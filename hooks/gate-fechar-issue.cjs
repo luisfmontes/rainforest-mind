@@ -32,7 +32,8 @@ const { MARCADOR } = require("./lib/marcador-evidencia.cjs");
 const { executar } = require("./lib/resolver-executavel.cjs");
 const {
   tokensComAspas, posicaoDeComando, textoAPartir, WRAPPERS_QUE_REPASSAM,
-  WRAPPERS_DE_COMANDO, desempacotarWrapperDeString,
+  WRAPPERS_DE_COMANDO, desempacotarWrapperDeString, OPERADORES_DE_DOIS,
+  colapsaContinuacaoDeLinhaNoTopo,
 } = require("./lib/tokens-comando.cjs");
 const { cwdPorSegmento } = require("./lib/cwd-efetivo.cjs");
 const { corpoDeHeredoc, linhaDoHeredocTemInterpretador, fimDaLinhaLogica } = require("./lib/heredoc.cjs");
@@ -110,6 +111,12 @@ const TEXTOS_DE_HEREDOC = [];
  * segmento verificável; não precisa entender a sintaxe do subshell/grupo.
  */
 function segmentosParaGate(cmd) {
+  // Tarefa 13 (#309, revisao 2): colapsa contrabarra+LF/CRLF de nivel
+  // superior (nao citada em aspas simples) ANTES de fatiar em segmentos —
+  // senao o `\n` cru vira fronteira de segmento incondicional (abaixo) e
+  // parte `gh issue \<LF>close 12` em dois pedaços que isolados nao
+  // bloqueiam. Ver docblock de `colapsaContinuacaoDeLinhaNoTopo`.
+  cmd = colapsaContinuacaoDeLinhaNoTopo(cmd);
   const segmentos = [];
   let atual = "";
   let aspa = null;
@@ -163,6 +170,17 @@ function segmentosParaGate(cmd) {
       continue;
     }
     if (c === "|" && cmd[i + 1] === "|") {
+      if (atual.trim()) segmentos.push(atual);
+      atual = "";
+      i++;
+      continue;
+    }
+    if (OPERADORES_DE_DOIS.has(cmd[i] + (cmd[i + 1] || ""))) {
+      // `|&` (#309, achado 1, revisao 2): fronteira de DOIS caracteres, como
+      // `||`/`&&` acima — o `&` NAO pode sobrar para o segmento seguinte,
+      // senao ele vira o primeiro token e tira `bash -c "..."` da posicao
+      // de comando. Ver o comentario de `OPERADORES_DE_DOIS` em
+      // `lib/tokens-comando.cjs`.
       if (atual.trim()) segmentos.push(atual);
       atual = "";
       i++;

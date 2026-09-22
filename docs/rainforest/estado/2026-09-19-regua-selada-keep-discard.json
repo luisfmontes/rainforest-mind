@@ -1,0 +1,139 @@
+{
+  "slug": "2026-09-19-regua-selada-keep-discard",
+  "titulo": "Regua selada por construcao e keep/discard por comparacao interna",
+  "criado_em": "2026-09-19",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-19-regua-selada-keep-discard.md",
+    "em": "2026-09-19"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-19-regua-selada-keep-discard.md",
+    "tarefas": 6,
+    "paralelas": [
+      1,
+      3,
+      5
+    ],
+    "em": "2026-09-20"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-21",
+    "tarefas_ok": 6,
+    "tarefas": 6,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "fdbfa28",
+        "iteracao": 1,
+        "sessao": "916c51f0-b6a9-4fc2-8102-3ba81981d545",
+        "ts": "2026-09-20T01:59:39.583Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "fdbfa28",
+        "iteracao": 1,
+        "sessao": "916c51f0-b6a9-4fc2-8102-3ba81981d545",
+        "ts": "2026-09-20T01:59:39.583Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "fdbfa28",
+        "iteracao": 1,
+        "sessao": "916c51f0-b6a9-4fc2-8102-3ba81981d545",
+        "ts": "2026-09-20T01:59:39.583Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "71e1b13",
+        "iteracao": 1,
+        "sessao": "916c51f0-b6a9-4fc2-8102-3ba81981d545",
+        "ts": "2026-09-20T02:19:10.328Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "71e1b13",
+        "iteracao": 1,
+        "sessao": "916c51f0-b6a9-4fc2-8102-3ba81981d545",
+        "ts": "2026-09-20T02:19:10.328Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "bf15e54",
+        "iteracao": 1,
+        "sessao": "916c51f0-b6a9-4fc2-8102-3ba81981d545",
+        "ts": "2026-09-20T04:54:14.443Z"
+      }
+    ],
+    "em": "2026-09-21",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-regua.sh, caso 1 \"manifesto editado na arvore de trabalho recusa\""
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-regua.sh, caso 6 \"mostrar com manifesto editado nao imprime nada\""
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "texto prescritivo da skill; falsificacao e o critico cego do fluxo-13-regua-fase0"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "texto prescritivo da skill; falsificacao e o critico cego do fluxo-13-regua-loop"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "linha de tabela; a trava e a catraca conferir-livro-de-repos.cjs"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-regua.sh, caso 9 pelo par vivo (conferir-fluxo mutacoes); rodada 8: casos 25-28; rodada 9: casos 30 (follow, 2 falhas), 31 (comentario, 3), 32 (cerca, 1), 33 (pathspec, 2); rodada 10: casos 34 (caixa) e 35 (Freios); rodada 11: caso 35, fixtures palavra-no-mecanismo e palavra-no-titulo (regex, 2 falhas); as duas camadas do caso 29 sobrevivem sozinhas e juntas o derrubam (1 falha)"
+      }
+    ],
+    "comando": "bash scripts/varrer-baterias.sh",
+    "saida": "as 125 baterias passaram (exit 0); testa-conferir-regua.sh 116 ok / 0 falha(s)",
+    "sensor_externo": "bash scripts/varrer-baterias.sh"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "a0c97aa2193f6eec867b82555ce07678160050dc",
+      "caminhos_sujos": []
+    },
+    "em": "2026-09-21",
+    "achados": 0,
+    "lista": [
+      "1 (reproduzido, baixa): regex do Freios quase certo larga demais - qualquer cabecalho com \"freios\" (### M1 Mostra os freios, titulo) vira a linha nomeada; sem nenhum Freios a mensagem deixa de dizer \"ausente\", contradizendo o pronto quando da rodada 10"
+    ],
+    "base": "4f714ef6",
+    "head": "a0c97aa2193f6eec867b82555ce07678160050dc",
+    "criticos": "fluxo-12-regua, fluxo-13-regua-fase0, fluxo-13-regua-loop: os tres concordo",
+    "revisor": "aprovado, 0 achados dentro do modelo (sonnet; duas tentativas em opus morreram em 529)"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/varrer-baterias.sh",
+    "saida": "arvore com merge da main (c1b97a25): as 125 baterias passaram (exit 0). T1/T2/T6: testa-conferir-regua.sh 116 ok, 0 falha(s), exit 0, 0 pulados; mostrar sem git no PATH sai 2 com 0 byte. T3/T4: segunda-opiniao --base origin/main --head HEAD, fluxo-12-regua, fluxo-13-regua-fase0 e fluxo-13-regua-loop: concordo, exit 0. T5: conferir-livro-de-repos sai 0; com o veredito trocado para Enxertar: vale a pena sai 2 com VEREDITO FORA DO VOCABULARIO. conferir-fluxo mutacoes: exit 0 (tarefas 1, 2, 6 vermelho; 3-5 n/a)",
+    "sensor_externo": "bash scripts/varrer-baterias.sh",
+    "em": "2026-09-21"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 308,
+    "em": "2026-09-21"
+  }
+}

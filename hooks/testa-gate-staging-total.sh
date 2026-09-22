@@ -392,6 +392,93 @@ gate "PowerShell: << em aspas nao esconde git add -A" 2 "$(pml "$(printf 'Write-
 gate "PowerShell: << em comentario nao esconde git add -A" 2 "$(pml "$(printf '# compara a << b\ngit add -A')")"
 
 echo
+echo "== bypass por palavra reservada (#309): posicaoDeComando pulando do/then/else/elif/while/until/if/! =="
+gate "for t in x; do bash -c \"git add -A\"; done BARRA (#309, do)"        2 "$(b 'for t in x; do bash -c \"git add -A\"; done')"
+gate "if true; then bash -c \"git add -A\"; fi BARRA (#309, then)"        2 "$(b 'if true; then bash -c \"git add -A\"; fi')"
+gate "while true; do bash -c \"git add -A\"; done BARRA (#309, while/do)" 2 "$(b 'while true; do bash -c \"git add -A\"; done')"
+gate "! bash -c \"git add -A\" BARRA (#309, !)"                           2 "$(b '! bash -c \"git add -A\"')"
+gate "{ bash -c \"git add -A\"; } BARRA (#309, controle: ja passava)"     2 "$(b '{ bash -c \"git add -A\"; }')"
+gate "if true; then git status; fi PASSA (#309, regressao: nao staging total)" 0 "$(b 'if true; then git status; fi')"
+
+echo
+echo "== coproc (#309, revisao): mesmo bypass — coproc sem nome nao entrava em PALAVRAS_RESERVADAS =="
+gate "coproc git add -A BARRA (coproc (#309, revisao))" 2 "$(b 'coproc git add -A')"
+
+echo
+echo '== (#309) bash "$t" como ultimo argumento: variavel citada com aspas DUPLAS =='
+# Os tres primeiros casos "BARRA" batem mesmo com conteudo generico
+# ("gh issue close 12"): este gate trata conteudo ILEGIVEL do wrapper como
+# `{incerto:true}` — bloqueia por precaucao (pode esconder `git add -A`),
+# independente do texto de dentro. So o ultimo caso ("for t in x; do bash -c
+# ...; done") precisa de conteudo LEGIVEL que bata com `git add -A` de
+# verdade — com "gh issue close 12" (legivel, sem variavel) ele passa exit 0
+# aqui, porque staging-total so olha para `git add -A`/`commit -a` (medido).
+gate 'bash "$t" PASSA (#309, caminho de script — nao mais ilegivel)'          0 "$(b 'bash \"$t\"')"
+gate 'bash "${t}" PASSA (#309, chaves)'                                       0 "$(b 'bash \"${t}\"')"
+gate 'bash "$t" 2>&1 PASSA (#309, redirecionamento nao conta)'                0 "$(b 'bash \"$t\" 2>&1')"
+gate 'bash "$t" > log PASSA (#309, redirecionamento nao conta)'               0 "$(b 'bash \"$t\" > log')"
+gate 'for t in $(grep -l x y.sh); do bash "$t"; done PASSA (#309, padrao real de bateria)' 0 "$(b 'for t in $(grep -l x y.sh); do bash \"$t\"; done')"
+gate 'bash "$f" "gh issue close 12" BARRA (#309, mais argumento depois — incerto)' 2 "$(b 'bash \"$f\" \"gh issue close 12\"')"
+gate 'bash $t BARRA (#309, sem aspas — incerto)'                              2 "$(b 'bash $t')"
+gate 'bash "$t" x BARRA (#309, mais argumento depois — incerto)'              2 "$(b 'bash \"$t\" x')"
+gate 'for t in x; do bash -c "git add -A"; done BARRA (#309, controle T1 adaptado: git add -A)' 2 "$(b 'for t in x; do bash -c \"git add -A\"; done')"
+
+echo
+echo "== pipe com stderr (|&) (#309, revisao 2) =="
+# `|&` (achado 1): mesmo conserto de gate-fechar-issue.cjs, aqui via
+# `segmentosComAspas` (hooks/lib/cwd-efetivo.cjs), que este gate usa para
+# segmentar. Medido na revisao de 2026-09-22, antes do conserto: exit 0 —
+# inclusive na origin/main.
+gate "echo hi |& git add -A BARRA (pipe com stderr (|&) (#309, revisao 2))" 2 "$(b 'echo hi |& git add -A')"
+
+echo
+echo "== continuacao de linha dentro da string (#309, revisao 2) =="
+# Achado 2: mesmo conserto de `desempacota()` em tokens-comando.cjs — a
+# contrabarra+LF dentro de `bash -c "..."` colapsa antes de reprocessar.
+# Medido na revisao de 2026-09-22, antes do conserto: exit 0 — inclusive na
+# origin/main.
+gate 'bash -c "git add \<LF>-A" BARRA (continuacao de linha dentro da string (#309, revisao 2))' 2 "$(bml "$(printf 'bash -c "git add \\\n-A"')")"
+
+echo
+echo "== continuacao de linha no topo (#309, revisao 2) =="
+# Tarefa 13, o buraco que a tarefa 12 deixou de fora: o texto de NIVEL
+# SUPERIOR nunca passava pelo colapso de continuacao de linha, so o INTERNO
+# de um wrapper de string passava (tarefa 12). `\<LF>` cru fora de wrapper
+# virava fronteira de segmento incondicional em `segmentosComAspas`
+# (cwd-efetivo.cjs, que este gate usa via `cwdPorSegmento`), partindo
+# `git add` de `-A` em dois segmentos que isolados nao batem no padrao.
+# Medido, ANTES deste conserto (2026-09-22): exit 0.
+gate 'git add \<LF>-A BARRA, sem wrapper (continuacao de linha no topo (#309, revisao 2))' 2 "$(bml "$(printf 'git add \\\n-A')")"
+
+echo
+echo "== continuacao de linha: paridade e aspas (#309, revisao 3) =="
+# Tarefa 14, caso equivalente ao de `testa-gate-fechar-issue.sh` — mesma
+# `colapsaContinuacaoDeLinhaNoTopo` (tokens-comando.cjs), aqui chamada por
+# `segmentosComAspas` (cwd-efetivo.cjs), caminho de codigo DIFERENTE do
+# `gate-fechar-issue.cjs`. Ver o docblock de `colapsaContinuacaoDeLinha` para
+# o mecanismo completo.
+
+# (sa) REGRESSAO (achado 1): duas contrabarras NAO colapsam (corrida par —
+# a 1a escapa a 2a, o LF sobra como fronteira de comando de verdade). Medido
+# direto em `segmentosComAspas` (2026-09-22): a versao anterior (regex
+# cega) fundia tudo num segmento so ("echo hi \git add -A", escondendo o
+# `git add -A` dentro de um segmento que comeca com `echo`); a desta tarefa
+# separa em dois segmentos, o segundo sendo `git add -A` sozinho.
+gate 'echo hi \\<LF>git add -A BARRA (continuacao de linha, duas contrabarras NAO colapsam (#309, revisao 3))' 2 "$(bml "$(printf 'echo hi \\\\\ngit add -A')")"
+
+echo
+echo "== continuacao de linha: buraco do apostrofo em aspas duplas (#309, revisao 3) =="
+# (sb) BURACO ANTIGO (achado 2): a mascara `/'[^']*'/g` da versao anterior
+# nao sabia de aspas DUPLAS — pareava QUALQUER apostrofo solto em QUALQUER
+# lugar do texto com o proximo que aparecesse depois, mesmo em trechos
+# citados DIFERENTES ("it's" de um --m e "don't" de um -- depois). Medido
+# direto em `segmentosComAspas` (2026-09-22): a versao anterior partia em
+# TRES segmentos ("git add \\" e "-A -- ..." separados, nenhum com o padrao
+# completo); a desta tarefa funde certo em dois, o segundo sendo
+# `git add -A -- "don't skip"` completo.
+gate 'git commit -m "its a test" && git add \<LF>-A -- "dont skip" BARRA (apostrofo solto em aspas duplas (#309, revisao 3))' 2 "$(bml "$(printf 'git commit -m "it'"'"'s a test" && git add \\\n-A -- "don'"'"'t skip"')")"
+
+echo
 echo "== saidas de emergencia =="
 saida=$(printf '%s' "$(b 'git add -A')" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (exit 0)"

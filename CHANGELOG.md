@@ -10,6 +10,61 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.23.0 — 2026-09-22
+
+**Os gates de texto pararam de deixar passar `bash -c` escondido atrás de palavra
+reservada, e pararam de barrar `bash "$t"`.** Antes, `for t in x; do bash -c "gh
+issue close 12"; done` passava pelo gate de fechar issue, enquanto o mesmo `bash -c`
+sem o laço era barrado: `do`, `then`, `else`, `elif`, `if`, `while`, `until`, `!` e
+`coproc` tiravam o `bash` da posição de comando. E o inverso: rodar uma lista de baterias com
+`for t in ...; do bash "$t"; done` era recusado como "comando encapsulado".
+
+- **Palavra reservada é pulada** na posição de comando, nos três gates de texto e no
+  gate de worktree.
+- **Variável entre aspas duplas como último argumento é caminho de script**:
+  `bash "$t"`, `bash "${t}"` e `bash "$t" 2>&1` passam. Sem aspas (`bash $t`) ou com
+  argumento depois (`bash "$f" "gh ..."`, que com `f=-c` vira `bash -c`) continuam
+  barrados.
+- **Parâmetro especial é ilegível**: `set -- -c "<cmd>"; bash "$@"`, `bash "$*"` e
+  `eval "$@"` passavam como se fossem caminho de script, e agora são barrados.
+- **Pipe com stderr (`|&`) e continuação de linha** deixaram de esconder comando: `echo
+  hi |& bash -c "<cmd>"`, `bash -c "gh issue \<quebra>close 12"` e a mesma quebra sem
+  wrapper nenhum passavam, e passavam também na 1.22.0 — são buracos antigos, achados
+  pela revisão desta rodada.
+- **E-mail em TLD reservado** (`.invalid`, `.example`, `.test`, `.localhost`, RFC 2606)
+  deixa de ser achado do gate de publicação, desde que seja o último rótulo
+  (`x@foo.test.com` continua pego).
+
+**O `conferir-entrega` em Python voltou a valer o mesmo que o de Node.** Ele tinha
+parado em agosto: faltavam `--escopo`, o exit 69 de "não deu para verificar",
+a reprovação de commit vazio e o BOM no `git status`. As quatro foram portadas, e o
+CI passou a rodar a bateria contra o gêmeo em passo próprio, para ele não congelar
+de novo em silêncio.
+
+## 1.22.0 — 2026-09-22
+
+**A régua do `/regua` não pode mais ser mexida depois que o loop começa.** Antes,
+"a régua é imutável" era uma frase na skill: nada impedia o builder (ou uma edição
+distraída) de afrouxar um mecanismo no meio das rodadas, e o crítico julgaria
+contra a régua nova sem ninguém perceber.
+
+- **Selada pelo commit.** O manifesto em `docs/rainforest/reguas/<slug>.md` vale
+  como foi commitado pela primeira vez. `node scripts/conferir-regua.cjs validar
+  --slug <slug>` confere o formato antes de selar; `conferir` recusa (exit 1)
+  régua alterada, apagada ou adicionada mais de uma vez no histórico; `mostrar` é
+  o único caminho que a imprime, e só imprime depois de conferir. Clone raso sai
+  2 — no CI, use `fetch-depth: 0`.
+- **Keep/discard automático.** A partir da 2ª rodada, um segundo crítico cego
+  compara o novo com o melhor guardado. Perdeu, o commit fica e o ponteiro não
+  anda; a próxima rodada parte do melhor. Estagnação em 3 rodadas vira a quarta
+  condição de parada.
+- **Log de rodadas versionado**, um TSV com SHA, veredito, status e lacuna de
+  cada rodada.
+
+O que o selo **não** cobre está escrito: manipulação deliberada de histórico por
+quem tem escrita no repositório (rebase, squash, branch órfã). Ele vigia o
+builder e os fluxos normais de git, não quem reescreve o histórico de propósito.
+
 ## 1.21.1 — 2026-09-21
 
 **A limpeza de branches para de mandar procurar no GitHub o que só existe no

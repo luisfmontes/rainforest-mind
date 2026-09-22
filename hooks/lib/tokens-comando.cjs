@@ -96,6 +96,40 @@ const WRAPPERS_QUE_REPASSAM = new Set([
   "env", "command", "exec", "nohup", "nice", "timeout", "xargs", "sudo", "time",
 ]);
 
+// Operadores de fronteira de segmento com DOIS caracteres que tem que ser
+// consumidos JUNTOS — nunca so o primeiro deles. `|&` (#309, achado 1, revisao
+// 2): atalho do bash para `2>&1 |` (liga stderr ao pipe seguinte). A
+// fronteira de segmento ja tratava `|` sozinho como divisor incondicional
+// (junto com `;`, `\n`, `(`, `)`, `{`, `}`), entao o `&` de `|&` sobrava e
+// virava o PRIMEIRO TOKEN do segmento seguinte — `echo hi |& bash -c "gh
+// issue close 12"` deixava `bash -c ...` fora da posicao de comando (o token
+// inicial era `&`). Medido saindo exit 0 no `gate-fechar-issue.cjs` e no
+// `gate-staging-total.cjs`, inclusive na `origin/main` (2026-09-22).
+// Exportado para as copias da segmentacao (`gate-fechar-issue.cjs` e
+// `cwd-efetivo.cjs`, que `gate-staging-total.cjs`/`gate-mensagem-commit.cjs`
+// usam) compartilharem a MESMA lista, em vez de cada uma aprender o operador
+// numa rodada diferente.
+const OPERADORES_DE_DOIS = new Set(["|&"]);
+
+// Palavras reservadas do shell que precedem um comando sem SEREM o comando —
+// `posicaoDeComando` tem que pular por cima delas para achar o wrapper de
+// verdade (#309): medido com o gate real, `do`/`then`/`else`/`elif`/`while`/
+// `until`/`if`/`!` na frente de `bash -c "gh issue close 12"` faziam
+// `posicaoDeComando` apontar para a PROPRIA palavra reservada (nao e
+// atribuicao nem wrapper conhecido, o laco parava ali), entao
+// `desempacotarWrapperDeString` nunca via o `bash -c` — `for t in x; do bash
+// -c "gh issue close 12"; done` saia com exit 0 (bypass). `{`/`(` NAO entram
+// aqui: `segmentosParaGate` (nos tres gates de texto) ja os consome como
+// FRONTEIRA DE SEGMENTO antes de qualquer tokenizacao chegar aqui — medido
+// que ja saiam exit 2 sem mudanca nenhuma.
+// `coproc` (revisao #309, achado 1): mesmo bypass, medido com `coproc bash -c
+// "gh issue close 12"` saindo exit 0 antes desta entrada. `coproc NOME { ...; }`
+// (com nome) exige comando composto — o `{` ja e fronteira de segmento, entao
+// so o `coproc bash -c ...` sem nome precisava deste pulo.
+const PALAVRAS_RESERVADAS = new Set([
+  "do", "then", "else", "elif", "while", "until", "if", "!", "coproc",
+]);
+
 // Flags que cada wrapper reconhece e que CONSOMEM VALOR: o proprio token
 // mais o seguinte — ou so o proprio, se o valor vier colado com `=`
 // (`--chdir=X`). Wrapper (ou flag) NAO listado aqui e tratado como SEM
@@ -207,6 +241,10 @@ function posicaoDeComando(toks, captura) {
   let i = 0;
   for (;;) {
     if (i < toks.length && !toks[i].q && ehAtribuicao(toks[i].v)) {
+      i += 1;
+      continue;
+    }
+    if (i < toks.length && !toks[i].q && PALAVRAS_RESERVADAS.has(toks[i].v)) {
       i += 1;
       continue;
     }
@@ -323,7 +361,64 @@ function extrairPrimeiroToken(str) {
   const m = /^\s*(?:"([^"]*)"|'([^']*)'|([{}()])|([^\s{}()]+))/.exec(str);
   if (!m) return null;
   const tok = m[1] !== undefined ? m[1] : m[2] !== undefined ? m[2] : m[3] !== undefined ? m[3] : m[4];
-  return { tok, resto: str.slice(m[0].length) };
+  // `citado`/`aspa` (D2, #309): de qual ramo do regex veio o token — precisa
+  // saber se era `"..."` (aspas duplas, onde o bash EXPANDE variavel) contra
+  // `'...'` (aspas simples, literal) ou nu. `tok` sozinho nao distingue: o
+  // conteudo capturado ja vem SEM as aspas nos tres casos, entao `"$t"` e
+  // `$t` nu produzem o mesmo `tok` ("$t") — sem este par a chamadora nao tem
+  // como saber se a variavel estava citada.
+  const citado = m[1] !== undefined || m[2] !== undefined;
+  const aspa = m[1] !== undefined ? '"' : m[2] !== undefined ? "'" : null;
+  return { tok, resto: str.slice(m[0].length), citado, aspa };
+}
+
+/**
+ * `current` (token de `extrairPrimeiroToken`) é EXATAMENTE uma variável
+ * citada com aspas DUPLAS (`"$x"`/`"${x}"`) — o bash expande, e aspas
+ * SIMPLES não contam (literal, não variável) — E não há mais nenhum
+ * argumento depois dela, só redirecionamento ou nada (D2, #309).
+ *
+ * Por que isto importa: `bash "$t"` é `bash <caminho de script>`, igual a
+ * `bash ./x.sh` — o CONTEÚDO de `$t` nunca é lido aqui, só o fato de que é
+ * UM caminho, sozinho, na última posição. Sem este ramo, `contemConstrucaoIlegivel`
+ * via de baixo marcava `"$t"` como ilegível pela MESMA regra que pega `bash
+ * $CMD` (variável de verdade, não resolvida) — mas `"$f" "gh issue close
+ * 12"` (variável com MAIS argumento depois) continua ilegível: a variável
+ * ali não é o único argumento, pode ser qualquer coisa (incluindo um `-c`
+ * escondido dentro dela).
+ */
+function ehVariavelCitadaFinal(current) {
+  if (!current.citado || current.aspa !== '"') return false;
+  if (!/^\$(?:[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_]*\})$/.test(current.tok)) return false;
+  return ehApenasRedirecionamentos(current.resto);
+}
+
+/** Um redirecionamento (`>`, `>>`, `<`, `2>&1`, `&>`, ...) no INÍCIO de `s`,
+ * consumindo também o alvo dele quando houver um (palavra citada ou não).
+ * `null` se `s` não começa com redirecionamento nenhum. */
+function consumirRedirecionamento(s) {
+  const semFd = /^(&>>?|\d*>>?&\d+|\d*<&\d+)/.exec(s);
+  if (semFd) return s.slice(semFd[0].length);
+  const comAlvo = /^\d*(>>|>|<)/.exec(s);
+  if (comAlvo) {
+    const resto = s.slice(comAlvo[0].length);
+    const alvo = extrairPrimeiroToken(resto);
+    return alvo ? alvo.resto : resto.replace(/^\s+/, "");
+  }
+  return null;
+}
+
+/** `resto` não tem NENHUM argumento posicional — só espaço e zero ou mais
+ * redirecionamentos, em qualquer sequência. */
+function ehApenasRedirecionamentos(resto) {
+  let s = resto;
+  for (;;) {
+    s = s.replace(/^\s+/, "");
+    if (s === "") return true;
+    const proximo = consumirRedirecionamento(s);
+    if (proximo === null) return false;
+    s = proximo;
+  }
 }
 
 /**
@@ -337,11 +432,162 @@ function casaPrefixoDeFlag(tok, nomeCompleto) {
   return t.length >= 2 && t[0] === "-" && nomeCompleto.toLowerCase().startsWith(t);
 }
 
+/**
+ * Remove continuacao de linha: contrabarra IMEDIATAMENTE seguida de quebra
+ * de linha (LF ou CRLF) some — exatamente como o bash colapsa a string que
+ * vira script de um wrapper (`bash -c "..."`, `eval "..."`) ANTES de rodar,
+ * e exatamente como o bash colapsa o texto de NIVEL SUPERIOR de um comando
+ * antes de fatiar em segmentos (tarefa 13).
+ *
+ * #309, revisao 3, achados 1 e 2: a versao anterior era uma regex cega
+ * (`/\\\r?\n/g`) sobre o texto todo, com aspas simples mascaradas por
+ * `/'[^']*'/g` só na chamada de topo (`colapsaContinuacaoDeLinhaNoTopo`).
+ * Dois defeitos:
+ *
+ *   1. REGRESSAO (tarefa 13): a regex colapsa QUALQUER contrabarra antes de
+ *      LF, sem olhar quantas vem antes. No bash, contrabarra escapa a
+ *      PROXIMA — uma corrida de `n` contrabarras seguida de LF só vira
+ *      continuacao quando `n` e IMPAR (a ultima contrabarra sobra e escapa o
+ *      LF); quando `n` e PAR, as contrabarras se casam duas a duas e o LF
+ *      fica de fora, continua fronteira de comando de verdade. Medido
+ *      (`spawnSync(["bash","-x",arquivo])`, 2026-09-22): `echo hi \\<LF>gh
+ *      issue close 12` (duas contrabarras) roda como DOIS comandos no bash
+ *      real (`echo hi \` e `gh issue close 12`, xtrace com dois `+`) — a
+ *      regex antiga colapsava do mesmo jeito que uma unica contrabarra,
+ *      fundindo tudo num `echo ...` so e escondendo o `gh issue close 12`.
+ *   2. BURACO ANTIGO: a mascara `/'[^']*'/g` da chamada de topo casa
+ *      QUALQUER trecho entre dois `'`, inclusive um apostrofo solto DENTRO
+ *      de aspas duplas (`"it's done"` — o `'` de "it's" e o `'` de "don't"
+ *      formam um par falso que a mascara declara "aspas simples" e protege
+ *      do colapso). `gh pr create --body "it's done, closes \<LF>#42, don't
+ *      worry"` chegava com o LF intacto, o corpo partia em duas linhas e o
+ *      `closes #42` nunca se formava.
+ *
+ * Os dois pedem a mesma correcao: varredura caractere a caractere com
+ * ESTADO de aspas (fora / aspas simples / aspas duplas) e CONTAGEM da
+ * corrida de contrabarras antes de decidir se a proxima quebra de linha
+ * escapa. Dentro de aspas simples nunca colapsa (aspas simples sao literais
+ * de ponta a ponta no bash, sem excecao para `\`); fora delas — sem aspas ou
+ * dentro de aspas duplas, onde o bash TAMBEM colapsa continuacao — colapsa
+ * quando a corrida de contrabarras imediatamente antes do LF/CRLF for
+ * IMPAR, preservando as contrabarras que sobraram em pares (elas nao mexem
+ * no texto, so a ULTIMA contrabarra impar + a quebra somem). Uma aspa dupla
+ * so alterna o estado quando NAO esta em aspas simples; uma aspa simples so
+ * abre quando o estado e "fora" (nunca dentro de aspas duplas — e o que
+ * consertava o achado 2). Uma contrabarra que escapa um caractere qualquer
+ * (inclusive uma aspa) e emitida com o caractere junto, sem passar pelo
+ * teste de alternancia de estado — e por isso `\"` dentro de aspas duplas
+ * nao fecha a aspa, e `\'` fora de aspas nao abre uma aspa simples.
+ *
+ * Serve os DOIS usos: o texto de NIVEL SUPERIOR (antes, `NoTopo`) e o
+ * INTERNO de um wrapper de string (`desempacota()`, tarefa 12) — o mascarar-
+ * e-desmascarar de `colapsaContinuacaoDeLinhaNoTopo` existia só porque a
+ * regex de baixo nao sabia respeitar aspas; agora que a propria varredura
+ * sabe, as duas funcoes fazem o mesmo trabalho e `colapsaContinuacaoDeLinhaNoTopo`
+ * (mantida, exportada, usada por `gate-fechar-issue.cjs` e `cwd-efetivo.cjs`)
+ * vira um alias direto — ver docblock dela.
+ */
+function colapsaContinuacaoDeLinha(str) {
+  let saida = "";
+  let estado = "fora"; // "fora" | "simples" | "duplas"
+  const n = str.length;
+  let i = 0;
+  while (i < n) {
+    const c = str[i];
+    if (estado === "simples") {
+      // Aspas simples sao literais de ponta a ponta — nem a propria aspa
+      // simples de fechamento passa por processamento nenhum antes.
+      if (c === "'") estado = "fora";
+      saida += c;
+      i += 1;
+      continue;
+    }
+    if (c === "'" && estado === "fora") {
+      estado = "simples";
+      saida += c;
+      i += 1;
+      continue;
+    }
+    if (c === '"') {
+      estado = estado === "duplas" ? "fora" : "duplas";
+      saida += c;
+      i += 1;
+      continue;
+    }
+    if (c === "\\") {
+      // Corrida de contrabarras consecutivas a partir daqui.
+      let fim = i;
+      while (fim < n && str[fim] === "\\") fim += 1;
+      const qtd = fim - i;
+      const pares = Math.floor(qtd / 2) * 2; // ficam como estao — nao mexem no texto
+      saida += "\\".repeat(pares);
+      if (qtd % 2 === 0) {
+        i = fim; // corrida par: nenhuma contrabarra sobra pra escapar o que vem depois
+        continue;
+      }
+      // Contrabarra impar sobrando: escapa o proximo caractere.
+      const alvo = str[fim];
+      const ehLF = alvo === "\n";
+      const ehCRLF = alvo === "\r" && str[fim + 1] === "\n";
+      if (ehLF || ehCRLF) {
+        // Continuacao de linha de verdade: a contrabarra sobrando e a
+        // quebra somem juntas, sem ir pra saida.
+        i = fim + (ehCRLF ? 2 : 1);
+        continue;
+      }
+      // Escapa um caractere qualquer (inclusive aspa): emite os dois juntos,
+      // sem passar pelo teste de alternancia de estado acima.
+      if (alvo === undefined) {
+        // Contrabarra solta no fim absoluto (nada depois dela, nem quebra).
+        // Medido: lido de script ou do stdin, o bash a DESCARTA (`echo hi\`
+        // imprime `hi`); em `bash -c`, ela sobrevive. A funcao segue o
+        // primeiro, e a diferenca nao muda veredito de gate nenhum: como nao
+        // sobra caractere depois, nao ha comando a esconder ali (revisao 5).
+        i = fim;
+        continue;
+      }
+      // Escapa um caractere qualquer (inclusive aspa): emite os dois juntos,
+      // sem passar pelo teste de alternancia de estado acima.
+      saida += "\\" + alvo;
+      i = fim + 1;
+      continue;
+    }
+    saida += c;
+    i += 1;
+  }
+  return saida;
+}
+
+/**
+ * Alias de `colapsaContinuacaoDeLinha` para o texto de comando de NIVEL
+ * SUPERIOR — mantido com nome proprio (e exportado) porque
+ * `hooks/gate-fechar-issue.cjs` e `hooks/lib/cwd-efetivo.cjs` importam por
+ * este nome (tarefa 14 não toca esses dois arquivos).
+ *
+ * Ate a tarefa 14 esta funcao tinha um corpo proprio: mascarava trecho entre
+ * aspas simples (`/'[^']*'/g`) antes de chamar a regex cega de
+ * `colapsaContinuacaoDeLinha` e desmascarava depois — só para que o colapso
+ * não mexesse no que estava entre aspas simples de verdade. Agora que
+ * `colapsaContinuacaoDeLinha` faz essa varredura com estado de aspas por
+ * conta propria (fora / simples / duplas), a mascara daqui virou trabalho
+ * duplicado — pior, era o proprio mecanismo do achado 2 (mascara por regex
+ * cega tambem casava apostrofo solto dentro de aspas duplas como se fosse
+ * par de aspas simples). As duas funcoes fazem hoje exatamente a mesma
+ * varredura; ficam como alias em vez de uma so para nao editar os dois
+ * arquivos que importam `colapsaContinuacaoDeLinhaNoTopo` por nome, fora do
+ * escopo desta tarefa.
+ */
+function colapsaContinuacaoDeLinhaNoTopo(cmdOriginal) {
+  return colapsaContinuacaoDeLinha(cmdOriginal);
+}
+
 /** Tira UM nivel de aspas externas de `interno`, se houver. */
 function desempacota(interno) {
   interno = interno.trim();
   const aspas = /^"([\s\S]*)"$/.exec(interno) || /^'([\s\S]*)'$/.exec(interno);
-  return aspas ? aspas[1] : interno;
+  interno = aspas ? aspas[1] : interno;
+  interno = colapsaContinuacaoDeLinha(interno);
+  return interno;
 }
 
 /**
@@ -353,7 +599,13 @@ function contemConstrucaoIlegivel(str) {
   // O `0-9` cobre parametro posicional (`$1`, `$2`): `bash -c` com ele dentro e
   // tao ilegivel quanto com `$VAR`, e a classe sem digito o deixava passar.
   // Apontado como lacuna na revisao de 2026-09-05, na mesma linha que D22 tocou.
-  return /\$\(|`|\$[A-Za-z_{0-9]/.test(str);
+  // `@*#?$!-` cobre parametro especial (`$@`, `$*`, `$#`, `$?`, `$$`, `$!`,
+  // `$-`): revisao #309, achado 2 — `set -- -c "gh issue close 12"; bash
+  // "$@"`, `bash "$*"` e `eval "$@"`/`eval $@` saiam exit 0 porque a classe
+  // sem esses caracteres nao via `$@`/`$*` como variavel nenhuma. `ehVariavelCitadaFinal`
+  // continua so aceitando `"$nome"`/`"${nome}"` (identificador), entao
+  // `"$@"`/`"$*"` nunca escapam por aquele ramo do caminho de script.
+  return /\$\(|`|\$[A-Za-z_{0-9@*#?$!-]/.test(str);
 }
 
 /**
@@ -479,6 +731,14 @@ function desempacotarWrapperDeString(segmento, { ferramenta } = {}) {
     // `${SCRIPT}` e `$(gerar)` chegam aqui como o token `$` sozinho, que nao
     // casa construcao nenhuma. O que se julga e a palavra INTEIRA: o token
     // mais o que vem colado nele ate o proximo espaco.
+    // D2 (#309): variável citada com aspas duplas, sozinha, como ÚLTIMO
+    // argumento (redirecionamento não conta) é um CAMINHO — mesmo tratamento
+    // que um caminho literal (`./script.sh`) já recebe logo abaixo. Sem
+    // aspas, ou com mais argumento depois, cai no `contemConstrucaoIlegivel`
+    // de sempre.
+    if (ehVariavelCitadaFinal(current)) {
+      return { interno: null, ilegivel: false };
+    }
     const coladoNoToken = /^[^\s]*/.exec(current.resto)[0];
     if (contemConstrucaoIlegivel(current.tok + coladoNoToken)) {
       return { interno: null, ilegivel: true };
@@ -493,9 +753,12 @@ module.exports = {
   ehComando,
   nomeDeWrapper,
   WRAPPERS_QUE_REPASSAM,
+  OPERADORES_DE_DOIS,
   posicaoDeComando,
   textoAPartir,
   WRAPPERS_DE_COMANDO,
   desempacotarWrapperDeString,
   contemConstrucaoIlegivel,
+  colapsaContinuacaoDeLinha,
+  colapsaContinuacaoDeLinhaNoTopo,
 };

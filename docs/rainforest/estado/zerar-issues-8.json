@@ -1,0 +1,178 @@
+{
+  "slug": "zerar-issues-8",
+  "titulo": "Zerar as Issues abertas, rodada 8 — gate bash \"$t\" e bypass do for/do (#309), gemeo Python do conferir-entrega (#303), eval de gatilho (#302)",
+  "criado_em": "2026-09-22",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/zerar-issues-8.md",
+    "em": "2026-09-22"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/zerar-issues-8.md",
+    "tarefas": 6,
+    "paralelas": [
+      1,
+      3,
+      4,
+      5
+    ],
+    "em": "2026-09-22"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-22",
+    "tarefas_ok": 15,
+    "tarefas": 15,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "5cdb90e",
+        "iteracao": 1,
+        "sessao": "dfa3221b-cc2c-48ce-a245-d0d976418fcc",
+        "ts": "2026-09-22T12:39:53.786Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "5cdb90e",
+        "iteracao": 1,
+        "sessao": "dfa3221b-cc2c-48ce-a245-d0d976418fcc",
+        "ts": "2026-09-22T12:39:53.786Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "5cdb90e",
+        "iteracao": 1,
+        "sessao": "dfa3221b-cc2c-48ce-a245-d0d976418fcc",
+        "ts": "2026-09-22T12:39:53.786Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "5cdb90e",
+        "iteracao": 1,
+        "sessao": "dfa3221b-cc2c-48ce-a245-d0d976418fcc",
+        "ts": "2026-09-22T12:39:53.786Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "5cdb90e",
+        "iteracao": 1,
+        "sessao": "dfa3221b-cc2c-48ce-a245-d0d976418fcc",
+        "ts": "2026-09-22T12:39:53.786Z"
+      }
+    ],
+    "em": "2026-09-22",
+    "comando": "bash hooks/testa-colapso-continuacao.sh",
+    "saida": "19 ok, 0 falha(s)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, palavra reservada"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, variavel citada final"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-entrega.sh, exit 69"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "passo de workflow; log do CI run 35734739268"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "emenda D6: suite no PR #311"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "bump de versao e changelog"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-entrega.sh, git fora do PATH"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, coproc"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, parametro especial"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-publicacao.sh, TLD reservado"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, pipe com stderr"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, continuacao dentro da string"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, continuacao no topo (fy)"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, paridade e aspas (ha-hf)"
+      },
+      {
+        "tarefa": 15,
+        "resultado": "vermelho",
+        "fixture": "testa-colapso-continuacao.cjs, 2/3/4 contrabarras"
+      }
+    ],
+    "em_voo": [],
+    "pendentes": [],
+    "sensor_externo": "bash hooks/testa-colapso-continuacao.sh"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "309c0432c0cf34f04821f10f957f2679b2adb6c0",
+      "caminhos_sujos": []
+    },
+    "em_voo": [],
+    "em": "2026-09-22",
+    "achados": 2,
+    "bloqueantes": 0,
+    "corrigidos": 2,
+    "base": "922f0a81",
+    "head": "309c0432",
+    "comando": "bash hooks/testa-colapso-continuacao.sh",
+    "saida": "19 ok, 0 falha(s)",
+    "sensor_externo": "bash hooks/testa-colapso-continuacao.sh"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues-8 && bash hooks/testa-colapso-continuacao.sh && CONFERIR=\"python scripts/conferir-entrega.py\" bash scripts/testa-conferir-entrega.sh",
+    "saida": "12 tarefas vermelhas, 3 puladas com motivo; colapso 19 ok 0 falha; gemeo 73 ok 0 falha (igual ao .cjs); 15 criterios de gate conferidos com payload real, todos no exit esperado",
+    "sensor_externo": "node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues-8",
+    "em": "2026-09-22"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

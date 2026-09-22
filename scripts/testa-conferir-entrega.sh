@@ -214,11 +214,16 @@ esac
 # areia so com o diretorio do proprio node (o comando FILHO herda esse PATH
 # raso; a linha de comando desta bateria continua com o PATH original). Sem
 # isto o `node` do comando nem seria encontrado pelo shell.
+# O interpretador do CONF_CMD entra tambem: o gemeo Python (CONFERIR=python ...)
+# nao mora no diretorio do node, e sem isto o `env` morria com 127 antes de o
+# .py rodar (#303, 2026-09-22).
 NODE_DIR="$(dirname "$(command -v node)")"
+INTERP_DIR="$(dirname "$(command -v "${CONF_CMD[0]}")")"
+PATH_SEM_GIT="$NODE_DIR:$INTERP_DIR"
 esperado "git fora do PATH -> exit 69 (ambiente, nao 'nao e repositorio git')" 69 \
-  env PATH="$NODE_DIR" "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE"
+  env PATH="$PATH_SEM_GIT" "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE"
 contem "  ... e o stderr nomeia git ausente" "nao-verificavel: git nao encontrado" \
-  env PATH="$NODE_DIR" "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE"
+  env PATH="$PATH_SEM_GIT" "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE"
 
 esperado "sem --base ainda roda, com aviso" 0 \
   "${CONF_CMD[@]}" --worktree "$WT" --head-antes "$HEAD_ANTES"

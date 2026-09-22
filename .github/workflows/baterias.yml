@@ -132,15 +132,14 @@ jobs:
           fi
           echo "  ok    arvore em LF"
 
-      # rainforest-gate: dados-de-exemplo — o endereco abaixo e sintetico (TLD
-      # .invalid, RFC 2606) e o numero citado no comentario e id de run do Actions.
-      # Sem o marcador, o gate de publicacao recusa qualquer edicao neste arquivo
-      # (Issue #165: ele confere o COMMIT inteiro, nao so as linhas novas).
+      # O endereco abaixo e sintetico: TLD .invalid (RFC 2606), que o gate de
+      # publicacao nao trata como e-mail real. Por isso o arquivo dispensa o
+      # marcador de dados de exemplo e continua escaneado inteiro.
       - name: Identidade git — o runner nao tem, a maquina do Luis tem
         run: |
           # Rede, nao conserto. Isto entrou apostando que era a causa das baterias
           # vermelhas — NAO era: com o step no lugar, as mesmas 4 continuaram
-          # vermelhas (run 32052513910). As causas reais estao no corpo do PR #17.
+          # vermelhas (mesma execucao). As causas reais estao no corpo do PR #17.
           #
           # Fica porque a afirmacao continua verdadeira e o custo e zero: o runner
           # nao tem `user.email` global, e hoje toda bateria que commita seta a
@@ -161,3 +160,13 @@ jobs:
 
       - name: Rodar as baterias
         run: bash scripts/varrer-baterias.sh
+
+      # Passo separado, de proposito (D5): o gemeo em Python de conferir-entrega.cjs
+      # so aparece quando alguem digita o CONFERIR override na mao — por isso
+      # congelou tres semanas sem ninguem ver (Issue #303). O runner ja garante
+      # `python` (comentario de scripts/testa-dependencias-de-bateria.sh: "cria
+      # python3 alem de python"), entao a linha e a MESMA que o CONTRIBUTING manda
+      # rodar antes de abrir PR — provar o gemeo aqui e provar o que o contribuidor
+      # roda na propria maquina, nao um substituto.
+      - name: Rodar a bateria do gemeo em Python (conferir-entrega)
+        run: CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh

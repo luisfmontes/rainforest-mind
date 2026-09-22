@@ -22,15 +22,11 @@ envolvido nela.
 
 ## Antes de qualquer coisa: quase sempre a resposta é não
 
-Se a tarefa **tem teste**, o teste é a régua e esta skill é overhead puro. Não
-use quando:
-
-- existe um critério falsificável possível e você só não escreveu ainda —
-  escreva o critério, é mais barato que um loop;
-- a tarefa é mecânica (renomear, mover, corrigir parse) — vá para `plano`;
-- a diferença entre "bom" e "ótimo" não muda nada para quem recebe — isso é a
-  regra 9, e ela vence esta skill;
-- você quer **opções** e não um vencedor — isso é `divergir`.
+Se a tarefa **tem teste**, o teste é a régua e esta skill é overhead puro. Os
+quatro casos em que ela não se usa — critério falsificável que você só não
+escreveu, tarefa mecânica, diferença que não muda nada para quem recebe
+(regra 9), e querer opções em vez de um vencedor (`divergir`) — estão em
+`references/quando-nao-usar.md`.
 
 Use quando errar o acabamento custa a impressão de quem recebe, e você percebe
 que não consegue escrever a frase "isto está pronto quando ___".
@@ -52,34 +48,48 @@ comparação e aprovar a primeira rodada, que é a falha mais comum deste padrã
 
 E uma régua **boa demais** é o outro lado da mesma moeda: se o alvo é
 inalcançável com o esforço disponível, o loop nunca sai e queima orçamento
-parecendo progresso. O teto da fase 1 existe por causa disso.
+parecendo progresso. O teto do `## Freios` existe por causa disso.
 
-### Os mecanismos: destile a régua antes de olhar para o seu trabalho
+### Os mecanismos: selam a régua por construção
 
-Régua nomeada ainda não é régua **útil**. "O README do Stripe" passa nos três
-testes acima e mesmo assim não diz nada ao crítico — ele vai olhar os dois lados
-e responder com o que sobra quando falta critério: "o B está mais polido".
 
 Antes da rodada 1, leia a régua de verdade e escreva **5 a 7 mecanismos** em
-`docs/rainforest/reguas/<slug>.md`. Mecanismo é o que alguém **confere
-olhando** — não adjetivo:
+um manifesto único: `docs/rainforest/reguas/<slug>.md`. Este arquivo carrega
+as três coisas — qual é a régua, os mecanismos, e uma seção `## Freios` com o
+teto de rodadas. Mecanismo é o que alguém **confere olhando** — não adjetivo.
+Veja o formato exigido em `references/formato-manifesto.md`.
 
-| ❌ não é mecanismo | ✅ é mecanismo |
-|---|---|
-| "parece premium" | o título tem 5× o corpo, e existem três tamanhos de fonte no total |
-| "tem bom ritmo" | nada anima abaixo de 400 ms |
-| "usa bem o espaço" | acima da dobra, ao menos 40% do quadro é vazio |
-| "erro claro" | toda mensagem de erro nomeia o arquivo e a linha |
+Adjetivo contra mecanismo, em pares: `references/mecanismos-exemplos.md`.
 
-O arquivo é **commitado na rodada 1** e não muda depois. Isso não é
+Antes de selar, `node scripts/conferir-regua.cjs validar --slug <slug>`: selado
+com erro de formato não tem conserto, só slug novo. O arquivo é **commitado na
+rodada 1**, **antes do primeiro crítico** — o `mostrar` lê do commit e recusa
+(exit 1) manifesto fora do git. Depois disso não muda. Isso não é
 organização: o crítico é `Agent` novo a **toda** rodada, e o que não estiver em
-disco não chega nele. Régua reescrita no meio do loop é régua trocada no meio do
-loop — que é exatamente o que esta skill existe para impedir.
+disco não chega nele. É por isso que o teto de rodadas deixou de viver na
+conversa e virou item do arquivo — e régua reescrita no meio do loop é régua
+trocada no meio do loop, a mesma fraude que trocar o teto.
 
 **Não consegue escrever cinco?** A régua reprovou, e reprovou **de graça**. Essa
 é a rede barata: ela custa zero rodada, enquanto a calibragem da Fase 1 custa
 uma. As duas ficam, porque pegam coisas diferentes — aqui, régua da qual não se
 extrai critério nenhum; lá, régua da qual se extrai critério que não discrimina.
+
+### Crítico cego lerá do commit, pela checagem
+
+O crítico recebe o manifesto pela saída de `node scripts/conferir-regua.cjs
+mostrar --slug <slug>`, e é o **único** caminho que imprime o arquivo. Assim
+não existe a abertura "pegou o conteúdo sem conferir": a checagem da âncora e
+do formato (cinco a sete mecanismos, seção "Freios" presente) roda antes da
+impressão, e só imprime se passou. Arquivo lido direto, ou por `git show` por
+conta do orquestrador, falseia o mecanismo — o ganho de ter a régua sob controle
+do git é **um ponto onde burlar**, em vez de um por rodada e por crítico.
+
+O topo continua procedural — a sessão que orquestra precisa chamar o comando
+certo — porque quem orquestra é um LLM. Não é promessa de impossibilidade de
+burla; é limite honesto de onde termina a garantia. E o selo é o histórico do
+git: em clone raso o conferidor recusa (exit 2) em vez de julgar — em CI,
+`fetch-depth: 0`. Mais em `references/fronteira-de-honestidade.md`.
 
 ### Preflight: quem consegue ver o quê
 
@@ -114,15 +124,16 @@ outro lado da comparação, e insistir é queimar rodada.
 O padrão original não tem nenhum destes, e é por isso que ele só funciona com
 alguém olhando. Os três se declaram **antes** da rodada 1:
 
-**Teto de rodadas.** Um número. Ele **não é a condição de saída** — é o abort.
-Saída é vencer a comparação; abort é acabar o orçamento e você olhar o que tem.
-Confundir os dois é o que produz "5 rodadas, pronto!" com o trabalho pior que na
-rodada 2.
+**Teto de rodadas.** Já está escrito: é o número que a Fase 0 pôs no `## Freios`
+do manifesto, e é de lá que ele se lê. Não se declara de novo aqui — teto
+redeclarado na Fase 1 é teto de volta na conversa, que é o buraco que selá-lo
+fechou.
 
 **Commit por rodada.** Cada rodada fecha com um commit próprio, mensagem
-`regua: rodada N — <o que mudou>`. A última rodada **não é necessariamente a
-melhor**: sem commit por rodada, voltar para a rodada 3 é impossível e o loop
-vira um caminho só de ida.
+`regua: rodada N — <o que mudou>`.
+
+Por que abort não é saída, e por que a última rodada não é a melhor:
+`references/fase-1-orcamento.md`.
 
 **Calibragem na rodada 1.** Se o crítico da primeira rodada não conseguir
 apontar **uma lacuna específica e fechável**, o problema é a régua, não o
@@ -131,77 +142,110 @@ rodada 1 já provou que não vai discriminar na rodada 7.
 
 ## Fase 2 — o loop
 
-Cada rodada tem duas metades, e elas **nunca** rodam no mesmo contexto.
+Cada rodada tem três peças: **builder**, **crítico da régua** e **crítico
+interno** — nunca no mesmo contexto. As duas primeiras rodam desde a rodada 1
+(é o crítico da rodada 1 que a calibragem acima usa); o **crítico interno só
+existe a partir da rodada 2**, porque antes disso não há rodada anterior com
+que comparar.
 
-**Builder.** Recebe a tarefa e, a partir da rodada 2, **a lacuna única** que o
-crítico apontou — uma, não uma lista. Lista faz o builder espalhar esforço e
-não fechar nenhuma. Ele não vê os vereditos anteriores.
-
-Ele também **não vê o arquivo de mecanismos** — vê a régua, o artefato inteiro.
-Builder com a lista na mão otimiza para a lista: entrega os sete itens, vence a
+**Builder.** Recebe a tarefa e **a lacuna única** que o crítico da régua
+apontou — uma, não uma lista. Lista faz o builder espalhar esforço e não fechar
+nenhuma. Ele não vê os vereditos anteriores, e **não vê o arquivo de
+mecanismos** — vê a régua, o artefato inteiro. Builder com a lista na mão
+otimiza para a lista: entrega os sete itens, vence a
 comparação e não fica melhor. Aí o loop mede a si mesmo, que é a forma mais cara
 de não medir nada.
 
-**Crítico.** `Agent` novo **toda rodada**, nunca `fork`, nunca o mesmo da rodada
-anterior. Recebe os dois artefatos **sem rótulo** e sem saber qual é qual, sem
-saber que rodada é, e sem saber que um deles é "nosso" — mais o arquivo de
-mecanismos da Fase 0, que é o que ele tem para enxergar com. Devolve:
+A partir da rodada 2, o builder parte do **artefato do melhor guardado**
+materializado pelo orquestrador através de `git show`, não do último commit. O
+melhor guardado é um SHA registrado no log de rodadas versionado,
+`docs/rainforest/reguas/<slug>-rodadas.tsv`, com as colunas `rodada`, `commit`,
+`venceu_regua`, `venceu_interno`, `status` (em `keep|discard|abortado`) e `lacuna`,
+e atualizado pela comparação interna a cada rodada. A rodada 1 entra como `keep`
+— é o primeiro melhor guardado —, e cada linha entra depois do commit que fecha
+a rodada, que é de onde sai o SHA.
 
-1. **Qual venceu** — binário, A ou B. Nunca nota, nunca "empate", nunca "os dois
-   têm méritos". Nota infla a cada rodada; binário não.
+**O limite do `git show`: artefato que só existe renderizado.** `git show` devolve
+o versionado, e basta para texto. Quando se julga um render — print, filmstrip,
+PDF —, o arquivo renderizado **precisa estar commitado junto** com a rodada. Sem
+isso a **comparação interna fica cega**: compara o fonte enquanto o crítico da
+régua julga a imagem. O preflight pergunta se o nosso lado renderiza; aqui o
+render precisa **sobreviver à rodada**.
+
+**Crítico da régua.** `Agent` novo **toda rodada**, nunca `fork`, nunca o mesmo
+da rodada anterior. Recebe o nosso artefato e a régua **sem rótulo** e sem saber
+qual é qual, sem saber que rodada é — mais o arquivo de mecanismos da Fase 0,
+que é o que ele tem para enxergar com. Caminho: `node scripts/conferir-regua.cjs
+mostrar --slug <slug>`. Devolve:
+
+1. **Qual venceu** — binário, nosso ou régua. Nunca nota, nunca "empate", nunca
+   "os dois têm méritos". Nota infla a cada rodada; binário não.
 2. **A lacuna única** — se o vencedor não foi o nosso, a **uma** coisa concreta
    que decidiu. Com localização, igual a achado de `revisar`: "a terceira linha
-   força o leitor a contar colunas" é lacuna, "parece menos polido" não é.
+   força o leitor a contar colunas" é lacuna, "parece menos polido" não é. Essa
+   lacuna é a **única** que alimenta o builder — nunca da comparação interna,
+   senão o loop se persegue — e é a da **rodada do melhor guardado** (coluna
+   `lacuna` no TSV): a do descartado aponta para artefato de que o builder não
+   parte.
+
+**Crítico interno.** `Agent` novo toda rodada **a partir da 2ª**, cego como o crítico
+da régua. Recebe nosso-novo e nosso-melhor **sem rótulo** e sem saber qual é
+mais recente — mais o mesmo arquivo de mecanismos, pelo mesmo comando
+`conferir-regua.cjs mostrar`. Devolve **só** o binário: guardar (keep) ou
+descartar (discard). Sem lacuna, sem nota, sem progresso.
+
+Despachos separados porque um crítico só, vendo nosso-novo, nosso-melhor e a
+régua juntos, identifica pelo parentesco quais dois são nossos — o anonimato cai
+ali. Os dois recebem o mesmo manifesto porque crítico sem critério devolve "o B
+está mais polido", a falha já nomeada na calibragem da Fase 1.
 
 **Os mecanismos não são uma rubrica.** O crítico não pontua sete itens e soma:
-ele continua devolvendo A ou B, e **uma** lacuna. A lista existe para ele saber
-onde olhar, não para virar nota — nota infla a cada rodada, e é por isso que o
-veredito é binário desde a primeira linha desta seção.
+ele continua devolvendo A ou B (régua) ou keep/discard (interno), e **uma** lacuna
+(régua só). A lista existe para ele saber onde olhar, não para virar nota — nota
+infla a cada rodada, e é por isso que o veredito continua binário.
 
-O crítico ser novo a cada rodada é o mecanismo, não zelo. Crítico que
-acompanhou o loop julga **progresso** ("muito melhor que a rodada 3") em vez de
-julgar contra a régua, e aprova cedo demais por simpatia acumulada.
+O crítico ser novo a cada rodada é o mecanismo, não zelo. Quem acompanhou o
+loop julga **progresso** ("muito melhor que a rodada 3") em vez de julgar contra
+a régua, e aprova cedo por simpatia acumulada — no crítico interno isso vira
+"está bom demais pra jogar fora?", o mesmo viés por outra porta.
 
 ## Condição de parada
 
-Três saídas, e só três:
+Quatro saídas, não três:
 
-- **Venceu** — o crítico cego escolheu o nosso. Fim, sem mais uma rodada. Mais
-  uma rodada depois de vencer é a regra 9 sendo violada com método.
-- **Teto** — acabaram as rodadas. Você olha os commits, escolhe o melhor, e a
-  entrega sai com a distância para a régua **nomeada em uma linha**, não
-  escondida.
+- **Venceu** — o crítico da régua escolheu o nosso. Fim, sem mais uma rodada,
+  e **mesmo com discard do interno**: o novo é o único que venceu, entra `keep`.
+  Mais uma rodada depois de vencer é a regra 9 sendo violada com método.
+- **Teto** — acabaram as rodadas do `## Freios`. Você entrega o **melhor
+  guardado** do log, materializado via `git show`, com a distância para a régua
+  **nomeada em uma linha**. Os commits das rodadas descartadas **permanecem no
+  histórico**: o que não avança é o ponteiro. A regra 11 proíbe git destrutivo em
+  agente, e poder voltar à rodada 3 depende do commit dela estar lá.
+- **Estagnação** — três rodadas seguidas com `discard` do crítico interno. Há
+  rodadas sobrando, mas o ponteiro não se moveu em três tentativas: o
+  investimento deixou de pagar. Distinto do teto:
+  teto é "acabaram os recursos", estagnação é "recursos sobraram, tentativas
+  pararam".
 - **Régua errada** — a calibragem da rodada 1 falhou. Nada foi entregue, e isso
   é resultado, não fracasso: descobrir em uma rodada que a régua não discrimina
   é o barato desta skill.
 
-Esta skill **não é estágio do fluxo** e não aparece no `estado.cjs` — é
-invocável sozinha, como `divergir`, `semear` e `arqueologia`. Ela também pode
-alimentar o `plano`: a régua vira o critério de aceite da tarefa que não tinha
-nenhum, e aí o `verificar` volta a ter o que rodar.
-
-## Rodando sozinho, sem babá
-
-O loop longo autônomo é feito com o `/loop` **nativo do Claude Code** — esta
-skill não implementa motor nenhum, e não precisa. O que ela adiciona ao `/loop`
-é justamente o que falta nele: uma condição de saída que não é "o usuário
-mandou parar".
-
-`/loop` sem régua e sem teto é queima de token com aparência de progresso. Com
-os dois, é a única configuração em que largar e sair de perto se sustenta.
 
 ## O que falsificaria esta skill
 
-Guarde a régua e o número da rodada em que o loop saiu. Se, em três usos,
-**todos** saírem na rodada 1 ou 2, a régua está sendo escolhida fraca de
-propósito e a skill virou cerimônia — o remédio é apertar a régua, não rodar
-mais. Se, em três usos, **nenhum** vencer dentro do teto, ou o teto está curto
-demais ou o padrão não paga o custo nesta classe de trabalho, e ele sai daqui.
+Três testes baratos, que valem mais que qualquer argumento desta página:
 
-Os dois testes são baratos e valem mais que qualquer argumento de desenho,
-inclusive os desta página.
+1. Se, em três usos, **todos** saírem na rodada 1 ou 2, a régua está sendo
+   escolhida fraca de propósito e a skill virou cerimônia — o remédio é
+   apertar a régua, não rodar mais.
+2. Se, em três usos, **nenhum** vencer dentro do teto, ou o teto está curto
+   demais ou o padrão não paga o custo nesta classe de trabalho — ele sai daqui.
+3. Se, em três usos, **toda rodada** der `keep`, o crítico interno não
+   discrimina — não há comparação, só chapa. O remédio não é apertá-lo: é
+   **cortá-lo inteiramente**. Dois críticos por rodada para nunca reprovar nada
+   é cerimônia cara.
 
-Duas fontes, e vale nomear as duas. Padrão adaptado do
+Três fontes, e todas valem nomear. Padrão adaptado do
 `robonuggets/gauntlet-loop`, que enuncia bem a tese central —
 trocar rubrica auto-avaliada por comparação cega contra uma referência externa
 nomeada — e cataloga com honestidade as formas de quebrá-la. Reimplementado a
@@ -219,34 +263,22 @@ gosto — três críticos por rodada, sem teto e sem commit intermediário, cust
 que este loop inteiro, e o custo era justamente a queixa que trouxe as duas
 skills para a mesma mesa (2026-09-04).
 
-## A fronteira de honestidade
+A imutabilidade da régua por construção (Fase 0, arquivo em disco com âncora de
+git) e o keep/discard automático por comparação interna entre rodadas (Fase 2)
+são enxertos do `karpathy/autoresearch`. Dele veio a ideia de decidir
+sozinho, a cada iteração, se guarda o trabalho ou descarta. A selagem veio pela
+ausência: lá o juiz (`evaluate_bpb`) é protegido só por uma linha de markdown, e
+o agente avaliado pode editá-lo — o commit de adição como selo é a resposta
+daqui a esse buraco, não uma peça copiada de lá. Dele ficou de fora:
+o custo fixo de 5 minutos por tentativa (lá faz `val_bpb` comparável entre
+arquiteturas diferentes; aqui a comparabilidade vem do crítico cego vendo os
+dois artefatos lado a lado). Reimplementado a partir da descrição, sem copiar
+arquivo — o original não está neste repositório, e o padrão não reusa código de
+terceiro nesta classe de controle.
 
-Esta skill não faz medição. Não aceita estimativa, não converte histórico em
-previsão, não responde perguntas em forma de "se pudéssemos sair da baseline".
+## Onde mora o resto
 
-**Nunca imprima número de economia estimado sobre um repo vivo.** A versão não
-construída nunca foi escrita, então não há baseline de onde subtrair. Não existe
-frase "quanto as regras economizam?" que responda sem dados medidos.
-
-Número só sai de dois lugares:
-
-1. **Bateria medida, com gate.** Um conjunto fixo de tarefas, rodado **com e sem**
-   a coisa sendo medida, que conta linhas e valida que o resultado está correto.
-   Sem gate, "menos linhas" não significa nada — é "errado por menos linhas", que é
-   pior. O exemplo é `scripts/medir-escada.sh`: roda um conjunto fixo com e sem o
-   `additionalContext` da escada, colhe dois números (linhas e gate), e reporta.
-   Sem CLI declarado na config, o script **pula e diz que pulou** — nunca inventa
-   número.
-
-2. **Contagem real.** Um ledger que registra cada adiamento ou corte — a
-   `scripts/atalhos.cjs`, que varre o repo e colhe os marcadores `atalho:` e
-   `ponytail:`. Isto é contagem, não estimativa: o número está ali, em código.
-
-Se o que você quer medir não cabe em nenhuma das duas formas acima, não está pronto
-para número. Fica escrito "menos boilerplate" até que vire um dos dois. E "menos
-boilerplate" é prognóstico, não fato, e tem que ser dito assim.
-
-Esta regra é comprada com a vida do repositório. Estimativa que fica lá não envelhece
-bem — daqui a um ano ela é história, e a próxima pessoa lê como fato. Três linhas
-de honestidade ("número saiu de bateria medida com gate, CLI: codex") custam bem
-menos que quatro meses de alguém acreditando em número que não existe.
+- `references/quando-nao-usar.md` — os quatro casos de overhead puro.
+- `references/mecanismos-exemplos.md` — adjetivo contra mecanismo.
+- `references/loop-autonomo.md` — largar rodando no `/loop` nativo.
+- `references/fronteira-de-honestidade.md` — de onde número pode sair aqui.
