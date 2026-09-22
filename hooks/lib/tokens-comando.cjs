@@ -96,6 +96,21 @@ const WRAPPERS_QUE_REPASSAM = new Set([
   "env", "command", "exec", "nohup", "nice", "timeout", "xargs", "sudo", "time",
 ]);
 
+// Palavras reservadas do shell que precedem um comando sem SEREM o comando —
+// `posicaoDeComando` tem que pular por cima delas para achar o wrapper de
+// verdade (#309): medido com o gate real, `do`/`then`/`else`/`elif`/`while`/
+// `until`/`if`/`!` na frente de `bash -c "gh issue close 12"` faziam
+// `posicaoDeComando` apontar para a PROPRIA palavra reservada (nao e
+// atribuicao nem wrapper conhecido, o laco parava ali), entao
+// `desempacotarWrapperDeString` nunca via o `bash -c` — `for t in x; do bash
+// -c "gh issue close 12"; done` saia com exit 0 (bypass). `{`/`(` NAO entram
+// aqui: `segmentosParaGate` (nos tres gates de texto) ja os consome como
+// FRONTEIRA DE SEGMENTO antes de qualquer tokenizacao chegar aqui — medido
+// que ja saiam exit 2 sem mudanca nenhuma.
+const PALAVRAS_RESERVADAS = new Set([
+  "do", "then", "else", "elif", "while", "until", "if", "!",
+]);
+
 // Flags que cada wrapper reconhece e que CONSOMEM VALOR: o proprio token
 // mais o seguinte — ou so o proprio, se o valor vier colado com `=`
 // (`--chdir=X`). Wrapper (ou flag) NAO listado aqui e tratado como SEM
@@ -207,6 +222,10 @@ function posicaoDeComando(toks, captura) {
   let i = 0;
   for (;;) {
     if (i < toks.length && !toks[i].q && ehAtribuicao(toks[i].v)) {
+      i += 1;
+      continue;
+    }
+    if (i < toks.length && !toks[i].q && PALAVRAS_RESERVADAS.has(toks[i].v)) {
       i += 1;
       continue;
     }
@@ -323,7 +342,64 @@ function extrairPrimeiroToken(str) {
   const m = /^\s*(?:"([^"]*)"|'([^']*)'|([{}()])|([^\s{}()]+))/.exec(str);
   if (!m) return null;
   const tok = m[1] !== undefined ? m[1] : m[2] !== undefined ? m[2] : m[3] !== undefined ? m[3] : m[4];
-  return { tok, resto: str.slice(m[0].length) };
+  // `citado`/`aspa` (D2, #309): de qual ramo do regex veio o token — precisa
+  // saber se era `"..."` (aspas duplas, onde o bash EXPANDE variavel) contra
+  // `'...'` (aspas simples, literal) ou nu. `tok` sozinho nao distingue: o
+  // conteudo capturado ja vem SEM as aspas nos tres casos, entao `"$t"` e
+  // `$t` nu produzem o mesmo `tok` ("$t") — sem este par a chamadora nao tem
+  // como saber se a variavel estava citada.
+  const citado = m[1] !== undefined || m[2] !== undefined;
+  const aspa = m[1] !== undefined ? '"' : m[2] !== undefined ? "'" : null;
+  return { tok, resto: str.slice(m[0].length), citado, aspa };
+}
+
+/**
+ * `current` (token de `extrairPrimeiroToken`) é EXATAMENTE uma variável
+ * citada com aspas DUPLAS (`"$x"`/`"${x}"`) — o bash expande, e aspas
+ * SIMPLES não contam (literal, não variável) — E não há mais nenhum
+ * argumento depois dela, só redirecionamento ou nada (D2, #309).
+ *
+ * Por que isto importa: `bash "$t"` é `bash <caminho de script>`, igual a
+ * `bash ./x.sh` — o CONTEÚDO de `$t` nunca é lido aqui, só o fato de que é
+ * UM caminho, sozinho, na última posição. Sem este ramo, `contemConstrucaoIlegivel`
+ * via de baixo marcava `"$t"` como ilegível pela MESMA regra que pega `bash
+ * $CMD` (variável de verdade, não resolvida) — mas `"$f" "gh issue close
+ * 12"` (variável com MAIS argumento depois) continua ilegível: a variável
+ * ali não é o único argumento, pode ser qualquer coisa (incluindo um `-c`
+ * escondido dentro dela).
+ */
+function ehVariavelCitadaFinal(current) {
+  if (!current.citado || current.aspa !== '"') return false;
+  if (!/^\$(?:[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_]*\})$/.test(current.tok)) return false;
+  return ehApenasRedirecionamentos(current.resto);
+}
+
+/** Um redirecionamento (`>`, `>>`, `<`, `2>&1`, `&>`, ...) no INÍCIO de `s`,
+ * consumindo também o alvo dele quando houver um (palavra citada ou não).
+ * `null` se `s` não começa com redirecionamento nenhum. */
+function consumirRedirecionamento(s) {
+  const semFd = /^(&>>?|\d*>>?&\d+|\d*<&\d+)/.exec(s);
+  if (semFd) return s.slice(semFd[0].length);
+  const comAlvo = /^\d*(>>|>|<)/.exec(s);
+  if (comAlvo) {
+    const resto = s.slice(comAlvo[0].length);
+    const alvo = extrairPrimeiroToken(resto);
+    return alvo ? alvo.resto : resto.replace(/^\s+/, "");
+  }
+  return null;
+}
+
+/** `resto` não tem NENHUM argumento posicional — só espaço e zero ou mais
+ * redirecionamentos, em qualquer sequência. */
+function ehApenasRedirecionamentos(resto) {
+  let s = resto;
+  for (;;) {
+    s = s.replace(/^\s+/, "");
+    if (s === "") return true;
+    const proximo = consumirRedirecionamento(s);
+    if (proximo === null) return false;
+    s = proximo;
+  }
 }
 
 /**
@@ -479,6 +555,14 @@ function desempacotarWrapperDeString(segmento, { ferramenta } = {}) {
     // `${SCRIPT}` e `$(gerar)` chegam aqui como o token `$` sozinho, que nao
     // casa construcao nenhuma. O que se julga e a palavra INTEIRA: o token
     // mais o que vem colado nele ate o proximo espaco.
+    // D2 (#309): variável citada com aspas duplas, sozinha, como ÚLTIMO
+    // argumento (redirecionamento não conta) é um CAMINHO — mesmo tratamento
+    // que um caminho literal (`./script.sh`) já recebe logo abaixo. Sem
+    // aspas, ou com mais argumento depois, cai no `contemConstrucaoIlegivel`
+    // de sempre.
+    if (ehVariavelCitadaFinal(current)) {
+      return { interno: null, ilegivel: false };
+    }
     const coladoNoToken = /^[^\s]*/.exec(current.resto)[0];
     if (contemConstrucaoIlegivel(current.tok + coladoNoToken)) {
       return { interno: null, ilegivel: true };
