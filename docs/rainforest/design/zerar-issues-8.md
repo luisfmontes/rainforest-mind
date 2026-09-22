@@ -17,6 +17,7 @@ gatilho de skill (#302) antes de qualquer decisão de CI.
 - **D8 — Versão: bump de minor sobre o que estiver em `origin/main` no `fechar` (o #308 leva a main a 1.22.0)** — porquê: muda comportamento de gate; o número exato depende da ordem dos merges.
 
 ## Avaliado e descartado
+- Deixar `scripts/conferir-publicacao.cjs` sem o marcador `dados-de-exemplo` e reescrever os 7 comentários que mostram forma de token: descartado porque os exemplos são o que documenta cada regra. O preço, nomeado na revisão 2: o marcador isenta o arquivo INTEIRO, e não existe isenção por linha no repo — segredo real colado nesse arquivo deixa de ser pego pelo `gate-verificador-staged` e pelo `gate-publicacao-destino`. Isenção por trecho é o conserto de verdade, e não cabe nesta rodada.
 - Eval de gatilho com pedidos de 2-3 palavras e grader de disparo em `arm: both` (tentativa 1, US$ 2,42): 0/7 disparos — o modelo pede contexto. Com cenários realistas e `with-only` (tentativa 2, US$ 7,83): disparo instável e fora do score.
 - Aposentar o gêmeo Python (alternativa honesta da #303): descartado porque o grupo do exit 69 não é cosmético e o `CONTRIBUTING.md` apresenta o gêmeo como a prova de que o port não perdeu garantia.
 - Rodar o gêmeo dentro da bateria padrão (`testa-conferir-entrega.sh` executando as duas implementações): dobraria o tempo da bateria mais lenta do conferidor em toda execução local; o passo separado no CI dá a mesma trava.
