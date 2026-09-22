@@ -116,7 +116,7 @@ pronto quando: com o payload PreToolUse real e `gh` de sandbox, `set -- -c "gh i
 
 ### 10. O workflow volta a ser escaneado pelo gate de publicação inteiro [tipo: implementar]
 atende: D5
-arquivos: `.github/workflows/baterias.yml`, `scripts/conferir-publicacao.cjs`, `scripts/testa-conferir-publicacao.sh`
+arquivos: `.github/workflows/baterias.yml`, `scripts/conferir-publicacao.cjs`, `scripts/testa-conferir-publicacao.sh, `hooks/testa-gate-publicacao-destino.sh`
 depende de: 4
 paralela: sim
 mutacao:
@@ -125,4 +125,4 @@ mutacao:
   para: `(?!x^)`
   bateria: `bash scripts/testa-conferir-publicacao.sh`
   fixture: testa-conferir-publicacao.sh, secao "TLD reservado (RFC 2606)"
-pronto quando: com o `.github/workflows/baterias.yml` real, `head -5` não contém `rainforest-gate: dados-de-exemplo` e `node scripts/conferir-publicacao.cjs .github/workflows/baterias.yml` sai **0** sem achado — o e-mail `ci@rainforest.invalid` deixa de ser achado porque TLD reservado (`.invalid`, `.example`, `.test`, `.localhost`) não é endereço real, e o id de run no comentário é reescrito sem a sequência de 11 dígitos; `nome@empresa.com.br` e `x@foo.test.com` (reservado fora do último rótulo) continuam achado; o próprio `scripts/conferir-publicacao.cjs`, cujos comentários são exemplos das formas que ele pega, leva o marcador nas primeiras linhas (o mesmo que a bateria dele já usa) — provado por `bash scripts/testa-conferir-publicacao.sh` com os casos impressos. Achado 3 da revisão.
+pronto quando: com o `.github/workflows/baterias.yml` real, `head -5` não contém `rainforest-gate: dados-de-exemplo` e `node scripts/conferir-publicacao.cjs .github/workflows/baterias.yml` sai **0** sem achado — o e-mail `ci@rainforest.invalid` deixa de ser achado porque TLD reservado (`.invalid`, `.example`, `.test`, `.localhost`) não é endereço real, e o id de run no comentário é reescrito sem a sequência de 11 dígitos; `nome@empresa.com.br` e `x@foo.test.com` (reservado fora do último rótulo) continuam achado; o próprio `scripts/conferir-publicacao.cjs`, cujos comentários são exemplos das formas que ele pega, leva o marcador nas primeiras linhas (o mesmo que a bateria dele já usa) — provado por `bash scripts/testa-conferir-publicacao.sh` com os casos impressos. O caso "arquivo vizinho SEM marcador" de `hooks/testa-gate-publicacao-destino.sh` usava o próprio conferidor como vizinho e passa a usar `scripts/conferir-entrega.cjs`, que segue sem marcador. Achado 3 da revisão.

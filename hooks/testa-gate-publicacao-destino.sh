@@ -214,7 +214,11 @@ gate "Edit em arquivo COM marcador em disco, fragmento sem marcador -> passa" 0 
 # O espelho, e o que faz a mutacao doer dos dois lados: arquivo vizinho SEM
 # marcador, mesmo conteudo, tem de barrar. Marcador que vazasse para o diretorio
 # deixaria este verde.
-gate "Edit em arquivo vizinho SEM marcador, mesmo conteudo -> barrado" 2   "$(pay Edit "$(esc "$SRC")/scripts/conferir-publicacao.cjs" 'jid="5500900000001@s.whatsapp.net"')"
+# O vizinho era o conferir-publicacao.cjs ate 2026-09-22, quando ele ganhou o
+# marcador (os comentarios dele sao exemplos das formas que ele pega). Trocado
+# pelo conferir-entrega.cjs, que segue sem marcador — se um dia ganhar um, este
+# caso fica verde por engano e a troca tem de ser refeita.
+gate "Edit em arquivo vizinho SEM marcador, mesmo conteudo -> barrado" 2   "$(pay Edit "$(esc "$SRC")/scripts/conferir-entrega.cjs" 'jid="5500900000001@s.whatsapp.net"')"
 
 # Arquivo novo trazendo o marcador no proprio conteudo: nao existe em disco,
 # entao nao ha marcador — auto-isencao num unico write nao passa.
