@@ -116,7 +116,7 @@ pronto quando: com o payload PreToolUse real e `gh` de sandbox, `set -- -c "gh i
 
 ### 10. O workflow volta a ser escaneado pelo gate de publicação inteiro [tipo: implementar]
 atende: D5
-arquivos: `.github/workflows/baterias.yml`, `scripts/conferir-publicacao.cjs`, `scripts/testa-conferir-publicacao.sh, `hooks/testa-gate-publicacao-destino.sh`
+arquivos: `.github/workflows/baterias.yml`, `scripts/conferir-publicacao.cjs`, `scripts/testa-conferir-publicacao.sh`, `hooks/testa-gate-publicacao-destino.sh`
 depende de: 4
 paralela: sim
 mutacao:
