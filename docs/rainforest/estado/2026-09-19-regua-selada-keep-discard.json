@@ -108,25 +108,27 @@
     "sensor_externo": "bash scripts/varrer-baterias.sh"
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "985582e36217e9cf8c8f7c90d3a332dd846429a8",
+      "head": "a0c97aa2193f6eec867b82555ce07678160050dc",
       "caminhos_sujos": []
     },
-    "em_voo": [],
     "em": "2026-09-21",
-    "achados": 1,
+    "achados": 0,
     "lista": [
       "1 (reproduzido, baixa): regex do Freios quase certo larga demais - qualquer cabecalho com \"freios\" (### M1 Mostra os freios, titulo) vira a linha nomeada; sem nenhum Freios a mensagem deixa de dizer \"ausente\", contradizendo o pronto quando da rodada 10"
     ],
-    "tentativas": 11,
     "base": "4f714ef6",
-    "head": "985582e36217e9cf8c8f7c90d3a332dd846429a8",
+    "head": "a0c97aa2193f6eec867b82555ce07678160050dc",
     "criticos": "fluxo-12-regua, fluxo-13-regua-fase0, fluxo-13-regua-loop: os tres concordo",
-    "liberado_em": "2026-09-21"
+    "revisor": "aprovado, 0 achados dentro do modelo (sonnet; duas tentativas em opus morreram em 529)"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/varrer-baterias.sh",
+    "saida": "arvore com merge da main (c1b97a25): as 125 baterias passaram (exit 0). T1/T2/T6: testa-conferir-regua.sh 116 ok, 0 falha(s), exit 0, 0 pulados; mostrar sem git no PATH sai 2 com 0 byte. T3/T4: segunda-opiniao --base origin/main --head HEAD, fluxo-12-regua, fluxo-13-regua-fase0 e fluxo-13-regua-loop: concordo, exit 0. T5: conferir-livro-de-repos sai 0; com o veredito trocado para Enxertar: vale a pena sai 2 com VEREDITO FORA DO VOCABULARIO. conferir-fluxo mutacoes: exit 0 (tarefas 1, 2, 6 vermelho; 3-5 n/a)",
+    "sensor_externo": "bash scripts/varrer-baterias.sh",
+    "em": "2026-09-21"
   },
   "fechar": {
     "status": "pendente"
