@@ -1146,6 +1146,49 @@ esperado "--slug 'teste-?' sai 2, nao 1" 2 node "$SCRIPT" conferir --slug 'teste
 
 cd "$REPO2"
 
+echo
+echo "== 34. slug com caixa diferente do arquivo e slug inexistente (2), em toda plataforma =="
+# No Windows e no macOS o stat nao diferencia caixa e o pathspec do git
+# diferencia: `--slug CAIXA` com `caixa.md` selado saia 1 "nunca foi commitado"
+# para sempre, e `validar` dizia "pode selar". No Linux ja saia 2.
+REPO24="$CAIXA/repo-caixa"
+mkdir -p "$REPO24/docs/rainforest/reguas"
+cd "$REPO24"
+git init -q >/dev/null 2>&1
+git config user.email "test@<email>"
+git config user.name "Test User"
+git config commit.gpgsign false
+git config core.autocrlf false
+{ printf '# Regua\n\n## Freios\n\n'; for n in 1 2 3 4 5; do printf '### M%s ok\nx\n\n' "$n"; done; } > docs/rainforest/reguas/caixa-baixa.md
+git add -A >/dev/null 2>&1; git commit -q -m "selo" >/dev/null 2>&1
+esperado "grafia exata passa" 0 node "$SCRIPT" conferir --slug caixa-baixa
+esperado "conferir com caixa trocada sai 2" 2 node "$SCRIPT" conferir --slug CAIXA-BAIXA
+contem "  ... e diz que nao achou" "arquivo não encontrado" node "$SCRIPT" conferir --slug CAIXA-BAIXA
+esperado "mostrar com caixa trocada sai 2" 2 node "$SCRIPT" mostrar --slug Caixa-Baixa
+esperado "validar com caixa trocada sai 2, nao 'pode selar'" 2 node "$SCRIPT" validar --slug CAIXA-BAIXA
+
+cd "$REPO2"
+
+echo
+echo "== 35. ## Freios quase certo nomeia a linha, nao diz 'ausente' =="
+# `## Freios ` com espaco no fim renderiza igual e o espaco e invisivel. A
+# recusa continua (o contrato e a linha exata); o que muda e a mensagem.
+REPO25="$CAIXA/repo-freios"
+mkdir -p "$REPO25/docs/rainforest/reguas"
+cd "$REPO25"
+mecs25() { for n in 1 2 3 4 5; do printf '### M%s ok\nx\n\n' "$n"; done; }
+{ printf '# Regua\n\n## Freios \n\n'; mecs25; } > docs/rainforest/reguas/espaco-no-fim.md
+{ printf '# Regua\n\n##  Freios\n\n'; mecs25; } > docs/rainforest/reguas/dois-espacos.md
+{ printf '# Regua\n\n## Freios:\n\n'; mecs25; } > docs/rainforest/reguas/dois-pontos.md
+{ printf '# Regua\n\n'; mecs25; } > docs/rainforest/reguas/sem-freios.md
+for sl in espaco-no-fim dois-espacos dois-pontos; do
+  esperado "$sl: recusa (1)" 1 node "$SCRIPT" validar --slug "$sl"
+  contem "  ... e nomeia a linha" "fora do formato" node "$SCRIPT" validar --slug "$sl"
+done
+contem "sem nenhuma linha de Freios continua 'ausente'" "secao obrigatoria ausente" node "$SCRIPT" validar --slug sem-freios
+
+cd "$REPO2"
+
 echo "== Resumo =="
 resultado=$((ok+falhou))
 if [ "$falhou" = "0" ]; then

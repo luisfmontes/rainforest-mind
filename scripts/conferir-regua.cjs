@@ -123,9 +123,25 @@ function normalizarEolBytes(buf) {
   return saida.subarray(0, n);
 }
 
-/** Existe E e arquivo. Diretorio no caminho do manifesto nao e manifesto. */
+/**
+ * Existe E e arquivo. Diretorio no caminho do manifesto nao e manifesto.
+ *
+ * E o nome tem de bater NA CAIXA. No Windows e no macOS o sistema de arquivos
+ * nao diferencia maiuscula de minuscula, e o pathspec do git diferencia: com
+ * `--slug Foo` e `foo.md` no disco, o stat achava o arquivo e o git nao achava
+ * a ancora — `conferir` saia 1 "nunca foi commitado" para sempre, e `validar`
+ * dizia "pode selar" a um slug que o selo nunca reconheceria. Conferindo a
+ * grafia exata na listagem do diretorio, a resposta fica igual em toda
+ * plataforma: slug que nao bate na caixa e slug inexistente (2).
+ */
 function ehArquivo(caminho) {
-  try { return fs.statSync(caminho).isFile(); } catch { return false; }
+  const existe = (() => {
+    try { return fs.statSync(caminho).isFile(); } catch { return false; }
+  })();
+  if (!existe) return false;
+  try {
+    return fs.readdirSync(path.dirname(caminho)).includes(path.basename(caminho));
+  } catch { return false; }
 }
 
 function arg(nome) {
@@ -322,9 +338,20 @@ function validarFormato(bytes, caminhoManifesto) {
   }
 
   // Procura pela secao "## Freios"
+  //
+  // A linha tem de ser exatamente `## Freios`. Quando falta, mas existe um
+  // cabecalho que o autor claramente quis que fosse ela — `## Freios ` com
+  // espaco no fim, `##  Freios`, `## Freios:` —, a recusa nomeia essa linha.
+  // Dizer "ausente" a quem ve a secao renderizada na tela manda procurar o
+  // defeito no lugar errado: o espaco sobrando e invisivel.
   const temFreios = foraDeCerca.some(linha => linha === '## Freios');
   if (!temFreios) {
-    console.error(`secao obrigatoria ausente: ## Freios (${caminhoManifesto})`);
+    const quase = foraDeCerca.find(linha => /^ {0,3}#{1,6}[ \t].*freios/i.test(linha));
+    if (quase !== undefined) {
+      console.error(`secao ## Freios fora do formato (a linha tem de ser exatamente '## Freios'): ${JSON.stringify(quase)} (${caminhoManifesto})`);
+    } else {
+      console.error(`secao obrigatoria ausente: ## Freios (${caminhoManifesto})`);
+    }
     process.exit(EXIT_RECUSA);
   }
 

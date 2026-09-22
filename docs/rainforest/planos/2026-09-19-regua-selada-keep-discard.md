@@ -500,3 +500,40 @@ para: true
 bateria: bash scripts/testa-conferir-regua.sh
 fixture: testa-conferir-regua.sh, caso 32 "cerca aninhada fecha como no CommonMark"
 ```
+
+**Rodada 10 (2026-09-21), dois achados de severidade baixa, ambos dentro do
+modelo.** Os três críticos cegos concordaram; o revisor reprovou por dois erros
+de boa-fé em que o script respondia errado. Decisão do usuário no teto:
+**consertar os dois.**
+
+- Slug com caixa diferente do arquivo: no Windows o `stat` não diferencia caixa
+  e o pathspec do git diferencia, então `--slug Foo` com `foo.md` selado saía 1
+  "nunca foi commitado" para sempre, e `validar` dizia "pode selar". O
+  `ehArquivo` passou a conferir a grafia exata na listagem do diretório: a
+  resposta é 2 em toda plataforma.
+- `## Freios ` com espaço no fim (e `##  Freios`, `## Freios:`) saía "seção
+  ausente" a quem via a seção renderizada. A recusa continua — o contrato é a
+  linha exata —, mas nomeia a linha ofensora.
+
+pronto quando (rodada 10): com `caixa-baixa.md` selado, `conferir`, `mostrar` e
+`validar` com `--slug CAIXA-BAIXA` saem **2**; `## Freios ` com espaço no fim,
+`##  Freios` e `## Freios:` saem **1** com "fora do formato" na mensagem, e sem
+nenhum Freios a mensagem segue "ausente" — provado por `bash
+scripts/testa-conferir-regua.sh` devolvendo `resultado: N ok, 0 falha(s)`, exit
+0 e zero pulados.
+
+Alvos de mutação da rodada 10:
+
+```
+arquivo: scripts/conferir-regua.cjs
+de: return fs.readdirSync(path.dirname(caminho)).includes(path.basename(caminho));
+para: return true;
+bateria: bash scripts/testa-conferir-regua.sh
+fixture: testa-conferir-regua.sh, caso 34 "slug com caixa diferente do arquivo"
+
+arquivo: scripts/conferir-regua.cjs
+de: if (quase !== undefined) {
+para: if (false) {
+bateria: bash scripts/testa-conferir-regua.sh
+fixture: testa-conferir-regua.sh, caso 35 "## Freios quase certo nomeia a linha"
+```

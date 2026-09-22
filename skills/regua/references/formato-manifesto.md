@@ -30,8 +30,13 @@ A linha exata:
 ## Freios
 ```
 
-Define o ponto onde a régua anuncia seu teto de rodadas. Uma seção `## Freios:`
-ou `## freios` não passa na validação.
+Define o ponto onde a régua anuncia seu teto de rodadas. Uma seção `## Freios:`,
+`## freios` ou `## Freios ` (espaço no fim, invisível na tela) não passa na
+validação — e a recusa nomeia a linha, em vez de dizer que a seção está ausente.
+
+O slug casa o nome do arquivo **na caixa**: `--slug Foo` com `foo.md` no disco
+sai 2 (não encontrado) em qualquer plataforma, mesmo onde o sistema de arquivos
+não diferencia maiúscula de minúscula — o git diferencia, e o selo é do git.
 
 A rejeição vale **mesmo em manifesto misto**: cinco cabeçalhos bem formados
 mais um `### M6:` reprovam o arquivo inteiro. Antes o validador contava só os
