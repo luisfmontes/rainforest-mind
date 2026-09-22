@@ -30,7 +30,7 @@
     "em": "2026-09-22"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-22",
     "tarefas_ok": 9,
     "tarefas": 9,
@@ -301,7 +301,11 @@
     "contratos_cache": "manifesto, skills, adaptador e marketplace exit 0; Gemini completo somente na worktree Git",
     "baterias_branch": "executadas com Git Bash correto depois de tentativa invalida pelo WSL sem Node; a tentativa sem Node nao e teste de produto",
     "head": "f6466b59",
-    "sensor_externo": "node scripts/portoes.cjs rodar"
+    "sensor_externo": "node scripts/portoes.cjs rodar",
+    "reaberto_por": {
+      "estagio": "verificar",
+      "data": "2026-09-22"
+    }
   },
   "revisar": {
     "status": "ok",
@@ -325,13 +329,14 @@
     "saida": "APROVADO: 0 achados; P1-P5 válidos e reexecutáveis; estado coerente"
   },
   "verificar": {
-    "status": "ok",
-    "criterio": "T1-T9 conforme plano na árvore, export e cache 1.21.1 reais",
-    "comando": "node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-09-12-multihost-sobre-1-11; projeção SHA-256; sessões Codex efêmeras 01a0ca47-c9c6-7e82-b49a-e5f8fbd9cea2 e 01a0ca49-115c-7d40-8289-fffbe205dc4a",
-    "saida": "P1-P5 cumpridos; gate 133/0; plugin exit 0; versão 5/0; cobertura 12/9; creep 18; T1-T5 vermelho e T6-T9 n/a; projeção expected=776 export/cache missing=0 different=0; cache extra=1 D11; dotgit=0; status e pathspec chegaram ao Git; git add \"-A\" e bash -c bloqueados antes do processo",
-    "faltou": "nada",
+    "status": "reprovado",
+    "criterio": "versão da entrega deve ser maior ou compatível com origin/main no fechamento",
+    "comando": "node scripts/conferir-versao.cjs",
+    "saida": "RECUSADO: versao declarada 1.21.1 nao e maior que a de origin/main 1.23.0; exit 1",
+    "faltou": "reancorar a entrega na base 0e27956c / versão 1.23.0 e refazer as provas",
     "em": "2026-09-22",
-    "sensor_externo": "node scripts/portoes.cjs rodar"
+    "sensor_externo": "node scripts/portoes.cjs rodar",
+    "tentativas": 1
   },
   "fechar": {
     "status": "pendente"
