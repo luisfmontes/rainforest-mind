@@ -34,7 +34,7 @@ const casos = [
   ["dentro de aspas duplas colapsa", `echo "a${B}${LF}b"`, `echo "a${B}${LF}b"`.replace(`${B}${LF}`, "")],
   ["apostrofo solto em aspas duplas nao protege a quebra", `--body "it's closes ${B}${LF}#42, don't"`, `--body "it's closes #42, don't"`],
   ["aspa dupla escapada nao fecha a aspa", `echo "a${B}"b ${B}${LF}c"`, `echo "a${B}"b c"`],
-  ["contrabarra solta no fim absoluto: o bash descarta", `echo hi${B}`, "echo hi"],
+  ["contrabarra solta no fim absoluto: descartada (bash de script/stdin)", `echo hi${B}`, "echo hi"],
   ["2 contrabarras no fim absoluto ficam", `echo hi${B}${B}`, `echo hi${B}${B}`],
   ["quebra sem contrabarra fica", `gh issue${LF}close 12`, `gh issue${LF}close 12`],
   ["string vazia", "", ""],

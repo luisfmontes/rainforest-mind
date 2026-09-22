@@ -538,9 +538,11 @@ function colapsaContinuacaoDeLinha(str) {
       // Escapa um caractere qualquer (inclusive aspa): emite os dois juntos,
       // sem passar pelo teste de alternancia de estado acima.
       if (alvo === undefined) {
-        // Contrabarra solta no fim absoluto: o bash a DESCARTA (`echo hi\` com
-        // EOF logo depois imprime `hi`). Emiti-la deixava a funcao divergindo
-        // do bash no unico ponto em que a revisao 4 pegou diferenca.
+        // Contrabarra solta no fim absoluto (nada depois dela, nem quebra).
+        // Medido: lido de script ou do stdin, o bash a DESCARTA (`echo hi\`
+        // imprime `hi`); em `bash -c`, ela sobrevive. A funcao segue o
+        // primeiro, e a diferenca nao muda veredito de gate nenhum: como nao
+        // sobra caractere depois, nao ha comando a esconder ali (revisao 5).
         i = fim;
         continue;
       }
