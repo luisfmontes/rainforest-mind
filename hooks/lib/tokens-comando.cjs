@@ -463,6 +463,44 @@ function colapsaContinuacaoDeLinha(str) {
   return str.replace(/\\\r?\n/g, "");
 }
 
+/**
+ * Colapsa continuacao de linha (contrabarra+LF/CRLF) no texto de comando de
+ * NIVEL SUPERIOR, ANTES de fatiar em segmentos — poupando o que estiver
+ * dentro de aspas SIMPLES, onde o bash nao processa escape nenhum (aspas
+ * simples sao literais de ponta a ponta, sem excecao para `\`). Fora de
+ * aspas simples (sem aspas, ou dentro de aspas duplas — o bash TAMBEM
+ * colapsa ali) o colapso e o MESMO que `colapsaContinuacaoDeLinha` ja faz
+ * para o interno de um wrapper de string (tarefa 12).
+ *
+ * #309, tarefa 13 (revisao 2, achado que a tarefa 12 deixou de fora): o
+ * texto de NIVEL SUPERIOR nunca passava por `colapsaContinuacaoDeLinha` — so
+ * o INTERNO de um wrapper de string passava, via `desempacota()`. `\<LF>`
+ * cru fora de wrapper chegava intacto em `segmentosParaGate`/
+ * `segmentosComAspas`, onde `\n` e fronteira de segmento incondicional — o
+ * comando partia em dois ANTES de qualquer coisa reconhecer o `gh`/`git`.
+ * Medido (2026-09-22, payload PreToolUse real, `gh` de sandbox):
+ * `bash -c "gh issue \<LF>close 12"` (dentro do wrapper, ja colapsa pela
+ * tarefa 12) sai 2; o MESMO comando SEM wrapper, `gh issue \<LF>close 12`
+ * direto, saia 0 antes deste conserto.
+ *
+ * Medido tambem (`bash arquivo.sh` real, 2026-09-22): dentro de aspas
+ * SIMPLES no topo (`echo 'a\<LF>b'`) o bash preserva a contrabarra e a
+ * quebra de linha LITERAIS — nao colapsa. Aspas simples sao mascaradas
+ * ANTES do colapso (substituidas por um marcador sem `\` nem quebra de
+ * linha) e devolvidas ao texto original depois — `colapsaContinuacaoDeLinha`
+ * nunca ve o conteudo delas, entao o resultado final preserva intacta a
+ * contrabarra+LF que estava dentro de aspas simples.
+ */
+function colapsaContinuacaoDeLinhaNoTopo(cmdOriginal) {
+  const guardadas = [];
+  let cmd = cmdOriginal.replace(/'[^']*'/g, (m) => {
+    guardadas.push(m);
+    return `\u0000${guardadas.length - 1}\u0000`;
+  });
+  cmd = colapsaContinuacaoDeLinha(cmd);
+  return cmd.replace(/\u0000(\d+)\u0000/g, (_, i) => guardadas[Number(i)]);
+}
+
 /** Tira UM nivel de aspas externas de `interno`, se houver. */
 function desempacota(interno) {
   interno = interno.trim();
@@ -642,4 +680,5 @@ module.exports = {
   desempacotarWrapperDeString,
   contemConstrucaoIlegivel,
   colapsaContinuacaoDeLinha,
+  colapsaContinuacaoDeLinhaNoTopo,
 };

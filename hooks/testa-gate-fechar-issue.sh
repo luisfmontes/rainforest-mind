@@ -2182,6 +2182,56 @@ echo '== (fx) bash -c "gh issue<LF>close 12" → exit 0 continua (continuacao de
 EXIT_FX=$?
 [ $EXIT_FX -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_FX)"
 
+# Continuacao de linha NO TOPO, sem wrapper nenhum (tarefa 13, #309, revisao
+# 2 — o buraco que a tarefa 12 deixou de fora, nomeado pelo proprio
+# executor): o texto de NIVEL SUPERIOR nunca passava por colapso de
+# continuacao de linha, so o INTERNO de um wrapper de string (bash -c "...")
+# passava (`desempacota()`, tarefa 12). `\<LF>` cru fora de wrapper chegava
+# intacto em `segmentosParaGate`, onde `\n` e fronteira de segmento
+# incondicional — o comando partia em dois ANTES de qualquer coisa
+# reconhecer o `gh`. Medido, ANTES deste conserto (2026-09-22, payload
+# PreToolUse real, `gh` de sandbox): `gh issue \<LF>close 12` direto saia
+# 0 — inclusive depois das tarefas 11 e 12.
+echo
+echo '== (fy) gh issue \<LF>close 12 → exit 2, sem wrapper (continuacao de linha no topo (#309, revisao 2)) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const cmd="gh issue "+String.fromCharCode(92)+"\n"+"close 12";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fy"
+EXIT_FY=$?
+[ $EXIT_FY -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_FY)"
+
+echo
+echo '== (fz) gh issue<LF>close 12 → exit 0 continua, sem wrapper (continuacao de linha no topo (#309, revisao 2), controle: LF legitimo SEM contrabarra nao e continuacao) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const cmd="gh issue"+"\n"+"close 12";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fz"
+EXIT_FZ=$?
+[ $EXIT_FZ -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_FZ)"
+
+# Dentro de aspas SIMPLES no topo, o bash NAO colapsa (aspas simples sao
+# literais de ponta a ponta, sem excecao para `\`) — medido com `bash
+# arquivo.sh` real (2026-09-22): `echo 'a\<LF>b'` imprime "a\" e "b" em
+# linhas separadas, a contrabarra e a quebra sobrevivem. Este comando nunca
+# cita `gh`, entao o exit continua 0 antes e depois do conserto — o que este
+# caso prova e que a colapsagem NAO mexe no conteudo citado com aspas
+# simples (regressao: o colapso ingenuo, sem mascarar aspas simples,
+# tambem sairia 0 aqui, mas mudaria o TEXTO — nao ha como este teste de
+# exit-code sozinho flagrar isso; a garantia mora na medicao direta de
+# `colapsaContinuacaoDeLinhaNoTopo`, documentada no proprio codigo).
+echo
+echo "== (fz2) echo 'a\\<LF>b' → exit 0 continua como esta, aspas simples no topo (continuacao de linha no topo (#309, revisao 2)) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const cmd="echo \x27a"+String.fromCharCode(92)+"\n"+"b\x27";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fz2"
+EXIT_FZ2=$?
+[ $EXIT_FZ2 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_FZ2)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

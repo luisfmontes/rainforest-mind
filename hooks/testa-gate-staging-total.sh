@@ -440,6 +440,17 @@ echo "== continuacao de linha dentro da string (#309, revisao 2) =="
 gate 'bash -c "git add \<LF>-A" BARRA (continuacao de linha dentro da string (#309, revisao 2))' 2 "$(bml "$(printf 'bash -c "git add \\\n-A"')")"
 
 echo
+echo "== continuacao de linha no topo (#309, revisao 2) =="
+# Tarefa 13, o buraco que a tarefa 12 deixou de fora: o texto de NIVEL
+# SUPERIOR nunca passava pelo colapso de continuacao de linha, so o INTERNO
+# de um wrapper de string passava (tarefa 12). `\<LF>` cru fora de wrapper
+# virava fronteira de segmento incondicional em `segmentosComAspas`
+# (cwd-efetivo.cjs, que este gate usa via `cwdPorSegmento`), partindo
+# `git add` de `-A` em dois segmentos que isolados nao batem no padrao.
+# Medido, ANTES deste conserto (2026-09-22): exit 0.
+gate 'git add \<LF>-A BARRA, sem wrapper (continuacao de linha no topo (#309, revisao 2))' 2 "$(bml "$(printf 'git add \\\n-A')")"
+
+echo
 echo "== saidas de emergencia =="
 saida=$(printf '%s' "$(b 'git add -A')" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (exit 0)"
