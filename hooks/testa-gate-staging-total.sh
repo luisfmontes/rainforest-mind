@@ -424,6 +424,22 @@ gate 'bash "$t" x BARRA (#309, mais argumento depois — incerto)'              
 gate 'for t in x; do bash -c "git add -A"; done BARRA (#309, controle T1 adaptado: git add -A)' 2 "$(b 'for t in x; do bash -c \"git add -A\"; done')"
 
 echo
+echo "== pipe com stderr (|&) (#309, revisao 2) =="
+# `|&` (achado 1): mesmo conserto de gate-fechar-issue.cjs, aqui via
+# `segmentosComAspas` (hooks/lib/cwd-efetivo.cjs), que este gate usa para
+# segmentar. Medido na revisao de 2026-09-22, antes do conserto: exit 0 —
+# inclusive na origin/main.
+gate "echo hi |& git add -A BARRA (pipe com stderr (|&) (#309, revisao 2))" 2 "$(b 'echo hi |& git add -A')"
+
+echo
+echo "== continuacao de linha dentro da string (#309, revisao 2) =="
+# Achado 2: mesmo conserto de `desempacota()` em tokens-comando.cjs — a
+# contrabarra+LF dentro de `bash -c "..."` colapsa antes de reprocessar.
+# Medido na revisao de 2026-09-22, antes do conserto: exit 0 — inclusive na
+# origin/main.
+gate 'bash -c "git add \<LF>-A" BARRA (continuacao de linha dentro da string (#309, revisao 2))' 2 "$(bml "$(printf 'bash -c "git add \\\n-A"')")"
+
+echo
 echo "== saidas de emergencia =="
 saida=$(printf '%s' "$(b 'git add -A')" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (exit 0)"

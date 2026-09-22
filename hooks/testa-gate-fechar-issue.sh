@@ -2068,6 +2068,120 @@ echo '== (fo) bash "$t" → exit 0 continua (parametro especial (#309, revisao),
 EXIT_FO=$?
 [ $EXIT_FO -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_FO)"
 
+# |& (#309, achado 1, revisao 2): bash usa `|&` como atalho de `2>&1 |` — liga
+# stderr ao pipe seguinte, nao e "OU" como `||`. A fronteira de segmento ja
+# tratava `|` sozinho como divisor incondicional (junto com `;`, `\n`, `(`,
+# `)`, `{`, `}`); o `&` de `|&` sobrava e virava o PRIMEIRO TOKEN do segmento
+# seguinte, tirando `bash -c "..."` da posicao de comando. Medido na revisao
+# de 2026-09-22, antes do conserto: exit 0 — inclusive na origin/main.
+echo
+echo '== (fp) echo hi |& bash -c "gh issue close 12" → exit 2 (pipe com stderr (|&) (#309, revisao 2)) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"echo hi |& bash -c \"gh issue close 12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fp"
+EXIT_FP=$?
+[ $EXIT_FP -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_FP)"
+
+echo
+echo '== (fq) echo a | grep b → exit 0 continua (pipe com stderr (|&) (#309, revisao 2), controle: | sozinho nao muda) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"echo a | grep b"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fq"
+EXIT_FQ=$?
+[ $EXIT_FQ -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_FQ)"
+
+echo
+echo '== (fr) echo a || echo b → exit 0 continua (pipe com stderr (|&) (#309, revisao 2), controle: || nao muda) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"echo a || echo b"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fr"
+EXIT_FR=$?
+[ $EXIT_FR -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_FR)"
+
+echo
+echo '== (fs) gh issue close 12 & → exit 2 continua (pipe com stderr (|&) (#309, revisao 2), controle: & no fim nao muda) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh issue close 12 &"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fs"
+EXIT_FS=$?
+[ $EXIT_FS -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_FS)"
+
+echo
+echo '== (ft) sudo & gh issue close 12 → exit 2 continua (pipe com stderr (|&) (#309, revisao 2), controle: a & b nao muda) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"sudo & gh issue close 12"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ft"
+EXIT_FT=$?
+[ $EXIT_FT -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_FT)"
+
+# Continuacao de linha (#309, achado 2, revisao 2): dentro da string que vira
+# script de um wrapper (`bash -c "..."`), o bash colapsa CONTRABARRA+quebra-
+# de-linha antes de rodar. `desempacota()` devolvia o LF literal dentro de
+# `interno`, que depois vira fronteira de segmento em quem reprocessa
+# `interno` (`segmentosParaGate` trata `\n` como divisor incondicional),
+# partindo `gh issue` de `close 12` em dois segmentos que isolados nao
+# bloqueiam. Medido na revisao de 2026-09-22, antes do conserto: exit 0 —
+# inclusive na origin/main.
+#
+# Medido tambem (2026-09-22) para decidir o caso de aspas SIMPLES: via
+# `spawnSync(["bash","-c",script])` com o argv montado sem NENHUM quoting de
+# shell (contrabarra+LF chegando crua no argumento), o `bash -c` INTERNO
+# colapsa do mesmo jeito — porque ele faz sua PROPRIA passada de tokenizacao
+# sobre o script, independente de como a string chegou até ali. Um teste com
+# arquivo (`bash -c 'echo A\<LF>B'` vs `bash -c "echo A\<LF>B"`) confirmou:
+# os dois terminam executando "AB" merged. Por isso o colapso aqui NAO
+# distingue aspas simples de aspas duplas — `bash -c 'gh issue \<LF>close
+# 12'` tambem sai **2** abaixo, e nao "continua como hoje".
+echo
+echo '== (fu) bash -c "gh issue \<LF>close 12" → exit 2 (continuacao de linha dentro da string (#309, revisao 2), aspas duplas) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const cmd="bash -c \"gh issue "+String.fromCharCode(92)+"\n"+"close 12\"";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fu"
+EXIT_FU=$?
+[ $EXIT_FU -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_FU)"
+
+echo
+echo '== (fv) bash -c "gh issue \<CRLF>close 12" → exit 2 (continuacao de linha dentro da string (#309, revisao 2), CRLF) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const cmd="bash -c \"gh issue "+String.fromCharCode(92)+"\r\n"+"close 12\"";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fv"
+EXIT_FV=$?
+[ $EXIT_FV -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_FV)"
+
+echo
+echo "== (fw) bash -c 'gh issue \\<LF>close 12' → exit 2 (continuacao de linha dentro da string (#309, revisao 2), aspas SIMPLES — bash tambem colapsa na segunda passada, medido acima) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const cmd="bash -c \x27gh issue "+String.fromCharCode(92)+"\n"+"close 12\x27";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fw"
+EXIT_FW=$?
+[ $EXIT_FW -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_FW)"
+
+echo
+echo '== (fx) bash -c "gh issue<LF>close 12" → exit 0 continua (continuacao de linha dentro da string (#309, revisao 2), controle: LF legitimo SEM contrabarra nao e continuacao) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const cmd="bash -c \"gh issue"+"\n"+"close 12\"";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fx"
+EXIT_FX=$?
+[ $EXIT_FX -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_FX)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
