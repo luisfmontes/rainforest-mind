@@ -304,35 +304,25 @@
     "sensor_externo": "node scripts/conferir-fluxo.cjs mutacoes"
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "4dda647e0b0c6f9f04f594b91d0e546d3868a7b6",
+      "head": "d65a544f9600eba8440ede9320c32aa8517896a8",
       "caminhos_sujos": []
     },
-    "achados": 1,
+    "achados": 0,
     "base": "5cdb90e768cb1ba808821d5bdcdf46f7a19fc782",
-    "head": "4dda647e0b0c6f9f04f594b91d0e546d3868a7b6",
+    "head": "d65a544f9600eba8440ede9320c32aa8517896a8",
     "em": "2026-09-22",
-    "achado": "Campos correntes executar.base_anterior e revisar.confirmacoes ainda descrevem bases 1.13.2/1.19.2 fora do histórico.",
+    "achado": "nenhum",
     "confirmacoes": [
-      "base corrente 5cdb90e propagada ao design, plano, handover e portão",
-      "instalação, cache e projeção 1.21.1 medidos na árvore reancorada",
-      "contraprova do hook 1.21.1 bloqueou git add antes do Git",
-      "caminhos locais removidos do rastro versionado"
+      "campos correntes coerentes em 1.21.1 e base 5cdb90e",
+      "handover e portão sem rota histórica executável",
+      "projeção 776 e sessão de contraprova coerentes",
+      "cobertura 12/9, creep 18 e diff-check verdes"
     ],
-    "pendencias": [
-      "nova revisão independente do diff final"
-    ],
-    "tentativas": 5,
-    "em_voo": [
-      {
-        "agente": "revisor-final-multihost-2",
-        "desde": "2026-09-22T14:25:00-03:00",
-        "tarefa": "revisão independente do diff final"
-      }
-    ],
-    "comando": "revisão independente do diff 5cdb90e...4dda647e",
-    "saida": "REPROVADO: 1 achado documental médio; demais verificações verdes"
+    "pendencias": [],
+    "comando": "revisão independente do diff 5cdb90e...d65a544f",
+    "saida": "APROVADO: 0 achados; campos correntes coerentes; cobertura 12/9; creep 18; diff-check exit 0"
   },
   "verificar": {
     "status": "reprovado",
