@@ -306,23 +306,23 @@
   "revisar": {
     "status": "ok",
     "snapshot": {
-      "head": "d65a544f9600eba8440ede9320c32aa8517896a8",
+      "head": "6b0d19d2e0c524fcce1ee24c32887234e653e31c",
       "caminhos_sujos": []
     },
     "achados": 0,
     "base": "5cdb90e768cb1ba808821d5bdcdf46f7a19fc782",
-    "head": "d65a544f9600eba8440ede9320c32aa8517896a8",
+    "head": "6b0d19d2e0c524fcce1ee24c32887234e653e31c",
     "em": "2026-09-22",
     "achado": "nenhum",
     "confirmacoes": [
-      "campos correntes coerentes em 1.21.1 e base 5cdb90e",
-      "handover e portão sem rota histórica executável",
-      "projeção 776 e sessão de contraprova coerentes",
+      "P1-P5 reproduzem os cinco comandos da tarefa 9",
+      "lint e lint strict: 5 portões, 0 avisos",
+      "rodar --reverificar passou em clone temporário sem alterar bytes",
       "cobertura 12/9, creep 18 e diff-check verdes"
     ],
     "pendencias": [],
-    "comando": "revisão independente do diff 5cdb90e...d65a544f",
-    "saida": "APROVADO: 0 achados; campos correntes coerentes; cobertura 12/9; creep 18; diff-check exit 0"
+    "comando": "revisão independente do diff 5cdb90e...6b0d19d2",
+    "saida": "APROVADO: 0 achados; P1-P5 válidos e reexecutáveis; estado coerente"
   },
   "verificar": {
     "status": "reprovado",
