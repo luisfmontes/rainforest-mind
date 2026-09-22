@@ -1316,14 +1316,18 @@ fi
 R5_TEST="$SBP/test-poda-viva"
 mkdir -p "$R5_TEST/.rainforest/poda"
 R5_PORTA=$((20000 + RANDOM % 40000))
+# Espera o 'pronto' do listen, nao um sleep fixo: no CI carregado (a execucao
+# aninhada do caso K roda a bateria inteira de novo) 1s nao bastava e o R5
+# reprovava com "porta nao responde" (PR #308, node 24, 2026-09-22).
+R5_PRONTO="$R5_TEST/pronto"
 node -e "
 const http=require('http');
 const s=http.createServer((req,res)=>{res.writeHead(200);res.end('ok');});
-s.listen($R5_PORTA,'127.0.0.1',()=>console.log('pronto'));
+s.listen($R5_PORTA,'127.0.0.1',()=>require('fs').writeFileSync(process.argv[1],'pronto'));
 setTimeout(()=>process.exit(0), 20000);
-" &
+" "$R5_PRONTO" &
 R5_SRV_PID=$!
-sleep 1
+for _ in $(seq 1 100); do [ -f "$R5_PRONTO" ] && break; sleep 0.1; done
 printf '{"pid":%s,"porta":%s,"iniciadoEm":"2026-08-31T00:00:00Z"}' "$R5_SRV_PID" "$R5_PORTA" > "$R5_TEST/.rainforest/poda/poda.pid"
 printf '{"atualizadoEm":"2026-08-31T00:00:00Z","estagio":null,"usage":{},"requisicoes":7}' > "$R5_TEST/.rainforest/poda/contexto.json"
 R5="$( cd "$R5_TEST" && RFM_ROOT="$R5_TEST/.rainforest" ANTHROPIC_BASE_URL="http://127.0.0.1:$R5_PORTA" node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e '
