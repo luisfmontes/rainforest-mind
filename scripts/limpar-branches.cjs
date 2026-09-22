@@ -470,8 +470,8 @@ function coletar(baseOverride) {
 /**
  * O que entra na remoção — e o que NUNCA entra.
  *
- * `viva` fica de fora sempre: é trabalho que não está na base e cujo remoto está de
- * pé. Nem `--forcar` a alcança, porque a única coisa que `-D` faz por ela é apagar
+ * `viva` fica de fora sempre: é trabalho que não está na base — com upstream ou só
+ * local. Nem `--forcar` a alcança, porque a única coisa que `-D` faz por ela é apagar
  * commit que só existe ali.
  */
 // A ordem importa para a bateria de teste: a secao de MUTACAO casa, no fonte deste
@@ -494,7 +494,12 @@ const EXPLICA = {
   'sumiu-divergente': 'o remoto foi apagado mas a base NAO contem estes commits (tipico de squash merge) — so o -D apaga',
   'mergeada-por-squash': 'o PR foi mergeado por squash e o remoto ainda existe — a base NAO contem estes commits (gh confirmou o merge) — so o -D apaga',
   'mergeada-por-conteudo': 'o conteudo entrou na base por squash, mas a branch nao tem upstream (worktree de agente) — so o -D apaga',
-  viva: 'nao esta na base e o remoto esta de pe — trabalho vivo',
+  viva: 'nao esta na base e acompanha um upstream que existe — trabalho vivo',
+  // Mesma classe `viva` (a decisao de nunca remover nao muda), impressa num grupo
+  // proprio: ate 2026-09-21 as duas saiam sob o rotulo acima, e 72 das 78 branches
+  // assim rotuladas nesta maquina nunca tinham tido remoto nenhum. O rotulo mandava
+  // procurar no GitHub um trabalho que so existia no disco.
+  'viva-so-local': 'nao esta na base e NUNCA teve upstream — os commits so existem nesta maquina. Pode ser trabalho em andamento ou tentativa descartada; o script nao distingue. Olhe e apague com git branch -D',
 };
 
 function main() {
@@ -596,12 +601,19 @@ function main() {
   for (const classe of ['viva', 'mergeada-por-squash', 'mergeada-por-conteudo', 'sumiu-divergente', 'sumiu-mergeada', 'resolvida-remota', 'resolvida-local', 'em-uso', 'atual', 'padrao', 'base']) {
     const lista = porClasse[classe];
     if (!lista || !lista.length) continue;
-    console.log(`${classe} (${lista.length}) — ${EXPLICA[classe]}`);
-    for (const b of lista) {
-      const up = b.upstream ? ` -> ${b.upstream}${b.track ? ` ${b.track}` : ''}` : ' (sem upstream)';
-      console.log(`  ${b.sha}  ${b.nome}${up}`);
+    // `viva` sai em dois grupos: com upstream e so local (ver EXPLICA['viva-so-local']).
+    const grupos = classe === 'viva'
+      ? [['viva', lista.filter((b) => b.upstream)], ['viva-so-local', lista.filter((b) => !b.upstream)]]
+      : [[classe, lista]];
+    for (const [rotulo, grupo] of grupos) {
+      if (!grupo.length) continue;
+      console.log(`${rotulo} (${grupo.length}) — ${EXPLICA[rotulo]}`);
+      for (const b of grupo) {
+        const up = b.upstream ? ` -> ${b.upstream}${b.track ? ` ${b.track}` : ''}` : ' (sem upstream)';
+        console.log(`  ${b.sha}  ${b.nome}${up}`);
+      }
+      console.log('');
     }
-    console.log('');
   }
 
   if (!alvos.length) {
