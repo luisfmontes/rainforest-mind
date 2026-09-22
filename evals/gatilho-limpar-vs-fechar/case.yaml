@@ -1,0 +1,38 @@
+schema_version: "1.0"
+name: gatilho-limpar-vs-fechar
+description: >
+  Pedido "limpa o rastro" (issue #302) tem que acionar `limpar`, não `fechar`
+  — limpar é manutenção de rastro (worktree órfão, estado concluído, arquivo
+  temporário) invocável a qualquer momento; fechar é o fim do fluxo (commit,
+  remoção de worktree, PR) e só faz sentido depois de `verificar` fechado.
+tags: [gatilho, colisao]
+
+execution:
+  prompt: "limpa o rastro"
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-limpar
+    tool: Skill
+    input_match: "rainforest-mind:limpar"
+    arm: both
+
+  - type: tool_used
+    name: nao-aciona-fechar
+    tool: Skill
+    input_match: "rainforest-mind:fechar"
+    min: 0
+    max: 0
+    arm: both
+
+  - type: llm
+    name: resposta-segue-metodo-limpar
+    criteria: >
+      A resposta identifica o pedido como manutenção de rastro (worktree
+      órfão, estado concluído, arquivo temporário) — nunca como fim de fluxo
+      com commit, remoção de worktree em uso e abertura de PR. Vale mesmo que
+      a resposta só peça mais contexto ou relate não ter ferramenta para agir
+      nesta sessão, desde que o enquadramento seja o de `limpar`.
+    weight: 1

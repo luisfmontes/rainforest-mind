@@ -1,0 +1,46 @@
+schema_version: "1.0"
+name: gatilho-revisar-vs-enxugar-verificar
+description: >
+  Pedido "revisa isso" (issue #302) tem que acionar `revisar`, não `enxugar`
+  nem `verificar` — revisar é revisão independente de uma entrega contra o
+  diff real, antes de `verificar`; enxugar só lista código morto/inflação; e
+  verificar roda o critério do plano já definido, sem redigir critério novo.
+tags: [gatilho, colisao]
+
+execution:
+  prompt: "revisa isso"
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-revisar
+    tool: Skill
+    input_match: "rainforest-mind:revisar"
+    arm: both
+
+  - type: tool_used
+    name: nao-aciona-enxugar
+    tool: Skill
+    input_match: "rainforest-mind:enxugar"
+    min: 0
+    max: 0
+    arm: both
+
+  - type: tool_used
+    name: nao-aciona-verificar
+    tool: Skill
+    input_match: "rainforest-mind:verificar"
+    min: 0
+    max: 0
+    arm: both
+
+  - type: llm
+    name: resposta-segue-metodo-revisar
+    criteria: >
+      A resposta trata o pedido como uma revisão independente contra o diff
+      real de uma entrega — não como uma lista de código morto/inflação para
+      remover (enxugar), nem como rodar um critério de aceite já definido
+      num plano (verificar). Vale mesmo que a resposta só peça qual entrega
+      revisar antes de agir, desde que o enquadramento seja o de revisar.
+    weight: 1

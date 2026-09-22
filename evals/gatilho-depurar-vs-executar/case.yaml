@@ -1,0 +1,38 @@
+schema_version: "1.0"
+name: gatilho-depurar-vs-executar
+description: >
+  Pedido "tá quebrado" (issue #302) tem que acionar `depurar`, não `executar`
+  — as duas skills lidam com "algo não está certo", mas depurar cobre o bug
+  sem repro conhecido e executar despacha um plano já fechado.
+tags: [gatilho, colisao]
+
+execution:
+  prompt: "tá quebrado"
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-depurar
+    tool: Skill
+    input_match: "rainforest-mind:depurar"
+    arm: both
+
+  - type: tool_used
+    name: nao-aciona-executar
+    tool: Skill
+    input_match: "rainforest-mind:executar"
+    min: 0
+    max: 0
+    arm: both
+
+  - type: llm
+    name: resposta-segue-metodo-depurar
+    criteria: >
+      A resposta trata o pedido como um bug a investigar (loop de feedback,
+      sinal reproduzível, hipótese só depois de um repro apertado) — não como
+      um plano de trabalho já fechado para despachar a agentes, nem como uma
+      tarefa mecânica de execução direta sem investigação prévia. Vale mesmo
+      que a resposta só peça repro/contexto antes de agir, desde que o
+      enquadramento seja o de investigar um bug, não o de executar um plano.
+    weight: 1

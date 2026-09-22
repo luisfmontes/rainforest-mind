@@ -1,0 +1,39 @@
+schema_version: "1.0"
+name: gatilho-enxugar-vs-revisar
+description: >
+  Pedido "o que eu removo daqui" (issue #302) tem que acionar `enxugar`, não
+  `revisar` — enxugar lista código morto, inflação e abstração não usada
+  (num diff ou no repo inteiro), sem nunca aplicar; revisar é a revisão
+  independente de correção de uma entrega contra o diff real.
+tags: [gatilho, colisao]
+
+execution:
+  prompt: "o que eu removo daqui"
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-enxugar
+    tool: Skill
+    input_match: "rainforest-mind:enxugar"
+    arm: both
+
+  - type: tool_used
+    name: nao-aciona-revisar
+    tool: Skill
+    input_match: "rainforest-mind:revisar"
+    min: 0
+    max: 0
+    arm: both
+
+  - type: llm
+    name: resposta-segue-metodo-enxugar
+    criteria: >
+      A resposta trata o pedido como um levantamento do que pode sair
+      (código morto, inflação, abstração não usada) — listando candidatos a
+      remover, nunca aplicando a remoção nem indo atrás de bug de
+      correção como uma revisão faria. Vale mesmo que a resposta só peça
+      mais contexto (qual diff, qual pasta) antes de listar, desde que o
+      enquadramento seja o de enxugar, não o de revisar.
+    weight: 1
