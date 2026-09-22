@@ -30,7 +30,7 @@
     "em": "2026-09-22"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-22",
     "tarefas_ok": 9,
     "tarefas": 9,
@@ -292,17 +292,21 @@
       "baterias_branch": "executadas com Git Bash correto depois de tentativa invalida pelo WSL sem Node; a tentativa sem Node nao e teste de produto",
       "pendencia_fluxo": "coordenador ainda fechara a catraca e repetira as baterias formais"
     },
-    "head": "e8baa18e"
+    "head": "e8baa18e",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-22"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "bbe60df2d531ac34300f817c8341e8499ba49907",
+      "head": "9e47ddae71ea85b7a9cfcc5641630c5c82e54479",
       "caminhos_sujos": []
     },
-    "achados": 1,
-    "base": "2adbae270782a5a36512c28a5c2a5354ba05c73e",
-    "head": "bbe60df2d531ac34300f817c8341e8499ba49907",
+    "achados": 3,
+    "base": "5cdb90e768cb1ba808821d5bdcdf46f7a19fc782",
+    "head": "9e47ddae71ea85b7a9cfcc5641630c5c82e54479",
     "em": "2026-09-22",
     "achado": "Reancoragem incompleta em D5/D9 e T4/T6/T7/T8/T9; T6 sem cachebuster 1.19.2; criterio de creep antigo; falso negativo em fixture Gemini; caminhos locais e medicoes sem re-verificar. Correcoes aplicadas aguardam nova revisao independente.",
     "confirmacoes": [
@@ -312,10 +316,18 @@
       "caminhos locais removidos do rastro versionado"
     ],
     "pendencias": [
-      "nova revisão independente da reancoragem 1.21.1",
-      "coordenador fechar a catraca de executar e repetir as baterias formais"
+      "remover rota histórica operacional 1.13.2 do handover corrente",
+      "alinhar handover e portão a executar=ok",
+      "tornar evidência 1.21.1 canônica no estado e arquivar 1.19.2 sem chaves correntes concorrentes"
     ],
-    "tentativas": 1
+    "tentativas": 2,
+    "em_voo": [
+      {
+        "agente": "revisor-independente-1.21.1",
+        "tarefa": "revisar diff final contra design, plano e padrões",
+        "desde": "2026-09-22T12:35:00Z"
+      }
+    ]
   },
   "verificar": {
     "status": "reprovado",
