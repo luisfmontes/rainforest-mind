@@ -23,10 +23,10 @@
     "em": "2026-09-22"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-22",
-    "tarefas_ok": 7,
-    "tarefas": 7,
+    "tarefas_ok": 10,
+    "tarefas": 10,
     "carimbos": [
       {
         "tarefa": 1,
@@ -65,8 +65,8 @@
       }
     ],
     "em": "2026-09-22",
-    "comando": "CONFERIR=\"python scripts/conferir-entrega.py\" bash scripts/testa-conferir-entrega.sh; bash hooks/testa-gate-fechar-issue.sh",
-    "saida": "gemeo 73 ok 0 falha (local e CI run 35734739268); gate-fechar-issue 166 ok 0 falha",
+    "comando": "bash hooks/testa-gate-fechar-issue.sh",
+    "saida": "172 ok, 0 falha(s)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -76,12 +76,12 @@
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh, secao (#309) bash \"$t\" como ultimo argumento"
+        "fixture": "testa-gate-fechar-issue.sh, secao (#309) bash variavel citada como ultimo argumento"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-entrega.sh, secao D5 exit 69 (+ BOM, commit vazio e --escopo tambem vermelhos)"
+        "fixture": "testa-conferir-entrega.sh, secao D5 exit 69 (+ BOM, commit vazio e --escopo)"
       },
       {
         "tarefa": 4,
@@ -91,7 +91,7 @@
       {
         "tarefa": 5,
         "resultado": "n/a",
-        "motivo": "emenda D6: suite fora desta entrega (PR #311); mutacao tentada mostrou grader with-only fora do score"
+        "motivo": "emenda D6: suite fora desta entrega (PR #311)"
       },
       {
         "tarefa": 6,
@@ -102,12 +102,26 @@
         "tarefa": 7,
         "resultado": "vermelho",
         "fixture": "testa-conferir-entrega.sh, caso git fora do PATH -> exit 69"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, secao coproc (#309, revisao)"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, secao parametro especial (#309, revisao)"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-publicacao.sh, secao TLD reservado (RFC 2606)"
       }
     ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-22"
-    }
+    "em_voo": [],
+    "pendentes": [],
+    "sensor_externo": "bash hooks/testa-gate-fechar-issue.sh"
   },
   "revisar": {
     "status": "reprovado",
