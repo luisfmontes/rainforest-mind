@@ -10,6 +10,31 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.23.0 — 2026-09-22
+
+**Os gates de texto pararam de deixar passar `bash -c` escondido atrás de palavra
+reservada, e pararam de barrar `bash "$t"`.** Antes, `for t in x; do bash -c "gh
+issue close 12"; done` passava pelo gate de fechar issue, enquanto o mesmo `bash -c`
+sem o laço era barrado: `do`, `then`, `else`, `elif`, `if`, `while`, `until` e `!`
+tiravam o `bash` da posição de comando. E o inverso: rodar uma lista de baterias com
+`for t in ...; do bash "$t"; done` era recusado como "comando encapsulado".
+
+- **Palavra reservada é pulada** na posição de comando, nos três gates de texto e no
+  gate de worktree.
+- **Variável entre aspas duplas como último argumento é caminho de script**:
+  `bash "$t"`, `bash "${t}"` e `bash "$t" 2>&1` passam. Sem aspas (`bash $t`) ou com
+  argumento depois (`bash "$f" "gh ..."`, que com `f=-c` vira `bash -c`) continuam
+  barrados.
+
+**O `conferir-entrega` em Python voltou a valer o mesmo que o de Node.** Ele tinha
+parado em agosto: faltavam `--escopo`, o exit 69 de "não deu para verificar",
+a reprovação de commit vazio e o BOM no `git status`. As quatro foram portadas, e o
+CI passou a rodar a bateria contra o gêmeo em passo próprio, para ele não congelar
+de novo em silêncio.
+
+**Primeira suíte de eval de gatilho de skill** em `evals/`, rodável com
+`claude plugin eval`. Não entra no CI ainda: cada rodada custa crédito de API.
+
 ## 1.22.0 — 2026-09-22
 
 **A régua do `/regua` não pode mais ser mexida depois que o loop começa.** Antes,

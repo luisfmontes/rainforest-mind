@@ -27,7 +27,13 @@
     "catraca_mutacao": "2026-09-22",
     "tarefas_ok": 4,
     "tarefas": 6,
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "executor-evals-2",
+        "tarefa": "5 eval #302 (redespacho)",
+        "desde": "2026-09-22"
+      }
+    ],
     "carimbos": [
       {
         "tarefa": 1,
