@@ -66,6 +66,15 @@ from pathlib import Path
 # Rastro que o proprio fluxo grava no principal durante o despacho (Issue #51).
 EXCLUIDOS = re.compile(r"^docs[\\/]rainforest[\\/]estado[\\/].*\.json$", re.IGNORECASE)
 
+# D5 (2026-09-12): worktree que sumiu ou diretorio que nao e/deixou de ser
+# repositorio git nao e reprovacao, e' ambiente — sai 69 (EX_UNAVAILABLE),
+# primeira linha do stderr "nao-verificavel: <motivo>".
+EXIT_NAO_VERIFICAVEL = 69
+
+# Commit do agente sem nenhum arquivo tocado e entrega inexistente — guarda
+# nomeada para a checagem nao sumir sem ninguem notar (Issue #303, grupo 3).
+COMMIT_VAZIO_REPROVA = True
+
 
 class Conferencia:
     def __init__(self) -> None:
@@ -82,7 +91,11 @@ class Conferencia:
             )
         except FileNotFoundError:
             return 127, "git nao encontrado no PATH"
-        return p.returncode, (p.stdout + p.stderr).strip()
+        # rstrip (nao strip): trimEnd do .cjs. Um strip() nos dois lados come o
+        # espaco inicial da primeira linha de `git status --porcelain` (" M a.txt"
+        # vira "M a.txt"), e o slice [3:] de caminho_da_linha perde o primeiro
+        # caractere do nome do arquivo (Issue #303, grupo BOM/trimEnd).
+        return p.returncode, (p.stdout + p.stderr).rstrip()
 
     # -- relato ----------------------------------------------------------
     def abre(self, titulo: str) -> None:
@@ -130,6 +143,65 @@ def arquivosAgente(c: Conferencia, wt: str, base: str | None, commit: str) -> se
     return {l.replace("\\", "/").lower() for l in linhas}
 
 
+def arquivosAgentComStatus(c: Conferencia, wt: str, base: str | None, commit: str) -> dict[str, str]:
+    """Extrai mapa de arquivos com status (A/M/D/R/C) que o agente tocou."""
+    if base:
+        rc, saida = c.mostra(wt, "diff", "--name-status", f"{base}..{commit}")
+    else:
+        rc, saida = c.mostra(wt, "show", "--name-status", "--format=", commit)
+
+    if rc != 0:
+        return {}
+
+    linhas = [l for l in (saida or "").split("\n") if l.strip()]
+    mapa: dict[str, str] = {}
+    for linha in linhas:
+        partes = linha.split("\t")
+        if len(partes) < 2:
+            continue
+        status = partes[0]
+        tipo = status[0]
+        if tipo in ("R", "C") and len(partes) >= 3:
+            # Rename/copia: git emite "R100\told\tnew" (ou "C100\told\tnew").
+            # Duas entradas — origem e destino — ambas conferidas contra o escopo.
+            origem = partes[1].replace("\\", "/").lower()
+            destino = partes[2].replace("\\", "/").lower()
+            mapa[origem] = f"{tipo} (origem)"
+            mapa[destino] = f"{tipo} (destino)"
+        else:
+            caminho = "\t".join(partes[1:]).replace("\\", "/").lower()
+            mapa[caminho] = status
+    return mapa
+
+
+def globToRegex(glob: str) -> str:
+    """Converte um glob simples em regex. Suporta *, **, e ?."""
+    # Primeiro, marca ** com um placeholder temporário antes de escapar
+    pattern = glob.replace("**", "\x00")
+    # Escapa caracteres especiais de regex, exceto *, ?, e /
+    pattern = re.sub(r"[.+^${}()|\[\]\\]", lambda m: "\\" + m.group(0), pattern)
+    # Agora restaura ** e converte em regex
+    pattern = pattern.replace("\x00", ".*")
+    # * (em qualquer posicao) = qualquer coisa EXCETO /
+    pattern = pattern.replace("*", "[^/]*")
+    # ? = um caractere qualquer EXCETO /
+    pattern = pattern.replace("?", "[^/]")
+    return "^" + pattern + "$"
+
+
+def bateComEscopo(caminho: str, globs: list[str]) -> bool:
+    """Verifica se um caminho bate com algum dos globs fornecidos.
+    Se nenhum glob foi fornecido, retorna True (sem filtro)."""
+    if not globs:
+        return True
+    cami = caminho.replace("\\", "/").lower()
+    for glob in globs:
+        g = glob.replace("\\", "/").lower()
+        if re.match(globToRegex(g), cami):
+            return True
+    return False
+
+
 def caminho_da_linha(l: str) -> str:
     """Caminho de uma linha do porcelain: descarta o status, resolve rename e desfaz
     o escape com aspas que o git usa para caractere fora do ASCII."""
@@ -150,14 +222,16 @@ def caminhosSujoAntes(arquivo: str) -> set[str] | None:
     """Extrai conjunto de caminhos sujos ANTES do despacho (do arquivo porcelain)."""
     try:
         with open(arquivo, "r", encoding="utf-8") as f:
-            conteudo = f.read().strip()
-        if not conteudo:
-            return set()
+            conteudo = f.read()
+        # Remove BOM antes de qualquer trim
+        if conteudo.startswith("\ufeff"):
+            conteudo = conteudo[1:]
+
+        linhas = [l.rstrip() for l in re.split(r"\r?\n", conteudo)]
+        linhas = [l for l in linhas if l]
 
         caminhos = set()
-        for linha in conteudo.split("\n"):
-            if not linha.strip():
-                continue
+        for linha in linhas:
             # Descarta 3 primeiros caracteres do status, trata rename ("A -> B")
             p = linha[3:]
             partes = p.split(" -> ")
@@ -196,14 +270,18 @@ def main() -> int:
                     help="nao falhar por working tree suja no worktree (raro; justifique)")
     ap.add_argument("--paralelo", action="store_true",
                     help="ativa cruzamento de sujeira com arquivos tocados (checagem 4)")
+    ap.add_argument("--escopo", action="append", default=[], metavar="GLOB",
+                    help="glob para escopo de arquivos tocados (repetivel)")
     a = ap.parse_args()
 
     c = Conferencia()
     wt = a.worktree
 
     if not Path(wt).is_dir():
-        print(f"erro: worktree '{wt}' nao existe", file=sys.stderr)
-        return 2
+        # Ambiente, nao conteudo: sem o diretorio nao ha o que conferir, e um
+        # worktree que sumiu nao e uma entrega reprovada (D5, 2026-09-12).
+        print(f"nao-verificavel: worktree '{wt}' nao existe", file=sys.stderr)
+        return EXIT_NAO_VERIFICAVEL
 
     # Valida --sujo-antes antes de tudo
     if a.sujo_antes:
@@ -215,8 +293,16 @@ def main() -> int:
     c.abre("Onde ele mexeu — o worktree e mesmo um worktree?")
     rc, top = c.mostra(wt, "rev-parse", "--show-toplevel")
     if rc != 0:
-        c.falha("nao e repositorio git")
-        top = ""
+        # Ambiente, nao conteudo (D5, 2026-09-12): sem git funcionando aqui, TODA
+        # checagem seguinte tambem falharia por tabela — para aqui e diz que nao
+        # deu para medir, em vez de acumular reprovacoes que nao apontam defeito.
+        motivo = (
+            "git nao encontrado no PATH"
+            if rc == 127 and "git nao encontrado" in top
+            else f"'{wt}' nao e repositorio git"
+        )
+        print(f"nao-verificavel: {motivo}", file=sys.stderr)
+        return EXIT_NAO_VERIFICAVEL
     _, gitdir = c.mostra(wt, "rev-parse", "--git-dir")
     _, common = c.git(wt, "rev-parse", "--git-common-dir")
 
@@ -278,6 +364,31 @@ def main() -> int:
         c.aviso(f"{len(st.splitlines())} entrada(s) nao commitada(s), dispensado por --permite-sujeira")
     else:
         c.ok("worktree limpo, tudo o que ele fez esta no commit")
+
+    # ------------------------------------------------------------------
+    c.abre("O commit entregue alterou algum arquivo?")
+    arquivos_commit = arquivosAgente(c, wt, a.base, a.commit)
+    if not arquivos_commit:
+        if COMMIT_VAZIO_REPROVA:
+            c.falha("commit do agente vazio — entrega inexistente")
+        else:
+            c.aviso("commit do agente vazio — entrega inexistente")
+    else:
+        c.ok(f"commit tocou {len(arquivos_commit)} arquivo(s)")
+
+    # ------------------------------------------------------------------
+    if a.escopo:
+        c.abre("Os arquivos tocados estão dentro do(s) escopo(s)?")
+        arquivos_status = arquivosAgentComStatus(c, wt, a.base, a.commit)
+        fora = [(caminho, status) for caminho, status in arquivos_status.items()
+                if not bateComEscopo(caminho, a.escopo)]
+        if fora:
+            c.falha(
+                f"{len(fora)} arquivo(s) fora do(s) escopo(s): " +
+                ", ".join(f"{caminho} ({status})" for caminho, status in fora[:5])
+            )
+        else:
+            c.ok(f"todos os {len(arquivos_status)} arquivo(s) tocados estão dentro do(s) escopo(s)")
 
     # ------------------------------------------------------------------
     if principal and Path(principal).is_dir() and norm(principal) != norm(wt):

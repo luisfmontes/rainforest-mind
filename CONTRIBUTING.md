@@ -12,6 +12,10 @@ for t in scripts/testa-*.sh hooks/testa-*.sh; do bash "$t"; done
 CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh
 ```
 
+A segunda linha é a mesma que o CI roda em passo próprio (ver abaixo) — rode-a
+você também, e não só no CI, senão a divergência só aparece quando alguém digita
+o override na mão.
+
 Todas verdes, sem exceção. **Node é a única dependência**: as baterias não usam
 outra linguagem — nem para montar fixture, nem para conferir JSON. Isso vale para
 quem contribui, não só para quem instala; promessa de runtime que não alcança o
@@ -33,6 +37,13 @@ provar equivalência). Ela é a exceção que confirma a regra: ali o Python **�
 teste**, não o meio — a mesma bateria roda contra as duas implementações, e é
 isso que prova que o port não perdeu garantia. Apagar um gêmeo é apagar a
 prova; escrever teste novo em Python é adicionar dependência sem precisar.
+
+O CI roda essa linha do gêmeo num **passo próprio** do job `baterias`
+(`.github/workflows/baterias.yml`, depois de "Rodar as baterias"), não dentro de
+`scripts/varrer-baterias.sh` nem da bateria padrão — decisão D5. Sem isso a
+garantia só existe quando alguém digita o override na mão: foi assim que ela
+congelou por três semanas sem ninguém ver (Issue #303) — 21 casos vermelhos no
+gêmeo, zero no `.cjs`, e nenhuma bateria do caminho default acusou nada.
 
 Bateria nova entra com pelo menos um caso de **mutação** — sabota o mecanismo e
 exige que ele reprove. Trava que nunca foi vista travando não é evidência de nada.

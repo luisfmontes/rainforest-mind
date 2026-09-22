@@ -1,3 +1,8 @@
+# rainforest-gate: dados-de-exemplo — o endereco de e-mail e o id de run do
+# Actions mais abaixo (step "Identidade git") sao sinteticos, nao credencial
+# real; o marcador precisa estar nas 5 primeiras linhas do arquivo para o gate
+# de publicacao ler (hooks/lib/marcador-dados.cjs), e so existia mais fundo.
+#
 # Roda TODAS as baterias do repositorio a cada push e a cada PR.
 #
 # Por que existe: ate 2026-08-17 nenhuma bateria deste repo rodava sozinha. A
@@ -161,3 +166,13 @@ jobs:
 
       - name: Rodar as baterias
         run: bash scripts/varrer-baterias.sh
+
+      # Passo separado, de proposito (D5): o gemeo em Python de conferir-entrega.cjs
+      # so aparece quando alguem digita o CONFERIR override na mao — por isso
+      # congelou tres semanas sem ninguem ver (Issue #303). O runner ja garante
+      # `python` (comentario de scripts/testa-dependencias-de-bateria.sh: "cria
+      # python3 alem de python"), entao a linha e a MESMA que o CONTRIBUTING manda
+      # rodar antes de abrir PR — provar o gemeo aqui e provar o que o contribuidor
+      # roda na propria maquina, nao um substituto.
+      - name: Rodar a bateria do gemeo em Python (conferir-entrega)
+        run: CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh
