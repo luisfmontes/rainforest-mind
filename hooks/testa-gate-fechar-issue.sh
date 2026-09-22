@@ -2232,6 +2232,106 @@ echo "== (fz2) echo 'a\\<LF>b' → exit 0 continua como esta, aspas simples no t
 EXIT_FZ2=$?
 [ $EXIT_FZ2 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_FZ2)"
 
+# continuacao de linha: paridade e aspas (#309, revisao 3)
+#
+# Tarefa 14: a versao anterior (regex cega + mascara de aspas simples por
+# regex, tarefa 13) tinha dois defeitos, achados na revisao 3 — ver o
+# docblock de `colapsaContinuacaoDeLinha` em tokens-comando.cjs para a
+# explicacao completa do mecanismo (varredura caractere a caractere, estado
+# de aspas, paridade de contrabarra).
+echo
+echo "== continuacao de linha: paridade e aspas (#309, revisao 3) =="
+
+# (ha) REGRESSAO (achado 1): DUAS contrabarras antes do LF. No bash a
+# primeira escapa a segunda (corrida par) — o LF sobra como fronteira de
+# comando de VERDADE, nao continuacao. Medido (`spawnSync(["bash","-x",...])`,
+# 2026-09-22): dois comandos rodam (`echo hi \` e `gh issue close 12`,
+# xtrace com dois `+`). Na `origin/main` (antes da tarefa 13) isto ja saia
+# **2** — a regex cega da tarefa 13 colapsava do mesmo jeito que UMA
+# contrabarra, fundindo tudo num `echo ...` so e escondendo o `gh issue
+# close 12`, saindo **0**. Este e o caso da tabela medida pela janela
+# principal.
+echo
+echo "== (ha) echo hi \\\\<LF>gh issue close 12 → exit 2, duas contrabarras NAO colapsam (regressao da tarefa 13) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const B=String.fromCharCode(92);const cmd="echo hi "+B+B+"\n"+"gh issue close 12";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ha"
+EXIT_HA=$?
+[ $EXIT_HA -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HA)"
+
+# (hb) BURACO ANTIGO (achado 2): apostrofo solto DENTRO de aspas duplas
+# (`it's`, `don't`). A mascara `/'[^']*'/g` da versao anterior casava o `'`
+# de "it's" com o `'` de "don't" como se fosse um par de aspas simples de
+# verdade, protegendo a contrabarra+LF do meio do colapso — o corpo do PR
+# partia em duas linhas e `closes #42` nunca se formava. Ja saia **0** na
+# `origin/main`, antes da tarefa 13 — nao e regressao, e buraco antigo.
+echo
+echo "== (hb) gh pr create --body \"it's done, closes \\<LF>#42, don't worry\" → exit 2, apostrofo solto em aspas duplas nao e aspa simples (buraco antigo) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const B=String.fromCharCode(92);const cmd="gh pr create --body \"it'"'"'s done, closes "+B+"\n"+"#42, don'"'"'t worry\"";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hb"
+EXIT_HB=$?
+[ $EXIT_HB -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HB)"
+
+# (hc) controle: UMA contrabarra antes do LF continua colapsando (paridade
+# impar) — mesmo comportamento de antes e depois da tarefa 14.
+echo
+echo "== (hc) echo hi \\<LF>gh issue close 12 → exit 2, uma contrabarra colapsa (controle, paridade impar) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const B=String.fromCharCode(92);const cmd="echo hi "+B+"\n"+"gh issue close 12";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hc"
+EXIT_HC=$?
+[ $EXIT_HC -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HC)"
+
+# (hd) controle: TRES contrabarras antes do LF (paridade impar) tambem
+# colapsam — mas o colapso funde `gh issue close 12` dentro do argumento do
+# `echo` anterior (exatamente o que o bash de verdade faz: a fusao NAO
+# invoca `gh`, so imprime texto), entao o exit correto e 0 — o mesmo que o
+# bash real executaria.
+echo
+echo "== (hd) echo hi \\\\\\<LF>gh issue close 12 → exit 0, tres contrabarras colapsam e fundem no echo (controle, paridade impar) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const B=String.fromCharCode(92);const cmd="echo hi "+B+B+B+"\n"+"gh issue close 12";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hd"
+EXIT_HD=$?
+[ $EXIT_HD -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_HD)"
+
+# (he) controle: dentro de aspas SIMPLES de verdade a contrabarra+LF nunca
+# colapsa, mesmo com o texto de `gh issue close` dentro — mas como esta tudo
+# citado como argumento de `echo`, nunca vira invocacao de `gh` de qualquer
+# jeito (o que este caso prova e que o colapso nao corrompe o conteudo
+# citado; a medicao direta do NAO-colapso mora no docblock de
+# `colapsaContinuacaoDeLinha`, provada com bash de verdade fora desta
+# bateria).
+echo
+echo "== (he) echo 'gh issue \\<LF>close 12' → exit 0, aspas simples de verdade nao colapsam (controle) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const B=String.fromCharCode(92);const cmd="echo \x27gh issue "+B+"\n"+"close 12\x27";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-he"
+EXIT_HE=$?
+[ $EXIT_HE -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_HE)"
+
+# (hf) controle: uma contrabarra antes de CRLF, sem wrapper, tambem colapsa.
+echo
+echo "== (hf) echo hi \\<CRLF>gh issue close 12 → exit 2, CRLF sem wrapper (controle) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const B=String.fromCharCode(92);const cmd="echo hi "+B+"\r\n"+"gh issue close 12";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hf"
+EXIT_HF=$?
+[ $EXIT_HF -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HF)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

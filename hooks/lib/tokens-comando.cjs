@@ -435,70 +435,144 @@ function casaPrefixoDeFlag(tok, nomeCompleto) {
 /**
  * Remove continuacao de linha: contrabarra IMEDIATAMENTE seguida de quebra
  * de linha (LF ou CRLF) some — exatamente como o bash colapsa a string que
- * vira script de um wrapper (`bash -c "..."`, `eval "..."`) ANTES de rodar.
+ * vira script de um wrapper (`bash -c "..."`, `eval "..."`) ANTES de rodar,
+ * e exatamente como o bash colapsa o texto de NIVEL SUPERIOR de um comando
+ * antes de fatiar em segmentos (tarefa 13).
  *
- * #309, achado 2, revisao 2: `bash -c "gh issue \<LF>close 12"` (contrabarra
- * seguida de quebra de linha real, dentro da string) chegava aqui com o LF
- * literal ainda dentro de `interno` — o LF depois vira fronteira de segmento
- * em quem reprocessa `interno` (`segmentosParaGate`/`segmentosComAspas`
- * tratam `\n` como divisor incondicional), partindo `gh issue` de `close 12`
- * em dois segmentos que isolados não bloqueiam. Medido saindo exit 0 no
- * `gate-fechar-issue.cjs` e no `gate-staging-total.cjs`, inclusive na
- * `origin/main` (2026-09-22).
+ * #309, revisao 3, achados 1 e 2: a versao anterior era uma regex cega
+ * (`/\\\r?\n/g`) sobre o texto todo, com aspas simples mascaradas por
+ * `/'[^']*'/g` só na chamada de topo (`colapsaContinuacaoDeLinhaNoTopo`).
+ * Dois defeitos:
  *
- * Medido tambem (2026-09-22, `bash -c` real, via `spawnSync(["bash", "-c",
- * script])` com o argv MONTADO, sem passar por quoting nenhum, e confirmado
- * de ponta a ponta com o wrapper citado dos dois jeitos): contrabarra+LF
- * dentro da string que vira `-c` de um `bash`/`sh`/`zsh`/... SEMPRE colapsa,
- * tanto quando a string chega citada com aspas DUPLAS (o bash EXTERNO ja
- * colapsa ao processar a aspa dupla, antes mesmo de `bash -c` rodar) quanto
- * com aspas SIMPLES (o bash externo preserva literal — aspas simples nao
- * processam nada — mas o `bash -c` INTERNO faz uma segunda passada de
- * tokenizacao sobre o proprio argumento, e ESSA passada colapsa contrabarra+LF
- * de novo, porque nao ha aspas sobrando naquele nivel). As duas formas citadas
- * terminam executando o MESMO comando merged — por isso o colapso aqui nao
- * distingue aspas simples de aspas duplas.
+ *   1. REGRESSAO (tarefa 13): a regex colapsa QUALQUER contrabarra antes de
+ *      LF, sem olhar quantas vem antes. No bash, contrabarra escapa a
+ *      PROXIMA — uma corrida de `n` contrabarras seguida de LF só vira
+ *      continuacao quando `n` e IMPAR (a ultima contrabarra sobra e escapa o
+ *      LF); quando `n` e PAR, as contrabarras se casam duas a duas e o LF
+ *      fica de fora, continua fronteira de comando de verdade. Medido
+ *      (`spawnSync(["bash","-x",arquivo])`, 2026-09-22): `echo hi \\<LF>gh
+ *      issue close 12` (duas contrabarras) roda como DOIS comandos no bash
+ *      real (`echo hi \` e `gh issue close 12`, xtrace com dois `+`) — a
+ *      regex antiga colapsava do mesmo jeito que uma unica contrabarra,
+ *      fundindo tudo num `echo ...` so e escondendo o `gh issue close 12`.
+ *   2. BURACO ANTIGO: a mascara `/'[^']*'/g` da chamada de topo casa
+ *      QUALQUER trecho entre dois `'`, inclusive um apostrofo solto DENTRO
+ *      de aspas duplas (`"it's done"` — o `'` de "it's" e o `'` de "don't"
+ *      formam um par falso que a mascara declara "aspas simples" e protege
+ *      do colapso). `gh pr create --body "it's done, closes \<LF>#42, don't
+ *      worry"` chegava com o LF intacto, o corpo partia em duas linhas e o
+ *      `closes #42` nunca se formava.
+ *
+ * Os dois pedem a mesma correcao: varredura caractere a caractere com
+ * ESTADO de aspas (fora / aspas simples / aspas duplas) e CONTAGEM da
+ * corrida de contrabarras antes de decidir se a proxima quebra de linha
+ * escapa. Dentro de aspas simples nunca colapsa (aspas simples sao literais
+ * de ponta a ponta no bash, sem excecao para `\`); fora delas — sem aspas ou
+ * dentro de aspas duplas, onde o bash TAMBEM colapsa continuacao — colapsa
+ * quando a corrida de contrabarras imediatamente antes do LF/CRLF for
+ * IMPAR, preservando as contrabarras que sobraram em pares (elas nao mexem
+ * no texto, so a ULTIMA contrabarra impar + a quebra somem). Uma aspa dupla
+ * so alterna o estado quando NAO esta em aspas simples; uma aspa simples so
+ * abre quando o estado e "fora" (nunca dentro de aspas duplas — e o que
+ * consertava o achado 2). Uma contrabarra que escapa um caractere qualquer
+ * (inclusive uma aspa) e emitida com o caractere junto, sem passar pelo
+ * teste de alternancia de estado — e por isso `\"` dentro de aspas duplas
+ * nao fecha a aspa, e `\'` fora de aspas nao abre uma aspa simples.
+ *
+ * Serve os DOIS usos: o texto de NIVEL SUPERIOR (antes, `NoTopo`) e o
+ * INTERNO de um wrapper de string (`desempacota()`, tarefa 12) — o mascarar-
+ * e-desmascarar de `colapsaContinuacaoDeLinhaNoTopo` existia só porque a
+ * regex de baixo nao sabia respeitar aspas; agora que a propria varredura
+ * sabe, as duas funcoes fazem o mesmo trabalho e `colapsaContinuacaoDeLinhaNoTopo`
+ * (mantida, exportada, usada por `gate-fechar-issue.cjs` e `cwd-efetivo.cjs`)
+ * vira um alias direto — ver docblock dela.
  */
 function colapsaContinuacaoDeLinha(str) {
-  return str.replace(/\\\r?\n/g, "");
+  let saida = "";
+  let estado = "fora"; // "fora" | "simples" | "duplas"
+  const n = str.length;
+  let i = 0;
+  while (i < n) {
+    const c = str[i];
+    if (estado === "simples") {
+      // Aspas simples sao literais de ponta a ponta — nem a propria aspa
+      // simples de fechamento passa por processamento nenhum antes.
+      if (c === "'") estado = "fora";
+      saida += c;
+      i += 1;
+      continue;
+    }
+    if (c === "'" && estado === "fora") {
+      estado = "simples";
+      saida += c;
+      i += 1;
+      continue;
+    }
+    if (c === '"') {
+      estado = estado === "duplas" ? "fora" : "duplas";
+      saida += c;
+      i += 1;
+      continue;
+    }
+    if (c === "\\") {
+      // Corrida de contrabarras consecutivas a partir daqui.
+      let fim = i;
+      while (fim < n && str[fim] === "\\") fim += 1;
+      const qtd = fim - i;
+      const pares = Math.floor(qtd / 2) * 2; // ficam como estao — nao mexem no texto
+      saida += "\\".repeat(pares);
+      if (qtd % 2 === 0) {
+        i = fim; // corrida par: nenhuma contrabarra sobra pra escapar o que vem depois
+        continue;
+      }
+      // Contrabarra impar sobrando: escapa o proximo caractere.
+      const alvo = str[fim];
+      const ehLF = alvo === "\n";
+      const ehCRLF = alvo === "\r" && str[fim + 1] === "\n";
+      if (ehLF || ehCRLF) {
+        // Continuacao de linha de verdade: a contrabarra sobrando e a
+        // quebra somem juntas, sem ir pra saida.
+        i = fim + (ehCRLF ? 2 : 1);
+        continue;
+      }
+      // Escapa um caractere qualquer (inclusive aspa): emite os dois juntos,
+      // sem passar pelo teste de alternancia de estado acima.
+      saida += "\\";
+      if (alvo !== undefined) {
+        saida += alvo;
+        i = fim + 1;
+      } else {
+        i = fim; // contrabarra no fim da string, sem proximo caractere
+      }
+      continue;
+    }
+    saida += c;
+    i += 1;
+  }
+  return saida;
 }
 
 /**
- * Colapsa continuacao de linha (contrabarra+LF/CRLF) no texto de comando de
- * NIVEL SUPERIOR, ANTES de fatiar em segmentos — poupando o que estiver
- * dentro de aspas SIMPLES, onde o bash nao processa escape nenhum (aspas
- * simples sao literais de ponta a ponta, sem excecao para `\`). Fora de
- * aspas simples (sem aspas, ou dentro de aspas duplas — o bash TAMBEM
- * colapsa ali) o colapso e o MESMO que `colapsaContinuacaoDeLinha` ja faz
- * para o interno de um wrapper de string (tarefa 12).
+ * Alias de `colapsaContinuacaoDeLinha` para o texto de comando de NIVEL
+ * SUPERIOR — mantido com nome proprio (e exportado) porque
+ * `hooks/gate-fechar-issue.cjs` e `hooks/lib/cwd-efetivo.cjs` importam por
+ * este nome (tarefa 14 não toca esses dois arquivos).
  *
- * #309, tarefa 13 (revisao 2, achado que a tarefa 12 deixou de fora): o
- * texto de NIVEL SUPERIOR nunca passava por `colapsaContinuacaoDeLinha` — so
- * o INTERNO de um wrapper de string passava, via `desempacota()`. `\<LF>`
- * cru fora de wrapper chegava intacto em `segmentosParaGate`/
- * `segmentosComAspas`, onde `\n` e fronteira de segmento incondicional — o
- * comando partia em dois ANTES de qualquer coisa reconhecer o `gh`/`git`.
- * Medido (2026-09-22, payload PreToolUse real, `gh` de sandbox):
- * `bash -c "gh issue \<LF>close 12"` (dentro do wrapper, ja colapsa pela
- * tarefa 12) sai 2; o MESMO comando SEM wrapper, `gh issue \<LF>close 12`
- * direto, saia 0 antes deste conserto.
- *
- * Medido tambem (`bash arquivo.sh` real, 2026-09-22): dentro de aspas
- * SIMPLES no topo (`echo 'a\<LF>b'`) o bash preserva a contrabarra e a
- * quebra de linha LITERAIS — nao colapsa. Aspas simples sao mascaradas
- * ANTES do colapso (substituidas por um marcador sem `\` nem quebra de
- * linha) e devolvidas ao texto original depois — `colapsaContinuacaoDeLinha`
- * nunca ve o conteudo delas, entao o resultado final preserva intacta a
- * contrabarra+LF que estava dentro de aspas simples.
+ * Ate a tarefa 14 esta funcao tinha um corpo proprio: mascarava trecho entre
+ * aspas simples (`/'[^']*'/g`) antes de chamar a regex cega de
+ * `colapsaContinuacaoDeLinha` e desmascarava depois — só para que o colapso
+ * não mexesse no que estava entre aspas simples de verdade. Agora que
+ * `colapsaContinuacaoDeLinha` faz essa varredura com estado de aspas por
+ * conta propria (fora / simples / duplas), a mascara daqui virou trabalho
+ * duplicado — pior, era o proprio mecanismo do achado 2 (mascara por regex
+ * cega tambem casava apostrofo solto dentro de aspas duplas como se fosse
+ * par de aspas simples). As duas funcoes fazem hoje exatamente a mesma
+ * varredura; ficam como alias em vez de uma so para nao editar os dois
+ * arquivos que importam `colapsaContinuacaoDeLinhaNoTopo` por nome, fora do
+ * escopo desta tarefa.
  */
 function colapsaContinuacaoDeLinhaNoTopo(cmdOriginal) {
-  const guardadas = [];
-  let cmd = cmdOriginal.replace(/'[^']*'/g, (m) => {
-    guardadas.push(m);
-    return `\u0000${guardadas.length - 1}\u0000`;
-  });
-  cmd = colapsaContinuacaoDeLinha(cmd);
-  return cmd.replace(/\u0000(\d+)\u0000/g, (_, i) => guardadas[Number(i)]);
+  return colapsaContinuacaoDeLinha(cmdOriginal);
 }
 
 /** Tira UM nivel de aspas externas de `interno`, se houver. */

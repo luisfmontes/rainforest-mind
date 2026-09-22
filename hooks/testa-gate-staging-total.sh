@@ -451,6 +451,34 @@ echo "== continuacao de linha no topo (#309, revisao 2) =="
 gate 'git add \<LF>-A BARRA, sem wrapper (continuacao de linha no topo (#309, revisao 2))' 2 "$(bml "$(printf 'git add \\\n-A')")"
 
 echo
+echo "== continuacao de linha: paridade e aspas (#309, revisao 3) =="
+# Tarefa 14, caso equivalente ao de `testa-gate-fechar-issue.sh` — mesma
+# `colapsaContinuacaoDeLinhaNoTopo` (tokens-comando.cjs), aqui chamada por
+# `segmentosComAspas` (cwd-efetivo.cjs), caminho de codigo DIFERENTE do
+# `gate-fechar-issue.cjs`. Ver o docblock de `colapsaContinuacaoDeLinha` para
+# o mecanismo completo.
+
+# (sa) REGRESSAO (achado 1): duas contrabarras NAO colapsam (corrida par —
+# a 1a escapa a 2a, o LF sobra como fronteira de comando de verdade). Medido
+# direto em `segmentosComAspas` (2026-09-22): a versao anterior (regex
+# cega) fundia tudo num segmento so ("echo hi \git add -A", escondendo o
+# `git add -A` dentro de um segmento que comeca com `echo`); a desta tarefa
+# separa em dois segmentos, o segundo sendo `git add -A` sozinho.
+gate 'echo hi \\<LF>git add -A BARRA (continuacao de linha, duas contrabarras NAO colapsam (#309, revisao 3))' 2 "$(bml "$(printf 'echo hi \\\\\ngit add -A')")"
+
+echo
+echo "== continuacao de linha: buraco do apostrofo em aspas duplas (#309, revisao 3) =="
+# (sb) BURACO ANTIGO (achado 2): a mascara `/'[^']*'/g` da versao anterior
+# nao sabia de aspas DUPLAS — pareava QUALQUER apostrofo solto em QUALQUER
+# lugar do texto com o proximo que aparecesse depois, mesmo em trechos
+# citados DIFERENTES ("it's" de um --m e "don't" de um -- depois). Medido
+# direto em `segmentosComAspas` (2026-09-22): a versao anterior partia em
+# TRES segmentos ("git add \\" e "-A -- ..." separados, nenhum com o padrao
+# completo); a desta tarefa funde certo em dois, o segundo sendo
+# `git add -A -- "don't skip"` completo.
+gate 'git commit -m "its a test" && git add \<LF>-A -- "dont skip" BARRA (apostrofo solto em aspas duplas (#309, revisao 3))' 2 "$(bml "$(printf 'git commit -m "it'"'"'s a test" && git add \\\n-A -- "don'"'"'t skip"')")"
+
+echo
 echo "== saidas de emergencia =="
 saida=$(printf '%s' "$(b 'git add -A')" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (exit 0)"
