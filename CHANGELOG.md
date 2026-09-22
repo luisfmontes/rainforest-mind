@@ -10,6 +10,30 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.22.0 — 2026-09-22
+
+**A régua do `/regua` não pode mais ser mexida depois que o loop começa.** Antes,
+"a régua é imutável" era uma frase na skill: nada impedia o builder (ou uma edição
+distraída) de afrouxar um mecanismo no meio das rodadas, e o crítico julgaria
+contra a régua nova sem ninguém perceber.
+
+- **Selada pelo commit.** O manifesto em `docs/rainforest/reguas/<slug>.md` vale
+  como foi commitado pela primeira vez. `node scripts/conferir-regua.cjs validar
+  --slug <slug>` confere o formato antes de selar; `conferir` recusa (exit 1)
+  régua alterada, apagada ou adicionada mais de uma vez no histórico; `mostrar` é
+  o único caminho que a imprime, e só imprime depois de conferir. Clone raso sai
+  2 — no CI, use `fetch-depth: 0`.
+- **Keep/discard automático.** A partir da 2ª rodada, um segundo crítico cego
+  compara o novo com o melhor guardado. Perdeu, o commit fica e o ponteiro não
+  anda; a próxima rodada parte do melhor. Estagnação em 3 rodadas vira a quarta
+  condição de parada.
+- **Log de rodadas versionado**, um TSV com SHA, veredito, status e lacuna de
+  cada rodada.
+
+O que o selo **não** cobre está escrito: manipulação deliberada de histórico por
+quem tem escrita no repositório (rebase, squash, branch órfã). Ele vigia o
+builder e os fluxos normais de git, não quem reescreve o histórico de propósito.
+
 ## 1.21.1 — 2026-09-21
 
 **A limpeza de branches para de mandar procurar no GitHub o que só existe no
