@@ -344,9 +344,13 @@ function validarFormato(bytes, caminhoManifesto) {
   // espaco no fim, `##  Freios`, `## Freios:` —, a recusa nomeia essa linha.
   // Dizer "ausente" a quem ve a secao renderizada na tela manda procurar o
   // defeito no lugar errado: o espaco sobrando e invisivel.
+  // "Freios" tem de ser o TEXTO do cabecalho, nao uma palavra dentro dele:
+  // `### M1 Mostra os freios do carro` ou o titulo da regua mencionando freios
+  // eram nomeados como a linha ofensora, e sem nenhum Freios a mensagem
+  // deixava de dizer "ausente".
   const temFreios = foraDeCerca.some(linha => linha === '## Freios');
   if (!temFreios) {
-    const quase = foraDeCerca.find(linha => /^ {0,3}#{1,6}[ \t].*freios/i.test(linha));
+    const quase = foraDeCerca.find(linha => /^ {0,3}#{1,6}[ \t]+freios\W*$/i.test(linha));
     if (quase !== undefined) {
       console.error(`secao ## Freios fora do formato (a linha tem de ser exatamente '## Freios'): ${JSON.stringify(quase)} (${caminhoManifesto})`);
     } else {

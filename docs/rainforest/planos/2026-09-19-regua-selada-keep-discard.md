@@ -537,3 +537,23 @@ para: if (false) {
 bateria: bash scripts/testa-conferir-regua.sh
 fixture: testa-conferir-regua.sh, caso 35 "## Freios quase certo nomeia a linha"
 ```
+
+**Rodada 11 (2026-09-21), um achado — regressão do conserto da rodada 10.**
+A regex que acha o "Freios quase certo" casava qualquer cabeçalho com a palavra
+"freios": `### M1 Mostra os freios do carro` ou um título mencionando freios
+viravam a linha nomeada, e sem nenhum Freios a mensagem deixava de dizer
+"ausente" — contra o "pronto quando" da própria rodada 10. É a parte não
+cumprida da decisão da rodada 10 (consertar os dois), então segue sob ela:
+"Freios" tem de ser o texto do cabeçalho (`freios\W*$`), não uma palavra dentro.
+
+pronto quando (rodada 11): manifesto sem seção e com `### M1 Mostra os freios`
+sai "ausente"; título com "freios" mais `## Freios ` nomeia `"## Freios "` —
+provado por `bash scripts/testa-conferir-regua.sh` com `0 falha(s)`.
+
+```
+arquivo: scripts/conferir-regua.cjs
+de: ]+freios
+para: ].*freios
+bateria: bash scripts/testa-conferir-regua.sh
+fixture: testa-conferir-regua.sh, caso 35, fixtures palavra-no-mecanismo e palavra-no-titulo
+```

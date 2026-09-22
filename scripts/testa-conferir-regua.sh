@@ -1186,6 +1186,12 @@ for sl in espaco-no-fim dois-espacos dois-pontos; do
   contem "  ... e nomeia a linha" "fora do formato" node "$SCRIPT" validar --slug "$sl"
 done
 contem "sem nenhuma linha de Freios continua 'ausente'" "secao obrigatoria ausente" node "$SCRIPT" validar --slug sem-freios
+# "freios" como palavra DENTRO de outro cabecalho nao e a secao. A regex
+# larga da rodada 10 nomeava `### M1 Mostra os freios` e o titulo da regua.
+{ printf '# Regua\n\n### M1 Mostra os freios\nx\n\n'; for n in 2 3 4 5; do printf '### M%s ok\nx\n\n' "$n"; done; } > docs/rainforest/reguas/palavra-no-mecanismo.md
+{ printf '# Regua dos freios\n\n## Freios \n\n'; mecs25; } > docs/rainforest/reguas/palavra-no-titulo.md
+contem "freios dentro de um mecanismo, sem secao: 'ausente'" "secao obrigatoria ausente" node "$SCRIPT" validar --slug palavra-no-mecanismo
+contem "titulo com freios + '## Freios ': nomeia a linha certa" '"## Freios "' node "$SCRIPT" validar --slug palavra-no-titulo
 
 cd "$REPO2"
 
