@@ -126,3 +126,29 @@ mutacao:
   bateria: `bash scripts/testa-conferir-publicacao.sh`
   fixture: testa-conferir-publicacao.sh, secao "TLD reservado (RFC 2606)"
 pronto quando: com o `.github/workflows/baterias.yml` real, `head -5` não contém `rainforest-gate: dados-de-exemplo` e `node scripts/conferir-publicacao.cjs .github/workflows/baterias.yml` sai **0** sem achado — o e-mail `ci@rainforest.invalid` deixa de ser achado porque TLD reservado (`.invalid`, `.example`, `.test`, `.localhost`) não é endereço real, e o id de run no comentário é reescrito sem a sequência de 11 dígitos; `nome@empresa.com.br` e `x@foo.test.com` (reservado fora do último rótulo) continuam achado; o próprio `scripts/conferir-publicacao.cjs`, cujos comentários são exemplos das formas que ele pega, leva o marcador nas primeiras linhas (o mesmo que a bateria dele já usa) — provado por `bash scripts/testa-conferir-publicacao.sh` com os casos impressos. O caso "arquivo vizinho SEM marcador" de `hooks/testa-gate-publicacao-destino.sh` usava o próprio conferidor como vizinho e passa a usar `scripts/conferir-entrega.cjs`, que segue sem marcador. Achado 3 da revisão.
+
+### 11. `|&` é fronteira de segmento, como `&&` e `||` [tipo: implementar]
+atende: D1, D3
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/gate-staging-total.cjs`, `hooks/gate-mensagem-commit.cjs`, `hooks/lib/tokens-comando.cjs`, `hooks/testa-gate-fechar-issue.sh`, `hooks/testa-gate-staging-total.sh`
+depende de: 8
+paralela: sim
+mutacao:
+  arquivo: `hooks/lib/tokens-comando.cjs`
+  de: `const OPERADORES_DE_DOIS = new Set(["|&"]);`
+  para: `const OPERADORES_DE_DOIS = new Set([]);`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  fixture: testa-gate-fechar-issue.sh, secao "pipe com stderr (|&) (#309, revisao 2)"
+pronto quando: com o payload PreToolUse real e `gh` de sandbox, `echo hi |& bash -c "gh issue close 12"` sai **2** no `gate-fechar-issue.cjs` e `echo hi |& git add -A` sai **2** no `gate-staging-total.cjs` — os dois saem **0** hoje, inclusive na `origin/main` (medido em 2026-09-22); `echo a | grep b` e `echo a || echo b` continuam com o exit de hoje. Achado 1 da revisão 2.
+
+### 12. Continuação de linha dentro da string do wrapper não parte o comando [tipo: implementar]
+atende: D2, D3
+arquivos: `hooks/lib/tokens-comando.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 9
+paralela: nao
+mutacao:
+  arquivo: `hooks/lib/tokens-comando.cjs`
+  de: `interno = colapsaContinuacaoDeLinha(interno);`
+  para: `interno = interno;`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  fixture: testa-gate-fechar-issue.sh, secao "continuacao de linha dentro da string (#309, revisao 2)"
+pronto quando: com o payload PreToolUse real e `gh` de sandbox, `bash -c "gh issue \<LF>close 12"` (contrabarra seguida de quebra de linha dentro das aspas, que o bash colapsa antes de executar) sai **2**, e `bash -c "git add \<LF>-A"` sai **2** no `gate-staging-total.cjs` — hoje os dois saem **0**, inclusive na `origin/main`; comando legítimo de várias linhas sem contrabarra continua com o exit de hoje. Achado 2 da revisão 2.
