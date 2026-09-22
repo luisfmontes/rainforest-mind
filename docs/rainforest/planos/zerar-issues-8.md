@@ -129,7 +129,7 @@ pronto quando: com o `.github/workflows/baterias.yml` real, `head -5` não cont�
 
 ### 11. `|&` é fronteira de segmento, como `&&` e `||` [tipo: implementar]
 atende: D1, D3
-arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/gate-staging-total.cjs`, `hooks/gate-mensagem-commit.cjs`, `hooks/lib/tokens-comando.cjs`, `hooks/testa-gate-fechar-issue.sh`, `hooks/testa-gate-staging-total.sh`
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/lib/cwd-efetivo.cjs`, `hooks/lib/tokens-comando.cjs`, `hooks/testa-gate-fechar-issue.sh`, `hooks/testa-gate-staging-total.sh` (os gates `staging-total` e `mensagem-commit` não são tocados: a segmentação deles vem de `segmentosComAspas`, em `cwd-efetivo.cjs`)
 depende de: 8
 paralela: sim
 mutacao:
@@ -152,3 +152,16 @@ mutacao:
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
   fixture: testa-gate-fechar-issue.sh, secao "continuacao de linha dentro da string (#309, revisao 2)"
 pronto quando: com o payload PreToolUse real e `gh` de sandbox, `bash -c "gh issue \<LF>close 12"` (contrabarra seguida de quebra de linha dentro das aspas, que o bash colapsa antes de executar) sai **2**, e `bash -c "git add \<LF>-A"` sai **2** no `gate-staging-total.cjs` — hoje os dois saem **0**, inclusive na `origin/main`; comando legítimo de várias linhas sem contrabarra continua com o exit de hoje. Achado 2 da revisão 2.
+
+### 13. Continuação de linha no topo do comando, sem wrapper [tipo: implementar]
+atende: D1, D3
+arquivos: `hooks/lib/cwd-efetivo.cjs`, `hooks/gate-fechar-issue.cjs`, `hooks/lib/tokens-comando.cjs`, `hooks/testa-gate-fechar-issue.sh`, `hooks/testa-gate-staging-total.sh`
+depende de: 12
+paralela: nao
+mutacao:
+  arquivo: `hooks/lib/tokens-comando.cjs`
+  de: `cmd = colapsaContinuacaoDeLinha(cmd);`
+  para: `cmd = cmd;`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  fixture: testa-gate-fechar-issue.sh, secao "continuacao de linha no topo (#309, revisao 2)"
+pronto quando: com o payload PreToolUse real e `gh` de sandbox, `gh issue <contrabarra><LF>close 12` mandado direto, **sem wrapper**, sai **2** (hoje sai 0, inclusive depois das tarefas 11 e 12), e `git add <contrabarra><LF>-A` sai **2** no `gate-staging-total.cjs`; comando de várias linhas sem contrabarra (`gh issue<LF>close 12`) continua **0**, e contrabarra dentro de aspas simples segue o que o bash faz (medir e dizer o que mediu). Achado que a tarefa 12 deixou de fora, nomeado pelo próprio executor.
