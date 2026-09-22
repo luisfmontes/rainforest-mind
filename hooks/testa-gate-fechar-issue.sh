@@ -1995,6 +1995,79 @@ echo '== (fi) for t in x; do bash -c "gh issue close 12"; done → exit 2 ((#309
 EXIT_FI=$?
 [ $EXIT_FI -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_FI)"
 
+# coproc (#309, revisao): mesmo bypass de `posicaoDeComando` que do/then/else/
+# elif/while/until/if/! ja tinham — `coproc bash -c "..."` (sem nome) fazia
+# a busca parar na propria palavra reservada, sem ver o `bash -c` depois.
+# Medido na revisao de 2026-09-22: exit 0 antes de `coproc` entrar em
+# PALAVRAS_RESERVADAS. Achado 1 da revisao.
+echo
+echo '== (fj) coproc bash -c "gh issue close 12" → exit 2 (coproc (#309, revisao)) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"coproc bash -c \"gh issue close 12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fj"
+EXIT_FJ=$?
+[ $EXIT_FJ -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_FJ)"
+
+# parametro especial (#309, revisao): `contemConstrucaoIlegivel` nao tratava
+# `$@`/`$*`/`$#`/`$?`/`$$`/`$!`/`$-` como variavel — so identificador
+# (`[A-Za-z_{0-9]`) entrava na classe. `set -- -c "gh issue close 12"; bash
+# "$@"`, `bash "$*"`, `eval "$@"` e `eval $@` saiam exit 0 (ilegivel nunca
+# detectado). Medido na revisao de 2026-09-22, antes do conserto: exit 0 nos
+# quatro. `ehVariavelCitadaFinal` continua so aceitando `"$nome"`/`"${nome}"`
+# (identificador), entao `"$@"`/`"$*"` nunca viram caminho de script por
+# aquele ramo — ficam ilegivel, que bloqueia aqui. Achado 2 da revisao.
+echo
+echo '== (fk) set -- -c "gh issue close 12"; bash "$@" → exit 2 (parametro especial (#309, revisao)) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"set -- -c \"gh issue close 12\"; bash \"$@\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fk"
+EXIT_FK=$?
+[ $EXIT_FK -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_FK)"
+
+echo
+echo '== (fl) bash "$*" → exit 2 (parametro especial (#309, revisao)) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash \"$*\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fl"
+EXIT_FL=$?
+[ $EXIT_FL -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_FL)"
+
+echo
+echo '== (fm) eval "$@" → exit 2 (parametro especial (#309, revisao)) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"eval \"$@\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fm"
+EXIT_FM=$?
+[ $EXIT_FM -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_FM)"
+
+echo
+echo '== (fn) eval $@ → exit 2 (parametro especial (#309, revisao), sem aspas) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"eval $@"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fn"
+EXIT_FN=$?
+[ $EXIT_FN -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_FN)"
+
+echo
+echo '== (fo) bash "$t" → exit 0 continua (parametro especial (#309, revisao), regressao: caminho de script nao vira ilegivel) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash \"$t\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-fo"
+EXIT_FO=$?
+[ $EXIT_FO -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_FO)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

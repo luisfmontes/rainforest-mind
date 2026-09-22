@@ -401,6 +401,10 @@ gate "{ bash -c \"git add -A\"; } BARRA (#309, controle: ja passava)"     2 "$(b
 gate "if true; then git status; fi PASSA (#309, regressao: nao staging total)" 0 "$(b 'if true; then git status; fi')"
 
 echo
+echo "== coproc (#309, revisao): mesmo bypass — coproc sem nome nao entrava em PALAVRAS_RESERVADAS =="
+gate "coproc git add -A BARRA (coproc (#309, revisao))" 2 "$(b 'coproc git add -A')"
+
+echo
 echo '== (#309) bash "$t" como ultimo argumento: variavel citada com aspas DUPLAS =='
 # Os tres primeiros casos "BARRA" batem mesmo com conteudo generico
 # ("gh issue close 12"): este gate trata conteudo ILEGIVEL do wrapper como

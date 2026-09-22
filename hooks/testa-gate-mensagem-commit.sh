@@ -177,6 +177,10 @@ gate "{ bash -c \"git commit -m x\"; } -> exit 2 (#309, controle: ja passava)"  
 gate "if true; then git status; fi -> exit 0 (#309, regressao: nao e git commit)" 0 "$(payload "$R4" Bash 'if true; then git status; fi')"
 
 echo
+echo "== coproc (#309, revisao): mesmo bypass — coproc sem nome nao entrava em PALAVRAS_RESERVADAS =="
+gate "coproc bash -c \"git commit -m x\" -> exit 2 (coproc (#309, revisao))" 2 "$(payload "$R4" Bash 'coproc bash -c "git commit -m x"')"
+
+echo
 echo '== (#309) bash "$t" como ultimo argumento: variavel citada com aspas DUPLAS =='
 # Este gate e sobre FORMA de mensagem, nao sobre evasao (comentario de
 # `analisaSegmentoCommit`, tokens-comando.cjs): conteudo ILEGIVEL de um

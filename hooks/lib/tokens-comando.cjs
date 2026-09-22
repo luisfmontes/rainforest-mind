@@ -107,8 +107,12 @@ const WRAPPERS_QUE_REPASSAM = new Set([
 // aqui: `segmentosParaGate` (nos tres gates de texto) ja os consome como
 // FRONTEIRA DE SEGMENTO antes de qualquer tokenizacao chegar aqui — medido
 // que ja saiam exit 2 sem mudanca nenhuma.
+// `coproc` (revisao #309, achado 1): mesmo bypass, medido com `coproc bash -c
+// "gh issue close 12"` saindo exit 0 antes desta entrada. `coproc NOME { ...; }`
+// (com nome) exige comando composto — o `{` ja e fronteira de segmento, entao
+// so o `coproc bash -c ...` sem nome precisava deste pulo.
 const PALAVRAS_RESERVADAS = new Set([
-  "do", "then", "else", "elif", "while", "until", "if", "!",
+  "do", "then", "else", "elif", "while", "until", "if", "!", "coproc",
 ]);
 
 // Flags que cada wrapper reconhece e que CONSOMEM VALOR: o proprio token
@@ -429,7 +433,13 @@ function contemConstrucaoIlegivel(str) {
   // O `0-9` cobre parametro posicional (`$1`, `$2`): `bash -c` com ele dentro e
   // tao ilegivel quanto com `$VAR`, e a classe sem digito o deixava passar.
   // Apontado como lacuna na revisao de 2026-09-05, na mesma linha que D22 tocou.
-  return /\$\(|`|\$[A-Za-z_{0-9]/.test(str);
+  // `@*#?$!-` cobre parametro especial (`$@`, `$*`, `$#`, `$?`, `$$`, `$!`,
+  // `$-`): revisao #309, achado 2 — `set -- -c "gh issue close 12"; bash
+  // "$@"`, `bash "$*"` e `eval "$@"`/`eval $@` saiam exit 0 porque a classe
+  // sem esses caracteres nao via `$@`/`$*` como variavel nenhuma. `ehVariavelCitadaFinal`
+  // continua so aceitando `"$nome"`/`"${nome}"` (identificador), entao
+  // `"$@"`/`"$*"` nunca escapam por aquele ramo do caminho de script.
+  return /\$\(|`|\$[A-Za-z_{0-9@*#?$!-]/.test(str);
 }
 
 /**
