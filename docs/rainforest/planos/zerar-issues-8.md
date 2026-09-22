@@ -147,8 +147,8 @@ depende de: 9
 paralela: nao
 mutacao:
   arquivo: `hooks/lib/tokens-comando.cjs`
-  de: `interno = colapsaContinuacaoDeLinha(interno);`
-  para: `interno = interno;`
+  de: `if (ehLF || ehCRLF) {`
+  para: `if (false) {`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
   fixture: testa-gate-fechar-issue.sh, secao "continuacao de linha dentro da string (#309, revisao 2)"
 pronto quando: com o payload PreToolUse real e `gh` de sandbox, `bash -c "gh issue \<LF>close 12"` (contrabarra seguida de quebra de linha dentro das aspas, que o bash colapsa antes de executar) sai **2**, e `bash -c "git add \<LF>-A"` sai **2** no `gate-staging-total.cjs` — hoje os dois saem **0**, inclusive na `origin/main`; comando legítimo de várias linhas sem contrabarra continua com o exit de hoje. Achado 2 da revisão 2.
@@ -160,11 +160,11 @@ depende de: 12
 paralela: nao
 mutacao:
   arquivo: `hooks/lib/tokens-comando.cjs`
-  de: `cmd = colapsaContinuacaoDeLinha(cmd);`
+  de: `cmd = colapsaContinuacaoDeLinhaNoTopo(cmd);`
   para: `cmd = cmd;`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
   fixture: testa-gate-fechar-issue.sh, secao "continuacao de linha no topo (#309, revisao 2)"
-pronto quando: com o payload PreToolUse real e `gh` de sandbox, `gh issue <contrabarra><LF>close 12` mandado direto, **sem wrapper**, sai **2** (hoje sai 0, inclusive depois das tarefas 11 e 12), e `git add <contrabarra><LF>-A` sai **2** no `gate-staging-total.cjs`; comando de várias linhas sem contrabarra (`gh issue<LF>close 12`) continua **0**, e contrabarra dentro de aspas simples segue o que o bash faz (medir e dizer o que mediu). Achado que a tarefa 12 deixou de fora, nomeado pelo próprio executor.
+pronto quando: com o payload PreToolUse real e `gh` de sandbox, `gh issue <contrabarra><LF>close 12` mandado direto, **sem wrapper**, sai **2** (hoje sai 0, inclusive depois das tarefas 11 e 12), e `git add <contrabarra><LF>-A` sai **2** no `gate-staging-total.cjs`; comando de várias linhas sem contrabarra (`gh issue<LF>close 12`) continua **0**, e contrabarra dentro de aspas simples segue o que o bash faz (medir e dizer o que mediu). Achado que a tarefa 12 deixou de fora, nomeado pelo próprio executor. Alvo de mutação corrigido no `verificar`: a tarefa 14 reescreveu a função e o alvo antigo deixou de existir. Medido também no `verificar`: com o colapso de topo no lugar, a chamada interna `interno = colapsaContinuacaoDeLinha(interno)` de `desempacota` ficou **neutra** em 7 casos de wrapper (mesmo exit com e sem ela) — fica como está, e a redundância está registrada na #313, que mexe nesse mesmo ponto.
 
 ### 14. Colapso de continuação segue o bash: paridade de contrabarra e estado de aspas [tipo: implementar]
 atende: D1, D2, D3
