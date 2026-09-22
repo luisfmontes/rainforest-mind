@@ -26,11 +26,12 @@
     "head_derivacao": "git rev-parse HEAD",
     "gemini": "adiado",
     "ancoras_corpo": "fechar, modo-dev, montar-corpus e regua iguais byte a byte a base 1.21.1",
-    "instalacao_cache": "concluida em 1.21.1 sobre f02843b91c2f7dd09aa2919b14e5713c5333a9ee; evidencia 1.19.2 preservada somente como historico",
+    "instalacao_cache": "concluida em 1.21.1 sobre f02843b91c2f7dd09aa2919b14e5713c5333a9ee; evidencia anterior preservada somente sob executar.historico_1_19_2",
     "em": "2026-09-22"
   },
   "executar": {
     "status": "parcial",
+    "motivo_parcial": "correcao do rastro final em curso; o coordenador fechara executar depois deste commit",
     "catraca_mutacao": "2026-09-22",
     "tarefas_ok": 8,
     "tarefas": 9,
@@ -221,58 +222,17 @@
     ],
     "origem_instalacao": {
       "tipo": "git archive",
-      "commit": "68dbcf6e3493084f3faa6a41a5a3e012c6281bbb",
-      "caminho": "<export-clean-1.19.2-reviewfix-68dbcf6e>",
-      "versao": "1.19.2",
-      "export_arquivos_force": 765,
-      "cache_arquivos_force": 766,
+      "commit": "f02843b91c2f7dd09aa2919b14e5713c5333a9ee",
+      "caminho": "<export-clean-1.21.1>",
+      "versao": "1.21.1",
+      "export_arquivos_force": 783,
+      "cache": "<cache-rainforest-mind-1.21.1>",
+      "cache_arquivos_force": 784,
       "export_dotgit": false,
       "cache_dotgit": false,
       "extra_d11": ".codex-plugin/migrated-command-skills/source-command-saude/SKILL.md"
     },
     "projecao_d9": {
-      "governanca_excluida": 7,
-      "arquivos_esperados": 758,
-      "ausentes": 0,
-      "sha_divergentes": 0,
-      "extras": 1
-    },
-    "contraprova_hook": {
-      "fixture": "<fixture-host-owned>",
-      "sessao": "01a0bb99-1f24-7310-bc4a-689613d1589e",
-      "versao_instalada": "1.19.2",
-      "decisao": "PreToolUse Blocked",
-      "saida_literal": "Codigo de saida: N/A - processo nao iniciado",
-      "estado_apos": "?? deny-control.txt; nada staged; sem .git/index.lock"
-    },
-    "correcao_revisao_2026_09_20": {
-      "cachebuster": "1.19.2+codex.20260920005618",
-      "sessao": "01a0bc51-ac65-7461-a8eb-4781dbd6c9ae",
-      "skills": 20,
-      "decisao": "PreToolUse Blocked",
-      "git_iniciou": false,
-      "fixture_apos": "?? deny-control.txt; nada staged; sem .git/index.lock",
-      "gemini_vermelho_antes": "detector Gemini deixou passar test/fixtures/gemini/request.json",
-      "gemini_verde_depois": true,
-      "manifestos_restaurados": "1.19.2 byte a byte",
-      "export_commit": "68dbcf6e3493084f3faa6a41a5a3e012c6281bbb",
-      "export_arquivos_force": 765,
-      "cache_arquivos_force": 766,
-      "projecao": "758 esperados; 0 ausente; 0 divergente; 1 extra D11; zero .git",
-      "contratos_cache": "manifesto, skills, adaptador e marketplace exit 0"
-    },
-    "mutacao_nesta_iteracao": "o detector Gemini mudou com vermelho antes e verde depois. T3 foi corrigida para casar as aspas escapadas do JSON e ficou vermelha ao trocar o adaptador pelo core; T4 ficou vermelha em 1.19.3 contra 1.19.2. Os demais contratos aplicaveis ficaram verdes.",
-    "base": "5cdb90e768cb1ba808821d5bdcdf46f7a19fc782",
-    "base_anterior": "068468fb956b8d606e9af1800aaa91dd399fdeb8",
-    "nota_mutacao": "Mutantes reexercitados na arvore reancorada, nao herdados: a main trouxe 188 commits e a lista de 2026-09-14 media outra arvore. Uma primeira mutacao da T1 sobreviveu (tirar -A de CAMINHO_TOTAL) e isso NAO era lacuna da bateria: temCurta(opcoes,\"A\") pega o mesmo caso sozinho. Defesa redundante nao morre com um tiro so, entao o mutante foi refeito matando os dois detectores.",
-    "evidencia_1_21_1": {
-      "source_commit": "f02843b91c2f7dd09aa2919b14e5713c5333a9ee",
-      "origem_export": "C:\\Projetos\\rainforest-mind\\.claude\\marketplaces\\rainforest-mind-export-1.21.1-flow",
-      "export_arquivos_force": 783,
-      "cache": "C:\\Users\\Luis\\.codex\\plugins\\cache\\rainforest-mind-local\\rainforest-mind\\1.21.1",
-      "cache_arquivos_force": 784,
-      "export_dotgit": false,
-      "cache_dotgit": false,
       "rastreados": 783,
       "governanca_excluida": 7,
       "arquivos_esperados": 776,
@@ -280,18 +240,67 @@
       "export_different": 0,
       "cache_missing": 0,
       "cache_different": 0,
-      "extra_d11": ".codex-plugin/migrated-command-skills/source-command-saude/SKILL.md",
-      "contratos_cache": "manifesto, skills, adaptador e marketplace exit 0; Gemini completo somente na worktree Git",
-      "contraprova": {
-        "sessao": "01a0c90c-bbe6-7940-9011-e944d8d585ad",
-        "fixture": "<fixture-host-owned>",
-        "comando": "git add \"-A\"",
-        "decisao": "hook: PreToolUse Blocked",
-        "estado_apos": "?? deny-control.txt; staged_count=0; index_lock=False"
-      },
-      "baterias_branch": "executadas com Git Bash correto depois de tentativa invalida pelo WSL sem Node; a tentativa sem Node nao e teste de produto",
-      "pendencia_fluxo": "coordenador ainda fechara a catraca e repetira as baterias formais"
+      "cache_extras": 1,
+      "extra_d11": ".codex-plugin/migrated-command-skills/source-command-saude/SKILL.md"
     },
+    "contraprova_hook": {
+      "fixture": "<fixture-host-owned>",
+      "sessao": "01a0c90c-bbe6-7940-9011-e944d8d585ad",
+      "versao_instalada": "1.21.1",
+      "comando": "git add \"-A\"",
+      "decisao": "hook: PreToolUse Blocked",
+      "estado_apos": "?? deny-control.txt; staged_count=0; index_lock=False"
+    },
+    "historico_1_19_2": {
+      "origem_instalacao": {
+        "tipo": "git archive",
+        "commit": "68dbcf6e3493084f3faa6a41a5a3e012c6281bbb",
+        "caminho": "<export-clean-1.19.2-reviewfix-68dbcf6e>",
+        "versao": "1.19.2",
+        "export_arquivos_force": 765,
+        "cache_arquivos_force": 766,
+        "export_dotgit": false,
+        "cache_dotgit": false,
+        "extra_d11": ".codex-plugin/migrated-command-skills/source-command-saude/SKILL.md"
+      },
+      "projecao_d9": {
+        "governanca_excluida": 7,
+        "arquivos_esperados": 758,
+        "ausentes": 0,
+        "sha_divergentes": 0,
+        "extras": 1
+      },
+      "contraprova_hook": {
+        "fixture": "<fixture-host-owned>",
+        "sessao": "01a0bb99-1f24-7310-bc4a-689613d1589e",
+        "versao_instalada": "1.19.2",
+        "decisao": "PreToolUse Blocked",
+        "saida_literal": "Codigo de saida: N/A - processo nao iniciado",
+        "estado_apos": "?? deny-control.txt; nada staged; sem .git/index.lock"
+      },
+      "correcao_revisao_2026_09_20": {
+        "cachebuster": "1.19.2+codex.20260920005618",
+        "sessao": "01a0bc51-ac65-7461-a8eb-4781dbd6c9ae",
+        "skills": 20,
+        "decisao": "PreToolUse Blocked",
+        "git_iniciou": false,
+        "fixture_apos": "?? deny-control.txt; nada staged; sem .git/index.lock",
+        "gemini_vermelho_antes": "detector Gemini deixou passar test/fixtures/gemini/request.json",
+        "gemini_verde_depois": true,
+        "manifestos_restaurados": "1.19.2 byte a byte",
+        "export_commit": "68dbcf6e3493084f3faa6a41a5a3e012c6281bbb",
+        "export_arquivos_force": 765,
+        "cache_arquivos_force": 766,
+        "projecao": "758 esperados; 0 ausente; 0 divergente; 1 extra D11; zero .git",
+        "contratos_cache": "manifesto, skills, adaptador e marketplace exit 0"
+      },
+      "mutacao_nesta_iteracao": "o detector Gemini mudou com vermelho antes e verde depois. T3 foi corrigida para casar as aspas escapadas do JSON e ficou vermelha ao trocar o adaptador pelo core; T4 ficou vermelha em 1.19.3 contra 1.19.2. Os demais contratos aplicaveis ficaram verdes."
+    },
+    "base": "5cdb90e768cb1ba808821d5bdcdf46f7a19fc782",
+    "base_anterior": "068468fb956b8d606e9af1800aaa91dd399fdeb8",
+    "nota_mutacao": "Mutantes reexercitados na arvore reancorada, nao herdados: a main trouxe 188 commits e a lista de 2026-09-14 media outra arvore. Uma primeira mutacao da T1 sobreviveu (tirar -A de CAMINHO_TOTAL) e isso NAO era lacuna da bateria: temCurta(opcoes,\"A\") pega o mesmo caso sozinho. Defesa redundante nao morre com um tiro so, entao o mutante foi refeito matando os dois detectores.",
+    "contratos_cache": "manifesto, skills, adaptador e marketplace exit 0; Gemini completo somente na worktree Git",
+    "baterias_branch": "executadas com Git Bash correto depois de tentativa invalida pelo WSL sem Node; a tentativa sem Node nao e teste de produto",
     "head": "e8baa18e",
     "reaberto_por": {
       "estagio": "revisar",
@@ -315,26 +324,18 @@
     "base": "5cdb90e768cb1ba808821d5bdcdf46f7a19fc782",
     "head": "9e47ddae71ea85b7a9cfcc5641630c5c82e54479",
     "em": "2026-09-22",
-    "achado": "Reancoragem incompleta em D5/D9 e T4/T6/T7/T8/T9; T6 sem cachebuster 1.19.2; criterio de creep antigo; falso negativo em fixture Gemini; caminhos locais e medicoes sem re-verificar. Correcoes aplicadas aguardam nova revisao independente.",
+    "achado": "Reancoragem incompleta em D5/D9 e T4/T6/T7/T8/T9; T6 sem cachebuster da base anterior; criterio de creep antigo; falso negativo em fixture Gemini; caminhos locais e medicoes sem re-verificar. Correcoes aplicadas aguardam o fechamento de executar pelo coordenador e nova revisao independente.",
     "confirmacoes": [
       "base corrente 2adbae27 propagada ao design e plano",
-      "cachebuster 1.19.2 provado em sessao nova",
+      "cachebuster da base anterior provado em sessao nova",
       "fixture Gemini request.json agora falha no detector",
       "caminhos locais removidos do rastro versionado"
     ],
     "pendencias": [
-      "remover rota histórica operacional 1.13.2 do handover corrente",
-      "alinhar handover e portão a executar=ok",
-      "tornar evidência 1.21.1 canônica no estado e arquivar 1.19.2 sem chaves correntes concorrentes"
+      "coordenador fechar executar depois da correcao do rastro final",
+      "nova revisão independente do diff final depois do fechamento de executar"
     ],
-    "tentativas": 2,
-    "em_voo": [
-      {
-        "agente": "revisor-independente-1.21.1",
-        "tarefa": "revisar diff final contra design, plano e padrões",
-        "desde": "2026-09-22T12:35:00Z"
-      }
-    ]
+    "tentativas": 2
   },
   "verificar": {
     "status": "reprovado",

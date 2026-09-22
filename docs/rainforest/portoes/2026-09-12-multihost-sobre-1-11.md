@@ -14,6 +14,10 @@
 - Instalação, export, projeção D9/D11 e contraprova de 1.21.1 estão
   concluídos na seção de evidência corrente ao fim deste arquivo. As medições
   1.19.2 intermediárias permanecem somente como histórico.
+- `executar` está `parcial` somente enquanto esta correção do rastro final
+  permanece em curso; as 9/9 tarefas estão concluídas. O coordenador fechará
+  `executar` depois deste commit e então encaminhará uma nova revisão
+  independente do diff final.
 - Sem aval explícito, não abrir PR, publicar release, mesclar nem alterar a
   `main`.
 
@@ -2554,14 +2558,14 @@ O export foi produzido por `git archive` do commit candidato
 `f02843b91c2f7dd09aa2919b14e5713c5333a9ee` em:
 
 ```text
-C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.21.1-flow
+<export-clean-1.21.1>
 ```
 
 A origem tem 783 arquivos, zero arquivo ou diretório `.git`, e os manifestos
 Claude e Codex declaram `1.21.1`. O cache instalado medido foi:
 
 ```text
-C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.21.1
+<cache-rainforest-mind-1.21.1>
 ```
 
 Ele tem 784 arquivos e zero `.git`. A configuração do Codex registra o
@@ -2626,6 +2630,7 @@ staged_count=0
 index_lock=False
 ```
 
-Instalação, projeção e contraprova 1.21.1 estão completas. O estágio
-`executar` continua `parcial`: o coordenador ainda fechará a catraca e repetirá
-as baterias formais.
+Instalação, projeção e contraprova 1.21.1 estão completas. `executar` está
+`parcial` somente enquanto esta correção do rastro final permanece em curso;
+as 9/9 tarefas estão concluídas. O coordenador fechará `executar` depois deste
+commit e então encaminhará uma nova revisão independente do diff final.
