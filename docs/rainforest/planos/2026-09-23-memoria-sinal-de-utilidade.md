@@ -169,3 +169,21 @@ mutacao:
   bateria: `bash scripts/testa-utilidade.sh`
   fixture: `testa-utilidade.sh, secao "sessao que falha e marcada e a fila anda"`
 pronto quando: com a cópia do banco real e `TETO_PONTUAR` sessões mais antigas apontando para transcritos que fazem `pontuarSessao` lançar (JSON truncado no meio de uma linha de attachment de SessionStart) mais 2 sessões válidas mais novas, duas `manutencao` seguidas (com dublê de LLM) deixam as 2 válidas em `uso_memoria_sessoes` e o log registra `30 falharam` na primeira — provado por `bash scripts/testa-utilidade.sh` imprimindo `ok   sessao que falha e marcada e a fila anda`.
+
+**Emenda 3 de 2026-09-23 — achado da terceira revisão (reprovado, 1 achado):** a tarefa 11 abaixo. O `catch` da tarefa 10 marcava também a falha transitória (`database is locked`: o `rainforest.db` é um só por máquina e `memoria-marca.cjs` grava nele a cada Stop/SessionEnd de qualquer sessão), e as escritas de uma sessão não eram atômicas — o contrafactual truncado só perde candidatos, então o viés empurra a régua D9 sempre para "recência basta".
+
+### 11. Banco ocupado adia a sessão em vez de marcá-la, e a sessão grava tudo ou nada [tipo: implementar]
+atende: D7, D9
+arquivos: `scripts/lib/utilidade.cjs`, `scripts/memoria.cjs`, `scripts/testa-utilidade.sh`
+depende de: 10
+paralela: nao
+- `pontuarSessao` grava as linhas de uma sessão (servidas + contrafactual) dentro de uma transação só (`BEGIN IMMEDIATE` … `COMMIT`); qualquer erro faz `ROLLBACK` e relança — nenhuma linha parcial da sessão fica em `uso_memoria`.
+- No `catch` de `pontuarSessoesPendentes`, erro de banco ocupado (`ERR_SQLITE_ERROR` com mensagem `database is locked` ou `database is busy`) **não marca** a sessão e **interrompe a passada** (o banco está ocupado; a sessão e as seguintes voltam na próxima manutenção). A linha é exatamente `if (ehBancoOcupado(e)) { adiadas++; break; }`, antes do `marcarSessao(conexao, sessao, agora); falharam++;` da tarefa 10, que continua valendo para os demais erros.
+- O retorno ganha `adiadas`, e a linha `utilidade:` do `manutencao.log` ganha `<A> adiadas (banco ocupado)`.
+mutacao:
+  arquivo: `scripts/lib/utilidade.cjs`
+  de: `if (ehBancoOcupado(e)) { adiadas++; break; }`
+  para: `if (false) { adiadas++; break; }`
+  bateria: `bash scripts/testa-utilidade.sh`
+  fixture: `testa-utilidade.sh, secao "banco ocupado adia a sessao sem marcar nem gravar parcial"`
+pronto quando: com a cópia do banco real e o transcrito real de uma sessão pendente, uma segunda conexão `DatabaseSync` segurando `BEGIN IMMEDIATE` no mesmo arquivo durante `pontuarSessoesPendentes` faz a chamada devolver `adiadas: 1, falharam: 0`, a sessão fica fora de `uso_memoria_sessoes` e com zero linhas em `uso_memoria`; liberada a trava, a chamada seguinte a pontua (sessão em `uso_memoria_sessoes`, linhas com `servida = 1` presentes) — provado por `bash scripts/testa-utilidade.sh` imprimindo `ok   banco ocupado adia a sessao sem marcar nem gravar parcial`.

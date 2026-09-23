@@ -1,0 +1,180 @@
+{
+  "slug": "2026-09-23-memoria-sinal-de-utilidade",
+  "titulo": "Sinal de utilidade no ranking da memoria",
+  "criado_em": "2026-09-23",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-23-memoria-sinal-de-utilidade.md",
+    "em": "2026-09-23"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-23-memoria-sinal-de-utilidade.md",
+    "tarefas": 11,
+    "paralelas": [],
+    "em": "2026-09-23",
+    "emenda": "tarefas 6-10, achados das duas revisoes"
+  },
+  "executar": {
+    "status": "parcial",
+    "catraca_mutacao": "2026-09-23",
+    "tarefas_ok": 10,
+    "tarefas": 10,
+    "em": "2026-09-23",
+    "comando": "bash scripts/testa-utilidade.sh",
+    "saida": "== resultado: 18 ok, 0 falha(s) ==",
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "5c77dcef",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T16:49:45.798Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "5c77dcef",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T16:49:45.798Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "5c77dcef",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T16:49:45.798Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "5c77dcef",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T16:49:45.798Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "a3472b11",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T17:29:37.396Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "a3472b11",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T17:29:37.396Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "a3472b11",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T17:29:37.396Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "7de9cdcb",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T18:11:58.028Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "7de9cdcb",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T18:11:58.028Z"
+      }
+    ],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, secao prosa do assistente que ecoa a injecao nao entra no texto"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, secao termo comum a todo o corpus nao pontua"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, FALHA manutencao nao pontuou as 2 pendentes"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, secao regua D9 liga com 1 de 3 sessoes com perda"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "registro de dado do usuario pela ferramenta ideias.cjs, sem codigo a inverter"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, secao servida substituida pela reconciliacao ainda casa com o id"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, secao passada respeita TETO_PONTUAR e deixa o resto pendente"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, secao sessao sem servida nao entra no denominador da regua"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, secao servida sem id nao reaparece como nao-servida"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, secao sessao que falha e marcada e a fila anda"
+      }
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-23"
+    }
+  },
+  "revisar": {
+    "status": "reprovado",
+    "snapshot": {
+      "head": "e6d24f4b78829146298443eeb9d2e3f55a478713",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-09-23-memoria-sinal-de-utilidade.json"
+      ]
+    },
+    "em_voo": [
+      {
+        "agente": "revisor",
+        "tarefa": "terceira revisao 8fb97623...e6d24f4",
+        "desde": "2026-09-23T15:12:16-03:00"
+      }
+    ],
+    "em": "2026-09-23",
+    "achados": 1,
+    "pendentes": [
+      "1: servida sem id nao entra em jaGravados e o contrafactual a grava como servida=0; lerProjetoDoTranscrito nao sobe ate o .git como resolverCaminhos (utilidade.cjs:173-196, 386-407)",
+      "2: sessao cujo pontuarSessao sempre lanca nunca e marcada e, com ordem ASC, ocupa vaga do teto para sempre (utilidade.cjs:437-481)"
+    ],
+    "tentativas": 3
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
