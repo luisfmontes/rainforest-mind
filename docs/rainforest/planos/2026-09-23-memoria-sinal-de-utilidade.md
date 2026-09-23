@@ -208,7 +208,7 @@ pronto quando: com o `memoria.cjs` desta branch (que faz `require("./lib/utilida
 
 ### 13. A bateria da utilidade traz as próprias fixtures [tipo: teste]
 atende: D1, D4, D5, D6, D9
-arquivos: `scripts/testa-utilidade.sh`, `scripts/fixtures/utilidade/transcrito-sessao.jsonl`
+arquivos: `scripts/testa-utilidade.sh`, `scripts/fixtures/utilidade/transcrito-sessao.jsonl`, `scripts/fixtures/utilidade/gerar-banco.cjs`
 depende de: 11
 paralela: sim
 Nenhuma seção lê `~/.rainforest/` nem `~/.claude-personal/`. O banco é montado na caixa a partir de `scripts/esquema-memoria.sql` com observações sintéticas (termos raros e comuns suficientes para o IDF das seções 2, 6, 9); o transcrito é um fixture versionado **no formato real do Claude Code** — estrutura copiada de um transcrito real desta máquina (linhas `user` com prompt, `assistant` com `tool_use`/`input` e texto, `attachment` do SessionStart com `hookSpecificOutput.additionalContext` contendo o bloco `## Memória (corpus residentes)` … `mais: node scripts/memoria.cjs buscar`), conteúdo sintético, sem dado pessoal nem sequência numérica longa. As seções que precisavam de "transcrito real grande" (bytes, teto de 30) geram cópias do fixture na caixa.
