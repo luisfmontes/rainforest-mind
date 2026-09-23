@@ -967,7 +967,18 @@ function cmdBuscar() {
     query += ' ORDER BY criada_em DESC LIMIT :limite';
 
     const stmt = conexao.prepare(query);
-    resultados = stmt.all(params);
+    try {
+      resultados = stmt.all(params);
+    } catch (e) {
+      // Texto livre com pontuação ("claude-mem", "a:b", aspas) é sintaxe
+      // inválida de FTS5 e caía no catch de fora como banco com defeito,
+      // devolvendo vazio. A sintaxe crua continua valendo quando é válida;
+      // só no erro repete com cada termo citado, unidos por AND implícito.
+      const termos = texto && (String(texto).match(/[\p{L}\p{N}]+/gu) || []);
+      if (!termos) throw e;
+      params.fts_query = termos.map(t => `"${t}"`).join(' ');
+      resultados = termos.length ? stmt.all(params) : [];
+    }
     conexao.close();
   } catch (e) {
     // Degradação: banco corrompido ou outro erro — resultado vazio, exit 0.
