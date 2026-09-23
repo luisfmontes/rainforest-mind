@@ -198,6 +198,21 @@ else
   falhou=$((falhou+1)); echo "  FALHA observacao nao apareceu em buscar sem reindexar"
   echo "         resultado: $resultado"
 fi
+# Texto com hífen é sintaxe inválida de FTS5 ("no such column: 123"); o
+# buscar tem que achar mesmo assim, não devolver vazio.
+resultado=$(RFM_ROOT="$CAIXA5" $MEMORIA buscar --texto "TRIGGER-123" --json 2>/dev/null)
+if echo "$resultado" | grep -q "TRIGGER123"; then
+  falhou=$((falhou+1)); echo "  FALHA o termo com hifen casou com TRIGGER123 — citação errada"
+else
+  ok=$((ok+1)); echo "  ok   termo com hifen nao casa por acidente com o token colado"
+fi
+resultado=$(RFM_ROOT="$CAIXA5" $MEMORIA buscar --texto "unica-TRIGGER123" --json 2>/dev/null)
+if echo "$resultado" | grep -q "TRIGGER123"; then
+  ok=$((ok+1)); echo "  ok   buscar com pontuacao no texto acha a observacao"
+else
+  falhou=$((falhou+1)); echo "  FALHA buscar com pontuacao no texto devolveu vazio"
+  echo "         resultado: $resultado"
+fi
 
 echo
 echo "== 11. banco legacy (FTS sem content=) migra de verdade: termo NUNCA indexado vira achavel =="
