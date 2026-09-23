@@ -72,6 +72,15 @@ errada; o caminho é que não existia.
 
 ## Molde do briefing do revisor
 
+Linha isolada `Slug: <slug>` no cabeçalho do briefing despachado, ao lado de
+`Runtime:`/`Sensor:` — mesma convenção de `skills/executar/SKILL.md:71-79`
+(o parser aceita a linha em qualquer ponto do prompt, não só a primeira —
+`scripts/lib/primeiro-prompt-jsonl.cjs:65-73` —, mas `Runtime:` já ocupa a
+primeira linha quando presente, então `Slug:` vem logo depois dela). É dali
+que o hook `SubagentStop` (`hooks/veredito-revisor.cjs`) lê o slug para
+gravar o veredito (D5); revisão avulsa, sem `Slug:`, não grava nada nem
+trava — continua funcionando como hoje.
+
 Briefing que pede mutação de fonte é recusado na PRIMEIRA linha do relato,
 antes de qualquer leitura. Quando o achado só fecha com mutação — reverter
 o código e ver o teste falhar — descreva-a sem mutar:
@@ -195,14 +204,70 @@ sem commit novo, `head` que não existe, worktree que não foi integrado —
 vale mais que produzir um veredito sobre o que a memória da conversa
 lembra ter sido feito.
 
+### Contrato de uma linha: `VEREDITO: ok` / `VEREDITO: reprovado`
+
+O relato do revisor (`agents/revisor.md`, seção (f)) termina, sempre, com uma
+última linha exata — sem negrito, sem markdown, sem texto depois: `VEREDITO:
+ok` ou `VEREDITO: reprovado`. Um hook `SubagentStop`
+(`hooks/veredito-revisor.cjs`) lê essa linha direto de
+`last_assistant_message` contra vocabulário fechado
+(`hooks/veredito-revisor.cjs:44`) e grava em `revisar.vereditos` via `node
+scripts/estado.cjs veredito` — sem passar pelo relato de quem despachou
+(D1-D3). Fora do vocabulário (prosa, `**APROVADO**` em negrito, sem a linha)
+grava `invalido`: a revisão existe e fica auditável, mas não conta como `ok`
+nem como `reprovado` nos gates abaixo.
+
+**Transição**: fluxo cujo `exigir revisar` rodou antes deste contrato existir
+não tem `revisar.vereditos` armado — `marcar` então só **avisa** em stderr e
+segue fechando como hoje (`scripts/estado.cjs:446-451` para `ok`,
+`scripts/estado.cjs:472-477` para `reprovado`); a exigência vale só para
+janela armada por um `exigir` novo.
+
+**Desligar**: o hook obedece o toggle `contrato-veredito` (padrão ligado,
+`hooks/lib/config.cjs:75-78`) — `node scripts/setup.cjs --desligar
+contrato-veredito` desarma para o projeto atual.
+
+### Teto de 3 reprovações e a 4ª rodada
+
+`revisar` herda o teto genérico de tentativas (`TETO_TENTATIVAS = 3`,
+`scripts/estado.cjs`): na 3ª reprovação seguida, `exigir --estagio executar`
+(o estágio reaberto pela reprovação) recusa reentrar sem destrave. A 4ª
+rodada não é automática — é decisão do usuário, com rastro escrito:
+
+```
+node scripts/estado.cjs liberar --slug <slug> --estagio revisar --rodada-extra "<o que o usuário decidiu>"
+```
+
+exige, antes de destravar (`scripts/estado.cjs:1738-1762`):
+
+1. `--rodada-extra "<texto>"` com o que o usuário decidiu;
+2. o impasse escrito em `docs/rainforest/portoes/<slug>-impasse.md`
+   (`scripts/estado.cjs:1747`, isento de creep —
+   `scripts/conferir-fluxo.cjs:530`) — sem o arquivo, recusa (exit 2) nomeando
+   o caminho esperado.
+
+Não é `exigir revisar --rodada-extra`: quem primeiro bate no teto é `exigir
+--estagio executar`, não `exigir --estagio revisar` — um flag pendurado ali
+não destravaria o estágio que realmente recusa.
+
 ### Trava de cobertura de creep e mutação
 
 `node scripts/estado.cjs marcar --estagio revisar --status ok` recusa se o `--json` não incluir `base` e `head` — são os dois pontos que definem o diff e permitem provar ausência de creep — e recusa também se o repositório foi mutado desde `exigir --estagio revisar`: HEAD diferente ou arquivo novo sujo (ver seção anterior). Sem `base`/`head`, fechar a revisão sem poder provar que o diff não toca arquivo fora do plano é o buraco que a trava fecha.
 
-**`reprovado` não exige nada disso**, e é deliberado: reprovar já devolve o
-trabalho para o `executar`, então não há veredito de ausência de creep para
-provar. A trava existe para impedir que se declare "sem creep" ou "sem mutação"
-sem poder comprová-lo — não para burocratizar a recusa.
+**`reprovado` não exige `base`/`head` nem a comparação de instantâneo**
+(HEAD/caminhos sujos), e é deliberado: reprovar já devolve o trabalho para o
+`executar`, então não há veredito de ausência de creep para provar — a
+comparação de instantâneo só roda quando `status` fecha `ok`
+(`scripts/estado.cjs:1892-1896`, gatilho `FECHADO['revisar'] || 'ok'`,
+`scripts/estado.cjs:132`). A trava existe para impedir que se declare "sem
+creep" ou "sem mutação" sem poder comprová-lo — não para burocratizar a
+recusa.
+
+O que `reprovado` PASSA a exigir (D9): pelo menos um veredito `reprovado`
+gravado na janela `revisar.vereditos` — sem isso, `marcar --estagio revisar
+--status reprovado` recusa (exit 2) citando "nenhum veredito 'reprovado'
+gravado" (`scripts/estado.cjs:470-480`). Simetria com D3: quem despacha não
+reabre o `executar` sem um revisor ter de fato dito `VEREDITO: reprovado`.
 
 ## Segunda opinião (opcional)
 

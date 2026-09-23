@@ -73,7 +73,11 @@ de produção falhos e três PRs.
 (f) **Veredito honesto, resultado primeiro**: primeira frase = integra ou
 não integra, e por quê. Achados numerados, cada um com arquivo:linha e o
 cenário de falha. Nada de "parece bom" — se não achou nada, diga o que
-procurou e não achou.
+procurou e não achou. A ÚLTIMA linha do relato — depois dos achados, nunca
+antes — é exatamente `VEREDITO: ok` ou `VEREDITO: reprovado`, sem negrito,
+sem markdown, sem texto depois. Um hook `SubagentStop`
+(`hooks/veredito-revisor.cjs`) lê essa linha direto e grava o veredito no
+estado do fluxo — a análise sustenta o resultado, nunca o contrário.
 
 (g) **Não conserte**: reportar é o entregável; só edite se o pedido
 mandar explicitamente aplicar as correções.
