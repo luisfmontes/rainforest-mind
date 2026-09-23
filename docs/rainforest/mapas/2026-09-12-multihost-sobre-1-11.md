@@ -1,5 +1,11 @@
 # Arqueologia: fatia multihost sobre a versão 1.11
 
+> Mapa histórico da fatia na base 1.11. A execução corrente está ancorada em
+> `4301a205b9c90a101924cc60fdd2cb7b3bed4bfa` pelo merge
+> `fc76be76b5f8dd5c3c9dac9016db33098abc5d94`, versão 1.23.0. O diff
+> corrente cobre 18 caminhos; design, plano, estado e portão do mesmo slug
+> registram as provas novas. A piloto `c71ecd01` segue como referência histórica.
+
 **Data:** 2026-09-12
 **Árvore atual:** `a338dd02ad495f87a66d84af2ab24eab3d2660b8` (`codex/multihost-1.11`)
 **Referência piloto:** `c71ecd01a73ab9208c981ff2d1eea5f6378434d7` (`codex/piloto-rainforest`)

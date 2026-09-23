@@ -8,6 +8,10 @@ método que a skill `arqueologia` descreve.
 |---|---|---|---|---|---|
 | multihost sobre 1.11 | 14 caminhos finais de `codex/piloto-rainforest` + `hooks/gate-staging-total.cjs` | 1 | superfície + mecanismo + regra implícita | 2026-09-12 | reconciliação contra `a338dd02`; core e contratos colidem semanticamente |
 
+O mapa dessa linha preserva a arqueologia inicial. A execução da fatia foi
+reancorada sobre `4301a205` no merge `fc76be76`, versão 1.23.0; o plano e o
+portão `2026-09-12-multihost-sobre-1-11` registram os 18 caminhos correntes.
+
 ## Histórico do índice
 
 Havia aqui um mapa real, de 2026-08-22, produzido durante a validação do agente

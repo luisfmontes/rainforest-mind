@@ -19,27 +19,25 @@
   },
   "reancoragem_corrente": {
     "versao": "1.23.0",
-    "base": "0e27956c14d52bd7efefdd343531ffbbb8811726",
-    "merge": "7febeface33c10de4f2b32395c3e0a595656857a",
-    "base_anterior": "5cdb90e768cb1ba808821d5bdcdf46f7a19fc782",
+    "base": "4301a205b9c90a101924cc60fdd2cb7b3bed4bfa",
+    "merge": "fc76be76b5f8dd5c3c9dac9016db33098abc5d94",
+    "base_anterior": "0e27956c14d52bd7efefdd343531ffbbb8811726",
+    "merge_anterior": "7febeface33c10de4f2b32395c3e0a595656857a",
+    "base_antes_da_anterior": "5cdb90e768cb1ba808821d5bdcdf46f7a19fc782",
     "branch": "codex/multihost-1.13",
     "worktree_derivacao": "git worktree list --porcelain; localizar branch refs/heads/codex/multihost-1.13",
     "head_derivacao": "git rev-parse HEAD",
     "gemini": "adiado",
     "ancoras_corpo": "fechar, modo-dev, montar-corpus e regua iguais byte a byte a base 1.23.0; somente regua exigiu nova ancora",
-    "instalacao_cache": "pendente em 1.23.0; evidencia anterior preservada somente sob executar.historico_1_21_1",
+    "instalacao_cache": "1.23.0 instalada de git archive fc76be76; export 801, cache 802, projeção 794 sem divergência, extra único D11",
     "em": "2026-09-22"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao_historico_1_21_1": "2026-09-22",
-    "tarefas_ok": 5,
+    "tarefas_ok": 9,
     "tarefas": 9,
     "em": "2026-09-22",
-    "pendentes": [
-      "catraca completa T1-T5 na base 1.23.0; T4 ja reexecutada com vermelho",
-      "instalacao, cache, projecao D9/D11 e contraprova de host em 1.23.0"
-    ],
     "carimbos": [
       {
         "tarefa": 1,
@@ -173,6 +171,69 @@
         "iteracao": 7,
         "sessao": "desconhecida",
         "ts": "2026-09-14T19:10:34.525Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "fc76be76b5f8dd5c3c9dac9016db33098abc5d94",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-23T01:28:53.092Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "fc76be76b5f8dd5c3c9dac9016db33098abc5d94",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-23T01:28:53.092Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "fc76be76b5f8dd5c3c9dac9016db33098abc5d94",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-23T01:28:53.092Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "fc76be76b5f8dd5c3c9dac9016db33098abc5d94",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-23T01:28:53.092Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "fc76be76b5f8dd5c3c9dac9016db33098abc5d94",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-23T01:28:53.092Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "fc76be76b5f8dd5c3c9dac9016db33098abc5d94",
+        "iteracao": 4,
+        "sessao": "desconhecida",
+        "ts": "2026-09-23T01:28:53.092Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "fc76be76b5f8dd5c3c9dac9016db33098abc5d94",
+        "iteracao": 4,
+        "sessao": "desconhecida",
+        "ts": "2026-09-23T01:28:53.092Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "fc76be76b5f8dd5c3c9dac9016db33098abc5d94",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-23T01:28:53.092Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "fc76be76b5f8dd5c3c9dac9016db33098abc5d94",
+        "iteracao": 8,
+        "sessao": "desconhecida",
+        "ts": "2026-09-23T01:28:53.092Z"
       }
     ],
     "comando_historico_1_21_1": "node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-09-12-multihost-sobre-1-11",
@@ -302,17 +363,17 @@
       },
       "mutacao_nesta_iteracao": "o detector Gemini mudou com vermelho antes e verde depois. T3 foi corrigida para casar as aspas escapadas do JSON e ficou vermelha ao trocar o adaptador pelo core; T4 ficou vermelha em 1.19.3 contra 1.19.2. Os demais contratos aplicaveis ficaram verdes."
     },
-    "base": "0e27956c14d52bd7efefdd343531ffbbb8811726",
-    "base_anterior": "5cdb90e768cb1ba808821d5bdcdf46f7a19fc782",
+    "base": "4301a205b9c90a101924cc60fdd2cb7b3bed4bfa",
+    "base_anterior": "0e27956c14d52bd7efefdd343531ffbbb8811726",
     "mutacao_versao_1_23_0": {
       "tarefa": 4,
       "resultado": "vermelho",
       "comando": "node scripts/conferir-mutacao.cjs --arquivo .codex-plugin/plugin.json --de '\"version\": \"1.23.0\"' --para '\"version\": \"1.23.1\"' --bateria 'bash scripts/testa-versao.sh'",
       "saida": "baseline: ok: 5   falhou: 0; mutacao: ok: 4   falhou: 1; bateria VERMELHA (exit 1); fonte restaurado; catraca exit 0"
     },
-    "nota_mutacao": "T4 reexecutada: Codex 1.23.1 diverge de Claude 1.23.0 e a bateria fica vermelha; a catraca completa ainda precisa ser reexecutada na base corrente.",
-    "contratos_cache": "pendentes para 1.23.0; evidencia anterior preservada em historico_1_21_1",
-    "baterias_branch": "Git Bash com login e Node; TMPDIR neutro fora de .claude/worktrees. Tentativas sem utilitarios Unix no PATH ou com TMPDIR sob .claude/worktrees sao invalidas e nao contam como teste de produto.",
+    "nota_mutacao": "T1-T5 reexecutadas na base 4301a205: todas vermelho com fonte restaurado; catraca integrada exit 0; T6-T9 n/a.",
+    "contratos_cache": "1.23.0: export 801, cache 802, projeção 794 esperados, 0 ausente, 0 divergente, 1 extra D11; P2 contrato ponta a ponta exit 0",
+    "baterias_branch": "Git Bash C:\\Program Files\\Git\\bin, BASH_ENV removido, TMPDIR neutro sob Temp; P1 medido 282243 ms e portão concluído com PORTOES_TIMEOUT_MS=600000 apenas no processo.",
     "verificacao_local_1_23_0": {
       "gate_staging": "== resultado: 154 ok, 0 falha(s) ==",
       "contratos": "manifesto, skills, adaptador, marketplace, Gemini e wrapper: exit 0; 19 skills, 4 ancoras",
@@ -325,10 +386,73 @@
     },
     "head": "derivar com git rev-parse HEAD",
     "sensor_externo": "node scripts/portoes.cjs rodar",
-    "reaberto_por": {
-      "estagio": "verificar",
-      "data": "2026-09-22"
-    }
+    "catraca_mutacao": "2026-09-22",
+    "comando": "node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-09-12-multihost-sobre-1-11",
+    "saida": "TODOS OS PORTOES CUMPRIDOS — 5 portão(ões); tarefa 1-5 vermelho; T6-T9 n/a; cobertura 12/9; creep 18; export/cache 794 sem divergencia",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-staging-total.sh: git add citado e wrappers"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "contrato-skills: montar-corpus description ausente"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "contrato-adaptador-hook: handler Codex chama core direto"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-versao.sh: Codex 1.23.1 diverge de Claude 1.23.0"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "contrato-marketplace: source.path nao resolve raiz"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "cachebuster e instalacao externa medidos por versao, bytes e sessao Codex"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "artefato instalado validado por export, cache e sessao Codex"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "documentacao de continuidade conferida contra evidencias reais"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "integracao e registro sem comportamento novo"
+      }
+    ],
+    "candidato": "fc76be76b5f8dd5c3c9dac9016db33098abc5d94",
+    "projecao_1_23_0": {
+      "tracked": 801,
+      "governanca": 7,
+      "esperados": 794,
+      "export_total_force": 801,
+      "cache_total_force": 802,
+      "ausentes": 0,
+      "divergentes": 0,
+      "extras": 1,
+      "extra_sha256": "321C30BCFDA44FF56AD53FCA7EF5C3B170987A3BD2BEE646152AF22AAF1DD339"
+    },
+    "sessoes_codex": {
+      "cachebuster": "01a0cbb4-b21c-7252-9ff2-0b59363a60c3",
+      "final": "01a0cbba-023c-7ce1-a9a5-03d8434efb5c"
+    },
+    "portoes": "P1-P5 cumpridos; lint strict 5/0; P1 teto 600000 apos medicao 282243 ms"
   },
   "revisar_historico_1_21_1": {
     "status": "ok",

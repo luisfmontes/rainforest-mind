@@ -2,19 +2,16 @@
 
 ## Estado corrente — reancoragem 1.23.0 (2026-09-22)
 
-- Base: `0e27956c14d52bd7efefdd343531ffbbb8811726` (`origin/main`, 1.23.0).
-- Merge da base na entrega: `7febeface33c10de4f2b32395c3e0a595656857a`.
-- Base anterior corrente: `5cdb90e768cb1ba808821d5bdcdf46f7a19fc782`.
+- Base: `4301a205b9c90a101924cc60fdd2cb7b3bed4bfa` (`origin/main`, 1.23.0).
+- Merge da base na entrega: `fc76be76b5f8dd5c3c9dac9016db33098abc5d94`.
+- Base e merge históricos: `0e27956c14d52bd7efefdd343531ffbbb8811726` e `7febeface33c10de4f2b32395c3e0a595656857a`.
 - Branch: `codex/multihost-1.13`; HEAD é rederivado com `git rev-parse HEAD`.
-- Entre `5cdb90e7` e `0e27956c`, 71 commits entraram. O escopo da entrega permanece
-  em 18 arquivos; entre as quatro skills normalizadas, só o corpo de `regua`
-  mudou, e sua âncora foi recalculada contra a nova base.
+- O escopo da entrega contra a base corrente permanece em 18 arquivos.
 - O manifesto Codex acompanha o manifesto Claude em 1.23.0. Gemini permanece
   adiado, sem artefato de host nesta entrega.
-- Instalação, export, projeção D9/D11 e contraprova de 1.23.0 estão pendentes.
-  Evidências de versões anteriores permanecem somente como histórico.
-- `executar` está parcial até a prova externa de 1.23.0; esta reancoragem não
-  altera configuração nem cache do host.
+- Export `fc76be76`, instalação, projeção D9/D11 e contraprova de 1.23.0
+  estão medidos na seção corrente ao fim deste portão. Evidências anteriores
+  permanecem como histórico.
 - Sem aval explícito, não abrir PR, publicar release, mesclar nem alterar a
   `main`.
 
@@ -27,7 +24,7 @@ export, cache e sessão Codex continuam nas seções seguintes.
 - [x] P1: o gate de staging total passa todos os casos
   CHECK: bash hooks/testa-gate-staging-total.sh
   ESPERA: == resultado: 154 ok, 0 falha(s) ==
-  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"337c2736a31a"}
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"2c6960628787"}
 
 - [x] P2: o contrato ponta a ponta do plugin Codex passa
   CHECK: bash scripts/testa-plugin-codex.sh
@@ -45,7 +42,7 @@ export, cache e sessão Codex continuam nas seções seguintes.
   EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"c2c28f24842b"}
 
 - [x] P5: o diff final não contém creep fora do plano
-  CHECK: node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 0e27956c14d52bd7efefdd343531ffbbb8811726 --head HEAD
+  CHECK: node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 4301a205b9c90a101924cc60fdd2cb7b3bed4bfa --head HEAD
   ESPERA: ok: sem creep — 18 arquivo(s) coberto(s)
   EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"465244f33ebc"}
 
@@ -2711,8 +2708,116 @@ index_lock=False
 Instalação, projeção e contraprova 1.21.1 estavam completas naquela árvore; são
 histórico não operacional depois da reancoragem 1.23.0.
 
-## Evidência corrente 1.23.0 — pendente
+## Evidência corrente 1.23.0 — merge `fc76be76`
 
-Nenhuma instalação externa foi executada nesta reancoragem. Permanecem pendentes
-o export limpo do commit candidato, o cache instalado, a projeção D9/D11 e a
-contraprova em sessão Codex para 1.23.0.
+O commit candidato medido foi `fc76be76b5f8dd5c3c9dac9016db33098abc5d94`,
+cujo segundo pai é a base `4301a205b9c90a101924cc60fdd2cb7b3bed4bfa`.
+`git merge-base --is-ancestor origin/main HEAD` terminou em `0`. O export velho
+`rainforest-mind-export-1.23.0-flow` vinha de `28dcdc2e` e foi substituído
+como fonte ativa por
+`C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.23.0-fc76be76`.
+
+### T6 — cachebuster temporário
+
+`codex plugin add rainforest-mind@rainforest-mind-local -c 'marketplaces.rainforest-mind-local.source=C:\Projetos\rainforest-mind\.claude\worktrees\codex-multihost-1.11' --json`
+retornou `version: 1.23.0+codex.20260922234144` e
+`installedPath: C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.23.0+codex.20260922234144`.
+A sessão nova `01a0cbb4-b21c-7252-9ff2-0b59363a60c3` descobriu
+`source-command-saude`, permitiu `git status` e `git add -- "-A"`, e negou
+`git add "-A"` e `bash -c "git status; git add -A"` com
+`Command blocked by PreToolUse hook`. No primeiro teste o Git recebeu o
+comando permitido, mas o sandbox negou criar `index.lock`; a sessão final
+abaixo repetiu o caso com acesso à fixture. Os dois manifestos foram
+restaurados byte a byte: `git diff --exit-code -- .claude-plugin/plugin.json
+.codex-plugin/plugin.json` retornou `0`. `git rev-parse HEAD:<manifesto>` e
+`git hash-object --no-filters <manifesto>` deram, respectivamente,
+`b332fadba0d9d2b4931af8ece22631d5cb0fd542` para Claude e
+`ae7f9f0c1bec8011e6f6662848465375d43d2e29` para Codex, iguais entre
+o commit e o disco.
+
+### T7 — export, cache e sessão final
+
+`git archive --format=tar --output=C:\Users\Luis\AppData\Local\Temp\rainforest-mind-export-fc76be76.tar HEAD`
+seguido de `tar -xf` produziu o export. `codex plugin marketplace remove
+rainforest-mind-local`, `codex plugin marketplace add
+C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.23.0-fc76be76`
+e `codex plugin add rainforest-mind@rainforest-mind-local --json` registraram
+a fonte ativa e instalaram exatamente `1.23.0`. `codex plugin list` confirma
+`installed, enabled  1.23.0` na origem nova.
+
+Inventário por `Get-ChildItem -Force -Recurse -File`, SHA-256 do worktree
+versionado contra export e cache, e inspeção de arquivos **e diretórios**
+`.git` com `Get-ChildItem -Force -Recurse`:
+
+```text
+tracked_total=801
+governance_excluded=7
+expected=794
+export_total_force=801
+cache_total_force=802
+export_dotgit=0
+cache_dotgit=0
+export_missing=0
+export_different=0
+cache_missing=0
+cache_different=0
+cache_extras=1
+extra=.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md
+extra_sha256=321C30BCFDA44FF56AD53FCA7EF5C3B170987A3BD2BEE646152AF22AAF1DD339
+```
+
+A sessão Codex nova `01a0cbba-023c-7ce1-a9a5-03d8434efb5c`, na fixture Git
+`C:\Users\Luis\AppData\Local\Temp\rainforest-multihost-proof-20260922-1`, carregou
+`rainforest-mind:rainforest-mind`. Saídas literais principais:
+
+```text
+git status                                -> On branch master; nothing to commit, working tree clean (exit 0)
+git add -- "-A"                          -> fatal: pathspec '-A' did not match any files (hook permitiu; Git exit 1)
+git add "-A"                             -> Command blocked by PreToolUse hook
+bash -c "git status; git add -A"          -> Command blocked by PreToolUse hook
+'{bad' | node hooks/codex-gate-staging-total.cjs
+  -> {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Falha interna do gate de staging; comando recusado por seguranca."}}
+git diff --cached --name-only            -> vazio
+.git/index.lock                          -> False
+```
+
+### Catraca de mutação na base corrente
+
+Com `C:\Program Files\Git\bin` no `PATH`, `BASH_ENV` removido e `TMPDIR`
+sob Temp neutro, `node scripts/conferir-mutacao.cjs` foi reexecutado em
+sequência com os literais T1–T5 do plano. A primeira tentativa T1 sem acesso
+à fixture Temp deu baseline não verde por `Permission denied` e foi descartada;
+a repetição com acesso concluiu:
+
+```text
+T1 baseline == resultado: 154 ok, 0 falha(s) ==; mutação: 149 ok, 5 falha(s); bateria VERMELHA; fonte restaurado; exit 0
+T2 FALHA skills Codex invalidas: montar-corpus (description ausente); bateria VERMELHA; fonte restaurado; exit 0
+T3 FALHA handler Codex chama core direto; bateria VERMELHA; fonte restaurado; exit 0
+T4 Claude 1.23.0, Codex 1.23.1; ok: 4 falhou: 1; bateria VERMELHA; fonte restaurado; exit 0
+T5 FALHA source.path nao resolve o manifesto deste repo; bateria VERMELHA; fonte restaurado; exit 0
+total=5 vermelhas:[1,2,3,4,5]
+```
+
+### T9 — portões e limite medido
+
+`node scripts/portoes.cjs rodar
+docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar`
+cumpriu P2–P5, mas P1 deu `NAO CUMPRIDO — estourou o timeout e foi morto`
+com o limite padrão de `120000` ms. O repro curto
+`PORTOES_TIMEOUT_MS=1; node scripts/portoes.cjs rodar ...` repetiu o mesmo
+motivo. O comando literal do P1, medido via `cmd.exe /d /s /c`, levou
+`282243` ms, exit `0`, `== resultado: 154 ok, 0 falha(s) ==`. A mutação T1
+havia medido baseline de `96158` ms, confirmando variação de duração do host.
+O plano registra `timeout: 600000` para a catraca T1, cujo teto anterior de
+300 s ficou próximo da duração observada sem mutação.
+Com `PORTOES_TIMEOUT_MS=600000` somente no processo do portão, a repetição
+terminou:
+
+```text
+P1: CUMPRIDO — exit 0, marcador presente (2c6960628787)
+P2: cumprido (reverificado antes; marcador 077adea17e32)
+P3: cumprido (reverificado antes; marcador c8fd95e6a496)
+P4: cumprido (reverificado antes; marcador c2c28f24842b)
+P5: cumprido (reverificado antes; marcador 465244f33ebc)
+TODOS OS PORTOES CUMPRIDOS — 5 portão(ões).
+```

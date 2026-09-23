@@ -4,9 +4,11 @@ Design: `docs/rainforest/design/2026-09-12-multihost-sobre-1-11.md`
 
 Base inicial confirmada: `a338dd02ad495f87a66d84af2ab24eab3d2660b8`.
 Base histórica confirmada antes da tarefa 4: `cf1ad7689f84428eb0b10943c0f1cf1a662b8faf` (`1.12.0`). Os 12 commits locais foram reaplicados sobre ela após confirmar zero caminhos sobrepostos.
-Base corrente: `0e27956c14d52bd7efefdd343531ffbbb8811726` (`1.23.0`), incorporada pelo merge limpo
-`7febeface33c10de4f2b32395c3e0a595656857a` em 2026-09-22. A base anterior corrente era
-`5cdb90e768cb1ba808821d5bdcdf46f7a19fc782`. O delta preserva os 18 caminhos da entrega;
+Base corrente: `4301a205b9c90a101924cc60fdd2cb7b3bed4bfa` (`1.23.0`), incorporada pelo merge
+`fc76be76b5f8dd5c3c9dac9016db33098abc5d94` em 2026-09-22. A base histórica
+`0e27956c14d52bd7efefdd343531ffbbb8811726` entrou pelo merge
+`7febeface33c10de4f2b32395c3e0a595656857a`; antes dela havia
+`5cdb90e768cb1ba808821d5bdcdf46f7a19fc782`. O delta corrente preserva os 18 caminhos da entrega;
 entre as quatro skills normalizadas, somente `skills/regua/SKILL.md` mudou, e sua âncora foi
 recalculada contra a base 1.23.0. As demais permanecem byte a byte iguais.
 Referência histórica confirmada: `codex/piloto-rainforest` em
@@ -32,9 +34,9 @@ Referência histórica confirmada: `codex/piloto-rainforest` em
 - **CONFIRMADO:** inventários de export e cache usam
   `Get-ChildItem -Force -Recurse -File`; enumeração sem `-Force` não prova a
   ausência de metadados ocultos.
-- **LACUNA:** instalação, cachebuster, export e projeção D9/D11 ainda não foram
-  refeitos para 1.23.0; as saídas de versões anteriores são arquivo histórico e não satisfazem
-  as tarefas 6 e 7 nesta base.
+- **CONFIRMADO:** cachebuster e instalação final foram refeitos para 1.23.0;
+  export de `fc76be76` e cache têm 794 arquivos projetados sem divergência e
+  um único extra derivado pela D11. As saídas de versões anteriores são históricas.
 
 ## O que não pode quebrar
 
@@ -71,6 +73,7 @@ mutacao:
   de: `const resto = toksComAspas.slice(pos + 1).map((t) => t.v);`
   para: `const resto = toksComAspas.slice(pos + 1).filter((t) => !t.q).map((t) => t.v);`
   bateria: `bash hooks/testa-gate-staging-total.sh`
+  timeout: `600000`
   fixture: `testa-gate-staging-total.sh`, casos `git add "-A"`, `git "add" -A` e `bash -c "git status; git add -A"`
 pronto quando: com payload real `PreToolUse` cujo `tool_input.command` é
 `git add "-A"`, `git "add" -A` ou
@@ -210,7 +213,7 @@ mutacao: n/a
 pronto quando: com o commit candidato local, `bash hooks/testa-gate-staging-total.sh`,
 `bash scripts/testa-plugin-codex.sh`, `bash scripts/testa-versao.sh`,
 `node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11`
-e `node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 0e27956c14d52bd7efefdd343531ffbbb8811726 --head HEAD`
+e `node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 4301a205b9c90a101924cc60fdd2cb7b3bed4bfa --head HEAD`
 terminam verdes; a projeção do cache `1.23.0` contra o HEAD, excluindo somente
 os sete documentos de governança da D9, tem zero caminho ausente e zero SHA-256
 divergente, e o único extra continua sendo o derivado autorizado pela D11. O
@@ -218,7 +221,7 @@ marketplace ativo aponta para o export limpo do commit candidato; a enumeração
 com `Get-ChildItem -Force -Recurse -File` confirma zero `.git` no export e no
 cache, sem omitir arquivos ocultos; o
 handover registra execução `9/9` e aponta `revisar` como próximo estágio;
-`git diff --name-only 0e27956c14d52bd7efefdd343531ffbbb8811726...HEAD` contém somente os
+`git diff --name-only 4301a205b9c90a101924cc60fdd2cb7b3bed4bfa...HEAD` contém somente os
 caminhos autorizados pelo plano; o estado registra a evidência por tarefa; e
 `git branch --show-current`, `git status --short` e a ausência de comandos de
 push/merge/release no portão demonstram que a entrega permanece somente na
