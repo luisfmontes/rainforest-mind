@@ -13,6 +13,8 @@
 #      transcrito real, `pontuarSessao` grava as servidas e o contrafactual,
 #      idempotente, sem coluna de texto de sessão em `uso_memoria`; e um termo
 #      comum ao corpus (frequência de documento alta) não pontua sozinho.
+#   3. Manutenção (Tarefa 3): `manutencao` pontua as sessões pendentes da
+#      `marca_dagua`, e transcrito apagado não derruba reconciliar/consolidar.
 #
 # Hermética por padrão (mktemp -d + RFM_ROOT) — SALVO as seções 1a e 2a, que
 # leem CÓPIAS do transcrito real e do rainforest.db real desta máquina (nunca
@@ -286,6 +288,109 @@ if [ "$NOTA_FIXTURE" = "1" ]; then
   ok=$((ok+1)); echo "  ok   termo comum a todo o corpus nao pontua (nota=$NOTA_FIXTURE, só o termo raro contou)"
 else
   falhou=$((falhou+1)); echo "  FALHA termo comum a todo o corpus nao pontua: esperava nota=1, veio $NOTA_FIXTURE"
+fi
+
+echo
+echo "== Tarefa 3: pontuacao dentro da manutencao, sessoes pendentes =="
+
+if [ -z "$TRANSCRITO_REAL" ] || [ ! -f "$HOME/.rainforest/rainforest.db" ]; then
+  falhou=$((falhou+1)); echo "  FALHA sem transcrito/banco real, pulando Tarefa 3"
+else
+  # Dublê de LLM: reconciliar/consolidar (chamados por `manutencao` ANTES do
+  # passo de utilidade) nunca devem spawnar o `claude` real nesta bateria —
+  # o banco copiado é o real, com centenas de observações pendentes.
+  DUBLE_LLM_DIR="$(novo_sandbox)"
+  cat > "$DUBLE_LLM_DIR/dubleLLM.cjs" <<'EOF'
+async function chamarLLM(texto) {
+  return '{"acao":"store","alvo_id":null}';
+}
+module.exports = { chamarLLM };
+EOF
+
+  CAIXA5="$(novo_sandbox)"
+  CAIXA5_WIN="$(cygpath -m "$CAIXA5" 2>/dev/null || printf '%s' "$CAIXA5")"
+  cp "$HOME/.rainforest/rainforest.db" "$CAIXA5/rainforest.db"
+  cp "$TRANSCRITO_REAL" "$CAIXA5/transcrito-a.jsonl"
+  cp "$TRANSCRITO_REAL" "$CAIXA5/transcrito-b.jsonl"
+
+  cat > "$CAIXA5/marcar.cjs" <<EOF
+process.env.RFM_ROOT = process.argv[2];
+const { abrirBanco, criarSchema, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { caminhoDb } = resolverCaminhos();
+const conexao = abrirBanco(caminhoDb);
+criarSchema(conexao);
+const agora = new Date().toISOString();
+// Limpa a marca_dagua HERDADA do banco real copiado — sem isto,
+// pontuarSessoesPendentes tentaria processar dezenas de sessoes reais, e a
+// contagem "2 pontuadas" deste teste nao bateria.
+conexao.exec('DELETE FROM marca_dagua');
+conexao.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)')
+  .run('proj-manutencao', 'sessao-manutencao-a', process.argv[3], 100, 100, agora);
+conexao.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)')
+  .run('proj-manutencao', 'sessao-manutencao-b', process.argv[4], 100, 100, agora);
+conexao.close();
+EOF
+  node --no-warnings "$CAIXA5/marcar.cjs" "$CAIXA5_WIN" "$CAIXA5_WIN/transcrito-a.jsonl" "$CAIXA5_WIN/transcrito-b.jsonl"
+
+  RFM_ROOT="$CAIXA5" TESTADOR_CHAMAR_LLM="$DUBLE_LLM_DIR/dubleLLM.cjs" $MEMORIA manutencao > /dev/null 2>&1
+  got_manutencao=$?
+  LOG_MANUTENCAO="$CAIXA5/manutencao.log"
+  echo "  comando: RFM_ROOT=<copia com 2 marcas pendentes> node scripts/memoria.cjs manutencao"
+  echo "  saida (log): $(cat "$LOG_MANUTENCAO" 2>/dev/null | tr '\n' ' | ')"
+
+  cat > "$CAIXA5/conferir-sessoes.cjs" <<EOF
+process.env.RFM_ROOT = process.argv[2];
+const { abrirBancoSomenteLeitura, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { caminhoDb } = resolverCaminhos();
+const conexao = abrirBancoSomenteLeitura(caminhoDb);
+const linhas = conexao.prepare('SELECT sessao FROM uso_memoria_sessoes WHERE sessao IN (?, ?)').all('sessao-manutencao-a', 'sessao-manutencao-b');
+conexao.close();
+process.stdout.write(String(linhas.length));
+EOF
+  N_MARCADAS=$(node --no-warnings "$CAIXA5/conferir-sessoes.cjs" "$CAIXA5_WIN")
+
+  if [ "$got_manutencao" = "0" ] && [ "$N_MARCADAS" = "2" ] && grep -q "utilidade: 2 sessao(oes) pontuada(s)" "$LOG_MANUTENCAO"; then
+    ok=$((ok+1)); echo "  ok   manutencao pontua as sessoes pendentes da marca_dagua (2 em uso_memoria_sessoes, log 'utilidade: 2 sessao(oes) pontuada(s)')"
+  else
+    falhou=$((falhou+1)); echo "  FALHA manutencao nao pontuou as 2 pendentes: exit=$got_manutencao marcadas=$N_MARCADAS"
+    echo "         log: $(cat "$LOG_MANUTENCAO" 2>/dev/null)"
+  fi
+
+  # --- transcrito apagado nao derruba reconciliar/consolidar ---
+  CAIXA6="$(novo_sandbox)"
+  CAIXA6_WIN="$(cygpath -m "$CAIXA6" 2>/dev/null || printf '%s' "$CAIXA6")"
+  cp "$HOME/.rainforest/rainforest.db" "$CAIXA6/rainforest.db"
+  cp "$TRANSCRITO_REAL" "$CAIXA6/transcrito-existe.jsonl"
+  # transcrito-sumiu.jsonl e apontado na marca_dagua mas NUNCA criado.
+
+  cat > "$CAIXA6/marcar2.cjs" <<EOF
+process.env.RFM_ROOT = process.argv[2];
+const { abrirBanco, criarSchema, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { caminhoDb } = resolverCaminhos();
+const conexao = abrirBanco(caminhoDb);
+criarSchema(conexao);
+const agora = new Date().toISOString();
+conexao.exec('DELETE FROM marca_dagua');
+conexao.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)')
+  .run('proj-manutencao', 'sessao-existe', process.argv[3], 100, 100, agora);
+conexao.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)')
+  .run('proj-manutencao', 'sessao-sumiu', process.argv[4], 100, 100, agora);
+conexao.close();
+EOF
+  node --no-warnings "$CAIXA6/marcar2.cjs" "$CAIXA6_WIN" "$CAIXA6_WIN/transcrito-existe.jsonl" "$CAIXA6_WIN/transcrito-sumiu.jsonl"
+
+  RFM_ROOT="$CAIXA6" TESTADOR_CHAMAR_LLM="$DUBLE_LLM_DIR/dubleLLM.cjs" $MEMORIA manutencao > /dev/null 2>&1
+  got_manutencao2=$?
+  LOG_MANUTENCAO2="$CAIXA6/manutencao.log"
+
+  if [ "$got_manutencao2" = "0" ] \
+    && grep -q "reconciliar: fim" "$LOG_MANUTENCAO2" \
+    && grep -q "consolidar: fim" "$LOG_MANUTENCAO2"; then
+    ok=$((ok+1)); echo "  ok   transcrito apagado nao derruba a manutencao (exit 0, reconciliar/consolidar seguem registrados)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA transcrito apagado derrubou a manutencao: exit=$got_manutencao2"
+    echo "         log: $(cat "$LOG_MANUTENCAO2" 2>/dev/null)"
+  fi
 fi
 
 echo

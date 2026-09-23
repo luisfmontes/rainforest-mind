@@ -411,6 +411,51 @@ function pontuarSessao(conexao, sessao, caminhoTranscrito) {
   return { servidasComId, servidasSemId, contrafactuais: contrafactuais.length };
 }
 
+// ---- Tarefa 3: manutenção ----
+
+/**
+ * Pontua toda sessão da `marca_dagua` sem linha em `uso_memoria_sessoes`
+ * (D7). Transcrito ainda existente: pontua e marca. Transcrito ausente: marca
+ * a sessão sem nota nenhuma (nunca reprocessa a mesma sessão morta todo dia)
+ * e segue — uma sessão problemática nunca trava as demais.
+ *
+ * @param {object} conexao conexão de banco já aberta
+ * @returns {{pontuadas: number, semTranscrito: number, total: number}}
+ */
+function pontuarSessoesPendentes(conexao) {
+  const agora = new Date().toISOString();
+  const pendentes = conexao
+    .prepare(
+      `SELECT m.sessao AS sessao, m.arquivo AS arquivo
+       FROM marca_dagua m
+       LEFT JOIN uso_memoria_sessoes u ON u.sessao = m.sessao
+       WHERE u.sessao IS NULL`
+    )
+    .all();
+
+  let pontuadas = 0;
+  let semTranscrito = 0;
+
+  for (const { sessao, arquivo } of pendentes) {
+    if (!arquivo || !fs.existsSync(arquivo)) {
+      semTranscrito++;
+      conexao
+        .prepare(`INSERT OR REPLACE INTO uso_memoria_sessoes (sessao, pontuada_em) VALUES (?, ?)`)
+        .run(sessao, agora);
+      continue;
+    }
+    try {
+      pontuarSessao(conexao, sessao, arquivo);
+      pontuadas++;
+    } catch (e) {
+      // uma sessão com transcrito ilegível não trava as demais — nem marca,
+      // para que a próxima passada tente de novo.
+    }
+  }
+
+  return { pontuadas, semTranscrito, total: pendentes.length };
+}
+
 module.exports = {
   LIMIAR_DF,
   TETO_CONTRAFACTUAL,
@@ -423,4 +468,5 @@ module.exports = {
   construirQueryFts5DoTexto,
   buscarContrafactual,
   pontuarSessao,
+  pontuarSessoesPendentes,
 };

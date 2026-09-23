@@ -48,10 +48,10 @@ const { acharExecutavelClaude } = require('./lib/achar-executavel-claude.cjs');
 // Chave de grupo de origem de uma observação — consolidação por grupo (D7).
 const { sqlGrupoDeOrigem } = require('./lib/grupo-de-origem.cjs');
 
-// Sinal de utilidade da memória (Tarefa 1, D1-D11). Sentido único:
+// Sinal de utilidade da memória (Tarefas 1 e 3, D1-D11). Sentido único:
 // utilidade.cjs nunca requer este arquivo de volta (evitaria require
 // circular — ver o comentário no topo de scripts/lib/utilidade.cjs).
-const { extrairSessao } = require('./lib/utilidade.cjs');
+const { extrairSessao, pontuarSessoesPendentes } = require('./lib/utilidade.cjs');
 
 // Encontra o diretório .git subindo a árvore de diretórios.
 // Retorna o caminho do diretório que contém .git, ou null se não encontrado.
@@ -2180,6 +2180,31 @@ async function cmdManutencao() {
   } catch (e) {
     houveFalha = true;
     registrar(`consolidar: falhou: ${e.message}`);
+  }
+
+  // Tarefa 3 (D7): pontua as sessões pendentes da marca_dagua, depois de
+  // reconciliar e consolidar. Conexão própria, fechada neste bloco — os
+  // passos acima abrem e fecham a própria conexão dentro de cada cmd*().
+  // Conta via uso_memoria_sessoes (antes/depois): cobre tanto a sessão
+  // pontuada de verdade quanto a marcada sem transcrito (as duas terminam
+  // ali) — ao contrário de contar por uso_memoria, que ficaria mudo para
+  // uma sessão com transcrito mas sem servida/contrafactual nenhum.
+  registrar('utilidade: inicio');
+  try {
+    const { caminhoDb: caminhoDbUtilidade } = resolverCaminhos();
+    const conexao = abrirBanco(caminhoDbUtilidade);
+    try {
+      const antes = conexao.prepare('SELECT COUNT(*) c FROM uso_memoria_sessoes').get().c;
+      pontuarSessoesPendentes(conexao);
+      const depois = conexao.prepare('SELECT COUNT(*) c FROM uso_memoria_sessoes').get().c;
+      registrar(`utilidade: ${depois - antes} sessao(oes) pontuada(s)`);
+    } finally {
+      conexao.close();
+    }
+    registrar('utilidade: fim');
+  } catch (e) {
+    houveFalha = true;
+    registrar(`utilidade: falhou: ${e.message}`);
   }
 
   registrar(houveFalha ? 'manutencao: completa com falhas' : 'manutencao: completa');
