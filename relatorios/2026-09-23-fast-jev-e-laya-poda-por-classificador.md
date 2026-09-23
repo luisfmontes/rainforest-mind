@@ -184,4 +184,4 @@ com rótulos de compaction. A #44 supõe rótulos do Jev pago; a alternativa sem
 superada por um `Edit` no mesmo arquivo é descartável; um resultado citado depois, não).
 Isso é ideia, não fato — nada disso foi medido.
 
-Decisão pendente com o usuario: plantar ou não o enxerto da política como ideia.
+Decidido pelo usuario em 2026-09-23: plantadas `memoria-encurta-antes-de-cortar-e-superada-sai-primeiro` (escada de encaixe + superação, com gate de ganho mínimo como aceite) e `poda-verbatim-de-tool-calls-na-compaction` (a política, com juiz determinístico). O treino do Laya com rótulos das transcripts ficou só aqui, de propósito.
