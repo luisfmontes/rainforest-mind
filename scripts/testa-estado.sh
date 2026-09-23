@@ -1902,5 +1902,47 @@ fi
 
 unset RFM_ESTADO_ROOT
 
+echo
+echo "== 32. contrato de veredito: 'marcar revisar reprovado' exige veredito 'reprovado' gravado (D9 — Tarefa 6) =="
+mkdir -p "$SBP/veredito-repr"
+(cd "$SBP/veredito-repr" && git init -q && git config user.email t@t && git config user.name T && echo x > a.txt && git add . && git commit -qm inicial)
+export RFM_ESTADO_ROOT="$SBP/veredito-repr"
+ER="node scripts/estado.cjs"
+
+prep_vered_r() { # slug — chega ate 'exigir revisar' com a janela armada (vazia)
+  $ER iniciar --slug "$1" >/dev/null
+  $ER marcar --slug "$1" --estagio design --status aprovado >/dev/null
+  $ER marcar --slug "$1" --estagio plano --status ok >/dev/null
+  $ER exigir --slug "$1" --estagio executar >/dev/null
+  $ER marcar --slug "$1" --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
+  $ER exigir --slug "$1" --estagio revisar >/dev/null
+}
+
+# Caso (a, fixture do plano): janela so com 'ok' -> 'reprovado' recusa exit 2
+prep_vered_r vered-repr-so-ok
+$ER veredito --slug vered-repr-so-ok --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id AG1 >/dev/null
+msg_sorepr=$($ER marcar --slug vered-repr-so-ok --estagio revisar --status reprovado 2>&1)
+cod_sorepr=$?
+if [ "$cod_sorepr" = "2" ] && printf '%s' "$msg_sorepr" | grep -q "nenhum veredito 'reprovado' gravado"; then
+  ok=$((ok+1)); echo "  ok   contrato de veredito: marcar revisar reprovado recusa sem veredito reprovado gravado"
+else
+  falhou=$((falhou+1)); echo "  FALHA janela so-ok / marcar reprovado: exit=$cod_sorepr"; printf '%s\n' "$msg_sorepr" | sed 's/^/         /'
+fi
+
+# Caso (b): janela vazia -> 'reprovado' tambem recusa (nenhum veredito, muito menos 'reprovado')
+prep_vered_r vered-repr-vazio
+esperado "janela vazia recusa 'reprovado' tambem" 2 \
+  $ER marcar --slug vered-repr-vazio --estagio revisar --status reprovado
+
+# Caso (c): janela com 1 'reprovado' -> fecha exit 0, 'tentativas' incrementa (mecanismo ja testado em §17)
+prep_vered_r vered-repr-ok
+$ER veredito --slug vered-repr-ok --estagio revisar --veredito reprovado --agente rainforest-mind:revisor --agente-id AG1 >/dev/null
+esperado "janela com 1 'reprovado' fecha 'reprovado'" 0 \
+  $ER marcar --slug vered-repr-ok --estagio revisar --status reprovado
+igual "tentativas incrementou para 1" "1" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('veredito-repr/docs/rainforest/estado/vered-repr-ok.json','utf8')).revisar.tentativas)")"
+
+unset RFM_ESTADO_ROOT
+
 echo "== resultado: $ok ok, $falhou falhas =="
 [ "$falhou" = 0 ]

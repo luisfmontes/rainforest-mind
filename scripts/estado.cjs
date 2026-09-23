@@ -465,6 +465,25 @@ function verificarJanelaDeVereditos(bloco_atual) {
   return null;
 }
 
+/** @returns {string|null} mensagem de recusa, ou null se passou/nao se aplica.
+ *  D9 — Tarefa 6: fechamento 'reprovado' do 'revisar'. Mesma transicao da
+ *  funcao acima: sem 'vereditos' no bloco, so avisa. */
+function verificarVeredictoReprovado(bloco_atual) {
+  if (!bloco_atual || !Array.isArray(bloco_atual.vereditos)) {
+    console.warn(
+      "aviso: 'revisar' sem janela de vereditos armada para este fluxo — o ultimo " +
+      "'exigir --estagio revisar' rodou antes do contrato de veredito. Fechando 'reprovado' sem a trava nova."
+    );
+    return null;
+  }
+  if (!bloco_atual.vereditos.some((v) => v.veredito === 'reprovado')) {
+    return "RECUSADO: nenhum veredito 'reprovado' gravado para 'revisar'. Reprovar reabre o\n"
+      + "'executar' sem revisor nenhum ter dito nada (D9) — um revisor real precisa ter terminado\n"
+      + "com 'VEREDITO: reprovado' antes de fechar assim este estagio.";
+  }
+  return null;
+}
+
 // ------------------------------ catraca de mutacao no executar (D6, D9, D10)
 //
 // Em 2026-08-21 um agente cumpriu todos os criterios falsificaveis do briefing,
@@ -1916,6 +1935,17 @@ function main() {
       const recusa = conferirFechamento(estagio, slug, extra, estadoComExtra);
       if (recusa) {
         console.error(recusa);
+        process.exit(2);
+      }
+    }
+    // Contrato de veredito (D9 — Tarefa 6): 'reprovado' so fecha 'revisar' se
+    // algum veredito 'reprovado' foi gravado na janela — simetria com o 'ok'
+    // acima. Roda ANTES do incremento de `tentativas` logo abaixo: sem
+    // veredito, a reprovacao nem acontece.
+    if (status === 'reprovado' && estagio === 'revisar') {
+      const recusa_reprovado = verificarVeredictoReprovado(estado.revisar);
+      if (recusa_reprovado) {
+        console.error(recusa_reprovado);
         process.exit(2);
       }
     }
