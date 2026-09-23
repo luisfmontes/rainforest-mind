@@ -15,6 +15,8 @@
 #      comum ao corpus (frequência de documento alta) não pontua sozinho.
 #   3. Manutenção (Tarefa 3): `manutencao` pontua as sessões pendentes da
 #      `marca_dagua`, e transcrito apagado não derruba reconciliar/consolidar.
+#   4. Relatório (Tarefa 4): a régua D9 liga com 1/3, não liga com 1/4, e lista
+#      as não-servidas que motivaram a decisão só quando há perda.
 #
 # Hermética por padrão (mktemp -d + RFM_ROOT) — SALVO as seções 1a e 2a, que
 # leem CÓPIAS do transcrito real e do rainforest.db real desta máquina (nunca
@@ -391,6 +393,115 @@ EOF
     falhou=$((falhou+1)); echo "  FALHA transcrito apagado derrubou a manutencao: exit=$got_manutencao2"
     echo "         log: $(cat "$LOG_MANUTENCAO2" 2>/dev/null)"
   fi
+fi
+
+echo
+echo "== Tarefa 4: relatorio com a regua D9 =="
+
+# --- 4a. LIGA com 1 de 3 ---
+CAIXA7="$(novo_sandbox)"
+CAIXA7_WIN="$(cygpath -m "$CAIXA7" 2>/dev/null || printf '%s' "$CAIXA7")"
+RFM_ROOT="$CAIXA7" $MEMORIA iniciar > /dev/null 2>&1
+
+cat > "$CAIXA7/popular-1de3.cjs" <<EOF
+process.env.RFM_ROOT = process.argv[2];
+const { abrirBanco, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { caminhoDb } = resolverCaminhos();
+const conexao = abrirBanco(caminhoDb);
+const agora = new Date().toISOString();
+
+// 3 observacoes so para idadeEmDias() ter de onde ler criada_em.
+for (let i = 1; i <= 3; i++) {
+  conexao.prepare('INSERT INTO observacoes (id, projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?, ?)')
+    .run(i, 'proj-regua', 'obs ' + i, agora, 'regua-' + i);
+}
+
+function sessao(id, servidaNota, naoServidaNota) {
+  conexao.prepare('INSERT OR REPLACE INTO uso_memoria_sessoes (sessao, pontuada_em) VALUES (?, ?)').run(id, agora);
+  conexao.prepare('INSERT OR REPLACE INTO uso_memoria (origem, ref_id, sessao, servida, nota, pontuada_em) VALUES (?,?,?,?,?,?)')
+    .run('observacao', 1, id, 1, servidaNota, agora);
+  if (naoServidaNota !== null) {
+    conexao.prepare('INSERT OR REPLACE INTO uso_memoria (origem, ref_id, sessao, servida, nota, pontuada_em) VALUES (?,?,?,?,?,?)')
+      .run('observacao', 2, id, 0, naoServidaNota, agora);
+  }
+}
+
+// sessao-1: nao-servida (0.9) pontua ACIMA da melhor servida (0.3) -> perda.
+sessao('sessao-1', 0.3, 0.9);
+// sessao-2 e sessao-3: sem perda (nao-servida abaixo ou ausente).
+sessao('sessao-2', 0.8, 0.2);
+sessao('sessao-3', 0.5, null);
+
+conexao.close();
+EOF
+node --no-warnings "$CAIXA7/popular-1de3.cjs" "$CAIXA7_WIN"
+
+SAIDA_1DE3=$(RFM_ROOT="$CAIXA7" $MEMORIA utilidade --relatorio 2>&1)
+echo "  comando: RFM_ROOT=<caixa 1 de 3> node scripts/memoria.cjs utilidade --relatorio"
+echo "  saida:"
+echo "$SAIDA_1DE3" | sed 's/^/    /'
+if echo "$SAIDA_1DE3" | grep -q "régua D9: LIGA o ranking (1 de 3 sessões)"; then
+  ok=$((ok+1)); echo "  ok   regua D9 liga com 1 de 3 sessoes com perda"
+else
+  falhou=$((falhou+1)); echo "  FALHA regua D9 nao ligou com 1 de 3: $SAIDA_1DE3"
+fi
+if echo "$SAIDA_1DE3" | grep -q "não-servidas que a recência perdeu:"; then
+  ok=$((ok+1)); echo "  ok   lista de nao-servidas presente quando ha perda"
+else
+  falhou=$((falhou+1)); echo "  FALHA lista de nao-servidas ausente com 1 sessao com perda"
+fi
+
+# --- 4b. NAO liga com 1 de 4 (mesma caixa, 1 sessao a mais sem perda) ---
+cat > "$CAIXA7/popular-mais1.cjs" <<EOF
+process.env.RFM_ROOT = process.argv[2];
+const { abrirBanco, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { caminhoDb } = resolverCaminhos();
+const conexao = abrirBanco(caminhoDb);
+const agora = new Date().toISOString();
+conexao.prepare('INSERT OR REPLACE INTO uso_memoria_sessoes (sessao, pontuada_em) VALUES (?, ?)').run('sessao-4', agora);
+conexao.prepare('INSERT OR REPLACE INTO uso_memoria (origem, ref_id, sessao, servida, nota, pontuada_em) VALUES (?,?,?,?,?,?)')
+  .run('observacao', 1, 'sessao-4', 1, 0.9, agora);
+conexao.close();
+EOF
+node --no-warnings "$CAIXA7/popular-mais1.cjs" "$CAIXA7_WIN"
+
+SAIDA_1DE4=$(RFM_ROOT="$CAIXA7" $MEMORIA utilidade --relatorio 2>&1)
+echo "  comando: RFM_ROOT=<caixa 1 de 4> node scripts/memoria.cjs utilidade --relatorio"
+echo "  saida:"
+echo "$SAIDA_1DE4" | sed 's/^/    /'
+if echo "$SAIDA_1DE4" | grep -q "régua D9: NÃO liga — recência basta (1 de 4 sessões)"; then
+  ok=$((ok+1)); echo "  ok   regua D9 nao liga com 1 de 4 sessoes com perda"
+else
+  falhou=$((falhou+1)); echo "  FALHA regua D9 deveria nao ligar com 1 de 4: $SAIDA_1DE4"
+fi
+
+# --- 4c. lista some quando nao ha perda nenhuma ---
+CAIXA8="$(novo_sandbox)"
+CAIXA8_WIN="$(cygpath -m "$CAIXA8" 2>/dev/null || printf '%s' "$CAIXA8")"
+RFM_ROOT="$CAIXA8" $MEMORIA iniciar > /dev/null 2>&1
+cat > "$CAIXA8/popular-sem-perda.cjs" <<EOF
+process.env.RFM_ROOT = process.argv[2];
+const { abrirBanco, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { caminhoDb } = resolverCaminhos();
+const conexao = abrirBanco(caminhoDb);
+const agora = new Date().toISOString();
+conexao.prepare('INSERT OR REPLACE INTO uso_memoria_sessoes (sessao, pontuada_em) VALUES (?, ?)').run('sessao-sem-perda', agora);
+conexao.prepare('INSERT OR REPLACE INTO uso_memoria (origem, ref_id, sessao, servida, nota, pontuada_em) VALUES (?,?,?,?,?,?)')
+  .run('observacao', 1, 'sessao-sem-perda', 1, 0.9, agora);
+conexao.prepare('INSERT OR REPLACE INTO uso_memoria (origem, ref_id, sessao, servida, nota, pontuada_em) VALUES (?,?,?,?,?,?)')
+  .run('observacao', 2, 'sessao-sem-perda', 0, 0.1, agora);
+conexao.close();
+EOF
+node --no-warnings "$CAIXA8/popular-sem-perda.cjs" "$CAIXA8_WIN"
+
+SAIDA_SEM_PERDA=$(RFM_ROOT="$CAIXA8" $MEMORIA utilidade --relatorio 2>&1)
+echo "  comando: RFM_ROOT=<caixa sem perda> node scripts/memoria.cjs utilidade --relatorio"
+echo "  saida:"
+echo "$SAIDA_SEM_PERDA" | sed 's/^/    /'
+if echo "$SAIDA_SEM_PERDA" | grep -q "não-servidas que a recência perdeu:"; then
+  falhou=$((falhou+1)); echo "  FALHA lista de nao-servidas apareceu sem perda nenhuma"
+else
+  ok=$((ok+1)); echo "  ok   lista de nao-servidas some quando nao ha perda"
 fi
 
 echo

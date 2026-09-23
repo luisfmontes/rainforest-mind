@@ -456,6 +456,90 @@ function pontuarSessoesPendentes(conexao) {
   return { pontuadas, semTranscrito, total: pendentes.length };
 }
 
+// ---- Tarefa 4: relatório (régua D9) ----
+
+function idadeEmDias(conexao, origem, refId) {
+  try {
+    const tabela = origem === 'resumo' ? 'resumos' : 'observacoes';
+    const row = conexao.prepare(`SELECT criada_em FROM ${tabela} WHERE id = ?`).get(refId);
+    if (!row || !row.criada_em) return null;
+    const dias = Math.floor((Date.now() - new Date(row.criada_em).getTime()) / 86400000);
+    return Number.isFinite(dias) ? dias : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Relatório da régua D9: lê só `uso_memoria` e `uso_memoria_sessoes` (nunca
+ * texto de sessão — D10; `criada_em` de observações/resumos entra só para
+ * calcular a idade da linha, nunca o `conteudo`), e decide se liga o
+ * ranking. Não altera seleção nenhuma (D2).
+ *
+ * @param {object} conexao conexão de banco já aberta (leitura basta)
+ * @returns {string} relatório pronto para imprimir
+ */
+function gerarRelatorio(conexao) {
+  let sessoes = [];
+  try {
+    sessoes = conexao.prepare(`SELECT sessao, pontuada_em FROM uso_memoria_sessoes ORDER BY pontuada_em ASC`).all();
+  } catch (e) {
+    return 'nenhuma sessão pontuada ainda (uso_memoria_sessoes não existe — rode `manutencao` ao menos uma vez)';
+  }
+  const total = sessoes.length;
+  if (total === 0) return 'nenhuma sessão pontuada ainda';
+
+  const linhas = [];
+  linhas.push(`sessões pontuadas: ${total}`);
+  linhas.push(`período: ${sessoes[0].pontuada_em} a ${sessoes[total - 1].pontuada_em}`);
+
+  let sessoesComPerda = 0;
+  const naoServidasComPerda = [];
+
+  for (const { sessao } of sessoes) {
+    const melhorRow = conexao.prepare(`SELECT MAX(nota) n FROM uso_memoria WHERE sessao = ? AND servida = 1`).get(sessao);
+    const melhorNota = melhorRow && melhorRow.n != null ? melhorRow.n : 0;
+
+    const naoServidas = conexao
+      .prepare(
+        `SELECT origem, ref_id, nota FROM uso_memoria
+         WHERE sessao = ? AND servida = 0 AND nota > ?
+         ORDER BY nota DESC`
+      )
+      .all(sessao, melhorNota);
+
+    if (naoServidas.length > 0) {
+      sessoesComPerda++;
+      for (const linha of naoServidas) {
+        naoServidasComPerda.push({ sessao, origem: linha.origem, refId: linha.ref_id, nota: linha.nota });
+      }
+    }
+  }
+
+  linhas.push(`sessões com perda (não-servida pontuou acima da melhor servida): ${sessoesComPerda} de ${total}`);
+
+  const top5 = naoServidasComPerda.sort((a, b) => b.nota - a.nota).slice(0, 5);
+  if (top5.length > 0) {
+    linhas.push('não-servidas que a recência perdeu:');
+    for (const item of top5) {
+      const dias = idadeEmDias(conexao, item.origem, item.refId);
+      const idadeTxt = dias === null ? '?' : `${dias}d`;
+      linhas.push(`  ${item.origem} #${item.refId} nota=${item.nota.toFixed(2)} idade=${idadeTxt} (sessão ${item.sessao})`);
+    }
+  }
+
+  // A comparação exata da régua D9 — "pelo menos 1/3" inclui o empate.
+  const liga = sessoesComPerda * 3 >= total;
+
+  linhas.push(
+    liga
+      ? `régua D9: LIGA o ranking (${sessoesComPerda} de ${total} sessões)`
+      : `régua D9: NÃO liga — recência basta (${sessoesComPerda} de ${total} sessões)`
+  );
+
+  return linhas.join('\n');
+}
+
 module.exports = {
   LIMIAR_DF,
   TETO_CONTRAFACTUAL,
@@ -469,4 +553,6 @@ module.exports = {
   buscarContrafactual,
   pontuarSessao,
   pontuarSessoesPendentes,
+  idadeEmDias,
+  gerarRelatorio,
 };

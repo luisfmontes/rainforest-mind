@@ -22,6 +22,7 @@
  *   node scripts/memoria.cjs consolidar              sintetizar observações antigas em resumos
  *   node scripts/memoria.cjs reconciliar             store/update/merge/skip contra o acervo pendente
  *   node scripts/memoria.cjs utilidade --extrair <transcrito>   inspecionar servidas/texto de um transcrito
+ *   node scripts/memoria.cjs utilidade --relatorio  régua D9: liga ou não o ranking por utilidade
  */
 
 const fs = require('fs');
@@ -48,10 +49,10 @@ const { acharExecutavelClaude } = require('./lib/achar-executavel-claude.cjs');
 // Chave de grupo de origem de uma observação — consolidação por grupo (D7).
 const { sqlGrupoDeOrigem } = require('./lib/grupo-de-origem.cjs');
 
-// Sinal de utilidade da memória (Tarefas 1 e 3, D1-D11). Sentido único:
+// Sinal de utilidade da memória (Tarefas 1, 3 e 4, D1-D11). Sentido único:
 // utilidade.cjs nunca requer este arquivo de volta (evitaria require
 // circular — ver o comentário no topo de scripts/lib/utilidade.cjs).
-const { extrairSessao, pontuarSessoesPendentes } = require('./lib/utilidade.cjs');
+const { extrairSessao, pontuarSessoesPendentes, gerarRelatorio } = require('./lib/utilidade.cjs');
 
 // Encontra o diretório .git subindo a árvore de diretórios.
 // Retorna o caminho do diretório que contém .git, ou null se não encontrado.
@@ -2069,8 +2070,10 @@ async function cmdReconciliar() {
   }
 }
 
-// Comando `utilidade` (Tarefa 1, D1-D11): inspeção do extrator do transcrito
-// (`--extrair <transcrito>`). Nunca escreve no banco.
+// Comando `utilidade` (Tarefas 1 e 4, D1-D11): inspeção do extrator
+// (`--extrair <transcrito>`) e relatório da régua D9 (`--relatorio`). Nunca
+// escreve no banco — quem grava é `pontuarSessoesPendentes`, chamada só de
+// dentro de `cmdManutencao`.
 function cmdUtilidade() {
   const args = process.argv.slice(3);
 
@@ -2086,7 +2089,28 @@ function cmdUtilidade() {
     return;
   }
 
-  console.error('Use: utilidade --extrair <transcrito>');
+  if (args.includes('--relatorio')) {
+    const { caminhoDb } = resolverCaminhos();
+    if (!fs.existsSync(caminhoDb)) {
+      console.log('(banco não existe, nada a relatar)');
+      return;
+    }
+    // Somente-leitura de propósito (D2: o relatório só lê) — sem fallback
+    // para abrirBanco() em caso de falha, que abriria para ESCRITA.
+    const conexao = abrirBancoSomenteLeitura(caminhoDb);
+    if (!conexao) {
+      console.log('(banco indisponível, nada a relatar)');
+      return;
+    }
+    try {
+      console.log(gerarRelatorio(conexao));
+    } finally {
+      conexao.close();
+    }
+    return;
+  }
+
+  console.error('Use: utilidade --extrair <transcrito> | utilidade --relatorio');
   process.exit(1);
 }
 
