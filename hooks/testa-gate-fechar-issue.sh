@@ -2332,6 +2332,40 @@ echo "== (hf) echo hi \\<CRLF>gh issue close 12 → exit 2, CRLF sem wrapper (co
 EXIT_HF=$?
 [ $EXIT_HF -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HF)"
 
+# (hg)-(hi) call operator do PowerShell com alvo literal (2026-09-22): o resto
+# e analisado como comando comum. Antes, todo `&` era ilegivel e `& "C:\Program
+# Files\nodejs\node.exe" --version` barrava aqui. A contrabarra vai por
+# String.fromCharCode(92) para o caminho chegar ao gate como foi escrito.
+echo
+echo '== (hg) & "C:\x\node.exe" --version → exit 0 (call operator, alvo literal) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const B=String.fromCharCode(92);const cmd="& \"C:"+B+"x"+B+"node.exe\" --version";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"PowerShell",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hg"
+EXIT_HG=$?
+[ $EXIT_HG -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_HG)"
+
+echo
+echo '== (hh) & "C:\x\gh.exe" issue close 12 → exit 2 (barra pelo gh, nao pelo &) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const B=String.fromCharCode(92);const cmd="& \"C:"+B+"x"+B+"gh.exe\" issue close 12";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"PowerShell",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hh"
+EXIT_HH=$?
+[ $EXIT_HH -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HH)"
+
+echo
+echo '== (hi) & $exe issue close 12 → exit 2 (alvo variavel continua ilegivel) =='
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"PowerShell","tool_input":{"command":"& $exe issue close 12"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hi"
+EXIT_HI=$?
+[ $EXIT_HI -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HI)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

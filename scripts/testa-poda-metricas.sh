@@ -155,10 +155,16 @@ afirma "[ -f '$RAIZ_DADOS/poda/poda.pid' ]" "pidfile criado"
 
 PID_PODA=$(grep -o '"pid"[[:space:]]*:[[:space:]]*[0-9]*' "$RAIZ_DADOS/poda/poda.pid" 2>/dev/null | grep -o '[0-9]*$' || echo "")
 
-for i in {1..30}; do
+# 10 s, e afirmado. Com 3 s e sem `afirma`, a varredura completa de
+# 2026-09-23 (maquina carregada) seguiu com a porta ainda fechada: o `curl -s`
+# falhou calado e a bateria acusou "metricas.jsonl nao criado" tres passos
+# depois — sozinha, a mesma bateria deu 28 ok. O pidfile sai antes do
+# `listen`, entao ele sozinho nao prova que o proxy atende.
+for i in {1..100}; do
   (echo > /dev/tcp/127.0.0.1/$PORTA_PODA) 2>/dev/null && break
   sleep 0.1
 done
+afirma "(echo > /dev/tcp/127.0.0.1/$PORTA_PODA) 2>/dev/null" "proxy aceita conexao na porta"
 
 METRICAS="$RAIZ_DADOS/poda/metricas.jsonl"
 CONTEXTO="$RAIZ_DADOS/poda/contexto.json"

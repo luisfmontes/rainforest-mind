@@ -660,7 +660,22 @@ function desempacotarWrapperDeString(segmento, { ferramenta } = {}) {
     return { interno: null, ilegivel: true };
   }
   if (exe === "&" && ferramenta === "PowerShell") {
-    return { interno: null, ilegivel: true };
+    // `& <caminho literal> args` e o mesmo comando que `<caminho> args`: o
+    // call operator so existe porque o PowerShell nao executa string citada
+    // sem ele (`& "C:\Program Files\nodejs\node.exe" --version`). Devolve o
+    // resto como `interno`, e quem chama analisa como comando comum — `& git
+    // add -A` continua barrando pelo git, nao pelo `&`. Mesma regra que `bash
+    // ./x.sh` ja segue (D17). Continua ILEGIVEL o alvo que nao se le: script
+    // block (`& { ... }`), subexpressao (`& (...)`), variavel ou crase fora de
+    // aspas simples (`& $exe`, `& "$dir\x.exe"`). Barrado em 2026-09-22
+    // conferindo o Node novo com o caminho escrito por extenso.
+    const alvo = extrairPrimeiroToken(p1.resto);
+    const naoSeLe = !alvo ||
+      /^[{}()]$/.test(alvo.tok) ||
+      /^[({]/.test(alvo.resto) ||
+      (alvo.aspa !== "'" && /[$`@]/.test(alvo.tok));
+    if (naoSeLe) return { interno: null, ilegivel: true };
+    return { interno: p1.resto.trim(), ilegivel: false };
   }
 
   if (exe === "eval" || exe === "invoke-expression" || exe === "iex") {
