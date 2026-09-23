@@ -195,3 +195,17 @@ pronto quando: rodando `bash scripts/testa-estado.sh` completo, a contagem final
 
 ---
 
+
+### 14. `verificar` reprovado devolve o `revisar` a `pendente` [tipo: implementar]
+atende: D10
+arquivos: `scripts/estado.cjs`, `scripts/testa-estado.sh`
+depende de: 13
+paralela: nao
+Em `marcar --status reprovado` de `verificar`, além de rebaixar o `executar` (comportamento de hoje, `rebaixarUpstream`), o bloco `revisar` volta a `pendente`, com a linha exatamente `if (estagio === 'verificar' && estado.revisar) estado.revisar = { ...estado.revisar, status: 'pendente', em: hoje() };`. O contador `tentativas` do `verificar` e a janela de vereditos (D6, zerada no próximo `exigir revisar`) não mudam.
+mutacao:
+  arquivo: `scripts/estado.cjs`
+  de: `if (estagio === 'verificar' && estado.revisar) estado.revisar = { ...estado.revisar, status: 'pendente', em: hoje() };`
+  para: `void 0;`
+  bateria: `bash scripts/testa-estado.sh`
+  fixture: `testa-estado.sh, secao "verificar reprovado reabre o revisar"`
+pronto quando: num slug de caixa com `executar ok`, `revisar ok`, `verificar ok`, rodar `node scripts/estado.cjs marcar --slug <s> --estagio verificar --status reprovado --json '{"comando":"gh pr checks 1","saida":"fail","sensor_externo":"gh pr checks 1"}'` deixa `executar` e `revisar` em `parcial`/`pendente`, `marcar --estagio executar --status parcial` passa a sair 0 (hoje sai 2 com "executar nao pode voltar a parcial com revisar em ok"), e `exigir --estagio verificar` sai 2 enquanto o `revisar` não fechar de novo — provado por `bash scripts/testa-estado.sh` imprimindo `ok` na seção "verificar reprovado reabre o revisar".
