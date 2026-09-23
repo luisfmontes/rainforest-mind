@@ -33,6 +33,13 @@
  *   node scripts/estado.cjs liberar  --slug <slug> --estagio <e>
  *   node scripts/estado.cjs listar
  *   node scripts/estado.cjs concluido [--slug <slug>]
+ *   node scripts/estado.cjs veredito  --slug <slug> --estagio <e> --veredito <ok|reprovado|invalido> --agente <tipo> --agente-id <id>
+ *
+ * `veredito` grava em `<estagio>.vereditos` uma entrada {agente, agente_id,
+ * veredito, em}, upsert por agente_id (retomada de um mesmo subagente não
+ * duplica). Trava por arquivo (hooks/lib/trava-jsonl.cjs) contra escrita
+ * concorrente de dois hooks de SubagentStop. Slug inexistente: sai 0 sem
+ * gravar, avisa em stderr — quem chama é um hook, não deve derrubar sessão.
  *
  * `concluido` reusa o predicado `proximo` (não escreve lógica de progresso nova):
  * com `--slug`, sai 0 se `proximo(estado) === null` (fluxo fechado), 2 nomeando o
@@ -44,6 +51,10 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync, execSync } = require('child_process');
+// Trava por lock de PID (defeitos A/B fechados em 2026-08-23), ja usada por
+// scripts/ideias.cjs e scripts/divergencias.cjs — o `veredito` reusa em vez
+// de inventar uma terceira copia.
+const { comTrava } = require(path.join(__dirname, '..', 'hooks', 'lib', 'trava-jsonl.cjs'));
 // Defensivo, igual ao require de config.cjs mais abaixo: plugin antigo ou
 // cópia parcial não pode derrubar o script inteiro por um efeito colateral
 // best-effort. Sem o ledger, carimbarFluxo vira no-op.
@@ -1292,6 +1303,7 @@ const FLAGS_POR_SUBCOMANDO = {
   liberar: ['slug', 'estagio'],
   listar: [],
   concluido: ['slug'],
+  veredito: ['slug', 'estagio', 'veredito', 'agente', 'agente-id'],
 };
 
 function arg(nome, obrigatorio = true) {
@@ -1459,6 +1471,65 @@ function main() {
     console.log('sessao, ou outro dev, retoma de onde parou.');
     console.log(`proximo: ${proximo(e)}`);
     carimbarFluxo({ slug, estagio: 'design', aberto: proximo(e) });
+    return;
+  }
+
+  // `veredito` grava fora do fluxo normal de leitura (linha 1470 abaixo): slug
+  // inexistente sai 0 (nao 1) porque quem chama e um hook de SubagentStop —
+  // ele nunca deve derrubar a sessao do revisor por um slug que nao existe
+  // mais (fluxo ja fechado, encerrado, ou nunca existiu). O aviso vai so para
+  // stderr.
+  if (cmd === 'veredito') {
+    const estagio = arg('estagio');
+    const veredito = arg('veredito');
+    const agente = arg('agente');
+    const agenteId = arg('agente-id', false);
+    if (!(estagio in PRE_REQUISITOS)) {
+      console.error(`erro: estagio desconhecido '${estagio}'`);
+      process.exit(1);
+    }
+    const VOCAB_VEREDITO = ['ok', 'reprovado', 'invalido'];
+    if (!VOCAB_VEREDITO.includes(veredito)) {
+      console.error(`erro: veredito '${veredito}' invalido — use ${VOCAB_VEREDITO.join('|')}`);
+      process.exit(1);
+    }
+    // Checagem RAPIDA fora da trava: sem ela, `Trava.entrar()` tenta abrir o
+    // arquivo de lock dentro de DIR_ESTADO, que pode nem existir (projeto sem
+    // nenhum `iniciar` rodado ainda — cenario real de um `Slug:` invalido
+    // chegando ao hook de SubagentStop). `fs.openSync(..., 'wx')` so trata
+    // EEXIST; ENOENT (diretorio ausente) sobe e derruba o processo com stack
+    // trace — o oposto do "sai 0 sem gravar" que este comando promete a quem
+    // o chama. A releitura DENTRO da trava, logo abaixo, continua cobrindo a
+    // corrida real (slug apagado ENTRE esta checagem e a entrada na trava).
+    if (!fs.existsSync(caminho(slug))) {
+      console.error(`aviso: ${slug} nao existe — veredito nao gravado`);
+      return;
+    }
+    const lockPath = path.join(DIR_ESTADO, '.' + slug + '.veredito.lock');
+    comTrava(lockPath, () => {
+      // Releitura DENTRO da trava: nunca reaproveitar o `estado` que `main()`
+      // teria carregado antes do lock — outra chamada concorrente pode ter
+      // gravado entre a leitura de fora e a entrada na trava.
+      const estadoVivo = ler(slug);
+      if (!estadoVivo) {
+        console.error(`aviso: ${slug} nao existe — veredito nao gravado`);
+        return;
+      }
+      const bloco = estadoVivo[estagio] || {};
+      const vereditos = Array.isArray(bloco.vereditos) ? bloco.vereditos.slice() : [];
+      // Upsert por agente_id: um mesmo subagente pode disparar SubagentStop
+      // mais de uma vez (retomada), e a segunda chamada substitui a entrada
+      // anterior em vez de duplicar — ver achado 7 do plano.
+      const idx = agenteId ? vereditos.findIndex((v) => v.agente_id === agenteId) : -1;
+      const entrada = { agente, agente_id: agenteId, veredito, em: hoje() };
+      if (idx === -1) {
+        vereditos.push(entrada);
+      } else {
+        vereditos[idx] = entrada;
+      }
+      estadoVivo[estagio] = { ...bloco, vereditos };
+      gravar(slug, estadoVivo);
+    });
     return;
   }
 
@@ -1815,7 +1886,7 @@ function main() {
     return;
   }
 
-  console.error('uso: iniciar | ler | marcar | proximo | exigir | liberar | listar | concluido');
+  console.error('uso: iniciar | ler | marcar | proximo | exigir | liberar | listar | concluido | veredito');
   process.exit(1);
 }
 

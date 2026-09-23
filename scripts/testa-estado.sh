@@ -26,6 +26,7 @@ cp "$SRC/scripts/conferir-fluxo.cjs" "$SBP/scripts/"
 cp "$SRC/scripts/conferir-mutacao.cjs" "$SBP/scripts/"
 cp "$SRC/hooks/lib/raiz.cjs" "$SBP/hooks/lib/"
 cp "$SRC/hooks/lib/config.cjs" "$SBP/hooks/lib/"
+cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SBP/hooks/lib/"
 # A caixa vira raiz de dados: sem marcador, resolverRaiz cairia no repo de verdade
 # e a bateria escreveria estado no .rainforest do usuario.
 touch "$SBP/FOCO.md"
@@ -1719,9 +1720,10 @@ echo "== 27. EVIDENCIA DE 'verificar' CITA SENSOR (D3, D6 — Tarefa 5) =="
 # dezenas de linhas de teste que nao sao desta tarefa, sem deixar a checagem
 # sem exercicio real: aqui ela roda com o conferidor de verdade, contra as
 # pecas de verdade do repo (RAIZ_PLUGIN = a raiz desta propria copia).
-mkdir -p "$SBP/sensor-test/scripts"
+mkdir -p "$SBP/sensor-test/scripts" "$SBP/sensor-test/hooks/lib"
 cp "$SRC/scripts/estado.cjs" "$SBP/sensor-test/scripts/"
 cp "$SRC/scripts/conferir-categoria.cjs" "$SBP/sensor-test/scripts/"
+cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SBP/sensor-test/hooks/lib/"
 cd "$SBP/sensor-test" || exit 1
 ES="node scripts/estado.cjs"
 
@@ -1791,6 +1793,27 @@ else
 fi
 
 cd "$SBP" || exit 1
+
+echo
+echo "== 28. contrato de veredito: registrar duas vezes o mesmo agente-id substitui, nao duplica =="
+$E iniciar --slug vered-upsert >/dev/null
+esperado "primeiro veredito (reprovado) grava" 0 \
+  $E veredito --slug vered-upsert --estagio revisar --veredito reprovado --agente rainforest-mind:revisor --agente-id AAA
+esperado "segundo veredito do MESMO agente-id grava" 0 \
+  $E veredito --slug vered-upsert --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id AAA
+N_VERED_UPSERT=$(node -e "console.log((JSON.parse(require('fs').readFileSync('docs/rainforest/estado/vered-upsert.json','utf8')).revisar.vereditos||[]).length)")
+igual "upsert por agente-id: 1 entrada, nao 2" "1" "$N_VERED_UPSERT"
+V_VERED_UPSERT=$(node -e "console.log(JSON.parse(require('fs').readFileSync('docs/rainforest/estado/vered-upsert.json','utf8')).revisar.vereditos[0].veredito)")
+igual "upsert por agente-id: prevalece a SEGUNDA chamada" "ok" "$V_VERED_UPSERT"
+
+echo
+echo "== 29. contrato de veredito: duas escritas concorrentes preservam as duas =="
+$E iniciar --slug vered-concorrente >/dev/null
+$E veredito --slug vered-concorrente --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id BBB &
+$E veredito --slug vered-concorrente --estagio revisar --veredito reprovado --agente rainforest-mind:revisor --agente-id CCC &
+wait
+N_VERED_CONC=$(node -e "console.log((JSON.parse(require('fs').readFileSync('docs/rainforest/estado/vered-concorrente.json','utf8')).revisar.vereditos||[]).length)")
+igual "escritas concorrentes (agente-id diferentes): 2 entradas, nao 1, nao 0" "2" "$N_VERED_CONC"
 
 echo "== resultado: $ok ok, $falhou falhas =="
 [ "$falhou" = 0 ]
