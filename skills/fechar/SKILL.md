@@ -46,8 +46,8 @@ node scripts/fechar-issue.cjs <n> --comando "node scripts/portoes.cjs rodar docs
 `rodar` grava o campo `EVIDENCIA:` de volta no próprio arquivo do portão —
 depois de rodar, o arquivo já é comando+saída, não só a definição do portão.
 
-**(b) Sem portão para este fluxo** (é o caso de `zerar-issues-5`: não existe
-`docs/rainforest/portoes/zerar-issues-5.md`): rode o comando do critério de
+**(b) Sem portão para este fluxo** (não existe
+`docs/rainforest/portoes/<slug>.md`): rode o comando do critério de
 pronto da Issue redirecionando a saída para um arquivo **dentro do
 repositório** (ex.: `docs/rainforest/estado/<slug>-fechar-<n>.txt`, apagado
 depois de usado — mesma disciplina de "limpar o repositório local" do passo
@@ -62,8 +62,8 @@ rm docs/rainforest/estado/<slug>-fechar-<n>.txt
 **Nunca um caminho fora do repositório**: `--saida-arquivo` recusa
 (`estaNoRepositorio` em `fechar-issue.cjs`) e `--saida` recusa qualquer valor
 que já seja o caminho de um arquivo existente, colado ou não — "o diretório
-temporário da sessão" não é atalho válido (Issue #269: colar um caminho onde
-se espera saída sempre é erro).
+temporário da sessão" não é atalho válido: colar um caminho onde se espera
+saída sempre é erro.
 
 ## 3. Limpar o repositório local
 
@@ -100,8 +100,8 @@ fechamento do estágio.
 `close`, `closes`, `closed`, `fix`, `fixes`, `fixed`, `resolve`, `resolves`,
 `resolved`. A **palavra precisa repetir antes de cada número**, senão fecha só
 a primeira: `Closes #81, closes #79` funciona; `Closes #81 e #79` fecha só
-a #81. Incidente 2026-08-24 (PR #85): usou `Fecha #81 e #79` em português —
-nenhuma palavra-chave foi reconhecida e as duas issues continuaram abertas.
+a #81 — e uma palavra-chave em português (`Fecha #81 e #79`) não é
+reconhecida, deixando as issues abertas.
 
 **A branch remota sai sozinha no merge.** O repositório tem
 `delete_branch_on_merge` ligado desde 2026-08-26, então o `gh pr merge` apaga a
@@ -137,12 +137,9 @@ versão. Sem bump não existe versão nova para o `claude plugin update` buscar,
 o trabalho fica na `main` sem chegar em máquina nenhuma — inclusive na do
 usuário.
 
-> 2026-08-26: o `plugin.json` estava em 0.77.0 desde o dia anterior e a `main`
-> tinha 18 commits além disso — quatro PRs de regra, três defeitos de produção,
-> uma trava de borda nova. Nada rodando. O `/saude` já dizia "o que EXECUTA está
-> atrás: 18 commit(s) atrás"; ninguém olhava no momento em que dava para agir.
-> A regra do bump não estava escrita em lugar nenhum — nem aqui, nem no
-> `CONTRIBUTING.md`, nem nas 17 regras. Era hábito, e hábito não dispara.
+> O risco é silencioso: nada no repositório aplica o bump automaticamente, e
+> hábito não dispara sozinho quando ninguém está olhando no momento em que dá
+> para agir.
 
 Fora do repositório do plugin, o comando sai `0` dizendo que não deu para medir.
 Falha **aberta** de propósito: isto não é guarda-corpo de segurança.

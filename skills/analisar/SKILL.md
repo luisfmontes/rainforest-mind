@@ -95,9 +95,6 @@ legível por quem pediu.
 
 ## Células curtas, outputs inspecionáveis
 
-IAs tendem a gerar células enormes, cheias de comentários óbvios e lógica
-empilhada. Não faça isso.
-
 - **Cada célula responde UMA pergunta.** A maioria das células de análise tem
   1-3 linhas; plots ficam em torno de 5. Passou de 10 linhas, a célula mistura
   preparação com visualização — separe.

@@ -41,8 +41,8 @@ Carimbo marca quando o código foi salvo; uma lista de commits prova atividade
 em pontos, nunca no intervalo entre eles. A fonte é
 `node scripts/jornada.cjs` (deste repo, sem Python desde 2026-08-11): mede o
 intervalo entre as mensagens **dele** no
-transcript e descarta lacuna acima de **55 min** — era 75, e um almoço de uma
-hora passava por baixo e entrava na conta como trabalho.
+transcript e descarta lacuna acima de **55 min** — o porquê do valor está no
+incidente de 2026-08-09 logo abaixo.
 Não dando para medir por nenhuma das duas, **pergunte em uma linha** ("você
 emendou a noite?") — nunca afirme.
 

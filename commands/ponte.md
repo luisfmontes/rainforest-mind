@@ -41,9 +41,7 @@ repositório de outra pessoa.
 
 **Nunca escreva esses arquivos à mão, nem edite o bloco gerado.** Eles são
 derivados: mudança de regra vai no SKILL.md e a ponte se regera. Um `AGENTS.md`
-editado à mão é uma segunda versão das regras, e ela diverge em silêncio — foi o
-que aconteceu com as duas `CLAUDE.md` de escopo usuario desta máquina em
-2026-08-10.
+editado à mão vira uma segunda versão das regras, e ela diverge em silêncio.
 
 Três coisas que o script já garante, e que você não precisa checar de novo:
 

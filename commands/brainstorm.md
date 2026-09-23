@@ -24,10 +24,5 @@ trabalho depois de ele confirmar que chegaram ao mesmo lugar.
 
 ---
 
-Renomeado de `/grill` em 2026-08-11, quando virou o primeiro de sete estágios:
-o par `brainstorm` → `plano` diz o que uma palavra sozinha não dizia — que vem
-pergunta e que sai plano. É também como o `superpowers` e um plugin interno de
-cliente chamam este mesmo estágio.
-
 Mecânica de `grilling` e `grill-me` (mattpocock/skills, MIT): árvore de
 decisão, fronteira por rodadas, e a partição fato/decisão.

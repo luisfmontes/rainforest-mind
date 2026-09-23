@@ -354,8 +354,7 @@ function bloqueia(motivo, toplevel, agente, apenasRestauracao = null, ehWorktree
       saidas
     : `Este e o diretorio de trabalho principal, nao um worktree isolado. A regra 11 manda\n` +
       `subagente que edita arquivos trabalhar em worktree proprio, para o trabalho poder ser\n` +
-      `descartado sem tocar no estado dele. Em 2026-08-08 um agente escreveu aqui duas vezes,\n` +
-      `trocou a branch e moveu o HEAD com stash/pop.\n\n` +
+      `descartado sem tocar no estado dele.\n\n` +
       saidas;
 
   process.stderr.write(msg);
@@ -672,9 +671,7 @@ function bloqueiaColocada(verbo, toplevel, outras, agora) {
     `Repo: ${toplevel}\n` +
     `Outra(s) sessao(oes) do Claude Code neste MESMO diretorio:\n${lista}\n\n` +
     `HEAD e do CHECKOUT, nao da janela: trocar de branch aqui troca para as duas.\n` +
-    `Em 2026-08-21 foi exatamente isso — um \`git checkout -b\` arrancou a outra sessao\n` +
-    `da branch dela, e ela commitou tres vezes na branch alheia sem perceber\n` +
-    `(Issues #25 e #38, 11 registros do acervo na mesma familia).\n\n` +
+    `Um \`git checkout -b\` numa arranca a outra da branch em que ela estava.\n\n` +
     `A SAIDA e um checkout so seu, que ninguem mais compartilha:\n` +
     `  git worktree add .claude/worktrees/<nome> -b <branch>\n` +
     `  cd .claude/worktrees/<nome>\n` +

@@ -78,8 +78,7 @@ desligado no projeto.
 **Mídia do WhatsApp que o bridge não baixa costuma estar em `Downloads`.**
 O cliente desktop salva o que chega, então o caminho local existe mesmo
 quando o `download_media` falha — perguntar o caminho ao usuário vem antes de
-insistir no bridge. Em 2026-08-10 o bridge devolvia 403 para **toda** mídia,
-inclusive uma de 14 minutos atrás, então não é expiração.
+insistir no bridge.
 
 **Exit 69 dos `conferir-*` é bloqueio de ambiente — nem aprovação, nem
 reprovação, nem `flaky`.** `conferir-entrega`, `conferir-mutacao`,

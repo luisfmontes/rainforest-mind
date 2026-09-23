@@ -84,7 +84,7 @@ Quem a executa é um `tester` isolado em worktree.
 
 ### Backstop de mutação (Issue #4)
 
-A partir de 2026-08-21, `exigir --estagio revisar` **captura um instantâneo**:
+`exigir --estagio revisar` **captura um instantâneo**:
 o `HEAD` do repositório e a lista de caminhos sujos (`git status --porcelain`).
 Depois, `marcar --estagio revisar --status ok` **compara** esse instantâneo e
 recusa (exit 2) se:
@@ -197,9 +197,7 @@ lembra ter sido feito.
 
 ### Trava de cobertura de creep e mutação
 
-A partir de 2026-08-13, `node scripts/estado.cjs marcar --estagio revisar --status ok` recusa se o `--json` não incluir `base` e `head` — são os dois pontos que definem o diff e permitem provar ausência de creep. Sem eles, fechar a revisão sem poder provar que o diff não toca arquivo fora do plano é o buraco que a trava fecha.
-
-A partir de 2026-08-21, a mesma chamada também recusa se o repositório foi mutado desde `exigir --estagio revisar`: HEAD diferente ou arquivo novo sujo. Ver seção anterior para detalhes.
+`node scripts/estado.cjs marcar --estagio revisar --status ok` recusa se o `--json` não incluir `base` e `head` — são os dois pontos que definem o diff e permitem provar ausência de creep — e recusa também se o repositório foi mutado desde `exigir --estagio revisar`: HEAD diferente ou arquivo novo sujo (ver seção anterior). Sem `base`/`head`, fechar a revisão sem poder provar que o diff não toca arquivo fora do plano é o buraco que a trava fecha.
 
 **`reprovado` não exige nada disso**, e é deliberado: reprovar já devolve o
 trabalho para o `executar`, então não há veredito de ausência de creep para
