@@ -91,6 +91,30 @@ CREATE TABLE IF NOT EXISTS indice_ideias (
   indexada_em TEXT NOT NULL
 );
 
+-- Sinal de utilidade da memória (design 2026-09-23-memoria-sinal-de-utilidade,
+-- D1-D11). Mede, sem mudar a seleção da abertura, se cada observação/resumo
+-- SERVIDO na abertura (servida=1) ou candidato do contrafactual (servida=0,
+-- D6) casou com o que a sessão fez. `origem` é `observacao` ou `resumo`;
+-- `ref_id` é o id na tabela correspondente. D10: só id, sessão, flag, nota e
+-- data — nenhum texto de sessão entra aqui, a nota se recalcula do
+-- transcrito quando precisar.
+CREATE TABLE IF NOT EXISTS uso_memoria (
+  origem TEXT NOT NULL,
+  ref_id INTEGER NOT NULL,
+  sessao TEXT NOT NULL,
+  servida INTEGER NOT NULL,
+  nota REAL,
+  pontuada_em TEXT NOT NULL,
+  UNIQUE(origem, ref_id, sessao)
+);
+
+-- Quais sessões já foram pontuadas — evita repontuar a cada passada de
+-- manutenção (Tarefa 3, D7).
+CREATE TABLE IF NOT EXISTS uso_memoria_sessoes (
+  sessao TEXT PRIMARY KEY,
+  pontuada_em TEXT NOT NULL
+);
+
 -- Índices para acesso rápido
 CREATE INDEX IF NOT EXISTS idx_observacoes_projeto ON observacoes(projeto);
 CREATE INDEX IF NOT EXISTS idx_resumos_projeto ON resumos(projeto);
@@ -99,6 +123,7 @@ CREATE INDEX IF NOT EXISTS idx_marca_dagua_projeto ON marca_dagua(projeto);
 CREATE INDEX IF NOT EXISTS idx_indice_foco_projeto ON indice_foco(projeto);
 CREATE INDEX IF NOT EXISTS idx_indice_ideias_projeto ON indice_ideias(projeto);
 CREATE INDEX IF NOT EXISTS idx_indice_ideias_id ON indice_ideias(ideia_id);
+CREATE INDEX IF NOT EXISTS idx_uso_memoria_sessao ON uso_memoria(sessao);
 
 -- Full-Text Search para busca rapida em observacoes
 -- Tarefa 1 (D24): FTS5 com conteudo externo sincronizado por triggers.

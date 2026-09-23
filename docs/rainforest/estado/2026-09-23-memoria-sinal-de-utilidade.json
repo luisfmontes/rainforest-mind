@@ -1,0 +1,211 @@
+{
+  "slug": "2026-09-23-memoria-sinal-de-utilidade",
+  "titulo": "Sinal de utilidade no ranking da memoria",
+  "criado_em": "2026-09-23",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-23-memoria-sinal-de-utilidade.md",
+    "em": "2026-09-23"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-23-memoria-sinal-de-utilidade.md",
+    "tarefas": 13,
+    "paralelas": [
+      12,
+      13
+    ],
+    "em": "2026-09-23",
+    "emenda": "tarefas 6-10, achados das duas revisoes"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-23",
+    "tarefas_ok": 13,
+    "tarefas": 13,
+    "em": "2026-09-23",
+    "comando": "HOME=$(mktemp -d) bash scripts/testa-utilidade.sh",
+    "saida": "== resultado: 19 ok, 0 falha(s) ==",
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "5c77dcef",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T16:49:45.798Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "5c77dcef",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T16:49:45.798Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "5c77dcef",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T16:49:45.798Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "5c77dcef",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T16:49:45.798Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "a3472b11",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T17:29:37.396Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "a3472b11",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T17:29:37.396Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "a3472b11",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T17:29:37.396Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "7de9cdcb",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T18:11:58.028Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "7de9cdcb",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T18:11:58.028Z"
+      },
+      {
+        "tarefa": 11,
+        "hash_base": "9994b59a",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T19:20:49.214Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "7d601d3d",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T22:30:36.092Z"
+      },
+      {
+        "tarefa": 13,
+        "hash_base": "7d601d3d",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T22:30:36.092Z"
+      }
+    ],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, secao prosa do assistente que ecoa a injecao nao entra no texto"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, secao termo comum a todo o corpus nao pontua"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, FALHA manutencao nao pontuou as 2 pendentes"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, secao regua D9 liga com 1 de 3 sessoes com perda"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "registro de dado do usuario pela ferramenta ideias.cjs, sem codigo a inverter"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, secao servida substituida pela reconciliacao ainda casa com o id"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, secao passada respeita TETO_PONTUAR e deixa o resto pendente"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, secao sessao sem servida nao entra no denominador da regua"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, secao servida sem id nao reaparece como nao-servida"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, secao sessao que falha e marcada e a fila anda"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, secao banco ocupado adia a sessao sem marcar nem gravar parcial"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "testa-importar-claude-mem.sh, secao SABOTAGEM readonly minusculo"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, secao banco ocupado adia a sessao sem marcar nem gravar parcial (fixtures sinteticas)"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "9caf9bc066042dbcb1301ffe598e884870fee605",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-09-23-memoria-sinal-de-utilidade.json"
+      ]
+    },
+    "em": "2026-09-23",
+    "achados": 0,
+    "base": "7d601d3d146a0372896214fbec56c56f7668d3d4",
+    "head": "9caf9bc0"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "gh pr checks 326",
+    "saida": "baterias (node 24) pass 27m33s run 35931098855",
+    "sensor_externo": "gh pr checks 326",
+    "em": "2026-09-23"
+  },
+  "fechar": {
+    "status": "ok",
+    "pr": 326,
+    "em": "2026-09-23"
+  }
+}
