@@ -386,10 +386,17 @@ function extrairPrimeiroToken(str) {
  * 12"` (variável com MAIS argumento depois) continua ilegível: a variável
  * ali não é o único argumento, pode ser qualquer coisa (incluindo um `-c`
  * escondido dentro dela).
+ *
+ * A variável pode vir seguida de um resto LITERAL de caminho que começa em
+ * separador (`"$P/on-stop.sh"`, `"${D}\x.ps1"`): continua sendo UM caminho,
+ * e o resto não tem `$`, crase nem aspa — nada ali expande. Barrado pelo
+ * gate de staging em 2026-09-22 rodando o hook do plugin Warp à mão
+ * (`bash "$P/on-stop.sh"`), enquanto `bash "$P"` e o caminho escrito por
+ * extenso já passavam.
  */
 function ehVariavelCitadaFinal(current) {
   if (!current.citado || current.aspa !== '"') return false;
-  if (!/^\$(?:[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_]*\})$/.test(current.tok)) return false;
+  if (!/^\$(?:[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_]*\})(?:[\/\\][^$`"]*)?$/.test(current.tok)) return false;
   return ehApenasRedirecionamentos(current.resto);
 }
 
