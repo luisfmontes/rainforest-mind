@@ -25,9 +25,20 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-09-23",
-    "tarefas_ok": 3,
+    "tarefas_ok": 5,
     "tarefas": 14,
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "tarefas 5-7",
+        "desde": "2026-09-23T20:07:48-03:00"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "tarefa 9",
+        "desde": "2026-09-23T20:07:48-03:00"
+      }
+    ],
     "em": "2026-09-23",
     "carimbos": [
       {
@@ -50,6 +61,20 @@
         "iteracao": 1,
         "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
         "ts": "2026-09-23T21:03:06.300Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "59c9a705",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T23:01:58.154Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "59c9a705",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T23:07:48.799Z"
       }
     ],
     "achados_tarefa_1": "payload SubagentStop real: agent_type=rainforest-mind:revisor, agent_transcript_path presente (subagents/agent-<id>.jsonl, 1a msg user content string com o briefing), last_assistant_message, stop_hook_active, agent_id"
