@@ -1,10 +1,11 @@
 # Arqueologia: fatia multihost sobre a versão 1.11
 
 > Mapa histórico da fatia na base 1.11. A execução corrente está ancorada em
-> `4301a205b9c90a101924cc60fdd2cb7b3bed4bfa` pelo merge
-> `fc76be76b5f8dd5c3c9dac9016db33098abc5d94`, versão 1.23.0. O diff
+> `9c05ee9a71b79d763a39f24195c580bc2d915752` pelo merge
+> `06be3273c3ba08252ef8fd6d1417cb75fb38bfc4`, versão 1.23.3. O diff
 > corrente cobre 18 caminhos; design, plano, estado e portão do mesmo slug
-> registram as provas novas. A piloto `c71ecd01` segue como referência histórica.
+> registram as provas novas. As bases 1.23.0 e 1.23.1 e a piloto `c71ecd01`
+> seguem como referência histórica.
 
 **Data:** 2026-09-12
 **Árvore atual:** `a338dd02ad495f87a66d84af2ab24eab3d2660b8` (`codex/multihost-1.11`)

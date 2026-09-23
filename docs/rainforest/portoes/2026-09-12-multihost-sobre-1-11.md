@@ -1,17 +1,19 @@
-# Portão: adaptação multihost sobre o Rainforest Mind 1.23.0
+# Portão: adaptação multihost sobre o Rainforest Mind 1.23.3
 
-## Estado corrente — reancoragem 1.23.0 (2026-09-22)
+## Estado corrente — reancoragem 1.23.3 (2026-09-23)
 
-- Base: `4301a205b9c90a101924cc60fdd2cb7b3bed4bfa` (`origin/main`, 1.23.0).
-- Merge da base na entrega: `fc76be76b5f8dd5c3c9dac9016db33098abc5d94`.
+- Base: `9c05ee9a71b79d763a39f24195c580bc2d915752` (`origin/main`, 1.23.3).
+- Merge da base na entrega: `06be3273c3ba08252ef8fd6d1417cb75fb38bfc4`.
+- Base e merge 1.23.1 históricos: `2405f76aa8ae8847a16d66792686d1ec4b6cfee1` e `7be5f9e78a0294269218144f0b92bc0275e8f9b3`.
+- Base e merge 1.23.0 históricos: `4301a205b9c90a101924cc60fdd2cb7b3bed4bfa` e `fc76be76b5f8dd5c3c9dac9016db33098abc5d94`.
 - Base e merge históricos: `0e27956c14d52bd7efefdd343531ffbbb8811726` e `7febeface33c10de4f2b32395c3e0a595656857a`.
 - Branch: `codex/multihost-1.13`; HEAD é rederivado com `git rev-parse HEAD`.
 - O escopo da entrega contra a base corrente permanece em 18 arquivos.
-- O manifesto Codex acompanha o manifesto Claude em 1.23.0. Gemini permanece
+- O manifesto Codex acompanha o manifesto Claude em 1.23.3. Gemini permanece
   adiado, sem artefato de host nesta entrega.
-- Export `fc76be76`, instalação, projeção D9/D11 e contraprova de 1.23.0
-  estão medidos na seção corrente ao fim deste portão. Evidências anteriores
-  permanecem como histórico.
+- Export, instalação e projeção D9/D11 de 1.23.3 foram medidos nesta
+  reancoragem. A contraprova `PreToolUse` em sessão nova segue pendente por
+  falha do executor do host; evidências anteriores permanecem como histórico.
 - Sem aval explícito, não abrir PR, publicar release, mesclar nem alterar a
   `main`.
 
@@ -21,7 +23,7 @@ Estes oráculos são a forma executável dos cinco comandos já definidos no
 critério da tarefa 9 do plano. A evidência narrativa e as medições externas de
 export, cache e sessão Codex continuam nas seções seguintes.
 
-P1 levou `282243` ms na medição corrente, acima do limite padrão de `120000`
+P1 levou `282243` ms na medição histórica 1.23.0, acima do limite padrão de `120000`
 ms de `portoes.cjs`. Para reexecutar P1–P5, defina o limite de `600000` ms
 **no processo pai** que executa `portoes.cjs`. Neste host, P1 também requer
 Git Bash em modo login e `TMPDIR` gravável fora de `.claude/worktrees`. O
@@ -29,12 +31,12 @@ procedimento abaixo foi executado no PowerShell; a pasta temporária é neutra
 e pode ser removida após a prova:
 
 ```powershell
-New-Item -ItemType Directory -Force 'C:\Projetos\rainforest-mind\.claude\tmp-portoes-codex-9b21e95b'
+New-Item -ItemType Directory -Force 'C:\Projetos\rainforest-mind\.claude\tmp-portoes-codex-1233'
 $env:PATH = 'C:\Program Files\Git\bin;C:\Program Files\nodejs;' + $env:PATH
 $env:CHERE_INVOKING = '1'
 Remove-Item Env:BASH_ENV -ErrorAction SilentlyContinue
-& 'C:\Program Files\Git\bin\bash.exe' -lc 'TMPDIR=/c/Projetos/rainforest-mind/.claude/tmp-portoes-codex-9b21e95b node -p "process.env.TMPDIR"'
-& 'C:\Program Files\Git\bin\bash.exe' -lc 'TMPDIR=/c/Projetos/rainforest-mind/.claude/tmp-portoes-codex-9b21e95b PORTOES_TIMEOUT_MS=600000 node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar'
+& 'C:\Program Files\Git\bin\bash.exe' -lc 'TMPDIR=/c/Projetos/rainforest-mind/.claude/tmp-portoes-codex-1233 node -p "process.env.TMPDIR"'
+& 'C:\Program Files\Git\bin\bash.exe' -lc 'TMPDIR=/c/Projetos/rainforest-mind/.claude/tmp-portoes-codex-1233 PORTOES_TIMEOUT_MS=600000 node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar'
 ```
 
 O shell de login pode substituir o `TMPDIR` herdado do PowerShell; a atribuição
@@ -43,13 +45,13 @@ uma sessão Git Bash de login, use o mesmo comando com `TMPDIR=...` e
 `PORTOES_TIMEOUT_MS=600000` antes de `node scripts/portoes.cjs rodar ...`.
 Definir a variável apenas no `CHECK` filho não amplia o limite imposto pelo pai.
 Na sondagem publicada, `node -p "process.env.TMPDIR"` retornou
-`C:\Projetos\rainforest-mind\.claude\tmp-portoes-codex-9b21e95b` (exit `0`),
+`C:\Projetos\rainforest-mind\.claude\tmp-portoes-codex-1233` (exit `0`),
 o mesmo diretório criado pelo `New-Item`.
 
 - [x] P1: o gate de staging total passa todos os casos
   CHECK: bash hooks/testa-gate-staging-total.sh
-  ESPERA: == resultado: 154 ok, 0 falha(s) ==
-  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"3ea7ac429c28"}
+  ESPERA: == resultado: 171 ok, 0 falha(s) ==
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"5d0905e98e1c"}
 
 - [x] P2: o contrato ponta a ponta do plugin Codex passa
   CHECK: bash scripts/testa-plugin-codex.sh
@@ -59,7 +61,7 @@ o mesmo diretório criado pelo `New-Item`.
 - [x] P3: os manifestos e referências públicas têm a mesma versão
   CHECK: bash scripts/testa-versao.sh
   ESPERA: ok: 5   falhou: 0
-  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"c8fd95e6a496"}
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"f34166e6f248"}
 
 - [x] P4: todas as decisões aprovadas são cobertas pelo plano
   CHECK: node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11
@@ -67,11 +69,65 @@ o mesmo diretório criado pelo `New-Item`.
   EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"c2c28f24842b"}
 
 - [x] P5: o diff final não contém creep fora do plano
-  CHECK: node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 4301a205b9c90a101924cc60fdd2cb7b3bed4bfa --head HEAD
+  CHECK: node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 9c05ee9a71b79d763a39f24195c580bc2d915752 --head HEAD
   ESPERA: ok: sem creep — 18 arquivo(s) coberto(s)
   EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"465244f33ebc"}
 
-Reexecução do procedimento PowerShell acima nesta correção (exit `0`):
+## Medição corrente 1.23.3 — 2026-09-23
+
+O procedimento acima saiu `0`: P1–P5 `CUMPRIDO`, fingerprints
+`5d0905e98e1c`, `077adea17e32`, `f34166e6f248`, `c2c28f24842b` e
+`465244f33ebc`, respectivamente; `TODOS OS PORTOES CUMPRIDOS — 5 portão(ões).`
+`node scripts/portoes.cjs lint ... --strict` saiu `LINT OK — 5 portão(ões),
+0 aviso(s)` e `status` saiu `PARSE OK — 5 portão(ões), 0 não cumprido(s),
+0 abandonado(s)`. O gate individual deu
+`== resultado: 171 ok, 0 falha(s) ==`; os contratos Codex passaram com
+19 skills e quatro âncoras de corpo; versão `ok: 5   falhou: 0`, cobertura
+`12 decisão(ões), 9 tarefa(s)`, creep `18 arquivo(s)` contra `9c05ee9a` e
+`git diff --check` saiu `0`.
+
+As mutações T1–T5 foram executadas sequencialmente com
+`node scripts/conferir-mutacao.cjs`: cada baseline verde, mutante vermelho,
+fonte restaurado e catraca exit `0`. T1: gate 171/0 no baseline, 166/5 no
+mutante que descarta aspas. T2: remoção de `description` em `montar-corpus`
+falha no contrato de skills. T3: chamada direta do core falha no contrato do
+adaptador. T4: `1.23.3` → `1.23.4` no manifesto Codex dá versão 4/1. T5:
+`source.path` → `./codex` falha no contrato do marketplace. A linha
+`total=5 vermelhas:[1,2,3,4,5]` é agregação desta medição, não saída literal
+de uma catraca única; T6–T9 têm mutação n/a no plano.
+
+O cachebuster `1.23.3+codex.20260923102218` foi instalado a partir do
+marketplace apontando para este worktree. Os dois manifestos foram restaurados
+byte a byte ao HEAD; blobs Claude `5c8322b0500eaafe6cb6234ac97cd04cd7050c7d`
+e Codex `0e465f7d48e1469b8e4dda410e36ecb27b700037`. O commit candidato
+`ebb5ae58805d61b438573b6a3babbcfc8523ef83` foi exportado por
+`git archive HEAD` para
+`C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.23.3-ebb5ae58`;
+o marketplace ativo aponta para esse export e instalou `1.23.3` no cache
+`C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.23.3`.
+`Get-ChildItem -Force -Recurse -File` encontrou export 801, cache 802,
+zero `.git` em ambos; projeção D9 794 arquivos, zero missing/different, único
+extra D11 `.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md`
+com SHA-256 `321C30BCFDA44FF56AD53FCA7EF5C3B170987A3BD2BEE646152AF22AAF1DD339`.
+
+T6 não está aprovado. O adaptador instalado, chamado diretamente com o evento
+`PreToolUse`, devolveu `permissionDecision: deny` para `git add "-A"`.
+Na sessão CLI `01a0cdda-425d-78c2-b710-6fb464074454`, `/hooks` mostrou o
+hook instalado, ativo e confiável, matcher `^Bash$` e comando do cache correto,
+mas o executor restrito falhou antes de criar o processo:
+`helper_unknown_error: setup refresh had errors`. A rota externa aprovada
+executou `git add` sem evento de hook. `codex --version` informou
+`codex-cli 0.155.0-alpha.9.2`, enquanto o `session_meta` dessa sessão registrou
+`cli_version 0.151.0`; a contraprova histórica bloqueou no CLI `0.153.4`.
+Essa divergência reforça a hipótese de problema de runtime/dispatch, mas não
+é uma causa comprovada. Nenhum desses resultados é a frase
+`Command blocked by PreToolUse hook`; por isso não contam como contraprova
+do produto. T7 tem export, cache e hashes comprovados, mas a contraprova final
+do host segue pendente. `executar` fica parcial 5/9.
+
+## Histórico 1.23.0 — não aceitar como prova de 1.23.3
+
+Reexecução do procedimento PowerShell acima na versão 1.23.0 (exit `0`):
 
 ```text
 P1: CUMPRIDO — exit 0, marcador presente (3ea7ac429c28)
@@ -82,7 +138,7 @@ P5: CUMPRIDO — exit 0, marcador presente (465244f33ebc)
 TODOS OS PORTOES CUMPRIDOS — 5 portão(ões).
 ```
 
-## Medição local 1.23.0 — 2026-09-22
+### Medição local 1.23.0 — 2026-09-22
 
 Executada no Git Bash iniciado com `bash.exe -lc`, com Node e utilitários Unix
 disponíveis. `TMPDIR` apontou para uma pasta temporária neutra fora de
@@ -2744,7 +2800,7 @@ index_lock=False
 Instalação, projeção e contraprova 1.21.1 estavam completas naquela árvore; são
 histórico não operacional depois da reancoragem 1.23.0.
 
-## Evidência corrente 1.23.0 — merge `fc76be76`
+## Evidência histórica 1.23.0 — merge `fc76be76` (não aceitar para 1.23.3)
 
 O commit candidato medido foi `fc76be76b5f8dd5c3c9dac9016db33098abc5d94`,
 cujo segundo pai é a base `4301a205b9c90a101924cc60fdd2cb7b3bed4bfa`.

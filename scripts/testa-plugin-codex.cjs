@@ -24,11 +24,9 @@ const DOCUMENTOS_DO_FLUXO = new Set([
   'docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md',
 ]);
 
-// Corpos medidos na base 0e27956c14d52bd7efefdd343531ffbbb8811726 (origin/main,
-// versao 1.23.0), antes da normalizacao exclusiva do frontmatter. Reancorados em
-// 2026-09-22: desde a base anterior historica 5cdb90e7 (1.21.1), somente a skill regua
-// mudou entre as quatro normalizadas; os demais corpos permaneceram byte a byte
-// iguais. Esta ancora nao
+// Corpos medidos contra origin/main 9c05ee9a71b79d763a39f24195c580bc2d915752
+// (versao 1.23.3), antes da normalizacao exclusiva do frontmatter. As bases
+// 1.23.1 e 1.23.3 mantiveram os quatro corpos byte a byte. Esta ancora nao
 // descreve o que a entrega escreveu — descreve o que ela NAO tocou, entao o valor
 // certo e sempre o da main, e um vermelho aqui significa ou corpo alterado por
 // engano, ou base velha depois que a main andou.
