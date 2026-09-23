@@ -18,8 +18,10 @@ do teto do script (`--timeout-ms`, default 540000; não aumente): `node "<script
 "<arquivo>"`, onde `<script>` é, nesta ordem: o caminho da linha `Despacho: <caminho>` do
 briefing, se houver; senão `$CLAUDE_PLUGIN_ROOT/scripts/despachar-codex.cjs`;
 senão `scripts/despachar-codex.cjs` na raiz do repositório atual, se existir;
-senão PARE e reporte "despachar-codex.cjs não encontrado"; (3) devolva o stdout
-literal, seguido da linha `comando: ...` que saiu no stderr; exit ≠ 0 é
+senão PARE e reporte "despachar-codex.cjs não encontrado"; (3) devolva a linha
+`comando: ...` que saiu no stderr e, DEPOIS dela, o stdout literal — a última
+linha da sua resposta tem de ser a última do Codex, porque é ela que o hook de
+veredito lê (`VEREDITO: ok|reprovado`); exit ≠ 0 é
 bloqueio, devolvido com o stderr colado. Não reprocesse, não resuma, não
 corrija a saída. Sem a linha `Runtime: codex`, ignore este bloco e siga o método
 abaixo normalmente.
