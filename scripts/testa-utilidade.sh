@@ -5,24 +5,45 @@
 # Uso: bash scripts/testa-utilidade.sh
 #
 # O que esta bateria prova, nesta ordem:
-#   1. Extrator (Tarefa 1): contra um TRANSCRITO REAL desta máquina, `utilidade
+#   1. Extrator (Tarefa 1): contra o transcrito sintético versionado, `utilidade
 #      --extrair` devolve o mesmo número de servidas que uma contagem
 #      independente (outra leitura do arquivo, sem chamar o módulo sob
 #      teste); e a prosa do assistente que ecoa a injeção nunca entra no texto.
-#   2. Pontuação (Tarefa 2): contra uma CÓPIA do rainforest.db real + o mesmo
-#      transcrito real, `pontuarSessao` grava as servidas e o contrafactual,
-#      idempotente, sem coluna de texto de sessão em `uso_memoria`; e um termo
-#      comum ao corpus (frequência de documento alta) não pontua sozinho.
+#   2. Pontuação (Tarefa 2): contra um banco sintético (montado a partir de
+#      `scripts/esquema-memoria.sql`) + o mesmo transcrito sintético,
+#      `pontuarSessao` grava as servidas e o contrafactual, idempotente, sem
+#      coluna de texto de sessão em `uso_memoria`; e um termo comum ao corpus
+#      (frequência de documento alta) não pontua sozinho.
 #   3. Manutenção (Tarefa 3): `manutencao` pontua as sessões pendentes da
 #      `marca_dagua`, e transcrito apagado não derruba reconciliar/consolidar.
 #   4. Relatório (Tarefa 4): a régua D9 liga com 1/3, não liga com 1/4, e lista
 #      as não-servidas que motivaram a decisão só quando há perda.
+#   6-11. Emendas: reconciliação que substitui uma servida ainda casa por id;
+#      teto por passada e log de servidas sem id; denominador da régua só
+#      conta sessão com servida; servida sem id nunca "vaza" para o
+#      contrafactual (checada com cwd real subindo até o `.git` do próprio
+#      repositório, e com rótulo forçado); sessão que falha é marcada sem
+#      travar a fila; banco ocupado adia a sessão em vez de marcá-la.
 #
-# Hermética por padrão (mktemp -d + RFM_ROOT) — SALVO as seções 1a e 2a, que
-# leem CÓPIAS do transcrito real e do rainforest.db real desta máquina (nunca
-# escrevem neles) porque o próprio "pronto quando" do plano exige medir
-# contra dado real, não sintético. Se a máquina não tiver banco/transcrito
-# reais, a bateria REPORTA a ausência e conta como falha — não finge sucesso.
+# HERMÉTICA de propósito (Tarefa 13, Emenda 4 — CI do PR #326 vermelha: o
+# runner do GitHub não tem banco nem transcrito reais desta máquina, e
+# `.github/workflows/baterias.yml` proíbe plantar dado sintético fora da
+# bateria). Toda seção usa:
+#   - o banco: montado do zero em cada caixa (`mktemp -d`) a partir de
+#     `scripts/esquema-memoria.sql` (via `criarSchema`, nunca DDL duplicado
+#     aqui), populado com o corpus sintético de
+#     `scripts/fixtures/utilidade/gerar-banco.cjs --popular`;
+#   - o transcrito: o fixture versionado
+#     `scripts/fixtures/utilidade/transcrito-sessao.jsonl`, no formato real do
+#     harness (attachment de SessionStart, prompt de usuário, tool_use,
+#     tool_result, prosa do assistente), conteúdo inteiramente sintético.
+# `gerar-banco.cjs` é a ÚNICA fonte das observações: o fixture .jsonl foi
+# gerado a partir dele (`node scripts/fixtures/utilidade/gerar-banco.cjs
+# --emitir-transcrito scripts/fixtures/utilidade/transcrito-sessao.jsonl`) —
+# se o corpus mudar, regenere o fixture com o mesmo comando antes de commitar.
+# A única seção que NÃO usa esse fixture é a primeira metade da Tarefa 9: ela
+# testa a subida real até um `.git` de verdade, e usa o próprio checkout deste
+# repositório como cwd — nunca um dado externo à máquina que roda a bateria.
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -34,6 +55,8 @@ SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # medido nesta bateria antes deste comentário existir.
 SRC_WIN="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
 
+FIXTURE="$SRC/scripts/fixtures/utilidade/transcrito-sessao.jsonl"
+
 SANDBOXES=()
 novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
 cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done; }
@@ -42,29 +65,53 @@ trap cleanup EXIT
 MEMORIA="node $SRC/scripts/memoria.cjs"
 ok=0; falhou=0
 
+if [ ! -f "$FIXTURE" ]; then
+  echo "FALHA fixture ausente: $FIXTURE"
+  echo "== resultado: 0 ok, 1 falha(s) =="
+  exit 1
+fi
+
+# Dublê de chamada de LLM — reconciliar/consolidar (chamados por `manutencao`
+# antes do passo de utilidade) nunca podem spawnar o `claude` real numa
+# bateria. Usado por toda seção que roda `manutencao`.
+duble_llm() {
+  local dir
+  dir="$(novo_sandbox)"
+  cat > "$dir/dubleLLM.cjs" <<'EOF'
+async function chamarLLM(texto) {
+  return '{"acao":"store","alvo_id":null}';
+}
+module.exports = { chamarLLM };
+EOF
+  echo "$dir"
+}
+
+# Monta uma caixa hermética completa: banco (schema + corpus sintético de
+# gerar-banco.cjs) e uma cópia do transcrito fixture. Define CAIXA_PREP e
+# CAIXA_PREP_WIN (convenção "variável global" — o mesmo estilo que o resto
+# desta bateria já usa para CAIXA1, CAIXA2, ...).
+preparar_caixa_utilidade() {
+  local caixa caixa_win
+  caixa="$(novo_sandbox)"
+  caixa_win="$(cygpath -m "$caixa" 2>/dev/null || printf '%s' "$caixa")"
+  RFM_ROOT="$caixa" $MEMORIA iniciar > /dev/null 2>&1
+  RFM_ROOT="$caixa" node --no-warnings "$SRC/scripts/fixtures/utilidade/gerar-banco.cjs" --popular > /dev/null
+  cp "$FIXTURE" "$caixa/transcrito.jsonl"
+  CAIXA_PREP="$caixa"
+  CAIXA_PREP_WIN="$caixa_win"
+}
+
 echo "== Tarefa 1: extrator do transcrito (servidas/texto) =="
 
-# --- 1a. transcrito real desta máquina ---
-TRANSCRITO_REAL=""
-for f in $(ls -t "$HOME/.claude-personal/projects/C--Projetos-rainforest-mind/"*.jsonl 2>/dev/null); do
-  if grep -q "corpus residentes" "$f" 2>/dev/null; then
-    TRANSCRITO_REAL="$f"
-    break
-  fi
-done
+# --- 1a. fixture versionado: contagem de servidas bate com contagem independente ---
+CAIXA1="$(novo_sandbox)"
+cp "$FIXTURE" "$CAIXA1/transcrito.jsonl"
 
-if [ -z "$TRANSCRITO_REAL" ]; then
-  falhou=$((falhou+1))
-  echo "  FALHA nao achei transcrito real com 'corpus residentes' em ~/.claude-personal/projects/C--Projetos-rainforest-mind/"
-else
-  CAIXA1="$(novo_sandbox)"
-  cp "$TRANSCRITO_REAL" "$CAIXA1/transcrito.jsonl"
+SAIDA_EXTRAIR=$($MEMORIA utilidade --extrair "$CAIXA1/transcrito.jsonl" 2>&1)
+echo "  comando: node scripts/memoria.cjs utilidade --extrair <fixture versionado>"
+echo "  saida: $SAIDA_EXTRAIR"
 
-  SAIDA_EXTRAIR=$($MEMORIA utilidade --extrair "$CAIXA1/transcrito.jsonl" 2>&1)
-  echo "  comando: node scripts/memoria.cjs utilidade --extrair <transcrito real copiado>"
-  echo "  saida: $SAIDA_EXTRAIR"
-
-  cat > "$CAIXA1/contagem-independente.cjs" <<'EOF'
+cat > "$CAIXA1/contagem-independente.cjs" <<'EOF'
 // Contagem INDEPENDENTE das servidas — releitura do arquivo sem chamar
 // scripts/lib/utilidade.cjs, para provar que o extrator não está apenas
 // concordando consigo mesmo.
@@ -90,77 +137,17 @@ for (const l of linhas) {
 }
 process.stdout.write(String(total));
 EOF
-  CONTAGEM_INDEPENDENTE=$(node --no-warnings "$CAIXA1/contagem-independente.cjs" "$CAIXA1/transcrito.jsonl")
-  N_EXTRAIDO=$(printf '%s' "$SAIDA_EXTRAIR" | node --no-warnings -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{process.stdout.write(String(JSON.parse(s).servidas))}catch(e){process.stdout.write('ERRO')}})")
+CONTAGEM_INDEPENDENTE=$(node --no-warnings "$CAIXA1/contagem-independente.cjs" "$CAIXA1/transcrito.jsonl")
+N_EXTRAIDO=$(printf '%s' "$SAIDA_EXTRAIR" | node --no-warnings -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{process.stdout.write(String(JSON.parse(s).servidas))}catch(e){process.stdout.write('ERRO')}})")
 
-  if [ "$N_EXTRAIDO" = "$CONTAGEM_INDEPENDENTE" ] && [ "$N_EXTRAIDO" != "ERRO" ]; then
-    ok=$((ok+1)); echo "  ok   servidas do transcrito real = $N_EXTRAIDO (contagem independente = $CONTAGEM_INDEPENDENTE)"
-  else
-    falhou=$((falhou+1)); echo "  FALHA servidas do transcrito real = $N_EXTRAIDO, contagem independente = $CONTAGEM_INDEPENDENTE"
-  fi
+if [ "$N_EXTRAIDO" = "$CONTAGEM_INDEPENDENTE" ] && [ "$N_EXTRAIDO" != "ERRO" ] && [ "$N_EXTRAIDO" != "0" ]; then
+  ok=$((ok+1)); echo "  ok   servidas do transcrito real = $N_EXTRAIDO (contagem independente = $CONTAGEM_INDEPENDENTE)"
+else
+  falhou=$((falhou+1)); echo "  FALHA servidas do transcrito real = $N_EXTRAIDO, contagem independente = $CONTAGEM_INDEPENDENTE"
 fi
 
-# --- 1b. fixture da mutação: prosa do assistente que ecoa a injecao nao entra no texto ---
-CAIXA2="$(novo_sandbox)"
-cat > "$CAIXA2/fixture-prosa.cjs" <<'EOF'
-// Fixture da Tarefa 1 (mutacao): transcrito sintético com um attachment de
-// SessionStart (2 servidas), um prompt do usuário, uma prosa do assistente
-// (deve ficar de FORA do texto) e um tool_use (deve ENTRAR no texto).
-const fs = require('fs');
-const destino = process.argv[2];
-
-const additionalContext = [
-  '## Memória (corpus residentes)',
-  '[2026-01-01 (proj)] titulo um — sub um',
-  '[2026-01-02 (proj)] titulo dois — sub dois',
-  '',
-  'mais: node scripts/memoria.cjs buscar --texto "<termo>"',
-].join('\n');
-
-const linhas = [];
-linhas.push(JSON.stringify({
-  type: 'attachment',
-  cwd: 'C:\\Projetos\\fixture-proj',
-  attachment: {
-    hookEvent: 'SessionStart',
-    stdout: JSON.stringify({ hookSpecificOutput: { additionalContext } }),
-  },
-}));
-linhas.push(JSON.stringify({
-  type: 'user',
-  cwd: 'C:\\Projetos\\fixture-proj',
-  message: { role: 'user', content: 'prompt do usuario com o termo MARCADORPROMPTUNICO' },
-}));
-linhas.push(JSON.stringify({
-  type: 'assistant',
-  cwd: 'C:\\Projetos\\fixture-proj',
-  message: {
-    role: 'assistant',
-    content: [{ type: 'text', text: 'prosa do assistente com o termo MARCADORPROSAUNICO que ecoa a injecao' }],
-  },
-}));
-linhas.push(JSON.stringify({
-  type: 'assistant',
-  cwd: 'C:\\Projetos\\fixture-proj',
-  message: {
-    role: 'assistant',
-    content: [{ type: 'tool_use', id: 't1', name: 'Bash', input: { command: 'echo MARCADORFERRAMENTAUNICO' } }],
-  },
-}));
-linhas.push(JSON.stringify({
-  type: 'user',
-  cwd: 'C:\\Projetos\\fixture-proj',
-  message: {
-    role: 'user',
-    content: [{ type: 'tool_result', tool_use_id: 't1', content: 'MARCADORRESULTADOUNICO' }],
-  },
-}));
-
-fs.writeFileSync(destino, linhas.join('\n') + '\n');
-EOF
-node --no-warnings "$CAIXA2/fixture-prosa.cjs" "$CAIXA2/transcrito.jsonl"
-
-cat > "$CAIXA2/checar-fixture.cjs" <<EOF
+# --- 1b. mesma fixture: prosa do assistente que ecoa a injecao nao entra no texto ---
+cat > "$CAIXA1/checar-fixture.cjs" <<EOF
 const { extrairSessao } = require('$SRC_WIN/scripts/lib/utilidade.cjs');
 const r = extrairSessao(process.argv[2]);
 const temPrompt = r.texto.includes('MARCADORPROMPTUNICO');
@@ -169,10 +156,10 @@ const temProsa = r.texto.includes('MARCADORPROSAUNICO');
 const temResultado = r.texto.includes('MARCADORRESULTADOUNICO');
 process.stdout.write(JSON.stringify({ servidas: r.servidas.length, temPrompt, temFerramenta, temProsa, temResultado }));
 EOF
-RESULTADO_FIXTURE=$(node --no-warnings "$CAIXA2/checar-fixture.cjs" "$CAIXA2/transcrito.jsonl")
-echo "  comando: node -e \"extrairSessao(<fixture>)\" (secao \"prosa do assistente que ecoa a injecao nao entra no texto\")"
+RESULTADO_FIXTURE=$(node --no-warnings "$CAIXA1/checar-fixture.cjs" "$CAIXA1/transcrito.jsonl")
+echo "  comando: node -e \"extrairSessao(<fixture versionado>)\" (secao \"prosa do assistente que ecoa a injecao nao entra no texto\")"
 echo "  saida: $RESULTADO_FIXTURE"
-if echo "$RESULTADO_FIXTURE" | grep -q '"servidas":2' \
+if echo "$RESULTADO_FIXTURE" | grep -q '"servidas":5' \
   && echo "$RESULTADO_FIXTURE" | grep -q '"temPrompt":true' \
   && echo "$RESULTADO_FIXTURE" | grep -q '"temFerramenta":true' \
   && echo "$RESULTADO_FIXTURE" | grep -q '"temProsa":false' \
@@ -185,26 +172,19 @@ fi
 echo
 echo "== Tarefa 2: pontuacao (nota crua, contrafactual, idempotencia) =="
 
-# --- 2a/2b. banco real (copia) + transcrito real ---
-if [ -z "$TRANSCRITO_REAL" ]; then
-  falhou=$((falhou+1)); echo "  FALHA sem transcrito real, pulando 2a/2b"
-elif [ ! -f "$HOME/.rainforest/rainforest.db" ]; then
-  falhou=$((falhou+1)); echo "  FALHA nao achei $HOME/.rainforest/rainforest.db (banco real) para copiar"
-else
-  CAIXA3="$(novo_sandbox)"
-  cp "$HOME/.rainforest/rainforest.db" "$CAIXA3/rainforest.db"
-  cp "$TRANSCRITO_REAL" "$CAIXA3/transcrito.jsonl"
-  CAIXA3_WIN="$(cygpath -m "$CAIXA3" 2>/dev/null || printf '%s' "$CAIXA3")"
+# --- 2a/2b. banco sintetico (esquema-memoria.sql + corpus de gerar-banco.cjs) + fixture ---
+preparar_caixa_utilidade
+CAIXA3="$CAIXA_PREP"
+CAIXA3_WIN="$CAIXA_PREP_WIN"
 
-  cat > "$CAIXA3/pontuar-real.cjs" <<EOF
+cat > "$CAIXA3/pontuar-real.cjs" <<EOF
 process.env.RFM_ROOT = process.argv[2];
 const caminhoTranscrito = process.argv[3];
-const { abrirBanco, criarSchema, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { abrirBanco, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
 const { pontuarSessao } = require('$SRC_WIN/scripts/lib/utilidade.cjs');
 
 const { caminhoDb } = resolverCaminhos();
 const conexao = abrirBanco(caminhoDb);
-criarSchema(conexao);
 
 const r1 = pontuarSessao(conexao, 'sessao-bateria-utilidade', caminhoTranscrito);
 const servidasRow = conexao.prepare("SELECT COUNT(*) c FROM uso_memoria WHERE sessao = ? AND servida = 1").get('sessao-bateria-utilidade');
@@ -229,30 +209,29 @@ process.stdout.write(JSON.stringify({
   colunas,
 }));
 EOF
-  RESULTADO_PONTUACAO=$(node --no-warnings "$CAIXA3/pontuar-real.cjs" "$CAIXA3_WIN" "$CAIXA3_WIN/transcrito.jsonl" 2>&1)
-  echo "  comando: RFM_ROOT=<copia> node -e \"pontuarSessao(conexao, sessao, <transcrito real copiado>)\""
-  echo "  saida: $RESULTADO_PONTUACAO"
+RESULTADO_PONTUACAO=$(node --no-warnings "$CAIXA3/pontuar-real.cjs" "$CAIXA3_WIN" "$CAIXA3_WIN/transcrito.jsonl" 2>&1)
+echo "  comando: RFM_ROOT=<caixa sintetica> node -e \"pontuarSessao(conexao, sessao, <fixture versionado>)\""
+echo "  saida: $RESULTADO_PONTUACAO"
 
-  S_SERVIDAS=$(printf '%s' "$RESULTADO_PONTUACAO" | node --no-warnings -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const o=JSON.parse(s);process.stdout.write(String(o.servidasEsperadasEmUso))}catch(e){process.stdout.write('ERRO')}})")
-  C_CONTRA=$(printf '%s' "$RESULTADO_PONTUACAO" | node --no-warnings -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const o=JSON.parse(s);process.stdout.write(String(o.contrafactualEmUso))}catch(e){process.stdout.write('ERRO')}})")
+S_SERVIDAS=$(printf '%s' "$RESULTADO_PONTUACAO" | node --no-warnings -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const o=JSON.parse(s);process.stdout.write(String(o.servidasEsperadasEmUso))}catch(e){process.stdout.write('ERRO')}})")
+C_CONTRA=$(printf '%s' "$RESULTADO_PONTUACAO" | node --no-warnings -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const o=JSON.parse(s);process.stdout.write(String(o.contrafactualEmUso))}catch(e){process.stdout.write('ERRO')}})")
 
-  if echo "$RESULTADO_PONTUACAO" | grep -q '"foraDeFaixa":0' \
-    && echo "$RESULTADO_PONTUACAO" | grep -q '"idempotenteServida":true' \
-    && echo "$RESULTADO_PONTUACAO" | grep -q '"idempotenteContra":true' \
-    && [ "$S_SERVIDAS" != "ERRO" ] && [ "$C_CONTRA" != "ERRO" ]; then
-    ok=$((ok+1)); echo "  ok   pontuacao real: $S_SERVIDAS servidas + $C_CONTRA contrafactual, idempotente"
-  else
-    falhou=$((falhou+1)); echo "  FALHA pontuacao real nao bateu: $RESULTADO_PONTUACAO"
-  fi
-
-  if echo "$RESULTADO_PONTUACAO" | grep -q '"colunas":\["nota","origem","pontuada_em","ref_id","servida","sessao"\]'; then
-    ok=$((ok+1)); echo "  ok   nenhuma coluna de texto em uso_memoria"
-  else
-    falhou=$((falhou+1)); echo "  FALHA colunas de uso_memoria fora do esperado (D10): $RESULTADO_PONTUACAO"
-  fi
+if echo "$RESULTADO_PONTUACAO" | grep -q '"foraDeFaixa":0' \
+  && echo "$RESULTADO_PONTUACAO" | grep -q '"idempotenteServida":true' \
+  && echo "$RESULTADO_PONTUACAO" | grep -q '"idempotenteContra":true' \
+  && [ "$S_SERVIDAS" != "ERRO" ] && [ "$S_SERVIDAS" != "0" ] && [ "$C_CONTRA" != "ERRO" ] && [ "$C_CONTRA" != "0" ]; then
+  ok=$((ok+1)); echo "  ok   pontuacao real: $S_SERVIDAS servidas + $C_CONTRA contrafactual, idempotente"
+else
+  falhou=$((falhou+1)); echo "  FALHA pontuacao real nao bateu: $RESULTADO_PONTUACAO"
 fi
 
-# --- 2c. fixture da mutacao: termo comum a todo o corpus nao pontua ---
+if echo "$RESULTADO_PONTUACAO" | grep -q '"colunas":\["nota","origem","pontuada_em","ref_id","servida","sessao"\]'; then
+  ok=$((ok+1)); echo "  ok   nenhuma coluna de texto em uso_memoria"
+else
+  falhou=$((falhou+1)); echo "  FALHA colunas de uso_memoria fora do esperado (D10): $RESULTADO_PONTUACAO"
+fi
+
+# --- 2c. fixture da mutacao: termo comum a todo o corpus nao pontua (ja hermetica) ---
 CAIXA4="$(novo_sandbox)"
 CAIXA4_WIN="$(cygpath -m "$CAIXA4" 2>/dev/null || printf '%s' "$CAIXA4")"
 RFM_ROOT="$CAIXA4" $MEMORIA iniciar > /dev/null 2>&1
@@ -295,52 +274,33 @@ fi
 echo
 echo "== Tarefa 3: pontuacao dentro da manutencao, sessoes pendentes =="
 
-if [ -z "$TRANSCRITO_REAL" ] || [ ! -f "$HOME/.rainforest/rainforest.db" ]; then
-  falhou=$((falhou+1)); echo "  FALHA sem transcrito/banco real, pulando Tarefa 3"
-else
-  # Dublê de LLM: reconciliar/consolidar (chamados por `manutencao` ANTES do
-  # passo de utilidade) nunca devem spawnar o `claude` real nesta bateria —
-  # o banco copiado é o real, com centenas de observações pendentes.
-  DUBLE_LLM_DIR="$(novo_sandbox)"
-  cat > "$DUBLE_LLM_DIR/dubleLLM.cjs" <<'EOF'
-async function chamarLLM(texto) {
-  return '{"acao":"store","alvo_id":null}';
-}
-module.exports = { chamarLLM };
-EOF
+DUBLE_LLM_DIR_T3="$(duble_llm)"
 
-  CAIXA5="$(novo_sandbox)"
-  CAIXA5_WIN="$(cygpath -m "$CAIXA5" 2>/dev/null || printf '%s' "$CAIXA5")"
-  cp "$HOME/.rainforest/rainforest.db" "$CAIXA5/rainforest.db"
-  cp "$TRANSCRITO_REAL" "$CAIXA5/transcrito-a.jsonl"
-  cp "$TRANSCRITO_REAL" "$CAIXA5/transcrito-b.jsonl"
+preparar_caixa_utilidade
+CAIXA5="$CAIXA_PREP"
+CAIXA5_WIN="$CAIXA_PREP_WIN"
 
-  cat > "$CAIXA5/marcar.cjs" <<EOF
+cat > "$CAIXA5/marcar.cjs" <<EOF
 process.env.RFM_ROOT = process.argv[2];
-const { abrirBanco, criarSchema, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { resolverCaminhos, abrirBanco } = require('$SRC_WIN/scripts/memoria.cjs');
 const { caminhoDb } = resolverCaminhos();
 const conexao = abrirBanco(caminhoDb);
-criarSchema(conexao);
 const agora = new Date().toISOString();
-// Limpa a marca_dagua HERDADA do banco real copiado — sem isto,
-// pontuarSessoesPendentes tentaria processar dezenas de sessoes reais, e a
-// contagem "2 pontuadas" deste teste nao bateria.
-conexao.exec('DELETE FROM marca_dagua');
 conexao.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)')
   .run('proj-manutencao', 'sessao-manutencao-a', process.argv[3], 100, 100, agora);
 conexao.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)')
-  .run('proj-manutencao', 'sessao-manutencao-b', process.argv[4], 100, 100, agora);
+  .run('proj-manutencao', 'sessao-manutencao-b', process.argv[3], 100, 100, agora);
 conexao.close();
 EOF
-  node --no-warnings "$CAIXA5/marcar.cjs" "$CAIXA5_WIN" "$CAIXA5_WIN/transcrito-a.jsonl" "$CAIXA5_WIN/transcrito-b.jsonl"
+node --no-warnings "$CAIXA5/marcar.cjs" "$CAIXA5_WIN" "$CAIXA5_WIN/transcrito.jsonl"
 
-  RFM_ROOT="$CAIXA5" TESTADOR_CHAMAR_LLM="$DUBLE_LLM_DIR/dubleLLM.cjs" $MEMORIA manutencao > /dev/null 2>&1
-  got_manutencao=$?
-  LOG_MANUTENCAO="$CAIXA5/manutencao.log"
-  echo "  comando: RFM_ROOT=<copia com 2 marcas pendentes> node scripts/memoria.cjs manutencao"
-  echo "  saida (log): $(cat "$LOG_MANUTENCAO" 2>/dev/null | tr '\n' ' | ')"
+RFM_ROOT="$CAIXA5" TESTADOR_CHAMAR_LLM="$DUBLE_LLM_DIR_T3/dubleLLM.cjs" $MEMORIA manutencao > /dev/null 2>&1
+got_manutencao=$?
+LOG_MANUTENCAO="$CAIXA5/manutencao.log"
+echo "  comando: RFM_ROOT=<caixa sintetica com 2 marcas pendentes> node scripts/memoria.cjs manutencao"
+echo "  saida (log): $(cat "$LOG_MANUTENCAO" 2>/dev/null | tr '\n' ' | ')"
 
-  cat > "$CAIXA5/conferir-sessoes.cjs" <<EOF
+cat > "$CAIXA5/conferir-sessoes.cjs" <<EOF
 process.env.RFM_ROOT = process.argv[2];
 const { abrirBancoSomenteLeitura, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
 const { caminhoDb } = resolverCaminhos();
@@ -349,56 +309,55 @@ const linhas = conexao.prepare('SELECT sessao FROM uso_memoria_sessoes WHERE ses
 conexao.close();
 process.stdout.write(String(linhas.length));
 EOF
-  N_MARCADAS=$(node --no-warnings "$CAIXA5/conferir-sessoes.cjs" "$CAIXA5_WIN")
+N_MARCADAS=$(node --no-warnings "$CAIXA5/conferir-sessoes.cjs" "$CAIXA5_WIN")
 
-  if [ "$got_manutencao" = "0" ] && [ "$N_MARCADAS" = "2" ] && grep -q "utilidade: 2 sessao(oes) pontuada(s)" "$LOG_MANUTENCAO"; then
-    ok=$((ok+1)); echo "  ok   manutencao pontua as sessoes pendentes da marca_dagua (2 em uso_memoria_sessoes, log 'utilidade: 2 sessao(oes) pontuada(s)')"
-  else
-    falhou=$((falhou+1)); echo "  FALHA manutencao nao pontuou as 2 pendentes: exit=$got_manutencao marcadas=$N_MARCADAS"
-    echo "         log: $(cat "$LOG_MANUTENCAO" 2>/dev/null)"
-  fi
+if [ "$got_manutencao" = "0" ] && [ "$N_MARCADAS" = "2" ] && grep -q "utilidade: 2 sessao(oes) pontuada(s)" "$LOG_MANUTENCAO"; then
+  ok=$((ok+1)); echo "  ok   manutencao pontua as sessoes pendentes da marca_dagua (2 em uso_memoria_sessoes, log 'utilidade: 2 sessao(oes) pontuada(s)')"
+else
+  falhou=$((falhou+1)); echo "  FALHA manutencao nao pontuou as 2 pendentes: exit=$got_manutencao marcadas=$N_MARCADAS"
+  echo "         log: $(cat "$LOG_MANUTENCAO" 2>/dev/null)"
+fi
 
-  # --- transcrito apagado nao derruba reconciliar/consolidar ---
-  CAIXA6="$(novo_sandbox)"
-  CAIXA6_WIN="$(cygpath -m "$CAIXA6" 2>/dev/null || printf '%s' "$CAIXA6")"
-  cp "$HOME/.rainforest/rainforest.db" "$CAIXA6/rainforest.db"
-  cp "$TRANSCRITO_REAL" "$CAIXA6/transcrito-existe.jsonl"
-  # transcrito-sumiu.jsonl e apontado na marca_dagua mas NUNCA criado.
+# --- transcrito apagado nao derruba reconciliar/consolidar ---
+DUBLE_LLM_DIR_T3B="$(duble_llm)"
 
-  cat > "$CAIXA6/marcar2.cjs" <<EOF
+preparar_caixa_utilidade
+CAIXA6="$CAIXA_PREP"
+CAIXA6_WIN="$CAIXA_PREP_WIN"
+mv "$CAIXA6/transcrito.jsonl" "$CAIXA6/transcrito-existe.jsonl"
+# transcrito-sumiu.jsonl e apontado na marca_dagua mas NUNCA criado.
+
+cat > "$CAIXA6/marcar2.cjs" <<EOF
 process.env.RFM_ROOT = process.argv[2];
-const { abrirBanco, criarSchema, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { abrirBanco, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
 const { caminhoDb } = resolverCaminhos();
 const conexao = abrirBanco(caminhoDb);
-criarSchema(conexao);
 const agora = new Date().toISOString();
-conexao.exec('DELETE FROM marca_dagua');
 conexao.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)')
   .run('proj-manutencao', 'sessao-existe', process.argv[3], 100, 100, agora);
 conexao.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)')
   .run('proj-manutencao', 'sessao-sumiu', process.argv[4], 100, 100, agora);
 conexao.close();
 EOF
-  node --no-warnings "$CAIXA6/marcar2.cjs" "$CAIXA6_WIN" "$CAIXA6_WIN/transcrito-existe.jsonl" "$CAIXA6_WIN/transcrito-sumiu.jsonl"
+node --no-warnings "$CAIXA6/marcar2.cjs" "$CAIXA6_WIN" "$CAIXA6_WIN/transcrito-existe.jsonl" "$CAIXA6_WIN/transcrito-sumiu.jsonl"
 
-  RFM_ROOT="$CAIXA6" TESTADOR_CHAMAR_LLM="$DUBLE_LLM_DIR/dubleLLM.cjs" $MEMORIA manutencao > /dev/null 2>&1
-  got_manutencao2=$?
-  LOG_MANUTENCAO2="$CAIXA6/manutencao.log"
+RFM_ROOT="$CAIXA6" TESTADOR_CHAMAR_LLM="$DUBLE_LLM_DIR_T3B/dubleLLM.cjs" $MEMORIA manutencao > /dev/null 2>&1
+got_manutencao2=$?
+LOG_MANUTENCAO2="$CAIXA6/manutencao.log"
 
-  if [ "$got_manutencao2" = "0" ] \
-    && grep -q "reconciliar: fim" "$LOG_MANUTENCAO2" \
-    && grep -q "consolidar: fim" "$LOG_MANUTENCAO2"; then
-    ok=$((ok+1)); echo "  ok   transcrito apagado nao derruba a manutencao (exit 0, reconciliar/consolidar seguem registrados)"
-  else
-    falhou=$((falhou+1)); echo "  FALHA transcrito apagado derrubou a manutencao: exit=$got_manutencao2"
-    echo "         log: $(cat "$LOG_MANUTENCAO2" 2>/dev/null)"
-  fi
+if [ "$got_manutencao2" = "0" ] \
+  && grep -q "reconciliar: fim" "$LOG_MANUTENCAO2" \
+  && grep -q "consolidar: fim" "$LOG_MANUTENCAO2"; then
+  ok=$((ok+1)); echo "  ok   transcrito apagado nao derruba a manutencao (exit 0, reconciliar/consolidar seguem registrados)"
+else
+  falhou=$((falhou+1)); echo "  FALHA transcrito apagado derrubou a manutencao: exit=$got_manutencao2"
+  echo "         log: $(cat "$LOG_MANUTENCAO2" 2>/dev/null)"
 fi
 
 echo
 echo "== Tarefa 4: relatorio com a regua D9 =="
 
-# --- 4a. LIGA com 1 de 3 ---
+# --- 4a. LIGA com 1 de 3 (ja hermetica: banco proprio, sem depender do fixture) ---
 CAIXA7="$(novo_sandbox)"
 CAIXA7_WIN="$(cygpath -m "$CAIXA7" 2>/dev/null || printf '%s' "$CAIXA7")"
 RFM_ROOT="$CAIXA7" $MEMORIA iniciar > /dev/null 2>&1
@@ -507,33 +466,28 @@ fi
 echo
 echo "== Tarefa 6: servida substituida pela reconciliacao ainda casa com o id =="
 
-if [ -z "$TRANSCRITO_REAL" ] || [ ! -f "$HOME/.rainforest/rainforest.db" ]; then
-  falhou=$((falhou+1)); echo "  FALHA sem transcrito/banco real, pulando Tarefa 6"
-else
-  CAIXA9="$(novo_sandbox)"
-  CAIXA9_WIN="$(cygpath -m "$CAIXA9" 2>/dev/null || printf '%s' "$CAIXA9")"
-  cp "$HOME/.rainforest/rainforest.db" "$CAIXA9/rainforest.db"
-  cp "$TRANSCRITO_REAL" "$CAIXA9/transcrito.jsonl"
+preparar_caixa_utilidade
+CAIXA9="$CAIXA_PREP"
+CAIXA9_WIN="$CAIXA_PREP_WIN"
 
-  cat > "$CAIXA9/fixture-substituida.cjs" <<EOF
+cat > "$CAIXA9/fixture-substituida.cjs" <<EOF
 process.env.RFM_ROOT = process.argv[2];
 const caminhoTranscrito = process.argv[3];
-const { abrirBanco, criarSchema, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { abrirBanco, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
 const { pontuarSessao } = require('$SRC_WIN/scripts/lib/utilidade.cjs');
 
 const { caminhoDb } = resolverCaminhos();
 const conexao = abrirBanco(caminhoDb);
-criarSchema(conexao);
 
 // Passada 1: sem nenhuma marca — descobre um id de observacao servida (o
-// unico jeito de achar um alvo de verdade eh pontuar contra o transcrito real).
+// unico jeito de achar um alvo de verdade eh pontuar contra o fixture).
 const r1 = pontuarSessao(conexao, 'sessao-substituida-sem-marca', caminhoTranscrito);
 const alvo = conexao.prepare(
   "SELECT ref_id FROM uso_memoria WHERE sessao = ? AND servida = 1 AND origem = 'observacao' LIMIT 1"
 ).get('sessao-substituida-sem-marca');
 
 if (!alvo) {
-  process.stdout.write(JSON.stringify({ erro: 'nenhuma observacao servida encontrada no transcrito real (nao da para testar a Tarefa 6)' }));
+  process.stdout.write(JSON.stringify({ erro: 'nenhuma observacao servida encontrada no fixture (nao da para testar a Tarefa 6)' }));
 } else {
   // Marca a observacao servida como substituida pela reconciliacao (D3) —
   // a reconciliacao roda ANTES da pontuacao na mesma passada.
@@ -555,73 +509,59 @@ if (!alvo) {
   }));
 }
 EOF
-  RESULTADO_SUBSTITUIDA=$(node --no-warnings "$CAIXA9/fixture-substituida.cjs" "$CAIXA9_WIN" "$CAIXA9_WIN/transcrito.jsonl" 2>&1)
-  echo "  comando: RFM_ROOT=<copia> node -e \"pontuarSessao(...)\" apos UPDATE observacoes SET substituida_por (secao \"servida substituida pela reconciliacao ainda casa com o id\")"
-  echo "  saida: $RESULTADO_SUBSTITUIDA"
+RESULTADO_SUBSTITUIDA=$(node --no-warnings "$CAIXA9/fixture-substituida.cjs" "$CAIXA9_WIN" "$CAIXA9_WIN/transcrito.jsonl" 2>&1)
+echo "  comando: RFM_ROOT=<caixa sintetica> node -e \"pontuarSessao(...)\" apos UPDATE observacoes SET substituida_por (secao \"servida substituida pela reconciliacao ainda casa com o id\")"
+echo "  saida: $RESULTADO_SUBSTITUIDA"
 
-  if echo "$RESULTADO_SUBSTITUIDA" | grep -q '"aindaServida":1' \
-    && echo "$RESULTADO_SUBSTITUIDA" | node --no-warnings -e "
-      let s='';process.stdin.on('data',d=>s+=d);
-      process.stdin.on('end',()=>{
-        try {
-          const o = JSON.parse(s);
-          process.exit(o.servidasSemIdSemMarca === o.servidasSemIdComMarca ? 0 : 1);
-        } catch (e) { process.exit(1); }
-      });
-    "; then
-    ok=$((ok+1)); echo "  ok   servida substituida pela reconciliacao ainda casa com o id"
-  else
-    falhou=$((falhou+1)); echo "  FALHA servida substituida pela reconciliacao nao casou com o id: $RESULTADO_SUBSTITUIDA"
-  fi
+if echo "$RESULTADO_SUBSTITUIDA" | grep -q '"aindaServida":1' \
+  && echo "$RESULTADO_SUBSTITUIDA" | node --no-warnings -e "
+    let s='';process.stdin.on('data',d=>s+=d);
+    process.stdin.on('end',()=>{
+      try {
+        const o = JSON.parse(s);
+        process.exit(o.servidasSemIdSemMarca === o.servidasSemIdComMarca ? 0 : 1);
+      } catch (e) { process.exit(1); }
+    });
+  "; then
+  ok=$((ok+1)); echo "  ok   servida substituida pela reconciliacao ainda casa com o id"
+else
+  falhou=$((falhou+1)); echo "  FALHA servida substituida pela reconciliacao nao casou com o id: $RESULTADO_SUBSTITUIDA"
 fi
 
 echo
 echo "== Tarefa 7: teto por passada e servidas_sem_id no log =="
 
-if [ -z "$TRANSCRITO_REAL" ] || [ ! -f "$HOME/.rainforest/rainforest.db" ]; then
-  falhou=$((falhou+1)); echo "  FALHA sem transcrito/banco real, pulando Tarefa 7"
-else
-  # Dublê próprio desta seção (nunca depende de variável definida em outra
-  # seção da bateria) — mesmo motivo da Tarefa 3: reconciliar/consolidar não
-  # podem spawnar o `claude` real contra o banco real copiado.
-  DUBLE_LLM_DIR_T7="$(novo_sandbox)"
-  cat > "$DUBLE_LLM_DIR_T7/dubleLLM.cjs" <<'EOF'
-async function chamarLLM(texto) {
-  return '{"acao":"store","alvo_id":null}';
-}
-module.exports = { chamarLLM };
-EOF
+DUBLE_LLM_DIR_T7="$(duble_llm)"
 
-  TETO_PONTUAR_VAL=$(node --no-warnings -e "process.stdout.write(String(require('$SRC_WIN/scripts/lib/utilidade.cjs').TETO_PONTUAR))")
+TETO_PONTUAR_VAL=$(node --no-warnings -e "process.stdout.write(String(require('$SRC_WIN/scripts/lib/utilidade.cjs').TETO_PONTUAR))")
 
-  CAIXA9="$(novo_sandbox)"
-  CAIXA9_WIN="$(cygpath -m "$CAIXA9" 2>/dev/null || printf '%s' "$CAIXA9")"
-  cp "$HOME/.rainforest/rainforest.db" "$CAIXA9/rainforest.db"
-  cp "$TRANSCRITO_REAL" "$CAIXA9/transcrito.jsonl"
+preparar_caixa_utilidade
+CAIXA10="$CAIXA_PREP"
+CAIXA10_WIN="$CAIXA_PREP_WIN"
 
-  cat > "$CAIXA9/marcar-teto.cjs" <<EOF
+cat > "$CAIXA10/marcar-teto.cjs" <<EOF
 process.env.RFM_ROOT = process.argv[2];
-const { abrirBanco, criarSchema, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { abrirBanco, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
 const { TETO_PONTUAR } = require('$SRC_WIN/scripts/lib/utilidade.cjs');
 const { caminhoDb } = resolverCaminhos();
 const conexao = abrirBanco(caminhoDb);
-criarSchema(conexao);
-conexao.exec('DELETE FROM marca_dagua');
 const total = TETO_PONTUAR + 2;
 const insert = conexao.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)');
 for (let i = 0; i < total; i++) {
   // processada_em CRESCENTE — a sessao i eh mais antiga quanto menor i, e
   // pontuarSessoesPendentes ordena por processada_em ASC (as mais antigas
-  // primeiro entram no lote do teto).
+  // primeiro entram no lote do teto). Todas as sessoes reusam o MESMO
+  // arquivo de transcrito (variacao real seria so custo, o teto so olha
+  // quantas sessoes existem, nao o conteudo de cada uma).
   const processadaEm = new Date(Date.now() - (total - i) * 1000).toISOString();
   insert.run('proj-teto', 'sessao-teto-' + String(i).padStart(3, '0'), process.argv[3], 100, 100, processadaEm);
 }
 conexao.close();
 process.stdout.write(String(total));
 EOF
-  TOTAL_MARCADAS=$(node --no-warnings "$CAIXA9/marcar-teto.cjs" "$CAIXA9_WIN" "$CAIXA9_WIN/transcrito.jsonl")
+TOTAL_MARCADAS=$(node --no-warnings "$CAIXA10/marcar-teto.cjs" "$CAIXA10_WIN" "$CAIXA10_WIN/transcrito.jsonl")
 
-  cat > "$CAIXA9/contar-pontuadas.cjs" <<EOF
+cat > "$CAIXA10/contar-pontuadas.cjs" <<EOF
 process.env.RFM_ROOT = process.argv[2];
 const { abrirBancoSomenteLeitura, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
 const { caminhoDb } = resolverCaminhos();
@@ -631,44 +571,43 @@ conexao.close();
 process.stdout.write(String(row.c));
 EOF
 
-  # --- passada 1: deve pontuar exatamente TETO_PONTUAR, deixar 2 pendentes ---
-  RFM_ROOT="$CAIXA9" TESTADOR_CHAMAR_LLM="$DUBLE_LLM_DIR_T7/dubleLLM.cjs" $MEMORIA manutencao > /dev/null 2>&1
-  got_manutencao_teto1=$?
-  LOG_TETO="$CAIXA9/manutencao.log"
-  LINHA_UTILIDADE_T7=$(grep "^.*utilidade: [0-9]" "$LOG_TETO" | tail -1)
-  echo "  comando: RFM_ROOT=<copia com $TOTAL_MARCADAS marcas pendentes (TETO_PONTUAR+2)> node scripts/memoria.cjs manutencao"
-  echo "  saida (linha utilidade do manutencao.log): $LINHA_UTILIDADE_T7"
+# --- passada 1: deve pontuar exatamente TETO_PONTUAR, deixar 2 pendentes ---
+RFM_ROOT="$CAIXA10" TESTADOR_CHAMAR_LLM="$DUBLE_LLM_DIR_T7/dubleLLM.cjs" $MEMORIA manutencao > /dev/null 2>&1
+got_manutencao_teto1=$?
+LOG_TETO="$CAIXA10/manutencao.log"
+LINHA_UTILIDADE_T7=$(grep "^.*utilidade: [0-9]" "$LOG_TETO" | tail -1)
+echo "  comando: RFM_ROOT=<caixa sintetica com $TOTAL_MARCADAS marcas pendentes (TETO_PONTUAR+2)> node scripts/memoria.cjs manutencao"
+echo "  saida (linha utilidade do manutencao.log): $LINHA_UTILIDADE_T7"
 
-  N_PONTUADAS_PASSADA1=$(node --no-warnings "$CAIXA9/contar-pontuadas.cjs" "$CAIXA9_WIN")
+N_PONTUADAS_PASSADA1=$(node --no-warnings "$CAIXA10/contar-pontuadas.cjs" "$CAIXA10_WIN")
 
-  # --- passada 2: deve completar as 2 restantes ---
-  RFM_ROOT="$CAIXA9" TESTADOR_CHAMAR_LLM="$DUBLE_LLM_DIR_T7/dubleLLM.cjs" $MEMORIA manutencao > /dev/null 2>&1
-  N_PONTUADAS_PASSADA2=$(node --no-warnings "$CAIXA9/contar-pontuadas.cjs" "$CAIXA9_WIN")
+# --- passada 2: deve completar as 2 restantes ---
+RFM_ROOT="$CAIXA10" TESTADOR_CHAMAR_LLM="$DUBLE_LLM_DIR_T7/dubleLLM.cjs" $MEMORIA manutencao > /dev/null 2>&1
+N_PONTUADAS_PASSADA2=$(node --no-warnings "$CAIXA10/contar-pontuadas.cjs" "$CAIXA10_WIN")
 
-  if [ "$got_manutencao_teto1" = "0" ] \
-    && [ "$N_PONTUADAS_PASSADA1" = "$TETO_PONTUAR_VAL" ] \
-    && echo "$LINHA_UTILIDADE_T7" | grep -q "2 pendente(s) para a proxima" \
-    && [ "$N_PONTUADAS_PASSADA2" = "$TOTAL_MARCADAS" ]; then
-    ok=$((ok+1)); echo "  ok   passada respeita TETO_PONTUAR e deixa o resto pendente"
-  else
-    falhou=$((falhou+1)); echo "  FALHA passada nao respeitou TETO_PONTUAR: passada1=$N_PONTUADAS_PASSADA1 (esperado $TETO_PONTUAR_VAL), passada2=$N_PONTUADAS_PASSADA2 (esperado $TOTAL_MARCADAS), linha: $LINHA_UTILIDADE_T7"
-  fi
+if [ "$got_manutencao_teto1" = "0" ] \
+  && [ "$N_PONTUADAS_PASSADA1" = "$TETO_PONTUAR_VAL" ] \
+  && echo "$LINHA_UTILIDADE_T7" | grep -q "2 pendente(s) para a proxima" \
+  && [ "$N_PONTUADAS_PASSADA2" = "$TOTAL_MARCADAS" ]; then
+  ok=$((ok+1)); echo "  ok   passada respeita TETO_PONTUAR e deixa o resto pendente"
+else
+  falhou=$((falhou+1)); echo "  FALHA passada nao respeitou TETO_PONTUAR: passada1=$N_PONTUADAS_PASSADA1 (esperado $TETO_PONTUAR_VAL), passada2=$N_PONTUADAS_PASSADA2 (esperado $TOTAL_MARCADAS), linha: $LINHA_UTILIDADE_T7"
+fi
 
-  if echo "$LINHA_UTILIDADE_T7" | grep -Eq "[0-9]+ servida\(s\) sem id"; then
-    ok=$((ok+1)); echo "  ok   manutencao.log registra servidas sem id"
-  else
-    falhou=$((falhou+1)); echo "  FALHA manutencao.log nao registrou servidas sem id: $LINHA_UTILIDADE_T7"
-  fi
+if echo "$LINHA_UTILIDADE_T7" | grep -Eq "[0-9]+ servida\(s\) sem id"; then
+  ok=$((ok+1)); echo "  ok   manutencao.log registra servidas sem id"
+else
+  falhou=$((falhou+1)); echo "  FALHA manutencao.log nao registrou servidas sem id: $LINHA_UTILIDADE_T7"
 fi
 
 echo
 echo "== Tarefa 8: denominador da regua so conta sessao com servida =="
 
-CAIXA10="$(novo_sandbox)"
-CAIXA10_WIN="$(cygpath -m "$CAIXA10" 2>/dev/null || printf '%s' "$CAIXA10")"
-RFM_ROOT="$CAIXA10" $MEMORIA iniciar > /dev/null 2>&1
+CAIXA11="$(novo_sandbox)"
+CAIXA11_WIN="$(cygpath -m "$CAIXA11" 2>/dev/null || printf '%s' "$CAIXA11")"
+RFM_ROOT="$CAIXA11" $MEMORIA iniciar > /dev/null 2>&1
 
-cat > "$CAIXA10/popular-sem-servida.cjs" <<EOF
+cat > "$CAIXA11/popular-sem-servida.cjs" <<EOF
 process.env.RFM_ROOT = process.argv[2];
 const { abrirBanco, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
 const { caminhoDb } = resolverCaminhos();
@@ -708,9 +647,9 @@ sessaoSemServida('sessao8-sem-c');
 
 conexao.close();
 EOF
-node --no-warnings "$CAIXA10/popular-sem-servida.cjs" "$CAIXA10_WIN"
+node --no-warnings "$CAIXA11/popular-sem-servida.cjs" "$CAIXA11_WIN"
 
-SAIDA_TAREFA8=$(RFM_ROOT="$CAIXA10" $MEMORIA utilidade --relatorio 2>&1)
+SAIDA_TAREFA8=$(RFM_ROOT="$CAIXA11" $MEMORIA utilidade --relatorio 2>&1)
 echo "  comando: RFM_ROOT=<caixa 3 com servida + 3 sem servida> node scripts/memoria.cjs utilidade --relatorio"
 echo "  saida:"
 echo "$SAIDA_TAREFA8" | sed 's/^/    /'
@@ -725,94 +664,120 @@ fi
 echo
 echo "== Tarefa 9: servida sem id nunca vira nao-servida no contrafactual =="
 
-if [ -z "$TRANSCRITO_REAL" ] || [ ! -f "$HOME/.rainforest/rainforest.db" ]; then
-  falhou=$((falhou+1)); echo "  FALHA sem transcrito/banco real, pulando Tarefa 9"
-else
-  CAIXA11="$(novo_sandbox)"
-  CAIXA11_WIN="$(cygpath -m "$CAIXA11" 2>/dev/null || printf '%s' "$CAIXA11")"
-  cp "$HOME/.rainforest/rainforest.db" "$CAIXA11/rainforest.db"
-  cp "$TRANSCRITO_REAL" "$CAIXA11/transcrito-original.jsonl"
+# --- 9a. cwd em subpasta casa as mesmas servidas — usa o proprio checkout
+# deste repositorio como cwd (tem .git de verdade), NUNCA o fixture (que usa
+# cwd sintetico de proposito, ver comentario de gerar-banco.cjs) — e a UNICA
+# forma de provar que lerProjetoDoTranscrito sobe ate um .git de verdade sem
+# depender de onde o repositorio esta checked out. ---
+CAIXA12="$(novo_sandbox)"
+CAIXA12_WIN="$(cygpath -m "$CAIXA12" 2>/dev/null || printf '%s' "$CAIXA12")"
+RFM_ROOT="$CAIXA12" $MEMORIA iniciar > /dev/null 2>&1
 
-  # Prepara duas variantes do transcrito real: uma com o cwd de TODAS as
-  # entradas trocado por uma subpasta do mesmo repositorio (prova a Tarefa 9
-  # parte 1: lerProjetoDoTranscrito sobe ate o .git mais proximo, igual a
-  # encontrarGit), outra com um cwd totalmente bogus, sem .git em nenhum
-  # ancestral (prova a Tarefa 9 parte 2: forca "servida sem id").
-  cat > "$CAIXA11/preparar-t9.cjs" <<'EOF'
+cat > "$CAIXA12/fixture-t9-git.cjs" <<EOF
+process.env.RFM_ROOT = process.argv[2];
 const fs = require('fs');
-const origem = process.argv[2];
-const destinoSubpasta = process.argv[3];
-const destinoBogus = process.argv[4];
+const SRC_WIN_ARG = process.argv[3];
+const { abrirBanco, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { lerProjetoDoTranscrito, pontuarSessao } = require('$SRC_WIN/scripts/lib/utilidade.cjs');
+const { formatarObservacao } = require('$SRC_WIN/hooks/lib/memoria-sessao.cjs');
 
-const conteudo = fs.readFileSync(origem, 'utf8');
-const linhas = conteudo.split('\n');
+const { caminhoDb } = resolverCaminhos();
+const conexao = abrirBanco(caminhoDb);
 
-let cwdOriginal = null;
-for (const l of linhas) {
-  if (!l.trim()) continue;
-  let o;
-  try { o = JSON.parse(l); } catch (e) { continue; }
-  if (o.cwd) { cwdOriginal = String(o.cwd); break; }
+// Descobre harnessKey/curto para a raiz do repo usando a MESMA funcao sob
+// teste, aplicada a um transcrito minimo cujo unico papel e carregar o cwd.
+const tmpCwdOnly = process.argv[4];
+fs.writeFileSync(tmpCwdOnly, JSON.stringify({ cwd: SRC_WIN_ARG }) + '\n');
+const { harnessKey, curto } = lerProjetoDoTranscrito(tmpCwdOnly);
+
+const criadaEm = '2026-01-09T00:00:00.000Z';
+const conteudo = 'titulo t9 dinamico\nsubtitulo t9 dinamico termoclimbt9unico';
+conexao.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?,?,?,?)')
+  .run(harnessKey, conteudo, criadaEm, 'fx-t9-dinamica');
+
+const apelidos = harnessKey && curto && harnessKey !== curto ? { [harnessKey]: curto } : null;
+const linhaServida = formatarObservacao({ conteudo, projeto: harnessKey, criada_em: criadaEm }, apelidos);
+
+const additionalContext = [
+  '## Memória (corpus residentes)',
+  linhaServida,
+  '',
+  'mais: node scripts/memoria.cjs buscar --texto "<termo>"',
+].join('\n');
+
+function transcrito(cwd) {
+  return [
+    JSON.stringify({ cwd, type: 'attachment', attachment: { hookEvent: 'SessionStart', stdout: JSON.stringify({ hookSpecificOutput: { additionalContext } }) } }),
+    JSON.stringify({ cwd, type: 'user', message: { role: 'user', content: 'termoclimbt9unico' } }),
+  ].join('\n') + '\n';
 }
-if (!cwdOriginal) {
-  process.stdout.write(JSON.stringify({ erro: 'transcrito real sem cwd' }));
-  process.exit(0);
-}
 
-const sep = cwdOriginal.includes('\\') ? '\\' : '/';
-const cwdSubpasta = cwdOriginal.replace(/[\\/]+$/, '') + sep + 'scripts';
-const cwdBogus = sep === '\\'
-  ? 'C:\\Projetos\\projeto-que-nao-existe-forcado-t9'
-  : '/projeto-que-nao-existe-forcado-t9';
+const caminhoRaiz = process.argv[5];
+const caminhoSubpasta = process.argv[6];
+fs.writeFileSync(caminhoRaiz, transcrito(SRC_WIN_ARG));
+fs.writeFileSync(caminhoSubpasta, transcrito(SRC_WIN_ARG + '/scripts'));
 
-function rewrite(novoCwd, destino) {
-  const out = linhas.map((l) => {
-    if (!l.trim()) return l;
-    let o;
-    try { o = JSON.parse(l); } catch (e) { return l; }
-    if (o.cwd) o.cwd = novoCwd;
-    return JSON.stringify(o);
-  });
-  fs.writeFileSync(destino, out.join('\n') + '\n');
-}
+const r1 = pontuarSessao(conexao, 'sessao-t9-raiz', caminhoRaiz);
+const idsRaiz = conexao.prepare("SELECT ref_id FROM uso_memoria WHERE sessao = 'sessao-t9-raiz' AND servida = 1 AND origem = 'observacao' ORDER BY ref_id").all().map((r) => r.ref_id);
+const r2 = pontuarSessao(conexao, 'sessao-t9-subpasta', caminhoSubpasta);
+const idsSubpasta = conexao.prepare("SELECT ref_id FROM uso_memoria WHERE sessao = 'sessao-t9-subpasta' AND servida = 1 AND origem = 'observacao' ORDER BY ref_id").all().map((r) => r.ref_id);
 
-rewrite(cwdSubpasta, destinoSubpasta);
-rewrite(cwdBogus, destinoBogus);
-
-process.stdout.write(JSON.stringify({ cwdOriginal, cwdSubpasta, cwdBogus }));
+conexao.close();
+process.stdout.write(JSON.stringify({
+  servidasComIdRaiz: r1.servidasComId,
+  servidasComIdSubpasta: r2.servidasComId,
+  idsIguais: JSON.stringify(idsRaiz) === JSON.stringify(idsSubpasta) && idsRaiz.length > 0,
+}));
 EOF
-  PREP_T9=$(node --no-warnings "$CAIXA11/preparar-t9.cjs" "$CAIXA11/transcrito-original.jsonl" "$CAIXA11/transcrito-subpasta.jsonl" "$CAIXA11/transcrito-bogus.jsonl")
-  echo "  preparo (cwd original/subpasta/bogus): $PREP_T9"
+RESULTADO_T9_GIT=$(node --no-warnings "$CAIXA12/fixture-t9-git.cjs" "$CAIXA12_WIN" "$SRC_WIN" "$CAIXA12_WIN/cwd-only.jsonl" "$CAIXA12_WIN/raiz.jsonl" "$CAIXA12_WIN/subpasta.jsonl" 2>&1)
+echo "  comando: node -e \"pontuarSessao com cwd = raiz deste checkout e cwd = <raiz>/scripts (subida real ate o .git)\" (secao \"cwd em subpasta casa as mesmas servidas\")"
+echo "  saida: $RESULTADO_T9_GIT"
 
-  cat > "$CAIXA11/fixture-t9.cjs" <<EOF
+if echo "$RESULTADO_T9_GIT" | grep -q '"idsIguais":true' \
+  && echo "$RESULTADO_T9_GIT" | grep -q '"servidasComIdRaiz":1' \
+  && echo "$RESULTADO_T9_GIT" | grep -q '"servidasComIdSubpasta":1'; then
+  ok=$((ok+1)); echo "  ok   cwd em subpasta casa as mesmas servidas"
+else
+  falhou=$((falhou+1)); echo "  FALHA cwd em subpasta nao casou as mesmas servidas: $RESULTADO_T9_GIT"
+fi
+
+# --- 9b. servida sem id nao reaparece como nao-servida — rotulo de projeto
+# forcado (bogus), usando o fixture versionado com o cwd trocado. ---
+preparar_caixa_utilidade
+CAIXA13="$CAIXA_PREP"
+CAIXA13_WIN="$CAIXA_PREP_WIN"
+
+cat > "$CAIXA13/preparar-bogus.cjs" <<EOF
+const fs = require('fs');
+const { CWD_FIXTURE_BOGUS } = require('$SRC_WIN/scripts/fixtures/utilidade/gerar-banco.cjs');
+const linhas = fs.readFileSync(process.argv[2], 'utf8').split('\n').filter(Boolean);
+const out = linhas.map((l) => { const o = JSON.parse(l); o.cwd = CWD_FIXTURE_BOGUS; return JSON.stringify(o); });
+fs.writeFileSync(process.argv[3], out.join('\n') + '\n');
+EOF
+node --no-warnings "$CAIXA13/preparar-bogus.cjs" "$CAIXA13_WIN/transcrito.jsonl" "$CAIXA13_WIN/transcrito-bogus.jsonl"
+
+cat > "$CAIXA13/fixture-t9.cjs" <<EOF
 process.env.RFM_ROOT = process.argv[2];
 const caminhoOriginal = process.argv[3];
-const caminhoSubpasta = process.argv[4];
-const caminhoBogus = process.argv[5];
-const { abrirBanco, criarSchema, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const caminhoBogus = process.argv[4];
+const { abrirBanco, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
 const { pontuarSessao } = require('$SRC_WIN/scripts/lib/utilidade.cjs');
 
 const { caminhoDb } = resolverCaminhos();
 const conexao = abrirBanco(caminhoDb);
-criarSchema(conexao);
 
-function idsServidos(sessao) {
-  return conexao.prepare(
-    "SELECT ref_id FROM uso_memoria WHERE sessao = ? AND servida = 1 AND origem = 'observacao' ORDER BY ref_id"
-  ).all(sessao).map((r) => r.ref_id);
-}
-
-// 1) cwd original — baseline.
+// 1) cwd original (do fixture) — baseline: todas as 5 servidas casam por id.
 const r1 = pontuarSessao(conexao, 'sessao-t9-original', caminhoOriginal);
-const idsOriginal = idsServidos('sessao-t9-original');
+const idsOriginal = conexao.prepare(
+  "SELECT ref_id FROM uso_memoria WHERE sessao = 'sessao-t9-original' AND servida = 1 AND origem = 'observacao' ORDER BY ref_id"
+).all().map((r) => r.ref_id);
 
-// 2) cwd numa subpasta do MESMO repositorio — tem que casar as MESMAS servidas.
-const r2 = pontuarSessao(conexao, 'sessao-t9-subpasta', caminhoSubpasta);
-const idsSubpasta = idsServidos('sessao-t9-subpasta');
-
-// 3) rotulo de projeto bogus (sem .git ancestral) — acharAlvo nao casa por id
-// nenhuma servida; a defesa por conteudo (semPrefixo) tem que impedir que
-// essas MESMAS observacoes reapareçam como servida=0 (contrafactual).
+// 2) rotulo de projeto bogus (sem .git ancestral) — acharAlvo so acha por id
+// a servida gravada com o rotulo curto direto ('outro-proj'), que nenhum
+// apelido traduz; as demais (gravadas com o harnessKey do projeto proprio)
+// ficam "servida sem id". A defesa por conteudo (semPrefixo) tem que impedir
+// que as 4 originais reapareçam como servida=0 (contrafactual) sob o rotulo
+// bogus.
 const r3 = pontuarSessao(conexao, 'sessao-t9-bogus', caminhoBogus);
 const idsOriginalSql = idsOriginal.length ? idsOriginal.join(',') : '-1';
 const vazamento = conexao.prepare(
@@ -822,41 +787,30 @@ const vazamento = conexao.prepare(
 conexao.close();
 process.stdout.write(JSON.stringify({
   servidasComIdOriginal: r1.servidasComId,
-  servidasComIdSubpasta: r2.servidasComId,
-  idsIguais: JSON.stringify(idsOriginal) === JSON.stringify(idsSubpasta),
   servidasComIdBogus: r3.servidasComId,
   servidasSemIdBogus: r3.servidasSemId,
   vazamento,
 }));
 EOF
-  RESULTADO_T9=$(node --no-warnings "$CAIXA11/fixture-t9.cjs" "$CAIXA11_WIN" "$CAIXA11_WIN/transcrito-original.jsonl" "$CAIXA11_WIN/transcrito-subpasta.jsonl" "$CAIXA11_WIN/transcrito-bogus.jsonl" 2>&1)
-  echo "  comando: RFM_ROOT=<copia> node -e \"pontuarSessao com cwd original, subpasta e rotulo bogus\" (secao \"servida sem id nao reaparece como nao-servida\")"
-  echo "  saida: $RESULTADO_T9"
+RESULTADO_T9=$(node --no-warnings "$CAIXA13/fixture-t9.cjs" "$CAIXA13_WIN" "$CAIXA13_WIN/transcrito.jsonl" "$CAIXA13_WIN/transcrito-bogus.jsonl" 2>&1)
+echo "  comando: RFM_ROOT=<caixa sintetica> node -e \"pontuarSessao com cwd original e rotulo bogus\" (secao \"servida sem id nao reaparece como nao-servida\")"
+echo "  saida: $RESULTADO_T9"
 
-  SERVIDAS_COM_ID_ORIGINAL_T9=$(printf '%s' "$RESULTADO_T9" | node --no-warnings -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const o=JSON.parse(s);process.stdout.write(String(o.servidasComIdOriginal))}catch(e){process.stdout.write('ERRO')}})")
-  SERVIDAS_SEM_ID_BOGUS_T9=$(printf '%s' "$RESULTADO_T9" | node --no-warnings -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const o=JSON.parse(s);process.stdout.write(String(o.servidasSemIdBogus))}catch(e){process.stdout.write('ERRO')}})")
-  SERVIDAS_COM_ID_BOGUS_T9=$(printf '%s' "$RESULTADO_T9" | node --no-warnings -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const o=JSON.parse(s);process.stdout.write(String(o.servidasComIdBogus))}catch(e){process.stdout.write('ERRO')}})")
+SERVIDAS_COM_ID_ORIGINAL_T9=$(printf '%s' "$RESULTADO_T9" | node --no-warnings -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const o=JSON.parse(s);process.stdout.write(String(o.servidasComIdOriginal))}catch(e){process.stdout.write('ERRO')}})")
+SERVIDAS_COM_ID_BOGUS_T9=$(printf '%s' "$RESULTADO_T9" | node --no-warnings -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const o=JSON.parse(s);process.stdout.write(String(o.servidasComIdBogus))}catch(e){process.stdout.write('ERRO')}})")
+SERVIDAS_SEM_ID_BOGUS_T9=$(printf '%s' "$RESULTADO_T9" | node --no-warnings -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const o=JSON.parse(s);process.stdout.write(String(o.servidasSemIdBogus))}catch(e){process.stdout.write('ERRO')}})")
 
-  if echo "$RESULTADO_T9" | grep -q '"idsIguais":true' \
-    && [ "$SERVIDAS_COM_ID_ORIGINAL_T9" != "0" ] && [ "$SERVIDAS_COM_ID_ORIGINAL_T9" != "ERRO" ]; then
-    ok=$((ok+1)); echo "  ok   cwd em subpasta casa as mesmas servidas"
-  else
-    falhou=$((falhou+1)); echo "  FALHA cwd em subpasta nao casou as mesmas servidas: $RESULTADO_T9"
-  fi
+# Defesa sintética e determinística, independente do fixture: colisão
+# FORÇADA (mesmo id, mesmo conteúdo, termo raro escolhido a dedo) chamando
+# `buscarContrafactual` DIRETO — o chamador real dentro de `pontuarSessao`
+# (mesma assinatura, mesmos 4 argumentos), só que com `jaServidos` vazio para
+# simular exatamente o caso "servida sem id": a defesa por `textosServidos` é
+# a ÚNICA coisa que pode barrar o vazamento.
+CAIXA13B="$(novo_sandbox)"
+CAIXA13B_WIN="$(cygpath -m "$CAIXA13B" 2>/dev/null || printf '%s' "$CAIXA13B")"
+RFM_ROOT="$CAIXA13B" $MEMORIA iniciar > /dev/null 2>&1
 
-  # Defesa sintética e determinística da mesma checagem: dados reais só
-  # provam a ausência de vazamento se a observação servida também aparecesse
-  # no topo do FTS para aquele texto — não garantido. Aqui a colisão é
-  # FORÇADA (mesmo id, mesmo conteúdo, termo raro escolhido a dedo) e
-  # `buscarContrafactual` é chamada DIRETO — é o chamador real dentro de
-  # `pontuarSessao` (mesma assinatura, mesmos 4 argumentos), só que com
-  # `jaServidos` vazio para simular exatamente o caso "servida sem id": a
-  # defesa por `textosServidos` é a ÚNICA coisa que pode barrar o vazamento.
-  CAIXA11B="$(novo_sandbox)"
-  CAIXA11B_WIN="$(cygpath -m "$CAIXA11B" 2>/dev/null || printf '%s' "$CAIXA11B")"
-  RFM_ROOT="$CAIXA11B" $MEMORIA iniciar > /dev/null 2>&1
-
-  cat > "$CAIXA11B/fixture-t9-sintetico.cjs" <<EOF
+cat > "$CAIXA13B/fixture-t9-sintetico.cjs" <<EOF
 process.env.RFM_ROOT = process.argv[2];
 const { abrirBanco, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
 const { buscarContrafactual } = require('$SRC_WIN/scripts/lib/utilidade.cjs');
@@ -885,69 +839,45 @@ const resultado = buscarContrafactual(conexao, texto, new Set(), textosServidos)
 conexao.close();
 process.stdout.write(JSON.stringify({ apareceu: resultado.some((r) => r.id === 777) }));
 EOF
-  RESULTADO_T9_SINTETICO=$(node --no-warnings "$CAIXA11B/fixture-t9-sintetico.cjs" "$CAIXA11B_WIN" 2>&1)
-  echo "  comando: node -e \"buscarContrafactual(conexao, texto, new Set(), textosServidos)\" com jaServidos vazio (secao \"servida sem id nao reaparece como nao-servida\")"
-  echo "  saida: $RESULTADO_T9_SINTETICO"
+RESULTADO_T9_SINTETICO=$(node --no-warnings "$CAIXA13B/fixture-t9-sintetico.cjs" "$CAIXA13B_WIN" 2>&1)
+echo "  comando: node -e \"buscarContrafactual(conexao, texto, new Set(), textosServidos)\" com jaServidos vazio (secao \"servida sem id nao reaparece como nao-servida\")"
+echo "  saida: $RESULTADO_T9_SINTETICO"
 
-  # Tarefa 11 (D8): exigir zero absoluto em servidasComIdBogus quebrou em
-  # 2026-09-23 — o transcrito real desta maquina tem linha servida de OUTRO
-  # projeto (recem aberto na mesma janela do harness), que casa por id com
-  # QUALQUER rotulo forcado, o bogus incluido (acharAlvo nao usa o rotulo de
-  # projeto para casar id, so a formatacao da linha). A prova de verdade
-  # desta secao e "vazamento":0 (nenhuma servida do transcrito ORIGINAL
-  # reaparece como nao-servida sob o rotulo bogus) mais o teste sintetico
-  # abaixo; aqui so confere que o rotulo bogus casou por id MENOS vezes que o
-  # original — nao zero, so estritamente menos.
-  if [ "$SERVIDAS_COM_ID_BOGUS_T9" != "ERRO" ] && [ "$SERVIDAS_COM_ID_ORIGINAL_T9" != "ERRO" ] \
-    && [ "$SERVIDAS_COM_ID_BOGUS_T9" -lt "$SERVIDAS_COM_ID_ORIGINAL_T9" ] \
-    && echo "$RESULTADO_T9" | grep -q '"vazamento":0' \
-    && [ "$SERVIDAS_SEM_ID_BOGUS_T9" != "0" ] && [ "$SERVIDAS_SEM_ID_BOGUS_T9" != "ERRO" ] \
-    && echo "$RESULTADO_T9_SINTETICO" | grep -q '"apareceu":false'; then
-    ok=$((ok+1)); echo "  ok   servida sem id nao reaparece como nao-servida"
-  else
-    falhou=$((falhou+1)); echo "  FALHA servida sem id reapareceu como nao-servida: real=$RESULTADO_T9 sintetico=$RESULTADO_T9_SINTETICO"
-  fi
+if [ "$SERVIDAS_COM_ID_BOGUS_T9" != "ERRO" ] && [ "$SERVIDAS_COM_ID_ORIGINAL_T9" != "ERRO" ] \
+  && [ "$SERVIDAS_COM_ID_BOGUS_T9" -lt "$SERVIDAS_COM_ID_ORIGINAL_T9" ] \
+  && echo "$RESULTADO_T9" | grep -q '"vazamento":0' \
+  && [ "$SERVIDAS_SEM_ID_BOGUS_T9" != "0" ] && [ "$SERVIDAS_SEM_ID_BOGUS_T9" != "ERRO" ] \
+  && echo "$RESULTADO_T9_SINTETICO" | grep -q '"apareceu":false'; then
+  ok=$((ok+1)); echo "  ok   servida sem id nao reaparece como nao-servida"
+else
+  falhou=$((falhou+1)); echo "  FALHA servida sem id reapareceu como nao-servida: real=$RESULTADO_T9 sintetico=$RESULTADO_T9_SINTETICO"
 fi
 
 echo
 echo "== Tarefa 10: sessao que falha e marcada e a fila anda =="
 
-if [ -z "$TRANSCRITO_REAL" ] || [ ! -f "$HOME/.rainforest/rainforest.db" ]; then
-  falhou=$((falhou+1)); echo "  FALHA sem transcrito/banco real, pulando Tarefa 10"
-else
-  # Dublê próprio desta seção — mesmo motivo das Tarefas 3 e 7:
-  # reconciliar/consolidar não podem spawnar o `claude` real contra o banco
-  # real copiado.
-  DUBLE_LLM_DIR_T10="$(novo_sandbox)"
-  cat > "$DUBLE_LLM_DIR_T10/dubleLLM.cjs" <<'EOF'
-async function chamarLLM(texto) {
-  return '{"acao":"store","alvo_id":null}';
-}
-module.exports = { chamarLLM };
-EOF
+DUBLE_LLM_DIR_T10="$(duble_llm)"
 
-  TETO_PONTUAR_VAL_T10=$(node --no-warnings -e "process.stdout.write(String(require('$SRC_WIN/scripts/lib/utilidade.cjs').TETO_PONTUAR))")
+TETO_PONTUAR_VAL_T10=$(node --no-warnings -e "process.stdout.write(String(require('$SRC_WIN/scripts/lib/utilidade.cjs').TETO_PONTUAR))")
 
-  CAIXA12="$(novo_sandbox)"
-  CAIXA12_WIN="$(cygpath -m "$CAIXA12" 2>/dev/null || printf '%s' "$CAIXA12")"
-  cp "$HOME/.rainforest/rainforest.db" "$CAIXA12/rainforest.db"
-  cp "$TRANSCRITO_REAL" "$CAIXA12/transcrito-valido.jsonl"
-  # Transcrito quebrado: um DIRETORIO no lugar do arquivo. fs.existsSync()
-  # (que pontuarSessoesPendentes usa para decidir "tem transcrito") enxerga
-  # um diretorio como existente; fs.readFileSync() dentro de extrairSessao
-  # entao lanca EISDIR — throw real e reproduzivel. JSON truncado dentro de
-  # uma linha (o exemplo do plano) NAO lanca: a Tarefa 1 ja blinda esse caso
-  # com try/catch por linha (linha corrompida vira "sem servida", nao throw).
-  mkdir -p "$CAIXA12/transcrito-quebrado.jsonl"
+preparar_caixa_utilidade
+CAIXA14="$CAIXA_PREP"
+CAIXA14_WIN="$CAIXA_PREP_WIN"
+mv "$CAIXA14/transcrito.jsonl" "$CAIXA14/transcrito-valido.jsonl"
+# Transcrito quebrado: um DIRETORIO no lugar do arquivo. fs.existsSync()
+# (que pontuarSessoesPendentes usa para decidir "tem transcrito") enxerga
+# um diretorio como existente; fs.readFileSync() dentro de extrairSessao
+# entao lanca EISDIR — throw real e reproduzivel. JSON truncado dentro de
+# uma linha (o exemplo do plano) NAO lanca: a Tarefa 1 ja blinda esse caso
+# com try/catch por linha (linha corrompida vira "sem servida", nao throw).
+mkdir -p "$CAIXA14/transcrito-quebrado.jsonl"
 
-  cat > "$CAIXA12/marcar-t10.cjs" <<EOF
+cat > "$CAIXA14/marcar-t10.cjs" <<EOF
 process.env.RFM_ROOT = process.argv[2];
-const { abrirBanco, criarSchema, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { abrirBanco, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
 const { TETO_PONTUAR } = require('$SRC_WIN/scripts/lib/utilidade.cjs');
 const { caminhoDb } = resolverCaminhos();
 const conexao = abrirBanco(caminhoDb);
-criarSchema(conexao);
-conexao.exec('DELETE FROM marca_dagua');
 const insert = conexao.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)');
 const agora = Date.now();
 // TETO_PONTUAR sessoes QUEBRADAS, as mais antigas — entram inteiras no lote.
@@ -960,9 +890,9 @@ insert.run('proj-t10', 'sessao-t10-valida-a', process.argv[4], 100, 100, new Dat
 insert.run('proj-t10', 'sessao-t10-valida-b', process.argv[4], 100, 100, new Date(agora - 1000).toISOString());
 conexao.close();
 EOF
-  node --no-warnings "$CAIXA12/marcar-t10.cjs" "$CAIXA12_WIN" "$CAIXA12_WIN/transcrito-quebrado.jsonl" "$CAIXA12_WIN/transcrito-valido.jsonl"
+node --no-warnings "$CAIXA14/marcar-t10.cjs" "$CAIXA14_WIN" "$CAIXA14_WIN/transcrito-quebrado.jsonl" "$CAIXA14_WIN/transcrito-valido.jsonl"
 
-  cat > "$CAIXA12/conferir-t10.cjs" <<EOF
+cat > "$CAIXA14/conferir-t10.cjs" <<EOF
 process.env.RFM_ROOT = process.argv[2];
 const { abrirBancoSomenteLeitura, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
 const { caminhoDb } = resolverCaminhos();
@@ -973,57 +903,52 @@ conexao.close();
 process.stdout.write(JSON.stringify({ quebradas, validas }));
 EOF
 
-  # --- passada 1: as TETO_PONTUAR quebradas falham e sao marcadas; as 2 validas ficam pendentes ---
-  RFM_ROOT="$CAIXA12" TESTADOR_CHAMAR_LLM="$DUBLE_LLM_DIR_T10/dubleLLM.cjs" $MEMORIA manutencao > /dev/null 2>&1
-  got_manutencao_t10_1=$?
-  LOG_T10="$CAIXA12/manutencao.log"
-  LINHA_UTILIDADE_T10_1=$(grep "^.*utilidade: [0-9]" "$LOG_T10" | tail -1)
-  echo "  comando: RFM_ROOT=<copia com $TETO_PONTUAR_VAL_T10 sessoes quebradas (diretorio no lugar do transcrito) + 2 validas> node scripts/memoria.cjs manutencao"
-  echo "  saida (linha utilidade do manutencao.log, 1a passada): $LINHA_UTILIDADE_T10_1"
+# --- passada 1: as TETO_PONTUAR quebradas falham e sao marcadas; as 2 validas ficam pendentes ---
+RFM_ROOT="$CAIXA14" TESTADOR_CHAMAR_LLM="$DUBLE_LLM_DIR_T10/dubleLLM.cjs" $MEMORIA manutencao > /dev/null 2>&1
+got_manutencao_t10_1=$?
+LOG_T10="$CAIXA14/manutencao.log"
+LINHA_UTILIDADE_T10_1=$(grep "^.*utilidade: [0-9]" "$LOG_T10" | tail -1)
+echo "  comando: RFM_ROOT=<caixa sintetica com $TETO_PONTUAR_VAL_T10 sessoes quebradas (diretorio no lugar do transcrito) + 2 validas> node scripts/memoria.cjs manutencao"
+echo "  saida (linha utilidade do manutencao.log, 1a passada): $LINHA_UTILIDADE_T10_1"
 
-  CONFERE_PASSADA1_T10=$(node --no-warnings "$CAIXA12/conferir-t10.cjs" "$CAIXA12_WIN")
-  echo "  saida (uso_memoria_sessoes apos 1a passada): $CONFERE_PASSADA1_T10"
+CONFERE_PASSADA1_T10=$(node --no-warnings "$CAIXA14/conferir-t10.cjs" "$CAIXA14_WIN")
+echo "  saida (uso_memoria_sessoes apos 1a passada): $CONFERE_PASSADA1_T10"
 
-  # --- passada 2: fila anda — as 2 validas sao pontuadas agora ---
-  RFM_ROOT="$CAIXA12" TESTADOR_CHAMAR_LLM="$DUBLE_LLM_DIR_T10/dubleLLM.cjs" $MEMORIA manutencao > /dev/null 2>&1
-  got_manutencao_t10_2=$?
-  CONFERE_PASSADA2_T10=$(node --no-warnings "$CAIXA12/conferir-t10.cjs" "$CAIXA12_WIN")
-  echo "  saida (uso_memoria_sessoes apos 2a passada): $CONFERE_PASSADA2_T10"
+# --- passada 2: fila anda — as 2 validas sao pontuadas agora ---
+RFM_ROOT="$CAIXA14" TESTADOR_CHAMAR_LLM="$DUBLE_LLM_DIR_T10/dubleLLM.cjs" $MEMORIA manutencao > /dev/null 2>&1
+got_manutencao_t10_2=$?
+CONFERE_PASSADA2_T10=$(node --no-warnings "$CAIXA14/conferir-t10.cjs" "$CAIXA14_WIN")
+echo "  saida (uso_memoria_sessoes apos 2a passada): $CONFERE_PASSADA2_T10"
 
-  if [ "$got_manutencao_t10_1" = "0" ] && [ "$got_manutencao_t10_2" = "0" ] \
-    && echo "$LINHA_UTILIDADE_T10_1" | grep -q "${TETO_PONTUAR_VAL_T10} falharam" \
-    && echo "$LINHA_UTILIDADE_T10_1" | grep -q "utilidade: 0 sessao(oes) pontuada(s)" \
-    && echo "$CONFERE_PASSADA1_T10" | grep -q "\"quebradas\":${TETO_PONTUAR_VAL_T10}" \
-    && echo "$CONFERE_PASSADA1_T10" | grep -q '"validas":0' \
-    && echo "$CONFERE_PASSADA2_T10" | grep -q '"validas":2'; then
-    ok=$((ok+1)); echo "  ok   sessao que falha e marcada e a fila anda"
-  else
-    falhou=$((falhou+1)); echo "  FALHA sessao que falha nao foi marcada ou a fila nao andou: passada1=$CONFERE_PASSADA1_T10 linha1=$LINHA_UTILIDADE_T10_1 passada2=$CONFERE_PASSADA2_T10"
-  fi
+if [ "$got_manutencao_t10_1" = "0" ] && [ "$got_manutencao_t10_2" = "0" ] \
+  && echo "$LINHA_UTILIDADE_T10_1" | grep -q "${TETO_PONTUAR_VAL_T10} falharam" \
+  && echo "$LINHA_UTILIDADE_T10_1" | grep -q "utilidade: 0 sessao(oes) pontuada(s)" \
+  && echo "$CONFERE_PASSADA1_T10" | grep -q "\"quebradas\":${TETO_PONTUAR_VAL_T10}" \
+  && echo "$CONFERE_PASSADA1_T10" | grep -q '"validas":0' \
+  && echo "$CONFERE_PASSADA2_T10" | grep -q '"validas":2'; then
+  ok=$((ok+1)); echo "  ok   sessao que falha e marcada e a fila anda"
+else
+  falhou=$((falhou+1)); echo "  FALHA sessao que falha nao foi marcada ou a fila nao andou: passada1=$CONFERE_PASSADA1_T10 linha1=$LINHA_UTILIDADE_T10_1 passada2=$CONFERE_PASSADA2_T10"
 fi
 
 echo
 echo "== Tarefa 11: banco ocupado adia a sessao sem marcar nem gravar parcial =="
 
-if [ -z "$TRANSCRITO_REAL" ] || [ ! -f "$HOME/.rainforest/rainforest.db" ]; then
-  falhou=$((falhou+1)); echo "  FALHA sem transcrito/banco real, pulando Tarefa 11"
-else
-  CAIXA13="$(novo_sandbox)"
-  CAIXA13_WIN="$(cygpath -m "$CAIXA13" 2>/dev/null || printf '%s' "$CAIXA13")"
-  cp "$HOME/.rainforest/rainforest.db" "$CAIXA13/rainforest.db"
-  cp "$TRANSCRITO_REAL" "$CAIXA13/transcrito-t11.jsonl"
+preparar_caixa_utilidade
+CAIXA15="$CAIXA_PREP"
+CAIXA15_WIN="$CAIXA_PREP_WIN"
 
-  # Uma sessao pendente na marca_dagua apontando para o transcrito real.
-  # Uma SEGUNDA conexao DatabaseSync no MESMO arquivo segura BEGIN IMMEDIATE
-  # (o lock de escrita) antes da conexao principal tentar pontuar — e' o
-  # mesmo mecanismo que uma escrita concorrente de outra sessao (ex.:
-  # memoria-marca.cjs no Stop/SessionEnd de outra janela) produziria. Tudo
-  # num processo so, para poder segurar a trava, chamar
-  # pontuarSessoesPendentes, conferir o estado, soltar a trava (ROLLBACK) e
-  # chamar de novo, sem reabrir processo entre os passos.
-  cat > "$CAIXA13/fixture-t11.cjs" <<EOF
+# Uma sessao pendente na marca_dagua apontando para o transcrito fixture.
+# Uma SEGUNDA conexao DatabaseSync no MESMO arquivo segura BEGIN IMMEDIATE
+# (o lock de escrita) antes da conexao principal tentar pontuar — e' o
+# mesmo mecanismo que uma escrita concorrente de outra sessao (ex.:
+# memoria-marca.cjs no Stop/SessionEnd de outra janela) produziria. Tudo
+# num processo so, para poder segurar a trava, chamar
+# pontuarSessoesPendentes, conferir o estado, soltar a trava (ROLLBACK) e
+# chamar de novo, sem reabrir processo entre os passos.
+cat > "$CAIXA15/fixture-t11.cjs" <<EOF
 process.env.RFM_ROOT = process.argv[2];
-const { abrirBanco, criarSchema, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { abrirBanco, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
 const { pontuarSessoesPendentes } = require('$SRC_WIN/scripts/lib/utilidade.cjs');
 const { DatabaseSync } = require('node:sqlite');
 
@@ -1031,8 +956,6 @@ const caminhoTranscrito = process.argv[3];
 const { caminhoDb } = resolverCaminhos();
 
 const setup = abrirBanco(caminhoDb);
-criarSchema(setup);
-setup.exec('DELETE FROM marca_dagua');
 setup.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)')
   .run('proj-t11', 'sessao-t11-ocupado', caminhoTranscrito, 100, 100, new Date().toISOString());
 setup.close();
@@ -1069,24 +992,23 @@ process.stdout.write(JSON.stringify({
   servidasLinhas2,
 }));
 EOF
-  RESULTADO_T11=$(node --no-warnings "$CAIXA13/fixture-t11.cjs" "$CAIXA13_WIN" "$CAIXA13_WIN/transcrito-t11.jsonl" 2>&1)
-  echo "  comando: RFM_ROOT=<copia> node -e \"segunda conexao com BEGIN IMMEDIATE ativo + pontuarSessoesPendentes(conexaoPrincipal)\" (secao \"banco ocupado adia a sessao sem marcar nem gravar parcial\")"
-  echo "  saida: $RESULTADO_T11"
+RESULTADO_T11=$(node --no-warnings "$CAIXA15/fixture-t11.cjs" "$CAIXA15_WIN" "$CAIXA15_WIN/transcrito.jsonl" 2>&1)
+echo "  comando: RFM_ROOT=<caixa sintetica> node -e \"segunda conexao com BEGIN IMMEDIATE ativo + pontuarSessoesPendentes(conexaoPrincipal)\" (secao \"banco ocupado adia a sessao sem marcar nem gravar parcial\")"
+echo "  saida: $RESULTADO_T11"
 
-  SERVIDAS_LINHAS2_T11=$(printf '%s' "$RESULTADO_T11" | node --no-warnings -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const o=JSON.parse(s);process.stdout.write(String(o.servidasLinhas2))}catch(e){process.stdout.write('ERRO')}})")
+SERVIDAS_LINHAS2_T11=$(printf '%s' "$RESULTADO_T11" | node --no-warnings -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const o=JSON.parse(s);process.stdout.write(String(o.servidasLinhas2))}catch(e){process.stdout.write('ERRO')}})")
 
-  if echo "$RESULTADO_T11" | grep -q '"adiadas1":1' \
-    && echo "$RESULTADO_T11" | grep -q '"falharam1":0' \
-    && echo "$RESULTADO_T11" | grep -q '"pontuadas1":0' \
-    && echo "$RESULTADO_T11" | grep -q '"emSessoesTabela1":0' \
-    && echo "$RESULTADO_T11" | grep -q '"linhasUsoMemoria1":0' \
-    && echo "$RESULTADO_T11" | grep -q '"pontuadas2":1' \
-    && echo "$RESULTADO_T11" | grep -q '"emSessoesTabela2":1' \
-    && [ "$SERVIDAS_LINHAS2_T11" != "0" ] && [ "$SERVIDAS_LINHAS2_T11" != "ERRO" ]; then
-    ok=$((ok+1)); echo "  ok   banco ocupado adia a sessao sem marcar nem gravar parcial"
-  else
-    falhou=$((falhou+1)); echo "  FALHA banco ocupado nao adiou corretamente: $RESULTADO_T11"
-  fi
+if echo "$RESULTADO_T11" | grep -q '"adiadas1":1' \
+  && echo "$RESULTADO_T11" | grep -q '"falharam1":0' \
+  && echo "$RESULTADO_T11" | grep -q '"pontuadas1":0' \
+  && echo "$RESULTADO_T11" | grep -q '"emSessoesTabela1":0' \
+  && echo "$RESULTADO_T11" | grep -q '"linhasUsoMemoria1":0' \
+  && echo "$RESULTADO_T11" | grep -q '"pontuadas2":1' \
+  && echo "$RESULTADO_T11" | grep -q '"emSessoesTabela2":1' \
+  && [ "$SERVIDAS_LINHAS2_T11" != "0" ] && [ "$SERVIDAS_LINHAS2_T11" != "ERRO" ]; then
+  ok=$((ok+1)); echo "  ok   banco ocupado adia a sessao sem marcar nem gravar parcial"
+else
+  falhou=$((falhou+1)); echo "  FALHA banco ocupado nao adiou corretamente: $RESULTADO_T11"
 fi
 
 echo
