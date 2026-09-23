@@ -94,7 +94,7 @@ mutacao: n/a
   motivo: não há comportamento de código a inverter — é um registro de dado do usuário escrito pela ferramenta que já tem trava e backup; a falsificação é o registro existir com a data e o comando certos.
 pronto quando: com o plugin mergeado, `node scripts/ideias.cjs listar` mostra a ideia `rodar-relatorio-de-utilidade-da-memoria` com `gancho` contendo `2026-10-07` e `ao_colher` contendo `node scripts/memoria.cjs utilidade --relatorio` e a régua D9 por extenso — provado por `grep '"id":"rodar-relatorio-de-utilidade-da-memoria"' ~/.rainforest/ideias.jsonl` devolvendo uma linha com os três trechos, conferidos contra o texto de D9 do design.
 
-## Emenda de 2026-09-23 — achados do `revisar` (reprovado, 3 achados + 1 da integração)
+**Emenda de 2026-09-23 — achados do `revisar` (reprovado, 3 achados + 1 da integração):** as tarefas 6-8 abaixo.
 
 ### 6. Servida substituída pela reconciliação ainda casa com o id [tipo: implementar]
 atende: D8
