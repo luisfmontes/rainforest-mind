@@ -78,15 +78,17 @@ jobs:
     # serve igual. Se o tempo real encostar em 30, o conserto e a suite ficar mais
     # barata, nao este numero subir de novo.
     timeout-minutes: 35
-    # Node 22 E 24 (Issue #161): o testa-limpar-branches ficou verde no 22 e
-    # vermelho no 24 (DEP0190 no stderr contaminando um JSON.parse) — o CI
-    # pinado numa versao so era verde numa versao so. O repo e publico desde
-    # 2026-09-02 e o minuto de Actions deixou de contar na cota; o custo do
-    # segundo job e relogio.
+    # Node 24 so, a mesma versao da maquina do Luis (2026-09-22). De 2026-09 ate
+    # aqui foi matriz 22 E 24 (Issue #161): o testa-limpar-branches ficou verde
+    # no 22 e vermelho no 24 (DEP0190 no stderr contaminando um JSON.parse),
+    # porque o CI rodava so numa versao e a maquina estava em outra. A licao
+    # daquela issue era CI e maquina na mesma versao — com as duas no 24, o
+    # segundo job so dobrava a espera. Ao trocar o Node da maquina, troque aqui
+    # junto.
     strategy:
       fail-fast: false
       matrix:
-        node: ['22', '24']
+        node: ['24']
     name: baterias (node ${{ matrix.node }})
 
     defaults:
