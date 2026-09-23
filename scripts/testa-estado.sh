@@ -1815,5 +1815,21 @@ wait
 N_VERED_CONC=$(node -e "console.log((JSON.parse(require('fs').readFileSync('docs/rainforest/estado/vered-concorrente.json','utf8')).revisar.vereditos||[]).length)")
 igual "escritas concorrentes (agente-id diferentes): 2 entradas, nao 1, nao 0" "2" "$N_VERED_CONC"
 
+echo
+echo "== 30. contrato de veredito: janela de vereditos zera a cada exigir revisar =="
+$E iniciar --slug vered-zera >/dev/null
+$E marcar --slug vered-zera --estagio design --status aprovado >/dev/null
+$E marcar --slug vered-zera --estagio plano --status ok >/dev/null
+$E exigir --slug vered-zera --estagio executar >/dev/null
+$E marcar --slug vered-zera --estagio executar --status ok --json '{"comando":"echo exec","saida":"ok","mutacao":[]}' >/dev/null
+esperado "exigir revisar (1a rodada)" 0 $E exigir --slug vered-zera --estagio revisar
+esperado "grava 1 veredito na janela" 0 \
+  $E veredito --slug vered-zera --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id ZZZ
+N_VERED_ZERA_ANTES=$(node -e "console.log((JSON.parse(require('fs').readFileSync('docs/rainforest/estado/vered-zera.json','utf8')).revisar.vereditos||[]).length)")
+igual "veredito gravado antes do 2o exigir: 1 entrada" "1" "$N_VERED_ZERA_ANTES"
+esperado "exigir revisar (2a rodada)" 0 $E exigir --slug vered-zera --estagio revisar
+VERED_ZERA_DEPOIS=$(node -e "const r=JSON.parse(require('fs').readFileSync('docs/rainforest/estado/vered-zera.json','utf8')).revisar; console.log(JSON.stringify(r.vereditos))")
+igual "janela de vereditos zera no 2o exigir revisar (presente e vazia)" "[]" "$VERED_ZERA_DEPOIS"
+
 echo "== resultado: $ok ok, $falhou falhas =="
 [ "$falhou" = 0 ]

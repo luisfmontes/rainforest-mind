@@ -1618,10 +1618,12 @@ function main() {
     const falta = faltando(estado, estagio);
     if (!falta.length) {
       console.log(`ok: pre-requisitos de '${estagio}' fechados`);
-      // Capturar snapshot ao exigir revisar, para detectar mutacao depois
+      // Capturar snapshot ao exigir revisar, para detectar mutacao depois.
+      // Zera a janela de vereditos (D6) — cada `exigir revisar` abre uma
+      // rodada nova; vereditos de uma rodada anterior nao contam para esta.
       if (estagio === 'revisar') {
         const snapshot = capturarSnapshot();
-        estado.revisar = { ...estado.revisar, snapshot };
+        estado.revisar = { ...estado.revisar, snapshot, vereditos: [] };
         gravar(slug, estado);
         console.log(`snapshot capturado: HEAD=${snapshot.head.substring(0, 7)}, ${snapshot.caminhos_sujos.length} arquivo(s) sujo(s)`);
       }
