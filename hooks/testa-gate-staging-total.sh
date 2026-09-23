@@ -424,6 +424,19 @@ gate 'bash "$t" x BARRA (#309, mais argumento depois — incerto)'              
 gate 'for t in x; do bash -c "git add -A"; done BARRA (#309, controle T1 adaptado: git add -A)' 2 "$(b 'for t in x; do bash -c \"git add -A\"; done')"
 
 echo
+echo '== variavel citada + resto literal de caminho (2026-09-22, hook do Warp) =='
+gate 'bash "$P/on-stop.sh" PASSA (resto literal depois de separador)'           0 "$(b 'bash \"$P/on-stop.sh\"')"
+gate 'bash "${P}/x.sh" 2>&1 PASSA (chaves + redirecionamento)'                   0 "$(b 'bash \"${P}/x.sh\" 2>&1')"
+gate 'bash "$P/$Q" BARRA (segunda variavel no resto)'                             2 "$(b 'bash \"$P/$Q\"')"
+gate 'bash "$P/$(id)" BARRA (substituicao no resto)'                              2 "$(b 'bash \"$P/$(id)\"')"
+gate 'bash "$P/x.sh" y BARRA (mais argumento depois)'                             2 "$(b 'bash \"$P/x.sh\" y')"
+gate 'bash "$1/x.sh" BARRA (posicional nao e identificador)'                      2 "$(b 'bash \"$1/x.sh\"')"
+# `"$P"/x.sh` e a mesma palavra que `"$P/x.sh"` para o bash (sem split: a
+# variavel esta citada e o resto e literal) — `textoAPartir` ja junta as duas.
+gate 'bash "$P"/x.sh PASSA (mesma palavra que "$P/x.sh")'                         0 "$(b 'bash \"$P\"/x.sh')"
+gate 'bash "$P"$Q BARRA (segunda variavel colada, fora das aspas)'                2 "$(b 'bash \"$P\"$Q')"
+
+echo
 echo "== pipe com stderr (|&) (#309, revisao 2) =="
 # `|&` (achado 1): mesmo conserto de gate-fechar-issue.cjs, aqui via
 # `segmentosComAspas` (hooks/lib/cwd-efetivo.cjs), que este gate usa para
