@@ -120,6 +120,12 @@ function main() {
   const repoRoot = toplevel(payload.cwd);
   if (!repoRoot) process.exit(0);
 
+  try {
+    if (!require('./lib/config.cjs').ligado('contrato-veredito', { projeto: repoRoot })) {
+      process.exit(0);
+    }
+  } catch {}
+
   const estadoCjs = path.join(PLUGIN_ROOT, 'scripts', 'estado.cjs');
   const args = [
     estadoCjs, 'veredito',
