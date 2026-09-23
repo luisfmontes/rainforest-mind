@@ -418,6 +418,19 @@ function gravarUso(conexao, { origem, refId, sessao, servida, nota, pontuadaEm }
  * Idempotente — pode rodar mais de uma vez sobre a mesma sessão sem duplicar
  * linha (UNIQUE trata isso) nem mudar a contagem final.
  *
+ * Tarefa 11 (D7, D9): todas as escritas da sessão (servidas + contrafactual +
+ * a marca em uso_memoria_sessoes) ficam dentro de UMA transação
+ * (`BEGIN IMMEDIATE` … `COMMIT`) — sem ela, um transcrito que faz o laço
+ * lançar no meio grava só as primeiras linhas do contrafactual antes de
+ * relançar, e esse contrafactual truncado só PERDE candidatos (nunca
+ * inventa), o que empurra a régua D9 sempre para "recência basta". Qualquer
+ * erro faz `ROLLBACK` e relança — nenhuma linha parcial fica em
+ * `uso_memoria`. `BEGIN IMMEDIATE` (em vez de `BEGIN TRANSACTION`, que é
+ * DEFERRED e só pega o lock de escrita na primeira escrita de fato) pega o
+ * lock de escrita já na abertura — é o que faz uma segunda conexão que
+ * também tenta `BEGIN IMMEDIATE` no mesmo arquivo falhar imediatamente com
+ * "database is locked" em vez de esperar ou intercalar escrita.
+ *
  * @param {object} conexao conexão de banco já aberta (leitura E escrita)
  * @param {string} sessao id da sessão
  * @param {string} caminhoTranscrito
@@ -429,36 +442,49 @@ function pontuarSessao(conexao, sessao, caminhoTranscrito) {
   const { harnessKey, curto } = lerProjetoDoTranscrito(caminhoTranscrito);
   const apelidos = harnessKey && curto && harnessKey !== curto ? { [harnessKey]: curto } : null;
 
-  const jaGravados = new Set();
-  const textosServidos = new Set(servidas.map(semPrefixo));
-  let servidasComId = 0;
-  let servidasSemId = 0;
+  conexao.exec('BEGIN IMMEDIATE');
+  try {
+    const jaGravados = new Set();
+    const textosServidos = new Set(servidas.map(semPrefixo));
+    let servidasComId = 0;
+    let servidasSemId = 0;
 
-  for (const linha of servidas) {
-    const alvo = acharAlvo(conexao, linha, apelidos);
-    if (!alvo) {
-      servidasSemId++;
-      continue;
+    for (const linha of servidas) {
+      const alvo = acharAlvo(conexao, linha, apelidos);
+      if (!alvo) {
+        servidasSemId++;
+        continue;
+      }
+      const chave = `${alvo.origem}:${alvo.id}`;
+      if (jaGravados.has(chave)) continue; // linha duplicada no bloco — grava uma vez
+      jaGravados.add(chave);
+      const nota = calcularNota(conexao, alvo.conteudo, texto);
+      gravarUso(conexao, { origem: alvo.origem, refId: alvo.id, sessao, servida: 1, nota, pontuadaEm: agora });
+      servidasComId++;
     }
-    const chave = `${alvo.origem}:${alvo.id}`;
-    if (jaGravados.has(chave)) continue; // linha duplicada no bloco — grava uma vez
-    jaGravados.add(chave);
-    const nota = calcularNota(conexao, alvo.conteudo, texto);
-    gravarUso(conexao, { origem: alvo.origem, refId: alvo.id, sessao, servida: 1, nota, pontuadaEm: agora });
-    servidasComId++;
+
+    const contrafactuais = buscarContrafactual(conexao, texto, jaGravados, textosServidos);
+    for (const cand of contrafactuais) {
+      const nota = calcularNota(conexao, cand.conteudo, texto);
+      gravarUso(conexao, { origem: cand.origem, refId: cand.id, sessao, servida: 0, nota, pontuadaEm: agora });
+    }
+
+    conexao
+      .prepare(`INSERT OR REPLACE INTO uso_memoria_sessoes (sessao, pontuada_em) VALUES (?, ?)`)
+      .run(sessao, agora);
+
+    conexao.exec('COMMIT');
+    return { servidasComId, servidasSemId, contrafactuais: contrafactuais.length };
+  } catch (e) {
+    try {
+      conexao.exec('ROLLBACK');
+    } catch (e2) {
+      // rollback pode falhar se a transação já não existe mais (ex.: o
+      // próprio BEGIN IMMEDIATE lançou por banco ocupado) — o erro original
+      // é o que importa, relançado abaixo de qualquer forma.
+    }
+    throw e;
   }
-
-  const contrafactuais = buscarContrafactual(conexao, texto, jaGravados, textosServidos);
-  for (const cand of contrafactuais) {
-    const nota = calcularNota(conexao, cand.conteudo, texto);
-    gravarUso(conexao, { origem: cand.origem, refId: cand.id, sessao, servida: 0, nota, pontuadaEm: agora });
-  }
-
-  conexao
-    .prepare(`INSERT OR REPLACE INTO uso_memoria_sessoes (sessao, pontuada_em) VALUES (?, ?)`)
-    .run(sessao, agora);
-
-  return { servidasComId, servidasSemId, contrafactuais: contrafactuais.length };
 }
 
 // ---- Tarefa 3: manutenção ----
@@ -481,6 +507,19 @@ function marcarSessao(conexao, sessao, pontuadaEm) {
     .run(sessao, pontuadaEm);
 }
 
+// Tarefa 11 (D7, D9): distingue falha TRANSITÓRIA de banco ocupado (outra
+// conexão — ex.: `memoria-marca.cjs` gravando a marca d'água de outra
+// sessão, a cada Stop/SessionEnd — segurando o lock de escrita no mesmo
+// rainforest.db) de falha de verdade no transcrito (Tarefa 10). A primeira
+// NUNCA marca a sessão: marcar uma sessão que só não pontuou porque o banco
+// estava ocupado no momento errado a tiraria da fila para sempre, mesmo que
+// o transcrito seja perfeitamente legível. `node:sqlite` reporta essa falha
+// com `code === 'ERR_SQLITE_ERROR'` e mensagem contendo "database is locked"
+// ou "database is busy" (SQLITE_BUSY/SQLITE_BUSY_SNAPSHOT).
+function ehBancoOcupado(e) {
+  return Boolean(e) && e.code === 'ERR_SQLITE_ERROR' && /database is (locked|busy)/.test(String(e.message || ''));
+}
+
 /**
  * Pontua toda sessão da `marca_dagua` sem linha em `uso_memoria_sessoes`
  * (D7), até TETO_PONTUAR sessões COM transcrito por passada (Tarefa 7), as
@@ -490,8 +529,14 @@ function marcarSessao(conexao, sessao, pontuadaEm) {
  * sessão problemática nunca trava as demais, e não conta no teto. Sessão cujo
  * `pontuarSessao` lança (Tarefa 10) também é marcada, pelo mesmo motivo.
  *
+ * Tarefa 11 (D7, D9): banco ocupado (`ehBancoOcupado`) é diferente — não
+ * marca a sessão (ela volta inteira à próxima passada) e INTERROMPE a
+ * passada nesse ponto (`break`): o banco está ocupado agora, não só para
+ * esta sessão, então tentar a próxima do lote só acumularia mais falha
+ * transitória.
+ *
  * @param {object} conexao conexão de banco já aberta
- * @returns {{pontuadas: number, semTranscrito: number, servidasSemId: number, falharam: number, pendentesParaProxima: number, total: number}}
+ * @returns {{pontuadas: number, semTranscrito: number, servidasSemId: number, falharam: number, adiadas: number, pendentesParaProxima: number, total: number}}
  */
 function pontuarSessoesPendentes(conexao) {
   const agora = new Date().toISOString();
@@ -525,6 +570,7 @@ function pontuarSessoesPendentes(conexao) {
   let pontuadas = 0;
   let servidasSemId = 0;
   let falharam = 0;
+  let adiadas = 0;
 
   for (const { sessao, arquivo } of lote) {
     try {
@@ -532,6 +578,7 @@ function pontuarSessoesPendentes(conexao) {
       pontuadas++;
       servidasSemId += resultado.servidasSemId;
     } catch (e) {
+      if (ehBancoOcupado(e)) { adiadas++; break; }
       // Tarefa 10 (D7): transcrito ilegível não trava as demais — MAS marca,
       // para não voltar ao lote para sempre (a fila é ordenada da mais
       // antiga; sem marca, a mesma sessão quebrada seria a primeira de toda
@@ -540,7 +587,7 @@ function pontuarSessoesPendentes(conexao) {
     }
   }
 
-  return { pontuadas, semTranscrito, servidasSemId, falharam, pendentesParaProxima, total: pendentes.length };
+  return { pontuadas, semTranscrito, servidasSemId, falharam, adiadas, pendentesParaProxima, total: pendentes.length };
 }
 
 // ---- Tarefa 4: relatório (régua D9) ----

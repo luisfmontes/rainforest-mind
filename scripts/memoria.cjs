@@ -2209,26 +2209,25 @@ async function cmdManutencao() {
   // Tarefa 3 (D7): pontua as sessões pendentes da marca_dagua, depois de
   // reconciliar e consolidar. Conexão própria, fechada neste bloco — os
   // passos acima abrem e fecham a própria conexão dentro de cada cmd*().
-  // Conta via uso_memoria_sessoes (antes/depois): cobre tanto a sessão
-  // pontuada de verdade quanto a marcada sem transcrito (as duas terminam
-  // ali) — ao contrário de contar por uso_memoria, que ficaria mudo para
-  // uma sessão com transcrito mas sem servida/contrafactual nenhum.
+  // Tarefa 11: a contagem de pontuadas do log vem de
+  // resultadoUtilidade.pontuadas (só quem passou por pontuarSessao com
+  // sucesso) — ver o comentário junto do registrar() abaixo.
   registrar('utilidade: inicio');
   try {
     const { caminhoDb: caminhoDbUtilidade } = resolverCaminhos();
     const conexao = abrirBanco(caminhoDbUtilidade);
     try {
-      const antes = conexao.prepare('SELECT COUNT(*) c FROM uso_memoria_sessoes').get().c;
       const resultadoUtilidade = pontuarSessoesPendentes(conexao);
-      const depois = conexao.prepare('SELECT COUNT(*) c FROM uso_memoria_sessoes').get().c;
-      // Tarefa 7 (D7, D8): N continua vindo do antes/depois (cobre tanto a
-      // sessão pontuada de verdade quanto a marcada sem transcrito — mesma
-      // razão do comentário acima, e agora também a sessão que falhou e foi
-      // marcada pela Tarefa 10); servidasSemId, pendentesParaProxima e
-      // falharam vêm do retorno de pontuarSessoesPendentes, que é quem
-      // aplicou o teto TETO_PONTUAR.
+      // Tarefa 11 (D7, D9): a contagem de pontuadas vem de
+      // resultadoUtilidade.pontuadas (só as que passaram por pontuarSessao
+      // com sucesso), não mais de antes/depois em uso_memoria_sessoes — esse
+      // cálculo somava também as marcadas por falha (Tarefa 10) e por banco
+      // ocupado (adiadas, que nem marca), inflando o número de "pontuadas".
+      // servidasSemId, pendentesParaProxima, falharam e adiadas vêm todos do
+      // retorno de pontuarSessoesPendentes, que é quem aplicou o teto
+      // TETO_PONTUAR.
       registrar(
-        `utilidade: ${depois - antes} sessao(oes) pontuada(s), ${resultadoUtilidade.servidasSemId} servida(s) sem id, ${resultadoUtilidade.pendentesParaProxima} pendente(s) para a proxima, ${resultadoUtilidade.falharam} falharam`
+        `utilidade: ${resultadoUtilidade.pontuadas} sessao(oes) pontuada(s), ${resultadoUtilidade.servidasSemId} servida(s) sem id, ${resultadoUtilidade.pendentesParaProxima} pendente(s) para a proxima, ${resultadoUtilidade.falharam} falharam, ${resultadoUtilidade.adiadas} adiadas (banco ocupado)`
       );
     } finally {
       conexao.close();

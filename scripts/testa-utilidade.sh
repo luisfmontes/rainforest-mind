@@ -835,6 +835,7 @@ EOF
 
   SERVIDAS_COM_ID_ORIGINAL_T9=$(printf '%s' "$RESULTADO_T9" | node --no-warnings -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const o=JSON.parse(s);process.stdout.write(String(o.servidasComIdOriginal))}catch(e){process.stdout.write('ERRO')}})")
   SERVIDAS_SEM_ID_BOGUS_T9=$(printf '%s' "$RESULTADO_T9" | node --no-warnings -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const o=JSON.parse(s);process.stdout.write(String(o.servidasSemIdBogus))}catch(e){process.stdout.write('ERRO')}})")
+  SERVIDAS_COM_ID_BOGUS_T9=$(printf '%s' "$RESULTADO_T9" | node --no-warnings -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const o=JSON.parse(s);process.stdout.write(String(o.servidasComIdBogus))}catch(e){process.stdout.write('ERRO')}})")
 
   if echo "$RESULTADO_T9" | grep -q '"idsIguais":true' \
     && [ "$SERVIDAS_COM_ID_ORIGINAL_T9" != "0" ] && [ "$SERVIDAS_COM_ID_ORIGINAL_T9" != "ERRO" ]; then
@@ -888,7 +889,17 @@ EOF
   echo "  comando: node -e \"buscarContrafactual(conexao, texto, new Set(), textosServidos)\" com jaServidos vazio (secao \"servida sem id nao reaparece como nao-servida\")"
   echo "  saida: $RESULTADO_T9_SINTETICO"
 
-  if echo "$RESULTADO_T9" | grep -q '"servidasComIdBogus":0' \
+  # Tarefa 11 (D8): exigir zero absoluto em servidasComIdBogus quebrou em
+  # 2026-09-23 — o transcrito real desta maquina tem linha servida de OUTRO
+  # projeto (recem aberto na mesma janela do harness), que casa por id com
+  # QUALQUER rotulo forcado, o bogus incluido (acharAlvo nao usa o rotulo de
+  # projeto para casar id, so a formatacao da linha). A prova de verdade
+  # desta secao e "vazamento":0 (nenhuma servida do transcrito ORIGINAL
+  # reaparece como nao-servida sob o rotulo bogus) mais o teste sintetico
+  # abaixo; aqui so confere que o rotulo bogus casou por id MENOS vezes que o
+  # original — nao zero, so estritamente menos.
+  if [ "$SERVIDAS_COM_ID_BOGUS_T9" != "ERRO" ] && [ "$SERVIDAS_COM_ID_ORIGINAL_T9" != "ERRO" ] \
+    && [ "$SERVIDAS_COM_ID_BOGUS_T9" -lt "$SERVIDAS_COM_ID_ORIGINAL_T9" ] \
     && echo "$RESULTADO_T9" | grep -q '"vazamento":0' \
     && [ "$SERVIDAS_SEM_ID_BOGUS_T9" != "0" ] && [ "$SERVIDAS_SEM_ID_BOGUS_T9" != "ERRO" ] \
     && echo "$RESULTADO_T9_SINTETICO" | grep -q '"apareceu":false'; then
@@ -981,12 +992,100 @@ EOF
 
   if [ "$got_manutencao_t10_1" = "0" ] && [ "$got_manutencao_t10_2" = "0" ] \
     && echo "$LINHA_UTILIDADE_T10_1" | grep -q "${TETO_PONTUAR_VAL_T10} falharam" \
+    && echo "$LINHA_UTILIDADE_T10_1" | grep -q "utilidade: 0 sessao(oes) pontuada(s)" \
     && echo "$CONFERE_PASSADA1_T10" | grep -q "\"quebradas\":${TETO_PONTUAR_VAL_T10}" \
     && echo "$CONFERE_PASSADA1_T10" | grep -q '"validas":0' \
     && echo "$CONFERE_PASSADA2_T10" | grep -q '"validas":2'; then
     ok=$((ok+1)); echo "  ok   sessao que falha e marcada e a fila anda"
   else
     falhou=$((falhou+1)); echo "  FALHA sessao que falha nao foi marcada ou a fila nao andou: passada1=$CONFERE_PASSADA1_T10 linha1=$LINHA_UTILIDADE_T10_1 passada2=$CONFERE_PASSADA2_T10"
+  fi
+fi
+
+echo
+echo "== Tarefa 11: banco ocupado adia a sessao sem marcar nem gravar parcial =="
+
+if [ -z "$TRANSCRITO_REAL" ] || [ ! -f "$HOME/.rainforest/rainforest.db" ]; then
+  falhou=$((falhou+1)); echo "  FALHA sem transcrito/banco real, pulando Tarefa 11"
+else
+  CAIXA13="$(novo_sandbox)"
+  CAIXA13_WIN="$(cygpath -m "$CAIXA13" 2>/dev/null || printf '%s' "$CAIXA13")"
+  cp "$HOME/.rainforest/rainforest.db" "$CAIXA13/rainforest.db"
+  cp "$TRANSCRITO_REAL" "$CAIXA13/transcrito-t11.jsonl"
+
+  # Uma sessao pendente na marca_dagua apontando para o transcrito real.
+  # Uma SEGUNDA conexao DatabaseSync no MESMO arquivo segura BEGIN IMMEDIATE
+  # (o lock de escrita) antes da conexao principal tentar pontuar — e' o
+  # mesmo mecanismo que uma escrita concorrente de outra sessao (ex.:
+  # memoria-marca.cjs no Stop/SessionEnd de outra janela) produziria. Tudo
+  # num processo so, para poder segurar a trava, chamar
+  # pontuarSessoesPendentes, conferir o estado, soltar a trava (ROLLBACK) e
+  # chamar de novo, sem reabrir processo entre os passos.
+  cat > "$CAIXA13/fixture-t11.cjs" <<EOF
+process.env.RFM_ROOT = process.argv[2];
+const { abrirBanco, criarSchema, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { pontuarSessoesPendentes } = require('$SRC_WIN/scripts/lib/utilidade.cjs');
+const { DatabaseSync } = require('node:sqlite');
+
+const caminhoTranscrito = process.argv[3];
+const { caminhoDb } = resolverCaminhos();
+
+const setup = abrirBanco(caminhoDb);
+criarSchema(setup);
+setup.exec('DELETE FROM marca_dagua');
+setup.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)')
+  .run('proj-t11', 'sessao-t11-ocupado', caminhoTranscrito, 100, 100, new Date().toISOString());
+setup.close();
+
+// Segunda conexao: segura o lock de escrita ANTES da principal tentar pontuar.
+const locker = new DatabaseSync(caminhoDb);
+locker.exec('PRAGMA journal_mode = WAL;');
+locker.exec('BEGIN IMMEDIATE');
+
+const principal = abrirBanco(caminhoDb);
+const resultado1 = pontuarSessoesPendentes(principal);
+const emSessoesTabela1 = principal.prepare("SELECT COUNT(*) c FROM uso_memoria_sessoes WHERE sessao = 'sessao-t11-ocupado'").get().c;
+const linhasUsoMemoria1 = principal.prepare("SELECT COUNT(*) c FROM uso_memoria WHERE sessao = 'sessao-t11-ocupado'").get().c;
+principal.close();
+
+// Solta a trava: a sessao volta a ficar pontuavel na proxima chamada.
+locker.exec('ROLLBACK');
+locker.close();
+
+const principal2 = abrirBanco(caminhoDb);
+const resultado2 = pontuarSessoesPendentes(principal2);
+const emSessoesTabela2 = principal2.prepare("SELECT COUNT(*) c FROM uso_memoria_sessoes WHERE sessao = 'sessao-t11-ocupado'").get().c;
+const servidasLinhas2 = principal2.prepare("SELECT COUNT(*) c FROM uso_memoria WHERE sessao = 'sessao-t11-ocupado' AND servida = 1").get().c;
+principal2.close();
+
+process.stdout.write(JSON.stringify({
+  adiadas1: resultado1.adiadas,
+  falharam1: resultado1.falharam,
+  pontuadas1: resultado1.pontuadas,
+  emSessoesTabela1,
+  linhasUsoMemoria1,
+  pontuadas2: resultado2.pontuadas,
+  emSessoesTabela2,
+  servidasLinhas2,
+}));
+EOF
+  RESULTADO_T11=$(node --no-warnings "$CAIXA13/fixture-t11.cjs" "$CAIXA13_WIN" "$CAIXA13_WIN/transcrito-t11.jsonl" 2>&1)
+  echo "  comando: RFM_ROOT=<copia> node -e \"segunda conexao com BEGIN IMMEDIATE ativo + pontuarSessoesPendentes(conexaoPrincipal)\" (secao \"banco ocupado adia a sessao sem marcar nem gravar parcial\")"
+  echo "  saida: $RESULTADO_T11"
+
+  SERVIDAS_LINHAS2_T11=$(printf '%s' "$RESULTADO_T11" | node --no-warnings -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const o=JSON.parse(s);process.stdout.write(String(o.servidasLinhas2))}catch(e){process.stdout.write('ERRO')}})")
+
+  if echo "$RESULTADO_T11" | grep -q '"adiadas1":1' \
+    && echo "$RESULTADO_T11" | grep -q '"falharam1":0' \
+    && echo "$RESULTADO_T11" | grep -q '"pontuadas1":0' \
+    && echo "$RESULTADO_T11" | grep -q '"emSessoesTabela1":0' \
+    && echo "$RESULTADO_T11" | grep -q '"linhasUsoMemoria1":0' \
+    && echo "$RESULTADO_T11" | grep -q '"pontuadas2":1' \
+    && echo "$RESULTADO_T11" | grep -q '"emSessoesTabela2":1' \
+    && [ "$SERVIDAS_LINHAS2_T11" != "0" ] && [ "$SERVIDAS_LINHAS2_T11" != "ERRO" ]; then
+    ok=$((ok+1)); echo "  ok   banco ocupado adia a sessao sem marcar nem gravar parcial"
+  else
+    falhou=$((falhou+1)); echo "  FALHA banco ocupado nao adiou corretamente: $RESULTADO_T11"
   fi
 fi
 
