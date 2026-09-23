@@ -500,6 +500,11 @@ function idadeEmDias(conexao, origem, refId) {
  * calcular a idade da linha, nunca o `conteudo`), e decide se liga o
  * ranking. Não altera seleção nenhuma (D2).
  *
+ * Tarefa 8 (D9): sessão sem nenhuma linha `servida = 1` (sem transcrito, ou
+ * com transcrito mas nada casou) não tem como "perder" nada para a
+ * recência — contá-la no denominador empurra a régua para "não liga" sem
+ * dado nenhum. Só entra no denominador quem tem ao menos uma servida.
+ *
  * @param {object} conexao conexão de banco já aberta (leitura basta)
  * @returns {string} relatório pronto para imprimir
  */
@@ -510,17 +515,30 @@ function gerarRelatorio(conexao) {
   } catch (e) {
     return 'nenhuma sessão pontuada ainda (uso_memoria_sessoes não existe — rode `manutencao` ao menos uma vez)';
   }
-  const total = sessoes.length;
-  if (total === 0) return 'nenhuma sessão pontuada ainda';
+  if (sessoes.length === 0) return 'nenhuma sessão pontuada ainda';
+
+  const temServida = new Set(
+    conexao.prepare(`SELECT DISTINCT sessao FROM uso_memoria WHERE servida = 1`).all().map((r) => r.sessao)
+  );
+  const sessoesComServida = sessoes.filter((s) => temServida.has(s.sessao));
+  const semServida = sessoes.length - sessoesComServida.length;
+
+  const total = sessoesComServida.length;
+  if (total === 0) {
+    return `${semServida} sessão(ões) sem servida fora da conta\nnenhuma sessão com servida para medir a régua D9`;
+  }
 
   const linhas = [];
-  linhas.push(`sessões pontuadas: ${total}`);
-  linhas.push(`período: ${sessoes[0].pontuada_em} a ${sessoes[total - 1].pontuada_em}`);
+  linhas.push(`sessões pontuadas: ${sessoes.length}`);
+  linhas.push(`período: ${sessoes[0].pontuada_em} a ${sessoes[sessoes.length - 1].pontuada_em}`);
+  if (semServida > 0) {
+    linhas.push(`${semServida} sessão(ões) sem servida fora da conta`);
+  }
 
   let sessoesComPerda = 0;
   const naoServidasComPerda = [];
 
-  for (const { sessao } of sessoes) {
+  for (const { sessao } of sessoesComServida) {
     const melhorRow = conexao.prepare(`SELECT MAX(nota) n FROM uso_memoria WHERE sessao = ? AND servida = 1`).get(sessao);
     const melhorNota = melhorRow && melhorRow.n != null ? melhorRow.n : 0;
 

@@ -662,5 +662,66 @@ EOF
 fi
 
 echo
+echo "== Tarefa 8: denominador da regua so conta sessao com servida =="
+
+CAIXA10="$(novo_sandbox)"
+CAIXA10_WIN="$(cygpath -m "$CAIXA10" 2>/dev/null || printf '%s' "$CAIXA10")"
+RFM_ROOT="$CAIXA10" $MEMORIA iniciar > /dev/null 2>&1
+
+cat > "$CAIXA10/popular-sem-servida.cjs" <<EOF
+process.env.RFM_ROOT = process.argv[2];
+const { abrirBanco, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { caminhoDb } = resolverCaminhos();
+const conexao = abrirBanco(caminhoDb);
+const agora = new Date().toISOString();
+
+for (let i = 1; i <= 3; i++) {
+  conexao.prepare('INSERT INTO observacoes (id, projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?, ?)')
+    .run(i, 'proj-regua8', 'obs ' + i, agora, 'regua8-' + i);
+}
+
+function sessaoComServida(id, servidaNota, naoServidaNota) {
+  conexao.prepare('INSERT OR REPLACE INTO uso_memoria_sessoes (sessao, pontuada_em) VALUES (?, ?)').run(id, agora);
+  conexao.prepare('INSERT OR REPLACE INTO uso_memoria (origem, ref_id, sessao, servida, nota, pontuada_em) VALUES (?,?,?,?,?,?)')
+    .run('observacao', 1, id, 1, servidaNota, agora);
+  if (naoServidaNota !== null) {
+    conexao.prepare('INSERT OR REPLACE INTO uso_memoria (origem, ref_id, sessao, servida, nota, pontuada_em) VALUES (?,?,?,?,?,?)')
+      .run('observacao', 2, id, 0, naoServidaNota, agora);
+  }
+}
+
+function sessaoSemServida(id) {
+  // marcada pela manutencao (ex.: transcrito ausente) — entra em
+  // uso_memoria_sessoes mas NUNCA tem linha servida=1 em uso_memoria.
+  conexao.prepare('INSERT OR REPLACE INTO uso_memoria_sessoes (sessao, pontuada_em) VALUES (?, ?)').run(id, agora);
+}
+
+// 3 sessoes com servida, 1 com perda (mesmo formato da Tarefa 4).
+sessaoComServida('sessao8-1', 0.3, 0.9);
+sessaoComServida('sessao8-2', 0.8, 0.2);
+sessaoComServida('sessao8-3', 0.5, null);
+
+// 3 sessoes marcadas sem transcrito/sem servida — nao podem entrar no denominador.
+sessaoSemServida('sessao8-sem-a');
+sessaoSemServida('sessao8-sem-b');
+sessaoSemServida('sessao8-sem-c');
+
+conexao.close();
+EOF
+node --no-warnings "$CAIXA10/popular-sem-servida.cjs" "$CAIXA10_WIN"
+
+SAIDA_TAREFA8=$(RFM_ROOT="$CAIXA10" $MEMORIA utilidade --relatorio 2>&1)
+echo "  comando: RFM_ROOT=<caixa 3 com servida + 3 sem servida> node scripts/memoria.cjs utilidade --relatorio"
+echo "  saida:"
+echo "$SAIDA_TAREFA8" | sed 's/^/    /'
+
+if echo "$SAIDA_TAREFA8" | grep -q "régua D9: LIGA o ranking (1 de 3 sessões)" \
+  && echo "$SAIDA_TAREFA8" | grep -q "3 sessão(ões) sem servida fora da conta"; then
+  ok=$((ok+1)); echo "  ok   sessao sem servida nao entra no denominador da regua"
+else
+  falhou=$((falhou+1)); echo "  FALHA sessao sem servida entrou no denominador ou linha 'fora da conta' ausente: $SAIDA_TAREFA8"
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
