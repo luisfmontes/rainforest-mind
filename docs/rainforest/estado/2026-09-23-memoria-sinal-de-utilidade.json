@@ -22,7 +22,7 @@
     "emenda": "tarefas 6-10, achados das duas revisoes"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-23",
     "tarefas_ok": 11,
     "tarefas": 11,
@@ -157,7 +157,11 @@
         "resultado": "vermelho",
         "fixture": "testa-utilidade.sh, secao banco ocupado adia a sessao sem marcar nem gravar parcial"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "verificar",
+      "data": "2026-09-23"
+    }
   },
   "revisar": {
     "status": "ok",
@@ -173,11 +177,12 @@
     "head": "02d42ce4dad4fc6b84ea8d7adf8871ec8af433b3"
   },
   "verificar": {
-    "status": "ok",
-    "comando": "bash scripts/testa-utilidade.sh",
-    "saida": "== resultado: 19 ok, 0 falha(s) == (copia do rainforest.db real + transcrito real; testa-memoria 40 ok, testa-memoria-somente-leitura 29 ok)",
-    "sensor_externo": "bash scripts/testa-utilidade.sh",
-    "em": "2026-09-23"
+    "status": "reprovado",
+    "comando": "gh pr checks 326",
+    "saida": "baterias (node 24) fail — vermelhas: scripts/testa-importar-claude-mem.sh, scripts/testa-utilidade.sh",
+    "sensor_externo": "gh pr checks 326",
+    "em": "2026-09-23",
+    "tentativas": 1
   },
   "fechar": {
     "status": "pendente"
