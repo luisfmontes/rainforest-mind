@@ -289,10 +289,8 @@ function bloqueia(motivo, dir, quem, segmento) {
     `Repo: ${dir}\n` +
     `Quem: ${quem}\n\n` +
     `Varias sessoes podem trabalhar no MESMO working tree. Staging em massa nao\n` +
-    `distingue o seu trabalho do da janela do lado. Em 2026-08-09, na mesma sessao,\n` +
-    `'git add -A' varreu trabalho alheio duas vezes: logs e sessoes.json numa, e o\n` +
-    `relatorio escrito por outra sessao para dentro de uma branch que ia ser\n` +
-    `descartada na outra.\n` +
+    `distingue o seu trabalho do da janela do lado — pode varrer log, estado ou\n` +
+    `relatorio de outra sessao junto com o seu.\n` +
     `${oQueSeriaVarrido(dir)}` +
     `\nAdicione por caminho. Se algum arquivo acima nao e seu, ele nao entra — e vale\n` +
     `perguntar de quem e antes de commitar.\n\n` +

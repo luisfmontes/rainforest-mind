@@ -89,12 +89,10 @@ alta. Não achando nenhum dos dois, **não publique em silêncio**: leia o rascu
 à mão e diga em uma linha que o gate não rodou.
 
 Ele **sai com código 2** e recusa quando acha telefone, JID de WhatsApp, e-mail,
-caminho de pasta pessoal ou credencial. Isto não é zelo: até 2026-08-10 este
-comando dizia por escrito "anonimize dado de cliente antes de gravar", e um
-relatório foi gravado assim mesmo com o telefone e o nome completo de um
-terceiro, mais o caminho e o parâmetro do sistema do cliente. Ficou no
-repositório por um dia. Regra escrita não alcança quem a leu e errou mesmo
-assim — código com exit code alcança.
+caminho de pasta pessoal ou credencial. Isto não é zelo: regra escrita em prosa
+("anonimize dado de cliente antes de gravar") já foi lida e violada mesmo assim,
+com dado real de terceiro indo parar no repositório. Regra escrita não alcança
+quem a leu e errou mesmo assim — código com exit code alcança.
 
 **O que ele não vê, e continua com você:** nome de pessoa. Não há padrão para
 isso, e foi exatamente o que passou. Leia o rascunho procurando nome de gente,

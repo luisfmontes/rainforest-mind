@@ -79,7 +79,7 @@ repositório e reporte a divergência, em vez de concluir que o dado não
 existe.
 
 Se produzir teste de regressão, **commite-o** com mensagem terminando em
-Co-Authored-By: Claude Fable 5 <noreply@anthropic.com> — nunca commite a
+Co-Authored-By: <nome do modelo em que você roda> <noreply@anthropic.com> — nunca commite a
 correção do defeito em si.
 
 Método destilado do fable-method (MIT, Sahir619/fable-method), ramo de

@@ -66,9 +66,9 @@ com erro de formato não tem conserto, só slug novo. O arquivo é **commitado n
 rodada 1**, **antes do primeiro crítico** — o `mostrar` lê do commit e recusa
 (exit 1) manifesto fora do git. Depois disso não muda. Isso não é
 organização: o crítico é `Agent` novo a **toda** rodada, e o que não estiver em
-disco não chega nele. É por isso que o teto de rodadas deixou de viver na
-conversa e virou item do arquivo — e régua reescrita no meio do loop é régua
-trocada no meio do loop, a mesma fraude que trocar o teto.
+disco não chega nele. É por isso que o teto de rodadas é item do arquivo, não
+da conversa — e régua reescrita no meio do loop é régua trocada no meio do
+loop, a mesma fraude que trocar o teto.
 
 **Não consegue escrever cinco?** A régua reprovou, e reprovou **de graça**. Essa
 é a rede barata: ela custa zero rodada, enquanto a calibragem da Fase 1 custa

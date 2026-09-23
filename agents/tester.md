@@ -69,7 +69,7 @@ mais valioso que você pode devolver.
 
 (g) **Commite os testes** (nunca o conserto — achou bug, reporta) com
 mensagem terminando em
-Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>.
+Co-Authored-By: <nome do modelo em que você roda> <noreply@anthropic.com>.
 
 Método destilado do fable-method (MIT, Sahir619/fable-method), ramo de teste.
 

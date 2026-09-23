@@ -177,10 +177,8 @@ else
 fi
 
 # ------------------------------------------------- 5. Incidente documentado
-echo; echo "5. Incidente 2026-08-24 documentado no SKILL.md"
-tem "referência a PR #85" "$CONTEUDO_SKILL" "PR #85"
+echo; echo "5. Palavra-chave em português documentada no SKILL.md"
 tem "referência a issues #81 e #79" "$CONTEUDO_SKILL" "#81 e #79"
-tem "referência a data 2026-08-24" "$CONTEUDO_SKILL" "2026-08-24"
 tem "explicação do problema (português)" "$CONTEUDO_SKILL" "português"
 
 echo; echo "-----------------------------------------"
