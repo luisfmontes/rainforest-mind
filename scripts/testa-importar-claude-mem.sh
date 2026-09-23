@@ -456,12 +456,19 @@ echo "  -- SABOTAGEM: devolver o \`readonly\` minusculo e exigir que a assercao 
 # de MODULE_NOT_FOUND igual aos outros dois, so que calado pelo `2>/dev/null`
 # la embaixo: stdout vazio comparava igual a "" != "ESCREVEU" e a bateria
 # reportava "mutacao sem efeito" sem nunca ter chegado a rodar a mutacao.
+# Terceira vez da mesma classe: o plano memoria-sinal-de-utilidade (2026-09-23)
+# acrescentou scripts/lib/utilidade.cjs, que por sua vez faz
+# require("../../hooks/lib/memoria-sessao.cjs") — outro irmao que ficaria de
+# fora se a lista continuasse copiando arquivo por arquivo. Em vez de caçar
+# cada `require` novo do memoria.cjs (e do que ele importa) um a um pra
+# sempre, a pasta `lib/` inteira (de scripts/ e de hooks/) e' copiada de uma
+# vez: qualquer irmao novo, presente ou futuro, entra sem precisar editar
+# esta lista de novo.
 mkdir -p "$CAIXA/mut/scripts/lib" "$CAIXA/mut/hooks/lib"
 MUT_MEMORIA="$CAIXA/mut/scripts/memoria-mut.cjs"
 cp "$SRC/scripts/memoria.cjs" "$MUT_MEMORIA"
-cp "$SRC/hooks/lib/raiz.cjs" "$CAIXA/mut/hooks/lib/raiz.cjs"
-cp "$SRC/scripts/lib/achar-executavel-claude.cjs" "$CAIXA/mut/scripts/lib/achar-executavel-claude.cjs"
-cp "$SRC/scripts/lib/grupo-de-origem.cjs" "$CAIXA/mut/scripts/lib/grupo-de-origem.cjs"
+cp -r "$SRC/scripts/lib/." "$CAIXA/mut/scripts/lib/"
+cp -r "$SRC/hooks/lib/." "$CAIXA/mut/hooks/lib/"
 node -e '
 const fs = require("fs");
 const alvo = process.argv[1];

@@ -21,6 +21,8 @@
  *   node scripts/memoria.cjs reindexar               reconstruir índices
  *   node scripts/memoria.cjs consolidar              sintetizar observações antigas em resumos
  *   node scripts/memoria.cjs reconciliar             store/update/merge/skip contra o acervo pendente
+ *   node scripts/memoria.cjs utilidade --extrair <transcrito>   inspecionar servidas/texto de um transcrito
+ *   node scripts/memoria.cjs utilidade --relatorio  régua D9: liga ou não o ranking por utilidade
  */
 
 const fs = require('fs');
@@ -46,6 +48,11 @@ const { acharExecutavelClaude } = require('./lib/achar-executavel-claude.cjs');
 
 // Chave de grupo de origem de uma observação — consolidação por grupo (D7).
 const { sqlGrupoDeOrigem } = require('./lib/grupo-de-origem.cjs');
+
+// Sinal de utilidade da memória (Tarefas 1, 3 e 4, D1-D11). Sentido único:
+// utilidade.cjs nunca requer este arquivo de volta (evitaria require
+// circular — ver o comentário no topo de scripts/lib/utilidade.cjs).
+const { extrairSessao, pontuarSessoesPendentes, gerarRelatorio } = require('./lib/utilidade.cjs');
 
 // Encontra o diretório .git subindo a árvore de diretórios.
 // Retorna o caminho do diretório que contém .git, ou null se não encontrado.
@@ -2063,6 +2070,50 @@ async function cmdReconciliar() {
   }
 }
 
+// Comando `utilidade` (Tarefas 1 e 4, D1-D11): inspeção do extrator
+// (`--extrair <transcrito>`) e relatório da régua D9 (`--relatorio`). Nunca
+// escreve no banco — quem grava é `pontuarSessoesPendentes`, chamada só de
+// dentro de `cmdManutencao`.
+function cmdUtilidade() {
+  const args = process.argv.slice(3);
+
+  const iExtrair = args.indexOf('--extrair');
+  if (iExtrair !== -1) {
+    const caminhoTranscrito = args[iExtrair + 1];
+    if (!caminhoTranscrito) {
+      console.error('ERRO: --extrair requer o caminho do transcrito');
+      process.exit(1);
+    }
+    const { servidas, texto } = extrairSessao(caminhoTranscrito);
+    console.log(JSON.stringify({ servidas: servidas.length, bytesTexto: Buffer.byteLength(texto, 'utf8') }));
+    return;
+  }
+
+  if (args.includes('--relatorio')) {
+    const { caminhoDb } = resolverCaminhos();
+    if (!fs.existsSync(caminhoDb)) {
+      console.log('(banco não existe, nada a relatar)');
+      return;
+    }
+    // Somente-leitura de propósito (D2: o relatório só lê) — sem fallback
+    // para abrirBanco() em caso de falha, que abriria para ESCRITA.
+    const conexao = abrirBancoSomenteLeitura(caminhoDb);
+    if (!conexao) {
+      console.log('(banco indisponível, nada a relatar)');
+      return;
+    }
+    try {
+      console.log(gerarRelatorio(conexao));
+    } finally {
+      conexao.close();
+    }
+    return;
+  }
+
+  console.error('Use: utilidade --extrair <transcrito> | utilidade --relatorio');
+  process.exit(1);
+}
+
 // Comando `manutencao` (Tarefa 5, D1/D5): a passada que roda de verdade
 // garante o esquema, reconcilia e DEPOIS consolida, nessa ordem, registrando
 // cada passo em `<raiz>/manutencao.log`. Quem dispara isto é o hook fino
@@ -2155,6 +2206,38 @@ async function cmdManutencao() {
     registrar(`consolidar: falhou: ${e.message}`);
   }
 
+  // Tarefa 3 (D7): pontua as sessões pendentes da marca_dagua, depois de
+  // reconciliar e consolidar. Conexão própria, fechada neste bloco — os
+  // passos acima abrem e fecham a própria conexão dentro de cada cmd*().
+  // Tarefa 11: a contagem de pontuadas do log vem de
+  // resultadoUtilidade.pontuadas (só quem passou por pontuarSessao com
+  // sucesso) — ver o comentário junto do registrar() abaixo.
+  registrar('utilidade: inicio');
+  try {
+    const { caminhoDb: caminhoDbUtilidade } = resolverCaminhos();
+    const conexao = abrirBanco(caminhoDbUtilidade);
+    try {
+      const resultadoUtilidade = pontuarSessoesPendentes(conexao);
+      // Tarefa 11 (D7, D9): a contagem de pontuadas vem de
+      // resultadoUtilidade.pontuadas (só as que passaram por pontuarSessao
+      // com sucesso), não mais de antes/depois em uso_memoria_sessoes — esse
+      // cálculo somava também as marcadas por falha (Tarefa 10) e por banco
+      // ocupado (adiadas, que nem marca), inflando o número de "pontuadas".
+      // servidasSemId, pendentesParaProxima, falharam e adiadas vêm todos do
+      // retorno de pontuarSessoesPendentes, que é quem aplicou o teto
+      // TETO_PONTUAR.
+      registrar(
+        `utilidade: ${resultadoUtilidade.pontuadas} sessao(oes) pontuada(s), ${resultadoUtilidade.servidasSemId} servida(s) sem id, ${resultadoUtilidade.pendentesParaProxima} pendente(s) para a proxima, ${resultadoUtilidade.falharam} falharam, ${resultadoUtilidade.adiadas} adiadas (banco ocupado)`
+      );
+    } finally {
+      conexao.close();
+    }
+    registrar('utilidade: fim');
+  } catch (e) {
+    houveFalha = true;
+    registrar(`utilidade: falhou: ${e.message}`);
+  }
+
   registrar(houveFalha ? 'manutencao: completa com falhas' : 'manutencao: completa');
   console.log(`manutencao completa: log em ${caminhoLog}`);
 }
@@ -2181,9 +2264,11 @@ async function main() {
       return await cmdReconciliar();
     case 'manutencao':
       return await cmdManutencao();
+    case 'utilidade':
+      return cmdUtilidade();
     default:
       console.error(`Comando desconhecido: ${cmd}`);
-      console.error('Use: iniciar | esquema | buscar | backup | reindexar | consolidar | reconciliar | manutencao');
+      console.error('Use: iniciar | esquema | buscar | backup | reindexar | consolidar | reconciliar | manutencao | utilidade');
       process.exit(1);
   }
 }
@@ -2202,7 +2287,7 @@ if (require.main === module) {
 
 module.exports = {
   abrirBanco, abrirBancoSomenteLeitura, chaveHarness, criarSchema, extrairSchema, popularFts5,
-  resolverCaminhos, verificarConstraintUniqueProjetoOrigem,
+  resolverCaminhos, verificarConstraintUniqueProjetoOrigem, encontrarGit,
   K_CANDIDATAS, TETO_RECONCILIAR, construirQueryFts5, buscarCandidatas,
   interpretarDecisaoReconciliacao, aplicarDecisaoReconciliacao,
   formatarPromptReconciliacao,
