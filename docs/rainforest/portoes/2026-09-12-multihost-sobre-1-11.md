@@ -32,19 +32,24 @@ e pode ser removida após a prova:
 New-Item -ItemType Directory -Force 'C:\Projetos\rainforest-mind\.claude\tmp-portoes-codex-9b21e95b'
 $env:PATH = 'C:\Program Files\Git\bin;C:\Program Files\nodejs;' + $env:PATH
 $env:CHERE_INVOKING = '1'
-$env:TMPDIR = '/c/Projetos/rainforest-mind/.claude/tmp-portoes-codex-9b21e95b'
 Remove-Item Env:BASH_ENV -ErrorAction SilentlyContinue
-& 'C:\Program Files\Git\bin\bash.exe' -lc 'PORTOES_TIMEOUT_MS=600000 node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar'
+& 'C:\Program Files\Git\bin\bash.exe' -lc 'TMPDIR=/c/Projetos/rainforest-mind/.claude/tmp-portoes-codex-9b21e95b node -p "process.env.TMPDIR"'
+& 'C:\Program Files\Git\bin\bash.exe' -lc 'TMPDIR=/c/Projetos/rainforest-mind/.claude/tmp-portoes-codex-9b21e95b PORTOES_TIMEOUT_MS=600000 node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar'
 ```
 
-Dentro de uma sessão Git Bash de login, com o mesmo `TMPDIR`, o comando é
-`PORTOES_TIMEOUT_MS=600000 node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar`.
+O shell de login pode substituir o `TMPDIR` herdado do PowerShell; a atribuição
+dentro de `-lc` faz o processo Node receber o diretório gravável. Dentro de
+uma sessão Git Bash de login, use o mesmo comando com `TMPDIR=...` e
+`PORTOES_TIMEOUT_MS=600000` antes de `node scripts/portoes.cjs rodar ...`.
 Definir a variável apenas no `CHECK` filho não amplia o limite imposto pelo pai.
+Na sondagem publicada, `node -p "process.env.TMPDIR"` retornou
+`C:\Projetos\rainforest-mind\.claude\tmp-portoes-codex-9b21e95b` (exit `0`),
+o mesmo diretório criado pelo `New-Item`.
 
 - [x] P1: o gate de staging total passa todos os casos
   CHECK: bash hooks/testa-gate-staging-total.sh
   ESPERA: == resultado: 154 ok, 0 falha(s) ==
-  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"5a3760b9b520"}
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"3ea7ac429c28"}
 
 - [x] P2: o contrato ponta a ponta do plugin Codex passa
   CHECK: bash scripts/testa-plugin-codex.sh
@@ -69,7 +74,7 @@ Definir a variável apenas no `CHECK` filho não amplia o limite imposto pelo pa
 Reexecução do procedimento PowerShell acima nesta correção (exit `0`):
 
 ```text
-P1: CUMPRIDO — exit 0, marcador presente (5a3760b9b520)
+P1: CUMPRIDO — exit 0, marcador presente (3ea7ac429c28)
 P2: CUMPRIDO — exit 0, marcador presente (077adea17e32)
 P3: CUMPRIDO — exit 0, marcador presente (c8fd95e6a496)
 P4: CUMPRIDO — exit 0, marcador presente (c2c28f24842b)
