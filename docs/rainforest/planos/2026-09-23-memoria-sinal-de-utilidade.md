@@ -189,3 +189,33 @@ mutacao:
   bateria: `bash scripts/testa-utilidade.sh`
   fixture: `testa-utilidade.sh, secao "banco ocupado adia a sessao sem marcar nem gravar parcial"`
 pronto quando: com a cópia do banco real e o transcrito real de uma sessão pendente, uma segunda conexão `DatabaseSync` segurando `BEGIN IMMEDIATE` no mesmo arquivo durante `pontuarSessoesPendentes` faz a chamada devolver `adiadas: 1, falharam: 0`, a sessão fica fora de `uso_memoria_sessoes` e com zero linhas em `uso_memoria`; liberada a trava, a chamada seguinte a pontua (sessão em `uso_memoria_sessoes`, linhas com `servida = 1` presentes) — provado por `bash scripts/testa-utilidade.sh` imprimindo `ok   banco ocupado adia a sessao sem marcar nem gravar parcial`.
+
+**Emenda 4 de 2026-09-23 — CI do PR #326 vermelha em duas baterias:** as tarefas 12-13 abaixo. `testa-importar-claude-mem.sh` monta o mutante copiando os irmãos do `memoria.cjs` um a um, e o `lib/utilidade.cjs` novo ficou de fora (terceira vez da mesma classe, documentada no próprio teste): o mutante morre de `MODULE_NOT_FOUND` calado e a bateria acusa "mutacao sem efeito". `testa-utilidade.sh` lê `~/.rainforest/rainforest.db` e transcritos de `~/.claude-personal/projects/`, que o runner não tem — e o `baterias.yml` proíbe plantar `~/.rainforest` sintético no CI.
+
+### 12. O mutante do importar copia a pasta `lib/` inteira [tipo: teste]
+atende: D7
+arquivos: `scripts/testa-importar-claude-mem.sh`
+depende de: 11
+paralela: sim
+A lista de `cp` de irmãos um a um vira cópia da pasta: `cp -r "$SRC/scripts/lib/." "$CAIXA/mut/scripts/lib/"` e o mesmo para `hooks/lib/`, para que o próximo `require` novo do `memoria.cjs` não reabra a classe.
+mutacao:
+  arquivo: `scripts/testa-importar-claude-mem.sh`
+  de: `cp -r "$SRC/scripts/lib/." "$CAIXA/mut/scripts/lib/"`
+  para: `true`
+  bateria: `bash scripts/testa-importar-claude-mem.sh`
+  fixture: `testa-importar-claude-mem.sh, secao "SABOTAGEM: devolver o readonly minusculo e exigir que a assercao caia"`
+pronto quando: com o `memoria.cjs` desta branch (que faz `require("./lib/utilidade.cjs")`), o mutante carrega e a sabotagem imprime `(mutante com \`readonly\` minusculo: ESCREVEU)` — provado por `bash scripts/testa-importar-claude-mem.sh` devolvendo `== resultado: 18 ok, 0 falha(s) ==`.
+
+### 13. A bateria da utilidade traz as próprias fixtures [tipo: teste]
+atende: D1, D4, D5, D6, D9
+arquivos: `scripts/testa-utilidade.sh`, `scripts/fixtures/utilidade/transcrito-sessao.jsonl`
+depende de: 11
+paralela: sim
+Nenhuma seção lê `~/.rainforest/` nem `~/.claude-personal/`. O banco é montado na caixa a partir de `scripts/esquema-memoria.sql` com observações sintéticas (termos raros e comuns suficientes para o IDF das seções 2, 6, 9); o transcrito é um fixture versionado **no formato real do Claude Code** — estrutura copiada de um transcrito real desta máquina (linhas `user` com prompt, `assistant` com `tool_use`/`input` e texto, `attachment` do SessionStart com `hookSpecificOutput.additionalContext` contendo o bloco `## Memória (corpus residentes)` … `mais: node scripts/memoria.cjs buscar`), conteúdo sintético, sem dado pessoal nem sequência numérica longa. As seções que precisavam de "transcrito real grande" (bytes, teto de 30) geram cópias do fixture na caixa.
+mutacao:
+  arquivo: `scripts/lib/utilidade.cjs`
+  de: `if (ehBancoOcupado(e)) { adiadas++; break; }`
+  para: `if (false) { adiadas++; break; }`
+  bateria: `bash scripts/testa-utilidade.sh`
+  fixture: `testa-utilidade.sh, secao "banco ocupado adia a sessao sem marcar nem gravar parcial"`
+pronto quando: com `HOME` apontando para diretório vazio (o que o runner tem), a bateria roda todas as seções sem pular nenhuma — provado por `HOME="$(mktemp -d)" bash scripts/testa-utilidade.sh` devolvendo `== resultado: 19 ok, 0 falha(s) ==` e por `grep -c "\.rainforest/\|claude-personal" scripts/testa-utilidade.sh` devolvendo `0`.
