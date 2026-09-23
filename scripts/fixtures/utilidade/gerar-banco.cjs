@@ -186,7 +186,25 @@ function construirEntradasTranscrito() {
     'mais: node scripts/memoria.cjs buscar --texto "<termo>"',
   ].join('\n');
 
-  const base = { cwd: CWD_FIXTURE, sessionId: 'fixture-sessao-utilidade' };
+  // Envelope comum a toda linha de um transcrito real (estrutura copiada por
+  // leitura do transcrito mais recente desta máquina com "corpus residentes"
+  // — nunca o conteúdo). `parentUuid`/`uuid` usam sufixo letra-dígito
+  // misturado (nunca uma corrida de 4+ dígitos puros): o gate de publicação
+  // (`scripts/conferir-publicacao.cjs`) reconhece forma de telefone em
+  // sequências `\d{2}...9?\d{4}...\d{4}`, e um uuid "de verdade" (blocos hex
+  // de 4/8/12 dígitos) casaria.
+  const base = {
+    parentUuid: null,
+    isSidechain: false,
+    uuid: 'fx-uuid-a1b2-linha',
+    timestamp: '2026-01-05T09:00:00.000Z',
+    userType: 'fixture',
+    entrypoint: 'cli',
+    cwd: CWD_FIXTURE,
+    sessionId: 'fixture-sessao-utilidade',
+    version: '0.0.0-fixture',
+    gitBranch: 'fixture-branch',
+  };
 
   return [
     // Attachment de outro hook (nunca SessionStart) — extrairSessao() tem que
@@ -195,9 +213,16 @@ function construirEntradasTranscrito() {
       ...base,
       type: 'attachment',
       attachment: {
-        hookEvent: 'PostToolUse',
+        type: 'hook',
         hookName: 'fixture-hook-irrelevante',
+        hookEvent: 'PostToolUse',
+        toolUseID: 'fixture-tool-1',
+        content: null,
         stdout: JSON.stringify({ ok: true }),
+        stderr: '',
+        exitCode: 0,
+        command: 'node hooks/fixture-hook-irrelevante.cjs',
+        durationMs: 8,
       },
     },
     // Attachment de SessionStart — é daqui que vêm as servidas (D3, D8).
@@ -205,12 +230,19 @@ function construirEntradasTranscrito() {
       ...base,
       type: 'attachment',
       attachment: {
-        hookEvent: 'SessionStart',
+        type: 'hook',
         hookName: 'memoria-session-start',
+        hookEvent: 'SessionStart',
+        toolUseID: null,
+        content: null,
         stdout: JSON.stringify({
           hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext },
           systemMessage: '',
         }),
+        stderr: '',
+        exitCode: 0,
+        command: 'node hooks/memoria-session-start.cjs',
+        durationMs: 12,
       },
     },
     // Linha de tipo desconhecido do extrator — cobre o `continue` genérico.
@@ -221,6 +253,7 @@ function construirEntradasTranscrito() {
     {
       ...base,
       type: 'user',
+      promptId: 'fx-prompt-um',
       message: {
         role: 'user',
         content:
@@ -234,6 +267,9 @@ function construirEntradasTranscrito() {
       ...base,
       type: 'assistant',
       message: {
+        model: 'fixture-model',
+        id: 'fx-msg-tool-use',
+        type: 'message',
         role: 'assistant',
         content: [
           {
@@ -243,6 +279,7 @@ function construirEntradasTranscrito() {
             input: { command: 'echo MARCADORFERRAMENTAUNICO raroferramentaunico' },
           },
         ],
+        stop_reason: 'tool_use',
       },
     },
     // tool_result: NUNCA é prompt do usuário — fica de fora do texto mesmo
@@ -252,7 +289,14 @@ function construirEntradasTranscrito() {
       type: 'user',
       message: {
         role: 'user',
-        content: [{ type: 'tool_result', tool_use_id: 'fixture-tool-1', content: 'MARCADORRESULTADOUNICO' }],
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: 'fixture-tool-1',
+            content: 'MARCADORRESULTADOUNICO',
+            is_error: false,
+          },
+        ],
       },
     },
     // Prosa do assistente que ECOA a injeção (repete "alfa corpusfiller" e o
@@ -262,6 +306,9 @@ function construirEntradasTranscrito() {
       ...base,
       type: 'assistant',
       message: {
+        model: 'fixture-model',
+        id: 'fx-msg-prosa',
+        type: 'message',
         role: 'assistant',
         content: [
           {
@@ -271,6 +318,7 @@ function construirEntradasTranscrito() {
               'foi a que usei, e rarogamaunico também parece relevante.',
           },
         ],
+        stop_reason: 'end_turn',
       },
     },
   ];
@@ -309,11 +357,13 @@ if (require.main === module) {
     const n = emitirTranscrito(destino);
     console.log(`ok: ${n} linhas escritas em ${destino}`);
   } else if (args.includes('--popular')) {
-    // Uso direto (fora da bateria): RFM_ROOT=<caixa> node gerar-banco.cjs --popular
+    // Chamador real: scripts/testa-utilidade.sh, função preparar_caixa_utilidade
+    // (`RFM_ROOT=<caixa> node scripts/fixtures/utilidade/gerar-banco.cjs
+    // --popular`, depois de `$MEMORIA iniciar` já ter criado o schema).
     const { abrirBanco, criarSchema, resolverCaminhos } = require('../../memoria.cjs');
     const { caminhoDb } = resolverCaminhos();
     const conexao = abrirBanco(caminhoDb);
-    criarSchema(conexao);
+    criarSchema(conexao); // idempotente — cobre também o uso direto, sem `iniciar` antes
     popularBanco(conexao);
     conexao.close();
     console.log(`ok: banco populado em ${caminhoDb}`);

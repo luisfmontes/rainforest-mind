@@ -32,7 +32,7 @@
 #   - o banco: montado do zero em cada caixa (`mktemp -d`) a partir de
 #     `scripts/esquema-memoria.sql` (via `criarSchema`, nunca DDL duplicado
 #     aqui), populado com o corpus sintético de
-#     `scripts/fixtures/utilidade/gerar-banco.cjs` (`popularBanco`);
+#     `scripts/fixtures/utilidade/gerar-banco.cjs --popular`;
 #   - o transcrito: o fixture versionado
 #     `scripts/fixtures/utilidade/transcrito-sessao.jsonl`, no formato real do
 #     harness (attachment de SessionStart, prompt de usuário, tool_use,
@@ -95,15 +95,7 @@ preparar_caixa_utilidade() {
   caixa="$(novo_sandbox)"
   caixa_win="$(cygpath -m "$caixa" 2>/dev/null || printf '%s' "$caixa")"
   RFM_ROOT="$caixa" $MEMORIA iniciar > /dev/null 2>&1
-  node --no-warnings -e "
-    process.env.RFM_ROOT = process.argv[1];
-    const { abrirBanco, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
-    const { popularBanco } = require('$SRC_WIN/scripts/fixtures/utilidade/gerar-banco.cjs');
-    const { caminhoDb } = resolverCaminhos();
-    const conexao = abrirBanco(caminhoDb);
-    popularBanco(conexao);
-    conexao.close();
-  " "$caixa_win"
+  RFM_ROOT="$caixa" node --no-warnings "$SRC/scripts/fixtures/utilidade/gerar-banco.cjs" --popular > /dev/null
   cp "$FIXTURE" "$caixa/transcrito.jsonl"
   CAIXA_PREP="$caixa"
   CAIXA_PREP_WIN="$caixa_win"
