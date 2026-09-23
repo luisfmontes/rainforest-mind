@@ -22,12 +22,12 @@
     "emenda": "tarefas 6-10, achados das duas revisoes"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-23",
-    "tarefas_ok": 11,
-    "tarefas": 11,
+    "tarefas_ok": 13,
+    "tarefas": 13,
     "em": "2026-09-23",
-    "comando": "bash scripts/testa-utilidade.sh",
+    "comando": "HOME=$(mktemp -d) bash scripts/testa-utilidade.sh",
     "saida": "== resultado: 19 ok, 0 falha(s) ==",
     "carimbos": [
       {
@@ -99,6 +99,20 @@
         "iteracao": 1,
         "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
         "ts": "2026-09-23T19:20:49.214Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "7d601d3d",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T22:30:36.092Z"
+      },
+      {
+        "tarefa": 13,
+        "hash_base": "7d601d3d",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T22:30:36.092Z"
       }
     ],
     "mutacao": [
@@ -156,25 +170,31 @@
         "tarefa": 11,
         "resultado": "vermelho",
         "fixture": "testa-utilidade.sh, secao banco ocupado adia a sessao sem marcar nem gravar parcial"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "testa-importar-claude-mem.sh, secao SABOTAGEM readonly minusculo"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, secao banco ocupado adia a sessao sem marcar nem gravar parcial (fixtures sinteticas)"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "verificar",
-      "data": "2026-09-23"
-    }
+    ]
   },
   "revisar": {
     "status": "ok",
     "snapshot": {
-      "head": "02d42ce4dad4fc6b84ea8d7adf8871ec8af433b3",
+      "head": "9caf9bc066042dbcb1301ffe598e884870fee605",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-09-23-memoria-sinal-de-utilidade.json"
       ]
     },
     "em": "2026-09-23",
     "achados": 0,
-    "base": "8fb976232434c3c68a34b3de06e8e689c5fbd7bf",
-    "head": "02d42ce4dad4fc6b84ea8d7adf8871ec8af433b3"
+    "base": "7d601d3d146a0372896214fbec56c56f7668d3d4",
+    "head": "9caf9bc0"
   },
   "verificar": {
     "status": "reprovado",
