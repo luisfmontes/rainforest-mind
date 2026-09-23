@@ -38,7 +38,7 @@ pronto quando: com um transcrito **real** desta máquina copiado para a caixa de
 
 ### 2. Pontuação: nota crua das servidas e do contrafactual [tipo: implementar]
 atende: D1, D5, D6, D10
-arquivos: `scripts/lib/utilidade.cjs`, `scripts/memoria.cjs`, `scripts/testa-utilidade.sh`
+arquivos: `scripts/lib/utilidade.cjs`, `scripts/memoria.cjs`, `scripts/esquema-memoria.sql`, `scripts/testa-utilidade.sh`
 depende de: 1
 paralela: nao
 - Tabelas novas no `criarSchema` de `scripts/memoria.cjs`: `uso_memoria(origem TEXT, ref_id INTEGER, sessao TEXT, servida INTEGER, nota REAL, pontuada_em TEXT, UNIQUE(origem, ref_id, sessao))` — `origem` é `observacao` ou `resumo` — e `uso_memoria_sessoes(sessao TEXT PRIMARY KEY, pontuada_em TEXT)`. Nenhuma coluna de texto além de ids e datas (D10).
