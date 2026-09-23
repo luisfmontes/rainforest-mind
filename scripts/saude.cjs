@@ -1143,14 +1143,15 @@ function checarMemoria() {
     // `VACUUM` ou outra versão do SQLite podem mudar essa ordem sem aviso. Tornar a
     // seleção da mais antiga EXPLÍCITA (não uma coincidência de ordem de scan).
     try {
+      // Sem LIMIT 1: marca cujo transcrito sumiu (worktree removido) nunca
+      // avanca o offset e congelava o aviso na pendencia mais antiga.
       const marca = db.prepare(`
-        SELECT processada_em, offset, offset_processado
+        SELECT processada_em, offset, offset_processado, arquivo
         FROM marca_dagua
         WHERE offset > COALESCE(offset_processado, 0)
           AND processada_em IS NOT NULL AND processada_em <> ''
         ORDER BY processada_em ASC
-        LIMIT 1
-      `).get();
+      `).all().find((m) => m.arquivo && fs.existsSync(m.arquivo));
 
       if (marca) {
         const tempoPassado = Date.now() - Date.parse(marca.processada_em);
