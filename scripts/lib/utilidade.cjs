@@ -470,16 +470,28 @@ function pontuarSessao(conexao, sessao, caminhoTranscrito) {
 // nunca conta no teto (marcar sem pontuar é barato, não precisa esperar).
 const TETO_PONTUAR = 30;
 
+// Marca uma sessão em uso_memoria_sessoes sem gravar pontuação nenhuma
+// (Tarefa 10, D7) — usada tanto para sessão sem transcrito (semTranscrito,
+// acima) quanto para sessão cujo pontuarSessao lançou (catch, abaixo). Sem a
+// marca, a fila ordenada da mais antiga devolve a MESMA sessão quebrada ao
+// lote para sempre e, acumulado, trava a fila inteira.
+function marcarSessao(conexao, sessao, pontuadaEm) {
+  conexao
+    .prepare(`INSERT OR REPLACE INTO uso_memoria_sessoes (sessao, pontuada_em) VALUES (?, ?)`)
+    .run(sessao, pontuadaEm);
+}
+
 /**
  * Pontua toda sessão da `marca_dagua` sem linha em `uso_memoria_sessoes`
  * (D7), até TETO_PONTUAR sessões COM transcrito por passada (Tarefa 7), as
  * mais antigas primeiro (ordem por `processada_em`). Transcrito ainda
  * existente: pontua e marca. Transcrito ausente: marca a sessão sem nota
  * nenhuma (nunca reprocessa a mesma sessão morta todo dia) e segue — uma
- * sessão problemática nunca trava as demais, e não conta no teto.
+ * sessão problemática nunca trava as demais, e não conta no teto. Sessão cujo
+ * `pontuarSessao` lança (Tarefa 10) também é marcada, pelo mesmo motivo.
  *
  * @param {object} conexao conexão de banco já aberta
- * @returns {{pontuadas: number, semTranscrito: number, servidasSemId: number, pendentesParaProxima: number, total: number}}
+ * @returns {{pontuadas: number, semTranscrito: number, servidasSemId: number, falharam: number, pendentesParaProxima: number, total: number}}
  */
 function pontuarSessoesPendentes(conexao) {
   const agora = new Date().toISOString();
@@ -512,6 +524,7 @@ function pontuarSessoesPendentes(conexao) {
 
   let pontuadas = 0;
   let servidasSemId = 0;
+  let falharam = 0;
 
   for (const { sessao, arquivo } of lote) {
     try {
@@ -519,12 +532,15 @@ function pontuarSessoesPendentes(conexao) {
       pontuadas++;
       servidasSemId += resultado.servidasSemId;
     } catch (e) {
-      // uma sessão com transcrito ilegível não trava as demais — nem marca,
-      // para que a próxima passada tente de novo.
+      // Tarefa 10 (D7): transcrito ilegível não trava as demais — MAS marca,
+      // para não voltar ao lote para sempre (a fila é ordenada da mais
+      // antiga; sem marca, a mesma sessão quebrada seria a primeira de toda
+      // passada seguinte, e nunca deixaria a fila andar).
+      marcarSessao(conexao, sessao, agora); falharam++;
     }
   }
 
-  return { pontuadas, semTranscrito, servidasSemId, pendentesParaProxima, total: pendentes.length };
+  return { pontuadas, semTranscrito, servidasSemId, falharam, pendentesParaProxima, total: pendentes.length };
 }
 
 // ---- Tarefa 4: relatório (régua D9) ----

@@ -899,5 +899,97 @@ EOF
 fi
 
 echo
+echo "== Tarefa 10: sessao que falha e marcada e a fila anda =="
+
+if [ -z "$TRANSCRITO_REAL" ] || [ ! -f "$HOME/.rainforest/rainforest.db" ]; then
+  falhou=$((falhou+1)); echo "  FALHA sem transcrito/banco real, pulando Tarefa 10"
+else
+  # Dublê próprio desta seção — mesmo motivo das Tarefas 3 e 7:
+  # reconciliar/consolidar não podem spawnar o `claude` real contra o banco
+  # real copiado.
+  DUBLE_LLM_DIR_T10="$(novo_sandbox)"
+  cat > "$DUBLE_LLM_DIR_T10/dubleLLM.cjs" <<'EOF'
+async function chamarLLM(texto) {
+  return '{"acao":"store","alvo_id":null}';
+}
+module.exports = { chamarLLM };
+EOF
+
+  TETO_PONTUAR_VAL_T10=$(node --no-warnings -e "process.stdout.write(String(require('$SRC_WIN/scripts/lib/utilidade.cjs').TETO_PONTUAR))")
+
+  CAIXA12="$(novo_sandbox)"
+  CAIXA12_WIN="$(cygpath -m "$CAIXA12" 2>/dev/null || printf '%s' "$CAIXA12")"
+  cp "$HOME/.rainforest/rainforest.db" "$CAIXA12/rainforest.db"
+  cp "$TRANSCRITO_REAL" "$CAIXA12/transcrito-valido.jsonl"
+  # Transcrito quebrado: um DIRETORIO no lugar do arquivo. fs.existsSync()
+  # (que pontuarSessoesPendentes usa para decidir "tem transcrito") enxerga
+  # um diretorio como existente; fs.readFileSync() dentro de extrairSessao
+  # entao lanca EISDIR — throw real e reproduzivel. JSON truncado dentro de
+  # uma linha (o exemplo do plano) NAO lanca: a Tarefa 1 ja blinda esse caso
+  # com try/catch por linha (linha corrompida vira "sem servida", nao throw).
+  mkdir -p "$CAIXA12/transcrito-quebrado.jsonl"
+
+  cat > "$CAIXA12/marcar-t10.cjs" <<EOF
+process.env.RFM_ROOT = process.argv[2];
+const { abrirBanco, criarSchema, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { TETO_PONTUAR } = require('$SRC_WIN/scripts/lib/utilidade.cjs');
+const { caminhoDb } = resolverCaminhos();
+const conexao = abrirBanco(caminhoDb);
+criarSchema(conexao);
+conexao.exec('DELETE FROM marca_dagua');
+const insert = conexao.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)');
+const agora = Date.now();
+// TETO_PONTUAR sessoes QUEBRADAS, as mais antigas — entram inteiras no lote.
+for (let i = 0; i < TETO_PONTUAR; i++) {
+  const processadaEm = new Date(agora - (TETO_PONTUAR + 2 - i) * 1000).toISOString();
+  insert.run('proj-t10', 'sessao-t10-quebrada-' + String(i).padStart(3, '0'), process.argv[3], 100, 100, processadaEm);
+}
+// 2 sessoes VALIDAS, mais novas — ficam pendentes para a passada seguinte.
+insert.run('proj-t10', 'sessao-t10-valida-a', process.argv[4], 100, 100, new Date(agora - 2000).toISOString());
+insert.run('proj-t10', 'sessao-t10-valida-b', process.argv[4], 100, 100, new Date(agora - 1000).toISOString());
+conexao.close();
+EOF
+  node --no-warnings "$CAIXA12/marcar-t10.cjs" "$CAIXA12_WIN" "$CAIXA12_WIN/transcrito-quebrado.jsonl" "$CAIXA12_WIN/transcrito-valido.jsonl"
+
+  cat > "$CAIXA12/conferir-t10.cjs" <<EOF
+process.env.RFM_ROOT = process.argv[2];
+const { abrirBancoSomenteLeitura, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { caminhoDb } = resolverCaminhos();
+const conexao = abrirBancoSomenteLeitura(caminhoDb);
+const quebradas = conexao.prepare("SELECT COUNT(*) c FROM uso_memoria_sessoes WHERE sessao LIKE 'sessao-t10-quebrada-%'").get().c;
+const validas = conexao.prepare("SELECT sessao FROM uso_memoria_sessoes WHERE sessao IN ('sessao-t10-valida-a','sessao-t10-valida-b')").all().length;
+conexao.close();
+process.stdout.write(JSON.stringify({ quebradas, validas }));
+EOF
+
+  # --- passada 1: as TETO_PONTUAR quebradas falham e sao marcadas; as 2 validas ficam pendentes ---
+  RFM_ROOT="$CAIXA12" TESTADOR_CHAMAR_LLM="$DUBLE_LLM_DIR_T10/dubleLLM.cjs" $MEMORIA manutencao > /dev/null 2>&1
+  got_manutencao_t10_1=$?
+  LOG_T10="$CAIXA12/manutencao.log"
+  LINHA_UTILIDADE_T10_1=$(grep "^.*utilidade: [0-9]" "$LOG_T10" | tail -1)
+  echo "  comando: RFM_ROOT=<copia com $TETO_PONTUAR_VAL_T10 sessoes quebradas (diretorio no lugar do transcrito) + 2 validas> node scripts/memoria.cjs manutencao"
+  echo "  saida (linha utilidade do manutencao.log, 1a passada): $LINHA_UTILIDADE_T10_1"
+
+  CONFERE_PASSADA1_T10=$(node --no-warnings "$CAIXA12/conferir-t10.cjs" "$CAIXA12_WIN")
+  echo "  saida (uso_memoria_sessoes apos 1a passada): $CONFERE_PASSADA1_T10"
+
+  # --- passada 2: fila anda — as 2 validas sao pontuadas agora ---
+  RFM_ROOT="$CAIXA12" TESTADOR_CHAMAR_LLM="$DUBLE_LLM_DIR_T10/dubleLLM.cjs" $MEMORIA manutencao > /dev/null 2>&1
+  got_manutencao_t10_2=$?
+  CONFERE_PASSADA2_T10=$(node --no-warnings "$CAIXA12/conferir-t10.cjs" "$CAIXA12_WIN")
+  echo "  saida (uso_memoria_sessoes apos 2a passada): $CONFERE_PASSADA2_T10"
+
+  if [ "$got_manutencao_t10_1" = "0" ] && [ "$got_manutencao_t10_2" = "0" ] \
+    && echo "$LINHA_UTILIDADE_T10_1" | grep -q "${TETO_PONTUAR_VAL_T10} falharam" \
+    && echo "$CONFERE_PASSADA1_T10" | grep -q "\"quebradas\":${TETO_PONTUAR_VAL_T10}" \
+    && echo "$CONFERE_PASSADA1_T10" | grep -q '"validas":0' \
+    && echo "$CONFERE_PASSADA2_T10" | grep -q '"validas":2'; then
+    ok=$((ok+1)); echo "  ok   sessao que falha e marcada e a fila anda"
+  else
+    falhou=$((falhou+1)); echo "  FALHA sessao que falha nao foi marcada ou a fila nao andou: passada1=$CONFERE_PASSADA1_T10 linha1=$LINHA_UTILIDADE_T10_1 passada2=$CONFERE_PASSADA2_T10"
+  fi
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

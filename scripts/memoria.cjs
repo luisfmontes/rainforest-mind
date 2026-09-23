@@ -2223,10 +2223,12 @@ async function cmdManutencao() {
       const depois = conexao.prepare('SELECT COUNT(*) c FROM uso_memoria_sessoes').get().c;
       // Tarefa 7 (D7, D8): N continua vindo do antes/depois (cobre tanto a
       // sessão pontuada de verdade quanto a marcada sem transcrito — mesma
-      // razão do comentário acima); M e R vêm do retorno de
-      // pontuarSessoesPendentes, que é quem aplicou o teto TETO_PONTUAR.
+      // razão do comentário acima, e agora também a sessão que falhou e foi
+      // marcada pela Tarefa 10); servidasSemId, pendentesParaProxima e
+      // falharam vêm do retorno de pontuarSessoesPendentes, que é quem
+      // aplicou o teto TETO_PONTUAR.
       registrar(
-        `utilidade: ${depois - antes} sessao(oes) pontuada(s), ${resultadoUtilidade.servidasSemId} servida(s) sem id, ${resultadoUtilidade.pendentesParaProxima} pendente(s) para a proxima`
+        `utilidade: ${depois - antes} sessao(oes) pontuada(s), ${resultadoUtilidade.servidasSemId} servida(s) sem id, ${resultadoUtilidade.pendentesParaProxima} pendente(s) para a proxima, ${resultadoUtilidade.falharam} falharam`
       );
     } finally {
       conexao.close();
