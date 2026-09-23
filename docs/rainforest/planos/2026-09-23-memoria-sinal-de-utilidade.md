@@ -138,3 +138,34 @@ mutacao:
   bateria: `bash scripts/testa-utilidade.sh`
   fixture: `testa-utilidade.sh, secao "sessao sem servida nao entra no denominador da regua"`
 pronto quando: com um banco de caixa de teste com 3 sessões com servida (1 com perda) e 3 sessões marcadas sem transcrito, `utilidade --relatorio` termina com `régua D9: LIGA o ranking (1 de 3 sessões)` e mostra antes a linha `3 sessão(ões) sem servida fora da conta` — provado por `bash scripts/testa-utilidade.sh` imprimindo `ok   sessao sem servida nao entra no denominador da regua`.
+
+**Emenda 2 de 2026-09-23 — achados da segunda revisão (reprovado, 2 achados):** as tarefas 9-10 abaixo.
+
+### 9. Servida sem id nunca vira não-servida no contrafactual [tipo: implementar]
+atende: D6, D8
+arquivos: `scripts/lib/utilidade.cjs`, `scripts/memoria.cjs`, `scripts/testa-utilidade.sh`
+depende de: 8
+paralela: nao
+- `lerProjetoDoTranscrito` resolve o projeto como a abertura resolve: sobe do `cwd` do transcrito até o `.git` mais próximo (a mesma `encontrarGit` de `scripts/memoria.cjs`, exportada se ainda não for); se o diretório não existe mais (worktree removido), cai no `cwd` cru, como hoje.
+- Defesa independente do rótulo: o contrafactual descarta todo candidato cujo texto formatado, **sem o prefixo `[AAAA-MM-DD (projeto)] `**, é igual ao de alguma linha servida da sessão — casada por id ou não. A comparação é exatamente `if (textosServidos.has(semPrefixo(linhaCandidato))) continue;`.
+mutacao:
+  arquivo: `scripts/lib/utilidade.cjs`
+  de: `if (textosServidos.has(semPrefixo(linhaCandidato))) continue;`
+  para: `if (false) continue;`
+  bateria: `bash scripts/testa-utilidade.sh`
+  fixture: `testa-utilidade.sh, secao "servida sem id nao reaparece como nao-servida"`
+pronto quando: com a cópia do banco real e o transcrito real com o `cwd` de todas as entradas trocado por uma subpasta do repositório (`<raiz>/scripts`), `pontuarSessao` casa as mesmas servidas por id que com o `cwd` original; e, forçando um rótulo de projeto que não casa, nenhuma das linhas servidas aparece em `uso_memoria` com `servida = 0` — provado por `bash scripts/testa-utilidade.sh` imprimindo `ok   cwd em subpasta casa as mesmas servidas` e `ok   servida sem id nao reaparece como nao-servida`.
+
+### 10. Sessão que falha é marcada e não trava a fila [tipo: implementar]
+atende: D7
+arquivos: `scripts/lib/utilidade.cjs`, `scripts/memoria.cjs`, `scripts/testa-utilidade.sh`
+depende de: 9
+paralela: nao
+Transcrito que faz `pontuarSessao` lançar não fica mais legível na passada seguinte; deixar sem marca, com a fila ordenada da mais antiga, garante que ele volta ao lote para sempre e, acumulado, trava a fila. No `catch`, a sessão é marcada em `uso_memoria_sessoes` e contada; o `manutencao.log` ganha `<F> falharam` na linha `utilidade:`. A marcação no `catch` é exatamente `marcarSessao(conexao, sessao, agora); falharam++;`.
+mutacao:
+  arquivo: `scripts/lib/utilidade.cjs`
+  de: `marcarSessao(conexao, sessao, agora); falharam++;`
+  para: `falharam++;`
+  bateria: `bash scripts/testa-utilidade.sh`
+  fixture: `testa-utilidade.sh, secao "sessao que falha e marcada e a fila anda"`
+pronto quando: com a cópia do banco real e `TETO_PONTUAR` sessões mais antigas apontando para transcritos que fazem `pontuarSessao` lançar (JSON truncado no meio de uma linha de attachment de SessionStart) mais 2 sessões válidas mais novas, duas `manutencao` seguidas (com dublê de LLM) deixam as 2 válidas em `uso_memoria_sessoes` e o log registra `30 falharam` na primeira — provado por `bash scripts/testa-utilidade.sh` imprimindo `ok   sessao que falha e marcada e a fila anda`.
