@@ -21,10 +21,30 @@ Estes oráculos são a forma executável dos cinco comandos já definidos no
 critério da tarefa 9 do plano. A evidência narrativa e as medições externas de
 export, cache e sessão Codex continuam nas seções seguintes.
 
+P1 levou `282243` ms na medição corrente, acima do limite padrão de `120000`
+ms de `portoes.cjs`. Para reexecutar P1–P5, defina o limite de `600000` ms
+**no processo pai** que executa `portoes.cjs`. Neste host, P1 também requer
+Git Bash em modo login e `TMPDIR` gravável fora de `.claude/worktrees`. O
+procedimento abaixo foi executado no PowerShell; a pasta temporária é neutra
+e pode ser removida após a prova:
+
+```powershell
+New-Item -ItemType Directory -Force 'C:\Projetos\rainforest-mind\.claude\tmp-portoes-codex-9b21e95b'
+$env:PATH = 'C:\Program Files\Git\bin;C:\Program Files\nodejs;' + $env:PATH
+$env:CHERE_INVOKING = '1'
+$env:TMPDIR = '/c/Projetos/rainforest-mind/.claude/tmp-portoes-codex-9b21e95b'
+Remove-Item Env:BASH_ENV -ErrorAction SilentlyContinue
+& 'C:\Program Files\Git\bin\bash.exe' -lc 'PORTOES_TIMEOUT_MS=600000 node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar'
+```
+
+Dentro de uma sessão Git Bash de login, com o mesmo `TMPDIR`, o comando é
+`PORTOES_TIMEOUT_MS=600000 node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar`.
+Definir a variável apenas no `CHECK` filho não amplia o limite imposto pelo pai.
+
 - [x] P1: o gate de staging total passa todos os casos
   CHECK: bash hooks/testa-gate-staging-total.sh
   ESPERA: == resultado: 154 ok, 0 falha(s) ==
-  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"2c6960628787"}
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"5a3760b9b520"}
 
 - [x] P2: o contrato ponta a ponta do plugin Codex passa
   CHECK: bash scripts/testa-plugin-codex.sh
@@ -45,6 +65,17 @@ export, cache e sessão Codex continuam nas seções seguintes.
   CHECK: node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 4301a205b9c90a101924cc60fdd2cb7b3bed4bfa --head HEAD
   ESPERA: ok: sem creep — 18 arquivo(s) coberto(s)
   EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"465244f33ebc"}
+
+Reexecução do procedimento PowerShell acima nesta correção (exit `0`):
+
+```text
+P1: CUMPRIDO — exit 0, marcador presente (5a3760b9b520)
+P2: CUMPRIDO — exit 0, marcador presente (077adea17e32)
+P3: CUMPRIDO — exit 0, marcador presente (c8fd95e6a496)
+P4: CUMPRIDO — exit 0, marcador presente (c2c28f24842b)
+P5: CUMPRIDO — exit 0, marcador presente (465244f33ebc)
+TODOS OS PORTOES CUMPRIDOS — 5 portão(ões).
+```
 
 ## Medição local 1.23.0 — 2026-09-22
 
@@ -79,7 +110,7 @@ ok: cobertura válida — 12 decisão(ões), 9 tarefa(s)
 node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 0e27956c14d52bd7efefdd343531ffbbb8811726 --head HEAD
 ok: sem creep — 18 arquivo(s) coberto(s)
 
-node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar
+PORTOES_TIMEOUT_MS=600000 node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar
 TODOS OS PORTOES CUMPRIDOS — 5 portão(ões).
 
 node scripts/portoes.cjs lint docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md

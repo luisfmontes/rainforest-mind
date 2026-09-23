@@ -32,6 +32,24 @@ git show HEAD:.codex-plugin/plugin.json
 node scripts/estado.cjs ler --slug 2026-09-12-multihost-sobre-1-11
 ```
 
+Reexecute os cinco portões no PowerShell com o teto medido de P1 (`282243`
+ms) configurado no processo pai do executor. O Git Bash em modo login fornece
+os utilitários Unix de P1; `TMPDIR` fica em pasta gravável fora dos worktrees:
+
+```powershell
+New-Item -ItemType Directory -Force 'C:\Projetos\rainforest-mind\.claude\tmp-portoes-codex-9b21e95b'
+$env:PATH = 'C:\Program Files\Git\bin;C:\Program Files\nodejs;' + $env:PATH
+$env:CHERE_INVOKING = '1'
+$env:TMPDIR = '/c/Projetos/rainforest-mind/.claude/tmp-portoes-codex-9b21e95b'
+Remove-Item Env:BASH_ENV -ErrorAction SilentlyContinue
+& 'C:\Program Files\Git\bin\bash.exe' -lc 'PORTOES_TIMEOUT_MS=600000 node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar'
+node scripts/portoes.cjs lint docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --strict
+node scripts/portoes.cjs status docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md
+```
+
+Dentro de uma sessão Git Bash de login com o mesmo `TMPDIR`, use
+`PORTOES_TIMEOUT_MS=600000 node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar`.
+
 ## Evidência corrente de instalação 1.23.0
 
 O export limpo de `fc76be76` está em

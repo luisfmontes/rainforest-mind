@@ -387,8 +387,8 @@
     "head": "derivar com git rev-parse HEAD",
     "sensor_externo": "node scripts/portoes.cjs rodar",
     "catraca_mutacao": "2026-09-22",
-    "comando": "node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-09-12-multihost-sobre-1-11",
-    "saida": "TODOS OS PORTOES CUMPRIDOS — 5 portão(ões); tarefa 1-5 vermelho; T6-T9 n/a; cobertura 12/9; creep 18; export/cache 794 sem divergencia",
+    "comando": "PORTOES_TIMEOUT_MS=600000 node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar",
+    "saida": "P1-P5 CUMPRIDOS; TODOS OS PORTOES CUMPRIDOS — 5 portão(ões); LINT OK — 5 portão(ões), 0 aviso(s); PARSE OK — 5 portão(ões), 0 não cumprido(s), 0 abandonado(s); cobertura 12/9; creep 18; git diff --check exit 0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -452,7 +452,8 @@
       "cachebuster": "01a0cbb4-b21c-7252-9ff2-0b59363a60c3",
       "final": "01a0cbba-023c-7ce1-a9a5-03d8434efb5c"
     },
-    "portoes": "P1-P5 cumpridos; lint strict 5/0; P1 teto 600000 apos medicao 282243 ms"
+    "portoes": "P1-P5 cumpridos; lint strict 5/0; P1 teto 600000 apos medicao 282243 ms",
+    "reexecucao_p1": "2026-09-22: portoes P1-P5 reexecutados com teto 600000 no pai, Git Bash login e TMPDIR gravavel; mutacoes T1-T5 preservadas da medicao anterior, nao reexecutadas nesta correcao"
   },
   "revisar_historico_1_21_1": {
     "status": "ok",
@@ -476,7 +477,19 @@
     "saida": "APROVADO: 0 achados; P1-P5 válidos e reexecutáveis; estado coerente"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "9b21e95b129822e057d6e9edec265771ee2408c2",
+      "caminhos_sujos": []
+    },
+    "em": "2026-09-22",
+    "achados": 1,
+    "base": "4301a205b9c90a101924cc60fdd2cb7b3bed4bfa",
+    "head": "9b21e95b129822e057d6e9edec265771ee2408c2",
+    "pendentes": [
+      "P2: P1 nao reexecutavel com o comando publicado; default 120s mata bateria que levou 282243ms; aplicar e documentar limite 600s no procedimento corrente"
+    ],
+    "tentativas": 1
   },
   "verificar_historico_1_21_1": {
     "status": "reprovado",
