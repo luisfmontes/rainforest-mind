@@ -19,13 +19,13 @@
     "emenda": "tarefas 6-10, achados das duas revisoes"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-23",
-    "tarefas_ok": 10,
-    "tarefas": 10,
+    "tarefas_ok": 11,
+    "tarefas": 11,
     "em": "2026-09-23",
     "comando": "bash scripts/testa-utilidade.sh",
-    "saida": "== resultado: 18 ok, 0 falha(s) ==",
+    "saida": "== resultado: 19 ok, 0 falha(s) ==",
     "carimbos": [
       {
         "tarefa": 1,
@@ -89,6 +89,13 @@
         "iteracao": 1,
         "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
         "ts": "2026-09-23T18:11:58.028Z"
+      },
+      {
+        "tarefa": 11,
+        "hash_base": "9994b59a",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T19:20:49.214Z"
       }
     ],
     "mutacao": [
@@ -141,38 +148,33 @@
         "tarefa": 10,
         "resultado": "vermelho",
         "fixture": "testa-utilidade.sh, secao sessao que falha e marcada e a fila anda"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade.sh, secao banco ocupado adia a sessao sem marcar nem gravar parcial"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-23"
-    }
+    ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "e6d24f4b78829146298443eeb9d2e3f55a478713",
+      "head": "02d42ce4dad4fc6b84ea8d7adf8871ec8af433b3",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-09-23-memoria-sinal-de-utilidade.json"
       ]
     },
-    "em_voo": [
-      {
-        "agente": "revisor",
-        "tarefa": "terceira revisao 8fb97623...e6d24f4",
-        "desde": "2026-09-23T15:12:16-03:00"
-      }
-    ],
     "em": "2026-09-23",
-    "achados": 1,
-    "pendentes": [
-      "1: servida sem id nao entra em jaGravados e o contrafactual a grava como servida=0; lerProjetoDoTranscrito nao sobe ate o .git como resolverCaminhos (utilidade.cjs:173-196, 386-407)",
-      "2: sessao cujo pontuarSessao sempre lanca nunca e marcada e, com ordem ASC, ocupa vaga do teto para sempre (utilidade.cjs:437-481)"
-    ],
-    "tentativas": 3
+    "achados": 0,
+    "base": "8fb976232434c3c68a34b3de06e8e689c5fbd7bf",
+    "head": "02d42ce4dad4fc6b84ea8d7adf8871ec8af433b3"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-utilidade.sh",
+    "saida": "== resultado: 19 ok, 0 falha(s) == (copia do rainforest.db real + transcrito real; testa-memoria 40 ok, testa-memoria-somente-leitura 29 ok)",
+    "sensor_externo": "bash scripts/testa-utilidade.sh",
+    "em": "2026-09-23"
   },
   "fechar": {
     "status": "pendente"
