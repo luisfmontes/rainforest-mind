@@ -93,3 +93,48 @@ paralela: nao
 mutacao: n/a
   motivo: não há comportamento de código a inverter — é um registro de dado do usuário escrito pela ferramenta que já tem trava e backup; a falsificação é o registro existir com a data e o comando certos.
 pronto quando: com o plugin mergeado, `node scripts/ideias.cjs listar` mostra a ideia `rodar-relatorio-de-utilidade-da-memoria` com `gancho` contendo `2026-10-07` e `ao_colher` contendo `node scripts/memoria.cjs utilidade --relatorio` e a régua D9 por extenso — provado por `grep '"id":"rodar-relatorio-de-utilidade-da-memoria"' ~/.rainforest/ideias.jsonl` devolvendo uma linha com os três trechos, conferidos contra o texto de D9 do design.
+
+## Emenda de 2026-09-23 — achados do `revisar` (reprovado, 3 achados + 1 da integração)
+
+### 6. Servida substituída pela reconciliação ainda casa com o id [tipo: implementar]
+atende: D8
+arquivos: `scripts/lib/utilidade.cjs`, `scripts/testa-utilidade.sh`
+depende de: 4
+paralela: nao
+A reconciliação roda **antes** da pontuação na mesma passada e marca `substituida_por` em observação que pode ter sido servida numa sessão ainda pendente; D8 mede o que chegou à sessão, não o que sobreviveu. A busca de observações do dia em `acharAlvo` deixa de filtrar `substituida_por`, numa constante de uma linha exatamente `const SQL_OBS_DO_DIA = 'SELECT id, projeto, conteudo, criada_em FROM observacoes WHERE criada_em LIKE ?';`.
+mutacao:
+  arquivo: `scripts/lib/utilidade.cjs`
+  de: `const SQL_OBS_DO_DIA = 'SELECT id, projeto, conteudo, criada_em FROM observacoes WHERE criada_em LIKE ?';`
+  para: `const SQL_OBS_DO_DIA = 'SELECT id, projeto, conteudo, criada_em FROM observacoes WHERE criada_em LIKE ? AND substituida_por IS NULL';`
+  bateria: `bash scripts/testa-utilidade.sh`
+  fixture: `testa-utilidade.sh, secao "servida substituida pela reconciliacao ainda casa com o id"`
+pronto quando: com a cópia do banco real e o transcrito real, marcando `substituida_por` numa das observações servidas antes de pontuar, `pontuarSessao` ainda grava essa observação com `servida = 1` e `servidasSemId` fica igual ao da pontuação sem a marca — provado por `bash scripts/testa-utilidade.sh` imprimindo `ok   servida substituida pela reconciliacao ainda casa com o id`.
+
+### 7. Teto por passada e `servidas_sem_id` no log [tipo: implementar]
+atende: D7, D8
+arquivos: `scripts/lib/utilidade.cjs`, `scripts/memoria.cjs`, `scripts/testa-utilidade.sh`
+depende de: 6
+paralela: nao
+- `pontuarSessoesPendentes` processa no máximo `TETO_PONTUAR = 30` sessões **com transcrito** por passada, as mais antigas primeiro (ordem por `processada_em`), seguindo o padrão do `TETO_RECONCILIAR`; o resto fica para a passada seguinte. Sessões sem transcrito continuam marcadas sem custo e não contam no teto. A linha que corta é exatamente `const lote = comTranscrito.slice(0, TETO_PONTUAR);`.
+- Devolve a soma de `servidasSemId` das sessões pontuadas, e o `cmdManutencao` registra `utilidade: <N> sessao(oes) pontuada(s), <M> servida(s) sem id, <R> pendente(s) para a proxima` no `manutencao.log`.
+mutacao:
+  arquivo: `scripts/lib/utilidade.cjs`
+  de: `const lote = comTranscrito.slice(0, TETO_PONTUAR);`
+  para: `const lote = comTranscrito;`
+  bateria: `bash scripts/testa-utilidade.sh`
+  fixture: `testa-utilidade.sh, secao "passada respeita TETO_PONTUAR e deixa o resto pendente"`
+pronto quando: com a cópia do banco real e `TETO_PONTUAR + 2` sessões com transcrito real copiado na `marca_dagua`, uma `manutencao` (com dublê de LLM) pontua exatamente `TETO_PONTUAR`, grava no `manutencao.log` a linha com `2 pendente(s) para a proxima` e um número de `servida(s) sem id`, e a segunda passada pontua as 2 restantes — provado por `bash scripts/testa-utilidade.sh` imprimindo `ok   passada respeita TETO_PONTUAR e deixa o resto pendente` e `ok   manutencao.log registra servidas sem id`.
+
+### 8. Denominador da régua só conta sessão com servida [tipo: implementar]
+atende: D9
+arquivos: `scripts/lib/utilidade.cjs`, `scripts/testa-utilidade.sh`
+depende de: 7
+paralela: nao
+Sessão sem transcrito ou sem nenhuma servida não tem como "perder" nada para a recência; contá-la no total empurra a régua para "não liga" sem dado. O relatório passa a contar só sessões com ao menos uma linha `servida = 1` em `uso_memoria`, e mostra à parte quantas ficaram de fora e por quê. A linha é exatamente `const total = sessoesComServida.length;`.
+mutacao:
+  arquivo: `scripts/lib/utilidade.cjs`
+  de: `const total = sessoesComServida.length;`
+  para: `const total = sessoes.length;`
+  bateria: `bash scripts/testa-utilidade.sh`
+  fixture: `testa-utilidade.sh, secao "sessao sem servida nao entra no denominador da regua"`
+pronto quando: com um banco de caixa de teste com 3 sessões com servida (1 com perda) e 3 sessões marcadas sem transcrito, `utilidade --relatorio` termina com `régua D9: LIGA o ranking (1 de 3 sessões)` e mostra antes a linha `3 sessão(ões) sem servida fora da conta` — provado por `bash scripts/testa-utilidade.sh` imprimindo `ok   sessao sem servida nao entra no denominador da regua`.
