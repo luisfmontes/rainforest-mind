@@ -281,7 +281,10 @@ echo
 echo "== R18 (auditor, 16a revisao, lote 3, 2026-09-04): source/./& viram ilegivel (arquivo opaco) =="
 gate "via Bash, source x.sh BARRA (R18, arquivo opaco)"                    2 "$(b 'source x.sh')"
 gate "via Bash, . x.sh BARRA (R18, arquivo opaco)"                         2 "$(b '. x.sh')"
-gate "via PowerShell, & x.ps1 BARRA (R18, call operator)"                  2 "$(p '& x.ps1')"
+# `& x.ps1` passou a PASSAR em 2026-09-22: o alvo literal do call operator e
+# analisado como comando comum, igual `bash ./x.sh` (D17). O que o R18 queria
+# barrar — alvo que nao se le — segue barrando na secao "call operator" abaixo.
+gate "via PowerShell, & x.ps1 PASSA (alvo literal, igual bash ./x.sh)"      0 "$(p '& x.ps1')"
 # contraprova: em Bash, '&' sozinho e SEPARADOR de comando (K1, rodada 6) —
 # nao pode super-bloquear so porque agora '&' vira ilegivel em PowerShell.
 gate "contraprova: via Bash, echo hi & git status PASSA (R18, & e separador)" 0 "$(b 'echo hi & git status')"
@@ -295,6 +298,18 @@ echo "== rodada 19 (lote 3): &{...} colado ao scriptblock atravessa o gate =="
 gate "&{git add -A} BARRA (colado, sem espaco nenhum)"     2 "$(p '&{git add -A}')"
 gate "&{ git add -A } BARRA (espaco so por dentro)"        2 "$(p '&{ git add -A }')"
 gate "& {git add -A} BARRA (espaco so antes do '{', ja passava)" 2 "$(p '& {git add -A}')"
+
+echo
+echo "== call operator com alvo literal (2026-09-22): analisa o resto como comando comum =="
+gate '& "C:\Program Files\nodejs\node.exe" --version PASSA (caminho citado)' 0 "$(p '& \"C:\\Program Files\\nodejs\\node.exe\" --version')"
+gate "& 'C:\\x\\node.exe' --version PASSA (aspas simples)"                    0 "$(p "& 'C:\\\\x\\\\node.exe' --version")"
+gate '& node.exe -e "console.log($x)" PASSA (variavel no argumento, nao no alvo)' 0 "$(p '& node.exe -e \"console.log($x)\"')"
+gate '& git add -A BARRA (pelo git, nao pelo &)'                              2 "$(p '& git add -A')"
+gate '& "C:\Program Files\Git\cmd\git.exe" add -A BARRA (git por caminho)'   2 "$(p '& \"C:\\Program Files\\Git\\cmd\\git.exe\" add -A')"
+gate '& $exe add -A BARRA (alvo variavel)'                                   2 "$(p '& $exe add -A')"
+gate '& "$dir\git.exe" add -A BARRA (variavel dentro das aspas duplas)'      2 "$(p '& \"$dir\\git.exe\" add -A')"
+gate '& (Get-Command git) add -A BARRA (subexpressao)'                       2 "$(p '& (Get-Command git) add -A')"
+gate '. x.ps1 BARRA (dot-source continua opaco)'                             2 "$(p '. x.ps1')"
 # contraprovas de super-bloqueio: chave/parenteses DENTRO de aspas nao muda
 # nada — a mensagem/argumento continua UMA palavra so, igual antes.
 gate 'contraprova: git commit -m "fix {json} parse" PASSA' 0 "$(b 'git commit -m \"fix {json} parse\"')"
