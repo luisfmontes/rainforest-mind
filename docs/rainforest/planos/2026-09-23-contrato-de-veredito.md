@@ -146,7 +146,7 @@ pronto quando: (a) com um payload de `SubagentStop` real ou fielmente reproduzid
 
 ### 9. `hooks/hooks.json` + `hooks/lib/config.cjs` — registrar e permitir desligar [tipo: configurar]
 atende: D1
-arquivos: `hooks/hooks.json`, `hooks/lib/config.cjs`
+arquivos: `hooks/hooks.json`, `hooks/lib/config.cjs`, `hooks/veredito-revisor.cjs`, `scripts/testa-conferir-categoria.sh`
 depende de: 8
 paralela: nao
 mutacao:
