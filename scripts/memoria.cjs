@@ -21,6 +21,7 @@
  *   node scripts/memoria.cjs reindexar               reconstruir índices
  *   node scripts/memoria.cjs consolidar              sintetizar observações antigas em resumos
  *   node scripts/memoria.cjs reconciliar             store/update/merge/skip contra o acervo pendente
+ *   node scripts/memoria.cjs utilidade --extrair <transcrito>   inspecionar servidas/texto de um transcrito
  */
 
 const fs = require('fs');
@@ -46,6 +47,11 @@ const { acharExecutavelClaude } = require('./lib/achar-executavel-claude.cjs');
 
 // Chave de grupo de origem de uma observação — consolidação por grupo (D7).
 const { sqlGrupoDeOrigem } = require('./lib/grupo-de-origem.cjs');
+
+// Sinal de utilidade da memória (Tarefa 1, D1-D11). Sentido único:
+// utilidade.cjs nunca requer este arquivo de volta (evitaria require
+// circular — ver o comentário no topo de scripts/lib/utilidade.cjs).
+const { extrairSessao } = require('./lib/utilidade.cjs');
 
 // Encontra o diretório .git subindo a árvore de diretórios.
 // Retorna o caminho do diretório que contém .git, ou null se não encontrado.
@@ -2063,6 +2069,27 @@ async function cmdReconciliar() {
   }
 }
 
+// Comando `utilidade` (Tarefa 1, D1-D11): inspeção do extrator do transcrito
+// (`--extrair <transcrito>`). Nunca escreve no banco.
+function cmdUtilidade() {
+  const args = process.argv.slice(3);
+
+  const iExtrair = args.indexOf('--extrair');
+  if (iExtrair !== -1) {
+    const caminhoTranscrito = args[iExtrair + 1];
+    if (!caminhoTranscrito) {
+      console.error('ERRO: --extrair requer o caminho do transcrito');
+      process.exit(1);
+    }
+    const { servidas, texto } = extrairSessao(caminhoTranscrito);
+    console.log(JSON.stringify({ servidas: servidas.length, bytesTexto: Buffer.byteLength(texto, 'utf8') }));
+    return;
+  }
+
+  console.error('Use: utilidade --extrair <transcrito>');
+  process.exit(1);
+}
+
 // Comando `manutencao` (Tarefa 5, D1/D5): a passada que roda de verdade
 // garante o esquema, reconcilia e DEPOIS consolida, nessa ordem, registrando
 // cada passo em `<raiz>/manutencao.log`. Quem dispara isto é o hook fino
@@ -2181,9 +2208,11 @@ async function main() {
       return await cmdReconciliar();
     case 'manutencao':
       return await cmdManutencao();
+    case 'utilidade':
+      return cmdUtilidade();
     default:
       console.error(`Comando desconhecido: ${cmd}`);
-      console.error('Use: iniciar | esquema | buscar | backup | reindexar | consolidar | reconciliar | manutencao');
+      console.error('Use: iniciar | esquema | buscar | backup | reindexar | consolidar | reconciliar | manutencao | utilidade');
       process.exit(1);
   }
 }
