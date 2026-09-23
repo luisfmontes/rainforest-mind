@@ -505,5 +505,76 @@ else
 fi
 
 echo
+echo "== Tarefa 6: servida substituida pela reconciliacao ainda casa com o id =="
+
+if [ -z "$TRANSCRITO_REAL" ] || [ ! -f "$HOME/.rainforest/rainforest.db" ]; then
+  falhou=$((falhou+1)); echo "  FALHA sem transcrito/banco real, pulando Tarefa 6"
+else
+  CAIXA9="$(novo_sandbox)"
+  CAIXA9_WIN="$(cygpath -m "$CAIXA9" 2>/dev/null || printf '%s' "$CAIXA9")"
+  cp "$HOME/.rainforest/rainforest.db" "$CAIXA9/rainforest.db"
+  cp "$TRANSCRITO_REAL" "$CAIXA9/transcrito.jsonl"
+
+  cat > "$CAIXA9/fixture-substituida.cjs" <<EOF
+process.env.RFM_ROOT = process.argv[2];
+const caminhoTranscrito = process.argv[3];
+const { abrirBanco, criarSchema, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { pontuarSessao } = require('$SRC_WIN/scripts/lib/utilidade.cjs');
+
+const { caminhoDb } = resolverCaminhos();
+const conexao = abrirBanco(caminhoDb);
+criarSchema(conexao);
+
+// Passada 1: sem nenhuma marca — descobre um id de observacao servida (o
+// unico jeito de achar um alvo de verdade eh pontuar contra o transcrito real).
+const r1 = pontuarSessao(conexao, 'sessao-substituida-sem-marca', caminhoTranscrito);
+const alvo = conexao.prepare(
+  "SELECT ref_id FROM uso_memoria WHERE sessao = ? AND servida = 1 AND origem = 'observacao' LIMIT 1"
+).get('sessao-substituida-sem-marca');
+
+if (!alvo) {
+  process.stdout.write(JSON.stringify({ erro: 'nenhuma observacao servida encontrada no transcrito real (nao da para testar a Tarefa 6)' }));
+} else {
+  // Marca a observacao servida como substituida pela reconciliacao (D3) —
+  // a reconciliacao roda ANTES da pontuacao na mesma passada.
+  conexao.prepare('UPDATE observacoes SET substituida_por = ? WHERE id = ?').run(999999, alvo.ref_id);
+
+  // Passada 2: MESMO transcrito, sessao DIFERENTE (para nao reaproveitar a
+  // linha ja gravada pela passada 1 via INSERT OR REPLACE).
+  const r2 = pontuarSessao(conexao, 'sessao-substituida-com-marca', caminhoTranscrito);
+  const aindaServida = conexao.prepare(
+    "SELECT servida FROM uso_memoria WHERE sessao = ? AND origem = 'observacao' AND ref_id = ?"
+  ).get('sessao-substituida-com-marca', alvo.ref_id);
+
+  conexao.close();
+  process.stdout.write(JSON.stringify({
+    alvoRefId: alvo.ref_id,
+    aindaServida: aindaServida ? aindaServida.servida : null,
+    servidasSemIdSemMarca: r1.servidasSemId,
+    servidasSemIdComMarca: r2.servidasSemId,
+  }));
+}
+EOF
+  RESULTADO_SUBSTITUIDA=$(node --no-warnings "$CAIXA9/fixture-substituida.cjs" "$CAIXA9_WIN" "$CAIXA9_WIN/transcrito.jsonl" 2>&1)
+  echo "  comando: RFM_ROOT=<copia> node -e \"pontuarSessao(...)\" apos UPDATE observacoes SET substituida_por (secao \"servida substituida pela reconciliacao ainda casa com o id\")"
+  echo "  saida: $RESULTADO_SUBSTITUIDA"
+
+  if echo "$RESULTADO_SUBSTITUIDA" | grep -q '"aindaServida":1' \
+    && echo "$RESULTADO_SUBSTITUIDA" | node --no-warnings -e "
+      let s='';process.stdin.on('data',d=>s+=d);
+      process.stdin.on('end',()=>{
+        try {
+          const o = JSON.parse(s);
+          process.exit(o.servidasSemIdSemMarca === o.servidasSemIdComMarca ? 0 : 1);
+        } catch (e) { process.exit(1); }
+      });
+    "; then
+    ok=$((ok+1)); echo "  ok   servida substituida pela reconciliacao ainda casa com o id"
+  else
+    falhou=$((falhou+1)); echo "  FALHA servida substituida pela reconciliacao nao casou com o id: $RESULTADO_SUBSTITUIDA"
+  fi
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

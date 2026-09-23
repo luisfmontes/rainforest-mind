@@ -32,6 +32,14 @@ const LIMIAR_DF = 3;
 // Quantas do contrafactual o relatório grava por sessão (D6).
 const TETO_CONTRAFACTUAL = 14;
 
+// Observações do dia (Tarefa 6, D8): SEM o filtro de substituida_por. A
+// reconciliação roda ANTES da pontuação na mesma passada e pode marcar
+// substituida_por numa observação que já foi servida numa sessão ainda
+// pendente — D8 mede o que CHEGOU à sessão, não o que sobreviveu à
+// reconciliação. `buscarContrafactual` (mais abaixo) continua filtrando
+// substituida_por: ali a pergunta é outra, "o que o FTS acharia hoje".
+const SQL_OBS_DO_DIA = 'SELECT id, projeto, conteudo, criada_em FROM observacoes WHERE criada_em LIKE ?';
+
 // ---- Tarefa 1: extrator do transcrito ----
 
 /**
@@ -220,12 +228,7 @@ function acharAlvo(conexao, linhaServida, apelidos) {
 
   let obsRows = [];
   try {
-    obsRows = conexao
-      .prepare(
-        `SELECT id, projeto, conteudo, criada_em FROM observacoes
-         WHERE criada_em LIKE ? AND substituida_por IS NULL`
-      )
-      .all(like);
+    obsRows = conexao.prepare(SQL_OBS_DO_DIA).all(like);
   } catch (e) {
     obsRows = [];
   }
