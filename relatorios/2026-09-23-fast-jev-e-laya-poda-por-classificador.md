@@ -121,7 +121,67 @@ pergunta**: objetivo + a call em questão + a vizinhança dela + o que veio depo
 - `mizorewww/laya-coreml` — **Instalar → Enxertar → Ler: vale voltar.** Reprova em 4 de
   Instalar (só Apple). Enxertar não tem peça para Windows: o que ele tem é o grafo ANE. Vale
   voltar pelo método de gate de fidelidade e pelo clamp de temperatura. O repo operante para
-  este usuario é o upstream `NandhaKishorM/laya`, **não avaliado aqui** além de `serve.py`
-  e `common.py`.
+  este usuario é o upstream `NandhaKishorM/laya` — avaliado no adendo abaixo.
+
+## Adendo, mesmo dia: o upstream `NandhaKishorM/laya`, avaliado a pedido
+
+Lidos `laya/agent.py`, `laya/common.py`, `laya/router.py`, `laya/serve.py`, o `README.md`
+(seções de limites e benchmark), o `BENCHMARKS.md` e as issues #44, #123, #156 e #185.
+Não rodado: exige torch + transformers e ~1,5 GB de checkpoint, e instalar pede a palavra
+do usuario.
+
+**O próprio README diz que o Laya não é o que o fast-jev precisa:** *"Treat Laya as a fast
+base to specialise, not as a zero-shot decision engine."* Os checkpoints base marcam 0,362
+e 0,342 no typed-decisions — **abaixo** da classe majoritária (0,461) e perto do aleatório
+(0,318). O 0,766 que "bate o Jev" é do checkpoint **ajustado no split de treino do mesmo
+benchmark**, e os números do Jev são de terceiros, **nunca medidos por eles** (sem acesso à
+API, `BENCHMARKS.md:3`). É ajustado-no-domínio contra zero-shot. O README é honesto sobre
+isso; o título "Jev free" que circula não é.
+
+**A pergunta exata já foi feita no repo — issue #44, fechada em 21/09:** *"Can Laya be used
+as a local decision model for fast-jev-compaction-style tool-call compaction?"* Quatro
+chamadas reais: concordância com o Jev de 1/4, igual à linha de base "manter tudo", e a
+ordem **invertida**. A resposta do colaborador fecha o diagnóstico: calibração não conserta
+discriminação, o checkpoint base é de acaso, e *"keepability isn't a property of the call on
+its own"* — o estado precisa dizer se a call foi superada depois. Caminho proposto:
+**destilar** — ajustar o `typed-decisions` com decisões registradas do Jev como alvo suave,
+4-5 h no 2×T4 grátis do Kaggle. Ou seja, precisa **do Jev pago** para gerar os rótulos.
+
+**O `noul` está quebrado, e é o único tipo que o fast-jev usa** (issue #156, aberta, duas
+reproduções independentes): com rótulos `true`/`false` o checkpoint inglês devolve
+`P(true)=0.0000` com `confidence 1.0000` para uma afirmação claramente verdadeira — o
+modelo responde pela **palavra do rótulo**, não pelo estado. `A`/`B` funciona 6/6.
+Ligado no fast-jev, isso vira `keepCall = keepResult = 0` em toda call: **apaga o
+histórico inteiro de ferramentas** com cara de certeza. O `render_options` fixa os rótulos
+do `noul` em `false:`/`true:` (`common.py:43-46`), então não há como contornar por
+parâmetro; o contorno é um `choice` de duas opções com rótulos neutros.
+
+**Mais três fatos de código:**
+
+- **O roteador escolhe a janela por idioma.** `Router.route` (`router.py:386-413`) manda
+  estado em inglês para o checkpoint `english`, de **512 tokens** (~320 para o estado). O
+  estado do fast-jev é JSON com o `STATE_CONTEXT` em inglês: a janela vira 512 ou 1024
+  conforme o idioma do que o usuario escreveu. Fixa-se com `LAYA_MODELS` + `model=`.
+- **Cada pergunta re-encoda o estado inteiro** (`agent.py:345-351`: um `build_sequence` por
+  pergunta, tudo num batch). Para 2 perguntas × N calls, o custo cresce com N × janela. A
+  issue #49 (aberta) propõe codificar o estado uma vez.
+- **`act_probability` é sempre 1,0** (issue #185, aberta): a cabeça de ação satura porque o
+  residual sai da cabeça ~300× maior que o do encoder. Não afeta as probabilidades das
+  opções — o `scorer` tem `LayerNorm` próprio.
+
+**Windows:** o segfault em Python 3.14 (#123) foi consertado no 0.3.7 com `no_init_weights`
+(`agent.py:193`), confirmado na própria issue no Windows 11 10.0.26200 — a mesma build desta
+máquina. Uma issue mede em RTX 5060 no Windows. Roda aqui.
+
+**Saúde:** 103 commits, 54 do autor, ~10 contribuidores externos; issues técnicas fundas,
+com reprodução, e o mantenedor responde e solta release (0.3.7 saiu durante a #123). Repo de 5 dias.
+
+**Veredito:** `fora da ancora`. Para o problema ancorado (decidir o que podar na
+compaction), o Laya como está não resolve: base de acaso, `noul` quebrado, janela de 512/1024.
+O que sobra é um **caminho de projeto**, não um componente: ajustar o `typed-decisions`
+com rótulos de compaction. A #44 supõe rótulos do Jev pago; a alternativa sem API é
+**tirar os rótulos das próprias transcripts** do Claude Code (uma call de `Read` que foi
+superada por um `Edit` no mesmo arquivo é descartável; um resultado citado depois, não).
+Isso é ideia, não fato — nada disso foi medido.
 
 Decisão pendente com o usuario: plantar ou não o enxerto da política como ideia.
