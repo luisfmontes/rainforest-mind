@@ -1944,5 +1944,74 @@ igual "tentativas incrementou para 1" "1" \
 
 unset RFM_ESTADO_ROOT
 
+echo
+echo "== 33. contrato de veredito: 'liberar --estagio revisar' exige impasse + --rodada-extra (D4, D7 — Tarefa 7) =="
+mkdir -p "$SBP/impasse-revisar"
+(cd "$SBP/impasse-revisar" && git init -q && git config user.email t@t && git config user.name T && echo x > a.txt && git add . && git commit -qm inicial)
+export RFM_ESTADO_ROOT="$SBP/impasse-revisar"
+EI="node scripts/estado.cjs"
+
+$EI iniciar --slug impasse-rev >/dev/null
+$EI marcar --slug impasse-rev --estagio design --status aprovado >/dev/null
+$EI marcar --slug impasse-rev --estagio plano  --status ok >/dev/null
+
+# 'revisar' e' o proprio reprovador aqui (o caso que o Achado 1 do plano
+# descreve): cada ciclo fecha 'executar' de novo, arma a janela, grava um
+# veredito 'reprovado' (Tarefa 6 exige) e reprova 'revisar'. Apos 3 ciclos, o
+# teto generico (TETO_TENTATIVAS, ja testado em secao 17) faz 'exigir
+# executar' recusar — e quem nomeia o destrave e' 'liberar --estagio
+# revisar', nao 'exigir revisar'.
+ciclo_impasse() {
+  $EI exigir --slug impasse-rev --estagio executar >/dev/null 2>&1
+  $EI marcar --slug impasse-rev --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
+  $EI exigir --slug impasse-rev --estagio revisar >/dev/null
+  $EI veredito --slug impasse-rev --estagio revisar --veredito reprovado --agente rainforest-mind:revisor --agente-id IMP >/dev/null
+  $EI marcar --slug impasse-rev --estagio revisar --status reprovado >/dev/null
+}
+ciclo_impasse; ciclo_impasse; ciclo_impasse   # 3 reprovacoes de 'revisar': teto atingido
+esperado "teto de 'revisar' atingido: exigir executar recusa" 2 $EI exigir --slug impasse-rev --estagio executar
+
+# Caso (a): liberar --estagio revisar SEM --rodada-extra recusa exit 2, pedindo o texto
+msg_sem_texto=$($EI liberar --slug impasse-rev --estagio revisar 2>&1)
+cod_sem_texto=$?
+if [ "$cod_sem_texto" = "2" ] && printf '%s' "$msg_sem_texto" | grep -q -- "--rodada-extra"; then
+  ok=$((ok+1)); echo "  ok   liberar --estagio revisar sem --rodada-extra recusa exit 2"
+else
+  falhou=$((falhou+1)); echo "  FALHA liberar sem rodada-extra: exit=$cod_sem_texto"; printf '%s\n' "$msg_sem_texto" | sed 's/^/         /'
+fi
+
+# Caso (b, fixture do plano): com --rodada-extra mas sem o arquivo de impasse no disco, recusa exit 2
+CAMINHO_IMPASSE="$SBP/impasse-revisar/docs/rainforest/portoes/impasse-rev-impasse.md"
+esperado "contrato de veredito: liberar --estagio revisar recusa sem o arquivo de impasse" 2 \
+  $EI liberar --slug impasse-rev --estagio revisar --rodada-extra "o usuario decidiu seguir"
+
+# Caso (c): criando o arquivo de impasse, o mesmo comando fecha exit 0 e grava liberado_em + rodadas_extra
+mkdir -p "$(dirname "$CAMINHO_IMPASSE")"
+cat > "$CAMINHO_IMPASSE" << 'EOF'
+# Impasse: impasse-rev
+
+Usuario decidiu seguir apos 3 reprovacoes de 'revisar'.
+EOF
+esperado "com o arquivo de impasse, liberar --estagio revisar fecha" 0 \
+  $EI liberar --slug impasse-rev --estagio revisar --rodada-extra "o usuario decidiu seguir"
+igual "liberado_em gravado" "sim" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('impasse-revisar/docs/rainforest/estado/impasse-rev.json','utf8')).revisar.liberado_em ? 'sim' : 'nao')")"
+igual "rodadas_extra tem 1 entrada" "1" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('impasse-revisar/docs/rainforest/estado/impasse-rev.json','utf8')).revisar.rodadas_extra.length)")"
+esperado "apos liberar, exigir executar passa" 0 $EI exigir --slug impasse-rev --estagio executar
+
+# Caso (d): uma segunda rodada extra ACUMULA no array (nao sobrescreve a anterior)
+esperado "segunda rodada extra tambem grava (acumula)" 0 \
+  $EI liberar --slug impasse-rev --estagio revisar --rodada-extra "segunda rodada, outro motivo"
+igual "rodadas_extra acumulou para 2 entradas" "2" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('impasse-revisar/docs/rainforest/estado/impasse-rev.json','utf8')).revisar.rodadas_extra.length)")"
+
+# Caso (e): outros estagios continuam com 'liberar' incondicional de hoje (sem --rodada-extra)
+$EI iniciar --slug impasse-outro >/dev/null
+esperado "liberar --estagio verificar continua incondicional (sem --rodada-extra)" 0 \
+  $EI liberar --slug impasse-outro --estagio verificar
+
+unset RFM_ESTADO_ROOT
+
 echo "== resultado: $ok ok, $falhou falhas =="
 [ "$falhou" = 0 ]

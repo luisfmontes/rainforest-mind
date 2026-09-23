@@ -1367,7 +1367,7 @@ const FLAGS_POR_SUBCOMANDO = {
   marcar: ['slug', 'estagio', 'status', 'json'],
   proximo: ['slug'],
   exigir: ['slug', 'estagio'],
-  liberar: ['slug', 'estagio'],
+  liberar: ['slug', 'estagio', 'rodada-extra'],
   listar: [],
   concluido: ['slug'],
   veredito: ['slug', 'estagio', 'veredito', 'agente', 'agente-id'],
@@ -1721,6 +1721,49 @@ function main() {
       console.error(`erro: estagio desconhecido '${estagio}'`);
       process.exit(1);
     }
+
+    // D4, D7 — Tarefa 7: o teto de 3 reprovações (TETO_TENTATIVAS, já
+    // genérico e testado em §17) é quem recusa a 4ª rodada — via `exigir
+    // --estagio executar`, que nomeia `liberar --slug <s> --estagio
+    // <estagio_reprovador>` como destrave (ver o comentário logo ali). Quando
+    // o reprovador é o próprio 'revisar' (Achado 1 do plano: a via literal
+    // "exigir revisar --rodada-extra" criaria um deadlock, porque quem
+    // recusa de verdade é 'exigir executar', não 'exigir revisar'), o
+    // destrave exige rastro auditável: o texto do usuário e o arquivo de
+    // impasse escrito em disco. A trava não prova que o usuário falou, mas
+    // impede passar da 3ª rodada sem esse rastro (D7). Só 'revisar' — outros
+    // estágios continuam com o 'liberar' incondicional de hoje, fora do
+    // escopo deste design.
+    if (estagio === 'revisar') {
+      const rodadaExtra = arg('rodada-extra', false);
+      if (!rodadaExtra || rodadaExtra.trim() === '') {
+        console.error(
+          `RECUSADO: 'liberar --estagio revisar' exige --rodada-extra "<o que o usuario disse>" (D7). ` +
+          `A 4a rodada e decisao dele, com o motivo por escrito — nao ha frase-senha por sessao (regra 10). ` +
+          `Ex.: node scripts/estado.cjs liberar --slug ${slug} --estagio revisar --rodada-extra "texto"`
+        );
+        process.exit(2);
+      }
+      const caminhoImpasse = path.join(RAIZ, 'docs', 'rainforest', 'portoes', `${slug}-impasse.md`);
+      if (!fs.existsSync(caminhoImpasse)) {
+        console.error(
+          `RECUSADO: 'liberar --estagio revisar' exige o impasse escrito em ` +
+          `${path.relative(RAIZ, caminhoImpasse)} (D7). O teto de 3 reprovações não manda parar, ` +
+          `torna a 4a rodada decisão do usuário — escreva o arquivo com o que ele decidiu e rode de novo.`
+        );
+        process.exit(2);
+      }
+      const rodadas_extra = Array.isArray(estado.revisar && estado.revisar.rodadas_extra)
+        ? estado.revisar.rodadas_extra.slice()
+        : [];
+      rodadas_extra.push({ texto: rodadaExtra, em: hoje() });
+      estado[estagio] = { ...estado[estagio], liberado_em: hoje(), rodadas_extra };
+      gravar(slug, estado);
+      console.log(`${estagio}: liberado em ${hoje()} (rodada extra registrada, impasse em ${path.relative(RAIZ, caminhoImpasse)})`);
+      console.log(JSON.stringify(estado[estagio], null, 2));
+      return;
+    }
+
     // Gravar liberado_em no bloco do estágio para destrava-lo uma vez
     estado[estagio] = { ...estado[estagio], liberado_em: hoje() };
     gravar(slug, estado);
