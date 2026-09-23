@@ -180,6 +180,8 @@ paralela: nao
 - `pontuarSessao` grava as linhas de uma sessão (servidas + contrafactual) dentro de uma transação só (`BEGIN IMMEDIATE` … `COMMIT`); qualquer erro faz `ROLLBACK` e relança — nenhuma linha parcial da sessão fica em `uso_memoria`.
 - No `catch` de `pontuarSessoesPendentes`, erro de banco ocupado (`ERR_SQLITE_ERROR` com mensagem `database is locked` ou `database is busy`) **não marca** a sessão e **interrompe a passada** (o banco está ocupado; a sessão e as seguintes voltam na próxima manutenção). A linha é exatamente `if (ehBancoOcupado(e)) { adiadas++; break; }`, antes do `marcarSessao(conexao, sessao, agora); falharam++;` da tarefa 10, que continua valendo para os demais erros.
 - O retorno ganha `adiadas`, e a linha `utilidade:` do `manutencao.log` ganha `<A> adiadas (banco ocupado)`.
+- A contagem de pontuadas da linha `utilidade:` passa a vir de `resultadoUtilidade.pontuadas` (hoje é `depois - antes` em `uso_memoria_sessoes`, que soma as marcadas por falha: o log da tarefa 10 imprime `30 pontuada(s) ... 30 falharam`).
+- A seção da tarefa 9 do `testa-utilidade.sh` troca `"servidasComIdBogus":0` por `servidasComIdBogus < servidasComIdOriginal`: o transcrito real é o mais recente da máquina, e linha servida de **outro** projeto casa por id com qualquer rótulo forçado — a exigência de zero só valia com bloco de um projeto só (quebrou em 2026-09-23 com `servidasComIdBogus: 2`, `vazamento: 0`).
 mutacao:
   arquivo: `scripts/lib/utilidade.cjs`
   de: `if (ehBancoOcupado(e)) { adiadas++; break; }`
