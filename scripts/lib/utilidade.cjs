@@ -416,14 +416,23 @@ function pontuarSessao(conexao, sessao, caminhoTranscrito) {
 
 // ---- Tarefa 3: manutenção ----
 
+// Teto por passada de pontuarSessoesPendentes (Tarefa 7, D7): mesmo padrão
+// do TETO_RECONCILIAR (scripts/memoria.cjs) — cada passada de manutenção
+// processa no máximo isto de sessões COM transcrito, as mais antigas
+// primeiro; o resto fica para a passada seguinte. Sessão sem transcrito
+// nunca conta no teto (marcar sem pontuar é barato, não precisa esperar).
+const TETO_PONTUAR = 30;
+
 /**
  * Pontua toda sessão da `marca_dagua` sem linha em `uso_memoria_sessoes`
- * (D7). Transcrito ainda existente: pontua e marca. Transcrito ausente: marca
- * a sessão sem nota nenhuma (nunca reprocessa a mesma sessão morta todo dia)
- * e segue — uma sessão problemática nunca trava as demais.
+ * (D7), até TETO_PONTUAR sessões COM transcrito por passada (Tarefa 7), as
+ * mais antigas primeiro (ordem por `processada_em`). Transcrito ainda
+ * existente: pontua e marca. Transcrito ausente: marca a sessão sem nota
+ * nenhuma (nunca reprocessa a mesma sessão morta todo dia) e segue — uma
+ * sessão problemática nunca trava as demais, e não conta no teto.
  *
  * @param {object} conexao conexão de banco já aberta
- * @returns {{pontuadas: number, semTranscrito: number, total: number}}
+ * @returns {{pontuadas: number, semTranscrito: number, servidasSemId: number, pendentesParaProxima: number, total: number}}
  */
 function pontuarSessoesPendentes(conexao) {
   const agora = new Date().toISOString();
@@ -432,12 +441,13 @@ function pontuarSessoesPendentes(conexao) {
       `SELECT m.sessao AS sessao, m.arquivo AS arquivo
        FROM marca_dagua m
        LEFT JOIN uso_memoria_sessoes u ON u.sessao = m.sessao
-       WHERE u.sessao IS NULL`
+       WHERE u.sessao IS NULL
+       ORDER BY m.processada_em ASC`
     )
     .all();
 
-  let pontuadas = 0;
   let semTranscrito = 0;
+  const comTranscrito = [];
 
   for (const { sessao, arquivo } of pendentes) {
     if (!arquivo || !fs.existsSync(arquivo)) {
@@ -447,16 +457,27 @@ function pontuarSessoesPendentes(conexao) {
         .run(sessao, agora);
       continue;
     }
+    comTranscrito.push({ sessao, arquivo });
+  }
+
+  const lote = comTranscrito.slice(0, TETO_PONTUAR);
+  const pendentesParaProxima = comTranscrito.length - lote.length;
+
+  let pontuadas = 0;
+  let servidasSemId = 0;
+
+  for (const { sessao, arquivo } of lote) {
     try {
-      pontuarSessao(conexao, sessao, arquivo);
+      const resultado = pontuarSessao(conexao, sessao, arquivo);
       pontuadas++;
+      servidasSemId += resultado.servidasSemId;
     } catch (e) {
       // uma sessão com transcrito ilegível não trava as demais — nem marca,
       // para que a próxima passada tente de novo.
     }
   }
 
-  return { pontuadas, semTranscrito, total: pendentes.length };
+  return { pontuadas, semTranscrito, servidasSemId, pendentesParaProxima, total: pendentes.length };
 }
 
 // ---- Tarefa 4: relatório (régua D9) ----
@@ -546,6 +567,7 @@ function gerarRelatorio(conexao) {
 module.exports = {
   LIMIAR_DF,
   TETO_CONTRAFACTUAL,
+  TETO_PONTUAR,
   extrairLinhasServidas,
   extrairSessao,
   lerProjetoDoTranscrito,

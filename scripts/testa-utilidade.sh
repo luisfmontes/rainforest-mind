@@ -576,5 +576,91 @@ EOF
 fi
 
 echo
+echo "== Tarefa 7: teto por passada e servidas_sem_id no log =="
+
+if [ -z "$TRANSCRITO_REAL" ] || [ ! -f "$HOME/.rainforest/rainforest.db" ]; then
+  falhou=$((falhou+1)); echo "  FALHA sem transcrito/banco real, pulando Tarefa 7"
+else
+  # Dublê próprio desta seção (nunca depende de variável definida em outra
+  # seção da bateria) — mesmo motivo da Tarefa 3: reconciliar/consolidar não
+  # podem spawnar o `claude` real contra o banco real copiado.
+  DUBLE_LLM_DIR_T7="$(novo_sandbox)"
+  cat > "$DUBLE_LLM_DIR_T7/dubleLLM.cjs" <<'EOF'
+async function chamarLLM(texto) {
+  return '{"acao":"store","alvo_id":null}';
+}
+module.exports = { chamarLLM };
+EOF
+
+  TETO_PONTUAR_VAL=$(node --no-warnings -e "process.stdout.write(String(require('$SRC_WIN/scripts/lib/utilidade.cjs').TETO_PONTUAR))")
+
+  CAIXA9="$(novo_sandbox)"
+  CAIXA9_WIN="$(cygpath -m "$CAIXA9" 2>/dev/null || printf '%s' "$CAIXA9")"
+  cp "$HOME/.rainforest/rainforest.db" "$CAIXA9/rainforest.db"
+  cp "$TRANSCRITO_REAL" "$CAIXA9/transcrito.jsonl"
+
+  cat > "$CAIXA9/marcar-teto.cjs" <<EOF
+process.env.RFM_ROOT = process.argv[2];
+const { abrirBanco, criarSchema, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { TETO_PONTUAR } = require('$SRC_WIN/scripts/lib/utilidade.cjs');
+const { caminhoDb } = resolverCaminhos();
+const conexao = abrirBanco(caminhoDb);
+criarSchema(conexao);
+conexao.exec('DELETE FROM marca_dagua');
+const total = TETO_PONTUAR + 2;
+const insert = conexao.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)');
+for (let i = 0; i < total; i++) {
+  // processada_em CRESCENTE — a sessao i eh mais antiga quanto menor i, e
+  // pontuarSessoesPendentes ordena por processada_em ASC (as mais antigas
+  // primeiro entram no lote do teto).
+  const processadaEm = new Date(Date.now() - (total - i) * 1000).toISOString();
+  insert.run('proj-teto', 'sessao-teto-' + String(i).padStart(3, '0'), process.argv[3], 100, 100, processadaEm);
+}
+conexao.close();
+process.stdout.write(String(total));
+EOF
+  TOTAL_MARCADAS=$(node --no-warnings "$CAIXA9/marcar-teto.cjs" "$CAIXA9_WIN" "$CAIXA9_WIN/transcrito.jsonl")
+
+  cat > "$CAIXA9/contar-pontuadas.cjs" <<EOF
+process.env.RFM_ROOT = process.argv[2];
+const { abrirBancoSomenteLeitura, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { caminhoDb } = resolverCaminhos();
+const conexao = abrirBancoSomenteLeitura(caminhoDb);
+const row = conexao.prepare("SELECT COUNT(*) c FROM uso_memoria_sessoes WHERE sessao LIKE 'sessao-teto-%'").get();
+conexao.close();
+process.stdout.write(String(row.c));
+EOF
+
+  # --- passada 1: deve pontuar exatamente TETO_PONTUAR, deixar 2 pendentes ---
+  RFM_ROOT="$CAIXA9" TESTADOR_CHAMAR_LLM="$DUBLE_LLM_DIR_T7/dubleLLM.cjs" $MEMORIA manutencao > /dev/null 2>&1
+  got_manutencao_teto1=$?
+  LOG_TETO="$CAIXA9/manutencao.log"
+  LINHA_UTILIDADE_T7=$(grep "^.*utilidade: [0-9]" "$LOG_TETO" | tail -1)
+  echo "  comando: RFM_ROOT=<copia com $TOTAL_MARCADAS marcas pendentes (TETO_PONTUAR+2)> node scripts/memoria.cjs manutencao"
+  echo "  saida (linha utilidade do manutencao.log): $LINHA_UTILIDADE_T7"
+
+  N_PONTUADAS_PASSADA1=$(node --no-warnings "$CAIXA9/contar-pontuadas.cjs" "$CAIXA9_WIN")
+
+  # --- passada 2: deve completar as 2 restantes ---
+  RFM_ROOT="$CAIXA9" TESTADOR_CHAMAR_LLM="$DUBLE_LLM_DIR_T7/dubleLLM.cjs" $MEMORIA manutencao > /dev/null 2>&1
+  N_PONTUADAS_PASSADA2=$(node --no-warnings "$CAIXA9/contar-pontuadas.cjs" "$CAIXA9_WIN")
+
+  if [ "$got_manutencao_teto1" = "0" ] \
+    && [ "$N_PONTUADAS_PASSADA1" = "$TETO_PONTUAR_VAL" ] \
+    && echo "$LINHA_UTILIDADE_T7" | grep -q "2 pendente(s) para a proxima" \
+    && [ "$N_PONTUADAS_PASSADA2" = "$TOTAL_MARCADAS" ]; then
+    ok=$((ok+1)); echo "  ok   passada respeita TETO_PONTUAR e deixa o resto pendente"
+  else
+    falhou=$((falhou+1)); echo "  FALHA passada nao respeitou TETO_PONTUAR: passada1=$N_PONTUADAS_PASSADA1 (esperado $TETO_PONTUAR_VAL), passada2=$N_PONTUADAS_PASSADA2 (esperado $TOTAL_MARCADAS), linha: $LINHA_UTILIDADE_T7"
+  fi
+
+  if echo "$LINHA_UTILIDADE_T7" | grep -Eq "[0-9]+ servida\(s\) sem id"; then
+    ok=$((ok+1)); echo "  ok   manutencao.log registra servidas sem id"
+  else
+    falhou=$((falhou+1)); echo "  FALHA manutencao.log nao registrou servidas sem id: $LINHA_UTILIDADE_T7"
+  fi
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
