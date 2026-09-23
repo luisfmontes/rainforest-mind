@@ -127,8 +127,7 @@ function bloqueia(motivo, repoAlheio, agente) {
     `Repo alheio: ${repoAlheio}\n` +
     `Agente: ${agente}\n\n` +
     `Esta escrita seria para dentro de OUTRO repositório git, diferente da sessão\n` +
-    `que está sendo executada. Em 2026-08-23 um agente escreveu numa sessão de\n` +
-    `worktree alheio, deixando um checkout divergente que se perdeu.\n\n` +
+    `que está sendo executada.\n\n` +
     `A saída correta é usar um worktree próprio naquele repo — ou deixar para a\n` +
     `sessão que já está lá trabalhar nele.\n\n` +
     saidas

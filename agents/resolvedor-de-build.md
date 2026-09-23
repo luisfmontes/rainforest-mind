@@ -81,7 +81,7 @@ repositório e reporte a divergência, em vez de concluir que o dado não
 existe.
 
 Commite a correção fechada antes de reportar, mensagem terminando em
-Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>.
+Co-Authored-By: <nome do modelo em que você roda> <noreply@anthropic.com>.
 
 Método destilado do fable-method (MIT, Sahir619/fable-method) e do
 guardrail de `commands/build-fix.md` (affaan-m/everything-claude-code,

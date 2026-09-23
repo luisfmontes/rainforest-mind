@@ -55,9 +55,9 @@ puderam ser cobrados.
 > 2026-08-12 o mecanismo já estava escrito acima ("sem nome, o agente
 > devolve o resultado inline e encerra sozinho") e ainda assim a sessão
 > pisou no defeito, porque despachou sem carregar `Skill(rainforest-mind)`
-> antes de aplicar a regra 10. Por isso o núcleo passou a dizer, em uma
-> linha, que nomeado só entrega por `SendMessage`: o que não cabe no
-> núcleo não chega a lugar nenhum.
+> antes de aplicar a regra 10. Por isso o núcleo carrega, em uma linha, o
+> que a elaboração sozinha não protege — "nunca é nomeado": o que não cabe
+> no núcleo não chega a lugar nenhum.
 
 **E nomear custa o worktree junto** (verificado 2026-08-08): agente que
 **edita arquivo nunca é nomeado** — nome só pra agente de conversa, que não
