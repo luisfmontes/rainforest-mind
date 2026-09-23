@@ -205,6 +205,8 @@ $E_REPO exigir --slug backstop-1 --estagio executar >/dev/null
 $E_REPO marcar --slug backstop-1 --estagio executar --status ok --json '{"comando":"node test.cjs","saida":"ok","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
 # Executar rodaria no test-repo, vamos simular que criou algo capturando snapshot
 esperado "backstop: exigir revisar captura snapshot" 0 $E_REPO exigir --slug backstop-1 --estagio revisar
+# Contrato de veredito (Tarefa 5): 'exigir revisar' armou a janela — precisa de um 'ok' gravado antes de fechar.
+$E_REPO veredito --slug backstop-1 --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id backstop-1-v1 >/dev/null
 esperado "backstop: marcar ok passa quando nada mudou" 0 $E_REPO marcar --slug backstop-1 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
 
 # Caso 2: exigir revisar => commit novo => marcar ok FALHA
@@ -245,6 +247,7 @@ $E_REPO marcar --slug backstop-4 --estagio plano --status ok >/dev/null
 $E_REPO exigir --slug backstop-4 --estagio executar >/dev/null
 $E_REPO marcar --slug backstop-4 --estagio executar --status ok --json '{"comando":"bash cmd.sh","saida":"result","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
 esperado "backstop-4: exigir revisar com arvore suja" 0 $E_REPO exigir --slug backstop-4 --estagio revisar
+$E_REPO veredito --slug backstop-4 --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id backstop-4-v1 >/dev/null
 # Nao fazer mudanca nenhuma, sujeira pre-existente nao reprova
 esperado "backstop-4: marcar ok passa com sujeira preexistente" 0 $E_REPO marcar --slug backstop-4 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
 
@@ -263,6 +266,7 @@ $E_REPO exigir --slug backstop-5 --estagio executar >/dev/null
 $E_REPO marcar --slug backstop-5 --estagio executar --status ok --json '{"comando":"node x.cjs","saida":"ok","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
 (cd "$SBP/test-repo" && git add -A && git commit -qm "estado versionado" >/dev/null 2>&1)
 esperado "backstop-5: arvore limpa e estado versionado" 0 $E_REPO exigir --slug backstop-5 --estagio revisar
+$E_REPO veredito --slug backstop-5 --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id backstop-5-v1 >/dev/null
 esperado "backstop-5: marcar ok passa (o exigir sujou o proprio estado)" 0 $E_REPO marcar --slug backstop-5 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
 
 # Caso 6: sujeira que MUDA DE POSICAO na saida do porcelain nao vira mutacao.
@@ -294,6 +298,7 @@ $E_REPO marcar --slug backstop-6 --estagio plano --status ok >/dev/null
 $E_REPO exigir --slug backstop-6 --estagio executar >/dev/null
 $E_REPO marcar --slug backstop-6 --estagio executar --status ok --json '{"comando":"bash run.sh","saida":"done","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
 esperado "backstop-6: exigir com dois rastreados sujos" 0 $E_REPO exigir --slug backstop-6 --estagio revisar
+$E_REPO veredito --slug backstop-6 --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id backstop-6-v1 >/dev/null
 # O primeiro volta ao conteudo commitado (sem git destrutivo — so reescreve).
 # Ninguem sujou nada novo: bravo.txt so subiu da linha 2 para a linha 1.
 (cd "$SBP/test-repo" && echo "conteudo-alpha" > alpha.txt)
@@ -547,6 +552,7 @@ $E exigir  --slug t-snap --estagio executar >/dev/null
 $E marcar --slug t-snap --estagio executar --status ok \
   --json '{"comando":"snap","saida":"snap-ok","tarefas_ok":1,"tarefas":1,"mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
 $E exigir  --slug t-snap --estagio revisar >/dev/null
+$E veredito --slug t-snap --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id t-snap-v1 >/dev/null
 $E marcar --slug t-snap --estagio revisar --status ok \
   --json '{"achados":0,"base":"HEAD","head":"HEAD"}' >/dev/null
 igual "snapshot (armado pelo exigir revisar) sobrevive ao fechamento" "sim" \
@@ -900,6 +906,7 @@ $E_R1 marcar --slug rev-vaza --estagio plano  --status ok >/dev/null
 $E_R1 exigir --slug rev-vaza --estagio executar >/dev/null
 $E_R1 marcar --slug rev-vaza --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
 $E_R1 exigir --slug rev-vaza --estagio revisar >/dev/null
+$E_R1 veredito --slug rev-vaza --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id rev-vaza-v1 >/dev/null
 $E_R1 marcar --slug rev-vaza --estagio revisar --status ok >/dev/null
 $E_R1 exigir --slug rev-vaza --estagio verificar >/dev/null
 $E_R1 marcar --slug rev-vaza --estagio verificar --status reprovado >/dev/null
@@ -915,6 +922,7 @@ ciclo_rev() { # fecha executar+revisar e reprova verificar
   $E_R1 exigir --slug rev-teto --estagio executar >/dev/null 2>&1
   $E_R1 marcar --slug rev-teto --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
   $E_R1 exigir --slug rev-teto --estagio revisar >/dev/null
+  $E_R1 veredito --slug rev-teto --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id rev-teto-v >/dev/null
   $E_R1 marcar --slug rev-teto --estagio revisar --status ok >/dev/null
   $E_R1 exigir --slug rev-teto --estagio verificar >/dev/null
   $E_R1 marcar --slug rev-teto --estagio verificar --status reprovado >/dev/null
@@ -956,6 +964,7 @@ $E_C marcar --slug conc-a --estagio plano  --status ok >/dev/null
 $E_C exigir --slug conc-a --estagio executar >/dev/null
 $E_C marcar --slug conc-a --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
 $E_C exigir --slug conc-a --estagio revisar >/dev/null
+$E_C veredito --slug conc-a --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id conc-a-v1 >/dev/null
 $E_C marcar --slug conc-a --estagio revisar --status ok >/dev/null
 $E_C exigir --slug conc-a --estagio verificar >/dev/null
 $E_C marcar --slug conc-a --estagio verificar --status ok --json '{"comando":"x","saida":"y"}' >/dev/null
@@ -970,6 +979,7 @@ $E_C marcar --slug conc-b --estagio plano  --status ok >/dev/null
 $E_C exigir --slug conc-b --estagio executar >/dev/null
 $E_C marcar --slug conc-b --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
 $E_C exigir --slug conc-b --estagio revisar >/dev/null
+$E_C veredito --slug conc-b --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id conc-b-v1 >/dev/null
 $E_C marcar --slug conc-b --estagio revisar --status ok >/dev/null
 $E_C exigir --slug conc-b --estagio verificar >/dev/null
 $E_C marcar --slug conc-b --estagio verificar --status ok --json '{"comando":"x","saida":"y"}' >/dev/null
@@ -1006,6 +1016,7 @@ esac
 $E_C2 exigir --slug conc-aberto --estagio executar >/dev/null
 $E_C2 marcar --slug conc-aberto --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
 $E_C2 exigir --slug conc-aberto --estagio revisar >/dev/null
+$E_C2 veredito --slug conc-aberto --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id conc-aberto-v1 >/dev/null
 $E_C2 marcar --slug conc-aberto --estagio revisar --status ok >/dev/null
 $E_C2 exigir --slug conc-aberto --estagio verificar >/dev/null
 $E_C2 marcar --slug conc-aberto --estagio verificar --status ok --json '{"comando":"x","saida":"y"}' >/dev/null
@@ -1830,6 +1841,177 @@ igual "veredito gravado antes do 2o exigir: 1 entrada" "1" "$N_VERED_ZERA_ANTES"
 esperado "exigir revisar (2a rodada)" 0 $E exigir --slug vered-zera --estagio revisar
 VERED_ZERA_DEPOIS=$(node -e "const r=JSON.parse(require('fs').readFileSync('docs/rainforest/estado/vered-zera.json','utf8')).revisar; console.log(JSON.stringify(r.vereditos))")
 igual "janela de vereditos zera no 2o exigir revisar (presente e vazia)" "[]" "$VERED_ZERA_DEPOIS"
+
+echo
+echo "== 31. contrato de veredito: 'marcar revisar ok' exige a janela toda 'ok' (D3, D6 — Tarefa 5) =="
+# Caixa PROPRIA com git de verdade: exigir --estagio revisar precisa capturar o
+# snapshot (backstop da secao 10) para armar a janela de vereditos.
+mkdir -p "$SBP/veredito-ok"
+(cd "$SBP/veredito-ok" && git init -q && git config user.email t@t && git config user.name T && echo x > a.txt && git add . && git commit -qm inicial)
+export RFM_ESTADO_ROOT="$SBP/veredito-ok"
+EV="node scripts/estado.cjs"
+
+prep_vered() { # slug — chega ate 'exigir revisar' com a janela armada (vazia)
+  $EV iniciar --slug "$1" >/dev/null
+  $EV marcar --slug "$1" --estagio design --status aprovado >/dev/null
+  $EV marcar --slug "$1" --estagio plano --status ok >/dev/null
+  $EV exigir --slug "$1" --estagio executar >/dev/null
+  $EV marcar --slug "$1" --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
+  $EV exigir --slug "$1" --estagio revisar >/dev/null
+}
+
+# Caso (a): janela armada e VAZIA -> recusa exit 2, "nenhum veredito gravado"
+prep_vered vered-vazio
+msg_vazio=$($EV marcar --slug vered-vazio --estagio revisar --status ok 2>&1)
+cod_vazio=$?
+if [ "$cod_vazio" = "2" ] && printf '%s' "$msg_vazio" | grep -q "nenhum veredito gravado"; then
+  ok=$((ok+1)); echo "  ok   janela vazia recusa exit 2 com 'nenhum veredito gravado'"
+else
+  falhou=$((falhou+1)); echo "  FALHA janela vazia: exit=$cod_vazio"; printf '%s\n' "$msg_vazio" | sed 's/^/         /'
+fi
+
+# Caso (b): 2 vereditos 'ok' de agentes diferentes -> fecha exit 0
+prep_vered vered-dois-ok
+$EV veredito --slug vered-dois-ok --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id AG1 >/dev/null
+$EV veredito --slug vered-dois-ok --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id AG2 >/dev/null
+esperado "janela com 2 'ok' de agentes diferentes fecha" 0 \
+  $EV marcar --slug vered-dois-ok --estagio revisar --status ok
+
+# Caso (c, fixture do plano): 1 'ok' + 1 'reprovado' na janela -> recusa exit 2
+prep_vered vered-misto
+$EV veredito --slug vered-misto --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id AG1 >/dev/null
+$EV veredito --slug vered-misto --estagio revisar --veredito reprovado --agente rainforest-mind:revisor --agente-id AG2 >/dev/null
+esperado "contrato de veredito: marcar revisar ok recusa quando ha veredito reprovado na janela" 2 \
+  $EV marcar --slug vered-misto --estagio revisar --status ok
+
+# Caso (d, D3): veredito 'invalido' na janela tambem recusa — fora do vocabulario, a revisao nao existe
+prep_vered vered-invalido
+$EV veredito --slug vered-invalido --estagio revisar --veredito invalido --agente rainforest-mind:revisor --agente-id AG1 >/dev/null
+esperado "janela com 'invalido' recusa fechamento 'ok'" 2 \
+  $EV marcar --slug vered-invalido --estagio revisar --status ok
+
+# Caso (e, Achado 5): --json com 'vereditos' recusa exit 1, mesma trava que 'reaberto_por' ja tem
+prep_vered vered-json-forjado
+msg_json=$($EV marcar --slug vered-json-forjado --estagio revisar --status ok --json '{"vereditos":[{"veredito":"ok"}]}' 2>&1)
+cod_json=$?
+if [ "$cod_json" = "1" ] && printf '%s' "$msg_json" | grep -q "vereditos"; then
+  ok=$((ok+1)); echo "  ok   --json com 'vereditos' recusa exit 1"
+else
+  falhou=$((falhou+1)); echo "  FALHA --json com vereditos: exit=$cod_json"; printf '%s\n' "$msg_json" | sed 's/^/         /'
+fi
+
+unset RFM_ESTADO_ROOT
+
+echo
+echo "== 32. contrato de veredito: 'marcar revisar reprovado' exige veredito 'reprovado' gravado (D9 — Tarefa 6) =="
+mkdir -p "$SBP/veredito-repr"
+(cd "$SBP/veredito-repr" && git init -q && git config user.email t@t && git config user.name T && echo x > a.txt && git add . && git commit -qm inicial)
+export RFM_ESTADO_ROOT="$SBP/veredito-repr"
+ER="node scripts/estado.cjs"
+
+prep_vered_r() { # slug — chega ate 'exigir revisar' com a janela armada (vazia)
+  $ER iniciar --slug "$1" >/dev/null
+  $ER marcar --slug "$1" --estagio design --status aprovado >/dev/null
+  $ER marcar --slug "$1" --estagio plano --status ok >/dev/null
+  $ER exigir --slug "$1" --estagio executar >/dev/null
+  $ER marcar --slug "$1" --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
+  $ER exigir --slug "$1" --estagio revisar >/dev/null
+}
+
+# Caso (a, fixture do plano): janela so com 'ok' -> 'reprovado' recusa exit 2
+prep_vered_r vered-repr-so-ok
+$ER veredito --slug vered-repr-so-ok --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id AG1 >/dev/null
+msg_sorepr=$($ER marcar --slug vered-repr-so-ok --estagio revisar --status reprovado 2>&1)
+cod_sorepr=$?
+if [ "$cod_sorepr" = "2" ] && printf '%s' "$msg_sorepr" | grep -q "nenhum veredito 'reprovado' gravado"; then
+  ok=$((ok+1)); echo "  ok   contrato de veredito: marcar revisar reprovado recusa sem veredito reprovado gravado"
+else
+  falhou=$((falhou+1)); echo "  FALHA janela so-ok / marcar reprovado: exit=$cod_sorepr"; printf '%s\n' "$msg_sorepr" | sed 's/^/         /'
+fi
+
+# Caso (b): janela vazia -> 'reprovado' tambem recusa (nenhum veredito, muito menos 'reprovado')
+prep_vered_r vered-repr-vazio
+esperado "janela vazia recusa 'reprovado' tambem" 2 \
+  $ER marcar --slug vered-repr-vazio --estagio revisar --status reprovado
+
+# Caso (c): janela com 1 'reprovado' -> fecha exit 0, 'tentativas' incrementa (mecanismo ja testado em §17)
+prep_vered_r vered-repr-ok
+$ER veredito --slug vered-repr-ok --estagio revisar --veredito reprovado --agente rainforest-mind:revisor --agente-id AG1 >/dev/null
+esperado "janela com 1 'reprovado' fecha 'reprovado'" 0 \
+  $ER marcar --slug vered-repr-ok --estagio revisar --status reprovado
+igual "tentativas incrementou para 1" "1" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('veredito-repr/docs/rainforest/estado/vered-repr-ok.json','utf8')).revisar.tentativas)")"
+
+unset RFM_ESTADO_ROOT
+
+echo
+echo "== 33. contrato de veredito: 'liberar --estagio revisar' exige impasse + --rodada-extra (D4, D7 — Tarefa 7) =="
+mkdir -p "$SBP/impasse-revisar"
+(cd "$SBP/impasse-revisar" && git init -q && git config user.email t@t && git config user.name T && echo x > a.txt && git add . && git commit -qm inicial)
+export RFM_ESTADO_ROOT="$SBP/impasse-revisar"
+EI="node scripts/estado.cjs"
+
+$EI iniciar --slug impasse-rev >/dev/null
+$EI marcar --slug impasse-rev --estagio design --status aprovado >/dev/null
+$EI marcar --slug impasse-rev --estagio plano  --status ok >/dev/null
+
+# 'revisar' e' o proprio reprovador aqui (o caso que o Achado 1 do plano
+# descreve): cada ciclo fecha 'executar' de novo, arma a janela, grava um
+# veredito 'reprovado' (Tarefa 6 exige) e reprova 'revisar'. Apos 3 ciclos, o
+# teto generico (TETO_TENTATIVAS, ja testado em secao 17) faz 'exigir
+# executar' recusar — e quem nomeia o destrave e' 'liberar --estagio
+# revisar', nao 'exigir revisar'.
+ciclo_impasse() {
+  $EI exigir --slug impasse-rev --estagio executar >/dev/null 2>&1
+  $EI marcar --slug impasse-rev --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
+  $EI exigir --slug impasse-rev --estagio revisar >/dev/null
+  $EI veredito --slug impasse-rev --estagio revisar --veredito reprovado --agente rainforest-mind:revisor --agente-id IMP >/dev/null
+  $EI marcar --slug impasse-rev --estagio revisar --status reprovado >/dev/null
+}
+ciclo_impasse; ciclo_impasse; ciclo_impasse   # 3 reprovacoes de 'revisar': teto atingido
+esperado "teto de 'revisar' atingido: exigir executar recusa" 2 $EI exigir --slug impasse-rev --estagio executar
+
+# Caso (a): liberar --estagio revisar SEM --rodada-extra recusa exit 2, pedindo o texto
+msg_sem_texto=$($EI liberar --slug impasse-rev --estagio revisar 2>&1)
+cod_sem_texto=$?
+if [ "$cod_sem_texto" = "2" ] && printf '%s' "$msg_sem_texto" | grep -q -- "--rodada-extra"; then
+  ok=$((ok+1)); echo "  ok   liberar --estagio revisar sem --rodada-extra recusa exit 2"
+else
+  falhou=$((falhou+1)); echo "  FALHA liberar sem rodada-extra: exit=$cod_sem_texto"; printf '%s\n' "$msg_sem_texto" | sed 's/^/         /'
+fi
+
+# Caso (b, fixture do plano): com --rodada-extra mas sem o arquivo de impasse no disco, recusa exit 2
+CAMINHO_IMPASSE="$SBP/impasse-revisar/docs/rainforest/portoes/impasse-rev-impasse.md"
+esperado "contrato de veredito: liberar --estagio revisar recusa sem o arquivo de impasse" 2 \
+  $EI liberar --slug impasse-rev --estagio revisar --rodada-extra "o usuario decidiu seguir"
+
+# Caso (c): criando o arquivo de impasse, o mesmo comando fecha exit 0 e grava liberado_em + rodadas_extra
+mkdir -p "$(dirname "$CAMINHO_IMPASSE")"
+cat > "$CAMINHO_IMPASSE" << 'EOF'
+# Impasse: impasse-rev
+
+Usuario decidiu seguir apos 3 reprovacoes de 'revisar'.
+EOF
+esperado "com o arquivo de impasse, liberar --estagio revisar fecha" 0 \
+  $EI liberar --slug impasse-rev --estagio revisar --rodada-extra "o usuario decidiu seguir"
+igual "liberado_em gravado" "sim" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('impasse-revisar/docs/rainforest/estado/impasse-rev.json','utf8')).revisar.liberado_em ? 'sim' : 'nao')")"
+igual "rodadas_extra tem 1 entrada" "1" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('impasse-revisar/docs/rainforest/estado/impasse-rev.json','utf8')).revisar.rodadas_extra.length)")"
+esperado "apos liberar, exigir executar passa" 0 $EI exigir --slug impasse-rev --estagio executar
+
+# Caso (d): uma segunda rodada extra ACUMULA no array (nao sobrescreve a anterior)
+esperado "segunda rodada extra tambem grava (acumula)" 0 \
+  $EI liberar --slug impasse-rev --estagio revisar --rodada-extra "segunda rodada, outro motivo"
+igual "rodadas_extra acumulou para 2 entradas" "2" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('impasse-revisar/docs/rainforest/estado/impasse-rev.json','utf8')).revisar.rodadas_extra.length)")"
+
+# Caso (e): outros estagios continuam com 'liberar' incondicional de hoje (sem --rodada-extra)
+$EI iniciar --slug impasse-outro >/dev/null
+esperado "liberar --estagio verificar continua incondicional (sem --rodada-extra)" 0 \
+  $EI liberar --slug impasse-outro --estagio verificar
+
+unset RFM_ESTADO_ROOT
 
 echo "== resultado: $ok ok, $falhou falhas =="
 [ "$falhou" = 0 ]

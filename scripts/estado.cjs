@@ -417,6 +417,73 @@ function verificarMutacao(slug, snapshot_anterior) {
   }
 }
 
+// ----------------------------- contrato de veredito no revisar (D3, D6, D9)
+//
+// O veredito do `revisar` deixa de passar pelo relato de quem despacha: um
+// hook `SubagentStop` grava `<estagio>.vereditos` direto da saida do revisor
+// (subcomando `veredito`, ja integrado), e o `exigir --estagio revisar` zera
+// essa janela a cada rodada nova (ja integrado). O que falta e o `marcar`
+// cobrar a janela no fechamento:
+//
+//   - `ok` (Tarefa 5, D3/D6): so fecha se TODOS os vereditos da janela
+//     disserem 'ok'. Janela vazia e janela com qualquer coisa fora de 'ok'
+//     (inclui 'invalido' — D3, "sem a linha certa a revisao nao existe")
+//     recusam igual.
+//   - `reprovado` (Tarefa 6, D9): so fecha se ALGUM veredito 'reprovado' foi
+//     gravado. Sem isso, quem despacha reabre o `executar` sem revisor
+//     nenhum ter dito nada — falta de simetria com D3/D6.
+//
+// TRANSICAO (plano, "O que nao pode quebrar"): fluxo cujo `revisar` nao tem
+// o campo `vereditos` — o `exigir revisar` que o armaria (Tarefa 4) rodou
+// ANTES deste contrato — continua fechando sem a trava nova, so avisa em
+// stderr. A trava vale quando `vereditos` existe (a janela foi armada).
+// Mesmo desenho do backstop de mutacao acima: travar retroativo quebra
+// trabalho em andamento.
+
+/** @returns {string|null} mensagem de recusa, ou null se passou/nao se aplica.
+ *  D3, D6 — Tarefa 5: fechamento 'ok' do 'revisar'. */
+function verificarJanelaDeVereditos(bloco_atual) {
+  if (!bloco_atual || !Array.isArray(bloco_atual.vereditos)) {
+    console.warn(
+      "aviso: 'revisar' sem janela de vereditos armada para este fluxo — o ultimo " +
+      "'exigir --estagio revisar' rodou antes do contrato de veredito. Fechando sem a trava nova."
+    );
+    return null;
+  }
+  if (bloco_atual.vereditos.length === 0) {
+    return "RECUSADO: nenhum veredito gravado para 'revisar'. Um revisor real precisa terminar com\n"
+      + "'VEREDITO: ok' (o hook SubagentStop grava a janela) antes de fechar este estagio. Rode um\n"
+      + "agente rainforest-mind:revisor com 'Slug: <slug>' na primeira linha do briefing.";
+  }
+  const naoOk = bloco_atual.vereditos.filter((v) => v.veredito !== 'ok');
+  if (naoOk.length > 0) {
+    const vistos = naoOk.map((v) => v.veredito).join(', ');
+    return `RECUSADO: ha ${naoOk.length} veredito(s) na janela que nao sao 'ok' (${vistos}).\n`
+      + `Todos os revisores desde o ultimo 'exigir --estagio revisar' precisam ter dito 'ok' (D6) —\n`
+      + `um 'ok' que chegou depois nao cobre um 'reprovado' anterior.`;
+  }
+  return null;
+}
+
+/** @returns {string|null} mensagem de recusa, ou null se passou/nao se aplica.
+ *  D9 — Tarefa 6: fechamento 'reprovado' do 'revisar'. Mesma transicao da
+ *  funcao acima: sem 'vereditos' no bloco, so avisa. */
+function verificarVeredictoReprovado(bloco_atual) {
+  if (!bloco_atual || !Array.isArray(bloco_atual.vereditos)) {
+    console.warn(
+      "aviso: 'revisar' sem janela de vereditos armada para este fluxo — o ultimo " +
+      "'exigir --estagio revisar' rodou antes do contrato de veredito. Fechando 'reprovado' sem a trava nova."
+    );
+    return null;
+  }
+  if (!bloco_atual.vereditos.some((v) => v.veredito === 'reprovado')) {
+    return "RECUSADO: nenhum veredito 'reprovado' gravado para 'revisar'. Reprovar reabre o\n"
+      + "'executar' sem revisor nenhum ter dito nada (D9) — um revisor real precisa ter terminado\n"
+      + "com 'VEREDITO: reprovado' antes de fechar assim este estagio.";
+  }
+  return null;
+}
+
 // ------------------------------ catraca de mutacao no executar (D6, D9, D10)
 //
 // Em 2026-08-21 um agente cumpriu todos os criterios falsificaveis do briefing,
@@ -1300,7 +1367,7 @@ const FLAGS_POR_SUBCOMANDO = {
   marcar: ['slug', 'estagio', 'status', 'json'],
   proximo: ['slug'],
   exigir: ['slug', 'estagio'],
-  liberar: ['slug', 'estagio'],
+  liberar: ['slug', 'estagio', 'rodada-extra'],
   listar: [],
   concluido: ['slug'],
   veredito: ['slug', 'estagio', 'veredito', 'agente', 'agente-id'],
@@ -1654,6 +1721,49 @@ function main() {
       console.error(`erro: estagio desconhecido '${estagio}'`);
       process.exit(1);
     }
+
+    // D4, D7 — Tarefa 7: o teto de 3 reprovações (TETO_TENTATIVAS, já
+    // genérico e testado em §17) é quem recusa a 4ª rodada — via `exigir
+    // --estagio executar`, que nomeia `liberar --slug <s> --estagio
+    // <estagio_reprovador>` como destrave (ver o comentário logo ali). Quando
+    // o reprovador é o próprio 'revisar' (Achado 1 do plano: a via literal
+    // "exigir revisar --rodada-extra" criaria um deadlock, porque quem
+    // recusa de verdade é 'exigir executar', não 'exigir revisar'), o
+    // destrave exige rastro auditável: o texto do usuário e o arquivo de
+    // impasse escrito em disco. A trava não prova que o usuário falou, mas
+    // impede passar da 3ª rodada sem esse rastro (D7). Só 'revisar' — outros
+    // estágios continuam com o 'liberar' incondicional de hoje, fora do
+    // escopo deste design.
+    if (estagio === 'revisar') {
+      const rodadaExtra = arg('rodada-extra', false);
+      if (!rodadaExtra || rodadaExtra.trim() === '') {
+        console.error(
+          `RECUSADO: 'liberar --estagio revisar' exige --rodada-extra "<o que o usuario disse>" (D7). ` +
+          `A 4a rodada e decisao dele, com o motivo por escrito — nao ha frase-senha por sessao (regra 10). ` +
+          `Ex.: node scripts/estado.cjs liberar --slug ${slug} --estagio revisar --rodada-extra "texto"`
+        );
+        process.exit(2);
+      }
+      const caminhoImpasse = path.join(RAIZ, 'docs', 'rainforest', 'portoes', `${slug}-impasse.md`);
+      if (!fs.existsSync(caminhoImpasse)) {
+        console.error(
+          `RECUSADO: 'liberar --estagio revisar' exige o impasse escrito em ` +
+          `${path.relative(RAIZ, caminhoImpasse)} (D7). O teto de 3 reprovações não manda parar, ` +
+          `torna a 4a rodada decisão do usuário — escreva o arquivo com o que ele decidiu e rode de novo.`
+        );
+        process.exit(2);
+      }
+      const rodadas_extra = Array.isArray(estado.revisar && estado.revisar.rodadas_extra)
+        ? estado.revisar.rodadas_extra.slice()
+        : [];
+      rodadas_extra.push({ texto: rodadaExtra, em: hoje() });
+      estado[estagio] = { ...estado[estagio], liberado_em: hoje(), rodadas_extra };
+      gravar(slug, estado);
+      console.log(`${estagio}: liberado em ${hoje()} (rodada extra registrada, impasse em ${path.relative(RAIZ, caminhoImpasse)})`);
+      console.log(JSON.stringify(estado[estagio], null, 2));
+      return;
+    }
+
     // Gravar liberado_em no bloco do estágio para destrava-lo uma vez
     estado[estagio] = { ...estado[estagio], liberado_em: hoje() };
     gravar(slug, estado);
@@ -1717,6 +1827,16 @@ function main() {
         console.error("erro: 'reaberto_por' e preenchido pelo proprio estado.cjs ao reprovar — nao entra pelo --json (Issue #148)");
         process.exit(1);
       }
+      // Achado 5 do plano: `--json` funde cru no bloco do estagio (linha do
+      // `estado[estagio] = blocoNovo` mais abaixo). Sem esta trava, `marcar
+      // revisar ok --json '{"vereditos":[...]}'` forjaria a prova que o
+      // contrato de veredito (Tarefa 5/6) exige — mesmo buraco que a trava de
+      // `reaberto_por` acima ja fecha (Issue #148). `vereditos` so entra pelo
+      // subcomando `veredito` (hook SubagentStop), nunca pela mao.
+      if (Object.prototype.hasOwnProperty.call(extra, 'vereditos')) {
+        console.error("erro: 'vereditos' e gravado pelo subcomando 'veredito' (hook SubagentStop) — nao entra pelo --json (contrato de veredito, D6)");
+        process.exit(1);
+      }
     }
     // Carimbos (D8): valida e funde ANTES de qualquer outra checagem, porque
     // funciona nos tres status (parcial, ok, reprovado) — nao so no fechamento.
@@ -1775,6 +1895,18 @@ function main() {
         const recusa_mutacao = verificarMutacao(slug, estado.revisar && estado.revisar.snapshot);
         if (recusa_mutacao) {
           console.error(recusa_mutacao);
+          process.exit(2);
+        }
+      }
+      // Contrato de veredito (D3, D6 — Tarefa 5): 'ok' so fecha 'revisar' se
+      // a janela armada pelo ultimo 'exigir --estagio revisar' existir e for
+      // toda 'ok'. Roda DEPOIS do backstop de mutacao (mesma ordem: as duas
+      // travas sao independentes, e a de mutacao ja recusa por outro motivo
+      // nos casos em que a arvore mudou).
+      if (estagio === 'revisar') {
+        const recusa_veredito = verificarJanelaDeVereditos(estado.revisar);
+        if (recusa_veredito) {
+          console.error(recusa_veredito);
           process.exit(2);
         }
       }
@@ -1846,6 +1978,17 @@ function main() {
       const recusa = conferirFechamento(estagio, slug, extra, estadoComExtra);
       if (recusa) {
         console.error(recusa);
+        process.exit(2);
+      }
+    }
+    // Contrato de veredito (D9 — Tarefa 6): 'reprovado' so fecha 'revisar' se
+    // algum veredito 'reprovado' foi gravado na janela — simetria com o 'ok'
+    // acima. Roda ANTES do incremento de `tentativas` logo abaixo: sem
+    // veredito, a reprovacao nem acontece.
+    if (status === 'reprovado' && estagio === 'revisar') {
+      const recusa_reprovado = verificarVeredictoReprovado(estado.revisar);
+      if (recusa_reprovado) {
+        console.error(recusa_reprovado);
         process.exit(2);
       }
     }
