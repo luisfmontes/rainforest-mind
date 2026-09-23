@@ -38,11 +38,11 @@ nenhum recebe a saída de outro, nenhum é nomeado. Cada frame roda como
 `rainforest-mind:planejador` (sonnet, devolve abordagem e nunca código, e já
 rotula `CONFIRMADO`/`INFERIDO`/`LACUNA`).
 
-O isolamento **é** o mecanismo. Antes, isso dependia de eu ler esta prosa e
-cumprir; agora quem garante que os seis não se veem é o código do workflow, não
-a minha disciplina — se os frames rodassem em sequência na mesma janela, ou se
-um visse o resultado do outro, a skill não faria nada que um prompt comum já
-não faça, e aí não valeria o custo.
+O isolamento **é** o mecanismo: quem garante que os seis não se veem é o
+código do workflow, não a disciplina de quem lê esta prosa — se os frames
+rodassem em sequência na mesma janela, ou se um visse o resultado do outro, a
+skill não faria nada que um prompt comum já não faça, e aí não valeria o
+custo.
 
 Seis frames, escolhidos para serem ortogonais e não sinônimos. A tabela abaixo
 documenta o que cada lente pergunta, para quem está decidindo se usa a skill;

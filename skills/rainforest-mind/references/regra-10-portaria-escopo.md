@@ -152,9 +152,10 @@ caminho: só é escrita quando o projeto aberto **é** o próprio plugin, porque
 existe para virar documentação versionada daqui. Num repo de cliente ela não tem
 leitor nem destino.
 
-## O que não mudou
+## O que ainda vale
 
-Manifesto **e** estágio ativo continua sendo a regra. Repo sem fluxo aberto
-continua sem estágio, e lá o caminho é a autorização explícita do usuário na
-sessão — que dispensa o portão de estágio e **só** ele, mantendo as travas de
-`escreve: true` (`isolation: "worktree"`, despacho sem `name`).
+A regra 11 é o único portão que barra: `escreve: true` sem `isolation:
+"worktree"`, ou com `name`, nega. Manifesto ausente e estágio fora da lista
+**não** bloqueiam nada desde a #264 (`regra-10-portaria.md`) — repo sem fluxo
+aberto não pede frase do usuário; o agente passa e o log registra
+`fora_de_fluxo: true`.
