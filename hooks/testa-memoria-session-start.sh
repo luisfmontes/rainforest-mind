@@ -1369,13 +1369,21 @@ CAIXA_PIPELINE="$(novo_sandbox)"
 RFM_ROOT="$CAIXA_PIPELINE" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
 
 # Insere uma marca_dagua com offset > offset_processado e processada_em de 60h
-# atras — a pendencia que o D8 quer que a abertura acuse.
+# atras — a pendencia que o D8 quer que a abertura acuse. `arquivo` tem que
+# apontar para um transcrito que EXISTE de verdade: desde o conserto do
+# aviso de captura parada (2026-09-23), a função pula marca cujo arquivo
+# sumiu (worktree removido), então a fixture precisa de um arquivo real, não
+# só um nome de placeholder.
 RFM_ROOT="$CAIXA_PIPELINE" node <<'SETUP_MARCA_PARADA'
+const fs = require('fs');
+const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+const arquivo = path.join(process.env.RFM_ROOT, 'arq1.jsonl');
+fs.writeFileSync(arquivo, '');
 const sessenta = new Date(Date.now() - 60 * 60 * 60 * 1000).toISOString();
 db.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)')
-  .run('projx', 'sessao1', 'arq1', 10, 5, sessenta);
+  .run('projx', 'sessao1', arquivo, 10, 5, sessenta);
 db.close();
 SETUP_MARCA_PARADA
 
@@ -1455,12 +1463,15 @@ else
 fi
 
 echo
-echo "  21.e — a seleção da marca mais antiga é EXPLÍCITA (ORDER BY processada_em ASC LIMIT 1), não a ordem de varredura"
+echo "  21.e — a seleção da marca mais antiga é EXPLÍCITA (ORDER BY processada_em ASC), não a ordem de varredura"
 # Mesma prova de forma da tarefa 14 (scripts/saude.cjs, verificação 3): o
 # ORDER BY explícito tem que estar no fonte do hook, não só "funcionar por
-# acaso" na ordem que o SQLite devolve.
-if grep -q "ORDER BY processada_em ASC" "$HOOK" && grep -q "LIMIT 1" "$HOOK"; then
-  ok=$((ok+1)); echo "  ok    21.e hook usa ORDER BY processada_em ASC LIMIT 1 explícito"
+# acaso" na ordem que o SQLite devolve. Sem checar mais "LIMIT 1": o conserto
+# do aviso de captura parada (2026-09-23) tirou o LIMIT 1 da consulta —
+# precisa varrer as pendências ordenadas e pular as com arquivo órfão
+# (worktree removido) até achar a mais antiga que ainda existe em disco.
+if grep -q "ORDER BY processada_em ASC" "$HOOK"; then
+  ok=$((ok+1)); echo "  ok    21.e hook usa ORDER BY processada_em ASC explícito"
 else
   falhou=$((falhou+1)); echo "  FALHA 21.e hook não tem a seleção explícita da marca mais antiga"
 fi
@@ -1476,6 +1487,8 @@ echo "  21.f — FALSIFICAÇÃO: bloco cheio (corta observação) + marca parada
 CAIXA_CHEIO="$(novo_sandbox)"
 RFM_ROOT="$CAIXA_CHEIO" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
 RFM_ROOT="$CAIXA_CHEIO" GRANDE="$GRANDE" node <<'SETUP_CHEIO'
+const fs = require('fs');
+const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
 const conteudoGrande = process.env.GRANDE + ' ' + process.env.GRANDE;
@@ -1484,9 +1497,12 @@ for (let i = 0; i < 20; i++) {
   const dia = String(10 + i).padStart(2, '0');
   stmt.run('proj-estouro', '## Obs grande ' + i + '\n\n' + conteudoGrande, `2026-08-${dia}T10:00:00Z`, 'sessao:teste:offset:' + i);
 }
+// arquivo real (nao so nome placeholder) — ver comentario da fixture 21.a acima.
+const arquivo = path.join(process.env.RFM_ROOT, 'arq1.jsonl');
+fs.writeFileSync(arquivo, '');
 const sessenta = new Date(Date.now() - 60 * 60 * 60 * 1000).toISOString();
 db.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)')
-  .run('projx', 'sessao1', 'arq1', 10, 5, sessenta);
+  .run('projx', 'sessao1', arquivo, 10, 5, sessenta);
 db.close();
 SETUP_CHEIO
 
@@ -1502,7 +1518,75 @@ else
   falhou=$((falhou+1)); echo "  FALHA 21.f esperava '1 true' com o corpus cheio, veio '$RESULT_CHEIO'"
 fi
 
-rm -rf "$CAIXA_PIPELINE" "$CAIXA_EMDIA" "$CAIXA_MANFALHOU" "$CAIXA_MANOK" "$CAIXA_CHEIO"
+echo
+echo "  21.g — marca com arquivo ORFAO (transcrito apagado, ex.: worktree removido): o aviso NAO aparece"
+# Achado real (2026-09-23, banco real do usuario em <home>/.rainforest):
+# marca de um worktree ja removido, offset_processado=0, processada_em de 18
+# dias atras. O arquivo do transcrito nao existe mais em lugar nenhum, e
+# nunca vai ser processado (observar.cjs le 0 eventos de arquivo ausente e
+# nao avanca offset_processado). Essa marca sozinha nao pode fazer o aviso
+# de "captura parada" aparecer: ela nunca vai virar captura de novo.
+CAIXA_ORFAO="$(novo_sandbox)"
+RFM_ROOT="$CAIXA_ORFAO" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+RFM_ROOT="$CAIXA_ORFAO" node <<'SETUP_ORFAO'
+const path = require('path');
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+const arquivoOrfao = path.join(process.env.RFM_ROOT, 'worktree-removido', 'sessao-orfa.jsonl');
+const quatrocentas = new Date(Date.now() - 400 * 60 * 60 * 1000).toISOString();
+db.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)')
+  .run('proj-removido', 'sessao-orfa', arquivoOrfao, 1478071, 0, quatrocentas);
+db.close();
+SETUP_ORFAO
+PAYLOAD_ORFAO='{"hook_event_name":"SessionStart","source":"startup","session_id":"11111111-1111-1111-1111-111111111111","cwd":"'"$CAIXA_ORFAO"'","transcript_path":"'"$CAIXA_ORFAO"'/t.jsonl"}'
+SAIDA_ORFAO="$(printf '%s' "$PAYLOAD_ORFAO" | RFM_ROOT="$CAIXA_ORFAO" node "$HOOK" 2>/dev/null)"
+echo "  comando: printf '%s' '<payload>' | RFM_ROOT=<sandbox com marca de arquivo inexistente, 400h> node hooks/memoria-session-start.cjs | node -e '...'"
+RESULT_ORFAO="$(printf '%s' "$SAIDA_ORFAO" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const t=JSON.parse(s).hookSpecificOutput.additionalContext;const l=t.split("\n").filter(x=>/captura/i.test(x)&&x.includes("observar.cjs"));console.log(l.length)})')"
+echo "  saida: $RESULT_ORFAO"
+if [ "$RESULT_ORFAO" = "0" ]; then
+  ok=$((ok+1)); echo "  ok    21.g marca orfa (arquivo apagado) nao dispara o aviso de captura parada"
+else
+  falhou=$((falhou+1)); echo "  FALHA 21.g esperava '0' (sem aviso), veio '$RESULT_ORFAO'"
+fi
+
+echo
+echo "  21.h — marca ORFA mais antiga + marca REAL mais nova pendente: o aviso usa a REAL, pula a orfa"
+# A marca orfa de 21.g fica pra sempre com processada_em congelado no
+# passado — se a funcao so pegasse a mais antiga sem checar o arquivo, o
+# numero de horas so cresceria e nunca refletiria uma pendencia de verdade
+# mais recente. Duas marcas no mesmo banco: a orfa (400h, arquivo nao
+# existe) e uma real (60h, arquivo existe) — o aviso tem que mostrar 60, nao
+# a orfa.
+CAIXA_ORFAOEREAL="$(novo_sandbox)"
+RFM_ROOT="$CAIXA_ORFAOEREAL" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
+RFM_ROOT="$CAIXA_ORFAOEREAL" node <<'SETUP_ORFAOEREAL'
+const fs = require('fs');
+const path = require('path');
+const { DatabaseSync } = require('node:sqlite');
+const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
+const arquivoOrfao = path.join(process.env.RFM_ROOT, 'worktree-removido', 'sessao-orfa.jsonl');
+const arquivoReal = path.join(process.env.RFM_ROOT, 'sessao-real.jsonl');
+fs.writeFileSync(arquivoReal, '');
+const quatrocentas = new Date(Date.now() - 400 * 60 * 60 * 1000).toISOString();
+const sessenta = new Date(Date.now() - 60 * 60 * 60 * 1000).toISOString();
+db.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)')
+  .run('proj-removido', 'sessao-orfa', arquivoOrfao, 1478071, 0, quatrocentas);
+db.prepare('INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?,?,?,?,?,?)')
+  .run('projx', 'sessao-real', arquivoReal, 10, 5, sessenta);
+db.close();
+SETUP_ORFAOEREAL
+PAYLOAD_ORFAOEREAL='{"hook_event_name":"SessionStart","source":"startup","session_id":"11111111-1111-1111-1111-111111111111","cwd":"'"$CAIXA_ORFAOEREAL"'","transcript_path":"'"$CAIXA_ORFAOEREAL"'/t.jsonl"}'
+SAIDA_ORFAOEREAL="$(printf '%s' "$PAYLOAD_ORFAOEREAL" | RFM_ROOT="$CAIXA_ORFAOEREAL" node "$HOOK" 2>/dev/null)"
+echo "  comando: printf '%s' '<payload>' | RFM_ROOT=<sandbox com marca orfa de 400h + marca real de 60h> node hooks/memoria-session-start.cjs | node -e '...'"
+RESULT_ORFAOEREAL="$(printf '%s' "$SAIDA_ORFAOEREAL" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const t=JSON.parse(s).hookSpecificOutput.additionalContext;const l=t.split("\n").filter(x=>/captura/i.test(x)&&x.includes("observar.cjs"));console.log(l.length, t.includes("60h"), t.includes("400h"))})')"
+echo "  saida: $RESULT_ORFAOEREAL"
+if [ "$RESULT_ORFAOEREAL" = "1 true false" ]; then
+  ok=$((ok+1)); echo "  ok    21.h aviso usa a pendencia REAL (60h), pula a orfa (400h) mesmo sendo mais antiga"
+else
+  falhou=$((falhou+1)); echo "  FALHA 21.h esperava '1 true false', veio '$RESULT_ORFAOEREAL'"
+fi
+
+rm -rf "$CAIXA_PIPELINE" "$CAIXA_EMDIA" "$CAIXA_MANFALHOU" "$CAIXA_MANOK" "$CAIXA_CHEIO" "$CAIXA_ORFAO" "$CAIXA_ORFAOEREAL"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
