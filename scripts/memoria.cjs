@@ -2286,7 +2286,7 @@ if (require.main === module) {
 
 module.exports = {
   abrirBanco, abrirBancoSomenteLeitura, chaveHarness, criarSchema, extrairSchema, popularFts5,
-  resolverCaminhos, verificarConstraintUniqueProjetoOrigem,
+  resolverCaminhos, verificarConstraintUniqueProjetoOrigem, encontrarGit,
   K_CANDIDATAS, TETO_RECONCILIAR, construirQueryFts5, buscarCandidatas,
   interpretarDecisaoReconciliacao, aplicarDecisaoReconciliacao,
   formatarPromptReconciliacao,

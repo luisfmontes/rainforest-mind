@@ -723,5 +723,181 @@ else
 fi
 
 echo
+echo "== Tarefa 9: servida sem id nunca vira nao-servida no contrafactual =="
+
+if [ -z "$TRANSCRITO_REAL" ] || [ ! -f "$HOME/.rainforest/rainforest.db" ]; then
+  falhou=$((falhou+1)); echo "  FALHA sem transcrito/banco real, pulando Tarefa 9"
+else
+  CAIXA11="$(novo_sandbox)"
+  CAIXA11_WIN="$(cygpath -m "$CAIXA11" 2>/dev/null || printf '%s' "$CAIXA11")"
+  cp "$HOME/.rainforest/rainforest.db" "$CAIXA11/rainforest.db"
+  cp "$TRANSCRITO_REAL" "$CAIXA11/transcrito-original.jsonl"
+
+  # Prepara duas variantes do transcrito real: uma com o cwd de TODAS as
+  # entradas trocado por uma subpasta do mesmo repositorio (prova a Tarefa 9
+  # parte 1: lerProjetoDoTranscrito sobe ate o .git mais proximo, igual a
+  # encontrarGit), outra com um cwd totalmente bogus, sem .git em nenhum
+  # ancestral (prova a Tarefa 9 parte 2: forca "servida sem id").
+  cat > "$CAIXA11/preparar-t9.cjs" <<'EOF'
+const fs = require('fs');
+const origem = process.argv[2];
+const destinoSubpasta = process.argv[3];
+const destinoBogus = process.argv[4];
+
+const conteudo = fs.readFileSync(origem, 'utf8');
+const linhas = conteudo.split('\n');
+
+let cwdOriginal = null;
+for (const l of linhas) {
+  if (!l.trim()) continue;
+  let o;
+  try { o = JSON.parse(l); } catch (e) { continue; }
+  if (o.cwd) { cwdOriginal = String(o.cwd); break; }
+}
+if (!cwdOriginal) {
+  process.stdout.write(JSON.stringify({ erro: 'transcrito real sem cwd' }));
+  process.exit(0);
+}
+
+const sep = cwdOriginal.includes('\\') ? '\\' : '/';
+const cwdSubpasta = cwdOriginal.replace(/[\\/]+$/, '') + sep + 'scripts';
+const cwdBogus = sep === '\\'
+  ? 'C:\\Projetos\\projeto-que-nao-existe-forcado-t9'
+  : '/projeto-que-nao-existe-forcado-t9';
+
+function rewrite(novoCwd, destino) {
+  const out = linhas.map((l) => {
+    if (!l.trim()) return l;
+    let o;
+    try { o = JSON.parse(l); } catch (e) { return l; }
+    if (o.cwd) o.cwd = novoCwd;
+    return JSON.stringify(o);
+  });
+  fs.writeFileSync(destino, out.join('\n') + '\n');
+}
+
+rewrite(cwdSubpasta, destinoSubpasta);
+rewrite(cwdBogus, destinoBogus);
+
+process.stdout.write(JSON.stringify({ cwdOriginal, cwdSubpasta, cwdBogus }));
+EOF
+  PREP_T9=$(node --no-warnings "$CAIXA11/preparar-t9.cjs" "$CAIXA11/transcrito-original.jsonl" "$CAIXA11/transcrito-subpasta.jsonl" "$CAIXA11/transcrito-bogus.jsonl")
+  echo "  preparo (cwd original/subpasta/bogus): $PREP_T9"
+
+  cat > "$CAIXA11/fixture-t9.cjs" <<EOF
+process.env.RFM_ROOT = process.argv[2];
+const caminhoOriginal = process.argv[3];
+const caminhoSubpasta = process.argv[4];
+const caminhoBogus = process.argv[5];
+const { abrirBanco, criarSchema, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { pontuarSessao } = require('$SRC_WIN/scripts/lib/utilidade.cjs');
+
+const { caminhoDb } = resolverCaminhos();
+const conexao = abrirBanco(caminhoDb);
+criarSchema(conexao);
+
+function idsServidos(sessao) {
+  return conexao.prepare(
+    "SELECT ref_id FROM uso_memoria WHERE sessao = ? AND servida = 1 AND origem = 'observacao' ORDER BY ref_id"
+  ).all(sessao).map((r) => r.ref_id);
+}
+
+// 1) cwd original — baseline.
+const r1 = pontuarSessao(conexao, 'sessao-t9-original', caminhoOriginal);
+const idsOriginal = idsServidos('sessao-t9-original');
+
+// 2) cwd numa subpasta do MESMO repositorio — tem que casar as MESMAS servidas.
+const r2 = pontuarSessao(conexao, 'sessao-t9-subpasta', caminhoSubpasta);
+const idsSubpasta = idsServidos('sessao-t9-subpasta');
+
+// 3) rotulo de projeto bogus (sem .git ancestral) — acharAlvo nao casa por id
+// nenhuma servida; a defesa por conteudo (semPrefixo) tem que impedir que
+// essas MESMAS observacoes reapareçam como servida=0 (contrafactual).
+const r3 = pontuarSessao(conexao, 'sessao-t9-bogus', caminhoBogus);
+const idsOriginalSql = idsOriginal.length ? idsOriginal.join(',') : '-1';
+const vazamento = conexao.prepare(
+  \`SELECT COUNT(*) c FROM uso_memoria WHERE sessao = ? AND servida = 0 AND origem = 'observacao' AND ref_id IN (\${idsOriginalSql})\`
+).get('sessao-t9-bogus').c;
+
+conexao.close();
+process.stdout.write(JSON.stringify({
+  servidasComIdOriginal: r1.servidasComId,
+  servidasComIdSubpasta: r2.servidasComId,
+  idsIguais: JSON.stringify(idsOriginal) === JSON.stringify(idsSubpasta),
+  servidasComIdBogus: r3.servidasComId,
+  servidasSemIdBogus: r3.servidasSemId,
+  vazamento,
+}));
+EOF
+  RESULTADO_T9=$(node --no-warnings "$CAIXA11/fixture-t9.cjs" "$CAIXA11_WIN" "$CAIXA11_WIN/transcrito-original.jsonl" "$CAIXA11_WIN/transcrito-subpasta.jsonl" "$CAIXA11_WIN/transcrito-bogus.jsonl" 2>&1)
+  echo "  comando: RFM_ROOT=<copia> node -e \"pontuarSessao com cwd original, subpasta e rotulo bogus\" (secao \"servida sem id nao reaparece como nao-servida\")"
+  echo "  saida: $RESULTADO_T9"
+
+  SERVIDAS_COM_ID_ORIGINAL_T9=$(printf '%s' "$RESULTADO_T9" | node --no-warnings -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const o=JSON.parse(s);process.stdout.write(String(o.servidasComIdOriginal))}catch(e){process.stdout.write('ERRO')}})")
+  SERVIDAS_SEM_ID_BOGUS_T9=$(printf '%s' "$RESULTADO_T9" | node --no-warnings -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{const o=JSON.parse(s);process.stdout.write(String(o.servidasSemIdBogus))}catch(e){process.stdout.write('ERRO')}})")
+
+  if echo "$RESULTADO_T9" | grep -q '"idsIguais":true' \
+    && [ "$SERVIDAS_COM_ID_ORIGINAL_T9" != "0" ] && [ "$SERVIDAS_COM_ID_ORIGINAL_T9" != "ERRO" ]; then
+    ok=$((ok+1)); echo "  ok   cwd em subpasta casa as mesmas servidas"
+  else
+    falhou=$((falhou+1)); echo "  FALHA cwd em subpasta nao casou as mesmas servidas: $RESULTADO_T9"
+  fi
+
+  # Defesa sintética e determinística da mesma checagem: dados reais só
+  # provam a ausência de vazamento se a observação servida também aparecesse
+  # no topo do FTS para aquele texto — não garantido. Aqui a colisão é
+  # FORÇADA (mesmo id, mesmo conteúdo, termo raro escolhido a dedo) e
+  # `buscarContrafactual` é chamada DIRETO — é o chamador real dentro de
+  # `pontuarSessao` (mesma assinatura, mesmos 4 argumentos), só que com
+  # `jaServidos` vazio para simular exatamente o caso "servida sem id": a
+  # defesa por `textosServidos` é a ÚNICA coisa que pode barrar o vazamento.
+  CAIXA11B="$(novo_sandbox)"
+  CAIXA11B_WIN="$(cygpath -m "$CAIXA11B" 2>/dev/null || printf '%s' "$CAIXA11B")"
+  RFM_ROOT="$CAIXA11B" $MEMORIA iniciar > /dev/null 2>&1
+
+  cat > "$CAIXA11B/fixture-t9-sintetico.cjs" <<EOF
+process.env.RFM_ROOT = process.argv[2];
+const { abrirBanco, resolverCaminhos } = require('$SRC_WIN/scripts/memoria.cjs');
+const { buscarContrafactual } = require('$SRC_WIN/scripts/lib/utilidade.cjs');
+const { formatarObservacao } = require('$SRC_WIN/hooks/lib/memoria-sessao.cjs');
+
+const { caminhoDb } = resolverCaminhos();
+const conexao = abrirBanco(caminhoDb);
+const agora = new Date().toISOString();
+
+conexao.prepare('INSERT INTO observacoes (id, projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?, ?)')
+  .run(777, 'proj-t9', 'titulo termoexclusivot9 — subtitulo com termoexclusivot9 no conteudo', agora, 'fixture-t9-contra');
+
+const row = conexao.prepare('SELECT id, conteudo, projeto, criada_em FROM observacoes WHERE id = 777').get();
+// MESMA formatação que buscarContrafactual aplica ao candidato internamente
+// — semPrefixo é só o regex do prefixo de data/projeto, sem depender de
+// nenhuma função interna do módulo sob teste.
+const linha = formatarObservacao(row, null);
+const semPrefixoLocal = linha.replace(/^\[[^\]]*\]\s*/, '');
+const textosServidos = new Set([semPrefixoLocal]);
+
+// jaServidos VAZIO — simula "servida sem id": nada exclui o candidato 777
+// por id, só a defesa por conteúdo pode barrá-lo.
+const texto = 'a sessao usou termoexclusivot9 em algum lugar do texto';
+const resultado = buscarContrafactual(conexao, texto, new Set(), textosServidos);
+
+conexao.close();
+process.stdout.write(JSON.stringify({ apareceu: resultado.some((r) => r.id === 777) }));
+EOF
+  RESULTADO_T9_SINTETICO=$(node --no-warnings "$CAIXA11B/fixture-t9-sintetico.cjs" "$CAIXA11B_WIN" 2>&1)
+  echo "  comando: node -e \"buscarContrafactual(conexao, texto, new Set(), textosServidos)\" com jaServidos vazio (secao \"servida sem id nao reaparece como nao-servida\")"
+  echo "  saida: $RESULTADO_T9_SINTETICO"
+
+  if echo "$RESULTADO_T9" | grep -q '"servidasComIdBogus":0' \
+    && echo "$RESULTADO_T9" | grep -q '"vazamento":0' \
+    && [ "$SERVIDAS_SEM_ID_BOGUS_T9" != "0" ] && [ "$SERVIDAS_SEM_ID_BOGUS_T9" != "ERRO" ] \
+    && echo "$RESULTADO_T9_SINTETICO" | grep -q '"apareceu":false'; then
+    ok=$((ok+1)); echo "  ok   servida sem id nao reaparece como nao-servida"
+  else
+    falhou=$((falhou+1)); echo "  FALHA servida sem id reapareceu como nao-servida: real=$RESULTADO_T9 sintetico=$RESULTADO_T9_SINTETICO"
+  fi
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

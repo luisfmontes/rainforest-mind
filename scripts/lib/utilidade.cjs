@@ -153,6 +153,28 @@ function extrairSessao(caminhoTranscrito) {
 
 // ---- Tarefa 2: pontuação ----
 
+// Sobe a árvore de diretórios procurando `.git` — MESMO algoritmo de
+// `encontrarGit()` em scripts/memoria.cjs (exportada de lá pela Tarefa 9,
+// mas duplicada aqui em vez de importada: mesmo motivo do require circular
+// explicado no topo do arquivo. Não é de 1 linha como `chaveHarness`, mas
+// ainda é função pura sobre o sistema de arquivos — o custo de duplicar é
+// menor que o de amarrar a ordem de carga dos dois módulos).
+function encontrarGitLocal(inicio) {
+  let atual = path.resolve(inicio);
+  const raizVolume = path.parse(atual).root;
+  while (atual !== raizVolume) {
+    const gitPath = path.join(atual, '.git');
+    try {
+      const stats = fs.statSync(gitPath);
+      if (stats.isFile() || stats.isDirectory()) return atual;
+    } catch (e) {
+      // .git não existe neste diretório, sobe mais um nível
+    }
+    atual = path.dirname(atual);
+  }
+  return null;
+}
+
 /**
  * Lê o `cwd` gravado nas entradas do transcrito e deriva as duas formas sob
  * as quais uma observação pode estar gravada em `projeto` — a chave do
@@ -162,10 +184,11 @@ function extrairSessao(caminhoTranscrito) {
  * `resolverCaminhos()` porque a sessão de origem pode ter rodado num `cwd`
  * diferente do processo atual (a pontuação roda na manutenção, dias depois).
  *
- * Duplica a transformação de `chaveHarness()` (scripts/memoria.cjs) em vez de
- * importá-la — mesmo motivo do require circular explicado no topo do
- * arquivo: função pura de 1 linha, custo de duplicar é menor que o de um
- * require condicionado à ordem de carga do módulo.
+ * Tarefa 9 (D8): sobe do `cwd` até o `.git` mais próximo, exatamente como a
+ * abertura resolve o projeto — um `cwd` de sessão numa subpasta do
+ * repositório (ex.: `<raiz>/scripts`) tem que resolver para o MESMO projeto
+ * que a raiz, não para "scripts". Sem `.git` encontrado (worktree removido),
+ * cai no `cwd` cru, como antes.
  *
  * @param {string} caminhoTranscrito
  * @returns {{harnessKey: string|null, curto: string|null}}
@@ -184,8 +207,10 @@ function lerProjetoDoTranscrito(caminhoTranscrito) {
       }
       if (entrada.cwd) {
         const cwd = String(entrada.cwd);
-        const curto = path.basename(cwd);
-        const harnessKey = cwd.replace(/[\\/:]/g, '-');
+        const topLevel = encontrarGitLocal(cwd);
+        const base = topLevel || cwd; // .git não encontrado -> cwd cru, como antes
+        const curto = path.basename(base);
+        const harnessKey = base.replace(/[\\/:]/g, '-');
         return { harnessKey, curto };
       }
     }
@@ -321,12 +346,28 @@ function construirQueryFts5DoTexto(texto, limiteTermos) {
   return tokens.map((t) => `"${t.replace(/"/g, '""')}"`).join(' OR ');
 }
 
+// Corta o prefixo `[AAAA-MM-DD (projeto)] ` de uma linha formatada, deixando
+// só "título — subtítulo" (Tarefa 9, D8). Defesa independente do rótulo: duas
+// linhas com o mesmo título/subtítulo são a MESMA observação/resumo, ainda
+// que o prefixo de data/projeto não bata (rótulo de projeto que não casou —
+// ver lerProjetoDoTranscrito acima).
+function semPrefixo(linha) {
+  return String(linha || '').replace(/^\[[^\]]*\]\s*/, '');
+}
+
 /**
  * Contrafactual (D6): até TETO_CONTRAFACTUAL observações que o FTS acha a
  * partir dos termos do texto da sessão (bm25), excluindo as já servidas
  * (`jaServidos`, um Set de `"observacao:<id>"`).
+ *
+ * Tarefa 9 (D8): uma servida sem id casado (rótulo de projeto que não bateu)
+ * não fica de fora de `jaServidos` — sem a segunda defesa abaixo, ela podia
+ * reaparecer aqui como "não-servida" (servida=0), quando na verdade FOI
+ * servida. `textosServidos` é o Set de `semPrefixo(linha)` de toda servida da
+ * sessão (casada por id ou não); um candidato cujo texto formatado, sem o
+ * prefixo de data/projeto, bate com alguma delas é descartado.
  */
-function buscarContrafactual(conexao, texto, jaServidos) {
+function buscarContrafactual(conexao, texto, jaServidos, textosServidos) {
   const query = construirQueryFts5DoTexto(texto, 200);
   if (!query) return [];
 
@@ -334,7 +375,7 @@ function buscarContrafactual(conexao, texto, jaServidos) {
   try {
     rows = conexao
       .prepare(
-        `SELECT o.id, o.conteudo
+        `SELECT o.id, o.conteudo, o.projeto, o.criada_em
          FROM observacoes_fts
          JOIN observacoes o ON o.id = observacoes_fts.rowid
          WHERE observacoes_fts MATCH ? AND o.substituida_por IS NULL
@@ -350,6 +391,11 @@ function buscarContrafactual(conexao, texto, jaServidos) {
   for (const row of rows) {
     const chave = `observacao:${row.id}`;
     if (jaServidos.has(chave)) continue;
+    const linhaCandidato = formatarObservacao(
+      { conteudo: row.conteudo, projeto: row.projeto, criada_em: row.criada_em },
+      null
+    );
+    if (textosServidos.has(semPrefixo(linhaCandidato))) continue;
     resultado.push({ origem: 'observacao', id: row.id, conteudo: row.conteudo });
   }
   return resultado;
@@ -384,6 +430,7 @@ function pontuarSessao(conexao, sessao, caminhoTranscrito) {
   const apelidos = harnessKey && curto && harnessKey !== curto ? { [harnessKey]: curto } : null;
 
   const jaGravados = new Set();
+  const textosServidos = new Set(servidas.map(semPrefixo));
   let servidasComId = 0;
   let servidasSemId = 0;
 
@@ -401,7 +448,7 @@ function pontuarSessao(conexao, sessao, caminhoTranscrito) {
     servidasComId++;
   }
 
-  const contrafactuais = buscarContrafactual(conexao, texto, jaGravados);
+  const contrafactuais = buscarContrafactual(conexao, texto, jaGravados, textosServidos);
   for (const cand of contrafactuais) {
     const nota = calcularNota(conexao, cand.conteudo, texto);
     gravarUso(conexao, { origem: cand.origem, refId: cand.id, sessao, servida: 0, nota, pontuadaEm: agora });
