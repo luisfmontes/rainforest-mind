@@ -6,10 +6,19 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-24-beads-por-cima-do-ideias.md",
+    "em": "2026-09-24"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-24-beads-por-cima-do-ideias.md",
+    "tarefas": 8,
+    "paralelas": [
+      1,
+      6
+    ],
+    "em": "2026-09-24"
   },
   "executar": {
     "status": "pendente"
