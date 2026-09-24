@@ -29,3 +29,13 @@ paralela: nao
 mutacao: n/a
   motivo: doc; a falsificação é a coerência com D1 e com os números do doc de pesquisa.
 pronto quando: a entrada do Beads no `vigias/livro-de-repos.md` diz "não acopla", com os números da tarefa 1 (abertas, citações, 1 bloqueio) e o caminho do doc de pesquisa, no formato das entradas vizinhas — conferido lendo a entrada contra o doc de pesquisa.
+
+### 3. Versão 1.23.11 [tipo: configurar]
+atende: D2
+arquivos: `.claude-plugin/plugin.json`, `README.md`
+depende de: 2
+paralela: nao
+Emenda de 2026-09-24: o CI (`scripts/conferir-versao.cjs`) exige versão maior que a da `origin/main` em todo PR, mesmo só de docs — a suposição de que PR sem comportamento dispensava o bump estava errada.
+mutacao: n/a
+  motivo: bump de versão, sem comportamento a inverter.
+pronto quando: `node scripts/conferir-versao.cjs` aceita (1.23.11 > 1.23.10 da `origin/main`) e `bash scripts/testa-versao.sh` confirma `plugin.json` e selo do README iguais.
