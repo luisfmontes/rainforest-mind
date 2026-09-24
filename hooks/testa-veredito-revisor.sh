@@ -168,9 +168,11 @@ echo
 echo "== 2. agent_type que nao e revisor e ignorado =="
 # Fixture do transcrito TEM Slug valido e o veredito e vocabulario-valido — se
 # o filtro de agent_type sumir (mutacao da tarefa 8), o hook gravaria mesmo
-# assim, e esta secao pegaria isso.
+# assim, e esta secao pegaria isso. O transcrito mora na arvore real (com
+# .meta.json de revisor): senao a checagem de D14 no estado.cjs recusaria
+# sozinha e o mutante sobreviveria — foi o que a catraca do verificar achou.
 reset_estado
-P=$(pay "$R" "outro-agente" "BBB" "$VEREDITO_OK" '{"agent_transcript_path":"'"$FIX"'/transcript-slug-string-ok.jsonl"}')
+P=$(pay "$R" "outro-agente" "BBB" "$VEREDITO_OK" '{"agent_transcript_path":"'"$(real_transcrito "$FIX/transcript-slug-string-ok.jsonl" BBB)"'"}')
 rodar_hook "$P"; GOT=$?
 V=$(vereditos)
 if [ "$GOT" = 0 ] && [ "$V" = "[]" ]; then

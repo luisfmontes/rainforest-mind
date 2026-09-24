@@ -23,7 +23,7 @@
     "em": "2026-09-24"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-24",
     "tarefas_ok": 20,
     "tarefas": 20,
@@ -267,10 +267,14 @@
         "resultado": "vermelho",
         "fixture": "testa-estado.sh, arvore inventada ~/.claude-x/ recusa"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "verificar",
+      "data": "2026-09-24"
+    }
   },
   "revisar": {
-    "status": "ok",
+    "status": "pendente",
     "snapshot": {
       "head": "e2fc28bcc445e3b40dd4d3954e5cb681cf77162f",
       "caminhos_sujos": []
@@ -296,7 +300,12 @@
     "head": "e2fc28bc"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "comando": "node scripts/estado.cjs marcar --estagio verificar (catraca de mutacao)",
+    "saida": "tarefa 8: mutante sobreviveu; tarefa 20: sem bloco mutacao",
+    "sensor_externo": "node scripts/estado.cjs marcar",
+    "em": "2026-09-24",
+    "tentativas": 1
   },
   "fechar": {
     "status": "pendente"

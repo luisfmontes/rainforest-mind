@@ -275,6 +275,16 @@ mutacao: n/a
 pronto quando: `skills/revisar/SKILL.md` troca a promessa de "auditável" pelo que o código faz — transcrito na pasta real de sessão, meta de revisor, caminho gravado — e diz que o contrato barra o atalho por hábito, não quem forja de propósito com acesso ao disco (D14); conferido lendo cada frase contra `transcritoEmPastaDeSessaoReal` em `scripts/estado.cjs`, e `bash scripts/testa-teto-skills.sh` mantendo `revisar` dentro do teto.
 
 ### 20. Transcrito só vale na config dir em uso [tipo: implementar]
+atende: D14
+arquivos: `scripts/estado.cjs`, `scripts/testa-estado.sh`, `hooks/testa-veredito-revisor.sh`
+depende de: 18
+paralela: nao
+mutacao:
+  arquivo: `scripts/estado.cjs`
+  de: `: path.join(os.homedir(), '.claude');`
+  para: `: path.join(os.homedir(), '.claude-personal');`
+  bateria: `bash scripts/testa-estado.sh`
+  fixture: `testa-estado.sh, caso "sem CLAUDE_CONFIG_DIR: arvore em ~/.claude grava"`
 Emenda de 2026-09-24 — 3ª revisão reprovada, impasse
 `docs/rainforest/portoes/2026-09-23-contrato-de-veredito-impasse.md`, 4ª rodada
 liberada pelo usuário ("recomendado").
