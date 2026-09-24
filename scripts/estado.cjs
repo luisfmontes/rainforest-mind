@@ -439,10 +439,37 @@ function verificarMutacao(slug, snapshot_anterior) {
 // stderr. A trava vale quando `vereditos` existe (a janela foi armada).
 // Mesmo desenho do backstop de mutacao acima: travar retroativo quebra
 // trabalho em andamento.
+//
+// D11 — Tarefa 15 (emenda de 2026-09-23): achado da revisao independente —
+// `exigir --estagio revisar` arma a janela (`vereditos: []`) mesmo com o
+// toggle `contrato-veredito` desligado neste projeto, e o hook desligado
+// nunca grava nela. Sem este helper, as duas travas abaixo recusariam pra
+// sempre com uma mensagem que manda rodar um revisor que nao resolve nada.
+// Com o toggle desligado, as duas tratam o fluxo como se nunca tivesse
+// contrato — so avisam, igual a transicao acima.
+
+/** Resolve o projeto do jeito que os outros usos de `ligado(..., { projeto })`
+ *  resolvem (ver `hooks/veredito-revisor.cjs` e os `gate-*.cjs` que leem
+ *  `cwdDoEvento`): a raiz do repositorio onde o trabalho acontece — aqui e
+ *  `RAIZ` (comentario no topo deste arquivo), nunca a raiz do plugin. */
+function contratoVereditoLigado() {
+  try {
+    const { ligado } = require(path.join(__dirname, '..', 'hooks', 'lib', 'config.cjs'));
+    return ligado('contrato-veredito', { projeto: RAIZ });
+  } catch (_) {
+    return true; // config.cjs indisponivel: mesmo fail-safe de `ligado()` (erro = ligado)
+  }
+}
 
 /** @returns {string|null} mensagem de recusa, ou null se passou/nao se aplica.
  *  D3, D6 — Tarefa 5: fechamento 'ok' do 'revisar'. */
 function verificarJanelaDeVereditos(bloco_atual) {
+  if (!contratoVereditoLigado()) {
+    console.warn(
+      "aviso: 'contrato-veredito' desligado neste projeto — fechando 'revisar' sem a trava de veredito (D11)."
+    );
+    return null;
+  }
   if (!bloco_atual || !Array.isArray(bloco_atual.vereditos)) {
     console.warn(
       "aviso: 'revisar' sem janela de vereditos armada para este fluxo — o ultimo " +
@@ -469,6 +496,12 @@ function verificarJanelaDeVereditos(bloco_atual) {
  *  D9 — Tarefa 6: fechamento 'reprovado' do 'revisar'. Mesma transicao da
  *  funcao acima: sem 'vereditos' no bloco, so avisa. */
 function verificarVeredictoReprovado(bloco_atual) {
+  if (!contratoVereditoLigado()) {
+    console.warn(
+      "aviso: 'contrato-veredito' desligado neste projeto — fechando 'revisar' reprovado sem a trava de veredito (D11)."
+    );
+    return null;
+  }
   if (!bloco_atual || !Array.isArray(bloco_atual.vereditos)) {
     console.warn(
       "aviso: 'revisar' sem janela de vereditos armada para este fluxo — o ultimo " +

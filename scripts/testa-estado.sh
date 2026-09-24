@@ -2079,5 +2079,64 @@ esperado "exigir verificar passa apos revisar fechar de novo" 0 \
 
 unset RFM_ESTADO_ROOT
 
+echo
+echo "== 35. contrato de veredito: toggle 'contrato-veredito' desligado desarma as travas do marcar revisar (D11 — Tarefa 15) =="
+# Caixa PROPRIA com git de verdade: exigir --estagio revisar precisa capturar o
+# snapshot (backstop da secao 10) para armar a janela de vereditos, mesmo com
+# o toggle desligado (a janela continua sendo armada — so as travas de
+# 'marcar' passam a avisar em vez de recusar).
+mkdir -p "$SBP/toggle-veredito/.rainforest"
+(cd "$SBP/toggle-veredito" && git init -q && git config user.email t@t && git config user.name T && echo x > a.txt && git add . && git commit -qm inicial)
+export RFM_ESTADO_ROOT="$SBP/toggle-veredito"
+ET="node scripts/estado.cjs"
+
+prep_toggle() { # slug — chega ate 'exigir revisar' com a janela armada (vazia)
+  $ET iniciar --slug "$1" >/dev/null
+  $ET marcar --slug "$1" --estagio design --status aprovado >/dev/null
+  $ET marcar --slug "$1" --estagio plano --status ok >/dev/null
+  $ET exigir --slug "$1" --estagio executar >/dev/null
+  $ET marcar --slug "$1" --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
+  $ET exigir --slug "$1" --estagio revisar >/dev/null
+}
+
+# Toggle DESLIGADO: janela armada e vazia (achado 1 da revisao — sem o
+# helper, isso recusaria pra sempre), mas 'marcar ok' fecha mesmo assim, so
+# avisando em stderr e nomeando o toggle.
+printf '{"contrato-veredito": false}' > "$SBP/toggle-veredito/.rainforest/config.json"
+prep_toggle toggle-desligado
+msg_desl=$($ET marcar --slug toggle-desligado --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}' 2>&1)
+cod_desl=$?
+if [ "$cod_desl" = "0" ] && printf '%s' "$msg_desl" | grep -q "contrato-veredito"; then
+  ok=$((ok+1)); echo "  ok   contrato-veredito desligado: 'marcar revisar ok' fecha sem veredito, aviso nomeia o toggle"
+else
+  falhou=$((falhou+1)); echo "  FALHA toggle desligado (ok): exit=$cod_desl"; printf '%s\n' "$msg_desl" | sed 's/^/         /'
+fi
+
+# Mesmo toggle desligado, tambem cobre o fechamento 'reprovado' (D9/Tarefa 6):
+# a janela vazia (nenhum 'reprovado' gravado) nao barra com o toggle desligado.
+prep_toggle toggle-desligado-repr
+msg_desl_repr=$($ET marcar --slug toggle-desligado-repr --estagio revisar --status reprovado 2>&1)
+cod_desl_repr=$?
+if [ "$cod_desl_repr" = "0" ] && printf '%s' "$msg_desl_repr" | grep -q "contrato-veredito"; then
+  ok=$((ok+1)); echo "  ok   contrato-veredito desligado: 'marcar revisar reprovado' fecha sem veredito, aviso nomeia o toggle"
+else
+  falhou=$((falhou+1)); echo "  FALHA toggle desligado (reprovado): exit=$cod_desl_repr"; printf '%s\n' "$msg_desl_repr" | sed 's/^/         /'
+fi
+
+# Toggle LIGADO (arquivo removido -> volta ao padrao 'true'): a mesma janela
+# vazia volta a recusar com a mensagem de sempre — prova que foi o toggle (e
+# nao outra coisa) que liberou o fechamento acima.
+rm -f "$SBP/toggle-veredito/.rainforest/config.json"
+prep_toggle toggle-ligado
+msg_lig=$($ET marcar --slug toggle-ligado --estagio revisar --status ok 2>&1)
+cod_lig=$?
+if [ "$cod_lig" = "2" ] && printf '%s' "$msg_lig" | grep -q "nenhum veredito gravado"; then
+  ok=$((ok+1)); echo "  ok   contrato-veredito ligado (padrao): a mesma janela vazia volta a recusar"
+else
+  falhou=$((falhou+1)); echo "  FALHA toggle ligado: exit=$cod_lig"; printf '%s\n' "$msg_lig" | sed 's/^/         /'
+fi
+
+unset RFM_ESTADO_ROOT
+
 echo "== resultado: $ok ok, $falhou falhas =="
 [ "$falhou" = 0 ]
