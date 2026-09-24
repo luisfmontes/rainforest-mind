@@ -72,6 +72,11 @@ const CHAVES = {
     padrao: true,
     descricao: 'barra commit quando o `verificador-staged` do config reprova conteúdo staged',
   },
+  'contrato-veredito': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'grava o veredito de uma linha do revisor em SubagentStop (hooks/veredito-revisor.cjs)',
+  },
   fluxo: {
     tipo: 'boolean',
     padrao: true,
