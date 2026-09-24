@@ -1,9 +1,11 @@
 # Dependências propostas entre ideias abertas (tarefa 6)
 
+> Redação para repositório público: nomes de pessoa viraram papel ("usuário", "o mantenedor original", "um contato"), e ids e trechos que carregavam nome de cliente, empresa ou turma foram redigidos (`<empresa>`, `<turma>`, `cliente`, `usuario`). As contagens e as classificações não mudam — o comando de medição roda contra o arquivo real, onde os ids estão inteiros.
+
 Pesquisa da tarefa 6 do plano
 `docs/rainforest/planos/2026-09-24-beads-por-cima-do-ideias.md`. Design de
 referência: `docs/rainforest/design/2026-09-24-beads-por-cima-do-ideias.md`
-(D2, D3). Lembrete de D2: `depende_de` é SÓ bloqueio — "B não deve ser feita
+(D2, D3; o design foi refeito para "não acopla" depois desta medição). Lembrete de D2: `depende_de` é SÓ bloqueio — "B não deve ser feita
 antes de A". Parentesco, irmandade, vizinhança ou "ver também" **não** é
 dependência; nesses casos a classificação é `irma`, e o campo `depende_de`
 continua sem efeito para elas (o vínculo de parentesco já existe em prosa,
@@ -414,11 +416,11 @@ colada é o formato de link que o próprio `ideias.jsonl` usa em prosa.
 
 ### `mit041-cliente-diagramas-de-fluxo-da-v2` (plantada)
 
-- cita `gerador-de-mits-no-plugin-tbc` (plantada) — **irma**
-  - (`ao_colher`) "formatacao, PYTHONIOENCODING=utf-8). VINCULO: esta tarefa e o primeiro caso de teste de [[gerador-de-mits-no-plugin-tbc]] -- se o gerador de MITs sair antes, os diagramas do cliente nascem por ele, e nao a mao."
+- cita `gerador-de-mits-no-plugin-<empresa>` (plantada) — **irma**
+  - (`ao_colher`) "formatacao, PYTHONIOENCODING=utf-8). VINCULO: esta tarefa e o primeiro caso de teste de [[gerador-de-mits-no-plugin-<empresa>]] -- se o gerador de MITs sair antes, os diagramas do cliente nascem por ele, e nao a mao."
   - Porquê: 'SE o gerador sair antes, os diagramas nascem por ele' é condicional/oportunista — esta ideia não precisa que a outra termine, pode seguir à mão.
 
-### `gerador-de-mits-no-plugin-tbc` (plantada)
+### `gerador-de-mits-no-plugin-<empresa>` (plantada)
 
 - cita `mit041-cliente-diagramas-de-fluxo-da-v2` (plantada) — **irma**
   - (`ao_colher`) "tem por item na descricao desta ideia e da para reescrever sem redescobrir. Amarrar com [[mit041-cliente-diagramas-de-fluxo-da-v2]], que e a tarefa concreta dos diagramas do cliente e vira o primeiro caso de teste do gera"
@@ -552,11 +554,11 @@ colada é o formato de link que o próprio `ideias.jsonl` usa em prosa.
   - (`ao_colher`) "egex) — porque ali o conjunto de contraexemplos nao fecha. Conferir antes se a observacao obs-2026-09-04-criterio-de-trava-precisa-de-contorno ja cobre (a); se cobrir, esta aqui acrescenta so (b) e a proibicao de diagnostico fabrica"
   - Porquê: 'conferir antes se a observação X já cobre' é aviso para evitar duplicar trabalho, não uma espera obrigatória.
 
-### `grupo-fiap-sem-rodape-assistente` (plantada)
+### `grupo-<turma>-sem-rodape-assistente` (plantada)
 
-- cita `grupo-fiap-mensagem-em-blocos` (plantada) — **irma**
-  - (`contexto`) "cidida em sessao anterior e nao estava gravada em lugar que a sessao nova lesse — a ideia grupo-fiap-mensagem-em-blocos fala so de blocos."
-  - (`ao_colher`) "cecoes por destinatario' listando o grupo FIAP como canal sem rodape, e atualizar a ideia grupo-fiap-mensagem-em-blocos para citar a excecao."
+- cita `grupo-<turma>-mensagem-em-blocos` (plantada) — **irma**
+  - (`contexto`) "cidida em sessao anterior e nao estava gravada em lugar que a sessao nova lesse — a ideia grupo-<turma>-mensagem-em-blocos fala so de blocos."
+  - (`ao_colher`) "cecoes por destinatario' listando o grupo <turma> como canal sem rodape, e atualizar a ideia grupo-<turma>-mensagem-em-blocos para citar a excecao."
   - Porquê: esta ideia usa o ao_colher para propor atualizar a outra ('atualizar a ideia X para citar a exceção') — ação sobre uma irmã do mesmo canal, não espera por ela.
 
 ### `sabia-trava-permanente-contra-segredo` (plantada)
@@ -571,7 +573,7 @@ colada é o formato de link que o próprio `ideias.jsonl` usa em prosa.
   - (`contexto`) "6-09-08: nenhuma ideia existia sobre isso, e o codigo segue sem guarda. Separada da ideia sabia-boca-de-url-o-que-nunca-foi-medido de proposito: aquelas sao medicoes de rede, esta e risco de a maquina travar no meio de u"
   - Porquê: 'separada de X de propósito: aquelas são medições de rede, esta é risco de travar' — separação deliberada de escopo entre abertas.
 
-### `whatsapp-mensagem-de-voz-em-nome-do-luis` (plantada)
+### `whatsapp-mensagem-de-voz-em-nome-do-usuario` (plantada)
 
 - cita `pilha-de-voz-local-voicestudio` (colhida) — **outro**
   - (`descricao`) "Ultimo pedaco da metade (B) da [[pilha-de-voz-local-voicestudio]] que continua fora. O que ja existe: o Sabia gera fala local com sherpa-onnx (vits-piper"
