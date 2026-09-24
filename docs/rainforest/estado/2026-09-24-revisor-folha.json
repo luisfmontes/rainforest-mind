@@ -6,7 +6,9 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-24-revisor-folha.md",
+    "em": "2026-09-24"
   },
   "plano": {
     "status": "pendente"
