@@ -23,11 +23,10 @@
     "em": "2026-09-24"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-24",
-    "tarefas_ok": 19,
-    "tarefas": 19,
-    "em_voo": [],
+    "tarefas_ok": 20,
+    "tarefas": 20,
     "em": "2026-09-24",
     "carimbos": [
       {
@@ -166,7 +165,7 @@
     ],
     "achados_tarefa_1": "payload SubagentStop real: agent_type=rainforest-mind:revisor, agent_transcript_path presente (subagents/agent-<id>.jsonl, 1a msg user content string com o briefing), last_assistant_message, stop_hook_active, agent_id",
     "comando": "bash scripts/testa-estado.sh",
-    "saida": "== resultado: 289 ok, 0 falhas ==",
+    "saida": "== resultado: 292 ok, 0 falhas ==",
     "mutacao": [
       {
         "tarefa": 1,
@@ -262,28 +261,23 @@
         "tarefa": 19,
         "resultado": "n/a",
         "motivo": "doc da skill revisar"
+      },
+      {
+        "tarefa": 20,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, arvore inventada ~/.claude-x/ recusa"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-24"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "c0b528ebee4b02f9bf107147b46249a1c0501408",
-      "caminhos_sujos": []
+      "head": "6eff8a51c6b973430fb6c9e42e5cef2deeaaf510",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-09-23-contrato-de-veredito.json"
+      ]
     },
-    "vereditos": [
-      {
-        "agente": "rainforest-mind:revisor",
-        "agente_id": "a0fbae3d0ae47abd9",
-        "veredito": "reprovado",
-        "em": "2026-09-24",
-        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\subagents\\agent-a0fbae3d0ae47abd9.jsonl"
-      }
-    ],
+    "vereditos": [],
     "em_voo": [
       {
         "agente": "revisor",
