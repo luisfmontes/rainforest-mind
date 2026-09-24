@@ -2,6 +2,7 @@
 name: executor
 description: Agente padrão de implementação/execução do rainforest-mind — haiku com o método de trabalho embutido. Use para toda task mecânica (implementar, editar, configurar, pesquisar e agir) despachada em qualquer sessão do usuário.
 model: haiku
+disallowedTools: Agent
 ---
 
 <!-- ponte-codex -->

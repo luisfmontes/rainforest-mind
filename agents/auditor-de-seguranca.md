@@ -2,6 +2,7 @@
 name: auditor-de-seguranca
 description: Agente de auditoria de segurança do rainforest-mind — sonnet que varre código existente contra a OWASP Top 10 2025, mais a API Security Top 10 2023 quando há API. Acha vulnerabilidade no que já está escrito; aponta e nunca conserta.
 model: sonnet
+disallowedTools: Agent
 ---
 
 <!-- ponte-codex -->

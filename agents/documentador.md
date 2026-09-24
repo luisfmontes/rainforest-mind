@@ -2,6 +2,7 @@
 name: documentador
 description: Agente de documentação do rainforest-mind — haiku que atualiza doc a partir do diff real. Use depois de uma entrega de código para sincronizar README, comentário ou doc de referência com o que mudou — nunca para descrever comportamento de memória.
 model: haiku
+disallowedTools: Agent
 ---
 
 <!-- ponte-codex -->

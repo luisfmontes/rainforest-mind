@@ -2,6 +2,7 @@
 name: depurador
 description: Agente de depuração do rainforest-mind — sonnet que executa a skill depurar. Use quando algo está quebrado, falha, dá erro, ficou lento ou intermitente, ou não reproduz — sempre antes de propor conserto.
 model: sonnet
+disallowedTools: Agent
 ---
 
 <!-- ponte-codex -->

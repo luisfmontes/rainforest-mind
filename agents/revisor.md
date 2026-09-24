@@ -2,6 +2,7 @@
 name: revisor
 description: Agente padrão de review/QA do rainforest-mind — sonnet com método de revisão embutido. Use para revisar código, diff, plano ou entrega de outro agente antes de integrar, em qualquer sessão do usuário.
 model: sonnet
+disallowedTools: Agent
 ---
 
 <!-- ponte-codex -->
