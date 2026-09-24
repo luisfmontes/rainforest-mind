@@ -71,7 +71,11 @@ nesta ordem:
    `references/regra-10-runtime.md`, logo abaixo da linha. Uma linha opcional `Despacho: <caminho>` no
    mesmo bloco aponta o script quando ele não está nem em
    `$CLAUDE_PLUGIN_ROOT` nem na raiz do worktree (branch ainda não
-   integrada).
+   integrada). Agente **nativo do harness** (`general-purpose`, `Explore`) não
+   tem `disallowedTools: Agent` — os 9 agentes do plugin têm, no próprio
+   frontmatter; o nativo não. O briefing para ele leva a linha: "Não despache
+   agente: você é folha; se não couber, devolva parcial com a lista do que
+   não conferiu." (regra 10, agente despachado é folha).
 2. **Objetivos** — numerados e concretos, um por linha.
 3. **Restrições** — o que olhar e, explicitamente, o que ignorar. E uma pergunta
    **obrigatória**, respondida antes de despachar: *este trabalho precisa tocar
@@ -131,6 +135,10 @@ número fixo de rodadas.
 O teste que separa: **se as chamadas seriam iguais, era pra ser paralelo.** O
 que faz a próxima ser diferente da anterior é a leitura da anterior. Tasks
 independentes e sem ordem entre si vão juntas, numa mensagem só.
+
+**Fechar a rodada paralela**: antes de declarar pronto, `ListAgents` e parar o
+que a própria janela abriu e sobrou — nunca o que não é dela (regra 10,
+fechamento de rodada; incidente 2026-09-23).
 
 ## A escada (parar no primeiro degrau que segura)
 

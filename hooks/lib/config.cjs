@@ -77,6 +77,11 @@ const CHAVES = {
     padrao: true,
     descricao: 'grava o veredito de uma linha do revisor em SubagentStop (hooks/veredito-revisor.cjs)',
   },
+  'agente-folha': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'a portaria nega Agent vindo de dentro de subagente (agent_id presente) — regra 10, agente despachado e folha',
+  },
   fluxo: {
     tipo: 'boolean',
     padrao: true,

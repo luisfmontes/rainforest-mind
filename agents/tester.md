@@ -2,6 +2,7 @@
 name: tester
 description: Agente padrão de testes do rainforest-mind — sonnet com método de teste embutido. Use para escrever os testes que faltam numa entrega e tentar quebrá-la exercitando comportamento real, antes de integrar.
 model: sonnet
+disallowedTools: Agent
 ---
 
 <!-- ponte-codex -->

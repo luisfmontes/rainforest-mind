@@ -89,6 +89,42 @@ O mecanismo inteiro — schema do manifesto, as sete decisões do fail-closed, o
 
 Os vigias headless carregam a versão resumida no `vigias/_comum.md`.
 
+## Agente despachado é folha
+
+Nenhum subagente despacha outro agente. Duas camadas, não uma. Os 9 agentes do
+plugin (`agents/*.md`) trazem `disallowedTools: Agent` no frontmatter — a
+ferramenta nem existe para eles, nem tentativa nem turno gasto. E a portaria
+(`hooks/portaria.cjs`) nega qualquer chamada de `Agent` cujo payload traga
+`agent_id`: essa chave (com `agent_type`) só aparece no `PreToolUse` quando a
+chamada sai de **dentro** de um subagente — a janela principal nunca traz as
+duas —, então esta camada cobre o que o frontmatter não alcança: os agentes
+nativos do harness (`general-purpose`, `Explore`) e agente de qualquer outro
+plugin instalado. A negação tem toggle, desligável por projeto:
+`"agente-folha": false` no `.rainforest/config.json` do repo, mesma forma do
+`contrato-veredito`.
+
+**Folha com trabalho grande demais faz sozinha.** Não pede para particionar
+e não devolve só uma proposta de divisão — se não cobrir tudo, devolve o
+resultado parcial com a **lista explícita** do que não conferiu. Quem vê o
+todo e decide particionar é sempre quem despachou, nunca a folha.
+
+**Fechamento de rodada.** Antes de declarar pronta uma rodada com agentes em
+paralelo, a janela roda `ListAgents` e para o que **ela mesma** abriu e
+sobrou — pelo nome ou id que ela despachou, nunca o que não é dela. Folha
+reduz o risco de agente pendurado, não zera: rodada de topo (a própria
+janela despachando vários agentes) também deixa sobra, e ninguém além da
+janela confere isso.
+
+> **2026-09-04:** um revisor despachou quatro sub-revisores nomeados,
+> acumulou ~243k tokens de contexto e esperou 8 minutos antes de fechar
+> sozinho — o custo do aninhamento sem ganho de qualidade medido: o veredito
+> sozinho já saía certo.
+
+> **2026-09-23:** um avaliador `general-purpose` — nativo do harness, fora do
+> alcance do frontmatter dos 9 agentes do plugin — manteve dois teammates
+> pendurados no roster por ~2h. Quem percebeu foi o usuário, não a janela que
+> os abriu.
+
 ## Racionalizações
 
 | Pensamento | Realidade |

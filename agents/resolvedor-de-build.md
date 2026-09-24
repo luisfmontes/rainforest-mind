@@ -2,6 +2,7 @@
 name: resolvedor-de-build
 description: Agente de correção de build do rainforest-mind — haiku que só conserta erro de build, compilação ou tipo. Use quando o build, a compilação ou o typecheck está vermelho e a correção é mecânica — nunca para feature nova ou mudança arquitetural.
 model: haiku
+disallowedTools: Agent
 ---
 
 <!-- ponte-codex -->

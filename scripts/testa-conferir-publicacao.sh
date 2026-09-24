@@ -86,6 +86,13 @@ saiu "o vigia.config.exemplo.json do repo passa no gate" "$(codigo "$SRC/vigias/
 printf '# ''ac''ha''do''\n''\n''re''po''rt''ad''o ''po''r ''fu''la''no''@e''mp''re''sa''.c''om''.b''r\''n' > "$SBP/mail.md"
 tem   "pega e-mail"                 "$(roda "$SBP/mail.md")" "email"
 
+# noreply@ (trailer Co-Authored-By) nao e e-mail de ninguem; o mesmo arquivo com
+# um e-mail real continua achado. Montado em partes pelo mesmo motivo do caso acima.
+printf 'Co-Authored-By: Modelo <''no''re''ply''@''an''thro''pic''.c''om>\n' > "$SBP/noreply.md"
+nao_tem "trailer noreply@ nao acende a regra de e-mail" "$(roda "$SBP/noreply.md")" "email"
+printf 'Co-Authored-By: Modelo <''no''re''ply''@''an''thro''pic''.c''om>\n''fu''la''no''@e''mp''re''sa''.c''om\n' > "$SBP/noreply-e-real.md"
+tem     "com e-mail real no mesmo arquivo, acha"        "$(roda "$SBP/noreply-e-real.md")" "email"
+
 printf '# achado\n\nabri C:\\Users\\Fulano\\Downloads\\print.jpeg\n' > "$SBP/home.md"
 tem   "pega caminho de home"        "$(roda "$SBP/home.md")" "caminho-de-home"
 

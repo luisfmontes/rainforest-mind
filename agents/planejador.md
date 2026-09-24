@@ -2,6 +2,7 @@
 name: planejador
 description: Agente de planejamento do rainforest-mind — sonnet que devolve plano, nunca código. Use para desenhar abordagem, dividir tarefa complexa em etapas ou decidir arquitetura antes de qualquer implementação, em qualquer sessão do usuário.
 model: sonnet
+disallowedTools: Agent
 ---
 
 <!-- ponte-codex -->
