@@ -23,7 +23,7 @@
     "em": "2026-09-24"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-23",
     "tarefas_ok": 19,
     "tarefas": 19,
@@ -263,32 +263,37 @@
         "resultado": "n/a",
         "motivo": "doc da skill revisar"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-24"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "9f532776440791952648e3dbaa8ae64e0ad89a63",
+      "head": "c0b528ebee4b02f9bf107147b46249a1c0501408",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a005abf6c9fca75ac",
+        "agente_id": "a0fbae3d0ae47abd9",
         "veredito": "reprovado",
-        "em": "2026-09-23"
+        "em": "2026-09-24",
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\subagents\\agent-a0fbae3d0ae47abd9.jsonl"
       }
     ],
     "em_voo": [
       {
         "agente": "revisor",
-        "tarefa": "segunda revisao do contrato",
-        "desde": "2026-09-23T23:12:06-03:00"
+        "tarefa": "terceira revisao do contrato",
+        "desde": "2026-09-24T09:11:53-03:00"
       }
     ],
-    "em": "2026-09-23",
+    "em": "2026-09-24",
     "achados": 1,
-    "tentativas": 2
+    "tentativas": 3
   },
   "verificar": {
     "status": "pendente"
