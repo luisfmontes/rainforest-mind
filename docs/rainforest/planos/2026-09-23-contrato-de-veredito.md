@@ -228,7 +228,7 @@ pronto quando: num sandbox (`RFM_ESTADO_ROOT` e `RFM_ROOT` temporários) com `co
 
 ### 16. `veredito` confere o transcrito real do revisor [tipo: implementar]
 atende: D12
-arquivos: `scripts/estado.cjs`, `scripts/lib/primeiro-prompt-jsonl.cjs`, `hooks/veredito-revisor.cjs`, `scripts/testa-estado.sh`, `hooks/testa-veredito-revisor.sh`
+arquivos: `scripts/estado.cjs`, `scripts/lib/primeiro-prompt-jsonl.cjs`, `hooks/veredito-revisor.cjs`, `scripts/testa-estado.sh`, `hooks/testa-veredito-revisor.sh`, `scripts/testa-estado-principal.sh`, `hooks/fixtures/veredito-revisor/subagents/*.jsonl`
 depende de: 15
 paralela: nao
 O subcomando `veredito` exige `--transcrito <caminho>` e recusa (exit 2, sem gravar) quando: o arquivo não existe; o caminho não tem `subagents` como diretório pai; o primeiro prompt não tem a linha `Slug: <slug>` do `--slug`; a última linha com conteúdo da última mensagem de texto do assistente, normalizada como o hook normaliza, não corresponde ao `--veredito` (`invalido` casa com linha fora do vocabulário). A checagem é exatamente `if (!transcritoConfirmaVeredito(transcrito, slug, veredito)) {`. O hook passa o `agent_transcript_path` (ou o fallback) em `--transcrito`. Os casos de bateria que hoje chamam `veredito` direto passam a montar um transcrito de sandbox em `<tmp>/<sessao>/subagents/agent-<id>.jsonl`.

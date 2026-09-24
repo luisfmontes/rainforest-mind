@@ -30,12 +30,11 @@ unset GITHUB_ACTIONS
 REPO="$CAIXA/repo"
 mkdir -p "$REPO/scripts/lib" "$REPO/hooks/lib"
 cp "$SRC/scripts/estado.cjs" "$REPO/scripts/"
-# D12 — Tarefa 16: estado.cjs agora exige (require duro) scripts/lib/*.cjs —
-# sem eles, QUALQUER subcomando (nao so 'veredito') derruba com MODULE_NOT_FOUND.
-cp "$SRC/scripts/lib/primeiro-prompt-jsonl.cjs" "$REPO/scripts/lib/"
-cp "$SRC/scripts/lib/extrair-veredito.cjs" "$REPO/scripts/lib/"
-cp "$SRC/hooks/lib/raiz.cjs" "$REPO/hooks/lib/"
-cp "$SRC/hooks/lib/config.cjs" "$REPO/hooks/lib/"
+# estado.cjs faz require duro de scripts/lib/ e hooks/lib/ (trava-jsonl,
+# extrair-veredito, primeiro-prompt-jsonl, config). Copia as pastas inteiras:
+# lista irmao a irmao quebrou aqui e em testa-importar-claude-mem (2026-09-23).
+cp -r "$SRC/scripts/lib/." "$REPO/scripts/lib/"
+cp -r "$SRC/hooks/lib/." "$REPO/hooks/lib/"
 touch "$REPO/FOCO.md"
 
 cd "$REPO" || exit 1
@@ -123,8 +122,8 @@ echo
 echo "== e. pasta que nao e repositorio git: iniciar passa (comportamento antigo) =="
 mkdir -p "$CAIXA/nao-git/scripts/lib" "$CAIXA/nao-git/hooks/lib"
 cp "$REPO/scripts/estado.cjs" "$CAIXA/nao-git/scripts/"
-cp "$REPO/scripts/lib/primeiro-prompt-jsonl.cjs" "$REPO/scripts/lib/extrair-veredito.cjs" "$CAIXA/nao-git/scripts/lib/"
-cp "$REPO/hooks/lib/raiz.cjs" "$REPO/hooks/lib/config.cjs" "$CAIXA/nao-git/hooks/lib/"
+cp -r "$REPO/scripts/lib/." "$CAIXA/nao-git/scripts/lib/"
+cp -r "$REPO/hooks/lib/." "$CAIXA/nao-git/hooks/lib/"
 touch "$CAIXA/nao-git/FOCO.md"
 (
   cd "$CAIXA/nao-git" || exit 9
