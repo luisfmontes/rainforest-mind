@@ -76,3 +76,17 @@ paralela: nao
 mutacao: n/a
   motivo: bump de versão, sem comportamento a inverter.
 pronto quando: `.claude-plugin/plugin.json` e o selo da linha 7 do `README.md` dizem a versão seguinte à da `origin/main` no momento do bump (hoje `1.23.9` → `1.23.10`) — conferido por `MSYS_NO_PATHCONV=1 git show origin/main:.claude-plugin/plugin.json`. Feita no `fechar`, depois do `revisar`.
+
+### 7. Verificador de publicação não recusa `noreply@` [tipo: implementar]
+atende: D4
+arquivos: `scripts/conferir-publicacao.cjs`, `scripts/testa-conferir-publicacao.sh`
+depende de: nenhuma
+paralela: nao
+Emenda de 2026-09-24: o commit da tarefa 4 foi barrado pelo `gate-verificador-staged` — cinco `agents/*.md` já traziam no corpo o trailer `Co-Authored-By: ... <noreply@...>`, e arquivo staged diferente de HEAD é varrido inteiro. Defeito do repo da sessão atrapalhando a entrega: conserto na hora (regra 6).
+mutacao:
+  arquivo: `scripts/conferir-publicacao.cjs`
+  de: `re: /\b(?!noreply@)[\w.+-]+@`
+  para: `re: /\b[\w.+-]+@`
+  bateria: `bash scripts/testa-conferir-publicacao.sh`
+  fixture: `testa-conferir-publicacao.sh, caso "trailer noreply@ nao acende a regra de e-mail"`
+pronto quando: com o arquivo real `agents/executor.md` (que traz o trailer), `node scripts/conferir-publicacao.cjs agents/executor.md --json` devolve `achados: []`; um arquivo com o trailer e um e-mail real continua achado `email` — provado por `bash scripts/testa-conferir-publicacao.sh` nos dois casos novos e pelo commit da tarefa 4 passando no gate.
