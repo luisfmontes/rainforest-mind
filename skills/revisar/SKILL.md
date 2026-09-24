@@ -230,12 +230,16 @@ param de exigir a janela, avisando em stderr. Sem a segunda camada,
 `revisar` ficava infechável: `exigir --estagio revisar` continua armando a
 janela vazia com o toggle desligado, e o hook nunca a preenche.
 
-**`--transcrito` é a prova** (D12): `veredito` recusa (exit 2, nada
-gravado) sem `--transcrito <caminho>` que confirme, NO ARQUIVO
-(`transcritoConfirmaVeredito`): dentro de `subagents/`, primeiro prompt com
-`Slug: <slug>` do fluxo, última mensagem do assistente batendo com o
-`--veredito` (`invalido` fora do vocabulário). Gravar `ok` à mão volta a
-exigir fabricar um transcrito dentro de `subagents/`, auditável.
+**`--transcrito` é a prova** (D12/D14): `veredito` recusa (exit 2, nada
+gravado) sem `--transcrito <caminho>` que confirme, NO ARQUIVO: dentro de
+`subagents/`, primeiro prompt com `Slug: <slug>` do fluxo, última mensagem
+do assistente batendo com o `--veredito` (`transcritoConfirmaVeredito`;
+`invalido` fora do vocabulário). D14: o arquivo tem que estar sob
+`<home>/.claude*/projects/<projeto>/<sessao>/subagents/`, nomeado
+`agent-<agente-id>.jsonl`, com `.meta.json` irmão de `agentType`
+`revisor` (`transcritoEmPastaDeSessaoReal`) — caminho gravado no
+veredito. Limite: barra o atalho por hábito, não quem forja de
+propósito com acesso ao disco.
 
 **Risco residual aceito** (D13): nada amarra o `Slug:` do briefing ao diff
 revisado — `Slug:` errado grava no fluxo errado. D12 exige o slug real do
