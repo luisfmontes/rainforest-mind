@@ -8,13 +8,13 @@
   "design": {
     "status": "aprovado",
     "arquivo": "docs/rainforest/design/2026-09-23-contrato-de-veredito.md",
-    "decisoes": 10,
+    "decisoes": 13,
     "em": "2026-09-23"
   },
   "plano": {
     "status": "ok",
     "arquivo": "docs/rainforest/planos/2026-09-23-contrato-de-veredito.md",
-    "tarefas": 14,
+    "tarefas": 17,
     "paralelas": [
       1,
       2,
@@ -23,7 +23,7 @@
     "em": "2026-09-23"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-23",
     "tarefas_ok": 14,
     "tarefas": 14,
@@ -203,10 +203,36 @@
         "resultado": "vermelho",
         "fixture": "testa-estado.sh, verificar reprovado reabre o revisar"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-23"
+    }
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "b5683d64a1d58a34f727cef95b517ca63a6c52d2",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a00a241678bc68ff9",
+        "veredito": "reprovado",
+        "em": "2026-09-23"
+      }
+    ],
+    "em_voo": [
+      {
+        "agente": "revisor",
+        "tarefa": "revisao do contrato",
+        "desde": "2026-09-23T21:12:39-03:00"
+      }
+    ],
+    "em": "2026-09-23",
+    "achados": 3,
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

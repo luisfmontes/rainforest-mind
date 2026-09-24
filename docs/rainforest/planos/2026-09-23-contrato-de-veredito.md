@@ -209,3 +209,42 @@ mutacao:
   bateria: `bash scripts/testa-estado.sh`
   fixture: `testa-estado.sh, secao "verificar reprovado reabre o revisar"`
 pronto quando: num slug de caixa com `executar ok`, `revisar ok`, `verificar ok`, rodar `node scripts/estado.cjs marcar --slug <s> --estagio verificar --status reprovado --json '{"comando":"gh pr checks 1","saida":"fail","sensor_externo":"gh pr checks 1"}'` deixa `executar` e `revisar` em `parcial`/`pendente`, `marcar --estagio executar --status parcial` passa a sair 0 (hoje sai 2 com "executar nao pode voltar a parcial com revisar em ok"), e `exigir --estagio verificar` sai 2 enquanto o `revisar` não fechar de novo — provado por `bash scripts/testa-estado.sh` imprimindo `ok` na seção "verificar reprovado reabre o revisar".
+
+**Emenda de 2026-09-23 — revisão reprovada (3 achados):** tarefas 15-17. Achado 1 (toggle desligado deixa o `revisar` infechável) → D11/tarefa 15; achado 2 (veredito gravável à mão pelo subcomando) → D12/tarefa 16; achado 3 (`Slug:` errado) → D13/tarefa 17.
+
+### 15. Toggle `contrato-veredito` desligado desarma as travas do `marcar revisar` [tipo: implementar]
+atende: D11
+arquivos: `scripts/estado.cjs`, `scripts/testa-estado.sh`
+depende de: 14
+paralela: nao
+Helper `contratoVereditoLigado()` em `scripts/estado.cjs` (usa `ligado` de `hooks/lib/config.cjs`, com o projeto resolvido como os outros toggles resolvem), cujo corpo tem exatamente uma linha começando por `return ligado('contrato-veredito'`. As travas de `ok` (janela toda ok) e de `reprovado` (veredito reprovado gravado) consultam o helper: desligado → aviso em stderr ("contrato-veredito desligado neste projeto — fechando sem a trava de veredito") e seguem como a transição sem janela.
+mutacao:
+  arquivo: `scripts/estado.cjs`
+  de: `return ligado('contrato-veredito'`
+  para: `return true || ligado('contrato-veredito'`
+  bateria: `bash scripts/testa-estado.sh`
+  fixture: `testa-estado.sh, secao "contrato-veredito desligado fecha o revisar sem veredito"`
+pronto quando: num sandbox (`RFM_ESTADO_ROOT` e `RFM_ROOT` temporários) com `contrato-veredito: false`, `exigir --estagio revisar` seguido de `marcar --estagio revisar --status ok --json '{"achados":0,"base":"<h>","head":"<h>"}'` sai 0 com o aviso nomeando o toggle, e com o toggle ligado o mesmo comando sai 2 com "nenhum veredito gravado" — provado por `bash scripts/testa-estado.sh` imprimindo `ok` na seção "contrato-veredito desligado fecha o revisar sem veredito".
+
+### 16. `veredito` confere o transcrito real do revisor [tipo: implementar]
+atende: D12
+arquivos: `scripts/estado.cjs`, `scripts/lib/primeiro-prompt-jsonl.cjs`, `hooks/veredito-revisor.cjs`, `scripts/testa-estado.sh`, `hooks/testa-veredito-revisor.sh`
+depende de: 15
+paralela: nao
+O subcomando `veredito` exige `--transcrito <caminho>` e recusa (exit 2, sem gravar) quando: o arquivo não existe; o caminho não tem `subagents` como diretório pai; o primeiro prompt não tem a linha `Slug: <slug>` do `--slug`; a última linha com conteúdo da última mensagem de texto do assistente, normalizada como o hook normaliza, não corresponde ao `--veredito` (`invalido` casa com linha fora do vocabulário). A checagem é exatamente `if (!transcritoConfirmaVeredito(transcrito, slug, veredito)) {`. O hook passa o `agent_transcript_path` (ou o fallback) em `--transcrito`. Os casos de bateria que hoje chamam `veredito` direto passam a montar um transcrito de sandbox em `<tmp>/<sessao>/subagents/agent-<id>.jsonl`.
+mutacao:
+  arquivo: `scripts/estado.cjs`
+  de: `if (!transcritoConfirmaVeredito(transcrito, slug, veredito)) {`
+  para: `if (false) {`
+  bateria: `bash scripts/testa-estado.sh`
+  fixture: `testa-estado.sh, secao "veredito sem transcrito que o confirme e recusado"`
+pronto quando: com a sessão chamando `node scripts/estado.cjs veredito --slug <s> --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id X` sem `--transcrito`, ou com um transcrito cuja última linha é `VEREDITO: reprovado`, ou fora de `subagents/`, o comando sai 2 e `ler` mostra a janela inalterada; com o transcrito que confirma, grava — provado por `bash scripts/testa-estado.sh` imprimindo `ok` na seção "veredito sem transcrito que o confirme e recusado", e `bash hooks/testa-veredito-revisor.sh` terminando em `0 falha(s)`.
+
+### 17. Doc: toggle, `--transcrito` e o risco do `Slug:` errado [tipo: docs]
+atende: D11, D12, D13
+arquivos: `skills/revisar/SKILL.md`
+depende de: 16
+paralela: nao
+mutacao: n/a
+  motivo: doc; a falsificação é a coerência com D11-D13 e com o código das tarefas 15-16.
+pronto quando: `skills/revisar/SKILL.md` diz (a) que desligar `contrato-veredito` faz o `marcar revisar` fechar sem a trava, com aviso — coerente com o helper da tarefa 15; (b) que o veredito só entra pelo hook, e que o subcomando `veredito` recusa sem transcrito de revisor que o confirme — coerente com a tarefa 16; (c) que `Slug:` errado grava no fluxo errado e é responsabilidade de quem despacha conferir — D13; conferido lendo cada frase contra `scripts/estado.cjs` (helper e `transcritoConfirmaVeredito`), e `bash scripts/testa-teto-skills.sh` mantendo `revisar` dentro do teto.
