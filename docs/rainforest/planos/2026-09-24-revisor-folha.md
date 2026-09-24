@@ -27,7 +27,7 @@ depende de: 1
 paralela: nao
 mutacao:
   arquivo: `hooks/portaria.cjs`
-  de: `if (payload.agent_id && agenteFolhaLigado(raiz)) {`
+  de: `if (Object.prototype.hasOwnProperty.call(payload, "agent_id") && agenteFolhaLigado(raiz)) {`
   para: `if (false) {`
   bateria: `node hooks/testa-portaria-folha.cjs`
   fixture: `testa-portaria-folha.cjs, caso "payload de subagente (agent_id presente) e negado"`

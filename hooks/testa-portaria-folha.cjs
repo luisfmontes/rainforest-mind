@@ -75,9 +75,10 @@ function lerLog(dadosDir) {
 // So `cwd` e ajustado, para a caixa resolver como raiz do projeto (a mesma
 // precedencia de `raizDoProjeto()`: `payload.cwd` primeiro). Nenhuma outra
 // chave do payload real e tocada.
-function despacharFixture(fixturePath, repo) {
+function despacharFixture(fixturePath, repo, trocas) {
   const payload = JSON.parse(fs.readFileSync(fixturePath, "utf8"));
   payload.cwd = repo;
+  Object.assign(payload, trocas || {});
   return spawnSync(process.execPath, [HOOK], {
     input: JSON.stringify(payload),
     encoding: "utf8",
@@ -128,6 +129,20 @@ console.log("== payload da janela (sem agent_id) segue o caminho de hoje ==");
   caso("payload da janela (sem agent_id) segue o caminho de hoje: nao negado pela regra de folha",
     !/folha/i.test(r.stderr || ""), r.stderr);
 
+  fs.rmSync(repo, { recursive: true, force: true });
+}
+
+// == 1b. agent_id presente mas falsy ("", 0, false, null) tambem e negado ==
+// Achado da revisao de 2026-09-24: a condicao por truthiness deixava passar
+// `agent_id: ""`. A chave so existe dentro de subagente (pesquisa da tarefa 1),
+// entao PRESENCA basta para negar — valor estranho e duvida, e duvida fecha.
+console.log("== agent_id presente mas falsy tambem e negado ==");
+for (const valor of ["", 0, false, null]) {
+  const repo = caixa();
+  iniciarGit(repo);
+  const r = despacharFixture(FIXTURE_SUBAGENTE, repo, { agent_id: valor });
+  caso(`agent_id presente mas falsy (${JSON.stringify(valor)}) e negado pela regra de folha`,
+    r.status === 2 && /folha/i.test(r.stderr || ""), `exit=${r.status} stderr=${r.stderr}`);
   fs.rmSync(repo, { recursive: true, force: true });
 }
 

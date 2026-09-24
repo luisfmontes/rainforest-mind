@@ -682,8 +682,10 @@ function main() {
   // camada e o reforco que cobre os nativos do harness (`general-purpose`,
   // `Explore`) e qualquer agente de outro plugin — nenhum dos quais este
   // portao teria como negar mais adiante, no manifesto, sem reescrever a
-  // logica de admissao inteira so para este caso.
-  if (payload.agent_id && agenteFolhaLigado(raiz)) {
+  // logica de admissao inteira so para este caso. PRESENCA da chave, nao
+  // truthiness: `agent_id: ""` passava (revisao de 2026-09-24) — valor estranho
+  // e duvida, e duvida fecha.
+  if (Object.prototype.hasOwnProperty.call(payload, "agent_id") && agenteFolhaLigado(raiz)) {
     const motivo =
       `agent_type '${payload.agent_type || "desconhecido"}' despachou '${nomeAgente}' pela ferramenta Agent — ` +
       `agente despachado e FOLHA e nao despacha agente (regra 10): faca o trabalho sozinho e, se nao couber, ` +
