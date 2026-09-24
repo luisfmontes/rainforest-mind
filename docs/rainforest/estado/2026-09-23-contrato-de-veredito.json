@@ -277,7 +277,15 @@
         "docs/rainforest/estado/2026-09-23-contrato-de-veredito.json"
       ]
     },
-    "vereditos": [],
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a495acd35de618617",
+        "veredito": "ok",
+        "em": "2026-09-24",
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\subagents\\agent-a495acd35de618617.jsonl"
+      }
+    ],
     "em_voo": [
       {
         "agente": "revisor",

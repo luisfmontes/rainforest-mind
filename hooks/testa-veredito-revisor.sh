@@ -36,7 +36,7 @@ echo "(caixa de areia: $RAIZ)"
 
 # D14 — Tarefa 18: `estado.cjs veredito` (chamado pelo hook) agora tambem
 # exige que --transcrito more na pasta REAL de sessao
-# (<home>/.claude*/projects/<p>/<s>/subagents/agent-<id>.jsonl, com o
+# (<CLAUDE_CONFIG_DIR>/projects/<p>/<s>/subagents/agent-<id>.jsonl, com o
 # '.meta.json' irmao de agentType revisor) — nao basta confirmar Slug e
 # veredito no conteudo (D12). HOME/USERPROFILE apontam pro sandbox, nunca o
 # home de verdade do usuario; no Windows so' USERPROFILE conta (Node nem le

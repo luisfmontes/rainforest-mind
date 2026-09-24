@@ -1739,7 +1739,7 @@ function main() {
     if (!transcritoEmPastaDeSessaoReal(transcrito, agenteId)) {
       console.error(
         `RECUSADO: 'veredito' exige que --transcrito more na pasta real de sessao ` +
-        `(<home>/.claude ou .claude-*/projects/<projeto>/<sessao>/subagents/agent-${agenteId}.jsonl), ` +
+        `(<CLAUDE_CONFIG_DIR, ou ~/.claude sem ela>/projects/<projeto>/<sessao>/subagents/agent-${agenteId}.jsonl), ` +
         `com o '.meta.json' irmao de agentType 'revisor'. Nada foi gravado (D14).`
       );
       process.exit(2);

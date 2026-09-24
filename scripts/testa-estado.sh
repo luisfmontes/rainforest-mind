@@ -38,7 +38,7 @@ cd "$SBP" || exit 1
 echo "(caixa de areia: $SBP)"
 
 # D14 — Tarefa 18: `transcritoEmPastaDeSessaoReal` confere o transcrito sob
-# <os.homedir()>/.claude*/projects/.../subagents/ — nunca o home de verdade
+# <CLAUDE_CONFIG_DIR>/projects/.../subagents/ — nunca o home de verdade
 # do usuario. No Windows o Node NEM LE `HOME` (so' `USERPROFILE`); em POSIX
 # e' o contrario — exporta os dois pro sandbox, cobre as duas plataformas.
 HOME_SBOX="$SBP/home"
@@ -68,7 +68,7 @@ igual() { # nome, esperado, obtido
 # confirme, NO ARQUIVO: dentro de uma pasta 'subagents', primeiro prompt com
 # 'Slug: <slug>', ultima mensagem do assistente batendo com <veredito>
 # (D12) — E que o arquivo more na pasta REAL de sessao
-# (<HOME_SBOX>/.claude*/projects/<p>/<s>/subagents/agent-<id>.jsonl), com o
+# (<CLAUDE_CONFIG_DIR do sandbox>/projects/<p>/<s>/subagents/agent-<id>.jsonl), com o
 # irmao '.meta.json' de agentType revisor (D14).
 #
 # transcrito_em escreve um transcrito EM QUALQUER pasta 'subagents' dada —
