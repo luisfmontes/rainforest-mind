@@ -270,9 +270,9 @@
     ]
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "e6745750aa740e17cfe2d5a116f098720824c4f7",
+      "head": "c3f2f38b43ced11669451c2aa55b30a2c2b6e5b9",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-09-23-contrato-de-veredito.json"
       ]
@@ -280,14 +280,14 @@
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a91a041a775abd89b",
+        "agente_id": "a5b080ff396072854",
         "veredito": "ok",
         "em": "2026-09-24",
-        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\subagents\\agent-a91a041a775abd89b.jsonl"
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\subagents\\agent-a5b080ff396072854.jsonl"
       }
     ],
     "em": "2026-09-24",
-    "achados": 1,
+    "achados": 0,
     "rodadas_extra": [
       {
         "texto": "recomendado: aceitar so a pasta de config em uso (CLAUDE_CONFIG_DIR, ou ~/.claude sem ela)",
@@ -295,15 +295,14 @@
       }
     ],
     "base": "dec421f5",
-    "head": "e2fc28bc"
+    "head": "c3f2f38b"
   },
   "verificar": {
-    "status": "reprovado",
-    "comando": "node scripts/estado.cjs marcar --estagio verificar (catraca de mutacao)",
-    "saida": "tarefa 8: mutante sobreviveu; tarefa 20: sem bloco mutacao",
-    "sensor_externo": "node scripts/estado.cjs marcar",
-    "em": "2026-09-24",
-    "tentativas": 1
+    "status": "ok",
+    "comando": "node scripts/estado.cjs veredito --veredito ok|reprovado --transcrito <transcrito real da 3a revisao> (caixa RFM_ESTADO_ROOT)",
+    "saida": "ok forjado: RECUSADO ... Nada foi gravado (D12); reprovado real: exit 0 gravado. Mutacoes 8 e 20 vermelhas.",
+    "sensor_externo": "node scripts/estado.cjs veredito",
+    "em": "2026-09-24"
   },
   "fechar": {
     "status": "pendente"
