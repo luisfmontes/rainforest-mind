@@ -293,7 +293,14 @@
     ],
     "em": "2026-09-24",
     "achados": 1,
-    "tentativas": 3
+    "tentativas": 3,
+    "liberado_em": "2026-09-24",
+    "rodadas_extra": [
+      {
+        "texto": "recomendado: aceitar so a pasta de config em uso (CLAUDE_CONFIG_DIR, ou ~/.claude sem ela)",
+        "em": "2026-09-24"
+      }
+    ]
   },
   "verificar": {
     "status": "pendente"

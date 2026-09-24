@@ -45,6 +45,10 @@ HOME_SBOX="$SBP/home"
 mkdir -p "$HOME_SBOX"
 export HOME="$HOME_SBOX"
 export USERPROFILE="$HOME_SBOX"
+# A config dir em uso decide qual arvore vale (emenda da 3a revisao): fixa no
+# sandbox — herdar a da sessao apontaria para o ~/.claude* de verdade, e em CI
+# (sem a variavel) cairia em ~/.claude, que os fixtures nao usam.
+export CLAUDE_CONFIG_DIR="$HOME_SBOX/.claude-personal"
 
 ok=0; falhou=0
 E="node scripts/estado.cjs"
@@ -2327,6 +2331,27 @@ else
   falhou=$((falhou+1)); echo "  FALHA nome != agente-id: exit=$cod_nomeerrado janela=$janela_nomeerrado"
   printf '%s\n' "$msg_nomeerrado" | sed 's/^/         /'
 fi
+
+# (f) arvore INVENTADA ~/.claude-x/ (3a revisao, 2026-09-24): nome, meta e
+# conteudo certos, mas fora da config dir em uso — recusa exit 2.
+T_CONTAX=$(transcrito_em "$HOME_SBOX/.claude-x/projects/p/s/subagents" pasta-real-teste BYP1 ok "rainforest-mind:revisor")
+msg_contax=$($EPR veredito --slug pasta-real-teste --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id BYP1 --transcrito "$T_CONTAX" 2>&1)
+cod_contax=$?
+janela_contax=$(janela_pasta_real)
+if [ "$cod_contax" = "2" ] && [ "$janela_contax" = "[]" ]; then
+  ok=$((ok+1)); echo "  ok   arvore inventada ~/.claude-x/: recusa exit 2, nada gravado"
+else
+  falhou=$((falhou+1)); echo "  FALHA ~/.claude-x/: exit=$cod_contax janela=$janela_contax"
+  printf '%s
+' "$msg_contax" | sed 's/^/         /'
+fi
+
+# (g) sem CLAUDE_CONFIG_DIR a config em uso e' ~/.claude: la' grava, e a
+# arvore de ~/.claude-personal (que valia com a variavel) passa a ser recusada.
+T_PADRAO=$(transcrito_em "$HOME_SBOX/.claude/projects/p/s-padrao/subagents" pasta-real-teste PADRAO1 ok "rainforest-mind:revisor")
+esperado "sem CLAUDE_CONFIG_DIR: arvore em ~/.claude grava" 0   env -u CLAUDE_CONFIG_DIR $EPR veredito --slug pasta-real-teste --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id PADRAO1 --transcrito "$T_PADRAO"
+T_OUTRACONTA=$(transcrito_em "$HOME_SBOX/.claude-personal/projects/p/s-outra/subagents" pasta-real-teste OUTRA1 ok "rainforest-mind:revisor")
+esperado "sem CLAUDE_CONFIG_DIR: arvore em ~/.claude-personal recusa" 2   env -u CLAUDE_CONFIG_DIR $EPR veredito --slug pasta-real-teste --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id OUTRA1 --transcrito "$T_OUTRACONTA"
 
 # (e) arvore real de verdade (transcrito_para, ja aponta pro home sandbox):
 # grava, e o campo 'transcrito' fica com o caminho absoluto.

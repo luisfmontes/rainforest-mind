@@ -46,6 +46,10 @@ mkdir -p "$HOME_SBOX_POSIX"
 HOME_SBOX="$(cygpath -m "$HOME_SBOX_POSIX" 2>/dev/null || printf '%s' "$HOME_SBOX_POSIX")"
 export HOME="$HOME_SBOX"
 export USERPROFILE="$HOME_SBOX"
+# A config dir em uso decide qual arvore vale (emenda da 3a revisao): fixa no
+# sandbox — herdar a da sessao apontaria para o ~/.claude* de verdade, e em CI
+# (sem a variavel) cairia em ~/.claude, que os fixtures nao usam.
+export CLAUDE_CONFIG_DIR="$HOME_SBOX/.claude-personal"
 
 ok=0; falhou=0
 

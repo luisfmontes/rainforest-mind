@@ -542,7 +542,8 @@ function transcritoConfirmaVeredito(caminhoTranscrito, slug, veredito) {
 // caminho gravado (`entrada.transcrito`, mais abaixo) deixa a forja visivel.
 
 /** @returns {boolean} true so quando `caminhoTranscrito` mora sob
- *  `<os.homedir()>/(.claude|.claude-*)/projects/<projeto>/<sessao>/subagents/`,
+ *  `<config dir em uso>/projects/<projeto>/<sessao>/subagents/` (CLAUDE_CONFIG_DIR,
+ *  ou `~/.claude` sem ela),
  *  nomeado exatamente `agent-<agenteId>.jsonl`, com o irmao
  *  `agent-<agenteId>.meta.json` de `agentType` 'revisor' ou
  *  'rainforest-mind:revisor'. Compara normalizado (barra e minusculo) —
@@ -555,14 +556,19 @@ function transcritoEmPastaDeSessaoReal(caminhoTranscrito, agenteId) {
 
   const absoluto = path.resolve(caminhoTranscrito);
   const normalizado = absoluto.replace(/\\/g, '/').toLowerCase();
-  const homeNormalizado = path.resolve(os.homedir()).replace(/\\/g, '/').toLowerCase();
-  if (!normalizado.startsWith(homeNormalizado + '/')) return false;
+  // Emenda de 2026-09-24 (3a revisao, impasse decidido pelo usuario): so a
+  // config dir EM USO vale — CLAUDE_CONFIG_DIR, ou ~/.claude sem ela. Aceitar
+  // qualquer ~/.claude-* deixava uma arvore inventada (~/.claude-x/) passar.
+  const configDir = process.env.CLAUDE_CONFIG_DIR
+    ? path.resolve(process.env.CLAUDE_CONFIG_DIR)
+    : path.join(os.homedir(), '.claude');
+  const configNormalizado = configDir.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+  if (!normalizado.startsWith(configNormalizado + '/')) return false;
 
-  const resto = normalizado.slice(homeNormalizado.length + 1).split('/').filter(Boolean);
-  // esperado: [.claude|.claude-*, projects, <projeto>, <sessao>, subagents, agent-<id>.jsonl]
-  if (resto.length !== 6) return false;
-  const [contaDir, projectsDir, , , subagentsDir, nomeArquivo] = resto;
-  if (!/^\.claude(-[^/]+)?$/.test(contaDir)) return false;
+  const resto = normalizado.slice(configNormalizado.length + 1).split('/').filter(Boolean);
+  // esperado: [projects, <projeto>, <sessao>, subagents, agent-<id>.jsonl]
+  if (resto.length !== 5) return false;
+  const [projectsDir, , , subagentsDir, nomeArquivo] = resto;
   if (projectsDir !== 'projects') return false;
   if (subagentsDir !== 'subagents') return false;
   if (nomeArquivo !== `agent-${agenteId}.jsonl`.toLowerCase()) return false;
