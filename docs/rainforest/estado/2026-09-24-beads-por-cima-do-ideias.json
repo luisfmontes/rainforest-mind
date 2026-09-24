@@ -21,8 +21,25 @@
     "em": "2026-09-24"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-09-24"
+    "status": "ok",
+    "catraca_mutacao": "2026-09-24",
+    "tarefas_ok": 2,
+    "tarefas": 2,
+    "comando": "node scripts/conferir-publicacao.cjs docs/rainforest/pesquisas/2026-09-24-dependencias-propostas.md --json",
+    "saida": "achados: []",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "n/a",
+        "motivo": "pesquisa"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "doc"
+      }
+    ],
+    "em": "2026-09-24"
   },
   "revisar": {
     "status": "pendente"
