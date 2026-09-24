@@ -66,23 +66,31 @@
     "em": "2026-09-24"
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "8a8ad617a4f33be4e7b348517de0bb2999603fb9",
+      "head": "19fa0fd181a1bbc54e24e61b455a0eb33c78e2d2",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a3849db9deae79e29",
-        "veredito": "invalido",
+        "agente_id": "a902e602b7e0037a0",
+        "veredito": "ok",
         "em": "2026-09-24",
-        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\subagents\\agent-a3849db9deae79e29.jsonl"
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\subagents\\agent-a902e602b7e0037a0.jsonl"
       }
-    ]
+    ],
+    "achados": 1,
+    "base": "1c4c2720",
+    "head": "19fa0fd1",
+    "em": "2026-09-24"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node hooks/portaria.cjs < payload-de-subagente.json real (caixa CLAUDE_PROJECT_DIR/RFM_ROOT)",
+    "saida": "subagente: exit 2, agent_type despachante, mensagem de folha + parcial; janela: exit 0; log so na caixa",
+    "sensor_externo": "node hooks/portaria.cjs",
+    "em": "2026-09-24"
   },
   "fechar": {
     "status": "pendente"
