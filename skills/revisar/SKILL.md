@@ -223,9 +223,24 @@ segue fechando como hoje (`scripts/estado.cjs:446-451` para `ok`,
 `scripts/estado.cjs:472-477` para `reprovado`); a exigência vale só para
 janela armada por um `exigir` novo.
 
-**Desligar**: o hook obedece o toggle `contrato-veredito` (padrão ligado,
-`hooks/lib/config.cjs:75-78`) — `node scripts/setup.cjs --desligar
-contrato-veredito` desarma para o projeto atual.
+**Desligar** (D11): `contrato-veredito` é obedecido em duas camadas — `node
+scripts/setup.cjs --desligar contrato-veredito` desarma as duas. O hook
+para de gravar; as travas de `marcar revisar` (`contratoVereditoLigado()`)
+param de exigir a janela, avisando em stderr. Sem a segunda camada,
+`revisar` ficava infechável: `exigir --estagio revisar` continua armando a
+janela vazia com o toggle desligado, e o hook nunca a preenche.
+
+**`--transcrito` é a prova** (D12): `veredito` recusa (exit 2, nada
+gravado) sem `--transcrito <caminho>` que confirme, NO ARQUIVO
+(`transcritoConfirmaVeredito`): dentro de `subagents/`, primeiro prompt com
+`Slug: <slug>` do fluxo, última mensagem do assistente batendo com o
+`--veredito` (`invalido` fora do vocabulário). Gravar `ok` à mão volta a
+exigir fabricar um transcrito dentro de `subagents/`, auditável.
+
+**Risco residual aceito** (D13): nada amarra o `Slug:` do briefing ao diff
+revisado — `Slug:` errado grava no fluxo errado. D12 exige o slug real do
+transcrito, mas não o confere contra o `Head:`; conferir o `Slug:` certo é
+responsabilidade de quem despacha.
 
 ### Teto de 3 reprovações e a 4ª rodada
 
