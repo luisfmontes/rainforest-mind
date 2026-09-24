@@ -61,7 +61,7 @@ pronto quando: com os 9 arquivos reais de `agents/`, cada frontmatter tem `disal
 
 ### 5. Regra 10 e briefing: folha, parcial com lacuna, fechamento de rodada [tipo: docs]
 atende: D2, D3, D5
-arquivos: `skills/rainforest-mind/references/regra-10.md`, `skills/rainforest-mind/SKILL.md`, `skills/modo-dev/SKILL.md`
+arquivos: `skills/rainforest-mind/references/regra-10.md`, `skills/rainforest-mind/SKILL.md`, `skills/modo-dev/SKILL.md`, `hooks/testa-contexto-sessao.sh`
 depende de: 2, 4
 paralela: nao
 mutacao: n/a
@@ -75,7 +75,7 @@ depende de: 5
 paralela: nao
 mutacao: n/a
   motivo: bump de versão, sem comportamento a inverter.
-pronto quando: `.claude-plugin/plugin.json` e o selo da linha 7 do `README.md` dizem a versão seguinte à da `origin/main` no momento do bump (hoje `1.23.9` → `1.23.10`) — conferido por `MSYS_NO_PATHCONV=1 git show origin/main:.claude-plugin/plugin.json`. Feita no `fechar`, depois do `revisar`.
+pronto quando: `.claude-plugin/plugin.json` e o selo da linha 7 do `README.md` dizem a versão seguinte à da `origin/main` no momento do bump (hoje `1.23.9` → `1.23.10`) — conferido por `MSYS_NO_PATHCONV=1 git show origin/main:.claude-plugin/plugin.json`. Feita como última tarefa do `executar`, para o `revisar` cobrir o diff inteiro.
 
 ### 7. Verificador de publicação não recusa `noreply@` [tipo: implementar]
 atende: D4
