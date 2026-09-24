@@ -708,6 +708,16 @@ esperado "exigir do estagio reaberto passa" 0 $E exigir --slug t-repr4 --estagio
 $E marcar --slug t-repr4 --estagio executar --status ok --json '{"comando":"node script.cjs","saida":"ok","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
 igual "reaberto_por foi limpo apos fechamento ok" "nao" \
   "$(node -e "const e = JSON.parse(require('fs').readFileSync('docs/rainforest/estado/t-repr4.json', 'utf8')); console.log(e.executar.reaberto_por ? 'sim' : 'nao')")"
+# D10 (Tarefa 14): 'verificar' reprovado (linha 704) tambem devolveu 'revisar' a
+# 'pendente' — refechar so' 'executar' NAO destrava mais 'verificar' sozinho,
+# porque 'revisar' (pre-requisito de 'verificar') ficou pendente junto. Antes de
+# D10, este `exigir verificar` saia 0 aqui; a secao 34 exercita o mesmo ciclo
+# em detalhe partindo de 'verificar' ja 'ok' — aqui e' o caminho onde ele nunca
+# chegou a fechar.
+esperado "verificar ainda recusa: revisar tambem reabriu (D10)" 2 $E exigir --slug t-repr4 --estagio verificar
+$E exigir --slug t-repr4 --estagio revisar >/dev/null
+$E veredito --slug t-repr4 --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id t-repr4-v >/dev/null
+esperado "marcar revisar ok fecha de novo" 0 $E marcar --slug t-repr4 --estagio revisar --status ok
 # Agora o fluxo foi destravado: verificar (que reprovou) é exigivel novamente
 esperado "verificar agora exigivel novamente (ciclo destravou)" 0 $E exigir --slug t-repr4 --estagio verificar
 
@@ -2010,6 +2020,62 @@ igual "rodadas_extra acumulou para 2 entradas" "2" \
 $EI iniciar --slug impasse-outro >/dev/null
 esperado "liberar --estagio verificar continua incondicional (sem --rodada-extra)" 0 \
   $EI liberar --slug impasse-outro --estagio verificar
+
+unset RFM_ESTADO_ROOT
+
+echo
+echo "== 34. verificar reprovado reabre o revisar (D10, Tarefa 14) =="
+mkdir -p "$SBP/reabre-revisar"
+(cd "$SBP/reabre-revisar" && git init -q && git config user.email t@t && git config user.name T && echo x > a.txt && git add . && git commit -qm inicial)
+export RFM_ESTADO_ROOT="$SBP/reabre-revisar"
+ED="node scripts/estado.cjs"
+ESTADO_D10="reabre-revisar/docs/rainforest/estado/d10-reabre.json"
+campo_d10() { node -e "console.log(JSON.parse(require('fs').readFileSync('$ESTADO_D10','utf8'))$1)"; }
+
+# Caixa de caixa: executar ok, revisar ok, verificar ok — o mesmo ciclo feliz de
+# sempre, antes do CI externo (gh pr checks) achar defeito DEPOIS do 'verificar'
+# ja ter fechado.
+$ED iniciar --slug d10-reabre >/dev/null
+$ED marcar --slug d10-reabre --estagio design --status aprovado >/dev/null
+$ED marcar --slug d10-reabre --estagio plano  --status ok >/dev/null
+$ED exigir --slug d10-reabre --estagio executar >/dev/null
+$ED marcar --slug d10-reabre --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
+$ED exigir --slug d10-reabre --estagio revisar >/dev/null
+$ED veredito --slug d10-reabre --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id d10-v1 >/dev/null
+esperado "setup: marcar revisar ok" 0 $ED marcar --slug d10-reabre --estagio revisar --status ok
+esperado "setup: exigir verificar" 0 $ED exigir --slug d10-reabre --estagio verificar
+esperado "setup: marcar verificar ok" 0 \
+  $ED marcar --slug d10-reabre --estagio verificar --status ok --json '{"comando":"x","saida":"y"}'
+
+# D10: 'verificar' reprovado (achado depois, via CI externo) devolve o 'revisar'
+# a 'pendente' — sem depender de 'veredito' gravado para 'verificar' (D9 e' so'
+# do 'revisar'; nenhum 'veredito --estagio verificar' roda nesta secao, e o
+# comando abaixo fecha mesmo assim).
+esperado "marcar verificar reprovado (D10) fecha" 0 \
+  $ED marcar --slug d10-reabre --estagio verificar --status reprovado \
+    --json '{"comando":"gh pr checks 1","saida":"fail","sensor_externo":"gh pr checks 1"}'
+igual "revisar volta a pendente" "pendente" "$(campo_d10 .revisar.status)"
+igual "tentativas do verificar incrementa como na secao 17" "1" "$(campo_d10 .verificar.tentativas)"
+
+# 'executar' ja voltava a 'parcial' antes de D10 (rebaixarUpstream, comportamento
+# de hoje) — o que muda e' que agora ISSO PASSA, porque 'revisar' nao esta mais
+# 'ok'. Antes de D10 este comando saia 2: "executar nao pode voltar a parcial
+# com revisar em ok" (estagioPosteriorAberto).
+esperado "marcar executar parcial passa (revisar nao esta mais ok)" 0 \
+  $ED marcar --slug d10-reabre --estagio executar --status parcial
+
+esperado "marcar executar ok fecha de novo (limpa reaberto_por)" 0 \
+  $ED marcar --slug d10-reabre --estagio executar --status ok \
+    --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}'
+
+esperado "exigir verificar RECUSA ate o revisar fechar de novo" 2 \
+  $ED exigir --slug d10-reabre --estagio verificar
+
+$ED exigir --slug d10-reabre --estagio revisar >/dev/null
+$ED veredito --slug d10-reabre --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id d10-v2 >/dev/null
+esperado "marcar revisar ok fecha de novo" 0 $ED marcar --slug d10-reabre --estagio revisar --status ok
+esperado "exigir verificar passa apos revisar fechar de novo" 0 \
+  $ED exigir --slug d10-reabre --estagio verificar
 
 unset RFM_ESTADO_ROOT
 
