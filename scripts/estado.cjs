@@ -36,13 +36,15 @@
  *   node scripts/estado.cjs veredito  --slug <slug> --estagio <e> --veredito <ok|reprovado|invalido> --agente <tipo> --agente-id <id> --transcrito <caminho>
  *
  * `veredito` grava em `<estagio>.vereditos` uma entrada {agente, agente_id,
- * veredito, em}, upsert por agente_id (retomada de um mesmo subagente não
- * duplica). Trava por arquivo (hooks/lib/trava-jsonl.cjs) contra escrita
- * concorrente de dois hooks de SubagentStop. Slug inexistente: sai 0 sem
- * gravar, avisa em stderr — quem chama é um hook, não deve derrubar sessão.
- * `--transcrito` é OBRIGATÓRIO na prática (D12, Tarefa 16): sem um arquivo
- * real que confirme slug e veredito (`transcritoConfirmaVeredito`, dentro de
- * `subagents/`), o comando recusa com exit 2 e não grava nada.
+ * veredito, em, transcrito}, upsert por agente_id (retomada de um mesmo
+ * subagente não duplica). Trava por arquivo (hooks/lib/trava-jsonl.cjs)
+ * contra escrita concorrente de dois hooks de SubagentStop. Slug inexistente:
+ * sai 0 sem gravar, avisa em stderr — quem chama é um hook, não deve
+ * derrubar sessão. `--transcrito` é OBRIGATÓRIO na prática (D12, Tarefa 16;
+ * D14, Tarefa 18): sem um arquivo real, NA PASTA REAL DE SESSÃO do Claude
+ * Code, que confirme slug e veredito (`transcritoConfirmaVeredito`,
+ * `transcritoEmPastaDeSessaoReal`), o comando recusa com exit 2 e não grava
+ * nada; quando grava, o caminho absoluto fica no campo `transcrito`.
  *
  * `concluido` reusa o predicado `proximo` (não escreve lógica de progresso nova):
  * com `--slug`, sai 0 se `proximo(estado) === null` (fluxo fechado), 2 nomeando o
@@ -53,6 +55,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { spawnSync, execSync } = require('child_process');
 // Trava por lock de PID (defeitos A/B fechados em 2026-08-23), ja usada por
 // scripts/ideias.cjs e scripts/divergencias.cjs — o `veredito` reusa em vez
@@ -523,6 +526,56 @@ function transcritoConfirmaVeredito(caminhoTranscrito, slug, veredito) {
     : 'invalido';
 
   return vereditoDoTranscrito === veredito;
+}
+
+// -------------------------------------- transcrito na pasta real de sessao (D14)
+//
+// Emenda de 2026-09-24 (2a revisao reprovada): `transcritoConfirmaVeredito`
+// confirma Slug e veredito NO CONTEUDO do arquivo, mas nao onde o arquivo
+// mora — duas linhas de JSONL numa pasta `subagents` qualquer em `$TEMP`
+// passavam. D14 fecha isso: o transcrito so vale se morar na pasta REAL de
+// sessao do Claude Code (home do usuario, nao um caminho que a chamada
+// inventa), com o nome exato que o `--agente-id` implica, e com um irmao
+// `.meta.json` provando que o agente que gerou o transcrito era um revisor.
+// Nao elimina forja — quem escreve no disco sempre pode fabricar os tres —
+// so encarece: passa a exigir escrever ENTRE os transcritos reais, e o
+// caminho gravado (`entrada.transcrito`, mais abaixo) deixa a forja visivel.
+
+/** @returns {boolean} true so quando `caminhoTranscrito` mora sob
+ *  `<os.homedir()>/(.claude|.claude-*)/projects/<projeto>/<sessao>/subagents/`,
+ *  nomeado exatamente `agent-<agenteId>.jsonl`, com o irmao
+ *  `agent-<agenteId>.meta.json` de `agentType` 'revisor' ou
+ *  'rainforest-mind:revisor'. Compara normalizado (barra e minusculo) —
+ *  Windows entrega `\` e caixa inconsistente de drive/usuario — mas le o
+ *  `.meta.json` pelo caminho ORIGINAL (resolvido, nao normalizado): o disco
+ *  continua case-sensitive em Linux/macOS. */
+function transcritoEmPastaDeSessaoReal(caminhoTranscrito, agenteId) {
+  if (typeof caminhoTranscrito !== 'string' || !caminhoTranscrito) return false;
+  if (typeof agenteId !== 'string' || !agenteId) return false;
+
+  const absoluto = path.resolve(caminhoTranscrito);
+  const normalizado = absoluto.replace(/\\/g, '/').toLowerCase();
+  const homeNormalizado = path.resolve(os.homedir()).replace(/\\/g, '/').toLowerCase();
+  if (!normalizado.startsWith(homeNormalizado + '/')) return false;
+
+  const resto = normalizado.slice(homeNormalizado.length + 1).split('/').filter(Boolean);
+  // esperado: [.claude|.claude-*, projects, <projeto>, <sessao>, subagents, agent-<id>.jsonl]
+  if (resto.length !== 6) return false;
+  const [contaDir, projectsDir, , , subagentsDir, nomeArquivo] = resto;
+  if (!/^\.claude(-[^/]+)?$/.test(contaDir)) return false;
+  if (projectsDir !== 'projects') return false;
+  if (subagentsDir !== 'subagents') return false;
+  if (nomeArquivo !== `agent-${agenteId}.jsonl`.toLowerCase()) return false;
+
+  const metaAbsoluto = absoluto.slice(0, -'.jsonl'.length) + '.meta.json';
+  if (!fs.existsSync(metaAbsoluto)) return false;
+  let meta;
+  try {
+    meta = JSON.parse(fs.readFileSync(metaAbsoluto, 'utf8'));
+  } catch {
+    return false;
+  }
+  return !!meta && (meta.agentType === 'revisor' || meta.agentType === 'rainforest-mind:revisor');
 }
 
 /** @returns {string|null} mensagem de recusa, ou null se passou/nao se aplica.
@@ -1673,6 +1726,18 @@ function main() {
       );
       process.exit(2);
     }
+    // D14 — Tarefa 18: o transcrito tambem tem que morar na pasta REAL de
+    // sessao do Claude Code — a 2a revisao (2026-09-24) forjou um `ok` com
+    // duas linhas numa pasta `subagents` qualquer em `$TEMP`, que ja
+    // confirmava D12 sem confirmar nada sobre a ORIGEM do arquivo.
+    if (!transcritoEmPastaDeSessaoReal(transcrito, agenteId)) {
+      console.error(
+        `RECUSADO: 'veredito' exige que --transcrito more na pasta real de sessao ` +
+        `(<home>/.claude ou .claude-*/projects/<projeto>/<sessao>/subagents/agent-${agenteId}.jsonl), ` +
+        `com o '.meta.json' irmao de agentType 'revisor'. Nada foi gravado (D14).`
+      );
+      process.exit(2);
+    }
     // Checagem RAPIDA fora da trava: sem ela, `Trava.entrar()` tenta abrir o
     // arquivo de lock dentro de DIR_ESTADO, que pode nem existir (projeto sem
     // nenhum `iniciar` rodado ainda — cenario real de um `Slug:` invalido
@@ -1701,7 +1766,10 @@ function main() {
       // mais de uma vez (retomada), e a segunda chamada substitui a entrada
       // anterior em vez de duplicar — ver achado 7 do plano.
       const idx = agenteId ? vereditos.findIndex((v) => v.agente_id === agenteId) : -1;
-      const entrada = { agente, agente_id: agenteId, veredito, em: hoje() };
+      // D14 — Tarefa 18: caminho absoluto gravado junto — deixa a forja
+      // visivel (quem confere a entrada ve exatamente qual transcrito real
+      // confirmou o veredito, nao so o dizer de quem despachou).
+      const entrada = { agente, agente_id: agenteId, veredito, em: hoje(), transcrito: path.resolve(transcrito) };
       if (idx === -1) {
         vereditos.push(entrada);
       } else {

@@ -37,6 +37,15 @@ touch "$SBP/FOCO.md"
 cd "$SBP" || exit 1
 echo "(caixa de areia: $SBP)"
 
+# D14 — Tarefa 18: `transcritoEmPastaDeSessaoReal` confere o transcrito sob
+# <os.homedir()>/.claude*/projects/.../subagents/ — nunca o home de verdade
+# do usuario. No Windows o Node NEM LE `HOME` (so' `USERPROFILE`); em POSIX
+# e' o contrario — exporta os dois pro sandbox, cobre as duas plataformas.
+HOME_SBOX="$SBP/home"
+mkdir -p "$HOME_SBOX"
+export HOME="$HOME_SBOX"
+export USERPROFILE="$HOME_SBOX"
+
 ok=0; falhou=0
 E="node scripts/estado.cjs"
 
@@ -51,18 +60,19 @@ igual() { # nome, esperado, obtido
   else falhou=$((falhou+1)); echo "  FALHA $1: esperava '$2', veio '$3'"; fi
 }
 
-# D12 — Tarefa 16: 'veredito' agora exige --transcrito <caminho> que confirme
-# (no arquivo, nao so no argumento): dentro de uma pasta 'subagents', primeiro
-# prompt com 'Slug: <slug>', ultima mensagem do assistente batendo com
-# <veredito>. Monta um transcrito de sandbox
-# $SBP/transcritos/<slug>-<agente_id>-<veredito>/subagents/agent-<agente_id>.jsonl
-# que confirma exatamente o que o caso declara, e imprime o caminho — usar
-# com --transcrito "$(transcrito_para <slug> <veredito> <agente_id>)".
-# Caminho SEMPRE absoluto (baseado em $SBP, definido no topo do arquivo):
-# funciona independente do cwd atual (algumas secoes trocam de caixa).
-transcrito_para() { # slug, veredito(ok|reprovado|invalido), agente_id
-  local slug="$1" veredito="$2" agente_id="$3"
-  local dir="$SBP/transcritos/$slug-$agente_id-$veredito/subagents"
+# D12/D14 — Tarefas 16 e 18: 'veredito' exige --transcrito <caminho> que
+# confirme, NO ARQUIVO: dentro de uma pasta 'subagents', primeiro prompt com
+# 'Slug: <slug>', ultima mensagem do assistente batendo com <veredito>
+# (D12) — E que o arquivo more na pasta REAL de sessao
+# (<HOME_SBOX>/.claude*/projects/<p>/<s>/subagents/agent-<id>.jsonl), com o
+# irmao '.meta.json' de agentType revisor (D14).
+#
+# transcrito_em escreve um transcrito EM QUALQUER pasta 'subagents' dada —
+# usada tanto pelo caminho feliz (arvore real) quanto pelos casos negativos
+# de D14 (arvore fora do home, sem meta, meta de outro agente). agentType
+# vazio (5o arg omitido) pula a escrita do '.meta.json'.
+transcrito_em() { # dir_subagents, slug, agente_id, veredito, agentType(vazio = sem meta)
+  local dir="$1" slug="$2" agente_id="$3" veredito="$4" agentType="${5:-}"
   mkdir -p "$dir"
   local arq="$dir/agent-$agente_id.jsonl"
   local ultima
@@ -80,7 +90,21 @@ const linhas = [
 ];
 fs.writeFileSync(arq, linhas.join("\n")+"\n");
 ' "$arq" "$slug" "$ultima"
+  if [ -n "$agentType" ]; then
+    printf '{"agentType":"%s"}' "$agentType" > "$dir/agent-$agente_id.meta.json"
+  fi
   printf '%s' "$arq"
+}
+
+# Caminho feliz, usado pelo resto da bateria: monta a arvore REAL de sessao
+# em $HOME_SBOX/.claude-personal/projects/p/<slug>-<agente_id>-<veredito>/subagents/,
+# com o '.meta.json' de agentType revisor — confirma D12 E D14. Caminho
+# SEMPRE absoluto: funciona independente do cwd atual (algumas secoes trocam
+# de caixa). Usar com --transcrito "$(transcrito_para <slug> <veredito> <agente_id>)".
+transcrito_para() { # slug, veredito(ok|reprovado|invalido), agente_id
+  local slug="$1" veredito="$2" agente_id="$3"
+  local dir="$HOME_SBOX/.claude-personal/projects/p/$slug-$agente_id-$veredito/subagents"
+  transcrito_em "$dir" "$slug" "$agente_id" "$veredito" "rainforest-mind:revisor"
 }
 
 echo
@@ -2236,6 +2260,82 @@ esperado "transcrito certo: grava" 0 \
 janela_certa=$(node -e "const e=JSON.parse(require('fs').readFileSync('transcrito-confere/docs/rainforest/estado/transcrito-teste.json','utf8')); console.log(JSON.stringify((e.revisar&&e.revisar.vereditos)||[]))")
 igual "transcrito certo: janela tem a entrada TR4 ok" "sim" \
   "$(case "$janela_certa" in *'"agente_id":"TR4"'*'"veredito":"ok"'*) echo sim;; *) echo nao;; esac)"
+
+unset RFM_ESTADO_ROOT
+
+echo
+echo "== 37. transcrito fora da pasta real de sessao e recusado (D14 — Tarefa 18) =="
+mkdir -p "$SBP/pasta-real"
+(cd "$SBP/pasta-real" && git init -q && git config user.email t@t && git config user.name T && echo x > a.txt && git add . && git commit -qm inicial)
+export RFM_ESTADO_ROOT="$SBP/pasta-real"
+EPR="node scripts/estado.cjs"
+$EPR iniciar --slug pasta-real-teste >/dev/null
+
+janela_pasta_real() {
+  node -e "const e=JSON.parse(require('fs').readFileSync('pasta-real/docs/rainforest/estado/pasta-real-teste.json','utf8')); console.log(JSON.stringify((e.revisar&&e.revisar.vereditos)||[]))"
+}
+
+# (a) forja em QUALQUER pasta 'subagents' fora do home real — com Slug,
+# veredito E .meta.json de revisor corretos, ja passava no D12 sozinho
+# (achado da 2a revisao, 2026-09-24: duas linhas de JSONL numa pasta
+# 'subagents' qualquer em $TEMP). Agora recusa por D14.
+T_FORJA=$(transcrito_em "$SBP/forja-qualquer/subagents" pasta-real-teste FORJA1 ok "rainforest-mind:revisor")
+echo "  comando: $EPR veredito --slug pasta-real-teste --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id FORJA1 --transcrito $T_FORJA"
+saida_forja=$($EPR veredito --slug pasta-real-teste --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id FORJA1 --transcrito "$T_FORJA" 2>&1)
+cod_forja=$?
+janela_forja=$(janela_pasta_real)
+printf '%s\n' "$saida_forja" | sed 's/^/  saida: /'
+if [ "$cod_forja" = "2" ] && [ "$janela_forja" = "[]" ]; then
+  ok=$((ok+1)); echo "  ok   forja em pasta 'subagents' fora do home real: recusa exit 2, janela inalterada"
+else
+  falhou=$((falhou+1)); echo "  FALHA forja fora do home real: exit=$cod_forja janela=$janela_forja"
+fi
+
+# (b) arvore real, nome certo, mas SEM '.meta.json' irmao: recusa exit 2
+T_SEMMETA=$(transcrito_em "$HOME_SBOX/.claude-personal/projects/p/sem-meta/subagents" pasta-real-teste SEMMETA1 ok "")
+msg_semmeta=$($EPR veredito --slug pasta-real-teste --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id SEMMETA1 --transcrito "$T_SEMMETA" 2>&1)
+cod_semmeta=$?
+janela_semmeta=$(janela_pasta_real)
+if [ "$cod_semmeta" = "2" ] && [ "$janela_semmeta" = "[]" ]; then
+  ok=$((ok+1)); echo "  ok   arvore real sem '.meta.json' irmao: recusa exit 2, nada gravado"
+else
+  falhou=$((falhou+1)); echo "  FALHA sem meta: exit=$cod_semmeta janela=$janela_semmeta"
+  printf '%s\n' "$msg_semmeta" | sed 's/^/         /'
+fi
+
+# (c) arvore real, nome certo, meta.json presente mas de OUTRO agentType: recusa exit 2
+T_METAOUTRO=$(transcrito_em "$HOME_SBOX/.claude-personal/projects/p/meta-outro/subagents" pasta-real-teste METAOUTRO1 ok "rainforest-mind:executor")
+msg_metaoutro=$($EPR veredito --slug pasta-real-teste --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id METAOUTRO1 --transcrito "$T_METAOUTRO" 2>&1)
+cod_metaoutro=$?
+janela_metaoutro=$(janela_pasta_real)
+if [ "$cod_metaoutro" = "2" ] && [ "$janela_metaoutro" = "[]" ]; then
+  ok=$((ok+1)); echo "  ok   '.meta.json' de outro agentType (rainforest-mind:executor): recusa exit 2, nada gravado"
+else
+  falhou=$((falhou+1)); echo "  FALHA meta de outro agente: exit=$cod_metaoutro janela=$janela_metaoutro"
+  printf '%s\n' "$msg_metaoutro" | sed 's/^/         /'
+fi
+
+# (d) arvore real, meta certo, mas o NOME do arquivo nao bate com --agente-id
+# (arquivo e' agent-OUTROID.jsonl, o comando declara --agente-id NOMEERRADO1): recusa exit 2
+T_NOMEERRADO=$(transcrito_em "$HOME_SBOX/.claude-personal/projects/p/nome-errado/subagents" pasta-real-teste OUTROID ok "rainforest-mind:revisor")
+msg_nomeerrado=$($EPR veredito --slug pasta-real-teste --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id NOMEERRADO1 --transcrito "$T_NOMEERRADO" 2>&1)
+cod_nomeerrado=$?
+janela_nomeerrado=$(janela_pasta_real)
+if [ "$cod_nomeerrado" = "2" ] && [ "$janela_nomeerrado" = "[]" ]; then
+  ok=$((ok+1)); echo "  ok   nome do arquivo != agent-<agente-id>.jsonl: recusa exit 2, nada gravado"
+else
+  falhou=$((falhou+1)); echo "  FALHA nome != agente-id: exit=$cod_nomeerrado janela=$janela_nomeerrado"
+  printf '%s\n' "$msg_nomeerrado" | sed 's/^/         /'
+fi
+
+# (e) arvore real de verdade (transcrito_para, ja aponta pro home sandbox):
+# grava, e o campo 'transcrito' fica com o caminho absoluto.
+T_REAL=$(transcrito_para pasta-real-teste ok REAL1)
+esperado "arvore real de sessao: grava" 0 \
+  $EPR veredito --slug pasta-real-teste --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id REAL1 --transcrito "$T_REAL"
+janela_real=$(janela_pasta_real)
+igual "arvore real: janela tem REAL1 ok com 'transcrito' gravado" "sim" \
+  "$(case "$janela_real" in *'"agente_id":"REAL1"'*'"veredito":"ok"'*'"transcrito":'*) echo sim;; *) echo nao;; esac)"
 
 unset RFM_ESTADO_ROOT
 
