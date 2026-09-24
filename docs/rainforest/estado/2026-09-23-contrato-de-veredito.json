@@ -23,10 +23,10 @@
     "em": "2026-09-23"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-23",
-    "tarefas_ok": 14,
-    "tarefas": 14,
+    "tarefas_ok": 17,
+    "tarefas": 17,
     "em_voo": [],
     "em": "2026-09-23",
     "carimbos": [
@@ -127,11 +127,32 @@
         "iteracao": 1,
         "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
         "ts": "2026-09-24T00:12:11.378Z"
+      },
+      {
+        "tarefa": 15,
+        "hash_base": "2699bf98",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-24T01:59:46.880Z"
+      },
+      {
+        "tarefa": 16,
+        "hash_base": "2699bf98",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-24T01:59:46.880Z"
+      },
+      {
+        "tarefa": 17,
+        "hash_base": "2699bf98",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-24T01:59:46.880Z"
       }
     ],
     "achados_tarefa_1": "payload SubagentStop real: agent_type=rainforest-mind:revisor, agent_transcript_path presente (subagents/agent-<id>.jsonl, 1a msg user content string com o briefing), last_assistant_message, stop_hook_active, agent_id",
     "comando": "bash scripts/testa-estado.sh",
-    "saida": "== resultado: 275 ok, 0 falhas ==",
+    "saida": "== resultado: 283 ok, 0 falhas ==",
     "mutacao": [
       {
         "tarefa": 1,
@@ -202,12 +223,23 @@
         "tarefa": 14,
         "resultado": "vermelho",
         "fixture": "testa-estado.sh, verificar reprovado reabre o revisar"
+      },
+      {
+        "tarefa": 15,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, contrato-veredito desligado fecha o revisar sem veredito"
+      },
+      {
+        "tarefa": 16,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, veredito sem transcrito que o confirme e recusado"
+      },
+      {
+        "tarefa": 17,
+        "resultado": "n/a",
+        "motivo": "doc da skill revisar"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-23"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
