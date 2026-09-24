@@ -23,9 +23,9 @@
     "em": "2026-09-23"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-23",
-    "tarefas_ok": 9,
+    "tarefas_ok": 14,
     "tarefas": 14,
     "em_voo": [],
     "em": "2026-09-23",
@@ -92,9 +92,118 @@
         "iteracao": 1,
         "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
         "ts": "2026-09-23T23:46:28.441Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "4ebbc350",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T23:57:12.820Z"
+      },
+      {
+        "tarefa": 11,
+        "hash_base": "4ebbc350",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T23:57:12.820Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "4ebbc350",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T23:58:26.157Z"
+      },
+      {
+        "tarefa": 13,
+        "hash_base": "4ebbc350",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-24T00:12:11.378Z"
+      },
+      {
+        "tarefa": 14,
+        "hash_base": "4ebbc350",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-24T00:12:11.378Z"
       }
     ],
-    "achados_tarefa_1": "payload SubagentStop real: agent_type=rainforest-mind:revisor, agent_transcript_path presente (subagents/agent-<id>.jsonl, 1a msg user content string com o briefing), last_assistant_message, stop_hook_active, agent_id"
+    "achados_tarefa_1": "payload SubagentStop real: agent_type=rainforest-mind:revisor, agent_transcript_path presente (subagents/agent-<id>.jsonl, 1a msg user content string com o briefing), last_assistant_message, stop_hook_active, agent_id",
+    "comando": "bash scripts/testa-estado.sh",
+    "saida": "== resultado: 275 ok, 0 falhas ==",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "n/a",
+        "motivo": "pesquisa: captura do payload real, sem codigo de producao"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-segunda-opiniao.sh, parecer-multilinhas"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, registrar duas vezes o mesmo agente-id substitui"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, janela de vereditos zera a cada exigir revisar"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, marcar revisar ok recusa com veredito reprovado na janela"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, marcar revisar reprovado recusa sem veredito reprovado"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, liberar --estagio revisar recusa sem arquivo de impasse"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-veredito-revisor.sh, agent_type que nao e revisor e ignorado"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-veredito-revisor.sh, hooks.json aponta para o hook certo"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "doc da skill revisar"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "n/a",
+        "motivo": "doc do agente revisor"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "n/a",
+        "motivo": "a propria bateria; mutacoes das tarefas 8 e 9 rodadas contra ela"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "n/a",
+        "motivo": "extensao de bateria ja coberta pelas tarefas 3-7, sem commit"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, verificar reprovado reabre o revisar"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
