@@ -305,6 +305,9 @@
     "em": "2026-09-24"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "pr": 327,
+    "ci": "baterias (node 24) pass, run 36040606368, head b717b5f9",
+    "em": "2026-09-24"
   }
 }
