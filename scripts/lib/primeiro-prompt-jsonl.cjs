@@ -72,4 +72,50 @@ function extrairSlug(prompt) {
   return null;
 }
 
-module.exports = { primeiroPrompt, extrairSlug };
+/**
+ * Última mensagem de TEXTO do assistente no transcrito inteiro (não só a
+ * primeira linha — Tarefa 16, D12). Varre toda linha `type:"assistant"` cujo
+ * `message.content` tem bloco de texto não vazio (string pura, ou array
+ * `[{type:'text', text}]` — mesmos dois formatos de `primeiroPrompt` acima) e
+ * devolve o texto da ÚLTIMA que casar. Mensagem só com tool_use/tool_result
+ * (sem bloco de texto) não conta e não sobrescreve a última encontrada.
+ *
+ * `null` quando o arquivo não existe, não parseia, ou nenhuma linha casa —
+ * best-effort, mesmo contrato de `primeiroPrompt`: quem chama (o subcomando
+ * `veredito`) trata `null` como "não confirma", nunca lança.
+ */
+function ultimaMensagemAssistente(caminhoJsonl) {
+  let conteudo;
+  try {
+    conteudo = fs.readFileSync(caminhoJsonl, 'utf8');
+  } catch {
+    return null;
+  }
+
+  let ultima = null;
+  for (const linha of conteudo.split(/\r?\n/)) {
+    const l = linha.trim();
+    if (!l) continue;
+    let obj;
+    try {
+      obj = JSON.parse(l);
+    } catch {
+      continue;
+    }
+    if (!obj || obj.type !== 'assistant' || !obj.message || obj.message.role !== 'assistant') {
+      continue;
+    }
+    const c = obj.message.content;
+    let texto = null;
+    if (typeof c === 'string' && c.trim() !== '') {
+      texto = c;
+    } else if (Array.isArray(c)) {
+      const blocos = c.filter((b) => b && b.type === 'text' && typeof b.text === 'string' && b.text.trim() !== '');
+      if (blocos.length > 0) texto = blocos.map((b) => b.text).join('\n');
+    }
+    if (texto !== null) ultima = texto;
+  }
+  return ultima;
+}
+
+module.exports = { primeiroPrompt, extrairSlug, ultimaMensagemAssistente };

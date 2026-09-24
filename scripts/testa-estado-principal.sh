@@ -28,8 +28,12 @@ unset CI
 unset GITHUB_ACTIONS
 
 REPO="$CAIXA/repo"
-mkdir -p "$REPO/scripts" "$REPO/hooks/lib"
+mkdir -p "$REPO/scripts/lib" "$REPO/hooks/lib"
 cp "$SRC/scripts/estado.cjs" "$REPO/scripts/"
+# D12 — Tarefa 16: estado.cjs agora exige (require duro) scripts/lib/*.cjs —
+# sem eles, QUALQUER subcomando (nao so 'veredito') derruba com MODULE_NOT_FOUND.
+cp "$SRC/scripts/lib/primeiro-prompt-jsonl.cjs" "$REPO/scripts/lib/"
+cp "$SRC/scripts/lib/extrair-veredito.cjs" "$REPO/scripts/lib/"
 cp "$SRC/hooks/lib/raiz.cjs" "$REPO/hooks/lib/"
 cp "$SRC/hooks/lib/config.cjs" "$REPO/hooks/lib/"
 touch "$REPO/FOCO.md"
@@ -117,8 +121,9 @@ rm -f "$REPO/.rainforest/config.json"
 
 echo
 echo "== e. pasta que nao e repositorio git: iniciar passa (comportamento antigo) =="
-mkdir -p "$CAIXA/nao-git/scripts" "$CAIXA/nao-git/hooks/lib"
+mkdir -p "$CAIXA/nao-git/scripts/lib" "$CAIXA/nao-git/hooks/lib"
 cp "$REPO/scripts/estado.cjs" "$CAIXA/nao-git/scripts/"
+cp "$REPO/scripts/lib/primeiro-prompt-jsonl.cjs" "$REPO/scripts/lib/extrair-veredito.cjs" "$CAIXA/nao-git/scripts/lib/"
 cp "$REPO/hooks/lib/raiz.cjs" "$REPO/hooks/lib/config.cjs" "$CAIXA/nao-git/hooks/lib/"
 touch "$CAIXA/nao-git/FOCO.md"
 (

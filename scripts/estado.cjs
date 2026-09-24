@@ -33,13 +33,16 @@
  *   node scripts/estado.cjs liberar  --slug <slug> --estagio <e>
  *   node scripts/estado.cjs listar
  *   node scripts/estado.cjs concluido [--slug <slug>]
- *   node scripts/estado.cjs veredito  --slug <slug> --estagio <e> --veredito <ok|reprovado|invalido> --agente <tipo> --agente-id <id>
+ *   node scripts/estado.cjs veredito  --slug <slug> --estagio <e> --veredito <ok|reprovado|invalido> --agente <tipo> --agente-id <id> --transcrito <caminho>
  *
  * `veredito` grava em `<estagio>.vereditos` uma entrada {agente, agente_id,
  * veredito, em}, upsert por agente_id (retomada de um mesmo subagente não
  * duplica). Trava por arquivo (hooks/lib/trava-jsonl.cjs) contra escrita
  * concorrente de dois hooks de SubagentStop. Slug inexistente: sai 0 sem
  * gravar, avisa em stderr — quem chama é um hook, não deve derrubar sessão.
+ * `--transcrito` é OBRIGATÓRIO na prática (D12, Tarefa 16): sem um arquivo
+ * real que confirme slug e veredito (`transcritoConfirmaVeredito`, dentro de
+ * `subagents/`), o comando recusa com exit 2 e não grava nada.
  *
  * `concluido` reusa o predicado `proximo` (não escreve lógica de progresso nova):
  * com `--slug`, sai 0 se `proximo(estado) === null` (fluxo fechado), 2 nomeando o
@@ -55,6 +58,13 @@ const { spawnSync, execSync } = require('child_process');
 // scripts/ideias.cjs e scripts/divergencias.cjs — o `veredito` reusa em vez
 // de inventar uma terceira copia.
 const { comTrava } = require(path.join(__dirname, '..', 'hooks', 'lib', 'trava-jsonl.cjs'));
+// D12 — Tarefa 16: leitura do transcrito real do revisor (slug do primeiro
+// prompt, ultima mensagem de texto do assistente). Require DURO, nao
+// defensivo: sem estes dois modulos o subcomando `veredito` gravaria vereditos
+// sem confirmar nada contra o transcrito, que e exatamente o buraco que D12
+// fecha — modulo ausente tem de derrubar o script, nao virar bypass silencioso.
+const { primeiroPrompt, extrairSlug, ultimaMensagemAssistente } = require(path.join(__dirname, 'lib', 'primeiro-prompt-jsonl.cjs'));
+const { extrairUltimaLinha, validarVocabulario } = require(path.join(__dirname, 'lib', 'extrair-veredito.cjs'));
 // Defensivo, igual ao require de config.cjs mais abaixo: plugin antigo ou
 // cópia parcial não pode derrubar o script inteiro por um efeito colateral
 // best-effort. Sem o ledger, carimbarFluxo vira no-op.
@@ -459,6 +469,60 @@ function contratoVereditoLigado() {
   } catch (_) {
     return true; // config.cjs indisponivel: mesmo fail-safe de `ligado()` (erro = ligado)
   }
+}
+
+// -------------------------------------------- transcrito confirma o veredito (D12)
+//
+// Achado 2 da revisao de 2026-09-23: o subcomando `veredito` (mais abaixo)
+// grava o que a linha de comando declarar — quem despacha continua podendo
+// gravar 'ok' a mao, e o contrato volta a ser o relato dela. D12 fecha isso
+// exigindo `--transcrito <caminho>` e conferindo TRES coisas nele, sem
+// confiar em nenhuma delas vinda so do argumento:
+//
+//   1. o caminho fica DENTRO de uma pasta `subagents` (o formato real dos
+//      transcritos de subagente, achado 3 do plano) — nao um arquivo
+//      qualquer que alguem apontou;
+//   2. o PRIMEIRO prompt do transcrito tem a linha `Slug: <slug>` do MESMO
+//      slug que `--slug` declara (reaproveita `primeiro-prompt-jsonl.cjs`,
+//      ja usado pelo hook para o mesmo fim);
+//   3. a ULTIMA mensagem de texto do assistente, normalizada do mesmo jeito
+//      que o hook normaliza (`extrair-veredito.cjs`), bate com o `--veredito`
+//      declarado — inclusive 'invalido', que so confirma quando a ultima
+//      linha do transcrito estiver FORA do vocabulario fechado.
+//
+// Forjar um veredito passa a exigir fabricar um transcrito inteiro dentro de
+// `subagents/` — auditavel, ao contrario de um `--json` de uma linha.
+
+/** Caminho tem `subagents` como diretorio pai IMEDIATO. Aceita `\` e `/`
+ *  (Windows entrega caminho nativo com barra invertida) — normaliza antes de
+ *  comparar, nunca conta barras cruas. */
+function transcritoDentroDeSubagents(caminhoTranscrito) {
+  const normalizado = String(caminhoTranscrito).replace(/\\/g, '/');
+  const partes = normalizado.split('/').filter((p) => p !== '');
+  return partes.length >= 2 && partes[partes.length - 2] === 'subagents';
+}
+
+/** @returns {boolean} true so quando o arquivo em `caminhoTranscrito` confirma,
+ *  de verdade, que um revisor real deu ESTE `veredito` para ESTE `slug`. */
+function transcritoConfirmaVeredito(caminhoTranscrito, slug, veredito) {
+  if (typeof caminhoTranscrito !== 'string' || !caminhoTranscrito) return false;
+  if (!fs.existsSync(caminhoTranscrito)) return false;
+  if (!transcritoDentroDeSubagents(caminhoTranscrito)) return false;
+
+  const prompt = primeiroPrompt(caminhoTranscrito);
+  const slugDoTranscrito = extrairSlug(prompt);
+  if (!slugDoTranscrito || slugDoTranscrito !== slug) return false;
+
+  const mensagem = ultimaMensagemAssistente(caminhoTranscrito);
+  if (typeof mensagem !== 'string') return false;
+
+  const VOCAB_ULTIMA_LINHA = ['veredito: ok', 'veredito: reprovado'];
+  const ultimaLinha = extrairUltimaLinha(mensagem);
+  const vereditoDoTranscrito = validarVocabulario(ultimaLinha, VOCAB_ULTIMA_LINHA)
+    ? (ultimaLinha === 'veredito: ok' ? 'ok' : 'reprovado')
+    : 'invalido';
+
+  return vereditoDoTranscrito === veredito;
 }
 
 /** @returns {string|null} mensagem de recusa, ou null se passou/nao se aplica.
@@ -1403,7 +1467,7 @@ const FLAGS_POR_SUBCOMANDO = {
   liberar: ['slug', 'estagio', 'rodada-extra'],
   listar: [],
   concluido: ['slug'],
-  veredito: ['slug', 'estagio', 'veredito', 'agente', 'agente-id'],
+  veredito: ['slug', 'estagio', 'veredito', 'agente', 'agente-id', 'transcrito'],
 };
 
 function arg(nome, obrigatorio = true) {
@@ -1584,6 +1648,7 @@ function main() {
     const veredito = arg('veredito');
     const agente = arg('agente');
     const agenteId = arg('agente-id', false);
+    const transcrito = arg('transcrito', false);
     if (!(estagio in PRE_REQUISITOS)) {
       console.error(`erro: estagio desconhecido '${estagio}'`);
       process.exit(1);
@@ -1592,6 +1657,21 @@ function main() {
     if (!VOCAB_VEREDITO.includes(veredito)) {
       console.error(`erro: veredito '${veredito}' invalido — use ${VOCAB_VEREDITO.join('|')}`);
       process.exit(1);
+    }
+    // D12 — Tarefa 16: exit 2 (recusa deliberada, nao "comando quebrou") e
+    // NADA e gravado sem um transcrito real que confirme os tres pontos de
+    // `transcritoConfirmaVeredito` (dentro de subagents/, Slug do transcrito
+    // == --slug, ultima linha do assistente == --veredito). `arg(...,
+    // false)` devolve null sem --transcrito — a funcao ja recusa null, entao
+    // as quatro recusas do criterio (sem --transcrito, fora de subagents/,
+    // slug que nao bate, veredito que nao bate) caem no MESMO `if`.
+    if (!transcritoConfirmaVeredito(transcrito, slug, veredito)) {
+      console.error(
+        `RECUSADO: 'veredito' exige --transcrito <caminho> que confirme, no arquivo: dentro de uma pasta ` +
+        `'subagents', primeiro prompt com 'Slug: ${slug}', e ultima linha do assistente igual a 'VEREDITO: ${veredito}' ` +
+        `(ou fora do vocabulario, se --veredito for 'invalido'). Nada foi gravado (D12).`
+      );
+      process.exit(2);
     }
     // Checagem RAPIDA fora da trava: sem ela, `Trava.entrar()` tenta abrir o
     // arquivo de lock dentro de DIR_ESTADO, que pode nem existir (projeto sem

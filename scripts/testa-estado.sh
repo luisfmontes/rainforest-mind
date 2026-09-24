@@ -20,10 +20,14 @@ SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SBP="$(mktemp -d)/caixa"
 trap 'rm -rf "$(dirname "$SBP")"' EXIT
 
-mkdir -p "$SBP/scripts" "$SBP/hooks/lib"
+mkdir -p "$SBP/scripts/lib" "$SBP/hooks/lib"
 cp "$SRC/scripts/estado.cjs" "$SBP/scripts/"
 cp "$SRC/scripts/conferir-fluxo.cjs" "$SBP/scripts/"
 cp "$SRC/scripts/conferir-mutacao.cjs" "$SBP/scripts/"
+# D12 — Tarefa 16: estado.cjs agora exige (require duro) scripts/lib/*.cjs —
+# sem eles, QUALQUER subcomando (nao so 'veredito') derruba com MODULE_NOT_FOUND.
+cp "$SRC/scripts/lib/primeiro-prompt-jsonl.cjs" "$SBP/scripts/lib/"
+cp "$SRC/scripts/lib/extrair-veredito.cjs" "$SBP/scripts/lib/"
 cp "$SRC/hooks/lib/raiz.cjs" "$SBP/hooks/lib/"
 cp "$SRC/hooks/lib/config.cjs" "$SBP/hooks/lib/"
 cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SBP/hooks/lib/"
@@ -45,6 +49,38 @@ esperado() { # nome, exit esperado, comando...
 igual() { # nome, esperado, obtido
   if [ "$2" = "$3" ]; then ok=$((ok+1)); echo "  ok   $1"
   else falhou=$((falhou+1)); echo "  FALHA $1: esperava '$2', veio '$3'"; fi
+}
+
+# D12 — Tarefa 16: 'veredito' agora exige --transcrito <caminho> que confirme
+# (no arquivo, nao so no argumento): dentro de uma pasta 'subagents', primeiro
+# prompt com 'Slug: <slug>', ultima mensagem do assistente batendo com
+# <veredito>. Monta um transcrito de sandbox
+# $SBP/transcritos/<slug>-<agente_id>-<veredito>/subagents/agent-<agente_id>.jsonl
+# que confirma exatamente o que o caso declara, e imprime o caminho — usar
+# com --transcrito "$(transcrito_para <slug> <veredito> <agente_id>)".
+# Caminho SEMPRE absoluto (baseado em $SBP, definido no topo do arquivo):
+# funciona independente do cwd atual (algumas secoes trocam de caixa).
+transcrito_para() { # slug, veredito(ok|reprovado|invalido), agente_id
+  local slug="$1" veredito="$2" agente_id="$3"
+  local dir="$SBP/transcritos/$slug-$agente_id-$veredito/subagents"
+  mkdir -p "$dir"
+  local arq="$dir/agent-$agente_id.jsonl"
+  local ultima
+  case "$veredito" in
+    ok) ultima="VEREDITO: ok" ;;
+    reprovado) ultima="VEREDITO: reprovado" ;;
+    *) ultima="parece bom, sem certeza do veredito" ;;
+  esac
+  node -e '
+const fs = require("fs");
+const [arq, slug, ultima] = process.argv.slice(1);
+const linhas = [
+  JSON.stringify({type:"user",message:{role:"user",content:"Slug: "+slug+"\nRevise o diff."}}),
+  JSON.stringify({type:"assistant",message:{role:"assistant",content:[{type:"text",text:"Revisado.\n"+ultima}]}}),
+];
+fs.writeFileSync(arq, linhas.join("\n")+"\n");
+' "$arq" "$slug" "$ultima"
+  printf '%s' "$arq"
 }
 
 echo
@@ -206,7 +242,7 @@ $E_REPO marcar --slug backstop-1 --estagio executar --status ok --json '{"comand
 # Executar rodaria no test-repo, vamos simular que criou algo capturando snapshot
 esperado "backstop: exigir revisar captura snapshot" 0 $E_REPO exigir --slug backstop-1 --estagio revisar
 # Contrato de veredito (Tarefa 5): 'exigir revisar' armou a janela — precisa de um 'ok' gravado antes de fechar.
-$E_REPO veredito --slug backstop-1 --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id backstop-1-v1 >/dev/null
+$E_REPO veredito --slug backstop-1 --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id backstop-1-v1 --transcrito "$(transcrito_para backstop-1 ok backstop-1-v1)" >/dev/null
 esperado "backstop: marcar ok passa quando nada mudou" 0 $E_REPO marcar --slug backstop-1 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
 
 # Caso 2: exigir revisar => commit novo => marcar ok FALHA
@@ -247,7 +283,7 @@ $E_REPO marcar --slug backstop-4 --estagio plano --status ok >/dev/null
 $E_REPO exigir --slug backstop-4 --estagio executar >/dev/null
 $E_REPO marcar --slug backstop-4 --estagio executar --status ok --json '{"comando":"bash cmd.sh","saida":"result","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
 esperado "backstop-4: exigir revisar com arvore suja" 0 $E_REPO exigir --slug backstop-4 --estagio revisar
-$E_REPO veredito --slug backstop-4 --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id backstop-4-v1 >/dev/null
+$E_REPO veredito --slug backstop-4 --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id backstop-4-v1 --transcrito "$(transcrito_para backstop-4 ok backstop-4-v1)" >/dev/null
 # Nao fazer mudanca nenhuma, sujeira pre-existente nao reprova
 esperado "backstop-4: marcar ok passa com sujeira preexistente" 0 $E_REPO marcar --slug backstop-4 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
 
@@ -266,7 +302,7 @@ $E_REPO exigir --slug backstop-5 --estagio executar >/dev/null
 $E_REPO marcar --slug backstop-5 --estagio executar --status ok --json '{"comando":"node x.cjs","saida":"ok","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
 (cd "$SBP/test-repo" && git add -A && git commit -qm "estado versionado" >/dev/null 2>&1)
 esperado "backstop-5: arvore limpa e estado versionado" 0 $E_REPO exigir --slug backstop-5 --estagio revisar
-$E_REPO veredito --slug backstop-5 --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id backstop-5-v1 >/dev/null
+$E_REPO veredito --slug backstop-5 --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id backstop-5-v1 --transcrito "$(transcrito_para backstop-5 ok backstop-5-v1)" >/dev/null
 esperado "backstop-5: marcar ok passa (o exigir sujou o proprio estado)" 0 $E_REPO marcar --slug backstop-5 --estagio revisar --status ok --json '{"achados":0,"base":"HEAD","head":"HEAD"}'
 
 # Caso 6: sujeira que MUDA DE POSICAO na saida do porcelain nao vira mutacao.
@@ -298,7 +334,7 @@ $E_REPO marcar --slug backstop-6 --estagio plano --status ok >/dev/null
 $E_REPO exigir --slug backstop-6 --estagio executar >/dev/null
 $E_REPO marcar --slug backstop-6 --estagio executar --status ok --json '{"comando":"bash run.sh","saida":"done","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
 esperado "backstop-6: exigir com dois rastreados sujos" 0 $E_REPO exigir --slug backstop-6 --estagio revisar
-$E_REPO veredito --slug backstop-6 --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id backstop-6-v1 >/dev/null
+$E_REPO veredito --slug backstop-6 --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id backstop-6-v1 --transcrito "$(transcrito_para backstop-6 ok backstop-6-v1)" >/dev/null
 # O primeiro volta ao conteudo commitado (sem git destrutivo — so reescreve).
 # Ninguem sujou nada novo: bravo.txt so subiu da linha 2 para a linha 1.
 (cd "$SBP/test-repo" && echo "conteudo-alpha" > alpha.txt)
@@ -552,7 +588,7 @@ $E exigir  --slug t-snap --estagio executar >/dev/null
 $E marcar --slug t-snap --estagio executar --status ok \
   --json '{"comando":"snap","saida":"snap-ok","tarefas_ok":1,"tarefas":1,"mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
 $E exigir  --slug t-snap --estagio revisar >/dev/null
-$E veredito --slug t-snap --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id t-snap-v1 >/dev/null
+$E veredito --slug t-snap --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id t-snap-v1 --transcrito "$(transcrito_para t-snap ok t-snap-v1)" >/dev/null
 $E marcar --slug t-snap --estagio revisar --status ok \
   --json '{"achados":0,"base":"HEAD","head":"HEAD"}' >/dev/null
 igual "snapshot (armado pelo exigir revisar) sobrevive ao fechamento" "sim" \
@@ -716,7 +752,7 @@ igual "reaberto_por foi limpo apos fechamento ok" "nao" \
 # chegou a fechar.
 esperado "verificar ainda recusa: revisar tambem reabriu (D10)" 2 $E exigir --slug t-repr4 --estagio verificar
 $E exigir --slug t-repr4 --estagio revisar >/dev/null
-$E veredito --slug t-repr4 --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id t-repr4-v >/dev/null
+$E veredito --slug t-repr4 --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id t-repr4-v --transcrito "$(transcrito_para t-repr4 ok t-repr4-v)" >/dev/null
 esperado "marcar revisar ok fecha de novo" 0 $E marcar --slug t-repr4 --estagio revisar --status ok
 # Agora o fluxo foi destravado: verificar (que reprovou) é exigivel novamente
 esperado "verificar agora exigivel novamente (ciclo destravou)" 0 $E exigir --slug t-repr4 --estagio verificar
@@ -916,7 +952,7 @@ $E_R1 marcar --slug rev-vaza --estagio plano  --status ok >/dev/null
 $E_R1 exigir --slug rev-vaza --estagio executar >/dev/null
 $E_R1 marcar --slug rev-vaza --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
 $E_R1 exigir --slug rev-vaza --estagio revisar >/dev/null
-$E_R1 veredito --slug rev-vaza --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id rev-vaza-v1 >/dev/null
+$E_R1 veredito --slug rev-vaza --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id rev-vaza-v1 --transcrito "$(transcrito_para rev-vaza ok rev-vaza-v1)" >/dev/null
 $E_R1 marcar --slug rev-vaza --estagio revisar --status ok >/dev/null
 $E_R1 exigir --slug rev-vaza --estagio verificar >/dev/null
 $E_R1 marcar --slug rev-vaza --estagio verificar --status reprovado >/dev/null
@@ -932,7 +968,7 @@ ciclo_rev() { # fecha executar+revisar e reprova verificar
   $E_R1 exigir --slug rev-teto --estagio executar >/dev/null 2>&1
   $E_R1 marcar --slug rev-teto --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
   $E_R1 exigir --slug rev-teto --estagio revisar >/dev/null
-  $E_R1 veredito --slug rev-teto --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id rev-teto-v >/dev/null
+  $E_R1 veredito --slug rev-teto --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id rev-teto-v --transcrito "$(transcrito_para rev-teto ok rev-teto-v)" >/dev/null
   $E_R1 marcar --slug rev-teto --estagio revisar --status ok >/dev/null
   $E_R1 exigir --slug rev-teto --estagio verificar >/dev/null
   $E_R1 marcar --slug rev-teto --estagio verificar --status reprovado >/dev/null
@@ -974,7 +1010,7 @@ $E_C marcar --slug conc-a --estagio plano  --status ok >/dev/null
 $E_C exigir --slug conc-a --estagio executar >/dev/null
 $E_C marcar --slug conc-a --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
 $E_C exigir --slug conc-a --estagio revisar >/dev/null
-$E_C veredito --slug conc-a --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id conc-a-v1 >/dev/null
+$E_C veredito --slug conc-a --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id conc-a-v1 --transcrito "$(transcrito_para conc-a ok conc-a-v1)" >/dev/null
 $E_C marcar --slug conc-a --estagio revisar --status ok >/dev/null
 $E_C exigir --slug conc-a --estagio verificar >/dev/null
 $E_C marcar --slug conc-a --estagio verificar --status ok --json '{"comando":"x","saida":"y"}' >/dev/null
@@ -989,7 +1025,7 @@ $E_C marcar --slug conc-b --estagio plano  --status ok >/dev/null
 $E_C exigir --slug conc-b --estagio executar >/dev/null
 $E_C marcar --slug conc-b --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
 $E_C exigir --slug conc-b --estagio revisar >/dev/null
-$E_C veredito --slug conc-b --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id conc-b-v1 >/dev/null
+$E_C veredito --slug conc-b --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id conc-b-v1 --transcrito "$(transcrito_para conc-b ok conc-b-v1)" >/dev/null
 $E_C marcar --slug conc-b --estagio revisar --status ok >/dev/null
 $E_C exigir --slug conc-b --estagio verificar >/dev/null
 $E_C marcar --slug conc-b --estagio verificar --status ok --json '{"comando":"x","saida":"y"}' >/dev/null
@@ -1026,7 +1062,7 @@ esac
 $E_C2 exigir --slug conc-aberto --estagio executar >/dev/null
 $E_C2 marcar --slug conc-aberto --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
 $E_C2 exigir --slug conc-aberto --estagio revisar >/dev/null
-$E_C2 veredito --slug conc-aberto --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id conc-aberto-v1 >/dev/null
+$E_C2 veredito --slug conc-aberto --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id conc-aberto-v1 --transcrito "$(transcrito_para conc-aberto ok conc-aberto-v1)" >/dev/null
 $E_C2 marcar --slug conc-aberto --estagio revisar --status ok >/dev/null
 $E_C2 exigir --slug conc-aberto --estagio verificar >/dev/null
 $E_C2 marcar --slug conc-aberto --estagio verificar --status ok --json '{"comando":"x","saida":"y"}' >/dev/null
@@ -1741,9 +1777,11 @@ echo "== 27. EVIDENCIA DE 'verificar' CITA SENSOR (D3, D6 — Tarefa 5) =="
 # dezenas de linhas de teste que nao sao desta tarefa, sem deixar a checagem
 # sem exercicio real: aqui ela roda com o conferidor de verdade, contra as
 # pecas de verdade do repo (RAIZ_PLUGIN = a raiz desta propria copia).
-mkdir -p "$SBP/sensor-test/scripts" "$SBP/sensor-test/hooks/lib"
+mkdir -p "$SBP/sensor-test/scripts/lib" "$SBP/sensor-test/hooks/lib"
 cp "$SRC/scripts/estado.cjs" "$SBP/sensor-test/scripts/"
 cp "$SRC/scripts/conferir-categoria.cjs" "$SBP/sensor-test/scripts/"
+cp "$SRC/scripts/lib/primeiro-prompt-jsonl.cjs" "$SBP/sensor-test/scripts/lib/"
+cp "$SRC/scripts/lib/extrair-veredito.cjs" "$SBP/sensor-test/scripts/lib/"
 cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SBP/sensor-test/hooks/lib/"
 cd "$SBP/sensor-test" || exit 1
 ES="node scripts/estado.cjs"
@@ -1819,9 +1857,9 @@ echo
 echo "== 28. contrato de veredito: registrar duas vezes o mesmo agente-id substitui, nao duplica =="
 $E iniciar --slug vered-upsert >/dev/null
 esperado "primeiro veredito (reprovado) grava" 0 \
-  $E veredito --slug vered-upsert --estagio revisar --veredito reprovado --agente rainforest-mind:revisor --agente-id AAA
+  $E veredito --slug vered-upsert --estagio revisar --veredito reprovado --agente rainforest-mind:revisor --agente-id AAA --transcrito "$(transcrito_para vered-upsert reprovado AAA)"
 esperado "segundo veredito do MESMO agente-id grava" 0 \
-  $E veredito --slug vered-upsert --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id AAA
+  $E veredito --slug vered-upsert --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id AAA --transcrito "$(transcrito_para vered-upsert ok AAA)"
 N_VERED_UPSERT=$(node -e "console.log((JSON.parse(require('fs').readFileSync('docs/rainforest/estado/vered-upsert.json','utf8')).revisar.vereditos||[]).length)")
 igual "upsert por agente-id: 1 entrada, nao 2" "1" "$N_VERED_UPSERT"
 V_VERED_UPSERT=$(node -e "console.log(JSON.parse(require('fs').readFileSync('docs/rainforest/estado/vered-upsert.json','utf8')).revisar.vereditos[0].veredito)")
@@ -1830,8 +1868,8 @@ igual "upsert por agente-id: prevalece a SEGUNDA chamada" "ok" "$V_VERED_UPSERT"
 echo
 echo "== 29. contrato de veredito: duas escritas concorrentes preservam as duas =="
 $E iniciar --slug vered-concorrente >/dev/null
-$E veredito --slug vered-concorrente --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id BBB &
-$E veredito --slug vered-concorrente --estagio revisar --veredito reprovado --agente rainforest-mind:revisor --agente-id CCC &
+$E veredito --slug vered-concorrente --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id BBB --transcrito "$(transcrito_para vered-concorrente ok BBB)" &
+$E veredito --slug vered-concorrente --estagio revisar --veredito reprovado --agente rainforest-mind:revisor --agente-id CCC --transcrito "$(transcrito_para vered-concorrente reprovado CCC)" &
 wait
 N_VERED_CONC=$(node -e "console.log((JSON.parse(require('fs').readFileSync('docs/rainforest/estado/vered-concorrente.json','utf8')).revisar.vereditos||[]).length)")
 igual "escritas concorrentes (agente-id diferentes): 2 entradas, nao 1, nao 0" "2" "$N_VERED_CONC"
@@ -1845,7 +1883,7 @@ $E exigir --slug vered-zera --estagio executar >/dev/null
 $E marcar --slug vered-zera --estagio executar --status ok --json '{"comando":"echo exec","saida":"ok","mutacao":[]}' >/dev/null
 esperado "exigir revisar (1a rodada)" 0 $E exigir --slug vered-zera --estagio revisar
 esperado "grava 1 veredito na janela" 0 \
-  $E veredito --slug vered-zera --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id ZZZ
+  $E veredito --slug vered-zera --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id ZZZ --transcrito "$(transcrito_para vered-zera ok ZZZ)"
 N_VERED_ZERA_ANTES=$(node -e "console.log((JSON.parse(require('fs').readFileSync('docs/rainforest/estado/vered-zera.json','utf8')).revisar.vereditos||[]).length)")
 igual "veredito gravado antes do 2o exigir: 1 entrada" "1" "$N_VERED_ZERA_ANTES"
 esperado "exigir revisar (2a rodada)" 0 $E exigir --slug vered-zera --estagio revisar
@@ -1882,21 +1920,21 @@ fi
 
 # Caso (b): 2 vereditos 'ok' de agentes diferentes -> fecha exit 0
 prep_vered vered-dois-ok
-$EV veredito --slug vered-dois-ok --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id AG1 >/dev/null
-$EV veredito --slug vered-dois-ok --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id AG2 >/dev/null
+$EV veredito --slug vered-dois-ok --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id AG1 --transcrito "$(transcrito_para vered-dois-ok ok AG1)" >/dev/null
+$EV veredito --slug vered-dois-ok --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id AG2 --transcrito "$(transcrito_para vered-dois-ok ok AG2)" >/dev/null
 esperado "janela com 2 'ok' de agentes diferentes fecha" 0 \
   $EV marcar --slug vered-dois-ok --estagio revisar --status ok
 
 # Caso (c, fixture do plano): 1 'ok' + 1 'reprovado' na janela -> recusa exit 2
 prep_vered vered-misto
-$EV veredito --slug vered-misto --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id AG1 >/dev/null
-$EV veredito --slug vered-misto --estagio revisar --veredito reprovado --agente rainforest-mind:revisor --agente-id AG2 >/dev/null
+$EV veredito --slug vered-misto --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id AG1 --transcrito "$(transcrito_para vered-misto ok AG1)" >/dev/null
+$EV veredito --slug vered-misto --estagio revisar --veredito reprovado --agente rainforest-mind:revisor --agente-id AG2 --transcrito "$(transcrito_para vered-misto reprovado AG2)" >/dev/null
 esperado "contrato de veredito: marcar revisar ok recusa quando ha veredito reprovado na janela" 2 \
   $EV marcar --slug vered-misto --estagio revisar --status ok
 
 # Caso (d, D3): veredito 'invalido' na janela tambem recusa — fora do vocabulario, a revisao nao existe
 prep_vered vered-invalido
-$EV veredito --slug vered-invalido --estagio revisar --veredito invalido --agente rainforest-mind:revisor --agente-id AG1 >/dev/null
+$EV veredito --slug vered-invalido --estagio revisar --veredito invalido --agente rainforest-mind:revisor --agente-id AG1 --transcrito "$(transcrito_para vered-invalido invalido AG1)" >/dev/null
 esperado "janela com 'invalido' recusa fechamento 'ok'" 2 \
   $EV marcar --slug vered-invalido --estagio revisar --status ok
 
@@ -1930,7 +1968,7 @@ prep_vered_r() { # slug — chega ate 'exigir revisar' com a janela armada (vazi
 
 # Caso (a, fixture do plano): janela so com 'ok' -> 'reprovado' recusa exit 2
 prep_vered_r vered-repr-so-ok
-$ER veredito --slug vered-repr-so-ok --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id AG1 >/dev/null
+$ER veredito --slug vered-repr-so-ok --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id AG1 --transcrito "$(transcrito_para vered-repr-so-ok ok AG1)" >/dev/null
 msg_sorepr=$($ER marcar --slug vered-repr-so-ok --estagio revisar --status reprovado 2>&1)
 cod_sorepr=$?
 if [ "$cod_sorepr" = "2" ] && printf '%s' "$msg_sorepr" | grep -q "nenhum veredito 'reprovado' gravado"; then
@@ -1946,7 +1984,7 @@ esperado "janela vazia recusa 'reprovado' tambem" 2 \
 
 # Caso (c): janela com 1 'reprovado' -> fecha exit 0, 'tentativas' incrementa (mecanismo ja testado em §17)
 prep_vered_r vered-repr-ok
-$ER veredito --slug vered-repr-ok --estagio revisar --veredito reprovado --agente rainforest-mind:revisor --agente-id AG1 >/dev/null
+$ER veredito --slug vered-repr-ok --estagio revisar --veredito reprovado --agente rainforest-mind:revisor --agente-id AG1 --transcrito "$(transcrito_para vered-repr-ok reprovado AG1)" >/dev/null
 esperado "janela com 1 'reprovado' fecha 'reprovado'" 0 \
   $ER marcar --slug vered-repr-ok --estagio revisar --status reprovado
 igual "tentativas incrementou para 1" "1" \
@@ -1975,7 +2013,7 @@ ciclo_impasse() {
   $EI exigir --slug impasse-rev --estagio executar >/dev/null 2>&1
   $EI marcar --slug impasse-rev --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
   $EI exigir --slug impasse-rev --estagio revisar >/dev/null
-  $EI veredito --slug impasse-rev --estagio revisar --veredito reprovado --agente rainforest-mind:revisor --agente-id IMP >/dev/null
+  $EI veredito --slug impasse-rev --estagio revisar --veredito reprovado --agente rainforest-mind:revisor --agente-id IMP --transcrito "$(transcrito_para impasse-rev reprovado IMP)" >/dev/null
   $EI marcar --slug impasse-rev --estagio revisar --status reprovado >/dev/null
 }
 ciclo_impasse; ciclo_impasse; ciclo_impasse   # 3 reprovacoes de 'revisar': teto atingido
@@ -2041,7 +2079,7 @@ $ED marcar --slug d10-reabre --estagio plano  --status ok >/dev/null
 $ED exigir --slug d10-reabre --estagio executar >/dev/null
 $ED marcar --slug d10-reabre --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"t"}]}' >/dev/null
 $ED exigir --slug d10-reabre --estagio revisar >/dev/null
-$ED veredito --slug d10-reabre --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id d10-v1 >/dev/null
+$ED veredito --slug d10-reabre --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id d10-v1 --transcrito "$(transcrito_para d10-reabre ok d10-v1)" >/dev/null
 esperado "setup: marcar revisar ok" 0 $ED marcar --slug d10-reabre --estagio revisar --status ok
 esperado "setup: exigir verificar" 0 $ED exigir --slug d10-reabre --estagio verificar
 esperado "setup: marcar verificar ok" 0 \
@@ -2072,7 +2110,7 @@ esperado "exigir verificar RECUSA ate o revisar fechar de novo" 2 \
   $ED exigir --slug d10-reabre --estagio verificar
 
 $ED exigir --slug d10-reabre --estagio revisar >/dev/null
-$ED veredito --slug d10-reabre --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id d10-v2 >/dev/null
+$ED veredito --slug d10-reabre --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id d10-v2 --transcrito "$(transcrito_para d10-reabre ok d10-v2)" >/dev/null
 esperado "marcar revisar ok fecha de novo" 0 $ED marcar --slug d10-reabre --estagio revisar --status ok
 esperado "exigir verificar passa apos revisar fechar de novo" 0 \
   $ED exigir --slug d10-reabre --estagio verificar
@@ -2135,6 +2173,69 @@ if [ "$cod_lig" = "2" ] && printf '%s' "$msg_lig" | grep -q "nenhum veredito gra
 else
   falhou=$((falhou+1)); echo "  FALHA toggle ligado: exit=$cod_lig"; printf '%s\n' "$msg_lig" | sed 's/^/         /'
 fi
+
+unset RFM_ESTADO_ROOT
+
+echo
+echo "== 36. contrato de veredito: 'veredito' sem transcrito que o confirme e recusado (D12 — Tarefa 16) =="
+mkdir -p "$SBP/transcrito-confere"
+(cd "$SBP/transcrito-confere" && git init -q && git config user.email t@t && git config user.name T && echo x > a.txt && git add . && git commit -qm inicial)
+export RFM_ESTADO_ROOT="$SBP/transcrito-confere"
+ETR="node scripts/estado.cjs"
+$ETR iniciar --slug transcrito-teste >/dev/null
+
+# (a) sem --transcrito: recusa exit 2, nada gravado
+msg_sem_transcrito=$($ETR veredito --slug transcrito-teste --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id TR1 2>&1)
+cod_sem_transcrito=$?
+janela_sem_transcrito=$(node -e "const e=JSON.parse(require('fs').readFileSync('transcrito-confere/docs/rainforest/estado/transcrito-teste.json','utf8')); console.log(JSON.stringify((e.revisar&&e.revisar.vereditos)||[]))")
+if [ "$cod_sem_transcrito" = "2" ] && [ "$janela_sem_transcrito" = "[]" ]; then
+  ok=$((ok+1)); echo "  ok   sem --transcrito: recusa exit 2, nada gravado"
+else
+  falhou=$((falhou+1)); echo "  FALHA sem --transcrito: exit=$cod_sem_transcrito janela=$janela_sem_transcrito"
+  printf '%s\n' "$msg_sem_transcrito" | sed 's/^/         /'
+fi
+
+# (b) transcrito cuja ultima linha e' 'VEREDITO: reprovado', mas --veredito diz 'ok': recusa exit 2
+T_DIVERGENTE=$(transcrito_para transcrito-teste reprovado TR2)
+msg_divergente=$($ETR veredito --slug transcrito-teste --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id TR2 --transcrito "$T_DIVERGENTE" 2>&1)
+cod_divergente=$?
+janela_divergente=$(node -e "const e=JSON.parse(require('fs').readFileSync('transcrito-confere/docs/rainforest/estado/transcrito-teste.json','utf8')); console.log(JSON.stringify((e.revisar&&e.revisar.vereditos)||[]))")
+if [ "$cod_divergente" = "2" ] && [ "$janela_divergente" = "[]" ]; then
+  ok=$((ok+1)); echo "  ok   transcrito diz 'reprovado' mas --veredito diz 'ok': recusa exit 2, nada gravado"
+else
+  falhou=$((falhou+1)); echo "  FALHA transcrito divergente: exit=$cod_divergente janela=$janela_divergente"
+  printf '%s\n' "$msg_divergente" | sed 's/^/         /'
+fi
+
+# (c) transcrito fora de subagents/ (mesmo conteudo valido): recusa exit 2
+mkdir -p "$SBP/transcrito-confere/fora-de-subagents"
+T_FORA="$SBP/transcrito-confere/fora-de-subagents/agent-TR3.jsonl"
+node -e '
+const fs = require("fs");
+const [arq] = process.argv.slice(1);
+const linhas = [
+  JSON.stringify({type:"user",message:{role:"user",content:"Slug: transcrito-teste\nRevise o diff."}}),
+  JSON.stringify({type:"assistant",message:{role:"assistant",content:[{type:"text",text:"Revisado.\nVEREDITO: ok"}]}}),
+];
+fs.writeFileSync(arq, linhas.join("\n")+"\n");
+' "$T_FORA"
+msg_fora=$($ETR veredito --slug transcrito-teste --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id TR3 --transcrito "$T_FORA" 2>&1)
+cod_fora=$?
+janela_fora=$(node -e "const e=JSON.parse(require('fs').readFileSync('transcrito-confere/docs/rainforest/estado/transcrito-teste.json','utf8')); console.log(JSON.stringify((e.revisar&&e.revisar.vereditos)||[]))")
+if [ "$cod_fora" = "2" ] && [ "$janela_fora" = "[]" ]; then
+  ok=$((ok+1)); echo "  ok   transcrito fora de subagents/: recusa exit 2, nada gravado"
+else
+  falhou=$((falhou+1)); echo "  FALHA transcrito fora de subagents/: exit=$cod_fora janela=$janela_fora"
+  printf '%s\n' "$msg_fora" | sed 's/^/         /'
+fi
+
+# (d) transcrito certo: grava
+T_CERTO=$(transcrito_para transcrito-teste ok TR4)
+esperado "transcrito certo: grava" 0 \
+  $ETR veredito --slug transcrito-teste --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id TR4 --transcrito "$T_CERTO"
+janela_certa=$(node -e "const e=JSON.parse(require('fs').readFileSync('transcrito-confere/docs/rainforest/estado/transcrito-teste.json','utf8')); console.log(JSON.stringify((e.revisar&&e.revisar.vereditos)||[]))")
+igual "transcrito certo: janela tem a entrada TR4 ok" "sim" \
+  "$(case "$janela_certa" in *'"agente_id":"TR4"'*'"veredito":"ok"'*) echo sim;; *) echo nao;; esac)"
 
 unset RFM_ESTADO_ROOT
 

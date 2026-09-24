@@ -20,7 +20,14 @@ SRC="$(cygpath -m "$SRC_POSIX" 2>/dev/null || printf '%s' "$SRC_POSIX")"
 HOOK="$SRC/hooks/veredito-revisor.cjs"
 ESTADO="$SRC/scripts/estado.cjs"
 HOOKS_JSON="$SRC/hooks/hooks.json"
-FIX="$SRC/hooks/fixtures/veredito-revisor"
+# D12 — Tarefa 16: `estado.cjs veredito` agora exige `--transcrito <caminho>`
+# dentro de uma pasta `subagents` (o hook passa o mesmo caminho que ja
+# resolvia para achar o Slug). Os fixtures moraram soltos ate a tarefa 16;
+# agora ficam em subagents/, e ganharam duas variantes cujo ULTIMO texto do
+# assistente bate com o vocabulario ('-ok'/'-reprovado') — o arquivo antigo
+# (sem sufixo) continua fora do vocabulario ('Lendo o diff.'), de proposito,
+# para o caso 5 (veredito 'invalido').
+FIX="$SRC/hooks/fixtures/veredito-revisor/subagents"
 
 RAIZ_POSIX="$(mktemp -d)"
 RAIZ="$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")"
@@ -116,7 +123,7 @@ VEREDITO: ok"
 echo
 echo "== 1. agent_type certo grava =="
 reset_estado
-P=$(pay "$R" "rainforest-mind:revisor" "AAA" "$VEREDITO_OK" '{"agent_transcript_path":"'"$FIX"'/transcript-slug-string.jsonl"}')
+P=$(pay "$R" "rainforest-mind:revisor" "AAA" "$VEREDITO_OK" '{"agent_transcript_path":"'"$FIX"'/transcript-slug-string-ok.jsonl"}')
 rodar_hook "$P"; GOT=$?
 V=$(vereditos)
 if [ "$GOT" = 0 ] && printf '%s' "$V" | grep -q '"veredito":"ok"' && printf '%s' "$V" | grep -q '"agente_id":"AAA"' && printf '%s' "$V" | grep -q '"agente":"rainforest-mind:revisor"'; then
@@ -131,7 +138,7 @@ echo "== 2. agent_type que nao e revisor e ignorado =="
 # o filtro de agent_type sumir (mutacao da tarefa 8), o hook gravaria mesmo
 # assim, e esta secao pegaria isso.
 reset_estado
-P=$(pay "$R" "outro-agente" "BBB" "$VEREDITO_OK" '{"agent_transcript_path":"'"$FIX"'/transcript-slug-string.jsonl"}')
+P=$(pay "$R" "outro-agente" "BBB" "$VEREDITO_OK" '{"agent_transcript_path":"'"$FIX"'/transcript-slug-string-ok.jsonl"}')
 rodar_hook "$P"; GOT=$?
 V=$(vereditos)
 if [ "$GOT" = 0 ] && [ "$V" = "[]" ]; then
@@ -181,9 +188,9 @@ echo
 echo "== 6. dois hooks concorrentes preservam as duas entradas =="
 reset_estado
 P1=$(pay "$R" "rainforest-mind:revisor" "CONC-1" "Parece certo.
-VEREDITO: ok" '{"agent_transcript_path":"'"$FIX"'/transcript-slug-string.jsonl"}')
+VEREDITO: ok" '{"agent_transcript_path":"'"$FIX"'/transcript-slug-string-ok.jsonl"}')
 P2=$(pay "$R" "rainforest-mind:revisor" "CONC-2" "Falta ajuste.
-VEREDITO: reprovado" '{"agent_transcript_path":"'"$FIX"'/transcript-slug-string.jsonl"}')
+VEREDITO: reprovado" '{"agent_transcript_path":"'"$FIX"'/transcript-slug-string-reprovado.jsonl"}')
 ( printf '%s' "$P1" | RFM_ESTADO_ROOT="$R" node "$HOOK" >/dev/null 2>&1 ) &
 PID1=$!
 ( printf '%s' "$P2" | RFM_ESTADO_ROOT="$R" node "$HOOK" >/dev/null 2>&1 ) &
@@ -203,7 +210,7 @@ echo "== 7. fallback sem agent_transcript_path =="
 # <dirname(transcript_path)>/<session_id>/subagents/agent-<agent_id>.jsonl.
 reset_estado
 mkdir -p "$R/transcripts/sess-fallback/subagents"
-cp "$FIX/transcript-slug-string.jsonl" "$R/transcripts/sess-fallback/subagents/agent-FB1.jsonl"
+cp "$FIX/transcript-slug-string-ok.jsonl" "$R/transcripts/sess-fallback/subagents/agent-FB1.jsonl"
 P=$(pay "$R" "rainforest-mind:revisor" "FB1" "$VEREDITO_OK" '{"session_id":"sess-fallback"}')
 rodar_hook "$P"; GOT=$?
 V=$(vereditos)
@@ -230,7 +237,7 @@ echo "== 9. toggle desligado nao grava =="
 reset_estado
 mkdir -p "$R/.rainforest"
 printf '{"contrato-veredito": false}' > "$R/.rainforest/config.json"
-P=$(pay "$R" "rainforest-mind:revisor" "TOG1" "$VEREDITO_OK" '{"agent_transcript_path":"'"$FIX"'/transcript-slug-string.jsonl"}')
+P=$(pay "$R" "rainforest-mind:revisor" "TOG1" "$VEREDITO_OK" '{"agent_transcript_path":"'"$FIX"'/transcript-slug-string-ok.jsonl"}')
 rodar_hook "$P"; GOT=$?
 V=$(vereditos)
 if [ "$GOT" = 0 ] && [ "$V" = "[]" ]; then
@@ -280,7 +287,7 @@ fi
 # encontrado (nao um caminho hardcoded pela bateria) — se a tarefa 9 apontar
 # para um arquivo que nao existe, esta secao pega o MODULE_NOT_FOUND.
 reset_estado
-P=$(pay "$R" "rainforest-mind:revisor" "HOOKSJSON1" "$VEREDITO_OK" '{"agent_transcript_path":"'"$FIX"'/transcript-slug-string.jsonl"}')
+P=$(pay "$R" "rainforest-mind:revisor" "HOOKSJSON1" "$VEREDITO_OK" '{"agent_transcript_path":"'"$FIX"'/transcript-slug-string-ok.jsonl"}')
 SAIDA_CMD=$(printf '%s' "$P" | CLAUDE_PLUGIN_ROOT="$SRC" RFM_ESTADO_ROOT="$R" bash -c "$CMD" 2>&1)
 GOT_CMD=$?
 V=$(vereditos)

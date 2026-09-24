@@ -133,6 +133,10 @@ function main() {
     '--estagio', 'revisar',
     '--veredito', veredito,
     '--agente', String(agentType),
+    // D12 — Tarefa 16: `estado.cjs veredito` agora exige --transcrito e
+    // confere nele (dentro de subagents/, Slug bate, ultima linha bate) —
+    // o mesmo caminho que este hook ja resolveu para achar o Slug.
+    '--transcrito', caminhoTranscrito,
   ];
   if (typeof payload.agent_id === 'string' && payload.agent_id) {
     args.push('--agente-id', payload.agent_id);
