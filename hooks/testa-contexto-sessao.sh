@@ -733,7 +733,8 @@ fi
 # 2026-09-17: 5897 -> 5895 — a regra 6 ganhou a fronteira de repo (issue #291: conserto na hora so no repo da sessao; repo alheio vira Issue + Q) pagando por SUBTRACAO no proprio texto. A primeira redacao custou +93 B e a combinacao real de hoje (22.1) passou a perder o bloco de Dependencias em silencio; +27 B ainda cortava. Folga sobre NUCLEOS_MAX_BYTES: 103 B, mas a folga que vale e' a da 22.1, que nao passa de ~20 B.
 # 2026-09-17: 5895 -> 5899 — a regra 4 ganhou elaboracao (issue #299: rota com emoji por etapa); o texto do nucleo nao mudou, os +4 B sao so o " ↳" do marcador. A 22.1 segue verde; folga dela cai para ~16 B.
 # 2026-09-23: 5899 -> 5896 — a regra 10 trocou "viraram declaracao" por "sao declaracao" (prompt-audit: frase relativa a migracao no nucleo injetado). Folga da 22.1 sobe para ~19 B.
-NUCLEO_ESPERADO=5896
+# 2026-09-24: 5896 -> 5914 — a regra 10 ganhou "barram so a 11 ... e a folha: nao despacha" mais "ListAgents fecha rodada parando a sobra" (fluxo 2026-09-24-revisor-folha, tarefa 5, D2/D3: agente despachado e folha, fechamento de rodada por ListAgents), corrigindo tambem "so a regra 11 barra" -- falso apos a tarefa 2, que fez a portaria negar Agent com agent_id presente. Pagou quase tudo por SUBTRACAO no proprio texto: "quem edita usa isolation..." perdeu o sujeito redundante, "entram no log, nao no portao — e nao ha frase digitada por sessao" virou "so log, nao portao, sem frase digitada por sessao" (travessao por virgula). Folga sobre NUCLEOS_MAX_BYTES: 86 B; a folga que vale e' a da 22.1, que caiu para 8 B (sobra 708 B, piso 700 B) -- praticamente esgotada, proxima regra que crescer aqui tem de cortar em outro lugar do nucleo.
+NUCLEO_ESPERADO=5914
 if [ "$NUCLEO_BYTES_REAL" = "$NUCLEO_ESPERADO" ]; then
   ok=$((ok+1)); echo "  ok    D7: nucleo emitido mede exatamente $NUCLEO_BYTES_REAL B (contrato: $NUCLEO_ESPERADO B)"
 else

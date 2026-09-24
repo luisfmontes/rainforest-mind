@@ -123,9 +123,10 @@ Elaboração: references/regra-09.md
 
 **10. Agentes baratos, e a portaria REGISTRA.** Task de **3.000+ tokens** vai para o
 agente da **função**; abaixo disso despachar sai mais caro que fazer, e a janela
-principal pensa. Só a regra 11 **barra**: quem edita usa `isolation: "worktree"` e
-**nunca é nomeado**. Manifesto e estágio são **declaração**: entram no log, não
-no portão — e não há frase digitada por sessão.
+principal pensa. Barram só a 11 (`isolation: "worktree"`, nunca nomeado) e a
+folha: não despacha. Manifesto e estágio são **declaração**: só log, não
+portão, sem frase digitada por sessão. `ListAgents` fecha rodada parando a
+sobra.
 <!-- detalhe -->
 Elaboração: references/regra-10.md
 
