@@ -2016,6 +2016,15 @@ function main() {
           console.log(`upstream '${upstream_reaberto}' reaberto por reprovação`);
         }
       }
+      // D10: 'verificar' reprovado devolve tambem o 'revisar' a 'pendente' —
+      // hoje a reprovacao reabre so o 'executar' (rebaixarUpstream acima) e o
+      // 'revisar' fica 'ok', entao a mudanca nova (que corrige o defeito que
+      // 'verificar' achou) segue para 'verificar' sem revisao, e 'marcar
+      // executar parcial' e recusado ("executar nao pode voltar a parcial com
+      // revisar em ok", D28/estagioPosteriorAberto). O contador `tentativas`
+      // do 'verificar' (linha acima) e a janela de vereditos (D6, zerada so
+      // no proximo 'exigir revisar') nao mudam aqui.
+      if (estagio === 'verificar' && estado.revisar) estado.revisar = { ...estado.revisar, status: 'pendente', em: hoje() };
     }
     // Limpar tentativas e liberado_em quando fecha com ok
     if (status === (FECHADO[estagio] || 'ok')) {
