@@ -23,7 +23,7 @@
     "em": "2026-09-24"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-24",
     "tarefas_ok": 20,
     "tarefas": 20,
@@ -164,8 +164,8 @@
       }
     ],
     "achados_tarefa_1": "payload SubagentStop real: agent_type=rainforest-mind:revisor, agent_transcript_path presente (subagents/agent-<id>.jsonl, 1a msg user content string com o briefing), last_assistant_message, stop_hook_active, agent_id",
-    "comando": "bash scripts/testa-estado.sh",
-    "saida": "== resultado: 292 ok, 0 falhas ==",
+    "comando": "bash hooks/testa-veredito-revisor.sh",
+    "saida": "== resultado: 16 ok, 0 falha(s) ==",
     "mutacao": [
       {
         "tarefa": 1,
@@ -265,27 +265,25 @@
       {
         "tarefa": 20,
         "resultado": "vermelho",
-        "fixture": "testa-estado.sh, arvore inventada ~/.claude-x/ recusa"
+        "fixture": "testa-estado.sh, sem CLAUDE_CONFIG_DIR: arvore em ~/.claude grava"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "verificar",
-      "data": "2026-09-24"
-    }
+    ]
   },
   "revisar": {
     "status": "pendente",
     "snapshot": {
-      "head": "e2fc28bcc445e3b40dd4d3954e5cb681cf77162f",
-      "caminhos_sujos": []
+      "head": "e6745750aa740e17cfe2d5a116f098720824c4f7",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-09-23-contrato-de-veredito.json"
+      ]
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a146f3b999175dc7f",
+        "agente_id": "a91a041a775abd89b",
         "veredito": "ok",
         "em": "2026-09-24",
-        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\subagents\\agent-a146f3b999175dc7f.jsonl"
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\subagents\\agent-a91a041a775abd89b.jsonl"
       }
     ],
     "em": "2026-09-24",

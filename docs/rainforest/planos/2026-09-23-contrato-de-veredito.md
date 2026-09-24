@@ -293,3 +293,12 @@ liberada pelo usuário ("recomendado").
 - Critério: `testa-estado.sh` recusa `~/.claude-x/...` com meta de revisor
   (exit 2, janela vazia); sem a variável, `~/.claude` grava e
   `~/.claude-personal` recusa. Contra o `estado.cjs` anterior: 2 falhas.
+
+### 21. Versão 1.23.9 [tipo: configurar]
+atende: fechar
+arquivos: `.claude-plugin/plugin.json`, `README.md`
+depende de: 20
+paralela: nao
+mutacao: n/a
+  motivo: bump de versão, sem comportamento a inverter.
+pronto quando: `.claude-plugin/plugin.json` e o selo da linha 7 do `README.md` dizem `1.23.9`, um acima da `origin/main` (`1.23.8`) — conferido por `MSYS_NO_PATHCONV=1 git show origin/main:.claude-plugin/plugin.json`.
