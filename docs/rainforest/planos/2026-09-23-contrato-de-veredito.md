@@ -248,3 +248,28 @@ paralela: nao
 mutacao: n/a
   motivo: doc; a falsificação é a coerência com D11-D13 e com o código das tarefas 15-16.
 pronto quando: `skills/revisar/SKILL.md` diz (a) que desligar `contrato-veredito` faz o `marcar revisar` fechar sem a trava, com aviso — coerente com o helper da tarefa 15; (b) que o veredito só entra pelo hook, e que o subcomando `veredito` recusa sem transcrito de revisor que o confirme — coerente com a tarefa 16; (c) que `Slug:` errado grava no fluxo errado e é responsabilidade de quem despacha conferir — D13; conferido lendo cada frase contra `scripts/estado.cjs` (helper e `transcritoConfirmaVeredito`), e `bash scripts/testa-teto-skills.sh` mantendo `revisar` dentro do teto.
+
+**Emenda de 2026-09-24 — segunda revisão reprovada (1 achado):** transcrito fabricado em qualquer pasta `subagents` satisfazia a D12 → D14/tarefas 18-19.
+
+### 18. Transcrito só vale na pasta real de sessão, e o caminho fica gravado [tipo: implementar]
+atende: D14
+arquivos: `scripts/estado.cjs`, `scripts/testa-estado.sh`, `hooks/testa-veredito-revisor.sh`, `hooks/fixtures/veredito-revisor/subagents/*.jsonl`, `hooks/fixtures/veredito-revisor/subagents/*.meta.json`
+depende de: 17
+paralela: nao
+Além da D12, o subcomando `veredito` recusa (exit 2, sem gravar) quando o transcrito não está sob `<os.homedir()>/<.claude ou .claude-*>/projects/<projeto>/<sessao>/subagents/`, quando o nome não é `agent-<--agente-id>.jsonl`, ou quando falta o irmão `agent-<id>.meta.json` com `agentType` `revisor` ou `rainforest-mind:revisor`. A checagem é exatamente `if (!transcritoEmPastaDeSessaoReal(transcrito, agenteId)) {`. A entrada gravada ganha o campo `transcrito` (caminho absoluto). As baterias montam a árvore com `HOME`/`USERPROFILE` apontando para o sandbox.
+mutacao:
+  arquivo: `scripts/estado.cjs`
+  de: `if (!transcritoEmPastaDeSessaoReal(transcrito, agenteId)) {`
+  para: `if (false) {`
+  bateria: `bash scripts/testa-estado.sh`
+  fixture: `testa-estado.sh, secao "transcrito fora da pasta real de sessao e recusado"`
+pronto quando: com o forjamento da segunda revisão (duas linhas JSONL em `$TEMP/qualquer/subagents/agent-X.jsonl`, `veredito ... --veredito ok --agente-id X --transcrito <ele>`), o comando sai 2 e a janela fica inalterada; sem o `.meta.json` ou com `agentType` de outro agente, sai 2; com a árvore `<home>/.claude-personal/projects/p/s/subagents/agent-X.jsonl` + meta de revisor, grava e `ler` mostra `transcrito` com esse caminho — provado por `bash scripts/testa-estado.sh` imprimindo `ok` na seção "transcrito fora da pasta real de sessao e recusado", e `bash hooks/testa-veredito-revisor.sh` terminando em `0 falha(s)`.
+
+### 19. Doc: o limite do contrato [tipo: docs]
+atende: D14
+arquivos: `skills/revisar/SKILL.md`
+depende de: 18
+paralela: nao
+mutacao: n/a
+  motivo: doc; a falsificação é a coerência com D14 e com a checagem da tarefa 18.
+pronto quando: `skills/revisar/SKILL.md` troca a promessa de "auditável" pelo que o código faz — transcrito na pasta real de sessão, meta de revisor, caminho gravado — e diz que o contrato barra o atalho por hábito, não quem forja de propósito com acesso ao disco (D14); conferido lendo cada frase contra `transcritoEmPastaDeSessaoReal` em `scripts/estado.cjs`, e `bash scripts/testa-teto-skills.sh` mantendo `revisar` dentro do teto.
