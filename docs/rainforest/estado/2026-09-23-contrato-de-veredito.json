@@ -270,39 +270,30 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "6eff8a51c6b973430fb6c9e42e5cef2deeaaf510",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/2026-09-23-contrato-de-veredito.json"
-      ]
+      "head": "e2fc28bcc445e3b40dd4d3954e5cb681cf77162f",
+      "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a495acd35de618617",
+        "agente_id": "a146f3b999175dc7f",
         "veredito": "ok",
         "em": "2026-09-24",
-        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\subagents\\agent-a495acd35de618617.jsonl"
-      }
-    ],
-    "em_voo": [
-      {
-        "agente": "revisor",
-        "tarefa": "terceira revisao do contrato",
-        "desde": "2026-09-24T09:11:53-03:00"
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\subagents\\agent-a146f3b999175dc7f.jsonl"
       }
     ],
     "em": "2026-09-24",
     "achados": 1,
-    "tentativas": 3,
-    "liberado_em": "2026-09-24",
     "rodadas_extra": [
       {
         "texto": "recomendado: aceitar so a pasta de config em uso (CLAUDE_CONFIG_DIR, ou ~/.claude sem ela)",
         "em": "2026-09-24"
       }
-    ]
+    ],
+    "base": "dec421f5",
+    "head": "e2fc28bc"
   },
   "verificar": {
     "status": "pendente"
