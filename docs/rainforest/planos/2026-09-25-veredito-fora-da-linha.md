@@ -49,12 +49,12 @@ pronto quando: com o payload real de `SubagentStop` de um revisor com `Slug:` cu
 
 ### 4. Documentar a segunda chance [tipo: docs]
 atende: D1, D2, D3
-arquivos: `agents/revisor.md`
+arquivos: `agents/revisor.md`, `skills/revisar/SKILL.md`
 depende de: 3
 paralela: nao
 mutacao: n/a
   motivo: doc; a falsificação é a coerência com D1–D3 e com o comportamento real das tarefas 2 e 3.
-pronto quando: a seção do `agents/revisor.md` que pede a última linha diz que negrito em volta é aceito (D2) e que, fora disso, o hook devolve a vez uma vez pedindo a linha, e na segunda o veredito fica `invalido` (D1, D3) — conferido lendo contra `hooks/veredito-revisor.cjs` e `scripts/lib/extrair-veredito.cjs`; `skills/revisar/SKILL.md` não muda (teto).
+pronto quando: a seção do `agents/revisor.md` que pede a última linha diz que negrito em volta é aceito (D2) e que, fora disso, o hook devolve a vez uma vez pedindo a linha, e na segunda o veredito fica `invalido` (D1, D3) — conferido lendo contra `hooks/veredito-revisor.cjs` e `scripts/lib/extrair-veredito.cjs`; em `skills/revisar/SKILL.md` só a frase "sem negrito" vira "negrito aceito", no mesmo tamanho (a skill está a 11 B do teto).
 
 ### 5. Versão 1.23.12 [tipo: configurar]
 atende: D1

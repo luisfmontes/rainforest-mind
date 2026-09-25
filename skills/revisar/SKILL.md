@@ -207,7 +207,7 @@ lembra ter sido feito.
 ### Contrato de uma linha: `VEREDITO: ok` / `VEREDITO: reprovado`
 
 O relato do revisor (`agents/revisor.md`, seção (f)) termina, sempre, com uma
-última linha exata — sem negrito, sem markdown, sem texto depois: `VEREDITO:
+última linha exata — sozinha, sem texto depois (negrito aceito): `VEREDITO:
 ok` ou `VEREDITO: reprovado`. Um hook `SubagentStop`
 (`hooks/veredito-revisor.cjs`) lê essa linha direto de
 `last_assistant_message` contra vocabulário fechado

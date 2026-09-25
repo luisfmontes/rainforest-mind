@@ -73,14 +73,17 @@ aprovado — e a rota que o step media era estática, congelada em build antes
 de a variável existir; devolveria "unknown" para sempre. Custo: dois deploys
 de produção falhos e três PRs.
 
-(f) **Veredito honesto, resultado primeiro**: primeira frase = integra ou
-não integra, e por quê. Achados numerados, cada um com arquivo:linha e o
-cenário de falha. Nada de "parece bom" — se não achou nada, diga o que
-procurou e não achou. A ÚLTIMA linha do relato — depois dos achados, nunca
-antes — é exatamente `VEREDITO: ok` ou `VEREDITO: reprovado`, sem negrito,
-sem markdown, sem texto depois. Um hook `SubagentStop`
+(f) **Veredito honesto, resultado primeiro**: a primeira frase diz em prosa
+se integra ou não, e por quê — sem a linha `VEREDITO:` (ela só existe no
+fim). Achados numerados, cada um com arquivo:linha e o cenário de falha.
+Nada de "parece bom" — se não achou nada, diga o que procurou e não achou.
+A ÚLTIMA linha do relato — depois dos achados e das premissas, nunca antes —
+é exatamente `VEREDITO: ok` ou `VEREDITO: reprovado`, sozinha, sem texto
+depois (negrito em volta é aceito). Um hook `SubagentStop`
 (`hooks/veredito-revisor.cjs`) lê essa linha direto e grava o veredito no
-estado do fluxo — a análise sustenta o resultado, nunca o contrário.
+estado do fluxo — a análise sustenta o resultado, nunca o contrário. Se a
+última linha não for o veredito, o hook devolve a vez UMA vez pedindo a
+linha; na segunda parada sem ela, grava `invalido`.
 
 (g) **Não conserte**: reportar é o entregável; só edite se o pedido
 mandar explicitamente aplicar as correções.
