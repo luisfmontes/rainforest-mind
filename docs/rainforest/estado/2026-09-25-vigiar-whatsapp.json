@@ -21,8 +21,40 @@
     "em": "2026-09-25"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-09-25"
+    "status": "ok",
+    "catraca_mutacao": "2026-09-25",
+    "tarefas_ok": 5,
+    "tarefas": 5,
+    "comando": "bash scripts/testa-vigiar-checar.sh; python -m pytest -q scripts/test_watch_chat.py (whatsapp-mcp, PR 33)",
+    "saida": "ok: 19   falhou: 0; 11 passed",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "n/a",
+        "motivo": "fonte no whatsapp-mcp, fora do alcance da catraca; rodada a mao no worktree de la: if healthy != last_healthy: -> if False: deixou 3 failed (h, i, j), revertido 11 passed"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "doc de fluxo no whatsapp-mcp"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-vigiar-checar.sh, chave desligada recusa em uma linha sem consultar a bridge"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "texto de skill e comando"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "bump de versao"
+      }
+    ],
+    "em": "2026-09-25"
   },
   "revisar": {
     "status": "pendente"
