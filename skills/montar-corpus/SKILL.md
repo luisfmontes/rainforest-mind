@@ -1,3 +1,8 @@
+---
+name: montar-corpus
+description: "Constrói acervo em markdown a partir de um corpus de wiki em versão de controle."
+---
+
 # montar-corpus
 
 Constrói acervo em markdown a partir de um corpus de wiki em versão de controle.
