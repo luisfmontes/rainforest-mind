@@ -103,6 +103,41 @@ else
 fi
 
 echo ""
+echo "== CASO 1b: veredito-negrito-concordo =="
+# D2/D4 (docs/rainforest/design/2026-09-25-veredito-fora-da-linha.md): a
+# mesma tolerancia de marcacao em volta da ultima linha vale para o
+# vocabulario concordo|discordo, porque segunda-opiniao.cjs usa a MESMA
+# funcao extrairUltimaLinha de scripts/lib/extrair-veredito.cjs. Fixture
+# criado em RUNTIME dentro da caixa de areia (nunca em scripts/fixtures/,
+# que a tarefa 2 nao lista em arquivos) para nao precisar de um arquivo novo
+# versionado so para este caso.
+FIXTURE_NEGRITO_CONCORDO="$RAIZ/fixture-negrito-concordo.cjs"
+FIXTURE_NEGRITO_CONCORDO_M="$(cygpath -m "$FIXTURE_NEGRITO_CONCORDO" 2>/dev/null || printf '%s' "$FIXTURE_NEGRITO_CONCORDO")"
+cat > "$FIXTURE_NEGRITO_CONCORDO" << 'EOF'
+#!/usr/bin/env node
+let entrada = '';
+process.stdin.on('data', c => { entrada += c.toString(); });
+process.stdin.on('end', () => {
+  process.stdout.write('Analisando o diff... O criterio e atendido.\n\n**concordo**\n');
+  process.exit(0);
+});
+setTimeout(() => {
+  process.stdout.write('Analise simples.\n\n**concordo**\n');
+  process.exit(0);
+}, 500);
+EOF
+
+OUTPUT_NEGRITO=$(cd "$TEMP_REPO" && node "$SRC/scripts/segunda-opiniao.cjs" --base "$BASE_SHA" --head "$HEAD_SHA" --criterio "$CRITERIO_FILE" --cli-cmd "node $FIXTURE_NEGRITO_CONCORDO_M" 2>&1)
+EXIT_NEGRITO=$?
+if [ "$EXIT_NEGRITO" = "0" ] && echo "$OUTPUT_NEGRITO" | grep -q "^concordo$"; then
+  ok=$((ok + 1))
+  echo "  ok   veredito-negrito-concordo: parecer terminando em **concordo** sai 0 com output 'concordo'"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA veredito-negrito-concordo: output=$OUTPUT_NEGRITO (exit $EXIT_NEGRITO)"
+fi
+
+echo ""
 echo "== CASO 2: veredito-discordo =="
 
 TEMP_REPO2="$RAIZ/test-discordo-repo"
