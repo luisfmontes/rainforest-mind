@@ -11,7 +11,13 @@
  *
  * Exported:
  *   - extrairUltimaLinha(texto): última linha não vazia de `texto`, com
- *     trim e lowercase aplicados. Não valida vocabulário.
+ *     trim, remoção de marcação (`*`, `_` ou crase) só nas pontas da linha
+ *     e lowercase aplicados — aceita `**VEREDITO: ok**`, `__VEREDITO: ok__`
+ *     e `` `VEREDITO: ok` `` (D2/D4 do design
+ *     `docs/rainforest/design/2026-09-25-veredito-fora-da-linha.md`); texto
+ *     depois do veredito dentro da marcação (ex.: `**VEREDITO: reprovado —
+ *     4 bloqueantes**`) não vira vocabulário válido, porque só as pontas são
+ *     tocadas. Não valida vocabulário.
  *   - validarVocabulario(linha, vocabulario): true se `linha` está no array
  *     `vocabulario` (comparação exata, sem normalização adicional — quem
  *     chama já deve ter passado `linha` por `extrairUltimaLinha`).
@@ -20,7 +26,8 @@
 function extrairUltimaLinha(texto) {
   const parecer = texto.trim();
   const linhas = parecer.split('\n');
-  return linhas[linhas.length - 1].trim().toLowerCase();
+  const ultima = linhas[linhas.length - 1].trim();
+  return ultima.replace(/^[*_`]+|[*_`]+$/g, '').trim().toLowerCase();
 }
 
 function validarVocabulario(linha, vocabulario) {

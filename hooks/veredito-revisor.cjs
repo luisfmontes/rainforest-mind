@@ -26,10 +26,20 @@
  *      ter `Slug:` — daria falso positivo (achado 3 do plano).
  *   4. extrai o veredito da ÚLTIMA linha de `last_assistant_message`
  *      (`scripts/lib/extrair-veredito.cjs`, D2, task 2) contra o
- *      vocabulário fechado; fora dele → `invalido` (D3: a revisão existe e
- *      fica registrada, mas não conta como `ok` nem como `reprovado` nos
- *      gates de `marcar`).
- *   5. grava via `node scripts/estado.cjs veredito ...`, cwd = raiz do
+ *      vocabulário fechado; fora dele → candidato a `invalido`.
+ *   5. depois de TODAS as checagens acima (agent_type, Slug, transcrito,
+ *      cwd/repoRoot, toggle `contrato-veredito`) — tarefa 3 do plano
+ *      `2026-09-25-veredito-fora-da-linha`, D1/D3/D5: se o veredito deu
+ *      `invalido` e esta NÃO é a segunda parada
+ *      (`payload.stop_hook_active !== true`), o hook devolve a vez ao
+ *      revisor: imprime no stdout `{"decision":"block","reason":...}`
+ *      pedindo a linha exata e sai 0 SEM gravar (confirmado ao vivo em
+ *      `docs/rainforest/pesquisas/2026-09-25-subagentstop-block.md`: o
+ *      harness honra esse bloqueio e devolve o `reason` ao subagente, que
+ *      pode responder de novo). Na segunda parada (`stop_hook_active ===
+ *      true`) segue o caminho de sempre: grava `invalido`, sem bloquear de
+ *      novo (D3 — uma chance só, para não laçar o subagente).
+ *   6. grava via `node scripts/estado.cjs veredito ...`, cwd = raiz do
  *      repositório do EVENTO (`payload.cwd`), nunca a do processo do hook
  *      (molde `hooks/gate-agente-em-voo.cjs` ~56-67 para a função
  *      `toplevel`).
@@ -110,6 +120,7 @@ function main() {
   // Ausente de vez (nem string) e caso que nao ha o que auditar. String
   // vazia (revisor que saiu sem texto) SEGUE para invalido — D3: a revisao
   // existe e fica registrada, o silencio e so para "nao houve revisor".
+  // Na primeira parada, invalido ainda desvia para o bloqueio (D1, abaixo).
   if (typeof payload.last_assistant_message !== 'string') process.exit(0);
   const ultimaLinha = extrairUltimaLinha(payload.last_assistant_message);
   const veredito = validarVocabulario(ultimaLinha, VOCAB_ULTIMA_LINHA)
@@ -125,6 +136,16 @@ function main() {
       process.exit(0);
     }
   } catch {}
+
+  // Tarefa 3 (D1/D3/D5): depois de TODAS as checagens acima, primeira
+  // parada com veredito invalido devolve a vez ao revisor em vez de gravar
+  // invalido de cara. Na segunda parada (stop_hook_active === true) nao
+  // bloqueia de novo — segue para a gravacao abaixo, como antes desta tarefa.
+  if (veredito === 'invalido' && payload.stop_hook_active !== true) {
+    const reason = 'Termine a mensagem com uma linha sozinha e exata, sem nada depois dela na mesma linha: VEREDITO: ok ou VEREDITO: reprovado (negrito, sublinhado ou crase em volta da linha e aceito, ex.: **VEREDITO: ok**). Nao repita a analise que voce ja escreveu, so acrescente essa linha final.';
+    process.stdout.write(JSON.stringify({ decision: 'block', reason }) + '\n');
+    process.exit(0);
+  }
 
   const estadoCjs = path.join(PLUGIN_ROOT, 'scripts', 'estado.cjs');
   const args = [

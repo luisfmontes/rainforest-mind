@@ -1,0 +1,89 @@
+{
+  "slug": "2026-09-25-veredito-fora-da-linha",
+  "titulo": "Veredito do revisor fora da ultima linha exata",
+  "criado_em": "2026-09-24",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-25-veredito-fora-da-linha.md",
+    "em": "2026-09-24"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-25-veredito-fora-da-linha.md",
+    "tarefas": 5,
+    "paralelas": [
+      1,
+      2
+    ],
+    "em": "2026-09-24"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-24",
+    "tarefas_ok": 5,
+    "tarefas": 5,
+    "comando": "bash hooks/testa-veredito-revisor.sh",
+    "saida": "== resultado: 27 ok, 0 falha(s) ==",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "n/a",
+        "motivo": "pesquisa ao vivo"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-veredito-revisor.sh, veredito em negrito na ultima linha grava ok"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-veredito-revisor.sh, primeira parada sem veredito valido bloqueia com o motivo e nao grava"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "doc"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "bump de versao"
+      }
+    ],
+    "em": "2026-09-24"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "13e78c0ae3e6abfa54372ea91e1b436965b11064",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a6e0ca8a603a62083",
+        "veredito": "ok",
+        "em": "2026-09-24",
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\subagents\\agent-a6e0ca8a603a62083.jsonl"
+      }
+    ],
+    "achados": 3,
+    "base": "d28dc5c0",
+    "head": "13e78c0a",
+    "em": "2026-09-24"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node hooks/veredito-revisor.cjs < payload SubagentStop com o transcrito real do revisor deste fluxo (Slug), ultima linha fora do veredito, sem stop_hook_active",
+    "saida": "{\"decision\":\"block\",\"reason\":\"Termine a mensagem com uma linha sozinha e exata ... VEREDITO: ok ou VEREDITO: reprovado ...\"} exit 0; md5 do estado igual antes e depois (dc0a968a), nada gravado",
+    "sensor_externo": "node hooks/veredito-revisor.cjs",
+    "em": "2026-09-24"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
