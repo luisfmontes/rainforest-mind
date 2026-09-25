@@ -67,6 +67,30 @@ real_transcrito() { # fixture_src, agente_id, sessao(opcional, default sess-caix
   cygpath -m "$dir/agent-$id.jsonl" 2>/dev/null || printf '%s' "$dir/agent-$id.jsonl"
 }
 
+# Gera um transcrito de sessao real (mesmo formato de real_transcrito) com o
+# TEXTO EXATO do assistente passado — para casos 12/13, onde `estado.cjs
+# veredito` (D12, transcritoConfirmaVeredito) reextrai a ultima linha DIRETO
+# do arquivo, independente do que o payload de SubagentStop carrega em
+# last_assistant_message. Os dois precisam bater, senao `estado.cjs` recusa
+# a gravacao (RECUSADO: ... nao confirma). Usar um fixture estatico (como
+# real_transcrito faz) so funciona quando o texto do fixture, apos a mesma
+# extracao, cai no mesmo veredito do payload — o que nao vale para o caso 13
+# (texto depois do veredito, dentro do negrito).
+transcrito_com_texto() { # texto_assistente, agente_id, sessao(opcional)
+  local texto="$1" id="$2" sess="${3:-sess-caixa}"
+  local dir="$HOME_SBOX_POSIX/.claude-personal/projects/p/$sess/subagents"
+  mkdir -p "$dir"
+  node -e '
+const fs = require("fs");
+const [dir, id, texto] = process.argv.slice(1);
+const linha1 = JSON.stringify({type:"user", isSidechain:true, message:{role:"user", content:"Slug: revisor-fixture-caixa\nRevise o diff da tarefa de teste. Responda com a ultima linha exatamente VEREDITO: ok ou VEREDITO: reprovado."}});
+const linha2 = JSON.stringify({type:"assistant", isSidechain:true, message:{role:"assistant", content:[{type:"text", text: texto}]}});
+fs.writeFileSync(dir + "/agent-" + id + ".jsonl", linha1 + "\n" + linha2 + "\n");
+fs.writeFileSync(dir + "/agent-" + id + ".meta.json", JSON.stringify({agentType:"rainforest-mind:revisor"}));
+' "$dir" "$id" "$texto"
+  cygpath -m "$dir/agent-$id.jsonl" 2>/dev/null || printf '%s' "$dir/agent-$id.jsonl"
+}
+
 # ---------------------------------------------------------------- a fixture
 # Repositorio git real: toplevel(payload.cwd) em veredito-revisor.cjs precisa
 # de um `git rev-parse --show-toplevel` que funcione de verdade — sem isso o
@@ -370,6 +394,83 @@ if [ "$GOT_FORA" = 0 ] && [ "$V" = "[]" ]; then
   ok=$((ok+1)); echo "  ok    cwd fora de repositorio git: toplevel() falha e o hook nao grava"
 else
   falhou=$((falhou+1)); echo "  FALHA cwd fora de git: exit=$GOT_FORA, vereditos=$V"
+fi
+
+echo
+echo "== 12. veredito em negrito na ultima linha grava ok =="
+# D2/D4 (docs/rainforest/design/2026-09-25-veredito-fora-da-linha.md): a
+# extracao aceita marcacao (*, _ ou crase) SO nas pontas da ultima linha.
+# Cobre as tres formas vistas em revisao real (negrito, sublinhado, crase)
+# mais o caso reprovado em negrito.
+MD_BOLD_OK='Diff revisado, sem pendencia.
+**VEREDITO: ok**'
+MD_UNDER_OK='Diff revisado, sem pendencia.
+__VEREDITO: ok__'
+MD_CRASE_OK='Diff revisado, sem pendencia.
+`VEREDITO: ok`'
+MD_BOLD_REPROVADO='Falta ajuste no contrato.
+**VEREDITO: reprovado**'
+
+reset_estado
+TMD1=$(transcrito_com_texto "$MD_BOLD_OK" MD1)
+P=$(pay "$R" "rainforest-mind:revisor" "MD1" "$MD_BOLD_OK" '{"agent_transcript_path":"'"$TMD1"'"}')
+rodar_hook "$P"; GOT=$?
+V=$(vereditos)
+if [ "$GOT" = 0 ] && printf '%s' "$V" | grep -q '"veredito":"ok"' && printf '%s' "$V" | grep -q '"agente_id":"MD1"'; then
+  ok=$((ok+1)); echo "  ok    **VEREDITO: ok** (negrito) grava veredito ok"
+else
+  falhou=$((falhou+1)); echo "  FALHA **VEREDITO: ok** (negrito) nao gravou ok: $V"
+fi
+
+reset_estado
+TMD2=$(transcrito_com_texto "$MD_UNDER_OK" MD2)
+P=$(pay "$R" "rainforest-mind:revisor" "MD2" "$MD_UNDER_OK" '{"agent_transcript_path":"'"$TMD2"'"}')
+rodar_hook "$P"; GOT=$?
+V=$(vereditos)
+if [ "$GOT" = 0 ] && printf '%s' "$V" | grep -q '"veredito":"ok"' && printf '%s' "$V" | grep -q '"agente_id":"MD2"'; then
+  ok=$((ok+1)); echo "  ok    __VEREDITO: ok__ (sublinhado) grava veredito ok"
+else
+  falhou=$((falhou+1)); echo "  FALHA __VEREDITO: ok__ (sublinhado) nao gravou ok: $V"
+fi
+
+reset_estado
+TMD3=$(transcrito_com_texto "$MD_CRASE_OK" MD3)
+P=$(pay "$R" "rainforest-mind:revisor" "MD3" "$MD_CRASE_OK" '{"agent_transcript_path":"'"$TMD3"'"}')
+rodar_hook "$P"; GOT=$?
+V=$(vereditos)
+if [ "$GOT" = 0 ] && printf '%s' "$V" | grep -q '"veredito":"ok"' && printf '%s' "$V" | grep -q '"agente_id":"MD3"'; then
+  ok=$((ok+1)); echo "  ok    \`VEREDITO: ok\` (crase) grava veredito ok"
+else
+  falhou=$((falhou+1)); echo "  FALHA \`VEREDITO: ok\` (crase) nao gravou ok: $V"
+fi
+
+reset_estado
+TMD4=$(transcrito_com_texto "$MD_BOLD_REPROVADO" MD4)
+P=$(pay "$R" "rainforest-mind:revisor" "MD4" "$MD_BOLD_REPROVADO" '{"agent_transcript_path":"'"$TMD4"'"}')
+rodar_hook "$P"; GOT=$?
+V=$(vereditos)
+if [ "$GOT" = 0 ] && printf '%s' "$V" | grep -q '"veredito":"reprovado"' && printf '%s' "$V" | grep -q '"agente_id":"MD4"'; then
+  ok=$((ok+1)); echo "  ok    **VEREDITO: reprovado** (negrito) grava veredito reprovado"
+else
+  falhou=$((falhou+1)); echo "  FALHA **VEREDITO: reprovado** (negrito) nao gravou reprovado: $V"
+fi
+
+echo
+echo "== 13. negrito com texto depois do veredito nao grava =="
+# D2: a marcacao so tolera as PONTAS da linha. Texto depois do veredito
+# dentro do negrito ("**VEREDITO: reprovado — 4 bloqueantes**") continua
+# fora do vocabulario fechado -> invalido, nunca reprovado.
+MD_BOLD_TEXTO_DEPOIS='Faltam bloqueantes.
+**VEREDITO: reprovado — 4 bloqueantes**'
+reset_estado
+TMD5=$(transcrito_com_texto "$MD_BOLD_TEXTO_DEPOIS" MD5)
+P=$(pay "$R" "rainforest-mind:revisor" "MD5" "$MD_BOLD_TEXTO_DEPOIS" '{"agent_transcript_path":"'"$TMD5"'"}')
+rodar_hook "$P"; GOT=$?
+V=$(vereditos)
+if [ "$GOT" = 0 ] && printf '%s' "$V" | grep -q '"veredito":"invalido"' && printf '%s' "$V" | grep -q '"agente_id":"MD5"'; then
+  ok=$((ok+1)); echo "  ok    **VEREDITO: reprovado — 4 bloqueantes** (texto depois do veredito) grava invalido, nao reprovado"
+else
+  falhou=$((falhou+1)); echo "  FALHA negrito com texto depois do veredito nao gravou invalido: $V"
 fi
 
 echo
