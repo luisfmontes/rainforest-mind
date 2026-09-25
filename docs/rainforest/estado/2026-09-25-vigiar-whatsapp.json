@@ -1,0 +1,93 @@
+{
+  "slug": "2026-09-25-vigiar-whatsapp",
+  "titulo": "Skill vigiar: acompanhar conversa de WhatsApp sem gastar token (issue 331)",
+  "criado_em": "2026-09-25",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-09-25-vigiar-whatsapp.md",
+    "em": "2026-09-25"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-25-vigiar-whatsapp.md",
+    "tarefas": 5,
+    "paralelas": [
+      1,
+      3
+    ],
+    "em": "2026-09-25"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-25",
+    "tarefas_ok": 5,
+    "tarefas": 5,
+    "comando": "bash scripts/testa-vigiar-checar.sh; python -m pytest -q scripts/test_watch_chat.py (whatsapp-mcp, PR 33)",
+    "saida": "ok: 19   falhou: 0; 11 passed",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "n/a",
+        "motivo": "fonte no whatsapp-mcp, fora do alcance da catraca; rodada a mao no worktree de la: if healthy != last_healthy: -> if False: deixou 3 failed (h, i, j), revertido 11 passed"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "doc de fluxo no whatsapp-mcp"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-vigiar-checar.sh, chave desligada recusa em uma linha sem consultar a bridge"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "texto de skill e comando"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "bump de versao"
+      }
+    ],
+    "em": "2026-09-25"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "d4dab1965d39bd18991f65e2973500f582af0676",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a283a31425906fec4",
+        "veredito": "ok",
+        "em": "2026-09-25",
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\subagents\\agent-a283a31425906fec4.jsonl"
+      }
+    ],
+    "achados": 2,
+    "base": "303a490c",
+    "head": "d4dab196",
+    "em": "2026-09-25"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node scripts/vigiar-checar.cjs --conta trabalho (accounts.json e bridge 3006 reais, chave ligada so em config de projeto temporaria); python watch_chat.py do PR 33 sobre o messages.db real da conta pessoal com --status-url numa porta morta",
+    "saida": "checar: exit 0, porta 3006, status_url 3006, db accounts/trabalho/store/messages.db; watch: BRIDGE: desconectada (sem resposta: conexao recusada) — a espera esta cega..., depois END, exit 0",
+    "sensor_externo": "node scripts/vigiar-checar.cjs",
+    "em": "2026-09-25"
+  },
+  "fechar": {
+    "status": "ok",
+    "pr": 334,
+    "ci": "baterias (node 24) pass, run 36123776389, head ffdff2e2",
+    "pr_fork": "luisfmontes/whatsapp-mcp#33 mergeado (5a55724), main do checkout atualizada",
+    "em": "2026-09-25"
+  }
+}
