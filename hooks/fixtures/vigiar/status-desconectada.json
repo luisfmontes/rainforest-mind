@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "healthy": false,
+  "connected": false,
+  "logged_in": false,
+  "jid": null,
+  "last_successful_connect": "2026-09-24T19:10:33-03:00",
+  "auto_reconnect_errors": 5,
+  "last_event_at": "2026-09-25T06:30:00-03:00",
+  "uptime_seconds": 0,
+  "watchdog": {
+    "interval_seconds": 60,
+    "reconnects": 3,
+    "last_tick_at": "2026-09-25T06:45:00-03:00"
+  }
+}
