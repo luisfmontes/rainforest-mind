@@ -77,7 +77,11 @@
     "em": "2026-09-24"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node hooks/veredito-revisor.cjs < payload SubagentStop com o transcrito real do revisor deste fluxo (Slug), ultima linha fora do veredito, sem stop_hook_active",
+    "saida": "{\"decision\":\"block\",\"reason\":\"Termine a mensagem com uma linha sozinha e exata ... VEREDITO: ok ou VEREDITO: reprovado ...\"} exit 0; md5 do estado igual antes e depois (dc0a968a), nada gravado",
+    "sensor_externo": "node hooks/veredito-revisor.cjs",
+    "em": "2026-09-24"
   },
   "fechar": {
     "status": "pendente"
