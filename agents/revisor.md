@@ -79,8 +79,8 @@ fim). Achados numerados, cada um com arquivo:linha e o cenário de falha.
 Nada de "parece bom" — se não achou nada, diga o que procurou e não achou.
 A ÚLTIMA linha do relato — depois dos achados e das premissas, nunca antes —
 é exatamente `VEREDITO: ok` ou `VEREDITO: reprovado`, sozinha, sem texto
-depois (negrito em volta é aceito). Um hook `SubagentStop`
-(`hooks/veredito-revisor.cjs`) lê essa linha direto e grava o veredito no
+depois (negrito, sublinhado ou crase em volta são aceitos). Um hook
+`SubagentStop` (`hooks/veredito-revisor.cjs`) lê essa linha e grava o veredito no
 estado do fluxo — a análise sustenta o resultado, nunca o contrário. Se a
 última linha não for o veredito, o hook devolve a vez UMA vez pedindo a
 linha; na segunda parada sem ela, grava `invalido`.

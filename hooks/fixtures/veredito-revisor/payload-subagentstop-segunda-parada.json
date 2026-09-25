@@ -1,7 +1,7 @@
 {
   "session_id": "f2a570fe-7cc0-45bd-ac9a-b8cedb1660cf",
-  "transcript_path": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Users-Luis-AppData-Local-Temp-claude-C--Projetos-rainforest-mind-553122e5-fb70-4bad-8c90-94892ab86341-scratchpad-subagentstop-block-test\\f2a570fe-7cc0-45bd-ac9a-b8cedb1660cf.jsonl",
-  "cwd": "C:\\Users\\Luis\\AppData\\Local\\Temp\\claude\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\scratchpad\\subagentstop-block-test",
+  "transcript_path": "C:\\Users\\usuario\\.claude-personal\\projects\\C--Users-usuario-AppData-Local-Temp-claude-C--Projetos-rainforest-mind-553122e5-fb70-4bad-8c90-94892ab86341-scratchpad-subagentstop-block-test\\f2a570fe-7cc0-45bd-ac9a-b8cedb1660cf.jsonl",
+  "cwd": "C:\\Users\\usuario\\AppData\\Local\\Temp\\claude\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\scratchpad\\subagentstop-block-test",
   "prompt_id": "58c493c5-8e3f-43c5-8f1d-326ed1fa94f5",
   "permission_mode": "bypassPermissions",
   "agent_id": "adc320ec84df66697",
@@ -11,7 +11,7 @@
   },
   "hook_event_name": "SubagentStop",
   "stop_hook_active": true,
-  "agent_transcript_path": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Users-Luis-AppData-Local-Temp-claude-C--Projetos-rainforest-mind-553122e5-fb70-4bad-8c90-94892ab86341-scratchpad-subagentstop-block-test\\f2a570fe-7cc0-45bd-ac9a-b8cedb1660cf\\subagents\\agent-adc320ec84df66697.jsonl",
+  "agent_transcript_path": "C:\\Users\\usuario\\.claude-personal\\projects\\C--Users-usuario-AppData-Local-Temp-claude-C--Projetos-rainforest-mind-553122e5-fb70-4bad-8c90-94892ab86341-scratchpad-subagentstop-block-test\\f2a570fe-7cc0-45bd-ac9a-b8cedb1660cf\\subagents\\agent-adc320ec84df66697.jsonl",
   "last_assistant_message": "Tarefa concluida.\nFIM-DO-TESTE",
   "background_tasks": [],
   "session_crons": []

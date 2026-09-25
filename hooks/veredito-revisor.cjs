@@ -120,6 +120,7 @@ function main() {
   // Ausente de vez (nem string) e caso que nao ha o que auditar. String
   // vazia (revisor que saiu sem texto) SEGUE para invalido — D3: a revisao
   // existe e fica registrada, o silencio e so para "nao houve revisor".
+  // Na primeira parada, invalido ainda desvia para o bloqueio (D1, abaixo).
   if (typeof payload.last_assistant_message !== 'string') process.exit(0);
   const ultimaLinha = extrairUltimaLinha(payload.last_assistant_message);
   const veredito = validarVocabulario(ultimaLinha, VOCAB_ULTIMA_LINHA)
