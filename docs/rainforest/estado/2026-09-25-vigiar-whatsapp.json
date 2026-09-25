@@ -1,0 +1,28 @@
+{
+  "slug": "2026-09-25-vigiar-whatsapp",
+  "titulo": "Skill vigiar: acompanhar conversa de WhatsApp sem gastar token (issue 331)",
+  "criado_em": "2026-09-25",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-09-25-vigiar-whatsapp.md",
+    "em": "2026-09-25"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
