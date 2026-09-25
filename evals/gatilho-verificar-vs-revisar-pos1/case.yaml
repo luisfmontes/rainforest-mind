@@ -1,0 +1,41 @@
+schema_version: "1.0"
+name: gatilho-verificar-vs-revisar-pos1
+description: >
+  Cenário realista de rodar o critério de um plano já revisado (issue
+  #302, par verificar×revisar) — tem que acionar `verificar`, não
+  `revisar`: revisão já passou, falta rodar o critério contra o artefato.
+tags: [gatilho, colisao, positivo]
+
+execution:
+  prompt: >
+    A tarefa 5 do plano já passou pela revisão independente e ficou ok.
+    Agora preciso rodar o critério de aceite que o plano definiu contra o
+    artefato real pra decidir se fecha ou reprova — não quero escrever
+    critério novo nenhum.
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-verificar
+    tool: Skill
+    input_match: "rainforest-mind:verificar"
+    arm: with-only
+
+  - type: tool_used
+    name: nao-aciona-revisar
+    tool: Skill
+    input_match: "rainforest-mind:revisar"
+    min: 0
+    max: 0
+    arm: both
+
+  - type: llm
+    name: resposta-segue-metodo-verificar
+    criteria: >
+      A resposta trata o pedido como executar o critério de aceite que o
+      plano já definiu, contra o artefato real, decidindo ok ou reprovado
+      — não como uma revisão independente nova nem como redigir critério.
+      Vale mesmo que a resposta só peça qual plano/tarefa antes de agir,
+      desde que o enquadramento seja o de verificar.
+    weight: 1

@@ -98,3 +98,8 @@ ferramentas.jsonl
 # esta linha, copiar o arquivo para um worktree vira pegadinha de
 # `git add -A` — o arquivo untracked entraria versionado por engano.
 .rainforest-gate-off
+
+# Saida de `claude plugin eval` (issue #302): timestamp por rodada, HTML e
+# JSON de agregado. E RASTRO DE EXECUCAO desta maquina/credencial, nunca
+# insumo do plugin — quem quiser reproduzir roda a suite de novo.
+evals/results/

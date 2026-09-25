@@ -1,0 +1,41 @@
+schema_version: "1.0"
+name: gatilho-enxugar-vs-revisar-pos2
+description: >
+  Cenário realista de módulo antigo inflado (issue #302, par
+  enxugar×revisar) — tem que acionar `enxugar`, não `revisar`: é auditoria
+  de código morto no repo, não revisão de correção de uma entrega.
+tags: [gatilho, colisao, positivo]
+
+execution:
+  prompt: >
+    Esse módulo de relatórios cresceu muito nos últimos três meses e tenho
+    quase certeza que tem função duplicada e camada de abstração que
+    ninguém usa mais. Queria um levantamento do que pode sair antes de eu
+    decidir o que apagar.
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-enxugar
+    tool: Skill
+    input_match: "rainforest-mind:enxugar"
+    arm: with-only
+
+  - type: tool_used
+    name: nao-aciona-revisar
+    tool: Skill
+    input_match: "rainforest-mind:revisar"
+    min: 0
+    max: 0
+    arm: both
+
+  - type: llm
+    name: resposta-segue-metodo-enxugar
+    criteria: >
+      A resposta trata o pedido como uma auditoria de código morto e
+      inflação no módulo (listando candidatos a remover) — não como uma
+      revisão independente de correção contra um diff. Vale mesmo que a
+      resposta só peça mais contexto (qual pasta, qual arquivo) antes de
+      listar, desde que o enquadramento seja o de enxugar.
+    weight: 1

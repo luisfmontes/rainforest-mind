@@ -1,0 +1,42 @@
+schema_version: "1.0"
+name: gatilho-arqueologia-vs-analisar-pos1
+description: >
+  Cenário realista de código legado sem mapa (issue #302, par
+  arqueologia×analisar) — tem que acionar `arqueologia`, não `analisar`:
+  é mapear uma fatia de código legado antes do brainstorm decidir, não
+  explorar dataset.
+tags: [gatilho, colisao, positivo]
+
+execution:
+  prompt: >
+    Vou mexer no módulo de faturamento que ninguém toca há uns 3 anos, sem
+    teste nenhum cobrindo, pra adicionar suporte a desconto progressivo.
+    Antes do brainstorm decidir como fazer, queria um mapa de como esse
+    código legado funciona hoje.
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-arqueologia
+    tool: Skill
+    input_match: "rainforest-mind:arqueologia"
+    arm: with-only
+
+  - type: tool_used
+    name: nao-aciona-analisar
+    tool: Skill
+    input_match: "rainforest-mind:analisar"
+    min: 0
+    max: 0
+    arm: both
+
+  - type: llm
+    name: resposta-segue-metodo-arqueologia
+    criteria: >
+      A resposta trata o pedido como mapear uma fatia de código legado
+      (arquivo/módulo, escala de confiança, sem gerar código) — não como
+      uma análise de dados em notebook (DataFrame, EDA, pandas). Vale
+      mesmo que a resposta só peça qual arquivo/pasta mapear antes de
+      agir, desde que o enquadramento seja o de arqueologia.
+    weight: 1
