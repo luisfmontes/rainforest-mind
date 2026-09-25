@@ -77,7 +77,11 @@
     "em": "2026-09-25"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node scripts/vigiar-checar.cjs --conta trabalho (accounts.json e bridge 3006 reais, chave ligada so em config de projeto temporaria); python watch_chat.py do PR 33 sobre o messages.db real da conta pessoal com --status-url numa porta morta",
+    "saida": "checar: exit 0, porta 3006, status_url 3006, db accounts/trabalho/store/messages.db; watch: BRIDGE: desconectada (sem resposta: conexao recusada) — a espera esta cega..., depois END, exit 0",
+    "sensor_externo": "node scripts/vigiar-checar.cjs",
+    "em": "2026-09-25"
   },
   "fechar": {
     "status": "pendente"
