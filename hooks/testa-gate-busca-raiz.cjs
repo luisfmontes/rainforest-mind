@@ -92,6 +92,53 @@ caso("toggle busca-na-raiz false no projeto: passa", r.status === 0, `${r.status
 r = rodar("find / -name x", { config: { "busca-na-raiz": true } });
 caso("toggle busca-na-raiz true no projeto: nega", r.status === 2, `${r.status} ${r.stderr}`);
 
+// Revisão de 2026-09-25: separadores que o parser não via, e texto em heredoc.
+for (const cmd of [
+  "sleep 1 & find / -iname accounts.json",
+  "echo $(find / -iname accounts.json)",
+  "echo `find / -iname accounts.json`",
+  "( find / -name x )",
+  "find / -name x 2>&1 | head",
+]) {
+  r = rodar(cmd);
+  caso(`subagente: nega — ${cmd}`, r.status === 2, `${r.status} ${r.stderr}`);
+}
+for (const cmd of [
+  "cat <<'EOF' > relato.md\nUm caso incidente foi\nfind / -iname accounts.json\nque travou.\nEOF",
+  "cat <<-EOF\n\tfind / -name x\n\tEOF\necho ok",
+  "find . \\( -name a -o -name b \\) -print",
+  "ls >/dev/null 2>&1 && find . -name y",
+]) {
+  r = rodar(cmd);
+  caso(`subagente: passa — ${JSON.stringify(cmd)}`, r.status === 0, `${r.status} ${r.stderr}`);
+}
+r = rodar("cat <<'EOF'\ntexto\nEOF\nfind / -name x");
+caso("subagente: find / depois do fim do heredoc nega", r.status === 2, `${r.status} ${r.stderr}`);
+
+// O toggle vale para o projeto do EVENTO (payload.cwd), como na portaria e nos
+// gates irmãos — não para CLAUDE_PROJECT_DIR, que num worktree aponta o
+// checkout principal. Dois projetos de propósito, nos dois sentidos.
+function rodarDoisProjetos(configDoCwd, configDoEnv) {
+  const doCwd = fs.mkdtempSync(path.join(caixa, "cwd-"));
+  const doEnv = fs.mkdtempSync(path.join(caixa, "env-"));
+  for (const [dir, cfg] of [[doCwd, configDoCwd], [doEnv, configDoEnv]]) {
+    fs.mkdirSync(path.join(dir, ".rainforest"), { recursive: true });
+    if (cfg) fs.writeFileSync(path.join(dir, ".rainforest", "config.json"), JSON.stringify(cfg));
+  }
+  const payload = JSON.parse(JSON.stringify(BASE));
+  payload.tool_input.command = "find / -name x";
+  payload.cwd = doCwd;
+  const s = spawnSync(process.execPath, [HOOK], {
+    input: JSON.stringify(payload), encoding: "utf8",
+    env: { ...process.env, CLAUDE_PROJECT_DIR: doEnv, RFM_ROOT: path.join(caixa, "dados") },
+  });
+  return s.status;
+}
+caso("toggle: desligado no projeto do cwd vale mesmo com CLAUDE_PROJECT_DIR ligado",
+  rodarDoisProjetos({ "busca-na-raiz": false }, null) === 0);
+caso("toggle: desligado só no CLAUDE_PROJECT_DIR não solta o projeto do cwd",
+  rodarDoisProjetos(null, { "busca-na-raiz": false }) === 2);
+
 for (const [nome, entrada] of [["vazio", ""], ["json inválido", "{x"], ["outra ferramenta", JSON.stringify({ ...BASE, tool_name: "Read", tool_input: { file_path: "/" } })]]) {
   const s = spawnSync(process.execPath, [HOOK], { input: entrada, encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: projeto } });
   caso(`payload ${nome}: sai 0`, s.status === 0, `${s.status} ${s.stderr}`);

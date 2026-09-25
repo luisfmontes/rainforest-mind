@@ -31,13 +31,36 @@ function tirarAspas(t) {
   return t.replace(/^(['"])(.*)\1$/, "$2");
 }
 
+/** Corpo de heredoc é texto, não comando: `cat <<'EOF'` com `find /` dentro
+ * (um relato deste mesmo incidente) não pode ser barrado. Tira as linhas entre
+ * `<<[-]DELIM` e a linha que é só `DELIM`. */
+function semCorpoDeHeredoc(comando) {
+  const linhas = comando.split("\n");
+  const saida = [];
+  let fim = null;
+  for (const linha of linhas) {
+    if (fim !== null) {
+      if (linha.trim() === fim) fim = null;
+      continue;
+    }
+    saida.push(linha);
+    const m = linha.match(/<<-?\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\1/);
+    if (m) fim = m[2];
+  }
+  return saida.join("\n");
+}
+
 /** Pontos de partida de cada `find` do comando. Divide em segmentos por
- * `;`, `&&`, `||`, `|` e quebra de linha, e só olha o segmento cujo comando
- * (depois de `sudo`/`timeout N`/atribuições `VAR=x`) é `find` — `grep "find /"`
- * e `echo find /` não contam. */
+ * `;`, `&&`, `||`, `|`, `&`, quebra de linha e abertura de substituição ou
+ * subshell (`$(`, crase, `(`), e só olha o segmento cujo comando (depois de
+ * `sudo`/`timeout N`/atribuições `VAR=x`) é `find` — `grep "find /"` e
+ * `echo find /` não contam. */
 function partidasDeFind(comando) {
   const partidas = [];
-  for (const segmento of comando.split(/;|&&|\|\||\||\n/)) {
+  const separado = semCorpoDeHeredoc(comando)
+    .replace(/\$\(|`/g, "\n")
+    .replace(/(^|\s)\(/g, "$1\n");
+  for (const segmento of separado.split(/&&|\|\||;|\||&|\n/)) {
     const tokens = segmento.trim().match(/"[^"]*"|'[^']*'|\S+/g) || [];
     let i = 0;
     while (i < tokens.length) {
@@ -81,7 +104,11 @@ function main() {
   const raiz = partidasDeFind(comando).find((p) => RAIZ_DE_DISCO.test(p));
   if (raiz === undefined) process.exit(0);
 
-  const projeto = process.env.CLAUDE_PROJECT_DIR || payload.cwd || process.cwd();
+  // Mesma ordem da portaria (`raizDoProjeto`) e dos gates irmãos: o cwd do
+  // EVENTO primeiro. Subagente em worktree traz ali o worktree, enquanto
+  // CLAUDE_PROJECT_DIR aponta o checkout principal — a config que vale é a
+  // de onde o agente trabalha (achado da revisão de 2026-09-25).
+  const projeto = payload.cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd();
   if (!buscaNaRaizLigada(path.resolve(projeto))) process.exit(0);
 
   process.stderr.write(
