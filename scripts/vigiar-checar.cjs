@@ -35,7 +35,7 @@ if (!conta) {
 // ============================================================================
 
 if (!ligado('integracao-whatsapp-mcp', { projeto: projetoDir })) {
-  console.error('integracao WhatsApp nao ligada; ative com: node scripts/setup.cjs --ligar integracao-whatsapp-mcp');
+  console.error('integração WhatsApp não ligada: rode /rainforest-mind:setup --ligar integracao-whatsapp-mcp --escopo usuario');
   process.exit(2);
 }
 

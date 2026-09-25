@@ -1,14 +1,14 @@
 #!/bin/bash
-# Bateria de testes para vigiar-checar.cjs
+# Bateria de vigiar-checar.cjs: a checagem de arme da skill vigiar (D2, D4, D5
+# do design 2026-09-25-vigiar-whatsapp). Chave ligada/desligada, bridge da
+# conta de pé ou fora, conta certa com a porta certa, caminhos resolvidos.
 #
-# Testa a checagem de arme da skill vigiar: integração ligada, bridge acessível,
-# caminhos resolvidos. Todos os casos rodam em caixa de areia isolada.
+# Caixa de areia: HOME, USERPROFILE, CLAUDE_PROJECT_DIR, RFM_ROOT e
+# accounts.json temporários. A bridge é um servidor falso em porta livre que
+# serve o formato real do /api/status (fixtures em hooks/fixtures/vigiar/, JID
+# fictício) — nunca as portas 3005/3006 das bridges reais.
 
 set -u
-
-# ============================================================================
-# Setup de caixa de areia
-# ============================================================================
 
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC_WIN="$(cygpath -m "$SRC" 2>/dev/null || printf '%s' "$SRC")"
@@ -18,336 +18,138 @@ SB="$(cygpath -m "$SBP" 2>/dev/null || printf '%s' "$SBP")"
 export RFM_ROOT="$SB/dados-rainforest"
 LAR="$SB/home-usuario"
 PROJ="$SB/projeto"
-mkdir -p "$RFM_ROOT" "$LAR" "$PROJ"
+MCP="$SB/whatsapp-mcp"
+mkdir -p "$RFM_ROOT" "$LAR/.whatsapp-mcp" "$PROJ/.rainforest" "$MCP/scripts" "$MCP/commands"
+touch "$MCP/scripts/watch_chat.py" "$MCP/commands/vigiar.md"
 
-# Windows: HOME e USERPROFILE precisam estar ambos em cygpath -m
 export HOME="$LAR"
-export USERPROFILE="$(cygpath -m "$LAR" 2>/dev/null || printf '%s' "$LAR")"
-export CLAUDE_PROJECT_DIR="$(cygpath -m "$PROJ" 2>/dev/null || printf '%s' "$PROJ")"
+export USERPROFILE="$LAR"
+export CLAUDE_PROJECT_DIR="$PROJ"
+export WHATSAPP_MCP_DIR="$MCP"
+export WHATSAPP_ACCOUNTS_FILE="$LAR/.whatsapp-mcp/accounts.json"
 
-# Pasta temporária para WhatsApp MCP
-WHATSAPP_MCP_TMP="$SB/whatsapp-mcp-teste"
-mkdir -p "$WHATSAPP_MCP_TMP/scripts" "$WHATSAPP_MCP_TMP/commands"
-touch "$WHATSAPP_MCP_TMP/scripts/watch_chat.py"
-
-export WHATSAPP_MCP_DIR="$(cygpath -m "$WHATSAPP_MCP_TMP" 2>/dev/null || printf '%s' "$WHATSAPP_MCP_TMP")"
-
-trap 'rm -rf "$SBP"; kill $(jobs -p) 2>/dev/null || true' EXIT
+PIDS=()
+trap 'for p in "${PIDS[@]}"; do kill "$p" 2>/dev/null; done; rm -rf "$SBP"' EXIT
 
 ok=0
 falhou=0
-
 log_ok() { ok=$((ok+1)); echo "  ok   $1"; }
 log_falha() { falhou=$((falhou+1)); echo "  FALHA $1"; }
 
-teste_saida() {
-  local nome="$1" esperado="$2" cmd="$3"
-  local saida exit_code
-  saida="$(eval "$cmd" 2>&1)"
-  exit_code=$?
-
-  if [ "$exit_code" = "$esperado" ]; then
-    log_ok "$nome (exit $exit_code)"
-    echo "$saida"
-  else
-    log_falha "$nome: esperava exit $esperado, veio $exit_code"
-    echo "$saida" | head -5
-  fi
-  echo "$saida"
+# Roda o checador com --conta <alias>; deixa a saída (stdout+stderr) em SAIDA
+# e confere o exit. Sem subshell: o placar é o do processo da bateria.
+checar() {
+  local nome="$1" esperado="$2" conta="$3" code
+  SAIDA="$(node "$SRC_WIN/scripts/vigiar-checar.cjs" --conta "$conta" 2>&1)"
+  code=$?
+  if [ "$code" = "$esperado" ]; then log_ok "$nome (exit $code)"
+  else log_falha "$nome: esperava exit $esperado, veio $code — $SAIDA"; fi
 }
+
+contem() { # <nome> <padrão grep -E>
+  if printf '%s' "$SAIDA" | grep -Eq "$2"; then log_ok "$1"
+  else log_falha "$1 — saída: $SAIDA"; fi
+}
+
+linhas_da_saida() { printf '%s\n' "$SAIDA" | grep -c .; }
+
+chave() { printf '{"integracao-whatsapp-mcp": %s}\n' "$1" > "$PROJ/.rainforest/config.json"; }
+
+# accounts.json no formato real (~/.whatsapp-mcp/accounts.json, conferido em
+# 2026-09-25): contas no topo, cada uma com dir, port e jid.
+contas() { # <porta pessoal> <porta trabalho>
+  cat > "$WHATSAPP_ACCOUNTS_FILE" <<EOF
+{
+  "pessoal": { "dir": "$SB/bridge-pessoal", "port": $1, "jid": "conta-pessoal@s.whatsapp.net" },
+  "trabalho": { "dir": "$SB/bridge-trabalho", "port": $2, "jid": "conta-trabalho@s.whatsapp.net" }
+}
+EOF
+}
+
+# Bridge falsa: serve hooks/fixtures/vigiar/<fixture> em qualquer caminho,
+# anota cada requisição em $SBP/<nome>.hits. Porta em PORTA_<nome>.
+subir_servidor() { # <fixture> <nome>
+  local fixture="$1" nome="$2" porta=""
+  FIXTURE="$SRC_WIN/hooks/fixtures/vigiar/$fixture" SAIDA_SRV="$SB/$nome" node -e '
+    const http = require("http"), fs = require("fs");
+    const corpo = fs.readFileSync(process.env.FIXTURE, "utf8");
+    const srv = http.createServer((req, res) => {
+      fs.appendFileSync(process.env.SAIDA_SRV + ".hits", req.url + "\n");
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(corpo);
+    });
+    srv.listen(0, "127.0.0.1", () => fs.writeFileSync(process.env.SAIDA_SRV + ".porta", String(srv.address().port)));
+  ' &
+  PIDS+=($!)
+  for _ in $(seq 1 50); do [ -s "$SBP/$nome.porta" ] && break; sleep 0.1; done
+  porta="$(cat "$SBP/$nome.porta" 2>/dev/null)"
+  [ -n "$porta" ] || { log_falha "servidor falso $nome não subiu"; porta=1; }
+  printf -v "PORTA_$nome" '%s' "$porta"
+}
+
+hits() { [ -f "$SBP/$1.hits" ] && grep -c . "$SBP/$1.hits" || echo 0; }
+
+# Porta livre sem ninguém escutando: abre e fecha um servidor.
+PORTA_MORTA="$(node -e 'const s=require("net").createServer().listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close()})')"
+
+subir_servidor status-conectada.json conectada
+subir_servidor status-desconectada.json desconectada
+subir_servidor status-conectada.json outra
 
 echo "== vigiar-checar: checagem de arme da skill vigiar =="
-echo "(caixa de areia: $SB)"
-echo
 
-# ============================================================================
-# Caso 1: chave desligada recusa em uma linha sem consultar a bridge
-# ============================================================================
+echo "-- chave desligada recusa em uma linha sem consultar a bridge"
+chave false
+contas "$PORTA_conectada" "$PORTA_outra"
+checar "chave desligada recusa" 2 pessoal
+contem "diz como ligar a chave" "integracao-whatsapp-mcp"
+[ "$(linhas_da_saida)" = 1 ] && log_ok "uma linha só" || log_falha "esperava uma linha, veio: $SAIDA"
+[ "$(hits conectada)" = 0 ] && log_ok "bridge não foi consultada" || log_falha "bridge recebeu $(hits conectada) requisição(ões) com a chave desligada"
 
-echo "== Caso 1: chave desligada recusa em uma linha sem consultar a bridge =="
+chave true
 
-# Montar config com chave desligada
-mkdir -p "$PROJ/.rainforest"
-echo '{"integracao-whatsapp-mcp": false}' > "$PROJ/.rainforest/config.json"
+echo "-- bridge fora recusa nomeando conta e porta"
+contas "$PORTA_MORTA" "$PORTA_outra"
+checar "porta recusada recusa" 2 pessoal
+contem "nomeia conta e porta (recusada)" "pessoal.*$PORTA_MORTA"
+contas "$PORTA_desconectada" "$PORTA_outra"
+checar "healthy:false recusa" 2 pessoal
+contem "nomeia conta e porta (healthy:false)" "pessoal.*$PORTA_desconectada"
+[ "$(linhas_da_saida)" = 1 ] && log_ok "uma linha só" || log_falha "esperava uma linha, veio: $SAIDA"
 
-# Criar accounts.json
-mkdir -p "$LAR/.whatsapp-mcp"
-cat > "$LAR/.whatsapp-mcp/accounts.json" <<'EOF'
-{
-  "accounts": {
-    "pessoal": {
-      "dir": "/tmp/bridge-pessoal",
-      "port": 3005,
-      "jid": "test-user-pessoal:0@s.whatsapp.net"
-    }
-  }
-}
-EOF
-export WHATSAPP_ACCOUNTS_FILE="$LAR/.whatsapp-mcp/accounts.json"
+echo "-- conta inexistente lista as contas"
+checar "conta inexistente recusa" 2 inexistente
+contem "lista pessoal e trabalho" "pessoal.*trabalho|trabalho.*pessoal"
 
-# Rodar sem servidor falso — não deve fazer requisição à bridge
-SAIDA1=$(teste_saida "chave desligada recusa" 2 "node '$SRC_WIN/scripts/vigiar-checar.cjs' --conta pessoal")
-if echo "$SAIDA1" | grep -q "integracao WhatsApp nao ligada"; then
-  log_ok "mensagem de erro correta"
-else
-  log_falha "mensagem de erro não menciona integração"
-fi
+echo "-- conta de outra porta devolve status_url da porta dela"
+contas "$PORTA_conectada" "$PORTA_outra"
+checar "conta trabalho arma" 0 trabalho
+contem "status_url na porta da conta trabalho" "\"status_url\":\"http://127.0.0.1:$PORTA_outra/api/status\""
+if printf '%s' "$SAIDA" | grep -q "127.0.0.1:$PORTA_conectada"; then log_falha "saiu a porta da outra conta: $SAIDA"; else log_ok "não usa a porta da outra conta"; fi
+[ "$(hits outra)" -ge 1 ] && log_ok "consultou a bridge da conta pedida" || log_falha "não consultou a bridge da conta trabalho"
 
-echo
+echo "-- script ausente recusa"
+mv "$MCP/scripts/watch_chat.py" "$MCP/scripts/watch_chat.py.fora"
+checar "script ausente recusa" 2 pessoal
+contem "nomeia o script" "watch_chat.py"
+mv "$MCP/scripts/watch_chat.py.fora" "$MCP/scripts/watch_chat.py"
 
-# ============================================================================
-# Caso 2: bridge fora recusa nomeando conta e porta
-# ============================================================================
+echo "-- tudo certo devolve json com os caminhos"
+checar "conta pessoal arma" 0 pessoal
+node -e '
+  const j = JSON.parse(process.argv[1]), sb = process.argv[2], porta = Number(process.argv[3]);
+  const path = require("path"), norm = (p) => path.normalize(p);
+  const esperado = {
+    conta: "pessoal", porta,
+    status_url: `http://127.0.0.1:${porta}/api/status`,
+    script: norm(`${sb}/whatsapp-mcp/scripts/watch_chat.py`),
+    vigiar_md: norm(`${sb}/whatsapp-mcp/commands/vigiar.md`),
+    db: norm(`${sb}/bridge-pessoal/store/messages.db`),
+  };
+  const errado = Object.keys(esperado).filter((k) => (k === "porta" || k === "conta" || k === "status_url" ? j[k] : norm(j[k])) !== esperado[k]);
+  if (errado.length) { console.log("campos errados: " + errado.map((k) => `${k}=${j[k]}`).join(", ")); process.exit(1); }
+' "$SAIDA" "$SB" "$PORTA_conectada" && log_ok "json com conta, porta, status_url, script, vigiar_md e db" || log_falha "json fora do esperado: $SAIDA"
 
-echo "== Caso 2: bridge fora recusa nomeando conta e porta =="
-
-# Ligar a chave
-echo '{"integracao-whatsapp-mcp": true}' > "$PROJ/.rainforest/config.json"
-
-# Criar accounts com portas fictícias que ninguém está escutando
-cat > "$LAR/.whatsapp-mcp/accounts.json" <<'EOF'
-{
-  "accounts": {
-    "pessoal": {
-      "dir": "/tmp/bridge-pessoal",
-      "port": 29999,
-      "jid": "test-user-pessoal:0@s.whatsapp.net"
-    },
-    "trabalho": {
-      "dir": "/tmp/bridge-trabalho",
-      "port": 29998,
-      "jid": "test-user-trabalho:0@s.whatsapp.net"
-    }
-  }
-}
-EOF
-
-SAIDA2=$(teste_saida "bridge fora: porta recusada" 2 "node '$SRC_WIN/scripts/vigiar-checar.cjs' --conta pessoal")
-if echo "$SAIDA2" | grep -q "pessoal.*29999"; then
-  log_ok "mensagem menciona conta e porta"
-else
-  log_falha "mensagem não menciona conta/porta corretamente"
-fi
-
-echo
-
-# ============================================================================
-# Caso 3: conta inexistente lista as contas
-# ============================================================================
-
-echo "== Caso 3: conta inexistente lista as contas =="
-
-SAIDA3=$(teste_saida "conta inexistente lista contas" 2 "node '$SRC_WIN/scripts/vigiar-checar.cjs' --conta inexistente")
-if echo "$SAIDA3" | grep -q "pessoal"; then
-  log_ok "lista contém 'pessoal'"
-else
-  log_falha "lista não contém 'pessoal'"
-fi
-
-if echo "$SAIDA3" | grep -q "trabalho"; then
-  log_ok "lista contém 'trabalho'"
-else
-  log_falha "lista não contém 'trabalho'"
-fi
-
-echo
-
-# ============================================================================
-# Caso 4: conta de outra porta devolve status_url da porta dela
-# ============================================================================
-
-echo "== Caso 4: conta de outra porta devolve status_url da porta dela =="
-
-# Usar serverNode em background para servir status conectado
-node -e "
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const statusConectada = JSON.parse(fs.readFileSync('$SRC_WIN/hooks/fixtures/vigiar/status-conectada.json', 'utf8'));
-const server = http.createServer((req, res) => {
-  if (req.url === '/api/status') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(statusConectada));
-  } else {
-    res.writeHead(404);
-    res.end();
-  }
-});
-server.listen(0, '127.0.0.1', () => {
-  const porta = server.address().port;
-  const portaFile = path.join('$SB', 'porta-trabalho.txt');
-  fs.writeFileSync(portaFile, String(porta));
-});
-" &
-SERVERPID1=\$!
-
-# Aguardar arquivo de porta
-for i in $(seq 1 50); do
-  if [ -f "$SBP/porta-trabalho.txt" ]; then
-    break
-  fi
-  sleep 0.1
-done
-
-PORTA_TRABALHO=$(cat "$SBP/porta-trabalho.txt" 2>/dev/null || echo "0")
-
-# Atualizar accounts.json com porta dinâmica para trabalho
-cat > "$LAR/.whatsapp-mcp/accounts.json" <<EOF
-{
-  "accounts": {
-    "pessoal": {
-      "dir": "/tmp/bridge-pessoal",
-      "port": 29999,
-      "jid": "test-user-pessoal:0@s.whatsapp.net"
-    },
-    "trabalho": {
-      "dir": "/tmp/bridge-trabalho",
-      "port": $PORTA_TRABALHO,
-      "jid": "test-user-trabalho:0@s.whatsapp.net"
-    }
-  }
-}
-EOF
-
-sleep 0.2
-
-SAIDA4=$(teste_saida "conta trabalho devolve JSON" 0 "node '$SRC_WIN/scripts/vigiar-checar.cjs' --conta trabalho")
-if echo "$SAIDA4" | grep -q "\"porta\":$PORTA_TRABALHO"; then
-  log_ok "JSON contém porta correta de trabalho"
-else
-  log_falha "JSON não contém porta correta"
-fi
-
-if echo "$SAIDA4" | grep -q "\"status_url\":\"http://127.0.0.1:$PORTA_TRABALHO"; then
-  log_ok "status_url usa porta de trabalho, não 3005"
-else
-  log_falha "status_url não usa porta de trabalho"
-fi
-
-kill $SERVERPID1 2>/dev/null || true
-
-echo
-
-# ============================================================================
-# Caso 5: script ausente recusa
-# ============================================================================
-
-echo "== Caso 5: script ausente recusa =="
-
-# Remover o script vazio que criamos
-rm -f "$WHATSAPP_MCP_TMP/scripts/watch_chat.py"
-
-SAIDA5=$(teste_saida "script ausente recusa" 2 "node '$SRC_WIN/scripts/vigiar-checar.cjs' --conta trabalho")
-if echo "$SAIDA5" | grep -q "script não encontrado"; then
-  log_ok "mensagem menciona script não encontrado"
-else
-  log_falha "mensagem não menciona script não encontrado"
-fi
-
-echo
-
-# ============================================================================
-# Caso 6: tudo certo devolve json com os caminhos
-# ============================================================================
-
-echo "== Caso 6: tudo certo devolve json com os caminhos =="
-
-# Recriar script
-mkdir -p "$WHATSAPP_MCP_TMP/scripts"
-touch "$WHATSAPP_MCP_TMP/scripts/watch_chat.py"
-
-# Ligar chave e ter porta de servidor
-echo '{"integracao-whatsapp-mcp": true}' > "$PROJ/.rainforest/config.json"
-
-# Servidor conectado novamente
-node -e "
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const statusConectada = JSON.parse(fs.readFileSync('$SRC_WIN/hooks/fixtures/vigiar/status-conectada.json', 'utf8'));
-const server = http.createServer((req, res) => {
-  if (req.url === '/api/status') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(statusConectada));
-  } else {
-    res.writeHead(404);
-    res.end();
-  }
-});
-server.listen(0, '127.0.0.1', () => {
-  const porta = server.address().port;
-  const portaFile = path.join('$SB', 'porta-pessoal.txt');
-  fs.writeFileSync(portaFile, String(porta));
-});
-" &
-SERVERPID2=\$!
-
-# Aguardar arquivo de porta
-for i in $(seq 1 50); do
-  if [ -f "$SBP/porta-pessoal.txt" ]; then
-    break
-  fi
-  sleep 0.1
-done
-
-PORTA_PESSOAL=$(cat "$SBP/porta-pessoal.txt" 2>/dev/null || echo "0")
-
-# Atualizar accounts.json
-cat > "$LAR/.whatsapp-mcp/accounts.json" <<EOF
-{
-  "accounts": {
-    "pessoal": {
-      "dir": "/tmp/bridge-pessoal",
-      "port": $PORTA_PESSOAL,
-      "jid": "test-user-pessoal:0@s.whatsapp.net"
-    }
-  }
-}
-EOF
-
-sleep 0.2
-
-SAIDA6=$(teste_saida "tudo certo devolve JSON" 0 "node '$SRC_WIN/scripts/vigiar-checar.cjs' --conta pessoal")
-
-if echo "$SAIDA6" | grep -q '"conta":"pessoal"'; then
-  log_ok "JSON contém conta"
-else
-  log_falha "JSON não contém conta"
-fi
-
-if echo "$SAIDA6" | grep -q '"porta"'; then
-  log_ok "JSON contém porta"
-else
-  log_falha "JSON não contém porta"
-fi
-
-if echo "$SAIDA6" | grep -q '"status_url"'; then
-  log_ok "JSON contém status_url"
-else
-  log_falha "JSON não contém status_url"
-fi
-
-if echo "$SAIDA6" | grep -q '"script"'; then
-  log_ok "JSON contém script"
-else
-  log_falha "JSON não contém script"
-fi
-
-if echo "$SAIDA6" | grep -q '"vigiar_md"'; then
-  log_ok "JSON contém vigiar_md"
-else
-  log_falha "JSON não contém vigiar_md"
-fi
-
-if echo "$SAIDA6" | grep -q '"db"'; then
-  log_ok "JSON contém db"
-else
-  log_falha "JSON não contém db"
-fi
-
-kill $SERVERPID2 2>/dev/null || true
-
-echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
-[ "$falhou" -eq 0 ]
+[ "$falhou" = 0 ]
