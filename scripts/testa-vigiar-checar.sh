@@ -55,13 +55,18 @@ linhas_da_saida() { printf '%s\n' "$SAIDA" | grep -c .; }
 
 chave() { printf '{"integracao-whatsapp-mcp": %s}\n' "$1" > "$PROJ/.rainforest/config.json"; }
 
-# accounts.json no formato real (~/.whatsapp-mcp/accounts.json, conferido em
-# 2026-09-25): contas no topo, cada uma com dir, port e jid.
+# accounts.json no formato real (~/.whatsapp-mcp/accounts.json, chaves
+# conferidas em 2026-09-25, e whatsapp-mcp-server/accounts.py, que lê
+# `accounts_map.get("accounts")`): {"default": <alias>, "accounts": {<alias>:
+# {dir, port, jid}}}. Com o embrulho, "default" e "accounts" NÃO são contas.
 contas() { # <porta pessoal> <porta trabalho>
   cat > "$WHATSAPP_ACCOUNTS_FILE" <<EOF
 {
-  "pessoal": { "dir": "$SB/bridge-pessoal", "port": $1, "jid": "conta-pessoal@s.whatsapp.net" },
-  "trabalho": { "dir": "$SB/bridge-trabalho", "port": $2, "jid": "conta-trabalho@s.whatsapp.net" }
+  "default": "pessoal",
+  "accounts": {
+    "pessoal": { "dir": "$SB/bridge-pessoal", "port": $1, "jid": "conta-pessoal@s.whatsapp.net" },
+    "trabalho": { "dir": "$SB/bridge-trabalho", "port": $2, "jid": "conta-trabalho@s.whatsapp.net" }
+  }
 }
 EOF
 }
@@ -120,6 +125,7 @@ contem "nomeia conta e porta (healthy:false)" "pessoal.*$PORTA_desconectada"
 echo "-- conta inexistente lista as contas"
 checar "conta inexistente recusa" 2 inexistente
 contem "lista pessoal e trabalho" "pessoal.*trabalho|trabalho.*pessoal"
+if printf '%s' "$SAIDA" | grep -Eq "default|accounts"; then log_falha "listou chave do arquivo como conta: $SAIDA"; else log_ok "não lista default/accounts como conta"; fi
 
 echo "-- conta de outra porta devolve status_url da porta dela"
 contas "$PORTA_conectada" "$PORTA_outra"
