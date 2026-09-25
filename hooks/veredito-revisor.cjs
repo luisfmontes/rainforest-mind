@@ -141,7 +141,7 @@ function main() {
   // invalido de cara. Na segunda parada (stop_hook_active === true) nao
   // bloqueia de novo — segue para a gravacao abaixo, como antes desta tarefa.
   if (veredito === 'invalido' && payload.stop_hook_active !== true) {
-    const reason = 'Termine a mensagem com uma linha sozinha e exata: VEREDITO: ok ou VEREDITO: reprovado (negrito, sublinhado ou crase em volta da linha e aceito, ex.: **VEREDITO: ok**). Nao repita a analise que voce ja escreveu, so acrescente essa linha final.';
+    const reason = 'Termine a mensagem com uma linha sozinha e exata, sem nada depois dela na mesma linha: VEREDITO: ok ou VEREDITO: reprovado (negrito, sublinhado ou crase em volta da linha e aceito, ex.: **VEREDITO: ok**). Nao repita a analise que voce ja escreveu, so acrescente essa linha final.';
     process.stdout.write(JSON.stringify({ decision: 'block', reason }) + '\n');
     process.exit(0);
   }
