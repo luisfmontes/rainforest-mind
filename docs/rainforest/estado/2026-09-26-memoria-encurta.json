@@ -20,7 +20,25 @@
     "em": "2026-09-26"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-09-26",
+    "tarefas_ok": 2,
+    "tarefas": 2,
+    "comando": "node hooks/testa-memoria-escada.cjs",
+    "saida": "ok: 16 falhou: 0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-escada.cjs, caso \"14 observações com títulos longos cabem todas com textos encurtados\""
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "bump de versão, sem comportamento a inverter"
+      }
+    ],
+    "em": "2026-09-26"
   },
   "revisar": {
     "status": "pendente"
