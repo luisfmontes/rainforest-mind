@@ -348,6 +348,49 @@ function conferirConteudo(conteudo) {
 }
 
 /**
+ * Filtra achados comparando por multiconjunto (id + trecho).
+ * Retorna apenas os achados de `novos` que não aparecem em `antigos`.
+ *
+ * Issue #322: o gate barra só o que a edição INTRODUZ, não o que já estava.
+ * Compara por `id` + `trecho` (redigido, que identifica sem expor o dado).
+ * Dois achados novos onde havia um → sobra um → barra.
+ *
+ * Falha fechada: se `antigos` é null/inválido, retorna `novos` (barra tudo).
+ */
+function soIntroduzidos(novos, antigos) {
+  // Constrói mapa de contagem de achados antigos por chave (id + trecho)
+  const contadorAntigos = new Map();
+  if (antigos && Array.isArray(antigos)) {
+    for (const a of antigos) {
+      if (a && typeof a.id === "string" && typeof a.trecho === "string") {
+        const chave = a.id + "\u0000" + a.trecho;
+        contadorAntigos.set(chave, (contadorAntigos.get(chave) || 0) + 1);
+      }
+    }
+  }
+
+  // Filtra: mantém novos achados que não estão em antigos (multiconjunto)
+  const sobra = [];
+  if (novos && Array.isArray(novos)) {
+    for (const n of novos) {
+      if (n && typeof n.id === "string" && typeof n.trecho === "string") {
+        const chave = n.id + "\u0000" + n.trecho;
+        const saldo = contadorAntigos.get(chave) || 0;
+        if (saldo > 0) {
+          contadorAntigos.set(chave, saldo - 1);
+        } else {
+          sobra.push(n);
+        }
+      } else {
+        // Achado malformado: falha fechada, mantém para bloquear
+        sobra.push(n);
+      }
+    }
+  }
+  return sobra;
+}
+
+/**
  * Formata a mensagem de bloqueio com os achados.
  */
 function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade) {
@@ -650,6 +693,7 @@ function main() {
   const entrada = ev.tool_input || {};
   let arquivo = null;
   let conteudo = null;
+  let antigo = null;
 
   if (nome === "Write" && typeof entrada.file_path === "string" && typeof entrada.content === "string") {
     arquivo = entrada.file_path;
@@ -657,6 +701,7 @@ function main() {
   } else if (nome === "Edit" && typeof entrada.file_path === "string" && typeof entrada.new_string === "string") {
     arquivo = entrada.file_path;
     conteudo = entrada.new_string;
+    antigo = typeof entrada.old_string === "string" ? entrada.old_string : "";
   } else if (nome === "MultiEdit") {
     // MultiEdit passa um array de edits. Conferir cada um.
     const edits = Array.isArray(entrada.edits) ? entrada.edits : [];
@@ -665,6 +710,7 @@ function main() {
         // Confere este arquivo/conteúdo
         const a = edit.file_path;
         const c = edit.new_string;
+        const o = typeof edit.old_string === "string" ? edit.old_string : "";
         const dir = dirDe(a);
         const gitTop = git(dir, ["rev-parse", "--show-toplevel"]);
         if (!gitTop) continue; // fora de repo git
@@ -675,9 +721,16 @@ function main() {
 
         if (desligadoPorArquivo(gitTop)) continue; // Issue #265: faltava aqui
 
-        const resultado = conferirConteudo(c);
+        let resultado = conferirConteudo(c);
         if (resultado && resultado.achados && resultado.achados.length) {
-          bloqueia(resultado.achados, a, agente, gitTop);
+          // Filtra apenas achados introduzidos (não presentes em old_string)
+          const ra = conferirConteudo(o);
+          const achadosAntigos = (ra && ra.achados) || [];
+          resultado.achados = soIntroduzidos(resultado.achados, achadosAntigos);
+
+          if (resultado.achados.length > 0) {
+            bloqueia(resultado.achados, a, agente, gitTop);
+          }
         }
       }
     }
@@ -705,9 +758,18 @@ function main() {
   if (desligadoPorArquivo(gitTop)) process.exit(0);
 
   // Roda a conferência de publicação
-  const resultado = conferirConteudo(conteudo);
+  let resultado = conferirConteudo(conteudo);
   if (resultado && resultado.achados && resultado.achados.length) {
-    bloqueia(resultado.achados, arquivo, agente, gitTop);
+    // Para Edit/MultiEdit, filtra apenas achados introduzidos (não presentes em old_string)
+    if (antigo !== null) {
+      const ra = conferirConteudo(antigo);
+      const achadosAntigos = (ra && ra.achados) || [];
+      resultado.achados = soIntroduzidos(resultado.achados, achadosAntigos);
+    }
+
+    if (resultado.achados.length > 0) {
+      bloqueia(resultado.achados, arquivo, agente, gitTop);
+    }
   }
 
   process.exit(0);
