@@ -2513,6 +2513,46 @@ echo "== (#337m) f=\$X; bash \$f → exit 2 (valor contém variável) =="
 EXIT_337M=$?
 [ $EXIT_337M -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_337M)"
 
+# (#313) contrabarra dupla dentro do wrapper
+echo
+echo "== (#313) contrabarra dupla dentro do wrapper =="
+
+# Caso: `bash -c "gh issue \\<quebra>close 12"` (aspas duplas, contrabarra dupla)
+# Esperado: 2 (o escape reduzido deixa \<quebra>, que o colapso funde)
+echo
+echo "== (#313a) bash -c \"gh issue \\\\<newline>close 12\" → exit 2 (dupla em duplas) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const B=String.fromCharCode(92);const cmd="bash -c \"gh issue "+B+B+"\n"+"close 12\"";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-313a"
+EXIT_313A=$?
+[ $EXIT_313A -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_313A)"
+
+# Caso: `bash -c "gh issue \<quebra>close 12"` (aspas duplas, contrabarra simples)
+# Esperado: 2 (continua 2 como antes - controle da rodada 8)
+echo
+echo "== (#313b) bash -c \"gh issue \\<newline>close 12\" → exit 2 (simples em duplas - controle rodada 8) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const B=String.fromCharCode(92);const cmd="bash -c \"gh issue "+B+"\n"+"close 12\"";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-313b"
+EXIT_313B=$?
+[ $EXIT_313B -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_313B)"
+
+# Caso: `echo hi \\<quebra>gh issue close 12` (sem wrapper, contrabarra dupla)
+# Esperado: 2 (continua 2 como antes - controle da rodada 8)
+echo
+echo "== (#313c) echo hi \\\\<newline>gh issue close 12 → exit 2 (dupla sem wrapper - controle rodada 8) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const B=String.fromCharCode(92);const cmd="echo hi "+B+B+"\n"+"gh issue close 12";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-313c"
+EXIT_313C=$?
+[ $EXIT_313C -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_313C)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
