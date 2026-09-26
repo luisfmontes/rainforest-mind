@@ -11,19 +11,19 @@ Design: docs/rainforest/design/zerar-issues-9.md
 
 ## Tarefas
 
-### 1. `bash $VAR` sem aspas é execução de arquivo (#337) [tipo: implementar]
+### 1. `bash $VAR` sem aspas é arquivo quando a variável é resolvida no comando (#337) [tipo: implementar]
 atende: D1
 arquivos: `hooks/lib/tokens-comando.cjs`, `hooks/testa-gate-fechar-issue.sh`, `hooks/testa-gate-mensagem-commit.sh`, `hooks/testa-gate-staging-total.sh`
 depende de: nenhuma
-paralela: sim
+paralela: nao
 mutacao:
   arquivo: `hooks/lib/tokens-comando.cjs`
-  de: `function ehVariavelSemAspasComoArquivo(current) {`
-  para: `function ehVariavelSemAspasComoArquivo(current) { return false;`
+  de: `function valoresDaVariavelNoComando(nome, comando) {`
+  para: `function valoresDaVariavelNoComando(nome, comando) { return null;`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
   timeout: `600000`
-  fixture: testa-gate-fechar-issue.sh, secao "(#337) bash $VAR sem aspas"
-pronto quando: com o payload PreToolUse real (`{"cwd":<worktree>,"tool_name":"Bash","tool_input":{"command":...}}`) e `gh` de sandbox no PATH, `for t in a b; do bash $t; done`, `f=x.sh; bash $f 2>&1 | tail -1`, `bash $t arg` e `sh ${t}` saem **0** no `gate-fechar-issue.cjs` (hoje os dois primeiros saem 2), enquanto `bash -c "$x"`, `bash -c $x`, `eval "$x"`, `bash $f "gh issue close 12"` e `for t in x; do bash -c "gh issue close 12"; done` saem **2** — nos três gates de texto, provado por `bash hooks/testa-gate-fechar-issue.sh && bash hooks/testa-gate-mensagem-commit.sh && bash hooks/testa-gate-staging-total.sh` com cada caso impresso com o exit. A função nova começa na linha exata `function ehVariavelSemAspasComoArquivo(current) {` e é chamada em `desempacotarWrapperDeString` ao lado de `ehVariavelCitadaFinal`. Antes de escrever, medir se `bash $f "gh issue close 12"` sai 2 hoje e colar no relato: aceitar esse caso é regressão (com `f=-c` vira `bash -c` escondido) — variável sem aspas só é arquivo quando nenhum argumento depois dela é string entre aspas com espaço; o executor documenta no comentário a regra exata que escolheu.
+  fixture: testa-gate-fechar-issue.sh, secao "(#337) bash $VAR resolvida no comando"
+pronto quando: com o payload PreToolUse real (`{"cwd":<worktree>,"tool_name":"Bash","tool_input":{"command":...}}`) e `gh` de sandbox no PATH, nos três gates de texto: `for t in a b; do bash $t; done`, `for t in scripts/testa-*.sh; do bash $t; done`, `f=x.sh; bash $f 2>&1 | tail -1`, `f=x.sh; bash ${f}`, `f=x.sh; sh $f arg` → **0** (hoje saem 2); e continuam **2**: `bash $CMD` (caso (cj) intacto), `bash $t` sem atribuição, `for t in $(ls); do bash $t; done`, `f=-c; bash $f "gh issue close 12"`, `for t in -c; do bash $t "gh issue close 12"; done`, `f="a b"; bash $f`, `IFS=,; f=x.sh; bash $f`, `f=$X; bash $f`, `bash -c "$x"`, `eval "$x"`, `for t in x; do bash -c "gh issue close 12"; done`. Provado por `bash hooks/testa-gate-fechar-issue.sh && bash hooks/testa-gate-mensagem-commit.sh && bash hooks/testa-gate-staging-total.sh` com cada caso impresso com o exit. A resolução mora na função que começa na linha exata `function valoresDaVariavelNoComando(nome, comando) {` — devolve a lista de valores literais possíveis de `nome` no comando inteiro, ou `null` quando não há ligação legível —, consultada em `desempacotarWrapperDeString`; nenhuma regra por tamanho ou forma do nome da variável. *(Emenda de 2026-09-26, Q1 (a): a versão anterior desta tarefa aceitava todo `$VAR` sem aspas, em conflito com o caso (cj); a primeira entrega foi descartada.)*
 
 ### 2. Aspas duplas do wrapper reduzem escape antes do colapso (#313) [tipo: implementar]
 atende: D2

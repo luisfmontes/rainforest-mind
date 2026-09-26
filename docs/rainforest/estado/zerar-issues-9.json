@@ -25,7 +25,55 @@
     "em": "2026-09-26"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-09-26",
+    "tarefas_ok": 4,
+    "tarefas": 8,
+    "em_voo": [],
+    "em": "2026-09-26",
+    "carimbos": [
+      {
+        "tarefa": 5,
+        "hash_base": "376d1faf",
+        "iteracao": 1,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-26T17:51:55.168Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "376d1faf",
+        "iteracao": 1,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-26T17:51:55.168Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "376d1faf",
+        "iteracao": 1,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-26T18:08:55.116Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "376d1faf",
+        "iteracao": 1,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-26T18:08:55.116Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "376d1faf",
+        "iteracao": 1,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-26T18:29:27.660Z"
+      }
+    ],
+    "pendentes": [
+      "tarefa-1: aguarda Q1 (bash $VAR x caso cj)",
+      "tarefa-2: depende da 1",
+      "tarefa-3: mutacao em re-medicao",
+      "tarefa-8: por ultimo"
+    ]
   },
   "revisar": {
     "status": "pendente"
