@@ -41,10 +41,33 @@
     "em": "2026-09-26"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "9fbb7cbd53365a8d001ef2dd682b032280abd13d",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "acb602c5d89980999",
+        "veredito": "ok",
+        "em": "2026-09-26",
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\subagents\\agent-acb602c5d89980999.jsonl"
+      }
+    ],
+    "achados": [
+      "APROVADO; 1 latente nao bloqueante: encurtarNaPalavra(x,0) devolve 1 caractere (sem call-site com 0)"
+    ],
+    "base": "506c0c032c0de2978ae1be43dfc06a3632221af8",
+    "head": "9fbb7cbd53365a8d001ef2dd682b032280abd13d",
+    "em": "2026-09-26"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node hooks/testa-memoria-escada.cjs",
+    "saida": "ok: 16   falhou: 0; banco real (so leitura) 12 janelas: main 6.3 -> novo 14.0",
+    "sensor_externo": "node hooks/testa-memoria-escada.cjs",
+    "em": "2026-09-26"
   },
   "fechar": {
     "status": "pendente"
