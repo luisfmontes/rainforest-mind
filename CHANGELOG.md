@@ -10,6 +10,42 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.24.0 — 2026-09-26
+
+**Os gates pararam de barrar o que já era legível, e fecharam dois buracos.**
+
+- **`bash $t` sem aspas passa quando o valor está escrito no próprio comando** (#337):
+  `for t in a b; do bash $t; done`, `for t in scripts/testa-*.sh; do bash $t; done` e
+  `f=x.sh; bash $f` deixam de ser "comando encapsulado". Continuam barrados `bash $CMD`
+  sem atribuição visível, valor que começa com `-` ou tem espaço (`f=-c; bash $f "gh ..."`),
+  lista com `$(...)` e qualquer comando que mexa em `IFS`.
+- **Contrabarra dupla dentro das aspas duplas de um wrapper** deixou de esconder o comando
+  (#313): `bash -c "gh issue \<quebra>close 12"` passava; agora o gate faz a mesma
+  redução de escape que o bash faz antes de juntar a linha.
+- **O gate de publicação mede o que a edição introduz** (#322): um `Edit` que preserva um
+  dado sensível já presente no `old_string` (a linha do trailer `Co-Authored-By`, por
+  exemplo) não é mais barrado. A comparação é pelo valor, não pelo trecho redigido: trocar
+  um e-mail por outro, ou acrescentar um segundo na mesma linha, continua barrado. A isenção
+  do `noreply@` no conferidor já existia e não mudou.
+
+**O fluxo passou a achar o próprio estado onde ele mora.**
+
+- **O veredito do revisor é gravado no worktree** quando o estado do fluxo só existe lá
+  (#329). Se o estado estiver em mais de um worktree, ou em nenhum, o hook avisa em stderr
+  e não grava — antes saía em silêncio.
+- **Tarefa acrescentada por emenda ao plano recebe carimbo** (#312): o teto do carimbo lê
+  o arquivo do plano, como a validação de `mutacao` já fazia; o número gravado no
+  `plano ok` fica de reserva quando o arquivo não existe.
+
+**Medição.**
+
+- **As baterias em Node entram no CI** (#335): o varredor descobre `testa-*.cjs` em
+  `scripts/` e `hooks/` e as roda com `node`. As cascas `.sh` que só chamavam uma
+  `.cjs` saíram. Antes, 13 baterias nunca rodavam no CI.
+- **A checagem de duplicata do `/saude` mede só o plugin versionável** (#323): arquivo
+  gitignorado (as cópias em `.claude/marketplaces/`, por exemplo) não conta mais. No
+  checkout principal, o aviso caía de 811 grupos para 0.
+
 ## 1.23.0 — 2026-09-22
 
 **Os gates de texto pararam de deixar passar `bash -c` escondido atrás de palavra
