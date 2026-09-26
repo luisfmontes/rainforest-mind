@@ -864,6 +864,11 @@ function cwdDoSegmento(segmento, mapaCwd, ordem) {
  * para que `cwdDoSegmento` saiba qual OCORRÊNCIA deste texto está sendo
  * processada agora (ver docblock de `cwdDoSegmento`).
  *
+ * `comandoInteiro` é o comando completo (antes de ser segmentado) — usado
+ * para que `valoresDaVariavelNoComando` (tarefa 1, #337) possa procurar
+ * definições de variáveis em qualquer ponto do comando (mesmo se em outro
+ * segmento).
+ *
  * Ordem:
  *   1. `gh` como comando efetivo — direto ou atrás de um prefixo que só
  *      repassa (`env`, `nohup`, `timeout <dur>`, `xargs`, `X=1`, ...), via
@@ -877,7 +882,7 @@ function cwdDoSegmento(segmento, mapaCwd, ordem) {
  *      `gh issue close`/`gh issue create`/`gh issue comment`/`gh pr create`/`gh pr edit`/`gh pr merge` aparece em qualquer
  *      posição do segmento, trata como comando mesmo assim.
  */
-function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
+function processarSegmento(segmento, mapaCwd, contadores, ferramenta, comandoInteiro) {
   // Ordem desta ocorrência do texto do segmento (0 = primeira vez que este
   // texto exato é processado, 1 = segunda, ...). Contada ANTES de qualquer
   // recursão/retorno abaixo — um único `processarSegmento(segmento, ...)`
@@ -913,9 +918,11 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   // desempacotador de STRING. Usa `textoAPartir(toksComAspas, pos)` quando
   // `pos` existe (o texto dali pra frente, sem o prefixo ja consumido);
   // sem posicao de comando (`pos === null`), nao ha o que desempacotar.
+  // Tarefa 1 (#337): passa também o comando inteiro para que
+  // `valoresDaVariavelNoComando` possa procurar valores de variáveis em qualquer ponto.
   const { interno, ilegivel } = pos === null
     ? { interno: null, ilegivel: false }
-    : desempacotarWrapperDeString(textoAPartir(toksComAspas, pos), { ferramenta });
+    : desempacotarWrapperDeString(textoAPartir(toksComAspas, pos), { ferramenta, comando: comandoInteiro });
   if (ilegivel) {
     bloqueia(
       `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
@@ -927,7 +934,7 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   }
   if (interno !== null) {
     for (const sub of segmentosParaGate(interno)) {
-      processarSegmento(sub, mapaCwd, contadores, ferramenta);
+      processarSegmento(sub, mapaCwd, contadores, ferramenta, comandoInteiro);
     }
     return;
   }
@@ -1031,7 +1038,7 @@ function main() {
   // docblock de `cwdDoSegmento`.
   const contadores = new Map();
   for (const segmento of segmentosParaGate(comando)) {
-    processarSegmento(segmento, mapaCwd, contadores, nome);
+    processarSegmento(segmento, mapaCwd, contadores, nome, comando);
   }
   verificarTextosDeHeredoc(mapaCwd, contadores, nome);
 

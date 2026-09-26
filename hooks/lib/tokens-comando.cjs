@@ -588,11 +588,139 @@ function colapsaContinuacaoDeLinhaNoTopo(cmdOriginal) {
   return colapsaContinuacaoDeLinha(cmdOriginal);
 }
 
+/**
+ * Reduz escape de aspas duplas: `\\` → `\`, `\"` → `"`, `\$` → `$`, `` \` `` → `` ` ``
+ * NUM ÚNICO PASSE da esquerda para direita. Qualquer outra sequência de
+ * contrabarra+caractere (inclusive `\`+quebra de linha) é emitida intacta
+ * e deixada para `colapsaContinuacaoDeLinha` processar depois.
+ *
+ * Tarefa 2 (#313): o bash reduz escape em TWO PASSES quando interpreta uma
+ * string dentro de aspas duplas — este passe reduz o que é específico de
+ * escape de aspas duplas, deixando o resto (continuação de linha) para o
+ * colapso de quebra.
+ */
+function reduzEscapeAspasDuplas(str) {
+  let saida = "";
+  for (let i = 0; i < str.length; i += 1) {
+    if (str[i] === "\\" && i + 1 < str.length) {
+      const prox = str[i + 1];
+      if (prox === "\\" || prox === '"' || prox === "$" || prox === "`") {
+        // Reduce: emite só o caractere seguinte
+        saida += prox;
+        i += 1;
+        continue;
+      }
+    }
+    saida += str[i];
+  }
+  return saida;
+}
+
+/**
+ * Extrai a lista de valores literais possíveis de uma variável `nome` no
+ * comando INTEIRO, ou `null` se não há ligação legível:
+ *
+ * - `for <nome> in <palavras>` onde as palavras são literais (sem `$`, crase,
+ *   `$(`, aspas com espaço interno) ou glob (`*`, `?`) — devolve os valores
+ *   expandidos (globbing é literal, não expandido pelo parser).
+ * - `(^|[;\s&|(])<nome>=<valor>` logo antes de uma posição que o usa, onde o
+ *   valor é `"[^"]*"` (duplas) | `'[^']*'` (simples) | `[^\s;&|]+` (nu).
+ *
+ * Condições:
+ *   - Se `/\bIFS=/` aparece em QUALQUER lugar do comando → `null` (ilegível).
+ *   - Cada palavra extraída: sem `$`, crase, `$(`, espaço, não começa com `-`.
+ *   - Se alguma palavra falha na validação, ou a lista está vazia → `null`.
+ *
+ * Tarefa 1 (#337): resolve se `bash $VAR` / `sh $VAR` (sem aspas) é execução
+ * de arquivo legível (valores todos literais e válidos) ou ilegível (variável
+ * não resolvida, com caracteres suspeitos, ou lista vazia).
+ */
+function valoresDaVariavelNoComando(nome, comando) {
+  // Cheque 1: IFS presente em qualquer lugar torna ilegível
+  if (/\bIFS=/.test(comando)) {
+    return null;
+  }
+
+  const valores = new Set();
+
+  // Fonte 1: `for <nome> in <palavras>`
+  const forRegex = new RegExp("\\bfor\\s+" + nome + "\\s+in\\s+([^;\\n]*?)(?:;|\\n|$)");
+  const forMatch = forRegex.exec(comando);
+  if (forMatch) {
+    const palavrasText = forMatch[1];
+    // Splita por espaço respeitando aspas
+    let i = 0;
+    while (i < palavrasText.length) {
+      // Pula espaço
+      while (i < palavrasText.length && /\s/.test(palavrasText[i])) i += 1;
+      if (i >= palavrasText.length) break;
+
+      // Extrai próxima palavra (até espaço, fora de aspas)
+      let palavra = "";
+      let aspa = null;
+      while (i < palavrasText.length) {
+        const c = palavrasText[i];
+        if (aspa) {
+          if (c === aspa) aspa = null;
+          else palavra += c;
+          i += 1;
+          continue;
+        }
+        if (c === '"' || c === "'") {
+          aspa = c;
+          i += 1;
+          continue;
+        }
+        if (/\s/.test(c)) break;
+        palavra += c;
+        i += 1;
+      }
+
+      if (palavra) {
+        valores.add(palavra);
+      }
+    }
+  }
+
+  // Fonte 2: `<nome>=<valor>` logo antes do comando
+  // Pattern: começa com (;, espaço, &, |, ( ou início) `<nome>=`
+  const atribRegex = new RegExp("(^|[;\\s&|(])" + nome + "=(['\"]?)([^'\"\\s;&|]+)\\2");
+  let atribMatch;
+  const atribGlobal = new RegExp("(^|[;\\s&|(])" + nome + "=(?:(['\"])([^'\"]*?)\\2|([^\\s;&|]+))", "g");
+  while ((atribMatch = atribGlobal.exec(comando)) !== null) {
+    // atribMatch[2] é a aspa (se houver); [3] é o valor citado; [4] é o valor nu
+    const valor = atribMatch[3] !== undefined ? atribMatch[3] : atribMatch[4];
+    if (valor) valores.add(valor);
+  }
+
+  // Se não encontrou nenhum valor, retorna null
+  if (valores.size === 0) {
+    return null;
+  }
+
+  // Valida cada valor: sem `$`, crase, `$(`, espaço, não começa com `-`
+  for (const v of valores) {
+    if (/\$|\`|\$\(|\s/.test(v) || v.startsWith("-")) {
+      return null;
+    }
+  }
+
+  return Array.from(valores);
+}
+
 /** Tira UM nivel de aspas externas de `interno`, se houver. */
 function desempacota(interno) {
   interno = interno.trim();
-  const aspas = /^"([\s\S]*)"$/.exec(interno) || /^'([\s\S]*)'$/.exec(interno);
+  const aspasD = /^"([\s\S]*)"$/.exec(interno);
+  const aspasS = /^'([\s\S]*)'$/.exec(interno);
+  const aspas = aspasD || aspasS;
   interno = aspas ? aspas[1] : interno;
+
+  // Tarefa 2 (#313): apenas aspas duplas sofrem redução de escape antes do colapso
+  if (aspasD) {
+    interno = reduzEscapeAspasDuplas(interno);
+  }
+
   interno = colapsaContinuacaoDeLinha(interno);
   return interno;
 }
@@ -646,12 +774,17 @@ function contemConstrucaoIlegivel(str) {
  * importa para o caso `&` acima; quem nao passa preserva o comportamento de
  * antes (`&` nunca vira ilegivel por este motivo).
  *
+ * `comando` (opcional): o segmento completo (ou comando inteiro em contexto de
+ * gate) — usado por `valoresDaVariavelNoComando` (tarefa 1, #337) para procurar
+ * valores literais de variáveis no comando. Quando não fornecido, variáveis
+ * sem valor identificado continuam ilegíveis (comportamento anterior).
+ *
  * Quem chama decide o que fazer com cada combinacao: `interno` legivel
  * (nao-null, `ilegivel: false`) e reprocessado como se fosse o proprio
  * comando; `ilegivel: true` (com ou sem `interno`) e tratado como INCERTO —
  * mesma postura conservadora que `$(`/crase solto ja recebe nos tres gates.
  */
-function desempacotarWrapperDeString(segmento, { ferramenta } = {}) {
+function desempacotarWrapperDeString(segmento, { ferramenta, comando } = {}) {
   const p1 = extrairPrimeiroToken(segmento);
   if (!p1) return { interno: null, ilegivel: false };
   const exe = normalizarNomeExecutavel(p1.tok);
@@ -761,6 +894,20 @@ function desempacotarWrapperDeString(segmento, { ferramenta } = {}) {
     if (ehVariavelCitadaFinal(current)) {
       return { interno: null, ilegivel: false };
     }
+
+    // Tarefa 1 (#337): `bash $VAR` sem aspas — procura valores literais de `$VAR`
+    // no comando inteiro. Se encontrar uma lista legível, trata como arquivo
+    // (mesmo que `./script.sh`); senão, cai no ilegível.
+    const matchVar = /^\$(?:([A-Za-z_][A-Za-z0-9_]*)|\{([A-Za-z_][A-Za-z0-9_]*)\})/.exec(current.tok);
+    if (matchVar && !current.citado && comando) {
+      const nomeVar = matchVar[1] || matchVar[2];
+      const valoresResolvidos = valoresDaVariavelNoComando(nomeVar, comando);
+      if (valoresResolvidos !== null) {
+        // Valores resolvidos: trata como caminho literal
+        return { interno: null, ilegivel: false };
+      }
+    }
+
     const coladoNoToken = /^[^\s]*/.exec(current.resto)[0];
     if (contemConstrucaoIlegivel(current.tok + coladoNoToken)) {
       return { interno: null, ilegivel: true };
@@ -783,4 +930,6 @@ module.exports = {
   contemConstrucaoIlegivel,
   colapsaContinuacaoDeLinha,
   colapsaContinuacaoDeLinhaNoTopo,
+  reduzEscapeAspasDuplas,
+  valoresDaVariavelNoComando,
 };
