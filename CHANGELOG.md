@@ -18,7 +18,9 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   `for t in a b; do bash $t; done`, `for t in scripts/testa-*.sh; do bash $t; done` e
   `f=x.sh; bash $f` deixam de ser "comando encapsulado". Continuam barrados `bash $CMD`
   sem atribuição visível, valor que começa com `-` ou tem espaço (`f=-c; bash $f "gh ..."`),
-  lista com `$(...)` e qualquer comando que mexa em `IFS`.
+  lista com `$(...)`, qualquer comando que mexa em `IFS`, e variável que o comando
+  também muda por outro caminho (`read`, `printf -v`, `declare`, `+=`, array) ou que tenha algo
+  colado (`$f` seguido de crase).
 - **Contrabarra dupla dentro das aspas duplas de um wrapper** deixou de esconder o comando
   (#313): `bash -c "gh issue \\<quebra>close 12"` passava; agora o gate faz a mesma
   redução de escape que o bash faz antes de juntar a linha.

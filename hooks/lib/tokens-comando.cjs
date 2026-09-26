@@ -641,76 +641,55 @@ function reduzEscapeAspasDuplas(str) {
  * não resolvida, com caracteres suspeitos, ou lista vazia).
  */
 function valoresDaVariavelNoComando(nome, comando) {
-  // Cheque 1: IFS presente em qualquer lugar torna ilegível
-  if (/\bIFS=/.test(comando)) {
-    return null;
-  }
+  // Qualquer mexida em IFS muda o word-splitting de `$nome` — ilegível.
+  if (/\bIFS\b/.test(comando)) return null;
 
-  const valores = new Set();
-
-  // Fonte 1: `for <nome> in <palavras>`
-  const forRegex = new RegExp("\\bfor\\s+" + nome + "\\s+in\\s+([^;\\n]*?)(?:;|\\n|$)");
-  const forMatch = forRegex.exec(comando);
-  if (forMatch) {
-    const palavrasText = forMatch[1];
-    // Splita por espaço respeitando aspas
-    let i = 0;
-    while (i < palavrasText.length) {
-      // Pula espaço
-      while (i < palavrasText.length && /\s/.test(palavrasText[i])) i += 1;
-      if (i >= palavrasText.length) break;
-
-      // Extrai próxima palavra (até espaço, fora de aspas)
-      let palavra = "";
-      let aspa = null;
-      while (i < palavrasText.length) {
-        const c = palavrasText[i];
-        if (aspa) {
-          if (c === aspa) aspa = null;
-          else palavra += c;
-          i += 1;
-          continue;
-        }
-        if (c === '"' || c === "'") {
-          aspa = c;
-          i += 1;
-          continue;
-        }
-        if (/\s/.test(c)) break;
-        palavra += c;
-        i += 1;
-      }
-
-      if (palavra) {
-        valores.add(palavra);
-      }
+  // Regra única (revisão 2): TODA ocorrência de `nome` como palavra tem de ser
+  // uma ligação que este leitor entende (`for nome in ...`, `nome=<literal>`)
+  // ou um uso (`$nome`, `${nome}`). Qualquer outra — `read nome`,
+  // `printf -v nome`, `declare nome`, `nome+=`, `nome=(...)` — pode dar a
+  // `nome` um valor que ninguém lê aqui, e devolve null. É isso que fecha o
+  // `for t in a; ...; for t in -c; ...` (a versão anterior lia só o primeiro
+  // `for`) e o `f=(-c x.sh)` (array cujo primeiro elemento é `-c`).
+  const valores = [];
+  const ocorrencia = new RegExp("(^|[^A-Za-z0-9_])" + nome + "(?![A-Za-z0-9_])", "g");
+  let m;
+  while ((m = ocorrencia.exec(comando)) !== null) {
+    const ini = m.index + m[1].length;
+    const antes = comando.slice(0, ini);
+    const depois = comando.slice(ini + nome.length);
+    // Pedaço de caminho ou de flag (`rm -f`, `a/f/b`, `x.f`), não a variável.
+    if (/[-/.]$/.test(antes) || /^[/.]/.test(depois)) continue;
+    // Uso: `$nome` ou `${nome}`.
+    if (/\$\{?$/.test(antes)) continue;
+    // Ligação 1: `for nome in <palavras>` até `;`, quebra ou `do`.
+    if (/(?:^|[;&|(\s])for\s+$/.test(antes)) {
+      const lista = /^\s+in\s+([^;\n]*)/.exec(depois);
+      if (!lista) return null;
+      const palavras = lista[1].replace(/\s+do\s*$/, "").trim().split(/\s+/).filter(Boolean);
+      if (palavras.length === 0) return null;
+      valores.push(...palavras);
+      continue;
     }
-  }
-
-  // Fonte 2: `<nome>=<valor>` logo antes do comando
-  // Pattern: começa com (;, espaço, &, |, ( ou início) `<nome>=`
-  const atribRegex = new RegExp("(^|[;\\s&|(])" + nome + "=(['\"]?)([^'\"\\s;&|]+)\\2");
-  let atribMatch;
-  const atribGlobal = new RegExp("(^|[;\\s&|(])" + nome + "=(?:(['\"])([^'\"]*?)\\2|([^\\s;&|]+))", "g");
-  while ((atribMatch = atribGlobal.exec(comando)) !== null) {
-    // atribMatch[2] é a aspa (se houver); [3] é o valor citado; [4] é o valor nu
-    const valor = atribMatch[3] !== undefined ? atribMatch[3] : atribMatch[4];
-    if (valor) valores.add(valor);
-  }
-
-  // Se não encontrou nenhum valor, retorna null
-  if (valores.size === 0) {
+    // Ligação 2: `nome=<literal>` (nu, ou entre aspas sem expansão dentro).
+    if (/(?:^|[;&|(\s])$/.test(antes) && depois.startsWith("=")) {
+      const atrib = /^=(?:'([^']*)'|"([^"$`\\]*)"|([^\s;&|<>()'"]+))(?=$|[\s;&|])/.exec(depois);
+      if (!atrib) return null;
+      valores.push(atrib[1] !== undefined ? atrib[1] : atrib[2] !== undefined ? atrib[2] : atrib[3]);
+      continue;
+    }
     return null;
   }
+  if (valores.length === 0) return null;
 
-  // Valida cada valor: sem `$`, crase, `$(`, espaço, não começa com `-`
+  // Cada valor possível é um caminho/glob literal: lista branca de caracteres,
+  // sem começar com `-` (senão `bash $f` vira `bash -c`), sem espaço, `$`,
+  // crase, parêntese, aspas ou redirecionamento.
+  const LITERAL = /^[A-Za-z0-9_.\/*?\[\]+,:=@%~][A-Za-z0-9_.\/*?\[\]+,:=@%~-]*$/;
   for (const v of valores) {
-    if (/\$|\`|\$\(|\s/.test(v) || v.startsWith("-")) {
-      return null;
-    }
+    if (!LITERAL.test(v)) return null;
   }
-
-  return Array.from(valores);
+  return valores;
 }
 
 /** Tira UM nivel de aspas externas de `interno`, se houver. */
@@ -903,7 +882,11 @@ function desempacotarWrapperDeString(segmento, { ferramenta, comando } = {}) {
     // Tarefa 1 (#337): `bash $VAR` sem aspas — procura valores literais de `$VAR`
     // no comando inteiro. Se encontrar uma lista legível, trata como arquivo
     // (mesmo que `./script.sh`); senão, cai no ilegível.
-    const matchVar = /^\$(?:([A-Za-z_][A-Za-z0-9_]*)|\{([A-Za-z_][A-Za-z0-9_]*)\})/.exec(current.tok);
+    // A PALAVRA INTEIRA tem de ser `$nome`/`${nome}`: com algo colado
+    // (`$f` + crase, `$f$(x)`), a substituição roda antes da concatenação e
+    // o resto segue no `contemConstrucaoIlegivel` abaixo (achado da revisão 2).
+    const palavraInteira = current.tok + /^[^\s]*/.exec(current.resto)[0];
+    const matchVar = /^\$(?:([A-Za-z_][A-Za-z0-9_]*)|\{([A-Za-z_][A-Za-z0-9_]*)\})$/.exec(palavraInteira);
     if (matchVar && !current.citado && comando) {
       const nomeVar = matchVar[1] || matchVar[2];
       const valoresResolvidos = valoresDaVariavelNoComando(nomeVar, comando);

@@ -2513,6 +2513,31 @@ echo "== (#337m) f=\$X; bash \$f → exit 2 (valor contém variável) =="
 EXIT_337M=$?
 [ $EXIT_337M -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_337M)"
 
+# (#337n-t) Bypasses achados na revisão 2 — todos saíam 0 com a primeira
+# versão de `valoresDaVariavelNoComando` (medido contra o commit anterior).
+# Cada um dá a `$f`/`$t` um valor que o leitor não via, ou cola uma
+# substituição à variável; no bash real, todos acabam rodando `gh issue close`.
+# Montados em node (crase e parêntese sobrevivem ao quoting do shell).
+echo
+echo "== (#337n-t) bypasses da revisao 2 → exit 2 =="
+for caso in n o p q r s t; do
+  PAYLOAD=$(node -e '
+    const C=String.fromCharCode(96);const g="\"gh issue close 12\"";
+    const cmd={
+      n:"f=x.sh; bash $f"+C+"gh issue close 12"+C,
+      o:"f=(-c x.sh); bash $f "+g,
+      p:"for t in a; do :; done; for t in -c; do bash $t "+g+"; done",
+      q:"f=x.sh; read f <<< -c; bash $f "+g,
+      r:"f=x.sh; printf -v f %s -c; bash $f "+g,
+      s:"f=x.sh; f+=\" -c\"; bash $f "+g,
+      t:"f=x.sh; declare -a f=(-c); bash $f "+g,
+    }[process.argv[2]];
+    process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$caso")
+  ( export PATH="$SBP/bin:$PATH"; echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs" ) 2>"$SBP/err-337$caso" >/dev/null
+  EXIT_337X=$?
+  [ $EXIT_337X -eq 2 ] && test_ok "(#337$caso) exit 2" || test_fail "(#337$caso) exit code (foi $EXIT_337X)"
+done
+
 # (#313) contrabarra dupla dentro do wrapper
 echo
 echo "== (#313) contrabarra dupla dentro do wrapper =="

@@ -25,7 +25,7 @@
     "em": "2026-09-26"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-26",
     "tarefas_ok": 8,
     "tarefas": 8,
@@ -131,34 +131,35 @@
         "resultado": "n/a",
         "motivo": "bump de versao e changelog, sem comportamento a inverter"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-26"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "7e0b7b8fb488c7dd85ad31d624d0c7fafd822af0",
+      "head": "1eae5432fdfe5c4454e2ac9d59f0fffd27b025f8",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a808e971acb6dbd95",
+        "agente_id": "abc839d8ec6ec8274",
         "veredito": "reprovado",
         "em": "2026-09-26",
-        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\fafafc3e-6038-4d4f-a12c-598b61a131f3\\subagents\\agent-a808e971acb6dbd95.jsonl"
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\fafafc3e-6038-4d4f-a12c-598b61a131f3\\subagents\\agent-abc839d8ec6ec8274.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-09-26",
-    "achados": 5,
+    "achados": 2,
     "pendentes": [
-      "1 alto: scripts/testa-cli-externo.sh casca roda .cjs em dobro",
-      "2 medio: casos das tarefas 1/2 so numa bateria; caso aspas simples ausente (revelou falso positivo de textoAPartir)",
-      "3 baixo: indexOf em conferir-duplicacao",
-      "4 baixo: design corrompido por $` no replace",
-      "5 obs: 811 x 813"
+      "rev2-1: crase colada a $VAR resolvida escapava (tokens-comando palavra inteira)",
+      "rev2-2: array f=(-c x.sh) escapava; mais 5 portas da mesma causa (segundo for, read, printf -v, +=, declare)"
     ],
-    "tentativas": 1
+    "tentativas": 2
   },
   "verificar": {
     "status": "pendente"
