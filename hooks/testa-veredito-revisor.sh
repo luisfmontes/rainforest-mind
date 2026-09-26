@@ -107,10 +107,15 @@ SLUG_JSON="$R/docs/rainforest/estado/$SLUG.json"
 
 # Escreve (ou reescreve) o estado do slug com a janela de vereditos vazia —
 # chamado antes de cada caso que precisa de uma janela limpa.
+# Parametrizado para suportar worktrees — ${1:-$SLUG_JSON} é o caminho do arquivo.
 reset_estado() {
+  local json_path="${1:-$SLUG_JSON}"
   node -e '
 const fs = require("fs");
+const path = require("path");
 const [p, slug] = process.argv.slice(1);
+const dir = path.dirname(p);
+fs.mkdirSync(dir, {recursive: true});
 fs.writeFileSync(p, JSON.stringify({
   slug, titulo: "fixture da bateria de contrato de veredito", criado_em: "2026-09-23",
   arqueologia: { status: "dispensada" },
@@ -121,19 +126,25 @@ fs.writeFileSync(p, JSON.stringify({
   verificar: { status: "pendente" },
   fechar: { status: "pendente" },
 }, null, 2) + "\n");
-' "$SLUG_JSON" "$SLUG"
+' "$json_path" "$SLUG"
 }
 reset_estado
 
 # Le a janela de vereditos do slug direto do arquivo (nunca via `estado.cjs
 # ler`: esse subcomando avisa em stdout sobre carimbos divergentes do ledger
 # e poluiria a comparacao — o arquivo em disco e a fonte real).
+# Parametrizado para suportar worktrees — ${1:-$SLUG_JSON} é o caminho do arquivo.
 vereditos() {
+  local json_path="${1:-$SLUG_JSON}"
   node -e '
 const fs = require("fs");
-const e = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-process.stdout.write(JSON.stringify((e.revisar && e.revisar.vereditos) || []));
-' "$SLUG_JSON" 2>/dev/null || echo '[]'
+try {
+  const e = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+  process.stdout.write(JSON.stringify((e.revisar && e.revisar.vereditos) || []));
+} catch {
+  process.stdout.write("[]");
+}
+' "$json_path" 2>/dev/null || echo '[]'
 }
 
 sha() { sha256sum "$1" 2>/dev/null | cut -d' ' -f1; }
@@ -593,6 +604,75 @@ else
   falhou=$((falhou+1)); echo "  FALHA toggle desligado bloqueou (nao deveria, exit $GOT): saida=$SAIDA"
 fi
 rm -rf "$R/.rainforest"
+
+echo
+echo "== 20. (#329) estado so no worktree - um worktree com JSON =="
+# Cria um worktree linkado e coloca o estado só lá
+WT1="$RAIZ/wt1"
+git -C "$R" worktree add -q --detach "$WT1" 2>/dev/null || true
+WT1_ESTADO="$WT1/docs/rainforest/estado/$SLUG.json"
+# Remove do repo principal (se existir) e coloca no worktree
+rm -f "$SLUG_JSON"
+reset_estado "$WT1_ESTADO"
+T20=$(transcrito_com_texto "Diff OK.
+VEREDITO: ok" WT20)
+P=$(pay "$R" "rainforest-mind:revisor" "WT20" "Diff OK.
+VEREDITO: ok" '{"agent_transcript_path":"'"$T20"'"}')
+# CRÍTICO: sem 'env -u RFM_ESTADO_ROOT' o estado.cjs gravaria em $R (RFM vence)
+# e a gravação no worktree falharia mesmo com o hook encontrando certo.
+SAIDA=$(printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" 2>&1); GOT=$?
+V=$(vereditos "$WT1_ESTADO")
+if [ "$GOT" = 0 ] && printf '%s' "$V" | grep -q '"agente_id":"WT20"' && printf '%s' "$V" | grep -q '"veredito":"ok"'; then
+  ok=$((ok+1)); echo "  ok    estado so no worktree: hook acha WT1 e grava lá (exit $GOT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA estado so no worktree nao gravou em WT1: exit=$GOT, V=$V"
+fi
+
+echo
+echo "== 21. (#329) estado so no worktree - dois worktrees com JSON =="
+# Cria segundo worktree e coloca o estado nele também
+WT2="$RAIZ/wt2"
+git -C "$R" worktree add -q --detach "$WT2" 2>/dev/null || true
+WT2_ESTADO="$WT2/docs/rainforest/estado/$SLUG.json"
+# Limpa WT1 e cria estados frescos em WT1 e WT2
+rm -f "$WT1_ESTADO"
+reset_estado "$WT1_ESTADO"
+reset_estado "$WT2_ESTADO"
+# Estado está em WT1 e WT2, não em $R
+rm -f "$SLUG_JSON"
+T21=$(transcrito_com_texto "Diff nao OK.
+VEREDITO: reprovado" WT21)
+P=$(pay "$R" "rainforest-mind:revisor" "WT21" "Diff nao OK.
+VEREDITO: reprovado" '{"agent_transcript_path":"'"$T21"'"}')
+SAIDA_ERR=$(printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" 2>&1 >/dev/null); GOT=$?
+V1=$(vereditos "$WT1_ESTADO")
+V2=$(vereditos "$WT2_ESTADO")
+# Hook deve sair 0 (best-effort), stderr com 'ambiguo', nada gravado em lugar nenhum
+if [ "$GOT" = 0 ] && printf '%s' "$SAIDA_ERR" | grep -q "ambiguo" && [ "$V1" = "[]" ] && [ "$V2" = "[]" ]; then
+  ok=$((ok+1)); echo "  ok    dois worktrees com estado: stderr 'ambiguo', nada gravado, exit 0"
+else
+  falhou=$((falhou+1)); echo "  FALHA dois worktrees: exit=$GOT, stderr=$SAIDA_ERR, V1=$V1, V2=$V2"
+fi
+
+echo
+echo "== 22. (#329) estado so no worktree - nenhum worktree com JSON =="
+# Estado não está em nenhum lugar
+rm -f "$SLUG_JSON" "$WT1_ESTADO" "$WT2_ESTADO"
+T22=$(transcrito_com_texto "Diff OK.
+VEREDITO: ok" WT22)
+P=$(pay "$R" "rainforest-mind:revisor" "WT22" "Diff OK.
+VEREDITO: ok" '{"agent_transcript_path":"'"$T22"'"}')
+SAIDA_ERR=$(printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" 2>&1 >/dev/null); GOT=$?
+# Hook deve sair 0, stderr com 'nao encontrado'
+if [ "$GOT" = 0 ] && printf '%s' "$SAIDA_ERR" | grep -q "nao encontrado"; then
+  ok=$((ok+1)); echo "  ok    nenhum worktree com estado: stderr 'nao encontrado', exit 0"
+else
+  falhou=$((falhou+1)); echo "  FALHA nenhum worktree: exit=$GOT, stderr=$SAIDA_ERR"
+fi
+
+# Limpar worktrees de teste
+git -C "$R" worktree remove "$WT1" 2>/dev/null || true
+git -C "$R" worktree remove "$WT2" 2>/dev/null || true
 
 echo
 echo "-----------------------------------------"
