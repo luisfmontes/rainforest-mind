@@ -50,9 +50,88 @@ function deveIgnorarDir(raiz, caminhoAbs, nome) {
   return rel === '.claude/worktrees' || rel.startsWith('.claude/worktrees/');
 }
 
+/**
+ * Lista candidatos usando `git ls-files --cached --others --exclude-standard`,
+ * filtrando por existência em disco e aplicando as mesmas regras de `deveIgnorarDir`.
+ * Retorna null se não estiver em repo git, caso em que `agruparPorHash` volta a usar `readdirSync`.
+ */
+function candidatosPeloGit(raiz) {
+  const r = spawnSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], {
+    cwd: raiz,
+    encoding: 'utf8',
+  });
+  if (r.error || r.status !== 0) return null;
+
+  const candidatos = [];
+  const nulos = r.stdout.split('\0').filter((s) => s.length > 0);
+
+  for (const rel of nulos) {
+    // Aplicar o mesmo filtro de deveIgnorarDir em cada segmento do caminho
+    const partes = rel.split('/');
+    let deveIgnorar = false;
+    for (const parte of partes) {
+      if (DIRS_IGNORADOS.has(parte)) {
+        deveIgnorar = true;
+        break;
+      }
+      // Checar se é começo de .claude/worktrees/
+      const prefixoAtual = partes.slice(0, partes.indexOf(parte) + 1).join('/');
+      if (prefixoAtual === '.claude/worktrees' || prefixoAtual.startsWith('.claude/worktrees/')) {
+        deveIgnorar = true;
+        break;
+      }
+    }
+    if (deveIgnorar) continue;
+
+    // Verificar existência e tipo de arquivo
+    const caminhoAbs = path.join(raiz, rel);
+    let stat;
+    try {
+      stat = fs.lstatSync(caminhoAbs);
+    } catch (e) {
+      if (e.code === 'ENOENT') continue; // deletado sem commit
+      continue; // outro erro: ignorar
+    }
+    if (!stat.isFile()) continue; // symlink, diretório, etc.
+
+    candidatos.push(rel);
+  }
+
+  return candidatos;
+}
+
 /** Varre a árvore a partir de `raiz` e agrupa arquivos por hash sha256 do conteúdo. */
 function agruparPorHash(raiz) {
   const porHash = new Map();
+
+  // Tentar usar lista do git (só versionável + untracked não-ignorado)
+  const candidatos = candidatosPeloGit(raiz);
+  if (candidatos !== null) {
+    // Estamos em repo git: usar lista do git
+    for (const rel of candidatos) {
+      const caminhoAbs = path.join(raiz, rel);
+      let buf;
+      try {
+        buf = fs.readFileSync(caminhoAbs);
+      } catch {
+        continue;
+      }
+      if (buf.length === 0) continue; // arquivo vazio não é duplicata de nada
+      const hash = crypto.createHash('sha256').update(buf).digest('hex');
+      if (!porHash.has(hash)) porHash.set(hash, []);
+      porHash.get(hash).push(rel);
+    }
+    const grupos = [];
+    for (const arquivos of porHash.values()) {
+      if (arquivos.length < 2) continue;
+      arquivos.sort();
+      grupos.push(arquivos);
+    }
+    grupos.sort((a, b) => a[0].localeCompare(b[0]));
+    return grupos;
+  }
+
+  // Fallback: varrer com readdirSync quando não em repo git
   const pilha = [raiz];
   while (pilha.length) {
     const dir = pilha.pop();

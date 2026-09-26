@@ -923,7 +923,10 @@ if [ -z "${RFM_TESTA_SAUDE_ANINHADA:-}" ]; then
   # repo proprio, de um commit so — e o que A-D precisam. E o conteudo vem da ARVORE
   # DE TRABALHO, nao de `git clone`, senao a bateria aninhada rodaria o codigo
   # COMMITADO e ficaria verde para uma edicao ainda por commitar.
-  ( cd "$SRC" && tar -cf - --exclude=./.git . ) | ( cd "$COPIA" && tar -xf - )
+  # (#323) Copiar só o versionável: git ls-files em vez de tar do diretório.
+  # Assim, arquivo gitignorado fica fora da copia, e a bateria tem mesmo veredito
+  # que no checkout principal (sem lixo local) — ver issue #323.
+  ( cd "$SRC" && git ls-files -z --cached --others --exclude-standard | tar --null -cf - -T - ) | ( cd "$COPIA" && tar -xf - )
   git init -q "$COPIA"
   git -C "$COPIA" -c user.email=t@t -c user.name=t add -A >/dev/null 2>&1
   git -C "$COPIA" -c user.email=t@t -c user.name=t commit -qm "copia para a bateria aninhada" >/dev/null 2>&1
