@@ -377,6 +377,9 @@ function soIntroduzidos(achados, textoNovo, textoAntigo) {
     const mapPadrao = new Map(); // id → { pAntigo (Map), pNovo (Map) }
     for (const p of PADROES) {
       if (!p || typeof p.id !== 'string') continue;
+      // Regex sem /g nunca avança o lastIndex e o while abaixo não termina:
+      // num PreToolUse isso trava a sessão. Padrão assim não se compara — falha fechada.
+      if (!(p.re instanceof RegExp) || !p.re.global) return achados;
       const pAntigo = new Map(); // valor → contagem
       const pNovo = new Map();
 
