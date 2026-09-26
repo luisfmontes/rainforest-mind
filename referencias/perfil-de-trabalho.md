@@ -33,6 +33,7 @@ carrega, para não gastar bytes no system prompt.
 | `git -C` mente sobre onde você está | `worktree-removido-vira-diretorio-fantasma` e Issue #21, seção 3 — a conferência de base da regra 11 devolveu o hash esperado, e era o do repo principal: o worktree tinha sido auto-removido e o `git -C` respondeu pelo pai |
 | Asserção de contagem em troca por script | Issue #197, design D16 — script trocou texto sem asserção de contagem, e bateria passou verde |
 | Peça nova é chamada, não só existe | Issue #197, design D16 — função nova existia mas ninguém a chamava, e bateria passou verde |
+| Nada seu fica rodando depois da resposta | design `2026-09-25-busca-na-raiz` — 34 de 113 revisores em 14 dias com comando empurrado para segundo plano; os `find /` prenderam agentes por horas, e o usuário viu seis "travados" |
 
 ## O que deliberadamente NÃO está no bloco
 
@@ -92,4 +93,8 @@ valem para a janela principal.
   aviso.
 - **Confira que a peça nova é chamada, não só que existe.** Função, módulo ou
   arquivo novo: `grep` por quem o chama, e rodar o chamador.
+- **Nada seu fica rodando depois da resposta.** Comando que pode passar de 2
+  min leva `timeout` explícito na chamada do Bash (até 600000) — senão vai para
+  segundo plano e prende você na lista depois de terminar. Busca vai no
+  caminho conhecido, nunca `find /`.
 <!-- perfil-de-trabalho:fim -->

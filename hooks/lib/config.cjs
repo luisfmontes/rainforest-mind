@@ -82,6 +82,11 @@ const CHAVES = {
     padrao: true,
     descricao: 'a portaria nega Agent vindo de dentro de subagente (agent_id presente) — regra 10, agente despachado e folha',
   },
+  'busca-na-raiz': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'nega find a partir da raiz do disco dentro de subagente — prende o agente em segundo plano',
+  },
   fluxo: {
     tipo: 'boolean',
     padrao: true,
