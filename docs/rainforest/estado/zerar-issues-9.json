@@ -1,0 +1,28 @@
+{
+  "slug": "zerar-issues-9",
+  "titulo": "Zerar as Issues abertas, rodada 9 — #337 #335 #329 #323 #322 #313 #312 (#302 em aberto)",
+  "criado_em": "2026-09-26",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/zerar-issues-9.md",
+    "em": "2026-09-26"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
