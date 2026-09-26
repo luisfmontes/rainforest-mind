@@ -1402,6 +1402,23 @@ function agoraIso() {
 }
 
 /**
+ * Lê o arquivo do plano e retorna o maior número de tarefa.
+ * Fallback para `blocoPlano.tarefas` se arquivo não existe.
+ * Reussa o mesmo leitor de `### <n>.` que a validação de `mutacao` usa.
+ *
+ * @returns {number|null} maior número de tarefa do arquivo ou fallback, ou null
+ */
+function tetoDeTarefasDoPlano(slug, blocoPlano) {
+  const nums = extrairNumerosTarefa(slug, arguments[2]); // estado é o terceiro argumento
+  if (nums === null || nums.size === 0) {
+    // Arquivo não existe ou sem tarefas: use fallback
+    return blocoPlano && typeof blocoPlano.tarefas === 'number' ? blocoPlano.tarefas : null;
+  }
+  // Devolver o maior número
+  return Math.max(...Array.from(nums));
+}
+
+/**
  * Valida e funde `extra.carimbos` (se vier no `--json`) com os carimbos já
  * gravados no bloco anterior do estágio. Efeito colateral: quando passa e há
  * `extra.carimbos`, SUBSTITUI `extra.carimbos` pela lista completa (antiga +
@@ -1409,7 +1426,7 @@ function agoraIso() {
  *
  * @returns {string|null} mensagem de recusa, ou null se passou/não se aplica
  */
-function processarCarimbos(estagio, blocoAnterior, extra, estado) {
+function processarCarimbos(estagio, blocoAnterior, extra, estado, slug) {
   if (estagio !== 'executar') return null;
   if (!Object.prototype.hasOwnProperty.call(extra, 'carimbos')) return null;
 
@@ -1433,7 +1450,7 @@ function processarCarimbos(estagio, blocoAnterior, extra, estado) {
 
   // Validar se plano.tarefas está gravado e tarefa está dentro do intervalo
   const blocoPlano = estado && estado.plano;
-  const limiteMaxTarefa = blocoPlano && typeof blocoPlano.tarefas === 'number' ? blocoPlano.tarefas : null;
+  const limiteMaxTarefa = tetoDeTarefasDoPlano(slug, blocoPlano, estado);
 
   for (let i = 0; i < entrada.length; i += 1) {
     const item = entrada[i];
@@ -2028,7 +2045,7 @@ function main() {
     // Carimbos (D8): valida e funde ANTES de qualquer outra checagem, porque
     // funciona nos tres status (parcial, ok, reprovado) — nao so no fechamento.
     {
-      const recusa_carimbos = processarCarimbos(estagio, estado[estagio], extra, estado);
+      const recusa_carimbos = processarCarimbos(estagio, estado[estagio], extra, estado, slug);
       if (recusa_carimbos) {
         console.error(recusa_carimbos);
         process.exit(2);
