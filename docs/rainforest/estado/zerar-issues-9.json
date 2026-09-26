@@ -25,9 +25,9 @@
     "em": "2026-09-26"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-26",
-    "tarefas_ok": 4,
+    "tarefas_ok": 8,
     "tarefas": 8,
     "em_voo": [],
     "em": "2026-09-26",
@@ -66,13 +66,72 @@
         "iteracao": 1,
         "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
         "ts": "2026-09-26T18:29:27.660Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "bc957c15",
+        "iteracao": 1,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-26T19:48:26.643Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "bc957c15",
+        "iteracao": 1,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-26T19:48:26.643Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "fff2a310",
+        "iteracao": 1,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-26T19:48:26.643Z"
       }
     ],
-    "pendentes": [
-      "tarefa-1: aguarda Q1 (bash $VAR x caso cj)",
-      "tarefa-2: depende da 1",
-      "tarefa-3: mutacao em re-medicao",
-      "tarefa-8: por ultimo"
+    "comando": "node scripts/conferir-mutacao.cjs (8 tarefas, re-rodado pela integracao)",
+    "saida": "tarefas 1-7: ok: bateria VERMELHA com o comportamento invertido (exit 1), conferir-mutacao exit 0; tarefa 8 n/a",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, secao (#337) bash $VAR resolvida no comando"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, secao (#313) contrabarra dupla dentro do wrapper"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-publicacao-destino.sh, secao (#322) Edit que preserva achado de old_string"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-varrer-baterias.sh, teste (m) (#335)"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-veredito-revisor.sh, secao (#329) estado so no worktree"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-duplicacao.sh, secao (#323) copia gitignorada nao conta"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, secao (#312) carimbo de tarefa acrescentada por emenda"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "bump de versao e changelog, sem comportamento a inverter"
+      }
     ]
   },
   "revisar": {
