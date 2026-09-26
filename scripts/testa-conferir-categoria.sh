@@ -13,6 +13,8 @@
 #      vindo "sensor" por engano; o conserto foi a marca, nao o numero.
 #      45 e 27 sensor desde 2026-09-23: entrou hooks/veredito-revisor.cjs, hook
 #      de SubagentStop (contrato de veredito) — evento de fim de agente, sensor.
+#      46 e 16 guia desde 2026-09-26: entrou hooks/gate-busca-raiz.cjs, hook
+#      de PreToolUse (nega find na raiz dentro de subagente) — antes da acao, guia.
 #   2. peca REAL copiada para arvore temporaria, com a linha de marca apagada,
 #      reprova (exit 1) e NOMEIA o caminho na saida;
 #   3. peca REAL copiada com valor de marca fora do vocabulario (nem guia, nem
@@ -54,17 +56,17 @@ montar_copia() {
   cp "$RAIZ"/vigias/*.md "$destino/vigias/" 2>/dev/null
 }
 
-echo "== 1. repositorio real na base — exit 0, 45 pecas, distribuicao 15/27/3 =="
+echo "== 1. repositorio real na base — exit 0, 46 pecas, distribuicao 16/27/3 =="
 S1="$(roda --raiz "$RAIZ")"
 saiu "repositorio real passa (exit 0)" "$(codigo --raiz "$RAIZ")" "0"
-tem  "conta as 45 pecas"               "$S1" "Total de peças varridas: 45"
+tem  "conta as 46 pecas"               "$S1" "Total de peças varridas: 46"
 N_GUIA="$(printf '%s' "$S1" | grep -cF '>  guia')"
 N_SENSOR="$(printf '%s' "$S1" | grep -cF '>  sensor')"
 N_DADO="$(printf '%s' "$S1" | grep -cF '>  dado')"
-if [ "$N_GUIA" = "15" ] && [ "$N_SENSOR" = "27" ] && [ "$N_DADO" = "3" ]; then
-  ok=$((ok+1)); echo "  ok   distribuicao 15 guia / 27 sensor / 3 dado confere"
+if [ "$N_GUIA" = "16" ] && [ "$N_SENSOR" = "27" ] && [ "$N_DADO" = "3" ]; then
+  ok=$((ok+1)); echo "  ok   distribuicao 16 guia / 27 sensor / 3 dado confere"
 else
-  falhou=$((falhou+1)); echo "  FALHA distribuicao: guia=$N_GUIA sensor=$N_SENSOR dado=$N_DADO (esperava 15/27/3)"
+  falhou=$((falhou+1)); echo "  FALHA distribuicao: guia=$N_GUIA sensor=$N_SENSOR dado=$N_DADO (esperava 16/27/3)"
 fi
 
 echo
