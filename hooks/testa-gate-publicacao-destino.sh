@@ -72,6 +72,15 @@ edit() { # arquivo, novo, [cwd]
 ' "old"
 }
 
+editComOld() { # arquivo, old, novo, [cwd]
+  local arquivo="$1" old="$2" novo="$3" cwd="${4:-$(esc "$R")}"
+  node -e 'const [fp,o,n]=process.argv.slice(1);const ti={file_path:fp,old_string:o,new_string:n};console.log(JSON.stringify({cwd:process.env.PAY_CWD||"",hook_event_name:"PreToolUse",tool_name:"Edit",tool_input:ti}))' "$(esc "$arquivo")" "$old" "$novo"
+}
+
+payMulti() { # edits: fp1, o1, n1, fp2, o2, n2, ...
+  node -e 'const argv=process.argv.slice(1);const edits=[];for(let i=0;i<argv.length;i+=3){edits.push({file_path:argv[i],old_string:argv[i+1],new_string:argv[i+2]})}console.log(JSON.stringify({cwd:process.env.PAY_CWD||"",hook_event_name:"PreToolUse",tool_name:"MultiEdit",tool_input:{edits}}))' "$@"
+}
+
 echo "== Preparação: dados sensíveis para testes =="
 JID_REAL="5500900000001@s.whatsapp.net"
 TEL_REAL="(00) 90000-0001"
@@ -630,6 +639,38 @@ if [ "$RC" = 2 ] && [ "$CNT_G" = "0" ]; then ok=$((ok+1)); echo "  ok   (g) exit
   # nenhuma para contar. A visibilidade citada e o que distingue.
   if printf '%s' "$SG" | grep -q "desconhecida"; then ok=$((ok+1)); echo "    ok   cita 'desconhecida'"; else falhou=$((falhou+1)); echo "    FALHA sem 'desconhecida'"; fi
 else falhou=$((falhou+1)); echo "  FALHA (g): exit=$RC cnt=$CNT_G (esperava 2,0)"; fi
+
+echo
+echo "== (#322) Edit que preserva achado de old_string =="
+EMAIL="fulano""@""empresa.com.br"
+EMAIL_B="beltrano""@""outra.com.br"
+
+# Caso 1: Edit com mesmo e-mail em old_string e new_string (apenas mudando outra palavra) → 0
+gate "Edit com e-mail em old e new, mudando só palavra" 0 "$(PAY_CWD="$(esc "$R")" editComOld "$(esc "$R")/edit-preserva.txt" "contato: $EMAIL" "novo contato: $EMAIL")"
+
+# Caso 2: Edit que introduz e-mail novo (não estava em old_string) → 2
+gate "Edit que acrescenta e-mail novo" 2 "$(PAY_CWD="$(esc "$R")" editComOld "$(esc "$R")/edit-novo.txt" "nada aqui" "contato: $EMAIL")"
+
+# Caso 3: MultiEdit - primeiro edit preserva, segundo introduz → 2
+gate "MultiEdit com dois edits: um preserva, outro introduz" 2 "$(PAY_CWD="$(esc "$R")" payMulti "$(esc "$R")/multi1.txt" "antigo $EMAIL" "antigo $EMAIL" "$(esc "$R")/multi2.txt" "limpo" "contato: $EMAIL")"
+
+# Caso 4: MultiEdit onde o único edit preserva → 0
+gate "MultiEdit com um edit que preserva e-mail" 0 "$(PAY_CWD="$(esc "$R")" payMulti "$(esc "$R")/multi-preserva.txt" "abc $EMAIL xyz" "abc $EMAIL novo")"
+
+# Caso 5: Write com e-mail → 2 (Write não tem old_string, sempre bloqueia se houver achado novo)
+gate "Write com e-mail" 2 "$(write "$R/write-email.txt" "contato: $EMAIL")"
+
+# Caso 6: Edit que muda só o nome do modelo no trailer noreply@anthropic.com → 0
+gate "Edit que troca nome do modelo no trailer noreply" 0 "$(PAY_CWD="$(esc "$R")" editComOld "$(esc "$R")/trailer.md" "Co-Authored-By: Claude X <noreply@anthropic.com>" "Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>")"
+
+# Caso 7: Edit que troca e-mail A por e-mail B (mesmo padrão, valor novo) → 2
+gate "Edit que troca e-mail A por e-mail B" 2 "$(PAY_CWD="$(esc "$R")" editComOld "$(esc "$R")/edit-troca.txt" "contato: $EMAIL" "contato: $EMAIL_B")"
+
+# Caso 8: Edit com e-mail A uma vez em old e A mais B na mesma linha → 2
+gate "Edit com e-mail A uma vez em old e A+B em new (mesma linha)" 2 "$(PAY_CWD="$(esc "$R")" editComOld "$(esc "$R")/edit-duplo.txt" "contato: $EMAIL" "contato: $EMAIL e $EMAIL_B")"
+
+# Caso 9: Edit com e-mail A duas vezes em new e uma vez em old → 2
+gate "Edit com e-mail A duas vezes em new e uma vez em old" 2 "$(PAY_CWD="$(esc "$R")" editComOld "$(esc "$R")/edit-repeticao.txt" "contato: $EMAIL" "contato: $EMAIL e $EMAIL")"
 
 echo "== Verificação: gate-staging-total continua verde =="
 echo "Rodando: bash hooks/testa-gate-staging-total.sh"

@@ -348,6 +348,105 @@ function conferirConteudo(conteudo) {
 }
 
 /**
+ * Filtra achados que INTRODUZ a edição, comparando por valor cru dos padrões em multiconjunto.
+ * Retorna apenas os achados de `achados` cujo padrão traz um valor novo em `textoNovo`
+ * que não estava em `textoAntigo`.
+ *
+ * Issue #322 (emenda 2026-09-26): o gate barra só o que a edição INTRODUZ, medindo pelo
+ * valor cru casado (não pelo `trecho` redigido, que é sempre igual para o mesmo padrão).
+ * A primeira entrega comparava `id` + `trecho`, deixando passar:
+ *   - Edit com e-mail A em old e e-mail B em new (mesma linha, trecho redigido igual)
+ *   - Edit com e-mail A uma vez em old e A+B em new (novo na mesma linha)
+ *
+ * Padrão que casou um valor novo em qualquer linha barra — sem casar linha a linha.
+ * Padrão com id fora de PADROES (termo privado) nunca cai — só traz valor novo quando
+ * o PADROES dele para de existir.
+ *
+ * Falha fechada: exceção no require, `so_se` estourando ou PADROES inválido → return achados.
+ */
+function soIntroduzidos(achados, textoNovo, textoAntigo) {
+  try {
+    const { PADROES } = require("../scripts/conferir-publicacao.cjs");
+
+    if (!Array.isArray(PADROES) || !Array.isArray(achados)) {
+      return achados;
+    }
+
+    // Para cada padrão em PADROES, coleta todos os valores crus de textoAntigo
+    // e textoNovo, computando diferença em multiconjunto.
+    const mapPadrao = new Map(); // id → { pAntigo (Map), pNovo (Map) }
+    for (const p of PADROES) {
+      if (!p || typeof p.id !== 'string') continue;
+      const pAntigo = new Map(); // valor → contagem
+      const pNovo = new Map();
+
+      // Coleta valores do texto antigo
+      const linhasAntigo = textoAntigo.split('\n');
+      for (const linha of linhasAntigo) {
+        p.re.lastIndex = 0;
+        let m;
+        while ((m = p.re.exec(linha)) !== null) {
+          try {
+            // Respeita so_se: só conta se passou na verificação
+            if (p.so_se && !p.so_se(m, linha)) {
+              if (m.index === p.re.lastIndex) p.re.lastIndex += 1;
+              continue;
+            }
+          } catch {
+            // so_se estourou: falha fechada
+            return achados;
+          }
+          const valor = m[0];
+          pAntigo.set(valor, (pAntigo.get(valor) || 0) + 1);
+          if (m.index === p.re.lastIndex) p.re.lastIndex += 1;
+        }
+      }
+
+      // Coleta valores do texto novo
+      const linhasNovo = textoNovo.split('\n');
+      for (const linha of linhasNovo) {
+        p.re.lastIndex = 0;
+        let m;
+        while ((m = p.re.exec(linha)) !== null) {
+          try {
+            if (p.so_se && !p.so_se(m, linha)) {
+              if (m.index === p.re.lastIndex) p.re.lastIndex += 1;
+              continue;
+            }
+          } catch {
+            return achados;
+          }
+          const valor = m[0];
+          pNovo.set(valor, (pNovo.get(valor) || 0) + 1);
+          if (m.index === p.re.lastIndex) p.re.lastIndex += 1;
+        }
+      }
+
+      mapPadrao.set(p.id, { pAntigo, pNovo });
+    }
+
+    // Calcula quais padrões introduzem valores novos
+    const introduz = new Map(); // id → contagem total de valores novos
+    for (const [id, { pAntigo, pNovo }] of mapPadrao) {
+      let novos = 0;
+      for (const [valor, cnt] of pNovo) {
+        const cntAntigo = pAntigo.get(valor) || 0;
+        if (cnt > cntAntigo) novos += (cnt - cntAntigo);
+      }
+      if (novos > 0) introduz.set(id, novos);
+    }
+
+    // Filtra: achado cai se seu id está em PADROES e não introduz valor.
+    // Achado com id fora de PADROES (termo privado) nunca cai.
+    const idsDePadroes = new Set(PADROES.map(p => p.id));
+    return achados.filter(a => !idsDePadroes.has(a.id) || introduz.has(a.id));
+  } catch {
+    // Falha fechada: require, parse ou outro erro → retorna achados intactos
+    return achados;
+  }
+}
+
+/**
  * Formata a mensagem de bloqueio com os achados.
  */
 function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade) {
@@ -650,6 +749,7 @@ function main() {
   const entrada = ev.tool_input || {};
   let arquivo = null;
   let conteudo = null;
+  let antigo = null;
 
   if (nome === "Write" && typeof entrada.file_path === "string" && typeof entrada.content === "string") {
     arquivo = entrada.file_path;
@@ -657,6 +757,7 @@ function main() {
   } else if (nome === "Edit" && typeof entrada.file_path === "string" && typeof entrada.new_string === "string") {
     arquivo = entrada.file_path;
     conteudo = entrada.new_string;
+    antigo = typeof entrada.old_string === "string" ? entrada.old_string : "";
   } else if (nome === "MultiEdit") {
     // MultiEdit passa um array de edits. Conferir cada um.
     const edits = Array.isArray(entrada.edits) ? entrada.edits : [];
@@ -665,6 +766,7 @@ function main() {
         // Confere este arquivo/conteúdo
         const a = edit.file_path;
         const c = edit.new_string;
+        const o = typeof edit.old_string === "string" ? edit.old_string : "";
         const dir = dirDe(a);
         const gitTop = git(dir, ["rev-parse", "--show-toplevel"]);
         if (!gitTop) continue; // fora de repo git
@@ -675,9 +777,14 @@ function main() {
 
         if (desligadoPorArquivo(gitTop)) continue; // Issue #265: faltava aqui
 
-        const resultado = conferirConteudo(c);
+        let resultado = conferirConteudo(c);
         if (resultado && resultado.achados && resultado.achados.length) {
-          bloqueia(resultado.achados, a, agente, gitTop);
+          // Filtra apenas achados introduzidos (não presentes em old_string)
+          resultado.achados = soIntroduzidos(resultado.achados, c, o);
+
+          if (resultado.achados.length > 0) {
+            bloqueia(resultado.achados, a, agente, gitTop);
+          }
         }
       }
     }
@@ -705,9 +812,16 @@ function main() {
   if (desligadoPorArquivo(gitTop)) process.exit(0);
 
   // Roda a conferência de publicação
-  const resultado = conferirConteudo(conteudo);
+  let resultado = conferirConteudo(conteudo);
   if (resultado && resultado.achados && resultado.achados.length) {
-    bloqueia(resultado.achados, arquivo, agente, gitTop);
+    // Para Edit/MultiEdit, filtra apenas achados introduzidos (não presentes em old_string)
+    if (antigo !== null) {
+      resultado.achados = soIntroduzidos(resultado.achados, conteudo, antigo);
+    }
+
+    if (resultado.achados.length > 0) {
+      bloqueia(resultado.achados, arquivo, agente, gitTop);
+    }
   }
 
   process.exit(0);
