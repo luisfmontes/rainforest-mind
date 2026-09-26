@@ -2553,6 +2553,33 @@ echo "== (#313c) echo hi \\\\<newline>gh issue close 12 → exit 2 (dupla sem wr
 EXIT_313C=$?
 [ $EXIT_313C -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_313C)"
 
+# Caso: `bash -c 'gh issue \\<quebra>close 12'` (aspas SIMPLES, contrabarra dupla)
+# Medido no bash real (2026-09-26, gh falso que imprime os argumentos): roda
+# `gh issue \` e depois `close 12` como outro comando — nenhum `gh issue close`.
+# Esperado: 0. Achado da revisao: `textoAPartir` remontava a aspa simples como
+# dupla e a reducao de escape (so de aspas duplas) valia aqui, dando 2.
+echo
+echo "== (#313d) bash -c 'gh issue \\\\<newline>close 12' → exit 0 (dupla em simples: dois comandos) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const B=String.fromCharCode(92);const A=String.fromCharCode(39);const cmd="bash -c "+A+"gh issue "+B+B+"\n"+"close 12"+A;process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-313d"
+EXIT_313D=$?
+[ $EXIT_313D -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_313D)"
+
+# Contraprova: aspas simples com contrabarra UNICA — dentro de aspas simples o
+# `\`+quebra chega intacto ao `bash -c`, que o funde: roda `gh issue close 12`.
+echo
+echo "== (#313e) bash -c 'gh issue \\<newline>close 12' → exit 2 (simples em simples) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const B=String.fromCharCode(92);const A=String.fromCharCode(39);const cmd="bash -c "+A+"gh issue "+B+"\n"+"close 12"+A;process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-313e"
+EXIT_313E=$?
+[ $EXIT_313E -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_313E)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

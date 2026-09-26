@@ -30,7 +30,7 @@
  */
 function tokensComAspas(cmd) {
   const out = [];
-  let atual = "", aspa = null, temAlgo = false, citado = false;
+  let atual = "", aspa = null, temAlgo = false, citado = false, primeiraAspa = null;
   for (let i = 0; i < cmd.length; i += 1) {
     const c = cmd[i];
     if (aspa) {
@@ -39,14 +39,15 @@ function tokensComAspas(cmd) {
       temAlgo = true;
     } else if (c === '"' || c === "'") {
       aspa = c; temAlgo = true; citado = true;
+      if (primeiraAspa === null) primeiraAspa = c;
     } else if (/\s/.test(c)) {
-      if (temAlgo) out.push({ v: atual, q: citado });
-      atual = ""; temAlgo = false; citado = false;
+      if (temAlgo) out.push({ v: atual, q: citado, aspa: primeiraAspa });
+      atual = ""; temAlgo = false; citado = false; primeiraAspa = null;
     } else {
       atual += c; temAlgo = true;
     }
   }
-  if (temAlgo) out.push({ v: atual, q: citado });
+  if (temAlgo) out.push({ v: atual, q: citado, aspa: primeiraAspa });
   return out;
 }
 
@@ -281,7 +282,11 @@ function posicaoDeComando(toks, captura) {
  * a unica copia e os outros dois reimplementarem por conta propria.
  */
 function textoAPartir(toks, i) {
-  return toks.slice(i).map((t) => (t.q ? `"${t.v}"` : t.v)).join(" ");
+  // Remonta com a aspa ORIGINAL: `desempacota` so reduz escape de aspas
+  // duplas (#313), e remontar `'...'` como `"..."` fazia a reducao valer
+  // para aspas simples — `bash -c 'gh issue \\<quebra>close 12'` virava
+  // `gh issue close 12`, que o bash nao executa (achado da revisao).
+  return toks.slice(i).map((t) => (t.q ? (t.aspa === "'" ? `'${t.v}'` : `"${t.v}"`) : t.v)).join(" ");
 }
 
 // --- Wrapper de STRING (T2, rodada 11, lote 3, 2026-09-04) -----------------

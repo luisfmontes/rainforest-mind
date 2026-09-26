@@ -69,13 +69,16 @@ function candidatosPeloGit(raiz) {
     // Aplicar o mesmo filtro de deveIgnorarDir em cada segmento do caminho
     const partes = rel.split('/');
     let deveIgnorar = false;
-    for (const parte of partes) {
+    for (let k = 0; k < partes.length; k++) {
+      const parte = partes[k];
       if (DIRS_IGNORADOS.has(parte)) {
         deveIgnorar = true;
         break;
       }
-      // Checar se é começo de .claude/worktrees/
-      const prefixoAtual = partes.slice(0, partes.indexOf(parte) + 1).join('/');
+      // Checar se é começo de .claude/worktrees/ — prefixo pela POSIÇÃO do
+      // segmento; `indexOf(parte)` achava a primeira ocorrência de um nome
+      // repetido (`a/b/a` virava `a`).
+      const prefixoAtual = partes.slice(0, k + 1).join('/');
       if (prefixoAtual === '.claude/worktrees' || prefixoAtual.startsWith('.claude/worktrees/')) {
         deveIgnorar = true;
         break;

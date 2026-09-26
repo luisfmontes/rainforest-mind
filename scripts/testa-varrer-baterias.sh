@@ -468,6 +468,19 @@ else
   exit 1
 fi
 
+echo "=== Teste (n): (#335) nenhuma testa-*.sh da arvore real executa uma testa-*.cjs ==="
+# O varredor roda as .cjs direto; uma casca .sh que tambem as execute faz a
+# mesma bateria rodar duas vezes. Achado da revisao: scripts/testa-cli-externo.sh
+# sobrou como casca de scripts/testa-cli-externo.cjs. Linha de comentario nao conta.
+RAIZ_REAL="$(cd "$SCRIPT_DIR/.." && pwd)"
+cascas=$(cd "$RAIZ_REAL" && grep -nE '^[^#]*\bnode\b[^#]*testa-[A-Za-z0-9_-]+\.cjs' scripts/testa-*.sh hooks/testa-*.sh 2>/dev/null)
+if [ -n "$cascas" ]; then
+  echo "  FAIL (n): casca .sh executa bateria .cjs (rodaria em dobro):"
+  printf '%s\n' "$cascas" | sed 's/^/    /'
+  exit 1
+fi
+echo "  PASS (n)"
+
 echo ""
 echo "======= TODOS OS TESTES PASSARAM ======="
 exit 0
