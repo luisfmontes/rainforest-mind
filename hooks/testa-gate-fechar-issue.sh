@@ -2518,9 +2518,11 @@ EXIT_337M=$?
 # Cada um dá a `$f`/`$t` um valor que o leitor não via, ou cola uma
 # substituição à variável; no bash real, todos acabam rodando `gh issue close`.
 # Montados em node (crase e parêntese sobrevivem ao quoting do shell).
+# (u)-(w), revisão 3: glob no PRIMEIRO caractere do valor expande para `-c`
+# quando existe um arquivo `-c` no diretório — medido no bash real.
 echo
 echo "== (#337n-t) bypasses da revisao 2 → exit 2 =="
-for caso in n o p q r s t; do
+for caso in n o p q r s t u v w; do
   PAYLOAD=$(node -e '
     const C=String.fromCharCode(96);const g="\"gh issue close 12\"";
     const cmd={
@@ -2531,6 +2533,9 @@ for caso in n o p q r s t; do
       r:"f=x.sh; printf -v f %s -c; bash $f "+g,
       s:"f=x.sh; f+=\" -c\"; bash $f "+g,
       t:"f=x.sh; declare -a f=(-c); bash $f "+g,
+      u:"f=?c; bash $f "+g,
+      v:"f=[-]c; bash $f "+g,
+      w:"for t in ?c; do bash $t "+g+"; done",
     }[process.argv[2]];
     process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$caso")
   ( export PATH="$SBP/bin:$PATH"; echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs" ) 2>"$SBP/err-337$caso" >/dev/null

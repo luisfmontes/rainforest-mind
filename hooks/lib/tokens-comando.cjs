@@ -685,7 +685,12 @@ function valoresDaVariavelNoComando(nome, comando) {
   // Cada valor possível é um caminho/glob literal: lista branca de caracteres,
   // sem começar com `-` (senão `bash $f` vira `bash -c`), sem espaço, `$`,
   // crase, parêntese, aspas ou redirecionamento.
-  const LITERAL = /^[A-Za-z0-9_.\/*?\[\]+,:=@%~][A-Za-z0-9_.\/*?\[\]+,:=@%~-]*$/;
+  // O PRIMEIRO caractere é literal — nem `-`, nem glob (`?`, `*`, `[`), nem `~`:
+  // a expansão de glob preserva o prefixo literal, então nenhum valor aceito
+  // vira `-c` mesmo com um arquivo `-c` no diretório (`f=?c`, `f=[-]c`;
+  // achado da revisão 3). Glob depois do primeiro caractere segue valendo
+  // (`scripts/testa-*.sh`).
+  const LITERAL = /^[A-Za-z0-9_.\/+,:=@%][A-Za-z0-9_.\/*?\[\]+,:=@%~-]*$/;
   for (const v of valores) {
     if (!LITERAL.test(v)) return null;
   }
