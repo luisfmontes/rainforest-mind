@@ -348,46 +348,102 @@ function conferirConteudo(conteudo) {
 }
 
 /**
- * Filtra achados comparando por multiconjunto (id + trecho).
- * Retorna apenas os achados de `novos` que não aparecem em `antigos`.
+ * Filtra achados que INTRODUZ a edição, comparando por valor cru dos padrões em multiconjunto.
+ * Retorna apenas os achados de `achados` cujo padrão traz um valor novo em `textoNovo`
+ * que não estava em `textoAntigo`.
  *
- * Issue #322: o gate barra só o que a edição INTRODUZ, não o que já estava.
- * Compara por `id` + `trecho` (redigido, que identifica sem expor o dado).
- * Dois achados novos onde havia um → sobra um → barra.
+ * Issue #322 (emenda 2026-09-26): o gate barra só o que a edição INTRODUZ, medindo pelo
+ * valor cru casado (não pelo `trecho` redigido, que é sempre igual para o mesmo padrão).
+ * A primeira entrega comparava `id` + `trecho`, deixando passar:
+ *   - Edit com e-mail A em old e e-mail B em new (mesma linha, trecho redigido igual)
+ *   - Edit com e-mail A uma vez em old e A+B em new (novo na mesma linha)
  *
- * Falha fechada: se `antigos` é null/inválido, retorna `novos` (barra tudo).
+ * Padrão que casou um valor novo em qualquer linha barra — sem casar linha a linha.
+ * Padrão com id fora de PADROES (termo privado) nunca cai — só traz valor novo quando
+ * o PADROES dele para de existir.
+ *
+ * Falha fechada: exceção no require, `so_se` estourando ou PADROES inválido → return achados.
  */
-function soIntroduzidos(novos, antigos) {
-  // Constrói mapa de contagem de achados antigos por chave (id + trecho)
-  const contadorAntigos = new Map();
-  if (antigos && Array.isArray(antigos)) {
-    for (const a of antigos) {
-      if (a && typeof a.id === "string" && typeof a.trecho === "string") {
-        const chave = a.id + "\u0000" + a.trecho;
-        contadorAntigos.set(chave, (contadorAntigos.get(chave) || 0) + 1);
-      }
-    }
-  }
+function soIntroduzidos(achados, textoNovo, textoAntigo) {
+  try {
+    const { PADROES } = require("../scripts/conferir-publicacao.cjs");
 
-  // Filtra: mantém novos achados que não estão em antigos (multiconjunto)
-  const sobra = [];
-  if (novos && Array.isArray(novos)) {
-    for (const n of novos) {
-      if (n && typeof n.id === "string" && typeof n.trecho === "string") {
-        const chave = n.id + "\u0000" + n.trecho;
-        const saldo = contadorAntigos.get(chave) || 0;
-        if (saldo > 0) {
-          contadorAntigos.set(chave, saldo - 1);
-        } else {
-          sobra.push(n);
-        }
-      } else {
-        // Achado malformado: falha fechada, mantém para bloquear
-        sobra.push(n);
-      }
+    if (!Array.isArray(PADROES) || !Array.isArray(achados)) {
+      return achados;
     }
+
+    // Para cada padrão em PADROES, coleta todos os valores crus de textoAntigo
+    // e textoNovo, computando diferença em multiconjunto.
+    const mapPadrao = new Map(); // id → { pAntigo (Map), pNovo (Map) }
+    for (const p of PADROES) {
+      if (!p || typeof p.id !== 'string') continue;
+      const pAntigo = new Map(); // valor → contagem
+      const pNovo = new Map();
+
+      // Coleta valores do texto antigo
+      const linhasAntigo = textoAntigo.split('\n');
+      for (const linha of linhasAntigo) {
+        p.re.lastIndex = 0;
+        let m;
+        while ((m = p.re.exec(linha)) !== null) {
+          try {
+            // Respeita so_se: só conta se passou na verificação
+            if (p.so_se && !p.so_se(m, linha)) {
+              if (m.index === p.re.lastIndex) p.re.lastIndex += 1;
+              continue;
+            }
+          } catch {
+            // so_se estourou: falha fechada
+            return achados;
+          }
+          const valor = m[0];
+          pAntigo.set(valor, (pAntigo.get(valor) || 0) + 1);
+          if (m.index === p.re.lastIndex) p.re.lastIndex += 1;
+        }
+      }
+
+      // Coleta valores do texto novo
+      const linhasNovo = textoNovo.split('\n');
+      for (const linha of linhasNovo) {
+        p.re.lastIndex = 0;
+        let m;
+        while ((m = p.re.exec(linha)) !== null) {
+          try {
+            if (p.so_se && !p.so_se(m, linha)) {
+              if (m.index === p.re.lastIndex) p.re.lastIndex += 1;
+              continue;
+            }
+          } catch {
+            return achados;
+          }
+          const valor = m[0];
+          pNovo.set(valor, (pNovo.get(valor) || 0) + 1);
+          if (m.index === p.re.lastIndex) p.re.lastIndex += 1;
+        }
+      }
+
+      mapPadrao.set(p.id, { pAntigo, pNovo });
+    }
+
+    // Calcula quais padrões introduzem valores novos
+    const introduz = new Map(); // id → contagem total de valores novos
+    for (const [id, { pAntigo, pNovo }] of mapPadrao) {
+      let novos = 0;
+      for (const [valor, cnt] of pNovo) {
+        const cntAntigo = pAntigo.get(valor) || 0;
+        if (cnt > cntAntigo) novos += (cnt - cntAntigo);
+      }
+      if (novos > 0) introduz.set(id, novos);
+    }
+
+    // Filtra: achado cai se seu id está em PADROES e não introduz valor.
+    // Achado com id fora de PADROES (termo privado) nunca cai.
+    const idsDePadroes = new Set(PADROES.map(p => p.id));
+    return achados.filter(a => !idsDePadroes.has(a.id) || introduz.has(a.id));
+  } catch {
+    // Falha fechada: require, parse ou outro erro → retorna achados intactos
+    return achados;
   }
-  return sobra;
 }
 
 /**
@@ -724,9 +780,7 @@ function main() {
         let resultado = conferirConteudo(c);
         if (resultado && resultado.achados && resultado.achados.length) {
           // Filtra apenas achados introduzidos (não presentes em old_string)
-          const ra = conferirConteudo(o);
-          const achadosAntigos = (ra && ra.achados) || [];
-          resultado.achados = soIntroduzidos(resultado.achados, achadosAntigos);
+          resultado.achados = soIntroduzidos(resultado.achados, c, o);
 
           if (resultado.achados.length > 0) {
             bloqueia(resultado.achados, a, agente, gitTop);
@@ -762,9 +816,7 @@ function main() {
   if (resultado && resultado.achados && resultado.achados.length) {
     // Para Edit/MultiEdit, filtra apenas achados introduzidos (não presentes em old_string)
     if (antigo !== null) {
-      const ra = conferirConteudo(antigo);
-      const achadosAntigos = (ra && ra.achados) || [];
-      resultado.achados = soIntroduzidos(resultado.achados, achadosAntigos);
+      resultado.achados = soIntroduzidos(resultado.achados, conteudo, antigo);
     }
 
     if (resultado.achados.length > 0) {

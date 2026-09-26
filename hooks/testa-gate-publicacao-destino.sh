@@ -643,6 +643,7 @@ else falhou=$((falhou+1)); echo "  FALHA (g): exit=$RC cnt=$CNT_G (esperava 2,0)
 echo
 echo "== (#322) Edit que preserva achado de old_string =="
 EMAIL="fulano""@""empresa.com.br"
+EMAIL_B="beltrano""@""outra.com.br"
 
 # Caso 1: Edit com mesmo e-mail em old_string e new_string (apenas mudando outra palavra) → 0
 gate "Edit com e-mail em old e new, mudando só palavra" 0 "$(PAY_CWD="$(esc "$R")" editComOld "$(esc "$R")/edit-preserva.txt" "contato: $EMAIL" "novo contato: $EMAIL")"
@@ -661,6 +662,15 @@ gate "Write com e-mail" 2 "$(write "$R/write-email.txt" "contato: $EMAIL")"
 
 # Caso 6: Edit que muda só o nome do modelo no trailer noreply@anthropic.com → 0
 gate "Edit que troca nome do modelo no trailer noreply" 0 "$(PAY_CWD="$(esc "$R")" editComOld "$(esc "$R")/trailer.md" "Co-Authored-By: Claude X <noreply@anthropic.com>" "Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>")"
+
+# Caso 7: Edit que troca e-mail A por e-mail B (mesmo padrão, valor novo) → 2
+gate "Edit que troca e-mail A por e-mail B" 2 "$(PAY_CWD="$(esc "$R")" editComOld "$(esc "$R")/edit-troca.txt" "contato: $EMAIL" "contato: $EMAIL_B")"
+
+# Caso 8: Edit com e-mail A uma vez em old e A mais B na mesma linha → 2
+gate "Edit com e-mail A uma vez em old e A+B em new (mesma linha)" 2 "$(PAY_CWD="$(esc "$R")" editComOld "$(esc "$R")/edit-duplo.txt" "contato: $EMAIL" "contato: $EMAIL e $EMAIL_B")"
+
+# Caso 9: Edit com e-mail A duas vezes em new e uma vez em old → 2
+gate "Edit com e-mail A duas vezes em new e uma vez em old" 2 "$(PAY_CWD="$(esc "$R")" editComOld "$(esc "$R")/edit-repeticao.txt" "contato: $EMAIL" "contato: $EMAIL e $EMAIL")"
 
 echo "== Verificação: gate-staging-total continua verde =="
 echo "Rodando: bash hooks/testa-gate-staging-total.sh"
