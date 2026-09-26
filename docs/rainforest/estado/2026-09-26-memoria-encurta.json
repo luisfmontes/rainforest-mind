@@ -1,0 +1,78 @@
+{
+  "slug": "2026-09-26-memoria-encurta",
+  "titulo": "Memoria da abertura encurta antes de cortar, e a superada sai primeiro",
+  "criado_em": "2026-09-26",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-09-26-memoria-encurta.md",
+    "em": "2026-09-26"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-26-memoria-encurta.md",
+    "tarefas": 2,
+    "paralelas": [
+      1
+    ],
+    "em": "2026-09-26"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-26",
+    "tarefas_ok": 2,
+    "tarefas": 2,
+    "comando": "node hooks/testa-memoria-escada.cjs",
+    "saida": "ok: 16 falhou: 0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-escada.cjs, caso \"14 observações com títulos longos cabem todas com textos encurtados\""
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "bump de versão, sem comportamento a inverter"
+      }
+    ],
+    "em": "2026-09-26"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "9fbb7cbd53365a8d001ef2dd682b032280abd13d",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "acb602c5d89980999",
+        "veredito": "ok",
+        "em": "2026-09-26",
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\subagents\\agent-acb602c5d89980999.jsonl"
+      }
+    ],
+    "achados": [
+      "APROVADO; 1 latente nao bloqueante: encurtarNaPalavra(x,0) devolve 1 caractere (sem call-site com 0)"
+    ],
+    "base": "506c0c032c0de2978ae1be43dfc06a3632221af8",
+    "head": "9fbb7cbd53365a8d001ef2dd682b032280abd13d",
+    "em": "2026-09-26"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node hooks/testa-memoria-escada.cjs",
+    "saida": "ok: 16   falhou: 0; banco real (so leitura) 12 janelas: main 6.3 -> novo 14.0",
+    "sensor_externo": "node hooks/testa-memoria-escada.cjs",
+    "em": "2026-09-26"
+  },
+  "fechar": {
+    "status": "ok",
+    "pr": 338,
+    "ci": "baterias (node 24) pass, run 36252664708, head 989e36c5",
+    "em": "2026-09-26"
+  }
+}

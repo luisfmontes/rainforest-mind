@@ -83,6 +83,38 @@ function cortarCaracteres(texto, maxChars) {
 }
 
 /**
+ * Encurta na PALAVRA: corta em `maxChars` caracteres (com o `…` dentro do
+ * limite) e recua até o último espaço, para não deixar palavra partida — desde
+ * que o recuo não coma mais que metade do texto que sobrou (palavra única
+ * gigante, um caminho, cai no corte por caractere).
+ *
+ * @param {string} texto
+ * @param {number} maxChars teto em caracteres, incluindo a reticência
+ * @returns {string}
+ */
+function encurtarNaPalavra(texto, maxChars) {
+  const s = String(texto || '');
+  const chars = Array.from(s);
+  if (chars.length <= maxChars) return s;
+  const cabe = chars.slice(0, Math.max(0, maxChars - 1)).join('');
+  const espaco = cabe.lastIndexOf(' ');
+  const base = espaco > cabe.length / 2 ? cabe.slice(0, espaco) : cabe;
+  return base.replace(/[\s,;:—–-]+$/, '') + '…';
+}
+
+/**
+ * Degraus da escada de encaixe do bloco de memória (D1 do design
+ * 2026-09-26-memoria-encurta): quando o bloco completo não cabe no teto,
+ * encurta o texto de TODAS as linhas (título — subtítulo, depois do rótulo) a
+ * 200, depois 160, depois 120 caracteres, e só então corta observação inteira.
+ * Medido no banco real em 2026-09-26 (janelas de 14 sobre as 60 mais
+ * recentes): cabiam 5,8 em média; 10,2 com 200; 12,5 com 160; 14 com 120.
+ * Encurtar só o título não basta: o subtítulo tem mediana de 188 B (D2).
+ * Escada enxertada do tamaratran/fast-jev-compaction (src/state.ts, MIT).
+ */
+const DEGRAUS_TEXTO = [200, 160, 120];
+
+/**
  * Extrai título e subtítulo de uma observação (conteúdo estruturado em markdown).
  * Observações têm estrutura: ## Título\n\nSubtítulo\n\n### Seções...
  *
@@ -116,9 +148,10 @@ function extrairTituloESubtitulo(conteudo) {
  *
  * @param {object} obs observação do banco
  * @param {object} [apelidos] mapa chave-do-banco -> nome curto para exibição
+ * @param {number} [maxTexto] teto do texto (título — subtítulo) em caracteres (degrau da escada); sem ele, inteiro
  * @returns {string} linha formatada
  */
-function formatarObservacao(obs, apelidos) {
+function formatarObservacao(obs, apelidos, maxTexto) {
   if (!obs) return '';
   const { conteudo, projeto, criada_em } = obs;
   // criada_em é timestamp ISO; tira a hora para economizar bytes.
@@ -133,10 +166,14 @@ function formatarObservacao(obs, apelidos) {
   // Extrai título e subtítulo do conteúdo
   const { titulo, subtitulo } = extrairTituloESubtitulo(conteudo);
 
-  // Formata como: [data (projeto)] título — subtítulo
+  // Formata como: [data (projeto)] título — subtítulo. No degrau da escada, o
+  // que encurta é o texto depois do rótulo, título e subtítulo juntos (D2).
+  let texto = titulo;
+  if (subtitulo) texto += (texto ? ' — ' : '— ') + subtitulo;
+  if (maxTexto) texto = encurtarNaPalavra(texto, maxTexto);
+
   let linha = `[${data}${proj}]`;
-  if (titulo) linha += ` ${titulo}`;
-  if (subtitulo) linha += ` — ${subtitulo}`;
+  if (texto) linha += ` ${texto}`;
 
   return linha.trim();
 }
@@ -153,11 +190,18 @@ function formatarObservacao(obs, apelidos) {
  * @param {number} cortadas quantas linhas (observações/resumos) ficaram de fora
  * @param {number} total quantas linhas existiam antes do corte
  * @param {number} maxBytes teto em bytes do bloco
+ * @param {number} [maxTexto] degrau da escada em que as linhas foram encurtadas, se houve
  * @returns {string} aviso com quebra dupla no fim, ou '' quando nada foi cortado
  */
-function construirAvisoCorteMemoria(cortadas, total, maxBytes) {
-  if (cortadas <= 0) return '';
-  return `⚠️ Memória acima do orçamento: ${cortadas} de ${total} observação(ões)/resumo(s) não couberam no teto de ${maxBytes} B e foram cortados.\n\n`;
+function construirAvisoCorteMemoria(cortadas, total, maxBytes, maxTexto) {
+  // Degrau da escada (D4 do design 2026-09-26-memoria-encurta): o aviso diz
+  // onde a escada parou — só encurtou, ou encurtou e ainda cortou.
+  const encurtou = maxTexto ? `textos encurtados a ${maxTexto} caracteres` : '';
+  if (cortadas <= 0) {
+    return encurtou ? `⚠️ Memória acima do orçamento: ${encurtou} para caber no teto de ${maxBytes} B (o resto: \`memoria.cjs buscar\`).\n\n` : '';
+  }
+  const tambem = encurtou ? ` (com ${encurtou})` : '';
+  return `⚠️ Memória acima do orçamento: ${cortadas} de ${total} observação(ões)/resumo(s) não couberam no teto de ${maxBytes} B e foram cortados${tambem}.\n\n`;
 }
 
 /**
@@ -176,10 +220,10 @@ function construirAvisoCorteMemoria(cortadas, total, maxBytes) {
  * @param {number} maxBytes teto em bytes
  * @returns {string}
  */
-function travarOrcamentoMemoria(linhas, cabecalho, rodape, maxBytes) {
+function travarOrcamentoMemoria(linhas, cabecalho, rodape, maxBytes, maxTexto) {
   for (let n = linhas.length; n >= 0; n--) {
     const cortadas = linhas.length - n;
-    const aviso = construirAvisoCorteMemoria(cortadas, linhas.length, maxBytes);
+    const aviso = construirAvisoCorteMemoria(cortadas, linhas.length, maxBytes, maxTexto);
     const corpo = linhas.slice(0, n).join('\n');
     const texto = aviso + cabecalho + corpo + rodape;
     if (Buffer.byteLength(texto, 'utf8') <= maxBytes) {
@@ -188,7 +232,7 @@ function travarOrcamentoMemoria(linhas, cabecalho, rodape, maxBytes) {
   }
   // Nem cabeçalho + rodapé + aviso, sozinhos (0 observações), coube no teto:
   // corte duro em bytes como último recurso, mas o aviso continua no topo.
-  const aviso = construirAvisoCorteMemoria(linhas.length, linhas.length, maxBytes);
+  const aviso = construirAvisoCorteMemoria(linhas.length, linhas.length, maxBytes, maxTexto);
   return cortarBytes(aviso + cabecalho + rodape, maxBytes);
 }
 
@@ -246,10 +290,22 @@ function montarMemoria(o) {
     return texto;
   }
 
-  // Estourou: corta por observação inteira e avisa NO TOPO o que ficou de
-  // fora. O aviso de PIPELINE, por já estar dentro do `cabecalho`, nunca é
-  // ele que sai — é sempre a observação mais antiga que cede lugar primeiro.
-  return travarOrcamentoMemoria(linhas, cabecalho, rodape, TETOS.MEMORIA_MAX_BYTES);
+  // Estourou: desce a escada (D1) — texto das linhas a 200, 160, 120 caracteres —, e o
+  // primeiro degrau que cabe, com o próprio aviso somado, é o que sai.
+  let linhasDoDegrau = linhas;
+  let degrau;
+  for (degrau of DEGRAUS_TEXTO) {
+    linhasDoDegrau = observacoes.map((obs) => formatarObservacao(obs, apelidos, degrau)).filter(Boolean);
+    const aviso = construirAvisoCorteMemoria(0, linhasDoDegrau.length, TETOS.MEMORIA_MAX_BYTES, degrau);
+    const noDegrau = aviso + cabecalho + linhasDoDegrau.join('\n') + rodape;
+    if (Buffer.byteLength(noDegrau, 'utf8') <= TETOS.MEMORIA_MAX_BYTES) return noDegrau;
+  }
+
+  // Nem o último degrau coube: corta por observação inteira (textos no último
+  // degrau) e avisa NO TOPO o que ficou de fora. O aviso de PIPELINE, por já
+  // estar dentro do `cabecalho`, nunca é ele que sai — é sempre a observação
+  // mais antiga que cede lugar primeiro.
+  return travarOrcamentoMemoria(linhasDoDegrau, cabecalho, rodape, TETOS.MEMORIA_MAX_BYTES, degrau);
 }
 
 /**
@@ -355,6 +411,8 @@ module.exports = {
   limitarBytes,
   cortarBytes,
   cortarCaracteres,
+  encurtarNaPalavra,
+  DEGRAUS_TEXTO,
   construirAvisoCorteMemoria,
   travarOrcamentoMemoria,
   avisoDePipeline,
