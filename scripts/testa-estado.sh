@@ -2409,8 +2409,9 @@ $ETR312 iniciar --slug teste-312 --titulo "Teste 312" >/dev/null
 node -e '
 const fs = require("fs");
 const e = JSON.parse(fs.readFileSync("plano-arquivo/docs/rainforest/estado/teste-312.json", "utf8"));
+e.design = { status: "aprovado", doc: "docs/rainforest/design/teste-312.md", em: "2026-09-26" };
 e.plano = {
-  status: "pendente",
+  status: "ok",
   arquivo: "docs/rainforest/planos/teste-312.md",
   tarefas: 6
 };
