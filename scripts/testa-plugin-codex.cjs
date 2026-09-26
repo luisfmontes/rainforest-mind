@@ -24,17 +24,17 @@ const DOCUMENTOS_DO_FLUXO = new Set([
   'docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md',
 ]);
 
-// Corpos medidos contra origin/main 9c05ee9a71b79d763a39f24195c580bc2d915752
-// (versao 1.23.3), antes da normalizacao exclusiva do frontmatter. As bases
-// 1.23.1 e 1.23.3 mantiveram os quatro corpos byte a byte. Esta ancora nao
+// Corpos medidos contra origin/main 5d59d36eeb30b617e716572834c810d0ad0c2ce9
+// (versao 1.23.15), antes da normalizacao exclusiva do frontmatter. A 1.23.15
+// mudou fechar, modo-dev e regua; montar-corpus ficou igual. Esta ancora nao
 // descreve o que a entrega escreveu — descreve o que ela NAO tocou, entao o valor
 // certo e sempre o da main, e um vermelho aqui significa ou corpo alterado por
 // engano, ou base velha depois que a main andou.
 const ANCORA_CORPOS_SKILLS = {
-  fechar: { bytes: 9986, sha256: 'a2f231f8137431da4e1b998b75d361c18f228b13ccc2cffbd4d5432c4de5a0f8' },
-  'modo-dev': { bytes: 13414, sha256: '281949f83cc647685a715e7dffae00fe082f6045adb0e16ad34fbbd3452aefa2' },
+  fechar: { bytes: 9585, sha256: '7ffc677b2f63ed030317417542f32f2ec4027294b39b14fcbc7ed00f01edc614' },
+  'modo-dev': { bytes: 13106, sha256: '9b4d2c0ceafdaa5ef95ecee0e2712cfbe7e44bd574dd7ccd5ba0647e26ae834a' },
   'montar-corpus': { bytes: 2935, sha256: 'f21d9af8be400bd8222f272b98ece70c1d01c92865e41f418340410b69bb11ab' },
-  regua: { bytes: 16053, sha256: '6a2e1e78075d89b0fb8a3c4e796c2f09eced762bf5e5bebd843dffb449fefcb6' },
+  regua: { bytes: 16038, sha256: 'c1318cbf03ef53a48575096a2898ca7f717b600b826b9061eb9b5552564895f4' },
 };
 
 class FalhaContrato extends Error {}
