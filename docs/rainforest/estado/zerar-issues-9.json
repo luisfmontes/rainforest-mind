@@ -25,7 +25,7 @@
     "em": "2026-09-26"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-26",
     "tarefas_ok": 8,
     "tarefas": 8,
@@ -88,13 +88,13 @@
         "ts": "2026-09-26T19:48:26.643Z"
       }
     ],
-    "comando": "node scripts/conferir-mutacao.cjs (revisao 2: 3 mutacoes) + 4 baterias de gate + matriz337.cjs",
-    "saida": "3x ok: bateria VERMELHA (exit 1); total=4 vermelhas:[]; matriz 25 ok, 0 falha(s) (7 falhavam antes)",
+    "comando": "bash hooks/testa-gate-fechar-issue.sh + conferir-mutacao (LITERAL primeiro caractere)",
+    "saida": "221 ok, 0 falha(s); ok: bateria VERMELHA com o comportamento invertido (exit 1)",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh, secoes (#337) e (#337n-t)"
+        "fixture": "testa-gate-fechar-issue.sh, secoes (#337), (#337n-w)"
       },
       {
         "tarefa": 2,
@@ -131,11 +131,7 @@
         "resultado": "n/a",
         "motivo": "bump de versao e changelog, sem comportamento a inverter"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-26"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
