@@ -621,82 +621,6 @@ function reduzEscapeAspasDuplas(str) {
   return saida;
 }
 
-/**
- * Extrai a lista de valores literais possíveis de uma variável `nome` no
- * comando INTEIRO, ou `null` se não há ligação legível:
- *
- * - `for <nome> in <palavras>` onde as palavras são literais (sem `$`, crase,
- *   `$(`, aspas com espaço interno) ou glob (`*`, `?`) — devolve os valores
- *   expandidos (globbing é literal, não expandido pelo parser).
- * - `(^|[;\s&|(])<nome>=<valor>` logo antes de uma posição que o usa, onde o
- *   valor é `"[^"]*"` (duplas) | `'[^']*'` (simples) | `[^\s;&|]+` (nu).
- *
- * Condições:
- *   - Se `/\bIFS=/` aparece em QUALQUER lugar do comando → `null` (ilegível).
- *   - Cada palavra extraída: sem `$`, crase, `$(`, espaço, não começa com `-`.
- *   - Se alguma palavra falha na validação, ou a lista está vazia → `null`.
- *
- * Tarefa 1 (#337): resolve se `bash $VAR` / `sh $VAR` (sem aspas) é execução
- * de arquivo legível (valores todos literais e válidos) ou ilegível (variável
- * não resolvida, com caracteres suspeitos, ou lista vazia).
- */
-function valoresDaVariavelNoComando(nome, comando) {
-  // Qualquer mexida em IFS muda o word-splitting de `$nome` — ilegível.
-  if (/\bIFS\b/.test(comando)) return null;
-
-  // Regra única (revisão 2): TODA ocorrência de `nome` como palavra tem de ser
-  // uma ligação que este leitor entende (`for nome in ...`, `nome=<literal>`)
-  // ou um uso (`$nome`, `${nome}`). Qualquer outra — `read nome`,
-  // `printf -v nome`, `declare nome`, `nome+=`, `nome=(...)` — pode dar a
-  // `nome` um valor que ninguém lê aqui, e devolve null. É isso que fecha o
-  // `for t in a; ...; for t in -c; ...` (a versão anterior lia só o primeiro
-  // `for`) e o `f=(-c x.sh)` (array cujo primeiro elemento é `-c`).
-  const valores = [];
-  const ocorrencia = new RegExp("(^|[^A-Za-z0-9_])" + nome + "(?![A-Za-z0-9_])", "g");
-  let m;
-  while ((m = ocorrencia.exec(comando)) !== null) {
-    const ini = m.index + m[1].length;
-    const antes = comando.slice(0, ini);
-    const depois = comando.slice(ini + nome.length);
-    // Pedaço de caminho ou de flag (`rm -f`, `a/f/b`, `x.f`), não a variável.
-    if (/[-/.]$/.test(antes) || /^[/.]/.test(depois)) continue;
-    // Uso: `$nome` ou `${nome}`.
-    if (/\$\{?$/.test(antes)) continue;
-    // Ligação 1: `for nome in <palavras>` até `;`, quebra ou `do`.
-    if (/(?:^|[;&|(\s])for\s+$/.test(antes)) {
-      const lista = /^\s+in\s+([^;\n]*)/.exec(depois);
-      if (!lista) return null;
-      const palavras = lista[1].replace(/\s+do\s*$/, "").trim().split(/\s+/).filter(Boolean);
-      if (palavras.length === 0) return null;
-      valores.push(...palavras);
-      continue;
-    }
-    // Ligação 2: `nome=<literal>` (nu, ou entre aspas sem expansão dentro).
-    if (/(?:^|[;&|(\s])$/.test(antes) && depois.startsWith("=")) {
-      const atrib = /^=(?:'([^']*)'|"([^"$`\\]*)"|([^\s;&|<>()'"]+))(?=$|[\s;&|])/.exec(depois);
-      if (!atrib) return null;
-      valores.push(atrib[1] !== undefined ? atrib[1] : atrib[2] !== undefined ? atrib[2] : atrib[3]);
-      continue;
-    }
-    return null;
-  }
-  if (valores.length === 0) return null;
-
-  // Cada valor possível é um caminho/glob literal: lista branca de caracteres,
-  // sem começar com `-` (senão `bash $f` vira `bash -c`), sem espaço, `$`,
-  // crase, parêntese, aspas ou redirecionamento.
-  // O PRIMEIRO caractere é literal — nem `-`, nem glob (`?`, `*`, `[`), nem `~`:
-  // a expansão de glob preserva o prefixo literal, então nenhum valor aceito
-  // vira `-c` mesmo com um arquivo `-c` no diretório (`f=?c`, `f=[-]c`;
-  // achado da revisão 3). Glob depois do primeiro caractere segue valendo
-  // (`scripts/testa-*.sh`).
-  const LITERAL = /^[A-Za-z0-9_.\/+,:=@%][A-Za-z0-9_.\/*?\[\]+,:=@%~-]*$/;
-  for (const v of valores) {
-    if (!LITERAL.test(v)) return null;
-  }
-  return valores;
-}
-
 /** Tira UM nivel de aspas externas de `interno`, se houver. */
 function desempacota(interno) {
   interno = interno.trim();
@@ -763,17 +687,12 @@ function contemConstrucaoIlegivel(str) {
  * importa para o caso `&` acima; quem nao passa preserva o comportamento de
  * antes (`&` nunca vira ilegivel por este motivo).
  *
- * `comando` (opcional): o segmento completo (ou comando inteiro em contexto de
- * gate) — usado por `valoresDaVariavelNoComando` (tarefa 1, #337) para procurar
- * valores literais de variáveis no comando. Quando não fornecido, variáveis
- * sem valor identificado continuam ilegíveis (comportamento anterior).
- *
  * Quem chama decide o que fazer com cada combinacao: `interno` legivel
  * (nao-null, `ilegivel: false`) e reprocessado como se fosse o proprio
  * comando; `ilegivel: true` (com ou sem `interno`) e tratado como INCERTO —
  * mesma postura conservadora que `$(`/crase solto ja recebe nos tres gates.
  */
-function desempacotarWrapperDeString(segmento, { ferramenta, comando } = {}) {
+function desempacotarWrapperDeString(segmento, { ferramenta } = {}) {
   const p1 = extrairPrimeiroToken(segmento);
   if (!p1) return { interno: null, ilegivel: false };
   const exe = normalizarNomeExecutavel(p1.tok);
@@ -884,23 +803,6 @@ function desempacotarWrapperDeString(segmento, { ferramenta, comando } = {}) {
       return { interno: null, ilegivel: false };
     }
 
-    // Tarefa 1 (#337): `bash $VAR` sem aspas — procura valores literais de `$VAR`
-    // no comando inteiro. Se encontrar uma lista legível, trata como arquivo
-    // (mesmo que `./script.sh`); senão, cai no ilegível.
-    // A PALAVRA INTEIRA tem de ser `$nome`/`${nome}`: com algo colado
-    // (`$f` + crase, `$f$(x)`), a substituição roda antes da concatenação e
-    // o resto segue no `contemConstrucaoIlegivel` abaixo (achado da revisão 2).
-    const palavraInteira = current.tok + /^[^\s]*/.exec(current.resto)[0];
-    const matchVar = /^\$(?:([A-Za-z_][A-Za-z0-9_]*)|\{([A-Za-z_][A-Za-z0-9_]*)\})$/.exec(palavraInteira);
-    if (matchVar && !current.citado && comando) {
-      const nomeVar = matchVar[1] || matchVar[2];
-      const valoresResolvidos = valoresDaVariavelNoComando(nomeVar, comando);
-      if (valoresResolvidos !== null) {
-        // Valores resolvidos: trata como caminho literal
-        return { interno: null, ilegivel: false };
-      }
-    }
-
     const coladoNoToken = /^[^\s]*/.exec(current.resto)[0];
     if (contemConstrucaoIlegivel(current.tok + coladoNoToken)) {
       return { interno: null, ilegivel: true };
@@ -924,5 +826,4 @@ module.exports = {
   colapsaContinuacaoDeLinha,
   colapsaContinuacaoDeLinhaNoTopo,
   reduzEscapeAspasDuplas,
-  valoresDaVariavelNoComando,
 };

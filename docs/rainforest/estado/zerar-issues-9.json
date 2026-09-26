@@ -25,7 +25,7 @@
     "em": "2026-09-26"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-26",
     "tarefas_ok": 8,
     "tarefas": 8,
@@ -131,31 +131,34 @@
         "resultado": "n/a",
         "motivo": "bump de versao e changelog, sem comportamento a inverter"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-26"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "27925c434988599945563391f675534e7cce582c",
+      "head": "96cb6c49e9fdf90a1eae4f64dfc9203483542261",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a08e7fc2648ae5cb8",
+        "agente_id": "a127521145b2fd82e",
         "veredito": "reprovado",
         "em": "2026-09-26",
-        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\fafafc3e-6038-4d4f-a12c-598b61a131f3\\subagents\\agent-a08e7fc2648ae5cb8.jsonl"
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\fafafc3e-6038-4d4f-a12c-598b61a131f3\\subagents\\agent-a127521145b2fd82e.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-09-26",
     "achados": 1,
     "pendentes": [
-      "rev3-1: glob no valor (f=?c, f=[-]c) expande para -c com arquivo -c no cwd; LITERAL so barra - textual"
+      "rev4-1: comentario/heredoc com f=literal vira ligacao legivel; f=-c herdado do ambiente vira bash -c. Criterio pre-decidido: #337 sai da entrega"
     ],
-    "tentativas": 3,
-    "liberado_em": "2026-09-26",
+    "tentativas": 4,
     "rodadas_extra": [
       {
         "texto": "Q1 (a) do usuario, 2026-09-26: quarta rodada com o conserto do glob no primeiro caractere; se a 4a revisao achar outro buraco em valoresDaVariavelNoComando, a #337 sai da entrega",

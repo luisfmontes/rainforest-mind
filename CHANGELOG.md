@@ -12,15 +12,11 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 ## 1.24.0 — 2026-09-26
 
-**Os gates pararam de barrar o que já era legível, e fecharam dois buracos.**
+**Os gates fecharam um buraco e pararam de barrar um `Edit` que só preserva o que já
+estava no arquivo.** O `bash $t` sem aspas (#337) continua barrado: quatro revisões acharam
+jeito de esconder `bash -c` atrás da variável em cada versão da resolução, e a issue segue
+aberta.
 
-- **`bash $t` sem aspas passa quando o valor está escrito no próprio comando** (#337):
-  `for t in a b; do bash $t; done`, `for t in scripts/testa-*.sh; do bash $t; done` e
-  `f=x.sh; bash $f` deixam de ser "comando encapsulado". Continuam barrados `bash $CMD`
-  sem atribuição visível, valor que começa com `-` ou tem espaço (`f=-c; bash $f "gh ..."`),
-  lista com `$(...)`, qualquer comando que mexa em `IFS`, e variável que o comando
-  também muda por outro caminho (`read`, `printf -v`, `declare`, `+=`, array) ou que tenha algo
-  colado (`$f` seguido de crase).
 - **Contrabarra dupla dentro das aspas duplas de um wrapper** deixou de esconder o comando
   (#313): `bash -c "gh issue \\<quebra>close 12"` passava; agora o gate faz a mesma
   redução de escape que o bash faz antes de juntar a linha.

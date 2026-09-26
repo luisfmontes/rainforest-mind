@@ -2366,64 +2366,13 @@ echo '== (hi) & $exe issue close 12 → exit 2 (alvo variavel continua ilegivel)
 EXIT_HI=$?
 [ $EXIT_HI -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HI)"
 
-# (#337) bash $VAR resolvida no comando
+# (#337) bash $VAR sem aspas continua ilegivel — regressao. A #337 saiu da
+# rodada zerar-issues-9 depois de quatro revisoes acharem bypass na resolucao
+# de variavel (impasse em docs/rainforest/portoes/zerar-issues-9-impasse.md).
+# Os casos abaixo sao os comandos que furavam alguma versao dela: com o
+# comportamento da base, todos tem de continuar saindo 2.
 echo
-echo "== (#337) bash \$VAR resolvida no comando =="
-
-# Caso: `for t in a b; do bash $t; done` → exit 0 (valores resolvidos de $t)
-echo
-echo "== (#337a) for t in a b; do bash \$t; done → exit 0 =="
-(
-  export PATH="$SBP/bin:$PATH"
-  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"for t in a b; do bash $t; done"}}'
-  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
-) 2>"$SBP/err-337a"
-EXIT_337A=$?
-[ $EXIT_337A -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_337A)"
-
-# Caso: `for t in scripts/testa-*.sh; do bash $t; done` → exit 0 (glob)
-echo
-echo "== (#337b) for t in scripts/testa-*.sh; do bash \$t; done → exit 0 =="
-(
-  export PATH="$SBP/bin:$PATH"
-  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"for t in scripts/testa-*.sh; do bash $t; done"}}'
-  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
-) 2>"$SBP/err-337b"
-EXIT_337B=$?
-[ $EXIT_337B -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_337B)"
-
-# Caso: `f=x.sh; bash $f 2>&1 | tail -1` → exit 0 (atribuição)
-echo
-echo "== (#337c) f=x.sh; bash \$f 2>&1 | tail -1 → exit 0 =="
-(
-  export PATH="$SBP/bin:$PATH"
-  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"f=x.sh; bash $f 2>&1 | tail -1"}}'
-  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
-) 2>"$SBP/err-337c"
-EXIT_337C=$?
-[ $EXIT_337C -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_337C)"
-
-# Caso: `f=x.sh; bash ${f}` → exit 0 (expansão com chaves)
-echo
-echo "== (#337d) f=x.sh; bash \${f} → exit 0 =="
-(
-  export PATH="$SBP/bin:$PATH"
-  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"f=x.sh; bash ${f}"}}'
-  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
-) 2>"$SBP/err-337d"
-EXIT_337D=$?
-[ $EXIT_337D -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_337D)"
-
-# Caso: `f=x.sh; sh $f arg` → exit 0 (sh em vez de bash)
-echo
-echo "== (#337e) f=x.sh; sh \$f arg → exit 0 =="
-(
-  export PATH="$SBP/bin:$PATH"
-  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"f=x.sh; sh $f arg"}}'
-  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
-) 2>"$SBP/err-337e"
-EXIT_337E=$?
-[ $EXIT_337E -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_337E)"
+echo "== (#337) bash \$VAR sem aspas continua ilegivel (regressao) =="
 
 # Caso: `bash $CMD` sem atribuição → exit 2 (variável não resolvida)
 echo
@@ -2520,9 +2469,11 @@ EXIT_337M=$?
 # Montados em node (crase e parêntese sobrevivem ao quoting do shell).
 # (u)-(w), revisão 3: glob no PRIMEIRO caractere do valor expande para `-c`
 # quando existe um arquivo `-c` no diretório — medido no bash real.
+# (x)-(y), revisão 4: comentário ou corpo de heredoc com `f=literal` passava
+# por ligação legível; com `f=-c` herdado do ambiente, o bash roda `bash -c`.
 echo
 echo "== (#337n-t) bypasses da revisao 2 → exit 2 =="
-for caso in n o p q r s t u v w; do
+for caso in n o p q r s t u v w x y; do
   PAYLOAD=$(node -e '
     const C=String.fromCharCode(96);const g="\"gh issue close 12\"";
     const cmd={
@@ -2536,6 +2487,8 @@ for caso in n o p q r s t u v w; do
       u:"f=?c; bash $f "+g,
       v:"f=[-]c; bash $f "+g,
       w:"for t in ?c; do bash $t "+g+"; done",
+      x:"# f=safe.sh\nbash $f "+g,
+      y:"cat <<\x27EOF\x27 >/tmp/decoy.txt\nf=safe.sh\nEOF\nbash $f "+g,
     }[process.argv[2]];
     process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$caso")
   ( export PATH="$SBP/bin:$PATH"; echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs" ) 2>"$SBP/err-337$caso" >/dev/null

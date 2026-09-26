@@ -27,3 +27,10 @@ prefixo literal, então nenhum valor aceito vira `-c`. Casos novos na bateria:
 Alternativa rejeitada nesta rodada, e recomendada se a quarta revisão achar
 outro buraco na mesma função: (b) tirar a #337 desta entrega, reverter o código
 da tarefa 1 e deixar a issue aberta.
+
+## Desfecho (2026-09-26)
+A quarta revisão achou outro buraco na mesma função: comentário (`# f=safe.sh`)
+ou corpo de heredoc com `f=literal` passava por ligação legível, e um `f=-c`
+herdado do ambiente virava `bash -c`. Conforme a decisão acima, a #337 saiu da
+entrega: código da tarefa 1 revertido, casos que furavam cada versão mantidos na
+bateria como regressão (todos → 2), issue aberta com o registro.
