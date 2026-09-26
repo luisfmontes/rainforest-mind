@@ -50,6 +50,31 @@ function semCorpoDeHeredoc(comando) {
   return saida.join("\n");
 }
 
+// Palavras que vêm antes do comando de verdade sem mudar qual ele é: as
+// palavras-chave do bash (`if find / ...; then`, `! find /`, `{ find /; }`) e
+// os comandos que só envolvem outro (`time`, `nice -n 10`, `env VAR=x`,
+// `timeout 300`, `xargs -0`). Terceira revisão: sem isto, qualquer uma delas
+// antes do `find` fazia o segmento inteiro passar sem ser lido.
+const PALAVRAS_CHAVE = new Set(["if", "then", "elif", "else", "while", "until", "do", "!", "{"]);
+const ENVOLTORIOS = new Set(["sudo", "command", "exec", "nice", "env", "nohup", "xargs", "stdbuf", "timeout", "time"]);
+
+function pularPrefixos(tokens, i) {
+  while (i < tokens.length) {
+    const t = tokens[i];
+    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(t) || PALAVRAS_CHAVE.has(t)) { i++; continue; }
+    if (ENVOLTORIOS.has(t)) {
+      i++;
+      // opções do envoltório e seus valores (`-n 10`, `-s KILL`, `-0`),
+      // atribuições do `env` e a duração do `timeout` (`300`, `10s`, `1m`)
+      while (i < tokens.length && (/^-/.test(tokens[i]) || /^\d+(\.\d+)?[smhd]?$/.test(tokens[i]) ||
+        /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[i]) || (/^-[ns]$/.test(tokens[i - 1]) && !/^-/.test(tokens[i])))) i++;
+      continue;
+    }
+    break;
+  }
+  return i;
+}
+
 /** Pontos de partida de cada `find` do comando. Divide em segmentos por
  * `;`, `&&`, `||`, `|`, `&`, quebra de linha e abertura de substituição ou
  * subshell (`$(`, crase, `(`), e só olha o segmento cujo comando (depois de
@@ -66,12 +91,17 @@ function partidasDeFind(comando) {
     .replace(/(^|[^\\])\(/g, "$1\n");
   for (const segmento of separado.split(/&&|\|\||;|\||&|\n/)) {
     const tokens = segmento.trim().match(/"[^"]*"|'[^']*'|\S+/g) || [];
-    let i = 0;
-    while (i < tokens.length) {
-      const t = tokens[i];
-      if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(t) || t === "sudo" || t === "command" || t === "exec") { i++; continue; }
-      if (t === "timeout") { i += 2; continue; }
-      break;
+    let i = pularPrefixos(tokens, 0);
+    // `bash -c "..."`, `sh -c '...'` e `eval "..."`: o texto de dentro é
+    // comando, e passa pelo mesmo parser.
+    if (/^(ba|z)?sh$/.test(tokens[i] || "")) {
+      const c = tokens.indexOf("-c", i);
+      if (c !== -1 && tokens[c + 1]) partidas.push(...partidasDeFind(tirarAspas(tokens[c + 1])));
+      continue;
+    }
+    if (tokens[i] === "eval") {
+      partidas.push(...partidasDeFind(tokens.slice(i + 1).map(tirarAspas).join(" ")));
+      continue;
     }
     if (tokens[i] !== "find" && !/[\\/]find(\.exe)?$/.test(tokens[i] || "")) continue;
     i++;

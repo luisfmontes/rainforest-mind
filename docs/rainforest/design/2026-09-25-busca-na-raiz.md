@@ -17,6 +17,7 @@ O usuário viu o sexto revisor "travado" em 2026-09-25. O agente já tinha termi
 - Barrar bateria longa no hook: não dá para saber antes de rodar quanto ela vai durar; o `timeout` explícito (D4) resolve sem proibir.
 
 ## Fora de escopo
+- Contorno deliberado. O hook é guia contra o erro honesto (varrer o disco para achar um arquivo), não barreira contra quem quer burlar. Ele lê as formas que um agente digita sem intenção: separadores, subshell, substituição de comando e de processo, palavras-chave do bash (`if`, `while`, `!`, `{`), envoltórios (`time`, `nice`, `env`, `timeout`, `xargs`) e o texto de `bash -c`/`eval`. Montar o comando por variável (`d=/; find $d`) ou por script em arquivo não é lido, e as três rodadas de revisão de 2026-09-25/26 não trouxeram caso honesto nessa forma.
 - `grep -r` e buscas longas em pastas grandes que não são a raiz: não apareceram prendendo agente na medição.
 - O payload do `PreToolUse` de `Bash` dentro de subagente: a presença de `agent_id` já foi confirmada ao vivo para `Agent` (`docs/rainforest/pesquisas/2026-09-24-revisor-folha-payload.md`), e a doc de hooks dá os mesmos campos comuns para toda ferramenta. A fixture deriva dessa captura trocando só `tool_name` e `tool_input`.
 

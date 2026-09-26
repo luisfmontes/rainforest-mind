@@ -108,6 +108,23 @@ for (const cmd of [
   "diff <(find / -name x) /dev/null",
   "tee >(find / -name x) </dev/null",
   "x=$(true)$(find / -name x)",
+  // terceira revisão: palavra antes do find
+  "{ find / -name x; }",
+  "if find / -name x; then echo hi; fi",
+  "if find / -iname accounts.json 2>/dev/null | grep -q .; then echo tem; fi",
+  "while find / -name x; do echo hi; done",
+  "! find / -name x",
+  "time find / -name x",
+  "time -p find / -name x",
+  "nice find / -name x",
+  "nice -n 10 find / -name x",
+  "env find / -name x",
+  "env LANG=C find / -name x",
+  "nohup find / -name x",
+  "timeout -s KILL 10s find / -name x",
+  "eval \"find / -name x\"",
+  "bash -c \"find / -name x\"",
+  "sh -c 'cd /tmp; find / -name x'",
 ]) {
   r = rodar(cmd);
   caso(`subagente: nega — ${cmd}`, r.status === 2, `${r.status} ${r.stderr}`);
@@ -120,6 +137,12 @@ for (const cmd of [
   "find \"$(pwd)\" -name y",
   "diff <(find . -name a) <(find src -name a)",
   "find . \\( -name a \\) &>/dev/null",
+  "if find . -name y; then echo tem; fi",
+  "time find src -name y",
+  "bash -c \"find . -name y\"",
+  "eval \"echo find /\"",
+  "echo / | xargs ls",
+  "find \"/c/Program Files (x86)/App\" -iname x.exe",
 ]) {
   r = rodar(cmd);
   caso(`subagente: passa — ${JSON.stringify(cmd)}`, r.status === 0, `${r.status} ${r.stderr}`);
