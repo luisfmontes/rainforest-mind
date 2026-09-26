@@ -135,7 +135,12 @@
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "0c72e8feb5ea3bc3c38f44559ece24fc221a8afd",
+      "caminhos_sujos": []
+    },
+    "vereditos": []
   },
   "verificar": {
     "status": "pendente"
