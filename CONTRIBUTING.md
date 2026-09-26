@@ -8,7 +8,7 @@ nenhuma dentro de arquivo versionado.
 ## Antes de abrir PR
 
 ```
-for t in scripts/testa-*.sh hooks/testa-*.sh; do bash "$t"; done
+bash scripts/varrer-baterias.sh
 CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh
 ```
 
