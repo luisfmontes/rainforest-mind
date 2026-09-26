@@ -182,6 +182,19 @@ function negar(motivo) {
   process.exit(2);
 }
 
+/* Toggle `agente-folha` (D6 do design 2026-09-24-revisor-folha), mesma forma
+ * de `contratoVereditoLigado()` em `scripts/estado.cjs`: le `ligado()` de
+ * `hooks/lib/config.cjs` com o projeto resolvido como os outros toggles
+ * resolvem — aqui `raiz`, a raiz do projeto ja resolvida por
+ * `raizDoProjeto()`, nunca a raiz do plugin. Erro de leitura cai para o lado
+ * de LIGADO (mesmo fail-safe de `ligado()`), entao instalacao com config.cjs
+ * indisponivel continua negando o aninhamento — nao libera por acidente.
+ */
+function agenteFolhaLigado(raiz) {
+  const { ligado } = require("./lib/config.cjs");
+  return ligado('agente-folha', { projeto: raiz });
+}
+
 function normalizarNomeAgente(nome) {
   if (!nome || typeof nome !== "string") return null;
   // Remove prefixo tipo 'rainforest-mind:' se existir
@@ -658,6 +671,29 @@ function main() {
     estErro = err;
   }
   const estagioLog = (estResult && estResult.estagio) || "?";
+
+  // D4 do design 2026-09-24-revisor-folha: agente despachado e FOLHA, nao
+  // despacha agente (regra 10). `agent_id` so aparece no payload do
+  // `PreToolUse` quando a chamada de `Agent` sai de DENTRO de outro
+  // subagente (confirmado ao vivo na tarefa 1, `docs/rainforest/pesquisas/
+  // 2026-09-24-revisor-folha-payload.md`) — a janela principal nunca traz a
+  // chave. Fica ANTES das checagens de manifesto: os 9 agentes do plugin ja
+  // perdem a ferramenta `Agent` no proprio frontmatter (D4, tarefa 4), e esta
+  // camada e o reforco que cobre os nativos do harness (`general-purpose`,
+  // `Explore`) e qualquer agente de outro plugin — nenhum dos quais este
+  // portao teria como negar mais adiante, no manifesto, sem reescrever a
+  // logica de admissao inteira so para este caso. PRESENCA da chave, nao
+  // truthiness: `agent_id: ""` passava (revisao de 2026-09-24) — valor estranho
+  // e duvida, e duvida fecha.
+  if (Object.prototype.hasOwnProperty.call(payload, "agent_id") && agenteFolhaLigado(raiz)) {
+    const motivo =
+      `agent_type '${payload.agent_type || "desconhecido"}' despachou '${nomeAgente}' pela ferramenta Agent — ` +
+      `agente despachado e FOLHA e nao despacha agente (regra 10): faca o trabalho sozinho e, se nao couber, ` +
+      `devolva resultado parcial com a lista explicita do que nao conferiu — quem particiona e quem despachou, nunca a folha. ` +
+      `Para desligar nesta arvore: "agente-folha": false em .rainforest/config.json do projeto.`;
+    gravarDespacho(raiz, "deny", nomeAgente, estagioLog, sessao, motivo);
+    negar(motivo);
+  }
 
   // Carrega manifesto. TRÊS níveis, e só um deles soma:
   //

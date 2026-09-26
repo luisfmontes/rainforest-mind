@@ -229,14 +229,6 @@ dela é candidato à deleção — nem que execute um caso só.
 Se encontrar um, reporte a oportunidade separadamente (issue/design), mas não
 marque para corte. O teste que falha quando você tira é prova de que serve.
 
-## Incidente 2026-07-15: correção mascarada de economia
-
-Um agente recomendou remover um bloco inteiro de validação por ser "redundante".
-O teste continuava passando porque havia um check anterior que capturava o erro
-— o segundo era de fato morto. Mas o check anterior falhava para casos onde a
-validação posterior deveria servir. A remoção "economizava" 12 linhas e introduzia
-um bug. A regra acima (nenhum check é apagado) previne exatamente isso.
-
 ---
 
 ## Exemplos

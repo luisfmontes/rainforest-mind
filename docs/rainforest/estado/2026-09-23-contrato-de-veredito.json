@@ -1,0 +1,313 @@
+{
+  "slug": "2026-09-23-contrato-de-veredito",
+  "titulo": "2026-09-23-contrato-de-veredito",
+  "criado_em": "2026-09-23",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-09-23-contrato-de-veredito.md",
+    "decisoes": 14,
+    "em": "2026-09-24"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-23-contrato-de-veredito.md",
+    "tarefas": 19,
+    "paralelas": [
+      1,
+      2,
+      3
+    ],
+    "em": "2026-09-24"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-24",
+    "tarefas_ok": 20,
+    "tarefas": 20,
+    "em": "2026-09-24",
+    "carimbos": [
+      {
+        "tarefa": 2,
+        "hash_base": "da908a62",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T20:38:42.098Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "da908a62",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T21:03:06.300Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "da908a62",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T21:03:06.300Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "59c9a705",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T23:01:58.154Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "59c9a705",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T23:07:48.799Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "a6f9e277",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T23:20:33.121Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "a6f9e277",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T23:46:28.441Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "a6f9e277",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T23:46:28.441Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "a6f9e277",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T23:46:28.441Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "4ebbc350",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T23:57:12.820Z"
+      },
+      {
+        "tarefa": 11,
+        "hash_base": "4ebbc350",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T23:57:12.820Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "4ebbc350",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-23T23:58:26.157Z"
+      },
+      {
+        "tarefa": 13,
+        "hash_base": "4ebbc350",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-24T00:12:11.378Z"
+      },
+      {
+        "tarefa": 14,
+        "hash_base": "4ebbc350",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-24T00:12:11.378Z"
+      },
+      {
+        "tarefa": 15,
+        "hash_base": "2699bf98",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-24T01:59:46.880Z"
+      },
+      {
+        "tarefa": 16,
+        "hash_base": "2699bf98",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-24T01:59:46.880Z"
+      },
+      {
+        "tarefa": 17,
+        "hash_base": "2699bf98",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-24T01:59:46.880Z"
+      },
+      {
+        "tarefa": 18,
+        "hash_base": "21de447a",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-24T12:11:25.910Z"
+      },
+      {
+        "tarefa": 19,
+        "hash_base": "21de447a",
+        "iteracao": 1,
+        "sessao": "553122e5-fb70-4bad-8c90-94892ab86341",
+        "ts": "2026-09-24T12:11:25.910Z"
+      }
+    ],
+    "achados_tarefa_1": "payload SubagentStop real: agent_type=rainforest-mind:revisor, agent_transcript_path presente (subagents/agent-<id>.jsonl, 1a msg user content string com o briefing), last_assistant_message, stop_hook_active, agent_id",
+    "comando": "bash hooks/testa-veredito-revisor.sh",
+    "saida": "== resultado: 16 ok, 0 falha(s) ==",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "n/a",
+        "motivo": "pesquisa: captura do payload real, sem codigo de producao"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-segunda-opiniao.sh, parecer-multilinhas"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, registrar duas vezes o mesmo agente-id substitui"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, janela de vereditos zera a cada exigir revisar"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, marcar revisar ok recusa com veredito reprovado na janela"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, marcar revisar reprovado recusa sem veredito reprovado"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, liberar --estagio revisar recusa sem arquivo de impasse"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-veredito-revisor.sh, agent_type que nao e revisor e ignorado"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-veredito-revisor.sh, hooks.json aponta para o hook certo"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "doc da skill revisar"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "n/a",
+        "motivo": "doc do agente revisor"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "n/a",
+        "motivo": "a propria bateria; mutacoes das tarefas 8 e 9 rodadas contra ela"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "n/a",
+        "motivo": "extensao de bateria ja coberta pelas tarefas 3-7, sem commit"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, verificar reprovado reabre o revisar"
+      },
+      {
+        "tarefa": 15,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, contrato-veredito desligado fecha o revisar sem veredito"
+      },
+      {
+        "tarefa": 16,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, veredito sem transcrito que o confirme e recusado"
+      },
+      {
+        "tarefa": 17,
+        "resultado": "n/a",
+        "motivo": "doc da skill revisar"
+      },
+      {
+        "tarefa": 18,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, transcrito fora da pasta real de sessao e recusado"
+      },
+      {
+        "tarefa": 19,
+        "resultado": "n/a",
+        "motivo": "doc da skill revisar"
+      },
+      {
+        "tarefa": 20,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, sem CLAUDE_CONFIG_DIR: arvore em ~/.claude grava"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "c3f2f38b43ced11669451c2aa55b30a2c2b6e5b9",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-09-23-contrato-de-veredito.json"
+      ]
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a5b080ff396072854",
+        "veredito": "ok",
+        "em": "2026-09-24",
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\subagents\\agent-a5b080ff396072854.jsonl"
+      }
+    ],
+    "em": "2026-09-24",
+    "achados": 0,
+    "rodadas_extra": [
+      {
+        "texto": "recomendado: aceitar so a pasta de config em uso (CLAUDE_CONFIG_DIR, ou ~/.claude sem ela)",
+        "em": "2026-09-24"
+      }
+    ],
+    "base": "dec421f5",
+    "head": "c3f2f38b"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node scripts/estado.cjs veredito --veredito ok|reprovado --transcrito <transcrito real da 3a revisao> (caixa RFM_ESTADO_ROOT)",
+    "saida": "ok forjado: RECUSADO ... Nada foi gravado (D12); reprovado real: exit 0 gravado. Mutacoes 8 e 20 vermelhas.",
+    "sensor_externo": "node scripts/estado.cjs veredito",
+    "em": "2026-09-24"
+  },
+  "fechar": {
+    "status": "ok",
+    "pr": 327,
+    "ci": "baterias (node 24) pass, run 36040606368, head b717b5f9",
+    "em": "2026-09-24"
+  }
+}

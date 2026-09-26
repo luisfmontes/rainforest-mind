@@ -28,10 +28,13 @@ unset CI
 unset GITHUB_ACTIONS
 
 REPO="$CAIXA/repo"
-mkdir -p "$REPO/scripts" "$REPO/hooks/lib"
+mkdir -p "$REPO/scripts/lib" "$REPO/hooks/lib"
 cp "$SRC/scripts/estado.cjs" "$REPO/scripts/"
-cp "$SRC/hooks/lib/raiz.cjs" "$REPO/hooks/lib/"
-cp "$SRC/hooks/lib/config.cjs" "$REPO/hooks/lib/"
+# estado.cjs faz require duro de scripts/lib/ e hooks/lib/ (trava-jsonl,
+# extrair-veredito, primeiro-prompt-jsonl, config). Copia as pastas inteiras:
+# lista irmao a irmao quebrou aqui e em testa-importar-claude-mem (2026-09-23).
+cp -r "$SRC/scripts/lib/." "$REPO/scripts/lib/"
+cp -r "$SRC/hooks/lib/." "$REPO/hooks/lib/"
 touch "$REPO/FOCO.md"
 
 cd "$REPO" || exit 1
@@ -117,9 +120,10 @@ rm -f "$REPO/.rainforest/config.json"
 
 echo
 echo "== e. pasta que nao e repositorio git: iniciar passa (comportamento antigo) =="
-mkdir -p "$CAIXA/nao-git/scripts" "$CAIXA/nao-git/hooks/lib"
+mkdir -p "$CAIXA/nao-git/scripts/lib" "$CAIXA/nao-git/hooks/lib"
 cp "$REPO/scripts/estado.cjs" "$CAIXA/nao-git/scripts/"
-cp "$REPO/hooks/lib/raiz.cjs" "$REPO/hooks/lib/config.cjs" "$CAIXA/nao-git/hooks/lib/"
+cp -r "$REPO/scripts/lib/." "$CAIXA/nao-git/scripts/lib/"
+cp -r "$REPO/hooks/lib/." "$CAIXA/nao-git/hooks/lib/"
 touch "$CAIXA/nao-git/FOCO.md"
 (
   cd "$CAIXA/nao-git" || exit 9

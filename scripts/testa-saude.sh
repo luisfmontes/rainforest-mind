@@ -379,6 +379,8 @@ printf '{"poda": false}' > "$DADOS_LEGADO/config.json"
 ( cd "$DADOS_LEGADO" && node << 'MKLEGACY'
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync('./rainforest.db');
+// Transcrito real no disco: marca cujo arquivo sumiu e ignorada pela checagem 3.
+const ARQ_T = require('path').join(process.cwd(), 't.jsonl'); require('fs').writeFileSync(ARQ_T, '');
 
 db.exec(`
   CREATE TABLE observacoes (
@@ -461,6 +463,8 @@ printf '{"poda": false}' > "$DADOS_OK/config.json"
 ( cd "$DADOS_OK" && node << 'MKBANCO_OK'
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync('./rainforest.db');
+// Transcrito real no disco: marca cujo arquivo sumiu e ignorada pela checagem 3.
+const ARQ_T = require('path').join(process.cwd(), 't.jsonl'); require('fs').writeFileSync(ARQ_T, '');
 
 db.exec(`
   CREATE TABLE observacoes (
@@ -496,7 +500,7 @@ db.exec(`
   VALUES (1, 'obs1');
 
   INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em)
-  VALUES ('test', 'sess1', '/tmp/t.jsonl', 100, 100, datetime('now'));
+  VALUES ('test', 'sess1', '${ARQ_T}', 100, 100, datetime('now'));
 `);
 
 db.close();
@@ -519,6 +523,8 @@ printf '{"poda": false}' > "$DADOS_DIVERGE/config.json"
 ( cd "$DADOS_DIVERGE" && node << 'MKBANCO_DIVERGE'
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync('./rainforest.db');
+// Transcrito real no disco: marca cujo arquivo sumiu e ignorada pela checagem 3.
+const ARQ_T = require('path').join(process.cwd(), 't.jsonl'); require('fs').writeFileSync(ARQ_T, '');
 
 db.exec(`
   CREATE TABLE observacoes (
@@ -573,6 +579,8 @@ printf '{"poda": false}' > "$DADOS_PENDENTE_72H/config.json"
 ( cd "$DADOS_PENDENTE_72H" && node << 'MKBANCO_PENDENTE_72H'
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync('./rainforest.db');
+// Transcrito real no disco: marca cujo arquivo sumiu e ignorada pela checagem 3.
+const ARQ_T = require('path').join(process.cwd(), 't.jsonl'); require('fs').writeFileSync(ARQ_T, '');
 
 // Data de 72 horas atras
 const data72hAtras = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
@@ -607,7 +615,7 @@ db.exec(`
   -- offset > offset_processado (100 > 50 = ha pendencia)
   -- processada_em = 72h atras
   INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em)
-  VALUES ('test', 'sess1', '/tmp/t.jsonl', 100, 50, '${data72hAtras}');
+  VALUES ('test', 'sess1', '${ARQ_T}', 100, 50, '${data72hAtras}');
 `);
 
 db.close();
@@ -626,6 +634,8 @@ printf '{"poda": false}' > "$DADOS_PENDENTE_1H/config.json"
 ( cd "$DADOS_PENDENTE_1H" && node << 'MKBANCO_PENDENTE_1H'
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync('./rainforest.db');
+// Transcrito real no disco: marca cujo arquivo sumiu e ignorada pela checagem 3.
+const ARQ_T = require('path').join(process.cwd(), 't.jsonl'); require('fs').writeFileSync(ARQ_T, '');
 
 // Data de 1 hora atras
 const data1hAtras = new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString();
@@ -660,7 +670,7 @@ db.exec(`
   -- offset > offset_processado (100 > 50 = ha pendencia)
   -- processada_em = 1h atras (MENOS que 48h, NAO deve acusar)
   INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em)
-  VALUES ('test', 'sess1', '/tmp/t.jsonl', 100, 50, '${data1hAtras}');
+  VALUES ('test', 'sess1', '${ARQ_T}', 100, 50, '${data1hAtras}');
 `);
 
 db.close();
@@ -685,6 +695,8 @@ printf '{"poda": false}' > "$DADOS_IMPREVISTO/config.json"
 ( cd "$DADOS_IMPREVISTO" && node << 'MKBANCO_IMPREVISTO'
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync('./rainforest.db');
+// Transcrito real no disco: marca cujo arquivo sumiu e ignorada pela checagem 3.
+const ARQ_T = require('path').join(process.cwd(), 't.jsonl'); require('fs').writeFileSync(ARQ_T, '');
 db.exec(`
   CREATE TABLE observacoes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -710,7 +722,7 @@ db.exec(`
     UNIQUE(projeto, sessao)
   );
   INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, processada_em)
-  VALUES ('test', 'sess1', '/tmp/t.jsonl', 100, '2026-08-20T10:00:00Z');
+  VALUES ('test', 'sess1', '${ARQ_T}', 100, '2026-08-20T10:00:00Z');
 `);
 db.close();
 MKBANCO_IMPREVISTO
@@ -741,14 +753,16 @@ DATA_NOVA="$(node -e 'console.log(new Date(Date.now()-72*60*60*1000).toISOString
 const path = require('path');
 const { abrirBanco, criarSchema } = require(path.join(process.env.RFM_SRC, 'scripts', 'memoria.cjs'));
 const db = abrirBanco(path.join(process.cwd(), 'rainforest.db'));
+const ARQ_A = path.join(process.cwd(), 'a.jsonl'); require('fs').writeFileSync(ARQ_A, '');
+const ARQ_B = path.join(process.cwd(), 'b.jsonl'); require('fs').writeFileSync(ARQ_B, '');
 criarSchema(db);
 
 // sessA: inserida primeiro (rowid menor), processada_em mais NOVA (72h atras).
 // sessB: inserida depois (rowid maior), processada_em mais ANTIGA (96h atras).
 db.prepare(`INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?, ?, ?, ?, ?, ?)`)
-  .run('test', 'sessA', '/tmp/a.jsonl', 100, 50, process.env.DATA_NOVA);
+  .run('test', 'sessA', ARQ_A, 100, 50, process.env.DATA_NOVA);
 db.prepare(`INSERT INTO marca_dagua (projeto, sessao, arquivo, offset, offset_processado, processada_em) VALUES (?, ?, ?, ?, ?, ?)`)
-  .run('test', 'sessB', '/tmp/b.jsonl', 100, 50, process.env.DATA_ANTIGA);
+  .run('test', 'sessB', ARQ_B, 100, 50, process.env.DATA_ANTIGA);
 
 db.close();
 MKBANCO_ORDEM

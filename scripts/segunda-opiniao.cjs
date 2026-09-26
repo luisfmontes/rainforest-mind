@@ -26,6 +26,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { rodarCli } = require('../hooks/lib/cli-externo.cjs');
 const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
+const { extrairUltimaLinha, validarVocabulario } = require('./lib/extrair-veredito.cjs');
 
 // Parse argumentos
 const args = {};
@@ -247,12 +248,11 @@ if (!resultado.stdout || resultado.stdout.trim().length === 0) {
 
 // Extrair última linha com conteúdo
 const parecer = resultado.stdout.trim(); // Parecer completo preservado
-const linhas = parecer.split('\n');
-const ultimaLinha = linhas[linhas.length - 1].trim().toLowerCase();
+const ultimaLinha = extrairUltimaLinha(resultado.stdout);
 
 // Validar veredito contra vocabulário fechado
 const vocabularioValido = ['concordo', 'discordo'];
-if (!vocabularioValido.includes(ultimaLinha)) {
+if (!validarVocabulario(ultimaLinha, vocabularioValido)) {
   console.error(
     `Erro: veredito fora do vocabulário. Recebido: "${ultimaLinha}"\n` +
     `Válido: ${vocabularioValido.join(', ')}`

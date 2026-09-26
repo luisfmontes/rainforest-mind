@@ -66,12 +66,16 @@ nesta ordem:
    próprio `agents/<nome>.md`, que então faz uma chamada só a
    `scripts/despachar-codex.cjs`, commita o que o Codex deixou (o sandbox
    dele não grava em `.git`) e devolve a saída literal; a portaria só
-   registra o valor no log. **O preâmbulo sozinho não segura um haiku**
-   (medido em 2026-09-08): com `Runtime: codex`, o briefing leva também o
-   bloco de ponte de `references/regra-10-runtime.md`, logo abaixo da linha. Uma linha opcional `Despacho: <caminho>` no
+   registra o valor no log. **O preâmbulo sozinho não segura um haiku**: com
+   `Runtime: codex`, o briefing leva também o bloco de ponte de
+   `references/regra-10-runtime.md`, logo abaixo da linha. Uma linha opcional `Despacho: <caminho>` no
    mesmo bloco aponta o script quando ele não está nem em
    `$CLAUDE_PLUGIN_ROOT` nem na raiz do worktree (branch ainda não
-   integrada).
+   integrada). Agente **nativo do harness** (`general-purpose`, `Explore`) não
+   tem `disallowedTools: Agent` — os 9 agentes do plugin têm, no próprio
+   frontmatter; o nativo não. O briefing para ele leva a linha: "Não despache
+   agente: você é folha; se não couber, devolva parcial com a lista do que
+   não conferiu." (regra 10, agente despachado é folha).
 2. **Objetivos** — numerados e concretos, um por linha.
 3. **Restrições** — o que olhar e, explicitamente, o que ignorar. E uma pergunta
    **obrigatória**, respondida antes de despachar: *este trabalho precisa tocar
@@ -83,15 +87,6 @@ nesta ordem:
    nessa fatia e dizer isso no briefing — nunca backup-e-restaura em cima do dado
    real. Regra geral em prosa não basta: o caminho tem que estar escrito.
 
-   > 2026-08-12, projeto de plugins de uma squad: a regra do projeto já dizia
-   > "teste não pode ler dado vivo", e a tarefa 6 de 13 recebeu essa frase em
-   > prosa, sem o caminho. O agente fez `Copy-Item` do diretório de estado real,
-   > sobrescreveu com fixture e tentou restaurar num `finally` que não funcionou —
-   > dois arquivos reais (medição de horas e um cache) ficaram com conteúdo de
-   > teste, e o relato dele dizia sucesso. Nas tarefas 4 e 5 do mesmo plano o
-   > caminho tinha sido nomeado; na 6 a regra geral foi considerada suficiente.
-   > O `conferir-entrega` passou as 5 checagens: ele confere **git**, e o dano
-   > foi fora do repo. Quem pegou foi a aritmética estranha no relato.
 4. **Formato de saída** — a forma exata que a janela principal quer de volta,
    **e como devolvê-la**. As duas coisas: subagente **anônimo** devolve
    sozinho (o texto final dele é o valor de retorno), mas subagente
@@ -119,8 +114,7 @@ igual à do original** sobre os fixtures do original (mesmos argumentos, mesma e
 `diff` vazio entre as duas saídas). Testes verdes não é o critério; é o artefato real,
 medido na saída dele. Helper de paridade (ordenação, serialização, quebra de linha) é
 custo esperado dessa classe de tarefa, não gambiarra — exemplar é o par `conferir-entrega.cjs`
-e `conferir-entrega.py` deste repo, que já vivem sob essa regra. Origem: porte Python→Node
-em plugin de dados de terceiro (2026-09-12) revelou que verde tautológico mascara reescrita.
+e `conferir-entrega.py` deste repo, que já vivem sob essa regra.
 
 **Na volta, antes de aceitar:** `node scripts/conferir-entrega.cjs --worktree
 <wt> --base <hash> --head-antes <hash>` é obrigatório, e **`entrada(s) nao
@@ -141,6 +135,10 @@ número fixo de rodadas.
 O teste que separa: **se as chamadas seriam iguais, era pra ser paralelo.** O
 que faz a próxima ser diferente da anterior é a leitura da anterior. Tasks
 independentes e sem ordem entre si vão juntas, numa mensagem só.
+
+**Fechar a rodada paralela**: antes de declarar pronto, `ListAgents` e parar o
+que a própria janela abriu e sobrou — nunca o que não é dela (regra 10,
+fechamento de rodada; incidente 2026-09-23).
 
 ## A escada (parar no primeiro degrau que segura)
 
@@ -206,7 +204,7 @@ etapas no mesmo commit.
 ## Enquanto coda
 
 - **Commit a cada entrega fechada, sempre.** Nunca deixar trabalho sem commit
-  na sessão — já houve perda de trabalho por reset de agente (2026-08-06).
+  na sessão — reset de agente já causou perda de trabalho por isso.
 - Lógica não-trivial deixa **um** teste/check executável mínimo. Trivial não
   precisa (YAGNI vale pra teste também).
 - Estado e resultados intermediários vão para **arquivo** (plano, notas,

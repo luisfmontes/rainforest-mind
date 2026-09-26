@@ -216,9 +216,7 @@ tudo isso mede a pessoa, não o instrumento.
 
 ### Trava de cobertura
 
-A partir de 2026-08-13, `node scripts/estado.cjs marcar --estagio plano --status ok` recusa plano que não tenha cobertura completa: testa se toda decisão `D<n>` do design tem tarefa no plano com `atende: D<n>`, e se toda tarefa do plano cita apenas `D<n>` existentes. Sem cobertura completa, o comando sai com exit 2.
-
-A partir de 2026-08-21 a checagem cobra o bloco `mutacao:`: tarefa sem o bloco é recusada **pelo número**, e `mutacao: n/a` sem `motivo:` também. Rode:
+`node scripts/estado.cjs marcar --estagio plano --status ok` recusa plano que não tenha cobertura completa: testa se toda decisão `D<n>` do design tem tarefa no plano com `atende: D<n>`, se toda tarefa do plano cita apenas `D<n>` existentes, e se todo bloco `mutacao:` está presente — tarefa sem o bloco é recusada **pelo número**, e `mutacao: n/a` sem `motivo:` também. Sem cobertura completa, o comando sai com exit 2. Rode:
 
 ```
 node scripts/conferir-fluxo.cjs cobertura --slug <slug>

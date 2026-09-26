@@ -521,6 +521,13 @@ function cmdCreep() {
     // fluxo era acusado de creep desse mesmo fluxo. É a irmã exata do defeito
     // que o comentário acima descreve para o design, e sobreviveu a ele.
     `docs/rainforest/portoes/*${slug}.md`,
+    // Achado 2 do plano contrato-de-veredito: o arquivo de impasse que a
+    // Tarefa 7 exige em 'liberar --estagio revisar' (D4, D7) se chama
+    // `<slug>-impasse.md` — o glob acima exige o slug IMEDIATAMENTE antes de
+    // `.md`, e `-impasse` depois do slug não casa nele. Sem esta entrada
+    // literal, o arquivo que autoriza a 4ª rodada seria creep da própria
+    // revisão que o autoriza.
+    `docs/rainforest/portoes/${slug}-impasse.md`,
     'relatorios/',
     // A skill `regua` exige commitar a régua antes da 1ª rodada, e ela nunca
     // aparece em `arquivos:` de tarefa nenhuma — incondicional, igual a

@@ -1,0 +1,19 @@
+{
+  "session_id": "98831315-80f8-43ca-9baa-7a32c8314301",
+  "transcript_path": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Users-Luis-AppData-Local-Temp-claude-C--Projetos-rainforest-mind-553122e5-fb70-4bad-8c90-94892ab86341-scratchpad-portaria-folha\\98831315-80f8-43ca-9baa-7a32c8314301.jsonl",
+  "cwd": "C:\\Users\\Luis\\AppData\\Local\\Temp\\claude\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\scratchpad\\portaria-folha",
+  "prompt_id": "09165acd-3bd2-4a4e-91e3-4dc6212d358f",
+  "permission_mode": "bypassPermissions",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Agent",
+  "tool_input": {
+    "description": "Despachar agente trivial aninhado",
+    "prompt": "Despache agora, usando a ferramenta Agent, o subagent_type trivial com o prompt: responda apenas a palavra ok. Aguarde o resultado e depois responda apenas: feito.",
+    "subagent_type": "despachante",
+    "run_in_background": false
+  },
+  "tool_use_id": "toolu_018Xf4QZWCvGzXYiDTFFBkBT"
+}

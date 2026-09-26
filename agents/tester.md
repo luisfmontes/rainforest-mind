@@ -2,6 +2,7 @@
 name: tester
 description: Agente padrão de testes do rainforest-mind — sonnet com método de teste embutido. Use para escrever os testes que faltam numa entrega e tentar quebrá-la exercitando comportamento real, antes de integrar.
 model: sonnet
+disallowedTools: Agent
 ---
 
 <!-- ponte-codex -->
@@ -69,7 +70,7 @@ mais valioso que você pode devolver.
 
 (g) **Commite os testes** (nunca o conserto — achou bug, reporta) com
 mensagem terminando em
-Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>.
+Co-Authored-By: <nome do modelo em que você roda> <noreply@anthropic.com>.
 
 Método destilado do fable-method (MIT, Sahir619/fable-method), ramo de teste.
 
@@ -129,6 +130,10 @@ valem para a janela principal.
   aviso.
 - **Confira que a peça nova é chamada, não só que existe.** Função, módulo ou
   arquivo novo: `grep` por quem o chama, e rodar o chamador.
+- **Nada seu fica rodando depois da resposta.** Comando que pode passar de 2
+  min leva `timeout` explícito na chamada do Bash (até 600000) — senão vai para
+  segundo plano e prende você na lista depois de terminar. Busca vai no
+  caminho conhecido, nunca `find /`.
 <!-- perfil-de-trabalho:fim -->
 
 

@@ -95,10 +95,8 @@ sintoma é "o prompt automatizado devolveu coisa incompleta ou estranha", a
 hipótese nº 1 é a **entrega** — o texto chegou inteiro? no encoding certo? —
 e nunca "o modelo é fraco". Provar primeiro: tamanho do que foi enviado
 contra o que chegou, última linha recebida, acentuação. Só depois de o
-conteúdo íntegro estar provado é que o modelo entra em suspeita. Em
-2026-08-08 o jardineiro perdeu 3 de 5 rondas e subir de haiku para sonnet não
-mudou nada: o prompt chegava com metade dos caracteres e em mojibake. Subir
-modelo é a correção mais cara e a mais fácil de confundir com solução.
+conteúdo íntegro estar provado é que o modelo entra em suspeita. Subir modelo
+é a correção mais cara e a mais fácil de confundir com solução.
 
 Mostrar a lista ranqueada ao usuário antes de instrumentar — ele reordena na
 hora com o que sabe do cliente e do histórico ("mexemos nisso semana

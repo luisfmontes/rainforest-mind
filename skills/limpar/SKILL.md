@@ -86,9 +86,8 @@ Sem `--remover` ele só lista, em oito classes. As que importam:
   nem com `--forcar`. Sai impressa em dois grupos: `viva`, com um upstream que
   existe, e `viva-so-local`, que **nunca teve upstream** — os commits só existem
   na máquina, e o script não distingue trabalho em andamento de tentativa
-  descartada. Até 2026-09-21 as duas saíam sob "o remoto está de pé", e 72 das
-  78 assim rotuladas nunca tinham tido remoto. `viva-so-local` é para olhar e
-  apagar à mão com `git branch -D`, não para procurar no GitHub.
+  descartada. `viva-so-local` é para olhar e apagar à mão com `git branch -D`,
+  não para procurar no GitHub.
 - **`padrao`** — a branch padrão do repositório (`origin/HEAD`). **Nunca entra na
   remoção**, seja qual for a `--base`. Nasceu da Issue #23, e o ponto é que a
   classificação estava *certa* e levava ao lugar errado — ver logo abaixo.
@@ -100,11 +99,11 @@ trabalho aparece como `viva`.
 
 Esse `--base` tem um efeito que não é óbvio: a branch de trabalho **saiu** da
 `main`, então a `main` está contida nela, então a `main` satisfaz "já está na
-base". Em 2026-08-19 isso apagou a `main` local junto com as 11 branches de
-agente, e o passo seguinte do `fechar` morreu com `fatal: ambiguous argument
-'main..HEAD'`. Estar na `main` não protegia — no incidente a pessoa estava na
-branch de trabalho. Por isso a classe `padrao` existe separada da `atual` e da
-`base`, e por isso ela não olha o valor de `--base`.
+base" — e isso já apagou a `main` local junto com branches de agente, com o
+passo seguinte do `fechar` morrendo em `fatal: ambiguous argument
+'main..HEAD'`. Estar na `main` não protege: quem roda o comando está na
+branch de trabalho, não na `main`. Por isso a classe `padrao` existe separada
+da `atual` e da `base`, e por isso ela não olha o valor de `--base`.
 
 O modo de remoção é configurável, e o padrão é o conservador:
 

@@ -1,0 +1,78 @@
+{
+  "slug": "2026-09-24-beads-por-cima-do-ideias",
+  "titulo": "Beads por cima do ideias.jsonl: dependencia entre ideias",
+  "criado_em": "2026-09-24",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-24-beads-por-cima-do-ideias.md",
+    "em": "2026-09-24",
+    "refeito": "medicao derrubou D1; usuario escolheu nao acoplar"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-24-beads-por-cima-do-ideias.md",
+    "tarefas": 2,
+    "paralelas": [
+      1
+    ],
+    "em": "2026-09-24"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-24",
+    "tarefas_ok": 2,
+    "tarefas": 2,
+    "comando": "node scripts/conferir-publicacao.cjs docs/rainforest/pesquisas/2026-09-24-dependencias-propostas.md --json",
+    "saida": "achados: []",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "n/a",
+        "motivo": "pesquisa"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "doc"
+      }
+    ],
+    "em": "2026-09-24"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "9299daa66ee34bdc558a40aebfb414055eaab141",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-09-24-beads-por-cima-do-ideias.json"
+      ]
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a64d9fdab71a43e13",
+        "veredito": "ok",
+        "em": "2026-09-24",
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\subagents\\agent-a64d9fdab71a43e13.jsonl"
+      }
+    ],
+    "achados": 2,
+    "base": "eeb4d99e",
+    "head": "9299daa6",
+    "em": "2026-09-24"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node scripts/conferir-publicacao.cjs <pesquisa, livro-de-repos, design> --json",
+    "saida": "achados: [] nos tres; medicao reproduzida pelo revisor contra o ideias.jsonl real: 336 abertas, 55 citam, 86 citacoes, 1 depende_de",
+    "em": "2026-09-24"
+  },
+  "fechar": {
+    "status": "ok",
+    "pr": 330,
+    "ci": "baterias (node 24) pass, run 36072254584, head 5b895414",
+    "em": "2026-09-24"
+  }
+}

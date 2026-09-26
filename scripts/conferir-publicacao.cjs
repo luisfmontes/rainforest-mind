@@ -206,7 +206,9 @@ const PADROES = [
   },
   {
     id: 'email',
-    re: /\b[\w.+-]+@(?!s\.whatsapp\.net|g\.us)(?![\w.-]+\.(?:invalid|example|test|localhost)(?![-\w]|\.\w))[\w-]+\.[\w.]{2,}\b/g,
+    // `noreply@` nao e endereco de ninguem: e o trailer Co-Authored-By que o
+    // metodo manda todo agente usar; recusado, travava commit de agents/*.md (2026-09-24).
+    re: /\b(?!noreply@)[\w.+-]+@(?!s\.whatsapp\.net|g\.us)(?![\w.-]+\.(?:invalid|example|test|localhost)(?![-\w]|\.\w))[\w-]+\.[\w.]{2,}\b/g,
     o_que: 'endereço de e-mail',
     faca: 'troque por `<email>` — endereço de terceiro em Issue público vira alvo de spam',
   },

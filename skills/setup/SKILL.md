@@ -66,12 +66,10 @@ conversa começou dentro de um repositório.
 
 ## A portaria de subagente não se liga — ela já está ligada
 
-Não há chave para ela na tabela acima, e isso é de propósito. Desde 2026-09-13 a
-portaria está registrada no `hooks/hooks.json` do **plugin**, com matcher
-`Task|Agent`: ela decide em toda sessão em que o plugin está habilitado, em
-qualquer repositório, que é o que a regra 10 sempre prometeu. Antes disso ela
-valia só no repositório do próprio plugin, e a regra 10 descrevia um portão que
-quase nunca existia.
+Não há chave para ela na tabela acima, e isso é de propósito. A portaria está
+registrada no `hooks/hooks.json` do **plugin**, com matcher `Task|Agent`: ela
+decide em toda sessão em que o plugin está habilitado, em qualquer repositório
+— é o que a regra 10 promete.
 
 **Não há nada a instalar, e é isso que o usuário precisa ouvir.** O manifesto que
 ela lê vem embarcado no plugin, em `.rainforest/agentes.padrao.json`: repo sem

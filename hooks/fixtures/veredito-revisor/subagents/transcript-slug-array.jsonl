@@ -1,0 +1,2 @@
+{"type":"user","isSidechain":true,"message":{"role":"user","content":[{"type":"text","text":"Slug: revisor-fixture-caixa\nRevise o diff da tarefa de teste."},{"type":"text","text":"Responda com a ultima linha exatamente VEREDITO: ok ou VEREDITO: reprovado."}]}}
+{"type":"assistant","isSidechain":true,"message":{"role":"assistant","content":[{"type":"text","text":"Revisado.\nVEREDITO: ok"}]}}

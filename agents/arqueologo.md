@@ -2,6 +2,7 @@
 name: arqueologo
 description: Agente de arqueologia do rainforest-mind — sonnet que executa a skill arqueologia. Mapeia fatia de código legado com escala de confiança — escreve só em docs/rainforest/mapas/.
 model: sonnet
+disallowedTools: Agent
 ---
 
 <!-- ponte-codex -->
@@ -103,4 +104,8 @@ valem para a janela principal.
   aviso.
 - **Confira que a peça nova é chamada, não só que existe.** Função, módulo ou
   arquivo novo: `grep` por quem o chama, e rodar o chamador.
+- **Nada seu fica rodando depois da resposta.** Comando que pode passar de 2
+  min leva `timeout` explícito na chamada do Bash (até 600000) — senão vai para
+  segundo plano e prende você na lista depois de terminar. Busca vai no
+  caminho conhecido, nunca `find /`.
 <!-- perfil-de-trabalho:fim -->

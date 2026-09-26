@@ -1,0 +1,2 @@
+{"type":"user","isSidechain":true,"message":{"role":"user","content":"Revise o diff da tarefa de teste. Nao ha linha de slug neste briefing avulso."}}
+{"type":"assistant","isSidechain":true,"message":{"role":"assistant","content":[{"type":"text","text":"Lendo o diff."}]}}

@@ -84,8 +84,9 @@ A assimetria é desenho; o errado era ela ser **invisível**. Hoje a linha traz 
 
 ## Emenda de 2026-09-02 — `escreve: true` admitido, com worktree obrigatório
 
-A Opção A acima **continua sendo o histórico correto** e não se apaga: descreve
-o estado entre 2026-08-31 e 2026-09-02. O que mudou é o mecanismo que faltava.
+O bloqueio de agente escritor por manifesto (2026-08-31 a 2026-09-02), tirado
+deste texto pela #264 por não valer mais, continua histórico correto. O que
+mudou é o mecanismo que faltava.
 
 **A trava, agora.** `escreve: true` não é permissão: é a exigência de duas
 condições que já eram obrigatórias em prosa, e agora são conferidas por código.

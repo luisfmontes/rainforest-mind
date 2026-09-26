@@ -35,12 +35,9 @@ faz o `semear` traduzir pasta em slug, e uma pasta que não é raiz de repo nunc
 errou justamente aqui (criou um slug por cliente, com caminho que não existia no
 disco), e é por isso que existe `--remover`.
 
-O campo era texto livre até 2026-08-12 e cobrou os dois preços de sempre:
-`C:\Projetos\rainforest-mind` dentro de string JSON virou `C:\Projetos` + CR +
-`ainforest-mind` em quatro registros (a barra + `r` é escape de carriage
-return), e 22 valores distintos para 7 projetos reais deixaram o campo
-inagrupável. Slug não tem barra para escape nenhum comer. Migração de arquivo
-antigo: `normalizar-projetos` (ensaio por padrão, `--aplicar` grava).
+Slug não tem barra de caminho para escape nenhum comer, nem admite os vários
+nomes distintos que texto livre acumula para o mesmo projeto. Migração de
+arquivo antigo: `normalizar-projetos` (ensaio por padrão, `--aplicar` grava).
 
 Se `$ARGUMENTS` estiver vazio: leia o jsonl e liste as **plantadas** em
 markdown legível (título, há quantos dias plantada, projeto, contexto em uma
@@ -71,10 +68,7 @@ história.
 sessões paralelas, releitura do arquivo vivo, backup, gravação atômica,
 carimbo de data pelo relógio local e conferência byte a byte das linhas que
 não eram alvo — e reverte tudo saindo com exit ≠ 0 se qualquer prova falhar.
-**Não edite o `ideias.jsonl` à mão nem com script improvisado.** Os quatro
-cuidados que moravam aqui em prosa viraram código em 2026-08-08, depois de
-dois appends quebrados no mesmo dia, uma data gravada no futuro e um `unificar`
-que precisou inventar status no meio do caminho.
+**Não edite o `ideias.jsonl` à mão nem com script improvisado.**
 
 ```
 node scripts/ideias.cjs plantar  < nova.json                    # JSON por stdin
@@ -125,17 +119,14 @@ antes: descreve tudo que faria, sem gravar.
 consegue inferir, **relata** o que precisa de texto seu (gancho, ou data que o git
 não sabe) e sai com **código 1**, porque reparo parcial não é reparo pronto. Com
 `--id`, o pedido é sobre aquela linha e a exigência continua: sem `--gancho` ou
-`--plantada-em`, ele recusa em vez de inventar. Até 2026-08-12 a varredura
-abortava na primeira pendência, e com isso não consertava `status` de nenhuma
-linha — o comando estava morto desde que uma única linha irreparável existisse.
+`--plantada-em`, ele recusa em vez de inventar.
 
 Dois cuidados continuam seus, porque o script não alcança:
 
 - **Escreva o JSON com a ferramenta de escrita de arquivo, nunca por heredoc
-  do shell** — o shell come as barras do caminho do Windows. Em 2026-08-08
-  isso quebrou uma gravação e o script recusou, em vez de gravar corrompido.
-  O `projeto` virando slug tirou o pior caso das mãos do aviso (era ele que
-  guardava caminho), mas `descricao` e `contexto` ainda são texto livre.
+  do shell** — o shell come as barras do caminho do Windows. `projeto` é slug
+  e não carrega mais esse risco, mas `descricao` e `contexto` ainda são texto
+  livre e continuam expostos a ele.
 - **Não passe data nenhuma.** `plantada_em`, `colhida_em` e afins vindos da
   entrada são erro, não aviso: quem carimba é o script, do relógio local.
 

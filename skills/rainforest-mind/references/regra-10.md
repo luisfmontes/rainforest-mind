@@ -55,9 +55,9 @@ puderam ser cobrados.
 > 2026-08-12 o mecanismo já estava escrito acima ("sem nome, o agente
 > devolve o resultado inline e encerra sozinho") e ainda assim a sessão
 > pisou no defeito, porque despachou sem carregar `Skill(rainforest-mind)`
-> antes de aplicar a regra 10. Por isso o núcleo passou a dizer, em uma
-> linha, que nomeado só entrega por `SendMessage`: o que não cabe no
-> núcleo não chega a lugar nenhum.
+> antes de aplicar a regra 10. Por isso o núcleo carrega, em uma linha, o
+> que a elaboração sozinha não protege — "nunca é nomeado": o que não cabe
+> no núcleo não chega a lugar nenhum.
 
 **E nomear custa o worktree junto** (verificado 2026-08-08): agente que
 **edita arquivo nunca é nomeado** — nome só pra agente de conversa, que não
@@ -88,6 +88,42 @@ Subagente só roda se estiver declarado no manifesto com o estágio ativo na sua
 O mecanismo inteiro — schema do manifesto, as sete decisões do fail-closed, o log de despacho, o modo `--lint`, o aceite do bloqueio e as duas portas da dívida do `escreve: false` — mora em `references/regra-10-portaria.md`; o escopo, a precedência entre os dois manifestos e o destino do log, em `references/regra-10-portaria-escopo.md`.
 
 Os vigias headless carregam a versão resumida no `vigias/_comum.md`.
+
+## Agente despachado é folha
+
+Nenhum subagente despacha outro agente. Duas camadas, não uma. Os 9 agentes do
+plugin (`agents/*.md`) trazem `disallowedTools: Agent` no frontmatter — a
+ferramenta nem existe para eles, nem tentativa nem turno gasto. E a portaria
+(`hooks/portaria.cjs`) nega qualquer chamada de `Agent` cujo payload traga
+`agent_id`: essa chave (com `agent_type`) só aparece no `PreToolUse` quando a
+chamada sai de **dentro** de um subagente — a janela principal nunca traz as
+duas —, então esta camada cobre o que o frontmatter não alcança: os agentes
+nativos do harness (`general-purpose`, `Explore`) e agente de qualquer outro
+plugin instalado. A negação tem toggle, desligável por projeto:
+`"agente-folha": false` no `.rainforest/config.json` do repo, mesma forma do
+`contrato-veredito`.
+
+**Folha com trabalho grande demais faz sozinha.** Não pede para particionar
+e não devolve só uma proposta de divisão — se não cobrir tudo, devolve o
+resultado parcial com a **lista explícita** do que não conferiu. Quem vê o
+todo e decide particionar é sempre quem despachou, nunca a folha.
+
+**Fechamento de rodada.** Antes de declarar pronta uma rodada com agentes em
+paralelo, a janela roda `ListAgents` e para o que **ela mesma** abriu e
+sobrou — pelo nome ou id que ela despachou, nunca o que não é dela. Folha
+reduz o risco de agente pendurado, não zera: rodada de topo (a própria
+janela despachando vários agentes) também deixa sobra, e ninguém além da
+janela confere isso.
+
+> **2026-09-04:** um revisor despachou quatro sub-revisores nomeados,
+> acumulou ~243k tokens de contexto e esperou 8 minutos antes de fechar
+> sozinho — o custo do aninhamento sem ganho de qualidade medido: o veredito
+> sozinho já saía certo.
+
+> **2026-09-23:** um avaliador `general-purpose` — nativo do harness, fora do
+> alcance do frontmatter dos 9 agentes do plugin — manteve dois teammates
+> pendurados no roster por ~2h. Quem percebeu foi o usuário, não a janela que
+> os abriu.
 
 ## Racionalizações
 

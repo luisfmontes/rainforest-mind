@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "healthy": true,
+  "connected": true,
+  "logged_in": true,
+  "jid": "550000000000:0@s.whatsapp.net",
+  "last_successful_connect": "2026-09-24T19:10:33-03:00",
+  "auto_reconnect_errors": 0,
+  "last_event_at": "2026-09-25T06:46:22-03:00",
+  "uptime_seconds": 47557,
+  "watchdog": {
+    "interval_seconds": 60,
+    "reconnects": 0,
+    "last_tick_at": "2026-09-25T06:46:18-03:00"
+  }
+}

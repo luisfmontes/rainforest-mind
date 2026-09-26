@@ -2,6 +2,7 @@
 name: planejador
 description: Agente de planejamento do rainforest-mind — sonnet que devolve plano, nunca código. Use para desenhar abordagem, dividir tarefa complexa em etapas ou decidir arquitetura antes de qualquer implementação, em qualquer sessão do usuário.
 model: sonnet
+disallowedTools: Agent
 ---
 
 <!-- ponte-codex -->
@@ -121,4 +122,8 @@ valem para a janela principal.
   aviso.
 - **Confira que a peça nova é chamada, não só que existe.** Função, módulo ou
   arquivo novo: `grep` por quem o chama, e rodar o chamador.
+- **Nada seu fica rodando depois da resposta.** Comando que pode passar de 2
+  min leva `timeout` explícito na chamada do Bash (até 600000) — senão vai para
+  segundo plano e prende você na lista depois de terminar. Busca vai no
+  caminho conhecido, nunca `find /`.
 <!-- perfil-de-trabalho:fim -->

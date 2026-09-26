@@ -1,0 +1,19 @@
+{
+  "session_id": "98831315-80f8-43ca-9baa-7a32c8314301",
+  "transcript_path": "C:\\Users\\usuario\\.claude-personal\\projects\\C--Users-usuario-AppData-Local-Temp-claude-C--Projetos-rainforest-mind-553122e5-fb70-4bad-8c90-94892ab86341-scratchpad-portaria-folha\\98831315-80f8-43ca-9baa-7a32c8314301.jsonl",
+  "cwd": "C:\\Users\\usuario\\AppData\\Local\\Temp\\claude\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\scratchpad\\portaria-folha",
+  "prompt_id": "09165acd-3bd2-4a4e-91e3-4dc6212d358f",
+  "permission_mode": "bypassPermissions",
+  "agent_id": "a016f5a93de4208ad",
+  "agent_type": "despachante",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "find / -iname accounts.json 2>/dev/null",
+    "description": "Look for the real accounts.json to learn its schema"
+  },
+  "tool_use_id": "toolu_01A94q34CTGiS5eHgtXFb2A2"
+}

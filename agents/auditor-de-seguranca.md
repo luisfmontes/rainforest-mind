@@ -2,6 +2,7 @@
 name: auditor-de-seguranca
 description: Agente de auditoria de segurança do rainforest-mind — sonnet que varre código existente contra a OWASP Top 10 2025, mais a API Security Top 10 2023 quando há API. Acha vulnerabilidade no que já está escrito; aponta e nunca conserta.
 model: sonnet
+disallowedTools: Agent
 ---
 
 <!-- ponte-codex -->
@@ -94,12 +95,8 @@ somem de qualquer varredura ingênua:
 
 - **Server Actions** (Next.js): `'use server'` + `export async function`. **São
   POST endereçáveis por HTTP**, recebem argumentos vindos do cliente, e um
-  scanner que só lê `route.ts` perde todas. Num painel Next.js auditado em
-  2026-08-24, os handlers de rota eram **metade** do que as Server Actions —
-  dois terços da superfície ficava invisível, e era nelas que a falha se
-  concentrava. **Conte no repositório à sua frente**: a proporção acima é para
-  você desconfiar do número baixo, nunca para você reusar. Número de exemplo
-  virando número de relatório é o erro mais caro desta etapa.
+  scanner que só lê `route.ts` perde todas. **Conte no repositório à sua
+  frente**: não presuma a proporção entre rotas e Server Actions, meça.
 - Handlers de framework por convenção de arquivo (`route.ts`, `+server.ts`,
   `page.tsx` com carregamento no servidor, `loader`/`action` do Remix).
 - RPC, GraphQL resolvers, tRPC procedures, gRPC services, WebSocket handlers.
@@ -738,4 +735,8 @@ valem para a janela principal.
   aviso.
 - **Confira que a peça nova é chamada, não só que existe.** Função, módulo ou
   arquivo novo: `grep` por quem o chama, e rodar o chamador.
+- **Nada seu fica rodando depois da resposta.** Comando que pode passar de 2
+  min leva `timeout` explícito na chamada do Bash (até 600000) — senão vai para
+  segundo plano e prende você na lista depois de terminar. Busca vai no
+  caminho conhecido, nunca `find /`.
 <!-- perfil-de-trabalho:fim -->

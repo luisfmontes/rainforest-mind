@@ -276,14 +276,15 @@ function horasDeCapturaParada(caminhoDb) {
   const conexao = abrirBancoSomenteLeitura(caminhoDb);
   if (!conexao) return 0;
   try {
+    // Sem LIMIT 1: marca cujo transcrito sumiu (worktree removido) nunca
+    // avanca o offset e congelava o aviso na pendencia mais antiga.
     const marca = conexao.prepare(`
-      SELECT processada_em, offset, offset_processado
+      SELECT processada_em, offset, offset_processado, arquivo
       FROM marca_dagua
       WHERE offset > COALESCE(offset_processado, 0)
         AND processada_em IS NOT NULL AND processada_em <> ''
       ORDER BY processada_em ASC
-      LIMIT 1
-    `).get();
+    `).all().find((m) => m.arquivo && fs.existsSync(m.arquivo));
     if (!marca) return 0;
     const decorridoMs = Date.now() - Date.parse(marca.processada_em);
     if (!Number.isFinite(decorridoMs)) return 0;

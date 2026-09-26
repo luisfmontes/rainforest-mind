@@ -92,12 +92,8 @@ O briefing de cada agente leva, sempre:
   `git commit -n`, `git commit --no-gpg-sign` e `git push --no-verify`. Hook
   de commit ou de push existe para pegar erro **antes** de ele entrar no
   histórico — pular a verificação na hora em que ela reprova é exatamente a
-  hora em que ela importa. Na rodada de validação de 2026-09-04
-  (`relatorios/2026-09-04-handover-rodada-cega.md`, achado R8) um executor
-  tentou `git commit --no-verify`; um hook do repositório barrou, e ele
-  commitou pelo caminho normal logo em seguida — num repo sem essa trava,
-  teria passado. `hooks/gate-git-verificacao.cjs` barra essas quatro formas;
-  o `-n` do `push`, que ali é `--dry-run`, continua permitido.
+  hora em que ela importa. `hooks/gate-git-verificacao.cjs` barra essas
+  quatro formas; o `-n` do `push`, que ali é `--dry-run`, continua permitido.
 - **O hash da base é executado `git rev-parse`, nunca digitado.** Briefing que
   monta do zero (despacho novo) calcula `--base` com `git rev-parse HEAD` na hora,
   não com hash lembrado ou copiado — identificador que vem de memória é o começo
@@ -141,7 +137,7 @@ node scripts/conferir-entrega.cjs --worktree <wt> --base <hash> \
 ```
 
 **`--sujo-antes` e `--paralelo` respondem a perguntas diferentes, e por isso os
-dois existem** (decidido em 2026-08-23, fechando a P4 da Issue #42):
+dois existem**:
 
 | flag | a pergunta que ela responde | precisa de |
 |---|---|---|
@@ -194,21 +190,12 @@ não fecha a tarefa**. A integração **re-roda** `conferir-mutacao.cjs` na volt
 e **o exit code dela é o veredito**. Bateria relatada vermelha e não re-rodada
 é bateria não medida.
 
-Isto é o P1 do relatório de método de 2026-08-08, já colado no cabeçalho de
-`conferir-entrega.cjs`:
-
 > "Enquanto o veredito de uma checagem for redigido pelo mesmo agente que ela
 > deveria travar, ela não trava nada."
 
 A ordem é fixa e sequencial — gate mecânico (`conferir-mutacao` vermelho) →
 tester → revisor — porque o avaliador caro só compensa depois que o gate
-barato passou (pipeline de um plugin de dados de terceiro, 2026-09-12).
-
-Em **2026-08-21** isso se repetiu, e é por causa desse dia que esta seção
-existe: o agente rodou mutação, relatou mutação, colou saída de mutação, e
-entregou quebrado — 49 de 49 verde, com a trava que ele dizia ter invertido
-recusando o caminho feliz **sempre**. A bateria não sabia falhar; o relato
-não tinha como revelar isso, porque quem o escreveu foi quem seria barrado.
+barato passou.
 
 Para cada tarefa que o plano marcou com `mutacao:`, a integração roda:
 
@@ -244,10 +231,8 @@ não casa com o fonte).
 
 `2` e `3` são códigos **diferentes de propósito**: "a bateria é fraca" e "a
 declaração de mutação está errada" pedem conserto em lugares distintos, e o
-`3` nunca pode ser lido como reprovação da bateria — em 2026-08-19 um `sed`
-com alvo errado deixou a bateria vermelha por outro motivo e o resultado quase
-virou prova. Veredito certo pelo motivo errado é pior que veredito errado,
-porque ninguém volta a olhar.
+`3` nunca pode ser lido como reprovação da bateria. Veredito certo pelo
+motivo errado é pior que veredito errado, porque ninguém volta a olhar.
 
 No Git Bash, argumento que **começa** com `//` chega ao script com uma barra
 só (`'// coment'` vira `'/ coment'`) e não casa, dando `3` sem culpa do fonte.

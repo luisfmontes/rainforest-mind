@@ -1,0 +1,84 @@
+{
+  "slug": "2026-09-25-busca-na-raiz",
+  "titulo": "Subagente preso por comando em segundo plano: find na raiz e bateria longa",
+  "criado_em": "2026-09-25",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-09-25-busca-na-raiz.md",
+    "em": "2026-09-25"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-25-busca-na-raiz.md",
+    "tarefas": 3,
+    "paralelas": [
+      1,
+      2
+    ],
+    "em": "2026-09-25"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-25",
+    "tarefas_ok": 3,
+    "tarefas": 3,
+    "comando": "node hooks/testa-gate-busca-raiz.cjs; node scripts/perfil.cjs --conferir",
+    "saida": "ok: 26   falhou: 0; ok: os 9 agentes carregam o bloco da fonte",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-busca-raiz.cjs, subagente: find / -iname nega com o caminho conhecido na mensagem"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "texto de system prompt"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "bump de versao"
+      }
+    ],
+    "em": "2026-09-25"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "0c0af68767961d63378a6bfc29a22c9457806972",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-09-25-busca-na-raiz.json"
+      ]
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a6882559bce58d02b",
+        "veredito": "ok",
+        "em": "2026-09-26",
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\subagents\\agent-a6882559bce58d02b.jsonl"
+      }
+    ],
+    "achados": 0,
+    "base": "829cc2f4",
+    "head": "0c0af687",
+    "em": "2026-09-26"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node hooks/gate-busca-raiz.cjs < payload PreToolUse Bash de subagente com o comando real do incidente, extraido do transcrito do revisor de 2026-09-25 (find / -iname accounts.json ...); o mesmo sem agent_id",
+    "saida": "subagente: BLOQUEADO ... Procure no caminho conhecido ..., exit 2; janela: exit 0",
+    "sensor_externo": "node hooks/gate-busca-raiz.cjs",
+    "em": "2026-09-26"
+  },
+  "fechar": {
+    "status": "ok",
+    "pr": 336,
+    "ci": "baterias (node 24) pass, run 36240214854, head 5ab00e07",
+    "em": "2026-09-26"
+  }
+}

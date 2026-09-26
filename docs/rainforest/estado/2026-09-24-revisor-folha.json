@@ -1,0 +1,101 @@
+{
+  "slug": "2026-09-24-revisor-folha",
+  "titulo": "Revisor e auditor sao folha: nao despacham agente",
+  "criado_em": "2026-09-24",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-24-revisor-folha.md",
+    "em": "2026-09-24"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-24-revisor-folha.md",
+    "tarefas": 6,
+    "paralelas": [
+      1
+    ],
+    "em": "2026-09-24"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-24",
+    "tarefas_ok": 7,
+    "tarefas": 7,
+    "comando": "node hooks/testa-portaria-folha.cjs",
+    "saida": "== resultado: 8 ok, 0 falha(s) ==",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "n/a",
+        "motivo": "pesquisa: captura de payload real"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-portaria-folha.cjs, payload de subagente (agent_id presente) e negado"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-portaria-folha.cjs, agente-folha desligado libera o payload de subagente"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-agentes-folha.sh, todo agents/*.md declara disallowedTools com Agent"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "doc da regra 10 e do briefing"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "bump de versao"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-publicacao.sh, trailer noreply@ nao acende a regra de e-mail"
+      }
+    ],
+    "em": "2026-09-24"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "19fa0fd181a1bbc54e24e61b455a0eb33c78e2d2",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a902e602b7e0037a0",
+        "veredito": "ok",
+        "em": "2026-09-24",
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\subagents\\agent-a902e602b7e0037a0.jsonl"
+      }
+    ],
+    "achados": 1,
+    "base": "1c4c2720",
+    "head": "19fa0fd1",
+    "em": "2026-09-24"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node hooks/portaria.cjs < payload-de-subagente.json real (caixa CLAUDE_PROJECT_DIR/RFM_ROOT)",
+    "saida": "subagente: exit 2, agent_type despachante, mensagem de folha + parcial; janela: exit 0; log so na caixa",
+    "sensor_externo": "node hooks/portaria.cjs",
+    "em": "2026-09-24"
+  },
+  "fechar": {
+    "status": "ok",
+    "pr": 328,
+    "ci": "baterias (node 24) pass, runs/36055395839, head 9f850130",
+    "em": "2026-09-24"
+  }
+}

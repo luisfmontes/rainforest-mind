@@ -72,6 +72,21 @@ const CHAVES = {
     padrao: true,
     descricao: 'barra commit quando o `verificador-staged` do config reprova conteúdo staged',
   },
+  'contrato-veredito': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'grava o veredito de uma linha do revisor em SubagentStop (hooks/veredito-revisor.cjs)',
+  },
+  'agente-folha': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'a portaria nega Agent vindo de dentro de subagente (agent_id presente) — regra 10, agente despachado e folha',
+  },
+  'busca-na-raiz': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'nega find a partir da raiz do disco dentro de subagente — prende o agente em segundo plano',
+  },
   fluxo: {
     tipo: 'boolean',
     padrao: true,

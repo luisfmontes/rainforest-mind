@@ -9,8 +9,8 @@ instala e não configura recebe o foco e as ideias de quem publicou o plugin), a
 **margem do orçamento de injeção** (sem margem, prazo e marco caem fora da
 abertura em silêncio), a **integridade do `ideias.jsonl`**, **trabalho do fluxo
 parado no meio**, **worktree de agente pendurado**, e se o **plugin instalado
-está atrás do repo** — em 2026-08-11 esteve 18 commits atrás, e sete skills
-escritas naquele dia não valiam em sessão nova.
+está atrás do repo** — atraso de dias significa que skills e regras corrigidas
+recentemente não valem ainda na sessão.
 
 Uma checagem responde a uma pergunta diferente das outras e por isso se comporta
 diferente: **contas do harness em versões diferentes do mesmo plugin**. Todas as
@@ -19,9 +19,8 @@ outras falam da sessão em que você está, e obedecem o `CLAUDE_CONFIG_DIR` —
 máquina batem?"), declaração de sessão não a responde, e por isso ela varre a
 home inteira. Fica **calada quando batem** — dizer "estão iguais" é inventário
 364 dias por ano, e o evento é a divergência — e é `aviso`, nunca alerta, porque
-divergir às vezes é escolha. Nasceu em 2026-08-20: depois de quatro PRs e de um
-`claude plugin update`, o perfil pessoal estava em 0.71.0 e o de trabalho em
-0.70.0, e o painel dizia `ok`.
+divergir às vezes é escolha: duas contas do mesmo harness já ficaram em
+versões diferentes do plugin sem que nenhum painel por conta acusasse.
 
 Nada aqui roda bateria de teste. Comando que demora vira comando que ninguém
 chama. Quando algo cheirar mal, ele diz qual bateria rodar.

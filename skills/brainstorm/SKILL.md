@@ -106,7 +106,7 @@ dele é assinar a aprovação no lugar de quem aprova — e é o que destranca o
 
 ### Trava de formato
 
-A partir de 2026-08-13, `node scripts/estado.cjs marcar --estagio design --status aprovado` recusa design que não siga o formato acima: seções obrigatórias, decisões marcadas como `**D<n> — ...**` com `n` sequencial de 1, sem buraco e sem repetido. Sem o formato, o comando sai com exit 2.
+`node scripts/estado.cjs marcar --estagio design --status aprovado` recusa design que não siga o formato acima: seções obrigatórias, decisões marcadas como `**D<n> — ...**` com `n` sequencial de 1, sem buraco e sem repetido. Sem o formato, o comando sai com exit 2.
 
 ## Conselho: debate estruturado de decisões (opt-in)
 
