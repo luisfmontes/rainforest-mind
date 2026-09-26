@@ -1223,7 +1223,10 @@ const stmt = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, 
 // Cada observação sozinha já passa de 300 B — mesmo as 14 que o hook lê
 // (lerObservacoes tem LIMIT 14) estouram o teto de 3000 B juntas, forçando
 // o corte de travarOrcamentoMemoria dentro do próprio hook real.
-const conteudoGrande = process.env.GRANDE + ' ' + process.env.GRANDE;
+// Texto de 3 B por caractere na frente: a escada (D1 de 2026-09-26-memoria-encurta)
+// encurta cada linha a 120 CARACTERES, e 14 linhas ASCII de 120 caracteres cabem
+// no teto — so texto multibyte ainda obriga a cortar observacao inteira.
+const conteudoGrande = '文字'.repeat(100) + ' ' + process.env.GRANDE + ' ' + process.env.GRANDE;
 for (let i = 0; i < 20; i++) {
   const dia = String(10 + i).padStart(2, '0');
   stmt.run('proj-estouro', '## Obs grande ' + i + '\n\n' + conteudoGrande, `2026-08-${dia}T10:00:00Z`, 'sessao:teste:offset:' + i);
@@ -1491,7 +1494,10 @@ const fs = require('fs');
 const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
-const conteudoGrande = process.env.GRANDE + ' ' + process.env.GRANDE;
+// Texto de 3 B por caractere na frente: a escada (D1 de 2026-09-26-memoria-encurta)
+// encurta cada linha a 120 CARACTERES, e 14 linhas ASCII de 120 caracteres cabem
+// no teto — so texto multibyte ainda obriga a cortar observacao inteira.
+const conteudoGrande = '文字'.repeat(100) + ' ' + process.env.GRANDE + ' ' + process.env.GRANDE;
 const stmt = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
 for (let i = 0; i < 20; i++) {
   const dia = String(10 + i).padStart(2, '0');
