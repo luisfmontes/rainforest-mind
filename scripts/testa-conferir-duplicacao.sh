@@ -148,5 +148,30 @@ C6_NATIVO="$(cygpath -m "$C6" 2>/dev/null || printf '%s' "$C6")"
 SAIDA6="$(node "$SCRIPT" --funcoes --raiz "$C6_NATIVO" 2>&1)"; EXIT6=$?
 checa "6. --funcoes acha homonimo dentro de hooks/lib/" 0 "cortarBytes: hooks/lib/m1.cjs, hooks/lib/m2.cjs" "$SAIDA6" "$EXIT6"
 
+# ---------------------------------------------------------------- caso (#323)
+# (#323) copia gitignorada nao conta
+# Repo de teste com git: arquivo versionado copiado para dentro de pasta
+# gitignorada NAO conta como duplicata; fora do gitignore, CONTA.
+C323="$RAIZ_POSIX/c323"
+mkdir -p "$C323"
+git init -q "$C323"
+printf 'conteudo identico\n' > "$C323/a.cjs"
+git -C "$C323" -c user.email=t@t -c user.name=t add a.cjs >/dev/null 2>&1
+git -C "$C323" -c user.email=t@t -c user.name=t commit -qm "a.cjs versionado" >/dev/null 2>&1
+printf 'ignorada/\n' > "$C323/.gitignore"
+git -C "$C323" -c user.email=t@t -c user.name=t add .gitignore >/dev/null 2>&1
+git -C "$C323" -c user.email=t@t -c user.name=t commit -qm "gitignore" >/dev/null 2>&1
+mkdir -p "$C323/ignorada"
+cp "$C323/a.cjs" "$C323/ignorada/copia.cjs"
+C323_NATIVO="$(cygpath -m "$C323" 2>/dev/null || printf '%s' "$C323")"
+SAIDA_323_1="$(node "$SCRIPT" --raiz "$C323_NATIVO" 2>&1)"; EXIT_323_1=$?
+checa "323a. copia em pasta gitignorada nao conta" 0 "CONFERIDO" "$SAIDA_323_1" "$EXIT_323_1"
+
+# Mesma copia fora do gitignore CONTA como duplicata
+mkdir -p "$C323/fora"
+cp "$C323/a.cjs" "$C323/fora/copia.cjs"
+SAIDA_323_2="$(node "$SCRIPT" --raiz "$C323_NATIVO" 2>&1)"; EXIT_323_2=$?
+checa "323b. copia fora do gitignore CONTA como duplicata" 2 "a.cjs == fora/copia.cjs" "$SAIDA_323_2" "$EXIT_323_2"
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
