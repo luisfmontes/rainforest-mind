@@ -25,13 +25,29 @@ EOF
   chmod +x "$sandbox_a/scripts/testa-verde-$i.sh"
 done
 
-# Piso proprio de hooks/: a caixa de areia precisa das duas metades.
+# Piso minimo de scripts/.cjs (1)
+cat > "$sandbox_a/scripts/testa-cjs-verde-1.cjs" << 'EOF'
+#!/usr/bin/env node
+process.exit(0);
+EOF
+chmod +x "$sandbox_a/scripts/testa-cjs-verde-1.cjs"
+
+# Piso proprio de hooks/.sh (5)
 for i in $(seq 1 5); do
   cat > "$sandbox_a/hooks/testa-hook-verde-$i.sh" << 'EOF'
 #!/bin/bash
 exit 0
 EOF
   chmod +x "$sandbox_a/hooks/testa-hook-verde-$i.sh"
+done
+
+# Piso minimo de hooks/.cjs (10)
+for i in $(seq 1 10); do
+  cat > "$sandbox_a/hooks/testa-hook-cjs-verde-$i.cjs" << 'EOF'
+#!/usr/bin/env node
+process.exit(0);
+EOF
+  chmod +x "$sandbox_a/hooks/testa-hook-cjs-verde-$i.cjs"
 done
 
 cd "$sandbox_a"
@@ -42,16 +58,17 @@ if [ $exitcode -ne 0 ]; then
   echo "$saida"
   exit 1
 fi
-if echo "$saida" | grep -q "== 20 baterias =="; then
-  if echo "$saida" | grep -q "as 20 baterias passaram"; then
+total_expected=31  # 15 + 1 + 5 + 10
+if echo "$saida" | grep -q "== $total_expected baterias =="; then
+  if echo "$saida" | grep -q "as $total_expected baterias passaram"; then
     echo "  PASS (a)"
   else
-    echo "  FAIL (a): placar final nao menciona 'as 15 baterias passaram'"
+    echo "  FAIL (a): placar final nao menciona 'as $total_expected baterias passaram'"
     echo "$saida"
     exit 1
   fi
 else
-  echo "  FAIL (a): contador de baterias nao menciona 20"
+  echo "  FAIL (a): contador de baterias nao menciona $total_expected"
   echo "$saida"
   exit 1
 fi
@@ -78,13 +95,29 @@ exit 1
 EOF
 chmod +x "$sandbox_b/scripts/testa-vermelha.sh"
 
-# Piso proprio de hooks/: a caixa de areia precisa das duas metades.
+# Piso minimo de scripts/.cjs (1)
+cat > "$sandbox_b/scripts/testa-cjs-verde-1.cjs" << 'EOF'
+#!/usr/bin/env node
+process.exit(0);
+EOF
+chmod +x "$sandbox_b/scripts/testa-cjs-verde-1.cjs"
+
+# Piso proprio de hooks/.sh (5)
 for i in $(seq 1 5); do
   cat > "$sandbox_b/hooks/testa-hook-verde-$i.sh" << 'EOF'
 #!/bin/bash
 exit 0
 EOF
   chmod +x "$sandbox_b/hooks/testa-hook-verde-$i.sh"
+done
+
+# Piso minimo de hooks/.cjs (10)
+for i in $(seq 1 10); do
+  cat > "$sandbox_b/hooks/testa-hook-cjs-verde-$i.cjs" << 'EOF'
+#!/usr/bin/env node
+process.exit(0);
+EOF
+  chmod +x "$sandbox_b/hooks/testa-hook-cjs-verde-$i.cjs"
 done
 
 cd "$sandbox_b"
@@ -110,13 +143,22 @@ SANDBOXES="$SANDBOXES $sandbox_c"
 # Cria estrutura mas nenhuma bateria, entao o glob nao acha nada
 mkdir -p "$sandbox_c/scripts" "$sandbox_c/hooks"
 
-# Piso proprio de hooks/: a caixa de areia precisa das duas metades.
+# Piso proprio de hooks/.sh
 for i in $(seq 1 5); do
   cat > "$sandbox_c/hooks/testa-hook-verde-$i.sh" << 'EOF'
 #!/bin/bash
 exit 0
 EOF
   chmod +x "$sandbox_c/hooks/testa-hook-verde-$i.sh"
+done
+
+# Piso minimo de hooks/.cjs (10)
+for i in $(seq 1 10); do
+  cat > "$sandbox_c/hooks/testa-hook-cjs-verde-$i.cjs" << 'EOF'
+#!/usr/bin/env node
+process.exit(0);
+EOF
+  chmod +x "$sandbox_c/hooks/testa-hook-cjs-verde-$i.cjs"
 done
 
 cd "$sandbox_c"
@@ -208,13 +250,29 @@ EOF
   chmod +x "$sandbox_f/scripts/testa-verde-$i.sh"
 done
 
-# Piso proprio de hooks/: a caixa de areia precisa das duas metades.
+# Piso minimo de scripts/.cjs (1)
+cat > "$sandbox_f/scripts/testa-cjs-verde-1.cjs" << 'EOF'
+#!/usr/bin/env node
+process.exit(0);
+EOF
+chmod +x "$sandbox_f/scripts/testa-cjs-verde-1.cjs"
+
+# Piso proprio de hooks/.sh (5)
 for i in $(seq 1 5); do
   cat > "$sandbox_f/hooks/testa-hook-verde-$i.sh" << 'EOF'
 #!/bin/bash
 exit 0
 EOF
   chmod +x "$sandbox_f/hooks/testa-hook-verde-$i.sh"
+done
+
+# Piso minimo de hooks/.cjs (10)
+for i in $(seq 1 10); do
+  cat > "$sandbox_f/hooks/testa-hook-cjs-verde-$i.cjs" << 'EOF'
+#!/usr/bin/env node
+process.exit(0);
+EOF
+  chmod +x "$sandbox_f/hooks/testa-hook-cjs-verde-$i.cjs"
 done
 
 cd "$sandbox_f"
@@ -250,6 +308,11 @@ exit 0
 EOF
   chmod +x "$sandbox_g/scripts/testa-verde-$i.sh"
 done
+cat > "$sandbox_g/scripts/testa-cjs-verde-1.cjs" << 'EOF'
+#!/usr/bin/env node
+process.exit(0);
+EOF
+chmod +x "$sandbox_g/scripts/testa-cjs-verde-1.cjs"
 cd "$sandbox_g"
 saida=$(bash "$VARRER" 2>&1)
 exitcode=$?
@@ -340,6 +403,68 @@ if [ $exitcode -eq 1 ] && echo "$saida" | grep -qF "  - $sandbox_l/testa-vermelh
   echo "  PASS (l)"
 else
   echo "  FAIL (l): exit=$exitcode; saida: $saida"
+  exit 1
+fi
+
+# (#335) Bateria .cjs quebrada deixa o placar vermelho. A mutacao tira a linha
+# `de_hooks_cjs=(hooks/testa-*.cjs)`, entao as .cjs nunca sao descobertas e o
+# varredor para achei <0 em hooks/*.cjs. Medindo de verdade: montamos uma caixa
+# com .cjs quebradas, o varredor tem que descobri-las e marcar vermelhas.
+echo "=== Teste (m): (#335) bateria .cjs quebrada deixa o placar vermelho ==="
+sandbox_m=$(mktemp -d)
+SANDBOXES="$SANDBOXES $sandbox_m"
+mkdir -p "$sandbox_m/scripts" "$sandbox_m/hooks"
+
+# Criar 15 baterias verdes em scripts/ (o piso de la)
+for i in $(seq 1 15); do
+  cat > "$sandbox_m/scripts/testa-verde-$i.sh" << 'EOF'
+#!/bin/bash
+exit 0
+EOF
+  chmod +x "$sandbox_m/scripts/testa-verde-$i.sh"
+done
+
+# Piso proprio de hooks/.sh
+for i in $(seq 1 5); do
+  cat > "$sandbox_m/hooks/testa-hook-verde-$i.sh" << 'EOF'
+#!/bin/bash
+exit 0
+EOF
+  chmod +x "$sandbox_m/hooks/testa-hook-verde-$i.sh"
+done
+
+# Piso minimo de scripts/.cjs (1) e hooks/.cjs (10)
+for i in $(seq 1 1); do
+  cat > "$sandbox_m/scripts/testa-cjs-verde-$i.cjs" << 'EOF'
+#!/usr/bin/env node
+process.exit(0);
+EOF
+  chmod +x "$sandbox_m/scripts/testa-cjs-verde-$i.cjs"
+done
+
+for i in $(seq 1 10); do
+  if [ $i -eq 5 ]; then
+    # Uma quebrada
+    cat > "$sandbox_m/hooks/testa-cjs-vermelha-5.cjs" << 'EOF'
+#!/usr/bin/env node
+process.exit(1);
+EOF
+  else
+    cat > "$sandbox_m/hooks/testa-cjs-verde-$i.cjs" << 'EOF'
+#!/usr/bin/env node
+process.exit(0);
+EOF
+  fi
+  chmod +x "$sandbox_m/hooks/testa-cjs-verde-$i.cjs"
+done
+
+cd "$sandbox_m"
+saida=$(bash "$VARRER" 2>&1)
+exitcode=$?
+if [ $exitcode -eq 1 ] && echo "$saida" | grep -q "testa-cjs-vermelha-5.cjs"; then
+  echo "  PASS (m)"
+else
+  echo "  FAIL (m): exit=$exitcode (esperava 1); saida: $saida"
   exit 1
 fi
 
