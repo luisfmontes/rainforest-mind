@@ -47,10 +47,33 @@
     "em": "2026-09-25"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "0c0af68767961d63378a6bfc29a22c9457806972",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-09-25-busca-na-raiz.json"
+      ]
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a6882559bce58d02b",
+        "veredito": "ok",
+        "em": "2026-09-26",
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\553122e5-fb70-4bad-8c90-94892ab86341\\subagents\\agent-a6882559bce58d02b.jsonl"
+      }
+    ],
+    "achados": 0,
+    "base": "829cc2f4",
+    "head": "0c0af687",
+    "em": "2026-09-26"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node hooks/gate-busca-raiz.cjs < payload PreToolUse Bash de subagente com o comando real do incidente, extraido do transcrito do revisor de 2026-09-25 (find / -iname accounts.json ...); o mesmo sem agent_id",
+    "saida": "subagente: BLOQUEADO ... Procure no caminho conhecido ..., exit 2; janela: exit 0",
+    "sensor_externo": "node hooks/gate-busca-raiz.cjs",
+    "em": "2026-09-26"
   },
   "fechar": {
     "status": "pendente"
