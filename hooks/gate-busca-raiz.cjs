@@ -57,9 +57,13 @@ function semCorpoDeHeredoc(comando) {
  * `echo find /` não contam. */
 function partidasDeFind(comando) {
   const partidas = [];
+  // Todo `(` sem barra antes abre segmento: subshell colado (`true;(find /)`),
+  // `$(`, `<(`/`>(` de substituição de processo. Só `\(` — a expressão do
+  // próprio find — fica de fora. Tratar posição por posição deixou brecha duas
+  // vezes na revisão; a classe inteira fecha aqui.
   const separado = semCorpoDeHeredoc(comando)
-    .replace(/\$\(|`/g, "\n")
-    .replace(/(^|\s)\(/g, "$1\n");
+    .replace(/`/g, "\n")
+    .replace(/(^|[^\\])\(/g, "$1\n");
   for (const segmento of separado.split(/&&|\|\||;|\||&|\n/)) {
     const tokens = segmento.trim().match(/"[^"]*"|'[^']*'|\S+/g) || [];
     let i = 0;

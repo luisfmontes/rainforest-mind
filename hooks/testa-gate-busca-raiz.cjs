@@ -99,6 +99,15 @@ for (const cmd of [
   "echo `find / -iname accounts.json`",
   "( find / -name x )",
   "find / -name x 2>&1 | head",
+  // segunda revisão: `(` colado ao separador e substituição de processo
+  "true;(find / -name x)",
+  "true &&(find / -name x)",
+  "true||(find / -name x)",
+  "true|(find / -name x)",
+  "echo hi &(find / -name x)",
+  "diff <(find / -name x) /dev/null",
+  "tee >(find / -name x) </dev/null",
+  "x=$(true)$(find / -name x)",
 ]) {
   r = rodar(cmd);
   caso(`subagente: nega — ${cmd}`, r.status === 2, `${r.status} ${r.stderr}`);
@@ -108,6 +117,9 @@ for (const cmd of [
   "cat <<-EOF\n\tfind / -name x\n\tEOF\necho ok",
   "find . \\( -name a -o -name b \\) -print",
   "ls >/dev/null 2>&1 && find . -name y",
+  "find \"$(pwd)\" -name y",
+  "diff <(find . -name a) <(find src -name a)",
+  "find . \\( -name a \\) &>/dev/null",
 ]) {
   r = rodar(cmd);
   caso(`subagente: passa — ${JSON.stringify(cmd)}`, r.status === 0, `${r.status} ${r.stderr}`);
