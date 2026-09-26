@@ -53,22 +53,26 @@ function semCorpoDeHeredoc(comando) {
 // Palavras que vêm antes do comando de verdade sem mudar qual ele é: as
 // palavras-chave do bash (`if find / ...; then`, `! find /`, `{ find /; }`) e
 // os comandos que só envolvem outro (`time`, `nice -n 10`, `env VAR=x`,
-// `timeout 300`, `xargs -0`). Terceira revisão: sem isto, qualquer uma delas
-// antes do `find` fazia o segmento inteiro passar sem ser lido.
+// `timeout 300`, `xargs -I {}`). Terceira revisão: sem isto, qualquer uma
+// delas antes do `find` fazia o segmento inteiro passar sem ser lido.
 const PALAVRAS_CHAVE = new Set(["if", "then", "elif", "else", "while", "until", "do", "!", "{"]);
 const ENVOLTORIOS = new Set(["sudo", "command", "exec", "nice", "env", "nohup", "xargs", "stdbuf", "timeout", "time"]);
 
+const eFind = (t) => t === "find" || /[\\/]find(\.exe)?$/.test(t || "");
+const eShell = (t) => /^(ba|z)?sh$/.test(t || "") || t === "eval";
+
+/** Índice do comando de verdade do segmento. Depois de um envoltório, é o
+ * primeiro `find`, shell ou `eval` que aparecer: adivinhar quais opções de
+ * cada envoltório levam valor (`xargs -I {}`, `env -u FOO`, `stdbuf -o L`,
+ * `sudo -n`) deixou brecha na quarta revisão, e esta forma não depende disso.
+ * Envoltório sem `find` depois (`time ls /`, `env ls /`) não é busca. */
 function pularPrefixos(tokens, i) {
   while (i < tokens.length) {
     const t = tokens[i];
     if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(t) || PALAVRAS_CHAVE.has(t)) { i++; continue; }
     if (ENVOLTORIOS.has(t)) {
-      i++;
-      // opções do envoltório e seus valores (`-n 10`, `-s KILL`, `-0`),
-      // atribuições do `env` e a duração do `timeout` (`300`, `10s`, `1m`)
-      while (i < tokens.length && (/^-/.test(tokens[i]) || /^\d+(\.\d+)?[smhd]?$/.test(tokens[i]) ||
-        /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[i]) || (/^-[ns]$/.test(tokens[i - 1]) && !/^-/.test(tokens[i])))) i++;
-      continue;
+      const j = tokens.findIndex((x, k) => k > i && (eFind(x) || eShell(x)));
+      return j === -1 ? tokens.length : j;
     }
     break;
   }
@@ -103,7 +107,7 @@ function partidasDeFind(comando) {
       partidas.push(...partidasDeFind(tokens.slice(i + 1).map(tirarAspas).join(" ")));
       continue;
     }
-    if (tokens[i] !== "find" && !/[\\/]find(\.exe)?$/.test(tokens[i] || "")) continue;
+    if (!eFind(tokens[i])) continue;
     i++;
     // opções de symlink/otimização antes dos caminhos
     while (i < tokens.length && /^-(H|L|P|O\d*|D)$/.test(tokens[i])) i++;

@@ -125,6 +125,13 @@ for (const cmd of [
   "eval \"find / -name x\"",
   "bash -c \"find / -name x\"",
   "sh -c 'cd /tmp; find / -name x'",
+  // quarta revisão: envoltório com opção de valor separado
+  "ls list.txt | xargs -I {} find / -iname {}",
+  "env -u FOO find / -name x",
+  "stdbuf -o L find / -name x",
+  "sudo -n find / -name x",
+  "nice -n 10 timeout 60 find / -name x",
+  "xargs -0 -P 4 -n 1 bash -c \"find / -name x\"",
 ]) {
   r = rodar(cmd);
   caso(`subagente: nega — ${cmd}`, r.status === 2, `${r.status} ${r.stderr}`);
@@ -142,6 +149,15 @@ for (const cmd of [
   "bash -c \"find . -name y\"",
   "eval \"echo find /\"",
   "echo / | xargs ls",
+  "env ls /",
+  "time ls /",
+  "nice du -sh /c/Projetos",
+  "timeout 10 ls /",
+  "xargs -I{} echo {}",
+  "which find",
+  "type find",
+  "nice -n 10 find . -name y",
+  "timeout -s KILL 10s find src -name y",
   "find \"/c/Program Files (x86)/App\" -iname x.exe",
 ]) {
   r = rodar(cmd);

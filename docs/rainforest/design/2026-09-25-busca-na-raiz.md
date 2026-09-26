@@ -18,6 +18,7 @@ O usuário viu o sexto revisor "travado" em 2026-09-25. O agente já tinha termi
 
 ## Fora de escopo
 - Contorno deliberado. O hook é guia contra o erro honesto (varrer o disco para achar um arquivo), não barreira contra quem quer burlar. Ele lê as formas que um agente digita sem intenção: separadores, subshell, substituição de comando e de processo, palavras-chave do bash (`if`, `while`, `!`, `{`), envoltórios (`time`, `nice`, `env`, `timeout`, `xargs`) e o texto de `bash -c`/`eval`. Montar o comando por variável (`d=/; find $d`) ou por script em arquivo não é lido, e as três rodadas de revisão de 2026-09-25/26 não trouxeram caso honesto nessa forma.
+- Falso positivo aceito: depois de um envoltório, o primeiro `find` do segmento conta como o comando, sem adivinhar quais opções de cada envoltório levam valor (a quarta revisão achou brecha nessa adivinhação). O preço é que `env X=1 echo find /`, em que `find /` é só texto passado a outro comando, também é barrado. É raro e a mensagem diz como desligar.
 - `grep -r` e buscas longas em pastas grandes que não são a raiz: não apareceram prendendo agente na medição.
 - O payload do `PreToolUse` de `Bash` dentro de subagente: a presença de `agent_id` já foi confirmada ao vivo para `Agent` (`docs/rainforest/pesquisas/2026-09-24-revisor-folha-payload.md`), e a doc de hooks dá os mesmos campos comuns para toda ferramenta. A fixture deriva dessa captura trocando só `tool_name` e `tool_input`.
 
