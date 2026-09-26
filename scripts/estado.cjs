@@ -1404,12 +1404,12 @@ function agoraIso() {
 /**
  * Lê o arquivo do plano e retorna o maior número de tarefa.
  * Fallback para `blocoPlano.tarefas` se arquivo não existe.
- * Reussa o mesmo leitor de `### <n>.` que a validação de `mutacao` usa.
+ * Reusa o mesmo leitor de `### <n>.` que a validação de `mutacao` usa.
  *
  * @returns {number|null} maior número de tarefa do arquivo ou fallback, ou null
  */
 function tetoDeTarefasDoPlano(slug, blocoPlano) {
-  const nums = extrairNumerosTarefa(slug, arguments[2]); // estado é o terceiro argumento
+  const nums = extrairNumerosTarefa(slug, { plano: blocoPlano });
   if (nums === null || nums.size === 0) {
     // Arquivo não existe ou sem tarefas: use fallback
     return blocoPlano && typeof blocoPlano.tarefas === 'number' ? blocoPlano.tarefas : null;
@@ -1450,7 +1450,7 @@ function processarCarimbos(estagio, blocoAnterior, extra, estado, slug) {
 
   // Validar se plano.tarefas está gravado e tarefa está dentro do intervalo
   const blocoPlano = estado && estado.plano;
-  const limiteMaxTarefa = tetoDeTarefasDoPlano(slug, blocoPlano, estado);
+  const limiteMaxTarefa = tetoDeTarefasDoPlano(slug, blocoPlano);
 
   for (let i = 0; i < entrada.length; i += 1) {
     const item = entrada[i];
