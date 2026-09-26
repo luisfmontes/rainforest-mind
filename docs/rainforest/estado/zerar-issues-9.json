@@ -25,11 +25,10 @@
     "em": "2026-09-26"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-26",
     "tarefas_ok": 8,
     "tarefas": 8,
-    "em_voo": [],
     "em": "2026-09-26",
     "carimbos": [
       {
@@ -89,8 +88,8 @@
         "ts": "2026-09-26T19:48:26.643Z"
       }
     ],
-    "comando": "node scripts/conferir-mutacao.cjs (8 tarefas, re-rodado pela integracao)",
-    "saida": "tarefas 1-7: ok: bateria VERMELHA com o comportamento invertido (exit 1), conferir-mutacao exit 0; tarefa 8 n/a",
+    "comando": "node scripts/conferir-mutacao.cjs (revisao 1: aspa original, tarefa 2, tarefa 4) + baterias afetadas",
+    "saida": "3x ok: bateria VERMELHA com o comportamento invertido (exit 1); total=6 vermelhas:[]",
     "mutacao": [
       {
         "tarefa": 1,
@@ -100,43 +99,39 @@
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh, secao (#313) contrabarra dupla dentro do wrapper"
+        "fixture": "testa-gate-fechar-issue.sh, secoes (#313a) e (#313d)"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "testa-gate-publicacao-destino.sh, secao (#322) Edit que preserva achado de old_string"
+        "fixture": "testa-gate-publicacao-destino.sh, secao (#322)"
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "testa-varrer-baterias.sh, teste (m) (#335)"
+        "fixture": "testa-varrer-baterias.sh, teste (m)"
       },
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "testa-veredito-revisor.sh, secao (#329) estado so no worktree"
+        "fixture": "testa-veredito-revisor.sh, secao (#329)"
       },
       {
         "tarefa": 6,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-duplicacao.sh, secao (#323) copia gitignorada nao conta"
+        "fixture": "testa-conferir-duplicacao.sh, secao (#323)"
       },
       {
         "tarefa": 7,
         "resultado": "vermelho",
-        "fixture": "testa-estado.sh, secao (#312) carimbo de tarefa acrescentada por emenda"
+        "fixture": "testa-estado.sh, secao (#312)"
       },
       {
         "tarefa": 8,
         "resultado": "n/a",
         "motivo": "bump de versao e changelog, sem comportamento a inverter"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-26"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
