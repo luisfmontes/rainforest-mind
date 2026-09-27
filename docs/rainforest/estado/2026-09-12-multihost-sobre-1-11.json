@@ -616,7 +616,11 @@
     "em": "2026-09-26"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "pr",
+    "pr": 315,
+    "worktree": "mantido ate o merge, que o design reserva ao aval do usuario",
+    "em": "2026-09-26"
   },
   "reancoragem_historico_1_23_3": {
     "versao": "1.23.3",
