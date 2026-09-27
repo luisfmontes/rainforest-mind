@@ -10,6 +10,43 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.24.0 — 2026-09-26
+
+**Os gates fecharam um buraco e pararam de barrar um `Edit` que só preserva o que já
+estava no arquivo.** O `bash $t` sem aspas (#337) continua barrado: quatro revisões acharam
+jeito de esconder `bash -c` atrás da variável em cada versão da resolução, e a issue segue
+aberta.
+
+- **Contrabarra dupla dentro das aspas duplas de um wrapper** deixou de esconder o comando
+  (#313): `bash -c "gh issue \\<quebra>close 12"` passava; agora o gate faz a mesma
+  redução de escape que o bash faz antes de juntar a linha.
+- **O gate de publicação mede o que a edição introduz** (#322): um `Edit` que preserva um
+  dado sensível já presente no `old_string` (a linha do trailer `Co-Authored-By`, por
+  exemplo) não é mais barrado. A comparação é pelo valor, não pelo trecho redigido: trocar
+  um e-mail por outro, ou acrescentar um segundo na mesma linha, continua barrado. A isenção
+  do `noreply@` no conferidor já existia e não mudou.
+
+**O fluxo passou a achar o próprio estado onde ele mora.**
+
+- **O veredito do revisor é gravado no worktree** quando o estado do fluxo só existe lá
+  (#329). Se o estado estiver em mais de um worktree, ou em nenhum, o hook avisa em stderr
+  e não grava — antes saía em silêncio.
+- **Tarefa acrescentada por emenda ao plano recebe carimbo** (#312): o teto do carimbo lê
+  o arquivo do plano, como a validação de `mutacao` já fazia; o número gravado no
+  `plano ok` fica de reserva quando o arquivo não existe.
+
+**Medição.**
+
+- **As baterias em Node entram no CI** (#335): o varredor descobre `testa-*.cjs` em
+  `scripts/` e `hooks/` e as roda com `node`. As cascas `.sh` que chamavam `.cjs`
+  saíram, inclusive a `hooks/testa-portaria.sh`, que rodava as da portaria por glob;
+  uma bateria nova falha se alguma `.sh` voltar a chamar uma `.cjs`. Antes, duas
+  baterias (`testa-estagio-ativo` e `testa-conferir-cobertura-fixtures`) nunca
+  rodavam no CI, e cada `.cjs` nova dependia de alguém lembrar da casca.
+- **A checagem de duplicata do `/saude` mede só o plugin versionável** (#323): arquivo
+  gitignorado (as cópias em `.claude/marketplaces/`, por exemplo) não conta mais. No
+  checkout principal, o aviso caía de 811 grupos para 0.
+
 ## 1.23.0 — 2026-09-22
 
 **Os gates de texto pararam de deixar passar `bash -c` escondido atrás de palavra
