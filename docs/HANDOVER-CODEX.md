@@ -72,7 +72,9 @@ A projeção export × cache tem zero ausentes, zero divergentes e zero `.git`; 
 Na sessão Codex nova `01a0e015-5dfc-7940-99e8-45826b8f921e`, `git status` e
 `git add -- "-A"` passaram pelo hook, `git add "-A"` e
 `bash -c "git status; git add -A"` saíram `Command blocked by PreToolUse hook`,
-e a skill `rainforest-mind:source-command-saude` apareceu no cache 1.24.0. O
+e a skill `rainforest-mind:source-command-saude` apareceu no cache 1.24.0; a
+sessão `01a0e03c-724d-7c62-9114-f7e0a6eba17e` invocou a skill real
+`rainforest-mind:regua` do cache 1.24.0 (título `# Régua`, `name: regua`). O
 adaptador do cache nega JSON malformado sem ecoar o payload. O cachebuster da
 T6 foi dispensado: a versão maior já cria a entrada de cache nova. Comandos e
 saídas completos estão no portão, seção "Medição corrente 1.24.0".
@@ -92,7 +94,7 @@ Claude blob `5c8322b0500eaafe6cb6234ac97cd04cd7050c7d`, Codex blob
 `C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.23.3-ebb5ae58`.
 O marketplace ativo aponta para esse export, e o plugin instalado e habilitado
 é `1.23.3` em
-`C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.23.3`;
+`<home>\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.23.3`;
 o cachebuster não é a instalação ativa. Os inventários
 `Get-ChildItem -Force -Recurse -File` encontraram 801 arquivos no export, 802
 no cache e zero `.git` em ambos. Na projeção D9, 794 arquivos têm SHA-256
@@ -119,7 +121,7 @@ usava `0.153.4`. A divergência é hipótese de runtime, não diagnóstico fecha
 O export limpo de `fc76be76` está em
 `C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.23.0-fc76be76`.
 Na medição histórica, o marketplace apontava para ele e o cache instalado era
-`C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.23.0`.
+`<home>\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.23.0`.
 O inventário com `Get-ChildItem -Force -Recurse -File` encontrou 801 arquivos
 no export, 802 no cache, zero `.git`, zero ausentes ou SHA-256 divergentes nos
 794 arquivos projetados, e somente a skill `source-command-saude` derivada

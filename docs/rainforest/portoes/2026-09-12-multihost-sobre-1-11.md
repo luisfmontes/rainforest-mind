@@ -113,7 +113,10 @@ Sessão Codex nova `01a0e015-5dfc-7940-99e8-45826b8f921e` (`codex exec -s worksp
 | `bash -c "git status; git add -A"` | Blocked | idem, `Segmento: bash -c "git status; git add -A"` |
 
 Skill invocável: a sessão enxergou `rainforest-mind:source-command-saude` no
-cache 1.24.0. JSON malformado no adaptador do cache: `permissionDecision:
+cache 1.24.0, e a sessão nova `01a0e03c-724d-7c62-9114-f7e0a6eba17e` carregou a
+skill real `rainforest-mind:regua` de
+`<home>.codexpluginscacheainforest-mind-localainforest-mind.24.0skillseguaSKILL.md`,
+respondendo título `# Régua` e `name: regua` do frontmatter normalizado. JSON malformado no adaptador do cache: `permissionDecision:
 deny`, motivo genérico, payload não ecoado.
 
 O bloqueio de 2026-09-23 (`helper_unknown_error: setup refresh had errors`) não
@@ -151,7 +154,7 @@ e Codex `0e465f7d48e1469b8e4dda410e36ecb27b700037`. O commit candidato
 `git archive HEAD` para
 `C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.23.3-ebb5ae58`;
 o marketplace ativo aponta para esse export e instalou `1.23.3` no cache
-`C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.23.3`.
+`<home>\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.23.3`.
 `Get-ChildItem -Force -Recurse -File` encontrou export 801, cache 802,
 zero `.git` em ambos; projeção D9 794 arquivos, zero missing/different, único
 extra D11 `.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md`
@@ -2860,7 +2863,7 @@ como fonte ativa por
 
 `codex plugin add rainforest-mind@rainforest-mind-local -c 'marketplaces.rainforest-mind-local.source=C:\Projetos\rainforest-mind\.claude\worktrees\codex-multihost-1.11' --json`
 retornou `version: 1.23.0+codex.20260922234144` e
-`installedPath: C:\Users\Luis\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.23.0+codex.20260922234144`.
+`installedPath: <home>\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.23.0+codex.20260922234144`.
 A sessão nova `01a0cbb4-b21c-7252-9ff2-0b59363a60c3` descobriu
 `source-command-saude`, permitiu `git status` e `git add -- "-A"`, e negou
 `git add "-A"` e `bash -c "git status; git add -A"` com
@@ -2876,7 +2879,7 @@ o commit e o disco.
 
 ### T7 — export, cache e sessão final
 
-`git archive --format=tar --output=C:\Users\Luis\AppData\Local\Temp\rainforest-mind-export-fc76be76.tar HEAD`
+`git archive --format=tar --output=<home>\AppData\Local\Temp\rainforest-mind-export-fc76be76.tar HEAD`
 seguido de `tar -xf` produziu o export. `codex plugin marketplace remove
 rainforest-mind-local`, `codex plugin marketplace add
 C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.23.0-fc76be76`
@@ -2906,7 +2909,7 @@ extra_sha256=321C30BCFDA44FF56AD53FCA7EF5C3B170987A3BD2BEE646152AF22AAF1DD339
 ```
 
 A sessão Codex nova `01a0cbba-023c-7ce1-a9a5-03d8434efb5c`, na fixture Git
-`C:\Users\Luis\AppData\Local\Temp\rainforest-multihost-proof-20260922-1`, carregou
+`<home>\AppData\Local\Temp\rainforest-multihost-proof-20260922-1`, carregou
 `rainforest-mind:rainforest-mind`. Saídas literais principais:
 
 ```text

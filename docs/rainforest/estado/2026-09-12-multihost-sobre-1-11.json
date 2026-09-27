@@ -46,7 +46,7 @@
       "cachebuster": "1.23.3+codex.20260923102218 instalado temporariamente; ambos manifestos restaurados byte a byte ao HEAD",
       "candidato": "ebb5ae58805d61b438573b6a3babbcfc8523ef83",
       "export": "C:\\Projetos\\rainforest-mind\\.claude\\marketplaces\\rainforest-mind-export-1.23.3-ebb5ae58",
-      "cache": "C:\\Users\\Luis\\.codex\\plugins\\cache\\rainforest-mind-local\\rainforest-mind\\1.23.3",
+      "cache": "<home>\\.codex\\plugins\\cache\\rainforest-mind-local\\rainforest-mind\\1.23.3",
       "projecao_d9": "Get-ChildItem -Force -Recurse -File: export 801, cache 802, esperados 794, missing 0, different 0, extra D11 1, .git 0 em ambos",
       "extra_d11_sha256": "321C30BCFDA44FF56AD53FCA7EF5C3B170987A3BD2BEE646152AF22AAF1DD339",
       "host_hook": "T6 nao provado: /hooks mostra PreToolUse instalado, ativo, confiavel; adaptador direto nega; shell restrito falha antes do processo em helper_unknown_error: setup refresh had errors; rota externa nao dispara o evento",
@@ -571,8 +571,31 @@
     "tentativas": 2
   },
   "revisar": {
-    "status": "pendente",
-    "motivo": "executar 9/9 fechado em 2026-09-26 sobre a base 1.23.15; proximo estagio e revisar o diff real contra 5d59d36e"
+    "status": "ok",
+    "motivo": "executar 9/9 fechado em 2026-09-26 sobre a base 1.23.15; proximo estagio e revisar o diff real contra 5d59d36e",
+    "snapshot": {
+      "head": "a69e21885c1a4f60091472212a154ce23af7c81c",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a1f7caeb1f4fb715c",
+        "veredito": "ok",
+        "em": "2026-09-26",
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\a5d80ae8-d98b-42bd-b71c-56ed27399491\\subagents\\agent-a1f7caeb1f4fb715c.jsonl"
+      }
+    ],
+    "em": "2026-09-26",
+    "achados": 0,
+    "base": "5d59d36eeb30b617e716572834c810d0ad0c2ce9",
+    "head": "a69e2188",
+    "ressalvas": [
+      "caminho pessoal literal nas secoes historicas de handover/portao/estado (higiene de repo publico)",
+      "PR #315 aberto em 2026-09-22 antes de revisar/verificar (historico, nao mesclado)",
+      "T7 1.24.0 provou skill derivada visivel, nao invocacao de skill real",
+      "bump 1.24.0 feito em executar, contra a invariante do plano que o poe em fechar; efeito pratico nulo"
+    ]
   },
   "verificar_historico_1_21_1": {
     "status": "reprovado",
