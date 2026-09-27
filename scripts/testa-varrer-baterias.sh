@@ -468,12 +468,27 @@ else
   exit 1
 fi
 
-echo "=== Teste (n): (#335) nenhuma testa-*.sh da arvore real executa uma testa-*.cjs ==="
+echo "=== Teste (n): (#335) nenhuma testa-*.sh executa uma testa-*.cjs (a arvore real e uma caixa de areia) ==="
 # O varredor roda as .cjs direto; uma casca .sh que tambem as execute faz a
-# mesma bateria rodar duas vezes. Achado da revisao: scripts/testa-cli-externo.sh
-# sobrou como casca de scripts/testa-cli-externo.cjs. Linha de comentario nao conta.
+# mesma bateria rodar duas vezes. Duas escaparam: scripts/testa-cli-externo.sh
+# (nome literal; achado da revisao) e hooks/testa-portaria.sh (glob
+# `hooks/testa-portaria-*.cjs` + `node "$f"`; achado no verificar). Por isso
+# conta qualquer mencao nao comentada a uma testa-*.cjs, com glob inclusive.
+# Este arquivo fica de fora porque monta fixtures .cjs nas caixas de areia.
+cascas_em() {
+  (cd "$1" && grep -nE '^[^#]*testa-[A-Za-z0-9_*-]+\.cjs' scripts/testa-*.sh hooks/testa-*.sh 2>/dev/null | grep -v '^scripts/testa-varrer-baterias\.sh:')
+}
+# Contraprova: a checagem tem de achar a casca por glob numa caixa de areia.
+sandbox_n=$(mktemp -d)
+SANDBOXES="$SANDBOXES $sandbox_n"
+mkdir -p "$sandbox_n/scripts" "$sandbox_n/hooks"
+printf '#!/bin/bash\nfor f in hooks/testa-p-*.cjs; do node "$f"; done\n' > "$sandbox_n/hooks/testa-p.sh"
+if [ -z "$(cascas_em "$sandbox_n")" ]; then
+  echo "  FAIL (n): a checagem nao achou a casca por glob da caixa de areia"
+  exit 1
+fi
 RAIZ_REAL="$(cd "$SCRIPT_DIR/.." && pwd)"
-cascas=$(cd "$RAIZ_REAL" && grep -nE '^[^#]*\bnode\b[^#]*testa-[A-Za-z0-9_-]+\.cjs' scripts/testa-*.sh hooks/testa-*.sh 2>/dev/null)
+cascas=$(cascas_em "$RAIZ_REAL")
 if [ -n "$cascas" ]; then
   echo "  FAIL (n): casca .sh executa bateria .cjs (rodaria em dobro):"
   printf '%s\n' "$cascas" | sed 's/^/    /'

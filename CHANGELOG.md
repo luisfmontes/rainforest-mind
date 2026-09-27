@@ -38,8 +38,11 @@ aberta.
 **Medição.**
 
 - **As baterias em Node entram no CI** (#335): o varredor descobre `testa-*.cjs` em
-  `scripts/` e `hooks/` e as roda com `node`. As cascas `.sh` que só chamavam uma
-  `.cjs` saíram. Antes, 13 baterias nunca rodavam no CI.
+  `scripts/` e `hooks/` e as roda com `node`. As cascas `.sh` que chamavam `.cjs`
+  saíram, inclusive a `hooks/testa-portaria.sh`, que rodava as da portaria por glob;
+  uma bateria nova falha se alguma `.sh` voltar a chamar uma `.cjs`. Antes, duas
+  baterias (`testa-estagio-ativo` e `testa-conferir-cobertura-fixtures`) nunca
+  rodavam no CI, e cada `.cjs` nova dependia de alguém lembrar da casca.
 - **A checagem de duplicata do `/saude` mede só o plugin versionável** (#323): arquivo
   gitignorado (as cópias em `.claude/marketplaces/`, por exemplo) não conta mais. No
   checkout principal, o aviso caía de 811 grupos para 0.

@@ -25,7 +25,7 @@
     "em": "2026-09-26"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-26",
     "tarefas_ok": 8,
     "tarefas": 8,
@@ -131,30 +131,30 @@
         "resultado": "n/a",
         "motivo": "bump de versao e changelog, sem comportamento a inverter"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "verificar",
+      "data": "2026-09-26"
+    }
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "pendente",
     "snapshot": {
-      "head": "96cb6c49e9fdf90a1eae4f64dfc9203483542261",
+      "head": "3e6b0cf5837e8778686c9fd8f0289b67fb64949b",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a127521145b2fd82e",
-        "veredito": "reprovado",
+        "agente_id": "ac20301d78554b1b4",
+        "veredito": "ok",
         "em": "2026-09-26",
-        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\fafafc3e-6038-4d4f-a12c-598b61a131f3\\subagents\\agent-a127521145b2fd82e.jsonl"
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\fafafc3e-6038-4d4f-a12c-598b61a131f3\\subagents\\agent-ac20301d78554b1b4.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-09-26",
-    "achados": 1,
-    "pendentes": [
-      "rev4-1: comentario/heredoc com f=literal vira ligacao legivel; f=-c herdado do ambiente vira bash -c. Criterio pre-decidido: #337 sai da entrega"
-    ],
-    "tentativas": 4,
+    "achados": 0,
     "rodadas_extra": [
       {
         "texto": "Q1 (a) do usuario, 2026-09-26: quarta rodada com o conserto do glob no primeiro caractere; se a 4a revisao achar outro buraco em valoresDaVariavelNoComando, a #337 sai da entrega",
@@ -165,10 +165,21 @@
         "em": "2026-09-26"
       }
     ],
-    "liberado_em": "2026-09-26"
+    "base": "5d59d36eeb30b617e716572834c810d0ad0c2ce9",
+    "head": "3e6b0cf5837e8778686c9fd8f0289b67fb64949b",
+    "observacoes": [
+      "residuo pre-existente da #313: 3+ contrabarras em aspas duplas (modelo de duas passadas) -> issue nova",
+      "chmod cosmetico em testa-varrer-baterias.sh teste (m)"
+    ]
   },
   "verificar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "criterio": "tarefa 4: nenhuma bateria roda duas vezes",
+    "comando": "bash scripts/varrer-baterias.sh; grep -cx -- \"----- <cjs> -----\" por .cjs real",
+    "saida": "11 hooks/testa-portaria-*.cjs aparecem 2 vezes: hooks/testa-portaria.sh roda por glob e o varredor roda direto",
+    "faltou": "remover a casca hooks/testa-portaria.sh e ampliar o teste (n) para glob",
+    "em": "2026-09-26",
+    "tentativas": 1
   },
   "fechar": {
     "status": "pendente"
