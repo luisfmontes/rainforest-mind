@@ -87,6 +87,11 @@ const CHAVES = {
     padrao: true,
     descricao: 'nega find a partir da raiz do disco dentro de subagente — prende o agente em segundo plano',
   },
+  'bateria-sem-timeout': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'nega bateria sem timeout explícito dentro de subagente — varredura completa só roda na integração',
+  },
   fluxo: {
     tipo: 'boolean',
     padrao: true,
