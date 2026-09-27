@@ -187,6 +187,52 @@ caso("echo \"rode bash hooks/testa-x.sh\" → 0", r.status, 0);
 r = rodar("git commit -m \"bash hooks/testa-x.sh\"");
 caso("git commit -m \"bash hooks/testa-x.sh\" → 0", r.status, 0);
 
+// === Achado 1: Segmentação cega a aspas (revisão 2) ===
+
+// Caso 6g: gh pr create --body "Teste: cd wt && bash hooks/testa-x.sh" → 0 (&& dentro de aspas é texto)
+r = rodar("gh pr create --title t --body \"Teste: cd wt && bash hooks/testa-x.sh\"");
+caso("gh pr create --body \"Teste: && bash hooks/testa-x.sh\" → 0", r.status, 0);
+
+// Caso 6h: git commit -m "gate: nega bateria; bash hooks/testa-x.sh exige timeout" → 0 (; dentro de aspas)
+r = rodar("git commit -m \"gate: nega bateria; bash hooks/testa-x.sh exige timeout\"");
+caso("git commit -m \"gate: ; bash hooks/testa-x.sh exige timeout\" → 0", r.status, 0);
+
+// Caso 6i: git commit -m "gate (bash hooks/testa-x.sh) sem timeout" → 0 (() dentro de aspas)
+r = rodar("git commit -m \"gate (bash hooks/testa-x.sh) sem timeout\"");
+caso("git commit -m \"gate (bash hooks/testa-x.sh) sem timeout\" → 0", r.status, 0);
+
+// Caso 6j: git commit -m "x && y" → 0 (&& dentro de aspas é texto)
+r = rodar("git commit -m \"x && y\"");
+caso("git commit -m \"x && y\" → 0", r.status, 0);
+
+// === Achado 2: Envoltório com flag (revisão 2) ===
+
+// Caso 6k: nice -n 10 bash hooks/testa-x.sh sem timeout → 2
+r = rodar("nice -n 10 bash hooks/testa-x.sh");
+caso("nice -n 10 bash hooks/testa-x.sh sem timeout → 2", r.status, 2);
+
+// Caso 6l: timeout -k 5 300 bash hooks/testa-x.sh sem timeout → 2
+r = rodar("timeout -k 5 300 bash hooks/testa-x.sh");
+caso("timeout -k 5 300 bash hooks/testa-x.sh sem timeout → 2", r.status, 2);
+
+// Caso 6m: env -i bash hooks/testa-x.sh sem timeout → 2
+r = rodar("env -i bash hooks/testa-x.sh");
+caso("env -i bash hooks/testa-x.sh sem timeout → 2", r.status, 2);
+
+// === Casos adicionais ===
+
+// Caso 6n: echo "$(bash hooks/testa-x.sh)" → 2 (substituição dentro de aspas duplas executa)
+r = rodar("echo \"$(bash hooks/testa-x.sh)\"");
+caso("echo \"$(bash hooks/testa-x.sh)\" sem timeout → 2", r.status, 2);
+
+// Caso 6o: echo '$(bash hooks/testa-x.sh)' → 0 (aspas simples são literais)
+r = rodar("echo '$(bash hooks/testa-x.sh)'");
+caso("echo '$(bash hooks/testa-x.sh)' → 0", r.status, 0);
+
+// Caso 6p: bash -c "bash hooks/testa-x.sh" com timeout 600000 → 0 (string desempacotada legível)
+r = rodar("bash -c \"bash hooks/testa-x.sh\"", { timeout: 600000 });
+caso("bash -c \"bash hooks/testa-x.sh\" com timeout 600000 → 0", r.status, 0);
+
 // Caso 7: payload sem agent_id com bateria sem timeout → 0 (janela principal)
 r = rodar("bash hooks/testa-gate-worktree.sh", { subagente: false });
 caso("bash hooks/testa-gate-worktree.sh sem timeout, sem agent_id (janela) → 0", r.status, 0);
