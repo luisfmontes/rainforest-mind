@@ -173,5 +173,8 @@ valem para a janela principal.
 - **Nada seu fica rodando depois da resposta.** Comando que pode passar de 2
   min leva `timeout` explícito na chamada do Bash (até 600000) — senão vai para
   segundo plano e prende você na lista depois de terminar. Busca vai no
-  caminho conhecido, nunca `find /`.
+  caminho conhecido, nunca `find /`. O hook `gate-bateria-sem-timeout.cjs`
+  reforça isso: nega bateria sem `timeout` na chamada do Bash dentro de
+  subagente, e nega varredura completa (`varrer-baterias.sh` sem `--so`), que é
+  de quem integra.
 <!-- perfil-de-trabalho:fim -->

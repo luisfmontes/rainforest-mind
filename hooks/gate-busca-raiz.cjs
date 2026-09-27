@@ -5,8 +5,8 @@
  * Protege contra: subagente que termina e fica "travado" na lista porque deixou
  *   um `find /` rodando em segundo plano (o harness empurra para lá o que passa
  *   de 2 min, e varrer o disco inteiro no Windows não termina em tempo útil)
- * Não protege contra: bateria longa (resolvida pelo `timeout` explícito do perfil
- *   de trabalho, D4), busca longa em pasta grande que não é a raiz, janela principal
+ * Não protege contra: bateria longa (resolvida por `gate-bateria-sem-timeout.cjs`),
+ *   busca longa em pasta grande que não é a raiz, janela principal
  *
  * Design: docs/rainforest/design/2026-09-25-busca-na-raiz.md (D1–D3). Medido nas
  * duas contas em 14 dias: 34 de 113 revisores com comando em segundo plano; os
