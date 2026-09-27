@@ -1,11 +1,14 @@
-# Plano: adaptação multihost sobre o Rainforest Mind 1.23.15 (entrega 1.24.0)
+# Plano: adaptação multihost sobre o Rainforest Mind 1.24.0 (entrega 1.25.0)
 
 Design: `docs/rainforest/design/2026-09-12-multihost-sobre-1-11.md`
 
 Base inicial confirmada: `a338dd02ad495f87a66d84af2ab24eab3d2660b8`.
 Base histórica confirmada antes da tarefa 4: `cf1ad7689f84428eb0b10943c0f1cf1a662b8faf` (`1.12.0`). Os 12 commits locais foram reaplicados sobre ela após confirmar zero caminhos sobrepostos.
-Base corrente: `5d59d36eeb30b617e716572834c810d0ad0c2ce9` (`1.23.15`), incorporada pelo merge
-`1d283312` em 2026-09-26. A entrega sobe os dois manifestos para `1.24.0`
+Base corrente: `e6c4f5699f971d2b42faf21f52ba6a2f56457020` (`1.24.0`, com a `zerar-issues-9`), incorporada em
+2026-09-27. A `zerar-issues-9` entrou na main antes com a própria `1.24.0`, então
+a entrega subiu para `1.25.0`; onde o texto abaixo diz `1.24.0` como versão da
+entrega, leia `1.25.0`. Base anterior: `5d59d36eeb30b617e716572834c810d0ad0c2ce9`
+(`1.23.15`), incorporada pelo merge `1d283312` em 2026-09-26. A entrega sobe os dois manifestos para `1.24.0`
 (host novo = MINOR); onde as tarefas 6, 7 e 9 dizem `1.23.3`, leia a versão
 da entrega corrente, `1.24.0`. Como a versão da entrega é maior que a instalada,
 a própria reinstalação cria a entrada de cache nova que o cachebuster da tarefa 6
@@ -138,8 +141,8 @@ depende de: 2
 paralela: nao
 mutacao:
   arquivo: `.codex-plugin/plugin.json`
-  de: `"version": "1.24.0"`
-  para: `"version": "1.24.1"`
+  de: `"version": "1.25.0"`
+  para: `"version": "1.25.1"`
   bateria: `bash scripts/testa-versao.sh`
   fixture: seção `manifesto Codex na mesma versao da fonte Claude`, esperando divergência `1.23.4` versus `1.23.3`
 pronto quando: com Claude e Codex em `1.23.3`, o portão informa igualdade;
@@ -225,7 +228,7 @@ mutacao: n/a
 pronto quando: com o commit candidato local, `bash hooks/testa-gate-staging-total.sh`,
 `bash scripts/testa-plugin-codex.sh`, `bash scripts/testa-versao.sh`,
 `node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11`
-e `node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 5d59d36eeb30b617e716572834c810d0ad0c2ce9 --head HEAD`
+e `node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base e6c4f5699f971d2b42faf21f52ba6a2f56457020 --head HEAD`
 terminam verdes; a projeção do cache `1.23.3` contra o HEAD, excluindo somente
 os sete documentos de governança da D9, tem zero caminho ausente e zero SHA-256
 divergente, e o único extra continua sendo o derivado autorizado pela D11. O
@@ -233,7 +236,7 @@ marketplace ativo aponta para o export limpo do commit candidato; a enumeração
 com `Get-ChildItem -Force -Recurse -File` confirma zero `.git` no export e no
 cache, sem omitir arquivos ocultos; o
 handover registra execução `9/9` e aponta `revisar` como próximo estágio;
-`git diff --name-only 5d59d36eeb30b617e716572834c810d0ad0c2ce9...HEAD` contém somente os
+`git diff --name-only e6c4f5699f971d2b42faf21f52ba6a2f56457020...HEAD` contém somente os
 caminhos autorizados pelo plano; o estado registra a evidência por tarefa; e
 `git branch --show-current`, `git status --short` e a ausência de comandos de
 push/merge/release no portão demonstram que a entrega permanece somente na

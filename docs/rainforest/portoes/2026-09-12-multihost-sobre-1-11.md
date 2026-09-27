@@ -1,4 +1,13 @@
-# Portão: adaptação multihost sobre o Rainforest Mind 1.23.15 (entrega 1.24.0)
+# Portão: adaptação multihost sobre o Rainforest Mind 1.24.0 (entrega 1.25.0)
+
+## Rebump para 1.25.0 (2026-09-27)
+
+A `zerar-issues-9` (PRs #343 e #345) chegou à `main` primeiro, também com
+`1.24.0`. A main `e6c4f5699f971d2b42faf21f52ba6a2f56457020` foi mesclada na entrega, os dois manifestos
+subiram para `1.25.0` e o README trocou a menção histórica "desde a 1.24.0" por
+"desde a 1.24" (o `testa-versao.sh` recusa semver completo que não seja o
+corrente). A medição de host abaixo, feita em 1.24.0, foi repetida sobre o
+export 1.25.0 na seção "Reinstalação 1.25.0".
 
 ## Estado corrente — reancoragem 1.23.15, entrega 1.24.0 (2026-09-26)
 
@@ -70,7 +79,7 @@ o mesmo diretório criado pelo `New-Item`.
   EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"c2c28f24842b"}
 
 - [x] P5: o diff final não contém creep fora do plano
-  CHECK: node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 5d59d36eeb30b617e716572834c810d0ad0c2ce9 --head HEAD
+  CHECK: node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base e6c4f5699f971d2b42faf21f52ba6a2f56457020 --head HEAD
   ESPERA: ok: sem creep — 20 arquivo(s) coberto(s)
   EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"90e851b4f583"}
 
