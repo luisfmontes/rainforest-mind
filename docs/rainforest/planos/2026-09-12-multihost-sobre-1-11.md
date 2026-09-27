@@ -138,8 +138,8 @@ depende de: 2
 paralela: nao
 mutacao:
   arquivo: `.codex-plugin/plugin.json`
-  de: `"version": "1.23.3"`
-  para: `"version": "1.23.4"`
+  de: `"version": "1.24.0"`
+  para: `"version": "1.24.1"`
   bateria: `bash scripts/testa-versao.sh`
   fixture: seção `manifesto Codex na mesma versao da fonte Claude`, esperando divergência `1.23.4` versus `1.23.3`
 pronto quando: com Claude e Codex em `1.23.3`, o portão informa igualdade;
