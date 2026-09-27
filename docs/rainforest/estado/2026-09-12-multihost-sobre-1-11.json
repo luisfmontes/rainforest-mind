@@ -608,7 +608,12 @@
     "tentativas": 1
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-plugin-codex.sh; node scripts/portoes.cjs rodar --reverificar (P1-P5 = criterio T9); node scripts/conferir-fluxo.cjs mutacoes; codex exec sessoes 01a0e015 e 01a0e03c; projecao export x cache",
+    "saida": "TODOS OS PORTOES CUMPRIDOS — 5; mutacoes exit 0 (T1-T5 vermelho, T6-T9 n/a); hook bloqueia git add \"-A\" e bash -c no Codex 0.151.0; skill regua invocada do cache 1.24.0; projecao 0 ausentes 0 divergentes 0 .git, extra unico D11",
+    "sensor_externo": "bash scripts/testa-plugin-codex.sh",
+    "head": "52e2c6c6",
+    "em": "2026-09-26"
   },
   "fechar": {
     "status": "pendente"
