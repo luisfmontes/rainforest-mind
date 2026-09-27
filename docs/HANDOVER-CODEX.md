@@ -1,37 +1,36 @@
-# Handover Codex — Rainforest Mind multihost 1.23.3
+# Handover Codex — Rainforest Mind multihost 1.24.0
 
-## Ponto canônico de retomada — 2026-09-23
+## Ponto canônico de retomada — 2026-09-26
 
-- Versão corrente: `1.23.3`, conforme os manifestos Claude e Codex.
-- Base corrente: `9c05ee9a71b79d763a39f24195c580bc2d915752`
-  (`origin/main`, 1.23.3).
-- Merge da base na entrega:
-  `06be3273c3ba08252ef8fd6d1417cb75fb38bfc4`.
+- Versão da entrega: `1.24.0`, igual nos manifestos Claude e Codex (host novo
+  = MINOR sobre a `origin/main` 1.23.15).
+- Base corrente: `5d59d36eeb30b617e716572834c810d0ad0c2ce9`
+  (`origin/main`, 1.23.15), incorporada pelo merge `1d283312`.
+- Base e merge 1.23.3 históricos: `9c05ee9a71b79d763a39f24195c580bc2d915752`
+  e `06be3273c3ba08252ef8fd6d1417cb75fb38bfc4`.
 - Base e merge 1.23.1 históricos: `2405f76aa8ae8847a16d66792686d1ec4b6cfee1`
   e `7be5f9e78a0294269218144f0b92bc0275e8f9b3`.
 - Base e merge 1.23.0 históricos: `4301a205b9c90a101924cc60fdd2cb7b3bed4bfa`
   e `fc76be76b5f8dd5c3c9dac9016db33098abc5d94`.
-- Base e merge históricos: `0e27956c14d52bd7efefdd343531ffbbb8811726`
-  e `7febeface33c10de4f2b32395c3e0a595656857a`.
-- Branch de entrega: `codex/multihost-1.13`.
+- Branch de entrega: `codex/multihost-1.13`; PR #315.
 - Design: `docs/rainforest/design/2026-09-12-multihost-sobre-1-11.md`.
 - Plano: `docs/rainforest/planos/2026-09-12-multihost-sobre-1-11.md`.
 - Estado: `docs/rainforest/estado/2026-09-12-multihost-sobre-1-11.json`.
 - Portão: `docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md`.
 - Gemini continua adiado: nenhum manifesto, hook, adaptador ou fixture de
   payload Gemini pertence a esta entrega.
-- `executar` permanece parcial: T1–T5 passaram suas mutações nesta base; T6
-  ainda não tem a contraprova de bloqueio pelo `PreToolUse` em sessão nova.
-  A tentativa de instalação 1.23.1 foi interrompida e é apenas histórica.
-- Esta rodada termina com commit local na branch de entrega: sem push, PR,
-  release, merge ou alteração da `main`.
+- `executar` fechou `9/9` em 2026-09-26. T6 e T7 foram provadas num Codex real
+  (`codex-cli 0.151.0`); o bloqueio de host de 2026-09-23 não reproduziu.
+- Próximo estágio: `revisar`, contra o diff real desde
+  `5d59d36eeb30b617e716572834c810d0ad0c2ce9`. Mesclar na `main` só com aval
+  do usuário.
 
 Revalide o ponto corrente com:
 
 ```powershell
 git rev-parse --show-toplevel
 git rev-parse HEAD
-git merge-base --is-ancestor 9c05ee9a71b79d763a39f24195c580bc2d915752 HEAD
+git merge-base --is-ancestor 5d59d36eeb30b617e716572834c810d0ad0c2ce9 HEAD
 git show HEAD:.claude-plugin/plugin.json
 git show HEAD:.codex-plugin/plugin.json
 node scripts/estado.cjs ler --slug 2026-09-12-multihost-sobre-1-11
@@ -39,15 +38,15 @@ node scripts/estado.cjs ler --slug 2026-09-12-multihost-sobre-1-11
 
 Reexecute os cinco portões no PowerShell com o teto de P1 (`600000`
 ms) configurado no processo pai do executor. O Git Bash em modo login fornece
-os utilitários Unix de P1; `TMPDIR` fica em pasta gravável fora dos worktrees:
+os utilitários Unix de P1; `TMPDIR` fica em pasta gravável FORA do repositório — dentro dele (ex.: `.claude/`) o caso "git add -A fora de repo git" de P1 deixa de estar fora de repo e fica vermelho:
 
 ```powershell
-New-Item -ItemType Directory -Force 'C:\Projetos\rainforest-mind\.claude\tmp-portoes-codex-1233'
+New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\Temp\rainforest-portoes"
 $env:PATH = 'C:\Program Files\Git\bin;C:\Program Files\nodejs;' + $env:PATH
 $env:CHERE_INVOKING = '1'
 Remove-Item Env:BASH_ENV -ErrorAction SilentlyContinue
-& 'C:\Program Files\Git\bin\bash.exe' -lc 'TMPDIR=/c/Projetos/rainforest-mind/.claude/tmp-portoes-codex-1233 node -p "process.env.TMPDIR"'
-& 'C:\Program Files\Git\bin\bash.exe' -lc 'TMPDIR=/c/Projetos/rainforest-mind/.claude/tmp-portoes-codex-1233 PORTOES_TIMEOUT_MS=600000 node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar'
+& 'C:\Program Files\Git\bin\bash.exe' -lc 'TMPDIR=$(cygpath -u "$LOCALAPPDATA")/Temp/rainforest-portoes node -p "process.env.TMPDIR"'
+& 'C:\Program Files\Git\bin\bash.exe' -lc 'TMPDIR=$(cygpath -u "$LOCALAPPDATA")/Temp/rainforest-portoes PORTOES_TIMEOUT_MS=600000 node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar'
 node scripts/portoes.cjs lint docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --strict
 node scripts/portoes.cjs status docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md
 ```
@@ -57,7 +56,31 @@ dentro de `-lc` faz o processo Node receber o diretório gravável. Dentro de
 uma sessão Git Bash de login, defina `TMPDIR=...` no próprio comando junto de
 `PORTOES_TIMEOUT_MS=600000` antes de `node scripts/portoes.cjs rodar ...`.
 
-## Evidência corrente de instalação 1.23.3 e pendência do host
+## Evidência corrente de instalação 1.24.0
+
+`git archive HEAD` do candidato `53152c46` gerou o export limpo em
+`C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.24.0-53152c46`
+(861 arquivos, zero `.git`). O marketplace `rainforest-mind-local` foi removido
+e readicionado apontando para esse export, e `codex plugin add` instalou
+`1.24.0` em
+`<home>\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.24.0`.
+A projeção export × cache tem zero ausentes, zero divergentes e zero `.git`; o
+único extra é o derivado D11
+`.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md`, SHA-256
+`94040cb2fadab3efb34ed185123ab918b01dea2d386826d8fc4dcd4a960bca09`.
+
+Na sessão Codex nova `01a0e015-5dfc-7940-99e8-45826b8f921e`, `git status` e
+`git add -- "-A"` passaram pelo hook, `git add "-A"` e
+`bash -c "git status; git add -A"` saíram `Command blocked by PreToolUse hook`,
+e a skill `rainforest-mind:source-command-saude` apareceu no cache 1.24.0. O
+adaptador do cache nega JSON malformado sem ecoar o payload. O cachebuster da
+T6 foi dispensado: a versão maior já cria a entrada de cache nova. Comandos e
+saídas completos estão no portão, seção "Medição corrente 1.24.0".
+
+Para voltar ao plugin da `main` no Codex depois do merge, gere um export novo
+do commit mesclado e repita `marketplace remove`/`add` e `plugin add`.
+
+## Histórico de instalação 1.23.3 e pendência de host (resolvida em 2026-09-26)
 
 O cachebuster `1.23.3+codex.20260923102218` foi instalado para a iteração
 local. Depois da prova, os dois manifestos voltaram byte a byte ao HEAD:
@@ -91,7 +114,7 @@ até lá, não avançar para `revisar`.
 da sessão diagnóstica registrou `cli_version 0.151.0`; o histórico que bloqueou
 usava `0.153.4`. A divergência é hipótese de runtime, não diagnóstico fechado.
 
-## Histórico de instalação 1.23.0 — não aceitar para 1.23.3
+## Histórico de instalação 1.23.0 — não aceitar para 1.24.0
 
 O export limpo de `fc76be76` está em
 `C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.23.0-fc76be76`.

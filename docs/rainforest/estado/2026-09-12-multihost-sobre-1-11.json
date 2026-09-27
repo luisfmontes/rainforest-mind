@@ -18,26 +18,26 @@
     "em": "2026-09-12"
   },
   "reancoragem_corrente": {
-    "versao": "1.23.3",
-    "base": "9c05ee9a71b79d763a39f24195c580bc2d915752",
-    "merge": "06be3273c3ba08252ef8fd6d1417cb75fb38bfc4",
-    "base_anterior": "2405f76aa8ae8847a16d66792686d1ec4b6cfee1",
-    "merge_anterior": "7be5f9e78a0294269218144f0b92bc0275e8f9b3",
-    "base_antes_da_anterior": "4301a205b9c90a101924cc60fdd2cb7b3bed4bfa",
+    "versao": "1.24.0",
+    "base": "5d59d36eeb30b617e716572834c810d0ad0c2ce9",
+    "base_versao": "1.23.15",
+    "merge": "1d283312",
+    "base_anterior": "9c05ee9a71b79d763a39f24195c580bc2d915752",
     "branch": "codex/multihost-1.13",
     "worktree_derivacao": "git worktree list --porcelain; localizar branch refs/heads/codex/multihost-1.13",
     "head_derivacao": "git rev-parse HEAD",
     "gemini": "adiado",
-    "ancoras_corpo": "fechar 9986/a2f231f8, modo-dev 13414/281949f8, montar-corpus 2935/f21d9af8 e regua 16053/6a2e1e78 iguais byte a byte a base 1.23.3",
-    "instalacao_cache": "1.23.3 instalado do export limpo do commit candidato ebb5ae58; T6 continua sem contraprova de hook no host; instalação 1.23.0 é histórica",
-    "em": "2026-09-23"
+    "ancoras_corpo": "fechar 9585/7ffc677b, modo-dev 13106/9b4d2c0c, regua 16038/c1318cbf recalculadas contra a base 1.23.15; montar-corpus 2935/f21d9af8 inalterada",
+    "versao_entrega": "1.24.0 nos dois manifestos (host novo = MINOR); cachebuster da T6 dispensado porque a versao maior ja cria entrada de cache nova",
+    "instalacao_cache": "1.24.0 instalado do export limpo do commit candidato 53152c46",
+    "em": "2026-09-26"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao_historico_1_21_1": "2026-09-22",
-    "tarefas_ok": 5,
+    "tarefas_ok": 9,
     "tarefas": 9,
-    "em": "2026-09-23",
+    "em": "2026-09-26",
     "verificacao_local_1_23_3": {
       "gate_staging": "== resultado: 171 ok, 0 falha(s) ==",
       "contratos": "manifesto, skills, adaptador, marketplace e Gemini: exit 0; 19 skills e 4 ancoras de corpo",
@@ -54,15 +54,53 @@
       "sessao_diagnostica": "01a0cdda-425d-78c2-b710-6fb464074454"
     },
     "mutacao_1_23_3": [
-      { "tarefa": 1, "resultado": "vermelho", "fixture": "gate staging: descartar token com aspas", "baseline": "171 ok, 0 falha(s)", "mutante": "166 ok, 5 falha(s)" },
-      { "tarefa": 2, "resultado": "vermelho", "fixture": "montar-corpus sem description" },
-      { "tarefa": 3, "resultado": "vermelho", "fixture": "handler Codex chama core direto" },
-      { "tarefa": 4, "resultado": "vermelho", "fixture": "Codex 1.23.4 diverge de Claude 1.23.3" },
-      { "tarefa": 5, "resultado": "vermelho", "fixture": "marketplace source.path aponta para ./codex" },
-      { "tarefa": 6, "resultado": "n/a", "motivo": "cachebuster e hook sao prova operacional fora do fonte; T6 ainda pendente no host" },
-      { "tarefa": 7, "resultado": "n/a", "motivo": "artefato instalado validado por export/cache; contraprova de hook pendente" },
-      { "tarefa": 8, "resultado": "n/a", "motivo": "documentacao de continuidade falsificada contra hashes e medidas" },
-      { "tarefa": 9, "resultado": "n/a", "motivo": "integracao e registro sem comportamento novo" }
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "gate staging: descartar token com aspas",
+        "baseline": "171 ok, 0 falha(s)",
+        "mutante": "166 ok, 5 falha(s)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "montar-corpus sem description"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "handler Codex chama core direto"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "Codex 1.23.4 diverge de Claude 1.23.3"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "marketplace source.path aponta para ./codex"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "cachebuster e hook sao prova operacional fora do fonte; T6 ainda pendente no host"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "artefato instalado validado por export/cache; contraprova de hook pendente"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "documentacao de continuidade falsificada contra hashes e medidas"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "integracao e registro sem comportamento novo"
+      }
     ],
     "carimbos": [
       {
@@ -480,13 +518,21 @@
     },
     "portoes_historico_1_23_0": "P1-P5 cumpridos; lint strict 5/0; P1 teto 600000 e TMPDIR no bash -lc",
     "reexecucao_p1_historico_1_23_0": "2026-09-22: sondagem no mesmo bash -lc retornou C:\\Projetos\\rainforest-mind\\.claude\\tmp-portoes-codex-9b21e95b (exit 0); portoes P1-P5 reexecutados com TMPDIR dentro de -lc e teto 600000 no pai, exit 0; mutacoes T1-T5 preservadas da medicao anterior, nao reexecutadas nesta correcao",
-    "pendentes": [
-      "T6: reproduzir em sessao Codex nova o bloqueio PreToolUse de git add -A e wrapper; neste host o executor restrito falha antes do processo, enquanto a rota externa nao dispara hook",
-      "T7: repetir a contraprova do hook na instalacao final 1.23.3; export/cache e projecao D9/D11 ja medidos",
-      "T8-T9: fechar documentacao e executar 9/9 somente depois da contraprova real do host"
-    ],
     "interrupcao_agente_1_23_1": "executor GPT-6 encerrou por limite de uso em 2026-09-23 antes de instalar ou verificar a 1.23.1; origin/main avançou para 1.23.3",
-    "catraca_mutacao": "2026-09-23"
+    "catraca_mutacao": "2026-09-23",
+    "verificacao_local_1_24_0": {
+      "candidato": "53152c46",
+      "contrato_codex": "bash scripts/testa-plugin-codex.sh: exit 0 (manifesto, 20 skills, hook seletivo, adaptador allow/deny/falha segura/JSON malformado, mutacao handler->core vermelha, marketplace, Gemini adiado)",
+      "versao": "bash scripts/testa-versao.sh: ok 5, falhou 0; node scripts/conferir-versao.cjs: 1.24.0 > origin/main 1.23.15",
+      "cobertura": "ok: cobertura válida — 12 decisão(ões), 9 tarefa(s)",
+      "creep": "ok: sem creep — 20 arquivo(s) coberto(s) (base 5d59d36e)",
+      "export": "C:\\Projetos\\rainforest-mind\\.claude\\marketplaces\\rainforest-mind-export-1.24.0-53152c46 (git archive HEAD; 861 arquivos, 0 .git)",
+      "cache": "<home>\\.codex\\plugins\\cache\\rainforest-mind-local\\rainforest-mind\\1.24.0",
+      "projecao": "export 861, cache 862, ausentes 0, divergentes 0, .git 0; unico extra D11 .codex-plugin/migrated-command-skills/source-command-saude/SKILL.md sha256 94040cb2fadab3efb34ed185123ab918b01dea2d386826d8fc4dcd4a960bca09",
+      "host_hook": "T6/T7 provados em codex-cli 0.151.0: sessao 01a0e015-5dfc-7940-99e8-45826b8f921e (plugin 1.24.0) permitiu git status e git add -- \"-A\" (hook Completed; falha posterior e index.lock do sandbox), bloqueou git add \"-A\" e bash -c \"git status; git add -A\" com a mensagem do gate; skill rainforest-mind:source-command-saude visivel no cache 1.24.0; sessao 01a0e013-b68c-7731-92ae-af3bf3b678e3 (plugin 1.23.3) ja bloqueava git add \"-A\"",
+      "json_malformado": "adaptador do cache 1.24.0 com stdin invalido: permissionDecision deny, motivo generico, sem ecoar payload",
+      "bloqueio_anterior": "helper_unknown_error do shell restrito (2026-09-23) nao reproduziu em 0.151.0; era do host, nao do produto"
+    }
   },
   "revisar_historico_1_21_1": {
     "status": "ok",
@@ -526,7 +572,7 @@
   },
   "revisar": {
     "status": "pendente",
-    "motivo": "executar 1.23.3 permanece parcial enquanto T6 nao tem contraprova do hook no host"
+    "motivo": "executar 9/9 fechado em 2026-09-26 sobre a base 1.23.15; proximo estagio e revisar o diff real contra 5d59d36e"
   },
   "verificar_historico_1_21_1": {
     "status": "reprovado",
@@ -543,5 +589,20 @@
   },
   "fechar": {
     "status": "pendente"
+  },
+  "reancoragem_historico_1_23_3": {
+    "versao": "1.23.3",
+    "base": "9c05ee9a71b79d763a39f24195c580bc2d915752",
+    "merge": "06be3273c3ba08252ef8fd6d1417cb75fb38bfc4",
+    "base_anterior": "2405f76aa8ae8847a16d66792686d1ec4b6cfee1",
+    "merge_anterior": "7be5f9e78a0294269218144f0b92bc0275e8f9b3",
+    "base_antes_da_anterior": "4301a205b9c90a101924cc60fdd2cb7b3bed4bfa",
+    "branch": "codex/multihost-1.13",
+    "worktree_derivacao": "git worktree list --porcelain; localizar branch refs/heads/codex/multihost-1.13",
+    "head_derivacao": "git rev-parse HEAD",
+    "gemini": "adiado",
+    "ancoras_corpo": "fechar 9986/a2f231f8, modo-dev 13414/281949f8, montar-corpus 2935/f21d9af8 e regua 16053/6a2e1e78 iguais byte a byte a base 1.23.3",
+    "instalacao_cache": "1.23.3 instalado do export limpo do commit candidato ebb5ae58; T6 continua sem contraprova de hook no host; instalação 1.23.0 é histórica",
+    "em": "2026-09-23"
   }
 }

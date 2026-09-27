@@ -1,10 +1,16 @@
-# Plano: adaptação multihost sobre o Rainforest Mind 1.23.3
+# Plano: adaptação multihost sobre o Rainforest Mind 1.23.15 (entrega 1.24.0)
 
 Design: `docs/rainforest/design/2026-09-12-multihost-sobre-1-11.md`
 
 Base inicial confirmada: `a338dd02ad495f87a66d84af2ab24eab3d2660b8`.
 Base histórica confirmada antes da tarefa 4: `cf1ad7689f84428eb0b10943c0f1cf1a662b8faf` (`1.12.0`). Os 12 commits locais foram reaplicados sobre ela após confirmar zero caminhos sobrepostos.
-Base corrente: `9c05ee9a71b79d763a39f24195c580bc2d915752` (`1.23.3`), incorporada pelo merge
+Base corrente: `5d59d36eeb30b617e716572834c810d0ad0c2ce9` (`1.23.15`), incorporada pelo merge
+`1d283312` em 2026-09-26. A entrega sobe os dois manifestos para `1.24.0`
+(host novo = MINOR); onde as tarefas 6, 7 e 9 dizem `1.23.3`, leia a versão
+da entrega corrente, `1.24.0`. Como a versão da entrega é maior que a instalada,
+a própria reinstalação cria a entrada de cache nova que o cachebuster da tarefa 6
+forçava — o cachebuster deixou de ser necessário. A base histórica
+`9c05ee9a71b79d763a39f24195c580bc2d915752` (`1.23.3`) entrou pelo merge
 `06be3273c3ba08252ef8fd6d1417cb75fb38bfc4` em 2026-09-23. A base histórica
 `2405f76aa8ae8847a16d66792686d1ec4b6cfee1` (`1.23.1`) entrou pelo merge
 `7be5f9e78a0294269218144f0b92bc0275e8f9b3`. A base anterior
@@ -14,7 +20,7 @@ Base corrente: `9c05ee9a71b79d763a39f24195c580bc2d915752` (`1.23.3`), incorporad
 `7febeface33c10de4f2b32395c3e0a595656857a`; antes dela havia
 `5cdb90e768cb1ba808821d5bdcdf46f7a19fc782`. O delta corrente preserva os 18 caminhos da entrega;
 entre as quatro skills normalizadas, somente `skills/regua/SKILL.md` mudou, e sua âncora foi
-recalculada contra a base 1.23.0. As bases 1.23.1 e 1.23.3 mantiveram os quatro corpos byte a byte.
+recalculada contra a base 1.23.0. As bases 1.23.1 e 1.23.3 mantiveram os quatro corpos byte a byte; a 1.23.15 mudou `fechar`, `modo-dev` e `regua`, e as âncoras foram recalculadas contra ela.
 Referência histórica confirmada: `codex/piloto-rainforest` em
 `c71ecd01a73ab9208c981ff2d1eea5f6378434d7`.
 
@@ -127,7 +133,7 @@ allow, deny, falha interna e entrada malformada.
 
 ### 4. Fazer o portão global comparar os dois manifestos [tipo: teste]
 atende: D3, D7
-arquivos: `scripts/testa-versao.sh`
+arquivos: `scripts/testa-versao.sh`, `.claude-plugin/plugin.json`, `README.md`
 depende de: 2
 paralela: nao
 mutacao:
@@ -219,7 +225,7 @@ mutacao: n/a
 pronto quando: com o commit candidato local, `bash hooks/testa-gate-staging-total.sh`,
 `bash scripts/testa-plugin-codex.sh`, `bash scripts/testa-versao.sh`,
 `node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11`
-e `node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 9c05ee9a71b79d763a39f24195c580bc2d915752 --head HEAD`
+e `node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 5d59d36eeb30b617e716572834c810d0ad0c2ce9 --head HEAD`
 terminam verdes; a projeção do cache `1.23.3` contra o HEAD, excluindo somente
 os sete documentos de governança da D9, tem zero caminho ausente e zero SHA-256
 divergente, e o único extra continua sendo o derivado autorizado pela D11. O
@@ -227,7 +233,7 @@ marketplace ativo aponta para o export limpo do commit candidato; a enumeração
 com `Get-ChildItem -Force -Recurse -File` confirma zero `.git` no export e no
 cache, sem omitir arquivos ocultos; o
 handover registra execução `9/9` e aponta `revisar` como próximo estágio;
-`git diff --name-only 9c05ee9a71b79d763a39f24195c580bc2d915752...HEAD` contém somente os
+`git diff --name-only 5d59d36eeb30b617e716572834c810d0ad0c2ce9...HEAD` contém somente os
 caminhos autorizados pelo plano; o estado registra a evidência por tarefa; e
 `git branch --show-current`, `git status --short` e a ausência de comandos de
 push/merge/release no portão demonstram que a entrega permanece somente na

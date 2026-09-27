@@ -1,19 +1,20 @@
-# Portão: adaptação multihost sobre o Rainforest Mind 1.23.3
+# Portão: adaptação multihost sobre o Rainforest Mind 1.23.15 (entrega 1.24.0)
 
-## Estado corrente — reancoragem 1.23.3 (2026-09-23)
+## Estado corrente — reancoragem 1.23.15, entrega 1.24.0 (2026-09-26)
 
-- Base: `9c05ee9a71b79d763a39f24195c580bc2d915752` (`origin/main`, 1.23.3).
-- Merge da base na entrega: `06be3273c3ba08252ef8fd6d1417cb75fb38bfc4`.
+- Base: `5d59d36eeb30b617e716572834c810d0ad0c2ce9` (`origin/main`, 1.23.15).
+- Merge da base na entrega: `1d283312`.
+- Base e merge 1.23.3 históricos: `9c05ee9a71b79d763a39f24195c580bc2d915752` e `06be3273c3ba08252ef8fd6d1417cb75fb38bfc4`.
 - Base e merge 1.23.1 históricos: `2405f76aa8ae8847a16d66792686d1ec4b6cfee1` e `7be5f9e78a0294269218144f0b92bc0275e8f9b3`.
 - Base e merge 1.23.0 históricos: `4301a205b9c90a101924cc60fdd2cb7b3bed4bfa` e `fc76be76b5f8dd5c3c9dac9016db33098abc5d94`.
 - Base e merge históricos: `0e27956c14d52bd7efefdd343531ffbbb8811726` e `7febeface33c10de4f2b32395c3e0a595656857a`.
 - Branch: `codex/multihost-1.13`; HEAD é rederivado com `git rev-parse HEAD`.
-- O escopo da entrega contra a base corrente permanece em 18 arquivos.
-- O manifesto Codex acompanha o manifesto Claude em 1.23.3. Gemini permanece
+- O escopo da entrega contra a base corrente tem 20 arquivos: os 18 de antes mais `.claude-plugin/plugin.json` e `README.md`, do bump para 1.24.0.
+- O manifesto Codex acompanha o manifesto Claude em 1.24.0. Gemini permanece
   adiado, sem artefato de host nesta entrega.
-- Export, instalação e projeção D9/D11 de 1.23.3 foram medidos nesta
-  reancoragem. A contraprova `PreToolUse` em sessão nova segue pendente por
-  falha do executor do host; evidências anteriores permanecem como histórico.
+- Export, instalação, projeção D9/D11 e a contraprova `PreToolUse` em sessão
+  Codex nova foram medidos em 1.24.0 (seção "Medição corrente 1.24.0"). O
+  bloqueio de host de 2026-09-23 não reproduziu em `codex-cli 0.151.0`.
 - Sem aval explícito, não abrir PR, publicar release, mesclar nem alterar a
   `main`.
 
@@ -51,17 +52,17 @@ o mesmo diretório criado pelo `New-Item`.
 - [x] P1: o gate de staging total passa todos os casos
   CHECK: bash hooks/testa-gate-staging-total.sh
   ESPERA: == resultado: 171 ok, 0 falha(s) ==
-  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"5d0905e98e1c"}
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"0c9d63606795"}
 
 - [x] P2: o contrato ponta a ponta do plugin Codex passa
   CHECK: bash scripts/testa-plugin-codex.sh
   ESPERA: ok Gemini adiado: caminhos rastreados nao contem manifesto, hook, adaptador ou fixture de payload Gemini fora dos documentos do fluxo
-  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"077adea17e32"}
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"cf03e50d22f2"}
 
 - [x] P3: os manifestos e referências públicas têm a mesma versão
   CHECK: bash scripts/testa-versao.sh
   ESPERA: ok: 5   falhou: 0
-  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"f34166e6f248"}
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"922c26c11ac7"}
 
 - [x] P4: todas as decisões aprovadas são cobertas pelo plano
   CHECK: node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11
@@ -69,11 +70,57 @@ o mesmo diretório criado pelo `New-Item`.
   EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"c2c28f24842b"}
 
 - [x] P5: o diff final não contém creep fora do plano
-  CHECK: node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 9c05ee9a71b79d763a39f24195c580bc2d915752 --head HEAD
-  ESPERA: ok: sem creep — 18 arquivo(s) coberto(s)
-  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"465244f33ebc"}
+  CHECK: node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base 5d59d36eeb30b617e716572834c810d0ad0c2ce9 --head HEAD
+  ESPERA: ok: sem creep — 20 arquivo(s) coberto(s)
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"90e851b4f583"}
 
-## Medição corrente 1.23.3 — 2026-09-23
+## Medição corrente 1.24.0 — 2026-09-26
+
+Candidato: `53152c46` (merge da main 1.23.15 + bump 1.24.0 + âncoras de corpo
+recalculadas: fechar 9585/`7ffc677b`, modo-dev 13106/`9b4d2c0c`, regua
+16038/`c1318cbf`; montar-corpus 2935/`f21d9af8` inalterada). Host:
+`codex-cli 0.151.0`.
+
+**T6 — iteração local.** O cachebuster foi dispensado: a versão da entrega
+(1.24.0) é maior que a instalada (1.23.3), então a reinstalação cria sozinha a
+entrada de cache nova. Nenhum manifesto temporário foi escrito.
+
+**T7 — reinstalação e contrato.**
+
+```
+git archive HEAD | tar -x -C .claude/marketplaces/rainforest-mind-export-1.24.0-53152c46
+  -> 861 arquivos, 0 .git
+codex plugin marketplace remove rainforest-mind-local
+codex plugin marketplace add <export>
+codex plugin add rainforest-mind@rainforest-mind-local
+  -> Installed plugin root: <home>\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.24.0
+codex plugin list -> rainforest-mind@rainforest-mind-local  installed, enabled  1.24.0
+```
+
+Projeção export × cache (SHA-256 de cada arquivo, ocultos inclusos): export 861,
+cache 862, ausentes 0, divergentes 0, `.git` 0. Único extra, D11:
+`.codex-plugin/migrated-command-skills/source-command-saude/SKILL.md`, SHA-256
+`94040cb2fadab3efb34ed185123ab918b01dea2d386826d8fc4dcd4a960bca09` (mudou em
+relação à 1.23.3 porque `commands/saude.md` mudou na main).
+
+Sessão Codex nova `01a0e015-5dfc-7940-99e8-45826b8f921e` (`codex exec -s workspace-write`, fixture descartável):
+
+| Comando | Hook | Resultado |
+|---|---|---|
+| `git status --short` | Completed | permitido, `?? a.txt` |
+| `git add -- "-A"` | Completed | permitido pelo gate; o git falhou depois em `.git/index.lock: Permission denied` (sandbox) |
+| `git add "-A"` | Blocked | `Command blocked by PreToolUse hook: BLOQUEADO pelo gate de staging total`, `Segmento: git add "-A"` |
+| `bash -c "git status; git add -A"` | Blocked | idem, `Segmento: bash -c "git status; git add -A"` |
+
+Skill invocável: a sessão enxergou `rainforest-mind:source-command-saude` no
+cache 1.24.0. JSON malformado no adaptador do cache: `permissionDecision:
+deny`, motivo genérico, payload não ecoado.
+
+O bloqueio de 2026-09-23 (`helper_unknown_error: setup refresh had errors`) não
+reproduziu: a sessão `01a0e013-b68c-7731-92ae-af3bf3b678e3`, ainda com o plugin
+1.23.3, já bloqueava `git add "-A"`. Era do host, não do produto.
+
+## Medição histórica 1.23.3 — 2026-09-23 (não aceitar para 1.24.0)
 
 O procedimento acima saiu `0`: P1–P5 `CUMPRIDO`, fingerprints
 `5d0905e98e1c`, `077adea17e32`, `f34166e6f248`, `c2c28f24842b` e
