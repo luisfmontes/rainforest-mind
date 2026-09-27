@@ -1,0 +1,190 @@
+#!/usr/bin/env node
+"use strict";
+/* Bateria do gate-bateria-sem-timeout (D1–D3 do design agente-sem-background.md).
+ *
+ * O payload é o de `PreToolUse` de subagente capturado ao vivo em 2026-09-24
+ * (`hooks/fixtures/busca-raiz/payload-bash-subagente.json`), com só
+ * `tool_name` e `tool_input` trocados para Bash. Os comandos são as baterias
+ * mencionadas no plano.
+ *
+ * Roda o hook como processo real, payload no stdin. Isolamento: cada caso usa
+ * um projeto em mkdtemp (CLAUDE_PROJECT_DIR e RFM_ROOT dentro dele) — nunca
+ * escreve em ~/.rainforest nem em ~/.claude* reais.
+ *
+ * Exit 0 = tudo passou; exit 1 = alguma falha.
+ */
+
+const { spawnSync } = require("child_process");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+
+const HOOK = path.join(__dirname, "gate-bateria-sem-timeout.cjs");
+const BASE = JSON.parse(fs.readFileSync(path.join(__dirname, "fixtures", "busca-raiz", "payload-bash-subagente.json"), "utf8"));
+
+let ok = 0;
+let falhou = 0;
+function caso(nome, obtido, esperado) {
+  if (obtido === esperado) {
+    ok++;
+    console.log(`  ok    ${nome} — esperado ${esperado}, obtido ${obtido}`);
+  } else {
+    falhou++;
+    console.log(`  FALHA ${nome} — esperado ${esperado}, obtido ${obtido}`);
+  }
+}
+
+const caixa = fs.mkdtempSync(path.join(os.tmpdir(), "bateria-sem-timeout-"));
+process.on("exit", () => fs.rmSync(caixa, { recursive: true, force: true }));
+const projeto = path.join(caixa, "projeto");
+fs.mkdirSync(path.join(projeto, ".rainforest"), { recursive: true });
+
+function rodar(comando, { subagente = true, config, timeout } = {}) {
+  const payload = JSON.parse(JSON.stringify(BASE));
+  payload.tool_input.command = comando;
+  payload.cwd = projeto;
+  if (!subagente) { delete payload.agent_id; delete payload.agent_type; }
+  if (typeof timeout === "number") { payload.tool_input.timeout = timeout; } else { delete payload.tool_input.timeout; }
+  const cfg = path.join(projeto, ".rainforest", "config.json");
+  if (config) fs.writeFileSync(cfg, JSON.stringify(config)); else fs.rmSync(cfg, { force: true });
+  const r = spawnSync(process.execPath, [HOOK], {
+    input: JSON.stringify(payload), encoding: "utf8",
+    env: { ...process.env, CLAUDE_PROJECT_DIR: projeto, RFM_ROOT: path.join(caixa, "dados") },
+  });
+  return { status: r.status, stderr: r.stderr || "" };
+}
+
+console.log("== gate-bateria-sem-timeout ==");
+
+// === TAREFA 1: Bateria sem timeout → 2 ===
+
+// Caso fixture 1: bash hooks/testa-gate-worktree.sh sem timeout em subagente → 2
+let r = rodar("bash hooks/testa-gate-worktree.sh 2>&1 | tail -5");
+caso("bash hooks/testa-gate-worktree.sh sem timeout em subagente → 2", r.status, 2);
+
+// Caso fixture 2: node hooks/testa-gate-busca-raiz.cjs sem timeout em subagente → 2
+r = rodar("node hooks/testa-gate-busca-raiz.cjs");
+caso("node hooks/testa-gate-busca-raiz.cjs sem timeout em subagente → 2", r.status, 2);
+
+// Caso 3: timeout 300 bash scripts/testa-estado.sh sem parâmetro timeout → 2
+r = rodar("timeout 300 bash scripts/testa-estado.sh");
+caso("timeout 300 bash scripts/testa-estado.sh sem parâmetro timeout → 2", r.status, 2);
+
+// Caso 4: node scripts/conferir-mutacao.cjs sem timeout → 2
+r = rodar("node scripts/conferir-mutacao.cjs --arquivo x --de a --para b --bateria c");
+caso("node scripts/conferir-mutacao.cjs sem timeout → 2", r.status, 2);
+
+// Caso 5: node scripts/conferir-fluxo.cjs mutacoes sem timeout → 2
+r = rodar("node scripts/conferir-fluxo.cjs mutacoes --slug x");
+caso("node scripts/conferir-fluxo.cjs mutacoes sem timeout → 2", r.status, 2);
+
+// Caso 6: ./scripts/testa-estado.sh sem timeout → 2
+r = rodar("./scripts/testa-estado.sh");
+caso("./scripts/testa-estado.sh sem timeout → 2", r.status, 2);
+
+// Caso 7: bash hooks/testa-gate-worktree.sh com timeout: 120000 (exatamente no limiar, rejeita) → 2
+r = rodar("bash hooks/testa-gate-worktree.sh", { timeout: 120000 });
+caso("bash hooks/testa-gate-worktree.sh com timeout: 120000 em subagente → 2", r.status, 2);
+
+// === TAREFA 1: Permite (pass → 0) ===
+
+// Caso 1: bash hooks/testa-gate-worktree.sh com timeout: 600000 → 0
+r = rodar("bash hooks/testa-gate-worktree.sh", { timeout: 600000 });
+caso("bash hooks/testa-gate-worktree.sh com timeout: 600000 → 0", r.status, 0);
+
+// Caso 2: cat hooks/testa-gate-worktree.sh → 0 (leitura)
+r = rodar("cat hooks/testa-gate-worktree.sh");
+caso("cat hooks/testa-gate-worktree.sh → 0", r.status, 0);
+
+// Caso 3: grep -n x scripts/testa-estado.sh → 0 (leitura)
+r = rodar("grep -n x scripts/testa-estado.sh");
+caso("grep -n x scripts/testa-estado.sh → 0", r.status, 0);
+
+// Caso 4: sed -n 1,5p hooks/testa-gate-busca-raiz.cjs → 0 (leitura)
+r = rodar("sed -n 1,5p hooks/testa-gate-busca-raiz.cjs");
+caso("sed -n 1,5p hooks/testa-gate-busca-raiz.cjs → 0", r.status, 0);
+
+// Caso 5: node scripts/conferir-fluxo.cjs cobertura --slug x → 0 (não é mutacoes)
+r = rodar("node scripts/conferir-fluxo.cjs cobertura --slug x");
+caso("node scripts/conferir-fluxo.cjs cobertura --slug x → 0", r.status, 0);
+
+// Caso 6: cat com heredoc contendo bateria → 0 (corpo é texto)
+r = rodar("cat <<'EOF'\nbash hooks/testa-gate-worktree.sh\nEOF");
+caso("cat <<'EOF' com bash hooks/testa-gate-worktree.sh no corpo → 0", r.status, 0);
+
+// Caso 7: payload sem agent_id com bateria sem timeout → 0 (janela principal)
+r = rodar("bash hooks/testa-gate-worktree.sh", { subagente: false });
+caso("bash hooks/testa-gate-worktree.sh sem timeout, sem agent_id (janela) → 0", r.status, 0);
+
+// Caso 8: toggle desligado no projeto → 0
+r = rodar("bash hooks/testa-gate-worktree.sh", { config: { "bateria-sem-timeout": false } });
+caso("toggle bateria-sem-timeout false no projeto → 0", r.status, 0);
+
+// Caso 9: tool_name diferente de Bash → 0
+const payloadEdit = JSON.parse(JSON.stringify(BASE));
+payloadEdit.tool_input = { file_path: "/tmp/x" };
+payloadEdit.tool_name = "Read";
+const r9 = spawnSync(process.execPath, [HOOK], {
+  input: JSON.stringify(payloadEdit), encoding: "utf8",
+  env: { ...process.env, CLAUDE_PROJECT_DIR: projeto },
+});
+caso("tool_name = Read, não Bash → 0", r9.status, 0);
+
+// Caso 10: stdin vazio → 0
+const r10 = spawnSync(process.execPath, [HOOK], {
+  input: "", encoding: "utf8",
+  env: { ...process.env, CLAUDE_PROJECT_DIR: projeto },
+});
+caso("stdin vazio → 0", r10.status, 0);
+
+// === TAREFA 2: Varredura completa negada ===
+
+// Caso fixture: bash scripts/varrer-baterias.sh com timeout 600000 em subagente → 2
+r = rodar("bash scripts/varrer-baterias.sh", { timeout: 600000 });
+caso("bash scripts/varrer-baterias.sh com timeout 600000 em subagente → 2", r.status, 2);
+
+// Caso 2: cd <wt> && bash scripts/varrer-baterias.sh com timeout 600000 → 2
+r = rodar("cd " + projeto + " && bash scripts/varrer-baterias.sh", { timeout: 600000 });
+caso("cd <wt> && bash scripts/varrer-baterias.sh com timeout 600000 → 2", r.status, 2);
+
+// Caso 3: bash scripts/varrer-baterias.sh --so hooks/testa-gate-worktree.sh com timeout 600000 → 0
+r = rodar("bash scripts/varrer-baterias.sh --so hooks/testa-gate-worktree.sh", { timeout: 600000 });
+caso("bash scripts/varrer-baterias.sh --so hooks/testa-gate-worktree.sh com timeout 600000 → 0", r.status, 0);
+
+// Caso 4: bash scripts/varrer-baterias.sh --so hooks/testa-gate-worktree.sh sem timeout → 2 (regra tarefa 1)
+r = rodar("bash scripts/varrer-baterias.sh --so hooks/testa-gate-worktree.sh");
+caso("bash scripts/varrer-baterias.sh --so hooks/testa-gate-worktree.sh sem timeout → 2", r.status, 2);
+
+// Caso 5: bash scripts/varrer-baterias.sh sem agent_id com timeout 600000 → 0
+r = rodar("bash scripts/varrer-baterias.sh", { subagente: false, timeout: 600000 });
+caso("bash scripts/varrer-baterias.sh sem agent_id (janela) com timeout 600000 → 0", r.status, 0);
+
+// === Toggle de cwd vs CLAUDE_PROJECT_DIR ===
+
+function rodarDoisProjetos(configDoCwd, configDoEnv, comando, timeout) {
+  const doCwd = fs.mkdtempSync(path.join(caixa, "cwd-"));
+  const doEnv = fs.mkdtempSync(path.join(caixa, "env-"));
+  for (const [dir, cfg] of [[doCwd, configDoCwd], [doEnv, configDoEnv]]) {
+    fs.mkdirSync(path.join(dir, ".rainforest"), { recursive: true });
+    if (cfg) fs.writeFileSync(path.join(dir, ".rainforest", "config.json"), JSON.stringify(cfg));
+  }
+  const payload = JSON.parse(JSON.stringify(BASE));
+  payload.tool_input.command = comando;
+  payload.tool_input.timeout = timeout;
+  payload.cwd = doCwd;
+  const s = spawnSync(process.execPath, [HOOK], {
+    input: JSON.stringify(payload), encoding: "utf8",
+    env: { ...process.env, CLAUDE_PROJECT_DIR: doEnv, RFM_ROOT: path.join(caixa, "dados") },
+  });
+  return s.status;
+}
+
+const status1 = rodarDoisProjetos({ "bateria-sem-timeout": false }, null, "bash hooks/testa-gate-worktree.sh", 600000);
+caso("toggle: desligado no cwd vale mesmo com CLAUDE_PROJECT_DIR ligado", status1, 0);
+
+const status2 = rodarDoisProjetos(null, { "bateria-sem-timeout": false }, "bash hooks/testa-gate-worktree.sh");
+caso("toggle: padrão (ligado) no cwd bloqueia mesmo com CLAUDE_PROJECT_DIR desligado", status2, 2);
+
+console.log("-----------------------------------------");
+console.log(`ok: ${ok}   falhou: ${falhou}`);
+process.exit(falhou === 0 ? 0 : 1);
