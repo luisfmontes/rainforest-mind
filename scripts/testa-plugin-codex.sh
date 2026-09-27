@@ -5,7 +5,7 @@
 set -u
 
 SRC="$(cd "${BASH_SOURCE[0]%/*}/.." && pwd)"
-SCRIPT="$SRC/scripts/testa-plugin-codex.cjs"
+SCRIPT="$SRC/scripts/contrato-plugin-codex.cjs"
 NODE_BIN="node"
 if ! command -v "$NODE_BIN" >/dev/null 2>&1; then
   WINDOWS_NODE='/mnt/c/Program Files/nodejs/node.exe'

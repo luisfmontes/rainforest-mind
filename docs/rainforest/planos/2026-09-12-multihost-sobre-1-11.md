@@ -99,33 +99,33 @@ nomeando cada entrada e terminando em zero falhas.
 
 ### 2. Criar o contrato estrutural Codex sobre o inventário corrente [tipo: implementar]
 atende: D2, D3, D10
-arquivos: `.codex-plugin/plugin.json`, `scripts/testa-plugin-codex.cjs`, `scripts/testa-plugin-codex.sh`, `skills/fechar/SKILL.md`, `skills/modo-dev/SKILL.md`, `skills/montar-corpus/SKILL.md`, `skills/regua/SKILL.md`
+arquivos: `.codex-plugin/plugin.json`, `scripts/contrato-plugin-codex.cjs`, `scripts/testa-plugin-codex.sh`, `skills/fechar/SKILL.md`, `skills/modo-dev/SKILL.md`, `skills/montar-corpus/SKILL.md`, `skills/regua/SKILL.md`
 depende de: 1
 paralela: nao
 mutacao:
   arquivo: `skills/montar-corpus/SKILL.md`
   de: `description: "Constrói acervo em markdown a partir de um corpus de wiki em versão de controle."`
   para: `description:`
-  bateria: `node scripts/testa-plugin-codex.cjs --contrato-skills`
+  bateria: `node scripts/contrato-plugin-codex.cjs --contrato-skills`
   fixture: modo `--contrato-skills`, caso que diagnostica `montar-corpus (description ausente)`
 pronto quando: com a lista real de diretórios que contêm
 `skills/*/SKILL.md`, o contrato descobre e valida todos os 19 nomes sem comparar
 contra número fixo; o manifesto Codex resolve `./skills/` e iguala ao manifesto
 Claude `name`, `version`, `description` e `author`; e o SHA-256 do corpo das
 quatro skills normalizadas é idêntico ao da base corrente 1.23.3 — provado
-por `node scripts/testa-plugin-codex.cjs --contrato-manifesto` imprimindo a
+por `node scripts/contrato-plugin-codex.cjs --contrato-manifesto` imprimindo a
 quantidade descoberta e as quatro âncoras de corpo, sem falhas.
 
 ### 3. Adaptar o protocolo do hook sem duplicar a política [tipo: implementar]
 atende: D1, D6, D10
-arquivos: `hooks/codex-gate-staging-total.cjs`, `hooks/codex-gate-staging-total.json`, `scripts/testa-plugin-codex.cjs`, `scripts/testa-plugin-codex.sh`, `.codex-plugin/plugin.json`
+arquivos: `hooks/codex-gate-staging-total.cjs`, `hooks/codex-gate-staging-total.json`, `scripts/contrato-plugin-codex.cjs`, `scripts/testa-plugin-codex.sh`, `.codex-plugin/plugin.json`
 depende de: 2
 paralela: nao
 mutacao:
   arquivo: `hooks/codex-gate-staging-total.json`
   de: `node \"${PLUGIN_ROOT}/hooks/codex-gate-staging-total.cjs\"`
   para: `node \"${PLUGIN_ROOT}/hooks/gate-staging-total.cjs\"`
-  bateria: `node scripts/testa-plugin-codex.cjs --contrato-adaptador-hook`
+  bateria: `node scripts/contrato-plugin-codex.cjs --contrato-adaptador-hook`
   fixture: modo `--contrato-adaptador-hook`, caso `handler Codex -> core direto`
 pronto quando: com payload Codex real de `PreToolUse/Bash`, o registro seletivo
 chama exatamente um adaptador fino; uma recusa do núcleo vira JSON oficial com
@@ -152,21 +152,21 @@ dois valores — provado por `bash scripts/testa-versao.sh` no original e por
 
 ### 5. Distribuir a raiz única e manter Gemini como escopo negativo [tipo: configurar]
 atende: D4, D8, D10
-arquivos: `.agents/plugins/marketplace.json`, `scripts/testa-plugin-codex.cjs`, `scripts/testa-plugin-codex.sh`
+arquivos: `.agents/plugins/marketplace.json`, `scripts/contrato-plugin-codex.cjs`, `scripts/testa-plugin-codex.sh`
 depende de: 3
 paralela: nao
 mutacao:
   arquivo: `.agents/plugins/marketplace.json`
   de: `"path": "./"`
   para: `"path": "./codex"`
-  bateria: `node scripts/testa-plugin-codex.cjs --contrato-marketplace`
+  bateria: `node scripts/contrato-plugin-codex.cjs --contrato-marketplace`
   fixture: modo `--contrato-marketplace`, caso `source.path nao resolve o manifesto deste repo`
 pronto quando: com a entrada `rainforest-mind` do marketplace local, resolver
 `source.path` chega à mesma raiz que contém os manifestos Claude e Codex; e a
 lista rastreada pelo Git não contém manifesto, hook, adaptador ou fixture de
 payload Gemini fora dos documentos deste fluxo — provado por
-`node scripts/testa-plugin-codex.cjs --contrato-marketplace` e
-`node scripts/testa-plugin-codex.cjs --contrato-gemini`, ambos nomeando o efeito
+`node scripts/contrato-plugin-codex.cjs --contrato-marketplace` e
+`node scripts/contrato-plugin-codex.cjs --contrato-gemini`, ambos nomeando o efeito
 verificado.
 
 ### 6. Provar uma iteração local com cachebuster [tipo: configurar]
