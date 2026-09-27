@@ -14,10 +14,10 @@
  *
  * Não protege contra: leitura de bateria (`cat`, `grep`, `sed -n`, `head`),
  *   bateria chamada por variável ou dentro de heredoc, comando longo que não
- *   é bateria (resolvida pelo `timeout` explícito do perfil, D4)
+ *   é bateria (resolvida pelo `timeout` explícito do perfil, fora de escopo)
  *
  * Design: docs/rainforest/design/agente-sem-background.md (D1–D3).
- * Só subagente (D2): `agent_id` só aparece no payload quando a chamada sai de
+ * Só subagente (D3): `agent_id` só aparece no payload quando a chamada sai de
  * dentro de um. Presença da chave, não truthiness. Toggle `bateria-sem-timeout` (D3).
  *
  * Payload ilegível, vazio ou de outra ferramenta: sai 0, como os gates irmãos.
@@ -25,6 +25,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const { colapsaContinuacaoDeLinha } = require("./lib/tokens-comando.cjs");
 
 // Corpo de heredoc é texto, não comando
 function semCorpoDeHeredoc(comando) {
@@ -91,11 +92,11 @@ function analisaSegmento(segmento) {
       nomeScript = tokens[i].replace(/^["']|["']$/g, "");
       scriptIndex = i;
     }
-  } else if (/^\.\//.test(cmd)) {
-    // Comando direto que começa com ./
+  } else if (/[\\/]/.test(cmd)) {
+    // Comando direto que contém / ou \ (caminho, com ou sem ./)
     nomeScript = cmd.replace(/^["']|["']$/g, "");
   } else {
-    // Não é interpretador nem começa com ./ — pode ser nome de bateria direto
+    // Não é interpretador nem contém separador de caminho — pode ser nome de bateria direto
     // (como um comando no PATH), mas aqui não conta como bateria
     return { ehBateria: false, nomeScript: null, ehVarredor: false, args: [] };
   }
@@ -157,13 +158,14 @@ function main() {
   const projeto = payload.cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd();
   if (!bateriaLigada(path.resolve(projeto))) process.exit(0);
 
-  // Remove heredoc do comando (corpo é texto, não código)
-  const cmdLimpo = semCorpoDeHeredoc(comando);
+  // Remove heredoc do comando (corpo é texto, não código), após colapsar continuação de linha
+  const cmdLimpo = semCorpoDeHeredoc(colapsaContinuacaoDeLinha(comando));
 
   // Divide em segmentos por separadores de comando
   const separado = cmdLimpo
     .replace(/`/g, "\n")
-    .replace(/(^|[^\\])\(/g, "$1\n");
+    .replace(/(^|[^\\])\(/g, "$1\n")
+    .replace(/(^|[^\\])\)/g, "$1\n");
 
   // Analisa cada segmento
   for (const segmento of separado.split(/&&|\|\||;|\||&|\n/)) {

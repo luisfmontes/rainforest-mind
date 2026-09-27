@@ -34,6 +34,25 @@ function caso(nome, obtido, esperado) {
   }
 }
 
+function casoContem(nome, status, stderr, esperadoStatus, trechosStderr) {
+  let ok_local = status === esperadoStatus;
+  if (ok_local && Array.isArray(trechosStderr)) {
+    for (const trecho of trechosStderr) {
+      if (!stderr.includes(trecho)) {
+        ok_local = false;
+        break;
+      }
+    }
+  }
+  if (ok_local) {
+    ok++;
+    console.log(`  ok    ${nome} — status ${esperadoStatus}, stderr contém trechos esperados`);
+  } else {
+    falhou++;
+    console.log(`  FALHA ${nome} — status esperado ${esperadoStatus}, obtido ${status}; trechos: ${JSON.stringify(trechosStderr)}`);
+  }
+}
+
 const caixa = fs.mkdtempSync(path.join(os.tmpdir(), "bateria-sem-timeout-"));
 process.on("exit", () => fs.rmSync(caixa, { recursive: true, force: true }));
 const projeto = path.join(caixa, "projeto");
@@ -86,6 +105,42 @@ caso("./scripts/testa-estado.sh sem timeout → 2", r.status, 2);
 r = rodar("bash hooks/testa-gate-worktree.sh", { timeout: 120000 });
 caso("bash hooks/testa-gate-worktree.sh com timeout: 120000 em subagente → 2", r.status, 2);
 
+// Caso 8: bash hooks/testa-gate-worktree.sh 2>&1 | tail -5 sem timeout → 2 com asserção de stderr (fixture 1 revisão 1)
+r = rodar("bash hooks/testa-gate-worktree.sh 2>&1 | tail -5");
+casoContem("bash hooks/testa-gate-worktree.sh 2>&1 | tail -5 sem timeout → 2", r.status, r.stderr, 2, ["timeout: 600000", "bateria-sem-timeout"]);
+
+// Caso 9: scripts/testa-estado.sh (caminho direto) sem timeout → 2
+r = rodar("scripts/testa-estado.sh");
+caso("scripts/testa-estado.sh sem timeout → 2", r.status, 2);
+
+// Caso 10: hooks/testa-gate-worktree.sh (caminho direto) sem timeout → 2
+r = rodar("hooks/testa-gate-worktree.sh");
+caso("hooks/testa-gate-worktree.sh sem timeout → 2", r.status, 2);
+
+// Caso 11: /c/Projetos/rainforest-mind/scripts/testa-estado.sh (caminho absoluto MSYS) sem timeout → 2
+r = rodar("/c/Projetos/rainforest-mind/scripts/testa-estado.sh");
+caso("/c/Projetos/rainforest-mind/scripts/testa-estado.sh sem timeout → 2", r.status, 2);
+
+// Caso 12: C:/Projetos/rainforest-mind/scripts/testa-estado.sh (caminho absoluto Windows) sem timeout → 2
+r = rodar("C:/Projetos/rainforest-mind/scripts/testa-estado.sh");
+caso("C:/Projetos/rainforest-mind/scripts/testa-estado.sh sem timeout → 2", r.status, 2);
+
+// Caso 13: bash \ + quebra + hooks/testa-gate-worktree.sh (continuação de linha) sem timeout → 2
+r = rodar("bash \\\n  hooks/testa-gate-worktree.sh");
+caso("bash \\\\\\n  hooks/testa-gate-worktree.sh sem timeout → 2", r.status, 2);
+
+// Caso 14: (cd <wt> && bash scripts/testa-estado.sh) (subshell) sem timeout → 2
+r = rodar("(cd " + projeto + " && bash scripts/testa-estado.sh)");
+caso("(cd <wt> && bash scripts/testa-estado.sh) sem timeout → 2", r.status, 2);
+
+// Caso 15: echo $(bash scripts/testa-estado.sh) (substituição) sem timeout → 2
+r = rodar("echo $(bash scripts/testa-estado.sh)");
+caso("echo $(bash scripts/testa-estado.sh) sem timeout → 2", r.status, 2);
+
+// Caso 16: cd <wt> && bash hooks/testa-gate-worktree.sh 2>&1 | tail -5 com asserção de stderr
+r = rodar("cd " + projeto + " && bash hooks/testa-gate-worktree.sh 2>&1 | tail -5");
+casoContem("cd <wt> && bash hooks/testa-gate-worktree.sh 2>&1 | tail -5 → 2", r.status, r.stderr, 2, ["timeout: 600000", "bateria-sem-timeout"]);
+
 // === TAREFA 1: Permite (pass → 0) ===
 
 // Caso 1: bash hooks/testa-gate-worktree.sh com timeout: 600000 → 0
@@ -111,6 +166,26 @@ caso("node scripts/conferir-fluxo.cjs cobertura --slug x → 0", r.status, 0);
 // Caso 6: cat com heredoc contendo bateria → 0 (corpo é texto)
 r = rodar("cat <<'EOF'\nbash hooks/testa-gate-worktree.sh\nEOF");
 caso("cat <<'EOF' com bash hooks/testa-gate-worktree.sh no corpo → 0", r.status, 0);
+
+// Caso 6b: git diff -- hooks/testa-x.sh → 0 (leitura)
+r = rodar("git diff -- hooks/testa-x.sh");
+caso("git diff -- hooks/testa-x.sh → 0", r.status, 0);
+
+// Caso 6c: git log -- hooks/testa-x.sh → 0 (leitura)
+r = rodar("git log -- hooks/testa-x.sh");
+caso("git log -- hooks/testa-x.sh → 0", r.status, 0);
+
+// Caso 6d: ls hooks/testa-*.cjs → 0 (leitura)
+r = rodar("ls hooks/testa-*.cjs");
+caso("ls hooks/testa-*.cjs → 0", r.status, 0);
+
+// Caso 6e: echo "rode bash hooks/testa-x.sh" → 0 (texto)
+r = rodar("echo \"rode bash hooks/testa-x.sh\"");
+caso("echo \"rode bash hooks/testa-x.sh\" → 0", r.status, 0);
+
+// Caso 6f: git commit -m "bash hooks/testa-x.sh" → 0 (texto)
+r = rodar("git commit -m \"bash hooks/testa-x.sh\"");
+caso("git commit -m \"bash hooks/testa-x.sh\" → 0", r.status, 0);
 
 // Caso 7: payload sem agent_id com bateria sem timeout → 0 (janela principal)
 r = rodar("bash hooks/testa-gate-worktree.sh", { subagente: false });
@@ -139,13 +214,17 @@ caso("stdin vazio → 0", r10.status, 0);
 
 // === TAREFA 2: Varredura completa negada ===
 
-// Caso fixture: bash scripts/varrer-baterias.sh com timeout 600000 em subagente → 2
+// Caso fixture: bash scripts/varrer-baterias.sh com timeout 600000 em subagente → 2 (com asserção de stderr)
 r = rodar("bash scripts/varrer-baterias.sh", { timeout: 600000 });
-caso("bash scripts/varrer-baterias.sh com timeout 600000 em subagente → 2", r.status, 2);
+casoContem("bash scripts/varrer-baterias.sh com timeout 600000 em subagente → 2", r.status, r.stderr, 2, ["--so", "varredura completa"]);
 
 // Caso 2: cd <wt> && bash scripts/varrer-baterias.sh com timeout 600000 → 2
 r = rodar("cd " + projeto + " && bash scripts/varrer-baterias.sh", { timeout: 600000 });
 caso("cd <wt> && bash scripts/varrer-baterias.sh com timeout 600000 → 2", r.status, 2);
+
+// Caso 2b: scripts/varrer-baterias.sh (caminho direto) com timeout 600000 → 2 (D2)
+r = rodar("scripts/varrer-baterias.sh", { timeout: 600000 });
+casoContem("scripts/varrer-baterias.sh com timeout 600000 → 2", r.status, r.stderr, 2, ["--so", "varredura completa"]);
 
 // Caso 3: bash scripts/varrer-baterias.sh --so hooks/testa-gate-worktree.sh com timeout 600000 → 0
 r = rodar("bash scripts/varrer-baterias.sh --so hooks/testa-gate-worktree.sh", { timeout: 600000 });
