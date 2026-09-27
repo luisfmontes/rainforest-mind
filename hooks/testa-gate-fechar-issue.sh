@@ -2366,6 +2366,203 @@ echo '== (hi) & $exe issue close 12 → exit 2 (alvo variavel continua ilegivel)
 EXIT_HI=$?
 [ $EXIT_HI -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HI)"
 
+# (#337) bash $VAR sem aspas continua ilegivel — regressao. A #337 saiu da
+# rodada zerar-issues-9 depois de quatro revisoes acharem bypass na resolucao
+# de variavel (impasse em docs/rainforest/portoes/zerar-issues-9-impasse.md).
+# Os casos abaixo sao os comandos que furavam alguma versao dela: com o
+# comportamento da base, todos tem de continuar saindo 2.
+echo
+echo "== (#337) bash \$VAR sem aspas continua ilegivel (regressao) =="
+
+# Caso: `bash $CMD` sem atribuição → exit 2 (variável não resolvida)
+echo
+echo "== (#337f) bash \$CMD → exit 2 (variável não resolvida - caso cj intacto) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash $CMD"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-337f"
+EXIT_337F=$?
+[ $EXIT_337F -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_337F)"
+
+# Caso: `bash $t` sem atribuição → exit 2 (variável não resolvida)
+echo
+echo "== (#337g) bash \$t (sem atribuição) → exit 2 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"bash $t"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-337g"
+EXIT_337G=$?
+[ $EXIT_337G -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_337G)"
+
+# Caso: `for t in $(ls); do bash $t; done` → exit 2 (valores dinâmicos)
+echo
+echo "== (#337h) for t in \$(ls); do bash \$t; done → exit 2 (valores dinâmicos) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"for t in $(ls); do bash $t; done"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-337h"
+EXIT_337H=$?
+[ $EXIT_337H -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_337H)"
+
+# Caso: `f=-c; bash $f "gh issue close 12"` → exit 2 (valor começa com -)
+echo
+echo "== (#337i) f=-c; bash \$f \"gh issue close 12\" → exit 2 (valor começa com -) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"f=-c; bash $f \"gh issue close 12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-337i"
+EXIT_337I=$?
+[ $EXIT_337I -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_337I)"
+
+# Caso: `for t in -c; do bash $t "gh issue close 12"; done` → exit 2 (valor começa com -)
+echo
+echo "== (#337j) for t in -c; do bash \$t \"gh issue close 12\"; done → exit 2 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"for t in -c; do bash $t \"gh issue close 12\"; done"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-337j"
+EXIT_337J=$?
+[ $EXIT_337J -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_337J)"
+
+# Caso: `f="a b"; bash $f` → exit 2 (valor contém espaço)
+echo
+echo "== (#337k) f=\"a b\"; bash \$f → exit 2 (valor contém espaço) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"f=\"a b\"; bash $f"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-337k"
+EXIT_337K=$?
+[ $EXIT_337K -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_337K)"
+
+# Caso: `IFS=,; f=x.sh; bash $f` → exit 2 (IFS presente)
+echo
+echo "== (#337l) IFS=,; f=x.sh; bash \$f → exit 2 (IFS presente) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"IFS=,; f=x.sh; bash $f"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-337l"
+EXIT_337L=$?
+[ $EXIT_337L -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_337L)"
+
+# Caso: `f=$X; bash $f` → exit 2 (valor contém variável)
+echo
+echo "== (#337m) f=\$X; bash \$f → exit 2 (valor contém variável) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"f=$X; bash $f"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-337m"
+EXIT_337M=$?
+[ $EXIT_337M -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_337M)"
+
+# (#337n-t) Bypasses achados na revisão 2 — todos saíam 0 com a primeira
+# versão de `valoresDaVariavelNoComando` (medido contra o commit anterior).
+# Cada um dá a `$f`/`$t` um valor que o leitor não via, ou cola uma
+# substituição à variável; no bash real, todos acabam rodando `gh issue close`.
+# Montados em node (crase e parêntese sobrevivem ao quoting do shell).
+# (u)-(w), revisão 3: glob no PRIMEIRO caractere do valor expande para `-c`
+# quando existe um arquivo `-c` no diretório — medido no bash real.
+# (x)-(y), revisão 4: comentário ou corpo de heredoc com `f=literal` passava
+# por ligação legível; com `f=-c` herdado do ambiente, o bash roda `bash -c`.
+echo
+echo "== (#337n-t) bypasses da revisao 2 → exit 2 =="
+for caso in n o p q r s t u v w x y; do
+  PAYLOAD=$(node -e '
+    const C=String.fromCharCode(96);const g="\"gh issue close 12\"";
+    const cmd={
+      n:"f=x.sh; bash $f"+C+"gh issue close 12"+C,
+      o:"f=(-c x.sh); bash $f "+g,
+      p:"for t in a; do :; done; for t in -c; do bash $t "+g+"; done",
+      q:"f=x.sh; read f <<< -c; bash $f "+g,
+      r:"f=x.sh; printf -v f %s -c; bash $f "+g,
+      s:"f=x.sh; f+=\" -c\"; bash $f "+g,
+      t:"f=x.sh; declare -a f=(-c); bash $f "+g,
+      u:"f=?c; bash $f "+g,
+      v:"f=[-]c; bash $f "+g,
+      w:"for t in ?c; do bash $t "+g+"; done",
+      x:"# f=safe.sh\nbash $f "+g,
+      y:"cat <<\x27EOF\x27 >/tmp/decoy.txt\nf=safe.sh\nEOF\nbash $f "+g,
+    }[process.argv[2]];
+    process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$caso")
+  ( export PATH="$SBP/bin:$PATH"; echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs" ) 2>"$SBP/err-337$caso" >/dev/null
+  EXIT_337X=$?
+  [ $EXIT_337X -eq 2 ] && test_ok "(#337$caso) exit 2" || test_fail "(#337$caso) exit code (foi $EXIT_337X)"
+done
+
+# (#313) contrabarra dupla dentro do wrapper
+echo
+echo "== (#313) contrabarra dupla dentro do wrapper =="
+
+# Caso: `bash -c "gh issue \\<quebra>close 12"` (aspas duplas, contrabarra dupla)
+# Esperado: 2 (o escape reduzido deixa \<quebra>, que o colapso funde)
+echo
+echo "== (#313a) bash -c \"gh issue \\\\<newline>close 12\" → exit 2 (dupla em duplas) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const B=String.fromCharCode(92);const cmd="bash -c \"gh issue "+B+B+"\n"+"close 12\"";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-313a"
+EXIT_313A=$?
+[ $EXIT_313A -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_313A)"
+
+# Caso: `bash -c "gh issue \<quebra>close 12"` (aspas duplas, contrabarra simples)
+# Esperado: 2 (continua 2 como antes - controle da rodada 8)
+echo
+echo "== (#313b) bash -c \"gh issue \\<newline>close 12\" → exit 2 (simples em duplas - controle rodada 8) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const B=String.fromCharCode(92);const cmd="bash -c \"gh issue "+B+"\n"+"close 12\"";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-313b"
+EXIT_313B=$?
+[ $EXIT_313B -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_313B)"
+
+# Caso: `echo hi \\<quebra>gh issue close 12` (sem wrapper, contrabarra dupla)
+# Esperado: 2 (continua 2 como antes - controle da rodada 8)
+echo
+echo "== (#313c) echo hi \\\\<newline>gh issue close 12 → exit 2 (dupla sem wrapper - controle rodada 8) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const B=String.fromCharCode(92);const cmd="echo hi "+B+B+"\n"+"gh issue close 12";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-313c"
+EXIT_313C=$?
+[ $EXIT_313C -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_313C)"
+
+# Caso: `bash -c 'gh issue \\<quebra>close 12'` (aspas SIMPLES, contrabarra dupla)
+# Medido no bash real (2026-09-26, gh falso que imprime os argumentos): roda
+# `gh issue \` e depois `close 12` como outro comando — nenhum `gh issue close`.
+# Esperado: 0. Achado da revisao: `textoAPartir` remontava a aspa simples como
+# dupla e a reducao de escape (so de aspas duplas) valia aqui, dando 2.
+echo
+echo "== (#313d) bash -c 'gh issue \\\\<newline>close 12' → exit 0 (dupla em simples: dois comandos) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const B=String.fromCharCode(92);const A=String.fromCharCode(39);const cmd="bash -c "+A+"gh issue "+B+B+"\n"+"close 12"+A;process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-313d"
+EXIT_313D=$?
+[ $EXIT_313D -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_313D)"
+
+# Contraprova: aspas simples com contrabarra UNICA — dentro de aspas simples o
+# `\`+quebra chega intacto ao `bash -c`, que o funde: roda `gh issue close 12`.
+echo
+echo "== (#313e) bash -c 'gh issue \\<newline>close 12' → exit 2 (simples em simples) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const B=String.fromCharCode(92);const A=String.fromCharCode(39);const cmd="bash -c "+A+"gh issue "+B+"\n"+"close 12"+A;process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-313e"
+EXIT_313E=$?
+[ $EXIT_313E -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_313E)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

@@ -1,0 +1,108 @@
+# Plano: Zerar as Issues abertas, rodada 9 — gates (#337, #313, #322), CI das baterias .cjs (#335), veredito em worktree (#329), duplicação gitignorada (#323), carimbo de emenda (#312)
+
+Design: docs/rainforest/design/zerar-issues-9.md
+
+## O que não pode quebrar
+- Tudo que os três gates de texto (`gate-fechar-issue`, `gate-mensagem-commit`, `gate-staging-total`) barram hoje continua barrado: `bash -c "gh issue close 12"`, `bash -c "$x"`, `eval "$x"`, `bash "$f" "gh issue close 12"`, `for t in x; do bash -c "gh issue close 12"; done` saem 2.
+- `gate-publicacao-destino` continua recusando `Write` com e-mail de terceiro e `Edit` que **introduz** e-mail de terceiro.
+- `bash scripts/varrer-baterias.sh` continua sem depender de rede nem credencial, e nenhuma bateria roda duas vezes.
+- `veredito-revisor` nunca derruba a sessão: todo caminho novo sai 0.
+- `estado.cjs` continua recusando carimbo de tarefa que não existe no plano (nem no arquivo, nem no número gravado).
+
+## Tarefas
+
+### 1. #337 sai da entrega: `bash $VAR` sem aspas continua ilegível [tipo: implementar]
+atende: D1
+arquivos: `hooks/lib/tokens-comando.cjs`, `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`, `hooks/testa-gate-mensagem-commit.sh`, `hooks/testa-gate-staging-total.sh`
+depende de: nenhuma
+paralela: nao
+mutacao: n/a
+  motivo: a tarefa virou reversão ao comportamento da base (emenda de D1, revisão 4); não há comportamento novo a inverter — o que fica são casos de regressão que já saíam 2 na base
+pronto quando: com o payload PreToolUse real e `gh` de sandbox, `hooks/gate-fechar-issue.cjs` é idêntico ao da base (`git diff 5d59d36e -- hooks/gate-fechar-issue.cjs` vazio), `hooks/lib/tokens-comando.cjs` não contém `valoresDaVariavelNoComando` (`grep -c` = 0), e `bash hooks/testa-gate-fechar-issue.sh` termina com 0 falhas incluindo a seção "(#337) bash $VAR sem aspas continua ilegivel (regressao)" — `bash $CMD`, `bash $t` e os casos (#337n)-(#337y) saem 2. *(Emenda de 2026-09-26, revisão 4: a versão anterior desta tarefa implementava a resolução de `$VAR` no próprio comando (Q1 (a)); quatro revisões acharam bypass nela, e a decisão prévia do usuário na rodada extra tirou a #337 da entrega. Histórico das emendas das revisões 1-3 no `git log` deste arquivo e no impasse `docs/rainforest/portoes/zerar-issues-9-impasse.md`.)*
+### 2. Aspas duplas do wrapper reduzem escape antes do colapso (#313) [tipo: implementar]
+atende: D2
+arquivos: `hooks/lib/tokens-comando.cjs`, `hooks/testa-gate-fechar-issue.sh`, `hooks/testa-gate-mensagem-commit.sh`, `hooks/testa-gate-staging-total.sh`
+depende de: 1
+paralela: nao
+mutacao:
+  arquivo: `hooks/lib/tokens-comando.cjs`
+  de: `function reduzEscapeAspasDuplas(str) {`
+  para: `function reduzEscapeAspasDuplas(str) { return str;`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `600000`
+  fixture: testa-gate-fechar-issue.sh, secao "(#313) contrabarra dupla dentro do wrapper"
+pronto quando: com o payload PreToolUse real e `gh` de sandbox, `bash -c "gh issue \\` + quebra + `close 12"` sai **2** nos três gates (hoje sai 0), e `bash -c 'gh issue \\` + quebra + `close 12'` (aspas simples) tem o comportamento de dois comandos separados — o executor mede o que o bash real executa nesse caso (`bash -c` com um `gh` falso que imprime os argumentos) e a bateria afirma o exit que corresponde a esse comportamento, com os dois casos lado a lado. Provado por `bash hooks/testa-gate-fechar-issue.sh && bash hooks/testa-gate-mensagem-commit.sh && bash hooks/testa-gate-staging-total.sh`; `desempacota` chama `reduzEscapeAspasDuplas` só no ramo de aspas duplas, antes de `colapsaContinuacaoDeLinha`; os casos fechados na rodada 8 (`bash -c "gh issue \<quebra>close 12"`, `echo hi \\<quebra>gh issue close 12`) continuam saindo 2. *(Emenda de 2026-09-26, revisão 1: a prova por payload real vale nos três gates, mas os casos novos moram só em `testa-gate-fechar-issue.sh` — `gate-mensagem-commit` e `gate-staging-total` só olham `git commit`/`git add`, e `bash $t` já saía 0 neles antes da mudança, medido. O código mexido é a biblioteca comum `hooks/lib/tokens-comando.cjs`, e as três baterias continuam rodando sobre ela.)* *(Emenda de 2026-09-26, revisão 1: faltava o caso de aspas simples, e ele revelou um falso positivo — `textoAPartir` remontava `'...'` como `"..."`, então a redução valia em aspas simples. O token passa a guardar a aspa original; casos (#313d) → 0 e (#313e) → 2, medidos contra o bash real.)*
+
+### 3. Edit só é barrado pelo que introduz (#322) [tipo: implementar]
+atende: D3
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
+depende de: nenhuma
+paralela: sim
+mutacao:
+  arquivo: `hooks/gate-publicacao-destino.cjs`
+  de: `function soIntroduzidos(achados, textoNovo, textoAntigo) {`
+  para: `function soIntroduzidos(achados, textoNovo, textoAntigo) { return achados;`
+  bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  fixture: testa-gate-publicacao-destino.sh, secao "(#322) Edit que preserva achado de old_string"
+pronto quando: com o payload PreToolUse real de `Edit` num arquivo versionado de um repo git de teste: `old_string` e `new_string` contendo o mesmo e-mail de terceiro (domínio real, não `.test`/`.example`, montado em tempo de execução na bateria para o próprio fonte não carregar um e-mail literal), mudando só outra palavra da linha → **0**; `new_string` que acrescenta um e-mail que não está em `old_string` → **2**; o mesmo par para `MultiEdit` (cada edit com seu `old_string`) → 0 e 2; `Write` com o e-mail de terceiro → **2**; `Edit` que troca só o nome do modelo na linha do trailer de co-autoria com o endereço noreply da Anthropic → **0**. Provado por `bash hooks/testa-gate-publicacao-destino.sh` com os casos impressos. A comparação é pelo **valor casado cru**, nunca pelo `trecho` (que é sempre `<redigido>`) nem pelo achado por linha (o `conferir` guarda só o primeiro casamento de cada padrão por linha): para cada padrão de `PADROES` (exportado por `scripts/conferir-publicacao.cjs`), todos os casamentos no texto novo menos os do antigo, em multiconjunto; achado de um `id` só cai se esse `id` não introduz nenhum valor, e achado de `id` fora de `PADROES` nunca cai. Feita pela função que começa na linha exata `function soIntroduzidos(achados, textoNovo, textoAntigo) {`, aplicada no ramo `Edit` e no `MultiEdit`. Casos obrigatórios a mais, todos → **2**: `old_string` com o e-mail A e `new_string` com o e-mail B (troca); `old_string` com A e `new_string` com A e B na MESMA linha; `old_string` com A uma vez e `new_string` com A duas vezes. *(Emenda de 2026-09-26, integração: a primeira entrega comparava `id`+`trecho` redigido, como esta tarefa dizia, e a troca de e-mail passava — medido exit 0 nos dois primeiros casos.)*
+
+### 4. Varredor descobre baterias `.cjs` (#335) [tipo: configurar]
+atende: D4
+arquivos: `scripts/varrer-baterias.sh`, `scripts/testa-varrer-baterias.sh`, `hooks/testa-colapso-continuacao.sh`, `hooks/testa-gate-commit.sh`, `hooks/testa-gate-busca-raiz.sh`, `hooks/testa-memoria-escada.sh`, `scripts/testa-cli-externo.sh`, `hooks/testa-portaria.sh`, `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`
+depende de: nenhuma
+paralela: sim
+mutacao:
+  arquivo: `scripts/varrer-baterias.sh`
+  de: `runner="node"`
+  para: `runner="true"`
+  bateria: `bash scripts/testa-varrer-baterias.sh`
+  fixture: testa-varrer-baterias.sh, secao "(#335) bateria .cjs quebrada deixa o placar vermelho"
+pronto quando: com a árvore real, `bash scripts/varrer-baterias.sh` roda com `node` cada `hooks/testa-*.cjs` e `scripts/testa-*.cjs` (as 18 de hoje, entre elas `hooks/testa-portaria-folha.cjs`) e nenhuma bateria aparece duas vezes — provado por `bash scripts/varrer-baterias.sh 2>&1 | grep -c -- '----- .*\.cjs -----'` igual a `ls hooks/testa-*.cjs scripts/testa-*.cjs | wc -l`, e `bash scripts/varrer-baterias.sh 2>&1 | grep -- '^----- ' | sort | uniq -d` vazio. Numa cópia da árvore com uma `hooks/testa-*.cjs` adulterada para `process.exit(1)`, o varredor sai **1** e a lista `vermelhas:` nomeia essa `.cjs` (caso novo em `testa-varrer-baterias.sh`). `--so` aceita `testa-*.cjs`. As cascas `.sh` que só fazem `exec node <mesma .cjs>` saem (`testa-colapso-continuacao.sh`, `testa-gate-commit.sh`, `testa-gate-busca-raiz.sh`, `testa-memoria-escada.sh` — conferir cada uma antes de apagar); `hooks/testa-cli-externo.sh` não é casca e fica — o executor confere se ele chama `scripts/testa-cli-externo.cjs` e, se chamar, garante que ela não rode em dobro. Pisos por pasta para `.cjs` como os de `.sh`. *(Emenda de 2026-09-26, integração: o alvo original `de_hooks_cjs=()` ficava vermelho pelo piso, antes de chegar ao caso (m) — `conferir-mutacao` exit 5; o alvo passou a ser o `runner`, que o caso (m) exercita.)* `CONTRIBUTING.md` coerente com D4 (o varredor roda `.sh` e `.cjs`; casca não é mais necessária). *(Emenda de 2026-09-26, revisão 1: `scripts/testa-cli-externo.sh` era casca de `scripts/testa-cli-externo.cjs` e fazia a bateria rodar em dobro — a busca desta tarefa olhou só o homônimo em `hooks/`. A casca sai, e o teste (n) de `testa-varrer-baterias.sh` falha se qualquer `testa-*.sh` executar uma `testa-*.cjs` — ele pega a casca antiga na linha 13. O critério do `uniq -d` não pegaria: os dois cabeçalhos têm nomes diferentes, e a saída inteira repete cabeçalhos das varreduras aninhadas da própria bateria.)* *(Emenda de 2026-09-26, verificar reprovado: `hooks/testa-portaria.sh` rodava as `hooks/testa-portaria-*.cjs` por glob e, com o varredor rodando-as direto, 11 baterias rodavam duas vezes — medido contando o cabeçalho de cada `.cjs` real no log da varredura completa. A casca sai; o teste (n) passa a contar qualquer menção não comentada a `testa-*.cjs`, glob inclusive, e prova numa caixa de areia que acha uma casca por glob. O README deixa de citar a casca. A premissa da #335 também estava errada: só `testa-estagio-ativo` e `testa-conferir-cobertura-fixtures` nunca rodavam; o CHANGELOG diz isso.)*
+
+### 5. `veredito-revisor` acha o estado no worktree (#329) [tipo: implementar]
+atende: D5
+arquivos: `hooks/veredito-revisor.cjs`, `hooks/testa-veredito-revisor.sh`
+depende de: nenhuma
+paralela: sim
+mutacao:
+  arquivo: `hooks/veredito-revisor.cjs`
+  de: `function raizComEstadoDoSlug(repoRoot, slug) {`
+  para: `function raizComEstadoDoSlug(repoRoot, slug) { return repoRoot;`
+  bateria: `bash hooks/testa-veredito-revisor.sh`
+  fixture: testa-veredito-revisor.sh, secao "(#329) estado so no worktree"
+pronto quando: com o payload SubagentStop real (`agent_type: rainforest-mind:revisor`, `cwd` = checkout principal de um repo de teste, transcrito com `Slug: <s>`, `last_assistant_message` terminando em `VEREDITO: ok`) e `docs/rainforest/estado/<s>.json` existindo **só** num worktree linkado desse repo: o veredito `ok` é gravado no JSON do worktree (`revisar.vereditos` com o `agent_id`) e `estado.cjs marcar --estagio revisar --status ok` rodado nesse worktree não recusa por falta de veredito; com o slug em **dois** worktrees e com o slug em **nenhum**: exit 0, nada gravado em lugar nenhum, e stderr com uma linha que nomeia o slug e o motivo (ambíguo, listando os caminhos / não encontrado). Provado por `bash hooks/testa-veredito-revisor.sh` com os três casos; o caso existente com o slug na raiz do `cwd` continua gravando lá.
+
+### 6. Duplicação mede só o versionável (#323) [tipo: implementar]
+atende: D6
+arquivos: `scripts/conferir-duplicacao.cjs`, `scripts/testa-conferir-duplicacao.sh`, `scripts/testa-saude.sh`
+depende de: nenhuma
+paralela: sim
+mutacao:
+  arquivo: `scripts/conferir-duplicacao.cjs`
+  de: `function candidatosPeloGit(raiz) {`
+  para: `function candidatosPeloGit(raiz) { return null;`
+  bateria: `bash scripts/testa-conferir-duplicacao.sh`
+  fixture: testa-conferir-duplicacao.sh, secao "(#323) copia gitignorada nao conta"
+pronto quando: com o checkout principal real (`C:/Projetos/rainforest-mind`, que tem `.claude/marketplaces/` com 3 cópias gitignoradas), `node scripts/conferir-duplicacao.cjs --raiz C:/Projetos/rainforest-mind --json` rodado **com o fonte do worktree** devolve `duplicados` vazio e exit 0 (hoje: 813 grupos); num repo de teste, a cópia de um arquivo versionado dentro de pasta gitignorada **não** conta e a mesma cópia fora do gitignore **conta** (caso novo). `candidatosPeloGit` usa `git ls-files --cached --others --exclude-standard` e devolve `null` fora de repo git, caso em que a varredura por `readdirSync` de hoje segue valendo. Na seção K de `scripts/testa-saude.sh`, a cópia da árvore passa a ser feita pela mesma lista do git em vez do `tar` do diretório. Provado por `bash scripts/testa-saude.sh` num worktree de teste com uma cópia gitignorada em `.claude/marketplaces/` terminando em `0 falha(s)` com `DUP2` e `K` em `ok`; o executor cola a linha `== resultado ==` de antes e de depois.
+
+### 7. Teto do carimbo lê o arquivo do plano (#312) [tipo: implementar]
+atende: D7
+arquivos: `scripts/estado.cjs`, `scripts/testa-estado.sh`
+depende de: nenhuma
+paralela: sim
+mutacao:
+  arquivo: `scripts/estado.cjs`
+  de: `function tetoDeTarefasDoPlano(slug, blocoPlano) {`
+  para: `function tetoDeTarefasDoPlano(slug, blocoPlano) { return blocoPlano && typeof blocoPlano.tarefas === 'number' ? blocoPlano.tarefas : null;`
+  bateria: `bash scripts/testa-estado.sh`
+  fixture: testa-estado.sh, secao "(#312) carimbo de tarefa acrescentada por emenda"
+pronto quando: com um fluxo de teste cujo `plano.tarefas` gravado é 6 e cujo arquivo do plano tem `### 1.` a `### 8.`, `estado.cjs marcar --estagio executar` com carimbo da tarefa 8 **grava** (hoje: `RECUSADO: carimbo da tarefa 8 fora do plano (1..6).`), carimbo da tarefa 9 **recusa** nomeando `1..8`, e sem o arquivo do plano o teto volta a ser `plano.tarefas` (carimbo 7 recusado com `1..6`). A contagem reusa o leitor de `### <n>. ` que a validação de `mutacao` já usa (não um segundo parser). Provado por `bash scripts/testa-estado.sh` com os três casos impressos.
+
+### 8. Versão, changelog e issues [tipo: docs]
+atende: D8
+arquivos: `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `README.md`, `CHANGELOG.md`
+depende de: 1, 2, 3, 4, 5, 6, 7
+paralela: nao
+mutacao: n/a
+  motivo: bump de versão e texto de changelog, sem comportamento a inverter
+pronto quando: com `origin/main` no momento do `fechar`, a versão no `plugin.json` e no badge do README é o minor seguinte ao dela (hoje 1.23.15 → 1.24.0) — provado por `node scripts/conferir-versao.cjs` saindo 0; o CHANGELOG tem uma entrada por issue (#337, #313, #322, #335, #329, #323, #312) dizendo o comportamento novo de cada uma, coerente com D1-D7 (inclusive a emenda de D3: a isenção do `noreply@` não mudou nesta rodada), e não anuncia nada da #302; depois do merge, as sete fecham pelo `fechar-issue.cjs` e a #302 continua aberta — provado por `gh issue list --state open --json number` devolvendo só `302`.

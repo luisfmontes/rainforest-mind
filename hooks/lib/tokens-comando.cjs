@@ -30,7 +30,7 @@
  */
 function tokensComAspas(cmd) {
   const out = [];
-  let atual = "", aspa = null, temAlgo = false, citado = false;
+  let atual = "", aspa = null, temAlgo = false, citado = false, primeiraAspa = null;
   for (let i = 0; i < cmd.length; i += 1) {
     const c = cmd[i];
     if (aspa) {
@@ -39,14 +39,15 @@ function tokensComAspas(cmd) {
       temAlgo = true;
     } else if (c === '"' || c === "'") {
       aspa = c; temAlgo = true; citado = true;
+      if (primeiraAspa === null) primeiraAspa = c;
     } else if (/\s/.test(c)) {
-      if (temAlgo) out.push({ v: atual, q: citado });
-      atual = ""; temAlgo = false; citado = false;
+      if (temAlgo) out.push({ v: atual, q: citado, aspa: primeiraAspa });
+      atual = ""; temAlgo = false; citado = false; primeiraAspa = null;
     } else {
       atual += c; temAlgo = true;
     }
   }
-  if (temAlgo) out.push({ v: atual, q: citado });
+  if (temAlgo) out.push({ v: atual, q: citado, aspa: primeiraAspa });
   return out;
 }
 
@@ -281,7 +282,11 @@ function posicaoDeComando(toks, captura) {
  * a unica copia e os outros dois reimplementarem por conta propria.
  */
 function textoAPartir(toks, i) {
-  return toks.slice(i).map((t) => (t.q ? `"${t.v}"` : t.v)).join(" ");
+  // Remonta com a aspa ORIGINAL: `desempacota` so reduz escape de aspas
+  // duplas (#313), e remontar `'...'` como `"..."` fazia a reducao valer
+  // para aspas simples — `bash -c 'gh issue \\<quebra>close 12'` virava
+  // `gh issue close 12`, que o bash nao executa (achado da revisao).
+  return toks.slice(i).map((t) => (t.q ? (t.aspa === "'" ? `'${t.v}'` : `"${t.v}"`) : t.v)).join(" ");
 }
 
 // --- Wrapper de STRING (T2, rodada 11, lote 3, 2026-09-04) -----------------
@@ -588,11 +593,47 @@ function colapsaContinuacaoDeLinhaNoTopo(cmdOriginal) {
   return colapsaContinuacaoDeLinha(cmdOriginal);
 }
 
+/**
+ * Reduz escape de aspas duplas: `\\` → `\`, `\"` → `"`, `\$` → `$`, `` \` `` → `` ` ``
+ * NUM ÚNICO PASSE da esquerda para direita. Qualquer outra sequência de
+ * contrabarra+caractere (inclusive `\`+quebra de linha) é emitida intacta
+ * e deixada para `colapsaContinuacaoDeLinha` processar depois.
+ *
+ * Tarefa 2 (#313): o bash reduz escape em TWO PASSES quando interpreta uma
+ * string dentro de aspas duplas — este passe reduz o que é específico de
+ * escape de aspas duplas, deixando o resto (continuação de linha) para o
+ * colapso de quebra.
+ */
+function reduzEscapeAspasDuplas(str) {
+  let saida = "";
+  for (let i = 0; i < str.length; i += 1) {
+    if (str[i] === "\\" && i + 1 < str.length) {
+      const prox = str[i + 1];
+      if (prox === "\\" || prox === '"' || prox === "$" || prox === "`") {
+        // Reduce: emite só o caractere seguinte
+        saida += prox;
+        i += 1;
+        continue;
+      }
+    }
+    saida += str[i];
+  }
+  return saida;
+}
+
 /** Tira UM nivel de aspas externas de `interno`, se houver. */
 function desempacota(interno) {
   interno = interno.trim();
-  const aspas = /^"([\s\S]*)"$/.exec(interno) || /^'([\s\S]*)'$/.exec(interno);
+  const aspasD = /^"([\s\S]*)"$/.exec(interno);
+  const aspasS = /^'([\s\S]*)'$/.exec(interno);
+  const aspas = aspasD || aspasS;
   interno = aspas ? aspas[1] : interno;
+
+  // Tarefa 2 (#313): apenas aspas duplas sofrem redução de escape antes do colapso
+  if (aspasD) {
+    interno = reduzEscapeAspasDuplas(interno);
+  }
+
   interno = colapsaContinuacaoDeLinha(interno);
   return interno;
 }
@@ -761,6 +802,7 @@ function desempacotarWrapperDeString(segmento, { ferramenta } = {}) {
     if (ehVariavelCitadaFinal(current)) {
       return { interno: null, ilegivel: false };
     }
+
     const coladoNoToken = /^[^\s]*/.exec(current.resto)[0];
     if (contemConstrucaoIlegivel(current.tok + coladoNoToken)) {
       return { interno: null, ilegivel: true };
@@ -783,4 +825,5 @@ module.exports = {
   contemConstrucaoIlegivel,
   colapsaContinuacaoDeLinha,
   colapsaContinuacaoDeLinhaNoTopo,
+  reduzEscapeAspasDuplas,
 };

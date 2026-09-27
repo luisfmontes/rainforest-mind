@@ -1,0 +1,186 @@
+{
+  "slug": "zerar-issues-9",
+  "titulo": "Zerar as Issues abertas, rodada 9 — #337 #335 #329 #323 #322 #313 #312 (#302 em aberto)",
+  "criado_em": "2026-09-26",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/zerar-issues-9.md",
+    "em": "2026-09-26"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/zerar-issues-9.md",
+    "tarefas": 8,
+    "paralelas": [
+      1,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "em": "2026-09-26"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-26",
+    "tarefas_ok": 8,
+    "tarefas": 8,
+    "em": "2026-09-26",
+    "carimbos": [
+      {
+        "tarefa": 5,
+        "hash_base": "376d1faf",
+        "iteracao": 1,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-26T17:51:55.168Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "376d1faf",
+        "iteracao": 1,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-26T17:51:55.168Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "376d1faf",
+        "iteracao": 1,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-26T18:08:55.116Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "376d1faf",
+        "iteracao": 1,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-26T18:08:55.116Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "376d1faf",
+        "iteracao": 1,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-26T18:29:27.660Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "bc957c15",
+        "iteracao": 1,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-26T19:48:26.643Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "bc957c15",
+        "iteracao": 1,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-26T19:48:26.643Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "fff2a310",
+        "iteracao": 1,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-26T19:48:26.643Z"
+      }
+    ],
+    "comando": "bash scripts/testa-varrer-baterias.sh + conferir-mutacao (regex do teste n sem glob)",
+    "saida": "TODOS OS TESTES PASSARAM; ok: bateria VERMELHA com o comportamento invertido (exit 1)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "n/a",
+        "motivo": "#337 saiu da entrega: reversao ao comportamento da base"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, secoes (#313a) e (#313d)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-publicacao-destino.sh, secao (#322)"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-varrer-baterias.sh, testes (m) e (n)"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-veredito-revisor.sh, secao (#329)"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-duplicacao.sh, secao (#323)"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, secao (#312)"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "bump de versao e changelog, sem comportamento a inverter"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "dd52ffb2301203dc6c9ead779692b46daab18ba1",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a0eaf5e0a8c319229",
+        "veredito": "ok",
+        "em": "2026-09-26",
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\fafafc3e-6038-4d4f-a12c-598b61a131f3\\subagents\\agent-a0eaf5e0a8c319229.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-09-26",
+    "achados": 0,
+    "rodadas_extra": [
+      {
+        "texto": "Q1 (a) do usuario, 2026-09-26: quarta rodada com o conserto do glob no primeiro caractere; se a 4a revisao achar outro buraco em valoresDaVariavelNoComando, a #337 sai da entrega",
+        "em": "2026-09-26"
+      },
+      {
+        "texto": "Execucao da decisao previa do usuario (Q1 (a), 2026-09-26): a 4a revisao achou outro buraco em valoresDaVariavelNoComando, entao a #337 saiu da entrega; 5a revisao so confere a reversao e o resto",
+        "em": "2026-09-26"
+      }
+    ],
+    "base": "5d59d36eeb30b617e716572834c810d0ad0c2ce9",
+    "head": "dd52ffb2301203dc6c9ead779692b46daab18ba1",
+    "observacoes": [
+      "residuo pre-existente da #313: 3+ contrabarras em aspas duplas (modelo de duas passadas) -> issue nova",
+      "chmod cosmetico em testa-varrer-baterias.sh teste (m)"
+    ]
+  },
+  "verificar": {
+    "status": "ok",
+    "criterio": "tarefa 4: nenhuma bateria roda duas vezes",
+    "comando": "bash scratchpad/verificar.sh (T1 diff gate vs base; T2 payload real; T3 Edit real; T6 checkout real; node scripts/conferir-versao.cjs; node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues-9; bash scripts/varrer-baterias.sh; cabecalho unico por .cjs)",
+    "saida": "T1 diff 0; T2 d2=2 s2=0 s1=2; T3 7/7 ok; T6 exit 0 duplicados=0; versao 1.24.0 exit 0; mutacoes: 2-7 vermelho, 1 e 8 n/a, exit 0; varredor exit 0, 144 baterias passaram; .cjs reais 18, cabecalho unico 18, cascas 0",
+    "faltou": "remover a casca hooks/testa-portaria.sh e ampliar o teste (n) para glob",
+    "em": "2026-09-26",
+    "sensor_externo": "bash scripts/varrer-baterias.sh"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 343,
+    "em": "2026-09-26"
+  }
+}

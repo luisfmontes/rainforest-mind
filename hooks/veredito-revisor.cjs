@@ -74,6 +74,63 @@ function toplevel(cwd) {
 }
 
 /**
+ * D5 — #329: procura docs/rainforest/estado/<slug>.json em repoRoot ou em
+ * worktrees linkados. Devolve o caminho onde o arquivo existe (única fonte
+ * de verdade), ou null se ambíguo/ausente.
+ *
+ * Precedência:
+ * 1. Se existe em repoRoot, devolve repoRoot (raiz é sempre válida).
+ * 2. Senão, procura `git worktree list --porcelain` por worktrees que tenham o arquivo.
+ * 3. Exatamente um → devolve esse caminho; 0 ou 2+ → stderr + null.
+ *
+ * Nunca derruba a sessão: falha em git/stat vira "não encontrado".
+ */
+function raizComEstadoDoSlug(repoRoot, slug) {
+  if (!slug) return repoRoot; // slug vazio = sem estado em lugar nenhum
+  const estadoFile = path.join(repoRoot, 'docs', 'rainforest', 'estado', `${slug}.json`);
+  if (fs.existsSync(estadoFile)) return repoRoot;
+
+  // Procura em worktrees linkados
+  let worktreeOutput;
+  try {
+    worktreeOutput = execFileSync('git', ['-C', repoRoot, 'worktree', 'list', '--porcelain'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+  } catch {
+    // Sem git worktree list: trata como "não encontrado"
+    process.stderr.write(`${slug} nao encontrado\n`);
+    return null;
+  }
+
+  const worktreePaths = [];
+  const linhas = worktreeOutput.split('\n');
+  for (const linha of linhas) {
+    if (linha.startsWith('worktree ')) {
+      const wtPath = linha.slice(9); // "worktree ".length = 9
+      if (wtPath && path.resolve(wtPath) !== path.resolve(repoRoot)) {
+        // Verifica se este worktree tem o arquivo
+        const wtEstadoFile = path.join(wtPath, 'docs', 'rainforest', 'estado', `${slug}.json`);
+        if (fs.existsSync(wtEstadoFile)) {
+          worktreePaths.push(wtPath);
+        }
+      }
+    }
+  }
+
+  if (worktreePaths.length === 1) {
+    return worktreePaths[0];
+  } else if (worktreePaths.length === 0) {
+    process.stderr.write(`${slug} nao encontrado\n`);
+  } else {
+    // 2 ou mais
+    const paths = worktreePaths.join(' ');
+    process.stderr.write(`${slug} ambiguo: ${paths}\n`);
+  }
+  return null;
+}
+
+/**
  * Caminho do transcrito do SUBAGENTE. `agent_transcript_path` quando o
  * payload trouxer; senão o fallback que bateu byte a byte na captura da
  * task 1: `<dirname(transcript_path)>/<session_id>/subagents/agent-<agent_id>.jsonl`.
@@ -147,6 +204,10 @@ function main() {
     process.exit(0);
   }
 
+  // D5 — #329: procura docs/rainforest/estado/<slug>.json no repoRoot ou em worktrees
+  const raizEstado = raizComEstadoDoSlug(repoRoot, slug);
+  if (!raizEstado) process.exit(0);
+
   const estadoCjs = path.join(PLUGIN_ROOT, 'scripts', 'estado.cjs');
   const args = [
     estadoCjs, 'veredito',
@@ -165,16 +226,16 @@ function main() {
 
   try {
     // `estado.cjs` resolve a raiz de dados por RFM_ESTADO_ROOT ||
-    // CLAUDE_PROJECT_DIR || process.cwd() (nessa ordem). `cwd: repoRoot`
+    // CLAUDE_PROJECT_DIR || process.cwd() (nessa ordem). `cwd: raizEstado`
     // cobre o último caso, mas CLAUDE_PROJECT_DIR herdado do processo do
     // hook (a sessão pode ter aberto no checkout principal e entrado em
     // worktree) venceria `cwd` — por isso ele é sobrescrito aqui com a raiz
-    // do EVENTO, a mesma que `hooks/gate-agente-em-voo.cjs` trata como
-    // única fonte. RFM_ESTADO_ROOT, quando setado (sandbox de teste), não é
-    // tocado e continua vencendo tudo.
+    // DO ESTADO, que pode ser um worktree (D5), a mesma que
+    // `hooks/gate-agente-em-voo.cjs` trata como única fonte. RFM_ESTADO_ROOT,
+    // quando setado (sandbox de teste), não é tocado e continua vencendo tudo.
     spawnSync(process.execPath, args, {
-      cwd: repoRoot,
-      env: { ...process.env, CLAUDE_PROJECT_DIR: repoRoot },
+      cwd: raizEstado,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: raizEstado },
       stdio: 'ignore',
     });
   } catch {

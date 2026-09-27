@@ -187,7 +187,7 @@ retorno (o despacho sai 75 e escreve `codex sem cota: ...`).
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
 não o repositório. Cada uma tem bateria própria — **849 casos** rodando o hook
 de verdade contra repos git montados na hora (soma re-medida em 2026-09-14, com os casos de heredoc e do staging citado:
-201 + 106 + 24 + 27 + 151 + 25 + 307 + 8 — a portaria agora soma os **dez** `testa-portaria-*.cjs` que o `testa-portaria.sh` encadeia, 92 + 14 + 24 + 10 + 28 + 8 + 16 + 87 + 5 + 23 (o `portoes` conta 5 porque imprime portões, não casos), e a última linha do wrapper (10) conta arquivos, não casos; re-verificar: a última linha da bateria `hooks/testa-<hook>.sh` de cada linha da tabela).
+201 + 106 + 24 + 27 + 151 + 25 + 307 + 8 — a portaria agora soma os **dez** `testa-portaria-*.cjs`, que o `varrer-baterias.sh` roda direto desde a 1.24.0, 92 + 14 + 24 + 10 + 28 + 8 + 16 + 87 + 5 + 23 (o `portoes` conta 5 porque imprime portões, não casos); re-verificar: a última linha da bateria `hooks/testa-<hook>.sh` de cada linha da tabela).
 
 → O incidente de origem de cada trava, as saídas de emergência e a tabela de
 scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
