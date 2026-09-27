@@ -12,7 +12,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 ## 1.25.0 — 2026-09-27
 
-**Subagente já não empe para segundo plano bateria sem `timeout`.** Em 2026-09-27,
+**Subagente já não deixa bateria sem `timeout` ir para segundo plano.** Em 2026-09-27,
 10 de 14 subagentes numa sessão tiveram comando empurrado para segundo plano, e em
 quase todos o motivo foi bateria rodada sem o parâmetro `timeout` do Bash. O gate
 novo `gate-bateria-sem-timeout.cjs` nega execução dentro de subagente em dois casos:
