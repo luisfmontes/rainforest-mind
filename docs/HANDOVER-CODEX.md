@@ -1,4 +1,10 @@
-# Handover Codex — Rainforest Mind multihost 1.24.0
+# Handover Codex — Rainforest Mind multihost 1.25.0
+
+> **2026-09-27:** a `zerar-issues-9` entrou na `main` primeiro com `1.24.0`; a
+> entrega subiu para `1.25.0` sobre a main `e6c4f569`, e o plugin Codex foi
+> reinstalado do export `rainforest-mind-export-1.25.0-070e55b4` com o hook
+> reconferido (portão, seção "Reinstalação 1.25.0"). Onde abaixo se lê `1.24.0`
+> como versão da entrega, vale `1.25.0`.
 
 ## Ponto canônico de retomada — 2026-09-26
 

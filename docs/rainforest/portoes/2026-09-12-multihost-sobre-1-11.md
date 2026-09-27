@@ -61,7 +61,7 @@ o mesmo diretório criado pelo `New-Item`.
 - [x] P1: o gate de staging total passa todos os casos
   CHECK: bash hooks/testa-gate-staging-total.sh
   ESPERA: == resultado: 171 ok, 0 falha(s) ==
-  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"7293c8954c0d"}
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"ccba01066cb7"}
 
 - [x] P2: o contrato ponta a ponta do plugin Codex passa
   CHECK: bash scripts/testa-plugin-codex.sh
@@ -71,7 +71,7 @@ o mesmo diretório criado pelo `New-Item`.
 - [x] P3: os manifestos e referências públicas têm a mesma versão
   CHECK: bash scripts/testa-versao.sh
   ESPERA: ok: 5   falhou: 0
-  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"922c26c11ac7"}
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"8b5c366a1308"}
 
 - [x] P4: todas as decisões aprovadas são cobertas pelo plano
   CHECK: node scripts/conferir-fluxo.cjs cobertura --slug 2026-09-12-multihost-sobre-1-11
@@ -82,6 +82,23 @@ o mesmo diretório criado pelo `New-Item`.
   CHECK: node scripts/conferir-fluxo.cjs creep --slug 2026-09-12-multihost-sobre-1-11 --base e6c4f5699f971d2b42faf21f52ba6a2f56457020 --head HEAD
   ESPERA: ok: sem creep — 20 arquivo(s) coberto(s)
   EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"90e851b4f583"}
+
+## Reinstalação 1.25.0 — 2026-09-27
+
+Export `git archive` de `070e55b4` em
+`C:\Projetos\rainforest-mind\.claude\marketplaces\rainforest-mind-export-1.25.0-070e55b4`
+(859 arquivos, 0 `.git`); `codex plugin marketplace remove/add` e
+`codex plugin add` instalaram `<home>\.codex\plugins\cache\rainforest-mind-local\rainforest-mind\1.25.0`.
+Projeção export × cache: export 859, cache 860, ausentes 0, divergentes 0,
+`.git` 0; único extra D11 `source-command-saude`, SHA-256
+`94040cb2fadab3efb34ed185123ab918b01dea2d386826d8fc4dcd4a960bca09`.
+
+Sessão Codex nova `01a0e2a1-6212-7c62-b882-247713289a58`: `git status --short`
+com hook Completed; `git add "-A"` e `bash -c "git status; git add -A"` com
+hook Blocked (`Segmento:` de cada um na mensagem do gate); a skill
+`rainforest-mind:regua` foi carregada de `...\1.25.0\skills\regua\SKILL.md`.
+Adaptador do cache com JSON malformado: `permissionDecision: deny`, motivo
+genérico, sem eco. O export 1.24.0 anterior foi apagado.
 
 ## Medição corrente 1.24.0 — 2026-09-26
 
