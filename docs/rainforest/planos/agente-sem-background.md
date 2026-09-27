@@ -30,11 +30,11 @@ depende de: 1
 paralela: nao
 mutacao:
   arquivo: `hooks/gate-bateria-sem-timeout.cjs`
-  de: const varreduraCompleta = ehVarredor && !args.includes("--so");
+  de: const varreduraCompleta = analise.ehVarredor && !analise.args.includes("--so");
   para: const varreduraCompleta = false;
   bateria: `node hooks/testa-gate-bateria-sem-timeout.cjs`
   fixture: `testa-gate-bateria-sem-timeout.cjs, caso "bash scripts/varrer-baterias.sh com timeout 600000 em subagente → 2"`
-pronto quando: com o mesmo payload real de subagente, `bash scripts/varrer-baterias.sh` com `timeout: 600000` sai **2** com mensagem que manda usar `--so <bateria>` e diz que a varredura completa é de quem integra; `cd <wt> && bash scripts/varrer-baterias.sh 2>&1 | tail -30` com `timeout: 600000` sai **2**; `bash scripts/varrer-baterias.sh --so hooks/testa-gate-worktree.sh` com `timeout: 600000` sai **0**; o mesmo `--so` sem `timeout` sai **2** (regra da tarefa 1); `bash scripts/varrer-baterias.sh` sem `agent_id` sai **0**. Provado por `node hooks/testa-gate-bateria-sem-timeout.cjs` com os casos impressos.
+pronto quando: com o mesmo payload real de subagente, `bash scripts/varrer-baterias.sh` com `timeout: 600000` sai **2** com mensagem que manda usar `--so <bateria>` e diz que a varredura completa é de quem integra; `cd <wt> && bash scripts/varrer-baterias.sh 2>&1 | tail -30` com `timeout: 600000` sai **2**; `bash scripts/varrer-baterias.sh --so hooks/testa-gate-worktree.sh` com `timeout: 600000` sai **0**; o mesmo `--so` sem `timeout` sai **2** (regra da tarefa 1); `bash scripts/varrer-baterias.sh` sem `agent_id` sai **0**. Provado por `node hooks/testa-gate-bateria-sem-timeout.cjs` com os casos impressos. *(Emenda de 2026-09-27, integração: o executor leu `ehVarredor`/`args` de um objeto `analise`; o alvo de mutação passou a ser a linha real, com a mesma semântica.)*
 
 ### 3. Texto acompanha o mecanismo, versão e changelog [tipo: docs]
 atende: D4, D5
