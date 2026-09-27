@@ -178,6 +178,9 @@
     "sensor_externo": "bash scripts/varrer-baterias.sh"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "pr",
+    "pr": 343,
+    "em": "2026-09-26"
   }
 }
