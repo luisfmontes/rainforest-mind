@@ -10,6 +10,32 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.26.0 — 2026-09-27
+
+**Subagente já não deixa bateria sem `timeout` ir para segundo plano.** Em 2026-09-27,
+10 de 14 subagentes numa sessão tiveram comando empurrado para segundo plano, e em
+quase todos o motivo foi bateria rodada sem o parâmetro `timeout` do Bash. O gate
+novo `gate-bateria-sem-timeout.cjs` nega execução dentro de subagente em dois casos:
+uma bateria (`testa-*.sh`, `testa-*.cjs`, `varrer-baterias.sh`, `conferir-mutacao.cjs`,
+`conferir-fluxo.cjs mutacoes`) sem `tool_input.timeout` > 120000, e a varredura
+completa (`varrer-baterias.sh` sem `--so`), que passa do teto de 10 minutos. A
+mensagem de bloqueio sugere `timeout: 600000`. Ler arquivo (`cat`, `grep`, `sed`)
+não é barrado.
+
+- **Toggle `bateria-sem-timeout`** (padrão ligado): desliga o gate para o projeto se
+  necessário. Mesma forma do `busca-na-raiz` e `agente-folha`. Janela principal vê e
+  pode parar qualquer execução.
+- **Texto acompanha o mecanismo** (`referencias/perfil-de-trabalho.md`): a linha
+  "Nada seu fica rodando depois da resposta" agora cita o gate. Os `agents/*.md` são
+  atualizados por `node scripts/perfil.cjs --aplicar`.
+- **Fora do gate**: checagem de sintaxe (`bash -n`, `node --check`), leitura de bateria
+  (`cat`, `grep`, `git add/diff/log`, mensagem de commit ou corpo de PR que cita o nome)
+  e bateria cujo nome só existe em runtime (`for f in …; do bash $f`, `find -exec {}`,
+  `xargs {}`). `stdbuf --output L` (opção longa com espaço) ainda escapa: issue #346.
+- **Skill `executar` (`skills/executar/SKILL.md`)** deixa claro que o laço de baterias
+  inteiro é rodado pela integração; o agente cola o placar das baterias que a tarefa
+  toca.
+
 ## 1.24.0 — 2026-09-26
 
 **Os gates fecharam um buraco e pararam de barrar um `Edit` que só preserva o que já

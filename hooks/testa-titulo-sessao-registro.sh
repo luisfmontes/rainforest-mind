@@ -69,8 +69,9 @@ echo "contagem: $RES3"
 # memoria-reconciliacao-e-consolidacao), disparando a passada diaria de
 # reconciliar+consolidar num filho destacado.
 # PreToolUse subiu de 10 para 11 em 2026-09-26: entrou hooks/gate-busca-raiz.cjs
-# (matcher Bash, design 2026-09-25-busca-na-raiz).
-if [ "$RES3" = '{"SessionStart":6,"PreToolUse":11,"Stop":4,"UserPromptSubmit":1}' ]; then
+# (matcher Bash, design 2026-09-25-busca-na-raiz). E de 11 para 12 em 2026-09-27:
+# entrou hooks/gate-bateria-sem-timeout.cjs (matcher Bash, design agente-sem-background).
+if [ "$RES3" = '{"SessionStart":6,"PreToolUse":12,"Stop":4,"UserPromptSubmit":1}' ]; then
   ok=$((ok+1)); echo "  ok    JSON valido e contagem de SessionStart/PreToolUse/Stop/UserPromptSubmit preservada"
 else
   falhou=$((falhou+1)); echo "  FALHA contagem mudou (ou JSON invalido): $RES3"

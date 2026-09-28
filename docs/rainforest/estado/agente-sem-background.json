@@ -1,0 +1,165 @@
+{
+  "slug": "agente-sem-background",
+  "titulo": "agente-sem-background",
+  "criado_em": "2026-09-27",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/agente-sem-background.md",
+    "decisoes": 5,
+    "em": "2026-09-27"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/agente-sem-background.md",
+    "tarefas": 3,
+    "paralelas": [
+      1,
+      3
+    ],
+    "em": "2026-09-27"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-27",
+    "tarefas_ok": 3,
+    "tarefas": 3,
+    "em_voo": [],
+    "em": "2026-09-27",
+    "carimbos": [
+      {
+        "tarefa": 3,
+        "hash_base": "683ee573",
+        "iteracao": 1,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-27T11:41:17.295Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "683ee573",
+        "iteracao": 1,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-27T11:46:58.761Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "683ee573",
+        "iteracao": 1,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-27T11:46:58.761Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "683ee573",
+        "iteracao": 2,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-27T11:46:58.761Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "5b21957e",
+        "iteracao": 2,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-27T12:08:50.029Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "5b21957e",
+        "iteracao": 2,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-27T12:08:50.029Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "b9145279",
+        "iteracao": 3,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-27T12:29:42.350Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "b9145279",
+        "iteracao": 3,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-27T12:29:42.350Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "9c474f69",
+        "iteracao": 4,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-28T01:06:31.591Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "eaf5836f",
+        "iteracao": 5,
+        "sessao": "fafafc3e-6038-4d4f-a12c-598b61a131f3",
+        "ts": "2026-09-28T01:55:42.417Z"
+      }
+    ],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-bateria-sem-timeout.cjs, caso bash hooks/testa-gate-worktree.sh sem timeout em subagente"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-bateria-sem-timeout.cjs, caso varrer-baterias.sh com timeout 600000 em subagente"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "so texto, versao e changelog"
+      }
+    ],
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug agente-sem-background",
+    "saida": "tarefa 1: vermelho; tarefa 2: vermelho; tarefa 3: pulada; exit 0"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "3967a628492ab49fececd515e6ebeff6330681f4",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ad85840cc8c43474a",
+        "veredito": "ok",
+        "em": "2026-09-27",
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\fafafc3e-6038-4d4f-a12c-598b61a131f3\\subagents\\agent-ad85840cc8c43474a.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-09-27",
+    "achados": 0,
+    "rodadas_extra": [
+      {
+        "texto": "usuario escolheu (a): 4a rodada fechada - stdbuf, bash -n/node --check isentos, find -exec/xargs {} fora de escopo; se o revisor 4 achar outro buraco vira issue e a entrega segue",
+        "em": "2026-09-27"
+      }
+    ],
+    "base": "683ee5731e28916220dc2f79c0fa10dfee097851",
+    "head": "3967a628492ab49fececd515e6ebeff6330681f4"
+  },
+  "verificar": {
+    "status": "ok",
+    "criterio": "varredura completa sem vermelhas",
+    "comando": "bash scripts/varrer-baterias.sh; node hooks/testa-gate-bateria-sem-timeout.cjs; node scripts/perfil.cjs --conferir; node scripts/conferir-versao.cjs; node scripts/conferir-fluxo.cjs mutacoes --slug agente-sem-background",
+    "saida": "varredor exit 0, as 145 baterias passaram; gate 58 ok 0 falha; perfil ok 9 agentes; versao 1.25.0 ok; mutacoes 1 e 2 vermelho, 3 n/a",
+    "faltou": "atualizar contagens e o semver do README",
+    "em": "2026-09-27",
+    "sensor_externo": "bash scripts/varrer-baterias.sh"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 347,
+    "em": "2026-09-27"
+  }
+}
