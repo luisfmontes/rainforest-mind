@@ -82,6 +82,11 @@ function apiEhEscrita(argsApi) {
     const tok = semContrabarra(argsApi[i]);
     const igual = tok.indexOf("=");
     const chave = (igual === -1 ? tok : tok.slice(0, igual)).toLowerCase();
+    // `-XPOST` colado (integração, 2026-09-28): saía 0.
+    if (igual === -1 && /^-X./.test(tok)) {
+      metodo = tok.slice(2).toUpperCase();
+      continue;
+    }
     if (FLAGS_METODO.has(chave)) {
       const valor = igual !== -1 ? tok.slice(igual + 1) : argsApi[i + 1];
       metodo = String(valor || "").toUpperCase();
@@ -101,15 +106,29 @@ function apiEhEscrita(argsApi) {
  * `subcomandos` são os tokens (strings cruas, `.v` de `tokensComAspas`) que
  * vêm depois de `gh`. Devolve `true` se a invocação ESCREVE no GitHub (D2).
  */
+// Integração (2026-09-28): flag global antes da família ou entre família e
+// verbo escondia a escrita — `gh -R o/r issue close 12` e `gh issue -R o/r
+// close 12` saíam 0 (o cobra aceita a flag em qualquer ponto). Família e verbo
+// passam a ser os dois primeiros POSICIONAIS; `-R`/`--repo` consomem o valor.
+const FLAGS_GH_COM_VALOR = new Set(["-r", "--repo", "--hostname"]);
+
 function comandoGhEhEscrita(subcomandos) {
-  if (subcomandos.length === 0) return false;
-  const familia = semContrabarra(subcomandos[0]).toLowerCase();
-  if (familia === "api") return apiEhEscrita(subcomandos.slice(1));
+  const posicionais = [];
+  for (let i = 0; i < subcomandos.length && posicionais.length < 2; i += 1) {
+    const tok = semContrabarra(subcomandos[i]);
+    if (tok.startsWith("-")) {
+      if (!tok.includes("=") && FLAGS_GH_COM_VALOR.has(tok.toLowerCase())) i += 1;
+      continue;
+    }
+    posicionais.push({ v: tok.toLowerCase(), i });
+  }
+  if (posicionais.length === 0) return false;
+  const familia = posicionais[0].v;
+  if (familia === "api") return apiEhEscrita(subcomandos.slice(posicionais[0].i + 1));
   const verbos = VERBOS_ESCRITA[familia];
   if (!verbos) return false;
-  if (subcomandos.length < 2) return false;
-  const verbo = semContrabarra(subcomandos[1]).toLowerCase();
-  return verbos.has(verbo);
+  if (posicionais.length < 2) return false;
+  return verbos.has(posicionais[1].v);
 }
 
 /**

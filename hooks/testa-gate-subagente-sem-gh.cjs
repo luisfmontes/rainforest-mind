@@ -91,6 +91,19 @@ caso("gh pr create -t t -b b em subagente", r.status, 2);
 r = rodar("gh release create v1");
 caso("gh release create v1 em subagente", r.status, 2);
 
+// Integração (2026-09-28): flag global antes da família, ou entre família e
+// verbo, e `-XPOST` colado escapavam (saíam 0).
+r = rodar("gh -R o/r issue close 12");
+caso("(integração) gh -R o/r issue close 12 em subagente", r.status, 2);
+r = rodar("gh --repo o/r pr create -t t -b b");
+caso("(integração) gh --repo o/r pr create em subagente", r.status, 2);
+r = rodar("gh issue -R o/r close 12");
+caso("(integração) gh issue -R o/r close 12 em subagente", r.status, 2);
+r = rodar("gh api -XPOST repos/o/r/issues");
+caso("(integração) gh api -XPOST em subagente", r.status, 2);
+r = rodar("gh -R o/r issue view 12");
+caso("(integração) gh -R o/r issue view 12 (leitura) em subagente", r.status, 0);
+
 r = rodar("gh workflow run x.yml");
 caso("gh workflow run x.yml em subagente", r.status, 2);
 
