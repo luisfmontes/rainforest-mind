@@ -2298,19 +2298,22 @@ EXIT_HC=$?
 [ $EXIT_HC -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HC)"
 
 # (hd) controle: TRES contrabarras antes do LF (paridade impar) tambem
-# colapsam — mas o colapso funde `gh issue close 12` dentro do argumento do
-# `echo` anterior (exatamente o que o bash de verdade faz: a fusao NAO
-# invoca `gh`, so imprime texto), entao o exit correto e 0 — o mesmo que o
-# bash real executaria.
+# colapsam, e o colapso funde `gh issue close 12` dentro do argumento do
+# `echo` anterior (`echo hi gh issue close 12`: o bash so imprime texto).
+# Emenda de 2026-09-28 (#339): o exit era 0 so porque `gh` nao casava com
+# `gh`; com a contrabarra tirada antes da comparacao, o caso cai na mesma
+# politica de `echo hi gh issue close 12`, que o gate ja barrava (exit 2,
+# medido na base) — a sequencia e barrada em qualquer posicao, por
+# conservadorismo.
 echo
-echo "== (hd) echo hi \\\\\\<LF>gh issue close 12 → exit 0, tres contrabarras colapsam e fundem no echo (controle, paridade impar) =="
+echo "== (hd) echo hi \\\\\\<LF>gh issue close 12 → exit 2, tres contrabarras colapsam e fundem no echo (mesma politica de echo hi gh issue close 12) =="
 (
   export PATH="$SBP/bin:$PATH"
   PAYLOAD=$(node -e 'const B=String.fromCharCode(92);const cmd="echo hi "+B+B+B+"\n"+"gh issue close 12";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
   echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
 ) 2>"$SBP/err-hd"
 EXIT_HD=$?
-[ $EXIT_HD -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_HD)"
+[ $EXIT_HD -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HD)"
 
 # (he) controle: dentro de aspas SIMPLES de verdade a contrabarra+LF nunca
 # colapsa, mesmo com o texto de `gh issue close` dentro — mas como esta tudo
@@ -2702,6 +2705,49 @@ for N339 in 1 2 3 4; do
   else
     [ "$EXIT_339" -ne 2 ] && test_ok "(#339 N=$N339) bash NAO chamou -> gate exit $EXIT_339 (nao 2)" || test_fail "(#339 N=$N339) bash nao chamou 'gh issue close 12' mas gate saiu 2"
   fi
+done
+
+# (#339c) A primeira passada, sozinha: o texto que o bash real entrega de
+# `"gh issue <N contrabarras><quebra>close 12"` (entre aspas duplas, sem
+# reexecutar) tem de ser o que `reduzEscapeAspasDuplas` devolve para o mesmo
+# miolo. Nao se compara com `desempacotarWrapperDeString`, que tambem aplica
+# `colapsaContinuacaoDeLinha` de proposito: aquilo modela a SEGUNDA leitura, a
+# do `bash -c` relendo o texto fora de aspas (N=2: o bash deixa `\<quebra>` e
+# o `bash -c` junta as linhas). Sem este caso a passada unica nao e medida
+# por nada: a
+# contrabarra tirada na comparacao do gate (#339b) mascara a divergencia.
+echo
+echo "== (#339c) primeira passada identica ao bash real, N = 1..4 =="
+for N339C in 1 2 3 4; do
+  SCRIPT_339C="$SBP/printf339-$N339C.sh"
+  node -e '
+    const N = parseInt(process.argv[1], 10);
+    const bs = String.fromCharCode(92).repeat(N);
+    require("fs").writeFileSync(process.argv[2], "printf %s \"gh issue " + bs + "\n" + "close 12\"\n");
+  ' "$N339C" "$SCRIPT_339C"
+  BASH_339C="$(bash "$SCRIPT_339C" | od -An -c | tr -s ' ')"
+  LIB_339C="$(node -e '
+    const { reduzEscapeAspasDuplas } = require(process.argv[2]);
+    const N = parseInt(process.argv[1], 10);
+    const bs = String.fromCharCode(92).repeat(N);
+    process.stdout.write(reduzEscapeAspasDuplas("gh issue " + bs + "\n" + "close 12"));
+  ' "$N339C" "$SRC/hooks/lib/tokens-comando.cjs" | od -An -c | tr -s ' ')"
+  [ "$BASH_339C" = "$LIB_339C" ] && test_ok "(#339c N=$N339C) primeira passada igual ao bash" || test_fail "(#339c N=$N339C) bash deu [$BASH_339C], lib deu [$LIB_339C]"
+done
+
+# (#339b) O que sobra do N=3 depois da primeira passada e `gh issue \close
+# 12`: fora de aspas o bash tira a contrabarra de qualquer caractere, entao
+# o comando SEM wrapper nenhum ja escapava do gate (medido: exit 0 na base).
+echo
+echo "== (#339b) contrabarra fora de aspas dentro do subcomando -> exit 2 =="
+for FORMA339 in 'gh issue \close 12' 'gh \issue close 12' 'gh issue cl\ose 12'; do
+  PAYLOAD_339B=$(node -e 'process.stdout.write(JSON.stringify({cwd: process.argv[2], tool_name: "Bash", tool_input: {command: process.argv[1]}}))' "$FORMA339" "$SBP_WIN")
+  EXIT_339B=$(
+    export PATH="$SBP/bin:$PATH"
+    echo "$PAYLOAD_339B" | node "$SRC/hooks/gate-fechar-issue.cjs" >/dev/null 2>&1
+    echo $?
+  )
+  [ "$EXIT_339B" -eq 2 ] && test_ok "(#339b) $FORMA339 -> exit 2" || test_fail "(#339b) $FORMA339 saiu $EXIT_339B (esperado 2)"
 done
 
 # Resultado final

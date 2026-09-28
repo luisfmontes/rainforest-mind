@@ -852,6 +852,7 @@ module.exports = {
   textoAPartir,
   WRAPPERS_DE_COMANDO,
   desempacotarWrapperDeString,
+  reduzEscapeAspasDuplas,
   contemConstrucaoIlegivel,
   colapsaContinuacaoDeLinha,
   colapsaContinuacaoDeLinhaNoTopo,

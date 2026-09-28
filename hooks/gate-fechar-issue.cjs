@@ -59,13 +59,24 @@ function temSubcomando(subcomandos, padrao) {
 /**
  * Índice da primeira ocorrência de `padrao` como sub-sequência CONTÍGUA
  * (case-insensitive) em `tokens`, ou -1 se não achar.
+ *
+ * #339: a contrabarra sai do token antes de comparar. Fora de aspas o bash
+ * remove `\` de qualquer caractere (`gh issue \close 12` roda `gh issue close
+ * 12`), e é isso que sobra de `bash -c "gh issue \\\<quebra>close 12"` depois
+ * da primeira passada. Nenhum padrão tem contrabarra, então a comparação só
+ * fica mais larga: `"\close"` citado (que o bash manteria) passa a barrar, e
+ * esse comando o `gh` recusaria de qualquer jeito.
  */
+function semContrabarra(s) {
+  return s.split("\\").join("");
+}
+
 function indiceSequencia(tokens, padrao) {
   for (let i = 0; i <= tokens.length - padrao.length; i++) {
     if (
       tokens
         .slice(i, i + padrao.length)
-        .every((s, idx) => s.toLowerCase() === padrao[idx].toLowerCase())
+        .every((s, idx) => semContrabarra(s).toLowerCase() === padrao[idx].toLowerCase())
     ) {
       return i;
     }
