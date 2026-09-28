@@ -61,7 +61,7 @@ o mesmo diretório criado pelo `New-Item`.
 - [x] P1: o gate de staging total passa todos os casos
   CHECK: bash hooks/testa-gate-staging-total.sh
   ESPERA: == resultado: 171 ok, 0 falha(s) ==
-  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"ccba01066cb7"}
+  EVIDENCIA: {"shell":"cmd.exe","cwd":".","exit":0,"match":true,"fingerprint":"42df7e701628"}
 
 - [x] P2: o contrato ponta a ponta do plugin Codex passa
   CHECK: bash scripts/testa-plugin-codex.sh
