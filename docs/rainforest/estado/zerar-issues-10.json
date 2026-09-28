@@ -70,31 +70,37 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "c98b1bd6a559c3791615615236622135f2a85ad1",
+      "head": "9ce899699a8a5ace9908a900bb6dfffe5ed67976",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a83d67cba101d1bf7",
-        "veredito": "reprovado",
+        "agente_id": "a296607f173512b49",
+        "veredito": "ok",
         "em": "2026-09-28",
-        "transcrito": "C:\\Users\\Luis\\.claude\\projects\\C--Projetos-rainforest-mind\\a5435dc7-36e5-4a20-b1d0-0d1c8a88edc5\\subagents\\agent-a83d67cba101d1bf7.jsonl"
+        "transcrito": "C:\\Users\\Luis\\.claude\\projects\\C--Projetos-rainforest-mind\\a5435dc7-36e5-4a20-b1d0-0d1c8a88edc5\\subagents\\agent-a296607f173512b49.jsonl"
       }
     ],
-    "achados": [
-      "caminhoComTil case-sensitive vaza caminho com drive minusculo (estado.cjs:215)",
-      "ANSI-C $close escapa do gate-fechar-issue",
-      "execucoes_sh_em nao pega ./hooks/testa-x.sh",
-      "CHANGELOG overclama stdbuf -oL gh issue close (ja barrava na base)"
-    ],
+    "achados": 0,
     "em": "2026-09-28",
-    "tentativas": 1
+    "rodadas": 2,
+    "base": "c630a3e57426fb9fe82166c17a854b40d5c34a70",
+    "head": "9ce899699a8a5ace9908a900bb6dfffe5ed67976",
+    "fora_de_escopo": [
+      "execucoes_sh_em nao pega timeout/env antes do bash",
+      "filtro de auto-referencia por basename",
+      "semContrabarra decodifica tambem em aspas simples (so alarga)"
+    ]
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/varrer-baterias.sh; node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues-10; gh run view 36419217268 --json attempt,conclusion",
+    "saida": "as 146 baterias passaram (exit 0; testa-gate-staging-total.sh e testa-conferir-publicacao.sh 1 cabecalho cada, nenhum cabecalho repetido); mutacoes: tarefas 1,2,4,5,6 vermelho, 3 e 7 puladas (n/a declarado); CI run 36419217268 tentativas 1-5 success no 9ce89969 (5 seguidas, criterio D3)",
+    "sensor_externo": "bash scripts/varrer-baterias.sh",
+    "em": "2026-09-28"
   },
   "fechar": {
     "status": "pendente"
