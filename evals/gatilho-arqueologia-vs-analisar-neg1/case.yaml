@@ -1,0 +1,30 @@
+schema_version: "1.0"
+name: gatilho-arqueologia-vs-analisar-neg1
+description: >
+  Cenário realista de explorar dataset em notebook (issue #302, par
+  arqueologia×analisar) — tem que acionar `analisar`, não `arqueologia`:
+  é EDA de dado tabular, não mapa de código legado.
+tags: [gatilho, colisao, negativo]
+
+execution:
+  prompt: >
+    Tenho um CSV de vendas dos últimos 6 meses e quero explorar esse
+    dataset num notebook — ver distribuição, outlier, talvez montar um
+    gráfico, antes de eu tirar qualquer conclusão sobre sazonalidade.
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-analisar
+    tool: Skill
+    input_match: "rainforest-mind:analisar"
+    arm: with-only
+
+  - type: tool_used
+    name: nao-aciona-arqueologia
+    tool: Skill
+    input_match: "rainforest-mind:arqueologia"
+    min: 0
+    max: 0
+    arm: both

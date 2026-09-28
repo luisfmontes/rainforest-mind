@@ -1,0 +1,42 @@
+schema_version: "1.0"
+name: gatilho-depurar-vs-executar-pos1
+description: >
+  Cenário realista de bug intermitente em produção (issue #302, par
+  depurar×executar) — tem que acionar `depurar`, não `executar`: é um bug
+  sem repro conhecido, não um plano já fechado para despachar.
+tags: [gatilho, colisao, positivo]
+
+execution:
+  prompt: >
+    O endpoint de checkout começou a devolver 500 só em produção, depois do
+    deploy de ontem à tarde. Não consigo reproduzir local, e já é a segunda
+    vez essa semana — sempre no horário de pico. Preciso entender o que está
+    causando isso antes de mexer em qualquer coisa.
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-depurar
+    tool: Skill
+    input_match: "rainforest-mind:depurar"
+    arm: with-only
+
+  - type: tool_used
+    name: nao-aciona-executar
+    tool: Skill
+    input_match: "rainforest-mind:executar"
+    min: 0
+    max: 0
+    arm: both
+
+  - type: llm
+    name: resposta-segue-metodo-depurar
+    criteria: >
+      A resposta trata o pedido como um bug a investigar (loop de feedback,
+      sinal reproduzível, hipótese só depois de um repro apertado) — não
+      como um plano de trabalho já fechado para despachar a agentes. Vale
+      mesmo que a resposta só peça mais contexto (logs, horário exato,
+      diff do deploy) antes de agir, desde que o enquadramento seja o de
+      investigar um bug, não o de executar um plano.
+    weight: 1

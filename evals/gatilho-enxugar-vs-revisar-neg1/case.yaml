@@ -1,0 +1,32 @@
+schema_version: "1.0"
+name: gatilho-enxugar-vs-revisar-neg1
+description: >
+  Cenário realista de desconfiar do relato de quem implementou (issue #302,
+  par enxugar×revisar) — tem que acionar `revisar`, não `enxugar`: é
+  revisão de correção contra o diff real, não levantamento de código
+  morto.
+tags: [gatilho, colisao, negativo]
+
+execution:
+  prompt: >
+    O agente disse que a tarefa 7 do plano está pronta, mas eu não quero
+    confiar só no relato dele — quero alguém comparando a entrega contra
+    o diff real antes de eu aprovar, pra pegar bug de corretude que ele
+    possa ter deixado passar.
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-revisar
+    tool: Skill
+    input_match: "rainforest-mind:revisar"
+    arm: with-only
+
+  - type: tool_used
+    name: nao-aciona-enxugar
+    tool: Skill
+    input_match: "rainforest-mind:enxugar"
+    min: 0
+    max: 0
+    arm: both

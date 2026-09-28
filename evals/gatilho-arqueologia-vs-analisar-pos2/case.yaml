@@ -1,0 +1,41 @@
+schema_version: "1.0"
+name: gatilho-arqueologia-vs-analisar-pos2
+description: >
+  Cenário realista de integração antiga sem dono (issue #302, par
+  arqueologia×analisar) — tem que acionar `arqueologia`, não `analisar`:
+  é mapear código legado, não explorar dado tabular.
+tags: [gatilho, colisao, positivo]
+
+execution:
+  prompt: >
+    Essa fatia de integração com o gateway de pagamento é toda escrita
+    num padrão antigo que não existe mais em nenhum outro lugar do repo,
+    e ninguém sabe direito o fluxo completo. Preciso entender essa parte
+    antes de decidir onde encaixar a mudança que pediram.
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-arqueologia
+    tool: Skill
+    input_match: "rainforest-mind:arqueologia"
+    arm: with-only
+
+  - type: tool_used
+    name: nao-aciona-analisar
+    tool: Skill
+    input_match: "rainforest-mind:analisar"
+    min: 0
+    max: 0
+    arm: both
+
+  - type: llm
+    name: resposta-segue-metodo-arqueologia
+    criteria: >
+      A resposta trata o pedido como mapear uma fatia de código legado
+      sem dono claro — não como uma análise exploratória de dados em
+      notebook. Vale mesmo que a resposta só peça qual arquivo/pasta
+      mapear antes de agir, desde que o enquadramento seja o de
+      arqueologia.
+    weight: 1

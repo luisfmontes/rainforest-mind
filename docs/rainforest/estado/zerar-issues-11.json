@@ -1,0 +1,28 @@
+{
+  "slug": "zerar-issues-11",
+  "titulo": "Rodada: #337 (mensagem bash \"$t\") e #302 (trava de gatilho sob demanda)",
+  "criado_em": "2026-09-28",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/zerar-issues-11.md",
+    "em": "2026-09-28"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

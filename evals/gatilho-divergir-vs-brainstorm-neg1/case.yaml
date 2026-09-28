@@ -1,0 +1,32 @@
+schema_version: "1.0"
+name: gatilho-divergir-vs-brainstorm-neg1
+description: >
+  Cenário realista de design do zero, sem decisão nenhuma tomada (issue
+  #302, par divergir×brainstorm) — tem que acionar `brainstorm`, não
+  `divergir`: não há caminho nenhum na mesa ainda, é entrevista adversarial
+  para fechar as suposições.
+tags: [gatilho, colisao, negativo]
+
+execution:
+  prompt: >
+    Quero desenhar do zero o fluxo de aprovação de despesas acima de
+    R$5000 — hoje não existe nada disso, nenhuma decisão tomada, nem
+    esboço. Bora entrevistar até fechar todas as suposições e eu aprovar o
+    design?
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-brainstorm
+    tool: Skill
+    input_match: "rainforest-mind:brainstorm"
+    arm: with-only
+
+  - type: tool_used
+    name: nao-aciona-divergir
+    tool: Skill
+    input_match: "rainforest-mind:divergir(?!-frames)"
+    min: 0
+    max: 0
+    arm: both
