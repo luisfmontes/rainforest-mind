@@ -103,7 +103,7 @@ cmd_trava() {
   casos=$(descobrir_casos "$glob")
   if [ -z "$casos" ]; then
     echo "FALHA nenhum caso casou com --case $glob em evals/*/case.yaml" >&2
-    exit 1
+    exit 4
   fi
 
   local algum_reprovou=0 nome ok_rodadas rodada exit_cli args
@@ -216,6 +216,12 @@ cmd_mutacao() {
     echo "FALHA mutacao NAO detectada: a trava ficou verde em skills/$skill (exit $exit_trava)"
     exit 3
   fi
+  # So exit 1 (algum caso reprovou) e trava vermelha. Teto de custo (2) ou
+  # nenhum caso casado (4) nao provam nada sobre a mutacao: repassa.
+  if [ "$exit_trava" -ne 1 ]; then
+    echo "FALHA mutacao inconclusiva: a trava saiu $exit_trava, nao 1 (skills/$skill)" >&2
+    exit "$exit_trava"
+  fi
   echo "ok mutacao detectada: a trava ficou vermelha em skills/$skill (exit $exit_trava)"
   exit 0
 }
@@ -243,6 +249,10 @@ cmd_baseline() {
 
 main() {
   local modo="${1:-}"
+  # `evals/` e `skills/` sao lidos relativos a raiz do repositorio em que se
+  # esta, de qualquer subpasta.
+  local raiz
+  raiz=$(git rev-parse --show-toplevel 2>/dev/null) && cd "$raiz"
   case "$modo" in
     trava)
       shift

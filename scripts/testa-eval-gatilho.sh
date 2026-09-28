@@ -143,7 +143,9 @@ EOF
 # ============================================== SANDBOX2: repo git com a skill
 # "foo" (para a letra d, mutacao) -- pos1/pos2/neg1 no par foo x bar.
 SANDBOX2="$RAIZ_BASE/sandbox2"
-mkdir -p "$SANDBOX2/skills/foo"
+mkdir -p "$SANDBOX2/skills/foo" "$SANDBOX2/skills/bar"
+# `bar` existe mas nao tem caso positivo proprio (so aparece como vizinha).
+printf -- '---\nname: bar\ndescription: skill vizinha sem caso positivo\n---\n' > "$SANDBOX2/skills/bar/SKILL.md"
 cat > "$SANDBOX2/skills/foo/SKILL.md" << 'EOF'
 ---
 name: foo
@@ -292,7 +294,7 @@ else
   echo "$saida" | sed 's/^/         /' | head -10
 fi
 
-echo "== (d) mutacao <skill>: quando o dible IGNORA a sabotagem, a trava fica verde e a mutacao acusa nao-deteccao (exit 3) =="
+echo "== (d) mutacao <skill>: quando o duble IGNORA a sabotagem, a trava fica verde e a mutacao acusa nao-deteccao (exit 3) =="
 resetar
 escrever_roteiro 0 0 0
 antes=$(cd "$SANDBOX2" && git status --porcelain)
@@ -301,10 +303,38 @@ exit_obtido=$?
 depois=$(cd "$SANDBOX2" && git status --porcelain)
 if [ "$exit_obtido" = "3" ] && [ -z "$antes" ] && [ -z "$depois" ]; then
   ok=$((ok + 1))
-  echo "  ok   (d) mutacao NAO detectada quando o dible ignora a sabotagem (exit 3), arvore real intacta"
+  echo "  ok   (d) mutacao NAO detectada quando o duble ignora a sabotagem (exit 3), arvore real intacta"
 else
   falhou=$((falhou + 1))
   echo "  FALHA (d) nao-deteccao: exit=$exit_obtido antes=[$antes] depois=[$depois]"
+  echo "$saida" | sed 's/^/         /' | head -10
+fi
+
+echo "== (d) mutacao <skill>: teto de custo (exit 2) no meio da trava nao conta como deteccao =="
+resetar
+escrever_roteiro 2 2 2
+saida=$(rodar "$SANDBOX2" cego mutacao foo --rodadas 1 2>&1)
+exit_obtido=$?
+if [ "$exit_obtido" = "2" ] && echo "$saida" | grep -q "inconclusiva"; then
+  ok=$((ok + 1))
+  echo "  ok   (d) mutacao com teto de custo sai 2 (inconclusiva), nao 0"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA (d) teto na mutacao: exit=$exit_obtido"
+  echo "$saida" | sed 's/^/         /' | head -10
+fi
+
+echo "== (d) mutacao <skill> sem caso positivo: sai 4 (nenhum caso), nao 0 =="
+resetar
+escrever_roteiro 1 1 1
+saida=$(rodar "$SANDBOX2" mutacao bar --rodadas 1 2>&1)
+exit_obtido=$?
+if [ "$exit_obtido" = "4" ]; then
+  ok=$((ok + 1))
+  echo "  ok   (d) mutacao sem positivo sai 4"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA (d) mutacao sem positivo: exit=$exit_obtido"
   echo "$saida" | sed 's/^/         /' | head -10
 fi
 
