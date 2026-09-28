@@ -24,7 +24,50 @@
     "em": "2026-09-28"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "tarefas_ok": 7,
+    "tarefas": 7,
+    "em": "2026-09-28",
+    "catraca_mutacao": "2026-09-28",
+    "comando": "bash hooks/testa-gate-fechar-issue.sh",
+    "saida": "== resultado: 234 ok, 0 falha(s) ==",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-bateria-sem-timeout.cjs, caso (#346) stdbuf --output L"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, (#344b) e (#344c)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "mudanca no proprio fixture da bateria; contraprova com servidor que nao sobe deu FALHA R5. fixture:"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-varrer-baterias.sh, teste (n), contraprova de .sh que executa .sh"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, caso (#340) veredito grava transcrito com ~"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, (#339c) N=1 e N=3; segunda mutacao (#339 N=3) e (#339b)"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "texto de registro e versao; testa-versao.sh 5 ok"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
