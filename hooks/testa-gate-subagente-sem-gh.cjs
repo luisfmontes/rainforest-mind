@@ -351,6 +351,9 @@ const sandboxRev = path.join(caixa, "sandbox-rev");
 fs.mkdirSync(sandboxRev, { recursive: true });
 fs.writeFileSync(path.join(sandboxRev, "m.ps1"), "gh issue close 12\n");
 fs.writeFileSync(path.join(sandboxRev, "ok.ps1"), "Write-Host oi\n");
+fs.writeFileSync(path.join(sandboxRev, "lista.pl"), "system('gh', 'issue', 'close', '12');\n");
+fs.writeFileSync(path.join(sandboxRev, "sys.py"), "import os\nos.system(\"gh issue close 12\")\n");
+fs.writeFileSync(path.join(sandboxRev, "limpo.py"), "print('gh is a cli')\n");
 const ps1Abs = toPosix(path.join(sandboxRev, "m.ps1"));
 
 const casosRevisao = [
@@ -375,6 +378,11 @@ const casosRevisao = [
   [`python -m pytest -q`, 0, "(revisão 2) python -m pytest (sem código inline)"],
   [`gh api graphql -f query="query { viewer { login } }"`, 0, "(revisão 2) gh api graphql com query (leitura)"],
   [`gh api graphql -f query="mutation { closeIssue(input:{issueId:\\"x\\"}) { clientMutationId } }"`, 2, "(revisão 2) gh api graphql com mutation"],
+  ["perl -Mfeature ./lista.pl", 2, "(revisão 3) perl -Mfeature <arquivo com gh> (valor do -M não esconde o arquivo)"],
+  ["python3 ./sys.py", 2, "(revisão 3) python3 <arquivo com os.system(\"gh issue close 12\")>"],
+  ["python3 ./limpo.py", 0, "(revisão 3) python3 <arquivo sem gh>"],
+  ["gh api graphql -f query=@q.graphql", 2, "(revisão 3) gh api graphql -f query=@arquivo (não se lê)"],
+  ["gh api graphql --input q.json", 2, "(revisão 3) gh api graphql --input"],
   ["python3 -c 'print(1)'", 0, "(revisão) python3 -c sem gh"],
   [`node -e "console.log('gh is nice')"`, 0, "(revisão) node -e com 'gh' como palavra"],
   ["pwsh ./ok.ps1", 0, "(revisão) pwsh <.ps1 sem gh>"],
@@ -385,6 +393,17 @@ const casosRevisao = [
 for (const [comando, esperado, nome] of casosRevisao) {
   caso(nome, rodarComCwd(comando, sandboxRev).status, esperado);
 }
+// Revisão 3: medir um gate com payload no stdin — o método que o perfil
+// prescreve — não pode ser negado só porque o fonte do gate cita `gh` em
+// comentário, mensagem ou tabela de padrões.
+const raizRepo = path.resolve(__dirname, "..");
+for (const gate of ["hooks/gate-fechar-issue.cjs", "hooks/gate-subagente-sem-gh.cjs", "hooks/gate-bateria-sem-timeout.cjs"]) {
+  caso(`(revisão 3) node ${gate} (medir gate pelo stdin, árvore real) → 0`, rodarComCwd(`node ${gate}`, raizRepo).status, 0);
+}
+fs.writeFileSync(path.join(sandboxRev, "msg.cjs"), "console.log('rode gh issue close 12 na janela principal');\n");
+fs.writeFileSync(path.join(sandboxRev, "crase.sh"), "saida=`gh issue close 12`\n");
+caso("(revisão 3) node msg.cjs (gh só em mensagem) → 0", rodarComCwd("node ./msg.cjs", sandboxRev).status, 0);
+caso("(revisão 3) bash crase.sh (crase executa) → 2", rodarComCwd("bash ./crase.sh", sandboxRev).status, 2);
 caso("(revisão) gh co 12 sem agent_id (janela principal) → 0", rodarComCwd("gh co 12", sandboxRev, { subagente: false }).status, 0);
 
 console.log("-----------------------------------------");

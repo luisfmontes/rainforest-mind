@@ -122,7 +122,13 @@ function apiEhEscrita(argsApi) {
   // `gh api graphql -f query="query { viewer { login } }"` saía 2).
   const posicional = argsApi.map(semContrabarra).find((t) => !t.startsWith("-"));
   if (posicional && posicional.toLowerCase() === "graphql") {
-    return argsApi.some((t) => /\bmutation\b/i.test(semContrabarra(t)));
+    // Query vinda de arquivo/stdin (`-f query=@x`, `--input x`) não se lê
+    // daqui: conta como escrita (revisão 3).
+    const deArquivo = argsApi.some((t) => {
+      const v = semContrabarra(t);
+      return v === "--input" || v.startsWith("--input=") || /^[^=]+=@/.test(v);
+    });
+    return deArquivo || argsApi.some((t) => /\bmutation\b/i.test(semContrabarra(t)));
   }
   return temCampo;
 }
@@ -557,7 +563,9 @@ function caminhoDeArquivoExecutado(toks, pos) {
 // — literal de array/argumentos em código (`execFileSync('gh', [...])`),
 // nunca sintaxe de shell. Colchete de abertura é opcional (cobre a forma sem
 // array citada no design, `"gh", "pr", "merge"`).
-const RE_CHAMADA_GH = /['"]gh['"]\s*,\s*(?:\[\s*)?['"]([A-Za-z]+)['"]\s*,\s*['"]([A-Za-z]+)['"]/;
+// Revisão 3: exige o `(` da chamada (com `[` opcional, forma de lista do
+// Python) — tabela de padrões `[["gh", "issue", "close"], ...]` não é chamada.
+const RE_CHAMADA_GH = /\(\s*\[?\s*['"]gh['"]\s*,\s*(?:\[\s*)?['"]([A-Za-z]+)['"]\s*,\s*['"]([A-Za-z]+)['"]/;
 
 /**
  * Uma LINHA (de script lido, ou de corpo de heredoc) escreve no GitHub via
@@ -597,6 +605,10 @@ function linhaEhEscritaGh(linha) {
  * `null` (sem escrita, ou arquivo inexistente/ilegível — D4: "arquivo que não
  * existe ou não se lê passa").
  */
+const RE_LINHA_EXECUTA = /\b(system|exec\w*|spawn\w*|popen|Popen|run|call|check_call|check_output|getoutput|Start-Process|Invoke-Expression|iex)\s*\(|\$\(\s*gh\b|\bqx\s*[({\/]/;
+// Crase executa em shell/perl/ruby; em JS é template literal (mensagem).
+const RE_CRASE_EXECUTA = /`[^`]*\bgh\b/;
+
 function lerEscritaEmArquivo(caminho) {
   let conteudo;
   try {
@@ -605,10 +617,18 @@ function lerEscritaEmArquivo(caminho) {
     return null;
   }
   const linhas = conteudo.split("\n");
+  const ehJs = /\.(c|m)?js$/i.test(caminho);
   for (let i = 0; i < linhas.length; i += 1) {
     const linha = linhas[i];
     if (/^\s*#/.test(linha)) continue;
-    if (linhaEhEscritaGh(linha)) {
+    // Comentário de JS (revisão 3): os próprios gates citam `gh issue close`
+    // na documentação, e `node hooks/gate-x.cjs` com payload no stdin — o
+    // jeito que o perfil manda medir um gate — saía 2.
+    if (ehJs && /^\s*(\/\/|\/\*|\*)/.test(linha)) continue;
+    // Revisão 3: `os.system("gh issue close 12")` num .py é um token só para
+    // o tokenizador de shell e passava. O `gh` dentro de string só conta em
+    // linha que CHAMA algo — mensagem que cita `'gh issue close'` não.
+    if (linhaEhEscritaGh(linha) || ((RE_LINHA_EXECUTA.test(linha) || (!ehJs && RE_CRASE_EXECUTA.test(linha))) && textoTemEscritaGh(linha))) {
       return { linha: i + 1, texto: linha.trim() };
     }
   }
@@ -721,7 +741,8 @@ function processarSegmento(segmento, cwd) {
     if (inline !== null) {
       if (inline.ilegivel) bloqueiaIlegivel(segmento);
       if (textoTemEscritaGh(inline.codigo)) bloqueiaEscrita(segmento);
-      return;
+      // Sem return (revisão 3): `perl -Mfeature x.pl` achava "código" no
+      // valor do `-M` e nunca lia o arquivo. O arquivo é conferido também.
     }
     const arq = caminhoDeArquivoExecutado(toks, pos);
     if (arq !== null) {
