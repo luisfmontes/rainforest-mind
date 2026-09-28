@@ -44,7 +44,12 @@
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "5c3ede06d80774f27a67878ea6793a97d825e908",
+      "caminhos_sujos": []
+    },
+    "vereditos": []
   },
   "verificar": {
     "status": "pendente"
