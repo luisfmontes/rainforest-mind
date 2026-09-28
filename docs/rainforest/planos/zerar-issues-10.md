@@ -75,7 +75,7 @@ pronto quando: com um transcrito na pasta real de sessão (o mesmo arranjo que o
 
 ### 6. Continuação de linha na mesma passada das aspas duplas (#339) [tipo: implementar]
 atende: D6
-arquivos: `hooks/lib/tokens-comando.cjs`, `hooks/testa-gate-fechar-issue.sh`
+arquivos: `hooks/lib/tokens-comando.cjs`, `hooks/testa-gate-fechar-issue.sh`, `hooks/gate-fechar-issue.cjs`
 depende de: 1
 paralela: nao
 mutacao:
@@ -89,9 +89,9 @@ pronto quando: com o payload PreToolUse real de `bash -c "gh issue ` + N contrab
 
 ### 7. CHANGELOG e README acompanham a entrega [tipo: docs]
 atende: D7
-arquivos: `CHANGELOG.md`, `README.md`
+arquivos: `CHANGELOG.md`, `README.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`
 depende de: 1, 2, 3, 4, 5, 6
 paralela: nao
 mutacao: n/a
   motivo: texto de registro, sem comportamento a inverter; a falsificação é a coerência com o diff real
-pronto quando: com o diff real da branch contra `origin/main`, o CHANGELOG ganha uma entrada de versão minor sobre a de `origin/main` no momento do `fechar` que descreve cada uma das seis correções pelo efeito medido (o comando que antes saía 0 e agora sai 2, o campo que agora grava `~`, a bateria que deixou de rodar em dobro), sem prometer o que o diff não faz — conferido lendo `git diff origin/main...HEAD --stat` contra a entrada; a linha da 1.26.0 que diz "`stdbuf --output L` ... ainda escapa: issue #346" fica como histórico, e a entrada nova diz que fechou; o README só muda se algum trecho dele descreve comportamento alterado (o executor procura `stdbuf`, `body-file`, `transcrito` e as duas baterias removidas do bloco e decide pelo que achar).
+pronto quando: *(emenda de 2026-09-28, revisar: a versão mora nos dois `plugin.json` e no selo do README — `scripts/testa-versao.sh` confere os três —, que faltavam em `arquivos:`)* com o diff real da branch contra `origin/main`, o CHANGELOG ganha uma entrada de versão minor sobre a de `origin/main` no momento do `fechar` que descreve cada uma das seis correções pelo efeito medido (o comando que antes saía 0 e agora sai 2, o campo que agora grava `~`, a bateria que deixou de rodar em dobro), sem prometer o que o diff não faz — conferido lendo `git diff origin/main...HEAD --stat` contra a entrada; a linha da 1.26.0 que diz "`stdbuf --output L` ... ainda escapa: issue #346" fica como histórico, e a entrada nova diz que fechou; o README só muda se algum trecho dele descreve comportamento alterado (o executor procura `stdbuf`, `body-file`, `transcrito` e as duas baterias removidas do bloco e decide pelo que achar).
