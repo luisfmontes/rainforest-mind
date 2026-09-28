@@ -1,5 +1,43 @@
 # Eval de gatilho — issue #302
 
+## Trava sob demanda — `scripts/eval-gatilho.sh`
+
+Esta suíte **não roda no CI** (emenda ao critério 3 original da #302, decisão
+D5 de `docs/rainforest/design/zerar-issues-11.md`): cada rodada tem custo
+medido em dinheiro (~US$ 0,32 por caso por rodada, só com o plugin — seção 3
+e 7 abaixo), e US$ 20 por trava completa em 3 rodadas não cabe em todo PR. A
+suíte roda **sob demanda**, pelo script abaixo, com a decisão de gasto na mão
+de quem chama.
+
+```
+# trava: N rodadas por caso (padrão 3), decide por maioria, sai 1 se algum
+# caso reprovar. --case filtra pelo `name:` do case.yaml (glob, padrão todos).
+bash scripts/eval-gatilho.sh trava [--case <glob>] [--rodadas N] [--max-cost-usd X]
+
+# mutacao: sabota a description da skill numa cópia temporária e confere que
+# a trava (só nos positivos dela) fica vermelha. Sai 0 (detectou), 3 (não
+# detectou) ou 127 (sem CLAUDE_BIN resolvível). A árvore real nunca muda.
+bash scripts/eval-gatilho.sh mutacao <skill> [--rodadas N]
+
+# baseline: uma chamada única com --ablation with-without --runs 1, para o
+# relatório de "acrescenta / peso morto" (seção 5).
+bash scripts/eval-gatilho.sh baseline [--case <glob>]
+```
+
+`CLAUDE_BIN` troca o executável do CLI (padrão: `claude` do PATH). A bateria
+`scripts/testa-eval-gatilho.sh` roda os três modos contra um `claude` falso
+— nenhuma chamada ao CLI real, nenhuma rede, nenhum custo — e entra no
+varredor (`scripts/varrer-baterias.sh`) e no CI como qualquer outra bateria
+deste repositório.
+
+**Critério 4 da #302** (ver a eval reprovar de verdade, com o CLI pago,
+contra uma `description` real sabotada) **ainda não rodou paga** nesta
+rodada — decisão do Luís, 2026-09-28: nenhuma eval paga roda enquanto o
+mecanismo não estiver prático (este script). Fica pendente, com a issue
+aberta, para uma próxima rodada sob demanda.
+
+## Suíte (21 casos, 7 pares)
+
 Suíte de `claude plugin eval` com 2-3 casos **positivos** e 1-2 casos
 **negativos** por par de colisão da tabela da issue #302 (7 pares, 21 casos).
 Redespacho da tarefa 5: a primeira tentativa (branch `worktree-agent-
