@@ -28,6 +28,13 @@ prompt, e uma ronda de teste do jardineiro foi parar no grupo. Agora o `-Teste` 
 as tools de envio (WhatsApp e Gmail) da sessão por `--disallowedTools`, e o prefixo
 avisa o modelo que a ausência delas não é bridge fora do ar.
 
+**Falha do backup externo diz o motivo.** Cinco linhas `backup externo falhou (exit 2):
+System.Management.Automation.RemoteException` (11 a 25/09, sem zip nos dias 21–23)
+não traziam causa nenhuma: o PowerShell 5.1 embrulha cada linha de stderr do node, e o
+registro pegava a última, que era vazia. Agora o `ERROS.md` recebe a linha `RECUSADO`
+do `backup.cjs` e o log do vigia guarda o stderr inteiro. A causa da falha intermitente
+em si ainda não é conhecida — a próxima ocorrência vai dizê-la.
+
 Bateria nova: `scripts/testa-run-vigia-claude.sh`, que executa o script com `claude`
 falso e uma porta simulando a bridge — contra a versão anterior ela fica vermelha
 nos três casos de falha e no caso do `-Teste`.

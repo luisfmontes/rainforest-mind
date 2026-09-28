@@ -160,7 +160,21 @@ if (Test-Path $backup_externo) {
     Pop-Location
 
     if ($codigo_externo -ne 0) {
-        $ultima_linha = if ($backup_log -is [array]) { $backup_log[-1] } else { $backup_log }
+        # Cada linha vira TEXTO antes de escolher, e a escolhida e a RECUSADO (o
+        # motivo que o backup.cjs escreve), senao a ultima NAO VAZIA. Ate
+        # 2026-09-28 era `$backup_log[-1]`: o stderr do node chega como
+        # ErrorRecord no PowerShell 5.1, o da linha vazia final vira o texto da
+        # excecao sem mensagem, e o ERROS.md juntou cinco "RemoteException" sem
+        # uma causa. O stderr inteiro vai para o log do vigia, saneado linha a
+        # linha, porque o ERROS.md so tem espaco para uma.
+        $linhas = @($backup_log | ForEach-Object {
+            if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { "$_" }
+        } | Where-Object { $_ -and $_.Trim() -and $_ -ne 'System.Management.Automation.RemoteException' })
+        if ($Log) {
+            foreach ($l in $linhas) { [void](Write-LinhaEmLf -Caminho $Log -Linha "backup externo: $(Get-MotivoSaneado $l)") }
+        }
+        $recusado = @($linhas | Where-Object { $_ -match '^RECUSADO' })
+        $ultima_linha = if ($recusado.Count) { $recusado[0] } elseif ($linhas.Count) { $linhas[-1] } else { '(sem saida)' }
         # ORDEM: sanear antes de truncar, sempre - ver o comentario do
         # Truncar-LinhaDeErro acima. Truncar primeiro cortaria o caminho no meio
         # do nome de usuario, e o saneador trataria o pedaco cortado como folha.
