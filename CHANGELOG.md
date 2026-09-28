@@ -10,7 +10,7 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
-## 1.25.0 — 2026-09-27
+## 1.26.0 — 2026-09-27
 
 **Subagente já não deixa bateria sem `timeout` ir para segundo plano.** Em 2026-09-27,
 10 de 14 subagentes numa sessão tiveram comando empurrado para segundo plano, e em
