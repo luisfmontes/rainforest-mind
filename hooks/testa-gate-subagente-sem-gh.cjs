@@ -261,6 +261,20 @@ casoContem("(D4) bash script avulso com gh issue close", r.status, r.stderr, 2, 
 r = rodarComCwd(`sh ${xshAbs}`, sandboxD4);
 caso("(D4) sh <caminho absoluto de x.sh> em subagente", r.status, 2);
 
+// Integração (2026-09-28): quatro formas escapavam da leitura do script.
+fs.writeFileSync(path.join(sandboxD4, "y.py"), "import subprocess\nsubprocess.run(['gh', 'issue', 'close', '12'])\n");
+fs.writeFileSync(path.join(sandboxD4, "z.sh"), "G=gh\n$G issue close 12\n");
+r = rodarComCwd(`python3 ${toPosix(path.join(sandboxD4, "y.py"))}`, sandboxD4);
+caso("(integração) python3 script com gh issue close", r.status, 2);
+r = rodarComCwd(`bash < ${xshAbs}`, sandboxD4);
+caso("(integração) bash < x.sh (stdin redirecionado)", r.status, 2);
+r = rodarComCwd(`cat ${xshAbs} | bash`, sandboxD4);
+caso("(integração) cat x.sh | bash (pipe)", r.status, 2);
+r = rodarComCwd(`bash ${toPosix(path.join(sandboxD4, "z.sh"))}`, sandboxD4);
+caso("(integração) script com variavel no lugar do gh", r.status, 2);
+r = rodarComCwd(`cat ${xshAbs} | grep issue`, sandboxD4);
+caso("(integração) cat x.sh | grep (leitura, nao interpretador)", r.status, 0);
+
 r = rodarComCwd(`source ${xshAbs}`, sandboxD4);
 caso("(D4) source <caminho absoluto de x.sh> em subagente", r.status, 2);
 

@@ -142,7 +142,11 @@ function comandoGhEhEscrita(subcomandos) {
  */
 function indiceSequenciaGh(tokens, padrao) {
   for (let i = 0; i + 1 < tokens.length; i += 1) {
-    if (semContrabarra(tokens[i]).toLowerCase() !== "gh") continue;
+    // `$G issue close 12` com `G=gh` (integração, 2026-09-28): variável
+    // sozinha na posição do `gh` conta como `gh` — o gate não sabe o valor.
+    const cabeca = tokens[i];
+    const ehVariavel = /^\$\{?[A-Za-z_][A-Za-z0-9_]*\}?$/.test(cabeca);
+    if (!ehVariavel && semContrabarra(cabeca).toLowerCase() !== "gh") continue;
     const familia = semContrabarra(tokens[i + 1]).toLowerCase();
     if (familia !== padrao[0]) continue;
     if (familia === "api") return i; // api decidido à parte, por flags
@@ -405,7 +409,8 @@ function normalizarExecutavel(nome) {
 // `processarSegmento` porque `desempacotarWrapperDeString` sempre devolve
 // `ilegivel: true` para eles (não têm forma de string), o que bloquearia
 // toda `source`/`.` às cegas antes desta tarefa ler o conteúdo.
-const INTERPRETADORES_DE_ARQUIVO = new Set(["bash", "sh", "source", ".", "node", "python"]);
+// Integração (2026-09-28): `python3`, `zsh`, `dash`, `ksh` e `py` escapavam.
+const INTERPRETADORES_DE_ARQUIVO = new Set(["bash", "sh", "zsh", "dash", "ksh", "source", ".", "node", "python", "python3", "python2", "py"]);
 
 // Extensão de script reconhecida para o caminho DIRETO em posição de
 // comando (`./x.sh`) — sem isto, qualquer binário com `/` no nome
@@ -434,7 +439,12 @@ function caminhoDeArquivoExecutado(toks, pos) {
   if (INTERPRETADORES_DE_ARQUIVO.has(exeNorm)) {
     let i = pos + 1;
     while (i < toks.length && !toks[i].q && toks[i].v.startsWith("-")) i += 1;
-    return i < toks.length ? toks[i].v : null;
+    if (i >= toks.length) return null;
+    // `bash < x.sh` (integração, 2026-09-28): o script chega pelo stdin
+    // redirecionado — o arquivo é o alvo do `<`, não o próprio `<`.
+    if (!toks[i].q && toks[i].v === "<") return i + 1 < toks.length ? toks[i + 1].v : null;
+    if (!toks[i].q && /^<[^<]/.test(toks[i].v)) return toks[i].v.slice(1);
+    return toks[i].v;
   }
 
   if (/[\\/]/.test(raw) && EXTENSAO_DE_SCRIPT.test(raw)) return raw;
@@ -691,6 +701,21 @@ function main() {
   }
 
   TEXTOS_DE_HEREDOC = [];
+
+  // `cat x.sh | bash` (integração, 2026-09-28): o script chega ao
+  // interpretador pelo pipe, e a segmentação por `|` separa os dois lados —
+  // o interpretador fica sem arquivo e o `cat` parece leitura. Os arquivos do
+  // `cat` que alimenta um interpretador sem `-c` são lidos como script.
+  const reCatPipe = /\bcat((?:\s+(?:"[^"]*"|'[^']*'|[^\s|;&<>]+))+)\s*\|\s*(?:sudo\s+)?(?:bash|sh|zsh|dash|ksh|python3?|python2|py|node)\b(?!\s+-c\b)/g;
+  let mCat;
+  while ((mCat = reCatPipe.exec(comando)) !== null) {
+    for (const tok of tokensComAspas(mCat[1])) {
+      if (!tok.q && tok.v.startsWith("-")) continue;
+      const achado = arquivoDeScriptExecutado(tok.v, projeto);
+      if (achado !== null) bloqueiaArquivo(achado);
+    }
+  }
+
   for (const segmento of segmentosParaGate(comando)) {
     processarSegmento(segmento, cwdDoSegmento(segmento));
   }
