@@ -32,6 +32,10 @@ passa, e a janela principal passa sempre.
   `pwsh`/`powershell` com `.ps1`, e código inline em `node -e`, `python -c`,
   `pwsh -Command` e `cmd /c`, inclusive `--eval="..."` e flags agrupadas
   (`python -Bc`, `perl -we`); `pwsh -EncodedCommand`, ilegível, nega.
+- **Limite declarado:** a leitura de script é textual. Pega o jeito comum de chamar
+  (`os.system("gh …")`, `execSync(…)`, `system 'gh', …`, `$(gh …)`, crase), não a
+  evasão deliberada (função apelidada, comando montado por concatenação). O alvo é o
+  agente que roda `gh` sem perceber, não o que tenta burlar.
 - **Isenção:** bateria `testa-*` rastreada pelo git, mesmo alterada — as baterias citam
   `gh issue close` como texto de teste. Bateria nova precisa de `git add` antes de rodar,
   e a mensagem diz isso. `scripts/fechar-issue.cjs` é negado pelo nome.

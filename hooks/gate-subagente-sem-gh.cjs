@@ -565,7 +565,8 @@ function caminhoDeArquivoExecutado(toks, pos) {
 // array citada no design, `"gh", "pr", "merge"`).
 // Revisão 3: exige o `(` da chamada (com `[` opcional, forma de lista do
 // Python) — tabela de padrões `[["gh", "issue", "close"], ...]` não é chamada.
-const RE_CHAMADA_GH = /\(\s*\[?\s*['"]gh['"]\s*,\s*(?:\[\s*)?['"]([A-Za-z]+)['"]\s*,\s*['"]([A-Za-z]+)['"]/;
+// Revisão 4: `system 'gh', 'issue', 'close'` (Perl sem parêntese) também.
+const RE_CHAMADA_GH = /(?:\(|\b(?:system|exec)\s)\s*\[?\s*['"]gh['"]\s*,\s*(?:\[\s*)?['"]([A-Za-z]+)['"]\s*,\s*['"]([A-Za-z]+)['"]/;
 
 /**
  * Uma LINHA (de script lido, ou de corpo de heredoc) escreve no GitHub via
@@ -605,7 +606,7 @@ function linhaEhEscritaGh(linha) {
  * `null` (sem escrita, ou arquivo inexistente/ilegível — D4: "arquivo que não
  * existe ou não se lê passa").
  */
-const RE_LINHA_EXECUTA = /\b(system|exec\w*|spawn\w*|popen|Popen|run|call|check_call|check_output|getoutput|Start-Process|Invoke-Expression|iex)\s*\(|\$\(\s*gh\b|\bqx\s*[({\/]/;
+const RE_LINHA_EXECUTA = /\b(system|exec\w*|spawn\w*|popen|Popen|run|call|check_call|check_output|getoutput|Start-Process|Invoke-Expression|iex)\s*\(|\b(system|exec)\s+['"]|\$\(\s*gh\b|\bqx\s*[({\/]/;
 // Crase executa em shell/perl/ruby; em JS é template literal (mensagem).
 const RE_CRASE_EXECUTA = /`[^`]*\bgh\b/;
 
@@ -619,12 +620,17 @@ function lerEscritaEmArquivo(caminho) {
   const linhas = conteudo.split("\n");
   const ehJs = /\.(c|m)?js$/i.test(caminho);
   for (let i = 0; i < linhas.length; i += 1) {
-    const linha = linhas[i];
+    let linha = linhas[i];
     if (/^\s*#/.test(linha)) continue;
     // Comentário de JS (revisão 3): os próprios gates citam `gh issue close`
     // na documentação, e `node hooks/gate-x.cjs` com payload no stdin — o
-    // jeito que o perfil manda medir um gate — saía 2.
-    if (ehJs && /^\s*(\/\/|\/\*|\*)/.test(linha)) continue;
+    // jeito que o perfil manda medir um gate — saía 2. Bloco fechado na
+    // mesma linha sai antes, e o código depois dele é lido (revisão 4:
+    // `/* x */ execSync("gh issue close 12")` passava).
+    if (ehJs) {
+      linha = linha.replace(/\/\*.*?\*\//g, " ");
+      if (/^\s*(\/\/|\/\*|\*)/.test(linha)) continue;
+    }
     // Revisão 3: `os.system("gh issue close 12")` num .py é um token só para
     // o tokenizador de shell e passava. O `gh` dentro de string só conta em
     // linha que CHAMA algo — mensagem que cita `'gh issue close'` não.

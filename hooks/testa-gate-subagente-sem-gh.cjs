@@ -402,6 +402,12 @@ for (const gate of ["hooks/gate-fechar-issue.cjs", "hooks/gate-subagente-sem-gh.
 }
 fs.writeFileSync(path.join(sandboxRev, "msg.cjs"), "console.log('rode gh issue close 12 na janela principal');\n");
 fs.writeFileSync(path.join(sandboxRev, "crase.sh"), "saida=`gh issue close 12`\n");
+fs.writeFileSync(path.join(sandboxRev, "bloco.cjs"), '/* setup */ require("child_process").execSync("gh issue close 12");\n');
+fs.writeFileSync(path.join(sandboxRev, "semparen.pl"), "system 'gh', 'issue', 'close', '12';\n");
+fs.writeFileSync(path.join(sandboxRev, "semparen2.pl"), "system \"gh issue close 12\";\n");
+caso("(revisão 4) node bloco.cjs (/* */ fechado e código na mesma linha) → 2", rodarComCwd("node ./bloco.cjs", sandboxRev).status, 2);
+caso("(revisão 4) perl semparen.pl (system LISTA sem parêntese) → 2", rodarComCwd("perl ./semparen.pl", sandboxRev).status, 2);
+caso("(revisão 4) perl semparen2.pl (system \"...\" sem parêntese) → 2", rodarComCwd("perl ./semparen2.pl", sandboxRev).status, 2);
 caso("(revisão 3) node msg.cjs (gh só em mensagem) → 0", rodarComCwd("node ./msg.cjs", sandboxRev).status, 0);
 caso("(revisão 3) bash crase.sh (crase executa) → 2", rodarComCwd("bash ./crase.sh", sandboxRev).status, 2);
 caso("(revisão) gh co 12 sem agent_id (janela principal) → 0", rodarComCwd("gh co 12", sandboxRev, { subagente: false }).status, 0);
