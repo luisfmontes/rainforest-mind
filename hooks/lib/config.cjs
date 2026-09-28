@@ -92,6 +92,11 @@ const CHAVES = {
     padrao: true,
     descricao: 'nega bateria sem timeout explícito dentro de subagente — varredura completa só roda na integração',
   },
+  'subagente-sem-gh': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'nega `gh` de escrita (issue/pr/release/repo/label/secret/variable/workflow/run/api) dentro de subagente — direto, em wrapper ou em heredoc',
+  },
   fluxo: {
     tipo: 'boolean',
     padrao: true,
