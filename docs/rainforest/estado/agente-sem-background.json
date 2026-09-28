@@ -148,13 +148,13 @@
     "head": "3967a628492ab49fececd515e6ebeff6330681f4"
   },
   "verificar": {
-    "status": "reprovado",
+    "status": "ok",
     "criterio": "varredura completa sem vermelhas",
-    "comando": "bash scripts/varrer-baterias.sh",
-    "saida": "vermelhas: scripts/testa-conferir-categoria.sh (46 pecas/16 guias), scripts/testa-versao.sh (semver no README divergindo de 1.25.0), hooks/testa-titulo-sessao-registro.sh (contagem PreToolUse 12)",
+    "comando": "bash scripts/varrer-baterias.sh; node hooks/testa-gate-bateria-sem-timeout.cjs; node scripts/perfil.cjs --conferir; node scripts/conferir-versao.cjs; node scripts/conferir-fluxo.cjs mutacoes --slug agente-sem-background",
+    "saida": "varredor exit 0, as 145 baterias passaram; gate 58 ok 0 falha; perfil ok 9 agentes; versao 1.25.0 ok; mutacoes 1 e 2 vermelho, 3 n/a",
     "faltou": "atualizar contagens e o semver do README",
     "em": "2026-09-27",
-    "tentativas": 1
+    "sensor_externo": "bash scripts/varrer-baterias.sh"
   },
   "fechar": {
     "status": "pendente"
