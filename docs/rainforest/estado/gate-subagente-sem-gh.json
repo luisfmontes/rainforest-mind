@@ -74,6 +74,10 @@
     "em": "2026-09-28"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "pr": 351,
+    "merge": "8e6533c3266d602eb1a953a8c14a3d81c0e9c8c5",
+    "ci": "baterias (node 24) pass 24m50s",
+    "em": "2026-09-28"
   }
 }
