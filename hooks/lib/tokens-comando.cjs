@@ -94,7 +94,7 @@ function nomeDeWrapper(tok) {
 // falso positivo — "claude" ali e um PADRAO DE BUSCA, argumento do grep,
 // nunca um comando.
 const WRAPPERS_QUE_REPASSAM = new Set([
-  "env", "command", "exec", "nohup", "nice", "timeout", "xargs", "sudo", "time",
+  "env", "command", "exec", "nohup", "nice", "timeout", "xargs", "sudo", "time", "stdbuf",
 ]);
 
 // Operadores de fronteira de segmento com DOIS caracteres que tem que ser
@@ -163,6 +163,7 @@ const FLAGS_COM_VALOR = {
   nice: new Set(["-n"]),
   xargs: new Set(["-n", "-I", "-d", "-P"]),
   timeout: new Set(["-s", "--signal", "-k", "--kill-after"]),
+  stdbuf: new Set(["-i", "-o", "-e", "--input", "--output", "--error"]),
 };
 
 /** `NOME=valor` isolado — atribuicao de variavel antes do comando de verdade. */
@@ -595,14 +596,32 @@ function colapsaContinuacaoDeLinhaNoTopo(cmdOriginal) {
 
 /**
  * Reduz escape de aspas duplas: `\\` → `\`, `\"` → `"`, `\$` → `$`, `` \` `` → `` ` ``
- * NUM ÚNICO PASSE da esquerda para direita. Qualquer outra sequência de
- * contrabarra+caractere (inclusive `\`+quebra de linha) é emitida intacta
- * e deixada para `colapsaContinuacaoDeLinha` processar depois.
+ * e `\`+quebra de linha (LF ou CRLF) → some, NUM ÚNICO PASSE da esquerda para
+ * direita — exatamente como o bash resolve escape dentro de aspas duplas.
+ * Qualquer outra sequência de contrabarra+caractere é emitida intacta.
  *
  * Tarefa 2 (#313): o bash reduz escape em TWO PASSES quando interpreta uma
  * string dentro de aspas duplas — este passe reduz o que é específico de
- * escape de aspas duplas, deixando o resto (continuação de linha) para o
- * colapso de quebra.
+ * escape de aspas duplas.
+ *
+ * #339 (revisão da #313): a continuação de linha (`\`+quebra) tinha ficado de
+ * fora deste passe, resolvida só depois por `colapsaContinuacaoDeLinha`. Como
+ * as duas passagens disputam a MESMA contrabarra de formas diferentes (a
+ * primeira só olha `\\`/`\"`/`\$`/`` \` ``, a segunda conta paridade da
+ * corrida inteira), com 3 contrabarras antes da quebra elas divergiam do
+ * bash: a 1ª passagem reduzia o par inicial e deixava `\<quebra>` sobrando; a
+ * 2ª via só 1 contrabarra (ímpar) e colapsava — mas o bash, numa única
+ * varredura, consome as 2 primeiras como par (`\\`→`\`) e a 3ª+quebra como
+ * continuação, isso ESCONDIA o `gh issue close 12` sem o gate ver (medido:
+ * `gate-fechar-issue` saía 0). Tratar `\`+quebra aqui, na mesma passada que as
+ * outras quatro sequências, resolve: a continuação sempre consome a
+ * contrabarra imediatamente anterior (a que sobrar de emparelhar da
+ * esquerda), igual ao bash. `colapsaContinuacaoDeLinha`, rodado depois em
+ * `desempacota`, continua valendo para o texto de NÍVEL SUPERIOR (que não
+ * passa por aqui) e é idempotente sobre o que este passe já resolveu: uma
+ * corrida de contrabarras que sobrou PAR antes de uma quebra real (ela
+ * também vira caractere literal aqui, pareada) não é ímpar para
+ * `colapsaContinuacaoDeLinha`, que não mexe nela de novo.
  */
 function reduzEscapeAspasDuplas(str) {
   let saida = "";
@@ -613,6 +632,16 @@ function reduzEscapeAspasDuplas(str) {
         // Reduce: emite só o caractere seguinte
         saida += prox;
         i += 1;
+        continue;
+      }
+      if (prox === "\n") {
+        // Continuação de linha (#339): a contrabarra e o LF somem juntos.
+        i += 1;
+        continue;
+      }
+      if (prox === "\r" && str[i + 2] === "\n") {
+        // Continuação de linha, forma CRLF: contrabarra + \r\n somem juntos.
+        i += 2;
         continue;
       }
     }
@@ -818,10 +847,12 @@ module.exports = {
   nomeDeWrapper,
   WRAPPERS_QUE_REPASSAM,
   OPERADORES_DE_DOIS,
+  pularFlagsDoWrapper,
   posicaoDeComando,
   textoAPartir,
   WRAPPERS_DE_COMANDO,
   desempacotarWrapperDeString,
+  reduzEscapeAspasDuplas,
   contemConstrucaoIlegivel,
   colapsaContinuacaoDeLinha,
   colapsaContinuacaoDeLinhaNoTopo,

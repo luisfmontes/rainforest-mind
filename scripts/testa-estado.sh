@@ -2447,6 +2447,58 @@ else
   falhou=$((falhou+1)); echo "  FALHA sem arquivo: esperava exit 2 com '1..6', veio exit=$cod3"; printf '%s\n' "$msg3" | sed 's/^/         /'
 fi
 
+echo
+echo "== (#340) veredito grava transcrito com ~ =="
+# Reusar a arvore de teste e criar um novo slug para este caso
+mkdir -p "$SBP/tildatest"
+(cd "$SBP/tildatest" && git init -q && git config user.email t@t && git config user.name T)
+export RFM_ESTADO_ROOT="$SBP/tildatest"
+
+E340="node scripts/estado.cjs"
+$E340 iniciar --slug t340 >/dev/null
+$E340 marcar --slug t340 --estagio design --status aprovado >/dev/null
+$E340 marcar --slug t340 --estagio plano  --status ok >/dev/null
+$E340 exigir  --slug t340 --estagio executar >/dev/null
+$E340 marcar --slug t340 --estagio executar --status ok --json '{"comando":"node x","saida":"ok","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
+$E340 exigir  --slug t340 --estagio revisar >/dev/null
+
+# Gravar veredito com --transcrito apontando para uma pasta dentro de $HOME_SBOX
+transcrito_ok340="$(transcrito_para t340 ok t340-v1)"
+$E340 veredito --slug t340 --estagio revisar --veredito ok --agente rainforest-mind:revisor --agente-id t340-v1 --transcrito "$transcrito_ok340" >/dev/null
+
+# Verificar que o JSON gravado tem transcrito com ~ em vez de caminho absoluto
+transcrito_gravado=$(node -e "
+const fs = require('fs');
+const e = JSON.parse(fs.readFileSync('tildatest/docs/rainforest/estado/t340.json', 'utf8'));
+if (e.revisar && e.revisar.vereditos && e.revisar.vereditos[0]) {
+  console.log(e.revisar.vereditos[0].transcrito);
+}
+")
+
+if printf '%s' "$transcrito_gravado" | grep -q '^~/'; then
+  ok=$((ok+1)); echo "  ok   veredito grava transcrito com ~"
+else
+  falhou=$((falhou+1)); echo "  FALHA veredito: esperava transcrito com ~/, veio '$transcrito_gravado'"
+fi
+
+# (#340b) caixa diferente da pasta pessoal (disco em minusculo, comum no Git
+# Bash): o D14 aceita esse transcrito, entao o `~` tem de valer tambem.
+# Direto na funcao, com HOME e USERPROFILE forcados, para rodar igual em
+# qualquer plataforma (no Linux o disco nao muda de caixa).
+til340b=$(HOME="X:/Casa/Pessoa" USERPROFILE="X:/Casa/Pessoa" node -e '
+  const { caminhoComTil } = require(process.argv[1]);
+  console.log([
+    caminhoComTil("x:/casa/pessoa/.claude/projects/p/s/subagents/agent-x.jsonl"),
+    caminhoComTil("X:/Casa/Pessoa/.claude/p"),
+    caminhoComTil("X:/Casa/PessoaOutra/.claude/p"),
+  ].join("|"));
+' "$(pwd)/scripts/estado.cjs")
+if [ "$til340b" = "~/.claude/projects/p/s/subagents/agent-x.jsonl|~/.claude/p|X:/Casa/PessoaOutra/.claude/p" ]; then
+  ok=$((ok+1)); echo "  ok   (#340b) caixa diferente da pasta pessoal tambem vira ~; prefixo de outra pasta nao"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#340b) veio '$til340b'"
+fi
+
 unset RFM_ESTADO_ROOT
 
 echo "== resultado: $ok ok, $falhou falhas =="

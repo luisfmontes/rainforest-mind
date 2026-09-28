@@ -25,7 +25,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { colapsaContinuacaoDeLinha, tokensComAspas, posicaoDeComando, textoAPartir, desempacotarWrapperDeString } = require("./lib/tokens-comando.cjs");
+const { colapsaContinuacaoDeLinha, tokensComAspas, posicaoDeComando, textoAPartir, desempacotarWrapperDeString, pularFlagsDoWrapper } = require("./lib/tokens-comando.cjs");
 
 // Corpo de heredoc é texto, não comando
 function semCorpoDeHeredoc(comando) {
@@ -234,10 +234,7 @@ function analisaSegmento(segmento) {
   // `stdbuf` só ajusta o buffer e repassa o comando, como `nice` (revisão 3):
   // pula as flags dele (`-oL`, `-i 0`, `--output=L`) e analisa o que sobra.
   if (cmd.v === "stdbuf") {
-    let i = posCmd + 1;
-    while (i < toks.length && toks[i].v.startsWith("-")) {
-      i += /^-[ioe]$/.test(toks[i].v) ? 2 : 1;
-    }
+    const i = pularFlagsDoWrapper(toks, posCmd + 1, "stdbuf");
     return i < toks.length ? analisaSegmento(textoAPartir(toks, i)) : { ehBateria: false, nomeScript: null, ehVarredor: false, args: [] };
   }
 

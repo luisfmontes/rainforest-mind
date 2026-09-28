@@ -227,6 +227,8 @@ r = rodar("stdbuf -i0 -o0 -e0 bash hooks/testa-x.sh");
 caso("stdbuf -i0 -o0 -e0 bash hooks/testa-x.sh sem timeout → 2", r.status, 2);
 r = rodar("stdbuf -o L bash hooks/testa-x.sh");
 caso("stdbuf -o L bash hooks/testa-x.sh sem timeout → 2", r.status, 2);
+r = rodar("stdbuf --output L bash hooks/testa-x.sh");
+caso("(#346) stdbuf --output L (forma longa com espaco) sem timeout → 2", r.status, 2);
 r = rodar("stdbuf -oL bash hooks/testa-x.sh", { timeout: 600000 });
 caso("stdbuf -oL bash hooks/testa-x.sh com timeout: 600000 → 0", r.status, 0);
 r = rodar("stdbuf -oL git log -- hooks/testa-x.sh");

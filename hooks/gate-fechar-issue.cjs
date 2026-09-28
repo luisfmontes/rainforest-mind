@@ -35,7 +35,7 @@ const {
   WRAPPERS_DE_COMANDO, desempacotarWrapperDeString, OPERADORES_DE_DOIS,
   colapsaContinuacaoDeLinhaNoTopo,
 } = require("./lib/tokens-comando.cjs");
-const { cwdPorSegmento } = require("./lib/cwd-efetivo.cjs");
+const { cwdPorSegmento, normalizarMsys } = require("./lib/cwd-efetivo.cjs");
 const { corpoDeHeredoc, linhaDoHeredocTemInterpretador, fimDaLinhaLogica } = require("./lib/heredoc.cjs");
 
 /**
@@ -59,13 +59,35 @@ function temSubcomando(subcomandos, padrao) {
 /**
  * Índice da primeira ocorrência de `padrao` como sub-sequência CONTÍGUA
  * (case-insensitive) em `tokens`, ou -1 se não achar.
+ *
+ * #339: a contrabarra sai do token antes de comparar. Fora de aspas o bash
+ * remove `\` de qualquer caractere (`gh issue \close 12` roda `gh issue close
+ * 12`), e é isso que sobra de `bash -c "gh issue \\\<quebra>close 12"` depois
+ * da primeira passada. Nenhum padrão tem contrabarra, então a comparação só
+ * fica mais larga: `"\close"` citado (que o bash manteria) passa a barrar, e
+ * esse comando o `gh` recusaria de qualquer jeito.
  */
+// Revisão 1 (zerar-issues-10): aspas ANSI-C também escondiam o subcomando —
+// `gh issue $'close' 12` e `gh issue $'clo\x73e' 12` rodam `gh issue close
+// 12`, e o token chegava como `$close`/`$clo\x73e`. O `$` da frente sai (o
+// mesmo desconto de `ehComando`, A4) e os escapes numéricos do ANSI-C viram o
+// caractere antes de tirar as contrabarras. Aplicado a qualquer token, a
+// decodificação só alarga a comparação, como a contrabarra acima.
+function semContrabarra(s) {
+  let v = s.startsWith("$") ? s.slice(1) : s;
+  v = v
+    .replace(/\\x([0-9a-fA-F]{1,2})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/\\u([0-9a-fA-F]{1,4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/\\([0-7]{1,3})/g, (_, o) => String.fromCharCode(parseInt(o, 8)));
+  return v.split("\\").join("");
+}
+
 function indiceSequencia(tokens, padrao) {
   for (let i = 0; i <= tokens.length - padrao.length; i++) {
     if (
       tokens
         .slice(i, i + padrao.length)
-        .every((s, idx) => s.toLowerCase() === padrao[idx].toLowerCase())
+        .every((s, idx) => semContrabarra(s).toLowerCase() === padrao[idx].toLowerCase())
     ) {
       return i;
     }
@@ -498,6 +520,7 @@ function extrairCorpoDoPR(segmento, cwdSegmento) {
       } else {
         continue;
       }
+      arquivo = normalizarMsys(arquivo);
       if (!path.isAbsolute(arquivo) && cwdSegmento == null) {
         // Caminho relativo e não dá pra saber onde este segmento roda de
         // verdade (não achado no mapa de `cwdPorSegmento`, ou `incerto`):

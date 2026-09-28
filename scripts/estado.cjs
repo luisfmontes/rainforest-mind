@@ -44,7 +44,7 @@
  * D14, Tarefa 18): sem um arquivo real, NA PASTA REAL DE SESSÃO do Claude
  * Code, que confirme slug e veredito (`transcritoConfirmaVeredito`,
  * `transcritoEmPastaDeSessaoReal`), o comando recusa com exit 2 e não grava
- * nada; quando grava, o caminho absoluto fica no campo `transcrito`.
+ * nada; quando grava, o caminho com ~ (pasta pessoal) ou / (normalizado) fica no campo `transcrito`.
  *
  * `concluido` reusa o predicado `proximo` (não escreve lógica de progresso nova):
  * com `--slug`, sai 0 se `proximo(estado) === null` (fluxo fechado), 2 nomeando o
@@ -205,6 +205,31 @@ function hoje() {
   const d = new Date();
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/**
+ * Converte caminho absoluto em forma de ~ quando em pasta pessoal.
+ * Substitui o prefixo os.homedir() por ~ e normaliza separadores para /.
+ * Caminho fora da pasta pessoal volta como veio, só com / normalizado.
+ */
+function caminhoComTil(caminho) {
+  if (!caminho || typeof caminho !== 'string') return caminho;
+  const home = os.homedir();
+  const caminhoNormalizado = caminho.replace(/\\/g, '/');
+  const homeNormalizado = home.replace(/\\/g, '/');
+  // A comparacao ignora caixa, como `transcritoEmPastaDeSessaoReal`: o
+  // Windows entrega o disco e o usuario em caixa inconsistente (`c:/Users`
+  // via Git Bash), e o D14 aceita esse transcrito — gravar o caminho cru
+  // nesse caso vazaria a pasta pessoal que a #340 esconde.
+  const caminhoComparavel = caminhoNormalizado.toLowerCase();
+  const homeComparavel = homeNormalizado.toLowerCase();
+  if (caminhoComparavel.startsWith(homeComparavel + '/')) {
+    return '~' + caminhoNormalizado.substring(homeNormalizado.length);
+  }
+  if (caminhoComparavel === homeComparavel) {
+    return '~';
+  }
+  return caminhoNormalizado;
 }
 
 /**
@@ -1789,10 +1814,11 @@ function main() {
       // mais de uma vez (retomada), e a segunda chamada substitui a entrada
       // anterior em vez de duplicar — ver achado 7 do plano.
       const idx = agenteId ? vereditos.findIndex((v) => v.agente_id === agenteId) : -1;
-      // D14 — Tarefa 18: caminho absoluto gravado junto — deixa a forja
+      // D14 — Tarefa 18: caminho gravado junto (com ~ no lugar da pasta
+      // pessoal, #340: o estado e versionado em repo publico) — deixa a forja
       // visivel (quem confere a entrada ve exatamente qual transcrito real
       // confirmou o veredito, nao so o dizer de quem despachou).
-      const entrada = { agente, agente_id: agenteId, veredito, em: hoje(), transcrito: path.resolve(transcrito) };
+      const entrada = { agente, agente_id: agenteId, veredito, em: hoje(), transcrito: caminhoComTil(path.resolve(transcrito)) };
       if (idx === -1) {
         vereditos.push(entrada);
       } else {
@@ -2249,4 +2275,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { novo, proximo, faltando, estaFechado, EXECUCAO, PRE_REQUISITOS, DIR_ESTADO };
+module.exports = { novo, proximo, faltando, estaFechado, EXECUCAO, PRE_REQUISITOS, DIR_ESTADO, caminhoComTil };

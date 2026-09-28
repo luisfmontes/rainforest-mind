@@ -1,0 +1,108 @@
+{
+  "slug": "zerar-issues-10",
+  "titulo": "Zerar as Issues abertas, rodada 10 — #346 #344 #342 #341 #340 #339 (#337 #302 em aberto)",
+  "criado_em": "2026-09-28",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/zerar-issues-10.md",
+    "em": "2026-09-28"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/zerar-issues-10.md",
+    "tarefas": 7,
+    "paralelas": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "em": "2026-09-28"
+  },
+  "executar": {
+    "status": "ok",
+    "tarefas_ok": 7,
+    "tarefas": 7,
+    "em": "2026-09-28",
+    "catraca_mutacao": "2026-09-28",
+    "comando": "bash hooks/testa-gate-fechar-issue.sh",
+    "saida": "== resultado: 239 ok, 0 falha(s) ==",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-bateria-sem-timeout.cjs, caso (#346) stdbuf --output L"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, (#344b) e (#344c)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "mudanca no proprio fixture da bateria; contraprova com servidor que nao sobe deu FALHA R5. fixture:"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-varrer-baterias.sh, teste (n), contraprovas testa-a e testa-d"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, (#340) e (#340b)"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, (#339c), (#339 N=3), (#339b), (#339d)"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "texto de registro e versao; testa-versao.sh 5 ok"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "9ce899699a8a5ace9908a900bb6dfffe5ed67976",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a296607f173512b49",
+        "veredito": "ok",
+        "em": "2026-09-28",
+        "transcrito": "C:\\Users\\Luis\\.claude\\projects\\C--Projetos-rainforest-mind\\a5435dc7-36e5-4a20-b1d0-0d1c8a88edc5\\subagents\\agent-a296607f173512b49.jsonl"
+      }
+    ],
+    "achados": 0,
+    "em": "2026-09-28",
+    "rodadas": 2,
+    "base": "c630a3e57426fb9fe82166c17a854b40d5c34a70",
+    "head": "9ce899699a8a5ace9908a900bb6dfffe5ed67976",
+    "fora_de_escopo": [
+      "execucoes_sh_em nao pega timeout/env antes do bash",
+      "filtro de auto-referencia por basename",
+      "semContrabarra decodifica tambem em aspas simples (so alarga)"
+    ]
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/varrer-baterias.sh; node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues-10; gh run view 36419217268 --json attempt,conclusion",
+    "saida": "as 146 baterias passaram (exit 0; testa-gate-staging-total.sh e testa-conferir-publicacao.sh 1 cabecalho cada, nenhum cabecalho repetido); mutacoes: tarefas 1,2,4,5,6 vermelho, 3 e 7 puladas (n/a declarado); CI run 36419217268 tentativas 1-5 success no 9ce89969 (5 seguidas, criterio D3)",
+    "sensor_externo": "bash scripts/varrer-baterias.sh",
+    "em": "2026-09-28"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

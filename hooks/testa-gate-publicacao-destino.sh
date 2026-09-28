@@ -672,29 +672,6 @@ gate "Edit com e-mail A uma vez em old e A+B em new (mesma linha)" 2 "$(PAY_CWD=
 # Caso 9: Edit com e-mail A duas vezes em new e uma vez em old → 2
 gate "Edit com e-mail A duas vezes em new e uma vez em old" 2 "$(PAY_CWD="$(esc "$R")" editComOld "$(esc "$R")/edit-repeticao.txt" "contato: $EMAIL" "contato: $EMAIL e $EMAIL")"
 
-echo "== Verificação: gate-staging-total continua verde =="
-echo "Rodando: bash hooks/testa-gate-staging-total.sh"
-if bash "$SRC/hooks/testa-gate-staging-total.sh" > /tmp/test-staging.log 2>&1; then
-  ok=$((ok+1))
-  echo "  ok   gate-staging-total passou"
-else
-  falhou=$((falhou+1))
-  echo "  FALHA gate-staging-total falhou"
-  tail -20 /tmp/test-staging.log | sed 's/^/    /'
-fi
-
-echo
-echo "== Verificação: conferir-publicacao.sh continua verde =="
-echo "Rodando: bash scripts/testa-conferir-publicacao.sh"
-if bash "$SRC/scripts/testa-conferir-publicacao.sh" > /tmp/test-conferir.log 2>&1; then
-  ok=$((ok+1))
-  echo "  ok   conferir-publicacao passou"
-else
-  falhou=$((falhou+1))
-  echo "  FALHA conferir-publicacao falhou"
-  tail -20 /tmp/test-conferir.log | sed 's/^/    /'
-fi
-
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

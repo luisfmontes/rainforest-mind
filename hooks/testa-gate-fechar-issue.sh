@@ -74,6 +74,14 @@ if [ "$1" = "pr" ] && [ "$2" = "view" ]; then
   node -e "console.log(JSON.stringify({body: process.env.GH_PR_VIEW_BODY || ''}))"
   exit 0
 fi
+if [ "$1" = "issue" ] && [ "$2" = "close" ]; then
+  # (#339) registra a chamada, só quando a bateria pede (GH_LOG_CHAMADAS
+  # setada) — sem a variável, comportamento idêntico ao de antes (exit 0).
+  if [ -n "${GH_LOG_CHAMADAS:-}" ]; then
+    echo "issue close $3" >> "$GH_LOG_CHAMADAS"
+  fi
+  exit 0
+fi
 exit 0
 STUB
 chmod +x "$SBP/bin/gh"
@@ -2290,19 +2298,22 @@ EXIT_HC=$?
 [ $EXIT_HC -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HC)"
 
 # (hd) controle: TRES contrabarras antes do LF (paridade impar) tambem
-# colapsam — mas o colapso funde `gh issue close 12` dentro do argumento do
-# `echo` anterior (exatamente o que o bash de verdade faz: a fusao NAO
-# invoca `gh`, so imprime texto), entao o exit correto e 0 — o mesmo que o
-# bash real executaria.
+# colapsam, e o colapso funde `gh issue close 12` dentro do argumento do
+# `echo` anterior (`echo hi gh issue close 12`: o bash so imprime texto).
+# Emenda de 2026-09-28 (#339): o exit era 0 so porque `gh` nao casava com
+# `gh`; com a contrabarra tirada antes da comparacao, o caso cai na mesma
+# politica de `echo hi gh issue close 12`, que o gate ja barrava (exit 2,
+# medido na base) — a sequencia e barrada em qualquer posicao, por
+# conservadorismo.
 echo
-echo "== (hd) echo hi \\\\\\<LF>gh issue close 12 → exit 0, tres contrabarras colapsam e fundem no echo (controle, paridade impar) =="
+echo "== (hd) echo hi \\\\\\<LF>gh issue close 12 → exit 2, tres contrabarras colapsam e fundem no echo (mesma politica de echo hi gh issue close 12) =="
 (
   export PATH="$SBP/bin:$PATH"
   PAYLOAD=$(node -e 'const B=String.fromCharCode(92);const cmd="echo hi "+B+B+B+"\n"+"gh issue close 12";process.stdout.write(JSON.stringify({cwd:process.argv[1],tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN")
   echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
 ) 2>"$SBP/err-hd"
 EXIT_HD=$?
-[ $EXIT_HD -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_HD)"
+[ $EXIT_HD -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HD)"
 
 # (he) controle: dentro de aspas SIMPLES de verdade a contrabarra+LF nunca
 # colapsa, mesmo com o texto de `gh issue close` dentro — mas como esta tudo
@@ -2562,6 +2573,203 @@ echo "== (#313e) bash -c 'gh issue \\<newline>close 12' → exit 2 (simples em s
 ) 2>"$SBP/err-313e"
 EXIT_313E=$?
 [ $EXIT_313E -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_313E)"
+
+# (#344) --body-file com caminho MSYS
+# Issue: No Git Bash, caminhos MSYS (/c/...) sao barrados porque path.isAbsolute
+# devolve true no win32, entao o caminho é lido como C:\c\..., que não existe.
+# Solução: aplicar normalizarMsys ao arquivo antes de path.isAbsolute.
+echo
+echo "== (#344) --body-file com caminho MSYS (/c/...) vs C:/... =="
+
+# Criar arquivo real com conteudo de PR (precisa ter "closes" ou nao)
+CORPO_344_REAL=$(mktemp)
+echo "closes #344" > "$CORPO_344_REAL"
+
+# No win32 (Git Bash): forma Windows C:/... e forma MSYS /c/... lado a lado.
+# Fora dele `normalizarMsys` devolve o caminho como veio: as duas formas
+# viram o caminho POSIX absoluto, e o caso afirma que ele e lido (roda, nao pula).
+if command -v cygpath >/dev/null 2>&1; then
+  CORPO_344_WIN="$(cygpath -m "$CORPO_344_REAL")"
+  CORPO_344_MSYS=$(echo "$CORPO_344_WIN" | sed 's|^\([A-Za-z]\):|/\L\1|')
+else
+  CORPO_344_WIN="$CORPO_344_REAL"
+  CORPO_344_MSYS="$CORPO_344_REAL"
+fi
+
+# Caso (344a): --body-file com C:/... (forma Windows) — deve funcionar
+echo
+echo "== (#344a) gh pr create --body-file C:/... COM marcador → exit 0 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=1
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body-file '"$CORPO_344_WIN"'"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-344a"
+EXIT_344A=$?
+[ $EXIT_344A -eq 0 ] && test_ok "exit 0 (C:/...)" || test_fail "exit code (foi $EXIT_344A)"
+
+# Caso (344b): --body-file com /c/... (forma MSYS) — deve ter MESMO comportamento que C:/...
+echo
+echo "== (#344b) gh pr create --body-file /c/... COM marcador → exit 0 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=1
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body-file '"$CORPO_344_MSYS"'"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-344b"
+EXIT_344B=$?
+[ $EXIT_344B -eq 0 ] && test_ok "exit 0 (/c/...)" || test_fail "exit code (foi $EXIT_344B)"
+
+# Caso (344c): --body-file com /c/... SEM marcador — deve bloquear com closes #344 citado
+echo
+echo "== (#344c) gh pr create --body-file /c/... SEM marcador → exit 2 citando #344 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body-file '"$CORPO_344_MSYS"'"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-344c"
+EXIT_344C=$?
+[ $EXIT_344C -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_344C)"
+ERR_344C="$(cat "$SBP/err-344c")"
+echo "$ERR_344C" | grep -q "#344" && test_ok "stderr cita #344" || test_fail "stderr não cita #344 ($ERR_344C)"
+
+# Limpeza
+rm -f "$CORPO_344_REAL"
+# Caso: `stdbuf -oL gh issue close 12` (tarefa 1 da rodada 10)
+# stdbuf é um wrapper que repassa o comando; o gate deve analisa o que sobra
+echo
+echo "== (#346) stdbuf -oL gh issue close 12 → exit 2 (wrapper stdbuf) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"stdbuf -oL gh issue close 12"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-346"
+EXIT_346=$?
+[ $EXIT_346 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_346)"
+
+# (#339) N contrabarras antes da quebra, entre aspas duplas
+# Residuo da #313: dentro de aspas duplas de um wrapper, o bash resolve
+# `\\`, `\"`, `\$`, `` \` `` e `\<quebra>` numa UNICA passada da esquerda
+# para a direita — todas disputam a mesma contrabarra. Compara o BASH REAL
+# (rodado de verdade, com um `gh` falso no PATH que registra a chamada num
+# arquivo) contra o gate, com o MESMO payload PreToolUse, para N = 1, 2, 3, 4
+# contrabarras antes da quebra. `command -v gh`, dentro do subshell com o
+# PATH ja trocado, confirma que o `gh` e o do sandbox ANTES de rodar o bash
+# real — nunca ha chance de chamar o `gh` de verdade.
+echo
+echo "== (#339) N contrabarras antes da quebra, entre aspas duplas =="
+GH_LOG_339="$SBP/gh-339.log"
+for N339 in 1 2 3 4; do
+  SCRIPT_339="$SBP/cmd339-$N339.sh"
+  PAYLOAD_339=$(node -e '
+    const fs = require("fs");
+    const N = parseInt(process.argv[1], 10);
+    const bs = "\\".repeat(N);
+    const cmd = "bash -c \"gh issue " + bs + "\n" + "close 12\"";
+    fs.writeFileSync(process.argv[2], cmd + "\n");
+    process.stdout.write(JSON.stringify({cwd: process.argv[3], tool_name: "Bash", tool_input: {command: cmd}}));
+  ' "$N339" "$SCRIPT_339" "$SBP_WIN")
+
+  # 1) BASH REAL: o gh falso so roda depois de `command -v gh`, dentro do
+  # mesmo subshell com o PATH ja trocado, confirmar que resolve para o
+  # sandbox — nunca o gh de verdade.
+  : > "$GH_LOG_339"
+  (
+    export PATH="$SBP/bin:$PATH"
+    export GH_LOG_CHAMADAS="$GH_LOG_339"
+    RESOLVIDO="$(command -v gh)"
+    if [ "$RESOLVIDO" != "$SBP/bin/gh" ]; then
+      echo "gh nao resolveu para o sandbox (veio: $RESOLVIDO)" >&2
+      exit 1
+    fi
+    bash "$SCRIPT_339"
+  ) >"$SBP/out-339-$N339" 2>"$SBP/err-339-$N339"
+  if grep -qx "issue close 12" "$GH_LOG_339" 2>/dev/null; then
+    BASH_CHAMOU_339="sim"
+  else
+    BASH_CHAMOU_339="nao"
+  fi
+
+  # 2) gate com o MESMO payload PreToolUse real
+  EXIT_339=$(
+    export PATH="$SBP/bin:$PATH"
+    echo "$PAYLOAD_339" | node "$SRC/hooks/gate-fechar-issue.cjs" >/dev/null 2>"$SBP/err-gate-339-$N339"
+    echo $?
+  )
+
+  echo "  N=$N339: bash real chamou 'gh issue close 12'? $BASH_CHAMOU_339 | gate-fechar-issue exit $EXIT_339"
+
+  if [ "$BASH_CHAMOU_339" = "sim" ]; then
+    [ "$EXIT_339" -eq 2 ] && test_ok "(#339 N=$N339) bash chamou -> gate exit 2" || test_fail "(#339 N=$N339) bash chamou 'gh issue close 12' mas gate saiu $EXIT_339 (esperado 2)"
+  else
+    [ "$EXIT_339" -ne 2 ] && test_ok "(#339 N=$N339) bash NAO chamou -> gate exit $EXIT_339 (nao 2)" || test_fail "(#339 N=$N339) bash nao chamou 'gh issue close 12' mas gate saiu 2"
+  fi
+done
+
+# (#339c) A primeira passada, sozinha: o texto que o bash real entrega de
+# `"gh issue <N contrabarras><quebra>close 12"` (entre aspas duplas, sem
+# reexecutar) tem de ser o que `reduzEscapeAspasDuplas` devolve para o mesmo
+# miolo. Nao se compara com `desempacotarWrapperDeString`, que tambem aplica
+# `colapsaContinuacaoDeLinha` de proposito: aquilo modela a SEGUNDA leitura, a
+# do `bash -c` relendo o texto fora de aspas (N=2: o bash deixa `\<quebra>` e
+# o `bash -c` junta as linhas). Sem este caso a passada unica nao e medida
+# por nada: a
+# contrabarra tirada na comparacao do gate (#339b) mascara a divergencia.
+echo
+echo "== (#339c) primeira passada identica ao bash real, N = 1..4 =="
+for N339C in 1 2 3 4; do
+  SCRIPT_339C="$SBP/printf339-$N339C.sh"
+  node -e '
+    const N = parseInt(process.argv[1], 10);
+    const bs = String.fromCharCode(92).repeat(N);
+    require("fs").writeFileSync(process.argv[2], "printf %s \"gh issue " + bs + "\n" + "close 12\"\n");
+  ' "$N339C" "$SCRIPT_339C"
+  BASH_339C="$(bash "$SCRIPT_339C" | od -An -c | tr -s ' ')"
+  LIB_339C="$(node -e '
+    const { reduzEscapeAspasDuplas } = require(process.argv[2]);
+    const N = parseInt(process.argv[1], 10);
+    const bs = String.fromCharCode(92).repeat(N);
+    process.stdout.write(reduzEscapeAspasDuplas("gh issue " + bs + "\n" + "close 12"));
+  ' "$N339C" "$SRC/hooks/lib/tokens-comando.cjs" | od -An -c | tr -s ' ')"
+  [ "$BASH_339C" = "$LIB_339C" ] && test_ok "(#339c N=$N339C) primeira passada igual ao bash" || test_fail "(#339c N=$N339C) bash deu [$BASH_339C], lib deu [$LIB_339C]"
+done
+
+# (#339b) O que sobra do N=3 depois da primeira passada e `gh issue \close
+# 12`: fora de aspas o bash tira a contrabarra de qualquer caractere, entao
+# o comando SEM wrapper nenhum ja escapava do gate (medido: exit 0 na base).
+echo
+echo "== (#339b) contrabarra fora de aspas dentro do subcomando -> exit 2 =="
+for FORMA339 in 'gh issue \close 12' 'gh \issue close 12' 'gh issue cl\ose 12'; do
+  PAYLOAD_339B=$(node -e 'process.stdout.write(JSON.stringify({cwd: process.argv[2], tool_name: "Bash", tool_input: {command: process.argv[1]}}))' "$FORMA339" "$SBP_WIN")
+  EXIT_339B=$(
+    export PATH="$SBP/bin:$PATH"
+    echo "$PAYLOAD_339B" | node "$SRC/hooks/gate-fechar-issue.cjs" >/dev/null 2>&1
+    echo $?
+  )
+  [ "$EXIT_339B" -eq 2 ] && test_ok "(#339b) $FORMA339 -> exit 2" || test_fail "(#339b) $FORMA339 saiu $EXIT_339B (esperado 2)"
+done
+
+# (#339d) Revisao 1: aspas ANSI-C tambem escondiam o subcomando — o bash
+# expande `$'close'` e `$'clo\x73e'` para `close` (medido com gh falso).
+# `gh issue list` continua passando.
+echo
+echo "== (#339d) aspas ANSI-C no subcomando -> exit 2 =="
+for I339D in 0 1 2 3 4; do
+  PAYLOAD_339D=$(node -e '
+    const B = String.fromCharCode(92);
+    const cmds = ["gh issue $'"'"'close'"'"' 12", "gh issue $'"'"'clo" + B + "x73e'"'"' 12", "gh issue $'"'"'clo" + B + "163e'"'"' 12", "gh $'"'"'" + B + "x69ssue'"'"' close 12", "gh issue list"];
+    const c = cmds[parseInt(process.argv[1], 10)];
+    process.stdout.write(JSON.stringify({cwd: process.argv[2], tool_name: "Bash", tool_input: {command: c}}));
+  ' "$I339D" "$SBP_WIN")
+  ESPERADO_339D=2; [ "$I339D" -eq 4 ] && ESPERADO_339D=0
+  EXIT_339D=$(
+    export PATH="$SBP/bin:$PATH"
+    echo "$PAYLOAD_339D" | node "$SRC/hooks/gate-fechar-issue.cjs" >/dev/null 2>&1
+    echo $?
+  )
+  [ "$EXIT_339D" -eq "$ESPERADO_339D" ] && test_ok "(#339d.$I339D) exit $ESPERADO_339D" || test_fail "(#339d.$I339D) saiu $EXIT_339D (esperado $ESPERADO_339D): $PAYLOAD_339D"
+done
 
 # Resultado final
 echo
