@@ -103,6 +103,18 @@
     "em": "2026-09-28"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "pr",
+    "pr": 348,
+    "merge": "737ad804",
+    "issues_fechadas": [
+      346,
+      344,
+      342,
+      341,
+      340,
+      339
+    ],
+    "em": "2026-09-28"
   }
 }
