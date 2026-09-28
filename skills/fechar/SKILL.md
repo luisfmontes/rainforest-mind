@@ -1,6 +1,6 @@
 ---
 name: fechar
-description: Use no estágio 'fechar' do fluxo rainforest-mind — depois de 'verificar' fechado, é o fim do fluxo: commit, remoção dos worktrees e abertura do PR, que é o destino padrão de toda branch.
+description: "Use no estágio 'fechar' do fluxo rainforest-mind — depois de 'verificar' fechado, é o fim do fluxo: commit, remoção dos worktrees e abertura do PR, que é o destino padrão de toda branch."
 ---
 
 # Fechar

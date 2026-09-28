@@ -1,0 +1,640 @@
+{
+  "slug": "2026-09-12-multihost-sobre-1-11",
+  "titulo": "Reaplicar a adaptação multihost sobre o Rainforest Mind 1.23.3 (slug iniciado em 1.11)",
+  "criado_em": "2026-09-12",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-12-multihost-sobre-1-11.md",
+    "em": "2026-09-12"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-09-12-multihost-sobre-1-11.md",
+    "tarefas": 9,
+    "paralelas": [],
+    "em": "2026-09-12"
+  },
+  "reancoragem_corrente": {
+    "versao": "1.24.0",
+    "base": "5d59d36eeb30b617e716572834c810d0ad0c2ce9",
+    "base_versao": "1.23.15",
+    "merge": "1d283312",
+    "base_anterior": "9c05ee9a71b79d763a39f24195c580bc2d915752",
+    "branch": "codex/multihost-1.13",
+    "worktree_derivacao": "git worktree list --porcelain; localizar branch refs/heads/codex/multihost-1.13",
+    "head_derivacao": "git rev-parse HEAD",
+    "gemini": "adiado",
+    "ancoras_corpo": "fechar 9585/7ffc677b, modo-dev 13106/9b4d2c0c, regua 16038/c1318cbf recalculadas contra a base 1.23.15; montar-corpus 2935/f21d9af8 inalterada",
+    "versao_entrega": "1.24.0 nos dois manifestos (host novo = MINOR); cachebuster da T6 dispensado porque a versao maior ja cria entrada de cache nova",
+    "instalacao_cache": "1.24.0 instalado do export limpo do commit candidato 53152c46",
+    "em": "2026-09-26"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao_historico_1_21_1": "2026-09-22",
+    "tarefas_ok": 9,
+    "tarefas": 9,
+    "em": "2026-09-26",
+    "verificacao_local_1_23_3": {
+      "gate_staging": "== resultado: 171 ok, 0 falha(s) ==",
+      "contratos": "manifesto, skills, adaptador, marketplace e Gemini: exit 0; 19 skills e 4 ancoras de corpo",
+      "versao": "ok: 5   falhou: 0",
+      "mutacoes": "total=5 vermelhas:[1,2,3,4,5] (agregacao das cinco saidas de conferir-mutacao; cada baseline verde, mutante vermelho, fonte restaurado, catraca exit 0)",
+      "cachebuster": "1.23.3+codex.20260923102218 instalado temporariamente; ambos manifestos restaurados byte a byte ao HEAD",
+      "candidato": "ebb5ae58805d61b438573b6a3babbcfc8523ef83",
+      "export": "C:\\Projetos\\rainforest-mind\\.claude\\marketplaces\\rainforest-mind-export-1.23.3-ebb5ae58",
+      "cache": "<home>\\.codex\\plugins\\cache\\rainforest-mind-local\\rainforest-mind\\1.23.3",
+      "projecao_d9": "Get-ChildItem -Force -Recurse -File: export 801, cache 802, esperados 794, missing 0, different 0, extra D11 1, .git 0 em ambos",
+      "extra_d11_sha256": "321C30BCFDA44FF56AD53FCA7EF5C3B170987A3BD2BEE646152AF22AAF1DD339",
+      "host_hook": "T6 nao provado: /hooks mostra PreToolUse instalado, ativo, confiavel; adaptador direto nega; shell restrito falha antes do processo em helper_unknown_error: setup refresh had errors; rota externa nao dispara o evento",
+      "cli_runtime": "codex --version: codex-cli 0.155.0-alpha.9.2; session_meta da sessao diagnostica: cli_version 0.151.0; historico com bloqueio usou 0.153.4",
+      "sessao_diagnostica": "01a0cdda-425d-78c2-b710-6fb464074454"
+    },
+    "mutacao_1_23_3": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "gate staging: descartar token com aspas",
+        "baseline": "171 ok, 0 falha(s)",
+        "mutante": "166 ok, 5 falha(s)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "montar-corpus sem description"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "handler Codex chama core direto"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "Codex 1.23.4 diverge de Claude 1.23.3"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "marketplace source.path aponta para ./codex"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "cachebuster e hook sao prova operacional fora do fonte; T6 ainda pendente no host"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "artefato instalado validado por export/cache; contraprova de hook pendente"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "documentacao de continuidade falsificada contra hashes e medidas"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "integracao e registro sem comportamento novo"
+      }
+    ],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "4d4c0cbddd4b66045a1cd7def1e12b9f4d24b4d0",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T20:17:50.631Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "771a0ee1047dea93099ea099772185ec0ead9d7c",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-12T20:31:43.880Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "9f3abc1656af827decb39771e97d562185438dcb",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-13T02:39:16.131Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "52aed192fa8714b53a768c817d64407bc0c6788e",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-13T02:53:16.093Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "4103a382ecb782155f25030529357e1fac7fcdbb",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-13T03:03:20.733Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "bb1a82ed04fd3e769b4c9d3aa23afb468763b378",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-13T03:16:36.094Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "3c7e7ab42c6a9c3d95639aa3f00b833fd75c2ef5",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-13T11:26:00.000Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "b24d2ec4a48372710e34925c93c843861807a47b",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-13T11:37:40.611Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "c614ae2d3d7ca8dee3f474cbe8701183b9a260b2",
+        "iteracao": 3,
+        "sessao": "desconhecida",
+        "ts": "2026-09-13T11:51:02.171Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "9c1ee894c3302d78fcbf568ea267b4ef7780ad76",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-13T11:57:28.783Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "810b0372df0f0ade2445645235d19dd261022550",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-13T12:03:32.401Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "f3a38ba9d862ec787b4637cc31341b27ab83136a",
+        "iteracao": 1,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T13:04:56.319Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "1340850bdf2b81afac13c1759b59f3cad724a17a",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T13:15:14.778Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "f51168147d15f1bafff538c4f4e9595fb977cd2f",
+        "iteracao": 3,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T13:38:51.101Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "46fcf099bad98c1a89cd8cdde62e12c93aed46c1",
+        "iteracao": 4,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T18:08:43.140Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "44ac4c2a02fe7aaf66518c6934afc618ba2a39e1",
+        "iteracao": 5,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T18:22:29.659Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "77b0226e6b168f97848d5fa8021d58c06dda8f6f",
+        "iteracao": 3,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T18:51:31.199Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "77b0226e6b168f97848d5fa8021d58c06dda8f6f",
+        "iteracao": 6,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T18:51:31.199Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "f9339f475f317b01761d1f0176af505b833c57ef",
+        "iteracao": 7,
+        "sessao": "desconhecida",
+        "ts": "2026-09-14T19:10:34.525Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "fc76be76b5f8dd5c3c9dac9016db33098abc5d94",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-23T01:28:53.092Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "fc76be76b5f8dd5c3c9dac9016db33098abc5d94",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-23T01:28:53.092Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "fc76be76b5f8dd5c3c9dac9016db33098abc5d94",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-23T01:28:53.092Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "fc76be76b5f8dd5c3c9dac9016db33098abc5d94",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-23T01:28:53.092Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "fc76be76b5f8dd5c3c9dac9016db33098abc5d94",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-23T01:28:53.092Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "fc76be76b5f8dd5c3c9dac9016db33098abc5d94",
+        "iteracao": 4,
+        "sessao": "desconhecida",
+        "ts": "2026-09-23T01:28:53.092Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "fc76be76b5f8dd5c3c9dac9016db33098abc5d94",
+        "iteracao": 4,
+        "sessao": "desconhecida",
+        "ts": "2026-09-23T01:28:53.092Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "fc76be76b5f8dd5c3c9dac9016db33098abc5d94",
+        "iteracao": 2,
+        "sessao": "desconhecida",
+        "ts": "2026-09-23T01:28:53.092Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "fc76be76b5f8dd5c3c9dac9016db33098abc5d94",
+        "iteracao": 8,
+        "sessao": "desconhecida",
+        "ts": "2026-09-23T01:28:53.092Z"
+      }
+    ],
+    "comando_historico_1_21_1": "node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-09-12-multihost-sobre-1-11",
+    "saida_historico_1_21_1": "P1-P5 cumpridos; lint 0 avisos; T1-T5 vermelho; T6-T9 n/a",
+    "historico_mutacao_1_21_1": [
+      {
+        "fixture": "testa-gate-staging-total.sh: git add citado e wrappers",
+        "resultado": "vermelho",
+        "tarefa": 1
+      },
+      {
+        "fixture": "contrato-skills: montar-corpus sem description",
+        "resultado": "vermelho",
+        "tarefa": 2
+      },
+      {
+        "fixture": "contrato-adaptador-hook: handler Codex chama core direto",
+        "resultado": "vermelho",
+        "tarefa": 3
+      },
+      {
+        "fixture": "testa-versao.sh: Codex 1.21.2 diverge de Claude 1.21.1",
+        "resultado": "vermelho",
+        "tarefa": 4
+      },
+      {
+        "fixture": "contrato-marketplace: source.path não resolve raiz",
+        "resultado": "vermelho",
+        "tarefa": 5
+      },
+      {
+        "motivo": "tarefa operacional sobre instalador e cache externo; projeção e host medidos",
+        "resultado": "n/a",
+        "tarefa": 6
+      },
+      {
+        "motivo": "artefato instalado validado fora do repositório",
+        "resultado": "n/a",
+        "tarefa": 7
+      },
+      {
+        "motivo": "documentação de continuidade conferida contra evidência real",
+        "resultado": "n/a",
+        "tarefa": 8
+      },
+      {
+        "motivo": "integração e registro sem comportamento novo",
+        "resultado": "n/a",
+        "tarefa": 9
+      }
+    ],
+    "historico_1_21_1": {
+      "origem_instalacao": {
+        "tipo": "git archive",
+        "commit": "f02843b91c2f7dd09aa2919b14e5713c5333a9ee",
+        "caminho": "<export-clean-1.21.1>",
+        "versao": "1.21.1",
+        "export_arquivos_force": 783,
+        "cache": "<cache-rainforest-mind-1.21.1>",
+        "cache_arquivos_force": 784,
+        "export_dotgit": false,
+        "cache_dotgit": false,
+        "extra_d11": ".codex-plugin/migrated-command-skills/source-command-saude/SKILL.md"
+      },
+      "projecao_d9": {
+        "rastreados": 783,
+        "governanca_excluida": 7,
+        "arquivos_esperados": 776,
+        "export_missing": 0,
+        "export_different": 0,
+        "cache_missing": 0,
+        "cache_different": 0,
+        "cache_extras": 1,
+        "extra_d11": ".codex-plugin/migrated-command-skills/source-command-saude/SKILL.md"
+      },
+      "contraprova_hook": {
+        "fixture": "<fixture-host-owned>",
+        "sessao": "01a0c90c-bbe6-7940-9011-e944d8d585ad",
+        "versao_instalada": "1.21.1",
+        "comando": "git add \"-A\"",
+        "decisao": "hook: PreToolUse Blocked",
+        "estado_apos": "?? deny-control.txt; staged_count=0; index_lock=False"
+      }
+    },
+    "historico_1_19_2": {
+      "origem_instalacao": {
+        "tipo": "git archive",
+        "commit": "68dbcf6e3493084f3faa6a41a5a3e012c6281bbb",
+        "caminho": "<export-clean-1.19.2-reviewfix-68dbcf6e>",
+        "versao": "1.19.2",
+        "export_arquivos_force": 765,
+        "cache_arquivos_force": 766,
+        "export_dotgit": false,
+        "cache_dotgit": false,
+        "extra_d11": ".codex-plugin/migrated-command-skills/source-command-saude/SKILL.md"
+      },
+      "projecao_d9": {
+        "governanca_excluida": 7,
+        "arquivos_esperados": 758,
+        "ausentes": 0,
+        "sha_divergentes": 0,
+        "extras": 1
+      },
+      "contraprova_hook": {
+        "fixture": "<fixture-host-owned>",
+        "sessao": "01a0bb99-1f24-7310-bc4a-689613d1589e",
+        "versao_instalada": "1.19.2",
+        "decisao": "PreToolUse Blocked",
+        "saida_literal": "Codigo de saida: N/A - processo nao iniciado",
+        "estado_apos": "?? deny-control.txt; nada staged; sem .git/index.lock"
+      },
+      "correcao_revisao_2026_09_20": {
+        "cachebuster": "1.19.2+codex.20260920005618",
+        "sessao": "01a0bc51-ac65-7461-a8eb-4781dbd6c9ae",
+        "skills": 20,
+        "decisao": "PreToolUse Blocked",
+        "git_iniciou": false,
+        "fixture_apos": "?? deny-control.txt; nada staged; sem .git/index.lock",
+        "gemini_vermelho_antes": "detector Gemini deixou passar test/fixtures/gemini/request.json",
+        "gemini_verde_depois": true,
+        "manifestos_restaurados": "1.19.2 byte a byte",
+        "export_commit": "68dbcf6e3493084f3faa6a41a5a3e012c6281bbb",
+        "export_arquivos_force": 765,
+        "cache_arquivos_force": 766,
+        "projecao": "758 esperados; 0 ausente; 0 divergente; 1 extra D11; zero .git",
+        "contratos_cache": "manifesto, skills, adaptador e marketplace exit 0"
+      },
+      "mutacao_nesta_iteracao": "o detector Gemini mudou com vermelho antes e verde depois. T3 foi corrigida para casar as aspas escapadas do JSON e ficou vermelha ao trocar o adaptador pelo core; T4 ficou vermelha em 1.19.3 contra 1.19.2. Os demais contratos aplicaveis ficaram verdes."
+    },
+    "base": "9c05ee9a71b79d763a39f24195c580bc2d915752",
+    "base_anterior": "2405f76aa8ae8847a16d66792686d1ec4b6cfee1",
+    "mutacao_versao_1_23_0": {
+      "tarefa": 4,
+      "resultado": "vermelho",
+      "comando": "node scripts/conferir-mutacao.cjs --arquivo .codex-plugin/plugin.json --de '\"version\": \"1.23.0\"' --para '\"version\": \"1.23.1\"' --bateria 'bash scripts/testa-versao.sh'",
+      "saida": "baseline: ok: 5   falhou: 0; mutacao: ok: 4   falhou: 1; bateria VERMELHA (exit 1); fonte restaurado; catraca exit 0"
+    },
+    "nota_mutacao_historico_1_23_0": "T1-T5 reexecutadas na base 4301a205: todas vermelho com fonte restaurado; catraca integrada exit 0; T6-T9 n/a.",
+    "contratos_cache_historico_1_23_0": "1.23.0: export 801, cache 802, projeção 794 esperados, 0 ausente, 0 divergente, 1 extra D11; P2 contrato ponta a ponta exit 0",
+    "baterias_branch_historico_1_23_0": "Git Bash C:\\Program Files\\Git\\bin, BASH_ENV removido, TMPDIR neutro sob Temp; P1 medido 282243 ms e portão concluído com PORTOES_TIMEOUT_MS=600000 apenas no processo.",
+    "verificacao_local_1_23_0": {
+      "gate_staging": "== resultado: 154 ok, 0 falha(s) ==",
+      "contratos": "manifesto, skills, adaptador, marketplace, Gemini e wrapper: exit 0; 19 skills, 4 ancoras",
+      "versao": "ok: 5   falhou: 0",
+      "cobertura": "ok: cobertura válida — 12 decisão(ões), 9 tarefa(s)",
+      "creep": "ok: sem creep — 18 arquivo(s) coberto(s)",
+      "portoes": "TODOS OS PORTOES CUMPRIDOS — 5 portão(ões).",
+      "lint": "LINT OK — 5 portão(ões), 0 aviso(s)",
+      "status": "PARSE OK — 5 portão(ões), 0 não cumprido(s), 0 abandonado(s)"
+    },
+    "head": "derivar com git rev-parse HEAD",
+    "sensor_externo": "node scripts/portoes.cjs rodar",
+    "catraca_mutacao_historico_1_23_0": "2026-09-23",
+    "comando_historico_1_23_0": "TMPDIR=/c/Projetos/rainforest-mind/.claude/tmp-portoes-codex-9b21e95b PORTOES_TIMEOUT_MS=600000 node scripts/portoes.cjs rodar docs/rainforest/portoes/2026-09-12-multihost-sobre-1-11.md --reverificar",
+    "saida_historico_1_23_0": "P1-P5 CUMPRIDOS; TODOS OS PORTOES CUMPRIDOS — 5 portão(ões); LINT OK — 5 portão(ões), 0 aviso(s); PARSE OK — 5 portão(ões), 0 não cumprido(s), 0 abandonado(s); cobertura 12/9; creep 18; git diff --check exit 0",
+    "mutacao_historico_1_23_0": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-staging-total.sh: git add citado e wrappers"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "contrato-skills: montar-corpus description ausente"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "contrato-adaptador-hook: handler Codex chama core direto"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-versao.sh: Codex 1.23.1 diverge de Claude 1.23.0"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "contrato-marketplace: source.path nao resolve raiz"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "cachebuster e instalacao externa medidos por versao, bytes e sessao Codex"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "artefato instalado validado por export, cache e sessao Codex"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "documentacao de continuidade conferida contra evidencias reais"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "integracao e registro sem comportamento novo"
+      }
+    ],
+    "candidato_historico_1_23_0": "fc76be76b5f8dd5c3c9dac9016db33098abc5d94",
+    "projecao_1_23_0": {
+      "tracked": 801,
+      "governanca": 7,
+      "esperados": 794,
+      "export_total_force": 801,
+      "cache_total_force": 802,
+      "ausentes": 0,
+      "divergentes": 0,
+      "extras": 1,
+      "extra_sha256": "321C30BCFDA44FF56AD53FCA7EF5C3B170987A3BD2BEE646152AF22AAF1DD339"
+    },
+    "sessoes_codex_historico_1_23_0": {
+      "cachebuster": "01a0cbb4-b21c-7252-9ff2-0b59363a60c3",
+      "final": "01a0cbba-023c-7ce1-a9a5-03d8434efb5c"
+    },
+    "portoes_historico_1_23_0": "P1-P5 cumpridos; lint strict 5/0; P1 teto 600000 e TMPDIR no bash -lc",
+    "reexecucao_p1_historico_1_23_0": "2026-09-22: sondagem no mesmo bash -lc retornou C:\\Projetos\\rainforest-mind\\.claude\\tmp-portoes-codex-9b21e95b (exit 0); portoes P1-P5 reexecutados com TMPDIR dentro de -lc e teto 600000 no pai, exit 0; mutacoes T1-T5 preservadas da medicao anterior, nao reexecutadas nesta correcao",
+    "interrupcao_agente_1_23_1": "executor GPT-6 encerrou por limite de uso em 2026-09-23 antes de instalar ou verificar a 1.23.1; origin/main avançou para 1.23.3",
+    "catraca_mutacao": "2026-09-23",
+    "verificacao_local_1_24_0": {
+      "candidato": "53152c46",
+      "contrato_codex": "bash scripts/testa-plugin-codex.sh: exit 0 (manifesto, 20 skills, hook seletivo, adaptador allow/deny/falha segura/JSON malformado, mutacao handler->core vermelha, marketplace, Gemini adiado)",
+      "versao": "bash scripts/testa-versao.sh: ok 5, falhou 0; node scripts/conferir-versao.cjs: 1.24.0 > origin/main 1.23.15",
+      "cobertura": "ok: cobertura válida — 12 decisão(ões), 9 tarefa(s)",
+      "creep": "ok: sem creep — 20 arquivo(s) coberto(s) (base 5d59d36e)",
+      "export": "C:\\Projetos\\rainforest-mind\\.claude\\marketplaces\\rainforest-mind-export-1.24.0-53152c46 (git archive HEAD; 861 arquivos, 0 .git)",
+      "cache": "<home>\\.codex\\plugins\\cache\\rainforest-mind-local\\rainforest-mind\\1.24.0",
+      "projecao": "export 861, cache 862, ausentes 0, divergentes 0, .git 0; unico extra D11 .codex-plugin/migrated-command-skills/source-command-saude/SKILL.md sha256 94040cb2fadab3efb34ed185123ab918b01dea2d386826d8fc4dcd4a960bca09",
+      "host_hook": "T6/T7 provados em codex-cli 0.151.0: sessao 01a0e015-5dfc-7940-99e8-45826b8f921e (plugin 1.24.0) permitiu git status e git add -- \"-A\" (hook Completed; falha posterior e index.lock do sandbox), bloqueou git add \"-A\" e bash -c \"git status; git add -A\" com a mensagem do gate; skill rainforest-mind:source-command-saude visivel no cache 1.24.0; sessao 01a0e013-b68c-7731-92ae-af3bf3b678e3 (plugin 1.23.3) ja bloqueava git add \"-A\"",
+      "json_malformado": "adaptador do cache 1.24.0 com stdin invalido: permissionDecision deny, motivo generico, sem ecoar payload",
+      "bloqueio_anterior": "helper_unknown_error do shell restrito (2026-09-23) nao reproduziu em 0.151.0; era do host, nao do produto"
+    }
+  },
+  "revisar_historico_1_21_1": {
+    "status": "ok",
+    "snapshot": {
+      "head": "6b0d19d2e0c524fcce1ee24c32887234e653e31c",
+      "caminhos_sujos": []
+    },
+    "achados": 0,
+    "base": "5cdb90e768cb1ba808821d5bdcdf46f7a19fc782",
+    "head": "6b0d19d2e0c524fcce1ee24c32887234e653e31c",
+    "em": "2026-09-22",
+    "achado": "nenhum",
+    "confirmacoes": [
+      "P1-P5 reproduzem os cinco comandos da tarefa 9",
+      "lint e lint strict: 5 portões, 0 avisos",
+      "rodar --reverificar passou em clone temporário sem alterar bytes",
+      "cobertura 12/9, creep 18 e diff-check verdes"
+    ],
+    "pendencias": [],
+    "comando": "revisão independente do diff 5cdb90e...6b0d19d2",
+    "saida": "APROVADO: 0 achados; P1-P5 válidos e reexecutáveis; estado coerente"
+  },
+  "revisar_historico_1_23_0": {
+    "status": "reprovado",
+    "snapshot": {
+      "head": "b6391f000a3f9023a1bdaa464ed4ed4a010b6372",
+      "caminhos_sujos": []
+    },
+    "em": "2026-09-22",
+    "achados": 1,
+    "base": "4301a205b9c90a101924cc60fdd2cb7b3bed4bfa",
+    "head": "b6391f000a3f9023a1bdaa464ed4ed4a010b6372",
+    "pendentes": [
+      "P2: bash -lc substitui TMPDIR definido no PowerShell; declarar TMPDIR dentro do comando -lc e provar que o processo Node o recebe"
+    ],
+    "tentativas": 2
+  },
+  "revisar": {
+    "status": "ok",
+    "motivo": "executar 9/9 fechado em 2026-09-26 sobre a base 1.23.15; proximo estagio e revisar o diff real contra 5d59d36e",
+    "snapshot": {
+      "head": "a69e21885c1a4f60091472212a154ce23af7c81c",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a1f7caeb1f4fb715c",
+        "veredito": "ok",
+        "em": "2026-09-26",
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\a5d80ae8-d98b-42bd-b71c-56ed27399491\\subagents\\agent-a1f7caeb1f4fb715c.jsonl"
+      }
+    ],
+    "em": "2026-09-26",
+    "achados": 0,
+    "base": "5d59d36eeb30b617e716572834c810d0ad0c2ce9",
+    "head": "a69e2188",
+    "ressalvas": [
+      "caminho pessoal literal nas secoes historicas de handover/portao/estado (higiene de repo publico)",
+      "PR #315 aberto em 2026-09-22 antes de revisar/verificar (historico, nao mesclado)",
+      "T7 1.24.0 provou skill derivada visivel, nao invocacao de skill real",
+      "bump 1.24.0 feito em executar, contra a invariante do plano que o poe em fechar; efeito pratico nulo"
+    ]
+  },
+  "verificar_historico_1_21_1": {
+    "status": "reprovado",
+    "criterio": "versão da entrega deve ser maior ou compatível com origin/main no fechamento",
+    "comando": "node scripts/conferir-versao.cjs",
+    "saida": "RECUSADO: versao declarada 1.21.1 nao e maior que a de origin/main 1.23.0; exit 1",
+    "faltou": "reancorar a entrega na base 0e27956c / versão 1.23.0 e refazer as provas",
+    "em": "2026-09-22",
+    "sensor_externo": "node scripts/portoes.cjs rodar",
+    "tentativas": 1
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/testa-plugin-codex.sh; node scripts/portoes.cjs rodar --reverificar (P1-P5 = criterio T9); node scripts/conferir-fluxo.cjs mutacoes; codex exec sessoes 01a0e015 e 01a0e03c; projecao export x cache",
+    "saida": "TODOS OS PORTOES CUMPRIDOS — 5; mutacoes exit 0 (T1-T5 vermelho, T6-T9 n/a); hook bloqueia git add \"-A\" e bash -c no Codex 0.151.0; skill regua invocada do cache 1.24.0; projecao 0 ausentes 0 divergentes 0 .git, extra unico D11",
+    "sensor_externo": "bash scripts/testa-plugin-codex.sh",
+    "head": "52e2c6c6",
+    "em": "2026-09-26"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 315,
+    "worktree": "mantido ate o merge, que o design reserva ao aval do usuario",
+    "em": "2026-09-26"
+  },
+  "reancoragem_historico_1_23_3": {
+    "versao": "1.23.3",
+    "base": "9c05ee9a71b79d763a39f24195c580bc2d915752",
+    "merge": "06be3273c3ba08252ef8fd6d1417cb75fb38bfc4",
+    "base_anterior": "2405f76aa8ae8847a16d66792686d1ec4b6cfee1",
+    "merge_anterior": "7be5f9e78a0294269218144f0b92bc0275e8f9b3",
+    "base_antes_da_anterior": "4301a205b9c90a101924cc60fdd2cb7b3bed4bfa",
+    "branch": "codex/multihost-1.13",
+    "worktree_derivacao": "git worktree list --porcelain; localizar branch refs/heads/codex/multihost-1.13",
+    "head_derivacao": "git rev-parse HEAD",
+    "gemini": "adiado",
+    "ancoras_corpo": "fechar 9986/a2f231f8, modo-dev 13414/281949f8, montar-corpus 2935/f21d9af8 e regua 16053/6a2e1e78 iguais byte a byte a base 1.23.3",
+    "instalacao_cache": "1.23.3 instalado do export limpo do commit candidato ebb5ae58; T6 continua sem contraprova de hook no host; instalação 1.23.0 é histórica",
+    "em": "2026-09-23"
+  }
+}

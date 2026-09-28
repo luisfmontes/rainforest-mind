@@ -1,0 +1,20 @@
+{
+  "name": "rainforest-mind-local",
+  "interface": {
+    "displayName": "Rainforest Mind Local"
+  },
+  "plugins": [
+    {
+      "name": "rainforest-mind",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
