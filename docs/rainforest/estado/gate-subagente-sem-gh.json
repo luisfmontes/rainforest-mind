@@ -44,12 +44,27 @@
     ]
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "5c3ede06d80774f27a67878ea6793a97d825e908",
-      "caminhos_sujos": []
+      "head": "c72e4810d65927feb91cb9a9c4083a5bc46082c8",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/gate-subagente-sem-gh.json"
+      ]
     },
-    "vereditos": []
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a2fe25a1085acd99c",
+        "veredito": "ok",
+        "em": "2026-09-28",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/a5435dc7-36e5-4a20-b1d0-0d1c8a88edc5/subagents/agent-a2fe25a1085acd99c.jsonl"
+      }
+    ],
+    "base": "71306811ca4ea6bdbf15c20220826f240e37df0e",
+    "head": "c72e4810d65927feb91cb9a9c4083a5bc46082c8",
+    "rodadas": 5,
+    "achados_corrigidos": "alias/familia desconhecida, codigo inline, PowerShell, --eval= e flags agrupadas, graphql, perl -M, os.system em arquivo, comentario em bloco, perl sem parentese; gate medido pelo stdin deixou de ser negado",
+    "em": "2026-09-28"
   },
   "verificar": {
     "status": "pendente"
