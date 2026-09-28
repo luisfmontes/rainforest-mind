@@ -1808,7 +1808,8 @@ function main() {
       // mais de uma vez (retomada), e a segunda chamada substitui a entrada
       // anterior em vez de duplicar — ver achado 7 do plano.
       const idx = agenteId ? vereditos.findIndex((v) => v.agente_id === agenteId) : -1;
-      // D14 — Tarefa 18: caminho absoluto gravado junto — deixa a forja
+      // D14 — Tarefa 18: caminho gravado junto (com ~ no lugar da pasta
+      // pessoal, #340: o estado e versionado em repo publico) — deixa a forja
       // visivel (quem confere a entrada ve exatamente qual transcrito real
       // confirmou o veredito, nao so o dizer de quem despachou).
       const entrada = { agente, agente_id: agenteId, veredito, em: hoje(), transcrito: caminhoComTil(path.resolve(transcrito)) };
