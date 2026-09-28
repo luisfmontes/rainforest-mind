@@ -231,11 +231,27 @@ function analisaSegmento(segmento) {
     // Senão, continua com o resto
   }
 
+  // `stdbuf` só ajusta o buffer e repassa o comando, como `nice` (revisão 3):
+  // pula as flags dele (`-oL`, `-i 0`, `--output=L`) e analisa o que sobra.
+  if (cmd.v === "stdbuf") {
+    let i = posCmd + 1;
+    while (i < toks.length && toks[i].v.startsWith("-")) {
+      i += /^-[ioe]$/.test(toks[i].v) ? 2 : 1;
+    }
+    return i < toks.length ? analisaSegmento(textoAPartir(toks, i)) : { ehBateria: false, nomeScript: null, ehVarredor: false, args: [] };
+  }
+
   // Se é interpretador (bash, sh, node, etc), o script é o próximo token não-flag
   if (/^(ba|z)?sh$|^node$/.test(cmd.v)) {
     scriptIndex = posCmd + 1;
-    // Pula flags do interpretador
-    while (scriptIndex < toks.length && toks[scriptIndex].v.startsWith("-")) scriptIndex++;
+    // Pula flags do interpretador. Checagem de sintaxe (`bash -n`, `node --check`)
+    // volta na hora e não é execução (revisão 3): não conta como bateria.
+    while (scriptIndex < toks.length && toks[scriptIndex].v.startsWith("-")) {
+      const flag = toks[scriptIndex].v;
+      const soSintaxe = cmd.v === "node" ? (flag === "--check" || flag === "-c") : /^-[a-z]*n[a-z]*$/.test(flag);
+      if (soSintaxe) return { ehBateria: false, nomeScript: null, ehVarredor: false, args: [] };
+      scriptIndex++;
+    }
     if (scriptIndex < toks.length) {
       nomeScript = toks[scriptIndex].v;
     }

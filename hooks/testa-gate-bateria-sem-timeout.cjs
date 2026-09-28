@@ -219,6 +219,27 @@ caso("timeout -k 5 300 bash hooks/testa-x.sh sem timeout → 2", r.status, 2);
 r = rodar("env -i bash hooks/testa-x.sh");
 caso("env -i bash hooks/testa-x.sh sem timeout → 2", r.status, 2);
 
+// Revisão 3 (rodada extra): `stdbuf` repassa o comando como `nice`; checagem
+// de sintaxe não é execução; `-x`/`-e` continuam sendo execução.
+r = rodar("stdbuf -oL bash hooks/testa-x.sh");
+caso("stdbuf -oL bash hooks/testa-x.sh sem timeout → 2", r.status, 2);
+r = rodar("stdbuf -i0 -o0 -e0 bash hooks/testa-x.sh");
+caso("stdbuf -i0 -o0 -e0 bash hooks/testa-x.sh sem timeout → 2", r.status, 2);
+r = rodar("stdbuf -o L bash hooks/testa-x.sh");
+caso("stdbuf -o L bash hooks/testa-x.sh sem timeout → 2", r.status, 2);
+r = rodar("stdbuf -oL bash hooks/testa-x.sh", { timeout: 600000 });
+caso("stdbuf -oL bash hooks/testa-x.sh com timeout: 600000 → 0", r.status, 0);
+r = rodar("stdbuf -oL git log -- hooks/testa-x.sh");
+caso("stdbuf -oL git log -- hooks/testa-x.sh → 0", r.status, 0);
+r = rodar("bash -n hooks/testa-x.sh");
+caso("bash -n hooks/testa-x.sh sem timeout → 0 (só sintaxe)", r.status, 0);
+r = rodar("node --check hooks/testa-x.cjs");
+caso("node --check hooks/testa-x.cjs sem timeout → 0 (só sintaxe)", r.status, 0);
+r = rodar("bash -x hooks/testa-x.sh");
+caso("bash -x hooks/testa-x.sh sem timeout → 2", r.status, 2);
+r = rodar("bash -e hooks/testa-x.sh");
+caso("bash -e hooks/testa-x.sh sem timeout → 2", r.status, 2);
+
 // === Casos adicionais ===
 
 // Caso 6n: echo "$(bash hooks/testa-x.sh)" → 2 (substituição dentro de aspas duplas executa)
