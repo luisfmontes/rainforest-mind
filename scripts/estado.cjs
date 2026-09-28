@@ -217,10 +217,16 @@ function caminhoComTil(caminho) {
   const home = os.homedir();
   const caminhoNormalizado = caminho.replace(/\\/g, '/');
   const homeNormalizado = home.replace(/\\/g, '/');
-  if (caminhoNormalizado.startsWith(homeNormalizado + '/')) {
+  // A comparacao ignora caixa, como `transcritoEmPastaDeSessaoReal`: o
+  // Windows entrega o disco e o usuario em caixa inconsistente (`c:/Users`
+  // via Git Bash), e o D14 aceita esse transcrito — gravar o caminho cru
+  // nesse caso vazaria a pasta pessoal que a #340 esconde.
+  const caminhoComparavel = caminhoNormalizado.toLowerCase();
+  const homeComparavel = homeNormalizado.toLowerCase();
+  if (caminhoComparavel.startsWith(homeComparavel + '/')) {
     return '~' + caminhoNormalizado.substring(homeNormalizado.length);
   }
-  if (caminhoNormalizado === homeNormalizado) {
+  if (caminhoComparavel === homeComparavel) {
     return '~';
   }
   return caminhoNormalizado;
@@ -2269,4 +2275,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { novo, proximo, faltando, estaFechado, EXECUCAO, PRE_REQUISITOS, DIR_ESTADO };
+module.exports = { novo, proximo, faltando, estaFechado, EXECUCAO, PRE_REQUISITOS, DIR_ESTADO, caminhoComTil };

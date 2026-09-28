@@ -484,14 +484,16 @@ cascas_em() {
   (cd "$1" && grep -nE '^[^#]*testa-[A-Za-z0-9_*-]+\.cjs' scripts/testa-*.sh hooks/testa-*.sh 2>/dev/null | grep -v '^scripts/testa-varrer-baterias\.sh:')
 }
 # execucoes_sh_em: testa-*.sh EXECUTANDO outra testa-*.sh -- bash/sh/source/./
-# exec em posicao de comando (inicio da linha, depois de ; & | ( ou de if/then/do/..., com
+# exec, ou o caminho direto pelo shebang (`./hooks/testa-x.sh`), em posicao
+# de comando (inicio da linha, depois de ; & | ( ou de if/then/do/..., com
 # atribuicoes NOME=valor na frente). Mencao que nao e execucao nao conta:
 # caminho como argumento (alvo de Edit num payload) ou texto de echo. A
 # bateria que reexecuta a si mesma (o caso K de testa-saude.sh roda uma copia
 # da propria bateria) nao e dobro de outra.
 execucoes_sh_em() {
-  (cd "$1" && grep -nE '(^|[;&|(]|(^|[[:space:]])(if|then|do|else|elif|while|until|!))[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(bash|sh|source|\.|exec)[[:space:]]+[^|;&]*testa-[A-Za-z0-9_.-]+\.sh' scripts/testa-*.sh hooks/testa-*.sh 2>/dev/null \
+  (cd "$1" && grep -nE '(^|[;&|(]|(^|[[:space:]])(if|then|do|else|elif|while|until|!))[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]$"'"'"'(]*[[:space:]]+)*((bash|sh|source|\.|exec)[[:space:]]+[^|;&]*|"?[^[:space:]|;&"]*/)testa-[A-Za-z0-9_.-]+\.sh' scripts/testa-*.sh hooks/testa-*.sh 2>/dev/null \
     | grep -v '^scripts/testa-varrer-baterias\.sh:' \
+    | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' \
     | awk -F: '{ n = split($1, p, "/"); resto = substr($0, length($1) + length($2) + 3); if (index(resto, p[n]) == 0) print }')
 }
 # Contraprova: as checagens tem de achar, numa caixa de areia, a casca .cjs
@@ -510,6 +512,14 @@ if bash "$SRC/hooks/testa-b.sh" > /dev/null; then echo ok; fi
 EOF
 if ! execucoes_sh_em "$sandbox_n" | grep -q '^hooks/testa-a\.sh:'; then
   echo "  FAIL (n): a checagem nao achou a .sh que executa outra .sh na caixa de areia"
+  exit 1
+fi
+cat > "$sandbox_n/scripts/testa-d.sh" <<'EOF'
+#!/bin/bash
+./hooks/testa-b.sh
+EOF
+if ! execucoes_sh_em "$sandbox_n" | grep -q '^scripts/testa-d\.sh:'; then
+  echo "  FAIL (n): a checagem nao achou a execucao direta ./hooks/testa-b.sh na caixa de areia"
   exit 1
 fi
 cat > "$sandbox_n/hooks/testa-c.sh" <<'EOF'

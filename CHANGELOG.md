@@ -19,8 +19,9 @@ as duas pedem outro desenho, não conserto.
 - **`stdbuf --output L` não escapa mais do `gate-bateria-sem-timeout`** (#346). A
   forma longa com espaço deixava o `L` passar por comando e a bateria ia para
   segundo plano (exit 0); agora sai 2, como `-oL`, `-o L` e `--output=L`. O `stdbuf`
-  entrou na lista comum de wrappers dos gates, então `stdbuf -oL gh issue close 12`
-  também passa a ser barrado pelo `gate-fechar-issue`.
+  entrou na lista comum de wrappers dos gates, que agora olham o comando depois
+  dele. `stdbuf -oL gh issue close 12` já era barrado antes, pela busca de sequência,
+  e ganhou caso de regressão.
 - **`gh pr create --body-file /c/...` lê o arquivo** (#344). No Git Bash o caminho
   MSYS virava `C:\c\...` e o gate barrava com "não consegui ler o arquivo de corpo do
   PR" com o arquivo existindo; agora o caminho é normalizado como o do `cd`.
@@ -28,12 +29,14 @@ as duas pedem outro desenho, não conserto.
   issue \\\<quebra>close 12"` (três contrabarras) executava `gh issue close 12` e o
   gate saía 0. Metade era a leitura das aspas duplas, que agora é uma passada só,
   como no bash. A outra metade apareceu na medição e era mais larga do que a issue:
-  `gh issue \close 12`, sem wrapper nenhum, também saía 0. O gate passou a comparar o
-  subcomando sem contrabarra. Um efeito colateral: `echo hi \gh issue close 12` agora
+  `gh issue \close 12`, sem wrapper nenhum, também saía 0, e na revisão apareceram as
+  aspas ANSI-C (`gh issue $'close' 12`, `$'clo\x73e'`). O gate passou a comparar o
+  subcomando sem contrabarra e com os escapes do ANSI-C resolvidos. Um efeito colateral: `echo hi \gh issue close 12` agora
   é barrado, como `echo hi gh issue close 12` já era.
 - **Veredito grava o transcrito com `~`** (#340). `estado.cjs veredito` gravava o
   caminho absoluto, que começa pela pasta pessoal, num arquivo versionado de repo
-  público. Agora grava `~/.claude*/projects/...`, e a conferência D12/D14 continua
+  público. Agora grava `~/.claude*/projects/...` (também quando o disco ou o usuário
+  chegam em outra caixa, como o Git Bash entrega), e a conferência D12/D14 continua
   sobre o caminho real. Os 10 estados que já estavam na main foram reescritos.
 - **R5 do `testa-saude.sh` diz quando a falha é do próprio teste** (#342). O servidor
   de teste escuta na porta que o sistema der e grava essa porta; se ele não subir, o
@@ -41,7 +44,8 @@ as duas pedem outro desenho, não conserto.
 - **Nenhuma bateria roda duas vezes na varredura** (#341). `testa-gate-publicacao-destino.sh`
   rodava outras duas baterias que o varredor já roda. O bloco saiu, e o teste (n) do
   `testa-varrer-baterias.sh` passou a barrar qualquer `testa-*.sh` que execute outra
-  `testa-*.sh`, além da casca `.cjs` que já barrava.
+  `testa-*.sh` (por `bash`/`sh`/`source`/`.`/`exec` ou pelo caminho direto), além da
+  casca `.cjs` que já barrava.
 
 ## 1.26.0 — 2026-09-27
 

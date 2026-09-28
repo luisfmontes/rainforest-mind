@@ -67,8 +67,19 @@ function temSubcomando(subcomandos, padrao) {
  * fica mais larga: `"\close"` citado (que o bash manteria) passa a barrar, e
  * esse comando o `gh` recusaria de qualquer jeito.
  */
+// Revisão 1 (zerar-issues-10): aspas ANSI-C também escondiam o subcomando —
+// `gh issue $'close' 12` e `gh issue $'clo\x73e' 12` rodam `gh issue close
+// 12`, e o token chegava como `$close`/`$clo\x73e`. O `$` da frente sai (o
+// mesmo desconto de `ehComando`, A4) e os escapes numéricos do ANSI-C viram o
+// caractere antes de tirar as contrabarras. Aplicado a qualquer token, a
+// decodificação só alarga a comparação, como a contrabarra acima.
 function semContrabarra(s) {
-  return s.split("\\").join("");
+  let v = s.startsWith("$") ? s.slice(1) : s;
+  v = v
+    .replace(/\\x([0-9a-fA-F]{1,2})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/\\u([0-9a-fA-F]{1,4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/\\([0-7]{1,3})/g, (_, o) => String.fromCharCode(parseInt(o, 8)));
+  return v.split("\\").join("");
 }
 
 function indiceSequencia(tokens, padrao) {

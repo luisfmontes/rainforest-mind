@@ -2481,6 +2481,24 @@ else
   falhou=$((falhou+1)); echo "  FALHA veredito: esperava transcrito com ~/, veio '$transcrito_gravado'"
 fi
 
+# (#340b) caixa diferente da pasta pessoal (disco em minusculo, comum no Git
+# Bash): o D14 aceita esse transcrito, entao o `~` tem de valer tambem.
+# Direto na funcao, com HOME e USERPROFILE forcados, para rodar igual em
+# qualquer plataforma (no Linux o disco nao muda de caixa).
+til340b=$(HOME="X:/Casa/Pessoa" USERPROFILE="X:/Casa/Pessoa" node -e '
+  const { caminhoComTil } = require(process.argv[1]);
+  console.log([
+    caminhoComTil("x:/casa/pessoa/.claude/projects/p/s/subagents/agent-x.jsonl"),
+    caminhoComTil("X:/Casa/Pessoa/.claude/p"),
+    caminhoComTil("X:/Casa/PessoaOutra/.claude/p"),
+  ].join("|"));
+' "$(pwd)/scripts/estado.cjs")
+if [ "$til340b" = "~/.claude/projects/p/s/subagents/agent-x.jsonl|~/.claude/p|X:/Casa/PessoaOutra/.claude/p" ]; then
+  ok=$((ok+1)); echo "  ok   (#340b) caixa diferente da pasta pessoal tambem vira ~; prefixo de outra pasta nao"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#340b) veio '$til340b'"
+fi
+
 unset RFM_ESTADO_ROOT
 
 echo "== resultado: $ok ok, $falhou falhas =="

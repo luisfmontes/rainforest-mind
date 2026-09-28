@@ -24,7 +24,7 @@
     "em": "2026-09-28"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "tarefas_ok": 7,
     "tarefas": 7,
     "em": "2026-09-28",
@@ -67,10 +67,35 @@
         "resultado": "n/a",
         "motivo": "texto de registro e versao; testa-versao.sh 5 ok"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-28"
+    }
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "c98b1bd6a559c3791615615236622135f2a85ad1",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a83d67cba101d1bf7",
+        "veredito": "reprovado",
+        "em": "2026-09-28",
+        "transcrito": "C:\\Users\\Luis\\.claude\\projects\\C--Projetos-rainforest-mind\\a5435dc7-36e5-4a20-b1d0-0d1c8a88edc5\\subagents\\agent-a83d67cba101d1bf7.jsonl"
+      }
+    ],
+    "achados": [
+      "caminhoComTil case-sensitive vaza caminho com drive minusculo (estado.cjs:215)",
+      "ANSI-C $close escapa do gate-fechar-issue",
+      "execucoes_sh_em nao pega ./hooks/testa-x.sh",
+      "CHANGELOG overclama stdbuf -oL gh issue close (ja barrava na base)"
+    ],
+    "em": "2026-09-28",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

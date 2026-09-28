@@ -2750,6 +2750,27 @@ for FORMA339 in 'gh issue \close 12' 'gh \issue close 12' 'gh issue cl\ose 12'; 
   [ "$EXIT_339B" -eq 2 ] && test_ok "(#339b) $FORMA339 -> exit 2" || test_fail "(#339b) $FORMA339 saiu $EXIT_339B (esperado 2)"
 done
 
+# (#339d) Revisao 1: aspas ANSI-C tambem escondiam o subcomando — o bash
+# expande `$'close'` e `$'clo\x73e'` para `close` (medido com gh falso).
+# `gh issue list` continua passando.
+echo
+echo "== (#339d) aspas ANSI-C no subcomando -> exit 2 =="
+for I339D in 0 1 2 3 4; do
+  PAYLOAD_339D=$(node -e '
+    const B = String.fromCharCode(92);
+    const cmds = ["gh issue $'"'"'close'"'"' 12", "gh issue $'"'"'clo" + B + "x73e'"'"' 12", "gh issue $'"'"'clo" + B + "163e'"'"' 12", "gh $'"'"'" + B + "x69ssue'"'"' close 12", "gh issue list"];
+    const c = cmds[parseInt(process.argv[1], 10)];
+    process.stdout.write(JSON.stringify({cwd: process.argv[2], tool_name: "Bash", tool_input: {command: c}}));
+  ' "$I339D" "$SBP_WIN")
+  ESPERADO_339D=2; [ "$I339D" -eq 4 ] && ESPERADO_339D=0
+  EXIT_339D=$(
+    export PATH="$SBP/bin:$PATH"
+    echo "$PAYLOAD_339D" | node "$SRC/hooks/gate-fechar-issue.cjs" >/dev/null 2>&1
+    echo $?
+  )
+  [ "$EXIT_339D" -eq "$ESPERADO_339D" ] && test_ok "(#339d.$I339D) exit $ESPERADO_339D" || test_fail "(#339d.$I339D) saiu $EXIT_339D (esperado $ESPERADO_339D): $PAYLOAD_339D"
+done
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
