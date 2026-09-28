@@ -33,7 +33,7 @@ const { executar } = require("./lib/resolver-executavel.cjs");
 const {
   tokensComAspas, posicaoDeComando, textoAPartir, WRAPPERS_QUE_REPASSAM,
   WRAPPERS_DE_COMANDO, desempacotarWrapperDeString, OPERADORES_DE_DOIS,
-  colapsaContinuacaoDeLinhaNoTopo,
+  colapsaContinuacaoDeLinhaNoTopo, semContrabarra,
 } = require("./lib/tokens-comando.cjs");
 const { cwdPorSegmento, normalizarMsys } = require("./lib/cwd-efetivo.cjs");
 const { corpoDeHeredoc, linhaDoHeredocTemInterpretador, fimDaLinhaLogica } = require("./lib/heredoc.cjs");
@@ -73,15 +73,11 @@ function temSubcomando(subcomandos, padrao) {
 // mesmo desconto de `ehComando`, A4) e os escapes numéricos do ANSI-C viram o
 // caractere antes de tirar as contrabarras. Aplicado a qualquer token, a
 // decodificação só alarga a comparação, como a contrabarra acima.
-function semContrabarra(s) {
-  let v = s.startsWith("$") ? s.slice(1) : s;
-  v = v
-    .replace(/\\x([0-9a-fA-F]{1,2})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
-    .replace(/\\u([0-9a-fA-F]{1,4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
-    .replace(/\\([0-7]{1,3})/g, (_, o) => String.fromCharCode(parseInt(o, 8)));
-  return v.split("\\").join("");
-}
-
+//
+// `semContrabarra` mudou-se para `hooks/lib/tokens-comando.cjs` (tarefa 1 do
+// plano `gate-subagente-sem-gh`, 2026-09-28): `hooks/gate-subagente-sem-gh.cjs`
+// precisa da MESMA normalização para comparar subcomando de `gh`, e duas
+// cópias divergiriam num escape novo aprendido só numa delas.
 function indiceSequencia(tokens, padrao) {
   for (let i = 0; i <= tokens.length - padrao.length; i++) {
     if (

@@ -1,0 +1,864 @@
+#!/usr/bin/env node
+// @categoria: guia
+/**
+ * PreToolUse (Bash) — nega, dentro de subagente, todo comando `gh` que
+ * ESCREVE no GitHub: no comando direto, atrás de um wrapper que repassa
+ * (`stdbuf`, `env`, `timeout`, ...), dentro de um wrapper de string
+ * (`bash -c`, `eval`, `Invoke-Expression`, `pwsh -Command`, `cmd /c`) ou no
+ * corpo de um heredoc citado como texto.
+ *
+ * Protege contra: subagente rodando `gh issue close`, `gh pr merge`, `gh
+ * release create`, `gh api -X POST`, etc. — direto ou escondido atrás de um
+ * wrapper. Duas vezes (2026-09-13, `zerar-issues-3`; 2026-09-28,
+ * `zerar-issues-10`) um revisor rodou `gh issue close 12` real com a
+ * proibição só em prosa no briefing; a regra em prosa não segura.
+ *
+ * Não protege (ainda) contra: escrita escondida dentro de um SCRIPT que o
+ * subagente manda executar (`bash script.sh` com `gh issue close` no corpo
+ * do arquivo) — é a tarefa 2 do plano (D4/D5), ponto de extensão marcado
+ * abaixo em `arquivoDeScriptExecutado`/`TODO_TAREFA_2`. Escrita por outro
+ * meio que não `gh` (`curl` na API do GitHub, `git push`) está fora de
+ * escopo (design, seção "Fora de escopo").
+ *
+ * Design: docs/rainforest/design/gate-subagente-sem-gh.md (D1-D6).
+ * Só subagente (D1): `agent_id` só aparece no payload quando a chamada sai de
+ * dentro de um. Presença da chave, não truthiness — mesma regra de
+ * `gate-bateria-sem-timeout.cjs`. Toggle `subagente-sem-gh` (D1), padrão
+ * ligado, mesma forma de `bateria-sem-timeout`.
+ *
+ * Payload ilegível, vazio ou de outra ferramenta: sai 0, como os gates irmãos.
+ */
+
+const fs = require("node:fs");
+const path = require("node:path");
+const { execFileSync } = require("node:child_process");
+const {
+  tokensComAspas, posicaoDeComando, textoAPartir,
+  WRAPPERS_QUE_REPASSAM, WRAPPERS_DE_COMANDO, desempacotarWrapperDeString,
+  OPERADORES_DE_DOIS, colapsaContinuacaoDeLinhaNoTopo, semContrabarra,
+} = require("./lib/tokens-comando.cjs");
+const { corpoDeHeredoc, linhaDoHeredocTemInterpretador, fimDaLinhaLogica } = require("./lib/heredoc.cjs");
+const { cwdPorSegmento, normalizarMsys } = require("./lib/cwd-efetivo.cjs");
+
+/**
+ * D2 — tabela de VERBOS DE ESCRITA por família de subcomando `gh`. A linha
+ * de `issue` é citada ao pé da letra pela mutação (catraca do plano): mudar
+ * este Set é o comportamento que a bateria tem que sentir.
+ */
+const VERBOS_ESCRITA = {
+  issue: new Set(["close", "comment", "edit", "create", "reopen", "delete", "transfer", "pin", "unpin", "lock", "unlock"]),
+  pr: new Set(["create", "edit", "merge", "close", "comment", "reopen", "review", "ready"]),
+  release: new Set(["create", "edit", "delete", "upload"]),
+  repo: new Set(["create", "edit", "delete", "rename", "archive"]),
+  label: new Set(["create", "edit", "delete", "set"]),
+  secret: new Set(["create", "edit", "delete", "set"]),
+  variable: new Set(["create", "edit", "delete", "set"]),
+  workflow: new Set(["run", "enable", "disable"]),
+  run: new Set(["rerun", "cancel", "delete"]),
+  // Revisão (2026-09-28): `gh alias set co "issue close" && gh co 12` saía 0.
+  alias: new Set(["set", "import", "delete"]),
+  gist: new Set(["create", "edit", "delete", "rename"]),
+  extension: new Set(["install", "upgrade", "exec"]),
+};
+
+// Famílias embutidas do `gh` (sem o alias padrão `co`, redefinível). Em POSIÇÃO DE
+// COMANDO, primeiro posicional fora desta lista é alias ou extensão — nome
+// que esconde qualquer verbo — e conta como escrita (revisão, 2026-09-28:
+// `gh co 12` com alias salvo saía 0). Na varredura de TEXTO (script, código
+// inline) não vale, porque ali `gh` pode ser só palavra.
+const FAMILIAS_GH = new Set([
+  "alias", "api", "attestation", "auth", "browse", "cache", "codespace",
+  "completion", "config", "extension", "ext", "gist", "gpg-key", "help", "issue",
+  "label", "org", "pr", "preview", "project", "release", "repo", "ruleset",
+  "run", "search", "secret", "ssh-key", "status", "variable", "workflow", "version",
+]);
+
+// Todos os pares [família, verbo] da tabela acima, como sequência de DOIS
+// tokens — usados pela rede de segurança W2 (wrapper desconhecido) e pela
+// varredura de texto de heredoc, que procuram a sequência literal em vez de
+// consultar a tabela por família (ali o primeiro token já é sabidamente `gh`;
+// aqui não se sabe qual comando o cerca, então casa-se o par direto).
+const PADROES_DE_ESCRITA = [];
+for (const [familia, verbos] of Object.entries(VERBOS_ESCRITA)) {
+  for (const verbo of verbos) PADROES_DE_ESCRITA.push([familia, verbo]);
+}
+
+// Flags de `gh api` que consomem o próximo token como VALOR do método HTTP.
+const FLAGS_METODO = new Set(["-x", "--method"]);
+// Flags de `gh api` que indicam corpo/campo — sem `-X`/`--method` explícito
+// (ou explícito e diferente de GET), o `gh api` faz POST por padrão.
+const FLAGS_CAMPO = new Set(["-f", "-F", "--field", "--raw-field", "--input"]);
+
+/**
+ * `gh api ...` escreve? D2: `-X`/`--method` diferente de `GET`, OU
+ * `-f`/`-F`/`--field`/`--raw-field`/`--input` sem `-X GET` explícito.
+ * `argsApi` são os tokens (strings cruas) depois de `api`.
+ */
+function apiEhEscrita(argsApi) {
+  let metodo = null;
+  let temCampo = false;
+  for (let i = 0; i < argsApi.length; i += 1) {
+    const tok = semContrabarra(argsApi[i]);
+    const igual = tok.indexOf("=");
+    const chave = (igual === -1 ? tok : tok.slice(0, igual)).toLowerCase();
+    // `-XPOST` colado (integração, 2026-09-28): saía 0.
+    if (igual === -1 && /^-X./.test(tok)) {
+      metodo = tok.slice(2).toUpperCase();
+      continue;
+    }
+    if (FLAGS_METODO.has(chave)) {
+      const valor = igual !== -1 ? tok.slice(igual + 1) : argsApi[i + 1];
+      metodo = String(valor || "").toUpperCase();
+      if (igual === -1) i += 1;
+      continue;
+    }
+    if (FLAGS_CAMPO.has(chave)) {
+      temCampo = true;
+      continue;
+    }
+  }
+  if (metodo !== null) return metodo !== "GET";
+  // `gh api graphql` é sempre POST, e só escreve com `mutation` (revisão 2:
+  // `gh api graphql -f query="query { viewer { login } }"` saía 2).
+  const posicional = argsApi.map(semContrabarra).find((t) => !t.startsWith("-"));
+  if (posicional && posicional.toLowerCase() === "graphql") {
+    // Query vinda de arquivo/stdin (`-f query=@x`, `--input x`) não se lê
+    // daqui: conta como escrita (revisão 3).
+    const deArquivo = argsApi.some((t) => {
+      const v = semContrabarra(t);
+      return v === "--input" || v.startsWith("--input=") || /^[^=]+=@/.test(v);
+    });
+    return deArquivo || argsApi.some((t) => /\bmutation\b/i.test(semContrabarra(t)));
+  }
+  return temCampo;
+}
+
+/**
+ * `subcomandos` são os tokens (strings cruas, `.v` de `tokensComAspas`) que
+ * vêm depois de `gh`. Devolve `true` se a invocação ESCREVE no GitHub (D2).
+ */
+// Integração (2026-09-28): flag global antes da família ou entre família e
+// verbo escondia a escrita — `gh -R o/r issue close 12` e `gh issue -R o/r
+// close 12` saíam 0 (o cobra aceita a flag em qualquer ponto). Família e verbo
+// passam a ser os dois primeiros POSICIONAIS; `-R`/`--repo` consomem o valor.
+const FLAGS_GH_COM_VALOR = new Set(["-r", "--repo", "--hostname"]);
+
+function comandoGhEhEscrita(subcomandos, { familiaDesconhecidaEscreve = false } = {}) {
+  const posicionais = [];
+  for (let i = 0; i < subcomandos.length && posicionais.length < 2; i += 1) {
+    const tok = semContrabarra(subcomandos[i]);
+    if (tok.startsWith("-")) {
+      if (!tok.includes("=") && FLAGS_GH_COM_VALOR.has(tok.toLowerCase())) i += 1;
+      continue;
+    }
+    posicionais.push({ v: tok.toLowerCase(), i });
+  }
+  if (posicionais.length === 0) return false;
+  const familia = posicionais[0].v;
+  if (familia === "api") return apiEhEscrita(subcomandos.slice(posicionais[0].i + 1));
+  if (familiaDesconhecidaEscreve && !FAMILIAS_GH.has(familia)) return true;
+  const verbos = VERBOS_ESCRITA[familia];
+  if (!verbos) return false;
+  if (posicionais.length < 2) return false;
+  return verbos.has(posicionais[1].v);
+}
+
+/**
+ * Índice da primeira ocorrência de `padrao` (par [família, verbo]) como
+ * sub-sequência CONTÍGUA (case-insensitive, sem contrabarra) em `tokens`, ou
+ * -1. Usada pela rede de segurança W2 e pela varredura de heredoc — as duas
+ * situações em que não se sabe de antemão que o primeiro token é `gh`.
+ */
+function indiceSequenciaGh(tokens, padrao) {
+  for (let i = 0; i + 1 < tokens.length; i += 1) {
+    // `$G issue close 12` com `G=gh` (integração, 2026-09-28): variável
+    // sozinha na posição do `gh` conta como `gh` — o gate não sabe o valor.
+    const cabeca = tokens[i];
+    const ehVariavel = /^\$\{?[A-Za-z_][A-Za-z0-9_]*\}?$/.test(cabeca);
+    if (!ehVariavel && semContrabarra(cabeca).toLowerCase() !== "gh") continue;
+    const familia = semContrabarra(tokens[i + 1]).toLowerCase();
+    if (familia !== padrao[0]) continue;
+    if (familia === "api") return i; // api decidido à parte, por flags
+    if (i + 2 >= tokens.length) continue;
+    const verbo = semContrabarra(tokens[i + 2]).toLowerCase();
+    if (verbo === padrao[1]) return i;
+  }
+  return -1;
+}
+
+function bateriaLigada(projeto) {
+  const { ligado } = require("./lib/config.cjs");
+  return ligado("subagente-sem-gh", { projeto });
+}
+
+// TEXTOS_DE_HEREDOC: corpos de heredoc tratados como DADO nesta invocação —
+// o texto ainda é varrido pelos padrões diretos (D3), como
+// `gate-fechar-issue.cjs` já faz para `gh issue close`/`gh pr merge`.
+let TEXTOS_DE_HEREDOC = [];
+
+/**
+ * Separa um comando em segmentos, respeitando aspas simples/duplas — mesma
+ * segmentação de `gate-fechar-issue.cjs` (`segmentosParaGate`), incluindo o
+ * tratamento de heredoc/here-string como TEXTO quando o receptor não é
+ * interpretador. Ver o docblock de lá para o porquê de cada ramo; mantida
+ * aqui como cópia (não extraída para a lib comum) porque `arquivos:` da
+ * tarefa 1 não inclui mover esta função — `gate-bateria-sem-timeout.cjs` já
+ * segue o mesmo precedente de manter a própria segmentação.
+ */
+function segmentosParaGate(cmd) {
+  cmd = colapsaContinuacaoDeLinhaNoTopo(cmd);
+  const segmentos = [];
+  let atual = "";
+  let aspa = null;
+
+  for (let i = 0; i < cmd.length; i++) {
+    const c = cmd[i];
+
+    if (aspa) {
+      if (aspa === '"' && c === "$" && cmd[i + 1] === "(") {
+        let profundidade = 1;
+        let j = i + 2;
+        let interno = "";
+        while (j < cmd.length && profundidade > 0) {
+          if (cmd[j] === "(") profundidade += 1;
+          else if (cmd[j] === ")") {
+            profundidade -= 1;
+            if (profundidade === 0) break;
+          }
+          interno += cmd[j];
+          j += 1;
+        }
+        if (interno.trim()) segmentos.push(interno);
+      }
+      if (c === aspa) aspa = null;
+      atual += c;
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      aspa = c;
+      atual += c;
+      continue;
+    }
+    if (c === "&" && cmd[i + 1] === "&") {
+      if (atual.trim()) segmentos.push(atual);
+      atual = "";
+      i++;
+      continue;
+    }
+    if (c === "|" && cmd[i + 1] === "|") {
+      if (atual.trim()) segmentos.push(atual);
+      atual = "";
+      i++;
+      continue;
+    }
+    if (OPERADORES_DE_DOIS.has(cmd[i] + (cmd[i + 1] || ""))) {
+      if (atual.trim()) segmentos.push(atual);
+      atual = "";
+      i++;
+      continue;
+    }
+    if (c === ";" || c === "|" || c === "\n" || c === "(" || c === ")" || c === "{" || c === "}") {
+      if (atual.trim()) segmentos.push(atual);
+      atual = "";
+      continue;
+    }
+    if (
+      c === "&" &&
+      cmd[i + 1] !== "&" &&
+      cmd[i + 1] !== ">" &&
+      cmd[i - 1] !== ">" &&
+      cmd[i - 1] !== "<" &&
+      cmd[i - 1] !== "|" &&
+      atual.trim() !== ""
+    ) {
+      if (atual.trim()) segmentos.push(atual);
+      atual = "";
+      continue;
+    }
+    if (c === "<" && cmd[i + 1] === "<" && cmd[i + 2] === "<") {
+      let k = i + 3;
+      while (k < cmd.length && (cmd[k] === ' ' || cmd[k] === '\t')) k++;
+      let conteudo = '';
+      if (cmd[k] === "'" || cmd[k] === '"') {
+        const aspaHs = cmd[k];
+        k++;
+        while (k < cmd.length && cmd[k] !== aspaHs) { conteudo += cmd[k]; k++; }
+        if (k < cmd.length) k++;
+      } else {
+        while (k < cmd.length && !/[\s;&|]/.test(cmd[k])) {
+          if (cmd[k] === '\\' && k + 1 < cmd.length) { conteudo += cmd[k + 1]; k += 2; continue; }
+          conteudo += cmd[k]; k++;
+        }
+      }
+      if (linhaDoHeredocTemInterpretador(cmd, i)) {
+        for (const sub of segmentosParaGate(conteudo)) {
+          if (sub.trim()) segmentos.push(sub);
+        }
+      } else {
+        TEXTOS_DE_HEREDOC.push(conteudo);
+      }
+      atual += cmd.slice(i, k);
+      i = k - 1;
+      continue;
+    }
+    if (c === "<" && cmd[i + 1] === "<") {
+      const heredoc = corpoDeHeredoc(cmd, i);
+      if (heredoc !== null) {
+        atual += cmd.slice(i, i + 2);
+        let j = i + 2;
+        if (cmd[j] === '-') j++;
+        while (j < cmd.length && (cmd[j] === ' ' || cmd[j] === '\t')) j++;
+        if (cmd[j] === '"' || cmd[j] === "'") {
+          const tipoAspa = cmd[j];
+          j++;
+          while (j < cmd.length && cmd[j] !== tipoAspa) j++;
+          if (j < cmd.length && cmd[j] === tipoAspa) j++;
+        } else {
+          while (j < cmd.length && cmd[j] !== ' ' && cmd[j] !== '\t' && cmd[j] !== '\n' && cmd[j] !== ';' && cmd[j] !== '&' && cmd[j] !== '|' && cmd[j] !== ')' && cmd[j] !== '<' && cmd[j] !== '>') {
+            j++;
+          }
+        }
+        atual += cmd.slice(i + 2, j);
+
+        if (linhaDoHeredocTemInterpretador(cmd, i)) {
+          for (const sub of segmentosParaGate(heredoc.corpo)) {
+            if (sub.trim()) segmentos.push(sub);
+          }
+        } else {
+          TEXTOS_DE_HEREDOC.push(heredoc.corpo);
+        }
+
+        const inicioCorpo = fimDaLinhaLogica(cmd, i);
+        if (inicioCorpo !== -1 && inicioCorpo < heredoc.fim) {
+          const fechado = inicioCorpo + 1 + heredoc.corpo.length < heredoc.fim;
+          const depois = fechado ? cmd.slice(heredoc.fim - 1) : '';
+          cmd = cmd.slice(0, inicioCorpo) + depois;
+        }
+        i = j - 1;
+        continue;
+      }
+    }
+    atual += c;
+  }
+
+  if (atual.trim()) segmentos.push(atual);
+  return segmentos;
+}
+
+function bloqueia(motivo) {
+  process.stderr.write(motivo);
+  process.exit(2);
+}
+
+const MSG_JANELA_PRINCIPAL =
+  "Escrita no GitHub (fechar/comentar Issue, abrir/mergear/fechar PR, criar release, " +
+  "rodar workflow, etc.) é da janela principal, não de subagente.\n";
+
+const MSG_MEDIR =
+  "Para medir este gate sem executar `gh` de verdade, alimente-o com o payload JSON " +
+  "no stdin do hook:\n" +
+  "  echo '{\"tool_name\":\"Bash\",\"agent_id\":\"a1\",\"tool_input\":{\"command\":\"...\"}}' " +
+  "| node hooks/gate-subagente-sem-gh.cjs\n";
+
+function bloqueiaEscrita(comandoVisto) {
+  bloqueia(
+    `BLOQUEADO pelo gate de subagente sem GitHub do rainforest-mind.\n\n` +
+    `Comando visto: \`${comandoVisto.trim()}\`\n\n` +
+    MSG_JANELA_PRINCIPAL + "\n" + MSG_MEDIR
+  );
+}
+
+function bloqueiaIlegivel(comandoVisto) {
+  bloqueia(
+    `BLOQUEADO pelo gate de subagente sem GitHub do rainforest-mind.\n\n` +
+    `Comando visto: \`${comandoVisto.trim()}\`\n\n` +
+    `Razão: comando encapsulado (eval/bash -c/sh -c/pwsh -Command/cmd /c) contém ` +
+    `variável ou substituição de comando; não consigo ler o que roda dentro com ` +
+    `segurança (ilegível), e pode ser um \`gh\` de escrita escondido.\n\n` +
+    MSG_JANELA_PRINCIPAL + "\n" + MSG_MEDIR
+  );
+}
+
+// D5: mensagem extra quando o bloqueio é de um arquivo `testa-*` NÃO
+// rastreado — a isenção existe (D5), só falta o `git add`.
+const MSG_GIT_ADD =
+  "Este arquivo parece bateria (`testa-*`) mas não está rastreado pelo git — " +
+  "rode `git add` nele antes de rodar uma bateria nova, para ele virar isento.\n\n";
+
+function bloqueiaArquivo(achado) {
+  if (achado.ehFechaIssue) {
+    bloqueia(
+      `BLOQUEADO pelo gate de subagente sem GitHub do rainforest-mind.\n\n` +
+      `Arquivo executado: \`${achado.caminho}\`\n\n` +
+      `Razão: \`scripts/fechar-issue.cjs\` é o fechador oficial de Issue — subagente não roda, mesmo versionado.\n\n` +
+      MSG_JANELA_PRINCIPAL + "\n" + MSG_MEDIR
+    );
+    return;
+  }
+  bloqueia(
+    `BLOQUEADO pelo gate de subagente sem GitHub do rainforest-mind.\n\n` +
+    `Arquivo executado: \`${achado.caminho}:${achado.linha}\`\n\n` +
+    `Linha: \`${achado.texto}\`\n\n` +
+    (achado.sugereGitAdd ? MSG_GIT_ADD : "") +
+    MSG_JANELA_PRINCIPAL + "\n" + MSG_MEDIR
+  );
+}
+
+/**
+ * `exe` (já normalizado) é um prefixo que sabemos que só repassa o comando
+ * adiante, ou um wrapper que sabemos desempacotar? Mesma função de
+ * `gate-fechar-issue.cjs` — um wrapper RECONHECIDO já foi resolvido por
+ * `posicaoDeComando`/`desempacotarWrapperDeString`; se o mecanismo específico
+ * dele falhar (ou for mutado), a bateria tem que sentir, não ser socorrida
+ * por esta rede de segurança genérica.
+ */
+function ehPrefixoOuWrapperConhecido(exe) {
+  return (
+    exe === "gh" ||
+    exe === "eval" ||
+    exe === "invoke-expression" ||
+    exe === "iex" ||
+    exe === "pwsh" ||
+    exe === "powershell" ||
+    exe === "cmd" ||
+    WRAPPERS_QUE_REPASSAM.has(exe) ||
+    !!WRAPPERS_DE_COMANDO[exe]
+  );
+}
+
+function normalizarExecutavel(nome) {
+  let sem_aspas = nome.replace(/^["']|["']$/g, "");
+  sem_aspas = path.basename(sem_aspas);
+  sem_aspas = sem_aspas.replace(/\.(exe|cmd|bat)$/i, "");
+  return sem_aspas.toLowerCase();
+}
+
+// Interpretadores cujo PRIMEIRO argumento não-flag é o ARQUIVO executado
+// (D4). `source`/`.` entram aqui também — tratados à parte em
+// `processarSegmento` porque `desempacotarWrapperDeString` sempre devolve
+// `ilegivel: true` para eles (não têm forma de string), o que bloquearia
+// toda `source`/`.` às cegas antes desta tarefa ler o conteúdo.
+// Integração (2026-09-28): `python3`, `zsh`, `dash`, `ksh` e `py` escapavam.
+// Revisão (2026-09-28): `pwsh`/`powershell` com `.ps1` escapavam.
+const INTERPRETADORES_DE_ARQUIVO = new Set(["bash", "sh", "zsh", "dash", "ksh", "source", ".", "node", "python", "python3", "python2", "py", "pwsh", "powershell", "perl", "ruby"]);
+
+// Extensão de script reconhecida para o caminho DIRETO em posição de
+// comando (`./x.sh`) — sem isto, qualquer binário com `/` no nome
+// (`/usr/bin/git`, `node_modules/.bin/eslint`) viraria candidato a "arquivo
+// executado" só por conter barra.
+const EXTENSAO_DE_SCRIPT = /\.(sh|bash|cjs|mjs|js|py|ps1|psm1|pl|rb)$/i;
+
+// Código INLINE (revisão, 2026-09-28): `node -e "...execSync('gh issue close
+// 12')"` e `python -c "os.system('gh issue close 12')"` saíam 0 — o gate lia
+// o código como se fosse caminho de arquivo, não achava o arquivo e passava.
+// Flag de código inline por interpretador (comparada em minúsculas).
+const FLAGS_CODIGO_INLINE = {
+  node: new Set(["-e", "--eval", "-p", "--print"]),
+  python: new Set(["-c"]), python3: new Set(["-c"]), python2: new Set(["-c"]), py: new Set(["-c"]),
+  perl: new Set(["-e"]), ruby: new Set(["-e"]),
+  pwsh: new Set(["-c", "-command"]), powershell: new Set(["-c", "-command"]),
+  cmd: new Set(["/c", "/k"]),
+};
+// PowerShell com código em base64 não se lê: ilegível.
+const FLAGS_CODIGO_CODIFICADO = new Set(["-e", "-ec", "-enc", "-encodedcommand"]);
+
+/**
+ * `toks[pos]` roda código INLINE? Devolve `{ codigo }`, `{ ilegivel: true }`
+ * (PowerShell codificado) ou `null`. O código é o token depois da flag (ou o
+ * resto do segmento, para `pwsh -Command` e `cmd /c` sem aspas).
+ */
+function codigoInline(toks, pos) {
+  const exe = normalizarExecutavel(toks[pos].v);
+  const flags = FLAGS_CODIGO_INLINE[exe];
+  if (!flags) return null;
+  const ehPowershell = exe === "pwsh" || exe === "powershell";
+  const proximo = (i) => {
+    const resto = toks.slice(i + 1).map((t) => t.v);
+    if (resto.length === 0) return null;
+    return { codigo: (ehPowershell || exe === "cmd") ? resto.join(" ") : resto[0] };
+  };
+  const achados = [];
+  for (let i = pos + 1; i < toks.length; i += 1) {
+    const bruto = toks[i].v;
+    // Token citado só é flag se começa com `-` (revisão 2: `--eval="..."`
+    // vem marcado como citado inteiro e era descartado aqui).
+    if (!bruto.startsWith("-") && !(exe === "cmd" && bruto.startsWith("/"))) break;
+    const igual = bruto.indexOf("=");
+    const chave = (igual === -1 ? bruto : bruto.slice(0, igual)).toLowerCase();
+    if (ehPowershell && FLAGS_CODIGO_CODIFICADO.has(chave)) return { ilegivel: true };
+    if (flags.has(chave)) {
+      if (igual !== -1) return { codigo: bruto.slice(igual + 1) };
+      return proximo(i);
+    }
+    // Flags curtas agrupadas (revisão 2): `python -Bc "..."`, `perl -we "..."`,
+    // e o código colado na letra, `python -cCODIGO`/`perl -e'...'`.
+    if (!ehPowershell && exe !== "cmd" && /^-[A-Za-z]/.test(bruto) && !bruto.startsWith("--")) {
+      for (let k = 1; k < bruto.length; k += 1) {
+        if (!/[A-Za-z]/.test(bruto[k])) break;
+        if (flags.has("-" + bruto[k].toLowerCase()) && bruto[k] === bruto[k].toLowerCase()) {
+          // Letra que parece a flag mas é valor de outra (`perl -Mfeature`)
+          // não pode esconder a flag de verdade adiante: acumula e segue.
+          const colado = bruto.slice(k + 1);
+          if (colado) { achados.push(colado); break; }
+          const p = proximo(i);
+          if (p) achados.push(p.codigo);
+          break;
+        }
+      }
+    }
+  }
+  return achados.length ? { codigo: achados.join("\n") } : null;
+}
+
+// `gh` seguido de até seis palavras dentro de TEXTO de código (string de
+// `os.system('gh issue close 12')`, `execSync("gh pr merge 1")`): o texto
+// não se tokeniza como shell, então a sequência se procura por expressão.
+const RE_GH_EM_TEXTO = /(?:^|[^\w.\/-])gh(?:\.exe)?((?:\s+[^\s'"`;|&()]+){1,6})/g;
+
+function textoTemEscritaGh(texto) {
+  if (texto.split("\n").some((linha) => linhaEhEscritaGh(linha))) return true;
+  RE_GH_EM_TEXTO.lastIndex = 0;
+  let m;
+  while ((m = RE_GH_EM_TEXTO.exec(texto)) !== null) {
+    if (comandoGhEhEscrita(m[1].trim().split(/\s+/))) return true;
+  }
+  return false;
+}
+
+/**
+ * `toks[pos]` é o comando de um segmento que EXECUTA UM ARQUIVO (D4)? Devolve
+ * o caminho (cru, como apareceu no comando) ou `null`.
+ *
+ * Interpretador (`bash|sh|source|.|node|python <arq>`): o arquivo é o
+ * primeiro token não-flag depois dele. Chamada só acontece (ver
+ * `processarSegmento`) depois que `desempacotarWrapperDeString` já teve
+ * chance de reconhecer `bash -c "..."`/`sh -c "..."` como wrapper de STRING
+ * — aqui só sobra a forma sem `-c`, então não há risco de confundir o corpo
+ * de um `-c` com um caminho de arquivo.
+ *
+ * Caminho direto (`./x.sh`): o próprio executável, com barra e extensão de
+ * script reconhecida.
+ */
+function caminhoDeArquivoExecutado(toks, pos) {
+  const raw = toks[pos].v;
+  const exeNorm = normalizarExecutavel(raw);
+
+  if (INTERPRETADORES_DE_ARQUIVO.has(exeNorm)) {
+    let i = pos + 1;
+    while (i < toks.length && !toks[i].q && toks[i].v.startsWith("-")) i += 1;
+    if (i >= toks.length) return null;
+    // `bash < x.sh` (integração, 2026-09-28): o script chega pelo stdin
+    // redirecionado — o arquivo é o alvo do `<`, não o próprio `<`.
+    if (!toks[i].q && toks[i].v === "<") return i + 1 < toks.length ? toks[i + 1].v : null;
+    if (!toks[i].q && /^<[^<]/.test(toks[i].v)) return toks[i].v.slice(1);
+    return toks[i].v;
+  }
+
+  if (/[\\/]/.test(raw) && EXTENSAO_DE_SCRIPT.test(raw)) return raw;
+
+  return null;
+}
+
+// Forma de CHAMADA (D4/D2): `'gh', ['issue', 'close'` / `"gh", "pr", "merge"`
+// — literal de array/argumentos em código (`execFileSync('gh', [...])`),
+// nunca sintaxe de shell. Colchete de abertura é opcional (cobre a forma sem
+// array citada no design, `"gh", "pr", "merge"`).
+// Revisão 3: exige o `(` da chamada (com `[` opcional, forma de lista do
+// Python) — tabela de padrões `[["gh", "issue", "close"], ...]` não é chamada.
+// Revisão 4: `system 'gh', 'issue', 'close'` (Perl sem parêntese) também.
+const RE_CHAMADA_GH = /(?:\(|\b(?:system|exec)\s)\s*\[?\s*['"]gh['"]\s*,\s*(?:\[\s*)?['"]([A-Za-z]+)['"]\s*,\s*['"]([A-Za-z]+)['"]/;
+
+/**
+ * Uma LINHA (de script lido, ou de corpo de heredoc) escreve no GitHub via
+ * `gh` — forma de shell (mesma sequência `gh <família> <verbo>` de D2/D3) ou
+ * forma de chamada (`RE_CHAMADA_GH`)? Compartilhada entre a leitura de
+ * arquivo (tarefa 2) e a varredura de heredoc (tarefa 1) — mesma pergunta,
+ * mesma resposta.
+ */
+function linhaEhEscritaGh(linha) {
+  const chamada = RE_CHAMADA_GH.exec(linha);
+  if (chamada) {
+    const familia = chamada[1].toLowerCase();
+    const verbo = chamada[2].toLowerCase();
+    const verbos = VERBOS_ESCRITA[familia];
+    if (verbos && verbos.has(verbo)) return true;
+  }
+
+  let toks;
+  try { toks = tokensComAspas(linha); } catch { toks = linha.split(/\s+/).filter(Boolean).map((v) => ({ v, q: false })); }
+  const idxComentario = toks.findIndex((t) => !t.q && t.v.startsWith("#"));
+  const valores = (idxComentario === -1 ? toks : toks.slice(0, idxComentario)).map((t) => t.v);
+  for (const padrao of PADROES_DE_ESCRITA) {
+    const idx = indiceSequenciaGh(valores, padrao);
+    if (idx === -1) continue;
+    if (padrao[0] === "api") {
+      if (comandoGhEhEscrita(valores.slice(idx + 1))) return true;
+    } else {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Lê `caminho` e devolve `{ linha, texto }` da primeira linha NÃO COMENTADA
+ * (não começa com `#`, ignorando espaço à frente) que escreve no GitHub, ou
+ * `null` (sem escrita, ou arquivo inexistente/ilegível — D4: "arquivo que não
+ * existe ou não se lê passa").
+ */
+const RE_LINHA_EXECUTA = /\b(system|exec\w*|spawn\w*|popen|Popen|run|call|check_call|check_output|getoutput|Start-Process|Invoke-Expression|iex)\s*\(|\b(system|exec)\s+['"]|\$\(\s*gh\b|\bqx\s*[({\/]/;
+// Crase executa em shell/perl/ruby; em JS é template literal (mensagem).
+const RE_CRASE_EXECUTA = /`[^`]*\bgh\b/;
+
+function lerEscritaEmArquivo(caminho) {
+  let conteudo;
+  try {
+    conteudo = fs.readFileSync(caminho, "utf8");
+  } catch {
+    return null;
+  }
+  const linhas = conteudo.split("\n");
+  const ehJs = /\.(c|m)?js$/i.test(caminho);
+  for (let i = 0; i < linhas.length; i += 1) {
+    let linha = linhas[i];
+    if (/^\s*#/.test(linha)) continue;
+    // Comentário de JS (revisão 3): os próprios gates citam `gh issue close`
+    // na documentação, e `node hooks/gate-x.cjs` com payload no stdin — o
+    // jeito que o perfil manda medir um gate — saía 2. Bloco fechado na
+    // mesma linha sai antes, e o código depois dele é lido (revisão 4:
+    // `/* x */ execSync("gh issue close 12")` passava).
+    if (ehJs) {
+      linha = linha.replace(/\/\*.*?\*\//g, " ");
+      if (/^\s*(\/\/|\/\*|\*)/.test(linha)) continue;
+    }
+    // Revisão 3: `os.system("gh issue close 12")` num .py é um token só para
+    // o tokenizador de shell e passava. O `gh` dentro de string só conta em
+    // linha que CHAMA algo — mensagem que cita `'gh issue close'` não.
+    if (linhaEhEscritaGh(linha) || ((RE_LINHA_EXECUTA.test(linha) || (!ehJs && RE_CRASE_EXECUTA.test(linha))) && textoTemEscritaGh(linha))) {
+      return { linha: i + 1, texto: linha.trim() };
+    }
+  }
+  return null;
+}
+
+/**
+ * Isenção (D5): arquivo de nome `testa-*` RASTREADO pelo git no repo dele
+ * (`git ls-files --error-unmatch`, o que inclui o que só está no stage),
+ * mesmo alterado depois do commit, não é varrido. Não rastreado (mesmo
+ * chamando-se `testa-*`) nunca é isento. Nome que não é `testa-*` nunca é
+ * isento, mesmo rastreado. Git ausente ou erro qualquer → não isento
+ * (conservador: some do lado errado nunca é "passa de graça").
+ */
+function arquivoIsento(caminho, cwd) {
+  const base = path.basename(caminho);
+  if (!/^testa-/.test(base)) return false;
+  const dir = path.dirname(caminho);
+  try {
+    execFileSync("git", ["-C", dir, "ls-files", "--error-unmatch", base], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * `caminhoBruto` (como apareceu no comando, ainda não resolvido) é um
+ * arquivo que o gate nega executar? Devolve o achado (para a mensagem) ou
+ * `null` (passa: arquivo isento, sem escrita, ou inexistente/ilegível).
+ *
+ * D5, exceção à isenção: `scripts/fechar-issue.cjs` (caminho absoluto ou
+ * relativo terminado nisso) é negado PELO NOME, antes de qualquer leitura —
+ * mesmo rastreado, mesmo sem conteúdo de escrita literal (o fechador oficial
+ * monta o comando `gh` dinamicamente, o texto pode não bater com D2).
+ */
+function arquivoDeScriptExecutado(caminhoBruto, cwd) {
+  const normalizado = String(caminhoBruto).replace(/\\/g, "/");
+  if (/(^|\/)scripts\/fechar-issue\.cjs$/i.test(normalizado)) {
+    return { caminho: caminhoBruto, linha: null, texto: null, ehFechaIssue: true };
+  }
+
+  let resolvido;
+  try {
+    const alvo = normalizarMsys(caminhoBruto);
+    resolvido = path.isAbsolute(alvo) ? alvo : path.resolve(cwd, alvo);
+  } catch {
+    return null;
+  }
+
+  if (arquivoIsento(resolvido, cwd)) return null;
+
+  const achado = lerEscritaEmArquivo(resolvido);
+  if (achado === null) return null;
+
+  const sugereGitAdd = /^testa-/.test(path.basename(resolvido));
+  return { caminho: resolvido, linha: achado.linha, texto: achado.texto, ehFechaIssue: false, sugereGitAdd };
+}
+
+/**
+ * Aplica as checagens D2/D3/D4/D5 a UM segmento (já separado por `;`, `&&`,
+ * `||`, `|`, `(`, `)`, `{`, `}` via `segmentosParaGate`). `cwd` é o diretório
+ * efetivo ONDE ESTE SEGMENTO roda (D4) — usado só para resolver caminho
+ * relativo de arquivo executado.
+ */
+function processarSegmento(segmento, cwd) {
+  const toks = tokensComAspas(segmento);
+  if (toks.length === 0) return;
+
+  const pos = posicaoDeComando(toks);
+  if (pos !== null && normalizarExecutavel(toks[pos].v) === "gh") {
+    const subcomandos = toks.slice(pos + 1).map((t) => t.v);
+    if (comandoGhEhEscrita(subcomandos, { familiaDesconhecidaEscreve: true })) {
+      bloqueiaEscrita(segmento);
+    }
+    return;
+  }
+
+  // `source`/`.` (D4): `desempacotarWrapperDeString` sempre devolve
+  // `ilegivel: true` para os dois (não têm forma de string) — bloquear ali
+  // bloquearia toda `source`/`. x.sh` às cegas, mesmo com o arquivo lendo
+  // limpo. Aqui o arquivo é LIDO em vez de bloqueado por padrão.
+  const exeNorm = pos !== null ? normalizarExecutavel(toks[pos].v) : null;
+  if (exeNorm === "source" || exeNorm === ".") {
+    const arq = caminhoDeArquivoExecutado(toks, pos);
+    const achado = arq === null ? null : arquivoDeScriptExecutado(arq, cwd);
+    if (achado !== null) bloqueiaArquivo(achado);
+    return;
+  }
+
+  const { interno, ilegivel } = pos === null
+    ? { interno: null, ilegivel: false }
+    : desempacotarWrapperDeString(textoAPartir(toks, pos));
+  if (ilegivel) {
+    bloqueiaIlegivel(segmento);
+  }
+  if (interno !== null) {
+    for (const sub of segmentosParaGate(interno)) {
+      processarSegmento(sub, cwd);
+    }
+    return;
+  }
+
+  // D4: o segmento executa um ARQUIVO — interpretador (`bash|sh|node|python`,
+  // sem `-c`/forma de string, já descartada acima) ou caminho direto
+  // (`./x.sh`). Lê o arquivo (resolvido contra `cwd`) e nega por conteúdo
+  // (D2 dentro dele) ou por nome (D5, `scripts/fechar-issue.cjs`).
+  if (pos !== null) {
+    const inline = codigoInline(toks, pos);
+    if (inline !== null) {
+      if (inline.ilegivel) bloqueiaIlegivel(segmento);
+      if (textoTemEscritaGh(inline.codigo)) bloqueiaEscrita(segmento);
+      // Sem return (revisão 3): `perl -Mfeature x.pl` achava "código" no
+      // valor do `-M` e nunca lia o arquivo. O arquivo é conferido também.
+    }
+    const arq = caminhoDeArquivoExecutado(toks, pos);
+    if (arq !== null) {
+      const achado = arquivoDeScriptExecutado(arq, cwd);
+      if (achado !== null) bloqueiaArquivo(achado);
+      // Sem achado no arquivo, o segmento ainda passa pela W2 abaixo: o
+      // "arquivo" pode não existir porque era outra coisa.
+    }
+  }
+
+  // W2: rede de segurança para wrapper DESCONHECIDO — procura a sequência
+  // `gh <família> <verbo>` em qualquer posição do segmento, fora de
+  // comentário shell (`#` não citado). Mesma postura de `gate-fechar-issue.cjs`.
+  const idxComentario = toks.findIndex((t) => !t.q && t.v.startsWith("#"));
+  const toksSemComentario = idxComentario === -1 ? toks : toks.slice(0, idxComentario);
+  const valores = toksSemComentario.map((t) => t.v);
+  const primeiro = valores.length ? normalizarExecutavel(valores[0]) : null;
+  if (primeiro !== null && !ehPrefixoOuWrapperConhecido(primeiro)) {
+    for (const padrao of PADROES_DE_ESCRITA) {
+      const idx = indiceSequenciaGh(valores, padrao);
+      if (idx === -1) continue;
+      if (padrao[0] === "api") {
+        // `api` decidido por flags — recolhe o resto do segmento a partir
+        // dali e aplica a mesma checagem de `comandoGhEhEscrita`.
+        if (comandoGhEhEscrita(valores.slice(idx + 1))) bloqueiaEscrita(segmento);
+      } else {
+        bloqueiaEscrita(segmento);
+      }
+      return;
+    }
+  }
+}
+
+/**
+ * Varre o TEXTO dos corpos de heredoc tratados como dado (D3) — mesma busca
+ * de sequência de `linhaEhEscritaGh` (compartilhada com a leitura de arquivo
+ * da tarefa 2), linha a linha, sem desempacotar wrapper.
+ */
+function verificarTextosDeHeredoc() {
+  for (const corpo of TEXTOS_DE_HEREDOC) {
+    for (const linha of corpo.split('\n')) {
+      if (!linha.trim()) continue;
+      if (linhaEhEscritaGh(linha)) bloqueiaEscrita(linha);
+    }
+  }
+}
+
+function main() {
+  let ev;
+  try {
+    const bruto = fs.readFileSync(0, "utf8");
+    if (!bruto.trim()) process.exit(0);
+    ev = JSON.parse(bruto);
+  } catch {
+    process.exit(0);
+  }
+  if (!ev || ev.tool_name !== "Bash") process.exit(0);
+  if (!Object.prototype.hasOwnProperty.call(ev, "agent_id")) process.exit(0);
+
+  const projeto = ev.cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  if (!bateriaLigada(path.resolve(projeto))) process.exit(0);
+
+  const comando = ev.tool_input && ev.tool_input.command;
+  if (typeof comando !== "string" || !comando) process.exit(0);
+
+  // D4: cwd EFETIVO de cada segmento de nível superior (`cd`/`pushd`/`popd`/
+  // `env -C`/`git -C`, via a lib comum) — para resolver caminho relativo de
+  // arquivo executado contra onde o comando de fato roda, não só o cwd do
+  // payload. `cwdPorSegmento` segmenta pela mesma noção de fronteira de
+  // comando; casamento por TEXTO (trim) entre as duas segmentações — falha
+  // de casamento (wrapper de string, heredoc reprocessado) cai no cwd do
+  // payload, conservador.
+  let porSegmentoCwd = [];
+  try {
+    porSegmentoCwd = cwdPorSegmento(comando, projeto);
+  } catch {
+    porSegmentoCwd = [];
+  }
+  function cwdDoSegmento(segmento) {
+    const alvo = segmento.trim();
+    for (const item of porSegmentoCwd) {
+      if (item.seg.trim() === alvo) return item.cwd;
+    }
+    return projeto;
+  }
+
+  TEXTOS_DE_HEREDOC = [];
+
+  // `cat x.sh | bash` (integração, 2026-09-28): o script chega ao
+  // interpretador pelo pipe, e a segmentação por `|` separa os dois lados —
+  // o interpretador fica sem arquivo e o `cat` parece leitura. Os arquivos do
+  // `cat` que alimenta um interpretador sem `-c` são lidos como script.
+  const reCatPipe = /\bcat((?:\s+(?:"[^"]*"|'[^']*'|[^\s|;&<>]+))+)\s*\|\s*(?:sudo\s+)?(?:bash|sh|zsh|dash|ksh|python3?|python2|py|node)\b(?!\s+-c\b)/g;
+  let mCat;
+  while ((mCat = reCatPipe.exec(comando)) !== null) {
+    for (const tok of tokensComAspas(mCat[1])) {
+      if (!tok.q && tok.v.startsWith("-")) continue;
+      const achado = arquivoDeScriptExecutado(tok.v, projeto);
+      if (achado !== null) bloqueiaArquivo(achado);
+    }
+  }
+
+  for (const segmento of segmentosParaGate(comando)) {
+    processarSegmento(segmento, cwdDoSegmento(segmento));
+  }
+  verificarTextosDeHeredoc();
+
+  process.exit(0);
+}
+
+if (require.main === module) main();
+
+module.exports = { comandoGhEhEscrita, apiEhEscrita, VERBOS_ESCRITA };

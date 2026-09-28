@@ -100,4 +100,13 @@ valem para a janela principal.
   reforça isso: nega bateria sem `timeout` na chamada do Bash dentro de
   subagente, e nega varredura completa (`varrer-baterias.sh` sem `--so`), que é
   de quem integra.
+- **Você não escreve no GitHub.** Fechar ou comentar Issue, abrir, mergear ou
+  comentar PR, criar release e disparar workflow são da janela principal, no
+  `fechar`. Duas vezes um revisor fechou uma Issue de verdade com a proibição
+  escrita no briefing, por um script que confiava num `alias` ou num stub que
+  não entrou no PATH. O hook `gate-subagente-sem-gh.cjs` nega `gh` de escrita
+  dentro de subagente: no comando, em `bash -c`, em heredoc e dentro do script
+  que você manda rodar, que ele lê antes. Só a bateria `testa-*` rastreada pelo
+  git é isenta (bateria nova: `git add` antes de rodar). Para medir um gate, mande o
+  payload JSON no stdin do hook; nunca execute o `gh`.
 <!-- perfil-de-trabalho:fim -->

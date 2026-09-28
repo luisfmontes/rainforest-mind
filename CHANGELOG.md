@@ -10,6 +10,41 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.28.0 — 2026-09-28
+
+**Subagente não escreve mais no GitHub.** Em 2026-09-13 e em 2026-09-28, um revisor
+fechou uma Issue de verdade (`gh issue close 12`) enquanto testava um gate — nas duas
+vezes com a proibição escrita no briefing, uma por stub que não entrou no PATH, outra
+por `alias` num script (alias não expande em script). O gate novo
+`gate-subagente-sem-gh.cjs` nega, dentro de subagente, todo `gh` que escreve no GitHub:
+`issue close|comment|edit|create|reopen|delete…`, `pr create|edit|merge|close|comment…`,
+`release`, `repo`, `gist`, `alias set`, `extension install`, `workflow run`, `run rerun`,
+qualquer família que não é do `gh` (alias ou extensão, como `gh co 12`), e `gh api` com método diferente de GET ou
+com campo (`-f`/`-F`, que viram POST) — `gh api graphql` só com `mutation`. Leitura (`view`, `list`, `checks`, `api` GET)
+passa, e a janela principal passa sempre.
+
+- **Onde ele olha:** o comando (inclusive atrás de `timeout`/`stdbuf`/`env`, com flag
+  global como `-R o/r` antes do subcomando, contrabarra e aspas ANSI-C), `bash -c` legível
+  (e nega o ilegível, `bash -c "$x"`), corpo de heredoc, e o **script que o subagente
+  manda rodar** — lido antes de rodar em `bash`/`sh`/`source`/`python3`/`node`, `./x.sh`,
+  `bash < x.sh` e `cat x.sh | bash`, pela forma de shell, pela forma de chamada
+  (`execFileSync('gh', ['issue', 'close'…`) e com variável no lugar do `gh`; também
+  `pwsh`/`powershell` com `.ps1`, e código inline em `node -e`, `python -c`,
+  `pwsh -Command` e `cmd /c`, inclusive `--eval="..."` e flags agrupadas
+  (`python -Bc`, `perl -we`); `pwsh -EncodedCommand`, ilegível, nega.
+- **Limite declarado:** a leitura de script é textual. Pega o jeito comum de chamar
+  (`os.system("gh …")`, `execSync(…)`, `system 'gh', …`, `$(gh …)`, crase), não a
+  evasão deliberada (função apelidada, comando montado por concatenação). O alvo é o
+  agente que roda `gh` sem perceber, não o que tenta burlar.
+- **Isenção:** bateria `testa-*` rastreada pelo git, mesmo alterada — as baterias citam
+  `gh issue close` como texto de teste. Bateria nova precisa de `git add` antes de rodar,
+  e a mensagem diz isso. `scripts/fechar-issue.cjs` é negado pelo nome.
+- **Toggle `subagente-sem-gh`** (padrão ligado). O perfil dos agentes
+  (`referencias/perfil-de-trabalho.md`, aplicado aos `agents/*.md`) explica a regra e
+  como medir um gate sem executar `gh`: payload JSON no stdin do hook.
+- `semContrabarra` saiu do `gate-fechar-issue.cjs` para `hooks/lib/tokens-comando.cjs`,
+  e os dois gates usam a mesma.
+
 ## 1.27.0 — 2026-09-28
 
 **Seis defeitos abertos fechados numa rodada** (Issues #346, #344, #342, #341, #340,

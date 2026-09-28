@@ -1,0 +1,79 @@
+{
+  "slug": "gate-subagente-sem-gh",
+  "titulo": "Gate: subagente não escreve no GitHub (direto nem por script)",
+  "criado_em": "2026-09-28",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/gate-subagente-sem-gh.md",
+    "em": "2026-09-28"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/gate-subagente-sem-gh.md",
+    "tarefas": 3,
+    "paralelas": [],
+    "em": "2026-09-28"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-09-28",
+    "tarefas_ok": 3,
+    "tarefas": 3,
+    "em": "2026-09-28",
+    "comando": "node hooks/testa-gate-subagente-sem-gh.cjs",
+    "saida": "ok: 61   falhou: 0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-subagente-sem-gh.cjs, (D2) gh issue close 12 em subagente"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-subagente-sem-gh.cjs, (D4) bash script avulso com gh issue close"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "texto de registro, perfil e versao; perfil.cjs --conferir 0 e testa-versao 5 ok"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "c72e4810d65927feb91cb9a9c4083a5bc46082c8",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/gate-subagente-sem-gh.json"
+      ]
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a2fe25a1085acd99c",
+        "veredito": "ok",
+        "em": "2026-09-28",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/a5435dc7-36e5-4a20-b1d0-0d1c8a88edc5/subagents/agent-a2fe25a1085acd99c.jsonl"
+      }
+    ],
+    "base": "71306811ca4ea6bdbf15c20220826f240e37df0e",
+    "head": "c72e4810d65927feb91cb9a9c4083a5bc46082c8",
+    "rodadas": 5,
+    "achados_corrigidos": "alias/familia desconhecida, codigo inline, PowerShell, --eval= e flags agrupadas, graphql, perl -M, os.system em arquivo, comentario em bloco, perl sem parentese; gate medido pelo stdin deixou de ser negado",
+    "em": "2026-09-28"
+  },
+  "verificar": {
+    "status": "ok",
+    "sensor_externo": "bash scripts/varrer-baterias.sh",
+    "comando": "bash scripts/varrer-baterias.sh; node scripts/conferir-fluxo.cjs mutacoes --slug gate-subagente-sem-gh",
+    "saida": "as 147 baterias passaram (fim=0); tarefa 1: vermelho, tarefa 2: vermelho, tarefa 3: pulada (n/a)",
+    "em": "2026-09-28"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

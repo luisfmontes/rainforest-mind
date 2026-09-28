@@ -650,6 +650,41 @@ function reduzEscapeAspasDuplas(str) {
   return saida;
 }
 
+/**
+ * Normaliza um token para comparação com um verbo/subcomando conhecido:
+ * desconta o `$` de uma variante ANSI-C citada (`$'close'` chega como token
+ * `$close`), resolve os escapes numéricos do ANSI-C (`\xHH`, `\uHHHH`, `\NNN`
+ * octal) e por fim remove toda contrabarra solta que sobrar.
+ *
+ * Movida de `hooks/gate-fechar-issue.cjs` (tarefa 1 do plano
+ * `gate-subagente-sem-gh`) para `hooks/gate-subagente-sem-gh.cjs` compartilhar
+ * a MESMA implementação — os dois gates comparam token de comando contra uma
+ * lista de subcomandos conhecidos (`gh issue close`, `gh pr merge`, ...) e os
+ * dois precisam do mesmo desconto de escape para não divergir.
+ *
+ * #339: a contrabarra sai do token antes de comparar. Fora de aspas o bash
+ * remove `\` de qualquer caractere (`gh issue \close 12` roda `gh issue close
+ * 12`), e é isso que sobra de `bash -c "gh issue \\<quebra>close 12"` depois
+ * da primeira passada. Nenhum padrão tem contrabarra, então a comparação só
+ * fica mais larga: `"\close"` citado (que o bash manteria) passa a barrar, e
+ * esse comando o `gh` recusaria de qualquer jeito.
+ *
+ * Revisão 1 (zerar-issues-10): aspas ANSI-C também escondiam o subcomando —
+ * `gh issue $'close' 12` e `gh issue $'clo\x73e' 12` rodam `gh issue close
+ * 12`, e o token chegava como `$close`/`$clo\x73e`. O `$` da frente sai (o
+ * mesmo desconto de `ehComando`, A4) e os escapes numéricos do ANSI-C viram o
+ * caractere antes de tirar as contrabarras. Aplicado a qualquer token, a
+ * decodificação só alarga a comparação, como a contrabarra acima.
+ */
+function semContrabarra(s) {
+  let v = s.startsWith("$") ? s.slice(1) : s;
+  v = v
+    .replace(/\\x([0-9a-fA-F]{1,2})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/\\u([0-9a-fA-F]{1,4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/\\([0-7]{1,3})/g, (_, o) => String.fromCharCode(parseInt(o, 8)));
+  return v.split("\\").join("");
+}
+
 /** Tira UM nivel de aspas externas de `interno`, se houver. */
 function desempacota(interno) {
   interno = interno.trim();
@@ -856,5 +891,5 @@ module.exports = {
   contemConstrucaoIlegivel,
   colapsaContinuacaoDeLinha,
   colapsaContinuacaoDeLinhaNoTopo,
-  reduzEscapeAspasDuplas,
+  semContrabarra,
 };
