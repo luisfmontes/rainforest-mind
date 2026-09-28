@@ -112,8 +112,26 @@ $prompt = Get-Content -Raw -Encoding UTF8 $promptFile
 # funciona: o envio é uma tool do modelo, e ele ignorou a marca nas duas
 # formas tentadas (prefixo no prompt e regra de formato no _comum). Não
 # enviar é determinístico — e ainda tira o ruído do grupo.
+#
+# O "deterministico" acima era falso ate 2026-09-28: o NAO ENVIE continuava sendo
+# so texto no prompt, e o haiku do jardineiro enviou a ronda de teste para o grupo
+# ("Mensagem enviada ao grupo com sucesso"). Agora o -Teste tambem TIRA as tools de
+# envio da sessao por --disallowedTools; conferido no mesmo dia que, com
+# --dangerously-skip-permissions, a tool negada some da lista em vez de so pedir
+# permissao. O prefixo do prompt fica: e ele que pede a mensagem entre marcadores.
+$semEnvio = @()
 if ($Teste) {
-    $prompt = "EXECUCAO DE TESTE (manual, fora do agendamento): NAO chame send_message nem qualquer tool de envio. Em vez de enviar, escreva no final da sua resposta a mensagem completa que voce enviaria, entre uma linha ---INICIO--- e uma linha ---FIM---. Todo o resto do trabalho (ler as fontes, apurar, decidir) e identico ao normal.`n`n" + $prompt
+    $semEnvio = @('--disallowedTools', (@(
+        'mcp__whatsapp__send_message', 'mcp__whatsapp__send_file',
+        'mcp__whatsapp__send_audio_message', 'mcp__whatsapp__create_poll',
+        'mcp__whatsapp__edit_message', 'mcp__whatsapp__react_to_message',
+        'mcp__whatsapp__delete_message', 'mcp__whatsapp__vote_in_poll',
+        'mcp__gmail__send_email', 'mcp__gmail__send_draft', 'mcp__gmail__reply_all'
+    ) -join ','))
+    # A segunda frase do prefixo nasceu na primeira ronda com as tools negadas:
+    # sem send_message na lista, o haiku concluiu "bridge fora do ar" (a bridge
+    # respondia healthy) e encerrou sem montar o relatorio.
+    $prompt = "EXECUCAO DE TESTE (manual, fora do agendamento): NAO chame send_message nem qualquer tool de envio. As tools de envio foram REMOVIDAS desta sessao de proposito: a ausencia delas NAO significa bridge fora do ar nem erro, nao registre erro por isso e nao pule nenhum passo. Em vez de enviar, escreva no final da sua resposta a mensagem completa que voce enviaria, entre uma linha ---INICIO--- e uma linha ---FIM---. Todo o resto do trabalho (ler as fontes, apurar, decidir) e identico ao normal.`n`n" + $prompt
 }
 
 # Dados apurados por script, quando o vigia tiver um. Existe porque instrução
@@ -166,6 +184,17 @@ if (-not (Test-NetConnection $bridgeHost -Port $bridgePort -InformationLevel Qui
 # completo importa — mas ele se descobre, nao se escreve: o caminho do instalador
 # muda de maquina e envelhece calado.
 $claude = Get-LocalConfig 'RFM_CLAUDE_EXE' 'claudeExe'
+# Caminho CONFIGURADO tambem se confere. Em 2026-09-02 a instalacao do WinGet
+# saiu (sobrou so um claude-*.exe.bak na pasta) e o claudeExe do config ficou
+# apontando para o nada. O `& $claude` falhava fora do 2>&1, o erro nao chegava
+# ao log, o backup rodava depois e a tarefa saia com 0: 26 dias de rondas sem
+# uma mensagem e sem uma linha no ERROS.md. Caminho velho registra e cai na
+# descoberta, em vez de parar a ronda: o config errado e defeito de config, nao
+# motivo para o usuario ficar sem mensagem.
+if ($claude -and -not (Test-Path $claude)) {
+    Write-ErroDeVigia -Vigia $Vigia -Plugin $plugin -Log $log -Motivo "claudeExe configurado nao existe ($claude) - usando o claude do PATH; corrija RFM_CLAUDE_EXE ou claudeExe em $configPath"
+    $claude = $null
+}
 if (-not $claude) { $claude = (Get-Command claude -ErrorAction SilentlyContinue).Source }
 if (-not $claude) {
     Stop-ComErro "claude.exe nao encontrado: defina RFM_CLAUDE_EXE ou claudeExe em $configPath"
@@ -200,8 +229,22 @@ $modelo = if ($modelos.ContainsKey($Vigia)) { $modelos[$Vigia] } else { 'haiku' 
 # Linha a linha pelo Write-LinhaEmLf, e nao por Out-File: o log tambem sofria
 # CRLF, e no dia em que alguem versionar o log ele quebra a catraca de
 # encoding do mesmo jeito que o ERROS.md quebrava.
-$prompt | & $claude -p --model $modelo --dangerously-skip-permissions 2>&1 |
-  ForEach-Object { [void](Write-LinhaEmLf -Caminho $log -Linha "$_") }
+# A ronda so conta como rodada se o claude DEVOLVEU algo. Exit 0 da tarefa nao
+# prova nada (ver o claudeExe acima): conta-se a saida e le-se o exit code, e
+# qualquer um dos dois faltando vira linha no ERROS.md e exit 1 no agendador.
+$script:linhasDoClaude = 0
+$exitClaude = $null
+try {
+    $prompt | & $claude -p --model $modelo --dangerously-skip-permissions @semEnvio 2>&1 |
+      ForEach-Object { $script:linhasDoClaude++; [void](Write-LinhaEmLf -Caminho $log -Linha "$_") }
+    $exitClaude = $LASTEXITCODE
+} catch {
+    $exitClaude = "excecao: $($_.Exception.Message)"
+}
+$falhaClaude = $null
+if ($exitClaude -ne 0) { $falhaClaude = "claude -p nao terminou bem (exit $exitClaude)" }
+elseif ($script:linhasDoClaude -eq 0) { $falhaClaude = "claude -p nao devolveu nenhuma linha" }
+if ($falhaClaude) { Write-ErroDeVigia -Vigia $Vigia -Plugin $plugin -Log $log -Motivo $falhaClaude }
 
 # O backup do estado fica de fora da execução de teste. O -Teste bloqueava só o
 # envio, e este bloco rodava igual: em 2026-08-10 um teste manual levou o
@@ -234,3 +277,6 @@ $prompt | & $claude -p --model $modelo --dangerously-skip-permissions 2>&1 |
 $argsBackup = @('-Vigia', $Vigia, '-Plugin', $plugin, '-Log', $log)
 if ($Teste) { $argsBackup += '-Teste' }
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $plugin 'vigias\backup-estado.ps1') @argsBackup
+# O backup roda mesmo com a ronda falha (ele nao depende do claude), mas o
+# exit da tarefa e o da ronda: e o que o LastTaskResult do agendador guarda.
+if ($falhaClaude) { exit 1 }
