@@ -10,6 +10,23 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.28.1 — 2026-09-28
+
+**Vigia que não chega ao Claude não sai mais com sucesso.** De 2026-09-02 a
+2026-09-28 nenhum vigia mandou mensagem: o `claudeExe` do `vigia.config.json`
+apontava para o `claude.exe` que o WinGet tinha removido, a chamada falhava sem
+chegar ao log, e a tarefa agendada saía com 0 — nem linha no `ERROS.md`. Agora o
+`run-vigia.ps1`:
+
+- confere o `claudeExe` configurado; se o arquivo sumiu, registra no `ERROS.md` e
+  usa o `claude` do PATH, para a ronda não se perder por config velho;
+- conta a saída do `claude -p` e lê o exit code: saída vazia ou exit ≠ 0 viram linha
+  no `ERROS.md` e **exit 1** da tarefa (o backup do estado roda assim mesmo).
+
+Bateria nova: `scripts/testa-run-vigia-claude.sh`, que executa o script com `claude`
+falso e uma porta simulando a bridge — contra a versão anterior ela fica vermelha
+nos três casos de falha.
+
 ## 1.28.0 — 2026-09-28
 
 **Subagente não escreve mais no GitHub.** Em 2026-09-13 e em 2026-09-28, um revisor
@@ -168,7 +185,7 @@ sem o laço era barrado: `do`, `then`, `else`, `elif`, `if`, `while`, `until`, `
   pela revisão desta rodada.
 - **E-mail em TLD reservado** (`.invalid`, `.example`, `.test`, `.localhost`, RFC 2606)
   deixa de ser achado do gate de publicação, desde que seja o último rótulo
-  (`x@foo.test.com` continua pego).
+  (com `.test` no meio, como em `foo.test.com`, continua pego).
 
 **O `conferir-entrega` em Python voltou a valer o mesmo que o de Node.** Ele tinha
 parado em agosto: faltavam `--escopo`, o exit 69 de "não deu para verificar",
