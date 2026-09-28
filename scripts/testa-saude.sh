@@ -1332,35 +1332,41 @@ fi
 # casava o defeito do consumidor (tautologia).
 R5_TEST="$SBP/test-poda-viva"
 mkdir -p "$R5_TEST/.rainforest/poda"
-R5_PORTA=$((20000 + RANDOM % 40000))
 # Espera o 'pronto' do listen, nao um sleep fixo: no CI carregado (a execucao
 # aninhada do caso K roda a bateria inteira de novo) 1s nao bastava e o R5
 # reprovava com "porta nao responde" (PR #308, node 24, 2026-09-22).
+# Porta 0: o SO aloca uma livre; a porta real e gravada em pronto para o fixture ler (#342).
 R5_PRONTO="$R5_TEST/pronto"
 node -e "
 const http=require('http');
 const s=http.createServer((req,res)=>{res.writeHead(200);res.end('ok');});
-s.listen($R5_PORTA,'127.0.0.1',()=>require('fs').writeFileSync(process.argv[1],'pronto'));
+s.listen(0,'127.0.0.1',()=>require('fs').writeFileSync(process.argv[1],String(s.address().port)));
 setTimeout(()=>process.exit(0), 20000);
 " "$R5_PRONTO" &
 R5_SRV_PID=$!
-for _ in $(seq 1 100); do [ -f "$R5_PRONTO" ] && break; sleep 0.1; done
-printf '{"pid":%s,"porta":%s,"iniciadoEm":"2026-08-31T00:00:00Z"}' "$R5_SRV_PID" "$R5_PORTA" > "$R5_TEST/.rainforest/poda/poda.pid"
-printf '{"atualizadoEm":"2026-08-31T00:00:00Z","estagio":null,"usage":{},"requisicoes":7}' > "$R5_TEST/.rainforest/poda/contexto.json"
-R5="$( cd "$R5_TEST" && RFM_ROOT="$R5_TEST/.rainforest" ANTHROPIC_BASE_URL="http://127.0.0.1:$R5_PORTA" node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e '
-  let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
-    try {
-      const a=JSON.parse(d).find(x=>x.item==="poda");
-      console.log(a ? a.nivel+"|"+a.detalhe : "ausente");
-    } catch { console.log("erro"); }
-  })' )"
-kill "$R5_SRV_PID" 2>/dev/null || true
-case "$R5" in
-  "ok|"*"7 requisi"*)
-    ok=$((ok+1)); echo "  ok   R5. caminho de sucesso: ok com contagem do contexto.json" ;;
-  *)
-    falhou=$((falhou+1)); echo "  FALHA R5. esperava ok com 7 requisicoes, veio: $R5" ;;
-esac
+for _ in $(seq 1 100); do [ -s "$R5_PRONTO" ] && break; sleep 0.1; done
+if [ ! -s "$R5_PRONTO" ]; then
+  falhou=$((falhou+1)); echo "  FALHA R5. fixture: servidor node nao subiu (arquivo 'pronto' nao apareceu)"
+  kill "$R5_SRV_PID" 2>/dev/null || true
+else
+  R5_PORTA="$(cat "$R5_PRONTO")"
+  printf '{"pid":%s,"porta":%s,"iniciadoEm":"2026-08-31T00:00:00Z"}' "$R5_SRV_PID" "$R5_PORTA" > "$R5_TEST/.rainforest/poda/poda.pid"
+  printf '{"atualizadoEm":"2026-08-31T00:00:00Z","estagio":null,"usage":{},"requisicoes":7}' > "$R5_TEST/.rainforest/poda/contexto.json"
+  R5="$( cd "$R5_TEST" && RFM_ROOT="$R5_TEST/.rainforest" ANTHROPIC_BASE_URL="http://127.0.0.1:$R5_PORTA" node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e '
+    let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+      try {
+        const a=JSON.parse(d).find(x=>x.item==="poda");
+        console.log(a ? a.nivel+"|"+a.detalhe : "ausente");
+      } catch { console.log("erro"); }
+    })' )"
+  kill "$R5_SRV_PID" 2>/dev/null || true
+  case "$R5" in
+    "ok|"*"7 requisi"*)
+      ok=$((ok+1)); echo "  ok   R5. caminho de sucesso: ok com contagem do contexto.json" ;;
+    *)
+      falhou=$((falhou+1)); echo "  FALHA R5. esperava ok com 7 requisicoes, veio: $R5" ;;
+  esac
+fi
 
 echo
 echo "== checarAllowlist: padrao largo de Bash na allowlist =="
