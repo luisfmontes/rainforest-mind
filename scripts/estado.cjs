@@ -44,7 +44,7 @@
  * D14, Tarefa 18): sem um arquivo real, NA PASTA REAL DE SESSÃO do Claude
  * Code, que confirme slug e veredito (`transcritoConfirmaVeredito`,
  * `transcritoEmPastaDeSessaoReal`), o comando recusa com exit 2 e não grava
- * nada; quando grava, o caminho absoluto fica no campo `transcrito`.
+ * nada; quando grava, o caminho com ~ (pasta pessoal) ou / (normalizado) fica no campo `transcrito`.
  *
  * `concluido` reusa o predicado `proximo` (não escreve lógica de progresso nova):
  * com `--slug`, sai 0 se `proximo(estado) === null` (fluxo fechado), 2 nomeando o
@@ -205,6 +205,25 @@ function hoje() {
   const d = new Date();
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/**
+ * Converte caminho absoluto em forma de ~ quando em pasta pessoal.
+ * Substitui o prefixo os.homedir() por ~ e normaliza separadores para /.
+ * Caminho fora da pasta pessoal volta como veio, só com / normalizado.
+ */
+function caminhoComTil(caminho) {
+  if (!caminho || typeof caminho !== 'string') return caminho;
+  const home = os.homedir();
+  const caminhoNormalizado = caminho.replace(/\\/g, '/');
+  const homeNormalizado = home.replace(/\\/g, '/');
+  if (caminhoNormalizado.startsWith(homeNormalizado + '/')) {
+    return '~' + caminhoNormalizado.substring(homeNormalizado.length);
+  }
+  if (caminhoNormalizado === homeNormalizado) {
+    return '~';
+  }
+  return caminhoNormalizado;
 }
 
 /**
@@ -1792,7 +1811,7 @@ function main() {
       // D14 — Tarefa 18: caminho absoluto gravado junto — deixa a forja
       // visivel (quem confere a entrada ve exatamente qual transcrito real
       // confirmou o veredito, nao so o dizer de quem despachou).
-      const entrada = { agente, agente_id: agenteId, veredito, em: hoje(), transcrito: path.resolve(transcrito) };
+      const entrada = { agente, agente_id: agenteId, veredito, em: hoje(), transcrito: caminhoComTil(path.resolve(transcrito)) };
       if (idx === -1) {
         vereditos.push(entrada);
       } else {
