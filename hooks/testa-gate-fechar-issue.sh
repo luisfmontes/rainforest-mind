@@ -2563,6 +2563,64 @@ echo "== (#313e) bash -c 'gh issue \\<newline>close 12' → exit 2 (simples em s
 EXIT_313E=$?
 [ $EXIT_313E -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_313E)"
 
+# (#344) --body-file com caminho MSYS
+# Issue: No Git Bash, caminhos MSYS (/c/...) sao barrados porque path.isAbsolute
+# devolve true no win32, entao o caminho é lido como C:\c\..., que não existe.
+# Solução: aplicar normalizarMsys ao arquivo antes de path.isAbsolute.
+echo
+echo "== (#344) --body-file com caminho MSYS (/c/...) vs C:/... =="
+
+# Criar arquivo real com conteudo de PR (precisa ter "closes" ou nao)
+CORPO_344_REAL=$(mktemp)
+echo "closes #344" > "$CORPO_344_REAL"
+
+# Converter para forma Windows C:/...
+CORPO_344_WIN="$(cygpath -m "$CORPO_344_REAL")"
+
+# Converter para forma MSYS /c/...
+CORPO_344_MSYS=$(echo "$CORPO_344_WIN" | sed 's|^\([A-Z]\):|/\L\1|g')
+
+# Caso (344a): --body-file com C:/... (forma Windows) — deve funcionar
+echo
+echo "== (#344a) gh pr create --body-file C:/... COM marcador → exit 0 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=1
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body-file '"$CORPO_344_WIN"'"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-344a"
+EXIT_344A=$?
+[ $EXIT_344A -eq 0 ] && test_ok "exit 0 (C:/...)" || test_fail "exit code (foi $EXIT_344A)"
+
+# Caso (344b): --body-file com /c/... (forma MSYS) — deve ter MESMO comportamento que C:/...
+echo
+echo "== (#344b) gh pr create --body-file /c/... COM marcador → exit 0 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=1
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body-file '"$CORPO_344_MSYS"'"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-344b"
+EXIT_344B=$?
+[ $EXIT_344B -eq 0 ] && test_ok "exit 0 (/c/...)" || test_fail "exit code (foi $EXIT_344B)"
+
+# Caso (344c): --body-file com /c/... SEM marcador — deve bloquear com closes #344 citado
+echo
+echo "== (#344c) gh pr create --body-file /c/... SEM marcador → exit 2 citando #344 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body-file '"$CORPO_344_MSYS"'"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-344c"
+EXIT_344C=$?
+[ $EXIT_344C -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_344C)"
+ERR_344C="$(cat "$SBP/err-344c")"
+echo "$ERR_344C" | grep -q "#344" && test_ok "stderr cita #344" || test_fail "stderr não cita #344 ($ERR_344C)"
+
+# Limpeza
+rm -f "$CORPO_344_REAL"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

@@ -35,7 +35,7 @@ const {
   WRAPPERS_DE_COMANDO, desempacotarWrapperDeString, OPERADORES_DE_DOIS,
   colapsaContinuacaoDeLinhaNoTopo,
 } = require("./lib/tokens-comando.cjs");
-const { cwdPorSegmento } = require("./lib/cwd-efetivo.cjs");
+const { cwdPorSegmento, normalizarMsys } = require("./lib/cwd-efetivo.cjs");
 const { corpoDeHeredoc, linhaDoHeredocTemInterpretador, fimDaLinhaLogica } = require("./lib/heredoc.cjs");
 
 /**
@@ -498,6 +498,7 @@ function extrairCorpoDoPR(segmento, cwdSegmento) {
       } else {
         continue;
       }
+      arquivo = normalizarMsys(arquivo);
       if (!path.isAbsolute(arquivo) && cwdSegmento == null) {
         // Caminho relativo e não dá pra saber onde este segmento roda de
         // verdade (não achado no mapa de `cwdPorSegmento`, ou `incerto`):
