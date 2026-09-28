@@ -66,7 +66,7 @@ N_GUIA="$(printf '%s' "$S1" | grep -cF '>  guia')"
 N_SENSOR="$(printf '%s' "$S1" | grep -cF '>  sensor')"
 N_DADO="$(printf '%s' "$S1" | grep -cF '>  dado')"
 if [ "$N_GUIA" = "17" ] && [ "$N_SENSOR" = "27" ] && [ "$N_DADO" = "3" ]; then
-  ok=$((ok+1)); echo "  ok   distribuicao 16 guia / 27 sensor / 3 dado confere"
+  ok=$((ok+1)); echo "  ok   distribuicao 17 guia / 27 sensor / 3 dado confere"
 else
   falhou=$((falhou+1)); echo "  FALHA distribuicao: guia=$N_GUIA sensor=$N_SENSOR dado=$N_DADO (esperava 17/27/3)"
 fi

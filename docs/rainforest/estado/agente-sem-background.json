@@ -121,18 +121,18 @@
     "saida": "tarefa 1: vermelho; tarefa 2: vermelho; tarefa 3: pulada; exit 0"
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "eaf5836f26755fa87c23cd6c7b3358b765d6821c",
+      "head": "3967a628492ab49fececd515e6ebeff6330681f4",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a366f5b269679fb54",
+        "agente_id": "ad85840cc8c43474a",
         "veredito": "ok",
         "em": "2026-09-27",
-        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\fafafc3e-6038-4d4f-a12c-598b61a131f3\\subagents\\agent-a366f5b269679fb54.jsonl"
+        "transcrito": "C:\\Users\\Luis\\.claude-personal\\projects\\C--Projetos-rainforest-mind\\fafafc3e-6038-4d4f-a12c-598b61a131f3\\subagents\\agent-ad85840cc8c43474a.jsonl"
       }
     ],
     "em_voo": [],
@@ -145,7 +145,7 @@
       }
     ],
     "base": "683ee5731e28916220dc2f79c0fa10dfee097851",
-    "head": "eaf5836f26755fa87c23cd6c7b3358b765d6821c"
+    "head": "3967a628492ab49fececd515e6ebeff6330681f4"
   },
   "verificar": {
     "status": "reprovado",
