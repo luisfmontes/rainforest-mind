@@ -28,6 +28,10 @@ não é barrado.
 - **Texto acompanha o mecanismo** (`referencias/perfil-de-trabalho.md`): a linha
   "Nada seu fica rodando depois da resposta" agora cita o gate. Os `agents/*.md` são
   atualizados por `node scripts/perfil.cjs --aplicar`.
+- **Fora do gate**: checagem de sintaxe (`bash -n`, `node --check`), leitura de bateria
+  (`cat`, `grep`, `git add/diff/log`, mensagem de commit ou corpo de PR que cita o nome)
+  e bateria cujo nome só existe em runtime (`for f in …; do bash $f`, `find -exec {}`,
+  `xargs {}`). `stdbuf --output L` (opção longa com espaço) ainda escapa: issue #346.
 - **Skill `executar` (`skills/executar/SKILL.md`)** deixa claro que o laço de baterias
   inteiro é rodado pela integração; o agente cola o placar das baterias que a tarefa
   toca.
