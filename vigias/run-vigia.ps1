@@ -112,8 +112,26 @@ $prompt = Get-Content -Raw -Encoding UTF8 $promptFile
 # funciona: o envio é uma tool do modelo, e ele ignorou a marca nas duas
 # formas tentadas (prefixo no prompt e regra de formato no _comum). Não
 # enviar é determinístico — e ainda tira o ruído do grupo.
+#
+# O "deterministico" acima era falso ate 2026-09-28: o NAO ENVIE continuava sendo
+# so texto no prompt, e o haiku do jardineiro enviou a ronda de teste para o grupo
+# ("Mensagem enviada ao grupo com sucesso"). Agora o -Teste tambem TIRA as tools de
+# envio da sessao por --disallowedTools; conferido no mesmo dia que, com
+# --dangerously-skip-permissions, a tool negada some da lista em vez de so pedir
+# permissao. O prefixo do prompt fica: e ele que pede a mensagem entre marcadores.
+$semEnvio = @()
 if ($Teste) {
-    $prompt = "EXECUCAO DE TESTE (manual, fora do agendamento): NAO chame send_message nem qualquer tool de envio. Em vez de enviar, escreva no final da sua resposta a mensagem completa que voce enviaria, entre uma linha ---INICIO--- e uma linha ---FIM---. Todo o resto do trabalho (ler as fontes, apurar, decidir) e identico ao normal.`n`n" + $prompt
+    $semEnvio = @('--disallowedTools', (@(
+        'mcp__whatsapp__send_message', 'mcp__whatsapp__send_file',
+        'mcp__whatsapp__send_audio_message', 'mcp__whatsapp__create_poll',
+        'mcp__whatsapp__edit_message', 'mcp__whatsapp__react_to_message',
+        'mcp__whatsapp__delete_message', 'mcp__whatsapp__vote_in_poll',
+        'mcp__gmail__send_email', 'mcp__gmail__send_draft', 'mcp__gmail__reply_all'
+    ) -join ','))
+    # A segunda frase do prefixo nasceu na primeira ronda com as tools negadas:
+    # sem send_message na lista, o haiku concluiu "bridge fora do ar" (a bridge
+    # respondia healthy) e encerrou sem montar o relatorio.
+    $prompt = "EXECUCAO DE TESTE (manual, fora do agendamento): NAO chame send_message nem qualquer tool de envio. As tools de envio foram REMOVIDAS desta sessao de proposito: a ausencia delas NAO significa bridge fora do ar nem erro, nao registre erro por isso e nao pule nenhum passo. Em vez de enviar, escreva no final da sua resposta a mensagem completa que voce enviaria, entre uma linha ---INICIO--- e uma linha ---FIM---. Todo o resto do trabalho (ler as fontes, apurar, decidir) e identico ao normal.`n`n" + $prompt
 }
 
 # Dados apurados por script, quando o vigia tiver um. Existe porque instrução
@@ -217,7 +235,7 @@ $modelo = if ($modelos.ContainsKey($Vigia)) { $modelos[$Vigia] } else { 'haiku' 
 $script:linhasDoClaude = 0
 $exitClaude = $null
 try {
-    $prompt | & $claude -p --model $modelo --dangerously-skip-permissions 2>&1 |
+    $prompt | & $claude -p --model $modelo --dangerously-skip-permissions @semEnvio 2>&1 |
       ForEach-Object { $script:linhasDoClaude++; [void](Write-LinhaEmLf -Caminho $log -Linha "$_") }
     $exitClaude = $LASTEXITCODE
 } catch {

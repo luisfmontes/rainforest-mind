@@ -23,9 +23,14 @@ chegar ao log, e a tarefa agendada saía com 0 — nem linha no `ERROS.md`. Agor
 - conta a saída do `claude -p` e lê o exit code: saída vazia ou exit ≠ 0 viram linha
   no `ERROS.md` e **exit 1** da tarefa (o backup do estado roda assim mesmo).
 
+**`-Teste` não envia mais de verdade.** O "não envie" do modo de teste era só texto no
+prompt, e uma ronda de teste do jardineiro foi parar no grupo. Agora o `-Teste` tira
+as tools de envio (WhatsApp e Gmail) da sessão por `--disallowedTools`, e o prefixo
+avisa o modelo que a ausência delas não é bridge fora do ar.
+
 Bateria nova: `scripts/testa-run-vigia-claude.sh`, que executa o script com `claude`
 falso e uma porta simulando a bridge — contra a versão anterior ela fica vermelha
-nos três casos de falha.
+nos três casos de falha e no caso do `-Teste`.
 
 ## 1.28.0 — 2026-09-28
 
