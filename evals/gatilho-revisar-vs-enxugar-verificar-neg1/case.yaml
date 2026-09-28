@@ -1,0 +1,41 @@
+schema_version: "1.0"
+name: gatilho-revisar-vs-enxugar-verificar-neg1
+description: >
+  Cenário realista de listar código morto num diff (issue #302, par
+  revisar×enxugar/verificar) — tem que acionar `enxugar`, não `revisar`:
+  é levantamento do que pode sair, nunca revisão de correção. Só testa a
+  vizinha `enxugar` (das duas da tabela) por limite de orçamento — ver
+  README seção de limitações.
+tags: [gatilho, colisao, negativo]
+
+execution:
+  prompt: >
+    Terminei a feature de exportação de relatório e, antes de revisar
+    corretude, eu queria só um levantamento do que sobrou de código morto
+    e abstração que eu não uso mais nesse diff — sem aplicar nada ainda,
+    só listar.
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-enxugar
+    tool: Skill
+    input_match: "rainforest-mind:enxugar"
+    arm: with-only
+
+  - type: tool_used
+    name: nao-aciona-revisar
+    tool: Skill
+    input_match: "rainforest-mind:revisar"
+    min: 0
+    max: 0
+    arm: both
+
+  - type: tool_used
+    name: nao-aciona-verificar
+    tool: Skill
+    input_match: "rainforest-mind:verificar"
+    min: 0
+    max: 0
+    arm: both

@@ -1,0 +1,43 @@
+schema_version: "1.0"
+name: gatilho-enxugar-vs-revisar-pos1
+description: >
+  Cenário realista de pente-fino pré-PR (issue #302, par enxugar×revisar)
+  — tem que acionar `enxugar`, não `revisar`: é levantar código morto e
+  abstração sobrando, nunca corrigir bug de corretude.
+tags: [gatilho, colisao, positivo]
+
+execution:
+  prompt: >
+    Terminei de implementar o cache de sessão e, antes de abrir o PR,
+    queria passar um pente fino só pra ver o que sobrou de código morto,
+    parâmetro que não uso mais e abstração que ficou genérica demais sem
+    necessidade. Não é pra corrigir bug nenhum, só listar o que dá pra
+    tirar.
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-enxugar
+    tool: Skill
+    input_match: "rainforest-mind:enxugar"
+    arm: with-only
+
+  - type: tool_used
+    name: nao-aciona-revisar
+    tool: Skill
+    input_match: "rainforest-mind:revisar"
+    min: 0
+    max: 0
+    arm: both
+
+  - type: llm
+    name: resposta-segue-metodo-enxugar
+    criteria: >
+      A resposta trata o pedido como um levantamento do que pode sair
+      (código morto, parâmetro não usado, abstração sobrando) — listando
+      candidatos a remover, sem nunca aplicar a remoção nem procurar bug
+      de correção como uma revisão faria. Vale mesmo que a resposta só
+      peça qual diff/pasta olhar antes de listar, desde que o
+      enquadramento seja o de enxugar.
+    weight: 1

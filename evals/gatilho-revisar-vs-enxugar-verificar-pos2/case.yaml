@@ -1,0 +1,50 @@
+schema_version: "1.0"
+name: gatilho-revisar-vs-enxugar-verificar-pos2
+description: >
+  Cenário realista de PR grande em área sensível (issue #302, par
+  revisar×enxugar/verificar) — tem que acionar `revisar`, não `enxugar`
+  nem `verificar`: é conferir corretude contra o diff real antes de
+  qualquer critério.
+tags: [gatilho, colisao, positivo]
+
+execution:
+  prompt: >
+    Subiu um PR enorme mexendo em autenticação e eu não confio só no
+    relato de quem implementou — quero alguém olhando o diff de verdade,
+    linha por linha, antes disso ir pro estágio de rodar o critério de
+    aceite.
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-revisar
+    tool: Skill
+    input_match: "rainforest-mind:revisar"
+    arm: with-only
+
+  - type: tool_used
+    name: nao-aciona-enxugar
+    tool: Skill
+    input_match: "rainforest-mind:enxugar"
+    min: 0
+    max: 0
+    arm: both
+
+  - type: tool_used
+    name: nao-aciona-verificar
+    tool: Skill
+    input_match: "rainforest-mind:verificar"
+    min: 0
+    max: 0
+    arm: both
+
+  - type: llm
+    name: resposta-segue-metodo-revisar
+    criteria: >
+      A resposta trata o pedido como uma revisão independente de correção
+      contra o diff real do PR — não como um levantamento de código morto
+      (enxugar), nem como rodar critério de aceite já definido (verificar).
+      Vale mesmo que a resposta só peça qual diff/PR revisar antes de
+      agir, desde que o enquadramento seja o de revisar.
+    weight: 1

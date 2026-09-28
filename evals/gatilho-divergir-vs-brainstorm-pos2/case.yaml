@@ -1,0 +1,41 @@
+schema_version: "1.0"
+name: gatilho-divergir-vs-brainstorm-pos2
+description: >
+  Cenário realista de nomeação com múltiplos caminhos brigando (issue #302,
+  par divergir×brainstorm) — tem que acionar `divergir`, não `brainstorm`:
+  já existem opções concretas na mesa, falta abrir o espaço, não converger.
+tags: [gatilho, colisao, positivo]
+
+execution:
+  prompt: >
+    Três nomes estão disputando o módulo novo de billing na minha cabeça —
+    cobranca-core, faturamento e billing-service — e cada um puxa pra um
+    desenho de API diferente. Queria ver os caminhos em paralelo antes de
+    decidir qual nomear, em vez de já cravar o primeiro que me ocorreu.
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-divergir
+    tool: Skill
+    input_match: "rainforest-mind:divergir(?!-frames)"
+    arm: with-only
+
+  - type: tool_used
+    name: nao-aciona-brainstorm
+    tool: Skill
+    input_match: "rainforest-mind:brainstorm"
+    min: 0
+    max: 0
+    arm: both
+
+  - type: llm
+    name: resposta-segue-metodo-divergir
+    criteria: >
+      A resposta trata o pedido como abrir o espaço de decisão entre os
+      nomes/desenhos já citados, em paralelo — não como uma entrevista
+      adversarial convergindo direto para um único nome aprovado. Vale
+      mesmo que a resposta só peça mais contexto antes de comparar, desde
+      que o enquadramento seja o de divergir.
+    weight: 1

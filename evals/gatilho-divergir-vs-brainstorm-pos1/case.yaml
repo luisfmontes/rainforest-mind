@@ -1,0 +1,43 @@
+schema_version: "1.0"
+name: gatilho-divergir-vs-brainstorm-pos1
+description: >
+  Cenário realista de duas arquiteturas concorrentes na mesa (issue #302,
+  par divergir×brainstorm) — tem que acionar `divergir`, não `brainstorm`:
+  já há mais de um caminho, o espaço precisa abrir antes de convergir.
+tags: [gatilho, colisao, positivo]
+
+execution:
+  prompt: >
+    Tem duas arquiteturas concorrendo pra resolver a fila de webhooks — uma
+    com Redis Streams, outra com um outbox no Postgres — e nenhuma das duas
+    foi descartada ainda. Antes de fechar em uma, queria abrir os dois
+    caminhos lado a lado, sem deixar a primeira que eu citei virar a
+    resposta por inércia.
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-divergir
+    tool: Skill
+    input_match: "rainforest-mind:divergir(?!-frames)"
+    arm: with-only
+
+  - type: tool_used
+    name: nao-aciona-brainstorm
+    tool: Skill
+    input_match: "rainforest-mind:brainstorm"
+    min: 0
+    max: 0
+    arm: both
+
+  - type: llm
+    name: resposta-segue-metodo-divergir
+    criteria: >
+      A resposta trata o pedido como abrir o espaço de decisão entre as
+      arquiteturas já citadas (comparar os caminhos em paralelo, sem
+      convergir logo na primeira) — não como uma entrevista adversarial
+      que já parte para fechar um único design aprovado. Vale mesmo que a
+      resposta só peça mais contexto antes de comparar, desde que o
+      enquadramento seja o de divergir.
+    weight: 1

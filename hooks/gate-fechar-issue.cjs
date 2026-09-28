@@ -941,6 +941,10 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
       `Razão: comando encapsulado (eval/bash -c/sh -c/pwsh -Command/cmd /c/-EncodedCommand) contém ` +
       `variável, substituição de comando, ou está em base64; não consigo ler o que roda dentro com ` +
       `segurança (ilegível).\n\n` +
+      // Só quando o segmento é `bash|sh $VAR` (#337; revisão: aparecia também
+      // em `bash -c "$x"` e `-EncodedCommand`, onde não ajuda).
+      (/(^|[\s;&|(])(bash|sh)\s+\$/.test(segmento) ?
+      `Rodando um arquivo cujo caminho está numa variável? Ponha aspas: bash "$t" passa, bash $t não.\n\n` : ``) +
       `Rode o comando 'gh' diretamente, sem encapsular, ou expanda a variável antes de chamar.\n`
     );
   }

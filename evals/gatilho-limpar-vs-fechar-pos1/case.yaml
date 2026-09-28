@@ -1,0 +1,41 @@
+schema_version: "1.0"
+name: gatilho-limpar-vs-fechar-pos1
+description: >
+  Cenário realista de worktree órfão e arquivo temporário sobrando (issue
+  #302, par limpar×fechar) — tem que acionar `limpar`, não `fechar`: é
+  manutenção de rastro invocável a qualquer momento, não fim de fluxo.
+tags: [gatilho, colisao, positivo]
+
+execution:
+  prompt: >
+    Tem um worktree órfão de uma sessão que travou semana passada, e um
+    monte de arquivo temporário de eval sobrando na pasta. Queria limpar
+    esse rastro agora — não estou no fim de fluxo nenhum, só quero
+    arrumar a bagunça.
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-limpar
+    tool: Skill
+    input_match: "rainforest-mind:limpar"
+    arm: with-only
+
+  - type: tool_used
+    name: nao-aciona-fechar
+    tool: Skill
+    input_match: "rainforest-mind:fechar"
+    min: 0
+    max: 0
+    arm: both
+
+  - type: llm
+    name: resposta-segue-metodo-limpar
+    criteria: >
+      A resposta identifica o pedido como manutenção de rastro (worktree
+      órfão, arquivo temporário) — nunca como fim de fluxo com commit,
+      remoção de worktree em uso e abertura de PR. Vale mesmo que a
+      resposta só peça mais contexto antes de agir, desde que o
+      enquadramento seja o de `limpar`.
+    weight: 1

@@ -1,0 +1,31 @@
+schema_version: "1.0"
+name: gatilho-verificar-vs-revisar-neg1
+description: >
+  Cenário realista de desconfiar do relato antes de qualquer critério
+  (issue #302, par verificar×revisar) — tem que acionar `revisar`, não
+  `verificar`: nenhum critério foi definido/rodado ainda, é revisão de
+  corretude primeiro.
+tags: [gatilho, colisao, negativo]
+
+execution:
+  prompt: >
+    Ainda não rodei nenhum critério de aceite dessa entrega — antes disso,
+    queria uma revisão independente contra o diff real, porque não confio
+    só no relato de quem implementou a tarefa.
+  max_turns: 6
+  allowed_tools: [Skill, Read, Glob, Grep]
+
+graders:
+  - type: tool_used
+    name: aciona-revisar
+    tool: Skill
+    input_match: "rainforest-mind:revisar"
+    arm: with-only
+
+  - type: tool_used
+    name: nao-aciona-verificar
+    tool: Skill
+    input_match: "rainforest-mind:verificar"
+    min: 0
+    max: 0
+    arm: both

@@ -2771,6 +2771,40 @@ for I339D in 0 1 2 3 4; do
   [ "$EXIT_339D" -eq "$ESPERADO_339D" ] && test_ok "(#339d.$I339D) exit $ESPERADO_339D" || test_fail "(#339d.$I339D) saiu $EXIT_339D (esperado $ESPERADO_339D): $PAYLOAD_339D"
 done
 
+# (#337) `bash $t` SEM aspas continua ilegivel (quatro revisoes da rodada 9
+# acharam bypass na resolucao estatica de $VAR), mas a mensagem passa a dizer
+# como rodar o arquivo: com aspas, `bash "$t"` passa. Antes ela mandava
+# "rodar o gh diretamente" num comando sem gh.
+echo
+echo '== (#337) bash $VAR sem aspas → exit 2, stderr orienta bash "$t" =='
+for CMD_337 in 'for t in a b; do bash $t; done' 'f=x.sh; bash $f 2>&1 | tail -1'; do
+  PAYLOAD_337=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$CMD_337")
+  ERR_337=$(
+    export PATH="$SBP/bin:$PATH"
+    echo "$PAYLOAD_337" | node "$SRC/hooks/gate-fechar-issue.cjs" 2>&1 >/dev/null
+    echo "exit=$?"
+  )
+  echo "$ERR_337" | grep -q '^exit=2$' && test_ok "(#337) $CMD_337 → exit 2" || test_fail "(#337) $CMD_337 não saiu 2: $ERR_337"
+  echo "$ERR_337" | grep -qF 'bash "$t" passa' && test_ok "(#337) $CMD_337 → stderr orienta bash \"\$t\"" || test_fail "(#337) $CMD_337 sem a orientação: $ERR_337"
+done
+for PAR_337 in '0|for t in a b; do bash "$t"; done' '2|bash -c "$x"'; do
+  ESP_337=${PAR_337%%|*}; CMD_337=${PAR_337#*|}
+  PAYLOAD_337=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$CMD_337")
+  EXIT_337=$(
+    export PATH="$SBP/bin:$PATH"
+    echo "$PAYLOAD_337" | node "$SRC/hooks/gate-fechar-issue.cjs" >/dev/null 2>&1
+    echo $?
+  )
+  [ "$EXIT_337" -eq "$ESP_337" ] && test_ok "(#337) controle: $CMD_337 → exit $ESP_337" || test_fail "(#337) controle: $CMD_337 saiu $EXIT_337 (esperado $ESP_337)"
+done
+# A orientação só aparece para `bash|sh $VAR`: em `bash -c "$x"` não ajuda.
+PAYLOAD_337=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" 'bash -c "$x"')
+ERR_337=$(
+  export PATH="$SBP/bin:$PATH"
+  echo "$PAYLOAD_337" | node "$SRC/hooks/gate-fechar-issue.cjs" 2>&1 >/dev/null
+)
+echo "$ERR_337" | grep -qF 'bash "$t" passa' && test_fail "(#337) bash -c \"\$x\" traz a orientação de bash \"\$t\" (não devia)" || test_ok "(#337) bash -c \"\$x\" sem a orientação de bash \"\$t\""
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
