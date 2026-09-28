@@ -118,6 +118,12 @@ function apiEhEscrita(argsApi) {
     }
   }
   if (metodo !== null) return metodo !== "GET";
+  // `gh api graphql` é sempre POST, e só escreve com `mutation` (revisão 2:
+  // `gh api graphql -f query="query { viewer { login } }"` saía 2).
+  const posicional = argsApi.map(semContrabarra).find((t) => !t.startsWith("-"));
+  if (posicional && posicional.toLowerCase() === "graphql") {
+    return argsApi.some((t) => /\bmutation\b/i.test(semContrabarra(t)));
+  }
   return temCampo;
 }
 
@@ -460,21 +466,42 @@ function codigoInline(toks, pos) {
   const flags = FLAGS_CODIGO_INLINE[exe];
   if (!flags) return null;
   const ehPowershell = exe === "pwsh" || exe === "powershell";
+  const proximo = (i) => {
+    const resto = toks.slice(i + 1).map((t) => t.v);
+    if (resto.length === 0) return null;
+    return { codigo: (ehPowershell || exe === "cmd") ? resto.join(" ") : resto[0] };
+  };
+  const achados = [];
   for (let i = pos + 1; i < toks.length; i += 1) {
-    if (toks[i].q) break;
     const bruto = toks[i].v;
+    // Token citado só é flag se começa com `-` (revisão 2: `--eval="..."`
+    // vem marcado como citado inteiro e era descartado aqui).
     if (!bruto.startsWith("-") && !(exe === "cmd" && bruto.startsWith("/"))) break;
     const igual = bruto.indexOf("=");
     const chave = (igual === -1 ? bruto : bruto.slice(0, igual)).toLowerCase();
     if (ehPowershell && FLAGS_CODIGO_CODIFICADO.has(chave)) return { ilegivel: true };
     if (flags.has(chave)) {
       if (igual !== -1) return { codigo: bruto.slice(igual + 1) };
-      const resto = toks.slice(i + 1).map((t) => t.v);
-      if (resto.length === 0) return null;
-      return { codigo: (ehPowershell || exe === "cmd") ? resto.join(" ") : resto[0] };
+      return proximo(i);
+    }
+    // Flags curtas agrupadas (revisão 2): `python -Bc "..."`, `perl -we "..."`,
+    // e o código colado na letra, `python -cCODIGO`/`perl -e'...'`.
+    if (!ehPowershell && exe !== "cmd" && /^-[A-Za-z]/.test(bruto) && !bruto.startsWith("--")) {
+      for (let k = 1; k < bruto.length; k += 1) {
+        if (!/[A-Za-z]/.test(bruto[k])) break;
+        if (flags.has("-" + bruto[k].toLowerCase()) && bruto[k] === bruto[k].toLowerCase()) {
+          // Letra que parece a flag mas é valor de outra (`perl -Mfeature`)
+          // não pode esconder a flag de verdade adiante: acumula e segue.
+          const colado = bruto.slice(k + 1);
+          if (colado) { achados.push(colado); break; }
+          const p = proximo(i);
+          if (p) achados.push(p.codigo);
+          break;
+        }
+      }
     }
   }
-  return null;
+  return achados.length ? { codigo: achados.join("\n") } : null;
 }
 
 // `gh` seguido de até seis palavras dentro de TEXTO de código (string de
