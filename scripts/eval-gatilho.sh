@@ -18,13 +18,17 @@
 #           `claude plugin eval . --trust-plugin --no-publish --ablation none
 #           --runs 1 --threshold 1.0 --case <nome exato>`, e decide por
 #           MAIORIA das rodadas (D3). Sai 1 se algum caso reprovar, 0 se todos
-#           passarem. Exit 2 do CLI (teto de custo) aborta a trava na hora.
+#           passarem. Exit 2 do CLI (teto de custo) aborta a trava na hora
+#           com 2; exit do CLI fora de 0/1/2 (erro, nao veredito) aborta com
+#           5 mostrando a saida dele; nenhum caso casado sai 4.
 #
 # mutacao:  sabota a `description:` de skills/<skill>/SKILL.md numa copia
 #           temporaria dos arquivos rastreados (`git ls-files`) e roda a
 #           trava so nos positivos dessa skill (gatilho-<skill>-vs-*-pos*).
 #           A arvore real nunca muda. Sai 0 quando a trava fica vermelha
-#           (mutacao pega), 3 quando fica verde (mutacao nao percebida).
+#           (mutacao pega), 3 quando fica verde (mutacao nao percebida); o
+#           que a trava der fora de 0/1 (2, 4, 5) e inconclusivo e repassado,
+#           e falha ao copiar sai 1.
 #
 # baseline: uma chamada unica com `--ablation with-without --runs 1`, sem
 #           decisao de maioria — relatorio para o "acrescenta / peso morto".
@@ -106,7 +110,7 @@ cmd_trava() {
     exit 4
   fi
 
-  local algum_reprovou=0 nome ok_rodadas rodada exit_cli args
+  local algum_reprovou=0 nome ok_rodadas rodada exit_cli args saida_cli
   while IFS= read -r nome; do
     [ -n "$nome" ] || continue
     ok_rodadas=0
@@ -115,7 +119,7 @@ cmd_trava() {
       if [ -n "$max_cost" ]; then
         args+=(--max-cost-usd "$max_cost")
       fi
-      "$CLAUDE_BIN" "${args[@]}" >/dev/null 2>&1
+      saida_cli=$("$CLAUDE_BIN" "${args[@]}" 2>&1)
       exit_cli=$?
 
       # Teto de custo: nao ha "resto de rodada" que valha a pena rodar depois
@@ -125,9 +129,24 @@ cmd_trava() {
         exit 2
       fi
 
-      if [ "$exit_cli" -eq 0 ]; then
-        ok_rodadas=$((ok_rodadas + 1))
+      # So 0 (passou) e 1 (score abaixo do --threshold, contrato do CLI) sao
+      # veredito sobre o caso. Qualquer outro exit e o CLI quebrando (auth,
+      # crash, flag): contar como rodada reprovada faria a `mutacao` declarar
+      # deteccao sem o grader ter visto nada (revisao, 2026-09-28).
+      # Exit 1 com ` error: ` na linha da rodada (timeout, max_turns -- formato
+      # visto na saida real em evals/README.md) tambem nao e veredito.
+      if [ "$exit_cli" -eq 1 ] && printf '%s\n' "$saida_cli" | grep -q ' error: '; then
+        exit_cli=5
       fi
+      case "$exit_cli" in
+        0) ok_rodadas=$((ok_rodadas + 1)) ;;
+        1) ;;
+        *)
+          echo "FALHA o CLI saiu $exit_cli rodando $nome, rodada $rodada/$rodadas -- nao e veredito, abortando a trava" >&2
+          printf '%s\n' "$saida_cli" | tail -20 >&2
+          exit 5
+          ;;
+      esac
     done
 
     # A decisao de maioria (D3): mais da metade das rodadas em exit 0. Esta
@@ -177,6 +196,8 @@ cmd_mutacao() {
   # sobreviver a nomes com espaco.
   local tmp
   tmp=$(mktemp -d) || { echo "erro: mktemp -d falhou" >&2; exit 1; }
+  # Ctrl-C no meio de uma rodada paga nao deixa a copia para tras.
+  trap 'rm -rf "$tmp"' EXIT
   local falhou_copia=0
   while IFS= read -r -d '' f; do
     mkdir -p "$tmp/$(dirname -- "$f")" || { falhou_copia=1; break; }

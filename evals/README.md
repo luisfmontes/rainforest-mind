@@ -16,7 +16,10 @@ bash scripts/eval-gatilho.sh trava [--case <glob>] [--rodadas N] [--max-cost-usd
 
 # mutacao: sabota a description da skill numa cópia temporária e confere que
 # a trava (só nos positivos dela) fica vermelha. Sai 0 (detectou), 3 (não
-# detectou) ou 127 (sem CLAUDE_BIN resolvível). A árvore real nunca muda.
+# detectou), 127 (sem CLAUDE_BIN resolvível), 1 (falha ao copiar) ou, sem
+# veredito, o que a trava der: 2 (teto de custo), 4 (nenhum caso), 5 (o CLI
+# saiu fora de 0/1, ou saiu 1 com ` error: ` numa rodada — timeout, max_turns).
+# A árvore real nunca muda.
 bash scripts/eval-gatilho.sh mutacao <skill> [--rodadas N]
 
 # baseline: uma chamada única com --ablation with-without --runs 1, para o

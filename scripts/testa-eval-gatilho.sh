@@ -85,6 +85,12 @@ codigo=$(sed -n "${n}p" "$ROTEIRO")
 if [ "$codigo" = "2" ]; then
   echo "cost ceiling: teto de custo atingido (fake)" >&2
 fi
+# "1e": rodada com erro (timeout) -- exit 1 com ` error: ` na linha, formato
+# da saida real registrada em evals/README.md.
+if [ "$codigo" = "1e" ]; then
+  echo "  caso run 1/1 [with]: score 0.50  $0.50  error: timed out after 300s"
+  codigo=1
+fi
 exit "$codigo"
 CLAUDEEOF
 chmod +x "$FAKE_CLAUDE"
@@ -337,6 +343,23 @@ else
   echo "  FALHA (d) mutacao sem positivo: exit=$exit_obtido"
   echo "$saida" | sed 's/^/         /' | head -10
 fi
+
+for par in "130|exit 130 do CLI" "1e|exit 1 com error: na rodada"; do
+  cod=${par%%|*}; rotulo=${par#*|}
+  echo "== (g) mutacao: $rotulo nao e deteccao (sai 5, inconclusiva) =="
+  resetar
+  escrever_roteiro "$cod" "$cod" "$cod"
+  saida=$(rodar "$SANDBOX2" cego mutacao foo --rodadas 1 2>&1)
+  exit_obtido=$?
+  if [ "$exit_obtido" = "5" ] && echo "$saida" | grep -q "nao e veredito"; then
+    ok=$((ok + 1))
+    echo "  ok   (g) mutacao com $rotulo sai 5, nao 0"
+  else
+    falhou=$((falhou + 1))
+    echo "  FALHA (g) mutacao com $rotulo: exit=$exit_obtido"
+    echo "$saida" | sed 's/^/         /' | head -10
+  fi
+done
 
 echo "== (e) baseline chama o CLI 1x com --ablation with-without --runs 1 (sem --ablation none nem --threshold) =="
 resetar

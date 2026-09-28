@@ -16,8 +16,8 @@ depende de: nenhuma
 paralela: sim
 mutacao:
   arquivo: `hooks/gate-fechar-issue.cjs`
-  de: `      `Rodando um arquivo cujo caminho está numa variável? Ponha aspas: bash "$t" passa, bash $t não.\n\n` +`
-  para: `      `\n` +`
+  de: `      `Rodando um arquivo cujo caminho está numa variável? Ponha aspas: bash "$t" passa, bash $t não.\n\n` : ``) +`
+  para: `      `` : ``) +`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
   fixture: testa-gate-fechar-issue.sh, caso "(#337) for t in a b; do bash $t; done"
 pronto quando: com o payload PreToolUse real (`{"tool_name":"Bash","tool_input":{"command":...}}`), `for t in a b; do bash $t; done` e `f=x.sh; bash $f 2>&1 | tail -1` saem **2** com `bash "$t"` no stderr; `for t in a b; do bash "$t"; done` sai 0; `bash -c "$x"` sai 2 — provado por `bash hooks/testa-gate-fechar-issue.sh` com 0 falhas e os casos "(#337)" impressos.
@@ -46,3 +46,4 @@ pronto quando: o CHANGELOG ganha a versão minor sobre `origin/main` descrevendo
 
 ## Emendas da integração (2026-09-28)
 - **Tarefa 2:** na leitura do script entregue, `mutacao` tratava qualquer saída ≠ 0 da trava como "mutação detectada" — teto de custo (2) e nenhum caso casado (que também saía 1) viravam exit 0. Agora nenhum caso casado sai 4, e a mutação só conta como detectada com exit 1; o resto é repassado como inconclusivo. O script também vai para a raiz do repositório (`git rev-parse --show-toplevel`) antes de ler `evals/`. Dois casos novos na bateria (13/0); mutação na linha `  if [ "$exit_trava" -ne 1 ]; then` → `  if false; then`: vermelha.
+- **Revisão 1 (reprovada):** `mutacao` declarava detecção (exit 0) quando o CLI falhava por qualquer motivo alheio à sabotagem — a saída do CLI era descartada e todo exit ≠ 0/2 contava como rodada reprovada. Conserto: só exit 1 (score abaixo do `--threshold`, contrato do CLI) é veredito; exit fora de 0/1/2, ou exit 1 com ` error: ` na linha da rodada (timeout, max_turns — formato da saída real registrada em `evals/README.md`), aborta a trava com 5 mostrando a saída do CLI, e a mutação repassa como inconclusiva. `trap` limpa a cópia em Ctrl-C; os exits estão documentados no cabeçalho e no `evals/README.md`. Não-bloqueante acatado: a orientação de `bash "$t"` só aparece quando o segmento é `bash|sh $VAR` (a mutação da tarefa 1 passa a mirar a linha com o ternário). Casos novos: (g) nas duas formas (15/0) e o controle `bash -c "$x"` sem a orientação (246/0); mutações `1) ;;` → `*) ;;` e `exit_cli=5` → `exit_cli=1`, as duas vermelhas.

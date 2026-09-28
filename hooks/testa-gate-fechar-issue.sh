@@ -2797,6 +2797,13 @@ for PAR_337 in '0|for t in a b; do bash "$t"; done' '2|bash -c "$x"'; do
   )
   [ "$EXIT_337" -eq "$ESP_337" ] && test_ok "(#337) controle: $CMD_337 → exit $ESP_337" || test_fail "(#337) controle: $CMD_337 saiu $EXIT_337 (esperado $ESP_337)"
 done
+# A orientação só aparece para `bash|sh $VAR`: em `bash -c "$x"` não ajuda.
+PAYLOAD_337=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" 'bash -c "$x"')
+ERR_337=$(
+  export PATH="$SBP/bin:$PATH"
+  echo "$PAYLOAD_337" | node "$SRC/hooks/gate-fechar-issue.cjs" 2>&1 >/dev/null
+)
+echo "$ERR_337" | grep -qF 'bash "$t" passa' && test_fail "(#337) bash -c \"\$x\" traz a orientação de bash \"\$t\" (não devia)" || test_ok "(#337) bash -c \"\$x\" sem a orientação de bash \"\$t\""
 
 # Resultado final
 echo
