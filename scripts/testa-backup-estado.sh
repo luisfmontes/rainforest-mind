@@ -675,6 +675,45 @@ else
   ok=$((ok+1)); echo "  ok    $ONEDRIVE_BACKUP_DIR ficou identico do inicio ao fim desta bateria"
 fi
 
+echo "== 20. stderr de varias linhas terminando em linha vazia: o motivo real chega ao ERROS.md =="
+# 2026-09-11 a 2026-09-25: cinco linhas "backup externo falhou (exit 2):
+# System.Management.Automation.RemoteException" e nenhuma causa. O PowerShell 5.1
+# embrulha cada linha de stderr de processo nativo num ErrorRecord, e o de uma
+# linha VAZIA vira o texto da excecao sem mensagem. O backup.cjs termina o
+# "PowerShell failed: <stderr do Compress-Archive>" com quebra de linha, entao
+# a ultima linha era sempre a vazia.
+montar
+SB_BACKUP="$(novo_sandbox)"
+rm -f "$SB/plugin/vigias/log.txt"
+cat > "$SB/plugin/scripts/backup.cjs" << 'EOF'
+#!/usr/bin/env node
+console.error('RECUSADO: PowerShell failed: arquivo-travado-pela-sessao.db esta em uso por outro processo');
+console.error('No linha:4 caractere:1');
+console.error('+ Compress-Archive -Path $items -DestinationPath $dest -Force');
+console.error('');
+process.exit(2);
+EOF
+RFM_ROOT="$(win "$SB/dados")" RFM_BACKUP_DESTINO="$(win "$SB_BACKUP")" env -u OneDrive -u ONEDRIVE powershell -NoProfile -ExecutionPolicy Bypass \
+  -File "$(win "$SB/plugin/vigias/backup-estado.ps1")" \
+  -Vigia sentinela-foco -Plugin "$(win "$SB/plugin")" \
+  -Log "$(win "$SB/plugin/vigias/log.txt")" > /dev/null 2>&1
+linha_erro=$(grep 'backup externo falhou' "$SB/plugin/vigias/ERROS.md" 2>/dev/null)
+if printf '%s' "$linha_erro" | grep -q 'arquivo-travado-pela-sessao.db esta em uso'; then
+  ok=$((ok+1)); echo "  ok    ERROS.md traz a linha RECUSADO, nao a vazia"
+else
+  falhou=$((falhou+1)); echo "  FALHA ERROS.md sem o motivo real (veio: $linha_erro)"
+fi
+if printf '%s' "$linha_erro" | grep -q 'RemoteException'; then
+  falhou=$((falhou+1)); echo "  FALHA ERROS.md ainda registra RemoteException"
+else
+  ok=$((ok+1)); echo "  ok    ERROS.md sem RemoteException"
+fi
+if grep -q 'No linha:4 caractere:1' "$SB/plugin/vigias/log.txt" 2>/dev/null; then
+  ok=$((ok+1)); echo "  ok    o stderr inteiro ficou no log do vigia"
+else
+  falhou=$((falhou+1)); echo "  FALHA o log do vigia nao guardou o stderr inteiro"
+fi
+
 echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
