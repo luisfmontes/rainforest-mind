@@ -219,6 +219,117 @@ const rOutraFerramenta = spawnSync(process.execPath, [HOOK], {
 });
 caso("tool_name = Read, não Bash → 0", rOutraFerramenta.status, 0);
 
+// =====================================================================
+// Tarefa 2 (D4/D5): script executado é lido, com isenção de bateria
+// rastreada. Caixa de areia própria (mktemp -d), arquivos REAIS em disco —
+// os fixtures só CONTÊM o texto `gh issue close 12`/forma de chamada, NUNCA
+// são executados: a bateria só manda o payload PreToolUse ao hook.
+// =====================================================================
+
+function toPosix(p) {
+  return p.split(path.sep).join("/");
+}
+
+function rodarComCwd(comando, cwdReal, { subagente = true } = {}) {
+  const payload = JSON.parse(JSON.stringify(BASE));
+  payload.tool_input.command = comando;
+  payload.cwd = cwdReal;
+  if (!subagente) { delete payload.agent_id; delete payload.agent_type; }
+  const r = spawnSync(process.execPath, [HOOK], {
+    input: JSON.stringify(payload), encoding: "utf8",
+    env: { ...process.env, CLAUDE_PROJECT_DIR: cwdReal, RFM_ROOT: path.join(caixa, "dados-d4-d5") },
+  });
+  return { status: r.status, stderr: r.stderr || "" };
+}
+
+console.log("== gate-subagente-sem-gh (tarefa 2: D4/D5) ==");
+
+// --- D4: segmento executa um arquivo — lido antes de rodar ---
+
+const sandboxD4 = path.join(caixa, "sandbox-d4");
+fs.mkdirSync(sandboxD4, { recursive: true });
+fs.writeFileSync(path.join(sandboxD4, "x.sh"), "gh issue close 12\n");
+fs.writeFileSync(path.join(sandboxD4, "view.sh"), "gh issue view 12\n");
+fs.writeFileSync(path.join(sandboxD4, "commentado.sh"), "# gh issue close 12\n");
+fs.writeFileSync(path.join(sandboxD4, "y.cjs"), "execFileSync('gh', ['issue', 'close', '12']);\n");
+
+const xshAbs = toPosix(path.join(sandboxD4, "x.sh"));
+
+r = rodarComCwd(`bash ${xshAbs}`, sandboxD4);
+casoContem("(D4) bash script avulso com gh issue close", r.status, r.stderr, 2, ["x.sh:1"]);
+
+r = rodarComCwd(`sh ${xshAbs}`, sandboxD4);
+caso("(D4) sh <caminho absoluto de x.sh> em subagente", r.status, 2);
+
+r = rodarComCwd(`source ${xshAbs}`, sandboxD4);
+caso("(D4) source <caminho absoluto de x.sh> em subagente", r.status, 2);
+
+r = rodarComCwd(`. ${xshAbs}`, sandboxD4);
+caso("(D4) . <caminho absoluto de x.sh> (dot) em subagente", r.status, 2);
+
+r = rodarComCwd("./x.sh", sandboxD4);
+caso("(D4) ./x.sh (caminho direto) em subagente", r.status, 2);
+
+r = rodarComCwd("bash x.sh", sandboxD4);
+caso("(D4) bash x.sh (caminho relativo resolvido contra o cwd do payload) em subagente", r.status, 2);
+
+r = rodarComCwd("bash view.sh", sandboxD4);
+caso("(D4) bash view.sh (só gh issue view, leitura) em subagente", r.status, 0);
+
+r = rodarComCwd("bash commentado.sh", sandboxD4);
+caso("(D4) bash commentado.sh (linha # gh issue close 12 comentada) em subagente", r.status, 0);
+
+r = rodarComCwd("bash nao-existe.sh", sandboxD4);
+caso("(D4) bash nao-existe.sh (arquivo inexistente) em subagente", r.status, 0);
+
+r = rodarComCwd("node y.cjs", sandboxD4);
+caso("(D4) node y.cjs (forma de chamada execFileSync('gh', [...])) em subagente", r.status, 2);
+
+// --- D5: isenção de bateria testa-* rastreada, e exceção de fechar-issue.cjs ---
+
+const sandboxD5 = path.join(caixa, "sandbox-d5");
+fs.mkdirSync(sandboxD5, { recursive: true });
+spawnSync("git", ["init", "-q"], { cwd: sandboxD5 });
+spawnSync("git", ["config", "user.email", "teste" + "@" + "invalido.local"], { cwd: sandboxD5 });
+spawnSync("git", ["config", "user.name", "Teste"], { cwd: sandboxD5 });
+
+fs.writeFileSync(path.join(sandboxD5, "testa-a.sh"), "gh issue close 12\n");
+spawnSync("git", ["add", "testa-a.sh"], { cwd: sandboxD5 });
+spawnSync("git", ["commit", "-q", "-m", "fixture testa-a"], { cwd: sandboxD5 });
+
+r = rodarComCwd("bash testa-a.sh", sandboxD5);
+caso("(D5) testa-a.sh rastreado (commitado) com gh issue close 12 em subagente", r.status, 0);
+
+fs.writeFileSync(path.join(sandboxD5, "testa-a.sh"), "gh issue close 12\necho depois do commit\n");
+r = rodarComCwd("bash testa-a.sh", sandboxD5);
+caso("(D5) testa-a.sh alterado depois do commit continua isento", r.status, 0);
+
+fs.writeFileSync(path.join(sandboxD5, "testa-b.sh"), "gh issue close 12\n");
+spawnSync("git", ["add", "testa-b.sh"], { cwd: sandboxD5 });
+r = rodarComCwd("bash testa-b.sh", sandboxD5);
+caso("(D5) testa-b.sh só no stage (git add, sem commit) em subagente", r.status, 0);
+
+fs.writeFileSync(path.join(sandboxD5, "testa-c.sh"), "gh issue close 12\n");
+r = rodarComCwd("bash testa-c.sh", sandboxD5);
+casoContem("(D5) testa-c.sh não rastreado em subagente (mensagem diz git add)", r.status, r.stderr, 2, ["git add"]);
+
+fs.writeFileSync(path.join(sandboxD5, "outro.sh"), "gh issue close 12\n");
+spawnSync("git", ["add", "outro.sh"], { cwd: sandboxD5 });
+spawnSync("git", ["commit", "-q", "-m", "fixture outro"], { cwd: sandboxD5 });
+r = rodarComCwd("bash outro.sh", sandboxD5);
+caso("(D5) outro.sh rastreado mas não se chama testa-* em subagente", r.status, 2);
+
+fs.mkdirSync(path.join(sandboxD5, "scripts"), { recursive: true });
+fs.writeFileSync(path.join(sandboxD5, "scripts", "fechar-issue.cjs"), "// fechador oficial, monta o comando gh dinamicamente\n");
+spawnSync("git", ["add", "scripts/fechar-issue.cjs"], { cwd: sandboxD5 });
+spawnSync("git", ["commit", "-q", "-m", "fixture fechar-issue"], { cwd: sandboxD5 });
+
+r = rodarComCwd("node scripts/fechar-issue.cjs 12 --comando x --saida y", sandboxD5);
+caso("(D5) node scripts/fechar-issue.cjs em subagente → pelo nome, mesmo versionado", r.status, 2);
+
+r = rodarComCwd("node scripts/fechar-issue.cjs 12 --comando x --saida y", sandboxD5, { subagente: false });
+caso("(D5) node scripts/fechar-issue.cjs sem agent_id (janela principal) → 0", r.status, 0);
+
 console.log("-----------------------------------------");
 console.log(`ok: ${ok}   falhou: ${falhou}`);
 process.exit(falhou === 0 ? 0 : 1);

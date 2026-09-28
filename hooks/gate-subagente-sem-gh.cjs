@@ -29,13 +29,16 @@
  * Payload ilegível, vazio ou de outra ferramenta: sai 0, como os gates irmãos.
  */
 
+const fs = require("node:fs");
 const path = require("node:path");
+const { execFileSync } = require("node:child_process");
 const {
   tokensComAspas, posicaoDeComando, textoAPartir,
   WRAPPERS_QUE_REPASSAM, WRAPPERS_DE_COMANDO, desempacotarWrapperDeString,
   OPERADORES_DE_DOIS, colapsaContinuacaoDeLinhaNoTopo, semContrabarra,
 } = require("./lib/tokens-comando.cjs");
 const { corpoDeHeredoc, linhaDoHeredocTemInterpretador, fimDaLinhaLogica } = require("./lib/heredoc.cjs");
+const { cwdPorSegmento, normalizarMsys } = require("./lib/cwd-efetivo.cjs");
 
 /**
  * D2 — tabela de VERBOS DE ESCRITA por família de subcomando `gh`. A linha
@@ -343,6 +346,31 @@ function bloqueiaIlegivel(comandoVisto) {
   );
 }
 
+// D5: mensagem extra quando o bloqueio é de um arquivo `testa-*` NÃO
+// rastreado — a isenção existe (D5), só falta o `git add`.
+const MSG_GIT_ADD =
+  "Este arquivo parece bateria (`testa-*`) mas não está rastreado pelo git — " +
+  "rode `git add` nele antes de rodar uma bateria nova, para ele virar isento.\n\n";
+
+function bloqueiaArquivo(achado) {
+  if (achado.ehFechaIssue) {
+    bloqueia(
+      `BLOQUEADO pelo gate de subagente sem GitHub do rainforest-mind.\n\n` +
+      `Arquivo executado: \`${achado.caminho}\`\n\n` +
+      `Razão: \`scripts/fechar-issue.cjs\` é o fechador oficial de Issue — subagente não roda, mesmo versionado.\n\n` +
+      MSG_JANELA_PRINCIPAL + "\n" + MSG_MEDIR
+    );
+    return;
+  }
+  bloqueia(
+    `BLOQUEADO pelo gate de subagente sem GitHub do rainforest-mind.\n\n` +
+    `Arquivo executado: \`${achado.caminho}:${achado.linha}\`\n\n` +
+    `Linha: \`${achado.texto}\`\n\n` +
+    (achado.sugereGitAdd ? MSG_GIT_ADD : "") +
+    MSG_JANELA_PRINCIPAL + "\n" + MSG_MEDIR
+  );
+}
+
 /**
  * `exe` (já normalizado) é um prefixo que sabemos que só repassa o comando
  * adiante, ou um wrapper que sabemos desempacotar? Mesma função de
@@ -372,25 +400,170 @@ function normalizarExecutavel(nome) {
   return sem_aspas.toLowerCase();
 }
 
+// Interpretadores cujo PRIMEIRO argumento não-flag é o ARQUIVO executado
+// (D4). `source`/`.` entram aqui também — tratados à parte em
+// `processarSegmento` porque `desempacotarWrapperDeString` sempre devolve
+// `ilegivel: true` para eles (não têm forma de string), o que bloquearia
+// toda `source`/`.` às cegas antes desta tarefa ler o conteúdo.
+const INTERPRETADORES_DE_ARQUIVO = new Set(["bash", "sh", "source", ".", "node", "python"]);
+
+// Extensão de script reconhecida para o caminho DIRETO em posição de
+// comando (`./x.sh`) — sem isto, qualquer binário com `/` no nome
+// (`/usr/bin/git`, `node_modules/.bin/eslint`) viraria candidato a "arquivo
+// executado" só por conter barra.
+const EXTENSAO_DE_SCRIPT = /\.(sh|bash|cjs|mjs|js|py)$/i;
+
 /**
- * Ponto de extensão da tarefa 2 (D4/D5, ainda não implementada): quando um
- * segmento executa um ARQUIVO (`bash|sh|source|. <arq>`, caminho direto
- * `./x.sh`, `node|python <arq>`), a tarefa 2 lê esse arquivo e nega se
- * alguma linha não comentada casar com o padrão de escrita de D2 — com
- * isenção para bateria `testa-*` rastreada (D5). Deliberadamente vazio nesta
- * tarefa: `segmento` e `cwd` chegam prontos para quem implementar a tarefa 2
- * não precisar redesenhar a chamada.
+ * `toks[pos]` é o comando de um segmento que EXECUTA UM ARQUIVO (D4)? Devolve
+ * o caminho (cru, como apareceu no comando) ou `null`.
+ *
+ * Interpretador (`bash|sh|source|.|node|python <arq>`): o arquivo é o
+ * primeiro token não-flag depois dele. Chamada só acontece (ver
+ * `processarSegmento`) depois que `desempacotarWrapperDeString` já teve
+ * chance de reconhecer `bash -c "..."`/`sh -c "..."` como wrapper de STRING
+ * — aqui só sobra a forma sem `-c`, então não há risco de confundir o corpo
+ * de um `-c` com um caminho de arquivo.
+ *
+ * Caminho direto (`./x.sh`): o próprio executável, com barra e extensão de
+ * script reconhecida.
  */
-// eslint-disable-next-line no-unused-vars
-function arquivoDeScriptExecutado(segmento, cwd) {
-  return null; // TODO (tarefa 2): ler o arquivo e devolver achado de escrita, ou null.
+function caminhoDeArquivoExecutado(toks, pos) {
+  const raw = toks[pos].v;
+  const exeNorm = normalizarExecutavel(raw);
+
+  if (INTERPRETADORES_DE_ARQUIVO.has(exeNorm)) {
+    let i = pos + 1;
+    while (i < toks.length && !toks[i].q && toks[i].v.startsWith("-")) i += 1;
+    return i < toks.length ? toks[i].v : null;
+  }
+
+  if (/[\\/]/.test(raw) && EXTENSAO_DE_SCRIPT.test(raw)) return raw;
+
+  return null;
+}
+
+// Forma de CHAMADA (D4/D2): `'gh', ['issue', 'close'` / `"gh", "pr", "merge"`
+// — literal de array/argumentos em código (`execFileSync('gh', [...])`),
+// nunca sintaxe de shell. Colchete de abertura é opcional (cobre a forma sem
+// array citada no design, `"gh", "pr", "merge"`).
+const RE_CHAMADA_GH = /['"]gh['"]\s*,\s*(?:\[\s*)?['"]([A-Za-z]+)['"]\s*,\s*['"]([A-Za-z]+)['"]/;
+
+/**
+ * Uma LINHA (de script lido, ou de corpo de heredoc) escreve no GitHub via
+ * `gh` — forma de shell (mesma sequência `gh <família> <verbo>` de D2/D3) ou
+ * forma de chamada (`RE_CHAMADA_GH`)? Compartilhada entre a leitura de
+ * arquivo (tarefa 2) e a varredura de heredoc (tarefa 1) — mesma pergunta,
+ * mesma resposta.
+ */
+function linhaEhEscritaGh(linha) {
+  const chamada = RE_CHAMADA_GH.exec(linha);
+  if (chamada) {
+    const familia = chamada[1].toLowerCase();
+    const verbo = chamada[2].toLowerCase();
+    const verbos = VERBOS_ESCRITA[familia];
+    if (verbos && verbos.has(verbo)) return true;
+  }
+
+  let toks;
+  try { toks = tokensComAspas(linha); } catch { toks = linha.split(/\s+/).filter(Boolean).map((v) => ({ v, q: false })); }
+  const idxComentario = toks.findIndex((t) => !t.q && t.v.startsWith("#"));
+  const valores = (idxComentario === -1 ? toks : toks.slice(0, idxComentario)).map((t) => t.v);
+  for (const padrao of PADROES_DE_ESCRITA) {
+    const idx = indiceSequenciaGh(valores, padrao);
+    if (idx === -1) continue;
+    if (padrao[0] === "api") {
+      if (comandoGhEhEscrita(valores.slice(idx + 1))) return true;
+    } else {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
- * Aplica as checagens D2/D3 a UM segmento (já separado por `;`, `&&`, `||`,
- * `|`, `(`, `)`, `{`, `}` via `segmentosParaGate`).
+ * Lê `caminho` e devolve `{ linha, texto }` da primeira linha NÃO COMENTADA
+ * (não começa com `#`, ignorando espaço à frente) que escreve no GitHub, ou
+ * `null` (sem escrita, ou arquivo inexistente/ilegível — D4: "arquivo que não
+ * existe ou não se lê passa").
  */
-function processarSegmento(segmento) {
+function lerEscritaEmArquivo(caminho) {
+  let conteudo;
+  try {
+    conteudo = fs.readFileSync(caminho, "utf8");
+  } catch {
+    return null;
+  }
+  const linhas = conteudo.split("\n");
+  for (let i = 0; i < linhas.length; i += 1) {
+    const linha = linhas[i];
+    if (/^\s*#/.test(linha)) continue;
+    if (linhaEhEscritaGh(linha)) {
+      return { linha: i + 1, texto: linha.trim() };
+    }
+  }
+  return null;
+}
+
+/**
+ * Isenção (D5): arquivo de nome `testa-*` RASTREADO pelo git no repo dele
+ * (`git ls-files --error-unmatch`, o que inclui o que só está no stage),
+ * mesmo alterado depois do commit, não é varrido. Não rastreado (mesmo
+ * chamando-se `testa-*`) nunca é isento. Nome que não é `testa-*` nunca é
+ * isento, mesmo rastreado. Git ausente ou erro qualquer → não isento
+ * (conservador: some do lado errado nunca é "passa de graça").
+ */
+function arquivoIsento(caminho, cwd) {
+  const base = path.basename(caminho);
+  if (!/^testa-/.test(base)) return false;
+  const dir = path.dirname(caminho);
+  try {
+    execFileSync("git", ["-C", dir, "ls-files", "--error-unmatch", base], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * `caminhoBruto` (como apareceu no comando, ainda não resolvido) é um
+ * arquivo que o gate nega executar? Devolve o achado (para a mensagem) ou
+ * `null` (passa: arquivo isento, sem escrita, ou inexistente/ilegível).
+ *
+ * D5, exceção à isenção: `scripts/fechar-issue.cjs` (caminho absoluto ou
+ * relativo terminado nisso) é negado PELO NOME, antes de qualquer leitura —
+ * mesmo rastreado, mesmo sem conteúdo de escrita literal (o fechador oficial
+ * monta o comando `gh` dinamicamente, o texto pode não bater com D2).
+ */
+function arquivoDeScriptExecutado(caminhoBruto, cwd) {
+  const normalizado = String(caminhoBruto).replace(/\\/g, "/");
+  if (/(^|\/)scripts\/fechar-issue\.cjs$/i.test(normalizado)) {
+    return { caminho: caminhoBruto, linha: null, texto: null, ehFechaIssue: true };
+  }
+
+  let resolvido;
+  try {
+    const alvo = normalizarMsys(caminhoBruto);
+    resolvido = path.isAbsolute(alvo) ? alvo : path.resolve(cwd, alvo);
+  } catch {
+    return null;
+  }
+
+  if (arquivoIsento(resolvido, cwd)) return null;
+
+  const achado = lerEscritaEmArquivo(resolvido);
+  if (achado === null) return null;
+
+  const sugereGitAdd = /^testa-/.test(path.basename(resolvido));
+  return { caminho: resolvido, linha: achado.linha, texto: achado.texto, ehFechaIssue: false, sugereGitAdd };
+}
+
+/**
+ * Aplica as checagens D2/D3/D4/D5 a UM segmento (já separado por `;`, `&&`,
+ * `||`, `|`, `(`, `)`, `{`, `}` via `segmentosParaGate`). `cwd` é o diretório
+ * efetivo ONDE ESTE SEGMENTO roda (D4) — usado só para resolver caminho
+ * relativo de arquivo executado.
+ */
+function processarSegmento(segmento, cwd) {
   const toks = tokensComAspas(segmento);
   if (toks.length === 0) return;
 
@@ -403,6 +576,18 @@ function processarSegmento(segmento) {
     return;
   }
 
+  // `source`/`.` (D4): `desempacotarWrapperDeString` sempre devolve
+  // `ilegivel: true` para os dois (não têm forma de string) — bloquear ali
+  // bloquearia toda `source`/`. x.sh` às cegas, mesmo com o arquivo lendo
+  // limpo. Aqui o arquivo é LIDO em vez de bloqueado por padrão.
+  const exeNorm = pos !== null ? normalizarExecutavel(toks[pos].v) : null;
+  if (exeNorm === "source" || exeNorm === ".") {
+    const arq = caminhoDeArquivoExecutado(toks, pos);
+    const achado = arq === null ? null : arquivoDeScriptExecutado(arq, cwd);
+    if (achado !== null) bloqueiaArquivo(achado);
+    return;
+  }
+
   const { interno, ilegivel } = pos === null
     ? { interno: null, ilegivel: false }
     : desempacotarWrapperDeString(textoAPartir(toks, pos));
@@ -411,9 +596,22 @@ function processarSegmento(segmento) {
   }
   if (interno !== null) {
     for (const sub of segmentosParaGate(interno)) {
-      processarSegmento(sub);
+      processarSegmento(sub, cwd);
     }
     return;
+  }
+
+  // D4: o segmento executa um ARQUIVO — interpretador (`bash|sh|node|python`,
+  // sem `-c`/forma de string, já descartada acima) ou caminho direto
+  // (`./x.sh`). Lê o arquivo (resolvido contra `cwd`) e nega por conteúdo
+  // (D2 dentro dele) ou por nome (D5, `scripts/fechar-issue.cjs`).
+  if (pos !== null) {
+    const arq = caminhoDeArquivoExecutado(toks, pos);
+    if (arq !== null) {
+      const achado = arquivoDeScriptExecutado(arq, cwd);
+      if (achado !== null) bloqueiaArquivo(achado);
+      return;
+    }
   }
 
   // W2: rede de segurança para wrapper DESCONHECIDO — procura a sequência
@@ -441,27 +639,14 @@ function processarSegmento(segmento) {
 
 /**
  * Varre o TEXTO dos corpos de heredoc tratados como dado (D3) — mesma busca
- * de sequência da rede W2, linha a linha, sem desempacotar wrapper. Só
- * `gh <família> <verbo>` literal no corpo dispara o bloqueio.
+ * de sequência de `linhaEhEscritaGh` (compartilhada com a leitura de arquivo
+ * da tarefa 2), linha a linha, sem desempacotar wrapper.
  */
 function verificarTextosDeHeredoc() {
   for (const corpo of TEXTOS_DE_HEREDOC) {
     for (const linha of corpo.split('\n')) {
       if (!linha.trim()) continue;
-      let toks;
-      try { toks = tokensComAspas(linha); } catch { toks = linha.split(/\s+/).filter(Boolean).map((v) => ({ v, q: false })); }
-      const idxComentario = toks.findIndex((t) => !t.q && t.v.startsWith("#"));
-      const valores = (idxComentario === -1 ? toks : toks.slice(0, idxComentario)).map((t) => t.v);
-      for (const padrao of PADROES_DE_ESCRITA) {
-        const idx = indiceSequenciaGh(valores, padrao);
-        if (idx === -1) continue;
-        if (padrao[0] === "api") {
-          if (comandoGhEhEscrita(valores.slice(idx + 1))) { bloqueiaEscrita(linha); }
-        } else {
-          bloqueiaEscrita(linha);
-        }
-        break;
-      }
+      if (linhaEhEscritaGh(linha)) bloqueiaEscrita(linha);
     }
   }
 }
@@ -469,7 +654,7 @@ function verificarTextosDeHeredoc() {
 function main() {
   let ev;
   try {
-    const bruto = require("node:fs").readFileSync(0, "utf8");
+    const bruto = fs.readFileSync(0, "utf8");
     if (!bruto.trim()) process.exit(0);
     ev = JSON.parse(bruto);
   } catch {
@@ -484,9 +669,30 @@ function main() {
   const comando = ev.tool_input && ev.tool_input.command;
   if (typeof comando !== "string" || !comando) process.exit(0);
 
+  // D4: cwd EFETIVO de cada segmento de nível superior (`cd`/`pushd`/`popd`/
+  // `env -C`/`git -C`, via a lib comum) — para resolver caminho relativo de
+  // arquivo executado contra onde o comando de fato roda, não só o cwd do
+  // payload. `cwdPorSegmento` segmenta pela mesma noção de fronteira de
+  // comando; casamento por TEXTO (trim) entre as duas segmentações — falha
+  // de casamento (wrapper de string, heredoc reprocessado) cai no cwd do
+  // payload, conservador.
+  let porSegmentoCwd = [];
+  try {
+    porSegmentoCwd = cwdPorSegmento(comando, projeto);
+  } catch {
+    porSegmentoCwd = [];
+  }
+  function cwdDoSegmento(segmento) {
+    const alvo = segmento.trim();
+    for (const item of porSegmentoCwd) {
+      if (item.seg.trim() === alvo) return item.cwd;
+    }
+    return projeto;
+  }
+
   TEXTOS_DE_HEREDOC = [];
   for (const segmento of segmentosParaGate(comando)) {
-    processarSegmento(segmento);
+    processarSegmento(segmento, cwdDoSegmento(segmento));
   }
   verificarTextosDeHeredoc();
 
