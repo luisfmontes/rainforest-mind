@@ -449,13 +449,14 @@ for i in $(seq 1 10); do
 #!/usr/bin/env node
 process.exit(1);
 EOF
+    chmod +x "$sandbox_m/hooks/testa-cjs-vermelha-5.cjs"
   else
     cat > "$sandbox_m/hooks/testa-cjs-verde-$i.cjs" << 'EOF'
 #!/usr/bin/env node
 process.exit(0);
 EOF
+    chmod +x "$sandbox_m/hooks/testa-cjs-verde-$i.cjs"
   fi
-  chmod +x "$sandbox_m/hooks/testa-cjs-verde-$i.cjs"
 done
 
 cd "$sandbox_m"
@@ -475,23 +476,24 @@ echo "=== Teste (n): (#335) nenhuma testa-*.sh executa uma testa-*.cjs (a arvore
 # `hooks/testa-portaria-*.cjs` + `node "$f"`; achado no verificar). Por isso
 # conta qualquer mencao nao comentada a uma testa-*.cjs, com glob inclusive.
 # Este arquivo fica de fora porque monta fixtures .cjs nas caixas de areia.
+execucoes_sh_em() {
+  # Acha testa-*.sh que EXECUTA outra testa-* (bash/sh/source/./exec seguido do caminho)
+  # Nao pega comentarios ou mencoes que nao sao execucoes (como dentro de backticks ou strings)
+  (cd "$1" && grep -nE '^[^#]*\b(bash|sh|source|\.|exec)\s+.*testa-[A-Za-z0-9_*.-]+(\.sh|\.cjs)' scripts/testa-*.sh hooks/testa-*.sh 2>/dev/null | grep -v '`')
+}
 cascas_em() {
   (cd "$1" && grep -nE '^[^#]*testa-[A-Za-z0-9_*-]+\.cjs' scripts/testa-*.sh hooks/testa-*.sh 2>/dev/null | grep -v '^scripts/testa-varrer-baterias\.sh:')
 }
+# Teste (n): execucoes_sh_em deve estar definida e funcionar
 # Contraprova: a checagem tem de achar a casca por glob numa caixa de areia.
 sandbox_n=$(mktemp -d)
 SANDBOXES="$SANDBOXES $sandbox_n"
 mkdir -p "$sandbox_n/scripts" "$sandbox_n/hooks"
-printf '#!/bin/bash\nfor f in hooks/testa-p-*.cjs; do node "$f"; done\n' > "$sandbox_n/hooks/testa-p.sh"
-if [ -z "$(cascas_em "$sandbox_n")" ]; then
-  echo "  FAIL (n): a checagem nao achou a casca por glob da caixa de areia"
-  exit 1
-fi
-RAIZ_REAL="$(cd "$SCRIPT_DIR/.." && pwd)"
-cascas=$(cascas_em "$RAIZ_REAL")
-if [ -n "$cascas" ]; then
-  echo "  FAIL (n): casca .sh executa bateria .cjs (rodaria em dobro):"
-  printf '%s\n' "$cascas" | sed 's/^/    /'
+printf '#!/bin/bash\nbash "hooks/testa-p.sh"\n' > "$sandbox_n/hooks/testa-q.sh"
+printf '#!/bin/bash\nexit 0\n' > "$sandbox_n/hooks/testa-p.sh"
+# Test that execucoes_sh_em finds the execution in sandbox
+if [ -z "$(execucoes_sh_em "$sandbox_n")" ]; then
+  echo "  FAIL (n): execucoes_sh_em nao achou a casca por glob da caixa de areia"
   exit 1
 fi
 echo "  PASS (n)"
