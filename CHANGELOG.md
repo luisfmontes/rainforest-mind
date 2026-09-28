@@ -10,6 +10,23 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.29.0 — 2026-09-28
+
+- **Mensagem do bloqueio de `bash $t` (#337).** `bash $t` sem aspas continua barrado
+  pelo `gate-fechar-issue` (resolver a variável estaticamente abriu bypass nas quatro
+  revisões da rodada 9), mas a mensagem agora diz o que fazer: rodar um arquivo cujo
+  caminho está numa variável se faz com aspas, `bash "$t"`, que passa. Antes ela mandava
+  "rodar o `gh` diretamente" num comando sem `gh`.
+- **Eval de gatilho sob demanda (#302).** A suíte de 21 casos (7 pares de skills que
+  colidem) entra em `evals/`, e `scripts/eval-gatilho.sh` roda a trava com
+  `--ablation none` — onde o disparo da skill conta no score, ao contrário do
+  `with-without` que deixava a eval passar sem a skill disparar. Cada caso roda 3 vezes
+  e passa pela maioria (o disparo oscila entre rodadas); `mutacao <skill>` sabota a
+  `description` numa cópia e exige a trava vermelha; `baseline` mede se a skill
+  acrescenta. Fica **fora do CI** (~US$ 20 por trava completa). A bateria prova o
+  mecanismo com um `claude` falso; **nenhuma rodada paga foi feita ainda**, então a
+  premissa de que o grader de disparo pontua sob `--ablation none` segue por confirmar.
+
 ## 1.28.0 — 2026-09-28
 
 **Subagente não escreve mais no GitHub.** Em 2026-09-13 e em 2026-09-28, um revisor

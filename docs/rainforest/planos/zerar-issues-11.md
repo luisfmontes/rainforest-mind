@@ -43,3 +43,6 @@ paralela: nao
 mutacao: n/a
   motivo: texto de registro e versão, sem comportamento a inverter
 pronto quando: o CHANGELOG ganha a versão minor sobre `origin/main` descrevendo o efeito medido (mensagem nova do bloqueio; script de trava e o que a bateria prova; o que não rodou pago); o README cita `scripts/eval-gatilho.sh` onde lista scripts e o badge acompanha a versão; `bash scripts/testa-versao.sh` com 0 falhas.
+
+## Emendas da integração (2026-09-28)
+- **Tarefa 2:** na leitura do script entregue, `mutacao` tratava qualquer saída ≠ 0 da trava como "mutação detectada" — teto de custo (2) e nenhum caso casado (que também saía 1) viravam exit 0. Agora nenhum caso casado sai 4, e a mutação só conta como detectada com exit 1; o resto é repassado como inconclusivo. O script também vai para a raiz do repositório (`git rev-parse --show-toplevel`) antes de ler `evals/`. Dois casos novos na bateria (13/0); mutação na linha `  if [ "$exit_trava" -ne 1 ]; then` → `  if false; then`: vermelha.

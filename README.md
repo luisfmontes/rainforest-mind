@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.28.0-1e5c3f?style=flat-square" alt="versão 1.28.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.29.0-1e5c3f?style=flat-square" alt="versão 1.29.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -203,6 +203,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `scripts/testa-teto-skills.sh` | Nenhum `SKILL.md` acima de 500 linhas ou 16.384 B — a falha diz o que mover para `references/` |
 | `scripts/testa-mapa-regras.sh` | Cada uma das 17 regras tem linha em `## Regra → trava` de `docs/travas-mecanicas.md` (hook/script existente **ou** `disciplina`), e todo arquivo citado existe |
 | `scripts/conferir-fluxo.cjs mutacoes --slug <slug> [--plano <arquivo>]` | Roda a catraca de cada tarefa do plano que declara `mutacao:` (`conferir-mutacao.cjs` com os campos literais do bloco) e imprime uma linha por tarefa: `vermelho`, `mutante sobreviveu` ou `pulada (<motivo>)`. **Exit 1** se algum mutante sobreviveu, 0 se nenhum (ou tudo pulado), 2 se o plano não existe; `--plano` aponta o arquivo quando ele não está em `docs/rainforest/planos/<slug>.md` — é o que `marcar verificar ok` passa (Issue #192) |
+| `scripts/eval-gatilho.sh trava|mutacao <skill>|baseline` | Eval de gatilho das skills (Issue #302), **sob demanda e fora do CI** — cada rodada é paga (~US$ 0,32 por caso). `trava` roda cada caso de `evals/` 3 vezes com `--ablation none` (o disparo da skill conta no score) e aprova pela maioria; `mutacao` sabota a `description` da skill numa cópia e exige a trava vermelha; `baseline` roda `with-without` uma vez para o "acrescenta / peso morto". `scripts/testa-eval-gatilho.sh` prova o mecanismo com um `claude` falso, sem custo |
 | `scripts/testa-sandbox-com-trap.sh` | Guarda estática das baterias `testa-*.sh` que criam sandbox: **mais de um** `mktemp -d` no arquivo exige o idioma `SANDBOXES=()` + função que registra cada caixa + um único `trap … EXIT` que varre o array; **um só** `mktemp -d` basta com `trap … EXIT` simples; sandbox sem trap nenhum reprova. A própria guarda e `testa-dependencias-de-bateria.sh` ficam fora da varredura real (seus fixtures citam `mktemp -d` como texto); `--autoteste` prova a guarda com fixtures sintéticos (Issue #216) |
 | `--confirmo` em `limpar-branches.cjs` e `limpar-worktrees.cjs --remover-sujo` | Apagar branch e remover worktree sujo exigem a frase literal que o próprio script imprime (`CONFIRMO apagar branches a,b`), digitada por você e repassada verbatim — frase de outro alvo sai 2 e nada acontece |
 | exit **69** `nao-verificavel:` em `conferir-entrega`, `conferir-mutacao`, `conferir-fluxo`, `conferir-ponte` | Ambiente impediu a checagem (worktree sumiu, `git` fora do PATH, bateria que não executa): nem aprovação, nem reprovação, nem `flaky` — anuncia em uma linha e não redespacha (regra 14) |
