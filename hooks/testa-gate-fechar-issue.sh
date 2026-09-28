@@ -2574,11 +2574,16 @@ echo "== (#344) --body-file com caminho MSYS (/c/...) vs C:/... =="
 CORPO_344_REAL=$(mktemp)
 echo "closes #344" > "$CORPO_344_REAL"
 
-# Converter para forma Windows C:/...
-CORPO_344_WIN="$(cygpath -m "$CORPO_344_REAL")"
-
-# Converter para forma MSYS /c/...
-CORPO_344_MSYS=$(echo "$CORPO_344_WIN" | sed 's|^\([A-Z]\):|/\L\1|g')
+# No win32 (Git Bash): forma Windows C:/... e forma MSYS /c/... lado a lado.
+# Fora dele `normalizarMsys` devolve o caminho como veio: as duas formas
+# viram o caminho POSIX absoluto, e o caso afirma que ele e lido (roda, nao pula).
+if command -v cygpath >/dev/null 2>&1; then
+  CORPO_344_WIN="$(cygpath -m "$CORPO_344_REAL")"
+  CORPO_344_MSYS=$(echo "$CORPO_344_WIN" | sed 's|^\([A-Za-z]\):|/\L\1|')
+else
+  CORPO_344_WIN="$CORPO_344_REAL"
+  CORPO_344_MSYS="$CORPO_344_REAL"
+fi
 
 # Caso (344a): --body-file com C:/... (forma Windows) — deve funcionar
 echo
