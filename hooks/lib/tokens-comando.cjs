@@ -94,7 +94,7 @@ function nomeDeWrapper(tok) {
 // falso positivo — "claude" ali e um PADRAO DE BUSCA, argumento do grep,
 // nunca um comando.
 const WRAPPERS_QUE_REPASSAM = new Set([
-  "env", "command", "exec", "nohup", "nice", "timeout", "xargs", "sudo", "time",
+  "env", "command", "exec", "nohup", "nice", "timeout", "xargs", "sudo", "time", "stdbuf",
 ]);
 
 // Operadores de fronteira de segmento com DOIS caracteres que tem que ser
@@ -163,6 +163,7 @@ const FLAGS_COM_VALOR = {
   nice: new Set(["-n"]),
   xargs: new Set(["-n", "-I", "-d", "-P"]),
   timeout: new Set(["-s", "--signal", "-k", "--kill-after"]),
+  stdbuf: new Set(["-i", "-o", "-e", "--input", "--output", "--error"]),
 };
 
 /** `NOME=valor` isolado — atribuicao de variavel antes do comando de verdade. */
@@ -818,6 +819,7 @@ module.exports = {
   nomeDeWrapper,
   WRAPPERS_QUE_REPASSAM,
   OPERADORES_DE_DOIS,
+  pularFlagsDoWrapper,
   posicaoDeComando,
   textoAPartir,
   WRAPPERS_DE_COMANDO,

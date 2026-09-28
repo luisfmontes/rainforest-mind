@@ -2625,6 +2625,17 @@ echo "$ERR_344C" | grep -q "#344" && test_ok "stderr cita #344" || test_fail "st
 
 # Limpeza
 rm -f "$CORPO_344_REAL"
+# Caso: `stdbuf -oL gh issue close 12` (tarefa 1 da rodada 10)
+# stdbuf é um wrapper que repassa o comando; o gate deve analisa o que sobra
+echo
+echo "== (#346) stdbuf -oL gh issue close 12 → exit 2 (wrapper stdbuf) =="
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"stdbuf -oL gh issue close 12"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-346"
+EXIT_346=$?
+[ $EXIT_346 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_346)"
 
 # Resultado final
 echo
