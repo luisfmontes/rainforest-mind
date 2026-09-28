@@ -43,12 +43,27 @@
     "em": "2026-09-28"
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "417935c5cb6bee7b85d1ec174d4bb6464b84b201",
-      "caminhos_sujos": []
+      "head": "a6b489fba5077ad432b8096eda80cdbd8e1aa4d2",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/zerar-issues-11.json",
+        "docs/rainforest/planos/zerar-issues-11.md"
+      ]
     },
-    "vereditos": []
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "aa3ea527221fe2bc1",
+        "veredito": "ok",
+        "em": "2026-09-28",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/a5435dc7-36e5-4a20-b1d0-0d1c8a88edc5/subagents/agent-aa3ea527221fe2bc1.jsonl"
+      }
+    ],
+    "base": "6677d1110e14f4e8fddc69f5b723b3ae3c472c19",
+    "head": "a6b489fba5077ad432b8096eda80cdbd8e1aa4d2",
+    "rodadas": 2,
+    "em": "2026-09-28"
   },
   "verificar": {
     "status": "pendente"
