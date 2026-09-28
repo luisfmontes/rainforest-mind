@@ -74,6 +74,14 @@ if [ "$1" = "pr" ] && [ "$2" = "view" ]; then
   node -e "console.log(JSON.stringify({body: process.env.GH_PR_VIEW_BODY || ''}))"
   exit 0
 fi
+if [ "$1" = "issue" ] && [ "$2" = "close" ]; then
+  # (#339) registra a chamada, só quando a bateria pede (GH_LOG_CHAMADAS
+  # setada) — sem a variável, comportamento idêntico ao de antes (exit 0).
+  if [ -n "${GH_LOG_CHAMADAS:-}" ]; then
+    echo "issue close $3" >> "$GH_LOG_CHAMADAS"
+  fi
+  exit 0
+fi
 exit 0
 STUB
 chmod +x "$SBP/bin/gh"
@@ -2636,6 +2644,65 @@ echo "== (#346) stdbuf -oL gh issue close 12 → exit 2 (wrapper stdbuf) =="
 ) 2>"$SBP/err-346"
 EXIT_346=$?
 [ $EXIT_346 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_346)"
+
+# (#339) N contrabarras antes da quebra, entre aspas duplas
+# Residuo da #313: dentro de aspas duplas de um wrapper, o bash resolve
+# `\\`, `\"`, `\$`, `` \` `` e `\<quebra>` numa UNICA passada da esquerda
+# para a direita — todas disputam a mesma contrabarra. Compara o BASH REAL
+# (rodado de verdade, com um `gh` falso no PATH que registra a chamada num
+# arquivo) contra o gate, com o MESMO payload PreToolUse, para N = 1, 2, 3, 4
+# contrabarras antes da quebra. `command -v gh`, dentro do subshell com o
+# PATH ja trocado, confirma que o `gh` e o do sandbox ANTES de rodar o bash
+# real — nunca ha chance de chamar o `gh` de verdade.
+echo
+echo "== (#339) N contrabarras antes da quebra, entre aspas duplas =="
+GH_LOG_339="$SBP/gh-339.log"
+for N339 in 1 2 3 4; do
+  SCRIPT_339="$SBP/cmd339-$N339.sh"
+  PAYLOAD_339=$(node -e '
+    const fs = require("fs");
+    const N = parseInt(process.argv[1], 10);
+    const bs = "\\".repeat(N);
+    const cmd = "bash -c \"gh issue " + bs + "\n" + "close 12\"";
+    fs.writeFileSync(process.argv[2], cmd + "\n");
+    process.stdout.write(JSON.stringify({cwd: process.argv[3], tool_name: "Bash", tool_input: {command: cmd}}));
+  ' "$N339" "$SCRIPT_339" "$SBP_WIN")
+
+  # 1) BASH REAL: o gh falso so roda depois de `command -v gh`, dentro do
+  # mesmo subshell com o PATH ja trocado, confirmar que resolve para o
+  # sandbox — nunca o gh de verdade.
+  : > "$GH_LOG_339"
+  (
+    export PATH="$SBP/bin:$PATH"
+    export GH_LOG_CHAMADAS="$GH_LOG_339"
+    RESOLVIDO="$(command -v gh)"
+    if [ "$RESOLVIDO" != "$SBP/bin/gh" ]; then
+      echo "gh nao resolveu para o sandbox (veio: $RESOLVIDO)" >&2
+      exit 1
+    fi
+    bash "$SCRIPT_339"
+  ) >"$SBP/out-339-$N339" 2>"$SBP/err-339-$N339"
+  if grep -qx "issue close 12" "$GH_LOG_339" 2>/dev/null; then
+    BASH_CHAMOU_339="sim"
+  else
+    BASH_CHAMOU_339="nao"
+  fi
+
+  # 2) gate com o MESMO payload PreToolUse real
+  EXIT_339=$(
+    export PATH="$SBP/bin:$PATH"
+    echo "$PAYLOAD_339" | node "$SRC/hooks/gate-fechar-issue.cjs" >/dev/null 2>"$SBP/err-gate-339-$N339"
+    echo $?
+  )
+
+  echo "  N=$N339: bash real chamou 'gh issue close 12'? $BASH_CHAMOU_339 | gate-fechar-issue exit $EXIT_339"
+
+  if [ "$BASH_CHAMOU_339" = "sim" ]; then
+    [ "$EXIT_339" -eq 2 ] && test_ok "(#339 N=$N339) bash chamou -> gate exit 2" || test_fail "(#339 N=$N339) bash chamou 'gh issue close 12' mas gate saiu $EXIT_339 (esperado 2)"
+  else
+    [ "$EXIT_339" -ne 2 ] && test_ok "(#339 N=$N339) bash NAO chamou -> gate exit $EXIT_339 (nao 2)" || test_fail "(#339 N=$N339) bash nao chamou 'gh issue close 12' mas gate saiu 2"
+  fi
+done
 
 # Resultado final
 echo
