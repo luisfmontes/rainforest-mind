@@ -469,31 +469,71 @@ else
   exit 1
 fi
 
-echo "=== Teste (n): (#335) nenhuma testa-*.sh executa uma testa-*.cjs (a arvore real e uma caixa de areia) ==="
-# O varredor roda as .cjs direto; uma casca .sh que tambem as execute faz a
-# mesma bateria rodar duas vezes. Duas escaparam: scripts/testa-cli-externo.sh
-# (nome literal; achado da revisao) e hooks/testa-portaria.sh (glob
-# `hooks/testa-portaria-*.cjs` + `node "$f"`; achado no verificar). Por isso
-# conta qualquer mencao nao comentada a uma testa-*.cjs, com glob inclusive.
-# Este arquivo fica de fora porque monta fixtures .cjs nas caixas de areia.
-execucoes_sh_em() {
-  # Acha testa-*.sh que EXECUTA outra testa-* (bash/sh/source/./exec seguido do caminho)
-  # Nao pega comentarios ou mencoes que nao sao execucoes (como dentro de backticks ou strings)
-  (cd "$1" && grep -nE '^[^#]*\b(bash|sh|source|\.|exec)\s+.*testa-[A-Za-z0-9_*.-]+(\.sh|\.cjs)' scripts/testa-*.sh hooks/testa-*.sh 2>/dev/null | grep -v '`')
-}
+echo "=== Teste (n): (#335, #341) nenhuma testa-*.sh executa outra bateria (a arvore real e uma caixa de areia) ==="
+# O varredor roda toda testa-*.sh e testa-*.cjs direto; uma bateria .sh que
+# tambem execute outra faz a mesma bateria rodar duas vezes, e a falha dela
+# aparece em dobro, uma vez com o nome da bateria errada. Tres escaparam:
+# scripts/testa-cli-externo.sh (nome literal; achado da revisao),
+# hooks/testa-portaria.sh (glob `hooks/testa-portaria-*.cjs` + `node "$f"`;
+# achado no verificar) e hooks/testa-gate-publicacao-destino.sh (rodava
+# testa-gate-staging-total.sh e testa-conferir-publicacao.sh; #341).
+# Este arquivo fica de fora porque monta fixtures nas caixas de areia.
+#
+# cascas_em: qualquer mencao nao comentada a uma testa-*.cjs, glob inclusive.
 cascas_em() {
   (cd "$1" && grep -nE '^[^#]*testa-[A-Za-z0-9_*-]+\.cjs' scripts/testa-*.sh hooks/testa-*.sh 2>/dev/null | grep -v '^scripts/testa-varrer-baterias\.sh:')
 }
-# Teste (n): execucoes_sh_em deve estar definida e funcionar
-# Contraprova: a checagem tem de achar a casca por glob numa caixa de areia.
+# execucoes_sh_em: testa-*.sh EXECUTANDO outra testa-*.sh -- bash/sh/source/./
+# exec em posicao de comando (inicio da linha, depois de ; & | ( ou de if/then/do/..., com
+# atribuicoes NOME=valor na frente). Mencao que nao e execucao nao conta:
+# caminho como argumento (alvo de Edit num payload) ou texto de echo. A
+# bateria que reexecuta a si mesma (o caso K de testa-saude.sh roda uma copia
+# da propria bateria) nao e dobro de outra.
+execucoes_sh_em() {
+  (cd "$1" && grep -nE '(^|[;&|(]|(^|[[:space:]])(if|then|do|else|elif|while|until|!))[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*(bash|sh|source|\.|exec)[[:space:]]+[^|;&]*testa-[A-Za-z0-9_.-]+\.sh' scripts/testa-*.sh hooks/testa-*.sh 2>/dev/null \
+    | grep -v '^scripts/testa-varrer-baterias\.sh:' \
+    | awk -F: '{ n = split($1, p, "/"); resto = substr($0, length($1) + length($2) + 3); if (index(resto, p[n]) == 0) print }')
+}
+# Contraprova: as checagens tem de achar, numa caixa de areia, a casca .cjs
+# por glob e a .sh que executa outra .sh -- e nao achar mencao que nao executa.
 sandbox_n=$(mktemp -d)
 SANDBOXES="$SANDBOXES $sandbox_n"
 mkdir -p "$sandbox_n/scripts" "$sandbox_n/hooks"
-printf '#!/bin/bash\nbash "hooks/testa-p.sh"\n' > "$sandbox_n/hooks/testa-q.sh"
-printf '#!/bin/bash\nexit 0\n' > "$sandbox_n/hooks/testa-p.sh"
-# Test that execucoes_sh_em finds the execution in sandbox
-if [ -z "$(execucoes_sh_em "$sandbox_n")" ]; then
-  echo "  FAIL (n): execucoes_sh_em nao achou a casca por glob da caixa de areia"
+printf '#!/bin/bash\nfor f in hooks/testa-p-*.cjs; do node "$f"; done\n' > "$sandbox_n/hooks/testa-p.sh"
+if [ -z "$(cascas_em "$sandbox_n")" ]; then
+  echo "  FAIL (n): a checagem nao achou a casca por glob da caixa de areia"
+  exit 1
+fi
+cat > "$sandbox_n/hooks/testa-a.sh" <<'EOF'
+#!/bin/bash
+if bash "$SRC/hooks/testa-b.sh" > /dev/null; then echo ok; fi
+EOF
+if ! execucoes_sh_em "$sandbox_n" | grep -q '^hooks/testa-a\.sh:'; then
+  echo "  FAIL (n): a checagem nao achou a .sh que executa outra .sh na caixa de areia"
+  exit 1
+fi
+cat > "$sandbox_n/hooks/testa-c.sh" <<'EOF'
+#!/bin/bash
+echo "== bash hooks/testa-b.sh =="
+gate x 0 "$(pay Edit "$SRC/scripts/testa-b.sh" y)"
+( cd "$C" && X=1 bash "$C/hooks/testa-c.sh" )
+EOF
+if execucoes_sh_em "$sandbox_n" | grep -q '^hooks/testa-c\.sh:'; then
+  echo "  FAIL (n): a checagem pegou mencao que nao e execucao (echo, argumento, a propria bateria):"
+  execucoes_sh_em "$sandbox_n" | grep '^hooks/testa-c\.sh:' | sed 's/^/    /'
+  exit 1
+fi
+RAIZ_REAL="$(cd "$SCRIPT_DIR/.." && pwd)"
+cascas=$(cascas_em "$RAIZ_REAL")
+if [ -n "$cascas" ]; then
+  echo "  FAIL (n): casca .sh executa bateria .cjs (rodaria em dobro):"
+  printf '%s\n' "$cascas" | sed 's/^/    /'
+  exit 1
+fi
+execucoes=$(execucoes_sh_em "$RAIZ_REAL")
+if [ -n "$execucoes" ]; then
+  echo "  FAIL (n): bateria .sh executa outra bateria .sh (rodaria em dobro):"
+  printf '%s\n' "$execucoes" | sed 's/^/    /'
   exit 1
 fi
 echo "  PASS (n)"
