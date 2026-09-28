@@ -344,6 +344,40 @@ caso("(D5) node scripts/fechar-issue.cjs em subagente → pelo nome, mesmo versi
 r = rodarComCwd("node scripts/fechar-issue.cjs 12 --comando x --saida y", sandboxD5, { subagente: false });
 caso("(D5) node scripts/fechar-issue.cjs sem agent_id (janela principal) → 0", r.status, 0);
 
+// --- Revisão (2026-09-28): alias, código inline e PowerShell escapavam ---
+console.log("== gate-subagente-sem-gh (revisão: alias, inline, PowerShell) ==");
+
+const sandboxRev = path.join(caixa, "sandbox-rev");
+fs.mkdirSync(sandboxRev, { recursive: true });
+fs.writeFileSync(path.join(sandboxRev, "m.ps1"), "gh issue close 12\n");
+fs.writeFileSync(path.join(sandboxRev, "ok.ps1"), "Write-Host oi\n");
+const ps1Abs = toPosix(path.join(sandboxRev, "m.ps1"));
+
+const casosRevisao = [
+  ['gh alias set co "issue close" && gh co 12', 2, "(revisão) gh alias set + uso do alias"],
+  ["gh co 12", 2, "(revisão) gh <família desconhecida> (alias salvo) em posição de comando"],
+  ["gh extension install o/r", 2, "(revisão) gh extension install"],
+  ["gh gist create a.txt", 2, "(revisão) gh gist create"],
+  [`node -e "require('child_process').execSync('gh issue close 12')"`, 2, "(revisão) node -e com gh issue close"],
+  [`python -c "import os; os.system('gh issue close 12')"`, 2, "(revisão) python -c com gh issue close"],
+  [`pwsh ${ps1Abs}`, 2, "(revisão) pwsh <arquivo .ps1 com gh issue close>"],
+  [`powershell -NoProfile -File ${ps1Abs}`, 2, "(revisão) powershell -File <.ps1>"],
+  ["./m.ps1", 2, "(revisão) ./m.ps1 (caminho direto)"],
+  ['pwsh -Command "gh issue close 12"', 2, "(revisão) pwsh -Command com gh issue close"],
+  ["pwsh -EncodedCommand ZwBoAA==", 2, "(revisão) pwsh -EncodedCommand (ilegível)"],
+  ['cmd /c "gh issue close 12"', 2, "(revisão) cmd /c com gh issue close"],
+  ["python3 -c 'print(1)'", 0, "(revisão) python3 -c sem gh"],
+  [`node -e "console.log('gh is nice')"`, 0, "(revisão) node -e com 'gh' como palavra"],
+  ["pwsh ./ok.ps1", 0, "(revisão) pwsh <.ps1 sem gh>"],
+  ['pwsh -Command "Get-ChildItem"', 0, "(revisão) pwsh -Command sem gh"],
+  ["gh pr checkout 3", 0, "(revisão) gh pr checkout (família conhecida, leitura)"],
+  ["gh --version", 0, "(revisão) gh --version"],
+];
+for (const [comando, esperado, nome] of casosRevisao) {
+  caso(nome, rodarComCwd(comando, sandboxRev).status, esperado);
+}
+caso("(revisão) gh co 12 sem agent_id (janela principal) → 0", rodarComCwd("gh co 12", sandboxRev, { subagente: false }).status, 0);
+
 console.log("-----------------------------------------");
 console.log(`ok: ${ok}   falhou: ${falhou}`);
 process.exit(falhou === 0 ? 0 : 1);

@@ -18,7 +18,8 @@ vezes com a proibição escrita no briefing, uma por stub que não entrou no PAT
 por `alias` num script (alias não expande em script). O gate novo
 `gate-subagente-sem-gh.cjs` nega, dentro de subagente, todo `gh` que escreve no GitHub:
 `issue close|comment|edit|create|reopen|delete…`, `pr create|edit|merge|close|comment…`,
-`release`, `repo`, `workflow run`, `run rerun`, e `gh api` com método diferente de GET ou
+`release`, `repo`, `gist`, `alias set`, `extension install`, `workflow run`, `run rerun`,
+qualquer família que não é do `gh` (alias ou extensão, como `gh co 12`), e `gh api` com método diferente de GET ou
 com campo (`-f`/`-F`, que viram POST). Leitura (`view`, `list`, `checks`, `api` GET)
 passa, e a janela principal passa sempre.
 
@@ -27,7 +28,9 @@ passa, e a janela principal passa sempre.
   (e nega o ilegível, `bash -c "$x"`), corpo de heredoc, e o **script que o subagente
   manda rodar** — lido antes de rodar em `bash`/`sh`/`source`/`python3`/`node`, `./x.sh`,
   `bash < x.sh` e `cat x.sh | bash`, pela forma de shell, pela forma de chamada
-  (`execFileSync('gh', ['issue', 'close'…`) e com variável no lugar do `gh`.
+  (`execFileSync('gh', ['issue', 'close'…`) e com variável no lugar do `gh`; também
+  `pwsh`/`powershell` com `.ps1`, e código inline em `node -e`, `python -c`,
+  `pwsh -Command` e `cmd /c` (`pwsh -EncodedCommand`, ilegível, nega).
 - **Isenção:** bateria `testa-*` rastreada pelo git, mesmo alterada — as baterias citam
   `gh issue close` como texto de teste. Bateria nova precisa de `git add` antes de rodar,
   e a mensagem diz isso. `scripts/fechar-issue.cjs` é negado pelo nome.

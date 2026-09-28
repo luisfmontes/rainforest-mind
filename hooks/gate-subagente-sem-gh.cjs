@@ -55,7 +55,23 @@ const VERBOS_ESCRITA = {
   variable: new Set(["create", "edit", "delete", "set"]),
   workflow: new Set(["run", "enable", "disable"]),
   run: new Set(["rerun", "cancel", "delete"]),
+  // Revisão (2026-09-28): `gh alias set co "issue close" && gh co 12` saía 0.
+  alias: new Set(["set", "import", "delete"]),
+  gist: new Set(["create", "edit", "delete", "rename"]),
+  extension: new Set(["install", "upgrade", "exec"]),
 };
+
+// Famílias embutidas do `gh` (sem o alias padrão `co`, redefinível). Em POSIÇÃO DE
+// COMANDO, primeiro posicional fora desta lista é alias ou extensão — nome
+// que esconde qualquer verbo — e conta como escrita (revisão, 2026-09-28:
+// `gh co 12` com alias salvo saía 0). Na varredura de TEXTO (script, código
+// inline) não vale, porque ali `gh` pode ser só palavra.
+const FAMILIAS_GH = new Set([
+  "alias", "api", "attestation", "auth", "browse", "cache", "codespace",
+  "completion", "config", "extension", "ext", "gist", "gpg-key", "help", "issue",
+  "label", "org", "pr", "preview", "project", "release", "repo", "ruleset",
+  "run", "search", "secret", "ssh-key", "status", "variable", "workflow", "version",
+]);
 
 // Todos os pares [família, verbo] da tabela acima, como sequência de DOIS
 // tokens — usados pela rede de segurança W2 (wrapper desconhecido) e pela
@@ -115,7 +131,7 @@ function apiEhEscrita(argsApi) {
 // passam a ser os dois primeiros POSICIONAIS; `-R`/`--repo` consomem o valor.
 const FLAGS_GH_COM_VALOR = new Set(["-r", "--repo", "--hostname"]);
 
-function comandoGhEhEscrita(subcomandos) {
+function comandoGhEhEscrita(subcomandos, { familiaDesconhecidaEscreve = false } = {}) {
   const posicionais = [];
   for (let i = 0; i < subcomandos.length && posicionais.length < 2; i += 1) {
     const tok = semContrabarra(subcomandos[i]);
@@ -128,6 +144,7 @@ function comandoGhEhEscrita(subcomandos) {
   if (posicionais.length === 0) return false;
   const familia = posicionais[0].v;
   if (familia === "api") return apiEhEscrita(subcomandos.slice(posicionais[0].i + 1));
+  if (familiaDesconhecidaEscreve && !FAMILIAS_GH.has(familia)) return true;
   const verbos = VERBOS_ESCRITA[familia];
   if (!verbos) return false;
   if (posicionais.length < 2) return false;
@@ -410,13 +427,70 @@ function normalizarExecutavel(nome) {
 // `ilegivel: true` para eles (não têm forma de string), o que bloquearia
 // toda `source`/`.` às cegas antes desta tarefa ler o conteúdo.
 // Integração (2026-09-28): `python3`, `zsh`, `dash`, `ksh` e `py` escapavam.
-const INTERPRETADORES_DE_ARQUIVO = new Set(["bash", "sh", "zsh", "dash", "ksh", "source", ".", "node", "python", "python3", "python2", "py"]);
+// Revisão (2026-09-28): `pwsh`/`powershell` com `.ps1` escapavam.
+const INTERPRETADORES_DE_ARQUIVO = new Set(["bash", "sh", "zsh", "dash", "ksh", "source", ".", "node", "python", "python3", "python2", "py", "pwsh", "powershell", "perl", "ruby"]);
 
 // Extensão de script reconhecida para o caminho DIRETO em posição de
 // comando (`./x.sh`) — sem isto, qualquer binário com `/` no nome
 // (`/usr/bin/git`, `node_modules/.bin/eslint`) viraria candidato a "arquivo
 // executado" só por conter barra.
-const EXTENSAO_DE_SCRIPT = /\.(sh|bash|cjs|mjs|js|py)$/i;
+const EXTENSAO_DE_SCRIPT = /\.(sh|bash|cjs|mjs|js|py|ps1|psm1|pl|rb)$/i;
+
+// Código INLINE (revisão, 2026-09-28): `node -e "...execSync('gh issue close
+// 12')"` e `python -c "os.system('gh issue close 12')"` saíam 0 — o gate lia
+// o código como se fosse caminho de arquivo, não achava o arquivo e passava.
+// Flag de código inline por interpretador (comparada em minúsculas).
+const FLAGS_CODIGO_INLINE = {
+  node: new Set(["-e", "--eval", "-p", "--print"]),
+  python: new Set(["-c"]), python3: new Set(["-c"]), python2: new Set(["-c"]), py: new Set(["-c"]),
+  perl: new Set(["-e"]), ruby: new Set(["-e"]),
+  pwsh: new Set(["-c", "-command"]), powershell: new Set(["-c", "-command"]),
+  cmd: new Set(["/c", "/k"]),
+};
+// PowerShell com código em base64 não se lê: ilegível.
+const FLAGS_CODIGO_CODIFICADO = new Set(["-e", "-ec", "-enc", "-encodedcommand"]);
+
+/**
+ * `toks[pos]` roda código INLINE? Devolve `{ codigo }`, `{ ilegivel: true }`
+ * (PowerShell codificado) ou `null`. O código é o token depois da flag (ou o
+ * resto do segmento, para `pwsh -Command` e `cmd /c` sem aspas).
+ */
+function codigoInline(toks, pos) {
+  const exe = normalizarExecutavel(toks[pos].v);
+  const flags = FLAGS_CODIGO_INLINE[exe];
+  if (!flags) return null;
+  const ehPowershell = exe === "pwsh" || exe === "powershell";
+  for (let i = pos + 1; i < toks.length; i += 1) {
+    if (toks[i].q) break;
+    const bruto = toks[i].v;
+    if (!bruto.startsWith("-") && !(exe === "cmd" && bruto.startsWith("/"))) break;
+    const igual = bruto.indexOf("=");
+    const chave = (igual === -1 ? bruto : bruto.slice(0, igual)).toLowerCase();
+    if (ehPowershell && FLAGS_CODIGO_CODIFICADO.has(chave)) return { ilegivel: true };
+    if (flags.has(chave)) {
+      if (igual !== -1) return { codigo: bruto.slice(igual + 1) };
+      const resto = toks.slice(i + 1).map((t) => t.v);
+      if (resto.length === 0) return null;
+      return { codigo: (ehPowershell || exe === "cmd") ? resto.join(" ") : resto[0] };
+    }
+  }
+  return null;
+}
+
+// `gh` seguido de até seis palavras dentro de TEXTO de código (string de
+// `os.system('gh issue close 12')`, `execSync("gh pr merge 1")`): o texto
+// não se tokeniza como shell, então a sequência se procura por expressão.
+const RE_GH_EM_TEXTO = /(?:^|[^\w.\/-])gh(?:\.exe)?((?:\s+[^\s'"`;|&()]+){1,6})/g;
+
+function textoTemEscritaGh(texto) {
+  if (texto.split("\n").some((linha) => linhaEhEscritaGh(linha))) return true;
+  RE_GH_EM_TEXTO.lastIndex = 0;
+  let m;
+  while ((m = RE_GH_EM_TEXTO.exec(texto)) !== null) {
+    if (comandoGhEhEscrita(m[1].trim().split(/\s+/))) return true;
+  }
+  return false;
+}
 
 /**
  * `toks[pos]` é o comando de um segmento que EXECUTA UM ARQUIVO (D4)? Devolve
@@ -580,7 +654,7 @@ function processarSegmento(segmento, cwd) {
   const pos = posicaoDeComando(toks);
   if (pos !== null && normalizarExecutavel(toks[pos].v) === "gh") {
     const subcomandos = toks.slice(pos + 1).map((t) => t.v);
-    if (comandoGhEhEscrita(subcomandos)) {
+    if (comandoGhEhEscrita(subcomandos, { familiaDesconhecidaEscreve: true })) {
       bloqueiaEscrita(segmento);
     }
     return;
@@ -616,11 +690,18 @@ function processarSegmento(segmento, cwd) {
   // (`./x.sh`). Lê o arquivo (resolvido contra `cwd`) e nega por conteúdo
   // (D2 dentro dele) ou por nome (D5, `scripts/fechar-issue.cjs`).
   if (pos !== null) {
+    const inline = codigoInline(toks, pos);
+    if (inline !== null) {
+      if (inline.ilegivel) bloqueiaIlegivel(segmento);
+      if (textoTemEscritaGh(inline.codigo)) bloqueiaEscrita(segmento);
+      return;
+    }
     const arq = caminhoDeArquivoExecutado(toks, pos);
     if (arq !== null) {
       const achado = arquivoDeScriptExecutado(arq, cwd);
       if (achado !== null) bloqueiaArquivo(achado);
-      return;
+      // Sem achado no arquivo, o segmento ainda passa pela W2 abaixo: o
+      // "arquivo" pode não existir porque era outra coisa.
     }
   }
 
