@@ -608,7 +608,8 @@ Uso:
 
 Exit codes:
   0  gravou com sucesso (ou --so-mostrar)
-  2  origem/destino invalido, ferramenta ausente, ou uso errado
+  2  origem/destino invalido, ferramenta ausente, uso errado, ou zip gravado
+     sem o rainforest.db (a copia VACUUM INTO falhou; stderr diz o motivo)
 `.trim());
 }
 
