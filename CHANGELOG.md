@@ -10,6 +10,23 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.30.0 — 2026-09-29
+
+- **Bloqueio por variável diz que a causa é a variável (#350).** Com outra sessão no
+  mesmo diretório, `git -C "$H" switch -c x` (ou `cd "$TMP"` antes do `git`) continua
+  barrado, porque o gate não sabe para onde o comando vai. Antes, a mensagem só dizia
+  "move o HEAD deste checkout". Agora ela explica que o alvo usa variável, substituição
+  ou `cd` que o gate não resolve e manda usar o caminho literal. Com o caminho literal,
+  o gate compara o repositório de verdade, e um clone de outro repo passa.
+- **`--body-file` com variável tem mensagem própria (#350).** `gh pr create --body-file
+  "$SP/pr.md"` continua barrado pelo `gate-fechar-issue`, mas a mensagem agora diz
+  "variável que o gate não resolve" em vez de culpar um caminho relativo que não
+  existe, e pede o caminho literal.
+- **Por que nenhum gate expande variável.** A rodada 9 tentou resolver `$VAR`
+  estaticamente no `gate-fechar-issue`, e quatro revisões acharam bypass (crase colada,
+  array, `read`/`declare`, heredoc como atribuição falsa). Na trava de sessão
+  co-locada, um bypass desses liberaria mover o HEAD da outra sessão.
+
 ## 1.29.1 — 2026-09-29
 
 - **Abertura sonda uma bridge WhatsApp por conta (#356).** Com duas contas no
