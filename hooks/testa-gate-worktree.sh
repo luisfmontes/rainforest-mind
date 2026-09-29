@@ -411,6 +411,49 @@ else
 fi
 
 echo
+echo "(#350) sessao co-locada: alvo com variavel barra citando o caminho literal"
+# Quando o alvo de git -C nao pode ser resolvido (variavel, $(...), etc), o gate nao
+# consegue decidir em qual repo o comando roda de verdade. O conservadorismo marca
+# incerto=true e passa a informacao para bloqueiaColocada, que agora explica na
+# mensagem que com caminho literal o gate consegue comparar o repo de verdade.
+RB="$RAIZ/repo-b"; git init -q "$RB"; git -C "$RB" config user.email t@t; git -C "$RB" config user.name t
+git -C "$RB" config commit.gpgsign false
+echo v1 > "$RB/x.txt"; git -C "$RB" add .; git -C "$RB" commit -qm base
+
+RBW="$(cygpath -m "$RB" 2>/dev/null || printf '%s' "$RB")"
+RBLIT="$(esc "$RBW")"
+RLIT="$(esc "$R")"
+
+monta_sessoes "$EU|$(esc "$R")|1|1" "$OUTRA|$(esc "$R")|15|2"
+
+echo "-- alvo com substituicao: barra citando 'caminho literal' --"
+# Usa node para criar payload com substituicao de variavel
+psub() { node -e 'const [c,d,s]=process.argv.slice(1);process.stdout.write(JSON.stringify({session_id:s||"11111111-1111-1111-1111-111111111111",cwd:d,tool_name:"Bash",tool_input:{command:c}}))' "$1" "$2" "$3"; }
+saida=$(printf '%s' "$(psub 'git -C $ALVO_DESCONHECIDO switch -q -c fix/y' "$R" "$EU")" | RFM_ROOT="$DADOSW" node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ] && printf '%s' "$saida" | grep -q "caminho literal"; then
+  ok=$((ok+1)); echo "  ok   alvo com variavel barra com 'caminho literal' (exit 2)"
+else
+  falhou=$((falhou+1)); echo "  FALHA alvo com variavel (exit $rc; esperava 2 com msg): $(printf '%s' "$saida" | grep 'caminho literal' | head -1)"
+fi
+
+echo "-- alvo com clone literal de outro repo: nao barra (exit 0) --"
+RB2="$RAIZ/repo-b2"; git init -q "$RB2"; git -C "$RB2" config user.email t@t; git -C "$RB2" config user.name t
+git -C "$RB2" config commit.gpgsign false
+echo v1 > "$RB2/y.txt"; git -C "$RB2" add .; git -C "$RB2" commit -qm base
+RB2W="$(cygpath -m "$RB2" 2>/dev/null || printf '%s' "$RB2")"
+RB2LIT="$(esc "$RB2W")"
+
+gatec "alvo com clone literal de outro repo nao barra" 0 "$(p "git -C $RB2LIT switch -q -c fix/y" "$R")"
+
+echo "-- alvo com principal literal: barra SEM 'caminho literal' na msg --"
+saida=$(printf '%s' "$(p "git -C $RLIT switch -q -c fix/y" "$R")" | RFM_ROOT="$DADOSW" node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 2 ] && ! printf '%s' "$saida" | grep -q "caminho literal"; then
+  ok=$((ok+1)); echo "  ok   alvo com principal literal barra SEM 'caminho literal' (exit 2)"
+else
+  falhou=$((falhou+1)); echo "  FALHA alvo com principal literal (exit $rc; esperava 2 sem msg): $(printf '%s' "$saida" | grep 'caminho literal' | head -1)"
+fi
+
+echo
 echo "== casos do conserto da âncora: checkout/switch na posição certa =="
 # A âncora antiga casava "checkout"/"switch" em QUALQUER lugar do comando e barrava
 # `git commit -m "checkout later"`. A segunda tentativa exigia nome sem ponto nem

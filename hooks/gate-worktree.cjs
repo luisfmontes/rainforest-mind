@@ -657,7 +657,7 @@ function alvosBashEscrita(comando, cwdInicial) {
  * desligou a trava. Quem le ESTA mensagem e quem tem a autoridade de decidir seguir
  * — e uma trava que barra sem dizer como sair e uma trava que o usuario arranca.
  */
-function bloqueiaColocada(verbo, toplevel, outras, agora) {
+function bloqueiaColocada(verbo, toplevel, outras, agora, incerto) {
   const lista = outras
     .map((s) => {
       const min = Math.round((agora - s.ultimo_ts) / 60000);
@@ -665,11 +665,18 @@ function bloqueiaColocada(verbo, toplevel, outras, agora) {
     })
     .join("\n");
 
-  process.stderr.write(
-    `BLOQUEADO pelo gate de sessao co-locada do rainforest-mind.\n\n` +
+  let msg = `BLOQUEADO pelo gate de sessao co-locada do rainforest-mind.\n\n` +
     `Comando: git ${verbo} — move o HEAD deste checkout.\n` +
-    `Repo: ${toplevel}\n` +
-    `Outra(s) sessao(oes) do Claude Code neste MESMO diretorio:\n${lista}\n\n` +
+    `Repo: ${toplevel}\n`;
+
+  if (incerto) {
+    msg += `O alvo do comando usa variavel, substituicao ou cd que o gate nao resolve, por\n` +
+      `isso ele foi lido como este checkout daqui. Com um caminho literal — sem variavel,\n` +
+      `sem substituicao e sem cd nao-resolvivel — o gate compara o repo de verdade.\n` +
+      `Clone de outro repo git passa se o caminho for literal.\n\n`;
+  }
+
+  msg += `Outra(s) sessao(oes) do Claude Code neste MESMO diretorio:\n${lista}\n\n` +
     `HEAD e do CHECKOUT, nao da janela: trocar de branch aqui troca para as duas.\n` +
     `Um \`git checkout -b\` numa arranca a outra da branch em que ela estava.\n\n` +
     `A SAIDA e um checkout so seu, que ninguem mais compartilha:\n` +
@@ -679,8 +686,9 @@ function bloqueiaColocada(verbo, toplevel, outras, agora) {
     `Se voce SABE que a outra sessao nao esta trabalhando aqui, tem tres saidas:\n` +
     `  - node scripts/setup.cjs --desligar gate-worktree --escopo projeto (preferida);\n` +
     `  - RAINFOREST_GATE_OFF=1 no ambiente da sessao (desliga na sessao inteira);\n` +
-    `  - arquivo .rainforest-gate-off na raiz do repo (desliga so naquele repo).\n`
-  );
+    `  - arquivo .rainforest-gate-off na raiz do repo (desliga so naquele repo).\n`;
+
+  process.stderr.write(msg);
   process.exit(2);
 }
 
@@ -688,11 +696,20 @@ function bloqueiaColocada(verbo, toplevel, outras, agora) {
  * A trava de sessao co-locada. Volta sem fazer nada quando nao se aplica; nao volta
  * quando barra.
  *
- * FALHA PARA O LADO DE LIBERAR em tudo que ela nao consegue medir — sem `session_id`
- * no evento, sem `sessoes.json`, sem raiz de dados, fora de repo git. E o mesmo
- * principio que o `estadoDoRepo` ja aplica quando o git nao responde, e aqui ele pesa
- * mais: esta e a UNICA condicao do arquivo que pode barrar a janela principal, e um
- * falso positivo aqui trava o trabalho de quem esta sozinho no repo.
+ * FALHA PARA O LADO DE LIBERAR em tudo que ela nao consegue medir por falta de
+ * INFRAESTRUTURA — sem `session_id` no evento, sem `sessoes.json`, sem raiz de dados,
+ * fora de repo git. E o mesmo principio que o `estadoDoRepo` ja aplica quando o git
+ * nao responde, e aqui ele pesa mais: esta e a UNICA condicao do arquivo que pode
+ * barrar a janela principal, e um falso positivo aqui trava o trabalho de quem esta
+ * sozinho no repo.
+ *
+ * ALVO QUE O PARSER NAO RESOLVE NAO E falta de infraestrutura, e BARRA (#350): `-C`
+ * com variavel, `$(...)`, `cd` nao-resolvivel. A outra sessao existe e foi medida; o
+ * que falta e saber para onde o comando vai, e liberar ali e o incidente que a trava
+ * existe para impedir. Nenhuma expansao de variavel entra no parser — a rodada 9
+ * tentou no gate-fechar-issue e quatro revisoes acharam bypass. O que o alvo incerto
+ * ganha e a mensagem: `bloqueiaColocada` diz que a causa e o `$` e manda usar o
+ * caminho literal, que o gate compara pelo toplevel (clone de outro repo passa).
  *
  * O `session_id` e o que distingue quem pergunta de quem esta la — as duas entradas
  * do incidente tinham `cwd` identico, entao `cwd` sozinho nao serve (D5). O hook
@@ -736,7 +753,7 @@ function gateDeSessaoColocada(ev, cwd) {
     const estado = estadoDoRepo(dirDe(alvo.dir));
     if (!estado) continue;
     if (estado.toplevel !== daqui.toplevel) continue;
-    bloqueiaColocada(alvo.verbo, daqui.toplevel, outras, agora);
+    bloqueiaColocada(alvo.verbo, daqui.toplevel, outras, agora, alvo.incerto === true);
   }
 }
 
