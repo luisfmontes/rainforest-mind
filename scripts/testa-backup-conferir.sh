@@ -38,10 +38,10 @@ criarOrigem() {
     const dbpath = path.join('$(cygpath -m "$dir")', 'rainforest.db');
     const db = new DatabaseSync(dbpath);
     db.exec('CREATE TABLE test (id INTEGER PRIMARY KEY, value TEXT)');
-    db.exec('INSERT INTO test (value) VALUES (\"test\")');
+    db.prepare('INSERT INTO test (value) VALUES (?)').run('test');
     db.close();
   "
-  [ -s "$dir/rainforest.db" ] || { echo "  FALHA criarOrigem nao criou o rainforest.db em $dir"; exit 1; }
+  [ "$(node -e "const {DatabaseSync}=require('node:sqlite');const d=new DatabaseSync(process.argv[1],{readOnly:true});console.log(d.prepare('select count(*) n from test').get().n)" "$(cygpath -m "$dir")/rainforest.db" 2>/dev/null)" = 1 ] || { echo "  FALHA criarOrigem nao criou o rainforest.db com uma linha em $dir"; exit 1; }
 
   mkdir -p "$dir/referencias" "$dir/relatorios"
   echo "ref1" > "$dir/referencias/ref1.txt"
@@ -206,7 +206,7 @@ igual "gravar exit code (db-snapshot)" "$exit_grava_db_snapshot" "0"
 node -e "
   const { DatabaseSync } = require('node:sqlite');
   const db = new DatabaseSync('$(cygpath -m "$origem_db_snapshot")/rainforest.db');
-  db.exec('INSERT INTO test (value) VALUES (\"altered\")');
+  db.prepare('INSERT INTO test (value) VALUES (?)').run('altered');
   db.close();
 " 2>/dev/null
 

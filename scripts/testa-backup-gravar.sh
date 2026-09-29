@@ -38,10 +38,10 @@ criarOrigem() {
     const dbpath = path.join('$(cygpath -m "$dir")', 'rainforest.db');
     const db = new DatabaseSync(dbpath);
     db.exec('CREATE TABLE test (id INTEGER PRIMARY KEY, value TEXT)');
-    db.exec('INSERT INTO test (value) VALUES (\"test\")');
+    db.prepare('INSERT INTO test (value) VALUES (?)').run('test');
     db.close();
   "
-  [ -s "$dir/rainforest.db" ] || { echo "  FALHA criarOrigem nao criou o rainforest.db em $dir"; exit 1; }
+  [ "$(node -e "const {DatabaseSync}=require('node:sqlite');const d=new DatabaseSync(process.argv[1],{readOnly:true});console.log(d.prepare('select count(*) n from test').get().n)" "$(cygpath -m "$dir")/rainforest.db" 2>/dev/null)" = 1 ] || { echo "  FALHA criarOrigem nao criou o rainforest.db com uma linha em $dir"; exit 1; }
 
   mkdir -p "$dir/referencias" "$dir/relatorios"
   echo "ref1" > "$dir/referencias/ref1.txt"
@@ -304,7 +304,7 @@ pid_db=""
 node -e "
   const { DatabaseSync } = require('node:sqlite');
   const db = new DatabaseSync('$(cygpath -m "$origem_db_aberto")/rainforest.db');
-  db.exec('INSERT INTO test (value) VALUES (\"inserted\")');
+  db.prepare('INSERT INTO test (value) VALUES (?)').run('inserted');
   require('fs').writeFileSync('$(cygpath -m "$marker_file")', 'ok');
   setTimeout(() => {}, 60000);
 " 2>/dev/null &
@@ -316,6 +316,9 @@ while [ ! -f "$marker_file" ] && [ $timeout -gt 0 ]; do
   sleep 0.1
   timeout=$((timeout - 1))
 done
+# Sem o processo vivo segurando a conexao, o caso nao reproduz nada: o
+# Compress-Archive so falha com o banco aberto por outro processo.
+verdade "processo segura o banco aberto durante o gravar (db-aberto)" "$([ -f "$marker_file" ] && kill -0 "$pid_db" 2>/dev/null && echo sim || echo nao)"
 
 origem_db_aberto_win=$(cygpath -w "$origem_db_aberto")
 destino_db_aberto_win=$(cygpath -w "$destino_db_aberto")
