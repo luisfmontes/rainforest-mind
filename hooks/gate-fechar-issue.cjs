@@ -517,6 +517,9 @@ function extrairCorpoDoPR(segmento, cwdSegmento) {
         continue;
       }
       arquivo = normalizarMsys(arquivo);
+      if (/[$\x60]/.test(arquivo)) {
+        return { tipo: "arquivo", conteudo: null, legivel: false, variavel: true };
+      }
       if (!path.isAbsolute(arquivo) && cwdSegmento == null) {
         // Caminho relativo e não dá pra saber onde este segmento roda de
         // verdade (não achado no mapa de `cwdPorSegmento`, ou `incerto`):
@@ -687,7 +690,15 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento) {
 
     // Corpo ilegível (não consegue ler com segurança)
     if (!corpoDoPR.legivel) {
-      if (corpoDoPR.tipo === "arquivo" && corpoDoPR.cwdIncerto) {
+      if (corpoDoPR.tipo === "arquivo" && corpoDoPR.variavel) {
+        bloqueia(
+          `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+          `Razão: --body-file contém uma variável que o gate não resolve ($, crase).\n\n` +
+          `O gate lê o arquivo antes de o 'gh' rodar e não expande variável: qualquer ` +
+          `forma com $ continua barrada. Escreva o caminho literal, por extenso:\n` +
+          `  gh pr create --body-file "C:/caminho/literal/corpo.md"\n`
+        );
+      } else if (corpoDoPR.tipo === "arquivo" && corpoDoPR.cwdIncerto) {
         bloqueia(
           `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
           `Razão: --body-file usa caminho relativo, e o diretório efetivo deste ` +

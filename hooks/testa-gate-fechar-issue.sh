@@ -2805,6 +2805,35 @@ ERR_337=$(
 )
 echo "$ERR_337" | grep -qF 'bash "$t" passa' && test_fail "(#337) bash -c \"\$x\" traz a orientação de bash \"\$t\" (não devia)" || test_ok "(#337) bash -c \"\$x\" sem a orientação de bash \"\$t\""
 
+# Caso (#350) --body-file com variável → exit 2 citando variavel nao resolvivel
+echo
+echo "== (#350) --body-file com variavel → exit 2 citando variavel nao resolvivel =="
+
+# Caso (350a): `SP=C:/x; gh pr create --title t --body-file "$SP/pr.md"` → exit 2, stderr contém "variável que o gate não resolve" e NÃO contém "caminho relativo"
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"SP=C:/x; gh pr create --title t --body-file \"$SP/pr.md\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-350a"
+EXIT_350A=$?
+[ $EXIT_350A -eq 2 ] && test_ok "exit 2 (variável)" || test_fail "exit code (foi $EXIT_350A)"
+ERR_350A="$(cat "$SBP/err-350a")"
+echo "$ERR_350A" | grep -q "variável que o gate não resolve" && test_ok "stderr cita 'variável que o gate não resolve'" || test_fail "stderr não cita 'variável que o gate não resolve' ($ERR_350A)"
+echo "$ERR_350A" | grep -q "caminho relativo" && test_fail "stderr NÃO deve citar 'caminho relativo' ($ERR_350A)" || test_ok "stderr não cita 'caminho relativo'"
+
+# Caso (350b): `cd $(pwd)/x && gh pr create --body-file pr.md` → exit 2, stderr contém "caminho relativo" (controle: relativo com cwd incerto)
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  PAYLOAD='{"cwd":"'"$SBP_WIN_PRINCIPAL"'","tool_name":"Bash","tool_input":{"command":"cd $(pwd)/x && gh pr create --body-file pr.md"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-350b"
+EXIT_350B=$?
+[ $EXIT_350B -eq 2 ] && test_ok "exit 2 (relativo)" || test_fail "exit code (foi $EXIT_350B)"
+ERR_350B="$(cat "$SBP/err-350b")"
+echo "$ERR_350B" | grep -q "caminho relativo" && test_ok "stderr cita 'caminho relativo'" || test_fail "stderr não cita 'caminho relativo' ($ERR_350B)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
