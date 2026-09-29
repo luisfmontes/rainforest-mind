@@ -1459,6 +1459,19 @@ checa "declarada e morta, diz FORA"                  tem     "bridge WhatsApp FO
 checa "declarada, a URL declarada e a que aparece"   tem     "127.0.0.1:59421"          "$COM_DEP"
 checa "claude-mem ausente segue fora do bloco"       nao_tem "claude-mem"               "$COM_DEP"
 
+# Multi-conta (2026-09-29): accounts.json com a porta declarada entre as contas faz
+# o hook sondar UMA bridge POR CONTA e nomear cada uma. Antes, só a declarada era
+# sondada e o resultado valia como "o WhatsApp" inteiro.
+printf '{"accounts":{"pessoal":{"port":59421},"trabalho":{"port":59423}}}\n' > "$CAIXA_DEP/accounts.json"
+MULTI="$(ctx_hook "WHATSAPP_API_BASE_URL=http://127.0.0.1:59421" "WHATSAPP_MCP_ACCOUNTS=$CAIXA_DEP/accounts.json" "RFM_ROOT=$RAIZ_NEUTRA" "CLAUDE_CONFIG_DIR=$CAIXA_DEP" "RFM_SETTINGS_PATH=$CAIXA_DEP/settings.json")"
+checa "multi-conta, nomeia a pessoal"                tem     "pessoal FORA (:59421)"    "$MULTI"
+checa "multi-conta, sonda tambem a trabalho"         tem     "trabalho FORA (:59423)"   "$MULTI"
+# Porta declarada fora do arquivo: o arquivo não é desta instalação, vale a de sempre.
+printf '{"accounts":{"pessoal":{"port":59425}}}\n' > "$CAIXA_DEP/accounts.json"
+ALHEIO="$(ctx_hook "WHATSAPP_API_BASE_URL=http://127.0.0.1:59421" "WHATSAPP_MCP_ACCOUNTS=$CAIXA_DEP/accounts.json" "RFM_ROOT=$RAIZ_NEUTRA" "CLAUDE_CONFIG_DIR=$CAIXA_DEP" "RFM_SETTINGS_PATH=$CAIXA_DEP/settings.json")"
+checa "contas de outra porta, checagem unica"        tem     "bridge WhatsApp FORA (http://127.0.0.1:59421)" "$ALHEIO"
+checa "contas de outra porta, nao nomeia conta"      nao_tem "pessoal FORA"             "$ALHEIO"
+
 echo
 echo "17. ISENCOES MECANIZADAS — pastasDoFoco, dentroDoExpediente, focoAtivoEmOutraJanela, computarVeredito"
 # D6: "sem dado, cobra — e a ausencia se anuncia". As quatro funcoes deste bloco
