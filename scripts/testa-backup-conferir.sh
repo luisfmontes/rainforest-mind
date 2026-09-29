@@ -30,7 +30,19 @@ criarOrigem() {
   echo '{}' > "$dir/ferramentas.jsonl"
   echo '{}' > "$dir/projetos.json"
   echo '{}' > "$dir/config.json"
-  dd if=/dev/zero bs=1024 count=100 of="$dir/rainforest.db" 2>/dev/null
+
+  # Cria rainforest.db como SQLite real com uma tabela
+  node -e "
+    const { DatabaseSync } = require('node:sqlite');
+    const path = require('path');
+    const dbpath = path.join('$(cygpath -m "$dir")', 'rainforest.db');
+    const db = new DatabaseSync(dbpath);
+    db.exec('CREATE TABLE test (id INTEGER PRIMARY KEY, value TEXT)');
+    db.exec('INSERT INTO test (value) VALUES (\"test\")');
+    db.close();
+  "
+  [ -s "$dir/rainforest.db" ] || { echo "  FALHA criarOrigem nao criou o rainforest.db em $dir"; exit 1; }
+
   mkdir -p "$dir/referencias" "$dir/relatorios"
   echo "ref1" > "$dir/referencias/ref1.txt"
   echo "rel1" > "$dir/relatorios/rel1.txt"
@@ -173,6 +185,84 @@ saida_conferir_e=$(node "$SRC/scripts/backup.cjs" conferir --origem "$origem_e_w
 exit_conferir_e=$?
 igual "conferir exit code (destino com apostrofo)" "$exit_conferir_e" "0"
 contem "conferir diz intacto (destino com apostrofo)" "$saida_conferir_e" "intacto"
+
+# --- CASO (db-snapshot): zip recém-gravado, com o banco da origem alterado depois, conferir sai 0 (integrity_check, não hash)
+
+teste "db-snapshot" "zip recém-gravado, banco alterado depois, conferir sai 0 (integrity_check, nao hash)"
+
+origem_db_snapshot="$SB/origem_db_snapshot"
+destino_db_snapshot="$SB/destino_db_snapshot"
+criarOrigem "$origem_db_snapshot"
+
+origem_db_snapshot_win=$(cygpath -w "$origem_db_snapshot")
+destino_db_snapshot_win=$(cygpath -w "$destino_db_snapshot")
+
+# Grava o backup
+node "$SRC/scripts/backup.cjs" gravar --origem "$origem_db_snapshot_win" --destino "$destino_db_snapshot_win" >/dev/null 2>&1
+exit_grava_db_snapshot=$?
+igual "gravar exit code (db-snapshot)" "$exit_grava_db_snapshot" "0"
+
+# Altera o banco na origem (INSERT novo)
+node -e "
+  const { DatabaseSync } = require('node:sqlite');
+  const db = new DatabaseSync('$(cygpath -m "$origem_db_snapshot")/rainforest.db');
+  db.exec('INSERT INTO test (value) VALUES (\"altered\")');
+  db.close();
+" 2>/dev/null
+
+# Confere — deve sair 0 apesar da alteração, porque confere por integrity_check
+saida_conferir_db_snapshot=$(node "$SRC/scripts/backup.cjs" conferir --origem "$origem_db_snapshot_win" --destino "$destino_db_snapshot_win" 2>&1)
+exit_conferir_db_snapshot=$?
+igual "conferir exit code (db-snapshot)" "$exit_conferir_db_snapshot" "0"
+contem "conferir diz intacto (db-snapshot)" "$saida_conferir_db_snapshot" "intacto"
+
+# --- CASO (db-corrompido): rainforest.db do zip é corrompido, conferir sai 1 com integrity_check
+
+teste "db-corrompido" "rainforest.db do zip corrompido: conferir sai 1 com integrity_check"
+
+origem_db_corrompido="$SB/origem_db_corrompido"
+destino_db_corrompido="$SB/destino_db_corrompido"
+criarOrigem "$origem_db_corrompido"
+
+origem_db_corrompido_win=$(cygpath -w "$origem_db_corrompido")
+destino_db_corrompido_win=$(cygpath -w "$destino_db_corrompido")
+
+# Grava o backup
+node "$SRC/scripts/backup.cjs" gravar --origem "$origem_db_corrompido_win" --destino "$destino_db_corrompido_win" >/dev/null 2>&1
+exit_grava_db_corrompido=$?
+igual "gravar exit code (db-corrompido)" "$exit_grava_db_corrompido" "0"
+
+# Define hoje para nomes de arquivo (necessário para os casos novos)
+hoje=$(date +%Y-%m-%d)
+
+# Extrai o zip, corrompe o rainforest.db, recompacta
+zipfile_db_corrompido="$destino_db_corrompido/rainforest-${hoje}.zip"
+expanddir_db_corrompido="$SB/expand_db_corrompido"
+mkdir -p "$expanddir_db_corrompido"
+
+zipfile_db_corrompido_win=$(cygpath -w "$zipfile_db_corrompido")
+expanddir_db_corrompido_win=$(cygpath -w "$expanddir_db_corrompido")
+
+# Extrai
+powershell -NoProfile -NonInteractive -Command "Expand-Archive -Path '$zipfile_db_corrompido_win' -DestinationPath '$expanddir_db_corrompido_win' -Force" 2>&1 >/dev/null || true
+
+# Corrompe o rainforest.db
+echo "CORRUPTED_BYTES" > "$expanddir_db_corrompido/rainforest.db"
+
+# Remove o zip antigo
+rm "$zipfile_db_corrompido"
+
+# Recompacta todos os arquivos
+powershell -NoProfile -NonInteractive -Command "
+  Get-ChildItem -Path '$expanddir_db_corrompido_win\\*' -Force |
+  Compress-Archive -DestinationPath '$zipfile_db_corrompido_win' -Force
+" 2>&1 >/dev/null || true
+
+# Confere — deve sair 1 por causa do banco corrompido
+saida_conferir_db_corrompido=$(node "$SRC/scripts/backup.cjs" conferir --origem "$origem_db_corrompido_win" --destino "$destino_db_corrompido_win" 2>&1)
+exit_conferir_db_corrompido=$?
+igual "conferir exit code (db-corrompido)" "$exit_conferir_db_corrompido" "1"
+contem "conferir menciona integrity_check (db-corrompido)" "$saida_conferir_db_corrompido" "integrity_check"
 
 # ==================== RESUMO ====================
 echo ""

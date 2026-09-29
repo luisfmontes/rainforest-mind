@@ -9,6 +9,7 @@
  * - Lista fechada de entrada (D10): FOCO.md, ESTRATEGIA.md, AVANCOS.md, ideias.jsonl,
  *   divergencias.jsonl, ferramentas.jsonl, projetos.json, config.json, rainforest.db,
  *   referencias/, relatorios/
+ * - rainforest.db entra como cópia consistente via VACUUM INTO (permite backup com banco aberto)
  * - Escrita atômica (temp + rename)
  * - Rotação: máximo 30 zips, remove os mais antigos, nunca o recém-gravado
  *
@@ -20,7 +21,7 @@
  *
  * Exit codes:
  *   0  gravou com sucesso (ou --so-mostrar)
- *   2  origem/destino inválido, ferramenta ausente, ou uso errado
+ *   2  origem/destino inválido, ferramenta ausente, cópia do banco falhou, ou uso errado
  */
 
 'use strict';
@@ -158,9 +159,9 @@ function rotacionarZips(destino, nomeDoNovoZip) {
 /**
  * Compacta direto com Compress-Archive inline, usando -Path com lista
  */
-function compactarSimples(origem, itens, zipPath) {
+function compactarSimples(origem, itens, zipPath, substituicoes = {}) {
   const itensExistentes = itens.filter((item) => {
-    const caminhoCompleto = path.join(origem, item);
+    const caminhoCompleto = substituicoes[item] || path.join(origem, item);
     try {
       return fs.existsSync(caminhoCompleto);
     } catch {
@@ -174,7 +175,7 @@ function compactarSimples(origem, itens, zipPath) {
 
   // Constrói os caminhos completos com escape correto
   const caminhos = itensExistentes.map((item) => {
-    const fullPath = path.join(origem, item);
+    const fullPath = substituicoes[item] || path.join(origem, item);
     // Escapar apóstrofos duplicando
     return `'${fullPath.replace(/'/g, "''")}'`;
   }).join(', ');
@@ -236,6 +237,42 @@ function listarArquivosRecursivamente(dir) {
 
   lerDiretorio(dir);
   return arquivos.sort();
+}
+
+/**
+ * Copia o rainforest.db de forma consistente via VACUUM INTO.
+ * Retorna { caminho, dir } em sucesso, ou { erro, dir } em falha.
+ * Se o arquivo não existe, retorna { caminho: null }.
+ */
+function copiarBancoConsistente(origem) {
+  const caminhoOrigem = path.join(origem, 'rainforest.db');
+
+  if (!fs.existsSync(caminhoOrigem)) {
+    return { caminho: null };
+  }
+
+  let dir;
+  try {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rainforest-db-'));
+
+    try {
+      const { DatabaseSync } = require('node:sqlite');
+      const caminhoAlvo = path.join(dir, 'rainforest.db');
+      const caminhoAlvoEscapado = caminhoAlvo.replace(/'/g, "''");
+      const db = new DatabaseSync(caminhoOrigem, { readOnly: true });
+      try {
+        db.exec(`VACUUM INTO '${caminhoAlvoEscapado}'`);
+      } finally {
+        db.close();
+      }
+
+      return { caminho: caminhoAlvo, dir };
+    } catch (err) {
+      return { erro: err.message, dir };
+    }
+  } catch (err) {
+    return { erro: err.message, dir: null };
+  }
 }
 
 /**
@@ -331,6 +368,30 @@ function cmdConferir(args) {
         arquivoDivergente = caminhoRelativo;
         descricaoDivergencia = 'arquivo nao existe na origem';
         break;
+      }
+
+      // Prova rainforest.db por restauração (integrity_check), não por hash
+      if (caminhoRelativo === 'rainforest.db') {
+        try {
+          const { DatabaseSync } = require('node:sqlite');
+          const db = new DatabaseSync(arquivoExpandido, { readOnly: true });
+          try {
+            const result = db.prepare('PRAGMA integrity_check').get();
+            const integrityValue = result && result.integrity_check ? result.integrity_check : '';
+            if (integrityValue !== 'ok') {
+              arquivoDivergente = caminhoRelativo;
+              descricaoDivergencia = `banco nao passa no integrity_check (${integrityValue || 'unknown'})`;
+              break;
+            }
+          } finally {
+            db.close();
+          }
+        } catch (err) {
+          arquivoDivergente = caminhoRelativo;
+          descricaoDivergencia = `banco nao passa no integrity_check (${err.message})`;
+          break;
+        }
+        continue;
       }
 
       // Compara hashes
@@ -466,11 +527,36 @@ function cmdGravar(args) {
   // Limpa um parcial deixado por uma tentativa anterior que falhou no meio
   try { fs.unlinkSync(caminhoTmp); } catch { }
 
+  // Copia o banco de forma consistente
+  const resultadoCopia = copiarBancoConsistente(origem);
+  const limpar = (dir) => {
+    if (dir) {
+      try { fs.rmSync(dir, { recursive: true, force: true }); } catch { }
+    }
+  };
+
+  let itensCompactar = ITENS_BACKUP;
+  let substituicoes = {};
+  let erroNoBanco = null;
+
+  if (resultadoCopia.caminho) {
+    // Sucesso: usar a cópia do banco
+    substituicoes = { 'rainforest.db': resultadoCopia.caminho };
+  } else if (resultadoCopia.erro) {
+    // Erro: compactar sem o banco
+    erroNoBanco = resultadoCopia.erro;
+    itensCompactar = ITENS_BACKUP.filter((item) => item !== 'rainforest.db');
+  } else {
+    // Arquivo não existe - compactar sem o banco
+    itensCompactar = ITENS_BACKUP.filter((item) => item !== 'rainforest.db');
+  }
+
   // Compacta via PowerShell
-  const resultadoCompact = compactarSimples(origem, ITENS_BACKUP, caminhoTmp);
+  const resultadoCompact = compactarSimples(origem, itensCompactar, caminhoTmp, substituicoes);
   if (!resultadoCompact.sucesso) {
     console.error(`RECUSADO: ${resultadoCompact.saida}`);
     try { fs.unlinkSync(caminhoTmp); } catch { }
+    limpar(resultadoCopia.dir);
     process.exit(2);
   }
 
@@ -478,6 +564,7 @@ function cmdGravar(args) {
   if (!fs.existsSync(caminhoTmp)) {
     console.error('RECUSADO: Compress-Archive nao criou o arquivo');
     try { fs.unlinkSync(caminhoTmp); } catch { }
+    limpar(resultadoCopia.dir);
     process.exit(2);
   }
 
@@ -487,11 +574,22 @@ function cmdGravar(args) {
   } catch (err) {
     console.error(`RECUSADO: nao consegui renomear para o nome final: ${err.message}`);
     try { fs.unlinkSync(caminhoTmp); } catch { }
+    limpar(resultadoCopia.dir);
     process.exit(2);
   }
 
   // Rotaciona
   rotacionarZips(destino, nomeZip);
+
+  // Se houve erro no banco, imprime e sai 2
+  if (erroNoBanco) {
+    limpar(resultadoCopia.dir);
+    console.error(`RECUSADO: rainforest.db ficou fora do backup: ${erroNoBanco}`);
+    process.exit(2);
+  }
+
+  // Limpa o diretório temporário em caso de sucesso
+  limpar(resultadoCopia.dir);
 
   console.log(`${nomeZip}`);
   process.exit(0);

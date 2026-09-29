@@ -14,6 +14,7 @@ export PATH="/c/Program Files/nodejs:/usr/bin:/usr/local/bin:/c/Windows/System32
 
 ok=0; falhou=0
 igual() { if [ "$2" = "$3" ]; then ok=$((ok+1)); echo "  ok    $1"; else falhou=$((falhou+1)); echo "  FALHA $1: '$2' != '$3'"; fi; }
+contem() { if echo "$2" | grep -F "$3" >/dev/null; then ok=$((ok+1)); echo "  ok    $1"; else falhou=$((falhou+1)); echo "  FALHA $1: nao encontrou '$3'"; fi; }
 verdade() { if [ "$2" = "sim" ]; then ok=$((ok+1)); echo "  ok    $1"; else falhou=$((falhou+1)); echo "  FALHA $1"; fi; }
 teste() { echo ""; echo "($1) $2"; }
 
@@ -29,7 +30,19 @@ criarOrigem() {
   echo '{}' > "$dir/ferramentas.jsonl"
   echo '{}' > "$dir/projetos.json"
   echo '{}' > "$dir/config.json"
-  dd if=/dev/zero bs=1024 count=100 of="$dir/rainforest.db" 2>/dev/null
+
+  # Cria rainforest.db como SQLite real com uma tabela
+  node -e "
+    const { DatabaseSync } = require('node:sqlite');
+    const path = require('path');
+    const dbpath = path.join('$(cygpath -m "$dir")', 'rainforest.db');
+    const db = new DatabaseSync(dbpath);
+    db.exec('CREATE TABLE test (id INTEGER PRIMARY KEY, value TEXT)');
+    db.exec('INSERT INTO test (value) VALUES (\"test\")');
+    db.close();
+  "
+  [ -s "$dir/rainforest.db" ] || { echo "  FALHA criarOrigem nao criou o rainforest.db em $dir"; exit 1; }
+
   mkdir -p "$dir/referencias" "$dir/relatorios"
   echo "ref1" > "$dir/referencias/ref1.txt"
   echo "rel1" > "$dir/relatorios/rel1.txt"
@@ -274,6 +287,134 @@ if [ "$tz_efetivo" = "America/Sao_Paulo" ]; then
 else
   echo "  PULADO  TZ nao tem efeito neste processo (fuso efetivo: '$tz_efetivo') — o caso do fuso nao da para medir aqui; o caso acima (dataLocal de um Date local) continua provando que a data e LOCAL, nao UTC"
 fi
+
+# --- CASO (db-aberto): gravar com conexao aberta no rainforest.db sai 0 e o banco do zip passa no integrity_check
+
+teste "db-aberto" "gravar com conexao aberta no rainforest.db sai 0 e o banco do zip passa no integrity_check"
+
+origem_db_aberto="$SB/origem_db_aberto"
+destino_db_aberto="$SB/destino_db_aberto"
+criarOrigem "$origem_db_aberto"
+
+# Inicia um background process que abre o banco e mantém a conexão
+marker_file="$SB/db_aberto_marker"
+rm -f "$marker_file"
+pid_db=""
+
+node -e "
+  const { DatabaseSync } = require('node:sqlite');
+  const db = new DatabaseSync('$(cygpath -m "$origem_db_aberto")/rainforest.db');
+  db.exec('INSERT INTO test (value) VALUES (\"inserted\")');
+  require('fs').writeFileSync('$(cygpath -m "$marker_file")', 'ok');
+  setTimeout(() => {}, 60000);
+" 2>/dev/null &
+pid_db=$!
+
+# Aguarda o marker file para confirmar que a conexão foi aberta
+timeout=100
+while [ ! -f "$marker_file" ] && [ $timeout -gt 0 ]; do
+  sleep 0.1
+  timeout=$((timeout - 1))
+done
+
+origem_db_aberto_win=$(cygpath -w "$origem_db_aberto")
+destino_db_aberto_win=$(cygpath -w "$destino_db_aberto")
+
+# Configura TEMP/TMP para contar rainforest-db-* depois
+tmpdir_custom="$SB/tmp_custom"
+mkdir -p "$tmpdir_custom"
+TEMP="$(cygpath -m "$tmpdir_custom")" TMP="$(cygpath -m "$tmpdir_custom")" node "$SRC/scripts/backup.cjs" gravar --origem "$origem_db_aberto_win" --destino "$destino_db_aberto_win" 2>/dev/null
+exit_db_aberto=$?
+
+# Mata o background
+kill $pid_db 2>/dev/null
+wait $pid_db 2>/dev/null
+
+igual "exit code (db-aberto)" "$exit_db_aberto" "0"
+
+# Verifica se o zip foi criado
+verdade "arquivo criado (db-aberto)" "$([ -f "$destino_db_aberto/rainforest-${hoje}.zip" ] && echo sim || echo nao)"
+
+# Extrai e confere integrity_check do banco
+zipfile_db_aberto="$destino_db_aberto/rainforest-${hoje}.zip"
+expanddir_db_aberto="$SB/expand_db_aberto"
+mkdir -p "$expanddir_db_aberto"
+
+zipfile_db_aberto_win=$(cygpath -w "$zipfile_db_aberto")
+expanddir_db_aberto_win=$(cygpath -w "$expanddir_db_aberto")
+
+powershell -NoProfile -NonInteractive -Command "Expand-Archive -Path '$zipfile_db_aberto_win' -DestinationPath '$expanddir_db_aberto_win' -Force" 2>&1 >/dev/null || true
+
+# Confere integrity_check do banco extraído
+db_path="$expanddir_db_aberto/rainforest.db"
+# Debug: verifica se o arquivo existe
+if [ ! -f "$db_path" ]; then
+  # Arquivo não encontrado, lista o conteúdo do diretório
+  integrity_check="error: file not found at $db_path (contents: $(ls -la "$expanddir_db_aberto" 2>&1 | head -5))"
+else
+  integrity_check=$(node -e "
+    try {
+      const { DatabaseSync } = require('node:sqlite');
+      const db = new DatabaseSync('$(cygpath -m "$db_path")', { readOnly: true });
+      const result = db.prepare('PRAGMA integrity_check').get();
+      const value = (result && result.integrity_check) ? result.integrity_check : 'undefined';
+      console.log(value);
+      db.close();
+    } catch (e) {
+      console.log('error: ' + e.message);
+    }
+  " 2>&1)
+fi
+
+igual "integrity_check do banco (db-aberto)" "$integrity_check" "ok"
+
+# Confere que nenhum rainforest-db-* sobrou
+leftover_count=$(ls "$tmpdir_custom"/rainforest-db-* 2>/dev/null | wc -l)
+igual "nenhum rainforest-db-* em tmpdir (db-aberto)" "$leftover_count" "0"
+
+# --- CASO (db-invalido): rainforest.db sao bytes invalidos, gravar sai 2, zip existe sem o banco
+
+teste "db-invalido" "rainforest.db invalido: gravar sai 2, stderr contem rainforest.db ficou fora, zip sem banco"
+
+origem_db_invalido="$SB/origem_db_invalido"
+destino_db_invalido="$SB/destino_db_invalido"
+criarOrigem "$origem_db_invalido"
+
+# Substitui rainforest.db por bytes inválidos
+echo "INVALID_BYTES_NOT_SQLITE" > "$origem_db_invalido/rainforest.db"
+
+origem_db_invalido_win=$(cygpath -w "$origem_db_invalido")
+destino_db_invalido_win=$(cygpath -w "$destino_db_invalido")
+
+# Configura TEMP/TMP
+tmpdir_custom2="$SB/tmp_custom2"
+mkdir -p "$tmpdir_custom2"
+saida_db_invalido=$(TEMP="$(cygpath -m "$tmpdir_custom2")" TMP="$(cygpath -m "$tmpdir_custom2")" node "$SRC/scripts/backup.cjs" gravar --origem "$origem_db_invalido_win" --destino "$destino_db_invalido_win" 2>&1)
+exit_db_invalido=$?
+
+igual "exit code (db-invalido)" "$exit_db_invalido" "2"
+
+contem "stderr contem rainforest.db ficou fora" "$saida_db_invalido" "rainforest.db ficou fora do backup"
+
+# Verifica se o zip foi criado (com os outros itens, mas sem o banco)
+verdade "arquivo criado (db-invalido)" "$([ -f "$destino_db_invalido/rainforest-${hoje}.zip" ] && echo sim || echo nao)"
+
+# Extrai e confere que FOCO.md está lá mas rainforest.db não
+zipfile_db_invalido="$destino_db_invalido/rainforest-${hoje}.zip"
+expanddir_db_invalido="$SB/expand_db_invalido"
+mkdir -p "$expanddir_db_invalido"
+
+zipfile_db_invalido_win=$(cygpath -w "$zipfile_db_invalido")
+expanddir_db_invalido_win=$(cygpath -w "$expanddir_db_invalido")
+
+powershell -NoProfile -NonInteractive -Command "Expand-Archive -Path '$zipfile_db_invalido_win' -DestinationPath '$expanddir_db_invalido_win' -Force" 2>&1 >/dev/null || true
+
+verdade "FOCO.md no zip (db-invalido)" "$([ -f "$expanddir_db_invalido/FOCO.md" ] && echo sim || echo nao)"
+verdade "rainforest.db NAO no zip (db-invalido)" "$([ ! -f "$expanddir_db_invalido/rainforest.db" ] && echo sim || echo nao)"
+
+# Confere que nenhum rainforest-db-* sobrou
+leftover_count2=$(ls "$tmpdir_custom2"/rainforest-db-* 2>/dev/null | wc -l)
+igual "nenhum rainforest-db-* em tmpdir (db-invalido)" "$leftover_count2" "0"
 
 # ==================== RESUMO ====================
 echo ""
