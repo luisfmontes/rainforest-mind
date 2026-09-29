@@ -70,37 +70,37 @@
     ]
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "2460774d23b8b243a1e14a989374fa78614435b9",
+      "head": "d821033884573f188845412ce206aa785f3ee7c7",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a4b29b2f81d99a35a",
+        "agente_id": "af238fba3c51b0692",
         "veredito": "ok",
         "em": "2026-09-29",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/a30cb581-806f-4f49-ab17-3899ac2eb1fb/subagents/agent-a4b29b2f81d99a35a.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/a30cb581-806f-4f49-ab17-3899ac2eb1fb/subagents/agent-af238fba3c51b0692.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-09-29",
     "achados": 0,
     "base": "2562d11708f6b8e27a38be018ce8e9405fd71137",
-    "head": "2460774d23b8b243a1e14a989374fa78614435b9",
+    "head": "d821033884573f188845412ce206aa785f3ee7c7",
     "ressalvas": [
       "o teste de dolar/crase no --body-file pega caminho literal com dolar no nome de pasta (Recycle.Bin); nao-bloqueante, contorno mover o arquivo"
     ]
   },
   "verificar": {
-    "status": "reprovado",
+    "status": "ok",
     "criterio": "varredura de baterias inteira verde",
-    "comando": "bash scripts/varrer-baterias.sh",
-    "saida": "149 baterias; vermelhas: hooks/testa-gate-subagente-sem-gh.cjs — (revisao 3) node hooks/gate-fechar-issue.cjs (medir gate pelo stdin) esperado 0, obtido 2",
+    "comando": "bash scripts/varrer-baterias.sh; node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues-12; payloads reais no node hooks/gate-fechar-issue.cjs",
+    "saida": "as 149 baterias passaram (fim=0); tarefa 1: vermelho, tarefa 2: vermelho, tarefa 3: pulada (n/a); SP=...$SP/pr.md → exit 2 com variavel que o gate nao resolve; cd $D rel → exit 2 caminho relativo; absoluto literal → 0",
     "faltou": "a linha de exemplo da mensagem nova do --body-file comecava com gh pr create e o gate-subagente-sem-gh a lia como comando gh no arquivo executado; corrigido tirando o gh do exemplo",
     "em": "2026-09-29",
-    "tentativas": 1
+    "sensor_externo": "bash scripts/varrer-baterias.sh"
   },
   "fechar": {
     "status": "pendente"
