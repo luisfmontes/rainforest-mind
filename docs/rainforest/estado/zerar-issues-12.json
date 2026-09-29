@@ -1,0 +1,28 @@
+{
+  "slug": "zerar-issues-12",
+  "titulo": "Rodada: #350 (gate-worktree ignora git -C / cd; gate-fechar-issue com variável no --body-file)",
+  "criado_em": "2026-09-29",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/zerar-issues-12.md",
+    "em": "2026-09-29"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
