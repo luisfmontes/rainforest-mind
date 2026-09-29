@@ -10,6 +10,13 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.30.2 — 2026-09-29
+
+- **Livro de repos: três indicados avaliados.** `strands-agents/harness-sdk` e
+  `Human-Agent-Society/reef` enxertam, e `reconurge/flowsint` vale voltar. Nada muda no
+  que o plugin executa; a versão sobe para o registro chegar a quem atualiza. Relatório:
+  `relatorios/2026-09-29-batedor-strands-reef-flowsint.md`.
+
 ## 1.30.1 — 2026-09-29
 
 - **Backup externo com o banco da memória aberto.** Quando a ronda do sentinela
