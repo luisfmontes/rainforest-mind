@@ -21,7 +21,27 @@
     "em": "2026-09-29"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-09-29",
+    "tarefas_ok": 1,
+    "tarefas": 3,
+    "em_voo": [
+      {
+        "agente": "rainforest-mind:executor",
+        "tarefa": "1 trava co-locada",
+        "desde": "2026-09-29"
+      }
+    ],
+    "em": "2026-09-29",
+    "carimbos": [
+      {
+        "tarefa": 2,
+        "hash_base": "6ec507e7d280b671faf962c257f2bec4439205d0",
+        "iteracao": 1,
+        "sessao": "a30cb581-806f-4f49-ab17-3899ac2eb1fb",
+        "ts": "2026-09-29T10:36:47.536Z"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
