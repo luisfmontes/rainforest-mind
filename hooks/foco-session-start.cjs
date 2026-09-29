@@ -8,6 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 const net = require('net');
+const os = require('os');
 const { montarContexto, montarLegenda, resumirSessoes, sessoesVivas, computarVeredito, pastasDoFoco } = require('./lib/contexto-sessao.cjs');
 const { resolverRaiz } = require('./lib/raiz.cjs');
 const { linhas: linhasPrincipalAtrasado } = require('./lib/principal-atrasado.cjs');
@@ -138,7 +139,7 @@ function testTcpConnection(host, port, timeout = 400) {
   });
 }
 
-async function checkWhatsAppBridge() {
+function urlDeclarada() {
   // Só chamada quando `bridgeDeclarada()` — a variável existe, e o default antigo
   // (`localhost:3005`) era justamente o que fazia toda máquina sondar sem pedir.
   const url = process.env.WHATSAPP_API_BASE_URL;
@@ -152,12 +153,56 @@ async function checkWhatsAppBridge() {
   } catch {
     // Se URL for inválida, usa default
   }
+  return { url, host, port: parseInt(port, 10) };
+}
 
-  const isConnected = await testTcpConnection(host, parseInt(port, 10));
-  return {
-    status: isConnected ? 'ok' : 'FORA',
-    url: url,
-  };
+/**
+ * Com mais de uma conta, a bridge é UMA POR CONTA, cada uma na sua porta
+ * (`~/.whatsapp-mcp/accounts.json`: pessoal 3005, trabalho 3006). Sondar só a URL
+ * declarada checava uma conta e anunciava o resultado como se fosse "o WhatsApp":
+ * em 2026-09-29 a abertura dizia FORA com a de trabalho de pé, e diria ok com ela
+ * caída. Mesmo defeito que o D5 do design `2026-09-25-vigiar-whatsapp` já tinha
+ * nomeado para a vigia.
+ *
+ * O arquivo só vale quando a porta declarada É de uma das contas dele — é isso
+ * que prova que a declaração e o arquivo falam da mesma instalação. Declarada para
+ * outra porta (outra máquina, fixture de teste), segue a checagem de sempre.
+ */
+function contasDaBridge(declarada) {
+  const caminho = process.env.WHATSAPP_MCP_ACCOUNTS
+    || path.join(os.homedir(), '.whatsapp-mcp', 'accounts.json');
+  try {
+    const contas = JSON.parse(fs.readFileSync(caminho, 'utf8')).accounts || {};
+    const lista = Object.entries(contas)
+      .map(([conta, c]) => ({ conta, port: parseInt(c && c.port, 10) }))
+      .filter((c) => Number.isInteger(c.port));
+    if (lista.some((c) => c.port === declarada.port)) return lista;
+  } catch {
+    // sem arquivo ou ilegível: uma bridge só, a declarada
+  }
+  return null;
+}
+
+// Devolve uma entrada por bridge: `conta` só existe no caso multi-conta.
+async function checkWhatsAppBridge() {
+  const declarada = urlDeclarada();
+  const contas = contasDaBridge(declarada);
+  if (!contas) {
+    const isConnected = await testTcpConnection(declarada.host, declarada.port);
+    return [{ status: isConnected ? 'ok' : 'FORA', url: declarada.url }];
+  }
+  return Promise.all(contas.map(async (c) => ({
+    conta: c.conta,
+    status: (await testTcpConnection(declarada.host, c.port)) ? 'ok' : 'FORA',
+    url: `:${c.port}`,
+  })));
+}
+
+// "bridge WhatsApp ok (url)" com uma só; "bridge WhatsApp pessoal ok (:3005), trabalho FORA (:3006)" com contas.
+function textoBridge(lista) {
+  return 'bridge WhatsApp ' + lista
+    .map((b) => `${b.conta ? b.conta + ' ' : ''}${b.status} (${b.url})`)
+    .join(', ');
 }
 
 const CAMINHO_SKILL = path.join(CODIGO_ROOT, 'skills', 'rainforest-mind', 'SKILL.md');
@@ -261,7 +306,7 @@ function doConsoleLog(pluginsStatus, whatsappStatus) {
   // se anuncia. Sem nada declarado, o bloco inteiro sai fora — o `montarContexto`
   // filtra bloco vazio.
   const checados = [];
-  if (whatsappStatus) checados.push(`bridge WhatsApp ${whatsappStatus.status} (${whatsappStatus.url})`);
+  if (whatsappStatus) checados.push(textoBridge(whatsappStatus));
   if (pluginsStatus.claudeMem) checados.push(`claude-mem ${pluginsStatus.claudeMem}`);
   const dependencias = checados.length
     ? `## Dependências de ambiente (regra 14)\nChecado pelo hook: ${checados.join('; ')}.`
@@ -309,8 +354,10 @@ function doConsoleLog(pluginsStatus, whatsappStatus) {
   // `additionalContextChars`), então a legenda NÃO tira bytes do orçamento das
   // regras.
   const bloqueios = [];
-  if (whatsappStatus && whatsappStatus.status && whatsappStatus.status !== 'ok') {
-    bloqueios.push(`bridge WhatsApp ${whatsappStatus.status} (${whatsappStatus.url}) — envio de mensagem indisponível`);
+  // Só a conta caída vira bloqueio: a outra de pé ainda envia.
+  const caidas = (whatsappStatus || []).filter((b) => b.status && b.status !== 'ok');
+  if (caidas.length) {
+    bloqueios.push(`${textoBridge(caidas)} — envio de mensagem indisponível`);
   }
   const legenda = montarLegenda({
     focoText: foco,
@@ -341,7 +388,7 @@ if (!bridgeDeclarada()) {
   // Força impressão após 700ms se não terminar (cancelado assim que imprime)
   guarda = setTimeout(() => {
     if (!impresso) {
-      doConsoleLog(readPlugins(), { status: '?', url: process.env.WHATSAPP_API_BASE_URL });
+      doConsoleLog(readPlugins(), [{ status: '?', url: process.env.WHATSAPP_API_BASE_URL }]);
     }
   }, 700);
 
@@ -353,7 +400,7 @@ if (!bridgeDeclarada()) {
       doConsoleLog(pluginsStatus, whatsappStatus);
     } catch {
       if (!impresso) {
-        doConsoleLog(readPlugins(), { status: '?', url: process.env.WHATSAPP_API_BASE_URL });
+        doConsoleLog(readPlugins(), [{ status: '?', url: process.env.WHATSAPP_API_BASE_URL }]);
       }
     }
   })();
