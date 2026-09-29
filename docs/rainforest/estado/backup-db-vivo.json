@@ -93,6 +93,10 @@
     "em": "2026-09-29"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "pr",
+    "pr": 359,
+    "issues_fechadas": [],
+    "em": "2026-09-29"
   }
 }
