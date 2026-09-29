@@ -366,7 +366,7 @@ else
     } catch (e) {
       console.log('error: ' + e.message);
     }
-  " 2>&1)
+  " 2>/dev/null)
 fi
 
 igual "integrity_check do banco (db-aberto)" "$integrity_check" "ok"
