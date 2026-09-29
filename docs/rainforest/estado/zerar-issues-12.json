@@ -21,17 +21,11 @@
     "em": "2026-09-29"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-29",
-    "tarefas_ok": 1,
+    "tarefas_ok": 3,
     "tarefas": 3,
-    "em_voo": [
-      {
-        "agente": "rainforest-mind:executor",
-        "tarefa": "1 trava co-locada",
-        "desde": "2026-09-29"
-      }
-    ],
+    "em_voo": [],
     "em": "2026-09-29",
     "carimbos": [
       {
@@ -40,6 +34,39 @@
         "iteracao": 1,
         "sessao": "a30cb581-806f-4f49-ab17-3899ac2eb1fb",
         "ts": "2026-09-29T10:36:47.536Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "6ec507e7d280b671faf962c257f2bec4439205d0",
+        "iteracao": 1,
+        "sessao": "a30cb581-806f-4f49-ab17-3899ac2eb1fb",
+        "ts": "2026-09-29T11:25:24.799Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "6ec507e7d280b671faf962c257f2bec4439205d0",
+        "iteracao": 2,
+        "sessao": "a30cb581-806f-4f49-ab17-3899ac2eb1fb",
+        "ts": "2026-09-29T11:25:24.799Z"
+      }
+    ],
+    "comando": "bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-fechar-issue.sh; bash scripts/testa-versao.sh",
+    "saida": "207 ok, 0 falha(s); 251 ok, 0 falha(s); ok: 5 falhou: 0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-worktree.sh, (#350) sessao co-locada: alvo com variavel barra citando o caminho literal"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, (#350) --body-file com variavel → exit 2 citando variavel nao resolvivel"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "texto de registro e versao; testa-versao 5 ok"
       }
     ]
   },
