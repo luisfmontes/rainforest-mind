@@ -10,6 +10,14 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.29.1 — 2026-09-29
+
+- **Abertura sonda uma bridge WhatsApp por conta (#356).** Com duas contas no
+  `~/.whatsapp-mcp/accounts.json` (pessoal 3005, trabalho 3006), o hook de abertura
+  sondava só a `WHATSAPP_API_BASE_URL` e anunciava o resultado como o WhatsApp inteiro
+  — dizia FORA com a de trabalho de pé. Agora, quando a porta declarada é de uma das
+  contas, sonda todas e nomeia cada uma; só a conta caída vira aviso na tela.
+
 ## 1.29.0 — 2026-09-28
 
 - **Mensagem do bloqueio de `bash $t` (#337).** `bash $t` sem aspas continua barrado
