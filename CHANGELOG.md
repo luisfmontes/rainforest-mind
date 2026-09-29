@@ -10,6 +10,20 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.30.1 — 2026-09-29
+
+- **Backup externo com o banco da memória aberto.** Quando a ronda do sentinela
+  coincidia com uma sessão do Claude Code aberta, o `rainforest.db` estava em uso, e o
+  `Compress-Archive` não conseguia ler o arquivo. O zip inteiro falhava, e em seis
+  dias (11, 21, 22, 23, 25 e 29/09) nem o FOCO.md nem as ideias foram para o
+  backup externo. Agora o `backup.cjs gravar` tira uma cópia consistente do banco com
+  `VACUUM INTO`, por uma conexão só de leitura, e zipa a cópia. Se a cópia falhar, o
+  zip sai com os outros itens, e o comando sai 2 com `RECUSADO: rainforest.db ficou
+  fora do backup: <motivo>`, linha que continua indo para o `vigias/ERROS.md`.
+- **`backup.cjs conferir` prova o banco por restauração.** O `rainforest.db` do zip é
+  aberto e precisa passar no `PRAGMA integrity_check`, porque a cópia nunca tem o hash
+  do arquivo vivo. Os demais arquivos continuam conferidos por hash.
+
 ## 1.30.0 — 2026-09-29
 
 - **Bloqueio por variável diz que a causa é a variável (#350).** Com outra sessão no
