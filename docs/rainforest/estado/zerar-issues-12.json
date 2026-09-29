@@ -103,6 +103,14 @@
     "sensor_externo": "bash scripts/varrer-baterias.sh"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "pr",
+    "pr": 357,
+    "merge": "553b257a4c52046418caf8769256ba9d238802e0",
+    "ci": "baterias (node 24) pass 30m16s",
+    "issues_fechadas": [
+      350
+    ],
+    "em": "2026-09-29"
   }
 }
