@@ -695,8 +695,8 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento) {
           `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
           `Razão: --body-file contém uma variável que o gate não resolve ($, crase).\n\n` +
           `O gate lê o arquivo antes de o 'gh' rodar e não expande variável: qualquer ` +
-          `forma com $ continua barrada. Escreva o caminho literal, por extenso:\n` +
-          `  gh pr create --body-file "C:/caminho/literal/corpo.md"\n`
+          `forma com $ continua barrada. Escreva o caminho literal, por extenso, ` +
+          `no --body-file (ex.: --body-file "C:/caminho/literal/corpo.md").\n`
         );
       } else if (corpoDoPR.tipo === "arquivo" && corpoDoPR.cwdIncerto) {
         bloqueia(
