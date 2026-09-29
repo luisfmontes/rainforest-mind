@@ -1,0 +1,28 @@
+{
+  "slug": "backup-db-vivo",
+  "titulo": "Backup externo falha quando o rainforest.db esta aberto por outra sessao",
+  "criado_em": "2026-09-29",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/backup-db-vivo.md",
+    "em": "2026-09-29"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
