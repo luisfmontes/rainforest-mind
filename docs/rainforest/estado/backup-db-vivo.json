@@ -18,7 +18,47 @@
     "em": "2026-09-29"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-09-29",
+    "tarefas_ok": 3,
+    "tarefas": 3,
+    "em_voo": [],
+    "em": "2026-09-29",
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "7654a7f43d583f2ff74e3cd30c32fc1719741c44",
+        "iteracao": 1,
+        "sessao": "a30cb581-806f-4f49-ab17-3899ac2eb1fb",
+        "ts": "2026-09-29T17:37:07.664Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "7654a7f43d583f2ff74e3cd30c32fc1719741c44",
+        "iteracao": 1,
+        "sessao": "a30cb581-806f-4f49-ab17-3899ac2eb1fb",
+        "ts": "2026-09-29T17:37:07.664Z"
+      }
+    ],
+    "comando": "bash scripts/testa-backup-gravar.sh; bash scripts/testa-backup-conferir.sh; bash scripts/testa-versao.sh",
+    "saida": "33 ok, 0 falha(s); 20 ok, 0 falha(s); ok: 5 falhou: 0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-backup-gravar.sh, (db-aberto) gravar com conexao aberta no rainforest.db sai 0 e o banco do zip passa no integrity_check"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-backup-conferir.sh, (db-snapshot) zip recem-gravado, banco alterado depois, conferir sai 0"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "texto de registro e versao; testa-versao 5 ok"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
