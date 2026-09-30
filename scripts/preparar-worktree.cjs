@@ -13,6 +13,9 @@ while (i < process.argv.length) {
   if (arg === "--hash") {
     ARGS.hash = process.argv[++i];
   } else if (arg === "--exige") {
+    if (i + 1 >= process.argv.length) {
+      falha(2, "--exige exige um caminho");
+    }
     ARGS.exige.push(process.argv[++i]);
   } else {
     falha(2, "Flag desconhecida: " + arg);
@@ -52,6 +55,11 @@ function getGitDir(cwd) {
   return r.status === 0 ? r.stdout : null;
 }
 
+function getGitCommonDir(cwd) {
+  const r = gitSync(cwd, "rev-parse", "--git-common-dir");
+  return r.status === 0 ? r.stdout : null;
+}
+
 function getTopLevel(cwd) {
   const r = gitSync(cwd, "rev-parse", "--show-toplevel");
   return r.status === 0 ? r.stdout : null;
@@ -71,8 +79,16 @@ if (!gitdir) {
   falha(69, "nao-verificavel: não é um repositório git");
 }
 
-if (!gitdir.replace(/\\/g, "/").includes("worktrees")) {
-  falha(1, "o git-dir é '" + gitdir + "' — sem 'worktrees' no meio isto NÃO é worktree linkado");
+const gitcommondir = getGitCommonDir(cwd);
+if (!gitcommondir) {
+  falha(69, "nao-verificavel: não conseguiu obter git-common-dir");
+}
+
+const normalizedGitdir = path.resolve(cwd, gitdir);
+const normalizedCommondir = path.resolve(cwd, gitcommondir);
+
+if (normalizedGitdir === normalizedCommondir) {
+  falha(1, "não é um worktree linkado");
 }
 
 const toplevel = getTopLevel(cwd);
@@ -94,6 +110,16 @@ if (!headAtual) {
 }
 
 if (headAtual !== hashResolvido) {
+  // Verificar se H é ancestral de HEAD (trabalho já foi feito/reexecução)
+  const rAncestorCheckReexec = gitSync(cwd, "merge-base", "--is-ancestor", hashResolvido, headAtual);
+  if (rAncestorCheckReexec.status === 0) {
+    // H é ancestral de HEAD - trabalho já foi feito
+    const headShort = headAtual.substring(0, 12);
+    console.log(`base-ok: HEAD ja contem ${headShort} (trabalho commitado em cima)`);
+    process.exit(0);
+  }
+
+  // Verificar se HEAD é ancestral de H (pode fazer merge)
   const rAncestor = gitSync(cwd, "merge-base", "--is-ancestor", headAtual, hashResolvido);
   const ancestral = rAncestor.status === 0;
 
