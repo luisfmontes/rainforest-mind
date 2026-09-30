@@ -1,1 +1,65 @@
-[]
+[
+  {
+    "id": "c015",
+    "gate": "gate-worktree",
+    "contexto": "subagente",
+    "motivo": "BLOQUEADO pelo gate de worktree do rainforest-mind.",
+    "issue": null
+  },
+  {
+    "id": "c019",
+    "gate": "gate-worktree",
+    "contexto": "subagente",
+    "motivo": "BLOQUEADO pelo gate de worktree do rainforest-mind.",
+    "issue": null
+  },
+  {
+    "id": "c020",
+    "gate": "gate-worktree",
+    "contexto": "subagente",
+    "motivo": "BLOQUEADO pelo gate de worktree do rainforest-mind.",
+    "issue": null
+  },
+  {
+    "id": "c026",
+    "gate": "gate-bateria-sem-timeout",
+    "contexto": "subagente",
+    "motivo": "BLOQUEADO: `conferir-fluxo.cjs` rodada sem `timeout: 600000` na chamada do Bash — passa de 2 min, é empurrada para segundo plano e deixa este agente preso na lista. Adicione `timeout: 600000` à chamada da ferramenta Bash (10 min). Para desligar neste projeto: \"bateria-sem-timeout\": false em .rainforest/config.json.",
+    "issue": null
+  },
+  {
+    "id": "c032",
+    "gate": "gate-bateria-sem-timeout",
+    "contexto": "subagente",
+    "motivo": "BLOQUEADO: `testa-gate-worktree.sh` rodada sem `timeout: 600000` na chamada do Bash — passa de 2 min, é empurrada para segundo plano e deixa este agente preso na lista. Adicione `timeout: 600000` à chamada da ferramenta Bash (10 min). Para desligar neste projeto: \"bateria-sem-timeout\": false em .rainforest/config.json.",
+    "issue": null
+  },
+  {
+    "id": "c033",
+    "gate": "gate-bateria-sem-timeout",
+    "contexto": "subagente",
+    "motivo": "BLOQUEADO: `testa-conferir-categoria.sh` rodada sem `timeout: 600000` na chamada do Bash — passa de 2 min, é empurrada para segundo plano e deixa este agente preso na lista. Adicione `timeout: 600000` à chamada da ferramenta Bash (10 min). Para desligar neste projeto: \"bateria-sem-timeout\": false em .rainforest/config.json.",
+    "issue": null
+  },
+  {
+    "id": "c034",
+    "gate": "gate-bateria-sem-timeout",
+    "contexto": "subagente",
+    "motivo": "BLOQUEADO: `testa-gate-fechar-issue.sh` rodada sem `timeout: 600000` na chamada do Bash — passa de 2 min, é empurrada para segundo plano e deixa este agente preso na lista. Adicione `timeout: 600000` à chamada da ferramenta Bash (10 min). Para desligar neste projeto: \"bateria-sem-timeout\": false em .rainforest/config.json.",
+    "issue": null
+  },
+  {
+    "id": "c-ancora-add",
+    "gate": "gate-staging-total",
+    "contexto": "principal",
+    "motivo": "BLOQUEADO pelo gate de staging total do rainforest-mind.",
+    "issue": null
+  },
+  {
+    "id": "c-ancora-add",
+    "gate": "gate-staging-total",
+    "contexto": "subagente",
+    "motivo": "BLOQUEADO pelo gate de staging total do rainforest-mind.",
+    "issue": null
+  }
+]
