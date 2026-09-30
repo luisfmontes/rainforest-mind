@@ -44,7 +44,8 @@ trap cleanup EXIT
 
 S="$(novo_sandbox)"
 mkdir -p "$S/docs/rainforest/design" "$S/docs/rainforest/planos" \
-         "$S/docs/rainforest/portoes" "$S/docs/rainforest/estado"
+         "$S/docs/rainforest/portoes" "$S/docs/rainforest/estado" \
+         "$S/docs/rainforest/varredura"
 
 afirma() {
   local nome="$1" cond="$2"
@@ -161,7 +162,12 @@ Nada.
 
 ## Em aberto
 Nada.
+
+## Varredura
+
+Ver `docs/rainforest/varredura/fluxo-x-design.txt`.
 FIM
+echo "Varredura de fixture — testa-portoes-gate.sh" > "$S/docs/rainforest/varredura/fluxo-x-design.txt"
 # Plano SEM tarefa citando D1: a cobertura tem de recusar por decisao orfa.
 cat > "$S/docs/rainforest/planos/cobertura-viva.md" <<'FIM'
 # Plano
@@ -187,6 +193,7 @@ afirma "G9. sem design.arquivo no estado, a cobertura nao dispara (o defeito)" \
 
 # Com `design.arquivo` gravado, o gate acha o design real e a cobertura RODA.
 novo_fluxo cobertura-viva2
+echo "Varredura de fixture — testa-portoes-gate.sh" > "$S/docs/rainforest/varredura/cobertura-viva2.txt"
 est marcar --slug cobertura-viva2 --estagio design --status aprovado \
   --json '{"arquivo":"docs/rainforest/design/fluxo-x-design.md"}' >/dev/null
 cp "$S/docs/rainforest/planos/cobertura-viva.md" "$S/docs/rainforest/planos/cobertura-viva2.md"
@@ -207,6 +214,7 @@ echo "== C1/C2: o gate enxerga o --json DA PROPRIA chamada =="
 # e nao alcancava o unico momento em que ele acontece.
 printf 'isto nao e um design valido, sem secoes nem decisoes\n' \
   > "$S/docs/rainforest/design/malformado.md"
+echo "Varredura de fixture — testa-portoes-gate.sh" > "$S/docs/rainforest/varredura/c1-mesma-chamada.txt"
 est iniciar --slug c1-mesma-chamada --titulo sandbox >/dev/null
 SAIDA="$(est marcar --slug c1-mesma-chamada --estagio design --status aprovado \
   --json '{"arquivo":"docs/rainforest/design/malformado.md"}')"; C=$?
@@ -234,7 +242,12 @@ Nada.
 
 ## Em aberto
 Nada.
+
+## Varredura
+
+Ver `docs/rainforest/varredura/com-orfa.txt`.
 FIM
+echo "Varredura de fixture — testa-portoes-gate.sh" > "$S/docs/rainforest/varredura/com-orfa.txt"
 cat > "$S/docs/rainforest/planos/com-orfa.md" <<'FIM'
 # Plano
 
@@ -252,6 +265,7 @@ pronto quando: sai 0
 prova-na-base: verde — fixture de bateria
 FIM
 est iniciar --slug c2-plano --titulo sandbox >/dev/null
+echo "Varredura de fixture — testa-portoes-gate.sh" > "$S/docs/rainforest/varredura/c2-plano.txt"
 est marcar --slug c2-plano --estagio design --status aprovado \
   --json '{"arquivo":"docs/rainforest/design/com-orfa.md"}' >/dev/null
 SAIDA="$(est marcar --slug c2-plano --estagio plano --status ok \
@@ -284,6 +298,7 @@ FORA="$(cygpath -m "$EXTERNO" 2>/dev/null || printf '%s' "$EXTERNO")/fora-da-arv
 cp "$S/docs/rainforest/design/com-orfa.md" "$FORA"
 cp "$S/docs/rainforest/planos/com-orfa.md" "$S/docs/rainforest/planos/a3-fora.md"
 est iniciar --slug a3-fora --titulo sandbox >/dev/null
+echo "Varredura de fixture — testa-portoes-gate.sh" > "$S/docs/rainforest/varredura/a3-fora.txt"
 est marcar --slug a3-fora --estagio design --status aprovado \
   --json "{\"arquivo\":\"$FORA\"}" >/dev/null
 SAIDA="$(est marcar --slug a3-fora --estagio plano --status ok \
@@ -295,6 +310,7 @@ afirma "G16. design FORA da arvore nao e' adotado — a cobertura nao roda com e
 # Sem este caso, G16 passaria por qualquer motivo que impedisse a checagem.
 cp "$S/docs/rainforest/planos/com-orfa.md" "$S/docs/rainforest/planos/a3-dentro.md"
 est iniciar --slug a3-dentro --titulo sandbox >/dev/null
+echo "Varredura de fixture — testa-portoes-gate.sh" > "$S/docs/rainforest/varredura/a3-dentro.txt"
 est marcar --slug a3-dentro --estagio design --status aprovado \
   --json '{"arquivo":"docs/rainforest/design/com-orfa.md"}' >/dev/null
 SAIDA="$(est marcar --slug a3-dentro --estagio plano --status ok \
@@ -336,6 +352,7 @@ echo "== as recusas se ACUMULAM, nao param na primeira =="
 # sequencia" era promessa nao cumprida — continuava uma cadeia, so que maior, e
 # custava duas idas para um fechamento.
 est iniciar --slug dois-problemas --titulo sandbox >/dev/null
+echo "Varredura de fixture — testa-portoes-gate.sh" > "$S/docs/rainforest/varredura/dois-problemas.txt"
 est marcar --slug dois-problemas --estagio design --status aprovado \
   --json '{"arquivo":"docs/rainforest/design/com-orfa.md"}' >/dev/null
 cp "$FIX/portoes-echo.md" "$S/docs/rainforest/portoes/dois-problemas.md"
