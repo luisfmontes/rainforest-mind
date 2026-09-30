@@ -21,7 +21,7 @@
     "em": "2026-09-30"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-30",
     "tarefas_ok": 6,
     "tarefas": 6,
@@ -180,33 +180,37 @@
       }
     ],
     "comando": "node scripts/conferir-mutacao.cjs (re-rodado na integracao)",
-    "saida": "exit 0 em 1,2,3,6"
+    "saida": "exit 0 em 1,2,3,6",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-30"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "721bf293d6ffbf87ee38bde6d907f05e913aba4b",
+      "head": "9ce93f02aebabfdd88ebff1c4d62d3b753588a2d",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a0d46d1e908063826",
+        "agente_id": "a63164181d759ec58",
         "veredito": "reprovado",
         "em": "2026-09-30",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea/subagents/agent-a0d46d1e908063826.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea/subagents/agent-a63164181d759ec58.jsonl"
       }
     ],
     "em_voo": [
       {
         "agente": "revisor",
-        "tarefa": "revisar diff 038e990...721bf29",
+        "tarefa": "rodada 2 diff 038e990...9ce93f0",
         "desde": "2026-09-30"
       }
     ],
     "em": "2026-09-30",
-    "achados": 5,
-    "tentativas": 1
+    "achados": 1,
+    "tentativas": 2
   },
   "verificar": {
     "status": "pendente"

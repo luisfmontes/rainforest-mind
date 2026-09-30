@@ -40,11 +40,18 @@ A poda de saída grande, a segunda metade do pedido, foi medida e descartada (ve
   falha com sessão aberta segurando o banco. Resultado: hoje nada apareceria. O critério
   de 2 ocorrências vem do reef (reaparecer no passo seguinte). Contam as ocorrências da
   impressão nos últimos 30 dias, posteriores ao último `RESOLVIDO` da vigia (D6):
-  - **persistente ×S desde DD/MM**: a última ronda da vigia no log ainda tem a
-    ocorrência, e as S ocorrências em rondas seguidas até ela somam S ≥ 2. `desde` é a
-    primeira dessa sequência.
-  - **intermitente ×N em 30 dias, última DD/MM**: N ≥ 2, e houve ronda limpa depois de
-    alguma ocorrência.
+  - **intermitente ×N em 30 dias, última DD/MM**: N ≥ 2, e existe **ronda limpa
+    provada**. Ronda limpa é um cabeçalho de ronda com hora estritamente posterior a
+    alguma ocorrência, ao qual nenhuma ocorrência daquela impressão pertence.
+  - **persistente ×N desde DD/MM**: N ≥ 2 sem ronda limpa provada. `desde` é a
+    primeira ocorrência.
+
+  Emenda de 2026-09-30, pelo revisar da rodada 2. A versão anterior contava rondas
+  seguidas até a última e chamava de intermitente tudo o que não fechava a sequência.
+  Só que o `run-vigia.ps1` registra erro e sai **antes** de escrever o cabeçalho da
+  ronda: toggle ilegível (`:56`), `-Cwd` inexistente (`:70`) e falta de destino
+  (`:97`). Uma vigia que falhava assim todo dia saía como intermitente justamente por
+  ter log. Isso é inferir melhora sem evidência, o que a D6 proíbe.
   - Com N < 2 a impressão não é mostrada.
 
   Sobre os dados reais de 30/09, o resultado esperado é uma linha só:

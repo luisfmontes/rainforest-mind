@@ -134,4 +134,26 @@ pronto quando: três efeitos, cada um com a sua prova.
 - Um log com rondas seguidas, cada uma com a mesma falha, até a última ronda, dá `persistente x2 desde <primeira da sequência>`. Provado pelo caso novo `persistente-com-log`.
 - O guarda redundante `if (!/^conferido/.test(vigia))` sai (achado 3), e o caso `conferido-na-janela-principal-nao-zera` continua `ok`.
 
-Tudo isso é provado por `bash scripts/testa-impressao-falha.sh` devolvendo `9 ok, 0 falha(s)`. O critério da tarefa 1 continua valendo: com os dados reais, `[["sentinela-foco","intermitente",5,"2026-09-25"]]`.
+Tudo isso é provado por `bash scripts/testa-impressao-falha.sh` devolvendo `9 ok, 0 falha(s)`.
+
+## Emenda de 2026-09-30 — revisar rodada 2 (reprovado)
+
+### 7. Intermitente só com ronda limpa provada [tipo: implementar]
+atende: D5, D6
+arquivos: `scripts/lib/impressao-falha.cjs`, `scripts/testa-impressao-falha.sh`
+depende de: nenhuma
+paralela: sim
+mutacao:
+  arquivo: `scripts/lib/impressao-falha.cjs`
+  de: const rondaLimpa = ativas.some((h) => h > primeiraChave && !rondasComOcorrencia.has(h));
+  para: const rondaLimpa = ativas.some((h) => !rondasComOcorrencia.has(h));
+  bateria: `bash scripts/testa-impressao-falha.sh`
+  fixture: `testa-impressao-falha.sh, caso novo "erro-antes-do-cabecalho: sem destino 4 dias, log com rondas so de 24 e 25/09"`
+pronto quando: com o formato real do `run-vigia.ps1`, em que o erro sai antes do cabeçalho (`vigias/run-vigia.ps1:56,70,97`), a rotulagem fica assim:
+- `ERROS.md` com `sem destino de envio` em 26, 27, 28 e 29/09, e log com rondas só de 24 e 25/09: `persistente x4 desde 2026-09-26`.
+- `ERROS.md` com ocorrências em 20/09 e 29/09 08:10, e log só com `=== 2026-09-29 08:00 ===`: `persistente x2`.
+- Os dados reais continuam `intermitente`, porque a ronda de 14/09 é limpa e posterior a 11/09.
+
+O ramo de sequência S (`if (s >= MINIMO_OCORRENCIAS) {`) sai. Persistente passa a ser `n` = todas as ocorrências da janela e `desde` = a primeira. Provado por `bash scripts/testa-impressao-falha.sh` devolvendo `0 falha(s)` com os casos `erro-antes-do-cabecalho` e `log-mais-novo-que-o-erros` novos, e por `RFM_VIGIAS_DIR=C:/Projetos/rainforest-mind/vigias node -e "const l=require('./scripts/lib/impressao-falha.cjs');console.log(JSON.stringify(l.falhasRecorrentes(new Date('2026-09-30T12:00:00')).map(r=>[r.vigia,r.rotulo,r.n,r.ultima])))"` devolvendo `[["sentinela-foco","intermitente",5,"2026-09-25"]]`.
+
+A catraca da tarefa 6 (`if (s >= MINIMO_OCORRENCIAS) {`) deixa de existir junto com o ramo. O caso `persistente-com-log` continua valendo e passa a ser medido pela mutação desta tarefa. O critério da tarefa 1 continua valendo: com os dados reais, `[["sentinela-foco","intermitente",5,"2026-09-25"]]`.
