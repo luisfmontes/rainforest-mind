@@ -91,6 +91,7 @@ function cmdDesign() {
     '## Avaliado e descartado',
     '## Fora de escopo',
     '## Em aberto',
+    '## Varredura',
   ];
 
   const linhas_conteudo = conteudo.split('\n');
@@ -101,6 +102,13 @@ function cmdDesign() {
       console.error(`RECUSADO: seção obrigatória ausente: ${secao}`);
       process.exit(2);
     }
+  }
+
+  // Verifica se o arquivo de varredura existe e não está vazio
+  const arquivoVarredura = path.join(RAIZ, 'docs', 'rainforest', 'varredura', `${slug}.txt`);
+  if (!fs.existsSync(arquivoVarredura) || fs.statSync(arquivoVarredura).size === 0) {
+    console.error(`RECUSADO: seção ## Varredura cita arquivo inexistente ou vazio: ${arquivoVarredura}`);
+    process.exit(2);
   }
 
   // Extrai decisões de "Decisões fechadas"
