@@ -26,7 +26,7 @@
     "em": "2026-09-30"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-30",
     "em_voo": [],
     "carimbos": [
@@ -161,10 +161,30 @@
       }
     ],
     "comando": "node scripts/conferir-fluxo.cjs creep --slug 2026-09-30-semear-travas --base 038e9905 --head HEAD",
-    "saida": "ok: sem creep — 52 arquivo(s) coberto(s); catracas das tarefas 1,2,4,5,6,7,8,10,11,13 re-rodadas pela integracao com exit 0"
+    "saida": "ok: sem creep — 52 arquivo(s) coberto(s); catracas das tarefas 1,2,4,5,6,7,8,10,11,13 re-rodadas pela integracao com exit 0",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-30"
+    }
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "97af08a5e4a13db7a2495b2e8c7e33cf1421ea6d",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "aedba3f71e792c8ab",
+        "veredito": "reprovado",
+        "em": "2026-09-30",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/183a33d5-b4f7-44e8-ad9e-1a1c581ac82c/subagents/agent-aedba3f71e792c8ab.jsonl"
+      }
+    ],
+    "achados": 12,
+    "em": "2026-09-30",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
