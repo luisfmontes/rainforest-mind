@@ -176,6 +176,12 @@ teste('passado-despachei: exit 0', () => {
   assert(r.status === 0, `esperado 0, obteve ${r.status}`);
 });
 
+// Passado na mesma mensagem nao anula a promessa (os padroes de passado cancelavam o bloqueio)
+teste('passado-e-promessa-na-mesma-mensagem: exit 2', () => {
+  const r = rodaGate('passado-e-promessa-na-mesma-mensagem.jsonl');
+  assert(r.status === 2, `esperado 2, obteve ${r.status}`);
+});
+
 // Teste (8): stop_hook_active true: exit 0
 teste('promete sem despachar com stop_hook_active true: exit 0 (sem laco)', () => {
   const r = rodaGate('promete-sem-despachar.jsonl', true);
