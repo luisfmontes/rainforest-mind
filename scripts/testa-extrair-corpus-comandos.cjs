@@ -192,6 +192,30 @@ function testar() {
     falhas++;
   }
 
+  // Teste 5: --max 1 imprime exatamente 1 linha de comando + resumo
+  console.log('  Teste 5: --max 1');
+  try {
+    const output = execSync(`node "${extractorPath}" --raiz "${fixtureDir}" --max 1`, {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+
+    const linhas = output.trim().split('\n');
+    // Primeira linha é JSON de comando, linhas seguintes são resumo (que começam com "  ")
+    const jsonLinhas = linhas.filter(l => !l.startsWith('  '));
+
+    if (jsonLinhas.length === 1) {
+      console.log('    ok   --max 1 imprime exatamente 1 linha e o resumo diz 1');
+      ok++;
+    } else {
+      console.log(`    FALHA: --max 1 imprimiu ${jsonLinhas.length} linhas JSON em vez de 1`);
+      falhas++;
+    }
+  } catch (e) {
+    console.log('    FALHA: ' + e.message);
+    falhas++;
+  }
+
   // Resumo
   console.log(`ok: ${ok}   falhou: ${falhas}`);
 

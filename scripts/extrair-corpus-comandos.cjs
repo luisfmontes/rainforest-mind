@@ -163,15 +163,15 @@ function lerTranscrices() {
   }
 
   // Saída dos candidatos
-  for (const candidato of candidatos.values()) {
-    if (maxCandidatos !== null && candidatos.size > maxCandidatos) {
-      break;
-    }
+  const candidatosArray = Array.from(candidatos.values());
+  const slice = maxCandidatos !== null ? candidatosArray.slice(0, maxCandidatos) : candidatosArray;
+  let emitidos = 0;
+  for (const candidato of slice) {
     console.log(JSON.stringify(candidato));
+    emitidos++;
   }
 
   // Resumo no stderr
-  const emitidos = Math.min(candidatos.size, maxCandidatos || candidatos.size);
   console.error(`Resumo: ${arquivosLidos} arquivo(s) lido(s), ${emitidos} candidato(s) emitido(s), ${bloqueados} bloqueado(s) por hook`);
   console.error('Aviso: a saída carrega dado local e nunca se commita sem curadoria.');
 }
