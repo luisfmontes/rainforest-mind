@@ -300,13 +300,18 @@ mkdir -p "$S/docs/rainforest/design" "$S/docs/rainforest/planos"
 cat > "$S/docs/rainforest/design/t.md" <<'DESIGN'
 # Design
 
+## Objetivo
+Teste
+
 ## Fora de escopo
 
 ## Avaliado e descartado
 
 ## Decisões fechadas
 
-- **D1** — porque: test
+- **D1 — porque: test**
+
+## Em aberto
 
 DESIGN
 
@@ -344,6 +349,8 @@ exige "marcar plano ok com prova verde na base: exit 2 pelo estado.cjs" 2 \
 # Plano com prova vermelha
 cp "$S/docs/rainforest/planos/t-verde.md" "$S/docs/rainforest/planos/t-vermelho.md"
 sed -i 's/exit 0/exit 1/' "$S/docs/rainforest/planos/t-vermelho.md"
+# Design para t2 (cópia de t.md)
+cp "$S/docs/rainforest/design/t.md" "$S/docs/rainforest/design/t2.md"
 git -C "$S" add -A; git -C "$S" commit -q -m "prova vermelha"
 E iniciar --slug t2 >/dev/null 2>&1
 E marcar --slug t2 --estagio design --status aprovado >/dev/null 2>&1

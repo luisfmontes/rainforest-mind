@@ -177,6 +177,7 @@ mutacao:
   para: y
   bateria: z
 pronto quando: sai 0
+prova-na-base: verde — fixture de bateria
 FIM
 
 # Sem `design.arquivo`, o gate procura design/<slug>.md, nao acha, e NAO roda.
@@ -248,6 +249,7 @@ mutacao:
   para: y
   bateria: z
 pronto quando: sai 0
+prova-na-base: verde — fixture de bateria
 FIM
 est iniciar --slug c2-plano --titulo sandbox >/dev/null
 est marcar --slug c2-plano --estagio design --status aprovado \
