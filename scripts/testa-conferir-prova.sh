@@ -367,6 +367,49 @@ else
   falhou=$((falhou+1)); echo "  FALHA a recusa do marcar nao cita a prova"
 fi
 
+# ============================================================ Rodada 2: B2, I2, M2
+# Plano de uma tarefa; $1 = linhas de campo (prova:/prova-na-base:)
+plano_uma() {
+  printf '# Plano r2\n### 1. Caso [tipo: implementar]\natende: D1\narquivos: scripts/x.cjs\n%s\npronto quando: ok\n' "$1" > "$P"
+}
+roda_plano() { RFM_ESTADO_ROOT="$W" node "$CONFERIR" plano --slug t --plano "$P" 2>&1; }
+caso_plano() {  # nome, exit esperado, regex (ou "-"), linhas de campo
+  local nome="$1" esp="$2" rx="$3" campos="$4"
+  plano_uma "$campos"
+  local saida got; saida=$(roda_plano); got=$?
+  if [ "$got" = "$esp" ] && { [ "$rx" = "-" ] || printf '%s' "$saida" | grep -qi -- "$rx"; }; then
+    ok=$((ok+1)); echo "  ok    $nome"
+  else
+    falhou=$((falhou+1)); echo "  FALHA $nome: esperava exit $esp /$rx/, veio $got"
+    printf '%s\n' "$saida" | sed 's/^/         /' | tail -4
+  fi
+}
+
+echo
+echo "== 8. B2: executor com arquivo ausente na base =="
+caso_plano "B2 bash <arquivo ausente>: aceita (arquivo nasce na tarefa)" 0 "1 prova" 'prova: `bash scripts/nao-existe-ainda.sh`'
+caso_plano "B2 sh <arquivo ausente>: aceita" 0 "1 prova" 'prova: `sh scripts/nao-existe-ainda.sh`'
+caso_plano "B2 node <arquivo ausente>: aceita" 0 "1 prova" 'prova: `node scripts/nao-existe-ainda.cjs`'
+caso_plano "B2 comando inexistente no PATH: exit 2 'nao executa'" 2 "a prova n.*o executa" 'prova: `comando-que-nao-existe-xyz`'
+
+echo "  -- tentativas de quebrar B2 (VERMELHO = achado: comando inexistente aceito) --"
+caso_plano "B2-quebra bash -c 'comando-inexistente': deve recusar (exit 2)" 2 "a prova n.*o executa" 'prova: `bash -c '"'"'comando-inexistente-xyz'"'"'`'
+caso_plano "B2-quebra bash <ausente> || comando-inexistente: deve recusar (exit 2)" 2 "a prova n.*o executa" 'prova: `bash scripts/ausente.sh || comando-inexistente-xyz`'
+
+echo
+echo "== 9. I2: forma de prova-na-base =="
+caso_plano "I2 'verde —' vazio: exit 2" 2 "fora da forma" 'prova-na-base: verde —'
+caso_plano "I2 texto sem 'verde —': exit 2" 2 "fora da forma" 'prova-na-base: ja passa porque sim'
+caso_plano "I2 prova: + prova-na-base: na mesma tarefa: exit 2" 2 "simultaneamente" 'prova: `exit 1`
+prova-na-base: verde — motivo qualquer'
+caso_plano "I2 motivo aceito sai no stdout" 0 "verde — fixture do motivo I2" 'prova-na-base: verde — fixture do motivo I2'
+
+echo
+echo "== 10. M2: env sem RFM_ESTADO_ROOT/CLAUDE_PROJECT_DIR/RFM_ROOT =="
+plano_uma 'prova: `test -z "$RFM_ESTADO_ROOT$CLAUDE_PROJECT_DIR$RFM_ROOT" && exit 1 || exit 0`'
+exige "M2 prova que sai 1 só se as 3 vars sumiram: aceita (exit 0)" 0 \
+  bash -c "RFM_ESTADO_ROOT='$W' CLAUDE_PROJECT_DIR='$W' RFM_ROOT='$W' node '$CONFERIR' plano --slug t --plano '$P'"
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
