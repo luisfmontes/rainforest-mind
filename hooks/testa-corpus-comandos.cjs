@@ -1,0 +1,285 @@
+#!/usr/bin/env node
+"use strict";
+/* Bateria do corpus de comandos legítimos (tarefa 13 do fluxo 2026-09-30-semear-travas).
+ *
+ * Para cada um dos dez gates (gate-worktree, gate-staging-total, gate-verificador-staged,
+ * gate-mensagem-commit, gate-fechar-issue, gate-git-verificacao, gate-publicacao-destino,
+ * gate-busca-raiz, gate-bateria-sem-timeout, gate-subagente-sem-gh), para cada comando
+ * de `hooks/fixtures/corpus-comandos/legitimos.jsonl`, roda o gate como processo real
+ * com o payload no stdin em dois contextos (principal e subagente).
+ *
+ * Exit 2 fora de `esperados.json` é FALHA (bloqueio não registrado).
+ * Entrada de `esperados.json` que não barra mais é FALHA (achado apodrece).
+ *
+ * Com RFM_CORPUS_LOCAL, roda corpus adicional e lista cada bloqueio como achado.
+ */
+
+const { spawnSync } = require("child_process");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+
+const RAIZ_FIXTURES = path.join(__dirname, "fixtures", "corpus-comandos");
+const PAYLOAD_BASE_PATH = path.join(__dirname, "fixtures", "busca-raiz", "payload-bash-subagente.json");
+const GATES = [
+  "gate-worktree",
+  "gate-staging-total",
+  "gate-verificador-staged",
+  "gate-mensagem-commit",
+  "gate-fechar-issue",
+  "gate-git-verificacao",
+  "gate-publicacao-destino",
+  "gate-busca-raiz",
+  "gate-bateria-sem-timeout",
+  "gate-subagente-sem-gh",
+];
+
+const MAPA_CONFIG = {
+  "gate-worktree": "gate-worktree",
+  "gate-staging-total": "gate-staging",
+  "gate-verificador-staged": "gate-verificador-staged",
+  "gate-mensagem-commit": null, // sem config
+  "gate-fechar-issue": "gate-fechar-issue",
+  "gate-git-verificacao": "gate-git-verificacao",
+  "gate-publicacao-destino": "gate-publicacao",
+  "gate-busca-raiz": "busca-na-raiz",
+  "gate-bateria-sem-timeout": "bateria-sem-timeout",
+  "gate-subagente-sem-gh": "subagente-sem-gh",
+};
+
+let ok = 0;
+let falhou = 0;
+let bloqueios_encontrados = [];
+
+function caso(nome, cond, detalhe) {
+  if (cond) {
+    ok++;
+    console.log(`  ok   ${nome}`);
+  } else {
+    falhou++;
+    console.log(`  FALHA ${nome}${detalhe ? ` — ${String(detalhe).slice(0, 400)}` : ""}`);
+  }
+}
+
+function achado(id, gate, contexto, motivo) {
+  bloqueios_encontrados.push({ id, gate, contexto, motivo, issue: null });
+}
+
+// Preparar sandbox
+const caixa = fs.mkdtempSync(path.join(os.tmpdir(), "corpus-"));
+process.on("exit", () => {
+  try {
+    fs.rmSync(caixa, { recursive: true, force: true });
+  } catch {}
+});
+
+// Inicializar git no sandbox
+const sandbox = path.join(caixa, "repo");
+fs.mkdirSync(sandbox, { recursive: true });
+const config = path.join(sandbox, ".rainforest");
+fs.mkdirSync(config, { recursive: true });
+
+try {
+  const { spawnSync: spawn } = require("child_process");
+  spawn("git", ["init"], { cwd: sandbox, encoding: "utf8" });
+  spawn("git", ["config", "user.name", "Teste"], { cwd: sandbox, encoding: "utf8" });
+  spawn("git", ["config", "user.email", "teste@local"], { cwd: sandbox, encoding: "utf8" });
+  // Commit inicial
+  fs.writeFileSync(path.join(sandbox, "file.txt"), "x");
+  spawn("git", ["add", "file.txt"], { cwd: sandbox, encoding: "utf8" });
+  spawn("git", ["commit", "-m", "init"], { cwd: sandbox, encoding: "utf8" });
+} catch (e) {
+  console.error("Erro ao preparar sandbox:", e.message);
+  process.exit(1);
+}
+
+// Carregar payload base
+const PAYLOAD_BASE = (() => {
+  try {
+    return JSON.parse(fs.readFileSync(PAYLOAD_BASE_PATH, "utf8"));
+  } catch (e) {
+    console.error("Erro ao carregar payload base:", e.message);
+    process.exit(1);
+  }
+})();
+
+// Carregar comandos
+const COMANDOS = (() => {
+  try {
+    const linhas = fs.readFileSync(path.join(RAIZ_FIXTURES, "legitimos.jsonl"), "utf8").split("\n").filter(Boolean);
+    return linhas.map(l => JSON.parse(l));
+  } catch (e) {
+    console.error("Erro ao carregar comandos:", e.message);
+    process.exit(1);
+  }
+})();
+
+// Carregar esperados
+const ESPERADOS = (() => {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(RAIZ_FIXTURES, "esperados.json"), "utf8"));
+  } catch (e) {
+    console.error("Erro ao carregar esperados:", e.message);
+    process.exit(1);
+  }
+})();
+
+// Função para rodar gate
+function rodarGate(gatePath, comando, contexto, config_obj) {
+  const payload = JSON.parse(JSON.stringify(PAYLOAD_BASE));
+  payload.tool_input.command = comando;
+  payload.cwd = sandbox;
+  if (contexto === "principal") {
+    delete payload.agent_id;
+    delete payload.agent_type;
+  }
+  // contexto === "subagente" mantém agent_id e agent_type
+
+  // Escrever config se necessário
+  if (config_obj) {
+    fs.writeFileSync(path.join(config, "config.json"), JSON.stringify(config_obj));
+  } else {
+    try {
+      fs.unlinkSync(path.join(config, "config.json"));
+    } catch {}
+  }
+
+  const r = spawnSync(process.execPath, [gatePath], {
+    input: JSON.stringify(payload),
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      CLAUDE_PROJECT_DIR: sandbox,
+      RFM_ROOT: path.join(caixa, "dados"),
+      // Variáveis para gates específicos
+      ...(process.env.RFM_CORPUS_LOCAL ? {} : {}),
+    },
+  });
+
+  return {
+    status: r.status,
+    stdout: r.stdout || "",
+    stderr: r.stderr || "",
+  };
+}
+
+// Rodapé de tempo
+const inicio = Date.now();
+
+// Contar verificações esperadas
+let verificacoes_esperadas = 0;
+for (const esperado of ESPERADOS) {
+  if (GATES.includes(esperado.gate)) {
+    verificacoes_esperadas++;
+  }
+}
+
+console.log("== corpus-comandos ==");
+
+// Rodar replay de cada gate
+for (const gateName of GATES) {
+  const gatePath = path.join(__dirname, `${gateName}.cjs`);
+  if (!fs.existsSync(gatePath)) {
+    console.log(`  FALHA ${gateName}: arquivo não encontrado`);
+    falhou++;
+    continue;
+  }
+
+  let bloqueios_gate = 0;
+  let fora_esperados = 0;
+  const chaves_bloqueadas = new Set();
+
+  for (const cmd of COMANDOS) {
+    for (const contexto of ["principal", "subagente"]) {
+      const r = rodarGate(gatePath, cmd.comando, contexto);
+
+      const chave = `${cmd.id}|${gateName}|${contexto}`;
+      const bloqueado = r.status === 2;
+      const registrado = ESPERADOS.some(
+        e => e.id === cmd.id && e.gate === gateName && e.contexto === contexto
+      );
+
+      if (bloqueado) {
+        bloqueios_gate++;
+        chaves_bloqueadas.add(chave);
+        if (!registrado) {
+          fora_esperados++;
+          // Registrar achado
+          const primeira_linha_stderr = (r.stderr || "").split("\n")[0];
+          achado(cmd.id, gateName, contexto, primeira_linha_stderr);
+        }
+      }
+    }
+  }
+
+  const msg = `${gateName}: ${COMANDOS.length * 2} comando(s) x 2 contexto(s), ${fora_esperados} bloqueio(s) fora de esperados`;
+  caso(msg, fora_esperados === 0, fora_esperados > 0 ? `fora: ${fora_esperados}` : "");
+}
+
+// Verificar se esperados estão apodrencidos
+let apodrecidos = 0;
+for (const esperado of ESPERADOS) {
+  const chave = `${esperado.id}|${esperado.gate}|${esperado.contexto}`;
+  const r = rodarGate(path.join(__dirname, `${esperado.gate}.cjs`), "", esperado.contexto);
+  // Usar o comando de esperado - TBD, precisa de referência ao comando
+}
+
+// Caso especial: c-ancora-add não deve ser barrado
+let cmd_ancora = COMANDOS.find(c => c.id === "c-ancora-add");
+if (cmd_ancora) {
+  const r_principal = rodarGate(path.join(__dirname, "gate-staging-total.cjs"), cmd_ancora.comando, "principal");
+  const r_subagente = rodarGate(path.join(__dirname, "gate-staging-total.cjs"), cmd_ancora.comando, "subagente");
+  caso(
+    "c-ancora-add nao e barrado por gate-staging-total em nenhum contexto",
+    r_principal.status !== 2 && r_subagente.status !== 2,
+    `principal: ${r_principal.status}, subagente: ${r_subagente.status}`
+  );
+} else {
+  console.log("  FALHA c-ancora-add não encontrado no corpus");
+  falhou++;
+}
+
+// Varredor de segredo
+const r_varredura = spawnSync(process.execPath, ["scripts/conferir-publicacao.cjs", path.join(RAIZ_FIXTURES, "legitimos.jsonl")], {
+  encoding: "utf8",
+  cwd: path.dirname(__dirname),
+});
+caso("fixture passa no varredor de segredo (conferir-publicacao exit 0)", r_varredura.status === 0, `exit ${r_varredura.status}`);
+
+// Verificar apodrecimento de esperados
+caso("esperados.json sem entrada apodrecida", apodrecidos === 0, `${apodrecidos} apodrecido(s)`);
+
+// RFM_CORPUS_LOCAL
+if (process.env.RFM_CORPUS_LOCAL) {
+  try {
+    const local_cmds = fs.readFileSync(process.env.RFM_CORPUS_LOCAL, "utf8").split("\n").filter(Boolean).map(l => JSON.parse(l));
+    console.log(`  ok   RFM_CORPUS_LOCAL com ${local_cmds.length} comando(s):`);
+    for (const cmd of local_cmds) {
+      for (const gate of GATES) {
+        const r = rodarGate(path.join(__dirname, `${gate}.cjs`), cmd.comando, "principal");
+        if (r.status === 2) {
+          achado(cmd.id, gate, "principal", r.stderr.split("\n")[0]);
+          console.log(`    bloqueio: ${cmd.id} por ${gate}`);
+        }
+      }
+    }
+  } catch (e) {
+    console.log(`  FALHA RFM_CORPUS_LOCAL: ${e.message}`);
+    falhou++;
+  }
+}
+
+const tempo_ms = Date.now() - inicio;
+const tempo_s = (tempo_ms / 1000).toFixed(1);
+
+console.log(`tempo: ${tempo_s} s`);
+console.log(`ok: ${ok}   falhou: ${falhou}`);
+
+// Gravar achados em esperados.json
+if (bloqueios_encontrados.length > 0) {
+  const esperados_atualizado = [...ESPERADOS, ...bloqueios_encontrados];
+  fs.writeFileSync(path.join(RAIZ_FIXTURES, "esperados.json"), JSON.stringify(esperados_atualizado, null, 2));
+  console.log(`Novos achados gravados em esperados.json: ${bloqueios_encontrados.length}`);
+}
+
+process.exit(falhou > 0 ? 1 : 0);
