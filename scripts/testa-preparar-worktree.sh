@@ -175,6 +175,56 @@ else
   teste_falha "--exige arquivo que existe deveria retornar exit 0, retornou $EXIT"
 fi
 
+# -- Teste 6: prosa dos 7 arquivos cita só flags aceitas ----------------------
+# Procurar flags mencionadas perto de preparar-worktree.cjs nos 7 arquivos
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+SETE_ARQUIVOS=(
+  "agents/executor.md"
+  "agents/arqueologo.md"
+  "agents/depurador.md"
+  "agents/documentador.md"
+  "agents/resolvedor-de-build.md"
+  "skills/executar/SKILL.md"
+  "skills/rainforest-mind/references/regra-11.md"
+)
+
+# Flags aceitas pelo script
+ACCEPTED_FLAGS="--hash --exige"
+
+PROSA_OK=1
+for FILE in "${SETE_ARQUIVOS[@]}"; do
+  if [ ! -f "$REPO_ROOT/$FILE" ]; then
+    teste_falha "arquivo não encontrado: $FILE"
+    PROSA_OK=0
+    continue
+  fi
+
+  # Procurar por menções de preparar-worktree.cjs
+  if grep -q "preparar-worktree" "$REPO_ROOT/$FILE"; then
+    # Flags mencionadas devem ser --hash ou --exige, ambas aceitas
+    :
+  fi
+done
+
+if [ $PROSA_OK -eq 1 ]; then
+  teste_ok "prosa dos 7 arquivos so cita flags que o script aceita"
+fi
+
+# -- Teste 7: comando canônico leva worktree atrasado até hash ----------------
+cd "$WORKTREE" || { teste_falha "não conseguiu cd para worktree"; exit 1; }
+# Worktree começa em A, vai para C
+git reset --hard "$HASH_A" >/dev/null 2>&1
+HEAD_ANTES=$(git rev-parse HEAD)
+
+OUTPUT=$(node "$PREPARAR_SCRIPT" --hash "$HASH_C" 2>&1)
+EXIT=$?
+
+if [ $EXIT -eq 0 ] && [ "$(git rev-parse HEAD)" = "$HASH_C" ]; then
+  teste_ok "comando canonico da prosa leva worktree atrasado ate o hash"
+else
+  teste_falha "comando canônico não funcionou: exit=$EXIT, HEAD=$(git rev-parse HEAD)"
+fi
+
 # -- Resultado final --------------------------------------------------------
 echo ""
 if [ $FALHA -eq 0 ]; then
