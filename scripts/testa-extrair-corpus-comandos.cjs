@@ -129,14 +129,17 @@ function testar() {
   // Teste 3: deduplicação
   console.log('  Teste 3: deduplicação');
   try {
-    // Criar arquivo com comando duplicado
-    const tempFile = path.join(__dirname, 'fixtures', 'corpus', 'projetos', 'p1', 'dup.jsonl');
+    // Copia a fixture para um temporario e acrescenta la o arquivo duplicado:
+    // gravar dentro de scripts/fixtures sujaria o repo e correria com outra bateria.
+    const raizDup = fs.mkdtempSync(path.join(require('os').tmpdir(), 'corpus-dup-'));
+    fs.cpSync(fixtureDir, raizDup, { recursive: true });
+    const tempFile = path.join(raizDup, 'p1', 'dup.jsonl');
     fs.writeFileSync(tempFile,
       '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"dup-1","name":"Bash","input":{"command":"ls -la"}}],"stop_reason":"tool_use"}}\n' +
       '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"dup-1","content":"teste","is_error":false}]}}\n'
     );
 
-    const output = execSync(`node "${extractorPath}" --raiz "${fixtureDir}"`, {
+    const output = execSync(`node "${extractorPath}" --raiz "${raizDup}"`, {
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe']
     });
@@ -159,7 +162,7 @@ function testar() {
       falhas++;
     }
 
-    fs.unlinkSync(tempFile);
+    fs.rmSync(raizDup, { recursive: true, force: true });
   } catch (e) {
     console.log('    FALHA: ' + e.message);
     falhas++;

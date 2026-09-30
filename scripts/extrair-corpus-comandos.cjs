@@ -125,14 +125,14 @@ function lerTranscrices() {
                   if (!comando) continue;
 
                   // Procurar resultado
-                  const resultadoTexto = results[toolUseId];
-                  if (resultadoTexto === undefined) {
+                  const texto = results[toolUseId];
+                  if (texto === undefined) {
                     // Sem result, descartar
                     continue;
                   }
 
                   // Verificar se bloqueado por hook
-                  const bloqueado = /^PreToolUse:[A-Za-z]+ hook error:/.test(resultadoTexto);
+                  const bloqueado = /^PreToolUse:[A-Za-z]+ hook error:/.test(texto);
                   if (bloqueado) {
                     bloqueados++;
                     continue;
