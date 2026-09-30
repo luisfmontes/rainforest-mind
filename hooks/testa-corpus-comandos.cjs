@@ -183,6 +183,20 @@ for (const esperado of ESPERADOS) {
 
 console.log("== corpus-comandos ==");
 
+// Definir controles positivos para cada gate
+const CONTROLES_POSITIVOS = {
+  "gate-git-verificacao": { comando: "git commit --no-verify", contextos: ["principal", "subagente"] },
+  "gate-mensagem-commit": { necessita_setup: true }, // Requer staged content e commit > 150 linhas
+  "gate-verificador-staged": { necessita_setup: true },
+  "gate-worktree": { necessita_setup: true }, // Requer cwd = checkout principal
+  "gate-staging-total": { comando: "git add -A", contextos: ["principal", "subagente"] },
+  "gate-fechar-issue": { comando: "gh issue close 1", contextos: ["principal", "subagente"] },
+  "gate-publicacao-destino": { necessita_validacao: true },
+  "gate-busca-raiz": { comando: "find / -name x", contextos: ["subagente"] },
+  "gate-bateria-sem-timeout": { necessita_validacao: true },
+  "gate-subagente-sem-gh": { comando: "gh issue close 1", contextos: ["subagente"] },
+};
+
 // Rodar replay de cada gate
 for (const gateName of GATES) {
   const gatePath = path.join(__dirname, `${gateName}.cjs`);
@@ -194,11 +208,19 @@ for (const gateName of GATES) {
 
   let bloqueios_gate = 0;
   let fora_esperados = 0;
+  let erros_gate = 0;
   const chaves_bloqueadas = new Set();
 
   for (const cmd of COMANDOS) {
     for (const contexto of ["principal", "subagente"]) {
       const r = rodarGate(gatePath, cmd.comando, contexto);
+
+      // Verificar exit code inválido
+      if (r.status !== 0 && r.status !== 2 && r.status !== null) {
+        erros_gate++;
+        const primeira_linha_stderr = (r.stderr || "").split("\n")[0];
+        console.log(`    ERRO ${gateName} ${cmd.id} (${contexto}): exit ${r.status} — ${primeira_linha_stderr.slice(0, 100)}`);
+      }
 
       const chave = `${cmd.id}|${gateName}|${contexto}`;
       const bloqueado = r.status === 2;
@@ -219,8 +241,22 @@ for (const gateName of GATES) {
     }
   }
 
+  // Controle positivo: testar comando que DEVE ser bloqueado
+  const controle = CONTROLES_POSITIVOS[gateName];
+  if (controle && controle.comando && !controle.necessita_setup && !controle.necessita_validacao) {
+    let controle_passou = false;
+    for (const contexto of controle.contextos) {
+      const r = rodarGate(gatePath, controle.comando, contexto);
+      if (r.status === 2) {
+        controle_passou = true;
+        break;
+      }
+    }
+    caso(`${gateName}: controle positivo barrado (exit 2)`, controle_passou, controle_passou ? "" : "controle não foi bloqueado");
+  }
+
   const msg = `${gateName}: ${COMANDOS.length} comando(s) x 2 contexto(s), ${fora_esperados} bloqueio(s) fora de esperados`;
-  caso(msg, fora_esperados === 0, fora_esperados > 0 ? `fora: ${fora_esperados}` : "");
+  caso(msg, fora_esperados === 0 && erros_gate === 0, fora_esperados > 0 ? `fora: ${fora_esperados}` : erros_gate > 0 ? `erros: ${erros_gate}` : "");
 }
 
 // Verificar se esperados estão apodrencidos
@@ -267,11 +303,13 @@ function processarCorpusLocal(arquivo_path) {
     console.log(`  ok   RFM_CORPUS_LOCAL com ${local_cmds.length} comando(s):`);
     for (const cmd of local_cmds) {
       for (const gate of GATES) {
-        const r = rodarGate(path.join(__dirname, `${gate}.cjs`), cmd.comando, "principal");
-        if (r.status === 2) {
-          const novo_achado = { id: cmd.id, gate: gate, contexto: "principal", motivo: r.stderr.split("\n")[0], issue: null };
-          achados_locais.push(novo_achado);
-          console.log(`    bloqueio: ${cmd.id} por ${gate}`);
+        for (const contexto of ["principal", "subagente"]) {
+          const r = rodarGate(path.join(__dirname, `${gate}.cjs`), cmd.comando, contexto);
+          if (r.status === 2) {
+            const novo_achado = { id: cmd.id, gate: gate, contexto: contexto, motivo: r.stderr.split("\n")[0], issue: null };
+            achados_locais.push(novo_achado);
+            console.log(`    bloqueio: ${cmd.id} por ${gate} (${contexto})`);
+          }
         }
       }
     }
