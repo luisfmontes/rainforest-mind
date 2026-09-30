@@ -47,6 +47,15 @@ cat > "$RAINFOREST/ideias.jsonl" <<'EOF'
 {"id":"x-travas","titulo":"Ideia sobre travas","descricao":"SEGREDO-NAO-PODE-SAIR","contexto":"teste","projeto":"test","gancho":"verificar","status":"plantada"}
 EOF
 
+# Criar repositório descartável com branch e commit
+REPO="$SANDBOX/repo"
+BARE="$SANDBOX/remoto.git"
+git init -q "$REPO" 2>/dev/null
+git init -q --bare "$BARE" 2>/dev/null
+git -C "$REPO" -c user.name=t -c user.email=t@t commit -q --allow-empty -m "commit sobre travas" 2>/dev/null
+git -C "$REPO" remote add origin "$BARE" 2>/dev/null
+git -C "$REPO" push -q origin HEAD:refs/heads/fluxo/travas 2>/dev/null
+
 # Criar dublê de gh que simula resposta real
 GH_MOCK="$SANDBOX/gh-mock.cjs"
 cat > "$GH_MOCK" <<'EOF'
@@ -78,36 +87,50 @@ chmod +x "$GH_MOCK"
 # ================================================================ Testes
 
 echo "== Issue FECHADA e PR merged com --state all =="
-RFM_ESTADO_ROOT="$RAINFOREST" RFM_VARRER_GH="$GH_MOCK" \
+RFM_ROOT="$RAINFOREST" RFM_ESTADO_ROOT="$REPO" RFM_VARRER_GH="$GH_MOCK" \
   bash -c "node '$SCRIPT' --slug teste travas >/dev/null 2>&1"
-TXT="$RAINFOREST/docs/rainforest/varredura/teste.txt"
-esperado "Issue FECHADA com o termo aparece na varredura (o caso #253)" 0 \
-  test -f "$TXT"
-contem "Issue #253 aparece no .txt" "$TXT" "Travas do semear #253"
+TXT="$REPO/docs/rainforest/varredura/teste.txt"
+esperado "Arquivo gravado com exit 0" 0 test -f "$TXT"
+contem "Issue FECHADA com o termo aparece na varredura (o caso #253)" "$TXT" "Travas do semear #253"
 contem "PR #99 aparece no .txt" "$TXT" "PR sobre travas #99"
+if grep -q "PR sobre travas #99" "$TXT" && grep -q "refs/heads/fluxo/travas" "$TXT" && grep -q "commit sobre travas" "$TXT"; then
+  ok=$((ok+1)); echo "  ok    PR fechado e branch remota e commit aparecem"
+else
+  falhou=$((falhou+1)); echo "  FALHA PR fechado e branch remota e commit aparecem"
+fi
 
 echo
 echo "== Ideia gravada sem descricao =="
-contem "Ideia sai so com id e titulo (descricao secreta ausente do .txt)" "$TXT" '"id":"x-travas"'
+contem "ideia sai so com id e titulo (descricao secreta ausente do .txt)" "$TXT" '"id":"x-travas"'
 nao_contem "Descricao secreta nao sai" "$TXT" "SEGREDO-NAO-PODE-SAIR"
 
 echo
 echo "== gh ausente e nenhum arquivo gravado =="
 esperado "gh ausente: exit 69 e nenhum arquivo gravado" 69 \
-  bash -c "RFM_ESTADO_ROOT='$RAINFOREST' RFM_VARRER_GH='$SANDBOX/nao-existe.cjs' node '$SCRIPT' --slug teste2 travas >/dev/null 2>&1"
-test ! -f "$RAINFOREST/docs/rainforest/varredura/teste2.txt" && ok=$((ok+1)) && echo "  ok    nenhum arquivo gravado em exit 69" || { falhou=$((falhou+1)); echo "  FALHA nenhum arquivo gravado em exit 69"; }
+  bash -c "RFM_ROOT='$RAINFOREST' RFM_ESTADO_ROOT='$REPO' RFM_VARRER_GH='$SANDBOX/nao-existe.cjs' node '$SCRIPT' --slug teste2 travas >/dev/null 2>&1"
+test ! -f "$REPO/docs/rainforest/varredura/teste2.txt" && ok=$((ok+1)) && echo "  ok    nenhum arquivo gravado em exit 69" || { falhou=$((falhou+1)); echo "  FALHA nenhum arquivo gravado em exit 69"; }
 
 echo
 echo "== Comandos executados aparecem no .txt =="
-contem "O .txt cita cada comando executado" "$TXT" "gh issue list --state all --search"
+contem "o .txt cita cada comando executado" "$TXT" "gh issue list --state all --search"
 contem "Comando gh pr aparece" "$TXT" "gh pr list --state all --search"
+contem "Comando de branch filtrada aparece" "$TXT" "git ls-remote --heads origin | grep -F"
+contem "Comando git log aparece" "$TXT" "git log --all --grep"
+
+echo
+echo "== Saida vazia aparece no .txt =="
+RFM_ROOT="$RAINFOREST" RFM_ESTADO_ROOT="$REPO" RFM_VARRER_GH="$GH_MOCK" \
+  bash -c "node '$SCRIPT' --slug teste-vazio travas semnada >/dev/null 2>&1"
+TXT_VAZIO="$REPO/docs/rainforest/varredura/teste-vazio.txt"
+contem "segundo termo sem match sai com (vazio)" "$TXT_VAZIO" "grep -F \"semnada\""
+contem "git log sem match sai com (vazio)" "$TXT_VAZIO" "git log --all --grep=\"semnada\"" && grep -q -A1 'git log --all --grep="semnada"' "$TXT_VAZIO" | grep -q '(vazio)'
 
 echo
 echo "== Validacoes de argumento =="
 esperado "sem termo: exit 2" 2 \
-  bash -c "RFM_ESTADO_ROOT='$RAINFOREST' node '$SCRIPT' --slug teste"
+  bash -c "RFM_ROOT='$RAINFOREST' RFM_ESTADO_ROOT='$REPO' node '$SCRIPT' --slug teste"
 esperado "sem --slug: exit 2" 2 \
-  bash -c "RFM_ESTADO_ROOT='$RAINFOREST' node '$SCRIPT' travas"
+  bash -c "RFM_ROOT='$RAINFOREST' RFM_ESTADO_ROOT='$REPO' node '$SCRIPT' travas"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

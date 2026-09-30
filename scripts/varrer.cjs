@@ -17,15 +17,37 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-// Resolver a raiz: mesma cadeia de conferir-fluxo.cjs
-const RAIZ = process.env.RFM_ESTADO_ROOT
+// Raiz do projeto: onde gravar a varredura (docs/rainforest/varredura/)
+const RAIZ_PROJETO = process.env.RFM_ESTADO_ROOT
   || process.env.CLAUDE_PROJECT_DIR
   || process.cwd();
+
+// Raiz de dados: onde lê ideias.jsonl (RFM_ROOT > .rainforest > ~/.rainforest > plugin)
+const RAIZ_DADOS = (() => {
+  const local = RAIZ_PROJETO;
+  try {
+    const { resolverRaiz } = require(path.join(__dirname, '..', 'hooks', 'lib', 'raiz.cjs'));
+    return resolverRaiz({ plugin: path.resolve(__dirname, '..') }).raiz || local;
+  } catch {
+    return local;
+  }
+})();
 
 // Estado padrão para os dois comandos gh
 const ESTADO_TODOS = "all";
 
 // Utilitários
+
+function pad(n, len = 2) {
+  return String(n).padStart(len, "0");
+}
+
+function hoje() {
+  // Data do relogio LOCAL. Nunca toISOString() (UTC): depois das 21h em
+  // Brasilia o UTC ja virou o dia seguinte e o carimbo sairia no futuro
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 function arg(nome) {
   const i = process.argv.indexOf(`--${nome}`);
@@ -67,7 +89,7 @@ function spawnarGh(args) {
 
   const r = spawnSync(cmd, cmdArgs, {
     encoding: 'utf8',
-    cwd: RAIZ,
+    cwd: RAIZ_PROJETO,
     stdio: ['pipe', 'pipe', 'pipe']
   });
 
@@ -120,7 +142,7 @@ for (const termo of termos) {
 for (const termo of termos) {
   const r = spawnSync('git', ['ls-remote', '--heads', 'origin'], {
     encoding: 'utf8',
-    cwd: RAIZ,
+    cwd: RAIZ_PROJETO,
     stdio: ['pipe', 'pipe', 'pipe']
   });
 
@@ -134,12 +156,10 @@ for (const termo of termos) {
       .split('\n')
       .filter(l => l.includes(termo))
       .join('\n');
-    if (linhas.trim()) {
-      saidas.push({
-        comando: `git ls-remote --heads origin`,
-        saida: linhas
-      });
-    }
+    saidas.push({
+      comando: `git ls-remote --heads origin | grep -F "${termo}"`,
+      saida: linhas.trim() || '(vazio)'
+    });
   }
 }
 
@@ -147,7 +167,7 @@ for (const termo of termos) {
 for (const termo of termos) {
   const r = spawnSync('git', ['log', '--all', `--grep=${termo}`, '--oneline'], {
     encoding: 'utf8',
-    cwd: RAIZ,
+    cwd: RAIZ_PROJETO,
     stdio: ['pipe', 'pipe', 'pipe']
   });
 
@@ -157,18 +177,21 @@ for (const termo of termos) {
 
   if (r.status === 0) {
     const linhas = r.stdout.trim();
-    if (linhas) {
-      saidas.push({
-        comando: `git log --all --grep="${termo}" --oneline`,
-        saida: linhas
-      });
-    }
+    saidas.push({
+      comando: `git log --all --grep="${termo}" --oneline`,
+      saida: linhas || '(vazio)'
+    });
   }
 }
 
 // 5. ideias.jsonl (só id e titulo, filtrado por termo)
-const caminhoIdeias = path.join(RAIZ, 'ideias.jsonl');
-if (fs.existsSync(caminhoIdeias)) {
+const caminhoIdeias = path.join(RAIZ_DADOS, 'ideias.jsonl');
+if (!fs.existsSync(caminhoIdeias)) {
+  saidas.push({
+    comando: `cat ${caminhoIdeias}`,
+    saida: `(sem ideias.jsonl em ${caminhoIdeias})`
+  });
+} else {
   try {
     const conteudo = fs.readFileSync(caminhoIdeias, 'utf8');
     const ideias = conteudo
@@ -194,24 +217,24 @@ if (fs.existsSync(caminhoIdeias)) {
       });
     }
   } catch (e) {
-    // Silencioso se falhar na leitura de ideias
+    naoVerificavel(`Não foi possível ler ${caminhoIdeias}: ${e.message}`);
   }
 }
 
 // Montar o conteúdo do arquivo de varredura
-const agora = new Date().toISOString().split('T')[0];
+const agora = hoje();
 let conteudo = `Data: ${agora}\n`;
 conteudo += `Termos: ${termos.join(', ')}\n`;
 conteudo += '\n';
 
 for (const { comando, saida } of saidas) {
   conteudo += `$ ${comando}\n`;
-  conteudo += saida || '(vazio)\n';
+  conteudo += saida + '\n';
   conteudo += '\n';
 }
 
 // Gravar o arquivo
-const dirVarredura = path.join(RAIZ, 'docs', 'rainforest', 'varredura');
+const dirVarredura = path.join(RAIZ_PROJETO, 'docs', 'rainforest', 'varredura');
 try {
   fs.mkdirSync(dirVarredura, { recursive: true });
   const caminhoSaida = path.join(dirVarredura, `${slug}.txt`);
