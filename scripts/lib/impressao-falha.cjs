@@ -54,7 +54,7 @@ function classificar({ erros, logs, agora }) {
     const [, data, hora, vigia, motivo] = m;
     if (!porVigia.has(vigia)) porVigia.set(vigia, []);
     if (/^RESOLVIDO/.test(motivo)) {
-      if (!/^conferido/.test(vigia)) porVigia.set(vigia, []);
+      porVigia.set(vigia, []);
       continue;
     }
     const t = paraMs(data, hora);
@@ -131,13 +131,15 @@ function ler(arquivo) {
 }
 
 function falhasRecorrentes(agora = new Date()) {
-  const dir = process.env.RFM_VIGIAS_DIR || path.join(__dirname, '..', '..', 'vigias');
+  const doPlugin = path.join(__dirname, '..', '..', 'vigias');
+  const dir = process.env.RFM_VIGIAS_DIR || doPlugin;
+  const dirLogs = process.env.RFM_VIGIAS_DIR ? dir : process.env.RFM_ROOT ? path.join(process.env.RFM_ROOT, 'vigias') : doPlugin;
   const erros = ler(path.join(dir, 'ERROS.md'));
   if (!erros) return [];
   const logs = {};
   for (const linha of erros.split(/\r?\n/)) {
     const m = RE_ERRO.exec(linha);
-    if (m && /^[\w.-]+$/.test(m[3]) && !(m[3] in logs)) logs[m[3]] = ler(path.join(dir, 'log-' + m[3] + '.txt'));
+    if (m && /^[\w.-]+$/.test(m[3]) && !(m[3] in logs)) logs[m[3]] = ler(path.join(dirLogs, 'log-' + m[3] + '.txt'));
   }
   return classificar({ erros, logs, agora });
 }

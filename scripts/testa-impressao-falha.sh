@@ -79,5 +79,31 @@ mkdir -p "$SB/vazia"
 igual "sem-erros-md" "$(roda "$SB/vazia" "2026-09-30T12:00:00" 2>&1)" '[]'
 
 echo ""
+echo "(8) persistente-com-log: duas rondas seguidas com a falha"
+pasta comlog <<'EOF'
+- 2026-09-28 08:01 [vigia-x]: falhou exit 2
+- 2026-09-29 08:01 [vigia-x]: falhou exit 2
+EOF
+printf '=== 2026-09-27 08:00 ===\n=== 2026-09-28 08:00 ===\n=== 2026-09-29 08:00 ===\n' > "$SB/comlog/log-vigia-x.txt"
+igual "persistente-com-log: duas rondas seguidas" "$(roda "$SB/comlog" "2026-09-30T12:00:00")" '[["vigia-x","persistente",2,"2026-09-29"]]'
+
+echo ""
+echo "(9) log-em-RFM_ROOT"
+# caixa de areia: copia da lib + ERROS.md proprio; o log so existe em outra pasta (RFM_ROOT)
+mkdir -p "$SB/caixa/scripts/lib" "$SB/caixa/vigias" "$SB/raiz/vigias"
+cp "$LIB" "$SB/caixa/scripts/lib/impressao-falha.cjs"
+printf -- '- 2026-09-27 08:01 [vigia-x]: falhou exit 2\n- 2026-09-28 08:01 [vigia-x]: falhou exit 2\n' > "$SB/caixa/vigias/ERROS.md"
+printf '=== 2026-09-27 08:00 ===\n=== 2026-09-28 08:00 ===\n=== 2026-09-29 08:00 ===\n' > "$SB/raiz/vigias/log-vigia-x.txt"
+roda_caixa() {
+  env -u RFM_VIGIAS_DIR "$@" LIB="$SB/caixa/scripts/lib/impressao-falha.cjs" node -e "
+    const l = require(process.env.LIB);
+    console.log(JSON.stringify(l.falhasRecorrentes(new Date('2026-09-30T12:00:00')).map(r => [r.vigia, r.rotulo, r.n, r.ultima])));
+  "
+}
+com_raiz="$(roda_caixa RFM_ROOT="$SB/raiz")"
+sem_raiz="$(env -u RFM_ROOT bash -c "$(declare -f roda_caixa); SB='$SB'; roda_caixa")"
+igual "log-em-RFM_ROOT" "$com_raiz $sem_raiz" '[["vigia-x","intermitente",2,"2026-09-28"]] [["vigia-x","persistente",2,"2026-09-28"]]'
+
+echo ""
 echo "Placar: $ok ok, $falhou falha(s)"
 [ "$falhou" -eq 0 ]
