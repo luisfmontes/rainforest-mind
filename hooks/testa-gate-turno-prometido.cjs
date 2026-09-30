@@ -30,6 +30,7 @@ const hookJsonPath = path.join(__dirname, 'hooks.json');
 
 let ok = 0;
 let falha = 0;
+const tmpdirsCriados = [];
 
 function teste(nome, fn) {
   try {
@@ -57,7 +58,9 @@ function rodaGate(fixture, stop_hook_active = false, temAgentId = false, transcr
 
   const env = { ...process.env };
   delete env.RAINFOREST_GATE_OFF;
-  env.RFM_ROOT = os.tmpdir();
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rfm-gate-test-'));
+  tmpdirsCriados.push(tmpDir);
+  env.RFM_ROOT = tmpDir;
 
   const resultado = spawnSync(process.execPath, [scriptPath], {
     input: JSON.stringify(payload),
@@ -73,6 +76,61 @@ function rodaGate(fixture, stop_hook_active = false, temAgentId = false, transcr
 function assert(condicao, msg) {
   if (!condicao) throw new Error(msg);
 }
+
+// Teste (0): o comando registrado em hooks.json (com CLAUDE_PLUGIN_ROOT resolvido) barra promete-sem-despachar.jsonl: exit 2
+teste('o comando registrado em hooks.json (com CLAUDE_PLUGIN_ROOT resolvido) barra promete-sem-despachar.jsonl: exit 2', () => {
+  // Lê hooks.json
+  const hookJson = JSON.parse(fs.readFileSync(hookJsonPath, 'utf8'));
+
+  // Encontra o comando no grupo Stop que cita gate-turno-prometido.cjs
+  let comando = null;
+  const stopHooks = hookJson.hooks.Stop || [];
+  for (const grupo of stopHooks) {
+    if (grupo.hooks) {
+      for (const hook of grupo.hooks) {
+        if (hook.type === 'command' && hook.command && hook.command.includes('gate-turno-prometido.cjs')) {
+          comando = hook.command;
+          break;
+        }
+      }
+    }
+    if (comando) break;
+  }
+
+  assert(comando, 'comando de gate-turno-prometido não encontrado em hooks.json');
+
+  // Resolve ${CLAUDE_PLUGIN_ROOT} para a raiz do repo (pai de __dirname)
+  const repoRoot = path.resolve(__dirname, '..');
+  // Converte para forma Windows com barras normalizadas
+  const repoRootNormalizado = repoRoot.replace(/\\/g, '/');
+  const comandoResolvido = comando.replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, repoRootNormalizado);
+
+  // Monta o payload
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rfm-cmd-test-'));
+  tmpdirsCriados.push(tmpDir);
+  const payload = {
+    session_id: 'test-session',
+    cwd: 'C:\\Projetos\\fixture-turno-prometido',
+    transcript_path: path.join(fixtureDir, 'promete-sem-despachar.jsonl'),
+    hook_event_name: 'Stop',
+  };
+
+  const env = { ...process.env };
+  delete env.RAINFOREST_GATE_OFF;
+  env.RFM_ROOT = tmpDir;
+
+  // Executa por bash -c
+  const resultado = spawnSync('bash', ['-c', comandoResolvido], {
+    input: JSON.stringify(payload),
+    encoding: 'utf8',
+    env,
+    timeout: 30000,
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+
+  assert(resultado.status === 2, `esperado exit 2, obteve ${resultado.status}`);
+  assert(resultado.stderr.includes('Razão:'), 'stderr deve incluir "Razão:"');
+});
 
 // Teste (1): promete-sem-despachar: exit 2
 teste('promete sem despachar: exit 2', () => {
@@ -227,4 +285,14 @@ teste('fixtures no formato real (chaves de cada linha cobrem o envelope de trans
 
 
 console.log(`ok: ${ok}   falhou: ${falha}`);
+
+// Limpeza de tmpdirs
+for (const tmpDir of tmpdirsCriados) {
+  try {
+    fs.rmSync(tmpDir, { recursive: true });
+  } catch (e) {
+    // Ignora erros de limpeza
+  }
+}
+
 process.exit(falha > 0 ? 1 : 0);
