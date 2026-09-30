@@ -21,8 +21,86 @@
     "em": "2026-09-30"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-09-30"
+    "status": "ok",
+    "catraca_mutacao": "2026-09-30",
+    "tarefas_ok": 4,
+    "tarefas": 4,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "4c8cb50",
+        "iteracao": 1,
+        "sessao": "5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea",
+        "ts": "2026-09-30T08:43:24.598Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "4c8cb50",
+        "iteracao": 2,
+        "sessao": "5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea",
+        "ts": "2026-09-30T08:46:55.870Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "cd2e83c",
+        "iteracao": 1,
+        "sessao": "5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea",
+        "ts": "2026-09-30T08:46:55.870Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "cd2e83c",
+        "iteracao": 1,
+        "sessao": "5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea",
+        "ts": "2026-09-30T08:46:55.870Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "4c8cb50",
+        "iteracao": 3,
+        "sessao": "5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea",
+        "ts": "2026-09-30T09:37:37.946Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "cd2e83c",
+        "iteracao": 2,
+        "sessao": "5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea",
+        "ts": "2026-09-30T09:37:37.946Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "cd2e83c",
+        "iteracao": 2,
+        "sessao": "5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea",
+        "ts": "2026-09-30T09:37:37.946Z"
+      }
+    ],
+    "em": "2026-09-30",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-impressao-falha.sh duas-seguidas-sem-log: persistente x2"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-saude.sh VR1 vigias-recorrentes"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-dados-batedor-repos.sh TESTE 5 secao FALHAS RECORRENTES"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "mudanca de dado pelo CLI ideias.cjs descartar, sem codigo a inverter"
+      }
+    ],
+    "comando": "node scripts/conferir-mutacao.cjs (tarefas 1-3, re-rodado na integracao)",
+    "saida": "exit 0 nas tres; casos nomeados vermelhos"
   },
   "revisar": {
     "status": "pendente"
