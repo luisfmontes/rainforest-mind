@@ -276,5 +276,79 @@ else
 fi
 
 echo
+echo "== 7. prosa dos 5 arquivos so cita flags que o script aceita =="
+
+# Arquivos que precisam citar o substituir.cjs
+ARQUIVOS_PROSA=(
+  "$RAIZ/skills/modo-dev/SKILL.md"
+  "$RAIZ/agents/executor.md"
+  "$RAIZ/agents/depurador.md"
+  "$RAIZ/agents/documentador.md"
+  "$RAIZ/agents/resolvedor-de-build.md"
+)
+
+# Confere que cada arquivo cita substituir.cjs
+CITA_TUDO=0
+for arq in "${ARQUIVOS_PROSA[@]}"; do
+  CONTAGEM=$(grep -c "substituir.cjs" "$arq" 2>/dev/null || echo 0)
+  if [ "$CONTAGEM" -ge 1 ]; then
+    : # ok
+  else
+    falhou=$((falhou+1))
+    echo "  FALHA arquivo $arq nao cita substituir.cjs"
+    CITA_TUDO=1
+  fi
+done
+
+if [ "$CITA_TUDO" -eq 0 ]; then
+  # Extrai as flags citadas nos 5 arquivos
+  FLAGS_CITADAS=$(grep -h "substituir.cjs" "${ARQUIVOS_PROSA[@]}" 2>/dev/null | grep -oE -- '--[a-z]+' | sort -u)
+
+  # Valida cada flag contra o script
+  FLAGS_INVALIDAS=0
+  while IFS= read -r flag; do
+    if [ -z "$flag" ]; then continue; fi
+
+    SAIDA=$(roda "$flag" dummy 2>&1 || true)
+    if echo "$SAIDA" | grep -q "opcao desconhecida"; then
+      falhou=$((falhou+1))
+      echo "  FALHA flag $flag nao e aceita pelo script (citada na prosa)"
+      FLAGS_INVALIDAS=1
+    fi
+  done <<< "$FLAGS_CITADAS"
+
+  if [ "$FLAGS_INVALIDAS" -eq 0 ]; then
+    ok=$((ok+1))
+    echo "  ok    prosa dos 5 arquivos so cita flags que o script aceita"
+  fi
+fi
+
+# Teste canonico: roda o comando com as flags extraidas em um arquivo real
+ALVO_CANONICO="$SB/alvo_canonico.cjs"
+cat > "$ALVO_CANONICO" << 'EOF'
+const x = "valor_antigo";
+console.log("resto");
+EOF
+
+DE_CANONICO="$SB/de_canonico.txt"
+cat > "$DE_CANONICO" << 'EOF'
+valor_antigo
+EOF
+
+PARA_CANONICO="$SB/para_canonico.txt"
+cat > "$PARA_CANONICO" << 'EOF'
+valor_novo_com_escape\$teste
+EOF
+
+RC_CANONICO=$(codigo --arquivo "$ALVO_CANONICO" --de "$DE_CANONICO" --para "$PARA_CANONICO" --ocorrencias 1)
+if [ "$RC_CANONICO" -eq 0 ] && grep -qF 'valor_novo_com_escape\$teste' "$ALVO_CANONICO"; then
+  ok=$((ok+1))
+  echo "  ok    comando canonico da prosa leva worktree atrasado ate o hash"
+else
+  falhou=$((falhou+1))
+  echo "  FALHA comando canonico nao funcionou (exit $RC_CANONICO ou texto nao encontrado)"
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ $falhou -eq 0 ]

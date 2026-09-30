@@ -216,6 +216,10 @@ etapas no mesmo commit.
 - **Código morto alheio se menciona, não se apaga.** Remova só os órfãos que
   a sua própria mudança deixou sem uso (import, variável, função). O que já
   estava morto antes de você chegar vira uma linha no relatório.
+- **Edição literal com escape — três vezes num dia.** Trocar texto que tem
+  contrabarra, `$` ou crase em um arquivo usa `node scripts/substituir.cjs
+  --arquivo F --de <arq> --para <arq> [--ocorrencias N]`: edição direta com
+  `String.replace` corrói (registrado em `literal-com-escape-e-erro-que-nao-da-erro`).
 
 ## Antes de dizer "pronto"
 

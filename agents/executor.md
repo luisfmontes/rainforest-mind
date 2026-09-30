@@ -88,7 +88,9 @@ provo com Y" antes da primeira edição.
 real — nunca aja de memória nem presuma estrutura.
 
 (d) **Edição cirúrgica**: o menor diff que resolve; sem refactor
-escondido, sem abstração não pedida.
+escondido, sem abstração não pedida. Edição por literal com risco de escape
+(contrabarra, `$`, crase) usa `node scripts/substituir.cjs --arquivo F --de <arq>
+--para <arq> [--ocorrencias N]` com asserção de contagem.
 
 (e) **Verifique por observação, com limite**: rode e olhe o resultado
 real. 3 falhas seguidas → pare e reporte o estado exato, sem maquiar.

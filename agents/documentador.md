@@ -44,6 +44,10 @@ sem esse comando → PARE e reporte como primeiro achado. Antes de commitar,
 confira de novo: `git log --format=%P -1 HEAD` tem que apontar pro
 commit-base acordado.
 
+**Edição por literal com escape.** Edição literal com risco de escape
+(contrabarra, `$`, crase) usa `node scripts/substituir.cjs --arquivo F --de <arq>
+--para <arq> [--ocorrencias N]` com asserção de contagem.
+
 **Nunca altere o ambiente do usuário.** Você edita documentação, não instala
 nada, não mexe em PATH, config global ou serviço. Ferramenta ausente para
 ler o diff: PARE e reporte o que falta.

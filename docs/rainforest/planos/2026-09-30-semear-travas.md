@@ -201,7 +201,7 @@ pronto quando: com um arquivo-alvo real (um `.cjs` com contrabarra, `$` e crase,
 
 ### 9. O `substituir.cjs` é citado onde se edita [tipo: docs]
 atende: D6
-arquivos: `skills/modo-dev/SKILL.md`, `agents/executor.md`, `agents/depurador.md`, `agents/documentador.md`, `agents/resolvedor-de-build.md`
+arquivos: `skills/modo-dev/SKILL.md`, `agents/executor.md`, `agents/depurador.md`, `agents/documentador.md`, `agents/resolvedor-de-build.md`, `scripts/testa-substituir.sh`
 depende de: 3, 8
 paralela: nao
 escopo: uma frase curta em cada arquivo: edição por literal com risco de escape (contrabarra, `$`, crase) usa `node scripts/substituir.cjs --arquivo F --de <arq> --para <arq> [--ocorrencias N]` com asserção de contagem; sem hook que obrigue (o design descartou). `modo-dev` (13464 B, folga de 2920 B) leva a explicação de uma linha do porquê (`literal-com-escape-e-erro-que-nao-da-erro`, três vezes num dia). Depende da tarefa 3 porque os mesmos quatro agentes são editados lá.
