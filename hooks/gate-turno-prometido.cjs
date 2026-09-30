@@ -153,14 +153,12 @@ function main() {
 
     // Verifica se o texto promete despacho
     const prometeDespacho = /vou despachar|despachando|disparo agora|vou disparar/i.test(ultimoText);
-    const passadoDespacho = /despachei|já despachado|já foi despachado/i.test(ultimoText);
 
     // Verifica se o texto promete espera de máquina
     const prometeEsperaMaquina = /CI rodando|aguardando o CI|aguardando o build|aguardando a build/i.test(ultimoText);
-    const passadoEsperaMaquina = /CI rodou|CI saiu|já rodou|build saiu|já foi/i.test(ultimoText);
 
     // Caso (a): promete despacho mas não tem Agent/Task
-    if (prometeDespacho && !passadoDespacho) {
+    if (prometeDespacho) {
       const temAgent = toolUses.some(t => t.name === 'Agent');
       const temTask = toolUses.some(t => t.name === 'Task');
       if (!temAgent && !temTask) {
@@ -177,7 +175,7 @@ function main() {
     }
 
     // Caso (b): promete espera de máquina mas não tem vigia
-    if (prometeEsperaMaquina && !passadoEsperaMaquina) {
+    if (prometeEsperaMaquina) {
       const temBashBackground = toolUses.some(t => t.name === 'Bash' && t.input && t.input.run_in_background === true);
       const temMonitor = toolUses.some(t => t.name === 'Monitor');
       const temScheduleWakeup = toolUses.some(t => t.name === 'ScheduleWakeup');
