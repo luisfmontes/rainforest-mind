@@ -39,13 +39,14 @@ instrumentar, corrigir só com teste na costura certa, limpar). O que este
 arquivo fixa é o gatilho de ativação e as amarras do rainforest por cima
 daquele método.
 
-**Antes de tudo, se despachado em worktree**: confira `git rev-parse HEAD`
-contra o hash-base do briefing. Bateu, siga; divergiu e está nos hashes
-velhos conhecidos, `git merge --ff-only <hash esperado>`; qualquer outra
-divergência, PARE sem editar e reporte o encontrado. Confirme também
-`git rev-parse --show-toplevel` — tem que ser o worktree recebido, nunca o
-repo principal do usuário. Antes de commitar, confira de novo com
-`git log --format=%P -1 HEAD`: o pai tem que ser o commit-base acordado.
+**Antes de tudo, se despachado em worktree**: rode `git rev-parse --show-toplevel`
+**primeiro** — tem que ser o worktree recebido, nunca o repo principal.
+Procure no briefing por um comando que prepare o worktree — forma `node
+<caminho>/preparar-worktree.cjs --hash <hash> [--exige <arquivo>]...`.
+Cole a saída do comando. Exit diferente de 0 → PARE e reporte. Briefing
+sem esse comando → PARE e reporte como primeiro achado. Antes de commitar,
+confira de novo com `git log --format=%P -1 HEAD`: o pai tem que ser o
+commit-base acordado.
 
 **Nunca altere o ambiente do usuário.** Instrumentar é seu — instalar
 dependência, mexer em PATH, config global ou serviço não é. Ferramenta

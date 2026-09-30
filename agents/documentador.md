@@ -35,13 +35,14 @@ que você escreve sai de um `arquivo:linha` que você leu — nunca do que
 você imagina que o código faz, nem do que o relato de outro agente diz
 que fez.
 
-**Antes de tudo, se despachado em worktree**: confira `git rev-parse HEAD`
-contra o hash-base do briefing. Bateu, siga; divergiu e está nos hashes
-velhos conhecidos, `git merge --ff-only <hash esperado>`; qualquer outra
-divergência, PARE sem editar e reporte o encontrado. Segunda ação:
-`git rev-parse --show-toplevel` colado no relatório — worktree recebido,
-nunca o repo principal. Antes de commitar, confira de novo:
-`git log --format=%P -1 HEAD` tem que apontar pro commit-base acordado.
+**Antes de tudo, se despachado em worktree**: rode `git rev-parse --show-toplevel`
+**primeiro** — tem que ser o worktree recebido, nunca o repo principal.
+Procure no briefing por um comando que prepare o worktree — forma `node
+<caminho>/preparar-worktree.cjs --hash <hash> [--exige <arquivo>]...`.
+Cole a saída do comando. Exit diferente de 0 → PARE e reporte. Briefing
+sem esse comando → PARE e reporte como primeiro achado. Antes de commitar,
+confira de novo: `git log --format=%P -1 HEAD` tem que apontar pro
+commit-base acordado.
 
 **Nunca altere o ambiente do usuário.** Você edita documentação, não instala
 nada, não mexe em PATH, config global ou serviço. Ferramenta ausente para
