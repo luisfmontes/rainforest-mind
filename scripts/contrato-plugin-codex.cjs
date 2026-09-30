@@ -32,7 +32,9 @@ const DOCUMENTOS_DO_FLUXO = new Set([
 // engano, ou base velha depois que a main andou.
 const ANCORA_CORPOS_SKILLS = {
   fechar: { bytes: 9585, sha256: '7ffc677b2f63ed030317417542f32f2ec4027294b39b14fcbc7ed00f01edc614' },
-  'modo-dev': { bytes: 13106, sha256: '9b4d2c0ceafdaa5ef95ecee0e2712cfbe7e44bd574dd7ccd5ba0647e26ae834a' },
+  // modo-dev re-medido em 2026-09-30: o fluxo semear-travas (tarefa 9) acrescentou
+  // de proposito a linha do substituir.cjs.
+  'modo-dev': { bytes: 13427, sha256: '02193a59749a425bd20016ec24f50241a21e59a79829228a053ab815bfc4666c' },
   'montar-corpus': { bytes: 2935, sha256: 'f21d9af8be400bd8222f272b98ece70c1d01c92865e41f418340410b69bb11ab' },
   regua: { bytes: 16038, sha256: 'c1318cbf03ef53a48575096a2898ca7f717b600b826b9061eb9b5552564895f4' },
 };
