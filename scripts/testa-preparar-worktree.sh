@@ -225,6 +225,80 @@ else
   teste_falha "comando canônico não funcionou: exit=$EXIT, HEAD=$(git rev-parse HEAD)"
 fi
 
+# -- Teste 8: principal dentro de pasta worktrees rodando de subpasta -----------
+# Criar estrutura com checkout principal dentro de pasta chamada 'worktrees'
+FAKE_WORKTREES="$FIXTURE/fake-worktrees"
+mkdir -p "$FAKE_WORKTREES"
+FAKE_MAIN="$FAKE_WORKTREES/meurepo"
+mkdir -p "$FAKE_MAIN"
+cd "$FAKE_MAIN" || { teste_falha "não conseguiu cd para fake-main"; exit 1; }
+git init >/dev/null 2>&1
+git config user.email "t@t"
+git config user.name "t"
+echo "test" > file.txt
+git add file.txt >/dev/null 2>&1
+git commit -m "test" >/dev/null 2>&1
+HASH_TEST=$(git rev-parse HEAD)
+
+# Criar subpasta e rodar o script de lá
+mkdir -p "$FAKE_MAIN/sub"
+cd "$FAKE_MAIN/sub" || { teste_falha "não conseguiu cd para sub"; exit 1; }
+HEAD_BEFORE=$(cd .. && git rev-parse HEAD)
+
+OUTPUT=$(node "$PREPARAR_SCRIPT" --hash "$HASH_TEST" 2>&1)
+EXIT=$?
+
+HEAD_AFTER=$(cd .. && git rev-parse HEAD)
+
+if [ $EXIT -eq 1 ] && [ "$HEAD_AFTER" = "$HEAD_BEFORE" ]; then
+  teste_ok "principal dentro de pasta worktrees: exit 1 e branch intacta"
+else
+  teste_falha "principal em worktrees deveria retornar exit 1 e deixar HEAD intacta, retornou exit=$EXIT HEAD_AFTER=$HEAD_AFTER HEAD_BEFORE=$HEAD_BEFORE"
+fi
+
+# -- Teste 9: HEAD à frente de H (reexecução após commit) -----------------------
+cd "$WORKTREE" || { teste_falha "não conseguiu cd para worktree"; exit 1; }
+# Reseitar para B, depois commitar trabalho em cima
+git reset --hard "$HASH_B" >/dev/null 2>&1
+
+# Chamar preparar-worktree com hash B (deve dar base-ok)
+OUTPUT1=$(node "$PREPARAR_SCRIPT" --hash "$HASH_B" 2>&1)
+EXIT1=$?
+
+if [ $EXIT1 -eq 0 ]; then
+  # Agora fazer commit de trabalho
+  echo "novo-trabalho" > trabalho.txt
+  git add trabalho.txt >/dev/null 2>&1
+  git -c user.email="t@t" -c user.name="t" commit -qm "trabalho adicional" >/dev/null 2>&1
+
+  # Reexecutar preparar-worktree com mesmo hash B
+  OUTPUT2=$(node "$PREPARAR_SCRIPT" --hash "$HASH_B" 2>&1)
+  EXIT2=$?
+
+  if [ $EXIT2 -eq 0 ] && echo "$OUTPUT2" | grep -q "ja contem"; then
+    teste_ok "reexecucao apos commit: exit 0 com ja contem"
+  else
+    teste_falha "reexecucao deveria retornar exit 0 com 'ja contem', retornou exit=$EXIT2, output=$OUTPUT2"
+  fi
+else
+  teste_falha "primeira execução falhou: exit=$EXIT1"
+fi
+
+# -- Teste 10: --exige sem valor: exit 2 ----------------------------------------
+cd "$WORKTREE" || { teste_falha "não conseguiu cd para worktree"; exit 1; }
+OUTPUT=$(node "$PREPARAR_SCRIPT" --hash "$HASH_C" --exige 2>&1)
+EXIT=$?
+
+if [ $EXIT -eq 2 ]; then
+  if echo "$OUTPUT" | grep -q "exige exige um caminho"; then
+    teste_ok "--exige sem valor: exit 2 com mensagem adequada"
+  else
+    teste_falha "--exige sem valor deveria dar mensagem 'exige exige um caminho', output=$OUTPUT"
+  fi
+else
+  teste_falha "--exige sem valor deveria retornar exit 2, retornou $EXIT"
+fi
+
 # -- Resultado final --------------------------------------------------------
 echo ""
 if [ $FALHA -eq 0 ]; then
