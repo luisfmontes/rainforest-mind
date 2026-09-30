@@ -126,14 +126,27 @@ function cmdPlano() {
       continue;
     }
 
+    // Ambos prova e prova-na-base: recusa (incompatível)
+    if (prova && provaNaBase !== null) {
+      recusas.push(`tarefa ${numero}. ${nome} tem \`prova:\` e \`prova-na-base:\` simultaneamente`);
+      continue;
+    }
+
     // prova-na-base sem motivo: recusa
     if (provaNaBase !== null && provaNaBase.trim() === '') {
       recusas.push(`tarefa ${numero}. ${nome} tem \`prova-na-base:\` sem motivo`);
       continue;
     }
 
-    // Se tem prova-na-base com motivo: aceita sem executar
+    // Se tem prova-na-base, validar forma: deve ser "verde — <motivo>"
     if (provaNaBase !== null && provaNaBase.trim() !== '') {
+      const match = provaNaBase.match(/^verde\s+—\s+(.+)$/);
+      if (!match || !match[1].trim()) {
+        recusas.push(`tarefa ${numero}. ${nome} tem \`prova-na-base:\` fora da forma \`verde — <motivo>\``);
+        continue;
+      }
+      // Prova-na-base válida: imprimir motivo ao stdout
+      console.log(`tarefa ${numero}: prova-na-base verde — ${match[1]}`);
       continue;
     }
 
@@ -146,11 +159,17 @@ function cmdPlano() {
     }
 
     const timeout = parseInt(process.env.RFM_PROVA_TIMEOUT_MS || '120000', 10);
+    // Preparar env: remover variáveis que apontam para o repo/estado reais
+    const env = { ...process.env };
+    delete env.RFM_ESTADO_ROOT;
+    delete env.CLAUDE_PROJECT_DIR;
+    delete env.RFM_ROOT;
     const resultado = spawnSync('bash', ['-c', prova], {
       cwd: wt,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
       timeout,
+      env,
     });
 
     removeWorktree();
@@ -178,9 +197,21 @@ function cmdPlano() {
       continue;
     }
 
-    // Exit 126 ou 127: recusa (comando não executa)
+    // Exit 126 ou 127: pode ser comando não encontrado no PATH (recusa),
+    // ou arquivo que será criado pela tarefa (aceita).
+    // Aceita apenas se o PRIMEIRO comando é bash|sh|node|python — indicando
+    // que o script/arquivo será criado pela tarefa.
     if (resultado.status === 126 || resultado.status === 127) {
-      recusas.push(`tarefa ${numero}. ${nome} a prova não executa (exit ${resultado.status})`);
+      const firstCmd = prova.trim().split(/\s+/)[0];
+      const executorComuns = ['bash', 'sh', 'node', 'python', 'python3'];
+      if (!executorComuns.includes(firstCmd)) {
+        // Primeiro comando não é executor comum: é um comando que não existe
+        recusas.push(`tarefa ${numero}. ${nome} a prova não executa (exit ${resultado.status})`);
+        continue;
+      }
+      // Primeiro comando é executor comum (bash, node, etc.) com arquivo que
+      // não existe na base — arquivo nasce na tarefa, aceita
+      provasExecutadas++;
       continue;
     }
 
