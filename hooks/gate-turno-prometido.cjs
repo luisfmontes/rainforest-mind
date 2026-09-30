@@ -151,23 +151,47 @@ function main() {
       process.exit(0);
     }
 
-    // Verifica se o texto promete despacho
-    const prometeDespacho = /vou despachar|despachando|disparo agora|vou disparar/i.test(ultimoText);
+    // Normaliza o texto: remove blocos de código, código inline, citações e linhas de lista
+    function normalizarTexto(texto) {
+      // Remove blocos de código (```...```)
+      let normalizado = texto.replace(/```[\s\S]*?```/g, '');
+      // Remove código inline (`...`)
+      normalizado = normalizado.replace(/`[^`]*`/g, '');
+      // Remove trechos entre aspas duplas ("...")
+      normalizado = normalizado.replace(/"[^"]*"/g, '');
+      // Remove linhas de lista (^\s*([-*]|\d+\.)\s)
+      normalizado = normalizado.replace(/^\s*[-*]\s+.*$/gm, '');
+      normalizado = normalizado.replace(/^\s*\d+\.\s+.*$/gm, '');
+      return normalizado;
+    }
 
-    // Verifica se o texto promete espera de máquina
-    const prometeEsperaMaquina = /CI rodando|aguardando o CI|aguardando o build|aguardando a build/i.test(ultimoText);
+    const textoNormalizado = normalizarTexto(ultimoText);
 
-    // Caso (a): promete despacho mas não tem Agent/Task
+    // Constantes de regex para despacho (com \b nas bordas)
+    const RE_PROMETE_DESPACHO = /\b(vou despachar|despachando|disparo agora|vou disparar)\b/i;
+    const RE_PROMETE_ESPERA_MAQUINA = /\b(CI rodando|aguardando (o|a) (CI|build))\b/i;
+
+    // Verifica se o texto normalizado promete despacho
+    const matchDespacho = textoNormalizado.match(RE_PROMETE_DESPACHO);
+    const prometeDespacho = matchDespacho !== null;
+
+    // Verifica se o texto normalizado promete espera de máquina
+    const matchEsperaMaquina = textoNormalizado.match(RE_PROMETE_ESPERA_MAQUINA);
+    const prometeEsperaMaquina = matchEsperaMaquina !== null;
+
+    // Caso (a): promete despacho mas não tem Agent/Task/SendMessage/Workflow
     if (prometeDespacho) {
       const temAgent = toolUses.some(t => t.name === 'Agent');
       const temTask = toolUses.some(t => t.name === 'Task');
-      if (!temAgent && !temTask) {
+      const temSendMessage = toolUses.some(t => t.name === 'SendMessage');
+      const temWorkflow = toolUses.some(t => t.name === 'Workflow');
+      if (!temAgent && !temTask && !temSendMessage && !temWorkflow) {
         bloqueia(
           `BLOQUEADO pelo gate de turno prometido do rainforest-mind.\n\n` +
-          `Razão: você prometeu despachar no texto ("${ultimoText.match(/vou despachar|despachando|disparo agora|vou disparar/i)[0]}"),\n` +
+          `Razão: você prometeu despachar no texto ("${matchDespacho[0]}"),\n` +
           `mas não despachava nada neste turno. Se queria despachar agora, despacha; se não, diz de quem é a bola.\n\n` +
           `O que fazer:\n` +
-          `  1. Despacha agora: use a ferramenta Agent ou Task.\n` +
+          `  1. Despacha agora: use a ferramenta Agent, Task, SendMessage ou Workflow.\n` +
           `  2. Não despacha: corrige a resposta para não prometer despacho.\n` +
           `  3. Desliga o gate se souber que é falso positivo: node scripts/setup.cjs --desligar gate-turno-prometido\n`
         );
@@ -177,15 +201,16 @@ function main() {
     // Caso (b): promete espera de máquina mas não tem vigia
     if (prometeEsperaMaquina) {
       const temBashBackground = toolUses.some(t => t.name === 'Bash' && t.input && t.input.run_in_background === true);
+      const temPowershellBackground = toolUses.some(t => t.name === 'PowerShell' && t.input && t.input.run_in_background === true);
       const temMonitor = toolUses.some(t => t.name === 'Monitor');
       const temScheduleWakeup = toolUses.some(t => t.name === 'ScheduleWakeup');
-      if (!temBashBackground && !temMonitor && !temScheduleWakeup) {
+      if (!temBashBackground && !temPowershellBackground && !temMonitor && !temScheduleWakeup) {
         bloqueia(
           `BLOQUEADO pelo gate de turno prometido do rainforest-mind.\n\n` +
-          `Razão: você disse que está aguardando máquina ("${ultimoText.match(/CI rodando|aguardando o CI|aguardando o build/i)[0]}"),\n` +
+          `Razão: você disse que está aguardando máquina ("${matchEsperaMaquina[0]}"),\n` +
           `mas não configurou nenhuma vigia. O turno vai encerrar e você não vai ser despertado.\n\n` +
           `O que fazer:\n` +
-          `  1. Vigiar agora: use Bash com run_in_background, Monitor ou ScheduleWakeup.\n` +
+          `  1. Vigiar agora: use Bash ou PowerShell com run_in_background, Monitor ou ScheduleWakeup.\n` +
           `  2. Não vigiar: diz que não precisa mais esperar (muda a resposta).\n` +
           `  3. Desliga o gate: node scripts/setup.cjs --desligar gate-turno-prometido\n`
         );

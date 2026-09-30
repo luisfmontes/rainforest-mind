@@ -182,6 +182,49 @@ teste('passado-e-promessa-na-mesma-mensagem: exit 2', () => {
   assert(r.status === 2, `esperado 2, obteve ${r.status}`);
 });
 
+// Teste: citação no texto não dispara (promessa em citação é descrita, não prometida)
+teste('citação no texto: exit 0', () => {
+  const r = rodaGate('citacao-no-texto.jsonl');
+  assert(r.status === 0, `esperado 0, obteve ${r.status}`);
+});
+
+// Teste: bloco de código não dispara (promessa em bloco é código, não promessa)
+teste('bloco de código: exit 0', () => {
+  const r = rodaGate('bloco-de-codigo.jsonl');
+  assert(r.status === 0, `esperado 0, obteve ${r.status}`);
+});
+
+// Teste: lista de estado não dispara (item de lista é relato, não promessa)
+teste('lista de estado: exit 0', () => {
+  const r = rodaGate('lista-de-estado.jsonl');
+  assert(r.status === 0, `esperado 0, obteve ${r.status}`);
+});
+
+// Teste: aguardando a build sem vigia: exit 2
+teste('aguardando a build sem vigia: exit 2', () => {
+  const r = rodaGate('aguardando-a-build-sem-vigia.jsonl');
+  assert(r.status === 2, `esperado 2, obteve ${r.status}`);
+  assert(r.stderr.includes('aguardando máquina'), 'stderr deve mencionar aguardando máquina');
+});
+
+// Teste: PowerShell com background: exit 0
+teste('espera-ci-com-powershell-background: exit 0', () => {
+  const r = rodaGate('espera-ci-com-powershell-background.jsonl');
+  assert(r.status === 0, `esperado 0, obteve ${r.status}`);
+});
+
+// Teste: SendMessage é despacho válido: exit 0
+teste('promete-e-envia-mensagem: exit 0', () => {
+  const r = rodaGate('promete-e-envia-mensagem.jsonl');
+  assert(r.status === 0, `esperado 0, obteve ${r.status}`);
+});
+
+// Teste: Workflow é despacho válido: exit 0
+teste('promete-e-dispara-workflow: exit 0', () => {
+  const r = rodaGate('promete-e-dispara-workflow.jsonl');
+  assert(r.status === 0, `esperado 0, obteve ${r.status}`);
+});
+
 // Teste (8): stop_hook_active true: exit 0
 teste('promete sem despachar com stop_hook_active true: exit 0 (sem laco)', () => {
   const r = rodaGate('promete-sem-despachar.jsonl', true);
