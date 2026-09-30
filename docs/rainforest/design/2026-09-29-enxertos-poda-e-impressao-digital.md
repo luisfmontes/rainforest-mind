@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Fazer a falha de vigia que se repete aparecer como **persistente**, e não como novidade
+Fazer a falha de vigia que se repete aparecer como **recorrente**, e não como novidade
 a cada dia. O mecanismo é enxertado da impressão digital de falha do reef
 (`reef/train/cordis_backend/manifest.py:41-63`, lido no código em 2026-09-29, relatório
 `relatorios/2026-09-29-batedor-strands-reef-flowsint.md`).
@@ -34,48 +34,34 @@ A poda de saída grande, a segunda metade do pedido, foi medida e descartada (ve
   mesma ordem: caminho absoluto vira `<path>`, sequência opaca longa vira `<id>`, dígitos
   viram `<n>`, espaço colapsa e o texto é truncado em tamanho fixo. A causa é o texto
   depois de `[vigia]:`. A data e a hora do prefixo ficam de fora da chave.
-- **D5 — Dois rótulos, janela de 30 dias, mínimo de 2 ocorrências** — porquê: ronda
-  limpa não prova conserto quando a falha é intermitente. Rodando a regra anterior à mão
-  sobre os dados reais, o backup virava "corrigido" em 14/09, 24/09 e 28/09, porque só
-  falha com sessão aberta segurando o banco. Resultado: hoje nada apareceria. O critério
-  de 2 ocorrências vem do reef (reaparecer no passo seguinte). Contam as ocorrências da
-  impressão nos últimos 30 dias, posteriores ao último `RESOLVIDO` da vigia (D6):
-  - **intermitente ×N em 30 dias, última DD/MM**: N ≥ 2, e existe **ronda limpa
-    provada**. Ronda limpa é um cabeçalho de ronda com hora estritamente posterior a
-    alguma ocorrência, ao qual nenhuma ocorrência daquela impressão pertence.
-  - **persistente ×N desde DD/MM**: N ≥ 2 sem ronda limpa provada. `desde` é a
-    primeira ocorrência.
+- **D5 — Um rótulo só: `recorrente xN em 30 dias, desde DD/MM, ultima DD/MM`, com
+  mínimo de 2 ocorrências** — porquê: separar persistente de intermitente exige provar
+  ronda limpa, e o log de vigia não prova isso. Foram três rodadas de revisar
+  reprovadas nessa mesma decisão; o registro está em
+  `docs/rainforest/portoes/2026-09-29-enxertos-poda-e-impressao-digital-impasse.md`.
+  O usuário decidiu em 2026-09-30 pela opção (a). O objetivo do design é que a falha
+  que volta pare de chegar como novidade, e um rótulo único entrega isso sem nunca
+  inferir melhora.
 
-  Emenda de 2026-09-30, pelo revisar da rodada 2. A versão anterior contava rondas
-  seguidas até a última e chamava de intermitente tudo o que não fechava a sequência.
-  Só que o `run-vigia.ps1` registra erro e sai **antes** de escrever o cabeçalho da
-  ronda: toggle ilegível (`:56`), `-Cwd` inexistente (`:70`) e falta de destino
-  (`:97`). Uma vigia que falhava assim todo dia saía como intermitente justamente por
-  ter log. Isso é inferir melhora sem evidência, o que a D6 proíbe.
-  - Com N < 2 a impressão não é mostrada.
+  Contam as ocorrências da impressão nos últimos 30 dias que vêm depois do último
+  `RESOLVIDO` da vigia (D6). O critério de 2 ocorrências vem do reef (reaparecer no
+  passo seguinte). Com N < 2, a impressão não é mostrada.
 
   Sobre os dados reais de 30/09, o resultado esperado é uma linha só:
-  `backup externo falhou … RemoteException` como **intermitente ×5 em 30 dias, última
-  25/09**. A falha de 29/09 (`ZipArchiveHelper`) tem outra causa normalizada e fica
-  com ×1.
-- **D6 — Corrigida só por linha `RESOLVIDO`; ronda limpa não corrige, silêncio não
-  corrige** — porquê: silêncio de N dias engana com vigia semanal, e ronda limpa engana
-  com falha intermitente (D5). Uma linha `[<vigia>]: RESOLVIDO…` zera a contagem das
-  impressões daquela vigia anteriores a ela. Linha sem vigia nomeada
-  (`[conferido na janela principal]`) não zera nada.
+  `backup externo falhou … RemoteException`, **recorrente x5 em 30 dias, desde 11/09,
+  ultima 25/09**. A falha de 29/09 (`ZipArchiveHelper`) tem outra causa normalizada e
+  fica com ×1.
+- **D6 — Sai da lista só por linha `RESOLVIDO`; a lib não lê log** — porquê: silêncio
+  de N dias engana com vigia semanal. Ronda de log engana de três jeitos, medidos nas
+  rodadas 1 a 3 do revisar:
+  - o log fica em `RFM_ROOT`;
+  - o erro é gravado antes do cabeçalho da ronda;
+  - há ronda com cabeçalho que nunca chega ao passo que falha.
 
-  O log da vigia (`vigias/log-<vigia>.txt`, cabeçalho de ronda `=== AAAA-MM-DD HH:MM ===`,
-  `vigias/run-vigia.ps1:153`) serve só para separar persistente de intermitente. A
-  ocorrência pertence à ronda de cabeçalho mais recente com hora ≤ a dela. Sem log (CI,
-  máquina nova), não há prova de ronda limpa, e a impressão com N ≥ 2 sai como
-  **persistente ×N desde** a primeira. A regra é nunca inferir melhora sem evidência.
-
-  O log é procurado onde o `run-vigia.ps1` o grava, que é `$root\vigias`, com
-  `$root = RFM_ROOT` quando essa variável existe (`vigias/run-vigia.ps1:5,152`). O
-  `ERROS.md` fica sempre no plugin (`:87-94`). Ler o log ao lado do `ERROS.md` com
-  `RFM_ROOT` definido não o acharia, e todo erro sairia como persistente (achado 4 do
-  revisar, 2026-09-30).
-- **D7 — Os dois rótulos aparecem no resumo de erros das vigias (`erros_24h`, em
+  Uma linha `[<vigia>]: RESOLVIDO…` zera a contagem das impressões daquela vigia
+  anteriores a ela. Uma linha sem vigia nomeada (`[conferido na janela principal]`) não
+  zera nada.
+- **D7 — O rótulo aparece no resumo de erros das vigias (`erros_24h`, em
   `vigias/dados-batedor-repos.js`) e no `/saude`** — porquê: é onde o erro já é lido.
   WhatsApp fica fora, porque o aviso viraria ruído no celular.
 
@@ -100,7 +86,11 @@ A poda de saída grande, a segunda metade do pedido, foi medida e descartada (ve
 - **Corrigida por silêncio de N dias.** Descartado na D6.
 - **Corrigida por ronda limpa no log** (a primeira versão desta D6, aprovada e reaberta
   no plano). Simulada sobre o log real do sentinela, marcou o backup como corrigido três
-  vezes em 18 dias, e hoje não sobraria nada para mostrar (D5).
+  vezes em 18 dias, e hoje não sobraria nada para mostrar.
+- **Dois rótulos, persistente e intermitente, separados por ronda de log.** Reprovado
+  nas rodadas 1, 2 e 3 do revisar, cada vez por um caminho diferente do
+  `run-vigia.ps1` em que o cabeçalho da ronda não prova que o passo rodou. Os detalhes
+  estão no arquivo de impasse citado na D5.
 - **A impressão digital sobre as observações da regra 13.** As observações são prosa que
   o modelo redige, e duas descrições do mesmo erro não colidem no hash. O mecanismo
   pressupõe texto de erro de máquina, que é o que o `ERROS.md` tem.
@@ -112,11 +102,10 @@ A poda de saída grande, a segunda metade do pedido, foi medida e descartada (ve
 - Transformar falha em caso de regressão permanente (`promote_failures` do reef). É outra
   peça, e fica como pergunta de revisita do reef no livro.
 - Aviso por WhatsApp (D7).
-- Duas ocorrências na **mesma** ronda, com a ronda anterior limpa, saem como
-  `intermitente x2`, e não como persistente. A sequência S conta rondas, não
-  ocorrências (achado 5 do revisar). A linha aparece do mesmo jeito, com `ultima` de
-  hoje; o que se discute é só o rótulo, e vigia não repete erro dentro da mesma ronda
-  no uso real.
+- Separar persistente de intermitente por **prova de passo**: a ronda conta como limpa
+  só quando o log tem a linha que prova que aquele passo chegou ao fim (para o backup,
+  `backup do estado:`, em `vigias/backup-estado.ps1:188`). Exige um mapa de impressão
+  para linha de prova, vigia por vigia. Plantada como ideia em 2026-09-30.
 
 ## Em aberto
 

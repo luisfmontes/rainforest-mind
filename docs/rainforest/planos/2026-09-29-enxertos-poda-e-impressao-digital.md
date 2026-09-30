@@ -157,3 +157,25 @@ pronto quando: com o formato real do `run-vigia.ps1`, em que o erro sai antes do
 O ramo de sequência S (`if (s >= MINIMO_OCORRENCIAS) {`) sai. Persistente passa a ser `n` = todas as ocorrências da janela e `desde` = a primeira. Provado por `bash scripts/testa-impressao-falha.sh` devolvendo `0 falha(s)` com os casos `erro-antes-do-cabecalho` e `log-mais-novo-que-o-erros` novos, e por `RFM_VIGIAS_DIR=C:/Projetos/rainforest-mind/vigias node -e "const l=require('./scripts/lib/impressao-falha.cjs');console.log(JSON.stringify(l.falhasRecorrentes(new Date('2026-09-30T12:00:00')).map(r=>[r.vigia,r.rotulo,r.n,r.ultima])))"` devolvendo `[["sentinela-foco","intermitente",5,"2026-09-25"]]`.
 
 A catraca da tarefa 6 (`if (s >= MINIMO_OCORRENCIAS) {`) deixa de existir junto com o ramo. O caso `persistente-com-log` continua valendo e passa a ser medido pela mutação desta tarefa. O critério da tarefa 1 continua valendo: com os dados reais, `[["sentinela-foco","intermitente",5,"2026-09-25"]]`.
+
+## Emenda de 2026-09-30 — 4ª rodada, liberada pelo usuário (opção a do impasse)
+
+### 8. Rótulo único `recorrente`, lib sem log [tipo: implementar]
+atende: D5, D6, D7
+arquivos: `scripts/lib/impressao-falha.cjs`, `scripts/testa-impressao-falha.sh`, `scripts/testa-saude.sh`, `scripts/testa-dados-batedor-repos.sh`, `scripts/fixtures/impressao-falha/log-sentinela-foco.txt`
+depende de: nenhuma
+paralela: sim
+mutacao:
+  arquivo: `scripts/lib/impressao-falha.cjs`
+  de: if (n < MINIMO_OCORRENCIAS) continue;
+  para: if (n < 1) continue;
+  bateria: `bash scripts/testa-impressao-falha.sh`
+  fixture: `testa-impressao-falha.sh, caso "uma-so-nao-aparece"`
+pronto quando: com os dados reais do checkout principal e `agora = 2026-09-30T12:00`, a lib devolve uma recorrência só, `sentinela-foco`, `recorrente`, `n = 5`, `desde = 2026-09-11` e `ultima = 2026-09-25`, e `formatar` produz `... - recorrente x5 em 30 dias, desde 11/09, ultima 25/09`.
+
+A prova é `RFM_VIGIAS_DIR=C:/Projetos/rainforest-mind/vigias node -e "const l=require('./scripts/lib/impressao-falha.cjs');const r=l.falhasRecorrentes(new Date('2026-09-30T12:00:00'));console.log(JSON.stringify(r.map(x=>[x.vigia,x.rotulo,x.n,x.desde,x.ultima])));r.forEach(x=>console.log(l.formatar(x)))"`, que deve devolver `[["sentinela-foco","recorrente",5,"2026-09-11","2026-09-25"]]` e a linha formatada.
+
+Mais três condições:
+- A lib não lê mais nenhum `log-*.txt`. Provado por `grep -n "log-\|RFM_ROOT\|ronda" scripts/lib/impressao-falha.cjs` sem ocorrência de código, só em comentário histórico.
+- O `/saude` e o batedor mostram `recorrente x2 em 30 dias, desde` nos casos VR1 e TESTE 5.
+- As baterias `testa-impressao-falha.sh`, `testa-saude.sh` e `testa-dados-batedor-repos.sh` saem com 0 falha.
