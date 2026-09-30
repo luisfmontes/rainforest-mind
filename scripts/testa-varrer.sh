@@ -26,14 +26,14 @@ esperado() { # nome, exit esperado, comando...
 
 contem() { # nome, arquivo_ou_saida, texto
   local nome="$1" alvo="$2" txt="$3"
-  if grep -q -F "$txt" "$alvo" 2>/dev/null; then ok=$((ok+1)); echo "  ok    $nome"
+  if grep -q -F -- "$txt" "$alvo" 2>/dev/null; then ok=$((ok+1)); echo "  ok    $nome"
   else falhou=$((falhou+1)); echo "  FALHA $nome: nao achei '$txt'"
   fi
 }
 
 nao_contem() { # nome, arquivo_ou_saida, texto
   local nome="$1" alvo="$2" txt="$3"
-  if ! grep -q -F "$txt" "$alvo" 2>/dev/null; then ok=$((ok+1)); echo "  ok    $nome"
+  if ! grep -q -F -- "$txt" "$alvo" 2>/dev/null; then ok=$((ok+1)); echo "  ok    $nome"
   else falhou=$((falhou+1)); echo "  FALHA $nome: encontrei '$txt' quando nao deveria"
   fi
 }
@@ -131,6 +131,113 @@ esperado "sem termo: exit 2" 2 \
   bash -c "RFM_ROOT='$RAINFOREST' RFM_ESTADO_ROOT='$REPO' node '$SCRIPT' --slug teste"
 esperado "sem --slug: exit 2" 2 \
   bash -c "RFM_ROOT='$RAINFOREST' RFM_ESTADO_ROOT='$REPO' node '$SCRIPT' travas"
+
+echo
+echo "== gh devolvendo 200 itens: .txt avisa que atingiu o teto =="
+# Criar dublê que devolve 200 itens
+GH_200="$SANDBOX/gh-200.cjs"
+cat > "$GH_200" <<'EOF'
+#!/usr/bin/env node
+const args = process.argv.slice(2);
+const stateIdx = args.indexOf('--state');
+const state = stateIdx >= 0 ? args[stateIdx + 1] : '';
+
+if (args[0] === 'issue') {
+  if (state === 'all') {
+    // Array de 200 objetos
+    const items = [];
+    for (let i = 1; i <= 200; i++) {
+      items.push({number: i, title: `Issue #${i}`, state: 'CLOSED'});
+    }
+    console.log(JSON.stringify(items));
+  } else {
+    console.log('[]');
+  }
+} else if (args[0] === 'pr') {
+  if (state === 'all') {
+    const items = [];
+    for (let i = 1; i <= 200; i++) {
+      items.push({number: i, title: `PR #${i}`, state: 'MERGED'});
+    }
+    console.log(JSON.stringify(items));
+  } else {
+    console.log('[]');
+  }
+}
+EOF
+chmod +x "$GH_200"
+RFM_ROOT="$RAINFOREST" RFM_ESTADO_ROOT="$REPO" RFM_VARRER_GH="$GH_200" \
+  bash -c "node '$SCRIPT' --slug teste-200 termo >/dev/null 2>&1"
+TXT_200="$REPO/docs/rainforest/varredura/teste-200.txt"
+esperado "200 itens: arquivo gravado com exit 0" 0 test -f "$TXT_200"
+contem "200 itens: aviso de teto no .txt (issues)" "$TXT_200" "ATENCAO: atingiu o teto de 200"
+contem "200 itens: aviso de teto no .txt (PRs)" "$TXT_200" "ATENCAO: atingiu o teto de 200"
+contem "200 itens: comando com --limit 200 (issue)" "$TXT_200" "--limit 200"
+contem "200 itens: comando com --limit 200 (pr)" "$TXT_200" "--limit 200"
+
+echo
+echo "== repo sem origin: exit 69 e nenhum arquivo gravado =="
+# Criar repo git SEM remote origin
+REPO_NOORIGIN="$SANDBOX/repo-noorigin"
+git init -q "$REPO_NOORIGIN" 2>/dev/null
+git -C "$REPO_NOORIGIN" -c user.name=t -c user.email=t@t commit -q --allow-empty -m "teste" 2>/dev/null
+# Não adicionar remote origin
+esperado "repo sem origin: exit 69" 69 \
+  bash -c "RFM_ROOT='$RAINFOREST' RFM_ESTADO_ROOT='$REPO_NOORIGIN' RFM_VARRER_GH='$GH_MOCK' node '$SCRIPT' --slug teste-noorigin termo >/dev/null 2>&1"
+test ! -f "$REPO_NOORIGIN/docs/rainforest/varredura/teste-noorigin.txt" && ok=$((ok+1)) && echo "  ok    repo sem origin: nenhum arquivo gravado" || { falhou=$((falhou+1)); echo "  FALHA repo sem origin: nenhum arquivo gravado"; }
+
+echo
+echo "== git log falhando: exit 69 e nenhum arquivo gravado =="
+# Criar repo válido, mas chamar varrer com GIT_DIR inválido para forçar git a falhar
+REPO_VALID="$SANDBOX/repo-valid"
+BARE_VALID="$SANDBOX/remoto-valid.git"
+git init -q "$REPO_VALID" 2>/dev/null
+git init -q --bare "$BARE_VALID" 2>/dev/null
+git -C "$REPO_VALID" -c user.name=t -c user.email=t@t commit -q --allow-empty -m "test" 2>/dev/null
+git -C "$REPO_VALID" remote add origin "$BARE_VALID" 2>/dev/null
+git -C "$REPO_VALID" push -q origin HEAD:refs/heads/test 2>/dev/null
+esperado "git falha (GIT_DIR inválido): exit 69" 69 \
+  bash -c "GIT_DIR=/nonexistent RFM_ROOT='$RAINFOREST' RFM_ESTADO_ROOT='$REPO_VALID' RFM_VARRER_GH='$GH_MOCK' node '$SCRIPT' --slug teste-gitlog termo >/dev/null 2>&1"
+test ! -f "$REPO_VALID/docs/rainforest/varredura/teste-gitlog.txt" && ok=$((ok+1)) && echo "  ok    git falha: nenhum arquivo gravado" || { falhou=$((falhou+1)); echo "  FALHA git falha: nenhum arquivo gravado"; }
+
+echo
+echo "== .txt passa no varredor de publicacao (caminho de home nao vaza) =="
+# Criar sandbox imitando home com <dados>/ideias.jsonl, sem expor caminho absoluto
+HOME_SANDBOX="$SANDBOX/fulano/.rainforest"
+mkdir -p "$HOME_SANDBOX"
+cat > "$HOME_SANDBOX/ideias.jsonl" <<'EOF'
+{"id":"x-publ","titulo":"Ideia publ","descricao":"dados aqui","contexto":"teste","projeto":"test","gancho":"v","status":"plantada"}
+EOF
+RFM_ROOT="$HOME_SANDBOX" RFM_ESTADO_ROOT="$REPO" RFM_VARRER_GH="$GH_MOCK" \
+  bash -c "node '$SCRIPT' --slug teste-publ publ >/dev/null 2>&1"
+TXT_PUBL="$REPO/docs/rainforest/varredura/teste-publ.txt"
+esperado "publicacao: arquivo gravado" 0 test -f "$TXT_PUBL"
+contem "publicacao: <dados>/ideias.jsonl presente" "$TXT_PUBL" "<dados>/ideias.jsonl"
+nao_contem "publicacao: fulano nao vaza" "$TXT_PUBL" "fulano"
+# Verificar que confere-publicacao sai 0
+CONFERIR_PUB="$PWD/scripts/conferir-publicacao.cjs"
+if [ -f "$CONFERIR_PUB" ]; then
+  if node "$CONFERIR_PUB" "$TXT_PUBL" >/dev/null 2>&1; then
+    ok=$((ok+1)); echo "  ok    publicacao: passa no varredor"
+  else
+    falhou=$((falhou+1)); echo "  FALHA publicacao: falha no varredor de publicacao"
+  fi
+else
+  falhou=$((falhou+1)); echo "  FALHA publicacao: conferir-publicacao.cjs nao existe"
+fi
+
+echo
+echo "== ideias sem casamento: secao presente com (vazio) =="
+RFM_ROOT="$RAINFOREST" RFM_ESTADO_ROOT="$REPO" RFM_VARRER_GH="$GH_MOCK" \
+  bash -c "node '$SCRIPT' --slug teste-semideia semideia >/dev/null 2>&1"
+TXT_SEMIDEIA="$REPO/docs/rainforest/varredura/teste-semideia.txt"
+contem "sem ideia: arquivo gravado" "$TXT_SEMIDEIA" "cat <dados>/ideias.jsonl"
+# Verifica que a seção de ideias contém (vazio)
+if grep -q "cat <dados>/ideias.jsonl" "$TXT_SEMIDEIA" && grep -A1 "cat <dados>/ideias.jsonl" "$TXT_SEMIDEIA" | grep -q "(vazio)"; then
+  ok=$((ok+1)); echo "  ok    sem ideia: (vazio) na secao de ideias"
+else
+  falhou=$((falhou+1)); echo "  FALHA sem ideia: (vazio) nao aparece"
+fi
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

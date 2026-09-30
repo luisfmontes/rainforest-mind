@@ -42,6 +42,17 @@ function pad(n, len = 2) {
   return String(n).padStart(len, "0");
 }
 
+// Verifica se atingiu teto de 200 e adiciona aviso à saída
+function avisarTeto(saida) {
+  try {
+    const parsed = JSON.parse(saida);
+    if (parsed && Array.isArray(parsed) && parsed.length >= 200) {
+      return saida.trimEnd() + '\n(ATENCAO: atingiu o teto de 200 — refine o termo)\n';
+    }
+  } catch {}
+  return saida;
+}
+
 function hoje() {
   // Data do relogio LOCAL. Nunca toISOString() (UTC): depois das 21h em
   // Brasilia o UTC ja virou o dia seguinte e o carimbo sairia no futuro
@@ -106,6 +117,7 @@ for (const termo of termos) {
     'issue', 'list',
     '--state', ESTADO_TODOS,
     '--search', termo,
+    '--limit', '200',
     '--json', 'number,title,state'
   ]);
 
@@ -113,9 +125,11 @@ for (const termo of termos) {
     naoVerificavel(`gh issue falhou com exit ${r.status}`);
   }
 
+  let saida = avisarTeto(r.stdout);
+
   saidas.push({
-    comando: `gh issue list --state ${ESTADO_TODOS} --search "${termo}" --json number,title,state`,
-    saida: r.stdout
+    comando: `gh issue list --state ${ESTADO_TODOS} --search "${termo}" --limit 200 --json number,title,state`,
+    saida: saida
   });
 }
 
@@ -125,6 +139,7 @@ for (const termo of termos) {
     'pr', 'list',
     '--state', ESTADO_TODOS,
     '--search', termo,
+    '--limit', '200',
     '--json', 'number,title,state'
   ]);
 
@@ -132,9 +147,11 @@ for (const termo of termos) {
     naoVerificavel(`gh pr falhou com exit ${r.status}`);
   }
 
+  let saida = avisarTeto(r.stdout);
+
   saidas.push({
-    comando: `gh pr list --state ${ESTADO_TODOS} --search "${termo}" --json number,title,state`,
-    saida: r.stdout
+    comando: `gh pr list --state ${ESTADO_TODOS} --search "${termo}" --limit 200 --json number,title,state`,
+    saida: saida
   });
 }
 
@@ -150,17 +167,19 @@ for (const termo of termos) {
     naoVerificavel('git não encontrado');
   }
 
-  if (r.status === 0) {
-    // Filtrar pelo termo
-    const linhas = r.stdout
-      .split('\n')
-      .filter(l => l.includes(termo))
-      .join('\n');
-    saidas.push({
-      comando: `git ls-remote --heads origin | grep -F "${termo}"`,
-      saida: linhas.trim() || '(vazio)'
-    });
+  if (r.status !== 0) {
+    naoVerificavel(`git ls-remote falhou com exit ${r.status}`);
   }
+
+  // Filtrar pelo termo
+  const linhas = r.stdout
+    .split('\n')
+    .filter(l => l.includes(termo))
+    .join('\n');
+  saidas.push({
+    comando: `git ls-remote --heads origin | grep -F "${termo}"`,
+    saida: linhas.trim() || '(vazio)'
+  });
 }
 
 // 4. git log com grep
@@ -175,23 +194,22 @@ for (const termo of termos) {
     naoVerificavel('git não encontrado');
   }
 
-  if (r.status === 0) {
-    const linhas = r.stdout.trim();
-    saidas.push({
-      comando: `git log --all --grep="${termo}" --oneline`,
-      saida: linhas || '(vazio)'
-    });
+  if (r.status !== 0) {
+    naoVerificavel(`git log falhou com exit ${r.status}`);
   }
+
+  const linhas = r.stdout.trim();
+  saidas.push({
+    comando: `git log --all --grep="${termo}" --oneline`,
+    saida: linhas || '(vazio)'
+  });
 }
 
 // 5. ideias.jsonl (só id e titulo, filtrado por termo)
 const caminhoIdeias = path.join(RAIZ_DADOS, 'ideias.jsonl');
-if (!fs.existsSync(caminhoIdeias)) {
-  saidas.push({
-    comando: `cat ${caminhoIdeias}`,
-    saida: `(sem ideias.jsonl em ${caminhoIdeias})`
-  });
-} else {
+let saidaIdeias = '(vazio)';
+
+if (fs.existsSync(caminhoIdeias)) {
   try {
     const conteudo = fs.readFileSync(caminhoIdeias, 'utf8');
     const ideias = conteudo
@@ -211,15 +229,17 @@ if (!fs.existsSync(caminhoIdeias)) {
       .map(o => ({ id: o.id, titulo: o.titulo }));
 
     if (ideias.length > 0) {
-      saidas.push({
-        comando: `cat ${caminhoIdeias}`,
-        saida: ideias.map(o => JSON.stringify(o)).join('\n') + '\n'
-      });
+      saidaIdeias = ideias.map(o => JSON.stringify(o)).join('\n') + '\n';
     }
   } catch (e) {
     naoVerificavel(`Não foi possível ler ${caminhoIdeias}: ${e.message}`);
   }
 }
+
+saidas.push({
+  comando: 'cat <dados>/ideias.jsonl',
+  saida: saidaIdeias
+});
 
 // Montar o conteúdo do arquivo de varredura
 const agora = hoje();
