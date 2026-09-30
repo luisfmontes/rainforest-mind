@@ -59,7 +59,8 @@ plano_no_formato(){
          print "  arquivo: `scripts/conferir-fluxo.cjs`";
          print "  de: a checagem que esta tarefa instala";
          print "  para: um no-op";
-         print "  bateria: `bash scripts/testa-conferir-fluxo.sh`"
+         print "  bateria: `bash scripts/testa-conferir-fluxo.sh`";
+         print "prova-na-base: verde — fixture de bateria"
        } {print}' "$1" > "$2"
 }
 restaura(){ cp "$REAL_D" "$D"; plano_no_formato "$REAL_P" "$P"; }
@@ -227,7 +228,7 @@ rm -rf "$V"
 # guarda: a trava só age quando TUDO que a checagem lê existe, não só o arquivo
 # do estágio que está fechando.
 M="$(novo_sandbox)"; MW="$(cygpath -m "$M" 2>/dev/null || printf '%s' "$M")"
-mkdir -p "$M/docs/rainforest/planos"; cp "$REAL_P" "$M/docs/rainforest/planos/misto.md"
+mkdir -p "$M/docs/rainforest/planos"; plano_no_formato "$REAL_P" "$M/docs/rainforest/planos/misto.md"
 ME(){ RFM_ESTADO_ROOT="$MW" node "$ESTADO" "$@"; }
 ME iniciar --slug misto >/dev/null 2>&1
 ME marcar --slug misto --estagio design --status aprovado >/dev/null 2>&1
@@ -383,6 +384,7 @@ exige_msg 'tarefa 5\.' 'nomeia tarefa' OCHK cobertura --slug t
 # cobra que a lista de mutacao a cubra. As duas travas recusam entrega correta, e a
 # mensagem aponta um numero que nao existe no plano.
 cp "$NOVO_D" "$OD"; cp "$NOVO_P" "$OP"
+plano_no_formato "$OP" "$OP.tmp" && mv "$OP.tmp" "$OP"
 cat >> "$OP" <<'CERCA'
 
 ## Anexo: o formato de uma tarefa
