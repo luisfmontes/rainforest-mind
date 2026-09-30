@@ -77,6 +77,7 @@ mutacao:
   para: for (const r of []) aviso('vigias-recorrentes', formatar(r), 'mesma causa normalizada voltou - leia vigias/ERROS.md; escreva [vigia]: RESOLVIDO quando consertar');
   bateria: `bash scripts/testa-saude.sh`
   fixture: `testa-saude.sh, caso novo "vigias-recorrentes com RFM_VIGIAS_DIR apontando para scripts/fixtures/impressao-falha"`
+  timeout: `1200000`
 pronto quando: com `RFM_VIGIAS_DIR=C:/Projetos/rainforest-mind/vigias` (os arquivos reais), `node scripts/saude.cjs` imprime um aviso `vigias-recorrentes` cujo texto contém `intermitente x5 em 30 dias, ultima 25/09`, e o aviso `vigias-erros` continua saindo — provado por `RFM_VIGIAS_DIR=C:/Projetos/rainforest-mind/vigias node scripts/saude.cjs 2>&1 | grep -E "vigias-(recorrentes|erros)"` devolvendo as duas linhas. Superfície humana: quem lê o `/saude` precisa ver **qual vigia**, **qual falha**, **desde quando** e a ação `RESOLVIDO`. O caso da bateria confere os quatro no texto.
 
 A linha nova entra dentro de `checarVigias()`, depois do bloco `vigias-erros`. O `require`
@@ -123,12 +124,8 @@ atende: D5, D6
 arquivos: `scripts/lib/impressao-falha.cjs`, `scripts/testa-impressao-falha.sh`
 depende de: nenhuma
 paralela: sim
-mutacao:
-  arquivo: `scripts/lib/impressao-falha.cjs`
-  de: if (s >= MINIMO_OCORRENCIAS) {
-  para: if (s < MINIMO_OCORRENCIAS) {
-  bateria: `bash scripts/testa-impressao-falha.sh`
-  fixture: `testa-impressao-falha.sh, caso novo "persistente-com-log: duas rondas seguidas com a falha"`
+mutacao: n/a
+  motivo: superada pela tarefa 8 (impasse, decisao do usuario em 2026-09-30); o trecho que esta mutacao invertia saiu do fonte junto com o ramo de log. O caso persistente-com-log virou recorrente-x2-consecutivas, medido pela mutacao da tarefa 8.
 pronto quando: três efeitos, cada um com a sua prova.
 - Com `RFM_ROOT` apontando para uma pasta cujo `vigias/log-<vigia>.txt` mostra ronda limpa depois da última ocorrência, e **sem** `RFM_VIGIAS_DIR`, a lib rotula `intermitente` e não `persistente`. Provado pelo caso novo `log-em-RFM_ROOT` da bateria. `RFM_VIGIAS_DIR` continua tendo precedência para o `ERROS.md` e para os logs.
 - Um log com rondas seguidas, cada uma com a mesma falha, até a última ronda, dá `persistente x2 desde <primeira da sequência>`. Provado pelo caso novo `persistente-com-log`.
@@ -143,12 +140,8 @@ atende: D5, D6
 arquivos: `scripts/lib/impressao-falha.cjs`, `scripts/testa-impressao-falha.sh`
 depende de: nenhuma
 paralela: sim
-mutacao:
-  arquivo: `scripts/lib/impressao-falha.cjs`
-  de: const rondaLimpa = ativas.some((h) => h > primeiraChave && !rondasComOcorrencia.has(h));
-  para: const rondaLimpa = ativas.some((h) => !rondasComOcorrencia.has(h));
-  bateria: `bash scripts/testa-impressao-falha.sh`
-  fixture: `testa-impressao-falha.sh, caso novo "erro-antes-do-cabecalho: sem destino 4 dias, log com rondas so de 24 e 25/09"`
+mutacao: n/a
+  motivo: superada pela tarefa 8 (impasse, decisao do usuario em 2026-09-30); o trecho que esta mutacao invertia saiu do fonte junto com o ramo de log. O comportamento remanescente e medido pela mutacao da tarefa 8 e pelos casos log-e-ignorado e erro-antes-do-cabecalho.
 pronto quando: com o formato real do `run-vigia.ps1`, em que o erro sai antes do cabeçalho (`vigias/run-vigia.ps1:56,70,97`), a rotulagem fica assim:
 - `ERROS.md` com `sem destino de envio` em 26, 27, 28 e 29/09, e log com rondas só de 24 e 25/09: `persistente x4 desde 2026-09-26`.
 - `ERROS.md` com ocorrências em 20/09 e 29/09 08:10, e log só com `=== 2026-09-29 08:00 ===`: `persistente x2`.
