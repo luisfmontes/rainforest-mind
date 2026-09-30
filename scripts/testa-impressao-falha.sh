@@ -105,5 +105,25 @@ sem_raiz="$(env -u RFM_ROOT bash -c "$(declare -f roda_caixa); SB='$SB'; roda_ca
 igual "log-em-RFM_ROOT" "$com_raiz $sem_raiz" '[["vigia-x","intermitente",2,"2026-09-28"]] [["vigia-x","persistente",2,"2026-09-28"]]'
 
 echo ""
+echo "(10) erro-antes-do-cabecalho"
+pasta antes <<'EOF'
+- 2026-09-26 08:00 [vigia-x]: sem destino de envio
+- 2026-09-27 08:00 [vigia-x]: sem destino de envio
+- 2026-09-28 08:00 [vigia-x]: sem destino de envio
+- 2026-09-29 08:00 [vigia-x]: sem destino de envio
+EOF
+printf '=== 2026-09-24 08:00 ===\n=== 2026-09-25 08:00 ===\n' > "$SB/antes/log-vigia-x.txt"
+igual "erro-antes-do-cabecalho: sem destino 4 dias, log com rondas so de 24 e 25/09" "$(roda "$SB/antes" "2026-09-30T12:00:00")" '[["vigia-x","persistente",4,"2026-09-29"]]'
+
+echo ""
+echo "(11) log-mais-novo-que-o-erros"
+pasta maisnovo <<'EOF'
+- 2026-09-20 08:10 [vigia-x]: falhou exit 2
+- 2026-09-29 08:10 [vigia-x]: falhou exit 2
+EOF
+printf '=== 2026-09-29 08:00 ===\n' > "$SB/maisnovo/log-vigia-x.txt"
+igual "log-mais-novo-que-o-erros" "$(roda "$SB/maisnovo" "2026-09-30T12:00:00")" '[["vigia-x","persistente",2,"2026-09-29"]]'
+
+echo ""
 echo "Placar: $ok ok, $falhou falha(s)"
 [ "$falhou" -eq 0 ]

@@ -1,6 +1,7 @@
 'use strict';
 // Impressao digital de falha de vigia (enxerto do reef) e os dois rotulos:
-// persistente (falhou em todas as rondas recentes) e intermitente (voltou depois de ronda limpa).
+// persistente (nenhuma ronda limpa provada depois da primeira ocorrencia) e intermitente (existe ronda
+// posterior a primeira ocorrencia sem nenhuma ocorrencia da impressao). Sem log: persistente.
 // So le vigias/ERROS.md e vigias/log-<vigia>.txt; nunca escreve, nunca lanca por arquivo ausente.
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -77,10 +78,10 @@ function classificar({ erros, logs, agora }) {
       return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
     })();
     const ativas = rondas.filter((r) => r <= chaveAgora);
-    const idxRonda = (chave) => {
-      let i = -1;
-      for (let k = 0; k < ativas.length; k++) if (ativas[k] <= chave) i = k;
-      return i;
+    const donaRonda = (chave) => {
+      let dona = null;
+      for (const h of ativas) if (h <= chave) dona = h;
+      return dona;
     };
     for (const [id, grupo] of grupos) {
       const n = grupo.length;
@@ -97,26 +98,11 @@ function classificar({ erros, logs, agora }) {
         saida.push({ ...base, rotulo: 'persistente' });
         continue;
       }
-      const L = ativas.length - 1;
-      const idxs = grupo.map((o) => idxRonda(o.chave));
-      if (idxs[n - 1] !== L) {
-        saida.push({ ...base, rotulo: 'intermitente' });
-        continue;
-      }
-      const com = new Set(idxs);
-      let s = 0;
-      let k = L;
-      while (k >= 0 && com.has(k)) {
-        s++;
-        k--;
-      }
-      if (s >= MINIMO_OCORRENCIAS) {
-        const inicio = L - s + 1;
-        const primeira = grupo[idxs.indexOf(inicio)];
-        saida.push({ ...base, rotulo: 'persistente', n: s, desde: primeira.data });
-      } else {
-        saida.push({ ...base, rotulo: 'intermitente' });
-      }
+      // ronda limpa provada: cabecalho posterior a primeira ocorrencia sem nenhuma ocorrencia dela
+      const primeiraChave = grupo[0].chave;
+      const rondasComOcorrencia = new Set(grupo.map((o) => donaRonda(o.chave)));
+      const rondaLimpa = ativas.some((h) => h > primeiraChave && !rondasComOcorrencia.has(h));
+      saida.push({ ...base, rotulo: rondaLimpa ? 'intermitente' : 'persistente' });
     }
   }
   return saida;
