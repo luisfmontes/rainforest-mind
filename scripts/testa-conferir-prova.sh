@@ -351,6 +351,14 @@ E marcar --slug t2 --estagio design --status aprovado >/dev/null 2>&1
 exige "marcar plano ok com prova vermelha na base: exit 0" 0 \
   E marcar --slug t2 --estagio plano --status ok --json '{"arquivo":"docs/rainforest/planos/t-vermelho.md","tarefas":1}'
 
+# Verificar que as recusas se acumulam
+SAIDA=$(E marcar --slug t --estagio plano --status ok --json '{"arquivo":"docs/rainforest/planos/t-verde.md","tarefas":1}' 2>&1)
+if echo "$SAIDA" | grep -q "RECUSADO"; then
+  ok=$((ok+1)); echo "  ok    a recusa acumula com a da cobertura (as duas saem numa chamada)"
+else
+  falhou=$((falhou+1)); echo "  FALHA marcar nao recusou com RECUSADO"
+fi
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
