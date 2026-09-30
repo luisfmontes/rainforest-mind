@@ -338,11 +338,12 @@ function extrairTarefas(conteudo) {
     if (cerca[i]) continue;
     const linha = linhas[i];
 
-    // Tarefa começa com ### <n>. <nome>
-    const match = linha.match(/^### (\d+)\. (.+?)(?:\s+\[tipo:|$)/);
+    // Tarefa começa com ### <n>. <nome> [tipo: <tipo>]
+    const match = linha.match(/^### (\d+)\. (.+?)(?:\s+\[tipo:\s*([^\]]*)\])?\s*$/);
     if (match) {
       const numero = parseInt(match[1], 10);
       const nome = match[2].trim();
+      const tipo = (match[3] || '').trim().toLowerCase();
 
       // Corpo da tarefa: até a próxima tarefa ou seção — cabeçalho dentro de
       // cerca não fecha a tarefa, pelo mesmo motivo que não abre uma.
@@ -365,7 +366,31 @@ function extrairTarefas(conteudo) {
         }
       }
 
-      tarefas.push({ numero, nome, atende, mutacao: extrairMutacao(corpo, corpo_cerca) });
+      // Procura campo prova: linha que começa com `prova:` e tem um par de crases
+      let prova = null;
+      let provaMalformada = false;
+      for (let k = 0; k < corpo.length; k++) {
+        if (!corpo_cerca[k] && corpo[k].startsWith('prova:')) {
+          const m = corpo[k].match(/^prova:\s*`([^`]+)`\s*$/);
+          if (m) {
+            prova = m[1];
+          } else {
+            provaMalformada = true;
+          }
+          break;
+        }
+      }
+
+      // Procura campo prova-na-base: texto após `prova-na-base:`
+      let provaNaBase = null;
+      for (let k = 0; k < corpo.length; k++) {
+        if (!corpo_cerca[k] && corpo[k].startsWith('prova-na-base:')) {
+          provaNaBase = corpo[k].substring('prova-na-base:'.length).trim();
+          break;
+        }
+      }
+
+      tarefas.push({ numero, nome, atende, tipo, prova, provaMalformada, provaNaBase, mutacao: extrairMutacao(corpo, corpo_cerca) });
     }
   }
 
