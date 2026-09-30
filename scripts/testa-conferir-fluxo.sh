@@ -137,6 +137,18 @@ exige 2 "design cita varredura vazia: exit 2" CHK design --slug t
 restaura
 exige 0 "design com varredura real e nao vazia: exit 0" CHK design --slug t
 
+# Design aprovado antes da trava nao e reconferido: a checagem so roda no
+# `marcar --estagio design`. Aprova com varredura, apaga o .txt, e o `exigir`
+# do estagio seguinte continua passando. Copia da caixa para nao sujar o resto.
+restaura
+SA="$(mktemp -d)"; cp -r "$S/." "$SA/"
+RFM_ESTADO_ROOT="$SA" node "$RAIZ/scripts/estado.cjs" iniciar --slug t >/dev/null 2>&1
+RFM_ESTADO_ROOT="$SA" node "$RAIZ/scripts/estado.cjs" marcar --slug t --estagio design --status aprovado --json '{"doc":"docs/rainforest/design/t.md"}' >/dev/null 2>&1
+rm -f "$SA/docs/rainforest/varredura/t.txt"
+exige 0 "design ja aprovado nao e reconferido (estado.cjs so roda a checagem no marcar)" \
+  env RFM_ESTADO_ROOT="$SA" node "$RAIZ/scripts/estado.cjs" exigir --slug t --estagio plano
+rm -rf "$SA"
+
 echo
 echo "== 2. cobertura: design x plano, nos dois sentidos (D8) =="
 restaura

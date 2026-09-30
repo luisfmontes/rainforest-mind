@@ -141,7 +141,7 @@ mutacao:
   bateria: `bash scripts/testa-conferir-prova.sh`
   fixture: testa-conferir-prova.sh, caso "marcar plano ok com prova verde na base: exit 2 pelo estado.cjs"
 pronto quando: com um fluxo real de sandbox (estado iniciado por `estado.cjs`, design aprovado, plano em disco com tarefa `implementar` cuja `prova:` sai 0 na base), o `marcar` recusa, e com a prova vermelha na base fecha — provado por:
-  (1) `bash scripts/testa-conferir-prova.sh` imprimindo `  ok    marcar plano ok com prova verde na base: exit 2 pelo estado.cjs`, `  ok    marcar plano ok com prova vermelha na base: exit 0` e `  ok    a recusa acumula com a da cobertura (as duas saem numa chamada)`;
+  (1) `bash scripts/testa-conferir-prova.sh` imprimindo `  ok    marcar plano ok com prova verde na base: exit 2 pelo estado.cjs`, `  ok    marcar plano ok com prova vermelha na base: exit 0` e `  ok    a recusa do marcar cita a prova (nao outra checagem)`;
   (2) `bash scripts/testa-conferir-fluxo.sh`, `bash scripts/testa-estado.sh` (com `timeout: 600000`), `bash scripts/testa-portoes-gate.sh`, `bash scripts/testa-recibo-fechar.sh` e `bash hooks/testa-ledger-fluxos.sh` cada uma terminando sem nenhuma linha `FALHA`;
   (3) `bash scripts/testa-teto-skills.sh` sem `FALHA` (plano/SKILL.md cabe no teto).
 

@@ -311,9 +311,17 @@ Teste
 
 - **D1 — porque: test**
 
+## Varredura
+Arquivo: docs/rainforest/varredura/t.txt
+
 ## Em aberto
 
 DESIGN
+mkdir -p "$S/docs/rainforest/varredura"
+printf 'Termos: x
+$ gh issue list
+(vazio)
+' > "$S/docs/rainforest/varredura/t.txt"
 
 # Plano com prova verde
 cat > "$S/docs/rainforest/planos/t-verde.md" <<'PLANO'
@@ -341,7 +349,7 @@ git -C "$S" add -A; git -C "$S" commit -q -m init
 E() { RFM_ESTADO_ROOT="$S" node "$RAIZ/scripts/estado.cjs" "$@"; }
 
 E iniciar --slug t >/dev/null 2>&1
-E marcar --slug t --estagio design --status aprovado >/dev/null 2>&1
+E marcar --slug t --estagio design --status aprovado >/dev/null 2>&1 || { falhou=$((falhou+1)); echo "  FALHA fixture: design t nao aprovou (a recusa da prova ficaria mascarada)"; }
 
 exige "marcar plano ok com prova verde na base: exit 2 pelo estado.cjs" 2 \
   E marcar --slug t --estagio plano --status ok --json '{"arquivo":"docs/rainforest/planos/t-verde.md","tarefas":1}'
@@ -350,20 +358,21 @@ exige "marcar plano ok com prova verde na base: exit 2 pelo estado.cjs" 2 \
 cp "$S/docs/rainforest/planos/t-verde.md" "$S/docs/rainforest/planos/t-vermelho.md"
 sed -i 's/exit 0/exit 1/' "$S/docs/rainforest/planos/t-vermelho.md"
 # Design para t2 (cópia de t.md)
-cp "$S/docs/rainforest/design/t.md" "$S/docs/rainforest/design/t2.md"
+sed 's#varredura/t.txt#varredura/t2.txt#' "$S/docs/rainforest/design/t.md" > "$S/docs/rainforest/design/t2.md"
+cp "$S/docs/rainforest/varredura/t.txt" "$S/docs/rainforest/varredura/t2.txt"
 git -C "$S" add -A; git -C "$S" commit -q -m "prova vermelha"
 E iniciar --slug t2 >/dev/null 2>&1
-E marcar --slug t2 --estagio design --status aprovado >/dev/null 2>&1
+E marcar --slug t2 --estagio design --status aprovado >/dev/null 2>&1 || { falhou=$((falhou+1)); echo "  FALHA fixture: design t2 nao aprovou"; }
 
 exige "marcar plano ok com prova vermelha na base: exit 0" 0 \
   E marcar --slug t2 --estagio plano --status ok --json '{"arquivo":"docs/rainforest/planos/t-vermelho.md","tarefas":1}'
 
 # Verificar que as recusas se acumulam
 SAIDA=$(E marcar --slug t --estagio plano --status ok --json '{"arquivo":"docs/rainforest/planos/t-verde.md","tarefas":1}' 2>&1)
-if echo "$SAIDA" | grep -q "RECUSADO"; then
-  ok=$((ok+1)); echo "  ok    a recusa acumula com a da cobertura (as duas saem numa chamada)"
+if echo "$SAIDA" | grep -q "prova que sai 0 na base"; then
+  ok=$((ok+1)); echo "  ok    a recusa do marcar cita a prova (nao outra checagem)"
 else
-  falhou=$((falhou+1)); echo "  FALHA marcar nao recusou com RECUSADO"
+  falhou=$((falhou+1)); echo "  FALHA a recusa do marcar nao cita a prova"
 fi
 
 echo
