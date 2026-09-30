@@ -132,17 +132,9 @@ const ESPERADOS = (() => {
   }
 })();
 
-// Função para rodar gate
-function rodarGate(gatePath, comando, contexto, config_obj) {
-  const payload = JSON.parse(JSON.stringify(PAYLOAD_BASE));
-  payload.tool_input.command = comando;
-  const cwd_efetivo = contexto === "subagente" ? wt : sandbox;
-  payload.cwd = cwd_efetivo;
-  if (contexto === "principal") {
-    delete payload.agent_id;
-    delete payload.agent_type;
-  }
-  // contexto === "subagente" mantém agent_id e agent_type
+// Função para rodar gate com payload customizado
+function rodarPayload(gatePath, payload, config_obj) {
+  const cwd_efetivo = payload.cwd;
 
   // Escrever config se necessário
   if (config_obj) {
@@ -170,6 +162,21 @@ function rodarGate(gatePath, comando, contexto, config_obj) {
   };
 }
 
+// Função para rodar gate (wrapper que prepara payload padrão)
+function rodarGate(gatePath, comando, contexto, config_obj) {
+  const payload = JSON.parse(JSON.stringify(PAYLOAD_BASE));
+  payload.tool_input.command = comando;
+  const cwd_efetivo = contexto === "subagente" ? wt : sandbox;
+  payload.cwd = cwd_efetivo;
+  if (contexto === "principal") {
+    delete payload.agent_id;
+    delete payload.agent_type;
+  }
+  // contexto === "subagente" mantém agent_id e agent_type
+
+  return rodarPayload(gatePath, payload, config_obj);
+}
+
 // Rodapé de tempo
 const inicio = Date.now();
 
@@ -183,19 +190,99 @@ for (const esperado of ESPERADOS) {
 
 console.log("== corpus-comandos ==");
 
-// Definir controles positivos para cada gate
-const CONTROLES_POSITIVOS = {
-  "gate-git-verificacao": { comando: "git commit --no-verify", contextos: ["principal", "subagente"] },
-  "gate-mensagem-commit": { necessita_setup: true }, // Requer staged content e commit > 150 linhas
-  "gate-verificador-staged": { necessita_setup: true },
-  "gate-worktree": { necessita_setup: true }, // Requer cwd = checkout principal
-  "gate-staging-total": { comando: "git add -A", contextos: ["principal", "subagente"] },
-  "gate-fechar-issue": { comando: "gh issue close 1", contextos: ["principal", "subagente"] },
-  "gate-publicacao-destino": { necessita_validacao: true },
-  "gate-busca-raiz": { comando: "find / -name x", contextos: ["subagente"] },
-  "gate-bateria-sem-timeout": { necessita_validacao: true },
-  "gate-subagente-sem-gh": { comando: "gh issue close 1", contextos: ["subagente"] },
-};
+// Funções de teste para controle positivo de cada gate
+function testeGateWorktree() {
+  // Subagente escrevendo no checkout principal (não worktree)
+  const payload = JSON.parse(JSON.stringify(PAYLOAD_BASE));
+  payload.cwd = sandbox; // cwd = checkout principal (não worktree)
+  payload.tool_name = "Write";
+  payload.tool_input = { file_path: path.join(sandbox, "test-file.txt"), content: "test" };
+  // agent_id já está no PAYLOAD_BASE para subagente
+  const r = rodarPayload(path.join(__dirname, "gate-worktree.cjs"), payload);
+  return r.status === 2 ? true : `exit ${r.status}, esperado 2`;
+}
+
+function testeGateMensagemCommit() {
+  // Commit com assunto > 72 colunas
+  const assunto_longo = "x".repeat(80); // Maior que 72 colunas
+  const cmd = `git commit -m "${assunto_longo}"`;
+  const r = rodarGate(path.join(__dirname, "gate-mensagem-commit.cjs"), cmd, "principal");
+  return r.status === 2 ? true : `exit ${r.status}, esperado 2`;
+}
+
+function testeGateVerificadorStaged() {
+  // Arquivo staged com dados sensíveis que o conferir-publicacao rejeita
+  try {
+    // Copiar conferir-publicacao.cjs para a sandbox
+    const conferirSource = path.join(path.dirname(__dirname), "scripts", "conferir-publicacao.cjs");
+    const scriptsDir = path.join(sandbox, "scripts");
+    fs.mkdirSync(scriptsDir, { recursive: true });
+    fs.copyFileSync(conferirSource, path.join(scriptsDir, "conferir-publicacao.cjs"));
+
+    // Escrever arquivo com dado sensível (telefone)
+    const telefone = "+55" + "119" + "12345" + "678";
+    const conteudo_sensivel = `Contato do cliente: ${telefone}\nNão publicar!`;
+    fs.writeFileSync(path.join(sandbox, "file.txt"), conteudo_sensivel, "utf8");
+
+    // Stage o arquivo
+    spawnSync("git", ["add", "file.txt"], { cwd: sandbox, encoding: "utf8" });
+
+    // Rodar gate
+    const payload = JSON.parse(JSON.stringify(PAYLOAD_BASE));
+    payload.cwd = sandbox;
+    payload.tool_name = "Bash";
+    payload.tool_input = { command: "git commit -m test" };
+    delete payload.agent_id; // contexto principal
+    delete payload.agent_type;
+
+    const r = rodarPayload(path.join(__dirname, "gate-verificador-staged.cjs"), payload);
+
+    // Limpar
+    try {
+      spawnSync("git", ["reset", "-q"], { cwd: sandbox });
+      fs.unlinkSync(path.join(sandbox, "file.txt"));
+    } catch {}
+
+    return r.status === 2 ? true : `exit ${r.status}, esperado 2`;
+  } catch (e) {
+    return `erro: ${e.message}`;
+  }
+}
+
+function testeGatePublicacaoDestino() {
+  // Escrita com dados sensíveis (telefone)
+  try {
+    const payload = JSON.parse(JSON.stringify(PAYLOAD_BASE));
+    payload.cwd = sandbox;
+    payload.tool_name = "Write";
+    // Montar telefone em tempo de execução para não bloquear a bateria em si
+    const telefone = "+55" + "119" + "12345" + "678";
+    payload.tool_input = {
+      file_path: path.join(sandbox, "dados.txt"),
+      content: `Contato: ${telefone}`
+    };
+    delete payload.agent_id;
+    delete payload.agent_type;
+
+    const r = rodarPayload(path.join(__dirname, "gate-publicacao-destino.cjs"), payload);
+    return r.status === 2 ? true : `exit ${r.status}, esperado 2`;
+  } catch (e) {
+    return `erro: ${e.message}`;
+  }
+}
+
+function testeGateBateriaSemTimeout() {
+  // Bateria sem timeout em subagente
+  const payload = JSON.parse(JSON.stringify(PAYLOAD_BASE));
+  payload.cwd = wt; // worktree para subagente
+  payload.tool_name = "Bash";
+  payload.tool_input = { command: "bash scripts/testa-cli-externo.cjs" };
+  delete payload.tool_input.timeout; // Remover timeout
+  // agent_id mantido para subagente
+
+  const r = rodarPayload(path.join(__dirname, "gate-bateria-sem-timeout.cjs"), payload);
+  return r.status === 2 ? true : `exit ${r.status}, esperado 2`;
+}
 
 // Rodar replay de cada gate
 for (const gateName of GATES) {
@@ -242,17 +329,72 @@ for (const gateName of GATES) {
   }
 
   // Controle positivo: testar comando que DEVE ser bloqueado
-  const controle = CONTROLES_POSITIVOS[gateName];
-  if (controle && controle.comando && !controle.necessita_setup && !controle.necessita_validacao) {
-    let controle_passou = false;
-    for (const contexto of controle.contextos) {
-      const r = rodarGate(gatePath, controle.comando, contexto);
-      if (r.status === 2) {
-        controle_passou = true;
-        break;
-      }
+  let resultado_controle = null;
+  let mensagem_controle = "";
+
+  switch (gateName) {
+    case "gate-git-verificacao": {
+      const r_principal = rodarGate(gatePath, "git commit --no-verify", "principal");
+      const r_subagente = rodarGate(gatePath, "git commit --no-verify", "subagente");
+      resultado_controle = r_principal.status === 2 || r_subagente.status === 2;
+      break;
     }
-    caso(`${gateName}: controle positivo barrado (exit 2)`, controle_passou, controle_passou ? "" : "controle não foi bloqueado");
+    case "gate-staging-total": {
+      const r_principal = rodarGate(gatePath, "git add -A", "principal");
+      const r_subagente = rodarGate(gatePath, "git add -A", "subagente");
+      resultado_controle = r_principal.status === 2 || r_subagente.status === 2;
+      break;
+    }
+    case "gate-fechar-issue": {
+      const r_principal = rodarGate(gatePath, "gh issue close 1", "principal");
+      const r_subagente = rodarGate(gatePath, "gh issue close 1", "subagente");
+      resultado_controle = r_principal.status === 2 || r_subagente.status === 2;
+      break;
+    }
+    case "gate-busca-raiz": {
+      const r = rodarGate(gatePath, "find / -name x", "subagente");
+      resultado_controle = r.status === 2;
+      break;
+    }
+    case "gate-subagente-sem-gh": {
+      const r = rodarGate(gatePath, "gh issue close 1", "subagente");
+      resultado_controle = r.status === 2;
+      break;
+    }
+    case "gate-worktree": {
+      const testResult = testeGateWorktree();
+      resultado_controle = testResult === true;
+      if (testResult !== true) mensagem_controle = testResult;
+      break;
+    }
+    case "gate-mensagem-commit": {
+      const testResult = testeGateMensagemCommit();
+      resultado_controle = testResult === true;
+      if (testResult !== true) mensagem_controle = testResult;
+      break;
+    }
+    case "gate-verificador-staged": {
+      const testResult = testeGateVerificadorStaged();
+      resultado_controle = testResult === true;
+      if (testResult !== true) mensagem_controle = testResult;
+      break;
+    }
+    case "gate-publicacao-destino": {
+      const testResult = testeGatePublicacaoDestino();
+      resultado_controle = testResult === true;
+      if (testResult !== true) mensagem_controle = testResult;
+      break;
+    }
+    case "gate-bateria-sem-timeout": {
+      const testResult = testeGateBateriaSemTimeout();
+      resultado_controle = testResult === true;
+      if (testResult !== true) mensagem_controle = testResult;
+      break;
+    }
+  }
+
+  if (resultado_controle !== null) {
+    caso(`${gateName}: controle positivo barrado (exit 2)`, resultado_controle, mensagem_controle);
   }
 
   const msg = `${gateName}: ${COMANDOS.length} comando(s) x 2 contexto(s), ${fora_esperados} bloqueio(s) fora de esperados`;
