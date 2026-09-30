@@ -21,7 +21,7 @@
     "em": "2026-09-30"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-09-30",
     "tarefas_ok": 4,
     "tarefas": 4,
@@ -100,10 +100,37 @@
       }
     ],
     "comando": "node scripts/conferir-mutacao.cjs (tarefas 1-3, re-rodado na integracao)",
-    "saida": "exit 0 nas tres; casos nomeados vermelhos"
+    "saida": "exit 0 nas tres; casos nomeados vermelhos",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-09-30"
+    }
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "721bf293d6ffbf87ee38bde6d907f05e913aba4b",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a0d46d1e908063826",
+        "veredito": "reprovado",
+        "em": "2026-09-30",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea/subagents/agent-a0d46d1e908063826.jsonl"
+      }
+    ],
+    "em_voo": [
+      {
+        "agente": "revisor",
+        "tarefa": "revisar diff 038e990...721bf29",
+        "desde": "2026-09-30"
+      }
+    ],
+    "em": "2026-09-30",
+    "achados": 5,
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

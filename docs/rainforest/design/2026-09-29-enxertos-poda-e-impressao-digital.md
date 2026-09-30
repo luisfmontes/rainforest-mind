@@ -62,6 +62,12 @@ A poda de saída grande, a segunda metade do pedido, foi medida e descartada (ve
   ocorrência pertence à ronda de cabeçalho mais recente com hora ≤ a dela. Sem log (CI,
   máquina nova), não há prova de ronda limpa, e a impressão com N ≥ 2 sai como
   **persistente ×N desde** a primeira. A regra é nunca inferir melhora sem evidência.
+
+  O log é procurado onde o `run-vigia.ps1` o grava, que é `$root\vigias`, com
+  `$root = RFM_ROOT` quando essa variável existe (`vigias/run-vigia.ps1:5,152`). O
+  `ERROS.md` fica sempre no plugin (`:87-94`). Ler o log ao lado do `ERROS.md` com
+  `RFM_ROOT` definido não o acharia, e todo erro sairia como persistente (achado 4 do
+  revisar, 2026-09-30).
 - **D7 — Os dois rótulos aparecem no resumo de erros das vigias (`erros_24h`, em
   `vigias/dados-batedor-repos.js`) e no `/saude`** — porquê: é onde o erro já é lido.
   WhatsApp fica fora, porque o aviso viraria ruído no celular.
@@ -99,6 +105,11 @@ A poda de saída grande, a segunda metade do pedido, foi medida e descartada (ve
 - Transformar falha em caso de regressão permanente (`promote_failures` do reef). É outra
   peça, e fica como pergunta de revisita do reef no livro.
 - Aviso por WhatsApp (D7).
+- Duas ocorrências na **mesma** ronda, com a ronda anterior limpa, saem como
+  `intermitente x2`, e não como persistente. A sequência S conta rondas, não
+  ocorrências (achado 5 do revisar). A linha aparece do mesmo jeito, com `ultima` de
+  hoje; o que se discute é só o rótulo, e vigia não repete erro dentro da mesma ronda
+  no uso real.
 
 ## Em aberto
 

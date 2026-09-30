@@ -106,3 +106,32 @@ pronto quando: a ideia `poda-de-resultado-com-invariante-de-convergencia`, hoje 
 
 Esta tarefa é feita pela janela principal, não por agente: a regra 15 proíbe agente de
 escrever dado fora do worktree.
+
+## Emenda de 2026-09-30 — achados do revisar (rodada 1, reprovado)
+
+### 5. Baterias que copiam `saude.cjs` ou `dados-batedor-repos.js` levam a lib junto [tipo: teste]
+atende: D7
+arquivos: `scripts/testa-fila-de-repos.sh`, `scripts/testa-vigias-agendados.sh`
+depende de: nenhuma
+paralela: sim
+mutacao: n/a
+  motivo: é conserto de fixture de teste, sem comportamento de produção a inverter. A falsificação é o estado medido antes: `testa-fila-de-repos.sh` com `2 ok, 17 falha(s)` e `testa-vigias-agendados.sh` com `ok: 3   falhou: 4`, os dois por `Cannot find module` da lib. Eles têm de passar sem que nenhum caso existente seja apagado ou afrouxado.
+pronto quando: com o `require` da lib já presente em `scripts/saude.cjs` e `vigias/dados-batedor-repos.js`, as caixas de areia das duas baterias copiam `scripts/lib/impressao-falha.cjs`, e a contagem de casos não diminui — provado por `bash scripts/testa-fila-de-repos.sh` devolvendo `0 falha(s)` com 19 casos no total e `bash scripts/testa-vigias-agendados.sh` devolvendo `falhou: 0` com 7 casos no total.
+
+### 6. A lib acha o log onde o `run-vigia.ps1` o grava, e a bateria cobre persistente com log [tipo: implementar]
+atende: D5, D6
+arquivos: `scripts/lib/impressao-falha.cjs`, `scripts/testa-impressao-falha.sh`
+depende de: nenhuma
+paralela: sim
+mutacao:
+  arquivo: `scripts/lib/impressao-falha.cjs`
+  de: if (s >= MINIMO_OCORRENCIAS) {
+  para: if (s < MINIMO_OCORRENCIAS) {
+  bateria: `bash scripts/testa-impressao-falha.sh`
+  fixture: `testa-impressao-falha.sh, caso novo "persistente-com-log: duas rondas seguidas com a falha"`
+pronto quando: três efeitos, cada um com a sua prova.
+- Com `RFM_ROOT` apontando para uma pasta cujo `vigias/log-<vigia>.txt` mostra ronda limpa depois da última ocorrência, e **sem** `RFM_VIGIAS_DIR`, a lib rotula `intermitente` e não `persistente`. Provado pelo caso novo `log-em-RFM_ROOT` da bateria. `RFM_VIGIAS_DIR` continua tendo precedência para o `ERROS.md` e para os logs.
+- Um log com rondas seguidas, cada uma com a mesma falha, até a última ronda, dá `persistente x2 desde <primeira da sequência>`. Provado pelo caso novo `persistente-com-log`.
+- O guarda redundante `if (!/^conferido/.test(vigia))` sai (achado 3), e o caso `conferido-na-janela-principal-nao-zera` continua `ok`.
+
+Tudo isso é provado por `bash scripts/testa-impressao-falha.sh` devolvendo `9 ok, 0 falha(s)`. O critério da tarefa 1 continua valendo: com os dados reais, `[["sentinela-foco","intermitente",5,"2026-09-25"]]`.
