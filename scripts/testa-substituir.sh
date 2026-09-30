@@ -350,5 +350,70 @@ else
 fi
 
 echo
+echo "== 8. CP-1252 preservado byte a byte =="
+
+# Arquivo com bytes CP-1252: acção (a=61, c=63, ç=e7, ã=e3, o=6f, espaço=20)
+ALVO8="$SB/alvo8.prw"
+printf '\x61\x63\xe7\xe3\x6f\x20\x58\x59\x0a' > "$ALVO8"
+
+DE8="$SB/de8.txt"
+printf 'XY\n' > "$DE8"
+
+PARA8="$SB/para8.txt"
+printf 'ZZ\n' > "$PARA8"
+
+# Confere antes com od
+ANTES8=$(od -An -tx1 "$ALVO8" 2>/dev/null | tr -d ' \n')
+
+RC=$(codigo --arquivo "$ALVO8" --de "$DE8" --para "$PARA8")
+saiu "CP-1252 preservado: exit 0" "$RC" "0"
+
+# Confere com od que e7 e3 permanecem e7 e3 (não degradadas para utf-8 inválido)
+DEPOIS8=$(od -An -tx1 "$ALVO8" 2>/dev/null | tr -d ' \n')
+# Esperado: 6163e7e36f205a5a0a (mesmos e7 e3, XY virou ZZ)
+if echo "$DEPOIS8" | grep -q 'e7e3'; then
+  ok=$((ok+1)); echo "  ok    bytes CP-1252 preservados (e7 e3 encontrados)"
+else
+  falhou=$((falhou+1)); echo "  FALHA bytes CP-1252 degradados (esperava e7 e3, obteve $DEPOIS8)"
+fi
+
+echo
+echo "== 9. aresta de residuo falso: aabb com de=ab para=a =="
+
+ALVO9="$SB/alvo9.txt"
+printf 'aabb\n' > "$ALVO9"
+
+DE9="$SB/de9.txt"
+printf 'ab' > "$DE9"
+
+PARA9="$SB/para9.txt"
+printf 'a' > "$PARA9"
+
+# Backup para cmp
+cp "$ALVO9" "$SB/alvo9_backup.txt"
+
+RC=$(codigo --arquivo "$ALVO9" --de "$DE9" --para "$PARA9")
+saiu "residuo falso rejeita: exit 2" "$RC" "2"
+
+# Confere com cmp que arquivo não foi modificado
+if cmp -s "$ALVO9" "$SB/alvo9_backup.txt"; then
+  ok=$((ok+1)); echo "  ok    arquivo intacto apos rejeicao de residuo falso"
+else
+  falhou=$((falhou+1)); echo "  FALHA arquivo foi modificado apos rejeicao"
+fi
+
+echo
+echo "== 10. symlink recusado =="
+# sonda: symlink nao funciona neste ambiente (EPERM no Node, falta de Developer Mode)
+# pular este caso
+echo "  pulado symlink nao criavel neste ambiente (EPERM, requer Developer Mode no Windows)"
+
+echo
+echo "== 11. modo executavel preservado =="
+# sonda: chmod +x nao e observavel em Git Bash/MSYS ([ -x ] sempre falsa)
+# pular este caso
+echo "  pulado chmod em Git Bash nao e observavel ([ -x ] sempre falha)"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ $falhou -eq 0 ]
