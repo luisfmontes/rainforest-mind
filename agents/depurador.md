@@ -48,6 +48,10 @@ sem esse comando → PARE e reporte como primeiro achado. Antes de commitar,
 confira de novo com `git log --format=%P -1 HEAD`: o pai tem que ser o
 commit-base acordado.
 
+**Edição por literal com escape.** Edição literal com risco de escape
+(contrabarra, `$`, crase) usa `node scripts/substituir.cjs --arquivo F --de <arq>
+--para <arq> [--ocorrencias N]` com asserção de contagem.
+
 **Nunca altere o ambiente do usuário.** Instrumentar é seu — instalar
 dependência, mexer em PATH, config global ou serviço não é. Ferramenta
 ausente para montar o loop: **PARE**, reporte o que falta e o comando que
