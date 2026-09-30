@@ -26,7 +26,7 @@
     "em": "2026-09-30"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-30",
     "em_voo": [],
     "carimbos": [
@@ -161,11 +161,7 @@
       }
     ],
     "comando": "node scripts/conferir-fluxo.cjs creep --slug 2026-09-30-semear-travas --base 038e9905 --head HEAD",
-    "saida": "ok: sem creep — 52 arquivo(s) coberto(s); catracas das tarefas 1,2,4,5,6,7,8,10,11,13 re-rodadas pela integracao com exit 0",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-30"
-    }
+    "saida": "ok: sem creep — 59 arquivo(s) coberto(s); rodada 2 (revisao reprovada): B1,B2/I2/M2,B3/I3,I1,I4,I5/I6,M1 integrados; suite 156/156 baterias exit 0; catracas novas vermelhas: conferir-prova (arquivoNasceNaTarefa), conferir-fluxo design (citacaoVarredura), gate-staging-total via corpus, extrair-corpus (bloqueado)"
   },
   "revisar": {
     "status": "reprovado",
