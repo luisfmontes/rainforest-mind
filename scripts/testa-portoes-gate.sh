@@ -165,7 +165,7 @@ Nada.
 
 ## Varredura
 
-Ver `docs/rainforest/varredura/fluxo-x-design.txt`.
+Ver `docs/rainforest/varredura/fluxo-x-design.txt` e `docs/rainforest/varredura/cobertura-viva2.txt` (o design e compartilhado; cada fluxo cita o .txt do proprio slug).
 FIM
 echo "Varredura de fixture — testa-portoes-gate.sh" > "$S/docs/rainforest/varredura/fluxo-x-design.txt"
 # Plano SEM tarefa citando D1: a cobertura tem de recusar por decisao orfa.
@@ -245,7 +245,7 @@ Nada.
 
 ## Varredura
 
-Ver `docs/rainforest/varredura/com-orfa.txt`.
+Ver `docs/rainforest/varredura/com-orfa.txt`, `docs/rainforest/varredura/c2-plano.txt`, `docs/rainforest/varredura/a3-fora.txt`, `docs/rainforest/varredura/a3-dentro.txt`, `docs/rainforest/varredura/dois-problemas.txt` e `docs/rainforest/varredura/via-link.txt` (design compartilhado).
 FIM
 echo "Varredura de fixture — testa-portoes-gate.sh" > "$S/docs/rainforest/varredura/com-orfa.txt"
 cat > "$S/docs/rainforest/planos/com-orfa.md" <<'FIM'
