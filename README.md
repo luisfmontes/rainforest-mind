@@ -185,6 +185,15 @@ fechada). Só a chave desligada e o `stop_hook_active` do turno seguinte
 liberam sem perguntar. Codex sem cota bloqueia dizendo isso, com a hora de
 retorno (o despacho sai 75 e escreve `codex sem cota: ...`).
 
+Fora da tabela, mesmo mecanismo (`Stop`, exit 2 com mensagem e **opt-in** pela
+chave `gate-turno-prometido`, desligável em `.rainforest/config.json`):
+`gate-turno-prometido.cjs` barra o turno que prometeu despacho futuro ou em
+andamento (frases do design como "vou despachar", "despachando") e o turno não
+tem `tool_use` de `Agent` nem `Task`; também barra turno que diz estar esperando
+máquina ("CI rodando", "aguardando build") e não tem `Bash` com
+`run_in_background === true`, `Monitor`, nem `ScheduleWakeup`. Passado
+("despachei") não dispara. Promessa com execução imediata passa; `stop_hook_active === true` libera. Payload ou transcrição ilegível saem 0 em silêncio.
+
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
 não o repositório. Cada uma tem bateria própria — **849 casos** rodando o hook
 de verdade contra repos git montados na hora (soma re-medida em 2026-09-14, com os casos de heredoc e do staging citado:
