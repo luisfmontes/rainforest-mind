@@ -286,6 +286,71 @@ else
   falhou=$((falhou+1)); echo "  FALHA testa-conferir-fluxo.sh falhou"
 fi
 
+# Teste 7: estado.cjs marcar com prova verde/vermelha
+echo
+echo "== 7. estado.cjs marcar com prova verde/vermelha =="
+
+S=$(novo_sandbox)
+git init -q "$S"
+git -C "$S" config user.email t@t; git -C "$S" config user.name t
+git -C "$S" config commit.gpgsign false
+mkdir -p "$S/docs/rainforest/design" "$S/docs/rainforest/planos"
+
+# Design minimal
+cat > "$S/docs/rainforest/design/t.md" <<'DESIGN'
+# Design
+
+## Fora de escopo
+
+## Avaliado e descartado
+
+## Decisões fechadas
+
+- **D1** — porque: test
+
+DESIGN
+
+# Plano com prova verde
+cat > "$S/docs/rainforest/planos/t-verde.md" <<'PLANO'
+# Plano
+
+Design: docs/rainforest/design/t.md
+
+## Tarefas
+
+### 1. Tarefa [tipo: implementar]
+atende: D1
+arquivos: x
+prova: `exit 0`
+mutacao:
+  arquivo: x
+  de: a
+  para: b
+  bateria: `bash test.sh`
+  fixture: test
+pronto quando: ok
+PLANO
+
+git -C "$S" add -A; git -C "$S" commit -q -m init
+
+E() { RFM_ESTADO_ROOT="$S" node "$RAIZ/scripts/estado.cjs" "$@"; }
+
+E iniciar --slug t >/dev/null 2>&1
+E marcar --slug t --estagio design --status aprovado >/dev/null 2>&1
+
+exige "marcar plano ok com prova verde na base: exit 2 pelo estado.cjs" 2 \
+  E marcar --slug t --estagio plano --status ok --json '{"arquivo":"docs/rainforest/planos/t-verde.md","tarefas":1}'
+
+# Plano com prova vermelha
+cp "$S/docs/rainforest/planos/t-verde.md" "$S/docs/rainforest/planos/t-vermelho.md"
+sed -i 's/exit 0/exit 1/' "$S/docs/rainforest/planos/t-vermelho.md"
+git -C "$S" add -A; git -C "$S" commit -q -m "prova vermelha"
+E iniciar --slug t2 >/dev/null 2>&1
+E marcar --slug t2 --estagio design --status aprovado >/dev/null 2>&1
+
+exige "marcar plano ok com prova vermelha na base: exit 0" 0 \
+  E marcar --slug t2 --estagio plano --status ok --json '{"arquivo":"docs/rainforest/planos/t-vermelho.md","tarefas":1}'
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
