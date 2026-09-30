@@ -179,3 +179,22 @@ Mais três condições:
 - A lib não lê mais nenhum `log-*.txt`. Provado por `grep -n "log-\|RFM_ROOT\|ronda" scripts/lib/impressao-falha.cjs` sem ocorrência de código, só em comentário histórico.
 - O `/saude` e o batedor mostram `recorrente x2 em 30 dias, desde` nos casos VR1 e TESTE 5.
 - As baterias `testa-impressao-falha.sh`, `testa-saude.sh` e `testa-dados-batedor-repos.sh` saem com 0 falha.
+
+## Emenda de 2026-09-30 — critérios vigentes para o `verificar` (achados da rodada 4)
+
+As tarefas 6 e 7 foram **superadas** pela 8: o ramo de log que elas criaram saiu por
+decisão do usuário (impasse). Os critérios das tarefas 1, 2 e 3 que citam
+`intermitente`, `persistente` ou `log-sentinela-foco.txt` descrevem o rótulo antigo. O
+comportamento que eles medem continua; muda só o texto do rótulo. O `verificar` roda
+estes critérios, **no lugar** dos originais:
+
+- **Tarefa 1:** `RFM_VIGIAS_DIR=C:/Projetos/rainforest-mind/vigias node -e "const l=require('./scripts/lib/impressao-falha.cjs');console.log(JSON.stringify(l.falhasRecorrentes(new Date('2026-09-30T12:00:00')).map(r=>[r.vigia,r.rotulo,r.n,r.desde,r.ultima])))"` deve devolver `[["sentinela-foco","recorrente",5,"2026-09-11","2026-09-25"]]`.
+- **Tarefa 2:** `RFM_VIGIAS_DIR=C:/Projetos/rainforest-mind/vigias node scripts/saude.cjs 2>&1 | grep -E "vigias-(recorrentes|erros)"` deve devolver uma linha `vigias-erros` e uma `vigias-recorrentes` contendo `recorrente x5 em 30 dias, desde 11/09, ultima 25/09`.
+- **Tarefa 3:** `RFM_VIGIAS_DIR=C:/Projetos/rainforest-mind/vigias node vigias/dados-batedor-repos.js | grep -A1 "FALHAS RECORRENTES"` deve devolver `FALHAS RECORRENTES (30 DIAS) (1)` e a linha com `recorrente x5 em 30 dias, desde 11/09, ultima 25/09`.
+- **Tarefas 4, 5 e 8:** os critérios escritos continuam valendo.
+- **Tarefas 6 e 7:** superadas. O que sobrou delas (o log é ignorado, e o erro gravado antes do cabeçalho vira recorrente) está coberto pelos casos `log-e-ignorado` e `erro-antes-do-cabecalho` da tarefa 8.
+
+Correção ao "O que não pode quebrar" (achado 2 da rodada 4): além do `vigias/erros.ps1`,
+o `ERROS.md` também recebe a linha `[vigia]: RESOLVIDO…` escrita **à mão** por quem
+consertou a falha. Essa exceção já existia no histórico do arquivo, e o aviso do
+`/saude` a pede. Nenhum código desta entrega escreve no `ERROS.md`.

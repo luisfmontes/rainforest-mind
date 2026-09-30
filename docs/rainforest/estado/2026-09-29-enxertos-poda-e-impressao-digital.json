@@ -375,37 +375,31 @@
     "saida": "exit 0 em 1,2,3,8"
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "5feceab44fda2c28dab44021defd12a2a153ccf7",
+      "head": "fba81fbe52d8640ef5a0ab13bffde0016ecd7190",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a3260ea7a1e77edc0",
-        "veredito": "reprovado",
+        "agente_id": "aed24be3da7d81178",
+        "veredito": "ok",
         "em": "2026-09-30",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea/subagents/agent-a3260ea7a1e77edc0.jsonl"
-      }
-    ],
-    "em_voo": [
-      {
-        "agente": "revisor",
-        "tarefa": "rodada 3",
-        "desde": "2026-09-30"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea/subagents/agent-aed24be3da7d81178.jsonl"
       }
     ],
     "em": "2026-09-30",
-    "achados": 3,
-    "tentativas": 3,
-    "liberado_em": "2026-09-30",
+    "achados": 2,
     "rodadas_extra": [
       {
         "texto": "Usuario escolheu (a) em 2026-09-30: rotulo unico 'recorrente', lib sem log, so RESOLVIDO tira da lista; prova por passo vira ideia plantada",
         "em": "2026-09-30"
       }
-    ]
+    ],
+    "base": "038e9905309619cf97746b6ddc856f5a7388a258",
+    "head": "fba81fbe52d8640ef5a0ab13bffde0016ecd7190",
+    "nota": "rodada 4 VEREDITO ok; achado 1 (criterios obsoletos no plano, tarefas 1-3/6/7) corrigido por emenda antes do verificar; achado 2 (RESOLVIDO manual) registrado no plano"
   },
   "verificar": {
     "status": "pendente"
