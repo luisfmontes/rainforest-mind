@@ -67,6 +67,7 @@ function achado(id, gate, contexto, motivo) {
 
 // Preparar sandbox
 const caixa = fs.mkdtempSync(path.join(os.tmpdir(), "corpus-"));
+let wt; // Será preenchido após criar o worktree
 process.on("exit", () => {
   try {
     fs.rmSync(caixa, { recursive: true, force: true });
@@ -88,6 +89,13 @@ try {
   fs.writeFileSync(path.join(sandbox, "file.txt"), "x");
   spawn("git", ["add", "file.txt"], { cwd: sandbox, encoding: "utf8" });
   spawn("git", ["commit", "-m", "init"], { cwd: sandbox, encoding: "utf8" });
+  // Criar worktree linkado para contexto subagente
+  wt = path.join(caixa, "worktree");
+  const r = spawn("git", ["worktree", "add", "--detach", wt], { cwd: sandbox, encoding: "utf8" });
+  if (r.status !== 0) {
+    console.error("Erro ao criar worktree:", r.stderr);
+    process.exit(1);
+  }
 } catch (e) {
   console.error("Erro ao preparar sandbox:", e.message);
   process.exit(1);
@@ -128,7 +136,8 @@ const ESPERADOS = (() => {
 function rodarGate(gatePath, comando, contexto, config_obj) {
   const payload = JSON.parse(JSON.stringify(PAYLOAD_BASE));
   payload.tool_input.command = comando;
-  payload.cwd = sandbox;
+  const cwd_efetivo = contexto === "subagente" ? wt : sandbox;
+  payload.cwd = cwd_efetivo;
   if (contexto === "principal") {
     delete payload.agent_id;
     delete payload.agent_type;
@@ -149,10 +158,8 @@ function rodarGate(gatePath, comando, contexto, config_obj) {
     encoding: "utf8",
     env: {
       ...process.env,
-      CLAUDE_PROJECT_DIR: sandbox,
+      CLAUDE_PROJECT_DIR: cwd_efetivo,
       RFM_ROOT: path.join(caixa, "dados"),
-      // Variáveis para gates específicos
-      ...(process.env.RFM_CORPUS_LOCAL ? {} : {}),
     },
   });
 
@@ -212,16 +219,19 @@ for (const gateName of GATES) {
     }
   }
 
-  const msg = `${gateName}: ${COMANDOS.length * 2} comando(s) x 2 contexto(s), ${fora_esperados} bloqueio(s) fora de esperados`;
+  const msg = `${gateName}: ${COMANDOS.length} comando(s) x 2 contexto(s), ${fora_esperados} bloqueio(s) fora de esperados`;
   caso(msg, fora_esperados === 0, fora_esperados > 0 ? `fora: ${fora_esperados}` : "");
 }
 
 // Verificar se esperados estão apodrencidos
 let apodrecidos = 0;
 for (const esperado of ESPERADOS) {
-  const chave = `${esperado.id}|${esperado.gate}|${esperado.contexto}`;
-  const r = rodarGate(path.join(__dirname, `${esperado.gate}.cjs`), "", esperado.contexto);
-  // Usar o comando de esperado - TBD, precisa de referência ao comando
+  const cmd = COMANDOS.find(c => c.id === esperado.id);
+  if (!cmd) continue; // comando não encontrado, pular
+  const r = rodarGate(path.join(__dirname, `${esperado.gate}.cjs`), cmd.comando, esperado.contexto);
+  if (r.status !== 2) {
+    apodrecidos++;
+  }
 }
 
 // Caso especial: c-ancora-add não deve ser barrado
@@ -249,16 +259,18 @@ caso("fixture passa no varredor de segredo (conferir-publicacao exit 0)", r_varr
 // Verificar apodrecimento de esperados
 caso("esperados.json sem entrada apodrecida", apodrecidos === 0, `${apodrecidos} apodrecido(s)`);
 
-// RFM_CORPUS_LOCAL
-if (process.env.RFM_CORPUS_LOCAL) {
+// Função para processar corpus local
+function processarCorpusLocal(arquivo_path) {
+  const achados_locais = [];
   try {
-    const local_cmds = fs.readFileSync(process.env.RFM_CORPUS_LOCAL, "utf8").split("\n").filter(Boolean).map(l => JSON.parse(l));
+    const local_cmds = fs.readFileSync(arquivo_path, "utf8").split("\n").filter(Boolean).map(l => JSON.parse(l));
     console.log(`  ok   RFM_CORPUS_LOCAL com ${local_cmds.length} comando(s):`);
     for (const cmd of local_cmds) {
       for (const gate of GATES) {
         const r = rodarGate(path.join(__dirname, `${gate}.cjs`), cmd.comando, "principal");
         if (r.status === 2) {
-          achado(cmd.id, gate, "principal", r.stderr.split("\n")[0]);
+          const novo_achado = { id: cmd.id, gate: gate, contexto: "principal", motivo: r.stderr.split("\n")[0], issue: null };
+          achados_locais.push(novo_achado);
           console.log(`    bloqueio: ${cmd.id} por ${gate}`);
         }
       }
@@ -267,6 +279,28 @@ if (process.env.RFM_CORPUS_LOCAL) {
     console.log(`  FALHA RFM_CORPUS_LOCAL: ${e.message}`);
     falhou++;
   }
+  return achados_locais;
+}
+
+// RFM_CORPUS_LOCAL
+if (process.env.RFM_CORPUS_LOCAL) {
+  processarCorpusLocal(process.env.RFM_CORPUS_LOCAL);
+}
+
+// Critério (4): RFM_CORPUS_LOCAL com git add -A lista o bloqueio como achado
+{
+  const temp_corpus_path = path.join(caixa, "temp-corpus.jsonl");
+  fs.writeFileSync(temp_corpus_path, JSON.stringify({ id: "c-test-add-a", comando: "git add -A" }) + "\n");
+  fs.writeFileSync(temp_corpus_path, JSON.stringify({ id: "c-test-status", comando: "git status" }) + "\n", { flag: "a" });
+  fs.writeFileSync(temp_corpus_path, JSON.stringify({ id: "c-test-commit", comando: "git commit -m test" }) + "\n", { flag: "a" });
+
+  const achados_criterion_4 = processarCorpusLocal(temp_corpus_path);
+  const bloqueio_add_a = achados_criterion_4.find(a => a.id === "c-test-add-a" && a.gate === "gate-staging-total");
+  caso(
+    "RFM_CORPUS_LOCAL com git add -A lista o bloqueio como achado",
+    bloqueio_add_a !== undefined,
+    bloqueio_add_a ? "" : "bloqueio de git add -A não encontrado"
+  );
 }
 
 const tempo_ms = Date.now() - inicio;
@@ -274,12 +308,5 @@ const tempo_s = (tempo_ms / 1000).toFixed(1);
 
 console.log(`tempo: ${tempo_s} s`);
 console.log(`ok: ${ok}   falhou: ${falhou}`);
-
-// Gravar achados em esperados.json
-if (bloqueios_encontrados.length > 0) {
-  const esperados_atualizado = [...ESPERADOS, ...bloqueios_encontrados];
-  fs.writeFileSync(path.join(RAIZ_FIXTURES, "esperados.json"), JSON.stringify(esperados_atualizado, null, 2));
-  console.log(`Novos achados gravados em esperados.json: ${bloqueios_encontrados.length}`);
-}
 
 process.exit(falhou > 0 ? 1 : 0);
