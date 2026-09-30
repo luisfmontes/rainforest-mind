@@ -3,28 +3,26 @@
 /* Edição literal com contagem e asserção. Substitui `de` por `para` em um arquivo.
  *
  * POR QUE EXISTE: String.replace com $ ou $` no texto novo corrompe o arquivo
- * (registrado em memória do usuário). Este script usa split/join para evitar a
- * interpolação mágica do Node e conta ocorrências antes e depois para garantir
- * atomicidade.
+ * (registrado em memória do usuário). Este script usa busca byte a byte em Buffer
+ * e conta ocorrências antes e depois para garantir atomicidade sem decodificação.
  *
  * INTERFACE:
  *   node scripts/substituir.cjs --arquivo <F> --de <arquivo-de> --para <arquivo-para> [--ocorrencias N]
  *
  * Argumentos:
- *   --arquivo <F>:        arquivo a ser modificado
- *   --de <arquivo-de>:    caminho do arquivo contendo o texto a substituir
- *   --para <arquivo-para>: caminho do arquivo contendo o texto novo
+ *   --arquivo <F>:        arquivo a ser modificado (recusa symlink)
+ *   --de <arquivo-de>:    caminho do arquivo contendo o texto a substituir (bytes)
+ *   --para <arquivo-para>: caminho do arquivo contendo o texto novo (bytes)
  *   --ocorrencias N:      número esperado de ocorrências (padrão: 1)
  *
  * Saídas:
  *   0  sucesso
  *   1  contagem divergente (arquivo não é alterado)
- *   2  erro de uso (flag ausente, arquivo inexistente, etc)
+ *   2  erro de uso (flag ausente, arquivo inexistente, symlink, etc)
  */
 
 const fs = require("fs");
 const path = require("path");
-const { tmpdir } = require("os");
 
 const OPCOES = {
   help: { dest: "help", flag: true },
@@ -73,25 +71,18 @@ function ajuda() {
   console.error(`uso: node scripts/substituir.cjs [opcoes]
 
 Opcoes obrigatorias:
-  --arquivo <F>         arquivo a ser modificado
-  --de <arquivo-de>     arquivo contendo o texto a substituir
-  --para <arquivo-para> arquivo contendo o texto novo
+  --arquivo <F>         arquivo a ser modificado (recusa symlink)
+  --de <arquivo-de>     arquivo contendo o texto a substituir (bytes)
+  --para <arquivo-para> arquivo contendo o texto novo (bytes)
 
 Opcoes opcionais:
   --ocorrencias N   número esperado de ocorrências (padrão: 1)
   --help            exibe esta ajuda
 
-Exemplo:
-  node scripts/substituir.cjs \\
-    --arquivo scripts/estado.cjs \\
-    --de de.txt \\
-    --para para.txt \\
-    --ocorrencias 1
-
 Exit codes:
   0  sucesso
   1  contagem divergente (arquivo não alterado)
-  2  erro de uso
+  2  erro de uso (symlink, arquivo inexistente, validação falhou antes de gravar)
 `);
 }
 
@@ -103,67 +94,109 @@ function main() {
     return 0;
   }
 
-  // Lê arquivo de texto `de`
+  const esperado = parseInt(a.ocorrencias, 10);
+  if (isNaN(esperado) || esperado < 0) {
+    falha(2, "--ocorrencias deve ser um número não-negativo");
+  }
+
+  // Valida arquivo alvo: não pode ser symlink
+  let st;
+  try {
+    st = fs.lstatSync(a.arquivo);
+  } catch (e) {
+    falha(2, `arquivo '${a.arquivo}' inexistente ou inacessível`);
+  }
+  if (st.isSymbolicLink()) {
+    falha(2, `arquivo '${a.arquivo}' é um symlink (recusado)`);
+  }
+  const modoBits = st.mode & 0o7777;
+
+  // Lê `de` como Buffer, remove um 0x0A final se houver
   let de;
   try {
-    de = fs.readFileSync(a.de, "utf8");
+    de = fs.readFileSync(a.de);
   } catch (e) {
     falha(2, `arquivo '${a.de}' inexistente ou ilegível`);
   }
-
-  // Remove um \n final se houver
-  if (de.endsWith("\n")) {
+  if (de.length > 0 && de[de.length - 1] === 0x0A) {
     de = de.slice(0, -1);
   }
-
-  // Valida que `de` não é vazio
   if (de.length === 0) {
     falha(2, "--de vazio");
   }
 
-  // Lê arquivo de texto `para`
+  // Lê `para` como Buffer, remove um 0x0A final se houver
   let para;
   try {
-    para = fs.readFileSync(a.para, "utf8");
+    para = fs.readFileSync(a.para);
   } catch (e) {
     falha(2, `arquivo '${a.para}' inexistente ou ilegível`);
   }
-
-  // Remove um \n final se houver
-  if (para.endsWith("\n")) {
+  if (para.length > 0 && para[para.length - 1] === 0x0A) {
     para = para.slice(0, -1);
   }
 
-  // Lê arquivo alvo
+  // Lê arquivo alvo como Buffer (operações byte a byte)
   let conteudo;
   try {
-    conteudo = fs.readFileSync(a.arquivo, "utf8");
+    conteudo = fs.readFileSync(a.arquivo);
   } catch (e) {
     falha(2, `arquivo '${a.arquivo}' inexistente ou ilegível`);
   }
 
-  // Conta ocorrências do texto `de`
-  const ocorrencias = conteudo.split(de).length - 1;
-  const esperado = parseInt(a.ocorrencias, 10);
-
-  if (isNaN(esperado) || esperado < 0) {
-    falha(2, "--ocorrencias deve ser um número não-negativo");
+  // Conta ocorrências de `de` em `conteudo` (varredura não-sobreposta, esquerda→direita)
+  let ocorrencias = 0;
+  let pos = 0;
+  while ((pos = conteudo.indexOf(de, pos)) !== -1) {
+    ocorrencias++;
+    pos += de.length;
   }
 
   // Valida contagem
   if (ocorrencias !== esperado) falha(1, "contagem divergente");
 
-  // Realiza substituição usando split/join (evita problema com $ em replace)
-  const novoConteudo = conteudo.split(de).join(para);
+  // Realiza substituição byte a byte
+  let novoConteudo = conteudo;
+  pos = 0;
+  while ((pos = novoConteudo.indexOf(de, pos)) !== -1) {
+    novoConteudo = Buffer.concat([
+      novoConteudo.slice(0, pos),
+      para,
+      novoConteudo.slice(pos + de.length)
+    ]);
+    pos += para.length;
+  }
 
-  // Grava em arquivo temporário
-  const tempDir = tmpdir();
-  const tempFile = path.join(tempDir, `substituir-${Date.now()}-${Math.random().toString(36).slice(2)}.tmp`);
+  // ANTES DE GRAVAR: valida asserções no Buffer resultante
+  // Asserção 1: `para` está presente no resultado
+  if (para.length === 0 || novoConteudo.indexOf(para) === -1) {
+    falha(2, "texto novo não encontrado no resultado");
+  }
+
+  // Asserção 2: resíduo falso (se novo não contém antigo, antigo não pode estar no resultado)
+  if (para.indexOf(de) === -1 && novoConteudo.indexOf(de) !== -1) {
+    falha(2, "substituição criaria nova ocorrência de --de por junção");
+  }
+
+  // TUDO OK: grava em arquivo temporário no MESMO DIRETÓRIO do alvo
+  const alvoDir = path.dirname(a.arquivo);
+  const tempFile = path.join(alvoDir, `.substituir-${process.pid}-${Date.now()}.tmp`);
 
   try {
-    fs.writeFileSync(tempFile, novoConteudo, "utf8");
+    fs.writeFileSync(tempFile, novoConteudo);
   } catch (e) {
     falha(2, `não foi possível gravar arquivo temporário: ${e.message}`);
+  }
+
+  // Preserva permissões
+  try {
+    fs.chmodSync(tempFile, modoBits);
+  } catch (e) {
+    // Tenta limpar temp se chmod falhar
+    try {
+      fs.unlinkSync(tempFile);
+    } catch {}
+    falha(2, `não foi possível preservar permissões: ${e.message}`);
   }
 
   // Rename atômico
@@ -175,24 +208,6 @@ function main() {
       fs.unlinkSync(tempFile);
     } catch {}
     falha(2, `não foi possível renomear arquivo: ${e.message}`);
-  }
-
-  // Relê arquivo para validar
-  let conteudoGravado;
-  try {
-    conteudoGravado = fs.readFileSync(a.arquivo, "utf8");
-  } catch (e) {
-    falha(2, `não foi possível reler arquivo após gravação: ${e.message}`);
-  }
-
-  // Confere que o texto novo está presente
-  if (!conteudoGravado.includes(para)) {
-    falha(2, "texto novo não encontrado no arquivo após substituição");
-  }
-
-  // Confere que o texto antigo sumiu (se não estiver contido no novo)
-  if (!para.includes(de) && conteudoGravado.includes(de)) {
-    falha(2, "texto antigo ainda presente no arquivo");
   }
 
   return 0;
