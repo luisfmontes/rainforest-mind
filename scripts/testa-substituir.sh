@@ -302,7 +302,7 @@ done
 
 if [ "$CITA_TUDO" -eq 0 ]; then
   # Extrai as flags citadas nos 5 arquivos
-  FLAGS_CITADAS=$(grep -h "substituir.cjs" "${ARQUIVOS_PROSA[@]}" 2>/dev/null | grep -oE -- '--[a-z]+' | sort -u)
+  FLAGS_CITADAS=$(grep -h -A2 "substituir.cjs" "${ARQUIVOS_PROSA[@]}" 2>/dev/null | grep -oE -- '--[a-z]+' | sort -u)
 
   # Valida cada flag contra o script
   FLAGS_INVALIDAS=0
@@ -343,7 +343,7 @@ EOF
 RC_CANONICO=$(codigo --arquivo "$ALVO_CANONICO" --de "$DE_CANONICO" --para "$PARA_CANONICO" --ocorrencias 1)
 if [ "$RC_CANONICO" -eq 0 ] && grep -qF 'valor_novo_com_escape\$teste' "$ALVO_CANONICO"; then
   ok=$((ok+1))
-  echo "  ok    comando canonico da prosa leva worktree atrasado ate o hash"
+  echo "  ok    forma canonica da prosa troca literal com contrabarra e cifrao"
 else
   falhou=$((falhou+1))
   echo "  FALHA comando canonico nao funcionou (exit $RC_CANONICO ou texto nao encontrado)"
