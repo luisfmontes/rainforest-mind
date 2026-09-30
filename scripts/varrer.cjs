@@ -42,6 +42,17 @@ function pad(n, len = 2) {
   return String(n).padStart(len, "0");
 }
 
+// Verifica se atingiu teto de 200 e adiciona aviso à saída
+function avisarTeto(saida) {
+  try {
+    const parsed = JSON.parse(saida);
+    if (parsed && Array.isArray(parsed) && parsed.length >= 200) {
+      return saida.trimEnd() + '\n(ATENCAO: atingiu o teto de 200 — refine o termo)\n';
+    }
+  } catch {}
+  return saida;
+}
+
 function hoje() {
   // Data do relogio LOCAL. Nunca toISOString() (UTC): depois das 21h em
   // Brasilia o UTC ja virou o dia seguinte e o carimbo sairia no futuro
@@ -114,16 +125,7 @@ for (const termo of termos) {
     naoVerificavel(`gh issue falhou com exit ${r.status}`);
   }
 
-  let saida = r.stdout;
-  // Detectar se atingiu o teto de 200 resultados
-  if (saida.trim().endsWith(']}')) {
-    try {
-      const parsed = JSON.parse(saida);
-      if (parsed && Array.isArray(parsed) && parsed.length === 200) {
-        saida = saida.replace('\n]', '\n(ATENCAO: atingiu o teto de 200 — refine o termo)\n]');
-      }
-    } catch {}
-  }
+  let saida = avisarTeto(r.stdout);
 
   saidas.push({
     comando: `gh issue list --state ${ESTADO_TODOS} --search "${termo}" --limit 200 --json number,title,state`,
@@ -145,16 +147,7 @@ for (const termo of termos) {
     naoVerificavel(`gh pr falhou com exit ${r.status}`);
   }
 
-  let saida = r.stdout;
-  // Detectar se atingiu o teto de 200 resultados
-  if (saida.trim().endsWith(']}')) {
-    try {
-      const parsed = JSON.parse(saida);
-      if (parsed && Array.isArray(parsed) && parsed.length === 200) {
-        saida = saida.replace('\n]', '\n(ATENCAO: atingiu o teto de 200 — refine o termo)\n]');
-      }
-    } catch {}
-  }
+  let saida = avisarTeto(r.stdout);
 
   saidas.push({
     comando: `gh pr list --state ${ESTADO_TODOS} --search "${termo}" --limit 200 --json number,title,state`,
