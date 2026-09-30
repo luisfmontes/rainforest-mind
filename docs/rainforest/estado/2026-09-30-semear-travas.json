@@ -26,7 +26,142 @@
     "em": "2026-09-30"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-09-30",
+    "em_voo": [],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "6196a91e",
+        "iteracao": 1,
+        "sessao": "183a33d5-b4f7-44e8-ad9e-1a1c581ac82c",
+        "ts": "2026-09-30T18:12:56.804Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "6196a91e",
+        "iteracao": 1,
+        "sessao": "183a33d5-b4f7-44e8-ad9e-1a1c581ac82c",
+        "ts": "2026-09-30T18:12:56.804Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "6196a91e",
+        "iteracao": 1,
+        "sessao": "183a33d5-b4f7-44e8-ad9e-1a1c581ac82c",
+        "ts": "2026-09-30T18:12:56.804Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "6196a91e",
+        "iteracao": 1,
+        "sessao": "183a33d5-b4f7-44e8-ad9e-1a1c581ac82c",
+        "ts": "2026-09-30T18:12:56.804Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "6196a91e",
+        "iteracao": 1,
+        "sessao": "183a33d5-b4f7-44e8-ad9e-1a1c581ac82c",
+        "ts": "2026-09-30T18:12:56.804Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "6196a91e",
+        "iteracao": 1,
+        "sessao": "183a33d5-b4f7-44e8-ad9e-1a1c581ac82c",
+        "ts": "2026-09-30T18:12:56.804Z"
+      },
+      {
+        "tarefa": 11,
+        "hash_base": "6196a91e",
+        "iteracao": 1,
+        "sessao": "183a33d5-b4f7-44e8-ad9e-1a1c581ac82c",
+        "ts": "2026-09-30T18:12:56.804Z"
+      }
+    ],
+    "em": "2026-09-30",
+    "tarefas_ok": 15,
+    "tarefas": 15,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-preparar-worktree.sh, caso \"ramo divergente: exit 1 e HEAD intacto\""
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-entrega.sh, caso \"sem --base -> exit 2 (era aviso e exit 0)\""
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "prosa; coerencia medida por testa-preparar-worktree"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-prova.sh, caso \"prova que sai 0 na base: exit 2 nomeando a tarefa\""
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-prova.sh, caso \"marcar plano ok com prova verde na base: exit 2 pelo estado.cjs\""
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-varrer.sh, caso \"Issue FECHADA com o termo aparece na varredura (o caso #253)\""
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-fluxo.sh, caso \"design cita varredura inexistente ou vazia: exit 2\""
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-substituir.sh, caso \"contagem divergente: exit 1 e arquivo byte a byte intacto\""
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "prosa; coerencia medida por testa-substituir secao 7"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-turno-prometido.cjs, caso \"promete sem despachar com stop_hook_active true: exit 0 (sem laco)\""
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "testa-extrair-corpus-comandos.cjs, caso \"comando bloqueado por hook nao vira candidato\""
+      },
+      {
+        "tarefa": 12,
+        "resultado": "n/a",
+        "motivo": "dado curado"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "testa-corpus-comandos.cjs, caso \"c-ancora-add nao e barrado por gate-staging-total em nenhum contexto\""
+      },
+      {
+        "tarefa": 14,
+        "resultado": "n/a",
+        "motivo": "colheita de dados do usuario"
+      },
+      {
+        "tarefa": 15,
+        "resultado": "n/a",
+        "motivo": "documentacao"
+      }
+    ],
+    "comando": "node scripts/conferir-fluxo.cjs creep --slug 2026-09-30-semear-travas --base 038e9905 --head HEAD",
+    "saida": "ok: sem creep — 52 arquivo(s) coberto(s); catracas das tarefas 1,2,4,5,6,7,8,10,11,13 re-rodadas pela integracao com exit 0"
   },
   "revisar": {
     "status": "pendente"
