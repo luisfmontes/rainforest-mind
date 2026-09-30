@@ -171,9 +171,9 @@ function ajuda() {
 
 Opcoes obrigatorias:
   --worktree <dir>           diretorio do worktree do subagente
+  --base <hash>              hash base para comparacao
 
 Opcoes opcionais:
-  --base <hash>              hash base para comparacao (sem this = primeiro commit)
   --commit <hash>            hash do commit a conferir (padrao: HEAD)
   --repo-principal <dir>     diretorio do repo principal do usuario
   --head-antes <hash>        HEAD do repo principal ANTES do despacho
@@ -245,7 +245,7 @@ function bateComEscopo(caminh, globs) {
 const OPCOES = {
   help: { dest: "help", flag: true },
   worktree: { dest: "worktree", exige: true },
-  base: { dest: "base" },
+  base: { dest: "base", exige: true },
   commit: { dest: "commit", padrao: "HEAD" },
   "repo-principal": { dest: "repo_principal" },
   "head-antes": { dest: "head_antes" },
@@ -468,8 +468,6 @@ function main() {
           "lugar. 'Nao afeta a funcionalidade' e conclusao da janela principal, nunca do agente."
       );
     }
-  } else {
-    c.aviso("sem --base para conferir; o briefing devia ter fixado uma");
   }
 
   // ------------------------------------------------------------------

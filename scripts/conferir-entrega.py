@@ -258,7 +258,7 @@ def main() -> int:
         description="Confere a entrega de um subagente na janela principal (P1 do relatorio 2).",
     )
     ap.add_argument("--worktree", required=True, help="o worktree que o agente RECEBEU no briefing")
-    ap.add_argument("--base", help="hash da base que o commit dele devia ter (o que foi no briefing)")
+    ap.add_argument("--base", required=True, help="hash da base que o commit dele devia ter (o que foi no briefing)")
     ap.add_argument("--commit", default="HEAD", help="commit entregue (default: HEAD do worktree)")
     ap.add_argument("--repo-principal", help="default: deduzido do git-common-dir do worktree")
     ap.add_argument("--head-antes", help="HEAD do repo principal ANTES do despacho, para pegar HEAD movido")
@@ -348,8 +348,6 @@ def main() -> int:
                 f"a base {a.base} NAO esta na historia de {entregue[:12]} — o trabalho saiu de outro "
                 "lugar. 'Nao afeta a funcionalidade' e conclusao da janela principal, nunca do agente."
             )
-    else:
-        c.aviso("sem --base para conferir; o briefing devia ter fixado uma")
 
     # ------------------------------------------------------------------
     c.abre("O que ficou solto no worktree")
