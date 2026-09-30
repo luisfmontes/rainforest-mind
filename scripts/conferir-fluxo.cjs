@@ -104,6 +104,18 @@ function cmdDesign() {
     }
   }
 
+  // A secao tem de citar literalmente o .txt do proprio slug (D4). So o
+  // arquivo existir nao basta: secao escrita a mao, sem rodar varrer.cjs,
+  // passava com um .txt qualquer ao lado.
+  const iVarredura = linhas_conteudo.indexOf('## Varredura');
+  const fimVarredura = linhas_conteudo.findIndex((l, i) => i > iVarredura && l.startsWith('## '));
+  const corpoVarredura = linhas_conteudo.slice(iVarredura + 1, fimVarredura === -1 ? undefined : fimVarredura).join('\n');
+  const citacaoVarredura = `docs/rainforest/varredura/${slug}.txt`;
+  if (!corpoVarredura.includes(citacaoVarredura)) {
+    console.error(`RECUSADO: seção ## Varredura não cita ${citacaoVarredura} (gere com node scripts/varrer.cjs --slug ${slug} <termos>)`);
+    process.exit(2);
+  }
+
   // Verifica se o arquivo de varredura existe e não está vazio
   const arquivoVarredura = path.join(RAIZ, 'docs', 'rainforest', 'varredura', `${slug}.txt`);
   if (!fs.existsSync(arquivoVarredura) || fs.statSync(arquivoVarredura).size === 0) {

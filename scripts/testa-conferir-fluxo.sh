@@ -134,6 +134,14 @@ exige 2 "design cita varredura inexistente ou vazia: exit 2" CHK design --slug t
 restaura; echo -n > "$V"
 exige 2 "design cita varredura vazia: exit 2" CHK design --slug t
 
+restaura; sed -i 's|Ver `docs/rainforest/varredura/t.txt`.|Busquei a mao, nada achado.|' "$D"
+exige 2 "design sem citar o .txt (que existe ao lado): exit 2" CHK design --slug t
+
+restaura; sed -i 's|Ver `docs/rainforest/varredura/t.txt`.|Ver `docs/rainforest/varredura/outro.txt`.|' "$D"
+echo "de outro fluxo" > "$S/docs/rainforest/varredura/outro.txt"
+exige 2 "design citando o .txt de outro slug: exit 2" CHK design --slug t
+rm -f "$S/docs/rainforest/varredura/outro.txt"
+
 restaura
 exige 0 "design com varredura real e nao vazia: exit 0" CHK design --slug t
 
