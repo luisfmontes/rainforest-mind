@@ -38,9 +38,10 @@ cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; 
 trap cleanup EXIT
 
 S="$(novo_sandbox)"; W="$(cygpath -m "$S" 2>/dev/null || printf '%s' "$S")"
-mkdir -p "$S/docs/rainforest/design" "$S/docs/rainforest/planos"
+mkdir -p "$S/docs/rainforest/design" "$S/docs/rainforest/planos" "$S/docs/rainforest/varredura"
 D="$S/docs/rainforest/design/t.md"
 P="$S/docs/rainforest/planos/t.md"
+V="$S/docs/rainforest/varredura/t.txt"
 
 # `plano_no_formato <origem> <destino>` — copia o plano acrescentando o bloco
 # `mutacao:` a cada tarefa.
@@ -63,7 +64,16 @@ plano_no_formato(){
          print "prova-na-base: verde — fixture de bateria"
        } {print}' "$1" > "$2"
 }
-restaura(){ cp "$REAL_D" "$D"; plano_no_formato "$REAL_P" "$P"; }
+restaura(){
+  cp "$REAL_D" "$D"
+  # Adiciona a seção ## Varredura se não existir
+  if ! grep -q '^## Varredura$' "$D"; then
+    sed -i '/^## Em aberto$/a ## Varredura\n\nVer `docs/rainforest/varredura/t.txt`.' "$D"
+  fi
+  # Cria o arquivo de varredura
+  echo "Varredura de fixture — bateria de testa-conferir-fluxo.sh" > "$V"
+  plano_no_formato "$REAL_P" "$P"
+}
 
 # exige <exit-esperado> <rotulo> <comando...>
 exige(){
@@ -114,6 +124,18 @@ exige 2 "buraco na sequencia de D recusa" CHK design --slug t
 # como a única coisa errada no documento.
 restaura; awk '/^## Avaliado e descartado$/{print "- **D3 — duplicata deliberada** — porque: isolar o check de repetido"; print ""} {print}' "$REAL_D" > "$D"
 exige 2 "D repetido (sem buraco junto) recusa" CHK design --slug t
+
+restaura; sed -i '/^## Varredura$/d' "$D"
+exige 2 "design sem secao Varredura: exit 2" CHK design --slug t
+
+restaura; rm -f "$V"
+exige 2 "design cita varredura inexistente ou vazia: exit 2" CHK design --slug t
+
+restaura; echo -n > "$V"
+exige 2 "design cita varredura vazia: exit 2" CHK design --slug t
+
+restaura
+exige 0 "design com varredura real e nao vazia: exit 0" CHK design --slug t
 
 echo
 echo "== 2. cobertura: design x plano, nos dois sentidos (D8) =="
@@ -327,8 +349,8 @@ echo
 echo "== 8. normalizacao de CRLF e ignorar cerca de codigo =="
 # Fixture proprio para testar CRLF e cercas
 O="$(novo_sandbox)"; OW="$(cygpath -m "$O" 2>/dev/null || printf '%s' "$O")"
-mkdir -p "$O/docs/rainforest/design" "$O/docs/rainforest/planos"
-OD="$O/docs/rainforest/design/t.md"; OP="$O/docs/rainforest/planos/t.md"
+mkdir -p "$O/docs/rainforest/design" "$O/docs/rainforest/planos" "$O/docs/rainforest/varredura"
+OD="$O/docs/rainforest/design/t.md"; OP="$O/docs/rainforest/planos/t.md"; OV="$O/docs/rainforest/varredura/t.txt"
 OCHK(){ RFM_ESTADO_ROOT="$OW" node "$CHECADOR" "$@"; }
 
 # Converte o arquivo para CRLF no lugar. Inline de proposito: um helper em arquivo
@@ -341,6 +363,11 @@ para_crlf(){
 
 # Caso 1: plano e design reais em CRLF devem passar
 cp "$NOVO_D" "$OD"; cp "$NOVO_P" "$OP"
+# Adiciona a seção ## Varredura e cria arquivo
+if ! grep -q '^## Varredura$' "$OD"; then
+  sed -i '/^## Em aberto$/a ## Varredura\n\nVer `docs/rainforest/varredura/t.txt`.' "$OD"
+fi
+echo "Varredura de fixture — testa-conferir-fluxo.sh" > "$OV"
 para_crlf "$OD"
 para_crlf "$OP"
 exige 0 "plano e design em CRLF passam" OCHK cobertura --slug t
@@ -348,6 +375,11 @@ exige 0 "plano e design em CRLF passam" OCHK cobertura --slug t
 # Caso 2: mutacao: dentro de cerca de codigo deve ser ignorado (recusa)
 # Usa o design e plano reais, mas modifica tarefa 5 para por mutacao: so em cerca
 cp "$NOVO_D" "$OD"; cp "$NOVO_P" "$OP.tmp"
+# Adiciona a seção ## Varredura ao design
+if ! grep -q '^## Varredura$' "$OD"; then
+  sed -i '/^## Em aberto$/a ## Varredura\n\nVer `docs/rainforest/varredura/t.txt`.' "$OD"
+fi
+echo "Varredura de fixture — testa-conferir-fluxo.sh" > "$OV"
 # Modifica a tarefa 5 para deixar mutacao: so em cerca
 awk '
 /^### 5\. Formato/ { in_task5 = 1; print; next }
@@ -384,6 +416,11 @@ exige_msg 'tarefa 5\.' 'nomeia tarefa' OCHK cobertura --slug t
 # cobra que a lista de mutacao a cubra. As duas travas recusam entrega correta, e a
 # mensagem aponta um numero que nao existe no plano.
 cp "$NOVO_D" "$OD"; cp "$NOVO_P" "$OP"
+# Adiciona a seção ## Varredura ao design
+if ! grep -q '^## Varredura$' "$OD"; then
+  sed -i '/^## Em aberto$/a ## Varredura\n\nVer `docs/rainforest/varredura/t.txt`.' "$OD"
+fi
+echo "Varredura de fixture — testa-conferir-fluxo.sh" > "$OV"
 plano_no_formato "$OP" "$OP.tmp" && mv "$OP.tmp" "$OP"
 cat >> "$OP" <<'CERCA'
 
