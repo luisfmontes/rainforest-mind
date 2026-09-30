@@ -1,8 +1,8 @@
 'use strict';
-// Impressao digital de falha de vigia (enxerto do reef) e os dois rotulos:
-// persistente (nenhuma ronda limpa provada depois da primeira ocorrencia) e intermitente (existe ronda
-// posterior a primeira ocorrencia sem nenhuma ocorrencia da impressao). Sem log: persistente.
-// So le vigias/ERROS.md e vigias/log-<vigia>.txt; nunca escreve, nunca lanca por arquivo ausente.
+// Impressao digital de falha de vigia (enxerto do reef), rotulo unico: recorrente.
+// Recorrente = a mesma impressao (vigia + causa normalizada) ocorreu ao menos MINIMO_OCORRENCIAS vezes
+// na janela de 30 dias, contando so depois do ultimo RESOLVIDO da propria vigia.
+// So le vigias/ERROS.md (ou RFM_VIGIAS_DIR/ERROS.md); nunca le log, nunca escreve, nunca lanca por arquivo ausente.
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -11,7 +11,6 @@ const JANELA_DIAS = 30;
 const MINIMO_OCORRENCIAS = 2;
 
 const RE_ERRO = /^- (\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}) \[([^\]]+)\]: (.*)$/;
-const RE_RONDA = /^=== (\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}) ===/;
 
 function normalizarCausa(texto) {
   return String(texto == null ? '' : texto)
@@ -36,16 +35,7 @@ function paraMs(data, hora) {
   return new Date(data + 'T' + hora + ':00').getTime();
 }
 
-function lerRondas(texto) {
-  const rondas = [];
-  for (const linha of String(texto || '').split(/\r?\n/)) {
-    const m = RE_RONDA.exec(linha);
-    if (m) rondas.push(m[1] + ' ' + m[2]);
-  }
-  return rondas.sort();
-}
-
-function classificar({ erros, logs, agora }) {
+function classificar({ erros, agora }) {
   const fim = (agora || new Date()).getTime();
   const ini = fim - JANELA_DIAS * 86400000;
   const porVigia = new Map();
@@ -60,7 +50,7 @@ function classificar({ erros, logs, agora }) {
     }
     const t = paraMs(data, hora);
     if (t < ini || t > fim) continue;
-    porVigia.get(vigia).push({ data, chave: data + ' ' + hora, motivo });
+    porVigia.get(vigia).push({ data, motivo });
   }
 
   const saida = [];
@@ -71,38 +61,18 @@ function classificar({ erros, logs, agora }) {
       if (!grupos.has(id)) grupos.set(id, []);
       grupos.get(id).push(o);
     }
-    const rondas = lerRondas(logs && logs[vigia]);
-    const chaveAgora = (() => {
-      const d = new Date(fim);
-      const p = (n) => String(n).padStart(2, '0');
-      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
-    })();
-    const ativas = rondas.filter((r) => r <= chaveAgora);
-    const donaRonda = (chave) => {
-      let dona = null;
-      for (const h of ativas) if (h <= chave) dona = h;
-      return dona;
-    };
     for (const [id, grupo] of grupos) {
       const n = grupo.length;
       if (n < MINIMO_OCORRENCIAS) continue;
-      const base = {
+      saida.push({
         vigia,
         causa: normalizarCausa(grupo[0].motivo),
         impressao: id,
+        rotulo: 'recorrente',
         n,
         desde: grupo[0].data,
         ultima: grupo[n - 1].data,
-      };
-      if (ativas.length === 0) {
-        saida.push({ ...base, rotulo: 'persistente' });
-        continue;
-      }
-      // ronda limpa provada: cabecalho posterior a primeira ocorrencia sem nenhuma ocorrencia dela
-      const primeiraChave = grupo[0].chave;
-      const rondasComOcorrencia = new Set(grupo.map((o) => donaRonda(o.chave)));
-      const rondaLimpa = ativas.some((h) => h > primeiraChave && !rondasComOcorrencia.has(h));
-      saida.push({ ...base, rotulo: rondaLimpa ? 'intermitente' : 'persistente' });
+      });
     }
   }
   return saida;
@@ -117,17 +87,10 @@ function ler(arquivo) {
 }
 
 function falhasRecorrentes(agora = new Date()) {
-  const doPlugin = path.join(__dirname, '..', '..', 'vigias');
-  const dir = process.env.RFM_VIGIAS_DIR || doPlugin;
-  const dirLogs = process.env.RFM_VIGIAS_DIR ? dir : process.env.RFM_ROOT ? path.join(process.env.RFM_ROOT, 'vigias') : doPlugin;
+  const dir = process.env.RFM_VIGIAS_DIR || path.join(__dirname, '..', '..', 'vigias');
   const erros = ler(path.join(dir, 'ERROS.md'));
   if (!erros) return [];
-  const logs = {};
-  for (const linha of erros.split(/\r?\n/)) {
-    const m = RE_ERRO.exec(linha);
-    if (m && /^[\w.-]+$/.test(m[3]) && !(m[3] in logs)) logs[m[3]] = ler(path.join(dirLogs, 'log-' + m[3] + '.txt'));
-  }
-  return classificar({ erros, logs, agora });
+  return classificar({ erros, agora });
 }
 
 function ddmm(iso) {
@@ -135,8 +98,7 @@ function ddmm(iso) {
 }
 
 function formatar(r) {
-  if (r.rotulo === 'persistente') return `${r.vigia}: ${r.causa} - persistente x${r.n} desde ${ddmm(r.desde)}`;
-  return `${r.vigia}: ${r.causa} - intermitente x${r.n} em ${JANELA_DIAS} dias, ultima ${ddmm(r.ultima)}`;
+  return `${r.vigia}: ${r.causa} - recorrente x${r.n} em ${JANELA_DIAS} dias, desde ${ddmm(r.desde)}, ultima ${ddmm(r.ultima)}`;
 }
 
 module.exports = { JANELA_DIAS, MINIMO_OCORRENCIAS, normalizarCausa, impressao, classificar, falhasRecorrentes, formatar };

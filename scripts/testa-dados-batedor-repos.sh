@@ -154,7 +154,7 @@ echo
 # ==============================================================================
 echo "=== TESTE 5: secao FALHAS RECORRENTES com RFM_VIGIAS_DIR ==="
 
-# Duas ocorrencias da mesma falha, sem log de vigia (=> persistente x2). As datas
+# Duas ocorrencias da mesma falha, sem log de vigia (=> recorrente x2). As datas
 # saem do relogio (anteontem e ontem) para ficarem dentro da janela de 30 dias.
 VIGIAS_FAKE="$(novo_sandbox)"
 D1="$(node -e "console.log(new Date(Date.now()-2*864e5).toISOString().slice(0,10))")"
@@ -163,7 +163,7 @@ printf '%s\n' "- $D1 07:00 [vigia-teste]: backup falhou (exit 2)" "- $D2 07:00 [
 
 SAIDA5=$(RFM_VIGIAS_DIR="$VIGIAS_FAKE" node "$REPO_ROOT/vigias/dados-batedor-repos.js")
 echo "$SAIDA5" | grep -q '^FALHAS RECORRENTES (30 DIAS) (1)$' || { echo "FALHA: secao FALHAS RECORRENTES (30 DIAS) (1) ausente"; echo "$SAIDA5"; exit 1; }
-echo "$SAIDA5" | grep -q 'persistente x2 desde' || { echo "FALHA: linha 'persistente x2 desde' ausente"; echo "$SAIDA5"; exit 1; }
+echo "$SAIDA5" | grep -q 'recorrente x2 em 30 dias, desde' || { echo "FALHA: linha 'recorrente x2 em 30 dias, desde' ausente"; echo "$SAIDA5"; exit 1; }
 echo "✓ TESTE 5 passou (secao FALHAS RECORRENTES com RFM_VIGIAS_DIR)"
 echo
 

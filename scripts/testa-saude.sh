@@ -1523,7 +1523,7 @@ rm -rf "$DESP_RAIZ" "$DESP_PROJ" "$HOMEFALSA_DESP"
 echo "== vigias-recorrentes com RFM_VIGIAS_DIR apontando para scripts/fixtures/impressao-falha =="
 # Raiz-sandbox propria: o toggle de vigias (setup.cjs --ligado) e a ERROS.md real
 # nao podem mascarar o caso. O setup.cjs falso sai 0 (ligado); a ERROS.md tem duas
-# ocorrencias seguidas da mesma falha, sem log de ronda (persistente x2), com datas
+# ocorrencias seguidas da mesma falha, sem log de ronda (recorrente x2), com datas
 # relativas a hoje para ficarem dentro da janela de 30 dias.
 VR="$SBP/raiz-vr"
 mkdir -p "$VR/scripts/lib" "$VR/vigias" "$VR/hooks"
@@ -1537,10 +1537,10 @@ node -e '
 ' > "$VR/vigias/ERROS.md"
 VR_OUT="$( RFM_VIGIAS_DIR="$VR/vigias" node "$VR/scripts/saude.cjs" 2>&1 | grep -A1 "aviso vigias-recorrentes" )"
 if echo "$VR_OUT" | grep -q "vigia-teste" && echo "$VR_OUT" | grep -q "erro de fixture" \
-   && echo "$VR_OUT" | grep -q "persistente x2 desde" && echo "$VR_OUT" | grep -q "RESOLVIDO"; then
-  ok=$((ok+1)); echo "  ok   VR1. vigias-recorrentes mostra vigia, causa, 'persistente x2 desde' e RESOLVIDO"
+   && echo "$VR_OUT" | grep -q "recorrente x2 em 30 dias, desde" && echo "$VR_OUT" | grep -q "RESOLVIDO"; then
+  ok=$((ok+1)); echo "  ok   VR1. vigias-recorrentes mostra vigia, causa, 'recorrente x2 em 30 dias, desde' e RESOLVIDO"
 else
-  falhou=$((falhou+1)); echo "  FALHA VR1: esperava vigia, causa, 'persistente x2 desde' e RESOLVIDO, veio: $VR_OUT"
+  falhou=$((falhou+1)); echo "  FALHA VR1: esperava vigia, causa, 'recorrente x2 em 30 dias, desde' e RESOLVIDO, veio: $VR_OUT"
 fi
 
 # Limpeza
