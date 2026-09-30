@@ -21,10 +21,10 @@
     "em": "2026-09-30"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-09-30",
-    "tarefas_ok": 6,
-    "tarefas": 6,
+    "tarefas_ok": 7,
+    "tarefas": 7,
     "carimbos": [
       {
         "tarefa": 1,
@@ -144,6 +144,90 @@
         "iteracao": 2,
         "sessao": "5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea",
         "ts": "2026-09-30T09:49:43.639Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "4c8cb50",
+        "iteracao": 6,
+        "sessao": "5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea",
+        "ts": "2026-09-30T09:58:32.272Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "cd2e83c",
+        "iteracao": 5,
+        "sessao": "5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea",
+        "ts": "2026-09-30T09:58:32.272Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "cd2e83c",
+        "iteracao": 5,
+        "sessao": "5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea",
+        "ts": "2026-09-30T09:58:32.272Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "f8923a9",
+        "iteracao": 3,
+        "sessao": "5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea",
+        "ts": "2026-09-30T09:58:32.272Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "f8923a9",
+        "iteracao": 3,
+        "sessao": "5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea",
+        "ts": "2026-09-30T09:58:32.272Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "556c0b8",
+        "iteracao": 1,
+        "sessao": "5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea",
+        "ts": "2026-09-30T09:58:32.272Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "4c8cb50",
+        "iteracao": 7,
+        "sessao": "5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea",
+        "ts": "2026-09-30T10:01:26.331Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "cd2e83c",
+        "iteracao": 6,
+        "sessao": "5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea",
+        "ts": "2026-09-30T10:01:26.331Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "cd2e83c",
+        "iteracao": 6,
+        "sessao": "5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea",
+        "ts": "2026-09-30T10:01:26.331Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "f8923a9",
+        "iteracao": 4,
+        "sessao": "5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea",
+        "ts": "2026-09-30T10:01:26.331Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "f8923a9",
+        "iteracao": 4,
+        "sessao": "5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea",
+        "ts": "2026-09-30T10:01:26.331Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "556c0b8",
+        "iteracao": 2,
+        "sessao": "5f9939ac-2690-4df9-88fd-0fb7e4d2b4ea",
+        "ts": "2026-09-30T10:01:26.331Z"
       }
     ],
     "em": "2026-09-30",
@@ -175,16 +259,17 @@
       },
       {
         "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "a linha mutada (if s >= MINIMO) saiu na tarefa 7; o caso persistente-com-log da 6 e medido pela mutacao da 7"
+      },
+      {
+        "tarefa": 7,
         "resultado": "vermelho",
-        "fixture": "testa-impressao-falha.sh persistente-com-log: duas rondas seguidas"
+        "fixture": "testa-impressao-falha.sh erro-antes-do-cabecalho"
       }
     ],
     "comando": "node scripts/conferir-mutacao.cjs (re-rodado na integracao)",
-    "saida": "exit 0 em 1,2,3,6",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-09-30"
-    }
+    "saida": "exit 0 em 1,2,3,7"
   },
   "revisar": {
     "status": "reprovado",
