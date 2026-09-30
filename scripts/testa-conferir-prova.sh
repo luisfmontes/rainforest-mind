@@ -275,16 +275,8 @@ else
   falhou=$((falhou+1)); echo "  FALHA status do repo mudou: $ANTES -> $DEPOIS"
 fi
 
-# Teste 6: bash scripts/testa-conferir-fluxo.sh segue verde
-echo
-echo "== 6. Bateria testa-conferir-fluxo.sh continua verde =="
-
-bash "$RAIZ/scripts/testa-conferir-fluxo.sh" >/dev/null 2>&1
-if [ $? -eq 0 ]; then
-  ok=$((ok+1)); echo "  ok    testa-conferir-fluxo.sh termina 0"
-else
-  falhou=$((falhou+1)); echo "  FALHA testa-conferir-fluxo.sh falhou"
-fi
+# (O criterio 6 da tarefa 4 — testa-conferir-fluxo.sh verde — roda como bateria
+# propria no laco; chamada aninhada aqui a rodaria em dobro, #335/#341.)
 
 # Teste 7: estado.cjs marcar com prova verde/vermelha
 echo
