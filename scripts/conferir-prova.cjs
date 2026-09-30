@@ -172,6 +172,14 @@ function cmdPlano() {
       env,
     });
 
+    // 126/127 so e "o arquivo nasce na tarefa" na forma simples
+    // `bash|sh|node|python <arquivo>`, sem operador de shell, e com o arquivo
+    // de fato ausente na base. Olhar so o primeiro token aceitava
+    // `bash -c 'comando-inexistente'` e `bash x.sh || comando-inexistente`.
+    const formaSimples = /^(bash|sh|node|python|python3)\s+("[^"]+"|'[^']+'|[^\s;&|<>()`$]+)$/.exec(prova.trim());
+    const arquivoNasceNaTarefa = !!formaSimples &&
+      !fs.existsSync(path.join(wt, formaSimples[2].replace(/^["']|["']$/g, '')));
+
     removeWorktree();
 
     // Analisar resultado
@@ -197,20 +205,13 @@ function cmdPlano() {
       continue;
     }
 
-    // Exit 126 ou 127: pode ser comando não encontrado no PATH (recusa),
-    // ou arquivo que será criado pela tarefa (aceita).
-    // Aceita apenas se o PRIMEIRO comando é bash|sh|node|python — indicando
-    // que o script/arquivo será criado pela tarefa.
+    // Exit 126 ou 127: comando que nao executa (recusa), salvo a forma simples
+    // cujo arquivo a propria tarefa cria (arquivoNasceNaTarefa, acima).
     if (resultado.status === 126 || resultado.status === 127) {
-      const firstCmd = prova.trim().split(/\s+/)[0];
-      const executorComuns = ['bash', 'sh', 'node', 'python', 'python3'];
-      if (!executorComuns.includes(firstCmd)) {
-        // Primeiro comando não é executor comum: é um comando que não existe
-        recusas.push(`tarefa ${numero}. ${nome} a prova não executa (exit ${resultado.status})`);
+      if (!arquivoNasceNaTarefa) {
+        recusas.push(`tarefa ${numero}. ${nome} a prova não executa (exit ${resultado.status}) — se ela roda um arquivo que a tarefa cria, use a forma simples: bash <arquivo>`);
         continue;
       }
-      // Primeiro comando é executor comum (bash, node, etc.) com arquivo que
-      // não existe na base — arquivo nasce na tarefa, aceita
       provasExecutadas++;
       continue;
     }
