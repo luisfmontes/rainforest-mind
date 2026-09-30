@@ -33,6 +33,7 @@ function testar() {
   const fixtureDir = path.join(__dirname, 'fixtures', 'corpus', 'projetos');
   const extractorPath = path.join(__dirname, 'extrair-corpus-comandos.cjs');
 
+  // Teste 1: comando liberado e subagente
   console.log('  Teste 1: comando liberado e subagente');
   try {
     const output = execSync(`node "${extractorPath}" --raiz "${fixtureDir}"`, {
@@ -51,26 +52,31 @@ function testar() {
 
     const cmds = candidatos.map(c => c.comando);
 
-    if (cmds.includes('ls -la')) {
-      const c = candidatos.find(x => x.comando === 'ls -la');
-      if (c.contexto === 'principal') {
-        console.log('    ok   comando liberado vira candidato com contexto principal');
-        ok++;
-      }
+    // Verificar comando liberado principal
+    const lsLa = candidatos.find(x => x.comando === 'ls -la');
+    if (lsLa && lsLa.contexto === 'principal') {
+      console.log('    ok   comando liberado vira candidato com contexto principal');
+      ok++;
+    } else {
+      console.log('    FALHA: comando liberado não encontrado ou contexto errado');
+      falhas++;
     }
 
-    if (cmds.includes('cd /tmp && pwd')) {
-      const c = candidatos.find(x => x.comando === 'cd /tmp && pwd');
-      if (c.contexto === 'subagente') {
-        console.log('    ok   comando do arquivo de subagente vem com contexto subagente');
-        ok++;
-      }
+    // Verificar comando subagente
+    const pwdCmd = candidatos.find(x => x.comando === 'cd /tmp && pwd');
+    if (pwdCmd && pwdCmd.contexto === 'subagente') {
+      console.log('    ok   comando do arquivo de subagente vem com contexto subagente');
+      ok++;
+    } else {
+      console.log('    FALHA: comando subagente não encontrado ou contexto errado');
+      falhas++;
     }
   } catch (e) {
     console.log('    FALHA: ' + e.message);
-    falhas++;
+    falhas += 2;
   }
 
+  // Teste 2: bloqueados e ignorados
   console.log('  Teste 2: bloqueados e ignorados');
   try {
     const output = execSync(`node "${extractorPath}" --raiz "${fixtureDir}"`, {
@@ -89,25 +95,38 @@ function testar() {
 
     const cmds = candidatos.map(c => c.comando);
 
+    // Verificar que bloqueado NÃO aparece
     if (!cmds.includes('git add scripts/estado.cjs')) {
       console.log('    ok   comando bloqueado por hook nao vira candidato');
       ok++;
+    } else {
+      console.log('    FALHA: comando bloqueado por hook apareceu nos resultados');
+      falhas++;
     }
 
+    // Verificar que sem resultado NÃO aparece
     if (!cmds.includes('echo sem resultado')) {
       console.log('    ok   Bash sem tool_result nao vira candidato');
       ok++;
+    } else {
+      console.log('    FALHA: Bash sem tool_result apareceu nos resultados');
+      falhas++;
     }
 
+    // Verificar que outra ferramenta NÃO aparece
     if (!cmds.some(c => c.includes('package.json'))) {
       console.log('    ok   outra ferramenta e ignorada');
       ok++;
+    } else {
+      console.log('    FALHA: outra ferramenta apareceu nos resultados');
+      falhas++;
     }
   } catch (e) {
     console.log('    FALHA: ' + e.message);
-    falhas++;
+    falhas += 3;
   }
 
+  // Teste 3: deduplicação
   console.log('  Teste 3: deduplicação');
   try {
     // Criar arquivo com comando duplicado
@@ -135,6 +154,9 @@ function testar() {
     if (lsCount === 1) {
       console.log('    ok   mesmo comando duas vezes sai uma so');
       ok++;
+    } else {
+      console.log('    FALHA: comando apareceu ' + lsCount + ' vezes em vez de 1');
+      falhas++;
     }
 
     fs.unlinkSync(tempFile);
@@ -143,6 +165,7 @@ function testar() {
     falhas++;
   }
 
+  // Teste 4: somente leitura
   console.log('  Teste 4: somente leitura');
   try {
     const hashAntes = hashArquivos(fixtureDir);
@@ -157,6 +180,9 @@ function testar() {
     if (hashAntes === hashDepois) {
       console.log('    ok   somente leitura: hash de todos os arquivos da raiz igual antes e depois');
       ok++;
+    } else {
+      console.log('    FALHA: arquivos foram modificados durante a execução');
+      falhas++;
     }
   } catch (e) {
     console.log('    FALHA: ' + e.message);
