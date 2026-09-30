@@ -66,6 +66,11 @@ Cada tarefa leva: **tipo**, `atende:` (lista de `D<n>` do design que esta tarefa
 - **`arquivos:` sem glob largo**: declare caminhos concretos ou padrões específicos. Glob largo como `hooks/**` não descreve o que você toca — é achado do `revisar`, não atalho. **`arquivos:` nomeia arquivos que a tarefa toca, não pastas**: `skills/executar/SKILL.md`, não `skills/**`; `scripts/conferir-entrega.cjs` e `scripts/conferir-entrega.py`, não `scripts/**`. Arquivo por arquivo.
 - **Cobertura nos dois sentidos**: decisão do design sem tarefa barra o plano, e tarefa citando `D<n>` inexistente também barra.
 
+### Campos opcionais: `prova:` e `prova-na-base:` — validação da tarefa na base
+
+- **`prova:`** linha inteira com um par de crases: comando `bash -c` que **tem de FALHAR** (exit ≠ 0) quando rodado no commit base do briefing. Exemplos: `prova: \`bash scripts/testa-xyz.sh\``, `prova: \`node conferir-x.cjs\``. Executado num worktree descartável da base com timeout padrão 120 s (sobrescrevível por `RFM_PROVA_TIMEOUT_MS`); saída 126/127 (comando não existe) é recusada. Isentos de `prova:` os tipos `docs`, `pesquisar`/`pesquisa` e `configurar`.
+- **`prova-na-base:`** aceita a tarefa sem executar: `prova-na-base: verde — <motivo não-vazio>`. O motivo explica por que a tarefa não pode ser testada na base (ex.: "fixture de bateria", "depende de ferramenta externa"). Incompatível com `prova:`.
+
 ### Campo obrigatório: `mutacao:` — o alvo é declarado, nunca inferido
 
 Toda tarefa declara **qual linha inverter e qual bateria tem de ficar vermelha**
