@@ -67,6 +67,11 @@ const CHAVES = {
     padrao: true,
     descricao: 'barra sessão quando há agente em voo que morreu',
   },
+  'gate-turno-prometido': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'barra turno que promete despacho ou espera de máquina sem concretizar',
+  },
   'gate-verificador-staged': {
     tipo: 'boolean',
     padrao: true,
