@@ -1,0 +1,28 @@
+{
+  "slug": "2026-09-30-semear-travas",
+  "titulo": "Seis travas do semear de 2026-09-30",
+  "criado_em": "2026-09-30",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-09-30-semear-travas.md",
+    "em": "2026-09-30"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
