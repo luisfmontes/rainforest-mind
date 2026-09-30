@@ -15,6 +15,7 @@
 const fs = require('fs');
 const path = require('path');
 const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
+const { falhasRecorrentes, formatar } = require('../scripts/lib/impressao-falha.cjs');
 
 // PLUGIN e ROOT nao sao a mesma coisa, e a `fila-de-repos.jsonl` foi o caso que
 // obrigou a separar aqui — o `run-vigia.ps1` ja separa desde 2026-08-11
@@ -179,13 +180,14 @@ const dados = {
   ...ideiasAbertas(),
   propostas: propostasDeRelatorio(),
   erros_24h: errosRecentes(),
+  falhas_recorrentes: falhasRecorrentes(),
   fila_de_repos: filaDeRepos(),
 };
 
 if (process.argv.includes('--json')) {
   console.log(JSON.stringify(dados, null, 2));
 } else {
-  const { ideias, observacoes, propostas, erros_24h, fila_de_repos } = dados;
+  const { ideias, observacoes, propostas, erros_24h, falhas_recorrentes, fila_de_repos } = dados;
   console.log(`teto de repos nesta ronda: ${TETO_REPOS}`);
   if (RAIZ_DADOS) {
     console.log(`\nIDEIAS ABERTAS (${ideias.length}) — ancora principal`);
@@ -200,6 +202,8 @@ if (process.argv.includes('--json')) {
   propostas.forEach((p) => console.log(`  ${p.tag} ${p.titulo}\n        ${p.relatorio}`));
   console.log(`\nERROS DE VIGIA NAS ULTIMAS 24H (${erros_24h.length})`);
   erros_24h.forEach((e) => console.log(`  ${e}`));
+  console.log(`\nFALHAS RECORRENTES (30 DIAS) (${falhas_recorrentes.length})`);
+  falhas_recorrentes.forEach((r) => console.log(`  ${formatar(r)}`));
   console.log(`\nFILA DE REPOS — ${fila_de_repos.utilizaveis.length} utilizavel(is), ${fila_de_repos.recusados.length} recusada(s)`);
   fila_de_repos.utilizaveis.forEach((c) => console.log(`  [${c.trilha}] ${c.candidato}\n        ancora: ${c.ancora ?? '(sem ancora)'}`));
   fila_de_repos.recusados.forEach((r) => console.log(`  RECUSADO ${r.candidato}: ${r.motivo}`));

@@ -68,6 +68,8 @@ PLUGIN_FAKE="$SANDBOX/plugin"
 mkdir -p "$PLUGIN_FAKE/vigias" "$PLUGIN_FAKE/hooks/lib" "$PLUGIN_FAKE/relatorios"
 cp "$REPO_ROOT/vigias/dados-batedor-repos.js" "$PLUGIN_FAKE/vigias/"
 cp "$REPO_ROOT/hooks/lib/raiz.cjs" "$PLUGIN_FAKE/hooks/lib/"
+mkdir -p "$PLUGIN_FAKE/scripts/lib"
+cp "$REPO_ROOT/scripts/lib/impressao-falha.cjs" "$PLUGIN_FAKE/scripts/lib/"
 printf '%s\n' '# Um' '' '**P1 — Abrir a Issue do vetor citado**' 'texto' '**P2 — Consertar a bateria**' > "$PLUGIN_FAKE/relatorios/2026-09-05-um.md"
 printf '%s\n' '# Dois' 'handover sem proposta' > "$PLUGIN_FAKE/relatorios/2026-09-04-dois.md"
 printf '%s\n' '# Tres' '**P1 - Com hifen simples tambem conta**' > "$PLUGIN_FAKE/relatorios/2026-09-03-tres.md"
@@ -145,6 +147,24 @@ echo "$IDEIAS_AUS" | grep -q "(0)" && { echo "FALHA: IDEIAS reportou (0) em vez 
 echo "$OBS_AUS" | grep -q "(0)" && { echo "FALHA: OBSERVACOES reportou (0) em vez de indisponivel"; exit 1; }
 
 echo "✓ TESTE 4 passou (raiz ausente marca como indisponível, aviso em stderr)"
+echo
+
+# ==============================================================================
+# TESTE 5: secao FALHAS RECORRENTES com RFM_VIGIAS_DIR
+# ==============================================================================
+echo "=== TESTE 5: secao FALHAS RECORRENTES com RFM_VIGIAS_DIR ==="
+
+# Duas ocorrencias da mesma falha, sem log de vigia (=> persistente x2). As datas
+# saem do relogio (anteontem e ontem) para ficarem dentro da janela de 30 dias.
+VIGIAS_FAKE="$(novo_sandbox)"
+D1="$(node -e "console.log(new Date(Date.now()-2*864e5).toISOString().slice(0,10))")"
+D2="$(node -e "console.log(new Date(Date.now()-864e5).toISOString().slice(0,10))")"
+printf '%s\n' "- $D1 07:00 [vigia-teste]: backup falhou (exit 2)" "- $D2 07:00 [vigia-teste]: backup falhou (exit 2)" > "$VIGIAS_FAKE/ERROS.md"
+
+SAIDA5=$(RFM_VIGIAS_DIR="$VIGIAS_FAKE" node "$REPO_ROOT/vigias/dados-batedor-repos.js")
+echo "$SAIDA5" | grep -q '^FALHAS RECORRENTES (30 DIAS) (1)$' || { echo "FALHA: secao FALHAS RECORRENTES (30 DIAS) (1) ausente"; echo "$SAIDA5"; exit 1; }
+echo "$SAIDA5" | grep -q 'persistente x2 desde' || { echo "FALHA: linha 'persistente x2 desde' ausente"; echo "$SAIDA5"; exit 1; }
+echo "✓ TESTE 5 passou (secao FALHAS RECORRENTES com RFM_VIGIAS_DIR)"
 echo
 
 echo "=== Todos os testes passaram ==="
