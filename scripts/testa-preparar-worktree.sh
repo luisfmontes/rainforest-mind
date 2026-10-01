@@ -308,6 +308,61 @@ else
   teste_falha "--exige sem valor deveria retornar exit 2, retornou $EXIT"
 fi
 
+# -- Teste 11: (#364) --exige ../../../README.md sai 2 ----------------------
+cd "$WORKTREE" || { teste_falha "não conseguiu cd para worktree"; exit 1; }
+# O teste 9 deixou o worktree em B + commit extra (divergente de C): sem este
+# reset o script sai 1 em "divergencia real" antes de chegar em conferirExige.
+git reset --hard "$HASH_C" >/dev/null 2>&1
+OUTPUT=$(node "$PREPARAR_SCRIPT" --hash "$HASH_C" --exige "../../../README.md" 2>&1)
+EXIT=$?
+
+if [ $EXIT -eq 2 ]; then
+  if echo "$OUTPUT" | grep -q "../../../README.md"; then
+    teste_ok "(#364) --exige ../../../README.md sai 2 nomeando o caminho"
+  else
+    teste_falha "(#364) --exige ../../../README.md sai 2 mas não nomeia o caminho"
+  fi
+else
+  teste_falha "(#364) --exige ../../../README.md deveria retornar exit 2, retornou $EXIT, output=$OUTPUT"
+fi
+
+# -- Teste 12: (#364) --exige com caminho tão profundo que sai fora ----
+cd "$WORKTREE" || { teste_falha "não conseguiu cd para worktree"; exit 1; }
+OUTPUT=$(node "$PREPARAR_SCRIPT" --hash "$HASH_C" --exige "../../../../../../../../README.md" 2>&1)
+EXIT=$?
+
+if [ $EXIT -eq 2 ]; then
+  if echo "$OUTPUT" | grep -q "../../../../../../../../README.md"; then
+    teste_ok "(#364) --exige com caminho muito profundo sai 2 nomeando"
+  else
+    teste_falha "(#364) --exige com caminho profundo sai 2 mas não nomeia"
+  fi
+else
+  teste_falha "(#364) --exige com caminho profundo deveria retornar exit 2, retornou $EXIT"
+fi
+
+# -- Teste 13: (#364) --exige com caminho absoluto fora do worktree sai 2 ----
+cd "$WORKTREE" || { teste_falha "não conseguiu cd para worktree"; exit 1; }
+OUTPUT=$(node "$PREPARAR_SCRIPT" --hash "$HASH_C" --exige "$FIXTURE/repo/file.txt" 2>&1)
+EXIT=$?
+
+if [ $EXIT -eq 2 ] && echo "$OUTPUT" | grep -q "fora do worktree"; then
+  teste_ok "(#364) --exige absoluto fora do worktree sai 2"
+else
+  teste_falha "(#364) --exige absoluto fora deveria sair 2, retornou exit=$EXIT, output=$OUTPUT"
+fi
+
+# -- Teste 14: (#364) --exige de arquivo dentro do worktree sai 0 -------------
+cd "$WORKTREE" || { teste_falha "não conseguiu cd para worktree"; exit 1; }
+OUTPUT=$(node "$PREPARAR_SCRIPT" --hash "$HASH_C" --exige "file.txt" 2>&1)
+EXIT=$?
+
+if [ $EXIT -eq 0 ]; then
+  teste_ok "(#364) --exige file.txt dentro do worktree sai 0"
+else
+  teste_falha "(#364) --exige file.txt deveria sair 0, retornou exit=$EXIT, output=$OUTPUT"
+fi
+
 # -- Resultado final --------------------------------------------------------
 echo ""
 if [ $FALHA -eq 0 ]; then
