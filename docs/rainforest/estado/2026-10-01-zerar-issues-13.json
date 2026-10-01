@@ -261,32 +261,30 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "840a26962ddab9c459666eb804d470063489d5eb",
+      "head": "43cd498c23f8c4af9398ac9778daaaf5adadb99c",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a067eb16a7c18a6e0",
-        "veredito": "reprovado",
+        "agente_id": "a2577392d8a5d22c8",
+        "veredito": "ok",
         "em": "2026-10-01",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/06244f96-323e-4467-83a9-b79ce0f5e98f/subagents/agent-a067eb16a7c18a6e0.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/06244f96-323e-4467-83a9-b79ce0f5e98f/subagents/agent-a2577392d8a5d22c8.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-01",
-    "achados": 6,
-    "pendentes": [
-      "1: fixture #364-2 nao falha na base",
-      "2: regex de aspas libera menos que a base (espaco/letra colada)",
-      "3: --exige confinado ao cwd, nao ao toplevel",
-      "4: comentarios de normalizarTexto contradizem o codigo",
-      "5: veredito some com 2+ candidatos todos agent-*",
-      "6: metade a/b da assercao do varrer nao mede"
-    ],
-    "tentativas": 2
+    "achados": 0,
+    "base": "4cd818f769a5c1025d03903536489b17e11aa8a5",
+    "head": "43cd498c23f8c4af9398ac9778daaaf5adadb99c",
+    "divida": [
+      "empate de dois worktrees nao-agente armados",
+      "casos extremos do --exige (..foo, ., symlink)",
+      "teste de CRLF nao mede a normalizacao"
+    ]
   },
   "verificar": {
     "status": "pendente"
