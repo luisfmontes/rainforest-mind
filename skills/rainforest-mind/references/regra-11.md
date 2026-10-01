@@ -106,9 +106,8 @@ falhar, PARA e reporta (a conferência de base não passa num diretório errado)
 > existia — sumiu de `git worktree list` — e ele trabalhou e commitou no
 > worktree do coordenador, na branch do coordenador. Três garantias caíram:
 > conferência sem alvo, `--sujo-antes` e `--paralelo` perderam sentido, e
-> coordenador e agente escreveram na mesma árvore ao mesmo tempo. Causa: a
-> conferência de base olhava lista de hashes velhos conhecidos, que envelhecia
-> a cada merge. Daí a regra 11 não mais aceitar retomada de agente que edita.
+> coordenador e agente escreveram na mesma árvore ao mesmo tempo. Daí a
+> regra 11 não mais aceitar retomada de agente que edita.
 
 Essa mesma armadilha morde de novo em dois lugares que não são o despacho.
 Quando a **janela principal** audita um worktree depois de um abort: o diretório
@@ -140,17 +139,10 @@ resultado.
 > worktree, não estado estável. Daí o `--ff-only` abaixo ser preferível a
 > parar, quando o toplevel está certo e só o HEAD diverge.
 
-**(2) A conferência de base não é lista de hashes**, mas regra que não envelhece.
-O agente roda:
-
-```
-git merge-base --is-ancestor HEAD <base do briefing>
-```
-
-Exit 0 → o HEAD do worktree é ancestral da base: `git merge --ff-only <base>`
-é permitido e obrigatório antes de editar. Exit ≠ 0 → divergência real: o agente
-PARA e reporta. Fast-forward não descarta nada, qualquer outro hash continua
-sendo aborto.
+**(2) O briefing leva o comando de preparo**, literal com caminho absoluto,
+montado com `git rev-parse`, nunca digitado. Forma: `node <caminho>/preparar-worktree.cjs --hash <hash> [--exige <arquivo>]...`.
+O agente roda esse comando, cola a saída. Exit 0 → base confirmada, segue.
+Exit ≠ 0 → divergência ou arquivo faltante: PARA e reporta.
 
 **(3) Na integração, a janela principal confere com evidência primária, nunca
 pelo relato** — `node scripts/conferir-entrega.cjs --worktree <wt> --base <hash>

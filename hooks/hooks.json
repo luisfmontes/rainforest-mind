@@ -134,6 +134,14 @@
         "hooks": [
           {
             "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/gate-turno-prometido.cjs\""
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/gate-review-codex.cjs\"",
             "timeout": 660
           }

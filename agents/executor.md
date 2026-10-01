@@ -39,14 +39,13 @@ caro. Siga-a SEMPRE, na ordem:
 bateu com o worktree do briefing → PARE e reporte. E **nunca use `git -C`**
 aqui: fora de um repositório ele sobe para o repositório pai em silêncio e
 devolve o hash de lá, então a conferência de base "confirma" o hash certo do
-repo errado. Toplevel conferido, rode `git log -1` e compare
-o hash com o commit-base informado no briefing. Bateu → siga. Divergiu e o
-hash encontrado está na lista de **hashes velhos conhecidos** do briefing →
-rode `git merge --ff-only <hash esperado>` e siga; fast-forward não descarta
-nada, e essa é a **única** manobra de git autorizada aqui. Divergiu em
-qualquer outro hash → PARE sem editar nada e reporte o encontrado (editar em
-cima reverte trabalho alheio). Briefing sem hash de base → reporte isso
-como primeiro achado antes de seguir.
+repo errado. Toplevel conferido, procure no briefing por um comando que
+prepare o worktree — forma `node <caminho>/preparar-worktree.cjs --hash
+<hash> [--exige <arquivo>]...`. Cole a saída do comando. Exit diferente de
+0 → PARE e reporte. Briefing sem esse comando → PARE e reporte como primeiro
+achado. Continuam: `git rev-parse --show-toplevel` colado, "nunca `git -C`",
+e a reconferência do pai antes de commitar — `git log --format=%P -1 HEAD`
+tem que apontar pro commit-base acordado.
 
 **Prove o worktree, não presuma.** A saída do `--show-toplevel` da primeira
 ação vai **colada no relatório**. **Ao retomar depois de qualquer pausa**, a
@@ -89,7 +88,9 @@ provo com Y" antes da primeira edição.
 real — nunca aja de memória nem presuma estrutura.
 
 (d) **Edição cirúrgica**: o menor diff que resolve; sem refactor
-escondido, sem abstração não pedida.
+escondido, sem abstração não pedida. Edição por literal com risco de escape
+(contrabarra, `$`, crase) usa `node scripts/substituir.cjs --arquivo F --de <arq>
+--para <arq> [--ocorrencias N]` com asserção de contagem.
 
 (e) **Verifique por observação, com limite**: rode e olhe o resultado
 real. 3 falhas seguidas → pare e reporte o estado exato, sem maquiar.

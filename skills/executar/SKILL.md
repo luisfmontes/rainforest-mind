@@ -79,11 +79,7 @@ Sensor: <nome>
 Fora da lista ou ilegível registra no log e despacha; só `sensores` malformado nega. Ver `references/sensor-no-briefing.md`.
 
 O briefing de cada agente leva, sempre:
-- **O hash da base** (regra 11) e a instrução de conferir na primeira ação:
-  `git rev-parse --show-toplevel` (PARE se for a raiz do repositório principal
-  ou o worktree de quem despachou — isolamento perdido nos dois casos), depois
-  conferir com `git merge-base --is-ancestor HEAD <base>` — exit 0 autoriza
-  `git merge --ff-only <base>`; exit ≠ 0 é aborto.
+- **O hash da base** (regra 11) com comando de preparo (forma `node <caminho>/preparar-worktree.cjs --hash <hash>`), montado com `git rev-parse`, nunca digitado. Agente roda esse comando, cola saída, exit ≠ 0 é aborto.
 - **Os caminhos que a tarefa promete criar**, para o `--espera` da integração
   abaixo — sem eles, arquivo que o agente cria e nunca chega ao commit passa
   por todas as outras checagens.
@@ -136,8 +132,8 @@ node scripts/conferir-entrega.cjs --worktree <wt> --base <hash> \
     [--paralelo] --espera <caminho-que-a-tarefa-prometia> [--espera <outro>]
 ```
 
-**`--sujo-antes` e `--paralelo` respondem a perguntas diferentes, e por isso os
-dois existem**:
+**`--base` é obrigatório** — conferência sem base sai exit 2. **`--sujo-antes` e
+`--paralelo` respondem a perguntas diferentes, e por isso os dois existem**:
 
 | flag | a pergunta que ela responde | precisa de |
 |---|---|---|

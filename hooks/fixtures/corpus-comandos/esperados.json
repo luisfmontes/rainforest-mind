@@ -1,0 +1,30 @@
+[
+  {
+    "id": "c026",
+    "gate": "gate-bateria-sem-timeout",
+    "contexto": "subagente",
+    "motivo": "bateria em subagente sem timeout: barrada por desenho (gate-bateria-sem-timeout)",
+    "issue": null
+  },
+  {
+    "id": "c032",
+    "gate": "gate-bateria-sem-timeout",
+    "contexto": "subagente",
+    "motivo": "bateria em subagente sem timeout: barrada por desenho (gate-bateria-sem-timeout)",
+    "issue": null
+  },
+  {
+    "id": "c033",
+    "gate": "gate-bateria-sem-timeout",
+    "contexto": "subagente",
+    "motivo": "bateria em subagente sem timeout: barrada por desenho (gate-bateria-sem-timeout)",
+    "issue": null
+  },
+  {
+    "id": "c034",
+    "gate": "gate-bateria-sem-timeout",
+    "contexto": "subagente",
+    "motivo": "bateria em subagente sem timeout: barrada por desenho (gate-bateria-sem-timeout)",
+    "issue": null
+  }
+]

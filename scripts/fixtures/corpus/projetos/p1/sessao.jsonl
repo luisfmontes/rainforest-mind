@@ -1,0 +1,7 @@
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tool-1-liberado","name":"Bash","input":{"command":"ls -la"}}],"stop_reason":"tool_use"}}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tool-1-liberado","content":"total 42\ndrwxr-xr-x 1 user group     0 Sep 30 15:14 .\ndrwxr-xr-x 1 user group     0 Sep 30 15:14 ..","is_error":false}]}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tool-2-bloqueado","name":"Bash","input":{"command":"git add scripts/estado.cjs"}}],"stop_reason":"tool_use"}}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tool-2-bloqueado","content":"PreToolUse:Bash hook error: gate-turno-prometido blocou este comando","is_error":false}]}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tool-3-sem-resultado","name":"Bash","input":{"command":"echo sem resultado"}}],"stop_reason":"tool_use"}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tool-4-outra-ferramenta","name":"Read","input":{"file_path":"package.json"}}],"stop_reason":"tool_use"}}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tool-4-outra-ferramenta","content":"{\"name\": \"fixture-project\"}","is_error":false}]}}

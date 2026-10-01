@@ -10,6 +10,42 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.32.0 — 2026-09-30
+
+Seis travas para defeitos que já se repetiram aqui. Cada uma nasceu de uma
+observação registrada, pelo `semear`.
+
+- **Turno que promete e não faz é barrado no `Stop`.** O hook novo
+  `gate-turno-prometido` (ligado por padrão) sai 2 em dois casos:
+  - o turno diz "vou despachar" e não chama `Agent`, `Task`, `SendMessage` nem
+    `Workflow`;
+  - o turno diz "CI rodando" ou "aguardando o build" sem vigia: nem `Bash` ou
+    `PowerShell` em background, nem `Monitor`, nem `ScheduleWakeup`.
+
+  Não disparam: passado, negação, código, aspas e lista. Para desligar:
+  `node scripts/setup.cjs --desligar gate-turno-prometido`.
+- **Critério de pronto tem de falhar antes do trabalho.** O
+  `marcar --estagio plano` roda a `prova:` de cada tarefa num worktree
+  descartável. Prova que já passa na base é recusada (exit 2), porque um critério
+  assim não prova nada. A exceção se declara: `prova-na-base: verde — <motivo>`.
+  Peça nova: `scripts/conferir-prova.cjs`.
+- **A base do agente virou um comando.** `scripts/preparar-worktree.cjs --hash <H>
+  [--exige <arquivo>]` leva o worktree ao hash do briefing por fast-forward e
+  recusa divergência real. O `conferir-entrega` passa a exigir `--base` (exit 2
+  sem ele), nos dois motores.
+- **Design só é aprovado com varredura.** O `scripts/varrer.cjs --slug <s>
+  <termos>` registra em `docs/rainforest/varredura/<slug>.txt` o que o repo já
+  sabia: branches, commits, Issues e ideias. A seção `## Varredura` do design tem
+  de citar esse arquivo.
+- **Edição literal sem corromper.** `scripts/substituir.cjs --arquivo F --de <arq>
+  --para <arq> [--ocorrencias N]` troca byte a byte e confere a contagem antes de
+  gravar. Texto com `$`, crase ou contrabarra entra literal, e `--para` vazio
+  apaga o trecho.
+- **Comandos reais contra as travas.** 50 comandos legítimos (curados) passam por
+  cada gate de Bash, nos contextos principal e subagente. Um gate que comece a
+  barrar comando legítimo deixa a bateria vermelha. O extrator dos candidatos é
+  `scripts/extrair-corpus-comandos.cjs`.
+
 ## 1.30.2 — 2026-09-29
 
 - **Livro de repos: três indicados avaliados.** `strands-agents/harness-sdk` e

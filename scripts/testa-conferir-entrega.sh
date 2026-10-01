@@ -225,9 +225,9 @@ esperado "git fora do PATH -> exit 69 (ambiente, nao 'nao e repositorio git')" 6
 contem "  ... e o stderr nomeia git ausente" "nao-verificavel: git nao encontrado" \
   env PATH="$PATH_SEM_GIT" "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE"
 
-esperado "sem --base ainda roda, com aviso" 0 \
+esperado "sem --base -> exit 2 (era aviso e exit 0)" 2 \
   "${CONF_CMD[@]}" --worktree "$WT" --head-antes "$HEAD_ANTES"
-contem "  ... e o aviso diz que o briefing devia ter fixado a base" "briefing devia ter fixado" \
+contem "  ... e o stderr cita --base obrigatorio" "--base" \
   "${CONF_CMD[@]}" --worktree "$WT" --head-antes "$HEAD_ANTES"
 
 echo

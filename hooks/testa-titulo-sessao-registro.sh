@@ -73,7 +73,7 @@ echo "contagem: $RES3"
 # entrou hooks/gate-bateria-sem-timeout.cjs (matcher Bash, design agente-sem-background).
 # E de 12 para 13 em 2026-09-28: entrou hooks/gate-subagente-sem-gh.cjs (matcher
 # Bash, design gate-subagente-sem-gh — nega `gh` de escrita em subagente).
-if [ "$RES3" = '{"SessionStart":6,"PreToolUse":13,"Stop":4,"UserPromptSubmit":1}' ]; then
+if [ "$RES3" = '{"SessionStart":6,"PreToolUse":13,"Stop":5,"UserPromptSubmit":1}' ]; then
   ok=$((ok+1)); echo "  ok    JSON valido e contagem de SessionStart/PreToolUse/Stop/UserPromptSubmit preservada"
 else
   falhou=$((falhou+1)); echo "  FALHA contagem mudou (ou JSON invalido): $RES3"
