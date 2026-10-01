@@ -287,7 +287,11 @@
     ]
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-01-zerar-issues-13; bash verif.sh (gate-fechar-issue, preparar-worktree, varrer com entrada real; 5 baterias)",
+    "saida": "mutacoes: 1,2,4,5,6,9,11-15 vermelho, 3/7/8/10 n/a; bash $b exit 2 com injetar -c, bash \"$b\" exit 0; --exige ../../../README.md exit 2, README.md exit 0, ../README.md de subpasta exit 0; --slug ../../x e a/b exit 2; baterias 32/34/19/36/257 ok, 0 falhas; conferir-versao 1.34.0 exit 0",
+    "sensor_externo": "node scripts/conferir-fluxo.cjs mutacoes",
+    "em": "2026-10-01"
   },
   "fechar": {
     "status": "pendente"
