@@ -10,6 +10,30 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.35.0 — 2026-10-01
+
+Rodada 14: a triagem de inbox do `sentinela-foco` (#367), o creep da varredura (#368) e as três
+dívidas da revisão da rodada 13 (#369).
+
+- **A ronda do vigia dá 90 s para o MCP subir** (#367). O `run-vigia.ps1` define `MCP_TIMEOUT=90000`
+  só no próprio processo, antes do `claude -p`. Medido em 01/10: o `@artymclabin/gmail-mcp` via
+  `npx -y` levou 57,6 s para responder ao `initialize`, acima do teto de 30 s do Claude Code, e a
+  triagem sumia do briefing em silêncio. Nenhuma variável do usuário ou do sistema muda.
+- **O vigia lê só pelo `gmail-leitura`** (#367). Toda ronda, com ou sem `-Teste`, nega o servidor
+  `gmail` inteiro por `--disallowedTools mcp__gmail`; o prompt nomeia `mcp__gmail-leitura__search_emails`.
+  Em 01/10 a triagem tinha lido pelo `gmail` de escopo completo (envia, apaga).
+- **Inbox não lido vira aviso explícito** (#367). Quando o MCP não sobe nem com o teto maior, o briefing
+  traz `inbox: não verificado — MCP do Gmail não subiu`, além do registro no `ERROS.md`.
+- **A varredura do próprio fluxo não é mais creep** (#368). O `conferir-fluxo creep` isenta
+  `docs/rainforest/varredura/<slug>.txt` do slug em revisão — o `brainstorm` obriga a criar e o
+  `marcar --estagio design` exige. Varredura de outro slug continua creep.
+- **Dívidas da rodada 13** (#369). Empate de worktrees armados no `veredito-revisor`: vence o do revisor.
+  `preparar-worktree --exige` aceita `..foo` dentro do worktree, recusa `.` dizendo que é a raiz e
+  confere existência pelo mesmo caminho resolvido (absoluto dentro do worktree passa). Saiu do
+  `gate-turno-prometido` a normalização de CRLF que nenhum caso distinguia.
+
+Fora desta versão: o log da ronda sem a saída do modelo entre 03 e 28/09 (#372).
+
 ## 1.34.0 — 2026-10-01
 
 Rodada 13: os três resíduos da revisão do semear-travas (#362, #363, #364).
