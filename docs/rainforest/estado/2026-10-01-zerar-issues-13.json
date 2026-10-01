@@ -25,10 +25,10 @@
     "em": "2026-10-01"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-01",
-    "tarefas_ok": 8,
-    "tarefas": 8,
+    "tarefas_ok": 11,
+    "tarefas": 11,
     "em_voo": [],
     "carimbos": [
       {
@@ -107,11 +107,53 @@
         "iteracao": 1,
         "sessao": "06244f96-323e-4467-83a9-b79ce0f5e98f",
         "ts": "2026-10-01T11:31:35.334Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "1db7dab7",
+        "iteracao": 1,
+        "sessao": "06244f96-323e-4467-83a9-b79ce0f5e98f",
+        "ts": "2026-10-01T11:38:03.837Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "1db7dab7",
+        "iteracao": 1,
+        "sessao": "06244f96-323e-4467-83a9-b79ce0f5e98f",
+        "ts": "2026-10-01T11:38:03.837Z"
+      },
+      {
+        "tarefa": 11,
+        "hash_base": "1db7dab7",
+        "iteracao": 1,
+        "sessao": "06244f96-323e-4467-83a9-b79ce0f5e98f",
+        "ts": "2026-10-01T11:38:03.837Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "1db7dab7",
+        "iteracao": 2,
+        "sessao": "06244f96-323e-4467-83a9-b79ce0f5e98f",
+        "ts": "2026-10-01T11:45:31.593Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "1db7dab7",
+        "iteracao": 2,
+        "sessao": "06244f96-323e-4467-83a9-b79ce0f5e98f",
+        "ts": "2026-10-01T11:45:31.593Z"
+      },
+      {
+        "tarefa": 11,
+        "hash_base": "1db7dab7",
+        "iteracao": 2,
+        "sessao": "06244f96-323e-4467-83a9-b79ce0f5e98f",
+        "ts": "2026-10-01T11:45:31.593Z"
       }
     ],
     "em": "2026-10-01",
-    "comando": "node scripts/conferir-mutacao.cjs (re-rodado pela integracao, tarefas 1-6)",
-    "saida": "exit 0 nas seis: bateria VERMELHA com o comportamento invertido",
+    "comando": "node scripts/conferir-mutacao.cjs (re-rodado pela integracao, tarefas 1-6 e 9-11)",
+    "saida": "exit 0 em todas: bateria VERMELHA com o comportamento invertido",
     "mutacao": [
       {
         "tarefa": 1,
@@ -121,7 +163,7 @@
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "testa-veredito-revisor.sh, caso 23 (#363) revisor em agent-x"
+        "fixture": "testa-veredito-revisor.sh, caso 23 (#363)"
       },
       {
         "tarefa": 3,
@@ -131,7 +173,7 @@
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "testa-gate-turno-prometido.cjs, #364-2b citacao em bloco"
+        "fixture": "testa-gate-turno-prometido.cjs, #364-2b"
       },
       {
         "tarefa": 5,
@@ -152,12 +194,23 @@
         "tarefa": 8,
         "resultado": "n/a",
         "motivo": "versao e registro; conferir-versao exit 0"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-turno-prometido.cjs, #364-r2 negrito e tres linhas"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "testa-veredito-revisor.sh, caso 25 (#363-r2)"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "testa-varrer.sh, nenhum x.txt gravado fora de varredura"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-01"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
