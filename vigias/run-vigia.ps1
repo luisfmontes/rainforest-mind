@@ -119,20 +119,23 @@ $prompt = Get-Content -Raw -Encoding UTF8 $promptFile
 # envio da sessao por --disallowedTools; conferido no mesmo dia que, com
 # --dangerously-skip-permissions, a tool negada some da lista em vez de so pedir
 # permissao. O prefixo do prompt fica: e ele que pede a mensagem entre marcadores.
-$semEnvio = @()
+# #367: toda ronda nega o servidor gmail inteiro (escopo completo, envia e apaga).
+# Em 01/10 a triagem leu por ele em vez do gmail-leitura (somente leitura, do
+# .mcp.json do comms-vigia). O vigia le pelo gmail-leitura, entao nada se perde.
+$negadas = @('mcp__gmail')
 if ($Teste) {
-    $semEnvio = @('--disallowedTools', (@(
+    $negadas += @(
         'mcp__whatsapp__send_message', 'mcp__whatsapp__send_file',
         'mcp__whatsapp__send_audio_message', 'mcp__whatsapp__create_poll',
         'mcp__whatsapp__edit_message', 'mcp__whatsapp__react_to_message',
-        'mcp__whatsapp__delete_message', 'mcp__whatsapp__vote_in_poll',
-        'mcp__gmail__send_email', 'mcp__gmail__send_draft', 'mcp__gmail__reply_all'
-    ) -join ','))
+        'mcp__whatsapp__delete_message', 'mcp__whatsapp__vote_in_poll'
+    )
     # A segunda frase do prefixo nasceu na primeira ronda com as tools negadas:
     # sem send_message na lista, o haiku concluiu "bridge fora do ar" (a bridge
     # respondia healthy) e encerrou sem montar o relatorio.
     $prompt = "EXECUCAO DE TESTE (manual, fora do agendamento): NAO chame send_message nem qualquer tool de envio. As tools de envio foram REMOVIDAS desta sessao de proposito: a ausencia delas NAO significa bridge fora do ar nem erro, nao registre erro por isso e nao pule nenhum passo. Em vez de enviar, escreva no final da sua resposta a mensagem completa que voce enviaria, entre uma linha ---INICIO--- e uma linha ---FIM---. Todo o resto do trabalho (ler as fontes, apurar, decidir) e identico ao normal.`n`n" + $prompt
 }
+$negar = @('--disallowedTools', ($negadas -join ','))
 
 # Dados apurados por script, quando o vigia tiver um. Existe porque instrução
 # não conserta aritmética: o jardineiro deu 12, 10, 9 e 11 para o mesmo
@@ -238,7 +241,7 @@ $exitClaude = $null
 # initialize, acima do teto de 30 s do Claude Code. Vale so para este processo e filhos.
 $env:MCP_TIMEOUT = '90000'
 try {
-    $prompt | & $claude -p --model $modelo --dangerously-skip-permissions @semEnvio 2>&1 |
+    $prompt | & $claude -p --model $modelo --dangerously-skip-permissions @negar 2>&1 |
       ForEach-Object { $script:linhasDoClaude++; [void](Write-LinhaEmLf -Caminho $log -Linha "$_") }
     $exitClaude = $LASTEXITCODE
 } catch {
