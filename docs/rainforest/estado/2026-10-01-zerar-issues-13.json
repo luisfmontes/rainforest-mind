@@ -25,7 +25,7 @@
     "em": "2026-10-01"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-01",
     "tarefas_ok": 8,
     "tarefas": 8,
@@ -153,10 +153,37 @@
         "resultado": "n/a",
         "motivo": "versao e registro; conferir-versao exit 0"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-01"
+    }
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "dbac72626f4f4d31b9702fb37c58d3a6ee7e15e1",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a02e33465921eeb64",
+        "veredito": "reprovado",
+        "em": "2026-10-01",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/06244f96-323e-4467-83a9-b79ce0f5e98f/subagents/agent-a02e33465921eeb64.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-01",
+    "achados": 4,
+    "pendentes": [
+      "1: regex de aspas nao abre depois de * _ — ; / (regressao)",
+      "2: aspa solta atravessa linhas e engole promessa; CRLF fura o teste de linha em branco",
+      "3: veredito some quando o unico candidato e agent-*",
+      "4: testa-varrer confere diretorio, nao o x.txt"
+    ],
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

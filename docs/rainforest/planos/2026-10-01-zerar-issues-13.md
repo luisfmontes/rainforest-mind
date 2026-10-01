@@ -121,3 +121,50 @@ paralela: nao
 mutacao: n/a
   motivo: número de versão e texto de registro; a coerência se confere por `node scripts/conferir-versao.cjs` e pela leitura contra D1–D5.
 pronto quando: com a `origin/main` do momento do fechar, os manifestos e o badge sobem o minor sobre ela e `node scripts/conferir-versao.cjs` sai 0; a entrada do CHANGELOG diz que `bash $b` sem aspas continua barrado e por quê (injeção de `-c`), não promete liberação, e descreve D2–D5 como o design — conferido lendo a entrada contra o design.
+
+## Rodada 2 — achados do revisar (01/10, reprovado com 4)
+
+### 9. Aspas: abre depois de qualquer não-letra, fecha colado, atravessa no máximo uma quebra, e CRLF vira LF [tipo: implementar]
+atende: D3
+arquivos: `hooks/gate-turno-prometido.cjs`, `hooks/testa-gate-turno-prometido.cjs`, `hooks/fixtures/turno-prometido/364-r2-citacao-em-negrito.jsonl`, `hooks/fixtures/turno-prometido/364-r2-aspa-solta-tres-linhas.jsonl`, `hooks/fixtures/turno-prometido/364-r2-aspa-solta-crlf.jsonl`
+depende de: nenhuma
+paralela: sim
+prova: `node hooks/testa-gate-turno-prometido.cjs 2>&1 | grep -qE '^ +ok +#364-r2'`
+mutacao:
+  arquivo: `hooks/gate-turno-prometido.cjs`
+  de: normalizado = normalizado.replace(/(^|[^\p{L}\p{N}])"(?=\S)[^"\n]*(?:\n[^"\n]*)?(?<=\S)"(?![\p{L}\p{N}])/gu, '$1');
+  para: normalizado = normalizado.replace(/(^|[\s(\[{:])"(?=\S)(?:[^"\n]|\n(?![ \t]*\n))*?"/g, '$1');
+  bateria: `node hooks/testa-gate-turno-prometido.cjs`
+  fixture: testa-gate-turno-prometido.cjs, casos "#364-r2 citacao em negrito" e "#364-r2 aspa solta em tres linhas"
+Implementação: em `normalizarTexto`, a primeira linha passa a ser `let normalizado = texto.replace(/\r\n?/g, '\n');` (os blocos de código passam a partir dela), e a remoção de aspas vira exatamente a linha do `de:` acima: abre depois de início ou de qualquer caractere que não seja letra ou dígito (`**"`, `_"`, `—"`, `;"`, `/"` abrem; `5"` não), o conteúdo começa e termina colado nas aspas, atravessa no máximo UMA quebra de linha, e o fecho não pode estar colado em letra ou dígito. O `para:` é a regex da rodada 1, a que o revisor reprovou: a bateria tem de distinguir as duas. Casos novos, transcritos no formato real: `#364-r2 citacao em negrito` (`Ele disse **"vou despachar o executor"** ontem.` sem Agent → exit 0; idem com `_"..."_`, `—"..."—`, `;"..." `, `/"..."/` em casos irmãos ou no mesmo caso); `#364-r2 aspa solta em tres linhas` (`Ele falou: "isso e o plano` / `vou despachar o executor agora` / `relatorio de "x"` sem Agent → exit 2); `#364-r2 aspa solta crlf` (o mesmo texto com `\r\n` e linhas em branco → exit 2). Os casos #364-1, #364-1b, #364-2 e #364-2b continuam verdes.
+pronto quando: com o transcrito real cujo último texto é `Ele disse **"vou despachar o executor"** ontem.` e nenhum Agent, `node hooks/gate-turno-prometido.cjs` sai 0; com a aspa solta aberta na linha 1 e a promessa na linha 2 (LF ou CRLF), sai 2 — provado por `node hooks/testa-gate-turno-prometido.cjs` (0 falhas, casos #364-r2 presentes).
+
+### 10. Veredito não some quando o único candidato é worktree de agente [tipo: implementar]
+atende: D2
+arquivos: `hooks/veredito-revisor.cjs`, `hooks/testa-veredito-revisor.sh`
+depende de: nenhuma
+paralela: sim
+prova: `bash hooks/testa-veredito-revisor.sh 2>&1 | grep -qE '^ +ok +\(#363-r2\)'`
+mutacao:
+  arquivo: `hooks/veredito-revisor.cjs`
+  de: if (sobra.length === 0 && candidatos.length === 1) sobra = candidatos;
+  para: if (false) sobra = candidatos;
+  bateria: `bash hooks/testa-veredito-revisor.sh`
+  fixture: testa-veredito-revisor.sh, caso "(#363-r2) unico candidato agent-x grava nele"
+Implementação: em `raizComEstadoDoSlug`, logo depois do filtro `.filter((p) => !ehWorktreeDeAgente(p))`, entra exatamente a linha do `de:` (com a variável que o código já usa para o resultado do filtro renomeada para `sobra` e declarada com `let`, se ainda não for): sem candidato fora de agente e com um único candidato no total, ele é a raiz — é o comportamento de antes, e perder o veredito em silêncio é pior que gravá-lo na única cópia que existe. Caso novo `(#363-r2) unico candidato agent-x grava nele`: estado só em `<repo>/.claude/worktrees/agent-x` (o repo principal não tem o arquivo), revisor com cwd lá → a entrada aparece em `revisar.vereditos` do agent-x. Os casos 23 e 24 continuam verdes.
+pronto quando: com o payload SubagentStop real e o estado existindo só em `.claude/worktrees/agent-x`, `node hooks/veredito-revisor.cjs` grava o veredito nessa cópia em vez de sair com `nao encontrado` — provado por `bash hooks/testa-veredito-revisor.sh` (0 falhas, caso #363-r2 presente).
+
+### 11. Bateria do varrer confere o arquivo que o defeito gravaria [tipo: teste]
+atende: D4
+arquivos: `scripts/testa-varrer.sh`
+depende de: nenhuma
+paralela: sim
+prova-na-base: verde — a asserção corrigida passa na base de propósito: ela troca `-d` por `-e` sobre os caminhos `x.txt` e `a/b.txt` que o defeito antigo gravaria; quem prova que ela mede é a mutação abaixo.
+mutacao:
+  arquivo: `scripts/varrer.cjs`
+  de: if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(slug) || slug.includes('..')) {
+  para: if (false) {
+  bateria: `bash scripts/testa-varrer.sh`
+  fixture: testa-varrer.sh, bloco "(#364) Validacao de slug com caminho", asserção "nenhum x.txt gravado fora de varredura"
+Implementação: no último `if` do bloco "(#364) Validacao de slug com caminho", `[ ! -d "$REPO/../x" ] && [ ! -d "$REPO/a" ]` vira a conferência dos ARQUIVOS que `path.join(dirVarredura, slug + '.txt')` produziria: `docs/rainforest/varredura/../../x.txt` (resolvido) e `docs/rainforest/varredura/a/b.txt`, com `[ ! -e ... ]`. Rótulo da asserção: `nenhum x.txt gravado fora de varredura`. Com a mutação aplicada, essa asserção tem de falhar junto com as de exit 2 — confira lendo a saída da mutação, não só o exit.
+pronto quando: com `node scripts/varrer.cjs --slug ../../x termo` num repo real, nenhum `x.txt` existe no caminho que o `path.join` produziria — provado por `bash scripts/testa-varrer.sh` (0 falhas) e, com a mutação aplicada, pela linha `FALHA` da asserção `nenhum x.txt gravado fora de varredura` na saída.
