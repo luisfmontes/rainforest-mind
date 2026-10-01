@@ -119,10 +119,31 @@
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "07a9a551a0146eb3898b4c932d0dcecd185695f0",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "aa74ba3bb130477ab",
+        "veredito": "ok",
+        "em": "2026-10-01",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/06244f96-323e-4467-83a9-b79ce0f5e98f/subagents/agent-aa74ba3bb130477ab.jsonl"
+      }
+    ],
+    "em": "2026-10-01",
+    "achados": 0,
+    "base": "7e719d86cac2f452c433ce78aaf4fb843ef09009",
+    "head": "07a9a551a0146eb3898b4c932d0dcecd185695f0",
+    "menores": 2
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-01-zerar-issues-14 + baterias (testa-conferir-fluxo, testa-veredito-revisor, testa-preparar-worktree, testa-run-vigia-claude, testa-teto-skills, testa-gate-turno-prometido) + conferir-versao",
+    "saida": "tarefas 1,2,3,5,6 vermelho; 4,7,8 n/a; baterias 79/35/22/20/20/32 ok 0 falha; versao 1.35.0 ok; tool real mcp__gmail-leitura__search_emails visivel com --disallowedTools mcp__gmail",
+    "em": "2026-10-01"
   },
   "fechar": {
     "status": "pendente"
