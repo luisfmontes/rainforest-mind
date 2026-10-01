@@ -119,6 +119,10 @@ function raizComEstadoDoSlug(repoRoot, slug) {
   let sobra = candidatos
     .filter((p) => !ehWorktreeDeAgente(p));
 
+  // Unico candidato e worktree de agente: perder o veredito em silencio e pior
+  // que grava-lo na unica copia que existe.
+  if (sobra.length === 0 && candidatos.length === 1) sobra = candidatos;
+
   if (sobra.length > 1) {
     sobra = sobra.filter((p) => {
       try {
