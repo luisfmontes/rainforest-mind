@@ -145,12 +145,10 @@ regra documentada do repo obrigou a criá-lo?** Se sim, isenção; se a resposta
 Classes que o `conferir-fluxo.cjs creep` reconhece (`globs_isentos`):
 
 - `docs/rainforest/design/<slug>.md`, `docs/rainforest/planos/<slug>.md`,
-  `docs/rainforest/estado/<slug>.json`, `docs/rainforest/portoes/*<slug>.md` —
-  o próprio rastro que o fluxo escreve para ESTE trabalho.
-- `docs/rainforest/varredura/<slug>.txt` — o brainstorm obriga criar varredura;
-  o `marcar --estagio design` a exige. Varredura de outro slug continua creep (Issue #368).
-- `relatorios/` — registro escrito depois que o fluxo já fechou; não pode ter
-  tarefa que o cubra, porque nasce depois do plano.
+  `docs/rainforest/estado/<slug>.json`, `docs/rainforest/portoes/*<slug>.md`,
+  `docs/rainforest/varredura/<slug>.txt` (#368) — o rastro que o fluxo
+  escreve para ESTE trabalho; de outro slug é creep.
+- `relatorios/` — registro escrito depois que o fluxo fechou, sem tarefa possível.
 - `docs/rainforest/reguas/` — a skill `regua` exige commitar a régua antes da
   1ª rodada.
 - `skills/<s>/references/`, **só quando `skills/<s>/SKILL.md` está em
@@ -159,10 +157,10 @@ Classes que o `conferir-fluxo.cjs creep` reconhece (`globs_isentos`):
   mesma skill continua creep normalmente: a isenção é condicional ao
   `SKILL.md` estar no escopo, nunca um glob largo por nome de skill.
 
-Foi a divergência real da Issue #279: dois revisores, o mesmo diff, veredito
+Foi a divergência da Issue #279: dois revisores, o mesmo diff, veredito
 oposto sobre `docs/rainforest/reguas/2026-09-14-conferidor-de-cli.md` e
 `skills/executar/references/runtime-do-agente.md` — um leu por olho, o outro
-pelo `creep` sem estas duas classes. Achar uma classe nova de isenção fora
+pelo `creep` sem as duas classes. Achar uma classe nova de isenção fora
 desta lista não é decisão de revisor: emenda a esta seção primeiro.
 
 ## Registre agentes em voo
