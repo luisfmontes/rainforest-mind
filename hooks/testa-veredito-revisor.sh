@@ -755,6 +755,41 @@ fi
 git -C "$R" worktree remove --force "$AGY" 2>/dev/null || true
 
 echo
+echo "== 26. (#363-r3) dois candidatos agent-*, so o do fluxo armado =="
+# Estado so em dois worktrees de agente; o principal nao tem o arquivo. Nenhum
+# candidato fora de agente: o filtro de janela armada escolhe agent-fluxo.
+AGF="$R/.claude/worktrees/agent-fluxo"
+AGR="$R/.claude/worktrees/agent-rev"
+git -C "$R" worktree add -q --detach "$AGF" 2>/dev/null || true
+git -C "$R" worktree add -q --detach "$AGR" 2>/dev/null || true
+AGF_ESTADO="$AGF/docs/rainforest/estado/$SLUG.json"
+AGR_ESTADO="$AGR/docs/rainforest/estado/$SLUG.json"
+rm -f "$SLUG_JSON"
+reset_estado "$AGF_ESTADO"
+reset_estado "$AGR_ESTADO"
+# copia do revisor: sem a janela armada (sem a chave vereditos)
+node -e '
+const fs = require("fs");
+const e = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+e.revisar = { status: "pendente" };
+fs.writeFileSync(process.argv[1], JSON.stringify(e, null, 2) + "\n");
+' "$AGR_ESTADO"
+cp "$AGR_ESTADO" "$RAIZ/agr-antes.json"
+T26=$(transcrito_com_texto "Diff OK.
+VEREDITO: ok" WT26)
+P=$(pay "$AGR" "rainforest-mind:revisor" "WT26" "Diff OK.
+VEREDITO: ok" '{"agent_transcript_path":"'"$T26"'"}')
+SAIDA=$(printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" 2>&1); GOT=$?
+V=$(vereditos "$AGF_ESTADO")
+if [ "$GOT" = 0 ] && [ ! -e "$SLUG_JSON" ] && printf '%s' "$V" | grep -q '"agente_id":"WT26"' && printf '%s' "$V" | grep -q '"veredito":"ok"' && cmp -s "$AGR_ESTADO" "$RAIZ/agr-antes.json"; then
+  ok=$((ok+1)); echo "  ok    (#363-r3) dois candidatos agent-*: grava no armado (agent-fluxo) e agent-rev fica byte a byte igual (exit $GOT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#363-r3) dois candidatos agent-*: exit=$GOT, V_fluxo=$V, saida=$SAIDA"
+fi
+git -C "$R" worktree remove --force "$AGF" 2>/dev/null || true
+git -C "$R" worktree remove --force "$AGR" 2>/dev/null || true
+
+echo
 echo "-----------------------------------------"
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
