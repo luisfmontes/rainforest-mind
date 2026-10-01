@@ -34,9 +34,10 @@ W="$(cygpath -m "$S" 2>/dev/null || printf '%s' "$S")"
 # O alvo faz `require('../hooks/lib/raiz.cjs')` desde a #110 — a caixa precisa
 # da dependencia junto, senao o node morre em "Cannot find module" e as
 # asserçoes seguintes falham por JSON vazio, escondendo a causa real.
-mkdir -p "$S/vigias" "$S/hooks/lib"
+mkdir -p "$S/vigias" "$S/hooks/lib" "$S/scripts/lib"
 cp "$RAIZ/$ALVO_REL" "$S/vigias/dados-batedor-repos.js"
 cp "$RAIZ/hooks/lib/raiz.cjs" "$S/hooks/lib/raiz.cjs"
+cp "$RAIZ/scripts/lib/impressao-falha.cjs" "$S/scripts/lib/impressao-falha.cjs"
 export RFM_ROOT="$W"
 
 fila() { # escreve a fila da caixa a partir do stdin (heredoc de quem chama)
