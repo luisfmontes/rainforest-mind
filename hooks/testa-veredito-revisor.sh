@@ -790,6 +790,34 @@ git -C "$R" worktree remove --force "$AGF" 2>/dev/null || true
 git -C "$R" worktree remove --force "$AGR" 2>/dev/null || true
 
 echo
+echo "== 27. (#369) empate de dois worktrees armados: vence o do revisor =="
+# Dois worktrees linkados FORA de agent-*, os dois com a janela armada; o
+# principal nao tem o arquivo. O revisor roda com cwd em fluxo: ele vence.
+FLZ="$RAIZ/fluxo"
+CPZ="$RAIZ/copia"
+git -C "$R" worktree add -q --detach "$FLZ" 2>/dev/null || true
+git -C "$R" worktree add -q --detach "$CPZ" 2>/dev/null || true
+FLZ_ESTADO="$FLZ/docs/rainforest/estado/$SLUG.json"
+CPZ_ESTADO="$CPZ/docs/rainforest/estado/$SLUG.json"
+rm -f "$SLUG_JSON"
+reset_estado "$FLZ_ESTADO"
+reset_estado "$CPZ_ESTADO"
+cp "$CPZ_ESTADO" "$RAIZ/cpz-antes.json"
+T27=$(transcrito_com_texto "Diff OK.
+VEREDITO: ok" WT27)
+P=$(pay "$FLZ" "rainforest-mind:revisor" "WT27" "Diff OK.
+VEREDITO: ok" '{"agent_transcript_path":"'"$T27"'"}')
+SAIDA=$(printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" 2>&1); GOT=$?
+V=$(vereditos "$FLZ_ESTADO")
+if [ "$GOT" = 0 ] && [ ! -e "$SLUG_JSON" ] && printf '%s' "$V" | grep -q '"agente_id":"WT27"' && printf '%s' "$V" | grep -q '"veredito":"ok"' && cmp -s "$CPZ_ESTADO" "$RAIZ/cpz-antes.json"; then
+  ok=$((ok+1)); echo "  ok    (#369) empate de dois worktrees armados: vence o do revisor"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#369) empate de dois worktrees armados: exit=$GOT, V_fluxo=$V, saida=$SAIDA"
+fi
+git -C "$R" worktree remove --force "$FLZ" 2>/dev/null || true
+git -C "$R" worktree remove --force "$CPZ" 2>/dev/null || true
+
+echo
 echo "-----------------------------------------"
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
