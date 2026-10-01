@@ -154,14 +154,15 @@ function main() {
     // Normaliza o texto: remove blocos de código, código inline, aspas pareadas (inclusive multi-linha), citação em bloco `>` e linhas de lista
     function normalizarTexto(texto) {
       // Remove blocos de código (```...```)
-      let normalizado = texto.replace(/```[\s\S]*?```/g, '');
+      let normalizado = texto.replace(/\r\n?/g, '\n');
+      normalizado = normalizado.replace(/```[\s\S]*?```/g, '');
       // Remove código inline (`...`)
       // Crase seguida de espaço não abre; atravessa quebra simples, nunca linha em branco.
       normalizado = normalizado.replace(/`(?=[^\s`])[^`\n]*`/g, '');
       // Remove trechos entre aspas duplas ("..."), pareadas quando abrem e fecham de verdade
       // Abre após: início, espaço ou ( [ { :
       // Segue: não-espaço, traverse quebra simples, fecha com aspas
-      normalizado = normalizado.replace(/(^|[\s(\[{:])"(?=\S)(?:[^"\n]|\n(?![ \t]*\n))*?"/g, '$1');
+      normalizado = normalizado.replace(/(^|[^\p{L}\p{N}])"(?=\S)[^"\n]*(?:\n[^"\n]*)?(?<=\S)"(?![\p{L}\p{N}])/gu, '$1');
       // Remove linhas de lista (^\s*([-*]|\d+\.)\s)
       normalizado = normalizado.replace(/^\s*[-*]\s+.*$/gm, '');
       normalizado = normalizado.replace(/^\s*\d+\.\s+.*$/gm, '');

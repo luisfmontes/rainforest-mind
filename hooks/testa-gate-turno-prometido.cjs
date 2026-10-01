@@ -325,6 +325,26 @@ teste('#364-2b controle promessa fora da citacao: exit 2', () => {
   assert(r.stderr.includes('Razão:'), 'stderr deve incluir "Razão:"');
 });
 
+// Teste (#364-r2): citação em negrito/itálico/travessão/ponto e vírgula/barra
+teste('#364-r2 citacao em negrito: exit 0', () => {
+  const r = rodaGate('364-r2-citacao-em-negrito.jsonl');
+  assert(r.status === 0, `esperado 0, obteve ${r.status}`);
+});
+
+// Teste (#364-r2): aspa solta atravessando duas quebras
+teste('#364-r2 aspa solta em tres linhas: exit 2', () => {
+  const r = rodaGate('364-r2-aspa-solta-tres-linhas.jsonl');
+  assert(r.status === 2, `esperado 2, obteve ${r.status}`);
+  assert(r.stderr.includes('Razão:'), 'stderr deve incluir "Razão:"');
+});
+
+// Teste (#364-r2): aspa solta com CRLF e linhas em branco
+teste('#364-r2 aspa solta crlf: exit 2', () => {
+  const r = rodaGate('364-r2-aspa-solta-crlf.jsonl');
+  assert(r.status === 2, `esperado 2, obteve ${r.status}`);
+  assert(r.stderr.includes('Razão:'), 'stderr deve incluir "Razão:"');
+});
+
 // Teste (12): fixtures no formato real
 teste('fixtures no formato real (chaves de cada linha cobrem o envelope de transcrito-sessao.jsonl)', () => {
   // Lê a fixture real para obter as chaves do envelope
