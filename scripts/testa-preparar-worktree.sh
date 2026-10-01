@@ -363,6 +363,19 @@ else
   teste_falha "(#364) --exige file.txt deveria sair 0, retornou exit=$EXIT, output=$OUTPUT"
 fi
 
+# -- Teste 15: (#364-r3) --exige ../file.txt rodando de subpasta passa -------
+mkdir -p "$WORKTREE/subpasta"
+cd "$WORKTREE/subpasta" || { teste_falha "não conseguiu cd para subpasta"; exit 1; }
+OUTPUT=$(node "$PREPARAR_SCRIPT" --hash "$HASH_C" --exige "../file.txt" 2>&1)
+EXIT=$?
+cd "$WORKTREE" || exit 1
+
+if [ $EXIT -eq 0 ]; then
+  teste_ok "(#364-r3) --exige ../file.txt rodando de subpasta passa"
+else
+  teste_falha "(#364-r3) --exige ../file.txt de subpasta deveria sair 0, retornou exit=$EXIT, output=$OUTPUT"
+fi
+
 # -- Resultado final --------------------------------------------------------
 echo ""
 if [ $FALHA -eq 0 ]; then
