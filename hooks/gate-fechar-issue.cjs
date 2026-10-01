@@ -624,10 +624,12 @@ function verificarIssuesCitadas(corpo) {
       bloqueia(
         `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
         `Razão: Issue #${issue} não tem comentário com a evidência de pronto.\n\n` +
-        `O critério de pronto deve ter sido rodado e colado em comentário.\n` +
-        `Use:\n` +
-        `  node scripts/fechar-issue.cjs ${issue} --comando "<seu-comando>" --saida "<texto colado>" ou --saida-arquivo <caminho dentro do repo>\n\n` +
-        `Depois crie o PR com o corpo citando closes #${issue}.\n`
+        `O gate procura, nos comentários da Issue, a linha ${MARCADOR} — comentário sem ela não conta.\n\n` +
+        `Issue que o merge deste PR vai fechar (o caso comum): comente a evidência COM o marcador, sem fechar,\n` +
+        `e rode o gh pr em comando separado — o gate lê o comando inteiro antes de qualquer parte rodar:\n` +
+        `  gh issue comment ${issue} --body-file <arquivo cuja 1ª linha é ${MARCADOR}, seguida de comando e saída>\n\n` +
+        `Issue que já deve fechar agora, antes do PR:\n` +
+        `  node scripts/fechar-issue.cjs ${issue} --comando "<seu-comando>" --saida "<texto colado>" ou --saida-arquivo <caminho dentro do repo>\n`
       );
     }
   }
