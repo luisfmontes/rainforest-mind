@@ -111,10 +111,23 @@ if (!headAtual) {
 
 // Cada --exige tem de existir no worktree. Roda em TODA saida de sucesso,
 // inclusive a de "HEAD ja contem" (revisao 2: ali o --exige era ignorado).
+// Forma canonica do caminho: o toplevel do git vem com o nome longo da pasta e o
+// argumento pode vir em 8.3 (RUNNER~1, o TEMP do runner do CI) — sem isto o
+// absoluto dentro do worktree era recusado como "fora". Inexistente: canoniza o pai.
+function canonico(p) {
+  try {
+    return fs.realpathSync.native(p);
+  } catch {
+    const pai = path.dirname(p);
+    return pai === p ? p : path.join(canonico(pai), path.basename(p));
+  }
+}
+
 function conferirExige() {
+  const raiz = canonico(toplevel);
   for (const arquivo of ARGS.exige) {
-    const alvo = path.resolve(cwd, arquivo);
-    const rel = path.relative(toplevel, alvo);
+    const alvo = canonico(path.resolve(cwd, arquivo));
+    const rel = path.relative(raiz, alvo);
     if (rel === "") {
       falha(2, "--exige aponta para a raiz do worktree: '" + arquivo + "'");
     }

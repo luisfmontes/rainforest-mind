@@ -416,6 +416,24 @@ else
   teste_falha "(#369) --exige absoluto deveria retornar exit 0, retornou $EXIT, output=$OUTPUT"
 fi
 
+# -- Teste 19: (#369-r2) --exige absoluto em forma curta 8.3 passa -------------
+# No runner do CI o TEMP vem em 8.3 (RUNNER~1) e o toplevel do git vem longo; o
+# caso 18 passava aqui e caía lá. Aqui a forma curta sai do próprio diretório.
+cd "$WORKTREE" || { teste_falha "não conseguiu cd para worktree"; exit 1; }
+WT_WIN=$(cygpath -w "$WORKTREE" 2>/dev/null)
+WT_CURTO=$(powershell -NoProfile -Command "(New-Object -ComObject Scripting.FileSystemObject).GetFolder('$WT_WIN').ShortPath" 2>/dev/null | tr -d '\r')
+if [ -z "$WT_CURTO" ] || [ "$WT_CURTO" = "$WT_WIN" ]; then
+  echo "  pulado (#369-r2) sem forma 8.3 para o worktree neste volume"
+else
+  OUTPUT=$(node "$PREPARAR_SCRIPT" --hash "$HASH_C" --exige "$WT_CURTO\\file.txt" 2>&1)
+  EXIT=$?
+  if [ $EXIT -eq 0 ]; then
+    teste_ok "(#369-r2) --exige absoluto em forma curta 8.3 passa"
+  else
+    teste_falha "(#369-r2) --exige em forma curta deveria sair 0, saiu $EXIT, output=$OUTPUT"
+  fi
+fi
+
 # -- Resultado final --------------------------------------------------------
 echo ""
 if [ $FALHA -eq 0 ]; then
