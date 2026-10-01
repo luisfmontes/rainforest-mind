@@ -187,7 +187,11 @@
     "saida": "veredito: ok — 0 bloqueante, 0 importante; 4 menores viram Issue no fechar (aspa dupla na mesma linha, citacao multilinha/blockquote, --exige com .., varrer --slug sem validacao)"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scratchpad/verificar.sh (pronto-quando das tarefas 1-13 e 15) + node hooks/gate-turno-prometido.cjs sobre a transcricao real da sessao",
+    "saida": "T1 14 ok; T2 73 ok nos dois motores, sem --base exit 2, grep fixado 0/0; T3 grep 0 nos 7, prosa e canonico ok, (j)(k)=1, teto 20 OK, orcamento 15101 B; T4/T5 24 ok com as 3 linhas do marcar; fluxo 77, estado 297, portoes 22, recibo 12, ledger 26; T6 31; T7 design antigo sai 2; T8/T9 23 ok; perfil 4; T10 24; T11 8; T12 publicacao 0, grep proibidos 1, 50 linhas, ancora 1, U1 no commit; T13 24 ok em 58 s; T15 exits 2/2/2/1 batem com a doc, mapa 6, categoria 14; creep 62 cobertos. M3: hook na transcricao real (5,4 MB) exit 0; prefixo real + promessa exit 2; disparo ao vivo no Stop do harness NAO MEDIDO (hook nao instalado na versao em uso). T14 e colheita do fechar.",
+    "sensor_externo": "node hooks/gate-turno-prometido.cjs",
+    "em": "2026-09-30"
   },
   "fechar": {
     "status": "pendente"
