@@ -376,6 +376,46 @@ else
   teste_falha "(#364-r3) --exige ../file.txt de subpasta deveria sair 0, retornou exit=$EXIT, output=$OUTPUT"
 fi
 
+# -- Teste 16: (#369) --exige ..foo dentro do worktree passa ----
+cd "$WORKTREE" || { teste_falha "não conseguiu cd para worktree"; exit 1; }
+# Criar arquivo com nome ..foo dentro do worktree (literal, not a relative path)
+echo "foo content" > "$WORKTREE/..foo"
+OUTPUT=$(node "$PREPARAR_SCRIPT" --hash "$HASH_C" --exige "..foo" 2>&1)
+EXIT=$?
+
+if [ $EXIT -eq 0 ]; then
+  teste_ok "(#369) --exige ..foo dentro do worktree passa"
+else
+  teste_falha "(#369) --exige ..foo deveria retornar exit 0, retornou $EXIT, output=$OUTPUT"
+fi
+
+# -- Teste 17: (#369) --exige . recusa citando a raiz ----
+cd "$WORKTREE" || { teste_falha "não conseguiu cd para worktree"; exit 1; }
+OUTPUT=$(node "$PREPARAR_SCRIPT" --hash "$HASH_C" --exige "." 2>&1)
+EXIT=$?
+
+if [ $EXIT -eq 2 ]; then
+  if echo "$OUTPUT" | grep -q "raiz"; then
+    teste_ok "(#369) --exige . recusa citando a raiz"
+  else
+    teste_falha "(#369) --exige . deveria mencionar 'raiz' na mensagem, output=$OUTPUT"
+  fi
+else
+  teste_falha "(#369) --exige . deveria retornar exit 2, retornou $EXIT"
+fi
+
+# -- Teste 18: (#369) --exige absoluto dentro do worktree passa ----
+cd "$WORKTREE" || { teste_falha "não conseguiu cd para worktree"; exit 1; }
+ABS_FILE="$WORKTREE/file.txt"
+OUTPUT=$(node "$PREPARAR_SCRIPT" --hash "$HASH_C" --exige "$ABS_FILE" 2>&1)
+EXIT=$?
+
+if [ $EXIT -eq 0 ]; then
+  teste_ok "(#369) --exige absoluto dentro do worktree passa"
+else
+  teste_falha "(#369) --exige absoluto deveria retornar exit 0, retornou $EXIT, output=$OUTPUT"
+fi
+
 # -- Resultado final --------------------------------------------------------
 echo ""
 if [ $FALHA -eq 0 ]; then
