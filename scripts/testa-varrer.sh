@@ -153,11 +153,11 @@ esperado "  (#364) --slug 2026-10-01-ok termo → exit 0" 0 \
   bash -c "RFM_ROOT='$RAINFOREST' RFM_ESTADO_ROOT='$REPO' RFM_VARRER_GH='$GH_MOCK' node '$SCRIPT' --slug 2026-10-01-ok termo >/dev/null 2>&1"
 
 # Com o dublê de gh, um --slug inválido que passasse da validação chegaria a
-# gravar: ../../x vira docs/x.txt e a/b vira varredura/a/b.txt. Sem o dublê o
-# varrer sai 69 no gh antes de gravar, e a asserção não mediria nada.
+# gravar: ../../x vira docs/x.txt. Sem o dublê o varrer sai 69 no gh antes de
+# gravar, e a asserção não mediria nada.
+# O varrer não cria varredura/a/, então a/b.txt nunca existiria e essa metade não media nada; a/b segue coberto pelo caso de exit 2.
 bash -c "RFM_ROOT='$RAINFOREST' RFM_ESTADO_ROOT='$REPO' RFM_VARRER_GH='$GH_MOCK' node '$SCRIPT' --slug ../../x termo >/dev/null 2>&1"
-bash -c "RFM_ROOT='$RAINFOREST' RFM_ESTADO_ROOT='$REPO' RFM_VARRER_GH='$GH_MOCK' node '$SCRIPT' --slug a/b termo >/dev/null 2>&1"
-if [ ! -e "$REPO/docs/x.txt" ] && [ ! -e "$REPO/docs/rainforest/varredura/a/b.txt" ]; then
+if [ ! -e "$REPO/docs/x.txt" ]; then
   ok=$((ok+1)); echo "  ok    (#364) nenhum x.txt gravado fora de varredura"
 else
   falhou=$((falhou+1)); echo "  FALHA (#364) nenhum x.txt gravado fora de varredura"
