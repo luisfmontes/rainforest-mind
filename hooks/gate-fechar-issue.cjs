@@ -627,7 +627,7 @@ function verificarIssuesCitadas(corpo) {
         `O gate procura, nos comentários da Issue, a linha ${MARCADOR} — comentário sem ela não conta.\n\n` +
         `Issue que o merge deste PR vai fechar (o caso comum): comente a evidência COM o marcador, sem fechar,\n` +
         `e rode o gh pr em comando separado — o gate lê o comando inteiro antes de qualquer parte rodar:\n` +
-        `  gh issue comment ${issue} --body-file <arquivo cuja 1ª linha é ${MARCADOR}, seguida de comando e saída>\n\n` +
+        `  'gh issue comment ${issue} --body-file <arquivo>' — 1ª linha do arquivo: ${MARCADOR}; depois, comando e saída\n\n` +
         `Issue que já deve fechar agora, antes do PR:\n` +
         `  node scripts/fechar-issue.cjs ${issue} --comando "<seu-comando>" --saida "<texto colado>" ou --saida-arquivo <caminho dentro do repo>\n`
       );
