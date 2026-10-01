@@ -578,6 +578,8 @@ function cmdCreep() {
     // aparece em `arquivos:` de tarefa nenhuma — incondicional, igual a
     // `relatorios/` acima (Issue #279).
     'docs/rainforest/reguas/',
+    // Brainstorm obriga a criar varredura; o `marcar --estagio design` a exige (Issue #368).
+    'docs/rainforest/varredura/' + slug + '.txt',
   ];
 
   // Isenção condicional: quando uma tarefa declara `skills/<s>/SKILL.md` em

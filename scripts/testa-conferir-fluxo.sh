@@ -322,6 +322,38 @@ fi
 rm -rf "$G"
 
 echo
+echo "== 6.1 (#368) varredura do proprio slug e outro slug =="
+# O brainstorm obriga criar varredura; o `marcar --estagio design` a exige.
+# Varredura do proprio slug e isenta; de outro slug, continua creep.
+# Similar a secao 6: repositorio git, dois commits, dois intervalos.
+V="$(novo_sandbox)"; VW="$(cygpath -m "$V" 2>/dev/null || printf '%s' "$V")"
+mkdir -p "$V/docs/rainforest/design" "$V/docs/rainforest/planos" "$V/docs/rainforest/varredura"
+cp "$REAL_D" "$V/docs/rainforest/design/t.md"
+cp "$REAL_P" "$V/docs/rainforest/planos/t.md"
+git -C "$V" init -q . >/dev/null 2>&1
+git -C "$V" config user.email t@t; git -C "$V" config user.name t
+git -C "$V" add docs >/dev/null 2>&1; git -C "$V" commit -qm base >/dev/null 2>&1
+BASE_V="$(git -C "$V" rev-parse HEAD 2>/dev/null)"
+# commit A: varredura DESTE slug (isenta)
+echo "Varredura de fixture — testa-conferir-fluxo.sh" > "$V/docs/rainforest/varredura/t.txt"
+git -C "$V" add docs >/dev/null 2>&1; git -C "$V" commit -qm varredura-proprio >/dev/null 2>&1
+VAR_PROPRIO="$(git -C "$V" rev-parse HEAD 2>/dev/null)"
+# commit B: varredura de OUTRO slug (nao isenta)
+echo "Varredura de outro slug" > "$V/docs/rainforest/varredura/outro.txt"
+git -C "$V" add docs >/dev/null 2>&1; git -C "$V" commit -qm varredura-outro >/dev/null 2>&1
+VAR_OUTRO="$(git -C "$V" rev-parse HEAD 2>/dev/null)"
+
+if [ -n "$BASE_V" ] && [ -n "$VAR_OUTRO" ] && [ "$BASE_V" != "$VAR_OUTRO" ]; then
+  exige 0 "(#368) varredura do proprio slug nao e creep" \
+    env RFM_ESTADO_ROOT="$VW" node "$CHECADOR" creep --slug t --base "$BASE_V" --head "$VAR_PROPRIO"
+  exige 2 "(#368) varredura de outro slug continua creep" \
+    env RFM_ESTADO_ROOT="$VW" node "$CHECADOR" creep --slug t --base "$VAR_PROPRIO" --head "$VAR_OUTRO"
+else
+  echo "  FALHA nao consegui montar o repositorio de fixture"; falhou=$((falhou+1))
+fi
+rm -rf "$V"
+
+echo
 echo "== 7. catraca de mutacao: toda tarefa declara o alvo (D7, D9) =="
 # Fixture proprio, e proposital: o plano de 2026-08-21 nasceu ja no formato, com
 # `mutacao:` nas 6 tarefas. Reaproveitar o fixture antigo — que so tem o bloco

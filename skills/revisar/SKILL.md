@@ -147,6 +147,8 @@ Classes que o `conferir-fluxo.cjs creep` reconhece (`globs_isentos`):
 - `docs/rainforest/design/<slug>.md`, `docs/rainforest/planos/<slug>.md`,
   `docs/rainforest/estado/<slug>.json`, `docs/rainforest/portoes/*<slug>.md` —
   o próprio rastro que o fluxo escreve para ESTE trabalho.
+- `docs/rainforest/varredura/<slug>.txt` — o brainstorm obriga criar varredura;
+  o `marcar --estagio design` a exige. Varredura de outro slug continua creep (Issue #368).
 - `relatorios/` — registro escrito depois que o fluxo já fechou; não pode ter
   tarefa que o cubra, porque nasce depois do plano.
 - `docs/rainforest/reguas/` — a skill `regua` exige commitar a régua antes da
