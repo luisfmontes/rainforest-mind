@@ -955,7 +955,7 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
       // Só quando o segmento é `bash|sh $VAR` (#337; revisão: aparecia também
       // em `bash -c "$x"` e `-EncodedCommand`, onde não ajuda).
       (/(^|[\s;&|(])(bash|sh)\s+\$/.test(segmento) ?
-      `Rodando um arquivo cujo caminho está numa variável? Ponha aspas: bash "$t" passa, bash $t não.\n\n` : ``) +
+      `Rodando um arquivo cujo caminho está numa variável? Ponha aspas: bash "$t" passa, bash $t não — sem aspas a variável se divide em palavras e pode injetar -c (ex.: CMD='-c gh\${IFS}issue\${IFS}close\${IFS}12'; bash $CMD fecha a Issue).\n\n` : ``) +
       `Rode o comando 'gh' diretamente, sem encapsular, ou expanda a variável antes de chamar.\n`
     );
   }
