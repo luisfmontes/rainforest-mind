@@ -10,6 +10,17 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.35.1 — 2026-10-01
+
+Os dois menores da revisão da rodada 14 (#373).
+
+- **Slug com `*` ou `?` é recusado.** O `estado.cjs` recusa curinga de glob no slug, como já recusava
+  `/`, `\` e `..`: o `conferir-fluxo creep` monta a isenção com o slug (`portoes/*<slug>.md`,
+  `varredura/<slug>.txt`), e um slug `x*` alargava a isenção a arquivos de outro fluxo.
+- **A premissa do desempate do `veredito-revisor` está escrita.** A docstring de `raizComEstadoDoSlug`
+  dizia "2+ → ambíguo", o que o desempate da 1.35.0 já não fazia. Agora diz que o worktree do revisor
+  vence e por quê, inclusive o caso aceito de revisor isolado fora de `agent-*`.
+
 ## 1.35.0 — 2026-10-01
 
 Rodada 14: a triagem de inbox do `sentinela-foco` (#367), o creep da varredura (#368) e as três

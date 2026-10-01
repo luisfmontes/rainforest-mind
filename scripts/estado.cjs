@@ -234,7 +234,10 @@ function caminhoComTil(caminho) {
 
 /**
  * Valida slug para impedir path traversal e escapes para fora de DIR_ESTADO.
- * RECUSA explicitamente (lança erro) quando o slug é vazio ou contém `/`, `\` ou `..`.
+ * RECUSA explicitamente (lança erro) quando o slug é vazio ou contém `/`, `\`, `..`,
+ * `*` ou `?`. Os dois curingas porque o `conferir-fluxo creep` monta glob de isenção
+ * com o slug (`portoes/*<slug>.md`, `varredura/<slug>.txt`): slug `x*` alargaria a
+ * isenção a arquivos de outro fluxo (#373).
  * Recusa é erro de quem chamou, e corrigir por baixo esconde o defeito.
  */
 function validarSlug(slug) {
@@ -243,6 +246,9 @@ function validarSlug(slug) {
   }
   if (slug.includes('/') || slug.includes('\\') || slug.includes('..')) {
     throw new Error(`slug inválido: contém caracteres proibidos (/, \\, ou ..) — ${slug}`);
+  }
+  if (slug.includes('*') || slug.includes('?')) {
+    throw new Error(`slug inválido: contém curinga de glob (* ou ?) — ${slug}`);
   }
 }
 

@@ -170,6 +170,13 @@ esperado "slug com path traversal ../../x" 1 $E iniciar --slug '../../x'
 esperado "slug com barra /: x/y"          1 $E iniciar --slug 'x/y'
 esperado "slug com backslash: x\\y"       1 $E iniciar --slug 'x\y'
 esperado "slug vazio"                     1 $E iniciar --slug ''
+# (#373) Curinga no slug vira glob na isencao do creep. Confere a MENSAGEM, nao
+# so o exit: no Windows `x*.json` ja falharia na escrita, com exit 1 tambem.
+for s in 'x*' 'x?'; do
+  m=$($E iniciar --slug "$s" 2>&1); c=$?
+  if [ "$c" = 1 ] && printf '%s' "$m" | grep -q 'curinga de glob'; then ok=$((ok+1)); echo "  ok   (#373) slug com curinga $s recusado (exit $c)"
+  else falhou=$((falhou+1)); echo "  FALHA (#373) slug com curinga $s: exit=$c saida=$m"; fi
+done
 
 echo
 echo "== 5. o estado sobrevive e e retomavel =="
