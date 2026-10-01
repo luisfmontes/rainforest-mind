@@ -294,6 +294,9 @@
     "em": "2026-10-01"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "pr",
+    "pr": 370,
+    "em": "2026-10-01"
   }
 }
