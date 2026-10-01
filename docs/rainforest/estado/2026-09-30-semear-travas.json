@@ -164,15 +164,27 @@
     "saida": "ok: sem creep — 59 arquivo(s) coberto(s); rodada 2 (revisao reprovada): B1,B2/I2/M2,B3/I3,I1,I4,I5/I6,M1 integrados; suite 156/156 baterias exit 0; catracas novas vermelhas: conferir-prova (arquivoNasceNaTarefa), conferir-fluxo design (citacaoVarredura), gate-staging-total via corpus, extrair-corpus (bloqueado)"
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "dc106759453aa0de653f1d41164cd7d79f85d8f3",
+      "head": "dff9e98c835dcbe73c14f845cd32de9150b34638",
       "caminhos_sujos": []
     },
-    "vereditos": [],
-    "achados": 12,
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "aa9ff406ed18d48ef",
+        "veredito": "ok",
+        "em": "2026-09-30",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/183a33d5-b4f7-44e8-ad9e-1a1c581ac82c/subagents/agent-aa9ff406ed18d48ef.jsonl"
+      }
+    ],
+    "achados": 4,
     "em": "2026-09-30",
-    "tentativas": 1
+    "bloqueantes": 0,
+    "base": "038e9905",
+    "head": "dff9e98c",
+    "comando": "revisor rodada 3 sobre 038e9905..dff9e98c (Slug no briefing)",
+    "saida": "veredito: ok — 0 bloqueante, 0 importante; 4 menores viram Issue no fechar (aspa dupla na mesma linha, citacao multilinha/blockquote, --exige com .., varrer --slug sem validacao)"
   },
   "verificar": {
     "status": "pendente"
