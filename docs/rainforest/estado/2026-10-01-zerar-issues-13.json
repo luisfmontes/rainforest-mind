@@ -1,0 +1,28 @@
+{
+  "slug": "2026-10-01-zerar-issues-13",
+  "titulo": "Rodada 13: #362 laco sem gh, #363 veredito no worktree do revisor, #364 menores do semear-travas",
+  "criado_em": "2026-10-01",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-01-zerar-issues-13.md",
+    "em": "2026-10-01"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
