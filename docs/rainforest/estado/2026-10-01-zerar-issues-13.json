@@ -28,8 +28,24 @@
     "status": "parcial",
     "catraca_mutacao": "2026-10-01",
     "tarefas_ok": 11,
-    "tarefas": 11,
-    "em_voo": [],
+    "tarefas": 15,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "12 (redespacho)",
+        "desde": "2026-10-01"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "13,14 (redespacho)",
+        "desde": "2026-10-01"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "15 (redespacho)",
+        "desde": "2026-10-01"
+      }
+    ],
     "carimbos": [
       {
         "tarefa": 1,
