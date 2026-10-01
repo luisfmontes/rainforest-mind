@@ -24,7 +24,99 @@
     "em": "2026-10-01"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-10-01",
+    "tarefas_ok": 8,
+    "tarefas": 8,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "eaaac3378cf4dcb3af6d35f377710b767ff1f917",
+        "iteracao": 1,
+        "sessao": "06244f96-323e-4467-83a9-b79ce0f5e98f",
+        "ts": "2026-10-01T13:30:42.946Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "eaaac3378cf4dcb3af6d35f377710b767ff1f917",
+        "iteracao": 1,
+        "sessao": "06244f96-323e-4467-83a9-b79ce0f5e98f",
+        "ts": "2026-10-01T13:30:42.946Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "eaaac3378cf4dcb3af6d35f377710b767ff1f917",
+        "iteracao": 1,
+        "sessao": "06244f96-323e-4467-83a9-b79ce0f5e98f",
+        "ts": "2026-10-01T13:30:42.946Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "eaaac3378cf4dcb3af6d35f377710b767ff1f917",
+        "iteracao": 1,
+        "sessao": "06244f96-323e-4467-83a9-b79ce0f5e98f",
+        "ts": "2026-10-01T13:30:42.946Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "eaaac3378cf4dcb3af6d35f377710b767ff1f917",
+        "iteracao": 1,
+        "sessao": "06244f96-323e-4467-83a9-b79ce0f5e98f",
+        "ts": "2026-10-01T13:30:42.946Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "eaaac3378cf4dcb3af6d35f377710b767ff1f917",
+        "iteracao": 1,
+        "sessao": "06244f96-323e-4467-83a9-b79ce0f5e98f",
+        "ts": "2026-10-01T13:30:42.946Z"
+      }
+    ],
+    "em": "2026-10-01",
+    "comando": "bash scripts/varrer-baterias.sh + conferir-mutacao por tarefa",
+    "saida": "mutacoes 1,2,3,5,6 vermelhas na integracao; varrer: so testa-teto-skills vermelha, corrigida (20 OK 0 FALHA)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-fluxo.sh (#368) varredura do proprio slug nao e creep"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-veredito-revisor.sh (#369) empate de dois worktrees armados"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-preparar-worktree.sh (#369) --exige ..foo dentro do worktree passa"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "remove codigo medido como neutro; a garantia e a bateria seguir verde (32/0) inclusive o caso CRLF"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-run-vigia-claude.sh (#367) MCP_TIMEOUT chega ao claude"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-run-vigia-claude.sh (#367) mcp__gmail negado tambem fora do -Teste"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "texto de prompt"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "versao e registro"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
