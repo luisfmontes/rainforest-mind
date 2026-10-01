@@ -2805,6 +2805,40 @@ ERR_337=$(
 )
 echo "$ERR_337" | grep -qF 'bash "$t" passa' && test_fail "(#337) bash -c \"\$x\" traz a orientação de bash \"\$t\" (não devia)" || test_ok "(#337) bash -c \"\$x\" sem a orientação de bash \"\$t\""
 
+# (#362) laco com bash $b sem aspas → exit 2 citando injetar -c
+echo
+echo '== (#362) laco com bash $b sem aspas → exit 2 citando injetar -c =='
+
+# Caso 362-1: for b in a.sh; do bash $b; done → exit 2 e stderr com "injetar -c"
+PAYLOAD_362=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" 'for b in a.sh; do bash $b; done')
+ERR_362=$(
+  export PATH="$SBP/bin:$PATH"
+  echo "$PAYLOAD_362" | node "$SRC/hooks/gate-fechar-issue.cjs" 2>&1 >/dev/null
+  echo "exit=$?"
+)
+echo "$ERR_362" | grep -q '^exit=2$' && test_ok "(#362) for b in a.sh; do bash \$b; done → exit 2" || test_fail "(#362) for b in a.sh; do bash \$b; done não saiu 2"
+echo "$ERR_362" | grep -qF 'injetar -c' && test_ok "(#362) stderr contém 'injetar -c'" || test_fail "(#362) stderr não contém 'injetar -c'"
+echo "$ERR_362" | grep -qF '${IFS}' && test_ok "(#362) stderr contém '\${IFS}'" || test_fail "(#362) stderr não contém '\${IFS}'"
+
+# Caso 362-2: for b in a.sh; do bash "$b"; done → exit 0
+PAYLOAD_362b=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" 'for b in a.sh; do bash "$b"; done')
+EXIT_362b=$(
+  export PATH="$SBP/bin:$PATH"
+  echo "$PAYLOAD_362b" | node "$SRC/hooks/gate-fechar-issue.cjs" >/dev/null 2>&1
+  echo $?
+)
+[ "$EXIT_362b" -eq "0" ] && test_ok "(#362) for b in a.sh; do bash \"\$b\"; done → exit 0" || test_fail "(#362) for b in a.sh; do bash \"\$b\"; done saiu $EXIT_362b (esperado 0)"
+
+# Caso 362-3: bash -c "$x" → exit 2 e stderr SEM "injetar -c"
+PAYLOAD_362c=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" 'bash -c "$x"')
+ERR_362c=$(
+  export PATH="$SBP/bin:$PATH"
+  echo "$PAYLOAD_362c" | node "$SRC/hooks/gate-fechar-issue.cjs" 2>&1 >/dev/null
+  echo "exit=$?"
+)
+echo "$ERR_362c" | grep -q '^exit=2$' && test_ok "(#362) bash -c \"\$x\" → exit 2" || test_fail "(#362) bash -c \"\$x\" não saiu 2"
+echo "$ERR_362c" | grep -qF 'injetar -c' && test_fail "(#362) bash -c \"\$x\" NÃO deve trazer 'injetar -c' (não devia)" || test_ok "(#362) bash -c \"\$x\" sem 'injetar -c'"
+
 # Caso (#350) --body-file com variável → exit 2 citando variavel nao resolvivel
 echo
 echo "== (#350) --body-file com variavel → exit 2 citando variavel nao resolvivel =="

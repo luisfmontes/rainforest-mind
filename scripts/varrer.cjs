@@ -82,6 +82,10 @@ if (!slug) {
   erroUso('falta --slug <s>');
 }
 
+if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(slug) || slug.includes('..')) {
+  erroUso("--slug invalido: '" + slug + "' (so letras, numeros, ponto, _ e -)");
+}
+
 const termos = process.argv.slice(process.argv.indexOf('--slug') + 2);
 if (termos.length === 0 || termos.some(t => t.startsWith('-'))) {
   erroUso('falta termo (um ou mais)');

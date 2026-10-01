@@ -675,6 +675,121 @@ git -C "$R" worktree remove "$WT1" 2>/dev/null || true
 git -C "$R" worktree remove "$WT2" 2>/dev/null || true
 
 echo
+echo "== 23. (#363) revisor isolado em .claude/worktrees/agent-x: grava no worktree do fluxo =="
+# Repo git real, worktrees reais. O revisor isolado (regra 11) tem cwd num
+# worktree de agente que nasceu da branch do fluxo e carrega copia ARMADA do
+# estado; o fluxo ativo vive noutro worktree, tambem armado. Ter o arquivo
+# (ou a janela armada) nao basta: o destino e o worktree que nao e de agente.
+rm -f "$SLUG_JSON"
+AGX="$R/.claude/worktrees/agent-x"
+FLX="$RAIZ/fluxo363"
+git -C "$R" worktree add -q --detach "$AGX" 2>/dev/null || true
+git -C "$R" worktree add -q --detach "$FLX" 2>/dev/null || true
+AGX_ESTADO="$AGX/docs/rainforest/estado/$SLUG.json"
+FLX_ESTADO="$FLX/docs/rainforest/estado/$SLUG.json"
+reset_estado "$AGX_ESTADO"
+reset_estado "$FLX_ESTADO"
+cp "$AGX_ESTADO" "$RAIZ/agx-antes.json"
+T23=$(transcrito_com_texto "Diff OK.
+VEREDITO: ok" WT23)
+P=$(pay "$AGX" "rainforest-mind:revisor" "WT23" "Diff OK.
+VEREDITO: ok" '{"agent_transcript_path":"'"$T23"'"}')
+SAIDA=$(printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" 2>&1); GOT=$?
+V=$(vereditos "$FLX_ESTADO")
+if [ "$GOT" = 0 ] && printf '%s' "$V" | grep -q '"agente_id":"WT23"' && printf '%s' "$V" | grep -q '"veredito":"ok"' && cmp -s "$AGX_ESTADO" "$RAIZ/agx-antes.json"; then
+  ok=$((ok+1)); echo "  ok    (#363) revisor em agent-x grava no worktree do fluxo e deixa o JSON do agent-x byte a byte igual (exit $GOT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#363) revisor em agent-x: exit=$GOT, V_fluxo=$V, V_agx=$(vereditos "$AGX_ESTADO"), saida=$SAIDA"
+fi
+git -C "$R" worktree remove --force "$AGX" 2>/dev/null || true
+
+echo
+echo "== 24. (#363) revisor nao isolado: cwd no worktree do fluxo, outro worktree com copia nao armada =="
+OLD="$RAIZ/antigo363"
+git -C "$R" worktree add -q --detach "$OLD" 2>/dev/null || true
+OLD_ESTADO="$OLD/docs/rainforest/estado/$SLUG.json"
+reset_estado "$FLX_ESTADO"
+reset_estado "$OLD_ESTADO"
+# copia antiga: janela de revisar nunca armada (sem a chave vereditos)
+node -e '
+const fs = require("fs");
+const e = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+e.revisar = { status: "pendente" };
+fs.writeFileSync(process.argv[1], JSON.stringify(e, null, 2) + "\n");
+' "$OLD_ESTADO"
+cp "$OLD_ESTADO" "$RAIZ/old-antes.json"
+T24=$(transcrito_com_texto "Diff OK.
+VEREDITO: ok" WT24)
+P=$(pay "$FLX" "rainforest-mind:revisor" "WT24" "Diff OK.
+VEREDITO: ok" '{"agent_transcript_path":"'"$T24"'"}')
+SAIDA=$(printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" 2>&1); GOT=$?
+V=$(vereditos "$FLX_ESTADO")
+if [ "$GOT" = 0 ] && printf '%s' "$V" | grep -q '"agente_id":"WT24"' && cmp -s "$OLD_ESTADO" "$RAIZ/old-antes.json"; then
+  ok=$((ok+1)); echo "  ok    (#363) revisor nao isolado grava no worktree do fluxo e a copia nao armada fica intacta (exit $GOT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#363) revisor nao isolado: exit=$GOT, V_fluxo=$V, saida=$SAIDA"
+fi
+git -C "$R" worktree remove --force "$FLX" 2>/dev/null || true
+git -C "$R" worktree remove --force "$OLD" 2>/dev/null || true
+
+echo
+echo "== 25. (#363-r2) unico candidato e worktree de agente: grava nele =="
+# Estado so em <repo>/.claude/worktrees/agent-x (linkado); o principal nao tem
+# o arquivo. Nao ha candidato fora de agente: perder o veredito seria pior.
+AGY="$R/.claude/worktrees/agent-x"
+git -C "$R" worktree add -q --detach "$AGY" 2>/dev/null || true
+AGY_ESTADO="$AGY/docs/rainforest/estado/$SLUG.json"
+rm -f "$SLUG_JSON"
+reset_estado "$AGY_ESTADO"
+T25=$(transcrito_com_texto "Diff OK.
+VEREDITO: ok" WT25)
+P=$(pay "$AGY" "rainforest-mind:revisor" "WT25" "Diff OK.
+VEREDITO: ok" '{"agent_transcript_path":"'"$T25"'"}')
+SAIDA=$(printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" 2>&1); GOT=$?
+V=$(vereditos "$AGY_ESTADO")
+if [ "$GOT" = 0 ] && [ ! -e "$SLUG_JSON" ] && printf '%s' "$V" | grep -q '"agente_id":"WT25"' && printf '%s' "$V" | grep -q '"veredito":"ok"'; then
+  ok=$((ok+1)); echo "  ok    (#363-r2) unico candidato agent-x grava nele (exit $GOT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#363-r2) unico candidato agent-x: exit=$GOT, V_agx=$V, saida=$SAIDA"
+fi
+git -C "$R" worktree remove --force "$AGY" 2>/dev/null || true
+
+echo
+echo "== 26. (#363-r3) dois candidatos agent-*, so o do fluxo armado =="
+# Estado so em dois worktrees de agente; o principal nao tem o arquivo. Nenhum
+# candidato fora de agente: o filtro de janela armada escolhe agent-fluxo.
+AGF="$R/.claude/worktrees/agent-fluxo"
+AGR="$R/.claude/worktrees/agent-rev"
+git -C "$R" worktree add -q --detach "$AGF" 2>/dev/null || true
+git -C "$R" worktree add -q --detach "$AGR" 2>/dev/null || true
+AGF_ESTADO="$AGF/docs/rainforest/estado/$SLUG.json"
+AGR_ESTADO="$AGR/docs/rainforest/estado/$SLUG.json"
+rm -f "$SLUG_JSON"
+reset_estado "$AGF_ESTADO"
+reset_estado "$AGR_ESTADO"
+# copia do revisor: sem a janela armada (sem a chave vereditos)
+node -e '
+const fs = require("fs");
+const e = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+e.revisar = { status: "pendente" };
+fs.writeFileSync(process.argv[1], JSON.stringify(e, null, 2) + "\n");
+' "$AGR_ESTADO"
+cp "$AGR_ESTADO" "$RAIZ/agr-antes.json"
+T26=$(transcrito_com_texto "Diff OK.
+VEREDITO: ok" WT26)
+P=$(pay "$AGR" "rainforest-mind:revisor" "WT26" "Diff OK.
+VEREDITO: ok" '{"agent_transcript_path":"'"$T26"'"}')
+SAIDA=$(printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" 2>&1); GOT=$?
+V=$(vereditos "$AGF_ESTADO")
+if [ "$GOT" = 0 ] && [ ! -e "$SLUG_JSON" ] && printf '%s' "$V" | grep -q '"agente_id":"WT26"' && printf '%s' "$V" | grep -q '"veredito":"ok"' && cmp -s "$AGR_ESTADO" "$RAIZ/agr-antes.json"; then
+  ok=$((ok+1)); echo "  ok    (#363-r3) dois candidatos agent-*: grava no armado (agent-fluxo) e agent-rev fica byte a byte igual (exit $GOT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#363-r3) dois candidatos agent-*: exit=$GOT, V_fluxo=$V, saida=$SAIDA"
+fi
+git -C "$R" worktree remove --force "$AGF" 2>/dev/null || true
+git -C "$R" worktree remove --force "$AGR" 2>/dev/null || true
+
+echo
 echo "-----------------------------------------"
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

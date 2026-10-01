@@ -1,0 +1,120 @@
+Data: 2026-10-01
+Termos: veredito-revisor, raizComEstadoDoSlug, bash $b, gate-turno-prometido, preparar-worktree, varrer.cjs
+
+$ gh issue list --state all --search "veredito-revisor" --limit 200 --json number,title,state
+[{"number":363,"state":"OPEN","title":"veredito-revisor grava no worktree do revisor, nao no do fluxo"},{"number":329,"state":"CLOSED","title":"veredito-revisor nao grava quando o estado do fluxo mora so no worktree"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"},{"number":231,"state":"CLOSED","title":"Revisor que confere por mutacao edita o worktree principal, e o gate o impede de desfazer"},{"number":279,"state":"CLOSED","title":"revisar: creep nao tem carve-out para artefato que outra skill obriga a criar"},{"number":206,"state":"CLOSED","title":"Design e doc de uso se contradizem sobre o mesmo mecanismo, e nada mede isso: dois revisores discordaram lendo o mesmo commit"},{"number":192,"state":"CLOSED","title":"Proibir background no briefing falhou duas vezes, com a proibicao escrita duas vezes no mesmo texto — falta checar a FORMA do retorno"}]
+
+
+$ gh issue list --state all --search "raizComEstadoDoSlug" --limit 200 --json number,title,state
+[{"number":363,"state":"OPEN","title":"veredito-revisor grava no worktree do revisor, nao no do fluxo"}]
+
+
+$ gh issue list --state all --search "bash $b" --limit 200 --json number,title,state
+[{"number":362,"state":"OPEN","title":"gate-fechar-issue barra laco sem gh quando a variavel esta sem aspas"},{"number":337,"state":"CLOSED","title":"gate-fechar-issue barra bash $t sem aspas como comando encapsulado"},{"number":344,"state":"CLOSED","title":"gate-fechar-issue: --body-file com caminho MSYS (/c/...) vira ilegivel"},{"number":339,"state":"CLOSED","title":"Tres contrabarras dentro das aspas duplas do wrapper ainda escondem o comando (residuo da #313)"},{"number":309,"state":"CLOSED","title":"gate de texto barra bash \"$t\" (variavel entre aspas) como comando encapsulado"},{"number":239,"state":"CLOSED","title":"gate-fechar-issue bloqueia heredoc cujo texto fecha frase com parentese: \").\" e lido como subshell + source"},{"number":230,"state":"CLOSED","title":"conferir-mutacao.cjs entrega a --bateria ao cmd.exe no Windows: 'rm ...; python ...' apagou o venv e o arquivo de teste, e o baseline saiu VERDE"},{"number":323,"state":"CLOSED","title":"conferir-duplicacao conta arquivo gitignorado (.claude/marketplaces) e deixa testa-saude vermelho em main limpa"},{"number":258,"state":"CLOSED","title":"gate-staging-total: bloqueia texto que cita comando git, e resolve o repo errado com -C"},{"number":350,"state":"CLOSED","title":"gate-worktree ignora git -C <outro-repo> e barra switch num clone descartavel como se fosse o checkout da sessao"},{"number":341,"state":"CLOSED","title":"varrer-baterias: testa-gate-publicacao-destino.sh roda outras duas baterias .sh em dobro"},{"number":294,"state":"CLOSED","title":"Achados menores do revisar zerar-issues-5 (catraca em copia, pyc, MSYS)"},{"number":322,"state":"CLOSED","title":"gate-publicacao-destino recusa o trailer Co-Authored-By e barra Edit de linha que já contém o e-mail"},{"number":299,"state":"CLOSED","title":"Rota com emoji de status por etapa: formato de acompanhamento que a regra 4 nao tem"},{"number":291,"state":"CLOSED","title":"Regra 6: \"conserta na hora\" nao diz em QUE repo, e eu fui consertar o do vizinho"},{"number":235,"state":"CLOSED","title":"gate-publicacao-destino so ve Write/Edit: valor escrito por script chega ao commit, e so a CI pega — do lado irreversivel"},{"number":298,"state":"CLOSED","title":"gate-agente-em-voo promete avisar UMA vez e repete a cada turno em sessao interativa"},{"number":335,"state":"CLOSED","title":"13 baterias .cjs nunca rodam no CI: varrer-baterias.sh so descobre testa-*.sh"},{"number":259,"state":"CLOSED","title":"cortarBytes duplicado entre memoria-sessao.cjs e contexto-sessao.cjs, com comentario afirmando reuso que nao existe"},{"number":270,"state":"CLOSED","title":"Linha de mutante sai como 'FALHA <nome real>' e se confunde com falha de verdade no log"},{"number":184,"state":"CLOSED","title":"Wrapper citado (\"env\" FOO=1 git add -A) escapa de posicaoDeComando e os tres gates por texto liberam"},{"number":221,"state":"CLOSED","title":"saude.cjs quebra com 'path argument undefined' quando ha duas config dirs e a versao do repo esta a frente da instalada"},{"number":120,"state":"CLOSED","title":"testa-contexto-sessao.sh esta vermelha na main: 5 falhas em dentroDoExpediente, focoAtivoEmOutraJanela e co-locada"},{"number":173,"state":"CLOSED","title":"O gate de publicacao barra merge de conteudo que ja esta na main — e engole o git add da mesma chamada"},{"number":157,"state":"CLOSED","title":"REINCIDE #16: o workflow esta disabled_manually ha 232 commits, e a maquina do Actions e mais rica que a de quem instala"},{"number":195,"state":"CLOSED","title":"Nada exige que o checkout principal fique na main, e os vigias agendados rodam contra ele"},{"number":81,"state":"CLOSED","title":"testa-orcamento.sh mede a mesa, nao o repo: verde no CI e vermelho local pelo mesmo commit"},{"number":165,"state":"CLOSED","title":"O gate de publicacao e cego para escrita mediada por Bash — node, sed e heredoc passam"},{"number":27,"state":"CLOSED","title":"testa-saude.sh fica vermelha por rodar de worktree, nao por defeito no codigo — e e onde a esteira roda"},{"number":214,"state":"CLOSED","title":"Sessao isolada em worktree nao consegue atualizar o checkout principal — nem o dono pelo prefixo !"},{"number":16,"state":"CLOSED","title":"Nenhuma bateria roda sozinha: sem CI, a catraca depende de alguem lembrar (a de nucleos ficou vermelha 3 dias)"},{"number":262,"state":"CLOSED","title":"conferir-publicacao: credencial em JSON com a chave entre aspas nao e vista, e a trava responde verde"},{"number":194,"state":"CLOSED","title":"atualizar-cli.sh sem o lock por mkdir que os dois refreshers ja tem — e nenhuma bateria exercita esse lock"},{"number":260,"state":"CLOSED","title":"conferir-publicacao: 'token' sozinho vira credencial, e a mensagem nao mostra o trecho casado"},{"number":253,"state":"CLOSED","title":"Gate de publicacao bloqueia repo PRIVADO citando \"repo publico\" — nao checa visibilidade"},{"number":207,"state":"CLOSED","title":"poda-estagio.cjs devolve null em toda branch fluxo/<slug>: copia divergente do resolvedor canonico, bateria verde"},{"number":143,"state":"CLOSED","title":"Os guardas medem o repositorio do cwd da sessao, nao o worktree onde a operacao roda — tres ocorrencias no mesmo dia"},{"number":279,"state":"CLOSED","title":"revisar: creep nao tem carve-out para artefato que outra skill obriga a criar"},{"number":215,"state":"CLOSED","title":"Vermelho largo passa por prova: a catraca de mutacao le o exit code da bateria, nunca quantas assercoes cairam"},{"number":277,"state":"CLOSED","title":"foco.cjs nao tem comando para registrar avanco: a regra 5 obriga o que a 17 proibe"},{"number":303,"state":"CLOSED","title":"Gemeo Python de conferir-entrega congelou: 21 falhas na main e o portao do CONTRIBUTING esta vermelho"},{"number":200,"state":"CLOSED","title":"A skill limpar remove worktree LIMPO de outra sessao sem perguntar — classifica por sujeira, nunca por dono"},{"number":254,"state":"CLOSED","title":"Catraca de mutacao: 'pulada' fecha o verificar como se fosse medida"},{"number":244,"state":"CLOSED","title":"Bump de versao e feito a mao no fechar, e o esquecimento e silencioso"},{"number":174,"state":"CLOSED","title":"Nada barra \"Fecha #N\" no corpo do PR — a regra está escrita há 10 dias e o erro repetiu"},{"number":238,"state":"CLOSED","title":"estado.cjs marcar reabre executar por baixo do revisar em voo e aceita carimbo de tarefa inexistente"},{"number":210,"state":"CLOSED","title":"Entrega vazia + --paralelo: o conjunto do agente e vazio, entao a checagem 4 nunca reprova"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"},{"number":21,"state":"CLOSED","title":"Criterio 'a bateria sai 0' e satisfazivel por fora, e tres instrumentos de conferencia falharam junto"},{"number":1,"state":"CLOSED","title":"Briefing nao diz o ato de entregar: subagente nomeado termina o trabalho e nao devolve (3 de 3)"},{"number":193,"state":"CLOSED","title":"Duas sessoes bumparam a MESMA versao e o testa-versao nao pode pegar: falta checagem externa (tag e cache)"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"}]
+
+
+$ gh issue list --state all --search "gate-turno-prometido" --limit 200 --json number,title,state
+[{"number":364,"state":"OPEN","title":"Menores da revisao do semear-travas: aspas na mesma linha, --exige com .., --slug do varrer"}]
+
+
+$ gh issue list --state all --search "preparar-worktree" --limit 200 --json number,title,state
+[{"number":364,"state":"OPEN","title":"Menores da revisao do semear-travas: aspas na mesma linha, --exige com .., --slug do varrer"}]
+
+
+$ gh issue list --state all --search "varrer.cjs" --limit 200 --json number,title,state
+[{"number":364,"state":"OPEN","title":"Menores da revisao do semear-travas: aspas na mesma linha, --exige com .., --slug do varrer"}]
+
+
+$ gh pr list --state all --search "veredito-revisor" --limit 200 --json number,title,state
+[{"number":327,"state":"MERGED","title":"Contrato de veredito de uma linha no revisar (1.23.9)"},{"number":332,"state":"MERGED","title":"Veredito fora da linha: hook devolve a vez uma vez; negrito aceito"},{"number":365,"state":"MERGED","title":"Seis travas semeadas do historico (1.32.0)"},{"number":343,"state":"MERGED","title":"zerar-issues-9: #313 #322 #329 #312 #335 #323 (1.24.0)"},{"number":140,"state":"MERGED","title":"Segunda opiniao cross-model: auditor de outra familia no revisar, e o transporte de CLI externo em um lugar so"},{"number":201,"state":"MERGED","title":"Fluxo 10 (critico): arquivado como superado, com a substituicao provada item a item"},{"number":305,"state":"MERGED","title":"Memória: reconciliação na escrita e consolidação automática"},{"number":141,"state":"MERGED","title":"Fluxo 9 — Portaria: admissao de subagente por manifesto"},{"number":177,"state":"MERGED","title":"Fluxo 12: régua absorve o bar.md de mecanismos e o preflight de renderização"},{"number":212,"state":"MERGED","title":"O orcamento do observar.cjs cabe no teto real do SessionEnd"},{"number":126,"state":"MERGED","title":"Fecha #121: a catraca de mutacao para de decidir por relogio de parede"},{"number":39,"state":"CLOSED","title":"Skill regua, backstop de mutacao no revisar, e o relatorio da Issue #38"},{"number":213,"state":"MERGED","title":"Skill montar-corpus: wiki em markdown vira acervo, com o grafo tratado como entrada nao confiavel"},{"number":9,"state":"MERGED","title":"As tres costuras da esteira: decisao, opcao morta e creep deixam de evaporar"}]
+
+
+$ gh pr list --state all --search "raizComEstadoDoSlug" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "bash $b" --limit 200 --json number,title,state
+[{"number":338,"state":"MERGED","title":"memoria: encurta o texto das linhas antes de cortar (1.23.15)"},{"number":228,"state":"MERGED","title":"Statusline com tempo até o reset; checkout principal fica na main (regra 11, closes #195) — 1.10.0"},{"number":285,"state":"MERGED","title":"Guias e sensores: marca de categoria, teto por hook, sensor na evidencia do verificar"},{"number":301,"state":"MERGED","title":"Regra 4: rota com emoji de status por etapa (#299) — 1.19.1"},{"number":58,"state":"MERGED","title":"Fecha a #51: as tres travas de isolamento passam a valer na borda"},{"number":167,"state":"MERGED","title":"Issue #165: o gate confere o COMMIT, nao so a ferramenta de escrita"},{"number":106,"state":"MERGED","title":"Fecha #100: execFileSync em setup.cjs, validarSlug em estado.cjs — e o teste que separa os dois"},{"number":154,"state":"MERGED","title":"README: porta de entrada em vez de diario de bordo"},{"number":139,"state":"MERGED","title":"Gate de worktree: decidir escrita por token, e isentar o scratchpad da sessao"},{"number":242,"state":"MERGED","title":"Zerar Issues, rodada 2: as 6 que faltavam e as 6 novas (1.12.0)"},{"number":152,"state":"MERGED","title":"Portaria: escreve:true admitido com worktree obrigatorio (0.82.0)"},{"number":234,"state":"MERGED","title":"Absorver de um plugin de terceiro o que vira trava: mensagem de commit, --confirmo, exit 69, duplicação, carimbos"},{"number":85,"state":"MERGED","title":"Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79)"},{"number":17,"state":"MERGED","title":"Nenhuma bateria roda sozinha: CI que roda as 20 baterias a cada PR (#16)"},{"number":246,"state":"MERGED","title":"Triagem de achado e portaria que le autorizacao explicita do usuario"},{"number":116,"state":"MERGED","title":"Fecha #76: a janela sabe que a ferramenta falta antes de tentar"},{"number":222,"state":"MERGED","title":"Agentes em Claude ou Codex, por escolha do usuário (1.8.0)"},{"number":60,"state":"MERGED","title":"Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture"},{"number":56,"state":"MERGED","title":"Fecha a #38: a regra 11 prescreve worktree, e o radar marca a janela co-locada"},{"number":107,"state":"MERGED","title":"Fecha #74: a causa raiz era CRLF — o corte por prioridade nunca rodou no FOCO.md"},{"number":99,"state":"MERGED","title":"Fecha #82: branch squash-mergeada SEM upstream deixa de ser 'trabalho vivo'"},{"number":57,"state":"MERGED","title":"Fecha a #42: a checagem 4 compara contra um instantaneo, nao contra limpo"},{"number":119,"state":"MERGED","title":"Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos"},{"number":32,"state":"MERGED","title":"O criterio apontava para o instrumento (#21)"},{"number":117,"state":"MERGED","title":"Tres defeitos achados apurando as observacoes abertas da regra 13"},{"number":55,"state":"MERGED","title":"O /relatorio vira /feedback, e nasce o /issue para o erro do repo em que voce esta"},{"number":98,"state":"MERGED","title":"Fecha a P5 da #61: enlace bidirecional entre as regras 16 e 17"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"},{"number":122,"state":"MERGED","title":"Fecha #118: o backup diario do sentinela nunca fez backup — e empurrava sozinho para um repo publico"},{"number":217,"state":"MERGED","title":"Contrato de territorio: AdvPL vira o primeiro, e o repo publico perde os identificadores de trabalho"}]
+
+
+$ gh pr list --state all --search "gate-turno-prometido" --limit 200 --json number,title,state
+[{"number":365,"state":"MERGED","title":"Seis travas semeadas do historico (1.32.0)"}]
+
+
+$ gh pr list --state all --search "preparar-worktree" --limit 200 --json number,title,state
+[{"number":365,"state":"MERGED","title":"Seis travas semeadas do historico (1.32.0)"}]
+
+
+$ gh pr list --state all --search "varrer.cjs" --limit 200 --json number,title,state
+[{"number":365,"state":"MERGED","title":"Seis travas semeadas do historico (1.32.0)"}]
+
+
+$ git ls-remote --heads origin | grep -F "veredito-revisor"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "raizComEstadoDoSlug"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "bash $b"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "gate-turno-prometido"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "preparar-worktree"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "varrer.cjs"
+(vazio)
+
+$ git log --all --grep="veredito-revisor" --oneline
+0ecc712e veredito-revisor: procura estado no worktree (#329)
+d61a66dd hook: devolve a vez ao revisor na primeira parada invalida (D1/D3/D5)
+292ac316 extracao de veredito: aceita marcacao so nas pontas da ultima linha (D2/D4)
+d2a0880a feat(estado): D14 — transcrito so vale na pasta real de sessao
+fbbc5ea6 feat(estado): subcomando 'veredito' exige --transcrito que confirme slug e veredito no arquivo (D12, Tarefa 16)
+d95dae8c teste: bateria de hooks/veredito-revisor.cjs (tarefa 12)
+0a37e2e1 docs: contrato de veredito em skills/revisar e agents/revisor (tarefas 10-11)
+ba371ff3 testa-conferir-categoria: 45 pecas e 27 sensores com o hook de veredito
+19f03851 contrato de veredito: registra SubagentStop e toggle contrato-veredito (tarefa 9)
+d5a9372d hooks: veredito-revisor.cjs grava o veredito de uma linha do revisor (tarefa 8)
+
+$ git log --all --grep="raizComEstadoDoSlug" --oneline
+0ecc712e veredito-revisor: procura estado no worktree (#329)
+
+$ git log --all --grep="bash $b" --oneline
+(vazio)
+
+$ git log --all --grep="gate-turno-prometido" --oneline
+dff9e98c Menores da revisao 2: exige na rota ja-contem, negacao e aspa solta
+da94151c gate-turno-prometido: normalizacao de texto e aceitacao de vigias/despachos ampliados
+2ef22ae1 Suite completa: duas baterias alheias acertadas
+192381bd Tarefa 15: Documentar as seis travas mecânicas em docs/travas-mecanicas.md e README.md
+1b6b75d1 Tarefa 10: Corrige gate-turno-prometido removendo passado* e adicionando teste de hooks.json
+d3dd7562 Integra tarefa 10: gate-turno-prometido
+3c8accd2 Tarefa 10: gate-turno-prometido, bloqueador de promessas não cumpridas
+
+$ git log --all --grep="preparar-worktree" --oneline
+d0fecce8 Versao 1.32.0: seis travas semeadas do historico
+dff9e98c Menores da revisao 2: exige na rota ja-contem, negacao e aspa solta
+6d35d008 Integra M1: preparar-worktree por git-common-dir
+22ee71b0 Corrigir preparar-worktree: worktree linkado, reexecução e --exige
+192381bd Tarefa 15: Documentar as seis travas mecânicas em docs/travas-mecanicas.md e README.md
+26defd07 Tarefa 9: rotulo do caso canonico e flags quebradas em linha
+55cdcf91 Tarefa 3: base do agente passa a ser o comando, não a prosa
+5ccf0679 Integra Tarefa 1: preparar-worktree.cjs, o único passo de base do a
+8cf702c5 Tarefa 1: preparar-worktree.cjs, o único passo de base do agente
+
+$ git log --all --grep="varrer.cjs" --oneline
+055a33e1 B3 + I3: bateria completa para varrer.cjs
+203b8a4d varrer.cjs: B3a (--limit 200), B3b (git falha é 69), I3 (caminho relativo de ideias)
+192381bd Tarefa 15: Documentar as seis travas mecânicas em docs/travas-mecanicas.md e README.md
+4f78519c Tarefas 5 e 7: o que a integracao achou faltando
+6b433604 Integra Tarefa 6: corrigir cinco defeitos em varrer.cjs e testa-varr
+4fbddad4 Tarefa 6: corrigir cinco defeitos em varrer.cjs e testa-varrer.sh
+25ec8444 Integra tarefa 6: varrer.cjs
+2938aa45 Tarefa 6: varrer.cjs e testa-varrer.sh para coleta estruturada de varredura
+
+$ cat <dados>/ideias.jsonl
+(vazio)
+

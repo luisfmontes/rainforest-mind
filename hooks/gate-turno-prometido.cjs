@@ -151,18 +151,24 @@ function main() {
       process.exit(0);
     }
 
-    // Normaliza o texto: remove blocos de código, código inline, citações e linhas de lista
+    // Normaliza o texto: remove blocos de código, código inline, aspas pareadas (inclusive multi-linha), citação em bloco `>` e linhas de lista
     function normalizarTexto(texto) {
       // Remove blocos de código (```...```)
-      let normalizado = texto.replace(/```[\s\S]*?```/g, '');
+      let normalizado = texto.replace(/\r\n?/g, '\n');
+      normalizado = normalizado.replace(/```[\s\S]*?```/g, '');
       // Remove código inline (`...`)
-      // Sem atravessar linha: crase solta num parágrafo não engole o seguinte.
-      normalizado = normalizado.replace(/`[^`\n]*`/g, '');
-      // Remove trechos entre aspas duplas ("...")
-      normalizado = normalizado.replace(/"[^"\n]*"/g, '');
+      // Crase seguida de espaço não abre; a crase NÃO atravessa linha (conteúdo sem crase nem quebra).
+      normalizado = normalizado.replace(/`(?=[^\s`])[^`\n]*`/g, '');
+      // Remove trechos entre aspas duplas ("..."), pareadas quando abrem e fecham de verdade
+      // Abre após: início ou qualquer não-letra/não-dígito, com o conteúdo colado na aspa de abertura
+      // Atravessa no máximo uma quebra de linha; fecha só com o conteúdo colado na aspa de fechamento
+      // e sem letra/dígito logo depois dela
+      normalizado = normalizado.replace(/(^|[^\p{L}\p{N}])"(?=\S)[^"\n]*(?:\n[^"\n]*)?(?<=\S)"(?![\p{L}\p{N}])/gu, '$1');
       // Remove linhas de lista (^\s*([-*]|\d+\.)\s)
       normalizado = normalizado.replace(/^\s*[-*]\s+.*$/gm, '');
       normalizado = normalizado.replace(/^\s*\d+\.\s+.*$/gm, '');
+      // Remove citação em bloco (linhas que começam com >)
+      normalizado = normalizado.replace(/^[ \t]*>.*$/gm, '');
       // Negação ("não vou despachar") é recusa, não promessa.
       normalizado = normalizado.replace(/\bn[ãa]o\s+(vou despachar|vou disparar|estou despachando)\b/gi, '');
       return normalizado;

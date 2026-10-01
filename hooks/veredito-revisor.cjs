@@ -50,6 +50,7 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 const { primeiroPrompt, extrairSlug } = require(path.join(__dirname, '..', 'scripts', 'lib', 'primeiro-prompt-jsonl.cjs'));
 const { extrairUltimaLinha, validarVocabulario } = require(path.join(__dirname, '..', 'scripts', 'lib', 'extrair-veredito.cjs'));
+const { ehWorktreeDeAgente } = require(path.join(__dirname, 'lib', 'contexto-sessao.cjs'));
 
 const VOCAB_ULTIMA_LINHA = ['veredito: ok', 'veredito: reprovado'];
 
@@ -74,58 +75,71 @@ function toplevel(cwd) {
 }
 
 /**
- * D5 — #329: procura docs/rainforest/estado/<slug>.json em repoRoot ou em
- * worktrees linkados. Devolve o caminho onde o arquivo existe (única fonte
- * de verdade), ou null se ambíguo/ausente.
+ * D5 — #329 / D2 — #363: procura docs/rainforest/estado/<slug>.json em
+ * repoRoot e em worktrees linkados e devolve a raiz onde o estado do fluxo
+ * VIVE, ou null se ambíguo/ausente.
  *
- * Precedência:
- * 1. Se existe em repoRoot, devolve repoRoot (raiz é sempre válida).
- * 2. Senão, procura `git worktree list --porcelain` por worktrees que tenham o arquivo.
- * 3. Exatamente um → devolve esse caminho; 0 ou 2+ → stderr + null.
+ * O repoRoot sai de `payload.cwd`; com o revisor isolado (regra 11) ele é o
+ * worktree DO REVISOR, que nasceu da branch do fluxo e por isso também tem o
+ * JSON — então ter o arquivo não basta para ser o destino.
+ *
+ * Candidatos: repoRoot (se tem o arquivo) + cada worktree de
+ * `git worktree list --porcelain` que tem o arquivo, sem repetir caminho.
+ * Worktrees de agente do harness (`.claude/worktrees/agent-*`) saem; se
+ * ainda sobrar mais de um, ficam os que têm a janela de revisar armada
+ * (`revisar.vereditos` array; leitura que falha = não armado).
+ * Exatamente um → devolve; zero → "nao encontrado"; 2+ → "ambiguo".
  *
  * Nunca derruba a sessão: falha em git/stat vira "não encontrado".
  */
 function raizComEstadoDoSlug(repoRoot, slug) {
   if (!slug) return repoRoot; // slug vazio = sem estado em lugar nenhum
-  const estadoFile = path.join(repoRoot, 'docs', 'rainforest', 'estado', `${slug}.json`);
-  if (fs.existsSync(estadoFile)) return repoRoot;
+  const arquivoEstado = (raiz) => path.join(raiz, 'docs', 'rainforest', 'estado', `${slug}.json`);
 
-  // Procura em worktrees linkados
-  let worktreeOutput;
+  const candidatos = [];
+  const juntar = (raiz) => {
+    if (!raiz || !fs.existsSync(arquivoEstado(raiz))) return;
+    if (candidatos.some((c) => path.resolve(c) === path.resolve(raiz))) return;
+    candidatos.push(raiz);
+  };
+  juntar(repoRoot);
+
   try {
-    worktreeOutput = execFileSync('git', ['-C', repoRoot, 'worktree', 'list', '--porcelain'], {
+    const saida = execFileSync('git', ['-C', repoRoot, 'worktree', 'list', '--porcelain'], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     });
-  } catch {
-    // Sem git worktree list: trata como "não encontrado"
-    process.stderr.write(`${slug} nao encontrado\n`);
-    return null;
-  }
-
-  const worktreePaths = [];
-  const linhas = worktreeOutput.split('\n');
-  for (const linha of linhas) {
-    if (linha.startsWith('worktree ')) {
-      const wtPath = linha.slice(9); // "worktree ".length = 9
-      if (wtPath && path.resolve(wtPath) !== path.resolve(repoRoot)) {
-        // Verifica se este worktree tem o arquivo
-        const wtEstadoFile = path.join(wtPath, 'docs', 'rainforest', 'estado', `${slug}.json`);
-        if (fs.existsSync(wtEstadoFile)) {
-          worktreePaths.push(wtPath);
-        }
-      }
+    for (const linha of saida.split('\n')) {
+      if (linha.startsWith('worktree ')) juntar(linha.slice(9).replace(/\r$/, ''));
     }
+  } catch {
+    // Sem git worktree list: segue só com o repoRoot, se ele tem o arquivo
   }
 
-  if (worktreePaths.length === 1) {
-    return worktreePaths[0];
-  } else if (worktreePaths.length === 0) {
+  let sobra = candidatos
+    .filter((p) => !ehWorktreeDeAgente(p));
+
+  // Sem candidato fora de worktree de agente: todos voltam e o filtro de janela
+  // armada logo abaixo decide; empate continua ambiguo. Perder o veredito em
+  // silencio e pior que grava-lo numa copia de agente.
+  if (sobra.length === 0) sobra = candidatos;
+
+  if (sobra.length > 1) {
+    sobra = sobra.filter((p) => {
+      try {
+        const e = JSON.parse(fs.readFileSync(arquivoEstado(p), 'utf8'));
+        return Boolean(e && e.revisar && Array.isArray(e.revisar.vereditos));
+      } catch {
+        return false;
+      }
+    });
+  }
+
+  if (sobra.length === 1) return sobra[0];
+  if (sobra.length === 0) {
     process.stderr.write(`${slug} nao encontrado\n`);
   } else {
-    // 2 ou mais
-    const paths = worktreePaths.join(' ');
-    process.stderr.write(`${slug} ambiguo: ${paths}\n`);
+    process.stderr.write(`${slug} ambiguo: ${sobra.join(' ')}\n`);
   }
   return null;
 }

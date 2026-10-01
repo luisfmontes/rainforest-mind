@@ -292,6 +292,59 @@ teste('chave desligada: exit 0', () => {
   try { fs.rmSync(sandboxDir, { recursive: true }); } catch {}
 });
 
+// Teste (#364-1): aspas soltas na mesma linha
+teste('#364-1 aspas soltas na mesma linha: exit 2', () => {
+  const r = rodaGate('364-1-aspas-soltas-mesma-linha.jsonl');
+  assert(r.status === 2, `esperado 2, obteve ${r.status}`);
+  assert(r.stderr.includes('Razão:'), 'stderr deve incluir "Razão:"');
+});
+
+// Teste (#364-1b): crases soltas na mesma linha
+teste('#364-1b crases soltas na mesma linha: exit 2', () => {
+  const r = rodaGate('364-1b-crases-soltas-mesma-linha.jsonl');
+  assert(r.status === 2, `esperado 2, obteve ${r.status}`);
+  assert(r.stderr.includes('Razão:'), 'stderr deve incluir "Razão:"');
+});
+
+// Teste (#364-2): citação multi-linha
+teste('#364-2 citacao multi-linha (promessa inteira na segunda linha)', () => {
+  const r = rodaGate('364-2-citacao-multi-linha.jsonl');
+  assert(r.status === 0, `esperado 0, obteve ${r.status}`);
+});
+
+// Teste (#364-2b): citação em bloco
+teste('#364-2b citacao em bloco: exit 0', () => {
+  const r = rodaGate('364-2b-citacao-em-bloco.jsonl');
+  assert(r.status === 0, `esperado 0, obteve ${r.status}`);
+});
+
+// Teste (#364-2b controle): promessa fora da citação em bloco
+teste('#364-2b controle promessa fora da citacao: exit 2', () => {
+  const r = rodaGate('364-2b-citacao-controle.jsonl');
+  assert(r.status === 2, `esperado 2, obteve ${r.status}`);
+  assert(r.stderr.includes('Razão:'), 'stderr deve incluir "Razão:"');
+});
+
+// Teste (#364-r2): citação em negrito/itálico/travessão/ponto e vírgula/barra
+teste('#364-r2 citacao em negrito: exit 0', () => {
+  const r = rodaGate('364-r2-citacao-em-negrito.jsonl');
+  assert(r.status === 0, `esperado 0, obteve ${r.status}`);
+});
+
+// Teste (#364-r2): aspa solta atravessando duas quebras
+teste('#364-r2 aspa solta em tres linhas: exit 2', () => {
+  const r = rodaGate('364-r2-aspa-solta-tres-linhas.jsonl');
+  assert(r.status === 2, `esperado 2, obteve ${r.status}`);
+  assert(r.stderr.includes('Razão:'), 'stderr deve incluir "Razão:"');
+});
+
+// Teste (#364-r2): aspa solta com CRLF e linhas em branco
+teste('#364-r2 aspa solta crlf: exit 2', () => {
+  const r = rodaGate('364-r2-aspa-solta-crlf.jsonl');
+  assert(r.status === 2, `esperado 2, obteve ${r.status}`);
+  assert(r.stderr.includes('Razão:'), 'stderr deve incluir "Razão:"');
+});
+
 // Teste (12): fixtures no formato real
 teste('fixtures no formato real (chaves de cada linha cobrem o envelope de transcrito-sessao.jsonl)', () => {
   // Lê a fixture real para obter as chaves do envelope

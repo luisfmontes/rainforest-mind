@@ -113,6 +113,10 @@ if (!headAtual) {
 // inclusive a de "HEAD ja contem" (revisao 2: ali o --exige era ignorado).
 function conferirExige() {
   for (const arquivo of ARGS.exige) {
+    const rel = path.relative(toplevel, path.resolve(cwd, arquivo));
+    if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) {
+      falha(2, "--exige fora do worktree: '" + arquivo + "'");
+    }
     if (!fs.existsSync(path.join(cwd, arquivo))) {
       falha(1, "arquivo exigido não existe: '" + arquivo + "'");
     }
