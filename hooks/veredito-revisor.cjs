@@ -88,7 +88,17 @@ function toplevel(cwd) {
  * Worktrees de agente do harness (`.claude/worktrees/agent-*`) saem; se
  * ainda sobrar mais de um, ficam os que têm a janela de revisar armada
  * (`revisar.vereditos` array; leitura que falha = não armado).
- * Exatamente um → devolve; zero → "nao encontrado"; 2+ → "ambiguo".
+ * Se ainda sobrar mais de um e o repoRoot está entre eles, ele vence (#369):
+ * é o revisor não isolado rodando no worktree do fluxo, e o outro armado é
+ * cópia commitada do estado.
+ * Exatamente um → devolve; zero → "nao encontrado"; 2+ sem o repoRoot → "ambiguo".
+ *
+ * Premissa do desempate: revisor isolado pelo harness sempre cai em
+ * `.claude/worktrees/agent-*`, que o primeiro filtro já tirou. Um revisor
+ * isolado num worktree fora de `agent-*`, com cópia armada do estado, é
+ * indistinguível do não isolado: o veredito vai para essa cópia e sai 0.
+ * Aceito de propósito — voltar a "ambiguo" perderia o veredito legítimo
+ * (caso 27 de `hooks/testa-veredito-revisor.sh`).
  *
  * Nunca derruba a sessão: falha em git/stat vira "não encontrado".
  */

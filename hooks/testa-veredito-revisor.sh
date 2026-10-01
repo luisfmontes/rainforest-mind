@@ -793,6 +793,9 @@ echo
 echo "== 27. (#369) empate de dois worktrees armados: vence o do revisor =="
 # Dois worktrees linkados FORA de agent-*, os dois com a janela armada; o
 # principal nao tem o arquivo. O revisor roda com cwd em fluxo: ele vence.
+# (#373) Vale tambem para revisor ISOLADO fora de agent-*: o hook nao distingue
+# os dois, e a decisao e vencer, nao voltar a "ambiguo" — ver a docstring de
+# raizComEstadoDoSlug.
 FLZ="$RAIZ/fluxo"
 CPZ="$RAIZ/copia"
 git -C "$R" worktree add -q --detach "$FLZ" 2>/dev/null || true
