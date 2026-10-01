@@ -21,9 +21,11 @@ Rodada 13: os três resíduos da revisão do semear-travas (#362, #363, #364).
   os worktrees de agente do harness (`.claude/worktrees/agent-*`) e, sobrando mais de um candidato,
   prefere o que tem a janela de revisar armada. Antes, com o revisor isolado (regra 11), o veredito
   caía na cópia do estado dentro do worktree descartável do revisor.
-- **`gate-turno-prometido` lê aspas e citações direito** (#364). Aspa ou crase solta na mesma
-  linha (`5"`, `6"`) não engole mais a promessa entre elas; citação entre aspas que atravessa
-  uma quebra de linha e citação em bloco `>` deixam de contar como promessa.
+- **`gate-turno-prometido` lê aspas e citações direito** (#364). Aspa ou crase solta (`5"`, `6"`,
+  ou uma aspa aberta e nunca fechada, com LF ou CRLF) não engole mais a promessa; citação entre
+  aspas colada em negrito, itálico ou pontuação (`**"…"**`, `_"…"_`), citação que atravessa uma
+  quebra de linha e citação em bloco `>` deixam de contar como promessa.
+- O `veredito-revisor` ainda grava quando a única cópia do estado está num worktree de agente.
 - **Caminho fora do lugar é recusado** (#364). `preparar-worktree --exige` fora do worktree e
   `varrer --slug` com separador ou `..` saem com exit 2 e nomeiam o valor.
 - `docs/travas-mecanicas.md` cita `python3` na forma simples do `conferir-prova`, como o código aceita.
