@@ -151,7 +151,7 @@ function main() {
       process.exit(0);
     }
 
-    // Normaliza o texto: remove blocos de código, código inline, citações pareadas (inclusive multi-linha) e linhas de lista
+    // Normaliza o texto: remove blocos de código, código inline, aspas pareadas (inclusive multi-linha), citação em bloco `>` e linhas de lista
     function normalizarTexto(texto) {
       // Remove blocos de código (```...```)
       let normalizado = texto.replace(/```[\s\S]*?```/g, '');
