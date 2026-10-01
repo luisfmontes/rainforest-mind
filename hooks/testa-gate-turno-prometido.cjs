@@ -312,6 +312,19 @@ teste('#364-2 citacao multi-linha: exit 0', () => {
   assert(r.status === 0, `esperado 0, obteve ${r.status}`);
 });
 
+// Teste (#364-2b): citação em bloco
+teste('#364-2b citacao em bloco: exit 0', () => {
+  const r = rodaGate('364-2b-citacao-em-bloco.jsonl');
+  assert(r.status === 0, `esperado 0, obteve ${r.status}`);
+});
+
+// Teste (#364-2b controle): promessa fora da citação em bloco
+teste('#364-2b controle promessa fora da citacao: exit 2', () => {
+  const r = rodaGate('364-2b-citacao-controle.jsonl');
+  assert(r.status === 2, `esperado 2, obteve ${r.status}`);
+  assert(r.stderr.includes('Razão:'), 'stderr deve incluir "Razão:"');
+});
+
 // Teste (12): fixtures no formato real
 teste('fixtures no formato real (chaves de cada linha cobrem o envelope de transcrito-sessao.jsonl)', () => {
   // Lê a fixture real para obter as chaves do envelope
