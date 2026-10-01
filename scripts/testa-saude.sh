@@ -116,6 +116,7 @@ criar_fonte_sintetica() {
   rm -rf "$FONTE"
   mkdir -p "$FONTE/scripts" "$FONTE/skills/exemplo" "$FONTE/.claude-plugin"
   cp "$SRC/scripts/saude.cjs" "$FONTE/scripts/saude.cjs"
+  mkdir -p "$FONTE/scripts/lib"; cp "$SRC/scripts/lib/impressao-falha.cjs" "$FONTE/scripts/lib/impressao-falha.cjs"
   echo "# skill de exemplo, so para skills/ nao ficar vazio" > "$FONTE/skills/exemplo/SKILL.md"
   # Manifesto com o nome IGUAL ao basename da pasta: as situacoes A-D ja assumiam
   # o basename, e o nome agora sai daqui (ver `manifestoDoPlugin`). Igualar os dois
@@ -163,6 +164,7 @@ echo "== o falso verde de 2026-08-17 =="
 NOGIT="$SBP/cache-falso/0.65.0"
 mkdir -p "$NOGIT/scripts" "$NOGIT/.claude-plugin" "$NOGIT/skills/exemplo"
 cp "$SRC/scripts/saude.cjs" "$NOGIT/scripts/saude.cjs"
+mkdir -p "$NOGIT/scripts/lib"; cp "$SRC/scripts/lib/impressao-falha.cjs" "$NOGIT/scripts/lib/impressao-falha.cjs"
 printf '{"name":"rainforest-mind","version":"0.65.0"}' > "$NOGIT/.claude-plugin/plugin.json"
 echo "# exemplo" > "$NOGIT/skills/exemplo/SKILL.md"
 E="$(ver "$NOGIT")"
@@ -1517,6 +1519,29 @@ case "$DESP2" in
   *) falhou=$((falhou+1)); echo "  FALHA DESP2: esperava 'ok ...1 despacho(s)...' (arquivo local), veio: $DESP2" ;;
 esac
 rm -rf "$DESP_RAIZ" "$DESP_PROJ" "$HOMEFALSA_DESP"
+
+echo "== vigias-recorrentes com RFM_VIGIAS_DIR apontando para scripts/fixtures/impressao-falha =="
+# Raiz-sandbox propria: o toggle de vigias (setup.cjs --ligado) e a ERROS.md real
+# nao podem mascarar o caso. O setup.cjs falso sai 0 (ligado); a ERROS.md tem duas
+# ocorrencias seguidas da mesma falha, sem log de ronda (recorrente x2), com datas
+# relativas a hoje para ficarem dentro da janela de 30 dias.
+VR="$SBP/raiz-vr"
+mkdir -p "$VR/scripts/lib" "$VR/vigias" "$VR/hooks"
+cp "$SRC/scripts/saude.cjs" "$VR/scripts/saude.cjs"
+cp "$SRC/scripts/lib/impressao-falha.cjs" "$VR/scripts/lib/impressao-falha.cjs"
+printf 'process.stdout.write("ligado\\n");\n' > "$VR/scripts/setup.cjs"
+node -e '
+  const d = (n) => { const t = new Date(Date.now() - n * 86400000); const p = (x) => String(x).padStart(2, "0");
+    return t.getFullYear() + "-" + p(t.getMonth() + 1) + "-" + p(t.getDate()); };
+  process.stdout.write("- " + d(3) + " 08:00 [vigia-teste]: backup externo falhou (exit 2): erro de fixture\n- " + d(2) + " 08:00 [vigia-teste]: backup externo falhou (exit 2): erro de fixture\n");
+' > "$VR/vigias/ERROS.md"
+VR_OUT="$( RFM_VIGIAS_DIR="$VR/vigias" node "$VR/scripts/saude.cjs" 2>&1 | grep -A1 "aviso vigias-recorrentes" )"
+if echo "$VR_OUT" | grep -q "vigia-teste" && echo "$VR_OUT" | grep -q "erro de fixture" \
+   && echo "$VR_OUT" | grep -q "recorrente x2 em 30 dias, desde" && echo "$VR_OUT" | grep -q "RESOLVIDO"; then
+  ok=$((ok+1)); echo "  ok   VR1. vigias-recorrentes mostra vigia, causa, 'recorrente x2 em 30 dias, desde' e RESOLVIDO"
+else
+  falhou=$((falhou+1)); echo "  FALHA VR1: esperava vigia, causa, 'recorrente x2 em 30 dias, desde' e RESOLVIDO, veio: $VR_OUT"
+fi
 
 # Limpeza
 rm -rf "$R1_TEST" "$R2_TEST" "$R3_TEST"

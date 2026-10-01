@@ -10,6 +10,17 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.33.0 — 2026-10-01
+
+- **Falha de vigia que volta aparece como recorrente.** O `/saude` ganha o aviso
+  `vigias-recorrentes`, e a âncora do batedor ganha a seção `FALHAS RECORRENTES (30 DIAS)`.
+  Cada erro do `vigias/ERROS.md` recebe uma impressão digital: vigia mais causa, com
+  caminho, id e número normalizados. É o mecanismo do reef, enxertado. Com 2 ou mais
+  ocorrências em 30 dias, a falha aparece como `recorrente xN em 30 dias, desde DD/MM,
+  ultima DD/MM`, e só sai da lista quando alguém escreve `[vigia]: RESOLVIDO` no
+  `ERROS.md`. Antes, cada ocorrência chegava como novidade: o backup externo falhou 5
+  vezes entre 11 e 25/09 sem aparecer como repetição.
+
 ## 1.32.0 — 2026-09-30
 
 Seis travas para defeitos que já se repetiram aqui. Cada uma nasceu de uma
