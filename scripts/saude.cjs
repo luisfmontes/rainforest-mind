@@ -29,6 +29,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { falhasRecorrentes, formatar } = require('./lib/impressao-falha.cjs');
 
 const RAIZ_CODIGO = path.resolve(__dirname, '..');
 const achados = [];
@@ -1361,6 +1362,7 @@ function checarVigias() {
       `${erros.length} erro(s) nos ultimos ${DIAS_DE_ERRO_RECENTE} dias: ${resumo}`,
       'leia vigias/ERROS.md - o ultimo defeito ficou cinco dias registrado sem ninguem abrir');
   }
+  for (const r of falhasRecorrentes()) aviso('vigias-recorrentes', formatar(r), 'mesma causa normalizada voltou - leia vigias/ERROS.md; escreva [vigia]: RESOLVIDO quando consertar');
 }
 
 // ---------------------------------------------------------------- poda

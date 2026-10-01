@@ -125,8 +125,9 @@ fi
 caixa() {  # caixa <nome> -> imprime a raiz criada
   local dir="$SB/$1"
   rm -rf "$dir"
-  mkdir -p "$dir/scripts" "$dir/vigias"
+  mkdir -p "$dir/scripts/lib" "$dir/vigias"
   cp "$SRC/scripts/saude.cjs" "$dir/scripts/saude.cjs"
+  cp "$SRC/scripts/lib/impressao-falha.cjs" "$dir/scripts/lib/impressao-falha.cjs"
   echo "$dir"
 }
 
