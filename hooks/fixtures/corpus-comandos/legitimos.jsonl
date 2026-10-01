@@ -1,0 +1,50 @@
+{"id":"c-ancora-add","comando":"git add scripts/estado.cjs"}
+{"id":"c002","comando":"git add hooks/gate-subagente-sem-gh.cjs hooks/testa-gate-subagente-sem-gh.cjs && git status --short"}
+{"id":"c003","comando":"git add scripts/memoria.cjs scripts/testa-memoria-reconciliar.sh && git status --short"}
+{"id":"c004","comando":"git status --short"}
+{"id":"c005","comando":"git status --short | head -20"}
+{"id":"c006","comando":"git show --stat HEAD"}
+{"id":"c007","comando":"git log --format=%P -1 HEAD"}
+{"id":"c008","comando":"git log -1 --format='%H %s' && echo \"---\" && git log --format=%P -1 HEAD"}
+{"id":"c009","comando":"git log --oneline -3 && echo \"--- estado\" && git status --short && git worktree list"}
+{"id":"c010","comando":"git diff --stat HEAD~1"}
+{"id":"c011","comando":"git rev-parse --show-toplevel"}
+{"id":"c012","comando":"git branch --show-current && git rev-parse HEAD && git status --short"}
+{"id":"c013","comando":"git rev-parse --show-toplevel && git branch --show-current"}
+{"id":"c014","comando":"git merge-base --is-ancestor HEAD 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b && echo \"EXIT 0: hash e ancestral\" || echo \"EXIT !=0: nao e ancestral\""}
+{"id":"c015","comando":"git merge --ff-only 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b && git log -1 --format='%H %s'"}
+{"id":"c016","comando":"git fetch --prune origin 2>&1 | tail -2; git branch -r | head -10"}
+{"id":"c017","comando":"git worktree add .claude/worktrees/issue-110 -b fix/110-exemplo origin/main 2>&1 | tail -3 && git -C .claude/worktrees/issue-110 rev-parse HEAD"}
+{"id":"c018","comando":"git worktree list"}
+{"id":"c019","comando":"git commit -F /tmp/commitmsg.txt"}
+{"id":"c020","comando":"git commit -q -F \"$TMP/m6.txt\" && git push -q 2>&1|tail -1; git log --oneline -1"}
+{"id":"c021","comando":"gh issue view 110"}
+{"id":"c022","comando":"gh issue list --state open --limit 50"}
+{"id":"c023","comando":"gh issue view 104 --json number,title,body,state,labels,comments 2>&1 | head -200"}
+{"id":"c024","comando":"gh pr view 92 --json baseRefName,mergeable --jq '.baseRefName, .mergeable'"}
+{"id":"c025","comando":"gh pr list --limit 5"}
+{"id":"c026","comando":"node scripts/conferir-fluxo.cjs mutacoes --slug zerar-issues-12 2>&1 | tail -5; echo \"exit=${PIPESTATUS[0]}\""}
+{"id":"c027","comando":"node scripts/conferir-versao.cjs; echo \"exit=$?\"; git worktree list"}
+{"id":"c028","comando":"node scripts/ideias.cjs 2>&1 | head -15"}
+{"id":"c029","comando":"node scripts/conferir-fluxo.cjs cobertura --slug zerar-issues-10; echo \"exit=$?\""}
+{"id":"c030","comando":"node scripts/conferir-fluxo.cjs creep --slug zerar-issues-10 2>&1 | tail -10"}
+{"id":"c031","comando":"node scripts/estado.cjs exigir --slug zerar-issues-10 --estagio plano"}
+{"id":"c032","comando":"bash hooks/testa-gate-worktree.sh 2>&1 | tail -5"}
+{"id":"c033","comando":"bash scripts/testa-conferir-categoria.sh 2>&1 | tail -20"}
+{"id":"c034","comando":"bash hooks/testa-gate-fechar-issue.sh 2>&1 | tail -6"}
+{"id":"c035","comando":"grep -n 'def filtrar' -A 60 dados.py"}
+{"id":"c036","comando":"grep -rn \"resolverRaiz\" hooks/lib scripts | head -20"}
+{"id":"c037","comando":"sed -n '580,650p' scripts/estado.cjs"}
+{"id":"c038","comando":"sed -n '1250,1300p' scripts/conferir-fluxo.cjs"}
+{"id":"c039","comando":"ls -la"}
+{"id":"c040","comando":"ls && echo \"---\" && find . -path ./node_modules -prune -o -name \"estado.cjs\" -print"}
+{"id":"c041","comando":"cat testes/conftest.py"}
+{"id":"c042","comando":"wc -l scripts/estado.cjs scripts/conferir-fluxo.cjs"}
+{"id":"c043","comando":"rm -rf /tmp/wt128test-qhxlwmre 2>/dev/null; true"}
+{"id":"c044","comando":"rm -f /tmp/orig_dicionario.md"}
+{"id":"c045","comando":"mkdir -p /tmp/tmp.nVCAuawb4j/docs/rainforest/estado"}
+{"id":"c046","comando":"cd scripts && wc -l layout.py && grep -n \"def ganho\" layout.py"}
+{"id":"c047","comando":"python -c \"import sys; sys.exit('mensagem de teste')\"; echo \"exit code: $?\""}
+{"id":"c048","comando":"python3 -c \"print(len('feat(exemplo): mensagem de commit curta (T1)'))\""}
+{"id":"c049","comando":"node -e \"console.log(process.version)\""}
+{"id":"c050","comando":"node -e \"const os=require('os'); console.log(os.tmpdir());\""}

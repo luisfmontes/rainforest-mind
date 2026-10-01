@@ -19,6 +19,8 @@
 #      hook de PreToolUse (nega bateria sem timeout em subagente) — guia.
 #      48 e 18 guia desde 2026-09-28: entrou hooks/gate-subagente-sem-gh.cjs,
 #      hook de PreToolUse (nega `gh` de escrita em subagente) — guia.
+#      50 e 29 sensor desde 2026-09-30: entraram hooks/gate-turno-prometido.cjs
+#      (Stop) e scripts/conferir-prova.cjs (prova do plano na base) — sensores.
 #   2. peca REAL copiada para arvore temporaria, com a linha de marca apagada,
 #      reprova (exit 1) e NOMEIA o caminho na saida;
 #   3. peca REAL copiada com valor de marca fora do vocabulario (nem guia, nem
@@ -60,17 +62,17 @@ montar_copia() {
   cp "$RAIZ"/vigias/*.md "$destino/vigias/" 2>/dev/null
 }
 
-echo "== 1. repositorio real na base — exit 0, 48 pecas, distribuicao 18/27/3 =="
+echo "== 1. repositorio real na base — exit 0, 50 pecas, distribuicao 18/29/3 =="
 S1="$(roda --raiz "$RAIZ")"
 saiu "repositorio real passa (exit 0)" "$(codigo --raiz "$RAIZ")" "0"
-tem  "conta as 48 pecas"               "$S1" "Total de peças varridas: 48"
+tem  "conta as 50 pecas"               "$S1" "Total de peças varridas: 50"
 N_GUIA="$(printf '%s' "$S1" | grep -cF '>  guia')"
 N_SENSOR="$(printf '%s' "$S1" | grep -cF '>  sensor')"
 N_DADO="$(printf '%s' "$S1" | grep -cF '>  dado')"
-if [ "$N_GUIA" = "18" ] && [ "$N_SENSOR" = "27" ] && [ "$N_DADO" = "3" ]; then
-  ok=$((ok+1)); echo "  ok   distribuicao 18 guia / 27 sensor / 3 dado confere"
+if [ "$N_GUIA" = "18" ] && [ "$N_SENSOR" = "29" ] && [ "$N_DADO" = "3" ]; then
+  ok=$((ok+1)); echo "  ok   distribuicao 18 guia / 29 sensor / 3 dado confere"
 else
-  falhou=$((falhou+1)); echo "  FALHA distribuicao: guia=$N_GUIA sensor=$N_SENSOR dado=$N_DADO (esperava 18/27/3)"
+  falhou=$((falhou+1)); echo "  FALHA distribuicao: guia=$N_GUIA sensor=$N_SENSOR dado=$N_DADO (esperava 18/29/3)"
 fi
 
 echo

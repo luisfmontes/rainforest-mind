@@ -91,6 +91,7 @@ function cmdDesign() {
     '## Avaliado e descartado',
     '## Fora de escopo',
     '## Em aberto',
+    '## Varredura',
   ];
 
   const linhas_conteudo = conteudo.split('\n');
@@ -101,6 +102,25 @@ function cmdDesign() {
       console.error(`RECUSADO: seção obrigatória ausente: ${secao}`);
       process.exit(2);
     }
+  }
+
+  // A secao tem de citar literalmente o .txt do proprio slug (D4). So o
+  // arquivo existir nao basta: secao escrita a mao, sem rodar varrer.cjs,
+  // passava com um .txt qualquer ao lado.
+  const iVarredura = linhas_conteudo.indexOf('## Varredura');
+  const fimVarredura = linhas_conteudo.findIndex((l, i) => i > iVarredura && l.startsWith('## '));
+  const corpoVarredura = linhas_conteudo.slice(iVarredura + 1, fimVarredura === -1 ? undefined : fimVarredura).join('\n');
+  const citacaoVarredura = `docs/rainforest/varredura/${slug}.txt`;
+  if (!corpoVarredura.includes(citacaoVarredura)) {
+    console.error(`RECUSADO: seção ## Varredura não cita ${citacaoVarredura} (gere com node scripts/varrer.cjs --slug ${slug} <termos>)`);
+    process.exit(2);
+  }
+
+  // Verifica se o arquivo de varredura existe e não está vazio
+  const arquivoVarredura = path.join(RAIZ, 'docs', 'rainforest', 'varredura', `${slug}.txt`);
+  if (!fs.existsSync(arquivoVarredura) || fs.statSync(arquivoVarredura).size === 0) {
+    console.error(`RECUSADO: seção ## Varredura cita arquivo inexistente ou vazio: ${arquivoVarredura}`);
+    process.exit(2);
   }
 
   // Extrai decisões de "Decisões fechadas"
@@ -338,11 +358,12 @@ function extrairTarefas(conteudo) {
     if (cerca[i]) continue;
     const linha = linhas[i];
 
-    // Tarefa começa com ### <n>. <nome>
-    const match = linha.match(/^### (\d+)\. (.+?)(?:\s+\[tipo:|$)/);
+    // Tarefa começa com ### <n>. <nome> [tipo: <tipo>]
+    const match = linha.match(/^### (\d+)\. (.+?)(?:\s+\[tipo:\s*([^\]]*)\])?\s*$/);
     if (match) {
       const numero = parseInt(match[1], 10);
       const nome = match[2].trim();
+      const tipo = (match[3] || '').trim().toLowerCase();
 
       // Corpo da tarefa: até a próxima tarefa ou seção — cabeçalho dentro de
       // cerca não fecha a tarefa, pelo mesmo motivo que não abre uma.
@@ -365,7 +386,31 @@ function extrairTarefas(conteudo) {
         }
       }
 
-      tarefas.push({ numero, nome, atende, mutacao: extrairMutacao(corpo, corpo_cerca) });
+      // Procura campo prova: linha que começa com `prova:` e tem um par de crases
+      let prova = null;
+      let provaMalformada = false;
+      for (let k = 0; k < corpo.length; k++) {
+        if (!corpo_cerca[k] && corpo[k].startsWith('prova:')) {
+          const m = corpo[k].match(/^prova:\s*`([^`]+)`\s*$/);
+          if (m) {
+            prova = m[1];
+          } else {
+            provaMalformada = true;
+          }
+          break;
+        }
+      }
+
+      // Procura campo prova-na-base: texto após `prova-na-base:`
+      let provaNaBase = null;
+      for (let k = 0; k < corpo.length; k++) {
+        if (!corpo_cerca[k] && corpo[k].startsWith('prova-na-base:')) {
+          provaNaBase = corpo[k].substring('prova-na-base:'.length).trim();
+          break;
+        }
+      }
+
+      tarefas.push({ numero, nome, atende, tipo, prova, provaMalformada, provaNaBase, mutacao: extrairMutacao(corpo, corpo_cerca) });
     }
   }
 

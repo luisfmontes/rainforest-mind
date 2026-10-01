@@ -79,9 +79,22 @@ design descreve aquele código e mora ao lado dele.
 ## Fora de escopo
 - <o que ficou de fora e por quê>
 
+## Varredura
+docs/rainforest/varredura/<slug>.txt — <o que ela achou, e o que isso mudou>
+
 ## Em aberto
 - <o que não fechou — geralmente vazio no fim>
 ```
+
+### Varredura: o que o repositório já sabia
+
+Antes de gravar o design, rode `node scripts/varrer.cjs --slug <slug> <termo>...`
+com os termos do tema. Ele consulta Issues e PRs em qualquer estado, branches
+remotas, `git log --all --grep` e o `ideias.jsonl`, e grava
+`docs/rainforest/varredura/<slug>.txt` com cada comando e a saída. A seção
+`## Varredura` cita esse arquivo; `marcar --estagio design` recusa (exit 2) sem
+ele, ou com ele vazio. Existe porque um design já reimplementou uma Issue
+inteira depois de varrer só a `main` (`varri-so-a-main-e-duplique-feature`).
 
 ### Avaliado e descartado vs. Fora de escopo
 

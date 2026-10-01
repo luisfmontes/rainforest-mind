@@ -1187,6 +1187,7 @@ function portoesDe(slug) {
 
 const PORTOES = path.join(__dirname, 'portoes.cjs');
 const RECIBO = path.join(__dirname, 'recibo.cjs');
+const PROVA = path.join(__dirname, 'conferir-prova.cjs');
 
 /**
  * Roda um dos checadores e devolve a recusa, ou null.
@@ -1249,6 +1250,12 @@ function conferirFechamento(estagio, slug, extra, estado) {
   // recibo.cjs, e este branch se limita a invocar — ver Tarefa 5 do fluxo 7.
   if (fs.existsSync(RECIBO) && estagio === 'fechar') {
     const r = rodarChecador(RECIBO, ['gravar', '--slug', slug, '--nao-provado', JSON.stringify((extra && extra.nao_provado) || [])], estagio);
+    if (r) recusas.push(r);
+  }
+
+  // A prova das tarefas do plano roda no estágio `plano` junto das outras checagens.
+  if (fs.existsSync(PROVA) && estagio === 'plano' && fs.existsSync(docDoEstagio('planos', slug, estado))) {
+    const r = rodarChecador(PROVA, ['plano', '--slug', slug, '--plano', docDoEstagio('planos', slug, estado)], estagio);
     if (r) recusas.push(r);
   }
 
