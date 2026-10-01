@@ -109,11 +109,22 @@ if (!headAtual) {
   falha(69, "nao-verificavel: não conseguiu obter HEAD");
 }
 
+// Cada --exige tem de existir no worktree. Roda em TODA saida de sucesso,
+// inclusive a de "HEAD ja contem" (revisao 2: ali o --exige era ignorado).
+function conferirExige() {
+  for (const arquivo of ARGS.exige) {
+    if (!fs.existsSync(path.join(cwd, arquivo))) {
+      falha(1, "arquivo exigido não existe: '" + arquivo + "'");
+    }
+  }
+}
+
 if (headAtual !== hashResolvido) {
   // Verificar se H é ancestral de HEAD (trabalho já foi feito/reexecução)
   const rAncestorCheckReexec = gitSync(cwd, "merge-base", "--is-ancestor", hashResolvido, headAtual);
   if (rAncestorCheckReexec.status === 0) {
     // H é ancestral de HEAD - trabalho já foi feito
+    conferirExige(); // rota ja-contem tambem confere
     const headShort = headAtual.substring(0, 12);
     console.log(`base-ok: HEAD ja contem ${headShort} (trabalho commitado em cima)`);
     process.exit(0);
@@ -143,12 +154,7 @@ if (headNovoAtual !== hashResolvido) {
 }
 
 // (e) Cada --exige tem de existir no worktree
-for (const arquivo of ARGS.exige) {
-  const caminho = path.join(cwd, arquivo);
-  if (!fs.existsSync(caminho)) {
-    falha(1, "arquivo exigido não existe: '" + arquivo + "'");
-  }
-}
+conferirExige();
 
 // -- Sucesso ----------------------------------------------------------------
 const hash12 = hashResolvido.substring(0, 12);

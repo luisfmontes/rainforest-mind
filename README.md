@@ -189,10 +189,10 @@ Fora da tabela, mesmo mecanismo (`Stop`, exit 2 com mensagem e **ligado por padr
 desligável pela chave `gate-turno-prometido` em `.rainforest/config.json`):
 `gate-turno-prometido.cjs` barra o turno que prometeu despacho futuro ou em
 andamento (frases do design como "vou despachar", "despachando") e o turno não
-tem `tool_use` de `Agent` nem `Task`; também barra turno que diz estar esperando
-máquina ("CI rodando", "aguardando build") e não tem `Bash` com
-`run_in_background === true`, `Monitor`, nem `ScheduleWakeup`. Passado
-("despachei") não dispara. Promessa com execução imediata passa; `stop_hook_active === true` libera. Subagente (payload com `agent_id`) não é conferido. Payload ou transcrição ilegível saem 0 com aviso no stderr.
+tem `tool_use` de `Agent`, `Task`, `SendMessage` nem `Workflow`; também barra turno
+que diz estar esperando máquina ("CI rodando", "aguardando build") e não tem `Bash`
+ou `PowerShell` com `run_in_background === true`, `Monitor`, nem `ScheduleWakeup`. Passado
+("despachei") e negação ("não vou despachar") não disparam. Promessa com execução imediata passa; `stop_hook_active === true` libera. Subagente (payload com `agent_id`) não é conferido. Payload ou transcrição ilegível saem 0 com aviso no stderr.
 
 Valem em **qualquer** repo git da máquina, porque o hábito é que é o problema,
 não o repositório. Cada uma tem bateria própria — **849 casos** rodando o hook

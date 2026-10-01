@@ -168,8 +168,9 @@ function main() {
   }
 
   // ANTES DE GRAVAR: valida asserções no Buffer resultante
-  // Asserção 1: `para` está presente no resultado
-  if (para.length === 0 || novoConteudo.indexOf(para) === -1) {
+  // Asserção 1: `para` está presente no resultado. `--para` vazio é apagar
+  // o trecho: não há texto novo a procurar, e a asserção 2 cobre o resíduo.
+  if (para.length > 0 && novoConteudo.indexOf(para) === -1) {
     falha(2, "texto novo não encontrado no resultado");
   }
 

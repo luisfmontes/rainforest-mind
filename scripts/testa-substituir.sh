@@ -415,5 +415,13 @@ echo "== 11. modo executavel preservado =="
 echo "  pulado chmod em Git Bash nao e observavel ([ -x ] sempre falha)"
 
 echo
+echo "== 12. --para vazio apaga o trecho =="
+ALVO12="$SB/alvo12.txt"; printf 'antes MIOLO depois\n' > "$ALVO12"
+DE12="$SB/de12.txt"; printf 'MIOLO ' > "$DE12"
+PARA12="$SB/para12.txt"; : > "$PARA12"
+saiu "--para vazio: exit 0" "$(codigo --arquivo "$ALVO12" --de "$DE12" --para "$PARA12")" 0
+tem "--para vazio: o trecho sumiu e o resto ficou" "$(cat "$ALVO12")" "antes depois"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ $falhou -eq 0 ]

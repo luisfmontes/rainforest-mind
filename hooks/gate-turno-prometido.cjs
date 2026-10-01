@@ -156,12 +156,15 @@ function main() {
       // Remove blocos de código (```...```)
       let normalizado = texto.replace(/```[\s\S]*?```/g, '');
       // Remove código inline (`...`)
-      normalizado = normalizado.replace(/`[^`]*`/g, '');
+      // Sem atravessar linha: crase solta num parágrafo não engole o seguinte.
+      normalizado = normalizado.replace(/`[^`\n]*`/g, '');
       // Remove trechos entre aspas duplas ("...")
-      normalizado = normalizado.replace(/"[^"]*"/g, '');
+      normalizado = normalizado.replace(/"[^"\n]*"/g, '');
       // Remove linhas de lista (^\s*([-*]|\d+\.)\s)
       normalizado = normalizado.replace(/^\s*[-*]\s+.*$/gm, '');
       normalizado = normalizado.replace(/^\s*\d+\.\s+.*$/gm, '');
+      // Negação ("não vou despachar") é recusa, não promessa.
+      normalizado = normalizado.replace(/\bn[ãa]o\s+(vou despachar|vou disparar|estou despachando)\b/gi, '');
       return normalizado;
     }
 

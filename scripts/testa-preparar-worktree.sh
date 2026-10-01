@@ -280,6 +280,15 @@ if [ $EXIT1 -eq 0 ]; then
   else
     teste_falha "reexecucao deveria retornar exit 0 com 'ja contem', retornou exit=$EXIT2, output=$OUTPUT2"
   fi
+
+  # Mesma rota "ja contem", agora com --exige de arquivo ausente: tem de recusar.
+  OUTPUT3=$(node "$PREPARAR_SCRIPT" --hash "$HASH_B" --exige "sumiu-depois.txt" 2>&1)
+  EXIT3=$?
+  if [ $EXIT3 -eq 1 ] && echo "$OUTPUT3" | grep -q "sumiu-depois.txt"; then
+    teste_ok "ja contem + --exige ausente: exit 1 nomeando o arquivo"
+  else
+    teste_falha "ja contem + --exige ausente deveria sair 1, retornou exit=$EXIT3, output=$OUTPUT3"
+  fi
 else
   teste_falha "primeira execução falhou: exit=$EXIT1"
 fi

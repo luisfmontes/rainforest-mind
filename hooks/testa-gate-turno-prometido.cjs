@@ -194,6 +194,23 @@ teste('bloco de código: exit 0', () => {
   assert(r.status === 0, `esperado 0, obteve ${r.status}`);
 });
 
+// Teste: negação não dispara ("não vou despachar" é recusa, não promessa)
+teste('negação de despacho: exit 0', () => {
+  const r = rodaGate('negacao-de-despacho.jsonl');
+  assert(r.status === 0, `esperado 0, obteve ${r.status}`);
+});
+
+// Teste: aspa ou crase solta em outro parágrafo não engole a promessa
+teste('aspa solta antes da promessa: exit 2', () => {
+  const r = rodaGate('aspa-solta-antes-da-promessa.jsonl');
+  assert(r.status === 2, `esperado 2, obteve ${r.status}`);
+});
+
+teste('crase solta antes da promessa: exit 2', () => {
+  const r = rodaGate('crase-solta-antes-da-promessa.jsonl');
+  assert(r.status === 2, `esperado 2, obteve ${r.status}`);
+});
+
 // Teste: lista de estado não dispara (item de lista é relato, não promessa)
 teste('lista de estado: exit 0', () => {
   const r = rodaGate('lista-de-estado.jsonl');
