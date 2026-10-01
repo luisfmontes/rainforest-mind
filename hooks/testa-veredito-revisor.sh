@@ -733,6 +733,28 @@ git -C "$R" worktree remove --force "$FLX" 2>/dev/null || true
 git -C "$R" worktree remove --force "$OLD" 2>/dev/null || true
 
 echo
+echo "== 25. (#363-r2) unico candidato e worktree de agente: grava nele =="
+# Estado so em <repo>/.claude/worktrees/agent-x (linkado); o principal nao tem
+# o arquivo. Nao ha candidato fora de agente: perder o veredito seria pior.
+AGY="$R/.claude/worktrees/agent-x"
+git -C "$R" worktree add -q --detach "$AGY" 2>/dev/null || true
+AGY_ESTADO="$AGY/docs/rainforest/estado/$SLUG.json"
+rm -f "$SLUG_JSON"
+reset_estado "$AGY_ESTADO"
+T25=$(transcrito_com_texto "Diff OK.
+VEREDITO: ok" WT25)
+P=$(pay "$AGY" "rainforest-mind:revisor" "WT25" "Diff OK.
+VEREDITO: ok" '{"agent_transcript_path":"'"$T25"'"}')
+SAIDA=$(printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" 2>&1); GOT=$?
+V=$(vereditos "$AGY_ESTADO")
+if [ "$GOT" = 0 ] && [ ! -e "$SLUG_JSON" ] && printf '%s' "$V" | grep -q '"agente_id":"WT25"' && printf '%s' "$V" | grep -q '"veredito":"ok"'; then
+  ok=$((ok+1)); echo "  ok    (#363-r2) unico candidato agent-x grava nele (exit $GOT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#363-r2) unico candidato agent-x: exit=$GOT, V_agx=$V, saida=$SAIDA"
+fi
+git -C "$R" worktree remove --force "$AGY" 2>/dev/null || true
+
+echo
 echo "-----------------------------------------"
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
