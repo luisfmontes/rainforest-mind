@@ -50,12 +50,8 @@ arquivos: `hooks/gate-turno-prometido.cjs`, `hooks/testa-gate-turno-prometido.cj
 depende de: nenhuma
 paralela: sim
 prova: `node hooks/testa-gate-turno-prometido.cjs 2>&1 | grep -qE '^ +ok +#364-1'`
-mutacao:
-  arquivo: `hooks/gate-turno-prometido.cjs`
-  de: normalizado = normalizado.replace(/(^|[\s(\[{:])"(?=\S)(?:[^"\n]|\n(?![ \t]*\n))*?"/g, '$1');
-  para: normalizado = normalizado.replace(/"[^"]*"/g, '');
-  bateria: `node hooks/testa-gate-turno-prometido.cjs`
-  fixture: testa-gate-turno-prometido.cjs, casos "#364-1 aspas soltas na mesma linha" e "#364-2 citacao multi-linha"
+mutacao: n/a
+  motivo: superada pela tarefa 9 (rodada 2 do revisar, 01/10): a regex que esta mutacao invertia saiu do fonte; o pareamento de aspas e medido pela mutacao da tarefa 9 (casos #364-r2) e o de uma quebra pela da tarefa 12.
 Implementação: em `normalizarTexto`, a remoção de aspas vira exatamente a linha do `de:` acima (abre só depois de início, espaço ou `( [ { :`, seguida de não-espaço; atravessa quebra simples, nunca linha em branco), e a de código inline vira `normalizado = normalizado.replace(/`(?=[^\s`])[^`\n]*`/g, '');` (crase seguida de espaço não abre). Casos novos na bateria, transcritos no formato real: `#364-1 aspas soltas na mesma linha` (`O corte de 5" fica ok, vou despachar o executor agora, e o outro de 6" tambem.` sem Agent → exit 2); `#364-1b crases soltas na mesma linha` (`a crase ` solta, vou despachar o executor, e outra ` aqui.` sem Agent → exit 2); `#364-2 citacao multi-linha` (`Ele escreveu "vou\ndespachar o executor" ontem.` sem Agent → exit 0). Os casos existentes de aspas e código continuam verdes.
 pronto quando: com o transcrito real cujo último texto do assistente é `O corte de 5" fica ok, vou despachar o executor agora, e o outro de 6" tambem.` e nenhum `Agent` no turno, `node hooks/gate-turno-prometido.cjs` sai 2 nomeando a promessa; com a citação de duas linhas entre aspas sai 0 — provado por `node hooks/testa-gate-turno-prometido.cjs` (0 falhas, os três casos novos presentes).
 
@@ -145,12 +141,8 @@ arquivos: `hooks/veredito-revisor.cjs`, `hooks/testa-veredito-revisor.sh`
 depende de: nenhuma
 paralela: sim
 prova: `bash hooks/testa-veredito-revisor.sh 2>&1 | grep -qE '^ +ok +\(#363-r2\)'`
-mutacao:
-  arquivo: `hooks/veredito-revisor.cjs`
-  de: if (sobra.length === 0 && candidatos.length === 1) sobra = candidatos;
-  para: if (false) sobra = candidatos;
-  bateria: `bash hooks/testa-veredito-revisor.sh`
-  fixture: testa-veredito-revisor.sh, caso "(#363-r2) unico candidato agent-x grava nele"
+mutacao: n/a
+  motivo: superada pela tarefa 15 (rodada 3 do revisar, 01/10): a linha do fallback virou `if (sobra.length === 0) sobra = candidatos;`, medida pela mutacao da tarefa 15 (caso 26, #363-r3); o caso 25 (#363-r2) continua verde.
 Implementação: em `raizComEstadoDoSlug`, logo depois do filtro `.filter((p) => !ehWorktreeDeAgente(p))`, entra exatamente a linha do `de:` (com a variável que o código já usa para o resultado do filtro renomeada para `sobra` e declarada com `let`, se ainda não for): sem candidato fora de agente e com um único candidato no total, ele é a raiz — é o comportamento de antes, e perder o veredito em silêncio é pior que gravá-lo na única cópia que existe. Caso novo `(#363-r2) unico candidato agent-x grava nele`: estado só em `<repo>/.claude/worktrees/agent-x` (o repo principal não tem o arquivo), revisor com cwd lá → a entrada aparece em `revisar.vereditos` do agent-x. Os casos 23 e 24 continuam verdes.
 pronto quando: com o payload SubagentStop real e o estado existindo só em `.claude/worktrees/agent-x`, `node hooks/veredito-revisor.cjs` grava o veredito nessa cópia em vez de sair com `nao encontrado` — provado por `bash hooks/testa-veredito-revisor.sh` (0 falhas, caso #363-r2 presente).
 
