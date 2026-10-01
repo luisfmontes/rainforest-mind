@@ -675,6 +675,64 @@ git -C "$R" worktree remove "$WT1" 2>/dev/null || true
 git -C "$R" worktree remove "$WT2" 2>/dev/null || true
 
 echo
+echo "== 23. (#363) revisor isolado em .claude/worktrees/agent-x: grava no worktree do fluxo =="
+# Repo git real, worktrees reais. O revisor isolado (regra 11) tem cwd num
+# worktree de agente que nasceu da branch do fluxo e carrega copia ARMADA do
+# estado; o fluxo ativo vive noutro worktree, tambem armado. Ter o arquivo
+# (ou a janela armada) nao basta: o destino e o worktree que nao e de agente.
+rm -f "$SLUG_JSON"
+AGX="$R/.claude/worktrees/agent-x"
+FLX="$RAIZ/fluxo363"
+git -C "$R" worktree add -q --detach "$AGX" 2>/dev/null || true
+git -C "$R" worktree add -q --detach "$FLX" 2>/dev/null || true
+AGX_ESTADO="$AGX/docs/rainforest/estado/$SLUG.json"
+FLX_ESTADO="$FLX/docs/rainforest/estado/$SLUG.json"
+reset_estado "$AGX_ESTADO"
+reset_estado "$FLX_ESTADO"
+cp "$AGX_ESTADO" "$RAIZ/agx-antes.json"
+T23=$(transcrito_com_texto "Diff OK.
+VEREDITO: ok" WT23)
+P=$(pay "$AGX" "rainforest-mind:revisor" "WT23" "Diff OK.
+VEREDITO: ok" '{"agent_transcript_path":"'"$T23"'"}')
+SAIDA=$(printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" 2>&1); GOT=$?
+V=$(vereditos "$FLX_ESTADO")
+if [ "$GOT" = 0 ] && printf '%s' "$V" | grep -q '"agente_id":"WT23"' && printf '%s' "$V" | grep -q '"veredito":"ok"' && cmp -s "$AGX_ESTADO" "$RAIZ/agx-antes.json"; then
+  ok=$((ok+1)); echo "  ok    (#363) revisor em agent-x grava no worktree do fluxo e deixa o JSON do agent-x byte a byte igual (exit $GOT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#363) revisor em agent-x: exit=$GOT, V_fluxo=$V, V_agx=$(vereditos "$AGX_ESTADO"), saida=$SAIDA"
+fi
+git -C "$R" worktree remove --force "$AGX" 2>/dev/null || true
+
+echo
+echo "== 24. (#363) revisor nao isolado: cwd no worktree do fluxo, outro worktree com copia nao armada =="
+OLD="$RAIZ/antigo363"
+git -C "$R" worktree add -q --detach "$OLD" 2>/dev/null || true
+OLD_ESTADO="$OLD/docs/rainforest/estado/$SLUG.json"
+reset_estado "$FLX_ESTADO"
+reset_estado "$OLD_ESTADO"
+# copia antiga: janela de revisar nunca armada (sem a chave vereditos)
+node -e '
+const fs = require("fs");
+const e = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+e.revisar = { status: "pendente" };
+fs.writeFileSync(process.argv[1], JSON.stringify(e, null, 2) + "\n");
+' "$OLD_ESTADO"
+cp "$OLD_ESTADO" "$RAIZ/old-antes.json"
+T24=$(transcrito_com_texto "Diff OK.
+VEREDITO: ok" WT24)
+P=$(pay "$FLX" "rainforest-mind:revisor" "WT24" "Diff OK.
+VEREDITO: ok" '{"agent_transcript_path":"'"$T24"'"}')
+SAIDA=$(printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" 2>&1); GOT=$?
+V=$(vereditos "$FLX_ESTADO")
+if [ "$GOT" = 0 ] && printf '%s' "$V" | grep -q '"agente_id":"WT24"' && cmp -s "$OLD_ESTADO" "$RAIZ/old-antes.json"; then
+  ok=$((ok+1)); echo "  ok    (#363) revisor nao isolado grava no worktree do fluxo e a copia nao armada fica intacta (exit $GOT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#363) revisor nao isolado: exit=$GOT, V_fluxo=$V, saida=$SAIDA"
+fi
+git -C "$R" worktree remove --force "$FLX" 2>/dev/null || true
+git -C "$R" worktree remove --force "$OLD" 2>/dev/null || true
+
+echo
 echo "-----------------------------------------"
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
