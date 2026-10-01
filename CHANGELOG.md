@@ -30,6 +30,10 @@ Rodada 13: os três resíduos da revisão do semear-travas (#362, #363, #364).
   `varrer --slug` com separador ou `..` saem com exit 2 e nomeiam o valor.
 - `docs/travas-mecanicas.md` cita `python3` na forma simples do `conferir-prova`, como o código aceita.
 
+## 1.33.1 — 2026-10-01
+
+- Arrumação: os erros do sentinela de 21 a 30/09 entram no `vigias/ERROS.md` versionado, e sai o estado `2026-09-05-inventario-do-acervo`, que nunca passou do design.
+
 ## 1.33.0 — 2026-10-01
 
 - **Falha de vigia que volta aparece como recorrente.** O `/saude` ganha o aviso
