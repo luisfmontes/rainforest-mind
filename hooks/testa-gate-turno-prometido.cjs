@@ -307,7 +307,7 @@ teste('#364-1b crases soltas na mesma linha: exit 2', () => {
 });
 
 // Teste (#364-2): citação multi-linha
-teste('#364-2 citacao multi-linha: exit 0', () => {
+teste('#364-2 citacao multi-linha (promessa inteira na segunda linha)', () => {
   const r = rodaGate('364-2-citacao-multi-linha.jsonl');
   assert(r.status === 0, `esperado 0, obteve ${r.status}`);
 });

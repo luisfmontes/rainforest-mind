@@ -157,11 +157,12 @@ function main() {
       let normalizado = texto.replace(/\r\n?/g, '\n');
       normalizado = normalizado.replace(/```[\s\S]*?```/g, '');
       // Remove código inline (`...`)
-      // Crase seguida de espaço não abre; atravessa quebra simples, nunca linha em branco.
+      // Crase seguida de espaço não abre; a crase NÃO atravessa linha (conteúdo sem crase nem quebra).
       normalizado = normalizado.replace(/`(?=[^\s`])[^`\n]*`/g, '');
       // Remove trechos entre aspas duplas ("..."), pareadas quando abrem e fecham de verdade
-      // Abre após: início, espaço ou ( [ { :
-      // Segue: não-espaço, traverse quebra simples, fecha com aspas
+      // Abre após: início ou qualquer não-letra/não-dígito, com o conteúdo colado na aspa de abertura
+      // Atravessa no máximo uma quebra de linha; fecha só com o conteúdo colado na aspa de fechamento
+      // e sem letra/dígito logo depois dela
       normalizado = normalizado.replace(/(^|[^\p{L}\p{N}])"(?=\S)[^"\n]*(?:\n[^"\n]*)?(?<=\S)"(?![\p{L}\p{N}])/gu, '$1');
       // Remove linhas de lista (^\s*([-*]|\d+\.)\s)
       normalizado = normalizado.replace(/^\s*[-*]\s+.*$/gm, '');
