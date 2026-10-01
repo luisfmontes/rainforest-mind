@@ -10,6 +10,10 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.33.1 — 2026-10-01
+
+- Arrumação: os erros do sentinela de 21 a 30/09 entram no `vigias/ERROS.md` versionado, e sai o estado `2026-09-05-inventario-do-acervo`, que nunca passou do design.
+
 ## 1.33.0 — 2026-10-01
 
 - **Falha de vigia que volta aparece como recorrente.** O `/saude` ganha o aviso
