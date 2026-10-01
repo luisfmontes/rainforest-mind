@@ -234,6 +234,9 @@ $modelo = if ($modelos.ContainsKey($Vigia)) { $modelos[$Vigia] } else { 'haiku' 
 # qualquer um dos dois faltando vira linha no ERROS.md e exit 1 no agendador.
 $script:linhasDoClaude = 0
 $exitClaude = $null
+# #367: o MCP @artymclabin/gmail-mcp via `npx -y` levou 57,6 s para responder ao
+# initialize, acima do teto de 30 s do Claude Code. Vale so para este processo e filhos.
+$env:MCP_TIMEOUT = '90000'
 try {
     $prompt | & $claude -p --model $modelo --dangerously-skip-permissions @semEnvio 2>&1 |
       ForEach-Object { $script:linhasDoClaude++; [void](Write-LinhaEmLf -Caminho $log -Linha "$_") }

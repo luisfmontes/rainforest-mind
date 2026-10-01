@@ -51,7 +51,7 @@ montar() {
   printf '@exit /b 0\r\n'                          > "$SB/mudo.cmd"
   printf '@echo meia-resposta\r\n@exit /b 3\r\n'    > "$SB/quebra.cmd"
   # O bom ecoa os argumentos: e por eles que o caso 5 confere a lista negada.
-  printf '@echo resposta-boa %%*\r\n@exit /b 0\r\n' > "$SB/bom.cmd"
+  printf '@echo resposta-boa MCP_TIMEOUT=%%MCP_TIMEOUT%% %%*\r\n@exit /b 0\r\n' > "$SB/bom.cmd"
 }
 
 # $1 = valor de RFM_CLAUDE_EXE. Devolve o exit code do run-vigia.ps1.
@@ -92,6 +92,11 @@ naotem "ERROS.md sem erro de claude" "claude" "$ERR"
 echo "== 5. -Teste tira as tools de envio da sessao (2026-09-28: o haiku enviou a ronda de teste) =="
 tem "o claude recebeu --disallowedTools" "--disallowedTools" "$LOG"
 tem "send_message esta na lista negada" "mcp__whatsapp__send_message" "$LOG"
+
+echo "== 6. (#367) o runner da 90 s para o MCP subir =="
+montar
+igual "exit da ronda" "$(rodar "$(win "$SB/bom.cmd")")" "0"
+tem   "(#367) MCP_TIMEOUT chega ao claude" "MCP_TIMEOUT=90000" "$LOG"
 
 echo
 echo "$ok ok, $falhou falha(s)"
