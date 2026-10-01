@@ -153,10 +153,10 @@ esperado "  (#364) --slug 2026-10-01-ok termo → exit 0" 0 \
   bash -c "RFM_ROOT='$RAINFOREST' RFM_ESTADO_ROOT='$REPO' RFM_VARRER_GH='$GH_MOCK' node '$SCRIPT' --slug 2026-10-01-ok termo >/dev/null 2>&1"
 
 # Verificar que nenhum arquivo foi criado fora de docs/rainforest/varredura/
-if [ ! -d "$REPO/../x" ] && [ ! -d "$REPO/a" ]; then
-  ok=$((ok+1)); echo "  ok    (#364) nenhum arquivo criado fora de docs/rainforest/varredura/"
+if [ ! -e "$REPO/x.txt" ] && [ ! -e "$REPO/docs/rainforest/varredura/a/b.txt" ]; then
+  ok=$((ok+1)); echo "  ok    (#364) nenhum x.txt gravado fora de varredura"
 else
-  falhou=$((falhou+1)); echo "  FALHA (#364) arquivo criado fora de docs/rainforest/varredura/"
+  falhou=$((falhou+1)); echo "  FALHA (#364) nenhum x.txt gravado fora de varredura"
 fi
 
 echo
