@@ -168,3 +168,67 @@ mutacao:
   fixture: testa-varrer.sh, bloco "(#364) Validacao de slug com caminho", asserção "nenhum x.txt gravado fora de varredura"
 Implementação: no último `if` do bloco "(#364) Validacao de slug com caminho", `[ ! -d "$REPO/../x" ] && [ ! -d "$REPO/a" ]` vira a conferência dos ARQUIVOS que `path.join(dirVarredura, slug + '.txt')` produziria: `docs/rainforest/varredura/../../x.txt` (resolvido) e `docs/rainforest/varredura/a/b.txt`, com `[ ! -e ... ]`. Rótulo da asserção: `nenhum x.txt gravado fora de varredura`. Com a mutação aplicada, essa asserção tem de falhar junto com as de exit 2 — confira lendo a saída da mutação, não só o exit.
 pronto quando: com `node scripts/varrer.cjs --slug ../../x termo` num repo real, nenhum `x.txt` existe no caminho que o `path.join` produziria — provado por `bash scripts/testa-varrer.sh` (0 falhas) e, com a mutação aplicada, pela linha `FALHA` da asserção `nenhum x.txt gravado fora de varredura` na saída.
+
+## Rodada 3 — achados da 2ª revisão (01/10, reprovado com 6)
+
+Decidido na janela (achado 2): a regra de pareamento de aspas fica estrita — abre só com o conteúdo colado na aspa e fecha só fora de letra/dígito. Quatro formas que a base liberava passam a barrar (`"… "`, `" …"`, `"…"s`, `x"…"`); afrouxar reabre o falso negativo da aspa solta (achado 2 da 1ª revisão). O invariante "continua liberando os casos que já libera hoje" vale com essa exceção, registrada também no CHANGELOG.
+
+### 12. Teste de citação multi-linha que falha sem o conserto, e comentários que batem com o código [tipo: implementar]
+atende: D3
+arquivos: `hooks/gate-turno-prometido.cjs`, `hooks/testa-gate-turno-prometido.cjs`, `hooks/fixtures/turno-prometido/364-2-citacao-multi-linha.jsonl`
+depende de: nenhuma
+paralela: sim
+prova: `node hooks/testa-gate-turno-prometido.cjs 2>&1 | grep -qE '^ +ok +#364-2 citacao multi-linha \(promessa inteira'`
+mutacao:
+  arquivo: `hooks/gate-turno-prometido.cjs`
+  de: [^"\n]*(?:\n[^"\n]*)?(?<=\S)"
+  para: [^"\n]*(?<=\S)"
+  bateria: `node hooks/testa-gate-turno-prometido.cjs`
+  fixture: testa-gate-turno-prometido.cjs, caso "#364-2 citacao multi-linha (promessa inteira na segunda linha)"
+Implementação: a fixture `364-2-citacao-multi-linha.jsonl` passa a ter o texto `Ele escreveu "o plano:` + quebra + `vou despachar o executor" ontem.` (a promessa inteira numa linha, dentro de uma citação de duas linhas), sem Agent → exit 0; o rótulo do caso vira `#364-2 citacao multi-linha (promessa inteira na segunda linha)`. Na base (e52afbd2) esse texto sai 2 — confira rodando o gate da base contra a fixture. Os comentários de `normalizarTexto` passam a dizer o que o código faz: crase não atravessa linha; aspas abrem depois de início ou de qualquer não-letra/não-dígito, com conteúdo colado nas aspas, atravessam no máximo uma quebra e não fecham colado em letra/dígito. Nenhuma regex muda.
+pronto quando: com o transcrito real da fixture nova, `node hooks/gate-turno-prometido.cjs` sai 0 no head e 2 na base; sem o grupo de uma quebra na regex de aspas, o caso fica FALHA — provado por `node hooks/testa-gate-turno-prometido.cjs` (0 falhas) e pela mutação acima.
+
+### 13. `--exige` confinado ao worktree, não ao cwd [tipo: implementar]
+atende: D4
+arquivos: `scripts/preparar-worktree.cjs`, `scripts/testa-preparar-worktree.sh`
+depende de: nenhuma
+paralela: sim
+prova: `bash scripts/testa-preparar-worktree.sh 2>&1 | grep -qE '^ +ok +\(#364-r3\)'`
+mutacao:
+  arquivo: `scripts/preparar-worktree.cjs`
+  de: const rel = path.relative(toplevel, path.resolve(cwd, arquivo));
+  para: const rel = path.relative(cwd, path.resolve(cwd, arquivo));
+  bateria: `bash scripts/testa-preparar-worktree.sh`
+  fixture: testa-preparar-worktree.sh, caso "(#364-r3) --exige ../file.txt rodando de subpasta passa"
+Implementação: em `conferirExige`, `rel` passa a ser exatamente a linha do `de:` (o caminho continua resolvido a partir do cwd, como o `existsSync` logo abaixo, mas o confinamento é contra o `toplevel` do worktree). Caso novo `(#364-r3) --exige ../file.txt rodando de subpasta passa`: na fixture, rodar o script de dentro de uma subpasta do worktree com `--exige ../file.txt` (arquivo que existe na raiz do worktree) → exit 0. Os casos `(#364)` de caminho fora continuam saindo 2.
+pronto quando: com um worktree real e o script rodado de `<worktree>/sub`, `--exige ../file.txt` sai 0 e `--exige ../../../README.md` sai 2 — provado por `bash scripts/testa-preparar-worktree.sh` (0 falhas, caso #364-r3 presente).
+
+### 14. Asserção do varrer só com a metade que mede [tipo: teste]
+atende: D4
+arquivos: `scripts/testa-varrer.sh`
+depende de: nenhuma
+paralela: sim
+prova-na-base: verde — muda só a bateria; a asserção já passa na base e o que prova que ela mede é a mutação (tarefa 11).
+mutacao:
+  arquivo: `scripts/varrer.cjs`
+  de: if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(slug) || slug.includes('..')) {
+  para: if (false) {
+  bateria: `bash scripts/testa-varrer.sh`
+  fixture: testa-varrer.sh, asserção "nenhum x.txt gravado fora de varredura"
+Implementação: a asserção `nenhum x.txt gravado fora de varredura` passa a conferir só `$REPO/docs/x.txt`; a corrida com `--slug a/b` sai do bloco dela, com um comentário de uma linha dizendo por quê (o varrer não cria `varredura/a/`, então `a/b.txt` nunca existiria e a metade não media nada; o `a/b` continua coberto pelo caso de exit 2).
+pronto quando: com a validação do `--slug` removida, a asserção `nenhum x.txt gravado fora de varredura` sai FALHA, e com ela no lugar sai ok — provado por `bash scripts/testa-varrer.sh` (0 falhas) e pela mutação acima lida linha a linha.
+
+### 15. Veredito não some quando todos os candidatos são worktree de agente [tipo: implementar]
+atende: D2
+arquivos: `hooks/veredito-revisor.cjs`, `hooks/testa-veredito-revisor.sh`
+depende de: nenhuma
+paralela: sim
+prova: `bash hooks/testa-veredito-revisor.sh 2>&1 | grep -qE '^ +ok +\(#363-r3\)'`
+mutacao:
+  arquivo: `hooks/veredito-revisor.cjs`
+  de: if (sobra.length === 0) sobra = candidatos;
+  para: if (sobra.length === 0 && candidatos.length === 1) sobra = candidatos;
+  bateria: `bash hooks/testa-veredito-revisor.sh`
+  fixture: testa-veredito-revisor.sh, caso "(#363-r3) dois candidatos agent-*, so o do fluxo armado"
+Implementação: a linha do fallback da tarefa 10 vira exatamente a do `de:` (sem candidato fora de agente, todos os candidatos voltam, e o filtro de janela armada logo abaixo decide; empate continua ambíguo e não grava). O comentário acima dela acompanha. Caso novo `(#363-r3) dois candidatos agent-*, so o do fluxo armado`: estado em `<repo>/.claude/worktrees/agent-fluxo` (com `revisar.vereditos: []`) e em `<repo>/.claude/worktrees/agent-rev` (sem a janela), principal sem o arquivo, revisor com cwd em agent-rev → a entrada aparece em agent-fluxo e agent-rev fica byte a byte igual. Casos 23, 24 e 25 continuam verdes.
+pronto quando: com o payload SubagentStop real e esse par de worktrees de agente, `node hooks/veredito-revisor.cjs` grava no agent-fluxo — provado por `bash hooks/testa-veredito-revisor.sh` (0 falhas, caso #363-r3 presente).

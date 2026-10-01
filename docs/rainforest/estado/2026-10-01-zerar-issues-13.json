@@ -25,7 +25,7 @@
     "em": "2026-10-01"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-01",
     "tarefas_ok": 11,
     "tarefas": 11,
@@ -210,33 +210,39 @@
         "resultado": "vermelho",
         "fixture": "testa-varrer.sh, nenhum x.txt gravado fora de varredura"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-01"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "dbac72626f4f4d31b9702fb37c58d3a6ee7e15e1",
+      "head": "840a26962ddab9c459666eb804d470063489d5eb",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a02e33465921eeb64",
+        "agente_id": "a067eb16a7c18a6e0",
         "veredito": "reprovado",
         "em": "2026-10-01",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/06244f96-323e-4467-83a9-b79ce0f5e98f/subagents/agent-a02e33465921eeb64.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/06244f96-323e-4467-83a9-b79ce0f5e98f/subagents/agent-a067eb16a7c18a6e0.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-01",
-    "achados": 4,
+    "achados": 6,
     "pendentes": [
-      "1: regex de aspas nao abre depois de * _ — ; / (regressao)",
-      "2: aspa solta atravessa linhas e engole promessa; CRLF fura o teste de linha em branco",
-      "3: veredito some quando o unico candidato e agent-*",
-      "4: testa-varrer confere diretorio, nao o x.txt"
+      "1: fixture #364-2 nao falha na base",
+      "2: regex de aspas libera menos que a base (espaco/letra colada)",
+      "3: --exige confinado ao cwd, nao ao toplevel",
+      "4: comentarios de normalizarTexto contradizem o codigo",
+      "5: veredito some com 2+ candidatos todos agent-*",
+      "6: metade a/b da assercao do varrer nao mede"
     ],
-    "tentativas": 1
+    "tentativas": 2
   },
   "verificar": {
     "status": "pendente"
