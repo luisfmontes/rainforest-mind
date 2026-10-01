@@ -1,0 +1,23 @@
+Tarefa 3: aspas e crases só se pareiam quando abrem e fecham de verdade
+
+Em `normalizarTexto` (hooks/gate-turno-prometido.cjs):
+- Remoção de aspas vira: /(^|[\s(\[{:])"(?=\S)(?:[^"\n]|\n(?![ \t]*\n))*?"/g → $1
+  Abre depois de espaço/paren/colchete/chave; segue não-espaço; fecha com aspas
+- Remoção de crases vira: /`(?=[^\s`])[^`\n]*`/g → ''
+  (crase seguida de espaço não abre; não atravessa linha)
+- Adicionado: remoção de citação em bloco (linhas começadas com >)
+
+Casos novos em testa-gate-turno-prometido.cjs:
+- #364-1: aspas soltas na mesma linha → exit 2
+- #364-1b: crases soltas na mesma linha → exit 2
+- #364-2: citação multi-linha entre aspas → exit 0
+
+Fixtures criadas em hooks/fixtures/turno-prometido/:
+- 364-1-aspas-soltas-mesma-linha.jsonl
+- 364-1b-crases-soltas-mesma-linha.jsonl
+- 364-2-citacao-multi-linha.jsonl
+
+Bateria: 27 testes, 0 falhas (todos os antigos continuam verdes).
+Mutação: a linha de remoção de aspas é essencial (bateria vermelha quando falsa).
+
+Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>
