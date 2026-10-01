@@ -13,9 +13,11 @@ já não estava), leia-o e monte o briefing matinal do usuario:
    ou vence em ≤2 dias, abra a mensagem por isso.
 3. Último avanço datado da seção Avanços. Se não houver avanço há 7+ dias
    (ou nunca), nomeie isso em uma frase, sem sermão.
-4. **Triagem do inbox** (MCP gmail, conta de trabalho — SOMENTE leitura): chame a
-   tool `search_emails` com query `in:inbox is:unread` e maxResults 15. Se a
-   tool ainda não estiver disponível (MCP conectando no arranque), execute
+4. **Triagem do inbox** (MCP `gmail-leitura`, conta de trabalho — SOMENTE leitura):
+   chame a tool `mcp__gmail-leitura__search_emails` com query `in:inbox is:unread`
+   e maxResults 15. O servidor `gmail` (escopo completo, envia e apaga) está
+   negado nesta sessão de propósito (#367) — não procure por ele. Se a tool
+   ainda não estiver disponível (MCP conectando no arranque), execute
    `ping -n 10 127.0.0.1` no shell pra esperar e tente de novo, até 3 vezes.
    Classifique cada email pelo remetente/assunto em: **responder hoje**
    (pede decisão ou resposta do usuario), **pode esperar** (real, sem urgência
@@ -24,9 +26,10 @@ já não estava), leia-o e monte o briefing matinal do usuario:
    podem esperar, 4 FYI") e, se houver "responder hoje", até 2 linhas
    nomeando (remetente + assunto curto). Zero não lidos = "inbox limpo".
    NUNCA envie, responda, arquive, rotule ou apague email — o vigia lê e
-   reporta; rascunho é trabalho de sessão com o usuario. Se a tool falhar
-   após as tentativas, registre pela porta (`registrar-erro.ps1`, ver
-   `_comum.md`) e siga o briefing sem a triagem.
+   reporta; rascunho é trabalho de sessão com o usuario. Se a tool não subir
+   ou falhar após as tentativas, escreva no briefing a linha exata
+   `inbox: não verificado — MCP do Gmail não subiu`, registre pela porta
+   (`registrar-erro.ps1`, ver `_comum.md`) e siga o resto do briefing.
 5. Feche com UMA pergunta: "qual o primeiro passo concreto de hoje no
    [foco]?" — nomeando o usuario, nunca "me responde".
 6. Leia C:\Projetos\rainforest-mind\vigias\ERROS.md (se existir). Se houver
