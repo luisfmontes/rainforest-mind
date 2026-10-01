@@ -19,3 +19,10 @@
 - 2026-08-31 08:00 [sentinela-foco]: send_message falhou na 1a tentativa com account='trabalho' (nao participa do grupo JID <jid>, mesmo sintoma do batedor-repos em 28/08); reenviei com account='pessoal' e funcionou. Grupo e so 'pessoal'.
 - 2026-08-31 09:32 [sentinela-foco]: backup do FOCO.md falhou (exit 1): erro: não achei o FOCO.md em C:\Projetos\rainforest-mind
 - 2026-09-11 12:54 [sentinela-foco]: backup externo falhou (exit 2): System.Management.Automation.RemoteException
+- 2026-09-21 08:37 [sentinela-foco]: backup externo falhou (exit 2): System.Management.Automation.RemoteException
+- 2026-09-22 08:35 [sentinela-foco]: backup externo falhou (exit 2): System.Management.Automation.RemoteException
+- 2026-09-23 07:52 [sentinela-foco]: backup externo falhou (exit 2): System.Management.Automation.RemoteException
+- 2026-09-25 08:10 [sentinela-foco]: backup externo falhou (exit 2): System.Management.Automation.RemoteException
+- 2026-09-29 08:21 [sentinela-foco]: triagem de inbox nao rodou: MCPs gmail e gmail-leitura deram CONNECT_TIMEOUT (30000ms) na sessao; ToolSearch nao achou search_emails apos 3 tentativas com espera
+- 2026-09-29 08:21 [sentinela-foco]: backup externo falhou (exit 2): RECUSADO: PowerShell failed: ZipArchiveHelper : O processo não pode acessar o arquivo '<caminho>\rainforest.db' porque ele está 
+- 2026-09-30 08:24 [sentinela-foco]: triagem de inbox nao rodou: MCPs gmail e gmail-leitura deram CONNECT_TIMEOUT na sessao; ToolSearch nao achou search_emails apos 3 tentativas com espera
