@@ -10,6 +10,14 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.35.2 — 2026-10-01
+
+- **A recusa do gate de PR ensina o caminho do PR.** Quando `gh pr create/edit/merge` cita
+  `closes #N` e a Issue não tem evidência, a mensagem agora nomeia o marcador literal
+  `<!-- rainforest-evidencia -->` e mostra como comentar a evidência **sem fechar** a Issue
+  (`gh issue comment`, em comando separado do `gh pr`). Antes ela só apontava o
+  `fechar-issue.cjs`, que fecha a Issue antes de o PR existir.
+
 ## 1.35.1 — 2026-10-01
 
 Os dois menores da revisão da rodada 14 (#373).

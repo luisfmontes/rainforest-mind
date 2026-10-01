@@ -128,6 +128,12 @@ echo "== (b) gh pr create com closes #12 SEM marcador → exit 2 =="
 ) 2>"$SBP/err-b"
 EXIT_B=$?
 [ $EXIT_B -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_B)"
+# A recusa ensina o caminho do PR: o marcador literal e o comentário sem
+# fechar. Em 2026-10-01 a mensagem só apontava o fechar-issue.cjs, que fecha a
+# Issue antes do PR existir, e a sessão gastou três tentativas até achar o marcador.
+ERR_B="$(cat "$SBP/err-b")"
+echo "$ERR_B" | grep -qF "<!-- rainforest-evidencia -->" && test_ok "stderr nomeia o marcador" || test_fail "stderr não nomeia o marcador ($ERR_B)"
+echo "$ERR_B" | grep -qF "gh issue comment 12" && test_ok "stderr ensina comentar sem fechar" || test_fail "stderr não ensina comentar sem fechar ($ERR_B)"
 
 # Caso (c): `gh pr create --body "closes #12"` COM marcador → exit 0
 echo
