@@ -8,6 +8,10 @@ Design: docs/rainforest/design/2026-10-01-zerar-issues-13.md
 - O gate-turno-prometido continua barrando a promessa fora de aspas e liberando os casos que já libera hoje (passado, negação, código, lista).
 - `preparar-worktree --exige <caminho dentro do worktree>` e `varrer --slug <slug-em-kebab>` continuam como hoje.
 
+## Emenda (revisar, 01/10)
+- Tarefas 3 e 4: as fixtures `hooks/fixtures/turno-prometido/364-*.jsonl` que os casos novos leem entram em `arquivos:` — a bateria lê transcrito de fixture, e o plano listou só os dois `.cjs`.
+- Tarefa 8: o registro da varredura (`docs/rainforest/varredura/<slug>.txt`), que o `marcar --estagio design` exige, entra em `arquivos:`. O `conferir-fluxo creep` não o isenta como isenta design, plano e estado; isso é defeito do plugin, registrado em Issue própria, não desta rodada.
+
 ## Tarefas
 
 ### 1. Mensagem do `bash $b` diz por que barra [tipo: implementar]
@@ -42,7 +46,7 @@ pronto quando: com o payload SubagentStop real (`cwd` dentro de `.claude/worktre
 
 ### 3. Aspas e crases só se pareiam quando abrem e fecham de verdade [tipo: implementar]
 atende: D3
-arquivos: `hooks/gate-turno-prometido.cjs`, `hooks/testa-gate-turno-prometido.cjs`
+arquivos: `hooks/gate-turno-prometido.cjs`, `hooks/testa-gate-turno-prometido.cjs`, `hooks/fixtures/turno-prometido/364-1-aspas-soltas-mesma-linha.jsonl`, `hooks/fixtures/turno-prometido/364-1b-crases-soltas-mesma-linha.jsonl`, `hooks/fixtures/turno-prometido/364-2-citacao-multi-linha.jsonl`
 depende de: nenhuma
 paralela: sim
 prova: `node hooks/testa-gate-turno-prometido.cjs 2>&1 | grep -qE '^ +ok +#364-1'`
@@ -57,7 +61,7 @@ pronto quando: com o transcrito real cujo último texto do assistente é `O cort
 
 ### 4. Citação em bloco `>` não conta como promessa [tipo: implementar]
 atende: D3
-arquivos: `hooks/gate-turno-prometido.cjs`, `hooks/testa-gate-turno-prometido.cjs`
+arquivos: `hooks/gate-turno-prometido.cjs`, `hooks/testa-gate-turno-prometido.cjs`, `hooks/fixtures/turno-prometido/364-2b-citacao-em-bloco.jsonl`, `hooks/fixtures/turno-prometido/364-2b-citacao-controle.jsonl`
 depende de: 3
 paralela: nao
 prova: `node hooks/testa-gate-turno-prometido.cjs 2>&1 | grep -qE '^ +ok +#364-2b'`
@@ -111,7 +115,7 @@ pronto quando: com a regex `formaSimples` de `scripts/conferir-prova.cjs` (`bash
 
 ### 8. Versão e registro [tipo: docs]
 atende: D6
-arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`
+arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`, `docs/rainforest/varredura/2026-10-01-zerar-issues-13.txt`
 depende de: 1, 2, 3, 4, 5, 6, 7
 paralela: nao
 mutacao: n/a
