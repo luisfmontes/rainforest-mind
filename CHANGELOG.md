@@ -25,6 +25,9 @@ Rodada 13: os três resíduos da revisão do semear-travas (#362, #363, #364).
   ou uma aspa aberta e nunca fechada, com LF ou CRLF) não engole mais a promessa; citação entre
   aspas colada em negrito, itálico ou pontuação (`**"…"**`, `_"…"_`), citação que atravessa uma
   quebra de linha e citação em bloco `>` deixam de contar como promessa.
+  O pareamento ficou mais estrito de propósito: aspa com espaço por dentro (`"… "`, `" …"`) ou
+  colada em letra (`"…"s`, `x"…"`) não conta como citação e a promessa dentro dela barra o turno —
+  afrouxar isso reabre o caso da aspa solta que engole a promessa.
 - O `veredito-revisor` ainda grava quando a única cópia do estado está num worktree de agente.
 - **Caminho fora do lugar é recusado** (#364). `preparar-worktree --exige` fora do worktree e
   `varrer --slug` com separador ou `..` saem com exit 2 e nomeiam o valor.
