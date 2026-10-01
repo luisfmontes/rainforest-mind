@@ -135,6 +135,13 @@ function raizComEstadoDoSlug(repoRoot, slug) {
     });
   }
 
+  // #369: o revisor nao isolado roda no worktree do fluxo (repoRoot); o empate
+  // vem de copia commitada do estado em outro worktree. Vence o do revisor.
+  if (sobra.length > 1) {
+    const raiz = sobra.find((p) => path.resolve(p) === path.resolve(repoRoot));
+    if (raiz) sobra = [raiz];
+  }
+
   if (sobra.length === 1) return sobra[0];
   if (sobra.length === 0) {
     process.stderr.write(`${slug} nao encontrado\n`);

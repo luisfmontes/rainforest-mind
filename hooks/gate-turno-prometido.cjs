@@ -154,7 +154,7 @@ function main() {
     // Normaliza o texto: remove blocos de código, código inline, aspas pareadas (inclusive multi-linha), citação em bloco `>` e linhas de lista
     function normalizarTexto(texto) {
       // Remove blocos de código (```...```)
-      let normalizado = texto.replace(/\r\n?/g, '\n');
+      let normalizado = texto;
       normalizado = normalizado.replace(/```[\s\S]*?```/g, '');
       // Remove código inline (`...`)
       // Crase seguida de espaço não abre; a crase NÃO atravessa linha (conteúdo sem crase nem quebra).

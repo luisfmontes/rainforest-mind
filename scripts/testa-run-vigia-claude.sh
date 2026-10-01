@@ -51,15 +51,21 @@ montar() {
   printf '@exit /b 0\r\n'                          > "$SB/mudo.cmd"
   printf '@echo meia-resposta\r\n@exit /b 3\r\n'    > "$SB/quebra.cmd"
   # O bom ecoa os argumentos: e por eles que o caso 5 confere a lista negada.
-  printf '@echo resposta-boa %%*\r\n@exit /b 0\r\n' > "$SB/bom.cmd"
+  printf '@echo resposta-boa MCP_TIMEOUT=%%MCP_TIMEOUT%% %%*\r\n@exit /b 0\r\n' > "$SB/bom.cmd"
 }
 
-# $1 = valor de RFM_CLAUDE_EXE. Devolve o exit code do run-vigia.ps1.
+# $1 = valor de RFM_CLAUDE_EXE; $2 = "sem-teste" roda SEM -Teste (default: com).
+# Devolve o exit code do run-vigia.ps1. Sem -Teste o runner tambem roda o
+# backup do estado (foco.cjs e backup.cjs, ambos sobre a raiz da caixa); o
+# RFM_BACKUP_DESTINO na caixa impede o zip de ir para o OneDrive real, e o
+# unico que poderia enviar algo (o claude) e o falso.
 rodar() {
+  local teste="-Teste"; [ "${2:-}" = "sem-teste" ] && teste=""
   PATH="$SB/bin:$PATH" RFM_ROOT="$(win "$SB/dados")" RFM_CLAUDE_EXE="$1" \
+  RFM_BACKUP_DESTINO="$(win "$SB/backup-destino")" \
   RFM_WHATSAPP_DESTINO="0@g.us" WHATSAPP_API_BASE_URL="http://127.0.0.1:$PORTA" \
     powershell -NoProfile -ExecutionPolicy Bypass \
-    -File "$(win "$SB/plugin/vigias/run-vigia.ps1")" -Vigia sentinela-foco -Teste \
+    -File "$(win "$SB/plugin/vigias/run-vigia.ps1")" -Vigia sentinela-foco $teste \
     > "$SB/saida.txt" 2>&1
   echo $?
 }
@@ -92,6 +98,20 @@ naotem "ERROS.md sem erro de claude" "claude" "$ERR"
 echo "== 5. -Teste tira as tools de envio da sessao (2026-09-28: o haiku enviou a ronda de teste) =="
 tem "o claude recebeu --disallowedTools" "--disallowedTools" "$LOG"
 tem "send_message esta na lista negada" "mcp__whatsapp__send_message" "$LOG"
+
+echo "== 6. (#367) o runner da 90 s para o MCP subir =="
+montar
+igual "exit da ronda" "$(rodar "$(win "$SB/bom.cmd")")" "0"
+tem   "(#367) MCP_TIMEOUT chega ao claude" "MCP_TIMEOUT=90000" "$LOG"
+
+echo "== 7. (#367) o servidor gmail inteiro fica fora da sessao, com e sem -Teste =="
+montar
+igual "exit da ronda sem -Teste" "$(rodar "$(win "$SB/bom.cmd")" sem-teste)" "0"
+tem   "(#367) mcp__gmail negado tambem fora do -Teste" "--disallowedTools mcp__gmail" "$LOG"
+naotem "fora do -Teste as tools de envio do whatsapp seguem livres" "mcp__whatsapp__send_message" "$LOG"
+montar
+igual "exit da ronda no -Teste" "$(rodar "$(win "$SB/bom.cmd")")" "0"
+tem   "(#367) mcp__gmail negado no -Teste" "--disallowedTools mcp__gmail," "$LOG"
 
 echo
 echo "$ok ok, $falhou falha(s)"
