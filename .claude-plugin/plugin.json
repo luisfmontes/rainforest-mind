@@ -6,5 +6,6 @@
     "name": "Luís Montes"
   },
   "license": "MIT",
+  "types": "./types/index.d.ts",
   "homepage": "https://github.com/luisfmontes/rainforest-mind"
 }
