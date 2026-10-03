@@ -50,9 +50,16 @@ function escaparBash(str) {
  *   herdam o ambiente tal como está — é o que reproduz uma sessão real, cuja
  *   cadeia de resolução (hooks/lib/raiz.cjs) já decide sozinha para onde
  *   olhar quando RFM_ROOT não está setada.
+ * @param {{argsAbertura?: string[]}} [opcoes] `argsAbertura` (ex. ['--destino','mod'])
+ *   e acrescentado SO aos dois geradores da abertura (foco-session-start.cjs e
+ *   memoria-session-start.cjs); os demais hooks rodam como declarados. Sem a opcao,
+ *   o comportamento e o de sempre.
  * @returns {{outputs: Array<{index:number,cmd:string,stdout:string,stderr:string,exitCode:number}>, hookIndex: number}}
  */
-function executarHooksSessionStart(raiz) {
+const GERADORES_ABERTURA = /(?:foco|memoria)-session-start\.cjs"/;
+
+function executarHooksSessionStart(raiz, opcoes = {}) {
+  const argsAbertura = (opcoes.argsAbertura || []).map(escaparBash).join(' ');
   const hooksJson = lerHooksJson();
   const sessionStartHooks = hooksJson.hooks.SessionStart || [];
 
@@ -68,7 +75,8 @@ function executarHooksSessionStart(raiz) {
         }
 
         hookIndex++;
-        const cmd = expandirComando(hook.command);
+        let cmd = expandirComando(hook.command);
+        if (argsAbertura && GERADORES_ABERTURA.test(hook.command)) cmd += ' ' + argsAbertura;
         // 60 s e o default do harness de verdade. O 5 s que estava aqui era
         // invencao do teste: doze vezes mais apertado que producao, e como o
         // kill por tempo devolve `status === null`, a bateria lia o estouro
