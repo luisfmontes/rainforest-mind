@@ -74,10 +74,37 @@
     "em": "2026-10-03"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "6cc3e88bcbd564d89a3d42520a1060786ead1fc7",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a86762fc0da2a38ac",
+        "veredito": "ok",
+        "em": "2026-10-03",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/da2628ca-c4c2-4c85-9335-967778ffae56/subagents/agent-a86762fc0da2a38ac.jsonl"
+      }
+    ],
+    "base": "197a147a",
+    "head": "6cc3e88b",
+    "revisor": "rainforest-mind:revisor (sonnet), 3 rodadas",
+    "rodada_1": "reprovado: bateria testa-mod-faixa vermelha por linha fixa do README (bloqueante); copia de worktree de agente vencia a real (importante); 4 menores",
+    "rodada_2": "aprovado: 5 achados resolvidos",
+    "rodada_3": "VEREDITO: ok; menores aceitos: fechamento de cerca com info string, cols undefined",
+    "comando": "node hooks/testa-mod-faixa.cjs && bash scripts/testa-faixa-dados.sh && claude plugin test .",
+    "saida": "20 ok, 0 falha(s) | 14 ok, 0 falha(s) | 4 pass, 0 fail",
+    "em": "2026-10-03"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "claude plugin test . && node hooks/testa-mod-faixa.cjs && bash scripts/testa-faixa-dados.sh && node hooks/testa-mod-abertura.cjs",
+    "saida": "4 pass, 0 fail | 20 ok, 0 falha(s), 0 skipped | 14 ok, 0 falha(s), 0 skipped | 28 ok, 0 falha(s), 0 skipped",
+    "sensor_externo": "claude plugin test . && node hooks/testa-mod-faixa.cjs && bash scripts/testa-faixa-dados.sh && node hooks/testa-mod-abertura.cjs",
+    "repl_real": "claude --plugin-dir, 2.1.288, lido pelo usuario em 5 prints: foco+fluxo; Q 1 aberta(s): Q1 Teste da faixa; visivel durante sleep 20; esconder some e Q2 traz de volta; controle em ~/Documents sem faixa",
+    "em": "2026-10-03"
   },
   "fechar": {
     "status": "pendente"
