@@ -1097,7 +1097,20 @@ function travarOrcamento(payload, orcamento = TETOS.ORCAMENTO_BYTES) {
  *   (regra 3, 7+ dias sem avanço) — default `Date.now()`. Ver `iparAvancoRecente`.
  */
 function montarContexto(o) {
+  // Destino `mod`: a abertura vai como secao do system prompt, sem o teto de
+  // entrega do hook SessionStart. Os tetos maiores vem de hooks/abertura-mod.json
+  // (via o adaptador) e SOBREPOEM so os que ele nomeia; sem `destino`, TETOS puro.
+  const tetos = o.destino === 'mod' ? { ...TETOS, ...o.tetosMod } : TETOS;
   const regras = blocoRegras(extrairNucleo(filtrarRegras(o.skillText)), o.caminhoSkill || '(caminho não informado)');
+  // Elaboracao INTEIRA das regras que o destino pede ([{ n, texto }], na ordem).
+  // Entra logo apos o nucleo, verbatim: a regra que vem inteira nao precisa de
+  // `Skill` nem de leitura para ser aplicada.
+  const inteiras = o.destino === 'mod' && Array.isArray(o.elaboracoes) ? o.elaboracoes : [];
+  const blocoInteiras = inteiras.length
+    ? `\n\n## Elaboração inteira das regras ${inteiras.map((e) => e.n).join(', ')}\n\n` +
+      inteiras.map((e) => normalizarFimDeLinha(e.texto).trim()).join('\n\n')
+    : '';
+  const nomesInteiras = inteiras.map((e) => e.n).join(', ');
   const caminho = o.caminhoSkill || `${o.root || ''}\\skills\\rainforest-mind\\SKILL.md`;
   const pastaReferences = path.join(path.dirname(caminho), 'references').replace(/\\/g, '/');
 
@@ -1106,13 +1119,16 @@ function montarContexto(o) {
   // acontecer; "carregue a skill antes de aplicar a regra marcada" faz.
   const cabecalho = `RAINFOREST MIND ATIVO — memória de trabalho externa e radar de escopo do usuario (perfil 2e).
 
-**Isto é o NÚCLEO das regras, não o texto completo.** Regra marcada com ↳ tem
+${inteiras.length
+    ? `**Estas são as regras em NÚCLEO; as regras ${nomesInteiras} vêm INTEIRAS na seção "Elaboração inteira" logo abaixo.** Regra marcada com ↳ cuja elaboração não veio inteira tem critérios finos, comandos exatos, incidentes.
+**Antes de aplicar uma regra marcada que não veio inteira, leia a elaboração:**`
+    : `**Isto é o NÚCLEO das regras, não o texto completo.** Regra marcada com ↳ tem
 elaboração que não está aqui — critérios finos, comandos exatos, incidentes.
-**Antes de aplicar uma regra marcada, leia a elaboração:**
+**Antes de aplicar uma regra marcada, leia a elaboração:**`}
 \`${pastaReferences}/regra-<n>.md\` (onde \`<n>\` é o número com dois dígitos — \`06\`, \`13\`, \`17\`).
 
 ## Regras (aplicar em toda resposta)
-${regras}
+${regras}${blocoInteiras}
 
 ## Foco declarado
 `;
@@ -1164,7 +1180,7 @@ ${regras}
   // vê em outro canal) e só então as SESSÕES (radar de janela, regra 17) —
   // nunca o veredito (regra 3/17, isenção de cobrança de desvio) nem o aviso de
   // revisão, os dois mais curtos e mais críticos para não cobrar errado.
-  if (fixo > TETOS.ORCAMENTO_BYTES - TETOS.FOCO_MIN_BYTES) {
+  if (fixo > tetos.ORCAMENTO_BYTES - tetos.FOCO_MIN_BYTES) {
     // So' aplica o corte se ELE RESOLVER: simula a remocao das DUAS partes antes
     // de tirar qualquer uma de verdade. Medido ao vivo (2026-09-16, worktree com
     // 11 pastas ja mescladas em origin/main): quando quem domina o estouro e' o
@@ -1185,7 +1201,7 @@ ${regras}
     }
     const fixoComCorteMaximo = Buffer.byteLength(cabecalho + '\n\n' + blocoRodapeSimulado.join('\n\n'), 'utf8');
 
-    if (fixoComCorteMaximo <= TETOS.ORCAMENTO_BYTES - TETOS.FOCO_MIN_BYTES) {
+    if (fixoComCorteMaximo <= tetos.ORCAMENTO_BYTES - tetos.FOCO_MIN_BYTES) {
       if (linhaDependencias) {
         const idxDependencias = blocoRodape.indexOf(linhaDependencias);
         if (idxDependencias !== -1) blocoRodape.splice(idxDependencias, 1);
@@ -1193,7 +1209,7 @@ ${regras}
       rodape = '\n\n' + blocoRodape.join('\n\n');
       fixo = Buffer.byteLength(cabecalho + rodape, 'utf8');
 
-      if (fixo > TETOS.ORCAMENTO_BYTES - TETOS.FOCO_MIN_BYTES && linhaSessoesRodape) {
+      if (fixo > tetos.ORCAMENTO_BYTES - tetos.FOCO_MIN_BYTES && linhaSessoesRodape) {
         const idxSessoes = blocoRodape.indexOf(linhaSessoesRodape);
         if (idxSessoes !== -1) blocoRodape.splice(idxSessoes, 1);
         rodape = '\n\n' + blocoRodape.join('\n\n');
@@ -1202,14 +1218,20 @@ ${regras}
     }
   }
 
-  const sobra = TETOS.ORCAMENTO_BYTES - fixo;
-  const tetoFoco = Math.max(0, Math.min(TETOS.FOCO_MAX_BYTES, Math.max(0, sobra)) - custoEstrategia);
+  const sobra = tetos.ORCAMENTO_BYTES - fixo;
+  const tetoFoco = Math.max(0, Math.min(tetos.FOCO_MAX_BYTES, Math.max(0, sobra)) - custoEstrategia);
 
   const focoResumido = resumirFoco(o.focoText, o.agora).trim();
+  // No destino mod o resumo existe para caber no teto do hook, e la o teto e outro:
+  // se o FOCO.md INTEIRO cabe, ele entra inteiro (sem omitir avanco, secao ou marco).
+  // Nao cabendo, cai no caminho de sempre, que corta por prioridade e avisa.
+  const focoInteiro = o.destino === 'mod' ? normalizarFimDeLinha(o.focoText).trim() : '';
   let foco;
-  if (!focoResumido) {
+  if (focoInteiro && Buffer.byteLength(focoInteiro, 'utf8') <= tetoFoco) {
+    foco = focoInteiro;
+  } else if (!focoResumido) {
     foco = '(nenhum foco declarado — sugira /foco <texto> se o usuario disser no que precisa entregar)';
-  } else if (tetoFoco < TETOS.FOCO_MIN_BYTES) {
+  } else if (tetoFoco < tetos.FOCO_MIN_BYTES) {
     // Abaixo do piso, um excerto é pior que um ponteiro: sobrariam o título e o
     // cabeçalho, e o critério de pronto — que é contra o que a regra 3 mede —
     // ficaria de fora, com o bloco parecendo completo. O piso não vira alocação
@@ -1235,7 +1257,7 @@ ${regras}
 
   if (pastaEstrategia) foco += pastaEstrategia;
 
-  return travarOrcamento(cabecalho + foco + rodape);
+  return travarOrcamento(cabecalho + foco + rodape, tetos.ORCAMENTO_BYTES);
 }
 
 /**

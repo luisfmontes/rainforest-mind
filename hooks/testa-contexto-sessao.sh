@@ -2852,7 +2852,7 @@ echo "22.3 (D12/Issue #294.5) — so' corta se resolver: corte que nao resolve f
 # dois blocos sem ACIMA e a lib com o guarda desligado (`if (true)`) tira os dois.
 # Se o guarda de producao nao fizer diferenca em tamanho nenhum, nao ha faixa: FALHA.
 cp "$LIB" "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs"
-sed -i "s/if (fixoComCorteMaximo <= TETOS.ORCAMENTO_BYTES - TETOS.FOCO_MIN_BYTES) {/if (true) {/" "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs"
+sed -i "s/if (fixoComCorteMaximo <= tetos.ORCAMENTO_BYTES - tetos.FOCO_MIN_BYTES) {/if (true) {/" "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs"
 NOTA_22_3=""
 if diff "$LIB" "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs" > /dev/null; then
   # Sem a linha do guarda na lib, a copia "sem guarda" e' a propria lib: a busca
@@ -2887,7 +2887,7 @@ rm -f "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs"
 echo
 echo "22.4 MUTAÇÃO — desligar o corte tem que derrubar o item 22.2"
 cp "$LIB" "$RAIZ_POSIX/lib-mut-rodape.cjs"
-sed -i "s/if (fixo > TETOS.ORCAMENTO_BYTES - TETOS.FOCO_MIN_BYTES) {/if (false) {/" "$RAIZ_POSIX/lib-mut-rodape.cjs"
+sed -i "s/if (fixo > tetos.ORCAMENTO_BYTES - tetos.FOCO_MIN_BYTES) {/if (false) {/" "$RAIZ_POSIX/lib-mut-rodape.cjs"
 if diff "$LIB" "$RAIZ_POSIX/lib-mut-rodape.cjs" > /dev/null; then
   falhou=$((falhou+1)); echo "  FALHA o sed não encontrou a linha a mutar — mutação não aplicou nada, teste inválido"
 else
