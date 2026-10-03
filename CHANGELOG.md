@@ -20,7 +20,8 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 - **Só acende quando ajuda.** Sem fluxo em curso e sem Q aberta, a faixa não aparece; o foco
   sozinho não a acende. Ela continua visível durante o turno do modelo e cede a vaga quando o
   Claude Code mostra uma pesquisa.
-- **"esconder"** tira a faixa até algo mudar: Q nova, etapa nova ou agente novo em voo.
+- **"esconder"** tira a faixa até algo mudar: Q nova ou resolvida, etapa nova, ou
+  mudança nos agentes em voo.
 - **Atualiza** ao abrir a sessão, ao fim de cada turno e ao apertar o botão. Uma resposta sem Q
   zera a linha das Q. Falha de leitura apaga só a linha afetada; a sessão nunca quebra.
 - **Não repete a statusline** (jornada, prazo, versão).

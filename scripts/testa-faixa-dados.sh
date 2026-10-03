@@ -106,6 +106,20 @@ rodar "$NAOREPO"
 checa "diretorio que nao e repo cai para [cwd]" \
   "d.fluxos.length === 1 && d.fluxos[0].slug === 'so-aqui' && d.fluxos[0].etapa === 'design' && d.fluxos[0].worktree.replace(/\\\\/g,'/') === '$NAOREPO'"
 
+# Caso 7: worktree de subagente (.claude/worktrees/agent-*) com copia do despacho mais
+# avancada (fluxo reaberto no real) nao vence a copia do worktree real.
+AG="$REPO/.claude/worktrees/agent-velho"
+( cd "$REPO" && git worktree add -q --detach "$AG" >/dev/null 2>&1 )
+[ -d "$AG" ] || { echo "FALHA montagem do worktree de agente"; exit 1; }
+estado "$AG" fluxo-x '{"slug":"fluxo-x","criado_em":"2026-10-01","design":{"status":"aprovado"},"plano":{"status":"ok"},"executar":{"status":"ok"},"revisar":{"status":"ok"}}'
+rodar "$REPO"
+checa "worktree de agente nao vence a copia real mesmo mais avancado" \
+  "(() => { const f = d.fluxos.find(f => f.slug === 'fluxo-x'); return f.etapa === 'executar' && f.worktree.replace(/\\\\/g,'/').endsWith('-wt'); })()"
+estado "$AG" so-no-agente '{"slug":"so-no-agente","criado_em":"2026-09-01","design":{"status":"pendente"}}'
+rodar "$REPO"
+checa "copia so no worktree de agente ainda aparece" "d.fluxos.some(f => f.slug === 'so-no-agente')"
+( cd "$REPO" && git worktree remove --force "$AG" >/dev/null 2>&1 )
+
 # Somente leitura: nada novo apareceu no repo temporario alem do que a bateria escreveu.
 ANTES=$(cd "$REPO" && find . -path ./.git -prune -o -type f -print | sort | md5sum)
 rodar "$REPO"

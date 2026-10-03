@@ -10,11 +10,16 @@
 export const MAX_LINHAS = 3;
 
 // As duas formas com que o brainstorm numera uma pergunta aberta. Cada marcador captura
-// o numero e o titulo; ambos aceitam o prefixo de blockquote `> `.
+// o numero e o titulo; ambos aceitam o prefixo de blockquote `> ` e de item de lista
+// (`- `, `* `, `1. `).
+const PREFIXO = String.raw`^\s*(?:>\s*)*(?:(?:[-*+]|\d+[.)])\s+)?`;
 export const MARCADORES_Q = [
-  /^\s*(?:>\s*)*❓\s*\*\*Q(\d+)\s*[—–-]\s*(.*?)\*\*/u,
-  /^\s*(?:>\s*)*\*\*Q(\d+)\.\*\*\s*(.*)$/u,
+  new RegExp(PREFIXO + String.raw`❓\s*\*\*Q(\d+)\s*[—–-]\s*(.*?)\*\*`, 'u'),
+  new RegExp(PREFIXO + String.raw`\*\*Q(\d+)\.\*\*\s*(.*)$`, 'u'),
 ];
+
+// Cerca de codigo: ``` ou ~~~ (3+), fechada pela mesma letra com o mesmo tamanho ou maior.
+const CERCA = /^\s*(?:>\s*)*(`{3,}|~{3,})/;
 
 function semMarkdown(s) {
   return String(s).replace(/[*_`]/g, '').trim();
@@ -25,13 +30,15 @@ export function extrairQs(texto) {
   if (typeof texto !== 'string') return [];
   const achados = [];
   const vistos = new Set();
-  let cerca = false;
+  let cerca = null;
   for (const linha of texto.split(/\r?\n/)) {
-    if (/^\s*(?:>\s*)*```/.test(linha)) {
-      cerca = !cerca;
+    const c = CERCA.exec(linha);
+    if (c) {
+      if (cerca === null) cerca = c[1];
+      else if (c[1][0] === cerca[0] && c[1].length >= cerca.length) cerca = null;
       continue;
     }
-    if (cerca) continue;
+    if (cerca !== null) continue;
     for (let i = 0; i < MARCADORES_Q.length; i++) {
       const m = MARCADORES_Q[i].exec(linha);
       if (!m) continue;

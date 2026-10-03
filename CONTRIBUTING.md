@@ -148,11 +148,13 @@ primeiro a Q, depois o fluxo. A faixa só aparece com fluxo em curso ou Q aberta
 e o foco sozinho não a acende. O fluxo vem de todos os worktrees do repositório,
 por `scripts/faixa-dados.cjs` (somente leitura, reusa `proximo` e
 `tituloDoFocoAtivo`). Quando o mesmo slug aparece em mais de um worktree, vale a
-cópia mais avançada. As Q saem do texto final do turno (`e.answer` do
+cópia mais avançada, e a de worktree de subagente (`.claude/worktrees/agent-*`)
+só vale quando é a única. As Q saem do texto final do turno (`e.answer` do
 `turn.complete`, só da sessão principal) pelos dois marcadores de `MARCADORES_Q`,
-`❓ **Q<n> — título**` e `**Q<n>.**`, fora de bloco de código. Uma resposta sem Q
-zera a linha. "Esconder" vale até a assinatura mudar: Q nova, etapa nova ou
-agente novo em voo. A faixa atualiza em `session.start`, em `turn.complete` e ao
+`❓ **Q<n> — título**` e `**Q<n>.**` (também em blockquote e item de lista), fora
+de cerca de código (```` ``` ```` ou `~~~`). Uma resposta sem Q
+zera a linha. "Esconder" vale até a assinatura mudar: Q nova ou resolvida,
+etapa nova ou mudança nos agentes em voo. A faixa atualiza em `session.start`, em `turn.complete` e ao
 pressionar, nunca no meio do turno. Falha de leitura apaga só a linha afetada e
 nunca quebra a sessão. Controle de terminal (ESC, C1, bidi) é trocado por espaço
 antes de desenhar. A faixa não repete a statusline (jornada, prazo, versão). A

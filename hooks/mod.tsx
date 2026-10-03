@@ -37,12 +37,16 @@ export const register: Register = (on, options) => {
   abertura(on, options)
 
   on('session.start', async ($, e, next) => {
-    const dados = await buscar({
-      rodar: (argv, init) => $.process.run(argv, init),
-      cwd: () => $.session.cwd(),
-      raiz: $.plugin.root,
-    })
-    await update($, faixaDados, () => dados)
+    try {
+      const dados = await buscar({
+        rodar: (argv, init) => $.process.run(argv, init),
+        cwd: () => $.session.cwd(),
+        raiz: $.plugin.root,
+      })
+      await update($, faixaDados, () => dados)
+    } catch {
+      // a faixa nunca quebra a abertura da sessao
+    }
     return next(e)
   })
 
@@ -83,15 +87,19 @@ export const register: Register = (on, options) => {
             key="esconder"
             label="esconder"
             onPress={async () => {
-              const d = await read($, faixaDados)
-              const q = await read($, faixaQ)
-              await update($, faixaOculta, () => assinatura(d, q))
-              const dados = await buscar({
-                rodar: (argv, init) => $.process.run(argv, init),
-                cwd: () => $.session.cwd(),
-                raiz: $.plugin.root,
-              })
-              await update($, faixaDados, () => dados)
+              try {
+                const d = await read($, faixaDados)
+                const q = await read($, faixaQ)
+                await update($, faixaOculta, () => assinatura(d, q))
+                const dados = await buscar({
+                  rodar: (argv, init) => $.process.run(argv, init),
+                  cwd: () => $.session.cwd(),
+                  raiz: $.plugin.root,
+                })
+                await update($, faixaDados, () => dados)
+              } catch {
+                // botao sem rejeicao solta
+              }
             }}
           />
         </Box>

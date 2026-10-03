@@ -45,9 +45,12 @@ const igual = (a, b, msg) => {
 let _mod;
 const modulo = async () => (_mod ??= await import(MJS));
 
-function linhasDe(arquivo, de, ate) {
+// Localiza pelo conteudo, nunca por numero de linha: arquivo vivo cresce acima do trecho.
+function blocoDe(arquivo, inicio, n) {
   const l = fs.readFileSync(path.join(SRC, arquivo), "utf8").split(/\r?\n/);
-  return l.slice(de - 1, ate).join("\n");
+  const i = l.findIndex(x => x.includes(inicio));
+  if (i < 0) throw new Error(`${arquivo}: trecho "${inicio}" sumiu`);
+  return l.slice(i, i + n).join("\n");
 }
 
 // Dados reais: repo temporario + script da tarefa 1.
@@ -75,15 +78,15 @@ function dadosReais() {
 }
 
 // ------------------------------------------------------------------ extrairQs
-caso("README real, linhas 49 a 52: Q1 e Q2 com titulo", async () => {
+caso("README real, exemplo de Q1 e Q2: as duas com titulo", async () => {
   const { extrairQs } = await modulo();
-  igual(extrairQs(linhasDe("README.md", 49, 52)),
+  igual(extrairQs(blocoDe("README.md", "❓ **Q1 — Onde o token vive", 4)),
     [{ n: 1, titulo: "Onde o token vive" }, { n: 2, titulo: "Expiração" }], "Qs do README");
 });
 
-caso("SKILL.md:22 real, fora de cerca e em blockquote: Q1", async () => {
+caso("SKILL.md do brainstorm real (modelo de Q), fora de cerca e em blockquote: Q1", async () => {
   const { extrairQs } = await modulo();
-  const linha = linhasDe("skills/brainstorm/SKILL.md", 22, 22);
+  const linha = blocoDe("skills/brainstorm/SKILL.md", "❓ **Q1 — <título curto>", 1);
   afirma(linha.includes("❓ **Q1 —"), `a linha 22 mudou: ${linha}`);
   igual(extrairQs(linha), [{ n: 1, titulo: "<título curto>" }], "sem prefixo");
   igual(extrairQs("> " + linha), [{ n: 1, titulo: "<título curto>" }], "com `> `");
@@ -91,10 +94,17 @@ caso("SKILL.md:22 real, fora de cerca e em blockquote: Q1", async () => {
 
 caso("a mesma linha dentro de cerca de codigo vira []", async () => {
   const { extrairQs } = await modulo();
-  const linha = linhasDe("skills/brainstorm/SKILL.md", 22, 22);
+  const linha = blocoDe("skills/brainstorm/SKILL.md", "❓ **Q1 — <título curto>", 1);
   igual(extrairQs("```\n" + linha + "\n```"), [], "cerca");
   igual(extrairQs("> ```\n> " + linha + "\n> ```"), [], "cerca em blockquote");
   igual(extrairQs("```\n" + linha + "\n```\n**Q2.** depois da cerca").map(q => q.n), [2], "volta depois de fechar");
+});
+
+caso("Q em item de lista conta; cerca ~~~ e cerca de 4 crases com ``` dentro nao", async () => {
+  const { extrairQs } = await modulo();
+  igual(extrairQs("1. **Q1.** a\n- **Q2.** b\n* ❓ **Q3 — c**: x\n**Q10.** d").map(q => q.n), [1, 2, 3, 10], "listas e Q10");
+  igual(extrairQs("~~~\n**Q1.** x\n~~~"), [], "cerca ~~~");
+  igual(extrairQs("````\n```\n**Q1.** x\n```\n````\n**Q2.** fora").map(q => q.n), [2], "4 crases com ``` dentro");
 });
 
 caso("forma **Q1.** texto", async () => {

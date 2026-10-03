@@ -14,6 +14,8 @@ const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
 
 const PLUGIN = path.resolve(__dirname, '..');
 const ORDEM = ['design', 'plano', 'executar', 'revisar', 'verificar', 'fechar', 'completo'];
+// Caminho de worktree criado pelo harness para subagente (isolation: worktree).
+const WORKTREE_DE_AGENTE = /[\\/]\.claude[\\/]worktrees[\\/]agent-[^\\/]*[\\/]?$/;
 
 function valorDe(nome) {
   const i = process.argv.indexOf(nome);
@@ -68,9 +70,15 @@ function lerFluxos(cwd) {
       const slug = typeof estado.slug === 'string' && estado.slug ? estado.slug : nome.replace(/\.json$/, '');
       const etapa = proximo(estado);
       const indice = ORDEM.indexOf(etapa === null ? 'completo' : etapa);
+      // Worktree de subagente (.claude/worktrees/agent-*) carrega copia do estado do
+      // despacho: so vence quando nao ha outra copia. Entre as demais, a mais avancada.
+      const agente = WORKTREE_DE_AGENTE.test(wt);
       const atual = melhores.get(slug);
-      if (!atual || indice > atual.indice || (indice === atual.indice && mtime > atual.mtime)) {
-        melhores.set(slug, { slug, estado, etapa, indice, mtime, worktree: wt });
+      const vence = !atual
+        || (atual.agente && !agente)
+        || (atual.agente === agente && (indice > atual.indice || (indice === atual.indice && mtime > atual.mtime)));
+      if (vence) {
+        melhores.set(slug, { slug, estado, etapa, indice, mtime, worktree: wt, agente });
       }
     }
   }

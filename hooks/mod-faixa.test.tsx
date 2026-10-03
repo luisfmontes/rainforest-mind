@@ -6,7 +6,7 @@
 // sequencia dentro dele e cada um herda o estado do anterior (a ordem e parte do contrato).
 // Os dados nao sao inventados: FIXTURE_DADOS e a saida REAL de `scripts/faixa-dados.cjs`
 // sobre um repo temporario (hooks/testa-mod-faixa.cjs confere que as chaves seguem as do
-// script) e ANSWER e o texto real de README.md:49-52.
+// script) e ANSWER e o texto real do exemplo de Q1 e Q2 do README.md.
 import { test, expect } from 'claude-code/testing'
 import { largura } from './faixa-puro.mjs'
 
