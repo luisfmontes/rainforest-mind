@@ -10,6 +10,19 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.36.0 — 2026-10-02
+
+- **Entra o primeiro mod do plugin, e é um canário.** `hooks/hooks.json` ganha a chave
+  `modules` apontando para `hooks/register.ts` (Claude Code 2.1.287+, "Claude Mods"); a
+  chave `hooks` não mudou. O mod é **inerte**: sem a variável `RFM_CANARIO_MOD` o hook
+  `prompt.compose` devolve o prompt como veio. É temporário, do fluxo
+  `2026-10-02-mod-regras-inteiras`, e será substituído.
+- **Como medir.** Com o plugin instalado do marketplace, rode
+  `RFM_CANARIO_MOD=1 claude -p --model haiku "Procure no seu system prompt linhas no formato RF-TETO-CANARIO-<numero>. Responda SO com os numeros, ou NENHUM."`.
+  A seção tem ~49.500 caracteres com marcas em 1024, 3072, 16384, 32000, 40000 e 48000; as
+  marcas que voltam dizem até onde o texto chega. Três linhas finais (`RF-TETO-TRAITS-`,
+  `-TOOLS-`, `-IDS-`) mostram o que o mod enxergou. Sem a variável, a resposta esperada é `NENHUM`.
+
 ## 1.35.2 — 2026-10-01
 
 - **A recusa do gate de PR ensina o caminho do PR.** Quando `gh pr create/edit/merge` cita
