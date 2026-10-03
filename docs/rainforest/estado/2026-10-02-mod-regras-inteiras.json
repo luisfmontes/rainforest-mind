@@ -18,7 +18,31 @@
     "em": "2026-10-02"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-02",
+    "em_voo": [],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "d5d2a203",
+        "iteracao": 1,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T01:09:12.259Z"
+      }
+    ],
+    "em": "2026-10-03",
+    "tarefas_ok": 1,
+    "tarefas": 11,
+    "pendentes": [
+      "tarefa-7: nao aplicavel pela medicao (secao nao chega ao subagente); fechar com a medicao colada"
+    ],
+    "medicao_tarefa_1": {
+      "versao": "1.36.0 pelo marketplace, sem --plugin-dir",
+      "principal": "1024 3072 16384 32000 40000 48000",
+      "controle": "NENHUM",
+      "subagente": "NENHUM",
+      "diagnostico_principal": "RF-TETO-TRAITS-print+skills / RF-TETO-TOOLS-134 / RF-TETO-IDS-intro+system+doing_tasks+actions+tools+tone+communication+pronouns+session_guidance+memory+env_info_simple+context_management+act_dont_rederive+total_tokens"
+    }
   },
   "revisar": {
     "status": "pendente"
