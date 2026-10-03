@@ -43,6 +43,7 @@ export const GERADORES = [
 export const PREFIXOS_FOCO = [
   'RAINFOREST MIND ATIVO',
   '⚠️ **FALHA AO CARREGAR AS REGRAS',
+  '⚠️ **INJEÇÃO ACIMA DO ORÇAMENTO',
 ];
 export const PREFIXOS_MEMORIA = [
   '## Memória (corpus residentes)',
@@ -119,9 +120,9 @@ export function criarAbertura() {
       return memo;
     },
 
-    /** `/clear` encerra a conversa sem `session.start`: a proxima abertura e remontada. */
+    /** `/clear` e `/resume` encerram a conversa sem `session.start`: a proxima abertura e remontada. */
     aoEncerrar(/** @type {string} */ reason) {
-      if (reason === 'clear') memo = null;
+      if (reason === 'clear' || reason === 'resume') memo = null;
     },
 
     /** Resultado do `prompt.compose` com a secao no fim; `r` intacto sem texto. */

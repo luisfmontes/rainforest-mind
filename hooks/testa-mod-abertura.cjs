@@ -16,7 +16,7 @@
 //   2. a secao e UMA, `{ id: 'rainforest-mind:abertura', scope: 'session' }`, no fim de
 //      `sections`, com o additionalContext do foco + o da memoria (sem systemMessage);
 //   3. montada uma vez: 3 composes seguidos chamam `$.process.run` so 2 vezes;
-//   4. `session.end` com reason 'clear' remonta; outro reason nao;
+//   4. `session.end` com reason 'clear' ou 'resume' remonta; outro reason nao;
 //   5. `classic.SessionStart` remove so as entradas dos dois hooks da abertura, em tres
 //      cenarios reais (memoria normal, so aviso, foco so com ponteiro) mais o fallback de
 //      regras ausentes, e mantem a do codex-transfer-session-start.cjs;
@@ -308,6 +308,18 @@ caso("session.end com outro reason nao remonta", async () => {
   igual($.chamadas.length, 2, "reason other nao deve remontar");
 });
 
+caso("session.end com resume remonta", async () => {
+  const { criarAbertura } = await modulo();
+  const $ = criar$(runReal);
+  const abertura = criarAbertura();
+  await abertura.promptCompose($, { traits: [] }, proximo(SECOES_DO_ENGINE));
+  igual($.chamadas.length, 2, "antes do resume");
+  await abertura.sessionEnd($, { reason: "resume" }, async () => ({}));
+  const depois = await abertura.promptCompose($, { traits: [] }, proximo(SECOES_DO_ENGINE));
+  igual($.chamadas.length, 4, "depois do resume remonta (novo par de $.process.run)");
+  igual(depois.sections.filter((s) => s.id === "rainforest-mind:abertura").length, 1, "ainda uma secao so");
+});
+
 caso("classic.SessionStart remove so as entradas dos dois hooks e mantem a do codex-transfer", async () => {
   const { criarAbertura } = await modulo();
   const abertura = criarAbertura();
@@ -365,6 +377,25 @@ caso("foco sem as regras (fallback FALHA AO CARREGAR AS REGRAS, hook real sem sk
   const { ehEntradaDaAbertura } = await modulo();
   afirma(entrada.includes("FALHA AO CARREGAR AS REGRAS"), `fixture nao produziu o fallback; comeca por ${JSON.stringify(entrada.slice(0, 80))}`);
   afirma(ehEntradaDaAbertura(entrada), `fallback nao reconhecido: ${JSON.stringify(entrada.slice(0, 80))}`);
+});
+
+// Estouro do teto: o texto do aviso sai de `travarOrcamento` DE VERDADE (a mesma funcao
+// que o hook do foco chama), nao e digitado aqui. Payload acima de 8.100 B comecando como
+// o do foco; o aviso fica no topo e "RAINFOREST MIND ATIVO" so vem depois.
+caso("foco acima do orcamento (travarOrcamento real, aviso no topo) e removido do SessionStart", async () => {
+  const { travarOrcamento, TETOS } = require(path.join(SRC, "hooks", "lib", "contexto-sessao.cjs"));
+  const bruto = "RAINFOREST MIND ATIVO\n" + "linha de regra de fixture\n".repeat(400);
+  afirma(Buffer.byteLength(bruto, "utf8") > TETOS.ORCAMENTO_BYTES, "fixture nao estoura o teto");
+  const entrada = travarOrcamento(bruto);
+  afirma(entrada.startsWith("⚠️ **INJEÇÃO ACIMA DO ORÇAMENTO"), `travarOrcamento nao produziu o aviso no topo: ${JSON.stringify(entrada.slice(0, 60))}`);
+  afirma(entrada.includes("RAINFOREST MIND ATIVO"), "a copia cortada deveria conter o foco");
+  const { criarAbertura, ehEntradaDaAbertura } = await modulo();
+  afirma(ehEntradaDaAbertura(entrada), "ehEntradaDaAbertura nao reconheceu a entrada em estouro");
+  const abertura = criarAbertura();
+  const $ = criar$(runReal);
+  await abertura.promptCompose($, { traits: [] }, proximo(SECOES_DO_ENGINE));
+  const r = await abertura.sessionStart($, { source: "startup" }, async () => ({ additionalContext: [entrada, ENTRADA_CODEX] }));
+  igual(JSON.stringify(r.additionalContext), JSON.stringify([ENTRADA_CODEX]), "so a do codex deve ficar");
 });
 
 caso("texto que nao e da abertura nao e reconhecido", async () => {
