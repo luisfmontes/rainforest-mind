@@ -10,6 +10,15 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.38.1 — 2026-10-03
+
+- **Q respondida sai da faixa na hora.** Ao enviar a mensagem, a linha das Q some; o fim do turno
+  seguinte traz de volta só as que continuarem abertas. Antes, as Q do turno anterior ficavam na
+  tela enquanto o modelo trabalhava na resposta.
+- **Todas as Q cabem na linha.** O título é só a pergunta (na forma `**Qn.** texto`, a
+  recomendação que vinha depois deixou de entrar), e cada Q ganha uma fatia da largura, cortada com
+  `…` dentro dela. Antes, uma Q1 longa empurrava as outras para fora da tela.
+
 ## 1.38.0 — 2026-10-03
 
 - **Faixa acima do prompt.** Com Claude Code 2.1.287+, no terminal e no desktop, aparecem até três
