@@ -10,6 +10,23 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.38.0 — 2026-10-03
+
+- **Faixa acima do prompt.** Com Claude Code 2.1.287+, no terminal e no desktop, aparecem até três
+  linhas logo acima do prompt: o **foco** ativo, o **fluxo em curso** (etapa, progresso, agentes em
+  voo e `+N` se houver outros) e as **Q abertas** da última resposta (`Q1 título | Q2 título`).
+  Os fluxos vêm de todos os worktrees do repositório, inclusive quando a janela está no checkout
+  principal.
+- **Só acende quando ajuda.** Sem fluxo em curso e sem Q aberta, a faixa não aparece; o foco
+  sozinho não a acende. Ela continua visível durante o turno do modelo e cede a vaga quando o
+  Claude Code mostra uma pesquisa.
+- **"esconder"** tira a faixa até algo mudar: Q nova, etapa nova ou agente novo em voo.
+- **Atualiza** ao abrir a sessão, ao fim de cada turno e ao apertar o botão. Uma resposta sem Q
+  zera a linha das Q. Falha de leitura apaga só a linha afetada; a sessão nunca quebra.
+- **Não repete a statusline** (jornada, prazo, versão).
+- **Sem mod, nada muda.** No Codex ou em Claude Code anterior à 2.1.287 não há faixa.
+- **Vale a partir da sessão seguinte** à atualização do plugin.
+
 ## 1.37.0 — 2026-10-03
 
 - **A abertura chega inteira.** Com Claude Code 2.1.287+, o mod (`hooks/register.ts`) entrega a
