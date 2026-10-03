@@ -25,6 +25,16 @@ function semMarkdown(s) {
   return String(s).replace(/[*_`]/g, '').trim();
 }
 
+// Na forma `**Qn.** texto` o resto da linha traz a pergunta e, muitas vezes, a
+// recomendacao. O titulo e so a pergunta: corta no primeiro `?` (que fica), ou no
+// primeiro `:`, ` — ` ou `. `, o que vier antes.
+function tituloCurto(s) {
+  const fim = [s.indexOf('?') + 1 || Infinity, s.indexOf(':'), s.indexOf(' — '), s.indexOf(' - '), s.indexOf('. ')]
+    .filter(i => i > 0)
+    .reduce((a, b) => Math.min(a, b), Infinity);
+  return (fim === Infinity ? s : s.slice(0, fim)).trim();
+}
+
 /** @param {unknown} texto @returns {{n:number,titulo:string}[]} */
 export function extrairQs(texto) {
   if (typeof texto !== 'string') return [];
@@ -45,7 +55,7 @@ export function extrairQs(texto) {
       const n = Number(m[1]);
       if (!vistos.has(n)) {
         vistos.add(n);
-        achados.push({ n, titulo: semMarkdown(m[2]) });
+        achados.push({ n, titulo: tituloCurto(semMarkdown(m[2])) });
       }
       break;
     }
@@ -119,15 +129,20 @@ function linhaFluxo(dados) {
   return s;
 }
 
-function linhaQ(qs) {
+// Cada Q recebe a sua fatia da largura, para todas aparecerem: titulo longo corta com
+// `…` dentro da fatia em vez de empurrar as seguintes para fora da linha.
+function linhaQ(qs, cols) {
   if (!Array.isArray(qs) || qs.length === 0) return null;
-  const itens = qs.map(q => `Q${q.n} ${q.titulo}`).join(' | ');
-  return `Q ${qs.length} aberta(s): ${itens}`;
+  const prefixo = `Q ${qs.length} aberta(s): `;
+  const resto = Number.isFinite(cols) ? cols - largura(prefixo) - 3 * (qs.length - 1) : Infinity;
+  const fatia = Math.max(8, Math.floor(resto / qs.length));
+  const itens = qs.map(q => cortar(`Q${q.n} ${semControle(String(q.titulo))}`, fatia)).join(' | ');
+  return prefixo + itens;
 }
 
 /** @returns {string[]} no maximo maxLinhas, cada uma com largura <= cols */
 export function montarLinhas(dados, qs, cols, maxLinhas) {
-  const q = linhaQ(qs);
+  const q = linhaQ(qs, cols);
   const fluxo = linhaFluxo(dados);
   if (!q && !fluxo) return [];
   const foco = dados && typeof dados.foco === 'string' && dados.foco.trim() ? `foco  ${dados.foco.trim()}` : null;

@@ -107,6 +107,25 @@ caso("Q em item de lista conta; cerca ~~~ e cerca de 4 crases com ``` dentro nao
   igual(extrairQs("````\n```\n**Q1.** x\n```\n````\n**Q2.** fora").map(q => q.n), [2], "4 crases com ``` dentro");
 });
 
+caso("titulo da Q e so a pergunta, sem a recomendacao do resto da linha", async () => {
+  const { extrairQs } = await modulo();
+  const t = "**Q1.** Onde o grafo mora? Recomendo um plugin novo territorio-advpl, que absorve a parte de grafo.\n"
+    + "**Q2.** Nome do comando: recomendo grafo.\n**Q3.** Formato de saida. JSON por padrao.\n**Q4.** Sem pontuacao nenhuma";
+  igual(extrairQs(t).map(q => q.titulo),
+    ["Onde o grafo mora?", "Nome do comando", "Formato de saida", "Sem pontuacao nenhuma"], "titulos curtos");
+});
+
+caso("quatro Q longas: todas aparecem na linha, cada uma na sua fatia", async () => {
+  const { montarLinhas, largura } = await modulo();
+  const longo = "x".repeat(80);
+  const qs = [1, 2, 3, 4].map(n => ({ n, titulo: `T${n} ${longo}` }));
+  for (const cols of [60, 100, 200]) {
+    const q = montarLinhas(null, qs, cols, 3)[0];
+    afirma(largura(q) <= cols, `cols=${cols} larga demais: ${largura(q)}`);
+    for (const n of [1, 2, 3, 4]) afirma(q.includes(`Q${n} `), `cols=${cols} perdeu Q${n}: ${q}`);
+  }
+});
+
 caso("forma **Q1.** texto", async () => {
   const { extrairQs } = await modulo();
   igual(extrairQs("antes\n**Q1.** Qual banco usar?\nfim"), [{ n: 1, titulo: "Qual banco usar?" }], "forma curta");

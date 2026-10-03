@@ -50,6 +50,17 @@ export const register: Register = (on, options) => {
     return next(e)
   })
 
+  // Mensagem do usuario responde as Q do turno anterior: a linha sai na hora, e o
+  // `turn.complete` seguinte traz de volta as que continuarem abertas.
+  on('classic.UserPromptSubmit', async ($, e, next) => {
+    try {
+      await update($, faixaQ, () => [])
+    } catch {
+      // a faixa nunca quebra o envio
+    }
+    return next(e)
+  })
+
   on('turn.complete', async ($, e, next) => {
     if (e.agentId !== undefined) return next(e)
     try {

@@ -152,10 +152,12 @@ cópia mais avançada, e a de worktree de subagente (`.claude/worktrees/agent-*`
 só vale quando é a única. As Q saem do texto final do turno (`e.answer` do
 `turn.complete`, só da sessão principal) pelos dois marcadores de `MARCADORES_Q`,
 `❓ **Q<n> — título**` e `**Q<n>.**` (também em blockquote e item de lista), fora
-de cerca de código (```` ``` ```` ou `~~~`). Uma resposta sem Q
-zera a linha. "Esconder" vale até a assinatura mudar: Q nova ou resolvida,
+de cerca de código (```` ``` ```` ou `~~~`). O título é só a pergunta (corta no
+primeiro `?`, `:`, ` — ` ou `. `), e cada Q ganha uma fatia da largura para todas
+aparecerem. Uma resposta sem Q zera a linha, e a mensagem do usuário
+(`classic.UserPromptSubmit`) também: as Q respondidas saem na hora. "Esconder" vale até a assinatura mudar: Q nova ou resolvida,
 etapa nova ou mudança nos agentes em voo. A faixa atualiza em `session.start`, em `turn.complete` e ao
-pressionar, nunca no meio do turno. Falha de leitura apaga só a linha afetada e
+pressionar; no meio do turno, só a limpeza das Q no envio da mensagem. Falha de leitura apaga só a linha afetada e
 nunca quebra a sessão. Controle de terminal (ESC, C1, bidi) é trocado por espaço
 antes de desenhar. A faixa não repete a statusline (jornada, prazo, versão). A
 prova de engine é `claude plugin test .` (`hooks/mod-faixa.test.tsx`, terminal e
