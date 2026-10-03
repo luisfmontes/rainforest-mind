@@ -168,6 +168,17 @@ caso("campos extras prazo, jornada e versao nunca aparecem", async () => {
   }
 });
 
+caso("controle ESC, C1 e bidi nao chegam crus ao terminal", async () => {
+  const { montarLinhas } = await modulo();
+  const esc = String.fromCharCode(27), csi = String.fromCharCode(0x9b), rlo = String.fromCharCode(0x202e);
+  const dados = { foco: `F${esc}]0;titulo${String.fromCharCode(7)}`, fluxos: [{ slug: "s", etapa: `plano${esc}[2J` }] };
+  const txt = montarLinhas(dados, [{ n: 1, titulo: `T${csi}31m${rlo}x` }], 80, 3).join("\n");
+  for (const c of [esc, csi, rlo, String.fromCharCode(7)]) {
+    afirma(!txt.includes(c), `controle U+${c.codePointAt(0).toString(16)} cru: ${JSON.stringify(txt)}`);
+  }
+  afirma(txt.includes("Q1 T") && txt.includes("fluxo s: plano"), `texto visivel sumiu: ${JSON.stringify(txt)}`);
+});
+
 caso("sem fluxo e sem Q devolve [], mesmo com foco; dados null tambem", async () => {
   const { montarLinhas } = await modulo();
   igual(montarLinhas({ foco: "so foco", fluxos: [] }, [], 40, 3), [], "foco sozinho");

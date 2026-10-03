@@ -1,7 +1,8 @@
 // Entrada do mod: a abertura (register.ts, sem mudanca) mais a faixa acima do prompt
 // (foco, fluxos em curso e Q abertas). A logica pura mora em ./faixa-puro.mjs; aqui so se
-// liga os eventos. O engine recusa `$` passado como argumento a funcao propria, entao o
-// refresh e uma closure dentro de `register`.
+// liga os eventos. O engine recusa `$` passado como argumento a qualquer funcao do arquivo
+// (closure inclusive), entao `buscar` recebe so `{ rodar, cwd, raiz }`, montado no ponto de
+// chamada de cada hook.
 import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
 import type { RainforestMindFaixaDados, RainforestMindFaixaQ } from '../types'

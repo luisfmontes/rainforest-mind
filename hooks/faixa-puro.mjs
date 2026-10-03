@@ -129,7 +129,14 @@ export function montarLinhas(dados, qs, cols, maxLinhas) {
   const prioridade = [['q', q], ['fluxo', fluxo], ['foco', foco]].filter(p => p[1]).slice(0, max);
   const ficam = new Set(prioridade.map(p => p[0]));
   const ordem = [['foco', foco], ['fluxo', fluxo], ['q', q]];
-  return ordem.filter(p => ficam.has(p[0])).map(p => cortar(p[1], cols));
+  return ordem.filter(p => ficam.has(p[0])).map(p => cortar(semControle(p[1]), cols));
+}
+
+// Titulo de Q vem do texto do modelo e o foco do FOCO.md: ESC (sequencia ANSI), outros
+// controles C0/C1 e override bidi nunca chegam crus ao terminal.
+const CONTROLES = /[\u0000-\u001f\u007f-\u009f‪-‮⁦-⁩]/g;
+function semControle(s) {
+  return s.replace(CONTROLES, ' ');
 }
 
 /** Estavel: muda com Q nova, etapa/slug novos e agente novo em voo; nao com tarefas_ok. */
