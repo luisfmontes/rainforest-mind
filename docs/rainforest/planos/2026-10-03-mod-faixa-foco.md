@@ -155,12 +155,14 @@ Nota: numeros do texto vem do codigo. Nada que a tarefa 5 nao tenha medido. Nao 
 
 ### 7. Versao 1.38.0, CHANGELOG e fim de lote [tipo: configurar]
 atende: D1, D2
-arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`
+arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`, `.gitignore`
 depende de: 6
 paralela: nao
 mutacao: n/a
   motivo: tarefa de configuracao de versao; quem prova o efeito e o sensor de versao e a medicao em sessao instalada pelo marketplace, pendente pos-merge.
 pronto quando: com a versao 1.38.0 em `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json` e no badge do `README.md`, e a nota `## 1.38.0` no topo do `CHANGELOG.md` no commit `Versao 1.38.0: ...` (ultimo do lote), `node scripts/conferir-versao.cjs` sai 0, `node scripts/contrato-plugin-codex.cjs` sai 0 e o diff de `.codex-plugin/plugin.json` contra `197a147a` e so a linha `version` — provado por esses tres comandos.
+
+Nota (emenda pos-tarefa 5): o `.gitignore` ganha `/tsconfig.json` — medido na tarefa 5, `claude --plugin-dir` deixa na raiz um `tsconfig.json` (`extends ./.claude-plugin/types/tsconfig.json`) que nenhuma regra ignora (a pasta `types/` se ignora sozinha); `git check-ignore tsconfig.json` sai 0.
 
 Nota: a nota diz o que o usuario passa a ver (a faixa, o que a acende, o "esconder", o requisito 2.1.287+ e o que acontece sem ele) e que vale na sessao seguinte a atualizacao.
 
