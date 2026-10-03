@@ -259,6 +259,11 @@ function montarMemoria(o) {
   const apelidos = (o && typeof o.apelidos === 'object' && o.apelidos) || null;
   const avisos = Array.isArray(o?.avisos) ? o.avisos.filter(Boolean) : [];
   const prefixoAvisos = avisos.length ? `${avisos.join('\n')}\n\n` : '';
+  // Destino `mod` (abertura entregue como secao do system prompt, sem o teto de entrega
+  // do hook) passa o teto maior em `o.tetoBytes`. Cabendo nele, o bloco sai INTEIRO: a
+  // escada de corte por linha so desce quando estoura, e o teto maior evita o estouro.
+  // Sem `tetoBytes`, o teto e o de sempre (MEMORIA_MAX_BYTES) e nada muda.
+  const tetoBytes = Number.isInteger(o?.tetoBytes) ? o.tetoBytes : TETOS.MEMORIA_MAX_BYTES;
 
   // Sem observação nenhuma: sem corpus pra injetar. O aviso de pipeline,
   // se houver, ainda é a única coisa que precisa chegar à abertura — banco
@@ -266,9 +271,9 @@ function montarMemoria(o) {
   if (!observacoes.length) {
     if (!avisos.length) return '';
     const soAviso = avisos.join('\n');
-    return Buffer.byteLength(soAviso, 'utf8') <= TETOS.MEMORIA_MAX_BYTES
+    return Buffer.byteLength(soAviso, 'utf8') <= tetoBytes
       ? soAviso
-      : cortarBytes(soAviso, TETOS.MEMORIA_MAX_BYTES);
+      : cortarBytes(soAviso, tetoBytes);
   }
 
   // Cabeçalho do bloco — o aviso de pipeline (se houver) entra ANTES do
@@ -286,7 +291,7 @@ function montarMemoria(o) {
   const texto = cabecalho + corpo + rodape;
 
   // Cabendo no teto, devolve sem acrescentar byte nenhum de aviso de corte.
-  if (Buffer.byteLength(texto, 'utf8') <= TETOS.MEMORIA_MAX_BYTES) {
+  if (Buffer.byteLength(texto, 'utf8') <= tetoBytes) {
     return texto;
   }
 
@@ -296,16 +301,16 @@ function montarMemoria(o) {
   let degrau;
   for (degrau of DEGRAUS_TEXTO) {
     linhasDoDegrau = observacoes.map((obs) => formatarObservacao(obs, apelidos, degrau)).filter(Boolean);
-    const aviso = construirAvisoCorteMemoria(0, linhasDoDegrau.length, TETOS.MEMORIA_MAX_BYTES, degrau);
+    const aviso = construirAvisoCorteMemoria(0, linhasDoDegrau.length, tetoBytes, degrau);
     const noDegrau = aviso + cabecalho + linhasDoDegrau.join('\n') + rodape;
-    if (Buffer.byteLength(noDegrau, 'utf8') <= TETOS.MEMORIA_MAX_BYTES) return noDegrau;
+    if (Buffer.byteLength(noDegrau, 'utf8') <= tetoBytes) return noDegrau;
   }
 
   // Nem o último degrau coube: corta por observação inteira (textos no último
   // degrau) e avisa NO TOPO o que ficou de fora. O aviso de PIPELINE, por já
   // estar dentro do `cabecalho`, nunca é ele que sai — é sempre a observação
   // mais antiga que cede lugar primeiro.
-  return travarOrcamentoMemoria(linhasDoDegrau, cabecalho, rodape, TETOS.MEMORIA_MAX_BYTES, degrau);
+  return travarOrcamentoMemoria(linhasDoDegrau, cabecalho, rodape, tetoBytes, degrau);
 }
 
 /**

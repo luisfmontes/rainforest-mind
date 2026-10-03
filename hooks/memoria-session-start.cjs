@@ -332,6 +332,14 @@ function lerUltimaManutencao(caminhoLog) {
   return null;
 }
 
+// `--destino mod` (ou `--destino=mod`) escolhe o teto do modo mod; qualquer outro valor, ou
+// a ausencia da flag, e o destino de sempre (SessionStart).
+function destinoMod() {
+  const av = process.argv.slice(2);
+  const i = av.indexOf('--destino');
+  return (i >= 0 && av[i + 1] === 'mod') || av.includes('--destino=mod');
+}
+
 // Resolve caminhos da raiz de dados.
 const { raiz: RAIZ_RESOLVIDA } = resolverRaiz({
   plugin: path.resolve(__dirname, '..'),
@@ -476,7 +484,11 @@ let bloco;
     linhas.push(avisoDeManutencaoFalhou(ultimaManutencao.horasDesde));
   }
 
-  bloco = montarMemoria({ observacoes, apelidos, avisos: linhas });
+  // `--destino mod`: abertura entregue como secao do system prompt, sem o teto de
+  // entrega do hook. O teto vem de hooks/abertura-mod.json (via a lib) e, cabendo nele,
+  // as linhas saem inteiras. Sem a flag, o teto e o de sempre e nada muda.
+  const tetoMod = destinoMod() ? require('./lib/abertura-mod.cjs').carregar().memoria : undefined;
+  bloco = montarMemoria({ observacoes, apelidos, avisos: linhas, tetoBytes: tetoMod });
 }
 
 // JSON, não texto cru (regra 12 do hook foco-session-start).

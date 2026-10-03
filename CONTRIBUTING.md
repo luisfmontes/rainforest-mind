@@ -122,6 +122,24 @@ O bloco de núcleos tem teto em bytes (`NUCLEOS_MAX_BYTES`), e é catraca: cresc
 regra dói na hora de escrever, não na hora de ler. Se o seu texto não couber,
 a saída é **subtrair**, não aumentar o teto.
 
+**Sem mod, o hook entrega o núcleo; com mod, as elaborações chegam inteiras.**
+Sem o mod (Codex, ou Claude Code anterior à 2.1.287), o `SessionStart` entrega só
+o núcleo, com `NUCLEOS_MAX_BYTES` de 6.000 B, o bloco de memória com
+`MEMORIA_MAX_BYTES` de 3.000 B e o conjunto com `ORCAMENTO_BYTES` de 8.100 B,
+como sempre. Com o mod (`hooks/register.ts`), a abertura vira seção do system
+prompt, fora do teto de entrega do hook, e as elaborações
+(`skills/rainforest-mind/references/regra-NN.md`) das regras listadas em
+`elaboracoes` de `hooks/abertura-mod.json` (hoje 16, 12, 11 e 17) entram
+inteiras. O hook fica de reserva e não duplica (D7): quando o mod monta a seção,
+ele tira as entradas da abertura do `SessionStart`. Lista e orçamentos moram nesse
+JSON, não aqui: `orcamentoRegrasBytes` de 40.960 B (núcleo medido mais
+elaborações), `orcamentoFocoBytes` de 12.288 B, `orcamentoMemoriaBytes` de
+8.192 B e `orcamentoTotalBytes` de 61.440 B, a soma exata das três partes.
+`scripts/sugerir-elaboracoes.cjs` só sugere, a partir das observações; quem muda
+a lista edita o JSON. Falha do mod é falha aberta: a seção não entra, nada sai do
+`SessionStart` e o hook segue entregando. O mod só vale a partir da sessão
+seguinte à atualização do plugin.
+
 ## Versão: o release é entrega própria, e o PATCH existe
 
 O bump vai num **commit próprio**, com título `Versao <x.y.z>: <o que o lote

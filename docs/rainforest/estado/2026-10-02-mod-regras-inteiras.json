@@ -1,0 +1,261 @@
+{
+  "slug": "2026-10-02-mod-regras-inteiras",
+  "titulo": "Mod: regras inteiras e memoria no system prompt via prompt.compose",
+  "criado_em": "2026-10-02",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-02-mod-regras-inteiras.md",
+    "em": "2026-10-02"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-02-mod-regras-inteiras.md",
+    "tarefas": 11,
+    "paralelas": [],
+    "em": "2026-10-02"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-02",
+    "em_voo": [],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "d5d2a203",
+        "iteracao": 1,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T01:09:12.259Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "e7e1c98a",
+        "iteracao": 1,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:15:32.657Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "e7e1c98a",
+        "iteracao": 2,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:21:56.852Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "d67d8cc2",
+        "iteracao": 1,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:21:56.852Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "d67d8cc2",
+        "iteracao": 1,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:21:56.852Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "d67d8cc2",
+        "iteracao": 1,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:21:56.852Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "d67d8cc2",
+        "iteracao": 2,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:37:20.033Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "d67d8cc2",
+        "iteracao": 2,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:37:20.033Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "d67d8cc2",
+        "iteracao": 2,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:37:20.033Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "b44c14a4",
+        "iteracao": 1,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:37:20.033Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "b44c14a4",
+        "iteracao": 1,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:37:20.033Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "b44c14a4",
+        "iteracao": 2,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:47:38.589Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "b44c14a4",
+        "iteracao": 2,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T11:17:27.344Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "b85f1133",
+        "iteracao": 1,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T11:17:27.344Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "522cd2e1",
+        "iteracao": 1,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T11:33:23.058Z"
+      }
+    ],
+    "em": "2026-10-03",
+    "tarefas_ok": 12,
+    "tarefas": 12,
+    "medicao_tarefa_1": {
+      "versao": "1.36.0 pelo marketplace, sem --plugin-dir",
+      "principal": "1024 3072 16384 32000 40000 48000",
+      "controle": "NENHUM",
+      "subagente": "NENHUM",
+      "diagnostico_principal": "RF-TETO-TRAITS-print+skills / RF-TETO-TOOLS-134 / RF-TETO-IDS-intro+system+doing_tasks+actions+tools+tone+communication+pronouns+session_guidance+memory+env_info_simple+context_management+act_dont_rederive+total_tokens"
+    },
+    "tarefa_7": "nao aplicavel: medicao da tarefa 1 (subagente devolveu NENHUM)",
+    "tarefa_9": {
+      "com_mod": "frase do nucleo 0x; regras 16,12,11,17 inteiras; nri-bundle (fim do FOCO) sim; ultima linha da memoria presente",
+      "sem_mod": "frase 1x; nenhuma regra elaborada; nri-bundle nao",
+      "tamanho_secao": "48589 chars, entregue inteira"
+    },
+    "comando": "node hooks/testa-mod-abertura.cjs",
+    "saida": "== resultado: 28 ok, 0 falha(s), 0 skipped ==",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "n/a",
+        "motivo": "medicao em sessao real; falsificacao pelo controle sem RFM_CANARIO_MOD (NENHUM)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-abertura-mod-config.sh: soma acima do total nao foi recusada pela checagem de soma"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-abertura-mod-foco.sh: destino mod entrega a elaboracao inteira das quatro regras"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-abertura-mod-memoria.sh: linhas cortadas no destino mod"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-sugerir-elaboracoes.sh: ranking por citacoes r16 antes de r12 antes de r11"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-mod-abertura.cjs: tres composes, um unico par de process.run"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "nao aplicavel: a secao nao chega ao prompt de subagente (medicao da tarefa 1)"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-orcamento.sh secao 7b: soma das partes medida acima do total declarado"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "medicao e2e; falsificacao pelo controle sem --plugin-dir"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "documentacao; conferida por node -e que sai 1 com numero adulterado"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "n/a",
+        "motivo": "bump de versao; medicao pos-publicacao fica para depois do merge"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "testa-mod-abertura.cjs: session.end com resume remonta"
+      }
+    ],
+    "medicao_repl": {
+      "versao": "1.36.0 marketplace, REPL interativo, RFM_CANARIO_MOD=1",
+      "resultado": "1024 3072 16384 32000 40000 48000",
+      "traits": "lean+skills",
+      "tools": "46",
+      "ids": "lean_body+communication+pronouns+action_caution+session_guidance+memory+env_info_simple+context_management+act_dont_rederive+endconv_deferred_hint+total_tokens"
+    },
+    "divida_4": "nao se aplica: REPL principal compoe com trait lean; filtrar por traits cortaria a sessao principal"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "13131a866c5b05b08d1208352a8dc23994a0c9f5",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-10-02-mod-regras-inteiras.json"
+      ]
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "aa02a672a193bc1b7",
+        "veredito": "ok",
+        "em": "2026-10-03",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/0072eecf-d369-431f-8f06-6444e9af87ce/subagents/agent-aa02a672a193bc1b7.jsonl"
+      }
+    ],
+    "base": "e7e1c98a",
+    "head": "13131a86",
+    "achados": 5,
+    "veredito": "rodada 1 aprovado com dividas (e7e1c98a...de7b3b96); rodada 2 aprovado (de7b3b96...13131a86)",
+    "dividas": [
+      "1 e 2: consertadas na tarefa 12",
+      "3: plantada como orcamento-avisa-foco-crescendo-no-mod",
+      "4: nao se aplica (REPL principal compoe com trait lean, medido)",
+      "5 (rodada 2, menor): mutacao.de da tarefa 12 no plano perdeu as aspas — corrigir no plano"
+    ],
+    "lacuna_fechada": "REPL interativo medido em 2026-10-03: marcas ate 48000 chegaram",
+    "em": "2026-10-03"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node hooks/testa-mod-abertura.cjs; bash hooks/testa-abertura-mod-config.sh; bash hooks/testa-abertura-mod-foco.sh; bash hooks/testa-abertura-mod-memoria.sh; bash scripts/testa-sugerir-elaboracoes.sh; bash scripts/testa-orcamento.sh; node scripts/conferir-versao.cjs; claude -p --plugin-dir <worktree> (frase do nucleo)",
+    "saida": "28 ok / passou / passou / passou / 12 ok / 51 ok / versao 1.37.0 ok / com mod 0, sem mod 1; regras 16,12,11,17 inteiras; orcamento mod 49682 B de 61440 B; plugin validate ok; plugin test 2 pass; REPL interativo: marcas ate 48000",
+    "sensor_externo": "node hooks/testa-mod-abertura.cjs",
+    "pendente_pos_merge": "tarefa 11: medicao em sessao nova pelo marketplace na 1.37.0",
+    "em": "2026-10-03"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

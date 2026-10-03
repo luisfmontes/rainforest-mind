@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.36.0-1e5c3f?style=flat-square" alt="versão 1.36.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.37.0-1e5c3f?style=flat-square" alt="versão 1.37.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -33,6 +33,10 @@ Ou aponte `--plugin-dir` para a pasta do repo em desenvolvimento.
 
 **Requisito único: Node no PATH.** Nada mais. Detalhe do runtime, dos gêmeos em
 Python e do orçamento de contexto em [`docs/runtime-e-orcamento.md`](docs/runtime-e-orcamento.md).
+
+**Claude Code 2.1, patch 287 em diante, para a abertura inteira.** Nessa versão o plugin entrega
+as regras e as elaborações como seção do system prompt (`hooks/register.ts`). Sem
+ela, ou no Codex, a abertura vem pelo hook com o núcleo, como antes.
 
 Não precisa configurar nada para começar. Quando quiser foco próprio num
 repositório, crie `.rainforest/FOCO.md` nele — é só isso.

@@ -10,6 +10,22 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.37.0 — 2026-10-03
+
+- **A abertura chega inteira.** Com Claude Code 2.1.287+, o mod (`hooks/register.ts`) entrega a
+  abertura da sessão como seção do system prompt, fora do teto de entrega do hook: o núcleo das
+  regras **mais a elaboração inteira das regras 16, 12, 11 e 17**, o `FOCO.md` sem corte e a
+  memória sem o corte de 160 caracteres por linha. Medido: a seção de 48.589 caracteres chegou
+  inteira ao modelo, e o núcleo deixa de vir duplicado (o mod tira do `SessionStart` as entradas
+  que ele mesmo passou a entregar).
+- **Lista e orçamentos num lugar só.** `hooks/abertura-mod.json` diz quais regras vêm inteiras e
+  os tetos (regras 40.960 B, foco 12.288 B, memória 8.192 B, total 61.440 B).
+  `node scripts/sugerir-elaboracoes.cjs` sugere a ordem a partir das observações, sem alterar nada;
+  quem muda a lista edita o JSON. `node scripts/orcamento.cjs --agregado --destino mod` mede o total.
+- **Sem mod, nada muda.** No Codex, em Claude Code anterior à 2.1.287, ou se o mod falhar, a abertura
+  vem pelo hook com o núcleo, byte a byte como antes. O mod não chega ao prompt de subagente.
+- **Vale a partir da sessão seguinte** à atualização do plugin. O canário da 1.36.0 saiu.
+
 ## 1.36.0 — 2026-10-02
 
 - **Entra o primeiro mod do plugin, e é um canário.** `hooks/hooks.json` ganha a chave

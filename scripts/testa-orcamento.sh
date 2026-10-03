@@ -315,6 +315,46 @@ SAIDA6E="$(RFM_ROOT="$RAIZ_VAZIA" node "$SRC/scripts/orcamento.cjs" --agregado 2
 igual "6e sai 0 contra os 5 hooks reais de hooks.json, raiz neutra" "$CODIGO6E" "0"
 tem "6e imprime soma medida e teto agregado real (8100+3000=11100, valores congelados na secao 1c)" "$SAIDA6E" "teto agregado real 11100 B"
 
+# ------------------------------------------------- 7. --agregado --destino mod (Tarefa 8)
+echo; echo "7. destino mod: soma das partes acima do total declarado estoura"
+# Mede a abertura do mod: os MESMOS hooks reais, pelo mesmo executarHooksSessionStart,
+# com --destino mod so nos dois geradores. O teto vem de abertura-mod.json (nunca
+# digitado aqui). Config adulterada para o estouro: partes COERENTES com o total
+# (carregar() recusa soma != total), mas pequenas — regras no minimo que comporta
+# nucleo + a elaboracao 16, foco e memoria 1 B — de modo que o MEDIDO (os hooks
+# seguem lendo a config do plugin) passa do total. A linha que decide o exit e a
+# do orcamento.cjs: sem ela, o estouro real sairia 0 e a 7b fica vermelha.
+TOTAL_MOD="$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).orcamentoTotalBytes)' "$SRC/hooks/abertura-mod.json")"
+SBMOD="$(novo_sandbox)"
+node -e '
+  const fs = require("fs"), path = require("path");
+  const src = process.argv[1], dest = process.argv[2];
+  const cfg = JSON.parse(fs.readFileSync(path.join(src, "hooks", "abertura-mod.json"), "utf8"));
+  const r16 = require(path.join(src, "hooks", "lib", "abertura-mod.cjs")).validar(
+    { ...cfg, elaboracoes: [16], orcamentoRegrasBytes: 1e6, orcamentoTotalBytes: 1e6 + cfg.orcamentoFocoBytes + cfg.orcamentoMemoriaBytes }, src);
+  const regras = r16.regrasBytes;
+  fs.writeFileSync(dest, JSON.stringify({ elaboracoes: [16], orcamentoRegrasBytes: regras, orcamentoFocoBytes: 1, orcamentoMemoriaBytes: 1, orcamentoTotalBytes: regras + 2 }));
+' "$SRC" "$SBMOD/abertura-mod-pequena.json"
+
+echo "7a. caminho verde — config real do plugin, raiz neutra, hooks reais"
+SAIDA7A="$(RFM_ROOT="$RAIZ_VAZIA" node "$SRC/scripts/orcamento.cjs" --agregado --destino mod 2>&1)"; CODIGO7A=$?
+igual "7a sai 0 (medido dentro do total)" "$CODIGO7A" "0"
+tem "7a linha com o teto lido de abertura-mod.json ($TOTAL_MOD B)" "$SAIDA7A" "SessionStart mod (additionalContext agregado):"
+tem "7a teto impresso e o orcamentoTotalBytes do JSON" "$SAIDA7A" "/ teto $TOTAL_MOD B"
+
+echo "7b. caminho vermelho — medido acima do total declarado"
+SAIDA7B="$(RFM_ROOT="$RAIZ_VAZIA" RFM_ABERTURA_MOD_JSON="$SBMOD/abertura-mod-pequena.json" node "$SRC/scripts/orcamento.cjs" --agregado --destino mod 2>&1)"; CODIGO7B=$?
+igual "7b sai 1 (soma das partes medida acima do total declarado)" "$CODIGO7B" "1"
+tem "7b acusa o estouro do SessionStart mod" "$SAIDA7B" "Estouro de SessionStart mod"
+
+echo "7c. destino desconhecido recusa antes de medir"
+SAIDA7C="$(node "$SRC/scripts/orcamento.cjs" --agregado --destino xyz 2>&1)"; CODIGO7C=$?
+igual "7c sai 1" "$CODIGO7C" "1"
+tem "7c nomeia o destino recusado" "$SAIDA7C" "desconhecido"
+
+echo "7d. --agregado sem --destino segue sem falar de mod"
+nao_tem "7d saida do 6e nao menciona mod" "$SAIDA6E" "SessionStart mod"
+
 echo; echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ] || exit 1

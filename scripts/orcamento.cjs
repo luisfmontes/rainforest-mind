@@ -29,6 +29,20 @@
  * + MEMORIA_MAX_BYTES (hooks/lib/memoria-sessao.cjs), cada um lido por regex,
  * nunca somado como literal. Não grava arquivo nenhum — só responde "estourou
  * agora?". Exit 0 dentro do teto, 1 fora.
+ *
+ * Modo --agregado --destino mod: mede a abertura do mod. Executa os MESMOS comandos
+ * pelo MESMO executarHooksSessionStart, passando `--destino mod` so aos dois
+ * geradores da abertura (foco e memoria), soma os additionalContext e compara com
+ * orcamentoTotalBytes de hooks/abertura-mod.json (lido por carregar(), que ja recusa
+ * config incoerente). Imprime
+ * `SessionStart mod (additionalContext agregado): <N> B / teto <total> B`; exit 1 so
+ * quando o MEDIDO passa do total (a linha `process.exit(avaliacaoMod...)` decide).
+ * Outro valor de --destino: erro, exit 1.
+ *
+ * RFM_ABERTURA_MOD_JSON: caminho de outra config do mod, so para o orcamento (teste do
+ * caminho de estouro). Os hooks seguem lendo a config do plugin; a copia precisa ser
+ * coerente (carregar() recusa partes != total), entao o estouro de teste e "partes
+ * coerentes com o total, mas o MEDIDO acima dele".
  */
 
 const fs = require('fs');
@@ -102,7 +116,43 @@ function bytesAdditionalContext(stdout) {
  * — nunca uma lista digitada aqui), soma os additionalContext que eles
  * emitem, e compara com a soma dos tetos das libs. Não grava nada em disco.
  */
+function modoAgregadoMod() {
+  const { executarHooksSessionStart } = require('./exporta-hooks-sessao-start.cjs');
+  const { carregar } = require('../hooks/lib/abertura-mod.cjs');
+  let cfg;
+  try {
+    cfg = process.env.RFM_ABERTURA_MOD_JSON ? carregar(process.env.RFM_ABERTURA_MOD_JSON) : carregar();
+  } catch (e) {
+    morrer(e.message);
+  }
+
+  const { outputs } = executarHooksSessionStart(undefined, { argsAbertura: ['--destino', 'mod'] });
+  let somaBytes = 0;
+  for (const out of outputs) {
+    somaBytes += bytesAdditionalContext(out.stdout);
+  }
+
+  const avaliacaoMod = avaliarFolga(somaBytes, cfg.total, {
+    nome: 'SessionStart mod',
+    banda: 0,
+    alternativas: ['tirar elaboracao de abertura-mod.json', 'subir as partes e o total juntos']
+  });
+
+  console.log(`SessionStart mod (additionalContext agregado): ${somaBytes} B / teto ${cfg.total} B`);
+  if (avaliacaoMod.mensagem) {
+    console.error(avaliacaoMod.mensagem);
+  }
+
+  process.exit(avaliacaoMod.estado === 'estouro' ? 1 : 0);
+}
+
 function modoAgregado() {
+  const destino = valorDe('destino');
+  if (process.argv.includes('--destino') && destino !== 'mod') {
+    morrer(`--destino ${JSON.stringify(destino)} desconhecido (so existe "mod")`);
+  }
+  if (destino === 'mod') return modoAgregadoMod();
+
   // Requerido aqui dentro, não no topo do arquivo: as seções 3 e 4 da bateria
   // (testa-orcamento.sh) copiam só orcamento.cjs + folga.cjs + uma
   // contexto-sessao.cjs fake para uma sandbox, sem o exportador nem
