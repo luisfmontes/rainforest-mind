@@ -1,43 +1,37 @@
-// Canario temporario do fluxo 2026-10-02-mod-regras-inteiras (sera substituido na tarefa 6).
-// Inerte sem a variavel RFM_CANARIO_MOD: mede ate onde um mod de plugin do marketplace
-// consegue empurrar texto para o system prompt, e se o mod chega a carregar.
+// Mod da abertura (fluxo 2026-10-02-mod-regras-inteiras): as regras e a memoria entram
+// como secao do system prompt, sem o teto de entrega do hook SessionStart. Toda a logica
+// mora em ./abertura-mod-puro.mjs (testavel sem engine); aqui so se liga os hooks.
+// Um modulo de mod com `import()` dinamico nao carrega: o import abaixo e estatico.
+// O engine tambem recusa `$` passado como argumento: a logica recebe so tres funcoes
+// tiradas dele, escritas no ponto de chamada.
 import type { Register } from 'claude-code'
-
-const MARCAS: ReadonlyArray<readonly [number, string]> = [
-  [1024, 'RF-TETO-CANARIO-1024'],
-  [3072, 'RF-TETO-CANARIO-3072'],
-  [16384, 'RF-TETO-CANARIO-16384'],
-  [32000, 'RF-TETO-CANARIO-32000'],
-  [40000, 'RF-TETO-CANARIO-40000'],
-  [48000, 'RF-TETO-CANARIO-48000'],
-]
-const TOTAL = 49500
-const ENCHIMENTO = 'Enchimento neutro de medicao, sem significado nem instrucao.\n'
-
-function corpo(): string {
-  let out = ''
-  for (const [pos, marca] of MARCAS) {
-    while (out.length < pos) out += ENCHIMENTO
-    out += marca + '\n'
-  }
-  while (out.length < TOTAL) out += ENCHIMENTO
-  return out
-}
+import { criarAbertura } from './abertura-mod-puro.mjs'
 
 export const register: Register = on => {
+  const abertura = criarAbertura()
+
+  on('session.end', ($, e, next) => {
+    abertura.aoEncerrar(e.reason)
+    return next(e)
+  })
+
   on('prompt.compose', async ($, e, next) => {
-    const ativo = await $.env.get('RFM_CANARIO_MOD')
-    if (!ativo) return next(e)
     const r = await next(e)
-    const diag =
-      `RF-TETO-TRAITS-${e.traits.join('+')}\n` +
-      `RF-TETO-TOOLS-${e.tools.length}\n` +
-      `RF-TETO-IDS-${r.sections.map(s => s.id).join('+')}\n`
-    return {
-      sections: [
-        ...r.sections,
-        { id: 'rainforest-mind:canario', text: corpo() + diag, scope: 'session' as const },
-      ],
-    }
+    const texto = await abertura.obter({
+      rodar: (argv, init) => $.process.run(argv, init),
+      cwd: () => $.session.cwd(),
+      raiz: $.plugin.root,
+    })
+    return abertura.comSecao(r, texto)
+  })
+
+  on('classic.SessionStart', async ($, e, next) => {
+    const r = await next(e)
+    const texto = await abertura.obter({
+      rodar: (argv, init) => $.process.run(argv, init),
+      cwd: () => $.session.cwd(),
+      raiz: $.plugin.root,
+    })
+    return abertura.semAbertura(r, texto)
   })
 }
