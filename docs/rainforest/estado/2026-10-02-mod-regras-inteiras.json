@@ -18,15 +18,9 @@
     "em": "2026-10-02"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-02",
-    "em_voo": [
-      {
-        "agente": "documentador",
-        "tarefa": "10 docs destino mod",
-        "desde": "2026-10-03T08:17:27-03:00"
-      }
-    ],
+    "em_voo": [],
     "carimbos": [
       {
         "tarefa": 1,
@@ -128,11 +122,8 @@
       }
     ],
     "em": "2026-10-03",
-    "tarefas_ok": 9,
+    "tarefas_ok": 11,
     "tarefas": 11,
-    "pendentes": [
-      "tarefa-7: nao aplicavel pela medicao (secao nao chega ao subagente); fechar com a medicao colada"
-    ],
     "medicao_tarefa_1": {
       "versao": "1.36.0 pelo marketplace, sem --plugin-dir",
       "principal": "1024 3072 16384 32000 40000 48000",
@@ -145,7 +136,66 @@
       "com_mod": "frase do nucleo 0x; regras 16,12,11,17 inteiras; nri-bundle (fim do FOCO) sim; ultima linha da memoria presente",
       "sem_mod": "frase 1x; nenhuma regra elaborada; nri-bundle nao",
       "tamanho_secao": "48589 chars, entregue inteira"
-    }
+    },
+    "comando": "claude -p --plugin-dir <worktree> --model haiku <sonda de 4 perguntas>",
+    "saida": "com mod: frase do nucleo 0x; regras 16,12,11,17 inteiras; nri-bundle sim; ultima linha da memoria presente. sem mod: frase 1x; nenhuma regra elaborada; nri-bundle nao",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "n/a",
+        "motivo": "medicao em sessao real; falsificacao pelo controle sem RFM_CANARIO_MOD (NENHUM)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-abertura-mod-config.sh: soma acima do total nao foi recusada pela checagem de soma"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-abertura-mod-foco.sh: destino mod entrega a elaboracao inteira das quatro regras"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-abertura-mod-memoria.sh: linhas cortadas no destino mod"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-sugerir-elaboracoes.sh: ranking por citacoes r16 antes de r12 antes de r11"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-mod-abertura.cjs: tres composes, um unico par de process.run"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "nao aplicavel: a secao nao chega ao prompt de subagente (medicao da tarefa 1)"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-orcamento.sh secao 7b: soma das partes medida acima do total declarado"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "medicao e2e; falsificacao pelo controle sem --plugin-dir"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "documentacao; conferida por node -e que sai 1 com numero adulterado"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "n/a",
+        "motivo": "bump de versao; medicao pos-publicacao fica para depois do merge"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
