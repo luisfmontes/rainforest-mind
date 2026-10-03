@@ -247,6 +247,20 @@ caso("esconder vale ate a assinatura mudar", async () => {
   igual(escondida(null, sig), false, "nunca escondeu");
 });
 
+// ------------------------------------------------------------------ fixture do engine
+caso("FIXTURE_DADOS de mod-faixa.test.tsx tem as chaves exatas da saida real do script", () => {
+  const fonte = fs.readFileSync(path.join(SRC, "hooks", "mod-faixa.test.tsx"), "utf8");
+  const m = /^const FIXTURE_DADOS = (\{.*\})\s*$/m.exec(fonte);
+  afirma(m, "nao achei `const FIXTURE_DADOS = {...}` (numa linha so) em hooks/mod-faixa.test.tsx");
+  const fixture = JSON.parse(m[1]);
+  const real = dadosReais();
+  const chaves = o => Object.keys(o).sort();
+  igual(chaves(fixture), chaves(real), "chaves do topo");
+  afirma(Array.isArray(real.fluxos) && real.fluxos.length > 0, "o script nao devolveu fluxo para comparar");
+  afirma(Array.isArray(fixture.fluxos) && fixture.fluxos.length > 0, "o fixture nao tem fluxo");
+  igual(chaves(fixture.fluxos[0]), chaves(real.fluxos[0]), "chaves de cada fluxo");
+});
+
 // ------------------------------------------------------------------ execucao
 (async () => {
   let ok = 0;
