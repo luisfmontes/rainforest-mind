@@ -1,0 +1,141 @@
+Data: 2026-10-03
+Termos: jornada, ociosidade, janela parada, esfriou, clock
+
+$ gh issue list --state all --search "jornada" --limit 200 --json number,title,state
+[{"number":194,"state":"CLOSED","title":"atualizar-cli.sh sem o lock por mkdir que os dois refreshers ja tem — e nenhuma bateria exercita esse lock"},{"number":165,"state":"CLOSED","title":"O gate de publicacao e cego para escrita mediada por Bash — node, sed e heredoc passam"}]
+
+
+$ gh issue list --state all --search "ociosidade" --limit 200 --json number,title,state
+[{"number":63,"state":"CLOSED","title":"O foco não chega na injeção, e a isenção da regra 17 é cega para a segunda pasta — 10ª vez que o radar cobra desvio onde não devia"}]
+
+
+$ gh issue list --state all --search "janela parada" --limit 200 --json number,title,state
+[{"number":270,"state":"CLOSED","title":"Linha de mutante sai como 'FALHA <nome real>' e se confunde com falha de verdade no log"},{"number":200,"state":"CLOSED","title":"A skill limpar remove worktree LIMPO de outra sessao sem perguntar — classifica por sujeira, nunca por dono"},{"number":120,"state":"CLOSED","title":"testa-contexto-sessao.sh esta vermelha na main: 5 falhas em dentroDoExpediente, focoAtivoEmOutraJanela e co-locada"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"},{"number":193,"state":"CLOSED","title":"Duas sessoes bumparam a MESMA versao e o testa-versao nao pode pegar: falta checagem externa (tag e cache)"}]
+
+
+$ gh issue list --state all --search "esfriou" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "clock" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "jornada" --limit 200 --json number,title,state
+[{"number":164,"state":"MERGED","title":"Scripts entregues derivam o home de quem roda, com trava"},{"number":229,"state":"MERGED","title":"fix(statusline): barra sumiu dos dois perfis — cwd faltando no segmento da escada"},{"number":166,"state":"MERGED","title":"Gate: placeholder de usuario nao e nome de ninguem"},{"number":50,"state":"MERGED","title":"Aposenta o gemeo python do ideias"},{"number":44,"state":"MERGED","title":"Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada"},{"number":40,"state":"MERGED","title":"A statusline sai de ~/.claude e entra no plugin, e a bateria de saude para de vazar temporario"}]
+
+
+$ gh pr list --state all --search "ociosidade" --limit 200 --json number,title,state
+[{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"},{"number":128,"state":"MERGED","title":"A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo"}]
+
+
+$ gh pr list --state all --search "janela parada" --limit 200 --json number,title,state
+[{"number":103,"state":"MERGED","title":"Legenda: o teto estava em BYTES, e quem corta na tela conta CARACTERE"},{"number":90,"state":"MERGED","title":"Abertura: os hooks passam a pintar na tela, nao so no contexto do modelo"},{"number":46,"state":"MERGED","title":"Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo'"},{"number":271,"state":"MERGED","title":"Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador"},{"number":186,"state":"MERGED","title":"R1 (frente 2) + R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao"}]
+
+
+$ gh pr list --state all --search "esfriou" --limit 200 --json number,title,state
+[{"number":103,"state":"MERGED","title":"Legenda: o teto estava em BYTES, e quem corta na tela conta CARACTERE"},{"number":8,"state":"MERGED","title":"Regra 17 estava cega por construcao: o pid gravado era uma shell efemera"}]
+
+
+$ gh pr list --state all --search "clock" --limit 200 --json number,title,state
+[]
+
+
+$ git ls-remote --heads origin | grep -F "jornada"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "ociosidade"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "janela parada"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "esfriou"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "clock"
+(vazio)
+
+$ git log --all --grep="jornada" --oneline
+ebd5a9ba faixa: logica pura (Q, linhas, assinatura, esconder) e bateria
+b73a3c4d Tarefa 17 (#194): Adicionar lock a scripts/atualizar-cli.sh
+fa68491c Gate: placeholder de usuario nao e nome de ninguem
+5a282ae2 Gate: placeholder de usuario nao e nome de ninguem
+3c8a8542 Scripts entregues derivam o home de quem roda, com trava
+2a5149d8 Scripts entregues derivam o home de quem roda, com trava
+63c8236d Aposenta o gemeo python do ideias (#50)
+fa50f1c5 Aposenta o gemeo python do ideias (#50)
+c3d775c0 Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada (#44)
+3e615363 Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada (#44)
+7dc1a9bf A statusline sai de ~/.claude e entra no plugin, e a bateria de saude para de vazar temporario (#40)
+e265afc5 A statusline sai de ~/.claude e entra no plugin, e a bateria de saude para de vazar temporario (#40)
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+54d5e5b2 Os dois consertos que o dev de fora sente no dia um
+c2f583e5 Os dois consertos que o dev de fora sente no dia um
+edac8168 Semear consome o mapa, nao dispara a arqueologia — e para de vazar relatorio alheio
+f1b97626 Semear consome o mapa, nao dispara a arqueologia — e para de vazar relatorio alheio
+7118d701 Arqueologia: o estagio ZERO que faltava, e opcional de forma mecanica
+b3d3220f Arqueologia: o estagio ZERO que faltava, e opcional de forma mecanica
+7af49225 /semear: propoe o que criar neste repo a partir do que ele ja tropecou
+3a750bf7 /semear: propoe o que criar neste repo a partir do que ele ja tropecou
+563ccb0d P1: a escotilha do gate para de ser revelada a quem esta sendo bloqueado
+9b493ecf P1: a escotilha do gate para de ser revelada a quem esta sendo bloqueado
+3848ff5d /setup: a pasta de dados nasce, e o que incomoda em repo de terceiro pode ser desligado
+0539c6c8 /setup: a pasta de dados nasce, e o que incomoda em repo de terceiro pode ser desligado
+baf3fe48 A jornada passa a medir em Node: nenhuma regra depende mais de Python
+9492c707 A jornada passa a medir em Node: nenhuma regra depende mais de Python
+d8b72ed0 A regra 8 desacopla do plugin de cliente, e o corte de lacuna para de engolir almoco
+4ff3da28 A regra 8 desacopla do plugin de cliente, e o corte de lacuna para de engolir almoco
+f01960e9 O /ideia passa a chamar Node: uma dependencia no caminho de execucao, nao duas
+90cc9cab O /ideia passa a chamar Node: uma dependencia no caminho de execucao, nao duas
+ef76b391 v0.46.0: a checagem de corpo pega carona no aviso da regra 8, e nao vira gatilho
+838995bc v0.46.0: a checagem de corpo pega carona no aviso da regra 8, e nao vira gatilho
+abaca49c Colhe a regra 8 e a do executor, com a checagem de cada uma no validador
+c7591bf3 Colhe a regra 8 e a do executor, com a checagem de cada uma no validador
+c8654b2e v0.42.0: regra 8 mede jornada no transcript, nunca em carimbo de commit
+3edac49e v0.42.0: regra 8 mede jornada no transcript, nunca em carimbo de commit
+45ff3cdd Revisao pos-mudanca: ponteiro morto na regra 2, licao de caminho sobe pra 14, regra 12 cobre relatorio analitico
+713ea3a1 Revisao pos-mudanca: ponteiro morto na regra 2, licao de caminho sobe pra 14, regra 12 cobre relatorio analitico
+d0048071 Regra 8: raiz do cache vem do CLAUDE_CONFIG_DIR, nao de caminho fixo
+52c741bc Regra 8: raiz do cache vem do CLAUDE_CONFIG_DIR, nao de caminho fixo
+b40a690d Regra 15 (agente nao mexe na maquina) e regra 3 com natureza do foco; v0.23.0
+6a433e9b Regra 15 (agente nao mexe na maquina) e regra 3 com natureza do foco; v0.23.0
+03ba99fb Regra 8 usa jornada real do apontamento-horas (complementar, com fallback) + regra 1 confirma itens ok + v0.12.0
+085acf3b Regra 8 usa jornada real do apontamento-horas (complementar, com fallback) + regra 1 confirma itens ok + v0.12.0
+a04a57cd Hook SubagentStart injeta metodo em todo agente + guarda-corpo contextual (delegar jogando nao e jornada) + descanso vs expediente + v0.11.0
+9c938139 Hook SubagentStart injeta metodo em todo agente + guarda-corpo contextual (delegar jogando nao e jornada) + descanso vs expediente + v0.11.0
+eb425489 Regra 8 (guarda-corpo de jornada), marketplace.json e registro de acompanhamento profissional
+
+$ git log --all --grep="ociosidade" --oneline
+63afa051 A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo (#128)
+1b18a725 A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo (#128)
+e1d2592c A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+bfc034d2 A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+
+$ git log --all --grep="janela parada" --oneline
+c3ab6cf1 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+62ca78d5 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+
+$ git log --all --grep="esfriou" --oneline
+cc9de8ee Legenda: o teto estava em BYTES, e quem corta na tela conta CARACTERE (#103)
+1c7133b0 Legenda: o teto estava em BYTES, e quem corta na tela conta CARACTERE (#103)
+ea43498e O radar para de comer o prazo: tres pastas por nome, o resto vira numero
+094f56d1 O radar para de comer o prazo: tres pastas por nome, o resto vira numero
+
+$ git log --all --grep="clock" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+{"id":"jornada-inferida-de-carimbo-de-commit","titulo":"Guarda-corpo da regra 8 disparado por carimbo de commit, sem olhar o intervalo"}
+{"id":"jornada-medida-no-transcript-nao-em-carimbo","titulo":"Regra 8 nunca infere jornada de carimbo: mede o intervalo entre mensagens do Luis"}
+{"id":"jornada-dita-nao-e-endereco-do-rainforest","titulo":"Fala sobre horario nao e, por si so, endereco do rainforest"}
+{"id":"obs-2026-09-04-listagents-nao-cruza-config-dir","titulo":"Lista de sessoes incompleta tratada como prova de janela parada — o radar cobra desvio, e eu declaro sessao morta"}
+{"id":"obs-jornada-inferida-de-mensagens-infla-hora","titulo":"Jornada inferida de janela de mensagens inflou 26/09 para 9h"}
+{"id":"obs-2026-10-01-merge-reclock-saldo","titulo":"Merge do importador SBJ/SBK sem levantar RecLock em tabela padrao de saldo"}
+{"id":"mods-jornada-e-janela-parada-por-relogio","titulo":"Jornada (regra 8) e janela parada (regra 17) medidas por relogio do mod, com aviso em toast/status"}
+{"id":"aviso-de-jornada-repetido-vira-cobranca","titulo":"Aviso de jornada repetido em todo turno vira cobranca"}
+
+
