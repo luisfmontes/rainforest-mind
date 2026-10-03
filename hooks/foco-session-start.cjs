@@ -31,6 +31,28 @@ const CODIGO_ROOT = path.resolve(__dirname, '..');
 const { raiz: RAIZ_RESOLVIDA, nivel: NIVEL_RAIZ } = resolverRaiz({ plugin: CODIGO_ROOT });
 const ROOT = RAIZ_RESOLVIDA || CODIGO_ROOT;
 
+// `--destino mod`: a abertura vai como secao do system prompt (mod), sem o teto de
+// entrega do hook. Os tetos e as regras que vem inteiras estao em
+// hooks/abertura-mod.json, validado por lib/abertura-mod.cjs. Config recusada ou
+// destino desconhecido sai ANTES de qualquer saida: stderr + exit 1, sem JSON parcial.
+// Sem a flag, nada disto roda e a abertura e a de sempre.
+let destino = null;
+let tetosMod = null;
+let elaboracoes = [];
+const iDestino = process.argv.indexOf('--destino');
+if (iDestino !== -1) {
+  try {
+    destino = process.argv[iDestino + 1];
+    if (destino !== 'mod') throw new Error(`--destino ${JSON.stringify(destino)} desconhecido (so existe "mod")`);
+    const cfg = require('./lib/abertura-mod.cjs').carregar();
+    tetosMod = { ORCAMENTO_BYTES: cfg.regras + cfg.foco, FOCO_MAX_BYTES: cfg.foco };
+    elaboracoes = cfg.elaboracoes.map((n) => ({ n, texto: fs.readFileSync(cfg.arquivos[n], 'utf8') }));
+  } catch (e) {
+    process.stderr.write(`foco-session-start: ${e.message}\n`);
+    process.exit(1);
+  }
+}
+
 function readSafe(p) {
   try { return fs.readFileSync(p, 'utf8').trim(); } catch { return ''; }
 }
@@ -332,6 +354,7 @@ function doConsoleLog(pluginsStatus, whatsappStatus) {
     principalAtrasado,
     temEstrategia,
     estrategiaPath: temEstrategia ? CAMINHO_ESTRATEGIA : null,
+    ...(destino === 'mod' ? { destino, tetosMod, elaboracoes } : {}),
   });
 
   // JSON, não texto cru — e a diferença não é de estilo.
