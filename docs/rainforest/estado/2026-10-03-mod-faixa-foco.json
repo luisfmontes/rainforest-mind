@@ -1,0 +1,28 @@
+{
+  "slug": "2026-10-03-mod-faixa-foco",
+  "titulo": "Mod: faixa acima do prompt com foco, fluxo em curso e Q abertas",
+  "criado_em": "2026-10-03",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-03-mod-faixa-foco.md",
+    "em": "2026-10-03"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
