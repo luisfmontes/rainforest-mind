@@ -86,7 +86,7 @@ Nota: o `de:` e texto que a propria tarefa escreve (o arquivo ainda nao existe).
 
 ### 3. Destino mod no gerador do foco: regras com elaboracao inteira, foco sem corte, dependencias [tipo: implementar]
 atende: D3, D6, D8
-arquivos: `hooks/lib/contexto-sessao.cjs`, `hooks/foco-session-start.cjs`, `hooks/testa-abertura-mod-foco.sh`
+arquivos: `hooks/lib/contexto-sessao.cjs`, `hooks/foco-session-start.cjs`, `hooks/testa-abertura-mod-foco.sh`, `hooks/testa-contexto-sessao.sh`
 depende de: 2
 paralela: nao
 prova: `bash hooks/testa-abertura-mod-foco.sh`
@@ -97,6 +97,8 @@ mutacao:
   bateria: `bash hooks/testa-abertura-mod-foco.sh`
   fixture: `testa-abertura-mod-foco.sh, caso "destino mod entrega a elaboracao inteira das quatro regras"`
 pronto quando: com `RFM_ROOT` numa copia do `~/.rainforest` real (FOCO.md de 8.905 B) e as `references/` reais, `node hooks/foco-session-start.cjs --destino mod` emite JSON cujo `additionalContext` contem verbatim a primeira e a ultima linha de cada um dos quatro `regra-NN.md` e o FOCO.md inteiro, sem o aviso "O foco não coube" e sem marca de corte, com <= 53.248 B, e o cabecalho deixa de dizer "Isto é o NÚCLEO" e nomeia as regras que vem inteiras; sem a flag, o stdout e identico (`cmp`) ao golden do commit base `d5d2a203`; com a config recusada pela lib da tarefa 2, sai com exit != 0, stderr nao vazio e sem JSON parcial. Provado por `bash hooks/testa-abertura-mod-foco.sh`, que monta o golden por `git archive d5d2a203 hooks scripts skills` no scratchpad.
+
+Nota (emenda pos-revisar): `hooks/testa-contexto-sessao.sh` entrou porque as mutacoes 22.3 e 22.4 fazem `sed` pelo texto `TETOS.ORCAMENTO_BYTES - TETOS.FOCO_MIN_BYTES`, renomeado para `tetos.*`; so o padrao dos dois `sed` mudou.
 
 Nota: o destino mod parametriza os pontos onde os TETOS entram em `montarContexto` (`contexto-sessao.cjs:1167`, `:1188`, `:1196`, `:1205`, `:1206`, `travarOrcamento` em `:1053`); ler antes de editar. Mesma `montarContexto`, sem reescrever a montagem.
 
@@ -205,9 +207,23 @@ mutacao: n/a
   motivo: tarefa de configuracao de versao; quem prova o efeito e a medicao em sessao nova pelo marketplace.
 pronto quando: com a versao 1.37.0 em `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json` e no badge do `README.md`, e a nota no topo de `CHANGELOG.md` no commit `Versao 1.37.0: ...` (ultimo do lote), `node scripts/conferir-versao.cjs` sai 0; e, depois do PR mesclado e do `claude plugin update` feito pelo usuario, numa sessao nova instalada pelo marketplace e sem `--plugin-dir`, o prompt da tarefa 9 devolve os cabecalhos das regras 16, 12, 11 e 17 e a frase do nucleo 0 vezes. Provado por `node scripts/conferir-versao.cjs` e pelo comando `claude -p` da tarefa 9 sem `--plugin-dir`.
 
+### 12. Dividas 1 e 2 do revisar: filtro reconhece o aviso de orcamento e memo zera no resume [tipo: implementar]
+atende: D7, D9
+arquivos: `hooks/abertura-mod-puro.mjs`, `hooks/testa-mod-abertura.cjs`
+depende de: 6
+paralela: nao
+prova: `node hooks/testa-mod-abertura.cjs`
+mutacao:
+  arquivo: `hooks/abertura-mod-puro.mjs`
+  de: `if (reason === clear || reason === resume) memo = null;`
+  para: `if (reason === clear) memo = null;`
+  bateria: `node hooks/testa-mod-abertura.cjs`
+  fixture: `testa-mod-abertura.cjs, caso "session.end com resume remonta"`
+pronto quando: com a entrada real do hook do foco quando ele estoura o teto (comeca por `⚠️ **INJEÇÃO ACIMA DO ORÇAMENTO`, gerada por `travarOrcamento` de `hooks/lib/contexto-sessao.cjs`), `classic.SessionStart` a remove depois de a secao montar; e depois de `session.end` com `reason: resume` o compose seguinte remonta (novo par de `$.process.run`). Provado por `node hooks/testa-mod-abertura.cjs`.
+
 ## Cobertura
 
-D1 → 6. D2 → 6, 7. D3 → 2, 3, 10. D4 → 2, 5. D5 → 2, 4. D6 → 3, 10. D7 → 6, 10. D8 → 3, 4, 6. D9 → 6, 7. D10 → 1. D11 → 8. D12 → 9, 11.
+D1 → 6. D2 → 6, 7. D3 → 2, 3, 10. D4 → 2, 5. D5 → 2, 4. D6 → 3, 10. D7 → 6, 10, 12. D8 → 3, 4, 6. D9 → 6, 7, 12. D10 → 1. D11 → 8. D12 → 9, 11.
 
 ## Lacunas conhecidas
 
