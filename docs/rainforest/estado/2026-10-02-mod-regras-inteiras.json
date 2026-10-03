@@ -20,7 +20,13 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-02",
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "documentador",
+        "tarefa": "10 docs destino mod",
+        "desde": "2026-10-03T08:17:27-03:00"
+      }
+    ],
     "carimbos": [
       {
         "tarefa": 1,
@@ -28,10 +34,101 @@
         "iteracao": 1,
         "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
         "ts": "2026-10-03T01:09:12.259Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "e7e1c98a",
+        "iteracao": 1,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:15:32.657Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "e7e1c98a",
+        "iteracao": 2,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:21:56.852Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "d67d8cc2",
+        "iteracao": 1,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:21:56.852Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "d67d8cc2",
+        "iteracao": 1,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:21:56.852Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "d67d8cc2",
+        "iteracao": 1,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:21:56.852Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "d67d8cc2",
+        "iteracao": 2,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:37:20.033Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "d67d8cc2",
+        "iteracao": 2,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:37:20.033Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "d67d8cc2",
+        "iteracao": 2,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:37:20.033Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "b44c14a4",
+        "iteracao": 1,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:37:20.033Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "b44c14a4",
+        "iteracao": 1,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:37:20.033Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "b44c14a4",
+        "iteracao": 2,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T10:47:38.589Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "b44c14a4",
+        "iteracao": 2,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T11:17:27.344Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "b85f1133",
+        "iteracao": 1,
+        "sessao": "0072eecf-d369-431f-8f06-6444e9af87ce",
+        "ts": "2026-10-03T11:17:27.344Z"
       }
     ],
     "em": "2026-10-03",
-    "tarefas_ok": 1,
+    "tarefas_ok": 9,
     "tarefas": 11,
     "pendentes": [
       "tarefa-7: nao aplicavel pela medicao (secao nao chega ao subagente); fechar com a medicao colada"
@@ -42,6 +139,12 @@
       "controle": "NENHUM",
       "subagente": "NENHUM",
       "diagnostico_principal": "RF-TETO-TRAITS-print+skills / RF-TETO-TOOLS-134 / RF-TETO-IDS-intro+system+doing_tasks+actions+tools+tone+communication+pronouns+session_guidance+memory+env_info_simple+context_management+act_dont_rederive+total_tokens"
+    },
+    "tarefa_7": "nao aplicavel: medicao da tarefa 1 (subagente devolveu NENHUM)",
+    "tarefa_9": {
+      "com_mod": "frase do nucleo 0x; regras 16,12,11,17 inteiras; nri-bundle (fim do FOCO) sim; ultima linha da memoria presente",
+      "sem_mod": "frase 1x; nenhuma regra elaborada; nri-bundle nao",
+      "tamanho_secao": "48589 chars, entregue inteira"
     }
   },
   "revisar": {
