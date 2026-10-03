@@ -1,0 +1,103 @@
+Data: 2026-10-02
+Termos: prompt.compose, mods, teto de 3000, additionalContext, nucleo das regras
+
+$ gh issue list --state all --search "prompt.compose" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "mods" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "teto de 3000" --limit 200 --json number,title,state
+[{"number":290,"state":"CLOSED","title":"foco.cjs rotacionar descarta pela posicao, nao pela data: com avanco novo no topo, some o mais recente"}]
+
+
+$ gh issue list --state all --search "additionalContext" --limit 200 --json number,title,state
+[{"number":240,"state":"CLOSED","title":"Triagem de achado mora em slash command e nunca chega a sessao: todo defeito sai pela porta do plantio"},{"number":81,"state":"CLOSED","title":"testa-orcamento.sh mede a mesa, nao o repo: verde no CI e vermelho local pelo mesmo commit"}]
+
+
+$ gh issue list --state all --search "nucleo das regras" --limit 200 --json number,title,state
+[{"number":250,"state":"CLOSED","title":"As partes do orcamento de injecao somam mais que o todo: 7700 B de teto para 8000 B, e nada confere"},{"number":240,"state":"CLOSED","title":"Triagem de achado mora em slash command e nunca chega a sessao: todo defeito sai pela porta do plantio"},{"number":243,"state":"CLOSED","title":"foco-session-start.cjs leva 6-8 s nesta maquina e estoura o timeout 5 do hooks.json: testa-memoria-somente-leitura fica vermelha e nada diz que foi timeout"},{"number":16,"state":"CLOSED","title":"Nenhuma bateria roda sozinha: sem CI, a catraca depende de alguem lembrar (a de nucleos ficou vermelha 3 dias)"},{"number":1,"state":"CLOSED","title":"Briefing nao diz o ato de entregar: subagente nomeado termina o trabalho e nao devolve (3 de 3)"},{"number":2,"state":"CLOSED","title":"Briefing de dispatch nao cobre dado vivo fora do repositorio git"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"}]
+
+
+$ gh pr list --state all --search "prompt.compose" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "mods" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "teto de 3000" --limit 200 --json number,title,state
+[{"number":49,"state":"MERGED","title":"A memoria volta a ler o que ela mesma escreve"}]
+
+
+$ gh pr list --state all --search "additionalContext" --limit 200 --json number,title,state
+[{"number":90,"state":"MERGED","title":"Abertura: os hooks passam a pintar na tela, nao so no contexto do modelo"},{"number":94,"state":"MERGED","title":"Versao 0.76.0: a abertura passa a aparecer, e o \"somente leitura\" passa a ser verdade"},{"number":177,"state":"MERGED","title":"Fluxo 12: régua absorve o bar.md de mecanismos e o preflight de renderização"},{"number":85,"state":"MERGED","title":"Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79)"}]
+
+
+$ gh pr list --state all --search "nucleo das regras" --limit 200 --json number,title,state
+[{"number":7,"state":"MERGED","title":"Decisao ganha namespace proprio: nasce o Q, e o que nao tem Q nao pede nada"},{"number":119,"state":"MERGED","title":"Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos"},{"number":12,"state":"MERGED","title":"O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook"},{"number":32,"state":"MERGED","title":"O criterio apontava para o instrumento (#21)"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"}]
+
+
+$ git ls-remote --heads origin | grep -F "prompt.compose"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "mods"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "teto de 3000"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "additionalContext"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "nucleo das regras"
+(vazio)
+
+$ git log --all --grep="prompt.compose" --oneline
+(vazio)
+
+$ git log --all --grep="mods" --oneline
+(vazio)
+
+$ git log --all --grep="teto de 3000" --oneline
+740ca62e Tarefa 3 da memoria: adiciona casos 17.d (FTS indisponível) e 17.e (bytes com casadas)
+8e046ffa Tarefa 3 da memoria: adiciona casos 17.d (FTS indisponível) e 17.e (bytes com casadas)
+
+$ git log --all --grep="additionalContext" --oneline
+36e24861 memoria-sessao: trava o orcamento do bloco de memoria com aviso no topo
+a446e0f7 integra tarefa 2: orcamento --agregado mede o SessionStart inteiro
+55e396a6 orcamento: modo --agregado mede o teto real do SessionStart inteiro (Tarefa 2)
+63db97b6 design: guias e sensores, cinco enxertos do Harness Engineering
+a1df23e8 Consertar regressão em dubliador-llm-ok e adicionar medição com escada
+980d99fb Versao 0.76.0: a abertura passa a aparecer, e o "somente leitura" passa a ser verdade (#94)
+11d72093 Versao 0.76.0: a abertura passa a aparecer, e o "somente leitura" passa a ser verdade (#94)
+f6d4552c Abertura: os hooks passam a pintar na tela, nao so no contexto do modelo (#90)
+3ee8b32f Abertura: os hooks passam a pintar na tela, nao so no contexto do modelo (#90)
+d9cb884f Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79) (#85)
+9b7ee00d Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79) (#85)
+e1d2592c A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+bfc034d2 A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+5e576099 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+d5261da4 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+7bad9650 Corrige o que o ECC injeta na abertura: nao e o caminho, e nada
+83a1ace7 Corrige o que o ECC injeta na abertura: nao e o caminho, e nada
+b76f04f7 v0.48.0: a regra passa a chegar — JSON no emissor e orcamento de 8 KB
+67364007 v0.48.0: a regra passa a chegar — JSON no emissor e orcamento de 8 KB
+
+$ git log --all --grep="nucleo das regras" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+{"id":"mods-regras-inteiras-via-prompt-compose","titulo":"Entregar as 17 regras inteiras como secao do system prompt (prompt.compose), furando o teto de 3000 B do SessionStart"}
+{"id":"mods-gates-em-tool-call","titulo":"Portar os gates PreToolUse para um hook tool.call em processo"}
+{"id":"mods-faixa-foco-e-checkpoint","titulo":"Faixa acima do prompt com foco ativo, Q abertas e checkpoint n/total"}
+{"id":"mods-jornada-e-janela-parada-por-relogio","titulo":"Jornada (regra 8) e janela parada (regra 17) medidas por relogio do mod, com aviso em toast/status"}
+
+
