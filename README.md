@@ -34,6 +34,10 @@ Ou aponte `--plugin-dir` para a pasta do repo em desenvolvimento.
 **Requisito único: Node no PATH.** Nada mais. Detalhe do runtime, dos gêmeos em
 Python e do orçamento de contexto em [`docs/runtime-e-orcamento.md`](docs/runtime-e-orcamento.md).
 
+**Claude Code 2.1, patch 287 em diante, para a abertura inteira.** Nessa versão o plugin entrega
+as regras e as elaborações como seção do system prompt (`hooks/register.ts`). Sem
+ela, ou no Codex, a abertura vem pelo hook com o núcleo, como antes.
+
 Não precisa configurar nada para começar. Quando quiser foco próprio num
 repositório, crie `.rainforest/FOCO.md` nele — é só isso.
 
