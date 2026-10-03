@@ -1,0 +1,115 @@
+{
+  "slug": "2026-10-03-mod-faixa-foco",
+  "titulo": "Mod: faixa acima do prompt com foco, fluxo em curso e Q abertas",
+  "criado_em": "2026-10-03",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-03-mod-faixa-foco.md",
+    "em": "2026-10-03"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-03-mod-faixa-foco.md",
+    "tarefas": 7,
+    "paralelas": [],
+    "em": "2026-10-03"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-03",
+    "tarefas_ok": 7,
+    "tarefas": 7,
+    "comando": "claude plugin test . && node hooks/testa-mod-faixa.cjs && bash scripts/testa-faixa-dados.sh",
+    "saida": "4 pass, 0 fail (abertura 2 + faixa terminal/desktop) | == resultado: 19 ok, 0 falha(s), 0 skipped == | 12 ok, 0 falha(s), 0 skipped",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-faixa-dados.sh, caso \"fluxo completo nao entra na lista\""
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-mod-faixa.cjs, caso \"esconder vale ate a assinatura mudar\""
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "validate lista ui.render{component=AbovePrompt}: o grep casa so com mod.tsx como entrada"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "mod-faixa.test.tsx, caso \"cede a vaga quando hasSurvey\""
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "medicao em REPL real; controle em Documents sem faixa"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "documentacao; node -e sai 1 com numero de linhas adulterado (4 x 3)"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "bump de versao; conferir-versao, contrato-plugin-codex e check-ignore sairam 0"
+      }
+    ],
+    "medicao_repl": {
+      "comando": "claude --plugin-dir <worktree> em C:/Projetos/rainforest-mind (2.1.288)",
+      "passo1": "foco  <titulo> / fluxo mod-faixa-foco: executar / [ esconder ]",
+      "passo2": "Q 1 aberta(s): Q1 Teste da faixa",
+      "passo3": "faixa visivel durante sleep 20 (D6)",
+      "passo4": "esconder some; Q2 nova traz de volta: Q 1 aberta(s): Q2 Volta",
+      "passo5": "controle em ~/Documents: sem faixa",
+      "tempo_script": "0,49 a 0,56 s no checkout real",
+      "residuo": "tsconfig.json na raiz sem regra de ignore -> .gitignore (emenda tarefa 7)"
+    },
+    "em": "2026-10-03"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "6cc3e88bcbd564d89a3d42520a1060786ead1fc7",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a86762fc0da2a38ac",
+        "veredito": "ok",
+        "em": "2026-10-03",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/da2628ca-c4c2-4c85-9335-967778ffae56/subagents/agent-a86762fc0da2a38ac.jsonl"
+      }
+    ],
+    "base": "197a147a",
+    "head": "6cc3e88b",
+    "revisor": "rainforest-mind:revisor (sonnet), 3 rodadas",
+    "rodada_1": "reprovado: bateria testa-mod-faixa vermelha por linha fixa do README (bloqueante); copia de worktree de agente vencia a real (importante); 4 menores",
+    "rodada_2": "aprovado: 5 achados resolvidos",
+    "rodada_3": "VEREDITO: ok; menores aceitos: fechamento de cerca com info string, cols undefined",
+    "comando": "node hooks/testa-mod-faixa.cjs && bash scripts/testa-faixa-dados.sh && claude plugin test .",
+    "saida": "20 ok, 0 falha(s) | 14 ok, 0 falha(s) | 4 pass, 0 fail",
+    "em": "2026-10-03"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "claude plugin test . && node hooks/testa-mod-faixa.cjs && bash scripts/testa-faixa-dados.sh && node hooks/testa-mod-abertura.cjs",
+    "saida": "4 pass, 0 fail | 20 ok, 0 falha(s), 0 skipped | 14 ok, 0 falha(s), 0 skipped | 28 ok, 0 falha(s), 0 skipped",
+    "sensor_externo": "claude plugin test . && node hooks/testa-mod-faixa.cjs && bash scripts/testa-faixa-dados.sh && node hooks/testa-mod-abertura.cjs",
+    "repl_real": "claude --plugin-dir, 2.1.288, lido pelo usuario em 5 prints: foco+fluxo; Q 1 aberta(s): Q1 Teste da faixa; visivel durante sleep 20; esconder some e Q2 traz de volta; controle em ~/Documents sem faixa",
+    "em": "2026-10-03"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 383,
+    "em": "2026-10-03"
+  }
+}

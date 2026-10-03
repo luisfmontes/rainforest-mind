@@ -256,6 +256,10 @@
     "em": "2026-10-03"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "pr": 381,
+    "merge": "origin/main",
+    "pendente_pos_merge": "medicao 1.37.0 em sessao nova pelo marketplace (apos plugin update)",
+    "em": "2026-10-03"
   }
 }

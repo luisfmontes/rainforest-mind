@@ -1,0 +1,144 @@
+Data: 2026-10-03
+Termos: AbovePrompt, faixa, Q aberta, checkpoint, statusline
+
+$ gh issue list --state all --search "AbovePrompt" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "faixa" --limit 200 --json number,title,state
+[{"number":149,"state":"CLOSED","title":"A regra jid-whatsapp para em 15 digitos, e JID de GRUPO tem 18 — passou por baixo e o dado ficou no repo publico"},{"number":120,"state":"CLOSED","title":"testa-contexto-sessao.sh esta vermelha na main: 5 falhas em dentroDoExpediente, focoAtivoEmOutraJanela e co-locada"},{"number":63,"state":"CLOSED","title":"O foco não chega na injeção, e a isenção da regra 17 é cega para a segunda pasta — 10ª vez que o radar cobra desvio onde não devia"},{"number":237,"state":"CLOSED","title":"gate-publicacao-destino le id publico do GitHub como telefone, e a mensagem manda confirmar sem haver como"},{"number":215,"state":"CLOSED","title":"Vermelho largo passa por prova: a catraca de mutacao le o exit code da bateria, nunca quantas assercoes cairam"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"}]
+
+
+$ gh issue list --state all --search "Q aberta" --limit 200 --json number,title,state
+[{"number":174,"state":"CLOSED","title":"Nada barra \"Fecha #N\" no corpo do PR — a regra está escrita há 10 dias e o erro repetiu"}]
+
+
+$ gh issue list --state all --search "checkpoint" --limit 200 --json number,title,state
+[{"number":299,"state":"CLOSED","title":"Rota com emoji de status por etapa: formato de acompanhamento que a regra 4 nao tem"}]
+
+
+$ gh issue list --state all --search "statusline" --limit 200 --json number,title,state
+[{"number":194,"state":"CLOSED","title":"atualizar-cli.sh sem o lock por mkdir que os dois refreshers ja tem — e nenhuma bateria exercita esse lock"},{"number":165,"state":"CLOSED","title":"O gate de publicacao e cego para escrita mediada por Bash — node, sed e heredoc passam"},{"number":159,"state":"CLOSED","title":"testa-medir-injecao quebra em 'python3: command not found' numa maquina com Python instalado — o Windows so cria python"},{"number":157,"state":"CLOSED","title":"REINCIDE #16: o workflow esta disabled_manually ha 232 commits, e a maquina do Actions e mais rica que a de quem instala"},{"number":195,"state":"CLOSED","title":"Nada exige que o checkout principal fique na main, e os vigias agendados rodam contra ele"},{"number":38,"state":"CLOSED","title":"CORRIGE #25: a saida prescrita (branch nova) e o que derruba a outra sessao em diretorio compartilhado"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"}]
+
+
+$ gh pr list --state all --search "AbovePrompt" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "faixa" --limit 200 --json number,title,state
+[{"number":70,"state":"MERGED","title":"dentroDoExpediente aceita N faixas horarias, fechando o buraco do almoco"},{"number":361,"state":"MERGED","title":"Vigias: falha recorrente com impressao digital enxertada do reef"},{"number":156,"state":"MERGED","title":"Pre-publico: JID de grupo, a porta do agente, e fixtures que eram telefone de gente"},{"number":52,"state":"MERGED","title":"Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo"},{"number":297,"state":"MERGED","title":"zerar-issues-6: fronteira de repo na regra 6 e os restos da rodada 5"},{"number":72,"state":"MERGED","title":"Versao 0.75.0: o dia dos sete consertos, e o release que faz eles existirem"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"}]
+
+
+$ gh pr list --state all --search "Q aberta" --limit 200 --json number,title,state
+[{"number":7,"state":"MERGED","title":"Decisao ganha namespace proprio: nasce o Q, e o que nao tem Q nao pede nada"},{"number":297,"state":"MERGED","title":"zerar-issues-6: fronteira de repo na regra 6 e os restos da rodada 5"},{"number":236,"state":"MERGED","title":"Zerar Issues: a fatia revisada e limpa (12 de 18 Issues)"},{"number":119,"state":"MERGED","title":"Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos"}]
+
+
+$ gh pr list --state all --search "checkpoint" --limit 200 --json number,title,state
+[{"number":301,"state":"MERGED","title":"Regra 4: rota com emoji de status por etapa (#299) — 1.19.1"},{"number":94,"state":"MERGED","title":"Versao 0.76.0: a abertura passa a aparecer, e o \"somente leitura\" passa a ser verdade"},{"number":92,"state":"MERGED","title":"Somente-leitura de verdade: o banco abria em modo ESCRITA e nada avisava"}]
+
+
+$ gh pr list --state all --search "statusline" --limit 200 --json number,title,state
+[{"number":229,"state":"MERGED","title":"fix(statusline): barra sumiu dos dois perfis — cwd faltando no segmento da escada"},{"number":164,"state":"MERGED","title":"Scripts entregues derivam o home de quem roda, com trava"},{"number":228,"state":"MERGED","title":"Statusline com tempo até o reset; checkout principal fica na main (regra 11, closes #195) — 1.10.0"},{"number":41,"state":"MERGED","title":"Versao 0.73.0: a statusline entra no plugin, e a bateria de saude para de vazar temporario"},{"number":40,"state":"MERGED","title":"A statusline sai de ~/.claude e entra no plugin, e a bateria de saude para de vazar temporario"},{"number":62,"state":"MERGED","title":"As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada"},{"number":224,"state":"MERGED","title":"Enxerta os sete mecanismos do ponytail, e fecha a fronteira que o gate de código de modelo não tinha"},{"number":47,"state":"MERGED","title":"Resgata a ronda do batedor de 2026-08-21 da branch obsoleta"},{"number":166,"state":"MERGED","title":"Gate: placeholder de usuario nao e nome de ninguem"},{"number":44,"state":"MERGED","title":"Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada"},{"number":171,"state":"MERGED","title":"A suite media a maquina do dono: 11 Issues da familia, catraca de dependencias, CI em Node 22 e 24"},{"number":60,"state":"MERGED","title":"Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"}]
+
+
+$ git ls-remote --heads origin | grep -F "AbovePrompt"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "faixa"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "Q aberta"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "checkpoint"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "statusline"
+(vazio)
+
+$ git log --all --grep="AbovePrompt" --oneline
+(vazio)
+
+$ git log --all --grep="faixa" --oneline
+117615cb regua selada: fecha os onze achados da rodada 6 do revisar
+5cafc040 Regra 6 sem custo de bytes; 22.1 e 22.3 independem do nucleo
+a6422e04 Corrige falso positivo do gate-git-verificacao: corpo de heredoc e dado, nunca comando
+063bef0f Issue #149: a regra de JID alcanca grupo, e os fixtures deixam de ser telefone de gente
+aa138c70 Issue #149: a regra de JID alcanca grupo, e os fixtures deixam de ser telefone de gente
+b47e60d5 Vigias: JID multi-dispositivo tambem — e ali o JID E o telefone
+d73c5913 Vigias: JID multi-dispositivo tambem — e ali o JID E o telefone
+8c10b296 Vigias: o ERROS.md commitado carregava um JID de WhatsApp, num repo publico
+8d0d4909 Vigias: o ERROS.md commitado carregava um JID de WhatsApp, num repo publico
+955a3074 Vigias: a rodada de correcoes da revisao — o vazamento, o falso positivo, o custo
+83301c7b Vigias: a rodada de correcoes da revisao — o vazamento, o falso positivo, o custo
+b2aa0b07 Vigias T3: a catraca de encoding aprende a assinatura OEM, e o passado e backfill
+d92f27a2 Vigias T3: a catraca de encoding aprende a assinatura OEM, e o passado e backfill
+6098e392 Versao 0.75.0: o dia dos sete consertos, e o release que faz eles existirem (#72)
+c42d1233 Versao 0.75.0: o dia dos sete consertos, e o release que faz eles existirem (#72)
+a71934c5 dentroDoExpediente aceita N faixas horarias, fechando o buraco do almoco (#70)
+a6684976 dentroDoExpediente aceita N faixas horarias, fechando o buraco do almoco (#70)
+f6c4bec0 Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo (#52)
+1d5b6312 Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo (#52)
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+5e576099 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+d5261da4 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+5443bc0e A limpeza enxerga a branch que sobrevive ao worktree, e as config dirs param de divergir em silencio
+acc85203 A limpeza enxerga a branch que sobrevive ao worktree, e as config dirs param de divergir em silencio
+7945fdd3 /saude: so o que o doctor oficial nao sabe, e ponteiro para ele no resto
+6da760f3 /saude: so o que o doctor oficial nao sabe, e ponteiro para ele no resto
+
+$ git log --all --grep="Q aberta" --oneline
+(vazio)
+
+$ git log --all --grep="checkpoint" --oneline
+7ad1a398 fluxo zerar-issues-7: rota com emoji por etapa na regra 4 (#299)
+980d99fb Versao 0.76.0: a abertura passa a aparecer, e o "somente leitura" passa a ser verdade (#94)
+11d72093 Versao 0.76.0: a abertura passa a aparecer, e o "somente leitura" passa a ser verdade (#94)
+5b03465b Somente-leitura de verdade: o banco abria em modo ESCRITA e nada avisava (#92)
+f8236e36 Somente-leitura de verdade: o banco abria em modo ESCRITA e nada avisava (#92)
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+
+$ git log --all --grep="statusline" --oneline
+c5f30402 Merge pull request #228 from luisfmontes/fluxo/statusline-reset-e-principal-na-main
+46b41d05 Versao 1.10.0 (MINOR): statusline com tempo ate o reset e principal na main
+f126bc02 Trazer a main para a branch do statusline e resolver os dois conflitos
+e8e39632 Merge origin/main (1.8.2, PR #229) na branch do fluxo
+10251507 Merge pull request #229 from luisfmontes/fix/statusline-escada-cwd
+2a164e16 fix(statusline): passar cwd para o segmento da escada, e bateria do main()
+b73a3c4d Tarefa 17 (#194): Adicionar lock a scripts/atualizar-cli.sh
+569a2883 Versão 1.9.0: statusline com tempo até o reset; estado.cjs iniciar recusa checkout principal fora da main
+08254133 Revisão rodada 2: a barra nunca trava — cada segmento nasce no próprio try; chave invertida lida sem ligado()
+84eddec1 Revisão rodada 1: NaN/Infinity não derrubam a barra; trava do iniciar olha o cwd real; núcleo cita a chave
+7333fa86 T1: statusline mostra o tempo até o reset das janelas 5h/7d; barra deixa de estourar no segmento de escada
+01e5fe5b Design e plano: statusline com tempo até o reset; checkout principal na main
+e80d4ffe D6: conserta quatro achados de revisão independente
+27fcb1fa Tarefa 6: Dial de intensidade para a escada YAGNI
+35223d4b Issues #148 #144 #153 #157-#163: a suite media a maquina do dono
+fa68491c Gate: placeholder de usuario nao e nome de ninguem
+5a282ae2 Gate: placeholder de usuario nao e nome de ninguem
+3c8a8542 Scripts entregues derivam o home de quem roda, com trava
+2a5149d8 Scripts entregues derivam o home de quem roda, com trava
+6e07275c Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README (#129)
+be0332c9 Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README (#129)
+c0508a73 As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada (#62)
+465f2544 As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada (#62)
+7a61c1e0 Resgata a ronda do batedor de 2026-08-21 da branch que ficou obsoleta (#47)
+b13fe516 Resgata a ronda do batedor de 2026-08-21 da branch que ficou obsoleta (#47)
+c3d775c0 Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada (#44)
+3e615363 Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada (#44)
+fe42796a Versao 0.73.0: a statusline entra no plugin, e a bateria de saude para de vazar temporario (#41)
+5d17edbc Versao 0.73.0: a statusline entra no plugin, e a bateria de saude para de vazar temporario (#41)
+b496ab17 Estado: esteira da statusline fechada (PR #40, CI verde na main)
+836d4955 Estado: esteira da statusline fechada (PR #40, CI verde na main)
+7dc1a9bf A statusline sai de ~/.claude e entra no plugin, e a bateria de saude para de vazar temporario (#40)
+e265afc5 A statusline sai de ~/.claude e entra no plugin, e a bateria de saude para de vazar temporario (#40)
+
+$ cat <dados>/ideias.jsonl
+{"id":"statusline-fora-de-repositorio","titulo":"statusline.py mora fora de repositorio e vale para os dois perfis"}
+{"id":"bateria-do-wrapper-de-lock","titulo":"Nenhuma bateria exercita o lock por mkdir dos refreshers da statusline"}
+{"id":"unificar-a-resolucao-de-raiz-de-dados-da-statusline","titulo":"A statusline resolve a raiz de dados de dois jeitos no mesmo arquivo"}
+{"id":"mods-faixa-foco-e-checkpoint","titulo":"Faixa acima do prompt com foco ativo, Q abertas e checkpoint n/total"}
+
+

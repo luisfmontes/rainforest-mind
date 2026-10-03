@@ -103,3 +103,7 @@ ferramentas.jsonl
 # JSON de agregado. E RASTRO DE EXECUCAO desta maquina/credencial, nunca
 # insumo do plugin — quem quiser reproduzir roda a suite de novo.
 evals/results/
+
+# Gerado por `claude --plugin-dir` / `claude plugin validate` (estende
+# .claude-plugin/types/, que se ignora sozinho). Medido no fluxo 2026-10-03-mod-faixa-foco.
+/tsconfig.json

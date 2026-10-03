@@ -140,6 +140,27 @@ a lista edita o JSON. Falha do mod é falha aberta: a seção não entra, nada s
 `SessionStart` e o hook segue entregando. O mod só vale a partir da sessão
 seguinte à atualização do plugin.
 
+**A faixa do mod.** A entrada do mod é `hooks/mod.tsx`: liga a abertura
+(`hooks/register.ts`, intacto) e desenha a faixa acima do prompt (`ui.render` em
+`AbovePrompt`). São no máximo 3 linhas (`MAX_LINHAS` em `hooks/faixa-puro.mjs`):
+foco, fluxo e Q, cada uma cortada em `bodyColumns`. Com menos espaço, sobra
+primeiro a Q, depois o fluxo. A faixa só aparece com fluxo em curso ou Q aberta,
+e o foco sozinho não a acende. O fluxo vem de todos os worktrees do repositório,
+por `scripts/faixa-dados.cjs` (somente leitura, reusa `proximo` e
+`tituloDoFocoAtivo`). Quando o mesmo slug aparece em mais de um worktree, vale a
+cópia mais avançada, e a de worktree de subagente (`.claude/worktrees/agent-*`)
+só vale quando é a única. As Q saem do texto final do turno (`e.answer` do
+`turn.complete`, só da sessão principal) pelos dois marcadores de `MARCADORES_Q`,
+`❓ **Q<n> — título**` e `**Q<n>.**` (também em blockquote e item de lista), fora
+de cerca de código (```` ``` ```` ou `~~~`). Uma resposta sem Q
+zera a linha. "Esconder" vale até a assinatura mudar: Q nova ou resolvida,
+etapa nova ou mudança nos agentes em voo. A faixa atualiza em `session.start`, em `turn.complete` e ao
+pressionar, nunca no meio do turno. Falha de leitura apaga só a linha afetada e
+nunca quebra a sessão. Controle de terminal (ESC, C1, bidi) é trocado por espaço
+antes de desenhar. A faixa não repete a statusline (jornada, prazo, versão). A
+prova de engine é `claude plugin test .` (`hooks/mod-faixa.test.tsx`, terminal e
+desktop); a lógica, `node hooks/testa-mod-faixa.cjs`.
+
 ## Versão: o release é entrega própria, e o PATCH existe
 
 O bump vai num **commit próprio**, com título `Versao <x.y.z>: <o que o lote
