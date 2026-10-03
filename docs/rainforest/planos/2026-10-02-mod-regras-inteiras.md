@@ -155,13 +155,8 @@ atende: D2, D9
 arquivos: `hooks/abertura-mod-puro.mjs`, `hooks/testa-mod-abertura.cjs`, `hooks/mod-abertura.test.ts`
 depende de: 6
 paralela: nao
-prova: `node hooks/testa-mod-abertura.cjs`
-mutacao:
-  arquivo: `hooks/abertura-mod-puro.mjs`
-  de: `if (!entregaNestePrompt(e)) return resultado;`
-  para: `if (false) return resultado;`
-  bateria: `node hooks/testa-mod-abertura.cjs`
-  fixture: `testa-mod-abertura.cjs, caso "prompt de subagente nao recebe a secao"`
+mutacao: n/a
+  motivo: nao aplicavel por medicao (2026-10-03): a secao do mod nao chega ao prompt de subagente (tarefa 1, subagente devolveu NENHUM) e o REPL principal compoe com trait lean; nao ha filtro a escrever, logo nao ha linha a inverter.
 pronto quando: com `e.traits`, `e.tools` e ids de secao iguais aos medidos dentro do subagente na tarefa 1, o mod devolve as `sections` sem `rainforest-mind:abertura` e sem chamar `$.process.run`; com os valores medidos da sessao principal, acrescenta; e em sessao real, `claude -p --plugin-dir <raiz> --model haiku` pedindo a um subagente as ocorrencias de `RAINFOREST MIND ATIVO` no seu system prompt devolve `NENHUM`. Provado por `node hooks/testa-mod-abertura.cjs` e pelo comando de subagente. Se a tarefa 1 mostrar que a secao nao chega ao subagente, a tarefa fecha como nao aplicavel com a medicao colada; se o usuario escolher outra politica em B, ou nao houver discriminante, a tarefa nao comeca e o plano volta ao estagio `plano`.
 
 ### 8. A bateria de orcamento aprende o destino mod [tipo: implementar]
@@ -215,11 +210,11 @@ paralela: nao
 prova: `node hooks/testa-mod-abertura.cjs`
 mutacao:
   arquivo: `hooks/abertura-mod-puro.mjs`
-  de: `if (reason === clear || reason === resume) memo = null;`
-  para: `if (reason === clear) memo = null;`
+  de: `if (reason === 'clear' || reason === 'resume') memo = null;`
+  para: `if (reason === 'clear') memo = null;`
   bateria: `node hooks/testa-mod-abertura.cjs`
   fixture: `testa-mod-abertura.cjs, caso "session.end com resume remonta"`
-pronto quando: com a entrada real do hook do foco quando ele estoura o teto (comeca por `⚠️ **INJEÇÃO ACIMA DO ORÇAMENTO`, gerada por `travarOrcamento` de `hooks/lib/contexto-sessao.cjs`), `classic.SessionStart` a remove depois de a secao montar; e depois de `session.end` com `reason: resume` o compose seguinte remonta (novo par de `$.process.run`). Provado por `node hooks/testa-mod-abertura.cjs`.
+pronto quando: com a entrada real do hook do foco quando ele estoura o teto (comeca por `⚠️ **INJEÇÃO ACIMA DO ORÇAMENTO`, gerada por `travarOrcamento` de `hooks/lib/contexto-sessao.cjs`), `classic.SessionStart` a remove depois de a secao montar; e depois de `session.end` com `reason: 'resume'` o compose seguinte remonta (novo par de `$.process.run`). Provado por `node hooks/testa-mod-abertura.cjs`.
 
 ## Cobertura
 
