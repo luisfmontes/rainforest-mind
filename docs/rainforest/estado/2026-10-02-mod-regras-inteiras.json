@@ -11,7 +11,11 @@
     "em": "2026-10-02"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-02-mod-regras-inteiras.md",
+    "tarefas": 11,
+    "paralelas": [],
+    "em": "2026-10-02"
   },
   "executar": {
     "status": "pendente"
