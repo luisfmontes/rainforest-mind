@@ -77,7 +77,8 @@ Respondidas em 2026-10-04, todas na recomendada:
 ## Ordem e paradas
 
 Cadeia: 1 ∥ 2 → 3 → 4 → 5 → 6 → 7 → 8. Tarefas 1 e 2 em arquivos disjuntos (`paralela: sim`); as demais `paralela: nao`.
-- **PARADA 1, depois da tarefa 5:** a tarefa 6 pede ao usuário a tela de um REPL real (`claude -p` não desenha nem tica). Falhou, volta ao usuário.
+- **Emenda pós-medição (2026-10-04):** a tarefa 9 entra entre a 5 e a 6 (a nota não chegava ao modelo pelo `classic.UserPromptSubmit` no REPL).
+- **PARADA 1, depois da tarefa 9:** a tarefa 6 pede ao usuário a tela de um REPL real (`claude -p` não desenha nem tica). Falhou, volta ao usuário.
 - **Pendente pós-merge:** repetir a leitura da tarefa 6 numa sessão pelo marketplace, com os limites reais.
 
 ## Tarefas
@@ -157,17 +158,33 @@ mutacao:
   de: `await update($, relogioNotaPendente, () => null)`
   para: `await update($, relogioNotaPendente, () => dia)`
   bateria: `claude plugin test .`
-  fixture: `mod-relogio.test.tsx, caso "a nota chega uma vez so: o segundo prompt do dia vai sem ela"`
+  fixture: `mod-relogio.test.tsx, caso "relogio (<surface>): linha, minutos, esconder, nota e virada do dia" (a nota chega no `context` do primeiro prompt e não no segundo)`
 pronto quando: com a saída real de `scripts/relogio-sessoes.cjs` e de `jornada.cjs --json` (coladas como `FIXTURE_SESSOES` e `FIXTURE_JORNADA`, servidas por `on('process.run')` conforme o `argv`), `$.session.id()` respondido por `on('session.id')` e `mock.clock(on, { now })` às 20h40 de um dia local, `claude plugin test .` sai 0 com `(pass)` e 0 fail, um `test(...)` por surface (`terminal` e `desktop`), mais os 4 casos existentes; `claude plugin validate .claude-plugin/plugin.json` sai 0 e lista `$.clock.after`, `$.clock.every`, `$.session.id`, `$.ui.invalidate` e `declares state:` com `relogioJornada`, `relogioSessoes`, `relogioNotaPendente`, `relogioNotaEntregue`; `node hooks/testa-mod-abertura.cjs` 28 ok e `node hooks/testa-mod-faixa.cjs` 22 ok; `git diff --quiet d2dba6cd -- hooks/register.ts hooks/abertura-mod-puro.mjs hooks/testa-mod-abertura.cjs hooks/mod-abertura.test.ts hooks/hooks.json statusline` sai 0 — provado por esses comandos.
 
 Casos por surface: (1) quieta antes de qualquer tick; (2) depois de `session.start` + `advance(2000)`, com 552 min e mensagem às 20h30, `find` acha `jornada 9h12` e `20h40`; (3) com `ociosidade_min` 30 e uma janela parada há 32 min, a linha traz a pasta e `parada há 32 min`; com duas acima, `(+1)`; (4) `advance(60000)` muda `32 min` → `33 min` e a assinatura não muda; (5) 8h59 às 14h, e 8h00 às 20h com mensagem há 31 min, deixam quieta; (6) `esconder` deixa quieta, `advance(300000)` com a mesma jornada mantém escondida, outra janela virando a mais parada ou uma nova cruzando traz de volta, a virada do dia traz a jornada de volta; (7) o primeiro `$.classic.UserPromptSubmit({ prompt, source: 'user' })` depois do aceso devolve `additionalContext` com `regra 8`, `9h12` e `20h40`, o segundo do mesmo dia sem, `source: 'loop_wakeup'` não gasta, esconder não impede, o dia seguinte entrega outra; (8) `process.run` exit 1 apaga só a linha, e `jornada.cjs` exit 2 também, sem exceção; (9) `session.start` com `isInteractive: false` não dispara nenhum `process.run` do relógio; (10) `session.end` cancela: `advance(600000)` depois não chama `process.run`; (11) o `argv` da leitura de janelas leva `--sessao` com o id de `$.session.id()`; (12) leitura de jornada lenta (`relogio.sleep`) não é reentrada por um tick de 5 min; (13) com `bodyColumns` 30 cada `Text` cabe em 30 células; com `maxRows` 3 sobram Q e relógio; (14) o texto do relógio nunca traz `ponto de parada` nem `água`.
 
 Nota: o engine recusa `$` passado como argumento: a leitura é `rodarJson(io, argv, timeoutMs)` com `io = { rodar }` montado no ponto de chamada (molde de `buscar(io)`); `lerSessoes`, `lerJornada`, o cancelamento e `reavaliar` são closures dentro do `register`. `ui.render` lê `await $.clock.now()`; se falhar no teste, guarda-se o `agora` do último tick num átomo. `types/index.d.ts` ganha os quatro átomos e `RainforestMindRelogioJornada`/`RainforestMindRelogioSessoes`, só `type` exportado. O `de:` é texto que a tarefa escreve, uma vez só, no hook `classic.UserPromptSubmit` (que hoje só zera as Q): lê `relogioNotaPendente` e, ao entregar, grava `relogioNotaEntregue` com o dia, zera o pendente (esse `update`) e devolve `{ ...r, additionalContext: [...] }` do `next(e)`; o tick só arma o pendente quando o dia ainda não foi entregue. Mutações extras para a revisão: `if (!e.isInteractive) return next(e)` → `if (false) return next(e)` (caso 9) e remover o `cancel()` do `session.end` (caso 10). `hooks/testa-mod-relogio.cjs` ganha o caso que lê `mod-relogio.test.tsx` como texto e confere que as chaves de `FIXTURE_SESSOES` e `FIXTURE_JORNADA` são as da saída real dos dois scripts (nunca pula). Nenhuma edição em `hooks/hooks.json` nem em `plugin.json`.
 
+### 9. Nota e limpeza das Q por `prompt.submit` (emenda pós-medição) [tipo: implementar]
+atende: D5, D6
+arquivos: `hooks/mod.tsx`, `hooks/mod-relogio.test.tsx`, `hooks/mod-faixa.test.tsx`
+depende de: 5
+paralela: nao
+prova: `grep -c "on('prompt.submit'" hooks/mod.tsx | grep -qx 1`
+mutacao:
+  arquivo: `hooks/mod.tsx`
+  de: `return next({ ...e, context: [...(e.context ?? []), nota] })`
+  para: `return next(e)`
+  bateria: `claude plugin test .`
+  fixture: `mod-relogio.test.tsx, caso "relogio (<surface>): linha, minutos, esconder, nota e virada do dia" (a nota chega no `context` do primeiro prompt e não no segundo)`
+pronto quando: `hooks/mod.tsx` deixa de registrar `classic.UserPromptSubmit` e registra `prompt.submit` uma vez: limpa `faixaQ` em todo envio e, com `e.origin` ausente ou `e.origin.kind === 'composer'`, entrega a nota pendente do dia como `context` (`next({ ...e, context: [...(e.context ?? []), nota] })`, nunca depois do `next`), gravando `relogioNotaEntregue` e zerando o pendente; os testes de engine passam a chamar `$.prompt.submit` (fundo `on('prompt.submit')`) e o caso da nota confere o `context` que chega ao fundo; `claude plugin test .` sai 0 com 0 fail, `claude plugin validate .claude-plugin/plugin.json` sai 0 e lista `prompt.submit` sem `classic.UserPromptSubmit` no `mod.tsx`, e as baterias Node (`testa-mod-abertura` 28 ok, `testa-mod-faixa` 22 ok, `testa-mod-faixa-relogio`, `testa-mod-relogio`) seguem verdes — provado por esses comandos.
+
+Nota: medido na tarefa 6 (REPL real, 2.1.289, cópia por `--plugin-dir`): o handler de mod para `classic.UserPromptSubmit` **não roda** no envio do composer interativo — um diagnóstico que escrevia na linha de Q da faixa não apareceu durante nem depois do turno —, enquanto o mesmo handler roda em `claude -p`. A linha do relógio desenhou, então era a cópia que estava carregada. Pesquisa: `prompt.submit` aceita `context?: readonly string[]` ("what the model reads beside the prompt and the user never sees"); em `-p`, um `context` com palavra secreta fez o modelo respondê-la, com o texto visível intacto. A limpeza das Q da 1.38.1 usava o mesmo evento e cai junto: o conserto vale para as duas. O `de:` é texto que a tarefa escreve, uma vez só.
+
 ### 6. Medição no REPL real: a linha, a nota, o esconder e a janela nomeada [tipo: pesquisar]
 atende: D1, D2, D3, D4, D5, D6, D8
 arquivos: nenhum
-depende de: 1, 5
+depende de: 1, 5, 9
 paralela: nao
 mutacao: n/a
   motivo: tarefa de medição em sessão interativa real; o controle é a faixa sem relógio quando nenhum limite foi cruzado e o relato do que apareceu na tela, mais as provas com limiares reais da tarefa 5.
@@ -199,7 +216,7 @@ Nota: o CHANGELOG diz, nesta ordem: a linha `⏰` (jornada e hora no limite, jan
 
 ## Cobertura
 
-D1 → 4, 5, 6, 8. D2 → 3, 5, 6, 7. D3 → 3, 5, 6, 7. D4 → 2, 3, 5, 6. D5 → 3, 5, 6, 7. D6 → 3, 4, 5, 6. D7 → 3, 4, 5, 7. D8 → 1, 2, 5, 6, 7. D9 → 1, 2, 5.
+D1 → 4, 5, 6, 8. D2 → 3, 5, 6, 7. D3 → 3, 5, 6, 7. D4 → 2, 3, 5, 6. D5 → 3, 5, 6, 7, 9. D6 → 3, 4, 5, 6, 9. D7 → 3, 4, 5, 7. D8 → 1, 2, 5, 6, 7. D9 → 1, 2, 5.
 
 ## Lacunas conhecidas
 
