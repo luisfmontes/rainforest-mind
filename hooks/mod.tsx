@@ -185,18 +185,19 @@ export const register: Register = (on, options) => {
   })
 
   // Mensagem do usuario responde as Q do turno anterior: a linha sai na hora, e o
-  // `turn.complete` seguinte traz de volta as que continuarem abertas.
-  on('classic.UserPromptSubmit', async ($, e, next) => {
+  // `turn.complete` seguinte traz de volta as que continuarem abertas. O evento e o
+  // `prompt.submit` porque o gancho classico de envio (UserPromptSubmit) nao roda, em mod, no composer do REPL.
+  on('prompt.submit', async ($, e, next) => {
     try {
       await update($, faixaQ, () => [])
     } catch {
       // a faixa nunca quebra o envio
     }
-    const r = await next(e)
-    // Nota da regra 8: uma vez por dia, so em prompt do usuario (nao em loop/schedule/system).
+    // Nota da regra 8: uma vez por dia, so em prompt digitado no composer (nao em loop/schedule/system).
+    // Vai em `context`: o modelo le, o usuario nao ve, e o texto do prompt segue intacto.
     let nota: string | null = null
     try {
-      if (e.source === undefined || e.source === 'user') {
+      if (e.origin === undefined || e.origin.kind === 'composer') {
         const pendente = await read($, relogioNotaPendente)
         if (pendente) {
           const agora = await $.clock.now()
@@ -213,8 +214,8 @@ export const register: Register = (on, options) => {
     } catch {
       // a nota nunca quebra o envio
     }
-    if (nota === null) return r
-    return { ...r, additionalContext: [...(r?.additionalContext ?? []), nota] }
+    if (nota === null) return next(e)
+    return next({ ...e, context: [...(e.context ?? []), nota] })
   })
 
   on('turn.complete', async ($, e, next) => {

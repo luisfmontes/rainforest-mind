@@ -66,6 +66,7 @@ async function montar($: any, on: any, surface: Surface, inicio: number, dadosFa
     maxVoo: 0,
     argvS: [] as string[][],
     faixa: dadosFaixa,
+    ctx: [] as string[],
   }
   const resposta = (modo: Modo, corpo: unknown) => {
     if (modo === 'exit1') return saida('', 1)
@@ -98,7 +99,11 @@ async function montar($: any, on: any, surface: Surface, inicio: number, dadosFa
   on('session.start', async (_$: any, e: any) => ({ cwd: e.cwd }))
   on('session.end', async () => ({ sessionId: 'sessao-atual' }) as never)
   on('turn.complete', async () => ({ text: '' }))
-  on('classic.UserPromptSubmit', async () => ({}) as never)
+  // Fundo da cadeia: guarda o `context` que chegou ate aqui (o que o modelo leria).
+  on('prompt.submit', async (_$: any, e: any) => {
+    s.ctx = [...(e.context ?? [])]
+    return e as never
+  })
   on('ui.render', async (t$: any, e: any) => {
     const { Box } = t$.ui.resolve(e)
     return <Box />
@@ -133,15 +138,19 @@ async function montar($: any, on: any, surface: Surface, inicio: number, dadosFa
       throw new Error(`[${surface}] ${nome}: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
-  return { relogio, s, ui, textos, juntos, botao, quieta, comecar, terminarSessao, terminar, caso }
+  // Envia um prompt e devolve o `context` que chegou ao fundo.
+  const enviar = async (prompt: string, origin?: { kind: string }) => {
+    s.ctx = []
+    await $.prompt.submit((origin === undefined ? { text: prompt } : { text: prompt, origin }) as never)
+    return s.ctx
+  }
+  return { relogio, s, ui, textos, juntos, botao, quieta, comecar, terminarSessao, terminar, caso, enviar }
 }
-
-const contexto = (r: any): string[] => (r && Array.isArray(r.additionalContext) ? r.additionalContext : [])
 
 for (const surface of ['terminal', 'desktop'] as const) {
   test(`relogio (${surface}): linha, minutos, esconder, nota e virada do dia`, async ($, on) => {
     const m = await montar($, on, surface, em(20, 40))
-    const { relogio, s, ui, juntos, quieta, botao, comecar, terminarSessao, caso } = m
+    const { relogio, s, ui, juntos, quieta, botao, comecar, terminarSessao, caso, enviar } = m
 
     await caso('1 quieta antes de qualquer tick', async () => {
       await quieta()
@@ -173,25 +182,21 @@ for (const surface of ['terminal', 'desktop'] as const) {
     })
 
     await caso('7 loop_wakeup, system e sdk nao gastam a nota', async () => {
-      for (const source of ['loop_wakeup', 'schedule_wakeup', 'system', 'sdk']) {
-        const r = await $.classic.UserPromptSubmit({ prompt: 'tick', source } as never)
-        expect(contexto(r)).toEqual([])
+      for (const kind of ['loop_wakeup', 'schedule_wakeup', 'system', 'sdk', 'task-notification', 'bridge']) {
+        expect(await enviar('tick', { kind })).toEqual([])
       }
     })
 
     await caso('7 o primeiro prompt do usuario do dia leva a nota, mesmo com a faixa escondida', async () => {
-      const r = await $.classic.UserPromptSubmit({ prompt: 'oi', source: 'user' } as never)
-      const c = contexto(r).join('\n')
+      const c = (await enviar('oi', { kind: 'composer' })).join('\n')
       expect(c).toContain('regra 8')
       expect(c).toContain('9h12')
       expect(c).toContain('20h40')
     })
 
     await caso('a nota chega uma vez so: o segundo prompt do dia vai sem ela', async () => {
-      const r = await $.classic.UserPromptSubmit({ prompt: 'de novo', source: 'user' } as never)
-      expect(contexto(r)).toEqual([])
-      const r2 = await $.classic.UserPromptSubmit({ prompt: 'sem source' } as never)
-      expect(contexto(r2)).toEqual([])
+      expect(await enviar('de novo', { kind: 'composer' })).toEqual([])
+      expect(await enviar('sem origin')).toEqual([])
     })
 
     await caso('3 janela parada ha 32 min traz a faixa de volta, com a pasta', async () => {
@@ -259,12 +264,10 @@ for (const surface of ['terminal', 'desktop'] as const) {
     })
 
     await caso('7 o dia seguinte entrega outra nota, e so uma', async () => {
-      const r = await $.classic.UserPromptSubmit({ prompt: 'bom dia', source: 'user' } as never)
-      const c = contexto(r).join('\n')
+      const c = (await enviar('bom dia', { kind: 'composer' })).join('\n')
       expect(c).toContain('regra 8')
       expect(c).toContain('9h12')
-      const r2 = await $.classic.UserPromptSubmit({ prompt: 'outra', source: 'user' } as never)
-      expect(contexto(r2)).toEqual([])
+      expect(await enviar('outra', { kind: 'composer' })).toEqual([])
     })
 
     await ui.unmount()
