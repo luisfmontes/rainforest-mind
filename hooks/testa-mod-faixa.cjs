@@ -242,9 +242,9 @@ caso("maxLinhas 1 e 2: prioridade Q, fluxo, foco; exibicao foco, fluxo, Q", asyn
   igual(montarLinhas(dados, qs, 80, 9).length, 3, "teto de MAX_LINHAS");
 });
 
-caso("MAX_LINHAS vale 3 e MARCADORES_Q tem as duas formas", async () => {
+caso("MAX_LINHAS vale 4 e MARCADORES_Q tem as duas formas", async () => {
   const { MAX_LINHAS, MARCADORES_Q } = await modulo();
-  igual(MAX_LINHAS, 3, "MAX_LINHAS");
+  igual(MAX_LINHAS, 4, "MAX_LINHAS");
   igual(MARCADORES_Q.length, 2, "duas formas");
 });
 

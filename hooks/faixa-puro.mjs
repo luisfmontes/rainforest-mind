@@ -6,8 +6,10 @@
 // entram, mesmo que o objeto os traga):
 //   dados = { foco: string|null, fluxos: [{ slug, etapa, tarefas_ok, tarefas, em_voo }] }
 //   qs    = [{ n, titulo }]
+//   relogio = linha pronta do relogio (string) ou null; a faixa tem ate 4 linhas:
+//   foco, fluxo, relogio, Q.
 
-export const MAX_LINHAS = 3;
+export const MAX_LINHAS = 4;
 
 // As duas formas com que o brainstorm numera uma pergunta aberta. Cada marcador captura
 // o numero e o titulo; ambos aceitam o prefixo de blockquote `> ` e de item de lista
@@ -141,16 +143,16 @@ function linhaQ(qs, cols) {
 }
 
 /** @returns {string[]} no maximo maxLinhas, cada uma com largura <= cols */
-export function montarLinhas(dados, qs, cols, maxLinhas) {
+export function montarLinhas(dados, qs, cols, maxLinhas, relogio) {
   const q = linhaQ(qs, cols);
   const fluxo = linhaFluxo(dados);
-  if (!q && !fluxo) return [];
+  if (!q && !fluxo && !relogio) return [];
   const foco = dados && typeof dados.foco === 'string' && dados.foco.trim() ? `foco  ${dados.foco.trim()}` : null;
-  // Prioridade quando falta espaco: Q, fluxo, foco. Exibicao: foco, fluxo, Q.
+  // Prioridade quando falta espaco: Q, relogio, fluxo, foco. Exibicao: foco, fluxo, relogio, Q.
   const max = Math.max(0, Math.min(MAX_LINHAS, maxLinhas ?? MAX_LINHAS));
-  const prioridade = [['q', q], ['fluxo', fluxo], ['foco', foco]].filter(p => p[1]).slice(0, max);
+  const prioridade = [['q', q], ['relogio', relogio], ['fluxo', fluxo], ['foco', foco]].filter(p => p[1]).slice(0, max);
   const ficam = new Set(prioridade.map(p => p[0]));
-  const ordem = [['foco', foco], ['fluxo', fluxo], ['q', q]];
+  const ordem = [['foco', foco], ['fluxo', fluxo], ['relogio', relogio], ['q', q]];
   return ordem.filter(p => ficam.has(p[0])).map(p => cortar(semControle(p[1]), cols));
 }
 
@@ -162,12 +164,14 @@ function semControle(s) {
 }
 
 /** Estavel: muda com Q nova, etapa/slug novos e agente novo em voo; nao com tarefas_ok. */
-export function assinatura(dados, qs) {
+export function assinatura(dados, qs, assinaturaRelogio) {
   const fluxos = dados && Array.isArray(dados.fluxos) ? dados.fluxos : [];
   const f = fluxos[0] || {};
   const voo = Array.isArray(f.em_voo) ? [...f.em_voo].map(String).sort() : [];
   const perguntas = (Array.isArray(qs) ? qs : []).map(q => [q.n, q.titulo]);
-  return JSON.stringify([perguntas, f.slug ?? null, f.etapa ?? null, voo]);
+  const base = [perguntas, f.slug ?? null, f.etapa ?? null, voo];
+  if (typeof assinaturaRelogio === 'string' && assinaturaRelogio) base.push(assinaturaRelogio);
+  return JSON.stringify(base);
 }
 
 /** Esconder vale ate a assinatura mudar. */
