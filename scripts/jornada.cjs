@@ -48,7 +48,10 @@ const CORTE_PADRAO_MIN = 55;
 // transcripts disponiveis
 // --------------------------------------------------------------------------
 
-function transcriptsDisponiveis() {
+// desdeMs: transcript com mtime anterior nao pode ter mensagem do dia, entao nem
+// entra na lista (0 = sem filtro, comportamento antigo).
+function transcriptsDisponiveis(desdeMs = 0) {
+  const desde = desdeMs;
   const base = process.env.USERPROFILE || os.homedir();
   const achados = [];
   for (const configDir of [".claude-personal", ".claude"]) {
@@ -69,7 +72,18 @@ function transcriptsDisponiveis() {
         continue;
       }
       for (const arquivo of arquivos) {
-        if (arquivo.endsWith(".jsonl")) achados.push(path.join(subPath, arquivo));
+        if (!arquivo.endsWith(".jsonl")) continue;
+        const caminho = path.join(subPath, arquivo);
+        if (desde > 0) {
+          let st;
+          try {
+            st = fs.statSync(caminho);
+          } catch {
+            continue;
+          }
+          if (st.mtimeMs < desde) continue;
+        }
+        achados.push(caminho);
       }
     }
   }
@@ -245,7 +259,10 @@ function main() {
   } else {
     const dia = args.dia || hoje();
     carimbos = [];
-    for (const t of transcriptsDisponiveis()) {
+    // meia-noite local do --dia; formato invalido nao filtra
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dia);
+    const desde = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime() : 0;
+    for (const t of transcriptsDisponiveis(Number.isNaN(desde) ? 0 : desde)) {
       for (const c of mensagensHumanas(t)) {
         if (diaLocal(c[0]) === dia) carimbos.push(c);
       }
