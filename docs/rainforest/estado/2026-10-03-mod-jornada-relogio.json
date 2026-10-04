@@ -11,7 +11,16 @@
     "em": "2026-10-03"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-03-mod-jornada-relogio.md",
+    "tarefas": 8,
+    "paralelas": [
+      [
+        1,
+        2
+      ]
+    ],
+    "em": "2026-10-04"
   },
   "executar": {
     "status": "pendente"
