@@ -314,6 +314,35 @@ caso("o .mjs e puro: sem require, node:, process., Date.now nem o objeto do engi
   for (const re of proibidos) afirma(!re.test(fonte), "hooks/relogio-puro.mjs tem " + re);
 });
 
+caso("FIXTURE_SESSOES e FIXTURE_JORNADA de mod-relogio.test.tsx tem as chaves exatas da saida real dos scripts", async () => {
+  const fonte = fs.readFileSync(path.join(SRC, "hooks", "mod-relogio.test.tsx"), "utf8");
+  const ler = nome => {
+    const m = new RegExp("^const " + nome + " = (\\{.*\\})\\s*$", "m").exec(fonte);
+    afirma(m, "nao achei `const " + nome + " = {...}` (numa linha so) em hooks/mod-relogio.test.tsx");
+    return JSON.parse(m[1]);
+  };
+  const chaves = o => Object.keys(o).sort();
+  const sessoes = ler("FIXTURE_SESSOES");
+  const realS = sessoesReais([["/projetos/painel", 120], ["/projetos/loja-api", 60]], null);
+  igual(chaves(sessoes), chaves(realS), "chaves do topo de relogio-sessoes.cjs");
+  afirma(realS.janelas.length > 0 && sessoes.janelas.length > 0, "sem janela para comparar");
+  igual(chaves(sessoes.janelas[0]), chaves(realS.janelas[0]), "chaves de cada janela");
+  const jornada = ler("FIXTURE_JORNADA");
+  const dir = caixa("relogio-fx-");
+  const f = path.join(dir, "s.jsonl");
+  const linhas = [];
+  for (let i = 2; i >= 0; i--) {
+    linhas.push(JSON.stringify({ type: "user", timestamp: new Date(Date.now() - i * 20 * 60000).toISOString(), message: { role: "user" } }));
+  }
+  fs.writeFileSync(f, linhas.join("\n") + "\n");
+  const r = spawnSync(process.execPath, [SCRIPT_JORNADA, "--json", "--transcript", f], {
+    env: envLimpo({ HOME: dir, USERPROFILE: dir }),
+    encoding: "utf8",
+  });
+  afirma(r.status === 0, "jornada.cjs saiu " + r.status + ": " + r.stdout + r.stderr);
+  igual(chaves(jornada), chaves(JSON.parse(r.stdout)), "chaves de jornada.cjs --json");
+});
+
 // ------------------------------------------------------------------ execucao
 (async () => {
   let ok = 0;

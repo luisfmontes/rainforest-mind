@@ -18,12 +18,23 @@ export type RainforestMindFaixaDados = {
 
 export type RainforestMindFaixaQ = { n: number; titulo: string }
 
+export type RainforestMindRelogioJornada = { efetiva_min: number; ultimo_ms: number }
+
+export type RainforestMindRelogioSessoes = {
+  ociosidade_min: number
+  janelas: { cwd: string; desde: number }[]
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'rainforest-mind': {
       faixaDados: RainforestMindFaixaDados | null
       faixaQ: RainforestMindFaixaQ[]
       faixaOculta: string | null
+      relogioJornada: RainforestMindRelogioJornada | null
+      relogioSessoes: RainforestMindRelogioSessoes | null
+      relogioNotaPendente: string | null
+      relogioNotaEntregue: string | null
     }
   }
 }
