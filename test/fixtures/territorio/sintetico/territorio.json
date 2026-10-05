@@ -1,0 +1,26 @@
+{
+  "versao_contrato": 0,
+  "nome": "sintetico",
+  "deteccao": { "extensoes": [".abc"], "arquivos": [] },
+  "variaveis": ["lint"],
+  "estagios": {
+    "brainstorm": {
+      "mcp": [
+        { "tool": "mcp__srv__consulta" },
+        { "tool": "mcp__srv__dicionario", "quem": "agente", "obrigatorio": true }
+      ],
+      "skills": ["sintetico:conhecimento"]
+    },
+    "executar": {
+      "modo": "substitui",
+      "agentes": [{ "tipo": "sintetico:executor", "mcp": "agente", "obrigatorio": true }]
+    },
+    "revisar": {
+      "modo": "soma",
+      "agentes": [{ "tipo": "sintetico:revisor" }]
+    },
+    "verificar": {
+      "comandos": [{ "id": "lint", "comando": "{lint} {arquivo}", "obrigatorio": true }]
+    }
+  }
+}
