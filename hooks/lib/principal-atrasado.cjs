@@ -10,6 +10,7 @@
 const { execFileSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const { caminhoExecutavel } = require('./resolver-executavel.cjs');
 
 // Teto de linhas "<caminho> já em origin/main" na injeção; o resto vira uma
 // única linha de resumo (mesmo tratamento que o bloco de sessões já dá aos
@@ -51,7 +52,7 @@ function normalizarCaminho(p) {
  */
 function resolverPrincipal(cwd) {
   try {
-    const gitCommonDir = execFileSync('git', ['rev-parse', '--git-common-dir'], {
+    const gitCommonDir = execFileSync(caminhoExecutavel('git'), ['rev-parse', '--git-common-dir'], {
       cwd,
       encoding: 'utf8',
       timeout: 3000,
@@ -67,7 +68,7 @@ function resolverPrincipal(cwd) {
   } catch {
     // Fallback: tentar git worktree list --porcelain
     try {
-      const output = execFileSync('git', ['worktree', 'list', '--porcelain'], {
+      const output = execFileSync(caminhoExecutavel('git'), ['worktree', 'list', '--porcelain'], {
         cwd,
         encoding: 'utf8',
         timeout: 3000,
@@ -101,7 +102,7 @@ function resolverPrincipal(cwd) {
  */
 function branchesMergeadas(principal) {
   try {
-    const output = execFileSync('git', ['branch', '--merged', 'origin/main', '--format=%(refname:short)'], {
+    const output = execFileSync(caminhoExecutavel('git'), ['branch', '--merged', 'origin/main', '--format=%(refname:short)'], {
       cwd: principal,
       encoding: 'utf8',
       timeout: 3000,
@@ -143,7 +144,7 @@ function linhas({ cwd }) {
     // Contar commits atrás de origin/main (sem fetch)
     let atras = 0;
     try {
-      const countOutput = execFileSync('git', ['rev-list', '--count', 'HEAD..origin/main'], {
+      const countOutput = execFileSync(caminhoExecutavel('git'), ['rev-list', '--count', 'HEAD..origin/main'], {
         cwd: principal,
         encoding: 'utf8',
         timeout: 3000,
@@ -166,7 +167,7 @@ function linhas({ cwd }) {
 
     // Listar worktrees linkadas cuja branch está em origin/main
     try {
-      const worktreesOutput = execFileSync('git', ['worktree', 'list', '--porcelain'], {
+      const worktreesOutput = execFileSync(caminhoExecutavel('git'), ['worktree', 'list', '--porcelain'], {
         cwd: principal,
         encoding: 'utf8',
         timeout: 3000,

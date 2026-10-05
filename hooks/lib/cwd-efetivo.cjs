@@ -9,6 +9,7 @@
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
+const { caminhoExecutavel } = require("./resolver-executavel.cjs");
 const {
   tokensComAspas, ehComando, posicaoDeComando, OPERADORES_DE_DOIS,
   colapsaContinuacaoDeLinhaNoTopo,
@@ -539,7 +540,7 @@ function resolverCwdEfetivo(comando, cwdInicial) {
  */
 function toplevelConfinado(dir) {
   try {
-    const toplevelRaw = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+    const toplevelRaw = execFileSync(caminhoExecutavel("git"), ["rev-parse", "--show-toplevel"], {
       cwd: dir,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
