@@ -23,7 +23,60 @@
     "em": "2026-10-04"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-10-05",
+    "tarefas_ok": 9,
+    "tarefas": 9,
+    "comando": "claude plugin test .",
+    "saida": "(pass) abertura: uma secao no fim, montada uma vez, SessionStart sem as entradas dos dois hooks [155.48ms] (pass) abertura: gerador que falha deixa o prompt e o SessionStart intactos [53.62ms] (pass) faixa (terminal): quieta, desenha, cede a vaga, esconde, falha aberta, largura [214.90ms] (pass) faixa (desktop): quieta, desenha, cede a vaga, esconde, falha aberta, largura [120.16ms] (pass) relogio (terminal): linha, minutos, esconder, nota e virada do dia [267.24ms] (pass) relogio (terminal): limiares, 8h59 as 14h e 8h00 as 20h com mensagem ha 31 min [73.35ms] (pass) relogio (terminal): falha de leitura apaga so a linha, sem excecao [127.51ms] (pass) relogio (terminal): session.start nao interativo nao arma o relogio [38.76ms] (pass) relogio (terminal): session.end cancela os timers [53.73ms] (pass) relogio (terminal): leitura lenta de jornada nao e reentrada [173.97ms] (pass) relogio (terminal): largura e linhas (Q e relogio sobram quando falta espaco) [88.22ms] (pass) relogio (desktop): linha, minutos, esconder, nota e virada do dia [141.61ms] (pass) relogio (desktop): limiares, 8h59 as 14h e 8h00 as 20h com mensagem ha 31 min [58.84ms] (pass) relogio (desktop): falha de leitura apaga so a linha, sem excecao [107.03ms] (pass) relogio (desktop): session.start nao interativo nao arma o relogio [41.58ms] (pass) relogio (desktop): session.end cancela os timers [39.49ms] (pass) relogio (desktop): leitura lenta de jornada nao e reentrada [145.81ms] (pass) relogio (desktop): largura e linhas (Q e relogio sobram quando falta espaco) [68.06ms] 18 pass 0 fail Ran 18 tests across 3 files. [1.80s]",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "transcript mais velho que o dia nao e lido"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "a propria janela nao entra"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "depois das 19h sem mensagem nos ultimos 30 min nao acende"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "com 2 linhas disponiveis ficam a Q e o relogio"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "relogio (<surface>): linha, minutos, esconder, nota e virada do dia"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "medicao no REPL real pelo usuario: nota citada no 1o prompt, ausente no 2o, Q saiu, linha e esconder e (+1) vistos"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "so documentacao; coerencia com as constantes conferida por script que sai 1 com numero adulterado"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "versao; conferir-versao e contrato-plugin-codex saem 0"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "relogio (<surface>): linha, minutos, esconder, nota e virada do dia"
+      }
+    ],
+    "em": "2026-10-05"
   },
   "revisar": {
     "status": "pendente"
