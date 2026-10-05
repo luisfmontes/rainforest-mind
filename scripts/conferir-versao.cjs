@@ -57,6 +57,7 @@
 const { execFileSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 /**
  * Descobre a raiz do repositório git do cwd (diretório de execução),
@@ -65,7 +66,7 @@ const path = require("path");
  */
 function raizDoCwd() {
   try {
-    return execFileSync("git", ["rev-parse", "--show-toplevel"], {
+    return execFileSync(caminhoExecutavel("git"), ["rev-parse", "--show-toplevel"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
       cwd: process.cwd(),
@@ -84,7 +85,7 @@ const TETO_PADRAO = 5;
 
 function git(args) {
   try {
-    return execFileSync("git", ["-C", RAIZ, ...args], {
+    return execFileSync(caminhoExecutavel("git"), ["-C", RAIZ, ...args], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
@@ -111,7 +112,7 @@ function buscarOrigem(raiz) {
     return; // Sem remoto, nao tem o que fazer
   }
   try {
-    execFileSync("git", ["-C", raiz, "fetch", "origin", "main"], {
+    execFileSync(caminhoExecutavel("git"), ["-C", raiz, "fetch", "origin", "main"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
       timeout: 15000,
@@ -151,7 +152,7 @@ function versaoDoManifesto() {
 function versaoDeOrigemMain() {
   try {
     const raw = execFileSync(
-      "git",
+      caminhoExecutavel("git"),
       ["-C", RAIZ, "show", `origin/main:${MANIFESTO_REF}`],
       {
         encoding: "utf8",

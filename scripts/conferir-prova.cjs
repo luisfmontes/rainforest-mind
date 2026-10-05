@@ -13,6 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { spawnSync } = require('child_process');
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 const RAIZ = process.env.RFM_ESTADO_ROOT
   || process.env.CLAUDE_PROJECT_DIR
@@ -42,7 +43,7 @@ let worktreeAtual = null;
 function criaWorktree(repo) {
   try {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rfm-prova-'));
-    const r = spawnSync('git', ['worktree', 'add', '--detach', tmp, 'HEAD'], {
+    const r = spawnSync(caminhoExecutavel('git'), ['worktree', 'add', '--detach', tmp, 'HEAD'], {
       cwd: repo,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -61,11 +62,11 @@ function removeWorktree() {
   if (!worktreeAtual) return;
   const { path: tmpPath, repo } = worktreeAtual;
   try {
-    spawnSync('git', ['worktree', 'remove', '--force', tmpPath], {
+    spawnSync(caminhoExecutavel('git'), ['worktree', 'remove', '--force', tmpPath], {
       cwd: repo,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
-    spawnSync('git', ['worktree', 'prune'], {
+    spawnSync(caminhoExecutavel('git'), ['worktree', 'prune'], {
       cwd: repo,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
