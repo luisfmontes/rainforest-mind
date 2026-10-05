@@ -20,7 +20,216 @@
     "em": "2026-10-05"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-10-05",
+    "tarefas_ok": 5,
+    "tarefas": 5,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "42e7b5e1",
+        "iteracao": 1,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:12:38.692Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "42e7b5e1",
+        "iteracao": 2,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:16:00.433Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1c940e48",
+        "iteracao": 1,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:16:00.433Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "42e7b5e1",
+        "iteracao": 3,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:19:09.994Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1c940e48",
+        "iteracao": 2,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:19:09.994Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "37a3c390",
+        "iteracao": 1,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:19:09.994Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "42e7b5e1",
+        "iteracao": 4,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:32:56.104Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1c940e48",
+        "iteracao": 3,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:32:56.104Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "37a3c390",
+        "iteracao": 2,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:32:56.104Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "f6d312dd",
+        "iteracao": 1,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:32:56.104Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "42e7b5e1",
+        "iteracao": 5,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:33:15.979Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1c940e48",
+        "iteracao": 4,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:33:15.979Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "37a3c390",
+        "iteracao": 3,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:33:15.979Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "f6d312dd",
+        "iteracao": 2,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:33:15.979Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "42e7b5e1",
+        "iteracao": 6,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:38:05.374Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1c940e48",
+        "iteracao": 5,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:38:05.374Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "37a3c390",
+        "iteracao": 4,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:38:05.374Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "f6d312dd",
+        "iteracao": 3,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:38:05.374Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "fd6e7c11",
+        "iteracao": 1,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:38:05.374Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "42e7b5e1",
+        "iteracao": 7,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:41:30.431Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1c940e48",
+        "iteracao": 6,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:41:30.431Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "37a3c390",
+        "iteracao": 5,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:41:30.431Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "f6d312dd",
+        "iteracao": 4,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:41:30.431Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "fd6e7c11",
+        "iteracao": 2,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:41:30.431Z"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-05",
+    "para_revisar": [
+      "versao_contrato != 0 de qualquer plugin instalado recusa marcar em todo repo, mesmo sem deteccao",
+      "aviso de indisponivel sai sem o tipo do agente (plano tarefa 2 pedia aviso: <tipo> indisponivel)",
+      "campo variaveis do manifesto nao e lido; variavel exigida = qualquer {nome} usado no comando (D6 fala em variaveis que o territorio declarar)"
+    ],
+    "comando": "bash scripts/testa-territorio.sh; bash scripts/testa-estado-territorio.sh",
+    "saida": "total=11 vermelhas:[]; total=6 vermelhas:[]",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-territorio.sh, caso apontamento do repo vence a deteccao"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-territorio.sh, caso variavel sem valor no config local sai 3 nomeando a variavel"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-estado-territorio.sh, caso verificar sem evidencia do comando obrigatorio recusa com exit 2"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "texto de skill; falsificado pelo conferir-invariantes saindo 2 sem a frase"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "documento de referencia; falsificado pelo chk de chaves fixture x doc"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
