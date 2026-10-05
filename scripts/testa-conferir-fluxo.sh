@@ -566,7 +566,8 @@ echo "  -- SABOTAGEM: devolver o execSync com string e exigir que a assercao cai
 # Trava que nunca foi vista travando nao e evidencia de nada. O mutante volta a
 # montar o comando como string; se o sentinela NAO aparecer nele, este teste esta
 # medindo outra coisa.
-MUT_CHECADOR="$CAIXA_INJ/conferir-fluxo-mut.cjs"
+mkdir -p "$CAIXA_INJ/mut/scripts" "$CAIXA_INJ/mut/hooks/lib" && cp "$RAIZ/hooks/lib/resolver-executavel.cjs" "$CAIXA_INJ/mut/hooks/lib/"   # o mutante faz require do resolvedor (Issue #392)
+MUT_CHECADOR="$CAIXA_INJ/mut/scripts/conferir-fluxo-mut.cjs"
 cp "$CHECADOR" "$MUT_CHECADOR"
 cat > "$CAIXA_INJ/sabotar-injecao.cjs" <<'SABOTA_INJ_EOF'
 const fs = require('fs');

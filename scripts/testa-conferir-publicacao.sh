@@ -554,7 +554,8 @@ echo
 echo "== 9b. MUTACAO — sem o filtro de comentario, o caso acima para de pegar =="
 # A prova de que o filtro e load-bearing: tira-se ele da COPIA e o texto limpo,
 # que passava, passa a ser recusado por causa do `#` do cabecalho da lista.
-MUT="$SBP/conferir-mutado.cjs"
+mkdir -p "$SBP/mut/scripts" "$SBP/mut/hooks/lib" && cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SBP/mut/hooks/lib/"   # o mutante faz require do resolvedor (Issue #392)
+MUT="$SBP/mut/scripts/conferir-mutado.cjs"
 # A aspa simples do fonte (`startsWith('#')`) e montada com fromCharCode(39):
 # escreve-la literal aqui fecharia a aspa do proprio `node -e` e o teste passaria
 # a medir outro comando. Mesma armadilha ja registrada neste acervo.
