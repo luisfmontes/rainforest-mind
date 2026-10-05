@@ -93,6 +93,25 @@ responde — a primeira metade já proíbe.
 > da fala (2026-08-22); e três frentes de investigação profunda abertas antes
 > de confirmar qual era o assunto (2026-08-22).
 
+**Citar alguém como fundamento é citar a frase literal, não a inferência.**
+Quando uma fala de terceiro sustenta uma recomendação, um requisito ou uma
+estimativa, o que vai escrito é a frase dele, com a fonte (trecho da fita, linha
+do e-mail, mensagem); se a frase não existe, a atribuição não existe. Três
+corolários: nome de mecanismo que a fita não traz é **nosso** e se escreve
+assim, com o trecho bruto ao lado — senão circula depois como decisão tomada;
+contexto que o cliente deu para justificar outro pedido não é requisito do que
+construir, e a pergunta antes de desenhar é qual dos dois o trecho é; e
+proximidade temporal não é vínculo de assunto: duas mensagens vizinhas só são o
+mesmo assunto quando o texto amarra (resposta explícita, nome da rotina, mesmo
+chamado) — sem amarra, dono de tarefa não sobe como recomendação.
+
+> 2026-09: uma ata batizou um mecanismo que a fita não nomeia e o nome entrou
+> no design e na estimativa como caminho fechado; uma frase de interlocutor foi
+> usada como argumento sem existir na gravação; um relato de contexto do cliente
+> virou item a construir (duas rodadas de brainstorm sobre a leitura errada); e
+> duas mensagens vizinhas foram lidas como o mesmo assunto, atribuindo o dono
+> errado a um card.
+
 **Decisão sobre falha que ele não viu acontecer abre pelo mecanismo, não pelo
 número.** Quando o assunto é infraestrutura silenciosa — hook, orçamento de
 injeção, agente, cron —, o usuário não presenciou o defeito: ele recebeu um aviso
