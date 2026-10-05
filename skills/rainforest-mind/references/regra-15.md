@@ -74,3 +74,23 @@ multilinha.
 > valores, deixou passar o corpo base64 de uma chave privada Ed25519 — a
 > chave inteira — para dentro de um print que o usuário colou na conversa.
 > Chave rotacionada, print apagado, sem impacto em cliente.
+
+**Processo de fundo: parar não é parar, e `&` dentro do Bash não é segundo plano.**
+Depois de parar um job, "Successfully stopped" não prova nada: o harness mata o
+processo do cano, não a árvore de shell que ele lançou. Conferir a lista real de
+processos (`Win32_Process` no Windows, `pgrep -f` em unix) antes de relançar,
+senão relançar cria duplicata em vez de substituir — e a duplicata se detecta por
+**linha de comando repetida**, não por contagem de PIDs (dois PIDs do mesmo job
+são legítimos quando um shim delega ao interpretador). Todo script de fila longa
+nasce com **trava de instância única** (`mkdir` de um diretório de lock é
+atômico, com `trap` no EXIT para soltar; teste a trava rodando a segunda
+instância e vendo exit 1). E comando longo vai com `run_in_background` do
+harness, um por vez, **nunca** com `&` dentro do comando: o processo com `&`
+morre com a sessão e disputa `fork` com o resto.
+
+> 2026-08-20: três filas de processamento de áudio, relançadas após "parar", ficaram
+> dormindo numa guarda de espera e acordaram juntas — três interpretadores no mesmo
+> arquivo de entrada e de saída, taxa efetiva caindo de 4,6x para 1,7x tempo real; o
+> arquivo saiu intacto por sorte. 2026-09-21: uma varredura de baterias lançada com
+> `&` morreu com a sessão ("Resource temporarily unavailable") em 122 de 125 e
+> custou cerca de 80 min.
