@@ -11,13 +11,23 @@ const { spawnSync } = require('child_process');
 const cacheResolverExecutavel = new Map();
 const cacheCaminhoExecutavel = new Map();
 
+function ehArquivo(caminho) {
+  try {
+    return fs.statSync(caminho).isFile();
+  } catch {
+    return false;
+  }
+}
+
 function lerPath(env = process.env) {
   // Encontra a chave PATH case-insensitive
   const chave = Object.keys(env).find(k => k.toUpperCase() === 'PATH');
   const PATH = env[chave] || '';
   const separador = process.platform === 'win32' ? ';' : ':';
 
-  const dirs = PATH.split(separador).filter(d => d && path.isAbsolute(d));
+  // Entrada entre aspas ("C:\Program Files\Git\cmd") vale para o libuv, que tira as aspas.
+  const semAspas = (d) => (d.length > 1 && d.startsWith('"') && d.endsWith('"') ? d.slice(1, -1) : d);
+  const dirs = PATH.split(separador).map(semAspas).filter(d => d && path.isAbsolute(d));
 
   return { PATH, dirs };
 }
@@ -36,7 +46,7 @@ function resolverExecutavel(nome, env = process.env) {
   for (const dir of dirs) {
     for (const ext of extensoes) {
       const caminhoCompleto = path.join(dir, nome + ext);
-      if (fs.existsSync(caminhoCompleto)) {
+      if (ehArquivo(caminhoCompleto)) {
         cacheResolverExecutavel.set(chave, caminhoCompleto);
         return caminhoCompleto;
       }
@@ -59,7 +69,7 @@ function caminhoExecutavel(nome, env = process.env) {
   for (const dir of dirs) {
     for (const ext of extensoes) {
       const caminhoCompleto = path.join(dir, nome + ext);
-      if (fs.existsSync(caminhoCompleto)) {
+      if (ehArquivo(caminhoCompleto)) {
         cacheCaminhoExecutavel.set(chave, caminhoCompleto);
         return caminhoCompleto;
       }

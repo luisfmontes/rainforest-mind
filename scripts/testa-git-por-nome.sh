@@ -185,6 +185,36 @@ fi
 
 echo
 
+echo
+echo "3b. entrada do PATH entre aspas e diretorio com o nome do executavel"
+echo
+SB3B="$(novo_sandbox)"
+mkdir -p "$SB3B/git.exe"
+cat > "$TMPB/tg3b.cjs" << 'EOFN3B'
+const path = require('path');
+const { spawnSync } = require('child_process');
+const [src, dirFalso] = process.argv.slice(2);
+const r = require(path.join(src, 'hooks', 'lib', 'resolver-executavel.cjs'));
+const real = r.caminhoExecutavel('git');
+const dirReal = path.dirname(real);
+const Q = String.fromCharCode(34);
+// (a) entrada entre aspas: o libuv acha, o resolvedor tem de achar o mesmo
+const envA = { PATH: Q + dirReal + Q };
+const libuv = spawnSync('git', ['--version'], { env: { ...envA, SystemRoot: process.env.SystemRoot }, encoding: 'utf8' });
+const a = r.caminhoExecutavel('git', envA);
+console.log('aspas-libuv:', libuv.status === 0);
+console.log('aspas-resolvedor:', a === real);
+// (b) pasta chamada git.exe antes do git real: nao e executavel, segue o PATH
+const envB = { PATH: dirFalso + ';' + dirReal };
+console.log('diretorio:', r.caminhoExecutavel('git', envB) === real && r.resolverExecutavel('git', envB) !== path.join(dirFalso, 'git.exe'));
+EOFN3B
+resultado=$(node "$TMPB/tg3b.cjs" "$SRC" "$SB3B" 2>&1)
+if echo "$resultado" | grep -q 'aspas-libuv: true' && echo "$resultado" | grep -q 'aspas-resolvedor: true' && echo "$resultado" | grep -q 'diretorio: true'; then
+  ok=$((ok+1)); echo "  ok   entrada entre aspas resolve como no libuv; pasta git.exe e pulada"
+else
+  falhou=$((falhou+1)); echo "  FALHA aspas/diretorio: $resultado"
+fi
+
 # =========== Caso 4: ausente dá ENOENT com caminho absoluto ===========
 echo "4. ausente dá ENOENT com caminho absoluto"
 echo

@@ -96,7 +96,7 @@ pronto quando: com o repositório do plugin, a varredura não lista linha destes
 ### 7. versão 1.39.3 [tipo: docs]
 atende: D8
 arquivos: `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`
-depende de: 1, 2, 3, 4, 5, 6, 8, 9
+depende de: 1, 2, 3, 4, 5, 6, 8, 9, 10
 paralela: nao
 mutacao: n/a
   motivo: nota de versão e bump não têm comportamento a inverter; a falsificação é a coerência da nota com D1–D7
@@ -125,3 +125,17 @@ mutacao:
   bateria: `bash scripts/testa-git-por-nome.sh`
   fixture: `testa-git-por-nome.sh, varredura do repo (linha de scripts/saude.cjs, forma por wrapper)`
 pronto quando: com o repositório do plugin, o detector não acusa nenhuma linha em `hooks/` e `scripts/` (inclusive `.py`), e o caso 6 acende em 5 formas JS e 1 Python sem acender em comentário nem em caminho resolvido; `_caminho_git()` devolve o `git.exe` absoluto e, com PATH só relativo, um caminho absoluto inexistente; `bash scripts/testa-saude.sh`, `testa-vigias-agendados.sh`, `testa-backup-rotativo.sh`, `testa-ideias.sh`, `testa-plugin-codex.sh`, `node hooks/testa-corpus-comandos.cjs` e o gêmeo Python (`CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh`) saem 0 — provado pelos placares
+
+### 10. revisão rodada 2: aspas no PATH, diretório e sensor-test [tipo: implementar]
+atende: D12
+arquivos: `hooks/lib/resolver-executavel.cjs`, `scripts/conferir-entrega.py`, `scripts/validar-colhidas.py`, `scripts/testa-estado.sh`, `scripts/testa-git-por-nome.sh`
+depende de: 9
+paralela: nao
+prova-na-base: verde — o resolvedor e a bateria só existem depois da tarefa 1
+mutacao:
+  arquivo: `hooks/lib/resolver-executavel.cjs`
+  de: `.map(semAspas).filter`
+  para: `.filter`
+  bateria: `bash scripts/testa-git-por-nome.sh`
+  fixture: `testa-git-por-nome.sh, caso 3b (entrada do PATH entre aspas)`
+pronto quando: com `PATH="<dir do git>"` (entre aspas), `caminhoExecutavel("git")` devolve o mesmo git que o `spawnSync("git")` do libuv roda; com uma pasta `git.exe` antes do git real no PATH, os dois resolvedores a pulam; `bash scripts/testa-estado.sh` sai 0 (305 ok) — provado pelo caso 3b da bateria e pelo placar

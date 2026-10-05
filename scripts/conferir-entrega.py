@@ -75,6 +75,8 @@ def _caminho_git() -> str:
     """
     exts = (".com", ".exe") if os.name == "nt" else ("",)
     for d in os.environ.get("PATH", "").split(os.pathsep):
+        if len(d) > 1 and d[0] == d[-1] == '"':
+            d = d[1:-1]
         if not d or not os.path.isabs(d):
             continue
         for e in exts:
