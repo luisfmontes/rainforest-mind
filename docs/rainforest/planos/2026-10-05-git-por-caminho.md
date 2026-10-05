@@ -81,7 +81,7 @@ pronto quando: numa pasta temporária com `git.exe` falso (cópia do `whoami.exe
 
 ### 6. demais scripts pelo caminho [tipo: implementar]
 atende: D3
-arquivos: `scripts/conferir-mutacao.cjs`, `scripts/conferir-duplicacao.cjs`, `scripts/semear.cjs`, `scripts/segunda-opiniao.cjs`, `scripts/preparar-worktree.cjs`, `scripts/fechar-issue.cjs`, `scripts/faixa-dados.cjs`, `scripts/conferir-publicacao.cjs`, `scripts/conferir-fluxo.cjs`, `scripts/conferir-entrega.cjs`, `scripts/conferir-encoding.cjs`, `scripts/conferir-comparacao.cjs`, `scripts/conferir-categoria.cjs`
+arquivos: `scripts/conferir-mutacao.cjs`, `scripts/conferir-duplicacao.cjs`, `scripts/semear.cjs`, `scripts/segunda-opiniao.cjs`, `scripts/preparar-worktree.cjs`, `scripts/fechar-issue.cjs`, `scripts/faixa-dados.cjs`, `scripts/conferir-publicacao.cjs`, `scripts/conferir-fluxo.cjs`, `scripts/conferir-entrega.cjs`, `scripts/conferir-encoding.cjs`, `scripts/conferir-comparacao.cjs`, `scripts/conferir-categoria.cjs`, `scripts/testa-conferir-fluxo.sh` (âncora de sabotagem que copia a linha do `conferir-fluxo.cjs`)
 depende de: 1
 paralela: sim
 prova: `bash scripts/testa-git-por-nome.sh`
