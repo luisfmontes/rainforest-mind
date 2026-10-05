@@ -208,6 +208,9 @@
     "em": "2026-10-05"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "merge",
+    "pr": 393,
+    "em": "2026-10-05"
   }
 }
