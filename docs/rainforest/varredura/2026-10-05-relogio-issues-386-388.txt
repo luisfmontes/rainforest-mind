@@ -1,0 +1,148 @@
+Data: 2026-10-05
+Termos: relogio, semControle, session.end, meia-noite, sessoes.json
+
+$ gh issue list --state all --search "relogio" --limit 200 --json number,title,state
+[{"number":387,"state":"OPEN","title":"relogio do mod: session.end de sessao nao interativa pode cancelar o relogio"},{"number":386,"state":"OPEN","title":"relogio do mod: jornada do dia anterior acende ate 5 min depois da meia-noite"},{"number":388,"state":"OPEN","title":"faixa do mod: semControle deixa passar LRM/RLM, ALM e separadores de linha"},{"number":385,"state":"OPEN","title":"marcar plano ok passa com o arquivo declarado ausente do disco"},{"number":121,"state":"CLOSED","title":"testa-conferir-mutacao.sh e verde ou vermelha conforme a carga da maquina — a catraca de mutacao depende de relogio de parede"},{"number":120,"state":"CLOSED","title":"testa-contexto-sessao.sh esta vermelha na main: 5 falhas em dentroDoExpediente, focoAtivoEmOutraJanela e co-locada"},{"number":273,"state":"CLOSED","title":"testa-cli-externo Teste 3: teto de 8s contra fixture de 60s vermelha intermitente na CI"},{"number":270,"state":"CLOSED","title":"Linha de mutante sai como 'FALHA <nome real>' e se confunde com falha de verdade no log"},{"number":230,"state":"CLOSED","title":"conferir-mutacao.cjs entrega a --bateria ao cmd.exe no Windows: 'rm ...; python ...' apagou o venv e o arquivo de teste, e o baseline saiu VERDE"},{"number":277,"state":"CLOSED","title":"foco.cjs nao tem comando para registrar avanco: a regra 5 obriga o que a 17 proibe"},{"number":76,"state":"CLOSED","title":"A regra 14 descobre ferramenta ausente tropecando: falta um catalogo do que existe na maquina"}]
+
+
+$ gh issue list --state all --search "semControle" --limit 200 --json number,title,state
+[{"number":388,"state":"OPEN","title":"faixa do mod: semControle deixa passar LRM/RLM, ALM e separadores de linha"}]
+
+
+$ gh issue list --state all --search "session.end" --limit 200 --json number,title,state
+[{"number":387,"state":"OPEN","title":"relogio do mod: session.end de sessao nao interativa pode cancelar o relogio"}]
+
+
+$ gh issue list --state all --search "meia-noite" --limit 200 --json number,title,state
+[{"number":386,"state":"OPEN","title":"relogio do mod: jornada do dia anterior acende ate 5 min depois da meia-noite"}]
+
+
+$ gh issue list --state all --search "sessoes.json" --limit 200 --json number,title,state
+[{"number":388,"state":"OPEN","title":"faixa do mod: semControle deixa passar LRM/RLM, ALM e separadores de linha"},{"number":243,"state":"CLOSED","title":"foco-session-start.cjs leva 6-8 s nesta maquina e estoura o timeout 5 do hooks.json: testa-memoria-somente-leitura fica vermelha e nada diz que foi timeout"},{"number":200,"state":"CLOSED","title":"A skill limpar remove worktree LIMPO de outra sessao sem perguntar — classifica por sujeira, nunca por dono"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"},{"number":270,"state":"CLOSED","title":"Linha de mutante sai como 'FALHA <nome real>' e se confunde com falha de verdade no log"},{"number":81,"state":"CLOSED","title":"testa-orcamento.sh mede a mesa, nao o repo: verde no CI e vermelho local pelo mesmo commit"},{"number":25,"state":"CLOSED","title":"A regra de branch so conhece `main`, e nao tem nocao de dono — commitei em cima de outra sessao"},{"number":63,"state":"CLOSED","title":"O foco não chega na injeção, e a isenção da regra 17 é cega para a segunda pasta — 10ª vez que o radar cobra desvio onde não devia"}]
+
+
+$ gh pr list --state all --search "relogio" --limit 200 --json number,title,state
+[{"number":389,"state":"MERGED","title":"Versao 1.39.0: relogio do mod acende jornada e janela parada"},{"number":126,"state":"MERGED","title":"Fecha #121: a catraca de mutacao para de decidir por relogio de parede"},{"number":224,"state":"MERGED","title":"Enxerta os sete mecanismos do ponytail, e fecha a fronteira que o gate de código de modelo não tinha"},{"number":229,"state":"MERGED","title":"fix(statusline): barra sumiu dos dois perfis — cwd faltando no segmento da escada"},{"number":105,"state":"MERGED","title":"CI: so no PR, e run superado se cancela — a cota de Actions bateu 90%"},{"number":116,"state":"MERGED","title":"Fecha #76: a janela sabe que a ferramenta falta antes de tentar"},{"number":12,"state":"MERGED","title":"O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook"},{"number":17,"state":"MERGED","title":"Nenhuma bateria roda sozinha: CI que roda as 20 baterias a cada PR (#16)"}]
+
+
+$ gh pr list --state all --search "semControle" --limit 200 --json number,title,state
+[{"number":389,"state":"MERGED","title":"Versao 1.39.0: relogio do mod acende jornada e janela parada"}]
+
+
+$ gh pr list --state all --search "session.end" --limit 200 --json number,title,state
+[{"number":389,"state":"MERGED","title":"Versao 1.39.0: relogio do mod acende jornada e janela parada"}]
+
+
+$ gh pr list --state all --search "meia-noite" --limit 200 --json number,title,state
+[{"number":389,"state":"MERGED","title":"Versao 1.39.0: relogio do mod acende jornada e janela parada"},{"number":84,"state":"MERGED","title":"batedor: tres repos no livro — OpenViking, deepseek-harness e MiroFish"}]
+
+
+$ gh pr list --state all --search "sessoes.json" --limit 200 --json number,title,state
+[{"number":389,"state":"MERGED","title":"Versao 1.39.0: relogio do mod acende jornada e janela parada"},{"number":274,"state":"MERGED","title":"Titulo da sessao marca se o fluxo fechou ou onde parou"},{"number":62,"state":"MERGED","title":"As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada"},{"number":78,"state":"MERGED","title":"design: a camada de conhecimento sai do Obsidian e vira rota, nao migracao"},{"number":56,"state":"MERGED","title":"Fecha a #38: a regra 11 prescreve worktree, e o radar marca a janela co-locada"},{"number":39,"state":"CLOSED","title":"Skill regua, backstop de mutacao no revisar, e o relatorio da Issue #38"},{"number":5,"state":"MERGED","title":"Premissa nao-olhada ganha contrapeso, e a Issue #4 ganha a checagem que faltava"},{"number":8,"state":"MERGED","title":"Regra 17 estava cega por construcao: o pid gravado era uma shell efemera"},{"number":45,"state":"CLOSED","title":"Gate de sessao co-locada e catraca de mutacao: duas familias reincidentes viram exit code"}]
+
+
+$ git ls-remote --heads origin | grep -F "relogio"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "semControle"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "session.end"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "meia-noite"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "sessoes.json"
+(vazio)
+
+$ git log --all --grep="relogio" --oneline
+12a6f3ed Merge pull request #389 from luisfmontes/fluxo/mod-jornada-relogio
+ab99e8dc estado relogio: fechar com PR #389
+7ea227a4 estado relogio: revisar e verificar ok
+58b42a79 plano e design relogio: emendas da revisao
+097d4767 docs relogio: esconder vale para a faixa inteira
+af3eb860 mod: session.start nao interativo nao cancela o relogio
+f8331119 estado relogio: executar ok, 9 tarefas e mutacoes reconferidas
+64ed7b6b Versao 1.39.0: relogio do mod acende jornada e janela parada
+a753d3c5 abertura: bytes da elaboracao 17 com a frase do relogio
+77a21767 docs: relogio do mod (jornada e janela parada) no CONTRIBUTING
+06c2ca98 plano relogio: tarefa 7 descreve a nota pelo prompt.submit
+f6e99901 mod: nota do relogio e limpeza das Q por prompt.submit
+2ef9b056 plano relogio: fixture das tarefas 5 e 9 com o nome real do caso
+f7791f58 plano relogio: tarefa 9, nota e Q por prompt.submit
+19027372 mod: relogio de jornada e janela parada na faixa, com nota da regra 8
+0215981c faixa: linha do relogio, 4 linhas, prioridade Q > relogio > fluxo
+1eabb0a3 relogio: logica pura de jornada, parada, assinatura e nota
+7353093b Integra tarefa 2 (relogio-sessoes) ao fluxo do relogio
+586a0436 relogio-sessoes: janelas esperando o usuario e ociosidade
+a6a7bd68 plano: relogio do mod em 8 tarefas; design emenda D3, D4 e D8
+1c5b6c28 design: mod de jornada e janela parada por relogio (D1-D9)
+080f7916 D9: o teto de tempo do CI para de ser cara ou coroa
+2c483d55 D5 diz o que o script faz: caractere, e a fronteira de isolamento
+8eb02f36 Fecha o buraco do relogio e trava o isolamento com payload hostil
+1ec70423 Fecha #121: a catraca de mutacao para de decidir por relogio de parede (#126)
+a4d836cd Fecha #121: a catraca de mutacao para de decidir por relogio de parede (#126)
+c21bd779 Fecha #118: o backup diario do sentinela nunca fez backup — e empurrava sozinho para um repo publico (#122)
+d7111a7f Fecha #118: o backup diario do sentinela nunca fez backup — e empurrava sozinho para um repo publico (#122)
+889ff9c9 Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+56ea03cc Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+f5e76d3c CI: so no PR, e run superado se cancela — a cota bateu 90% (#105)
+6b5d0679 CI: so no PR, e run superado se cancela — a cota bateu 90% (#105)
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+d8b72ed0 A regra 8 desacopla do plugin de cliente, e o corte de lacuna para de engolir almoco
+4ff3da28 A regra 8 desacopla do plugin de cliente, e o corte de lacuna para de engolir almoco
+434fb3a5 ideias.py ganha gemeo em Node, e o bloco de mutacao para de sabotar o arquivo errado
+605dfa7d ideias.py ganha gemeo em Node, e o bloco de mutacao para de sabotar o arquivo errado
+b2b22b14 ideias.py ganha 'editar', porque ideia muda antes de ser colhida
+4f9a803a ideias.py ganha 'editar', porque ideia muda antes de ser colhida
+c8654b2e v0.42.0: regra 8 mede jornada no transcript, nunca em carimbo de commit
+3edac49e v0.42.0: regra 8 mede jornada no transcript, nunca em carimbo de commit
+b6e97315 A escrita segura do ideias.jsonl vira codigo: scripts/ideias.py
+2120dba6 A escrita segura do ideias.jsonl vira codigo: scripts/ideias.py
+214884ed Colhe tres observacoes: saida ff-only na regra 11, ferramenta na 12, hora local na 8
+2d1384d7 Colhe tres observacoes: saida ff-only na regra 11, ferramenta na 12, hora local na 8
+8e0973bd Parametrizar caminhos e porta no codigo; corrige hook lendo settings.json da pasta antiga
+30729e4e Parametrizar caminhos e porta no codigo; corrige hook lendo settings.json da pasta antiga
+
+$ git log --all --grep="semControle" --oneline
+(vazio)
+
+$ git log --all --grep="session.end" --oneline
+19027372 mod: relogio de jornada e janela parada na faixa, com nota da regra 8
+13131a86 Mod da abertura: reconhece foco em estouro e remonta no resume
+
+$ git log --all --grep="meia-noite" --oneline
+ab822798 jornada: ler so transcript tocado no dia (14-18 s para ~2 s)
+f2ed420c Teste do conferir parava de valer na virada da meia-noite
+595794b8 Teste do conferir parava de valer na virada da meia-noite
+
+$ git log --all --grep="sessoes.json" --oneline
+f9cb568e pesquisa: SubagentStop bloqueia e libera ao vivo, isolado do plugin real
+13b552c6 Titulo da sessao marca se o fluxo fechou ou onde parou (#274)
+45e056c8 Tarefa 14 (D14): Limpar-worktrees respeita sessão viva (Issue #200)
+b2582e39 Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos (#119)
+ea9d0286 Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos (#119)
+d9cb884f Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79) (#85)
+9b7ee00d Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79) (#85)
+c0508a73 As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada (#62)
+465f2544 As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada (#62)
+40e3f3bd Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+2cc8788c Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+e1d2592c A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+bfc034d2 A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+ab867e8e Sessao encerrada some do radar, e o foco passa a cortar por prioridade
+04128a34 Sessao encerrada some do radar, e o foco passa a cortar por prioridade
+4bd13811 Gate de staging total: git add -A vira exit 2 (escrito e testado, NAO armado)
+5d4b4854 Gate de staging total: git add -A vira exit 2 (escrito e testado, NAO armado)
+9425a24d Desfaz o estrago do .gitignore sobrescrito no commit anterior
+b2c1be48 Desfaz o estrago do .gitignore sobrescrito no commit anterior
+
+$ cat <dados>/ideias.jsonl
+{"id":"obs-2026-08-22-perguntei-foco-que-sessoes-json-respondia","titulo":"Cobrei desvio de foco sem olhar o sessoes.json, que dizia que a janela do foco estava ativa"}
+{"id":"mods-jornada-e-janela-parada-por-relogio","titulo":"Jornada (regra 8) e janela parada (regra 17) medidas por relogio do mod, com aviso em toast/status"}
+
+
