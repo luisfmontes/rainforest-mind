@@ -61,7 +61,31 @@ diferir, é sintoma do medidor até prova em contrário. E o mesmo vale para a
 LEITURA da saída: o veredito de uma bateria é o exit code e a linha de placar,
 nunca um grep de substring — bateria que exercita mutação imprime o vermelho
 esperado no meio do verde, e quem grepa `FALHA` lê defeito onde há prova.
-(acervo: 2026-08-11, 2026-08-22, 2026-08-26)
+Comando e saída colados não bastam, porque a saída pode ser verdadeira e medir
+**outra coisa que o defeito**. A pergunta de leitura é *"esta saída cairia
+igual se o defeito não existisse?"* — a forma barata é nomear qual asserção
+mudou de lado e conferir que é a que cobre o conserto (número de asserções
+derrubadas fora da faixa esperada é sinal de que a prova mede outro portão).
+Quatro armadilhas já vistas: fixture onde o ataque não chega; **controle que
+também produziria o efeito sem o hook** (sandbox que impede a escrita de
+qualquer jeito — ausência do efeito não prova o bloqueador, pedem-se duas
+provas: o motivo explícito do hook e um controle em que a mesma operação teria
+permissão); prova rodada no worktree do agente e não na árvore de **destino**
+(o cherry-pick vem antes da prova, não depois); e variável de ambiente do lado
+de quem lê — `printf '%s' "$P" | VAR=x node hook`, nunca `VAR=x cmd1 | cmd2`,
+em que `VAR` vale só para o `cmd1` e o hook cai na raiz real do usuário.
+Por fim, número que **contradiz a percepção direta dele** tem a premissa de
+agregação conferida antes de ser apresentado: a média de vetores de um grupo
+misturado não se parece com ninguém, e um resumo não é observação.
+
+> 2026-09: um conserto de segurança foi dado como provado enquanto o commit
+> vivia só no worktree do agente e as provas chamavam a função fora da
+> fronteira de isolamento; um critério de plano com a variável antes do cano
+> disparou a manutenção contra a raiz real do usuário (nada se perdeu por
+> sorte de estado); e uma similaridade média de 0,087 quase fez a janela
+> contradizer quem ouviu a pessoa — medindo fala a fala, 14 de 69 falas
+> pontuavam 0,70 ou mais.
+(acervo: 2026-08-11, 2026-08-22, 2026-08-26, 2026-09-06, 2026-09-08, 2026-09-18)
 
 (7) **campo vazio não é campo ok.** Instrumento que responde por registro —
 tarefa agendada, job, fila, endpoint de saúde — pode trazer todo campo de
