@@ -127,7 +127,7 @@ async function montar($: any, on: any, surface: Surface, inicio: number, dadosFa
     expect(await botao()).toBeUndefined()
   }
   const comecar = (interativo = true) => $.session.start({ cwd: '/projeto', surface, isInteractive: interativo })
-  const terminarSessao = () => $.session.end({ reason: 'other' } as never)
+  const terminarSessao = () => $.session.end({ reason: 'other', sessionId: 'sessao-atual' } as never)
   let n = 0
   const terminar = (answer: string) =>
     $.turn.complete({ answer, durationMs: 1, isAborted: false, turnId: `t${++n}`, reason: 'answer' } as never)
@@ -383,6 +383,22 @@ for (const surface of ['terminal', 'desktop'] as const) {
       await relogio.advance(600000)
       expect(s.runsS).toBe(antes.s)
       expect(s.runsJ).toBe(antes.j)
+    })
+
+    await ui.unmount()
+  })
+
+  test(`relogio (${surface}): session.end de outra sessao nao cancela os timers`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40))
+    const { relogio, s, ui, comecar, caso } = m
+
+    await caso('D2 session.end com outro sessionId deixa o relogio armado', async () => {
+      await comecar()
+      await relogio.advance(2000)
+      await $.session.end({ reason: 'other', sessionId: 'outra-sessao' } as never)
+      const antes = s.runsS
+      await relogio.advance(60000)
+      expect(s.runsS).toBeGreaterThan(antes)
     })
 
     await ui.unmount()
