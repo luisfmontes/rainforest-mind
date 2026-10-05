@@ -26,10 +26,10 @@
     "em": "2026-10-05"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-05",
-    "tarefas_ok": 8,
-    "tarefas": 8,
+    "tarefas_ok": 9,
+    "tarefas": 9,
     "carimbos": [
       {
         "tarefa": 1,
@@ -75,38 +75,38 @@
       }
     ],
     "em": "2026-10-05",
-    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-05-git-por-caminho",
-    "saida": "tarefas 1-6 vermelho, 7 e 8 n/a, exit 0",
+    "comando": "node scripts/conferir-mutacao.cjs (tarefa 9, saude.cjs) + conferir-fluxo mutacoes",
+    "saida": "tarefa 9 vermelho exit 0; 1-6 vermelho; 7 e 8 n/a",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-git-por-nome.sh caso 2 PATH com . na frente"
+        "fixture": "caso 2"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "varredura do repo, linha de hooks/gate-worktree.cjs"
+        "fixture": "varredura gate-worktree"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "varredura do repo, linha de hooks/lib/cwd-efetivo.cjs"
+        "fixture": "varredura cwd-efetivo"
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "varredura do repo, linha de scripts/limpar-worktrees.cjs"
+        "fixture": "varredura limpar-worktrees"
       },
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "caso 7(ii) entrada real e varredura"
+        "fixture": "caso 7(ii)"
       },
       {
         "tarefa": 6,
         "resultado": "vermelho",
-        "fixture": "varredura do repo, linha de scripts/preparar-worktree.cjs"
+        "fixture": "varredura preparar-worktree"
       },
       {
         "tarefa": 7,
@@ -116,13 +116,14 @@
       {
         "tarefa": 8,
         "resultado": "n/a",
-        "motivo": "lista de copia de fixture; efeito MODULE_NOT_FOUND medido antes do conserto"
+        "motivo": "lista de copia de fixture"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "varredura saude.cjs por wrapper"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-05"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
