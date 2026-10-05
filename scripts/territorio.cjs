@@ -3,7 +3,8 @@
 /**
  * Descobre o território do repositório e imprime o bloco de UM estágio do fluxo.
  *
- * Uso: node scripts/territorio.cjs estagio <nome> [--raiz <repo>]
+ * Uso: node scripts/territorio.cjs estagio <nome> [--raiz <repo>] [--json]
+ * (--json: itens do estagio como dados, sem resolver variaveis; exit 0 sempre que resolve)
  *
  * POR QUE EXISTE. Um território (conjunto de ferramentas e agentes de uma linguagem
  * ou domínio) vive em plugin próprio e declara, num `territorio.json`, o que cada
@@ -140,6 +141,19 @@ function indisponivel(tipo, disponiveis) {
   return i > 0 && !disponiveis.has(tipo.slice(0, i));
 }
 
+// --json: itens do estagio como dados, sem resolver variaveis e sem falhar por item
+// indisponivel ou variavel faltando (quem le decide). Interface estavel para o estado.cjs.
+function imprimirJson(manifesto, estagio) {
+  const e = ((manifesto && manifesto.estagios) || {})[estagio] || {};
+  const disponiveis = pluginsDisponiveis();
+  const itens = [];
+  for (const a of e.agentes || []) itens.push({ classe: 'agente', id: a.tipo, obrigatorio: a.obrigatorio === true, disponivel: !indisponivel(a.tipo, disponiveis) });
+  for (const m of e.mcp || []) itens.push({ classe: 'mcp', id: m.tool, obrigatorio: m.obrigatorio === true, disponivel: true });
+  for (const s of e.skills || []) itens.push({ classe: 'skill', id: s, obrigatorio: false, disponivel: !indisponivel(s, disponiveis) });
+  for (const c of e.comandos || []) itens.push({ classe: 'comando', id: c.id, obrigatorio: c.obrigatorio === true, disponivel: true });
+  console.log(JSON.stringify({ territorio: manifesto ? manifesto.nome : null, itens }));
+}
+
 function imprimirEstagio(manifesto, estagio, arquivo) {
   const e = (manifesto.estagios || {})[estagio];
   const disponiveis = pluginsDisponiveis();
@@ -197,6 +211,10 @@ function main() {
   const apontado = lerApontamento(raiz);
   const t = resolver(candidatos, raiz, apontado);
   if (!t && apontado) falha(`territorio apontado em .rainforest/territorio nao existe: ${apontado}`);
+  if (resto.includes('--json')) {
+    imprimirJson(t ? t.manifesto : null, estagio);
+    return;
+  }
   if (!t) {
     console.log('sem territorio');
     return;
