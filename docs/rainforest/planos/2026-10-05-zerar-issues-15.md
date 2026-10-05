@@ -148,3 +148,17 @@ paralela: nao
 mutacao: n/a
   motivo: nota de versão, bump e Issue não têm comportamento a inverter; a falsificação é a coerência com as decisões
 pronto quando: versão `1.39.2` nos dois manifestos e no badge do README; `CHANGELOG.md` com `## 1.39.2 — 2026-10-05` descrevendo, do ponto de vista de quem usa, o efeito de cada uma das cinco issues (plano/design fantasma recusado; catraca mede com junction e diz por que não mediu; campo `raiz:` para monorepo; node não resolvido pela pasta do repo; CI em dois shards), sem prometer nada sobre `git`/`gh`; e uma Issue nova aberta no repo descrevendo o vetor de `git`/`gh` chamados por nome, com a medição do `node.exe` falso desta rodada — provado por `bash scripts/testa-versao.sh` saindo 0, leitura da seção contra o design e `gh issue view` da Issue nova
+
+### 11. abertura roda node na raiz do plugin sem perder o projeto da memória [tipo: implementar]
+atende: D7
+arquivos: `scripts/memoria.cjs`, `hooks/memoria-session-start.cjs`, `hooks/abertura-mod-puro.mjs`, `hooks/testa-mod-abertura.cjs`, `hooks/testa-memoria-session-start.sh`
+depende de: 7
+paralela: nao
+prova-na-base: verde — o caso novo da bateria é o que mede, e a base não o tem
+mutacao:
+  arquivo: `hooks/memoria-session-start.cjs`
+  de: `resolverCaminhos(process.env.CLAUDE_PROJECT_DIR || process.cwd())`
+  para: `resolverCaminhos()`
+  bateria: `bash hooks/testa-memoria-session-start.sh`
+  fixture: `testa-memoria-session-start.sh, caso "com cwd fora do projeto e CLAUDE_PROJECT_DIR no projeto, a memoria filtra pelo projeto"`
+pronto quando: emenda da tarefa 7, que voltou parcial com evidência: `scripts/memoria.cjs:118` (`resolverCaminhos`) tira o projeto de `process.cwd()` e ignora `CLAUDE_PROJECT_DIR`, então mudar o `cwd` da abertura para a raiz do plugin trocaria o filtro de memória pelo do próprio plugin. `resolverCaminhos(cwd = process.cwd())` passa a usar o `cwd` recebido (no `encontrarGit` e no `resolverRaiz({ cwd, plugin })`), sem mudar os outros chamadores; `hooks/memoria-session-start.cjs` chama com a linha literal do `de:` acima; e `hooks/abertura-mod-puro.mjs` passa `cwd: io.raiz` mantendo `env: { CLAUDE_PROJECT_DIR: cwd }`. Com `memoria-session-start.cjs` rodado com a pasta atual = outra pasta e `CLAUDE_PROJECT_DIR` = um projeto de caixa, o projeto da saída é o da caixa; `testa-mod-abertura.cjs` espera o `cwd` na raiz do plugin — provado por `bash hooks/testa-memoria-session-start.sh` com o caso novo ok e `0 falha(s)`, `node hooks/testa-mod-abertura.cjs` com `0 falha(s)` e `claude plugin test .` com `0 fail`
