@@ -116,6 +116,7 @@ criar_fonte_sintetica() {
   rm -rf "$FONTE"
   mkdir -p "$FONTE/scripts" "$FONTE/skills/exemplo" "$FONTE/.claude-plugin"
   cp "$SRC/scripts/saude.cjs" "$FONTE/scripts/saude.cjs"
+  mkdir -p "$FONTE/hooks/lib" && cp "$SRC/hooks/lib/resolver-executavel.cjs" "$FONTE/hooks/lib/"
   mkdir -p "$FONTE/scripts/lib"; cp "$SRC/scripts/lib/impressao-falha.cjs" "$FONTE/scripts/lib/impressao-falha.cjs"
   echo "# skill de exemplo, so para skills/ nao ficar vazio" > "$FONTE/skills/exemplo/SKILL.md"
   # Manifesto com o nome IGUAL ao basename da pasta: as situacoes A-D ja assumiam
@@ -164,6 +165,7 @@ echo "== o falso verde de 2026-08-17 =="
 NOGIT="$SBP/cache-falso/0.65.0"
 mkdir -p "$NOGIT/scripts" "$NOGIT/.claude-plugin" "$NOGIT/skills/exemplo"
 cp "$SRC/scripts/saude.cjs" "$NOGIT/scripts/saude.cjs"
+mkdir -p "$NOGIT/hooks/lib" && cp "$SRC/hooks/lib/resolver-executavel.cjs" "$NOGIT/hooks/lib/"
 mkdir -p "$NOGIT/scripts/lib"; cp "$SRC/scripts/lib/impressao-falha.cjs" "$NOGIT/scripts/lib/impressao-falha.cjs"
 printf '{"name":"rainforest-mind","version":"0.65.0"}' > "$NOGIT/.claude-plugin/plugin.json"
 echo "# exemplo" > "$NOGIT/skills/exemplo/SKILL.md"
@@ -1528,6 +1530,7 @@ echo "== vigias-recorrentes com RFM_VIGIAS_DIR apontando para scripts/fixtures/i
 VR="$SBP/raiz-vr"
 mkdir -p "$VR/scripts/lib" "$VR/vigias" "$VR/hooks"
 cp "$SRC/scripts/saude.cjs" "$VR/scripts/saude.cjs"
+mkdir -p "$VR/hooks/lib" && cp "$SRC/hooks/lib/resolver-executavel.cjs" "$VR/hooks/lib/"
 cp "$SRC/scripts/lib/impressao-falha.cjs" "$VR/scripts/lib/impressao-falha.cjs"
 printf 'process.stdout.write("ligado\\n");\n' > "$VR/scripts/setup.cjs"
 node -e '

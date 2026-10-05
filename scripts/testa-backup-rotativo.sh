@@ -11,6 +11,7 @@ export RFM_ROOT="$SB"
 
 mkdir -p "$SB/scripts/lib" "$SB/hooks/lib"
 cp "$SRC/scripts/ideias.cjs" "$SB/scripts/"
+mkdir -p "$SB/hooks/lib" && cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SB/hooks/lib/"
 cp "$SRC/scripts/divergencias.cjs" "$SB/scripts/"
 cp "$SRC/scripts/ferramentas.cjs" "$SB/scripts/"
 cp "$SRC/scripts/lib/backup-rotativo.cjs" "$SB/scripts/lib/"

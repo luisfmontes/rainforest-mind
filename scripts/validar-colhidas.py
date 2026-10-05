@@ -27,6 +27,25 @@ import re
 import subprocess
 from pathlib import Path
 
+
+def _caminho_git() -> str:
+    """git pelo caminho, nunca pelo nome (Issue #392).
+
+    No Windows o CreateProcess procura o executavel na pasta atual antes do PATH;
+    aqui so entra diretorio absoluto do PATH, com as extensoes que o Node usa.
+    Sem git no PATH, devolve um caminho absoluto inexistente: o subprocess da
+    FileNotFoundError, como dava com o nome.
+    """
+    exts = (".com", ".exe") if os.name == "nt" else ("",)
+    for d in os.environ.get("PATH", "").split(os.pathsep):
+        if not d or not os.path.isabs(d):
+            continue
+        for e in exts:
+            c = os.path.join(d, "git" + e)
+            if os.path.isfile(c):
+                return c
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "ausente-do-PATH", "git")
+
 R = Path(r"C:\Projetos\rainforest-mind")
 
 
@@ -53,7 +72,7 @@ def contem(rel, *padroes):
 
 
 def commit_existe(h):
-    r = subprocess.run(["git", "-C", str(R), "cat-file", "-t", h],
+    r = subprocess.run([_caminho_git(), "-C", str(R), "cat-file", "-t", h],
                        capture_output=True, text=True)
     return r.returncode == 0 and r.stdout.strip() == "commit"
 

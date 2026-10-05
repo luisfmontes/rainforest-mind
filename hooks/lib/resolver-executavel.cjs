@@ -43,7 +43,6 @@ function resolverExecutavel(nome, env = process.env) {
     }
   }
 
-  cacheResolverExecutavel.set(chave, null);
   return null;
 }
 
@@ -69,7 +68,6 @@ function caminhoExecutavel(nome, env = process.env) {
 
   // Não achou: devolve caminho absoluto inexistente
   const caminhoInexistente = path.join(__dirname, 'ausente-do-PATH', nome);
-  cacheCaminhoExecutavel.set(chave, caminhoInexistente);
   return caminhoInexistente;
 }
 

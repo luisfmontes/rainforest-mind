@@ -96,7 +96,7 @@ pronto quando: com o repositório do plugin, a varredura não lista linha destes
 ### 7. versão 1.39.3 [tipo: docs]
 atende: D8
 arquivos: `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`
-depende de: 1, 2, 3, 4, 5, 6, 8
+depende de: 1, 2, 3, 4, 5, 6, 8, 9
 paralela: nao
 mutacao: n/a
   motivo: nota de versão e bump não têm comportamento a inverter; a falsificação é a coerência da nota com D1–D7
@@ -111,3 +111,17 @@ prova-na-base: verde — na base nenhum fonte faz require do resolvedor, então 
 mutacao: n/a
   motivo: a tarefa só acrescenta um arquivo à lista de cópia de fixture; inverter é tirar a linha, e o efeito (MODULE_NOT_FOUND) já foi medido antes do conserto: 56 falhas em testa-limpar-branches.sh e 3 na seção 15 de testa-portaria-nucleo.cjs
 pronto quando: com as tarefas 2–6 integradas, cada bateria listada sai 0 rodando o fonte copiado — provado por `bash`/`node` de cada uma, com o placar
+
+### 9. revisão rodada 1: wrappers, linhas quebradas e Python [tipo: implementar]
+atende: D11, D10
+arquivos: `scripts/saude.cjs`, `scripts/ideias.cjs`, `scripts/contrato-plugin-codex.cjs`, `scripts/conferir-entrega.py`, `scripts/validar-colhidas.py`, `hooks/lib/resolver-executavel.cjs`, `scripts/testa-git-por-nome.sh`, `scripts/testa-saude.sh`, `scripts/testa-vigias-agendados.sh`, `scripts/testa-backup-rotativo.sh`, `scripts/testa-ideias.sh`, `hooks/testa-corpus-comandos.cjs`
+depende de: 1
+paralela: nao
+prova-na-base: verde — o detector novo e os pontos que ele acha só existem depois da tarefa 1; na base a bateria não existe
+mutacao:
+  arquivo: `scripts/saude.cjs`
+  de: `const r = rodar(caminhoExecutavel('git'), ['rev-list', '--max-parents=0', 'HEAD'], { cwd: dir });`
+  para: `const r = rodar('git', ['rev-list', '--max-parents=0', 'HEAD'], { cwd: dir });`
+  bateria: `bash scripts/testa-git-por-nome.sh`
+  fixture: `testa-git-por-nome.sh, varredura do repo (linha de scripts/saude.cjs, forma por wrapper)`
+pronto quando: com o repositório do plugin, o detector não acusa nenhuma linha em `hooks/` e `scripts/` (inclusive `.py`), e o caso 6 acende em 5 formas JS e 1 Python sem acender em comentário nem em caminho resolvido; `_caminho_git()` devolve o `git.exe` absoluto e, com PATH só relativo, um caminho absoluto inexistente; `bash scripts/testa-saude.sh`, `testa-vigias-agendados.sh`, `testa-backup-rotativo.sh`, `testa-ideias.sh`, `testa-plugin-codex.sh`, `node hooks/testa-corpus-comandos.cjs` e o gêmeo Python (`CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh`) saem 0 — provado pelos placares

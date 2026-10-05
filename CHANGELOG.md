@@ -19,9 +19,10 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   que o Node usa (`.com`, `.exe`), e entrada relativa do PATH (`.`) é ignorada. Sem `git` no PATH, o erro
   continua sendo `ENOENT` — nunca volta a procurar pelo nome. Os `execSync("git ...")` de string viraram
   chamadas sem shell. Os desvios de teste `RAINFOREST_GH` e `RFM_VARRER_GH` continuam valendo, e o `gh`
-  instalado como `.cmd` segue alcançado onde já era.
+  instalado como `.cmd` segue alcançado onde já era. Vale também para os dois scripts Python
+  (`conferir-entrega.py`, `validar-colhidas.py`), porque o `subprocess` do Windows procura do mesmo jeito.
 - **Bateria nova `scripts/testa-git-por-nome.sh`** barra a regressão: acusa `git`/`gh` chamado pelo nome em
-  `hooks/` e `scripts/`, e roda o `conferir-versao` numa pasta com um `git.exe` falso para provar que ele
+  `hooks/` e `scripts/` — inclusive por wrapper, em chamada quebrada em duas linhas e em `.py`, e roda o `conferir-versao` numa pasta com um `git.exe` falso para provar que ele
   não é executado.
 
 ## 1.39.2 — 2026-10-05

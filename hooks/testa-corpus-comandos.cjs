@@ -218,6 +218,10 @@ function testeGateVerificadorStaged() {
     const scriptsDir = path.join(sandbox, "scripts");
     fs.mkdirSync(scriptsDir, { recursive: true });
     fs.copyFileSync(conferirSource, path.join(scriptsDir, "conferir-publicacao.cjs"));
+    // git pelo caminho (Issue #392): sem o resolvedor ao lado, o require quebra e o
+    // gate recusaria por MODULE_NOT_FOUND, nao pelo telefone.
+    fs.mkdirSync(path.join(sandbox, "hooks", "lib"), { recursive: true });
+    fs.copyFileSync(path.join(path.dirname(__dirname), "hooks", "lib", "resolver-executavel.cjs"), path.join(sandbox, "hooks", "lib", "resolver-executavel.cjs"));
 
     // Escrever arquivo com dado sensível (telefone)
     const telefone = "+55" + "119" + "12345" + "678";

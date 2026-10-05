@@ -26,7 +26,7 @@
     "em": "2026-10-05"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-05",
     "tarefas_ok": 8,
     "tarefas": 8,
@@ -118,10 +118,30 @@
         "resultado": "n/a",
         "motivo": "lista de copia de fixture; efeito MODULE_NOT_FOUND medido antes do conserto"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-05"
+    }
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "368ec80cfe3f6b093ad73e1499799bf6e75981bd",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a30b6d00720915f2f",
+        "veredito": "reprovado",
+        "em": "2026-10-05",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/40524922-2eee-42a2-a52e-ae92540058d4/subagents/agent-a30b6d00720915f2f.jsonl"
+      }
+    ],
+    "achados": 4,
+    "em": "2026-10-05",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

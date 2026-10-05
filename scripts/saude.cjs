@@ -30,6 +30,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { falhasRecorrentes, formatar } = require('./lib/impressao-falha.cjs');
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 const RAIZ_CODIGO = path.resolve(__dirname, '..');
 const achados = [];
@@ -154,7 +155,7 @@ function checarFluxo() {
   //
   // O aviso NAO diz "nao commite": a sessao DONA do fluxo commita nessa branch o
   // tempo todo e com razao. Ele diz de quem e a branch, e quem sabe se e sua e voce.
-  const r = rodar('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: process.cwd() });
+  const r = rodar(caminhoExecutavel('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: process.cwd() });
   const branch = r.status === 0 ? r.out.trim() : '';
   const daBranch = branch && branch !== 'HEAD'
     ? linhas.find((l) => l.trim().split(/\s+/)[0].replace(/^\d{4}-\d{2}-\d{2}-/, '') === branch)
@@ -173,7 +174,7 @@ function checarFluxo() {
 
 // ---------------------------------------------------------------- 5. worktrees
 function checarWorktrees() {
-  const { status, out } = rodar('git', ['worktree', 'list'], { cwd: process.cwd() });
+  const { status, out } = rodar(caminhoExecutavel('git'), ['worktree', 'list'], { cwd: process.cwd() });
   if (status !== 0) return; // nao e repo git, nada a dizer
   const orfaos = out.split('\n').filter((l) => /[\\/]\.claude[\\/]worktrees[\\/]/.test(l));
   if (!orfaos.length) return ok('worktrees', 'nenhum worktree de agente pendurado');
@@ -369,7 +370,7 @@ function checarVersaoInstalada() {
   // Sem repo git sob os pes, a comparacao nao existe — e dizer isso e a resposta,
   // nao um detalhe de implementacao. Este e o ramo em que a versao anterior
   // imprimia "rodando direto do repo" e encerrava o assunto.
-  const dentroDeGit = rodar('git', ['rev-parse', '--is-inside-work-tree'], { cwd: RAIZ_CODIGO });
+  const dentroDeGit = rodar(caminhoExecutavel('git'), ['rev-parse', '--is-inside-work-tree'], { cwd: RAIZ_CODIGO });
   if (dentroDeGit.status !== 0 || dentroDeGit.out !== 'true') {
     return aviso('plugin instalado',
       `rodando a copia INSTALADA (${RAIZ_CODIGO}${versaoRepo ? `, versao ${versaoRepo}` : ''}), que nao e repo git`,
@@ -440,7 +441,7 @@ function avaliarInstalacoes(instalacoes, versaoRepo, nome) {
       partes.push(`versao ${i.version} instalada contra ${versaoRepo} no repo`);
     }
     if (i.gitCommitSha) {
-      const n = rodar('git', ['rev-list', '--count', `${i.gitCommitSha}..HEAD`], { cwd: RAIZ_CODIGO });
+      const n = rodar(caminhoExecutavel('git'), ['rev-list', '--count', `${i.gitCommitSha}..HEAD`], { cwd: RAIZ_CODIGO });
       // Comando que falha = commit desconhecido aqui. Nao vira contagem nem
       // interrogacao: vira a frase que descreve o que se sabe.
       if (n.status === 0 && Number(n.out) > 0) partes.push(`${n.out} commit(s) atras`);
@@ -511,8 +512,8 @@ function avaliarClone(instalado, nome, instalacoes) {
   // Commit é sinal SECUNDÁRIO, e por isso vem depois: clone no commit certo com
   // conteúdo faltando é o caso que dói, e a versão anterior desta checagem
   // devolvia cedo no commit e nunca chegava a olhar o conteúdo.
-  const aqui = rodar('git', ['rev-parse', 'HEAD'], { cwd: RAIZ_CODIGO });
-  const la = rodar('git', ['rev-parse', 'HEAD'], { cwd: instalado });
+  const aqui = rodar(caminhoExecutavel('git'), ['rev-parse', 'HEAD'], { cwd: RAIZ_CODIGO });
+  const la = rodar(caminhoExecutavel('git'), ['rev-parse', 'HEAD'], { cwd: instalado });
 
   // TRÊS situações, não uma — e a versão anterior desta checagem só sabia contar.
   //
@@ -542,7 +543,7 @@ function avaliarClone(instalado, nome, instalacoes) {
     // histórico troca a raiz. É a única pergunta que os dois repositórios sabem
     // responder sozinhos.
     const raizDe = (dir) => {
-      const r = rodar('git', ['rev-list', '--max-parents=0', 'HEAD'], { cwd: dir });
+      const r = rodar(caminhoExecutavel('git'), ['rev-list', '--max-parents=0', 'HEAD'], { cwd: dir });
       return r.status === 0 ? r.out.split('\n').pop().trim() : null;
     };
     const raizAqui = raizDe(RAIZ_CODIGO);
@@ -552,7 +553,7 @@ function avaliarClone(instalado, nome, instalacoes) {
     if (raizAqui && raizLa && raizAqui !== raizLa) {
       semParentesco = true;
     } else {
-      const n = rodar('git', ['rev-list', '--count', `${la.out}..HEAD`], { cwd: RAIZ_CODIGO });
+      const n = rodar(caminhoExecutavel('git'), ['rev-list', '--count', `${la.out}..HEAD`], { cwd: RAIZ_CODIGO });
       if (n.status === 0) {
         atrasoCommit = `${n.out} commit(s) atras ${par}`;
       } else {
