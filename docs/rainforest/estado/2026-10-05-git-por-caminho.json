@@ -131,28 +131,38 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "34bb41adcaab24a160fc24d92e47c2896ed771ff",
+      "head": "4323e7a24687314539a59ac6d245c38121fffe06",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ac69d573b22bae71d",
-        "veredito": "reprovado",
+        "agente_id": "aba06ac1e4224e0e0",
+        "veredito": "ok",
         "em": "2026-10-05",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/40524922-2eee-42a2-a52e-ae92540058d4/subagents/agent-ac69d573b22bae71d.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/40524922-2eee-42a2-a52e-ae92540058d4/subagents/agent-aba06ac1e4224e0e0.jsonl"
       }
     ],
-    "achados": 4,
+    "achados": 0,
     "em": "2026-10-05",
-    "tentativas": 2
+    "base": "4d4d5bda88a008bf2b121641e289cf3a81f3b297",
+    "head": "4323e7a24687314539a59ac6d245c38121fffe06",
+    "rodada": 3,
+    "residual": "aspas so de um lado no PATH: falha fechada, igual a antes"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node scripts/conferir-categoria.cjs; claude plugin test .; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-05-git-por-caminho; 17 baterias + gemeo python",
+    "saida": "conferir-categoria CONFERIDO; plugin test 24 pass 0 fail; mutacoes tarefas 1-6,9,10 vermelho, 7 e 8 n/a, exit 0; baterias todas exit 0 (git-por-nome 9, estado 305, limpar-branches 97, conferir-versao 36, portaria-nucleo 91, gemeo python 73); CI do PR #395 em a1a9bb23 verde nos dois shards",
+    "sensor_externo": "claude plugin test .",
+    "em": "2026-10-05"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "merge",
+    "pr": 395,
+    "em": "2026-10-05"
   }
 }
