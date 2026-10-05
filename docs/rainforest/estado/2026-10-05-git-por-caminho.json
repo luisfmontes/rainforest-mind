@@ -28,13 +28,33 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-05",
-    "tarefas_ok": 0,
+    "tarefas_ok": 1,
     "tarefas": 7,
     "em_voo": [
       {
         "agente": "executor",
-        "tarefa": "1 helper e bateria",
-        "desde": "2026-10-05T17:40:00"
+        "tarefa": "2 gates",
+        "desde": "2026-10-05T18:20:00"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "3 libs e varrer",
+        "desde": "2026-10-05T18:20:00"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "4 limpar",
+        "desde": "2026-10-05T18:20:00"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "5 estado setup versao",
+        "desde": "2026-10-05T18:20:00"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "6 demais scripts",
+        "desde": "2026-10-05T18:20:00"
       }
     ],
     "carimbos": [
@@ -44,6 +64,41 @@
         "iteracao": 1,
         "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
         "ts": "2026-10-05T17:17:22.710Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "a17188dc80df6348f7d674a150a8add2ae2eb49a",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T17:39:01.458Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "a17188dc80df6348f7d674a150a8add2ae2eb49a",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T17:39:01.458Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "a17188dc80df6348f7d674a150a8add2ae2eb49a",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T17:39:01.458Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "a17188dc80df6348f7d674a150a8add2ae2eb49a",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T17:39:01.458Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "a17188dc80df6348f7d674a150a8add2ae2eb49a",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T17:39:01.458Z"
       }
     ],
     "em": "2026-10-05"

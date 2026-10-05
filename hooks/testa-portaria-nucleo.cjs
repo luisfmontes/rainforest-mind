@@ -798,6 +798,8 @@ console.log("== 15. falha interna nega (exit 2) em vez de crashar (exit 1) ==");
   const daqui = (rel) => path.join(__dirname, "..", rel);
   fs.copyFileSync(daqui("hooks/portaria.cjs"), path.join(arvore, "hooks", "portaria.cjs"));
   fs.copyFileSync(daqui("hooks/lib/estagio-ativo.cjs"), path.join(arvore, "hooks", "lib", "estagio-ativo.cjs"));
+  // git pelo caminho (Issue #392): portaria e estagio-ativo fazem require do resolvedor.
+  fs.copyFileSync(daqui("hooks/lib/resolver-executavel.cjs"), path.join(arvore, "hooks", "lib", "resolver-executavel.cjs"));
   fs.copyFileSync(daqui("scripts/estado.cjs"), path.join(arvore, "scripts", "estado.cjs"));
 
   const hookCopia = path.join(arvore, "hooks", "portaria.cjs");

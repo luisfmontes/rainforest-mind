@@ -52,7 +52,7 @@
 
 const { spawnSync } = require('child_process');
 const path = require('path');
-const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
+const { caminhoExecutavel, resolverExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 const CODIGO_ROOT = path.resolve(__dirname, '..');
 const REPO = process.env.CLAUDE_PROJECT_DIR || process.cwd();
@@ -329,13 +329,15 @@ function prsMergeados() {
   //
   // Com argumentos constantes, o `shell: true` de fallback (que existe só para achar
   // um `gh` instalado como `.cmd`, que o spawn sem shell não alcança) não carrega
-  // dado de ninguém.
+  // dado de ninguém. O `.cmd` vem do `resolverExecutavel`, que só olha diretório
+  // absoluto do PATH (Issue #392): o cmd.exe não procura `gh` na pasta atual.
   const args = ['pr', 'list', '--state', 'merged', '--limit', '200', '--json', 'headRefName'];
   const tentativas = process.platform === 'win32'
-    ? [{ shell: false }, { shell: true }]
-    : [{ shell: false }];
-  for (const opts of tentativas) {
-    const r = spawnSync(caminhoExecutavel('gh'), args, { cwd: REPO, encoding: 'utf8', ...opts });
+    ? [{ exe: caminhoExecutavel('gh'), shell: false }, { exe: resolverExecutavel('gh'), shell: true }]
+    : [{ exe: caminhoExecutavel('gh'), shell: false }];
+  for (const { exe, shell } of tentativas) {
+    if (!exe) continue;
+    const r = spawnSync(shell ? `"${exe}"` : exe, args, { cwd: REPO, encoding: 'utf8', shell });
     // ENOENT é "não achei o executável assim" — tenta a próxima forma. Qualquer
     // outro erro, ou saída != 0 (sem auth, sem rede, repo sem GitHub por trás), é
     // `null`: a checagem não rodou, e `null` nunca vira remoção.

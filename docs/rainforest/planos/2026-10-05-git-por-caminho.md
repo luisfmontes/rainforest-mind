@@ -52,7 +52,7 @@ mutacao:
 pronto quando: com o repositório do plugin, a varredura não lista linha destes 5 arquivos; `estagio-ativo.cjs` não tem mais `execSync` de string com git; com `RAINFOREST_GH="node <stub>"` o gate de publicação ainda chama o stub (bateria `hooks/testa-gate-publicacao-destino.sh` sai 0), e sem a variável chama `caminhoExecutavel("gh")` sem `.split(" ")` no caminho; com `RFM_VARRER_GH` o varrer chama o stub (bateria do varrer sai 0); cada bateria que exercita estes arquivos sai 0 com o placar colado
 
 ### 4. limpar-branches e limpar-worktrees pelo caminho [tipo: implementar]
-atende: D3
+atende: D3, D9
 arquivos: `scripts/limpar-branches.cjs`, `scripts/limpar-worktrees.cjs`
 depende de: 1
 paralela: sim
@@ -96,8 +96,18 @@ pronto quando: com o repositório do plugin, a varredura não lista linha destes
 ### 7. versão 1.39.3 [tipo: docs]
 atende: D8
 arquivos: `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`
-depende de: 1, 2, 3, 4, 5, 6
+depende de: 1, 2, 3, 4, 5, 6, 8
 paralela: nao
 mutacao: n/a
   motivo: nota de versão e bump não têm comportamento a inverter; a falsificação é a coerência da nota com D1–D7
 pronto quando: com o repositório integrado, a entrada 1.39.3 do CHANGELOG descreve o que D1–D7 decidiram (filtro de PATH relativo, extensões do libuv, caminho inexistente em vez do nome, troca de `execSync`, desvios de teste mantidos, bateria nova) e cita a #392; as três versões dizem 1.39.3 — provado por `bash scripts/testa-versao.sh` e `node scripts/conferir-versao.cjs`
+
+### 8. baterias que copiam fonte levam o resolvedor [tipo: teste]
+atende: D10
+arquivos: `scripts/testa-limpar-branches.sh`, `scripts/testa-estado.sh`, `scripts/testa-ponte.sh`, `scripts/testa-ponte-entrevista.sh`, `scripts/testa-setup.sh`, `scripts/testa-conferir-versao.sh`, `scripts/testa-semear.sh`, `scripts/testa-conferir-publicacao.sh`, `hooks/testa-portaria-nucleo.cjs`
+depende de: 1
+paralela: nao
+prova-na-base: verde — na base nenhum fonte faz require do resolvedor, então a cópia sem ele não quebra; a falha só existe depois das tarefas 2–6
+mutacao: n/a
+  motivo: a tarefa só acrescenta um arquivo à lista de cópia de fixture; inverter é tirar a linha, e o efeito (MODULE_NOT_FOUND) já foi medido antes do conserto: 56 falhas em testa-limpar-branches.sh e 3 na seção 15 de testa-portaria-nucleo.cjs
+pronto quando: com as tarefas 2–6 integradas, cada bateria listada sai 0 rodando o fonte copiado — provado por `bash`/`node` de cada uma, com o placar

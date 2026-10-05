@@ -31,6 +31,7 @@ cp "$SRC/scripts/lib/extrair-veredito.cjs" "$SBP/scripts/lib/"
 cp "$SRC/hooks/lib/raiz.cjs" "$SBP/hooks/lib/"
 cp "$SRC/hooks/lib/config.cjs" "$SBP/hooks/lib/"
 cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SBP/hooks/lib/"
+cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SBP/hooks/lib/"   # git pelo caminho (Issue #392)
 # A caixa vira raiz de dados: sem marcador, resolverRaiz cairia no repo de verdade
 # e a bateria escreveria estado no .rainforest do usuario.
 touch "$SBP/FOCO.md"
