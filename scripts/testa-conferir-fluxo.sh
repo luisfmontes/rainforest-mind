@@ -967,6 +967,57 @@ fi
 exige_msg "mutante sobreviveu" "bateria com nota entre parenteses roda so' o comando puro, sem a nota (Issue #254)" \
   env RFM_ESTADO_ROOT="$S" node "$CHECADOR" mutacoes --slug t-bateria-com-nota
 
+echo
+echo "== 13c. mutacoes: raiz: por tarefa e razao sem rotulo (Issue #379) =="
+# Monorepo de caixa: a bateria `node --test test/x.test.js` so existe relativa a
+# `app/`. Sem `raiz:` a catraca rodava na raiz do repo e a tarefa saia `pulada`.
+MONO="$(novo_sandbox)"; MONOW="$(cygpath -m "$MONO" 2>/dev/null || printf '%s' "$MONO")"
+mkdir -p "$MONO/app/src" "$MONO/app/test" "$MONO/docs/rainforest/planos" "$MONO/docs/rainforest/design"
+cat > "$MONO/app/src/x.js" <<'EOF'
+function ok(x) {
+  if (x === 1) return true;
+  return false;
+}
+module.exports = { ok };
+EOF
+cat > "$MONO/app/test/x.test.js" <<'EOF'
+const test = require('node:test');
+const assert = require('node:assert');
+const { ok } = require('../src/x.js');
+test('ok(1) e verdadeiro', () => assert.strictEqual(ok(1), true));
+EOF
+cat > "$MONO/docs/rainforest/planos/t-raiz-app.md" <<'EOF'
+# Plano Raiz App
+
+### 1. Tarefa de monorepo cuja bateria so existe dentro do app
+
+atende: D1
+
+mutacao:
+  arquivo: `src/x.js`
+  de: `if (x === 1) return true;`
+  para: `if (x === 1) return false;`
+  bateria: `node --test test/x.test.js`
+  raiz: `app`
+EOF
+exige_msg "tarefa 1: vermelho" "mutacoes com raiz: de app roda a bateria dentro do app" \
+  env RFM_ESTADO_ROOT="$MONOW" node "$CHECADOR" mutacoes --slug t-raiz-app
+exige 0 "mutacoes com raiz: de app sai exit 0" \
+  env RFM_ESTADO_ROOT="$MONOW" node "$CHECADOR" mutacoes --slug t-raiz-app
+
+# Controle: o mesmo bloco sem `raiz:` segue como sempre (raiz do repo, e nela a
+# bateria nao existe -> pulada).
+sed '/^  raiz:/d' "$MONO/docs/rainforest/planos/t-raiz-app.md" > "$MONO/docs/rainforest/planos/t-sem-raiz.md"
+exige_msg "tarefa 1: pulada" "mutacoes sem raiz: segue rodando na raiz do repo" \
+  env RFM_ESTADO_ROOT="$MONOW" node "$CHECADOR" mutacoes --slug t-sem-raiz
+
+# `cobertura` recusa `raiz:` que nao e pasta existente, citando a pasta.
+restaura
+sed -i 's|^  bateria: `bash scripts/testa-conferir-fluxo.sh`$|&\n  raiz: `nao-existe`|' "$P"
+exige 2 "cobertura com raiz: nao-existe recusa" CHK cobertura --slug t
+exige_msg "raiz:.*pasta existente: nao-existe" "cobertura com raiz: nao-existe cita a pasta" CHK cobertura --slug t
+restaura
+
 echo "== 14. ambiente: git fora do PATH (D5, 2026-09-12) =="
 # `creep` chama `git diff` via execFileSync. Sem `git` no PATH do processo
 # filho, o `spawnSync` interno devolve ENOENT — isso e' ambiente, nao "sem
