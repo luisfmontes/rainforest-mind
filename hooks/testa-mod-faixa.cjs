@@ -208,6 +208,32 @@ caso("controle ESC, C1 e bidi nao chegam crus ao terminal", async () => {
   afirma(txt.includes("Q1 T") && txt.includes("fluxo s: plano"), `texto visivel sumiu: ${JSON.stringify(txt)}`);
 });
 
+caso("invisiveis LRM/RLM, ALM, separadores, zero-width, U+2060-2065 e BOM viram espaco", async () => {
+  const { montarLinhas } = await modulo();
+  const invisibles = [
+    String.fromCodePoint(0x200b), // Zero-Width Space
+    String.fromCodePoint(0x200c), // Zero-Width Non-Joiner
+    String.fromCodePoint(0x200d), // Zero-Width Joiner
+    String.fromCodePoint(0x200e), // Left-to-Right Mark
+    String.fromCodePoint(0x200f), // Right-to-Left Mark
+    String.fromCodePoint(0x061c), // Arabic Letter Mark
+    String.fromCodePoint(0x2028), // Line Separator
+    String.fromCodePoint(0x2029), // Paragraph Separator
+    String.fromCodePoint(0x2060), // Word Joiner
+    String.fromCodePoint(0x2064), // Invisible Plus
+    String.fromCodePoint(0x2065), // Invisible Separator
+    String.fromCodePoint(0xfeff), // Zero-Width No-Break Space (BOM)
+  ];
+  const focusText = "foco" + invisibles.join("");
+  const qTitle = "pergunta" + invisibles.join("");
+  const dados = { foco: focusText, fluxos: [{ slug: "s", etapa: "design" }] };
+  const txt = montarLinhas(dados, [{ n: 1, titulo: qTitle }], 80, 3).join("\n");
+  for (const inv of invisibles) {
+    afirma(!txt.includes(inv), `invisivel U+${inv.codePointAt(0).toString(16).toUpperCase()} cru: ${JSON.stringify(txt)}`);
+  }
+  afirma(txt.includes("foco") && txt.includes("pergunta"), `texto visivel sumiu: ${JSON.stringify(txt)}`);
+});
+
 caso("sem fluxo e sem Q devolve [], mesmo com foco; dados null tambem", async () => {
   const { montarLinhas } = await modulo();
   igual(montarLinhas({ foco: "so foco", fluxos: [] }, [], 40, 3), [], "foco sozinho");
