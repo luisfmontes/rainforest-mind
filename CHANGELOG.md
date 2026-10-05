@@ -19,7 +19,9 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 - **`scripts/territorio.cjs estagio <nome>`.** Descobre o território do repositório (pela detecção do
   manifesto, ou pelo apontamento `.rainforest/territorio`, que vence) e imprime o bloco do estágio.
   Variáveis de comando vêm de `~/.rainforest/territorios/<nome>.json`; variável sem valor sai 3
-  nomeando a que falta. Sem território, imprime `sem territorio` e nada muda.
+  nomeando a que falta. Sem território, imprime `sem territorio` e nada muda. O `{arquivo}` sai
+  citado para shell (aspas simples quando tem caractere fora do conjunto seguro): o nome vem do
+  repositório em que se trabalha e a linha impressa é executada, então `x$(cmd).prw` não roda `cmd`.
 - **O `marcar` recusa item obrigatório sem evidência.** Agente, tool ou comando que o mapa marca
   como obrigatório e não aparece no campo `territorio` do `--json` do `marcar` recusa com exit 2
   nomeando o item. Item opcional só gera aviso. Sem território, o `marcar` se comporta como antes.
