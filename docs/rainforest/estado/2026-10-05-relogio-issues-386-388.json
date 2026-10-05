@@ -101,10 +101,35 @@
     "saida": "22 pass 0 fail; 27/23/9/28/14 ok 0 falha; mutacao exit 0 nas 5"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "5ddf36defd4bd50e26ce75b4dc13450447c41979",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a0c9bce479597ef36",
+        "veredito": "ok",
+        "em": "2026-10-05",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/40524922-2eee-42a2-a52e-ae92540058d4/subagents/agent-a0c9bce479597ef36.jsonl"
+      }
+    ],
+    "achados": 0,
+    "base": "12a6f3ed0198db90f1ed5e2ef0854fd85d947457",
+    "head": "5ddf36defd4bd50e26ce75b4dc13450447c41979",
+    "baixos": [
+      "session.end real antes do primeiro tick pos-/clear e ignorado (processo morre junto; aceito pelo D3)",
+      "nota do /clear no CHANGELOG depende da medicao no REPL pos-merge"
+    ],
+    "em": "2026-10-05"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-05-relogio-issues-386-388; claude plugin test .; node hooks/testa-mod-relogio.cjs; node hooks/testa-mod-faixa.cjs; bash scripts/testa-relogio-sessoes.sh; bash scripts/testa-versao.sh",
+    "saida": "mutacoes: tarefas 1-5 vermelho, 6 pulada (n/a), exit 0; 22 pass 0 fail; 27 ok; 23 ok; 14 ok; versao ok 5; validate passed",
+    "sensor_externo": "claude plugin test .",
+    "em": "2026-10-05"
   },
   "fechar": {
     "status": "pendente"
