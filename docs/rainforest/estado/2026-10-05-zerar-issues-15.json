@@ -176,24 +176,29 @@
     "saida": "VERMELHA exit 0, conselho.cjs:40 acusado"
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "2421105364e42f4fe17f6bdf78978a61a4dc3924",
+      "head": "a14a5f3da8dde2084ad2cedd860fad7852f9adac",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "add664c6ba0cf7aeb",
-        "veredito": "reprovado",
+        "agente_id": "afc435a1fe0170d9e",
+        "veredito": "ok",
         "em": "2026-10-05",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/40524922-2eee-42a2-a52e-ae92540058d4/subagents/agent-add664c6ba0cf7aeb.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/40524922-2eee-42a2-a52e-ae92540058d4/subagents/agent-afc435a1fe0170d9e.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-05",
-    "achados": 1,
-    "tentativas": 2
+    "achados": 0,
+    "base": "530d62b7914b0d93b59ca03b24d11c23a21f17e7",
+    "head": "a14a5f3da8dde2084ad2cedd860fad7852f9adac",
+    "baixos": [
+      "membros.json gravado antes guarda cmd com node por nome",
+      "rodada 1 achado 3 e 4 aceitos"
+    ]
   },
   "verificar": {
     "status": "pendente"
