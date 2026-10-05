@@ -89,5 +89,41 @@ rm -f "$RAIZ/sessoes.json"
 rodar --cwd "$RAIZ" --sessao eu-1
 if [ "$CODIGO" -eq 1 ]; then passa "sessoes.json ausente: exit 1"; else falha "sessoes.json ausente: exit 1" "exit=$CODIGO"; fi
 
+# Caso novo: sessoes.json acima de 256 KB sai 1 sem ler
+env -u FORCE_COLOR node -e "
+  const min = (n) => Date.now() - n * 60000;
+  const s = {};
+  // Gera dados suficientes para passar de 300 KB
+  for (let i = 0; i < 2000; i++) {
+    const longPath = 'C:/p/projeto-' + i + '-' + 'x'.repeat(50);
+    s['sessao-' + i] = {
+      cwd: longPath,
+      prompt_ts: min(100 + i % 50),
+      stop_ts: min(90 + i % 50)
+    };
+  }
+  require('fs').writeFileSync(process.argv[1], JSON.stringify(s));
+" "$RAIZ/sessoes.json"
+rodar --cwd "$RAIZ" --sessao eu-1
+if [ "$CODIGO" -eq 1 ] && echo "$ERRO" | grep -q "sessoes.json" && [ -z "$SAIDA" ]; then
+  passa "sessoes.json acima de 256 KB sai 1 sem ler"
+else
+  falha "sessoes.json acima de 256 KB sai 1 sem ler" "exit=$CODIGO stderr=$ERRO saida=$SAIDA"
+fi
+
+# Limpa FOCO.md (foi deixado do teste anterior)
+rm -f "$RAIZ/FOCO.md"
+
+# Restaura arquivo pequeno e verifica que segue funcionando
+env -u FORCE_COLOR node -e "
+  const min = (n) => Date.now() - n * 60000;
+  const s = {
+    'teste': { cwd: 'C:/p/teste', prompt_ts: min(50), stop_ts: min(40) }
+  };
+  require('fs').writeFileSync(process.argv[1], JSON.stringify(s));
+" "$RAIZ/sessoes.json"
+rodar --cwd "$RAIZ" --sessao eu-1
+checa "sessoes.json pequeno ainda funciona" "d.ociosidade_min === 45"
+
 echo "$OK ok, $FALHA falha(s), 0 skipped"
 [ "$FALHA" -eq 0 ]
