@@ -572,7 +572,7 @@ cat > "$CAIXA_INJ/sabotar-injecao.cjs" <<'SABOTA_INJ_EOF'
 const fs = require('fs');
 const alvo = process.argv[2];
 let t = fs.readFileSync(alvo, 'utf8');
-const achar = "const output = execFileSync('git', ['diff', '--name-only', `${base}...${head}`], { cwd: RAIZ, encoding: 'utf8' });";
+const achar = "const output = execFileSync(caminhoExecutavel('git'), ['diff', '--name-only', `${base}...${head}`], { cwd: RAIZ, encoding: 'utf8' });";
 const trocar = "const output = require('child_process').execSync(`git diff --name-only ${base}...${head}`, { cwd: RAIZ, encoding: 'utf8' });";
 if (!t.includes(achar)) { console.error('ANCORA NAO BATE em ' + alvo); process.exit(1); }
 fs.writeFileSync(alvo, t.replace(achar, trocar));
