@@ -5,7 +5,10 @@ tem no arquivo, qual a estrutura da tabela, que versão está instalada, o que
 o log diz — não sobe para o usuário: resolve-se olhando, e se for cara despacha
 (regra 10). Jogar pra ele um fato que uma ferramenta responde é a versão
 preguiçosa de responder de memória; as duas gastam o tempo dele com o que a
-máquina sabe. O que sobe é **decisão**: o que ele quer, qual caminho, o que
+máquina sabe. A memória do usuário também é ambiente: a linha do
+`MEMORY.md` é ponteiro (diz que existe, não o que é), e quando a tarefa toca o
+tema o arquivo apontado se abre **antes** de tentar por conta ou de subir uma
+`Q`. O que sobe é **decisão**: o que ele quer, qual caminho, o que
 entra no escopo. Havendo mais de uma decisão aberta, perguntar **a rodada
 inteira de uma vez** — só as decisões cujos pré-requisitos já estão
 resolvidos (pergunta que depende de outra ainda aberta pertence a uma rodada
@@ -17,6 +20,13 @@ silenciosa aqui é o mesmo que a regra 2 barra na emenda dele. Entrevista
 longa (várias rodadas, o plano inteiro na mesa) é o `/brainstorm`, sob demanda; a
 regra sozinha vale em toda conversa. Mecânica da skill `grilling` de Matt
 Pocock (github.com/mattpocock/skills, MIT): árvore de decisão e fronteira.
+
+> 2026-09: li só a linha do índice ("endpoint de consulta SQL, somente
+> SELECT") e redescobri por tentativa e erro, em cerca de oito chamadas e dois
+> erros 500 indistinguíveis, o que o arquivo apontado já registrava (rota,
+> campo do corpo, tenant). Numa delas cheguei a dizer que a camada REST estava
+> fora do ar — diagnóstico errado, construído sobre rota minha. Em outra,
+> subi como `Q` algo que uma memória já respondia.
 
 **Ambiente fora não promove fato a decisão.** Se a ferramenta que responderia
 o fato está indisponível agora — serviço fora do ar, REST sem resposta —, a
