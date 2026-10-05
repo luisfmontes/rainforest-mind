@@ -24,7 +24,7 @@ const relogioNotaPendente = atom({ plugin: 'rainforest-mind', key: 'relogioNotaP
 const relogioNotaEntregue = atom({ plugin: 'rainforest-mind', key: 'relogioNotaEntregue' } as const, null as string | null)
 
 type Io = {
-  rodar: (argv: string[], init: { env: Record<string, string>; timeoutMs: number }) => Promise<{ exitCode: number; stdout: string }>
+  rodar: (argv: string[], init: { cwd: string; env: Record<string, string>; timeoutMs: number }) => Promise<{ exitCode: number; stdout: string }>
   cwd: () => Promise<string>
   raiz: string
 }
@@ -35,7 +35,7 @@ async function buscar(io: Io): Promise<RainforestMindFaixaDados | null> {
     const cwd = await io.cwd()
     const r = await io.rodar(
       ['node', `${io.raiz}/scripts/faixa-dados.cjs`, '--cwd', cwd],
-      { env: { CLAUDE_PROJECT_DIR: cwd }, timeoutMs: 5000 },
+      { cwd: io.raiz, env: { CLAUDE_PROJECT_DIR: cwd }, timeoutMs: 5000 },
     )
     return r.exitCode === 0 ? JSON.parse(r.stdout) : null
   } catch {
@@ -43,13 +43,13 @@ async function buscar(io: Io): Promise<RainforestMindFaixaDados | null> {
   }
 }
 
-type IoRodar = { rodar: Io['rodar'] }
+type IoRodar = { rodar: Io['rodar']; raiz: string }
 
 // Falha aberta: exit != 0 (jornada.cjs exit 2 = sem linha), JSON invalido, timeout ou excecao
 // devolvem null (apaga so a leitura).
 async function rodarJson(io: IoRodar, argv: string[], timeoutMs: number, env: Record<string, string>): Promise<unknown> {
   try {
-    const r = await io.rodar(argv, { env, timeoutMs })
+    const r = await io.rodar(argv, { cwd: io.raiz, env, timeoutMs })
     return r.exitCode === 0 ? JSON.parse(r.stdout) : null
   } catch {
     return null
@@ -118,7 +118,7 @@ export const register: Register = (on, options) => {
       armadoPor = id
       const cwd = await $.session.cwd()
       const raiz = $.plugin.root
-      const io = { rodar: (argv: string[], init: { env: Record<string, string>; timeoutMs: number }) => $.process.run(argv, init) }
+      const io = { rodar: (argv: string[], init: { cwd: string; env: Record<string, string>; timeoutMs: number }) => $.process.run(argv, init), raiz }
       let sessoesEmCurso = false
       let jornadaEmCurso = false
 

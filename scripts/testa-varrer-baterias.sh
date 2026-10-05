@@ -548,6 +548,70 @@ if [ -n "$execucoes" ]; then
 fi
 echo "  PASS (n)"
 
+# (o) Issue #377: o CI roda a suite em dois shards. Lista REAL do repositorio e
+# pesos REAIS (scripts/tempos-baterias.json): a uniao tem de ser a lista inteira,
+# sem repeticao, e as cargas diferem no maximo pelo maior peso individual.
+echo "=== Teste (o): shards 1/2 e 2/2 cobrem a lista inteira, sem repetir, com cargas equilibradas ==="
+RAIZ_O="$(cd "$SCRIPT_DIR/.." && pwd)"
+lista_o=$(cd "$RAIZ_O" && bash "$VARRER" --listar)
+s1_o=$(cd "$RAIZ_O" && bash "$VARRER" --shard 1/2 --listar)
+s2_o=$(cd "$RAIZ_O" && bash "$VARRER" --shard 2/2 --listar)
+n_lista=$(printf '%s\n' "$lista_o" | grep -c .)
+n1=$(printf '%s\n' "$s1_o" | grep -c .)
+n2=$(printf '%s\n' "$s2_o" | grep -c .)
+echo "  lista=$n_lista shard1=$n1 shard2=$n2"
+if [ "$n_lista" -lt 100 ]; then
+  echo "  FAIL (o): a lista real veio com $n_lista baterias (listagem quebrada?)"
+  exit 1
+fi
+uniao_o=$(printf '%s\n%s\n' "$s1_o" "$s2_o" | grep . | LC_ALL=C sort)
+esperada_o=$(printf '%s\n' "$lista_o" | grep . | LC_ALL=C sort)
+if [ "$uniao_o" != "$esperada_o" ]; then
+  echo "  FAIL (o): a uniao dos shards nao e a lista inteira"
+  diff <(printf '%s\n' "$uniao_o") <(printf '%s\n' "$esperada_o") | head
+  exit 1
+fi
+repetidas_o=$(printf '%s\n%s\n' "$s1_o" "$s2_o" | grep . | LC_ALL=C sort | uniq -d)
+if [ -n "$repetidas_o" ] || [ $((n1 + n2)) -ne "$n_lista" ]; then
+  echo "  FAIL (o): bateria repetida entre shards ou soma ($((n1 + n2))) diferente da lista ($n_lista):"
+  printf '%s\n' "$repetidas_o" | head
+  exit 1
+fi
+cargas_o=$(printf '%s\n--\n%s\n' "$s1_o" "$s2_o" | node -e '
+  const pesos = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+  const v = Object.values(pesos).sort((a, b) => a - b);
+  const med = (v[(v.length - 1) >> 1] + v[v.length >> 1]) / 2;
+  const [a, b] = require("fs").readFileSync(0, "utf8").split("\n--\n");
+  const soma = (t) => t.split("\n").filter(Boolean).reduce((s, x) => s + (x in pesos ? pesos[x] : med), 0);
+  const maior = Math.max(...Object.values(pesos));
+  console.log(soma(a) + " " + soma(b) + " " + maior);
+' "$RAIZ_O/scripts/tempos-baterias.json")
+read -r c1_o c2_o maior_o <<< "$cargas_o"
+echo "  carga shard1=${c1_o}s shard2=${c2_o}s maior peso=${maior_o}s"
+dif_o=$((c1_o > c2_o ? c1_o - c2_o : c2_o - c1_o))
+if [ "$dif_o" -gt "$maior_o" ]; then
+  echo "  FAIL (o): |carga1 - carga2| = $dif_o s passa do maior peso individual ($maior_o s)"
+  exit 1
+fi
+echo "  PASS (o)"
+
+# (p) Bateria sem peso entra com a mediana dos pesos. Pesos a=1, b=c=d=100 =>
+# mediana 100; a lista traz "e" sem peso. Com mediana, e pesa 100 como b/c/d e
+# o shard 1 fica {a,b,d}; se "e" pesasse 0, cairia como {b,d} no shard 1.
+echo "=== Teste (p): bateria sem peso entra com a mediana ==="
+pesos_p=$(mktemp)
+SANDBOXES="$SANDBOXES $pesos_p"
+printf '{"a":1,"b":100,"c":100,"d":100}\n' > "$pesos_p"
+REPARTIR="$SCRIPT_DIR/repartir-baterias.cjs"
+p1=$(printf 'a\nb\nc\nd\ne\n' | node "$REPARTIR" --shard 1/2 --pesos "$pesos_p" | tr '\n' ' ')
+p2=$(printf 'a\nb\nc\nd\ne\n' | node "$REPARTIR" --shard 2/2 --pesos "$pesos_p" | tr '\n' ' ')
+if [ "$p1" = "a b d " ] && [ "$p2" = "c e " ]; then
+  echo "  PASS (p)"
+else
+  echo "  FAIL (p): shard1='$p1' shard2='$p2' (esperava 'a b d ' e 'c e ')"
+  exit 1
+fi
+
 echo ""
 echo "======= TODOS OS TESTES PASSARAM ======="
 exit 0

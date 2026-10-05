@@ -2133,6 +2133,15 @@ function main() {
     // Depois do `--json`, porque o `revisar` tira `base` e `head` de lá; e antes
     // do `gravar`, porque estado que já foi para o disco não desfecha.
     if (status === (FECHADO[estagio] || 'ok')) {
+      // D1 — Tarefa 1: Validar que arquivo/doc declarado existe antes de gravar
+      if (estagio === 'plano' || estagio === 'design') {
+        const campo = estagio === 'plano' ? 'arquivo' : (extra['doc'] ? 'doc' : 'arquivo');
+        const declarado = extra[campo];
+        if (declarado && !fs.existsSync(path.resolve(RAIZ, declarado))) {
+          console.error(`RECUSADO: ${estagio} declarado em '${campo}' não existe: ${path.resolve(RAIZ, declarado)}`);
+          process.exit(2);
+        }
+      }
       // Verificar mutacao ANTES de conferirFechamento, porque é independente
       if (estagio === 'revisar') {
         const recusa_mutacao = verificarMutacao(slug, estado.revisar && estado.revisar.snapshot);

@@ -49,7 +49,9 @@ const saida = (stdout: string, exitCode = 0) => ({
 for (const surface of ['terminal', 'desktop'] as const) {
   test(`faixa (${surface}): quieta, desenha, cede a vaga, esconde, falha aberta, largura`, async ($, on) => {
     let modo: 'fixture' | 'vazio' | 'falha' | 'agente-novo' = 'vazio'
-    on('process.run', async () => {
+    const chamadas: { argv: readonly string[]; cwd: unknown }[] = []
+    on('process.run', async (_$, e) => {
+      chamadas.push({ argv: e.argv, cwd: e.init?.cwd })
       if (modo === 'falha') return saida('', 1)
       if (modo === 'vazio') return saida(JSON.stringify(VAZIO))
       return saida(JSON.stringify(modo === 'agente-novo' ? AGENTE_NOVO : FIXTURE_DADOS))
@@ -111,6 +113,17 @@ for (const surface of ['terminal', 'desktop'] as const) {
       expect(t).toContain('1 em voo')
       expect(t).toContain('Q2 Expiração')
       expect(t).not.toContain('2026-10-03')
+    })
+
+    await caso('o process.run da faixa roda com cwd na raiz do plugin, e a sessao vai por --cwd', async () => {
+      const dados = chamadas.filter(c => String(c.argv[1]).endsWith('faixa-dados.cjs'))
+      expect(dados.length).toBeGreaterThan(0)
+      for (const c of dados) {
+        const raiz = String(c.argv[1]).replace(/[\\/]scripts[\\/]faixa-dados\.cjs$/, '')
+        expect(raiz).not.toBe(String(c.argv[1]))
+        expect(c.cwd).toBe(raiz)
+        expect(c.argv[c.argv.indexOf('--cwd') + 1]).toBe('/projeto')
+      }
     })
 
     await caso('cede a vaga quando hasSurvey', async () => {

@@ -47,7 +47,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const { avaliarFolga } = require('../hooks/lib/folga.cjs');
 
 const LOCAL = path.resolve(__dirname, '..');
@@ -195,7 +195,7 @@ function modoAgregado() {
 function medirHook() {
   try {
     const hookPath = path.join(LOCAL, 'hooks', 'foco-session-start.cjs');
-    const saida = execSync(`node "${hookPath}"`, {
+    const saida = execFileSync(process.execPath, [hookPath], {
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'ignore'],
     });

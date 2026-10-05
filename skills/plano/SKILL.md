@@ -91,6 +91,11 @@ mutacao:
   certo.
 - **`bateria:` é o comando que tem de FALHAR** com a mutação aplicada. Se
   continuar verde, a bateria não mede o que a tarefa entregou.
+- **`raiz:` é opcional** (`raiz: \`api\``) e diz em que pasta, relativa ao
+  repositório, a bateria roda. Em monorepo, onde `node --test test/x.test.js` só
+  existe dentro do app, é ela que evita a tarefa sair `pulada`; com `raiz:`, o
+  `arquivo:` passa a ser relativo a essa pasta. Sem o campo, vale a raiz do
+  repositório. `cobertura` recusa `raiz:` que não seja pasta existente.
 - **`fixture:` nomeia qual caso de teste exercita a mutação** — arquivo, função ou
   intervalo de linhas. Não basta a **bateria** ficar vermelha: o ramo mutado tem de
   ser alcançado por um caso específico, senão o vermelho pode vir de outro lugar, e

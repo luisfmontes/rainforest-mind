@@ -173,7 +173,7 @@ function chamaVerificadorComArgumentos(verificador, pastaTemp, arquivos, gitTop)
       cmdArgs = [verificador.caminho, ...args];
     } else if (cmd.endsWith(".cjs") || cmd.endsWith(".js")) {
       // JavaScript
-      cmd = "node";
+      cmd = process.execPath;
       cmdArgs = [verificador.caminho, ...args];
     } else {
       // Script bash/sh - chamar com bash
@@ -212,7 +212,7 @@ function chamaConferirPublicacao(verificador, gitTop, arquivos) {
     if (!conteudo) continue;
 
     try {
-      const resultado = spawnSync("node", [verificador.caminho, "-", "--json"], {
+      const resultado = spawnSync(process.execPath, [verificador.caminho, "-", "--json"], {
         input: conteudo,
         encoding: "utf8",
         stdio: ["pipe", "pipe", "pipe"],

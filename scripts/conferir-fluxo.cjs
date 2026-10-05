@@ -506,6 +506,17 @@ function conferirBlocoMutacao(bloco) {
     }
   }
 
+  // `raiz:` opcional (#379): pasta, relativa ao repositório, onde a bateria roda.
+  // Apontar para pasta que não existe faria a tarefa inteira sair `pulada`.
+  if (!vazio(campos.raiz)) {
+    const pasta = campos.raiz.replace(/^`|`$/g, '').trim();
+    let ehPasta = false;
+    try { ehPasta = fs.statSync(path.resolve(RAIZ, pasta)).isDirectory(); } catch (_) { ehPasta = false; }
+    if (!ehPasta) {
+      return `declara \`mutacao:\` com \`raiz:\` que não é uma pasta existente: ${pasta}`;
+    }
+  }
+
   return null;
 }
 
@@ -833,6 +844,9 @@ function cmdMutacoes() {
     // Existe porque bateria legitimamente lenta (testa-saude.sh passa dos 300 s,
     // e a catraca a roda DUAS vezes) virava `pulada (nao mensuravel)` — cobertura
     // perdida em silencio, que e o modo de falha que D9 veio fechar.
+    // `raiz:` opcional (#379): em monorepo a bateria só existe relativa à pasta do
+    // app. Sem o campo, a raiz do repositório, como sempre foi.
+    const raizTarefa = campos.raiz ? path.resolve(RAIZ, campos.raiz.replace(/^`|`$/g, '').trim()) : RAIZ;
     const timeout = campos.timeout ? campos.timeout.replace(/^`|`$/g, '').trim() : '';
 
     // Executar conferir-mutacao.cjs via spawnSync (array de argumentos, nunca string)
@@ -843,7 +857,7 @@ function cmdMutacoes() {
       '--de', de,
       '--para', para,
       '--bateria', bateria,
-      '--raiz', RAIZ,
+      '--raiz', raizTarefa,
     ];
     if (timeout) argumentos.push('--timeout', timeout);
     const resultado = spawnSync(process.execPath, argumentos, {
@@ -868,7 +882,13 @@ function cmdMutacoes() {
       };
       let i = -1;
       for (let n = 0; n < linhas.length; n++) if (ehRotulo(linhas[n])) i = n;
-      if (i < 0) return '';
+      if (i < 0) {
+        // Sem rótulo conhecido (stack trace, `erro: --arquivo não existe`): a primeira
+        // linha que carrega uma marca de erro, para o motivo não sair vazio (#379).
+        const MARCAS_ERRO = ['Error', 'erro', 'EPERM'];
+        const achada = linhas.find(l => MARCAS_ERRO.some(m => l.includes(m)));
+        return achada ? ' — ' + achada.trim() : '';
+      }
       const rotulo = linhas[i].trim();
       // `RECUSADO:` já traz o motivo na mesma linha. `MUTACAO NAO APLICADA` e
       // `BATERIA SEM VEREDITO` são só o título — o que interessa está na linha

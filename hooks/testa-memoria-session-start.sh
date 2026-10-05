@@ -451,6 +451,24 @@ else
 fi
 
 echo
+echo "  10.a2 — cwd fora do projeto e CLAUDE_PROJECT_DIR no projeto-b (o mais antigo): filtra por projeto-b"
+# projeto-b tem 8 obs mais antigas que as 8 de projeto-a: sem o filtro entram so 6 de projeto-b
+# no bloco de 14 (as 8 de projeto-a ocupam as vagas recentes); com o filtro entram as 8.
+FORA_B="$(novo_sandbox)"
+PASTA_B="$CAIXA_HOOK/projeto-b"; mkdir -p "$PASTA_B"; git init -q "$PASTA_B"
+PASTA_B_WIN="$(cygpath -m "$PASTA_B" 2>/dev/null || printf '%s' "$PASTA_B")"
+SAIDA_FORA=$(cd "$FORA_B" && echo "{}" | RFM_ROOT="$CAIXA_HOOK" CLAUDE_PROJECT_DIR="$PASTA_B_WIN" node "$HOOK" 2>/dev/null)
+BLOCO_FORA=$(echo "$SAIDA_FORA" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
+TOTAL_B_FORA=$(echo "$BLOCO_FORA" | grep "\\[2026" | grep -c "(projeto-b)")
+echo "  comando: (cd <pasta fora de repositorio> && echo '{}' | RFM_ROOT=<caixa> CLAUDE_PROJECT_DIR=<repo projeto-b> node hooks/memoria-session-start.cjs) | grep '[2026' | grep -c '(projeto-b)'"
+echo "  saida: $TOTAL_B_FORA"
+if [ "$TOTAL_B_FORA" = "8" ]; then
+  ok=$((ok+1)); echo "  ok    com cwd fora do projeto e CLAUDE_PROJECT_DIR no projeto, a memoria filtra pelo projeto"
+else
+  falhou=$((falhou+1)); echo "  FALHA com cwd fora do projeto e CLAUDE_PROJECT_DIR no projeto, a memoria filtra pelo projeto: $TOTAL_B_FORA linhas de projeto-b no bloco, esperado 8"
+fi
+
+echo
 echo "  10.b — projeto com 2 obs próprias: recebe 2 + 12 de outros (total 14)"
 
 # Adicionar 2 observações de projeto-c (mais recentes)
