@@ -26,7 +26,27 @@
     "em": "2026-10-05"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-05",
+    "tarefas_ok": 0,
+    "tarefas": 7,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "1 helper e bateria",
+        "desde": "2026-10-05T17:40:00"
+      }
+    ],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "5f0127efc4f4baf744826b372e75f1ddf250afe0",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T17:17:22.710Z"
+      }
+    ],
+    "em": "2026-10-05"
   },
   "revisar": {
     "status": "pendente"

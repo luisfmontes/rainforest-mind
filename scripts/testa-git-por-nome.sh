@@ -183,7 +183,8 @@ echo
 
 encontrou_algum=0
 
-find "$SRC/hooks" "$SRC/scripts" -type f \( -name '*.cjs' -o -name '*.mjs' -o -name '*.js' -o -name '*.tsx' \) -print0 | while IFS= read -r -d '' arquivo; do
+# Sem pipe: o while num pipe roda em subshell e encontrou_algum se perderia.
+while IFS= read -r -d '' arquivo; do
   basename_arquivo=$(basename "$arquivo")
   if [[ "$basename_arquivo" == testa-* ]] || [[ "$basename_arquivo" == *.test.* ]]; then
     continue
@@ -206,13 +207,14 @@ find "$SRC/hooks" "$SRC/scripts" -type f \( -name '*.cjs' -o -name '*.mjs' -o -n
       fi
     done <<< "$resultado"
   fi
-done
+done < <(find "$SRC/hooks" "$SRC/scripts" -type f \( -name '*.cjs' -o -name '*.mjs' -o -name '*.js' -o -name '*.tsx' \) -print0)
 
 if [ "$encontrou_algum" -eq 0 ]; then
   ok=$((ok+1))
   echo "  ok   nenhum git/gh por nome fora de bateria"
 else
-  echo "  NOTA varredura encontrou ocorrências (esperado das tarefas 2-6)"
+  falhou=$((falhou+1))
+  echo "  FALHA git/gh chamado por nome nas linhas acima"
 fi
 
 echo
@@ -251,33 +253,25 @@ echo "7. entrada real: conferir-versao com git falso"
 echo
 
 SBP7="$(novo_sandbox)"
-cp /c/Windows/System32/whoami.exe "$SBP7/git.exe"
+# git.exe falso = copia do node.exe: `git rev-parse ...` roda o arquivo rev-parse
+# desta pasta, que grava a marca FALSO_RODOU. Marca no disco = o falso rodou.
+cp "$(node -p process.execPath)" "$SBP7/git.exe"
+echo 'require("fs").writeFileSync(require("path").join(__dirname, "FALSO_RODOU"), "")' > "$SBP7/rev-parse"
 
-prova=$(cd "$SBP7" && env -u NoDefaultCurrentDirectoryInExePath node -e "
-const { spawnSync } = require('child_process');
-const result = spawnSync('git', [], { encoding: 'utf-8' });
-const saida = (result.stdout + result.stderr).replace(/\r/g, '');
-console.log(saida);
-" 2>&1)
-
-if echo "$prova" | grep -qE '\\'; then
-  echo "  7(i) ok   falso ao alcance"
+(cd "$SBP7" && env -u NoDefaultCurrentDirectoryInExePath node -e 'require("child_process").spawnSync("git", ["rev-parse", "--show-toplevel"])') >/dev/null 2>&1
+if [ -f "$SBP7/FALSO_RODOU" ]; then
+  ok=$((ok+1)); echo "  7(i) ok   spawnSync('git') por nome roda o falso da pasta atual (fixture alcanca)"
 else
-  echo "  7(i) FALHA fixture"
-  falhou=$((falhou+1))
+  falhou=$((falhou+1)); echo "  7(i) FALHA fixture nao alcanca o falso: a medicao abaixo nao provaria nada"
 fi
+rm -f "$SBP7/FALSO_RODOU"
 
-teste_conf=$(cd "$SBP7" && env -u NoDefaultCurrentDirectoryInExePath node "$SRC/scripts/conferir-versao.cjs" 2>&1) || true
-teste_conf=$(echo "$teste_conf" | tr -d '\r')
-
-if ! echo "$teste_conf" | grep -qE '\\'; then
-  ok=$((ok+1))
-  echo "  7(ii) ok  conferir-versao seguro"
+(cd "$SBP7" && env -u NoDefaultCurrentDirectoryInExePath node "$SRC/scripts/conferir-versao.cjs") >/dev/null 2>&1
+if [ ! -f "$SBP7/FALSO_RODOU" ]; then
+  ok=$((ok+1)); echo "  7(ii) ok  conferir-versao com git.exe falso na pasta atual nao o roda"
 else
-  echo "  7(ii) FALHA conferir-versao rodou o falso"
-  falhou=$((falhou+1))
+  falhou=$((falhou+1)); echo "  7(ii) FALHA conferir-versao rodou o git.exe da pasta atual"
 fi
-
 echo
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
