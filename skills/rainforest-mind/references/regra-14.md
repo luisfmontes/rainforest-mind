@@ -56,6 +56,17 @@ atendido.
 > recusa oferecia como saída a frase que ele acabara de escrever, e mandei-o
 > reescrevê-la sem abrir o gate — a causa real era outra.
 
+**Parar de despachar por degradação do agente também se anuncia.** Se um agente
+degrada no meio da sessão (regride em casos, deixa de ficar vermelho sob
+mutação) e a janela passa a trabalhar sozinha por desconfiança, "parei de
+despachar porque X" é anúncio de **uma linha**, com a saída — re-despacho com
+briefing corrigido —, nunca decisão silenciosa. É parente desta regra: o
+usuário só percebe pela ausência do agente e reautoriza o que já valia.
+
+> 2026-08-26: dois agentes degradaram entre rodadas, a janela passou a fazer as
+> tarefas na mão sem dizer, e ele escreveu "autorizo subagentes" três vezes —
+> a autorização já estava dada.
+
 **Caminho de ambiente se resolve pela variável, nunca se escreve à mão.**
 Cache de plugin, config, sessão: a raiz é a `CLAUDE_CONFIG_DIR` **desta**
 sessão, resolvida na hora. Caminho fixo no texto envelhece calado, e é o
