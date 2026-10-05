@@ -76,7 +76,7 @@ manifesto imprime `estagio sem declaracao`. Campo omitido tem o padrão da colun
 | `estagios.<estagio>.agentes[].obrigatorio` | Agente obrigatório indisponível (plugin ausente ou desabilitado) faz o script sair 2. | `false`: indisponível vira uma linha `aviso:` e exit 0. |
 | `estagios.<estagio>.agentes[].mcp` | Quem consulta o MCP para esse agente: `orquestrador` ou `agente`. | `orquestrador`. |
 | `estagios.<estagio>.mcp[].tool` | Nome completo da tool de MCP (`mcp__<servidor>__<tool>`). | Sempre declare. |
-| `estagios.<estagio>.mcp[].quem` | Quem consulta: `orquestrador` ou `agente`. | `orquestrador`. |
+| `estagios.<estagio>.mcp[].quem` | Quem consulta: `orquestrador` ou `agente`. Com `agente`, o item não entra na evidência do estágio: quem consulta é o agente, e o `marcar` não a cobra do orquestrador, mesmo com `obrigatorio` (D8). | `orquestrador`. |
 | `estagios.<estagio>.mcp[].obrigatorio` | Item obrigatório precisa de evidência no `marcar` (abaixo). | `false`. |
 | `estagios.<estagio>.skills[]` | Skills no formato `<plugin>:<skill>` que o estágio deve consultar. Skill nunca é obrigatória nem exigida no `marcar`. | Lista vazia. |
 | `estagios.<estagio>.comandos[].id` | Identificador do comando; é a chave da evidência no `marcar`. | Sempre declare. |

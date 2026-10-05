@@ -67,6 +67,34 @@ function pluginsDisponiveis() {
   return ok;
 }
 
+// Forma do manifesto (versao_contrato 0): devolve o motivo nomeando o campo, ou undefined.
+function validarForma(m) {
+  const obj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+  const str = (v) => typeof v === 'string' && v !== '';
+  if (!str(m.nome)) return 'campo nome ausente ou nao e texto';
+  if (m.estagios === undefined) return undefined;
+  if (!obj(m.estagios)) return 'campo estagios nao e um objeto';
+  const itens = { agentes: ['tipo'], mcp: ['tool'], comandos: ['id', 'comando'] };
+  for (const [est, e] of Object.entries(m.estagios)) {
+    const onde = `estagios.${est}`;
+    if (!obj(e)) return `campo ${onde} nao e um objeto`;
+    for (const [lista, campos] of Object.entries(itens)) {
+      if (e[lista] === undefined) continue;
+      if (!Array.isArray(e[lista])) return `campo ${onde}.${lista} nao e um array`;
+      for (const [k, it] of e[lista].entries()) {
+        if (!obj(it)) return `campo ${onde}.${lista}[${k}] nao e um objeto`;
+        for (const c of campos) if (!str(it[c])) return `campo ${onde}.${lista}[${k}].${c} ausente ou nao e texto`;
+      }
+    }
+    if (e.skills !== undefined) {
+      if (!Array.isArray(e.skills)) return `campo ${onde}.skills nao e um array`;
+      const k = e.skills.findIndex((s) => !str(s));
+      if (k >= 0) return `campo ${onde}.skills[${k}] nao e texto`;
+    }
+  }
+  return undefined;
+}
+
 function descobrirCandidatos() {
   let registro;
   try {
@@ -93,6 +121,8 @@ function descobrirCandidatos() {
           invalido = 'territorio.json nao e um objeto';
         } else if (manifesto.versao_contrato !== 0) {
           invalido = `versao_contrato ${manifesto.versao_contrato} nao suportada (esperado 0)`;
+        } else {
+          invalido = validarForma(manifesto);
         }
       } catch (e) {
         invalido = `territorio.json ilegivel: ${e.message}`;
@@ -159,7 +189,7 @@ function imprimirJson(manifesto, estagio) {
   const disponiveis = pluginsDisponiveis();
   const itens = [];
   for (const a of e.agentes || []) itens.push({ classe: 'agente', id: a.tipo, obrigatorio: a.obrigatorio === true, disponivel: !indisponivel(a.tipo, disponiveis) });
-  for (const m of e.mcp || []) itens.push({ classe: 'mcp', id: m.tool, obrigatorio: m.obrigatorio === true, disponivel: true });
+  for (const m of e.mcp || []) itens.push({ classe: 'mcp', id: m.tool, obrigatorio: m.obrigatorio === true, quem: m.quem === 'agente' ? 'agente' : 'orquestrador', disponivel: true });
   for (const s of e.skills || []) itens.push({ classe: 'skill', id: s, obrigatorio: false, disponivel: !indisponivel(s, disponiveis) });
   for (const c of e.comandos || []) itens.push({ classe: 'comando', id: c.id, obrigatorio: c.obrigatorio === true, disponivel: true });
   console.log(JSON.stringify({ territorio: manifesto ? manifesto.nome : null, itens }));

@@ -48,7 +48,7 @@ M() { node scripts/estado.cjs marcar --slug "$@"; } # M <slug> --estagio ...
 ate_executar_fechado() {
   local s="$1"
   node scripts/estado.cjs iniciar --slug "$s" >/dev/null
-  M "$s" --estagio design --status aprovado --json '{"territorio":{"mcp":[{"tool":"mcp__srv__dicionario"}]}}' >/dev/null 2>&1
+  M "$s" --estagio design --status aprovado --json '{"territorio":{"mcp":[{"tool":"mcp__srv__consulta"}]}}' >/dev/null 2>&1
   M "$s" --estagio plano --status ok >/dev/null 2>&1
   node scripts/estado.cjs exigir --slug "$s" --estagio executar >/dev/null 2>&1
   M "$s" --estagio executar --status ok --json '{"comando":"node script.cjs","saida":"ok","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"caso-1"}],"territorio":{"agentes":[{"tipo":"sintetico:executor"}]}}' >/dev/null 2>&1
@@ -126,6 +126,19 @@ SZ="$TMP/sem-z"; monta_caixa "$SZ" 1 0
 sz=$(cd "$SZ" && CLAUDE_CONFIG_DIR="$CFGZ" fluxo_sem 2>/dev/null)
 [ -n "$sz" ] && [ "$sz" = "$sa" ] && echo "$sz" | grep -qx 'verificar: ok'
 caso "plugin invalido que nao casa nao recusa o marcar" $?
+
+# 8: mcp obrigatorio com quem=agente (dicionario) nao exige evidencia do orquestrador
+node scripts/estado.cjs iniciar --slug a8 >/dev/null
+out=$(M a8 --estagio design --status aprovado --json '{"territorio":{"mcp":[{"tool":"mcp__srv__consulta"}]}}' 2>&1); rc=$?
+[ $rc = 0 ] && ! echo "$out" | grep -q 'dicionario'
+caso "mcp obrigatorio com quem=agente nao exige evidencia do orquestrador" $?
+
+# 9: territorio.cjs que quebra (exit 1) recusa o marcar (fail-closed)
+SQ="$TMP/caixa-quebrada"; monta_caixa "$SQ" 1 1
+echo "process.exit(1);" > "$SQ/scripts/territorio.cjs"
+out=$(cd "$SQ" && node scripts/estado.cjs iniciar --slug q >/dev/null && node scripts/estado.cjs marcar --slug q --estagio design --status aprovado 2>&1); rc=$?
+[ $rc = 2 ] && echo "$out" | grep -q 'RECUSADO' && echo "$out" | grep -q 'exit 1'
+caso "territorio.cjs que sai 1 recusa o marcar" $?
 
 echo "total=$total vermelhas:[${vermelhas%,}]"
 [ -z "$vermelhas" ]

@@ -2234,10 +2234,7 @@ function main() {
       const scriptTerritorio = path.join(__dirname, 'territorio.cjs');
       if (estagioDoMapa && fs.existsSync(scriptTerritorio)) {
         const r = spawnSync(process.execPath, [scriptTerritorio, 'estagio', estagioDoMapa, '--json', '--raiz', RAIZ], { encoding: 'utf8' });
-        if (r.status === 2) {
-          console.error(`RECUSADO: territorio invalido: ${(r.stderr || '').trim()}`);
-          process.exit(2);
-        }
+        if (r.status !== 0) { console.error(`RECUSADO: territorio invalido ou territorio.cjs falhou (exit ${r.status}): ${(r.stderr || '').trim()}`); process.exit(2); }
         let itens = [];
         if (r.status === 0) {
           try { itens = JSON.parse(r.stdout).itens || []; } catch { itens = []; }
@@ -2250,7 +2247,7 @@ function main() {
           return lista('comandos').some((c) => c.id === item.id && typeof c.comando === 'string' && c.comando
             && typeof c.saida === 'string' && c.saida && typeof c.exit === 'number');
         };
-        const exigiveis = itens.filter((i) => i.classe !== 'skill');
+        const exigiveis = itens.filter((i) => i.classe !== 'skill' && !(i.classe === 'mcp' && i.quem === 'agente'));
         const obrigatoriosSemEvidencia = exigiveis.filter((i) => i.obrigatorio && !temEvidencia(i)).map((i) => i.id);
         if (obrigatoriosSemEvidencia.length) { console.error(`RECUSADO: item obrigatorio do territorio sem evidencia: ${obrigatoriosSemEvidencia.join(', ')}`); process.exit(2); }
         for (const i of exigiveis) {

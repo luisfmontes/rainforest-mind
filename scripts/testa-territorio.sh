@@ -149,5 +149,19 @@ out2=$(TH "$H3" estagio verificar --raiz "$FIX/repo-abc" --arquivo x.abc 2>&1); 
 [ $rc = 3 ] && [ $rc2 = 3 ] && echo "$out" | grep -q 'lint' && echo "$out2" | grep -q 'lint'
 caso "variavel com valor vazio sai 3" $?
 
+# --- forma errada do manifesto (versao_contrato 0 mas campos invalidos): nunca stack trace
+PLUGF="$TMP/pluginf"; mkdir -p "$PLUGF"
+printf '{"versao_contrato":0,"nome":"ff","deteccao":{"extensoes":[".fff"],"arquivos":[]},"estagios":{"revisar":{"agentes":"x"}}}' > "$PLUGF/territorio.json"
+CFGF="$TMP/cfgf"; monta_dois "$CFGF" "$PLUGF"
+RF="$TMP/repo-fff"; mkdir -p "$RF"; echo x > "$RF/a.fff"
+out=$(CLAUDE_CONFIG_DIR="$CFGF" node "$SRC/scripts/territorio.cjs" estagio revisar --raiz "$RF" 2>&1); rc=$?
+[ $rc = 2 ] && ! echo "$out" | grep -qE 'TypeError|^\s+at ' && echo "$out" | grep -q 'agentes'
+caso "manifesto com agentes nao-array que casa sai 2 sem stack trace" $?
+
+so=$(CLAUDE_CONFIG_DIR="$CFGF" node "$SRC/scripts/territorio.cjs" estagio revisar --raiz "$FIX/repo-vazio" 2>/dev/null); rc=$?
+se=$(CLAUDE_CONFIG_DIR="$CFGF" node "$SRC/scripts/territorio.cjs" estagio revisar --raiz "$FIX/repo-vazio" 2>&1 >/dev/null)
+[ $rc = 0 ] && [ "$so" = "sem territorio" ] && echo "$se" | grep -q 'aviso: plugin zz ignorado' && echo "$se" | grep -q 'agentes' && ! echo "$se" | grep -qE 'TypeError|^\s+at '
+caso "manifesto com forma errada que nao casa so avisa" $?
+
 echo "total=$total vermelhas:[${vermelhas%,}]"
 [ -z "$vermelhas" ]
