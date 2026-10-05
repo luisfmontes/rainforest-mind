@@ -202,12 +202,12 @@
       "campo variaveis do manifesto nao e lido; variavel exigida = qualquer {nome} usado no comando (D6 fala em variaveis que o territorio declarar)"
     ],
     "comando": "bash scripts/testa-territorio.sh; bash scripts/testa-estado-territorio.sh",
-    "saida": "total=16 vermelhas:[]; total=7 vermelhas:[]",
+    "saida": "total=18 vermelhas:[]; total=9 vermelhas:[]",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-territorio.sh, caso plugin com versao_contrato 1 que nao casa nao bloqueia (rodada 2, achado A1)"
+        "fixture": "testa-territorio.sh, caso plugin com versao_contrato 1 que nao casa nao bloqueia"
       },
       {
         "tarefa": 2,
@@ -217,7 +217,7 @@
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "testa-estado-territorio.sh, caso verificar sem evidencia do comando obrigatorio recusa com exit 2"
+        "fixture": "testa-estado-territorio.sh, casos mcp obrigatorio com quem=agente nao exige evidencia do orquestrador e territorio.cjs que sai 1 recusa o marcar (rodada 3)"
       },
       {
         "tarefa": 4,
@@ -230,12 +230,12 @@
         "motivo": "documento de referencia; falsificado pelo chk de chaves fixture x doc"
       }
     ],
-    "rodada": 2
+    "rodada": 3
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "2d120a86fdfc583ae74acf666f3a6dc063c7b791",
+      "head": "85c0152060b914a2d05a184cfef639158ad7e3f5",
       "caminhos_sujos": [
         "docs/rainforest/planos/2026-10-05-mapa-de-estagios-do-territorio.md"
       ]
@@ -243,21 +243,20 @@
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a6b9a2b17c7f2a0d9",
+        "agente_id": "a69609595e17244fe",
         "veredito": "reprovado",
         "em": "2026-10-05",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/bba7dce4-9408-434b-8792-367b984b1c9c/subagents/agent-a6b9a2b17c7f2a0d9.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/bba7dce4-9408-434b-8792-367b984b1c9c/subagents/agent-a69609595e17244fe.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-05",
-    "achados": 3,
+    "achados": 2,
     "lista": [
-      "ALTO territorio.cjs:78-95 versao_contrato!=0 (e manifesto null com TypeError) de plugin que nem casa com o repo derruba marcar em todo repo",
-      "MEDIO territorio.cjs:183 aviso de indisponivel sem o tipo",
-      "BAIXO variavel com valor vazio no config local passa e gera comando quebrado; brainstorm sem instrucao para mcp quem=agente"
+      "ALTO mcp obrigatorio com quem=agente trava o marcar: skill manda nao consultar, estado.cjs:2250 exige evidencia, --json do territorio.cjs nao leva quem",
+      "MEDIO manifesto com forma errada (agentes nao-array, comando ausente) da TypeError exit 1 em territorio.cjs:151, e estado.cjs:2234 trata exit 1 como itens [] (fail-open)"
     ],
-    "tentativas": 1
+    "tentativas": 2
   },
   "verificar": {
     "status": "pendente"
