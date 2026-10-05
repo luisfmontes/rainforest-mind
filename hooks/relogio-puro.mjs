@@ -43,7 +43,8 @@ export function avaliarRelogio({ jornada, sessoes, agora }) {
     const hora = new Date(agora).getHours();
     const longa = efetiva_min > LIMITE_EFETIVA_MIN;
     const noite = (hora >= HORA_NOITE || hora < HORA_FIM_MADRUGADA) && agora - ultimo_ms <= JANELA_MSG_MIN * 60000;
-    if (longa || noite) j = { efetiva_min, hora: horaLocal(agora), dia: diaLocal(agora) };
+    const mesmoDia = diaLocal(ultimo_ms) === diaLocal(agora);
+    if (mesmoDia && (longa || noite)) j = { efetiva_min, hora: horaLocal(agora), dia: diaLocal(agora) };
   }
 
   let parada = null;
