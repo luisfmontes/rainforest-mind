@@ -1,0 +1,28 @@
+{
+  "slug": "2026-10-05-mapa-de-estagios-do-territorio",
+  "titulo": "Contrato do mapa de estágios do território",
+  "criado_em": "2026-10-05",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-05-mapa-de-estagios-do-territorio.md",
+    "em": "2026-10-05"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
