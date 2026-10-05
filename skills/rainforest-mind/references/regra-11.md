@@ -21,22 +21,9 @@ com briefing corrigido. Retomada continua servindo para agente de leitura, que
 não tem worktree a perder. O worktree isolado pode não existir mais na
 retomada, e o agente passa a commitar na branch de quem despachou.
 
-**Um worktree por ATIVIDADE, não por estágio — e não se troca de worktree com
-agente em voo.** Antes de `git worktree add`, perguntar se já existe worktree
-desta atividade: se existe, o trabalho continua nele. Worktree novo é para
-atividade nova, ou para dois editores simultâneos de verdade — e aí se commita
-antes, não se abre branch separada por conveniência (agentes em série não têm
-concorrência a isolar). Quanto à troca: `EnterWorktree` com agente em voo faz o
-guard do harness comparar o cwd do comando ao worktree **atual** da sessão, não
-ao do despacho, e recusar todo o shell do agente. Despachar já do worktree
-destino, ou esperar a entrega. O `gate-agente-em-voo` só barra o fim do turno,
-não a troca.
-
-> 2026-09-03: criei dois worktrees e duas branches para uma atividade (design e
-> plano numa, código dos subagentes noutra); um merge a mais e o histórico
-> partido até consolidar. 2026-09-08: chamei `EnterWorktree` com dois
-> planejadores em voo e o guard recusou qualquer comando de shell deles, até
-> `pwd` — cerca de 365 mil tokens de agente sem rodar bateria alguma.
+**Um worktree por ATIVIDADE, e sem `EnterWorktree` com agente em voo** (a troca
+faz o guard recusar todo o shell deles). Worktree novo só para atividade nova ou
+dois editores simultâneos, commitando antes: `regra-11-atividade.md`.
 
 **Commite antes de despachar, na branch de trabalho, nunca na `main`** —
 sessão na branch padrão cria a branch primeiro. Vale principalmente pro
