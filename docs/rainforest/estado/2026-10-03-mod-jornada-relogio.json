@@ -79,7 +79,23 @@
     "em": "2026-10-05"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a974a3f25ef371d84",
+        "veredito": "reprovado",
+        "em": "2026-10-05",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/da2628ca-c4c2-4c85-9335-967778ffae56/subagents/agent-a974a3f25ef371d84.jsonl"
+      },
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ae6acc59975648a1c",
+        "veredito": "ok",
+        "em": "2026-10-05",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/da2628ca-c4c2-4c85-9335-967778ffae56/subagents/agent-ae6acc59975648a1c.jsonl"
+      }
+    ]
   },
   "verificar": {
     "status": "pendente"

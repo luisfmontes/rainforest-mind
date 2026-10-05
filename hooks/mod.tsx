@@ -106,9 +106,10 @@ export const register: Register = (on, options) => {
     } catch {
       // a faixa nunca quebra a abertura da sessao
     }
-    cancelarRelogio()
-    // claude -p, SDK e subagente nao desenham a faixa: sem timer.
+    // claude -p, SDK e subagente nao desenham a faixa: sem timer, e sem cancelar o relogio da
+    // sessao interativa que compartilha esta instancia do mod.
     if (!e.isInteractive) return next(e)
+    cancelarRelogio()
     try {
       const id = await $.session.id()
       const cwd = await $.session.cwd()

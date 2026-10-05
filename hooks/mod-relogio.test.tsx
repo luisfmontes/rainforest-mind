@@ -357,6 +357,15 @@ for (const surface of ['terminal', 'desktop'] as const) {
       await quieta()
     })
 
+    await caso('9b session.start nao interativo depois do interativo nao cancela o relogio', async () => {
+      await comecar(true)
+      await relogio.advance(2000)
+      await comecar(false)
+      const antes = s.runsS
+      await relogio.advance(60000)
+      expect(s.runsS).toBeGreaterThan(antes)
+    })
+
     await ui.unmount()
   })
 
