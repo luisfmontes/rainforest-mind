@@ -7,23 +7,70 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
+// Cache separados para cada resolvedor (nome + '\0' + PATH)
+const cacheResolverExecutavel = new Map();
+const cacheCaminhoExecutavel = new Map();
+
+function lerPath(env = process.env) {
+  // Encontra a chave PATH case-insensitive
+  const chave = Object.keys(env).find(k => k.toUpperCase() === 'PATH');
+  const PATH = env[chave] || '';
+  const separador = process.platform === 'win32' ? ';' : ':';
+
+  const dirs = PATH.split(separador).filter(d => d && path.isAbsolute(d));
+
+  return { PATH, dirs };
+}
+
 function resolverExecutavel(nome, env = process.env) {
-  const PATH = env.PATH || '';
+  const { PATH, dirs } = lerPath(env);
   const separador = process.platform === 'win32' ? ';' : ':';
   const extensoes = process.platform === 'win32' ? ['.cmd', '.bat', '.exe', ''] : [''];
 
-  const diretrios = PATH.split(separador).filter(d => d);
+  // Memoização: chave = nome + '\0' + PATH
+  const chave = nome + '\0' + PATH;
+  if (cacheResolverExecutavel.has(chave)) {
+    return cacheResolverExecutavel.get(chave);
+  }
 
-  for (const dir of diretrios) {
+  for (const dir of dirs) {
     for (const ext of extensoes) {
       const caminhoCompleto = path.join(dir, nome + ext);
       if (fs.existsSync(caminhoCompleto)) {
+        cacheResolverExecutavel.set(chave, caminhoCompleto);
         return caminhoCompleto;
       }
     }
   }
 
+  cacheResolverExecutavel.set(chave, null);
   return null;
+}
+
+function caminhoExecutavel(nome, env = process.env) {
+  const { PATH, dirs } = lerPath(env);
+  const extensoes = process.platform === 'win32' ? ['.com', '.exe'] : [''];
+
+  // Memoização: chave = nome + '\0' + PATH
+  const chave = nome + '\0' + PATH;
+  if (cacheCaminhoExecutavel.has(chave)) {
+    return cacheCaminhoExecutavel.get(chave);
+  }
+
+  for (const dir of dirs) {
+    for (const ext of extensoes) {
+      const caminhoCompleto = path.join(dir, nome + ext);
+      if (fs.existsSync(caminhoCompleto)) {
+        cacheCaminhoExecutavel.set(chave, caminhoCompleto);
+        return caminhoCompleto;
+      }
+    }
+  }
+
+  // Não achou: devolve caminho absoluto inexistente
+  const caminhoInexistente = path.join(__dirname, 'ausente-do-PATH', nome);
+  cacheCaminhoExecutavel.set(chave, caminhoInexistente);
+  return caminhoInexistente;
 }
 
 // Rodada 19 (lote 3): quando `exe` resolve para `.cmd`/`.bat`, `shell:true` é
@@ -71,4 +118,4 @@ function executar(nome, args, opts = {}) {
   });
 }
 
-module.exports = { resolverExecutavel, executar };
+module.exports = { lerPath, resolverExecutavel, caminhoExecutavel, executar };
