@@ -118,7 +118,16 @@ mutação que rebenta a execução mede o `catch`, não o comportamento — e o 
 afirma que o resultado mutado é **não-vazio** antes de julgar a diferença. E a
 integração **repete a mutação** pelo clone fiel de `conferir-mutacao.cjs` —
 nunca em fixture ou cópia à mão.
-(acervo: 2026-08-25)
+Conserto de **casamento** (regex, glob, comparação) leva **duas** mutações:
+desligar o ramo (`if (achou)` virando `if (false)`) prova que o ramo é testado,
+não que o padrão é estreito; a segunda **alarga o padrão**, e o fixture dela
+sai da reprodução literal do achado, antes de qualquer variação minha.
+
+> 2026-09-21: um conserto de regex entrou com a mutação do ramo vermelha, mas o
+> padrão casava qualquer cabeçalho com a palavra e a revisão seguinte reprovou.
+> A mutação que alarga o padrão só ficou vermelha com os fixtures copiados da
+> reprodução do revisor; com os meus, sobreviveu.
+(acervo: 2026-08-25, 2026-09-21)
 
 **Entrega analítica escapa por não ter artefato.** Relatório que compara,
 levanta achado ou lê documentação não tem comando pra rodar, então as defesas
