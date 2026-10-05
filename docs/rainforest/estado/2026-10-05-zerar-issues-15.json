@@ -27,8 +27,8 @@
   "executar": {
     "status": "ok",
     "catraca_mutacao": "2026-10-05",
-    "tarefas_ok": 12,
-    "tarefas": 12,
+    "tarefas_ok": 14,
+    "tarefas": 14,
     "carimbos": [
       {
         "tarefa": 1,
@@ -99,69 +99,96 @@
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-estado.sh, marcar plano/design declarado ausente recusa"
+        "fixture": "testa-estado.sh"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-mutacao.sh, raiz com node_modules como junction mede e sai 0"
+        "fixture": "testa-conferir-mutacao.sh junction"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-mutacao.sh, junction quebrada na raiz sai 69 nao-verificavel"
+        "fixture": "testa-conferir-mutacao.sh 69"
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-mutacao.sh, falha no meio de saida longa aparece em casos vermelhos"
+        "fixture": "testa-conferir-mutacao.sh casos vermelhos"
       },
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-fluxo.sh, mutacoes com raiz: de app roda a bateria dentro do app"
+        "fixture": "testa-conferir-fluxo.sh raiz"
       },
       {
         "tarefa": 6,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-fluxo.sh, pulada por erro sem rotulo traz a linha do erro"
+        "fixture": "testa-conferir-fluxo.sh razao"
       },
       {
         "tarefa": 7,
         "resultado": "vermelho",
-        "fixture": "mod-relogio.test.tsx, o process.run do relogio roda com cwd na raiz do plugin"
+        "fixture": "mod-relogio.test.tsx cwd"
       },
       {
         "tarefa": 8,
         "resultado": "vermelho",
-        "fixture": "testa-node-por-nome.sh, nenhum spawn/exec de node por nome fora de bateria"
+        "fixture": "testa-node-por-nome.sh"
       },
       {
         "tarefa": 9,
         "resultado": "vermelho",
-        "fixture": "testa-varrer-baterias.sh, shards 1/2 e 2/2 cobrem a lista inteira"
+        "fixture": "testa-varrer-baterias.sh shards"
       },
       {
         "tarefa": 10,
         "resultado": "n/a",
-        "motivo": "nota de versao, bump e Issue"
+        "motivo": "docs"
       },
       {
         "tarefa": 11,
         "resultado": "vermelho",
-        "fixture": "testa-memoria-session-start.sh, cwd fora do projeto filtra pelo projeto"
+        "fixture": "testa-memoria-session-start.sh"
       },
       {
         "tarefa": 12,
         "resultado": "vermelho",
-        "fixture": "testa-gate-bateria-sem-timeout.cjs, --shard 1/2 --listar nao e varredura completa"
+        "fixture": "testa-gate-bateria-sem-timeout.cjs listar"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria.sh sem argumento"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "vermelho",
+        "fixture": "testa-node-por-nome.sh"
       }
     ],
-    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-05-zerar-issues-15",
-    "saida": "tarefas 1-9, 11, 12 vermelho; 10 pulada n/a; exit 0"
+    "comando": "conferir-mutacao.cjs nas tarefas 13 e 14; conferir-fluxo mutacoes nas 1-12",
+    "saida": "13 e 14 VERMELHA exit 0; 1-9,11,12 vermelho"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "91dc8b400ff1631129ee554441d8f22f459e95b7",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a428e99a7ffe04a49",
+        "veredito": "reprovado",
+        "em": "2026-10-05",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/40524922-2eee-42a2-a52e-ae92540058d4/subagents/agent-a428e99a7ffe04a49.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-05",
+    "achados": 2,
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
