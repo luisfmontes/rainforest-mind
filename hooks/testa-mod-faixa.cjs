@@ -208,7 +208,7 @@ caso("controle ESC, C1 e bidi nao chegam crus ao terminal", async () => {
   afirma(txt.includes("Q1 T") && txt.includes("fluxo s: plano"), `texto visivel sumiu: ${JSON.stringify(txt)}`);
 });
 
-caso("invisiveis LRM/RLM, ALM, separadores, zero-width, U+2060-2065 e BOM viram espaco", async () => {
+caso("invisiveis LRM/RLM, ALM, separadores, zero-width, U+2060-2069 e BOM viram espaco", async () => {
   const { montarLinhas } = await modulo();
   const invisibles = [
     String.fromCodePoint(0x200b), // Zero-Width Space
@@ -222,6 +222,8 @@ caso("invisiveis LRM/RLM, ALM, separadores, zero-width, U+2060-2065 e BOM viram 
     String.fromCodePoint(0x2060), // Word Joiner
     String.fromCodePoint(0x2064), // Invisible Plus
     String.fromCodePoint(0x2065), // Invisible Separator
+    String.fromCodePoint(0x2066), // Left-to-Right Isolate
+    String.fromCodePoint(0x2069), // Pop Directional Isolate
     String.fromCodePoint(0xfeff), // Zero-Width No-Break Space (BOM)
   ];
   const focusText = "foco" + invisibles.join("");
