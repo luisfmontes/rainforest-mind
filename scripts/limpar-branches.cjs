@@ -52,6 +52,7 @@
 
 const { spawnSync } = require('child_process');
 const path = require('path');
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 const CODIGO_ROOT = path.resolve(__dirname, '..');
 const REPO = process.env.CLAUDE_PROJECT_DIR || process.cwd();
@@ -63,7 +64,7 @@ const argValor = (nome) => {
 };
 
 function git(args, { permitirErro = false } = {}) {
-  const r = spawnSync('git', args, { cwd: REPO, encoding: 'utf8' });
+  const r = spawnSync(caminhoExecutavel('git'), args, { cwd: REPO, encoding: 'utf8' });
   if (r.status !== 0 && !permitirErro) {
     console.error(`erro: git ${args.join(' ')}`);
     console.error((r.stderr || '').trim());
@@ -130,7 +131,7 @@ function confirmarRemotaSumiu(refs) {
   if (!candidatas.length) return resultado;
 
   for (const b of candidatas) {
-    const r = spawnSync('git', ['ls-remote', '--heads', 'origin', b.nome],
+    const r = spawnSync(caminhoExecutavel('git'), ['ls-remote', '--heads', 'origin', b.nome],
       { cwd: REPO, encoding: 'utf8' });
 
     if (r.status !== 0) {
@@ -194,7 +195,7 @@ function varrerTemporariosVazados() {
   const removidos = [];
   const falharam = [];
 
-  const lista = spawnSync('git', ['worktree', 'list', '--porcelain'],
+  const lista = spawnSync(caminhoExecutavel('git'), ['worktree', 'list', '--porcelain'],
     { cwd: REPO, encoding: 'utf8' });
   if (lista.status !== 0 || !lista.stdout) return { removidos, falharam };
 
@@ -216,8 +217,8 @@ function varrerTemporariosVazados() {
 
     // `unlock` antes: o registro pode ter ficado travado pelo processo morto, e
     // `remove` recusa worktree travado mesmo com `--force`.
-    spawnSync('git', ['worktree', 'unlock', caminho], { cwd: REPO, encoding: 'utf8' });
-    const r = spawnSync('git', ['worktree', 'remove', '--force', caminho],
+    spawnSync(caminhoExecutavel('git'), ['worktree', 'unlock', caminho], { cwd: REPO, encoding: 'utf8' });
+    const r = spawnSync(caminhoExecutavel('git'), ['worktree', 'remove', '--force', caminho],
       { cwd: REPO, encoding: 'utf8' });
     if (r.status === 0) removidos.push(caminho);
     else falharam.push(caminho);
@@ -225,7 +226,7 @@ function varrerTemporariosVazados() {
 
   // O `prune` fecha o caso do diretório que sumiu do disco antes do registro
   // sair: aí `remove` falha e só o `prune` desregistra.
-  if (falharam.length) spawnSync('git', ['worktree', 'prune'], { cwd: REPO, encoding: 'utf8' });
+  if (falharam.length) spawnSync(caminhoExecutavel('git'), ['worktree', 'prune'], { cwd: REPO, encoding: 'utf8' });
 
   return { removidos, falharam };
 }
@@ -253,7 +254,7 @@ function mergeadosPorConteudo(refs, base) {
     // processo morto, que é o caso que produziu os 169.
     const tempWT = caminhoTemp(b.nome);
 
-    const addWT = spawnSync('git', ['worktree', 'add', '--detach', tempWT, 'HEAD'],
+    const addWT = spawnSync(caminhoExecutavel('git'), ['worktree', 'add', '--detach', tempWT, 'HEAD'],
       { cwd: REPO, encoding: 'utf8' });
 
     if (addWT.status !== 0) {
@@ -263,7 +264,7 @@ function mergeadosPorConteudo(refs, base) {
 
     try {
       // cherry-pick sem commit dos commits da branch que não estão na base
-      const mergeBase = spawnSync('git', ['merge-base', base, b.nome],
+      const mergeBase = spawnSync(caminhoExecutavel('git'), ['merge-base', base, b.nome],
         { cwd: REPO, encoding: 'utf8' });
 
       if (mergeBase.status === 0 && mergeBase.stdout) {
@@ -271,7 +272,7 @@ function mergeadosPorConteudo(refs, base) {
         const pickRange = `${mb}..${b.nome}`;
 
         // tenta cherry-pick no worktree
-        const pick = spawnSync('git', ['cherry-pick', '--no-commit', pickRange],
+        const pick = spawnSync(caminhoExecutavel('git'), ['cherry-pick', '--no-commit', pickRange],
           { cwd: tempWT, encoding: 'utf8' });
 
         // se cherry-pick falhou, considere como não-mergeada (trabalho vivo)
@@ -279,7 +280,7 @@ function mergeadosPorConteudo(refs, base) {
           resultado[b.nome] = false;
         } else {
           // Se cherry-pick bem-sucedido, verifica se há diff
-          const diff = spawnSync('git', ['diff', '--quiet', 'HEAD'],
+          const diff = spawnSync(caminhoExecutavel('git'), ['diff', '--quiet', 'HEAD'],
             { cwd: tempWT, encoding: 'utf8' });
 
           // diff --quiet exit 0 = sem diff = mergeada por conteúdo
@@ -291,7 +292,7 @@ function mergeadosPorConteudo(refs, base) {
     } finally {
       // Remoção com veredito lido: engolir o exit code em silêncio foi o que
       // deixou 169 worktrees crescerem sem uma linha de aviso.
-      const rm = spawnSync('git', ['worktree', 'remove', '--force', tempWT],
+      const rm = spawnSync(caminhoExecutavel('git'), ['worktree', 'remove', '--force', tempWT],
         { cwd: REPO, encoding: 'utf8' });
       if (rm.status !== 0) {
         console.log(`aviso: nao removi o worktree temporario ${tempWT} — ${(rm.stderr || '').trim()}`);
@@ -334,7 +335,7 @@ function prsMergeados() {
     ? [{ shell: false }, { shell: true }]
     : [{ shell: false }];
   for (const opts of tentativas) {
-    const r = spawnSync('gh', args, { cwd: REPO, encoding: 'utf8', ...opts });
+    const r = spawnSync(caminhoExecutavel('gh'), args, { cwd: REPO, encoding: 'utf8', ...opts });
     // ENOENT é "não achei o executável assim" — tenta a próxima forma. Qualquer
     // outro erro, ou saída != 0 (sem auth, sem rede, repo sem GitHub por trás), é
     // `null`: a checagem não rodou, e `null` nunca vira remoção.

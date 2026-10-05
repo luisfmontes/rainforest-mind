@@ -27,6 +27,7 @@
 const { spawnSync, execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 // Importa o helper de confinamento da Tarefa 1
 const { toplevelConfinado } = require("../hooks/lib/cwd-efetivo.cjs");
@@ -146,7 +147,7 @@ function resolverRaiz() {
 
   // Tenta git rev-parse --show-toplevel no cwd atual
   try {
-    const result = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+    const result = execFileSync(caminhoExecutavel("git"), ["rev-parse", "--show-toplevel"], {
       cwd: process.cwd(),
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
@@ -185,7 +186,7 @@ function normalizarCaminho(p) {
 function detectarFantasmaTravado(raiz) {
   const fantasmas = new Map();
   try {
-    const output = execFileSync("git", ["worktree", "list", "--porcelain"], {
+    const output = execFileSync(caminhoExecutavel("git"), ["worktree", "list", "--porcelain"], {
       cwd: raiz,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
@@ -243,7 +244,7 @@ function detectarFantasmaTravado(raiz) {
  */
 function caminhoConformeGitWorktreeList(raiz, alvoNormalizado) {
   try {
-    const saida = execFileSync("git", ["worktree", "list", "--porcelain"], {
+    const saida = execFileSync(caminhoExecutavel("git"), ["worktree", "list", "--porcelain"], {
       cwd: raiz,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
@@ -265,7 +266,7 @@ function caminhoConformeGitWorktreeList(raiz, alvoNormalizado) {
  */
 function listarWorktreesRegistrados(raiz) {
   try {
-    const output = execFileSync("git", ["worktree", "list", "--porcelain"], {
+    const output = execFileSync(caminhoExecutavel("git"), ["worktree", "list", "--porcelain"], {
       cwd: raiz,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
@@ -365,7 +366,7 @@ function pastasDeWorktree(raiz, registrados) {
 function checkoutPrincipal(raiz) {
   try {
     const saida = execFileSync(
-      "git",
+      caminhoExecutavel("git"),
       ["rev-parse", "--path-format=absolute", "--git-common-dir"],
       { cwd: raiz, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
     ).trim();
@@ -428,7 +429,7 @@ function classificar(dir, fantasmas) {
 
   // Confinado: verifica se está limpo
   try {
-    const porcelain = execFileSync("git", ["status", "--porcelain"], {
+    const porcelain = execFileSync(caminhoExecutavel("git"), ["status", "--porcelain"], {
       cwd: dir,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
@@ -552,7 +553,7 @@ function executarRemocao(raiz, dadosLimpos) {
           `mídia removível ou de rede apenas desmontada, monte antes de seguir.`
       );
       console.log(`destravando ${item.caminho}...`);
-      const unlockResult = spawnSync("git", ["worktree", "unlock", item.caminhoOriginal], {
+      const unlockResult = spawnSync(caminhoExecutavel("git"), ["worktree", "unlock", item.caminhoOriginal], {
         cwd: raiz,
         encoding: "utf8",
       });
@@ -564,7 +565,7 @@ function executarRemocao(raiz, dadosLimpos) {
       }
 
       console.log(`removendo ${item.caminho}...`);
-      const removeResult = spawnSync("git", ["worktree", "remove", "--force", item.caminhoOriginal], {
+      const removeResult = spawnSync(caminhoExecutavel("git"), ["worktree", "remove", "--force", item.caminhoOriginal], {
         cwd: raiz,
         encoding: "utf8",
       });
@@ -576,7 +577,7 @@ function executarRemocao(raiz, dadosLimpos) {
       }
 
       console.log(`podando worktrees...`);
-      const pruneResult = spawnSync("git", ["worktree", "prune"], {
+      const pruneResult = spawnSync(caminhoExecutavel("git"), ["worktree", "prune"], {
         cwd: raiz,
         encoding: "utf8",
       });
@@ -594,7 +595,7 @@ function executarRemocao(raiz, dadosLimpos) {
       // só chega aqui um worktree de verdade LIMPO (porcelain vazio); `git
       // worktree remove` sem `--force` funciona nesse caso (confirmado na
       // caixa) — e sem `--force` a remoção nunca apaga sujeira por engano.
-      const result = spawnSync("git", ["worktree", "remove", item.caminhoOriginal], {
+      const result = spawnSync(caminhoExecutavel("git"), ["worktree", "remove", item.caminhoOriginal], {
         cwd: raiz,
         encoding: "utf8",
       });
@@ -727,7 +728,7 @@ function main() {
     }
 
     console.log(`removendo ${item.caminho} (sujo, confirmado)...`);
-    const result = spawnSync("git", ["worktree", "remove", "--force", item.caminhoOriginal], {
+    const result = spawnSync(caminhoExecutavel("git"), ["worktree", "remove", "--force", item.caminhoOriginal], {
       cwd: raiz,
       encoding: "utf8",
     });
