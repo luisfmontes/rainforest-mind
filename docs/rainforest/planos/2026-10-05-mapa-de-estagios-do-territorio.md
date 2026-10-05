@@ -61,7 +61,8 @@ pronto quando: com `HOME` de teste contendo `.rainforest/territorios/sintetico.j
 
 ### 3. `estado.cjs`: rastro do território e recusa de obrigatório sem evidência [tipo: implementar]
 atende: D9
-arquivos: `scripts/estado.cjs`, `scripts/testa-estado-territorio.sh`
+arquivos: `scripts/estado.cjs`, `scripts/testa-estado-territorio.sh`, `scripts/territorio.cjs`
+desvio (2026-10-05, na integracao da tarefa 2): `territorio.cjs` ganha `--json` com os itens do estagio sem resolver variaveis, para o `estado.cjs` ler os obrigatorios por interface estavel em vez de raspar o texto impresso
 depende de: 2
 paralela: nao
 prova: `bash scripts/testa-estado-territorio.sh`
