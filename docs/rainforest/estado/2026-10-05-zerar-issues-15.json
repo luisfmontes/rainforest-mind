@@ -1,0 +1,28 @@
+{
+  "slug": "2026-10-05-zerar-issues-15",
+  "titulo": "Zerar issues: #377, #378, #379, #382, #385",
+  "criado_em": "2026-10-05",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-05-zerar-issues-15.md",
+    "em": "2026-10-05"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

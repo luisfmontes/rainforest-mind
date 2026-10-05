@@ -1,0 +1,291 @@
+Data: 2026-10-05
+Termos: conferir-mutacao, junction, execPath, shard, varrer-baterias, paralelo
+
+$ gh issue list --state all --search "conferir-mutacao" --limit 200 --json number,title,state
+[{"number":378,"state":"OPEN","title":"conferir-mutacao.cjs sai 1 sem veredito no Windows quando a raiz tem node_modules como junction"},{"number":379,"state":"OPEN","title":"verificar não fecha em monorepo: a catraca roda toda bateria com --raiz na raiz do repo"},{"number":385,"state":"OPEN","title":"marcar plano ok passa com o arquivo declarado ausente do disco"},{"number":266,"state":"CLOSED","title":"conferir-mutacao muta a arvore compartilhada: quem ler naquela janela mede o mutante"},{"number":294,"state":"CLOSED","title":"Achados menores do revisar zerar-issues-5 (catraca em copia, pyc, MSYS)"},{"number":281,"state":"CLOSED","title":"catraca de mutacao sai 0 quando nenhuma mutacao declarada foi aplicada"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"},{"number":386,"state":"CLOSED","title":"relogio do mod: jornada do dia anterior acende ate 5 min depois da meia-noite"},{"number":215,"state":"CLOSED","title":"Vermelho largo passa por prova: a catraca de mutacao le o exit code da bateria, nunca quantas assercoes cairam"},{"number":254,"state":"CLOSED","title":"Catraca de mutacao: 'pulada' fecha o verificar como se fosse medida"},{"number":262,"state":"CLOSED","title":"conferir-publicacao: credencial em JSON com a chave entre aspas nao e vista, e a trava responde verde"},{"number":312,"state":"CLOSED","title":"estado.cjs recusa carimbo de tarefa acrescentada por emenda ao plano"},{"number":192,"state":"CLOSED","title":"Proibir background no briefing falhou duas vezes, com a proibicao escrita duas vezes no mesmo texto — falta checar a FORMA do retorno"},{"number":278,"state":"CLOSED","title":"gate-verificador-staged barra merge por arquivo que ja passou na main"},{"number":276,"state":"CLOSED","title":"despachos.jsonl nao tem leitor: fora_de_fluxo e escreve_conferido nascem divida"},{"number":230,"state":"CLOSED","title":"conferir-mutacao.cjs entrega a --bateria ao cmd.exe no Windows: 'rm ...; python ...' apagou o venv e o arquivo de teste, e o baseline saiu VERDE"},{"number":121,"state":"CLOSED","title":"testa-conferir-mutacao.sh e verde ou vermelha conforme a carga da maquina — a catraca de mutacao depende de relogio de parede"},{"number":329,"state":"CLOSED","title":"veredito-revisor nao grava quando o estado do fluxo mora so no worktree"},{"number":387,"state":"CLOSED","title":"relogio do mod: session.end de sessao nao interativa pode cancelar o relogio"},{"number":182,"state":"CLOSED","title":"conferir-mutacao.cjs deixa worktree temporario travado a cada rodada, e o acumulo quebra o despacho de subagente"},{"number":282,"state":"CLOSED","title":"Captura parada desde 03/09: spawn do claude.cmd dá EINVAL e a fila trava calada"},{"number":323,"state":"CLOSED","title":"conferir-duplicacao conta arquivo gitignorado (.claude/marketplaces) e deixa testa-saude vermelho em main limpa"},{"number":322,"state":"CLOSED","title":"gate-publicacao-destino recusa o trailer Co-Authored-By e barra Edit de linha que já contém o e-mail"},{"number":232,"state":"CLOSED","title":"conferir-mutacao.cjs restaura o fonte e deixa o .pyc mutado: o Python nunca invalida, e a bateria seguinte mede outro codigo"},{"number":268,"state":"CLOSED","title":"Mensagem do gate de publicacao nao oferece o toggle do setup, so as saidas de emergencia"},{"number":265,"state":"CLOSED","title":"gate-publicacao: .rainforest-gate-off nao e herdado pelo worktree, e nao esta no .gitignore"},{"number":275,"state":"CLOSED","title":"gate-verificador-staged barra merge por conteudo que ja esta na main"},{"number":279,"state":"CLOSED","title":"revisar: creep nao tem carve-out para artefato que outra skill obriga a criar"},{"number":244,"state":"CLOSED","title":"Bump de versao e feito a mao no fechar, e o esquecimento e silencioso"},{"number":303,"state":"CLOSED","title":"Gemeo Python de conferir-entrega congelou: 21 falhas na main e o portao do CONTRIBUTING esta vermelho"},{"number":196,"state":"CLOSED","title":"conferir-fluxo creep nao isenta relatorios/**, e recusa por arquivo que por construcao nao pode ter tarefa"},{"number":290,"state":"CLOSED","title":"foco.cjs rotacionar descarta pela posicao, nao pela data: com avanco novo no topo, some o mais recente"},{"number":270,"state":"CLOSED","title":"Linha de mutante sai como 'FALHA <nome real>' e se confunde com falha de verdade no log"},{"number":289,"state":"CLOSED","title":"gate-worktree: cd com caminho MSYS (/c/...) vira incerto e barra commit no scratchpad, chamando o worktree de principal"},{"number":189,"state":"CLOSED","title":"conferir-versao.cjs nao olha o numero: versao que anda para tras passa verde, e plugin.json ilegivel sai 0"},{"number":261,"state":"CLOSED","title":"gate-staging-total: mensagem citaria o repo errado com -C — nao reproduz, falta a linha exata"},{"number":273,"state":"CLOSED","title":"testa-cli-externo Teste 3: teto de 8s contra fixture de 60s vermelha intermitente na CI"},{"number":269,"state":"CLOSED","title":"gate-fechar-issue dita '--saida <saida-ou-arquivo>', e --saida cola o caminho como se fosse a saida"},{"number":335,"state":"CLOSED","title":"13 baterias .cjs nunca rodam no CI: varrer-baterias.sh so descobre testa-*.sh"},{"number":148,"state":"CLOSED","title":"reaberto_por aceita texto livre do --json, e exigir recusa onde marcar deixa passar"},{"number":144,"state":"CLOSED","title":"O gate de publicacao le dump hexadecimal como telefone — e provar defeito de encoding exige colar bytes"},{"number":259,"state":"CLOSED","title":"cortarBytes duplicado entre memoria-sessao.cjs e contexto-sessao.cjs, com comentario afirmando reuso que nao existe"},{"number":165,"state":"CLOSED","title":"O gate de publicacao e cego para escrita mediada por Bash — node, sed e heredoc passam"},{"number":231,"state":"CLOSED","title":"Revisor que confere por mutacao edita o worktree principal, e o gate o impede de desfazer"},{"number":257,"state":"CLOSED","title":"Portaria: autorizacao de subagente exige a palavra exata e culpa o estagio quando o usuario erra a digitacao"},{"number":260,"state":"CLOSED","title":"conferir-publicacao: 'token' sozinho vira credencial, e a mensagem nao mostra o trecho casado"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"},{"number":76,"state":"CLOSED","title":"A regra 14 descobre ferramenta ausente tropecando: falta um catalogo do que existe na maquina"},{"number":272,"state":"CLOSED","title":"Hooks de SessionEnd quebram com exit 1 quando o payload e o JSON null"},{"number":206,"state":"CLOSED","title":"Design e doc de uso se contradizem sobre o mesmo mecanismo, e nada mede isso: dois revisores discordaram lendo o mesmo commit"},{"number":4,"state":"CLOSED","title":"Worktree de agente nasce na base velha em pelo menos 2 de 8 despachos, e conferir-entrega.cjs nao ve arquivo autoexcluido por gitignore"},{"number":346,"state":"CLOSED","title":"gate-bateria-sem-timeout: stdbuf --output L (opcao longa com espaco) escapa"},{"number":221,"state":"CLOSED","title":"saude.cjs quebra com 'path argument undefined' quando ha duas config dirs e a versao do repo esta a frente da instalada"},{"number":263,"state":"CLOSED","title":"gate-mensagem-commit nao reconhece flag curta agrupada (-am, -qm) e nao isenta corpo de heredoc"},{"number":249,"state":"CLOSED","title":"O laco das 114 baterias so existe no YAML da CI: nao ha varredura local, e o verificar mede a ferramenta em vez do teste dela"},{"number":277,"state":"CLOSED","title":"foco.cjs nao tem comando para registrar avanco: a regra 5 obriga o que a 17 proibe"},{"number":21,"state":"CLOSED","title":"Criterio 'a bateria sai 0' e satisfazivel por fora, e tres instrumentos de conferencia falharam junto"},{"number":100,"state":"CLOSED","title":"execSync com valor interpolado em setup.cjs e slug sem validacao em estado.cjs — vizinhos da #89"},{"number":243,"state":"CLOSED","title":"foco-session-start.cjs leva 6-8 s nesta maquina e estoura o timeout 5 do hooks.json: testa-memoria-somente-leitura fica vermelha e nada diz que foi timeout"},{"number":149,"state":"CLOSED","title":"A regra jid-whatsapp para em 15 digitos, e JID de GRUPO tem 18 — passou por baixo e o dado ficou no repo publico"},{"number":101,"state":"CLOSED","title":"P6 da #61: verificacao comparativa tem de declarar ONDE rodou — o cwd do shell persiste entre chamadas"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"},{"number":81,"state":"CLOSED","title":"testa-orcamento.sh mede a mesa, nao o repo: verde no CI e vermelho local pelo mesmo commit"},{"number":239,"state":"CLOSED","title":"gate-fechar-issue bloqueia heredoc cujo texto fecha frase com parentese: \").\" e lido como subshell + source"},{"number":42,"state":"CLOSED","title":"A checagem 4 do conferir-entrega.cjs compara contra \"limpo\", nao contra um instantaneo — e reprova entrega por sujeira que ja estava la"},{"number":210,"state":"CLOSED","title":"Entrega vazia + --paralelo: o conjunto do agente e vazio, entao a checagem 4 nunca reprova"},{"number":27,"state":"CLOSED","title":"testa-saude.sh fica vermelha por rodar de worktree, nao por defeito no codigo — e e onde a esteira roda"},{"number":3,"state":"CLOSED","title":"conferir esta vermelho desde 11/08 e nao tem como ficar verde: 35 abertas sem gancho, e o reparar recusa sem texto a mao"},{"number":2,"state":"CLOSED","title":"Briefing de dispatch nao cobre dado vivo fora do repositorio git"},{"number":264,"state":"CLOSED","title":"Portaria: manifesto de agentes SUBSTITUI em vez de somar, e agente de outro plugin nunca passa"},{"number":14,"state":"CLOSED","title":"limpar-branches.cjs da branch de PR mergeado por squash: classificada 'viva', nunca limpa"},{"number":157,"state":"CLOSED","title":"REINCIDE #16: o workflow esta disabled_manually ha 232 commits, e a maquina do Actions e mais rica que a de quem instala"},{"number":83,"state":"CLOSED","title":"Critério de plano só mede o que a máquina lê — passou verde com feature inutilizável e com dado pessoal em repo público"},{"number":253,"state":"CLOSED","title":"Gate de publicacao bloqueia repo PRIVADO citando \"repo publico\" — nao checa visibilidade"},{"number":187,"state":"CLOSED","title":"testa-segunda-opiniao.sh vaza processo: 7 vivos por 95h, 531s de CPU, bateria verde"},{"number":258,"state":"CLOSED","title":"gate-staging-total: bloqueia texto que cita comando git, e resolve o repo errado com -C"},{"number":241,"state":"CLOSED","title":"Decisao pendente: a portaria vale so neste repo, mas a regra 10 promete portao em toda sessao"}]
+
+
+$ gh issue list --state all --search "junction" --limit 200 --json number,title,state
+[{"number":378,"state":"OPEN","title":"conferir-mutacao.cjs sai 1 sem veredito no Windows quando a raiz tem node_modules como junction"},{"number":379,"state":"OPEN","title":"verificar não fecha em monorepo: a catraca roda toda bateria com --raiz na raiz do repo"}]
+
+
+$ gh issue list --state all --search "execPath" --limit 200 --json number,title,state
+[{"number":382,"state":"OPEN","title":"Hooks chamam node sem caminho absoluto: no Windows, node.exe na pasta atual vence o PATH"},{"number":239,"state":"CLOSED","title":"gate-fechar-issue bloqueia heredoc cujo texto fecha frase com parentese: \").\" e lido como subshell + source"}]
+
+
+$ gh issue list --state all --search "shard" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "varrer-baterias" --limit 200 --json number,title,state
+[{"number":377,"state":"OPEN","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":341,"state":"CLOSED","title":"varrer-baterias: testa-gate-publicacao-destino.sh roda outras duas baterias .sh em dobro"},{"number":335,"state":"CLOSED","title":"13 baterias .cjs nunca rodam no CI: varrer-baterias.sh so descobre testa-*.sh"},{"number":249,"state":"CLOSED","title":"O laco das 114 baterias so existe no YAML da CI: nao ha varredura local, e o verificar mede a ferramenta em vez do teste dela"},{"number":346,"state":"CLOSED","title":"gate-bateria-sem-timeout: stdbuf --output L (opcao longa com espaco) escapa"},{"number":323,"state":"CLOSED","title":"conferir-duplicacao conta arquivo gitignorado (.claude/marketplaces) e deixa testa-saude vermelho em main limpa"},{"number":313,"state":"CLOSED","title":"Contrabarra dupla dentro da string do wrapper ainda esconde o comando dos gates"},{"number":329,"state":"CLOSED","title":"veredito-revisor nao grava quando o estado do fluxo mora so no worktree"},{"number":322,"state":"CLOSED","title":"gate-publicacao-destino recusa o trailer Co-Authored-By e barra Edit de linha que já contém o e-mail"},{"number":312,"state":"CLOSED","title":"estado.cjs recusa carimbo de tarefa acrescentada por emenda ao plano"},{"number":373,"state":"CLOSED","title":"Menores da revisão da rodada 14: docstring do desempate e slug com curinga"},{"number":270,"state":"CLOSED","title":"Linha de mutante sai como 'FALHA <nome real>' e se confunde com falha de verdade no log"},{"number":266,"state":"CLOSED","title":"conferir-mutacao muta a arvore compartilhada: quem ler naquela janela mede o mutante"},{"number":258,"state":"CLOSED","title":"gate-staging-total: bloqueia texto que cita comando git, e resolve o repo errado com -C"},{"number":253,"state":"CLOSED","title":"Gate de publicacao bloqueia repo PRIVADO citando \"repo publico\" — nao checa visibilidade"},{"number":339,"state":"CLOSED","title":"Tres contrabarras dentro das aspas duplas do wrapper ainda escondem o comando (residuo da #313)"},{"number":278,"state":"CLOSED","title":"gate-verificador-staged barra merge por arquivo que ja passou na main"},{"number":275,"state":"CLOSED","title":"gate-verificador-staged barra merge por conteudo que ja esta na main"}]
+
+
+$ gh issue list --state all --search "paralelo" --limit 200 --json number,title,state
+[{"number":377,"state":"OPEN","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":210,"state":"CLOSED","title":"Entrega vazia + --paralelo: o conjunto do agente e vazio, entao a checagem 4 nunca reprova"},{"number":303,"state":"CLOSED","title":"Gemeo Python de conferir-entrega congelou: 21 falhas na main e o portao do CONTRIBUTING esta vermelho"},{"number":42,"state":"CLOSED","title":"A checagem 4 do conferir-entrega.cjs compara contra \"limpo\", nao contra um instantaneo — e reprova entrega por sujeira que ja estava la"},{"number":143,"state":"CLOSED","title":"Os guardas medem o repositorio do cwd da sessao, nao o worktree onde a operacao roda — tres ocorrencias no mesmo dia"},{"number":194,"state":"CLOSED","title":"atualizar-cli.sh sem o lock por mkdir que os dois refreshers ja tem — e nenhuma bateria exercita esse lock"},{"number":180,"state":"CLOSED","title":"Fluxo: o estagio que despacha agente aposta que o turno dura mais que o agente"},{"number":266,"state":"CLOSED","title":"conferir-mutacao muta a arvore compartilhada: quem ler naquela janela mede o mutante"},{"number":181,"state":"CLOSED","title":"Retomar agente por SendMessage nao restaura o worktree isolado — ele passa a commitar na branch de quem despachou"},{"number":198,"state":"CLOSED","title":"observar.cjs no SessionEnd estoura o orcamento COMPARTILHADO de 60s do CLI e mata os outros hooks — 19 sessoes vazadas"},{"number":51,"state":"CLOSED","title":"As tres travas de isolamento falharam na borda: retomada de agente, janela principal, e o rastro da propria esteira"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"},{"number":38,"state":"CLOSED","title":"CORRIGE #25: a saida prescrita (branch nova) e o que derruba a outra sessao em diretorio compartilhado"},{"number":14,"state":"CLOSED","title":"limpar-branches.cjs da branch de PR mergeado por squash: classificada 'viva', nunca limpa"},{"number":1,"state":"CLOSED","title":"Briefing nao diz o ato de entregar: subagente nomeado termina o trabalho e nao devolve (3 de 3)"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"}]
+
+
+$ gh pr list --state all --search "conferir-mutacao" --limit 200 --json number,title,state
+[{"number":391,"state":"OPEN","title":"Mapa de estagios do territorio: contrato v0"},{"number":365,"state":"MERGED","title":"Seis travas semeadas do historico (1.32.0)"},{"number":389,"state":"MERGED","title":"Versao 1.39.0: relogio do mod acende jornada e janela parada"},{"number":348,"state":"MERGED","title":"zerar-issues-10: #346 #344 #342 #341 #340 #339 (1.27.0)"},{"number":354,"state":"MERGED","title":"zerar-issues-11: mensagem do bash $t e trava de gatilho sob demanda (1.29.0)"},{"number":347,"state":"MERGED","title":"gate-bateria-sem-timeout: subagente nao deixa bateria ir para segundo plano (1.26.0)"},{"number":370,"state":"MERGED","title":"zerar-issues-13: #362 #363 #364 (1.34.0)"},{"number":307,"state":"MERGED","title":"limpar-branches: viva sem upstream sai num grupo proprio"},{"number":390,"state":"MERGED","title":"Relógio do mod: #386, #387, #388 e /clear (1.39.1)"},{"number":343,"state":"MERGED","title":"zerar-issues-9: #313 #322 #329 #312 #335 #323 (1.24.0)"},{"number":288,"state":"MERGED","title":"conferir-versao: PR so de estado de fluxo nao exige bump"},{"number":234,"state":"MERGED","title":"Absorver de um plugin de terceiro o que vira trava: mensagem de commit, --confirmo, exit 69, duplicação, carimbos"},{"number":295,"state":"MERGED","title":"zerar-issues-5: conserta 20 Issues abertas em menos de 24h"},{"number":271,"state":"MERGED","title":"Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador"},{"number":328,"state":"MERGED","title":"Agente despachado é folha: não despacha agente (1.23.10)"},{"number":211,"state":"MERGED","title":"conferir-versao: falso positivo na main em sincronia (regressao da #189)"},{"number":297,"state":"MERGED","title":"zerar-issues-6: fronteira de repo na regra 6 e os restos da rodada 5"},{"number":236,"state":"MERGED","title":"Zerar Issues: a fatia revisada e limpa (12 de 18 Issues)"},{"number":308,"state":"MERGED","title":"regua: regua selada por construcao e keep/discard automatico (enxerto do autoresearch)"},{"number":306,"state":"MERGED","title":"Invariante de comportamento nas skills: 15 frases travadas em 7 SKILL.md"},{"number":45,"state":"CLOSED","title":"Gate de sessao co-locada e catraca de mutacao: duas familias reincidentes viram exit code"},{"number":108,"state":"MERGED","title":"Fecha #101: catraca de comparação — ela RODA os dois lados em vez de ler o relato"},{"number":246,"state":"MERGED","title":"Triagem de achado e portaria que le autorizacao explicita do usuario"},{"number":336,"state":"MERGED","title":"gate-busca-raiz: subagente nao varre o disco; perfil pede timeout"},{"number":245,"state":"MERGED","title":"Versao 1.12.1: gate de staging le argumento citado e -- encerra opcoes"},{"number":285,"state":"MERGED","title":"Guias e sensores: marca de categoria, teto por hook, sensor na evidencia do verificar"},{"number":228,"state":"MERGED","title":"Statusline com tempo até o reset; checkout principal fica na main (regra 11, closes #195) — 1.10.0"},{"number":43,"state":"MERGED","title":"Backstop de mutacao no revisar (#4), skill regua, e o relatorio da branch nova"},{"number":46,"state":"MERGED","title":"Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo'"},{"number":205,"state":"MERGED","title":"Issue #189: conferir-versao olha o numero declarado e nao sai 0 sem ter medido"},{"number":274,"state":"MERGED","title":"Titulo da sessao marca se o fluxo fechou ou onde parou"},{"number":156,"state":"MERGED","title":"Pre-publico: JID de grupo, a porta do agente, e fixtures que eram telefone de gente"},{"number":172,"state":"MERGED","title":"Fluxo 7: recibo de colheita — identidade verificavel do artefato entregue (1.1.0)"},{"number":224,"state":"MERGED","title":"Enxerta os sete mecanismos do ponytail, e fecha a fronteira que o gate de código de modelo não tinha"},{"number":36,"state":"MERGED","title":"O ramo 'avancou' da checagem 5 nao tinha guarda fora do --paralelo"},{"number":304,"state":"MERGED","title":"Notas de atualizacao (CHANGELOG) e o adendo que mede o D2 do contrato de territorio"},{"number":151,"state":"MERGED","title":"O retorno do Write-LinhaEmLf vazava um True por linha no stdout"},{"number":242,"state":"MERGED","title":"Zerar Issues, rodada 2: as 6 que faltavam e as 6 novas (1.12.0)"},{"number":267,"state":"MERGED","title":"portaria: deixa de admitir agente e passa a registrar (ver #264)"},{"number":135,"state":"MERGED","title":"Fluxo 3 — ponte: bloco do projeto e integracoes declaraveis"},{"number":126,"state":"MERGED","title":"Fecha #121: a catraca de mutacao para de decidir por relogio de parede"},{"number":152,"state":"MERGED","title":"Portaria: escreve:true admitido com worktree obrigatorio (0.82.0)"},{"number":201,"state":"MERGED","title":"Fluxo 10 (critico): arquivado como superado, com a substituicao provada item a item"},{"number":305,"state":"MERGED","title":"Memória: reconciliação na escrita e consolidação automática"},{"number":183,"state":"MERGED","title":"Lote 3 — guardas medem o repositorio da operacao; backup fora da maquina; fechar Issue exige criterio rodado"},{"number":85,"state":"MERGED","title":"Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79)"},{"number":33,"state":"MERGED","title":"Versao 0.71.0: as quatro issues abertas"},{"number":32,"state":"MERGED","title":"O criterio apontava para o instrumento (#21)"},{"number":154,"state":"MERGED","title":"README: porta de entrada em vez de diario de bordo"},{"number":68,"state":"MERGED","title":"Uma linha ruim nao para o acervo, e a trava nao e roubada por idade"},{"number":39,"state":"CLOSED","title":"Skill regua, backstop de mutacao no revisar, e o relatorio da Issue #38"},{"number":188,"state":"MERGED","title":"Lote 4: instrumento que mede o codigo, e nao a maquina de quem roda"},{"number":28,"state":"MERGED","title":"O padrao de evidencia do usuario chega ao subagente"},{"number":50,"state":"MERGED","title":"Aposenta o gemeo python do ideias"},{"number":114,"state":"MERGED","title":"Fecha #83 (P2): gate de destino — pergunta para onde o arquivo vai antes de deixar escrever"},{"number":69,"state":"MERGED","title":"Trava de encoding: conferir-encoding.cjs pega mojibake, BOM e CRLF em arquivo rastreado"},{"number":5,"state":"MERGED","title":"Premissa nao-olhada ganha contrapeso, e a Issue #4 ganha a checagem que faltava"},{"number":111,"state":"MERGED","title":"Fecha #110: o batedor volta a enxergar as 202 ideias e observacoes abertas"},{"number":164,"state":"MERGED","title":"Scripts entregues derivam o home de quem roda, com trava"},{"number":150,"state":"MERGED","title":"Vigias: dois mortos ha 20 dias, um backup que nunca rodou, e seis vazamentos num arquivo publico"},{"number":60,"state":"MERGED","title":"Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture"},{"number":109,"state":"MERGED","title":"Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler"},{"number":217,"state":"MERGED","title":"Contrato de territorio: AdvPL vira o primeiro, e o repo publico perde os identificadores de trabalho"},{"number":166,"state":"MERGED","title":"Gate: placeholder de usuario nao e nome de ninguem"},{"number":102,"state":"MERGED","title":"Fecha #77: catraca da ponte — e a ponte passa a gerar saida deterministica"},{"number":40,"state":"MERGED","title":"A statusline sai de ~/.claude e entra no plugin, e a bateria de saude para de vazar temporario"},{"number":247,"state":"MERGED","title":"zerar-issues rodada 3: heredoc no gate de Issue e radar em 4 chamadas (1.13.2)"},{"number":167,"state":"MERGED","title":"Issue #165: o gate confere o COMMIT, nao so a ferramenta de escrita"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"},{"number":191,"state":"MERGED","title":"Plano da camada Obsidian: a skill montar-corpus, com dois cortes de escopo"},{"number":31,"state":"MERGED","title":"\"Nao e a main\" nao prova que a branch e sua (#25)"},{"number":147,"state":"MERGED","title":"Fluxo 6 — Portoes: oraculos executaveis, e o lint que audita a autoria deles"},{"number":255,"state":"MERGED","title":"A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241)"},{"number":186,"state":"MERGED","title":"R1 (frente 2) + R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao"},{"number":44,"state":"MERGED","title":"Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada"},{"number":106,"state":"MERGED","title":"Fecha #100: execFileSync em setup.cjs, validarSlug em estado.cjs — e o teste que separa os dois"},{"number":141,"state":"MERGED","title":"Fluxo 9 — Portaria: admissao de subagente por manifesto"},{"number":128,"state":"MERGED","title":"A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo"},{"number":10,"state":"MERGED","title":"Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa"},{"number":213,"state":"MERGED","title":"Skill montar-corpus: wiki em markdown vira acervo, com o grafo tratado como entrada nao confiavel"},{"number":9,"state":"MERGED","title":"As tres costuras da esteira: decisao, opcao morta e creep deixam de evaporar"},{"number":87,"state":"MERGED","title":"auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API"},{"number":204,"state":"MERGED","title":"Issue #187: o vazamento e do transporte, nao da bateria — matarDescendencia no rodarCli"}]
+
+
+$ gh pr list --state all --search "junction" --limit 200 --json number,title,state
+[{"number":147,"state":"MERGED","title":"Fluxo 6 — Portoes: oraculos executaveis, e o lint que audita a autoria deles"}]
+
+
+$ gh pr list --state all --search "execPath" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "shard" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "varrer-baterias" --limit 200 --json number,title,state
+[{"number":347,"state":"MERGED","title":"gate-bateria-sem-timeout: subagente nao deixa bateria ir para segundo plano (1.26.0)"},{"number":375,"state":"MERGED","title":"Versao 1.35.1: slug sem curinga e premissa do desempate (#373)"},{"number":351,"state":"MERGED","title":"gate-subagente-sem-gh: subagente nao escreve no GitHub (1.28.0)"},{"number":343,"state":"MERGED","title":"zerar-issues-9: #313 #322 #329 #312 #335 #323 (1.24.0)"},{"number":359,"state":"MERGED","title":"backup-db-vivo: backup externo com o rainforest.db aberto, 1.30.1"},{"number":357,"state":"MERGED","title":"zerar-issues-12: gates dizem quando a causa é variável (#350), 1.30.0"},{"number":354,"state":"MERGED","title":"zerar-issues-11: mensagem do bash $t e trava de gatilho sob demanda (1.29.0)"},{"number":316,"state":"MERGED","title":"gates: bash \"$VAR/caminho\" e caminho de script, nao wrapper ilegivel"},{"number":271,"state":"MERGED","title":"Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador"},{"number":308,"state":"MERGED","title":"regua: regua selada por construcao e keep/discard automatico (enxerto do autoresearch)"},{"number":285,"state":"MERGED","title":"Guias e sensores: marca de categoria, teto por hook, sensor na evidencia do verificar"},{"number":306,"state":"MERGED","title":"Invariante de comportamento nas skills: 15 frases travadas em 7 SKILL.md"},{"number":305,"state":"MERGED","title":"Memória: reconciliação na escrita e consolidação automática"},{"number":318,"state":"MERGED","title":"gates: & com alvo literal no PowerShell e comando comum, nao ilegivel"},{"number":324,"state":"MERGED","title":"prompts: tira arqueologia datada e drift da regra 10"}]
+
+
+$ gh pr list --state all --search "paralelo" --limit 200 --json number,title,state
+[{"number":356,"state":"MERGED","title":"fix(abertura): sonda uma bridge WhatsApp por conta"},{"number":36,"state":"MERGED","title":"O ramo 'avancou' da checagem 5 nao tinha guarda fora do --paralelo"},{"number":13,"state":"MERGED","title":"Conferencia de entrega e teste de saude sobrevivem a despacho paralelo"},{"number":62,"state":"MERGED","title":"As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada"},{"number":57,"state":"MERGED","title":"Fecha a #42: a checagem 4 compara contra um instantaneo, nao contra limpo"},{"number":201,"state":"MERGED","title":"Fluxo 10 (critico): arquivado como superado, com a substituicao provada item a item"},{"number":66,"state":"MERGED","title":"Fecha a #61: criterio numerado vira contrato de retorno (P1, P2, P3, P4, P7)"},{"number":191,"state":"MERGED","title":"Plano da camada Obsidian: a skill montar-corpus, com dois cortes de escopo"},{"number":59,"state":"MERGED","title":"O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas"},{"number":105,"state":"MERGED","title":"CI: so no PR, e run superado se cancela — a cota de Actions bateu 90%"},{"number":56,"state":"MERGED","title":"Fecha a #38: a regra 11 prescreve worktree, e o radar marca a janela co-locada"},{"number":6,"state":"MERGED","title":"Nasce o /divergir, e o CRLF para de custar byte na injecao"},{"number":212,"state":"MERGED","title":"O orcamento do observar.cjs cabe no teto real do SessionEnd"},{"number":204,"state":"MERGED","title":"Issue #187: o vazamento e do transporte, nao da bateria — matarDescendencia no rodarCli"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"},{"number":109,"state":"MERGED","title":"Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler"},{"number":128,"state":"MERGED","title":"A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo"}]
+
+
+$ git ls-remote --heads origin | grep -F "conferir-mutacao"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "junction"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "execPath"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "shard"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "varrer-baterias"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "paralelo"
+(vazio)
+
+$ git log --all --grep="conferir-mutacao" --oneline
+f8331119 estado relogio: executar ok, 9 tarefas e mutacoes reconferidas
+bd2aaba8 Correção de três bugs em scripts/substituir.cjs: CP-1252, falso resíduo, temp em disco diferente
+34b4bd75 Correção Defei tos A e B do plano 2026-09-30-semear-travas (tarefa 5)
+e75eb2c8 agente-sem-background: gate nega bateria sem timeout em subagente
+d95dae8c teste: bateria de hooks/veredito-revisor.cjs (tarefa 12)
+200f4732 utilidade: denominador da regua so conta sessao com servida (tarefa 8)
+d5f4baab utilidade: teto por passada e servidas_sem_id no log (tarefa 7)
+8b12d51d utilidade: servida substituida pela reconciliacao ainda casa com o id (tarefa 6)
+343c5ff4 tarefa 1: extrator do transcrito real (servidas/texto)
+99bc95a8 zerar-issues-8: tarefa 14, colapso de continuacao segue o bash de verdade
+7054f133 zerar-issues-8: tarefas 8-9, coproc e parametro especial (achados 1-2 da revisao)
+c6dbfcc2 limpar-branches: viva sem upstream sai num grupo proprio
+117615cb regua selada: fecha os onze achados da rodada 6 do revisar
+210a7233 segunda fonte: typo em frase nao_deve passa a derrubar a bateria
+b45c4ab3 invariantes: numeros e fronteira coerentes com a forma que ficou aberta
+10e48c85 executar rodada 3: fecha ok; sensor deixa de aprovar sem medir
+1288fbe9 executar: ok 4/4, com as tres catracas re-rodadas pela integracao
+552b2d01 fluxo memoria-reconciliacao: integra conserto dos 2 achados e reabre executar ok
+74e99672 memoria: colunas substituida_por e reconciliada_em em observacoes
+73c11d4d Plano: os criterios passam a ser comandos que rodam
+7d074d45 fluxo zerar-issues-6, tarefa 6: varredura de orfaos conferir-mutacao-* > 24h
+a715b77b fluxo zerar-issues-6 tarefa 5: secao 20 do testa-conferir-mutacao.sh le PYCACHE_VISTO do stdout da bateria
+cb586e0d fluxo zerar-issues-6 tarefa 7: catraca de fixture isolada vs clone fiel
+6fe0cfb1 conferir-mutacao: metadados git da copia vinculada ficam fora da copia
+06550327 Integra tarefa 22 do zerar-issues-5
+9ec76d3b conferir-mutacao: copia de worktree vinculado continua vinculada
+891db543 Plano zerar-issues-5: tarefa 22 e de/para literal da tarefa 8
+083e1659 conferir-mutacao: copia da mutacao continua sendo repositorio git
+a835ca1e conferir-mutacao roda numa copia da arvore, nunca no fonte real
+981253ce gate-staging-total: preserva -C de segmento anterior e nomeia o bloqueio
+79804d82 conferir-fluxo mutacoes: exit != 0 do conferir-mutacao reprova
+13b552c6 Titulo da sessao marca se o fluxo fechou ou onde parou (#274)
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+2a86a3c4 testes: a soma do agentes.extra.json nao tinha caso nenhum
+ef77e1e2 A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241) (#255)
+69ef22bf Catraca de cobertura por fixture, versionada
+3ae555cb Verificar: caso 20 da catraca resolve o Python em $PY, como a guarda exige
+4830663a Revisar (rodada 2): os tres achados do revisor, fechados
+91db7071 Estado: executar fecha com 33 tarefas e a catraca declarada; handover ganha a rodada 2
+ddde15b4 Integracao das tarefas 24 e 25: literal do plano e sandbox com a catraca
+fd8226ce T28: conferir-mutacao bash+PYTHONDONTWRITEBYTECODE (D24-D25, rodada 2)
+97363814 Trazer a main (1.11.0) para fluxo/zerar-issues
+63228ff8 Zerar Issues: a fatia revisada e limpa (12 de 18 Issues)
+c90a0c30 Revisar: REPROVADO com 5 achados; executar reaberto
+59ea514b Tarefa 23 (D9): bloco `mutacao:` aceita `timeout:`, e a pulada diz por que
+d39d5e2d Tarefa 21 (D9): a catraca de verificar le o plano declarado, e a fixture prova
+6967685a Tarefa 22 (D11): o teto de queda vira 'a bateria colapsou'
+9bd0ec73 Emenda ao plano: tarefas 21 e 22, achadas pela propria catraca
+bb570aee Estado: 18 de 19; T10 e T12 integradas e validadas
+dbe58cf2 T12: comentario nao pode repetir o literal do bloco `mutacao:`
+757fa0da Tarefa 9 (D9, Issue #192): mutacoes do plano viram executavel
+2ba92952 Estado: recusa flag desconhecida ANTES de gravar (Issue #218)
+53ddd417 Estado: onda 1 com 10 de 14 integradas; emenda ao plano (T12 inclui contexto-sessao.cjs)
+67214638 Tarefa 11: o placar de uma bateria e a ULTIMA linha, nao a primeira
+67d56442 Tarefa 11 (D11): conferir-mutacao deteta queda desproporcional de asserções
+51d0afce Tarefa 13: ferramentas-consulta com timeout configurável e testes de incerteza
+2dfa734c Corta as duas catracas caseiras: conferir-mutacao.cjs ja faz isso
+1cdfa745 conferir-versao separa nao medi de nao ha o que medir, e olha o numero
+add5bb5a Tarefa 9, rodada 2: a bateria media o repositorio de quem a roda, e o hook lia o cwd errado
+4e5de7d8 Tarefa 2, rodada 3: o caso R21 do gate-worktree montava JSON invalido, e media outra coisa
+2448df0d Tarefa 1, rodada 3: o caso media o instrumento errado, e a isencao media o valor inteiro
+bb495646 Lote 4: design e plano — dez Issues de guarda que afirma o que nao mediu
+aff314a8 Fluxo: executar ok — 4/4 tarefas, catraca vermelha nas duas com comportamento
+38a31904 Conserta falso negativo do gate-git-verificacao: heredoc sem aspas expande $(...) e crase
+54c8eabf Merge conserto do falso positivo de heredoc into fluxo/nao-mente
+bb44c934 Merge conserto dos 2 achados do revisor into fluxo/nao-mente
+9946bb12 Merge gate rodada 3 (caminho de shell, eval, escape) into fluxo/nao-mente
+9579c02a Gate git-verificacao: fecha shell com caminho, eval, escape e backslash
+7ce56dad Merge gate rodada 2 (bash -c, sh -c, subshell) into fluxo/nao-mente
+aeda8e21 Merge tarefa 2 (gate git-verificacao) into fluxo/nao-mente
+dab88b1a Adiciona gate que barra pulo de verificacao no git (tarefa 2, D8-D11)
+9c8fb467 Lote 3 rodada 8: vigia saneia a linha de erro antes de truncar
+24c0286c Lote 3 T13: Hook barra `gh issue close` e `gh pr create/merge` sem evidência
+714a15c6 Fluxo 9: auditoria externa (codex) fecha dois buracos que a rede sincrona deixava
+0843a7fb Fluxo 9: auditoria externa (codex) fecha dois buracos que a rede sincrona deixava
+4bd05dbb Fluxo 9: falha interna da portaria NEGA — o critico da rodada 6 era meu
+d9aee5e0 Fluxo 9: falha interna da portaria NEGA — o critico da rodada 6 era meu
+e81d065d Fluxo 9: a FORMA do manifesto passa a ser conferida — critico da rodada 5
+ee3d9a21 Fluxo 9: a FORMA do manifesto passa a ser conferida — critico da rodada 5
+54949c6d Fluxo 9: o resolver de estagio ativo passa a USAR o estado.cjs, nao imitar
+5f7a68df Fluxo 9: o resolver de estagio ativo passa a USAR o estado.cjs, nao imitar
+39d78863 Fluxo 9: os dois criticos da rodada 4 — teste tautologico e allow que mentia
+07c6f35e Fluxo 9: os dois criticos da rodada 4 — teste tautologico e allow que mentia
+61c67b81 Fluxo 9: a chave `tools:` deixa de ser busca literal — critico da rodada 3
+4af5c86b Fluxo 9: a chave `tools:` deixa de ser busca literal — critico da rodada 3
+6adc5553 Fluxo 9: parser de `tools:` passa a ter TRES estados — o critico da rodada 2
+e1274286 Fluxo 9: parser de `tools:` passa a ter TRES estados — o critico da rodada 2
+29a8e8e7 Fluxo 9: executar refechado ok apos o conserto dos 2 criticos
+99a83dbe Fluxo 9: executar refechado ok apos o conserto dos 2 criticos
+695e8bc1 Adiciona bateria dos portoes P1-P5 do fluxo 9 (portaria)
+811ea05b Adiciona bateria dos portoes P1-P5 do fluxo 9 (portaria)
+203fa2a0 Fluxo 9: resolver de estagio ativo passa a casar `fluxo-N-<slug>` com `fluxo/<slug>`
+5f7c9de1 Fluxo 9: resolver de estagio ativo passa a casar `fluxo-N-<slug>` com `fluxo/<slug>`
+a14d675a Fluxo 9 T4: o log de despacho sai do git, o manifesto e a amostra ficam
+f3d22fee Fluxo 9 T4: o log de despacho sai do git, o manifesto e a amostra ficam
+f025a2bb T8: fecha cobertura da bateria do conselho — desempate real e lint de dependência
+b76ed64b T8: fecha cobertura da bateria do conselho — desempate real e lint de dependência
+e3975143 Reescreve testa-poda-metricas.sh (T5/T6 real) e conserta a contagem de testa-relatorio-poda.sh (T8)
+65645274 Reescreve testa-poda-metricas.sh (T5/T6 real) e conserta a contagem de testa-relatorio-poda.sh (T8)
+b16ee287 Adiciona script isolado de testes de poda para conferir-mutacao.cjs
+77f68210 Adiciona script isolado de testes de poda para conferir-mutacao.cjs
+08663197 Tarefa 3: Fase 2 (anonimização e revisões) — subcomando revisar + conferir --fase revisao
+66a348a2 Tarefa 3: Fase 2 (anonimização e revisões) — subcomando revisar + conferir --fase revisao
+0d79e70b Fluxo 9 T2: hook de captura + bateria da catraca + settings.json versionado
+939d6401 Fluxo 9 T2: hook de captura + bateria da catraca + settings.json versionado
+03b23bf5 T19: Remoção posicional do bloco de projeto — startsWith em vez de indexOf
+b81154e1 T19: Remoção posicional do bloco de projeto — startsWith em vez de indexOf
+1ec70423 Fecha #121: a catraca de mutacao para de decidir por relogio de parede (#126)
+a4d836cd Fecha #121: a catraca de mutacao para de decidir por relogio de parede (#126)
+889ff9c9 Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+56ea03cc Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+ebe9dbb1 Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler (#109)
+2fd34af9 Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler (#109)
+59847e31 Fecha #101: catraca de comparação — ela RODA os dois lados em vez de ler o relato (#108)
+1f426429 Fecha #101: catraca de comparação — ela RODA os dois lados em vez de ler o relato (#108)
+d9cb884f Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79) (#85)
+9b7ee00d Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79) (#85)
+c3ab6cf1 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+62ca78d5 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+f8dc7599 Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture (#60)
+13acf85e Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture (#60)
+40e3f3bd Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+2cc8788c Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+
+$ git log --all --grep="junction" --oneline
+c1d68f1f Bateria do radar: (f) de volta, (g) conta chamadas de verdade, (h) prunable
+43df8893 Consertar as tres baterias que so a CI viu vermelhas
+033882c5 Fluxo 7 T2: implementar gravar com testes e .gitignore
+ab3776e6 Fluxo 6: os dois achados da auditoria cross-model (codex)
+d50345d8 Fluxo 6: os dois achados da auditoria cross-model (codex)
+
+$ git log --all --grep="execPath" --oneline
+(vazio)
+
+$ git log --all --grep="shard" --oneline
+(vazio)
+
+$ git log --all --grep="varrer-baterias" --oneline
+371b587e Versao 1.35.1: slug sem curinga e premissa do desempate escrita (#373)
+deccd1d4 zerar-issues-14 t1: isencao da varredura cabe no teto da skill
+2ef22ae1 Suite completa: duas baterias alheias acertadas
+24d457b1 multihost: renomeia o contrato Codex para fora de testa-*.cjs
+e75eb2c8 agente-sem-background: gate nega bateria sem timeout em subagente
+778aa139 tarefa 4: Varredor descobre baterias .cjs - implementação (#335)
+ece512fa Tarefa 4: Varredor descobre baterias .cjs (#335)
+08bc3300 Issue #303: porta o gemeo Python de conferir-entrega e prova no CI
+da34851b testa-conferir-invariantes: caixas nascem dentro de uma raiz com trap
+f6872939 revisar rodada 7: primeira com 0 bloqueantes; reprovado por 6 menores
+039e1d04 fluxo memoria-reconciliacao: verificar fecha ok, 9 de 9 criterios
+46f93fec fluxo memoria-reconciliacao: executar fecha ok, 8 de 8
+71d574c0 conserta 5 regressoes da entrega memoria-reconciliacao-e-consolidacao
+a835ca1e conferir-mutacao roda numa copia da arvore, nunca no fonte real
+06f52e2a fluxo: fecha o executar da rodada 2, com o sensor que a CI usa
+f7d76692 teto: o Runtime sai do SKILL.md, e a bateria do ledger declara sensor
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+
+$ git log --all --grep="paralelo" --oneline
+6bfa8f95 docs: regra 10 e briefing — agente despachado é folha (tarefa 5)
+492347d6 ci: baterias so no Node 24, a mesma versao da maquina
+a9c226aa Integra tarefa 14 (#282) do zerar-issues-5
+c2a2dd37 Integra tarefa 13 (#276) do zerar-issues-5
+83e902df Issue #210: adicionar verificação de commit vazio no conferir-entrega
+b33e883e T7: credita ponytail e superpowers no README (D7)
+0ae3fc8f T9: corrige tres afirmacoes que nao batiam com o codigo
+f92451cc T9: campo runtime para despacho de agentes em Codex
+cfe66844 O orcamento do observar.cjs cabe no teto real do SessionEnd (fecha #198)
+404d4449 Achado da revisao: a guarda de reuso de PID nao cobria o PID RAIZ
+6dd373fa Corrige a tarefa 4 do plano: dependencia declarada nao batia com o criterio
+3ac0ceff Plano da camada Obsidian: a skill montar-corpus, com dois cortes de escopo
+1769547f Fluxo: executar ok de novo — os 3 achados da rodada 5 fechados
+ef546cbb Lote 3: stub do gh da bateria de fechar-issue em Node, nao em batch
+71545a04 Fluxo 2 (memoria) aberto: design aprovado na estrutura canonica, plano ok
+adddd596 Fluxo 2 (memoria) aberto: design aprovado na estrutura canonica, plano ok
+6e07275c Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README (#129)
+be0332c9 Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README (#129)
+081b6cf1 Batedor: seis repos indicados — e o gate-worktree e cego para CLI de agente externa
+9980cac0 Batedor: seis repos indicados — e o gate-worktree e cego para CLI de agente externa
+b2582e39 Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos (#119)
+ea9d0286 Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos (#119)
+ebe9dbb1 Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler (#109)
+2fd34af9 Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler (#109)
+f5e76d3c CI: so no PR, e run superado se cancela — a cota bateu 90% (#105)
+6b5d0679 CI: so no PR, e run superado se cancela — a cota bateu 90% (#105)
+c3ab6cf1 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+62ca78d5 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+c0508a73 As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada (#62)
+465f2544 As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada (#62)
+f8dc7599 Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture (#60)
+13acf85e Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture (#60)
+2a748cdf Cobre o ramo 'avancou' da checagem 5 no caminho default, sem --paralelo (#36)
+a7a2bcb1 Cobre o ramo 'avancou' da checagem 5 no caminho default, sem --paralelo (#36)
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+da72ec7f Conferencia de entrega e teste de saude sobrevivem a despacho paralelo (#13)
+05541310 Conferencia de entrega e teste de saude sobrevivem a despacho paralelo (#13)
+5e576099 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+d5261da4 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+9dc37f00 Nasce o /divergir, e o CRLF para de custar byte na injecao de toda sessao
+2fe9e119 Nasce o /divergir, e o CRLF para de custar byte na injecao de toda sessao
+ea43498e O radar para de comer o prazo: tres pastas por nome, o resto vira numero
+094f56d1 O radar para de comer o prazo: tres pastas por nome, o resto vira numero
+7a0369d5 A esteira de sete estagios, e o /grill vira /brainstorm
+60252094 A esteira de sete estagios, e o /grill vira /brainstorm
+4e055f1c A orquestracao sai da CLAUDE.md duplicada e vira regra do plugin
+12ca0281 A orquestracao sai da CLAUDE.md duplicada e vira regra do plugin
+48d06a5d Regras 13 (correcao vira observacao) e 14 (regra bloqueada se anuncia); v0.21.0
+f0e88330 Regras 13 (correcao vira observacao) e 14 (regra bloqueada se anuncia); v0.21.0
+d4fb49e9 ideias.jsonl como fonte da verdade + heartbeat multi-janela (radar leve em trabalho paralelo) + v0.7.0
+ffd61f7a ideias.jsonl como fonte da verdade + heartbeat multi-janela (radar leve em trabalho paralelo) + v0.7.0
+
+$ cat <dados>/ideias.jsonl
+{"id":"conferir-entrega-nao-sabe-lidar-com-despacho-paralelo","titulo":"conferir-entrega.cjs da falso positivo nas checagens 4 e 5 quando a janela principal integra a tarefa irma"}
+{"id":"ancestralidade-sem-paralelo-nao-tem-teste","titulo":"D1 diz que a ancestralidade vale sempre, mas so existe caso de recuo — o caminho default nao tem guarda"}
+{"id":"entrega-vazia-com-paralelo-nunca-cruza","titulo":"Entrega vazia + --paralelo: o conjunto do agente e vazio, entao o cruzamento nunca reprova"}
+{"id":"conferir-mutacao-compara-duracao","titulo":"conferir-mutacao.cjs deve comparar a DURACAO do baseline com a da pos-mutacao"}
+{"id":"briefing-que-pede-mutacao-em-prosa","titulo":"Briefing que descreve a prova de mutacao em prosa em vez de chamar conferir-mutacao.cjs"}
+{"id":"rainforest-conferir-mutacao-envenena-o-pycache","titulo":"conferir-mutacao.cjs deixa o .pyc com a mutacao dentro, e o Python nunca invalida"}
+{"id":"catraca-bateria-vai-para-o-cmd-no-windows","titulo":"conferir-mutacao.cjs entrega a bateria ao cmd.exe, e um 'rm ...; python ...' apaga arquivo"}
+{"id":"teto-de-queda-do-conferir-mutacao-pune-bateria-pequena","titulo":"O teto de 20% do conferir-mutacao reprova bateria pequena que funciona"}
+
+
