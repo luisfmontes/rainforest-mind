@@ -63,6 +63,8 @@
  *                                          baseline (`spawnSync` devolve `.error`,
  *                                          tipicamente ENOENT do shell) — diferente
  *                                          do 4, que e' "rodou e nao mediu nada".
+ *                                          Tambem sai 69 quando a copia da raiz
+ *                                          falha (ex.: junction quebrada, #378).
  *                                          Primeira linha do stderr:
  *                                          "nao-verificavel: <motivo>".
  *
@@ -123,6 +125,9 @@ function ler(nome) {
   if (i + 1 >= process.argv.length) erroUso(`--${nome} veio sem valor`);
   return process.argv[i + 1];
 }
+
+// Falha da copia da raiz: bloqueio de ambiente, o mesmo 69 do "nao executa".
+const EXIT_COPIA_FALHOU = 69;
 
 function ultimasLinhas(texto, n) {
   const linhas = String(texto || '').replace(/\s+$/, '').split(/\r?\n/);
@@ -563,20 +568,27 @@ function main() {
   // exige privilegio (EPERM). O filter pula o link e o script o recria depois:
   // junction para diretorio (nao exige privilegio), copia para arquivo.
   const links = [];
-  fs.cpSync(raiz, raizExecucao, {
-    recursive: true,
-    filter: (p) => {
-      if (path.relative(raiz, p) === '.git') return false;
-      if (p === raiz) return true;
-      if (fs.lstatSync(p).isSymbolicLink()) { links.push(p); return false; }
-      return true;
-    },
-  });
-  for (const p of links) {
-    const destino = path.join(raizExecucao, path.relative(raiz, p));
-    const real = fs.realpathSync(p);
-    if (fs.statSync(real).isDirectory()) fs.symlinkSync(real, destino, 'junction');
-    else fs.copyFileSync(real, destino);
+  try {
+    fs.cpSync(raiz, raizExecucao, {
+      recursive: true,
+      filter: (p) => {
+        if (path.relative(raiz, p) === '.git') return false;
+        if (p === raiz) return true;
+        if (fs.lstatSync(p).isSymbolicLink()) { links.push(p); return false; }
+        return true;
+      },
+    });
+    for (const p of links) {
+      const destino = path.join(raizExecucao, path.relative(raiz, p));
+      const real = fs.realpathSync(p);
+      if (fs.statSync(real).isDirectory()) fs.symlinkSync(real, destino, 'junction');
+      else fs.copyFileSync(real, destino);
+    }
+  } catch (e) {
+    // Ambiente, nao conteudo (regra 14): nao ha bateria para medir, entao sai
+    // 69 com uma linha, nao com stack trace e exit 1 (Issue #378).
+    process.stderr.write(`nao-verificavel: copia da raiz falhou — ${e.message}\n`);
+    process.exit(EXIT_COPIA_FALHOU);
   }
   materializarGit(raiz, raizExecucao);
 

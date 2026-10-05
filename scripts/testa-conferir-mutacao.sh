@@ -1313,6 +1313,35 @@ else
   falhou=$((falhou+1)); printf '  FALHA a limpeza da copia apagou o conteudo apontado pela junction\n'
 fi
 
+echo
+echo "== 27. junction quebrada na raiz: bloqueio de ambiente, nao stack trace (Issue #378) =="
+RQ="$S/raizq"; WRQ="$W/raizq"
+ALVOQ="$S/alvo-apagado"; WALVOQ="$W/alvo-apagado"
+mkdir -p "$RQ" "$ALVOQ"
+cp "$CAIXA/fonte.cjs" "$RQ/fonte.cjs"
+node -e "require('fs').symlinkSync(process.argv[1], process.argv[2], 'junction')" "$WALVOQ" "$WRQ/node_modules"
+rm -rf "$ALVOQ"
+node "$SCRIPT" --raiz "$WRQ" --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' \
+  --bateria 'bash bateria.sh' > "$SAIDA" 2> "$S/saida-q.err"
+GOTQ=$?
+if [ "$GOTQ" -eq 69 ]; then
+  ok=$((ok+1)); printf '  ok    junction quebrada na raiz sai 69 nao-verificavel\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA junction quebrada na raiz sai 69 nao-verificavel: veio exit=%s\n' "$GOTQ"
+  sed 's/^/        | /' "$S/saida-q.err" | tail -6
+fi
+if head -1 "$S/saida-q.err" | grep -q '^nao-verificavel: copia da raiz falhou — '; then
+  ok=$((ok+1)); printf '  ok    o stderr comeca por "nao-verificavel: copia da raiz falhou —"\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA o stderr nao comeca pelo texto de nao-verificavel\n'
+  sed 's/^/        | /' "$S/saida-q.err" | head -3
+fi
+if grep -q '    at ' "$S/saida-q.err"; then
+  falhou=$((falhou+1)); printf '  FALHA o stderr tem stack trace (linha com "    at ")\n'
+else
+  ok=$((ok+1)); printf '  ok    o stderr nao tem stack trace\n'
+fi
+
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]
