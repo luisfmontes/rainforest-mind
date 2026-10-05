@@ -80,6 +80,17 @@ Este é o único estágio que **não** abre com `exigir`: `design` não tem
 pré-requisito, e `exigir` recusa slug inexistente — é este estágio quem cria o
 estado.
 
+**Varra o que o repositório já sabia, ainda antes da primeira pergunta:**
+`node scripts/varrer.cjs --slug <slug> <termo>...` com os termos do tema (módulo,
+tabelas, nome da rotina). Ele consulta Issues e PRs em qualquer estado, branches
+remotas, `git log --all --grep` e o `ideias.jsonl`, e grava
+`docs/rainforest/varredura/<slug>.txt` com cada comando e a saída. Leia na íntegra
+o que casar. O `ao_colher` das ideias casadas entra na árvore de decisão como
+pergunta; o que for defeito técnico entra como risco, com a fonte. Fica antes da
+primeira rodada porque um design já reimplementou uma Issue inteira depois de
+varrer só a `main` (`varri-so-a-main-e-duplique-feature`), e uma sessão apresentou
+o bloco 1 do design sem abrir cinco ideias relevantes.
+
 ## Fato é meu, decisão é dele (regra 16)
 
 Pergunta da fronteira que o ambiente responde — o que tem no arquivo, a
@@ -124,13 +135,9 @@ docs/rainforest/varredura/<slug>.txt — <o que ela achou, e o que isso mudou>
 
 ### Varredura: o que o repositório já sabia
 
-Antes de gravar o design, rode `node scripts/varrer.cjs --slug <slug> <termo>...`
-com os termos do tema. Ele consulta Issues e PRs em qualquer estado, branches
-remotas, `git log --all --grep` e o `ideias.jsonl`, e grava
-`docs/rainforest/varredura/<slug>.txt` com cada comando e a saída. A seção
-`## Varredura` cita esse arquivo; `marcar --estagio design` recusa (exit 2) sem
-ele, ou com ele vazio. Existe porque um design já reimplementou uma Issue
-inteira depois de varrer só a `main` (`varri-so-a-main-e-duplique-feature`).
+A varredura já rodou na abertura (seção "Abrir"). A seção `## Varredura` do design
+cita o arquivo dela e diz o que ele achou e o que isso mudou; `marcar --estagio
+design` recusa (exit 2) sem o arquivo, ou com ele vazio.
 
 ### Avaliado e descartado vs. Fora de escopo
 
