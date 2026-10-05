@@ -15,6 +15,7 @@ const PLUGIN = path.resolve(__dirname, '..');
 // Mesmo teto do radar da abertura (hooks/foco-session-start.cjs).
 const JANELA_VIVA_MS = 6 * 3600 * 1000;
 const OCIOSIDADE_PADRAO_MIN = 45;
+const TETO_BYTES = 256 * 1024;
 
 function valorDe(nome) {
   const i = process.argv.indexOf(nome);
@@ -35,7 +36,13 @@ function main() {
   }
   let state;
   try {
-    state = JSON.parse(fs.readFileSync(path.join(raiz, 'sessoes.json'), 'utf8'));
+    const caminhoSessoes = path.join(raiz, 'sessoes.json');
+    const stats = fs.statSync(caminhoSessoes);
+    if (stats.size > TETO_BYTES) {
+      process.stderr.write(`relogio-sessoes: sessoes.json acima de 256 KB (${stats.size} bytes)\n`);
+      return 1;
+    }
+    state = JSON.parse(fs.readFileSync(caminhoSessoes, 'utf8'));
   } catch (e) {
     process.stderr.write(`relogio-sessoes: sessoes.json ausente ou ilegivel (${e.message})\n`);
     return 1;

@@ -83,7 +83,10 @@ export const register: Register = (on, options) => {
   // Timers do relogio: ficam no escopo do register para o session.end e o proximo
   // session.start cancelarem os da sessao anterior.
   let timers: { cancel: () => void }[] = []
+  // Id da sessao que armou os timers: so o session.end dela cancela o relogio.
+  let armadoPor: string | null = null
   const cancelarRelogio = () => {
+    armadoPor = null
     const velhos = timers
     timers = []
     for (const t of velhos) {
@@ -112,6 +115,7 @@ export const register: Register = (on, options) => {
     cancelarRelogio()
     try {
       const id = await $.session.id()
+      armadoPor = id
       const cwd = await $.session.cwd()
       const raiz = $.plugin.root
       const io = { rodar: (argv: string[], init: { env: Record<string, string>; timeoutMs: number }) => $.process.run(argv, init) }
@@ -143,7 +147,9 @@ export const register: Register = (on, options) => {
         if (sessoesEmCurso) return
         sessoesEmCurso = true
         try {
-          const bruto = await rodarJson(io, ['node', `${raiz}/scripts/relogio-sessoes.cjs`, '--cwd', cwd, '--sessao', id], 5000, { CLAUDE_PROJECT_DIR: cwd })
+          // Depois de /clear o processo segue com outro id: le-o de novo uma vez.
+          if (armadoPor === null) armadoPor = await $.session.id()
+          const bruto = await rodarJson(io, ['node', `${raiz}/scripts/relogio-sessoes.cjs`, '--cwd', cwd, '--sessao', armadoPor], 5000, { CLAUDE_PROJECT_DIR: cwd })
           const dados = sessoesDe(bruto)
           await update($, relogioSessoes, () => dados)
           await reavaliar()
@@ -181,7 +187,11 @@ export const register: Register = (on, options) => {
 
   // O matcher (qualquer motivo) evita colidir com o session.end sem matcher da abertura.
   on('session.end', { reason: /.*/ }, async (_$, e, next) => {
-    cancelarRelogio()
+    if (armadoPor !== null && e.sessionId === armadoPor) {
+      // /clear nao tem session.start depois: o relogio segue e o id novo e lido no proximo tick.
+      if (e.reason === 'clear') armadoPor = null
+      else cancelarRelogio()
+    }
     return next(e)
   })
 

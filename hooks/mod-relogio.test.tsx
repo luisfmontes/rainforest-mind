@@ -67,6 +67,7 @@ async function montar($: any, on: any, surface: Surface, inicio: number, dadosFa
     argvS: [] as string[][],
     faixa: dadosFaixa,
     ctx: [] as string[],
+    sessaoId: 'sessao-atual',
   }
   const resposta = (modo: Modo, corpo: unknown) => {
     if (modo === 'exit1') return saida('', 1)
@@ -95,7 +96,7 @@ async function montar($: any, on: any, surface: Surface, inicio: number, dadosFa
     return saida(JSON.stringify(s.faixa))
   })
   on('session.cwd', async () => ({ value: '/projeto' }))
-  on('session.id', async () => ({ value: 'sessao-atual' }))
+  on('session.id', async () => ({ value: s.sessaoId }))
   on('session.start', async (_$: any, e: any) => ({ cwd: e.cwd }))
   on('session.end', async () => ({ sessionId: 'sessao-atual' }) as never)
   on('turn.complete', async () => ({ text: '' }))
@@ -127,7 +128,7 @@ async function montar($: any, on: any, surface: Surface, inicio: number, dadosFa
     expect(await botao()).toBeUndefined()
   }
   const comecar = (interativo = true) => $.session.start({ cwd: '/projeto', surface, isInteractive: interativo })
-  const terminarSessao = () => $.session.end({ reason: 'other' } as never)
+  const terminarSessao = () => $.session.end({ reason: 'other', sessionId: 'sessao-atual' } as never)
   let n = 0
   const terminar = (answer: string) =>
     $.turn.complete({ answer, durationMs: 1, isAborted: false, turnId: `t${++n}`, reason: 'answer' } as never)
@@ -381,6 +382,49 @@ for (const surface of ['terminal', 'desktop'] as const) {
       await terminarSessao()
       const antes = { s: s.runsS, j: s.runsJ }
       await relogio.advance(600000)
+      expect(s.runsS).toBe(antes.s)
+      expect(s.runsJ).toBe(antes.j)
+    })
+
+    await ui.unmount()
+  })
+
+  test(`relogio (${surface}): session.end de outra sessao nao cancela os timers`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40))
+    const { relogio, s, ui, comecar, caso } = m
+
+    await caso('D2 session.end com outro sessionId deixa o relogio armado', async () => {
+      await comecar()
+      await relogio.advance(2000)
+      await $.session.end({ reason: 'other', sessionId: 'outra-sessao' } as never)
+      const antes = s.runsS
+      await relogio.advance(60000)
+      expect(s.runsS).toBeGreaterThan(antes)
+    })
+
+    await ui.unmount()
+  })
+
+  test(`relogio (${surface}): clear mantem o relogio e troca o --sessao`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40))
+    const { relogio, s, ui, comecar, caso } = m
+
+    await caso('D3 /clear mantem os timers e passa a ler com o id novo', async () => {
+      await comecar()
+      await relogio.advance(2000)
+      s.sessaoId = 'sessao-nova'
+      await $.session.end({ reason: 'clear', sessionId: 'sessao-atual' } as never)
+      const antes = s.runsS
+      await relogio.advance(60000)
+      expect(s.runsS).toBeGreaterThan(antes)
+      const argv = s.argvS[s.argvS.length - 1]
+      expect(argv[argv.indexOf('--sessao') + 1]).toBe('sessao-nova')
+    })
+
+    await caso('D3 o session.end da sessao nova cancela os timers', async () => {
+      await $.session.end({ reason: 'other', sessionId: 'sessao-nova' } as never)
+      const antes = { s: s.runsS, j: s.runsJ }
+      await relogio.advance(120000)
       expect(s.runsS).toBe(antes.s)
       expect(s.runsJ).toBe(antes.j)
     })

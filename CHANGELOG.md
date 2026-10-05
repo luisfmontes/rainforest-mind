@@ -32,6 +32,21 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   despachados, qualidade do júri cego, custo até +30%). Vira v1 quando um segundo território o
   implementar. O mapa de um território real mora no plugin dele, não neste repositório.
 
+## 1.39.1 — 2026-10-05
+
+- **A jornada de ontem não acende mais depois da meia-noite.** A leitura da jornada roda a cada
+  5 min; nos primeiros minutos do dia novo ela ainda era a de ontem e a linha `⏰ jornada` piscava
+  com as horas do dia anterior rotuladas como de hoje (e um "esconder" nesse intervalo valia para o
+  dia inteiro). Agora só acende quando a última mensagem medida é do mesmo dia.
+- **O relógio sobrevive ao `/clear`.** Antes, `/clear` parava a linha do relógio até a próxima
+  sessão; agora ela segue e passa a se reconhecer pelo id novo da conversa.
+- **O fim de outra sessão não para o relógio.** Só o fim da sessão que ligou o relógio o desliga.
+- **Caracteres invisíveis não deformam mais a faixa.** Marcas de direção (LRM, RLM, ALM),
+  separadores de linha e parágrafo, espaços de largura zero e o BOM, vindos de um título de foco, de
+  uma Q ou da pasta de uma janela, viram espaço — como já acontecia com ESC e os overrides bidi.
+- **`sessoes.json` acima de 256 KB é recusado.** O relógio apaga só a sua linha em vez de ler um
+  arquivo enorme a cada minuto.
+
 ## 1.39.0 — 2026-10-05
 
 - **Linha do relógio na faixa.** Quando você passa de 9 h efetivas de jornada, ou trabalha entre 19 h

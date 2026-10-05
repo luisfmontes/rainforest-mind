@@ -1,0 +1,140 @@
+{
+  "slug": "2026-10-05-relogio-issues-386-388",
+  "titulo": "Relógio do mod: issues #386, #387 e #388",
+  "criado_em": "2026-10-05",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-05-relogio-issues-386-388.md",
+    "em": "2026-10-05"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-05-relogio-issues-386-388.md",
+    "tarefas": 6,
+    "paralelas": [
+      1,
+      2,
+      4,
+      5
+    ],
+    "em": "2026-10-05"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-05",
+    "tarefas_ok": 6,
+    "tarefas": 6,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "12a6f3ed",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T12:33:23.721Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "12a6f3ed",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T12:33:23.721Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "12a6f3ed",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T12:33:23.721Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "12a6f3ed",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T12:33:23.721Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "12a6f3ed",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T12:33:23.721Z"
+      }
+    ],
+    "em": "2026-10-05",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-mod-relogio.cjs, caso meia-noite: leitura das 23h58 com 600 min nao acende as 0h01"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "mod-relogio.test.tsx, session.end de outra sessao nao cancela os timers"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "mod-relogio.test.tsx, clear mantem o relogio e troca o --sessao"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-mod-faixa.cjs, invisiveis ... U+2060-2069 e BOM viram espaco"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-relogio-sessoes.sh, sessoes.json acima de 256 KB sai 1 sem ler"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "nota de versao e bump, sem comportamento a inverter"
+      }
+    ],
+    "comando": "claude plugin test . + 5 baterias + conferir-mutacao x5",
+    "saida": "22 pass 0 fail; 27/23/9/28/14 ok 0 falha; mutacao exit 0 nas 5"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "5ddf36defd4bd50e26ce75b4dc13450447c41979",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a0c9bce479597ef36",
+        "veredito": "ok",
+        "em": "2026-10-05",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/40524922-2eee-42a2-a52e-ae92540058d4/subagents/agent-a0c9bce479597ef36.jsonl"
+      }
+    ],
+    "achados": 0,
+    "base": "12a6f3ed0198db90f1ed5e2ef0854fd85d947457",
+    "head": "5ddf36defd4bd50e26ce75b4dc13450447c41979",
+    "baixos": [
+      "session.end real antes do primeiro tick pos-/clear e ignorado (processo morre junto; aceito pelo D3)",
+      "nota do /clear no CHANGELOG depende da medicao no REPL pos-merge"
+    ],
+    "em": "2026-10-05"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-05-relogio-issues-386-388; claude plugin test .; node hooks/testa-mod-relogio.cjs; node hooks/testa-mod-faixa.cjs; bash scripts/testa-relogio-sessoes.sh; bash scripts/testa-versao.sh",
+    "saida": "mutacoes: tarefas 1-5 vermelho, 6 pulada (n/a), exit 0; 22 pass 0 fail; 27 ok; 23 ok; 14 ok; versao ok 5; validate passed",
+    "sensor_externo": "claude plugin test .",
+    "em": "2026-10-05"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "merge",
+    "pr": 390,
+    "em": "2026-10-05"
+  }
+}

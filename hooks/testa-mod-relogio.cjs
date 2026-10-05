@@ -151,6 +151,17 @@ caso("madrugada sem mensagem recente nao acende", async () => {
   igual(r.jornada, null, "jornada");
 });
 
+caso("meia-noite: leitura das 23h58 com 600 min nao acende as 0h01", async () => {
+  const { avaliarRelogio, linhaRelogio } = await modulo();
+  const jornada = jornadaReal(12, 50, new Date(em(23, 58, 3)));
+  igual(jornada.efetiva_min, 600, "jornada.cjs mediu outra coisa");
+  const r1 = avaliarRelogio({ jornada, sessoes: null, agora: em(0, 1, 4) });
+  igual(r1.jornada, null, "jornada - apos meia-noite nao acende");
+  igual(linhaRelogio(r1), null, "linha - apos meia-noite");
+  const r2 = avaliarRelogio({ jornada, sessoes: null, agora: em(23, 59, 3) });
+  igual(linhaRelogio(r2), "⏰ jornada 10h00 · 23h59", "linha - antes de meia-noite acende");
+});
+
 caso("fronteiras do horario: 5h00 e 18h59 nao acendem, 19h00 e 4h59 acendem", async () => {
   const { avaliarRelogio } = await modulo();
   const acende = (h, m) => avaliarRelogio({ jornada: { efetiva_min: 300, ultimo_ms: em(h, m) }, sessoes: null, agora: em(h, m) }).jornada !== null;
