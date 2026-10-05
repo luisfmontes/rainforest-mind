@@ -83,19 +83,16 @@
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a974a3f25ef371d84",
+        "agente_id": "a9f64111091d34305",
         "veredito": "reprovado",
         "em": "2026-10-05",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/da2628ca-c4c2-4c85-9335-967778ffae56/subagents/agent-a974a3f25ef371d84.jsonl"
-      },
-      {
-        "agente": "rainforest-mind:revisor",
-        "agente_id": "ae6acc59975648a1c",
-        "veredito": "ok",
-        "em": "2026-10-05",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/da2628ca-c4c2-4c85-9335-967778ffae56/subagents/agent-ae6acc59975648a1c.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/da2628ca-c4c2-4c85-9335-967778ffae56/subagents/agent-a9f64111091d34305.jsonl"
       }
-    ]
+    ],
+    "snapshot": {
+      "head": "af3eb8605410fe5d9798d16a16e2a5b4d8b18da5",
+      "caminhos_sujos": []
+    }
   },
   "verificar": {
     "status": "pendente"

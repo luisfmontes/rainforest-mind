@@ -20,8 +20,9 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   lembrar de checar.
 - **A faixa tem até 4 linhas:** foco, fluxo, relógio e Q. Com pouco espaço, sobra primeiro a Q, depois
   o relógio, depois o fluxo.
-- **"esconder" não volta com os minutos.** A jornada só volta no dia seguinte; a janela parada volta
-  quando outra janela vira a mais parada ou uma nova cruza o limite.
+- **"esconder" não volta com os minutos.** Ele tira a faixa inteira até algo mudar, e os minutos não
+  contam: da parte do relógio, só o dia novo ou outra janela virando a mais parada (ou uma nova
+  cruzando o limite) a trazem de volta. Quando volta, volta a faixa inteira, jornada inclusive.
 - **Nota de uma vez por dia para o modelo.** Quando a jornada acende, o prompt seguinte que você
   digita leva ao modelo uma nota que traz a regra 8; você não a vê, e quem decide se avisa ou se
   cala (por exemplo, quando você só está delegando) continua sendo o modelo. No REPL real, o modelo

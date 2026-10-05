@@ -172,9 +172,10 @@ parada mais antiga além da `Ociosidade máxima:` do `FOCO.md` (45 min se ausent
 esperando você há menos de 6 h (`JANELA_VIVA_MS` em `scripts/relogio-sessoes.cjs`). O relógio lê
 `sessoes.json` a cada 1 min (`scripts/relogio-sessoes.cjs`) e a jornada a cada 5 min
 (`scripts/jornada.cjs --json`) por `$.clock.every`, ligado no `session.start` e cancelado no
-`session.end`, e só nasce em sessão interativa. "Esconder" não volta com os minutos: a jornada
-volta no dia seguinte, e a janela parada quando outra vira a mais parada ou uma nova cruza o
-limite. Quando a jornada acende, uma nota de uma vez por dia vai no prompt seguinte digitado no
+`session.end`, e só nasce em sessão interativa. "Esconder" não volta com os minutos: a assinatura
+(`assinaturaRelogio`) leva só o dia da jornada e a pasta e a contagem da janela mais parada, então a
+faixa volta no dia seguinte ou quando outra janela vira a mais parada ou uma nova cruza o limite;
+como o esconder vale para a faixa inteira, ela volta inteira, jornada inclusive. Quando a jornada acende, uma nota de uma vez por dia vai no prompt seguinte digitado no
 composer, como `context` do `prompt.submit` (o modelo lê, o usuário não vê); avisar ou calar
 continua sendo decisão do modelo, pela regra 8. Falha de leitura apaga só a linha do relógio. A
 prova de engine é `hooks/mod-relogio.test.tsx` (`claude plugin test .`); a lógica,
