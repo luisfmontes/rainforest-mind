@@ -1342,6 +1342,41 @@ else
   ok=$((ok+1)); printf '  ok    o stderr nao tem stack trace\n'
 fi
 
+echo
+echo "== 28. caso vermelho no meio de saida longa sai inteiro (Issue #378) =="
+# O trecho geral da saida pos-mutacao mostra so as ultimas 20 linhas; quem
+# confere a `fixture:` precisa do NOME do caso vermelho, que ficava escondido
+# no meio. A bateria so fica vermelha com a mutacao aplicada.
+cat > "$CAIXA/bateria-longa.sh" <<'BAT'
+#!/bin/bash
+seq 1 300 | sed 's/^/ok caso-/'
+if grep -q 'process.exit(0);' fonte.cjs; then
+  echo "FALHA caso-escondido-no-meio"
+  f=1
+else
+  f=0
+fi
+seq 301 600 | sed 's/^/ok caso-/'
+exit $f
+BAT
+CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' --bateria 'bash bateria-longa.sh' > "$SAIDA" 2>&1
+GOTL=$?
+rm -f "$CAIXA/bateria-longa.sh"
+cp "$PRISTINO" "$CAIXA/fonte.cjs"
+CV="$(sed -n '/^--- casos vermelhos ---$/,$p' "$SAIDA")"
+if [ "$GOTL" -eq 0 ] && printf '%s\n' "$CV" | grep -qx 'FALHA caso-escondido-no-meio'; then
+  ok=$((ok+1)); printf '  ok    falha no meio de saida longa aparece em casos vermelhos\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA falha no meio de saida longa aparece em casos vermelhos: exit=%s\n' "$GOTL"
+  sed 's/^/        | /' "$SAIDA" | tail -12
+fi
+tem "o trecho geral continua truncado (a falha so aparece pela secao nova)" "linha(s) acima omitida(s)"
+if [ "$(grep -c 'caso-escondido-no-meio' "$SAIDA")" -eq 1 ]; then
+  ok=$((ok+1)); printf '  ok    a linha vermelha aparece uma vez so (fora do trecho truncado)\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA a linha vermelha nao apareceu exatamente uma vez\n'
+fi
+
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]

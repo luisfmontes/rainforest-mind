@@ -129,6 +129,14 @@ function ler(nome) {
 // Falha da copia da raiz: bloqueio de ambiente, o mesmo 69 do "nao executa".
 const EXIT_COPIA_FALHOU = 69;
 
+// Marcas de caso vermelho na saida da bateria (Issue #378): as linhas que as
+// contem saem inteiras, mesmo quando o trecho geral e truncado.
+const MARCAS_FALHA = ['FALHA', '✖', '(fail)', 'not ok'];
+
+function linhasVermelhas(texto) {
+  return String(texto || '').split(/\r?\n/).filter((l) => MARCAS_FALHA.some((m) => l.includes(m)));
+}
+
 function ultimasLinhas(texto, n) {
   const linhas = String(texto || '').replace(/\s+$/, '').split(/\r?\n/);
   if (linhas.length <= n) return linhas.join('\n');
@@ -717,6 +725,13 @@ function main() {
   if (posSaida) console.log(posSaida);
   console.log('---------------------------------');
   console.log('');
+  const vermelhas = linhasVermelhas(`${posRes.r.stdout || ''}${posRes.r.stderr || ''}`);
+  if (vermelhas.length > 0) {
+    console.log('--- casos vermelhos ---');
+    for (const l of vermelhas) console.log(l);
+    console.log('---------------------------------');
+    console.log('');
+  }
 
   // Apaga a cópia temporária ANTES de decidir e imprimir: nenhum caminho
   // abaixo precisa dela, e o fonte real nunca esteve mutado (Issue #266).
