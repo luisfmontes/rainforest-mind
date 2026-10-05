@@ -67,3 +67,5 @@ diferente — nomear uma vez, sem alarme, sem confundir com hiperfoco. Antes
 de qualquer pausa (fim de sessão, troca de foco), deixar uma **ponte**: os
 próximos 3 passos concretos, não abstratos — retomada sem ponte pesa mais
 que a interrupção em si.
+
+Com o mod ligado, o relógio dele acende esse aviso: passadas as 9 h efetivas, ou de noite com você ativo, uma linha `⏰` aparece acima do prompt e uma nota de uma vez por dia chega ao modelo, que decide se avisa.

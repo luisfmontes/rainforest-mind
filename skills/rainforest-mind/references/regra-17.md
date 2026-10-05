@@ -53,3 +53,5 @@ esta sessão *é* a do foco.
 > `C:\Projetos\rainforest-mind`, recebeu uma proposta inteira do trabalho que
 > OUTRA janela fazia em outro repositório. O `FOCO.md` já dizia "sessão nessa
 > pasta = sessão do foco", e esta sessão não estava na pasta.
+
+Com o mod ligado, o relógio dele acende o alerta de janela parada: a linha `⏰` acima do prompt nomeia, pela pasta, a janela esperando você além da ociosidade máxima do `FOCO.md`.

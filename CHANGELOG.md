@@ -10,6 +10,31 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.39.0 — 2026-10-05
+
+- **Linha do relógio na faixa.** Quando você passa de 9 h efetivas de jornada, ou trabalha entre 19 h
+  e 5 h com mensagem sua nos últimos 30 min, aparece `⏰ jornada 9h12 · 20h40`. Uma janela esperando
+  você além da ociosidade máxima do `FOCO.md` (45 min se não houver) entra na mesma linha, nomeada
+  pela pasta: `⏰ jornada 9h12 · 20h40 | janela-a parada há 32 min`, com ` (+1)` quando há mais
+  de uma. Só entram janelas paradas há menos de 6 h. Antes, esses avisos dependiam de o modelo
+  lembrar de checar.
+- **A faixa tem até 4 linhas:** foco, fluxo, relógio e Q. Com pouco espaço, sobra primeiro a Q, depois
+  o relógio, depois o fluxo.
+- **"esconder" não volta com os minutos.** Ele tira a faixa inteira até algo mudar, e os minutos não
+  contam: da parte do relógio, só o dia novo ou outra janela virando a mais parada (ou uma nova
+  cruzando o limite) a trazem de volta. Quando volta, volta a faixa inteira, jornada inclusive.
+- **Nota de uma vez por dia para o modelo.** Quando a jornada acende, o prompt seguinte que você
+  digita leva ao modelo uma nota que traz a regra 8; você não a vê, e quem decide se avisa ou se
+  cala (por exemplo, quando você só está delegando) continua sendo o modelo. No REPL real, o modelo
+  citou a nota no primeiro prompt do dia e não a recebeu no segundo.
+- **As Q respondidas saem da faixa no envio, agora de verdade no REPL.** A 1.38.1 prometia isso, mas no
+  REPL interativo o gancho que usava não rodava, e a linha das Q ficava até o fim do turno. A limpeza
+  passou para o evento que o REPL executa.
+- **`scripts/jornada.cjs` ficou rápido.** Passou a ler só os transcripts tocados no dia: de 14 a 18 s
+  antes para 0,39 s numa medição de manhã e entre 0,75 e 2 s em medições à tarde.
+- **Requisito:** Claude Code 2.1.287+. Sem o mod, nada muda. Vale a partir da sessão seguinte à
+  atualização do plugin, e o relógio só nasce em sessão interativa.
+
 ## 1.38.1 — 2026-10-03
 
 - **Q respondida sai da faixa na hora.** Ao enviar a mensagem, a linha das Q some; o fim do turno

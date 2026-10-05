@@ -57,7 +57,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     on('session.cwd', async () => ({ value: '/projeto' }))
     on('session.start', async (_$, e) => ({ cwd: e.cwd }))
     on('turn.complete', async () => ({ text: '' }))
-    on('classic.UserPromptSubmit', async () => ({}) as never)
+    on('prompt.submit', async (_$, e) => e as never)
     // Fundo da cadeia: o que o engine desenharia quando o mod cede (aqui, uma caixa vazia).
     on('ui.render', async (t$, e) => {
       const { Box } = t$.ui.resolve(e)
@@ -196,7 +196,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
       modo = 'agente-novo' // fixture devolveria a assinatura escondida (ver acima)
       await terminar(ANSWER)
       expect((await textos()).join('\n')).toContain('Q1 Onde o token vive')
-      await $.classic.UserPromptSubmit({ prompt: 'respondi' } as never)
+      await $.prompt.submit({ text: 'respondi' } as never)
       const t = (await textos()).join('\n')
       expect(t).not.toContain('Q1 Onde o token vive')
       expect(t).toContain('fluxo faixa-teste: executar')
