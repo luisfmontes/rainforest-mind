@@ -1,0 +1,22 @@
+Data: 2026-10-05
+Termos: resolverExecutavel, NoDefaultCurrentDirectoryInExePath, execPath, spawn git
+
+$ gh issue list --state all --search "resolverExecutavel" --limit 50 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "NoDefaultCurrentDirectoryInExePath" --limit 50 --json number,title,state
+[{"number":392,"state":"OPEN","title":"git e gh chamados por nome: um git.exe na raiz do repo aberto vence o PATH no Windows"}]
+
+
+$ gh issue list --state all --search "execPath" --limit 50 --json number,title,state
+[{"number":392,"state":"OPEN","title":"git e gh chamados por nome: um git.exe na raiz do repo aberto vence o PATH no Windows"},{"number":382,"state":"CLOSED","title":"Hooks chamam node sem caminho absoluto: no Windows, node.exe na pasta atual vence o PATH"},{"number":239,"state":"CLOSED","title":"gate-fechar-issue bloqueia heredoc cujo texto fecha frase com parentese: \").\" e lido como subshell + source"}]
+
+
+$ gh issue list --state all --search "git.exe" --limit 50 --json number,title,state
+[{"number":392,"state":"OPEN","title":"git e gh chamados por nome: um git.exe na raiz do repo aberto vence o PATH no Windows"}]
+
+
+$ gh issue list --state all --search "spawn git" --limit 50 --json number,title,state
+[{"number":392,"state":"OPEN","title":"git e gh chamados por nome: um git.exe na raiz do repo aberto vence o PATH no Windows"},{"number":243,"state":"CLOSED","title":"foco-session-start.cjs leva 6-8 s nesta maquina e estoura o timeout 5 do hooks.json: testa-memoria-somente-leitura fica vermelha e nada diz que foi timeout"}]
+

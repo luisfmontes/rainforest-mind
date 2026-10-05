@@ -1,0 +1,29 @@
+# git e gh pelo caminho, não pelo nome (#392)
+
+## Objetivo
+Fechar a #392 (PATCH 1.39.3): hooks e scripts do plugin chamam `git` e `gh` pelo nome, com a pasta atual dentro do repositório aberto, e no Windows o `cmd.exe` e o libuv procuram o executável na pasta atual antes do PATH quando `NoDefaultCurrentDirectoryInExePath` não está definida. Um `git.exe` plantado na raiz de um repositório não confiável rodaria a cada hook. É o vetor da #382, que fechou só o `node`.
+
+## Decisões fechadas
+- **D1 — `resolverExecutavel` (`hooks/lib/resolver-executavel.cjs`) passa a ignorar entrada do PATH que não seja caminho absoluto (`path.isAbsolute`), e memoiza o resultado por processo pela chave nome + PATH** — porquê: hoje `filter(d => d)` só tira entrada vazia; um `.` (ou qualquer relativa) no PATH volta a resolver pela pasta atual, que é o vetor inteiro. A memória evita refazer até 4×N `existsSync` a cada chamada em hook que chama git várias vezes.
+- **D2 — função nova `caminhoExecutavel(nome)` no mesmo módulo: devolve o caminho absoluto pelo PATH com as extensões que o libuv usa (`.com`, `.exe` no Windows; sem extensão fora dele) e, quando não acha, um caminho absoluto inexistente (`<pasta do módulo>/ausente-do-PATH/<nome>`), nunca o nome pelado** — porquê: medido nesta máquina, `spawnSync('xx')` com `xx.cmd` antes de `xx.exe` no PATH rodou o `.exe`, e um arquivo sem extensão deu `ENOENT`; usar as mesmas extensões mantém o mesmo binário que roda hoje (o `resolverExecutavel` prefere `.cmd`, que sem shell dá `EINVAL`). Devolver o nome quando não acha reabre o vetor exatamente no caso que importa (sem git no PATH e `git.exe` plantado); o caminho inexistente preserva a semântica de hoje para quem chama: `spawnSync` devolve `error.code === 'ENOENT'` e `execFileSync` lança `ENOENT`.
+- **D3 — toda chamada de `git`/`gh` por nome em `hooks/` e `scripts/` (fora das baterias `testa-*` e `*.test.*`) passa a `caminhoExecutavel("git")`/`caminhoExecutavel("gh")` no primeiro argumento, inline, mantendo o estilo de aspas do arquivo; nos arquivos com `function git(dir, args)` local a troca é dentro do wrapper** — porquê: são 35 arquivos e cerca de 80 chamadas por `spawn`/`spawnSync`/`execFile`/`execFileSync`; a forma inline e única é o que a bateria e a mutação conseguem conferir.
+- **D4 — `execSync('git ...')`/`execSync("gh ...")` (string de comando, que passa pelo `cmd.exe`) vira `execFileSync(caminhoExecutavel("git"), [...args])` em `hooks/lib/estagio-ativo.cjs`, `scripts/estado.cjs` e `scripts/setup.cjs`** — porquê: o `cmd.exe` procura na pasta atual do mesmo jeito, e a string some com a troca por vetor.
+- **D5 — os desvios de teste continuam: `RAINFOREST_GH` (`hooks/gate-publicacao-destino.cjs`) e `RFM_VARRER_GH` (`scripts/varrer.cjs`) seguem valendo quando definidos; o padrão sem a variável passa a ser `caminhoExecutavel("gh")`, e em `gate-publicacao-destino.cjs` o `.split(" ")` só se aplica ao valor da variável** — porquê: as baterias injetam gh falso por elas; e `C:\Program Files\GitHub CLI\gh.exe` quebraria no `.split(" ")`.
+- **D6 — bateria nova `scripts/testa-git-por-nome.sh`, no molde de `testa-node-por-nome.sh`: varre `hooks/` e `scripts/` (fora `testa-*` e `*.test.*`, ignorando linha de comentário) atrás de (a) `spawn`/`spawnSync`/`execFile`/`execFileSync`/`exec`/`execSync` com primeiro argumento string que é `git`/`gh` ou começa por `git `/`gh `, e (b) padrão `|| "gh"`/`|| 'git'`; mais casos do helper (PATH com `.` na frente; `.cmd` antes de `.exe`; nome ausente dá `ENOENT`) e o caso de entrada real** — porquê: é a trava contra regressão, como na #382, e o alvo de toda `mutacao:` do plano.
+- **D7 — entrada real: numa pasta temporária com `git.exe` falso (cópia do `whoami.exe`) e `NoDefaultCurrentDirectoryInExePath` fora do ambiente, `node scripts/conferir-versao.cjs` com a pasta atual nela não imprime o usuário do `whoami`; a mesma pasta com `spawnSync("git")` por nome imprime (prova de que o falso está ao alcance)** — porquê: mede o vetor que a issue descreve no processo real, não no helper.
+- **D8 — versão 1.39.3: CHANGELOG, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json` e o badge do README** — porquê: sem bump o conserto não chega ao cache.
+
+## Avaliado e descartado
+- Passar `cwd` fora do repositório e `-C <repo>` sempre: não cobre `gh` (que não tem `-C`) e muda a semântica de cada chamada; a resolução do executável acontece antes do `cwd` importar só no `cmd.exe`, não resolve no libuv.
+- Reusar `executar()` do helper: ele resolve `.cmd` primeiro e liga `shell:true`, que recusa `%`, `(` e `"` nos argumentos — `git log --format=%H` passaria a ser recusado.
+- `where git` uma vez por processo: é o `cmd.exe` de novo, com a mesma busca na pasta atual.
+
+## Fora de escopo
+- Os `command` de `hooks/hooks.json`: rodam em bash, que não procura na pasta atual (medido na #382).
+- Baterias `testa-*`: rodam em caixa de areia que elas mesmas montam.
+
+## Varredura
+docs/rainforest/varredura/2026-10-05-git-por-caminho.txt
+— apareceram só a própria #392, a #382 (o mesmo vetor para o `node`, fechada no PR #393), a #239 e a #243 (sem relação: heredoc e timeout). Nenhum trabalho anterior sobre resolver git/gh pelo caminho.
+
+## Em aberto
