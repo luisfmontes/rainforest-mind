@@ -6,5 +6,9 @@
   {
     "frase": "Justificar em prosa não destrava",
     "descricao": "Sem ela o creep volta a ser destravado por narrativa em vez de emenda ao plano"
+  },
+  {
+    "frase": "vão **em paralelo** ao `rainforest-mind:revisor`",
+    "descricao": "D4. Sem ela os revisores do território viram serial ou substituem o revisor do rainforest em vez de somar"
   }
 ]
