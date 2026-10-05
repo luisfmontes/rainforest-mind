@@ -150,6 +150,21 @@ conferir o **artefato que roda** — arquivo no disco, versão no clone que
 executa, saída do binário — nunca a mensagem de sucesso.
 (acervo: 2026-08-08)
 
+**Verde em uma máquina só prova uma máquina.** Suíte 100% verde local não é
+evidência de nada quando todas as execuções são no mesmo ambiente: a pergunta
+não é quantas vezes passou, é **em quantos ambientes**. CI vermelho só no runner
+se reproduz localmente antes do próximo push — TMP com nome 8.3, usuário sem
+identidade git, fim de linha LF — e a versão **anterior** roda como contraprova,
+que tem de falhar igual ao log do CI. Ao diagnosticar, ler a saída da própria
+ferramenta antes de propor causa: a hipótese plausível custa um ciclo inteiro.
+
+> 2026-08-17 e 2026-09-04: dois defeitos de produto (um gate barrando commit
+> legítimo, uma conferência errada por caminho 8.3) viveram escondidos porque a
+> máquina local não tem alias 8.3 e o runner tem; a aposta em identidade git
+> ausente custou um push e um run, e o primeiro conserto de outro PR foi
+> empurrado sem reproduzir a condição do runner — três pushes até ficar verde.
+(acervo: 2026-08-17, 2026-09-04)
+
 **Isso vale para a própria janela editando configuração, não só para CLI de
 terceiro.** Mudança em arquivo de config ou variável de ambiente é entrega como
 outra qualquer, com dois lados: antes de escrever, a **semântica** da chave tem
