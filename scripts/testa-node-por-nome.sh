@@ -31,9 +31,11 @@ detectar_node_por_nome() {
   # Windows olha a pasta atual antes do PATH):
   #  - spawn/exec*("node" ou 'node', ...)
   #  - exec/execSync com o comando inteiro numa template literal que comeca por node
+  #  - template literal que comeca por `node "${...}` em qualquer lugar (comando montado
+  #    para rodar depois, como o adaptador do conselho); texto de ajuda com `node <x>` nao
   #  - cmd = "node"; (o nome guardado numa variavel que vai para o spawn); campo de
   #    objeto (resultado.stack = "node") e rotulo, nao comando, e fica de fora
-  grep -nE "(spawn|spawnSync|execFile|execFileSync|exec|execSync)[[:space:]]*\([[:space:]]*(['\"]node['\"]|${crase}node[[:space:]])|(^|[^.[:alnum:]_$])[[:alpha:]_$][[:alnum:]_$]*[[:space:]]*=[[:space:]]*['\"]node['\"][[:space:]]*;" "$arquivo" || true
+  grep -nE "(spawn|spawnSync|execFile|execFileSync|exec|execSync)[[:space:]]*\([[:space:]]*(['\"]node['\"]|${crase}node[[:space:]])|${crase}node[[:space:]]+\"?[$][{]|(^|[^.[:alnum:]_$])[[:alpha:]_$][[:alnum:]_$]*[[:space:]]*=[[:space:]]*['\"]node['\"][[:space:]]*;" "$arquivo" || true
 }
 
 echo "== Deteccao de chamadas ao node por nome (process.execPath obrigatorio) =="
@@ -112,14 +114,16 @@ cmd = "node";
 execFileSync("node", [x]);
 const runtime = 'node-ish';
 resultado.stack = "node";
+const CMD = (n) => `node "${__filename}" adaptador-${n}`;
+const ajuda = "rode `node <plugin>/scripts/x.cjs`";
 EOF
 n_formas="$(detectar_node_por_nome "$arquivo_formas" | wc -l | tr -d ' ')"
-if [ "$n_formas" = "3" ]; then
+if [ "$n_formas" = "4" ]; then
   ok=$((ok+1))
-  echo "  ok   as tres formas acendem, e os falsos parecidos nao"
+  echo "  ok   as quatro formas acendem, e os falsos parecidos nao"
 else
   falhou=$((falhou+1))
-  echo "  FALHA esperava 3 linhas detectadas, vieram $n_formas"
+  echo "  FALHA esperava 4 linhas detectadas, vieram $n_formas"
   detectar_node_por_nome "$arquivo_formas"
 fi
 

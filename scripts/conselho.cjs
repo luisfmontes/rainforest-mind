@@ -34,8 +34,10 @@ const QUORUM_MINIMO = 3;
 
 // Cmd padrao dos adaptadores embutidos: caminho ABSOLUTO deste script.
 // O spawn roda no projeto do usuario, e 'scripts/conselho.cjs' relativo so
-// existe no repo do proprio plugin (achado da rodada real da T9).
-const CMD_ADAPTADOR = (nome) => `node "${__filename}" adaptador-${nome} {prompt} {saida}`;
+// existe no repo do proprio plugin (achado da rodada real da T9). O Node tambem vai
+// pelo caminho do processo: o cmd.exe procura `node` na pasta atual antes do PATH, e a
+// pasta atual e o repo do usuario (Issue #382).
+const CMD_ADAPTADOR = (nome) => `"${process.execPath}" "${__filename}" adaptador-${nome} {prompt} {saida}`;
 
 // Timeout por execução de membro. Membro real (claude/codex/gemini) leva
 // 30-120s; fixture leva ms. Os 30s fixos matavam a rodada real (achado da T9).

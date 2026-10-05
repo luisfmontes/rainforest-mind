@@ -206,3 +206,17 @@ mutacao:
 pronto quando: achado 2 da revisão: o detector só via `'node'`/`"node"` como primeiro argumento e deixava passar `` execSync(`node "${hookPath}"`) `` em `scripts/orcamento.cjs:198` e `cmd = "node"` em `hooks/gate-verificador-staged.cjs:176`; o filtro de bateria casava o caminho inteiro. Os dois pontos passam a `process.execPath` (`execFileSync(process.execPath, [hookPath], ...)` no orçamento); o detector acende nas três formas (argumento literal, template que começa por `node `, atribuição a variável simples) e não em campo de objeto (`resultado.stack = "node"` de `scripts/ponte.cjs:145`), e filtra `testa-*` pelo nome do arquivo — provado por `bash scripts/testa-node-por-nome.sh` com `ok: 3   falhou: 0`, `bash scripts/testa-orcamento.sh` com `falhou: 0` e `bash hooks/testa-gate-verificador-staged.sh` com `0 falha(s)`
 
 Nota da revisão (achado 3, aceito): o caso "raiz com node_modules como junction mede e sai 0" só morde onde criar symlink exige privilégio. Na máquina do Luís morde (a mutação da tarefa 2 deu `exit=69`); num runner administrador, não. A catraca roda na integração local, não no CI.
+
+### 15. adaptador do conselho chama o node pelo caminho do processo [tipo: implementar]
+atende: D8
+arquivos: `scripts/conselho.cjs`, `scripts/testa-node-por-nome.sh`
+depende de: 14
+paralela: nao
+prova: `bash scripts/testa-node-por-nome.sh`
+mutacao:
+  arquivo: `scripts/conselho.cjs`
+  de: `` `"${process.execPath}" "${__filename}" adaptador- ``
+  para: `` `node "${__filename}" adaptador- ``
+  bateria: `bash scripts/testa-node-por-nome.sh`
+  fixture: `testa-node-por-nome.sh, caso "nenhum spawn/exec de node por nome fora de bateria"`
+pronto quando: achado da revisão rodada 2: `CMD_ADAPTADOR` em `scripts/conselho.cjs:38` montava `` `node "${__filename}" ...` ``, que o `rodarCli` entrega ao `cmd.exe` com a pasta atual no repo do usuário. Passa a `"${process.execPath}"`; o detector acende também em template literal que começa por `node "${` (comando montado para rodar depois) e não em texto de ajuda com `node <plugin>/...` — provado por `bash scripts/testa-node-por-nome.sh` com `ok: 3   falhou: 0` e `bash scripts/testa-conselho.sh` com `total=105 vermelhas:[0]`

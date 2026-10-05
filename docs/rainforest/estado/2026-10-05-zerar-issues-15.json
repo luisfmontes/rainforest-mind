@@ -25,7 +25,7 @@
     "em": "2026-10-05"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-05",
     "tarefas_ok": 14,
     "tarefas": 14,
@@ -168,27 +168,31 @@
       }
     ],
     "comando": "conferir-mutacao.cjs nas tarefas 13 e 14; conferir-fluxo mutacoes nas 1-12",
-    "saida": "13 e 14 VERMELHA exit 0; 1-9,11,12 vermelho"
+    "saida": "13 e 14 VERMELHA exit 0; 1-9,11,12 vermelho",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-05"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "91dc8b400ff1631129ee554441d8f22f459e95b7",
+      "head": "2421105364e42f4fe17f6bdf78978a61a4dc3924",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a428e99a7ffe04a49",
+        "agente_id": "add664c6ba0cf7aeb",
         "veredito": "reprovado",
         "em": "2026-10-05",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/40524922-2eee-42a2-a52e-ae92540058d4/subagents/agent-a428e99a7ffe04a49.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/40524922-2eee-42a2-a52e-ae92540058d4/subagents/agent-add664c6ba0cf7aeb.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-05",
-    "achados": 2,
-    "tentativas": 1
+    "achados": 1,
+    "tentativas": 2
   },
   "verificar": {
     "status": "pendente"
