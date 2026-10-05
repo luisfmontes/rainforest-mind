@@ -161,8 +161,12 @@ node scripts/foco.cjs rotacionar --aplicar
 lá. Sem isso o arquivo só cresce, e ele é lido inteiro em toda sessão que
 precisa conferir prazo, marco ou avanço.
 
-Pergunte, em uma linha: **"alguma observação desta sessão?"** (regra 13) —
-é o gancho para o que não foi registrado no meio do trabalho.
+Abra com o **balanço de quem conduziu**: as observações que a própria sessão
+aprendeu (método, ferramenta, defeito), cada uma já registrada (regra 13). Só
+depois pergunte, em uma linha: **"alguma observação desta sessão?"** — é o gancho
+para o que não foi registrado no meio do trabalho. Pergunta sem balanço próprio
+conta como encerramento incompleto: devolve a ele o levantamento que a sessão
+tinha obrigação de fazer.
 
 ## Fechamento do estágio
 

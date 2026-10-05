@@ -9,9 +9,11 @@ FOCO.md ("- AAAA-MM-DD: o que andou") e rodar em seguida
 que passou do teto do bloco. Progresso se lê, não se lembra — e arquivo que
 só cresce deixa de ser lido: em 2026-08-12 o FOCO.md tinha 15,4 KB, dos quais
 11,8 KB de Avanços, num arquivo que toda sessão abre para conferir prazo. A
-mesma varredura pergunta em uma linha **"alguma observação desta sessão?"**
-(regra 13) — é no fecho que aparece o que não foi registrado no meio do
-trabalho.
+mesma varredura abre com as observações da própria sessão (método, ferramenta,
+defeito), cada uma já registrada, e só depois pergunta em uma linha **"alguma
+observação desta sessão?"** (regra 13) — é no fecho que aparece o que não foi
+registrado no meio do trabalho, e a pergunta sem o balanço próprio é
+encerramento incompleto.
 
 **Trabalho fora da sessão não aparece sozinho — o fecho vai buscar.** Tendo o
 plugin de apontamento de horas, o mesmo binário da regra 8 aponta trecho do dia
