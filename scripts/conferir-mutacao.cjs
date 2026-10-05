@@ -79,6 +79,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 const TIMEOUT_PADRAO = 300000; // 5 min
 const LIMITE_ORFAO_MS = 24 * 60 * 60 * 1000; // 24h (tarefa 6, Issue #294.2)
@@ -248,9 +249,9 @@ function registrarLimpeza(caminho) {
 // saída/sinal de `armarLimpeza` — nenhum mecanismo de limpeza novo, só mais
 // um alvo na lista existente.
 function materializarGit(raiz, raizExecucao) {
-  const gitDirRes = spawnSync('git', ['rev-parse', '--git-dir'], { cwd: raiz, encoding: 'utf8', stdio: 'pipe' });
+  const gitDirRes = spawnSync(caminhoExecutavel('git'), ['rev-parse', '--git-dir'], { cwd: raiz, encoding: 'utf8', stdio: 'pipe' });
   if (gitDirRes.status !== 0) return; // raiz nao e repositorio git: copia fica sem .git (comportamento da tarefa 7)
-  const commonDirRes = spawnSync('git', ['rev-parse', '--git-common-dir'], { cwd: raiz, encoding: 'utf8', stdio: 'pipe' });
+  const commonDirRes = spawnSync(caminhoExecutavel('git'), ['rev-parse', '--git-common-dir'], { cwd: raiz, encoding: 'utf8', stdio: 'pipe' });
   if (commonDirRes.status !== 0) return;
 
   let gitDir, commonDir;

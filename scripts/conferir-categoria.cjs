@@ -63,11 +63,12 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 const CATEGORIAS_VALIDAS = new Set(['guia', 'sensor', 'dado']);
 
 function resolverRaizPadrao() {
-  const r = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
+  const r = spawnSync(caminhoExecutavel('git'), ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
   if (r.status === 0 && r.stdout && r.stdout.trim()) return r.stdout.trim();
   return process.cwd();
 }

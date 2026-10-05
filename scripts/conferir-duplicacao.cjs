@@ -31,11 +31,12 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { spawnSync } = require('child_process');
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 const DIRS_IGNORADOS = new Set(['.git', 'node_modules', 'fixtures']);
 
 function resolverRaizPadrao() {
-  const r = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
+  const r = spawnSync(caminhoExecutavel('git'), ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
   if (r.status === 0 && r.stdout && r.stdout.trim()) return r.stdout.trim();
   return process.cwd();
 }
@@ -56,7 +57,7 @@ function deveIgnorarDir(raiz, caminhoAbs, nome) {
  * Retorna null se não estiver em repo git, caso em que `agruparPorHash` volta a usar `readdirSync`.
  */
 function candidatosPeloGit(raiz) {
-  const r = spawnSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], {
+  const r = spawnSync(caminhoExecutavel('git'), ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], {
     cwd: raiz,
     encoding: 'utf8',
   });

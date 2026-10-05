@@ -68,6 +68,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 /**
  * Uma referência de variável no COMEÇO do valor, nas quatro formas que
@@ -535,7 +536,7 @@ function conferir(texto) {
 function runGit(args) {
   let r;
   try {
-    r = spawnSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    r = spawnSync(caminhoExecutavel('git'), args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   } catch (e) {
     return { status: 127, stdout: '', stderr: 'git nao encontrado no PATH' };
   }

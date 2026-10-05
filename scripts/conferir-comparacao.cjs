@@ -80,6 +80,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 const TIMEOUT_PADRAO = 300000; // 5 min, mesmo padrão do conferir-mutacao.cjs
 const TIMEOUT_GIT = 15000; // teto interno para os comandos git de localização
@@ -141,7 +142,7 @@ function norm(p) {
 
 /** Roda `git <args...>` com cwd EXPLÍCITO (nunca `-C`, nunca herdado). */
 function git(dir, args) {
-  const r = spawnSync('git', args, {
+  const r = spawnSync(caminhoExecutavel('git'), args, {
     cwd: dir,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],

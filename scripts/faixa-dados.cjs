@@ -8,6 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 const { proximo } = require('./estado.cjs');
 const { tituloDoFocoAtivo } = require('../hooks/lib/contexto-sessao.cjs');
 const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
@@ -25,7 +26,7 @@ function valorDe(nome) {
 // `git -C` num diretorio que nao e repo sobe para o pai em silencio; por isso
 // spawnSync com cwd e conferencia de status. Falhou: so o proprio cwd.
 function worktrees(cwd) {
-  const r = spawnSync('git', ['worktree', 'list', '--porcelain'], { cwd, encoding: 'utf8' });
+  const r = spawnSync(caminhoExecutavel('git'), ['worktree', 'list', '--porcelain'], { cwd, encoding: 'utf8' });
   if (r.error || r.status !== 0) return [cwd];
   const dirs = String(r.stdout)
     .split(/\r?\n/)
