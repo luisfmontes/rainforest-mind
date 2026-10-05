@@ -31,6 +31,8 @@ Apontamento do repositório: `.rainforest/territorio`, uma linha com o `nome`.
 
 ## Tarefas
 
+desvio (2026-10-05, no verificar): os alvos de mutacao foram atualizados para as linhas atuais. A tarefa 1 passou a mirar `casaComRepo`, porque a rodada 2 da revisao reescreveu a resolucao e a linha antiga sumiu. As tarefas 2 e 3 perderam as contrabarras antes das crases, que a catraca lia como texto literal.
+
 ### 1. `territorio.cjs`: descoberta e bloco do estágio [tipo: implementar]
 atende: D1, D2, D3, D4, D8, D10
 arquivos: `scripts/territorio.cjs`, `scripts/testa-territorio.sh`, `test/fixtures/territorio/sintetico/territorio.json`, `test/fixtures/territorio/sintetico/.claude-plugin/plugin.json`, `test/fixtures/territorio/repo-abc/x.abc`, `test/fixtures/territorio/repo-vazio/LEIAME.txt`
@@ -39,8 +41,8 @@ paralela: sim
 prova: `bash scripts/testa-territorio.sh`
 mutacao:
   arquivo: `scripts/territorio.cjs`
-  de: `if (apontado) return candidatos.find((t) => t.manifesto.nome === apontado) || null;`
-  para: `if (false) return candidatos.find((t) => t.manifesto.nome === apontado) || null;`
+  de: `const casaComRepo = (t) => (apontado ? !!t.manifesto && t.manifesto.nome === apontado : !!t.manifesto && detecta(t, raiz));`
+  para: `const casaComRepo = (t) => (false ? !!t.manifesto && t.manifesto.nome === apontado : !!t.manifesto && detecta(t, raiz));`
   bateria: `bash scripts/testa-territorio.sh`
   fixture: `testa-territorio.sh, caso "apontamento do repo vence a deteccao"`
 pronto quando: com o `installed_plugins.json` de um config dir de teste apontando um plugin cuja raiz tem o `territorio.json` sintético, rodar `node scripts/territorio.cjs estagio revisar` dentro de `test/fixtures/territorio/repo-abc` imprime o `modo: soma` e o `tipo` do agente declarado. Dentro de `repo-vazio`, imprime `sem territorio` e sai 0. Com `.rainforest/territorio` apontando um nome inexistente, sai 2 nomeando o nome. Manifesto com `versao_contrato` diferente de 0 sai 2. A linha de cada MCP mostra `quem: orquestrador` quando o campo é omitido. Tudo provado por `bash scripts/testa-territorio.sh`, que monta o próprio config dir temporário (zero casos pulados).
@@ -53,8 +55,8 @@ paralela: nao
 prova: `bash scripts/testa-territorio.sh`
 mutacao:
   arquivo: `scripts/territorio.cjs`
-  de: `if (faltando.length) { console.error(\`variavel sem valor em ${arquivoLocal}: ${faltando.join(', ')}\`); process.exit(3); }`
-  para: `if (false) { console.error(\`variavel sem valor em ${arquivoLocal}: ${faltando.join(', ')}\`); process.exit(3); }`
+  de: `if (faltando.length) { console.error(`variavel sem valor em ${arquivoLocal}: ${faltando.join(', ')}`); process.exit(3); }`
+  para: `if (false) { console.error(`variavel sem valor em ${arquivoLocal}: ${faltando.join(', ')}`); process.exit(3); }`
   bateria: `bash scripts/testa-territorio.sh`
   fixture: `testa-territorio.sh, caso "variavel sem valor no config local sai 3 nomeando a variavel"`
 pronto quando: com `HOME` de teste contendo `.rainforest/territorios/sintetico.json` = `{"lint":"/bin/true"}`, `node scripts/territorio.cjs estagio verificar --arquivo x.abc` imprime o comando resolvido `/bin/true x.abc`. Sem a chave `lint`, sai 3 com stderr contendo `lint` e o caminho do config local. Agente opcional cujo plugin não está no `installed_plugins.json` sai do bloco com uma linha `aviso: <tipo> indisponivel, papel padrao do rainforest` e exit 0. Comando obrigatório com variável faltando nunca sai 0. Tudo provado por `bash scripts/testa-territorio.sh`.
@@ -68,8 +70,8 @@ paralela: nao
 prova: `bash scripts/testa-estado-territorio.sh`
 mutacao:
   arquivo: `scripts/estado.cjs`
-  de: `if (obrigatoriosSemEvidencia.length) { console.error(\`RECUSADO: item obrigatorio do territorio sem evidencia: ${obrigatoriosSemEvidencia.join(', ')}\`); process.exit(2); }`
-  para: `if (false) { console.error(\`RECUSADO: item obrigatorio do territorio sem evidencia: ${obrigatoriosSemEvidencia.join(', ')}\`); process.exit(2); }`
+  de: `if (obrigatoriosSemEvidencia.length) { console.error(`RECUSADO: item obrigatorio do territorio sem evidencia: ${obrigatoriosSemEvidencia.join(', ')}`); process.exit(2); }`
+  para: `if (false) { console.error(`RECUSADO: item obrigatorio do territorio sem evidencia: ${obrigatoriosSemEvidencia.join(', ')}`); process.exit(2); }`
   bateria: `bash scripts/testa-estado-territorio.sh`
   fixture: `testa-estado-territorio.sh, caso "verificar sem evidencia do comando obrigatorio recusa com exit 2"`
 pronto quando: num repositório de teste com o território sintético resolvido, `node scripts/estado.cjs marcar --estagio verificar --status ok --json '{...sem campo territorio...}'` sai 2 e nomeia o `id` `lint`. O mesmo `marcar` com `"territorio":{"comandos":[{"id":"lint","comando":"...","saida":"...","exit":0}]}` passa. O campo `territorio` fica gravado no JSON de estado do estágio. Um item opcional sem evidência só gera aviso em stderr e exit 0. Num repositório sem território, o `marcar` se comporta byte a byte como antes (a bateria compara a saída dos dois). Tudo provado por `bash scripts/testa-estado-territorio.sh`.

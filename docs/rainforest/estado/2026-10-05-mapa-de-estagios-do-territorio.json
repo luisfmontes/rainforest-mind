@@ -233,33 +233,43 @@
     "rodada": 3
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "85c0152060b914a2d05a184cfef639158ad7e3f5",
-      "caminhos_sujos": [
-        "docs/rainforest/planos/2026-10-05-mapa-de-estagios-do-territorio.md"
-      ]
+      "head": "fd8793187ae6248534646b600203535a046c4817",
+      "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a69609595e17244fe",
-        "veredito": "reprovado",
+        "agente_id": "aa0f455231ba4a525",
+        "veredito": "ok",
         "em": "2026-10-05",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/bba7dce4-9408-434b-8792-367b984b1c9c/subagents/agent-a69609595e17244fe.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/bba7dce4-9408-434b-8792-367b984b1c9c/subagents/agent-aa0f455231ba4a525.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-05",
-    "achados": 2,
+    "achados": 0,
     "lista": [
       "ALTO mcp obrigatorio com quem=agente trava o marcar: skill manda nao consultar, estado.cjs:2250 exige evidencia, --json do territorio.cjs nao leva quem",
       "MEDIO manifesto com forma errada (agentes nao-array, comando ausente) da TypeError exit 1 em territorio.cjs:151, e estado.cjs:2234 trata exit 1 como itens [] (fail-open)"
     ],
-    "tentativas": 2
+    "base": "530d62b7914b0d93b59ca03b24d11c23a21f17e7",
+    "head": "fd8793187ae6248534646b600203535a046c4817",
+    "ressalvas": [
+      "installPath nao-string sai 1 e recusa marcar (registro corrompido)",
+      "obrigatorio nao-booleano vira false em silencio",
+      "deteccao malformada ignorada em silencio",
+      "contrato-territorio.md:140/162 diz que so exit 2 recusa; codigo recusa qualquer exit != 0",
+      "exit 0 com JSON ilegivel = itens []"
+    ]
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-territorio.sh && bash scripts/testa-estado-territorio.sh && bash scripts/testa-estado.sh && bash scripts/testa-conferir-fluxo.sh && node scripts/conferir-invariantes.cjs",
+    "saida": "total=18 vermelhas:[]; total=9 vermelhas:[]; 299 ok, 0 falhas; ok: 79 falhou: 0; ok: conferidas 19 invariantes; chk contrato x fixture 16/16 erros=0; mutacoes tarefas 1-3 vermelho",
+    "sensor_externo": "bash scripts/testa-territorio.sh",
+    "em": "2026-10-05"
   },
   "fechar": {
     "status": "pendente"
