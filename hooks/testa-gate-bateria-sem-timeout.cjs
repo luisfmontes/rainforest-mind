@@ -295,6 +295,12 @@ caso("cd <wt> && bash scripts/varrer-baterias.sh com timeout 600000 → 2", r.st
 r = rodar("scripts/varrer-baterias.sh", { timeout: 600000 });
 casoContem("scripts/varrer-baterias.sh com timeout 600000 → 2", r.status, r.stderr, 2, ["--so", "varredura completa"]);
 
+// Caso 2c: --listar so imprime a lista, com ou sem --shard, e nao e varredura
+r = rodar("bash scripts/varrer-baterias.sh --shard 1/2 --listar", { timeout: 60000 });
+caso("varrer-baterias.sh --shard 1/2 --listar nao e varredura completa → 0", r.status, 0);
+r = rodar("bash scripts/varrer-baterias.sh --shard 1/2", { timeout: 600000 });
+caso("varrer-baterias.sh --shard 1/2 sem --listar segue barrado → 2", r.status, 2);
+
 // Caso 3: bash scripts/varrer-baterias.sh --so hooks/testa-gate-worktree.sh com timeout 600000 → 0
 r = rodar("bash scripts/varrer-baterias.sh --so hooks/testa-gate-worktree.sh", { timeout: 600000 });
 caso("bash scripts/varrer-baterias.sh --so hooks/testa-gate-worktree.sh com timeout 600000 → 0", r.status, 0);

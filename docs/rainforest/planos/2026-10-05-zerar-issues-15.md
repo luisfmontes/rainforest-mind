@@ -162,3 +162,17 @@ mutacao:
   bateria: `bash hooks/testa-memoria-session-start.sh`
   fixture: `testa-memoria-session-start.sh, caso "com cwd fora do projeto e CLAUDE_PROJECT_DIR no projeto, a memoria filtra pelo projeto"`
 pronto quando: emenda da tarefa 7, que voltou parcial com evidência: `scripts/memoria.cjs:118` (`resolverCaminhos`) tira o projeto de `process.cwd()` e ignora `CLAUDE_PROJECT_DIR`, então mudar o `cwd` da abertura para a raiz do plugin trocaria o filtro de memória pelo do próprio plugin. `resolverCaminhos(cwd = process.cwd())` passa a usar o `cwd` recebido (no `encontrarGit` e no `resolverRaiz({ cwd, plugin })`), sem mudar os outros chamadores; `hooks/memoria-session-start.cjs` chama com a linha literal do `de:` acima; e `hooks/abertura-mod-puro.mjs` passa `cwd: io.raiz` mantendo `env: { CLAUDE_PROJECT_DIR: cwd }`. Com `memoria-session-start.cjs` rodado com a pasta atual = outra pasta e `CLAUDE_PROJECT_DIR` = um projeto de caixa, o projeto da saída é o da caixa; `testa-mod-abertura.cjs` espera o `cwd` na raiz do plugin — provado por `bash hooks/testa-memoria-session-start.sh` com o caso novo ok e `0 falha(s)`, `node hooks/testa-mod-abertura.cjs` com `0 falha(s)` e `claude plugin test .` com `0 fail`
+
+### 12. gate de bateria deixa passar varrer-baterias --listar [tipo: implementar]
+atende: D9
+arquivos: `hooks/gate-bateria-sem-timeout.cjs`, `hooks/testa-gate-bateria-sem-timeout.cjs`
+depende de: 9
+paralela: nao
+prova-na-base: verde — `--listar` não existe na base
+mutacao:
+  arquivo: `hooks/gate-bateria-sem-timeout.cjs`
+  de: `if (analise.ehVarredor && analise.args.includes("--listar")) continue;`
+  para: `if (false) continue;`
+  bateria: `node hooks/testa-gate-bateria-sem-timeout.cjs`
+  fixture: `testa-gate-bateria-sem-timeout.cjs, caso "varrer-baterias.sh --shard 1/2 --listar nao e varredura completa → 0"`
+pronto quando: emenda achada na tarefa 9 — o subagente que rodou `bash scripts/varrer-baterias.sh --shard 1/2 --listar` (só imprime a lista) foi barrado três vezes como "varredura completa ~29 min". Com o payload de subagente que a bateria monta, `--shard 1/2 --listar` com timeout de 60 s sai 0, e `--shard 1/2` sem `--listar` segue barrado (2) — provado por `node hooks/testa-gate-bateria-sem-timeout.cjs` com `ok: 61   falhou: 0`

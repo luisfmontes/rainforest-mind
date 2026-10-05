@@ -336,6 +336,9 @@ function main() {
   const temTimeout = typeof entrada.timeout === "number" && entrada.timeout > 120000;
 
   for (const analise of analises) {
+    // `--listar` so imprime a lista (com ou sem `--shard`): nao roda bateria nenhuma,
+    // entao nem e varredura nem precisa de timeout.
+    if (analise.ehVarredor && analise.args.includes("--listar")) continue;
     const varreduraCompleta = analise.ehVarredor && !analise.args.includes("--so");
 
     if (varreduraCompleta) {
