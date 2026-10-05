@@ -10,6 +10,23 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.39.2 — 2026-10-05
+
+- **Plano ou design que não existe no disco não fecha mais o estágio.** `marcar --estagio plano --status ok`
+  com `arquivo` declarado, ou `--estagio design --status aprovado` com `doc` declarado, recusa (exit 2)
+  quando o arquivo não está lá. Antes, uma escrita barrada por um gate deixava o fluxo andar sem o documento.
+- **A catraca de mutação mede em pasta com `node_modules` como junction.** É o jeito de dar dependências a
+  um worktree no Windows, e antes a cópia morria com `EPERM` e saía 1 sem veredito. Quando a cópia falha por
+  outro motivo, sai 69 (`nao-verificavel: copia da raiz falhou — ...`), e os casos que ficaram vermelhos
+  saem inteiros numa seção `--- casos vermelhos ---`, mesmo com o resto da saída cortado.
+- **Monorepo: `raiz:` no bloco `mutacao:` do plano.** A bateria roda na pasta do app; o `verificar` deixa de
+  ser infechável quando cada app tem seus testes. Tarefa pulada sem rótulo de erro passa a mostrar a linha do erro.
+- **O `node` não é mais procurado na pasta do repositório aberto.** O mod roda seus scripts com a pasta atual
+  na raiz do plugin, e os `.cjs` chamam o Node pelo caminho do processo. No Windows, um `node.exe` plantado
+  na raiz de um repositório não confiável podia rodar no lugar do seu.
+- **CI em dois jobs.** As baterias se repartem por tempo entre dois jobs de ~17 min, em vez de um de ~31 min
+  que encostava no teto de 35.
+
 ## 1.39.1 — 2026-10-05
 
 - **A jornada de ontem não acende mais depois da meia-noite.** A leitura da jornada roda a cada
