@@ -29,6 +29,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync, execFileSync } = require('child_process');
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 const CODIGO_ROOT = path.resolve(__dirname, '..');
 const { resolverRaiz, ehRaiz } = require('../hooks/lib/raiz.cjs');
@@ -472,9 +473,9 @@ rainforest.db*
       }
 
       // Inicializa repositorio e faz commit inicial
-      execSync('git init', { cwd: raiz, stdio: 'pipe' });
-      execSync('git add -A', { cwd: raiz, stdio: 'pipe' });
-      execSync('git commit -m "Versionamento inicial: estrutura de dados do rainforest"', {
+      execFileSync(caminhoExecutavel('git'), ['init'], { cwd: raiz, stdio: 'pipe' });
+      execFileSync(caminhoExecutavel('git'), ['add', '-A'], { cwd: raiz, stdio: 'pipe' });
+      execFileSync(caminhoExecutavel('git'), ['commit', '-m', 'Versionamento inicial: estrutura de dados do rainforest'], {
         cwd: raiz,
         stdio: 'pipe',
       });
@@ -506,7 +507,7 @@ rainforest.db*
     // Isto acontece quando alguém rodou versionar antes do .gitignore estar correto
     // e commitou rainforest.db ou backups.
     try {
-      const arquivosRastreados = execSync('git ls-files', { cwd: raiz, encoding: 'utf8' })
+      const arquivosRastreados = execFileSync(caminhoExecutavel('git'), ['ls-files'], { cwd: raiz, encoding: 'utf8' })
         .split('\n')
         .filter(f => f.trim());
 
@@ -521,12 +522,12 @@ rainforest.db*
       if (arquivosDesrastrear.length > 0) {
         console.log(`  desrastreando ${arquivosDesrastrear.length} arquivo(s) que deveriam estar ignorados:`);
         for (const arquivo of arquivosDesrastrear) {
-          execFileSync('git', ['rm', '--cached', arquivo], { cwd: raiz, stdio: 'pipe' });
+          execFileSync(caminhoExecutavel('git'), ['rm', '--cached', arquivo], { cwd: raiz, stdio: 'pipe' });
           console.log(`    ${arquivo}`);
         }
         // Fazer commit para formalizar a remoção do histórico
-        execSync('git add .gitignore', { cwd: raiz, stdio: 'pipe' });
-        execSync('git commit -m "Desrastrear arquivos que deveriam estar ignorados (banco + journals)"', {
+        execFileSync(caminhoExecutavel('git'), ['add', '.gitignore'], { cwd: raiz, stdio: 'pipe' });
+        execFileSync(caminhoExecutavel('git'), ['commit', '-m', 'Desrastrear arquivos que deveriam estar ignorados (banco + journals)'], {
           cwd: raiz,
           stdio: 'pipe',
         });
@@ -541,8 +542,8 @@ rainforest.db*
 
     if (gitignoreAtualizado) {
       try {
-        execSync('git add .gitignore', { cwd: raiz, stdio: 'pipe' });
-        execSync('git commit -m "Atualizar .gitignore com padrões atuais"', {
+        execFileSync(caminhoExecutavel('git'), ['add', '.gitignore'], { cwd: raiz, stdio: 'pipe' });
+        execFileSync(caminhoExecutavel('git'), ['commit', '-m', 'Atualizar .gitignore com padrões atuais'], {
           cwd: raiz,
           stdio: 'pipe',
         });

@@ -20,6 +20,7 @@
 const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
+const { caminhoExecutavel } = require(path.join(__dirname, "..", "hooks", "lib", "resolver-executavel.cjs"));
 const { gravarBackup } = require("./lib/backup-rotativo.cjs");
 
 // A raiz sai da mesma cadeia de 5 niveis que o hook usa (hooks/lib/raiz.cjs):
@@ -483,7 +484,7 @@ function dataDoGit(alvoId) {
   let r;
   try {
     r = spawnSync(
-      "git",
+      caminhoExecutavel("git"),
       ["log", "--reverse", "--format=%ad", "--date=short", "-S", `"${alvoId}"`, "--", ALVO_NOME],
       { cwd: RAIZ, encoding: "utf8", timeout: 30000 }
     );

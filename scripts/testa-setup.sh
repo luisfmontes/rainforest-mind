@@ -184,7 +184,7 @@ contem "  ... com o estado de cada um (ausente/vazio/tamanho)" "(ausente)"   bas
 MUT="$CAIXA/plugin-mutante"
 mkdir -p "$MUT/scripts" "$MUT/hooks/lib"
 cp "$SRC/scripts/setup.cjs" "$MUT/scripts/setup.cjs"
-cp "$SRC/hooks/lib/raiz.cjs" "$SRC/hooks/lib/config.cjs" "$SRC/hooks/lib/projetos.cjs" "$MUT/hooks/lib/"
+cp "$SRC/hooks/lib/raiz.cjs" "$SRC/hooks/lib/config.cjs" "$SRC/hooks/lib/projetos.cjs" "$SRC/hooks/lib/resolver-executavel.cjs" "$MUT/hooks/lib/"
 # Caminho por ENV, nao por interpolacao: o heredoc e quoted (nao expande $), e a
 # primeira versao deste teste passou pelo motivo errado — o mutante nunca foi criado,
 # o node falhou, a saida nao continha "projetos.json" e o assert deu verde. Falso

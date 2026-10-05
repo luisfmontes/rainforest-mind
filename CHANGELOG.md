@@ -10,6 +10,21 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.39.3 — 2026-10-05
+
+- **`git` e `gh` não são mais procurados na pasta do repositório aberto** (#392). Hooks e scripts chamavam
+  os dois pelo nome, com a pasta atual dentro do repositório, e no Windows o `cmd.exe` e o Node procuram o
+  executável ali antes do PATH quando `NoDefaultCurrentDirectoryInExePath` não está definida: um `git.exe`
+  plantado na raiz de um repositório rodaria a cada hook. Agora o caminho sai do PATH, com as mesmas extensões
+  que o Node usa (`.com`, `.exe`), e entrada relativa do PATH (`.`) é ignorada. Sem `git` no PATH, o erro
+  continua sendo `ENOENT` — nunca volta a procurar pelo nome. Os `execSync("git ...")` de string viraram
+  chamadas sem shell. Os desvios de teste `RAINFOREST_GH` e `RFM_VARRER_GH` continuam valendo, e o `gh`
+  instalado como `.cmd` segue alcançado onde já era. Vale também para os dois scripts Python
+  (`conferir-entrega.py`, `validar-colhidas.py`), porque o `subprocess` do Windows procura do mesmo jeito.
+- **Bateria nova `scripts/testa-git-por-nome.sh`** barra a regressão: acusa `git`/`gh` chamado pelo nome em
+  `hooks/` e `scripts/` — inclusive por wrapper, em chamada quebrada em duas linhas e em `.py`, e roda o `conferir-versao` numa pasta com um `git.exe` falso para provar que ele
+  não é executado.
+
 ## 1.39.2 — 2026-10-05
 
 - **Plano ou design que não existe no disco não fecha mais o estágio.** `marcar --estagio plano --status ok`

@@ -29,6 +29,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 const CODIGO_ROOT = path.resolve(__dirname, '..');
 const PROJETO_DIR = process.env.CLAUDE_PROJECT_DIR || process.cwd();
@@ -61,7 +62,7 @@ function argPosicional() {
  */
 function raizProjetoGit(dir) {
   try {
-    const saida = execFileSync('git', ['rev-parse', '--git-common-dir'], {
+    const saida = execFileSync(caminhoExecutavel('git'), ['rev-parse', '--git-common-dir'], {
       cwd: dir,
       stdio: ['ignore', 'pipe', 'ignore'],
     }).toString().trim();

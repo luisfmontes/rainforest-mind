@@ -12,7 +12,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
+const { caminhoExecutavel } = require('./resolver-executavel.cjs');
 
 // Lógica oficial de fechamento e de próximo estágio: vem do `estado.cjs`, que é
 // o dono dela. O caminho é relativo a `__dirname`, não ao cwd — resolve igual
@@ -50,7 +51,7 @@ function resolver({ cwd }) {
   // 1. Obter branch atual
   let branch;
   try {
-    branch = execSync('git rev-parse --abbrev-ref HEAD', {
+    branch = execFileSync(caminhoExecutavel('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
       cwd,
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],

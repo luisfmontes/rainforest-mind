@@ -83,8 +83,9 @@ tem "e nomeia o comando exato"              "$SEM" "setup.cjs --criar"
 
 echo
 echo "== 6. MUTACAO — comparar por igualdade estrita perde o historico =="
-cp "$SRC/scripts/semear.cjs" "$SBP/semear-mutante.cjs"
-node - "$SBP/semear-mutante.cjs" <<'JS'
+mkdir -p "$SBP/mut/scripts" "$SBP/mut/hooks/lib" && cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SBP/mut/hooks/lib/"   # o mutante faz require do resolvedor (Issue #392)
+cp "$SRC/scripts/semear.cjs" "$SBP/mut/scripts/semear-mutante.cjs"
+node - "$SBP/mut/scripts/semear-mutante.cjs" <<'JS'
 const fs = require("fs");
 const alvo = process.argv[2];
 const antes = fs.readFileSync(alvo, "utf8");
@@ -93,7 +94,7 @@ if (!antes.includes(de)) throw new Error("ancora do combina() sumiu");
 fs.writeFileSync(alvo, antes.replace(de, "  return a === b; // MUTADO"), "utf8");
 JS
 MUT="$( cd "$SBP/proj" && RFM_ROOT="$SB/dados" CLAUDE_PROJECT_DIR="$SB/proj" \
-  node "$SBP/semear-mutante.cjs" --projeto meu-projeto 2>&1 )"
+  node "$SBP/mut/scripts/semear-mutante.cjs" --projeto meu-projeto 2>&1 )"
 if echo "$MUT" | grep -qF "OBS-CAMINHO"; then
   falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — nao e o combina() que acha o historico"
 else
@@ -235,8 +236,8 @@ EOF
 
   echo
   echo "== 13b. MUTACAO — trocar caminhoCanonico por path.resolve puro perde o alias 8.3 =="
-  cp "$SRC/scripts/semear.cjs" "$SBP/semear-mutante-83.cjs"
-  node - "$SBP/semear-mutante-83.cjs" <<'JS'
+  cp "$SRC/scripts/semear.cjs" "$SBP/mut/scripts/semear-mutante-83.cjs"
+  node - "$SBP/mut/scripts/semear-mutante-83.cjs" <<'JS'
 const fs = require("fs");
 const alvo = process.argv[2];
 const antes = fs.readFileSync(alvo, "utf8");
@@ -244,7 +245,7 @@ const de = "    return fs.realpathSync.native(p).toLowerCase();";
 if (!antes.includes(de)) throw new Error("ancora do caminhoCanonico sumiu");
 fs.writeFileSync(alvo, antes.replace(de, "    return path.resolve(p).toLowerCase(); // MUTADO"), "utf8");
 JS
-  MUT83="$( cd "$SBP/worktree-do-alias-83" && RFM_ROOT="$SB/dados-83" node "$SBP/semear-mutante-83.cjs" 2>&1 )"
+  MUT83="$( cd "$SBP/worktree-do-alias-83" && RFM_ROOT="$SB/dados-83" node "$SBP/mut/scripts/semear-mutante-83.cjs" 2>&1 )"
   if echo "$MUT83" | grep -qF "projeto: projeto-do-alias-83"; then
     falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — nao e' o realpathSync.native que resolve o alias 8.3"
   else

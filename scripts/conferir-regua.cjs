@@ -77,6 +77,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { validarSlug } = require('./recibo.cjs');
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 const EXIT_RECUSA = 1;
 const EXIT_GIT_FALHOU = 2;
@@ -173,7 +174,7 @@ function ancoraDe(slug) {
   //
   // Aqui o script se RECUSA A JULGAR (exit 2, ambiente), em vez de julgar
   // errado — e a D5 aplicada: ancora que nao resolve aborta.
-  const raso = spawnSync("git", ["rev-parse", "--is-shallow-repository"], {
+  const raso = spawnSync(caminhoExecutavel("git"), ["rev-parse", "--is-shallow-repository"], {
     encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
   });
   if (!raso.error && raso.status === 0 && raso.stdout.trim() === "true") {
@@ -195,7 +196,7 @@ function ancoraDe(slug) {
   // commit assinado virava "adicionado 4 vezes" (reproduzido). log.follow troca
   // o arquivo seguido num `git mv` e muda a ancora — manifesto posto no lugar
   // com `git mv` dava exit 2 falso.
-  const res = spawnSync('git', [
+  const res = spawnSync(caminhoExecutavel('git'), [
     '-c', 'log.showSignature=false',
     '-c', 'log.follow=false',
     'log',
@@ -222,7 +223,7 @@ function ancoraDe(slug) {
   // commitou nada (e virava ambiente). "Tem ref em algum lugar" nao responde
   // "o HEAD tem historico legivel".
   if (res.error || res.status !== 0) {
-    const gitDir = spawnSync('git', ['rev-parse', '--git-dir'], {
+    const gitDir = spawnSync(caminhoExecutavel('git'), ['rev-parse', '--git-dir'], {
       encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
     });
     if (gitDir.error || gitDir.status !== 0) {
@@ -232,7 +233,7 @@ function ancoraDe(slug) {
 
     // 1. O HEAD resolve? Se sim, ha historico legivel e o `log` falhou por
     //    outro motivo — ambiente.
-    const head = spawnSync('git', ['rev-parse', '--quiet', '--verify', 'HEAD'], {
+    const head = spawnSync(caminhoExecutavel('git'), ['rev-parse', '--quiet', '--verify', 'HEAD'], {
       encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
     });
     if (head.status === 0) {
@@ -242,7 +243,7 @@ function ancoraDe(slug) {
 
     // 2. HEAD nao resolve. Destacado (nao simbolico) significa que HEAD guarda
     //    um SHA: ja houve commit, e nao resolver e historico podre — ambiente.
-    const sym = spawnSync('git', ['symbolic-ref', '-q', 'HEAD'], {
+    const sym = spawnSync(caminhoExecutavel('git'), ['symbolic-ref', '-q', 'HEAD'], {
       encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
     });
     if (sym.error || sym.status !== 0) {
@@ -254,7 +255,7 @@ function ancoraDe(slug) {
     //    status 1 para "nao achei" e 128 para erro de verdade (packed-refs
     //    ilegivel, por exemplo) — e a distincao e por CODIGO, nunca por texto.
     const ref = sym.stdout.trim();
-    const mostraRef = spawnSync('git', ['show-ref', '--verify', '--quiet', ref], {
+    const mostraRef = spawnSync(caminhoExecutavel('git'), ['show-ref', '--verify', '--quiet', ref], {
       encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
     });
     if (mostraRef.status === 1) {
@@ -446,7 +447,7 @@ function exigirAncoraEFormato(slug) {
   }
 
   // Lê o conteúdo do commit
-  const resShow = spawnSync('git', [
+  const resShow = spawnSync(caminhoExecutavel('git'), [
     'show',
     `${ancora}:${caminhoManifesto}`,
   ], {
@@ -526,7 +527,7 @@ if (subcomando === 'validar') {
   const ancora = exigirAncoraEFormato(slug);
   const caminhoManifesto = `docs/rainforest/reguas/${slug}.md`;
 
-  const resShow = spawnSync('git', [
+  const resShow = spawnSync(caminhoExecutavel('git'), [
     'show',
     `${ancora}:${caminhoManifesto}`,
   ], {

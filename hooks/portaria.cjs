@@ -25,6 +25,7 @@
 const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
+const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
 
 /**
  * Agentes que pertencem ao Claude Code, não a este repositório. Podem ser
@@ -71,7 +72,7 @@ function raizDoProjeto(payload) {
     caminho = process.cwd();
   }
   try {
-    const toplevel = execFileSync("git", ["-C", caminho, "rev-parse", "--show-toplevel"], {
+    const toplevel = execFileSync(caminhoExecutavel("git"), ["-C", caminho, "rev-parse", "--show-toplevel"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
@@ -83,7 +84,7 @@ function raizDoProjeto(payload) {
 
 function obterBranch(raiz) {
   try {
-    const branch = execFileSync("git", ["-C", raiz, "rev-parse", "--abbrev-ref", "HEAD"], {
+    const branch = execFileSync(caminhoExecutavel("git"), ["-C", raiz, "rev-parse", "--abbrev-ref", "HEAD"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
@@ -105,7 +106,7 @@ function primeiroEstagioAberto(estado) {
 
 function obterOutrosWorktreesComFluxoAberto(raiz) {
   try {
-    const saida = execFileSync("git", ["-C", raiz, "worktree", "list", "--porcelain"], {
+    const saida = execFileSync(caminhoExecutavel("git"), ["-C", raiz, "worktree", "list", "--porcelain"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     });

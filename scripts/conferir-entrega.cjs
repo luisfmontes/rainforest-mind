@@ -77,6 +77,7 @@
 const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
+const { caminhoExecutavel } = require(path.join(__dirname, "..", "hooks", "lib", "resolver-executavel.cjs"));
 
 class Conferencia {
   constructor() {
@@ -89,7 +90,7 @@ class Conferencia {
   git(dir, ...args) {
     let r;
     try {
-      r = spawnSync("git", ["-C", String(dir), ...args], {
+      r = spawnSync(caminhoExecutavel("git"), ["-C", String(dir), ...args], {
         encoding: "utf8",
         maxBuffer: 32 * 1024 * 1024,
       });

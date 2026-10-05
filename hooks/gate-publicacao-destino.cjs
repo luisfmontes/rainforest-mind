@@ -36,6 +36,7 @@
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
+const { caminhoExecutavel } = require("./lib/resolver-executavel.cjs");
 const { resolverRaiz } = require("./lib/raiz.cjs");
 const { temMarcadorNoConteudo } = require("./lib/marcador-dados.cjs");
 
@@ -220,7 +221,7 @@ function visibilidadeDeUmRepo(ownerRepo) {
     // medir a ausencia do duble, nao a visibilidade. Aceita linha de comando
     // ("node /caminho/stub"), e os argumentos sao passados como VETOR: nada de
     // shell, nada de interpolacao.
-    const gh = (process.env.RAINFOREST_GH || "gh").split(" ").filter(Boolean);
+    const gh = process.env.RAINFOREST_GH ? process.env.RAINFOREST_GH.split(" ").filter(Boolean) : [caminhoExecutavel("gh")];
     const saida = execFileSync(gh[0], [...gh.slice(1), "repo", "view", ownerRepo, "--json", "isPrivate"], {
       encoding: "utf8", timeout: 10000, stdio: ["ignore", "pipe", "ignore"],
     }).trim();
@@ -241,7 +242,7 @@ function visibilidadeDeUmRepo(ownerRepo) {
 
 function git(dir, args) {
   try {
-    return execFileSync("git", ["-C", dir, ...args], {
+    return execFileSync(caminhoExecutavel("git"), ["-C", dir, ...args], {
       encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
     }).trim();
   } catch {
@@ -254,7 +255,7 @@ function git(dir, args) {
  */
 function estaGitignorado(dir, arquivo) {
   try {
-    execFileSync("git", ["-C", dir, "check-ignore", arquivo], {
+    execFileSync(caminhoExecutavel("git"), ["-C", dir, "check-ignore", arquivo], {
       stdio: "ignore",
     });
     return true; // arquivo está ignorado (exit 0 de check-ignore)

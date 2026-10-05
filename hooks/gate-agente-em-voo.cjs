@@ -45,6 +45,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
+const { caminhoExecutavel } = require(path.join(__dirname, 'lib', 'resolver-executavel.cjs'));
 
 const { resolver } = require('./lib/estagio-ativo.cjs');
 
@@ -56,7 +57,7 @@ function bloqueia(motivo) {
 /** Raiz do repositório do cwd do EVENTO — nunca a do processo do hook. */
 function toplevel(cwd) {
   try {
-    return execFileSync('git', ['-C', cwd, 'rev-parse', '--show-toplevel'], {
+    return execFileSync(caminhoExecutavel('git'), ['-C', cwd, 'rev-parse', '--show-toplevel'], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     }).trim() || null;
@@ -69,7 +70,7 @@ function toplevel(cwd) {
  * linkado tem git-dir próprio; `--git-dir` já devolve o caminho certo). */
 function gitDir(gitTop) {
   try {
-    const saida = execFileSync('git', ['-C', gitTop, 'rev-parse', '--git-dir'], {
+    const saida = execFileSync(caminhoExecutavel('git'), ['-C', gitTop, 'rev-parse', '--git-dir'], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     }).trim();

@@ -16,6 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 // Raiz do projeto: onde gravar a varredura (docs/rainforest/varredura/)
 const RAIZ_PROJETO = process.env.RFM_ESTADO_ROOT
@@ -96,7 +97,7 @@ const saidas = [];
 
 // Helper para rodar comando com gh
 function spawnarGh(args) {
-  const gh = process.env.RFM_VARRER_GH || 'gh';
+  const gh = process.env.RFM_VARRER_GH || caminhoExecutavel('gh');
   const ehNode = /\.(c|m)?js$/i.test(gh);
 
   const cmd = ehNode ? process.execPath : gh;
@@ -161,7 +162,7 @@ for (const termo of termos) {
 
 // 3. Branches remotas
 for (const termo of termos) {
-  const r = spawnSync('git', ['ls-remote', '--heads', 'origin'], {
+  const r = spawnSync(caminhoExecutavel('git'), ['ls-remote', '--heads', 'origin'], {
     encoding: 'utf8',
     cwd: RAIZ_PROJETO,
     stdio: ['pipe', 'pipe', 'pipe']
@@ -188,7 +189,7 @@ for (const termo of termos) {
 
 // 4. git log com grep
 for (const termo of termos) {
-  const r = spawnSync('git', ['log', '--all', `--grep=${termo}`, '--oneline'], {
+  const r = spawnSync(caminhoExecutavel('git'), ['log', '--all', `--grep=${termo}`, '--oneline'], {
     encoding: 'utf8',
     cwd: RAIZ_PROJETO,
     stdio: ['pipe', 'pipe', 'pipe']

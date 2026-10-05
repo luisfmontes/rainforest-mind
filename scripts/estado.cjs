@@ -56,7 +56,8 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { spawnSync, execSync } = require('child_process');
+const { spawnSync, execSync, execFileSync } = require('child_process');
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 // Trava por lock de PID (defeitos A/B fechados em 2026-08-23), ja usada por
 // scripts/ideias.cjs e scripts/divergencias.cjs — o `veredito` reusa em vez
 // de inventar uma terceira copia.
@@ -398,7 +399,7 @@ function caminhosDaPropriaTrava(slug) {
 
 /** Caminhos sujos do repo, normalizados. Sem `.trim()` no bloco: ver defeito 1. */
 function caminhosSujos() {
-  const saida = execSync('git status --porcelain', { cwd: RAIZ, encoding: 'utf8' });
+  const saida = execFileSync(caminhoExecutavel('git'), ['status', '--porcelain'], { cwd: RAIZ, encoding: 'utf8' });
   return saida
     .split(/\r?\n/)
     .filter((linha) => linha.length > 0)
@@ -413,7 +414,7 @@ function caminhosSujos() {
 function capturarSnapshot() {
   try {
     return {
-      head: execSync('git rev-parse HEAD', { cwd: RAIZ, encoding: 'utf8' }).trim(),
+      head: execFileSync(caminhoExecutavel('git'), ['rev-parse', 'HEAD'], { cwd: RAIZ, encoding: 'utf8' }).trim(),
       caminhos_sujos: caminhosSujos(),
     };
   } catch (err) {
@@ -432,7 +433,7 @@ function verificarMutacao(slug, snapshot_anterior) {
   }
 
   try {
-    const head_agora = execSync('git rev-parse HEAD', { cwd: RAIZ, encoding: 'utf8' }).trim();
+    const head_agora = execFileSync(caminhoExecutavel('git'), ['rev-parse', 'HEAD'], { cwd: RAIZ, encoding: 'utf8' }).trim();
 
     // Verificar se HEAD mudou
     if (head_agora !== snapshot_anterior.head) {
@@ -1331,7 +1332,7 @@ function checkoutPrincipalForaDaPadrao(raiz) {
   // Toda exceção vira null (nunca derrubar estado.cjs por erro próprio)
   try {
     // Verificar se é repositório git
-    const gitDir = spawnSync('git', ['rev-parse', '--git-dir'], {
+    const gitDir = spawnSync(caminhoExecutavel('git'), ['rev-parse', '--git-dir'], {
       cwd: raiz,
       encoding: 'utf8',
       stdio: 'pipe',
@@ -1339,7 +1340,7 @@ function checkoutPrincipalForaDaPadrao(raiz) {
     if (gitDir.status !== 0) return null; // não é repositório git
 
     // Detectar worktree linkado: comparar git-dir com git-common-dir (absoluto)
-    const gitCommonDir = spawnSync('git', ['rev-parse', '--git-common-dir'], {
+    const gitCommonDir = spawnSync(caminhoExecutavel('git'), ['rev-parse', '--git-common-dir'], {
       cwd: raiz,
       encoding: 'utf8',
       stdio: 'pipe',
@@ -1359,7 +1360,7 @@ function checkoutPrincipalForaDaPadrao(raiz) {
 
     // Detectar branch padrão: symbolic-ref, ou main/master
     let padrao = 'main';
-    const symRef = spawnSync('git', ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'], {
+    const symRef = spawnSync(caminhoExecutavel('git'), ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'], {
       cwd: raiz,
       encoding: 'utf8',
       stdio: 'pipe',
@@ -1369,7 +1370,7 @@ function checkoutPrincipalForaDaPadrao(raiz) {
       padrao = symRef.stdout.trim().replace(/^origin\//, '');
     } else {
       // Fallback: main se existir, senão master
-      const mainTest = spawnSync('git', ['show-ref', '--verify', 'refs/heads/main'], {
+      const mainTest = spawnSync(caminhoExecutavel('git'), ['show-ref', '--verify', 'refs/heads/main'], {
         cwd: raiz,
         stdio: 'pipe',
       });
@@ -1379,7 +1380,7 @@ function checkoutPrincipalForaDaPadrao(raiz) {
     }
 
     // Obter branch atual
-    const branch = spawnSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
+    const branch = spawnSync(caminhoExecutavel('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
       cwd: raiz,
       encoding: 'utf8',
       stdio: 'pipe',
@@ -1536,7 +1537,7 @@ function carimbosMaisRecentes(carimbos) {
 function ehAncestralDoHead(hash) {
   let r;
   try {
-    r = spawnSync('git', ['merge-base', '--is-ancestor', hash, 'HEAD'], {
+    r = spawnSync(caminhoExecutavel('git'), ['merge-base', '--is-ancestor', hash, 'HEAD'], {
       cwd: process.cwd(),
       stdio: 'ignore',
     });
