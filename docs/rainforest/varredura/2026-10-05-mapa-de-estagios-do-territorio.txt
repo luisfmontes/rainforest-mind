@@ -1,0 +1,199 @@
+Data: 2026-10-05
+Termos: territorio, contrato de territorio, mapa de estagios, manifesto, territorio.json
+
+$ gh issue list --state all --search "territorio" --limit 200 --json number,title,state
+[{"number":302,"state":"CLOSED","title":"Eval de gatilho: nenhuma bateria prova que uma skill e chamada (nem que precisa existir)"}]
+
+
+$ gh issue list --state all --search "contrato de territorio" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "mapa de estagios" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "manifesto" --limit 200 --json number,title,state
+[{"number":264,"state":"CLOSED","title":"Portaria: manifesto de agentes SUBSTITUI em vez de somar, e agente de outro plugin nunca passa"},{"number":241,"state":"CLOSED","title":"Decisao pendente: a portaria vale so neste repo, mas a regra 10 promete portao em toda sessao"},{"number":254,"state":"CLOSED","title":"Catraca de mutacao: 'pulada' fecha o verificar como se fosse medida"},{"number":225,"state":"CLOSED","title":"portaria: negação 'sem estágio ativo' lista o mesmo slug uma vez por worktree (~170 linhas repetidas)"},{"number":189,"state":"CLOSED","title":"conferir-versao.cjs nao olha o numero: versao que anda para tras passa verde, e plugin.json ilegivel sai 0"},{"number":176,"state":"CLOSED","title":"O conferir-versao.cjs mede a propria pasta de instalacao, entao no plugin instalado ele nunca roda"},{"number":257,"state":"CLOSED","title":"Portaria: autorizacao de subagente exige a palavra exata e culpa o estagio quando o usuario erra a digitacao"},{"number":335,"state":"CLOSED","title":"13 baterias .cjs nunca rodam no CI: varrer-baterias.sh so descobre testa-*.sh"},{"number":27,"state":"CLOSED","title":"testa-saude.sh fica vermelha por rodar de worktree, nao por defeito no codigo — e e onde a esteira roda"},{"number":235,"state":"CLOSED","title":"gate-publicacao-destino so ve Write/Edit: valor escrito por script chega ao commit, e so a CI pega — do lado irreversivel"},{"number":193,"state":"CLOSED","title":"Duas sessoes bumparam a MESMA versao e o testa-versao nao pode pegar: falta checagem externa (tag e cache)"},{"number":143,"state":"CLOSED","title":"Os guardas medem o repositorio do cwd da sessao, nao o worktree onde a operacao roda — tres ocorrencias no mesmo dia"},{"number":221,"state":"CLOSED","title":"saude.cjs quebra com 'path argument undefined' quando ha duas config dirs e a versao do repo esta a frente da instalada"}]
+
+
+$ gh issue list --state all --search "territorio.json" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "territorio" --limit 200 --json number,title,state
+[{"number":304,"state":"MERGED","title":"Notas de atualizacao (CHANGELOG) e o adendo que mede o D2 do contrato de territorio"},{"number":384,"state":"MERGED","title":"1.38.1: Q da faixa somem no envio e cabem na linha"},{"number":217,"state":"MERGED","title":"Contrato de territorio: AdvPL vira o primeiro, e o repo publico perde os identificadores de trabalho"},{"number":191,"state":"MERGED","title":"Plano da camada Obsidian: a skill montar-corpus, com dois cortes de escopo"},{"number":190,"state":"MERGED","title":"Inventario do acervo parado: tres mapas, e o manifesto que admite os cinco agentes negados"},{"number":147,"state":"MERGED","title":"Fluxo 6 — Portoes: oraculos executaveis, e o lint que audita a autoria deles"}]
+
+
+$ gh pr list --state all --search "contrato de territorio" --limit 200 --json number,title,state
+[{"number":304,"state":"MERGED","title":"Notas de atualizacao (CHANGELOG) e o adendo que mede o D2 do contrato de territorio"},{"number":384,"state":"MERGED","title":"1.38.1: Q da faixa somem no envio e cabem na linha"},{"number":217,"state":"MERGED","title":"Contrato de territorio: AdvPL vira o primeiro, e o repo publico perde os identificadores de trabalho"},{"number":191,"state":"MERGED","title":"Plano da camada Obsidian: a skill montar-corpus, com dois cortes de escopo"},{"number":190,"state":"MERGED","title":"Inventario do acervo parado: tres mapas, e o manifesto que admite os cinco agentes negados"}]
+
+
+$ gh pr list --state all --search "mapa de estagios" --limit 200 --json number,title,state
+[{"number":190,"state":"MERGED","title":"Inventario do acervo parado: tres mapas, e o manifesto que admite os cinco agentes negados"},{"number":191,"state":"MERGED","title":"Plano da camada Obsidian: a skill montar-corpus, com dois cortes de escopo"}]
+
+
+$ gh pr list --state all --search "manifesto" --limit 200 --json number,title,state
+[{"number":141,"state":"MERGED","title":"Fluxo 9 — Portaria: admissao de subagente por manifesto"},{"number":267,"state":"MERGED","title":"portaria: deixa de admitir agente e passa a registrar (ver #264)"},{"number":315,"state":"MERGED","title":"Adapta o Rainforest Mind para o Codex (multihost, 1.25.0)"},{"number":255,"state":"MERGED","title":"A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241)"},{"number":190,"state":"MERGED","title":"Inventario do acervo parado: tres mapas, e o manifesto que admite os cinco agentes negados"},{"number":252,"state":"MERGED","title":"fluxo: fecha o registro da Régua 3 (concluído na janela principal)"},{"number":205,"state":"MERGED","title":"Issue #189: conferir-versao olha o numero declarado e nao sai 0 sem ter medido"},{"number":29,"state":"MERGED","title":"A bateria de saude cobrava do produto a regra que ela mesma quebrava (#27)"},{"number":285,"state":"MERGED","title":"Guias e sensores: marca de categoria, teto por hook, sensor na evidencia do verificar"},{"number":168,"state":"MERGED","title":"1.0.0 — o repositorio vai a publico e o contrato passa a valer"},{"number":248,"state":"MERGED","title":"auditor: Régua 3 de técnicas defensivas (do claude-red)"},{"number":222,"state":"MERGED","title":"Agentes em Claude ou Codex, por escolha do usuário (1.8.0)"},{"number":130,"state":"MERGED","title":"Designs 9-11 e o indice consolidado v2 entram no repo"},{"number":308,"state":"MERGED","title":"regua: regua selada por construcao e keep/discard automatico (enxerto do autoresearch)"},{"number":209,"state":"MERGED","title":"Versao 1.6.0 (MINOR): o lote das Issues #187 e #189 muda contrato"},{"number":171,"state":"MERGED","title":"A suite media a maquina do dono: 11 Issues da familia, catraca de dependencias, CI em Node 22 e 24"},{"number":246,"state":"MERGED","title":"Triagem de achado e portaria que le autorizacao explicita do usuario"},{"number":172,"state":"MERGED","title":"Fluxo 7: recibo de colheita — identidade verificavel do artefato entregue (1.1.0)"},{"number":20,"state":"MERGED","title":"O verde mais saudavel do painel era falso: o /saude passa a medir o que executa"},{"number":35,"state":"MERGED","title":"A bateria de saude parava de mutar o produto que ela mede"},{"number":152,"state":"MERGED","title":"Portaria: escreve:true admitido com worktree obrigatorio (0.82.0)"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"}]
+
+
+$ gh pr list --state all --search "territorio.json" --limit 200 --json number,title,state
+[]
+
+
+$ git ls-remote --heads origin | grep -F "territorio"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "contrato de territorio"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "mapa de estagios"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "manifesto"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "territorio.json"
+(vazio)
+
+$ git log --all --grep="territorio" --oneline
+2adbae27 Merge pull request #304 from luisfmontes/fluxo/notas-de-atualizacao
+73b5eb37 Notas de atualizacao passam a existir, e o D2 medido de fora
+7913b7d6 Merge pull request #217 from luisfmontes/fluxo/contrato-de-territorio-advpl
+dbab58f9 Contrato de territorio: AdvPL vira o primeiro, e a fronteira vira restricao de publicacao
+a47dc213 Arqueologia: mapa do acervo do fluxo — 36 planos, todos entregue
+d485d55c Revalidacao contra os originais rebaixados: fluxo 1 restaurado, fluxos 2-8 instalados, plano do fluxo 9
+3727df50 Revalidacao contra os originais rebaixados: fluxo 1 restaurado, fluxos 2-8 instalados, plano do fluxo 9
+
+$ git log --all --grep="contrato de territorio" --oneline
+2adbae27 Merge pull request #304 from luisfmontes/fluxo/notas-de-atualizacao
+73b5eb37 Notas de atualizacao passam a existir, e o D2 medido de fora
+dbab58f9 Contrato de territorio: AdvPL vira o primeiro, e a fronteira vira restricao de publicacao
+
+$ git log --all --grep="mapa de estagios" --oneline
+(vazio)
+
+$ git log --all --grep="manifesto" --oneline
+60695f0d Versao 1.31.0: falha de vigia recorrente no /saude e no batedor
+fab36ce5 Manifesto Codex acompanha a versao 1.30.2
+84cb184f Batedor: strands e reef enxertam, flowsint vale voltar
+62a9d253 README: badge acompanha a 1.23.4
+20ca0e58 versao 1.23.4: livro e relatorio de fast-jev e Laya
+f02843b9 docs: reancora contrato multihost na 1.21.1
+68d8f93e regua selada: modelo de ameaca escrito e leitura imune a config comum
+d8529b9e regua selada: o validador passa a ver o que o critico cego ve
+ad225c36 regua selada: fecha a segunda porta do selo (merge) e ganha o validar
+117615cb regua selada: fecha os onze achados da rodada 6 do revisar
+e678c417 regua selada: o selo passa a exigir historico, e recusa clone raso
+56cf8eef regua selada: valida o slug antes de montar o caminho do manifesto
+30b99e74 B1 e B2: corrupcao de historico sai 2, e o regex passa a cumprir o que a doc promete
+b7258733 A2 fecha de verdade: ancoraDe separa ambiente de veredito, e o caso mede
+b7d7dc87 Tarefa 6: fecha os achados do revisar no conferidor
+a1261582 Adiciona subcomando mostrar a conferir-regua.cjs
+96053ecc Tarefa 4: Fase 2, keep/discard e quatro paradas da skill regua
+71e1b13a fluxo 3: Fase 0 selada por construção, manifesto com Freios
+6b746a1a tarefa 1: conferir-regua valida âncora e formato do manifesto
+7655f385 Livro de repos: corrige o PR inventado e a frase incoerente da linha
+ff3fb3c3 Design: regua selada por construcao e keep/discard por comparacao interna
+eabeb898 Alinha manifesto Codex em 1.19.2 e reancora as ancoras de corpo
+1cd74a2e Reancora a entrega multihost na origin/main 1.19.1
+1a93708e bump 1.19.1 -> 1.20.0
+b798c531 Versao 1.17.0: guias e sensores
+792c50bb plano: os tres artefatos que outra regua obrigou a criar ganham tarefa
+f7d76692 teto: o Runtime sai do SKILL.md, e a bateria do ledger declara sensor
+5fb11c94 tarefa 6 integrada, e o detalhe do sensor sai do SKILL.md para references
+872485e6 portaria: sensor fora de lista ou ilegível passa a registrar, não nega (Tarefa 6, issue #264)
+5a43d1fc plano e design emendados apos o revisar reprovar, e a peca nova marcada
+f01e01b3 merge: traz origin/main (#271, #267, #274) antes do revisar
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+421e6218 catracas de bytes: paga a regra 10 por subtracao, e corta o que a #264 tornou falso
+e77502ab portaria: nome de agente nao vira caminho sem ser um segmento simples
+2a86a3c4 testes: a soma do agentes.extra.json nao tinha caso nenhum
+a5a3be7a testes: atualiza testa-portaria-diagnostico.cjs para nova política
+7acbec5e testes: atualiza baterias de portaria para política nova (issue #264)
+d1b57b8b regra 10: manifesto vira declaracao, e so a regra 11 barra (#264)
+dd2e7ccd portaria: deixa de admitir agente e passa a registrar (fecha #264)
+72336e70 integra tarefa 7: documenta as duas formas de declaracao de sensor
+206e2051 tarefa 7: documenta as duas formas de declaracao de sensor (D18)
+c748d787 integra tarefa 6: campo sensores no manifesto e portao por linha Sensor:
+1cc64b12 portaria: campo sensores no manifesto, gate por linha Sensor: no briefing (Tarefa 6)
+0e2bc03c guias-sensores: marca @categoria em 40 pecas e o conferidor que exige
+a3f4820b plano: oito tarefas para guias e sensores, cinco paralelas
+63db97b6 design: guias e sensores, cinco enxertos do Harness Engineering
+ef77e1e2 A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241) (#255)
+a8e1f639 fluxo: fecha o registro da Régua 3 (concluído na janela principal) (#252)
+1661fd0c Matar a regra de condicao pendurada, que nao tinha como acertar
+26990b73 Fechar o executar com a catraca de mutacao satisfeita por tarefa
+59354206 Bateria da autorizacao do usuario na portaria (tarefa 7)
+12900048 Portaria: distinguir casos de negação e mudar estagio por autorização
+1066af63 Portaria consulta autorização do usuário antes de negar por estágio
+00d8f981 Isentar agente nativo do arquivo em agents/, em vez de fabricar stub
+78673f07 Integrar os agentes nativos no manifesto (tarefa 8)
+8fbecb18 Declarar agentes nativos do Claude Code no manifesto
+06d53a96 Desenhar a triagem de achado e a portaria fora do fluxo
+f92451cc T9: campo runtime para despacho de agentes em Codex
+8babfca1 T1: Portaria registra e valida runtime (claude/codex)
+42b7e46a Design: agentes do rainforest em Codex ou Claude, por escolha do usuario
+1cdfa745 conferir-versao separa nao medi de nao ha o que medir, e olha o numero
+c7853922 Design e plano da Issue #189: conferir-versao passa a olhar o numero
+a433d15e Merge pull request #190 from luisfmontes/fluxo/inventario-do-acervo
+f249566b Issue #176: separar recusas de repositório sem plugin vs manifesto corrompido
+84ed5c41 Lote 3 T3: Portaria diz o que leu ao negar
+6659f5c6 Fluxo 7 T7: documenta recibo.cjs na tabela de scripts do README
+033882c5 Fluxo 7 T2: implementar gravar com testes e .gitignore
+cd536206 1.0.0 — o repositorio vai a publico e o contrato passa a valer
+24f02adc 1.0.0 — o repositorio vai a publico e o contrato passa a valer
+519fd271 Portaria: escreve:true admitido com worktree obrigatorio, e as baterias entram na suite
+8315dc36 Portaria: escreve:true admitido com worktree obrigatorio, e as baterias entram na suite
+b9059ea2 Merge pull request #141 from luisfmontes/fluxo/portaria
+5635137c Merge pull request #141 from luisfmontes/fluxo/portaria
+535218c1 0.80.0 — portaria: admissao de subagente por manifesto (fluxo 9)
+8e667c79 0.80.0 — portaria: admissao de subagente por manifesto (fluxo 9)
+4bd05dbb Fluxo 9: falha interna da portaria NEGA — o critico da rodada 6 era meu
+d9aee5e0 Fluxo 9: falha interna da portaria NEGA — o critico da rodada 6 era meu
+e81d065d Fluxo 9: a FORMA do manifesto passa a ser conferida — critico da rodada 5
+ee3d9a21 Fluxo 9: a FORMA do manifesto passa a ser conferida — critico da rodada 5
+39d78863 Fluxo 9: os dois criticos da rodada 4 — teste tautologico e allow que mentia
+07c6f35e Fluxo 9: os dois criticos da rodada 4 — teste tautologico e allow que mentia
+6adc5553 Fluxo 9: parser de `tools:` passa a ter TRES estados — o critico da rodada 2
+e1274286 Fluxo 9: parser de `tools:` passa a ter TRES estados — o critico da rodada 2
+29a8e8e7 Fluxo 9: executar refechado ok apos o conserto dos 2 criticos
+99a83dbe Fluxo 9: executar refechado ok apos o conserto dos 2 criticos
+c18181f0 Fluxo 9 T9: verificacao manual unica, com o log de despacho como evidencia primaria
+2dc5c2fa Fluxo 9 T9: verificacao manual unica, com o log de despacho como evidencia primaria
+ca16c4b0 Fluxo 9 T8: manifesto real, com o aceite do bloqueio e a divida nomeada
+da885781 Fluxo 9 T8: manifesto real, com o aceite do bloqueio e a divida nomeada
+d8724044 Tarefa 5 (fluxo 9): portaria.cjs --lint (D5) e fixtures
+2c292ddb Tarefa 5 (fluxo 9): portaria.cjs --lint (D5) e fixtures
+a14d675a Fluxo 9 T4: o log de despacho sai do git, o manifesto e a amostra ficam
+f3d22fee Fluxo 9 T4: o log de despacho sai do git, o manifesto e a amostra ficam
+df8fafdf Tarefa 3: Nucleo de portaria — decisao fail-closed + bateria
+8bc3958f Tarefa 3: Nucleo de portaria — decisao fail-closed + bateria
+836140e9 Divida do merge com a main: nucleo da regra 10 encolhido para caber na catraca
+65223a8f Divida do merge com a main: nucleo da regra 10 encolhido para caber na catraca
+9742dff1 Fluxo 9 T2 fechada: amostra REAL do payload colhida em sessao nova
+67b6f6c2 Fluxo 9 T2 fechada: amostra REAL do payload colhida em sessao nova
+2d973e6f Tarefa 7 da portaria: regra 10 reescrita — admissao por manifesto e estagio, nucleo e elaboracao
+fe285fe8 Tarefa 7 da portaria: regra 10 reescrita — admissao por manifesto e estagio, nucleo e elaboracao
+6e07275c Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README (#129)
+be0332c9 Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README (#129)
+5410b560 A bateria de saude parava de mutar o produto que ela mede (#35)
+195ba759 A bateria de saude parava de mutar o produto que ela mede (#35)
+c4918934 A bateria de saude cobrava do produto a regra que ela mesma quebrava (#27) (#29)
+22de9e55 A bateria de saude cobrava do produto a regra que ela mesma quebrava (#27) (#29)
+c25afc4e O verde mais saudavel do painel era falso: o /saude passa a medir o que executa (#20)
+5ab6da43 O verde mais saudavel do painel era falso: o /saude passa a medir o que executa (#20)
+3e296bd9 Le o everything-claude-code no clone: o README descreve sistema, o codigo entrega catalogo
+9c61a2e2 Le o everything-claude-code no clone: o README descreve sistema, o codigo entrega catalogo
+
+$ git log --all --grep="territorio.json" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+{"id":"subtrair-deriva-de-proposito","titulo":"Subtrair as cinco pecas que nao servem ao manifesto"}
+{"id":"recomendei-rodada-que-a-portaria-negaria","titulo":"Recomendei abrir estagio e despachar sem conferir quem o manifesto admite — a rodada inteira teria batido na portaria"}
+{"id":"contrato-de-territorio-espera-o-nucleo-estavel","titulo":"Contrato de territorio: EM OBRA desde 2026-09-08 — AdvPL e o primeiro territorio; LSP via advpls (achado 2026-09-12) e a primeira peca dele"}
+{"id":"territorio-power-bi","titulo":"Power BI como terceiro território (o caso em que 'pronto quando' não é teste)"}
+{"id":"jevgrep-como-terceiro-braco-do-territorio","titulo":"jevgrep (dzhng/jevgrep, MIT) como braco de descoberta semantica do territorio AdvPL"}
+
+

@@ -2,5 +2,9 @@
   {
     "frase": "Antes de \"verde\" virar achado",
     "descricao": "Sem ela mutação neutra volta a virar achado de cobertura — veredito certo pelo motivo errado"
+  },
+  {
+    "frase": "pare e diga qual falta",
+    "descricao": "D6. Sem ela variável sem valor no config local vira caminho inventado em vez de pedido ao usuário"
   }
 ]

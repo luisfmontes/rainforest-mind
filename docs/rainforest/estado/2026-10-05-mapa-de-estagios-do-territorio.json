@@ -1,0 +1,280 @@
+{
+  "slug": "2026-10-05-mapa-de-estagios-do-territorio",
+  "titulo": "Contrato do mapa de estágios do território",
+  "criado_em": "2026-10-05",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-05-mapa-de-estagios-do-territorio.md",
+    "em": "2026-10-05"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-05-mapa-de-estagios-do-territorio.md",
+    "tarefas": 5,
+    "paralelas": [
+      1
+    ],
+    "em": "2026-10-05"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-05",
+    "tarefas_ok": 5,
+    "tarefas": 5,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "42e7b5e1",
+        "iteracao": 1,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:12:38.692Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "42e7b5e1",
+        "iteracao": 2,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:16:00.433Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1c940e48",
+        "iteracao": 1,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:16:00.433Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "42e7b5e1",
+        "iteracao": 3,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:19:09.994Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1c940e48",
+        "iteracao": 2,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:19:09.994Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "37a3c390",
+        "iteracao": 1,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:19:09.994Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "42e7b5e1",
+        "iteracao": 4,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:32:56.104Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1c940e48",
+        "iteracao": 3,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:32:56.104Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "37a3c390",
+        "iteracao": 2,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:32:56.104Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "f6d312dd",
+        "iteracao": 1,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:32:56.104Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "42e7b5e1",
+        "iteracao": 5,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:33:15.979Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1c940e48",
+        "iteracao": 4,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:33:15.979Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "37a3c390",
+        "iteracao": 3,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:33:15.979Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "f6d312dd",
+        "iteracao": 2,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:33:15.979Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "42e7b5e1",
+        "iteracao": 6,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:38:05.374Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1c940e48",
+        "iteracao": 5,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:38:05.374Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "37a3c390",
+        "iteracao": 4,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:38:05.374Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "f6d312dd",
+        "iteracao": 3,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:38:05.374Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "fd6e7c11",
+        "iteracao": 1,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:38:05.374Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "42e7b5e1",
+        "iteracao": 7,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:41:30.431Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1c940e48",
+        "iteracao": 6,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:41:30.431Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "37a3c390",
+        "iteracao": 5,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:41:30.431Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "f6d312dd",
+        "iteracao": 4,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:41:30.431Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "fd6e7c11",
+        "iteracao": 2,
+        "sessao": "bba7dce4-9408-434b-8792-367b984b1c9c",
+        "ts": "2026-10-05T13:41:30.431Z"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-05",
+    "para_revisar": [
+      "versao_contrato != 0 de qualquer plugin instalado recusa marcar em todo repo, mesmo sem deteccao",
+      "aviso de indisponivel sai sem o tipo do agente (plano tarefa 2 pedia aviso: <tipo> indisponivel)",
+      "campo variaveis do manifesto nao e lido; variavel exigida = qualquer {nome} usado no comando (D6 fala em variaveis que o territorio declarar)"
+    ],
+    "comando": "bash scripts/testa-territorio.sh; bash scripts/testa-estado-territorio.sh",
+    "saida": "total=18 vermelhas:[]; total=9 vermelhas:[]",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-territorio.sh, caso plugin com versao_contrato 1 que nao casa nao bloqueia"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-territorio.sh, caso variavel sem valor no config local sai 3 nomeando a variavel"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-estado-territorio.sh, casos mcp obrigatorio com quem=agente nao exige evidencia do orquestrador e territorio.cjs que sai 1 recusa o marcar (rodada 3)"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "texto de skill; falsificado pelo conferir-invariantes saindo 2 sem a frase"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "documento de referencia; falsificado pelo chk de chaves fixture x doc"
+      }
+    ],
+    "rodada": 3
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "fd8793187ae6248534646b600203535a046c4817",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "aa0f455231ba4a525",
+        "veredito": "ok",
+        "em": "2026-10-05",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/bba7dce4-9408-434b-8792-367b984b1c9c/subagents/agent-aa0f455231ba4a525.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-05",
+    "achados": 0,
+    "lista": [
+      "ALTO mcp obrigatorio com quem=agente trava o marcar: skill manda nao consultar, estado.cjs:2250 exige evidencia, --json do territorio.cjs nao leva quem",
+      "MEDIO manifesto com forma errada (agentes nao-array, comando ausente) da TypeError exit 1 em territorio.cjs:151, e estado.cjs:2234 trata exit 1 como itens [] (fail-open)"
+    ],
+    "base": "530d62b7914b0d93b59ca03b24d11c23a21f17e7",
+    "head": "fd8793187ae6248534646b600203535a046c4817",
+    "ressalvas": [
+      "installPath nao-string sai 1 e recusa marcar (registro corrompido)",
+      "obrigatorio nao-booleano vira false em silencio",
+      "deteccao malformada ignorada em silencio",
+      "contrato-territorio.md:140/162 diz que so exit 2 recusa; codigo recusa qualquer exit != 0",
+      "exit 0 com JSON ilegivel = itens []"
+    ]
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/testa-territorio.sh && bash scripts/testa-estado-territorio.sh && bash scripts/testa-estado.sh && bash scripts/testa-conferir-fluxo.sh && node scripts/conferir-invariantes.cjs",
+    "saida": "total=18 vermelhas:[]; total=9 vermelhas:[]; 299 ok, 0 falhas; ok: 79 falhou: 0; ok: conferidas 19 invariantes; chk contrato x fixture 16/16 erros=0; mutacoes tarefas 1-3 vermelho",
+    "sensor_externo": "bash scripts/testa-territorio.sh",
+    "em": "2026-10-05"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 391,
+    "em": "2026-10-05"
+  }
+}

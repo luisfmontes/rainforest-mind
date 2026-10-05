@@ -19,6 +19,25 @@ Exit ≠ 0 (recusa por `design` ou `plano` em aberto) encerra aqui — não se
 improvisa plano na cabeça pra contornar. Passou: leia o plano inteiro antes
 de despachar a primeira task.
 
+## Território
+
+Antes do primeiro despacho:
+
+```
+node scripts/territorio.cjs estagio executar
+```
+
+`sem territorio` = papel padrão, nada muda. Com território (formato em
+`docs/rainforest/referencia/contrato-territorio.md`), leia o bloco:
+
+- `modo: substitui` com `agente: <tipo>`: o `subagent_type` do despacho é o agente declarado, no lugar do `executor` do rainforest; o despacho mantém `isolation: "worktree"`, o preparo de base e o critério do plano (D4).
+- `modo: soma`: despache os dois, o declarado e o do rainforest.
+- `mcp=orquestrador` no agente: ele não enxerga o MCP; **você** consulta as `mcp:` do estágio e cola o resultado no briefing (D8).
+- `aviso: ...`: item indisponível, papel padrão do rainforest; anuncie em uma linha (regra 14, D5). Exit 2 é item obrigatório ausente: pare.
+
+Com `modo: substitui`, troque o `subagent_type` do despacho pelo agente declarado, mantendo `isolation: "worktree"`.
+Ao fechar, os agentes despachados vão no `--json`: `"territorio":{"agentes":[{"tipo":"<tipo>"}]}` (D9).
+
 ## O paralelismo é o ponto
 
 O plano marca quais tarefas são independentes entre si; essas vão **em

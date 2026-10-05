@@ -216,8 +216,8 @@ assere_base() {
 # `roster_verde` e a etiqueta `(7 arquivos, 15 invariantes)` repetida em três
 # lugares —, e quem acrescentasse uma invariante mexeria no número e esqueceria a
 # etiqueta: o placar diria "15" asserindo 16 (achado da quinta revisão).
-ROSTER_ESPERADO="executar fechar limpar plano rainforest-mind revisar verificar"
-ROSTER_INVARIANTES=15
+ROSTER_ESPERADO="brainstorm executar fechar limpar plano rainforest-mind revisar verificar"
+ROSTER_INVARIANTES=19
 ROSTER_ARQUIVOS="$(printf '%s\n' $ROSTER_ESPERADO | wc -l | tr -d ' ')"
 ROSTER_ETIQUETA="ROSTER: as skills protegidas continuam as mesmas ($ROSTER_ARQUIVOS arquivos, $ROSTER_INVARIANTES invariantes)"
 ROSTER_ATUAL=""
@@ -321,8 +321,10 @@ ROSTER_CONTAGEM=-1
 #
 # Invariante NOVA em producao nasce VERMELHA ate ser declarada aqui — custo
 # aceito e registrado na secao "Em aberto" do design.
-INVARIANTES_ESPERADAS='executar|deve|-|O hash da base é executado `git rev-parse`, nunca digitado
+INVARIANTES_ESPERADAS='brainstorm|deve|-|**você** consulta a tool antes da primeira rodada e usa o resultado como fato
+executar|deve|-|O hash da base é executado `git rev-parse`, nunca digitado
 executar|deve|-|nunca é nomeado
+executar|deve|-|troque o `subagent_type` do despacho pelo agente declarado, mantendo `isolation: "worktree"`
 fechar|deve|-|O destino da branch é sempre PR
 fechar|deve|-|Árvore suja de algo que não é deste trabalho é condição de parada
 fechar|nao_deve|-|CONFIRMO fechar issue
@@ -335,7 +337,9 @@ rainforest-mind|deve|skill,nucleo|pelo `ideias.cjs plantar`
 rainforest-mind|deve|skill,referencia,nucleo|printenv NOME
 revisar|deve|-|Justificar em prosa não destrava
 revisar|deve|-|nunca reduz a severidade de um achado
-verificar|deve|-|Antes de "verde" virar achado'
+revisar|deve|-|vão **em paralelo** ao `rainforest-mind:revisor`
+verificar|deve|-|Antes de "verde" virar achado
+verificar|deve|-|pare e diga qual falta'
 SF_DECL=""
 SF_PROD=""
 SF_N_PROD=-1

@@ -150,6 +150,10 @@ const FECHA_TAMBEM = { arqueologia: ['ok', 'dispensada'] };
 
 // Estágios de execução que exigem evidência (comando e saida) para fechar com ok
 const ESTAGIOS_EXIGEM_EVIDENCIA = ['executar', 'verificar'];
+
+// Estágio do estado -> nome do estágio no mapa do território (design do mapa, D12).
+// Os demais estágios não consultam o território.
+const ESTAGIO_DO_MAPA = { design: 'brainstorm', executar: 'executar', revisar: 'revisar', verificar: 'verificar' };
 function estaFechado(estagio, bloco) {
   if (!bloco || typeof bloco !== 'object') return false;
   // Issue #148: estágio reaberto por reprovação não está fechado, seja qual for
@@ -2232,6 +2236,33 @@ function main() {
       if (recusa) {
         console.error(recusa);
         process.exit(2);
+      }
+      // Território (D9): item obrigatório do mapa sem evidência no campo `territorio`
+      // do --json recusa; opcional só avisa. Sem território ou sem o territorio.cjs ao
+      // lado (instalação antiga), nada muda.
+      const estagioDoMapa = ESTAGIO_DO_MAPA[estagio];
+      const scriptTerritorio = path.join(__dirname, 'territorio.cjs');
+      if (estagioDoMapa && fs.existsSync(scriptTerritorio)) {
+        const r = spawnSync(process.execPath, [scriptTerritorio, 'estagio', estagioDoMapa, '--json', '--raiz', RAIZ], { encoding: 'utf8' });
+        if (r.status !== 0) { console.error(`RECUSADO: territorio invalido ou territorio.cjs falhou (exit ${r.status}): ${(r.stderr || '').trim()}`); process.exit(2); }
+        let itens = [];
+        if (r.status === 0) {
+          try { itens = JSON.parse(r.stdout).itens || []; } catch { itens = []; }
+        }
+        const t = extra.territorio && typeof extra.territorio === 'object' ? extra.territorio : {};
+        const lista = (k) => (Array.isArray(t[k]) ? t[k].filter((x) => x && typeof x === 'object') : []);
+        const temEvidencia = (item) => {
+          if (item.classe === 'agente') return lista('agentes').some((a) => a.tipo === item.id);
+          if (item.classe === 'mcp') return lista('mcp').some((m) => m.tool === item.id);
+          return lista('comandos').some((c) => c.id === item.id && typeof c.comando === 'string' && c.comando
+            && typeof c.saida === 'string' && c.saida && typeof c.exit === 'number');
+        };
+        const exigiveis = itens.filter((i) => i.classe !== 'skill' && !(i.classe === 'mcp' && i.quem === 'agente'));
+        const obrigatoriosSemEvidencia = exigiveis.filter((i) => i.obrigatorio && !temEvidencia(i)).map((i) => i.id);
+        if (obrigatoriosSemEvidencia.length) { console.error(`RECUSADO: item obrigatorio do territorio sem evidencia: ${obrigatoriosSemEvidencia.join(', ')}`); process.exit(2); }
+        for (const i of exigiveis) {
+          if (!i.obrigatorio && !temEvidencia(i)) console.error(`aviso: item opcional do territorio sem evidencia: ${i.id}`);
+        }
       }
     }
     // Contrato de veredito (D9 — Tarefa 6): 'reprovado' so fecha 'revisar' se

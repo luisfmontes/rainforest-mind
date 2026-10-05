@@ -10,6 +10,30 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.40.0 — 2026-10-05
+
+- **Mapa de estágios do território.** Um plugin de domínio (um "território") passa a declarar, num
+  `territorio.json`, quais agentes despachar, quais tools de MCP e skills consultar e quais comandos
+  rodar em cada estágio do fluxo. Antes, mesmo com os dois plugins habilitados, o modelo não
+  despachava nenhum agente do outro plugin: ficava por iniciativa dele.
+- **`scripts/territorio.cjs estagio <nome>`.** Descobre o território do repositório (pela detecção do
+  manifesto, ou pelo apontamento `.rainforest/territorio`, que vence) e imprime o bloco do estágio.
+  Variáveis de comando vêm de `~/.rainforest/territorios/<nome>.json`; variável sem valor sai 3
+  nomeando a que falta. Sem território, imprime `sem territorio` e nada muda. O `{arquivo}` sai
+  citado para shell (aspas simples quando tem caractere fora do conjunto seguro): o nome vem do
+  repositório em que se trabalha e a linha impressa é executada, então `x$(cmd).prw` não roda `cmd`.
+- **O `marcar` recusa item obrigatório sem evidência.** Agente, tool ou comando que o mapa marca
+  como obrigatório e não aparece no campo `territorio` do `--json` do `marcar` recusa com exit 2
+  nomeando o item. Item opcional só gera aviso. Sem território, o `marcar` se comporta como antes.
+- **As quatro skills ligadas.** `brainstorm`, `executar`, `revisar` e `verificar` rodam o
+  `territorio.cjs` na abertura e agem sobre o bloco: consultas de MCP no brainstorm, agente do
+  território no lugar do executor (`modo: substitui`), revisores em paralelo ao do rainforest
+  (`modo: soma`) e comandos do mapa na verificação.
+- **Contrato `versao_contrato: 0`, experimental.** Está descrito em
+  `docs/rainforest/referencia/contrato-territorio.md`, com o protocolo de aceite em números (agentes
+  despachados, qualidade do júri cego, custo até +30%). Vira v1 quando um segundo território o
+  implementar. O mapa de um território real mora no plugin dele, não neste repositório.
+
 ## 1.39.3 — 2026-10-05
 
 - **`git` e `gh` não são mais procurados na pasta do repositório aberto** (#392). Hooks e scripts chamavam
