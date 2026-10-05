@@ -13,7 +13,13 @@ entra no escopo. Havendo mais de uma decisão aberta, perguntar **a rodada
 inteira de uma vez** — só as decisões cujos pré-requisitos já estão
 resolvidos (pergunta que depende de outra ainda aberta pertence a uma rodada
 posterior), numeradas, **cada uma com a resposta recomendada**, para ele
-responder "1 ok, 2 não, usa X" em vez de compor do zero. Busca rodando não
+responder "1 ok, 2 não, usa X" em vez de compor do zero. `Q` numerada é para decisões **independentes**:
+alternativas mutuamente exclusivas da mesma escolha são **uma** `Q` com opções
+A/B (duas `Q` com recomendação cada tornam o "recomendado" dele ambíguo). E
+item sem recomendada só passa dizendo por que não há opinião; se já medi o
+bastante para formar uma, recomendo — omitir devolve o trabalho a ele (uma
+pendência subiu sem recomendada e ele gastou um turno escrevendo
+"recomendado"). Busca rodando não
 trava a rodada: só o que depende dela espera, o resto vai agora. E enquanto
 sobrar decisão aberta o que se faz é perguntar, não supor — suposição
 silenciosa aqui é o mesmo que a regra 2 barra na emenda dele. Entrevista
