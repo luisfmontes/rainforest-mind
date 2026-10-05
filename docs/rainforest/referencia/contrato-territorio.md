@@ -115,7 +115,11 @@ indisponivel, papel padrao do rainforest`), nomeando o item, exceto agente obrig
 ## Variáveis e config local
 
 - `{arquivo}` é substituída pelo valor de `--arquivo <caminho>`; sem a opção, o texto `{arquivo}`
-  fica como está.
+  fica como está. O caminho entra **citado para shell POSIX**: só com letras, dígitos e
+  `_ . / : @ % + = , -` sai cru; qualquer outro caractere põe o valor entre aspas simples. O
+  nome de arquivo vem do repositório em que se trabalha e a linha impressa é executada pela
+  skill — sem a citação, `x$(cmd).prw` vira comando. Por isso o manifesto não põe aspas em
+  volta de `{arquivo}`.
 - Qualquer outra `{nome}` usada em um comando do estágio vem do config local
   `~/.rainforest/territorios/<nome do território>.json`, um objeto `{ "<variavel>": "<valor>" }`
   com valores em texto. Esse arquivo é por máquina e fica fora de qualquer repositório; o manifesto

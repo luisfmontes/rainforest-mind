@@ -67,6 +67,14 @@ out=$(TH "$H1" estagio verificar --raiz "$FIX/repo-abc" --arquivo x.abc 2>&1); r
 [ $rc = 0 ] && echo "$out" | grep -qx 'comando: lint /bin/true x.abc obrigatorio=true'
 caso "variavel resolvida pelo config local" $?
 
+# --- {arquivo} hostil: nome de arquivo do repo nao pode virar comando na linha impressa
+ALVO="$TMP/injetado"; rm -f "$ALVO"
+HOSTIL='x$(touch injetado)'"'"'q.abc'
+out=$(TH "$H1" estagio verificar --raiz "$FIX/repo-abc" --arquivo "$HOSTIL" 2>&1); rc=$?
+linha=$(echo "$out" | sed -n 's/^comando: lint \(.*\) obrigatorio=true$/\1/p')
+[ $rc = 0 ] && [ -n "$linha" ] && (cd "$TMP" && timeout 10 bash -c "$linha" </dev/null) && [ ! -e "$ALVO" ]
+caso "arquivo com substituicao de comando sai entre aspas e nao executa" $?
+
 out=$(TH "$H2" estagio verificar --raiz "$FIX/repo-abc" --arquivo x.abc 2>&1); rc=$?
 [ $rc = 3 ] && echo "$out" | grep -q 'lint' && echo "$out" | grep -q 'sintetico.json'
 caso "variavel sem valor no config local sai 3 nomeando a variavel" $?

@@ -195,6 +195,14 @@ function imprimirJson(manifesto, estagio) {
   console.log(JSON.stringify({ territorio: manifesto ? manifesto.nome : null, itens }));
 }
 
+// {arquivo} vem do repo em que se trabalha (nome de arquivo pode ser de terceiro) e a linha
+// impressa e executada pela skill: sem aspas, `x$(cmd).prw` vira injecao de comando. Nome so
+// com caracteres seguros sai cru; o resto vai entre aspas simples POSIX. As variaveis do
+// config local sao do proprio usuario e entram como fragmento de comando, sem aspas.
+function citarShell(v) {
+  return /^[A-Za-z0-9_./:@%+=,-]+$/.test(v) ? v : "'" + v.split("'").join("'\\''") + "'";
+}
+
 function imprimirEstagio(manifesto, estagio, arquivo) {
   const e = (manifesto.estagios || {})[estagio];
   const disponiveis = pluginsDisponiveis();
@@ -233,7 +241,7 @@ function imprimirEstagio(manifesto, estagio, arquivo) {
     console.log(indisponivel(s, disponiveis) ? `aviso: skill ${s} indisponivel, papel padrao do rainforest` : `skill: ${s}`);
   }
   for (const c of comandos) {
-    const cmd = c.comando.replace(/\{(\w+)\}/g, (m, v) => (v === 'arquivo' ? (arquivo === undefined ? m : arquivo) : valores[v]));
+    const cmd = c.comando.replace(/\{(\w+)\}/g, (m, v) => (v === 'arquivo' ? (arquivo === undefined ? m : citarShell(arquivo)) : valores[v]));
     console.log(`comando: ${c.id} ${cmd} obrigatorio=${c.obrigatorio === true}`);
   }
 }
