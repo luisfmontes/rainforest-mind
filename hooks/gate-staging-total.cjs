@@ -56,6 +56,7 @@
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
+const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
 const { cwdPorSegmento, segmentosComAspas } = require("./lib/cwd-efetivo.cjs");
 const {
   tokensComAspas, ehComando, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
@@ -80,7 +81,7 @@ const PATHSPEC_TOTAL = new Set([".", "./", ":/", "*"]);
  */
 function git(dir, args, { cru = false } = {}) {
   try {
-    const s = execFileSync("git", ["-C", dir, ...args], {
+    const s = execFileSync(caminhoExecutavel("git"), ["-C", dir, ...args], {
       encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
     });
     return cru ? s.replace(/\r?\n+$/, "") : s.trim();

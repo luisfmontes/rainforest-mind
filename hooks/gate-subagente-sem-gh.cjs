@@ -32,6 +32,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { execFileSync } = require("node:child_process");
+const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
 const {
   tokensComAspas, posicaoDeComando, textoAPartir,
   WRAPPERS_QUE_REPASSAM, WRAPPERS_DE_COMANDO, desempacotarWrapperDeString,
@@ -654,7 +655,7 @@ function arquivoIsento(caminho, cwd) {
   if (!/^testa-/.test(base)) return false;
   const dir = path.dirname(caminho);
   try {
-    execFileSync("git", ["-C", dir, "ls-files", "--error-unmatch", base], { stdio: "ignore" });
+    execFileSync(caminhoExecutavel("git"), ["-C", dir, "ls-files", "--error-unmatch", base], { stdio: "ignore" });
     return true;
   } catch {
     return false;

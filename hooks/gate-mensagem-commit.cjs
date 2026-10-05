@@ -66,6 +66,7 @@
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
+const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
 const { segmentosComAspas } = require("./lib/cwd-efetivo.cjs");
 const {
   tokensComAspas, ehComando, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
@@ -84,7 +85,7 @@ const LIMITE_LINHAS = 150;
 
 function git(dir, args) {
   try {
-    return execFileSync("git", ["-C", dir, ...args], {
+    return execFileSync(caminhoExecutavel("git"), ["-C", dir, ...args], {
       encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
     });
   } catch {

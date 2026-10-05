@@ -213,6 +213,7 @@
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
+const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
 
 // Flags globais do git que consomem o token seguinte (`git -C <dir> commit`).
 const FLAG_COM_VALOR = new Set([
@@ -221,7 +222,7 @@ const FLAG_COM_VALOR = new Set([
 
 function git(dir, args) {
   try {
-    const s = execFileSync("git", ["-C", dir, ...args], {
+    const s = execFileSync(caminhoExecutavel("git"), ["-C", dir, ...args], {
       encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
     });
     return s.trim();
