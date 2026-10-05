@@ -23,7 +23,82 @@
     "em": "2026-10-05"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-10-05",
+    "tarefas_ok": 6,
+    "tarefas": 6,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "12a6f3ed",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T12:33:23.721Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "12a6f3ed",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T12:33:23.721Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "12a6f3ed",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T12:33:23.721Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "12a6f3ed",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T12:33:23.721Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "12a6f3ed",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T12:33:23.721Z"
+      }
+    ],
+    "em": "2026-10-05",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-mod-relogio.cjs, caso meia-noite: leitura das 23h58 com 600 min nao acende as 0h01"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "mod-relogio.test.tsx, session.end de outra sessao nao cancela os timers"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "mod-relogio.test.tsx, clear mantem o relogio e troca o --sessao"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-mod-faixa.cjs, invisiveis ... U+2060-2069 e BOM viram espaco"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-relogio-sessoes.sh, sessoes.json acima de 256 KB sai 1 sem ler"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "nota de versao e bump, sem comportamento a inverter"
+      }
+    ],
+    "comando": "claude plugin test . + 5 baterias + conferir-mutacao x5",
+    "saida": "22 pass 0 fail; 27/23/9/28/14 ok 0 falha; mutacao exit 0 nas 5"
   },
   "revisar": {
     "status": "pendente"
