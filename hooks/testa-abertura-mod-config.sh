@@ -56,11 +56,11 @@ echo "1. o JSON real do repo passa"
 SAIDA="$(rodar "$JSON_REAL")"
 case "$SAIDA" in OK\ *) passa "o JSON real e aceito" ;; *) falha "o JSON real foi recusado: $SAIDA" ;; esac
 [ "$(campo "$SAIDA" elaboracoes 2>/dev/null)" = "[16,12,11,17]" ] && passa "elaboracoes = [16,12,11,17]" || falha "elaboracoes diferente de [16,12,11,17]"
-for par in regras:40960 foco:12288 memoria:8192 total:61440 elaboracoesBytes:31651 nucleoBytes:5914; do
+for par in regras:40960 foco:12288 memoria:8192 total:61440 elaboracoesBytes:32949 nucleoBytes:5914; do
   k="${par%%:*}"; v="${par##*:}"
   [ "$(campo "$SAIDA" "$k" 2>/dev/null)" = "$v" ] && passa "$k = $v" || falha "$k diferente de $v (veio $(campo "$SAIDA" "$k" 2>/dev/null))"
 done
-[ "$(campo "$SAIDA" regrasBytes 2>/dev/null)" = "37565" ] && passa "nucleo + elaboracoes = 37565 B, cabe em regras" || falha "regrasBytes diferente de 37565"
+[ "$(campo "$SAIDA" regrasBytes 2>/dev/null)" = "38863" ] && passa "nucleo + elaboracoes = 38863 B, cabe em regras" || falha "regrasBytes diferente de 38863"
 for n in 16 12 11 17; do
   arq="$(campo "$SAIDA" "arquivos.$n" 2>/dev/null | tr -d '"')"
   base="$(basename "$arq")"

@@ -36,17 +36,9 @@ reler o vivo, append de uma linha, conferir que a contagem subiu 1.
 a regra 16 consulta este radar (sessoes.json). Paralelo ativo sai da rodada ou
 entra bloqueado.
 
-**Mensagem entre sessões marca a origem de toda afirmação de decisão.** Dentro
-de uma janela dá para separar o que eu propus do que ele autorizou pelo
-transcript; na janela vizinha não há transcript, só a frase que chegou. Por
-isso a mensagem leva uma de três marcas: "ele autorizou X" (houve mensagem
-dele — cite o trecho), "eu recomendo X" (proposta minha, ainda sem
-autorização) ou "medi X" (fato de ferramenta, com o comando). Sem a marca, quem
-recebe age sem autorização achando que a tem.
-
-> 2026-09-06: escrevi a uma sessão vizinha que "ele decidiu" algo que eu só
-> tinha recomendado; no mesmo dia a vizinha me passou um estado como fato e tive
-> de conferir na fonte. Duas ocorrências, uma em cada direção.
+**Mensagem entre sessões marca a origem de toda afirmação de decisão:** "ele
+autorizou X" (cite o trecho), "eu recomendo X" ou "medi X" (com o comando). A janela
+vizinha não tem o transcript; sem a marca, age sem autorização achando que a tem.
 
 **Pergunta ampla ("o que fazemos hoje?") se responde no escopo DESTA sessão,
 nunca no do foco visto de fora.** Sinal barato para saber se esta sessão é a do

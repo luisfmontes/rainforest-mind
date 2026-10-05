@@ -14,8 +14,9 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 - **Revisão bimestral das regras.** As 214 observações registradas desde 2026-08-08 foram triadas por conteúdo:
   85 já estavam cobertas pelo texto e foram colhidas; 26 lições viraram texto novo nas regras e nas skills do
-  fluxo; o que era defeito de script virou Issue (#396 a #404). Nenhum núcleo injetado mudou de tamanho — o
-  texto novo mora nas `references/`.
+  fluxo; o que era defeito de script virou Issue (#396 a #404). Nenhum núcleo mudou; as elaborações das regras 11,
+  12, 16 e 17, que a abertura injeta inteiras, cresceram 1,3 KB (38.863 B de 40.960 B) — o resto do texto novo
+  mora em arquivos irmãos das `references/`.
 - **Regras (references):** citar terceiro pela frase literal e memória do usuário como ambiente (16); `Q` só
   para decisões independentes, sempre com recomendada (16); a prova tem de medir o defeito, verde em quantos
   ambientes, e mutação que alarga o padrão (12, em `regra-12-prova.md`); um worktree por atividade e sem
