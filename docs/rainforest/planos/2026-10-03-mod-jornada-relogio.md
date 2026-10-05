@@ -194,14 +194,14 @@ Nota: PARADA 1 (bola com o usuário). Procedimento que a janela principal prepar
 
 ### 7. Documentação do relógio [tipo: docs]
 atende: D2, D3, D5, D7, D8
-arquivos: `CONTRIBUTING.md`, `README.md`, `skills/rainforest-mind/references/regra-08.md`, `skills/rainforest-mind/references/regra-17.md`
+arquivos: `CONTRIBUTING.md`, `README.md`, `skills/rainforest-mind/references/regra-08.md`, `skills/rainforest-mind/references/regra-17.md`, `hooks/testa-abertura-mod-config.sh`
 depende de: 6
 paralela: nao
 mutacao: n/a
   motivo: tarefa de documentação, sem comportamento a inverter; a falsificação é a coerência com o design e com o código entregue.
 pronto quando: a seção "A faixa do mod" do `CONTRIBUTING.md` diz que a faixa tem no máximo `MAX_LINHAS` linhas (foco, fluxo, relógio, Q); que a linha do relógio mostra jornada efetiva e hora quando as efetivas passam de `LIMITE_EFETIVA_MIN / 60` h, ou de noite (`HORA_NOITE` h a `HORA_FIM_MADRUGADA` h) com mensagem do usuário nos últimos `JANELA_MSG_MIN` min; que a janela parada mais antiga além da `Ociosidade máxima:` (`OCIOSIDADE_PADRAO_MIN` se ausente) é nomeada pela pasta; que o relógio lê `sessoes.json` a cada 1 min e `scripts/jornada.cjs` a cada 5 min por `$.clock.every`; que a nota de uma vez por dia vai no prompt seguinte digitado no composer, como `context` do `prompt.submit` (o modelo lê, o usuário não vê), e a decisão de avisar continua do modelo; que "esconder" não volta com os minutos; que o relógio só nasce em sessão interativa; o `README.md` diz, junto do requisito da faixa, que o mesmo mod acende os avisos; `references/regra-17.md` e `references/regra-08.md` ganham uma frase cada dizendo que o relógio do mod acende o aviso — provado por um `node -e` que importa `hooks/relogio-puro.mjs` e `hooks/faixa-puro.mjs`, extrai do `CONTRIBUTING.md` os números e confere contra as constantes, confere eventos e `$.clock` de `hooks/mod.tsx`, e sai 1 se algo divergir; e `bash hooks/testa-contexto-sessao.sh`, `bash hooks/testa-abertura-mod-config.sh`, `bash scripts/testa-mapa-regras.sh` e `node hooks/testa-mod-abertura.cjs` seguem verdes.
 
-Nota: números do texto vêm do código; nada que a tarefa 6 não tenha medido. Uma frase só em cada regra, na elaboração (a 17 chega com o mod, a 8 é consulta). O núcleo de `SKILL.md` não muda. Não toca o badge de versão.
+Nota: números do texto vêm do código; nada que a tarefa 6 não tenha medido. Uma frase só em cada regra, na elaboração (a 17 chega com o mod, a 8 é consulta). Emenda de 2026-10-05: a frase da regra 17 engorda a elaboração injetada, e `hooks/testa-abertura-mod-config.sh` fixa os bytes exatos (`elaboracoesBytes`, `regrasBytes`): os dois números sobem junto, desde que a soma siga no teto de `regras`. O núcleo de `SKILL.md` não muda. Não toca o badge de versão.
 
 ### 8. Versão 1.39.0, CHANGELOG e fim de lote [tipo: configurar]
 atende: D1
