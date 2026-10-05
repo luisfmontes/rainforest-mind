@@ -882,7 +882,13 @@ function cmdMutacoes() {
       };
       let i = -1;
       for (let n = 0; n < linhas.length; n++) if (ehRotulo(linhas[n])) i = n;
-      if (i < 0) return '';
+      if (i < 0) {
+        // Sem rótulo conhecido (stack trace, `erro: --arquivo não existe`): a primeira
+        // linha que carrega uma marca de erro, para o motivo não sair vazio (#379).
+        const MARCAS_ERRO = ['Error', 'erro', 'EPERM'];
+        const achada = linhas.find(l => MARCAS_ERRO.some(m => l.includes(m)));
+        return achada ? ' — ' + achada.trim() : '';
+      }
       const rotulo = linhas[i].trim();
       // `RECUSADO:` já traz o motivo na mesma linha. `MUTACAO NAO APLICADA` e
       // `BATERIA SEM VEREDITO` são só o título — o que interessa está na linha

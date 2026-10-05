@@ -1018,6 +1018,26 @@ exige 2 "cobertura com raiz: nao-existe recusa" CHK cobertura --slug t
 exige_msg "raiz:.*pasta existente: nao-existe" "cobertura com raiz: nao-existe cita a pasta" CHK cobertura --slug t
 restaura
 
+# Razao sem rotulo: `arquivo:` inexistente faz o conferir-mutacao sair 1 com
+# `erro: --arquivo nao existe: <caminho>` no stderr, sem RECUSADO/MUTACAO NAO
+# APLICADA/BATERIA SEM VEREDITO. Modo natural, sem ponto de injecao novo.
+cat > "$MONO/docs/rainforest/planos/t-erro-sem-rotulo.md" <<'EOF'
+# Plano Erro Sem Rotulo
+
+### 1. Tarefa cujo arquivo nao existe
+
+atende: D1
+
+mutacao:
+  arquivo: `src/nao-existe.js`
+  de: `if (x === 1) return true;`
+  para: `if (x === 1) return false;`
+  bateria: `node --test test/x.test.js`
+  raiz: `app`
+EOF
+exige_msg "pulada (erro de execução) — erro: --arquivo não existe" "pulada por erro sem rotulo traz a linha do erro" \
+  env RFM_ESTADO_ROOT="$MONOW" node "$CHECADOR" mutacoes --slug t-erro-sem-rotulo
+
 echo "== 14. ambiente: git fora do PATH (D5, 2026-09-12) =="
 # `creep` chama `git diff` via execFileSync. Sem `git` no PATH do processo
 # filho, o `spawnSync` interno devolve ENOENT — isso e' ambiente, nao "sem
