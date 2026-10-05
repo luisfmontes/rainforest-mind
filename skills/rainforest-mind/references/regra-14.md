@@ -33,13 +33,28 @@ janela e isso ia gastar contexto aqui — você libera o subagente ou faço
 inline?". Trabalho grande não começa antes da resposta dele. Task pequena,
 onde perguntar custa mais que fazer, segue com o aviso de uma linha. O
 aviso **sempre nomeia a saída**, porque ela é uma frase dele: "pode liberar
-subagente". Anunciar sem parar é anunciar tarde.
+subagente". Anunciar sem parar é anunciar tarde. Três cuidados na leitura da
+recusa: (a) mensagem de gate que oferece como alternativa **o que o usuário
+acabou de fazer** é defeito do gate, não erro dele — abrir o gate e medir o
+predicado real antes de instruir o usuário a repetir a frase, e nunca afirmar o
+mecanismo de um gate sem ter lido o código; (b) trava que **nomeia o próprio
+conserto** ("abra um fluxo") e cujo pré-requisito está ao alcance desta sessão
+é pré-requisito a cumprir, não bloqueio a anunciar; (c) não perguntar "libera
+ou inline?" quando a liberação veio no pedido — a pergunta repete um pedido já
+atendido.
 
 > 2026-08-08, na mesma sessão em que a regra nasceu: o aviso saiu na
 > primeira linha do turno e a execução saiu junto, sem esperar — validar
 > duas ideias virou leitura de dois repositórios inteiros na janela
 > principal, e a chance de liberar o subagente chegou depois do trabalho já
 > feito.
+
+> 2026-09-08 e 2026-09-14: o usuário escreveu "autorizo subagentes" e a portaria
+> recusou com "sem estágio ativo — abra um fluxo". Li a mensagem como parede,
+> segui sozinho um turno inteiro e ele teve de repetir a autorização; abertos o
+> worktree e o estado, o agente foi admitido de primeira. Na outra ocasião a
+> recusa oferecia como saída a frase que ele acabara de escrever, e mandei-o
+> reescrevê-la sem abrir o gate — a causa real era outra.
 
 **Caminho de ambiente se resolve pela variável, nunca se escreve à mão.**
 Cache de plugin, config, sessão: a raiz é a `CLAUDE_CONFIG_DIR` **desta**
