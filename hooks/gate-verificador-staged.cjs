@@ -173,7 +173,7 @@ function chamaVerificadorComArgumentos(verificador, pastaTemp, arquivos, gitTop)
       cmdArgs = [verificador.caminho, ...args];
     } else if (cmd.endsWith(".cjs") || cmd.endsWith(".js")) {
       // JavaScript
-      cmd = "node";
+      cmd = process.execPath;
       cmdArgs = [verificador.caminho, ...args];
     } else {
       // Script bash/sh - chamar com bash

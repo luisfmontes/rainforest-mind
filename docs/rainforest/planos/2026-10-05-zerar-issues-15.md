@@ -176,3 +176,33 @@ mutacao:
   bateria: `node hooks/testa-gate-bateria-sem-timeout.cjs`
   fixture: `testa-gate-bateria-sem-timeout.cjs, caso "varrer-baterias.sh --shard 1/2 --listar nao e varredura completa → 0"`
 pronto quando: emenda achada na tarefa 9 — o subagente que rodou `bash scripts/varrer-baterias.sh --shard 1/2 --listar` (só imprime a lista) foi barrado três vezes como "varredura completa ~29 min". Com o payload de subagente que a bateria monta, `--shard 1/2 --listar` com timeout de 60 s sai 0, e `--shard 1/2` sem `--listar` segue barrado (2) — provado por `node hooks/testa-gate-bateria-sem-timeout.cjs` com `ok: 61   falhou: 0`
+
+### 13. resolverCaminhos sem argumento volta a seguir CLAUDE_PROJECT_DIR [tipo: implementar]
+atende: D7
+arquivos: `scripts/memoria.cjs`, `scripts/testa-memoria.sh`
+depende de: 11
+paralela: nao
+prova-na-base: verde — a regressão nasceu na tarefa 11; a base (530d62b7) já tinha o comportamento certo
+mutacao:
+  arquivo: `scripts/memoria.cjs`
+  de: `function resolverCaminhos(cwd) {`
+  para: `function resolverCaminhos(cwd = process.cwd()) {`
+  bateria: `bash scripts/testa-memoria.sh`
+  fixture: `testa-memoria.sh, caso "sem argumento, cwd fora do projeto: o banco e o do CLAUDE_PROJECT_DIR"`
+pronto quando: achado 1 da revisão (reprovada): o default `cwd = process.cwd()` da tarefa 11 entrava no `resolverRaiz` e passava na frente do `CLAUDE_PROJECT_DIR` para todo chamador sem argumento (`observar.cjs`, `conta-em-tabela`, os comandos do `memoria.cjs`). Sem argumento, a raiz volta à cadeia do `resolverRaiz` e o projeto vem do `process.cwd()`; com argumento, os dois vêm dele. Com `CLAUDE_PROJECT_DIR` num projeto de caixa com `.rainforest/FOCO.md` e a pasta atual noutra caixa, `resolverCaminhos().caminhoDb` é `<projeto>/.rainforest/rainforest.db` (na versão da tarefa 11: `ERRO: Nenhuma raiz de dados encontrada`) — provado por `bash scripts/testa-memoria.sh` com `41 ok, 0 falha(s)` e `bash hooks/testa-memoria-session-start.sh` com `84 ok, 0 falha(s)`
+
+### 14. detector de node por nome cobre template e variavel [tipo: implementar]
+atende: D8
+arquivos: `scripts/testa-node-por-nome.sh`, `hooks/gate-verificador-staged.cjs`, `scripts/orcamento.cjs`
+depende de: 8
+paralela: nao
+prova: `bash scripts/testa-node-por-nome.sh`
+mutacao:
+  arquivo: `hooks/gate-verificador-staged.cjs`
+  de: `      cmd = process.execPath;`
+  para: `      cmd = "node";`
+  bateria: `bash scripts/testa-node-por-nome.sh`
+  fixture: `testa-node-por-nome.sh, caso "nenhum spawn/exec de node por nome fora de bateria"`
+pronto quando: achado 2 da revisão: o detector só via `'node'`/`"node"` como primeiro argumento e deixava passar `` execSync(`node "${hookPath}"`) `` em `scripts/orcamento.cjs:198` e `cmd = "node"` em `hooks/gate-verificador-staged.cjs:176`; o filtro de bateria casava o caminho inteiro. Os dois pontos passam a `process.execPath` (`execFileSync(process.execPath, [hookPath], ...)` no orçamento); o detector acende nas três formas (argumento literal, template que começa por `node `, atribuição a variável simples) e não em campo de objeto (`resultado.stack = "node"` de `scripts/ponte.cjs:145`), e filtra `testa-*` pelo nome do arquivo — provado por `bash scripts/testa-node-por-nome.sh` com `ok: 3   falhou: 0`, `bash scripts/testa-orcamento.sh` com `falhou: 0` e `bash hooks/testa-gate-verificador-staged.sh` com `0 falha(s)`
+
+Nota da revisão (achado 3, aceito): o caso "raiz com node_modules como junction mede e sai 0" só morde onde criar symlink exige privilégio. Na máquina do Luís morde (a mutação da tarefa 2 deu `exit=69`); num runner administrador, não. A catraca roda na integração local, não no CI.

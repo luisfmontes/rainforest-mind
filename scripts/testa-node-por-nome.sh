@@ -26,11 +26,14 @@ relatorio_falha() {
 
 # Detecta spawn/exec com 'node' ou "node" como primeiro argumento
 detectar_node_por_nome() {
-  local arquivo="$1"
-  # Procura por chamadas spawn/spawnSync/execFile/execFileSync/exec/execSync
-  # cujo primeiro argumento seja a string 'node' ou "node"
-  # Padrao: (spawn|spawnSync|execFile|execFileSync|exec|execSync)\s*\(\s*['"']node['"]
-  grep -n "\(spawn\|spawnSync\|execFile\|execFileSync\|exec\|execSync\)\s*(\s*['\"]node['\"]" "$arquivo" || true
+  local arquivo="$1" crase=$'\x60'
+  # Tres formas do mesmo vetor (o executavel resolvido pela busca de nome, que no
+  # Windows olha a pasta atual antes do PATH):
+  #  - spawn/exec*("node" ou 'node', ...)
+  #  - exec/execSync com o comando inteiro numa template literal que comeca por node
+  #  - cmd = "node"; (o nome guardado numa variavel que vai para o spawn); campo de
+  #    objeto (resultado.stack = "node") e rotulo, nao comando, e fica de fora
+  grep -nE "(spawn|spawnSync|execFile|execFileSync|exec|execSync)[[:space:]]*\([[:space:]]*(['\"]node['\"]|${crase}node[[:space:]])|(^|[^.[:alnum:]_$])[[:alpha:]_$][[:alnum:]_$]*[[:space:]]*=[[:space:]]*['\"]node['\"][[:space:]]*;" "$arquivo" || true
 }
 
 echo "== Deteccao de chamadas ao node por nome (process.execPath obrigatorio) =="
@@ -46,7 +49,9 @@ lista_erros=""
 for arquivo in "$SRC"/hooks/*.cjs "$SRC"/hooks/lib/*.cjs "$SRC"/scripts/*.cjs "$SRC"/scripts/lib/*.cjs; do
   # Skip files that don't exist or are test files
   [ -f "$arquivo" ] || continue
-  [[ "$arquivo" == *testa-* ]] && continue
+  # Pelo nome do arquivo, nao pelo caminho: um clone em pasta com "testa-" no nome
+  # pulava tudo e o caso passava vazio.
+  [[ "$(basename "$arquivo")" == testa-* ]] && continue
 
   resultado="$(detectar_node_por_nome "$arquivo")"
   if [ -n "$resultado" ]; then
@@ -93,6 +98,29 @@ if [ -n "$resultado_teste" ]; then
 else
   falhou=$((falhou+1))
   echo "  FALHA detector nao identificou spawn('node', [...]) plantado no teste"
+fi
+
+# =========== Caso 3: as outras formas do mesmo vetor tambem acendem ===========
+echo "3. detector acende nas formas execSync(template), variavel = node e execFileSync"
+echo
+arquivo_formas="$SBP/teste-formas.cjs"
+cat > "$arquivo_formas" <<'EOF'
+const { execSync, execFileSync, spawnSync } = require('child_process');
+execSync(`node "${hookPath}"`, {});
+let cmd = "bash";
+cmd = "node";
+execFileSync("node", [x]);
+const runtime = 'node-ish';
+resultado.stack = "node";
+EOF
+n_formas="$(detectar_node_por_nome "$arquivo_formas" | wc -l | tr -d ' ')"
+if [ "$n_formas" = "3" ]; then
+  ok=$((ok+1))
+  echo "  ok   as tres formas acendem, e os falsos parecidos nao"
+else
+  falhou=$((falhou+1))
+  echo "  FALHA esperava 3 linhas detectadas, vieram $n_formas"
+  detectar_node_por_nome "$arquivo_formas"
 fi
 
 echo
