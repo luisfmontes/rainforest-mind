@@ -25,10 +25,10 @@
     "em": "2026-10-05"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-05",
-    "tarefas_ok": 14,
-    "tarefas": 14,
+    "tarefas_ok": 15,
+    "tarefas": 15,
     "carimbos": [
       {
         "tarefa": 1,
@@ -165,14 +165,15 @@
         "tarefa": 14,
         "resultado": "vermelho",
         "fixture": "testa-node-por-nome.sh"
+      },
+      {
+        "tarefa": 15,
+        "resultado": "vermelho",
+        "fixture": "testa-node-por-nome.sh conselho.cjs:40"
       }
     ],
-    "comando": "conferir-mutacao.cjs nas tarefas 13 e 14; conferir-fluxo mutacoes nas 1-12",
-    "saida": "13 e 14 VERMELHA exit 0; 1-9,11,12 vermelho",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-05"
-    }
+    "comando": "conferir-mutacao.cjs na tarefa 15",
+    "saida": "VERMELHA exit 0, conselho.cjs:40 acusado"
   },
   "revisar": {
     "status": "reprovado",
