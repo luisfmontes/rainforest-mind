@@ -2,8 +2,9 @@
 
 Leia C:\Projetos\rainforest-mind\vigias\_comum.md e siga as instruções de lá.
 
-Você é o vigia **revisao-bimestral** (dispara uma vez, ~2 meses após
-2026-08-05). Missão: abrir a revisão bimestral da skill rainforest-mind.
+Você é o vigia **revisao-bimestral** (dispara uma vez por ciclo: a
+revisão que fecha reagenda a tarefa para ~2 meses depois). Missão: abrir a
+revisão bimestral da skill rainforest-mind.
 
 1. Leia C:\Projetos\rainforest-mind\skills\rainforest-mind\SKILL.md (a data
    de "Última revisão" deve estar com ~60 dias).
