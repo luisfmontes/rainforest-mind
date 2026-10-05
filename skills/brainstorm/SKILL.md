@@ -49,6 +49,13 @@ que reescrever a seção depois:
   o produz e a rotina que o grava.** Rótulo sozinho não é proposta, é
   vocabulário seu.
 
+**Quando o design cria selo, trava, gate ou validador**, uma quarta pergunta é
+obrigatória: *contra quem isto protege, e o que fica fora?* A resposta vira
+decisão `D<n>` do design (o modelo de ameaça), e o briefing do revisor a cita
+desde a rodada 1. Sem modelo escrito, cada revisão acha um vetor novo e a
+auditoria não converge; com ele, o que ficou fora é critério de parada, não
+buraco.
+
 ## Abrir: registre o trabalho antes da primeira rodada
 
 Assim que o assunto tem nome, **antes** de perguntar qualquer coisa:
