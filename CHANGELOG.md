@@ -10,6 +10,27 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.40.0 — 2026-10-05
+
+- **Revisão bimestral das regras.** As 214 observações registradas desde 2026-08-08 foram triadas por conteúdo:
+  85 já estavam cobertas pelo texto e foram colhidas; 26 lições viraram texto novo nas regras e nas skills do
+  fluxo; o que era defeito de script virou Issue (#396 a #404). Nenhum núcleo injetado mudou de tamanho — o
+  texto novo mora nas `references/`.
+- **Regras (references):** citar terceiro pela frase literal e memória do usuário como ambiente (16); `Q` só
+  para decisões independentes, sempre com recomendada (16); a prova tem de medir o defeito, verde em quantos
+  ambientes, e mutação que alarga o padrão (12, em `regra-12-prova.md`); um worktree por atividade e sem
+  `EnterWorktree` com agente em voo (11, em `regra-11-atividade.md`); foco é entrega, não pasta (3); plantio
+  é para o que desvia, não para o que ele quer resolver (6); ressalva antes da ordem e comentário lateral não
+  vira gate (7); como ler recusa de gate e anunciar quando parar de despachar (14); processo de fundo e `&`
+  no Bash (15); balanço da sessão antes de "alguma observação?" (5); origem marcada em mensagem entre sessões (17).
+- **Skills do fluxo:** `brainstorm` varre ideias e Issues antes da primeira rodada, pergunta alvo e
+  convive-ou-substitui, exige modelo de ameaça quando o design cria trava, e reconhece delegação prévia e
+  pedido de conversa; `plano` ganha "Critério de trava" e três cuidados de critério; `modo-dev` manda invocar
+  a catraca de mutação, proíbe temporário de nome genérico e põe teto no relatório; `fechar` troca a base da
+  PR empilhada antes do merge; `arqueologia` não devolve arquivo sem funções; `regua` confere a cobertura do
+  material de origem; `CONTRIBUTING` pede releitura hostil de texto injetado.
+- **Vigia `revisao-bimestral`** passa a ser por ciclo: quem fecha a revisão reagenda a próxima.
+
 ## 1.39.3 — 2026-10-05
 
 - **`git` e `gh` não são mais procurados na pasta do repositório aberto** (#392). Hooks e scripts chamavam
