@@ -357,7 +357,7 @@ let projetosList = null;
 // O rótulo mostra o nome curto do projeto, e o teto de bytes rende mais linhas.
 let apelidos = null;
 try {
-  const { projetos } = resolverCaminhos();
+  const { projetos } = resolverCaminhos(process.env.CLAUDE_PROJECT_DIR || process.cwd());
   projetosList = projetos;
   if (Array.isArray(projetos) && projetos.length > 1) {
     // projetos = [chaveHarness, nomeCurto]; o primeiro exibe como o segundo.

@@ -70,7 +70,7 @@ export function ehEntradaDaAbertura(texto) {
 async function gerar(io, cwd, g) {
   const script = `${io.raiz}/hooks/${g.script}`;
   const r = await io.rodar(['node', script, '--destino', 'mod'], {
-    cwd,
+    cwd: io.raiz,
     env: { CLAUDE_PROJECT_DIR: cwd },
     timeoutMs: TIMEOUT_MS,
   });

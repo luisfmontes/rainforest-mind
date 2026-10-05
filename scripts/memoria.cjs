@@ -99,8 +99,9 @@ function filtroVivas(alias) {
   return 'AND ' + (alias || '') + 'substituida_por IS NULL';
 }
 
-function resolverCaminhos() {
+function resolverCaminhos(cwd = process.cwd()) {
   const { raiz } = resolverRaiz({
+    cwd,
     plugin: path.resolve(__dirname, '..'),
   });
 
@@ -115,7 +116,6 @@ function resolverCaminhos() {
   // Fallback: basename do cwd se .git não encontrado (sessão fora de repositório).
   // Decisão D13 define que a matéria-prima é projects/<projeto>/<sessão>.jsonl no harness.
   let projeto;
-  const cwd = process.cwd();
   const topLevel = encontrarGit(cwd);
   if (topLevel) {
     projeto = path.basename(topLevel);
