@@ -25,7 +25,140 @@
     "em": "2026-10-05"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-10-05",
+    "tarefas_ok": 12,
+    "tarefas": 12,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "530d62b7",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T14:27:43.696Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "530d62b7",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T14:27:43.696Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "530d62b7",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T14:27:43.696Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "530d62b7",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T14:27:43.696Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "530d62b7",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T14:27:43.696Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "530d62b7",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T14:27:43.696Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "530d62b7",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T14:27:43.696Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "530d62b7",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T14:27:43.696Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "530d62b7",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T14:27:43.696Z"
+      }
+    ],
+    "em": "2026-10-05",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh, marcar plano/design declarado ausente recusa"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao.sh, raiz com node_modules como junction mede e sai 0"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao.sh, junction quebrada na raiz sai 69 nao-verificavel"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao.sh, falha no meio de saida longa aparece em casos vermelhos"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-fluxo.sh, mutacoes com raiz: de app roda a bateria dentro do app"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-fluxo.sh, pulada por erro sem rotulo traz a linha do erro"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "mod-relogio.test.tsx, o process.run do relogio roda com cwd na raiz do plugin"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-node-por-nome.sh, nenhum spawn/exec de node por nome fora de bateria"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-varrer-baterias.sh, shards 1/2 e 2/2 cobrem a lista inteira"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "nota de versao, bump e Issue"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-session-start.sh, cwd fora do projeto filtra pelo projeto"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-bateria-sem-timeout.cjs, --shard 1/2 --listar nao e varredura completa"
+      }
+    ],
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-05-zerar-issues-15",
+    "saida": "tarefas 1-9, 11, 12 vermelho; 10 pulada n/a; exit 0"
   },
   "revisar": {
     "status": "pendente"
