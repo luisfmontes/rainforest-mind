@@ -142,10 +142,10 @@ seguinte à atualização do plugin.
 
 **A faixa do mod.** A entrada do mod é `hooks/mod.tsx`: liga a abertura
 (`hooks/register.ts`, intacto) e desenha a faixa acima do prompt (`ui.render` em
-`AbovePrompt`). São no máximo 3 linhas (`MAX_LINHAS` em `hooks/faixa-puro.mjs`):
-foco, fluxo e Q, cada uma cortada em `bodyColumns`. Com menos espaço, sobra
-primeiro a Q, depois o fluxo. A faixa só aparece com fluxo em curso ou Q aberta,
-e o foco sozinho não a acende. O fluxo vem de todos os worktrees do repositório,
+`AbovePrompt`). São no máximo 4 linhas (`MAX_LINHAS` em `hooks/faixa-puro.mjs`):
+foco, fluxo, relógio e Q, cada uma cortada em `bodyColumns`. Com menos espaço, sobra
+primeiro a Q, depois o relógio, depois o fluxo. A faixa só aparece com fluxo em curso, Q aberta
+ou relógio aceso, e o foco sozinho não a acende. O fluxo vem de todos os worktrees do repositório,
 por `scripts/faixa-dados.cjs` (somente leitura, reusa `proximo` e
 `tituloDoFocoAtivo`). Quando o mesmo slug aparece em mais de um worktree, vale a
 cópia mais avançada, e a de worktree de subagente (`.claude/worktrees/agent-*`)
@@ -155,13 +155,30 @@ só vale quando é a única. As Q saem do texto final do turno (`e.answer` do
 de cerca de código (```` ``` ```` ou `~~~`). O título é só a pergunta (corta no
 primeiro `?`, `:`, ` — ` ou `. `), e cada Q ganha uma fatia da largura para todas
 aparecerem. Uma resposta sem Q zera a linha, e a mensagem do usuário
-(`classic.UserPromptSubmit`) também: as Q respondidas saem na hora. "Esconder" vale até a assinatura mudar: Q nova ou resolvida,
+(`prompt.submit`) também: as Q respondidas saem na hora. "Esconder" vale até a assinatura mudar: Q nova ou resolvida,
 etapa nova ou mudança nos agentes em voo. A faixa atualiza em `session.start`, em `turn.complete` e ao
 pressionar; no meio do turno, só a limpeza das Q no envio da mensagem. Falha de leitura apaga só a linha afetada e
 nunca quebra a sessão. Controle de terminal (ESC, C1, bidi) é trocado por espaço
 antes de desenhar. A faixa não repete a statusline (jornada, prazo, versão). A
 prova de engine é `claude plugin test .` (`hooks/mod-faixa.test.tsx`, terminal e
 desktop); a lógica, `node hooks/testa-mod-faixa.cjs`.
+
+**O relógio do mod.** A quarta linha da faixa é `⏰ jornada 9h12 · 20h40 | <pasta> parada há 32 min`
+(`hooks/relogio-puro.mjs`, sem Node e sem `$`). A jornada (efetiva e hora) aparece quando as
+efetivas passam de 9 h (`LIMITE_EFETIVA_MIN`), ou de noite (das 19 h às 5 h, `HORA_NOITE` e
+`HORA_FIM_MADRUGADA`) com mensagem do usuário nos últimos 30 min (`JANELA_MSG_MIN`). A janela
+parada mais antiga além da `Ociosidade máxima:` do `FOCO.md` (45 min se ausente,
+`OCIOSIDADE_PADRAO_MIN`) é nomeada pela pasta, e ` (+k)` conta as demais; só entram janelas
+esperando você há menos de 6 h (`JANELA_VIVA_MS` em `scripts/relogio-sessoes.cjs`). O relógio lê
+`sessoes.json` a cada 1 min (`scripts/relogio-sessoes.cjs`) e a jornada a cada 5 min
+(`scripts/jornada.cjs --json`) por `$.clock.every`, ligado no `session.start` e cancelado no
+`session.end`, e só nasce em sessão interativa. "Esconder" não volta com os minutos: a jornada
+volta no dia seguinte, e a janela parada quando outra vira a mais parada ou uma nova cruza o
+limite. Quando a jornada acende, uma nota de uma vez por dia vai no prompt seguinte digitado no
+composer, como `context` do `prompt.submit` (o modelo lê, o usuário não vê); avisar ou calar
+continua sendo decisão do modelo, pela regra 8. Falha de leitura apaga só a linha do relógio. A
+prova de engine é `hooks/mod-relogio.test.tsx` (`claude plugin test .`); a lógica,
+`node hooks/testa-mod-relogio.cjs`.
 
 ## Versão: o release é entrega própria, e o PATCH existe
 
