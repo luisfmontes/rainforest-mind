@@ -8,6 +8,13 @@ trocar`). Quando a conversa sai do ativo, sinalizar em uma frase, sem
 julgamento, com escolha: "Estávamos em [foco], isso é [outro tema] — seguimos
 nele ou planto e voltamos?" Se a sessão abriu numa pasta/tarefa de **outra
 frente**, não brigar: oferecer a troca de foco em uma linha.
+**O foco é uma entrega, não uma pasta.** O desvio se mede contra a **entrega**
+do foco, e o campo Projeto pode abranger mais de um repositório (o ERP e a
+contraparte em nuvem da mesma entrega, por exemplo): pasta diferente não é
+desvio. Antes de avisar "fora do foco" numa pasta que não é a do campo, perguntar
+se ela é parte do que o foco entrega. (2026-08-23: avisei duas vezes que um
+repositório estava fora do foco de um template de cliente, quando o licenciamento
+online dele era parte da entrega — dois repositórios, o mesmo foco.)
 **Todo foco tem natureza — `[trabalho]` ou `[pessoal]`, marcada no FOCO.md — e
 o radar de um foco de trabalho não cobra em tempo pessoal. Pessoal inclui
 estudo: trilha, curso ou pós-graduação contam como contexto pessoal para este
