@@ -117,5 +117,15 @@ process.stdout.write(j.territorio==="sintetico"&&l&&l.obrigatorio===true&&!proce
 [ $rc = 0 ] && [ "$ok6" = "s" ]
 caso "territorio.cjs --json lista itens sem resolver variavel" $?
 
+# 7: plugin invalido (versao_contrato 1) que nao casa com o repo nao recusa o marcar
+PZ="$TMP/plugin-zz"; mkdir -p "$PZ"
+printf '{"versao_contrato":1,"nome":"zz","deteccao":{"extensoes":[".zzz"],"arquivos":[]}}' > "$PZ/territorio.json"
+CFGZ="$HOME_T/.claude-zz"; mkdir -p "$CFGZ/plugins"
+printf '{"version":2,"plugins":{"zz@teste":[{"scope":"user","installPath":"%s"}],"sintetico@teste":[{"scope":"user","installPath":"%s"}]}}' "$(nativo "$PZ")" "$(nativo "$PLUG")" > "$CFGZ/plugins/installed_plugins.json"
+SZ="$TMP/sem-z"; monta_caixa "$SZ" 1 0
+sz=$(cd "$SZ" && CLAUDE_CONFIG_DIR="$CFGZ" fluxo_sem 2>/dev/null)
+[ -n "$sz" ] && [ "$sz" = "$sa" ] && echo "$sz" | grep -qx 'verificar: ok'
+caso "plugin invalido que nao casa nao recusa o marcar" $?
+
 echo "total=$total vermelhas:[${vermelhas%,}]"
 [ -z "$vermelhas" ]

@@ -76,7 +76,7 @@ PLUG6="$TMP/plugin6"; cp -r "$FIX/sintetico" "$PLUG6"
 sed -i 's/sintetico:revisor/ausente:revisor/' "$PLUG6/territorio.json"
 CFG6="$TMP/cfg6"; monta_config "$CFG6" "$PLUG6"
 out=$(CLAUDE_CONFIG_DIR="$CFG6" node "$SRC/scripts/territorio.cjs" estagio revisar --raiz "$FIX/repo-abc" 2>&1); rc=$?
-[ $rc = 0 ] && echo "$out" | grep -qx 'aviso: agente indisponivel, papel padrao do rainforest' && ! echo "$out" | grep -q '^agente:'
+[ $rc = 0 ] && echo "$out" | grep -qx 'aviso: agente ausente:revisor indisponivel, papel padrao do rainforest' && ! echo "$out" | grep -q '^agente:'
 caso "agente opcional de plugin ausente vira aviso e sai 0" $?
 
 PLUG7="$TMP/plugin7"; cp -r "$FIX/sintetico" "$PLUG7"
@@ -91,7 +91,7 @@ out=$(CLAUDE_CONFIG_DIR="$CFG7" node "$SRC/scripts/territorio.cjs" estagio revis
 # territorio desabilitado: a descoberta o ignora
 echo '{"enabledPlugins":{"sintetico@teste":false}}' > "$CFG7/settings.json"
 outd=$(CLAUDE_CONFIG_DIR="$CFG7" node "$SRC/scripts/territorio.cjs" estagio revisar --raiz "$FIX/repo-abc" 2>&1)
-echo "$c7" | grep -qx 'agente: outro:revisor obrigatorio=false mcp=orquestrador' && [ $rc = 0 ] && echo "$out" | grep -qx 'aviso: agente indisponivel, papel padrao do rainforest' && [ "$outd" = "sem territorio" ]
+echo "$c7" | grep -qx 'agente: outro:revisor obrigatorio=false mcp=orquestrador' && [ $rc = 0 ] && echo "$out" | grep -qx 'aviso: agente outro:revisor indisponivel, papel padrao do rainforest' && [ "$outd" = "sem territorio" ]
 caso "plugin desabilitado em settings.json conta como ausente" $?
 
 PLUG9="$TMP/plugin9"; cp -r "$FIX/sintetico" "$PLUG9"
@@ -100,6 +100,54 @@ CFG9="$TMP/cfg9"; monta_config "$CFG9" "$PLUG9"
 out=$(CLAUDE_CONFIG_DIR="$CFG9" node "$SRC/scripts/territorio.cjs" estagio executar --raiz "$FIX/repo-abc" 2>&1); rc=$?
 [ $rc = 2 ] && echo "$out" | grep -q 'ausente:executor'
 caso "agente obrigatorio de plugin ausente sai 2" $?
+
+# --- plugin invalido so conta quando casa com o repositorio (A1)
+# monta_dois: sintetico valido + zz (versao_contrato 1, deteccao .zzz); $1 = dir-config
+PLUGZ="$TMP/pluginz"; mkdir -p "$PLUGZ"
+printf '{"versao_contrato":1,"nome":"zz","deteccao":{"extensoes":[".zzz"],"arquivos":[]}}' > "$PLUGZ/territorio.json"
+monta_dois() { # dir-config plugin-invalido
+  mkdir -p "$1/plugins"
+  local a="$PLUG" b="$2"
+  command -v cygpath >/dev/null 2>&1 && { a="$(cygpath -m "$PLUG")"; b="$(cygpath -m "$2")"; }
+  printf '{"version":2,"plugins":{"zz@teste":[{"scope":"user","installPath":"%s"}],"sintetico@teste":[{"scope":"user","installPath":"%s"}]}}' "$b" "$a" > "$1/plugins/installed_plugins.json"
+}
+CFGZ="$TMP/cfgz"; monta_dois "$CFGZ" "$PLUGZ"
+TZ_() { CLAUDE_CONFIG_DIR="$CFGZ" node "$SRC/scripts/territorio.cjs" "$@"; }
+
+so=$(TZ_ estagio revisar --raiz "$FIX/repo-vazio" 2>/dev/null); rc=$?
+se=$(TZ_ estagio revisar --raiz "$FIX/repo-vazio" 2>&1 >/dev/null)
+soj=$(TZ_ estagio revisar --raiz "$FIX/repo-vazio" --json 2>/dev/null); rcj=$?
+sej=$(TZ_ estagio revisar --raiz "$FIX/repo-vazio" --json 2>&1 >/dev/null)
+[ $rc = 0 ] && [ "$so" = "sem territorio" ] && echo "$se" | grep -q 'aviso: plugin zz ignorado' \
+  && [ $rcj = 0 ] && [ "$soj" = '{"territorio":null,"itens":[]}' ] && echo "$sej" | grep -q 'aviso: plugin zz ignorado'
+caso "plugin com versao_contrato 1 que nao casa nao bloqueia" $?
+
+RZ="$TMP/repo-zzz"; mkdir -p "$RZ"; echo x > "$RZ/a.zzz"
+out=$(TZ_ estagio revisar --raiz "$RZ" 2>&1); rc=$?
+[ $rc = 2 ] && echo "$out" | grep -q 'zz' && echo "$out" | grep -q 'versao_contrato 1'
+caso "plugin com versao_contrato 1 que casa sai 2" $?
+
+PLUGN="$TMP/pluginn"; mkdir -p "$PLUGN"; printf 'null' > "$PLUGN/territorio.json"
+CFGN="$TMP/cfgn"; monta_dois "$CFGN" "$PLUGN"
+out=$(CLAUDE_CONFIG_DIR="$CFGN" node "$SRC/scripts/territorio.cjs" estagio revisar --raiz "$FIX/repo-vazio" 2>&1); rc=$?
+[ $rc = 0 ] && ! echo "$out" | grep -qE 'TypeError|^\s+at ' && echo "$out" | grep -qx 'sem territorio'
+caso "territorio.json null nao derruba" $?
+
+PLUGS="$TMP/plugins"; cp -r "$FIX/sintetico" "$PLUGS"
+sed -i 's/sintetico:conhecimento/ausente:conhecimento/' "$PLUGS/territorio.json"
+CFGS="$TMP/cfgs"; monta_config "$CFGS" "$PLUGS"
+out=$(CLAUDE_CONFIG_DIR="$CFGS" node "$SRC/scripts/territorio.cjs" estagio brainstorm --raiz "$FIX/repo-abc" 2>&1); rc=$?
+out6=$(CLAUDE_CONFIG_DIR="$CFG6" node "$SRC/scripts/territorio.cjs" estagio revisar --raiz "$FIX/repo-abc" 2>&1)
+[ $rc = 0 ] && echo "$out" | grep -qx 'aviso: skill ausente:conhecimento indisponivel, papel padrao do rainforest' && echo "$out6" | grep -qx 'aviso: agente ausente:revisor indisponivel, papel padrao do rainforest'
+caso "aviso de indisponivel nomeia o tipo" $?
+
+H3="$TMP/home3"; mkdir -p "$H3/.rainforest/territorios"
+echo '{"lint":"  "}' > "$H3/.rainforest/territorios/sintetico.json"
+out=$(TH "$H3" estagio verificar --raiz "$FIX/repo-abc" --arquivo x.abc 2>&1); rc=$?
+echo '{"lint":""}' > "$H3/.rainforest/territorios/sintetico.json"
+out2=$(TH "$H3" estagio verificar --raiz "$FIX/repo-abc" --arquivo x.abc 2>&1); rc2=$?
+[ $rc = 3 ] && [ $rc2 = 3 ] && echo "$out" | grep -q 'lint' && echo "$out2" | grep -q 'lint'
+caso "variavel com valor vazio sai 3" $?
 
 echo "total=$total vermelhas:[${vermelhas%,}]"
 [ -z "$vermelhas" ]

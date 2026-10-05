@@ -12,7 +12,8 @@ rainforest guarda só o contrato genérico; o mapa de cada território mora no p
 ## Versão e promoção
 
 - Este contrato é `versao_contrato: 0`: **experimental**. Um manifesto com qualquer outro valor
-  (inclusive a chave ausente) faz o `territorio.cjs` sair 2.
+  (inclusive a chave ausente) torna o plugin inválido: `territorio.cjs` sai 2 se ele for o
+  território do repositório; senão o ignora com aviso.
 - Ele é exercitado por um território sintético nos testes
   (`test/fixtures/territorio/sintetico/territorio.json`, reproduzido abaixo) e validado por um
   território real.
@@ -91,8 +92,12 @@ manifesto imprime `estagio sem declaracao`. Campo omitido tem o padrão da colun
    raiz de instalação. Um plugin com chave `false` em `enabledPlugins` do `settings.json` do mesmo
    config dir fica de fora (chave ausente = habilitado). Registro ilegível ou ausente = nenhum
    candidato.
-2. **Contrato.** Manifesto ilegível ou com `versao_contrato` diferente de 0, em qualquer
-   candidato, sai 2 nomeando o plugin, mesmo que ele nem casasse com o repositório.
+2. **Contrato.** A descoberta nunca falha. Manifesto ilegível, que não é objeto (`null`, lista,
+   número) ou com `versao_contrato` diferente de 0 marca o candidato como **inválido**, com o
+   motivo. Na escolha (abaixo), inválido que **não** casa com o repositório é ignorado com a linha
+   `aviso: plugin <plugin> ignorado: <motivo>` no stderr (também com `--json`) e o script segue;
+   inválido que **casa** (apontamento com o `nome` dele, ou detecção casando quando o manifesto é
+   objeto com `deteccao`) sai 2 nomeando o plugin.
 3. **Escolha.** Se o repositório tem `.rainforest/territorio` (primeira linha = `nome`), esse
    apontamento **vence** a detecção: escolhe o candidato de mesmo `nome`; nome sem candidato sai 2
    nomeando o `nome`. Sem apontamento, vale o primeiro candidato cuja detecção casa: alguma
@@ -104,8 +109,8 @@ Saída com território: `territorio: <nome>`, depois, na ordem, `modo: ...`, uma
 (`agente: <tipo> obrigatorio=<bool> mcp=<quem>`), por tool (`mcp: <tool> quem=<quem>
 obrigatorio=<bool>`), por skill (`skill: <id>`) e por comando (`comando: <id> <comando resolvido>
 obrigatorio=<bool>`). Agente ou skill indisponível (plugin ausente ou desabilitado) vira a linha
-`aviso: agente indisponivel, papel padrao do rainforest` (ou `skill indisponivel`), exceto agente
-obrigatório, que sai 2.
+`aviso: agente <tipo> indisponivel, papel padrao do rainforest` (ou `aviso: skill <nome>
+indisponivel, papel padrao do rainforest`), nomeando o item, exceto agente obrigatório, que sai 2.
 
 ## Variáveis e config local
 
@@ -115,7 +120,8 @@ obrigatório, que sai 2.
   `~/.rainforest/territorios/<nome do território>.json`, um objeto `{ "<variavel>": "<valor>" }`
   com valores em texto. Esse arquivo é por máquina e fica fora de qualquer repositório; o manifesto
   nunca carrega caminho de máquina.
-- Variável usada sem valor (arquivo ausente, chave ausente ou valor não textual) sai **3**, com a
+- Variável usada sem valor (arquivo ausente, chave ausente, valor não textual, vazio ou só
+  espaços) sai **3**, com a
   mensagem `variavel sem valor em <arquivo>: <variaveis>` no stderr. Config local ilegível sai 2.
 
 ## Saídas do `territorio.cjs`
@@ -124,7 +130,7 @@ obrigatório, que sai 2.
 |---|---|
 | 0 | Bloco impresso, ou `sem territorio`. |
 | 1 | Uso errado (subcomando diferente de `estagio`, ou estágio faltando). |
-| 2 | Contrato violado: manifesto ilegível, `versao_contrato` diferente de 0, apontamento para território inexistente, config local ilegível, agente obrigatório indisponível. |
+| 2 | Contrato violado pelo território que casa com o repositório (manifesto ilegível ou `versao_contrato` diferente de 0; plugin inválido que não casa só gera aviso), apontamento para território inexistente, config local ilegível, agente obrigatório indisponível. |
 | 3 | Variável de comando sem valor no config local. |
 
 Com `--json`, o script imprime uma linha

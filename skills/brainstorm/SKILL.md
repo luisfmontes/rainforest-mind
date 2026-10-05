@@ -57,6 +57,7 @@ Com território (formato do manifesto em `docs/rainforest/referencia/contrato-te
 leia o bloco:
 
 - `mcp: <tool> quem=orquestrador`: **você** consulta a tool antes da primeira rodada e usa o resultado como fato, não como pergunta ao usuário (regra 16, D8).
+- `mcp: <tool> quem=agente`: você **não** consulta; a consulta fica com o agente declarado, e o brainstorm segue sem o resultado.
 - `skill: <plugin>:<skill>`: carregue quando o tema tocar nela (D1: o conhecimento mora lá, o mapa só aponta).
 - `aviso: ...`: item indisponível, vale o papel padrão; anuncie em uma linha (regra 14, D5).
 

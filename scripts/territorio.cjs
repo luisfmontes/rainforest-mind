@@ -12,8 +12,9 @@
  * entrega do harness, então cada skill de estágio chama este script e lê o bloco
  * impresso — script verificável por exit code, não prosa que o modelo pode ignorar.
  *
- * Saídas: 0 = bloco impresso ou `sem territorio`; 2 = contrato violado
- * (versao_contrato != 0, ou apontamento do repo para território inexistente).
+ * Saídas: 0 = bloco impresso ou `sem territorio`; 2 = contrato violado (território do
+ * repositório com versao_contrato != 0 ou ilegível, ou apontamento para território
+ * inexistente). Plugin inválido que não casa com o repositório: aviso em stderr, segue.
  * Sem território, nada muda para o repositório: imprime `sem territorio` e sai 0.
  *
  * Variáveis (D6, D7): `{arquivo}` vem de --arquivo; as demais, de
@@ -82,16 +83,21 @@ function descobrirCandidatos() {
       const arq = path.join(item.installPath, 'territorio.json');
       if (!fs.existsSync(arq)) continue;
       const plugin = chave.split('@')[0];
-      let manifesto;
+      // A descoberta nao falha: so a resolucao sabe se este candidato e o do repositorio.
+      let manifesto = null;
+      let invalido;
       try {
         manifesto = JSON.parse(fs.readFileSync(arq, 'utf8'));
+        if (!manifesto || typeof manifesto !== 'object' || Array.isArray(manifesto)) {
+          manifesto = null;
+          invalido = 'territorio.json nao e um objeto';
+        } else if (manifesto.versao_contrato !== 0) {
+          invalido = `versao_contrato ${manifesto.versao_contrato} nao suportada (esperado 0)`;
+        }
       } catch (e) {
-        falha(`territorio.json ilegivel no plugin ${plugin}: ${e.message}`);
+        invalido = `territorio.json ilegivel: ${e.message}`;
       }
-      if (manifesto.versao_contrato !== 0) {
-        falha(`plugin ${plugin}: versao_contrato ${manifesto.versao_contrato} nao suportada (esperado 0)`);
-      }
-      candidatos.push({ plugin, raiz: item.installPath, manifesto });
+      candidatos.push({ plugin, raiz: item.installPath, manifesto, invalido });
     }
   }
   return candidatos;
@@ -116,10 +122,10 @@ function temExtensao(dir, extensoes, nivel) {
 }
 
 function detecta(t, raiz) {
-  const d = t.manifesto.deteccao || {};
-  const exts = (d.extensoes || []).map((x) => x.toLowerCase());
+  const d = (t.manifesto && t.manifesto.deteccao) || {};
+  const exts = (Array.isArray(d.extensoes) ? d.extensoes : []).filter((x) => typeof x === 'string').map((x) => x.toLowerCase());
   if (exts.length && temExtensao(raiz, exts, 0)) return true;
-  return (d.arquivos || []).some((a) => fs.existsSync(path.join(raiz, a)));
+  return (Array.isArray(d.arquivos) ? d.arquivos : []).some((a) => typeof a === 'string' && fs.existsSync(path.join(raiz, a)));
 }
 
 function lerApontamento(raiz) {
@@ -131,9 +137,14 @@ function lerApontamento(raiz) {
   }
 }
 
+// Candidato invalido so derruba o script quando seria o territorio deste repositorio.
 function resolver(candidatos, raiz, apontado) {
-  if (apontado) return candidatos.find((t) => t.manifesto.nome === apontado) || null;
-  return candidatos.find((t) => detecta(t, raiz)) || null;
+  const casaComRepo = (t) => (apontado ? !!t.manifesto && t.manifesto.nome === apontado : !!t.manifesto && detecta(t, raiz));
+  for (const t of candidatos) {
+    if (t.invalido && !casaComRepo(t)) { console.error(`aviso: plugin ${t.plugin} ignorado: ${t.invalido}`); continue; }
+    if (casaComRepo(t)) return t;
+  }
+  return null;
 }
 
 function indisponivel(tipo, disponiveis) {
@@ -170,7 +181,7 @@ function imprimirEstagio(manifesto, estagio, arquivo) {
   }
   const usadas = new Set();
   for (const c of comandos) for (const m of c.comando.matchAll(/\{(\w+)\}/g)) if (m[1] !== 'arquivo') usadas.add(m[1]);
-  const faltando = [...usadas].filter((v) => !valores || typeof valores[v] !== 'string');
+  const faltando = [...usadas].filter((v) => !valores || typeof valores[v] !== 'string' || !valores[v].trim());
   if (faltando.length) { console.error(`variavel sem valor em ${arquivoLocal}: ${faltando.join(', ')}`); process.exit(3); }
   console.log(`territorio: ${manifesto.nome}`);
   if (!e) {
@@ -180,7 +191,7 @@ function imprimirEstagio(manifesto, estagio, arquivo) {
   if (e.modo) console.log(`modo: ${e.modo}`);
   for (const a of e.agentes || []) {
     if (indisponivel(a.tipo, disponiveis)) {
-      console.log('aviso: agente indisponivel, papel padrao do rainforest');
+      console.log(`aviso: agente ${a.tipo} indisponivel, papel padrao do rainforest`);
       continue;
     }
     console.log(`agente: ${a.tipo} obrigatorio=${a.obrigatorio === true} mcp=${a.mcp || 'orquestrador'}`);
@@ -189,7 +200,7 @@ function imprimirEstagio(manifesto, estagio, arquivo) {
     console.log(`mcp: ${m.tool} quem=${m.quem || 'orquestrador'} obrigatorio=${m.obrigatorio === true}`);
   }
   for (const s of e.skills || []) {
-    console.log(indisponivel(s, disponiveis) ? 'aviso: skill indisponivel, papel padrao do rainforest' : `skill: ${s}`);
+    console.log(indisponivel(s, disponiveis) ? `aviso: skill ${s} indisponivel, papel padrao do rainforest` : `skill: ${s}`);
   }
   for (const c of comandos) {
     const cmd = c.comando.replace(/\{(\w+)\}/g, (m, v) => (v === 'arquivo' ? (arquivo === undefined ? m : arquivo) : valores[v]));
@@ -211,6 +222,7 @@ function main() {
   const apontado = lerApontamento(raiz);
   const t = resolver(candidatos, raiz, apontado);
   if (!t && apontado) falha(`territorio apontado em .rainforest/territorio nao existe: ${apontado}`);
+  if (t && t.invalido) falha(`plugin ${t.plugin}: ${t.invalido}`);
   if (resto.includes('--json')) {
     imprimirJson(t ? t.manifesto : null, estagio);
     return;
