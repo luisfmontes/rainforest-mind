@@ -27,6 +27,21 @@ E então **pare e espere**. Cada rodada de respostas remodela a árvore:
 decisão fechada empurra a fronteira para fora — recalcule e faça a rodada
 seguinte. Você nunca responde as próprias perguntas.
 
+### Perguntas obrigatórias da primeira rodada
+
+Três perguntas entram na primeira rodada sempre que o documento ainda não as
+responde — a premissa de alvo recalibra todos os riscos, e perguntar custa menos
+que reescrever a seção depois:
+
+- **Para QUEM e em que MOMENTO a entrega serve?** Risco, pendência e pergunta a
+  terceiro só se escrevem depois de saber, por exemplo, se a carga é inicial em
+  base vazia.
+- **A rotina nova convive com a existente ou a substitui?** Painel desenhado ao
+  lado da tela que devia substituir é o caso típico.
+- **Cada valor de um domínio (códigos, status, tipos) sai com o cenário real que
+  o produz e a rotina que o grava.** Rótulo sozinho não é proposta, é
+  vocabulário seu.
+
 ## Abrir: registre o trabalho antes da primeira rodada
 
 Assim que o assunto tem nome, **antes** de perguntar qualquer coisa:
