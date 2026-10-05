@@ -219,7 +219,7 @@ function comandoIniciar(argv, env) {
   const servidorArq = path.join(__dirname, 'poda.cjs');
   const logFile = path.join(path.dirname(caminhoArq), 'poda.log');
 
-  const filho = spawn('node', [servidorArq, '_servidor-interno', `--porta=${porta}`], {
+  const filho = spawn(process.execPath, [servidorArq, '_servidor-interno', `--porta=${porta}`], {
     detached: true,
     stdio: ['ignore', 'ignore', 'ignore'],
     env: {

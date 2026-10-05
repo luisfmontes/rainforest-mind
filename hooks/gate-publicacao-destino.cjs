@@ -328,7 +328,7 @@ function temMarcadorDados(caminhoDoArquivo) {
 function conferirConteudo(conteudo) {
   try {
     const scriptPath = path.join(__dirname, "..", "scripts", "conferir-publicacao.cjs");
-    const output = execFileSync("node", [scriptPath, "-", "--json"], {
+    const output = execFileSync(process.execPath, [scriptPath, "-", "--json"], {
       input: conteudo,
       encoding: "utf8",
       stdio: ["pipe", "pipe", "pipe"],

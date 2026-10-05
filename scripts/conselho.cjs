@@ -667,7 +667,7 @@ function executarRevisao(args) {
   }
 
   // First, check that pareceres phase is complete
-  const resultConferir = spawnSync('node', [process.argv[1], 'conferir', '--fase', 'pareceres'], {
+  const resultConferir = spawnSync(process.execPath, [process.argv[1], 'conferir', '--fase', 'pareceres'], {
     cwd: RAIZ,
     encoding: 'utf8'
   });
@@ -1039,7 +1039,7 @@ function executarSintetizar(args) {
   }
 
   // First, validate that revisao phase is complete
-  const resultConferir = spawnSync('node', [process.argv[1], 'conferir', '--fase', 'revisao'], {
+  const resultConferir = spawnSync(process.execPath, [process.argv[1], 'conferir', '--fase', 'revisao'], {
     cwd: RAIZ,
     encoding: 'utf8'
   });
