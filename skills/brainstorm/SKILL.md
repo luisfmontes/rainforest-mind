@@ -34,6 +34,13 @@ ficou fechado. Só sobe pergunta o que a delegação não cobre (escopo novo, ri
 de publicação). Perguntar o que a delegação já fechou devolve a ele o trabalho
 que acabou de delegar.
 
+**Exceção: ele pediu para conversar.** Se ele responde a uma decisão com
+"precisamos conversar", "quero rever" ou "é cedo para decidir", não é falta de
+alternativa na mesa: ele discorda ou desconfia de algo na sua análise. Responda em
+prosa curta com **uma** pergunta aberta e pare. Menu numerado serve à fronteira
+madura, em que ele sabe o que quer e falta escolher; devolvido nessa hora, fecha a
+conversa que ele queria abrir.
+
 ### Perguntas obrigatórias da primeira rodada
 
 Três perguntas entram na primeira rodada sempre que o documento ainda não as
