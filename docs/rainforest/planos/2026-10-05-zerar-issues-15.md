@@ -215,8 +215,8 @@ paralela: nao
 prova: `bash scripts/testa-node-por-nome.sh`
 mutacao:
   arquivo: `scripts/conselho.cjs`
-  de: `` `"${process.execPath}" "${__filename}" adaptador- ``
-  para: `` `node "${__filename}" adaptador- ``
+  de: `"${process.execPath}" "${__filename}" adaptador-`
+  para: `node "${__filename}" adaptador-`
   bateria: `bash scripts/testa-node-por-nome.sh`
   fixture: `testa-node-por-nome.sh, caso "nenhum spawn/exec de node por nome fora de bateria"`
 pronto quando: achado da revisão rodada 2: `CMD_ADAPTADOR` em `scripts/conselho.cjs:38` montava `` `node "${__filename}" ...` ``, que o `rodarCli` entrega ao `cmd.exe` com a pasta atual no repo do usuário. Passa a `"${process.execPath}"`; o detector acende também em template literal que começa por `node "${` (comando montado para rodar depois) e não em texto de ajuda com `node <plugin>/...` — provado por `bash scripts/testa-node-por-nome.sh` com `ok: 3   falhou: 0` e `bash scripts/testa-conselho.sh` com `total=105 vermelhas:[0]`
