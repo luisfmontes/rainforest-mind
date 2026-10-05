@@ -201,7 +201,11 @@
     ]
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-05-zerar-issues-15; claude plugin test .; 18 baterias das tarefas; gh run view do PR #393",
+    "saida": "mutacoes 14 vermelho + 1 n/a exit 0; plugin test 24 pass 0 fail; baterias todas exit 0 (estado 305, conferir-mutacao 165, conferir-fluxo 85, memoria 41, memoria-session-start 84, node-por-nome 3, conselho 105); CI shards 18m14s e 17m22s verdes, 78+91=169 baterias",
+    "sensor_externo": "claude plugin test .",
+    "em": "2026-10-05"
   },
   "fechar": {
     "status": "pendente"
