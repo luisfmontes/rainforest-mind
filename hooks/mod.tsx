@@ -147,7 +147,9 @@ export const register: Register = (on, options) => {
         if (sessoesEmCurso) return
         sessoesEmCurso = true
         try {
-          const bruto = await rodarJson(io, ['node', `${raiz}/scripts/relogio-sessoes.cjs`, '--cwd', cwd, '--sessao', id], 5000, { CLAUDE_PROJECT_DIR: cwd })
+          // Depois de /clear o processo segue com outro id: le-o de novo uma vez.
+          if (armadoPor === null) armadoPor = await $.session.id()
+          const bruto = await rodarJson(io, ['node', `${raiz}/scripts/relogio-sessoes.cjs`, '--cwd', cwd, '--sessao', armadoPor], 5000, { CLAUDE_PROJECT_DIR: cwd })
           const dados = sessoesDe(bruto)
           await update($, relogioSessoes, () => dados)
           await reavaliar()
@@ -186,7 +188,9 @@ export const register: Register = (on, options) => {
   // O matcher (qualquer motivo) evita colidir com o session.end sem matcher da abertura.
   on('session.end', { reason: /.*/ }, async (_$, e, next) => {
     if (armadoPor !== null && e.sessionId === armadoPor) {
-      cancelarRelogio()
+      // /clear nao tem session.start depois: o relogio segue e o id novo e lido no proximo tick.
+      if (e.reason === 'clear') armadoPor = null
+      else cancelarRelogio()
     }
     return next(e)
   })
