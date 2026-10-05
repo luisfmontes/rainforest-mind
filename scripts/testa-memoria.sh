@@ -935,5 +935,20 @@ else
 fi
 
 echo
+echo "== resolverCaminhos() sem argumento segue CLAUDE_PROJECT_DIR para a raiz =="
+# Revisao do fluxo 2026-10-05-zerar-issues-15: com o default cwd = process.cwd(),
+# todo chamador sem argumento (observar.cjs, conta-em-tabela, os comandos do proprio
+# memoria.cjs) passou a achar a raiz pela pasta atual, e nao pelo CLAUDE_PROJECT_DIR.
+RC_PROJ=$(novo_sandbox); RC_OUTRA=$(novo_sandbox); RC_HOME=$(novo_sandbox)
+mkdir -p "$RC_PROJ/.rainforest" && echo "# Foco" > "$RC_PROJ/.rainforest/FOCO.md"
+rc_db=$(cd "$RC_OUTRA" && env -u RFM_ROOT HOME="$RC_HOME" USERPROFILE="$RC_HOME" CLAUDE_PROJECT_DIR="$RC_PROJ" \
+  node -e 'console.log(require(process.argv[1]).resolverCaminhos().caminhoDb)' "$SRC/scripts/memoria.cjs" 2>&1)
+rc_esp=$(node -e 'console.log(require("path").join(process.argv[1], ".rainforest", "rainforest.db"))' "$RC_PROJ")
+if [ "$rc_db" = "$rc_esp" ]; then
+  ok=$((ok+1)); echo "  ok   sem argumento, cwd fora do projeto: o banco e o do CLAUDE_PROJECT_DIR"
+else
+  falhou=$((falhou+1)); echo "  FALHA sem argumento, cwd fora do projeto: esperado $rc_esp, veio $rc_db"
+fi
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

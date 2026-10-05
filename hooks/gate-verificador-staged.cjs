@@ -37,11 +37,12 @@ const { execFileSync, spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
+const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
 const { temMarcadorNoConteudo } = require("./lib/marcador-dados.cjs");
 
 function git(dir, args) {
   try {
-    return execFileSync("git", ["-C", dir, ...args], {
+    return execFileSync(caminhoExecutavel("git"), ["-C", dir, ...args], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
@@ -173,7 +174,7 @@ function chamaVerificadorComArgumentos(verificador, pastaTemp, arquivos, gitTop)
       cmdArgs = [verificador.caminho, ...args];
     } else if (cmd.endsWith(".cjs") || cmd.endsWith(".js")) {
       // JavaScript
-      cmd = "node";
+      cmd = process.execPath;
       cmdArgs = [verificador.caminho, ...args];
     } else {
       // Script bash/sh - chamar com bash
@@ -212,7 +213,7 @@ function chamaConferirPublicacao(verificador, gitTop, arquivos) {
     if (!conteudo) continue;
 
     try {
-      const resultado = spawnSync("node", [verificador.caminho, "-", "--json"], {
+      const resultado = spawnSync(process.execPath, [verificador.caminho, "-", "--json"], {
         input: conteudo,
         encoding: "utf8",
         stdio: ["pipe", "pipe", "pipe"],

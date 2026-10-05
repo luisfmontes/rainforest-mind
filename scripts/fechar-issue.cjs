@@ -19,7 +19,7 @@ const path = require('path');
 const os = require('os');
 const { execFileSync } = require('child_process');
 const { MARCADOR } = require(path.join(__dirname, '..', 'hooks', 'lib', 'marcador-evidencia.cjs'));
-const { resolverExecutavel, executar } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
+const { resolverExecutavel, executar, caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 /**
  * Tenta rodar git rev-parse --show-toplevel no cwd.
@@ -27,7 +27,7 @@ const { resolverExecutavel, executar } = require(path.join(__dirname, '..', 'hoo
  */
 function getGitToplevel(cwd) {
   try {
-    const resultado = execFileSync('git', ['-C', cwd, 'rev-parse', '--show-toplevel'], {
+    const resultado = execFileSync(caminhoExecutavel('git'), ['-C', cwd, 'rev-parse', '--show-toplevel'], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     });

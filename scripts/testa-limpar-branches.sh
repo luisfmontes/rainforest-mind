@@ -62,6 +62,8 @@ LB="$SBP/scripts/limpar-branches.cjs"
 cp "$SRC/scripts/limpar-branches.cjs" "$LB"
 cp "$SRC/hooks/lib/config.cjs" "$SBP/hooks/lib/config.cjs"
 cp "$SRC/hooks/lib/raiz.cjs" "$SBP/hooks/lib/raiz.cjs"
+# git e gh pelo caminho (Issue #392): o fonte faz require do resolvedor.
+cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SBP/hooks/lib/resolver-executavel.cjs"
 ORIGINAL_LIMPAR="$SBP/limpar-branches.original.cjs"
 cp "$LB" "$ORIGINAL_LIMPAR"
 echo "(caixa de areia: $SBP)"

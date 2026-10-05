@@ -63,6 +63,8 @@
  *                                          baseline (`spawnSync` devolve `.error`,
  *                                          tipicamente ENOENT do shell) — diferente
  *                                          do 4, que e' "rodou e nao mediu nada".
+ *                                          Tambem sai 69 quando a copia da raiz
+ *                                          falha (ex.: junction quebrada, #378).
  *                                          Primeira linha do stderr:
  *                                          "nao-verificavel: <motivo>".
  *
@@ -77,6 +79,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 const TIMEOUT_PADRAO = 300000; // 5 min
 const LIMITE_ORFAO_MS = 24 * 60 * 60 * 1000; // 24h (tarefa 6, Issue #294.2)
@@ -122,6 +125,17 @@ function ler(nome) {
   if (i === -1) return null;
   if (i + 1 >= process.argv.length) erroUso(`--${nome} veio sem valor`);
   return process.argv[i + 1];
+}
+
+// Falha da copia da raiz: bloqueio de ambiente, o mesmo 69 do "nao executa".
+const EXIT_COPIA_FALHOU = 69;
+
+// Marcas de caso vermelho na saida da bateria (Issue #378): as linhas que as
+// contem saem inteiras, mesmo quando o trecho geral e truncado.
+const MARCAS_FALHA = ['FALHA', '✖', '(fail)', 'not ok'];
+
+function linhasVermelhas(texto) {
+  return String(texto || '').split(/\r?\n/).filter((l) => MARCAS_FALHA.some((m) => l.includes(m)));
 }
 
 function ultimasLinhas(texto, n) {
@@ -235,9 +249,9 @@ function registrarLimpeza(caminho) {
 // saída/sinal de `armarLimpeza` — nenhum mecanismo de limpeza novo, só mais
 // um alvo na lista existente.
 function materializarGit(raiz, raizExecucao) {
-  const gitDirRes = spawnSync('git', ['rev-parse', '--git-dir'], { cwd: raiz, encoding: 'utf8', stdio: 'pipe' });
+  const gitDirRes = spawnSync(caminhoExecutavel('git'), ['rev-parse', '--git-dir'], { cwd: raiz, encoding: 'utf8', stdio: 'pipe' });
   if (gitDirRes.status !== 0) return; // raiz nao e repositorio git: copia fica sem .git (comportamento da tarefa 7)
-  const commonDirRes = spawnSync('git', ['rev-parse', '--git-common-dir'], { cwd: raiz, encoding: 'utf8', stdio: 'pipe' });
+  const commonDirRes = spawnSync(caminhoExecutavel('git'), ['rev-parse', '--git-common-dir'], { cwd: raiz, encoding: 'utf8', stdio: 'pipe' });
   if (commonDirRes.status !== 0) return;
 
   let gitDir, commonDir;
@@ -557,10 +571,34 @@ function main() {
   // fora — `.git` aninhado em alguma fixture não é excluído (D5, Issue #266).
   const raizExecucao = fs.mkdtempSync(path.join(os.tmpdir(), 'conferir-mutacao-'));
   armarLimpeza(raizExecucao);
-  fs.cpSync(raiz, raizExecucao, {
-    recursive: true,
-    filter: (p) => path.relative(raiz, p) !== '.git',
-  });
+  //
+  // Link simbolico/junction (tipicamente `node_modules` de worktree, Issue
+  // #378): `cpSync` o recriaria com `symlinkSync` sem tipo, e no Windows isso
+  // exige privilegio (EPERM). O filter pula o link e o script o recria depois:
+  // junction para diretorio (nao exige privilegio), copia para arquivo.
+  const links = [];
+  try {
+    fs.cpSync(raiz, raizExecucao, {
+      recursive: true,
+      filter: (p) => {
+        if (path.relative(raiz, p) === '.git') return false;
+        if (p === raiz) return true;
+        if (fs.lstatSync(p).isSymbolicLink()) { links.push(p); return false; }
+        return true;
+      },
+    });
+    for (const p of links) {
+      const destino = path.join(raizExecucao, path.relative(raiz, p));
+      const real = fs.realpathSync(p);
+      if (fs.statSync(real).isDirectory()) fs.symlinkSync(real, destino, 'junction');
+      else fs.copyFileSync(real, destino);
+    }
+  } catch (e) {
+    // Ambiente, nao conteudo (regra 14): nao ha bateria para medir, entao sai
+    // 69 com uma linha, nao com stack trace e exit 1 (Issue #378).
+    process.stderr.write(`nao-verificavel: copia da raiz falhou — ${e.message}\n`);
+    process.exit(EXIT_COPIA_FALHOU);
+  }
   materializarGit(raiz, raizExecucao);
 
   const alvo = path.resolve(raizExecucao, rel);
@@ -688,6 +726,13 @@ function main() {
   if (posSaida) console.log(posSaida);
   console.log('---------------------------------');
   console.log('');
+  const vermelhas = linhasVermelhas(`${posRes.r.stdout || ''}${posRes.r.stderr || ''}`);
+  if (vermelhas.length > 0) {
+    console.log('--- casos vermelhos ---');
+    for (const l of vermelhas) console.log(l);
+    console.log('---------------------------------');
+    console.log('');
+  }
 
   // Apaga a cópia temporária ANTES de decidir e imprimir: nenhum caminho
   // abaixo precisa dela, e o fonte real nunca esteve mutado (Issue #266).

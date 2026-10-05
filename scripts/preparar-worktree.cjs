@@ -3,6 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 // -- Configuração -----------------------------------------------------------
 
@@ -36,7 +37,7 @@ function falha(exitCode, mensagem) {
 
 function gitSync(cwd, ...args) {
   try {
-    const r = spawnSync("git", args, {
+    const r = spawnSync(caminhoExecutavel("git"), args, {
       cwd,
       encoding: "utf8",
       maxBuffer: 32 * 1024 * 1024,

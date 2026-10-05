@@ -24,6 +24,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 const { rodarCli } = require('../hooks/lib/cli-externo.cjs');
 const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
 const { extrairUltimaLinha, validarVocabulario } = require('./lib/extrair-veredito.cjs');
@@ -140,7 +141,7 @@ if (!fs.existsSync(CRITERIO_ARQUIVO)) {
 
 // Gerar diff
 const diffCmd = `git diff ${BASE}...${HEAD}`;
-const diffResult = spawnSync('git', ['diff', `${BASE}...${HEAD}`], {
+const diffResult = spawnSync(caminhoExecutavel('git'), ['diff', `${BASE}...${HEAD}`], {
   encoding: 'utf8',
   cwd: process.cwd()
 });

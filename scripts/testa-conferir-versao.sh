@@ -31,6 +31,7 @@ montar() {
   git -C "$R" config user.email t@t; git -C "$R" config user.name t
   git -C "$R" config commit.gpgsign false
   cp "$CHECADOR" "$R/scripts/conferir-versao.cjs"
+  mkdir -p "$R/hooks/lib" && cp "$SRC/hooks/lib/resolver-executavel.cjs" "$R/hooks/lib/"
   git -C "$R" add scripts; git -C "$R" commit -qm "andaime"
 
   # Tres bumps, para o script ter que achar o ULTIMO e nao o primeiro. O commit
@@ -70,6 +71,7 @@ montar_bump_por_merge() {
   git -C "$R" config user.email t@t; git -C "$R" config user.name t
   git -C "$R" config commit.gpgsign false
   cp "$CHECADOR" "$R/scripts/conferir-versao.cjs"
+  mkdir -p "$R/hooks/lib" && cp "$SRC/hooks/lib/resolver-executavel.cjs" "$R/hooks/lib/"
   printf '{\n  "name": "p",\n  "version": "0.1.0"\n}\n' > "$R/.claude-plugin/plugin.json"
   git -C "$R" add scripts .claude-plugin; git -C "$R" commit -qm "andaime com Versao 0.1.0"
 
@@ -113,6 +115,7 @@ montar_com_origin() {
   git -C "$LOCAL" config user.email t@t; git -C "$LOCAL" config user.name t
   git -C "$LOCAL" config commit.gpgsign false
   cp "$CHECADOR" "$LOCAL/scripts/conferir-versao.cjs"
+  mkdir -p "$LOCAL/hooks/lib" && cp "$SRC/hooks/lib/resolver-executavel.cjs" "$LOCAL/hooks/lib/"
   git -C "$LOCAL" add scripts; git -C "$LOCAL" commit -qm "andaime"
   printf '{\n  "name": "p",\n  "version": "%s"\n}\n' "$ver_local" > "$LOCAL/.claude-plugin/plugin.json"
   git -C "$LOCAL" add .claude-plugin/plugin.json
@@ -208,6 +211,7 @@ echo "== script copiado para pasta sem git mede o repositorio do cwd =="
 # Cria uma pasta temporária SEM .git, fora do repositório
 FORA="$RAIZ/script-fora"; mkdir -p "$FORA/scripts"
 cp "$CHECADOR" "$FORA/scripts/conferir-versao.cjs"
+mkdir -p "$FORA/hooks/lib" && cp "$SRC/hooks/lib/resolver-executavel.cjs" "$FORA/hooks/lib/"
 
 # Monta um repositório de plugin de fixture DENTRO de uma pasta fora do git
 FIXTURE="$RAIZ/fixture-plugin"; montar "$FIXTURE" 3
@@ -236,6 +240,7 @@ mkdir -p "$NPP/scripts"
 git init -q "$NPP"; git -C "$NPP" config user.email t@t; git -C "$NPP" config user.name t
 git -C "$NPP" config commit.gpgsign false
 cp "$CHECADOR" "$NPP/scripts/conferir-versao.cjs"
+mkdir -p "$NPP/hooks/lib" && cp "$SRC/hooks/lib/resolver-executavel.cjs" "$NPP/hooks/lib/"
 echo x > "$NPP/a.txt"; git -C "$NPP" add .; git -C "$NPP" commit -qm "repo sem plugin"
 saida=$(cd "$NPP" && node "scripts/conferir-versao.cjs" 2>&1); rc=$?
 if [ "$rc" = 0 ] && printf '%s' "$saida" | grep -qF "nao e um plugin"; then
@@ -248,6 +253,7 @@ echo
 echo "== pasta fora de qualquer repositorio git =="
 PURO="$RAIZ/puro"; mkdir -p "$PURO/scripts"
 cp "$CHECADOR" "$PURO/scripts/conferir-versao.cjs"
+mkdir -p "$PURO/hooks/lib" && cp "$SRC/hooks/lib/resolver-executavel.cjs" "$PURO/hooks/lib/"
 saida=$(cd "$PURO" && node "scripts/conferir-versao.cjs" 2>&1); rc=$?
 if [ "$rc" = 0 ] && printf '%s' "$saida" | grep -qF "nao e repositorio git"; then
   ok=$((ok+1)); echo "  ok   pasta sem git sai 0 e diz que nao e repositorio"
@@ -269,6 +275,7 @@ mkdir -p "$SB/.claude-plugin" "$SB/scripts"
 git init -q "$SB"; git -C "$SB" config user.email t@t; git -C "$SB" config user.name t
 git -C "$SB" config commit.gpgsign false
 cp "$CHECADOR" "$SB/scripts/conferir-versao.cjs"
+mkdir -p "$SB/hooks/lib" && cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SB/hooks/lib/"
 echo x > "$SB/a.txt"; git -C "$SB" add .; git -C "$SB" commit -qm "sem manifesto nenhum"
 printf '{"name":"p","version":"0.1.0"}\n' > "$SB/.claude-plugin/plugin.json"
 saida=$(cd "$SB" && node "scripts/conferir-versao.cjs" 2>&1); rc=$?
@@ -393,8 +400,9 @@ git -C "$EM_DIA_REMOTO" symbolic-ref HEAD refs/heads/main
 git -C "$EM_DIA_REMOTO" config user.email t@t; git -C "$EM_DIA_REMOTO" config user.name t
 git -C "$EM_DIA_REMOTO" config commit.gpgsign false
 cp "$CHECADOR" "$EM_DIA_REMOTO/scripts/conferir-versao.cjs"
+mkdir -p "$EM_DIA_REMOTO/hooks/lib" && cp "$SRC/hooks/lib/resolver-executavel.cjs" "$EM_DIA_REMOTO/hooks/lib/"
 printf '{\n  "name": "p",\n  "version": "1.6.0"\n}\n' > "$EM_DIA_REMOTO/.claude-plugin/plugin.json"
-git -C "$EM_DIA_REMOTO" add scripts .claude-plugin
+git -C "$EM_DIA_REMOTO" add scripts hooks .claude-plugin
 git -C "$EM_DIA_REMOTO" commit -qm "Versao 1.6.0"
 git clone -q "$EM_DIA_REMOTO" "$EM_DIA"
 
@@ -515,6 +523,7 @@ COMMIT_120=$(git -C "$CLONE1A" log --oneline | grep "Versao 1.2.0" | head -1 | c
 git -C "$CLONE1A" update-ref refs/remotes/origin/main "$COMMIT_120"
 mkdir -p "$CLONE1A/scripts"
 cp "$CHECADOR" "$CLONE1A/scripts/conferir-versao.cjs"
+mkdir -p "$CLONE1A/hooks/lib" && cp "$SRC/hooks/lib/resolver-executavel.cjs" "$CLONE1A/hooks/lib/"
 printf '{\n  "name": "p",\n  "version": "1.3.0"\n}\n' > "$CLONE1A/.claude-plugin/plugin.json"
 git -C "$CLONE1A" add .claude-plugin .claude-plugin/plugin.json scripts; git -C "$CLONE1A" commit -qm "Versao 1.3.0"
 
@@ -527,6 +536,7 @@ COMMIT_120=$(git -C "$CLONE1B" log --oneline | grep "Versao 1.2.0" | head -1 | c
 git -C "$CLONE1B" update-ref refs/remotes/origin/main "$COMMIT_120"
 mkdir -p "$CLONE1B/scripts"
 cp "$CHECADOR" "$CLONE1B/scripts/conferir-versao.cjs"
+mkdir -p "$CLONE1B/hooks/lib" && cp "$SRC/hooks/lib/resolver-executavel.cjs" "$CLONE1B/hooks/lib/"
 printf '{\n  "name": "p",\n  "version": "1.3.0"\n}\n' > "$CLONE1B/.claude-plugin/plugin.json"
 git -C "$CLONE1B" add .claude-plugin .claude-plugin/plugin.json scripts; git -C "$CLONE1B" commit -qm "Versao 1.3.0"
 
@@ -539,6 +549,7 @@ COMMIT_120=$(git -C "$CLONE1C" log --oneline | grep "Versao 1.2.0" | head -1 | c
 git -C "$CLONE1C" update-ref refs/remotes/origin/main "$COMMIT_120"
 mkdir -p "$CLONE1C/scripts"
 cp "$CHECADOR" "$CLONE1C/scripts/conferir-versao.cjs"
+mkdir -p "$CLONE1C/hooks/lib" && cp "$SRC/hooks/lib/resolver-executavel.cjs" "$CLONE1C/hooks/lib/"
 printf '{\n  "name": "p",\n  "version": "1.3.0"\n}\n' > "$CLONE1C/.claude-plugin/plugin.json"
 git -C "$CLONE1C" add .claude-plugin .claude-plugin/plugin.json scripts; git -C "$CLONE1C" commit -qm "Versao 1.3.0"
 

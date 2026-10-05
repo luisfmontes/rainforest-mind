@@ -1,0 +1,216 @@
+{
+  "slug": "2026-10-05-zerar-issues-15",
+  "titulo": "Zerar issues: #377, #378, #379, #382, #385",
+  "criado_em": "2026-10-05",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-05-zerar-issues-15.md",
+    "em": "2026-10-05"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-05-zerar-issues-15.md",
+    "tarefas": 10,
+    "paralelas": [
+      1,
+      2,
+      5,
+      7,
+      8,
+      9
+    ],
+    "em": "2026-10-05"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-05",
+    "tarefas_ok": 15,
+    "tarefas": 15,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "530d62b7",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T14:27:43.696Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "530d62b7",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T14:27:43.696Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "530d62b7",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T14:27:43.696Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "530d62b7",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T14:27:43.696Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "530d62b7",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T14:27:43.696Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "530d62b7",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T14:27:43.696Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "530d62b7",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T14:27:43.696Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "530d62b7",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T14:27:43.696Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "530d62b7",
+        "iteracao": 1,
+        "sessao": "40524922-2eee-42a2-a52e-ae92540058d4",
+        "ts": "2026-10-05T14:27:43.696Z"
+      }
+    ],
+    "em": "2026-10-05",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-estado.sh"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao.sh junction"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao.sh 69"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao.sh casos vermelhos"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-fluxo.sh raiz"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-fluxo.sh razao"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "mod-relogio.test.tsx cwd"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-node-por-nome.sh"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-varrer-baterias.sh shards"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "docs"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-session-start.sh"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-bateria-sem-timeout.cjs listar"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria.sh sem argumento"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "vermelho",
+        "fixture": "testa-node-por-nome.sh"
+      },
+      {
+        "tarefa": 15,
+        "resultado": "vermelho",
+        "fixture": "testa-node-por-nome.sh conselho.cjs:40"
+      }
+    ],
+    "comando": "conferir-mutacao.cjs na tarefa 15",
+    "saida": "VERMELHA exit 0, conselho.cjs:40 acusado"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "a14a5f3da8dde2084ad2cedd860fad7852f9adac",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "afc435a1fe0170d9e",
+        "veredito": "ok",
+        "em": "2026-10-05",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/40524922-2eee-42a2-a52e-ae92540058d4/subagents/agent-afc435a1fe0170d9e.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-05",
+    "achados": 0,
+    "base": "530d62b7914b0d93b59ca03b24d11c23a21f17e7",
+    "head": "a14a5f3da8dde2084ad2cedd860fad7852f9adac",
+    "baixos": [
+      "membros.json gravado antes guarda cmd com node por nome",
+      "rodada 1 achado 3 e 4 aceitos"
+    ]
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-05-zerar-issues-15; claude plugin test .; 18 baterias das tarefas; gh run view do PR #393",
+    "saida": "mutacoes 14 vermelho + 1 n/a exit 0; plugin test 24 pass 0 fail; baterias todas exit 0 (estado 305, conferir-mutacao 165, conferir-fluxo 85, memoria 41, memoria-session-start 84, node-por-nome 3, conselho 105); CI shards 18m14s e 17m22s verdes, 78+91=169 baterias",
+    "sensor_externo": "claude plugin test .",
+    "em": "2026-10-05"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "merge",
+    "pr": 393,
+    "em": "2026-10-05"
+  }
+}

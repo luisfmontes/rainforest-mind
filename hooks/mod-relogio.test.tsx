@@ -65,6 +65,8 @@ async function montar($: any, on: any, surface: Surface, inicio: number, dadosFa
     voo: 0,
     maxVoo: 0,
     argvS: [] as string[][],
+    cwdS: [] as unknown[],
+    cwdJ: [] as unknown[],
     faixa: dadosFaixa,
     ctx: [] as string[],
     sessaoId: 'sessao-atual',
@@ -80,11 +82,13 @@ async function montar($: any, on: any, surface: Surface, inicio: number, dadosFa
     if (alvo.endsWith('relogio-sessoes.cjs')) {
       s.runsS += 1
       s.argvS.push([...e.argv])
+      s.cwdS.push(e.init?.cwd)
       return resposta(s.modoS, s.sessoes)
     }
     if (alvo.endsWith('jornada.cjs')) {
       s.runsJ += 1
       s.voo += 1
+      s.cwdJ.push(e.init?.cwd)
       s.maxVoo = Math.max(s.maxVoo, s.voo)
       try {
         if (s.modoJ === 'lenta') await relogio.sleep(400000)
@@ -340,6 +344,27 @@ for (const surface of ['terminal', 'desktop'] as const) {
       s.modoJ = 'ok'
       await relogio.advance(300000)
       expect((await textos()).length).toBeGreaterThan(0)
+    })
+
+    await ui.unmount()
+  })
+
+  test(`relogio (${surface}): o process.run do relogio roda com cwd na raiz do plugin`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40))
+    const { relogio, s, ui, comecar, caso } = m
+
+    await caso('12 relogio-sessoes e jornada rodam com cwd na raiz do plugin, nao na pasta da sessao', async () => {
+      await comecar()
+      await relogio.advance(2000)
+      expect(s.cwdS.length).toBeGreaterThan(0)
+      expect(s.cwdJ.length).toBeGreaterThan(0)
+      // argv[1] = <raiz>/scripts/<script>.cjs: a raiz sai dele, sem supor o valor de $.plugin.root.
+      const raiz = s.argvS[0][1].replace(/[\\/]scripts[\\/]relogio-sessoes\.cjs$/, '')
+      expect(raiz).not.toBe(s.argvS[0][1])
+      expect(raiz).not.toBe('/projeto')
+      for (const c of [...s.cwdS, ...s.cwdJ]) expect(c).toBe(raiz)
+      // a pasta da sessao segue indo por --cwd
+      expect(s.argvS[0][s.argvS[0].indexOf('--cwd') + 1]).toBe('/projeto')
     })
 
     await ui.unmount()

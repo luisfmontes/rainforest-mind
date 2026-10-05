@@ -22,6 +22,7 @@ export RFM_ROOT="$SB"
 
 mkdir -p "$SB/scripts" "$SB/scripts/lib" "$SB/hooks/lib"
 cp "$SRC/scripts/ideias.cjs" "$SB/scripts/"
+mkdir -p "$SB/hooks/lib" && cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SB/hooks/lib/"
 # O vocabulario de projeto virou lib em 2026-08-12 (o setup.cjs tambem mexe no
 # projetos.json, e duas implementacoes divergem em silencio). O require dela e DURO
 # de proposito — lib ausente e instalacao quebrada, nao caso de fallback —, entao a

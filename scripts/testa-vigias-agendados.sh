@@ -127,6 +127,7 @@ caixa() {  # caixa <nome> -> imprime a raiz criada
   rm -rf "$dir"
   mkdir -p "$dir/scripts/lib" "$dir/vigias"
   cp "$SRC/scripts/saude.cjs" "$dir/scripts/saude.cjs"
+  mkdir -p "$dir/hooks/lib" && cp "$SRC/hooks/lib/resolver-executavel.cjs" "$dir/hooks/lib/"
   cp "$SRC/scripts/lib/impressao-falha.cjs" "$dir/scripts/lib/impressao-falha.cjs"
   echo "$dir"
 }

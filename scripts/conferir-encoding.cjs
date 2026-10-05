@@ -101,6 +101,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 // Tabela literal Windows-1252 para bytes 0x80-0x9F (indice 0 = byte 0x80).
 // Posicoes indefinidas na tabela classica (0x81, 0x8D, 0x8F, 0x90, 0x9D) o WHATWG
@@ -292,7 +293,7 @@ function pareceBinario(buf) {
 }
 
 function git(dir, args) {
-  const r = spawnSync('git', args, { cwd: dir, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+  const r = spawnSync(caminhoExecutavel('git'), args, { cwd: dir, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
   return { rc: r.status, out: (r.stdout || '').replace(/\r?\n$/, ''), err: r.stderr || '' };
 }
 

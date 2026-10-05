@@ -29,7 +29,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const { MARCADOR } = require("./lib/marcador-evidencia.cjs");
-const { executar } = require("./lib/resolver-executavel.cjs");
+const { caminhoExecutavel, executar } = require("./lib/resolver-executavel.cjs");
 const {
   tokensComAspas, posicaoDeComando, textoAPartir, WRAPPERS_QUE_REPASSAM,
   WRAPPERS_DE_COMANDO, desempacotarWrapperDeString, OPERADORES_DE_DOIS,
@@ -345,7 +345,7 @@ function segmentosParaGate(cmd) {
  */
 function git(dir, args) {
   try {
-    return execFileSync("git", ["-C", dir, ...args], {
+    return execFileSync(caminhoExecutavel("git"), ["-C", dir, ...args], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();

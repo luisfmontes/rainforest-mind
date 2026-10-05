@@ -48,6 +48,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
+const { caminhoExecutavel } = require(path.join(__dirname, 'lib', 'resolver-executavel.cjs'));
 const { primeiroPrompt, extrairSlug } = require(path.join(__dirname, '..', 'scripts', 'lib', 'primeiro-prompt-jsonl.cjs'));
 const { extrairUltimaLinha, validarVocabulario } = require(path.join(__dirname, '..', 'scripts', 'lib', 'extrair-veredito.cjs'));
 const { ehWorktreeDeAgente } = require(path.join(__dirname, 'lib', 'contexto-sessao.cjs'));
@@ -65,7 +66,7 @@ const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || path.resolve(__dirname, '.
  * (mesma função de `hooks/gate-agente-em-voo.cjs` ~56-67). */
 function toplevel(cwd) {
   try {
-    return execFileSync('git', ['-C', cwd, 'rev-parse', '--show-toplevel'], {
+    return execFileSync(caminhoExecutavel('git'), ['-C', cwd, 'rev-parse', '--show-toplevel'], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     }).trim() || null;
@@ -115,7 +116,7 @@ function raizComEstadoDoSlug(repoRoot, slug) {
   juntar(repoRoot);
 
   try {
-    const saida = execFileSync('git', ['-C', repoRoot, 'worktree', 'list', '--porcelain'], {
+    const saida = execFileSync(caminhoExecutavel('git'), ['-C', repoRoot, 'worktree', 'list', '--porcelain'], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     });

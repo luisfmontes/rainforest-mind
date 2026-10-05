@@ -99,8 +99,12 @@ function filtroVivas(alias) {
   return 'AND ' + (alias || '') + 'substituida_por IS NULL';
 }
 
-function resolverCaminhos() {
+// `cwd` explicito (memoria-session-start passa CLAUDE_PROJECT_DIR) vale para a raiz e para o
+// projeto. Sem ele, a raiz segue a cadeia de resolverRaiz (CLAUDE_PROJECT_DIR antes do
+// process.cwd()) e o projeto vem do process.cwd(), como sempre foi para os outros chamadores.
+function resolverCaminhos(cwd) {
   const { raiz } = resolverRaiz({
+    cwd,
     plugin: path.resolve(__dirname, '..'),
   });
 
@@ -115,12 +119,12 @@ function resolverCaminhos() {
   // Fallback: basename do cwd se .git não encontrado (sessão fora de repositório).
   // Decisão D13 define que a matéria-prima é projects/<projeto>/<sessão>.jsonl no harness.
   let projeto;
-  const cwd = process.cwd();
-  const topLevel = encontrarGit(cwd);
+  const dirProjeto = cwd || process.cwd();
+  const topLevel = encontrarGit(dirProjeto);
   if (topLevel) {
     projeto = path.basename(topLevel);
   } else {
-    projeto = path.basename(cwd);
+    projeto = path.basename(dirProjeto);
   }
 
   const caminhoDb = path.join(raiz, 'rainforest.db');

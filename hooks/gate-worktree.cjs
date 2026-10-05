@@ -62,6 +62,7 @@ const { execFileSync } = require("node:child_process");
 const os = require("node:os");
 const fs = require("node:fs");
 const path = require("node:path");
+const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
 const { cwdPorSegmento, resolverMovedor, toplevelConfinado, extrairUltimoDirGit, segmentosComAspas, SEPARADORES } = require(path.join(__dirname, "lib", "cwd-efetivo.cjs"));
 const CLIS_QUE_ESCREVEM = require(path.join(__dirname, "lib", "clis-que-escrevem.cjs"));
 const {
@@ -250,7 +251,7 @@ function moveOHead(cmd, cwd, existe = fs.existsSync) {
 
 function git(dir, args) {
   try {
-    return execFileSync("git", ["-C", dir, ...args], {
+    return execFileSync(caminhoExecutavel("git"), ["-C", dir, ...args], {
       encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
     }).trim();
   } catch {

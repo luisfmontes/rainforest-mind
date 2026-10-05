@@ -31,6 +31,7 @@ cp "$SRC/scripts/lib/extrair-veredito.cjs" "$SBP/scripts/lib/"
 cp "$SRC/hooks/lib/raiz.cjs" "$SBP/hooks/lib/"
 cp "$SRC/hooks/lib/config.cjs" "$SBP/hooks/lib/"
 cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SBP/hooks/lib/"
+cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SBP/hooks/lib/"   # git pelo caminho (Issue #392)
 # A caixa vira raiz de dados: sem marcador, resolverRaiz cairia no repo de verdade
 # e a bateria escreveria estado no .rainforest do usuario.
 touch "$SBP/FOCO.md"
@@ -567,6 +568,89 @@ echo "== 13. 'pendentes' nao sobrevive ao fechamento terminal-positivo =="
 # assim que a primeira versao deste teste falhou por 'ENOENT', apontando para
 # um caminho que a propria escrita nunca usou.
 unset RFM_ESTADO_ROOT
+
+# D1 (Tarefa 1): criar arquivos de design e plano para o teste t-pend
+# (agora que a validacao recusa arquivo ausente)
+mkdir -p "$SBP/docs/rainforest/design"
+mkdir -p "$SBP/docs/rainforest/planos"
+mkdir -p "$SBP/docs/rainforest/varredura"
+echo "t-pend" > "$SBP/docs/rainforest/varredura/t-pend.txt"
+cat > "$SBP/docs/rainforest/design/t-pend.md" << 'EOF'
+# Design
+
+## Objetivo
+Teste
+
+## Decisões fechadas
+- **D1 — teste**
+
+## Avaliado e descartado
+n/a
+
+## Fora de escopo
+n/a
+
+## Em aberto
+n/a
+
+## Varredura
+docs/rainforest/varredura/t-pend.txt
+EOF
+
+cat > "$SBP/docs/rainforest/planos/t-pend.md" << 'EOF'
+# Plano de Teste
+
+## Tarefas
+
+### 1. Tarefa um
+atende: D1
+mutacao:
+  arquivo: scripts/estado.cjs
+  de: n/a
+  para: n/a
+  motivo: teste
+
+### 2. Tarefa dois
+atende: D1
+mutacao:
+  arquivo: scripts/estado.cjs
+  de: n/a
+  para: n/a
+  motivo: teste
+
+### 3. Tarefa tres
+atende: D1
+mutacao:
+  arquivo: scripts/estado.cjs
+  de: n/a
+  para: n/a
+  motivo: teste
+
+### 4. Tarefa quatro
+atende: D1
+mutacao:
+  arquivo: scripts/estado.cjs
+  de: n/a
+  para: n/a
+  motivo: teste
+
+### 5. Tarefa cinco
+atende: D1
+mutacao:
+  arquivo: scripts/estado.cjs
+  de: n/a
+  para: n/a
+  motivo: teste
+
+### 6. Tarefa seis
+atende: D1
+mutacao:
+  arquivo: scripts/estado.cjs
+  de: n/a
+  para: n/a
+  motivo: teste
+EOF
+
 ARQ_T_PEND="docs/rainforest/estado/t-pend.json"
 
 $E iniciar --slug t-pend >/dev/null
@@ -578,7 +662,7 @@ $E exigir  --slug t-pend --estagio executar >/dev/null
 $E marcar --slug t-pend --estagio executar --status parcial \
   --json '{"tarefas_ok":5,"tarefas":6,"pendentes":["tarefa-6: falta rodar"]}' >/dev/null
 $E marcar --slug t-pend --estagio executar --status ok \
-  --json '{"comando":"tp","saida":"tp-out","tarefas_ok":6,"tarefas":6,"mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
+  --json '{"comando":"tp","saida":"tp-out","tarefas_ok":6,"tarefas":6,"mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"},{"tarefa":2,"resultado":"n/a","motivo":"teste"},{"tarefa":3,"resultado":"n/a","motivo":"teste"},{"tarefa":4,"resultado":"n/a","motivo":"teste"},{"tarefa":5,"resultado":"n/a","motivo":"teste"},{"tarefa":6,"resultado":"n/a","motivo":"teste"}]}' >/dev/null
 
 igual "pendentes NAO sobrevive ao fechamento ok" "sumiu" "$(node -e "
 const e = JSON.parse(require('fs').readFileSync('$ARQ_T_PEND', 'utf8'));
@@ -1818,6 +1902,7 @@ cp "$SRC/scripts/conferir-categoria.cjs" "$SBP/sensor-test/scripts/"
 cp "$SRC/scripts/lib/primeiro-prompt-jsonl.cjs" "$SBP/sensor-test/scripts/lib/"
 cp "$SRC/scripts/lib/extrair-veredito.cjs" "$SBP/sensor-test/scripts/lib/"
 cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SBP/sensor-test/hooks/lib/"
+cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SBP/sensor-test/hooks/lib/"   # git pelo caminho (Issue #392)
 cd "$SBP/sensor-test" || exit 1
 ES="node scripts/estado.cjs"
 
@@ -2504,6 +2589,129 @@ if [ "$til340b" = "~/.claude/projects/p/s/subagents/agent-x.jsonl|~/.claude/p|X:
   ok=$((ok+1)); echo "  ok   (#340b) caixa diferente da pasta pessoal tambem vira ~; prefixo de outra pasta nao"
 else
   falhou=$((falhou+1)); echo "  FALHA (#340b) veio '$til340b'"
+fi
+
+unset RFM_ESTADO_ROOT
+
+echo
+echo "== (#385) marcar recusa plano ou design declarado e ausente =="
+# Caixa isolada com git init (modelo dos casos existentes)
+mkdir -p "$SBP/caixa385"
+(cd "$SBP/caixa385" && git init -q && git config user.email t@t && git config user.name T)
+export RFM_ESTADO_ROOT="$SBP/caixa385"
+
+E385="node scripts/estado.cjs"
+
+# Criar arquivos de design e plano válidos para os casos positivos
+mkdir -p "$SBP/caixa385/docs/rainforest/design"
+mkdir -p "$SBP/caixa385/docs/rainforest/planos"
+mkdir -p "$SBP/caixa385/docs/rainforest/varredura"
+echo "d385" > "$SBP/caixa385/docs/rainforest/varredura/d385.txt"
+cat > "$SBP/caixa385/docs/rainforest/design/d385.md" << 'EOF'
+# Design
+
+## Objetivo
+Teste
+
+## Decisões fechadas
+- **D1 — teste**
+
+## Avaliado e descartado
+n/a
+
+## Fora de escopo
+n/a
+
+## Em aberto
+n/a
+
+## Varredura
+docs/rainforest/varredura/d385.txt
+EOF
+
+cat > "$SBP/caixa385/docs/rainforest/planos/p385.md" << 'EOF'
+# Plano de Teste 385
+
+## Tarefas
+
+### 1. Primeira tarefa
+atende: D1
+mutacao:
+  arquivo: scripts/estado.cjs
+  de: n/a
+  para: n/a
+  motivo: teste
+EOF
+
+# Caso 1: marcar design aprovado com doc declarado ausente recusa
+msg_design_ausente=$($E385 iniciar --slug des-ausente >/dev/null 2>&1 && $E385 marcar --slug des-ausente --estagio design --status aprovado --json '{"doc":"docs/rainforest/design/nao-existe.md"}' 2>&1)
+cod_design_ausente=$?
+if [ "$cod_design_ausente" = "2" ] && printf '%s' "$msg_design_ausente" | grep -q "RECUSADO: design declarado em 'doc' não existe"; then
+  ok=$((ok+1)); echo "  ok   marcar design aprovado com doc declarado ausente recusa"
+else
+  falhou=$((falhou+1)); echo "  FALHA design ausente: esperava exit 2 com mensagem, veio exit=$cod_design_ausente"; printf '%s\n' "$msg_design_ausente" | sed 's/^/         /'
+fi
+
+# Verificar que o estado NÃO foi gravado com design: aprovado
+estado_nao_fechou=$(node -e "
+const fs = require('fs');
+const p = require('path').join('$SBP/caixa385/docs/rainforest/estado/des-ausente.json');
+if (!fs.existsSync(p)) { console.log('nao existe'); }
+else {
+  const e = JSON.parse(fs.readFileSync(p, 'utf8'));
+  console.log(e.design.status);
+}
+" 2>/dev/null || echo "nao existe")
+if [ "$estado_nao_fechou" = "pendente" ] || [ "$estado_nao_fechou" = "nao existe" ]; then
+  ok=$((ok+1)); echo "  ok   design: estado não foi gravado com status aprovado"
+else
+  falhou=$((falhou+1)); echo "  FALHA design: estado foi gravado com status $estado_nao_fechou"
+fi
+
+# Caso 2: marcar plano ok com arquivo declarado ausente recusa
+msg_plano_ausente=$($E385 iniciar --slug plano-ausente >/dev/null 2>&1 && $E385 marcar --slug plano-ausente --estagio design --status aprovado >/dev/null 2>&1 && $E385 marcar --slug plano-ausente --estagio plano --status ok --json '{"arquivo":"docs/rainforest/planos/nao-existe.md"}' 2>&1)
+cod_plano_ausente=$?
+if [ "$cod_plano_ausente" = "2" ] && printf '%s' "$msg_plano_ausente" | grep -q "RECUSADO: plano declarado em 'arquivo' não existe"; then
+  ok=$((ok+1)); echo "  ok   marcar plano ok com arquivo declarado ausente recusa"
+else
+  falhou=$((falhou+1)); echo "  FALHA plano ausente: esperava exit 2 com mensagem, veio exit=$cod_plano_ausente"; printf '%s\n' "$msg_plano_ausente" | sed 's/^/         /'
+fi
+
+# Verificar que o estado NÃO foi gravado com plano: ok
+estado_plano_nao_fechou=$(node -e "
+const fs = require('fs');
+const p = require('path').join('$SBP/caixa385/docs/rainforest/estado/plano-ausente.json');
+if (!fs.existsSync(p)) { console.log('nao existe'); }
+else {
+  const e = JSON.parse(fs.readFileSync(p, 'utf8'));
+  console.log(e.plano.status);
+}
+" 2>/dev/null || echo "nao existe")
+if [ "$estado_plano_nao_fechou" = "pendente" ] || [ "$estado_plano_nao_fechou" = "nao existe" ]; then
+  ok=$((ok+1)); echo "  ok   plano: estado não foi gravado com status ok"
+else
+  falhou=$((falhou+1)); echo "  FALHA plano: estado foi gravado com status $estado_plano_nao_fechou"
+fi
+
+# Caso 3: Com arquivo presente, design fecha normalmente
+$E385 iniciar --slug des-presente >/dev/null 2>&1
+msg_design_ok=$($E385 marcar --slug des-presente --estagio design --status aprovado --json '{"doc":"docs/rainforest/design/d385.md"}' 2>&1)
+cod_design_ok=$?
+if [ "$cod_design_ok" = "0" ] && printf '%s' "$msg_design_ok" | grep -q "design: aprovado"; then
+  ok=$((ok+1)); echo "  ok   design: com arquivo presente fecha normalmente"
+else
+  falhou=$((falhou+1)); echo "  FALHA design ok: esperava exit 0, veio exit=$cod_design_ok"; printf '%s\n' "$msg_design_ok" | sed 's/^/         /'
+fi
+
+# Caso 4: Com arquivo presente, plano fecha normalmente
+$E385 iniciar --slug plano-presente >/dev/null 2>&1
+$E385 marcar --slug plano-presente --estagio design --status aprovado >/dev/null 2>&1
+msg_plano_ok=$($E385 marcar --slug plano-presente --estagio plano --status ok --json '{"arquivo":"docs/rainforest/planos/p385.md"}' 2>&1)
+cod_plano_ok=$?
+if [ "$cod_plano_ok" = "0" ] && printf '%s' "$msg_plano_ok" | grep -q "plano: ok"; then
+  ok=$((ok+1)); echo "  ok   plano: com arquivo presente fecha normalmente"
+else
+  falhou=$((falhou+1)); echo "  FALHA plano ok: esperava exit 0, veio exit=$cod_plano_ok"; printf '%s\n' "$msg_plano_ok" | sed 's/^/         /'
 fi
 
 unset RFM_ESTADO_ROOT

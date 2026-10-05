@@ -1274,6 +1274,109 @@ else
   falhou=$((falhou+1)); printf '  FALHA sobrou diretorio inesperado no sandbox:\n%s\n' "$SOBRAS_INESPERADAS"
 fi
 
+echo
+echo "== 26. raiz com node_modules como junction (Issue #378) =="
+# `cpSync` recriava o link com `symlinkSync` sem tipo e morria com EPERM no
+# Windows (criar symlink exige privilegio), saindo 1 sem veredito. Agora o
+# script pula o link no filter e recria como junction, que nao exige privilegio.
+# A junction aqui e' real: a bateria IMPORTA um modulo atraves dela, entao uma
+# copia que perdesse o link (ou o deixasse quebrado) deixaria o baseline
+# vermelho (exit 4) em vez de medir.
+RJ="$S/raizj"; WRJ="$W/raizj"
+ALVOJ="$S/modulos-alvo"; WALVOJ="$W/modulos-alvo"
+mkdir -p "$RJ" "$ALVOJ/modulo-x"
+cp "$CAIXA/fonte.cjs" "$RJ/fonte.cjs"
+echo "module.exports = { marca: 'junction-ok' };" > "$ALVOJ/modulo-x/index.js"
+cat > "$RJ/bateria.sh" <<'BAT'
+#!/bin/bash
+f=0
+node -e "if (require('modulo-x').marca !== 'junction-ok') process.exit(1)" || f=1
+node fonte.cjs valor >/dev/null 2>&1 || f=1
+node fonte.cjs >/dev/null 2>&1; [ $? -eq 2 ] || f=1
+echo "bateria da junction: falhou=$f"
+exit $f
+BAT
+node -e "require('fs').symlinkSync(process.argv[1], process.argv[2], 'junction')" "$WALVOJ" "$WRJ/node_modules"
+node "$SCRIPT" --raiz "$WRJ" --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' \
+  --bateria 'bash bateria.sh' > "$SAIDA" 2>&1
+GOTJ=$?
+if [ "$GOTJ" -eq 0 ]; then
+  ok=$((ok+1)); printf '  ok    raiz com node_modules como junction mede e sai 0\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA raiz com node_modules como junction mede e sai 0: veio exit=%s\n' "$GOTJ"
+  sed 's/^/        | /' "$SAIDA" | tail -8
+fi
+tem "a junction importou de verdade (baseline verde, mutacao vermelha)" "VERMELHA"
+if [ -f "$ALVOJ/modulo-x/index.js" ]; then
+  ok=$((ok+1)); printf '  ok    o alvo da junction original continua intacto apos a limpeza da copia\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA a limpeza da copia apagou o conteudo apontado pela junction\n'
+fi
+
+echo
+echo "== 27. junction quebrada na raiz: bloqueio de ambiente, nao stack trace (Issue #378) =="
+RQ="$S/raizq"; WRQ="$W/raizq"
+ALVOQ="$S/alvo-apagado"; WALVOQ="$W/alvo-apagado"
+mkdir -p "$RQ" "$ALVOQ"
+cp "$CAIXA/fonte.cjs" "$RQ/fonte.cjs"
+node -e "require('fs').symlinkSync(process.argv[1], process.argv[2], 'junction')" "$WALVOQ" "$WRQ/node_modules"
+rm -rf "$ALVOQ"
+node "$SCRIPT" --raiz "$WRQ" --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' \
+  --bateria 'bash bateria.sh' > "$SAIDA" 2> "$S/saida-q.err"
+GOTQ=$?
+if [ "$GOTQ" -eq 69 ]; then
+  ok=$((ok+1)); printf '  ok    junction quebrada na raiz sai 69 nao-verificavel\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA junction quebrada na raiz sai 69 nao-verificavel: veio exit=%s\n' "$GOTQ"
+  sed 's/^/        | /' "$S/saida-q.err" | tail -6
+fi
+if head -1 "$S/saida-q.err" | grep -q '^nao-verificavel: copia da raiz falhou — '; then
+  ok=$((ok+1)); printf '  ok    o stderr comeca por "nao-verificavel: copia da raiz falhou —"\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA o stderr nao comeca pelo texto de nao-verificavel\n'
+  sed 's/^/        | /' "$S/saida-q.err" | head -3
+fi
+if grep -q '    at ' "$S/saida-q.err"; then
+  falhou=$((falhou+1)); printf '  FALHA o stderr tem stack trace (linha com "    at ")\n'
+else
+  ok=$((ok+1)); printf '  ok    o stderr nao tem stack trace\n'
+fi
+
+echo
+echo "== 28. caso vermelho no meio de saida longa sai inteiro (Issue #378) =="
+# O trecho geral da saida pos-mutacao mostra so as ultimas 20 linhas; quem
+# confere a `fixture:` precisa do NOME do caso vermelho, que ficava escondido
+# no meio. A bateria so fica vermelha com a mutacao aplicada.
+cat > "$CAIXA/bateria-longa.sh" <<'BAT'
+#!/bin/bash
+seq 1 300 | sed 's/^/ok caso-/'
+if grep -q 'process.exit(0);' fonte.cjs; then
+  echo "FALHA caso-escondido-no-meio"
+  f=1
+else
+  f=0
+fi
+seq 301 600 | sed 's/^/ok caso-/'
+exit $f
+BAT
+CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' --bateria 'bash bateria-longa.sh' > "$SAIDA" 2>&1
+GOTL=$?
+rm -f "$CAIXA/bateria-longa.sh"
+cp "$PRISTINO" "$CAIXA/fonte.cjs"
+CV="$(sed -n '/^--- casos vermelhos ---$/,$p' "$SAIDA")"
+if [ "$GOTL" -eq 0 ] && printf '%s\n' "$CV" | grep -qx 'FALHA caso-escondido-no-meio'; then
+  ok=$((ok+1)); printf '  ok    falha no meio de saida longa aparece em casos vermelhos\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA falha no meio de saida longa aparece em casos vermelhos: exit=%s\n' "$GOTL"
+  sed 's/^/        | /' "$SAIDA" | tail -12
+fi
+tem "o trecho geral continua truncado (a falha so aparece pela secao nova)" "linha(s) acima omitida(s)"
+if [ "$(grep -c 'caso-escondido-no-meio' "$SAIDA")" -eq 1 ]; then
+  ok=$((ok+1)); printf '  ok    a linha vermelha aparece uma vez so (fora do trecho truncado)\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA a linha vermelha nao apareceu exatamente uma vez\n'
+fi
+
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]

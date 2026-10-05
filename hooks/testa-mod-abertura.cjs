@@ -227,7 +227,7 @@ caso("geradores chamados por argv com --destino mod, cwd e CLAUDE_PROJECT_DIR da
   for (const c of $.chamadas) {
     igual(c.argv[0], "node", "executavel");
     igual(c.argv.slice(-2).join(" "), "--destino mod", "flag do destino");
-    igual(c.init.cwd, PROJ, "cwd");
+    igual(c.init.cwd, SRC.replace(/\\/g, "/"), "cwd");
     igual(c.init.env.CLAUDE_PROJECT_DIR, PROJ, "CLAUDE_PROJECT_DIR");
     igual(c.init.timeoutMs, 60000, "timeout");
     afirma(geradorDoArgv(c.argv).startsWith(SRC.replace(/\\/g, "/") + "/hooks/"), `script fora da raiz do plugin: ${geradorDoArgv(c.argv)}`);

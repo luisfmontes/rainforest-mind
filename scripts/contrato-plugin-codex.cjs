@@ -5,6 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { createHash, randomBytes } = require('node:crypto');
 const { spawnSync } = require('node:child_process');
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 const RAIZ = path.resolve(__dirname, '..');
 const MANIFESTO_CODEX = path.join(RAIZ, '.codex-plugin', 'plugin.json');
@@ -267,7 +268,7 @@ function rodar(arquivo, args, opcoes = {}) {
 }
 
 function git(cwd, args) {
-  const resultado = rodar('git', args, { cwd });
+  const resultado = rodar(caminhoExecutavel('git'), args, { cwd });
   exige(!resultado.error && resultado.status === 0,
     `git ${args.join(' ')} falhou: ${resultado.error ? resultado.error.message : (resultado.stderr || '').trim()}`);
   return (resultado.stdout || '').trim();
@@ -481,7 +482,7 @@ function validarDetectorGemini() {
 }
 
 function validarGeminiAdiado() {
-  const listagem = rodar('git', ['ls-files', '-z'], { cwd: RAIZ });
+  const listagem = rodar(caminhoExecutavel('git'), ['ls-files', '-z'], { cwd: RAIZ });
   exige(!listagem.error, `git ls-files nao iniciou: ${listagem.error && listagem.error.message}`);
   exige(listagem.status === 0, `git ls-files saiu ${listagem.status}`);
   const arquivos = (listagem.stdout || '').split('\0').filter(Boolean)

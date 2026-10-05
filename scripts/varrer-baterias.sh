@@ -1,7 +1,10 @@
 #!/bin/bash
 # Varredura de baterias: executa todos os testes automatizados do repositorio.
-# Uso: bash scripts/varrer-baterias.sh [--so <caminho>]
+# Uso: bash scripts/varrer-baterias.sh [--so <caminho>] [--shard i/n] [--listar]
 # --so <caminho>: roda apenas uma bateria (dispensa a guarda de piso, aceita .sh e .cjs)
+# --shard i/n: roda so a fatia i de n, repartida por tempo (scripts/repartir-baterias.cjs
+#   com os pesos de scripts/tempos-baterias.json). E como o CI divide a suite (Issue #377).
+# --listar: imprime a lista (inteira, ou a do --shard) e sai, sem rodar nada
 
 set -u
 
@@ -10,6 +13,8 @@ set -u
 # varias baterias e o placar dizia "bateria passou", no singular.
 baterias=()
 modo_solo=""
+shard=""
+listar=0
 
 if [ $# -gt 0 ]; then
   if [ "$1" = "--so" ]; then
@@ -21,8 +26,26 @@ if [ $# -gt 0 ]; then
   else
     # Flag desconhecida nao pode cair no modo completo em silencio: `--sso x`
     # rodava a varredura inteira sem avisar que a flag nao existia.
-    echo "FALHA opcao desconhecida: $1. Uso: bash scripts/varrer-baterias.sh [--so <caminho>]"
-    exit 1
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --shard)
+          if [ $# -lt 2 ]; then
+            echo "FALHA --shard exige i/n (ex.: 1/2). Uso: bash scripts/varrer-baterias.sh --shard i/n"
+            exit 1
+          fi
+          shard="$2"
+          shift 2
+          ;;
+        --listar)
+          listar=1
+          shift
+          ;;
+        *)
+          echo "FALHA opcao desconhecida: $1. Uso: bash scripts/varrer-baterias.sh [--so <caminho>] [--shard i/n] [--listar]"
+          exit 1
+          ;;
+      esac
+    done
   fi
 fi
 
@@ -86,8 +109,37 @@ else
   fi
 
   baterias=("${de_scripts[@]}" "${de_hooks[@]}" "${de_scripts_cjs[@]}" "${de_hooks_cjs[@]}")
+
+  # --shard: a guarda de piso acima rodou na lista INTEIRA; so depois a lista
+  # encolhe para a fatia. Fatia vazia ou repartidor quebrado e falha, nunca
+  # "0 baterias passaram" verde.
+  if [ -n "$shard" ]; then
+    raiz_script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    total_lista="${#baterias[@]}"
+    if ! fatia=$(printf '%s\n' "${baterias[@]}" | node "$raiz_script/repartir-baterias.cjs" --shard "$shard"); then
+      echo "FALHA a reparticao das baterias falhou (--shard $shard)"
+      exit 1
+    fi
+    baterias=()
+    while IFS= read -r linha; do
+      if [ -n "$linha" ]; then baterias+=("$linha"); fi
+    done <<< "$fatia"
+    if [ "${#baterias[@]}" -lt 1 ]; then
+      echo "FALHA o shard $shard ficou sem baterias (de $total_lista)"
+      exit 1
+    fi
+  fi
+
+  if [ "$listar" -eq 1 ]; then
+    printf '%s\n' "${baterias[@]}"
+    exit 0
+  fi
   total="${#baterias[@]}"
-  echo "== $total baterias =="
+  if [ -n "$shard" ]; then
+    echo "== $total baterias (shard $shard de $total_lista) =="
+  else
+    echo "== $total baterias =="
+  fi
 fi
 
 vermelhas=()
