@@ -27,6 +27,13 @@ E então **pare e espere**. Cada rodada de respostas remodela a árvore:
 decisão fechada empurra a fronteira para fora — recalcule e faça a rodada
 seguinte. Você nunca responde as próprias perguntas.
 
+**Exceção: delegação explícita prévia.** Se ele disse, antes das perguntas, que
+pode seguir como recomendado, a rodada vira design escrito: as respostas
+recomendadas entram como decisões, com uma linha por decisão relatando o que
+ficou fechado. Só sobe pergunta o que a delegação não cobre (escopo novo, risco
+de publicação). Perguntar o que a delegação já fechou devolve a ele o trabalho
+que acabou de delegar.
+
 ### Perguntas obrigatórias da primeira rodada
 
 Três perguntas entram na primeira rodada sempre que o documento ainda não as
