@@ -1274,6 +1274,45 @@ else
   falhou=$((falhou+1)); printf '  FALHA sobrou diretorio inesperado no sandbox:\n%s\n' "$SOBRAS_INESPERADAS"
 fi
 
+echo
+echo "== 26. raiz com node_modules como junction (Issue #378) =="
+# `cpSync` recriava o link com `symlinkSync` sem tipo e morria com EPERM no
+# Windows (criar symlink exige privilegio), saindo 1 sem veredito. Agora o
+# script pula o link no filter e recria como junction, que nao exige privilegio.
+# A junction aqui e' real: a bateria IMPORTA um modulo atraves dela, entao uma
+# copia que perdesse o link (ou o deixasse quebrado) deixaria o baseline
+# vermelho (exit 4) em vez de medir.
+RJ="$S/raizj"; WRJ="$W/raizj"
+ALVOJ="$S/modulos-alvo"; WALVOJ="$W/modulos-alvo"
+mkdir -p "$RJ" "$ALVOJ/modulo-x"
+cp "$CAIXA/fonte.cjs" "$RJ/fonte.cjs"
+echo "module.exports = { marca: 'junction-ok' };" > "$ALVOJ/modulo-x/index.js"
+cat > "$RJ/bateria.sh" <<'BAT'
+#!/bin/bash
+f=0
+node -e "if (require('modulo-x').marca !== 'junction-ok') process.exit(1)" || f=1
+node fonte.cjs valor >/dev/null 2>&1 || f=1
+node fonte.cjs >/dev/null 2>&1; [ $? -eq 2 ] || f=1
+echo "bateria da junction: falhou=$f"
+exit $f
+BAT
+node -e "require('fs').symlinkSync(process.argv[1], process.argv[2], 'junction')" "$WALVOJ" "$WRJ/node_modules"
+node "$SCRIPT" --raiz "$WRJ" --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' \
+  --bateria 'bash bateria.sh' > "$SAIDA" 2>&1
+GOTJ=$?
+if [ "$GOTJ" -eq 0 ]; then
+  ok=$((ok+1)); printf '  ok    raiz com node_modules como junction mede e sai 0\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA raiz com node_modules como junction mede e sai 0: veio exit=%s\n' "$GOTJ"
+  sed 's/^/        | /' "$SAIDA" | tail -8
+fi
+tem "a junction importou de verdade (baseline verde, mutacao vermelha)" "VERMELHA"
+if [ -f "$ALVOJ/modulo-x/index.js" ]; then
+  ok=$((ok+1)); printf '  ok    o alvo da junction original continua intacto apos a limpeza da copia\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA a limpeza da copia apagou o conteudo apontado pela junction\n'
+fi
+
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]

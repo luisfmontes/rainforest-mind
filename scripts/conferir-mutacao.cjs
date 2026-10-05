@@ -557,10 +557,27 @@ function main() {
   // fora — `.git` aninhado em alguma fixture não é excluído (D5, Issue #266).
   const raizExecucao = fs.mkdtempSync(path.join(os.tmpdir(), 'conferir-mutacao-'));
   armarLimpeza(raizExecucao);
+  //
+  // Link simbolico/junction (tipicamente `node_modules` de worktree, Issue
+  // #378): `cpSync` o recriaria com `symlinkSync` sem tipo, e no Windows isso
+  // exige privilegio (EPERM). O filter pula o link e o script o recria depois:
+  // junction para diretorio (nao exige privilegio), copia para arquivo.
+  const links = [];
   fs.cpSync(raiz, raizExecucao, {
     recursive: true,
-    filter: (p) => path.relative(raiz, p) !== '.git',
+    filter: (p) => {
+      if (path.relative(raiz, p) === '.git') return false;
+      if (p === raiz) return true;
+      if (fs.lstatSync(p).isSymbolicLink()) { links.push(p); return false; }
+      return true;
+    },
   });
+  for (const p of links) {
+    const destino = path.join(raizExecucao, path.relative(raiz, p));
+    const real = fs.realpathSync(p);
+    if (fs.statSync(real).isDirectory()) fs.symlinkSync(real, destino, 'junction');
+    else fs.copyFileSync(real, destino);
+  }
   materializarGit(raiz, raizExecucao);
 
   const alvo = path.resolve(raizExecucao, rel);
