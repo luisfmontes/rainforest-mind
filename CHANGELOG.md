@@ -33,6 +33,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   `docs/rainforest/referencia/contrato-territorio.md`, com o protocolo de aceite em números (agentes
   despachados, qualidade do júri cego, custo até +30%). Vira v1 quando um segundo território o
   implementar. O mapa de um território real mora no plugin dele, não neste repositório.
+
 ## 1.39.3 — 2026-10-05
 
 - **`git` e `gh` não são mais procurados na pasta do repositório aberto** (#392). Hooks e scripts chamavam
