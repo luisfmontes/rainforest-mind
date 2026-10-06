@@ -100,6 +100,9 @@ function rodarHook(payload, cwd) {
     encoding: 'utf8',
     cwd,
   });
+  if (result.status !== 0) {
+    throw new Error(`hook saiu ${result.status}, stderr: ${result.stderr}`);
+  }
   return {
     stdout: result.stdout || '',
     stderr: result.stderr || '',
