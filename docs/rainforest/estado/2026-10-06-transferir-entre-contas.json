@@ -88,10 +88,39 @@
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "cdc8c1083cb2b9f2c20fcd877ce97a02c2a8a859",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-10-06-transferir-entre-contas.json"
+      ]
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a4f7eb0d2bc6dd4fc",
+        "veredito": "ok",
+        "em": "2026-10-06",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-transferir-entre-contas/bd14331a-3b60-4795-8ac0-a0e2de151749/subagents/agent-a4f7eb0d2bc6dd4fc.jsonl"
+      }
+    ],
+    "achados": 0,
+    "base": "a85f9315",
+    "head": "cdc8c1083cb2b9f2c20fcd877ce97a02c2a8a859",
+    "residuos": [
+      "ramo status===null do despachante sem caso (Windows nao produz null)",
+      "recusa exit 4 pode deixar pasta vazia no destino",
+      "sessionId sem validacao de caracteres (definido pelo harness)",
+      "imports os/dentroDeProjetos e homeNorm sem uso"
+    ],
+    "em": "2026-10-06"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-transferir-entre-contas.sh (mais transferencia real de sessao descartavel e retomada na conta pessoal, e conferir-fluxo mutacoes)",
+    "saida": "T1 real: transferir.cjs claude exit 0, imprimiu cd e a linha de resume com CLAUDE_CONFIG_DIR da conta pessoal, origem com sha f594b4d6 igual antes e depois, retomada na conta pessoal devolveu Biscoito-Azul-73, segunda execucao exit 4 citando --forcar, sessoes descartaveis apagadas das duas contas. Primeira tentativa com palavra-senha: haiku recusou repetir senha mas citou a resposta anterior; refeita com fato neutro. Baterias: entre-contas 0, codex 0, despacho 0. Mutacoes: tarefas 1 a 3 vermelho, 4 pulada. T4: 1.42.0 nos dois plugin.json, badge e CHANGELOG; origin/main 1.41.0",
+    "sensor_externo": "bash scripts/testa-transferir-entre-contas.sh",
+    "em": "2026-10-06"
   },
   "fechar": {
     "status": "pendente"
