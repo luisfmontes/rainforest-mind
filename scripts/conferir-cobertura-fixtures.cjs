@@ -55,7 +55,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { spawnSync, execFileSync } = require('child_process');
+const { caminhoExecutavel } = require('../hooks/lib/resolver-executavel.cjs');
 
 function uso(msg) {
   if (msg) console.error(`erro: ${msg}\n`);
@@ -89,12 +90,72 @@ const pastaFixtures = path.resolve(raiz, spec.fixtures);
 const [moduloAvaliar, funcaoAvaliar] = String(spec.avaliar).split('#');
 if (!funcaoAvaliar) uso('"avaliar" precisa ser "<modulo>#<funcao>"');
 
+const EXIT_LOCK_OCUPADO = 69;
+
+// Obter git-dir e criar lock exclusivo
+let lockMeu = false;
+let lock;
+try {
+  const gitDirResult = spawnSync(caminhoExecutavel('git'), ['rev-parse', '--git-dir'], {
+    cwd: raiz, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']
+  });
+  if (gitDirResult.status === 0) {
+    const gitDir = path.resolve(raiz, gitDirResult.stdout.trim());
+    lock = path.join(gitDir, 'rainforest-mutacao.lock');
+
+    let tentativas = 0;
+    while (tentativas < 2) {
+      try {
+        const fd = fs.openSync(lock, 'wx');
+        fs.writeSync(fd, String(process.pid));
+        fs.closeSync(fd);
+        lockMeu = true;
+        break;
+      } catch (e) {
+        if (e.code !== 'EEXIST') throw e;
+
+        // Lock já existe — verificar se pid está vivo
+        try {
+          const conteudo = fs.readFileSync(lock, 'utf8').trim();
+          const pidOutro = parseInt(conteudo, 10);
+          if (!isNaN(pidOutro)) {
+            try {
+              process.kill(pidOutro, 0);
+              // Pid está vivo
+              console.error('nao-verificavel: outra mutacao em curso neste worktree (pid ' + pidOutro + ' vivo)');
+              process.exit(EXIT_LOCK_OCUPADO);
+            } catch (killErr) {
+              // Pid morreu (ou sem permissão, mas no Linux é EPERM mesmo vivo)
+              if (killErr.code === 'ESRCH') {
+                // Processo não existe — remover lock stale e tentar novamente
+                try { fs.unlinkSync(lock); } catch (_) { /* ignorar */ }
+                tentativas++;
+              } else {
+                // EPERM = processo vivo mas sem permissão (improável em teste, mas válido em produção)
+                console.error('nao-verificavel: outra mutacao em curso neste worktree (pid ' + pidOutro + ' vivo)');
+                process.exit(EXIT_LOCK_OCUPADO);
+              }
+            }
+          }
+        } catch (_) { /* ignorar erro de leitura */ }
+        tentativas++;
+      }
+    }
+  }
+} catch (e) {
+  // Se git-dir não funciona, continua sem lock (raiz pode não ser git repo)
+  // Isso é consistente com saída 69 (nao-verificavel)
+}
+
 const original = fs.readFileSync(alvoFonte, 'utf8');
 let restaurado = false;
 function restaurar() {
   if (restaurado) return;
   restaurado = true;
   try { fs.writeFileSync(alvoFonte, original); } catch (_) { /* nada a fazer */ }
+  if (lockMeu && lock) {
+    try { fs.unlinkSync(lock); } catch (_) { /* nada a fazer */ }
+  }
 }
 process.on('exit', restaurar);
 for (const sinal of ['SIGINT', 'SIGTERM']) {
