@@ -90,7 +90,8 @@ pronto quando: com o payload SessionStart real (`{"session_id":…,"cwd":<projet
 
 ### 6. conferir-fluxo cobertura recusa plano que a execução não consome [tipo: implementar]
 atende: D14, D15
-arquivos: `scripts/conferir-fluxo.cjs`, `hooks/lib/contar-ocorrencias.cjs`, `scripts/testa-conferir-fluxo.sh`, `skills/plano/SKILL.md`
+arquivos: `scripts/conferir-fluxo.cjs`, `hooks/lib/contar-ocorrencias.cjs`, `scripts/testa-conferir-fluxo.sh`, `skills/plano/SKILL.md`, `scripts/testa-estado.sh`, `scripts/testa-estado-territorio.sh`
+emenda da integração: as duas baterias de estado montam caixa com cópia do `conferir-fluxo.cjs` e passam a copiar a dependência nova `contar-ocorrencias.cjs` (a varredura completa as pegou vermelhas)
 depende de: nenhuma
 paralela: sim
 prova-na-base: verde — a base aceita os planos defeituosos, mas a bateria da base não tem os fixtures
@@ -226,7 +227,8 @@ pronto quando: com uma HOME de caixa contendo `.claude/plugins`, `.claude-person
 
 ### 16. memória exibe a data local [tipo: implementar]
 atende: D28
-arquivos: `hooks/lib/memoria-sessao.cjs`, `hooks/testa-memoria-escada.cjs`, `hooks/testa-memoria-session-start.sh`
+arquivos: `hooks/lib/memoria-sessao.cjs`, `hooks/testa-memoria-escada.cjs`, `hooks/testa-memoria-session-start.sh`, `scripts/lib/utilidade.cjs`, `scripts/testa-utilidade.sh`
+emenda da integração: a linha servida passou a mostrar a data local e `acharAlvo` (utilidade) buscava só o dia UTC — busca o dia e os vizinhos; o caso 9a da bateria fixa `TZ=America/Sao_Paulo` e fica vermelho sem o conserto
 depende de: nenhuma
 paralela: sim
 prova-na-base: verde — as fixtures da base usam 10:00Z, que não muda de dia em UTC-3
@@ -240,7 +242,8 @@ pronto quando: com `TZ=America/Sao_Paulo` no ambiente do processo e uma observa�
 
 ### 17. registro dos hooks novos, versão 1.42.0 e documentação [tipo: configurar]
 atende: D29
-arquivos: `hooks/hooks.json`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`, `scripts/baterias-obrigatorias.txt`
+arquivos: `hooks/hooks.json`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`, `scripts/baterias-obrigatorias.txt`, `scripts/testa-conferir-categoria.sh`, `hooks/testa-ferramentas-nao-toca-abertura.sh`, `hooks/testa-titulo-sessao-registro.sh`, `docs/rainforest/relatorios/2026-10-06-zerar-issues-16-integracao.md`
+emenda da integração: registrar três hooks muda as contagens que essas baterias guardam (SessionStart 7, PreToolUse 15, 53 peças / 21 guias), com prova de que o `idioma-session-start` fica mudo na abertura; o relatório de integração registra a rodada
 depende de: 3, 4, 5, 7
 paralela: nao
 mutacao: n/a

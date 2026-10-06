@@ -262,7 +262,12 @@
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "c49eacf45bebcb1dc6ffd65dc8ece8c6c8d4f138",
+      "caminhos_sujos": []
+    },
+    "vereditos": []
   },
   "verificar": {
     "status": "pendente"
