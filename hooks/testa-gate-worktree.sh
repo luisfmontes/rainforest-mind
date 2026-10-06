@@ -31,6 +31,8 @@ ok=0; falhou=0
 # roda o hook com um payload e confere o exit: 0 = passou, 2 = barrou
 gate() { # nome, exit esperado, json
   local nome="$1" esp="$2" json="$3"
+  # payload vazio = o helper que o monta falhou: nunca vira "ok" (#403)
+  if [ -z "$json" ]; then falhou=$((falhou+1)); echo "  FALHA $nome: payload vazio"; return; fi
   local saida; saida=$(printf '%s' "$json" | node "$GATE" 2>&1); local got=$?
   if [ "$got" = "$esp" ]; then ok=$((ok+1)); echo "  ok   $nome (exit $got)"
   else falhou=$((falhou+1)); echo "  FALHA $nome: esperava $esp, veio $got"; echo "$saida" | sed 's/^/         /' | head -6; fi
@@ -43,52 +45,56 @@ echo v1 > "$R/a.txt"; git -C "$R" add .; git -C "$R" commit -qm base
 WT="$RAIZ/wt"; git -C "$R" worktree add -q -b trabalho "$WT" >/dev/null 2>&1
 FORA="$RAIZ/sem-git"; mkdir -p "$FORA"
 
+# Todo payload sai de JSON.stringify, com os valores CRUS por argv (#403):
+# montado por printf, aspas duplas ou barra invertida no valor quebravam o
+# JSON, o gate saia 0 por payload invalido e o caso ficava verde sem ter sido
+# olhado. pj <chave> <valor> ...: chave com ponto aninha (tool_input.command).
+# MSYS_NO_PATHCONV: o Git Bash reescreveria valor com cara de caminho POSIX.
+pj() { MSYS_NO_PATHCONV=1 node -e 'const a=process.argv.slice(1),o={};for(let i=0;i<a.length;i+=2){const k=a[i].split(".");let c=o;while(k.length>1){const s=k.shift();c=c[s]=c[s]||{}}c[k[0]]=a[i+1]}process.stdout.write(JSON.stringify(o))' "$@"; }
 j() { # tool, campo-alvo, valor, [extra]
-  printf '{"agent_id":"ag-1","agent_type":"executor","cwd":"%s","hook_event_name":"PreToolUse","tool_name":"%s","tool_input":{"%s":"%s"}}' \
-    "${4:-$R}" "$1" "$2" "$3"
+  pj agent_id ag-1 agent_type executor cwd "${4:-$R}" hook_event_name PreToolUse tool_name "$1" "tool_input.$2" "$3"
 }
-esc() { printf '%s' "$1" | sed 's|\\|/|g'; }
 
 echo "== deve BARRAR (exit 2) =="
-gate "subagente escreve no repo principal"        2 "$(j Write file_path "$(esc "$R/novo.txt")")"
-gate "subagente edita arquivo do repo principal"  2 "$(j Edit file_path "$(esc "$R/a.txt")")"
-gate "subagente usa MultiEdit no principal"       2 "$(j MultiEdit file_path "$(esc "$R/a.txt")")"
-gate "subagente roda git stash no principal (N1)" 2 "$(printf '{"agent_id":"ag-1","agent_type":"executor","cwd":"%s","tool_name":"Bash","tool_input":{"command":"git stash push -u"}}' "$(esc "$R")")"
-gate "subagente roda git checkout no principal"   2 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"git checkout main"}}' "$(esc "$R")")"
+gate "subagente escreve no repo principal"        2 "$(j Write file_path "$R/novo.txt")"
+gate "subagente edita arquivo do repo principal"  2 "$(j Edit file_path "$R/a.txt")"
+gate "subagente usa MultiEdit no principal"       2 "$(j MultiEdit file_path "$R/a.txt")"
+gate "subagente roda git stash no principal (N1)" 2 "$(pj agent_id ag-1 agent_type executor cwd "$R" tool_name Bash tool_input.command "git stash push -u")"
+gate "subagente roda git checkout no principal"   2 "$(pj agent_id ag-1 tool_name Bash cwd "$R" tool_input.command "git checkout main")"
 
 echo
 echo "== redirecionamento e ferramentas de escrita em Bash (Issue #88) =="
-gate "echo para arquivo FORA do worktree (novo)"     2 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"echo x > '"'"'%s/novo.txt'"'"'"}}' "$(esc "$R")" "$(esc "$R")")"
-gate "echo >> append FORA do worktree"               2 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"echo x >> '"'"'%s/novo.txt'"'"'"}}' "$(esc "$R")" "$(esc "$R")")"
-gate "tee para arquivo FORA do worktree"             2 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"echo x | tee '"'"'%s/novo.txt'"'"'"}}' "$(esc "$R")" "$(esc "$R")")"
-gate "sed -i arquivo FORA do worktree"               2 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"sed -i '"'"'s/x/y/'"'"' '"'"'%s/a.txt'"'"'"}}' "$(esc "$R")" "$(esc "$R")")"
-gate "cp para FORA do worktree"                      2 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"cp '"'"'%s/a.txt'"'"' '"'"'%s/copia.txt'"'"'"}}' "$(esc "$R")" "$(esc "$R")" "$(esc "$R")")"
-gate "mv para FORA do worktree"                      2 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"mv '"'"'%s/a.txt'"'"' '"'"'%s/renomeado.txt'"'"'"}}' "$(esc "$R")" "$(esc "$R")" "$(esc "$R")")"
-gate "criar .rainforest-gate-off (escape file)"      2 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"echo 1 > '"'"'%s/.rainforest-gate-off'"'"'"}}' "$(esc "$R")" "$(esc "$R")")"
+gate "echo para arquivo FORA do worktree (novo)"     2 "$(pj agent_id ag-1 tool_name Bash cwd "$R" tool_input.command "echo x > '$R/novo.txt'")"
+gate "echo >> append FORA do worktree"               2 "$(pj agent_id ag-1 tool_name Bash cwd "$R" tool_input.command "echo x >> '$R/novo.txt'")"
+gate "tee para arquivo FORA do worktree"             2 "$(pj agent_id ag-1 tool_name Bash cwd "$R" tool_input.command "echo x | tee '$R/novo.txt'")"
+gate "sed -i arquivo FORA do worktree"               2 "$(pj agent_id ag-1 tool_name Bash cwd "$R" tool_input.command "sed -i 's/x/y/' '$R/a.txt'")"
+gate "cp para FORA do worktree"                      2 "$(pj agent_id ag-1 tool_name Bash cwd "$R" tool_input.command "cp '$R/a.txt' '$R/copia.txt'")"
+gate "mv para FORA do worktree"                      2 "$(pj agent_id ag-1 tool_name Bash cwd "$R" tool_input.command "mv '$R/a.txt' '$R/renomeado.txt'")"
+gate "criar .rainforest-gate-off (escape file)"      2 "$(pj agent_id ag-1 tool_name Bash cwd "$R" tool_input.command "echo 1 > '$R/.rainforest-gate-off'")"
 
 echo
 echo "== redirecionamento e escrita DENTRO do worktree PASSA =="
-gate "echo para arquivo dentro do worktree"          0 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"echo x > '"'"'%s/novo.txt'"'"'"}}' "$(esc "$WT")" "$(esc "$WT")")"
-gate "echo >> append dentro do worktree"             0 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"echo x >> '"'"'%s/novo.txt'"'"'"}}' "$(esc "$WT")" "$(esc "$WT")")"
-gate "tee dentro do worktree"                        0 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"echo x | tee '"'"'%s/novo.txt'"'"'"}}' "$(esc "$WT")" "$(esc "$WT")")"
-gate "sed -i dentro do worktree"                     0 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"sed -i '"'"'s/x/y/'"'"' '"'"'%s/a.txt'"'"'"}}' "$(esc "$WT")" "$(esc "$WT")")"
-gate "cp dentro do worktree"                         0 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"cp '"'"'%s/a.txt'"'"' '"'"'%s/copia.txt'"'"'"}}' "$(esc "$WT")" "$(esc "$WT")" "$(esc "$WT")")"
-gate "mv dentro do worktree"                         0 "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"mv '"'"'%s/a.txt'"'"' '"'"'%s/renomeado.txt'"'"'"}}' "$(esc "$WT")" "$(esc "$WT")" "$(esc "$WT")")"
+gate "echo para arquivo dentro do worktree"          0 "$(pj agent_id ag-1 tool_name Bash cwd "$WT" tool_input.command "echo x > '$WT/novo.txt'")"
+gate "echo >> append dentro do worktree"             0 "$(pj agent_id ag-1 tool_name Bash cwd "$WT" tool_input.command "echo x >> '$WT/novo.txt'")"
+gate "tee dentro do worktree"                        0 "$(pj agent_id ag-1 tool_name Bash cwd "$WT" tool_input.command "echo x | tee '$WT/novo.txt'")"
+gate "sed -i dentro do worktree"                     0 "$(pj agent_id ag-1 tool_name Bash cwd "$WT" tool_input.command "sed -i 's/x/y/' '$WT/a.txt'")"
+gate "cp dentro do worktree"                         0 "$(pj agent_id ag-1 tool_name Bash cwd "$WT" tool_input.command "cp '$WT/a.txt' '$WT/copia.txt'")"
+gate "mv dentro do worktree"                         0 "$(pj agent_id ag-1 tool_name Bash cwd "$WT" tool_input.command "mv '$WT/a.txt' '$WT/renomeado.txt'")"
 
 echo
 echo "== deve PASSAR (exit 0) — falso positivo aqui para o trabalho do usuario =="
 gate "JANELA PRINCIPAL escrevendo no repo (sem agent_id)" 0 \
-  "$(printf '{"tool_name":"Write","cwd":"%s","tool_input":{"file_path":"%s"}}' "$(esc "$R")" "$(esc "$R/x.txt")")"
-gate "subagente escrevendo no worktree dele"      0 "$(j Write file_path "$(esc "$WT/novo.txt")" "$(esc "$WT")")"
-gate "subagente editando no worktree dele"        0 "$(j Edit file_path "$(esc "$WT/a.txt")" "$(esc "$WT")")"
-gate "subagente escrevendo fora de repo git"      0 "$(j Write file_path "$(esc "$FORA/nota.txt")" "$(esc "$FORA")")"
-gate "subagente LENDO o repo principal"           0 "$(j Read file_path "$(esc "$R/a.txt")")"
+  "$(pj tool_name Write cwd "$R" tool_input.file_path "$R/x.txt")"
+gate "subagente escrevendo no worktree dele"      0 "$(j Write file_path "$WT/novo.txt" "$WT")"
+gate "subagente editando no worktree dele"        0 "$(j Edit file_path "$WT/a.txt" "$WT")"
+gate "subagente escrevendo fora de repo git"      0 "$(j Write file_path "$FORA/nota.txt" "$FORA")"
+gate "subagente LENDO o repo principal"           0 "$(j Read file_path "$R/a.txt")"
 gate "subagente rodando git status (leitura)"     0 \
-  "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"git status --porcelain"}}' "$(esc "$R")")"
+  "$(pj agent_id ag-1 tool_name Bash cwd "$R" tool_input.command "git status --porcelain")"
 gate "subagente rodando git log (leitura)"        0 \
-  "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"git log --oneline -5"}}' "$(esc "$R")")"
+  "$(pj agent_id ag-1 tool_name Bash cwd "$R" tool_input.command "git log --oneline -5")"
 gate "subagente rodando ls"                       0 \
-  "$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"ls -la"}}' "$(esc "$R")")"
+  "$(pj agent_id ag-1 tool_name Bash cwd "$R" tool_input.command "ls -la")"
 gate "payload vazio nunca trava"                  0 "{}"
 gate "payload ilegivel nunca trava"               0 "isto nao e json"
 
@@ -117,16 +123,16 @@ bn() { # comando, cwd -> payload Bash de SUBAGENTE
   node -e 'const [c,d]=process.argv.slice(1);process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:d,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:c}}))' "$1" "$2"
 }
 gate 'subagente: "env" FOO=1 cp arquivo FORA do worktree BARRA (R21)' 2 \
-  "$(bn "\"env\" FOO=1 cp $(esc "$R")/a.txt $(esc "$R")/copia.txt" "$(esc "$WT")")"
+  "$(bn "\"env\" FOO=1 cp $R/a.txt $R/copia.txt" "$WT")"
 gate 'subagente: "sudo" -u x sed -i arquivo FORA do worktree BARRA (R21)' 2 \
-  "$(bn "\"sudo\" -u x sed -i s/x/y/ $(esc "$R")/a.txt" "$(esc "$WT")")"
+  "$(bn "\"sudo\" -u x sed -i s/x/y/ $R/a.txt" "$WT")"
 # Contraprova 1: wrapper citado como ARGUMENTO (nao no inicio) continua saindo 0.
 gate 'contraprova R21: grep -rn "env FOO=1 cp" docs/ PASSA' 0 \
-  "$(bn 'grep -rn "env FOO=1 cp" docs/' "$(esc "$WT")")"
+  "$(bn 'grep -rn "env FOO=1 cp" docs/' "$WT")"
 # Contraprova 2: sem as aspas o gate ja barrava — e o par que prova que o caso
 # acima mede o wrapper CITADO, e nao a escrita fora do worktree em geral.
 gate 'contraprova R21: env FOO=1 cp (sem aspas) BARRA como antes' 2 \
-  "$(bn "env FOO=1 cp $(esc "$R")/a.txt $(esc "$R")/copia.txt" "$(esc "$WT")")"
+  "$(bn "env FOO=1 cp $R/a.txt $R/copia.txt" "$WT")"
 
 echo
 echo
@@ -138,8 +144,7 @@ echo "== o cd do encadeamento: o falso positivo e o falso negativo que ele abre 
 # encadeava `cd`. Estes sao os que faltavam — e o par do meio existe porque a correcao
 # obvia (ler o cd e mandar ver) troca o falso positivo por um falso negativo.
 b() { # comando, cwd  -> payload Bash
-  printf '{"agent_id":"ag-1","agent_type":"executor","tool_name":"Bash","cwd":"%s","tool_input":{"command":"%s"}}' \
-    "$(esc "$2")" "$(esc "$1")"
+  pj agent_id ag-1 agent_type executor tool_name Bash cwd "$2" tool_input.command "$1"
 }
 gate "cd worktree && git commit (O BUG: tem que PASSAR)" 0 \
   "$(b "cd $WT && git commit -m x" "$R")"
@@ -181,20 +186,20 @@ fs.writeFileSync(process.argv[2], t);
 if ! node --check "$GATE_MUTADO" 2>/dev/null; then
   falhou=$((falhou+1)); echo "  FALHA mutante nao compila — a secao mediria crash, nao protecao"
 else
-  saida=$(printf '{"agent_id":"ag-1","tool_name":"Bash","cwd":"%s","tool_input":{"command":"echo x > '"'"'%s/novo.txt'"'"'"}}' "$(esc "$R")" "$(esc "$R")" | node "$GATE_MUTADO" 2>&1); rc=$?
+  saida=$(pj agent_id ag-1 tool_name Bash cwd "$R" tool_input.command "echo x > '$R/novo.txt'" | node "$GATE_MUTADO" 2>&1); rc=$?
   if [ "$rc" = "0" ]; then ok=$((ok+1)); echo "  ok   mutacao expos a inspecao: com alvosBashEscrita neutralizada, a escrita fora PASSA"
   else falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito ou mutante quebrado (exit $rc): $saida"; fi
 fi
 
 echo "== saidas de emergencia =="
-saida=$(printf '%s' "$(j Write file_path "$(esc "$R/novo.txt")")" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
+saida=$(printf '%s' "$(j Write file_path "$R/novo.txt")" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (exit 0)"
 else falhou=$((falhou+1)); echo "  FALHA RAINFOREST_GATE_OFF nao liberou (exit $rc)"; fi
 
 touch "$R/.rainforest-gate-off"
-gate ".rainforest-gate-off na raiz libera o repo" 0 "$(j Write file_path "$(esc "$R/novo.txt")")"
+gate ".rainforest-gate-off na raiz libera o repo" 0 "$(j Write file_path "$R/novo.txt")"
 rm "$R/.rainforest-gate-off"
-gate "  ... e volta a barrar quando o arquivo sai"  2 "$(j Write file_path "$(esc "$R/novo.txt")")"
+gate "  ... e volta a barrar quando o arquivo sai"  2 "$(j Write file_path "$R/novo.txt")"
 
 echo
 echo "== a mensagem de bloqueio serve pra alguma coisa? =="
@@ -206,7 +211,7 @@ echo "== a mensagem de bloqueio serve pra alguma coisa? =="
 #
 # Este bloco antes exigia que as escotilhas aparecessem SEMPRE. Testar o texto
 # velho depois da mudanca de comportamento so prova que o teste ficou para tras.
-msg=$(printf '%s' "$(j Write file_path "$(esc "$R/novo.txt")")" | node "$GATE" 2>&1)
+msg=$(printf '%s' "$(j Write file_path "$R/novo.txt")" | node "$GATE" 2>&1)
 for t in "PARE e reporte" "regra 11"; do
   if printf '%s' "$msg" | grep -q -- "$t"; then ok=$((ok+1)); echo "  ok   a mensagem diz '$t'"
   else falhou=$((falhou+1)); echo "  FALHA a mensagem nao diz '$t'"; fi
@@ -248,8 +253,7 @@ echo v1 > "$RT/a.txt"; git -C "$RT" add .; git -C "$RT" commit -qm base
 WTT="$TIL/wt"; git -C "$RT" worktree add -q -b trabalho-til "$WTT" >/dev/null 2>&1
 RTW="$(cygpath -m "$RT" 2>/dev/null || printf '%s' "$RT")"
 WTTW="$(cygpath -m "$WTT" 2>/dev/null || printf '%s' "$WTT")"
-bt() { printf '{"agent_id":"ag-1","agent_type":"executor","tool_name":"Bash","cwd":"%s","tool_input":{"command":"%s"}}' \
-  "$(esc "$2")" "$(esc "$1")"; }
+bt() { pj agent_id ag-1 agent_type executor tool_name Bash cwd "$2" tool_input.command "$1"; }
 
 gate "til NO MEIO (8.3): cd worktree && git commit PASSA" 0 \
   "$(bt "cd $WTTW && git commit -m x" "$RTW")"
@@ -301,6 +305,8 @@ monta_sessoes() {
 # `~/.rainforest/sessoes.json` da maquina de quem roda a bateria.
 gatec() { # nome, exit esperado, json
   local nome="$1" esp="$2" json="$3"
+  # payload vazio = o helper que o monta falhou: nunca vira "ok" (#403)
+  if [ -z "$json" ]; then falhou=$((falhou+1)); echo "  FALHA $nome: payload vazio"; return; fi
   local saida; saida=$(printf '%s' "$json" | RFM_ROOT="$DADOSW" node "$GATE" 2>&1); local got=$?
   if [ "$got" = "$esp" ]; then ok=$((ok+1)); echo "  ok   $nome (exit $got)"
   else falhou=$((falhou+1)); echo "  FALHA $nome: esperava $esp, veio $got"; echo "$saida" | sed 's/^/         /' | head -8; fi
@@ -309,12 +315,11 @@ gatec() { # nome, exit esperado, json
 # Payload no formato REAL do harness para a janela principal: tem `session_id`, NAO tem
 # `agent_id`. Testar com `agent_id` provaria o gate velho e nao este.
 p() { # comando, cwd, [session_id]
-  printf '{"session_id":"%s","cwd":"%s","tool_name":"Bash","tool_input":{"command":"%s"}}' \
-    "${3:-$EU}" "$(esc "$2")" "$(esc "$1")"
+  pj session_id "${3:-$EU}" cwd "$2" tool_name Bash tool_input.command "$1"
 }
 
-monta_sessoes "$EU|$(esc "$R")|1|1" "$OUTRA|$(esc "$R")|15|2" \
-  "so-eu|$(esc "$WT")|1|1" "outra-pasta|$(esc "$FORA")|1|1"
+monta_sessoes "$EU|$R|1|1" "$OUTRA|$R|15|2" \
+  "so-eu|$WT|1|1" "outra-pasta|$FORA|1|1"
 
 echo "-- deve BARRAR (exit 2) --"
 gatec "checkout -b com outra sessao no mesmo cwd" 2 "$(p "git checkout -b x" "$R")"
@@ -345,11 +350,11 @@ gatec "duas sessoes no MESMO worktree tambem barra" 2 "$(p "git checkout -b y" "
 # pelos dois motivos ao mesmo tempo, e a trava barraria quem esta sozinho.
 gatec "sozinho no cwd (a unica entrada sou eu)"   0 "$(p "git checkout -b x" "$WT" "so-eu")"
 
-monta_sessoes "$EU|$(esc "$R")|1|1" "$OUTRA|$(esc "$R")|15|2"
+monta_sessoes "$EU|$R|1|1" "$OUTRA|$R|15|2"
 # Fail-open, um caso por motivo. Sem session_id a trava nao distingue quem pergunta de
 # quem esta la — as duas entradas do incidente tinham `cwd` identico (D5).
 gatec "sem session_id no evento (fail-open)"      0 \
-  "$(printf '{"cwd":"%s","tool_name":"Bash","tool_input":{"command":"git checkout -b x"}}' "$(esc "$R")")"
+  "$(pj cwd "$R" tool_name Bash tool_input.command "git checkout -b x")"
 gatec "cwd fora de repo git nao tem HEAD a mover" 0 "$(p "git checkout -b x" "$FORA")"
 
 echo "-- deve PASSAR: as tres saidas de emergencia, no caso que barraria --"
@@ -364,7 +369,7 @@ rm "$R/.rainforest-gate-off"
 # `if (!ev.agent_id)`: enquanto elas ficavam depois, a janela principal saia do hook
 # antes de o config ser sequer lido, e `--desligar gate-worktree` nao desligaria o unico
 # ramo que barra a janela principal — que e o ramo em que desligar mais importa.
-mkdir -p "$R/.rainforest"; printf '{"gate-worktree": false}' > "$R/.rainforest/config.json"
+mkdir -p "$R/.rainforest"; echo '{"gate-worktree": false}' > "$R/.rainforest/config.json"
 gatec "toggle do config (projeto) libera a co-locada" 0 "$(p "git checkout -b x" "$R")"
 rm -rf "$R/.rainforest"
 gatec "  ... e volta a barrar quando o toggle sai"    2 "$(p "git checkout -b x" "$R")"
@@ -382,19 +387,19 @@ else falhou=$((falhou+1)); echo "  FALHA raiz inexistente nao liberou (exit $rc)
 # Janela de 4h: a entrada velha deixa de ser dona. O par com o caso "parada ha 2 min"
 # la em cima e o que separa "a janela e longa" de "a janela nao existe" — sem os dois,
 # uma trava que ignora o tempo por completo ficaria verde.
-monta_sessoes "$EU|$(esc "$R")|1|1" "$OUTRA|$(esc "$R")|300|300"
+monta_sessoes "$EU|$R|1|1" "$OUTRA|$R|300|300"
 gatec "a outra sessao sumiu ha 5h: nao e mais dona" 0 "$(p "git checkout -b x" "$R")"
 # Worktree de subagente e rastro MEU, nao janela dele — mesmo motivo pelo qual ela ja
 # sai do radar da regra 17.
-monta_sessoes "$EU|$(esc "$R")|1|1" "$OUTRA|$(esc "$R")/.claude/worktrees/agent-abc|1|1"
+monta_sessoes "$EU|$R|1|1" "$OUTRA|$R/.claude/worktrees/agent-abc|1|1"
 gatec "worktree de subagente nao conta como co-locada" 0 "$(p "git checkout -b x" "$R")"
 
 echo "-- o comportamento antigo com agent_id fica intacto --"
-monta_sessoes "$EU|$(esc "$R")|1|1" "$OUTRA|$(esc "$R")|1|1"
+monta_sessoes "$EU|$R|1|1" "$OUTRA|$R|1|1"
 gatec "subagente no worktree dele segue passando" 0 \
-  "$(printf '{"session_id":"%s","agent_id":"ag-1","agent_type":"executor","cwd":"%s","tool_name":"Bash","tool_input":{"command":"git checkout -b y"}}' "$EU" "$(esc "$WT")")"
+  "$(pj session_id "$EU" agent_id ag-1 agent_type executor cwd "$WT" tool_name Bash tool_input.command "git checkout -b y")"
 gatec "subagente no principal segue barrado"      2 \
-  "$(printf '{"session_id":"%s","agent_id":"ag-1","agent_type":"executor","cwd":"%s","tool_name":"Bash","tool_input":{"command":"git checkout -b y"}}' "$EU" "$(esc "$R")")"
+  "$(pj session_id "$EU" agent_id ag-1 agent_type executor cwd "$R" tool_name Bash tool_input.command "git checkout -b y")"
 
 echo "-- a mensagem oferece a saida certa --"
 msgc=$(printf '%s' "$(p "git checkout -b x" "$R")" | RFM_ROOT="$DADOSW" node "$GATE" 2>&1)
@@ -421,10 +426,10 @@ git -C "$RB" config commit.gpgsign false
 echo v1 > "$RB/x.txt"; git -C "$RB" add .; git -C "$RB" commit -qm base
 
 RBW="$(cygpath -m "$RB" 2>/dev/null || printf '%s' "$RB")"
-RBLIT="$(esc "$RBW")"
-RLIT="$(esc "$R")"
+RBLIT="$RBW"
+RLIT="$R"
 
-monta_sessoes "$EU|$(esc "$R")|1|1" "$OUTRA|$(esc "$R")|15|2"
+monta_sessoes "$EU|$R|1|1" "$OUTRA|$R|15|2"
 
 echo "-- alvo com substituicao: barra citando 'caminho literal' --"
 # Usa node para criar payload com substituicao de variavel
@@ -441,7 +446,7 @@ RB2="$RAIZ/repo-b2"; git init -q "$RB2"; git -C "$RB2" config user.email t@t; gi
 git -C "$RB2" config commit.gpgsign false
 echo v1 > "$RB2/y.txt"; git -C "$RB2" add .; git -C "$RB2" commit -qm base
 RB2W="$(cygpath -m "$RB2" 2>/dev/null || printf '%s' "$RB2")"
-RB2LIT="$(esc "$RB2W")"
+RB2LIT="$RB2W"
 
 gatec "alvo com clone literal de outro repo nao barra" 0 "$(p "git -C $RB2LIT switch -q -c fix/y" "$R")"
 
@@ -467,7 +472,7 @@ echo "== casos do conserto da âncora: checkout/switch na posição certa =="
 #
 # Testam a trava de sessao co-locada (`moveOHead`), nao a write-protect.
 
-monta_sessoes "$EU|$(esc "$R")|1|1" "$OUTRA|$(esc "$R")|15|2"
+monta_sessoes "$EU|$R|1|1" "$OUTRA|$R|15|2"
 
 gatec "commit com 'checkout' na mensagem PASSA"    0 "$(p "git commit -m \"checkout later\"" "$R")"
 gatec "commit com 'switch' na mensagem PASSA"      0 "$(p "git commit -m \"add login switch\"" "$R")"
@@ -511,14 +516,13 @@ gatec "checkout no fim de encadeamento BARRA"       2 "$(p "git status && git ch
 # ATENCAO ao helper: estes casos usam `b`/`gate` (payload com `agent_id`), nao
 # `p`/`gatec` (payload de sessao co-locada, que so olha verbo de git). A primeira
 # versao destes testes usou `p` e ficou verde por fora do caminho que queria
-# provar. E `jesc` existe porque `esc` so troca barra: comando com aspas duplas
-# quebrava o JSON, e o hook saia 0 por payload invalido — verde tautologico.
+# provar.
 # ============================================================================
 # `b` monta o payload pelo proprio node em vez de printf: comando com aspas
 # duplas quebrava o JSON montado a mao e o hook saia 0 por payload invalido —
 # oito casos ficaram verdes sem o gate ter olhado para eles.
 b() { # comando, cwd  -> payload de SUBAGENTE
-  node -e 'const [c,d]=process.argv.slice(1);process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:d,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:c}}))' "$1" "$2"
+  pj agent_id ag-1 agent_type executor cwd "$2" hook_event_name PreToolUse tool_name Bash tool_input.command "$1"
 }
 
 echo
@@ -563,17 +567,17 @@ CLONE="$SCRATCH/repo-de-terceiro"
 git init -q "$CLONE"; git -C "$CLONE" config user.email t@t; git -C "$CLONE" config user.name t
 git -C "$CLONE" config commit.gpgsign false
 echo v1 > "$CLONE/README.md"; git -C "$CLONE" add . >/dev/null 2>&1; git -C "$CLONE" commit -qm base
-gate  "Write dentro de clone de terceiro no scratchpad" 0 "$(j Write file_path "$(esc "$CLONE/medir.py")")"
-gate  "redirect gravando script ao lado do clone"       0 "$(b "python medir.py > saida.txt" "$(esc "$CLONE")")"
-gate  "git checkout dentro do clone descartavel"        0 "$(b "git checkout -b teste" "$(esc "$CLONE")")"
-gatec "janela principal tambem passa no scratchpad"     0 "$(p "git checkout -b teste" "$(esc "$CLONE")")"
+gate  "Write dentro de clone de terceiro no scratchpad" 0 "$(j Write file_path "$CLONE/medir.py")"
+gate  "redirect gravando script ao lado do clone"       0 "$(b "python medir.py > saida.txt" "$CLONE")"
+gate  "git checkout dentro do clone descartavel"        0 "$(b "git checkout -b teste" "$CLONE")"
+gatec "janela principal tambem passa no scratchpad"     0 "$(p "git checkout -b teste" "$CLONE")"
 
 echo
 echo "== a isencao e do scratchpad, NAO do temp inteiro (exit 2) =="
 # Se estas duas ficarem verdes com exit 0, a isencao voltou a ser larga demais e
 # a caixa de areia desta bateria inteira esta isenta — 100 casos viram teatro.
 gate "repo em temp SEM segmento scratchpad segue barrado"  2 "$(b "echo x > novo.txt" "$R")"
-gate "Write em repo em temp SEM scratchpad segue barrado"  2 "$(j Write file_path "$(esc "$R/outro.txt")")"
+gate "Write em repo em temp SEM scratchpad segue barrado"  2 "$(j Write file_path "$R/outro.txt")"
 
 echo
 echo "== CLI externa que escreve (Issue #127): codex, gemini, claude, aider, cursor, copilot =="
@@ -588,7 +592,7 @@ gate "cursor fora do worktree BARRA"                    2 "$(b "cursor open ." "
 gate "copilot dentro do worktree PASSA"                 0 "$(b "copilot activate" "$WT")"
 gate "CLI nao reconhecida PASSA (ls -la)"               0 "$(b "ls -la" "$R")"
 gate "codex da JANELA PRINCIPAL PASSA"                  0 "$(p "codex exec --yolo" "$R")"
-gatec "codex com caminho completo BARRA"                2 "$(printf '{\"agent_id\":\"ag-1\",\"tool_name\":\"Bash\",\"cwd\":\"%s\",\"tool_input\":{\"command\":\"/usr/bin/codex exec\"}}' "$(esc "$R")")"
+gatec "codex com caminho completo BARRA"                2 "$(pj agent_id ag-1 tool_name Bash cwd "$R" tool_input.command "/usr/bin/codex exec")"
 
 echo
 echo "== R1: cd nao resolvido antes de CLI que escreve nao pode liberar (2026-09-03) =="
@@ -829,7 +833,7 @@ echo "== rodada 19 (lote 3): &{...} tambem some da checagem de sessao co-locada 
 # ["&{git", "checkout", "main}"] — nem "&{git" nem "main}" batem com "git"/
 # "main" exatos, e a busca por 'git' literal (subcomandoGit) nunca achava o
 # comando escondido no scriptblock colado ao call operator.
-monta_sessoes "$EU|$(esc "$R")|1|1" "$OUTRA|$(esc "$R")|15|2"
+monta_sessoes "$EU|$R|1|1" "$OUTRA|$R|15|2"
 gatec "&{git checkout main} bloqueado como o 'git checkout main' puro (rodada 19)" 2 \
   "$(p "&{git checkout main}" "$R")"
 
@@ -912,6 +916,13 @@ else
   falhou=$((falhou+1)); echo "  FALHA cd \$ALVO289 do worktree (exit $rc289, esperava 2 com msg nova):"
   printf '%s' "$saida289" | sed 's/^/         /' | head -8
 fi
+
+echo
+echo "== #403: aspas duplas DENTRO do campo avaliado chegam ao gate =="
+# Com o payload montado por printf este JSON quebrava, o gate saia 0 por
+# payload invalido, e um caso que esperasse 0 ficava verde sem ser olhado.
+gate "comando com aspas duplas no campo: escrita fora do worktree barra" 2 \
+  "$(b 'echo "a \"b\"" > '"$R"'/novo.txt' "$WT")"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
