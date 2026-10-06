@@ -66,3 +66,17 @@ agente, ao limpar, rodou `rm -rf "$TEMP"` no shell, onde a variável expandiu pa
 a Temp real do usuário. O scratchpad da sessão e o snapshot `--sujo-antes` se
 perderam. Observação plantada (`obs-2026-10-06-briefing-temp-vira-rm-rf-da-temp-real`);
 os briefings seguintes passaram a usar `F=$(mktemp)` no próprio Bash.
+
+## Revisão, rodada 1: reprovada
+
+Dois revisores (hooks e scripts) reprovaram com 8 achados bloqueantes, todos com
+sonda confirmada: o `gate-subagente-sem-instalar` deixava instalação passar fora
+da primeira palavra e no PowerShell, barrava `yarn test`/`npm test -- add`, e
+tinha buracos no arquivo e na variável de desligar; `limpar-worktrees` tratava
+todo rastreado modificado como em uso; `conferir-entrega` lia git falhando no
+principal como "intacto"; `saude` caía com link quebrado; a bateria de backup
+dependia da máquina. Consertados em `0932be43` e `61a1b643`, cada um com caso que
+fica vermelho sem o conserto, junto com os achados menores (lock de mutação, lista
+de obrigatórias ausente, heredoc que reescreve body-file existente, `esc()`
+restante, review-codex 7b/10). Catracas re-rodadas (14 vermelhas, 15 à mão, 10 e
+17 n/a) e varredura completa: 175 verdes.

@@ -34,7 +34,7 @@
     "em": "2026-10-06"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-06",
     "tarefas_ok": 17,
     "tarefas": 17,
@@ -168,7 +168,7 @@
     ],
     "em": "2026-10-06",
     "comando": "bash scripts/varrer-baterias.sh; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-06-zerar-issues-16",
-    "saida": "as 175 baterias passaram; catracas 1-9, 11-14, 16 vermelho; 15 vermelho medido a mao; 10 e 17 n/a",
+    "saida": "rodada 2 (achados da revisao 1 consertados): as 175 baterias passaram; catracas 1-9, 11-14, 16 vermelho; 15 vermelho a mao; 10 e 17 n/a",
     "mutacao": [
       {
         "tarefa": 1,
@@ -259,11 +259,7 @@
     "observacoes": [
       "tarefa 15: catraca medida a mao no worktree (copia temporaria pendura o baseline de testa-saude)",
       "snapshot --sujo-antes da onda 1 perdeu-se com o scratchpad apagado no incidente da tarefa 4"
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-06"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
