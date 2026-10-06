@@ -312,6 +312,34 @@ const LEGITIMOS = [
   "echo $RAINFOREST_GATE_OFF", "unset RAINFOREST_GATE_OFF", 'git commit -m "nao rode npm install aqui"',
 ];
 for (const cmd of LEGITIMOS) caso(`${cmd} passa`, rodar(cmd).status, 0);
+
+// Revisão 2: flag com valor antes do verbo, operador `&`/`.` do PowerShell,
+// `pwsh -NoProfile -Command`, versão no nome do executável, atribuição citada.
+console.log("");
+console.log("== revisão 2: flag com valor, & do PowerShell, pwsh com flags, versão no nome ==");
+const CONTORNOS_R2 = [
+  ["Bash", "npm --prefix x install"], ["Bash", "npm -C x install"], ["Bash", "npm -w pkg install"],
+  ["Bash", "npm --workspace pkg i left-pad"], ["Bash", "pnpm --filter web add y"], ["Bash", "pnpm --dir x install"],
+  ["Bash", "yarn --cwd x add y"], ["Bash", "yarn workspace web add y"], ["Bash", "bun --cwd x add y"],
+  ["Bash", "pip --index-url U install y"], ["Bash", "poetry --directory x install"], ["Bash", "cargo +nightly install x"],
+  ["PowerShell", "& npm install"], ["PowerShell", "& pip install x"], ["PowerShell", '& "npm" install'],
+  ["PowerShell", ". npm install"], ["PowerShell", "& Install-Module Foo"], ["PowerShell", "& cmd /c npm install"],
+  ["Bash", 'pwsh -NoProfile -Command "npm install x"'],
+  ["Bash", 'powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "pip install x"'],
+  ["Bash", "pwsh -NoProfile -Command npm install x"], ["Bash", "python3.11 -m pip install y"],
+  ["Bash", "pip3.11 install x"], ["Bash", 'FOO="a b" npm install'],
+];
+for (const [ferramenta, cmd] of CONTORNOS_R2) {
+  caso(`[${ferramenta}] ${cmd} nega`, rodar(cmd, { toolName: ferramenta }).status, 2);
+}
+const LEGITIMOS_R2 = [
+  ["Bash", "npm install --help"], ["Bash", "pip install --help"], ["Bash", "cargo install --list"],
+  ["Bash", "npm --prefix x test"], ["Bash", "pnpm --filter web test"], ["Bash", "yarn workspace web build"],
+  ["PowerShell", "& npm test"], ["Bash", 'pwsh -NoProfile -Command "npm test"'],
+];
+for (const [ferramenta, cmd] of LEGITIMOS_R2) {
+  caso(`[${ferramenta}] ${cmd} passa`, rodar(cmd, { toolName: ferramenta }).status, 0);
+}
 for (const ferramenta of ["MultiEdit", "NotebookEdit"]) {
   const campo = ferramenta === "NotebookEdit" ? { notebook_path: path.join(projeto, ".rainforest-gate-off") }
     : { file_path: path.join(projeto, ".rainforest-gate-off") };

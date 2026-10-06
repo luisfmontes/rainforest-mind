@@ -72,12 +72,49 @@ const PYTHONS = new Set(["python", "python3", "python2", "py"]);
 /** Nome do executável comparável: sem aspas, sem caminho, sem .exe/.cmd/.bat/.ps1. */
 function normalizarExecutavel(nome) {
   const semAspas = String(nome).replace(/^["']|["']$/g, "");
-  return path.basename(semAspas).replace(/\.(exe|cmd|bat|ps1)$/i, "").toLowerCase();
+  const base = path.basename(semAspas).replace(/\.(exe|cmd|bat|ps1)$/i, "").toLowerCase();
+  // `python3.11`, `pip3.12`: a versão no nome não muda o que o comando faz.
+  return base.replace(/^(python3?|pip3?)\.\d+$/, "$1");
 }
 
-/** Argumentos que não são flag (não começam com `-`; `/x` do cmd também é flag). */
-function naoFlags(args) {
-  return args.filter((a) => !/^-/.test(a));
+/**
+ * Flags que consomem o token seguinte como valor, por gerenciador (revisão 2
+ * da zerar-issues-16): sem isto `npm --prefix x install` lia `x` como
+ * subcomando e passava. A forma `--flag=valor` já é um token só.
+ */
+const FLAGS_COM_VALOR = {
+  npm: ["--prefix", "-C", "-w", "--workspace", "--registry", "--cache", "--userconfig", "--globalconfig", "--loglevel", "--tag", "--otp"],
+  pnpm: ["-C", "--dir", "--filter", "-F", "--workspace-dir", "--registry", "--store-dir", "--loglevel"],
+  yarn: ["--cwd", "--registry", "--modules-folder", "--cache-folder"],
+  bun: ["--cwd", "--registry", "--cache-dir"],
+  pip: ["-i", "--index-url", "--extra-index-url", "-t", "--target", "--proxy", "--cache-dir", "--log", "-r", "--requirement", "-c", "--constraint", "--python", "--root", "--prefix"],
+  poetry: ["-C", "--directory", "-P", "--project"],
+  cargo: ["-Z", "--config", "--manifest-path", "--color"],
+  uv: ["--directory", "--project", "--python", "-p", "--index-url", "--cache-dir"],
+  winget: ["--source", "-s"],
+  choco: ["--source", "-s"],
+};
+FLAGS_COM_VALOR.pip3 = FLAGS_COM_VALOR.pip;
+
+/**
+ * Argumentos posicionais (não-flag), pulando o valor das flags que o consomem,
+ * toolchain do rustup (`+nightly`) e tudo depois de `--` (argumento do script,
+ * não do gerenciador: `npm test -- add`).
+ */
+function naoFlags(args, exe) {
+  const comValor = new Set(FLAGS_COM_VALOR[exe] || []);
+  const saida = [];
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === "--") break;
+    if (/^-/.test(a)) {
+      if (comValor.has(a)) i += 1;
+      continue;
+    }
+    if (/^\+/.test(a)) continue;
+    saida.push(a);
+  }
+  return saida;
 }
 
 /**
@@ -85,7 +122,12 @@ function naoFlags(args) {
  * `args` são os valores dos tokens depois do executável.
  */
 function instalacaoNoComando(exe, args) {
-  const sub = (naoFlags(args)[0] || "").toLowerCase();
+  // Pedido de ajuda nao instala: `npm install --help`, `cargo install --list`.
+  if (args.some((a) => /^(--help|-h|--list)$/.test(a))) return null;
+  let posicionais = naoFlags(args, exe);
+  // `yarn workspace <nome> add x`: o verbo vem depois do nome do workspace.
+  if (exe === "yarn" && (posicionais[0] || "").toLowerCase() === "workspace") posicionais = posicionais.slice(2);
+  const sub = (posicionais[0] || "").toLowerCase();
 
   // `yarn` sozinho (ou só com flags, `yarn --frozen-lockfile`) é install
   // implícito; `yarn test` e `yarn --version`/`--help` não são.
@@ -101,14 +143,14 @@ function instalacaoNoComando(exe, args) {
   if (PYTHONS.has(exe)) {
     const i = args.indexOf("-m");
     if (i !== -1 && /^pip3?$/i.test(args[i + 1] || "")) {
-      if ((naoFlags(args.slice(i + 2))[0] || "").toLowerCase() === "install") return exe;
+      if ((naoFlags(args.slice(i + 2), "pip")[0] || "").toLowerCase() === "install") return exe;
     }
     return null;
   }
 
   // `uv add`, `uv pip install`, `uv tool install` (D6); `uv run` passa.
   if (exe === "uv") {
-    const nf = naoFlags(args).map((a) => a.toLowerCase());
+    const nf = naoFlags(args, "uv").map((a) => a.toLowerCase());
     if (nf[0] === "add") return exe;
     if ((nf[0] === "pip" || nf[0] === "tool") && nf[1] === "install") return exe;
     return null;
@@ -190,12 +232,33 @@ const RAZAO_VARIAVEL = "subagente não pode definir `RAINFOREST_GATE_OFF`.";
 /** Um segmento: desce em `bash -c`/`eval`/`pwsh -Command`, depois decide. */
 function processarSegmento(segmento, profundidade) {
   if (profundidade > 8) return;
-  const toks = tokensComAspas(segmento);
+  let toks = tokensComAspas(segmento);
+  // Operador de chamada do PowerShell (`& npm install`, `. npm install`): o
+  // comando é o token seguinte (revisão 2 da zerar-issues-16).
+  // Atribuição com valor citado (`FOO="a b" npm install`) é um token citado, que
+  // `posicaoDeComando` não reconhece como atribuição.
+  while (toks.length > 1 && ((!toks[0].q && (toks[0].v === "&" || toks[0].v === "."))
+    || /^[A-Za-z_][A-Za-z0-9_]*=/.test(toks[0].v))) toks = toks.slice(1);
   if (!toks.length) return;
   const pos = posicaoDeComando(toks);
 
   if (escreveArquivoDeDesligar(toks, pos)) bloqueia(RAZAO_ARQUIVO, segmento);
   if (pos === null) return;
+
+  const exe = normalizarExecutavel(toks[pos].v);
+
+  // `pwsh`/`powershell` com flags ANTES do `-Command` (`-NoProfile
+  // -ExecutionPolicy Bypass -Command "..."`, a forma comum de chamar do Bash):
+  // o desempacotador compartilhado só reconhece o `-Command` logo depois do
+  // nome. O texto depois do `-Command`/`-c` é o comando.
+  if (exe === "pwsh" || exe === "powershell") {
+    const i = toks.findIndex((t, k) => k > pos && !t.q && /^-(c|command)$/i.test(t.v));
+    if (i !== -1) {
+      const texto = toks.slice(i + 1).map((t) => t.v).join(" ");
+      for (const sub of segmentosParaGate(texto)) processarSegmento(sub, profundidade + 1);
+      return;
+    }
+  }
 
   const { interno } = desempacotarWrapperDeString(textoAPartir(toks, pos));
   if (interno !== null) {
@@ -203,7 +266,6 @@ function processarSegmento(segmento, profundidade) {
     return;
   }
 
-  const exe = normalizarExecutavel(toks[pos].v);
   const args = toks.slice(pos + 1).map((t) => t.v);
   if (instalacaoNoComando(exe, args)) bloqueia(RAZAO_INSTALAR, segmento);
 }
