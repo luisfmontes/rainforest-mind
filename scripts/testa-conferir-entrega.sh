@@ -581,5 +581,48 @@ esperado "exclusao (e): docs/rainforest/estado/*.json é excluído, não reprova
 git -C "$R" checkout -- a.txt; rm -rf "$R/docs"
 
 echo
+echo "== #400: stderr do git e aviso, snapshot com identidade, vizinhas =="
+# D23: GIT_TRACE=1 faz TODO git escrever no stderr ("trace: ..."), inclusive o
+# `status --porcelain` de arvore limpa. Lido junto com o stdout (o defeito), cada
+# linha de trace vira "entrada nao commitada" e a entrega limpa reprova.
+esperado "git com stderr (GIT_TRACE) e arvore limpa -> aprovado" 0 \
+  env GIT_TRACE=1 "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES"
+
+# D24: o snapshot gravado pelo proprio script carrega o toplevel do principal.
+SNAP="$RAIZ/snap-com-toplevel.txt"
+esperado "--gravar-sujo-antes grava o snapshot" 0 \
+  "${CONF_CMD[@]}" --gravar-sujo-antes "$SNAP" --principal "$R"
+if head -1 "$SNAP" | grep -q '^# toplevel: '; then ok=$((ok+1)); echo "  ok   primeira linha do snapshot e '# toplevel: ...'"
+else falhou=$((falhou+1)); echo "  FALHA snapshot sem cabecalho: $(head -1 "$SNAP")"; fi
+esperado "snapshot do proprio principal -> aprovado" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" --sujo-antes "$SNAP"
+OUTRA_ARVORE=$(novo_repo outra-arvore)
+SNAP_ALHEIO="$RAIZ/snap-alheio.txt"
+"${CONF_CMD[@]}" --gravar-sujo-antes "$SNAP_ALHEIO" --principal "$OUTRA_ARVORE" >/dev/null 2>&1
+esperado "snapshot de outra arvore -> reprovado" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" --sujo-antes "$SNAP_ALHEIO"
+contem "  ... e diz que o snapshot e de outra arvore" "snapshot de outra arvore" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" --sujo-antes "$SNAP_ALHEIO"
+SNAP_CRU="$RAIZ/snap-cru.txt"; : > "$SNAP_CRU"
+esperado "snapshot sem cabecalho segue aceito (compativel)" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" --sujo-antes "$SNAP_CRU"
+
+# D25: arquivo fora do escopo lista as baterias que o citam e nao estao no diff.
+WTV="$RAIZ/wt-vizinhas"
+git -C "$R" worktree add -q -b vizinhas "$WTV" "$BASE" >/dev/null 2>&1
+mkdir -p "$WTV/scripts"
+printf 'bash scripts/b.cjs\n' > "$WTV/scripts/testa-b.sh"
+printf 'nada a ver\n' > "$WTV/scripts/testa-c.sh"
+git -C "$WTV" add . && git -C "$WTV" commit -qm "baterias da caixa"
+BASE_V=$(git -C "$WTV" rev-parse HEAD)
+echo a > "$WTV/a.cjs"; echo b > "$WTV/scripts/b.cjs"
+git -C "$WTV" add . && git -C "$WTV" commit -qm "entrega que toca b.cjs fora do escopo"
+contem "vizinhas de b.cjs: scripts/testa-b.sh" "vizinhas de scripts/b.cjs: scripts/testa-b.sh" \
+  "${CONF_CMD[@]}" --worktree "$WTV" --base "$BASE_V" --escopo 'a.cjs'
+if "${CONF_CMD[@]}" --worktree "$WTV" --base "$BASE_V" --escopo 'a.cjs' 2>&1 | grep -q "testa-c.sh"; then
+  falhou=$((falhou+1)); echo "  FALHA bateria que nao cita b.cjs entrou nas vizinhas"
+else ok=$((ok+1)); echo "  ok   bateria que nao cita o arquivo nao e vizinha"; fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

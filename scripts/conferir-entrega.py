@@ -105,19 +105,19 @@ class Conferencia:
         self.n = 0
 
     # -- execucao --------------------------------------------------------
-    def git(self, dir_: str, *args: str) -> tuple[int, str]:
+    def git(self, dir_: str, *args: str) -> tuple[int, str, str]:
         try:
             p = subprocess.run(
                 [_caminho_git(), "-C", str(dir_), *args],
                 capture_output=True, text=True, encoding="utf-8", errors="replace",
             )
         except FileNotFoundError:
-            return 127, "git nao encontrado no PATH"
+            return 127, "git nao encontrado no PATH", ""
         # rstrip (nao strip): trimEnd do .cjs. Um strip() nos dois lados come o
         # espaco inicial da primeira linha de `git status --porcelain` (" M a.txt"
         # vira "M a.txt"), e o slice [3:] de caminho_da_linha perde o primeiro
         # caractere do nome do arquivo (Issue #303, grupo BOM/trimEnd).
-        return p.returncode, (p.stdout + p.stderr).rstrip()
+        return p.returncode, p.stdout.rstrip(), p.stderr.rstrip()
 
     # -- relato ----------------------------------------------------------
     def abre(self, titulo: str) -> None:
@@ -125,10 +125,12 @@ class Conferencia:
         print(f"\n{self.n}. {titulo}")
 
     def mostra(self, dir_: str, *args: str) -> tuple[int, str]:
-        rc, out = self.git(dir_, *args)
+        rc, out, erro = self.git(dir_, *args)
         print(f"   $ git -C {dir_} {' '.join(args)}")
         for linha in (out or "(vazio)").splitlines() or ["(vazio)"]:
             print(f"     {linha}")
+        if erro:
+            self.aviso(f"git stderr: {erro}")
         return rc, out
 
     def ok(self, msg: str) -> None:
@@ -240,20 +242,32 @@ def caminho_da_linha(l: str) -> str:
         )
     return p
 
-def caminhosSujoAntes(arquivo: str) -> set[str] | None:
-    """Extrai conjunto de caminhos sujos ANTES do despacho (do arquivo porcelain)."""
+
+def caminhosSujoAntes(arquivo: str) -> dict | None:
+    """Extrai conjunto de caminhos sujos ANTES do despacho (do arquivo porcelain).
+    Pula primeira linha se começar com `# toplevel:` e devolve também o toplevel
+    se presente."""
     try:
         with open(arquivo, "r", encoding="utf-8") as f:
             conteudo = f.read()
         # Remove BOM antes de qualquer trim
-        if conteudo.startswith("\ufeff"):
+        if conteudo.startswith("﻿"):
             conteudo = conteudo[1:]
 
         linhas = [l.rstrip() for l in re.split(r"\r?\n", conteudo)]
         linhas = [l for l in linhas if l]
 
+        toplevel = None
+        inicio_linhas_porcelain = 0
+
+        # Verifica se primeira linha tem cabeçalho # toplevel:
+        if linhas and linhas[0].startswith("# toplevel:"):
+            toplevel = linhas[0][len("# toplevel:"):].strip()
+            inicio_linhas_porcelain = 1
+
         caminhos = set()
-        for linha in linhas:
+        for i in range(inicio_linhas_porcelain, len(linhas)):
+            linha = linhas[i]
             # Descarta 3 primeiros caracteres do status, trata rename ("A -> B")
             p = linha[3:]
             partes = p.split(" -> ")
@@ -269,7 +283,7 @@ def caminhosSujoAntes(arquivo: str) -> set[str] | None:
                     .replace("\\\\", "\\")
                 )
             caminhos.add(p.replace("\\", "/").lower())
-        return caminhos
+        return {"caminhos": caminhos, "toplevel": toplevel}
     except (FileNotFoundError, OSError, IOError):
         return None
 
@@ -279,12 +293,14 @@ def main() -> int:
         prog="conferir-entrega.py",
         description="Confere a entrega de um subagente na janela principal (P1 do relatorio 2).",
     )
-    ap.add_argument("--worktree", required=True, help="o worktree que o agente RECEBEU no briefing")
-    ap.add_argument("--base", required=True, help="hash da base que o commit dele devia ter (o que foi no briefing)")
+    ap.add_argument("--worktree", help="o worktree que o agente RECEBEU no briefing")
+    ap.add_argument("--base", help="hash da base que o commit dele devia ter (o que foi no briefing)")
     ap.add_argument("--commit", default="HEAD", help="commit entregue (default: HEAD do worktree)")
     ap.add_argument("--repo-principal", help="default: deduzido do git-common-dir do worktree")
     ap.add_argument("--head-antes", help="HEAD do repo principal ANTES do despacho, para pegar HEAD movido")
     ap.add_argument("--sujo-antes", help="arquivo com porcelain do repo principal ANTES do despacho")
+    ap.add_argument("--principal", help="diretório do repo principal do usuário")
+    ap.add_argument("--gravar-sujo-antes", help="grava snapshot do porcelain com cabeçalho de toplevel")
     ap.add_argument("--espera", action="append", default=[], metavar="CAMINHO",
                     help="caminho que a tarefa prometia criar; repetivel. Confere na ARVORE DO "
                          "COMMIT, nao no disco — `ls`/`cat` do agente provam o disco")
@@ -295,6 +311,37 @@ def main() -> int:
     ap.add_argument("--escopo", action="append", default=[], metavar="GLOB",
                     help="glob para escopo de arquivos tocados (repetivel)")
     a = ap.parse_args()
+    # --worktree/--base sao obrigatorios, menos no modo que so grava o snapshot
+    # (mesma regra do gemeo .cjs).
+    if not a.gravar_sujo_antes:
+        faltam = [f"--{n}" for n in ("worktree", "base") if not getattr(a, n)]
+        if faltam:
+            ap.error("the following arguments are required: " + ", ".join(faltam))
+
+    # Modo `--gravar-sujo-antes`: grava snapshot e sai
+    if a.gravar_sujo_antes:
+        if not a.principal:
+            print("conferir-entrega.py: erro: --gravar-sujo-antes exige --principal", file=sys.stderr)
+            return 2
+        
+        c = Conferencia()
+        rc, porcelain, _ = c.git(a.principal, "status", "--porcelain")
+        if rc != 0:
+            print(f"erro: nao consegui ler status do principal", file=sys.stderr)
+            return 2
+        
+        try:
+            rc_top, top_principal, _ = c.git(a.principal, "rev-parse", "--show-toplevel")
+            if rc_top != 0:
+                print("erro: nao consegui ler toplevel do principal", file=sys.stderr)
+                return 2
+            
+            with open(a.gravar_sujo_antes, "w", encoding="utf-8") as f:
+                f.write(f"# toplevel: {top_principal}\n{porcelain}\n")
+            return 0
+        except Exception as e:
+            print(f"erro: nao consegui gravar {a.gravar_sujo_antes}: {e}", file=sys.stderr)
+            return 2
 
     c = Conferencia()
     wt = a.worktree
@@ -326,7 +373,7 @@ def main() -> int:
         print(f"nao-verificavel: {motivo}", file=sys.stderr)
         return EXIT_NAO_VERIFICAVEL
     _, gitdir = c.mostra(wt, "rev-parse", "--git-dir")
-    _, common = c.git(wt, "rev-parse", "--git-common-dir")
+    _, common, _ = c.git(wt, "rev-parse", "--git-common-dir")
 
     principal = a.repo_principal
     if not principal and common:
@@ -350,6 +397,14 @@ def main() -> int:
 
     if principal and top and norm(principal) == norm(top):
         c.falha(f"worktree e repo principal sao o mesmo lugar ({principal})")
+    # Valida cabeçalho de --sujo-antes se presente
+    if a.sujo_antes and principal:
+        sujo_antes_result = caminhosSujoAntes(a.sujo_antes)
+        if sujo_antes_result and sujo_antes_result["toplevel"]:
+            rc_top_principal, top_principal, _ = c.git(principal, "rev-parse", "--show-toplevel")
+            if rc_top_principal == 0 and norm(sujo_antes_result["toplevel"]) != norm(top_principal):
+                c.falha("RECUSADO: snapshot de outra arvore")
+    
 
     # ------------------------------------------------------------------
     c.abre("De onde ele partiu — a base do commit entregue")
@@ -359,7 +414,7 @@ def main() -> int:
     elif a.base:
         partes = linha.split()
         entregue, pais = partes[0], partes[1:]
-        rc_anc, _ = c.git(wt, "merge-base", "--is-ancestor", a.base, entregue)
+        rc_anc, _, _ = c.git(wt, "merge-base", "--is-ancestor", a.base, entregue)
         pai_direto = any(p.startswith(a.base) or a.base.startswith(p) for p in pais)
         if pai_direto:
             c.ok(f"a base {a.base} e pai direto do commit entregue")
@@ -373,7 +428,12 @@ def main() -> int:
 
     # ------------------------------------------------------------------
     c.abre("O que ficou solto no worktree")
-    _, st = c.mostra(wt, "status", "--porcelain")
+    rc_st, st = c.mostra(wt, "status", "--porcelain")
+    if rc_st != 0:
+        # D23 (#400): o porcelain e a fonte da checagem; git que falha aqui e
+        # ambiente, nao entrega suja.
+        sys.stderr.write(f"nao-verificavel: git status falhou no worktree (exit {rc_st})\n")
+        return 69
     apagados = [l for l in st.splitlines() if l[:2].strip() == "D" or l[:2] == " D"]
     if apagados:
         c.falha(f"{len(apagados)} arquivo(s) RASTREADO(S) apagado(s) — dano colateral (falha N3): "
@@ -408,7 +468,31 @@ def main() -> int:
                 ", ".join(f"{caminho} ({status})" for caminho, status in fora[:5])
             )
         else:
-            c.ok(f"todos os {len(arquivos_status)} arquivo(s) tocados estão dentro do(s) escopo(s)")
+            c.ok(f"todos os {len(arquivos_status)} arquivo(s) tocados estão dentro do(s) escopo(s)")        
+        # D25 (#400): baterias que citam cada arquivo fora do escopo e nao estao
+        # no diff — as vizinhas que a entrega pode ter quebrado. Aviso, nao
+        # reprova: citacao textual de nome nao prova dependencia.
+        for caminho, _status in fora:
+            nome = Path(caminho).name
+            re_nome = re.compile(r"(^|[^A-Za-z0-9_.-])" + re.escape(nome) + r"($|[^A-Za-z0-9_-])")
+            vizinhas = []
+            for pasta in ("scripts", "hooks"):
+                d = Path(wt) / pasta
+                if not d.is_dir():
+                    continue
+                for f in sorted(d.iterdir(), key=lambda x: x.name):
+                    if not re.match(r"^testa-.*\.(sh|cjs)$", f.name):
+                        continue
+                    rel = f"{pasta}/{f.name}"
+                    if rel in arquivos_status:
+                        continue
+                    try:
+                        if re_nome.search(f.read_text(encoding="utf-8")):
+                            vizinhas.append(rel)
+                    except (OSError, UnicodeDecodeError):
+                        pass
+            if vizinhas:
+                c.aviso(f"vizinhas de {caminho}: {', '.join(vizinhas)}")
 
     # ------------------------------------------------------------------
     if principal and Path(principal).is_dir() and norm(principal) != norm(wt):
@@ -431,7 +515,8 @@ def main() -> int:
             )
 
         if a.sujo_antes:
-            sujo_antes = caminhosSujoAntes(a.sujo_antes)
+            sujo_antes_result = caminhosSujoAntes(a.sujo_antes)
+            sujo_antes = sujo_antes_result["caminhos"] if sujo_antes_result else set()
             # Compara CONJUNTO DE CAMINHOS, nao a linha inteira: o mesmo arquivo vai de
             # `??` para ` M` sem ninguem ter tocado nele.
             caminhos_sujos = [
@@ -488,7 +573,7 @@ def main() -> int:
             c.ok("HEAD do repo principal inalterado")
         else:
             # HEAD mexeu. Verifica se foi avanco (HEAD anterior é ancestral)
-            rc_anc, _ = c.git(principal, "merge-base", "--is-ancestor", a.head_antes, "HEAD")
+            rc_anc, _, _ = c.git(principal, "merge-base", "--is-ancestor", a.head_antes, "HEAD")
             if rc_anc == 0:
                 # Avançou: contar commits
                 _, contagem = c.mostra(principal, "rev-list", "--count", f"{a.head_antes}..HEAD")
@@ -533,7 +618,7 @@ def main() -> int:
             if not (Path(wt) / alvo).exists():
                 c.falha(f"'{alvo}' nao esta no commit e nao existe no disco — a tarefa nao criou o arquivo")
                 continue
-            rc_ig, regra = c.git(wt, "check-ignore", "-v", "--", alvo)
+            rc_ig, regra, _ = c.git(wt, "check-ignore", "-v", "--", alvo)
             porque = (
                 f"um .gitignore o excluiu: {regra.splitlines()[0]}"
                 if rc_ig == 0 and regra
