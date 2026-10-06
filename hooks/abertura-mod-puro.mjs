@@ -80,11 +80,12 @@ function textoDe(m) {
   const c = m.content;
   if (typeof c === 'string') return c.trimStart();
   if (!Array.isArray(c)) return '';
-  return c
+  const ts = c
     .filter((/** @type {any} */ b) => b && b.type === 'text' && typeof b.text === 'string')
-    .map((/** @type {any} */ b) => b.text)
-    .join('')
-    .trimStart();
+    .map((/** @type {any} */ b) => b.text.trimStart());
+  // No --resume (forma api) a linha anexada vem FUNDIDA como um bloco no meio do primeiro
+  // item user, depois de blocos <system-reminder>: o join comecaria pelo reminder.
+  return ts.find(t => t.startsWith(MARCA)) ?? ts.join('').trimStart();
 }
 
 /** @param {readonly any[] | null | undefined} mensagens */

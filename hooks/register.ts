@@ -48,7 +48,7 @@ export const register: Register = on => {
   on('session.start', { cwd: /.*/ }, async ($, e, next) => {
     await abertura.aoIniciar(
       { rodar: (argv, init) => $.process.run(argv, init), cwd: () => $.session.cwd(), raiz: $.plugin.root },
-      () => $.session.messages(),
+      () => $.session.messages({ as: 'api' }),
       args => $.session.append(args),
     )
     return next(e)
@@ -57,7 +57,7 @@ export const register: Register = on => {
   on('prompt.submit', { text: /.*/ }, async ($, e, next) => {
     await abertura.aoSubmeter(
       { rodar: (argv, init) => $.process.run(argv, init), cwd: () => $.session.cwd(), raiz: $.plugin.root },
-      () => $.session.messages(),
+      () => $.session.messages({ as: 'api' }),
       args => $.session.append(args),
     )
     return next(e)

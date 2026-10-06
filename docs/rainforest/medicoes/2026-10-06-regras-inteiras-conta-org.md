@@ -74,3 +74,17 @@ Ver o relatório final (o hash do commit não pode estar dentro do próprio arqu
 - `isMeta` e a MARCA como definidos no briefing e em `abertura-mod-puro.mjs` (CONFIRMADO: `export const MARCA = '[rainforest-mind:abertura]'`).
 - Os transcripts dos projetos do cwd do scratchpad pertencem só a estas sondas (o diretório do projeto era novo).
 - Resíduo: pasta `memory` criada pelo CLI no config dir de trabalho sob o projeto do cwd de scratchpad, não removida (a da conta pessoal não conferi).
+
+## Remedição após conserto do resume
+
+Conserto: `$.session.messages({ as: 'api' })` no `session.start` e no `prompt.submit` (a forma padrão não devolve a linha `isMeta` anexada) e `textoDe` devolvendo o bloco que começa pela MARCA (a linha anexada vem fundida no meio do primeiro item user, depois de blocos `<system-reminder>`).
+
+Cwd novo: `<scratchpad>/medicao-fix/cwd`. Conta de trabalho. Contagem por `node conta.cjs <id>` (linhas do jsonl com `isMeta: true` cujo texto, string ou bloco `text`, começa por `[rainforest-mind:abertura]`).
+
+- Sessão nova: `CLAUDE_CONFIG_DIR=<home>/.claude claude -p --plugin-dir <worktree> --model haiku --output-format json "oi"` -> sessão `a809dd13-1828-40bc-b9be-3f8382ae6f73`; `linhas=41 abertura_meta=1`.
+- Resume 1: `... --output-format json --resume a809dd13-1828-40bc-b9be-3f8382ae6f73 "diga ok"` -> exit 0, mesma sessão; `linhas=63 abertura_meta=1`.
+- Resume 2: mesmo comando -> exit 0; `linhas=85 abertura_meta=1`.
+
+Antes do conserto cada resume somava uma linha (critério 2 e 4 acima: 1 -> 2 -> 3). Agora 1 -> 1 -> 1.
+
+Veredito: PASSOU.

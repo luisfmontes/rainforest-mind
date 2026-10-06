@@ -111,14 +111,22 @@ async function runReal(argv, init) {
 }
 
 // `$` falso: guarda toda chamada a session.append / session.messages / process.run.
-function criar$({ mensagens = [], append } = {}) {
-  const t = { appends: [], leituras: 0, rodadas: 0 };
+// Formato medido na conta de trabalho: sem {as:"api"} as linhas {role,text,toolUses} NAO trazem a
+// linha meta anexada; com {as:"api"} vem {role,content:[blocos]}, a linha fundida como bloco.
+function criar$({ mensagens = [], api = [], append } = {}) {
+  const t = { appends: [], leituras: 0, rodadas: 0, formas: [] };
   return {
     t,
     plugin: { name: "rainforest-mind", root: SRC.replace(/\\/g, "/") },
     session: {
       cwd: async () => PROJ,
-      messages: async () => { t.leituras += 1; return typeof mensagens === "function" ? mensagens() : mensagens; },
+      messages: async (args) => {
+        t.leituras += 1;
+        const ehApi = !!args && args.as === "api";
+        t.formas.push(ehApi ? "api" : "linhas");
+        const v = ehApi ? api : mensagens;
+        return typeof v === "function" ? v() : v;
+      },
       append: async (args) => {
         t.appends.push(args);
         if (append) return append(args);
@@ -194,14 +202,42 @@ caso("conta com sec-default anexa uma vez no session.start", async () => {
 caso("resume com a marca no transcript nao anexa de novo", async () => {
   const { novo, MARCA } = await modulo();
   const mod = novo();
-  const $ = criar$({ mensagens: [
-    { role: "user", text: "oi", toolUses: [] },
-    { role: "user", text: `${MARCA}\nabertura de antes`, toolUses: [] },
-  ] });
+  const $ = criar$({
+    mensagens: [
+      { role: "user", text: "oi", toolUses: [] },
+      { role: "assistant", text: "", toolUses: [] },
+      { role: "assistant", text: "Oi!", toolUses: [] },
+    ],
+    api: [
+      { role: "user", content: [
+        { type: "text", text: "<system-reminder>\nA\n</system-reminder>\n" },
+        { type: "text", text: "<system-reminder>\nB\n</system-reminder>\n" },
+        { type: "text", text: `${MARCA}\nabertura de antes\n` },
+        { type: "text", text: "oi" },
+      ] },
+      { role: "assistant", content: [{ type: "text", text: "Oi!" }] },
+    ],
+  });
   await ligar(mod, COM_SEC);
   await mod.sessionStart($, { source: "resume" }, passa({}));
   igual($.t.appends.length, 0, "appends");
   afirma($.t.leituras >= 1, "o transcript nao foi lido");
+});
+
+caso("resume le messages na forma api", async () => {
+  const { novo } = await modulo();
+  const mod = novo();
+  const $ = criar$();
+  await ligar(mod, COM_SEC);
+  await mod.sessionStart($, { source: "resume" }, passa({}));
+  afirma($.t.formas.length >= 1, "o transcript nao foi lido");
+  igual(JSON.stringify($.t.formas), JSON.stringify(["api"]), "formas de leitura de messages() no session.start");
+  const m2 = novo();
+  const $2 = criar$();
+  await ligar(m2, COM_SEC);
+  await m2.sessionEnd($2, { reason: "clear" }, passa({}));
+  await m2.promptSubmit($2, { prompt: "um" }, passa({}));
+  igual(JSON.stringify($2.t.formas), JSON.stringify(["api"]), "formas de leitura de messages() no prompt.submit");
 });
 
 caso("clear anexa uma vez no primeiro prompt.submit", async () => {
