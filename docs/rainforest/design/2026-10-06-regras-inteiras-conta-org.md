@@ -39,6 +39,14 @@ aproveita o cache.
   `classic.PostCompact` utilizável (bypassed); a regra cobre os dois casos — linha
   preservada literal (não faz nada) ou virada resumo (reanexa) — sem depender de medir qual.
 
+- **D7 — Contornar o sec-default pelo append é autorizado pelo administrador da conta Team**
+  (o próprio usuário, 2026-10-06, depois do alerta da security review automática do commit
+  `7357ed11`: "eu sou o adim, mas ja descartamos a opção de fazer ser plugin do time totvs")
+  — porquê: o plugin é dele, o texto são as regras dele, e vai só para as sessões dele. A rota
+  de admin foi descartada pelo custo, não por falta de autoridade. Risco aceito: se a
+  organização estender a política ao `session.append` (a referência do engine prevê isso), o
+  append passa a ser barrado também. Pela falha aberta, a sessão volta ao núcleo, sem quebrar.
+
 ## Avaliado e descartado
 - **Tornar o rainforest mod da organização** (managed-settings.json local com
   `prependPlugins`, clone em `C:\ProgramData`) — funcionaria pela doc, mas troca o

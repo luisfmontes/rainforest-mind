@@ -20,7 +20,44 @@
     "em": "2026-10-06"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-06",
+    "tarefas_ok": 1,
+    "tarefas": 4,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "1: append condicionado ao sec-default",
+        "desde": "2026-10-06T19:55"
+      }
+    ],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "a85f9315343c82bb53d035368d44c8f4bc2fead0",
+        "iteracao": 1,
+        "sessao": "42fa8a5e-dc19-4a78-b86e-05d10364fd47",
+        "ts": "2026-10-06T22:48:29.825Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "a85f9315343c82bb53d035368d44c8f4bc2fead0",
+        "iteracao": 2,
+        "sessao": "42fa8a5e-dc19-4a78-b86e-05d10364fd47",
+        "ts": "2026-10-06T22:55:08.827Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "a85f9315343c82bb53d035368d44c8f4bc2fead0",
+        "iteracao": 3,
+        "sessao": "42fa8a5e-dc19-4a78-b86e-05d10364fd47",
+        "ts": "2026-10-06T22:57:47.613Z"
+      }
+    ],
+    "em": "2026-10-06",
+    "pendentes": [
+      "pausa: alerta de security review (contorno do sec-default) aguardando decisao do usuario"
+    ]
   },
   "revisar": {
     "status": "pendente"

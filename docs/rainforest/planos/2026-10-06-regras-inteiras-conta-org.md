@@ -19,7 +19,7 @@ Types do engine: `plugin-authoring/types/claude-code.d.ts` da skill embutida no 
 ## Tarefas
 
 ### 1. Append condicionado ao sec-default, com marca, resume, clear e compact [tipo: implementar]
-atende: D1, D2, D3, D4, D5, D6
+atende: D1, D2, D3, D4, D5, D6, D7
 arquivos: `hooks/abertura-mod-puro.mjs`, `hooks/register.ts`, `hooks/testa-mod-abertura.cjs`, `hooks/testa-mod-abertura-append.cjs`
 depende de: nenhuma
 paralela: sim
