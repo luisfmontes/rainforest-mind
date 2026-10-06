@@ -222,9 +222,11 @@ mutacao:
   arquivo: `scripts/saude.cjs`
   de: `if (hashes.size > 1) {`
   para: `if (false) {`
-  bateria: `bash scripts/testa-saude.sh`
+  bateria: `RFM_TESTA_SAUDE_ANINHADA=1 bash scripts/testa-saude.sh`
+  timeout: `900000`
   fixture: `testa-saude.sh, caso "skills-divergentes: duas copias diferentes avisam"`
 pronto quando: com uma HOME de caixa contendo `.claude/plugins`, `.claude-personal/plugins`, `.claude/skills/x/SKILL.md` (`aaa`) e `.claude-personal/skills/x/SKILL.md` (`bbbbbb`), `node scripts/saude.cjs --json` traz um achado `skills-divergentes` nível `aviso` cujo detalhe nomeia `x` e os dois tamanhos (3 e 6 B); cópias iguais ou skill numa pasta só não geram o achado; nada é escrito na HOME — provado por `bash scripts/testa-saude.sh` imprimindo os casos novos como ok e nenhuma falha
+emenda do verificar: a bateria da catraca pula a seção K (que roda a bateria inteira de novo numa cópia da pasta e estourava o teto de 300 s); o caso N1, que é o desta tarefa, não depende dela.
 
 ### 16. memória exibe a data local [tipo: implementar]
 atende: D28

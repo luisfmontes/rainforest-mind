@@ -80,3 +80,53 @@ fica vermelho sem o conserto, junto com os achados menores (lock de mutação, l
 de obrigatórias ausente, heredoc que reescreve body-file existente, `esc()`
 restante, review-codex 7b/10). Catracas re-rodadas (14 vermelhas, 15 à mão, 10 e
 17 n/a) e varredura completa: 175 verdes.
+
+## Revisão, rodadas 2 a 5
+
+| Rodada | Bloqueantes | Consertados em |
+|---|---|---|
+| 2 | gate de instalação: flag com valor antes do verbo, `&`/`.` do PowerShell, `pwsh` com flags antes de `-Command`; restauração do fonte nas fixtures de cobertura sem conferência de sha256 (D18) | `93e3ce59`, `2e882c3a` |
+| 3 | gate de instalação: redirecionamento colado a alvo citado; lock das fixtures retomado como pid morto depois de restauração que falhou | `c439514d` |
+| 4 | `conferir-entrega`: snapshot de outra árvore saía 1, o D24 pede 2 (a bateria esperava 1) | `e1e68fda` |
+| 5 | nenhum (só scripts; hooks aprovou na 4ª sem mudança depois) | — |
+
+Cada conserto tem caso que fica vermelho contra o commit anterior, e as
+catracas das tarefas tocadas foram re-rodadas vermelhas. Junto foram os
+não bloqueantes baratos: atribuição citada antes do comando, `yarn global add`,
+nome acentuado no `limpar-worktrees` (`core.quotepath=false`), heredocs somados
+no `--body-file` (último escritor, `>>`, `tee -a`, delimitador nu com expansão),
+erro de lock que não é EEXIST saindo 69, frase truncada em `skills/plano`.
+
+O teto de 3 reprovações foi atingido na 3ª e de novo na 4ª; o usuário liberou
+a 4ª e a 5ª rodada (`docs/rainforest/portoes/2026-10-06-zerar-issues-16-impasse.md`).
+
+**Ressalva do usuário na rodada 3:** desligar gate deveria ser só pela variável
+`RAINFOREST_GATE_OFF` ou pelo config, sem o arquivo `.rainforest-gate-off` em
+repo de cliente. Os gates ainda leem o arquivo; a remoção vai em fluxo próprio
+depois deste PR.
+
+### Não bloqueantes que ficaram
+
+- Gate de instalação: escrever o arquivo de desligar por interpretador
+  (`python -c`, `node -e`), `npm ic`/`install-ci-test`, `corepack yarn add`,
+  atribuição com crase, `Start-Process npm`, `npx npm install`; `npm update` e
+  afins fora do D6.
+- `gate-fechar-issue`: acréscimo fora de heredoc (`echo ... >> x.md`) depois de
+  heredoc benigno; heredoc com redirecionamento depois do `<<`; mensagem
+  imprecisa quando o corpo é ilegível por expansão.
+- `limpar-worktrees`: mtime de pasta não rastreada; mtime do índice (D21) não
+  lido; `RFM_LIMPAR_APOS_LISTAR` é gancho de teste em código de produção.
+- `conferir-entrega`: `git diff` que falha devolve conjunto vazio em vez de 69;
+  texto `nao-verificavel:` mais específico que o do D23.
+- `conferir-cobertura-fixtures`: SIGKILL no meio da mutação deixa lock de pid
+  morto que se retoma; corrida estreita na retomada de lock obsoleto.
+- `conferir-fluxo`: parser de `arquivos:` só lê caminhos entre crases.
+- D19: as baterias de memória conferem que nenhum nome da raiz real sumiu, não
+  que nenhum foi acrescentado.
+
+## Verificar
+
+A catraca da tarefa 15 não cabia no teto de 300 s com a seção K da
+`testa-saude.sh` (que roda a bateria inteira de novo). Emenda no plano: a
+bateria da catraca roda com `RFM_TESTA_SAUDE_ANINHADA=1` e teto de 15 min; o
+caso N1, o desta tarefa, não depende da seção K.
