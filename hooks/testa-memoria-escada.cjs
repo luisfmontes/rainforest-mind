@@ -87,6 +87,41 @@ caso("encurtarNaPalavra: cabe no limite e termina em …", Array.from(e).length 
 const g = ms.encurtarNaPalavra("C:/caminho/muito/longo/sem/espaco/nenhum/aqui", 20);
 caso("encurtarNaPalavra: palavra única gigante cai no corte por caractere", Array.from(g).length === 20 && g.endsWith("…"), g);
 
+// 7. Data local: observação com hora UTC que mantém o mesmo dia em São Paulo
+const obsLocalTime = {
+  id: 1,
+  projeto: "rainforest-mind",
+  conteudo: "## Obs às 23h20 locais\n\nSubtítulo\n\n### Detalhe\n\ntexto",
+  criada_em: "2026-10-06T02:20:59.000Z"  // 02:20 UTC = 23:20 São Paulo (anterior)
+};
+// NOTA: O teste de data ISO com hora (linha 9) usa 06:00Z para detectar a mutação.
+// Este caso usa 02:20Z para testar a conversão para dia anterior em São Paulo.
+const linhaLocal = ms.formatarObservacao(obsLocalTime);
+caso("observacao das 23h20 locais (02:20Z) sai com o dia local",
+  linhaLocal.includes("[2026-10-05"),
+  linhaLocal);
+
+// 8. Data ISO sem hora: devolvida como está
+const resultado1 = ms.dataLocalDeIso("2026-10-05");
+caso("data ISO só (sem hora) devolve como está", resultado1 === "2026-10-05", resultado1);
+
+// 9. Data ISO com hora: convertida para local (06h UTC = 03h São Paulo, mesmo dia)
+const resultado2 = ms.dataLocalDeIso("2026-10-06T06:00:00.000Z");
+caso("data ISO com hora converte para local", resultado2 === "2026-10-06", resultado2);
+
+// 10. Data inválida: fallback ao split antigo
+const resultado3 = ms.dataLocalDeIso("data-invalida");
+caso("data inválida volta ao comportamento antigo", resultado3.length > 0, resultado3);
+
+// 11. Legenda com data local
+const legenda = ms.montarLegendaMemoria({
+  observacoes: [obsLocalTime],
+  apelidos: { "rainforest-mind": "rfm" }
+});
+caso("legenda com data local mostra o dia local (05/10)",
+  legenda.includes("05/10"),
+  legenda);
+
 console.log("-----------------------------------------");
 console.log(`ok: ${ok}   falhou: ${falhou}`);
 process.exit(falhou === 0 ? 0 : 1);
