@@ -28,6 +28,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const crypto = require('crypto');
 const { spawnSync } = require('child_process');
 const { falhasRecorrentes, formatar } = require('./lib/impressao-falha.cjs');
 const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
@@ -362,6 +363,96 @@ function checarConfigDirsDivergentes() {
     `${nome} em versoes diferentes: ${instalacoes.map((i) => `[${i.dir}] ${i.versao} (${i.sha})`).join(', ')}`,
     'se for escolha, ignore. Se nao for, atualize a atrasada com CLAUDE_CONFIG_DIR apontando para ela — ' +
     'e o efeito so alcanca janelas NOVAS daquela conta');
+}
+
+// ---------------------------------------------------------------- skills divergentes
+function checarSkillsDivergentes() {
+  const dirs = todasAsConfigDirsDaHome();
+  if (dirs.length < 2) return; // uma config so nao diverge de ninguem
+
+  // Agrupa skills por nome, com hash e tamanho para cada cópia
+  const skillsPorNome = {};
+
+  for (const dir of dirs) {
+    const skillsDir = path.join(dir, 'skills');
+    if (!fs.existsSync(skillsDir)) continue;
+
+    let nomes;
+    try {
+      nomes = fs.readdirSync(skillsDir);
+    } catch {
+      continue;
+    }
+
+    for (const nome of nomes) {
+      const skillPath = path.join(skillsDir, nome);
+      const stats = fs.statSync(skillPath);
+      if (!stats.isDirectory()) continue;
+
+      // Calcula hash dos arquivos da skill
+      const { hash, tamanho } = hashSkillDir(skillPath);
+
+      if (!skillsPorNome[nome]) {
+        skillsPorNome[nome] = [];
+      }
+      skillsPorNome[nome].push({
+        dir: path.basename(dir),
+        hash,
+        tamanho,
+      });
+    }
+  }
+
+  // Procura skills com hashes divergentes em 2+ dirs
+  for (const [nomeDaSkill, copias] of Object.entries(skillsPorNome)) {
+    if (copias.length < 2) continue; // skill em uma cópia só: sem divergencia
+
+    const hashes = new Set(copias.map((c) => c.hash));
+    if (hashes.size > 1) {
+      // Divergencia encontrada: relata com tamanhos
+      const detalhes = copias.map((c) => `${c.dir} ${c.tamanho} B`).join(', ');
+      aviso('skills-divergentes',
+        `${nomeDaSkill}: ${detalhes}`,
+        'sincronize as cópias');
+    }
+  }
+}
+
+/**
+ * Calcula hash SHA256 dos arquivos de uma pasta de skill.
+ *
+ * Ordena os arquivos por caminho relativo para garantir consistencia.
+ * Retorna {hash, tamanho}.
+ */
+function hashSkillDir(skillPath) {
+  const hasher = crypto.createHash('sha256');
+  let tamanhoTotal = 0;
+
+  // Lista arquivos de forma recursiva
+  const percorrer = (dir) => {
+    const entradas = fs.readdirSync(dir).sort();
+    for (const entrada of entradas) {
+      const caminhoCompleto = path.join(dir, entrada);
+      const stats = fs.statSync(caminhoCompleto);
+      const caminhoRelativo = path.relative(skillPath, caminhoCompleto);
+
+      if (stats.isDirectory()) {
+        percorrer(caminhoCompleto);
+      } else {
+        // Lê arquivo e adiciona ao hash (caminho relativo + conteudo)
+        const conteudo = fs.readFileSync(caminhoCompleto);
+        tamanhoTotal += conteudo.length;
+        hasher.update(caminhoRelativo + '\n');
+        hasher.update(conteudo);
+      }
+    }
+  };
+
+  percorrer(skillPath);
+  return {
+    hash: hasher.digest('hex'),
+    tamanho: tamanhoTotal,
+  };
 }
 
 function checarVersaoInstalada() {
@@ -1622,6 +1713,7 @@ async function main() {
   checarWorktrees();
   checarVersaoInstalada();
   checarConfigDirsDivergentes();
+  checarSkillsDivergentes();
   checarClaudeMem();
   checarAutocompact();
   checarAllowlist();
