@@ -36,7 +36,8 @@ Fecha as doze Issues abertas pela revisão bimestral (#396 a #405, #407, #408).
 - **`limpar-worktrees` e leitor de estado (#399):** revalidam antes de remover, poupam worktree em uso
   recente (10 min) e dizem "fluxo concluído na base" quando a branch já entrou na `main`.
 - **`/saude`** avisa skill de usuário divergente entre os dois config dirs (#404).
-- **Memória:** legenda e bloco mostram a data local da observação, não a UTC (#408).
+- **Memória:** legenda e bloco mostram a data local da observação, não a UTC (#408); o relatório de
+  utilidade continua achando a observação servida quando a data local e a UTC caem em dias diferentes.
 
 ## 1.41.0 — 2026-10-05
 

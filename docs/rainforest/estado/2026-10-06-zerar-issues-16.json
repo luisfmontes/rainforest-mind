@@ -34,7 +34,232 @@
     "em": "2026-10-06"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-10-06",
+    "tarefas_ok": 17,
+    "tarefas": 17,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "a85f9315343c82bb53d035368d44c8f4bc2fead0",
+        "iteracao": 1,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T11:09:55.898Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "a85f9315",
+        "iteracao": 2,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T15:34:46.056Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "a85f9315",
+        "iteracao": 1,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T15:34:46.056Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "a85f9315",
+        "iteracao": 1,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T15:34:46.056Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "a85f9315",
+        "iteracao": 1,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T15:34:46.056Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "a85f9315",
+        "iteracao": 1,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T15:34:46.056Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "a85f9315",
+        "iteracao": 1,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T15:34:46.056Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "a85f9315",
+        "iteracao": 1,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T15:34:46.056Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "a85f9315",
+        "iteracao": 1,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T15:34:46.056Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "a85f9315",
+        "iteracao": 1,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T15:34:46.056Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "a85f9315",
+        "iteracao": 1,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T15:34:46.056Z"
+      },
+      {
+        "tarefa": 11,
+        "hash_base": "a85f9315",
+        "iteracao": 1,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T15:34:46.056Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "a85f9315",
+        "iteracao": 1,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T15:34:46.056Z"
+      },
+      {
+        "tarefa": 13,
+        "hash_base": "a85f9315",
+        "iteracao": 1,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T15:34:46.056Z"
+      },
+      {
+        "tarefa": 14,
+        "hash_base": "a85f9315",
+        "iteracao": 1,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T15:34:46.056Z"
+      },
+      {
+        "tarefa": 15,
+        "hash_base": "a85f9315",
+        "iteracao": 1,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T15:34:46.056Z"
+      },
+      {
+        "tarefa": 16,
+        "hash_base": "a85f9315",
+        "iteracao": 1,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T15:34:46.056Z"
+      },
+      {
+        "tarefa": 17,
+        "hash_base": "a85f9315",
+        "iteracao": 1,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T15:34:46.056Z"
+      }
+    ],
+    "em": "2026-10-06",
+    "comando": "bash scripts/varrer-baterias.sh; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-06-zerar-issues-16",
+    "saida": "as 175 baterias passaram; catracas 1-9, 11-14, 16 vermelho; 15 vermelho medido a mao; 10 e 17 n/a",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, casos \"405-1 laco com bash scripts/$b.sh passa\" e \"405-2 bash scripts/$b.sh passa\""
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, caso \"407-1 heredoc cria o body-file com palavra de fechamento: decide pelo conteudo\""
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-subagente-sem-instalar.cjs, caso \"subagente npm install x nega com exit 2\""
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-aviso-fluxo.cjs, caso \"segunda edicao de codigo na mesma sessao e silencio\""
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-idioma-session-start.cjs, caso \"source compact com idioma no config emite a linha\""
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-fluxo.sh, caso \"cobertura recusa paralela sim com depende de\""
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-varrer-baterias.sh, caso \"obrigatoria ausente sai FALTOU e exit 1\""
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao.sh, caso \"bateria com comando inexistente sai 69 nao-verificavel\""
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-cobertura-fixtures.cjs, caso \"lock de pid vivo sai 69 sem mutar\""
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "so altera baterias; a guarda foi provada nos dois sentidos com caixas (RFM_RAIZ_REAL_FALSA)"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "testa-limpar-worktrees.sh, caso \"(r) worktree fica sujo entre a listagem e a remocao: nao remove\""
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-entrega.sh, caso \"warning do git em stderr com arvore limpa sai 0\""
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-staging-total.sh, caso \"comando com aspas duplas no campo: git add -A barra\""
+      },
+      {
+        "tarefa": 14,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-repo-alheio.sh, caso \"comando com aspas duplas no campo: escrita no repo alheio barra\""
+      },
+      {
+        "tarefa": 15,
+        "resultado": "vermelho",
+        "fixture": "testa-saude.sh, caso \"N1. skills divergentes em 2 dirs avisam com tamanhos\" (medido a mao no worktree)"
+      },
+      {
+        "tarefa": 16,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-escada.cjs, caso \"observacao das 23h20 locais (02:20Z) sai com o dia local\""
+      },
+      {
+        "tarefa": 17,
+        "resultado": "n/a",
+        "motivo": "registro e versao; comportamento medido nas tarefas 3, 4 e 5"
+      }
+    ],
+    "observacoes": [
+      "tarefa 15: catraca medida a mao no worktree (copia temporaria pendura o baseline de testa-saude)",
+      "snapshot --sujo-antes da onda 1 perdeu-se com o scratchpad apagado no incidente da tarefa 4"
+    ]
   },
   "revisar": {
     "status": "pendente"
