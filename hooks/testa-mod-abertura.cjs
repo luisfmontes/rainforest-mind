@@ -12,7 +12,7 @@
 // uma bateria que depende dele passa e falha sem que ninguem a toque.
 //
 // O que precisa provar:
-//   1. register.ts liga exatamente session.end, prompt.compose e classic.SessionStart;
+//   1. register.ts liga exatamente session.end, prompt.compose, classic.SessionStart, engine.create, session.start, prompt.submit e session.compact;
 //   2. a secao e UMA, `{ id: 'rainforest-mind:abertura', scope: 'session' }`, no fim de
 //      `sections`, com o additionalContext do foco + o da memoria (sem systemMessage);
 //   3. montada uma vez: 3 composes seguidos chamam `$.process.run` so 2 vezes;
@@ -202,10 +202,10 @@ async function modulo() {
 const casos = [];
 const caso = (nome, fn) => casos.push([nome, fn]);
 
-caso("register.ts registra exatamente session.end, prompt.compose e classic.SessionStart", async () => {
+caso("register.ts registra exatamente session.end, prompt.compose, classic.SessionStart, engine.create, session.start, prompt.submit e session.compact", async () => {
   const fonte = fs.readFileSync(path.join(SRC, "hooks", "register.ts"), "utf8");
   const { criarAbertura } = await modulo();
-  igual(JSON.stringify(criarAbertura().eventos), JSON.stringify(["session.end", "prompt.compose", "classic.SessionStart"]), "eventos que register() liga");
+  igual(JSON.stringify(criarAbertura().eventos), JSON.stringify(["session.end", "prompt.compose", "classic.SessionStart", "engine.create", "session.start", "prompt.submit", "session.compact"]), "eventos que register() liga");
   afirma(/from '\.\/abertura-mod-puro\.mjs'/.test(fonte), "register.ts precisa importar o .mjs por import estatico");
   const semComentarios = (t) => t.split("\n").filter((l) => !/^\s*(\/\/|\/\*|\*)/.test(l)).join("\n");
   afirma(!/\bimport\(/.test(semComentarios(fonte)) && !/\bimport\(/.test(semComentarios(fs.readFileSync(path.join(SRC, "hooks", "abertura-mod-puro.mjs"), "utf8"))),
