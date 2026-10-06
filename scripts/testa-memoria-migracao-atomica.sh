@@ -19,14 +19,25 @@ novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo
 cleanup() {
   for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done
 }
-trap cleanup EXIT
+trap 'cleanup; if declare -F conferir_raiz_real >/dev/null; then conferir_raiz_real; fi' EXIT
 
-# Conferir que não vamos tocar a raiz real
-RAIZ_REAL=$(node -e "console.log(require('./hooks/lib/raiz.cjs').resolverRaiz().raiz)" 2>/dev/null || echo "")
-if [ -n "${RFM_ROOT:-}" ] && [ -n "$RAIZ_REAL" ] && [ "$RFM_ROOT" = "$RAIZ_REAL" ]; then
-  echo "FALHA Tarefa 10: RFM_ROOT aponta para a raiz real — aborta"
+# Guarda da raiz real (#398, D19): a raiz e a que resolverRaiz daria SEM o
+# RFM_ROOT herdado (RFM_RAIZ_REAL_FALSA a simula na prova). RFM_ROOT que cai
+# nela aborta antes de gravar; no fim, nenhum nome da raiz real pode ter sumido.
+_win() { cygpath -m "$1" 2>/dev/null || printf '%s' "$1"; }
+if [ -n "${RFM_RAIZ_REAL_FALSA:-}" ]; then RAIZ_REAL="$(_win "$RFM_RAIZ_REAL_FALSA")"
+else RAIZ_REAL="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && env -u RFM_ROOT node -e 'process.stdout.write(require("./hooks/lib/raiz.cjs").resolverRaiz().raiz)' 2>/dev/null)"; fi
+mesmo_caminho() { node -e 'const p=require("path"),f=require("fs");const n=x=>{try{x=f.realpathSync(x)}catch{};return p.resolve(x).toLowerCase()};process.exit(n(process.argv[1])===n(process.argv[2])?0:1)' "$(_win "$1")" "$(_win "$2")"; }
+if [ -n "${RFM_ROOT:-}" ] && [ -n "$RAIZ_REAL" ] && mesmo_caminho "$RFM_ROOT" "$RAIZ_REAL"; then
+  echo "nao-verificavel: RFM_ROOT aponta para a raiz real de dados ($RAIZ_REAL) — aborta antes de gravar"
   exit 69
 fi
+NOMES_REAIS_ANTES="$(ls -A "$RAIZ_REAL" 2>/dev/null | sort)"
+conferir_raiz_real() {
+  local sumiu
+  sumiu="$(comm -23 <(printf '%s\n' "$NOMES_REAIS_ANTES") <(ls -A "$RAIZ_REAL" 2>/dev/null | sort) | grep -v '^$' || true)"
+  if [ -n "$sumiu" ]; then echo "FALHA a bateria apagou da raiz real: $sumiu"; exit 1; fi
+}
 
 TEMP_DIR=$(novo_sandbox)
 
