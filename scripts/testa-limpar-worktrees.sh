@@ -982,5 +982,56 @@ fi
 # --- Relatório final
 
 echo ""
+# --- CASO (t): em_voo na branch, fluxo ja concluido na base (D22) ---
+# A branch guarda o em_voo de quando o agente rodou; o fluxo fechou depois, e a
+# base (origin/main) tem o estado concluido. Ler so a branch chamaria de
+# inacabado um fluxo ja fechado.
+teste "t" "em_voo na branch com fluxo concluido em origin/main nao segura a remocao"
+repo_t="$SB/repo_t"
+work_t="$SB/trabalho_t"
+criarRepoComCommit "$repo_t" "$work_t" >/dev/null 2>&1
+SLUG_T="2026-10-06-lote-base"
+estado_t() { # arquivo, status_executar, status_fechar, em_voo(json)
+  node -e '
+const fs = require("fs"), [p, slug, ex, fe, voo] = process.argv.slice(1);
+const ok = (st) => ({ status: st, em: "2026-10-06" });
+fs.mkdirSync(require("path").dirname(p), { recursive: true });
+fs.writeFileSync(p, JSON.stringify({
+  slug, titulo: "Fixture do caso t", criado_em: "2026-10-06",
+  arqueologia: { status: "dispensada" },
+  design: { status: "aprovado", em: "2026-10-06", doc: "x" },
+  plano: ok("ok"),
+  executar: Object.assign(ok(ex), { em_voo: JSON.parse(voo) }),
+  revisar: ok(fe === "ok" ? "ok" : "pendente"),
+  verificar: ok(fe === "ok" ? "ok" : "pendente"),
+  fechar: ok(fe),
+}, null, 2) + "\n");
+' "$1" "$SLUG_T" "$2" "$3" "$4"
+}
+# Base: estado CONCLUIDO, publicado como origin/main.
+estado_t "$work_t/docs/rainforest/estado/$SLUG_T.json" ok ok '[]'
+git -C "$work_t" add docs && git -C "$work_t" commit -qm "fluxo concluido" && git -C "$work_t" push -q origin HEAD:main
+git -C "$work_t" fetch -q origin
+# Branch do worktree: nasce ANTES do fechamento, com agente em voo.
+wt_t="$work_t-worktrees/wt-t"
+git -C "$work_t" worktree add -q -b fluxo/lote-base "$wt_t" HEAD~1
+estado_t "$wt_t/docs/rainforest/estado/$SLUG_T.json" parcial pendente '[{"agente":"rainforest-mind:executor","tarefa":1}]'
+git -C "$wt_t" add docs && git -C "$wt_t" commit -qm "estado com agente em voo"
+touch -d "30 minutes ago" "$wt_t/docs/rainforest/estado/$SLUG_T.json" 2>/dev/null || true
+
+saida_t=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_t" --remover 2>&1)
+if git -C "$work_t" worktree list --porcelain | grep -qF "wt-t"; then
+  falhou=$((falhou+1)); echo "  FALHA em_voo da branch segurou a remocao de fluxo concluido na base"
+  printf '%s\n' "$saida_t" | sed 's/^/        /' | head -8
+else
+  ok=$((ok+1)); echo "  ok    worktree removido: a base diz que o fluxo fechou"
+fi
+if printf '%s' "$saida_t" | grep -qF "fluxo concluido na base"; then
+  ok=$((ok+1)); echo "  ok    a saida diz que a base decidiu"
+else
+  falhou=$((falhou+1)); echo "  FALHA a saida nao cita a base"
+fi
+
+echo ""
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ $falhou -eq 0 ] && exit 0 || exit 1

@@ -72,7 +72,7 @@ function agentesEmVoo(dir) {
       const estadoBase = JSON.parse(saida);
       if (proximo(estadoBase) === null) {
         // Fluxo concluído na base, não segura a remoção
-        console.log(`pulando: fluxo concluido na base`);
+        console.log(`fluxo concluido na base: ${ativo.slug} fechou em origin/main — o em_voo da branch (${dir}) nao segura a remocao`);
         return null;
       }
     } catch {
