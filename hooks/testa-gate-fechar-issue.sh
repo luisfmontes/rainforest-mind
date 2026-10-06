@@ -2853,6 +2853,44 @@ EXIT_405_SEM_GH=$(
 )
 [ "$EXIT_405_SEM_GH" -eq "2" ] && test_ok "(#405 integração) gate-subagente-sem-gh com agent_id e bash scripts/\$b.sh sai 2" || test_fail "(#405 integração) gate-subagente-sem-gh com agent_id e bash scripts/\$b.sh saiu $EXIT_405_SEM_GH (esperado 2)"
 
+# (#407) --body-file criado por heredoc no MESMO comando: o arquivo nao existe
+# quando o gate olha (PreToolUse), e o corpo esta no proprio comando. O gate
+# decide pelo corpo do heredoc com as mesmas regras do arquivo existente.
+echo
+echo '== (#407) --body-file criado por heredoc no mesmo comando =='
+p407() { node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$1"; }
+g407() { # payload, GH_COM_MARCADOR -> exit; stderr em $SBP/err-407
+  ( export PATH="$SBP/bin:$PATH"; export GH_COM_MARCADOR="$2"
+    printf '%s' "$1" | node "$SRC/hooks/gate-fechar-issue.cjs" >/dev/null 2>"$SBP/err-407"; echo $? )
+}
+rm -f "$SBP/x407.md" "$SBP/y407.md"
+CMD_407a="$(printf "cat > x407.md <<'EOF'\nCloses #12\nEOF\ngh pr create --title t --body-file x407.md")"
+E=$(g407 "$(p407 "$CMD_407a")" "")
+[ "$E" -eq 2 ] && ! grep -q "não consegui ler" "$SBP/err-407" \
+  && test_ok "(407-1) heredoc cria o body-file com palavra de fechamento: decide pelo conteudo (exit 2 sem marcador)" \
+  || test_fail "(407-1) heredoc com Closes #12 saiu $E: $(head -3 "$SBP/err-407" | tr '\n' ' ')"
+E=$(g407 "$(p407 "$CMD_407a")" 1)
+[ "$E" -eq 0 ] && test_ok "(407-2) mesmo heredoc, com marcador de evidencia → exit 0" \
+  || test_fail "(407-2) heredoc com marcador saiu $E: $(head -3 "$SBP/err-407" | tr '\n' ' ')"
+CMD_407c="$(printf "cat > x407.md <<'EOF'\nsem palavra de fechamento\nEOF\ngh pr create --title t --body-file x407.md")"
+E=$(g407 "$(p407 "$CMD_407c")" "")
+[ "$E" -eq 0 ] && test_ok "(407-3) heredoc sem palavra de fechamento → exit 0" \
+  || test_fail "(407-3) heredoc sem fechamento saiu $E: $(head -3 "$SBP/err-407" | tr '\n' ' ')"
+CMD_407d="$(printf "tee x407.md <<'EOF' >/dev/null\nCloses #12\nEOF\ngh pr create --title t --body-file x407.md")"
+E=$(g407 "$(p407 "$CMD_407d")" "")
+[ "$E" -eq 2 ] && ! grep -q "não consegui ler" "$SBP/err-407" \
+  && test_ok "(407-4) tee P <<EOF tambem cria o corpo" \
+  || test_fail "(407-4) tee saiu $E: $(head -3 "$SBP/err-407" | tr '\n' ' ')"
+E=$(g407 "$(p407 'gh pr create --title t --body-file y407.md')" "")
+[ "$E" -eq 2 ] && grep -q "grave o corpo antes\|Grave o corpo antes" "$SBP/err-407" \
+  && test_ok "(407-5) sem arquivo e sem heredoc que o crie: ilegivel nomeia a saida" \
+  || test_fail "(407-5) sem arquivo saiu $E: $(head -3 "$SBP/err-407" | tr '\n' ' ')"
+CMD_407f="$(printf "cat > outro.md <<'EOF'\nCloses #12\nEOF\ngh pr create --title t --body-file y407.md")"
+E=$(g407 "$(p407 "$CMD_407f")" 1)
+[ "$E" -eq 2 ] && grep -q "Grave o corpo antes" "$SBP/err-407" \
+  && test_ok "(407-6) heredoc que cria OUTRO arquivo nao vale como corpo" \
+  || test_fail "(407-6) heredoc de outro arquivo saiu $E: $(head -3 "$SBP/err-407" | tr '\n' ' ')"
+
 # (#362) laco com bash $b sem aspas → exit 2 citando injetar -c
 echo
 echo '== (#362) laco com bash $b sem aspas → exit 2 citando injetar -c =='

@@ -40,11 +40,11 @@ paralela: nao
 prova-na-base: verde — a base barra por ilegível, e a bateria da base não tem os casos que o medem
 mutacao:
   arquivo: `hooks/gate-fechar-issue.cjs`
-  de: `const corpoCriado = corpoDeHeredocQueCria(comandoInteiro, caminhoResolvido);`
+  de: `const corpoCriado = corpoDeHeredocQueCria(COMANDO_INTEIRO, caminhoResolvido, cwdSegmento);`
   para: `const corpoCriado = null;`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
   fixture: `testa-gate-fechar-issue.sh, caso "407-1 heredoc cria o body-file com palavra de fechamento: decide pelo conteudo"`
-pronto quando: com o payload PreToolUse real do comando `cat > x.md <<'EOF'` / `Closes #12` / `EOF` / `gh pr create --title t --body-file x.md` (x.md ausente no disco), o gate decide pelo corpo do heredoc com as mesmas regras do arquivo existente — sai com a mesma decisão e mensagem que dá para um `x.md` existente com `Closes #12` (bloqueio citando fechamento) — e com corpo sem palavra de fechamento sai 0; com `gh pr create --body-file y.md` sem y.md e sem heredoc que o crie, sai 2 e o stderr contém `grave o corpo antes`; a função `corpoDeHeredocQueCria(comando, caminho)` usa `corpoDeHeredoc` de `hooks/lib/heredoc.cjs` e reconhece `cat > P <<`, `cat >| P <<` e `tee P <<`; a linha literal do `de:` acima fica no ramo de arquivo ilegível — provado por `bash hooks/testa-gate-fechar-issue.sh` imprimindo os casos novos como ok e `0 falha(s)`
+pronto quando: com o payload PreToolUse real do comando `cat > x.md <<'EOF'` / `Closes #12` / `EOF` / `gh pr create --title t --body-file x.md` (x.md ausente no disco), o gate decide pelo corpo do heredoc com as mesmas regras do arquivo existente — sai com a mesma decisão e mensagem que dá para um `x.md` existente com `Closes #12` (bloqueio citando fechamento) — e com corpo sem palavra de fechamento sai 0; com `gh pr create --body-file y.md` sem y.md e sem heredoc que o crie, sai 2 e o stderr contém `grave o corpo antes`; a função `corpoDeHeredocQueCria(comando, caminho, cwdSegmento)` usa `corpoDeHeredoc` de `hooks/lib/heredoc.cjs` e reconhece `cat > P <<`, `cat >| P <<` e `tee P <<`; a linha literal do `de:` acima fica no ramo de arquivo ilegível — provado por `bash hooks/testa-gate-fechar-issue.sh` imprimindo os casos novos como ok e `0 falha(s)`
 
 ### 3. gate novo: subagente não instala nem desliga gate [tipo: implementar]
 atende: D5, D6, D7, D8
