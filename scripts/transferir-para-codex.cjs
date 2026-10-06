@@ -7,7 +7,7 @@
  * `thread.started`, e devolve a saída + instrução de retomada `codex resume <thread_id>`.
  *
  * Recusa com exit 3 se a chave `transfer-codex` não está ligada (opt-in, D8).
- * Recusa com exit 2 se o caminho não está dentro de ~/.claude/projects (salvo com RFM_HOME).
+ * Recusa com exit 2 se o caminho não está dentro de ~/.claude/projects ou ~/.claude-personal/projects.
  * Timeout default 540000ms. Suporta RFM_TEST=1 + CODEX_CMD para dublê de teste.
  *
  * Uso: node transferir-para-codex.cjs [--source <arquivo.jsonl>] [--ultimas <n>] [--cwd <dir>] [--timeout-ms <n>] [--help]
@@ -15,9 +15,9 @@
 
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const { rodarCli } = require('../hooks/lib/cli-externo.cjs');
 const { detectarSemCota, detectarSemCotaEmEventos, EXIT_SEM_COTA } = require('../hooks/lib/codex-cota.cjs');
+const { homeDoUsuario, dentroDeProjetos } = require('../hooks/lib/contas-claude.cjs');
 
 /**
  * Processa argumentos CLI.
@@ -72,21 +72,17 @@ function resolverTranscript(opts) {
 }
 
 /**
- * Valida que o caminho está dentro de ~/.claude/projects.
+ * Valida que o caminho está dentro de ~/.claude/projects ou ~/.claude-personal/projects.
  * Permite override de home com RFM_HOME (para testes).
  * @param {string} transcriptPath caminho absoluto resolvido
  */
 function validarCaminhoTranscript(transcriptPath) {
-  const home = process.env.RFM_TEST === '1' && process.env.RFM_HOME
-    ? process.env.RFM_HOME
-    : os.homedir();
+  const home = homeDoUsuario(process.env);
 
-  const claudeProjectsDir = path.resolve(home, '.claude', 'projects');
-  const normalizado = path.resolve(transcriptPath);
-
-  // Verifica se está dentro de .claude/projects
-  if (!normalizado.startsWith(claudeProjectsDir + path.sep) && normalizado !== claudeProjectsDir) {
-    console.error(`erro: transcript deve estar dentro de ${claudeProjectsDir}`);
+  if (!dentroDeProjetos(transcriptPath, home)) {
+    const claudeDir = path.resolve(home, '.claude', 'projects');
+    const pessoalDir = path.resolve(home, '.claude-personal', 'projects');
+    console.error(`erro: transcript deve estar dentro de ${claudeDir} ou ${pessoalDir}`);
     process.exit(2);
   }
 }
