@@ -14,6 +14,23 @@ node scripts/estado.cjs exigir --slug <slug> --estagio revisar
 Recusa (exit 2) se `executar` estiver `parcial` — não existe revisão de
 entrega incompleta; é o próprio estado que barra, não julgamento seu.
 
+## Território
+
+Antes de despachar o revisor:
+
+```
+node scripts/territorio.cjs estagio revisar
+```
+
+`sem territorio` = só o revisor do rainforest. Com território (formato em
+`docs/rainforest/referencia/contrato-territorio.md`):
+
+- `modo: soma` com `agente: <tipo>`: os revisores declarados vão **em paralelo** ao `rainforest-mind:revisor`, na mesma resposta (várias chamadas de `Agent`), com o mesmo escopo por diff e o mesmo briefing sem relato (D4).
+- O veredito binário considera os achados de **todos** os revisores; achado de revisor declarado pesa como o do rainforest.
+- `aviso: ...`: revisor indisponível, segue só o do rainforest; anuncie em uma linha (regra 14, D5). Exit 2 é item obrigatório ausente: pare.
+
+Ao fechar, os revisores despachados vão no `--json`: `"territorio":{"agentes":[{"tipo":"<tipo>"}]}` (D9).
+
 ## Contexto zerado, nunca `fork`
 
 Revisor nasce sem a conversa que produziu a entrega — `Agent` novo, nunca
@@ -290,35 +307,4 @@ reabre o `executar` sem um revisor ter de fato dito `VEREDITO: reprovado`.
 
 ## Segunda opinião (opcional)
 
-Depois que o revisor Claude fecha `ok`, a entrega pode ser submetida a um
-segundo auditor de **família de modelo diferente** (Codex ou Gemini). A
-segunda opinião é um passo **opcional** — liga-se por `--modelo codex` ou
-`--modelo gemini` em `node scripts/segunda-opiniao.cjs`.
-
-Quando ligada, consome:
-
-- `git diff <base>...<head>` (três pontos, o mesmo escopo que `revisar` já fixa
-  acima)
-- O critério falsificável do briefing (arquivo de texto)
-- O commit-base (SHA fornecido)
-
-E devolve:
-
-- Veredito de **uma linha** no stdout, vocabulário fechado: `concordo` ou
-  `discordo`
-- Parecer completo (justificativa) no stderr
-
-**Arbitra sempre a janela.** O modelo externo aconselha, nunca manda. Se
-discordar e a janela rejeitar o parecer, a divergência vai ao log
-(`scripts/segunda-opiniao.cjs registrar-divergencia ...`) com motivo nomeado —
-não desaparece, mas também não trava a entrega.
-
-**Indisponibilidade reprova.** Se o modelo está ligado mas não responde (exit
-≠ 0, stdout vazio, ou timeout), o `segunda-opiniao.cjs` sai com erro — nunca segue
-em silêncio. Use `TIMEOUT_SEGUNDA_OPINIAO_MS` para calibrar timeout (default
-300000 ms = 5 min).
-
-Quando a segunda opinião concorda, a entrega prossegue com endorsement de
-ambos os auditores. Quando discorda e é aceita, o motivo fica registrado e
-visível para que revisões futuras de contexto relacionado saibam por quê a
-aprovação do externo foi descartada.
+Depois do `ok`, um auditor de outra família de modelo (`node scripts/segunda-opiniao.cjs --modelo codex|gemini`) pode opinar; a janela arbitra e indisponibilidade reprova. Detalhe em `references/segunda-opiniao.md`.

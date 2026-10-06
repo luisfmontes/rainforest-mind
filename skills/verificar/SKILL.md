@@ -64,6 +64,23 @@ Exit code do subcomando:
 
 Quando um mutante sobrevive, `marcar verificar ok` recusa com exit 2, imprime a saída acima e não grava o estado — é a mesma forma do `executar` quando a catraca de mutação falha.
 
+## Território
+
+Para cada fonte tocado pela entrega:
+
+```
+node scripts/territorio.cjs estagio verificar --arquivo <fonte>
+```
+
+`sem territorio` = só o critério do plano. Com território (formato em
+`docs/rainforest/referencia/contrato-territorio.md`), rode cada linha
+`comando: <id> <comando resolvido> obrigatorio=<bool>` e leia o exit real,
+sem pipe (seção acima).
+
+- Exit 3 do `territorio.cjs` é variável sem valor em `~/.rainforest/territorios/<nome>.json`: pare e diga qual falta. É config do usuário; não se inventa caminho (D6, D7).
+- Fecha com a evidência de cada comando no `--json`: `"territorio":{"comandos":[{"id":"<id>","comando":"<comando>","saida":"<saida>","exit":0}]}` (D9).
+- Comando obrigatório sem evidência no `--json` = o `marcar` recusa com exit 2 (D5, D9).
+
 ## Fechamento
 
 Todo critério passou:

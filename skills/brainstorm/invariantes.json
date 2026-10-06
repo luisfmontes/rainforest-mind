@@ -1,0 +1,6 @@
+[
+  {
+    "frase": "**você** consulta a tool antes da primeira rodada e usa o resultado como fato",
+    "descricao": "D8, regra 16. Sem ela a consulta ao MCP do território vira pergunta ao usuário, ou não acontece (zero consultas no benchmark)"
+  }
+]

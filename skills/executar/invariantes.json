@@ -6,5 +6,9 @@
   {
     "frase": "nunca é nomeado",
     "descricao": "Regra 10/11: agente que edita sem nome usa worktree isolado. Nome sem worktree é a ilusão de isolamento"
+  },
+  {
+    "frase": "troque o `subagent_type` do despacho pelo agente declarado, mantendo `isolation: \"worktree\"`",
+    "descricao": "D4. Sem ela o agente do território soma sem substituir, ou perde o isolamento que sustenta o paralelo"
   }
 ]

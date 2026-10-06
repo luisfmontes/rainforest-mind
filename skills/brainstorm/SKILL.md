@@ -91,6 +91,26 @@ primeira rodada porque um design já reimplementou uma Issue inteira depois de
 varrer só a `main` (`varri-so-a-main-e-duplique-feature`), e uma sessão apresentou
 o bloco 1 do design sem abrir cinco ideias relevantes.
 
+## Território
+
+Depois do `iniciar`, antes da primeira rodada:
+
+```
+node scripts/territorio.cjs estagio brainstorm
+```
+
+`sem territorio` = o repositório não tem plugin de domínio: siga como sempre.
+Com território (formato do manifesto em `docs/rainforest/referencia/contrato-territorio.md`),
+leia o bloco:
+
+- `mcp: <tool> quem=orquestrador`: **você** consulta a tool antes da primeira rodada e usa o resultado como fato, não como pergunta ao usuário (regra 16, D8).
+- `mcp: <tool> quem=agente`: você **não** consulta; a consulta fica com o agente declarado, e o brainstorm segue sem o resultado. Esse item não entra na evidência do estágio: o `marcar` não a cobra de você, mesmo se obrigatório.
+- `skill: <plugin>:<skill>`: carregue quando o tema tocar nela (D1: o conhecimento mora lá, o mapa só aponta).
+- `aviso: ...`: item indisponível, vale o papel padrão; anuncie em uma linha (regra 14, D5).
+
+Ao fechar o design, o `--json` do `marcar` leva as tools que consultou:
+`"territorio":{"mcp":[{"tool":"<tool>"}]}` (D9).
+
 ## Fato é meu, decisão é dele (regra 16)
 
 Pergunta da fronteira que o ambiente responde — o que tem no arquivo, a
