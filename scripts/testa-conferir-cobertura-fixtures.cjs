@@ -259,6 +259,33 @@ console.log('== 11. lock ilegivel (vazio) sai 69 sem mutar ==');
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
+console.log('== 12. restauracao que falha sai != 0 e mantem o lock ==');
+{
+  // O avaliador trava o fonte (somente leitura) ao ver o mutante: a escrita de
+  // restauração falha, como com arquivo preso por antivírus.
+  const dir = sandbox();
+  fs.writeFileSync(path.join(dir, 'av.cjs'), [
+    'const fs = require("fs"), path = require("path");',
+    'const alvo = path.join(__dirname, "alvo.cjs");',
+    'module.exports = { decide(p) {',
+    '  if (fs.readFileSync(alvo, "utf8").includes("if (false)")) fs.chmodSync(alvo, 0o444);',
+    '  return require(alvo).decide(p);',
+    '} };',
+    '',
+  ].join('\n'));
+  const p = escreverSpec(dir, [MUT_NEGACAO], []);
+  const spec = JSON.parse(fs.readFileSync(p, 'utf8'));
+  spec.avaliar = 'av.cjs#decide';
+  fs.writeFileSync(p, JSON.stringify(spec));
+  const r = rodar(dir, p);
+  const lock = path.join(dir, '.git', 'rainforest-mutacao.lock');
+  caso('exit != 0', r.status !== 0 && r.status !== null, String(r.status));
+  caso('stderr nomeia FONTE NAO RESTAURADO', /FONTE NAO RESTAURADO/.test(r.stderr), r.stderr);
+  caso('LOCK MANTIDO com o fonte mutado', fs.existsSync(lock));
+  try { fs.chmodSync(path.join(dir, 'alvo.cjs'), 0o644); } catch (_) { /* limpeza */ }
+  fs.rmSync(dir, { recursive: true, force: true });
+}
+
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 if (falhou > 0) {
   console.log('BATERIA VERMELHA');

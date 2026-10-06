@@ -455,7 +455,9 @@ function classificar(dir, fantasmas) {
     // So o fim: o espaco inicial de " M arq" e a coluna de status, e o
     // `trim()` o comia — o slice(3) abaixo cortava o caminho e todo rastreado
     // modificado virava "em-uso-recente" para sempre.
-    const porcelain = execFileSync(caminhoExecutavel("git"), ["status", "--porcelain"], {
+    // `core.quotepath=false`: sem ele, nome acentuado sai em octal
+    // ("relat\303\263rio.md"), o stat falha e o worktree fica recente para sempre.
+    const porcelain = execFileSync(caminhoExecutavel("git"), ["-c", "core.quotepath=false", "status", "--porcelain"], {
       cwd: dir,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],

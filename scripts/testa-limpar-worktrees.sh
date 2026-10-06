@@ -1008,6 +1008,18 @@ else
   falhou=$((falhou+1)); echo "  FALHA rastreado apagado nao saiu 'sujo': $saida_s3d"
 fi
 
+# --- CASO (s4): nome acentuado nao rastreado ha 3 h e sujo. Sem
+# core.quotepath=false o porcelain escapa em octal e o stat falha.
+teste "s4" "nao rastreado com acento ha 3 h: sujo, nao em-uso-recente"
+echo "x" > "$wt_s3/relatório.md"
+touch -d "3 hours ago" "$wt_s3/relatório.md"
+saida_s4=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_s3" 2>&1)
+if echo "$saida_s4" | grep -q "sujo" && ! echo "$saida_s4" | grep -q "em-uso-recente"; then
+  ok=$((ok+1)); echo "  ok    nome acentuado ha 3 h e 'sujo'"
+else
+  falhou=$((falhou+1)); echo "  FALHA nome acentuado ha 3 h nao saiu 'sujo': $saida_s4"
+fi
+
 # --- Relatório final
 
 echo ""

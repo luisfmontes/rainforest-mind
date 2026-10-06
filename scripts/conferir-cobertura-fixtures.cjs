@@ -154,11 +154,23 @@ try {
 }
 
 const original = fs.readFileSync(alvoFonte, 'utf8');
+const sha = (t) => require('crypto').createHash('sha256').update(t).digest('hex');
+const shaOriginal = sha(original);
 let restaurado = false;
+// D18: a restauração se confere pelo sha256 do fonte, em todo caminho de saída.
+// Escrita que falha (arquivo travado, sem permissão) deixava o fonte mutado, o
+// lock apagado e a próxima rodada lendo o mutante como "original". Divergindo,
+// o lock FICA — é ele que barra a próxima rodada até alguém olhar a árvore.
 function restaurar() {
   if (restaurado) return;
   restaurado = true;
-  try { fs.writeFileSync(alvoFonte, original); } catch (_) { /* nada a fazer */ }
+  try { fs.writeFileSync(alvoFonte, original); } catch (_) { /* conferido abaixo */ }
+  let atual = null;
+  try { atual = sha(fs.readFileSync(alvoFonte, 'utf8')); } catch (_) { /* conta como divergente */ }
+  if (atual !== shaOriginal) {
+    console.error('FONTE NAO RESTAURADO (sha256 diverge do original: ' + alvoFonte + ') — pare e confira a árvore antes de qualquer commit; o lock fica.');
+    process.exit(2);
+  }
   if (lockMeu && lock) {
     try { fs.unlinkSync(lock); } catch (_) { /* nada a fazer */ }
   }
