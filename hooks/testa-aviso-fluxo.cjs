@@ -186,6 +186,13 @@ casos['segunda edicao de codigo na mesma sessao e silencio'] = function () {
     if (ctx2) {
       throw new Error(`segunda edição: esperado vazio, obtido: ${result2.stdout}`);
     }
+
+    // Verificar que a memória foi gravada em <git-dir>/rainforest-aviso-fluxo.json
+    const gitDirPath = path.join(sandbox, '.git');
+    const memoriaPath = path.join(gitDirPath, 'rainforest-aviso-fluxo.json');
+    if (!fs.existsSync(memoriaPath)) {
+      throw new Error(`memória não gravada em ${memoriaPath}`);
+    }
   } finally {
     limparSandbox(sandbox);
   }
@@ -239,18 +246,13 @@ casos['.md ou arquivo sob docs/ e silencio'] = function () {
 casos['fluxo aberto na branch e silencio'] = function () {
   const sandbox = criarSandbox();
   try {
-    // Criar estado com estágio FECHADO (fluxo completo)
+    // Criar estado com estágio ABERTO casando a branch (fluxo ativo)
     const estado = novoEstadoRainforest('2026-01-01-test');
-    estado.arqueologia.status = 'aprovado';
-    estado.design.status = 'aprovado';
-    estado.plano.status = 'aprovado';
-    estado.executar.status = 'aprovado';
-    estado.revisar.status = 'aprovado';
-    estado.verificar.status = 'aprovado';
-    estado.fechar.status = 'aprovado';
+    // Deixar com estagio pendente (design) para resolver retornar non-null
     gravarEstadoRainforest('2026-01-01-test', sandbox, estado);
 
-    criarBranch(sandbox, 'test');
+    // Criar branch fluxo/test que casa com o slug 'test'
+    criarBranch(sandbox, 'fluxo/test');
     const scriptPath = path.join(sandbox, 'scripts', 'x.cjs');
     fs.mkdirSync(path.dirname(scriptPath), { recursive: true });
     fs.writeFileSync(scriptPath, 'console.log("test");\n', 'utf8');
@@ -299,7 +301,7 @@ casos['agent_id presente e silencio'] = function () {
   }
 };
 
-casos['protheus: aviso nomeando o trilho'] = function () {
+casos['protheus: aviso nomeando o trilho e skill'] = function () {
   const sandbox = criarSandbox();
   try {
     // Criar gates.json protheus com mtime > 24h (para simular fluxo não ativo)
@@ -319,9 +321,9 @@ casos['protheus: aviso nomeando o trilho'] = function () {
     const result = rodarHook(payload, sandbox);
 
     const ctx = extrairAdditionalContext(result.stdout);
-    if (!ctx || !ctx.includes('protheus')) {
+    if (!ctx || !ctx.includes('protheus') || !ctx.includes('/protheus:trabalhar')) {
       throw new Error(
-        `protheus: esperado contexto com "protheus", obtido: ${result.stdout}`
+        `protheus: esperado contexto com "protheus" e "/protheus:trabalhar", obtido: ${result.stdout}`
       );
     }
   } finally {

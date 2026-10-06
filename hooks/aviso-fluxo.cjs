@@ -201,7 +201,7 @@ function main() {
   if (trilho === 'rainforest') {
     aviso = 'Este repositório tem fluxo rainforest e nenhum está aberto nesta sessão. Abra o fluxo com `/rainforest-mind:foco` ou diga ao usuário que pula, e por quê.';
   } else if (trilho === 'protheus') {
-    aviso = 'Este repositório tem trilho protheus configurado. Abra o fluxo com `/protheus:trabalhar` ou diga ao usuário que pula, e por quê.';
+    aviso = 'Este repositório tem fluxo protheus e nenhum está aberto nesta sessão. Abra o fluxo com `/protheus:trabalhar` ou diga ao usuário que pula, e por quê.';
   }
 
   // Truncar em 400 B
