@@ -542,6 +542,510 @@
         "iteracao": 4,
         "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
         "ts": "2026-10-06T18:55:17.987Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "a85f9315343c82bb53d035368d44c8f4bc2fead0",
+        "iteracao": 9,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "a85f9315",
+        "iteracao": 10,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "a85f9315",
+        "iteracao": 5,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "a85f9315",
+        "iteracao": 5,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "a85f9315",
+        "iteracao": 5,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "a85f9315",
+        "iteracao": 5,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "a85f9315",
+        "iteracao": 5,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "a85f9315",
+        "iteracao": 5,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "a85f9315",
+        "iteracao": 5,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "a85f9315",
+        "iteracao": 5,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "a85f9315",
+        "iteracao": 5,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 11,
+        "hash_base": "a85f9315",
+        "iteracao": 5,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "a85f9315",
+        "iteracao": 5,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 13,
+        "hash_base": "a85f9315",
+        "iteracao": 5,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 14,
+        "hash_base": "a85f9315",
+        "iteracao": 5,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 15,
+        "hash_base": "a85f9315",
+        "iteracao": 5,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 16,
+        "hash_base": "a85f9315",
+        "iteracao": 5,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 17,
+        "hash_base": "a85f9315",
+        "iteracao": 5,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "a85f9315343c82bb53d035368d44c8f4bc2fead0",
+        "iteracao": 11,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "a85f9315",
+        "iteracao": 12,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "a85f9315",
+        "iteracao": 6,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "a85f9315",
+        "iteracao": 6,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "a85f9315",
+        "iteracao": 6,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "a85f9315",
+        "iteracao": 6,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "a85f9315",
+        "iteracao": 6,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "a85f9315",
+        "iteracao": 6,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "a85f9315",
+        "iteracao": 6,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "a85f9315",
+        "iteracao": 6,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "a85f9315",
+        "iteracao": 6,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 11,
+        "hash_base": "a85f9315",
+        "iteracao": 6,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "a85f9315",
+        "iteracao": 6,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 13,
+        "hash_base": "a85f9315",
+        "iteracao": 6,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 14,
+        "hash_base": "a85f9315",
+        "iteracao": 6,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 15,
+        "hash_base": "a85f9315",
+        "iteracao": 6,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 16,
+        "hash_base": "a85f9315",
+        "iteracao": 6,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 17,
+        "hash_base": "a85f9315",
+        "iteracao": 6,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "a85f9315343c82bb53d035368d44c8f4bc2fead0",
+        "iteracao": 13,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "a85f9315",
+        "iteracao": 14,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "a85f9315",
+        "iteracao": 7,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "a85f9315",
+        "iteracao": 7,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "a85f9315",
+        "iteracao": 7,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "a85f9315",
+        "iteracao": 7,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "a85f9315",
+        "iteracao": 7,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "a85f9315",
+        "iteracao": 7,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "a85f9315",
+        "iteracao": 7,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "a85f9315",
+        "iteracao": 7,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "a85f9315",
+        "iteracao": 7,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 11,
+        "hash_base": "a85f9315",
+        "iteracao": 7,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "a85f9315",
+        "iteracao": 7,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 13,
+        "hash_base": "a85f9315",
+        "iteracao": 7,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 14,
+        "hash_base": "a85f9315",
+        "iteracao": 7,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 15,
+        "hash_base": "a85f9315",
+        "iteracao": 7,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 16,
+        "hash_base": "a85f9315",
+        "iteracao": 7,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 17,
+        "hash_base": "a85f9315",
+        "iteracao": 7,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "a85f9315343c82bb53d035368d44c8f4bc2fead0",
+        "iteracao": 15,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "a85f9315",
+        "iteracao": 16,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "a85f9315",
+        "iteracao": 8,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "a85f9315",
+        "iteracao": 8,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "a85f9315",
+        "iteracao": 8,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "a85f9315",
+        "iteracao": 8,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "a85f9315",
+        "iteracao": 8,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "a85f9315",
+        "iteracao": 8,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "a85f9315",
+        "iteracao": 8,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "a85f9315",
+        "iteracao": 8,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "a85f9315",
+        "iteracao": 8,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 11,
+        "hash_base": "a85f9315",
+        "iteracao": 8,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "a85f9315",
+        "iteracao": 8,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 13,
+        "hash_base": "a85f9315",
+        "iteracao": 8,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 14,
+        "hash_base": "a85f9315",
+        "iteracao": 8,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 15,
+        "hash_base": "a85f9315",
+        "iteracao": 8,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 16,
+        "hash_base": "a85f9315",
+        "iteracao": 8,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
+      },
+      {
+        "tarefa": 17,
+        "hash_base": "a85f9315",
+        "iteracao": 8,
+        "sessao": "362cf405-4fdc-4132-b3de-8a20a347615a",
+        "ts": "2026-10-06T20:44:55.755Z"
       }
     ],
     "em": "2026-10-06",
@@ -638,13 +1142,14 @@
       "tarefa 15: catraca medida a mao no worktree (copia temporaria pendura o baseline de testa-saude)",
       "snapshot --sujo-antes da onda 1 perdeu-se com o scratchpad apagado no incidente da tarefa 4",
       "revisao 2: gate-subagente-sem-instalar 138 ok (anterior falha 27), catraca T3 vermelha; conferir-cobertura-fixtures 35 ok (anterior falha caso 12), catraca T9 vermelha; limpar-worktrees 54 ok (anterior falha s4), catraca T11 vermelha",
-      "revisao 3: gate-subagente-sem-instalar 142 ok (HEAD anterior falha 4), gate-fechar-issue 273 ok (anterior falha 407-8..10), conferir-cobertura-fixtures 37 ok (anterior falha 2a rodada); catracas T2, T3, T9 vermelhas"
+      "revisao 3: gate-subagente-sem-instalar 142 ok (HEAD anterior falha 4), gate-fechar-issue 273 ok (anterior falha 407-8..10), conferir-cobertura-fixtures 37 ok (anterior falha 2a rodada); catracas T2, T3, T9 vermelhas",
+      "revisao 4: conferir-entrega .cjs e .py 84 ok (anterior falha snapshot de outra arvore), catraca T12 vermelha"
     ]
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "2e882c3af6af560553c6dadf2b157c7b8df27492",
+      "head": "e1b4a629cdc0013838c8c2fbdbe6bdd68373cbcf",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-10-06-zerar-issues-16.json"
       ]
@@ -652,45 +1157,48 @@
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a596bdef7b763cc2b",
-        "veredito": "reprovado",
+        "agente_id": "a3a65468de1c32539",
+        "veredito": "ok",
         "em": "2026-10-06",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/362cf405-4fdc-4132-b3de-8a20a347615a/subagents/agent-a596bdef7b763cc2b.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/362cf405-4fdc-4132-b3de-8a20a347615a/subagents/agent-a3a65468de1c32539.jsonl"
       },
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a8db49ca7a04ea010",
+        "agente_id": "a4f0801b2765a8757",
         "veredito": "reprovado",
         "em": "2026-10-06",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/362cf405-4fdc-4132-b3de-8a20a347615a/subagents/agent-a8db49ca7a04ea010.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/362cf405-4fdc-4132-b3de-8a20a347615a/subagents/agent-a4f0801b2765a8757.jsonl"
       }
     ],
     "em_voo": [
       {
-        "agente": "revisor-hooks-r3",
-        "tarefa": "revisao 3: hooks",
-        "desde": "2026-10-06T16:30:00-03:00"
+        "agente": "revisor-hooks-r4",
+        "tarefa": "revisao 4: hooks",
+        "desde": "2026-10-06T17:40:00-03:00"
       },
       {
-        "agente": "revisor-scripts-r3",
-        "tarefa": "revisao 3: scripts",
-        "desde": "2026-10-06T16:30:00-03:00"
+        "agente": "revisor-scripts-r4",
+        "tarefa": "revisao 4: scripts",
+        "desde": "2026-10-06T17:40:00-03:00"
       }
     ],
     "em": "2026-10-06",
-    "achados": 17,
+    "achados": 13,
     "bloqueantes": [
-      "hooks-r3-1 gate-sem-instalar: redirecionamento colado a alvo citado passa",
-      "scripts-r3-1 conferir-cobertura-fixtures: lock retomado como pid morto na 2a rodada"
+      "scripts-r4-1 conferir-entrega: snapshot de outra arvore saia 1, D24 pede 2"
     ],
-    "tentativas": 3,
-    "liberado_em": "2026-10-06",
+    "tentativas": 4,
     "rodadas_extra": [
       {
         "texto": "Luis: 4a rodada liberada; remocao do .rainforest-gate-off em fluxo proprio apos o PR",
         "em": "2026-10-06"
+      },
+      {
+        "texto": "Luis: 5a rodada liberada; so revisor de scripts, hooks aprovou na 4a",
+        "em": "2026-10-06"
       }
-    ]
+    ],
+    "liberado_em": "2026-10-06"
   },
   "verificar": {
     "status": "pendente"

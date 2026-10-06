@@ -32,3 +32,15 @@ um diff de 61 arquivos.
 Liberar a 4ª rodada de revisão (resposta "recomendado" às Q1/Q2 de
 2026-10-06): remoção do arquivo em fluxo próprio depois do PR; varredura
 completa antes da rodada 4.
+
+## Rodada 4: reprovada por 1 bloqueante
+
+Hooks aprovou. Scripts reprovou: snapshot de outra árvore saía 1 no
+`conferir-entrega`, e o D24 e o `pronto quando:` da tarefa 12 pedem 2.
+Consertado em `e1e68fda` (os dois gêmeos, bateria vermelha contra o anterior,
+catraca da tarefa 12 vermelha).
+
+## Decisão do usuário (rodada 5)
+
+Liberar a 5ª rodada ("recomendado", 2026-10-06): um revisor só de scripts,
+porque hooks aprovou na 4ª e nada em `hooks/` mudou depois dela.
