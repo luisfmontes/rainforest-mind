@@ -95,10 +95,13 @@ function criarDirEstadoVazio(sandbox) {
 
 function rodarHook(payload, cwd) {
   const hookPath = path.join(__dirname, 'aviso-fluxo.cjs');
-  const result = spawnSync('node', [hookPath], {
+  // process.execPath, nunca 'node' cru (#382); RFM_ROOT de caixa para o config
+  // do usuario real nao decidir o caso.
+  const result = spawnSync(process.execPath, [hookPath], {
     input: JSON.stringify(payload),
     encoding: 'utf8',
     cwd,
+    env: { ...process.env, CLAUDE_PROJECT_DIR: cwd, RFM_ROOT: path.join(cwd, '.dados-teste') },
   });
   if (result.status !== 0) {
     throw new Error(`hook saiu ${result.status}, stderr: ${result.stderr}`);
@@ -152,6 +155,26 @@ casos['rainforest sem fluxo aberto: aviso na primeira edicao'] = function () {
       throw new Error(
         `esperado contexto com "fluxo rainforest", obtido: ${result.stdout}`
       );
+    }
+  } finally {
+    limparSandbox(sandbox);
+  }
+};
+
+casos['config aviso-fluxo false e silencio'] = function () {
+  const sandbox = criarSandbox();
+  try {
+    criarDirEstadoVazio(sandbox);
+    criarBranch(sandbox, 'test');
+    fs.mkdirSync(path.join(sandbox, '.rainforest'), { recursive: true });
+    fs.writeFileSync(path.join(sandbox, '.rainforest', 'config.json'), JSON.stringify({ 'aviso-fluxo': false }));
+    const scriptPath = path.join(sandbox, 'scripts', 'x.cjs');
+    fs.mkdirSync(path.dirname(scriptPath), { recursive: true });
+    fs.writeFileSync(scriptPath, 'console.log("test");\n', 'utf8');
+    const payload = { session_id: 'sess-cfg', cwd: sandbox, tool_name: 'Edit', tool_input: { file_path: scriptPath } };
+    const result = rodarHook(payload, sandbox);
+    if (result.stdout.trim() !== '') {
+      throw new Error(`config false: esperado vazio, obtido: ${result.stdout}`);
     }
   } finally {
     limparSandbox(sandbox);

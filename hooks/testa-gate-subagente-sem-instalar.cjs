@@ -271,6 +271,13 @@ const rComEnv = spawnSync(process.execPath, [HOOK], {
 });
 caso("RAINFOREST_GATE_OFF no ambiente não desliga o gate", rComEnv.status, 2);
 
+// === Toggle: a chave do config desliga (e só ela) ===
+r = rodar("npm install x", { config: { "subagente-sem-instalar": false } });
+caso("subagente-sem-instalar false no config do projeto desliga", r.status, 0);
+
+r = rodar("npm install x", { config: { "subagente-sem-instalar": true } });
+caso("subagente-sem-instalar true no config segue negando", r.status, 2);
+
 // === Resultado ===
 
 console.log("");
