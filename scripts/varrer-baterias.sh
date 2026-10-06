@@ -110,37 +110,18 @@ else
 
   baterias=("${de_scripts[@]}" "${de_hooks[@]}" "${de_scripts_cjs[@]}" "${de_hooks_cjs[@]}")
 
-  # --shard: a guarda de piso acima rodou na lista INTEIRA; so depois a lista
-  # encolhe para a fatia. Fatia vazia ou repartidor quebrado e falha, nunca
-  # "0 baterias passaram" verde.
-  if [ -n "$shard" ]; then
-    raiz_script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    total_lista="${#baterias[@]}"
-    if ! fatia=$(printf '%s\n' "${baterias[@]}" | node "$raiz_script/repartir-baterias.cjs" --shard "$shard"); then
-      echo "FALHA a reparticao das baterias falhou (--shard $shard)"
-      exit 1
-    fi
-    baterias=()
-    while IFS= read -r linha; do
-      if [ -n "$linha" ]; then baterias+=("$linha"); fi
-    done <<< "$fatia"
-    if [ "${#baterias[@]}" -lt 1 ]; then
-      echo "FALHA o shard $shard ficou sem baterias (de $total_lista)"
-      exit 1
-    fi
-  fi
-
-  # Conferencia de baterias obrigatorias: sem --so e sem --shard, verifica se
-  # todas as obrigatorias foram descobertas. ANTES de listar ou executar.
-  # Com --shard, cada shard roda independentemente, e nao faz sentido conferir
-  # se todas as obrigatorias globais estao presentes num shard.
+  # Conferencia de baterias obrigatorias (#398): sem --so, cada obrigatoria
+  # tem de estar na lista descoberta INTEIRA — antes da reparticao por shard,
+  # porque o CI so roda com --shard e uma conferencia por fatia nunca rodaria
+  # la. ANTES de listar ou executar.
   arquivo_obrigatorias="${RFM_BATERIAS_OBRIGATORIAS:-scripts/baterias-obrigatorias.txt}"
-  if [ -f "$arquivo_obrigatorias" ] && [ -z "$shard" ]; then
+  if [ -f "$arquivo_obrigatorias" ]; then
     # Ler as obrigatorias (ignorar linhas comentadas e vazias)
     obrigatorias=()
     while IFS= read -r linha; do
       # Remove comentarios e espacos em branco
       linha="${linha%%#*}"
+      linha="${linha%$'\r'}"  # checkout com CRLF
       linha="${linha%% }"
       linha="${linha## }"
       if [ -n "$linha" ]; then
@@ -165,6 +146,27 @@ else
     done
     [ "$faltou" = 1 ] && exit 1
   fi
+
+  # --shard: a guarda de piso acima rodou na lista INTEIRA; so depois a lista
+  # encolhe para a fatia. Fatia vazia ou repartidor quebrado e falha, nunca
+  # "0 baterias passaram" verde.
+  if [ -n "$shard" ]; then
+    raiz_script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    total_lista="${#baterias[@]}"
+    if ! fatia=$(printf '%s\n' "${baterias[@]}" | node "$raiz_script/repartir-baterias.cjs" --shard "$shard"); then
+      echo "FALHA a reparticao das baterias falhou (--shard $shard)"
+      exit 1
+    fi
+    baterias=()
+    while IFS= read -r linha; do
+      if [ -n "$linha" ]; then baterias+=("$linha"); fi
+    done <<< "$fatia"
+    if [ "${#baterias[@]}" -lt 1 ]; then
+      echo "FALHA o shard $shard ficou sem baterias (de $total_lista)"
+      exit 1
+    fi
+  fi
+
 
   if [ "$listar" -eq 1 ]; then
     printf '%s\n' "${baterias[@]}"

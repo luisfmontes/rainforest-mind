@@ -690,6 +690,29 @@ else
   exit 1
 fi
 
+# (r) O CI so roda com --shard: a conferencia vale em cada shard, contra a lista
+# inteira, e a lista com CRLF (checkout no Windows) nao inventa falta.
+echo "=== Teste (r): com --shard e lista CRLF, a obrigatoria ausente ainda sai FALTOU ==="
+obrig_r=$(mktemp)
+SANDBOXES="$SANDBOXES $obrig_r"
+printf 'hooks/testa-nao-existe.sh\r\nhooks/testa-gate-worktree.sh\r\n' > "$obrig_r"
+for s in 1/2 2/2; do
+  saida=$(RFM_BATERIAS_OBRIGATORIAS="$obrig_r" bash "$VARRER" --shard "$s" --listar 2>&1)
+  exitcode=$?
+  if [ $exitcode -ne 1 ] || ! echo "$saida" | grep -q "FALTOU hooks/testa-nao-existe.sh" \
+     || echo "$saida" | grep -q "FALTOU hooks/testa-gate-worktree.sh"; then
+    echo "  FAIL (r): shard $s exit=$exitcode"
+    echo "$saida"
+    exit 1
+  fi
+done
+printf 'hooks/testa-gate-worktree.sh\r\n' > "$obrig_r"
+if ! RFM_BATERIAS_OBRIGATORIAS="$obrig_r" bash "$VARRER" --shard 1/2 --listar >/dev/null 2>&1; then
+  echo "  FAIL (r): lista CRLF so com obrigatoria presente nao saiu 0"
+  exit 1
+fi
+echo "  PASS (r)"
+
 echo ""
 echo "======= TODOS OS TESTES PASSARAM ======="
 exit 0
