@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 "use strict";
+// Fuso fixo (#408): os casos de data local valem igual no CI (UTC) e aqui.
+// Antes de qualquer Date — o Node relê TZ quando ela muda em process.env.
+process.env.TZ = "America/Sao_Paulo";
 /* Bateria da escada de encaixe do bloco de memória (D1–D4 do design
  * 2026-09-26-memoria-encurta.md).
  *
