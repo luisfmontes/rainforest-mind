@@ -127,7 +127,7 @@ else
 fi
 
 echo ""
-echo "== CASO 2: cópia pessoal→trabalho, com pasta <id>/ =="
+echo "== CASO 2: cópia pessoal→trabalho (sem pasta <id>/ na origem) =="
 OUT_2="$RAIZ/out-2.txt"
 ERR_2="$RAIZ/err-2.txt"
 env -u CLAUDE_CODE_SESSION_ID -u CLAUDE_CONFIG_DIR \
@@ -403,6 +403,31 @@ if [ "$exit_13" = "0" ] && [ "$SHA_ANTES_13" = "$SHA_DEPOIS_13" ] && \
 else
   falhou=$((falhou + 1))
   echo "  FALHA caso 13: exit $exit_13, hash antes=$SHA_ANTES_13 depois=$SHA_DEPOIS_13"
+fi
+
+echo ""
+echo "== CASO 14: --forcar com origem sem pasta <id>/ nao deixa a pasta velha do destino =="
+mkdir -p "$RFMHOME/.claude/projects/velha-proj"
+cat > "$RFMHOME/.claude/projects/velha-proj/velha-555.jsonl" << 'JSONEOF'
+{"type":"user","sessionId":"velha-555","cwd":"C:\\proj\\velha","message":{"role":"user","content":"oi"}}
+JSONEOF
+mkdir -p "$RFMHOME/.claude-personal/projects/velha-proj/velha-555"
+echo '{"type":"dummy"}' > "$RFMHOME/.claude-personal/projects/velha-proj/velha-555.jsonl"
+echo "resto antigo" > "$RFMHOME/.claude-personal/projects/velha-proj/velha-555/antigo.txt"
+env -u CLAUDE_CODE_SESSION_ID -u CLAUDE_CONFIG_DIR \
+  RFM_TEST=1 RFM_HOME="$RFMHOME_M" \
+  CLAUDE_CODE_SESSION_ID=velha-555 CLAUDE_CONFIG_DIR="" \
+  node "$SRC/scripts/transferir-entre-contas.cjs" --forcar \
+  > /dev/null 2>&1
+exit_14=$?
+if [ "$exit_14" = "0" ] && \
+   [ ! -e "$RFMHOME/.claude-personal/projects/velha-proj/velha-555/antigo.txt" ] && \
+   cmp -s "$RFMHOME/.claude/projects/velha-proj/velha-555.jsonl" "$RFMHOME/.claude-personal/projects/velha-proj/velha-555.jsonl"; then
+  ok=$((ok + 1))
+  echo "  ok   caso 14: pasta velha removida, .jsonl novo no destino"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 14: exit $exit_14, antigo.txt $([ -e "$RFMHOME/.claude-personal/projects/velha-proj/velha-555/antigo.txt" ] && echo SOBROU || echo removido)"
 fi
 
 echo ""

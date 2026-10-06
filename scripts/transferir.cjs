@@ -56,8 +56,14 @@ function main() {
     cwd: process.cwd(),
   });
 
-  // Repassar exit code do filho
-  process.exit(resultado.status || 0);
+  // Repassar exit code do filho. status null = o filho nao terminou por conta
+  // propria (morto por sinal, ou nem subiu): isso nunca e sucesso.
+  if (resultado.status === null) {
+    const motivo = resultado.error ? resultado.error.message : `sinal ${resultado.signal}`;
+    console.error(`erro: o script de transferencia nao terminou (${motivo})`);
+    process.exit(1);
+  }
+  process.exit(resultado.status);
 }
 
 main();

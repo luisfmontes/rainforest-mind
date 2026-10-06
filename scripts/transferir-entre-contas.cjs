@@ -3,8 +3,8 @@
  * Transferência de sessão Claude Code entre contas (trabalho ↔ pessoal).
  *
  * Copia <id>.jsonl (transcript) e a pasta <id>/ inteira para a outra conta.
- * Imprime a linha pronta para retomada: `cd "<cwd>" && claude --resume <id>`
- * (com `CLAUDE_CONFIG_DIR` quando destino é pessoal).
+ * Imprime duas linhas para a retomada: `cd "<cwd>"` e `claude --resume <id>`
+ * (esta com `CLAUDE_CONFIG_DIR="..."` na frente quando o destino é a pessoal).
  *
  * Exit codes:
  *   0: sucesso
@@ -211,18 +211,19 @@ Opcionais:
     process.exit(1);
   }
 
-  // 9. Copia pasta <id>/ se existir
-  if (fs.existsSync(srcIdDir)) {
-    try {
-      // Se destIdDir existe, remove para fazer o override correto
-      if (fs.existsSync(destIdDir)) {
-        fs.rmSync(destIdDir, { recursive: true, force: true });
-      }
-      fs.cpSync(srcIdDir, destIdDir, { recursive: true });
-    } catch (e) {
-      console.error(`erro: não consegui copiar pasta ${sessionId}/: ${e.message}`);
-      process.exit(1);
+  // 9. Pasta <id>/: se ainda existe no destino aqui, é --forcar (sem ele saiu exit 4
+  // acima). Ela sai antes, exista ou não a da origem, para não sobrar resto da
+  // versão antiga da sessão ao lado do .jsonl novo.
+  try {
+    if (fs.existsSync(destIdDir)) {
+      fs.rmSync(destIdDir, { recursive: true, force: true });
     }
+    if (fs.existsSync(srcIdDir)) {
+      fs.cpSync(srcIdDir, destIdDir, { recursive: true });
+    }
+  } catch (e) {
+    console.error(`erro: não consegui copiar pasta ${sessionId}/: ${e.message}`);
+    process.exit(1);
   }
 
   // 10. Imprime resultado
