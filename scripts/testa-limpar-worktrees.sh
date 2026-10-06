@@ -83,6 +83,8 @@ git worktree add "$wt_b_real" HEAD
 
 cd "$wt_b_real"
 echo "sujeira" > arquivo_sujo.txt
+# D21: arquivo antigo (> 10 min) é sujo, não em-uso-recente
+touch -d "20 minutes ago" arquivo_sujo.txt
 
 # Lista com limpar-worktrees
 saida_b=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_b" 2>&1)
@@ -372,6 +374,8 @@ wt_h_real="$work_h-worktrees/wt-h"
 git worktree add "$wt_h_real" HEAD
 mkdir -p "$wt_h_real/logs"
 echo "log de verdade, nao rastreado" > "$wt_h_real/logs/app.log"
+# D21: arquivo antigo (> 10 min) é sujo, não em-uso-recente
+touch -d "20 minutes ago" "$wt_h_real/logs/app.log" "$wt_h_real/logs"
 
 saida_h=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_h" 2>&1)
 if echo "$saida_h" | grep -q "sujo"; then
@@ -405,6 +409,8 @@ criarRepoComCommit "$repo_i" "$work_i"
 wt_i_real="$work_i-worktrees/wt-i"
 git worktree add "$wt_i_real" HEAD
 echo "arquivo de usuario, nao rastreado" > "$wt_i_real/index"
+# D21: arquivo antigo (> 10 min) é sujo, não em-uso-recente
+touch -d "20 minutes ago" "$wt_i_real/index"
 
 saida_i=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_i" 2>&1)
 if echo "$saida_i" | grep -q "sujo"; then
@@ -670,6 +676,8 @@ wt_o_real="$work_o-worktrees/wt-o"
 git worktree add "$wt_o_real" HEAD
 cd "$wt_o_real"
 echo "sujeira" > arquivo_o.txt
+# D21: arquivo antigo (> 10 min) é sujo, não em-uso-recente
+touch -d "20 minutes ago" arquivo_o.txt
 cd "$work_o"
 
 # (o1) --remover (sem -sujo) continua NUNCA removendo sujo — comportamento de hoje
@@ -860,6 +868,115 @@ if [ -z "$lista_q" ]; then
 else
   falhou=$((falhou+1)); echo "  FALHA worktree com sessao antiga nao foi removido"
   echo "        Lista: $lista_q"
+fi
+
+# --- CASO (r): worktree fica sujo entre a listagem e a remocao: nao remove
+
+teste "r" "worktree fica sujo entre a listagem e a remocao: nao remove"
+
+repo_r="$SB/repo_r"
+work_r="$SB/trabalho_r"
+criarRepoComCommit "$repo_r" "$work_r"
+
+wt_r_real="$work_r-worktrees/wt-r"
+git worktree add "$wt_r_real" HEAD
+# D20: worktree começa limpo
+
+# RFM_LIMPAR_APOS_LISTAR escreve um arquivo no worktree entre a classificação e a remoção
+RFM_LIMPAR_APOS_LISTAR="echo 'mudou depois' > '$wt_r_real/arquivo-novo.txt'" \
+  node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_r" --remover > /tmp/saida_r.txt 2>&1
+
+saida_r=$(cat /tmp/saida_r.txt)
+
+# Verifica que a mensagem de mudança aparece
+if echo "$saida_r" | grep -qF "mudou desde a listagem"; then
+  ok=$((ok+1)); echo "  ok    mensagem 'mudou desde a listagem' aparece na saída"
+else
+  falhou=$((falhou+1)); echo "  FALHA mensagem 'mudou desde a listagem' não aparece"
+  echo "        Saída: $saida_r"
+fi
+
+# Verifica que o worktree NÃO foi removido
+lista_r=$(git worktree list --porcelain | grep -F "wt-r" || true)
+if [ -n "$lista_r" ]; then
+  ok=$((ok+1)); echo "  ok    worktree não foi removido (mudou durante a operação)"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree foi removido (não deveria)"
+fi
+
+# Verifica que o arquivo criado por RFM_LIMPAR_APOS_LISTAR ainda está lá
+if [ -f "$wt_r_real/arquivo-novo.txt" ]; then
+  ok=$((ok+1)); echo "  ok    arquivo criado por RFM_LIMPAR_APOS_LISTAR está presente"
+else
+  falhou=$((falhou+1)); echo "  FALHA arquivo criado por RFM_LIMPAR_APOS_LISTAR desapareceu"
+fi
+
+# --- CASO (s): arquivo modificado há 2 min é em-uso-recente, não é removido
+
+teste "s" "worktree com arquivo modificado há 2 min é em-uso-recente (não removível)"
+
+repo_s="$SB/repo_s"
+work_s="$SB/trabalho_s"
+criarRepoComCommit "$repo_s" "$work_s"
+
+wt_s_real="$work_s-worktrees/wt-s"
+git worktree add "$wt_s_real" HEAD
+cd "$wt_s_real"
+echo "sujeira recente" > arquivo_s.txt
+cd "$work_s"
+
+# Touch do arquivo para 2 minutos atrás (recente demais para remover)
+touch -d "2 minutes ago" "$wt_s_real/arquivo_s.txt"
+
+# Verifica que aparece como em-uso-recente
+saida_s=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_s" 2>&1)
+if echo "$saida_s" | grep -q "em-uso-recente"; then
+  ok=$((ok+1)); echo "  ok    worktree com arquivo há 2 min é 'em-uso-recente'"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree com arquivo há 2 min não apareceu como 'em-uso-recente'"
+  echo "        Saída: $saida_s"
+fi
+
+# --remover não deve remover worktree em-uso-recente
+node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_s" --remover >/dev/null 2>&1
+lista_s=$(git worktree list --porcelain | grep -F "wt-s" || true)
+if [ -n "$lista_s" ]; then
+  ok=$((ok+1)); echo "  ok    worktree em-uso-recente não foi removido com --remover"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree em-uso-recente foi removido (não deveria)"
+fi
+
+# --- CASO (s2): arquivo modificado há 20 min é sujo (não em-uso-recente), não é removido de qualquer forma
+
+teste "s2" "worktree com arquivo modificado há 20 min é sujo (não em-uso-recente)"
+
+repo_s2="$SB/repo_s2"
+work_s2="$SB/trabalho_s2"
+criarRepoComCommit "$repo_s2" "$work_s2"
+
+wt_s2_real="$work_s2-worktrees/wt-s2"
+git worktree add "$wt_s2_real" HEAD
+cd "$wt_s2_real"
+echo "sujeira antiga" > arquivo_s2.txt
+cd "$work_s2"
+
+# Touch do arquivo para 20 minutos atrás (antigo demais para em-uso-recente)
+touch -d "20 minutes ago" "$wt_s2_real/arquivo_s2.txt"
+
+# Verifica que aparece como sujo (não em-uso-recente)
+saida_s2=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_s2" 2>&1)
+if echo "$saida_s2" | grep -q "sujo"; then
+  ok=$((ok+1)); echo "  ok    worktree com arquivo há 20 min é 'sujo'"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree com arquivo há 20 min não apareceu como 'sujo'"
+  echo "        Saída: $saida_s2"
+fi
+
+if echo "$saida_s2" | grep -q "em-uso-recente"; then
+  falhou=$((falhou+1)); echo "  FALHA worktree com arquivo há 20 min apareceu como 'em-uso-recente'"
+  echo "        Saída: $saida_s2"
+else
+  ok=$((ok+1)); echo "  ok    não é classificado como 'em-uso-recente'"
 fi
 
 # --- Relatório final

@@ -33,6 +33,7 @@ const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib',
 const { toplevelConfinado } = require("../hooks/lib/cwd-efetivo.cjs");
 const { resolver } = require("../hooks/lib/estagio-ativo.cjs");
 const { resolverRaiz: resolverRaizDados } = require("../hooks/lib/raiz.cjs");
+const { proximo } = require("./estado.cjs");
 
 /**
  * O worktree tem agente registrado em voo?
@@ -45,6 +46,9 @@ const { resolverRaiz: resolverRaizDados } = require("../hooks/lib/raiz.cjs");
  *
  * Devolve `null` quando não há fluxo aberto, quando o estado é ilegível, ou
  * quando `em_voo` está vazio — nenhum desses casos segura a remoção.
+ *
+ * D22: se a base (origin/main) diz que o fluxo está concluído (proximo === null),
+ * o em_voo da branch não segura a remoção e imprime a mensagem.
  */
 function agentesEmVoo(dir) {
   try {
@@ -56,7 +60,26 @@ function agentesEmVoo(dir) {
     const voo = bloco && typeof bloco === "object" && Array.isArray(bloco.em_voo)
       ? bloco.em_voo.filter((a) => a && typeof a === "object" && a.agente)
       : [];
-    return voo.length ? { slug: ativo.slug, estagio: ativo.estagio, voo } : null;
+
+    if (!voo.length) return null;
+
+    // D22: verifica a base para saber se o fluxo já foi concluído lá
+    try {
+      const saida = execFileSync(caminhoExecutavel("git"),
+        ["show", `origin/main:docs/rainforest/estado/${ativo.slug}.json`],
+        { cwd: dir, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }
+      );
+      const estadoBase = JSON.parse(saida);
+      if (proximo(estadoBase) === null) {
+        // Fluxo concluído na base, não segura a remoção
+        console.log(`pulando: fluxo concluido na base`);
+        return null;
+      }
+    } catch {
+      // Não conseguiu ler da base, segue com a informação que tem
+    }
+
+    return { slug: ativo.slug, estagio: ativo.estagio, voo };
   } catch {
     return null;
   }
@@ -453,10 +476,41 @@ function classificar(dir, fantasmas) {
         detalhes: "",
       };
     } else {
-      return {
-        status: "sujo",
-        detalhes: `${linhas.length} alterações`,
-      };
+      // D21: worktree com arquivo modificado há menos de 10 min é em-uso-recente
+      let mtempoMax = 0;
+      for (const linha of linhas) {
+        // Extrai o caminho do arquivo (ignore status de 2 chars no início)
+        let caminho = linha.slice(3);
+        // Se tem " -> " é rename: pega o lado direito
+        if (caminho.includes(" -> ")) {
+          caminho = caminho.split(" -> ")[1];
+        }
+        // Remove aspas se houver
+        caminho = caminho.replace(/^"(.+)"$/, "$1");
+        // Remove / final se for diretório
+        caminho = caminho.replace(/\/$/, "");
+
+        try {
+          const stat = fs.statSync(path.join(dir, caminho));
+          mtempoMax = Math.max(mtempoMax, stat.mtimeMs);
+        } catch {
+          // Arquivo que não consegue stat conta como recente (não quer dizer)
+          mtempoMax = Date.now();
+        }
+      }
+
+      const minutosAtras = (Date.now() - mtempoMax) / (1000 * 60);
+      if (minutosAtras < 10) {
+        return {
+          status: "em-uso-recente",
+          detalhes: `${linhas.length} alteração(ões), modificada(s) há ${Math.round(minutosAtras)} min`,
+        };
+      } else {
+        return {
+          status: "sujo",
+          detalhes: `${linhas.length} alterações`,
+        };
+      }
     }
   } catch {
     return {
@@ -464,6 +518,60 @@ function classificar(dir, fantasmas) {
       detalhes: "não consegui ler status",
     };
   }
+}
+
+/**
+ * Revalida um item imediatamente antes da remoção.
+ * Reclassifica e compara com a classificação anterior.
+ * Devolve { mudou: bool, motivo: string }
+ */
+function revalidar(item) {
+  const statusAnterior = item.classificacao.status;
+
+  // Fantasma-travado: confere se o diretório reapareceu
+  if (statusAnterior === "fantasma-travado") {
+    if (fs.existsSync(item.caminhoOriginal)) {
+      return {
+        mudou: true,
+        motivo: "era 'fantasma-travado', diretório reapareceu",
+      };
+    }
+    // Continua fantasma-travado, pode remover
+    return { mudou: false, motivo: "" };
+  }
+
+  // Para outras classes, reclassifica
+  const fantasmas = new Map(); // Não precisa atualizar, aqui só reclassifica
+  let novaClassificacao = classificar(item.caminhoOriginal, fantasmas);
+  // Normaliza string em objeto
+  if (typeof novaClassificacao === "string") {
+    novaClassificacao = {
+      status: novaClassificacao,
+      detalhes: "sessão viva está usando este worktree",
+    };
+  }
+
+  if (novaClassificacao.status !== statusAnterior) {
+    return {
+      mudou: true,
+      motivo: `era '${statusAnterior}', agora '${novaClassificacao.status}'`,
+    };
+  }
+
+  return { mudou: false, motivo: "" };
+}
+
+/**
+ * Pula a remoção se o item mudou desde a listagem inicial.
+ * Imprime mensagem e retorna true se deve pular.
+ */
+function pularSeMudou(item) {
+  const agora = revalidar(item);
+  if (agora.mudou) {
+    console.log(`pulando ${item.caminho}: mudou desde a listagem: ${agora.motivo}`);
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -536,6 +644,11 @@ function executarRemocao(raiz, dadosLimpos) {
           `  node scripts/estado.cjs marcar --slug ${emVoo.slug} ` +
           `--estagio ${emVoo.estagio} --status parcial --json '{"em_voo":[]}'`
       );
+      continue;
+    }
+
+    // D20: revalida no instante antes de remover
+    if (pularSeMudou(item)) {
       continue;
     }
 
@@ -664,6 +777,21 @@ function main() {
   // Imprime tabela
   imprimirTabela(dados);
 
+  // RFM_LIMPAR_APOS_LISTAR: comando para teste que roda entre classificação e remoção
+  const cmdAposListar = process.env.RFM_LIMPAR_APOS_LISTAR;
+  if (cmdAposListar) {
+    const resultado = spawnSync(caminhoExecutavel("bash"), ["-c", cmdAposListar], {
+      cwd: raiz,
+      encoding: "utf8",
+    });
+    if (resultado.status !== 0) {
+      console.error(`aviso: RFM_LIMPAR_APOS_LISTAR falhou com exit ${resultado.status}`);
+      if (resultado.stderr) {
+        console.error(`  stderr: ${resultado.stderr}`);
+      }
+    }
+  }
+
   // Se --remover, remove os limpos e fantasmas-travados — "sujo" NUNCA entra
   // aqui, com ou sem --confirmo. Só --remover-sujo alcança "sujo".
   if (remover) {
@@ -724,6 +852,11 @@ function main() {
         `pulando ${item.caminho}: o estágio '${emVoo.estagio}' do fluxo ` +
           `'${emVoo.slug}' tem ${emVoo.voo.length} agente(s) em voo (${nomes})`
       );
+      process.exit(1);
+    }
+
+    // D20: revalida no instante antes de remover
+    if (pularSeMudou(item)) {
       process.exit(1);
     }
 
