@@ -612,6 +612,84 @@ else
   exit 1
 fi
 
+# (q) Conferencia de baterias obrigatorias: uma ausente sai FALTOU e exit 1
+echo "=== Teste (q): obrigatoria ausente sai FALTOU e exit 1 ==="
+sandbox_q=$(mktemp -d)
+SANDBOXES="$SANDBOXES $sandbox_q"
+mkdir -p "$sandbox_q/scripts" "$sandbox_q/hooks"
+
+# Criar 15 baterias verdes em scripts/ (o piso de la)
+for i in $(seq 1 15); do
+  cat > "$sandbox_q/scripts/testa-verde-$i.sh" << 'EOF'
+#!/bin/bash
+exit 0
+EOF
+  chmod +x "$sandbox_q/scripts/testa-verde-$i.sh"
+done
+
+# Piso minimo de scripts/.cjs (1)
+cat > "$sandbox_q/scripts/testa-cjs-verde-1.cjs" << 'EOF'
+#!/usr/bin/env node
+process.exit(0);
+EOF
+chmod +x "$sandbox_q/scripts/testa-cjs-verde-1.cjs"
+
+# Piso proprio de hooks/.sh (5) — incluindo uma que sera obrigatoria
+for i in $(seq 1 5); do
+  cat > "$sandbox_q/hooks/testa-hook-verde-$i.sh" << 'EOF'
+#!/bin/bash
+exit 0
+EOF
+  chmod +x "$sandbox_q/hooks/testa-hook-verde-$i.sh"
+done
+
+# Uma bateria especifica que sera exigida como obrigatoria
+cat > "$sandbox_q/hooks/testa-gate-worktree.sh" << 'EOF'
+#!/bin/bash
+exit 0
+EOF
+chmod +x "$sandbox_q/hooks/testa-gate-worktree.sh"
+
+# Piso minimo de hooks/.cjs (10)
+for i in $(seq 1 10); do
+  cat > "$sandbox_q/hooks/testa-hook-cjs-verde-$i.cjs" << 'EOF'
+#!/usr/bin/env node
+process.exit(0);
+EOF
+  chmod +x "$sandbox_q/hooks/testa-hook-cjs-verde-$i.cjs"
+done
+
+# Criar arquivo de obrigatorias: uma que nao existe, outra que existe
+obrig_q=$(mktemp)
+SANDBOXES="$SANDBOXES $obrig_q"
+cat > "$obrig_q" << 'EOF'
+# Lista de obrigatorias para teste
+hooks/testa-nao-existe.sh
+hooks/testa-gate-worktree.sh
+EOF
+
+cd "$sandbox_q"
+saida=$(RFM_BATERIAS_OBRIGATORIAS="$obrig_q" bash "$VARRER" --listar 2>&1)
+exitcode=$?
+if [ $exitcode -ne 1 ]; then
+  echo "  FAIL (q): exit code $exitcode em vez de 1"
+  echo "$saida"
+  exit 1
+fi
+if echo "$saida" | grep -q "FALTOU hooks/testa-nao-existe.sh"; then
+  if ! echo "$saida" | grep -q "FALTOU hooks/testa-gate-worktree.sh"; then
+    echo "  PASS (q)"
+  else
+    echo "  FAIL (q): nao deveria faltar hooks/testa-gate-worktree.sh"
+    echo "$saida"
+    exit 1
+  fi
+else
+  echo "  FAIL (q): nao encontrou 'FALTOU hooks/testa-nao-existe.sh'"
+  echo "$saida"
+  exit 1
+fi
+
 echo ""
 echo "======= TODOS OS TESTES PASSARAM ======="
 exit 0

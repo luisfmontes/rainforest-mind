@@ -130,6 +130,42 @@ else
     fi
   fi
 
+  # Conferencia de baterias obrigatorias: sem --so e sem --shard, verifica se
+  # todas as obrigatorias foram descobertas. ANTES de listar ou executar.
+  # Com --shard, cada shard roda independentemente, e nao faz sentido conferir
+  # se todas as obrigatorias globais estao presentes num shard.
+  arquivo_obrigatorias="${RFM_BATERIAS_OBRIGATORIAS:-scripts/baterias-obrigatorias.txt}"
+  if [ -f "$arquivo_obrigatorias" ] && [ -z "$shard" ]; then
+    # Ler as obrigatorias (ignorar linhas comentadas e vazias)
+    obrigatorias=()
+    while IFS= read -r linha; do
+      # Remove comentarios e espacos em branco
+      linha="${linha%%#*}"
+      linha="${linha%% }"
+      linha="${linha## }"
+      if [ -n "$linha" ]; then
+        obrigatorias+=("$linha")
+      fi
+    done < "$arquivo_obrigatorias"
+
+    # Conferir que cada obrigatoria esta na lista descoberta
+    faltou=0
+    for obrigatoria in "${obrigatorias[@]}"; do
+      encontrada=0
+      for bateria in "${baterias[@]}"; do
+        if [ "$bateria" = "$obrigatoria" ]; then
+          encontrada=1
+          break
+        fi
+      done
+      if [ $encontrada -eq 0 ]; then
+        echo "FALTOU $obrigatoria"
+        faltou=1
+      fi
+    done
+    [ "$faltou" = 1 ] && exit 1
+  fi
+
   if [ "$listar" -eq 1 ]; then
     printf '%s\n' "${baterias[@]}"
     exit 0

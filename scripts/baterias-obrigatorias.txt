@@ -1,0 +1,26 @@
+# Baterias obrigatorias do repositorio
+# Uma por linha; # comeca comentario
+# Lido por varrer-baterias.sh ou apontado por RFM_BATERIAS_OBRIGATORIAS
+
+# Gates: testes das barreiras
+hooks/testa-gate-agente-em-voo.sh
+hooks/testa-gate-bateria-sem-timeout.cjs
+hooks/testa-gate-busca-raiz.cjs
+hooks/testa-gate-commit.cjs
+hooks/testa-gate-fechar-issue.sh
+hooks/testa-gate-git-verificacao.sh
+hooks/testa-gate-mensagem-commit.sh
+hooks/testa-gate-publicacao-destino.sh
+hooks/testa-gate-repo-alheio.sh
+hooks/testa-gate-review-codex.sh
+hooks/testa-gate-staging-total.sh
+hooks/testa-gate-subagente-sem-gh.cjs
+hooks/testa-gate-turno-prometido.cjs
+hooks/testa-gate-verificador-staged.sh
+hooks/testa-gate-worktree.sh
+
+# Conferencias
+scripts/testa-estado.sh
+scripts/testa-conferir-fluxo.sh
+scripts/testa-conferir-mutacao.sh
+scripts/testa-conferir-entrega.sh
