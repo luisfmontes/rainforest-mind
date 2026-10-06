@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: guia
 /**
  * Aviso de fluxo no primeiro Edit de código da sessão.
  *

@@ -367,11 +367,12 @@ exige 69 "bateria com comando inexistente sai 69 nao-verificavel" \
 tem "stderr comeca por nao-verificavel" "nao-verificavel: bateria nao executa"
 
 # Caso 17 (D17): o bash que vence o PATH e o lancador do WSL (System32). Um
-# `bash.exe` de mentira numa pasta `System32` de caixa, na frente do PATH, faz
+# `bash.exe` de mentira numa pasta `System32` dentro da caixa $S (o trap a
+# apaga), na frente do PATH, faz
 # `caminhoExecutavel('bash')` resolver para ele; a catraca recusa com 69 antes
 # de rodar a bateria. So no Windows (o lancador so existe la).
 if [ "$(node -p process.platform)" = "win32" ]; then
-  WSLFALSO="$(mktemp -d)/System32"; mkdir -p "$WSLFALSO"; : > "$WSLFALSO/bash.exe"
+  WSLFALSO="$S/wsl/System32"; mkdir -p "$WSLFALSO"; : > "$WSLFALSO/bash.exe"
   exige 69 "bash resolvido em System32 (WSL) sai 69" \
     env PATH="$WSLFALSO:$PATH" node "$SCRIPT" --raiz "$WCAIXA" --arquivo fonte.cjs \
       --de 'process.exit(2);' --para 'process.exit(0);' --bateria 'bash bateria.sh'
