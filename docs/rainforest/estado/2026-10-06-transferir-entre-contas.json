@@ -20,7 +20,72 @@
     "em": "2026-10-06"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-10-06",
+    "tarefas_ok": 4,
+    "tarefas": 4,
+    "em": "2026-10-06",
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "db3abce9",
+        "iteracao": 1,
+        "sessao": "bd14331a-3b60-4795-8ac0-a0e2de151749",
+        "ts": "2026-10-06T22:57:09.894Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "db3abce9",
+        "iteracao": 2,
+        "sessao": "bd14331a-3b60-4795-8ac0-a0e2de151749",
+        "ts": "2026-10-06T23:04:57.225Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "32baf344",
+        "iteracao": 1,
+        "sessao": "bd14331a-3b60-4795-8ac0-a0e2de151749",
+        "ts": "2026-10-06T23:04:57.225Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "32baf344",
+        "iteracao": 1,
+        "sessao": "bd14331a-3b60-4795-8ac0-a0e2de151749",
+        "ts": "2026-10-06T23:04:57.225Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "19078e5e",
+        "iteracao": 1,
+        "sessao": "bd14331a-3b60-4795-8ac0-a0e2de151749",
+        "ts": "2026-10-06T23:04:57.225Z"
+      }
+    ],
+    "comando": "bash scripts/testa-transferir-entre-contas.sh; bash scripts/testa-transferir-para-codex.sh; bash scripts/testa-transferir.sh",
+    "saida": "resultado: 11 ok, 0 falha(s) | resultado: 13 ok, 0 falha(s) | Resultados: 5 passaram, 0 falharam",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-transferir-entre-contas.sh caso 4"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-transferir-para-codex.sh caso 11"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-transferir.sh casos 1 e 2"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "so texto e numero de versao"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
