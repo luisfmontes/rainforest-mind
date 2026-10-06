@@ -2842,6 +2842,17 @@ EXIT_405c=$(
 )
 [ "$EXIT_405c" -eq "0" ] && test_ok "(#405-3) bash \"scripts/\$b.sh\" → exit 0" || test_fail "(#405-3) bash \"scripts/\$b.sh\" saiu $EXIT_405c (esperado 0)"
 
+# Caso de integração: gate-subagente-sem-gh com agent_id e bash scripts/$b.sh
+# O gate-fechar-issue passa scriptComVariavel: 'desconhecido', mas gate-subagente-sem-gh
+# não passa a opção, então continua barrando script com variável
+PAYLOAD_405_SEM_GH=$(node -e 'const [cwd,cmd,id]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,agent_id:id,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" 'bash scripts/$b.sh' 'agent-xyz')
+EXIT_405_SEM_GH=$(
+  export PATH="$SBP/bin:$PATH"
+  echo "$PAYLOAD_405_SEM_GH" | node "$SRC/hooks/gate-subagente-sem-gh.cjs" >/dev/null 2>&1
+  echo $?
+)
+[ "$EXIT_405_SEM_GH" -eq "2" ] && test_ok "(#405 integração) gate-subagente-sem-gh com agent_id e bash scripts/\$b.sh sai 2" || test_fail "(#405 integração) gate-subagente-sem-gh com agent_id e bash scripts/\$b.sh saiu $EXIT_405_SEM_GH (esperado 2)"
+
 # (#362) laco com bash $b sem aspas → exit 2 citando injetar -c
 echo
 echo '== (#362) laco com bash $b sem aspas → exit 2 citando injetar -c =='
