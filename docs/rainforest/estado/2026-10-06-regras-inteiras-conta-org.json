@@ -22,13 +22,13 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-06",
-    "tarefas_ok": 1,
+    "tarefas_ok": 2,
     "tarefas": 4,
     "em_voo": [
       {
         "agente": "executor",
-        "tarefa": "1: append condicionado ao sec-default",
-        "desde": "2026-10-06T19:55"
+        "tarefa": "3: medicao real nas duas contas",
+        "desde": "2026-10-06T20:40"
       }
     ],
     "carimbos": [
@@ -52,11 +52,54 @@
         "iteracao": 3,
         "sessao": "42fa8a5e-dc19-4a78-b86e-05d10364fd47",
         "ts": "2026-10-06T22:57:47.613Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "a85f9315343c82bb53d035368d44c8f4bc2fead0",
+        "iteracao": 4,
+        "sessao": "42fa8a5e-dc19-4a78-b86e-05d10364fd47",
+        "ts": "2026-10-06T22:58:03.425Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "6ad99de439d9a950154150712b8d47077fd92f65",
+        "iteracao": 1,
+        "sessao": "42fa8a5e-dc19-4a78-b86e-05d10364fd47",
+        "ts": "2026-10-06T22:58:03.425Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "a85f9315343c82bb53d035368d44c8f4bc2fead0",
+        "iteracao": 5,
+        "sessao": "42fa8a5e-dc19-4a78-b86e-05d10364fd47",
+        "ts": "2026-10-06T23:13:28.863Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "6ad99de439d9a950154150712b8d47077fd92f65",
+        "iteracao": 1,
+        "sessao": "42fa8a5e-dc19-4a78-b86e-05d10364fd47",
+        "ts": "2026-10-06T23:13:28.863Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "a85f9315343c82bb53d035368d44c8f4bc2fead0",
+        "iteracao": 6,
+        "sessao": "42fa8a5e-dc19-4a78-b86e-05d10364fd47",
+        "ts": "2026-10-06T23:33:20.354Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "f1565ba11b4da325ea40a0fb35e13d6d304e70fd",
+        "iteracao": 2,
+        "sessao": "42fa8a5e-dc19-4a78-b86e-05d10364fd47",
+        "ts": "2026-10-06T23:33:20.354Z"
       }
     ],
     "em": "2026-10-06",
     "pendentes": [
-      "pausa: alerta de security review (contorno do sec-default) aguardando decisao do usuario"
+      "tarefa-2: claude-code/testing nao intercepta session.append vindo de plugin (decisao do usuario: n/a?)",
+      "tarefa-4: /clear e /compact no REPL, feito pelo usuario"
     ]
   },
   "revisar": {
