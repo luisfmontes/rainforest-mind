@@ -65,6 +65,7 @@ Cada tarefa leva: **tipo**, `atende:` (lista de `D<n>` do design que esta tarefa
 - **`atende:` vazio é recusa**: tarefa sem `atende:`, ou com `atende:` vazio, não entra no plano — se não atende nenhuma decisão, ela não deveria estar aqui.
 - **`arquivos:` sem glob largo**: declare caminhos concretos ou padrões específicos. Glob largo como `hooks/**` não descreve o que você toca — é achado do `revisar`, não atalho. **`arquivos:` nomeia arquivos que a tarefa toca, não pastas**: `skills/executar/SKILL.md`, não `skills/**`; `scripts/conferir-entrega.cjs` e `scripts/conferir-entrega.py`, não `scripts/**`. Arquivo por arquivo.
 - **Cobertura nos dois sentidos**: decisão do design sem tarefa barra o plano, e tarefa citando `D<n>` inexistente também barra.
+- **O que o `executar` não consome, a `cobertura` recusa** (#397): `paralela: sim` com `depende de` ≠ `nenhuma`; duas paralelas com caminho em comum em `arquivos:` (glob que casa o literal da outra conta); `tipo` fora do vocabulário acima; chave desconhecida antes do `pronto quando:`; `arquivos:` absoluto ou com `..`; `de:` que casa mais de uma vez no `arquivo:` (zero só avisa: é o código a nascer).
 
 ### Campo obrigatório: `prova:` ou `prova-na-base:` — o critério falha na base
 

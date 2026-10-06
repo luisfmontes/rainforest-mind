@@ -96,7 +96,7 @@ paralela: sim
 prova-na-base: verde — a base aceita os planos defeituosos, mas a bateria da base não tem os fixtures
 mutacao:
   arquivo: `scripts/conferir-fluxo.cjs`
-  de: `if (t.paralela === 'sim' && t.dependeDe !== 'nenhuma') {`
+  de: `if (paralela === 'sim' && dependeDe !== 'nenhuma') {`
   para: `if (false) {`
   bateria: `bash scripts/testa-conferir-fluxo.sh`
   fixture: `testa-conferir-fluxo.sh, caso "cobertura recusa paralela sim com depende de"`
