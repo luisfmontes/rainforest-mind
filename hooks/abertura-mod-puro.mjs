@@ -11,6 +11,17 @@
 // o modelo nao receber a abertura duas vezes. Por que o canal e o prompt, e nao o hook,
 // esta em hooks/abertura-mod.json e nos geradores.
 //
+// CONTA COM sec-default (login org): o built-in `cc-plugin-sec-default` faz bypass de
+// `prompt.compose` e de `classic.SessionStart` de plugin tier user, entao a secao acima
+// nao chega. Ai o mod entrega o MESMO texto da montagem memoizada (sem rodar os geradores
+// de novo) como uma mensagem de usuario, via `$.session.append`: `engine.create` guarda a
+// flag `barraCompose(e.plugins)`; com a flag, `session.start` anexa se o transcript nao
+// tem a MARCA (`temMarca`, cobre o --resume), o primeiro `prompt.submit` depois de um
+// `session.end` com reason clear anexa uma vez (nao ha session.start depois do /clear) e
+// `session.compact` reanexa se as mensagens devolvidas perderam a MARCA. O nucleo do
+// SessionStart fica como esta. Sem a flag nada disso roda: nenhum append, nenhuma leitura
+// de messages(). Desenho: docs/rainforest/design/2026-10-06-regras-inteiras-conta-org.md.
+//
 // FALHA ABERTA: se a montagem falha (gerador com exit != 0, JSON invalido, timeout,
 // additionalContext ausente), a secao nao e acrescentada E nenhuma entrada do
 // SessionStart e removida. A sessao nunca fica sem as regras: no pior caso elas chegam
@@ -25,6 +36,10 @@
  */
 
 export const ID_SECAO = 'rainforest-mind:abertura';
+
+// Primeira linha da mensagem anexada na conta com sec-default; `temMarca` a procura no
+// transcript. Nao comeca por nenhum dos PREFIXOS: o filtro do SessionStart nao a toca.
+export const MARCA = '[rainforest-mind:abertura]';
 
 // 60 s: o hook do foco ja levou 6 a 8 s (issue #243); o teto padrao do `$.process.run`
 // e 30 s.
@@ -52,6 +67,35 @@ export const PREFIXOS_MEMORIA = [
   '⚠️ Manutenção da memória falhou',
 ];
 const PREFIXOS = [...PREFIXOS_FOCO, ...PREFIXOS_MEMORIA];
+
+/**
+ * Texto de uma mensagem: `text` de `$.session.messages()`, ou `content` (string ou
+ * blocos `{ type: 'text', text }`) de `SessionCompacted.messages`.
+ * @param {any} m
+ * @returns {string}
+ */
+function textoDe(m) {
+  if (!m) return '';
+  if (typeof m.text === 'string' && m.text) return m.text.trimStart();
+  const c = m.content;
+  if (typeof c === 'string') return c.trimStart();
+  if (!Array.isArray(c)) return '';
+  return c
+    .filter((/** @type {any} */ b) => b && b.type === 'text' && typeof b.text === 'string')
+    .map((/** @type {any} */ b) => b.text)
+    .join('')
+    .trimStart();
+}
+
+/** @param {readonly any[] | null | undefined} mensagens */
+export function temMarca(mensagens) {
+  return (mensagens ?? []).some(m => textoDe(m).startsWith(MARCA));
+}
+
+/** @param {readonly string[]} nomes */
+export function barraCompose(nomes) {
+  return nomes.includes('cc-plugin-sec-default');
+}
 
 /** @param {unknown} texto */
 export function ehEntradaDaAbertura(texto) {
@@ -108,6 +152,26 @@ async function montar(io) {
 export function criarAbertura() {
   /** @type {Promise<string | null> | null} */
   let memo = null;
+  // Conta com sec-default (engine.create) e `/clear` ainda sem a abertura reanexada.
+  let barra = false;
+  let pendente = false;
+
+  /**
+   * Anexa a abertura como mensagem de usuario. Nunca lanca; texto null, nao anexa.
+   * @param {Io} io
+   * @param {() => Promise<readonly any[] | null | undefined>} ler  transcript a conferir
+   * @param {(args: any) => Promise<any>} escrever
+   */
+  async function anexar(io, ler, escrever) {
+    try {
+      const texto = await (memo ?? (memo = montar(io)));
+      if (!texto) return;
+      if (temMarca(await ler())) return;
+      await escrever({ message: { type: 'user', content: [{ type: 'text', text: `${MARCA}\n${texto}` }] } });
+    } catch {
+      // falha aberta: sem append, a sessao segue
+    }
+  }
 
   return {
     /**
@@ -123,6 +187,30 @@ export function criarAbertura() {
     /** `/clear` e `/resume` encerram a conversa sem `session.start`: a proxima abertura e remontada. */
     aoEncerrar(/** @type {string} */ reason) {
       if (reason === 'clear' || reason === 'resume') memo = null;
+      if (reason === 'clear') pendente = true;
+    },
+
+    /** `engine.create`: liga o caminho do append so na conta em que o compose e barrado. */
+    engineCriado(/** @type {unknown} */ plugins) {
+      barra = barraCompose(Array.isArray(plugins) ? plugins : []);
+    },
+
+    /** `session.start`: anexa se o transcript nao tem a MARCA. */
+    async aoIniciar(/** @type {Io} */ io, /** @type {() => Promise<any>} */ ler, /** @type {(args: any) => Promise<any>} */ escrever) {
+      if (barra) await anexar(io, ler, escrever);
+    },
+
+    /** `prompt.submit`: depois de um /clear, anexa uma vez e desarma a pendencia. */
+    async aoSubmeter(/** @type {Io} */ io, /** @type {() => Promise<any>} */ ler, /** @type {(args: any) => Promise<any>} */ escrever) {
+      if (!barra || !pendente) return;
+      pendente = false;
+      await anexar(io, ler, escrever);
+    },
+
+    /** `session.compact`: `r` e o resultado de next(e); reanexa se as mensagens devolvidas perderam a MARCA. */
+    async aposCompactar(/** @type {Io} */ io, /** @type {any} */ r, /** @type {(args: any) => Promise<any>} */ escrever) {
+      if (!barra || !Array.isArray(r?.messages)) return;
+      await anexar(io, async () => r.messages, escrever);
     },
 
     /** Resultado do `prompt.compose` com a secao no fim; `r` intacto sem texto. */
