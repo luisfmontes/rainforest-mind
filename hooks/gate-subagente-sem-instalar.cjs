@@ -127,6 +127,8 @@ function instalacaoNoComando(exe, args) {
   let posicionais = naoFlags(args, exe);
   // `yarn workspace <nome> add x`: o verbo vem depois do nome do workspace.
   if (exe === "yarn" && (posicionais[0] || "").toLowerCase() === "workspace") posicionais = posicionais.slice(2);
+  // `yarn global add x`: `global` é prefixo, o verbo vem depois.
+  if (exe === "yarn" && (posicionais[0] || "").toLowerCase() === "global") posicionais = posicionais.slice(1);
   const sub = (posicionais[0] || "").toLowerCase();
 
   // `yarn` sozinho (ou só com flags, `yarn --frozen-lockfile`) é install
@@ -182,7 +184,9 @@ function ehArquivoDeDesligar(valor) {
 function escreveArquivoDeDesligar(toks, pos) {
   for (let i = 0; i < toks.length; i++) {
     const t = toks[i];
-    if (t.q) continue;
+    // Token citado só conta se começa pelo redirecionamento: `>".x"` vira um
+    // token citado único, com o `>` fora das aspas.
+    if (t.q && !/^(\d*>|&>)/.test(t.v)) continue;
     const m = /^\d*>[>|]?(.*)$/.exec(t.v) || /^&>>?(.*)$/.exec(t.v);
     if (m) {
       const alvo = m[1] !== "" ? m[1] : (toks[i + 1] ? toks[i + 1].v : "");

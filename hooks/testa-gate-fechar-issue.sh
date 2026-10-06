@@ -2899,6 +2899,22 @@ E=$(g407 "$(p407 "$CMD_407a")" "")
   && test_ok "(407-7) heredoc que REESCREVE arquivo existente decide pelo corpo novo" \
   || test_fail "(407-7) arquivo existente com heredoc novo saiu $E: $(head -3 "$SBP/err-407" | tr '\n' ' ')"
 rm -f "$SBP/x407.md"
+# (407-8..10) revisao 3: o shell deixa o ULTIMO escritor e os acrescimos; o
+# gate lia so o primeiro heredoc. E corpo com $N em delimitador nu so se le
+# rodando o shell.
+CMD_407h="$(printf "cat > x407.md <<'EOF'\nbenigno\nEOF\ncat > x407.md <<'EOF'\nCloses #12\nEOF\ngh pr create --title t --body-file x407.md")"
+E=$(g407 "$(p407 "$CMD_407h")" "")
+[ "$E" -eq 2 ] && test_ok "(407-8) dois heredocs no mesmo arquivo: o segundo (Closes) conta" \
+  || test_fail "(407-8) segundo heredoc com Closes saiu $E"
+CMD_407i="$(printf "cat > x407.md <<'EOF'\nbenigno\nEOF\ncat >> x407.md <<'EOF'\nCloses #12\nEOF\ngh pr create --title t --body-file x407.md")"
+E=$(g407 "$(p407 "$CMD_407i")" "")
+[ "$E" -eq 2 ] && test_ok "(407-9) cat >> acrescenta Closes depois de heredoc benigno: conta" \
+  || test_fail "(407-9) cat >> com Closes saiu $E"
+CMD_407j="$(printf 'cat > x407.md <<EOF\nCloses #$N\nEOF\ngh pr create --title t --body-file x407.md')"
+E=$(g407 "$(p407 "$CMD_407j")" "")
+[ "$E" -eq 2 ] && test_ok "(407-10) heredoc sem aspas com \$N: ilegivel, nega" \
+  || test_fail "(407-10) heredoc com \$N saiu $E"
+rm -f "$SBP/x407.md"
 
 # (#362) laco com bash $b sem aspas → exit 2 citando injetar -c
 echo

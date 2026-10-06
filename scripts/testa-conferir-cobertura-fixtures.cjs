@@ -282,7 +282,13 @@ console.log('== 12. restauracao que falha sai != 0 e mantem o lock ==');
   caso('exit != 0', r.status !== 0 && r.status !== null, String(r.status));
   caso('stderr nomeia FONTE NAO RESTAURADO', /FONTE NAO RESTAURADO/.test(r.stderr), r.stderr);
   caso('LOCK MANTIDO com o fonte mutado', fs.existsSync(lock));
+  // A 2a rodada, com o fonte já liberado e ainda mutado, não pode retomar o
+  // lock como de pid morto e ler o mutante como original.
   try { fs.chmodSync(path.join(dir, 'alvo.cjs'), 0o644); } catch (_) { /* limpeza */ }
+  const mutado = fs.readFileSync(path.join(dir, 'alvo.cjs'), 'utf8');
+  const r2 = rodar(dir, p);
+  caso('2a rodada sai 69 (nao retoma o lock)', r2.status === 69, `${r2.status} — ${r2.stderr}`);
+  caso('2a rodada nao toca o fonte', fs.readFileSync(path.join(dir, 'alvo.cjs'), 'utf8') === mutado);
   fs.rmSync(dir, { recursive: true, force: true });
 }
 

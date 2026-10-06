@@ -63,7 +63,7 @@ Cada tarefa leva: **tipo**, `atende:` (lista de `D<n>` do design que esta tarefa
 ### Campos obrigatórios: `atende:` e `arquivos:`
 
 - **`atende:` vazio é recusa**: tarefa sem `atende:`, ou com `atende:` vazio, não entra no plano — se não atende nenhuma decisão, ela não deveria estar aqui.
-- **`arquivos:` sem glob largo**: declare caminhos concretos ou padrões específicos. Glob largo como `hooks/**` não descreve o que você toca — é achado do `revisar`, não atalho. **`arquivos:` nomeia arquivos que a tarefa toca, não pastas**: `skills/executar/SKILL.md`, não `skills/**`;
+- **`arquivos:` sem glob largo**: declare caminhos concretos ou padrões específicos. Glob largo como `hooks/**` não descreve o que você toca — é achado do `revisar`, não atalho. **`arquivos:` nomeia arquivos que a tarefa toca, não pastas**: `skills/executar/SKILL.md`, não `skills/**`.
 - **Cobertura nos dois sentidos**: decisão do design sem tarefa barra o plano, e tarefa citando `D<n>` inexistente também barra.
 - **A `cobertura` recusa o que o `executar` não consome** (#397): ver `references/recusas-da-cobertura.md`.
 

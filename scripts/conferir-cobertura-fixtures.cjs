@@ -149,8 +149,11 @@ try {
     }
   }
 } catch (e) {
-  // Se git-dir não funciona, continua sem lock (raiz pode não ser git repo)
-  // Isso é consistente com saída 69 (nao-verificavel)
+  // Erro do lock que não é EEXIST (EACCES em `.git`, disco): mutar sem a trava
+  // é a concorrência que ela existe para impedir. Raiz fora de git (rev-parse
+  // ≠ 0) não chega aqui: roda sem lock, porque não há worktree a disputar.
+  console.error('nao-verificavel: nao consegui criar o lock de mutacao (' + e.message + ')');
+  process.exit(EXIT_LOCK_OCUPADO);
 }
 
 const original = fs.readFileSync(alvoFonte, 'utf8');
@@ -160,7 +163,9 @@ let restaurado = false;
 // D18: a restauração se confere pelo sha256 do fonte, em todo caminho de saída.
 // Escrita que falha (arquivo travado, sem permissão) deixava o fonte mutado, o
 // lock apagado e a próxima rodada lendo o mutante como "original". Divergindo,
-// o lock FICA — é ele que barra a próxima rodada até alguém olhar a árvore.
+// o lock FICA, com marcador não numérico no lugar do pid: lock de pid morto se
+// retoma, e a próxima rodada leria o mutante como original; o ilegível sai 69
+// até alguém olhar a árvore e apagar o lock.
 function restaurar() {
   if (restaurado) return;
   restaurado = true;
@@ -168,6 +173,9 @@ function restaurar() {
   let atual = null;
   try { atual = sha(fs.readFileSync(alvoFonte, 'utf8')); } catch (_) { /* conta como divergente */ }
   if (atual !== shaOriginal) {
+    if (lockMeu && lock) {
+      try { fs.writeFileSync(lock, 'restauracao-falhou ' + alvoFonte); } catch (_) { /* o lock com o pid ainda fica */ }
+    }
     console.error('FONTE NAO RESTAURADO (sha256 diverge do original: ' + alvoFonte + ') — pare e confira a árvore antes de qualquer commit; o lock fica.');
     process.exit(2);
   }

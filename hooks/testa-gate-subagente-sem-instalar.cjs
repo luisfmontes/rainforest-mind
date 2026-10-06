@@ -328,6 +328,9 @@ const CONTORNOS_R2 = [
   ["Bash", 'powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "pip install x"'],
   ["Bash", "pwsh -NoProfile -Command npm install x"], ["Bash", "python3.11 -m pip install y"],
   ["Bash", "pip3.11 install x"], ["Bash", 'FOO="a b" npm install'],
+  // Revisão 3: redirecionamento colado ao alvo citado, `yarn global add`.
+  ["Bash", 'echo x >".rainforest-gate-off"'], ["Bash", "echo x >'.rainforest-gate-off'"],
+  ["Bash", 'echo x 2>".rainforest-gate-off"'], ["Bash", "yarn global add x"],
 ];
 for (const [ferramenta, cmd] of CONTORNOS_R2) {
   caso(`[${ferramenta}] ${cmd} nega`, rodar(cmd, { toolName: ferramenta }).status, 2);

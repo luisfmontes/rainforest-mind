@@ -131,7 +131,12 @@ function corpoDeHeredocQueCria(comando, caminho, cwdSegmento) {
   const igual = (a, b) => process.platform === "win32"
     ? path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase()
     : path.resolve(a) === path.resolve(b);
-  const reCat = /\bcat\s+>\|?\s*("[^"]+"|'[^']+'|[^\s<>;&|]+)\s*$/;
+  // `>>` e `tee -a` acrescentam; vários heredocs ao mesmo arquivo: o gh lê o
+  // que sobrar, então o gate soma TODOS os corpos (o último escritor e os
+  // acréscimos entram). Corpo com expansão (`$N`, crase) em heredoc de
+  // delimitador nu não se lê sem rodar o shell: ilegível.
+  const reCat = /\bcat\s+>[>|]?\s*("[^"]+"|'[^']+'|[^\s<>;&|]+)\s*$/;
+  const corpos = [];
   const reTee = /\btee\s+(?:-a\s+)?("[^"]+"|'[^']+'|[^\s<>;&|]+)\s*$/;
   for (let i = comando.indexOf("<<"); i !== -1; i = comando.indexOf("<<", i + 2)) {
     const heredoc = corpoDeHeredoc(comando, i);
@@ -144,9 +149,12 @@ function corpoDeHeredocQueCria(comando, caminho, cwdSegmento) {
     const alvoResolvido = path.isAbsolute(alvo)
       ? alvo
       : (cwdSegmento == null ? null : path.resolve(cwdSegmento, alvo));
-    if (alvoResolvido && igual(alvoResolvido, caminho)) return heredoc.corpo;
+    if (alvoResolvido && igual(alvoResolvido, caminho)) {
+      if (!heredoc.delimitadorQuotado && /[$\x60]/.test(heredoc.corpo)) return { legivel: false };
+      corpos.push(heredoc.corpo);
+    }
   }
-  return null;
+  return corpos.length ? { legivel: true, corpo: corpos.join("\n") } : null;
 }
 
 /**
@@ -569,7 +577,9 @@ function extrairCorpoDoPR(segmento, cwdSegmento) {
       // rodar — o corpo dele e o que o `gh` le, exista o arquivo ou nao. Ler o
       // disco primeiro decidia pelo conteudo VELHO (revisao da zerar-issues-16).
       const corpoCriado = corpoDeHeredocQueCria(COMANDO_INTEIRO, caminhoResolvido, cwdSegmento);
-      if (corpoCriado !== null) return { tipo: "arquivo", conteudo: corpoCriado, legivel: true };
+      if (corpoCriado !== null) {
+        return { tipo: "arquivo", conteudo: corpoCriado.legivel ? corpoCriado.corpo : null, legivel: corpoCriado.legivel };
+      }
       try {
         const conteudo = fs.readFileSync(caminhoResolvido, "utf8");
         return { tipo: "arquivo", conteudo, legivel: true };
