@@ -22,12 +22,7 @@ ok=0; falhou=0
 # Cria payload do Stop
 pay() { # cwd, transcript_path, stop_hook_active(true|false|absent)
   local c="$1" t="$2" s="${3:-}"
-  local json='{"session_id":"s1","cwd":"'"$c"'","transcript_path":"'"$t"'","hook_event_name":"Stop"'
-  if [ -n "$s" ]; then
-    json="$json"',"stop_hook_active":'"$s"
-  fi
-  json="$json"'}'
-  printf '%s' "$json"
+  node -e 'const [cwd,trans,sha]=process.argv.slice(1);const json={session_id:"s1",cwd:cwd,transcript_path:trans,hook_event_name:"Stop"};if(sha)json.stop_hook_active=sha==="true";process.stdout.write(JSON.stringify(json))' "$c" "$t" "$s"
 }
 
 # ============================================================================
@@ -241,6 +236,17 @@ if [ $got -eq 0 ] && [ -z "$(printf '%s' "$saida" | grep decision || true)" ]; t
   ok=$((ok+1)); echo "  ok   ALLOW do dublê atravessa o despacho e libera"
 else
   falhou=$((falhou+1)); echo "  FALHA ALLOW via despacho: exit=$got $(printf '%s' "$saida" | head -2)"
+fi
+
+echo
+echo "== Caso 10: payload com aspas duplas no campo barra =>"
+echo '{"gate-review-codex":true}' > "$R/.rainforest/config.json"
+# Payload com aspas duplas literais no cwd (passado por argv para escapar corretamente)
+saida=$(node -e 'const cwd=process.argv[1];const trans=process.argv[2];const payload={session_id:"s1",cwd:cwd,transcript_path:trans,hook_event_name:"Stop"};process.stdout.write(JSON.stringify(payload))' "$R" "$TRANSCRIPT" | RFM_DUBLE_SCRIPT="$DUBLE" RFM_DUBLE_MODO="BLOCK: com-aspas" node "$HOOK" 2>&1)
+if printf '%s' "$saida" | grep -qF '"decision":"block"' && printf '%s' "$saida" | grep -qF "com-aspas"; then
+  ok=$((ok+1)); echo "  ok   payload com transcript_path mantém bloqueio"
+else
+  falhou=$((falhou+1)); echo "  FALHA transcr: $saida"
 fi
 
 echo
