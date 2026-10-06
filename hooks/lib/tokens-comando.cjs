@@ -756,7 +756,7 @@ function contemConstrucaoIlegivel(str) {
  * comando; `ilegivel: true` (com ou sem `interno`) e tratado como INCERTO —
  * mesma postura conservadora que `$(`/crase solto ja recebe nos tres gates.
  */
-function desempacotarWrapperDeString(segmento, { ferramenta } = {}) {
+function desempacotarWrapperDeString(segmento, { ferramenta, scriptComVariavel } = {}) {
   const p1 = extrairPrimeiroToken(segmento);
   if (!p1) return { interno: null, ilegivel: false };
   const exe = normalizarNomeExecutavel(p1.tok);
@@ -868,6 +868,9 @@ function desempacotarWrapperDeString(segmento, { ferramenta } = {}) {
     }
 
     const coladoNoToken = /^[^\s]*/.exec(current.resto)[0];
+    if (scriptComVariavel === 'desconhecido' && contemConstrucaoIlegivel(current.tok + coladoNoToken)) {
+      return { interno: null, ilegivel: false };
+    }
     if (contemConstrucaoIlegivel(current.tok + coladoNoToken)) {
       return { interno: null, ilegivel: true };
     }

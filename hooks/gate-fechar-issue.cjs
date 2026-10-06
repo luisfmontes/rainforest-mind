@@ -947,7 +947,7 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   // sem posicao de comando (`pos === null`), nao ha o que desempacotar.
   const { interno, ilegivel } = pos === null
     ? { interno: null, ilegivel: false }
-    : desempacotarWrapperDeString(textoAPartir(toksComAspas, pos), { ferramenta });
+    : desempacotarWrapperDeString(textoAPartir(toksComAspas, pos), { ferramenta, scriptComVariavel: 'desconhecido' });
   if (ilegivel) {
     bloqueia(
       `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +

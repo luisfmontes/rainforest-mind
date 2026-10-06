@@ -2811,6 +2811,37 @@ ERR_337=$(
 )
 echo "$ERR_337" | grep -qF 'bash "$t" passa' && test_fail "(#337) bash -c \"\$x\" traz a orientação de bash \"\$t\" (não devia)" || test_ok "(#337) bash -c \"\$x\" sem a orientação de bash \"\$t\""
 
+# (#405) bash scripts/$b.sh com variavel no caminho → exit 0 (passa)
+echo
+echo '== (#405) laco com bash scripts/$b.sh passa =='
+
+# Caso 405-1: for b in a b; do bash scripts/$b.sh; done → exit 0
+PAYLOAD_405a=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" 'for b in a b; do bash scripts/$b.sh; done')
+EXIT_405a=$(
+  export PATH="$SBP/bin:$PATH"
+  echo "$PAYLOAD_405a" | node "$SRC/hooks/gate-fechar-issue.cjs" >/dev/null 2>&1
+  echo $?
+)
+[ "$EXIT_405a" -eq "0" ] && test_ok "(#405-1) for b in a b; do bash scripts/\$b.sh; done → exit 0" || test_fail "(#405-1) for b in a b; do bash scripts/\$b.sh; done saiu $EXIT_405a (esperado 0)"
+
+# Caso 405-2: bash scripts/$b.sh → exit 0
+PAYLOAD_405b=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" 'bash scripts/$b.sh')
+EXIT_405b=$(
+  export PATH="$SBP/bin:$PATH"
+  echo "$PAYLOAD_405b" | node "$SRC/hooks/gate-fechar-issue.cjs" >/dev/null 2>&1
+  echo $?
+)
+[ "$EXIT_405b" -eq "0" ] && test_ok "(#405-2) bash scripts/\$b.sh → exit 0" || test_fail "(#405-2) bash scripts/\$b.sh saiu $EXIT_405b (esperado 0)"
+
+# Caso 405-3: bash "scripts/$b.sh" (aspas duplas) → exit 0
+PAYLOAD_405c=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" 'bash "scripts/$b.sh"')
+EXIT_405c=$(
+  export PATH="$SBP/bin:$PATH"
+  echo "$PAYLOAD_405c" | node "$SRC/hooks/gate-fechar-issue.cjs" >/dev/null 2>&1
+  echo $?
+)
+[ "$EXIT_405c" -eq "0" ] && test_ok "(#405-3) bash \"scripts/\$b.sh\" → exit 0" || test_fail "(#405-3) bash \"scripts/\$b.sh\" saiu $EXIT_405c (esperado 0)"
+
 # (#362) laco com bash $b sem aspas → exit 2 citando injetar -c
 echo
 echo '== (#362) laco com bash $b sem aspas → exit 2 citando injetar -c =='
