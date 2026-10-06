@@ -403,7 +403,9 @@ def main() -> int:
         if sujo_antes_result and sujo_antes_result["toplevel"]:
             rc_top_principal, top_principal, _ = c.git(principal, "rev-parse", "--show-toplevel")
             if rc_top_principal == 0 and norm(sujo_antes_result["toplevel"]) != norm(top_principal):
-                c.falha("RECUSADO: snapshot de outra arvore")
+                # D24: recusa de uso (exit 2), não reprovação da entrega (exit 1).
+                print(f"RECUSADO: snapshot de outra arvore ({sujo_antes_result['toplevel']} != {top_principal})", file=sys.stderr)
+                return 2
     
 
     # ------------------------------------------------------------------

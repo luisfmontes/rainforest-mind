@@ -599,7 +599,7 @@ esperado "snapshot do proprio principal -> aprovado" 0 \
 OUTRA_ARVORE=$(novo_repo outra-arvore)
 SNAP_ALHEIO="$RAIZ/snap-alheio.txt"
 "${CONF_CMD[@]}" --gravar-sujo-antes "$SNAP_ALHEIO" --principal "$OUTRA_ARVORE" >/dev/null 2>&1
-esperado "snapshot de outra arvore -> reprovado" 1 \
+esperado "snapshot de outra arvore -> recusado (exit 2, D24)" 2 \
   "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" --sujo-antes "$SNAP_ALHEIO"
 contem "  ... e diz que o snapshot e de outra arvore" "snapshot de outra arvore" \
   "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" --sujo-antes "$SNAP_ALHEIO"

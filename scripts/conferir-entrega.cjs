@@ -512,8 +512,10 @@ function main() {
     if (sujoAntesResult && sujoAntesResult.toplevel) {
       const [rcTopPrincipal, topPrincipal] = c.git(principal, "rev-parse", "--show-toplevel");
       if (rcTopPrincipal === 0 && norm(sujoAntesResult.toplevel) !== norm(topPrincipal)) {
-        c.falha(`RECUSADO: snapshot de outra arvore`);
-        // Continua checagens para completude do relato, mas ja marcou falha
+        // D24: recusa de uso (exit 2), não reprovação da entrega (exit 1) — o
+        // snapshot errado não diz nada sobre o que o agente fez.
+        process.stderr.write(`RECUSADO: snapshot de outra arvore (${sujoAntesResult.toplevel} != ${topPrincipal})\n`);
+        return 2;
       }
     }
   }
