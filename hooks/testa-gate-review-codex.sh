@@ -172,7 +172,7 @@ fi
 
 echo
 echo "== Caso 7b: transcript_path ausente no evento => bloqueia (falha fechada) =>"
-saida=$(printf '%s' '{"session_id":"s","cwd":"'"$(cygpath -m "$R" 2>/dev/null || printf '%s' "$R")"'","stop_hook_active":false}' | node "$HOOK" 2>&1)
+saida=$(node -e 'process.stdout.write(JSON.stringify({session_id:"s",cwd:process.argv[1],stop_hook_active:false}))' "$(cygpath -m "$R" 2>/dev/null || printf '%s' "$R")" | node "$HOOK" 2>&1)
 if printf '%s' "$saida" | grep -qF '"decision":"block"' && printf '%s' "$saida" | grep -qF "transcript_path ausente"; then
   ok=$((ok+1)); echo "  ok   transcript_path ausente bloqueia com motivo"
 else
@@ -241,8 +241,10 @@ fi
 echo
 echo "== Caso 10: payload com aspas duplas no campo barra =>"
 echo '{"gate-review-codex":true}' > "$R/.rainforest/config.json"
-# Payload com aspas duplas literais no cwd (passado por argv para escapar corretamente)
-saida=$(node -e 'const cwd=process.argv[1];const trans=process.argv[2];const payload={session_id:"s1",cwd:cwd,transcript_path:trans,hook_event_name:"Stop"};process.stdout.write(JSON.stringify(payload))' "$R" "$TRANSCRIPT" | RFM_DUBLE_SCRIPT="$DUBLE" RFM_DUBLE_MODO="BLOCK: com-aspas" node "$HOOK" 2>&1)
+# Aspas duplas no session_id (#403): caminho no Windows nao aceita aspas, entao o
+# campo com aspas e o session_id. Montado por printf este JSON quebraria e o hook
+# leria payload invalido; por JSON.stringify ele chega e o bloqueio se mantem.
+saida=$(node -e 'const cwd=process.argv[1];const trans=process.argv[2];const payload={session_id:"s \"com aspas\"",cwd:cwd,transcript_path:trans,hook_event_name:"Stop"};process.stdout.write(JSON.stringify(payload))' "$R" "$TRANSCRIPT" | RFM_DUBLE_SCRIPT="$DUBLE" RFM_DUBLE_MODO="BLOCK: com-aspas" node "$HOOK" 2>&1)
 if printf '%s' "$saida" | grep -qF '"decision":"block"' && printf '%s' "$saida" | grep -qF "com-aspas"; then
   ok=$((ok+1)); echo "  ok   payload com transcript_path mantém bloqueio"
 else

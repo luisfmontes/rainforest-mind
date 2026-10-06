@@ -40,7 +40,6 @@ gate() { # nome, cwd, command, esperado_exit, json_extra
   else falhou=$((falhou+1)); echo "  FALHA $nome: esperava $esp, veio $got"; echo "$saida" | sed 's/^/         /' | head -5; fi
 }
 
-esc() { cygpath -m "$1" 2>/dev/null || printf '%s' "$1" | sed 's|\\|/|g'; }
 
 echo "== Caso (a): config com verificador que reprova SEGREDO staged =="
 CASE_A_POSIX="$SANDBOXES_POSIX/case-a"

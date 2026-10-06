@@ -862,4 +862,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { comandoGhEhEscrita, apiEhEscrita, VERBOS_ESCRITA };
+module.exports = { comandoGhEhEscrita, apiEhEscrita, VERBOS_ESCRITA, segmentosParaGate };

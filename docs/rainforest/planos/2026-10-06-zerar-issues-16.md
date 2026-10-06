@@ -48,7 +48,8 @@ pronto quando: com o payload PreToolUse real do comando `cat > x.md <<'EOF'` / `
 
 ### 3. gate novo: subagente não instala nem desliga gate [tipo: implementar]
 atende: D5, D6, D7, D8
-arquivos: `hooks/gate-subagente-sem-instalar.cjs`, `hooks/testa-gate-subagente-sem-instalar.cjs`
+arquivos: `hooks/gate-subagente-sem-instalar.cjs`, `hooks/testa-gate-subagente-sem-instalar.cjs`, `hooks/gate-subagente-sem-gh.cjs`
+emenda da revisão: a primeira versão partia o comando por `;&|` e olhava só a primeira palavra (contornos por `bash -c`, `sudo`, `env`, PowerShell passavam) e achava o verbo em qualquer posição (`yarn test`, `npm test -- add` barrados); o gate passa a usar o `segmentosParaGate` exportado pelo `gate-subagente-sem-gh` e a decidir pelo subcomando, com os contornos e os legítimos do revisor como casos da bateria
 depende de: nenhuma
 paralela: sim
 prova: `node hooks/testa-gate-subagente-sem-instalar.cjs`
@@ -248,4 +249,4 @@ depende de: 3, 4, 5, 7
 paralela: nao
 mutacao: n/a
   motivo: registro e versão; o comportamento dos hooks é medido nas tarefas 3, 4 e 5
-pronto quando: `hooks/hooks.json` tem o `gate-subagente-sem-instalar` em PreToolUse com `matcher: "Bash|PowerShell|Write|Edit"`, o `aviso-fluxo` em PreToolUse com `matcher: "Write|Edit|MultiEdit|NotebookEdit"` e o `idioma-session-start` em SessionStart com `matcher: "compact"`; `claude plugin validate .claude-plugin/plugin.json` sai 0; `node scripts/conferir-versao.cjs` sai 0 com 1.42.0 nos dois manifestos; a lista de obrigatórias inclui as baterias novas das tarefas 3, 4 e 5 — provado por esses três comandos e pela leitura do `hooks.json`
+pronto quando: `hooks/hooks.json` tem o `gate-subagente-sem-instalar` em PreToolUse com `matcher: "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit"` (emenda da revisão: sem os dois últimos o ramo de escrita do hook nunca recebia MultiEdit/NotebookEdit), o `aviso-fluxo` em PreToolUse com `matcher: "Write|Edit|MultiEdit|NotebookEdit"` e o `idioma-session-start` em SessionStart com `matcher: "compact"`; `claude plugin validate .claude-plugin/plugin.json` sai 0; `node scripts/conferir-versao.cjs` sai 0 com 1.42.0 nos dois manifestos; a lista de obrigatórias inclui as baterias novas das tarefas 3, 4 e 5 — provado por esses três comandos e pela leitura do `hooks.json`

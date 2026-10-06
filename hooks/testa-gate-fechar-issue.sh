@@ -2890,6 +2890,15 @@ E=$(g407 "$(p407 "$CMD_407f")" 1)
 [ "$E" -eq 2 ] && grep -q "Grave o corpo antes" "$SBP/err-407" \
   && test_ok "(407-6) heredoc que cria OUTRO arquivo nao vale como corpo" \
   || test_fail "(407-6) heredoc de outro arquivo saiu $E: $(head -3 "$SBP/err-407" | tr '\n' ' ')"
+# (407-7) o arquivo JA existe com corpo benigno e o heredoc o reescreve com
+# Closes: o gh le o corpo novo, entao o gate decide por ele (revisao da
+# zerar-issues-16 — lia o disco primeiro e passava com o conteudo velho).
+printf 'corpo antigo sem fechamento\n' > "$SBP/x407.md"
+E=$(g407 "$(p407 "$CMD_407a")" "")
+[ "$E" -eq 2 ] \
+  && test_ok "(407-7) heredoc que REESCREVE arquivo existente decide pelo corpo novo" \
+  || test_fail "(407-7) arquivo existente com heredoc novo saiu $E: $(head -3 "$SBP/err-407" | tr '\n' ' ')"
+rm -f "$SBP/x407.md"
 
 # (#362) laco com bash $b sem aspas → exit 2 citando injetar -c
 echo

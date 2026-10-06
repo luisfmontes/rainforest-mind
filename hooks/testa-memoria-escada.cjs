@@ -113,8 +113,11 @@ const resultado2 = ms.dataLocalDeIso("2026-10-06T06:00:00.000Z");
 caso("data ISO com hora converte para local", resultado2 === "2026-10-06", resultado2);
 
 // 10. Data inválida: fallback ao split antigo
-const resultado3 = ms.dataLocalDeIso("data-invalida");
-caso("data inválida volta ao comportamento antigo", resultado3.length > 0, resultado3);
+// Com "T" e data impossivel, o ramo NaN corta no T (antes so se testava valor
+// sem T, que nunca chega a esse ramo — revisao da zerar-issues-16).
+const resultado3 = ms.dataLocalDeIso("2026-99-99T99:99:99Z");
+caso("data inválida com T volta ao corte antigo", resultado3 === "2026-99-99", resultado3);
+caso("data sem T volta como veio", ms.dataLocalDeIso("2026-10-05") === "2026-10-05", ms.dataLocalDeIso("2026-10-05"));
 
 // 11. Legenda com data local
 const legenda = ms.montarLegendaMemoria({

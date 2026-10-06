@@ -565,12 +565,15 @@ function extrairCorpoDoPR(segmento, cwdSegmento) {
       const caminhoResolvido = path.isAbsolute(arquivo)
         ? arquivo
         : path.resolve(cwdSegmento, arquivo);
+      // #407: o heredoc do MESMO comando reescreve o arquivo antes de o `gh`
+      // rodar — o corpo dele e o que o `gh` le, exista o arquivo ou nao. Ler o
+      // disco primeiro decidia pelo conteudo VELHO (revisao da zerar-issues-16).
+      const corpoCriado = corpoDeHeredocQueCria(COMANDO_INTEIRO, caminhoResolvido, cwdSegmento);
+      if (corpoCriado !== null) return { tipo: "arquivo", conteudo: corpoCriado, legivel: true };
       try {
         const conteudo = fs.readFileSync(caminhoResolvido, "utf8");
         return { tipo: "arquivo", conteudo, legivel: true };
       } catch {
-        const corpoCriado = corpoDeHeredocQueCria(COMANDO_INTEIRO, caminhoResolvido, cwdSegmento);
-        if (corpoCriado !== null) return { tipo: "arquivo", conteudo: corpoCriado, legivel: true };
         return { tipo: "arquivo", conteudo: null, legivel: false };
       }
     }

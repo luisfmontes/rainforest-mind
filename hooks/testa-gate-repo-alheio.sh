@@ -63,7 +63,6 @@ TEM_SUB=0; [ -d "$R1/sub" ] && TEM_SUB=1
 ANIN="$R1/aninhado"; git init -q "$ANIN"; git -C "$ANIN" config user.email t@t
 git -C "$ANIN" config user.name t; git -C "$ANIN" config commit.gpgsign false
 
-esc() { printf '%s' "$1" | sed 's|\\|/|g'; }
 
 # payload de SUBAGENTE que escreve em alvo especifico
 j() { # tool, file_path, cwd
@@ -125,7 +124,7 @@ else falhou=$((falhou+1)); echo "  FALHA relativo no proprio repo barrou: espera
 echo
 echo "== tool_name que nao e escrita passa =="
 gate "Bash (Read) no outro repo"                     0 \
-  "$(node -e 'const [c,f]=process.argv.slice(1);process.stdout.write(JSON.stringify({agent_id:"ag-1",cwd:c,tool_name:"Bash",tool_input:{command:"cat "+f}}))' "$(esc "$R1")" "$(esc "$R2/b.txt")")"
+  "$(node -e 'const [c,f]=process.argv.slice(1);process.stdout.write(JSON.stringify({agent_id:"ag-1",cwd:c,tool_name:"Bash",tool_input:{command:"cat "+f}}))' "$R1" "$R2/b.txt")"
 
 echo
 echo "== saidas de emergencia =="
@@ -143,7 +142,7 @@ echo "== casos-limite =="
 gate "payload vazio nunca trava"                     0 "{}"
 gate "payload ilegivel nunca trava"                  0 "isto nao e json"
 gate "janela principal sem cwd nunca trava"           0 \
-  "$(node -e 'const f=process.argv[1];process.stdout.write(JSON.stringify({tool_name:"Write",tool_input:{file_path:f}}))' "$(esc "$R2/novo.txt")")"
+  "$(node -e 'const f=process.argv[1];process.stdout.write(JSON.stringify({tool_name:"Write",tool_input:{file_path:f}}))' "$R2/novo.txt")"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

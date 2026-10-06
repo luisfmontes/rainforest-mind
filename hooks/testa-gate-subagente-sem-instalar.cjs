@@ -278,6 +278,46 @@ caso("subagente-sem-instalar false no config do projeto desliga", r.status, 0);
 r = rodar("npm install x", { config: { "subagente-sem-instalar": true } });
 caso("subagente-sem-instalar true no config segue negando", r.status, 2);
 
+// === Revisão da zerar-issues-16: contornos que passavam e trabalho barrado ===
+// A primeira versão olhava só a 1ª palavra do segmento (contornos abaixo
+// passavam) e o verbo em qualquer posição (os legítimos eram barrados).
+console.log("");
+console.log("== contornos: instalação fora da 1ª palavra, PowerShell e escrita do arquivo de desligar ==");
+const CONTORNOS = [
+  ["Bash", 'bash -c "npm install x"'], ["Bash", 'sh -c "pip install x"'], ["Bash", "FOO=1 npm install x"],
+  ["Bash", "env FOO=1 npm install x"], ["Bash", "sudo npm install x"], ["Bash", "time npm install x"],
+  ["Bash", "(npm install x)"], ["Bash", "npm.cmd install x"], ["Bash", "py -m pip install x"],
+  ["Bash", "bun add x"], ["Bash", "poetry add x"], ["Bash", "pipx install x"], ["Bash", "cargo add x"],
+  ["Bash", "cd sub && npm i x"], ["Bash", "timeout 60 npm install x"], ["Bash", "yarn --frozen-lockfile"],
+  ["PowerShell", "pip install x"], ["PowerShell", "winget install x"], ["PowerShell", "uv add x"],
+  ["PowerShell", "pnpm add x"], ["PowerShell", "choco install x"], ["PowerShell", "python -m pip install x"],
+  ["PowerShell", 'pwsh -Command "npm install x"'],
+  ["Bash", "printf 1 > ./.rainforest-gate-off"], ["Bash", "> /x/.rainforest-gate-off"],
+  ["Bash", 'echo 1 > ".rainforest-gate-off"'], ["Bash", "cp a .rainforest-gate-off"], ["Bash", "mv a .rainforest-gate-off"],
+  ["Bash", "echo 1 | tee .rainforest-gate-off"], ["Bash", "ln -s a .rainforest-gate-off"],
+  ["Bash", "sed -i s/x/y/ .rainforest-gate-off"], ["PowerShell", "Set-Content .rainforest-gate-off 1"],
+  ["PowerShell", '"1" | Out-File .rainforest-gate-off'], ["PowerShell", "Copy-Item a .rainforest-gate-off"],
+  ["PowerShell", '[Environment]::SetEnvironmentVariable("RAINFOREST_GATE_OFF", "1")'],
+  ["Bash", "export RAINFOREST_GATE_OFF"],
+];
+for (const [ferramenta, cmd] of CONTORNOS) {
+  caso(`[${ferramenta}] ${cmd} nega`, rodar(cmd, { toolName: ferramenta }).status, 2);
+}
+console.log("");
+console.log("== legítimos: verbo fora da posição de subcomando, leitura do arquivo de desligar ==");
+const LEGITIMOS = [
+  "yarn test", "yarn build", "yarn run x", "yarn --version", "npm test -- add", "npm run ci", "npm run build add",
+  "npm ls ci", "npm view foo i", "python script.py install", "go test ./... -run install", "uv run script.py add",
+  "gem list install", "brew list install", "cat .rainforest-gate-off", "rm .rainforest-gate-off",
+  "echo $RAINFOREST_GATE_OFF", "unset RAINFOREST_GATE_OFF", 'git commit -m "nao rode npm install aqui"',
+];
+for (const cmd of LEGITIMOS) caso(`${cmd} passa`, rodar(cmd).status, 0);
+for (const ferramenta of ["MultiEdit", "NotebookEdit"]) {
+  const campo = ferramenta === "NotebookEdit" ? { notebook_path: path.join(projeto, ".rainforest-gate-off") }
+    : { file_path: path.join(projeto, ".rainforest-gate-off") };
+  caso(`${ferramenta} em .rainforest-gate-off nega`, rodar("", { toolName: ferramenta, toolInput: campo }).status, 2);
+}
+
 // === Resultado ===
 
 console.log("");

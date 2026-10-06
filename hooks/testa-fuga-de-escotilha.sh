@@ -83,12 +83,11 @@ echo
 echo "== Testando os 5 gates com agent_id =="
 
 # Helper: escape caminho para Windows/POSIX
-esc() { printf '%s' "$1" | sed 's|\\|/|g'; }
 
 # GATE 1: gate-worktree
 # Subagente tenta Write fora do worktree isolado → recusado
 echo "1. gate-worktree:"
-PAYLOAD=$(node -e 'const [p,w]=process.argv.slice(1);const fp=p+"/outside.txt";console.log(JSON.stringify({cwd:w,hook_event_name:"PreToolUse",tool_name:"Write",tool_input:{file_path:fp,content:"test"},agent_id:"agent-1",agent_type:"executor"}))' "$(esc "$PRINCIPAL")" "$(esc "$WORKTREE")")
+PAYLOAD=$(node -e 'const [p,w]=process.argv.slice(1);const fp=p+"/outside.txt";console.log(JSON.stringify({cwd:w,hook_event_name:"PreToolUse",tool_name:"Write",tool_input:{file_path:fp,content:"test"},agent_id:"agent-1",agent_type:"executor"}))' "$PRINCIPAL" "$WORKTREE")
 testa_gate "gate-worktree" "$PAYLOAD"
 
 # GATE 2: gate-staging-total
@@ -97,15 +96,15 @@ testa_gate "gate-worktree" "$PAYLOAD"
 echo "2. gate-staging-total:"
 SESSOES_JSON="$PRINCIPAL/.rainforest/sessions.json"
 mkdir -p "$(dirname "$SESSOES_JSON")"
-node -e 'const fs=require("fs");const [p,j]=process.argv.slice(1);const sess={session1:{session_id:"sess1",parada:false,ultimo_ts:Date.now()-10000,cwd:p}};fs.writeFileSync(j,JSON.stringify(sess))' "$(esc "$PRINCIPAL")" "$SESSOES_JSON" 2>/dev/null || true
-PAYLOAD=$(node -e 'const p=process.argv[1];console.log(JSON.stringify({cwd:p,session_id:"sess-diferente",hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"git add -A"},agent_id:"agent-2",agent_type:"executor"}))' "$(esc "$PRINCIPAL")")
+node -e 'const fs=require("fs");const [p,j]=process.argv.slice(1);const sess={session1:{session_id:"sess1",parada:false,ultimo_ts:Date.now()-10000,cwd:p}};fs.writeFileSync(j,JSON.stringify(sess))' "$PRINCIPAL" "$SESSOES_JSON" 2>/dev/null || true
+PAYLOAD=$(node -e 'const p=process.argv[1];console.log(JSON.stringify({cwd:p,session_id:"sess-diferente",hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"git add -A"},agent_id:"agent-2",agent_type:"executor"}))' "$PRINCIPAL")
 testa_gate "gate-staging-total" "$PAYLOAD"
 
 # GATE 3: gate-repo-alheio
 # Subagente tenta Write em outro repositório → recusado
 echo "3. gate-repo-alheio:"
 # cwd do subagente é no PRINCIPAL, mas tenta escrever no ALHEIO
-PAYLOAD=$(node -e 'const [a,p]=process.argv.slice(1);const fp=a+"/novo.txt";console.log(JSON.stringify({cwd:p,hook_event_name:"PreToolUse",tool_name:"Write",tool_input:{file_path:fp,content:"dados"},agent_id:"agent-3",agent_type:"executor"}))' "$(esc "$ALHEIO")" "$(esc "$PRINCIPAL")")
+PAYLOAD=$(node -e 'const [a,p]=process.argv.slice(1);const fp=a+"/novo.txt";console.log(JSON.stringify({cwd:p,hook_event_name:"PreToolUse",tool_name:"Write",tool_input:{file_path:fp,content:"dados"},agent_id:"agent-3",agent_type:"executor"}))' "$ALHEIO" "$PRINCIPAL")
 testa_gate "gate-repo-alheio" "$PAYLOAD"
 
 # GATE 4: gate-publicacao-destino
@@ -114,7 +113,7 @@ echo "4. gate-publicacao-destino:"
 # Gera JID em runtime (concatenação) para não deixar literal no arquivo
 JID="5500"
 JID="${JID}900000001@s.whatsapp.net"
-PAYLOAD=$(node -e 'const [p,j]=process.argv.slice(1);const fp=p+"/test.txt";console.log(JSON.stringify({cwd:p,hook_event_name:"PreToolUse",tool_name:"Write",tool_input:{file_path:fp,content:"contato: "+j},agent_id:"agent-4",agent_type:"executor"}))' "$(esc "$PRINCIPAL")" "$JID")
+PAYLOAD=$(node -e 'const [p,j]=process.argv.slice(1);const fp=p+"/test.txt";console.log(JSON.stringify({cwd:p,hook_event_name:"PreToolUse",tool_name:"Write",tool_input:{file_path:fp,content:"contato: "+j},agent_id:"agent-4",agent_type:"executor"}))' "$PRINCIPAL" "$JID")
 testa_gate "gate-publicacao-destino" "$PAYLOAD"
 
 # GATE 5: gate-verificador-staged
@@ -147,7 +146,7 @@ chmod +x "$STAGED_REPO/scripts/verifica.sh"
 # Stage arquivo com SEGREDO
 echo "contato: SEGREDO" > "$STAGED_REPO/arquivo.txt"
 git -C "$STAGED_REPO" add arquivo.txt
-PAYLOAD=$(node -e 'const s=process.argv[1];console.log(JSON.stringify({cwd:s,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"git commit -m test"},agent_id:"agent-5",agent_type:"executor"}))' "$(esc "$STAGED_REPO")")
+PAYLOAD=$(node -e 'const s=process.argv[1];console.log(JSON.stringify({cwd:s,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"git commit -m test"},agent_id:"agent-5",agent_type:"executor"}))' "$STAGED_REPO")
 testa_gate "gate-verificador-staged" "$PAYLOAD"
 
 echo
@@ -155,17 +154,17 @@ echo "== Casos com aspas duplas para validar JSON.stringify ==="
 
 # GATE 1: gate-worktree com aspas no file_path
 echo "1. gate-worktree com aspas:"
-PAYLOAD=$(node -e 'const [p,w]=process.argv.slice(1);const fp=p+"/\"outside\".txt";console.log(JSON.stringify({cwd:w,hook_event_name:"PreToolUse",tool_name:"Write",tool_input:{file_path:fp,content:"test"},agent_id:"agent-1q",agent_type:"executor"}))' "$(esc "$PRINCIPAL")" "$(esc "$WORKTREE")")
+PAYLOAD=$(node -e 'const [p,w]=process.argv.slice(1);const fp=p+"/\"outside\".txt";console.log(JSON.stringify({cwd:w,hook_event_name:"PreToolUse",tool_name:"Write",tool_input:{file_path:fp,content:"test"},agent_id:"agent-1q",agent_type:"executor"}))' "$PRINCIPAL" "$WORKTREE")
 testa_gate "gate-worktree" "$PAYLOAD"
 
 # GATE 2: gate-repo-alheio com aspas no file_path
 echo "2. gate-repo-alheio com aspas:"
-PAYLOAD=$(node -e 'const [a,p]=process.argv.slice(1);const fp=a+"/\"novo\".txt";console.log(JSON.stringify({cwd:p,hook_event_name:"PreToolUse",tool_name:"Write",tool_input:{file_path:fp,content:"dados"},agent_id:"agent-3q",agent_type:"executor"}))' "$(esc "$ALHEIO")" "$(esc "$PRINCIPAL")")
+PAYLOAD=$(node -e 'const [a,p]=process.argv.slice(1);const fp=a+"/\"novo\".txt";console.log(JSON.stringify({cwd:p,hook_event_name:"PreToolUse",tool_name:"Write",tool_input:{file_path:fp,content:"dados"},agent_id:"agent-3q",agent_type:"executor"}))' "$ALHEIO" "$PRINCIPAL")
 testa_gate "gate-repo-alheio" "$PAYLOAD"
 
 # GATE 3: gate-verificador-staged com aspas no command
 echo "3. gate-verificador-staged com aspas:"
-PAYLOAD=$(node -e 'const s=process.argv[1];console.log(JSON.stringify({cwd:s,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"git commit -m \"test message\""},agent_id:"agent-5q",agent_type:"executor"}))' "$(esc "$STAGED_REPO")")
+PAYLOAD=$(node -e 'const s=process.argv[1];console.log(JSON.stringify({cwd:s,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"git commit -m \"test message\""},agent_id:"agent-5q",agent_type:"executor"}))' "$STAGED_REPO")
 testa_gate "gate-verificador-staged" "$PAYLOAD"
 
 echo

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // @categoria: guia
 /**
- * PreToolUse (Bash, PowerShell, Write, Edit) — nega, dentro de subagente,
- * comandos de instalação de pacotes e tentativas de desligar o gate.
+ * PreToolUse (Bash, PowerShell, Write, Edit, MultiEdit, NotebookEdit) — nega,
+ * dentro de subagente, comandos de instalação de pacotes e tentativas de
+ * desligar o gate.
  *
  * Protege contra: subagente rodando `npm install`, `pip install`, e variações de
  * outros gerenciadores; também nega criação de `.rainforest-gate-off` e definição
@@ -14,53 +15,158 @@
  * padrão ligado. NÃO honra `RAINFOREST_GATE_OFF` nem `.rainforest-gate-off`
  * (diferente de outros gates).
  *
+ * Como lê o comando (revisão da zerar-issues-16): a primeira versão partia o
+ * texto por `;&|` e olhava só a primeira palavra — `bash -c "npm install x"`,
+ * `sudo npm install x`, `FOO=1 npm install x` passavam — e procurava o verbo em
+ * QUALQUER posição — `npm test -- add`, `yarn test` e `python x.py install`
+ * eram barrados. Agora os segmentos vêm do `segmentosParaGate` do
+ * `gate-subagente-sem-gh` (mesmo desempacotar de `bash -c`/`eval`/`pwsh
+ * -Command`), a posição de comando pula atribuição e wrapper (`env`, `sudo`,
+ * `time`, `timeout`…), e o verbo é o SUBCOMANDO: o primeiro argumento que não
+ * é flag.
+ *
  * Payload ilegível, vazio ou de outra ferramenta: sai 0, como os gates irmãos.
  */
 
 const fs = require("node:fs");
 const path = require("node:path");
+const {
+  tokensComAspas, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
+} = require("./lib/tokens-comando.cjs");
+const { segmentosParaGate } = require("./gate-subagente-sem-gh.cjs");
+
+const ARQUIVO_DE_DESLIGAR = ".rainforest-gate-off";
 
 /**
- * Comandos de instalação negados (D6): todos os gerenciadores de pacotes comuns.
+ * D6 — verbo (subcomando) que instala, por gerenciador. Conjunto vazio =
+ * qualquer invocação instala (cmdlet do PowerShell).
  */
-const COMANDOS_NEGADOS = {
-  npm: new Set(["install", "i", "add", "ci"]),
-  npx: new Set(["install", "--yes", "-y"]),
+const VERBOS_QUE_INSTALAM = {
+  npm: new Set(["install", "i", "in", "ins", "inst", "insta", "instal", "isntall", "add", "ci", "clean-install", "install-clean", "install-test", "it"]),
   pnpm: new Set(["add", "install", "i"]),
   yarn: new Set(["add", "install"]),
+  bun: new Set(["add", "install", "i"]),
   pip: new Set(["install"]),
   pip3: new Set(["install"]),
-  python: new Set(["install"]), // python -m pip install
-  python3: new Set(["install"]),
-  python2: new Set(["install"]),
-  uv: new Set(["add", "install"]), // uv add, uv pip install, uv tool install
-  winget: new Set(["install"]),
+  pipx: new Set(["install", "inject"]),
+  poetry: new Set(["add", "install"]),
+  conda: new Set(["install"]),
+  mamba: new Set(["install"]),
+  winget: new Set(["install", "add"]),
   choco: new Set(["install"]),
   scoop: new Set(["install"]),
-  cargo: new Set(["install"]),
-  go: new Set(["install"]),
+  cargo: new Set(["install", "add"]),
+  go: new Set(["install", "get"]),
   gem: new Set(["install"]),
   brew: new Set(["install"]),
   apt: new Set(["install"]),
   "apt-get": new Set(["install"]),
-  "Install-Module": new Set([]), // PowerShell - qualquer instância é negada
-  "Install-Package": new Set([]), // PowerShell - qualquer instância é negada
+  "install-module": new Set(),
+  "install-package": new Set(),
+  "install-script": new Set(),
+  "install-psresource": new Set(),
 };
 
-/**
- * Variantes de yarn sozinho (toda invocação de `yarn` sem subcomando é install implícito).
- */
-const YARN_SOZINHO = /^yarn$|^yarn\s+--/;
+const PYTHONS = new Set(["python", "python3", "python2", "py"]);
+
+/** Nome do executável comparável: sem aspas, sem caminho, sem .exe/.cmd/.bat/.ps1. */
+function normalizarExecutavel(nome) {
+  const semAspas = String(nome).replace(/^["']|["']$/g, "");
+  return path.basename(semAspas).replace(/\.(exe|cmd|bat|ps1)$/i, "").toLowerCase();
+}
+
+/** Argumentos que não são flag (não começam com `-`; `/x` do cmd também é flag). */
+function naoFlags(args) {
+  return args.filter((a) => !/^-/.test(a));
+}
 
 /**
- * Expressa formas de definir RAINFOREST_GATE_OFF no environment.
- * Export, prefixo, e PowerShell $env:.
+ * O segmento (já na posição de comando) instala? Devolve o executável ou null.
+ * `args` são os valores dos tokens depois do executável.
  */
-const RAINFOREST_GATE_OFF_PATTERNS = [
-  /\bexport\s+RAINFOREST_GATE_OFF\b/,
-  /\bRAINFOREST_GATE_OFF\s*=/,
-  /\$env:RAINFOREST_GATE_OFF\s*=/,
-  /\bsetx\s+RAINFOREST_GATE_OFF\b/,
+function instalacaoNoComando(exe, args) {
+  const sub = (naoFlags(args)[0] || "").toLowerCase();
+
+  // `yarn` sozinho (ou só com flags, `yarn --frozen-lockfile`) é install
+  // implícito; `yarn test` e `yarn --version`/`--help` não são.
+  if (exe === "yarn" && sub === "") {
+    const informativa = args.some((a) => /^(--version|-v|--help|-h)$/.test(a));
+    return informativa ? null : exe;
+  }
+
+  // `npx --yes`/`-y` instala o pacote sem perguntar (D6).
+  if (exe === "npx" && args.some((a) => a === "--yes" || a === "-y")) return exe;
+
+  // `python -m pip install`, `py -m pip install` (D6).
+  if (PYTHONS.has(exe)) {
+    const i = args.indexOf("-m");
+    if (i !== -1 && /^pip3?$/i.test(args[i + 1] || "")) {
+      if ((naoFlags(args.slice(i + 2))[0] || "").toLowerCase() === "install") return exe;
+    }
+    return null;
+  }
+
+  // `uv add`, `uv pip install`, `uv tool install` (D6); `uv run` passa.
+  if (exe === "uv") {
+    const nf = naoFlags(args).map((a) => a.toLowerCase());
+    if (nf[0] === "add") return exe;
+    if ((nf[0] === "pip" || nf[0] === "tool") && nf[1] === "install") return exe;
+    return null;
+  }
+
+  const verbos = VERBOS_QUE_INSTALAM[exe];
+  if (!verbos) return null;
+  if (verbos.size === 0) return exe;
+  return verbos.has(sub) ? exe : null;
+}
+
+/** Leitores e quem apaga: citar o arquivo de desligar com eles não o cria. */
+const LEEM_OU_APAGAM = new Set([
+  "cat", "ls", "dir", "test", "[", "stat", "rm", "del", "erase", "grep", "rg", "less", "more",
+  "head", "tail", "wc", "file", "find", "git", "get-content", "gc", "type", "test-path",
+  "remove-item", "ri", "get-item", "gi", "get-childitem", "gci", "select-string", "sls",
+]);
+
+function ehArquivoDeDesligar(valor) {
+  const v = String(valor).replace(/^["']|["']$/g, "").replace(/[\\/]+$/, "");
+  return path.basename(v.replace(/\\/g, "/")) === ARQUIVO_DE_DESLIGAR;
+}
+
+/**
+ * D7 — o segmento cria ou altera `.rainforest-gate-off`? Redirecionamento
+ * (`>`, `>>`, `>|`, `2>`) para ele sempre conta; citá-lo como argumento conta,
+ * a menos que o comando só leia ou apague.
+ */
+function escreveArquivoDeDesligar(toks, pos) {
+  for (let i = 0; i < toks.length; i++) {
+    const t = toks[i];
+    if (t.q) continue;
+    const m = /^\d*>[>|]?(.*)$/.exec(t.v) || /^&>>?(.*)$/.exec(t.v);
+    if (m) {
+      const alvo = m[1] !== "" ? m[1] : (toks[i + 1] ? toks[i + 1].v : "");
+      if (ehArquivoDeDesligar(alvo)) return true;
+    }
+  }
+  if (pos === null) return false;
+  const exe = normalizarExecutavel(toks[pos].v);
+  if (LEEM_OU_APAGAM.has(exe)) return false;
+  return toks.slice(pos + 1).some((t) => ehArquivoDeDesligar(t.v));
+}
+
+/**
+ * D7 — definir `RAINFOREST_GATE_OFF` no ambiente. Texto cru: a variável no
+ * comando já diz a intenção; ler (`echo $RAINFOREST_GATE_OFF`) e tirar
+ * (`unset`, `export -n`, `Remove-Item env:`) passam.
+ */
+const DEFINE_GATE_OFF = [
+  /(^|[\s;&|(`'"])RAINFOREST_GATE_OFF\s*=/,
+  /\bexport\s+(?:-[a-mo-z]+\s+)*RAINFOREST_GATE_OFF\b/,
+  /\b(?:declare|typeset)\s+-\w*x\w*\s+RAINFOREST_GATE_OFF\b/,
+  /\$env:RAINFOREST_GATE_OFF\s*=/i,
+  /\b(?:set-item|si|new-item|ni|set-content|sc)\s+(?:-path\s+)?["']?env:[\\/]?RAINFOREST_GATE_OFF\b/i,
+  /SetEnvironmentVariable\s*\(\s*["']RAINFOREST_GATE_OFF["']/i,
+  /\bsetx\s+RAINFOREST_GATE_OFF\b/i,
+  /\bset\s+["']?RAINFOREST_GATE_OFF=/i,
 ];
 
 function instalarLigada(projeto) {
@@ -68,84 +174,38 @@ function instalarLigada(projeto) {
   return ligado("subagente-sem-instalar", { projeto });
 }
 
-/**
- * Detecta se um segmento começa com um comando de instalação negado.
- */
-function ehComandoDeInstalacao(segmento) {
-  const partes = segmento.trim().split(/\s+/);
-  if (partes.length === 0) return null;
-
-  const exe = partes[0].toLowerCase();
-
-  // `yarn` sozinho é install implícito
-  if (YARN_SOZINHO.test(exe)) {
-    return exe;
-  }
-
-  // Casos especiais para PowerShell (Install-Module, Install-Package)
-  if (exe === "install-module" || exe === "install-package") {
-    return exe;
-  }
-
-  // Caso `python -m pip install`
-  if ((exe === "python" || exe === "python3" || exe === "python2") && partes.length > 2) {
-    if (partes[1] === "-m" && partes[2] === "pip" && partes[3] === "install") {
-      return exe;
-    }
-  }
-
-  // Caso `uv pip install`, `uv add`, `uv tool install`
-  if (exe === "uv" && partes.length > 1) {
-    const subcmd = partes[1].toLowerCase();
-    if (subcmd === "pip" && partes[2] === "install") return "uv";
-    if (["add", "install", "tool"].includes(subcmd)) return "uv";
-  }
-
-  // Caso `npx --yes` ou `npx -y` com qualquer coisa depois
-  if (exe === "npx") {
-    if (partes.some(p => p === "--yes" || p === "-y")) return "npx";
-  }
-
-  // Casos normais: comando com subcomando
-  const negados = COMANDOS_NEGADOS[exe];
-  if (!negados) return null;
-
-  if (negados.size === 0) {
-    // Install-Module e Install-Package (PowerShell) — qualquer invocação é negada
-    return exe;
-  }
-
-  // Para npm, pip, etc.: procura pelo subcomando
-  for (let i = 1; i < partes.length; i++) {
-    if (negados.has(partes[i].toLowerCase())) {
-      return exe;
-    }
-  }
-
-  return null;
-}
-
-/**
- * Detecta se o comando tenta definir RAINFOREST_GATE_OFF no environment.
- */
-function ehDefinicaoDeGateOff(comando) {
-  return RAINFOREST_GATE_OFF_PATTERNS.some(p => p.test(comando));
-}
-
-/**
- * Divide comando em segmentos por operadores e linhas (simples).
- */
-function segmentarComando(comando) {
-  // Remove linhas de continuação (barra invertida no final)
-  comando = comando.replace(/\\\s*\n/g, " ");
-  // Divide por ;, &&, ||, |, e quebra de linha
-  const partes = comando.split(/[;&|]/);
-  return partes.map(p => p.trim()).filter(p => p);
-}
-
-function bloquia(motivo) {
-  process.stderr.write(motivo);
+function bloqueia(razao, visto) {
+  process.stderr.write(
+    "BLOQUEADO pelo gate de subagente sem instalação do rainforest-mind.\n\n" +
+    (visto ? `Comando: \`${String(visto).trim()}\`\n\n` : "") +
+    `Razão: ${razao}\n`
+  );
   process.exit(2);
+}
+
+const RAZAO_INSTALAR = "subagente não pode instalar pacotes. Instalação é da janela principal, com a palavra do usuário.";
+const RAZAO_ARQUIVO = "subagente não pode criar ou alterar `.rainforest-gate-off`.";
+const RAZAO_VARIAVEL = "subagente não pode definir `RAINFOREST_GATE_OFF`.";
+
+/** Um segmento: desce em `bash -c`/`eval`/`pwsh -Command`, depois decide. */
+function processarSegmento(segmento, profundidade) {
+  if (profundidade > 8) return;
+  const toks = tokensComAspas(segmento);
+  if (!toks.length) return;
+  const pos = posicaoDeComando(toks);
+
+  if (escreveArquivoDeDesligar(toks, pos)) bloqueia(RAZAO_ARQUIVO, segmento);
+  if (pos === null) return;
+
+  const { interno } = desempacotarWrapperDeString(textoAPartir(toks, pos));
+  if (interno !== null) {
+    for (const sub of segmentosParaGate(interno)) processarSegmento(sub, profundidade + 1);
+    return;
+  }
+
+  const exe = normalizarExecutavel(toks[pos].v);
+  const args = toks.slice(pos + 1).map((t) => t.v);
+  if (instalacaoNoComando(exe, args)) bloqueia(RAZAO_INSTALAR, segmento);
 }
 
 function main() {
@@ -157,8 +217,7 @@ function main() {
   } catch {
     process.exit(0);
   }
-
-  if (!ev) process.exit(0);
+  if (!ev || typeof ev !== "object") process.exit(0);
 
   // Detecta subagente pela presença de agent_id
   const ehSubagente = Object.prototype.hasOwnProperty.call(ev, 'agent_id');
@@ -167,120 +226,21 @@ function main() {
   const projeto = ev.cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd();
   if (!instalarLigada(path.resolve(projeto))) process.exit(0);
 
-  // === ESCRITA (Write/Edit) ===
-  if (ev.tool_name === "Write" || ev.tool_name === "Edit" || ev.tool_name === "MultiEdit" || ev.tool_name === "NotebookEdit") {
-    const filepath = ev.tool_input && ev.tool_input.file_path;
-    if (typeof filepath === "string" && filepath.endsWith(".rainforest-gate-off")) {
-      bloquia(
-        "BLOQUEADO pelo gate de subagente sem instalação do rainforest-mind.\n\n" +
-        `Arquivo: \`${filepath}\`\n\n` +
-        "Razão: subagente não pode criar ou editar `.rainforest-gate-off`.\n"
-      );
-    }
+  const entrada = ev.tool_input || {};
+
+  // === ESCRITA (Write/Edit/MultiEdit/NotebookEdit) ===
+  if (["Write", "Edit", "MultiEdit", "NotebookEdit"].includes(ev.tool_name)) {
+    const alvo = entrada.file_path || entrada.notebook_path;
+    if (typeof alvo === "string" && ehArquivoDeDesligar(alvo)) bloqueia(RAZAO_ARQUIVO, alvo);
     process.exit(0);
   }
 
-  // === BASH ===
-  if (ev.tool_name === "Bash") {
-    const comando = ev.tool_input && ev.tool_input.command;
+  // === BASH / POWERSHELL ===
+  if (ev.tool_name === "Bash" || ev.tool_name === "PowerShell") {
+    const comando = entrada.command;
     if (typeof comando !== "string" || !comando) process.exit(0);
-
-    // Verifica se há tentativa de definir RAINFOREST_GATE_OFF
-    if (ehDefinicaoDeGateOff(comando)) {
-      bloquia(
-        "BLOQUEADO pelo gate de subagente sem instalação do rainforest-mind.\n\n" +
-        "Razão: subagente não pode definir `RAINFOREST_GATE_OFF`.\n"
-      );
-    }
-
-    // Verifica se há redireção para .rainforest-gate-off
-    if (/>+\s*\.rainforest-gate-off\b/.test(comando)) {
-      bloquia(
-        "BLOQUEADO pelo gate de subagente sem instalação do rainforest-mind.\n\n" +
-        "Razão: subagente não pode escrever em `.rainforest-gate-off`.\n"
-      );
-    }
-
-    // Verifica se há comando touch .rainforest-gate-off
-    if (/\btouch\s+[^&|;]*\.rainforest-gate-off\b/.test(comando)) {
-      bloquia(
-        "BLOQUEADO pelo gate de subagente sem instalação do rainforest-mind.\n\n" +
-        "Razão: subagente não pode criar `.rainforest-gate-off`.\n"
-      );
-    }
-
-    // Verifica segmentos para comandos de instalação
-    const segmentos = segmentarComando(comando);
-    for (const segmento of segmentos) {
-      const cmdNegado = ehComandoDeInstalacao(segmento);
-      if (cmdNegado) {
-        bloquia(
-          "BLOQUEADO pelo gate de subagente sem instalação do rainforest-mind.\n\n" +
-          `Comando: \`${segmento.trim()}\`\n\n` +
-          "Razão: subagente não pode instalar pacotes. Instalação é da janela principal, com a palavra do usuário.\n"
-        );
-      }
-    }
-
-    process.exit(0);
-  }
-
-  // === POWERSHELL ===
-  if (ev.tool_name === "PowerShell") {
-    const comando = ev.tool_input && ev.tool_input.command;
-    if (typeof comando !== "string" || !comando) process.exit(0);
-
-    // Verifica se há tentativa de definir RAINFOREST_GATE_OFF
-    if (ehDefinicaoDeGateOff(comando)) {
-      bloquia(
-        "BLOQUEADO pelo gate de subagente sem instalação do rainforest-mind.\n\n" +
-        "Razão: subagente não pode definir `RAINFOREST_GATE_OFF`.\n"
-      );
-    }
-
-    // Verifica se há redireção para .rainforest-gate-off
-    if (/>+\s*\.rainforest-gate-off\b/.test(comando)) {
-      bloquia(
-        "BLOQUEADO pelo gate de subagente sem instalação do rainforest-mind.\n\n" +
-        "Razão: subagente não pode escrever em `.rainforest-gate-off`.\n"
-      );
-    }
-
-    // Verifica se há New-Item .rainforest-gate-off
-    if (/\bNew-Item\s+[^&|;]*\.rainforest-gate-off\b/.test(comando)) {
-      bloquia(
-        "BLOQUEADO pelo gate de subagente sem instalação do rainforest-mind.\n\n" +
-        "Razão: subagente não pode criar `.rainforest-gate-off`.\n"
-      );
-    }
-
-    // Verifica se há Copy-Item/Copy/cp/mv para .rainforest-gate-off
-    if (/(Copy-Item|Copy|cp|move|mv|Move-Item).*\.rainforest-gate-off\b/.test(comando)) {
-      bloquia(
-        "BLOQUEADO pelo gate de subagente sem instalação do rainforest-mind.\n\n" +
-        "Razão: subagente não pode escrever em `.rainforest-gate-off`.\n"
-      );
-    }
-
-    // Verifica segmentos para comandos de instalação (case-insensitive para PowerShell)
-    const cmdLower = comando.toLowerCase();
-
-    // Install-Module ou Install-Package
-    if (/\b(install-module|install-package)\b/.test(cmdLower)) {
-      bloquia(
-        "BLOQUEADO pelo gate de subagente sem instalação do rainforest-mind.\n\n" +
-        "Razão: subagente não pode instalar pacotes. Instalação é da janela principal, com a palavra do usuário.\n"
-      );
-    }
-
-    // npm install (pode rodar em PowerShell também)
-    if (/\bnpm\s+(install|i|add|ci)\b/.test(cmdLower)) {
-      bloquia(
-        "BLOQUEADO pelo gate de subagente sem instalação do rainforest-mind.\n\n" +
-        "Razão: subagente não pode instalar pacotes. Instalação é da janela principal, com a palavra do usuário.\n"
-      );
-    }
-
+    if (DEFINE_GATE_OFF.some((p) => p.test(comando))) bloqueia(RAZAO_VARIAVEL, comando);
+    for (const segmento of segmentosParaGate(comando)) processarSegmento(segmento, 0);
     process.exit(0);
   }
 
@@ -288,3 +248,5 @@ function main() {
 }
 
 if (require.main === module) main();
+
+module.exports = { instalacaoNoComando, escreveArquivoDeDesligar };
