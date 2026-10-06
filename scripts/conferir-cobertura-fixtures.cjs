@@ -128,8 +128,8 @@ try {
               // Pid morreu (ou sem permissão, mas no Linux é EPERM mesmo vivo)
               if (killErr.code === 'ESRCH') {
                 // Processo não existe — remover lock stale e tentar novamente
+                // (o laco conta a tentativa; contar aqui tambem saia sem lock)
                 try { fs.unlinkSync(lock); } catch (_) { /* ignorar */ }
-                tentativas++;
               } else {
                 // EPERM = processo vivo mas sem permissão (improável em teste, mas válido em produção)
                 console.error('nao-verificavel: outra mutacao em curso neste worktree (pid ' + pidOutro + ' vivo)');
@@ -140,6 +140,12 @@ try {
         } catch (_) { /* ignorar erro de leitura */ }
         tentativas++;
       }
+    }
+    if (!lockMeu) {
+      // Lock vazio, corrompido ou recriado por outro no meio: rodar sem ele
+      // seria exatamente a mutacao concorrente que ele existe para impedir.
+      console.error("nao-verificavel: lock de mutacao ilegivel ou disputado (" + lock + ")");
+      process.exit(EXIT_LOCK_OCUPADO);
     }
   }
 } catch (e) {

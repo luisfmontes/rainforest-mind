@@ -386,11 +386,18 @@ function checarSkillsDivergentes() {
 
     for (const nome of nomes) {
       const skillPath = path.join(skillsDir, nome);
-      const stats = fs.statSync(skillPath);
-      if (!stats.isDirectory()) continue;
-
-      // Calcula hash dos arquivos da skill
-      const { hash, tamanho } = hashSkillDir(skillPath);
+      // Link quebrado ou arquivo ilegivel dentro da skill nao pode derrubar o
+      // painel inteiro: vira aviso nomeado e a skill fica fora da comparacao.
+      let hash, tamanho;
+      try {
+        if (!fs.statSync(skillPath).isDirectory()) continue;
+        ({ hash, tamanho } = hashSkillDir(skillPath));
+      } catch (e) {
+        aviso('skills-divergentes',
+          `${path.basename(dir)}/skills/${nome}: nao consegui ler (${e.code || e.message})`,
+          'confira se o link ou a pasta da skill existe');
+        continue;
+      }
 
       if (!skillsPorNome[nome]) {
         skillsPorNome[nome] = [];

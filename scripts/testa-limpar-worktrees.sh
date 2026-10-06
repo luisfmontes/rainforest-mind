@@ -979,6 +979,35 @@ else
   ok=$((ok+1)); echo "  ok    não é classificado como 'em-uso-recente'"
 fi
 
+# --- CASO (s3): RASTREADO modificado ha 3 h e sujo, nao em-uso-recente. O
+# porcelain de rastreado comeca com espaco (" M initial.txt"); com `.trim()` o
+# caminho perdia a primeira letra, o stat falhava e o worktree ficava "recente"
+# para sempre (revisao da zerar-issues-16). Apagado (" D") idem.
+
+teste "s3" "rastreado modificado ha 3 h e rastreado apagado: sujo, nao em-uso-recente"
+
+repo_s3="$SB/repo_s3"
+work_s3="$SB/trabalho_s3"
+criarRepoComCommit "$repo_s3" "$work_s3"
+wt_s3="$work_s3-worktrees/wt-s3"
+git worktree add "$wt_s3" HEAD
+echo "mexido" > "$wt_s3/initial.txt"
+touch -d "3 hours ago" "$wt_s3/initial.txt"
+saida_s3=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_s3" 2>&1)
+if echo "$saida_s3" | grep -q "sujo" && ! echo "$saida_s3" | grep -q "em-uso-recente"; then
+  ok=$((ok+1)); echo "  ok    rastreado modificado ha 3 h e 'sujo'"
+else
+  falhou=$((falhou+1)); echo "  FALHA rastreado modificado ha 3 h nao saiu 'sujo': $saida_s3"
+fi
+git -C "$wt_s3" checkout -q -- initial.txt
+rm "$wt_s3/initial.txt"
+saida_s3d=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_s3" 2>&1)
+if echo "$saida_s3d" | grep -q "sujo" && ! echo "$saida_s3d" | grep -q "em-uso-recente"; then
+  ok=$((ok+1)); echo "  ok    rastreado apagado e 'sujo'"
+else
+  falhou=$((falhou+1)); echo "  FALHA rastreado apagado nao saiu 'sujo': $saida_s3d"
+fi
+
 # --- Relatório final
 
 echo ""

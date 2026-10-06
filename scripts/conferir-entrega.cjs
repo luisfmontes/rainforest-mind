@@ -621,7 +621,13 @@ function main() {
   // ------------------------------------------------------------------
   if (principal && ehDir(principal) && norm(principal) !== norm(wt)) {
     c.abre(`O repo principal foi tocado? (${principal})`);
-    const [, stp] = c.mostra(principal, "status", "--porcelain");
+    const [rcStp, stp] = c.mostra(principal, "status", "--porcelain");
+    if (rcStp !== 0) {
+      // D23 (#400): com o stderr fora do stdout, git que falha devolve stdout
+      // vazio — que se leria como "principal intacto". Falha aberta nao: 69.
+      process.stderr.write(`nao-verificavel: git status falhou no repo principal (exit ${rcStp})\n`);
+      return 69;
+    }
     const linhasStp = stp ? stp.split(/\r?\n/).filter((l) => l.length > 0) : [];
 
     // O rastro do PROPRIO metodo nao e sujeira do agente: `estado.cjs marcar` grava
@@ -706,7 +712,11 @@ function main() {
     }
 
     c.abre("O HEAD do repo principal se mexeu?");
-    const [, headAgora] = c.mostra(principal, "rev-parse", "HEAD");
+    const [rcHead, headAgora] = c.mostra(principal, "rev-parse", "HEAD");
+    if (rcHead !== 0 || !headAgora) {
+      process.stderr.write(`nao-verificavel: git rev-parse HEAD falhou no repo principal (exit ${rcHead})\n`);
+      return 69;
+    }
     if (!a.head_antes) {
       c.aviso("sem --head-antes; registre o HEAD antes de despachar para esta checagem valer");
     } else if (headAgora.startsWith(a.head_antes) || a.head_antes.startsWith(headAgora)) {

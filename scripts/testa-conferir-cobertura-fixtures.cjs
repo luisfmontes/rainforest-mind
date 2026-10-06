@@ -213,6 +213,11 @@ console.log('== 10. lock de pid morto retoma e roda ==');
   const dir = sandbox();
   const antes = fs.readFileSync(path.join(dir, 'alvo.cjs'), 'utf8');
   const lock = path.join(dir, '.git', 'rainforest-mutacao.lock');
+  // O avaliador anota se o lock existia quando rodou: retomar o lock de pid
+  // morto tem de SEGURAR o lock, nao so apagar o velho (revisao zerar-issues-16).
+  const alvoP = path.join(dir, 'alvo.cjs');
+  const anotar = 'require("fs").appendFileSync(__dirname + "/visto.txt", String(require("fs").existsSync(__dirname + "/.git/rainforest-mutacao.lock")) + "\\n");\n';
+  fs.writeFileSync(alvoP, anotar + fs.readFileSync(alvoP, 'utf8'));
   // Criar lock com pid que ja morreu (spawn um filho que termina imediatamente)
   const deadPid = spawnSync(process.execPath, ['-e', '0']).pid;
   // Aguardar um pouco para garantir que o processo morreu
@@ -231,11 +236,26 @@ console.log('== 10. lock de pid morto retoma e roda ==');
     caso('exit 0 (retoma e roda)', r.status === 0, `${r.status} — ${r.stderr}`);
     caso('diz "cobertura por fixture: OK"', /cobertura por fixture: OK/.test(r.stdout), r.stdout);
     caso('LOCK REMOVIDO apos rodada', !fs.existsSync(lock));
+    const visto = fs.existsSync(path.join(dir, 'visto.txt'))
+      ? fs.readFileSync(path.join(dir, 'visto.txt'), 'utf8').trim().split('\n') : [];
+    caso('o lock estava SEGURO durante a avaliacao', visto.length > 0 && visto.every((v) => v === 'true'), visto.join(','));
   } else {
     // Se o pid ainda estiver vivo (raro), pular o teste
     console.log('  ok   lock de pid morto retoma e roda (pid ainda vivo, pulado)');
     ok++;
   }
+  fs.rmSync(dir, { recursive: true, force: true });
+}
+
+console.log('== 11. lock ilegivel (vazio) sai 69 sem mutar ==');
+{
+  const dir = sandbox();
+  const antes = fs.readFileSync(path.join(dir, 'alvo.cjs'), 'utf8');
+  fs.writeFileSync(path.join(dir, '.git', 'rainforest-mutacao.lock'), '');
+  const spec = escreverSpec(dir, [MUT_NEGACAO], []);
+  const r = rodar(dir, spec);
+  caso('exit 69', r.status === 69, `${r.status} — ${r.stderr}`);
+  caso('fonte intacto', fs.readFileSync(path.join(dir, 'alvo.cjs'), 'utf8') === antes);
   fs.rmSync(dir, { recursive: true, force: true });
 }
 

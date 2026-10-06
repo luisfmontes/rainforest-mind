@@ -623,6 +623,15 @@ if "${CONF_CMD[@]}" --worktree "$WTV" --base "$BASE_V" --escopo 'a.cjs' 2>&1 | g
   falhou=$((falhou+1)); echo "  FALHA bateria que nao cita b.cjs entrou nas vizinhas"
 else ok=$((ok+1)); echo "  ok   bateria que nao cita o arquivo nao e vizinha"; fi
 
+# D23 (#400): git que falha no repo PRINCIPAL e ambiente (69), nunca "intacto".
+# Com o stderr fora do stdout, o stdout vazio se lia como principal limpo e
+# HEAD inalterado — a checagem falhava aberta (revisao da zerar-issues-16).
+NAO_REPO="$RAIZ/nao-e-repo"; mkdir -p "$NAO_REPO"
+esperado "repo principal que nao e repositorio -> 69" 69 \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" --repo-principal "$NAO_REPO"
+contem "  ... e diz nao-verificavel" "nao-verificavel: git status falhou no repo principal" \
+  "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" --repo-principal "$NAO_REPO"
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

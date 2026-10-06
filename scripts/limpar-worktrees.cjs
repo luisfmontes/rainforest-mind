@@ -452,11 +452,14 @@ function classificar(dir, fantasmas) {
 
   // Confinado: verifica se está limpo
   try {
+    // So o fim: o espaco inicial de " M arq" e a coluna de status, e o
+    // `trim()` o comia — o slice(3) abaixo cortava o caminho e todo rastreado
+    // modificado virava "em-uso-recente" para sempre.
     const porcelain = execFileSync(caminhoExecutavel("git"), ["status", "--porcelain"], {
       cwd: dir,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
+    }).replace(/\s+$/, "");
 
     // S2 (8a revisao, rodada 10, lote 3, 2026-09-03): a lista de exclusao que
     // existia aqui ("arquivos especiais do worktree": HEAD, ORIG_HEAD,
@@ -480,6 +483,7 @@ function classificar(dir, fantasmas) {
       let mtempoMax = 0;
       for (const linha of linhas) {
         // Extrai o caminho do arquivo (ignore status de 2 chars no início)
+        const estado = linha.slice(0, 2);
         let caminho = linha.slice(3);
         // Se tem " -> " é rename: pega o lado direito
         if (caminho.includes(" -> ")) {
@@ -494,8 +498,9 @@ function classificar(dir, fantasmas) {
           const stat = fs.statSync(path.join(dir, caminho));
           mtempoMax = Math.max(mtempoMax, stat.mtimeMs);
         } catch {
-          // Arquivo que não consegue stat conta como recente (não quer dizer)
-          mtempoMax = Date.now();
+          // Apagado (" D"/"D ") nao tem mtime e nao diz se ha alguem trabalhando:
+          // fica fora da conta. Outro stat que falha conta como recente (cautela).
+          if (!estado.includes("D")) mtempoMax = Date.now();
         }
       }
 

@@ -713,6 +713,23 @@ if ! RFM_BATERIAS_OBRIGATORIAS="$obrig_r" bash "$VARRER" --shard 1/2 --listar >/
 fi
 echo "  PASS (r)"
 
+# (s) Lista apontada que nao existe e erro, nao "nada a conferir"; espaco no fim
+# da linha nao inventa falta (revisao da zerar-issues-16).
+echo "=== Teste (s): lista ausente falha; espaco no fim da linha e ignorado ==="
+saida=$(RFM_BATERIAS_OBRIGATORIAS="$sandbox_q/nao-existe.txt" bash "$VARRER" --listar 2>&1)
+exitcode=$?
+if [ $exitcode -ne 1 ] || ! echo "$saida" | grep -q "lista de baterias obrigatorias ausente"; then
+  echo "  FAIL (s): lista ausente exit=$exitcode"
+  echo "$saida"
+  exit 1
+fi
+printf 'hooks/testa-gate-worktree.sh  \t\n' > "$obrig_r"
+if ! RFM_BATERIAS_OBRIGATORIAS="$obrig_r" bash "$VARRER" --listar >/dev/null 2>&1; then
+  echo "  FAIL (s): espaco no fim da linha gerou FALTOU"
+  exit 1
+fi
+echo "  PASS (s)"
+
 echo ""
 echo "======= TODOS OS TESTES PASSARAM ======="
 exit 0

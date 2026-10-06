@@ -497,7 +497,12 @@ def main() -> int:
     # ------------------------------------------------------------------
     if principal and Path(principal).is_dir() and norm(principal) != norm(wt):
         c.abre(f"O repo principal foi tocado? ({principal})")
-        _, stp = c.mostra(principal, "status", "--porcelain")
+        rc_stp, stp = c.mostra(principal, "status", "--porcelain")
+        if rc_stp != 0:
+            # D23 (#400): com o stderr fora do stdout, git que falha devolve stdout
+            # vazio, que se leria como "principal intacto". Falha aberta nao: 69.
+            sys.stderr.write(f"nao-verificavel: git status falhou no repo principal (exit {rc_stp})\n")
+            return 69
         linhas_stp = [l for l in (stp or "").split("\n") if l.strip()]
 
         # O rastro do PROPRIO metodo nao e sujeira do agente: `estado.cjs marcar`
@@ -566,7 +571,10 @@ def main() -> int:
             c.ok("diretorio principal intacto")
 
         c.abre("O HEAD do repo principal se mexeu?")
-        _, head_agora = c.mostra(principal, "rev-parse", "HEAD")
+        rc_head, head_agora = c.mostra(principal, "rev-parse", "HEAD")
+        if rc_head != 0 or not head_agora:
+            sys.stderr.write(f"nao-verificavel: git rev-parse HEAD falhou no repo principal (exit {rc_head})\n")
+            return 69
         if not a.head_antes:
             c.aviso("sem --head-antes; registre o HEAD antes de despachar para esta checagem valer")
         elif head_agora.startswith(a.head_antes) or a.head_antes.startswith(head_agora):

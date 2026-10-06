@@ -34,7 +34,7 @@
     "em": "2026-10-06"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-06",
     "tarefas_ok": 17,
     "tarefas": 17,
@@ -259,15 +259,48 @@
     "observacoes": [
       "tarefa 15: catraca medida a mao no worktree (copia temporaria pendura o baseline de testa-saude)",
       "snapshot --sujo-antes da onda 1 perdeu-se com o scratchpad apagado no incidente da tarefa 4"
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-06"
+    }
   },
   "revisar": {
-    "status": "pendente",
+    "status": "reprovado",
     "snapshot": {
-      "head": "c49eacf45bebcb1dc6ffd65dc8ece8c6c8d4f138",
+      "head": "b631c173a837a9f86765a94189558991abe95510",
       "caminhos_sujos": []
     },
-    "vereditos": []
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a749b3e1c51804ccc",
+        "veredito": "reprovado",
+        "em": "2026-10-06",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/362cf405-4fdc-4132-b3de-8a20a347615a/subagents/agent-a749b3e1c51804ccc.jsonl"
+      },
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "acf553841d075e696",
+        "veredito": "reprovado",
+        "em": "2026-10-06",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/362cf405-4fdc-4132-b3de-8a20a347615a/subagents/agent-acf553841d075e696.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-06",
+    "achados": 17,
+    "bloqueantes": [
+      "scripts-1 limpar-worktrees: rastreado modificado sempre em-uso-recente",
+      "scripts-2 conferir-entrega: git falhando no principal vira intacto",
+      "scripts-3 saude: link quebrado derruba o painel",
+      "scripts-4 testa-backup-gravar caso (e) depende da maquina",
+      "hooks-1 gate-sem-instalar: instalacao fora do 1o token passa",
+      "hooks-2 gate-sem-instalar: PowerShell so checa Install-Module/npm",
+      "hooks-3 gate-sem-instalar: yarn test e subcomando em qualquer posicao barrados",
+      "hooks-4 gate-sem-instalar: buracos no desligamento de gate"
+    ],
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

@@ -115,6 +115,15 @@ else
   # porque o CI so roda com --shard e uma conferencia por fatia nunca rodaria
   # la. ANTES de listar ou executar.
   arquivo_obrigatorias="${RFM_BATERIAS_OBRIGATORIAS:-scripts/baterias-obrigatorias.txt}"
+  # Lista ausente onde ela deveria existir e falha, nao "nada a conferir":
+  # apagar ou renomear o arquivo desligava a trava em silencio (revisao da
+  # zerar-issues-16). Deveria existir = apontada por RFM_BATERIAS_OBRIGATORIAS,
+  # ou a varredura roda na raiz deste repositorio (tem scripts/varrer-baterias.sh).
+  if [ ! -f "$arquivo_obrigatorias" ] \
+     && { [ -n "${RFM_BATERIAS_OBRIGATORIAS:-}" ] || [ -f scripts/varrer-baterias.sh ]; }; then
+    echo "ERRO lista de baterias obrigatorias ausente: $arquivo_obrigatorias" >&2
+    exit 1
+  fi
   if [ -f "$arquivo_obrigatorias" ]; then
     # Ler as obrigatorias (ignorar linhas comentadas e vazias)
     obrigatorias=()
@@ -122,8 +131,8 @@ else
       # Remove comentarios e espacos em branco
       linha="${linha%%#*}"
       linha="${linha%$'\r'}"  # checkout com CRLF
-      linha="${linha%% }"
-      linha="${linha## }"
+      linha="${linha%"${linha##*[![:space:]]}"}"   # todo espaco do fim
+      linha="${linha#"${linha%%[![:space:]]*}"}"   # todo espaco do comeco
       if [ -n "$linha" ]; then
         obrigatorias+=("$linha")
       fi

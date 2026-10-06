@@ -181,14 +181,19 @@ teste "e" "sem flags e sem RFM_BACKUP_DESTINO, resolve OneDrive"
 # Usa --so-mostrar para apenas mostrar o destino sem gravar
 # Tarefa 10: exit_e precisa capturar o exit do comando, não do || true
 exit_e=0
-saida_e=$(env -u RFM_BACKUP_DESTINO node "$SRC/scripts/backup.cjs" gravar --so-mostrar 2>&1) || exit_e=$?
+# Hermetico (revisao da zerar-issues-16): OneDrive e raiz de dados de caixa —
+# sem isto o caso so passava em maquina com OneDrive e ~/.rainforest de verdade.
+origem_e="$SB/origem_e"; criarOrigem "$origem_e"
+onedrive_e="$SB/onedrive_e"; mkdir -p "$onedrive_e"
+saida_e=$(env -u RFM_BACKUP_DESTINO -u ONEDRIVE OneDrive="$(cygpath -w "$onedrive_e")" RFM_ROOT="$(cygpath -w "$origem_e")"   node "$SRC/scripts/backup.cjs" gravar --so-mostrar 2>&1) || exit_e=$?
 
 igual "exit code de --so-mostrar" "$exit_e" "0"
+if echo "$saida_e" | grep -qF "onedrive_e" && echo "$saida_e" | grep -qF "rainforest-backup"; then
+  ok=$((ok+1)); echo "  ok   destino resolvido em %OneDrive%\rainforest-backup"
+else
+  falhou=$((falhou+1)); echo "  FALHA destino nao veio do OneDrive de caixa: $saida_e"
+fi
 
-# A saída deve mencionar OneDrive (ou vazio se não houver env var OneDrive)
-# Neste teste em caixa de areia, o OneDrive pode não existir, então só confirmamos
-# que o comando retorna 0
-verdade "exit 0 com --so-mostrar" "sim"
 
 # --- CASO (f): sucesso nao deixa *.parcial*/*.tmp* no destino (R4)
 

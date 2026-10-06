@@ -905,6 +905,24 @@ SKILL_UMA="$( ( cd "$SRC" && CLAUDE_CONFIG_DIR= USERPROFILE="$HOMESKILLS" HOME="
   })' )"
 checa "N3. skill numa pasta so nao gera achado" "ausente" "ausente" "$SKILL_UMA"
 
+# Link quebrado em skills/ nao derruba o painel: vira aviso nomeado (revisao da
+# zerar-issues-16 — antes, `Erro fatal: ENOENT` e exit 1).
+rm -rf "$HOMESKILLS"
+mkdir -p "$HOMESKILLS/.claude/skills" "$HOMESKILLS/.claude-personal/skills" "$HOMESKILLS/alvo-sumido"
+mkdir -p "$HOMESKILLS/.claude/plugins" "$HOMESKILLS/.claude-personal/plugins"
+node -e 'require("fs").symlinkSync(require("path").resolve(process.argv[1]), process.argv[2], "junction")' \
+  "$HOMESKILLS/alvo-sumido" "$HOMESKILLS/.claude/skills/quebrada"
+rmdir "$HOMESKILLS/alvo-sumido"
+SKILL_QUEBRADA="$( ( cd "$SRC" && CLAUDE_CONFIG_DIR= USERPROFILE="$HOMESKILLS" HOME="$HOMESKILLS" RFM_ROOT="$SBP/dados" \
+  node "$SRC/scripts/saude.cjs" --json 2>/dev/null ) | node -e '
+  let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+    try {
+      const a = JSON.parse(d).find(x => x.item === "skills-divergentes");
+      console.log(a ? a.nivel + " " + a.detalhe : "ausente");
+    } catch { console.log("erro"); }
+  })' )"
+checa "N4. link quebrado em skills/ avisa e o painel sai inteiro" "aviso" ".claude/skills/quebrada: nao consegui ler" "$SKILL_QUEBRADA"
+
 rm -rf "$HOMESKILLS"
 
 echo
