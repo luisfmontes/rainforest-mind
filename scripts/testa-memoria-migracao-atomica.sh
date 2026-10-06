@@ -12,22 +12,23 @@
 set -e
 
 RAIZ=$(pwd)
-TEMP_DIR="${RFM_ROOT:-.rainforest-teste-migracao}"
-
-# Idioma da Tarefa 10 (docs/rainforest/planos/zerar-issues.md): MUT_DIR e
-# DADOS_CRASH (mais abaixo) nascem de `mktemp -d` e, com `set -e` ligado
-# nesta bateria, qualquer falha inesperada pula os `rm -rf` manuais antes de
-# cada `exit 1` — SANDBOXES garante a limpeza no EXIT de qualquer jeito.
+# Tarefa 10: baterias de memória e backup nunca tocam a raiz real.
+# Usar mktemp -d sempre; abortar se RFM_ROOT for resolvido como a raiz real do usuário.
 SANDBOXES=()
 novo_sandbox() { local tmpdir; tmpdir=$(mktemp -d); SANDBOXES+=("$tmpdir"); echo "$tmpdir"; }
 cleanup() {
-  rm -rf "$TEMP_DIR" 2>/dev/null || true
   for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; done
 }
 trap cleanup EXIT
 
-cleanup
-mkdir -p "$TEMP_DIR"
+# Conferir que não vamos tocar a raiz real
+RAIZ_REAL=$(node -e "console.log(require('./hooks/lib/raiz.cjs').resolverRaiz().raiz)" 2>/dev/null || echo "")
+if [ -n "${RFM_ROOT:-}" ] && [ -n "$RAIZ_REAL" ] && [ "$RFM_ROOT" = "$RAIZ_REAL" ]; then
+  echo "FALHA Tarefa 10: RFM_ROOT aponta para a raiz real — aborta"
+  exit 69
+fi
+
+TEMP_DIR=$(novo_sandbox)
 
 export RFM_ROOT="$TEMP_DIR"
 

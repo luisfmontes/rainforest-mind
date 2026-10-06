@@ -6,6 +6,15 @@
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Tarefa 10: baterias de memória e backup nunca tocam a raiz real.
+# Abortar se RFM_ROOT for resolvido como a raiz real do usuário.
+RAIZ_REAL=$(node -e "console.log(require('./hooks/lib/raiz.cjs').resolverRaiz().raiz)" 2>/dev/null || echo "")
+if [ -n "${RFM_ROOT:-}" ] && [ -n "$RAIZ_REAL" ] && [ "$RFM_ROOT" = "$RAIZ_REAL" ]; then
+  echo "FALHA Tarefa 10: RFM_ROOT aponta para a raiz real — aborta"
+  exit 69
+fi
+
 SB="$(mktemp -d)"
 trap 'rm -rf "$SB"' EXIT
 
@@ -159,8 +168,9 @@ igual "arquivos .tmp no destino" "$tmp_count" "0"
 teste "e" "sem flags e sem RFM_BACKUP_DESTINO, resolve OneDrive"
 
 # Usa --so-mostrar para apenas mostrar o destino sem gravar
-saida_e=$(env -u RFM_BACKUP_DESTINO node "$SRC/scripts/backup.cjs" gravar --so-mostrar 2>&1 || true)
-exit_e=$?
+# Tarefa 10: exit_e precisa capturar o exit do comando, não do || true
+exit_e=0
+saida_e=$(env -u RFM_BACKUP_DESTINO node "$SRC/scripts/backup.cjs" gravar --so-mostrar 2>&1) || exit_e=$?
 
 igual "exit code de --so-mostrar" "$exit_e" "0"
 
