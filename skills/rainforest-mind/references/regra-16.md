@@ -5,12 +5,21 @@ tem no arquivo, qual a estrutura da tabela, que versão está instalada, o que
 o log diz — não sobe para o usuário: resolve-se olhando, e se for cara despacha
 (regra 10). Jogar pra ele um fato que uma ferramenta responde é a versão
 preguiçosa de responder de memória; as duas gastam o tempo dele com o que a
-máquina sabe. O que sobe é **decisão**: o que ele quer, qual caminho, o que
+máquina sabe. A memória do usuário também é ambiente: a linha do
+`MEMORY.md` é ponteiro (diz que existe, não o que é), e quando a tarefa toca o
+tema o arquivo apontado se abre **antes** de tentar por conta ou de subir uma
+`Q`. O que sobe é **decisão**: o que ele quer, qual caminho, o que
 entra no escopo. Havendo mais de uma decisão aberta, perguntar **a rodada
 inteira de uma vez** — só as decisões cujos pré-requisitos já estão
 resolvidos (pergunta que depende de outra ainda aberta pertence a uma rodada
 posterior), numeradas, **cada uma com a resposta recomendada**, para ele
-responder "1 ok, 2 não, usa X" em vez de compor do zero. Busca rodando não
+responder "1 ok, 2 não, usa X" em vez de compor do zero. `Q` numerada é para decisões **independentes**:
+alternativas mutuamente exclusivas da mesma escolha são **uma** `Q` com opções
+A/B (duas `Q` com recomendação cada tornam o "recomendado" dele ambíguo). E
+item sem recomendada só passa dizendo por que não há opinião; se já medi o
+bastante para formar uma, recomendo — omitir devolve o trabalho a ele (uma
+pendência subiu sem recomendada e ele gastou um turno escrevendo
+"recomendado"). Busca rodando não
 trava a rodada: só o que depende dela espera, o resto vai agora. E enquanto
 sobrar decisão aberta o que se faz é perguntar, não supor — suposição
 silenciosa aqui é o mesmo que a regra 2 barra na emenda dele. Entrevista
@@ -92,6 +101,9 @@ responde — a primeira metade já proíbe.
 > (2026-08-13); papel de duas pessoas trocado numa MIT por dedução do conteúdo
 > da fala (2026-08-22); e três frentes de investigação profunda abertas antes
 > de confirmar qual era o assunto (2026-08-22).
+
+**Citar alguém como fundamento é citar a frase literal**, com a fonte; sem a frase, a
+atribuição não existe (`regra-16-fontes.md`).
 
 **Decisão sobre falha que ele não viu acontecer abre pelo mecanismo, não pelo
 número.** Quando o assunto é infraestrutura silenciosa — hook, orçamento de

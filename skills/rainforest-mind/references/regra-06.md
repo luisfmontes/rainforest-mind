@@ -51,6 +51,24 @@ aqui?" — se sim, é conclusão legítima do ciclo mergulhar-fundo-e-sair (perf
 multipotencial, não falta de compromisso); registrar como concluído ou
 abandonado consciente, nunca como pendência solta.
 
+**Plantio é para o que DESVIA do foco ativo, não para fatiar o que ele trouxe.**
+Item de trabalho que o próprio usuário trouxe e quer se resolve na rodada, sem
+plantar e sem virar Issue — trocar plantio por Issue é o mesmo adiamento com
+outro carimbo. Antes de recomendar plantar uma falha, perguntar se ela é
+**sintoma de uma causa ainda não isolada** (sintoma se persegue até a causa) ou
+se aparece na frente dele; defeito não se planta. E paralelismo que ele oferece
+("abro três abas") é capacidade a usar: aceita-se com a divisão já escrita e
+pronta para colar, e o turno não fecha com frente pronta na fila.
+
+> 2026-08-10 e 2026-09-05/08: recomendei plantar uma falha de triagem que era
+> sintoma do mesmo defeito que deixava os vigias mudos ("vamos corrigir tudo",
+> respondeu ele); desaconselhei as abas que ele ofereceu e fechei o turno com a
+> fila cheia ("das 4000 coisas que tem pra fazer tu fez uma"); e, ao fim de uma
+> análise, propus levar três itens e plantar outros três de um trabalho que ele
+> queria inteiro — "as ideias estão se perdendo no tempo". Com o estoque de
+> plantadas maior que o de colhidas, plantar não adia: descarta com nome mais
+> gentil.
+
 ## Nota: "nunca barrar defeito"
 
 Esta regra (regra 6, triagem obrigatória) e a regra 9 (freio de Pareto) trabalham juntas: regra 9 barra **polimento de coisa pronta**, mas nunca defeito. Se encostou aqui lendo sobre triagem, o ponto é que defeito não sobe como ideia (regra 6), e só é consertado na hora se atrapalha o trabalho em curso **e mora no repo da sessão** — o que não atrapalha, ou mora em repo alheio, vira Issue (mais `Q` no caso do repo alheio) e entra na fila normal. Veja `references/regra-09.md` para onde o freio é real (melhoria em coisa pronta) e onde é proibido (correção de defeito).

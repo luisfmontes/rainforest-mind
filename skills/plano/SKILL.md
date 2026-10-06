@@ -107,6 +107,10 @@ mutacao:
   vai em `bateria:`, e aí o exit code passa a valer pelo caso. **Obrigatória quando
   `resultado` é `vermelho`**, e o `estado.cjs` recusa sem ela; `n/a` não tem
   comportamento a inverter, então não tem caso a nomear.
+- **Alvo de mutação em código a nascer prescreve a FORMA da função** ("uma
+  expressão só, sem ramo, sem print"), não a linha literal — e diz que nenhum
+  caso de teste pode afirmar sobre o texto do fonte. Plano que dita a linha
+  produz teste que lê o fonte, e a catraca fica satisfeita por ele.
 - **O relato de mutação do agente não fecha a tarefa.** A integração re-roda, e
   só o exit code dela vale.
 - **`de:` e `para:` são texto COPIADO do fonte, nunca prosa** — mesmo quando o
@@ -155,6 +159,22 @@ manda**, não a que o teste monta: o JSON que o harness realmente envia no
 stdin, o registro que o cliente realmente tem na tabela, o arquivo no formato
 em que ele realmente chega. A bateria continua existindo e continua rodando —
 ela só não é mais o que a tarefa promete.
+
+Três cuidados ao escrever o critério, porque contrato de interface que ninguém
+executou só falha no último portão:
+
+- **Rode a forma literal do comando ao escrever o critério.** Invocação sem os
+  argumentos obrigatórios não é falsificável; registre todos eles e teste uma
+  execução representativa antes de aprovar o plano.
+- **Critério de instalação separa três conjuntos:** origem obrigatória (com
+  hash), derivados que o instalador acrescenta com legitimidade, e extras
+  proibidos (`.git` entre eles). Produza a origem por export do commit
+  candidato e inventarie também os arquivos ocultos. Igualdade literal de
+  conjunto só vale contra instalador comprovadamente transparente.
+- **"Byte a byte" exige âncora binária:** capture tamanho e hash do segmento
+  preservado **antes** da implementação, e o teste opera sobre bytes crus com
+  uma mutação real de EOL ou EOF que fique vermelha. Equivalência textual não
+  cobre EOL, EOF nem codificação.
 
 > 2026-08-19: as 13 tarefas de um plano tinham `pronto quando:` na forma
 > "`bash <bateria>` sai 0". A entrega passou por **10 baterias verdes**, por
@@ -223,6 +243,11 @@ decidir, e essa informação basta?*
 informação a pessoa precisa?", "onde ela fica visível?", "e o critério falha
 quando essa informação desaparece?" — tudo isso é falsificável por comando, e
 tudo isso mede a pessoa, não o instrumento.
+
+### Critério de trava
+
+Gate, hook ou validador: o `pronto quando:` enumera **contornos** e **casos
+legítimos vizinhos**, e declara a parada — `references/criterio-de-trava.md`.
 
 ### Trava de cobertura
 

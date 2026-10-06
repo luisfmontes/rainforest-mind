@@ -32,12 +32,14 @@ const DOCUMENTOS_DO_FLUXO = new Set([
 // certo e sempre o da main, e um vermelho aqui significa ou corpo alterado por
 // engano, ou base velha depois que a main andou.
 const ANCORA_CORPOS_SKILLS = {
-  fechar: { bytes: 9585, sha256: '7ffc677b2f63ed030317417542f32f2ec4027294b39b14fcbc7ed00f01edc614' },
+  fechar: { bytes: 10317, sha256: 'c854c623b0b1d1487cd542867fb9d78248c66d149b4810cedf16e1898f4d451f' },
+  // fechar, modo-dev e regua re-medidos em 2026-10-05: a revisao bimestral
+  // acrescentou texto de proposito (E4, E25, E27, E30).
   // modo-dev re-medido em 2026-09-30: o fluxo semear-travas (tarefa 9) acrescentou
   // de proposito a linha do substituir.cjs.
-  'modo-dev': { bytes: 13427, sha256: '02193a59749a425bd20016ec24f50241a21e59a79829228a053ab815bfc4666c' },
+  'modo-dev': { bytes: 14586, sha256: '3db8c57befa113ebdf5a6051901d30c58002702c4bcfe3140542ae9e1a89a5d6' },
   'montar-corpus': { bytes: 2935, sha256: 'f21d9af8be400bd8222f272b98ece70c1d01c92865e41f418340410b69bb11ab' },
-  regua: { bytes: 16038, sha256: 'c1318cbf03ef53a48575096a2898ca7f717b600b826b9061eb9b5552564895f4' },
+  regua: { bytes: 16058, sha256: 'e55525133ad68af2282d07bd6f6cfca3a58d5b69973d034d4f8b6c58c26b7776' },
 };
 
 class FalhaContrato extends Error {}

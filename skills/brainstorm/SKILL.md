@@ -27,6 +27,42 @@ E então **pare e espere**. Cada rodada de respostas remodela a árvore:
 decisão fechada empurra a fronteira para fora — recalcule e faça a rodada
 seguinte. Você nunca responde as próprias perguntas.
 
+**Exceção: delegação explícita prévia.** Se ele disse, antes das perguntas, que
+pode seguir como recomendado, a rodada vira design escrito: as respostas
+recomendadas entram como decisões, com uma linha por decisão relatando o que
+ficou fechado. Só sobe pergunta o que a delegação não cobre (escopo novo, risco
+de publicação). Perguntar o que a delegação já fechou devolve a ele o trabalho
+que acabou de delegar.
+
+**Exceção: ele pediu para conversar.** Se ele responde a uma decisão com
+"precisamos conversar", "quero rever" ou "é cedo para decidir", não é falta de
+alternativa na mesa: ele discorda ou desconfia de algo na sua análise. Responda em
+prosa curta com **uma** pergunta aberta e pare. Menu numerado serve à fronteira
+madura, em que ele sabe o que quer e falta escolher; devolvido nessa hora, fecha a
+conversa que ele queria abrir.
+
+### Perguntas obrigatórias da primeira rodada
+
+Três perguntas entram na primeira rodada sempre que o documento ainda não as
+responde — a premissa de alvo recalibra todos os riscos, e perguntar custa menos
+que reescrever a seção depois:
+
+- **Para QUEM e em que MOMENTO a entrega serve?** Risco, pendência e pergunta a
+  terceiro só se escrevem depois de saber, por exemplo, se a carga é inicial em
+  base vazia.
+- **A rotina nova convive com a existente ou a substitui?** Painel desenhado ao
+  lado da tela que devia substituir é o caso típico.
+- **Cada valor de um domínio (códigos, status, tipos) sai com o cenário real que
+  o produz e a rotina que o grava.** Rótulo sozinho não é proposta, é
+  vocabulário seu.
+
+**Quando o design cria selo, trava, gate ou validador**, uma quarta pergunta é
+obrigatória: *contra quem isto protege, e o que fica fora?* A resposta vira
+decisão `D<n>` do design (o modelo de ameaça), e o briefing do revisor a cita
+desde a rodada 1. Sem modelo escrito, cada revisão acha um vetor novo e a
+auditoria não converge; com ele, o que ficou fora é critério de parada, não
+buraco.
+
 ## Abrir: registre o trabalho antes da primeira rodada
 
 Assim que o assunto tem nome, **antes** de perguntar qualquer coisa:
@@ -43,6 +79,17 @@ exatamente o que esta ferramenta existe para evitar. Slug que já existe
 Este é o único estágio que **não** abre com `exigir`: `design` não tem
 pré-requisito, e `exigir` recusa slug inexistente — é este estágio quem cria o
 estado.
+
+**Varra o que o repositório já sabia, ainda antes da primeira pergunta:**
+`node scripts/varrer.cjs --slug <slug> <termo>...` com os termos do tema (módulo,
+tabelas, nome da rotina). Ele consulta Issues e PRs em qualquer estado, branches
+remotas, `git log --all --grep` e o `ideias.jsonl`, e grava
+`docs/rainforest/varredura/<slug>.txt` com cada comando e a saída. Leia na íntegra
+o que casar. O `ao_colher` das ideias casadas entra na árvore de decisão como
+pergunta; o que for defeito técnico entra como risco, com a fonte. Fica antes da
+primeira rodada porque um design já reimplementou uma Issue inteira depois de
+varrer só a `main` (`varri-so-a-main-e-duplique-feature`), e uma sessão apresentou
+o bloco 1 do design sem abrir cinco ideias relevantes.
 
 ## Território
 
@@ -108,13 +155,9 @@ docs/rainforest/varredura/<slug>.txt — <o que ela achou, e o que isso mudou>
 
 ### Varredura: o que o repositório já sabia
 
-Antes de gravar o design, rode `node scripts/varrer.cjs --slug <slug> <termo>...`
-com os termos do tema. Ele consulta Issues e PRs em qualquer estado, branches
-remotas, `git log --all --grep` e o `ideias.jsonl`, e grava
-`docs/rainforest/varredura/<slug>.txt` com cada comando e a saída. A seção
-`## Varredura` cita esse arquivo; `marcar --estagio design` recusa (exit 2) sem
-ele, ou com ele vazio. Existe porque um design já reimplementou uma Issue
-inteira depois de varrer só a `main` (`varri-so-a-main-e-duplique-feature`).
+A varredura já rodou na abertura (seção "Abrir"). A seção `## Varredura` do design
+cita o arquivo dela e diz o que ele achou e o que isso mudou; `marcar --estagio
+design` recusa (exit 2) sem o arquivo, ou com ele vazio.
 
 ### Avaliado e descartado vs. Fora de escopo
 

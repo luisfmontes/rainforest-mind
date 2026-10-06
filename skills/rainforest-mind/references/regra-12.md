@@ -61,6 +61,9 @@ diferir, é sintoma do medidor até prova em contrário. E o mesmo vale para a
 LEITURA da saída: o veredito de uma bateria é o exit code e a linha de placar,
 nunca um grep de substring — bateria que exercita mutação imprime o vermelho
 esperado no meio do verde, e quem grepa `FALHA` lê defeito onde há prova.
+Prova colada pode medir outra coisa: pergunte *esta saída cairia igual sem o
+defeito?*, em quantos ambientes rodou, e se a mutação **alarga o padrão**, não
+só desliga o ramo (`regra-12-prova.md`).
 (acervo: 2026-08-11, 2026-08-22, 2026-08-26)
 
 (7) **campo vazio não é campo ok.** Instrumento que responde por registro —
@@ -175,7 +178,4 @@ leva ao usuário, nunca roda direto. O alarme: **a ação apaga dado e a evidên
 
 ---
 
-Os incidentes que sustentam os parágrafos acima — o que aconteceu, com data e
-custo — moram em `references/regra-12-acervo.md`, indexados pelas datas que cada
-parágrafo cita. A regra se aplica sem eles; o acervo se lê quando o "por quê"
-for a pergunta.
+Incidentes: `regra-12-acervo.md`, indexado pelas datas acima.

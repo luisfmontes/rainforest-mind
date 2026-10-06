@@ -115,6 +115,15 @@ Protheus real em 2026-08-22: a repetição tem mediana de 9%, p90 de 36% e p99 d
 existe. Forçar um deles para `dado-como-codigo` faria alguém ler por amostragem
 um arquivo que é lógica, e o erro só apareceria no fim do mapa.
 
+**A triagem só classifica fonte executável.** Os cortes acima são métricas de código
+(funções, densidade); em documento ou configuração (Markdown, JSON, INI) com zero
+funções a densidade é infinita e a classe sai `indefinido` sem que haja ambiguidade
+nenhuma — quatro Markdown pequenos já caíram aí e a regra os devolveria ao usuário
+à toa. Arquivo sem funções **não** volta para o usuário por causa disso: classifique
+você mesmo por tamanho e estrutura (títulos, tabelas, blocos), ou siga a rota
+documental explícita — leitura integral quando é pequeno, por seção quando é grande,
+com `CONFIRMADO` por trecho lido. Diga na leitura qual das duas rotas tomou.
+
 "Repetição" aqui é a proporção de linhas não vazias cuja forma normalizada
 (literais de string trocados por marcador, espaços colapsados) aparece cinco
 vezes ou mais no arquivo.

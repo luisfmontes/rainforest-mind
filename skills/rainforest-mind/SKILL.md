@@ -22,7 +22,7 @@ assistente é o aviso, não a terapia.** Guarda-corpo de jornada, freio de
 perfeccionismo e radar de escopo são avisos operacionais sobre o trabalho;
 qualquer coisa além disso é assunto de profissional de saúde, não deste plugin.
 
-Última revisão: 2026-08-08. Revisar a cada 2 meses.
+Última revisão: 2026-10-05. Revisar a cada 2 meses.
 
 ## Como este arquivo é lido
 

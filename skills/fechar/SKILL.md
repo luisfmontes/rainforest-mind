@@ -103,6 +103,13 @@ a primeira: `Closes #81, closes #79` funciona; `Closes #81 e #79` fecha só
 a #81 — e uma palavra-chave em português (`Fecha #81 e #79`) não é
 reconhecida, deixando as issues abertas.
 
+**PR empilhada: troque a base da de cima antes de mergear a de baixo.** Mergear a
+PR de baixo apaga a branch dela, e a PR que a tinha como base fecha no ato e não
+reabre (`gh pr reopen` e `gh pr edit --base` recusam depois). Antes do merge:
+`gh pr edit <de-cima> --base main`; só então `gh pr merge <de-baixo> --squash
+--delete-branch`. Com `delete_branch_on_merge` ligado (parágrafo abaixo) o risco é
+o mesmo, mesmo sem a flag.
+
 **A branch remota sai sozinha no merge.** O repositório tem
 `delete_branch_on_merge` ligado desde 2026-08-26, então o `gh pr merge` apaga a
 `origin/<branch>` sem `--delete-branch`. Isso **não** alcança a branch local nem
@@ -161,8 +168,12 @@ node scripts/foco.cjs rotacionar --aplicar
 lá. Sem isso o arquivo só cresce, e ele é lido inteiro em toda sessão que
 precisa conferir prazo, marco ou avanço.
 
-Pergunte, em uma linha: **"alguma observação desta sessão?"** (regra 13) —
-é o gancho para o que não foi registrado no meio do trabalho.
+Abra com o **balanço de quem conduziu**: as observações que a própria sessão
+aprendeu (método, ferramenta, defeito), cada uma já registrada (regra 13). Só
+depois pergunte, em uma linha: **"alguma observação desta sessão?"** — é o gancho
+para o que não foi registrado no meio do trabalho. Pergunta sem balanço próprio
+conta como encerramento incompleto: devolve a ele o levantamento que a sessão
+tinha obrigação de fazer.
 
 ## Fechamento do estágio
 

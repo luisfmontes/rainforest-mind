@@ -122,6 +122,13 @@ O bloco de núcleos tem teto em bytes (`NUCLEOS_MAX_BYTES`), e é catraca: cresc
 regra dói na hora de escrever, não na hora de ler. Se o seu texto não couber,
 a saída é **subtrair**, não aumentar o teto.
 
+**Frase nova em texto injetado é relida por um leitor hostil antes do commit.**
+Vale para `additionalContext` de hook e para `SKILL.md`: o modelo obedece ao que lê
+sem o contexto de quem escreveu. Releia cada frase como quem procura a pior leitura
+possível, e cruze com as regras do design do mesmo plugin. Já aconteceu: "registre
+com o número do chamado", injetada na abertura da sessão, foi lida como "registre
+NO sistema de chamados" e contradisse um hook do mesmo plugin.
+
 **Sem mod, o hook entrega o núcleo; com mod, as elaborações chegam inteiras.**
 Sem o mod (Codex, ou Claude Code anterior à 2.1.287), o `SessionStart` entrega só
 o núcleo, com `NUCLEOS_MAX_BYTES` de 6.000 B, o bloco de memória com

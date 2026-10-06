@@ -42,13 +42,14 @@ nos três testes:
 | **Obtível** | você consegue pôr os dois lado a lado agora? | está atrás de login, é uma lembrança, é um print de qualidade ruim |
 | **Comparável** | os dois respondem à mesma pergunta? | comparar um CLI com um site, um README de biblioteca com o de um produto |
 
-Régua que não passa nos três **não vira loop**. A skill para aqui e devolve a
-escolha da régua para o usuário — porque régua vaga faz o crítico alucinar a
-comparação e aprovar a primeira rodada, que é a falha mais comum deste padrão.
+Régua que não passa nos três **não vira loop**: a escolha volta para o usuário,
+porque régua vaga faz o crítico alucinar a comparação e aprovar a primeira
+rodada — a falha mais comum deste padrão.
 
-E uma régua **boa demais** é o outro lado da mesma moeda: se o alvo é
+Régua **boa demais** é o outro lado da moeda: se o alvo é
 inalcançável com o esforço disponível, o loop nunca sai e queima orçamento
-parecendo progresso. O teto do `## Freios` existe por causa disso.
+parecendo progresso. O teto do `## Freios` existe por causa disso. E régua fechada recorta o
+pedido: `references/cobertura-da-fonte.md`.
 
 ### Os mecanismos: selam a régua por construção
 

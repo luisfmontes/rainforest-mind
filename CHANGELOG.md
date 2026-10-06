@@ -10,6 +10,28 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.41.0 — 2026-10-05
+
+- **Revisão bimestral das regras.** As 214 observações registradas desde 2026-08-08 foram triadas por conteúdo:
+  85 já estavam cobertas pelo texto e foram colhidas; 26 lições viraram texto novo nas regras e nas skills do
+  fluxo; o que era defeito de script virou Issue (#396 a #404). Nenhum núcleo mudou; as elaborações das regras 11,
+  12, 16 e 17, que a abertura injeta inteiras, cresceram 1,3 KB (38.863 B de 40.960 B) — o resto do texto novo
+  mora em arquivos irmãos das `references/`.
+- **Regras (references):** citar terceiro pela frase literal e memória do usuário como ambiente (16); `Q` só
+  para decisões independentes, sempre com recomendada (16); a prova tem de medir o defeito, verde em quantos
+  ambientes, e mutação que alarga o padrão (12, em `regra-12-prova.md`); um worktree por atividade e sem
+  `EnterWorktree` com agente em voo (11, em `regra-11-atividade.md`); foco é entrega, não pasta (3); plantio
+  é para o que desvia, não para o que ele quer resolver (6); ressalva antes da ordem e comentário lateral não
+  vira gate (7); como ler recusa de gate e anunciar quando parar de despachar (14); processo de fundo e `&`
+  no Bash (15); balanço da sessão antes de "alguma observação?" (5); origem marcada em mensagem entre sessões (17).
+- **Skills do fluxo:** `brainstorm` varre ideias e Issues antes da primeira rodada, pergunta alvo e
+  convive-ou-substitui, exige modelo de ameaça quando o design cria trava, e reconhece delegação prévia e
+  pedido de conversa; `plano` ganha "Critério de trava" e três cuidados de critério; `modo-dev` manda invocar
+  a catraca de mutação, proíbe temporário de nome genérico e põe teto no relatório; `fechar` troca a base da
+  PR empilhada antes do merge; `arqueologia` não devolve arquivo sem funções; `regua` confere a cobertura do
+  material de origem; `CONTRIBUTING` pede releitura hostil de texto injetado.
+- **Vigia `revisao-bimestral`** passa a ser por ciclo: quem fecha a revisão reagenda a próxima.
+
 ## 1.40.0 — 2026-10-05
 
 - **Mapa de estágios do território.** Um plugin de domínio (um "território") passa a declarar, num
@@ -21,7 +43,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   Variáveis de comando vêm de `~/.rainforest/territorios/<nome>.json`; variável sem valor sai 3
   nomeando a que falta. Sem território, imprime `sem territorio` e nada muda. O `{arquivo}` sai
   citado para shell (aspas simples quando tem caractere fora do conjunto seguro): o nome vem do
-  repositório em que se trabalha e a linha impressa é executada, então `x$(cmd).prw` não roda `cmd`.
+  repositório em que se trabalha e a linha impressa é executada, então `x$$(cmd).prw` não roda `cmd`.
 - **O `marcar` recusa item obrigatório sem evidência.** Agente, tool ou comando que o mapa marca
   como obrigatório e não aparece no campo `territorio` do `--json` do `marcar` recusa com exit 2
   nomeando o item. Item opcional só gera aviso. Sem território, o `marcar` se comporta como antes.

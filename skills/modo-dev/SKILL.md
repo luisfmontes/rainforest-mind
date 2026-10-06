@@ -86,6 +86,14 @@ nesta ordem:
    apontar para outro lugar, a resposta é **dispensar o teste de ponta a ponta**
    nessa fatia e dizer isso no briefing — nunca backup-e-restaura em cima do dado
    real. Regra geral em prosa não basta: o caminho tem que estar escrito.
+   **Arquivo temporário nunca tem nome genérico** (`$TEMP/msg.txt`): dois agentes
+   gravaram a mensagem de commit no mesmo caminho e um commitou a do outro. O
+   briefing manda gerar o nome com sufixo único por comando (`mktemp`), e a
+   mensagem de commit e o corpo de PR vão no scratchpad da sessão. E **lista de
+   detecção de um checker nunca vira lista de prescrição**: o que ele sabe
+   reconhecer não é o que o agente deve escrever (uma lista colada assim gravou
+   palavra acentuada em atas); o briefing prescreve a forma desejada por conta
+   própria.
 
 4. **Formato de saída** — a forma exata que a janela principal quer de volta,
    **e como devolvê-la**. As duas coisas: subagente **anônimo** devolve
@@ -94,7 +102,10 @@ nesta ordem:
    terminar o trabalho não entrega nada. Nomeou, o briefing manda devolver,
    e diz também que **reportar bloqueio é entrega válida** (ferramenta sem
    credencial, repo que sumiu, rede fechada), com o comando e a saída de
-   erro colados. Silêncio não é.
+   erro colados. Silêncio não é. **O relatório é curto e tem teto declarado**
+   (por exemplo, veredito por critério, comando, saída colada e nada além): a
+   janela principal lê o veredito e confere o artefato, não o corpo — relatórios
+   inteiros de 20 agentes levaram a janela a 96% de contexto.
 5. **Critério de sucesso** — qual comando rodar, qual saída conta como pronto,
    e qual mutação (revertendo o comportamento real) tem que quebrar qual teste.
    O critério nomeia a **entrada real do sistema** e o efeito observável, nunca
@@ -102,7 +113,11 @@ nesta ordem:
    por quem precisa dele verde (skill `plano`, seção do `pronto quando:`). E
    "prova por mutação" tem procedimento fechado: editar o **código de
    produção**, rodar a bateria, obter **exit 1**, colar a saída, reverter. Caso
-   de teste que aplica a mutação numa cópia e marca `ok` não conta.
+   de teste que aplica a mutação numa cópia e marca `ok` não conta. **O bloco
+   manda INVOCAR `node scripts/conferir-mutacao.cjs`** com os campos do bloco
+   `mutacao:` do plano (`--arquivo`, `--de`, `--para`, `--bateria`) e colar a
+   saída — nunca descrever o procedimento em prosa: prosa produz relato (2 de 3
+   executores relataram errado), o script produz exit code.
 
 O bloco 5 não é enfeite: é o que transforma "terminei" em evidência (regra 12),
 e sai pronto do passo 4 da cadeia acima. Briefing vago produz trabalho vago, e

@@ -36,6 +36,10 @@ reler o vivo, append de uma linha, conferir que a contagem subiu 1.
 a regra 16 consulta este radar (sessoes.json). Paralelo ativo sai da rodada ou
 entra bloqueado.
 
+**Mensagem entre sessões marca a origem de toda afirmação de decisão:** "ele
+autorizou X" (cite o trecho), "eu recomendo X" ou "medi X" (com o comando). A janela
+vizinha não tem o transcript; sem a marca, age sem autorização achando que a tem.
+
 **Pergunta ampla ("o que fazemos hoje?") se responde no escopo DESTA sessão,
 nunca no do foco visto de fora.** Sinal barato para saber se esta sessão é a do
 foco, antes de investigar qualquer coisa: comparar o `cwd` desta sessão com o

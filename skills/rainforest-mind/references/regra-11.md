@@ -21,6 +21,10 @@ com briefing corrigido. Retomada continua servindo para agente de leitura, que
 não tem worktree a perder. O worktree isolado pode não existir mais na
 retomada, e o agente passa a commitar na branch de quem despachou.
 
+**Um worktree por ATIVIDADE, e sem `EnterWorktree` com agente em voo** (a troca
+faz o guard recusar todo o shell deles). Worktree novo só para atividade nova ou
+dois editores simultâneos, commitando antes: `regra-11-atividade.md`.
+
 **Commite antes de despachar, na branch de trabalho, nunca na `main`** —
 sessão na branch padrão cria a branch primeiro. Vale principalmente pro
 **design**: ele nasce na branch do trabalho que desenha, e a `main` só o vê
