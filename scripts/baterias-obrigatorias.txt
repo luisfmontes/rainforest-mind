@@ -15,9 +15,14 @@ hooks/testa-gate-repo-alheio.sh
 hooks/testa-gate-review-codex.sh
 hooks/testa-gate-staging-total.sh
 hooks/testa-gate-subagente-sem-gh.cjs
+hooks/testa-gate-subagente-sem-instalar.cjs
 hooks/testa-gate-turno-prometido.cjs
 hooks/testa-gate-verificador-staged.sh
 hooks/testa-gate-worktree.sh
+
+# Avisos (exit 0 com additionalContext)
+hooks/testa-aviso-fluxo.cjs
+hooks/testa-idioma-session-start.cjs
 
 # Conferencias
 scripts/testa-estado.sh
