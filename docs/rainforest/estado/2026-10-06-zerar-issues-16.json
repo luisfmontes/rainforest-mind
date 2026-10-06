@@ -1181,7 +1181,10 @@
     "nao_bloqueantes": "hooks r4: 9; scripts r5: 6 (listados no relatorio de integracao)"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/varrer-baterias.sh (HEAD e1b4a629) + baterias tocadas depois (testa-conferir-entrega.sh nos dois gemeos, 84 ok) + node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-06-zerar-issues-16",
+    "saida": "as 175 baterias passaram; testa-conferir-entrega 84 ok, 0 falha(s) (.cjs e .py); mutacoes: tarefas 1-9 e 11-16 vermelho, 10 e 17 pulada (n/a), exit=0",
+    "em": "2026-10-06"
   },
   "fechar": {
     "status": "pendente"
