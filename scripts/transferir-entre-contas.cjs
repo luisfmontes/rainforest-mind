@@ -195,7 +195,9 @@ Opcionais:
   }
 
   // 7. Verifica colisão
-  const existe = fs.existsSync(destJsonl);
+  // A sessão "existe" no destino se o .jsonl OU a pasta <id>/ já estão lá:
+  // sem isso, uma pasta <id>/ órfã seria apagada (rmSync abaixo) sem --forcar.
+  const existe = fs.existsSync(destJsonl) || fs.existsSync(destIdDir);
   if (existe && !opts.forcar) {
     console.error(`erro: a sessão ${sessionId} já existe em ${contaDestinoValue}. Use --forcar para sobrescrever.`);
     process.exit(4);

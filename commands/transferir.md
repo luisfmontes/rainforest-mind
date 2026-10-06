@@ -20,6 +20,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/transferir.cjs" $ARGUMENTS
 - Só funciona entre contas nesta máquina (`~/.claude` ↔ `~/.claude-personal`)
 - `--para trabalho|pessoal` força destino explícito (padrão: a outra conta)
 - `--forcar` sobrescreve se a sessão já existe no destino
-- Retorna `cd "..." && CLAUDE_CONFIG_DIR="..." claude --resume <id>` pronto para colar na outra conta
+- Imprime duas linhas para rodar na outra conta: `cd "<pasta da sessão>"` e `claude --resume <id>` (com `CLAUDE_CONFIG_DIR="..."` na frente quando o destino é a conta pessoal — essa forma é de shell POSIX: no PowerShell, defina `$env:CLAUDE_CONFIG_DIR` antes, ou abra direto o terminal da conta pessoal)
+- A origem não é apagada: feche esta janela depois de retomar do outro lado, para não haver duas cópias da mesma conversa andando
 
 Sem argumentos e sem `transfer-codex` ligada: recusa com mensagem.

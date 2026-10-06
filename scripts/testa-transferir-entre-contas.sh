@@ -354,6 +354,58 @@ else
 fi
 
 echo ""
+echo "== CASO 12: pasta <id>/ orfa no destino (sem .jsonl): recusa sem --forcar e nao apaga a pasta =="
+mkdir -p "$RFMHOME/.claude/projects/orfa-proj/orfa-789"
+echo "da origem" > "$RFMHOME/.claude/projects/orfa-proj/orfa-789/x.txt"
+cat > "$RFMHOME/.claude/projects/orfa-proj/orfa-789.jsonl" << 'JSONEOF'
+{"type":"user","sessionId":"orfa-789","cwd":"C:\\proj\\orfa","message":{"role":"user","content":"oi"}}
+JSONEOF
+mkdir -p "$RFMHOME/.claude-personal/projects/orfa-proj/orfa-789"
+echo "so no destino" > "$RFMHOME/.claude-personal/projects/orfa-proj/orfa-789/orfao.txt"
+ERR_12="$RAIZ/err-12.txt"
+env -u CLAUDE_CODE_SESSION_ID -u CLAUDE_CONFIG_DIR \
+  RFM_TEST=1 RFM_HOME="$RFMHOME_M" \
+  CLAUDE_CODE_SESSION_ID=orfa-789 CLAUDE_CONFIG_DIR="" \
+  node "$SRC/scripts/transferir-entre-contas.cjs" \
+  > /dev/null 2> "$ERR_12"
+exit_12=$?
+if [ "$exit_12" = "4" ] && \
+   [ -f "$RFMHOME/.claude-personal/projects/orfa-proj/orfa-789/orfao.txt" ] && \
+   [ ! -f "$RFMHOME/.claude-personal/projects/orfa-proj/orfa-789.jsonl" ]; then
+  ok=$((ok + 1))
+  echo "  ok   caso 12: pasta <id>/ orfa preservada, exit 4"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 12: exit $exit_12 (esperava 4), orfao.txt $([ -f "$RFMHOME/.claude-personal/projects/orfa-proj/orfa-789/orfao.txt" ] && echo preservado || echo APAGADO)"
+  sed 's/^/    /' "$ERR_12"
+fi
+
+echo ""
+echo "== CASO 13: depois de uma copia bem-sucedida a origem continua inteira (.jsonl com o mesmo hash e pasta <id>/ no lugar) =="
+mkdir -p "$RFMHOME/.claude/projects/origem-proj/orig-321/sub"
+echo "a" > "$RFMHOME/.claude/projects/origem-proj/orig-321/sub/a.txt"
+cat > "$RFMHOME/.claude/projects/origem-proj/orig-321.jsonl" << 'JSONEOF'
+{"type":"user","sessionId":"orig-321","cwd":"C:\\proj\\orig","message":{"role":"user","content":"oi"}}
+JSONEOF
+SHA_ANTES_13=$(sha256sum "$RFMHOME/.claude/projects/origem-proj/orig-321.jsonl" | cut -d' ' -f1)
+env -u CLAUDE_CODE_SESSION_ID -u CLAUDE_CONFIG_DIR \
+  RFM_TEST=1 RFM_HOME="$RFMHOME_M" \
+  CLAUDE_CODE_SESSION_ID=orig-321 CLAUDE_CONFIG_DIR="" \
+  node "$SRC/scripts/transferir-entre-contas.cjs" \
+  > /dev/null 2>&1
+exit_13=$?
+SHA_DEPOIS_13=$(sha256sum "$RFMHOME/.claude/projects/origem-proj/orig-321.jsonl" 2>/dev/null | cut -d' ' -f1)
+if [ "$exit_13" = "0" ] && [ "$SHA_ANTES_13" = "$SHA_DEPOIS_13" ] && \
+   [ -f "$RFMHOME/.claude/projects/origem-proj/orig-321/sub/a.txt" ] && \
+   [ -f "$RFMHOME/.claude-personal/projects/origem-proj/orig-321/sub/a.txt" ]; then
+  ok=$((ok + 1))
+  echo "  ok   caso 13: origem inteira apos copia bem-sucedida"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 13: exit $exit_13, hash antes=$SHA_ANTES_13 depois=$SHA_DEPOIS_13"
+fi
+
+echo ""
 echo "== RESULTADO =="
 echo "resultado: $ok ok, $falhou falha(s)"
 if [ "$falhou" -gt 0 ]; then
