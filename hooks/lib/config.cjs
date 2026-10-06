@@ -102,6 +102,16 @@ const CHAVES = {
     padrao: true,
     descricao: 'nega `gh` de escrita (issue/pr/release/repo/label/secret/variable/workflow/run/api) dentro de subagente — direto, em wrapper ou em heredoc',
   },
+  'subagente-sem-instalar': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'nega instalação de pacotes e desligamento de gate dentro de subagente',
+  },
+  'aviso-fluxo': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'avisa no primeiro Edit de código da sessão quando o repositório tem fluxo e nenhum está aberto',
+  },
   fluxo: {
     tipo: 'boolean',
     padrao: true,
@@ -203,6 +213,11 @@ const CHAVES = {
     padrao: false,
     descricao: 'Sabiá: transcrição local de reunião com diarização (quem falou), CLI Python',
   },
+  idioma: {
+    tipo: 'texto',
+    padrao: null,
+    descricao: 'idioma preferido para respostas na compactação (ex.: "português do Brasil")',
+  },
   // CODEX COMO RUNTIME — chaves de modelo que mapeiam model: do agente para -m do Codex
   'codex-modelo-haiku': {
     tipo: 'modelo',
@@ -300,6 +315,10 @@ function resolverConfig(o = {}) {
       return typeof valor === 'object' && valor !== null &&
              typeof valor.modelo === 'string' &&
              (valor.esforco === undefined || typeof valor.esforco === 'string');
+    } else if (tipo === 'texto') {
+      // Tipo 'texto': string não vazia até 60 caracteres, ou null
+      if (valor === null) return true;
+      return typeof valor === 'string' && valor.length > 0 && valor.length <= 60;
     }
     return false;
   };

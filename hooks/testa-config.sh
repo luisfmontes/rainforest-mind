@@ -354,6 +354,31 @@ igual "(d) transfer-codex padrao false, gate-review-codex padrao false" "false p
 igual "(d) ambas ligadas no projeto" "true projeto + true projeto" "$(transfer '{"transfer-codex":true,"gate-review-codex":true}' '{}')"
 rm -f "$SBP/proj/.rainforest/config.json" "$SBP/lar/.rainforest/config.json"
 
+# Caso (e): chaves da rodada zerar-issues-16 — idioma (texto ate 60), aviso-fluxo
+# e subagente-sem-instalar (boolean, padrao true). Valor por argv: aspas e
+# acento no idioma nao passam por nenhum nivel de escape do shell.
+chave16() { # config_projeto_json, chave
+  mkdir -p "$SBP/lar/.rainforest" "$SBP/proj/.rainforest"
+  printf '%s' "$1" > "$SBP/proj/.rainforest/config.json"
+  printf '{}' > "$SBP/lar/.rainforest/config.json"
+  RFM_ROOT="$SB/lar/.rainforest" node -e '
+    const [src, proj, chave] = process.argv.slice(1);
+    const { resolverConfig } = require(src + "/hooks/lib/config.cjs");
+    const r = resolverConfig({ projeto: proj });
+    process.stdout.write(JSON.stringify(r.valores[chave]) + " " + r.origem[chave]);
+  ' "$SRC_WIN" "$PROJ" "$2" 2>&1
+}
+igual "(e) idioma padrao null" "null padrao" "$(chave16 '{}' idioma)"
+igual "(e) idioma do projeto vale" '"português do Brasil" projeto' "$(chave16 '{"idioma":"português do Brasil"}' idioma)"
+LONGO="$(node -e 'process.stdout.write(JSON.stringify({idioma:"x".repeat(61)}))')"
+igual "(e) idioma com 61 caracteres cai no padrao" "null padrao" "$(chave16 "$LONGO" idioma)"
+igual "(e) idioma vazio cai no padrao" "null padrao" "$(chave16 '{"idioma":""}' idioma)"
+igual "(e) aviso-fluxo padrao true" "true padrao" "$(chave16 '{}' aviso-fluxo)"
+igual "(e) aviso-fluxo desligado no projeto" "false projeto" "$(chave16 '{"aviso-fluxo":false}' aviso-fluxo)"
+igual "(e) subagente-sem-instalar padrao true" "true padrao" "$(chave16 '{}' subagente-sem-instalar)"
+igual "(e) subagente-sem-instalar desligado no projeto" "false projeto" "$(chave16 '{"subagente-sem-instalar":false}' subagente-sem-instalar)"
+rm -f "$SBP/proj/.rainforest/config.json" "$SBP/lar/.rainforest/config.json"
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
