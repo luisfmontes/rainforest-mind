@@ -359,6 +359,13 @@ exige 4 "baseline pendura (estoura o teto) -> continua exit=4, nao 69" \
 tem "diz que o baseline estourou o teto" "estourou o teto"
 nao_tem "e nao fala em nao-verificavel" "nao-verificavel"
 
+# Caso 16 (D17, 2026-10-06): bateria com comando inexistente sai exit 127/126
+# do bash e deve virar 69 (nao-verificavel), nao 4 (baseline NAO-VERDE).
+exige 69 "bateria com comando inexistente sai 69 nao-verificavel" \
+  CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' \
+      --bateria 'comando-que-nao-existe-xyz && true'
+tem "stderr comeca por nao-verificavel" "nao-verificavel: bateria nao executa"
+
 echo
 echo "== 9. erro de uso: nunca silencioso, nunca 0 =="
 exige 1 "sem argumento nenhum imprime o uso" node "$SCRIPT"
