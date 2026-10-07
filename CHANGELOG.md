@@ -10,6 +10,37 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.45.0 — 2026-10-07
+
+Fecha as Issues #409 a #414, #417 e #419, e retira o contorno da política de segurança em conta de organização.
+
+- **Pastas de docs do repositório (#412).** Mapa da arqueologia, design e plano passam a seguir a pasta que o
+  repositório já usa: `docs/legado/` quando existe `docs/legado/COBERTURA.md` (o mapa entra com uma linha por
+  fatia no índice que já existe), `docs/plans/` quando lá há `*-design.md` ou `*.gates.json` (design e plano com
+  sufixo `-design.md`/`-plano.md`), ou o que a chave nova `pastas` do `.rainforest/config.json` disser. Sem nada
+  disso, `docs/rainforest/` como sempre. `node scripts/pastas-docs.cjs caminho --tipo <t> [--slug <s>]` diz onde.
+  Estado, portões, réguas e varredura continuam em `docs/rainforest/`. O estado passa a ler o caminho do design
+  que o brainstorm grava (`doc`).
+- **Desligar gate: só `RAINFOREST_GATE_OFF` ou a chave do config (#417).** O arquivo `.rainforest-gate-off` deixou
+  de ser lido por qualquer gate; se você usava, troque por `node scripts/setup.cjs --desligar <gate> --escopo
+  projeto`. O `gate-git-verificacao` não oferece mais a saída a subagente.
+- **Config de projeto em worktree (#411).** `.rainforest/config.json` é lido da raiz do checkout principal, também
+  de dentro de `.claude/worktrees/*` ou de um subdiretório, e `setup --escopo projeto` grava lá.
+- **Repo privado fora do GitHub (#419).** Com `"visibilidade-repo": "privada"` no config **do projeto**, o gate de
+  publicação deixa de barrar termos da sua lista privada quando o `gh` não sabe a visibilidade (GitLab, por
+  exemplo). Telefone, JID, CPF e credencial continuam barrando, e a declaração não vale com remoto GitHub.
+- **Gate de publicação (#409, #410).** Pseudo-versão de módulo Go em `go.mod`/`go.sum` não é mais telefone, e
+  `Authorization` com `Bearer`/`Basic`/`Token` seguido de referência de variável (`f"Bearer {KEY}"`, `.format(KEY)`,
+  `${KEY}`) não é mais credencial. Literal depois do esquema continua barrado.
+- **`gate-fechar-issue` (#414).** `. arquivo`/`source arquivo` lê o arquivo e só barra se ele fecha Issue: carregar
+  `.env` com `set -a; . x.env; set +a` passa.
+- **`verificar --raiz <dir>` (#413).** Quando o código vive noutro worktree que não o do estado (PR para upstream),
+  `estado.cjs marcar --estagio verificar --raiz <worktree>` roda as mutações lá.
+- **Conta de organização.** Em conta com o plugin gerenciado `cc-plugin-sec-default`, o mod da abertura não entrega
+  mais as regras inteiras como mensagem de usuário: a política da organização barra o system prompt de plugin de
+  usuário, e contorná-la saiu. Nessa conta as regras chegam pelo núcleo do SessionStart; para as regras inteiras,
+  peça ao admin da organização a liberação do plugin.
+
 ## 1.43.0 — 2026-10-06
 
 Fecha as doze Issues abertas pela revisão bimestral (#396 a #405, #407, #408).
