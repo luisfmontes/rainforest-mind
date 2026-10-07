@@ -6,8 +6,30 @@
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Tarefa 10: baterias de memória e backup nunca tocam a raiz real.
+# Sem pasta de dados (runner de CI) o resolverRaiz falha: sem raiz real, sem
+# guarda, e o `|| true` impede o `set -e` de matar a bateria em silencio.
+# Guarda da raiz real (#398, D19): a raiz e a que resolverRaiz daria SEM o
+# RFM_ROOT herdado (RFM_RAIZ_REAL_FALSA a simula na prova). RFM_ROOT que cai
+# nela aborta antes de gravar; no fim, nenhum nome da raiz real pode ter sumido.
+_win() { cygpath -m "$1" 2>/dev/null || printf '%s' "$1"; }
+if [ -n "${RFM_RAIZ_REAL_FALSA:-}" ]; then RAIZ_REAL="$(_win "$RFM_RAIZ_REAL_FALSA")"
+else RAIZ_REAL="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && env -u RFM_ROOT node -e 'process.stdout.write(require("./hooks/lib/raiz.cjs").resolverRaiz().raiz)' 2>/dev/null || true)"; fi
+mesmo_caminho() { node -e 'const p=require("path"),f=require("fs");const n=x=>{try{x=f.realpathSync(x)}catch{};return p.resolve(x).toLowerCase()};process.exit(n(process.argv[1])===n(process.argv[2])?0:1)' "$(_win "$1")" "$(_win "$2")"; }
+if [ -n "${RFM_ROOT:-}" ] && [ -n "$RAIZ_REAL" ] && mesmo_caminho "$RFM_ROOT" "$RAIZ_REAL"; then
+  echo "nao-verificavel: RFM_ROOT aponta para a raiz real de dados ($RAIZ_REAL) — aborta antes de gravar"
+  exit 69
+fi
+NOMES_REAIS_ANTES="$(ls -A "$RAIZ_REAL" 2>/dev/null | sort)"
+conferir_raiz_real() {
+  local sumiu
+  sumiu="$(comm -23 <(printf '%s\n' "$NOMES_REAIS_ANTES") <(ls -A "$RAIZ_REAL" 2>/dev/null | sort) | grep -v '^$' || true)"
+  if [ -n "$sumiu" ]; then echo "FALHA a bateria apagou da raiz real: $sumiu"; exit 1; fi
+}
+
 SB="$(mktemp -d)"
-trap 'rm -rf "$SB"' EXIT
+trap 'rm -rf "$SB"; if declare -F conferir_raiz_real >/dev/null; then conferir_raiz_real; fi' EXIT
 
 # Prepend common tool paths to PATH before anything else runs
 export PATH="/c/Program Files/nodejs:/usr/bin:/usr/local/bin:/c/Windows/System32:/c/Program Files/PowerShell:$PATH"
@@ -159,15 +181,21 @@ igual "arquivos .tmp no destino" "$tmp_count" "0"
 teste "e" "sem flags e sem RFM_BACKUP_DESTINO, resolve OneDrive"
 
 # Usa --so-mostrar para apenas mostrar o destino sem gravar
-saida_e=$(env -u RFM_BACKUP_DESTINO node "$SRC/scripts/backup.cjs" gravar --so-mostrar 2>&1 || true)
-exit_e=$?
+# Tarefa 10: exit_e precisa capturar o exit do comando, não do || true
+exit_e=0
+# Hermetico (revisao da zerar-issues-16): OneDrive e raiz de dados de caixa —
+# sem isto o caso so passava em maquina com OneDrive e ~/.rainforest de verdade.
+origem_e="$SB/origem_e"; criarOrigem "$origem_e"
+onedrive_e="$SB/onedrive_e"; mkdir -p "$onedrive_e"
+saida_e=$(env -u RFM_BACKUP_DESTINO -u ONEDRIVE OneDrive="$(cygpath -w "$onedrive_e")" RFM_ROOT="$(cygpath -w "$origem_e")"   node "$SRC/scripts/backup.cjs" gravar --so-mostrar 2>&1) || exit_e=$?
 
 igual "exit code de --so-mostrar" "$exit_e" "0"
+if echo "$saida_e" | grep -qF "onedrive_e" && echo "$saida_e" | grep -qF "rainforest-backup"; then
+  ok=$((ok+1)); echo "  ok   destino resolvido em %OneDrive%\rainforest-backup"
+else
+  falhou=$((falhou+1)); echo "  FALHA destino nao veio do OneDrive de caixa: $saida_e"
+fi
 
-# A saída deve mencionar OneDrive (ou vazio se não houver env var OneDrive)
-# Neste teste em caixa de areia, o OneDrive pode não existir, então só confirmamos
-# que o comando retorna 0
-verdade "exit 0 com --so-mostrar" "sim"
 
 # --- CASO (f): sucesso nao deixa *.parcial*/*.tmp* no destino (R4)
 

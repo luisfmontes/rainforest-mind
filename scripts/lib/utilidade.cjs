@@ -248,29 +248,31 @@ function resumoComoPseudoObservacao(row) {
 function acharAlvo(conexao, linhaServida, apelidos) {
   const m = /^\[(\d{4}-\d{2}-\d{2})(?: \(([^)]*)\))?\]/.exec(linhaServida);
   if (!m) return null;
-  const data = m[1];
-  const like = `${data}%`;
+  // A linha mostra a data LOCAL (#408) e o banco guarda `criada_em` em UTC: a
+  // data UTC pode ser a da linha ou a de um dia vizinho. Busca os três dias; a
+  // comparação exata com `formatarObservacao` abaixo é que decide o par.
+  const dia = Date.parse(`${m[1]}T00:00:00Z`);
+  const likes = [-1, 0, 1].map((d) => `${new Date(dia + d * 86400000).toISOString().slice(0, 10)}%`);
+  const doDia = (sql) => {
+    const linhas = [];
+    for (const like of likes) {
+      try {
+        linhas.push(...conexao.prepare(sql).all(like));
+      } catch (e) {
+        // tabela ausente ou banco degradado: sem candidatas deste dia
+      }
+    }
+    return linhas;
+  };
 
-  let obsRows = [];
-  try {
-    obsRows = conexao.prepare(SQL_OBS_DO_DIA).all(like);
-  } catch (e) {
-    obsRows = [];
-  }
+  const obsRows = doDia(SQL_OBS_DO_DIA);
   for (const row of obsRows) {
     if (formatarObservacao(row, apelidos) === linhaServida) {
       return { origem: 'observacao', id: row.id, conteudo: row.conteudo };
     }
   }
 
-  let resumoRows = [];
-  try {
-    resumoRows = conexao
-      .prepare(`SELECT id, projeto, titulo, conteudo, criada_em FROM resumos WHERE criada_em LIKE ?`)
-      .all(like);
-  } catch (e) {
-    resumoRows = [];
-  }
+  const resumoRows = doDia(`SELECT id, projeto, titulo, conteudo, criada_em FROM resumos WHERE criada_em LIKE ?`);
   for (const row of resumoRows) {
     const pseudo = resumoComoPseudoObservacao(row);
     if (formatarObservacao(pseudo, apelidos) === linhaServida) {

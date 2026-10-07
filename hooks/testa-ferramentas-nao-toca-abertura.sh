@@ -61,10 +61,24 @@ QTD="$(node -e '
 # 6 desde 2026-09-16: entrou hooks/memoria-manutencao-session-start.cjs (Tarefa
 # 5 do plano memoria-reconciliacao-e-consolidacao) — "async": true, dispara um
 # filho destacado e sai sem escrever no stdout, mesma prova de antes.
-if [ "$QTD" = "6" ]; then
-  ok=$((ok+1)); echo "  ok   SessionStart continua com 6 hooks"
+# 7 desde 2026-10-06: entrou hooks/idioma-session-start.cjs (#401), com matcher
+# "compact". Ele escreve, mas so na compactacao; na abertura (source startup)
+# sai mudo mesmo com a chave `idioma` ligada — provado logo abaixo.
+if [ "$QTD" = "7" ]; then
+  ok=$((ok+1)); echo "  ok   SessionStart continua com 7 hooks"
 else
-  falhou=$((falhou+1)); echo "  FALHA SessionStart tem $QTD hooks, esperava 6"
+  falhou=$((falhou+1)); echo "  FALHA SessionStart tem $QTD hooks, esperava 7"
+fi
+PROJ="$DADOS/projeto-idioma"; mkdir -p "$PROJ/.rainforest"
+echo '{"idioma":"ingles"}' > "$PROJ/.rainforest/config.json"
+EVENTO="$(node -e 'process.stdout.write(JSON.stringify({hook_event_name:"SessionStart",source:process.argv[1],cwd:process.argv[2]}))' startup "$PROJ")"
+SAIDA_ID="$(printf '%s' "$EVENTO" | RFM_ROOT="$DADOS" node "$SRC/hooks/idioma-session-start.cjs" 2>/dev/null)"
+EVENTO_C="$(node -e 'process.stdout.write(JSON.stringify({hook_event_name:"SessionStart",source:process.argv[1],cwd:process.argv[2]}))' compact "$PROJ")"
+SAIDA_IC="$(printf '%s' "$EVENTO_C" | RFM_ROOT="$DADOS" node "$SRC/hooks/idioma-session-start.cjs" 2>/dev/null)"
+if [ -z "$SAIDA_ID" ] && printf '%s' "$SAIDA_IC" | grep -q 'ingles'; then
+  ok=$((ok+1)); echo "  ok   idioma-session-start mudo na abertura (e fala na compactacao: controle)"
+else
+  falhou=$((falhou+1)); echo "  FALHA idioma-session-start na abertura: '$SAIDA_ID' / compact: '$SAIDA_IC'"
 fi
 
 echo

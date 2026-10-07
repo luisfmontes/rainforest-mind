@@ -83,6 +83,40 @@ function cortarCaracteres(texto, maxChars) {
 }
 
 /**
+ * Converte data ISO com hora para data local (AAAA-MM-DD).
+ * Se já for uma data sem componente de hora, devolve como está.
+ * Se inválida, devolve o corte antigo (split por T).
+ *
+ * @param {string} iso data ISO (ex: "2026-10-06T02:20:59.000Z" ou "2026-10-05")
+ * @returns {string} data local em formato AAAA-MM-DD
+ */
+function dataLocalDeIso(iso) {
+  iso = String(iso || '');
+  // Se não tem 'T', é só data ou inválido — devolve como está
+  if (!iso.includes('T')) {
+    return iso;
+  }
+  // Tenta converter para data local
+  try {
+    const d = new Date(iso);
+    // Verifica se a data é válida
+    if (Number.isNaN(d.getTime())) {
+      return iso.split('T')[0] || '';
+    }
+    // Usa Intl para converter para data local respeitando o timezone
+    const formatter = new Intl.DateTimeFormat('sv-SE', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    return formatter.format(d);
+  } catch {
+    // Em caso de erro, volta ao comportamento antigo
+    return iso.split('T')[0] || '';
+  }
+}
+
+/**
  * Encurta na PALAVRA: corta em `maxChars` caracteres (com o `…` dentro do
  * limite) e recua até o último espaço, para não deixar palavra partida — desde
  * que o recuo não coma mais que metade do texto que sobrou (palavra única
@@ -154,8 +188,8 @@ function extrairTituloESubtitulo(conteudo) {
 function formatarObservacao(obs, apelidos, maxTexto) {
   if (!obs) return '';
   const { conteudo, projeto, criada_em } = obs;
-  // criada_em é timestamp ISO; tira a hora para economizar bytes.
-  const data = (criada_em || '').split('T')[0] || '';
+  // criada_em é timestamp ISO; converte para data local.
+  const data = dataLocalDeIso(criada_em);
   // O rótulo exibe o apelido curto quando há um. A chave que o banco guarda é a
   // pasta do harness (`C--Projetos-rainforest-mind`), ~12 bytes a mais por linha
   // que o nome curto — e o bloco tem teto duro. Medido em 2026-08-22: a chave
@@ -339,8 +373,8 @@ function montarLegendaMemoria(o) {
 
   const linhas = observacoes.slice(0, Math.max(0, quantas)).map((obs) => {
     // Data curta: quem lê na abertura quer "quando", não o ano — e o ano custa
-    // 5 dos 150 bytes da linha.
-    const iso = String(obs.criada_em || '').split('T')[0];
+    // 5 dos 150 bytes da linha. Converte para data local antes de extrair.
+    const iso = dataLocalDeIso(obs.criada_em);
     const partes = iso.split('-');
     const data = partes.length === 3 ? `${partes[2]}/${partes[1]}` : iso;
     const nome = (apelidos && apelidos[obs.projeto]) || obs.projeto || '';
@@ -417,6 +451,7 @@ module.exports = {
   cortarBytes,
   cortarCaracteres,
   encurtarNaPalavra,
+  dataLocalDeIso,
   DEGRAUS_TEXTO,
   construirAvisoCorteMemoria,
   travarOrcamentoMemoria,

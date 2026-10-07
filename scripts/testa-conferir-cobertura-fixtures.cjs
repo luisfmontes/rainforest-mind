@@ -11,10 +11,12 @@
  * Trabalha num sandbox de arquivos próprios, nunca no fonte do plugin.
  */
 
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { caminhoExecutavel } = require('../hooks/lib/resolver-executavel.cjs');
 
 const SCRIPT = path.resolve(__dirname, 'conferir-cobertura-fixtures.cjs');
 let ok = 0;
@@ -33,6 +35,8 @@ function caso(nome, condicao, detalhe) {
 /** Monta um sandbox: um módulo com duas regras e fixtures que as exercitam. */
 function sandbox() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cob-'));
+  // Inicializar git repo para que o lock funcione
+  spawnSync(caminhoExecutavel('git'), ['init', '-q'], { cwd: dir });
   fs.mkdirSync(path.join(dir, 'fx'));
   fs.writeFileSync(path.join(dir, 'alvo.cjs'), [
     'const fs = require("fs");',
@@ -78,14 +82,20 @@ console.log('== 1. caminho feliz: toda fixture viva e exercitada, muda declarada
 {
   const dir = sandbox();
   const antes = fs.readFileSync(path.join(dir, 'alvo.cjs'), 'utf8');
+  const hash256Antes = crypto.createHash('sha256').update(antes).digest('hex');
   const spec = escreverSpec(dir, [MUT_NEGACAO, MUT_PERGUNTA], [
     { fixture: 'muda.txt', motivo: 'nao contem SIM; false por ausencia, nao por regra' },
     { fixture: 'concede.txt', motivo: 'concessao limpa; nenhuma das duas regras a toca' },
   ]);
   const r = rodar(dir, spec);
+  const depois = fs.readFileSync(path.join(dir, 'alvo.cjs'), 'utf8');
+  const hash256Depois = crypto.createHash('sha256').update(depois).digest('hex');
+  const lock = path.join(dir, '.git', 'rainforest-mutacao.lock');
   caso('exit 0', r.status === 0, `${r.status} — ${r.stdout}${r.stderr}`);
   caso('diz "cobertura por fixture: OK"', /cobertura por fixture: OK/.test(r.stdout), r.stdout);
-  caso('FONTE RESTAURADO no caminho feliz', fs.readFileSync(path.join(dir, 'alvo.cjs'), 'utf8') === antes);
+  caso('FONTE RESTAURADO no caminho feliz', depois === antes);
+  caso('sha256 igual antes e depois', hash256Antes === hash256Depois);
+  caso('lock removido depois da execucao', !fs.existsSync(lock));
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
@@ -178,6 +188,107 @@ console.log('== 8. fonte limpo que nao avalia para com exit 2, sem deixar lixo =
   const r = rodar(dir, spec);
   caso('exit 2', r.status === 2, r.status);
   caso('FONTE RESTAURADO', fs.readFileSync(path.join(dir, 'alvo.cjs'), 'utf8') === antes);
+  fs.rmSync(dir, { recursive: true, force: true });
+}
+
+console.log('== 9. lock de pid vivo sai 69 sem mutar ==');
+{
+  const dir = sandbox();
+  const antes = fs.readFileSync(path.join(dir, 'alvo.cjs'), 'utf8');
+  const lock = path.join(dir, '.git', 'rainforest-mutacao.lock');
+  // Criar lock com pid do processo atual
+  fs.writeFileSync(lock, String(process.pid));
+  const spec = escreverSpec(dir, [MUT_NEGACAO], []);
+  const r = rodar(dir, spec);
+  const depois = fs.readFileSync(path.join(dir, 'alvo.cjs'), 'utf8');
+  caso('exit 69', r.status === 69, r.status);
+  caso('stderr menciona "outra mutacao em curso neste worktree"', /outra mutacao em curso neste worktree/.test(r.stderr), r.stderr);
+  caso('FONTE NAO MUTADO (byte a byte igual)', depois === antes);
+  caso('LOCK AINDA EXISTE (propriedade do outro)', fs.existsSync(lock));
+  fs.rmSync(dir, { recursive: true, force: true });
+}
+
+console.log('== 10. lock de pid morto retoma e roda ==');
+{
+  const dir = sandbox();
+  const antes = fs.readFileSync(path.join(dir, 'alvo.cjs'), 'utf8');
+  const lock = path.join(dir, '.git', 'rainforest-mutacao.lock');
+  // O avaliador anota se o lock existia quando rodou: retomar o lock de pid
+  // morto tem de SEGURAR o lock, nao so apagar o velho (revisao zerar-issues-16).
+  const alvoP = path.join(dir, 'alvo.cjs');
+  const anotar = 'require("fs").appendFileSync(__dirname + "/visto.txt", String(require("fs").existsSync(__dirname + "/.git/rainforest-mutacao.lock")) + "\\n");\n';
+  fs.writeFileSync(alvoP, anotar + fs.readFileSync(alvoP, 'utf8'));
+  // Criar lock com pid que ja morreu (spawn um filho que termina imediatamente)
+  const deadPid = spawnSync(process.execPath, ['-e', '0']).pid;
+  // Aguardar um pouco para garantir que o processo morreu
+  let morreu = false;
+  for (let i = 0; i < 50 && !morreu; i++) {
+    try { process.kill(deadPid, 0); } catch (_) { morreu = true; }
+    if (!morreu) require('child_process').execSync('sleep 0.01');
+  }
+  if (morreu || true) { // ignorar se ainda estiver vivo em alguns OSes; o script vai tentar remover mesmo
+    fs.writeFileSync(lock, String(deadPid));
+    const spec = escreverSpec(dir, [MUT_NEGACAO, MUT_PERGUNTA], [
+      { fixture: 'muda.txt', motivo: 'nao contem SIM' },
+      { fixture: 'concede.txt', motivo: 'concessao limpa' },
+    ]);
+    const r = rodar(dir, spec);
+    caso('exit 0 (retoma e roda)', r.status === 0, `${r.status} — ${r.stderr}`);
+    caso('diz "cobertura por fixture: OK"', /cobertura por fixture: OK/.test(r.stdout), r.stdout);
+    caso('LOCK REMOVIDO apos rodada', !fs.existsSync(lock));
+    const visto = fs.existsSync(path.join(dir, 'visto.txt'))
+      ? fs.readFileSync(path.join(dir, 'visto.txt'), 'utf8').trim().split('\n') : [];
+    caso('o lock estava SEGURO durante a avaliacao', visto.length > 0 && visto.every((v) => v === 'true'), visto.join(','));
+  } else {
+    // Se o pid ainda estiver vivo (raro), pular o teste
+    console.log('  ok   lock de pid morto retoma e roda (pid ainda vivo, pulado)');
+    ok++;
+  }
+  fs.rmSync(dir, { recursive: true, force: true });
+}
+
+console.log('== 11. lock ilegivel (vazio) sai 69 sem mutar ==');
+{
+  const dir = sandbox();
+  const antes = fs.readFileSync(path.join(dir, 'alvo.cjs'), 'utf8');
+  fs.writeFileSync(path.join(dir, '.git', 'rainforest-mutacao.lock'), '');
+  const spec = escreverSpec(dir, [MUT_NEGACAO], []);
+  const r = rodar(dir, spec);
+  caso('exit 69', r.status === 69, `${r.status} — ${r.stderr}`);
+  caso('fonte intacto', fs.readFileSync(path.join(dir, 'alvo.cjs'), 'utf8') === antes);
+  fs.rmSync(dir, { recursive: true, force: true });
+}
+
+console.log('== 12. restauracao que falha sai != 0 e mantem o lock ==');
+{
+  // O avaliador trava o fonte (somente leitura) ao ver o mutante: a escrita de
+  // restauração falha, como com arquivo preso por antivírus.
+  const dir = sandbox();
+  fs.writeFileSync(path.join(dir, 'av.cjs'), [
+    'const fs = require("fs"), path = require("path");',
+    'const alvo = path.join(__dirname, "alvo.cjs");',
+    'module.exports = { decide(p) {',
+    '  if (fs.readFileSync(alvo, "utf8").includes("if (false)")) fs.chmodSync(alvo, 0o444);',
+    '  return require(alvo).decide(p);',
+    '} };',
+    '',
+  ].join('\n'));
+  const p = escreverSpec(dir, [MUT_NEGACAO], []);
+  const spec = JSON.parse(fs.readFileSync(p, 'utf8'));
+  spec.avaliar = 'av.cjs#decide';
+  fs.writeFileSync(p, JSON.stringify(spec));
+  const r = rodar(dir, p);
+  const lock = path.join(dir, '.git', 'rainforest-mutacao.lock');
+  caso('exit != 0', r.status !== 0 && r.status !== null, String(r.status));
+  caso('stderr nomeia FONTE NAO RESTAURADO', /FONTE NAO RESTAURADO/.test(r.stderr), r.stderr);
+  caso('LOCK MANTIDO com o fonte mutado', fs.existsSync(lock));
+  // A 2a rodada, com o fonte já liberado e ainda mutado, não pode retomar o
+  // lock como de pid morto e ler o mutante como original.
+  try { fs.chmodSync(path.join(dir, 'alvo.cjs'), 0o644); } catch (_) { /* limpeza */ }
+  const mutado = fs.readFileSync(path.join(dir, 'alvo.cjs'), 'utf8');
+  const r2 = rodar(dir, p);
+  caso('2a rodada sai 69 (nao retoma o lock)', r2.status === 69, `${r2.status} — ${r2.stderr}`);
+  caso('2a rodada nao toca o fonte', fs.readFileSync(path.join(dir, 'alvo.cjs'), 'utf8') === mutado);
   fs.rmSync(dir, { recursive: true, force: true });
 }
 

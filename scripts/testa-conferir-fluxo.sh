@@ -64,6 +64,24 @@ plano_no_formato(){
          print "prova-na-base: verde — fixture de bateria"
        } {print}' "$1" > "$2"
 }
+# `copia_novo_p <destino>` — o plano de 2026-08-21 marcava paralelas as tarefas
+# 3 e 8 (conferir-mutacao.cjs), 4 e 9 (estado.cjs) e 5 e 10 (conferir-esteira), o que a
+# cobertura passou a recusar (#397). O versionado e registro de trabalho fechado e
+# nao se reescreve: a copia serializa os dois pares, como o executar fez.
+copia_novo_p(){
+  node -e '
+    const fs = require("fs"), [orig, dest] = process.argv.slice(1);
+    let s = fs.readFileSync(orig, "utf8");
+    for (const [t, dep] of [["8", "3"], ["9", "4"], ["10", "5"]]) {
+      const ini = s.search(new RegExp("^### " + t + "\\. ", "m"));
+      const alvo = /depende de: nenhuma(\r?\n)paralela: sim/;
+      const resto = s.slice(ini);
+      if (ini < 0 || !alvo.test(resto)) { console.error("copia_novo_p: tarefa " + t + " nao casou"); process.exit(1); }
+      s = s.slice(0, ini) + resto.replace(alvo, (_, nl) => "depende de: " + dep + nl + "paralela: nao");
+    }
+    fs.writeFileSync(dest, s);
+  ' "$1" "$2"
+}
 restaura(){
   cp "$REAL_D" "$D"
   # Adiciona a seção ## Varredura se não existir
@@ -368,13 +386,13 @@ mkdir -p "$N/docs/rainforest/design" "$N/docs/rainforest/planos"
 ND="$N/docs/rainforest/design/t.md"; NP="$N/docs/rainforest/planos/t.md"
 NCHK(){ RFM_ESTADO_ROOT="$NW" node "$CHECADOR" "$@"; }
 
-cp "$NOVO_D" "$ND"; cp "$NOVO_P" "$NP"
+cp "$NOVO_D" "$ND"; copia_novo_p "$NOVO_P" "$NP"
 exige 0 'plano no formato novo passa (6 tarefas com mutacao:)' NCHK cobertura --slug t
 
 # Tira o bloco da tarefa 3 e SO' dele: a tarefa 3 atende D11, que nenhuma outra
 # atende, entao mexer no `atende:` orfanaria a decisao e a recusa viria do check
 # errado. Aqui o unico defeito do documento e' o bloco ausente.
-cp "$NOVO_P" "$N/inteiro.md"
+copia_novo_p "$NOVO_P" "$N/inteiro.md"
 awk '/^### 3\./{t=1} /^### 4\./{t=0}
      {if (t && /^mutacao:/) {drop=1; next} if (t && drop) {if (/^  /) next; drop=0} print}' \
      "$N/inteiro.md" > "$NP"
@@ -414,7 +432,7 @@ para_crlf(){
 }
 
 # Caso 1: plano e design reais em CRLF devem passar
-cp "$NOVO_D" "$OD"; cp "$NOVO_P" "$OP"
+cp "$NOVO_D" "$OD"; copia_novo_p "$NOVO_P" "$OP"
 # Adiciona a seção ## Varredura e cria arquivo
 if ! grep -q '^## Varredura$' "$OD"; then
   sed -i '/^## Em aberto$/a ## Varredura\n\nVer `docs/rainforest/varredura/t.txt`.' "$OD"
@@ -426,7 +444,7 @@ exige 0 "plano e design em CRLF passam" OCHK cobertura --slug t
 
 # Caso 2: mutacao: dentro de cerca de codigo deve ser ignorado (recusa)
 # Usa o design e plano reais, mas modifica tarefa 5 para por mutacao: so em cerca
-cp "$NOVO_D" "$OD"; cp "$NOVO_P" "$OP.tmp"
+cp "$NOVO_D" "$OD"; copia_novo_p "$NOVO_P" "$OP.tmp"
 # Adiciona a seção ## Varredura ao design
 if ! grep -q '^## Varredura$' "$OD"; then
   sed -i '/^## Em aberto$/a ## Varredura\n\nVer `docs/rainforest/varredura/t.txt`.' "$OD"
@@ -467,7 +485,7 @@ exige_msg 'tarefa 5\.' 'nomeia tarefa' OCHK cobertura --slug t
 # ninguem pode cumprir: `cobertura` cobra um bloco `mutacao:` dela, e o `estado.cjs`
 # cobra que a lista de mutacao a cubra. As duas travas recusam entrega correta, e a
 # mensagem aponta um numero que nao existe no plano.
-cp "$NOVO_D" "$OD"; cp "$NOVO_P" "$OP"
+cp "$NOVO_D" "$OD"; copia_novo_p "$NOVO_P" "$OP"
 # Adiciona a seção ## Varredura ao design
 if ! grep -q '^## Varredura$' "$OD"; then
   sed -i '/^## Em aberto$/a ## Varredura\n\nVer `docs/rainforest/varredura/t.txt`.' "$OD"
@@ -566,7 +584,7 @@ echo "  -- SABOTAGEM: devolver o execSync com string e exigir que a assercao cai
 # Trava que nunca foi vista travando nao e evidencia de nada. O mutante volta a
 # montar o comando como string; se o sentinela NAO aparecer nele, este teste esta
 # medindo outra coisa.
-mkdir -p "$CAIXA_INJ/mut/scripts" "$CAIXA_INJ/mut/hooks/lib" && cp "$RAIZ/hooks/lib/resolver-executavel.cjs" "$CAIXA_INJ/mut/hooks/lib/"   # o mutante faz require do resolvedor (Issue #392)
+mkdir -p "$CAIXA_INJ/mut/scripts" "$CAIXA_INJ/mut/hooks/lib" && cp "$RAIZ/hooks/lib/resolver-executavel.cjs" "$RAIZ/hooks/lib/contar-ocorrencias.cjs" "$CAIXA_INJ/mut/hooks/lib/"   # o mutante faz require do resolvedor (Issue #392) e da contagem do #397
 MUT_CHECADOR="$CAIXA_INJ/mut/scripts/conferir-fluxo-mut.cjs"
 cp "$CHECADOR" "$MUT_CHECADOR"
 cat > "$CAIXA_INJ/sabotar-injecao.cjs" <<'SABOTA_INJ_EOF'
@@ -1117,6 +1135,69 @@ else
   echo "  FALHA nao consegui montar o repositorio de fixture"; falhou=$((falhou+1))
 fi
 rm -rf "$E"
+
+echo
+echo "== 16. cobertura recusa plano que o executar nao consome (#397) =="
+# Base: o plano de 2026-08-21 ja serializado (copia_novo_p), que passa. Cada caso
+# muda UMA coisa e exige a recusa com a mensagem dela; o ultimo mostra que o
+# plano intocado segue passando — sem ele, todo caso passaria por qualquer motivo.
+Q="$(novo_sandbox)"; QW="$(cygpath -m "$Q" 2>/dev/null || printf '%s' "$Q")"
+mkdir -p "$Q/docs/rainforest/design" "$Q/docs/rainforest/planos" "$Q/docs/rainforest/varredura"
+QD="$Q/docs/rainforest/design/t.md"; QP="$Q/docs/rainforest/planos/t.md"
+QCHK(){ RFM_ESTADO_ROOT="$QW" node "$CHECADOR" "$@"; }
+cp "$NOVO_D" "$QD"; copia_novo_p "$NOVO_P" "$Q/base.md"
+qbase(){ cp "$Q/base.md" "$QP"; }
+# Troca so dentro da tarefa N: `qtarefa N 'perl-subst'`.
+qtarefa(){ node -e '
+    const fs = require("fs"), [p, n, de, para] = process.argv.slice(1);
+    const s = fs.readFileSync(p, "utf8"), ini = s.search(new RegExp("^### " + n + "\\. ", "m"));
+    const fimRel = s.slice(ini + 4).search(/^### /m), fim = fimRel < 0 ? s.length : ini + 4 + fimRel;
+    const bloco = s.slice(ini, fim);
+    if (!bloco.includes(de)) { console.error("qtarefa: " + de + " nao esta na tarefa " + n); process.exit(1); }
+    fs.writeFileSync(p, s.slice(0, ini) + bloco.replace(de, para) + s.slice(fim));
+  ' "$QP" "$1" "$2" "$3"; }
+
+qbase
+exige 0 "plano serializado passa (controle)" QCHK cobertura --slug t
+
+qbase; qtarefa 1 "depende de: nenhuma" "depende de: 2"
+exige 2 "cobertura recusa paralela sim com depende de" QCHK cobertura --slug t
+exige_msg "paralela: sim mas depende de" "a recusa diz paralela com dependencia" QCHK cobertura --slug t
+
+qbase; qtarefa 1 'arquivos: `hooks/lib/contexto-sessao.cjs`' 'arquivos: `scripts/conferir-mutacao.cjs`, `hooks/lib/contexto-sessao.cjs`'
+exige 2 "duas paralelas com o mesmo caminho em arquivos: recusam" QCHK cobertura --slug t
+exige_msg "compartilham arquivos: scripts/conferir-mutacao.cjs" "a recusa nomeia o caminho em comum" QCHK cobertura --slug t
+
+qbase; qtarefa 1 'arquivos: `hooks/lib/contexto-sessao.cjs`' 'arquivos: `scripts/conferir-*.cjs`, `hooks/lib/contexto-sessao.cjs`'
+exige 2 "glob de uma paralela que casa caminho literal de outra recusa" QCHK cobertura --slug t
+
+qbase; qtarefa 1 "[tipo: implementar]" "[tipo: implementacao]"
+exige 2 "tipo fora do vocabulario recusa" QCHK cobertura --slug t
+exige_msg "tipo: implementacao" "a recusa cita o tipo" QCHK cobertura --slug t
+
+qbase; qtarefa 1 "depende de: nenhuma" "prioridade: alta
+depende de: nenhuma"
+exige 2 "chave desconhecida no corpo da tarefa recusa" QCHK cobertura --slug t
+exige_msg "campo desconhecido: prioridade" "a recusa nomeia a chave" QCHK cobertura --slug t
+
+qbase; qtarefa 1 'arquivos: `hooks/lib/contexto-sessao.cjs`' 'arquivos: `../fora.cjs`, `hooks/lib/contexto-sessao.cjs`'
+exige 2 "arquivos: com ../ recusa" QCHK cobertura --slug t
+qbase; qtarefa 1 'arquivos: `hooks/lib/contexto-sessao.cjs`' 'arquivos: `C:/fora/x.cjs`, `hooks/lib/contexto-sessao.cjs`'
+exige 2 "arquivos: com caminho absoluto recusa" QCHK cobertura --slug t
+
+# `de:` contado no `arquivo:` (relativo a raiz do projeto): 2x recusa; 0x avisa.
+mkdir -p "$Q/src"; printf 'const a = 1;\nconst a = 1;\nconst b = 2;\n' > "$Q/src/alvo.cjs"
+qbase; qtarefa 1 'arquivo: `hooks/lib/contexto-sessao.cjs`' 'arquivo: `src/alvo.cjs`'
+qtarefa 1 'de: a comparação de `cwd` normalizado que decide co-locação' 'de: const a = 1;'
+exige 2 "de: que casa 2 vezes no arquivo recusa" QCHK cobertura --slug t
+exige_msg "aparece 2 vezes" "a recusa traz a contagem" QCHK cobertura --slug t
+qbase; qtarefa 1 'arquivo: `hooks/lib/contexto-sessao.cjs`' 'arquivo: `src/alvo.cjs`'
+qtarefa 1 'de: a comparação de `cwd` normalizado que decide co-locação' 'de: const c = 3;'
+exige 0 "de: que casa 0 vezes so avisa (codigo a nascer)" QCHK cobertura --slug t
+exige_msg "ainda nao casa" "e o aviso diz que ainda nao casa" QCHK cobertura --slug t
+qbase; qtarefa 1 'arquivo: `hooks/lib/contexto-sessao.cjs`' 'arquivo: `src/alvo.cjs`'
+qtarefa 1 'de: a comparação de `cwd` normalizado que decide co-locação' 'de: const b = 2;'
+exige 0 "de: que casa 1 vez passa" QCHK cobertura --slug t
 
 echo
 echo "-----------------------------------------"

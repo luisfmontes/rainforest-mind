@@ -35,12 +35,11 @@ ok=0; falhou=0
 
 gate() { # nome, cwd, command, esperado_exit, json_extra
   local nome="$1" cwd="$2" command="$3" esp="$4" json_extra="${5:-}"
-  local saida; saida=$(printf '%s' "$(printf '{"session_id":"s1","cwd":"%s","hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"%s"}%s}' "$cwd" "$command" "$json_extra")" | node "$GATE" 2>&1); local got=$?
+  local saida; saida=$(node -e 'const [c,cmd,ex]=process.argv.slice(1);const json={session_id:"s1",cwd:c,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:cmd}};if(ex)Object.assign(json,JSON.parse(ex));process.stdout.write(JSON.stringify(json))' "$cwd" "$command" "$json_extra" | node "$GATE" 2>&1); local got=$?
   if [ "$got" = "$esp" ]; then ok=$((ok+1)); echo "  ok   $nome (exit $got)"
   else falhou=$((falhou+1)); echo "  FALHA $nome: esperava $esp, veio $got"; echo "$saida" | sed 's/^/         /' | head -5; fi
 }
 
-esc() { cygpath -m "$1" 2>/dev/null || printf '%s' "$1" | sed 's|\\|/|g'; }
 
 echo "== Caso (a): config com verificador que reprova SEGREDO staged =="
 CASE_A_POSIX="$SANDBOXES_POSIX/case-a"
@@ -219,7 +218,7 @@ chmod +x "$CASE_F_POSIX/scripts/verifica.sh"
 echo "qualquer coisa" > "$CASE_F_POSIX/arquivo.txt"
 git -C "$CASE_F_POSIX" add arquivo.txt
 # Payload COM agent_id
-msg=$(printf '{"session_id":"s1","cwd":"%s","hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git commit -m x"},"agent_id":"agent-1","agent_type":"executor"}' "$CASE_F" | node "$GATE" 2>&1); rc=$?
+msg=$(node -e 'const c=process.argv[1];process.stdout.write(JSON.stringify({session_id:"s1",cwd:c,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"git commit -m x"},agent_id:"agent-1",agent_type:"executor"}))' "$CASE_F" | node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 2 ] && ! printf '%s' "$msg" | grep -q "\.rainforest-gate-off\|RAINFOREST_GATE_OFF"; then
   echo "  ok   case-f: agent_id não nomeia escotilhas"
   ok=$((ok+1))
@@ -254,7 +253,7 @@ chmod +x "$CASE_G_POSIX/scripts/verifica.sh"
 echo "contato: SEGREDO" > "$CASE_G_POSIX/arquivo.txt"
 git -C "$CASE_G_POSIX" add arquivo.txt
 # Com RAINFOREST_GATE_OFF=1
-msg=$(printf '%s' "$(printf '{"session_id":"s1","cwd":"%s","hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' "$CASE_G")" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
+msg=$(node -e 'const c=process.argv[1];process.stdout.write(JSON.stringify({session_id:"s1",cwd:c,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"git commit -m x"}}))' "$CASE_G" | RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then
   echo "  ok   case-g: RAINFOREST_GATE_OFF=1 derrota tudo"
   ok=$((ok+1))
@@ -302,7 +301,7 @@ gate "case-h: merge com segredo.txt idêntico ao MERGE_HEAD" "$CASE_H" "git comm
 # continua bloqueando, citando o arquivo novo.
 echo "contato: SEGREDO novo" > "$CASE_H_POSIX/novo-segredo.txt"
 git -C "$CASE_H_POSIX" add novo-segredo.txt
-msg=$(printf '%s' "$(printf '{"session_id":"s1","cwd":"%s","hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git commit -m x"}}' "$CASE_H")" | node "$GATE" 2>&1); rc=$?
+msg=$(node -e 'const c=process.argv[1];process.stdout.write(JSON.stringify({session_id:"s1",cwd:c,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"git commit -m x"}}))' "$CASE_H" | node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 2 ] && printf '%s' "$msg" | grep -q "novo-segredo.txt"; then
   echo "  ok   case-h: novo-segredo.txt (sem correspondente) continua bloqueando"
   ok=$((ok+1))
@@ -388,6 +387,37 @@ cat > "$CASE_J_POSIX/.rainforest/config.json" <<'EOF'
 {"verificador-staged": "bash scripts/verifica.sh"}
 EOF
 gate "case-j: chave ausente continua barrando (exit 2)" "$CASE_J" "git commit -m x" 2
+
+echo
+echo "== Caso (k): comando com aspas duplas no campo barra com SEGREDO =="
+CASE_K_POSIX="$SANDBOXES_POSIX/case-k"
+CASE_K="$(cygpath -m "$CASE_K_POSIX" 2>/dev/null || printf '%s' "$CASE_K_POSIX")"
+mkdir -p "$CASE_K_POSIX"
+mkdir -p "$CASE_K_POSIX/.rainforest"
+mkdir -p "$CASE_K_POSIX/scripts"
+git init -q "$CASE_K_POSIX"
+git -C "$CASE_K_POSIX" config user.email test@test
+git -C "$CASE_K_POSIX" config user.name test
+git -C "$CASE_K_POSIX" config core.autocrlf false
+echo "base" > "$CASE_K_POSIX/arquivo.txt"
+git -C "$CASE_K_POSIX" add arquivo.txt
+git -C "$CASE_K_POSIX" commit -qm "base"
+cat > "$CASE_K_POSIX/.rainforest/config.json" <<'EOF'
+{"verificador-staged": "bash scripts/verifica.sh"}
+EOF
+cat > "$CASE_K_POSIX/scripts/verifica.sh" << 'EOF'
+#!/bin/bash
+for arquivo in "$@"; do
+  if grep -q "SEGREDO" "$arquivo" 2>/dev/null; then
+    exit 1
+  fi
+done
+exit 0
+EOF
+chmod +x "$CASE_K_POSIX/scripts/verifica.sh"
+echo "contato: SEGREDO" > "$CASE_K_POSIX/arquivo.txt"
+git -C "$CASE_K_POSIX" add arquivo.txt
+gate "case-k: comando com aspas duplas no campo: git commit barra" "$CASE_K" 'git commit -m "msg com aspas"' 2
 
 echo
 echo "== Resultado: $ok ok   $falhou falha(s) =="

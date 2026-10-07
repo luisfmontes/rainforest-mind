@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 "use strict";
+// Fuso fixo (#408): os casos de data local valem igual no CI (UTC) e aqui.
+// Antes de qualquer Date — o Node relê TZ quando ela muda em process.env.
+process.env.TZ = "America/Sao_Paulo";
 /* Bateria da escada de encaixe do bloco de memória (D1–D4 do design
  * 2026-09-26-memoria-encurta.md).
  *
@@ -86,6 +89,44 @@ const e = ms.encurtarNaPalavra("uma frase com várias palavras bem longas aqui",
 caso("encurtarNaPalavra: cabe no limite e termina em …", Array.from(e).length <= 20 && e.endsWith("…") && !e.includes(" …"), e);
 const g = ms.encurtarNaPalavra("C:/caminho/muito/longo/sem/espaco/nenhum/aqui", 20);
 caso("encurtarNaPalavra: palavra única gigante cai no corte por caractere", Array.from(g).length === 20 && g.endsWith("…"), g);
+
+// 7. Data local: observação com hora UTC que mantém o mesmo dia em São Paulo
+const obsLocalTime = {
+  id: 1,
+  projeto: "rainforest-mind",
+  conteudo: "## Obs às 23h20 locais\n\nSubtítulo\n\n### Detalhe\n\ntexto",
+  criada_em: "2026-10-06T02:20:59.000Z"  // 02:20 UTC = 23:20 São Paulo (anterior)
+};
+// NOTA: O teste de data ISO com hora (linha 9) usa 06:00Z para detectar a mutação.
+// Este caso usa 02:20Z para testar a conversão para dia anterior em São Paulo.
+const linhaLocal = ms.formatarObservacao(obsLocalTime);
+caso("observacao das 23h20 locais (02:20Z) sai com o dia local",
+  linhaLocal.includes("[2026-10-05"),
+  linhaLocal);
+
+// 8. Data ISO sem hora: devolvida como está
+const resultado1 = ms.dataLocalDeIso("2026-10-05");
+caso("data ISO só (sem hora) devolve como está", resultado1 === "2026-10-05", resultado1);
+
+// 9. Data ISO com hora: convertida para local (06h UTC = 03h São Paulo, mesmo dia)
+const resultado2 = ms.dataLocalDeIso("2026-10-06T06:00:00.000Z");
+caso("data ISO com hora converte para local", resultado2 === "2026-10-06", resultado2);
+
+// 10. Data inválida: fallback ao split antigo
+// Com "T" e data impossivel, o ramo NaN corta no T (antes so se testava valor
+// sem T, que nunca chega a esse ramo — revisao da zerar-issues-16).
+const resultado3 = ms.dataLocalDeIso("2026-99-99T99:99:99Z");
+caso("data inválida com T volta ao corte antigo", resultado3 === "2026-99-99", resultado3);
+caso("data sem T volta como veio", ms.dataLocalDeIso("2026-10-05") === "2026-10-05", ms.dataLocalDeIso("2026-10-05"));
+
+// 11. Legenda com data local
+const legenda = ms.montarLegendaMemoria({
+  observacoes: [obsLocalTime],
+  apelidos: { "rainforest-mind": "rfm" }
+});
+caso("legenda com data local mostra o dia local (05/10)",
+  legenda.includes("05/10"),
+  legenda);
 
 console.log("-----------------------------------------");
 console.log(`ok: ${ok}   falhou: ${falhou}`);

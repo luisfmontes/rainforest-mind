@@ -55,7 +55,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { spawnSync, execFileSync } = require('child_process');
+const { caminhoExecutavel } = require('../hooks/lib/resolver-executavel.cjs');
 
 function uso(msg) {
   if (msg) console.error(`erro: ${msg}\n`);
@@ -89,12 +90,98 @@ const pastaFixtures = path.resolve(raiz, spec.fixtures);
 const [moduloAvaliar, funcaoAvaliar] = String(spec.avaliar).split('#');
 if (!funcaoAvaliar) uso('"avaliar" precisa ser "<modulo>#<funcao>"');
 
+const EXIT_LOCK_OCUPADO = 69;
+
+// Obter git-dir e criar lock exclusivo
+let lockMeu = false;
+let lock;
+try {
+  const gitDirResult = spawnSync(caminhoExecutavel('git'), ['rev-parse', '--git-dir'], {
+    cwd: raiz, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']
+  });
+  if (gitDirResult.status === 0) {
+    const gitDir = path.resolve(raiz, gitDirResult.stdout.trim());
+    lock = path.join(gitDir, 'rainforest-mutacao.lock');
+
+    let tentativas = 0;
+    while (tentativas < 2) {
+      try {
+        const fd = fs.openSync(lock, 'wx');
+        fs.writeSync(fd, String(process.pid));
+        fs.closeSync(fd);
+        lockMeu = true;
+        break;
+      } catch (e) {
+        if (e.code !== 'EEXIST') throw e;
+
+        // Lock já existe — verificar se pid está vivo
+        try {
+          const conteudo = fs.readFileSync(lock, 'utf8').trim();
+          const pidOutro = parseInt(conteudo, 10);
+          if (!isNaN(pidOutro)) {
+            try {
+              process.kill(pidOutro, 0);
+              // Pid está vivo
+              console.error('nao-verificavel: outra mutacao em curso neste worktree (pid ' + pidOutro + ' vivo)');
+              process.exit(EXIT_LOCK_OCUPADO);
+            } catch (killErr) {
+              // Pid morreu (ou sem permissão, mas no Linux é EPERM mesmo vivo)
+              if (killErr.code === 'ESRCH') {
+                // Processo não existe — remover lock stale e tentar novamente
+                // (o laco conta a tentativa; contar aqui tambem saia sem lock)
+                try { fs.unlinkSync(lock); } catch (_) { /* ignorar */ }
+              } else {
+                // EPERM = processo vivo mas sem permissão (improável em teste, mas válido em produção)
+                console.error('nao-verificavel: outra mutacao em curso neste worktree (pid ' + pidOutro + ' vivo)');
+                process.exit(EXIT_LOCK_OCUPADO);
+              }
+            }
+          }
+        } catch (_) { /* ignorar erro de leitura */ }
+        tentativas++;
+      }
+    }
+    if (!lockMeu) {
+      // Lock vazio, corrompido ou recriado por outro no meio: rodar sem ele
+      // seria exatamente a mutacao concorrente que ele existe para impedir.
+      console.error("nao-verificavel: lock de mutacao ilegivel ou disputado (" + lock + ")");
+      process.exit(EXIT_LOCK_OCUPADO);
+    }
+  }
+} catch (e) {
+  // Erro do lock que não é EEXIST (EACCES em `.git`, disco): mutar sem a trava
+  // é a concorrência que ela existe para impedir. Raiz fora de git (rev-parse
+  // ≠ 0) não chega aqui: roda sem lock, porque não há worktree a disputar.
+  console.error('nao-verificavel: nao consegui criar o lock de mutacao (' + e.message + ')');
+  process.exit(EXIT_LOCK_OCUPADO);
+}
+
 const original = fs.readFileSync(alvoFonte, 'utf8');
+const sha = (t) => require('crypto').createHash('sha256').update(t).digest('hex');
+const shaOriginal = sha(original);
 let restaurado = false;
+// D18: a restauração se confere pelo sha256 do fonte, em todo caminho de saída.
+// Escrita que falha (arquivo travado, sem permissão) deixava o fonte mutado, o
+// lock apagado e a próxima rodada lendo o mutante como "original". Divergindo,
+// o lock FICA, com marcador não numérico no lugar do pid: lock de pid morto se
+// retoma, e a próxima rodada leria o mutante como original; o ilegível sai 69
+// até alguém olhar a árvore e apagar o lock.
 function restaurar() {
   if (restaurado) return;
   restaurado = true;
-  try { fs.writeFileSync(alvoFonte, original); } catch (_) { /* nada a fazer */ }
+  try { fs.writeFileSync(alvoFonte, original); } catch (_) { /* conferido abaixo */ }
+  let atual = null;
+  try { atual = sha(fs.readFileSync(alvoFonte, 'utf8')); } catch (_) { /* conta como divergente */ }
+  if (atual !== shaOriginal) {
+    if (lockMeu && lock) {
+      try { fs.writeFileSync(lock, 'restauracao-falhou ' + alvoFonte); } catch (_) { /* o lock com o pid ainda fica */ }
+    }
+    console.error('FONTE NAO RESTAURADO (sha256 diverge do original: ' + alvoFonte + ') — pare e confira a árvore antes de qualquer commit; o lock fica.');
+    process.exit(2);
+  }
+  if (lockMeu && lock) {
+    try { fs.unlinkSync(lock); } catch (_) { /* nada a fazer */ }
+  }
 }
 process.on('exit', restaurar);
 for (const sinal of ['SIGINT', 'SIGTERM']) {

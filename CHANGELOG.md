@@ -10,6 +10,36 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.43.0 — 2026-10-06
+
+Fecha as doze Issues abertas pela revisão bimestral (#396 a #405, #407, #408).
+
+- **Hooks novos.** `aviso-fluxo` (PreToolUse em Write/Edit): no primeiro arquivo de código editado numa
+  sessão de repositório com fluxo rainforest e nenhum fluxo aberto, lembra de abrir o fluxo ou de dizer por
+  que pula (#396; desliga com a chave `aviso-fluxo`). `gate-subagente-sem-instalar` (PreToolUse em
+  Bash/PowerShell/Write/Edit/MultiEdit/NotebookEdit): subagente não instala pacote — também atrás de `bash -c`,
+  `sudo`, `env`, `FOO=1`, `pwsh -Command`, `&` do PowerShell e flags com valor antes do verbo (`npm --prefix x install`), decidido pelo subcomando (`npm test`, `yarn build`, `--help` passam) — nem cria
+  ou altera `.rainforest-gate-off` nem define `RAINFOREST_GATE_OFF` (#402; chave `subagente-sem-instalar`). `idioma-session-start` (SessionStart na
+  compactação): com a chave `idioma` no config, a sessão compactada volta a responder no idioma preferido (#401).
+- **`gate-fechar-issue`:** `bash scripts/$b.sh` (caminho que mistura literal e variável) deixa de ser
+  ilegível (#405), e `--body-file` criado por heredoc no mesmo comando é lido do próprio comando (#407).
+- **`conferir-fluxo cobertura`** recusa plano que o `executar` não consome: tarefa paralela com
+  dependência, paralelas que tocam o mesmo arquivo, `tipo` inválido, chave desconhecida, caminho com `..` ou
+  absoluto, e `de:` de mutação que casa mais de uma vez no fonte (#397).
+- **Baterias (#398, #403):** `varrer-baterias.sh` confere a lista de obrigatórias
+  (`scripts/baterias-obrigatorias.txt`) antes de repartir em shards; a catraca roda o bash por caminho e sai 69
+  com o bash do WSL; mutação concorrente nas fixtures de cobertura sai 69 com a trava ocupada, e a restauração do fonte se confere por sha256 (divergindo, sai ≠ 0 e a trava fica marcada, barrando a próxima rodada); três baterias de memória
+  recusam rodar contra a raiz real; o payload das sete baterias de gate da #403 sai de `JSON.stringify` — seis casos eram
+  JSON inválido e ficavam verdes sem o gate olhar.
+- **`conferir-entrega` (.cjs e .py, #400):** stderr do git vira aviso em vez de sujeira; `status` que falha
+  sai 69; `--gravar-sujo-antes` grava o snapshot com a árvore de origem e a conferência recusa snapshot de
+  outra árvore; regressão em bateria vizinha passa a ser avisada.
+- **`limpar-worktrees` e leitor de estado (#399):** revalidam antes de remover, poupam worktree em uso
+  recente (10 min, nome acentuado incluído) e dizem "fluxo concluído na base" quando a branch já entrou na `main`.
+- **`/saude`** avisa skill de usuário divergente entre os dois config dirs (#404).
+- **Memória:** legenda e bloco mostram a data local da observação, não a UTC (#408); o relatório de
+  utilidade continua achando a observação servida quando a data local e a UTC caem em dias diferentes.
+
 ## 1.42.0 — 2026-10-06
 
 - **`/transferir claude`: a sessão muda de conta com o contexto inteiro.** Copia o transcript da sessão atual
