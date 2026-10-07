@@ -100,7 +100,7 @@ pronto quando: com o arquivo `.rainforest-gate-off` presente na raiz de um repo 
 
 ### 7. resolvedor de pastas de docs e estado lendo o caminho real [tipo: implementar]
 atende: D1, D2, D3, D6
-arquivos: `hooks/lib/pastas-docs.cjs`, `scripts/pastas-docs.cjs`, `scripts/testa-pastas-docs.sh`, `hooks/lib/config.cjs`, `scripts/estado.cjs`, `scripts/conferir-fluxo.cjs`, `scripts/conferir-prova.cjs`, `scripts/semear.cjs`, `scripts/testa-semear.sh`, `scripts/baterias-obrigatorias.txt`, `scripts/testa-estado.sh`, `scripts/testa-estado-territorio.sh`, `scripts/testa-conferir-fluxo.sh`
+arquivos: `hooks/lib/pastas-docs.cjs`, `scripts/pastas-docs.cjs`, `scripts/testa-pastas-docs.sh`, `hooks/lib/config.cjs`, `scripts/estado.cjs`, `scripts/conferir-fluxo.cjs`, `scripts/conferir-prova.cjs`, `scripts/semear.cjs`, `scripts/testa-semear.sh`, `scripts/baterias-obrigatorias.txt`, `scripts/testa-estado.sh`, `scripts/testa-estado-territorio.sh`, `scripts/testa-conferir-fluxo.sh`, `scripts/desvio-do-plano.cjs` (emenda da revisão 5: o desvio vindo da main lia o plano em caminho fixo)
 depende de: 3, 5
 paralela: nao
 prova-na-base: verde — a bateria existe na base e passa; os casos que medem a tarefa ainda nao existem nela, e entram com a entrega
