@@ -52,12 +52,14 @@ REPO=$(novo_sandbox)
 WT="$REPO-wt"; SANDBOXES+=("$WT")
 AGENTE="$REPO/.claude/worktrees/agent-abc123"
 SEMPLANO="$REPO-sp"; SANDBOXES+=("$SEMPLANO")
+SEMARQ="$REPO-sa"; SANDBOXES+=("$SEMARQ")
 git init -q "$REPO" >/dev/null 2>&1
 cd "$REPO" || exit 1
 git -c user.email=t@t -c user.name=t commit -q --allow-empty -m base >/dev/null 2>&1
 git worktree add -q -b ramo "$WT" >/dev/null 2>&1
 git worktree add -q -b ramo-agente "$AGENTE" >/dev/null 2>&1
 git worktree add -q -b ramo-sp "$SEMPLANO" >/dev/null 2>&1
+git worktree add -q -b ramo-sa "$SEMARQ" >/dev/null 2>&1
 cd "$SRC" || exit 1
 [ -d "$WT" ] && [ -d "$AGENTE" ] && [ -d "$SEMPLANO" ] || { echo "FALHA montagem do worktree temporario"; exit 1; }
 
@@ -107,6 +109,12 @@ rodar "$WT" "$WT/hooks/faixa-puro.mjs";               veredito "fluxo concluido 
 # sem-plano: fluxo em curso sem arquivo de plano.
 estado "$SEMPLANO" sem-plano-x '{"slug":"sem-plano-x","criado_em":"2026-10-04","design":{"status":"aprovado"}}'
 rodar "$SEMPLANO" "$SEMPLANO/hooks/faixa-puro.mjs";   veredito "fluxo sem arquivo de plano e sem-plano" sem-plano
+
+# sem-arquivos: plano existente sem nenhum `arquivos:` nao acusa nada.
+estado "$SEMARQ" sem-arq-x '{"slug":"sem-arq-x","criado_em":"2026-10-04","design":{"status":"aprovado"}}'
+mkdir -p "$SEMARQ/docs/rainforest/planos"
+printf '### 1. Tarefa [tipo: implementar]\n\narquivos: nenhum\n' > "$SEMARQ/docs/rainforest/planos/sem-arq-x.md"
+rodar "$SEMARQ" "$SEMARQ/hooks/qualquer.mjs";         veredito "plano sem arquivos: e sem-arquivos, nao fora" sem-arquivos
 
 # Sem argumento: exit 2.
 env HOME="$CAIXA_HOME" USERPROFILE="$CAIXA_HOME" RFM_ROOT="$RAIZ_VAZIA" node "$SCRIPT" --cwd "$WT" >/dev/null 2>&1

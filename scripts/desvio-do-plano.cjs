@@ -66,6 +66,8 @@ function veredito(cwd, arquivo) {
   const rel = relativo(arquivo, cwd, worktrees(cwd));
   if (rel === null) return { veredito: 'fora-da-raiz', rel: null, slug: fluxo.slug };
   const globs = globsDe(plano);
+  // Plano sem nenhum `arquivos:` nao declara escopo: tudo sairia `fora`, e isso acusaria sem base.
+  if (globs.length === 0) return { veredito: 'sem-arquivos', rel, slug: fluxo.slug };
   if (!foraDoPlano(rel, globs)) return { veredito: 'dentro', rel, slug: fluxo.slug };
   const isentos = globsIsentos({ slug: fluxo.slug, design: null, plano: null, globsDoPlano: globs });
   if (!foraDoPlano(rel, isentos)) return { veredito: 'isento', rel, slug: fluxo.slug };
