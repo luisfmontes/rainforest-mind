@@ -1,5 +1,5 @@
 #!/bin/bash
-# Bateria do scripts/faixa-dados.cjs (dados da faixa de foco).
+# Bateria do scripts/faixa-dados.cjs (dados do painel do mod: fluxos em curso).
 #
 # EXECUTA o script real contra um repo temporario com `git init` + `git worktree add`.
 # Nunca le o ~/.rainforest vivo: HOME e USERPROFILE apontam para uma caixa e RFM_ROOT
@@ -9,7 +9,7 @@
 #   1. copia velha no principal x copia avancada no worktree: vale a avancada
 #   2. "fluxo completo nao entra na lista"
 #   3. estado ilegivel ignorado, com aviso no stderr e exit 0
-#   4. sem FOCO.md, foco: null; com FOCO.md, o titulo
+#   4. o foco saiu do JSON: nem sem FOCO.md nem com ele a chave `foco` existe (D2)
 #   5. diretorio que nao e repo cai para [cwd]
 #   6. ordem: criado_em desc, depois slug desc
 set -u
@@ -82,7 +82,7 @@ checa "fluxo completo nao entra na lista" "!d.fluxos.some(f => f.slug === 'fluxo
 checa "estado ilegivel ignorado, os outros seguem" "d.fluxos.length === 2"
 if printf '%s' "$ERRO" | grep -q "quebrado.json"; then passa "estado ilegivel avisa no stderr"; else falha "estado ilegivel avisa no stderr" "stderr=$ERRO"; fi
 checa "ordem criado_em desc" "d.fluxos.map(f => f.slug).join(',') === 'fluxo-novo,fluxo-x'"
-checa "sem FOCO.md, foco null" "d.foco === null"
+checa "sem FOCO.md, a saida so tem a chave fluxos" "JSON.stringify(Object.keys(d)) === '[\"fluxos\"]'"
 
 # Empate de criado_em: slug desc.
 estado "$REPO" aaa-empate '{"slug":"aaa-empate","criado_em":"2026-10-03","design":{"status":"pendente"}}'
@@ -90,14 +90,11 @@ rodar "$REPO"
 checa "empate de criado_em ordena por slug desc" "d.fluxos.map(f => f.slug).join(',') === 'fluxo-novo,aaa-empate,fluxo-x'"
 rm -f "$REPO/docs/rainforest/estado/aaa-empate.json"
 
-# Caso 4: com FOCO.md.
+# Caso 4: com FOCO.md ativo ao lado, a saida continua sem foco.
 RAIZ_FOCO=$(novo_sandbox)
 printf '# Foco\n\n## Ativo\n\n**Faixa de teste**\nresto\n\n## Concluido\n' > "$RAIZ_FOCO/FOCO.md"
 rodar "$REPO" "$RAIZ_FOCO"
-checa "com FOCO.md, foco e o titulo ativo" "d.foco === 'Faixa de teste'"
-printf '# Foco\n\n## Ativo\n\nnada em negrito\n' > "$RAIZ_FOCO/FOCO.md"
-rodar "$REPO" "$RAIZ_FOCO"
-checa "FOCO.md sem titulo ativo vira null" "d.foco === null"
+checa "com FOCO.md ativo, a chave foco nao existe" "!('foco' in d) && JSON.stringify(Object.keys(d)) === '[\"fluxos\"]'"
 
 # Caso 5: diretorio que nao e repo cai para [cwd].
 NAOREPO=$(novo_sandbox)

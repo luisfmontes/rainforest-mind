@@ -12,13 +12,53 @@
 // `scripts/conferir-mutacao.cjs`; o caso "cache frio quando o TTL acabou no instante exato
 // e quando nada foi medido" precisa ficar vermelho.
 
+const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
+const { execFileSync, spawnSync } = require("node:child_process");
 const { pathToFileURL } = require("node:url");
 
 const SRC = path.resolve(__dirname, "..");
 const PAINEL = pathToFileURL(path.join(SRC, "hooks", "painel-puro.mjs")).href;
 const RELOGIO = pathToFileURL(path.join(SRC, "hooks", "relogio-puro.mjs")).href;
 const FAIXA = pathToFileURL(path.join(SRC, "hooks", "faixa-puro.mjs")).href;
+const SCRIPT_DADOS = path.join(SRC, "scripts", "faixa-dados.cjs");
+
+const caixas = [];
+function caixa(prefixo) {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), prefixo));
+  caixas.push(d);
+  return d;
+}
+function limpar() {
+  for (const d of caixas) {
+    try { fs.rmSync(d, { recursive: true, force: true }); } catch { /* melhor esforco */ }
+  }
+}
+
+// Dados reais: a saida de `scripts/faixa-dados.cjs` sobre um repo temporario (nunca sobre o
+// ~/.rainforest vivo: HOME, USERPROFILE e RFM_ROOT apontam para caixas).
+let _dados;
+function dadosReais() {
+  if (_dados) return _dados;
+  const repo = caixa("painel-repo-");
+  const home = caixa("painel-home-");
+  const raiz = caixa("painel-raiz-");
+  execFileSync("git", ["init", "-q", repo], { stdio: "ignore" });
+  fs.mkdirSync(path.join(repo, "docs", "rainforest", "estado"), { recursive: true });
+  const estado = {
+    slug: "2026-10-03-faixa-teste", titulo: "Faixa de teste", criado_em: "2026-10-03",
+    design: { status: "aprovado" }, plano: { status: "ok" },
+    executar: { status: "parcial", tarefas_ok: 1, tarefas: 3, em_voo: [{ agente: "agente-a" }] },
+  };
+  fs.writeFileSync(path.join(repo, "docs", "rainforest", "estado", "2026-10-03-faixa-teste.json"), JSON.stringify(estado));
+  const env = { ...process.env, HOME: home, USERPROFILE: home, RFM_ROOT: raiz };
+  delete env.CLAUDE_PROJECT_DIR;
+  const r = spawnSync("node", [SCRIPT_DADOS, "--cwd", repo], { env, encoding: "utf8" });
+  if (r.status !== 0) throw new Error("faixa-dados.cjs saiu " + r.status + ": " + r.stderr);
+  _dados = JSON.parse(r.stdout);
+  return _dados;
+}
 
 const casos = [];
 const caso = (nome, fn) => casos.push([nome, fn]);
@@ -236,6 +276,21 @@ caso("o texto da barra tambem passa por semControle", async () => {
   afirma(figuras.every((f) => !/[\u0000-\u001f]/.test(f.texto)), "controle na barra: " + JSON.stringify(figuras.map((f) => f.texto)));
 });
 
+// ------------------------------------------------------------------ fixture do engine
+caso("FIXTURE_DADOS de mod-painel.test.tsx tem as chaves exatas da saida real do script (e nenhum foco)", () => {
+  const fonte = fs.readFileSync(path.join(SRC, "hooks", "mod-painel.test.tsx"), "utf8");
+  const m = /^const FIXTURE_DADOS = ({.*})s*$/m.exec(fonte);
+  afirma(m, "nao achei `const FIXTURE_DADOS = {...}` (numa linha so) em hooks/mod-painel.test.tsx");
+  const fixture = JSON.parse(m[1]);
+  const real = dadosReais();
+  const chaves = (o) => Object.keys(o).sort();
+  igual(chaves(fixture), chaves(real), "chaves do topo");
+  igual(chaves(real), ["fluxos"], "a saida real nao tem mais foco");
+  afirma(Array.isArray(real.fluxos) && real.fluxos.length > 0, "o script nao devolveu fluxo para comparar");
+  afirma(Array.isArray(fixture.fluxos) && fixture.fluxos.length > 0, "o fixture nao tem fluxo");
+  igual(chaves(fixture.fluxos[0]), chaves(real.fluxos[0]), "chaves de cada fluxo");
+});
+
 // ------------------------------------------------------------------ execucao
 (async () => {
   let ok = 0;
@@ -251,6 +306,7 @@ caso("o texto da barra tambem passa por semControle", async () => {
       console.log(`        ${String(e && e.message || e).split("\n").join("\n        ")}`);
     }
   }
+  limpar();
   console.log(`== resultado: ${ok} ok, ${falhou} falha(s), 0 skipped ==`);
   process.exit(falhou === 0 ? 0 : 1);
 })();
