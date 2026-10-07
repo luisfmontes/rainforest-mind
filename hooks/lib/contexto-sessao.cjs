@@ -807,10 +807,11 @@ function normalizarCwd(caminho) {
  * o comportamento que o método quer premiar, e trava que atrapalha vira trava
  * desligada.
  *
- * Vivacidade é SÓ TEMPO, e não é escolha de desenho: das 5 entradas reais do
- * `sessoes.json` em 2026-08-21, ZERO tinham `pid` — o filtro `!s.pid || estaVivo(s.pid)`
- * do `sessoesVivas` logo abaixo nunca dispara. Fingir que há checagem de processo
- * aqui seria descrever um mecanismo que não existe.
+ * Vivacidade aqui é SÓ TEMPO. Em 2026-08-21 nenhuma entrada do `sessoes.json`
+ * tinha `pid`; desde 2026-10-07 o heartbeat grava o pid lido de
+ * `<config dir>/sessions/<pid>.json`, e o `sessoesVivas` logo abaixo descarta
+ * entrada com processo morto. Este motor não usa o pid: entrada sem ele (Codex,
+ * versão antiga) continua valendo pela janela de tempo.
  *
  * @param {object} state          conteúdo do sessoes.json (objeto indexado por session_id)
  * @param {object} o
