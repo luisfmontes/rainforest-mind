@@ -88,3 +88,27 @@ Cwd novo: `<scratchpad>/medicao-fix/cwd`. Conta de trabalho. Contagem por `node 
 Antes do conserto cada resume somava uma linha (critério 2 e 4 acima: 1 -> 2 -> 3). Agora 1 -> 1 -> 1.
 
 Veredito: PASSOU.
+
+## Tarefa 4 — /clear e /compact no REPL (usuário, conta de trabalho, 2026-10-07)
+
+Sessão aberta pelo usuário com `CLAUDE_CONFIG_DIR=<home>/.claude claude --plugin-dir <worktree> --model haiku`, cwd `C:\Projetos\comms`. Contagem pela janela principal com node sobre o jsonl (linhas com `isMeta` e bloco de texto iniciado por `[rainforest-mind:abertura]`; `compact_boundary`; `isCompactSummary`).
+
+**/clear (HEAD com append no prompt.submit pós-clear):** pergunta-sonda depois do `/clear` respondeu `fato que só ele sabe não se deduz do ambiente. ...`. Transcript da sessão pós-clear `d1360590`: marca na linha 14 (anexada pelo primeiro `prompt.submit`). Veredito: **passou**.
+
+**/compact, primeira forma (append na volta do `session.compact`):** mesma sessão `d1360590`:
+```
+58 user  meta=true summary=false startsMarca=true
+59 system compact_boundary
+60 user  meta=false summary=true
+```
+A linha anexada caiu antes do `compact_boundary` e a sonda respondeu `NONE`. Veredito: **falhou** → D6 refeita (commit `1b17c503`: compact arma a pendência, o próximo `prompt.submit` reanexa).
+
+**/compact, depois do conserto (`1b17c503`):** sessão `4c949f8f`, `oi` → `/compact` → sonda:
+```
+10 user  meta=true summary=false marca=true
+55 system compact_boundary meta=false summary=false marca=false
+56 user  meta=false summary=true marca=false
+76 user  meta=true summary=false marca=true
+linhas 111
+```
+A sonda respondeu `O terceiro caso: fato que só ele sabe não se deduz do ambiente. ...`. A abertura reanexada está depois do boundary (linha 76). Veredito: **passou**.
