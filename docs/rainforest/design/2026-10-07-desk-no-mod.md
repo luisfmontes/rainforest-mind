@@ -9,7 +9,7 @@ português, relógio ⏰ mantido, "Left undone" checado contra a regra 12.
 - **D1 — Enxerto dentro do `hooks/mod.tsx`, uma faixa só** — porquê: dois mods escrevendo
   em `AbovePrompt` sem chamar `next(e)` se tapam (desk `register.tsx:635`, rainforest
   `mod.tsx:251`); um dono do slot acaba com a disputa. Código de origem:
-  terminal-desk 0.2.1, `hooks/register.tsx`, licença MIT — crédito em `NOTICE` (ou
+  terminal-desk 0.2.1, `hooks/register.tsx`, licença MIT, titular `ClariSortAi` (GraniteAI é o site de distribuição; LICENSE do zip) — crédito em `NOTICE` (ou
   `THIRD_PARTY.md`) com o texto da licença e comentário de cabeçalho no arquivo enxertado.
 - **D2 — Sai da faixa: foco e linhas Q** — porquê: o usuário ignora o foco ("eu sempre ignoro
   o foco e nem ligo pra ele", 2026-10-07) e escolheu tirar as Q. O código que só servia a
