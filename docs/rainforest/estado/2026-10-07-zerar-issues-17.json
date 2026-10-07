@@ -157,31 +157,36 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "a38483a5ea43a7f03411bc55e7d935aa41f8f5a1",
-      "caminhos_sujos": []
+      "head": "d9f74bda3dbb3001c33448ed2d5de8d202b44abb",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-10-07-zerar-issues-17.json"
+      ]
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "aa70b0cefa5803c60",
-        "veredito": "reprovado",
+        "agente_id": "a0a2b3acf204bd307",
+        "veredito": "ok",
         "em": "2026-10-07",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/8a92195d-02e9-4689-a92d-ece42b872931/subagents/agent-aa70b0cefa5803c60.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/8a92195d-02e9-4689-a92d-ece42b872931/subagents/agent-a0a2b3acf204bd307.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-07",
-    "achados": [
-      "bloqueante: aspas escapadas e ofuscacao por aspas escondiam gh literal no arquivo carregado",
-      "chave do corte de ciclo sem o cwd (revisao de seguranca)",
-      "--hostname nao pulava valor; ssh com www"
-    ],
-    "tentativas": 3
+    "achados": 0,
+    "rodada": 6,
+    "nota": "rodada 5 voltou aprovada; snapshot precisa ser recapturado depois do merge da main",
+    "base": "8ee17ff6dc8eb2e5cfde1b222d08fa925f375d9d",
+    "head": "d9f74bda3dbb3001c33448ed2d5de8d202b44abb"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/varrer-baterias.sh --shard i/4 (4 shards) + baterias e greps de cada pronto quando + node scripts/conferir-fluxo.cjs mutacoes",
+    "saida": "181 de 181 baterias verdes (41+54+43+43, EXIT=0 nos 4); testa-estado 314 ok, conferir-publicacao 162, mod-abertura 29, config 63, setup 60, gate-fechar-issue 295, gate-publicacao-destino 78, pastas-docs 15, conferir-fluxo 102, semear 31, desvio-do-plano 22, 0 falhas; greps T2/T6/T8 conforme; conferir-versao 1.46.0 exit 0; claude plugin validate exit 0; mutacoes 1,3,4,5,6,7,10 vermelho, 2,8,9 n/a",
+    "sensor_externo": "bash scripts/varrer-baterias.sh",
+    "em": "2026-10-07"
   },
   "fechar": {
     "status": "pendente"
