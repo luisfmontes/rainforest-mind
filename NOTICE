@@ -1,0 +1,37 @@
+rainforest-mind
+Avisos de terceiros
+
+Este plugin e distribuido sob a licenca do arquivo LICENSE na raiz. Partes do painel do
+mod sao adaptadas de um software de terceiros, distribuido sob a licenca MIT:
+
+  terminal-desk 0.2.1
+  Titular do copyright: ClariSortAi
+  Origem: graniteai.co/tools/terminal-desk (site de distribuicao)
+
+O que foi adaptado: a barra de sessao e o pane /painel (hooks/painel-puro.mjs e a parte do
+painel em hooks/mod.tsx) e a varredura do "deixado para depois" (hooks/deixado-puro.mjs).
+Os arquivos adaptados abrem com um comentario que remete a este NOTICE.
+
+O texto da licenca de origem segue abaixo, sem alteracao.
+
+MIT License
+
+Copyright (c) 2026 ClariSortAi
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

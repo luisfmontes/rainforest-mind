@@ -1,4 +1,6 @@
-// Prova de engine do relogio do mod (jornada e janela parada): `claude plugin test <raiz>`.
+// Prova de engine do relogio do mod (jornada e janela parada), agora uma figura da barra:
+// `claude plugin test <raiz>`. "Quieta" quer dizer sem o ⏰ na barra; "escondida" e a barra
+// inteira calada por `/painel esconder` (D9: so volta com `/painel mostrar`).
 // O engine carrega hooks/mod.tsx de verdade; por baixo dos plugins respondem `process.run`
 // (a saida dos dois scripts, escolhida pelo argv), `session.cwd`, `session.id` e o relogio
 // simulado de `mock.clock` (so anda quando o teste manda).
@@ -15,8 +17,8 @@ import { largura } from './faixa-puro.mjs'
 const FIXTURE_SESSOES = {"ociosidade_min":45,"janelas":[{"cwd":"/projetos/painel","desde":0},{"cwd":"/projetos/loja-api","desde":0}]}
 const FIXTURE_JORNADA = {"escopo":"s.jsonl","mensagens":13,"efetiva_min":552,"bruto_min":552,"primeiro":"2026-10-03T11:18:00-03:00","ultimo":"2026-10-03T20:30:00-03:00","corte_min":55,"descartadas":[]}
 
-const DADOS_FAIXA = { foco: '🚀 Lancar faixa', fluxos: [{ slug: '2026-10-03-faixa-teste', etapa: 'executar', tarefas_ok: 1, tarefas: 3, em_voo: ['agente-a'] }] }
-const VAZIO = { foco: null, fluxos: [] }
+const DADOS_FAIXA = { fluxos: [{ slug: '2026-10-03-faixa-teste', etapa: 'executar', tarefas_ok: 1, tarefas: 3, em_voo: ['agente-a'] }] }
+const VAZIO = { fluxos: [] }
 
 const ANSWER = `> ❓ **Q1 — Onde o token vive**: sessão no servidor ou JWT no cliente?
 > ➡️ **Recomendo:** sessão no servidor.
@@ -126,11 +128,16 @@ async function montar($: any, on: any, surface: Surface, inicio: number, dadosFa
     return t
   }
   const juntos = async () => (await textos()).join('\n')
-  const botao = () => ui.find({ type: 'Button', key: 'esconder' })
+  // A barra segue desenhada, sem o relogio.
   const quieta = async () => {
-    expect(await textos()).toEqual([])
-    expect(await botao()).toBeUndefined()
+    expect(await juntos()).not.toContain('⏰')
+    expect(await ui.find({ type: 'Button' })).toBeUndefined()
   }
+  // A barra inteira calada (`/painel esconder`).
+  const escondida = async () => {
+    expect(await textos()).toEqual([])
+  }
+  const painel = (args: string) => $.command.run({ command: 'painel', args } as never)
   const comecar = (interativo = true) => $.session.start({ cwd: '/projeto', surface, isInteractive: interativo })
   const terminarSessao = () => $.session.end({ reason: 'other', sessionId: 'sessao-atual' } as never)
   let n = 0
@@ -149,13 +156,13 @@ async function montar($: any, on: any, surface: Surface, inicio: number, dadosFa
     await $.prompt.submit((origin === undefined ? { text: prompt } : { text: prompt, origin }) as never)
     return s.ctx
   }
-  return { relogio, s, ui, textos, juntos, botao, quieta, comecar, terminarSessao, terminar, caso, enviar }
+  return { relogio, s, ui, textos, juntos, quieta, escondida, painel, comecar, terminarSessao, terminar, caso, enviar }
 }
 
 for (const surface of ['terminal', 'desktop'] as const) {
   test(`relogio (${surface}): linha, minutos, esconder, nota e virada do dia`, async ($, on) => {
     const m = await montar($, on, surface, em(20, 40))
-    const { relogio, s, ui, juntos, quieta, botao, comecar, terminarSessao, caso, enviar } = m
+    const { relogio, s, ui, juntos, quieta, escondida, painel, comecar, terminarSessao, caso, enviar } = m
 
     await caso('1 quieta antes de qualquer tick', async () => {
       await quieta()
@@ -171,7 +178,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
       expect(t).toContain('jornada 9h12')
       expect(t).toContain('20h40')
       expect(t).not.toContain('parada')
-      expect(await botao()).toBeDefined()
+      expect(await ui.find({ type: 'Button' })).toBeUndefined()
     })
 
     await caso('11 o argv da leitura de janelas leva --sessao com o id de $.session.id()', async () => {
@@ -181,9 +188,9 @@ for (const surface of ['terminal', 'desktop'] as const) {
       expect(argv[argv.indexOf('--cwd') + 1]).toBe('/projeto')
     })
 
-    await caso('6 esconder deixa quieta', async () => {
-      await ui.press({ key: 'esconder' })
-      await quieta()
+    await caso('6 /painel esconder deixa a barra escondida', async () => {
+      await painel('esconder')
+      await escondida()
     })
 
     await caso('7 loop_wakeup, system e sdk nao gastam a nota', async () => {
@@ -204,7 +211,8 @@ for (const surface of ['terminal', 'desktop'] as const) {
       expect(await enviar('sem origin')).toEqual([])
     })
 
-    await caso('3 janela parada ha 32 min traz a faixa de volta, com a pasta', async () => {
+    await caso('3 janela parada ha 32 min aparece na barra (apos /painel mostrar), com a pasta', async () => {
+      await painel('mostrar')
       s.sessoes = sessoesJson(30, [{ cwd: '/projetos/loja-api', desde: em(20, 41) - 32 * MIN }])
       await relogio.advance(58000) // 20h41:00: o tick de 60 s le as janelas
       const t = await juntos()
@@ -213,16 +221,17 @@ for (const surface of ['terminal', 'desktop'] as const) {
       expect(t).not.toContain('(+')
     })
 
-    await caso('4 advance(60000) muda 32 min para 33 min e a assinatura nao muda (esconder segue valendo)', async () => {
+    await caso('4 advance(60000) muda 32 min para 33 min e esconder nao volta com os minutos', async () => {
       await relogio.advance(60000)
       expect(await juntos()).toContain('loja-api parada há 33 min')
-      await ui.press({ key: 'esconder' })
-      await quieta()
+      await painel('esconder')
+      await escondida()
       await relogio.advance(60000) // 34 min: so os minutos mudaram
-      await quieta()
+      await escondida()
     })
 
-    await caso('3 duas janelas acima do limite: a mais antiga nomeada e (+1), e isso traz de volta', async () => {
+    await caso('3 duas janelas acima do limite: a mais antiga nomeada e (+1)', async () => {
+      await painel('mostrar')
       s.sessoes = sessoesJson(30, [
         { cwd: '/projetos/loja-api', desde: em(20, 41) - 32 * MIN },
         { cwd: '/projetos/painel', desde: em(20, 40) - 100 * MIN },
@@ -234,13 +243,14 @@ for (const surface of ['terminal', 'desktop'] as const) {
     })
 
     await caso('6 esconder segue valendo com advance(300000) e a mesma jornada', async () => {
-      await ui.press({ key: 'esconder' })
-      await quieta()
+      await painel('esconder')
+      await escondida()
       await relogio.advance(300000)
-      await quieta()
+      await escondida()
     })
 
-    await caso('6 outra janela virando a mais parada traz de volta', async () => {
+    await caso('6 outra janela virando a mais parada aparece depois de /painel mostrar', async () => {
+      await painel('mostrar')
       s.sessoes = sessoesJson(30, [
         { cwd: '/projetos/loja-api', desde: em(20, 41) - 32 * MIN },
         { cwd: '/projetos/api-x', desde: em(20, 40) - 200 * MIN },
@@ -249,21 +259,22 @@ for (const surface of ['terminal', 'desktop'] as const) {
       expect(await juntos()).toContain('api-x parada há')
     })
 
-    await caso('6 so a jornada, escondida, e a virada do dia traz a jornada de volta', async () => {
+    await caso('6 so a jornada, escondida, e a virada do dia com /painel mostrar acende a jornada', async () => {
       s.sessoes = sessoesJson(30, [])
       await relogio.advance(60000)
       const t = await juntos()
       expect(t).toContain('jornada 9h12')
       expect(t).not.toContain('parada')
-      await ui.press({ key: 'esconder' })
-      await quieta()
+      await painel('esconder')
+      await escondida()
       await relogio.advance(300000)
-      await quieta()
+      await escondida()
       // dia seguinte, 20h40: a sessao reabre (sem 1.440 ticks no meio)
       await terminarSessao()
       await relogio.set(em(20, 40, 4))
       s.jornada = jornadaJson(552, em(20, 35, 4))
       await comecar()
+      await painel('mostrar')
       await relogio.advance(2000)
       expect(await juntos()).toContain('jornada 9h12')
     })
@@ -343,7 +354,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
       s.modoS = 'ok'
       s.modoJ = 'ok'
       await relogio.advance(300000)
-      expect((await textos()).length).toBeGreaterThan(0)
+      expect(await juntos()).toContain('⏰')
     })
 
     await ui.unmount()
@@ -478,7 +489,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     await ui.unmount()
   })
 
-  test(`relogio (${surface}): largura e linhas (Q e relogio sobram quando falta espaco)`, async ($, on) => {
+  test(`relogio (${surface}): largura (o relogio cabe em cada Text e e o ultimo a cair)`, async ($, on) => {
     const m = await montar($, on, surface, em(20, 40), DADOS_FAIXA)
     const { relogio, s, ui, textos, juntos, comecar, terminar, caso } = m
 
@@ -496,14 +507,16 @@ for (const surface of ['terminal', 'desktop'] as const) {
       await ui.redraw(PROPS)
     })
 
-    await caso('13 com maxRows 3 sobram Q e relogio (foco e fluxo cedem)', async () => {
-      await ui.redraw({ ...PROPS, maxRows: 3 })
+    await caso('13 com 40 colunas e so a jornada, o relogio fica depois do estado e as outras figuras cedem', async () => {
+      s.sessoes = sessoesJson(30, [])
+      await relogio.advance(60000) // o tick de 60 s le as janelas: nenhuma parada
+      await ui.redraw({ ...PROPS, bodyColumns: 40 })
       const t = await textos()
       expect(t.length).toBe(2)
-      expect(t.some(linha => linha.includes('Q1 Onde o token vive'))).toBe(true)
-      expect(t.some(linha => linha.includes('jornada 9h12'))).toBe(true)
-      expect(t.some(linha => linha.includes('Lancar faixa'))).toBe(false)
-      expect(t.some(linha => linha.includes('fluxo faixa-teste'))).toBe(false)
+      expect(t[0]).toBe('○ pronto')
+      expect(t[1]).toContain('jornada 9h12')
+      expect(t.some(linha => linha.includes('foco') || linha.includes('fluxo') || linha.includes('Q1'))).toBe(false)
+      for (const linha of t) expect(largura(linha)).toBeLessThanOrEqual(40)
       await ui.redraw(PROPS)
     })
 
