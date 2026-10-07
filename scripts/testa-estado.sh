@@ -17,8 +17,14 @@
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SBP="$(mktemp -d)/caixa"
-trap 'rm -rf "$(dirname "$SBP")"' EXIT
+# Idioma SANDBOXES (testa-sandbox-com-trap.sh): toda caixa entra no array e o
+# trap de EXIT varre todas. A funcao grava no nome dado (printf -v), sem subshell,
+# para o registro no array nao se perder.
+SANDBOXES=()
+novo_sandbox() { local d; d=$(mktemp -d); SANDBOXES+=("$d"); printf -v "$1" '%s' "$d"; }
+cleanup() { for d in "${SANDBOXES[@]}"; do rm -rf "$d" 2>/dev/null || true; done; }
+trap cleanup EXIT
+novo_sandbox SBP0; SBP="$SBP0/caixa"
 
 mkdir -p "$SBP/scripts/lib" "$SBP/hooks/lib"
 cp "$SRC/scripts/estado.cjs" "$SBP/scripts/"
@@ -2721,7 +2727,7 @@ echo
 echo "== (#413) verificar --raiz roda a catraca de mutacao na arvore do codigo =="
 # A = raiz do ESTADO (estado + plano), B = arvore do CODIGO (src/x.sh + bateria).
 # O fonte mutado existe SO em B: sem --raiz a catraca o procura em A e recusa.
-A413="$(mktemp -d)"; B413="$(mktemp -d)"
+novo_sandbox A413; novo_sandbox B413
 touch "$A413/FOCO.md"
 mkdir -p "$A413/docs/rainforest/planos" "$A413/docs/rainforest/design" "$B413/src"
 printf 'exit 0\n' > "$B413/src/x.sh"
@@ -2809,7 +2815,7 @@ echo "== (#412 D3) docDoEstagio le 'doc' do bloco: design fora de docs/rainfores
 # aqui (data-slug-design) NAO e o que `caminhoDoc` derivaria do slug, entao so o
 # campo `doc` leva a checagem `cobertura` ate ele: ignorar `doc` deixa o plano
 # fechar sem a cobertura rodar.
-C412="$(mktemp -d)"
+novo_sandbox C412
 mkdir -p "$C412/docs/plans"
 (cd "$C412" && git init -q && git config user.email t@t && git config user.name T)
 export RFM_ESTADO_ROOT="$C412"
