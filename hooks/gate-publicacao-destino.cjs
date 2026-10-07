@@ -484,7 +484,13 @@ function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade) {
 // `gh` não soube responder; `publica` apurada prevalece.
 function declaradaPrivada(gitTop) {
   try {
-    return require("./lib/config.cjs").resolverConfig({ projeto: gitTop }).valores["visibilidade-repo"] === "privada";
+    // So o config DO PROJETO declara: no config de usuario a chave valeria para
+    // todo repositorio sem resposta do `gh`, e a declaracao e por repositorio (D22).
+    // E so para remoto FORA do GitHub: com remoto GitHub, `desconhecida` e o `gh`
+    // fora do ar, e a declaracao liberaria termo privado num repo que pode ser publico.
+    if (repositoriosDoGitHub(gitTop).length > 0) return false;
+    const r = require("./lib/config.cjs").resolverConfig({ projeto: gitTop });
+    return r.valores["visibilidade-repo"] === "privada" && String(r.origem["visibilidade-repo"]).startsWith("projeto");
   } catch { return false; }
 }
 

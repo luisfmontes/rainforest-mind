@@ -728,6 +728,14 @@ confere419 "419 idem, payload vindo de worktree linkado" 0
 g419 "$R419" "$R419/docs/x.md" "$CONT419 tel $TEL419"
 confere419 "419 com a chave, telefone no mesmo conteudo continua barrando" 2
 if printf '%s' "$S419" | grep -q "telefone"; then ok=$((ok+1)); echo "    ok   cita 'telefone'"; else falhou=$((falhou+1)); echo "    FALHA sem 'telefone'"; fi
+# a declaracao e por repositorio: no config de USUARIO ela nao vale
+rm -f "$R419/.rainforest/config.json"
+CFGU419="$SANDBOX_DATA/config.json"; BKU419=""
+[ -f "$CFGU419" ] && BKU419="$(cat "$CFGU419")"
+printf '{"visibilidade-repo":"privada"}' > "$CFGU419"
+g419 "$R419" "$R419/docs/x.md" "$CONT419"
+confere419 "419 chave no config de usuario nao libera" 2
+if [ -n "$BKU419" ]; then printf '%s' "$BKU419" > "$CFGU419"; else rm -f "$CFGU419"; fi
 # 5. valor invalido
 printf '{"visibilidade-repo":"publica"}' > "$R419/.rainforest/config.json"
 g419 "$R419" "$R419/docs/x.md" "$CONT419"
@@ -738,6 +746,9 @@ git -C "$R419" remote set-url origin "https://github.com/test/p419.git"
 PUB419=$(PAY_CWD="$(esc "$R419")" pay Write "$(esc "$R419/docs/x.md")" "$CONT419")
 printf '%s' "$PUB419" | env HOME="$H419" RFM_ROOT="$SANDBOX_DATA" GH_RESPONSE='{"isPrivate":false}' RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" > /dev/null 2>&1; RC419=$?
 S419=""; confere419 "419 gh diz publica: a declaracao e ignorada" 2
+# remoto GitHub com o gh fora do ar (SEM_REDE): desconhecida, e a declaracao nao vale
+g419 "$R419" "$R419/docs/x.md" "$CONT419"
+confere419 "419 remoto GitHub sem rede: a declaracao nao libera" 2
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
