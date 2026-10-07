@@ -1,0 +1,207 @@
+Data: 2026-10-07
+Termos: terminal-desk, faixa, AbovePrompt, mod.tsx, relogio, left undone
+
+$ gh issue list --state all --search "terminal-desk" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "faixa" --limit 200 --json number,title,state
+[{"number":388,"state":"CLOSED","title":"faixa do mod: semControle deixa passar LRM/RLM, ALM e separadores de linha"},{"number":382,"state":"CLOSED","title":"Hooks chamam node sem caminho absoluto: no Windows, node.exe na pasta atual vence o PATH"},{"number":386,"state":"CLOSED","title":"relogio do mod: jornada do dia anterior acende ate 5 min depois da meia-noite"},{"number":149,"state":"CLOSED","title":"A regra jid-whatsapp para em 15 digitos, e JID de GRUPO tem 18 — passou por baixo e o dado ficou no repo publico"},{"number":120,"state":"CLOSED","title":"testa-contexto-sessao.sh esta vermelha na main: 5 falhas em dentroDoExpediente, focoAtivoEmOutraJanela e co-locada"},{"number":63,"state":"CLOSED","title":"O foco não chega na injeção, e a isenção da regra 17 é cega para a segunda pasta — 10ª vez que o radar cobra desvio onde não devia"},{"number":237,"state":"CLOSED","title":"gate-publicacao-destino le id publico do GitHub como telefone, e a mensagem manda confirmar sem haver como"},{"number":215,"state":"CLOSED","title":"Vermelho largo passa por prova: a catraca de mutacao le o exit code da bateria, nunca quantas assercoes cairam"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"}]
+
+
+$ gh issue list --state all --search "AbovePrompt" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "mod.tsx" --limit 200 --json number,title,state
+[{"number":387,"state":"CLOSED","title":"relogio do mod: session.end de sessao nao interativa pode cancelar o relogio"},{"number":382,"state":"CLOSED","title":"Hooks chamam node sem caminho absoluto: no Windows, node.exe na pasta atual vence o PATH"}]
+
+
+$ gh issue list --state all --search "relogio" --limit 200 --json number,title,state
+[{"number":387,"state":"CLOSED","title":"relogio do mod: session.end de sessao nao interativa pode cancelar o relogio"},{"number":386,"state":"CLOSED","title":"relogio do mod: jornada do dia anterior acende ate 5 min depois da meia-noite"},{"number":388,"state":"CLOSED","title":"faixa do mod: semControle deixa passar LRM/RLM, ALM e separadores de linha"},{"number":408,"state":"CLOSED","title":"memória: legenda e bloco exibem a data UTC da observação — depois das 21h (UTC-3) aparece o dia seguinte"},{"number":385,"state":"CLOSED","title":"marcar plano ok passa com o arquivo declarado ausente do disco"},{"number":121,"state":"CLOSED","title":"testa-conferir-mutacao.sh e verde ou vermelha conforme a carga da maquina — a catraca de mutacao depende de relogio de parede"},{"number":120,"state":"CLOSED","title":"testa-contexto-sessao.sh esta vermelha na main: 5 falhas em dentroDoExpediente, focoAtivoEmOutraJanela e co-locada"},{"number":273,"state":"CLOSED","title":"testa-cli-externo Teste 3: teto de 8s contra fixture de 60s vermelha intermitente na CI"},{"number":270,"state":"CLOSED","title":"Linha de mutante sai como 'FALHA <nome real>' e se confunde com falha de verdade no log"},{"number":230,"state":"CLOSED","title":"conferir-mutacao.cjs entrega a --bateria ao cmd.exe no Windows: 'rm ...; python ...' apagou o venv e o arquivo de teste, e o baseline saiu VERDE"},{"number":277,"state":"CLOSED","title":"foco.cjs nao tem comando para registrar avanco: a regra 5 obriga o que a 17 proibe"},{"number":76,"state":"CLOSED","title":"A regra 14 descobre ferramenta ausente tropecando: falta um catalogo do que existe na maquina"}]
+
+
+$ gh issue list --state all --search "left undone" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "terminal-desk" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "faixa" --limit 200 --json number,title,state
+[{"number":383,"state":"MERGED","title":"1.38.0: faixa acima do prompt com foco, fluxo e Q abertas"},{"number":389,"state":"MERGED","title":"Versao 1.39.0: relogio do mod acende jornada e janela parada"},{"number":384,"state":"MERGED","title":"1.38.1: Q da faixa somem no envio e cabem na linha"},{"number":390,"state":"MERGED","title":"Relógio do mod: #386, #387, #388 e /clear (1.39.1)"},{"number":70,"state":"MERGED","title":"dentroDoExpediente aceita N faixas horarias, fechando o buraco do almoco"},{"number":361,"state":"MERGED","title":"Vigias: falha recorrente com impressao digital enxertada do reef"},{"number":156,"state":"MERGED","title":"Pre-publico: JID de grupo, a porta do agente, e fixtures que eram telefone de gente"},{"number":52,"state":"MERGED","title":"Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo"},{"number":297,"state":"MERGED","title":"zerar-issues-6: fronteira de repo na regra 6 e os restos da rodada 5"},{"number":72,"state":"MERGED","title":"Versao 0.75.0: o dia dos sete consertos, e o release que faz eles existirem"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"}]
+
+
+$ gh pr list --state all --search "AbovePrompt" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "mod.tsx" --limit 200 --json number,title,state
+[{"number":389,"state":"MERGED","title":"Versao 1.39.0: relogio do mod acende jornada e janela parada"},{"number":383,"state":"MERGED","title":"1.38.0: faixa acima do prompt com foco, fluxo e Q abertas"}]
+
+
+$ gh pr list --state all --search "relogio" --limit 200 --json number,title,state
+[{"number":390,"state":"MERGED","title":"Relógio do mod: #386, #387, #388 e /clear (1.39.1)"},{"number":389,"state":"MERGED","title":"Versao 1.39.0: relogio do mod acende jornada e janela parada"},{"number":126,"state":"MERGED","title":"Fecha #121: a catraca de mutacao para de decidir por relogio de parede"},{"number":224,"state":"MERGED","title":"Enxerta os sete mecanismos do ponytail, e fecha a fronteira que o gate de código de modelo não tinha"},{"number":229,"state":"MERGED","title":"fix(statusline): barra sumiu dos dois perfis — cwd faltando no segmento da escada"},{"number":105,"state":"MERGED","title":"CI: so no PR, e run superado se cancela — a cota de Actions bateu 90%"},{"number":116,"state":"MERGED","title":"Fecha #76: a janela sabe que a ferramenta falta antes de tentar"},{"number":12,"state":"MERGED","title":"O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook"},{"number":17,"state":"MERGED","title":"Nenhuma bateria roda sozinha: CI que roda as 20 baterias a cada PR (#16)"}]
+
+
+$ gh pr list --state all --search "left undone" --limit 200 --json number,title,state
+[]
+
+
+$ git ls-remote --heads origin | grep -F "terminal-desk"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "faixa"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "AbovePrompt"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "mod.tsx"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "relogio"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "left undone"
+(vazio)
+
+$ git log --all --grep="terminal-desk" --oneline
+(vazio)
+
+$ git log --all --grep="faixa" --oneline
+d9405fa7 mod: process.run do relogio e da faixa roda com cwd na raiz do plugin
+04ecdc7c faixa: devolver U+2066-2069 ao CONTROLES e cobrir no teste (#388)
+e9fc2d09 faixa: expandir CONTROLES para cobrir invisíveis e separadores Unicode
+58b42a79 plano e design relogio: emendas da revisao
+097d4767 docs relogio: esconder vale para a faixa inteira
+64ed7b6b Versao 1.39.0: relogio do mod acende jornada e janela parada
+77a21767 docs: relogio do mod (jornada e janela parada) no CONTRIBUTING
+19027372 mod: relogio de jornada e janela parada na faixa, com nota da regra 8
+0215981c faixa: linha do relogio, 4 linhas, prioridade Q > relogio > fluxo
+5b3825e9 Merge pull request #384 from luisfmontes/fix/faixa-q-legivel
+fd356492 Versao 1.38.1: Q da faixa somem no envio e cabem na linha
+b848b2ee faixa: Q respondida sai no envio e todas as Q cabem na linha
+bffe50c0 Merge pull request #383 from luisfmontes/fluxo/mod-faixa-foco
+a4d58afb estado: fechar com PR #383
+6cc3e88b faixa: corrige achados da revisao (teste por conteudo, agente, Q)
+fe3694f7 estado: executar fechado com as 7 tarefas da faixa
+0fff3e22 Versao 1.38.0: faixa acima do prompt com foco, fluxo e Q abertas
+158b97a8 docs: a faixa do mod no CONTRIBUTING e o requisito no README
+806d3454 Prova de engine da faixa: terminal e desktop com dados reais
+603a559a faixa: limpa controle ESC, C1 e bidi antes de desenhar a linha
+a81762da Fiacao do mod: mod.tsx com a faixa acima do prompt
+ebd5a9ba faixa: logica pura (Q, linhas, assinatura, esconder) e bateria
+0fe51d48 faixa: script de dados com foco e fluxos de todos os worktrees
+6ff23e25 plano: faixa do mod em 7 tarefas; D7 le as Q de e.answer
+197a147a design: faixa acima do prompt com foco, fluxos e Q abertas
+117615cb regua selada: fecha os onze achados da rodada 6 do revisar
+5cafc040 Regra 6 sem custo de bytes; 22.1 e 22.3 independem do nucleo
+a6422e04 Corrige falso positivo do gate-git-verificacao: corpo de heredoc e dado, nunca comando
+063bef0f Issue #149: a regra de JID alcanca grupo, e os fixtures deixam de ser telefone de gente
+aa138c70 Issue #149: a regra de JID alcanca grupo, e os fixtures deixam de ser telefone de gente
+b47e60d5 Vigias: JID multi-dispositivo tambem — e ali o JID E o telefone
+d73c5913 Vigias: JID multi-dispositivo tambem — e ali o JID E o telefone
+8c10b296 Vigias: o ERROS.md commitado carregava um JID de WhatsApp, num repo publico
+8d0d4909 Vigias: o ERROS.md commitado carregava um JID de WhatsApp, num repo publico
+955a3074 Vigias: a rodada de correcoes da revisao — o vazamento, o falso positivo, o custo
+83301c7b Vigias: a rodada de correcoes da revisao — o vazamento, o falso positivo, o custo
+b2aa0b07 Vigias T3: a catraca de encoding aprende a assinatura OEM, e o passado e backfill
+d92f27a2 Vigias T3: a catraca de encoding aprende a assinatura OEM, e o passado e backfill
+6098e392 Versao 0.75.0: o dia dos sete consertos, e o release que faz eles existirem (#72)
+c42d1233 Versao 0.75.0: o dia dos sete consertos, e o release que faz eles existirem (#72)
+a71934c5 dentroDoExpediente aceita N faixas horarias, fechando o buraco do almoco (#70)
+a6684976 dentroDoExpediente aceita N faixas horarias, fechando o buraco do almoco (#70)
+f6c4bec0 Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo (#52)
+1d5b6312 Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo (#52)
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+5e576099 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+d5261da4 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+5443bc0e A limpeza enxerga a branch que sobrevive ao worktree, e as config dirs param de divergir em silencio
+acc85203 A limpeza enxerga a branch que sobrevive ao worktree, e as config dirs param de divergir em silencio
+7945fdd3 /saude: so o que o doctor oficial nao sabe, e ponteiro para ele no resto
+6da760f3 /saude: so o que o doctor oficial nao sabe, e ponteiro para ele no resto
+
+$ git log --all --grep="AbovePrompt" --oneline
+0fff3e22 Versao 1.38.0: faixa acima do prompt com foco, fluxo e Q abertas
+806d3454 Prova de engine da faixa: terminal e desktop com dados reais
+a81762da Fiacao do mod: mod.tsx com a faixa acima do prompt
+
+$ git log --all --grep="mod.tsx" --oneline
+19027372 mod: relogio de jornada e janela parada na faixa, com nota da regra 8
+603a559a faixa: limpa controle ESC, C1 e bidi antes de desenhar a linha
+a81762da Fiacao do mod: mod.tsx com a faixa acima do prompt
+
+$ git log --all --grep="relogio" --oneline
+769439a2 CI das baterias em dois shards repartidos por tempo (#377)
+d9405fa7 mod: process.run do relogio e da faixa roda com cwd na raiz do plugin
+530d62b7 Merge pull request #390 from luisfmontes/fluxo/relogio-issues
+bd394557 estado relogio-issues: fechar com PR #390
+0be2e1fc estado relogio-issues: revisar e verificar ok
+5ddf36de estado relogio-issues: executar ok
+259f24f3 relogio-sessoes: limitar leitura de sessoes.json a 256 KB
+8688f582 relogio: corrigir acensao apos meia-noite com verificacao de dia
+9d60c33e relogio: /clear mantem o relogio e troca o --sessao (#387)
+a76ef4af relogio: session.end de outra sessao nao cancela os timers (#387)
+04c95a77 plano relogio-issues: 6 tarefas, design D3 sem armar($)
+b83d0b75 design relogio-issues: #386 #387 #388 e /clear
+12a6f3ed Merge pull request #389 from luisfmontes/fluxo/mod-jornada-relogio
+ab99e8dc estado relogio: fechar com PR #389
+7ea227a4 estado relogio: revisar e verificar ok
+58b42a79 plano e design relogio: emendas da revisao
+097d4767 docs relogio: esconder vale para a faixa inteira
+af3eb860 mod: session.start nao interativo nao cancela o relogio
+f8331119 estado relogio: executar ok, 9 tarefas e mutacoes reconferidas
+64ed7b6b Versao 1.39.0: relogio do mod acende jornada e janela parada
+a753d3c5 abertura: bytes da elaboracao 17 com a frase do relogio
+77a21767 docs: relogio do mod (jornada e janela parada) no CONTRIBUTING
+06c2ca98 plano relogio: tarefa 7 descreve a nota pelo prompt.submit
+f6e99901 mod: nota do relogio e limpeza das Q por prompt.submit
+2ef9b056 plano relogio: fixture das tarefas 5 e 9 com o nome real do caso
+f7791f58 plano relogio: tarefa 9, nota e Q por prompt.submit
+19027372 mod: relogio de jornada e janela parada na faixa, com nota da regra 8
+0215981c faixa: linha do relogio, 4 linhas, prioridade Q > relogio > fluxo
+1eabb0a3 relogio: logica pura de jornada, parada, assinatura e nota
+7353093b Integra tarefa 2 (relogio-sessoes) ao fluxo do relogio
+586a0436 relogio-sessoes: janelas esperando o usuario e ociosidade
+a6a7bd68 plano: relogio do mod em 8 tarefas; design emenda D3, D4 e D8
+1c5b6c28 design: mod de jornada e janela parada por relogio (D1-D9)
+080f7916 D9: o teto de tempo do CI para de ser cara ou coroa
+2c483d55 D5 diz o que o script faz: caractere, e a fronteira de isolamento
+8eb02f36 Fecha o buraco do relogio e trava o isolamento com payload hostil
+1ec70423 Fecha #121: a catraca de mutacao para de decidir por relogio de parede (#126)
+a4d836cd Fecha #121: a catraca de mutacao para de decidir por relogio de parede (#126)
+c21bd779 Fecha #118: o backup diario do sentinela nunca fez backup — e empurrava sozinho para um repo publico (#122)
+d7111a7f Fecha #118: o backup diario do sentinela nunca fez backup — e empurrava sozinho para um repo publico (#122)
+889ff9c9 Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+56ea03cc Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+f5e76d3c CI: so no PR, e run superado se cancela — a cota bateu 90% (#105)
+6b5d0679 CI: so no PR, e run superado se cancela — a cota bateu 90% (#105)
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+d8b72ed0 A regra 8 desacopla do plugin de cliente, e o corte de lacuna para de engolir almoco
+4ff3da28 A regra 8 desacopla do plugin de cliente, e o corte de lacuna para de engolir almoco
+434fb3a5 ideias.py ganha gemeo em Node, e o bloco de mutacao para de sabotar o arquivo errado
+605dfa7d ideias.py ganha gemeo em Node, e o bloco de mutacao para de sabotar o arquivo errado
+b2b22b14 ideias.py ganha 'editar', porque ideia muda antes de ser colhida
+4f9a803a ideias.py ganha 'editar', porque ideia muda antes de ser colhida
+c8654b2e v0.42.0: regra 8 mede jornada no transcript, nunca em carimbo de commit
+3edac49e v0.42.0: regra 8 mede jornada no transcript, nunca em carimbo de commit
+b6e97315 A escrita segura do ideias.jsonl vira codigo: scripts/ideias.py
+2120dba6 A escrita segura do ideias.jsonl vira codigo: scripts/ideias.py
+214884ed Colhe tres observacoes: saida ff-only na regra 11, ferramenta na 12, hora local na 8
+2d1384d7 Colhe tres observacoes: saida ff-only na regra 11, ferramenta na 12, hora local na 8
+8e0973bd Parametrizar caminhos e porta no codigo; corrige hook lendo settings.json da pasta antiga
+30729e4e Parametrizar caminhos e porta no codigo; corrige hook lendo settings.json da pasta antiga
+
+$ git log --all --grep="left undone" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+{"id":"mods-faixa-foco-e-checkpoint","titulo":"Faixa acima do prompt com foco ativo, Q abertas e checkpoint n/total"}
+{"id":"mods-jornada-e-janela-parada-por-relogio","titulo":"Jornada (regra 8) e janela parada (regra 17) medidas por relogio do mod, com aviso em toast/status"}
+{"id":"escopo-de-as-issues-encolhido-sem-perguntar","titulo":"'Corrigir as issues' virou as 3 do relogio, sem confirmar"}
+
+
