@@ -25,12 +25,12 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-07",
-    "tarefas_ok": 6,
+    "tarefas_ok": 7,
     "tarefas": 14,
     "em_voo": [
       {
-        "agente": "executor-t7",
-        "tarefa": "7 pane /painel",
+        "agente": "executor-t8",
+        "tarefa": "8 mapa e desvio no pane",
         "desde": "2026-10-07"
       }
     ],
@@ -126,6 +126,55 @@
         "iteracao": 1,
         "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
         "ts": "2026-10-07T12:48:39.520Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "0656db33",
+        "iteracao": 4,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:56:26.661Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "0656db33",
+        "iteracao": 4,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:56:26.661Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "0656db33",
+        "iteracao": 3,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:56:26.661Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "0656db33",
+        "iteracao": 4,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:56:26.661Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "fd12e60b",
+        "iteracao": 2,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:56:26.661Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "fd12e60b",
+        "iteracao": 2,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:56:26.661Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "9761d46f",
+        "iteracao": 1,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:56:26.661Z"
       }
     ]
   },
