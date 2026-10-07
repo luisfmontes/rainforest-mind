@@ -106,7 +106,18 @@ type Surface = 'terminal' | 'desktop'
 // `comUi: false` deixa a tela por montar (`abrir()`): um avanco longo do relogio redesenharia a
 // barra a cada segundo, e sem tela montada o teste fica rapido.
 async function montar($: any, on: any, surface: Surface, inicio: number, comUi = true) {
-  const relogio = mock.clock(on, { now: inicio })
+  // Um relogio que lanca: o `ui.render` do mod le a hora, entao e a excecao que ele tem de engolir.
+  // O `mock.clock` registra o `clock.now` uma vez so; o embrulho dele vai por um `on` que o intercepta.
+  let relogioQuebrado = false
+  const onRelogio: any = (evento: any, ...resto: any[]) => {
+    const fn = resto[resto.length - 1]
+    if (evento !== 'clock.now' || typeof fn !== 'function') return (on as any)(evento, ...resto)
+    return (on as any)(evento, ...resto.slice(0, -1), (...args: any[]) => {
+      if (relogioQuebrado) throw new Error('relogio quebrado')
+      return fn(...args)
+    })
+  }
+  const relogio = mock.clock(onRelogio, { now: inicio })
   const s = {
     jornada: jornadaJson(552, inicio - 10 * MIN) as unknown,
     sessoes: { ...FIXTURE_SESSOES, janelas: [] } as unknown,
@@ -114,7 +125,7 @@ async function montar($: any, on: any, surface: Surface, inicio: number, comUi =
     modoDados: 'ok' as 'ok' | 'falha',
     usage: SESSION_USAGE(38, 76599, 0.42) as unknown,
     modoUsage: 'ok' as 'ok' | 'falha',
-    modoOpen: 'ok' as 'ok' | 'recusa',
+    modoOpen: 'ok' as 'ok' | 'recusa' | 'deny',
     opens: [] as unknown[],
     usageCalls: 0,
     dados: [] as { argv: readonly string[]; cwd: unknown }[],
@@ -130,7 +141,10 @@ async function montar($: any, on: any, surface: Surface, inicio: number, comUi =
     // Deixado para depois: as chamadas do segundo modelo, o modo e o texto da resposta dele, o
     // atraso (ms do relogio simulado) e os rascunhos que o botao "Faz agora" preencheu.
     modelos: [] as { model: unknown; prompt: unknown; maxTokens: unknown; timeoutMs: unknown }[],
-    modoModelo: 'ok' as 'ok' | 'sem-resposta',
+    modoModelo: 'ok' as 'ok' | 'sem-resposta' | 'rejeita',
+    // Falha aberta: o que o sec-default pode barrar, uma peca de cada vez.
+    modoFill: 'ok' as 'ok' | 'recusa',
+    modoToast: 'ok' as 'ok' | 'recusa',
     textoModelo: 'NENHUM',
     atrasoModelo: 0,
     fills: [] as { text: unknown; mode: unknown }[],
@@ -163,6 +177,7 @@ async function montar($: any, on: any, surface: Surface, inicio: number, comUi =
   })
   on('ui.open', async (_$: any, e: any) => {
     s.opens.push(e)
+    if (s.modoOpen === 'deny') return { deny: 'recusado pelo sec-default' } as never
     return { value: { isPlaced: s.modoOpen === 'ok' } } as never
   })
   on('turn.complete', async () => ({ text: '' }))
@@ -174,14 +189,18 @@ async function montar($: any, on: any, surface: Surface, inicio: number, comUi =
     s.modelos.push({ model: e.model, prompt: e.prompt, maxTokens: e.maxTokens, timeoutMs: e.timeoutMs })
     if (s.atrasoModelo > 0) await relogio.sleep(s.atrasoModelo)
     const usage = { input_tokens: 1, output_tokens: 1 }
+    if (s.modoModelo === 'rejeita') return { deny: 'recusado pelo sec-default' } as never
     if (s.modoModelo === 'sem-resposta') return { value: { isAnswered: false, reason: 'empty-reply', usage } } as never
     return { value: { isAnswered: true, text: s.textoModelo, usage } } as never
   })
   on('prompt.fill', async (_$: any, e: any) => {
+    // Recusa de `prompt.fill` e `{ isFilled: false }`: o engine nao aceita `{ deny }` neste evento.
+    if (s.modoFill === 'recusa') return { isFilled: false } as never
     s.fills.push({ text: e.text, mode: e.mode })
     return { isFilled: true } as never
   })
   on('ui.toast', async (_$: any, e: any) => {
+    if (s.modoToast === 'recusa') return { deny: 'recusado pelo sec-default' } as never
     s.toasts.push(String(e.text))
     return { value: undefined } as never
   })
@@ -235,7 +254,7 @@ async function montar($: any, on: any, surface: Surface, inicio: number, comUi =
       throw new Error(`[${surface}] ${nome}: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
-  return { relogio, s, get ui() { return ui }, abrir, abrirPane, textos, juntos, quieta, comecar, terminar, passo, painel, caso }
+  return { relogio, s, quebrarRelogio: (v: boolean) => { relogioQuebrado = v }, get ui() { return ui }, abrir, abrirPane, textos, juntos, quieta, comecar, terminar, passo, painel, caso }
 }
 
 for (const surface of ['terminal', 'desktop'] as const) {
@@ -919,5 +938,368 @@ for (const surface of ['terminal', 'desktop'] as const) {
     })
 
     await m.ui.unmount()
+  })
+
+  // ---- Prova transversal (tarefa 10): o mundo por baixo recusa uma peca de cada vez ----------
+
+  test(`painel (${surface}): falha aberta, process.run com exit 1 apaga fluxos e desvio e a barra segue`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40), false)
+    const { s, textos, juntos, comecar, terminar, caso } = m
+    const vermelhos = async () => (await m.ui.findAll({ type: 'Text' })).filter((x: any) => x.props.color === '#ff4d4d')
+
+    await caso(`falha aberta (${surface}): com o mundo bom o pane traz o fluxo`, async () => {
+      await comecar()
+      await terminar(ANSWER, { usage: USAGE_REAL })
+      await m.abrirPane()
+      const t = await textos()
+      expect(t).toContain('painel-pane')
+      expect(t).toContain('executar · 1/3 · 1 em voo')
+    })
+
+    await caso(`falha aberta (${surface}): exit 1 nos dados apaga os fluxos e so eles`, async () => {
+      s.modoDados = 'falha'
+      await terminar('de novo', { usage: USAGE_REAL })
+      const t = await textos()
+      expect(t).toContain('Nenhum fluxo em curso')
+      expect(t).not.toContain('painel-pane')
+      expect(t).toContain(' Custo e tokens ')
+      expect(t).toContain('38% de 200.0K') // o contexto segue medido
+    })
+
+    await caso(`falha aberta (${surface}): exit 1 no desvio lista a escrita, sem vermelho e sem toast`, async () => {
+      s.modoDesvio = 'exit1'
+      const ran: any = await $.tool.call({ tool: 'Edit', file_path: '/projeto/scripts/estado.cjs', old_string: 'a', new_string: 'b' } as never)
+      await m.relogio.settle()
+      expect(ran.result).toBe('ok')
+      expect(await textos()).toContain('✓ /projeto/scripts/estado.cjs')
+      expect((await vermelhos()).some((x: any) => String(x.text).includes('estado.cjs'))).toBe(false)
+      expect(s.toasts).toEqual([])
+    })
+
+    await caso(`falha aberta (${surface}): a barra segue com os mesmos numeros`, async () => {
+      await m.ui.unmount()
+      await m.abrir()
+      const t = await juntos()
+      expect(t).toContain('Tokens')
+      expect(t).toContain('Custo $0.42')
+      expect(t).toContain('Turnos 2')
+      expect(t).toContain('Erros 0')
+    })
+
+    await m.ui.unmount()
+  })
+
+  test(`painel (${surface}): falha aberta, session.usage rejeitando apaga o contexto e o pane diz Medição indisponível`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40), false)
+    const { s, textos, juntos, comecar, terminar, painel, caso } = m
+
+    await caso(`falha aberta (${surface}): com a medicao boa a barra tem o contexto`, async () => {
+      await comecar()
+      await m.abrir()
+      await terminar(ANSWER, { usage: USAGE_REAL })
+      expect(await juntos()).toContain('Contexto 0')
+      expect(await juntos()).toContain('38%')
+    })
+
+    await caso(`falha aberta (${surface}): usage recusado some com a figura de contexto, o resto da barra fica`, async () => {
+      await m.relogio.advance(2000) // o relogio acende 2 s depois do session.start
+      s.modoUsage = 'falha'
+      await terminar('outro', { usage: USAGE_REAL })
+      const t = await juntos()
+      expect(t).not.toContain('Contexto 0')
+      expect(t).not.toContain('38%')
+      for (const resto of ['Tokens', 'Custo', 'Turnos 2', 'Erros 0', '⏰ jornada 9h12']) expect(t).toContain(resto)
+      expect(s.logs.some(l => l.startsWith('painel: contexto: '))).toBe(true)
+    })
+
+    await caso(`falha aberta (${surface}): a barra de subagente em tela diz contexto -- em vez de um numero velho`, async () => {
+      await $.agent.spawn({ prompt: 'p', description: 'revisar o diff', subagentType: 'general-purpose', tool_use_id: 'u1' } as never)
+      await m.ui.redraw({ ...PROPS, view: { agentId: 'ag-1' } })
+      const t = await juntos()
+      expect(t).toContain('revisar o diff')
+      expect(t).toContain('Sessão principal: contexto --')
+      await m.ui.redraw(PROPS)
+    })
+
+    await caso(`falha aberta (${surface}): o pane diz Medição indisponível e mantem os outros paineis`, async () => {
+      await m.ui.unmount()
+      const r = await painel('')
+      expect(r.text).toBe('Painel aberto.') // o comando nunca depende da medicao
+      await m.abrirPane()
+      const t = await textos()
+      expect(t).toContain('Medição indisponível')
+      expect(t).toContain('Usado')
+      expect(t).toContain(' Fluxos em curso ')
+      expect(t).toContain(' Cache de prompt ')
+      expect(t).toContain(' Custo e tokens ')
+      expect(t.some(x => /^[█▒░]+$/.test(x))).toBe(false)
+    })
+
+    await m.ui.unmount()
+  })
+
+  test(`painel (${surface}): falha aberta, o modelo do checker recusa`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40), false)
+    const { relogio, s, textos, comecar, terminar, caso } = m
+    const pedir = (texto: string) => $.prompt.submit({ text: texto, origin: { kind: 'composer' } } as never)
+    const bash = { tool: 'Bash', command: 'ls' }
+    const cinco = async () => {
+      for (const c of [bash, bash, bash, bash, bash]) await $.tool.call(c as never)
+      await relogio.settle()
+    }
+    const itens = async () => (await textos()).filter(t => /^D\d+ · /.test(t))
+
+    await caso(`falha aberta (${surface}): model.complete rejeita e o pane para de dizer checando`, async () => {
+      await comecar()
+      await m.abrirPane()
+      s.modoModelo = 'rejeita'
+      s.atrasoModelo = 5000
+      await pedir('rode a bateria e corrija')
+      await cinco()
+      await terminar('Tudo certo, terminei.') // nao pode lancar
+      await relogio.settle()
+      expect(s.modelos).toHaveLength(1)
+      expect(await textos()).toContain('Checando com o segundo modelo…') // a chamada esta em voo
+      await relogio.advance(5000) // ...e agora o modelo recusa
+      expect(await textos()).not.toContain('Checando com o segundo modelo…')
+      expect(await itens()).toEqual([])
+      expect(s.toasts).toEqual([])
+      expect(s.logs.some(l => l.startsWith('painel: checker: '))).toBe(true)
+    })
+
+    await caso(`falha aberta (${surface}): a recusa nao trava a proxima checagem`, async () => {
+      s.modoModelo = 'ok'
+      s.atrasoModelo = 0
+      s.textoModelo = 'Conferir a tarefa 3'
+      await pedir('rode a bateria de novo')
+      await cinco()
+      await terminar('Tudo certo, terminei.')
+      await relogio.settle()
+      expect(s.modelos).toHaveLength(2)
+      expect(await itens()).toEqual(['D1 · segundo modelo'])
+      expect(await textos()).not.toContain('Checando com o segundo modelo…')
+    })
+
+    await caso(`falha aberta (${surface}): ui.toast recusado nao tira a checagem do segundo modelo`, async () => {
+      s.modoToast = 'recusa'
+      s.textoModelo = 'NENHUM'
+      await pedir('me diga o status do fluxo 4')
+      await cinco()
+      await terminar(ADIAMENTO_REAL) // a varredura acha o adiamento e tenta o toast, que o sec-default barra
+      await relogio.settle()
+      expect(await itens()).toEqual(['D1 · segundo modelo', 'D2 · Claude disse'])
+      expect(s.modelos).toHaveLength(3) // o toast barrado nao pode derrubar o checker
+      s.modoToast = 'ok'
+    })
+
+    await m.ui.unmount()
+  })
+
+  test(`painel (${surface}): falha aberta, ui.open recusado ainda devolve o texto do comando`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40), false)
+    const { s, comecar, terminar, painel, caso } = m
+
+    await caso(`falha aberta (${surface}): ui.open com deny ainda devolve o texto do comando`, async () => {
+      await comecar()
+      await terminar(ANSWER, { usage: USAGE_REAL })
+      s.modoOpen = 'deny'
+      const r = await painel('')
+      expect(r.text).toContain('Painel indisponível aqui')
+      expect(r.text).toContain('Contexto 38%')
+      expect(r.text).toContain('custo $0.42')
+      s.modoUsage = 'falha'
+      const r2 = await painel('') // as duas pecas recusadas ao mesmo tempo
+      expect(r2.text).toContain('Painel indisponível aqui')
+      s.modoUsage = 'ok'
+      s.modoOpen = 'recusa'
+      expect((await painel('')).text).toContain('Painel indisponível aqui') // isPlaced falso
+      s.modoOpen = 'ok'
+    })
+  })
+
+  test(`painel (${surface}): falha aberta, prompt.fill recusado nao derruba o pane e nao descarta o item`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40), false)
+    const { s, textos, comecar, terminar, caso } = m
+    const itens = async () => (await textos()).filter(t => /^D\d+ · /.test(t))
+
+    await caso(`falha aberta (${surface}): o botao Faz agora com prompt.fill recusado nao derruba o pane`, async () => {
+      await comecar()
+      await m.abrirPane()
+      await $.prompt.submit({ text: 'me diga o status do fluxo 4', origin: { kind: 'composer' } } as never)
+      await terminar(ADIAMENTO_REAL)
+      expect(await itens()).toEqual(['D1 · Claude disse'])
+      s.modoFill = 'recusa'
+      await m.ui.press({ key: 'faz-1' }) // nao pode lancar
+      expect(s.fills).toHaveLength(0) // a caixa recusou o texto
+      const t = await textos()
+      expect(t).toContain(' Fluxos em curso ')
+      expect(t).toContain(' Custo e tokens ')
+    })
+
+    // Contrato: "Faz agora so preenche o prompt". Recusado o preenchimento (`isFilled: false`),
+    // o item nao foi levado a lugar nenhum e tem de seguir aberto para a pessoa tentar de novo.
+    await caso(`falha aberta (${surface}): prompt.fill recusado deixa o item aberto`, async () => {
+      expect(await itens()).toEqual(['D1 · Claude disse'])
+    })
+
+    await caso(`falha aberta (${surface}): depois da recusa o botao volta a funcionar`, async () => {
+      s.modoFill = 'ok'
+      await m.ui.press({ key: 'faz-1' })
+      expect(s.fills).toHaveLength(1)
+      expect(await itens()).toEqual([])
+    })
+
+    await m.ui.unmount()
+  })
+
+  test(`painel (${surface}): falha aberta, ui.render que lanca devolve next(e) na barra e no pane`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40))
+    const { s, textos, juntos, comecar, terminar, quieta, caso } = m
+
+    await caso(`falha aberta (${surface}): a barra lancando devolve next(e) e volta quando a leitura volta`, async () => {
+      await comecar()
+      await terminar(ANSWER, { usage: USAGE_REAL })
+      expect(await juntos()).toContain('Tokens')
+      m.quebrarRelogio(true)
+      await m.ui.redraw({ ...PROPS, isWorking: true })
+      await quieta() // o fundo desenhou uma caixa vazia: o mod cedeu
+      m.quebrarRelogio(false)
+      await m.ui.redraw(PROPS)
+      expect(await juntos()).toContain('Tokens')
+    })
+
+    await caso(`falha aberta (${surface}): o pane lancando devolve next(e)`, async () => {
+      await m.ui.unmount()
+      await m.abrirPane()
+      expect(await textos()).toContain(' Custo e tokens ')
+      m.quebrarRelogio(true)
+      await m.ui.redraw({ ...PANE_PROPS, isFocused: true })
+      expect(await textos()).toEqual([])
+      m.quebrarRelogio(false)
+      await m.ui.redraw(PANE_PROPS)
+      expect(await textos()).toContain(' Custo e tokens ')
+    })
+
+    await m.ui.unmount()
+  })
+
+  test(`painel (${surface}): falha aberta, subagente em tela com nome hostil na barra e no pane a 30 colunas`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40), false)
+    const { textos, comecar, terminar, caso } = m
+    const ESC = String.fromCharCode(27)
+    const hostil = `${ESC}[31mvermelho${ESC}[0m\nlinha dois ${'日本語'.repeat(12)}`
+    const semControle = (t: string[]) => t.every(x => !/[\u0000-\u001f\u007f]/.test(x))
+
+    await caso(`falha aberta (${surface}): o subagente aparece sem controle e cabe em 30 colunas na barra`, async () => {
+      await comecar()
+      await terminar(ANSWER, { usage: USAGE_REAL })
+      await $.agent.spawn({ prompt: 'p', description: hostil, subagentType: 'general-purpose', tool_use_id: 'u1' } as never)
+      await $.tool.call({ tool: 'Bash', command: 'ls', agentId: 'ag-1' } as never)
+      await m.abrir()
+      await m.ui.redraw({ ...PROPS, bodyColumns: 30, view: { agentId: 'ag-1' } })
+      const t = await textos()
+      expect(t.length).toBeGreaterThan(0)
+      for (const linha of t) expect(largura(linha)).toBeLessThanOrEqual(30)
+      expect(t.filter(x => !semControle([x]))).toEqual([])
+      await m.ui.redraw({ ...PROPS, bodyColumns: 100, view: { agentId: 'ag-1' } })
+      const largo = await textos()
+      expect(largo.filter(x => !semControle([x]))).toEqual([])
+      expect(largo.join('|')).toContain('vermelho') // o controle some, o nome fica
+      for (const linha of largo) expect(largura(linha)).toBeLessThanOrEqual(100)
+      await m.ui.unmount()
+    })
+
+    await caso(`falha aberta (${surface}): o pane do subagente em tela tira o controle e corta o nome largo`, async () => {
+      await m.abrirPane({ bodyColumns: 30, view: { agentId: 'ag-1' } })
+      const t = await textos()
+      expect(t).toContain(' Subagente em tela ')
+      expect(t.filter(x => !semControle([x]))).toEqual([])
+      const nomes = t.filter(x => x.includes('vermelho'))
+      expect(nomes.length).toBeGreaterThan(0)
+      for (const nome of nomes) expect(largura(nome)).toBeLessThanOrEqual(30)
+    })
+
+    await m.ui.unmount()
+  })
+
+  test(`painel (${surface}): falha aberta, bodyColumns 30 e menores com cada Text dentro da largura`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40))
+    const { relogio, textos, comecar, terminar, caso } = m
+
+    await caso(`falha aberta (${surface}): com 30 colunas cada Text da barra cabe`, async () => {
+      await comecar()
+      await relogio.advance(2000)
+      await terminar(ANSWER, { usage: USAGE_REAL })
+      for (const cols of [30, 24, 12, 8, 7, 3, 1]) {
+        await m.ui.redraw({ ...PROPS, bodyColumns: cols })
+        const t = await textos()
+        for (const linha of t) expect(largura(linha)).toBeLessThanOrEqual(cols)
+        if (cols === 30) expect(t[0]).toBe('○ pronto')
+      }
+      await m.ui.redraw({ ...PROPS, bodyColumns: 30, isWorking: true })
+      expect((await textos())[0]).toBe('● trabalhando')
+    })
+
+    // No pane a prosa fixa (rotulos e notas) quebra por conta do engine (`Text` sem `wrap` = wrap);
+    // o que o mod mesmo mede e corta e a barra de contexto, a legenda, o mapa e os agentes.
+    await caso(`falha aberta (${surface}): com 30 colunas a barra de contexto, a legenda e os nomes do pane cabem`, async () => {
+      await m.ui.unmount()
+      await $.agent.spawn({ prompt: 'p', description: 'revisar o diff do plano inteiro e depois tudo de novo', subagentType: 'general-purpose', tool_use_id: 'u1' } as never)
+      await $.tool.call({ tool: 'Write', file_path: '/projeto/hooks/um/caminho/muito/longo/de/arquivo-com-nome-grande.mjs', content: 'x' } as never)
+      await relogio.settle()
+      await m.painel('')
+      await m.abrirPane({ bodyColumns: 30 })
+      const t = await textos()
+      expect(t.filter(x => /^[█▒░]+$/.test(x)).reduce((n, x) => n + x.length, 0)).toBe(26) // 30 - 4
+      const dinamicos = t.filter(x => /^(■|▒ |░ |✓|✗|▶|●|  \S)/.test(x))
+      expect(dinamicos.length).toBeGreaterThan(3)
+      expect(dinamicos.filter(x => largura(x) > 30)).toEqual([])
+    })
+
+    await m.ui.unmount()
+  })
+
+  test(`painel (${surface}): falha aberta, isInteractive false sem timer e sem process.run do painel`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40), false)
+    const { relogio, s, comecar, caso } = m
+
+    await caso(`falha aberta (${surface}): isInteractive false nao arma timer: o tempo passa e nada roda`, async () => {
+      await comecar(false)
+      const aposInicio = s.runs
+      await relogio.advance(10 * MIN)
+      expect(s.runs).toBe(aposInicio)
+      expect(s.usageCalls).toBe(0)
+      expect(s.desvios).toHaveLength(0)
+    })
+
+    await caso(`falha aberta (${surface}): isInteractive false nao roda process.run do painel nem no session.start`, async () => {
+      expect(s.dados).toHaveLength(0) // faixa-dados.cjs so serve o pane, que -p, SDK e subagente nao desenham
+      expect(s.runs).toBe(0)
+    })
+  })
+
+  test(`painel (${surface}): falha aberta, session.end cancela relogio e tique`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40), false)
+    const { relogio, s, comecar, terminar, caso } = m
+
+    await caso(`falha aberta (${surface}): session.end da sessao cancela relogio e tique`, async () => {
+      await comecar()
+      await relogio.advance(2000)
+      expect(s.runs).toBeGreaterThan(0)
+      await $.session.compact({ trigger: 'manual', messages: [{ role: 'user', text: 'oi', toolUses: [] }] } as never) // arma o tique com medicao pendente
+      await $.session.end({ reason: 'other', sessionId: 'sessao-atual' } as never)
+      const runs = s.runs
+      const medidas = s.usageCalls
+      await relogio.advance(10 * MIN)
+      expect(s.runs).toBe(runs)
+      expect(s.usageCalls).toBe(medidas) // o tique cancelado nao refaz a medicao pendente
+    })
+
+    await caso(`falha aberta (${surface}): o turno depois do fim da sessao nao arma tique novo`, async () => {
+      const antes = s.usageCalls
+      await terminar(ANSWER, { usage: USAGE_REAL }) // mede uma vez, no proprio turn.complete
+      await relogio.advance(MIN)
+      expect(s.usageCalls).toBe(antes + 1)
+    })
   })
 }
