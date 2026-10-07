@@ -234,22 +234,39 @@ caso("40 colunas: a soma cabe e o relogio e a ultima a cair", async () => {
   afirma(figuras.length < 10, "a 40 colunas algo tinha de cair");
 });
 
-caso("cada coluna a menos derruba figuras da direita e o relogio so cai depois de todas as outras", async () => {
+caso("cada coluna a menos derruba figuras; o relogio cabe sempre que cabe sozinho e o estado so cai depois das demais", async () => {
   const m = await importar(PAINEL);
+  const f = await importar(FAIXA);
   const linha = await linhaDoRelogio();
+  const larguraRelogio = f.largura(linha);
   let tinhaRelogio = true;
   for (let cols = 200; cols >= 12; cols--) {
     const figuras = m.figurasDaBarra(STATS, linha, cols);
-    const soma = figuras.reduce((s, f) => s + f.largura, 0) + 2 * Math.max(0, figuras.length - 1);
+    const ids = figuras.map((x) => x.id);
+    const soma = figuras.reduce((s, x) => s + x.largura, 0) + 2 * Math.max(0, figuras.length - 1);
     afirma(soma <= cols, "soma " + soma + " passa de " + cols);
-    const temRelogio = figuras.some((f) => f.id === "relogio");
-    if (!temRelogio) {
-      // sem relogio, so o estado (e no maximo mais nada) pode restar
-      afirma(figuras.every((f) => f.id === "estado"), "relogio caiu com outras figuras vivas em " + cols + ": " + figuras.map((f) => f.id));
-    }
+    const temRelogio = ids.includes("relogio");
+    afirma(temRelogio === (cols >= larguraRelogio), "relogio " + (temRelogio ? "presente" : "ausente") + " com " + cols + " colunas (largura " + larguraRelogio + ")");
     afirma(!(temRelogio && !tinhaRelogio), "relogio voltou ao estreitar");
     tinhaRelogio = temRelogio;
+    // so o relogio e o estado podem ficar sem as demais: nada menor entra no lugar do estado
+    if (temRelogio && !ids.includes("estado")) afirma(ids.length === 1, "figura menor no lugar do estado em " + cols + ": " + ids);
   }
+});
+
+caso("30 e 24 colunas: o relogio sozinho fica antes do estado sozinho e nada o troca", async () => {
+  const m = await importar(PAINEL);
+  const linha = "⏰ jornada 9h12 · 20h40";
+  for (const cols of [30, 24]) {
+    const ids = m.figurasDaBarra(STATS, linha, cols).map((x) => x.id);
+    igual(ids, ["relogio"], cols + " colunas");
+  }
+});
+
+caso("22 colunas: o relogio (23) nao cabe, cai, e o Tokens e tentado depois do estado", async () => {
+  const m = await importar(PAINEL);
+  const ids = m.figurasDaBarra({ ...STATS, trabalhando: false }, "⏰ jornada 9h12 · 20h40", 22).map((x) => x.id);
+  igual(ids, ["estado", "tokens"], "estado e Tokens");
 });
 
 caso("coluna absurdamente estreita corta o estado em vez de estourar", async () => {

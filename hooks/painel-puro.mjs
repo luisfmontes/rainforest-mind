@@ -103,7 +103,7 @@ function barraContexto(pct) {
 //          ultimaRequisicaoMs, agora, deixado, carimbos, subagentes, turnos, erros }
 // relogio: linha pronta de `linhaRelogio` (string) ou null.
 // Devolve as figuras que cabem em `cols`, na ordem de exibicao: [{ id, texto, largura }].
-// Quando aperta, caem da direita; o estado e o relogio ficam por ultimo.
+// Quando aperta, caem da direita; o estado e o relogio ficam por ultimo, o relogio por ultimo.
 export function figurasDaBarra(stats, relogio, cols) {
   const s = stats ?? {};
   const agora = s.agora ?? 0;
@@ -137,15 +137,20 @@ export function figurasDaBarra(stats, relogio, cols) {
     const t = semControle(String(texto));
     return { id, texto: t, largura: largura(t) };
   });
-  const prioridade = ['estado', 'relogio'];
-  const ordemDeCorte = [...prioridade, ...figuras.map((f) => f.id).filter((id) => !prioridade.includes(id))];
+  // Ordem em que as figuras tentam entrar: o relogio primeiro (e o ultimo a cair), o estado
+  // depois, o resto na ordem de exibicao. Cada uma entra se couber; a que nao cabe nao
+  // impede as seguintes. As demais so entram com o estado ja dentro: estreito demais para os
+  // dois prioritarios juntos, sobra o relogio sozinho, nunca uma figura menor no lugar do estado.
+  const prioridade = ['relogio', 'estado'];
+  const ordemDeEntrada = [...prioridade, ...figuras.map((f) => f.id).filter((id) => !prioridade.includes(id))];
   const mantidas = new Set();
   let usado = 0;
-  for (const id of ordemDeCorte) {
+  for (const id of ordemDeEntrada) {
     const f = figuras.find((x) => x.id === id);
     if (!f) continue;
+    if (!prioridade.includes(id) && !mantidas.has('estado')) continue;
     const custo = f.largura + (mantidas.size > 0 ? largura(SEPARADOR) : 0);
-    if (usado + custo > cols) break;
+    if (usado + custo > cols) continue;
     mantidas.add(id);
     usado += custo;
   }
