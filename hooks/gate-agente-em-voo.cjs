@@ -38,8 +38,8 @@
  * escrita = barra mesmo assim).
  *
  * Saídas de emergência, na ordem que os outros gates usam:
- * `RAINFOREST_GATE_OFF` no ambiente, `.rainforest-gate-off` na raiz do repo, e
- * o toggle do `/setup` (chave `gate-agente-em-voo`).
+ * `RAINFOREST_GATE_OFF` no ambiente e o toggle do `/setup` (chave
+ * `gate-agente-em-voo`). O arquivo `.rainforest-gate-off` deixou de ser lido (#417).
  */
 
 const fs = require('node:fs');
@@ -144,10 +144,6 @@ function main() {
   if (!ev.cwd) process.exit(0);
   const gitTop = toplevel(ev.cwd);
   if (!gitTop) process.exit(0);
-
-  try {
-    if (fs.existsSync(path.join(gitTop, '.rainforest-gate-off'))) process.exit(0);
-  } catch {}
 
   try {
     if (!require('./lib/config.cjs').ligado('gate-agente-em-voo', { projeto: gitTop })) {

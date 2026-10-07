@@ -3,7 +3,7 @@
 // Por que existe: até 2026-08-11 tudo era obrigatório. Os dois gates de git valiam
 // em QUALQUER repositório da máquina, o fluxo aparecia para quem nunca vai
 // desenvolver, e a única saída era a de emergência (`RAINFOREST_GATE_OFF=1` ou um
-// arquivo `.rainforest-gate-off` na raiz). Saída de emergência serve para o
+// arquivo `.rainforest-gate-off` na raiz, lido até a #417 e hoje ignorado). Saída de emergência serve para o
 // incidente, não para a preferência: quem quer o radar e não quer o gate não tinha
 // o que fazer além de desinstalar.
 //

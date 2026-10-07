@@ -261,6 +261,17 @@ else
   echo "  FALHA case-g: RAINFOREST_GATE_OFF=1 não funcionou (exit $rc)"
   falhou=$((falhou+1))
 fi
+# #417: o arquivo .rainforest-gate-off presente NÃO desliga mais
+touch "$CASE_G_POSIX/.rainforest-gate-off"
+msg=$(node -e 'const c=process.argv[1];process.stdout.write(JSON.stringify({session_id:"s1",cwd:c,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"git commit -m x"}}))' "$CASE_G" | node "$GATE" 2>&1); rc=$?
+rm -f "$CASE_G_POSIX/.rainforest-gate-off"
+if [ "$rc" = 2 ]; then
+  echo "  ok   case-g: arquivo .rainforest-gate-off presente NÃO desliga (exit 2)"
+  ok=$((ok+1))
+else
+  echo "  FALHA case-g: arquivo presente desligou o gate (exit $rc)"
+  falhou=$((falhou+1))
+fi
 
 echo
 echo "== Caso (h): merge trazendo segredo.txt idêntico ao MERGE_HEAD da branch mesclada =="

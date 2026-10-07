@@ -157,7 +157,9 @@ temf     "subagente e mandado PARAR e reportar"    "$SUB" "PARE e reporte"
 temf     "e proibido de criar o contorno sozinho"  "$SUB" "a decisao nao e sua"
 # A janela principal continua sabendo como seguir: tirar a saida dela transformaria
 # uma escolha legitima em beco sem saida.
-temf     "janela principal ve as tres saidas"      "$PRI" "tres saidas"
+temf     "janela principal ve as duas saidas"      "$PRI" "duas saidas"
+temf     "janela principal ve a variavel de ambiente" "$PRI" "RAINFOREST_GATE_OFF"
+nao_temf "nem a principal ve o arquivo (#417)"     "$PRI" ".rainforest-gate-off"
 temf     "janela principal ve a preferida"         "$PRI" "setup.cjs --desligar"
 
 echo

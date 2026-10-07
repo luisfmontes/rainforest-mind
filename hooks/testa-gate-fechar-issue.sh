@@ -183,9 +183,9 @@ echo "== (e) RAINFOREST_GATE_OFF=1 libera gh issue close =="
 EXIT_E=$?
 [ $EXIT_E -eq 0 ] && test_ok "exit 0 (emergência ativa)" || test_fail "exit code (foi $EXIT_E)"
 
-# Caso (f): .rainforest-gate-off na raiz → libera tudo
+# Caso (f): .rainforest-gate-off na raiz NÃO libera mais (#417) — só RAINFOREST_GATE_OFF (caso e)
 echo
-echo "== (f) .rainforest-gate-off libera gh pr merge =="
+echo "== (f) .rainforest-gate-off presente NAO libera gh issue close =="
 mkdir -p "$SBP/repo"
 cd "$SBP/repo"
 git init . >/dev/null 2>&1
@@ -193,11 +193,11 @@ touch "$SBP/repo/.rainforest-gate-off"
 SBP_WIN_REPO="$(cygpath -m "$SBP/repo")"
 (
   export PATH="$SBP/bin:$PATH"
-  PAYLOAD='{"cwd":"'"$SBP_WIN_REPO"'","tool_name":"Bash","tool_input":{"command":"gh pr merge --body \"closes #888\""}}'
+  PAYLOAD='{"cwd":"'"$SBP_WIN_REPO"'","tool_name":"Bash","tool_input":{"command":"gh issue close 888"}}'
   echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
 ) 2>"$SBP/err-f"
 EXIT_F=$?
-[ $EXIT_F -eq 0 ] && test_ok "exit 0 (arquivo de emergência)" || test_fail "exit code (foi $EXIT_F)"
+[ $EXIT_F -eq 2 ] && test_ok "arquivo presente nao desliga: exit 2" || test_fail "arquivo presente nao desliga (foi $EXIT_F)"
 
 # Caso (g): `gh.exe issue close 999921` → exit 2 (exe com extensão)
 echo

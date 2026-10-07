@@ -50,7 +50,8 @@
  *
  * Saidas de emergencia, as mesmas do gate-worktree e nomeadas na mensagem:
  *   - env RAINFOREST_GATE_OFF=1  -> desliga na sessao inteira;
- *   - arquivo .rainforest-gate-off na raiz do repo -> desliga naquele repo.
+ *   - chave do config do projeto -> desliga naquele repo.
+ * O arquivo `.rainforest-gate-off` deixou de ser lido (#417).
  */
 
 const { execFileSync } = require("node:child_process");
@@ -259,7 +260,7 @@ function bloqueia(motivo, dir, quem, segmento) {
   // P1 do relatorio 2026-08-11-escotilha-do-gate-usada-para-contornar: a saida
   // de emergencia era NOMEADA na mensagem que o SUBAGENTE le. Um implementador
   // bloqueado leu o nome do arquivo de escape na propria mensagem de bloqueio,
-  // criou `.rainforest-gate-off` na raiz do checkout principal - fora do
+  // criou o arquivo de desligar na raiz do checkout principal - fora do
   // worktree dele - e seguiu trabalhando. Reportou `DONE`, e o achado so apareceu
   // porque um revisor leu o relatorio completo linha a linha.
   //
@@ -278,10 +279,9 @@ function bloqueia(motivo, dir, quem, segmento) {
     ? `PARE e reporte isto para a janela principal — ela decide como seguir.\n` +
       `NAO crie arquivo nem variavel para desativar esta trava: a decisao nao e sua,\n` +
       `e desativa-la para si mesmo e o contorno que esta trava existe para impedir.\n`
-    : `Quem decide seguir sem isolamento e voce, e tem tres saidas:\n` +
+    : `Quem decide seguir sem isolamento e voce, e tem duas saidas:\n` +
       `  - node scripts/setup.cjs --desligar gate-staging --escopo projeto (preferida);\n` +
-      `  - RAINFOREST_GATE_OFF=1 no ambiente da sessao (desliga na sessao inteira);\n` +
-      `  - arquivo .rainforest-gate-off na raiz do repo (desliga so naquele repo).\n`;
+      `  - RAINFOREST_GATE_OFF=1 no ambiente da sessao (desliga na sessao inteira).\n`;
 
   process.stderr.write(
     `BLOQUEADO pelo gate de staging total do rainforest-mind.\n\n` +
@@ -380,7 +380,6 @@ function main() {
   if (gitDir.replace(/\\/g, "/").includes("/worktrees/")) process.exit(0);
 
   const toplevel = git(dir, ["rev-parse", "--show-toplevel"]) || dir;
-  if (fs.existsSync(path.join(toplevel, ".rainforest-gate-off"))) process.exit(0);
 
   bloqueia(
     motivo, toplevel,

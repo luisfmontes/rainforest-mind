@@ -64,14 +64,16 @@ git('add', 'README.md');
 git('commit', '-qm', 'base');
 
 /** Dispara o hook real com o payload de PreToolUse de um comando Bash. */
-function dispara(cmd) {
+function dispara(cmd, envExtra) {
   const payload = JSON.stringify({
     cwd: caixa,
     hook_event_name: 'PreToolUse',
     tool_name: 'Bash',
     tool_input: { command: cmd },
   });
-  const r = spawnSync(process.execPath, [HOOK], { input: payload, encoding: 'utf8' });
+  const r = spawnSync(process.execPath, [HOOK], {
+    input: payload, encoding: 'utf8', env: { ...process.env, ...(envExtra || {}) },
+  });
   return { exit: r.status, err: r.stderr || '' };
 }
 
@@ -158,9 +160,10 @@ console.log('\n== 6. o desligamento explicito continua valendo ==');
 fs.writeFileSync(path.join(caixa, 'vaza3.md'), sujo('Fulaninho'));
 git('add', 'vaza3.md');
 fs.writeFileSync(path.join(caixa, '.rainforest-gate-off'), '');
-caso('.rainforest-gate-off na raiz desliga', dispara('git commit -m "x"').exit === 0);
+caso('.rainforest-gate-off presente NAO desliga (#417)', dispara('git commit -m "x"').exit === 2);
 fs.rmSync(path.join(caixa, '.rainforest-gate-off'));
-caso('e removido, a trava volta', dispara('git commit -m "x"').exit === 2);
+caso('RAINFOREST_GATE_OFF desliga', dispara('git commit -m "x"', { RAINFOREST_GATE_OFF: '1' }).exit === 0);
+caso('sem a variavel, a trava segue', dispara('git commit -m "x"', { RAINFOREST_GATE_OFF: '' }).exit === 2);
 
 fs.rmSync(caixa, { recursive: true, force: true });
 

@@ -20,7 +20,8 @@
  *
  * Saídas de emergência, as mesmas dos outros gates:
  *   - env RAINFOREST_GATE_OFF=1  → desliga na sessão inteira
- *   - arquivo .rainforest-gate-off na raiz do destino → desliga naquele repo
+ *   - chave do config do projeto → desliga naquele repo
+ * O arquivo `.rainforest-gate-off` deixou de ser lido (#417).
  */
 
 const { execFileSync } = require("node:child_process");
@@ -117,10 +118,9 @@ function bloqueia(motivo, repoAlheio, agente) {
     ? `PARE e reporte isto para a janela principal — ela decide como seguir.\n` +
       `NÃO crie arquivo nem variável para desativar esta trava: a decisão não é sua,\n` +
       `e desativá-la para si mesmo é o contorno que esta trava existe para impedir.\n`
-    : `Quem decide seguir sem isolamento é você, e tem três saídas:\n` +
+    : `Quem decide seguir sem isolamento é você, e tem duas saídas:\n` +
       `  - node scripts/setup.cjs --desligar gate-repo-alheio --escopo projeto (preferida);\n` +
-      `  - RAINFOREST_GATE_OFF=1 no ambiente da sessão (desliga na sessão inteira);\n` +
-      `  - arquivo .rainforest-gate-off na raiz do repo alheio (desliga só naquele repo).\n`;
+      `  - RAINFOREST_GATE_OFF=1 no ambiente da sessão (desliga na sessão inteira).\n`;
 
   process.stderr.write(
     `BLOQUEADO pelo gate de repo alheio do rainforest-mind.\n\n` +
@@ -215,9 +215,6 @@ function main() {
     const dentroDaSessao = normalizarCaminho(estadoAlvo.toplevel) + "/";
     const raizDaSessao = normalizarCaminho(estadoSessao.toplevel) + "/";
     if (dentroDaSessao.startsWith(raizDaSessao)) continue;
-
-    // Verifica escape por arquivo .rainforest-gate-off
-    if (fs.existsSync(path.join(estadoAlvo.toplevel, ".rainforest-gate-off"))) continue;
 
     // É repo alheio: barra
     const motivo = `Escrita (${nome}) em ${alvo}`;

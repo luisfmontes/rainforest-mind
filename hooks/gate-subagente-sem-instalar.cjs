@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 // @categoria: guia
 /**
- * PreToolUse (Bash, PowerShell, Write, Edit, MultiEdit, NotebookEdit) — nega,
- * dentro de subagente, comandos de instalação de pacotes e tentativas de
- * desligar o gate.
+ * PreToolUse (Bash, PowerShell; o registro ainda casa Write/Edit/MultiEdit/
+ * NotebookEdit, que passam sem exame desde #417) — nega, dentro de subagente,
+ * comandos de instalação de pacotes e a definição de `RAINFOREST_GATE_OFF`.
  *
  * Protege contra: subagente rodando `npm install`, `pip install`, e variações de
- * outros gerenciadores; também nega criação de `.rainforest-gate-off` e definição
- * de `RAINFOREST_GATE_OFF`.
+ * outros gerenciadores; também nega a definição de `RAINFOREST_GATE_OFF`.
+ * (A trava de criar `.rainforest-gate-off` saiu em #417/D9: o arquivo deixou de
+ * desligar qualquer gate, então não há o que proteger.)
  *
  * Design: D5–D8 do plano de zerar-issues-16.
  * Só subagente (D5): `agent_id` só aparece no payload quando a chamada sai de
  * dentro de um. Presença da chave, não truthiness. Toggle `subagente-sem-instalar`,
- * padrão ligado. NÃO honra `RAINFOREST_GATE_OFF` nem `.rainforest-gate-off`
- * (diferente de outros gates).
+ * padrão ligado. NÃO honra `RAINFOREST_GATE_OFF` (diferente de outros gates).
  *
  * Como lê o comando (revisão da zerar-issues-16): a primeira versão partia o
  * texto por `;&|` e olhava só a primeira palavra — `bash -c "npm install x"`,
@@ -34,8 +34,6 @@ const {
   tokensComAspas, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
 } = require("./lib/tokens-comando.cjs");
 const { segmentosParaGate } = require("./gate-subagente-sem-gh.cjs");
-
-const ARQUIVO_DE_DESLIGAR = ".rainforest-gate-off";
 
 /**
  * D6 — verbo (subcomando) que instala, por gerenciador. Conjunto vazio =
@@ -164,41 +162,6 @@ function instalacaoNoComando(exe, args) {
   return verbos.has(sub) ? exe : null;
 }
 
-/** Leitores e quem apaga: citar o arquivo de desligar com eles não o cria. */
-const LEEM_OU_APAGAM = new Set([
-  "cat", "ls", "dir", "test", "[", "stat", "rm", "del", "erase", "grep", "rg", "less", "more",
-  "head", "tail", "wc", "file", "find", "git", "get-content", "gc", "type", "test-path",
-  "remove-item", "ri", "get-item", "gi", "get-childitem", "gci", "select-string", "sls",
-]);
-
-function ehArquivoDeDesligar(valor) {
-  const v = String(valor).replace(/^["']|["']$/g, "").replace(/[\\/]+$/, "");
-  return path.basename(v.replace(/\\/g, "/")) === ARQUIVO_DE_DESLIGAR;
-}
-
-/**
- * D7 — o segmento cria ou altera `.rainforest-gate-off`? Redirecionamento
- * (`>`, `>>`, `>|`, `2>`) para ele sempre conta; citá-lo como argumento conta,
- * a menos que o comando só leia ou apague.
- */
-function escreveArquivoDeDesligar(toks, pos) {
-  for (let i = 0; i < toks.length; i++) {
-    const t = toks[i];
-    // Token citado só conta se começa pelo redirecionamento: `>".x"` vira um
-    // token citado único, com o `>` fora das aspas.
-    if (t.q && !/^(\d*>|&>)/.test(t.v)) continue;
-    const m = /^\d*>[>|]?(.*)$/.exec(t.v) || /^&>>?(.*)$/.exec(t.v);
-    if (m) {
-      const alvo = m[1] !== "" ? m[1] : (toks[i + 1] ? toks[i + 1].v : "");
-      if (ehArquivoDeDesligar(alvo)) return true;
-    }
-  }
-  if (pos === null) return false;
-  const exe = normalizarExecutavel(toks[pos].v);
-  if (LEEM_OU_APAGAM.has(exe)) return false;
-  return toks.slice(pos + 1).some((t) => ehArquivoDeDesligar(t.v));
-}
-
 /**
  * D7 — definir `RAINFOREST_GATE_OFF` no ambiente. Texto cru: a variável no
  * comando já diz a intenção; ler (`echo $RAINFOREST_GATE_OFF`) e tirar
@@ -230,7 +193,6 @@ function bloqueia(razao, visto) {
 }
 
 const RAZAO_INSTALAR = "subagente não pode instalar pacotes. Instalação é da janela principal, com a palavra do usuário.";
-const RAZAO_ARQUIVO = "subagente não pode criar ou alterar `.rainforest-gate-off`.";
 const RAZAO_VARIAVEL = "subagente não pode definir `RAINFOREST_GATE_OFF`.";
 
 /** Um segmento: desce em `bash -c`/`eval`/`pwsh -Command`, depois decide. */
@@ -246,7 +208,6 @@ function processarSegmento(segmento, profundidade) {
   if (!toks.length) return;
   const pos = posicaoDeComando(toks);
 
-  if (escreveArquivoDeDesligar(toks, pos)) bloqueia(RAZAO_ARQUIVO, segmento);
   if (pos === null) return;
 
   const exe = normalizarExecutavel(toks[pos].v);
@@ -294,13 +255,6 @@ function main() {
 
   const entrada = ev.tool_input || {};
 
-  // === ESCRITA (Write/Edit/MultiEdit/NotebookEdit) ===
-  if (["Write", "Edit", "MultiEdit", "NotebookEdit"].includes(ev.tool_name)) {
-    const alvo = entrada.file_path || entrada.notebook_path;
-    if (typeof alvo === "string" && ehArquivoDeDesligar(alvo)) bloqueia(RAZAO_ARQUIVO, alvo);
-    process.exit(0);
-  }
-
   // === BASH / POWERSHELL ===
   if (ev.tool_name === "Bash" || ev.tool_name === "PowerShell") {
     const comando = entrada.command;
@@ -315,4 +269,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { instalacaoNoComando, escreveArquivoDeDesligar };
+module.exports = { instalacaoNoComando };

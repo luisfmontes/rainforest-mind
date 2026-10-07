@@ -13,7 +13,7 @@
  *   do PR) — lê a descrição real via `gh pr view <ref> --json body` e verifica as
  *   Issues citadas ali. Leitura falhou (exit ≠ 0, JSON inválido, sem rede) → bloqueia.
  * - Corpo ilegível (editor interativo) → exit 2 dizendo isso
- * - Saídas de emergência: `RAINFOREST_GATE_OFF=1`, `.rainforest-gate-off`
+ * - Saídas de emergência: `RAINFOREST_GATE_OFF=1` e a chave do config (o arquivo `.rainforest-gate-off` deixou de ser lido, #417)
  *
  * O gate só LÊ via `gh issue view --json comments` e `gh pr view --json body`; nunca escreve.
  *
@@ -1137,10 +1137,6 @@ function main() {
   if (process.env.RAINFOREST_GATE_OFF) process.exit(0);
 
   const cwdDoEvento = ev.cwd || process.cwd();
-  const gitTop = git(cwdDoEvento, ["rev-parse", "--show-toplevel"]);
-  if (gitTop && fs.existsSync(path.join(gitTop, ".rainforest-gate-off"))) {
-    process.exit(0);
-  }
 
   // Toggle do setup
   try {

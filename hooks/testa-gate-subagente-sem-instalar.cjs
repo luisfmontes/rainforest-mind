@@ -198,23 +198,19 @@ caso("npm install x sem agent_id (janela principal) passa", r.status, 0);
 r = rodar("pip install requests", { subagente: false });
 caso("pip install requests sem agent_id passa", r.status, 0);
 
-// === D7: Criar .rainforest-gate-off é negado ===
+// === #417/D9: criar .rainforest-gate-off PASSA (o arquivo não desliga mais nada) ===
 
-// Touch
 r = rodar("touch .rainforest-gate-off");
-caso("touch .rainforest-gate-off nega", r.status, 2);
+caso("touch .rainforest-gate-off passa (arquivo não desliga gate)", r.status, 0);
 
-// Echo redirect
 r = rodar("echo 1 > .rainforest-gate-off");
-caso("echo 1 > .rainforest-gate-off nega", r.status, 2);
+caso("echo 1 > .rainforest-gate-off passa", r.status, 0);
 
-// Write tool
 r = rodar("dummy", { toolName: "Write", toolInput: { file_path: ".rainforest-gate-off" } });
-caso("Write com file_path .rainforest-gate-off nega", r.status, 2);
+caso("Write com file_path .rainforest-gate-off passa", r.status, 0);
 
-// Edit tool
 r = rodar("dummy", { toolName: "Edit", toolInput: { file_path: ".rainforest-gate-off" } });
-caso("Edit com file_path .rainforest-gate-off nega", r.status, 2);
+caso("Edit com file_path .rainforest-gate-off passa", r.status, 0);
 
 // === D7: RAINFOREST_GATE_OFF em environment é negado ===
 
@@ -282,7 +278,7 @@ caso("subagente-sem-instalar true no config segue negando", r.status, 2);
 // A primeira versão olhava só a 1ª palavra do segmento (contornos abaixo
 // passavam) e o verbo em qualquer posição (os legítimos eram barrados).
 console.log("");
-console.log("== contornos: instalação fora da 1ª palavra, PowerShell e escrita do arquivo de desligar ==");
+console.log("== contornos: instalação fora da 1ª palavra, PowerShell e definição da variável ==");
 const CONTORNOS = [
   ["Bash", 'bash -c "npm install x"'], ["Bash", 'sh -c "pip install x"'], ["Bash", "FOO=1 npm install x"],
   ["Bash", "env FOO=1 npm install x"], ["Bash", "sudo npm install x"], ["Bash", "time npm install x"],
@@ -292,11 +288,6 @@ const CONTORNOS = [
   ["PowerShell", "pip install x"], ["PowerShell", "winget install x"], ["PowerShell", "uv add x"],
   ["PowerShell", "pnpm add x"], ["PowerShell", "choco install x"], ["PowerShell", "python -m pip install x"],
   ["PowerShell", 'pwsh -Command "npm install x"'],
-  ["Bash", "printf 1 > ./.rainforest-gate-off"], ["Bash", "> /x/.rainforest-gate-off"],
-  ["Bash", 'echo 1 > ".rainforest-gate-off"'], ["Bash", "cp a .rainforest-gate-off"], ["Bash", "mv a .rainforest-gate-off"],
-  ["Bash", "echo 1 | tee .rainforest-gate-off"], ["Bash", "ln -s a .rainforest-gate-off"],
-  ["Bash", "sed -i s/x/y/ .rainforest-gate-off"], ["PowerShell", "Set-Content .rainforest-gate-off 1"],
-  ["PowerShell", '"1" | Out-File .rainforest-gate-off'], ["PowerShell", "Copy-Item a .rainforest-gate-off"],
   ["PowerShell", '[Environment]::SetEnvironmentVariable("RAINFOREST_GATE_OFF", "1")'],
   ["Bash", "export RAINFOREST_GATE_OFF"],
 ];
@@ -329,8 +320,7 @@ const CONTORNOS_R2 = [
   ["Bash", "pwsh -NoProfile -Command npm install x"], ["Bash", "python3.11 -m pip install y"],
   ["Bash", "pip3.11 install x"], ["Bash", 'FOO="a b" npm install'],
   // Revisão 3: redirecionamento colado ao alvo citado, `yarn global add`.
-  ["Bash", 'echo x >".rainforest-gate-off"'], ["Bash", "echo x >'.rainforest-gate-off'"],
-  ["Bash", 'echo x 2>".rainforest-gate-off"'], ["Bash", "yarn global add x"],
+  ["Bash", "yarn global add x"],
 ];
 for (const [ferramenta, cmd] of CONTORNOS_R2) {
   caso(`[${ferramenta}] ${cmd} nega`, rodar(cmd, { toolName: ferramenta }).status, 2);
@@ -343,10 +333,22 @@ const LEGITIMOS_R2 = [
 for (const [ferramenta, cmd] of LEGITIMOS_R2) {
   caso(`[${ferramenta}] ${cmd} passa`, rodar(cmd, { toolName: ferramenta }).status, 0);
 }
+// #417/D9: nenhuma forma de escrever o arquivo é barrada (ele não desliga mais gate).
+const ARQUIVO_PASSA = [
+  ["Bash", "printf 1 > ./.rainforest-gate-off"], ["Bash", "> /x/.rainforest-gate-off"],
+  ["Bash", 'echo 1 > ".rainforest-gate-off"'], ["Bash", "cp a .rainforest-gate-off"], ["Bash", "mv a .rainforest-gate-off"],
+  ["Bash", "echo 1 | tee .rainforest-gate-off"], ["Bash", "ln -s a .rainforest-gate-off"],
+  ["Bash", "sed -i s/x/y/ .rainforest-gate-off"], ["PowerShell", "Set-Content .rainforest-gate-off 1"],
+  ["PowerShell", '"1" | Out-File .rainforest-gate-off'], ["PowerShell", "Copy-Item a .rainforest-gate-off"],
+  ["Bash", 'echo x >".rainforest-gate-off"'], ["Bash", "echo x 2>'.rainforest-gate-off'"],
+];
+for (const [ferramenta, cmd] of ARQUIVO_PASSA) {
+  caso(`[${ferramenta}] ${cmd} passa (arquivo não desliga gate)`, rodar(cmd, { toolName: ferramenta }).status, 0);
+}
 for (const ferramenta of ["MultiEdit", "NotebookEdit"]) {
   const campo = ferramenta === "NotebookEdit" ? { notebook_path: path.join(projeto, ".rainforest-gate-off") }
     : { file_path: path.join(projeto, ".rainforest-gate-off") };
-  caso(`${ferramenta} em .rainforest-gate-off nega`, rodar("", { toolName: ferramenta, toolInput: campo }).status, 2);
+  caso(`${ferramenta} em .rainforest-gate-off passa`, rodar("", { toolName: ferramenta, toolInput: campo }).status, 0);
 }
 
 // === Resultado ===

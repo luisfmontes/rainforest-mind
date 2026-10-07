@@ -160,37 +160,46 @@ else
 fi
 
 echo
-echo "== Teste de escape com .rainforest-gate-off =="
+echo "== Teste de escape com .rainforest-gate-off: arquivo presente NAO desliga mais (#417) =="
 touch "$R/.rainforest-gate-off"
 msg=$(printf '%s' "$(write "$R/escape-arquivo.txt" "contato: $JID_REAL")" | node "$GATE" 2>&1); rc=$?
-if [ "$rc" = 0 ]; then
+if [ "$rc" = 2 ]; then
   ok=$((ok+1))
-  echo "  ok   .rainforest-gate-off libera gate (exit 0)"
+  echo "  ok   .rainforest-gate-off presente NAO libera o gate (exit 2)"
 else
   falhou=$((falhou+1))
-  echo "  FALHA .rainforest-gate-off não liberou (exit $rc)"
+  echo "  FALHA .rainforest-gate-off presente mudou o resultado (exit $rc, esperava 2)"
 fi
 rm "$R/.rainforest-gate-off"
 
 echo
-echo "== CASO NOVO (Issue #265): .rainforest-gate-off do checkout principal libera gate rodando de worktree linkado =="
+echo "== CASO NOVO (Issue #265, #417): config de projeto do checkout principal libera gate rodando de worktree linkado =="
 WT="$RAIZ/worktree-linkado"
 git -C "$R" worktree add -q "$WT" -b wt-gate-off-branch >/dev/null 2>&1
 echo "v1" > "$WT/b.txt"
 msg=$(printf '%s' "$(write "$WT/escape-worktree.txt" "contato: $JID_REAL" "$(esc "$WT")")" | node "$GATE" 2>&1); rc=$?
 if [ "$rc" != 0 ]; then
-  ok=$((ok+1)); echo "  ok   sem .rainforest-gate-off, worktree barra normalmente (exit $rc)"
+  ok=$((ok+1)); echo "  ok   sem config, worktree barra normalmente (exit $rc)"
 else
-  falhou=$((falhou+1)); echo "  FALHA worktree passou sem gate-off (exit $rc) — sanidade do caso quebrada"
+  falhou=$((falhou+1)); echo "  FALHA worktree passou sem config (exit $rc) — sanidade do caso quebrada"
 fi
 touch "$R/.rainforest-gate-off"
 msg=$(printf '%s' "$(write "$WT/escape-worktree.txt" "contato: $JID_REAL" "$(esc "$WT")")" | node "$GATE" 2>&1); rc=$?
-if [ "$rc" = 0 ]; then
-  ok=$((ok+1)); echo "  ok   .rainforest-gate-off do principal libera gate a partir do worktree (exit 0)"
+if [ "$rc" != 0 ]; then
+  ok=$((ok+1)); echo "  ok   .rainforest-gate-off do principal NAO libera o worktree (exit $rc)"
 else
-  falhou=$((falhou+1)); echo "  FALHA nao herdou o gate-off do principal (exit $rc)"; echo "$msg" | sed 's/^/         /' | head -10
+  falhou=$((falhou+1)); echo "  FALHA arquivo do principal liberou o worktree (exit $rc)"
 fi
 rm "$R/.rainforest-gate-off"
+mkdir -p "$R/.rainforest"
+printf '%s' '{"gate-publicacao": false}' > "$R/.rainforest/config.json"
+msg=$(printf '%s' "$(write "$WT/escape-worktree.txt" "contato: $JID_REAL" "$(esc "$WT")")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 0 ]; then
+  ok=$((ok+1)); echo "  ok   config do projeto no principal libera gate a partir do worktree (exit 0)"
+else
+  falhou=$((falhou+1)); echo "  FALHA nao herdou o config do principal (exit $rc)"; echo "$msg" | sed 's/^/         /' | head -10
+fi
+rm -rf "$R/.rainforest"
 git -C "$R" worktree remove --force "$WT" >/dev/null 2>&1
 
 echo

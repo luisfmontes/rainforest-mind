@@ -58,7 +58,7 @@
  * cujo arquivo nao pode ser lido (fail-open, ver `main()`).
  *
  * Saidas de emergencia: nenhuma alem do fail-open acima — nao ha
- * `.rainforest-gate-off` nem `RAINFOREST_GATE_OFF` aqui de proposito: a
+ * `RAINFOREST_GATE_OFF` (nem o arquivo de desligar, retirado em #417) aqui de proposito: a
  * pior consequencia de bloqueio e "use -F <arquivo>" ou "escreva um corpo",
  * nunca perda de trabalho, entao nao ha necessidade de escape dedicado.
  */

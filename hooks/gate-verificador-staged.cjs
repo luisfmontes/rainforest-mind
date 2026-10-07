@@ -26,7 +26,6 @@
  *
  * Saídas de emergência:
  *   - env RAINFOREST_GATE_OFF=1        → desliga na sessão inteira
- *   - arquivo .rainforest-gate-off na raiz do repo → desliga naquele repo
  *   - `.rainforest/config.json`, chave `"gate-verificador-staged": false` → desliga
  *
  * Com `agent_id` no payload: não nomeia escotilhas (subagente não vê as variáveis).
@@ -272,9 +271,6 @@ function main() {
 
   // Normaliza gitTop também, pois git pode retornar caminho MSYS
 
-  // Confere escotilha de emergência
-  if (fs.existsSync(path.join(gitTop, ".rainforest-gate-off"))) process.exit(0);
-
   // Descobre verificador
   const verificador = descobreVerificador(gitTop);
   if (!verificador) process.exit(0);
@@ -312,7 +308,6 @@ function main() {
       escotilhas.push(
         "\nSaídas de emergência:",
         "  - RAINFOREST_GATE_OFF=1 (env var da sessão);",
-        "  - arquivo .rainforest-gate-off na raiz do repo;",
         "  - chave \"gate-verificador-staged\": false em .rainforest/config.json."
       );
     } else {
