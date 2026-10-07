@@ -25,12 +25,12 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-07",
-    "tarefas_ok": 7,
+    "tarefas_ok": 8,
     "tarefas": 14,
     "em_voo": [
       {
-        "agente": "executor-t8",
-        "tarefa": "8 mapa e desvio no pane",
+        "agente": "executor-t9",
+        "tarefa": "9 deixado para depois + checker",
         "desde": "2026-10-07"
       }
     ],
@@ -175,6 +175,62 @@
         "iteracao": 1,
         "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
         "ts": "2026-10-07T12:56:26.661Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "0656db33",
+        "iteracao": 5,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:04:48.989Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "0656db33",
+        "iteracao": 5,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:04:48.989Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "0656db33",
+        "iteracao": 4,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:04:48.989Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "0656db33",
+        "iteracao": 5,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:04:48.989Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "fd12e60b",
+        "iteracao": 3,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:04:48.989Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "fd12e60b",
+        "iteracao": 3,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:04:48.989Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "9761d46f",
+        "iteracao": 2,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:04:48.989Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "2d266d42",
+        "iteracao": 1,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:04:48.989Z"
       }
     ]
   },
