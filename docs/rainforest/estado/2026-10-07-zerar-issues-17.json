@@ -158,7 +158,14 @@
     "reaberto_por": {
       "estagio": "revisar",
       "data": "2026-10-07"
-    }
+    },
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "emenda da revisao: 2 bloqueantes e 4 menores",
+        "desde": "2026-10-07"
+      }
+    ]
   },
   "revisar": {
     "status": "reprovado",
