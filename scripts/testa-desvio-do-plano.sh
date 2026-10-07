@@ -79,6 +79,17 @@ rodar "$WT" "$WT/$PLANO_REL";                         veredito "plano do proprio
 rodar "$WT" "$CAIXA_HOME/qualquer.txt";               veredito "arquivo em TEMP e fora-da-raiz" fora-da-raiz
 rodar "$WT/hooks" "faixa-puro.mjs";                   veredito "cwd em subpasta, caminho relativo ao cwd" dentro "hooks/faixa-puro.mjs"
 
+# Forma 8.3: o runner do CI devolve TEMP como <home>/RUNNER~1/..., o git responde a raiz na
+# forma longa, e comparar por texto dava fora-da-raiz para todo arquivo. O alias depende do
+# 8dot3name da maquina; sem alias o caso ANUNCIA que pulou (nao conta como ok).
+HOOKS_CURTO="$(cygpath -m -s "$WT/hooks" 2>/dev/null || printf '%s' "$WT/hooks")"
+if [ "$HOOKS_CURTO" = "$WT/hooks" ]; then
+  echo "PULADO sem alias 8.3 nesta maquina ($HOOKS_CURTO) - o CI cobre"
+else
+  rodar "$WT" "$HOOKS_CURTO/faixa-puro.mjs";          veredito "arquivo na forma 8.3 e dentro, com rel na forma longa" dentro "hooks/faixa-puro.mjs"
+  rodar "$WT" "$HOOKS_CURTO/novo/ainda-nao-existe.mjs"; veredito "arquivo novo sob pasta 8.3 e fora, nao fora-da-raiz" fora "hooks/novo/ainda-nao-existe.mjs"
+fi
+
 # Caminho absoluto de Windows: barras invertidas e drive em caixa diferente.
 if command -v cygpath >/dev/null 2>&1; then
   WINPATH=$(cygpath -w "$WT/hooks/faixa-puro.mjs")

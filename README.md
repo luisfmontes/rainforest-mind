@@ -39,7 +39,7 @@ as regras e as elaborações como seção do system prompt (`hooks/register.ts`)
 ela, ou no Codex, a abertura vem pelo hook com o núcleo, como antes. A mesma versão desenha
 a barra de sessão acima do prompt (`hooks/mod.tsx`): estado, tokens, custo, contexto, cache,
 subagentes, erros e o relógio ⏰ dos avisos de jornada (regra 8) e de janela parada (regra 17), mais o
-comando `/painel`. **O painel pede o Claude Code 2.1.292 ou mais novo**, a versão em que foi medido,
+comando `/painel`. **O painel pede o Claude Code 2.1, patch 292 em diante**, a versão em que foi medido,
 no terminal, nas duas contas; no desktop o desenho não foi medido. Sem o mod, não há barra, painel
 nem aviso por relógio, e nada mais muda. Parte do painel é adaptada do terminal-desk (MIT);
 crédito em [`NOTICE`](NOTICE).

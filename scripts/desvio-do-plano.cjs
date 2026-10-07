@@ -7,6 +7,7 @@
 // Uso: node scripts/desvio-do-plano.cjs --cwd <dir> --arquivo <caminho>
 //   {"veredito":"dentro"|"fora"|"isento"|"sem-fluxo"|"sem-plano"|"fora-da-raiz","rel":...,"slug":...}
 // Exit 2 sem --cwd ou sem --arquivo; exit 1 em erro inesperado.
+const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
@@ -33,11 +34,30 @@ function raizDe(cwd) {
   return String(r.stdout).trim() || cwd;
 }
 
+// Forma longa do caminho: no Windows o git responde a raiz na forma longa (`runneradmin`) e o
+// arquivo pode chegar na forma 8.3 (`RUNNER~1`); comparar por texto daria `fora-da-raiz`.
+// `realpathSync.native` expande o 8.3 (o `realpathSync` puro nao, ver conferir-entrega.cjs);
+// arquivo novo ainda nao existe, entao expande o ancestral mais fundo que existe.
+function longo(p) {
+  const resto = [];
+  let atual = p;
+  for (;;) {
+    try {
+      return [fs.realpathSync.native(atual).replace(/\\/g, '/'), ...resto].join('/');
+    } catch {
+      const pai = path.dirname(atual);
+      if (pai === atual) return p;
+      resto.unshift(path.basename(atual));
+      atual = pai;
+    }
+  }
+}
+
 // Caminho do arquivo escrito, relativo a `rel` contra a raiz de worktree mais longa que o contem.
 function relativo(arquivo, cwd, raizes) {
-  const abs = /^[a-zA-Z]:[\\/]/.test(arquivo) || arquivo.startsWith('/')
+  const abs = longo(/^[a-zA-Z]:[\\/]/.test(arquivo) || arquivo.startsWith('/')
     ? arquivo.replace(/\\/g, '/')
-    : path.resolve(cwd, arquivo.replace(/\\/g, '/')).replace(/\\/g, '/');
+    : path.resolve(cwd, arquivo.replace(/\\/g, '/')).replace(/\\/g, '/'));
   const k = chave(abs);
   let melhor = null;
   for (const r of raizes) {
