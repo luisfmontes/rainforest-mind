@@ -30,7 +30,7 @@ mutacao:
   para: `return false;`
   bateria: `node hooks/testa-mod-abertura-append.cjs`
   fixture: `testa-mod-abertura-append.cjs, caso "resume com a marca no transcript nao anexa de novo"`
-pronto quando: com o `e.plugins` que o `engine.create` da conta de trabalho manda (nomes medidos: `cc-plugin-sec-default,rainforest-mind,cc-plugin-agents-md,cc-plugin-telemetry,cc-plugin-you-should-know`, na forma dos types), o `session.start` chama `$.session.append` exatamente 1 vez com `{ message: { type: 'user', content: [{ type: 'text', text }] } }` e `text` comecando por `MARCA` seguido do texto que o compose usaria; um `session.start` de resume com a marca ja em `$.session.messages()` faz 0 appends; `session.end` com `reason: 'clear'` seguido de 2 `prompt.submit` faz 1 append so, no primeiro; `session.compact` cujo `next(e)` devolve mensagens sem a marca faz 1 append, e com a marca 0; com `e.plugins` sem `cc-plugin-sec-default`, 0 appends e 0 leituras de `messages()` em todos os eventos — provado por `node hooks/testa-mod-abertura-append.cjs` (carrega o `register.ts` real com `$` falso e geradores reais sobre fixture) imprimindo o placar final com 0 falhas e exit 0, e por `node hooks/testa-mod-abertura.cjs` com exit 0.
+pronto quando: com o `e.plugins` que o `engine.create` da conta de trabalho manda (nomes medidos: `cc-plugin-sec-default,rainforest-mind,cc-plugin-agents-md,cc-plugin-telemetry,cc-plugin-you-should-know`, na forma dos types), o `session.start` chama `$.session.append` exatamente 1 vez com `{ message: { type: 'user', content: [{ type: 'text', text }] } }` e `text` comecando por `MARCA` seguido do texto que o compose usaria; um `session.start` de resume com a marca ja em `$.session.messages()` faz 0 appends; `session.end` com `reason: 'clear'` seguido de 2 `prompt.submit` faz 1 append so, no primeiro; `session.compact` seguido de `prompt.submit` com mensagens sem a marca faz 1 append (no submit, 0 no compact), e com a marca 0 (emenda 2026-10-07, D6 refeita apos medicao no REPL; texto original: "`session.compact` cujo `next(e)` devolve mensagens sem a marca faz 1 append, e com a marca 0"); com `e.plugins` sem `cc-plugin-sec-default`, 0 appends e 0 leituras de `messages()` em todos os eventos — provado por `node hooks/testa-mod-abertura-append.cjs` (carrega o `register.ts` real com `$` falso e geradores reais sobre fixture) imprimindo o placar final com 0 falhas e exit 0, e por `node hooks/testa-mod-abertura.cjs` com exit 0.
 
 Forma prescrita do codigo novo (alvo de mutacao em codigo a nascer):
 - `export const MARCA` e uma string de uma linha, sem aspas nem barra invertida, que nao comeca por nenhum dos `PREFIXOS` existentes (ex.: `[rainforest-mind:abertura]`).
@@ -48,12 +48,8 @@ arquivos: `hooks/mod-abertura.test.ts`
 depende de: 1
 paralela: nao
 prova-na-base: verde — `claude plugin test .` ja passa na base com os dois casos atuais; o caso novo nasce com esta tarefa, e o comando roda pelo binario `claude`, fora do CI
-mutacao:
-  arquivo: `hooks/abertura-mod-puro.mjs`
-  de: `return nomes.includes('cc-plugin-sec-default');`
-  para: `return false;`
-  bateria: `claude plugin test .`
-  fixture: `mod-abertura.test.ts, test "append: sec-default no engine.create anexa uma vez e o resume nao duplica"`
+mutacao: n/a
+  motivo: emenda 2026-10-07 — tarefa fechada n/a por decisao do usuario em 2026-10-06: o `claude-code/testing` do CLI 2.1.292 nao intercepta `$.session.append` vindo de plugin (`HooksError: no implementation for session.append`); a inversao de `barraCompose` e medida pela bateria `node hooks/testa-mod-abertura-append.cjs` (tarefa 1). Bloco original: arquivo `hooks/abertura-mod-puro.mjs`, de `return nomes.includes('cc-plugin-sec-default');`, para `return false;`, bateria `claude plugin test .`. Ideia `harness-testing-nao-intercepta-session-append-de-plugin`
 pronto quando: com o engine real do `claude-code/testing` carregando o modulo do `hooks.json` e `engine.create` recebendo `cc-plugin-sec-default` entre os plugins, um `session.start` gera 1 chamada a `session.append` com texto iniciado pela `MARCA`, e um segundo `session.start` com essa linha em `session.messages` gera 0 — provado por `claude plugin test .` com exit 0 e o nome do teste novo no relatorio. Se o `claude-code/testing` nao conseguir simular `engine.create` ou `session.append`, a tarefa para e reporta o trecho dos types que impede; nao troca por teste que afirme menos.
 
 ### 3. Medicao real nas duas contas [tipo: pesquisar]
