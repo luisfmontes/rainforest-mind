@@ -170,7 +170,11 @@
     "head": "c82af64e656c9a7c68f158296cb50cb7c8e11d3b"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node hooks/testa-mod-abertura-append.cjs",
+    "saida": "== resultado: 8 ok, 0 falha(s), 0 skipped == (EXIT=0); testa-mod-abertura.cjs 28 ok EXIT=0; claude plugin validate EXIT=0; claude plugin test 24 pass EXIT=0; conferir-fluxo mutacoes EXIT=0 (t1 vermelho); t3 recontagem 85 linhas marca_meta 1 apos 2 resumes; t4 compact: marca linha 76 apos compact_boundary 55; t5 handoff 0bd2e907",
+    "sensor_externo": "node hooks/testa-mod-abertura-append.cjs",
+    "em": "2026-10-07"
   },
   "fechar": {
     "status": "pendente"
