@@ -3097,6 +3097,19 @@ printf 'gh issue close 12\n' > "$SBP/b414/alvo.sh"
 rodar414 'cd a414 && . ./x.sh; cd ../b414 && . ../a414/x.sh'
 E414=$?
 [ $E414 -eq 2 ] && test_ok "414-13 mesmo arquivo carregado de outro cwd e relido" || test_fail "414-13 mesmo arquivo carregado de outro cwd e relido (exit $E414)"
+# `$'..'` e `$".."` sao aspas do bash: o literal dentro delas segue legivel.
+cat > "$SBP/lit414-dolar.sh" <<'DOL414'
+bash -c $'gh issue close 1'
+DOL414
+rodar414 '. ./lit414-dolar.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-15 $'..' em arquivo carregado barra" || test_fail "414-15 $'..' em arquivo carregado barra (exit $E414)"
+cat > "$SBP/lit414-dolar2.sh" <<'DOL414'
+bash -c "gh $'issue' close 1 $X"
+DOL414
+rodar414 '. ./lit414-dolar2.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-16 $'..' no meio do comando barra" || test_fail "414-16 $'..' no meio do comando barra (exit $E414)"
 # Cadeia de 12 arquivos distintos, cada um carregando o seguinte por caminho
 # absoluto e nenhum fechando Issue: so o teto de profundidade barra. Sem
 # teto, a leitura percorre a cadeia inteira e libera (exit 0).

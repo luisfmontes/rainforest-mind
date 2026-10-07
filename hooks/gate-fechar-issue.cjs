@@ -946,9 +946,10 @@ const RE_MUDA_DIRETORIO = /(?:^|[\s;&|({])(?:cd|pushd)(?=\s|$)/;
 // viram espaco). Serve so para nao deixar passar literal dentro de arquivo
 // carregado por `.`; nao decide evidencia, so impede o atalho do ilegivel.
 function temGhLiteralQueEscreve(texto) {
+  // `$'..'`/`$".."` sao aspas do bash: o `$` colado na aspa sai junto com ela.
   // Aspas, crase e contrabarra SOMEM (nao viram espaco): `c''lose`, `\"close\"`
   // e `-R \"a/b\"` voltam a ser as palavras que o shell ve.
-  const v = String(texto).replace(/["'\x60\\]/g, "").split(/[\s;&|(){}]+/).filter(Boolean);
+  const v = String(texto).replace(/\$(?=["'])/g, "").replace(/["'\x60\\]/g, "").split(/[\s;&|(){}]+/).filter(Boolean);
   const escreve = { issue: ["close", "create", "comment"], pr: ["create", "edit", "merge"] };
   for (let i = 0; i < v.length; i++) {
     if (normalizarExecutavel(v[i]) !== "gh") continue;
