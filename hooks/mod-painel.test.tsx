@@ -689,7 +689,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
       expect(String(d.argv[1]).endsWith('/scripts/desvio-do-plano.cjs')).toBe(true)
       expect(d.argv.slice(2)).toEqual(['--cwd', '/projeto', '--arquivo', '/projeto/hooks/faixa-puro.mjs'])
       expect(d.env).toEqual({ CLAUDE_PROJECT_DIR: '/projeto' })
-      expect(d.timeoutMs).toBe(5000)
+      expect(d.timeoutMs).toBe(10000)
       expect(String(d.cwd)).toBe(String(d.argv[1]).replace(/\/scripts\/desvio-do-plano\.cjs$/, ''))
     })
 
@@ -960,7 +960,8 @@ for (const surface of ['terminal', 'desktop'] as const) {
       s.modoDados = 'falha'
       await terminar('de novo', { usage: USAGE_REAL })
       const t = await textos()
-      expect(t).toContain('Nenhum fluxo em curso')
+      expect(t).toContain('Leitura dos fluxos indisponível agora; tenta de novo no fim do próximo turno')
+      expect(t).not.toContain('Nenhum fluxo em curso')
       expect(t).not.toContain('painel-pane')
       expect(t).toContain(' Custo e tokens ')
       expect(t).toContain('38% de 200.0K') // o contexto segue medido

@@ -618,7 +618,8 @@ export const register: Register = (on, options) => {
               const cwd = await $.session.cwd()
               const r = await $.process.run(
                 ['node', `${raiz}/scripts/desvio-do-plano.cjs`, '--cwd', cwd, '--arquivo', escrita],
-                { cwd: raiz, env: { CLAUDE_PROJECT_DIR: cwd }, timeoutMs: 5000 },
+                // Roda em segundo plano depois da escrita: sob carga passa de 2 s, e o teto folga.
+                { cwd: raiz, env: { CLAUDE_PROJECT_DIR: cwd }, timeoutMs: 10000 },
               )
               const lido = r.exitCode === 0 ? JSON.parse(r.stdout) : null
               desvio = lido !== null && typeof lido === 'object' && typeof lido.veredito === 'string' ? lido : null
@@ -861,7 +862,10 @@ export const register: Register = (on, options) => {
 
       // Fluxos em curso (D4): o que esta aberto neste repositorio, lido de faixa-dados.cjs.
       const fluxos = dados?.fluxos ?? []
-      const painelFluxos = painel('p-fluxos', COR.ciano, 'Fluxos em curso', fluxos.length === 0
+      // Leitura que falhou (exit, timeout, JSON) nao se mostra como "nenhum": vazio nao e ok.
+      const painelFluxos = painel('p-fluxos', COR.ciano, 'Fluxos em curso', dados === null
+        ? <Text color={COR.ambar}>Leitura dos fluxos indisponível agora; tenta de novo no fim do próximo turno</Text>
+        : fluxos.length === 0
         ? <Text dimColor>Nenhum fluxo em curso</Text>
         : fluxos.map(f => {
             const partes = [f.etapa]
