@@ -115,6 +115,48 @@ function indiceSequencia(tokens, padrao) {
 // gate não pode ser pior que ela.
 const TEXTOS_DE_HEREDOC = [];
 
+// #407: o comando inteiro desta chamada. O `--body-file` é lido no PreToolUse,
+// ANTES de o comando rodar — quando a mesma linha cria o arquivo por heredoc
+// (`cat > corpo.md <<'EOF' ... EOF` e depois `gh pr create --body-file
+// corpo.md`), o arquivo ainda não existe, e o corpo está no próprio comando.
+let COMANDO_INTEIRO = "";
+
+/**
+ * Corpo do heredoc que, neste mesmo comando, é redirecionado para `caminho`
+ * (`cat > P <<`, `cat >| P <<`, `tee P <<`), ou `null`. `P` relativo resolve
+ * contra o cwd do segmento do `gh` — o mesmo contra o qual o `--body-file` foi
+ * resolvido.
+ */
+function corpoDeHeredocQueCria(comando, caminho, cwdSegmento) {
+  const igual = (a, b) => process.platform === "win32"
+    ? path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase()
+    : path.resolve(a) === path.resolve(b);
+  // `>>` e `tee -a` acrescentam; vários heredocs ao mesmo arquivo: o gh lê o
+  // que sobrar, então o gate soma TODOS os corpos (o último escritor e os
+  // acréscimos entram). Corpo com expansão (`$N`, crase) em heredoc de
+  // delimitador nu não se lê sem rodar o shell: ilegível.
+  const reCat = /\bcat\s+>[>|]?\s*("[^"]+"|'[^']+'|[^\s<>;&|]+)\s*$/;
+  const corpos = [];
+  const reTee = /\btee\s+(?:-a\s+)?("[^"]+"|'[^']+'|[^\s<>;&|]+)\s*$/;
+  for (let i = comando.indexOf("<<"); i !== -1; i = comando.indexOf("<<", i + 2)) {
+    const heredoc = corpoDeHeredoc(comando, i);
+    if (!heredoc) continue;
+    const antes = comando.slice(comando.lastIndexOf("\n", i) + 1, i);
+    const m = reCat.exec(antes) || reTee.exec(antes);
+    if (!m) continue;
+    const alvo = normalizarMsys(m[1].replace(/^["']|["']$/g, ""));
+    if (/[$\x60]/.test(alvo)) continue;
+    const alvoResolvido = path.isAbsolute(alvo)
+      ? alvo
+      : (cwdSegmento == null ? null : path.resolve(cwdSegmento, alvo));
+    if (alvoResolvido && igual(alvoResolvido, caminho)) {
+      if (!heredoc.delimitadorQuotado && /[$\x60]/.test(heredoc.corpo)) return { legivel: false };
+      corpos.push(heredoc.corpo);
+    }
+  }
+  return corpos.length ? { legivel: true, corpo: corpos.join("\n") } : null;
+}
+
 /**
  * Separa um comando em segmentos, respeitando aspas simples/duplas.
  * Delimitadores fora de aspas: `;`, `&&`, `||`, `|`, quebra de linha — e
@@ -531,6 +573,13 @@ function extrairCorpoDoPR(segmento, cwdSegmento) {
       const caminhoResolvido = path.isAbsolute(arquivo)
         ? arquivo
         : path.resolve(cwdSegmento, arquivo);
+      // #407: o heredoc do MESMO comando reescreve o arquivo antes de o `gh`
+      // rodar — o corpo dele e o que o `gh` le, exista o arquivo ou nao. Ler o
+      // disco primeiro decidia pelo conteudo VELHO (revisao da zerar-issues-16).
+      const corpoCriado = corpoDeHeredocQueCria(COMANDO_INTEIRO, caminhoResolvido, cwdSegmento);
+      if (corpoCriado !== null) {
+        return { tipo: "arquivo", conteudo: corpoCriado.legivel ? corpoCriado.corpo : null, legivel: corpoCriado.legivel };
+      }
       try {
         const conteudo = fs.readFileSync(caminhoResolvido, "utf8");
         return { tipo: "arquivo", conteudo, legivel: true };
@@ -711,8 +760,10 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento) {
       } else if (corpoDoPR.tipo === "arquivo") {
         bloqueia(
           `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-          `Razão: não consegui ler o arquivo de corpo do PR.\n\n` +
-          `Use --body "texto" ou --body-file <arquivo-legível>.\n`
+          `Razão: não consegui ler o arquivo de corpo do PR — o gate o lê ANTES de o ` +
+          `comando rodar, e nada neste comando o cria por heredoc.\n\n` +
+          `Grave o corpo antes (ferramenta de escrita, ou num comando separado) e rode ` +
+          `o 'gh' em seguida; ou use --body "texto".\n`
         );
       } else if (corpoDoPR.tipo === "direto" && (corpoDoPR.conteudo.includes("$(") || corpoDoPR.conteudo.includes("`"))) {
         bloqueia(
@@ -947,7 +998,7 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   // sem posicao de comando (`pos === null`), nao ha o que desempacotar.
   const { interno, ilegivel } = pos === null
     ? { interno: null, ilegivel: false }
-    : desempacotarWrapperDeString(textoAPartir(toksComAspas, pos), { ferramenta });
+    : desempacotarWrapperDeString(textoAPartir(toksComAspas, pos), { ferramenta, scriptComVariavel: 'desconhecido' });
   if (ilegivel) {
     bloqueia(
       `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
@@ -1066,6 +1117,7 @@ function main() {
   // K-ÉSIMA ocorrência de um texto repetido, não sempre a primeira. Ver
   // docblock de `cwdDoSegmento`.
   const contadores = new Map();
+  COMANDO_INTEIRO = comando;
   for (const segmento of segmentosParaGate(comando)) {
     processarSegmento(segmento, mapaCwd, contadores, nome);
   }

@@ -729,7 +729,10 @@ process.stdout.write(JSON.stringify({
   idsIguais: JSON.stringify(idsRaiz) === JSON.stringify(idsSubpasta) && idsRaiz.length > 0,
 }));
 EOF
-RESULTADO_T9_GIT=$(node --no-warnings "$CAIXA12/fixture-t9-git.cjs" "$CAIXA12_WIN" "$SRC_WIN" "$CAIXA12_WIN/cwd-only.jsonl" "$CAIXA12_WIN/raiz.jsonl" "$CAIXA12_WIN/subpasta.jsonl" 2>&1)
+# TZ fixo (#408): a linha servida mostra a data LOCAL e criada_em e meia-noite
+# UTC — em Sao Paulo ela cai no dia anterior, e o casamento tem de achar o par
+# mesmo assim. Sem o TZ, o CI (UTC) nunca exercitaria a virada de dia.
+RESULTADO_T9_GIT=$(TZ=America/Sao_Paulo node --no-warnings "$CAIXA12/fixture-t9-git.cjs" "$CAIXA12_WIN" "$SRC_WIN" "$CAIXA12_WIN/cwd-only.jsonl" "$CAIXA12_WIN/raiz.jsonl" "$CAIXA12_WIN/subpasta.jsonl" 2>&1)
 echo "  comando: node -e \"pontuarSessao com cwd = raiz deste checkout e cwd = <raiz>/scripts (subida real ate o .git)\" (secao \"cwd em subpasta casa as mesmas servidas\")"
 echo "  saida: $RESULTADO_T9_GIT"
 

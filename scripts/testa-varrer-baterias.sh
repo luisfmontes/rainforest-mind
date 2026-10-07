@@ -612,6 +612,124 @@ else
   exit 1
 fi
 
+# (q) Conferencia de baterias obrigatorias: uma ausente sai FALTOU e exit 1
+echo "=== Teste (q): obrigatoria ausente sai FALTOU e exit 1 ==="
+sandbox_q=$(mktemp -d)
+SANDBOXES="$SANDBOXES $sandbox_q"
+mkdir -p "$sandbox_q/scripts" "$sandbox_q/hooks"
+
+# Criar 15 baterias verdes em scripts/ (o piso de la)
+for i in $(seq 1 15); do
+  cat > "$sandbox_q/scripts/testa-verde-$i.sh" << 'EOF'
+#!/bin/bash
+exit 0
+EOF
+  chmod +x "$sandbox_q/scripts/testa-verde-$i.sh"
+done
+
+# Piso minimo de scripts/.cjs (1)
+cat > "$sandbox_q/scripts/testa-cjs-verde-1.cjs" << 'EOF'
+#!/usr/bin/env node
+process.exit(0);
+EOF
+chmod +x "$sandbox_q/scripts/testa-cjs-verde-1.cjs"
+
+# Piso proprio de hooks/.sh (5) — incluindo uma que sera obrigatoria
+for i in $(seq 1 5); do
+  cat > "$sandbox_q/hooks/testa-hook-verde-$i.sh" << 'EOF'
+#!/bin/bash
+exit 0
+EOF
+  chmod +x "$sandbox_q/hooks/testa-hook-verde-$i.sh"
+done
+
+# Uma bateria especifica que sera exigida como obrigatoria
+cat > "$sandbox_q/hooks/testa-gate-worktree.sh" << 'EOF'
+#!/bin/bash
+exit 0
+EOF
+chmod +x "$sandbox_q/hooks/testa-gate-worktree.sh"
+
+# Piso minimo de hooks/.cjs (10)
+for i in $(seq 1 10); do
+  cat > "$sandbox_q/hooks/testa-hook-cjs-verde-$i.cjs" << 'EOF'
+#!/usr/bin/env node
+process.exit(0);
+EOF
+  chmod +x "$sandbox_q/hooks/testa-hook-cjs-verde-$i.cjs"
+done
+
+# Criar arquivo de obrigatorias: uma que nao existe, outra que existe
+obrig_q=$(mktemp)
+SANDBOXES="$SANDBOXES $obrig_q"
+cat > "$obrig_q" << 'EOF'
+# Lista de obrigatorias para teste
+hooks/testa-nao-existe.sh
+hooks/testa-gate-worktree.sh
+EOF
+
+cd "$sandbox_q"
+saida=$(RFM_BATERIAS_OBRIGATORIAS="$obrig_q" bash "$VARRER" --listar 2>&1)
+exitcode=$?
+if [ $exitcode -ne 1 ]; then
+  echo "  FAIL (q): exit code $exitcode em vez de 1"
+  echo "$saida"
+  exit 1
+fi
+if echo "$saida" | grep -q "FALTOU hooks/testa-nao-existe.sh"; then
+  if ! echo "$saida" | grep -q "FALTOU hooks/testa-gate-worktree.sh"; then
+    echo "  PASS (q)"
+  else
+    echo "  FAIL (q): nao deveria faltar hooks/testa-gate-worktree.sh"
+    echo "$saida"
+    exit 1
+  fi
+else
+  echo "  FAIL (q): nao encontrou 'FALTOU hooks/testa-nao-existe.sh'"
+  echo "$saida"
+  exit 1
+fi
+
+# (r) O CI so roda com --shard: a conferencia vale em cada shard, contra a lista
+# inteira, e a lista com CRLF (checkout no Windows) nao inventa falta.
+echo "=== Teste (r): com --shard e lista CRLF, a obrigatoria ausente ainda sai FALTOU ==="
+obrig_r=$(mktemp)
+SANDBOXES="$SANDBOXES $obrig_r"
+printf 'hooks/testa-nao-existe.sh\r\nhooks/testa-gate-worktree.sh\r\n' > "$obrig_r"
+for s in 1/2 2/2; do
+  saida=$(RFM_BATERIAS_OBRIGATORIAS="$obrig_r" bash "$VARRER" --shard "$s" --listar 2>&1)
+  exitcode=$?
+  if [ $exitcode -ne 1 ] || ! echo "$saida" | grep -q "FALTOU hooks/testa-nao-existe.sh" \
+     || echo "$saida" | grep -q "FALTOU hooks/testa-gate-worktree.sh"; then
+    echo "  FAIL (r): shard $s exit=$exitcode"
+    echo "$saida"
+    exit 1
+  fi
+done
+printf 'hooks/testa-gate-worktree.sh\r\n' > "$obrig_r"
+if ! RFM_BATERIAS_OBRIGATORIAS="$obrig_r" bash "$VARRER" --shard 1/2 --listar >/dev/null 2>&1; then
+  echo "  FAIL (r): lista CRLF so com obrigatoria presente nao saiu 0"
+  exit 1
+fi
+echo "  PASS (r)"
+
+# (s) Lista apontada que nao existe e erro, nao "nada a conferir"; espaco no fim
+# da linha nao inventa falta (revisao da zerar-issues-16).
+echo "=== Teste (s): lista ausente falha; espaco no fim da linha e ignorado ==="
+saida=$(RFM_BATERIAS_OBRIGATORIAS="$sandbox_q/nao-existe.txt" bash "$VARRER" --listar 2>&1)
+exitcode=$?
+if [ $exitcode -ne 1 ] || ! echo "$saida" | grep -q "lista de baterias obrigatorias ausente"; then
+  echo "  FAIL (s): lista ausente exit=$exitcode"
+  echo "$saida"
+  exit 1
+fi
+printf 'hooks/testa-gate-worktree.sh  \t\n' > "$obrig_r"
+if ! RFM_BATERIAS_OBRIGATORIAS="$obrig_r" bash "$VARRER" --listar >/dev/null 2>&1; then
+  echo "  FAIL (s): espaco no fim da linha gerou FALTOU"
+  exit 1
+fi
+echo "  PASS (s)"
+
 echo ""
 echo "======= TODOS OS TESTES PASSARAM ======="
 exit 0

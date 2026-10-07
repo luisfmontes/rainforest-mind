@@ -83,6 +83,8 @@ git worktree add "$wt_b_real" HEAD
 
 cd "$wt_b_real"
 echo "sujeira" > arquivo_sujo.txt
+# D21: arquivo antigo (> 10 min) é sujo, não em-uso-recente
+touch -d "20 minutes ago" arquivo_sujo.txt
 
 # Lista com limpar-worktrees
 saida_b=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_b" 2>&1)
@@ -372,6 +374,8 @@ wt_h_real="$work_h-worktrees/wt-h"
 git worktree add "$wt_h_real" HEAD
 mkdir -p "$wt_h_real/logs"
 echo "log de verdade, nao rastreado" > "$wt_h_real/logs/app.log"
+# D21: arquivo antigo (> 10 min) é sujo, não em-uso-recente
+touch -d "20 minutes ago" "$wt_h_real/logs/app.log" "$wt_h_real/logs"
 
 saida_h=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_h" 2>&1)
 if echo "$saida_h" | grep -q "sujo"; then
@@ -405,6 +409,8 @@ criarRepoComCommit "$repo_i" "$work_i"
 wt_i_real="$work_i-worktrees/wt-i"
 git worktree add "$wt_i_real" HEAD
 echo "arquivo de usuario, nao rastreado" > "$wt_i_real/index"
+# D21: arquivo antigo (> 10 min) é sujo, não em-uso-recente
+touch -d "20 minutes ago" "$wt_i_real/index"
 
 saida_i=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_i" 2>&1)
 if echo "$saida_i" | grep -q "sujo"; then
@@ -670,6 +676,8 @@ wt_o_real="$work_o-worktrees/wt-o"
 git worktree add "$wt_o_real" HEAD
 cd "$wt_o_real"
 echo "sujeira" > arquivo_o.txt
+# D21: arquivo antigo (> 10 min) é sujo, não em-uso-recente
+touch -d "20 minutes ago" arquivo_o.txt
 cd "$work_o"
 
 # (o1) --remover (sem -sujo) continua NUNCA removendo sujo — comportamento de hoje
@@ -862,7 +870,208 @@ else
   echo "        Lista: $lista_q"
 fi
 
+# --- CASO (r): worktree fica sujo entre a listagem e a remocao: nao remove
+
+teste "r" "worktree fica sujo entre a listagem e a remocao: nao remove"
+
+repo_r="$SB/repo_r"
+work_r="$SB/trabalho_r"
+criarRepoComCommit "$repo_r" "$work_r"
+
+wt_r_real="$work_r-worktrees/wt-r"
+git worktree add "$wt_r_real" HEAD
+# D20: worktree começa limpo
+
+# RFM_LIMPAR_APOS_LISTAR escreve um arquivo no worktree entre a classificação e a remoção
+RFM_LIMPAR_APOS_LISTAR="echo 'mudou depois' > '$wt_r_real/arquivo-novo.txt'" \
+  node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_r" --remover > /tmp/saida_r.txt 2>&1
+
+saida_r=$(cat /tmp/saida_r.txt)
+
+# Verifica que a mensagem de mudança aparece
+if echo "$saida_r" | grep -qF "mudou desde a listagem"; then
+  ok=$((ok+1)); echo "  ok    mensagem 'mudou desde a listagem' aparece na saída"
+else
+  falhou=$((falhou+1)); echo "  FALHA mensagem 'mudou desde a listagem' não aparece"
+  echo "        Saída: $saida_r"
+fi
+
+# Verifica que o worktree NÃO foi removido
+lista_r=$(git worktree list --porcelain | grep -F "wt-r" || true)
+if [ -n "$lista_r" ]; then
+  ok=$((ok+1)); echo "  ok    worktree não foi removido (mudou durante a operação)"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree foi removido (não deveria)"
+fi
+
+# Verifica que o arquivo criado por RFM_LIMPAR_APOS_LISTAR ainda está lá
+if [ -f "$wt_r_real/arquivo-novo.txt" ]; then
+  ok=$((ok+1)); echo "  ok    arquivo criado por RFM_LIMPAR_APOS_LISTAR está presente"
+else
+  falhou=$((falhou+1)); echo "  FALHA arquivo criado por RFM_LIMPAR_APOS_LISTAR desapareceu"
+fi
+
+# --- CASO (s): arquivo modificado há 2 min é em-uso-recente, não é removido
+
+teste "s" "worktree com arquivo modificado há 2 min é em-uso-recente (não removível)"
+
+repo_s="$SB/repo_s"
+work_s="$SB/trabalho_s"
+criarRepoComCommit "$repo_s" "$work_s"
+
+wt_s_real="$work_s-worktrees/wt-s"
+git worktree add "$wt_s_real" HEAD
+cd "$wt_s_real"
+echo "sujeira recente" > arquivo_s.txt
+cd "$work_s"
+
+# Touch do arquivo para 2 minutos atrás (recente demais para remover)
+touch -d "2 minutes ago" "$wt_s_real/arquivo_s.txt"
+
+# Verifica que aparece como em-uso-recente
+saida_s=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_s" 2>&1)
+if echo "$saida_s" | grep -q "em-uso-recente"; then
+  ok=$((ok+1)); echo "  ok    worktree com arquivo há 2 min é 'em-uso-recente'"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree com arquivo há 2 min não apareceu como 'em-uso-recente'"
+  echo "        Saída: $saida_s"
+fi
+
+# --remover não deve remover worktree em-uso-recente
+node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_s" --remover >/dev/null 2>&1
+lista_s=$(git worktree list --porcelain | grep -F "wt-s" || true)
+if [ -n "$lista_s" ]; then
+  ok=$((ok+1)); echo "  ok    worktree em-uso-recente não foi removido com --remover"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree em-uso-recente foi removido (não deveria)"
+fi
+
+# --- CASO (s2): arquivo modificado há 20 min é sujo (não em-uso-recente), não é removido de qualquer forma
+
+teste "s2" "worktree com arquivo modificado há 20 min é sujo (não em-uso-recente)"
+
+repo_s2="$SB/repo_s2"
+work_s2="$SB/trabalho_s2"
+criarRepoComCommit "$repo_s2" "$work_s2"
+
+wt_s2_real="$work_s2-worktrees/wt-s2"
+git worktree add "$wt_s2_real" HEAD
+cd "$wt_s2_real"
+echo "sujeira antiga" > arquivo_s2.txt
+cd "$work_s2"
+
+# Touch do arquivo para 20 minutos atrás (antigo demais para em-uso-recente)
+touch -d "20 minutes ago" "$wt_s2_real/arquivo_s2.txt"
+
+# Verifica que aparece como sujo (não em-uso-recente)
+saida_s2=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_s2" 2>&1)
+if echo "$saida_s2" | grep -q "sujo"; then
+  ok=$((ok+1)); echo "  ok    worktree com arquivo há 20 min é 'sujo'"
+else
+  falhou=$((falhou+1)); echo "  FALHA worktree com arquivo há 20 min não apareceu como 'sujo'"
+  echo "        Saída: $saida_s2"
+fi
+
+if echo "$saida_s2" | grep -q "em-uso-recente"; then
+  falhou=$((falhou+1)); echo "  FALHA worktree com arquivo há 20 min apareceu como 'em-uso-recente'"
+  echo "        Saída: $saida_s2"
+else
+  ok=$((ok+1)); echo "  ok    não é classificado como 'em-uso-recente'"
+fi
+
+# --- CASO (s3): RASTREADO modificado ha 3 h e sujo, nao em-uso-recente. O
+# porcelain de rastreado comeca com espaco (" M initial.txt"); com `.trim()` o
+# caminho perdia a primeira letra, o stat falhava e o worktree ficava "recente"
+# para sempre (revisao da zerar-issues-16). Apagado (" D") idem.
+
+teste "s3" "rastreado modificado ha 3 h e rastreado apagado: sujo, nao em-uso-recente"
+
+repo_s3="$SB/repo_s3"
+work_s3="$SB/trabalho_s3"
+criarRepoComCommit "$repo_s3" "$work_s3"
+wt_s3="$work_s3-worktrees/wt-s3"
+git worktree add "$wt_s3" HEAD
+echo "mexido" > "$wt_s3/initial.txt"
+touch -d "3 hours ago" "$wt_s3/initial.txt"
+saida_s3=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_s3" 2>&1)
+if echo "$saida_s3" | grep -q "sujo" && ! echo "$saida_s3" | grep -q "em-uso-recente"; then
+  ok=$((ok+1)); echo "  ok    rastreado modificado ha 3 h e 'sujo'"
+else
+  falhou=$((falhou+1)); echo "  FALHA rastreado modificado ha 3 h nao saiu 'sujo': $saida_s3"
+fi
+git -C "$wt_s3" checkout -q -- initial.txt
+rm "$wt_s3/initial.txt"
+saida_s3d=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_s3" 2>&1)
+if echo "$saida_s3d" | grep -q "sujo" && ! echo "$saida_s3d" | grep -q "em-uso-recente"; then
+  ok=$((ok+1)); echo "  ok    rastreado apagado e 'sujo'"
+else
+  falhou=$((falhou+1)); echo "  FALHA rastreado apagado nao saiu 'sujo': $saida_s3d"
+fi
+
+# --- CASO (s4): nome acentuado nao rastreado ha 3 h e sujo. Sem
+# core.quotepath=false o porcelain escapa em octal e o stat falha.
+teste "s4" "nao rastreado com acento ha 3 h: sujo, nao em-uso-recente"
+echo "x" > "$wt_s3/relatório.md"
+touch -d "3 hours ago" "$wt_s3/relatório.md"
+saida_s4=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_s3" 2>&1)
+if echo "$saida_s4" | grep -q "sujo" && ! echo "$saida_s4" | grep -q "em-uso-recente"; then
+  ok=$((ok+1)); echo "  ok    nome acentuado ha 3 h e 'sujo'"
+else
+  falhou=$((falhou+1)); echo "  FALHA nome acentuado ha 3 h nao saiu 'sujo': $saida_s4"
+fi
+
 # --- Relatório final
+
+echo ""
+# --- CASO (t): em_voo na branch, fluxo ja concluido na base (D22) ---
+# A branch guarda o em_voo de quando o agente rodou; o fluxo fechou depois, e a
+# base (origin/main) tem o estado concluido. Ler so a branch chamaria de
+# inacabado um fluxo ja fechado.
+teste "t" "em_voo na branch com fluxo concluido em origin/main nao segura a remocao"
+repo_t="$SB/repo_t"
+work_t="$SB/trabalho_t"
+criarRepoComCommit "$repo_t" "$work_t" >/dev/null 2>&1
+SLUG_T="2026-10-06-lote-base"
+estado_t() { # arquivo, status_executar, status_fechar, em_voo(json)
+  node -e '
+const fs = require("fs"), [p, slug, ex, fe, voo] = process.argv.slice(1);
+const ok = (st) => ({ status: st, em: "2026-10-06" });
+fs.mkdirSync(require("path").dirname(p), { recursive: true });
+fs.writeFileSync(p, JSON.stringify({
+  slug, titulo: "Fixture do caso t", criado_em: "2026-10-06",
+  arqueologia: { status: "dispensada" },
+  design: { status: "aprovado", em: "2026-10-06", doc: "x" },
+  plano: ok("ok"),
+  executar: Object.assign(ok(ex), { em_voo: JSON.parse(voo) }),
+  revisar: ok(fe === "ok" ? "ok" : "pendente"),
+  verificar: ok(fe === "ok" ? "ok" : "pendente"),
+  fechar: ok(fe),
+}, null, 2) + "\n");
+' "$1" "$SLUG_T" "$2" "$3" "$4"
+}
+# Base: estado CONCLUIDO, publicado como origin/main.
+estado_t "$work_t/docs/rainforest/estado/$SLUG_T.json" ok ok '[]'
+git -C "$work_t" add docs && git -C "$work_t" commit -qm "fluxo concluido" && git -C "$work_t" push -q origin HEAD:main
+git -C "$work_t" fetch -q origin
+# Branch do worktree: nasce ANTES do fechamento, com agente em voo.
+wt_t="$work_t-worktrees/wt-t"
+git -C "$work_t" worktree add -q -b fluxo/lote-base "$wt_t" HEAD~1
+estado_t "$wt_t/docs/rainforest/estado/$SLUG_T.json" parcial pendente '[{"agente":"rainforest-mind:executor","tarefa":1}]'
+git -C "$wt_t" add docs && git -C "$wt_t" commit -qm "estado com agente em voo"
+touch -d "30 minutes ago" "$wt_t/docs/rainforest/estado/$SLUG_T.json" 2>/dev/null || true
+
+saida_t=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_t" --remover 2>&1)
+if git -C "$work_t" worktree list --porcelain | grep -qF "wt-t"; then
+  falhou=$((falhou+1)); echo "  FALHA em_voo da branch segurou a remocao de fluxo concluido na base"
+  printf '%s\n' "$saida_t" | sed 's/^/        /' | head -8
+else
+  ok=$((ok+1)); echo "  ok    worktree removido: a base diz que o fluxo fechou"
+fi
+if printf '%s' "$saida_t" | grep -qF "fluxo concluido na base"; then
+  ok=$((ok+1)); echo "  ok    a saida diz que a base decidiu"
+else
+  falhou=$((falhou+1)); echo "  FALHA a saida nao cita a base"
+fi
 
 echo ""
 echo "== resultado: $ok ok, $falhou falha(s) =="

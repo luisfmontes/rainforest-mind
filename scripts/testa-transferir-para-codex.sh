@@ -66,6 +66,7 @@ mkdir -p "$PLUGIN/hooks/lib"
 cp "$SRC/hooks/lib/cli-externo.cjs" "$PLUGIN/hooks/lib/cli-externo.cjs"
 cp "$SRC/hooks/lib/codex-cota.cjs" "$PLUGIN/hooks/lib/codex-cota.cjs"
 cp "$SRC/hooks/lib/config.cjs" "$PLUGIN/hooks/lib/config.cjs"
+cp "$SRC/hooks/lib/contas-claude.cjs" "$PLUGIN/hooks/lib/contas-claude.cjs"
 cp "$SRC/hooks/lib/raiz.cjs" "$PLUGIN/hooks/lib/raiz.cjs" 2>/dev/null || true
 cp "$SRC/hooks/codex-transfer-session-start.cjs" "$PLUGIN/hooks/codex-transfer-session-start.cjs"
 
@@ -123,12 +124,12 @@ RFM_ROOT="$RFMHOME_M/.rainforest" CLAUDE_PROJECT_DIR="$RFMHOME_M" \
   --source "$BAD_TRANSCRIPT_M" 2>&1)
 exit_1=$?
 
-if [ "$exit_1" = "2" ] && echo "$saida_1" | grep -qE "\.claude[/\\]projects"; then
+if [ "$exit_1" = "2" ] && echo "$saida_1" | grep -qE "\.claude[/\\]projects" && echo "$saida_1" | grep -q "\.claude-personal"; then
   ok=$((ok + 1))
-  echo "  ok   caso 1: exit 2 com mensagem citando .claude/projects"
+  echo "  ok   caso 1: exit 2 com mensagem citando .claude/projects e .claude-personal"
 else
   falhou=$((falhou + 1))
-  echo "  FALHA caso 1: esperava exit 2 com '.claude/projects', veio exit $exit_1"
+  echo "  FALHA caso 1: esperava exit 2 com '.claude/projects' e '.claude-personal', veio exit $exit_1"
   echo "$saida_1" | sed 's/^/    /'
 fi
 
@@ -400,6 +401,43 @@ else
   echo "  FALHA caso 10: exit $exit_10; stdout: $(cat "$OUT_10" | tr '
 ' ' '); stderr: $(head -2 "$ERR_10" | tr '
 ' ' ')"
+fi
+
+echo ""
+echo "== CASO 11: transcript em .claude-personal/projects e aceito ==="
+# Cria diretório de teste na conta pessoal
+mkdir -p "$RFMHOME/.claude-personal/projects/test-proj-pessoal"
+PESSOAL_PROJ_DIR="$RFMHOME/.claude-personal/projects/test-proj-pessoal"
+PESSOAL_PROJ_DIR_M="$(cygpath -m "$PESSOAL_PROJ_DIR" 2>/dev/null || printf '%s' "$PESSOAL_PROJ_DIR")"
+
+# Cria transcript de teste em .claude-personal com mesmo formato
+PESSOAL_TRANSCRIPT="$PESSOAL_PROJ_DIR/test-pessoal.jsonl"
+cat > "$PESSOAL_TRANSCRIPT" << 'JSONEOF'
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"Pergunta da conta pessoal"}]}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Resposta da conta pessoal"}]}}
+JSONEOF
+PESSOAL_TRANSCRIPT_M="$(cygpath -m "$PESSOAL_TRANSCRIPT" 2>/dev/null || printf '%s' "$PESSOAL_TRANSCRIPT")"
+
+STDIN_OUT_11="$RAIZ/stdin-11.txt"
+STDIN_OUT_11_M="$(cygpath -m "$STDIN_OUT_11" 2>/dev/null || printf '%s' "$STDIN_OUT_11")"
+
+saida_11=$(DUBLE_MODO=transfer \
+DUBLE_STDIN_OUT="$STDIN_OUT_11_M" \
+RFM_TEST=1 RFM_HOME="$RFMHOME_M" \
+RFM_ROOT="$RFMHOME_M/.rainforest" CLAUDE_PROJECT_DIR="$RFMHOME_M" \
+CODEX_CMD="node $DUBLE_M" \
+node "$PLUGIN/scripts/transferir-para-codex.cjs" \
+  --source "$PESSOAL_TRANSCRIPT_M" \
+  --cwd "$CWD_M" 2>&1)
+exit_11=$?
+
+if [ "$exit_11" = "0" ] && echo "$saida_11" | tail -1 | grep -q "^codex resume"; then
+  ok=$((ok + 1))
+  echo "  ok   caso 11: transcript em .claude-personal/projects e aceito"
+else
+  falhou=$((falhou + 1))
+  echo "  FALHA caso 11: esperava exit 0 com 'codex resume' na última linha, veio exit $exit_11"
+  echo "$saida_11" | tail -3 | sed 's/^/    /'
 fi
 
 echo ""

@@ -859,6 +859,73 @@ fi
 rm -rf "$MUTCD" "$HOMEDIVERGE"
 
 echo
+echo "== skills divergentes entre config dirs =="
+HOMESKILLS="$SBP/home-skills"
+mkdir -p "$HOMESKILLS/.claude/skills/x" "$HOMESKILLS/.claude-personal/skills/x"
+mkdir -p "$HOMESKILLS/.claude/plugins" "$HOMESKILLS/.claude-personal/plugins"
+printf 'aaa' > "$HOMESKILLS/.claude/skills/x/SKILL.md"
+printf 'bbbbbb' > "$HOMESKILLS/.claude-personal/skills/x/SKILL.md"
+SKILL_DIV="$( ( cd "$SRC" && CLAUDE_CONFIG_DIR= USERPROFILE="$HOMESKILLS" HOME="$HOMESKILLS" RFM_ROOT="$SBP/dados" \
+  node "$SRC/scripts/saude.cjs" --json 2>/dev/null ) | node -e '
+  let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+    try {
+      const a = JSON.parse(d).find(x => x.item === "skills-divergentes");
+      console.log(a ? a.nivel + " " + a.detalhe : "ausente");
+    } catch { console.log("erro"); }
+  })' )"
+checa "N1. skills divergentes em 2 dirs avisam com tamanhos" "aviso" "x: .claude 3 B, .claude-personal 6 B" "$SKILL_DIV"
+
+# Cópias iguais nao geram achado
+rm -rf "$HOMESKILLS"
+mkdir -p "$HOMESKILLS/.claude/skills/y" "$HOMESKILLS/.claude-personal/skills/y"
+mkdir -p "$HOMESKILLS/.claude/plugins" "$HOMESKILLS/.claude-personal/plugins"
+printf 'igual' > "$HOMESKILLS/.claude/skills/y/SKILL.md"
+printf 'igual' > "$HOMESKILLS/.claude-personal/skills/y/SKILL.md"
+SKILL_IGUAL="$( ( cd "$SRC" && CLAUDE_CONFIG_DIR= USERPROFILE="$HOMESKILLS" HOME="$HOMESKILLS" RFM_ROOT="$SBP/dados" \
+  node "$SRC/scripts/saude.cjs" --json 2>/dev/null ) | node -e '
+  let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+    try {
+      const a = JSON.parse(d).find(x => x.item === "skills-divergentes");
+      console.log(a ? a.nivel + " " + a.detalhe : "ausente");
+    } catch { console.log("erro"); }
+  })' )"
+checa "N2. skills iguais em 2 dirs nao geram achado" "ausente" "ausente" "$SKILL_IGUAL"
+
+# Skill numa pasta só nao gera achado
+rm -rf "$HOMESKILLS"
+mkdir -p "$HOMESKILLS/.claude/skills/z" "$HOMESKILLS/.claude/plugins"
+printf 'sozinha' > "$HOMESKILLS/.claude/skills/z/SKILL.md"
+SKILL_UMA="$( ( cd "$SRC" && CLAUDE_CONFIG_DIR= USERPROFILE="$HOMESKILLS" HOME="$HOMESKILLS" RFM_ROOT="$SBP/dados" \
+  node "$SRC/scripts/saude.cjs" --json 2>/dev/null ) | node -e '
+  let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+    try {
+      const a = JSON.parse(d).find(x => x.item === "skills-divergentes");
+      console.log(a ? a.nivel + " " + a.detalhe : "ausente");
+    } catch { console.log("erro"); }
+  })' )"
+checa "N3. skill numa pasta so nao gera achado" "ausente" "ausente" "$SKILL_UMA"
+
+# Link quebrado em skills/ nao derruba o painel: vira aviso nomeado (revisao da
+# zerar-issues-16 — antes, `Erro fatal: ENOENT` e exit 1).
+rm -rf "$HOMESKILLS"
+mkdir -p "$HOMESKILLS/.claude/skills" "$HOMESKILLS/.claude-personal/skills" "$HOMESKILLS/alvo-sumido"
+mkdir -p "$HOMESKILLS/.claude/plugins" "$HOMESKILLS/.claude-personal/plugins"
+node -e 'require("fs").symlinkSync(require("path").resolve(process.argv[1]), process.argv[2], "junction")' \
+  "$HOMESKILLS/alvo-sumido" "$HOMESKILLS/.claude/skills/quebrada"
+rmdir "$HOMESKILLS/alvo-sumido"
+SKILL_QUEBRADA="$( ( cd "$SRC" && CLAUDE_CONFIG_DIR= USERPROFILE="$HOMESKILLS" HOME="$HOMESKILLS" RFM_ROOT="$SBP/dados" \
+  node "$SRC/scripts/saude.cjs" --json 2>/dev/null ) | node -e '
+  let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
+    try {
+      const a = JSON.parse(d).find(x => x.item === "skills-divergentes");
+      console.log(a ? a.nivel + " " + a.detalhe : "ausente");
+    } catch { console.log("erro"); }
+  })' )"
+checa "N4. link quebrado em skills/ avisa e o painel sai inteiro" "aviso" ".claude/skills/quebrada: nao consegui ler" "$SKILL_QUEBRADA"
+
+rm -rf "$HOMESKILLS"
+
+echo
 echo "== o fluxo diz de QUEM e a branch, nao so que ha trabalho aberto (Issue #25) =="
 # 2026-08-20: esta checagem imprimiu `1 trabalho(s) em aberto -> revisar` 20 minutos
 # antes de a sessao commitar naquela mesma branch — que era de outra sessao. Ela tinha

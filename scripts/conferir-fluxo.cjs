@@ -34,6 +34,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
+const { contarOcorrencias } = require(path.join(__dirname, '..', 'hooks', 'lib', 'contar-ocorrencias.cjs'));
 
 // A raiz é a do PROJETO em que se trabalha, mesma cadeia do estado.cjs
 const RAIZ = process.env.RFM_ESTADO_ROOT
@@ -228,9 +229,10 @@ function cmdCobertura() {
   // Extrai D<n> mencionados em tarefas
   const decisoes_citadas = new Set();
   const erros = [];
+  const paralelasComArquivos = []; // Para checar overlaps
 
   for (const tarefa of tarefas) {
-    const { numero, nome, atende } = tarefa;
+    const { numero, nome, atende, tipo, paralela, dependeDe, arquivos, mutacao } = tarefa;
 
     // Verifica se atende está vazio/ausente
     if (!atende || atende.trim() === '') {
@@ -264,9 +266,82 @@ function cmdCobertura() {
     // tem o que re-rodar, e o veredito volta a ser a prosa de quem implementou —
     // exatamente o arranjo que o cabeçalho do `conferir-entrega.cjs` já condena.
     // Inferir o alvo sozinho seria outro projeto; declarar é uma linha do plano.
-    const falha_mutacao = conferirBlocoMutacao(tarefa.mutacao);
+    const falha_mutacao = conferirBlocoMutacao(mutacao);
     if (falha_mutacao) {
       erros.push(`tarefa ${numero}. ${nome} ${falha_mutacao}`);
+    }
+
+    // D14: paralela: sim com depende de ≠ nenhuma
+    if (paralela === 'sim' && dependeDe !== 'nenhuma') {
+      erros.push(`tarefa ${numero}. ${nome} paralela: sim mas depende de: ${dependeDe}`);
+    }
+
+    // D14: tipo fora da lista permitida
+    const tipos_permitidos = ['implementar', 'configurar', 'pesquisar', 'pesquisa', 'teste', 'docs'];
+    if (tipo && !tipos_permitidos.includes(tipo)) {
+      erros.push(`tarefa ${numero}. ${nome} [tipo: ${tipo}] não está na lista permitida`);
+    }
+
+    // D14: arquivos com path absoluto ou saindo do repositório
+    for (const arquivo of arquivos) {
+      if (path.isAbsolute(arquivo)) {
+        erros.push(`tarefa ${numero}. ${nome} arquivos: ${arquivo} é caminho absoluto`);
+      }
+      if (arquivo.split(/[\\/]/).includes('..')) {
+        erros.push(`tarefa ${numero}. ${nome} arquivos: ${arquivo} sai do repositório`);
+      }
+    }
+
+    // Guarda tarefas paralela: sim para checar overlaps depois
+    if (paralela === 'sim') {
+      paralelasComArquivos.push({ numero, nome, arquivos });
+    }
+
+    // D14: Campos desconhecidos na tarefa
+    const { corpo, corpo_cerca } = extrairCorpoTarefa(conteudo_plano, numero);
+    const campos_desconhecidos = extrairCamposDesconhecidos(corpo, corpo_cerca);
+    for (const campo of campos_desconhecidos) {
+      erros.push(`tarefa ${numero}. ${nome} campo desconhecido: ${campo}`);
+    }
+
+    // D15: Conta ocorrências de de: no arquivo da mutacao
+    if (mutacao && mutacao.campos.de && !mutacao.campos.de.toLowerCase().includes('n/a')) {
+      const arquivo_mutacao = mutacao.campos.arquivo ? mutacao.campos.arquivo.replace(/^`|`$/g, '') : null;
+      const de = mutacao.campos.de.replace(/^`|`$/g, '');
+      const raiz = mutacao.campos.raiz ? mutacao.campos.raiz.replace(/^`|`$/g, '') : '';
+
+      if (arquivo_mutacao) {
+        const caminho_arquivo = path.resolve(RAIZ, raiz || '', arquivo_mutacao);
+        try {
+          if (fs.existsSync(caminho_arquivo)) {
+            const conteudo_arquivo = fs.readFileSync(caminho_arquivo, 'utf-8');
+            const ocorrencias = contarOcorrencias(conteudo_arquivo, de);
+            if (ocorrencias > 1) {
+              erros.push(`tarefa ${numero}. ${nome} de: aparece ${ocorrencias} vezes em ${arquivo_mutacao}`);
+            } else if (ocorrencias === 0) {
+              console.log(`de: ainda nao casa em ${arquivo_mutacao} — codigo a nascer?`);
+            }
+          }
+        } catch (_) {
+          // Arquivo não existe - não é erro (D15 diz "arquivo ausente não é recusa")
+        }
+      }
+    }
+  }
+
+  // D14: Duas tarefas paralela: sim com overlap em arquivos
+  for (let i = 0; i < paralelasComArquivos.length; i++) {
+    for (let j = i + 1; j < paralelasComArquivos.length; j++) {
+      const t1 = paralelasComArquivos[i];
+      const t2 = paralelasComArquivos[j];
+      for (const arq1 of t1.arquivos) {
+        for (const arq2 of t2.arquivos) {
+          // Mesmo arquivo ou glob que casa
+          if (arq1 === arq2 || globMatches(arq1, arq2) || globMatches(arq2, arq1)) {
+            erros.push(`tarefa ${t1.numero}. ${t1.nome} e tarefa ${t2.numero}. ${t2.nome} compartilham arquivos: ${arq1}`);
+          }
+        }
+      }
     }
   }
 
@@ -411,7 +486,43 @@ function extrairTarefas(conteudo) {
         }
       }
 
-      tarefas.push({ numero, nome, atende, tipo, prova, provaMalformada, provaNaBase, mutacao: extrairMutacao(corpo, corpo_cerca) });
+      // Procura campo arquivos: e extrai os caminhos
+      let arquivos = [];
+      for (let k = 0; k < corpo.length; k++) {
+        if (!corpo_cerca[k] && corpo[k].startsWith('arquivos:')) {
+          const match = corpo[k].match(/arquivos:\s*(.+)/);
+          if (match) {
+            const items = match[1];
+            const matches = items.match(/`([^`]+)`/g);
+            if (matches) {
+              for (const m of matches) {
+                arquivos.push(m.replace(/`/g, ''));
+              }
+            }
+          }
+          break;
+        }
+      }
+
+      // Procura campo depende de:
+      let dependeDe = 'nenhuma';
+      for (let k = 0; k < corpo.length; k++) {
+        if (!corpo_cerca[k] && corpo[k].startsWith('depende de:')) {
+          dependeDe = corpo[k].substring('depende de:'.length).trim();
+          break;
+        }
+      }
+
+      // Procura campo paralela:
+      let paralela = 'nao';
+      for (let k = 0; k < corpo.length; k++) {
+        if (!corpo_cerca[k] && corpo[k].startsWith('paralela:')) {
+          paralela = corpo[k].substring('paralela:'.length).trim().toLowerCase();
+          break;
+        }
+      }
+
+      tarefas.push({ numero, nome, atende, tipo, prova, provaMalformada, provaNaBase, arquivos, dependeDe, paralela, mutacao: extrairMutacao(corpo, corpo_cerca) });
     }
   }
 
@@ -519,6 +630,90 @@ function conferirBlocoMutacao(bloco) {
   }
 
   return null;
+}
+
+/**
+ * Extrai o corpo de uma tarefa específica do plano por seu número.
+ */
+function extrairCorpoTarefa(conteudo_plano, numero_tarefa) {
+  const linhas = conteudo_plano.split('\n');
+  const cerca = mascaraDeCerca(linhas);
+
+  for (let i = 0; i < linhas.length; i++) {
+    if (!cerca[i] && linhas[i].match(new RegExp(`^### ${numero_tarefa}\\.`))) {
+      const corpo = [];
+      const corpo_cerca = [];
+      for (let j = i + 1; j < linhas.length; j++) {
+        if (!cerca[j] && (linhas[j].startsWith('###') || linhas[j].startsWith('##'))) {
+          break;
+        }
+        corpo.push(linhas[j]);
+        corpo_cerca.push(cerca[j]);
+      }
+      return { corpo, corpo_cerca };
+    }
+  }
+  return { corpo: [], corpo_cerca: [] };
+}
+
+/**
+ * Confere campos desconhecidos no corpo de uma tarefa (D14).
+ * Retorna uma lista de nomes de campos desconhecidos encontrados.
+ */
+function extrairCamposDesconhecidos(corpo, cerca) {
+  const conhecidos_top = new Set([
+    'atende', 'arquivos', 'depende de', 'paralela', 'prova',
+    'prova-na-base', 'mutacao', 'motivo', 'pronto quando'
+  ]);
+  const conhecidos_subcampos = new Set([
+    'arquivo', 'de', 'para', 'bateria', 'fixture', 'raiz', 'timeout', 'motivo'
+  ]);
+
+  const desconhecidos = [];
+  let em_mutacao = false;
+
+  for (let k = 0; k < corpo.length; k++) {
+    if (cerca && cerca[k]) continue; // Pula linhas em cerca de código
+
+    const linha = corpo[k];
+
+    // `pronto quando:` e o ultimo campo do template; o que vem depois e prosa,
+    // e prosa tem dois-pontos ("nasceu:", "emenda 2026-09-08:") sem ser campo.
+    if (/^pronto quando:/.test(linha)) break;
+
+    // Detecta bloco mutacao:
+    if (linha.startsWith('mutacao:')) {
+      em_mutacao = true;
+      continue;
+    }
+
+    // Sai do bloco mutacao: quando encontra uma linha não-indentada que não é um subcampo
+    if (em_mutacao && linha && !/^\s/.test(linha)) {
+      em_mutacao = false;
+    }
+
+    // Campo = linha `chave:` na coluna 0 (ou subcampo indentado de `mutacao:`),
+    // chave minuscula de ate tres palavras — frase de prosa nao vira campo.
+    const match = linha.match(/^(\s*)([a-z][a-z0-9-]*(?: [a-z0-9-]+){0,2}):(.*)$/);
+    if (!match) continue;
+
+    const indentacao = match[1];
+    const campo = match[2].toLowerCase();
+
+    // Se está indentado, é subcampo de mutacao:
+    if (indentacao) {
+      if (em_mutacao && !conhecidos_subcampos.has(campo)) {
+        desconhecidos.push(`${campo}:`);
+      }
+    } else {
+      // Campo no topo
+      if (!conhecidos_top.has(campo)) {
+        desconhecidos.push(`${campo}:`);
+      }
+    }
+  }
+
+  return desconhecidos;
 }
 
 // ================================================================ creep

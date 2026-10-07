@@ -756,7 +756,23 @@ function contemConstrucaoIlegivel(str) {
  * comando; `ilegivel: true` (com ou sem `interno`) e tratado como INCERTO —
  * mesma postura conservadora que `$(`/crase solto ja recebe nos tres gates.
  */
-function desempacotarWrapperDeString(segmento, { ferramenta } = {}) {
+/**
+ * #405: caminho de script que MISTURA texto literal com expansao de variavel
+ * (`scripts/$b.sh`, `"scripts/$b.sh"`) — a variavel escolhe QUAL script roda,
+ * e isso e o mesmo caso de um script literal que o gate nao le por inteiro.
+ * Token que e SO a expansao (`$CMD`, `"$t"`, `"$@"`) nao e caminho: pode ser
+ * `-c "gh issue close 1"` inteiro, e continua ilegivel. Substituicao de
+ * comando (`$(`, crase) nunca entra.
+ */
+function caminhoComVariavelELiteral(str) {
+  if (!str.includes('$') || /\$\(|`/.test(str)) return false;
+  const semAspas = str.replace(/["']/g, '');
+  const semExpansao = semAspas.replace(/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*|\$[@*#?$!0-9-]/g, '');
+  return semExpansao.length > 0 && !semExpansao.startsWith('-');
+}
+
+function desempacotarWrapperDeString(segmento, opcoes = {}) {
+  const { ferramenta } = opcoes;
   const p1 = extrairPrimeiroToken(segmento);
   if (!p1) return { interno: null, ilegivel: false };
   const exe = normalizarNomeExecutavel(p1.tok);
@@ -868,6 +884,9 @@ function desempacotarWrapperDeString(segmento, { ferramenta } = {}) {
     }
 
     const coladoNoToken = /^[^\s]*/.exec(current.resto)[0];
+    if (opcoes.scriptComVariavel === 'desconhecido' && caminhoComVariavelELiteral(current.tok + coladoNoToken)) {
+      return { interno: null, ilegivel: false };
+    }
     if (contemConstrucaoIlegivel(current.tok + coladoNoToken)) {
       return { interno: null, ilegivel: true };
     }

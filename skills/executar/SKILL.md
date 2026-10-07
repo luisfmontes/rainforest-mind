@@ -134,11 +134,11 @@ teammate ocioso pendurado.
 ## Integração confere na fonte
 
 Entrega de agente não se aceita pelo relato (regra 12). **Antes de despachar**,
-capture o estado do repo principal:
+grave o estado do repo principal com cabeçalho de identidade:
 
 ```
 PORCELAIN_ANTES="/tmp/porcelain-antes.txt"
-git -C <principal> status --porcelain > "$PORCELAIN_ANTES"
+node scripts/conferir-entrega.cjs --gravar-sujo-antes "$PORCELAIN_ANTES" --principal <principal>
 ```
 
 Ao receber a entrega, **antes de rodar a conferência, verifique que o worktree

@@ -32,6 +32,7 @@ cp "$SRC/hooks/lib/raiz.cjs" "$SBP/hooks/lib/"
 cp "$SRC/hooks/lib/config.cjs" "$SBP/hooks/lib/"
 cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SBP/hooks/lib/"
 cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SBP/hooks/lib/"   # git pelo caminho (Issue #392)
+cp "$SRC/hooks/lib/contar-ocorrencias.cjs" "$SBP/hooks/lib/"   # conferir-fluxo conta o de: da mutacao (#397)
 # A caixa vira raiz de dados: sem marcador, resolverRaiz cairia no repo de verdade
 # e a bateria escreveria estado no .rainforest do usuario.
 touch "$SBP/FOCO.md"
@@ -1903,6 +1904,7 @@ cp "$SRC/scripts/lib/primeiro-prompt-jsonl.cjs" "$SBP/sensor-test/scripts/lib/"
 cp "$SRC/scripts/lib/extrair-veredito.cjs" "$SBP/sensor-test/scripts/lib/"
 cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SBP/sensor-test/hooks/lib/"
 cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SBP/sensor-test/hooks/lib/"   # git pelo caminho (Issue #392)
+cp "$SRC/hooks/lib/contar-ocorrencias.cjs" "$SBP/sensor-test/hooks/lib/"   # conferir-fluxo conta o de: da mutacao (#397)
 cd "$SBP/sensor-test" || exit 1
 ES="node scripts/estado.cjs"
 

@@ -371,14 +371,24 @@ function limparTemporariosOrfaos() {
  */
 function comandoDaBateria(bateria) {
   if (process.platform === 'win32') {
-    // Tenta executar 'bash' de forma não-interativa para testar se existe
-    try {
-      const r = spawnSync('bash', ['-c', 'exit 0'], { shell: false });
-      // Se funcionou (exit 0 ou qualquer outro exit, não error), bash existe
-      if (!r.error) {
-        return { cmd: 'bash', args: ['-c', bateria], shell: false };
-      }
-    } catch { /* bash não existe */ }
+    // Tenta resolver 'bash' via PATH para testar se existe
+    const caminhoDoShell = caminhoExecutavel('bash');
+    // Verifica se o bash resolvido é do WSL (em System32 ou WindowsApps)
+    if (caminhoDoShell && /\\(system32|windowsapps)\\/i.test(caminhoDoShell)) {
+      process.stderr.write(`nao-verificavel: bash do WSL — ${caminhoDoShell}\n`);
+      console.error(`RECUSADO: bash resolvido é do WSL, não pode rodar bateria`);
+      process.exit(69);
+    }
+    // Se achou um bash válido (não WSL), tenta executar para confirmar
+    if (caminhoDoShell) {
+      try {
+        const r = spawnSync(caminhoDoShell, ['-c', 'exit 0'], { shell: false });
+        // Se funcionou (exit 0 ou qualquer outro exit, não error), bash existe
+        if (!r.error) {
+          return { cmd: caminhoDoShell, args: ['-c', bateria], shell: false };
+        }
+      } catch { /* bash não conseguiu executar */ }
+    }
 
     // Windows, sem bash: rejeita bateria com encadeamento de shell
     if (/[;&|]/.test(bateria)) {
@@ -653,6 +663,13 @@ function main() {
   if (baselineRes.r.status === null) {
     console.error(`RECUSADO: baseline morta pelo sinal ${baselineRes.r.signal}, sem exit code.`);
     process.exit(4);
+  }
+  if (baselineRes.r.status === 126 || baselineRes.r.status === 127) {
+    process.stderr.write(`nao-verificavel: bateria nao executa — comando não encontrado (exit ${baselineExit})\n`);
+    console.error(`RECUSADO: baseline com exit ${baselineExit} (comando não encontrado).`);
+    console.error('  O comando da bateria não pode ser executado no baseline.');
+    console.error('  Conserte o caminho do comando ou o PATH antes de invocar esta catraca.');
+    process.exit(69);
   }
   if (baselineExit !== 0) {
     console.error(`RECUSADO: baseline NAO-VERDE (exit ${baselineExit}).`);

@@ -2811,6 +2811,111 @@ ERR_337=$(
 )
 echo "$ERR_337" | grep -qF 'bash "$t" passa' && test_fail "(#337) bash -c \"\$x\" traz a orientação de bash \"\$t\" (não devia)" || test_ok "(#337) bash -c \"\$x\" sem a orientação de bash \"\$t\""
 
+# (#405) bash scripts/$b.sh com variavel no caminho → exit 0 (passa)
+echo
+echo '== (#405) laco com bash scripts/$b.sh passa =='
+
+# Caso 405-1: for b in a b; do bash scripts/$b.sh; done → exit 0
+PAYLOAD_405a=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" 'for b in a b; do bash scripts/$b.sh; done')
+EXIT_405a=$(
+  export PATH="$SBP/bin:$PATH"
+  echo "$PAYLOAD_405a" | node "$SRC/hooks/gate-fechar-issue.cjs" >/dev/null 2>&1
+  echo $?
+)
+[ "$EXIT_405a" -eq "0" ] && test_ok "(#405-1) for b in a b; do bash scripts/\$b.sh; done → exit 0" || test_fail "(#405-1) for b in a b; do bash scripts/\$b.sh; done saiu $EXIT_405a (esperado 0)"
+
+# Caso 405-2: bash scripts/$b.sh → exit 0
+PAYLOAD_405b=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" 'bash scripts/$b.sh')
+EXIT_405b=$(
+  export PATH="$SBP/bin:$PATH"
+  echo "$PAYLOAD_405b" | node "$SRC/hooks/gate-fechar-issue.cjs" >/dev/null 2>&1
+  echo $?
+)
+[ "$EXIT_405b" -eq "0" ] && test_ok "(#405-2) bash scripts/\$b.sh → exit 0" || test_fail "(#405-2) bash scripts/\$b.sh saiu $EXIT_405b (esperado 0)"
+
+# Caso 405-3: bash "scripts/$b.sh" (aspas duplas) → exit 0
+PAYLOAD_405c=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" 'bash "scripts/$b.sh"')
+EXIT_405c=$(
+  export PATH="$SBP/bin:$PATH"
+  echo "$PAYLOAD_405c" | node "$SRC/hooks/gate-fechar-issue.cjs" >/dev/null 2>&1
+  echo $?
+)
+[ "$EXIT_405c" -eq "0" ] && test_ok "(#405-3) bash \"scripts/\$b.sh\" → exit 0" || test_fail "(#405-3) bash \"scripts/\$b.sh\" saiu $EXIT_405c (esperado 0)"
+
+# Caso de integração: gate-subagente-sem-gh com agent_id e bash scripts/$b.sh
+# O gate-fechar-issue passa scriptComVariavel: 'desconhecido', mas gate-subagente-sem-gh
+# não passa a opção, então continua barrando script com variável
+PAYLOAD_405_SEM_GH=$(node -e 'const [cwd,cmd,id]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,agent_id:id,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" 'bash scripts/$b.sh' 'agent-xyz')
+EXIT_405_SEM_GH=$(
+  export PATH="$SBP/bin:$PATH"
+  echo "$PAYLOAD_405_SEM_GH" | node "$SRC/hooks/gate-subagente-sem-gh.cjs" >/dev/null 2>&1
+  echo $?
+)
+[ "$EXIT_405_SEM_GH" -eq "2" ] && test_ok "(#405 integração) gate-subagente-sem-gh com agent_id e bash scripts/\$b.sh sai 2" || test_fail "(#405 integração) gate-subagente-sem-gh com agent_id e bash scripts/\$b.sh saiu $EXIT_405_SEM_GH (esperado 2)"
+
+# (#407) --body-file criado por heredoc no MESMO comando: o arquivo nao existe
+# quando o gate olha (PreToolUse), e o corpo esta no proprio comando. O gate
+# decide pelo corpo do heredoc com as mesmas regras do arquivo existente.
+echo
+echo '== (#407) --body-file criado por heredoc no mesmo comando =='
+p407() { node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$1"; }
+g407() { # payload, GH_COM_MARCADOR -> exit; stderr em $SBP/err-407
+  ( export PATH="$SBP/bin:$PATH"; export GH_COM_MARCADOR="$2"
+    printf '%s' "$1" | node "$SRC/hooks/gate-fechar-issue.cjs" >/dev/null 2>"$SBP/err-407"; echo $? )
+}
+rm -f "$SBP/x407.md" "$SBP/y407.md"
+CMD_407a="$(printf "cat > x407.md <<'EOF'\nCloses #12\nEOF\ngh pr create --title t --body-file x407.md")"
+E=$(g407 "$(p407 "$CMD_407a")" "")
+[ "$E" -eq 2 ] && ! grep -q "não consegui ler" "$SBP/err-407" \
+  && test_ok "(407-1) heredoc cria o body-file com palavra de fechamento: decide pelo conteudo (exit 2 sem marcador)" \
+  || test_fail "(407-1) heredoc com Closes #12 saiu $E: $(head -3 "$SBP/err-407" | tr '\n' ' ')"
+E=$(g407 "$(p407 "$CMD_407a")" 1)
+[ "$E" -eq 0 ] && test_ok "(407-2) mesmo heredoc, com marcador de evidencia → exit 0" \
+  || test_fail "(407-2) heredoc com marcador saiu $E: $(head -3 "$SBP/err-407" | tr '\n' ' ')"
+CMD_407c="$(printf "cat > x407.md <<'EOF'\nsem palavra de fechamento\nEOF\ngh pr create --title t --body-file x407.md")"
+E=$(g407 "$(p407 "$CMD_407c")" "")
+[ "$E" -eq 0 ] && test_ok "(407-3) heredoc sem palavra de fechamento → exit 0" \
+  || test_fail "(407-3) heredoc sem fechamento saiu $E: $(head -3 "$SBP/err-407" | tr '\n' ' ')"
+CMD_407d="$(printf "tee x407.md <<'EOF' >/dev/null\nCloses #12\nEOF\ngh pr create --title t --body-file x407.md")"
+E=$(g407 "$(p407 "$CMD_407d")" "")
+[ "$E" -eq 2 ] && ! grep -q "não consegui ler" "$SBP/err-407" \
+  && test_ok "(407-4) tee P <<EOF tambem cria o corpo" \
+  || test_fail "(407-4) tee saiu $E: $(head -3 "$SBP/err-407" | tr '\n' ' ')"
+E=$(g407 "$(p407 'gh pr create --title t --body-file y407.md')" "")
+[ "$E" -eq 2 ] && grep -q "grave o corpo antes\|Grave o corpo antes" "$SBP/err-407" \
+  && test_ok "(407-5) sem arquivo e sem heredoc que o crie: ilegivel nomeia a saida" \
+  || test_fail "(407-5) sem arquivo saiu $E: $(head -3 "$SBP/err-407" | tr '\n' ' ')"
+CMD_407f="$(printf "cat > outro.md <<'EOF'\nCloses #12\nEOF\ngh pr create --title t --body-file y407.md")"
+E=$(g407 "$(p407 "$CMD_407f")" 1)
+[ "$E" -eq 2 ] && grep -q "Grave o corpo antes" "$SBP/err-407" \
+  && test_ok "(407-6) heredoc que cria OUTRO arquivo nao vale como corpo" \
+  || test_fail "(407-6) heredoc de outro arquivo saiu $E: $(head -3 "$SBP/err-407" | tr '\n' ' ')"
+# (407-7) o arquivo JA existe com corpo benigno e o heredoc o reescreve com
+# Closes: o gh le o corpo novo, entao o gate decide por ele (revisao da
+# zerar-issues-16 — lia o disco primeiro e passava com o conteudo velho).
+printf 'corpo antigo sem fechamento\n' > "$SBP/x407.md"
+E=$(g407 "$(p407 "$CMD_407a")" "")
+[ "$E" -eq 2 ] \
+  && test_ok "(407-7) heredoc que REESCREVE arquivo existente decide pelo corpo novo" \
+  || test_fail "(407-7) arquivo existente com heredoc novo saiu $E: $(head -3 "$SBP/err-407" | tr '\n' ' ')"
+rm -f "$SBP/x407.md"
+# (407-8..10) revisao 3: o shell deixa o ULTIMO escritor e os acrescimos; o
+# gate lia so o primeiro heredoc. E corpo com $N em delimitador nu so se le
+# rodando o shell.
+CMD_407h="$(printf "cat > x407.md <<'EOF'\nbenigno\nEOF\ncat > x407.md <<'EOF'\nCloses #12\nEOF\ngh pr create --title t --body-file x407.md")"
+E=$(g407 "$(p407 "$CMD_407h")" "")
+[ "$E" -eq 2 ] && test_ok "(407-8) dois heredocs no mesmo arquivo: o segundo (Closes) conta" \
+  || test_fail "(407-8) segundo heredoc com Closes saiu $E"
+CMD_407i="$(printf "cat > x407.md <<'EOF'\nbenigno\nEOF\ncat >> x407.md <<'EOF'\nCloses #12\nEOF\ngh pr create --title t --body-file x407.md")"
+E=$(g407 "$(p407 "$CMD_407i")" "")
+[ "$E" -eq 2 ] && test_ok "(407-9) cat >> acrescenta Closes depois de heredoc benigno: conta" \
+  || test_fail "(407-9) cat >> com Closes saiu $E"
+CMD_407j="$(printf 'cat > x407.md <<EOF\nCloses #$N\nEOF\ngh pr create --title t --body-file x407.md')"
+E=$(g407 "$(p407 "$CMD_407j")" "")
+[ "$E" -eq 2 ] && test_ok "(407-10) heredoc sem aspas com \$N: ilegivel, nega" \
+  || test_fail "(407-10) heredoc com \$N saiu $E"
+rm -f "$SBP/x407.md"
+
 # (#362) laco com bash $b sem aspas → exit 2 citando injetar -c
 echo
 echo '== (#362) laco com bash $b sem aspas → exit 2 citando injetar -c =='

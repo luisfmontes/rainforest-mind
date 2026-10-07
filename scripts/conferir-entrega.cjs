@@ -95,14 +95,15 @@ class Conferencia {
         maxBuffer: 32 * 1024 * 1024,
       });
     } catch {
-      return [127, "git nao encontrado no PATH"];
+      return [127, "git nao encontrado no PATH", ""];
     }
     if (!r || (r.error && r.error.code === "ENOENT")) {
-      return [127, "git nao encontrado no PATH"];
+      return [127, "git nao encontrado no PATH", ""];
     }
-    if (r.error) return [127, String(r.error.message || r.error)];
-    const saida = `${r.stdout || ""}${r.stderr || ""}`.trimEnd();
-    return [r.status === null ? 127 : r.status, saida];
+    if (r.error) return [127, String(r.error.message || r.error), ""];
+    const saida = String(r.stdout || "").trimEnd();
+    const erro = String(r.stderr || "").trimEnd();
+    return [r.status === null ? 127 : r.status, saida, erro];
   }
 
   // -- relato ----------------------------------------------------------
@@ -112,11 +113,14 @@ class Conferencia {
   }
 
   mostra(dir, ...args) {
-    const [rc, out] = this.git(dir, ...args);
+    const [rc, out, erro] = this.git(dir, ...args);
     console.log(`   $ git -C ${dir} ${args.join(" ")}`);
     const linhas = (out || "(vazio)").split(/\r?\n/);
     for (const linha of linhas.length ? linhas : ["(vazio)"]) {
       console.log(`     ${linha}`);
+    }
+    if (erro) {
+      this.aviso(`git stderr: ${erro}`);
     }
     return [rc, out];
   }
@@ -249,8 +253,10 @@ const OPCOES = {
   base: { dest: "base", exige: true },
   commit: { dest: "commit", padrao: "HEAD" },
   "repo-principal": { dest: "repo_principal" },
+  principal: { dest: "principal" },
   "head-antes": { dest: "head_antes" },
   "sujo-antes": { dest: "sujo_antes" },
+  "gravar-sujo-antes": { dest: "gravar_sujo_antes" },
   "permite-sujeira": { dest: "permite_sujeira", flag: true },
   paralelo: { dest: "paralelo", flag: true },
   // Repetivel: o briefing costuma prometer mais de um arquivo por tarefa.
@@ -278,8 +284,11 @@ function parseArgs(argv, permitirSemObrigatorios = false) {
     i += 2;
   }
   if (!permitirSemObrigatorios) {
-    for (const [chave, o] of Object.entries(OPCOES)) {
-      if (o.exige && !a[o.dest]) erroArgs(`opcao obrigatoria faltando: --${chave}`);
+    // Se `--gravar-sujo-antes` está presente, não exige outras obrigatorias
+    if (!a.gravar_sujo_antes) {
+      for (const [chave, o] of Object.entries(OPCOES)) {
+        if (o.exige && !a[o.dest]) erroArgs(`opcao obrigatoria faltando: --${chave}`);
+      }
     }
   }
   return a;
@@ -339,7 +348,9 @@ function arquivosAgentComStatus(c, wt, base, commit) {
   return mapa;
 }
 
-/** Extrai conjunto de caminhos sujos ANTES do despacho (do arquivo porcelain). */
+/** Extrai conjunto de caminhos sujos ANTES do despacho (do arquivo porcelain).
+ * Pula primeira linha se começar com `# toplevel:` e devolve também o toplevel
+ * se presente. */
 function caminhosSujoAntes(arquivo) {
   try {
     let conteudo = fs.readFileSync(arquivo, "utf8");
@@ -348,7 +359,19 @@ function caminhosSujoAntes(arquivo) {
       conteudo = conteudo.slice(1);
     }
     const linhas = conteudo.split(/\r?\n/).map((l) => l.trimEnd()).filter((l) => l.length > 0);
-    return new Set(linhas.map((l) => {
+
+    let toplevel = null;
+    let inicioLinhasPortcelain = 0;
+
+    // Verifica se primeira linha tem cabeçalho # toplevel:
+    if (linhas.length > 0 && linhas[0].startsWith("# toplevel:")) {
+      toplevel = linhas[0].slice("# toplevel:".length).trim();
+      inicioLinhasPortcelain = 1;
+    }
+
+    const caminhos = new Set();
+    for (let i = inicioLinhasPortcelain; i < linhas.length; i++) {
+      const l = linhas[i];
       // Descarta 3 primeiros caracteres do status, trata rename ("A -> B")
       let p = l.slice(3);
       const partes = p.split(" -> ");
@@ -365,10 +388,27 @@ function caminhosSujoAntes(arquivo) {
           return c;
         });
       }
-      return p.replace(/\\/g, "/").toLowerCase();
-    }));
+      caminhos.add(p.replace(/\\/g, "/").toLowerCase());
+    }
+    return { caminhos, toplevel };
   } catch (e) {
     return null; // arquivo inexistente ou ilegível
+  }
+}
+
+/** Grava snapshot de --sujo-antes com cabeçalho de toplevel. */
+function gravarSujoAntes(arquivo, principal, porcelain, c) {
+  try {
+    const [rcTop, topPrincipal] = c.git(principal, "rev-parse", "--show-toplevel");
+    if (rcTop !== 0) {
+      process.stderr.write(`erro: nao consegui ler toplevel do principal\n`);
+      return false;
+    }
+    const linhaHeader = `# toplevel: ${topPrincipal}\n`;
+    fs.writeFileSync(arquivo, linhaHeader + porcelain, "utf8");
+    return true;
+  } catch (e) {
+    return false;
   }
 }
 
@@ -380,7 +420,25 @@ function main() {
     return 0;
   }
 
-  // Agora verifica argumentos obrigatórios
+  // Modo `--gravar-sujo-antes`: grava snapshot e sai
+  if (a.gravar_sujo_antes) {
+    if (!a.principal) erroArgs(`--gravar-sujo-antes exige --principal`);
+
+    const c = new Conferencia();
+    const [rc, porcelain] = c.git(a.principal, "status", "--porcelain");
+    if (rc !== 0) {
+      process.stderr.write(`erro: nao consegui ler status do principal\n`);
+      return 2;
+    }
+
+    if (!gravarSujoAntes(a.gravar_sujo_antes, a.principal, porcelain, c)) {
+      process.stderr.write(`erro: nao consegui gravar ${a.gravar_sujo_antes}\n`);
+      return 2;
+    }
+    return 0;
+  }
+
+  // Agora verifica argumentos obrigatórios (só se não for --gravar-sujo-antes)
   for (const [chave, o] of Object.entries(OPCOES)) {
     if (o.exige && !a[o.dest]) erroArgs(`opcao obrigatoria faltando: --${chave}`);
   }
@@ -448,6 +506,20 @@ function main() {
     c.falha(`worktree e repo principal sao o mesmo lugar (${principal})`);
   }
 
+  // Valida cabeçalho de --sujo-antes se presente
+  if (a.sujo_antes && principal) {
+    const sujoAntesResult = caminhosSujoAntes(a.sujo_antes);
+    if (sujoAntesResult && sujoAntesResult.toplevel) {
+      const [rcTopPrincipal, topPrincipal] = c.git(principal, "rev-parse", "--show-toplevel");
+      if (rcTopPrincipal === 0 && norm(sujoAntesResult.toplevel) !== norm(topPrincipal)) {
+        // D24: recusa de uso (exit 2), não reprovação da entrega (exit 1) — o
+        // snapshot errado não diz nada sobre o que o agente fez.
+        process.stderr.write(`RECUSADO: snapshot de outra arvore (${sujoAntesResult.toplevel} != ${topPrincipal})\n`);
+        return 2;
+      }
+    }
+  }
+
   // ------------------------------------------------------------------
   c.abre("De onde ele partiu — a base do commit entregue");
   const [rcLog, linha] = c.mostra(wt, "log", "--format=%H %P", "-1", a.commit);
@@ -473,7 +545,13 @@ function main() {
 
   // ------------------------------------------------------------------
   c.abre("O que ficou solto no worktree");
-  const [, st] = c.mostra(wt, "status", "--porcelain");
+  const [rcSt, st] = c.mostra(wt, "status", "--porcelain");
+  if (rcSt !== 0) {
+    // D23 (#400): o porcelain e a fonte da checagem; git que falha aqui e
+    // ambiente, nao entrega suja.
+    process.stderr.write(`nao-verificavel: git status falhou no worktree (exit ${rcSt})\n`);
+    return 69;
+  }
   const linhasSt = st ? st.split(/\r?\n/).filter((l) => l.length > 0) : [];
   const apagados = linhasSt.filter((l) => l.slice(0, 2).trim() === "D");
   if (apagados.length) {
@@ -514,6 +592,29 @@ function main() {
         `${fora.length} arquivo(s) fora do(s) escopo(s): ` +
           fora.slice(0, 5).map((x) => `${x.caminho} (${x.status})`).join(", ")
       );
+
+      // D25 (#400): baterias que citam cada arquivo fora do escopo e nao estao
+      // no diff — as vizinhas que a entrega pode ter quebrado. Aviso, nao
+      // reprova: citacao textual de nome nao prova dependencia.
+      for (const item of fora) {
+        const nome = path.basename(item.caminho);
+        const escapado = nome.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const reNome = new RegExp(`(^|[^A-Za-z0-9_.-])${escapado}($|[^A-Za-z0-9_-])`);
+        const vizinhas = [];
+        for (const pasta of ["scripts", "hooks"]) {
+          const dir = path.join(wt, pasta);
+          if (!ehDir(dir)) continue;
+          for (const f of fs.readdirSync(dir).sort()) {
+            if (!/^testa-.*\.(sh|cjs)$/.test(f)) continue;
+            const rel = `${pasta}/${f}`;
+            if (arquivos.has(rel)) continue;
+            try {
+              if (reNome.test(fs.readFileSync(path.join(dir, f), "utf8"))) vizinhas.push(rel);
+            } catch { /* bateria ilegivel: nao e vizinha conhecida */ }
+          }
+        }
+        if (vizinhas.length) c.aviso(`vizinhas de ${item.caminho}: ${vizinhas.join(", ")}`);
+      }
     } else {
       c.ok(`todos os ${arquivos.size} arquivo(s) tocados estão dentro do(s) escopo(s)`);
     }
@@ -522,7 +623,13 @@ function main() {
   // ------------------------------------------------------------------
   if (principal && ehDir(principal) && norm(principal) !== norm(wt)) {
     c.abre(`O repo principal foi tocado? (${principal})`);
-    const [, stp] = c.mostra(principal, "status", "--porcelain");
+    const [rcStp, stp] = c.mostra(principal, "status", "--porcelain");
+    if (rcStp !== 0) {
+      // D23 (#400): com o stderr fora do stdout, git que falha devolve stdout
+      // vazio — que se leria como "principal intacto". Falha aberta nao: 69.
+      process.stderr.write(`nao-verificavel: git status falhou no repo principal (exit ${rcStp})\n`);
+      return 69;
+    }
     const linhasStp = stp ? stp.split(/\r?\n/).filter((l) => l.length > 0) : [];
 
     // O rastro do PROPRIO metodo nao e sujeira do agente: `estado.cjs marcar` grava
@@ -556,7 +663,8 @@ function main() {
     }
 
     if (a.sujo_antes) {
-      const sujoAntes = caminhosSujoAntes(a.sujo_antes);
+      const sujoAntesResult = caminhosSujoAntes(a.sujo_antes);
+      const sujoAntes = sujoAntesResult ? sujoAntesResult.caminhos : new Set();
       // Compara CONJUNTO DE CAMINHOS, nao a linha inteira: o mesmo arquivo vai de `??`
       // para ` M` sem ninguem ter tocado nele.
       const caminhosSujos = linhasNaoExcluidas.map((l) => norma(caminhoDaLinha(l)));
@@ -606,7 +714,11 @@ function main() {
     }
 
     c.abre("O HEAD do repo principal se mexeu?");
-    const [, headAgora] = c.mostra(principal, "rev-parse", "HEAD");
+    const [rcHead, headAgora] = c.mostra(principal, "rev-parse", "HEAD");
+    if (rcHead !== 0 || !headAgora) {
+      process.stderr.write(`nao-verificavel: git rev-parse HEAD falhou no repo principal (exit ${rcHead})\n`);
+      return 69;
+    }
     if (!a.head_antes) {
       c.aviso("sem --head-antes; registre o HEAD antes de despachar para esta checagem valer");
     } else if (headAgora.startsWith(a.head_antes) || a.head_antes.startsWith(headAgora)) {
