@@ -1,0 +1,77 @@
+Data: 2026-10-06
+Termos: sec-default, session.append, prompt.compose, regras-inteiras
+
+$ gh issue list --state all --search "sec-default" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "session.append" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "prompt.compose" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "regras-inteiras" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "sec-default" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "session.append" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "prompt.compose" --limit 200 --json number,title,state
+[{"number":380,"state":"MERGED","title":"Versao 1.36.0: mod canario para provar carregamento pelo marketplace"},{"number":381,"state":"MERGED","title":"Versao 1.37.0: abertura inteira pelo mod via prompt.compose"}]
+
+
+$ gh pr list --state all --search "regras-inteiras" --limit 200 --json number,title,state
+[{"number":381,"state":"MERGED","title":"Versao 1.37.0: abertura inteira pelo mod via prompt.compose"},{"number":380,"state":"MERGED","title":"Versao 1.36.0: mod canario para provar carregamento pelo marketplace"}]
+
+
+$ git ls-remote --heads origin | grep -F "sec-default"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "session.append"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "prompt.compose"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "regras-inteiras"
+(vazio)
+
+$ git log --all --grep="sec-default" --oneline
+0bd2e907 Handoff: regras inteiras na conta org via session.append
+
+$ git log --all --grep="session.append" --oneline
+0bd2e907 Handoff: regras inteiras na conta org via session.append
+
+$ git log --all --grep="prompt.compose" --oneline
+0bd2e907 Handoff: regras inteiras na conta org via session.append
+e0a35eea Merge pull request #381 from luisfmontes/fluxo/mod-regras-inteiras
+9c4b07a3 Versao 1.37.0: abertura inteira pelo mod via prompt.compose
+50695ca8 Mod canario de teto de prompt, inerte sem RFM_CANARIO_MOD
+14b442fc design: abertura inteira por mod via prompt.compose
+
+$ git log --all --grep="regras-inteiras" --oneline
+197a147a design: faixa acima do prompt com foco, fluxos e Q abertas
+e0a35eea Merge pull request #381 from luisfmontes/fluxo/mod-regras-inteiras
+b85f1133 Merge branch 'fluxo/mod-regras-inteiras-t6' into fluxo/mod-regras-inteiras
+b44c14a4 Merge branch 'fluxo/mod-regras-inteiras-t3' into fluxo/mod-regras-inteiras
+4f56e35a Merge branch 'fluxo/mod-regras-inteiras-t4' into fluxo/mod-regras-inteiras
+d67d8cc2 Merge branch 'fluxo/mod-regras-inteiras-t2' into fluxo/mod-regras-inteiras
+d05393b9 Merge origin/main (1.36.0) em fluxo/mod-regras-inteiras
+e7e1c98a Merge pull request #380 from luisfmontes/fluxo/mod-regras-inteiras-canario
+6629c212 plano: 11 tarefas do mod de abertura, com parada no marketplace
+14b442fc design: abertura inteira por mod via prompt.compose
+
+$ cat <dados>/ideias.jsonl
+{"id":"mods-regras-inteiras-via-prompt-compose","titulo":"Entregar as 17 regras inteiras como secao do system prompt (prompt.compose), furando o teto de 3000 B do SessionStart"}
+{"id":"regras-inteiras-barradas-pelo-sec-default-na-conta-org","titulo":"Na conta de trabalho (org TOTVS) o prompt.compose do mod é ignorado pelo cc-plugin-sec-default: as regras inteiras nunca chegam lá"}
+
+
