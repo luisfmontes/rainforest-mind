@@ -25,12 +25,17 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-07",
-    "tarefas_ok": 3,
+    "tarefas_ok": 4,
     "tarefas": 14,
     "em_voo": [
       {
-        "agente": "executor-t3",
-        "tarefa": "3 globsIsentos",
+        "agente": "executor-t4",
+        "tarefa": "4 desvio-do-plano",
+        "desde": "2026-10-07"
+      },
+      {
+        "agente": "executor-t6",
+        "tarefa": "6 fiacao da barra",
         "desde": "2026-10-07"
       }
     ],
@@ -56,6 +61,34 @@
         "iteracao": 1,
         "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
         "ts": "2026-10-07T12:10:43.069Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "0656db33",
+        "iteracao": 2,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:20:02.961Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "0656db33",
+        "iteracao": 2,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:20:02.961Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "0656db33",
+        "iteracao": 1,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:20:02.961Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "0656db33",
+        "iteracao": 2,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:20:02.961Z"
       }
     ]
   },
