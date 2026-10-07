@@ -61,6 +61,7 @@ const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib',
 // Trava por lock de PID (defeitos A/B fechados em 2026-08-23), ja usada por
 // scripts/ideias.cjs e scripts/divergencias.cjs — o `veredito` reusa em vez
 // de inventar uma terceira copia.
+const { caminhoDoc } = require(path.join(__dirname, '..', 'hooks', 'lib', 'pastas-docs.cjs'));
 const { comTrava } = require(path.join(__dirname, '..', 'hooks', 'lib', 'trava-jsonl.cjs'));
 // D12 — Tarefa 16: leitura do transcrito real do revisor (slug do primeiro
 // prompt, ultima mensagem de texto do assistente). Require DURO, nao
@@ -1122,7 +1123,7 @@ function verificarSensorNaEvidencia(estagio, extra) {
 const CHECADOR = path.join(__dirname, 'conferir-fluxo.cjs');
 
 function docDe(tipo, slug) {
-  return path.join(RAIZ, 'docs', 'rainforest', tipo, `${slug}.md`);
+  return path.join(RAIZ, caminhoDoc(tipo, slug, { raiz: RAIZ }));
 }
 
 /**
@@ -1146,9 +1147,11 @@ function docDe(tipo, slug) {
  */
 function docDoEstagio(tipo, slug, estado) {
   const bloco = estado && estado[tipo === 'planos' ? 'plano' : 'design'];
-  if (bloco && typeof bloco.arquivo === 'string' && bloco.arquivo) {
+  // `doc` é o que o brainstorm grava; `arquivo` é o nome antigo.
+  const declaradoBruto = bloco && (bloco.doc || bloco.arquivo);
+  if (typeof declaradoBruto === 'string' && declaradoBruto) {
     const declarado = path.resolve(
-      path.isAbsolute(bloco.arquivo) ? bloco.arquivo : path.join(RAIZ, bloco.arquivo)
+      path.isAbsolute(declaradoBruto) ? declaradoBruto : path.join(RAIZ, declaradoBruto)
     );
     // CONFINADO à árvore do projeto. O `arquivo` vem de um campo de texto livre
     // do estado, e sem esta cerca um caminho absoluto (ou com `../`) aceitava

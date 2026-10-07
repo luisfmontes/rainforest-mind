@@ -35,6 +35,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 const { contarOcorrencias } = require(path.join(__dirname, '..', 'hooks', 'lib', 'contar-ocorrencias.cjs'));
+const { caminhoDoc } = require(path.join(__dirname, '..', 'hooks', 'lib', 'pastas-docs.cjs'));
 
 // A raiz é a do PROJETO em que se trabalha, mesma cadeia do estado.cjs
 const RAIZ = process.env.RFM_ESTADO_ROOT
@@ -78,7 +79,7 @@ function lerMarkdown(arquivo) {
  */
 function cmdDesign() {
   const slug = arg('slug');
-  const arquivo = arg('design', false) || path.join(RAIZ, 'docs', 'rainforest', 'design', `${slug}.md`);
+  const arquivo = arg('design', false) || path.join(RAIZ, caminhoDoc('design', slug, { raiz: RAIZ }));
 
   const conteudo = lerMarkdown(arquivo);
   if (!conteudo) {
@@ -205,7 +206,7 @@ function cmdCobertura() {
   const slug = arg('slug');
 
   // Lê design
-  const arquivo_design = arg('design', false) || path.join(RAIZ, 'docs', 'rainforest', 'design', `${slug}.md`);
+  const arquivo_design = arg('design', false) || path.join(RAIZ, caminhoDoc('design', slug, { raiz: RAIZ }));
   const conteudo_design = lerMarkdown(arquivo_design);
   if (!conteudo_design) {
     console.error(`RECUSADO: design não existe: ${arquivo_design}`);
@@ -213,7 +214,7 @@ function cmdCobertura() {
   }
 
   // Lê plano
-  const arquivo_plano = arg('plano', false) || path.join(RAIZ, 'docs', 'rainforest', 'planos', `${slug}.md`);
+  const arquivo_plano = arg('plano', false) || path.join(RAIZ, caminhoDoc('planos', slug, { raiz: RAIZ }));
   const conteudo_plano = lerMarkdown(arquivo_plano);
   if (!conteudo_plano) {
     console.error(`RECUSADO: plano não existe: ${arquivo_plano}`);
@@ -729,7 +730,7 @@ function cmdCreep() {
   const head = arg('head');
 
   // Lê plano
-  const arquivo_plano = arg('plano', false) || path.join(RAIZ, 'docs', 'rainforest', 'planos', `${slug}.md`);
+  const arquivo_plano = arg('plano', false) || path.join(RAIZ, caminhoDoc('planos', slug, { raiz: RAIZ }));
   const conteudo_plano = lerMarkdown(arquivo_plano);
   if (!conteudo_plano) {
     console.error(`RECUSADO: plano não existe: ${arquivo_plano}`);
@@ -764,8 +765,8 @@ function cmdCreep() {
     ? path.relative(RAIZ, abs).split(path.sep).join('/')
     : padrao);
   const globs_isentos = [
-    rel(arg('design', false), `docs/rainforest/design/${slug}.md`),
-    rel(arg('plano', false), `docs/rainforest/planos/${slug}.md`),
+    rel(arg('design', false), caminhoDoc('design', slug, { raiz: RAIZ })),
+    rel(arg('plano', false), caminhoDoc('planos', slug, { raiz: RAIZ })),
     `docs/rainforest/estado/${slug}.json`,
     // Portão é datado no nome (`2026-09-08-aclopar-ponytail.md`) — os dois que
     // existem neste repo são, e o `recibo`/`portoes` cria assim. `${slug}.md`
@@ -978,7 +979,7 @@ function cmdMutacoes() {
   const raizCodigo = flagRaizCodigo || RAIZ;
 
   // Lê plano
-  const arquivo_plano = arg('plano', false) || path.join(RAIZ, 'docs', 'rainforest', 'planos', `${slug}.md`);
+  const arquivo_plano = arg('plano', false) || path.join(RAIZ, caminhoDoc('planos', slug, { raiz: RAIZ }));
   const conteudo_plano = lerMarkdown(arquivo_plano);
   if (!conteudo_plano) {
     console.error(`RECUSADO: plano não existe: ${arquivo_plano}`);

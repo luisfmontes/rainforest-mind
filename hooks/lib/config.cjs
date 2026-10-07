@@ -223,6 +223,11 @@ const CHAVES = {
     padrao: null,
     descricao: 'idioma preferido para respostas na compactação (ex.: "português do Brasil")',
   },
+  pastas: {
+    tipo: 'pastas',
+    padrao: null,
+    descricao: 'pastas de mapas/design/planos quando o repo já usa outra (ex.: {"design": "docs/plans"})',
+  },
   // CODEX COMO RUNTIME — chaves de modelo que mapeiam model: do agente para -m do Codex
   'codex-modelo-haiku': {
     tipo: 'modelo',
@@ -347,6 +352,14 @@ function resolverConfig(o = {}) {
     } else if (tipo === 'privada') {
       // Tipo 'privada': só o literal "privada", ou null. Qualquer outro valor é inválido.
       return valor === null || valor === 'privada';
+    } else if (tipo === 'pastas') {
+      // Tipo 'pastas': null ou objeto só com mapas/design/planos; cada valor é
+      // caminho relativo ao repo, sem drive, sem raiz absoluta, sem segmento '..'.
+      if (valor === null) return true;
+      if (typeof valor !== 'object' || Array.isArray(valor)) return false;
+      return Object.entries(valor).every(([k, v]) => ['mapas', 'design', 'planos'].includes(k) &&
+        typeof v === 'string' && v.trim().length > 0 &&
+        !/^([a-zA-Z]:|[\\/])/.test(v) && !v.split(/[\\/]/).includes('..'));
     }
     return false;
   };

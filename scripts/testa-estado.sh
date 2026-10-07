@@ -31,6 +31,7 @@ cp "$SRC/scripts/lib/extrair-veredito.cjs" "$SBP/scripts/lib/"
 cp "$SRC/hooks/lib/raiz.cjs" "$SBP/hooks/lib/"
 cp "$SRC/hooks/lib/config.cjs" "$SBP/hooks/lib/"
 cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SBP/hooks/lib/"
+cp "$SRC/hooks/lib/pastas-docs.cjs" "$SBP/hooks/lib/"   # onde moram design e plano (D1/D3 do #412)
 cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SBP/hooks/lib/"   # git pelo caminho (Issue #392)
 cp "$SRC/hooks/lib/contar-ocorrencias.cjs" "$SBP/hooks/lib/"   # conferir-fluxo conta o de: da mutacao (#397)
 # A caixa vira raiz de dados: sem marcador, resolverRaiz cairia no repo de verdade
@@ -1902,7 +1903,7 @@ cp "$SRC/scripts/estado.cjs" "$SBP/sensor-test/scripts/"
 cp "$SRC/scripts/conferir-categoria.cjs" "$SBP/sensor-test/scripts/"
 cp "$SRC/scripts/lib/primeiro-prompt-jsonl.cjs" "$SBP/sensor-test/scripts/lib/"
 cp "$SRC/scripts/lib/extrair-veredito.cjs" "$SBP/sensor-test/scripts/lib/"
-cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SBP/sensor-test/hooks/lib/"
+cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SRC/hooks/lib/pastas-docs.cjs" "$SRC/hooks/lib/config.cjs" "$SRC/hooks/lib/raiz.cjs" "$SBP/sensor-test/hooks/lib/"
 cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SBP/sensor-test/hooks/lib/"   # git pelo caminho (Issue #392)
 cp "$SRC/hooks/lib/contar-ocorrencias.cjs" "$SBP/sensor-test/hooks/lib/"   # conferir-fluxo conta o de: da mutacao (#397)
 cd "$SBP/sensor-test" || exit 1
@@ -2696,8 +2697,8 @@ else
 fi
 
 # Caso 3: Com arquivo presente, design fecha normalmente
-$E385 iniciar --slug des-presente >/dev/null 2>&1
-msg_design_ok=$($E385 marcar --slug des-presente --estagio design --status aprovado --json '{"doc":"docs/rainforest/design/d385.md"}' 2>&1)
+$E385 iniciar --slug d385 >/dev/null 2>&1
+msg_design_ok=$($E385 marcar --slug d385 --estagio design --status aprovado --json '{"doc":"docs/rainforest/design/d385.md"}' 2>&1)
 cod_design_ok=$?
 if [ "$cod_design_ok" = "0" ] && printf '%s' "$msg_design_ok" | grep -q "design: aprovado"; then
   ok=$((ok+1)); echo "  ok   design: com arquivo presente fecha normalmente"
@@ -2801,6 +2802,61 @@ printf '%s\n' "$MSG413" | sed 's/^/         | /'
 N413=$(grep -c -F "$B413" "$A413/docs/rainforest/estado/s413.json")
 igual "413 o caminho da arvore do codigo nao entra no estado" "0" "$N413"
 rm -rf "$A413" "$B413"
+
+echo
+echo "== (#412 D3) docDoEstagio le 'doc' do bloco: design fora de docs/rainforest =="
+# O brainstorm grava {"doc": ...}; ate aqui so 'arquivo' era lido. O nome do design
+# aqui (data-slug-design) NAO e o que `caminhoDoc` derivaria do slug, entao so o
+# campo `doc` leva a checagem `cobertura` ate ele: ignorar `doc` deixa o plano
+# fechar sem a cobertura rodar.
+C412="$(mktemp -d)"
+mkdir -p "$C412/docs/plans"
+(cd "$C412" && git init -q && git config user.email t@t && git config user.name T)
+export RFM_ESTADO_ROOT="$C412"
+cat > "$C412/docs/plans/2026-10-07-s412-design.md" << 'EOF'
+# Design
+
+## Objetivo
+Teste
+
+## Decisões fechadas
+- **D1 — primeira**
+- **D2 — segunda**
+
+## Avaliado e descartado
+n/a
+
+## Fora de escopo
+n/a
+
+## Em aberto
+n/a
+
+## Varredura
+docs/rainforest/varredura/s412.txt
+EOF
+mkdir -p "$C412/docs/rainforest/varredura"
+echo "s412" > "$C412/docs/rainforest/varredura/s412.txt"
+cat > "$C412/docs/plans/s412-plano.md" << 'EOF'
+# Plano
+
+## Tarefas
+
+### 1. Primeira tarefa
+atende: D1
+mutacao:
+  arquivo: scripts/estado.cjs
+  de: n/a
+  para: n/a
+  motivo: teste
+EOF
+node scripts/estado.cjs iniciar --slug s412 >/dev/null
+esperado "412 design com doc fora de docs/rainforest fecha" 0 node scripts/estado.cjs marcar --slug s412 --estagio design --status aprovado --json '{"doc":"docs/plans/2026-10-07-s412-design.md"}'
+msg412="$(node scripts/estado.cjs marcar --slug s412 --estagio plano --status ok --json '{"arquivo":"docs/plans/s412-plano.md"}' 2>&1)"
+cod412=$?
+igual "412 plano recusado: cobertura leu o design apontado por doc (D2 sem tarefa)" "2" "$cod412"
+printf '%s' "$msg412" | grep -q "D2" && igual "412 recusa cita a decisao D2 descoberta" "sim" "sim" || igual "412 recusa cita a decisao D2 descoberta" "sim" "nao: $msg412"
+rm -rf "$C412"
 
 unset RFM_ESTADO_ROOT
 

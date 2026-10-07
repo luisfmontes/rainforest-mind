@@ -83,7 +83,7 @@ tem "e nomeia o comando exato"              "$SEM" "setup.cjs --criar"
 
 echo
 echo "== 6. MUTACAO — comparar por igualdade estrita perde o historico =="
-mkdir -p "$SBP/mut/scripts" "$SBP/mut/hooks/lib" && cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SBP/mut/hooks/lib/"   # o mutante faz require do resolvedor (Issue #392)
+mkdir -p "$SBP/mut/scripts" "$SBP/mut/hooks/lib" && cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SRC/hooks/lib/pastas-docs.cjs" "$SRC/hooks/lib/config.cjs" "$SRC/hooks/lib/raiz.cjs" "$SBP/mut/hooks/lib/"   # o mutante faz require do resolvedor (Issue #392)
 cp "$SRC/scripts/semear.cjs" "$SBP/mut/scripts/semear-mutante.cjs"
 node - "$SBP/mut/scripts/semear-mutante.cjs" <<'JS'
 const fs = require("fs");
@@ -129,6 +129,14 @@ COM_MAPA="$(roda)"
 tem "a fatia mapeada aparece no digest" "$COM_MAPA" "faturamento"
 tem "sob o bloco de mapas"              "$COM_MAPA" "MAPAS DE LEGADO"
 
+# Repo de cliente com o plugin protheus: o mapa mora em docs/legado (#412 D1).
+rm -rf "$SBP/proj/docs/rainforest/mapas"
+mkdir -p "$SBP/proj/docs/legado"
+printf '# Cobertura de arqueologia\n\n| Fatia | Fontes cobertos | Demanda | Data |\n|---|---|---|---|\n| expedicao-legada | A.prw | d1 | 2026-01-01 |\n' > "$SBP/proj/docs/legado/COBERTURA.md"
+COM_LEGADO="$(roda)"
+tem "mapa de docs/legado: a fatia aparece" "$COM_LEGADO" "expedicao-legada"
+rm -rf "$SBP/proj/docs/legado"
+
 echo
 echo "== 9. sem historico NENHUM, diz o que fazer em vez de devolver vazio =="
 # E o caso de quem acabou de instalar, nao uma anomalia. Tres blocos vazios e
@@ -145,7 +153,7 @@ tem "e o recomendador oficial para stack"     "$NOVO" "claude-automation-recomme
 # 2026-08-21) so aparecem quando ha vocabulario para consultar.
 mkdir -p "$SBP/dados-vocab" "$SBP/gitrepo-principal"
 cp "$SBP/dados/ideias.jsonl" "$SBP/dados-vocab/ideias.jsonl"
-( cd "$SBP/gitrepo-principal" && git init -q && git config user.email t@t.com \
+( cd "$SBP/gitrepo-principal" && git init -q && git config user.email t@t \
   && git config user.name t && git commit -q --allow-empty -m init )
 GITREPO_WIN="$(cygpath -m "$SBP/gitrepo-principal" 2>/dev/null || printf '%s' "$SBP/gitrepo-principal")"
 cat > "$SBP/dados-vocab/projetos.json" <<EOF
@@ -207,8 +215,8 @@ nao_tem "nao fica preso no basename do worktree (o defeito original)" \
 
 echo
 echo "== 13. caminho registrado em forma CURTA (alias 8.3 do Windows) ainda casa com o real =="
-# Achado na CI (windows-latest, run 32665203220): o TEMP do runner vem como
-# `C:\Users\RUNNER~1\...`, forma curta 8.3. `path.resolve()` NUNCA expande
+# Achado na CI (windows-latest): o TEMP do runner vem como
+# `<home>\RUNNER~1\...`, forma curta 8.3. `path.resolve()` NUNCA expande
 # esse alias — e' string pura, nunca toca o disco — mas o
 # `git rev-parse --git-common-dir` expande, porque resolve pelo filesystem de
 # verdade. O caminho registrado no projetos.json pode chegar em QUALQUER uma
@@ -221,7 +229,7 @@ CURTO_WIN="$(powershell.exe -NoProfile -Command "(New-Object -ComObject Scriptin
 if [ "$CURTO_WIN" = "$LONGO_WIN" ]; then
   echo "  (pulado: este disco nao gera alias 8.3 para este caminho — nada a provar aqui)"
 else
-  ( cd "$LONGO_POSIX" && git init -q && git config user.email t@t.com && git config user.name t \
+  ( cd "$LONGO_POSIX" && git init -q && git config user.email t@t && git config user.name t \
     && git commit -q --allow-empty -m init )
   git -C "$LONGO_POSIX" worktree add --detach -q "$SBP/worktree-do-alias-83"
   mkdir -p "$SBP/dados-83"
