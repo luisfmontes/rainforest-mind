@@ -81,6 +81,7 @@ mutacao:
   de: `const raizCodigo = flagRaizCodigo || RAIZ;`
   para: `const raizCodigo = RAIZ;`
   bateria: `bash scripts/testa-estado.sh`
+  timeout: `900000`
   fixture: `testa-estado.sh, caso "413 verificar --raiz roda a mutacao na arvore do codigo"`
 pronto quando: com um estado e um plano em `RFM_ESTADO_ROOT=<A>` (de `mktemp -d`) cuja tarefa muta `src/x.sh`, que só existe numa segunda árvore `<B>` com a bateria, `node scripts/estado.cjs marcar --slug <s> --estagio verificar --status ok --raiz <B> --json '{…}'` roda a catraca contra `<B>` e passa; o mesmo sem `--raiz` sai 2 como hoje; `--raiz <inexistente>` sai 2 com mensagem nomeando a flag; o JSON do estado depois do `marcar` não contém o caminho `<B>`. `estado.cjs` repassa `--raiz-codigo <B>` ao `conferir-fluxo.cjs mutacoes`, e `raizTarefa` passa a ser `path.resolve(raizCodigo, raiz:)` ou `raizCodigo`; `skills/verificar/SKILL.md` diz quando passar a flag — provado por `bash scripts/testa-estado.sh` com o caso novo ok e `0 falha(s)`
 
