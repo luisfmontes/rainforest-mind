@@ -3097,6 +3097,14 @@ printf 'gh issue close 12\n' > "$SBP/b414/alvo.sh"
 rodar414 'cd a414 && . ./x.sh; cd ../b414 && . ../a414/x.sh'
 E414=$?
 [ $E414 -eq 2 ] && test_ok "414-13 mesmo arquivo carregado de outro cwd e relido" || test_fail "414-13 mesmo arquivo carregado de outro cwd e relido (exit $E414)"
+# Cadeia de 12 arquivos distintos, cada um carregando o seguinte por caminho
+# absoluto e nenhum fechando Issue: so o teto de profundidade barra. Sem
+# teto, a leitura percorre a cadeia inteira e libera (exit 0).
+for n in $(seq 1 11); do printf '. %s/cadeia414-%s.sh\n' "$SBP_WIN" "$((n+1))" > "$SBP/cadeia414-$n.sh"; done
+printf 'echo fim\n' > "$SBP/cadeia414-12.sh"
+rodar414 '. ./cadeia414-1.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-14 encadeamento sem fim barra pelo teto" || test_fail "414-14 encadeamento sem fim barra pelo teto (exit $E414: $(head -c 300 "$SBP/err-414"))"
 
 # Resultado final
 echo

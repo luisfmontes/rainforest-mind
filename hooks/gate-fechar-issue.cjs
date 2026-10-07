@@ -1038,6 +1038,15 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
     const resolvidoSource = path.isAbsolute(arquivoSource) ? arquivoSource : path.resolve(cwdSource, arquivoSource);
     // Chave = arquivo + cwd: o mesmo arquivo carregado de outro cwd encadeia
     // outros arquivos (caminho relativo resolve contra o cwd), e tem de ser lido.
+    // Teto: a chave com cwd nao se repete quando cada nivel faz `cd sub`, e a
+    // recursao sem fim derrubaria o hook (exit != 2 = passa). Estourou, barra.
+    if (LENDO_SOURCE >= 8 || ARQUIVOS_SOURCE_VISTOS.size >= 64) {
+      bloqueia(
+        `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+        `Razão: encadeamento de '.'/'source' fundo demais para ler com segurança ` +
+        `(mais de 8 níveis ou 64 arquivos).\n`
+      );
+    }
     const chaveSource = resolvidoSource + "|" + (cwdSource || "");
     if (ARQUIVOS_SOURCE_VISTOS.has(chaveSource)) return;
     ARQUIVOS_SOURCE_VISTOS.add(chaveSource);
