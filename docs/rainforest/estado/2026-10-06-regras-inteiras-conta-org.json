@@ -147,7 +147,27 @@
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "c82af64e656c9a7c68f158296cb50cb7c8e11d3b",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-10-06-regras-inteiras-conta-org.json"
+      ]
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a45587953c6d5eb1d",
+        "veredito": "ok",
+        "em": "2026-10-07",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/42fa8a5e-dc19-4a78-b86e-05d10364fd47/subagents/agent-a45587953c6d5eb1d.jsonl"
+      }
+    ],
+    "em": "2026-10-07",
+    "achados": 0,
+    "menores": 3,
+    "base": "99c5e5b70dc69ead09fb3e0702c009b7f5f17b68",
+    "head": "c82af64e656c9a7c68f158296cb50cb7c8e11d3b"
   },
   "verificar": {
     "status": "pendente"
