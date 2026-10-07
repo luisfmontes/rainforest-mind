@@ -23,9 +23,9 @@
     "em": "2026-10-07"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-07",
-    "tarefas_ok": 11,
+    "tarefas_ok": 14,
     "tarefas": 14,
     "em_voo": [],
     "em": "2026-10-07",
@@ -360,15 +360,81 @@
         "ts": "2026-10-07T13:35:51.814Z"
       }
     ],
-    "pendentes": [
-      "tarefa-11: medicao no REPL real nas duas contas (bola do usuario)",
-      "revisar: figurasDaBarra quebra o laco quando o relogio nao cabe e some com Tokens/Custo em 30 colunas",
-      "revisar: toast que lanca sincrono aborta anotar e o checker",
-      "revisar: mapa-puro tem copia local de semControle (faixa-puro ja exporta)",
-      "revisar: rascunho Faz agora sem acento",
-      "medir: desvio-do-plano.cjs leva 1,5-2,4 s por escrita"
+    "tarefa11": "REPL real nas duas contas: barra, /painel, fatias, toast, Haiku (trabalho 835 ms) ok; desvio sessao pessoal 2026-10-07T15:04:53 Edit -> 15:04:58 toast unico (2o Edit sem toast), ~5 s; conta de trabalho bloqueia so prompt.compose e classic.SessionStart",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-mod-painel.cjs, cache frio quando o TTL acabou"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-mod-deixado.cjs, frase entre aspas nao conta"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-fluxo.sh, globsIsentos inclui o estado"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-desvio-do-plano.sh, arquivo fora do plano acusado"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-mod-mapa.cjs, Read e Bash devolvem nulo"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "mod-painel.test.tsx, barra: esconder e mostrar"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "mod-painel.test.tsx, barra de contexto soma a largura"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "mod-painel.test.tsx, um toast por arquivo"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "mod-painel.test.tsx, checker so com 5+ ferramentas"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "mod-painel.test.tsx, falha aberta model.complete"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "n/a",
+        "motivo": "medicao em REPL real, sem codigo a inverter"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "n/a",
+        "motivo": "texto legal; falsificacao e o sha256 do LICENSE"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "n/a",
+        "motivo": "documentacao; checker de coerencia ficou vermelho com HORA_NOITE mutado"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "n/a",
+        "motivo": "versao; sensor conferir-versao"
+      }
     ],
-    "tarefa11": "REPL real nas duas contas: barra, /painel, fatias, toast, Haiku (trabalho 835 ms) ok; desvio sessao pessoal 2026-10-07T15:04:53 Edit -> 15:04:58 toast unico (2o Edit sem toast), ~5 s; conta de trabalho bloqueia so prompt.compose e classic.SessionStart"
+    "comando": "node scripts/conferir-mutacao.cjs (10 tarefas, re-rodadas na integracao)",
+    "saida": "tarefas 1-10 exit 0 (6 e 10 exit 4 sob concorrencia, exit 0 sozinhas; baseline 3x 0 fail)"
   },
   "revisar": {
     "status": "pendente"
