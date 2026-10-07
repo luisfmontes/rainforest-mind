@@ -1126,7 +1126,8 @@ EXIT_BX=$?
 # executa um ARQUIVO opaco ao parser; mesma postura conservadora que
 # `bash x.sh` (sem `-c`) ja recebe do laco W1 — exit 2.
 echo
-echo "== (by) source fechar.sh → exit 2 (R18, arquivo opaco) =="
+echo "== (by) source fechar.sh → exit 2 (R18, arquivo que fecha Issue) =="
+printf 'gh issue close 12\n' > "$SBP/fechar.sh"
 (
   export PATH="$SBP/bin:$PATH"
   PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"source fechar.sh"}}'
@@ -2978,6 +2979,47 @@ EXIT_350B=$?
 [ $EXIT_350B -eq 2 ] && test_ok "exit 2 (relativo)" || test_fail "exit code (foi $EXIT_350B)"
 ERR_350B="$(cat "$SBP/err-350b")"
 echo "$ERR_350B" | grep -q "caminho relativo" && test_ok "stderr cita 'caminho relativo'" || test_fail "stderr não cita 'caminho relativo' ($ERR_350B)"
+
+# Issue #414 (D14-D16): `source`/`.` de arquivo de ambiente nao e `gh`. O
+# desempacotador devolve `ilegivel` sempre para os dois e o gate barrava todo
+# `. x.env` com "contem variavel". Agora o arquivo e lido: so barra o que fecha.
+# Chamador real: `processarSegmento` (gate-fechar-issue.cjs), ramo
+# `if (ehSourceDeArquivo(toksComAspas, pos))`, antes de `desempacotarWrapperDeString`.
+rodar414() { # $1 = comando; stderr em $SBP/err-414
+  (
+    export PATH="$SBP/bin:$PATH"
+    node -e 'console.log(JSON.stringify({cwd:process.argv[2],tool_name:"Bash",tool_input:{command:process.argv[1]}}))' "$1" "$SBP_WIN" | node "$SRC/hooks/gate-fechar-issue.cjs"
+  ) 2>"$SBP/err-414"
+}
+NL414=$'\n'
+
+echo
+echo "== (414-1) set -a ponto env com variavel passa =="
+rodar414 'cd /tmp && W=/c/x; set -a; [ -f "/c/x/transcription.env" ] && . "/c/x/transcription.env"; set +a'"$NL414"'TRANSCRIPTION_ENGINE=local uv run --directory "$W/srv" python transcribe.py --message-id X --chat-jid Y; echo "exit=$?"'
+E414=$?
+[ $E414 -eq 0 ] && test_ok "414-1 set -a ponto env com variavel passa" || test_fail "414-1 set -a ponto env com variavel passa (exit $E414: $(cat "$SBP/err-414"))"
+
+echo
+echo "== (414-2) ponto env literal passa =="
+rodar414 'set -a; . /c/x/transcription.env; set +a'"$NL414"'TRANSCRIPTION_ENGINE=local uv run --directory "C:/x/srv" python transcribe.py --message-id X --chat-jid Y; echo "exit=$?"'
+E414=$?
+[ $E414 -eq 0 ] && test_ok "414-2 ponto env literal passa" || test_fail "414-2 ponto env literal passa (exit $E414: $(cat "$SBP/err-414"))"
+
+echo
+echo "== (414-3) laco com ponto ./\$f passa =="
+rodar414 'for f in env-api env-off; do ( unset TRANSCRIPTION_ENGINE; set -a; . ./$f; set +a; case "${TRANSCRIPTION_ENGINE:-off}" in off) export TRANSCRIPTION_ENGINE=local ;; esac; echo "$f -> $TRANSCRIPTION_ENGINE" ); done'
+E414=$?
+[ $E414 -eq 0 ] && test_ok "414-3 laco com ponto ./\$f passa" || test_fail "414-3 laco com ponto ./\$f passa (exit $E414: $(cat "$SBP/err-414"))"
+
+echo
+echo "== (414-4) ponto de script que fecha issue barra =="
+printf 'echo oi\ngh issue close 12\n' > "$SBP/fecha414.sh"
+rodar414 '. ./fecha414.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-4 ponto de script que fecha issue barra" || test_fail "414-4 ponto de script que fecha issue barra (exit $E414)"
+rodar414 'source fecha414.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-4 source de script que fecha issue barra" || test_fail "414-4 source de script que fecha issue barra (exit $E414)"
 
 # Resultado final
 echo

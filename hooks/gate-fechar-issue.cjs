@@ -933,6 +933,15 @@ function cwdDoSegmento(segmento, mapaCwd, ordem) {
   return null;
 }
 
+// Arquivos ja lidos por `source`/`.` neste processo (corta ciclo `. a` -> `. a`).
+const ARQUIVOS_SOURCE_VISTOS = new Set();
+
+function ehSourceDeArquivo(toks, pos) {
+  if (pos === null) return false;
+  const exe = normalizarExecutavel(toks[pos].v);
+  return exe === "source" || exe === ".";
+}
+
 /**
  * Aplica as checagens D15/D16 a UM segmento do comando (já separado por
  * `;`, `&&`, `||`, `|`, `(`, `)`, `{`, `}` via `segmentosParaGate`).
@@ -983,6 +992,43 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
     return;
   }
 
+  // #414: `source`/`.` carrega um ARQUIVO (tipicamente `.env`). O desempacotador
+  // devolve `ilegivel` sempre para os dois, o que barrava todo `. x.env` sem
+  // `gh` nenhum. Aqui o arquivo e LIDO: so barra se o conteudo fecha Issue
+  // (ou faz outra escrita que o gate checa); ilegivel, inexistente, caminho
+  // com variavel ou cwd incerto PASSA. Modelo de ameaca (D16): protege contra
+  // a janela principal fechar Issue sem a evidencia; fica fora script
+  // carregado que monta o `gh` a partir de variavel (mesmo limite do
+  // gate-subagente-sem-gh).
+  if (ehSourceDeArquivo(toksComAspas, pos)) {
+    const alvoSource = toksComAspas[pos + 1];
+    if (!alvoSource || /[$\x60]/.test(alvoSource.v)) return;
+    const cwdSource = cwdDoSegmento(segmento, mapaCwd, ordem);
+    const arquivoSource = normalizarMsys(alvoSource.v);
+    if (!path.isAbsolute(arquivoSource) && cwdSource == null) return;
+    const resolvidoSource = path.isAbsolute(arquivoSource) ? arquivoSource : path.resolve(cwdSource, arquivoSource);
+    if (ARQUIVOS_SOURCE_VISTOS.has(resolvidoSource)) return;
+    ARQUIVOS_SOURCE_VISTOS.add(resolvidoSource);
+    let conteudoSource;
+    try { conteudoSource = fs.readFileSync(resolvidoSource, "utf8"); } catch { return; }
+    const PADROES_SOURCE = [["gh", "issue", "close"], ["gh", "issue", "create"], ["gh", "issue", "comment"], ["gh", "pr", "create"], ["gh", "pr", "edit"], ["gh", "pr", "merge"]];
+    for (const linha of conteudoSource.split("\n")) {
+      if (!linha.trim()) continue;
+      let toks;
+      try { toks = tokensComAspas(linha); } catch { toks = linha.split(/\s+/).filter(Boolean).map((v) => ({ v, q: false })); }
+      const idxCom = toks.findIndex((t) => !t.q && t.v.startsWith("#"));
+      const valores = (idxCom === -1 ? toks : toks.slice(0, idxCom)).map((t) => t.v);
+      for (const padrao of PADROES_SOURCE) {
+        const idx = indiceSequencia(valores, padrao);
+        if (idx !== -1) {
+          verificarComandoGh(linha, valores.slice(idx + 1), path.dirname(resolvidoSource));
+          break;
+        }
+      }
+    }
+    return;
+  }
+
   // `desempacotarWrapperDeString` (lib/tokens-comando.cjs, movida aqui na
   // rodada 11): `ilegivel` cobre TANTO o conteudo com `$(`/crase/variavel
   // QUANTO `-EncodedCommand` (que nunca tem `interno` — so `ilegivel`
@@ -1002,14 +1048,19 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   if (ilegivel) {
     bloqueia(
       `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-      `Razão: comando encapsulado (eval/bash -c/sh -c/pwsh -Command/cmd /c/-EncodedCommand) contém ` +
-      `variável, substituição de comando, ou está em base64; não consigo ler o que roda dentro com ` +
-      `segurança (ilegível).\n\n` +
+      (/[$\x60]/.test(segmento) || /encodedcommand|-enc\b/i.test(segmento)
+        ? `Razão: comando encapsulado (eval/bash -c/sh -c/pwsh -Command/cmd /c/-EncodedCommand) contém ` +
+          `variável, substituição de comando, ou está em base64; não consigo ler o que roda dentro com ` +
+          `segurança (ilegível).\n\n`
+        : `Razão: comando encapsulado (eval/bash -c/sh -c/pwsh -Command/cmd /c) cuja forma não consigo ler ` +
+          `com segurança (ilegível), ainda que não tenha variável, substituição de comando nem base64.\n\n`) +
       // Só quando o segmento é `bash|sh $VAR` (#337; revisão: aparecia também
       // em `bash -c "$x"` e `-EncodedCommand`, onde não ajuda).
       (/(^|[\s;&|(])(bash|sh)\s+\$/.test(segmento) ?
       `Rodando um arquivo cujo caminho está numa variável? Ponha aspas: bash "$t" passa, bash $t não — sem aspas a variável se divide em palavras e pode injetar -c (ex.: CMD='-c gh\${IFS}issue\${IFS}close\${IFS}12'; bash $CMD fecha a Issue).\n\n` : ``) +
-      `Rode o comando 'gh' diretamente, sem encapsular, ou expanda a variável antes de chamar.\n`
+      (/[$\x60]/.test(segmento) || /encodedcommand|-enc\b/i.test(segmento)
+        ? `Rode o comando 'gh' diretamente, sem encapsular, ou expanda a variável antes de chamar.\n`
+        : `Rode o comando 'gh' diretamente, sem encapsular.\n`)
     );
   }
   if (interno !== null) {
