@@ -17,8 +17,10 @@
 // de novo) como uma mensagem de usuario, via `$.session.append`: `engine.create` guarda a
 // flag `barraCompose(e.plugins)`; com a flag, `session.start` anexa se o transcript nao
 // tem a MARCA (`temMarca`, cobre o --resume), o primeiro `prompt.submit` depois de um
-// `session.end` com reason clear anexa uma vez (nao ha session.start depois do /clear) e
-// `session.compact` reanexa se as mensagens devolvidas perderam a MARCA. O nucleo do
+// `session.end` com reason clear anexa uma vez (nao ha session.start depois do /clear), e
+// `session.compact` so arma a mesma pendencia (o resumo e gravado DEPOIS do hook, entao
+// anexar ali cairia antes do compact_boundary e sumiria do contexto): o proximo
+// `prompt.submit` confere o transcript e anexa se faltar a MARCA. O nucleo do
 // SessionStart fica como esta. Sem a flag nada disso roda: nenhum append, nenhuma leitura
 // de messages(). Desenho: docs/rainforest/design/2026-10-06-regras-inteiras-conta-org.md.
 //
@@ -153,7 +155,7 @@ async function montar(io) {
 export function criarAbertura() {
   /** @type {Promise<string | null> | null} */
   let memo = null;
-  // Conta com sec-default (engine.create) e `/clear` ainda sem a abertura reanexada.
+  // Conta com sec-default (engine.create) e `/clear` ou compact ainda sem a abertura reanexada.
   let barra = false;
   let pendente = false;
 
@@ -201,17 +203,16 @@ export function criarAbertura() {
       if (barra) await anexar(io, ler, escrever);
     },
 
-    /** `prompt.submit`: depois de um /clear, anexa uma vez e desarma a pendencia. */
+    /** `prompt.submit`: depois de um /clear ou compact, confere a MARCA, anexa uma vez e desarma a pendencia. */
     async aoSubmeter(/** @type {Io} */ io, /** @type {() => Promise<any>} */ ler, /** @type {(args: any) => Promise<any>} */ escrever) {
       if (!barra || !pendente) return;
       pendente = false;
       await anexar(io, ler, escrever);
     },
 
-    /** `session.compact`: `r` e o resultado de next(e); reanexa se as mensagens devolvidas perderam a MARCA. */
-    async aposCompactar(/** @type {Io} */ io, /** @type {any} */ r, /** @type {(args: any) => Promise<any>} */ escrever) {
-      if (!barra || !Array.isArray(r?.messages)) return;
-      await anexar(io, async () => r.messages, escrever);
+    /** `session.compact`: so arma a pendencia; quem confere e anexa e o proximo `prompt.submit`. */
+    aoCompactar() {
+      if (barra) pendente = true;
     },
 
     /** Resultado do `prompt.compose` com a secao no fim; `r` intacto sem texto. */

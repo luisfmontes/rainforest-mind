@@ -63,13 +63,11 @@ export const register: Register = on => {
     return next(e)
   })
 
-  on('session.compact', async ($, e, next) => {
+  // O resumo do compact e gravado depois deste hook: anexar aqui cairia antes do
+  // compact_boundary. So arma a pendencia; o proximo prompt.submit confere e anexa.
+  on('session.compact', async (_$, e, next) => {
     const r = await next(e)
-    await abertura.aposCompactar(
-      { rodar: (argv, init) => $.process.run(argv, init), cwd: () => $.session.cwd(), raiz: $.plugin.root },
-      r,
-      args => $.session.append(args),
-    )
+    abertura.aoCompactar()
     return r
   })
 }

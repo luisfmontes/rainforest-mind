@@ -11,8 +11,9 @@
 // temporario. Nenhum caso afirma sobre o texto do fonte, so sobre as chamadas feitas ao
 // `$` falso (`session.append`, `session.messages`).
 //
-// A mutacao (`temMarca` -> `return false;` e `barraCompose` -> `return false;` no .mjs)
-// e rodada por `scripts/conferir-mutacao.cjs`: o caso b e o caso a precisam ficar vermelhos.
+// As mutacoes (`temMarca`, `barraCompose`, a escolha da MARCA em `textoDe` e o
+// `if (barra) pendente = true;` de `aoCompactar`, no .mjs) sao rodadas por
+// `scripts/conferir-mutacao.cjs`: cada uma precisa deixar a bateria vermelha.
 
 const fs = require("node:fs");
 const os = require("node:os");
@@ -257,29 +258,39 @@ caso("clear anexa uma vez no primeiro prompt.submit", async () => {
   afirma(r2.eco === e2, "2o submit nao devolveu next(e) intacto");
 });
 
-caso("compact sem a marca reanexa", async () => {
+caso("compact arma e o proximo prompt.submit reanexa", async () => {
   const { novo } = await modulo();
   const mod = novo();
-  const $ = criar$();
+  const $ = criar$({ api: [{ role: "user", content: [{ type: "text", text: "resumo da conversa" }] }] });
   await ligar(mod, COM_SEC);
   const r = { messages: [{ role: "user", text: "resumo da conversa", toolUses: [] }] };
   const saiu = await mod.sessionCompact($, { trigger: "manual", messages: [] }, passa(r));
-  igual($.t.appends.length, 1, "appends");
+  igual($.t.appends.length, 0, "appends no proprio compact");
+  igual($.t.leituras, 0, "o compact nao le messages()");
   afirma(saiu === r, "session.compact nao devolveu o resultado de next(e) intacto");
+  const e1 = { prompt: "um" };
+  const r1 = await mod.promptSubmit($, e1, async (e) => ({ eco: e }));
+  igual($.t.appends.length, 1, "appends depois do 1o submit");
+  afirma(r1.eco === e1, "1o submit nao devolveu next(e) intacto");
+  await mod.promptSubmit($, { prompt: "dois" }, passa({}));
+  igual($.t.appends.length, 1, "appends depois do 2o submit");
 });
 
-caso("compact com a marca nao reanexa", async () => {
+caso("compact seguido de submit com a marca nao reanexa", async () => {
   const { novo, MARCA } = await modulo();
   const mod = novo();
-  const $ = criar$();
+  const $ = criar$({ api: [
+    { role: "user", content: [
+      { type: "text", text: "<system-reminder>\nA\n</system-reminder>\n" },
+      { type: "text", text: `${MARCA}\nabertura` },
+      { type: "text", text: "resumo" },
+    ] },
+  ] });
   await ligar(mod, COM_SEC);
-  const r = { messages: [
-    { role: "user", text: "resumo", toolUses: [] },
-    { role: "user", content: [{ type: "text", text: `${MARCA}\nabertura` }], text: "", toolUses: [] },
-  ] };
-  const saiu = await mod.sessionCompact($, { trigger: "auto", messages: [] }, passa(r));
+  await mod.sessionCompact($, { trigger: "auto", messages: [] }, passa({ messages: [] }));
+  await mod.promptSubmit($, { prompt: "um" }, passa({}));
   igual($.t.appends.length, 0, "appends");
-  afirma(saiu === r, "session.compact nao devolveu o resultado de next(e) intacto");
+  afirma($.t.leituras >= 1, "o transcript nao foi conferido no submit");
 });
 
 caso("conta sem sec-default nao anexa nem le messages", async () => {
@@ -291,6 +302,7 @@ caso("conta sem sec-default nao anexa nem le messages", async () => {
   await mod.sessionEnd($, { reason: "clear" }, passa({}));
   await mod.promptSubmit($, { prompt: "um" }, passa({}));
   await mod.sessionCompact($, { trigger: "manual", messages: [] }, passa({ messages: [{ role: "user", text: "x", toolUses: [] }] }));
+  await mod.promptSubmit($, { prompt: "dois" }, passa({}));
   igual($.t.appends.length, 0, "appends");
   igual($.t.leituras, 0, "chamadas a messages()");
   igual($.t.rodadas, 0, "geradores nao devem rodar");
