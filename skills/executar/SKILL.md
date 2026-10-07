@@ -5,7 +5,7 @@ description: Executa um plano do fluxo despachando agentes — a fatia paralela 
 
 # Executar
 
-Lê `docs/rainforest/planos/<slug>.md` e faz o que ele manda acontecer. **Esta
+Lê o plano (`node scripts/pastas-docs.cjs caminho --tipo planos --slug <slug>`) e faz o que ele manda acontecer. **Esta
 skill despacha, não implementa** — se você se pegar editando arquivo do
 projeto na mão, pare: a task era pra um agente.
 
@@ -289,7 +289,7 @@ existe para que haja alvo declarado a re-rodar e para que "esqueci" pare de
 sair 0, não para transformar o relato do agente em veredito.
 
 **Validação da cobertura**: o campo `mutacao` deve cobrir **todas as tarefas**
-do plano (`docs/rainforest/planos/<slug>.md`) — nenhuma ausente, nenhuma
+do plano — nenhuma ausente, nenhuma
 duplicada, nenhuma inexistente. Se o plano não existir, a validação avisa e
 passa (fail-open); se os dados divergirem, a marcação recusa com exit 2.
 Tarefas do plano são os itens numerados no formato `### <n>. ` do markdown

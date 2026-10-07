@@ -161,7 +161,7 @@ regra documentada do repo obrigou a criá-lo?** Se sim, isenção; se a resposta
 
 Classes que o `conferir-fluxo.cjs creep` reconhece (`globs_isentos`):
 
-- `docs/rainforest/design/<slug>.md`, `docs/rainforest/planos/<slug>.md`,
+- design e plano (caminhos de `node scripts/pastas-docs.cjs caminho --tipo design --slug <slug>` e `--tipo planos`),
   `docs/rainforest/estado/<slug>.json`, `docs/rainforest/portoes/*<slug>.md`,
   `docs/rainforest/varredura/<slug>.txt` (#368) — o rastro que o fluxo
   escreve para ESTE trabalho; de outro slug é creep.
