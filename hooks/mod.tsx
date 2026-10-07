@@ -626,7 +626,8 @@ export const register: Register = (on, options) => {
     }
     // Cada falha vira uma linha em <raiz>/erros.jsonl na hora (scripts/erros.cjs), para triar
     // depois com /painel erros. Na hora e nao no SessionEnd: janela fechada no X nao dispara
-    // SessionEnd. So roda em falha (custa um node, ~100 ms) e nunca quebra a ferramenta.
+    // SessionEnd. So roda em falha (custa um node, ~100 ms) e nunca quebra a ferramenta. O corte
+    // fino e o mascaramento de segredo sao do script: cortar aqui deixaria meio token sem mascara.
     if (ran.deny !== undefined || ran.isError === true) {
       const entrada = e as unknown as Record<string, unknown>
       const comando = entrada.command ?? entrada.file_path ?? entrada.notebook_path ?? entrada.pattern ?? entrada.url ?? entrada.description ?? ''
@@ -637,8 +638,8 @@ export const register: Register = (on, options) => {
           cwd,
           ferramenta: String(e.tool),
           tipo: ran.deny !== undefined ? 'bloqueio' : 'erro',
-          comando: semControle(String(comando)).slice(0, 160),
-          mensagem: semControle(String(ran.deny ?? ran.text ?? '')).slice(0, 300),
+          comando: semControle(String(comando)).slice(0, 4000),
+          mensagem: semControle(String(ran.deny ?? ran.text ?? '')).slice(0, 4000),
         }
         await $.process.run(['node', `${$.plugin.root}/scripts/erros.cjs`, 'gravar'], {
           cwd: $.plugin.root,

@@ -30,8 +30,24 @@ function valorDe(nome) {
 
 // Uma linha, sem controle, cortada: a mensagem de erro vem da ferramenta e pode ser enorme.
 function texto(v, teto) {
-  const s = String(v ?? '').replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const s = mascarar(String(v ?? '')).replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim();
   return s.length > teto ? s.slice(0, teto - 1) + '…' : s;
+}
+
+// Segredo nunca chega ao disco: comando e mensagem de erro podem carregar token, senha ou
+// cabecalho de autorizacao (curl -H, URL com usuario:senha, chave de API colada no comando).
+// O mascaramento roda ANTES do corte, para que um segredo nao sobreviva pela metade.
+const SEGREDOS = [
+  [/\b(authorization|proxy-authorization)\s*[:=]\s*(?:(?:bearer|basic|token)\s+)?[^\s'",;]+/gi, '$1: ***'],
+  [/\b(bearer|basic)\s+[A-Za-z0-9._~+\/=-]{8,}/gi, '$1 ***'],
+  [/\b([\w.-]*(?:pass(?:word|wd)?|senha|secret|token|api[_-]?key|apikey|credential)s?[\w.-]*)(\s*[:=]\s*|\s+)("[^"]*"|'[^']*'|[^\s'",;&]+)/gi, '$1$2***'],
+  [/(--?(?:p|pw|pass(?:word)?|senha|token|secret|api-key)[= ])("[^"]*"|'[^']*'|\S+)/gi, '$1***'],
+  [/(:\/\/[^\/\s:@]+:)[^@\s\/]+@/g, '$1***@'],
+  [/\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-(?:ant-)?[A-Za-z0-9_-]{16,}|xox[abprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})\b/g, '***'],
+];
+
+function mascarar(s) {
+  return SEGREDOS.reduce((acc, [re, troca]) => acc.replace(re, troca), s);
 }
 
 function arquivo() {
@@ -145,5 +161,5 @@ function main() {
   return contar(alvo, horas);
 }
 
-module.exports = { recentes, texto };
+module.exports = { recentes, texto, mascarar };
 if (require.main === module) process.exitCode = main();

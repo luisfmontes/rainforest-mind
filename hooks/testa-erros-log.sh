@@ -32,5 +32,12 @@ checa "listar separa bloqueios" "$(printf '%s' "$L" | grep -c '^Bloqueios')" "1"
 S=$(node "$SRC/scripts/saude.cjs" --json 2>/dev/null | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const a=JSON.parse(d).find(x=>x.item==='erros de ferramenta');console.log(a?a.nivel+' '+a.detalhe:'ausente')})")
 checa "saude avisa com a contagem" "$S" "aviso 2 nas ultimas 24 h (1 erro(s), 1 bloqueio(s))"
 
+# segredo nunca chega ao disco
+printf %s "{\"sessao\":\"s2\",\"cwd\":\"C:/x/p\",\"ferramenta\":\"Bash\",\"tipo\":\"erro\",\"comando\":\"curl -H Authorization:Bearer_abcdefghijklmnop https://luis:SenhaUrl99@h/x --password Segr3d0\",\"mensagem\":\"token ghp_abcdefghijklmnopqrstuvwx1234 invalido\"}" | node "$E" gravar
+for seg in abcdefghijklmnop SenhaUrl99 Segr3d0 ghp_abcdefghijklmnopqrstuvwx1234; do
+  checa "segredo $seg fora do arquivo" "$(grep -c "$seg" "$CAIXA_POSIX/erros.jsonl")" "0"
+done
+checa "comando mascarado continua legivel" "$(grep -c "curl -H" "$CAIXA_POSIX/erros.jsonl")" "1"
+
 echo "placar: $ok ok, $falhou falha(s)"
 [ "$falhou" -eq 0 ]
