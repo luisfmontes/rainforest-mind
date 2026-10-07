@@ -50,7 +50,7 @@ contem "segunda passada nao sobrescreve" "nada foi sobrescrito" $SETUP --criar
 if [ -s "$DADOS/projetos.json" ]; then ok=$((ok+1)); echo "  ok   projetos.json existe"
 else falhou=$((falhou+1)); echo "  FALHA projetos.json nao foi criado"; fi
 # Caminho em forma WINDOWS: o node daqui e o do Windows e nao enxerga o
-# `/c/Users/...` do Git Bash. Terceira vez que este detalhe morde neste repo.
+# `/c/<home>/...` do Git Bash. Terceira vez que este detalhe morde neste repo.
 if node -e "
 const m = require('$DADOS_WIN/projetos.json');
 if (!m.solta) throw new Error('sem a entrada solta');
@@ -332,6 +332,19 @@ else
   falhou=$((falhou+1)); echo "  FALHA .gitignore foi sobrescrito"; cat "$CAIXA7b/.gitignore" | sed 's/^/         /'
 fi
 
+echo
+echo "== 411. --escopo projeto dentro de worktree linkado grava no PRINCIPAL =="
+R411="$CAIXA/r411"; mkdir -p "$R411"
+git init -q "$R411" && git -C "$R411" -c user.email=t@t -c user.name=t commit -q --allow-empty -m i
+git -C "$R411" worktree add -q .claude/worktrees/x -b x >/dev/null 2>&1
+WT411="$R411/.claude/worktrees/x"
+saida411=$( cd "$WT411" && env -u CLAUDE_PROJECT_DIR RFM_ROOT="$DADOS_WIN" node "$SRC/scripts/setup.cjs" --desligar gate-publicacao --escopo projeto 2>&1 ); got411=$?
+if [ "$got411" = 0 ] && [ -f "$R411/.rainforest/config.json" ] && [ ! -e "$WT411/.rainforest" ] \
+   && grep -q '"gate-publicacao": false' "$R411/.rainforest/config.json"; then
+  ok=$((ok+1)); echo "  ok   411 setup --escopo projeto em worktree grava no principal"
+else
+  falhou=$((falhou+1)); echo "  FALHA 411 setup em worktree (exit $got411)"; echo "$saida411" | sed 's/^/         /'
+fi
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

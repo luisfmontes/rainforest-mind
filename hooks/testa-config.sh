@@ -380,5 +380,18 @@ igual "(e) subagente-sem-instalar desligado no projeto" "false projeto" "$(chave
 rm -f "$SBP/proj/.rainforest/config.json" "$SBP/lar/.rainforest/config.json"
 
 echo
+echo "== 411. o config do projeto e achado a partir de worktree linkado e de subdiretorio =="
+# Issue #411: `<projeto>/.rainforest/config.json` era lido na pasta crua do chamador;
+# dentro de `.claude/worktrees/x` ou de `<repo>/sub` o gate passava a ligado.
+R411="$SBP/r411"; mkdir -p "$R411/.rainforest" "$R411/sub"
+git init -q "$R411" && git -C "$R411" -c user.email=t@t -c user.name=t commit -q --allow-empty -m i
+git -C "$R411" worktree add -q .claude/worktrees/x -b x >/dev/null 2>&1
+echo '{"gate-publicacao": false}' > "$R411/.rainforest/config.json"
+mkdir -p "$SBP/fora411/.rainforest"; echo '{"gate-publicacao": false}' > "$SBP/fora411/.rainforest/config.json"
+lig411() { RFM_ROOT="$SB/dados-vazio411" node -e 'console.log(require(process.argv[2]).ligado("gate-publicacao",{projeto:process.argv[1]}))' "$1" "$SRC_WIN/hooks/lib/config.cjs" 2>&1; }
+igual "411 config do projeto visto de dentro de worktree linkado" "false" "$(lig411 "$SB/r411/.claude/worktrees/x")"
+igual "411 config visto de subdiretorio do principal"             "false" "$(lig411 "$SB/r411/sub")"
+igual "411 fora de git segue como antes"                          "false" "$(lig411 "$SB/fora411")"
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

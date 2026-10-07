@@ -274,6 +274,26 @@ function lerJson(p) {
 }
 
 /**
+ * Raiz do checkout PRINCIPAL de `dir`. Dentro de um worktree linkado
+ * (`.claude/worktrees/x`) ou de um subdiretório, o `.rainforest/config.json` do
+ * projeto mora no principal, não ali. Sem git, com erro, ou com o git-common-dir
+ * fora do padrão `<raiz>/.git` (bare, submódulo), devolve `dir` inalterado.
+ */
+function raizDoPrincipal(dir) {
+  try {
+    const { caminhoExecutavel } = require('./resolver-executavel.cjs');
+    const r = require('child_process').spawnSync(
+      caminhoExecutavel('git'), ['rev-parse', '--path-format=absolute', '--git-common-dir'],
+      { cwd: dir, encoding: 'utf8', timeout: 3000, windowsHide: true });
+    if (r.status !== 0 || !r.stdout) return dir;
+    const comum = r.stdout.trim();
+    return path.basename(comum) === '.git' ? path.dirname(comum) : dir;
+  } catch {
+    return dir;
+  }
+}
+
+/**
  * Resolve a configuração efetiva, e diz de ONDE veio cada chave.
  *
  * A procedência importa tanto quanto o valor: "o gate está desligado" sem dizer
@@ -288,7 +308,7 @@ function lerJson(p) {
  */
 function resolverConfig(o = {}) {
   const env = o.env || process.env;
-  const projetoDir = o.projeto || env.CLAUDE_PROJECT_DIR || process.cwd();
+  const projetoDir = raizDoPrincipal(o.projeto || env.CLAUDE_PROJECT_DIR || process.cwd());
 
   let dadosDir = o.dados;
   if (dadosDir === undefined) {
@@ -383,4 +403,4 @@ function ligado(chave, o = {}) {
   }
 }
 
-module.exports = { CHAVES, resolverConfig, ligado };
+module.exports = { CHAVES, resolverConfig, ligado, raizDoPrincipal };
