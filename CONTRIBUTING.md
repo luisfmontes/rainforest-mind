@@ -198,8 +198,9 @@ lista.
 
 *Falhas e disco.* Falha de qualquer leitura (`$.session.usage`, `$.model.complete`, `$.ui.open`,
 `$.process.run`) apaga só a peça afetada; exceção no desenho da barra ou do pane cai em `next(e)` e nunca
-quebra a sessão. O mod não grava em disco: o estado é do `$.state`, e o desvio e os fluxos só
-leem. Só vale a partir da sessão seguinte à atualização do plugin. A prova de engine é
+quebra a sessão. O mod só grava em disco por um caminho: cada falha de ferramenta vira uma linha em
+`<raiz>/erros.jsonl` pelo `scripts/erros.cjs`, na hora (lida com `/painel erros` e no `/saude`). O
+resto do estado é do `$.state`, e o desvio e os fluxos só leem. Só vale a partir da sessão seguinte à atualização do plugin. A prova de engine é
 `claude plugin test .` (`hooks/mod-painel.test.tsx`, terminal e desktop); a lógica, `node
 hooks/testa-mod-painel.cjs`, `node hooks/testa-mod-deixado.cjs` e `node hooks/testa-mod-mapa.cjs`.
 

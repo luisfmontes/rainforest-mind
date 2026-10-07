@@ -149,6 +149,8 @@ async function montar($: any, on: any, surface: Surface, inicio: number, comUi =
     textoModelo: 'NENHUM',
     atrasoModelo: 0,
     fills: [] as { text: unknown; mode: unknown }[],
+    // Log de erros: cada process.run do scripts/erros.cjs, com argv, stdin e env.
+    erros: [] as { argv: string[]; stdin: unknown; env: unknown }[],
   }
   on('process.run', async (_$: any, e: any) => {
     s.runs += 1
@@ -161,6 +163,10 @@ async function montar($: any, on: any, surface: Surface, inicio: number, comUi =
       if (s.modoDesvio === 'json-ruim') return saida('isto nao e json {')
       if (s.modoDesvio === 'sem-fluxo') return saida(DESVIO_SEM_FLUXO)
       return saida(String(e.argv[e.argv.indexOf('--arquivo') + 1]).endsWith('faixa-puro.mjs') ? DESVIO_DENTRO : DESVIO_FORA)
+    }
+    if (alvo.endsWith('erros.cjs')) {
+      s.erros.push({ argv: [...e.argv], stdin: e.init?.stdin, env: e.init?.env })
+      return saida(e.argv[2] === 'listar' ? '1 falha(s) de ferramenta nas últimas 24 h' : '')
     }
     if (alvo.endsWith('relogio-sessoes.cjs')) return saida(JSON.stringify(s.sessoes))
     if (alvo.endsWith('jornada.cjs')) return s.modoJornada === 'falha' ? saida('', 1) : saida(JSON.stringify(s.jornada))
@@ -326,6 +332,23 @@ for (const surface of ['terminal', 'desktop'] as const) {
       const t = await juntos()
       expect(t).toContain('Erros 1')
       expect(t).toContain('Ferram./min 1')
+    })
+
+    await caso(`erros (${surface}): a falha vira uma linha do erros.cjs gravar, com sessao, cwd e comando`, async () => {
+      const gravacoes = s.erros.filter(x => x.argv[2] === 'gravar')
+      expect(gravacoes.length).toBe(1)
+      const falha = JSON.parse(String(gravacoes[0]!.stdin))
+      expect(falha).toMatchObject({ sessao: 'sessao-atual', cwd: '/projeto', ferramenta: 'Bash', tipo: 'erro', comando: 'comando-que-falha' })
+      expect(gravacoes[0]!.env).toMatchObject({ CLAUDE_PROJECT_DIR: '/projeto' })
+      await $.tool.call({ tool: 'Bash', command: 'ls' } as never)
+      expect(s.erros.filter(x => x.argv[2] === 'gravar').length).toBe(1)
+    })
+
+    await caso(`erros (${surface}): /painel erros devolve a listagem do erros.cjs e /painel erros 48 passa as horas`, async () => {
+      expect((await painel('erros') as any).text).toContain('1 falha(s) de ferramenta')
+      await painel('erros 48')
+      const ultima = s.erros[s.erros.length - 1]!
+      expect(ultima.argv.slice(2)).toEqual(['listar', '--horas', '48'])
     })
 
     await caso(`barra (${surface}): Subagentes 1 depois do agent.spawn e 0 depois do turn.complete do agentId`, async () => {
