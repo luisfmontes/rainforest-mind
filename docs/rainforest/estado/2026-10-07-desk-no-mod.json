@@ -25,15 +25,9 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-07",
-    "tarefas_ok": 9,
+    "tarefas_ok": 10,
     "tarefas": 14,
-    "em_voo": [
-      {
-        "agente": "tester-t10",
-        "tarefa": "10 prova transversal",
-        "desde": "2026-10-07"
-      }
-    ],
+    "em_voo": [],
     "em": "2026-10-07",
     "carimbos": [
       {
@@ -294,7 +288,85 @@
         "iteracao": 1,
         "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
         "ts": "2026-10-07T13:16:49.104Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "0656db33",
+        "iteracao": 7,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:35:51.814Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "0656db33",
+        "iteracao": 7,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:35:51.814Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "0656db33",
+        "iteracao": 6,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:35:51.814Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "0656db33",
+        "iteracao": 7,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:35:51.814Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "fd12e60b",
+        "iteracao": 5,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:35:51.814Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "fd12e60b",
+        "iteracao": 5,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:35:51.814Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "9761d46f",
+        "iteracao": 4,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:35:51.814Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "2d266d42",
+        "iteracao": 3,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:35:51.814Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "a0f35b59",
+        "iteracao": 2,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:35:51.814Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "885bed92",
+        "iteracao": 1,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:35:51.814Z"
       }
+    ],
+    "pendentes": [
+      "tarefa-11: medicao no REPL real nas duas contas (bola do usuario)",
+      "revisar: figurasDaBarra quebra o laco quando o relogio nao cabe e some com Tokens/Custo em 30 colunas",
+      "revisar: toast que lanca sincrono aborta anotar e o checker",
+      "revisar: mapa-puro tem copia local de semControle (faixa-puro ja exporta)",
+      "revisar: rascunho Faz agora sem acento",
+      "medir: desvio-do-plano.cjs leva 1,5-2,4 s por escrita"
     ]
   },
   "revisar": {
