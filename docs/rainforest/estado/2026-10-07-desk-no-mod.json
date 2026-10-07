@@ -25,12 +25,12 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-07",
-    "tarefas_ok": 8,
+    "tarefas_ok": 9,
     "tarefas": 14,
     "em_voo": [
       {
-        "agente": "executor-t9",
-        "tarefa": "9 deixado para depois + checker",
+        "agente": "tester-t10",
+        "tarefa": "10 prova transversal",
         "desde": "2026-10-07"
       }
     ],
@@ -231,6 +231,69 @@
         "iteracao": 1,
         "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
         "ts": "2026-10-07T13:04:48.989Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "0656db33",
+        "iteracao": 6,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:16:49.104Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "0656db33",
+        "iteracao": 6,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:16:49.104Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "0656db33",
+        "iteracao": 5,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:16:49.104Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "0656db33",
+        "iteracao": 6,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:16:49.104Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "fd12e60b",
+        "iteracao": 4,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:16:49.104Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "fd12e60b",
+        "iteracao": 4,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:16:49.104Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "9761d46f",
+        "iteracao": 3,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:16:49.104Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "2d266d42",
+        "iteracao": 2,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:16:49.104Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "a0f35b59",
+        "iteracao": 1,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:16:49.104Z"
       }
     ]
   },
