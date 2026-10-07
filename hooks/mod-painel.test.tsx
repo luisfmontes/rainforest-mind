@@ -18,7 +18,7 @@ import { largura } from './faixa-puro.mjs'
 
 // Saida real do script; so o campo `worktree` (caminho da caixa temporaria) foi trocado por um
 // caminho neutro.
-const FIXTURE_DADOS = {"fluxos":[{"slug":"2026-10-03-faixa-teste","titulo":"Faixa de teste","etapa":"executar","tarefas_ok":1,"tarefas":3,"em_voo":["agente-a"],"criado_em":"2026-10-03","worktree":"C:/tmp/faixa-repo-OdhnjD"}]}
+const FIXTURE_DADOS = {"fluxos":[{"slug":"2026-10-07-painel-pane","titulo":"Pane do painel","etapa":"executar","tarefas_ok":1,"tarefas":3,"em_voo":["agente-a"],"criado_em":"2026-10-07","worktree":"C:/tmp/painel-repo-0l2wTg"}]}
 const FIXTURE_SESSOES = {"ociosidade_min":45,"janelas":[{"cwd":"/projetos/painel","desde":0},{"cwd":"/projetos/loja-api","desde":0}]}
 const FIXTURE_JORNADA = {"escopo":"s.jsonl","mensagens":13,"efetiva_min":552,"bruto_min":552,"primeiro":"2026-10-03T11:18:00-03:00","ultimo":"2026-10-03T20:30:00-03:00","corte_min":55,"descartadas":[]}
 
@@ -39,7 +39,9 @@ const SESSION_USAGE = (percent: number, tokens: number, usd: number) => ({
         { name: 'Mensagens', tokens: Math.round(tokens / 2), color: 'a', isDeferred: false, kind: 'used' },
         { name: 'Ferramentas', tokens: Math.round(tokens * 0.3), color: 'b', isDeferred: false, kind: 'used' },
         { name: 'Sistema', tokens: Math.round(tokens * 0.2), color: 'c', isDeferred: false, kind: 'used' },
-        { name: 'Livre', tokens: 200000 - tokens, color: 'd', isDeferred: false, kind: 'free' },
+        { name: 'Ferramentas sob demanda', tokens: 4200, color: 'e', isDeferred: true, kind: 'deferred' },
+        { name: 'Reserva de compactação', tokens: 33000, color: 'f', isDeferred: false, kind: 'buffer' },
+        { name: 'Livre', tokens: 200000 - tokens - 33000, color: 'd', isDeferred: false, kind: 'free' },
       ],
     },
   },
@@ -64,6 +66,15 @@ const PROPS = {
   maxRows: 10,
   bodyColumns: 200,
   scroll: { offset: 0, bodyRows: 20 },
+  view: {},
+}
+
+const PANE_PROPS = {
+  title: 'Esta sessão',
+  isFocused: false,
+  bodyColumns: 80,
+  placement: 'inline' as const,
+  scroll: { offset: 0, bodyRows: 40 },
   view: {},
 }
 
@@ -92,6 +103,8 @@ async function montar($: any, on: any, surface: Surface, inicio: number, comUi =
     modoDados: 'ok' as 'ok' | 'falha',
     usage: SESSION_USAGE(38, 76599, 0.42) as unknown,
     modoUsage: 'ok' as 'ok' | 'falha',
+    modoOpen: 'ok' as 'ok' | 'recusa',
+    opens: [] as unknown[],
     usageCalls: 0,
     dados: [] as { argv: readonly string[]; cwd: unknown }[],
     runs: 0,
@@ -114,6 +127,10 @@ async function montar($: any, on: any, surface: Surface, inicio: number, comUi =
     s.usageCalls += 1
     return s.modoUsage === 'falha' ? ({ deny: 'recusado pelo sec-default' } as never) : ({ value: s.usage } as never)
   })
+  on('ui.open', async (_$: any, e: any) => {
+    s.opens.push(e)
+    return { value: { isPlaced: s.modoOpen === 'ok' } } as never
+  })
   on('turn.complete', async () => ({ text: '' }))
   on('prompt.submit', async (_$: any, e: any) => e as never)
   on('tool.call', async (_$: any, e: any) => ({ result: 'ok', isError: e.command === 'comando-que-falha' }) as never)
@@ -135,6 +152,11 @@ async function montar($: any, on: any, surface: Surface, inicio: number, comUi =
     return ui
   }
   if (comUi) await abrir()
+  // O pane do /painel monta no lugar da barra (cada teste usa um ou outro).
+  const abrirPane = async (props: Record<string, unknown> = {}) => {
+    ui = await $.ui.mount({ plugin: 'rainforest-mind', surface, component: 'Pane', requestId: 'painel', props: { ...PANE_PROPS, ...props } })
+    return ui
+  }
   const textos = async () => (await ui.findAll({ type: 'Text' })).map((t: any) => t.text as string)
   const juntos = async () => (await textos()).join('\n')
   const quieta = async () => {
@@ -157,7 +179,7 @@ async function montar($: any, on: any, surface: Surface, inicio: number, comUi =
       throw new Error(`[${surface}] ${nome}: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
-  return { relogio, s, get ui() { return ui }, abrir, textos, juntos, quieta, comecar, terminar, passo, painel, caso }
+  return { relogio, s, get ui() { return ui }, abrir, abrirPane, textos, juntos, quieta, comecar, terminar, passo, painel, caso }
 }
 
 for (const surface of ['terminal', 'desktop'] as const) {
@@ -280,6 +302,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
       expect(r.text).toContain('esconder')
       expect(r.text).toContain('mostrar')
       expect(r.text).toContain('cache 5m|1h')
+      expect(r.text).toContain('checar ligar|desligar')
     })
 
     await ui.unmount()
@@ -427,5 +450,151 @@ for (const surface of ['terminal', 'desktop'] as const) {
     })
 
     await ui.unmount()
+  })
+
+  test(`painel (${surface}): pane com fluxos, contexto por fatia, cache, subagentes, custo e subagente em tela`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40), false)
+    const { relogio, s, textos, juntos, comecar, terminar, passo, painel, caso } = m
+    const soma = (t: string[]) => t.filter(x => /^[█▒░]+$/.test(x)).reduce((n, x) => n + x.length, 0)
+
+    await caso(`pane (${surface}): /painel sem argumento abre o pane, mede o contexto e devolve o texto`, async () => {
+      await comecar()
+      await relogio.advance(2000)
+      await passo()
+      await terminar(ANSWER, { usage: USAGE_REAL })
+      const antes = s.usageCalls
+      const r = await painel('')
+      expect(r.text).toBe('Painel aberto.')
+      expect(s.opens).toEqual([{ id: 'painel', title: 'Esta sessão' }])
+      expect(s.usageCalls).toBe(antes + 1)
+      await m.abrirPane()
+    })
+
+    await caso(`pane (${surface}): Fluxos em curso traz o slug sem data, a etapa, 1/3 e 1 em voo`, async () => {
+      const t = await textos()
+      expect(t).toContain(' Fluxos em curso ')
+      expect(t).toContain('painel-pane')
+      expect(t).not.toContain('2026-10-07-painel-pane')
+      expect(t).toContain('executar · 1/3 · 1 em voo')
+    })
+
+    await caso(`pane (${surface}): a barra de contexto soma exatamente a largura interna`, async () => {
+      expect(soma(await textos())).toBe(76) // bodyColumns 80 - 4
+      await m.ui.redraw({ ...PANE_PROPS, bodyColumns: 50 })
+      expect(soma(await textos())).toBe(46)
+      await m.ui.redraw({ ...PANE_PROPS, bodyColumns: 10 })
+      expect(soma(await textos())).toBe(16) // o piso do interior
+      await m.ui.redraw(PANE_PROPS)
+    })
+
+    await caso(`pane (${surface}): Onde foi o contexto traz nome, compacto e % de cada fatia e as ferramentas sob demanda`, async () => {
+      const t = await textos()
+      expect(t).toContain(' Onde foi o contexto ')
+      expect(t).toContain('Usado')
+      expect(t).toContain('38% de 200.0K')
+      expect(t).toContain('■ Mensagens')
+      expect(t).toContain('38.3K  19%')
+      expect(t).toContain('■ Ferramentas')
+      expect(t).toContain('23.0K  11%')
+      expect(t).toContain('■ Sistema')
+      expect(t).toContain('15.3K   8%')
+      expect(t).toContain('▒ Reserva de compactação')
+      expect(t).toContain('░ Livre')
+      expect(t).toContain('+ 4.2K em ferramentas sob demanda')
+      expect(t).not.toContain('Medição indisponível')
+    })
+
+    await caso(`pane (${surface}): Cache de prompt mostra quente, o custo quente e frio e a estimativa de 1h`, async () => {
+      const t = await textos()
+      expect(t).toContain(' Cache de prompt ')
+      expect(t).toContain('quente, faltam 60:00')
+      expect(t).toContain('$0.02')
+      expect(t).toContain('$0.61')
+      expect(t).toContain('Estimativa: reenvio da conversa a preço de lista, cache de 1h')
+      await painel('cache 5m')
+      const c = await textos()
+      expect(c).toContain('Estimativa: reenvio da conversa a preço de lista, cache de 5m')
+      expect(c).toContain('$0.38') // 76599 tokens a US$ 4/M, escrita a 1,25x
+      await relogio.advance(6 * MIN)
+      const frio = await textos()
+      expect(frio).toContain('frio')
+      expect(frio).not.toContain('quente, faltam 0:00')
+      await painel('cache 1h')
+    })
+
+    await caso(`pane (${surface}): Subagentes lista o agente com tipo, modelo e ferramentas`, async () => {
+      expect(await textos()).toContain('Nenhum iniciado ainda')
+      await $.agent.spawn({ prompt: 'p', description: 'revisar o diff', subagentType: 'general-purpose', tool_use_id: 'u1' } as never)
+      await $.tool.call({ tool: 'Bash', command: 'ls', agentId: 'ag-1' } as never)
+      const t = await textos()
+      expect(t).toContain(' Subagentes ')
+      expect(t.some(x => x.includes('● revisar o diff'))).toBe(true)
+      expect(t.some(x => x.includes('trabalhando · general-purpose · haiku · 1 ferramentas'))).toBe(true)
+      await terminar('feito', { agentId: 'ag-1', usage: { ...USAGE_REAL, model: 'haiku' } })
+      expect((await textos()).some(x => x.includes('✓ revisar o diff'))).toBe(true)
+    })
+
+    await caso(`pane (${surface}): Custo e tokens traz custo, lidos, % servida do cache, escritos e turnos`, async () => {
+      const t = await textos()
+      expect(t).toContain(' Custo e tokens ')
+      expect(t).toContain('Custo da sessão')
+      expect(t).toContain('$0.42')
+      expect(t).toContain('153.2K') // 76599 do turno e 76599 do subagente
+      expect(t).toContain('40%') // 30782 de 76599 lidos do cache, nos dois turnos
+      expect(t).toContain('546') // 273 + 273 tokens escritos
+      expect(t).toContain('Turnos')
+      expect(t).toContain('1')
+    })
+
+    await caso(`pane (${surface}): com view.agentId o pane e o do subagente e diz que contexto e cache sao da principal`, async () => {
+      await m.ui.redraw({ ...PANE_PROPS, view: { agentId: 'ag-1' } })
+      const t = await juntos()
+      expect(t).toContain('Subagente em tela')
+      expect(t).toContain('revisar o diff')
+      expect(t).toContain('Todos os subagentes')
+      expect(t).toContain('Contexto e cache são da sessão principal')
+      expect(t).not.toContain('Onde foi o contexto')
+      expect(t).not.toContain('Cache de prompt')
+      await m.ui.redraw({ ...PANE_PROPS, view: { agentId: 'ag-novo' } })
+      expect(await juntos()).toContain('Sem atividade vista ainda')
+    })
+
+    await m.ui.unmount()
+  })
+
+  test(`painel (${surface}): pane com ui.open recusado, session.usage rejeitado e subcomando desconhecido`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40), false)
+    const { s, textos, comecar, painel, caso } = m
+
+    await caso(`pane (${surface}): ui.open recusado ainda devolve o texto do comando`, async () => {
+      await comecar()
+      s.modoOpen = 'recusa'
+      const r = await painel('')
+      expect(r.text).toContain('Painel indisponível aqui')
+      expect(r.text).toContain('Contexto 38%')
+      expect(r.text).toContain('custo $0.42')
+      s.modoOpen = 'ok'
+    })
+
+    await caso(`pane (${surface}): session.usage rejeitado ainda devolve o texto e o pane diz Medição indisponível`, async () => {
+      s.modoUsage = 'falha'
+      const r = await painel('')
+      expect(r.text).toBe('Painel aberto.')
+      await m.abrirPane()
+      const t = await textos()
+      expect(t).toContain('Medição indisponível')
+      expect(t).toContain(' Fluxos em curso ')
+      expect(t).toContain(' Cache de prompt ')
+      expect(t).toContain(' Custo e tokens ')
+      expect(t.some(x => /^[█▒░]+$/.test(x))).toBe(false)
+    })
+
+    await caso(`pane (${surface}): /painel xyz devolve a lista de subcomandos`, async () => {
+      const r = await painel('xyz')
+      for (const sub of ['esconder', 'mostrar', 'cache 5m|1h', 'checar ligar|desligar']) expect(r.text).toContain(sub)
+      expect(s.opens.length).toBe(2) // so os dois /painel sem argumento abriram o pane
+    })
+
+    await m.ui.unmount()
   })
 }

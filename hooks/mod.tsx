@@ -9,14 +9,17 @@ import type { Register } from 'claude-code'
 import type {
   RainforestMindFaixaDados,
   RainforestMindPainelAgente,
+  RainforestMindPainelFatia,
   RainforestMindPainelStats,
   RainforestMindRelogioJornada,
   RainforestMindRelogioSessoes,
 } from '../types'
 import { register as abertura } from './register.ts'
 import { largura, cortar } from './faixa-puro.mjs'
-import { cacheDe, compacto, figurasDaBarra, ritmoPorMinuto, rotuloSubagente } from './painel-puro.mjs'
+import { cacheDe, compacto, dinheiro, fatias, figurasDaBarra, restante, ritmoPorMinuto, rotuloSubagente } from './painel-puro.mjs'
 import { avaliarRelogio, linhaRelogio, notaJornada } from './relogio-puro.mjs'
+
+type Fatia = RainforestMindPainelFatia
 
 const MIN = 60_000
 const HORA = 60 * MIN
@@ -187,9 +190,16 @@ const mmss = (ms: number): string => {
   return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0')
 }
 
-const COR = { ambar: '#ffb000', verde: '#00d67a', vermelho: '#ff4d4d', ciano: '#4dd2ff' }
+const COR = { ambar: '#ffb000', verde: '#00d67a', vermelho: '#ff4d4d', ciano: '#4dd2ff', cinza: '#808080' }
+const CORES_FATIA = ['#4dd2ff', '#00d67a', '#ffb000', '#c792ea', '#ff7eb6', '#7aa2f7', '#e0af68']
+const PANE = 'painel'
+const FATIAS_NA_LEGENDA = 7
+const AGENTES_NO_PANE = 6
 
-const AJUDA = 'Subcomandos: esconder, mostrar, cache 5m|1h'
+// O slug do fluxo comeca pela data de criacao; no pane so o nome conta.
+const slugSemData = (slug: string): string => slug.replace(/^\d{4}-\d{2}-\d{2}-/, '')
+
+const AJUDA = 'Subcomandos: esconder, mostrar, cache 5m|1h, checar ligar|desligar. Sem argumento abre o painel.'
 
 export const register: Register = (on, options) => {
   abertura(on, options)
@@ -241,7 +251,7 @@ export const register: Register = (on, options) => {
     try {
       await $.command.register({
         name: 'painel',
-        description: 'Barra de sessao: /painel esconder, /painel mostrar, /painel cache 5m|1h',
+        description: 'Painel da sessao: /painel abre o pane; esconder, mostrar, cache 5m|1h',
       })
     } catch {
       // sem comando, a barra segue
@@ -386,7 +396,33 @@ export const register: Register = (on, options) => {
       await update($, painelStats, s => ({ ...inteiro(s), ttlMs: palavra === 'cache 5m' ? 5 * MIN : HORA }))
       return { text: `Vida do cache em ${palavra.slice(6)}.` }
     }
-    return { text: AJUDA }
+    if (palavra !== '') return { text: AJUDA }
+    // Sem argumento: abre o pane, mede o contexto e atualiza os fluxos. Cada peca que falha
+    // some sozinha; o comando sempre devolve o texto.
+    let aberto = false
+    try {
+      aberto = (await $.ui.open({ id: PANE, title: 'Esta sessão' })).isPlaced === true
+    } catch {
+      // sem pane, o texto do comando basta
+    }
+    try {
+      await medir({
+        usage: () => $.session.usage({ breakdown: 'summary' }),
+        gravar: f => update($, painelStats, f),
+        log: m => $.ui.log(m, { to: 'debug' }),
+      })
+      const dados = await buscar({
+        rodar: (argv, init) => $.process.run(argv, init),
+        cwd: () => $.session.cwd(),
+        raiz: $.plugin.root,
+      })
+      await update($, faixaDados, () => dados)
+    } catch {
+      // a medicao nunca quebra o comando
+    }
+    if (aberto) return { text: 'Painel aberto.' }
+    const s = inteiro(await read($, painelStats))
+    return { text: `Painel indisponível aqui. Contexto ${s.ctxPct === null ? '--' : Math.round(s.ctxPct) + '%'}, custo ${dinheiro(s.custoUsd)}.` }
   })
 
   on('agent.spawn', async ($, e, next) => {
@@ -567,6 +603,155 @@ export const register: Register = (on, options) => {
       // o contador nunca quebra a compactacao
     }
     return feito
+  })
+
+  // O pane do /painel: fluxos em curso, onde foi o contexto, cache, subagentes e custo. Toda
+  // leitura que falta vira uma frase no proprio painel; excecao devolve next(e).
+  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e, next) => {
+    try {
+      const { Box, Text } = $.ui.resolve(e)
+      const s = inteiro(await read($, painelStats))
+      const dados = await read($, faixaDados)
+      const agora = await $.clock.now()
+      const interior = Math.max(16, e.props.bodyColumns - 4)
+      const visto = e.props.view?.agentId
+      const corte = (texto: string, margem: number): string => rotuloSubagente(texto, Math.max(8, interior - margem))
+
+      const linha = (chave: string, rotulo: string, valor: string, cor: string) => (
+        <Box key={chave} flexDirection="row" justifyContent="space-between">
+          <Text color={COR.ambar} dimColor>{rotulo}</Text>
+          <Text color={cor} bold>{valor}</Text>
+        </Box>
+      )
+      const painel = (chave: string, cor: string, titulo: string, filhos: unknown) => (
+        <Box key={chave} flexDirection="column" borderStyle="single" borderColor={cor} paddingX={1}>
+          <Text backgroundColor={cor} color="#000000" bold>{` ${titulo} `}</Text>
+          {filhos}
+        </Box>
+      )
+      const linhasAgentes = (limite: number) =>
+        [...s.agentes]
+          .sort((a, b) => b.iniciadoEm - a.iniciadoEm)
+          .slice(0, limite)
+          .map(a => {
+            const roda = emAndamento(a, agora)
+            const cor = roda ? COR.verde : a.falhou ? COR.vermelho : COR.ciano
+            const seta = a.id === visto ? '▶ ' : ''
+            return (
+              <Box key={`ag-${a.id}`} flexDirection="column">
+                <Box flexDirection="row" justifyContent="space-between">
+                  <Text color={cor} bold>{corte(`${seta}${roda ? '●' : a.falhou ? '✗' : '✓'} ${a.rotulo}`, 7)}</Text>
+                  <Text color={cor}>{mmss((roda ? agora : (a.fimEm ?? a.vistoEm)) - a.iniciadoEm)}</Text>
+                </Box>
+                <Text dimColor>{corte(`  ${roda ? 'trabalhando' : a.falhou ? 'parou' : 'pronto'} · ${a.tipo} · ${a.modelo ?? 'modelo desconhecido'} · ${a.ferramentas} ferramentas`, 0)}</Text>
+              </Box>
+            )
+          })
+
+      // O transcript de um subagente esta em tela: o pane e dele, e contexto e cache sao da principal.
+      if (visto !== undefined) {
+        const a = s.agentes.find(x => x.id === visto)
+        const roda = a !== undefined && emAndamento(a, agora)
+        const cor = a === undefined ? COR.ambar : roda ? COR.verde : a.falhou ? COR.vermelho : COR.ciano
+        return (
+          <Box flexDirection="column">
+            {painel('p-agente', COR.ciano, 'Subagente em tela', [
+              <Text key="nome" color={cor} bold>{corte(a?.rotulo ?? `agente ${visto.slice(0, 6)}`, 0)}</Text>,
+              a === undefined ? <Text key="sem" dimColor>Sem atividade vista ainda</Text> : null,
+              a !== undefined ? linha('status', 'Status', roda ? 'trabalhando' : a.falhou ? 'parou' : 'pronto', cor) : null,
+              a !== undefined ? linha('tempo', 'Tempo', mmss((roda ? agora : (a.fimEm ?? a.vistoEm)) - a.iniciadoEm), cor) : null,
+              a !== undefined ? linha('tipo', 'Tipo', a.tipo, COR.ciano) : null,
+              a !== undefined ? linha('modelo', 'Modelo', a.modelo ?? 'desconhecido', COR.ciano) : null,
+              a !== undefined ? linha('ferr', 'Ferramentas', `${a.ferramentas}`, COR.ciano) : null,
+              a !== undefined ? linha('lidos', 'Tokens lidos', compacto(a.tokensLidos), COR.ciano) : null,
+              a !== undefined ? linha('escritos', 'Tokens escritos', compacto(a.tokensSaida), COR.verde) : null,
+              <Text key="nota" dimColor>Os tokens sobem cada vez que ele termina uma rodada</Text>,
+            ])}
+            {painel('p-agentes', COR.ambar, 'Todos os subagentes', linhasAgentes(AGENTES_NO_PANE))}
+            <Text dimColor>Contexto e cache são da sessão principal. Volte a ela para vê-los.</Text>
+          </Box>
+        )
+      }
+
+      // Fluxos em curso (D4): o que esta aberto neste repositorio, lido de faixa-dados.cjs.
+      const fluxos = dados?.fluxos ?? []
+      const painelFluxos = painel('p-fluxos', COR.ciano, 'Fluxos em curso', fluxos.length === 0
+        ? <Text dimColor>Nenhum fluxo em curso</Text>
+        : fluxos.map(f => {
+            const partes = [f.etapa]
+            if (f.tarefas !== null && f.tarefas_ok !== null) partes.push(`${f.tarefas_ok}/${f.tarefas}`)
+            if (f.em_voo.length > 0) partes.push(`${f.em_voo.length} em voo`)
+            const direita = rotuloSubagente(partes.join(' · '), Math.max(24, Math.floor(interior / 2)))
+            return (
+              <Box key={`fl-${f.slug}`} flexDirection="row" justifyContent="space-between">
+                <Text color={COR.ciano} bold>{rotuloSubagente(slugSemData(f.slug), Math.max(8, interior - largura(direita) - 2))}</Text>
+                <Text>{direita}</Text>
+              </Box>
+            )
+          }))
+
+      // Onde foi o contexto: maiores primeiro, depois o livre e a reserva; as ferramentas
+      // carregadas sob demanda ficam fora da janela e so sao listadas.
+      const ocupadas = s.fatias.filter(f => f.tipo === 'used').sort((a, b) => b.tokens - a.tokens)
+      const sobras = s.fatias.filter(f => f.tipo === 'free' || f.tipo === 'buffer')
+      const sobDemanda = s.fatias.filter(f => f.tipo === 'deferred').reduce((soma, f) => soma + f.tokens, 0)
+      const desenhadas = [...ocupadas, ...sobras]
+      const celulas = fatias(desenhadas, interior);
+      const janela = desenhadas.reduce((soma, f) => soma + f.tokens, 0)
+      const tinta = (f: Fatia): string => (f.tipo === 'used' ? (CORES_FATIA[ocupadas.indexOf(f) % CORES_FATIA.length] ?? COR.ciano) : COR.cinza)
+      const celula = (f: Fatia): string => (f.tipo === 'used' ? '█' : f.tipo === 'buffer' ? '▒' : '░')
+      const restoUsado = ocupadas.slice(FATIAS_NA_LEGENDA).reduce((soma, f) => soma + f.tokens, 0)
+      const legenda = [...ocupadas.slice(0, FATIAS_NA_LEGENDA), ...sobras]
+      const corCtx = (s.ctxPct ?? 0) > 80 ? COR.vermelho : COR.verde
+      const painelContexto = painel('p-contexto', COR.ambar, 'Onde foi o contexto', [
+        linha('usado', 'Usado', s.ctxPct === null ? '--' : `${Math.round(s.ctxPct)}% de ${compacto(s.ctxJanela ?? 0)}`, corCtx),
+        desenhadas.length === 0 ? <Text key="indisp" color={COR.ambar}>Medição indisponível</Text> : null,
+        desenhadas.length > 0 ? (
+          <Box key="barra" flexDirection="row">
+            {desenhadas.map((f, i) => ((celulas[i] ?? 0) > 0 ? <Text key={`c-${i}`} color={ocupadas.indexOf(f) >= FATIAS_NA_LEGENDA ? COR.cinza : tinta(f)}>{celula(f).repeat(celulas[i] ?? 0)}</Text> : null))}
+          </Box>
+        ) : null,
+        ...legenda.map((f, i) => (
+          <Box key={`lg-${i}`} flexDirection="row" justifyContent="space-between">
+            <Text color={tinta(f)}>{`${celula(f) === '█' ? '■' : celula(f)} ${rotuloSubagente(f.nome, Math.max(8, interior - 14))}`}</Text>
+            <Text color={tinta(f)} bold>{`${compacto(f.tokens)} ${`${Math.round((f.tokens / Math.max(1, janela)) * 100)}%`.padStart(4)}`}</Text>
+          </Box>
+        )),
+        restoUsado > 0 ? <Text key="resto" dimColor>{`■ ${ocupadas.length - FATIAS_NA_LEGENDA} itens menores, ${compacto(restoUsado)}`}</Text> : null,
+        sobDemanda > 0 ? <Text key="demanda" dimColor>{`+ ${compacto(sobDemanda)} em ferramentas sob demanda`}</Text> : null,
+      ])
+
+      // Cache de prompt: quente enquanto a ultima requisicao ainda cabe na vida do cache.
+      const cache = cacheDe({ modelo: s.modelo, ctxTokens: s.ctxTokens, ultimaRequisicaoMs: s.ultimaRequisicaoMs, agora, ttlMs: s.ttlMs })
+      const painelCache = painel('p-cache', COR.ambar, 'Cache de prompt', [
+        s.ultimaRequisicaoMs === 0 ? <Text key="sem" dimColor>Medido depois do próximo turno</Text> : null,
+        s.ultimaRequisicaoMs !== 0 ? linha('agora', 'Agora', cache.quente ? `quente, faltam ${restante(cache.restanteMs)}` : 'frio', cache.quente ? COR.vermelho : COR.ciano) : null,
+        s.ultimaRequisicaoMs !== 0 ? linha('quente', 'Próxima mensagem com o cache quente', dinheiro(cache.custoQuente), COR.verde) : null,
+        s.ultimaRequisicaoMs !== 0 ? linha('frio', 'Próxima mensagem com o cache frio', dinheiro(cache.custoFrio), cache.quente ? COR.ambar : COR.vermelho) : null,
+        <Text key="nota" dimColor>{`Estimativa: reenvio da conversa a preço de lista, cache de ${s.ttlMs > 5 * MIN ? '1h' : '5m'}`}</Text>,
+      ])
+
+      const lidos = s.tokensNovos + s.tokensCacheLido + s.tokensCacheEscrito
+      const doCache = lidos === 0 ? 0 : Math.round((s.tokensCacheLido / lidos) * 100)
+      return (
+        <Box flexDirection="column">
+          {painelFluxos}
+          {painelContexto}
+          {painelCache}
+          {painel('p-agentes', COR.ambar, 'Subagentes', s.agentes.length === 0 ? <Text dimColor>Nenhum iniciado ainda</Text> : linhasAgentes(AGENTES_NO_PANE))}
+          {painel('p-custo', COR.ambar, 'Custo e tokens', [
+            linha('custo', 'Custo da sessão', dinheiro(s.custoUsd), COR.ambar),
+            linha('lidos', 'Tokens lidos', compacto(lidos), COR.ciano),
+            linha('servido', '  servidos do cache', `${doCache}%`, COR.ciano),
+            linha('escritos', 'Tokens escritos', compacto(s.tokensSaida), COR.verde),
+            linha('turnos', 'Turnos', `${s.turnos}`, COR.ciano),
+            <Text key="nota" dimColor>Tokens e turnos contam desde que o mod carregou</Text>,
+          ])}
+        </Box>
+      )
+    } catch {
+      return next(e)
+    }
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
