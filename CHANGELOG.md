@@ -44,6 +44,14 @@ Uma barra de sessão acima do prompt e um painel que abre sob demanda.
   desktop não foi medido. Sem o mod nada muda.
 - **Vale a partir da sessão seguinte à atualização:** o mod é carregado na abertura da sessão.
 
+## 1.44.1 — 2026-10-07
+
+- **O aviso de agente em voo só barra a sessão que despachou.** Antes, qualquer sessão aberta no mesmo
+  worktree era bloqueada no fim do turno por um agente que outra janela tinha despachado. Agora o
+  `estado.cjs marcar` grava a sessão dona em cada item de `em_voo`, e o aviso só conta os da sessão que
+  está parando; registro antigo, sem dono, segue barrando como antes. Vale a partir da sessão seguinte
+  à atualização.
+
 ## 1.43.0 — 2026-10-06
 
 Fecha as doze Issues abertas pela revisão bimestral (#396 a #405, #407, #408).
