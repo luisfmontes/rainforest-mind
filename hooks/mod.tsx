@@ -21,8 +21,8 @@ import type {
 } from '../types'
 import { register as abertura } from './register.ts'
 import { CHECAR_MIN_FERRAMENTAS, deferimentos, lerRespostaChecker, marcadoresEmArquivo, montarPromptChecker, rascunhoFazAgora } from './deixado-puro.mjs'
-import { largura, cortar } from './faixa-puro.mjs'
-import { escritaDe, mapaVazio, registrar } from './mapa-puro.mjs'
+import { largura, cortar, semControle } from './faixa-puro.mjs'
+import { ESCRITORAS, escritaDe, mapaVazio, registrar } from './mapa-puro.mjs'
 import { cacheDe, compacto, dinheiro, fatias, figurasDaBarra, restante, ritmoPorMinuto, rotuloSubagente } from './painel-puro.mjs'
 import { avaliarRelogio, linhaRelogio, notaJornada } from './relogio-puro.mjs'
 
@@ -240,10 +240,35 @@ const AGENTES_NO_PANE = 6
 const slugSemData = (slug: string): string => slug.replace(/^\d{4}-\d{2}-\d{2}-/, '')
 
 const AJUDA = 'Subcomandos: esconder, mostrar, cache 5m|1h, checar ligar|desligar. Sem argumento abre o painel.'
-const ESCRITORAS = ['Edit', 'Write', 'NotebookEdit']
+// Ate tantas escritas esperam a vez do script do desvio; as demais entram no mapa sem veredito.
+const FILA_DESVIO_MAX = 50
 
 export const register: Register = (on, options) => {
   abertura(on, options)
+
+  // Desvio do plano: no maximo um spawn do script por vez. Escritas que chegam durante ele
+  // esperam em `filaDesvio`; `desvioPendente` (na fila ou rodando) e `desvioConsultado` (ja
+  // tem veredito) garantem que cada caminho roda uma vez so. Zerados a cada sessao.
+  const filaDesvio: { escrita: string; rodar: () => Promise<boolean> }[] = []
+  const desvioPendente = new Set<string>()
+  const desvioConsultado = new Set<string>()
+  let desvioRodando = false
+  const drenarDesvios = async (): Promise<void> => {
+    if (desvioRodando) return
+    desvioRodando = true
+    try {
+      for (let item = filaDesvio.shift(); item !== undefined; item = filaDesvio.shift()) {
+        try {
+          if (await item.rodar()) desvioConsultado.add(item.escrita)
+        } catch {
+          // o desvio nunca quebra a ferramenta
+        }
+        desvioPendente.delete(item.escrita)
+      }
+    } finally {
+      desvioRodando = false
+    }
+  }
 
   // Timers do relogio e do tique da barra: ficam no escopo do register para o session.end e
   // o proximo session.start cancelarem os da sessao anterior.
@@ -289,6 +314,7 @@ export const register: Register = (on, options) => {
   }
 
   on('session.start', async ($, e, next) => {
+    desvioConsultado.clear()
     try {
       await $.command.register({
         name: 'painel',
@@ -588,15 +614,16 @@ export const register: Register = (on, options) => {
           return { ...x, ferramentas: [...x.ferramentas, { tool: String(e.tool), deny: ran.deny !== undefined, isError: ran.isError === true }] }
         })
       }
-      if (!falhou && ESCRITORAS.includes(String(e.tool))) {
+      if (!falhou && ESCRITORAS.has(String(e.tool))) {
         const entrada = e as unknown as Record<string, unknown>
         const escrito = String(entrada.new_string ?? entrada.content ?? entrada.new_source ?? '')
         const linha = (marcadoresEmArquivo(escrito) as string[])[0]
         if (linha !== undefined) {
-          const arquivo = String(entrada.file_path ?? entrada.notebook_path ?? 'arquivo').split(/[\\/]/).pop() ?? 'arquivo'
+          // O nome do arquivo e a linha vem do modelo: nenhum controle chega ao Text nem ao toast.
+          const arquivo = semControle(String(entrada.file_path ?? entrada.notebook_path ?? 'arquivo')).split(/[\\/]/).pop() ?? 'arquivo'
           await anotar(
             { gravar: f => update($, painelDeixado, f), avisar: t => $.ui.toast(t) },
-            [`Escreveu "${linha.slice(0, 90)}" em ${arquivo}`],
+            [`Escreveu "${semControle(linha).slice(0, 90)}" em ${arquivo}`],
             'em arquivo',
           )
         }
@@ -610,49 +637,61 @@ export const register: Register = (on, options) => {
         if (escrita === null) {
           await update($, painelMapa, raw => registrar(raw, e).mapa as RainforestMindPainelMapa)
         } else {
-          // Escrita: o script do desvio roda em segundo plano (leva 1,5 a 2,4 s) e o resultado
-          // da ferramenta nao espera por ele. O arquivo entra no mapa quando a resposta chega,
-          // para o `novo` do desvio valer uma vez por arquivo (D15). Nada daqui vai ao modelo.
-          const raiz = $.plugin.root
-          void (async () => {
-            let desvio: { veredito?: string; rel?: string | null } | null = null
-            try {
-              const cwd = await $.session.cwd()
-              const r = await $.process.run(
-                ['node', `${raiz}/scripts/desvio-do-plano.cjs`, '--cwd', cwd, '--arquivo', escrita],
-                // Roda em segundo plano depois da escrita: sob carga passa de 2 s, e o teto folga.
-                { cwd: raiz, env: { CLAUDE_PROJECT_DIR: cwd }, timeoutMs: 10000 },
-              )
-              const lido = r.exitCode === 0 ? JSON.parse(r.stdout) : null
-              desvio = lido !== null && typeof lido === 'object' && typeof lido.veredito === 'string' ? lido : null
-            } catch (err) {
+          // Escrita: o script do desvio roda em segundo plano (3 a 5 s medidos) e o resultado
+          // da ferramenta nao espera por ele. Um spawn por vez: as escritas que chegam durante
+          // ele esperam na fila, e cada caminho roda uma vez so (veredito ou espera ja valem
+          // por ele). O arquivo entra no mapa quando a resposta chega, para o `novo` do desvio
+          // valer uma vez por arquivo (D15). Nada daqui vai ao modelo.
+          if (desvioConsultado.has(escrita) || desvioPendente.has(escrita)) {
+            // ja tem veredito, ou ja espera a vez
+          } else if (filaDesvio.length >= FILA_DESVIO_MAX) {
+            await update($, painelMapa, raw => registrar(raw, e).mapa as RainforestMindPainelMapa)
+          } else {
+            const raiz = $.plugin.root
+            const log = (err: unknown) => {
               try {
                 $.ui.log(`painel: desvio: ${String(err)}`, { to: 'debug' })
               } catch {
                 // sem log, sem problema
               }
             }
-            try {
-              const caminho: string = typeof desvio?.rel === 'string' && desvio.rel !== '' ? desvio.rel : escrita
-              const escreveu = { tool: e.tool, file_path: caminho, notebook_path: caminho }
-              let avisar = false
-              await update($, painelMapa, raw => {
-                if (desvio === null) return registrar(raw, escreveu).mapa as RainforestMindPainelMapa
-                const marcado = registrar(raw, { desvio: true, caminho })
-                if (desvio.veredito === 'fora' && marcado.novo) {
-                  avisar = true
-                }
-                return (desvio.veredito === 'fora' ? marcado.mapa : registrar(raw, escreveu).mapa) as RainforestMindPainelMapa
-              })
-              if (avisar) $.ui.toast(`Fora dos arquivos do plano: ${caminho}`)
-            } catch (err) {
+            // Devolve true quando o script respondeu um veredito; falha aberta, nunca lanca.
+            const rodar = async (): Promise<boolean> => {
+              let desvio: { veredito?: string; rel?: string | null } | null = null
               try {
-                $.ui.log(`painel: desvio: ${String(err)}`, { to: 'debug' })
-              } catch {
-                // sem log, sem problema
+                const cwd = await $.session.cwd()
+                const r = await $.process.run(
+                  ['node', `${raiz}/scripts/desvio-do-plano.cjs`, '--cwd', cwd, '--arquivo', escrita],
+                  // Roda em segundo plano depois da escrita: sob carga passa de 5 s, e o teto folga.
+                  { cwd: raiz, env: { CLAUDE_PROJECT_DIR: cwd }, timeoutMs: 10000 },
+                )
+                const lido = r.exitCode === 0 ? JSON.parse(r.stdout) : null
+                desvio = lido !== null && typeof lido === 'object' && typeof lido.veredito === 'string' ? lido : null
+              } catch (err) {
+                log(err)
               }
+              try {
+                const caminho: string = typeof desvio?.rel === 'string' && desvio.rel !== '' ? desvio.rel : escrita
+                const escreveu = { tool: e.tool, file_path: caminho, notebook_path: caminho }
+                let avisar = false
+                await update($, painelMapa, raw => {
+                  if (desvio === null) return registrar(raw, escreveu).mapa as RainforestMindPainelMapa
+                  const marcado = registrar(raw, { desvio: true, caminho })
+                  if (desvio.veredito === 'fora' && marcado.novo) {
+                    avisar = true
+                  }
+                  return (desvio.veredito === 'fora' ? marcado.mapa : registrar(raw, escreveu).mapa) as RainforestMindPainelMapa
+                })
+                if (avisar) $.ui.toast(`Fora dos arquivos do plano: ${caminho}`)
+              } catch (err) {
+                log(err)
+              }
+              return desvio !== null
             }
-          })()
+            desvioPendente.add(escrita)
+            filaDesvio.push({ escrita, rodar })
+            void drenarDesvios()
+          }
         }
       }
     } catch {
@@ -664,6 +703,27 @@ export const register: Register = (on, options) => {
   on('turn.complete', async ($, e, next) => {
     const agentId = e.agentId
     acordar()
+    const log = (m: string) => {
+      try {
+        $.ui.log(m, { to: 'debug' })
+      } catch {
+        // sem log, sem problema
+      }
+    }
+    // As ferramentas e o pedido do turno saem do estado e a lista zera ANTES de qualquer outra
+    // espera: o turno seguinte ja pode estar chamando ferramentas enquanto este fecha as medidas.
+    const turno: { d: RainforestMindPainelDeixado | null } = { d: null }
+    if (agentId === undefined) {
+      try {
+        await update($, painelDeixado, x => {
+          const d = deixadoInteiro(x)
+          turno.d = d
+          return { ...d, ferramentas: [] }
+        })
+      } catch {
+        // o deixado nunca quebra o turno
+      }
+    }
     try {
       const at = await $.clock.now()
       const saida = e.usage?.output_tokens ?? 0
@@ -697,34 +757,29 @@ export const register: Register = (on, options) => {
         }
       })
       if (agentId === undefined) {
-        await medir({
+        // Sem await: medir (session.usage) e buscar (scripts) levam segundos e o turno nao
+        // espera por eles. Falha aberta: cada um apaga so a propria leitura.
+        medir({
           usage: () => $.session.usage({ breakdown: 'summary' }),
           gravar: f => update($, painelStats, f),
           log: m => $.ui.log(m, { to: 'debug' }),
-        })
-        const dados = await buscar({
+        }).catch((err: unknown) => log(`painel: medir: ${String(err)}`))
+        buscar({
           rodar: (argv, init) => $.process.run(argv, init),
           cwd: () => $.session.cwd(),
           raiz: $.plugin.root,
         })
-        await update($, faixaDados, () => dados)
+          .then(dados => update($, faixaDados, () => dados))
+          .catch((err: unknown) => log(`painel: buscar: ${String(err)}`))
       }
     } catch {
       // a barra nunca quebra o turno
     }
     if (agentId === undefined) {
       try {
-        const d = deixadoInteiro(await read($, painelDeixado))
-        await update($, painelDeixado, x => ({ ...deixadoInteiro(x), ferramentas: [] }))
-        if (e.reason === 'answer') {
+        const d = turno.d
+        if (d !== null && e.reason === 'answer') {
           const relato = String(e.answer ?? '')
-          const log = (m: string) => {
-            try {
-              $.ui.log(m, { to: 'debug' })
-            } catch {
-              // sem log, sem problema
-            }
-          }
           const io = { gravar: (f: (x: RainforestMindPainelDeixado) => RainforestMindPainelDeixado) => update($, painelDeixado, f), avisar: (t: string) => $.ui.toast(t) }
           await anotar(io, deferimentos(relato) as string[], 'Claude disse')
           const ligado = d.checar

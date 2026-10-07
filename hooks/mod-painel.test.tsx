@@ -128,6 +128,7 @@ async function montar($: any, on: any, surface: Surface, inicio: number, comUi =
     modoOpen: 'ok' as 'ok' | 'recusa' | 'deny',
     opens: [] as unknown[],
     usageCalls: 0,
+    atrasoUsage: 0,
     dados: [] as { argv: readonly string[]; cwd: unknown }[],
     runs: 0,
     passos: 0,
@@ -173,6 +174,7 @@ async function montar($: any, on: any, surface: Surface, inicio: number, comUi =
   on('command.register', async () => ({ value: { command: 'painel' } }) as never)
   on('session.usage', async () => {
     s.usageCalls += 1
+    if (s.atrasoUsage > 0) await relogio.sleep(s.atrasoUsage)
     return s.modoUsage === 'falha' ? ({ deny: 'recusado pelo sec-default' } as never) : ({ value: s.usage } as never)
   })
   on('ui.open', async (_$: any, e: any) => {
@@ -680,7 +682,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
 
     await caso(`mapa (${surface}): um toast por arquivo, nao por escrita`, async () => {
       expect(s.toasts).toEqual(['Fora dos arquivos do plano: scripts/estado.cjs'])
-      expect(s.desvios).toHaveLength(3) // so escrita dispara o script: 3 escritas, nenhuma leitura nem Bash
+      expect(s.desvios).toHaveLength(2) // so escrita dispara o script, uma vez por caminho: 3 escritas em 2 arquivos, nenhuma leitura nem Bash
     })
 
     await caso(`mapa (${surface}): o script roda com o argv, o cwd e o env do contrato`, async () => {
@@ -749,7 +751,55 @@ for (const surface of ['terminal', 'desktop'] as const) {
       expect(s.desvios).toHaveLength(antes)
     })
 
+    await caso(`mapa (${surface}): duas escritas no mesmo arquivo disparam um unico process.run do desvio`, async () => {
+      s.modoDesvio = 'plano'
+      const antes = s.desvios.length
+      await escrever('/projeto/hooks/faixa-puro.mjs')
+      await escrever('/projeto/hooks/faixa-puro.mjs')
+      await relogio.settle()
+      expect(s.desvios).toHaveLength(antes + 1)
+      await escrever('/projeto/hooks/faixa-puro.mjs') // o caminho ja tem veredito
+      await relogio.settle()
+      expect(s.desvios).toHaveLength(antes + 1)
+    })
+
+    await caso(`mapa (${surface}): um spawn por vez, as escritas durante ele esperam na fila e cada caminho roda uma vez`, async () => {
+      const antes = s.desvios.length
+      s.atrasoDesvio = 3000
+      await escrever('/projeto/fila-a.txt')
+      await escrever('/projeto/fila-b.txt')
+      await escrever('/projeto/fila-b.txt')
+      await relogio.settle()
+      expect(s.desvios).toHaveLength(antes + 1) // so o primeiro saiu; b espera uma vez so
+      await relogio.advance(3000)
+      await relogio.settle()
+      expect(s.desvios).toHaveLength(antes + 2) // a terminou, b saiu
+      await relogio.advance(3000)
+      await relogio.settle()
+      expect(s.desvios).toHaveLength(antes + 2)
+      s.atrasoDesvio = 0
+    })
+
     await m.ui.unmount()
+  })
+
+  test(`painel (${surface}): turn.complete devolve antes de a medida do contexto terminar`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40), false)
+    const { relogio, s, comecar, terminar, caso } = m
+
+    await caso(`turno (${surface}): session.usage lento nao segura o retorno do turn.complete`, async () => {
+      await comecar()
+      const antes = s.usageCalls
+      s.atrasoUsage = 3000
+      let voltou = false
+      void terminar(ANSWER, { usage: USAGE_REAL }).then(() => { voltou = true })
+      await relogio.settle()
+      expect(s.usageCalls).toBe(antes + 1) // a medida saiu...
+      expect(voltou).toBe(true) // ...e o turno nao esperou por ela
+      await relogio.advance(3000)
+      await relogio.settle()
+      s.atrasoUsage = 0
+    })
   })
 
   test(`painel (${surface}): pane com ui.open recusado, session.usage rejeitado e subcomando desconhecido`, async ($, on) => {
@@ -1235,9 +1285,10 @@ for (const surface of ['terminal', 'desktop'] as const) {
         await m.ui.redraw({ ...PROPS, bodyColumns: cols })
         const t = await textos()
         for (const linha of t) expect(largura(linha)).toBeLessThanOrEqual(cols)
-        if (cols === 30) expect(t[0]).toBe('○ pronto')
+        // 30 colunas: o relogio (23) cabe, o estado junto dele (23 + 2 + 8) nao; o relogio fica sozinho
+        if (cols === 30) expect(t).toEqual(['⏰ jornada 9h12 · 20h40'])
       }
-      await m.ui.redraw({ ...PROPS, bodyColumns: 30, isWorking: true })
+      await m.ui.redraw({ ...PROPS, bodyColumns: 40, isWorking: true })
       expect((await textos())[0]).toBe('● trabalhando')
     })
 
