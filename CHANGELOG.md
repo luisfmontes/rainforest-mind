@@ -10,6 +10,12 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.46.2 — 2026-10-07
+
+- **Janela fechada sai do relógio.** O `⏰ … parada há` mostrava janela que já tinha sido fechada no X — inclusive
+  a da outra conta, que divide o `sessoes.json` — por até 6 h. O heartbeat agora grava o PID da sessão (lido do
+  registro do próprio Claude Code em `<config dir>/sessions/`), e janela com processo morto some na hora.
+
 ## 1.46.1 — 2026-10-07
 
 - **"Deixado para depois" fecha o que se resolveu.** O segundo modelo passa a receber os itens abertos e

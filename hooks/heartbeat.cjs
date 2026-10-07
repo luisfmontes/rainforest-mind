@@ -7,6 +7,7 @@
 // Ocioso = stop_ts mais novo que prompt_ts e antigo demais; Claude
 // trabalhando (prompt_ts > stop_ts) nunca conta como ocioso.
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { resolverRaiz } = require('./lib/raiz.cjs');
 
@@ -31,6 +32,14 @@ const { resolverRaiz } = require('./lib/raiz.cjs');
 // Causa 3: linha de comando sem identidade. `"...\claude.exe" --dangerously-skip-permissions`
 // não tem session id, não tem cwd, não tem projeto — impossível casar pela CLI.
 //
+// 2026-10-07: o PID voltou por outro caminho, sem subir árvore de processo. O
+// Claude Code mantém `<config dir>/sessions/<pid>.json` com o `sessionId` de
+// cada sessão aberta, e apaga o arquivo quando ela sai. O hook lê dali o PID da
+// PRÓPRIA sessão e grava em `s.pid`; quem lê (`sessoesVivas`) já descartava
+// entrada com pid morto. Sem isso, janela fechada no X aparecia horas como
+// "parada" no relógio do mod — inclusive a da outra conta, que divide o arquivo.
+// Não achou o arquivo (versão antiga, Codex): fica sem pid, e vale só a idade.
+//
 // Desenho aprovado: podar só por IDADE (24h). SessionEnd cuida do fechamento
 // limpo (ação "end"). Custo aceito, nomeado: janela fechada no X ou por crash
 // fica no arquivo até o corte de 24 h, pode ser lida como janela do foco ociosa.
@@ -42,6 +51,20 @@ const CODIGO_ROOT = path.resolve(__dirname, '..');
 const ROOT = resolverRaiz({ plugin: CODIGO_ROOT }).raiz || CODIGO_ROOT;
 const STATE = path.join(ROOT, 'sessoes.json');
 const acao = process.argv[2];
+
+// PID da sessão pelo registro do próprio Claude Code. Nunca lança.
+function pidDaSessao(sessionId) {
+  const dir = path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'), 'sessions');
+  let nomes = [];
+  try { nomes = fs.readdirSync(dir).filter((n) => /^\d+\.json$/.test(n)); } catch { return null; }
+  for (const n of nomes) {
+    try {
+      const r = JSON.parse(fs.readFileSync(path.join(dir, n), 'utf8'));
+      if (r && r.sessionId === sessionId && Number.isInteger(r.pid)) return r.pid;
+    } catch {}
+  }
+  return null;
+}
 const evento = acao === 'stop' ? 'stop_ts' : 'prompt_ts';
 
 let input = '';
@@ -62,6 +85,10 @@ if (acao === 'end') {
 } else {
   const s = state[data.session_id] || {};
   if (data.cwd) s.cwd = data.cwd;
+  if (!s.pid) {
+    const pid = pidDaSessao(data.session_id);
+    if (pid) s.pid = pid;
+  }
   s[evento] = Date.now();
   state[data.session_id] = s;
 }
