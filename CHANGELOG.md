@@ -10,6 +10,13 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.47.0 — 2026-10-07
+
+- **Erros de ferramenta ficam registrados.** O "Erros N" do mod zerava com a sessão. Agora cada falha (comando que
+  falhou, gate que bloqueou, permissão negada) vira uma linha em `~/.rainforest/erros.jsonl` na hora, com pasta,
+  ferramenta, comando e o começo da mensagem — inclusive em janela fechada no X. `/painel erros [horas]` lista
+  as últimas 24 h agrupadas por tipo, e o `/saude` avisa quantas houve.
+
 ## 1.46.2 — 2026-10-07
 
 - **Janela fechada sai do relógio.** O `⏰ … parada há` mostrava janela que já tinha sido fechada no X — inclusive

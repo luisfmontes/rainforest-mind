@@ -239,7 +239,7 @@ const AGENTES_NO_PANE = 6
 // O slug do fluxo comeca pela data de criacao; no pane so o nome conta.
 const slugSemData = (slug: string): string => slug.replace(/^\d{4}-\d{2}-\d{2}-/, '')
 
-const AJUDA = 'Subcomandos: esconder, mostrar, cache 5m|1h, checar ligar|desligar, limpar. Sem argumento abre o painel.'
+const AJUDA = 'Subcomandos: esconder, mostrar, cache 5m|1h, checar ligar|desligar, limpar, erros [horas]. Sem argumento abre o painel.'
 // Ate tantas escritas esperam a vez do script do desvio; as demais entram no mapa sem veredito.
 const FILA_DESVIO_MAX = 50
 
@@ -467,6 +467,20 @@ export const register: Register = (on, options) => {
       await update($, painelDeixado, d => ({ ...deixadoInteiro(d), checar: palavra === 'checar ligar' }))
       return { text: palavra === 'checar ligar' ? 'Checagem do segundo modelo ligada.' : 'Checagem do segundo modelo desligada.' }
     }
+    if (palavra === 'erros' || /^erros \d+$/.test(palavra)) {
+      const horas = palavra === 'erros' ? '24' : palavra.slice(6)
+      try {
+        const cwd = await $.session.cwd()
+        const r = await $.process.run(['node', `${$.plugin.root}/scripts/erros.cjs`, 'listar', '--horas', horas], {
+          cwd: $.plugin.root,
+          env: { CLAUDE_PROJECT_DIR: cwd },
+          timeoutMs: 10000,
+        })
+        return { text: r.exitCode === 0 ? r.stdout.trimEnd() : `Log de erros indisponível (exit ${r.exitCode}).` }
+      } catch {
+        return { text: 'Log de erros indisponível.' }
+      }
+    }
     if (palavra === 'limpar') {
       await update($, painelDeixado, d => ({ ...deixadoInteiro(d), itens: [] }))
       return { text: 'Deixado para depois zerado.' }
@@ -609,6 +623,32 @@ export const register: Register = (on, options) => {
       })
     } catch {
       // o contador nunca quebra a ferramenta
+    }
+    // Cada falha vira uma linha em <raiz>/erros.jsonl na hora (scripts/erros.cjs), para triar
+    // depois com /painel erros. Na hora e nao no SessionEnd: janela fechada no X nao dispara
+    // SessionEnd. So roda em falha (custa um node, ~100 ms) e nunca quebra a ferramenta.
+    if (ran.deny !== undefined || ran.isError === true) {
+      const entrada = e as unknown as Record<string, unknown>
+      const comando = entrada.command ?? entrada.file_path ?? entrada.notebook_path ?? entrada.pattern ?? entrada.url ?? entrada.description ?? ''
+      try {
+        const cwd = await $.session.cwd()
+        const falha = {
+          sessao: await $.session.id(),
+          cwd,
+          ferramenta: String(e.tool),
+          tipo: ran.deny !== undefined ? 'bloqueio' : 'erro',
+          comando: semControle(String(comando)).slice(0, 160),
+          mensagem: semControle(String(ran.deny ?? ran.text ?? '')).slice(0, 300),
+        }
+        await $.process.run(['node', `${$.plugin.root}/scripts/erros.cjs`, 'gravar'], {
+          cwd: $.plugin.root,
+          env: { CLAUDE_PROJECT_DIR: cwd },
+          stdin: JSON.stringify(falha),
+          timeoutMs: 5000,
+        })
+      } catch {
+        // o log de erros nunca quebra a ferramenta
+      }
     }
     try {
       const falhou = ran.deny !== undefined || ran.isError === true

@@ -1168,6 +1168,25 @@ async function checarIntegracoes() {
  *
  * Banco ausente é estado legítimo ("instalação sem memória é ok").
  */
+// Falhas de ferramenta das sessões (scripts/erros.cjs, gravadas pelo mod na hora da falha).
+// Aviso e nao alerta: errar comando e normal; o que importa e alguem olhar a lista.
+function checarErros() {
+  let raizDados;
+  try {
+    const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
+    raizDados = resolverRaiz({ plugin: RAIZ_CODIGO }).raiz;
+  } catch {
+    return;
+  }
+  if (!raizDados) return;
+  const { recentes } = require('./erros.cjs');
+  const itens = recentes(path.join(raizDados, 'erros.jsonl'), 24);
+  if (itens.length === 0) return ok('erros de ferramenta', 'nenhum nas ultimas 24 h');
+  const erro = itens.filter((o) => o.tipo === 'erro').length;
+  aviso('erros de ferramenta', `${itens.length} nas ultimas 24 h (${erro} erro(s), ${itens.length - erro} bloqueio(s))`,
+    'ver com /painel erros (ou node scripts/erros.cjs listar) e triar: defeito vira Issue, erro do metodo vira /feedback');
+}
+
 function checarMemoria() {
   let raizDados;
   try {
@@ -1730,6 +1749,7 @@ async function main() {
   checarDespachos();
   checarEsquema();
   checarMemoria();
+  checarErros();
   checarVigias();
   checarBackupExterno();
   await checarIntegracoes();
