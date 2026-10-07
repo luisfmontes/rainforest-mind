@@ -1187,6 +1187,10 @@
     "em": "2026-10-06"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "pr",
+    "pr": 416,
+    "issue_acompanhamento": 417,
+    "em": "2026-10-06"
   }
 }
