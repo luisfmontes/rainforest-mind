@@ -3,7 +3,7 @@
 // Por que existe: até 2026-08-11 tudo era obrigatório. Os dois gates de git valiam
 // em QUALQUER repositório da máquina, o fluxo aparecia para quem nunca vai
 // desenvolver, e a única saída era a de emergência (`RAINFOREST_GATE_OFF=1` ou um
-// arquivo `.rainforest-gate-off` na raiz). Saída de emergência serve para o
+// arquivo `.rainforest-gate-off` na raiz, lido até a #417 e hoje ignorado). Saída de emergência serve para o
 // incidente, não para a preferência: quem quer o radar e não quer o gate não tinha
 // o que fazer além de desinstalar.
 //
@@ -213,10 +213,20 @@ const CHAVES = {
     padrao: false,
     descricao: 'Sabiá: transcrição local de reunião com diarização (quem falou), CLI Python',
   },
+  'visibilidade-repo': {
+    tipo: 'privada',
+    padrao: null,
+    descricao: 'declara o repositório privado quando o gh não o enxerga (GitLab etc.); só libera termos da lista privada',
+  },
   idioma: {
     tipo: 'texto',
     padrao: null,
     descricao: 'idioma preferido para respostas na compactação (ex.: "português do Brasil")',
+  },
+  pastas: {
+    tipo: 'pastas',
+    padrao: null,
+    descricao: 'pastas de mapas/design/planos quando o repo já usa outra (ex.: {"design": "docs/plans"})',
   },
   // CODEX COMO RUNTIME — chaves de modelo que mapeiam model: do agente para -m do Codex
   'codex-modelo-haiku': {
@@ -274,6 +284,26 @@ function lerJson(p) {
 }
 
 /**
+ * Raiz do checkout PRINCIPAL de `dir`. Dentro de um worktree linkado
+ * (`.claude/worktrees/x`) ou de um subdiretório, o `.rainforest/config.json` do
+ * projeto mora no principal, não ali. Sem git, com erro, ou com o git-common-dir
+ * fora do padrão `<raiz>/.git` (bare, submódulo), devolve `dir` inalterado.
+ */
+function raizDoPrincipal(dir) {
+  try {
+    const { caminhoExecutavel } = require('./resolver-executavel.cjs');
+    const r = require('child_process').spawnSync(
+      caminhoExecutavel('git'), ['rev-parse', '--path-format=absolute', '--git-common-dir'],
+      { cwd: dir, encoding: 'utf8', timeout: 3000, windowsHide: true });
+    if (r.status !== 0 || !r.stdout) return dir;
+    const comum = r.stdout.trim();
+    return path.basename(comum) === '.git' ? path.dirname(comum) : dir;
+  } catch {
+    return dir;
+  }
+}
+
+/**
  * Resolve a configuração efetiva, e diz de ONDE veio cada chave.
  *
  * A procedência importa tanto quanto o valor: "o gate está desligado" sem dizer
@@ -288,7 +318,7 @@ function lerJson(p) {
  */
 function resolverConfig(o = {}) {
   const env = o.env || process.env;
-  const projetoDir = o.projeto || env.CLAUDE_PROJECT_DIR || process.cwd();
+  const projetoDir = raizDoPrincipal(o.projeto || env.CLAUDE_PROJECT_DIR || process.cwd());
 
   let dadosDir = o.dados;
   if (dadosDir === undefined) {
@@ -319,6 +349,17 @@ function resolverConfig(o = {}) {
       // Tipo 'texto': string não vazia até 60 caracteres, ou null
       if (valor === null) return true;
       return typeof valor === 'string' && valor.length > 0 && valor.length <= 60;
+    } else if (tipo === 'privada') {
+      // Tipo 'privada': só o literal "privada", ou null. Qualquer outro valor é inválido.
+      return valor === null || valor === 'privada';
+    } else if (tipo === 'pastas') {
+      // Tipo 'pastas': null ou objeto só com mapas/design/planos; cada valor é
+      // caminho relativo ao repo, sem drive, sem raiz absoluta, sem segmento '..'.
+      if (valor === null) return true;
+      if (typeof valor !== 'object' || Array.isArray(valor)) return false;
+      return Object.entries(valor).every(([k, v]) => ['mapas', 'design', 'planos'].includes(k) &&
+        typeof v === 'string' && v.trim().length > 0 &&
+        !/^([a-zA-Z]:|[\\/])/.test(v) && !v.split(/[\\/]/).includes('..'));
     }
     return false;
   };
@@ -383,4 +424,4 @@ function ligado(chave, o = {}) {
   }
 }
 
-module.exports = { CHAVES, resolverConfig, ligado };
+module.exports = { CHAVES, resolverConfig, ligado, raizDoPrincipal };

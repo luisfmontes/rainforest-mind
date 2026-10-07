@@ -30,6 +30,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
+const { pastaDe } = require(path.join(__dirname, '..', 'hooks', 'lib', 'pastas-docs.cjs'));
 
 const CODIGO_ROOT = path.resolve(__dirname, '..');
 const PROJETO_DIR = process.env.CLAUDE_PROJECT_DIR || process.cwd();
@@ -257,7 +258,7 @@ function main() {
   // tropecou); arqueologia le o TERRENO (o que ja esta la e ninguem daqui escreveu).
   // Uma nao dispara a outra — arqueologia custa uma sessao e e escopada a uma
   // demanda —, mas mapa ja escrito e evidencia barata e entra no digest.
-  const cobertura = path.join(PROJETO_DIR, 'docs', 'rainforest', 'mapas', 'COBERTURA.md');
+  const cobertura = path.join(PROJETO_DIR, pastaDe('mapas', { raiz: PROJETO_DIR }), 'COBERTURA.md');
   if (fs.existsSync(cobertura)) {
     try {
       saida.mapas = fs.readFileSync(cobertura, 'utf8').split('\n')

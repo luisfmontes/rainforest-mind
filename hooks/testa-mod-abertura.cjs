@@ -12,7 +12,7 @@
 // uma bateria que depende dele passa e falha sem que ninguem a toque.
 //
 // O que precisa provar:
-//   1. register.ts liga exatamente session.end, prompt.compose, classic.SessionStart, engine.create, session.start, prompt.submit e session.compact;
+//   1. register.ts liga exatamente session.end, prompt.compose e classic.SessionStart;
 //   2. a secao e UMA, `{ id: 'rainforest-mind:abertura', scope: 'session' }`, no fim de
 //      `sections`, com o additionalContext do foco + o da memoria (sem systemMessage);
 //   3. montada uma vez: 3 composes seguidos chamam `$.process.run` so 2 vezes;
@@ -20,7 +20,8 @@
 //   5. `classic.SessionStart` remove so as entradas dos dois hooks da abertura, em tres
 //      cenarios reais (memoria normal, so aviso, foco so com ponteiro) mais o fallback de
 //      regras ausentes, e mantem a do codex-transfer-session-start.cjs;
-//   6. gerador com exit != 0, JSON invalido ou timeout devolve `next(e)` intacto e nao
+//   6. sec-default: nenhum append, nenhum handler de engine.create/session.start/prompt.submit/session.compact;
+//   7. gerador com exit != 0, JSON invalido ou timeout devolve `next(e)` intacto e nao
 //      remove nada, tambem quando o SessionStart chega ANTES do primeiro compose.
 //
 // A mutacao (`if (memo) return memo;` -> `if (false) return memo;` no .mjs) e rodada por
@@ -202,14 +203,37 @@ async function modulo() {
 const casos = [];
 const caso = (nome, fn) => casos.push([nome, fn]);
 
-caso("register.ts registra exatamente session.end, prompt.compose, classic.SessionStart, engine.create, session.start, prompt.submit e session.compact", async () => {
+caso("register.ts registra exatamente session.end, prompt.compose e classic.SessionStart", async () => {
   const fonte = fs.readFileSync(path.join(SRC, "hooks", "register.ts"), "utf8");
   const { criarAbertura } = await modulo();
-  igual(JSON.stringify(criarAbertura().eventos), JSON.stringify(["session.end", "prompt.compose", "classic.SessionStart", "engine.create", "session.start", "prompt.submit", "session.compact"]), "eventos que register() liga");
+  igual(JSON.stringify(criarAbertura().eventos), JSON.stringify(["session.end", "prompt.compose", "classic.SessionStart"]), "eventos que register() liga");
   afirma(/from '\.\/abertura-mod-puro\.mjs'/.test(fonte), "register.ts precisa importar o .mjs por import estatico");
   const semComentarios = (t) => t.split("\n").filter((l) => !/^\s*(\/\/|\/\*|\*)/.test(l)).join("\n");
   afirma(!/\bimport\(/.test(semComentarios(fonte)) && !/\bimport\(/.test(semComentarios(fs.readFileSync(path.join(SRC, "hooks", "abertura-mod-puro.mjs"), "utf8"))),
     "modulo de mod com import() dinamico nao carrega");
+});
+
+caso("sec-default: nenhum append (conta que barra o compose nao recebe a abertura por outro canal)", async () => {
+  const { register } = await import(REGISTER);
+  const hooks = new Map();
+  register((evento, ...resto) => { hooks.set(evento, resto[resto.length - 1]); });
+  for (const ev of ["engine.create", "session.start", "prompt.submit", "session.compact"]) {
+    afirma(!hooks.has(ev), `register.ts ainda registra handler para ${ev}`);
+  }
+  const $ = criar$(runReal);
+  let appends = 0;
+  $.session.append = async () => { appends++; return {}; };
+  $.session.messages = async () => [];
+  const passa = async (e) => e;
+  const dispara = async (ev, e) => { if (hooks.has(ev)) await hooks.get(ev)($, e, passa); };
+  await dispara("engine.create", { plugins: ["cc-plugin-sec-default"] });
+  await dispara("session.start", { source: "startup" });
+  await dispara("prompt.submit", { text: "oi" });
+  await dispara("session.end", { reason: "clear" });
+  await dispara("prompt.submit", { text: "oi de novo" });
+  await dispara("session.compact", {});
+  await dispara("prompt.submit", { text: "depois do compact" });
+  igual(appends, 0, "chamadas a session.append");
 });
 
 caso("o canario saiu: register.ts nao le RFM_CANARIO_MOD", async () => {

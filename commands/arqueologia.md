@@ -10,7 +10,7 @@ Antes de ler o primeiro arquivo, duas coisas:
 1. **Confirme a fatia com o usuário.** Escopo é o que a demanda toca, nunca a base
    inteira — mapa que não cabe numa sessão significa escopo errado, e a saída é
    reduzir, não resumir mais.
-2. **Olhe `docs/rainforest/mapas/COBERTURA.md`.** Fatia com linha lá não é
+2. **Olhe o `COBERTURA.md` da pasta de mapas** (`node scripts/pastas-docs.cjs caminho --tipo mapas`). Fatia com linha lá não é
    extração nova: é **conferência**, e o método muda inteiro.
 
 Toda afirmação sai rotulada — `CONFIRMADO` com `arquivo:linha`, `INFERIDO` dito

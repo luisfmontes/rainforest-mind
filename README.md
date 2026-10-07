@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.45.1-1e5c3f?style=flat-square" alt="versão 1.45.1">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.46.1-1e5c3f?style=flat-square" alt="versão 1.46.1">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -184,7 +184,7 @@ As baterias dos gates rodam em Windows + Git Bash (ambiente do CI: `runs-on: win
 | `gate-mensagem-commit.cjs` | `git commit` com assunto acima de 72 colunas ou terminando em ponto; sem corpo quando o stage passa de 3 arquivos ou 150 linhas; e mensagem que o hook não consegue ler (`-F -`, heredoc, `git commit` pelado — fechando merge, `-F .git/MERGE_MSG`) |
 | `gate-verificador-staged.cjs` | `git commit` cujo conteúdo **staged** o verificador do repositório reprova — descoberta nesta ordem: chave `"verificador-staged"` em `.rainforest/config.json`; senão `scripts/check-personal-data.py|.cjs|.sh|.js`; senão `scripts/conferir-publicacao.cjs`. Materializa os blobs (`git show :<caminho>`) numa pasta temporária e chama o verificador com esses caminhos; a saída dele vai no stderr. Repo sem verificador passa |
 | `gate-subagente-sem-gh.cjs` | dentro de subagente, `gh` que escreve no GitHub (`issue close/comment/edit/create…`, `pr create/merge/comment…`, `release`, `gist`, `alias set`, `extension install`, `workflow run`, `run rerun`, família que não é do `gh` — alias ou extensão —, `api` com método ≠ GET ou com campo) — no comando, atrás de wrapper, em `bash -c` (ilegível também nega), em heredoc e **dentro do script executado**, que é lido antes de rodar (`bash`/`sh`/`source`/`python3`/`node`/`pwsh`, `./x.sh`, `./x.ps1`, `bash < x.sh`, `cat x.sh \| bash`), e o código inline de `node -e`, `python -c`, `pwsh -Command` e `cmd /c`. Isenta só bateria `testa-*` rastreada pelo git; `scripts/fechar-issue.cjs` é negado pelo nome. A janela principal passa sempre. Toggle `subagente-sem-gh` |
-| `gate-subagente-sem-instalar.cjs` | dentro de subagente, instalação de pacote (`npm/pnpm/yarn/bun/pip/pipx/poetry/uv/cargo/go/gem/brew/apt/choco/scoop/winget`, `python -m pip`, `npx -y`, `Install-Module`…) — também atrás de `bash -c`, `sudo`, `env`, `FOO=1` e no PowerShell, decidido pelo subcomando (`npm test`, `yarn build` passam) —, e criar ou alterar `.rainforest-gate-off` (redirecionamento, `cp`, `tee`, `Set-Content`…; ler e apagar passam) ou definir `RAINFOREST_GATE_OFF` — a chave de desligar gate não é do subagente. Não honra as próprias saídas de emergência. Toggle `subagente-sem-instalar` |
+| `gate-subagente-sem-instalar.cjs` | dentro de subagente, instalação de pacote (`npm/pnpm/yarn/bun/pip/pipx/poetry/uv/cargo/go/gem/brew/apt/choco/scoop/winget`, `python -m pip`, `npx -y`, `Install-Module`…) — também atrás de `bash -c`, `sudo`, `env`, `FOO=1` e no PowerShell, decidido pelo subcomando (`npm test`, `yarn build` passam) —, e definir `RAINFOREST_GATE_OFF` — a chave de desligar gate não é do subagente. Não honra as próprias saídas de emergência. Toggle `subagente-sem-instalar` |
 | `portaria.cjs` | despacho de subagente não declarado em `.rainforest/agentes.json`, ou sem `isolation: "worktree"` quando ele escreve |
 
 Dois hooks avisam sem barrar (exit 0 com `additionalContext`): `aviso-fluxo.cjs`

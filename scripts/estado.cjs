@@ -61,6 +61,7 @@ const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib',
 // Trava por lock de PID (defeitos A/B fechados em 2026-08-23), ja usada por
 // scripts/ideias.cjs e scripts/divergencias.cjs — o `veredito` reusa em vez
 // de inventar uma terceira copia.
+const { caminhoDoc } = require(path.join(__dirname, '..', 'hooks', 'lib', 'pastas-docs.cjs'));
 const { comTrava } = require(path.join(__dirname, '..', 'hooks', 'lib', 'trava-jsonl.cjs'));
 // D12 — Tarefa 16: leitura do transcrito real do revisor (slug do primeiro
 // prompt, ultima mensagem de texto do assistente). Require DURO, nao
@@ -1122,7 +1123,7 @@ function verificarSensorNaEvidencia(estagio, extra) {
 const CHECADOR = path.join(__dirname, 'conferir-fluxo.cjs');
 
 function docDe(tipo, slug) {
-  return path.join(RAIZ, 'docs', 'rainforest', tipo, `${slug}.md`);
+  return path.join(RAIZ, caminhoDoc(tipo, slug, { raiz: RAIZ }));
 }
 
 /**
@@ -1146,9 +1147,11 @@ function docDe(tipo, slug) {
  */
 function docDoEstagio(tipo, slug, estado) {
   const bloco = estado && estado[tipo === 'planos' ? 'plano' : 'design'];
-  if (bloco && typeof bloco.arquivo === 'string' && bloco.arquivo) {
+  // `doc` é o que o brainstorm grava; `arquivo` é o nome antigo.
+  const declaradoBruto = bloco && (bloco.doc || bloco.arquivo);
+  if (typeof declaradoBruto === 'string' && declaradoBruto) {
     const declarado = path.resolve(
-      path.isAbsolute(bloco.arquivo) ? bloco.arquivo : path.join(RAIZ, bloco.arquivo)
+      path.isAbsolute(declaradoBruto) ? declaradoBruto : path.join(RAIZ, declaradoBruto)
     );
     // CONFINADO à árvore do projeto. O `arquivo` vem de um campo de texto livre
     // do estado, e sem esta cerca um caminho absoluto (ou com `../`) aceitava
@@ -1580,7 +1583,7 @@ function avisarCarimbosDivergentes(estado) {
 const FLAGS_POR_SUBCOMANDO = {
   iniciar: ['slug', 'titulo'],
   ler: ['slug'],
-  marcar: ['slug', 'estagio', 'status', 'json'],
+  marcar: ['slug', 'estagio', 'status', 'json', 'raiz'],
   proximo: ['slug'],
   exigir: ['slug', 'estagio'],
   liberar: ['slug', 'estagio', 'rodada-extra'],
@@ -2057,6 +2060,25 @@ function main() {
       console.error(`erro: status '${status}' invalido para '${estagio}' — use ${permitidos.join('|')}`);
       process.exit(1);
     }
+    // #413: `--raiz <dir>` aponta a árvore do CÓDIGO quando ela não é a do estado
+    // (worktree de uma branch do upstream). Só vale em 'verificar' — é lá que a
+    // catraca de mutações roda — e NUNCA é gravado no JSON do estado (D13: caminho
+    // de máquina versionado fica velho quando o worktree some).
+    let raizCodigo = null;
+    const flagRaiz = arg('raiz', false);
+    if (process.argv.includes('--raiz')) {
+      if (estagio !== 'verificar') {
+        console.error("erro: --raiz so faz sentido com --estagio verificar (aponta a arvore do codigo para a catraca de mutacoes)");
+        process.exit(2);
+      }
+      let ehPasta = false;
+      try { ehPasta = !!flagRaiz && fs.statSync(flagRaiz).isDirectory(); } catch (_) { ehPasta = false; }
+      if (!ehPasta) {
+        console.error(`erro: --raiz '${flagRaiz}' nao existe ou nao e uma pasta`);
+        process.exit(2);
+      }
+      raizCodigo = path.resolve(flagRaiz);
+    }
     // Parsear JSON primeiro, antes de qualquer outra verificação
     let extra = {};
     const j = arg('json', false);
@@ -2213,7 +2235,9 @@ function main() {
       if (estagio === 'verificar') {
         const arquivo_plano = docDoEstagio('planos', slug, estado);
         if (fs.existsSync(arquivo_plano)) {
-          const mutacoes = spawnSync(process.execPath, [path.join(__dirname, 'conferir-fluxo.cjs'), 'mutacoes', '--slug', slug, '--plano', arquivo_plano], {
+          const argsMut = [path.join(__dirname, 'conferir-fluxo.cjs'), 'mutacoes', '--slug', slug, '--plano', arquivo_plano];
+          if (raizCodigo) argsMut.push('--raiz-codigo', raizCodigo);
+          const mutacoes = spawnSync(process.execPath, argsMut, {
             stdio: 'inherit',
           });
           if (mutacoes.status !== 0) {

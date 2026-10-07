@@ -55,7 +55,8 @@
  *
  * Saidas de emergencia, as duas nomeadas na mensagem de bloqueio:
  *   - env RAINFOREST_GATE_OFF=1  → desliga na sessao inteira;
- *   - arquivo .rainforest-gate-off na raiz do repo → desliga naquele repo.
+ *   - chave do config do projeto → desliga naquele repo.
+ * O arquivo `.rainforest-gate-off` deixou de ser lido (#417).
  */
 
 const { execFileSync } = require("node:child_process");
@@ -314,7 +315,7 @@ function bloqueia(motivo, toplevel, agente, apenasRestauracao = null, ehWorktree
   // P1 do relatorio 2026-08-11-escotilha-do-gate-usada-para-contornar: a saida
   // de emergencia era NOMEADA na mensagem que o SUBAGENTE le. Um implementador
   // bloqueado leu o nome do arquivo de escape na propria mensagem de bloqueio,
-  // criou `.rainforest-gate-off` na raiz do checkout principal - fora do
+  // criou o arquivo de desligar na raiz do checkout principal - fora do
   // worktree dele - e seguiu trabalhando. Reportou `DONE`, e o achado so apareceu
   // porque um revisor leu o relatorio completo linha a linha.
   //
@@ -333,10 +334,9 @@ function bloqueia(motivo, toplevel, agente, apenasRestauracao = null, ehWorktree
     ? `PARE e reporte isto para a janela principal — ela decide como seguir.\n` +
       `NAO crie arquivo nem variavel para desativar esta trava: a decisao nao e sua,\n` +
       `e desativa-la para si mesmo e o contorno que esta trava existe para impedir.\n`
-    : `Quem decide seguir sem isolamento e voce, e tem tres saidas:\n` +
+    : `Quem decide seguir sem isolamento e voce, e tem duas saidas:\n` +
       `  - node scripts/setup.cjs --desligar gate-worktree --escopo projeto (preferida);\n` +
-      `  - RAINFOREST_GATE_OFF=1 no ambiente da sessao (desliga na sessao inteira);\n` +
-      `  - arquivo .rainforest-gate-off na raiz do repo (desliga so naquele repo).\n`;
+      `  - RAINFOREST_GATE_OFF=1 no ambiente da sessao (desliga na sessao inteira).\n`;
 
   let msg = `BLOQUEADO pelo gate de worktree do rainforest-mind.\n\n` +
     `${motivo}\n` +
@@ -684,10 +684,9 @@ function bloqueiaColocada(verbo, toplevel, outras, agora, incerto) {
     `  git worktree add .claude/worktrees/<nome> -b <branch>\n` +
     `  cd .claude/worktrees/<nome>\n` +
     `Assim as duas sessoes ficam donas do proprio HEAD, e nenhuma move o da outra.\n\n` +
-    `Se voce SABE que a outra sessao nao esta trabalhando aqui, tem tres saidas:\n` +
+    `Se voce SABE que a outra sessao nao esta trabalhando aqui, tem duas saidas:\n` +
     `  - node scripts/setup.cjs --desligar gate-worktree --escopo projeto (preferida);\n` +
-    `  - RAINFOREST_GATE_OFF=1 no ambiente da sessao (desliga na sessao inteira);\n` +
-    `  - arquivo .rainforest-gate-off na raiz do repo (desliga so naquele repo).\n`;
+    `  - RAINFOREST_GATE_OFF=1 no ambiente da sessao (desliga na sessao inteira).\n`;
 
   process.stderr.write(msg);
   process.exit(2);
@@ -748,7 +747,6 @@ function gateDeSessaoColocada(ev, cwd) {
   // ja resolve o encadeamento, incluindo o conservadorismo do `cd` nao-resolvivel.
   const daqui = estadoDoRepo(cwd);
   if (!daqui) return; // fora de repo git: nao ha HEAD para mover
-  if (fs.existsSync(path.join(daqui.toplevel, ".rainforest-gate-off"))) return;
 
   for (const alvo of alvosBash(comando, cwd, moveOHead)) {
     const estado = estadoDoRepo(dirDe(alvo.dir));
@@ -835,7 +833,7 @@ function main() {
               // confiar.
               if (!ehScratchpad(cwd)) {
                 const estadoAqui = estadoDoRepo(cwd);
-                if (estadoAqui && !fs.existsSync(path.join(estadoAqui.toplevel, ".rainforest-gate-off"))) {
+                if (estadoAqui) {
                   bloqueia(
                     achado.incerto
                       ? `Comando dinamico (eval/bash -c) com conteudo nao resolvivel — pode rodar CLI que escreve`
@@ -847,7 +845,7 @@ function main() {
               }
             } else if (!ehScratchpad(doSegmento.cwd)) {
               const estado = estadoDoRepo(dirDe(doSegmento.cwd));
-              if (estado && !estado.ehWorktree && !fs.existsSync(path.join(estado.toplevel, ".rainforest-gate-off"))) {
+              if (estado && !estado.ehWorktree) {
                 bloqueia(
                   `CLI que escreve (${achado.nome})`,
                   estado.toplevel,
@@ -874,7 +872,6 @@ function main() {
     // sem confiar na classificacao de worktree — mesmo espirito do ramo de
     // CLI que ja faz isso para `cd`/subshell nao resolvidos.
     if (!incerto && estado.ehWorktree) continue; // worktree linkado: era pra ser isso mesmo
-    if (fs.existsSync(path.join(estado.toplevel, ".rainforest-gate-off"))) continue;
     const restauro = linhaDeRestauro(entrada.command || '', estado.toplevel);
     bloqueia(motivo, estado.toplevel, `${ev.agent_type || "?"} (${ev.agent_id})`, restauro, estado.ehWorktree);
   }

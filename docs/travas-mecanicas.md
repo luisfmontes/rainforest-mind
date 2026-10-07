@@ -32,8 +32,9 @@ trava que só diz "não" vira trava desligada. Saídas de emergência, nomeadas 
 mensagem que a **janela principal** recebe — a do subagente as omite de
 propósito, porque em 2026-08-11 uma delas foi usada para contornar a trava em
 vez de resolver o problema: `node scripts/setup.cjs --desligar <gate> --escopo
-projeto` (preferida), `RAINFOREST_GATE_OFF=1` no ambiente, ou um arquivo
-`.rainforest-gate-off` na raiz do repo.
+projeto` (preferida) ou `RAINFOREST_GATE_OFF=1` no ambiente. O arquivo
+`.rainforest-gate-off` na raiz do repo deixou de ser lido por qualquer gate
+(#417): ficava largado ou acabava commitado em repo de cliente.
 
 Cada uma tem bateria própria (`hooks/testa-gate-*.sh`, **509 casos** nas cinco
 primeiras, medidos em 2026-09-13: 201 de worktree + 151 de fechar Issue + 106 de

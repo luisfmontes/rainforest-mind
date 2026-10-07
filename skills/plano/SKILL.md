@@ -17,17 +17,16 @@ node scripts/estado.cjs exigir --slug <slug> --estagio plano
 ```
 
 Sai com exit 2 se `design` não estiver `aprovado` — não insista, volte para
-o `brainstorm`. Leia o design inteiro em
-`docs/rainforest/design/<slug>.md` antes de escrever a primeira tarefa.
+o `brainstorm`. Leia o design inteiro (`node scripts/pastas-docs.cjs caminho --tipo design --slug <slug>`) antes da primeira tarefa.
 
-## Template — `docs/rainforest/planos/<slug>.md`
+## Template — `node scripts/pastas-docs.cjs caminho --tipo planos --slug <slug>`
 
-Caminho relativo à **raiz do projeto em que se trabalha**, como o design.
+Caminho relativo à **raiz do projeto em que se trabalha**.
 
 ```markdown
 # Plano: <título>
 
-Design: docs/rainforest/design/<slug>.md
+Design: <caminho do design>
 
 ## O que não pode quebrar
 - <invariante 1>
@@ -261,7 +260,7 @@ node scripts/conferir-fluxo.cjs cobertura --slug <slug>
 ## Fechar
 
 ```
-node scripts/estado.cjs marcar --slug <slug> --estagio plano --status ok --json '{"arquivo":"docs/rainforest/planos/<slug>.md","tarefas":N,"paralelas":[1,3]}'
+node scripts/estado.cjs marcar --slug <slug> --estagio plano --status ok --json '{"arquivo":"<caminho do plano>","tarefas":N,"paralelas":[1,3]}'
 ```
 
 **Condição de parada: o plano termina antes da primeira linha de código.**

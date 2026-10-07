@@ -125,7 +125,7 @@ Acaba quando não sobra ramo — **nada suposto em silêncio**. Aí escreve o
 design doc e grava o estado. **Não executa**: vira trabalho só depois de ele
 confirmar que chegaram ao mesmo lugar.
 
-### Design doc — `docs/rainforest/design/<slug>.md`
+### Design doc — onde `node scripts/pastas-docs.cjs caminho --tipo design --slug <slug>` mandar
 
 Caminho relativo à **raiz do projeto em que se trabalha**, nunca à do plugin: o
 design descreve aquele código e mora ao lado dele.
@@ -173,7 +173,7 @@ A seção "Avaliado e descartado" é distinta porque reduz a chance de a mesma i
 O `iniciar` já rodou lá na abertura. Aqui só se marca:
 
 ```
-node scripts/estado.cjs marcar --slug <slug> --estagio design --status aprovado --json '{"doc":"docs/rainforest/design/<slug>.md"}'
+node scripts/estado.cjs marcar --slug <slug> --estagio design --status aprovado --json '{"doc":"<caminho de pastas-docs.cjs --tipo design --slug <slug>>"}'
 ```
 
 Só depois que ele confirmou o entendimento. Marcar `aprovado` sem a palavra

@@ -90,6 +90,11 @@ node scripts/estado.cjs marcar --slug <slug> --estagio verificar --status ok \
   --json '{"comando":"...","saida":"..."}'
 ```
 
+Quando o código vive em outro worktree que não o do estado (ex.: PR para upstream
+numa branch criada de `upstream/main`), acrescente `--raiz <worktree do código>` ao
+`marcar --estagio verificar`. Sem a flag, a catraca de mutações roda na árvore do
+estado e recusa. O caminho não é gravado no estado.
+
 Algum critério falhou:
 
 ```

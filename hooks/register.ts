@@ -35,39 +35,7 @@ export const register: Register = on => {
     return abertura.semAbertura(r, texto)
   })
 
-  // Conta com sec-default: o compose e o SessionStart sao barrados, entao a abertura
-  // entra por `$.session.append` (ver o cabecalho de abertura-mod-puro.mjs). Sem
-  // sec-default em `e.plugins`, nenhum dos hooks abaixo anexa nem le messages().
-  on('engine.create', (_$, e, next) => {
-    abertura.engineCriado(e.plugins)
-    return next(e)
-  })
-
-  // Matcher em session.start e prompt.submit: mod.tsx registra os seus sem matcher, e o engine
-  // recusa dois hooks do mesmo evento sem matcher. Aqui o matcher casa qualquer valor (/.*/).
-  on('session.start', { cwd: /.*/ }, async ($, e, next) => {
-    await abertura.aoIniciar(
-      { rodar: (argv, init) => $.process.run(argv, init), cwd: () => $.session.cwd(), raiz: $.plugin.root },
-      () => $.session.messages({ as: 'api' }),
-      args => $.session.append(args),
-    )
-    return next(e)
-  })
-
-  on('prompt.submit', { text: /.*/ }, async ($, e, next) => {
-    await abertura.aoSubmeter(
-      { rodar: (argv, init) => $.process.run(argv, init), cwd: () => $.session.cwd(), raiz: $.plugin.root },
-      () => $.session.messages({ as: 'api' }),
-      args => $.session.append(args),
-    )
-    return next(e)
-  })
-
-  // O resumo do compact e gravado depois deste hook: anexar aqui cairia antes do
-  // compact_boundary. So arma a pendencia; o proximo prompt.submit confere e anexa.
-  on('session.compact', async (_$, e, next) => {
-    const r = await next(e)
-    abertura.aoCompactar()
-    return r
-  })
+  // Conta com sec-default: o compose e o SessionStart do plugin sao barrados por politica da
+  // organizacao. O mod nao tenta entregar a abertura por outro canal (nenhum handler de
+  // engine.create, session.start, prompt.submit ou session.compact); ver abertura-mod-puro.mjs.
 }

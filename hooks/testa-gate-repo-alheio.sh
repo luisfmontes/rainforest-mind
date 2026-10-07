@@ -133,9 +133,8 @@ if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (
 else falhou=$((falhou+1)); echo "  FALHA RAINFOREST_GATE_OFF nao liberou (exit $rc)"; fi
 
 touch "$R2/.rainforest-gate-off"
-gate ".rainforest-gate-off na raiz do outro repo libera" 0 "$(j Write "$R2/novo.txt" "$R1")"
+gate ".rainforest-gate-off presente no outro repo NAO libera (#417)" 2 "$(j Write "$R2/novo.txt" "$R1")"
 rm "$R2/.rainforest-gate-off"
-gate "  ... e volta a barrar quando o arquivo sai"      2 "$(j Write "$R2/novo.txt" "$R1")"
 
 echo
 echo "== casos-limite =="

@@ -33,7 +33,7 @@ const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib',
 
 const CODIGO_ROOT = path.resolve(__dirname, '..');
 const { resolverRaiz, ehRaiz } = require('../hooks/lib/raiz.cjs');
-const { CHAVES, resolverConfig } = require('../hooks/lib/config.cjs');
+const { CHAVES, resolverConfig, raizDoPrincipal } = require('../hooks/lib/config.cjs');
 const P = require('../hooks/lib/projetos.cjs');
 
 function arg(nome) {
@@ -42,7 +42,8 @@ function arg(nome) {
 }
 const tem = (nome) => process.argv.includes(`--${nome}`);
 
-const PROJETO = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+// Worktree linkado e subdiretório gravam no PRINCIPAL: é lá que os gates leem.
+const PROJETO = raizDoPrincipal(process.env.CLAUDE_PROJECT_DIR || process.cwd());
 
 // ---------------------------------------------------------------- pasta de dados
 

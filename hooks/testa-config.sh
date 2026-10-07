@@ -157,7 +157,9 @@ temf     "subagente e mandado PARAR e reportar"    "$SUB" "PARE e reporte"
 temf     "e proibido de criar o contorno sozinho"  "$SUB" "a decisao nao e sua"
 # A janela principal continua sabendo como seguir: tirar a saida dela transformaria
 # uma escolha legitima em beco sem saida.
-temf     "janela principal ve as tres saidas"      "$PRI" "tres saidas"
+temf     "janela principal ve as duas saidas"      "$PRI" "duas saidas"
+temf     "janela principal ve a variavel de ambiente" "$PRI" "RAINFOREST_GATE_OFF"
+nao_temf "nem a principal ve o arquivo (#417)"     "$PRI" ".rainforest-gate-off"
 temf     "janela principal ve a preferida"         "$PRI" "setup.cjs --desligar"
 
 echo
@@ -379,6 +381,28 @@ igual "(e) subagente-sem-instalar padrao true" "true padrao" "$(chave16 '{}' sub
 igual "(e) subagente-sem-instalar desligado no projeto" "false projeto" "$(chave16 '{"subagente-sem-instalar":false}' subagente-sem-instalar)"
 rm -f "$SBP/proj/.rainforest/config.json" "$SBP/lar/.rainforest/config.json"
 
+echo
+echo "== 411. o config do projeto e achado a partir de worktree linkado e de subdiretorio =="
+# Issue #411: `<projeto>/.rainforest/config.json` era lido na pasta crua do chamador;
+# dentro de `.claude/worktrees/x` ou de `<repo>/sub` o gate passava a ligado.
+R411="$SBP/r411"; mkdir -p "$R411/.rainforest" "$R411/sub"
+git init -q "$R411" && git -C "$R411" -c user.email=t@t -c user.name=t commit -q --allow-empty -m i
+git -C "$R411" worktree add -q .claude/worktrees/x -b x >/dev/null 2>&1
+echo '{"gate-publicacao": false}' > "$R411/.rainforest/config.json"
+mkdir -p "$SBP/fora411/.rainforest"; echo '{"gate-publicacao": false}' > "$SBP/fora411/.rainforest/config.json"
+lig411() { RFM_ROOT="$SB/dados-vazio411" node -e 'console.log(require(process.argv[2]).ligado("gate-publicacao",{projeto:process.argv[1]}))' "$1" "$SRC_WIN/hooks/lib/config.cjs" 2>&1; }
+igual "411 config do projeto visto de dentro de worktree linkado" "false" "$(lig411 "$SB/r411/.claude/worktrees/x")"
+igual "411 config visto de subdiretorio do principal"             "false" "$(lig411 "$SB/r411/sub")"
+igual "411 fora de git segue como antes"                          "false" "$(lig411 "$SB/fora411")"
+echo
+echo "== 419. visibilidade-repo: so o literal \"privada\" vale =="
+vis419() { chave16 "$1" visibilidade-repo; }
+igual "419 padrao null" "null padrao" "$(vis419 '{}')"
+igual "419 \"privada\" e valida" '"privada" projeto' "$(vis419 '{"visibilidade-repo":"privada"}')"
+igual "419 \"publica\" e invalida" "null padrao" "$(vis419 '{"visibilidade-repo":"publica"}')"
+igual "419 true e invalido" "null padrao" "$(vis419 '{"visibilidade-repo":true}')"
+igual "419 vazio e invalido" "null padrao" "$(vis419 '{"visibilidade-repo":""}')"
+rm -f "$SBP/proj/.rainforest/config.json" "$SBP/lar/.rainforest/config.json"
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

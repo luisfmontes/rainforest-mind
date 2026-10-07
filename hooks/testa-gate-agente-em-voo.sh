@@ -134,9 +134,8 @@ if [ "$got_off" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 lib
 else falhou=$((falhou+1)); echo "  FALHA RAINFOREST_GATE_OFF=1 libera: veio $got_off"; fi
 
 touch "$R/.rainforest-gate-off"
-checa ".rainforest-gate-off na raiz libera"            0 "$(pay "$R" false)"
+checa ".rainforest-gate-off presente NAO libera (#417)"  2 "$(pay "$R" false)"
 rm -f "$R/.rainforest-gate-off"
-checa "  ... e volta a barrar quando o arquivo sai"    2 "$(pay "$R" false)"
 
 echo
 echo "== sem nada em voo =="

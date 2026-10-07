@@ -18,8 +18,8 @@ Descobrir **fato** é seu trabalho, nunca dele (regra 16): pergunta que o
 ambiente responde vira busca sua, despachada pela regra 10. O que sobe para ele
 é **decisão**.
 
-Acaba quando a fronteira esvazia, com o design escrito em
-`docs/rainforest/design/<slug>.md` e o estágio marcado — e aí **para**. Só vira
+Acaba quando a fronteira esvazia, com o design escrito no
+caminho que `node scripts/pastas-docs.cjs caminho --tipo design --slug <slug>` devolve, e o estágio marcado — e aí **para**. Só vira
 trabalho depois de ele confirmar que chegaram ao mesmo lugar.
 
 ---
