@@ -10,6 +10,40 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.45.0 — 2026-10-07
+
+Uma barra de sessão acima do prompt e um painel que abre sob demanda.
+
+- **A barra entra no lugar da faixa.** Foco, fluxo e Q saem da linha acima do prompt, porque você as
+  ignorava; o relógio ⏰ (jornada e janela parada) fica, agora como uma figura da barra, e a nota da
+  regra 8 segue como estava. A barra mostra estado (trabalhando ou pronto), tokens, custo, contexto de 0
+  a 100, cache (quente ou frio, com a estimativa do reenvio), itens deixados, ferramentas por minuto,
+  subagentes, turnos e erros; o que não cabe cai da direita, e o ⏰ é o último a cair.
+- **`/painel` abre o pane** com os fluxos em curso, o mapa da sessão, o contexto por fatia, o cache, os
+  subagentes e o custo. Subcomandos: `esconder`, `mostrar` (a barra só volta quando você manda),
+  `cache 5m|1h` e `checar ligar|desligar`. O mapa lista os arquivos escritos, as skills, os serviços MCP e os
+  subagentes; com um fluxo em curso, escrever num arquivo fora dos `arquivos:` do plano acende uma linha
+  vermelha e um único toast, o aviso de desvio, que vai só a você, nunca ao modelo. Só `Edit`, `Write` e
+  `NotebookEdit` contam: escrita por `Bash` não é detectada, e fora de fluxo o mapa só lista.
+- **Deixado para depois, com um checker que vê as ferramentas.** Frases de adiamento em português e inglês,
+  marcadores de pendência em arquivo e, em turno com 5 ou mais ferramentas, um segundo modelo (Haiku) que lê o
+  pedido, o fim do relato e a lista de ferramentas do turno com as falhas — a regra 12 na tela: "feito" sem
+  comando que o sustente aparece como item. "Faz agora" só preenche o prompt; quem envia é você.
+- **Crédito.** O painel é adaptado do terminal-desk 0.2.1 (licença MIT, ClariSortAi); o texto da licença está
+  em `NOTICE`, e os arquivos adaptados abrem com a remissão a ele.
+- **Falha aberta nas duas contas.** Se uma leitura (uso de tokens, segundo modelo, pane, subprocesso) é
+  recusada, falha ou demora, some só aquela peça; a barra e o pane nunca derrubam a sessão, e o mod não
+  grava nada em disco. Medido no terminal, Claude Code 2.1.292, nas contas pessoal e de trabalho: a barra, o
+  `/painel`, as fatias de contexto e o toast funcionam nas duas; o checker Haiku respondeu em 835 ms na
+  conta de trabalho, e na pessoal um `Edit` fora do plano gerou a linha vermelha e um único toast, com cerca de 5 s
+  de latência.
+- **A conta de trabalho barra só duas coisas** (política `cc-plugin-sec-default`): `prompt.compose` e
+  `classic.SessionStart`, e o painel não usa nenhuma. `ui.render`, `ui.open`, `session.usage`,
+  `model.complete` e `ui.toast` passam.
+- **Requisito.** O painel pede o Claude Code 2.1.292 ou mais novo, a versão em que foi medido, no terminal; o
+  desktop não foi medido. Sem o mod nada muda.
+- **Vale a partir da sessão seguinte à atualização:** o mod é carregado na abertura da sessão.
+
 ## 1.43.0 — 2026-10-06
 
 Fecha as doze Issues abertas pela revisão bimestral (#396 a #405, #407, #408).
