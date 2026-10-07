@@ -499,6 +499,48 @@ nao_tem "URL de clone com indirecao continua isenta"            "$(roda "$SBP/cr
 saiu    "e passa (exit 0)"                                      "$(codigo "$SBP/cred-url-2.md")" "0"
 
 echo
+echo "== 10b. pseudo-versao Go nao e telefone (Issue #409) =="
+# O timestamp de 14 digitos da pseudo-versao tem forma de telefone e a isencao de
+# hex nao o alcanca (o primeiro token hex do contexto e so digitos). Os literais
+# sao montados em pedacos: este arquivo e versionado e o gate le o que e commitado.
+TS1="2026""0821""131652"; H1="72f22e""67194f"
+TS2="2026""0813""180055"; H2="c1d0aa""cb2297"
+printf 'require go.mau.fi/whatsmeow v0.0.0-%s-%s\ngolang.org/x/exp v0.0.0-%s-%s h1:abc=\n' "$TS1" "$H1" "$TS2" "$H2" > "$SBP/gomod.md"
+S="$(roda "$SBP/gomod.md")"
+nao_tem "409 pseudo-versao Go em go.mod nao e telefone" "$S" "telefone"
+saiu    "e passa limpo (exit 0)"                         "$(codigo "$SBP/gomod.md")" "0"
+
+printf 'require go.mau.fi/whatsmeow v0.0.0-%s-%s\n// contato (%s) %s-%s\n' "$TS1" "$H1" "11" "98765" "4321" > "$SBP/gomod-tel.md"
+tem  "409 telefone em comentario de go.mod continua pego" "$(roda "$SBP/gomod-tel.md")" "telefone"
+saiu "e RECUSA (exit 2)"                                  "$(codigo "$SBP/gomod-tel.md")" "2"
+
+echo
+echo "== 10c. Authorization com esquema e referencia de variavel (Issue #410) =="
+# A regex captura a palavra do esquema (Bearer) como valor; o que decide e a
+# proxima palavra. Chave e valor montados em pedacos pelo mesmo motivo acima.
+AU="Autho""rization"; BE="Bea""rer"
+printf 'headers={"%s": f"%s {TTS_API_KEY}"}\n' "$AU" "$BE" > "$SBP/auth-fstring.md"
+nao_tem "410 f-string Bearer com variavel passa" "$(roda "$SBP/auth-fstring.md")" "credencial"
+saiu    "e passa (exit 0)"                       "$(codigo "$SBP/auth-fstring.md")" "0"
+
+printf '{"%s": "%s {}".format(TTS_API_KEY)}\n' "$AU" "$BE" > "$SBP/auth-format.md"
+nao_tem "410 format com variavel passa"          "$(roda "$SBP/auth-format.md")" "credencial"
+saiu    "e passa (exit 0)"                       "$(codigo "$SBP/auth-format.md")" "0"
+
+printf '{"%s": "%s ${TTS_API_KEY}"}\n' "$AU" "$BE" > "$SBP/auth-shell.md"
+nao_tem "410 Bearer com \${VAR} passa"           "$(roda "$SBP/auth-shell.md")" "credencial"
+saiu    "e passa (exit 0)"                       "$(codigo "$SBP/auth-shell.md")" "0"
+
+# O lado que importa: literal no lugar da referencia, ou colado nela, e acusado.
+printf '{"%s": "%s %s"}\n' "$AU" "$BE" "$HEX32" > "$SBP/auth-hex.md"
+tem  "410 Bearer com literal hex continua credencial"      "$(roda "$SBP/auth-hex.md")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/auth-hex.md")" "2"
+
+printf '{"%s": f"%s {KEY}%s"}\n' "$AU" "$BE" "abc123""literal" > "$SBP/auth-colado.md"
+tem  "410 f-string com literal colado continua credencial" "$(roda "$SBP/auth-colado.md")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/auth-colado.md")" "2"
+
+echo
 echo "== 9. termos privados — o que nao tem FORMA e so uma lista reconhece =="
 # Nome de empregador, de cliente e de projeto interno nao tem regex. A lista mora
 # FORA da arvore (~/.rainforest/termos-proibidos.txt) de proposito: escreve-la num
