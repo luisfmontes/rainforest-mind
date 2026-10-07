@@ -2,8 +2,8 @@
 // ingles, marcadores em arquivo escrito e o prompt do checker. ES module sem Node e sem
 // o objeto do engine: tudo entra por argumento.
 // Contrato: docs/rainforest/planos/2026-10-07-desk-no-mod.md, tarefa 2.
-// Frases e marcadores partem das regex do terminal-desk 0.2.1 (MIT, ClariSortAi);
-// credito em NOTICE.
+// Frases e marcadores partem das regex do terminal-desk 0.2.1 (licenca MIT, titular
+// ClariSortAi); texto da licenca e origem em NOTICE, na raiz do plugin.
 
 // Um turno com menos ferramentas que isso trabalhou pouco para valer um checker.
 export const CHECAR_MIN_FERRAMENTAS = 5;

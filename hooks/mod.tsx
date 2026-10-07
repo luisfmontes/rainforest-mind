@@ -1,3 +1,5 @@
+// A barra de sessao e o pane /painel daqui sao adaptados do terminal-desk 0.2.1 (licenca
+// MIT, titular ClariSortAi); texto da licenca e origem em NOTICE, na raiz do plugin.
 // Entrada do mod: a abertura (register.ts, sem mudanca) mais a barra de sessao acima do
 // prompt (estado, tokens, custo, contexto, cache, subagentes, erros e o relogio) e o
 // comando /painel. A logica pura mora em ./painel-puro.mjs e ./relogio-puro.mjs; aqui so se

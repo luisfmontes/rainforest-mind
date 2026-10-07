@@ -1,3 +1,5 @@
+// Adaptado do terminal-desk 0.2.1 (licenca MIT, titular ClariSortAi); texto da licenca e
+// origem em NOTICE, na raiz do plugin.
 // Logica pura do painel do mod (barra de sessao e pane): preco e cache de prompt, fatias
 // do contexto, ritmo, formatacao e as figuras da barra. ES module sem Node, sem `$` e sem
 // relogio: o instante entra por argumento (`agora`, em ms), nunca por leitura.
