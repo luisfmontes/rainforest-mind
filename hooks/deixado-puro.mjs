@@ -32,10 +32,21 @@ const semCitacao = (parte) =>
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase();
 
-// As frases de uma resposta que adiam trabalho, blocos de codigo fora; ate 3, 200 cars.
+// Decisao que sobe para a pessoa (regra 16: `Q1`, `**Q2**`, `Q3:`) espera a palavra dela,
+// nao e trabalho que Claude adiou.
+const LINHA_Q = /^[\s>*#-]*Q\d+\b/;
+const semCodigo = (texto) => String(texto ?? '').replace(/```[\s\S]*?```/g, ' ');
+
+// O relato pergunta decisao a pessoa: uma linha abre com `Q<n>`, fora de bloco de codigo.
+export const perguntaDecisao = (relato) => semCodigo(relato).split(/\n+/).some(linha => LINHA_Q.test(linha));
+
+// As frases de uma resposta que adiam trabalho, blocos de codigo e linhas `Q<n>` fora; ate 3,
+// 200 cars.
 export const deferimentos = (resposta) =>
-  String(resposta ?? '')
-    .replace(/```[\s\S]*?```/g, ' ')
+  semCodigo(resposta)
+    .split(/\n+/)
+    .filter(linha => !LINHA_Q.test(linha))
+    .join('\n')
     .split(/(?<=[.!?])\s+|\n+/)
     // Texto do modelo: ESC, BEL e override bidi nunca chegam ao Text, ao toast nem ao prompt.
     .map(parte => semControle(parte.replace(/^[\s>*#-]+/, '').replace(/\*\*/g, '')).trim())
@@ -75,14 +86,20 @@ export const resumirFerramentas = (ferramentas) => {
     .join(', ');
 };
 
-// O que o segundo modelo (checker) le: o pedido, as ferramentas do turno com as falhas e
-// o fim do relato. Em portugues; resposta de ate 3 linhas, ou a palavra NENHUM.
-export const montarPromptChecker = ({ pedido, relato, ferramentas }) =>
+// O que o segundo modelo (checker) le: o pedido, as ferramentas do turno com as falhas, o fim
+// do relato e os itens ainda abertos. Em portugues; ate 3 linhas de pendencia nova, uma linha
+// `RESOLVIDO <id>: <evidencia>` por item aberto que o turno resolveu, ou a palavra NENHUM.
+export const montarPromptChecker = ({ pedido, relato, ferramentas, abertos }) =>
   [
     'Voce compara o que a pessoa pediu a um assistente de codigo com o relato final dele e com as ferramentas que ele usou.',
     'Liste cada coisa que o pedido claramente exigia e que o relato mostra que nao foi feita, foi adiada ou foi feita so em parte.',
     'No maximo 3 linhas, cada uma com menos de 20 palavras e comecando por um verbo. Sem numeracao e sem comentario.',
-    'Se nada ficou por fazer, responda apenas com a palavra NENHUM.',
+    'Pergunta de decisao que o relato faz a pessoa (Q1, Q2...) nao e pendencia: nao liste.',
+    'Para cada item de PENDENCIAS ABERTAS que o pedido, o relato ou as ferramentas mostram feito, respondido ou que deixou de valer, escreva uma linha RESOLVIDO <id>: <evidencia em ate 8 palavras>.',
+    'Se nada ficou por fazer e nada foi resolvido, responda apenas com a palavra NENHUM.',
+    '',
+    'PENDENCIAS ABERTAS:',
+    (abertos ?? []).map(i => i.id + ': ' + String(i.texto ?? '').slice(0, 200)).join('\n') || '(nenhuma)',
     '',
     'PEDIDO:',
     String(pedido ?? '').slice(0, 4000),
@@ -94,13 +111,29 @@ export const montarPromptChecker = ({ pedido, relato, ferramentas }) =>
     String(relato ?? '').slice(-6000),
   ].join('\n');
 
-// A resposta do checker em itens: ate 3, sem numeracao, sem a palavra NENHUM.
+const RESOLVIDO = /^[\s*-]*RESOLVIDO\s+D?(\d+)\b/i;
+
+// A resposta do checker em itens: ate 3, sem numeracao, sem a palavra NENHUM e sem as linhas
+// RESOLVIDO, que nao comem a cota dos novos.
 export const lerRespostaChecker = (texto) =>
   String(texto ?? '')
     .split('\n')
+    .filter(linha => !RESOLVIDO.test(linha))
     .map(linha => semControle(linha).replace(/^[\s\d.)*-]+/, '').trim().slice(0, 200))
     .filter(linha => linha !== '' && !['nenhum', 'none'].includes(linha.replace(/[.\s]+/g, '').toLowerCase()))
     .slice(0, 3);
+
+// Os ids que o checker deu por resolvidos, so os de `idsAbertos`: o id vem do modelo.
+export const lerResolvidosChecker = (texto, idsAbertos) => {
+  const abertos = new Set(idsAbertos ?? []);
+  const ids = String(texto ?? '')
+    .split('\n')
+    .map(linha => RESOLVIDO.exec(linha))
+    .filter(m => m !== null)
+    .map(m => Number(m[1]))
+    .filter(id => abertos.has(id));
+  return [...new Set(ids)];
+};
 
 // Rascunho do prompt do botao "Faz agora". Nunca e enviado sozinho: so preenche.
 export const rascunhoFazAgora = (frase) =>

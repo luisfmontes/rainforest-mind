@@ -20,7 +20,7 @@ import type {
   RainforestMindRelogioSessoes,
 } from '../types'
 import { register as abertura } from './register.ts'
-import { CHECAR_MIN_FERRAMENTAS, deferimentos, lerRespostaChecker, marcadoresEmArquivo, montarPromptChecker, rascunhoFazAgora } from './deixado-puro.mjs'
+import { CHECAR_MIN_FERRAMENTAS, deferimentos, lerResolvidosChecker, lerRespostaChecker, marcadoresEmArquivo, montarPromptChecker, perguntaDecisao, rascunhoFazAgora } from './deixado-puro.mjs'
 import { largura, cortar, semControle } from './faixa-puro.mjs'
 import { ESCRITORAS, escritaDe, mapaVazio, registrar } from './mapa-puro.mjs'
 import { cacheDe, compacto, dinheiro, fatias, figurasDaBarra, restante, ritmoPorMinuto, rotuloSubagente } from './painel-puro.mjs'
@@ -239,7 +239,7 @@ const AGENTES_NO_PANE = 6
 // O slug do fluxo comeca pela data de criacao; no pane so o nome conta.
 const slugSemData = (slug: string): string => slug.replace(/^\d{4}-\d{2}-\d{2}-/, '')
 
-const AJUDA = 'Subcomandos: esconder, mostrar, cache 5m|1h, checar ligar|desligar. Sem argumento abre o painel.'
+const AJUDA = 'Subcomandos: esconder, mostrar, cache 5m|1h, checar ligar|desligar, limpar. Sem argumento abre o painel.'
 // Ate tantas escritas esperam a vez do script do desvio; as demais entram no mapa sem veredito.
 const FILA_DESVIO_MAX = 50
 
@@ -466,6 +466,10 @@ export const register: Register = (on, options) => {
     if (palavra === 'checar ligar' || palavra === 'checar desligar') {
       await update($, painelDeixado, d => ({ ...deixadoInteiro(d), checar: palavra === 'checar ligar' }))
       return { text: palavra === 'checar ligar' ? 'Checagem do segundo modelo ligada.' : 'Checagem do segundo modelo desligada.' }
+    }
+    if (palavra === 'limpar') {
+      await update($, painelDeixado, d => ({ ...deixadoInteiro(d), itens: [] }))
+      return { text: 'Deixado para depois zerado.' }
     }
     if (palavra !== '') return { text: AJUDA }
     // Sem argumento: abre o pane, mede o contexto e atualiza os fluxos. Cada peca que falha
@@ -785,7 +789,12 @@ export const register: Register = (on, options) => {
           const ligado = d.checar
           const ferramentas = d.ferramentas
           const pedido = d.pedido
-          const deveChecar = ligado && ferramentas.length >= CHECAR_MIN_FERRAMENTAS && pedido !== '';
+          // Duas metades: achar pendencia nova pede turno de 5+ ferramentas e relato sem decisao
+          // `Q<n>` para a pessoa (a Q espera a palavra dela); fechar item resolvido roda em todo
+          // turno com item aberto, porque a fala da pessoa no pedido tambem e evidencia.
+          const abertos = d.itens.filter(i => i.estado === 'aberto').map(i => ({ id: i.id, texto: i.texto }))
+          const acharNovos = ferramentas.length >= CHECAR_MIN_FERRAMENTAS && !perguntaDecisao(relato)
+          const deveChecar = ligado && pedido !== '' && (acharNovos || abertos.length > 0);
           if (deveChecar) {
             // Sem await: o turno acaba agora e o achado chega quando chegar.
             await update($, painelDeixado, x => ({ ...deixadoInteiro(x), checando: true }))
@@ -793,7 +802,7 @@ export const register: Register = (on, options) => {
               try {
                 const r = await $.model.complete({
                   model: 'haiku',
-                  prompt: montarPromptChecker({ pedido, relato, ferramentas }),
+                  prompt: montarPromptChecker({ pedido, relato, ferramentas, abertos }),
                   maxTokens: 300,
                   timeoutMs: 30000,
                 })
@@ -801,7 +810,16 @@ export const register: Register = (on, options) => {
                   log(`painel: checker: o modelo nao respondeu (${r.reason})`)
                   return
                 }
-                await anotar(io, lerRespostaChecker(r.text) as string[], 'segundo modelo')
+                // So `aberto -> resolvido`, dentro do update: o estado pode ter mudado enquanto o
+                // modelo pensava (Faz agora, limpar).
+                const resolvidos = new Set(lerResolvidosChecker(r.text, abertos.map(i => i.id)) as number[])
+                if (resolvidos.size > 0) {
+                  await update($, painelDeixado, x => {
+                    const y = deixadoInteiro(x)
+                    return { ...y, itens: y.itens.map(i => (i.estado === 'aberto' && resolvidos.has(i.id) ? { ...i, estado: 'resolvido' as const } : i)) }
+                  })
+                }
+                if (acharNovos) await anotar(io, lerRespostaChecker(r.text) as string[], 'segundo modelo')
               } finally {
                 try {
                   await update($, painelDeixado, (d) => ({ ...d, checando: false }));

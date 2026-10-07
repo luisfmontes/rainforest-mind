@@ -194,6 +194,28 @@ const caso = (nome, fn) => casos.push([nome, fn]);
   caso("CHECAR_MIN_FERRAMENTAS e 5", () => {
     igual(m.CHECAR_MIN_FERRAMENTAS, 5, "limiar");
   });
+  // Issue #424: itens abertos no prompt, linhas RESOLVIDO e decisao Q<n>.
+  caso("prompt do checker leva os itens abertos com id, ou (nenhuma)", () => {
+    const p = m.montarPromptChecker({ pedido: "x", relato: "y", ferramentas: [], abertos: [{ id: 3, texto: "Criar card Jira" }, { id: 5, texto: "Baixar XML" }] });
+    afirma(p.includes("PENDENCIAS ABERTAS:\n3: Criar card Jira\n5: Baixar XML"), "abertos com id");
+    afirma(p.includes("RESOLVIDO <id>"), "formato da resolucao");
+    afirma(m.montarPromptChecker({ pedido: "x", relato: "y", ferramentas: [] }).includes("PENDENCIAS ABERTAS:\n(nenhuma)"), "sem abertos");
+  });
+  caso("lerResolvidosChecker: so ids abertos, sem repetir, aceita D3 e caixa baixa", () => {
+    igual(m.lerResolvidosChecker("RESOLVIDO 3: card criado\nresolvido D5: xml baixado\nRESOLVIDO 9: nao existe\nRESOLVIDO 3: de novo\nBaixar PDF", [3, 5, 7]), [3, 5], "ids");
+    igual(m.lerResolvidosChecker("NENHUM", [3]), [], "nenhum");
+  });
+  caso("lerRespostaChecker nao devolve linha RESOLVIDO e ela nao come a cota de 3", () => {
+    igual(m.lerRespostaChecker("RESOLVIDO 1: a\nRESOLVIDO 2: b\nFazer A\nFazer B\nFazer C"), ["Fazer A", "Fazer B", "Fazer C"], "novos");
+  });
+  caso("perguntaDecisao: Q1., **Q2**, Q3: e > Q4 acusam; Q em codigo ou no meio da frase nao", () => {
+    for (const r of ["Feito.\n\nQ1. Mando?", "Feito.\n**Q2** Mando?", "Feito.\n- Q3: Mando?", "Feito.\n> Q4. Mando?"]) afirma(m.perguntaDecisao(r), r);
+    for (const r of ["Feito, sem pendencias.", "```\nQ1. dentro de codigo\n```", "Fechei o Q1 do trimestre."]) afirma(!m.perguntaDecisao(r), r);
+  });
+  caso("deferimentos ignora a linha Q de decisao e mantem a frase fora dela", () => {
+    igual(m.deferimentos("Q1. Fica para depois o envio, ou mando agora?").length, 0, "linha Q");
+    igual(m.deferimentos("O relatorio ficou para depois.\nQ1. Fica para depois o envio?").length, 1, "frase fora da Q");
+  });
 
   let ok = 0;
   let falhou = 0;
