@@ -75,3 +75,12 @@ paralela: nao
 mutacao: n/a
   motivo: `/clear` so existe no REPL interativo, que o agente nao dirige; o comportamento esta invertido pela mutacao da tarefa 1 no caso de `/clear` da bateria
 pronto quando: com o usuario numa sessao interativa da conta de trabalho aberta com `claude --plugin-dir <worktree>`, depois de `/clear`, a mesma pergunta da tarefa 3 volta com `fato que só ele sabe não se deduz do ambiente.` e o transcript da sessao pos-clear tem exatamente 1 linha `isMeta` iniciada pela `MARCA` — provado pelo comando de contagem que a janela principal roda sobre o jsonl do novo session id, colado no arquivo de medicoes.
+
+### 5. Handoff da sessao de origem [tipo: docs]
+atende: D3, D7
+arquivos: `docs/rainforest/handoff/2026-10-06-regras-inteiras-conta-org.md`
+depende de: nenhuma
+paralela: sim
+mutacao: n/a
+  motivo: documento de passagem escrito pela sessao de origem (commit 0bd2e907) antes do brainstorm; nao tem comportamento a inverter. Emenda feita no revisar, porque o creep o acusou
+pronto quando: com o handoff versionado na branch, as medicoes que ele declara (debug `prompt.compose bypassed by cc-plugin-sec-default`, sonda de append admitida, rota de admin descartada) batem com as decisoes D3 e D7 do design e com `docs/rainforest/medicoes/2026-10-06-regras-inteiras-conta-org.md` — provado por `git log --format=%h -1 -- docs/rainforest/handoff/2026-10-06-regras-inteiras-conta-org.md` devolvendo `0bd2e907`, e por leitura cruzada na revisao.
