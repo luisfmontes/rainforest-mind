@@ -540,6 +540,16 @@ printf '{"%s": f"%s {KEY}%s"}\n' "$AU" "$BE" "abc123""literal" > "$SBP/auth-cola
 tem  "410 f-string com literal colado continua credencial" "$(roda "$SBP/auth-colado.md")" "credencial"
 saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/auth-colado.md")" "2"
 
+# `{NOME}` so e referencia dentro de f-string depois do esquema. Fora dela sao
+# chaves com texto dentro: isentar na lista global soltava qualquer chave.
+PW="pass""word"
+printf '%s={%s}\n' "$PW" "hunter""2xyz" > "$SBP/chaves-sem-fstring.md"
+tem  "410 chaves sem f-string continuam credencial"        "$(roda "$SBP/chaves-sem-fstring.md")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/chaves-sem-fstring.md")" "2"
+
+printf '{"%s": "%s {KEY}"}\n' "$AU" "$BE" > "$SBP/auth-chaves-sem-f.md"
+tem  "410 Bearer {KEY} sem f-string continua credencial"   "$(roda "$SBP/auth-chaves-sem-f.md")" "credencial"
+
 echo
 echo "== 9. termos privados — o que nao tem FORMA e so uma lista reconhece =="
 # Nome de empregador, de cliente e de projeto interno nao tem regex. A lista mora

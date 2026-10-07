@@ -88,7 +88,6 @@ const REFERENCIA_DE_VARIAVEL = new RegExp(
     '|\\$\\{[^}]*\\}',        // ${VAR} e ${VAR:-padrao}
     '|\\$[A-Za-z_]\\w*',       // $VAR
     '|%[^%\\s]+%',           // %VAR%
-    '|\\{[A-Za-z_]\\w*\\}',     // {VAR} — f-string do Python (Issue #410)
     ')',
   ].join('')
 );
@@ -298,7 +297,11 @@ const PADROES = [
         if (prox) {
           const v2 = prox[1].replace(/^["']+/, '');
           const fmt = /^\{\}["']?\.format\(\s*[A-Za-z_]\w*\s*\)/.exec(v2);
-          const r2 = fmt || REFERENCIA_DE_VARIAVEL.exec(v2);
+          // `{VAR}` so e referencia quando o esquema veio de f-string (`f"Bearer`).
+          // Fora dela, chaves com um nome dentro sao texto literal: na lista
+          // global, `password={abc}` saia isento em qualquer chave.
+          const fstr = /^f["']/i.test(valor) ? /^\{[A-Za-z_]\w*\}/.exec(v2) : null;
+          const r2 = fmt || fstr || REFERENCIA_DE_VARIAVEL.exec(v2);
           if (r2 && !/^[A-Za-z0-9_]/.test(v2.slice(r2[0].length))) return false;
         }
       }
