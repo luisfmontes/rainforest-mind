@@ -24,7 +24,7 @@
     "em": "2026-10-07"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-07",
     "tarefas_ok": 10,
     "tarefas": 10,
@@ -101,8 +101,8 @@
       }
     ],
     "em": "2026-10-07",
-    "comando": "bash scripts/varrer-baterias.sh --shard i/4 (i=1..4)",
-    "saida": "as 40/41/55/42 baterias passaram (178 verdes, 0 vermelhas)",
+    "comando": "bash scripts/varrer-baterias.sh --shard i/4 (i=1..4) + baterias da emenda",
+    "saida": "178 verdes antes da emenda; emenda: publicacao-destino 76 ok, fechar-issue 286 ok, sem-instalar 137 ok",
     "mutacao": [
       {
         "tarefa": 1,
@@ -155,17 +155,7 @@
         "fixture": "419 visibilidade-repo privada libera termo privado com remoto sem gh"
       }
     ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-07"
-    },
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "emenda da revisao: 2 bloqueantes e 4 menores",
-        "desde": "2026-10-07"
-      }
-    ]
+    "em_voo": []
   },
   "revisar": {
     "status": "reprovado",
