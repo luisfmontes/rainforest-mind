@@ -34,10 +34,14 @@ aproveita o cache.
   `session.start` (tipo: "no `session.start` fires for it"); `prompt.submit` não está na lista
   do sec-default e o tipo não restringe de onde `$.session.append` é chamado. Ainda não
   medido: a medição entra no critério do plano.
-- **D6 — Compactação: na volta do `next(e)` do `session.compact`, se a marca não estiver nas
-  mensagens devolvidas, reanexar** — porquê: não há evento "after" separado nem
-  `classic.PostCompact` utilizável (bypassed); a regra cobre os dois casos — linha
-  preservada literal (não faz nada) ou virada resumo (reanexa) — sem depender de medir qual.
+- **D6 — Compactação: o `session.compact` arma a mesma pendência do `/clear`, e o próximo
+  `prompt.submit` reanexa se a marca não estiver nas mensagens** — porquê: não há evento "after"
+  separado nem `classic.PostCompact` utilizável (bypassed). A primeira forma (append na volta do
+  `next(e)` do `session.compact`) foi medida no REPL em 2026-10-07 e falhou: a linha anexada caiu
+  ANTES do `compact_boundary` (transcript: marca na linha 58, boundary na 59, resumo na 60) e a
+  sonda respondeu `NONE` depois do `/compact`. O caminho do `prompt.submit` foi provado pelo
+  `/clear` na mesma sessão. A checagem de marca cobre os dois casos: linha preservada (não faz
+  nada) ou perdida (reanexa).
 
 - **D7 — Contornar o sec-default pelo append é autorizado pelo administrador da conta Team**
   (o próprio usuário, 2026-10-06, depois do alerta da security review automática do commit
