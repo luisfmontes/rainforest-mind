@@ -24,7 +24,55 @@
     "em": "2026-10-07"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-07",
+    "tarefas_ok": 4,
+    "tarefas": 9,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "3 config principal",
+        "desde": "2026-10-07"
+      }
+    ],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "0656db33",
+        "iteracao": 1,
+        "sessao": "8a92195d-02e9-4689-a92d-ece42b872931",
+        "ts": "2026-10-07T13:08:43.593Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "0656db33",
+        "iteracao": 1,
+        "sessao": "8a92195d-02e9-4689-a92d-ece42b872931",
+        "ts": "2026-10-07T13:08:43.593Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "0656db33",
+        "iteracao": 1,
+        "sessao": "8a92195d-02e9-4689-a92d-ece42b872931",
+        "ts": "2026-10-07T13:08:43.593Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "0656db33",
+        "iteracao": 1,
+        "sessao": "8a92195d-02e9-4689-a92d-ece42b872931",
+        "ts": "2026-10-07T13:08:43.593Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "0656db33",
+        "iteracao": 1,
+        "sessao": "8a92195d-02e9-4689-a92d-ece42b872931",
+        "ts": "2026-10-07T13:08:43.593Z"
+      }
+    ],
+    "em": "2026-10-07"
   },
   "revisar": {
     "status": "pendente"
