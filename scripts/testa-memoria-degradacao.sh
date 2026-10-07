@@ -25,12 +25,14 @@ cleanup() {
 }
 trap 'cleanup; if declare -F conferir_raiz_real >/dev/null; then conferir_raiz_real; fi' EXIT
 
+# Sem pasta de dados (runner de CI) o resolverRaiz falha: sem raiz real, sem
+# guarda, e o `|| true` impede o `set -e` de matar a bateria em silencio.
 # Guarda da raiz real (#398, D19): a raiz e a que resolverRaiz daria SEM o
 # RFM_ROOT herdado (RFM_RAIZ_REAL_FALSA a simula na prova). RFM_ROOT que cai
 # nela aborta antes de gravar; no fim, nenhum nome da raiz real pode ter sumido.
 _win() { cygpath -m "$1" 2>/dev/null || printf '%s' "$1"; }
 if [ -n "${RFM_RAIZ_REAL_FALSA:-}" ]; then RAIZ_REAL="$(_win "$RFM_RAIZ_REAL_FALSA")"
-else RAIZ_REAL="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && env -u RFM_ROOT node -e 'process.stdout.write(require("./hooks/lib/raiz.cjs").resolverRaiz().raiz)' 2>/dev/null)"; fi
+else RAIZ_REAL="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && env -u RFM_ROOT node -e 'process.stdout.write(require("./hooks/lib/raiz.cjs").resolverRaiz().raiz)' 2>/dev/null || true)"; fi
 mesmo_caminho() { node -e 'const p=require("path"),f=require("fs");const n=x=>{try{x=f.realpathSync(x)}catch{};return p.resolve(x).toLowerCase()};process.exit(n(process.argv[1])===n(process.argv[2])?0:1)' "$(_win "$1")" "$(_win "$2")"; }
 if [ -n "${RFM_ROOT:-}" ] && [ -n "$RAIZ_REAL" ] && mesmo_caminho "$RFM_ROOT" "$RAIZ_REAL"; then
   echo "nao-verificavel: RFM_ROOT aponta para a raiz real de dados ($RAIZ_REAL) — aborta antes de gravar"
