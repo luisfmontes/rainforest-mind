@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // @categoria: guia
-// Dados da faixa de foco: o foco declarado e os fluxos em curso de TODOS os worktrees.
-// Somente leitura. Saida: JSON em uma linha. Contrato em
+// Dados do painel do mod: os fluxos em curso de TODOS os worktrees. Somente leitura. Saida:
+// JSON em uma linha, `{ "fluxos": [...] }`. O foco declarado saiu daqui junto com a faixa que
+// o desenhava (docs/rainforest/design/2026-10-07-desk-no-mod.md, D2); forma original em
 // docs/rainforest/planos/2026-10-03-mod-faixa-foco.md ("Contrato dos dados").
 //
 // Uso: node scripts/faixa-dados.cjs --cwd <dir>
@@ -10,10 +11,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 const { proximo } = require('./estado.cjs');
-const { tituloDoFocoAtivo } = require('../hooks/lib/contexto-sessao.cjs');
-const { resolverRaiz } = require('../hooks/lib/raiz.cjs');
 
-const PLUGIN = path.resolve(__dirname, '..');
 const ORDEM = ['design', 'plano', 'executar', 'revisar', 'verificar', 'fechar', 'completo'];
 // Caminho de worktree criado pelo harness para subagente (isolation: worktree).
 const WORKTREE_DE_AGENTE = /[\\/]\.claude[\\/]worktrees[\\/]agent-[^\\/]*[\\/]?$/;
@@ -102,21 +100,9 @@ function lerFluxos(cwd) {
   return fluxos;
 }
 
-function lerFoco(cwd) {
-  const { raiz } = resolverRaiz({ cwd, plugin: PLUGIN });
-  if (!raiz) return null;
-  let texto;
-  try {
-    texto = fs.readFileSync(path.join(raiz, 'FOCO.md'), 'utf8');
-  } catch {
-    return null;
-  }
-  return tituloDoFocoAtivo(texto) || null;
-}
-
 function main() {
   const cwd = path.resolve(valorDe('--cwd') || process.cwd());
-  process.stdout.write(`${JSON.stringify({ foco: lerFoco(cwd), fluxos: lerFluxos(cwd) })}\n`);
+  process.stdout.write(`${JSON.stringify({ fluxos: lerFluxos(cwd) })}\n`);
 }
 
 if (require.main === module) main();

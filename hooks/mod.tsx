@@ -1,27 +1,57 @@
-// Entrada do mod: a abertura (register.ts, sem mudanca) mais a faixa acima do prompt
-// (foco, fluxos em curso e Q abertas). A logica pura mora em ./faixa-puro.mjs; aqui so se
-// liga os eventos. O engine recusa `$` passado como argumento a qualquer funcao do arquivo
-// (closure inclusive), entao `buscar` recebe so `{ rodar, cwd, raiz }`, montado no ponto de
-// chamada de cada hook.
+// Entrada do mod: a abertura (register.ts, sem mudanca) mais a barra de sessao acima do
+// prompt (estado, tokens, custo, contexto, cache, subagentes, erros e o relogio) e o
+// comando /painel. A logica pura mora em ./painel-puro.mjs e ./relogio-puro.mjs; aqui so se
+// liga os eventos. O engine recusa `$` passado como argumento a qualquer funcao do arquivo,
+// entao `buscar` e `medir` recebem so valores e lambdas montadas no ponto de chamada de
+// cada hook. Toda leitura do mundo tem falha aberta: so a peca afetada some.
 import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
 import type {
   RainforestMindFaixaDados,
-  RainforestMindFaixaQ,
+  RainforestMindPainelAgente,
+  RainforestMindPainelStats,
   RainforestMindRelogioJornada,
   RainforestMindRelogioSessoes,
 } from '../types'
 import { register as abertura } from './register.ts'
-import { MAX_LINHAS, assinatura, escondida, extrairQs, montarLinhas } from './faixa-puro.mjs'
-import { assinaturaRelogio, avaliarRelogio, linhaRelogio, notaJornada } from './relogio-puro.mjs'
+import { largura, cortar } from './faixa-puro.mjs'
+import { cacheDe, compacto, figurasDaBarra, ritmoPorMinuto, rotuloSubagente } from './painel-puro.mjs'
+import { avaliarRelogio, linhaRelogio, notaJornada } from './relogio-puro.mjs'
+
+const MIN = 60_000
+const HORA = 60 * MIN
+const MAX_AGENTES = 12
+
+const VAZIO: RainforestMindPainelStats = {
+  turnos: 0,
+  ferramentas: 0,
+  falhas: 0,
+  tokensNovos: 0,
+  tokensCacheLido: 0,
+  tokensCacheEscrito: 0,
+  tokensSaida: 0,
+  custoUsd: null,
+  ctxPct: null,
+  ctxTokens: null,
+  ctxJanela: null,
+  fatias: [],
+  carimbos: [],
+  agentes: [],
+  ultimaRequisicaoMs: 0,
+  modelo: null,
+  ttlMs: HORA,
+  medirDeNovo: false,
+}
 
 const faixaDados = atom({ plugin: 'rainforest-mind', key: 'faixaDados' } as const, null as RainforestMindFaixaDados | null)
-const faixaQ = atom({ plugin: 'rainforest-mind', key: 'faixaQ' } as const, [] as RainforestMindFaixaQ[])
-const faixaOculta = atom({ plugin: 'rainforest-mind', key: 'faixaOculta' } as const, null as string | null)
+const painelStats = atom({ plugin: 'rainforest-mind', key: 'painelStats' } as const, VAZIO)
+const painelOculto = atom({ plugin: 'rainforest-mind', key: 'painelOculto' } as const, false)
 const relogioJornada = atom({ plugin: 'rainforest-mind', key: 'relogioJornada' } as const, null as RainforestMindRelogioJornada | null)
 const relogioSessoes = atom({ plugin: 'rainforest-mind', key: 'relogioSessoes' } as const, null as RainforestMindRelogioSessoes | null)
 const relogioNotaPendente = atom({ plugin: 'rainforest-mind', key: 'relogioNotaPendente' } as const, null as string | null)
 const relogioNotaEntregue = atom({ plugin: 'rainforest-mind', key: 'relogioNotaEntregue' } as const, null as string | null)
+
+const inteiro = (s: RainforestMindPainelStats | null | undefined): RainforestMindPainelStats => ({ ...VAZIO, ...(s ?? {}) })
 
 type Io = {
   rodar: (argv: string[], init: { cwd: string; env: Record<string, string>; timeoutMs: number }) => Promise<{ exitCode: number; stdout: string }>
@@ -67,26 +97,135 @@ function sessoesDe(bruto: any): RainforestMindRelogioSessoes | null {
   return { ociosidade_min: bruto.ociosidade_min, janelas: bruto.janelas }
 }
 
-// Linha e assinatura do relogio para o desenho; qualquer falha apaga so o relogio.
-function relogioDe(jornada: RainforestMindRelogioJornada | null, sessoes: RainforestMindRelogioSessoes | null, agora: number) {
+// Linha do relogio para a barra; qualquer falha apaga so o relogio.
+function linhaDoRelogio(jornada: RainforestMindRelogioJornada | null, sessoes: RainforestMindRelogioSessoes | null, agora: number): string | null {
   try {
-    const r = avaliarRelogio({ jornada, sessoes, agora })
-    return { linha: linhaRelogio(r) as string | null, sig: assinaturaRelogio(r) as string }
+    return linhaRelogio(avaliarRelogio({ jornada, sessoes, agora })) as string | null
   } catch {
-    return { linha: null as string | null, sig: '' }
+    return null
   }
 }
+
+type IoMedir = {
+  usage: () => Promise<any>
+  gravar: (f: (s: RainforestMindPainelStats) => RainforestMindPainelStats) => Promise<unknown>
+  log: (texto: string) => void
+}
+
+// Contexto e custo pela estimativa local (`breakdown: 'summary'`; `full` chama a API de
+// contagem a cada turno). Falha aberta: o contexto some da barra, o resto fica.
+async function medir(io: IoMedir): Promise<void> {
+  let uso: any
+  try {
+    uso = await io.usage()
+  } catch (err) {
+    try {
+      io.log(`painel: contexto: ${String(err)}`)
+    } catch {
+      // sem log, sem problema
+    }
+    try {
+      await io.gravar(raw => ({ ...inteiro(raw), ctxPct: null, ctxTokens: null, ctxJanela: null, fatias: [], medirDeNovo: false }))
+    } catch {
+      // a medicao nunca quebra nada
+    }
+    return
+  }
+  try {
+    const contexto = uso?.context ?? {}
+    const detalhe = contexto.breakdown
+    const fatias = (Array.isArray(detalhe?.categories) ? detalhe.categories : [])
+      .filter((c: any) => c && typeof c.tokens === 'number' && c.tokens > 0)
+      .map((c: any) => ({ nome: String(c.name), tokens: c.tokens as number, tipo: String(c.kind) }))
+    const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+    await io.gravar(raw => {
+      const s = inteiro(raw)
+      return {
+        ...s,
+        custoUsd: num(uso?.cost?.usd) ?? s.custoUsd,
+        ctxPct: num(detalhe?.percentage) ?? num(contexto.percent),
+        ctxTokens: num(contexto.tokens) ?? num(detalhe?.totalTokens),
+        ctxJanela: num(detalhe?.rawMaxTokens) ?? num(contexto.window),
+        fatias,
+        medirDeNovo: false,
+      }
+    })
+  } catch {
+    // a medicao nunca quebra nada
+  }
+}
+
+// Subagentes: a linha de um agente nunca visto comeca em branco; acima do teto saem os
+// mais antigos ja encerrados (um em andamento nunca sai).
+function comAgente(agentes: RainforestMindPainelAgente[], id: string, at: number, mudar: (a: RainforestMindPainelAgente) => RainforestMindPainelAgente): RainforestMindPainelAgente[] {
+  const conhecido: RainforestMindPainelAgente = agentes.find(a => a.id === id) ?? {
+    id,
+    rotulo: `agente ${id.slice(0, 6)}`,
+    tipo: 'subagente',
+    modelo: null,
+    iniciadoEm: at,
+    fimEm: null,
+    vistoEm: at,
+    criadoAqui: false,
+    ferramentas: 0,
+    tokensLidos: 0,
+    tokensSaida: 0,
+    falhou: false,
+  }
+  const linhas = [...agentes.filter(a => a.id !== id), { ...mudar(conhecido), vistoEm: at }]
+  const sobra = linhas.filter(a => a.fimEm !== null).slice(0, Math.max(0, linhas.length - MAX_AGENTES))
+  return linhas.filter(a => !sobra.includes(a))
+}
+
+// Um agente que ninguem viu comecar nesta carga do mod pode nunca avisar que acabou: o
+// silencio de 2 min o encerra.
+const emAndamento = (a: RainforestMindPainelAgente, agora: number): boolean =>
+  a.fimEm === null && (a.criadoAqui || agora - a.vistoEm < 2 * MIN)
+
+const mmss = (ms: number): string => {
+  const s = Math.max(0, Math.floor(ms / 1000))
+  return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0')
+}
+
+const COR = { ambar: '#ffb000', verde: '#00d67a', vermelho: '#ff4d4d', ciano: '#4dd2ff' }
+
+const AJUDA = 'Subcomandos: esconder, mostrar, cache 5m|1h'
 
 export const register: Register = (on, options) => {
   abertura(on, options)
 
-  // Timers do relogio: ficam no escopo do register para o session.end e o proximo
-  // session.start cancelarem os da sessao anterior.
+  // Timers do relogio e do tique da barra: ficam no escopo do register para o session.end e
+  // o proximo session.start cancelarem os da sessao anterior.
   let timers: { cancel: () => void }[] = []
   // Id da sessao que armou os timers: so o session.end dela cancela o relogio.
   let armadoPor: string | null = null
+  // O tique da barra (1 s) so existe depois de alguma atividade (ferramenta, passo, subagente,
+  // turno) ou de um compact que pediu medicao nova, e se desarma quando nada mais conta: parado,
+  // nao ha timer nenhum.
+  let ativo = false
+  let medirPendente = false
+  let tiqueTimer: { cancel: () => void } | null = null
+  let armarTique: (() => void) | null = null
+  const acordar = () => {
+    ativo = true
+    try {
+      if (armarTique !== null) armarTique()
+    } catch {
+      // sem tique, a barra so se redesenha quando o estado muda
+    }
+  }
   const cancelarRelogio = () => {
     armadoPor = null
+    armarTique = null
+    if (tiqueTimer !== null) {
+      try {
+        tiqueTimer.cancel()
+      } catch {
+        // timer ja encerrado
+      }
+      tiqueTimer = null
+    }
+    ativo = false
     const velhos = timers
     timers = []
     for (const t of velhos) {
@@ -100,6 +239,14 @@ export const register: Register = (on, options) => {
 
   on('session.start', async ($, e, next) => {
     try {
+      await $.command.register({
+        name: 'painel',
+        description: 'Barra de sessao: /painel esconder, /painel mostrar, /painel cache 5m|1h',
+      })
+    } catch {
+      // sem comando, a barra segue
+    }
+    try {
       const dados = await buscar({
         rodar: (argv, init) => $.process.run(argv, init),
         cwd: () => $.session.cwd(),
@@ -107,9 +254,9 @@ export const register: Register = (on, options) => {
       })
       await update($, faixaDados, () => dados)
     } catch {
-      // a faixa nunca quebra a abertura da sessao
+      // a barra nunca quebra a abertura da sessao
     }
-    // claude -p, SDK e subagente nao desenham a faixa: sem timer, e sem cancelar o relogio da
+    // claude -p, SDK e subagente nao desenham a barra: sem timer, e sem cancelar o relogio da
     // sessao interativa que compartilha esta instancia do mod.
     if (!e.isInteractive) return next(e)
     cancelarRelogio()
@@ -154,7 +301,7 @@ export const register: Register = (on, options) => {
           await update($, relogioSessoes, () => dados)
           await reavaliar()
         } catch {
-          // falha apaga so a linha do relogio
+          // falha apaga so a figura do relogio
         } finally {
           sessoesEmCurso = false
         }
@@ -169,9 +316,40 @@ export const register: Register = (on, options) => {
           await update($, relogioJornada, () => dados)
           await reavaliar()
         } catch {
-          // falha apaga so a linha do relogio
+          // falha apaga so a figura do relogio
         } finally {
           jornadaEmCurso = false
+        }
+      }
+
+      // A contagem do cache e o ritmo andam sozinhos: o tique redesenha a barra a cada segundo
+      // enquanto algo conta (cache quente, ferramenta no ultimo minuto, subagente) e refaz a
+      // medicao que um compact deixou pendente. Nunca roda processo.
+      const tique = async () => {
+        if (!ativo && !medirPendente) return
+        try {
+          if (medirPendente) {
+            medirPendente = false
+            await medir({
+              usage: () => $.session.usage({ breakdown: 'summary' }),
+              gravar: f => update($, painelStats, f),
+              log: m => $.ui.log(m, { to: 'debug' }),
+            })
+          }
+          const s = inteiro(await read($, painelStats))
+          const agora = await $.clock.now()
+          const contando =
+            ritmoPorMinuto(s.carimbos, agora) > 0 ||
+            s.agentes.some(a => emAndamento(a, agora)) ||
+            cacheDe({ modelo: s.modelo, ctxTokens: s.ctxTokens, ultimaRequisicaoMs: s.ultimaRequisicaoMs, agora, ttlMs: s.ttlMs }).quente
+          if (contando) $.ui.invalidate('ui.render')
+          else {
+            ativo = false
+            if (tiqueTimer !== null) tiqueTimer.cancel()
+            tiqueTimer = null
+          }
+        } catch {
+          // o tique nunca quebra nada
         }
       }
 
@@ -179,6 +357,9 @@ export const register: Register = (on, options) => {
       timers.push($.clock.after(2000, lerJornada))
       timers.push($.clock.every(60000, lerSessoes))
       timers.push($.clock.every(300000, lerJornada))
+      armarTique = () => {
+        if (tiqueTimer === null) tiqueTimer = $.clock.every(1000, tique)
+      }
     } catch {
       // o relogio nunca quebra a abertura da sessao
     }
@@ -195,17 +376,52 @@ export const register: Register = (on, options) => {
     return next(e)
   })
 
-  // Mensagem do usuario responde as Q do turno anterior: a linha sai na hora, e o
-  // `turn.complete` seguinte traz de volta as que continuarem abertas. O evento e o
-  // `prompt.submit` porque o gancho classico de envio (UserPromptSubmit) nao roda, em mod, no composer do REPL.
-  on('prompt.submit', async ($, e, next) => {
-    try {
-      await update($, faixaQ, () => [])
-    } catch {
-      // a faixa nunca quebra o envio
+  on('command.run', { command: 'painel' }, async ($, e) => {
+    const palavra = `${e.args ?? ''}`.trim().toLowerCase()
+    if (palavra === 'esconder' || palavra === 'mostrar') {
+      await update($, painelOculto, () => palavra === 'esconder')
+      return { text: palavra === 'esconder' ? 'Barra escondida.' : 'Barra de volta.' }
     }
-    // Nota da regra 8: uma vez por dia, so em prompt digitado no composer (nao em loop/schedule/system).
-    // Vai em `context`: o modelo le, o usuario nao ve, e o texto do prompt segue intacto.
+    if (palavra === 'cache 5m' || palavra === 'cache 1h') {
+      await update($, painelStats, s => ({ ...inteiro(s), ttlMs: palavra === 'cache 5m' ? 5 * MIN : HORA }))
+      return { text: `Vida do cache em ${palavra.slice(6)}.` }
+    }
+    return { text: AJUDA }
+  })
+
+  on('agent.spawn', async ($, e, next) => {
+    const criado = await next(e)
+    acordar()
+    try {
+      if (criado.agentId !== undefined) {
+        const id = criado.agentId
+        const at = await $.clock.now()
+        await update($, painelStats, raw => {
+          const s = inteiro(raw)
+          return {
+            ...s,
+            agentes: comAgente(s.agentes, id, at, a => ({
+              ...a,
+              rotulo: rotuloSubagente(e.description, 40),
+              tipo: String(e.subagentType),
+              modelo: criado.model,
+              criadoAqui: true,
+              fimEm: null,
+            })),
+          }
+        })
+      }
+    } catch {
+      // o contador nunca quebra o spawn
+    }
+    return criado
+  })
+
+  // Nota da regra 8: uma vez por dia, so em prompt digitado no composer (nao em loop/schedule/system).
+  // Vai em `context`: o modelo le, o usuario nao ve, e o texto do prompt segue intacto. O evento e
+  // o `prompt.submit` porque o gancho classico de envio (UserPromptSubmit) nao roda, em mod, no
+  // composer do REPL.
+  on('prompt.submit', async ($, e, next) => {
     let nota: string | null = null
     try {
       if (e.origin === undefined || e.origin.kind === 'composer') {
@@ -229,70 +445,214 @@ export const register: Register = (on, options) => {
     return next({ ...e, context: [...(e.context ?? []), nota] })
   })
 
-  on('turn.complete', async ($, e, next) => {
-    if (e.agentId !== undefined) return next(e)
+  // Cada requisicao do laco. A vida do cache corre do comeco da ultima requisicao do laco
+  // principal; uma requisicao de subagente quer dizer que ele esta trabalhando.
+  on('turn.step', async function* ($, e, next) {
+    acordar()
     try {
-      if (e.reason === 'answer') {
-        const qs = extrairQs(e.answer ?? '')
-        await update($, faixaQ, () => qs)
-      }
-      const dados = await buscar({
-        rodar: (argv, init) => $.process.run(argv, init),
-        cwd: () => $.session.cwd(),
-        raiz: $.plugin.root,
+      const at = await $.clock.now()
+      const agentId = e.agentId
+      await update($, painelStats, raw => {
+        const s = inteiro(raw)
+        return agentId === undefined
+          ? { ...s, ultimaRequisicaoMs: at }
+          : { ...s, agentes: comAgente(s.agentes, agentId, at, a => ({ ...a, fimEm: null })) }
       })
-      await update($, faixaDados, () => dados)
     } catch {
-      // a faixa nunca quebra o turno
+      // o contador nunca quebra o passo
+    }
+    return yield* next(e)
+  })
+
+  on('tool.call', async ($, e, next) => {
+    const ran = await next(e)
+    acordar()
+    try {
+      const at = await $.clock.now()
+      const agentId = e.agentId
+      const falhou = ran.deny !== undefined || ran.isError === true
+      await update($, painelStats, raw => {
+        const s = inteiro(raw)
+        return {
+          ...s,
+          ferramentas: s.ferramentas + 1,
+          falhas: s.falhas + (falhou ? 1 : 0),
+          carimbos: [...s.carimbos, at].filter(t => at - t <= MIN),
+          agentes: agentId === undefined ? s.agentes : comAgente(s.agentes, agentId, at, a => ({ ...a, fimEm: null, ferramentas: a.ferramentas + 1 })),
+        }
+      })
+    } catch {
+      // o contador nunca quebra a ferramenta
+    }
+    return ran
+  })
+
+  on('turn.complete', async ($, e, next) => {
+    const agentId = e.agentId
+    acordar()
+    try {
+      const at = await $.clock.now()
+      const saida = e.usage?.output_tokens ?? 0
+      // `input_tokens` e so a parte sem cache; um prompt em cache reporta quase tudo nos dois
+      // campos de cache.
+      const novos = e.usage?.input_tokens ?? 0
+      const lidos = e.usage?.cache_read_input_tokens ?? 0
+      const escritos = e.usage?.cache_creation_input_tokens ?? 0
+      await update($, painelStats, raw => {
+        const s = inteiro(raw)
+        return {
+          ...s,
+          // So onde nenhuma requisicao do laco principal foi vista comecar.
+          ultimaRequisicaoMs: agentId === undefined && s.ultimaRequisicaoMs === 0 ? at : s.ultimaRequisicaoMs,
+          modelo: agentId === undefined ? (e.usage?.model ?? s.modelo) : s.modelo,
+          turnos: s.turnos + (agentId === undefined ? 1 : 0),
+          tokensNovos: s.tokensNovos + novos,
+          tokensCacheLido: s.tokensCacheLido + lidos,
+          tokensCacheEscrito: s.tokensCacheEscrito + escritos,
+          tokensSaida: s.tokensSaida + saida,
+          agentes: agentId === undefined
+            ? s.agentes
+            : comAgente(s.agentes, agentId, at, a => ({
+                ...a,
+                fimEm: at,
+                modelo: e.usage?.model ?? a.modelo,
+                tokensLidos: a.tokensLidos + novos + lidos + escritos,
+                tokensSaida: a.tokensSaida + saida,
+                falhou: e.reason === 'error' || e.reason === 'aborted',
+              })),
+        }
+      })
+      if (agentId === undefined) {
+        await medir({
+          usage: () => $.session.usage({ breakdown: 'summary' }),
+          gravar: f => update($, painelStats, f),
+          log: m => $.ui.log(m, { to: 'debug' }),
+        })
+        const dados = await buscar({
+          rodar: (argv, init) => $.process.run(argv, init),
+          cwd: () => $.session.cwd(),
+          raiz: $.plugin.root,
+        })
+        await update($, faixaDados, () => dados)
+      }
+    } catch {
+      // a barra nunca quebra o turno
     }
     return next(e)
   })
 
+  // A conversa compactada e outra janela: mostra a contagem da propria compactacao na hora e
+  // pede medicao nova (o engine troca a conversa depois que este hook volta, entao uma leitura
+  // agora ainda seria a velha).
+  // O matcher casa qualquer gatilho: register.ts ja tem um session.compact sem matcher.
+  on('session.compact', { trigger: /.*/ }, async ($, e, next) => {
+    const feito = await next(e)
+    try {
+      if (e.agentId !== undefined || e.trigger === 'precompute' || feito.messages === undefined) return feito
+      const depois = feito.tokensAfter
+      medirPendente = true
+      acordar()
+      await update($, painelStats, raw => {
+        const s = inteiro(raw)
+        const medida = depois !== undefined && s.ctxJanela !== null && s.ctxJanela > 0
+        return {
+          ...s,
+          medirDeNovo: true,
+          ctxTokens: depois ?? s.ctxTokens,
+          ctxPct: medida ? (depois / (s.ctxJanela ?? 1)) * 100 : s.ctxPct,
+          fatias: medida ? [] : s.fatias,
+        }
+      })
+    } catch {
+      // o contador nunca quebra a compactacao
+    }
+    return feito
+  })
+
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     try {
-      if (e.props.hasSurvey) return next(e)
-      const dados = await read($, faixaDados)
-      const qs = await read($, faixaQ)
-      const oculto = await read($, faixaOculta)
-      let rel: { linha: string | null; sig: string } = { linha: null, sig: '' }
-      try {
-        rel = relogioDe(await read($, relogioJornada), await read($, relogioSessoes), await $.clock.now())
-      } catch {
-        // sem relogio, a faixa segue
+      if (e.props.hasSurvey || (await read($, painelOculto))) return next(e)
+      const { Box, Text } = $.ui.resolve(e)
+      const s = inteiro(await read($, painelStats))
+      const agora = await $.clock.now()
+      const cols = e.props.bodyColumns
+      const visto = e.props.view?.agentId
+
+      // O transcript de um subagente esta em tela: a barra e dele, e o contexto e o da sessao principal.
+      if (visto !== undefined) {
+        const a = s.agentes.find(x => x.id === visto)
+        const roda = a !== undefined && emAndamento(a, agora)
+        const cor = a === undefined ? COR.ambar : roda ? COR.verde : a.falhou ? COR.vermelho : COR.ciano
+        const partes: { texto: string; cor: string }[] = [
+          { texto: ' Subagente ', cor: COR.ciano },
+          { texto: rotuloSubagente(a?.rotulo ?? `agente ${visto.slice(0, 6)}`, 24), cor },
+        ]
+        if (a === undefined) {
+          partes.push({ texto: 'Sem atividade vista ainda', cor: COR.ambar })
+        } else {
+          partes.push(
+            { texto: 'Status ' + (roda ? 'trabalhando' : a.falhou ? 'parou' : 'pronto'), cor },
+            { texto: 'Tempo ' + mmss((roda ? agora : (a.fimEm ?? a.vistoEm)) - a.iniciadoEm), cor },
+            { texto: 'Ferram. ' + a.ferramentas, cor },
+            { texto: 'Tokens ' + compacto(a.tokensLidos + a.tokensSaida), cor },
+            { texto: 'Modelo ' + rotuloSubagente(a.modelo ?? 'desconhecido', 24), cor },
+          )
+        }
+        partes.push({ texto: 'Sessão principal: contexto ' + (s.ctxPct === null ? '--' : Math.round(s.ctxPct) + '%'), cor: COR.ambar })
+        const ficam: { texto: string; cor: string }[] = []
+        let usado = 0
+        for (const p of partes) {
+          const custo = largura(p.texto) + (ficam.length > 0 ? 2 : 0)
+          if (ficam.length > 0 && usado + custo > cols) break
+          ficam.push(ficam.length === 0 ? { ...p, texto: cortar(p.texto, cols) } : p)
+          usado += custo
+        }
+        return (
+          <Box flexDirection="row" height={1} overflow="hidden">
+            {ficam.map((p, i) => (
+              <Box key={`a${i}`} marginLeft={i === 0 ? 0 : 2}>
+                <Text color={p.cor} wrap="truncate-end">{p.texto}</Text>
+              </Box>
+            ))}
+          </Box>
+        )
       }
-      const linhas = montarLinhas(dados, qs, e.props.bodyColumns, Math.min(MAX_LINHAS, e.props.maxRows - 1), rel.linha)
-      if (linhas.length === 0 || escondida(oculto, assinatura(dados, qs, rel.sig))) return next(e)
-      const { Box, Button, Text } = $.ui.resolve(e)
+
+      let relogio: string | null = null
+      try {
+        relogio = linhaDoRelogio(await read($, relogioJornada), await read($, relogioSessoes), agora)
+      } catch {
+        // sem relogio, a barra segue
+      }
+      const figuras = figurasDaBarra(
+        {
+          trabalhando: e.props.isWorking,
+          tokens: s.tokensNovos + s.tokensCacheLido + s.tokensCacheEscrito + s.tokensSaida,
+          custoUsd: s.custoUsd,
+          ctxPct: s.ctxPct ?? undefined,
+          ctxTokens: s.ctxTokens ?? undefined,
+          modelo: s.modelo,
+          ttlMs: s.ttlMs,
+          ultimaRequisicaoMs: s.ultimaRequisicaoMs,
+          agora,
+          carimbos: s.carimbos,
+          subagentes: s.agentes.filter(a => emAndamento(a, agora)).length,
+          turnos: s.turnos,
+          erros: s.falhas,
+        },
+        relogio,
+        cols,
+      ) as { id: string; texto: string; largura: number }[]
+      if (figuras.length === 0) return next(e)
+      const corDe = (id: string): string | undefined =>
+        id === 'estado' ? (e.props.isWorking ? COR.verde : COR.ambar) : id === 'erros' ? (s.falhas > 0 ? COR.vermelho : COR.verde) : id === 'relogio' ? COR.ambar : undefined
       return (
-        <Box flexDirection="column">
-          {linhas.map((linha: string, i: number) => (
-            <Text key={`l${i}`} wrap="truncate-end">{linha}</Text>
+        <Box flexDirection="row" height={1} overflow="hidden">
+          {figuras.map((f, i) => (
+            <Box key={f.id} marginLeft={i === 0 ? 0 : 2}>
+              <Text color={corDe(f.id)} wrap="truncate-end">{f.texto}</Text>
+            </Box>
           ))}
-          <Button
-            key="esconder"
-            label="esconder"
-            onPress={async () => {
-              try {
-                const d = await read($, faixaDados)
-                const q = await read($, faixaQ)
-                let sig = ''
-                try {
-                  sig = relogioDe(await read($, relogioJornada), await read($, relogioSessoes), await $.clock.now()).sig
-                } catch {
-                  // sem relogio na assinatura
-                }
-                await update($, faixaOculta, () => assinatura(d, q, sig))
-                const dados = await buscar({
-                  rodar: (argv, init) => $.process.run(argv, init),
-                  cwd: () => $.session.cwd(),
-                  raiz: $.plugin.root,
-                })
-                await update($, faixaDados, () => dados)
-              } catch {
-                // botao sem rejeicao solta
-              }
-            }}
-          />
         </Box>
       )
     } catch {
