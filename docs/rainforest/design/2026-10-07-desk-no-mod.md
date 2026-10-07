@@ -55,6 +55,10 @@ português, relógio ⏰ mantido, "Left undone" checado contra a regra 12.
 - **D12 — Lógica pura testável fora do engine** — porquê: padrão do repo (`faixa-puro.mjs`,
   `relogio-puro.mjs` com baterias). Cálculos do desk (cache, fatias, deferimento, ritmo)
   vão para um `painel-puro.mjs` com bateria; `mod.tsx` só liga eventos.
+- **D13 — Painel "Mapa da sessão" no `/painel`** (Builder Map do guia de mods, Actionable AI) — porquê: pedido do usuário na mesma rodada (2026-10-07). Lista arquivos escritos, skills usadas, subagentes e serviços (MCP por nome de servidor), atualizado a cada ferramenta.
+- **D14 — Desvio medido contra a soma dos `arquivos:` de todas as tarefas do plano do fluxo deste worktree; fora de fluxo, o mapa só lista** — porquê: o estado do fluxo registra o estágio, não a tarefa em curso (lido em `docs/rainforest/estado/*.json`); o plano é o único lugar com arquivos declarados (`skills/plano/SKILL.md:61-66`).
+- **D15 — Arquivo fora do plano: linha vermelha no painel e um toast por arquivo, nada vai ao modelo** — porquê: o aviso é para o usuário; avisar o modelo é outra regra e outro custo.
+- **D16 — "Tocar" = escrever por Edit, Write ou NotebookEdit** — porquê: ler fora do plano é investigação normal; escrita via Bash não é detectável com segurança e fica fora, dito no próprio painel.
 
 ## Avaliado e descartado
 - **Rodar o terminal-desk como plugin separado ao lado do rainforest** — os dois desenham
@@ -68,7 +72,8 @@ português, relógio ⏰ mantido, "Left undone" checado contra a regra 12.
 - Investigar por que o foco não serve a ele (Q4 da primeira rodada: depois, vendo o que ele
   passa a olhar na barra nova).
 - O mecanismo do foco em si (FOCO.md, radar da regra 3) — só sai da faixa.
-- Builder Map e Caliper — ideias separadas, oferecidas para plantar.
+- Caliper — plantado (`caliper-medir-quais-regras-pagam`): não é mod, é CLI Python e custa N execuções do agente.
+- Exportar o mapa (`/map`, Mermaid no navegador) — plantado como HTML (`mapa-da-sessao-exportado-em-html`): exige gravar arquivo e abrir navegador.
 - Fazer o sec-default deixar passar eventos na conta de trabalho — é da sessão paralela.
 
 ## Varredura

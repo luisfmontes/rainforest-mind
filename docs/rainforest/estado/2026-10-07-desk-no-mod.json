@@ -6,7 +6,9 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-07-desk-no-mod.md",
+    "em": "2026-10-07"
   },
   "plano": {
     "status": "pendente"
