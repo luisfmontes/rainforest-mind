@@ -439,6 +439,10 @@ function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade) {
     msgVisibilidade = `\n\nRepositório: visibilidade pública, apurada por 'gh repo view'. `;
   } else if (visibilidade === "desconhecida") {
     msgVisibilidade = `\n\nRepositório: visibilidade desconhecida — bloqueado por precaução. `;
+    if (!ehSubagente) {
+      msgVisibilidade += `Repositório privado fora do GitHub? Declare \`"visibilidade-repo": "privada"\` em ` +
+        `.rainforest/config.json do projeto (vale só para termos da lista privada; telefone, JID, CPF e credencial continuam barrando). `;
+    }
   }
   msg += msgVisibilidade;
 
@@ -473,10 +477,23 @@ function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade) {
 // Medido na revisao de 2026-09-15: o aviso da Issue #165 era escrito no stderr
 // antes desta chamada, e em repositorio privado o gate segue para `exit(0)` --
 // o usuario lia "este conteudo entraria no COMMIT" e nada tinha sido barrado.
+// Declaração `visibilidade-repo: "privada"` (Issue #419). Modelo de ameaça: protege
+// contra termo da lista privada bloquear trabalho legítimo em repo de trabalho
+// privado fora do GitHub, que o `gh` não enxerga. Fica fora o repo declarado
+// privado que depois vira público — a declaração é do usuário. Só vale quando o
+// `gh` não soube responder; `publica` apurada prevalece.
+function declaradaPrivada(gitTop) {
+  try {
+    return require("./lib/config.cjs").resolverConfig({ projeto: gitTop }).valores["visibilidade-repo"] === "privada";
+  } catch { return false; }
+}
+
 function bloqueia(achados, arquivo, agente, gitTop, preambulo) {
   const ehSubagente = Boolean(agente);
   const visibilidade = visibilidadeDoRepo(gitTop);
   if (visibilidade === "privada") process.exit(0);
+  if (visibilidade === "desconhecida" && declaradaPrivada(gitTop)) achados = achados.filter((a) => a.id !== "termo-privado");
+  if (achados.length === 0) process.exit(0);
   if (preambulo) process.stderr.write(preambulo);
   process.stderr.write(mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade));
   process.exit(2);

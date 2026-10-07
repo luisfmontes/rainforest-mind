@@ -395,5 +395,14 @@ igual "411 config do projeto visto de dentro de worktree linkado" "false" "$(lig
 igual "411 config visto de subdiretorio do principal"             "false" "$(lig411 "$SB/r411/sub")"
 igual "411 fora de git segue como antes"                          "false" "$(lig411 "$SB/fora411")"
 echo
+echo "== 419. visibilidade-repo: so o literal \"privada\" vale =="
+vis419() { chave16 "$1" visibilidade-repo; }
+igual "419 padrao null" "null padrao" "$(vis419 '{}')"
+igual "419 \"privada\" e valida" '"privada" projeto' "$(vis419 '{"visibilidade-repo":"privada"}')"
+igual "419 \"publica\" e invalida" "null padrao" "$(vis419 '{"visibilidade-repo":"publica"}')"
+igual "419 true e invalido" "null padrao" "$(vis419 '{"visibilidade-repo":true}')"
+igual "419 vazio e invalido" "null padrao" "$(vis419 '{"visibilidade-repo":""}')"
+rm -f "$SBP/proj/.rainforest/config.json" "$SBP/lar/.rainforest/config.json"
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

@@ -213,6 +213,11 @@ const CHAVES = {
     padrao: false,
     descricao: 'Sabiá: transcrição local de reunião com diarização (quem falou), CLI Python',
   },
+  'visibilidade-repo': {
+    tipo: 'privada',
+    padrao: null,
+    descricao: 'declara o repositório privado quando o gh não o enxerga (GitLab etc.); só libera termos da lista privada',
+  },
   idioma: {
     tipo: 'texto',
     padrao: null,
@@ -339,6 +344,9 @@ function resolverConfig(o = {}) {
       // Tipo 'texto': string não vazia até 60 caracteres, ou null
       if (valor === null) return true;
       return typeof valor === 'string' && valor.length > 0 && valor.length <= 60;
+    } else if (tipo === 'privada') {
+      // Tipo 'privada': só o literal "privada", ou null. Qualquer outro valor é inválido.
+      return valor === null || valor === 'privada';
     }
     return false;
   };
