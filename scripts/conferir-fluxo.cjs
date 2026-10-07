@@ -973,6 +973,9 @@ function globMatches(arquivo, glob) {
  */
 function cmdMutacoes() {
   const slug = arg('slug');
+  // #413: árvore do CÓDIGO, quando difere da do estado. Plano e estado seguem em RAIZ.
+  const flagRaizCodigo = arg('raiz-codigo', false);
+  const raizCodigo = flagRaizCodigo || RAIZ;
 
   // Lê plano
   const arquivo_plano = arg('plano', false) || path.join(RAIZ, 'docs', 'rainforest', 'planos', `${slug}.md`);
@@ -1042,7 +1045,7 @@ function cmdMutacoes() {
     // perdida em silencio, que e o modo de falha que D9 veio fechar.
     // `raiz:` opcional (#379): em monorepo a bateria só existe relativa à pasta do
     // app. Sem o campo, a raiz do repositório, como sempre foi.
-    const raizTarefa = campos.raiz ? path.resolve(RAIZ, campos.raiz.replace(/^`|`$/g, '').trim()) : RAIZ;
+    const raizTarefa = campos.raiz ? path.resolve(raizCodigo, campos.raiz.replace(/^`|`$/g, '').trim()) : raizCodigo;
     const timeout = campos.timeout ? campos.timeout.replace(/^`|`$/g, '').trim() : '';
 
     // Executar conferir-mutacao.cjs via spawnSync (array de argumentos, nunca string)

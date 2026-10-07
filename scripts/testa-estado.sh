@@ -2716,6 +2716,92 @@ else
   falhou=$((falhou+1)); echo "  FALHA plano ok: esperava exit 0, veio exit=$cod_plano_ok"; printf '%s\n' "$msg_plano_ok" | sed 's/^/         /'
 fi
 
+echo
+echo "== (#413) verificar --raiz roda a catraca de mutacao na arvore do codigo =="
+# A = raiz do ESTADO (estado + plano), B = arvore do CODIGO (src/x.sh + bateria).
+# O fonte mutado existe SO em B: sem --raiz a catraca o procura em A e recusa.
+A413="$(mktemp -d)"; B413="$(mktemp -d)"
+touch "$A413/FOCO.md"
+mkdir -p "$A413/docs/rainforest/planos" "$A413/docs/rainforest/design" "$B413/src"
+printf 'exit 0\n' > "$B413/src/x.sh"
+printf 'bash src/x.sh\n' > "$B413/bat.sh"
+cat > "$A413/docs/rainforest/planos/p413.md" << 'PLANO'
+# Plano 413
+
+### 1. Tarefa
+
+atende: D1
+
+mutacao:
+  arquivo: `src/x.sh`
+  de: `exit 0`
+  para: `exit 1`
+  bateria: `bash bat.sh`
+PLANO
+cat > "$A413/docs/rainforest/design/p413.md" << 'DESIGN'
+# Design
+
+## Objetivo
+Teste
+
+## Decisões fechadas
+- **D1 — teste**
+
+## Avaliado e descartado
+n/a
+
+## Fora de escopo
+n/a
+
+## Em aberto
+n/a
+DESIGN
+GIT413="git -c user.email=t@t -c user.name=T"
+( cd "$B413" && git init -q && git add -A && $GIT413 commit -q -m b )
+( cd "$A413" && git init -q && git add -A && $GIT413 commit -q -m a && $GIT413 commit -q --allow-empty -m h )
+E413="node $SBP/scripts/estado.cjs"
+prep413() { # slug — fluxo ate 'exigir verificar' em A
+  local s="$1"
+  ( cd "$A413" && export RFM_ESTADO_ROOT="$A413"
+    $E413 iniciar --slug "$s" >/dev/null || exit 1
+    node -e "
+      const fs=require('fs'),p=require('path').join(process.env.RFM_ESTADO_ROOT,'docs','rainforest','estado','$s.json');
+      const e=JSON.parse(fs.readFileSync(p,'utf8'));
+      e.design={status:'aprovado',em:'2026-09-01',arquivo:'docs/rainforest/design/p413.md'};
+      e.plano={status:'ok',em:'2026-09-01',arquivo:'docs/rainforest/planos/p413.md'};
+      fs.writeFileSync(p,JSON.stringify(e,null,2));" || exit 1
+    $E413 exigir --slug "$s" --estagio executar >/dev/null || exit 1
+    $E413 marcar --slug "$s" --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"p413"}]}' >/dev/null || exit 1
+    $E413 marcar --slug "$s" --estagio revisar --status ok --json "{\"achados\":0,\"base\":\"$(git rev-parse HEAD~1)\",\"head\":\"$(git rev-parse HEAD)\"}" >/dev/null || exit 1
+    $E413 exigir --slug "$s" --estagio verificar >/dev/null || exit 1 )
+}
+if prep413 s413; then ok=$((ok+1)); echo "  ok   413 preparo do fluxo ate verificar"; else falhou=$((falhou+1)); echo "  FALHA 413 preparo do fluxo"; fi
+EV413='{"comando":"bash","saida":"done"}'
+# Recusas ANTES do fechamento bem-sucedido: recusa nao grava nada.
+esperado "413 verificar sem --raiz recusa (fonte so existe na arvore do codigo)" 2 env RFM_ESTADO_ROOT="$A413" $E413 marcar --slug s413 --estagio verificar --status ok --json "$EV413"
+MSG413=$(RFM_ESTADO_ROOT="$A413" $E413 marcar --slug s413 --estagio verificar --status ok --raiz "$A413/nao-existe" --json "$EV413" 2>&1); COD413=$?
+if [ "$COD413" = 2 ] && printf '%s' "$MSG413" | grep -q -- "--raiz"; then
+  ok=$((ok+1)); echo "  ok   413 --raiz inexistente recusa exit 2 nomeando --raiz"
+else
+  falhou=$((falhou+1)); echo "  FALHA 413 --raiz inexistente: exit=$COD413"; printf '%s\n' "$MSG413" | sed 's/^/         /'
+fi
+MSG413=$(RFM_ESTADO_ROOT="$A413" $E413 marcar --slug s413 --estagio revisar --status ok --raiz "$B413" 2>&1); COD413=$?
+if [ "$COD413" = 2 ] && printf '%s' "$MSG413" | grep -q -- "--raiz"; then
+  ok=$((ok+1)); echo "  ok   413 --raiz com outro estagio recusa exit 2"
+else
+  falhou=$((falhou+1)); echo "  FALHA 413 --raiz com estagio revisar: exit=$COD413"; printf '%s\n' "$MSG413" | sed 's/^/         /'
+fi
+MSG413=$(RFM_ESTADO_ROOT="$A413" $E413 marcar --slug s413 --estagio verificar --status ok --raiz "$B413" --json "$EV413" 2>&1); COD413=$?
+if [ "$COD413" = 0 ]; then
+  ok=$((ok+1)); echo "  ok   413 verificar --raiz roda a mutacao na arvore do codigo"
+else
+  falhou=$((falhou+1)); echo "  FALHA 413 verificar --raiz: exit=$COD413"
+fi
+printf '%s\n' "$MSG413" | sed 's/^/         | /'
+N413=$(grep -c -F "$B413" "$A413/docs/rainforest/estado/s413.json")
+igual "413 o caminho da arvore do codigo nao entra no estado" "0" "$N413"
+rm -rf "$A413" "$B413"
+
 unset RFM_ESTADO_ROOT
 
 echo "== resultado: $ok ok, $falhou falhas =="
