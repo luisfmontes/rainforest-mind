@@ -26,14 +26,9 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-07",
-    "tarefas_ok": 5,
-    "tarefas": 9,
+    "tarefas_ok": 7,
+    "tarefas": 10,
     "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "6 gate-off so variavel",
-        "desde": "2026-10-07"
-      },
       {
         "agente": "executor",
         "tarefa": "7 resolvedor de pastas",
@@ -89,6 +84,13 @@
         "iteracao": 1,
         "sessao": "8a92195d-02e9-4689-a92d-ece42b872931",
         "ts": "2026-10-07T13:42:30.671Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "8ef0d22f",
+        "iteracao": 1,
+        "sessao": "8a92195d-02e9-4689-a92d-ece42b872931",
+        "ts": "2026-10-07T14:02:54.561Z"
       }
     ],
     "em": "2026-10-07"
