@@ -102,7 +102,7 @@ export function largura(str) {
   return total;
 }
 
-function cortar(str, cols) {
+export function cortar(str, cols) {
   if (largura(str) <= cols) return str;
   if (cols < 1) return '';
   const cps = Array.from(str);
@@ -159,7 +159,7 @@ export function montarLinhas(dados, qs, cols, maxLinhas, relogio) {
 // Titulo de Q vem do texto do modelo e o foco do FOCO.md: ESC (sequencia ANSI), outros
 // controles C0/C1 e override bidi nunca chegam crus ao terminal.
 const CONTROLES = /[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u2028\u2029\u202a-\u202e\u2060-\u2069\ufeff]/g;
-function semControle(s) {
+export function semControle(s) {
   return s.replace(CONTROLES, ' ');
 }
 
