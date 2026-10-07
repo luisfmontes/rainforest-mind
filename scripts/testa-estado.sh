@@ -2724,6 +2724,23 @@ else
 fi
 
 echo
+echo "== marcar carimba 'sessao' no em_voo (gate de agente em voo, sessao dona) =="
+# Roda na caixa385 (git init feito acima). `em_voo` sem dono barraria o Stop de
+# qualquer sessao do worktree; o carimbo vem de CLAUDE_CODE_SESSION_ID.
+$E385 iniciar --slug em-voo-dono >/dev/null 2>&1
+$E385 marcar --slug em-voo-dono --estagio design --status aprovado >/dev/null 2>&1
+$E385 marcar --slug em-voo-dono --estagio plano --status ok >/dev/null 2>&1
+$E385 exigir --slug em-voo-dono --estagio executar >/dev/null 2>&1
+CLAUDE_CODE_SESSION_ID=sess-dona $E385 marcar --slug em-voo-dono --estagio executar --status parcial \
+  --json '{"em_voo":[{"agente":"x","tarefa":1},{"agente":"y","tarefa":2,"sessao":"sess-outra"}]}' >/dev/null 2>&1
+ARQ_DONO="$SBP/caixa385/docs/rainforest/estado/em-voo-dono.json"
+sessoes_dono=$(node -e 'const e=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));process.stdout.write((e.executar.em_voo||[]).map((a)=>a.agente+"="+a.sessao).join(","))' "$ARQ_DONO")
+igual "marcar carimba sessao sem dono e preserva a que ja vem" "x=sess-dona,y=sess-outra" "$sessoes_dono"
+env -u CLAUDE_CODE_SESSION_ID $E385 marcar --slug em-voo-dono --estagio executar --status parcial \
+  --json '{"em_voo":[{"agente":"z"}]}' >/dev/null 2>&1
+sessoes_sem=$(node -e 'const e=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));process.stdout.write((e.executar.em_voo||[]).map((a)=>a.agente+"="+a.sessao).join(","))' "$ARQ_DONO")
+igual "sem CLAUDE_CODE_SESSION_ID nao carimba (legado)" "z=undefined" "$sessoes_sem"
+
 echo "== (#413) verificar --raiz roda a catraca de mutacao na arvore do codigo =="
 # A = raiz do ESTADO (estado + plano), B = arvore do CODIGO (src/x.sh + bateria).
 # O fonte mutado existe SO em B: sem --raiz a catraca o procura em A e recusa.

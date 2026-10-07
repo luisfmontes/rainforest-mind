@@ -37,6 +37,13 @@
  * silencia um aviso que devia sair (erro de leitura = não avisado; erro de
  * escrita = barra mesmo assim).
  *
+ * Sessão dona (2026-10-07): `em_voo` é do worktree, mas o agente é de UMA
+ * sessão — a janela B, que não despachou nada, era barrada pelo agente da A.
+ * `estado.cjs marcar` carimba `sessao` (de `CLAUDE_CODE_SESSION_ID`) no item
+ * que chega sem ela; aqui só conta o item sem `sessao` (legado, barra como
+ * antes) ou com `sessao === session_id` do payload. Payload sem `session_id`
+ * não tem como comparar: tudo conta. Se não sobra item, exit 0 em silêncio.
+ *
  * Saídas de emergência, na ordem que os outros gates usam:
  * `RAINFOREST_GATE_OFF` no ambiente e o toggle do `/setup` (chave
  * `gate-agente-em-voo`). O arquivo `.rainforest-gate-off` deixou de ser lido (#417).
@@ -167,8 +174,13 @@ function main() {
   }
 
   const bloco = estado[ativo.estagio];
+  // So barra pelo agente que ESTA sessao despachou: item com `sessao` de outra
+  // sessao e problema dela. Item sem `sessao` (legado) conta, e payload sem
+  // `session_id` nao tem como comparar: tudo conta, como antes.
+  const meuId = typeof ev.session_id === 'string' && ev.session_id ? ev.session_id : null;
   const emVoo = bloco && typeof bloco === 'object' && Array.isArray(bloco.em_voo)
-    ? bloco.em_voo.filter((a) => a && typeof a === 'object' && a.agente)
+    ? bloco.em_voo.filter((a) => a && typeof a === 'object' && a.agente
+      && (!meuId || !a.sessao || a.sessao === meuId))
     : [];
   if (emVoo.length === 0) process.exit(0);
 

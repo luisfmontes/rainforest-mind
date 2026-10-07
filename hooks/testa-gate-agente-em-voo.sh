@@ -106,6 +106,27 @@ checa "sessao mem-a com em_voo mudado (agente novo) volta a barrar" 2 "$(pay "$R
 escreve_estado '{"status":"parcial","em":"2026-09-04","em_voo":[{"agente":"rainforest-mind:revisor","tarefa":7,"desde":"2026-09-04"}]}'
 
 echo
+echo "== sessao dona do em_voo =="
+# O agente em voo e de UMA sessao: a janela que nao despachou nada nao e barrada.
+# Sessoes novas em cada checagem, para a memoria por sessao nao mascarar o exit.
+escreve_estado '{"status":"parcial","em":"2026-09-04","em_voo":[{"agente":"rainforest-mind:revisor","tarefa":7,"desde":"2026-09-04","sessao":"dona-a"}]}'
+checa "sessao alheia (dona-b) NAO barra"               0 "$(pay "$R" false dona-b)"
+checa "a mesma sessao (dona-a) BARRA e nomeia o agente" 2 "$(pay "$R" false dona-a)" "rainforest-mind:revisor"
+escreve_estado '{"status":"parcial","em":"2026-09-04","em_voo":[{"agente":"rainforest-mind:revisor","tarefa":7,"desde":"2026-09-04"}]}'
+checa "item legado sem sessao BARRA qualquer sessao"   2 "$(pay "$R" false dona-legado)" "rainforest-mind:revisor"
+escreve_estado '{"status":"parcial","em":"2026-09-04","em_voo":[{"agente":"rainforest-mind:revisor","tarefa":7,"sessao":"dona-a"},{"agente":"rainforest-mind:tester","tarefa":8}]}'
+saida_mista=$(printf '%s' "$(pay "$R" false dona-c)" | node "$HOOK" 2>&1)
+if printf '%s' "$saida_mista" | grep -qF "rainforest-mind:tester" && ! printf '%s' "$saida_mista" | grep -qF "rainforest-mind:revisor"; then
+  ok=$((ok+1)); echo "  ok   lista mista: sessao alheia so ve o item legado"
+else
+  falhou=$((falhou+1)); echo "  FALHA lista mista: devia citar so o tester"; echo "$saida_mista" | sed 's/^/         /' | head -8
+fi
+escreve_estado '{"status":"parcial","em":"2026-09-04","em_voo":[{"agente":"rainforest-mind:revisor","tarefa":7,"sessao":"dona-a"}]}'
+sem_sid=$(node -e 'process.stdout.write(JSON.stringify({cwd:process.argv[1],hook_event_name:"Stop",stop_hook_active:false}))' "$R")
+checa "payload sem session_id: tudo conta, BARRA"      2 "$sem_sid" "rainforest-mind:revisor"
+escreve_estado '{"status":"parcial","em":"2026-09-04","em_voo":[{"agente":"rainforest-mind:revisor","tarefa":7,"desde":"2026-09-04"}]}'
+
+echo
 echo "== saidas de emergencia =="
 RAINFOREST_GATE_OFF=1 bash -c 'true'  # documenta a forma; o teste abaixo usa env inline
 saida_off=$(printf '%s' "$(pay "$R" false)" | RAINFOREST_GATE_OFF=1 node "$HOOK" 2>&1); got_off=$?

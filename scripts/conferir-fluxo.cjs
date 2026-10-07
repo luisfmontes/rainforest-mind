@@ -720,33 +720,10 @@ function extrairCamposDesconhecidos(corpo, cerca) {
 // ================================================================ creep
 
 /**
- * Detecta arquivos no diff que não casam com glob de tarefa nenhuma.
- * Globs: *, **, ?
- * Isenção: só o rastro DESTE slug — design e plano nos caminhos que `caminhoDoc`
- * (hooks/lib/pastas-docs.cjs) resolve (ou `--design`/`--plano`), mais
- * `docs/rainforest/estado/<slug>.json`. Não há pasta isenta fixa.
+ * Lista de isentos do creep. `design` e `plano` são caminhos relativos reais
+ * (vieram por `--design`/`--plano`) ou null, e então caem nos nomes derivados do slug.
  */
-function cmdCreep() {
-  const slug = arg('slug');
-  const base = arg('base');
-  const head = arg('head');
-
-  // Lê plano
-  const arquivo_plano = arg('plano', false) || path.join(RAIZ, caminhoDoc('planos', slug, { raiz: RAIZ }));
-  const conteudo_plano = lerMarkdown(arquivo_plano);
-  if (!conteudo_plano) {
-    console.error(`RECUSADO: plano não existe: ${arquivo_plano}`);
-    process.exit(2);
-  }
-
-  // Extrai globs de todas as tarefas
-  const tarefas = extrairTarefas(conteudo_plano);
-  const globs = [];
-  for (const tarefa of tarefas) {
-    const gs = extrairArquivos(conteudo_plano, tarefa.numero);
-    globs.push(...gs);
-  }
-
+function globsIsentos({ slug, design, plano, globsDoPlano }) {
   // Isentos: os artefatos que o PRÓPRIO fluxo escreve para ESTE trabalho.
   // Eles nunca aparecem no `arquivos:` de tarefa nenhuma — quem os escreve é o
   // brainstorm, o plano e o `estado.cjs` —, então sem isenção a checagem acusaria
@@ -765,12 +742,9 @@ function cmdCreep() {
   // (`fluxo-9-design-portaria.md`, `fluxo-6-design-portoes.md`), e derivar do slug
   // fazia o design DO PRÓPRIO FLUXO aparecer como creep do fluxo — o arquivo que
   // autoriza o trabalho acusado de estar fora dele.
-  const rel = (abs, padrao) => (abs
-    ? path.relative(RAIZ, abs).split(path.sep).join('/')
-    : padrao);
   const globs_isentos = [
-    rel(arg('design', false), caminhoDoc('design', slug, { raiz: RAIZ })),
-    rel(arg('plano', false), caminhoDoc('planos', slug, { raiz: RAIZ })),
+    design || caminhoDoc('design', slug, { raiz: RAIZ }),
+    plano || caminhoDoc('planos', slug, { raiz: RAIZ }),
     `docs/rainforest/estado/${slug}.json`,
     // Portão é datado no nome (`2026-09-08-aclopar-ponytail.md`) — os dois que
     // existem neste repo são, e o `recibo`/`portoes` cria assim. `${slug}.md`
@@ -799,10 +773,50 @@ function cmdCreep() {
   // documentação auxiliar da skill que a tarefa já está autorizada a tocar.
   // Só entra quando o `SKILL.md` está declarado; skill nenhuma ganha glob
   // largo escondendo creep de verdade (Issue #279).
-  for (const g of globs) {
+  for (const g of globsDoPlano) {
     const m = g.match(/^skills\/([^/]+)\/SKILL\.md$/);
     if (m) globs_isentos.push(`skills/${m[1]}/references/`);
   }
+  return globs_isentos;
+}
+
+/**
+ * Detecta arquivos no diff que não casam com glob de tarefa nenhuma.
+ * Globs: *, **, ?
+ * Isenção: só o rastro DESTE slug — design e plano nos caminhos que `caminhoDoc`
+ * (hooks/lib/pastas-docs.cjs) resolve (ou `--design`/`--plano`), mais
+ * `docs/rainforest/estado/<slug>.json`. Não há pasta isenta fixa.
+ */
+function cmdCreep() {
+  const slug = arg('slug');
+  const base = arg('base');
+  const head = arg('head');
+
+  // Lê plano
+  const arquivo_plano = arg('plano', false) || path.join(RAIZ, caminhoDoc('planos', slug, { raiz: RAIZ }));
+  const conteudo_plano = lerMarkdown(arquivo_plano);
+  if (!conteudo_plano) {
+    console.error(`RECUSADO: plano não existe: ${arquivo_plano}`);
+    process.exit(2);
+  }
+
+  // Extrai globs de todas as tarefas
+  const tarefas = extrairTarefas(conteudo_plano);
+  const globs = [];
+  for (const tarefa of tarefas) {
+    const gs = extrairArquivos(conteudo_plano, tarefa.numero);
+    globs.push(...gs);
+  }
+
+  const rel = (abs, padrao) => (abs
+    ? path.relative(RAIZ, abs).split(path.sep).join('/')
+    : padrao);
+  const globs_isentos = globsIsentos({
+    slug,
+    design: rel(arg('design', false), null),
+    plano: rel(arg('plano', false), null),
+    globsDoPlano: globs,
+  });
 
   // Pega diff.
   //
@@ -1188,4 +1202,4 @@ if (require.main === module) main();
 // leitura do plano para cruzar a catraca de mutação com a lista de tarefas. Um
 // segundo parser divergiria — e divergiu: a primeira versão daquela checagem contava
 // `### 3.` dentro de cerca como tarefa e recusava entrega correta.
-module.exports = { globMatches, extrairTarefas, lerMarkdown, mascaraDeCerca };
+module.exports = { globsIsentos, globMatches, extrairTarefas, lerMarkdown, mascaraDeCerca };

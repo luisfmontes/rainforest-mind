@@ -135,11 +135,13 @@ mutacao:
   fixture: `testa-gate-publicacao-destino.sh, caso "419 visibilidade-repo privada libera termo privado com remoto sem gh"`
 pronto quando: num repo de `mktemp -d` com `origin` apontando para um host que o `gh` não resolve (ou com `RAINFOREST_GATE_SEM_REDE=1`), termo da lista privada de teste no conteúdo e `.rainforest/config.json` com `{"visibilidade-repo":"privada"}` na raiz do principal, o payload PreToolUse real de Write de um `.md` versionado sai 0 — também a partir de um worktree linkado; sem a chave, sai 2; com a chave e um telefone mascarado no mesmo conteúdo, sai 2 com `telefone`; com `{"visibilidade-repo":"publica"}` a chave é inválida e sai 2; a mensagem de bloqueio de `desconhecida` cita `visibilidade-repo` — provado por `bash hooks/testa-gate-publicacao-destino.sh` e `bash hooks/testa-config.sh` com os casos novos ok e `0 falha(s)`
 
-### 9. versão 1.45.0 [tipo: configurar]
+### 9. versão 1.46.0 [tipo: configurar]
+
+(Emenda da integração: a origin/main publicou 1.45.0 durante o fluxo; esta entrega sobe para 1.46.0.)
 atende: D21
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`
 depende de: 1, 2, 3, 4, 5, 6, 7, 8, 10
 paralela: nao
 mutacao: n/a
   motivo: troca de número de versão e texto de changelog, sem comportamento a inverter
-pronto quando: com o repo integrado, `node scripts/conferir-versao.cjs` sai 0 com 1.45.0 em todos os manifestos, o `CHANGELOG.md` tem a entrada 1.45.0 citando #409, #410, #411, #412, #413, #414, #417, #419 e a retirada do append do sec-default, e `claude plugin validate .claude-plugin/plugin.json` sai 0 — provado pelos dois comandos
+pronto quando: com o repo integrado, `node scripts/conferir-versao.cjs` sai 0 com 1.46.0 em todos os manifestos, o `CHANGELOG.md` tem a entrada 1.46.0 citando #409, #410, #411, #412, #413, #414, #417, #419 e a retirada do append do sec-default, e `claude plugin validate .claude-plugin/plugin.json` sai 0 — provado pelos dois comandos

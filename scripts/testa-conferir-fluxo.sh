@@ -1200,6 +1200,16 @@ qtarefa 1 'de: a comparação de `cwd` normalizado que decide co-locação' 'de:
 exige 0 "de: que casa 1 vez passa" QCHK cobertura --slug t
 
 echo
+echo
+echo "== 8. globsIsentos: a lista de isentos do creep, exportada =="
+GI='const g=require(process.argv[1]).globsIsentos({slug:"s-x",design:null,plano:null,globsDoPlano:["skills/limpar/SKILL.md"]});'
+exige 0 "globsIsentos inclui o estado do proprio fluxo" \
+  node -e "$GI process.exit(g.includes('docs/rainforest/estado/s-x.json')?0:1)" "$CHECADOR"
+exige 0 "globsIsentos inclui relatorios/ e references/ da skill declarada" \
+  node -e "$GI process.exit(g.includes('relatorios/')&&g.includes('skills/limpar/references/')?0:1)" "$CHECADOR"
+exige 0 "globsIsentos usa design e plano reais quando vieram, nao os derivados do slug" \
+  node -e "const g=require(process.argv[1]).globsIsentos({slug:'s-x',design:'d/real.md',plano:'p/real.md',globsDoPlano:[]});process.exit(g[0]==='d/real.md'&&g[1]==='p/real.md'&&!g.includes('docs/rainforest/design/s-x.md')?0:1)" "$CHECADOR"
+
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]

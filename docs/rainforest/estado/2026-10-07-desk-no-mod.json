@@ -1,0 +1,489 @@
+{
+  "slug": "2026-10-07-desk-no-mod",
+  "titulo": "Enxertar o terminal-desk no mod do rainforest",
+  "criado_em": "2026-10-07",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-07-desk-no-mod.md",
+    "em": "2026-10-07"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-07-desk-no-mod.md",
+    "tarefas": 14,
+    "paralelas": [
+      1,
+      2,
+      3,
+      5
+    ],
+    "em": "2026-10-07"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-07",
+    "tarefas_ok": 14,
+    "tarefas": 14,
+    "em_voo": [],
+    "em": "2026-10-07",
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "0656db33",
+        "iteracao": 1,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:10:43.069Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "0656db33",
+        "iteracao": 1,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:10:43.069Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "0656db33",
+        "iteracao": 1,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:10:43.069Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "0656db33",
+        "iteracao": 2,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:20:02.961Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "0656db33",
+        "iteracao": 2,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:20:02.961Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "0656db33",
+        "iteracao": 1,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:20:02.961Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "0656db33",
+        "iteracao": 2,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:20:02.961Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "0656db33",
+        "iteracao": 3,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:48:39.520Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "0656db33",
+        "iteracao": 3,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:48:39.520Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "0656db33",
+        "iteracao": 2,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:48:39.520Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "0656db33",
+        "iteracao": 3,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:48:39.520Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "fd12e60b",
+        "iteracao": 1,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:48:39.520Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "fd12e60b",
+        "iteracao": 1,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:48:39.520Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "0656db33",
+        "iteracao": 4,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:56:26.661Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "0656db33",
+        "iteracao": 4,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:56:26.661Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "0656db33",
+        "iteracao": 3,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:56:26.661Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "0656db33",
+        "iteracao": 4,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:56:26.661Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "fd12e60b",
+        "iteracao": 2,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:56:26.661Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "fd12e60b",
+        "iteracao": 2,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:56:26.661Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "9761d46f",
+        "iteracao": 1,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T12:56:26.661Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "0656db33",
+        "iteracao": 5,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:04:48.989Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "0656db33",
+        "iteracao": 5,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:04:48.989Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "0656db33",
+        "iteracao": 4,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:04:48.989Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "0656db33",
+        "iteracao": 5,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:04:48.989Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "fd12e60b",
+        "iteracao": 3,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:04:48.989Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "fd12e60b",
+        "iteracao": 3,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:04:48.989Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "9761d46f",
+        "iteracao": 2,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:04:48.989Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "2d266d42",
+        "iteracao": 1,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:04:48.989Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "0656db33",
+        "iteracao": 6,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:16:49.104Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "0656db33",
+        "iteracao": 6,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:16:49.104Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "0656db33",
+        "iteracao": 5,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:16:49.104Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "0656db33",
+        "iteracao": 6,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:16:49.104Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "fd12e60b",
+        "iteracao": 4,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:16:49.104Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "fd12e60b",
+        "iteracao": 4,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:16:49.104Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "9761d46f",
+        "iteracao": 3,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:16:49.104Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "2d266d42",
+        "iteracao": 2,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:16:49.104Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "a0f35b59",
+        "iteracao": 1,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:16:49.104Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "0656db33",
+        "iteracao": 7,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:35:51.814Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "0656db33",
+        "iteracao": 7,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:35:51.814Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "0656db33",
+        "iteracao": 6,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:35:51.814Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "0656db33",
+        "iteracao": 7,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:35:51.814Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "fd12e60b",
+        "iteracao": 5,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:35:51.814Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "fd12e60b",
+        "iteracao": 5,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:35:51.814Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "9761d46f",
+        "iteracao": 4,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:35:51.814Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "2d266d42",
+        "iteracao": 3,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:35:51.814Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "a0f35b59",
+        "iteracao": 2,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:35:51.814Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "885bed92",
+        "iteracao": 1,
+        "sessao": "08016e29-f51c-41aa-af56-118d8eab5f72",
+        "ts": "2026-10-07T13:35:51.814Z"
+      }
+    ],
+    "tarefa11": "REPL real nas duas contas: barra, /painel, fatias, toast, Haiku (trabalho 835 ms) ok; desvio sessao pessoal 2026-10-07T15:04:53 Edit -> 15:04:58 toast unico (2o Edit sem toast), ~5 s; conta de trabalho bloqueia so prompt.compose e classic.SessionStart",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-mod-painel.cjs, 22 colunas (continue->break)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-mod-deixado.cjs, ESC/BEL/bidi nao chegam ao item"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-fluxo.sh, globsIsentos inclui o estado"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-desvio-do-plano.sh, arquivo fora do plano acusado"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-mod-mapa.cjs, Read e Bash devolvem nulo"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "mod-painel.test.tsx, barra: esconder e mostrar"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "mod-painel.test.tsx, barra de contexto soma a largura"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "mod-painel.test.tsx, um toast por arquivo"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "mod-painel.test.tsx, checker so com 5+ ferramentas"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "mod-painel.test.tsx, falha aberta model.complete"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "n/a",
+        "motivo": "medicao em REPL real, sem codigo a inverter"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "n/a",
+        "motivo": "texto legal; falsificacao e o sha256 do LICENSE"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "n/a",
+        "motivo": "documentacao; checker de coerencia vermelho com HORA_NOITE mutado"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "n/a",
+        "motivo": "versao; sensor conferir-versao"
+      }
+    ],
+    "comando": "node scripts/conferir-mutacao.cjs (A x2, B) + baterias com exit",
+    "saida": "mutacoes exit 0; baterias exit 0; claude plugin test 64 pass 0 fail",
+    "rodada": 2,
+    "achados_corrigidos": [
+      "A semControle no deixado",
+      "B relogio ultimo a cair",
+      "C desvio em fila sem repeticao",
+      "D turn.complete sem await",
+      "E sem-arquivos",
+      "F dedup semControle/ESCRITORAS",
+      "G frases",
+      "H Faça agora"
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "d3e270714b9e65a3167da5b3bf9199142a58a766",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a27cf34e382ea7551",
+        "veredito": "ok",
+        "em": "2026-10-07",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/08016e29-f51c-41aa-af56-118d8eab5f72/subagents/agent-a27cf34e382ea7551.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-07",
+    "achados": 0,
+    "bloqueantes": [
+      "1: texto do deixado sem semControle no pane/toast/prompt.fill"
+    ],
+    "nao_bloqueantes": 5,
+    "base": "0656db336900f0af358cf5e535f577f64b35f6aa",
+    "head": "d3e270714b9e65a3167da5b3bf9199142a58a766"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-07-desk-no-mod",
+    "saida": "exit 0; tarefas 1-10 vermelho, 11-14 n/a",
+    "criterios": "T1 [true,3000000,$0.02,$0.61,false,[4,2,1]]; T2 [1,1,0,0]; T3 [true,true,true] e function function; T5 [null,hooks/mod.tsx,claude_ai_Claude_Docs,null]; validate 0 com eventos e state; greps negativos 0; D11 intacto; T12 sha256 ok; T13 checker verde; T14 versao 1.45.0; plugin test 64/0; T11 medicao real nas duas contas",
+    "emenda": "mutacao das tarefas 2 e 8 reancorada (rodada 2 tornou a de 8 neutra)",
+    "em": "2026-10-07"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 422,
+    "em": "2026-10-07"
+  }
+}

@@ -2107,6 +2107,15 @@ function main() {
         console.error("erro: 'vereditos' e gravado pelo subcomando 'veredito' (hook SubagentStop) — nao entra pelo --json (contrato de veredito, D6)");
         process.exit(1);
       }
+      // `em_voo` sem dono barraria o Stop de QUALQUER sessao do mesmo worktree
+      // (hooks/gate-agente-em-voo.cjs). Item que chega sem `sessao` ganha a da
+      // sessao que despacha; item que ja traz `sessao` fica como veio.
+      const sessaoDona = process.env.CLAUDE_CODE_SESSION_ID;
+      if (sessaoDona && Array.isArray(extra.em_voo)) {
+        extra.em_voo = extra.em_voo.map((a) => (
+          a && typeof a === 'object' && !Array.isArray(a) && a.sessao === undefined ? { ...a, sessao: sessaoDona } : a
+        ));
+      }
     }
     // Carimbos (D8): valida e funde ANTES de qualquer outra checagem, porque
     // funciona nos tres status (parcial, ok, reprovado) — nao so no fechamento.
