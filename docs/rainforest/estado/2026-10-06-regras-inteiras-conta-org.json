@@ -22,7 +22,7 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-06",
-    "tarefas_ok": 2,
+    "tarefas_ok": 3,
     "tarefas": 4,
     "em_voo": [
       {
@@ -94,12 +94,28 @@
         "iteracao": 2,
         "sessao": "42fa8a5e-dc19-4a78-b86e-05d10364fd47",
         "ts": "2026-10-06T23:33:20.354Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "a85f9315343c82bb53d035368d44c8f4bc2fead0",
+        "iteracao": 7,
+        "sessao": "42fa8a5e-dc19-4a78-b86e-05d10364fd47",
+        "ts": "2026-10-07T00:42:12.624Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "f1565ba11b4da325ea40a0fb35e13d6d304e70fd",
+        "iteracao": 3,
+        "sessao": "42fa8a5e-dc19-4a78-b86e-05d10364fd47",
+        "ts": "2026-10-07T00:42:12.624Z"
       }
     ],
     "em": "2026-10-06",
     "pendentes": [
-      "tarefa-2: claude-code/testing nao intercepta session.append vindo de plugin (decisao do usuario: n/a?)",
       "tarefa-4: /clear e /compact no REPL, feito pelo usuario"
+    ],
+    "nao_aplicavel": [
+      "tarefa-2: claude-code/testing nao intercepta session.append vindo de plugin (HooksError: no implementation for session.append); n/a por decisao do usuario 2026-10-06; ideia harness-testing-nao-intercepta-session-append-de-plugin"
     ]
   },
   "revisar": {
