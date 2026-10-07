@@ -1,6 +1,6 @@
 ---
 name: arqueologia
-description: Use antes do `brainstorm` quando a área que a demanda toca é código que ninguém daqui escreveu e ainda não tem mapa. Mapeia a FATIA — nunca a base inteira — e grava em docs/rainforest/mapas/ com escala de confiança. Não gera código.
+description: Use antes do `brainstorm` quando a área que a demanda toca é código que ninguém daqui escreveu e ainda não tem mapa. Mapeia a FATIA — nunca a base inteira — e grava na pasta de mapas do repo com escala de confiança. Não gera código.
 ---
 
 # Arqueologia
@@ -23,8 +23,8 @@ vêm de lá.
 está prestes a escrever não cabe numa sessão, o escopo está errado — volte e
 reduza antes de ler mais um arquivo.
 
-E esta skill **não gera código e não modifica fonte nenhum**. Ela escreve em
-`docs/rainforest/mapas/` e mais nada.
+E esta skill **não gera código e não modifica fonte nenhum**. Ela escreve só na
+pasta de mapas (`node scripts/pastas-docs.cjs caminho --tipo mapas`) e mais nada.
 
 ## Toda afirmação sai rotulada
 
@@ -41,7 +41,7 @@ correm o mesmo risco de virar afirmação confiante sem lastro.
 Este é o mecanismo que mais importa, e o único que não existe em nenhum outro
 lugar deste repo.
 
-Antes de acrescentar qualquer coisa, olhe `docs/rainforest/mapas/COBERTURA.md`.
+Antes de acrescentar qualquer coisa, olhe o `COBERTURA.md` da pasta de mapas (`node scripts/pastas-docs.cjs caminho --tipo mapas`).
 Se a fatia já tem linha lá, esta rodada é conferência. Para cada afirmação
 marcada `CONFIRMADO`, volte ao `arquivo:linha` de origem e responda uma de três:
 
@@ -57,10 +57,19 @@ desatualizada é pior que `LACUNA` — porque ninguém desconfia dela.
 
 ## O mapa cresce por demanda
 
-`docs/rainforest/mapas/<fatia>.md`, append-only, com `COBERTURA.md` de índice —
-o que já foi mapeado, quando, e em que profundidade. Versionado, junto do design
-e do plano: mapa é **veredito**, e é por ele que outra pessoa entende o terreno
-sem refazer a leitura.
+`<fatia>.md` na pasta que `node scripts/pastas-docs.cjs caminho --tipo mapas`
+devolve, append-only, com `COBERTURA.md` de índice — o que já foi
+mapeado, quando, e em que profundidade. Versionado, junto do design e do plano:
+mapa é **veredito**, e é por ele que outra pessoa entende o terreno sem refazer
+a leitura.
+
+**Pasta `docs/legado/`** (repo de cliente que usa o plugin protheus): o mapa vai
+para `docs/legado/<fatia>.md` no formato do rainforest, e o `COBERTURA.md` que já
+existe recebe UMA linha por fatia nas colunas de lá
+(`| Fatia | Fontes cobertos | Demanda | Data |`) — nunca a tabela de 6 colunas
+abaixo; o detalhe por bloco fica dentro do mapa. Porquê: um índice só por
+repositório, que a arqueologia do outro plugin também lê. Na pasta padrão vale a
+tabela de 6 colunas.
 
 ## A leitura é despachada
 
@@ -157,7 +166,7 @@ Quando a fatia não cabe numa sessão (mapa > 15KB, muito mais de três passadas
 o agente grava cada bloco assim:
 
 ```
-docs/rainforest/mapas/<fatia>/<bloco>.md
+<pasta de mapas>/<fatia>/<bloco>.md
 ```
 
 A pasta é permanente. O `COBERTURA.md` passa a indexar pasta além de arquivo:
@@ -193,7 +202,7 @@ linhas 156-159).
 ## Fechar
 
 ```
-node scripts/estado.cjs marcar --slug <slug> --estagio arqueologia --status ok --json '{"fatia":"...","mapa":"docs/rainforest/mapas/<fatia>.md"}'
+node scripts/estado.cjs marcar --slug <slug> --estagio arqueologia --status ok --json '{"fatia":"...","mapa":"<pasta de mapas>/<fatia>.md"}'
 ```
 
 Olhou e concluiu que não há legado a mapear:

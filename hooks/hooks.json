@@ -119,7 +119,7 @@
         ]
       },
       {
-        "matcher": "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit",
+        "matcher": "Bash|PowerShell",
         "hooks": [
           {
             "type": "command",

@@ -70,7 +70,7 @@ gate "tee para arquivo FORA do worktree"             2 "$(pj agent_id ag-1 tool_
 gate "sed -i arquivo FORA do worktree"               2 "$(pj agent_id ag-1 tool_name Bash cwd "$R" tool_input.command "sed -i 's/x/y/' '$R/a.txt'")"
 gate "cp para FORA do worktree"                      2 "$(pj agent_id ag-1 tool_name Bash cwd "$R" tool_input.command "cp '$R/a.txt' '$R/copia.txt'")"
 gate "mv para FORA do worktree"                      2 "$(pj agent_id ag-1 tool_name Bash cwd "$R" tool_input.command "mv '$R/a.txt' '$R/renomeado.txt'")"
-gate "criar .rainforest-gate-off (escape file)"      2 "$(pj agent_id ag-1 tool_name Bash cwd "$R" tool_input.command "echo 1 > '$R/.rainforest-gate-off'")"
+gate "escrever .rainforest-gate-off FORA = arquivo comum"  2 "$(pj agent_id ag-1 tool_name Bash cwd "$R" tool_input.command "echo 1 > '$R/.rainforest-gate-off'")"
 
 echo
 echo "== redirecionamento e escrita DENTRO do worktree PASSA =="
@@ -197,9 +197,8 @@ if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (
 else falhou=$((falhou+1)); echo "  FALHA RAINFOREST_GATE_OFF nao liberou (exit $rc)"; fi
 
 touch "$R/.rainforest-gate-off"
-gate ".rainforest-gate-off na raiz libera o repo" 0 "$(j Write file_path "$R/novo.txt")"
+gate ".rainforest-gate-off presente NAO libera o repo (#417)" 2 "$(j Write file_path "$R/novo.txt")"
 rm "$R/.rainforest-gate-off"
-gate "  ... e volta a barrar quando o arquivo sai"  2 "$(j Write file_path "$R/novo.txt")"
 
 echo
 echo "== a mensagem de bloqueio serve pra alguma coisa? =="
@@ -357,13 +356,13 @@ gatec "sem session_id no evento (fail-open)"      0 \
   "$(pj cwd "$R" tool_name Bash tool_input.command "git checkout -b x")"
 gatec "cwd fora de repo git nao tem HEAD a mover" 0 "$(p "git checkout -b x" "$FORA")"
 
-echo "-- deve PASSAR: as tres saidas de emergencia, no caso que barraria --"
+echo "-- deve PASSAR: as saidas de emergencia, no caso que barraria --"
 saida=$(printf '%s' "$(p "git checkout -b x" "$R")" | RFM_ROOT="$DADOSW" RAINFOREST_GATE_OFF=1 node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera a co-locada (exit 0)"
 else falhou=$((falhou+1)); echo "  FALHA RAINFOREST_GATE_OFF nao liberou a co-locada (exit $rc)"; fi
 
 touch "$R/.rainforest-gate-off"
-gatec ".rainforest-gate-off libera a co-locada"   0 "$(p "git checkout -b x" "$R")"
+gatec ".rainforest-gate-off presente NAO libera a co-locada (#417)"   2 "$(p "git checkout -b x" "$R")"
 rm "$R/.rainforest-gate-off"
 # O toggle do setup e o motivo pelo qual as saidas de emergencia subiram para antes do
 # `if (!ev.agent_id)`: enquanto elas ficavam depois, a janela principal saia do hook

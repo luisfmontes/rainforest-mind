@@ -17,8 +17,14 @@
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SBP="$(mktemp -d)/caixa"
-trap 'rm -rf "$(dirname "$SBP")"' EXIT
+# Idioma SANDBOXES (testa-sandbox-com-trap.sh): toda caixa entra no array e o
+# trap de EXIT varre todas. A funcao grava no nome dado (printf -v), sem subshell,
+# para o registro no array nao se perder.
+SANDBOXES=()
+novo_sandbox() { local d; d=$(mktemp -d); SANDBOXES+=("$d"); printf -v "$1" '%s' "$d"; }
+cleanup() { for d in "${SANDBOXES[@]}"; do rm -rf "$d" 2>/dev/null || true; done; }
+trap cleanup EXIT
+novo_sandbox SBP0; SBP="$SBP0/caixa"
 
 mkdir -p "$SBP/scripts/lib" "$SBP/hooks/lib"
 cp "$SRC/scripts/estado.cjs" "$SBP/scripts/"
@@ -31,6 +37,7 @@ cp "$SRC/scripts/lib/extrair-veredito.cjs" "$SBP/scripts/lib/"
 cp "$SRC/hooks/lib/raiz.cjs" "$SBP/hooks/lib/"
 cp "$SRC/hooks/lib/config.cjs" "$SBP/hooks/lib/"
 cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SBP/hooks/lib/"
+cp "$SRC/hooks/lib/pastas-docs.cjs" "$SBP/hooks/lib/"   # onde moram design e plano (D1/D3 do #412)
 cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SBP/hooks/lib/"   # git pelo caminho (Issue #392)
 cp "$SRC/hooks/lib/contar-ocorrencias.cjs" "$SBP/hooks/lib/"   # conferir-fluxo conta o de: da mutacao (#397)
 # A caixa vira raiz de dados: sem marcador, resolverRaiz cairia no repo de verdade
@@ -1902,7 +1909,7 @@ cp "$SRC/scripts/estado.cjs" "$SBP/sensor-test/scripts/"
 cp "$SRC/scripts/conferir-categoria.cjs" "$SBP/sensor-test/scripts/"
 cp "$SRC/scripts/lib/primeiro-prompt-jsonl.cjs" "$SBP/sensor-test/scripts/lib/"
 cp "$SRC/scripts/lib/extrair-veredito.cjs" "$SBP/sensor-test/scripts/lib/"
-cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SBP/sensor-test/hooks/lib/"
+cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SRC/hooks/lib/pastas-docs.cjs" "$SRC/hooks/lib/config.cjs" "$SRC/hooks/lib/raiz.cjs" "$SBP/sensor-test/hooks/lib/"
 cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SBP/sensor-test/hooks/lib/"   # git pelo caminho (Issue #392)
 cp "$SRC/hooks/lib/contar-ocorrencias.cjs" "$SBP/sensor-test/hooks/lib/"   # conferir-fluxo conta o de: da mutacao (#397)
 cd "$SBP/sensor-test" || exit 1
@@ -2696,8 +2703,8 @@ else
 fi
 
 # Caso 3: Com arquivo presente, design fecha normalmente
-$E385 iniciar --slug des-presente >/dev/null 2>&1
-msg_design_ok=$($E385 marcar --slug des-presente --estagio design --status aprovado --json '{"doc":"docs/rainforest/design/d385.md"}' 2>&1)
+$E385 iniciar --slug d385 >/dev/null 2>&1
+msg_design_ok=$($E385 marcar --slug d385 --estagio design --status aprovado --json '{"doc":"docs/rainforest/design/d385.md"}' 2>&1)
 cod_design_ok=$?
 if [ "$cod_design_ok" = "0" ] && printf '%s' "$msg_design_ok" | grep -q "design: aprovado"; then
   ok=$((ok+1)); echo "  ok   design: com arquivo presente fecha normalmente"
@@ -2733,6 +2740,146 @@ env -u CLAUDE_CODE_SESSION_ID $E385 marcar --slug em-voo-dono --estagio executar
   --json '{"em_voo":[{"agente":"z"}]}' >/dev/null 2>&1
 sessoes_sem=$(node -e 'const e=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));process.stdout.write((e.executar.em_voo||[]).map((a)=>a.agente+"="+a.sessao).join(","))' "$ARQ_DONO")
 igual "sem CLAUDE_CODE_SESSION_ID nao carimba (legado)" "z=undefined" "$sessoes_sem"
+
+echo "== (#413) verificar --raiz roda a catraca de mutacao na arvore do codigo =="
+# A = raiz do ESTADO (estado + plano), B = arvore do CODIGO (src/x.sh + bateria).
+# O fonte mutado existe SO em B: sem --raiz a catraca o procura em A e recusa.
+novo_sandbox A413; novo_sandbox B413
+touch "$A413/FOCO.md"
+mkdir -p "$A413/docs/rainforest/planos" "$A413/docs/rainforest/design" "$B413/src"
+printf 'exit 0\n' > "$B413/src/x.sh"
+printf 'bash src/x.sh\n' > "$B413/bat.sh"
+cat > "$A413/docs/rainforest/planos/p413.md" << 'PLANO'
+# Plano 413
+
+### 1. Tarefa
+
+atende: D1
+
+mutacao:
+  arquivo: `src/x.sh`
+  de: `exit 0`
+  para: `exit 1`
+  bateria: `bash bat.sh`
+PLANO
+cat > "$A413/docs/rainforest/design/p413.md" << 'DESIGN'
+# Design
+
+## Objetivo
+Teste
+
+## Decisões fechadas
+- **D1 — teste**
+
+## Avaliado e descartado
+n/a
+
+## Fora de escopo
+n/a
+
+## Em aberto
+n/a
+DESIGN
+GIT413="git -c user.email=t@t -c user.name=T"
+( cd "$B413" && git init -q && git add -A && $GIT413 commit -q -m b )
+( cd "$A413" && git init -q && git add -A && $GIT413 commit -q -m a && $GIT413 commit -q --allow-empty -m h )
+E413="node $SBP/scripts/estado.cjs"
+prep413() { # slug — fluxo ate 'exigir verificar' em A
+  local s="$1"
+  ( cd "$A413" && export RFM_ESTADO_ROOT="$A413"
+    $E413 iniciar --slug "$s" >/dev/null || exit 1
+    node -e "
+      const fs=require('fs'),p=require('path').join(process.env.RFM_ESTADO_ROOT,'docs','rainforest','estado','$s.json');
+      const e=JSON.parse(fs.readFileSync(p,'utf8'));
+      e.design={status:'aprovado',em:'2026-09-01',arquivo:'docs/rainforest/design/p413.md'};
+      e.plano={status:'ok',em:'2026-09-01',arquivo:'docs/rainforest/planos/p413.md'};
+      fs.writeFileSync(p,JSON.stringify(e,null,2));" || exit 1
+    $E413 exigir --slug "$s" --estagio executar >/dev/null || exit 1
+    $E413 marcar --slug "$s" --estagio executar --status ok --json '{"comando":"x","saida":"y","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"p413"}]}' >/dev/null || exit 1
+    $E413 marcar --slug "$s" --estagio revisar --status ok --json "{\"achados\":0,\"base\":\"$(git rev-parse HEAD~1)\",\"head\":\"$(git rev-parse HEAD)\"}" >/dev/null || exit 1
+    $E413 exigir --slug "$s" --estagio verificar >/dev/null || exit 1 )
+}
+if prep413 s413; then ok=$((ok+1)); echo "  ok   413 preparo do fluxo ate verificar"; else falhou=$((falhou+1)); echo "  FALHA 413 preparo do fluxo"; fi
+EV413='{"comando":"bash","saida":"done"}'
+# Recusas ANTES do fechamento bem-sucedido: recusa nao grava nada.
+esperado "413 verificar sem --raiz recusa (fonte so existe na arvore do codigo)" 2 env RFM_ESTADO_ROOT="$A413" $E413 marcar --slug s413 --estagio verificar --status ok --json "$EV413"
+MSG413=$(RFM_ESTADO_ROOT="$A413" $E413 marcar --slug s413 --estagio verificar --status ok --raiz "$A413/nao-existe" --json "$EV413" 2>&1); COD413=$?
+if [ "$COD413" = 2 ] && printf '%s' "$MSG413" | grep -q -- "--raiz"; then
+  ok=$((ok+1)); echo "  ok   413 --raiz inexistente recusa exit 2 nomeando --raiz"
+else
+  falhou=$((falhou+1)); echo "  FALHA 413 --raiz inexistente: exit=$COD413"; printf '%s\n' "$MSG413" | sed 's/^/         /'
+fi
+MSG413=$(RFM_ESTADO_ROOT="$A413" $E413 marcar --slug s413 --estagio revisar --status ok --raiz "$B413" 2>&1); COD413=$?
+if [ "$COD413" = 2 ] && printf '%s' "$MSG413" | grep -q -- "--raiz"; then
+  ok=$((ok+1)); echo "  ok   413 --raiz com outro estagio recusa exit 2"
+else
+  falhou=$((falhou+1)); echo "  FALHA 413 --raiz com estagio revisar: exit=$COD413"; printf '%s\n' "$MSG413" | sed 's/^/         /'
+fi
+MSG413=$(RFM_ESTADO_ROOT="$A413" $E413 marcar --slug s413 --estagio verificar --status ok --raiz "$B413" --json "$EV413" 2>&1); COD413=$?
+if [ "$COD413" = 0 ]; then
+  ok=$((ok+1)); echo "  ok   413 verificar --raiz roda a mutacao na arvore do codigo"
+else
+  falhou=$((falhou+1)); echo "  FALHA 413 verificar --raiz: exit=$COD413"
+fi
+printf '%s\n' "$MSG413" | sed 's/^/         | /'
+N413=$(grep -c -F "$B413" "$A413/docs/rainforest/estado/s413.json")
+igual "413 o caminho da arvore do codigo nao entra no estado" "0" "$N413"
+rm -rf "$A413" "$B413"
+
+echo
+echo "== (#412 D3) docDoEstagio le 'doc' do bloco: design fora de docs/rainforest =="
+# O brainstorm grava {"doc": ...}; ate aqui so 'arquivo' era lido. O nome do design
+# aqui (data-slug-design) NAO e o que `caminhoDoc` derivaria do slug, entao so o
+# campo `doc` leva a checagem `cobertura` ate ele: ignorar `doc` deixa o plano
+# fechar sem a cobertura rodar.
+novo_sandbox C412
+mkdir -p "$C412/docs/plans"
+(cd "$C412" && git init -q && git config user.email t@t && git config user.name T)
+export RFM_ESTADO_ROOT="$C412"
+cat > "$C412/docs/plans/2026-10-07-s412-design.md" << 'EOF'
+# Design
+
+## Objetivo
+Teste
+
+## Decisões fechadas
+- **D1 — primeira**
+- **D2 — segunda**
+
+## Avaliado e descartado
+n/a
+
+## Fora de escopo
+n/a
+
+## Em aberto
+n/a
+
+## Varredura
+docs/rainforest/varredura/s412.txt
+EOF
+mkdir -p "$C412/docs/rainforest/varredura"
+echo "s412" > "$C412/docs/rainforest/varredura/s412.txt"
+cat > "$C412/docs/plans/s412-plano.md" << 'EOF'
+# Plano
+
+## Tarefas
+
+### 1. Primeira tarefa
+atende: D1
+mutacao:
+  arquivo: scripts/estado.cjs
+  de: n/a
+  para: n/a
+  motivo: teste
+EOF
+node scripts/estado.cjs iniciar --slug s412 >/dev/null
+esperado "412 design com doc fora de docs/rainforest fecha" 0 node scripts/estado.cjs marcar --slug s412 --estagio design --status aprovado --json '{"doc":"docs/plans/2026-10-07-s412-design.md"}'
+msg412="$(node scripts/estado.cjs marcar --slug s412 --estagio plano --status ok --json '{"arquivo":"docs/plans/s412-plano.md"}' 2>&1)"
+cod412=$?
+igual "412 plano recusado: cobertura leu o design apontado por doc (D2 sem tarefa)" "2" "$cod412"
+printf '%s' "$msg412" | grep -q "D2" && igual "412 recusa cita a decisao D2 descoberta" "sim" "sim" || igual "412 recusa cita a decisao D2 descoberta" "sim" "nao: $msg412"
+rm -rf "$C412"
 
 unset RFM_ESTADO_ROOT
 

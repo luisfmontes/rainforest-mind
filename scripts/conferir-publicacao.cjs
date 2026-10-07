@@ -167,6 +167,9 @@ const PADROES = [
       // a coluna ASCII do dump, se mostrar um telefone legível, continua recusada.
       if (dentroDeDumpHex(m, linha)) return false;
 
+      // Issue #409: pseudo-versao Go (ver `dentroDePseudoVersaoGo`).
+      if (dentroDePseudoVersaoGo(m, linha)) return false;
+
       // D27: GitHub Actions run, job, PR, Issue, commit, discussion — IDs de
       // plataforma que casam forma de telefone mas não são telefone de ninguém.
       // A isenção olha o prefixo imediatamente antes do match: se termina com
@@ -282,6 +285,26 @@ const PADROES = [
       const chaveComOp = m[0];
       const chave = chaveComOp.match(/^(.*?)\s*[:=]/i)[1].replace(/^["']+|["']+$/g, '').toLowerCase();
       const ehTokenNu = chave === 'token';
+
+      // Issue #410: `Authorization` com ESQUEMA (Bearer/Basic/Token). A regex captura
+      // a palavra do esquema como valor (`f"Bearer` numa f-string); o valor de
+      // verdade e a PROXIMA palavra da linha. So e isento quando esse valor e
+      // INTEIRO referencia de variavel: `{VAR}` / `${VAR}` ou `{}` + `.format(VAR)`.
+      // Literal colado depois da referencia, ou literal no lugar dela, continua
+      // caindo no restante da regra e e acusado.
+      if (chave === 'authorization' && /^f?["']?(?:Bearer|Basic|Token)$/i.test(valor)) {
+        const prox = /^\s+(\S+)/.exec(linha.slice(m.index + m[0].length));
+        if (prox) {
+          const v2 = prox[1].replace(/^["']+/, '');
+          const fmt = /^\{\}["']?\.format\(\s*[A-Za-z_]\w*\s*\)/.exec(v2);
+          // `{VAR}` so e referencia quando o esquema veio de f-string (`f"Bearer`).
+          // Fora dela, chaves com um nome dentro sao texto literal: na lista
+          // global, `password={abc}` saia isento em qualquer chave.
+          const fstr = /^f["']/i.test(valor) ? /^\{[A-Za-z_]\w*\}/.exec(v2) : null;
+          const r2 = fmt || fstr || REFERENCIA_DE_VARIAVEL.exec(v2);
+          if (r2 && !/^[A-Za-z0-9_]/.test(v2.slice(r2[0].length))) return false;
+        }
+      }
 
 
       // Isenta referências de variável (não são segredos colados). A isenção é
@@ -452,6 +475,19 @@ const RE_TRECHO_HEX = /^\s*(?:[0-9a-f]{7,8}:?\s+)?(?:[0-9a-f]{2}(?:[0-9a-f]{2})?
 function dentroDeDumpHex(m, linha) {
   const t = RE_TRECHO_HEX.exec(linha);
   return !!t && m.index + m[0].length <= t[0].length;
+}
+
+// Issue #409: pseudo-versao de modulo Go (`vX.Y.Z-<timestamp de 14 digitos>-<12 hex>`,
+// com `0.` opcional antes do timestamp) traz um timestamp que tem forma de telefone.
+// A isencao de hex nao pega porque o primeiro token hex do contexto e so digitos.
+// Vale so para match de telefone DENTRO de um casamento da forma inteira.
+function dentroDePseudoVersaoGo(m, linha) {
+  const re = /v\d+\.\d+\.\d+-(?:0\.)?\d{14}-[0-9a-f]{12}/g;
+  let pv;
+  while ((pv = re.exec(linha)) !== null) {
+    if (m.index >= pv.index && m.index + m[0].length <= pv.index + pv[0].length) return true;
+  }
+  return false;
 }
 
 /**

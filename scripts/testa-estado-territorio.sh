@@ -35,7 +35,7 @@ monta_caixa() { # dir, com_territorio_cjs(1|0), com_abc(1|0)
   cp "$SRC/scripts/estado.cjs" "$SRC/scripts/conferir-fluxo.cjs" "$SRC/scripts/conferir-mutacao.cjs" "$d/scripts/"
   [ "$2" = 1 ] && cp "$SRC/scripts/territorio.cjs" "$d/scripts/"
   cp "$SRC/scripts/lib/primeiro-prompt-jsonl.cjs" "$SRC/scripts/lib/extrair-veredito.cjs" "$d/scripts/lib/"
-  cp "$SRC/hooks/lib/raiz.cjs" "$SRC/hooks/lib/config.cjs" "$SRC/hooks/lib/trava-jsonl.cjs" "$SRC/hooks/lib/resolver-executavel.cjs" "$SRC/hooks/lib/contar-ocorrencias.cjs" "$d/hooks/lib/"   # git pelo caminho (Issue #392)
+  cp "$SRC/hooks/lib/raiz.cjs" "$SRC/hooks/lib/config.cjs" "$SRC/hooks/lib/trava-jsonl.cjs" "$SRC/hooks/lib/resolver-executavel.cjs" "$SRC/hooks/lib/contar-ocorrencias.cjs" "$SRC/hooks/lib/pastas-docs.cjs" "$d/hooks/lib/"   # git pelo caminho (Issue #392)
   touch "$d/FOCO.md"
   [ "$3" = 1 ] && cp "$FIX/repo-abc/x.abc" "$d/x.abc"
   return 0

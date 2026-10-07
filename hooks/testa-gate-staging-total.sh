@@ -99,7 +99,7 @@ echo "relatorio de outra janela" > "$R/relatorios/2026-08-09-de-outra-sessao.md"
 # passou verde sem ela porque so tinha '??' (sem espaco a esquerda) na caixa.
 echo v2 >> "$R/a.txt"
 msg=$(printf '%s' "$(b 'git add -A')" | node "$GATE" 2>&1)
-for t in "relatorios/2026-08-09-de-outra-sessao.md" "git status --porcelain" "Adicione por caminho" "RAINFOREST_GATE_OFF" ".rainforest-gate-off"; do
+for t in "relatorios/2026-08-09-de-outra-sessao.md" "git status --porcelain" "Adicione por caminho" "RAINFOREST_GATE_OFF"; do
   if printf '%s' "$msg" | grep -qF -- "$t"; then ok=$((ok+1)); echo "  ok   a mensagem mostra '$t'"
   else falhou=$((falhou+1)); echo "  FALHA a mensagem NAO mostra '$t'"; fi
 done
@@ -517,9 +517,8 @@ if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (
 else falhou=$((falhou+1)); echo "  FALHA RAINFOREST_GATE_OFF nao liberou (exit $rc)"; fi
 
 touch "$R/.rainforest-gate-off"
-gate ".rainforest-gate-off na raiz libera o repo"   0 "$(b 'git add -A')"
+gate ".rainforest-gate-off presente NAO libera o repo (#417)"   2 "$(b 'git add -A')"
 rm "$R/.rainforest-gate-off"
-gate "  ... e volta a barrar quando o arquivo sai"  2 "$(b 'git add -A')"
 
 echo
 echo "== #403: aspas duplas DENTRO do campo avaliado chegam ao gate =="

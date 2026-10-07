@@ -160,37 +160,46 @@ else
 fi
 
 echo
-echo "== Teste de escape com .rainforest-gate-off =="
+echo "== Teste de escape com .rainforest-gate-off: arquivo presente NAO desliga mais (#417) =="
 touch "$R/.rainforest-gate-off"
 msg=$(printf '%s' "$(write "$R/escape-arquivo.txt" "contato: $JID_REAL")" | node "$GATE" 2>&1); rc=$?
-if [ "$rc" = 0 ]; then
+if [ "$rc" = 2 ]; then
   ok=$((ok+1))
-  echo "  ok   .rainforest-gate-off libera gate (exit 0)"
+  echo "  ok   .rainforest-gate-off presente NAO libera o gate (exit 2)"
 else
   falhou=$((falhou+1))
-  echo "  FALHA .rainforest-gate-off não liberou (exit $rc)"
+  echo "  FALHA .rainforest-gate-off presente mudou o resultado (exit $rc, esperava 2)"
 fi
 rm "$R/.rainforest-gate-off"
 
 echo
-echo "== CASO NOVO (Issue #265): .rainforest-gate-off do checkout principal libera gate rodando de worktree linkado =="
+echo "== CASO NOVO (Issue #265, #417): config de projeto do checkout principal libera gate rodando de worktree linkado =="
 WT="$RAIZ/worktree-linkado"
 git -C "$R" worktree add -q "$WT" -b wt-gate-off-branch >/dev/null 2>&1
 echo "v1" > "$WT/b.txt"
 msg=$(printf '%s' "$(write "$WT/escape-worktree.txt" "contato: $JID_REAL" "$(esc "$WT")")" | node "$GATE" 2>&1); rc=$?
 if [ "$rc" != 0 ]; then
-  ok=$((ok+1)); echo "  ok   sem .rainforest-gate-off, worktree barra normalmente (exit $rc)"
+  ok=$((ok+1)); echo "  ok   sem config, worktree barra normalmente (exit $rc)"
 else
-  falhou=$((falhou+1)); echo "  FALHA worktree passou sem gate-off (exit $rc) — sanidade do caso quebrada"
+  falhou=$((falhou+1)); echo "  FALHA worktree passou sem config (exit $rc) — sanidade do caso quebrada"
 fi
 touch "$R/.rainforest-gate-off"
 msg=$(printf '%s' "$(write "$WT/escape-worktree.txt" "contato: $JID_REAL" "$(esc "$WT")")" | node "$GATE" 2>&1); rc=$?
-if [ "$rc" = 0 ]; then
-  ok=$((ok+1)); echo "  ok   .rainforest-gate-off do principal libera gate a partir do worktree (exit 0)"
+if [ "$rc" != 0 ]; then
+  ok=$((ok+1)); echo "  ok   .rainforest-gate-off do principal NAO libera o worktree (exit $rc)"
 else
-  falhou=$((falhou+1)); echo "  FALHA nao herdou o gate-off do principal (exit $rc)"; echo "$msg" | sed 's/^/         /' | head -10
+  falhou=$((falhou+1)); echo "  FALHA arquivo do principal liberou o worktree (exit $rc)"
 fi
 rm "$R/.rainforest-gate-off"
+mkdir -p "$R/.rainforest"
+printf '%s' '{"gate-publicacao": false}' > "$R/.rainforest/config.json"
+msg=$(printf '%s' "$(write "$WT/escape-worktree.txt" "contato: $JID_REAL" "$(esc "$WT")")" | node "$GATE" 2>&1); rc=$?
+if [ "$rc" = 0 ]; then
+  ok=$((ok+1)); echo "  ok   config do projeto no principal libera gate a partir do worktree (exit 0)"
+else
+  falhou=$((falhou+1)); echo "  FALHA nao herdou o config do principal (exit $rc)"; echo "$msg" | sed 's/^/         /' | head -10
+fi
+rm -rf "$R/.rainforest"
 git -C "$R" worktree remove --force "$WT" >/dev/null 2>&1
 
 echo
@@ -671,6 +680,96 @@ gate "Edit com e-mail A uma vez em old e A+B em new (mesma linha)" 2 "$(PAY_CWD=
 
 # Caso 9: Edit com e-mail A duas vezes em new e uma vez em old → 2
 gate "Edit com e-mail A duas vezes em new e uma vez em old" 2 "$(PAY_CWD="$(esc "$R")" editComOld "$(esc "$R")/edit-repeticao.txt" "contato: $EMAIL" "contato: $EMAIL e $EMAIL")"
+
+echo
+echo "== (#419) visibilidade-repo: remoto fora do GitHub declarado privado =="
+# Lista privada de teste com termo SINTETICO, em HOME de caixa de areia.
+H419="$RAIZ/home419"; mkdir -p "$H419/.rainforest"
+TERMO419="zzsinteticoprivado"
+printf '%s\n' "$TERMO419" > "$H419/.rainforest/termos-proibidos.txt"
+R419="$RAIZ/r419"
+git init -q "$R419"; git -C "$R419" config user.email t@t; git -C "$R419" config user.name t; git -C "$R419" config commit.gpgsign false
+mkdir -p "$R419/docs"; echo x > "$R419/docs/ok.md"; git -C "$R419" add docs/ok.md; git -C "$R419" commit -qm base
+git -C "$R419" remote add origin "https://gitlab.example.invalid/x/y.git"
+git -C "$R419" worktree add -q "$R419/.claude/worktrees/w" -b w419 > /dev/null 2>&1
+mkdir -p "$R419/.rainforest"
+TEL419="(00) 90000-""0001"
+g419() { # esperado-rc, cwd, arquivo, conteudo [agent_id]  -> saida em $S419
+  local cwd="$(esc "$1")" arq="$(esc "$2")"
+  local p
+  if [ -n "${4:-}" ]; then p=$(PAY_CWD="$cwd" payWithAgent Write "$arq" "$3" "$4")
+  else p=$(PAY_CWD="$cwd" pay Write "$arq" "$3"); fi
+  S419=$(printf '%s' "$p" | env HOME="$H419" RFM_ROOT="$SANDBOX_DATA" RAINFOREST_GATE_SEM_REDE=1 node "$GATE" 2>&1); RC419=$?
+}
+confere419() { # nome, esperado
+  if [ "$RC419" = "$2" ]; then ok=$((ok+1)); echo "  ok   $1 (exit $RC419)"
+  else falhou=$((falhou+1)); echo "  FALHA $1: esperava $2, veio $RC419"; echo "$S419" | sed 's/^/         /' | head -8; fi
+}
+CONT419="nota sobre o $TERMO419 para o time"
+
+# 3. sem a chave: barra (e a mensagem cita a saida)
+g419 "$R419" "$R419/docs/x.md" "$CONT419"
+confere419 "419 sem a chave, termo privado barra com remoto sem gh" 2
+if printf '%s' "$S419" | grep -q "visibilidade-repo"; then ok=$((ok+1)); echo "    ok   mensagem cita 'visibilidade-repo'"
+else falhou=$((falhou+1)); echo "    FALHA mensagem sem 'visibilidade-repo'"; fi
+g419 "$R419" "$R419/docs/x.md" "$CONT419" "agent-419"
+confere419 "419 subagente sem a chave: barra" 2
+if printf '%s' "$S419" | grep -q "visibilidade-repo"; then falhou=$((falhou+1)); echo "    FALHA subagente ve a saida 'visibilidade-repo'"
+else ok=$((ok+1)); echo "    ok   subagente nao recebe a saida"; fi
+
+# 1. com a chave: libera
+printf '{"visibilidade-repo":"privada"}' > "$R419/.rainforest/config.json"
+g419 "$R419" "$R419/docs/x.md" "$CONT419"
+confere419 "419 visibilidade-repo privada libera termo privado com remoto sem gh" 0
+# 2. do worktree linkado
+g419 "$R419/.claude/worktrees/w" "$R419/.claude/worktrees/w/docs/x.md" "$CONT419"
+confere419 "419 idem, payload vindo de worktree linkado" 0
+# 4. padrao com forma continua barrando
+g419 "$R419" "$R419/docs/x.md" "$CONT419 tel $TEL419"
+confere419 "419 com a chave, telefone no mesmo conteudo continua barrando" 2
+if printf '%s' "$S419" | grep -q "telefone"; then ok=$((ok+1)); echo "    ok   cita 'telefone'"; else falhou=$((falhou+1)); echo "    FALHA sem 'telefone'"; fi
+# a declaracao e por repositorio: no config de USUARIO ela nao vale
+rm -f "$R419/.rainforest/config.json"
+CFGU419="$SANDBOX_DATA/config.json"; BKU419=""
+[ -f "$CFGU419" ] && BKU419="$(cat "$CFGU419")"
+printf '{"visibilidade-repo":"privada"}' > "$CFGU419"
+g419 "$R419" "$R419/docs/x.md" "$CONT419"
+confere419 "419 chave no config de usuario nao libera" 2
+if [ -n "$BKU419" ]; then printf '%s' "$BKU419" > "$CFGU419"; else rm -f "$CFGU419"; fi
+# 5. valor invalido
+printf '{"visibilidade-repo":"publica"}' > "$R419/.rainforest/config.json"
+g419 "$R419" "$R419/docs/x.md" "$CONT419"
+confere419 "419 chave com valor 'publica' e invalida: barra" 2
+# gh dizendo publica prevalece sobre a declaracao
+printf '{"visibilidade-repo":"privada"}' > "$R419/.rainforest/config.json"
+git -C "$R419" remote set-url origin "https://github.com/test/p419.git"
+PUB419=$(PAY_CWD="$(esc "$R419")" pay Write "$(esc "$R419/docs/x.md")" "$CONT419")
+printf '%s' "$PUB419" | env HOME="$H419" RFM_ROOT="$SANDBOX_DATA" GH_RESPONSE='{"isPrivate":false}' RAINFOREST_GH="node $SANDBOX_BIN/gh" GH_INVOCATIONS_FILE="$GH_INVOCATIONS" node "$GATE" > /dev/null 2>&1; RC419=$?
+S419=""; confere419 "419 gh diz publica: a declaracao e ignorada" 2
+# remoto GitHub com o gh fora do ar (SEM_REDE): desconhecida, e a declaracao nao vale
+g419 "$R419" "$R419/docs/x.md" "$CONT419"
+confere419 "419 remoto GitHub sem rede: a declaracao nao libera" 2
+
+# Achado 1 da emenda: o filtro de `termo-privado` rodava dentro de `bloqueia()`, que
+# saia 0 quando o arquivo ficava sem achado -- e os arquivos/edits SEGUINTES nunca
+# eram examinados. Remoto fora do GitHub + declaracao privada de novo.
+git -C "$R419" remote set-url origin "https://gitlab.example.invalid/x/y.git"
+printf '{"visibilidade-repo":"privada"}' > "$R419/.rainforest/config.json"
+printf '%s\n' "$CONT419" > "$R419/docs/a1.md"
+printf 'contato %s\n' "$TEL419" > "$R419/docs/b2.md"
+git -C "$R419" add docs/a1.md docs/b2.md
+S419=$(PAY_CWD="$(esc "$R419")" payBash 'git commit -m x' "$(esc "$R419")" | env HOME="$H419" RFM_ROOT="$SANDBOX_DATA" RAINFOREST_GATE_SEM_REDE=1 node "$GATE" 2>&1); RC419=$?
+confere419 "419 commit com termo num arquivo e telefone noutro barra" 2
+git -C "$R419" rm --cached -q docs/a1.md docs/b2.md
+S419=$(PAY_CWD="$(esc "$R419")" payMulti "$(esc "$R419")/docs/m1.md" "x" "$CONT419" "$(esc "$R419")/docs/m2.md" "x" "contato $TEL419" | env HOME="$H419" RFM_ROOT="$SANDBOX_DATA" RAINFOREST_GATE_SEM_REDE=1 node "$GATE" 2>&1); RC419=$?
+confere419 "419 MultiEdit termo primeiro e telefone depois barra" 2
+# Achado 4: credencial na URL do remoto GitHub nao pode esconder o remoto.
+for U419 in "https://tok""en@github.com/test/p419.git" "https://user:x@github.com/test/p419" "ssh://git@github.com/test/p419.git" "ssh://git@ssh.github.com:443/test/p419.git" "ssh://git@github.com:22/test/p419"; do
+  git -C "$R419" remote set-url origin "$U419"
+  g419 "$R419" "$R419/docs/x.md" "$CONT419"
+  confere419 "419 remoto GitHub com usuario na URL ($(printf '%s' "$U419" | sed 's|//[^@]*@|//***@|')): a declaracao nao libera" 2
+done
+if printf '%s' "$S419" | grep -q "visibilidade-repo"; then falhou=$((falhou+1)); echo "    FALHA remoto GitHub: a mensagem sugere 'visibilidade-repo'"; else ok=$((ok+1)); echo "    ok   remoto GitHub: mensagem nao sugere 'visibilidade-repo'"; fi
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

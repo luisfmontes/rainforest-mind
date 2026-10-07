@@ -13,6 +13,7 @@ const { spawnSync } = require('child_process');
 const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 const { lerFluxos, worktrees } = require('./faixa-dados.cjs');
 const { extrairTarefas, lerMarkdown, globMatches, globsIsentos } = require('./conferir-fluxo.cjs');
+const { caminhoDoc } = require(path.join(__dirname, '..', 'hooks', 'lib', 'pastas-docs.cjs'));
 
 function valorDe(nome) {
   const i = process.argv.indexOf(nome);
@@ -81,7 +82,10 @@ function veredito(cwd, arquivo) {
   const raiz = raizDe(cwd);
   const fluxo = lerFluxos(cwd).find((f) => chave(f.worktree) === chave(raiz));
   if (!fluxo) return { veredito: 'sem-fluxo', rel: null, slug: null };
-  const plano = lerMarkdown(path.join(fluxo.worktree, 'docs', 'rainforest', 'planos', `${fluxo.slug}.md`));
+  // Pasta do plano pelo resolvedor (#412): o repo pode guardar planos em `docs/plans/`.
+  const relPlano = caminhoDoc('planos', fluxo.slug, { raiz: fluxo.worktree });
+  const relDesign = caminhoDoc('design', fluxo.slug, { raiz: fluxo.worktree });
+  const plano = lerMarkdown(path.join(fluxo.worktree, relPlano));
   if (plano === null) return { veredito: 'sem-plano', rel: null, slug: fluxo.slug };
   const rel = relativo(arquivo, cwd, worktrees(cwd));
   if (rel === null) return { veredito: 'fora-da-raiz', rel: null, slug: fluxo.slug };
@@ -89,7 +93,7 @@ function veredito(cwd, arquivo) {
   // Plano sem nenhum `arquivos:` nao declara escopo: tudo sairia `fora`, e isso acusaria sem base.
   if (globs.length === 0) return { veredito: 'sem-arquivos', rel, slug: fluxo.slug };
   if (!foraDoPlano(rel, globs)) return { veredito: 'dentro', rel, slug: fluxo.slug };
-  const isentos = globsIsentos({ slug: fluxo.slug, design: null, plano: null, globsDoPlano: globs });
+  const isentos = globsIsentos({ slug: fluxo.slug, design: relDesign, plano: relPlano, globsDoPlano: globs });
   if (!foraDoPlano(rel, isentos)) return { veredito: 'isento', rel, slug: fluxo.slug };
   return { veredito: 'fora', rel, slug: fluxo.slug };
 }

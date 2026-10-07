@@ -93,12 +93,6 @@ ferramentas.jsonl
 # so deixa o gate mais rigido), mas rastro de execucao nao se versiona.
 .rainforest/cache-visibilidade-repo.json
 
-# Toggle de EMERGENCIA do gate de publicacao (issue #265): quem cria este
-# arquivo na raiz do repo ou do checkout principal desliga o gate ali. Sem
-# esta linha, copiar o arquivo para um worktree vira pegadinha de
-# `git add -A` — o arquivo untracked entraria versionado por engano.
-.rainforest-gate-off
-
 # Saida de `claude plugin eval` (issue #302): timestamp por rodada, HTML e
 # JSON de agregado. E RASTRO DE EXECUCAO desta maquina/credencial, nunca
 # insumo do plugin — quem quiser reproduzir roda a suite de novo.

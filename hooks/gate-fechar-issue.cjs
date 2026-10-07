@@ -13,7 +13,7 @@
  *   do PR) — lê a descrição real via `gh pr view <ref> --json body` e verifica as
  *   Issues citadas ali. Leitura falhou (exit ≠ 0, JSON inválido, sem rede) → bloqueia.
  * - Corpo ilegível (editor interativo) → exit 2 dizendo isso
- * - Saídas de emergência: `RAINFOREST_GATE_OFF=1`, `.rainforest-gate-off`
+ * - Saídas de emergência: `RAINFOREST_GATE_OFF=1` e a chave do config (o arquivo `.rainforest-gate-off` deixou de ser lido, #417)
  *
  * O gate só LÊ via `gh issue view --json comments` e `gh pr view --json body`; nunca escreve.
  *
@@ -933,6 +933,40 @@ function cwdDoSegmento(segmento, mapaCwd, ordem) {
   return null;
 }
 
+// Arquivos ja lidos por `source`/`.` neste processo (corta ciclo `. a` -> `. a`).
+const ARQUIVOS_SOURCE_VISTOS = new Set();
+// Profundidade de leitura de arquivo carregado por `source`/`.`: dentro dela o
+// veredito `ilegivel` nao barra (o limite de D16 vale para o arquivo carregado).
+let LENDO_SOURCE = 0;
+let CWD_DO_EVENTO = "";
+const RE_MUDA_DIRETORIO = /(?:^|[\s;&|({])(?:cd|pushd)(?=\s|$)/;
+
+// Busca TEXTUAL de `gh [-R x|--repo x] issue close|create|comment` ou `gh ... pr
+// create|edit|merge` num segmento ilegivel (aspas ignoradas, separadores de shell
+// viram espaco). Serve so para nao deixar passar literal dentro de arquivo
+// carregado por `.`; nao decide evidencia, so impede o atalho do ilegivel.
+function temGhLiteralQueEscreve(texto) {
+  // `$'..'`/`$".."` sao aspas do bash: o `$` colado na aspa sai junto com ela.
+  // Aspas, crase e contrabarra SOMEM (nao viram espaco): `c''lose`, `\"close\"`
+  // e `-R \"a/b\"` voltam a ser as palavras que o shell ve.
+  const v = String(texto).replace(/\$(?=["'])/g, "").replace(/["'\x60\\]/g, "").split(/[\s;&|(){}]+/).filter(Boolean);
+  const escreve = { issue: ["close", "create", "comment"], pr: ["create", "edit", "merge"] };
+  for (let i = 0; i < v.length; i++) {
+    if (normalizarExecutavel(v[i]) !== "gh") continue;
+    let j = i + 1;
+    while (j < v.length && v[j].startsWith("-")) j += (/^(-R|--repo|-h|--hostname)$/.test(v[j]) ? 2 : 1);
+    const sub = escreve[v[j]];
+    if (sub && sub.includes(v[j + 1])) return true;
+  }
+  return false;
+}
+
+function ehSourceDeArquivo(toks, pos) {
+  if (pos === null) return false;
+  const exe = normalizarExecutavel(toks[pos].v);
+  return exe === "source" || exe === ".";
+}
+
 /**
  * Aplica as checagens D15/D16 a UM segmento do comando (já separado por
  * `;`, `&&`, `||`, `|`, `(`, `)`, `{`, `}` via `segmentosParaGate`).
@@ -983,6 +1017,64 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
     return;
   }
 
+  // #414: `source`/`.` carrega um ARQUIVO (tipicamente `.env`). O desempacotador
+  // devolve `ilegivel` sempre para os dois, o que barrava todo `. x.env` sem
+  // `gh` nenhum. Aqui o arquivo e LIDO: so barra se o conteudo fecha Issue
+  // (ou faz outra escrita que o gate checa); ilegivel, inexistente, caminho
+  // com variavel ou cwd incerto PASSA. Modelo de ameaca (D16): protege contra
+  // a janela principal fechar Issue sem a evidencia; fica fora script
+  // carregado que monta o `gh` a partir de variavel (mesmo limite do
+  // gate-subagente-sem-gh).
+  if (ehSourceDeArquivo(toksComAspas, pos)) {
+    const alvoSource = toksComAspas[pos + 1];
+    if (!alvoSource || /[$\x60]/.test(alvoSource.v)) return;
+    let cwdSource = cwdDoSegmento(segmento, mapaCwd, ordem);
+    const arquivoSource = normalizarMsys(alvoSource.v);
+    // Cwd incerto (subshell, `{ }`, `bash -c`, `eval`: sub-segmento sem
+    // correspondencia no mapa): usa o cwd do EVENTO, que e onde o comando
+    // comeca. So segue passando quando a linha tem `cd`/`pushd`, porque ai o
+    // cwd do evento pode estar errado.
+    if (cwdSource == null && !RE_MUDA_DIRETORIO.test(COMANDO_INTEIRO)) cwdSource = CWD_DO_EVENTO || null;
+    if (!path.isAbsolute(arquivoSource) && cwdSource == null) return;
+    const resolvidoSource = path.isAbsolute(arquivoSource) ? arquivoSource : path.resolve(cwdSource, arquivoSource);
+    // Chave = arquivo + cwd: o mesmo arquivo carregado de outro cwd encadeia
+    // outros arquivos (caminho relativo resolve contra o cwd), e tem de ser lido.
+    // Teto: a chave com cwd nao se repete quando cada nivel faz `cd sub`, e a
+    // recursao sem fim derrubaria o hook (exit != 2 = passa). Estourou, barra.
+    if (LENDO_SOURCE >= 8 || ARQUIVOS_SOURCE_VISTOS.size >= 64) {
+      bloqueia(
+        `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+        `Razão: encadeamento de '.'/'source' fundo demais para ler com segurança ` +
+        `(mais de 8 níveis ou 64 arquivos).\n`
+      );
+    }
+    const chaveSource = resolvidoSource + "|" + (cwdSource || "");
+    if (ARQUIVOS_SOURCE_VISTOS.has(chaveSource)) return;
+    ARQUIVOS_SOURCE_VISTOS.add(chaveSource);
+    let conteudoSource;
+    try { conteudoSource = fs.readFileSync(resolvidoSource, "utf8"); } catch { return; }
+    // O conteudo passa pelo MESMO caminho de um comando digitado: segmentos de
+    // `segmentosParaGate` (`if ...; then gh ...`) e `processarSegmento` (`gh -R a/b
+    // issue close`, wrappers, prefixos), com o cwd do proprio arquivo. O que o
+    // arquivo tem de ilegivel (variavel, `$(...)`) segue passando (D16).
+    const comandoAnterior = COMANDO_INTEIRO;
+    COMANDO_INTEIRO = conteudoSource;
+    LENDO_SOURCE += 1;
+    try {
+      // Caminho relativo dentro do arquivo carregado resolve contra o cwd de
+      // quem carregou (`.` nao muda de diretorio), nao contra a pasta do arquivo.
+      const mapaArquivo = cwdPorSegmento(conteudoSource, cwdSource || path.dirname(resolvidoSource));
+      const contadoresArquivo = new Map();
+      for (const sub of segmentosParaGate(conteudoSource)) {
+        processarSegmento(sub, mapaArquivo, contadoresArquivo, ferramenta);
+      }
+    } finally {
+      LENDO_SOURCE -= 1;
+      COMANDO_INTEIRO = comandoAnterior;
+    }
+    return;
+  }
+
   // `desempacotarWrapperDeString` (lib/tokens-comando.cjs, movida aqui na
   // rodada 11): `ilegivel` cobre TANTO o conteudo com `$(`/crase/variavel
   // QUANTO `-EncodedCommand` (que nunca tem `interno` — so `ilegivel`
@@ -1000,16 +1092,25 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
     ? { interno: null, ilegivel: false }
     : desempacotarWrapperDeString(textoAPartir(toksComAspas, pos), { ferramenta, scriptComVariavel: 'desconhecido' });
   if (ilegivel) {
+    // Dentro de arquivo carregado, ilegivel so passa quando NAO ha `gh` que
+    // fecha/cria literal no texto (D16: fica fora o `gh` montado de variavel).
+    // `bash -c "gh issue close 1 && echo $HOME"` tem o literal: barra.
+    if (LENDO_SOURCE > 0 && !temGhLiteralQueEscreve(segmento)) return;
     bloqueia(
       `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-      `Razão: comando encapsulado (eval/bash -c/sh -c/pwsh -Command/cmd /c/-EncodedCommand) contém ` +
-      `variável, substituição de comando, ou está em base64; não consigo ler o que roda dentro com ` +
-      `segurança (ilegível).\n\n` +
+      (/[$\x60]/.test(segmento) || /encodedcommand|-enc\b/i.test(segmento)
+        ? `Razão: comando encapsulado (eval/bash -c/sh -c/pwsh -Command/cmd /c/-EncodedCommand) contém ` +
+          `variável, substituição de comando, ou está em base64; não consigo ler o que roda dentro com ` +
+          `segurança (ilegível).\n\n`
+        : `Razão: comando encapsulado (eval/bash -c/sh -c/pwsh -Command/cmd /c) cuja forma não consigo ler ` +
+          `com segurança (ilegível), ainda que não tenha variável, substituição de comando nem base64.\n\n`) +
       // Só quando o segmento é `bash|sh $VAR` (#337; revisão: aparecia também
       // em `bash -c "$x"` e `-EncodedCommand`, onde não ajuda).
       (/(^|[\s;&|(])(bash|sh)\s+\$/.test(segmento) ?
       `Rodando um arquivo cujo caminho está numa variável? Ponha aspas: bash "$t" passa, bash $t não — sem aspas a variável se divide em palavras e pode injetar -c (ex.: CMD='-c gh\${IFS}issue\${IFS}close\${IFS}12'; bash $CMD fecha a Issue).\n\n` : ``) +
-      `Rode o comando 'gh' diretamente, sem encapsular, ou expanda a variável antes de chamar.\n`
+      (/[$\x60]/.test(segmento) || /encodedcommand|-enc\b/i.test(segmento)
+        ? `Rode o comando 'gh' diretamente, sem encapsular, ou expanda a variável antes de chamar.\n`
+        : `Rode o comando 'gh' diretamente, sem encapsular.\n`)
     );
   }
   if (interno !== null) {
@@ -1086,10 +1187,6 @@ function main() {
   if (process.env.RAINFOREST_GATE_OFF) process.exit(0);
 
   const cwdDoEvento = ev.cwd || process.cwd();
-  const gitTop = git(cwdDoEvento, ["rev-parse", "--show-toplevel"]);
-  if (gitTop && fs.existsSync(path.join(gitTop, ".rainforest-gate-off"))) {
-    process.exit(0);
-  }
 
   // Toggle do setup
   try {
@@ -1118,6 +1215,7 @@ function main() {
   // docblock de `cwdDoSegmento`.
   const contadores = new Map();
   COMANDO_INTEIRO = comando;
+  CWD_DO_EVENTO = cwdDoEvento;
   for (const segmento of segmentosParaGate(comando)) {
     processarSegmento(segmento, mapaCwd, contadores, nome);
   }

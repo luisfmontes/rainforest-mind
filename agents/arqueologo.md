@@ -1,6 +1,6 @@
 ---
 name: arqueologo
-description: Agente de arqueologia do rainforest-mind — sonnet que executa a skill arqueologia. Mapeia fatia de código legado com escala de confiança — escreve só em docs/rainforest/mapas/.
+description: Agente de arqueologia do rainforest-mind — sonnet que executa a skill arqueologia. Mapeia fatia de código legado com escala de confiança — escreve só na pasta de mapas que `node scripts/pastas-docs.cjs caminho --tipo mapas` devolve.
 model: sonnet
 disallowedTools: Agent
 ---
@@ -52,7 +52,8 @@ global ou serviço não é. Ferramenta ausente para rodar as passadas: **PARE**,
 reporte o que falta e o comando que resolveria; decisão de instalar é da
 janela principal.
 
-**Condição de parada, objetiva**: escreve **só** em `docs/rainforest/mapas/`;
+**Condição de parada, objetiva**: escreve **só** na pasta de mapas que
+`node scripts/pastas-docs.cjs caminho --tipo mapas` devolve;
 nenhuma edição de fonte, nenhum diff, nenhuma sugestão formatada como patch.
 Toda afirmação `CONFIRMADO` cita `arquivo:linha`, e afirmação sem citação é
 reprovada antes de sair. Mapa que não cabe numa sessão significa escopo errado

@@ -30,7 +30,9 @@
  *
  * Saídas de emergência, as mesmas dos outros gates:
  *   - env RAINFOREST_GATE_OFF=1  → desliga na sessão inteira
- *   - arquivo .rainforest-gate-off na raiz do repo → desliga naquele repo
+ *   - chave do config do projeto (`.rainforest/config.json`, lida da raiz do
+ *     checkout principal mesmo de dentro de um worktree)
+ * O arquivo `.rainforest-gate-off` deixou de ser lido (#417).
  */
 
 const { execFileSync } = require("node:child_process");
@@ -146,7 +148,8 @@ function repositoriosDoGitHub(gitTop) {
   for (const nome of nomes) {
     const url = git(gitTop, ["remote", "get-url", nome]);
     if (!url) continue;
-    const m = url.match(/(?:https:\/\/|git@)(?:www\.)?github\.com[:/]([\w.-]+)\/([\w.-]+?)(?:\.git)?$/);
+    // `ssh://` aceita porta (`:22`, `:443`) e o host `ssh.github.com` (SSH pela 443).
+    const m = url.match(/(?:https:\/\/(?:[^@/\s]+@)?(?:www\.)?github\.com[:/]|ssh:\/\/git@(?:ssh\.|www\.)?github\.com(?::\d+)?\/|git@(?:www\.)?github\.com:)([\w.-]+)\/([\w.-]+?)(?:\.git)?$/);
     if (!m) continue;
     const ownerRepo = `${m[1]}/${m[2]}`;
     if (!achados.includes(ownerRepo)) achados.push(ownerRepo);
@@ -262,39 +265,6 @@ function estaGitignorado(dir, arquivo) {
   } catch {
     return false; // arquivo NÃO está ignorado (exit 1 de check-ignore)
   }
-}
-
-/**
- * O gate está desligado por arquivo `.rainforest-gate-off`?
- *
- * Issue #265: o arquivo é untracked, então `git worktree add` não o leva para
- * a raiz do worktree novo — quem cria o toggle no checkout PRINCIPAL via um
- * worktree linkado do mesmo repo (`gitTop` ali é a raiz do worktree, não a do
- * principal) tinha o gate voltando a bloquear lá, mesmo com o arquivo presente
- * no repo.
- *
- * `gitTop` continua sendo a raiz de onde o comando roda — é dali que o resto
- * do hook lê conteúdo, visibilidade e `.gitignore`, e isso não muda. Este
- * arquivo é o ÚNICO lido também na raiz do checkout principal, deduzida via
- * `--git-common-dir` (mesmo padrão de `scripts/limpar-worktrees.cjs:365-379`):
- * aponta para o `.git` do principal mesmo a partir de um worktree, e
- * `path.dirname()` do resultado (quando termina em `.git`) dá a raiz dele.
- *
- * Falha ao medir o common-dir não apaga o comportamento de hoje: a checagem
- * do próprio `gitTop` roda sempre, a do principal é só um OR a mais.
- */
-function desligadoPorArquivo(gitTop) {
-  try {
-    if (fs.existsSync(path.join(gitTop, ".rainforest-gate-off"))) return true;
-  } catch {}
-  try {
-    const commonDir = git(gitTop, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
-    if (commonDir && path.basename(commonDir) === ".git") {
-      const raizPrincipal = path.dirname(commonDir);
-      if (raizPrincipal !== gitTop && fs.existsSync(path.join(raizPrincipal, ".rainforest-gate-off"))) return true;
-    }
-  } catch {}
-  return false;
 }
 
 /**
@@ -453,7 +423,7 @@ function soIntroduzidos(achados, textoNovo, textoAntigo) {
 /**
  * Formata a mensagem de bloqueio com os achados.
  */
-function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade) {
+function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade, temRemotoGitHub) {
   let msg = `BLOQUEADO pelo gate de publicação do rainforest-mind.\n\n` +
     `Arquivo: ${arquivo}\n` +
     `Razão: este arquivo é versionado (rastreado por git) e contém dados sensíveis.\n\n` +
@@ -470,6 +440,11 @@ function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade) {
     msgVisibilidade = `\n\nRepositório: visibilidade pública, apurada por 'gh repo view'. `;
   } else if (visibilidade === "desconhecida") {
     msgVisibilidade = `\n\nRepositório: visibilidade desconhecida — bloqueado por precaução. `;
+    // Com remoto GitHub a declaracao nao vale (declaradaPrivada), entao nao se sugere.
+    if (!ehSubagente && !temRemotoGitHub) {
+      msgVisibilidade += `Repositório privado fora do GitHub? Declare \`"visibilidade-repo": "privada"\` em ` +
+        `.rainforest/config.json do projeto (vale só para termos da lista privada; telefone, JID, CPF e credencial continuam barrando). `;
+    }
   }
   msg += msgVisibilidade;
 
@@ -487,17 +462,14 @@ function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade) {
     ? `PARE e reporte isto para a janela principal — ela decide como seguir.\n` +
       `NÃO crie arquivo nem variável para desativar esta trava: a decisão não é sua,\n` +
       `e desativá-la para si mesmo é o contorno que esta trava existe para impedir.\n`
-    : `As duas saídas de emergência NÃO valem no MESMO comando:\n` +
+    : `A saída de emergência por ambiente NÃO vale no MESMO comando:\n` +
       `  - RAINFOREST_GATE_OFF=1 no ambiente: precisa estar na sessão (export),\n` +
-      `    não funciona como prefixo inline ('RAINFOREST_GATE_OFF=1 git commit');\n` +
-      `  - arquivo .rainforest-gate-off: é conferido ANTES do hook rodar, então\n` +
-      `    'touch .rainforest-gate-off && git commit' é bloqueado (usa outro 'git add' depois).\n\n` +
+      `    não funciona como prefixo inline ('RAINFOREST_GATE_OFF=1 git commit').\n\n` +
       `Se isto é falso positivo legítimo (teste com dado fake, documentação de formato),\n` +
-      `você tem três saídas:\n` +
+      `você tem duas saídas:\n` +
       `  - node scripts/setup.cjs --desligar gate-publicacao --escopo projeto (preferida,\n` +
       `    desliga só neste repositório, de forma declarada e legível);\n` +
-      `  - RAINFOREST_GATE_OFF=1 no ambiente da sessão (desliga na sessão inteira);\n` +
-      `  - arquivo .rainforest-gate-off na raiz do repo (desliga naquele repo).\n`;
+      `  - RAINFOREST_GATE_OFF=1 no ambiente da sessão (desliga na sessão inteira).\n`;
 
   msg += saidas;
   return msg;
@@ -507,12 +479,33 @@ function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade) {
 // Medido na revisao de 2026-09-15: o aviso da Issue #165 era escrito no stderr
 // antes desta chamada, e em repositorio privado o gate segue para `exit(0)` --
 // o usuario lia "este conteudo entraria no COMMIT" e nada tinha sido barrado.
+// Declaração `visibilidade-repo: "privada"` (Issue #419). Modelo de ameaça: protege
+// contra termo da lista privada bloquear trabalho legítimo em repo de trabalho
+// privado fora do GitHub, que o `gh` não enxerga. Fica fora o repo declarado
+// privado que depois vira público — a declaração é do usuário. Só vale quando o
+// `gh` não soube responder; `publica` apurada prevalece.
+function declaradaPrivada(gitTop) {
+  try {
+    // So o config DO PROJETO declara: no config de usuario a chave valeria para
+    // todo repositorio sem resposta do `gh`, e a declaracao e por repositorio (D22).
+    // E so para remoto FORA do GitHub: com remoto GitHub, `desconhecida` e o `gh`
+    // fora do ar, e a declaracao liberaria termo privado num repo que pode ser publico.
+    if (repositoriosDoGitHub(gitTop).length > 0) return false;
+    const r = require("./lib/config.cjs").resolverConfig({ projeto: gitTop });
+    return r.valores["visibilidade-repo"] === "privada" && String(r.origem["visibilidade-repo"]).startsWith("projeto");
+  } catch { return false; }
+}
+
 function bloqueia(achados, arquivo, agente, gitTop, preambulo) {
   const ehSubagente = Boolean(agente);
   const visibilidade = visibilidadeDoRepo(gitTop);
   if (visibilidade === "privada") process.exit(0);
+  if (visibilidade === "desconhecida" && declaradaPrivada(gitTop)) achados = achados.filter((a) => a.id !== "termo-privado");
+  // Sem achado depois do filtro, este arquivo/edit esta liberado e o laco do
+  // chamador CONTINUA: sair aqui deixaria os seguintes sem exame.
+  if (achados.length === 0) return;
   if (preambulo) process.stderr.write(preambulo);
-  process.stderr.write(mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade));
+  process.stderr.write(mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade, repositoriosDoGitHub(gitTop).length > 0));
   process.exit(2);
 }
 
@@ -695,8 +688,6 @@ function conferirCommit(ev, cwdDoEvento, agente) {
   const gitTop = git(cwdDoEvento, ["rev-parse", "--show-toplevel"]);
   if (!gitTop) process.exit(0);
 
-  if (desligadoPorArquivo(gitTop)) process.exit(0);
-
   for (const { nome, conteudo } of arquivosQueVaoParaOCommit(gitTop, cmd)) {
     const absoluto = path.join(gitTop, nome);
     if (estaGitignorado(gitTop, absoluto)) continue;
@@ -779,8 +770,6 @@ function main() {
 
         if (temMarcadorDados(a)) continue; // marcador de dados-de-exemplo passa
 
-        if (desligadoPorArquivo(gitTop)) continue; // Issue #265: faltava aqui
-
         let resultado = conferirConteudo(c);
         if (resultado && resultado.achados && resultado.achados.length) {
           // Filtra apenas achados introduzidos (não presentes em old_string)
@@ -811,9 +800,6 @@ function main() {
 
   // Confere se tem marcador de dados-de-exemplo (para testes de bateria)
   if (temMarcadorDados(arquivo)) process.exit(0); // marcador dispensa conferência
-
-  // Toggle de emergência, herdado do checkout principal quando gitTop é worktree
-  if (desligadoPorArquivo(gitTop)) process.exit(0);
 
   // Roda a conferência de publicação
   let resultado = conferirConteudo(conteudo);

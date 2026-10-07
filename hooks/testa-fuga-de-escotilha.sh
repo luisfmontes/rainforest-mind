@@ -1,5 +1,5 @@
 #!/bin/bash
-# Bateria de fuga de escotilha — verifica que os cinco gates nomeiam
+# Bateria de fuga de escotilha — verifica que os seis gates nomeiam
 # saídas de emergência APENAS para a janela principal, nunca para subagente.
 # rainforest-gate: dados-de-exemplo
 #
@@ -7,7 +7,7 @@
 # e afirma que o stderr não contém .rainforest-gate-off nem RAINFOREST_GATE_OFF.
 #
 # Uso: bash hooks/testa-fuga-de-escotilha.sh
-# Saída: exit 0 se todos os 5 gates passaram; exit 1 se algum falhou.
+# Saída: exit 0 se todos os 6 gates passaram; exit 1 se algum falhou.
 # Imprime placar: ok: N   falhou: M
 
 set -u
@@ -80,7 +80,7 @@ git -C "$ALHEIO" commit -qm "base"
 
 echo
 
-echo "== Testando os 5 gates com agent_id =="
+echo "== Testando os 6 gates com agent_id =="
 
 # Helper: escape caminho para Windows/POSIX
 
@@ -148,6 +148,20 @@ echo "contato: SEGREDO" > "$STAGED_REPO/arquivo.txt"
 git -C "$STAGED_REPO" add arquivo.txt
 PAYLOAD=$(node -e 'const s=process.argv[1];console.log(JSON.stringify({cwd:s,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"git commit -m test"},agent_id:"agent-5",agent_type:"executor"}))' "$STAGED_REPO")
 testa_gate "gate-verificador-staged" "$PAYLOAD"
+
+# GATE 6: gate-git-verificacao (D10, #417)
+# Subagente tenta `git commit --no-verify` → recusado, sem a secao de saidas
+echo "6. gate-git-verificacao: subagente nao ve RAINFOREST_GATE_OFF"
+PAYLOAD=$(node -e 'const p=process.argv[1];console.log(JSON.stringify({cwd:p,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"git commit --no-verify -m x"},agent_id:"agent-6",agent_type:"executor"}))' "$PRINCIPAL")
+testa_gate "gate-git-verificacao" "$PAYLOAD"
+
+# Contraprova: a janela principal (sem agent_id) CONTINUA vendo a variavel
+MSG6=$(node -e 'const p=process.argv[1];console.log(JSON.stringify({cwd:p,hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"git commit --no-verify -m x"}}))' "$PRINCIPAL" | node "$SRC/hooks/gate-git-verificacao.cjs" 2>&1)
+if printf '%s' "$MSG6" | grep -q "RAINFOREST_GATE_OFF"; then
+  echo "  ✓ gate-git-verificacao: a janela principal ainda ve RAINFOREST_GATE_OFF"; ok=$((ok+1))
+else
+  echo "  ✗ gate-git-verificacao: a janela principal deixou de ver a saida"; falhou=$((falhou+1))
+fi
 
 echo
 echo "== Casos com aspas duplas para validar JSON.stringify ==="

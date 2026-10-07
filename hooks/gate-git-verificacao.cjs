@@ -204,7 +204,6 @@
  *
  * Saidas de emergencia, as mesmas dos outros gates deste plugin:
  *   - env RAINFOREST_GATE_OFF=1        -> desliga na sessao inteira;
- *   - arquivo .rainforest-gate-off na raiz do repo -> desliga naquele repo;
  *   - `.rainforest/config.json` do projeto, chave `gate-git-verificacao`
  *     (registrada em CHAVES de hooks/lib/config.cjs, lida por `ligado()`;
  *     padrao LIGADO — quem quiser desligar declara `false` na chave).
@@ -1010,8 +1009,8 @@ function analisaComando(cmd, profundidade) {
   return null;
 }
 
-function bloqueia(motivo, dir) {
-  process.stderr.write(
+function corpoDaMensagem(motivo, dir) {
+  return (
     `BLOQUEADO pelo gate de verificacao git do rainforest-mind.\n\n` +
     `Comando: ${motivo}\n` +
     `Repo: ${dir}\n\n` +
@@ -1019,13 +1018,34 @@ function bloqueia(motivo, dir) {
     `existe para pegar erro ANTES de entrar no historico. Pular a verificacao na\n` +
     `hora em que ela reprova e exatamente a hora em que ela importa.\n\n` +
     `Nao use --no-verify, -n (em commit) nem --no-gpg-sign. Se o hook esta\n` +
-    `reprovando por motivo legitimo, conserte o motivo — nao pule a checagem.\n\n` +
+    `reprovando por motivo legitimo, conserte o motivo — nao pule a checagem.\n\n`
+  );
+}
+
+// Mensagem que o SUBAGENTE le, sem secao de saidas: escotilha nomeada na
+// mensagem de bloqueio, sem verificacao de proveniencia, e indistinguivel de
+// instrucao de contorno para quem esta justamente tentando contornar (mesma
+// decisao do gate-staging-total, relatorio 2026-08-11).
+function mensagemSemEscotilha(motivo, dir) {
+  return (
+    corpoDaMensagem(motivo, dir) +
+    `PARE e reporte isto para a janela principal — ela decide como seguir.\n`
+  );
+}
+
+function mensagemDeBloqueio(motivo, dir, ehSubagente) {
+  if (ehSubagente) return mensagemSemEscotilha(motivo, dir);
+  return (
+    corpoDaMensagem(motivo, dir) +
     `Saidas de emergencia, para quem decide seguir mesmo assim:\n` +
     `  - RAINFOREST_GATE_OFF=1 no ambiente da sessao (desliga na sessao inteira);\n` +
-    `  - arquivo .rainforest-gate-off na raiz do repo (desliga so naquele repo);\n` +
     `  - chave "gate-git-verificacao": false em .rainforest/config.json do\n` +
-    `    projeto (desliga so naquele repo, sem precisar de arquivo marcador).\n`
+    `    projeto (desliga so naquele repo).\n`
   );
+}
+
+function bloqueia(motivo, dir, ehSubagente) {
+  process.stderr.write(mensagemDeBloqueio(motivo, dir, ehSubagente));
   process.exit(2);
 }
 
@@ -1055,10 +1075,7 @@ function main() {
   const { motivo, dirC } = achado;
 
   const dir = dirC || cwdDoEvento;
-  const toplevel = git(dir, ["rev-parse", "--show-toplevel"]) || dir;
-  if (fs.existsSync(path.join(toplevel, ".rainforest-gate-off"))) process.exit(0);
-
-  bloqueia(motivo, dir);
+  bloqueia(motivo, dir, Boolean(ev.agent_id));
 }
 
 main();

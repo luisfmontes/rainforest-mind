@@ -13,6 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { spawnSync } = require('child_process');
+const { caminhoDoc } = require(path.join(__dirname, '..', 'hooks', 'lib', 'pastas-docs.cjs'));
 const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 const RAIZ = process.env.RFM_ESTADO_ROOT
@@ -95,7 +96,7 @@ process.on('SIGTERM', () => { limpeza(); process.exit(143); });
 
 function cmdPlano() {
   const slug = arg('slug');
-  const arquivo = arg('plano', false) || path.join(RAIZ, 'docs', 'rainforest', 'planos', `${slug}.md`);
+  const arquivo = arg('plano', false) || path.join(RAIZ, caminhoDoc('planos', slug, { raiz: RAIZ }));
 
   const conteudo = lerMarkdown(arquivo);
   if (!conteudo) {

@@ -1,0 +1,194 @@
+{
+  "slug": "2026-10-07-zerar-issues-17",
+  "titulo": "Zerar issues: #409-#414, #417",
+  "criado_em": "2026-10-07",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-07-zerar-issues-17.md",
+    "em": "2026-10-07"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-07-zerar-issues-17.md",
+    "tarefas": 9,
+    "paralelas": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "em": "2026-10-07"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-07",
+    "tarefas_ok": 10,
+    "tarefas": 10,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "0656db33",
+        "iteracao": 1,
+        "sessao": "8a92195d-02e9-4689-a92d-ece42b872931",
+        "ts": "2026-10-07T13:08:43.593Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "0656db33",
+        "iteracao": 1,
+        "sessao": "8a92195d-02e9-4689-a92d-ece42b872931",
+        "ts": "2026-10-07T13:08:43.593Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "0656db33",
+        "iteracao": 1,
+        "sessao": "8a92195d-02e9-4689-a92d-ece42b872931",
+        "ts": "2026-10-07T13:08:43.593Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "0656db33",
+        "iteracao": 1,
+        "sessao": "8a92195d-02e9-4689-a92d-ece42b872931",
+        "ts": "2026-10-07T13:08:43.593Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "0656db33",
+        "iteracao": 1,
+        "sessao": "8a92195d-02e9-4689-a92d-ece42b872931",
+        "ts": "2026-10-07T13:08:43.593Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "a1560fcd",
+        "iteracao": 1,
+        "sessao": "8a92195d-02e9-4689-a92d-ece42b872931",
+        "ts": "2026-10-07T13:42:30.671Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "a1560fcd",
+        "iteracao": 1,
+        "sessao": "8a92195d-02e9-4689-a92d-ece42b872931",
+        "ts": "2026-10-07T13:42:30.671Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "8ef0d22f",
+        "iteracao": 1,
+        "sessao": "8a92195d-02e9-4689-a92d-ece42b872931",
+        "ts": "2026-10-07T14:02:54.561Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "a1560fcd",
+        "iteracao": 2,
+        "sessao": "8a92195d-02e9-4689-a92d-ece42b872931",
+        "ts": "2026-10-07T14:27:57.800Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "6134c557",
+        "iteracao": 1,
+        "sessao": "8a92195d-02e9-4689-a92d-ece42b872931",
+        "ts": "2026-10-07T14:27:57.800Z"
+      }
+    ],
+    "em": "2026-10-07",
+    "comando": "bash scripts/varrer-baterias.sh --shard i/4 (i=1..4) + baterias da emenda",
+    "saida": "178 verdes antes da emenda; emenda: publicacao-destino 76 ok, fechar-issue 286 ok, sem-instalar 137 ok; revisao 2: fechar-issue 289 ok, publicacao 78 ok; revisao 3: fechar-issue 292 ok, publicacao 78 ok",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "409 pseudo-versao Go em go.mod nao e telefone"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "remocao de caminho de codigo; prova e o caso novo vermelho na base (27 ok, 2 falhas)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "411 config do projeto visto de dentro de worktree linkado"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "414-1 set -a ponto env com variavel passa"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "413 verificar --raiz roda a mutacao na arvore do codigo"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "gate-git-verificacao: stderr contem saidas de emergencia"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "mapas adota docs/legado com COBERTURA"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "texto de skill e agente, sem comportamento executavel"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "troca de versao e changelog"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "419 visibilidade-repo privada libera termo privado com remoto sem gh"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "d9f74bda3dbb3001c33448ed2d5de8d202b44abb",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-10-07-zerar-issues-17.json"
+      ]
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a0a2b3acf204bd307",
+        "veredito": "ok",
+        "em": "2026-10-07",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/8a92195d-02e9-4689-a92d-ece42b872931/subagents/agent-a0a2b3acf204bd307.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-07",
+    "achados": 0,
+    "rodada": 6,
+    "nota": "rodada 5 voltou aprovada; snapshot precisa ser recapturado depois do merge da main",
+    "base": "8ee17ff6dc8eb2e5cfde1b222d08fa925f375d9d",
+    "head": "d9f74bda3dbb3001c33448ed2d5de8d202b44abb"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/varrer-baterias.sh --shard i/4 (4 shards) + baterias e greps de cada pronto quando + node scripts/conferir-fluxo.cjs mutacoes",
+    "saida": "181 de 181 baterias verdes (41+54+43+43, EXIT=0 nos 4); testa-estado 314 ok, conferir-publicacao 162, mod-abertura 29, config 63, setup 60, gate-fechar-issue 295, gate-publicacao-destino 78, pastas-docs 15, conferir-fluxo 102, semear 31, desvio-do-plano 22, 0 falhas; greps T2/T6/T8 conforme; conferir-versao 1.46.0 exit 0; claude plugin validate exit 0; mutacoes 1,3,4,5,6,7,10 vermelho, 2,8,9 n/a",
+    "sensor_externo": "bash scripts/varrer-baterias.sh",
+    "em": "2026-10-07"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

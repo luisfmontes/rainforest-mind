@@ -183,9 +183,9 @@ echo "== (e) RAINFOREST_GATE_OFF=1 libera gh issue close =="
 EXIT_E=$?
 [ $EXIT_E -eq 0 ] && test_ok "exit 0 (emergência ativa)" || test_fail "exit code (foi $EXIT_E)"
 
-# Caso (f): .rainforest-gate-off na raiz → libera tudo
+# Caso (f): .rainforest-gate-off na raiz NÃO libera mais (#417) — só RAINFOREST_GATE_OFF (caso e)
 echo
-echo "== (f) .rainforest-gate-off libera gh pr merge =="
+echo "== (f) .rainforest-gate-off presente NAO libera gh issue close =="
 mkdir -p "$SBP/repo"
 cd "$SBP/repo"
 git init . >/dev/null 2>&1
@@ -193,11 +193,11 @@ touch "$SBP/repo/.rainforest-gate-off"
 SBP_WIN_REPO="$(cygpath -m "$SBP/repo")"
 (
   export PATH="$SBP/bin:$PATH"
-  PAYLOAD='{"cwd":"'"$SBP_WIN_REPO"'","tool_name":"Bash","tool_input":{"command":"gh pr merge --body \"closes #888\""}}'
+  PAYLOAD='{"cwd":"'"$SBP_WIN_REPO"'","tool_name":"Bash","tool_input":{"command":"gh issue close 888"}}'
   echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
 ) 2>"$SBP/err-f"
 EXIT_F=$?
-[ $EXIT_F -eq 0 ] && test_ok "exit 0 (arquivo de emergência)" || test_fail "exit code (foi $EXIT_F)"
+[ $EXIT_F -eq 2 ] && test_ok "arquivo presente nao desliga: exit 2" || test_fail "arquivo presente nao desliga (foi $EXIT_F)"
 
 # Caso (g): `gh.exe issue close 999921` → exit 2 (exe com extensão)
 echo
@@ -1126,7 +1126,8 @@ EXIT_BX=$?
 # executa um ARQUIVO opaco ao parser; mesma postura conservadora que
 # `bash x.sh` (sem `-c`) ja recebe do laco W1 — exit 2.
 echo
-echo "== (by) source fechar.sh → exit 2 (R18, arquivo opaco) =="
+echo "== (by) source fechar.sh → exit 2 (R18, arquivo que fecha Issue) =="
+printf 'gh issue close 12\n' > "$SBP/fechar.sh"
 (
   export PATH="$SBP/bin:$PATH"
   PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"source fechar.sh"}}'
@@ -2978,6 +2979,145 @@ EXIT_350B=$?
 [ $EXIT_350B -eq 2 ] && test_ok "exit 2 (relativo)" || test_fail "exit code (foi $EXIT_350B)"
 ERR_350B="$(cat "$SBP/err-350b")"
 echo "$ERR_350B" | grep -q "caminho relativo" && test_ok "stderr cita 'caminho relativo'" || test_fail "stderr não cita 'caminho relativo' ($ERR_350B)"
+
+# Issue #414 (D14-D16): `source`/`.` de arquivo de ambiente nao e `gh`. O
+# desempacotador devolve `ilegivel` sempre para os dois e o gate barrava todo
+# `. x.env` com "contem variavel". Agora o arquivo e lido: so barra o que fecha.
+# Chamador real: `processarSegmento` (gate-fechar-issue.cjs), ramo
+# `if (ehSourceDeArquivo(toksComAspas, pos))`, antes de `desempacotarWrapperDeString`.
+rodar414() { # $1 = comando; stderr em $SBP/err-414
+  (
+    export PATH="$SBP/bin:$PATH"
+    node -e 'console.log(JSON.stringify({cwd:process.argv[2],tool_name:"Bash",tool_input:{command:process.argv[1]}}))' "$1" "$SBP_WIN" | node "$SRC/hooks/gate-fechar-issue.cjs"
+  ) 2>"$SBP/err-414"
+}
+NL414=$'\n'
+
+echo
+echo "== (414-1) set -a ponto env com variavel passa =="
+rodar414 'cd /tmp && W=/c/x; set -a; [ -f "/c/x/transcription.env" ] && . "/c/x/transcription.env"; set +a'"$NL414"'TRANSCRIPTION_ENGINE=local uv run --directory "$W/srv" python transcribe.py --message-id X --chat-jid Y; echo "exit=$?"'
+E414=$?
+[ $E414 -eq 0 ] && test_ok "414-1 set -a ponto env com variavel passa" || test_fail "414-1 set -a ponto env com variavel passa (exit $E414: $(cat "$SBP/err-414"))"
+
+echo
+echo "== (414-2) ponto env literal passa =="
+rodar414 'set -a; . /c/x/transcription.env; set +a'"$NL414"'TRANSCRIPTION_ENGINE=local uv run --directory "C:/x/srv" python transcribe.py --message-id X --chat-jid Y; echo "exit=$?"'
+E414=$?
+[ $E414 -eq 0 ] && test_ok "414-2 ponto env literal passa" || test_fail "414-2 ponto env literal passa (exit $E414: $(cat "$SBP/err-414"))"
+
+echo
+echo "== (414-3) laco com ponto ./\$f passa =="
+rodar414 'for f in env-api env-off; do ( unset TRANSCRIPTION_ENGINE; set -a; . ./$f; set +a; case "${TRANSCRIPTION_ENGINE:-off}" in off) export TRANSCRIPTION_ENGINE=local ;; esac; echo "$f -> $TRANSCRIPTION_ENGINE" ); done'
+E414=$?
+[ $E414 -eq 0 ] && test_ok "414-3 laco com ponto ./\$f passa" || test_fail "414-3 laco com ponto ./\$f passa (exit $E414: $(cat "$SBP/err-414"))"
+
+echo
+echo "== (414-4) ponto de script que fecha issue barra =="
+printf 'echo oi\ngh issue close 12\n' > "$SBP/fecha414.sh"
+rodar414 '. ./fecha414.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-4 ponto de script que fecha issue barra" || test_fail "414-4 ponto de script que fecha issue barra (exit $E414)"
+rodar414 'source fecha414.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-4 source de script que fecha issue barra" || test_fail "414-4 source de script que fecha issue barra (exit $E414)"
+
+# Emenda da revisao: o ramo exigia `gh issue close` contiguo e, com cwd incerto,
+# passava. O conteudo do arquivo agora segue o caminho de um comando digitado.
+echo
+echo "== (414-5..7) ponto de script com variantes de gh que fecham barra =="
+printf 'gh -R a/b issue close 12\n' > "$SBP/fecha414-r.sh"
+rodar414 '. ./fecha414-r.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-5 ponto de script com gh -R issue close barra" || test_fail "414-5 ponto de script com gh -R issue close barra (exit $E414)"
+printf 'gh --repo a/b issue close 12\n' > "$SBP/fecha414-repo.sh"
+rodar414 '. ./fecha414-repo.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-6 ponto de script com gh --repo issue close barra" || test_fail "414-6 ponto de script com gh --repo issue close barra (exit $E414)"
+printf 'if true; then gh -R a/b issue close 12; fi\n' > "$SBP/fecha414-if.sh"
+rodar414 '. ./fecha414-if.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-7 ponto de script com if/then gh issue close barra" || test_fail "414-7 ponto de script com if/then gh issue close barra (exit $E414)"
+
+echo
+echo "== (414-8..9) cwd incerto usa o cwd do evento =="
+rodar414 '(. ./fecha414.sh)'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-8 subshell com ponto de script que fecha barra" || test_fail "414-8 subshell com ponto de script que fecha barra (exit $E414)"
+rodar414 '{ . ./fecha414.sh; }'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-8 chaves com ponto de script que fecha barra" || test_fail "414-8 chaves com ponto de script que fecha barra (exit $E414)"
+rodar414 'bash -c ". ./fecha414.sh"'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-9 bash -c com ponto de script que fecha barra" || test_fail "414-9 bash -c com ponto de script que fecha barra (exit $E414)"
+rodar414 'eval ". ./fecha414.sh"'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-9 eval com ponto de script que fecha barra" || test_fail "414-9 eval com ponto de script que fecha barra (exit $E414)"
+printf 'FOO=bar\neval "$(echo x)"\nbash -c "$FOO"\n' > "$SBP/ilegivel414.sh"
+rodar414 '. ./ilegivel414.sh'
+E414=$?
+[ $E414 -eq 0 ] && test_ok "414-10 script carregado com variavel ilegivel segue passando" || test_fail "414-10 script carregado com variavel ilegivel segue passando (exit $E414: $(cat "$SBP/err-414"))"
+
+# Revisao rodada 2: dentro do arquivo carregado, o ilegivel passava inteiro, e
+# um `gh issue close` LITERAL ao lado de uma variavel alheia passava junto.
+echo
+echo "== (414-11..12) literal que fecha, ao lado de variavel, barra =="
+printf 'bash -c "gh issue close 1 && echo $HOME"\n' > "$SBP/lit414-home.sh"
+rodar414 '. ./lit414-home.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-11 bash -c com literal e variavel alheia barra" || test_fail "414-11 bash -c com literal e variavel alheia barra (exit $E414)"
+printf 'sh -c "gh -R a/b issue close 1; $X"\n' > "$SBP/lit414-x.sh"
+rodar414 '. ./lit414-x.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-11 sh -c com gh -R literal e variavel barra" || test_fail "414-11 sh -c com gh -R literal e variavel barra (exit $E414)"
+# Revisao rodada 3: aspas escapadas e ofuscacao por aspas nao escondem o literal.
+cat > "$SBP/lit414-esc.sh" <<'ESC414'
+bash -c "gh -R \"a/b\" issue close 1; echo $X"
+ESC414
+rodar414 '. ./lit414-esc.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-11 aspas escapadas no -R nao escondem o literal" || test_fail "414-11 aspas escapadas no -R nao escondem o literal (exit $E414)"
+cat > "$SBP/lit414-ofusca.sh" <<'OFU414'
+bash -c "gh issue c''lose 1 $X"
+OFU414
+rodar414 '. ./lit414-ofusca.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-11 close ofuscado por aspas barra" || test_fail "414-11 close ofuscado por aspas barra (exit $E414)"
+# Encadeado: `.` dentro do arquivo resolve contra o cwd de quem carregou.
+mkdir -p "$SBP/sub414"
+printf '. ./fecha414.sh\n' > "$SBP/sub414/encadeia.sh"
+rodar414 '. ./sub414/encadeia.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-12 ponto encadeado resolve contra o cwd e barra" || test_fail "414-12 ponto encadeado resolve contra o cwd e barra (exit $E414)"
+# O mesmo arquivo carregado de dois cwds encadeia arquivos diferentes: a
+# segunda carga nao pode ser pulada pelo corte de ciclo.
+mkdir -p "$SBP/a414" "$SBP/b414"
+printf '. ./alvo.sh\n' > "$SBP/a414/x.sh"
+printf 'echo oi\n' > "$SBP/a414/alvo.sh"
+printf 'gh issue close 12\n' > "$SBP/b414/alvo.sh"
+rodar414 'cd a414 && . ./x.sh; cd ../b414 && . ../a414/x.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-13 mesmo arquivo carregado de outro cwd e relido" || test_fail "414-13 mesmo arquivo carregado de outro cwd e relido (exit $E414)"
+# `$'..'` e `$".."` sao aspas do bash: o literal dentro delas segue legivel.
+cat > "$SBP/lit414-dolar.sh" <<'DOL414'
+bash -c $'gh issue close 1'
+DOL414
+rodar414 '. ./lit414-dolar.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-15 $'..' em arquivo carregado barra" || test_fail "414-15 $'..' em arquivo carregado barra (exit $E414)"
+cat > "$SBP/lit414-dolar2.sh" <<'DOL414'
+bash -c "gh $'issue' close 1 $X"
+DOL414
+rodar414 '. ./lit414-dolar2.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-16 $'..' no meio do comando barra" || test_fail "414-16 $'..' no meio do comando barra (exit $E414)"
+# Cadeia de 12 arquivos distintos, cada um carregando o seguinte por caminho
+# absoluto e nenhum fechando Issue: so o teto de profundidade barra. Sem
+# teto, a leitura percorre a cadeia inteira e libera (exit 0).
+for n in $(seq 1 11); do printf '. %s/cadeia414-%s.sh\n' "$SBP_WIN" "$((n+1))" > "$SBP/cadeia414-$n.sh"; done
+printf 'echo fim\n' > "$SBP/cadeia414-12.sh"
+rodar414 '. ./cadeia414-1.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-14 encadeamento sem fim barra pelo teto" || test_fail "414-14 encadeamento sem fim barra pelo teto (exit $E414: $(head -c 300 "$SBP/err-414"))"
 
 # Resultado final
 echo

@@ -15,7 +15,7 @@
 #      subcomando certo;
 #   5. que qualquer comando que nao seja `git`, e qualquer `tool_name` que nao
 #      seja `Bash`, passa sempre;
-#   6. as saidas de emergencia (RAINFOREST_GATE_OFF, .rainforest-gate-off);
+#   6. as saidas de emergencia (RAINFOREST_GATE_OFF e a chave do config; o arquivo .rainforest-gate-off nao desliga mais);
 #   7. os nove contornos medidos pelo security review (criterio ampliado da
 #      tarefa 2, commit 7d0fb268): flag citada de tres formas, abreviacao de
 #      long option, separador `&`, prefixo nao-reconhecido (`then`),
@@ -265,9 +265,8 @@ if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   RAINFOREST_GATE_OFF=1 libera (
 else falhou=$((falhou+1)); echo "  FALHA RAINFOREST_GATE_OFF nao liberou (exit $rc)"; fi
 
 touch "$R/.rainforest-gate-off"
-gate ".rainforest-gate-off na raiz libera o repo"   0 "$(b 'git commit --no-verify -m x')"
+gate ".rainforest-gate-off presente NAO libera o repo (#417)"   2 "$(b 'git commit --no-verify -m x')"
 rm "$R/.rainforest-gate-off"
-gate "  ... e volta a barrar quando o arquivo sai"  2 "$(b 'git commit --no-verify -m x')"
 
 echo
 echo "== achado 2: toggle de config .rainforest/config.json (chave gate-git-verificacao) =="
