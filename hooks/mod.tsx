@@ -295,6 +295,9 @@ export const register: Register = (on, options) => {
     } catch {
       // sem comando, a barra segue
     }
+    // claude -p, SDK e subagente nao desenham a barra: sem timer, sem ler os fluxos do painel,
+    // e sem cancelar o relogio da sessao interativa que compartilha esta instancia do mod.
+    if (!e.isInteractive) return next(e)
     try {
       const dados = await buscar({
         rodar: (argv, init) => $.process.run(argv, init),
@@ -305,9 +308,6 @@ export const register: Register = (on, options) => {
     } catch {
       // a barra nunca quebra a abertura da sessao
     }
-    // claude -p, SDK e subagente nao desenham a barra: sem timer, e sem cancelar o relogio da
-    // sessao interativa que compartilha esta instancia do mod.
-    if (!e.isInteractive) return next(e)
     cancelarRelogio()
     try {
       const id = await $.session.id()
@@ -943,7 +943,9 @@ export const register: Register = (on, options) => {
       const abertos = deixado.itens.filter(i => i.estado === 'aberto')
       const fazAgora = async (id: number, texto: string): Promise<void> => {
         try {
-          await $.prompt.fill({ text: rascunhoFazAgora(texto) as string, mode: 'append' })
+          const preenchido = await $.prompt.fill({ text: rascunhoFazAgora(texto) as string, mode: 'append' })
+          // Prompt que recusou o texto deixa o item aberto: nada chegou a pessoa.
+          if (!preenchido?.isFilled) return
           await update($, painelDeixado, d => ({ ...deixadoInteiro(d), itens: deixadoInteiro(d).itens.map(i => (i.id === id ? { ...i, estado: 'enviado' as const } : i)) }))
         } catch (err) {
           try {
