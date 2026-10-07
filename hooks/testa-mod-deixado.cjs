@@ -153,7 +153,43 @@ const caso = (nome, fn) => casos.push([nome, fn]);
   caso("rascunho do 'Faz agora' esta em portugues e leva a frase", () => {
     const r = m.rascunhoFazAgora("Rodar a bateria da tarefa 2");
     afirma(r.includes("Rodar a bateria da tarefa 2"), "a frase some");
-    afirma(/Faca agora/.test(r), "o rascunho nao esta em portugues");
+    afirma(/Faça agora/.test(r), "o rascunho nao esta em portugues, com acento");
+  });
+
+  // -------------------------------------------- texto do modelo sem controle (achado A)
+  const PERIGO = /[\u0000-\u001f\u007f-\u009f‪-‮]/;
+  caso("deferimentos: ESC, BEL e override bidi nao chegam ao item", () => {
+    const r = m.deferimentos("Fica para depois a parte \x1b]0;pwn\x07 do relatorio ‮ final.");
+    igual(r.length, 1, "a frase continua acusando");
+    afirma(!PERIGO.test(r[0]), "sobrou controle em " + JSON.stringify(r[0]));
+  });
+  caso("lerRespostaChecker: ESC, BEL e override bidi nao chegam ao item", () => {
+    const r = m.lerRespostaChecker("Rodar a bateria \x1b[31m vermelha\x07 agora ‮ fim\n- Abrir \x1b]0;x\x07 o PR");
+    igual(r.length, 2, "dois itens");
+    afirma(r.every(x => !PERIGO.test(x)), "sobrou controle em " + JSON.stringify(r));
+  });
+  caso("marcadoresEmArquivo: ESC, BEL e override bidi nao chegam a linha", () => {
+    const r = m.marcadoresEmArquivo("// TODO: \x1b]0;pwn\x07 tratar ‮ timeout");
+    igual(r.length, 1, "TODO acha");
+    afirma(!PERIGO.test(r[0]), "sobrou controle em " + JSON.stringify(r[0]));
+  });
+
+  // ---------------------------------------------------- varredura de frases (achado G)
+  caso("falsos negativos: ficou/fica/ficaram para ou pra depois e ficou faltando acusam", () => {
+    for (const f of [
+      "A parte do relatorio ficou para depois por falta de tempo.",
+      "A parte do relatorio fica pra depois, sem pressa nenhuma.",
+      "A parte do relatorio ficou pra depois, sem pressa nenhuma.",
+      "Os ajustes de layout ficaram para depois da entrega.",
+      "O tratamento de timeout ficou faltando na versao final.",
+      "Dois casos de borda ficaram faltando na bateria nova.",
+    ]) igual(m.deferimentos(f).length, 1, f);
+  });
+  caso("falso positivo: negacao desfaz o adiamento", () => {
+    igual(m.deferimentos("Nada fica para depois nesta entrega, tudo foi feito.").length, 0, "nada fica para depois");
+    igual(m.deferimentos("Nenhum item ficou pra depois nesta entrega, tudo foi feito.").length, 0, "nenhum item ficou pra depois");
+    igual(m.deferimentos("Nao ficou faltando nada nesta entrega, tudo foi feito.").length, 0, "nao ficou faltando");
+    igual(m.deferimentos("Nada fica para depois, mas o relatorio ficou para depois mesmo.").length, 1, "negacao nao apaga outra frase positiva");
   });
   caso("CHECAR_MIN_FERRAMENTAS e 5", () => {
     igual(m.CHECAR_MIN_FERRAMENTAS, 5, "limiar");

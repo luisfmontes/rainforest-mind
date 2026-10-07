@@ -816,7 +816,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
       expect(s.fills).toHaveLength(1)
       expect(s.fills[0].mode).toBe('append')
       expect(String(s.fills[0].text)).toContain('Fluxo 4 (território) fica para depois do núcleo estável')
-      expect(String(s.fills[0].text)).toContain('Faca agora')
+      expect(String(s.fills[0].text)).toContain('Faça agora')
       expect(s.submits).toBe(submits + 1) // so o prompt.submit do pedido: o botao nunca envia
       expect(await itens()).toEqual([])
     })

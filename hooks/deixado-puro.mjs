@@ -8,9 +8,15 @@
 // Um turno com menos ferramentas que isso trabalhou pouco para valer um checker.
 export const CHECAR_MIN_FERRAMENTAS = 5;
 
+import { semControle } from './faixa-puro.mjs';
+
 // Como uma resposta diz que adiou trabalho. Roda sobre texto normalizado por
 // `semCitacao` (sem acento, minusculo, sem o que esta entre aspas ou crases).
-const DITO = /\b(?:por enquanto|fica(?:m|ra|ram)? para depois|deixei para depois|proxima (?:fase|etapa|rodada|passada)|nao (?:rodei|testei|verifiquei|implementei|executei|conferi|consegui)|sem (?:rodar|testar|verificar)|fora do escopo|em outra (?:rodada|passada|etapa)|placeholder|for now|follow[- ]up|out of scope|not yet|i (?:didn't|did not|haven't|have not|skipped|left)\b|(?:do|handle|add|fix|revisit|address|tackle) (?:that|this|it|them|those) later|in a later (?:pass|step|turn|change|pr)|still needs?|remains? to be|stubbed|untested|not (?:verified|tested|implemented|wired up))/i;
+const DITO = /\b(?:por enquanto|fic(?:a|am|ou|aram|ara|arao) (?:para|pra) depois|ficou faltando|ficaram faltando|deixei para depois|proxima (?:fase|etapa|rodada|passada)|nao (?:rodei|testei|verifiquei|implementei|executei|conferi|consegui)|sem (?:rodar|testar|verificar)|fora do escopo|em outra (?:rodada|passada|etapa)|placeholder|for now|follow[- ]up|out of scope|not yet|i (?:didn't|did not|haven't|have not|skipped|left)\b|(?:do|handle|add|fix|revisit|address|tackle) (?:that|this|it|them|those) later|in a later (?:pass|step|turn|change|pr)|still needs?|remains? to be|stubbed|untested|not (?:verified|tested|implemented|wired up))/i;
+
+// "Nada fica para depois", "nao ficou faltando": a negacao desfaz o adiamento, entao a
+// expressao negada sai do texto antes de DITO rodar.
+const NEGADO = /\b(?:nada|nenhum[a-z]*|nem|nao)\s+(?:[a-z]+\s+){0,2}?fic(?:a|am|ou|aram|ara|arao)\s+(?:(?:para|pra) depois|faltando)/g;
 
 // Como trabalho adiado aparece quando ja foi escrito num arquivo. `TODO` em maiusculas
 // e palavra portuguesa neste repo ("corpo de TODO heredoc"), por isso o marcador so conta
@@ -31,8 +37,9 @@ export const deferimentos = (resposta) =>
   String(resposta ?? '')
     .replace(/```[\s\S]*?```/g, ' ')
     .split(/(?<=[.!?])\s+|\n+/)
-    .map(parte => parte.replace(/^[\s>*#-]+/, '').replace(/\*\*/g, '').trim())
-    .filter(parte => parte.length > 12 && DITO.test(semCitacao(parte)))
+    // Texto do modelo: ESC, BEL e override bidi nunca chegam ao Text, ao toast nem ao prompt.
+    .map(parte => semControle(parte.replace(/^[\s>*#-]+/, '').replace(/\*\*/g, '')).trim())
+    .filter(parte => parte.length > 12 && DITO.test(semCitacao(parte).replace(NEGADO, ' ')))
     .map(parte => parte.slice(0, 200))
     .slice(0, 3);
 
@@ -41,7 +48,7 @@ export const marcadoresEmArquivo = (conteudo) =>
   String(conteudo ?? '')
     .split(/\r?\n/)
     .filter(linha => MARCA.test(linha))
-    .map(linha => linha.trim().slice(0, 200))
+    .map(linha => semControle(linha).trim().slice(0, 200))
     .slice(0, 3);
 
 const plural = (n, um, varios) => n + ' ' + (n === 1 ? um : varios);
@@ -91,10 +98,10 @@ export const montarPromptChecker = ({ pedido, relato, ferramentas }) =>
 export const lerRespostaChecker = (texto) =>
   String(texto ?? '')
     .split('\n')
-    .map(linha => linha.replace(/^[\s\d.)*-]+/, '').trim().slice(0, 200))
+    .map(linha => semControle(linha).replace(/^[\s\d.)*-]+/, '').trim().slice(0, 200))
     .filter(linha => linha !== '' && !['nenhum', 'none'].includes(linha.replace(/[.\s]+/g, '').toLowerCase()))
     .slice(0, 3);
 
 // Rascunho do prompt do botao "Faz agora". Nunca e enviado sozinho: so preenche.
 export const rascunhoFazAgora = (frase) =>
-  'Voce deixou isto para depois: "' + String(frase ?? '').slice(0, 200) + '". Faca agora e me diga o que rodou para provar.';
+  'Voce deixou isto para depois: "' + String(frase ?? '').slice(0, 200) + '". Faça agora e me diga o que rodou para provar.';
