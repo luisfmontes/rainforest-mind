@@ -1,4 +1,4 @@
-# Zerar issues: #409-#414, #417
+# Zerar issues: #409-#414, #417, #419
 
 ## Objetivo
 Fechar as sete issues abertas depois da 1.44.0 numa rodada só (MINOR 1.45.0 — chave de config `pastas` e flag `--raiz` novas): pasta de docs do repo adotada pelo mapa, design e plano; config de projeto visível em worktree; desligar gate só por variável e config; raiz do código separada da raiz do estado na catraca do verificar; `. arquivo` lido pelo gate de Issue; dois falsos positivos do gate de publicação; e a retirada do contorno do `cc-plugin-sec-default` que a revisão de segurança apontou no #418.
@@ -40,6 +40,10 @@ Para quem: o Luís e quem usa o plugin em repo de cliente onde o plugin `protheu
 
 ### Contorno do `cc-plugin-sec-default` (achado da revisão de segurança, #418)
 - **D20 — o mod da abertura não injeta nada quando `cc-plugin-sec-default` está presente: saem de `hooks/register.ts` os hooks `engine.create`, `session.start`, `prompt.submit` e `session.compact`, e de `hooks/abertura-mod-puro.mjs` `barraCompose`, `anexar`, `temMarca`, `MARCA` e os métodos `engineCriado`/`aoIniciar`/`aoSubmeter`/`aoCompactar`; sai a bateria `hooks/testa-mod-abertura-append.cjs`; o comentário de cabeçalho passa a dizer que, nessa conta, a abertura chega só pelo núcleo do SessionStart que o harness entrega, e que regras inteiras ali pedem liberação do admin da organização** — porquê: o plugin gerenciado barra `prompt.compose` e `classic.SessionStart` de plugin de usuário por política da organização; detectá-lo e entregar o mesmo texto como mensagem de usuário é contornar a trava. Decisão do Luís (Q8).
+
+### #419 — remoto GitLab privado (acrescentada durante o executar)
+- **D22 — chave de config nova `visibilidade-repo` (aceita só o valor `"privada"`; qualquer outro valor é inválido e cai no padrão `null`), lida do config do projeto pela raiz do checkout principal (D7). No `gate-publicacao-destino`, quando `visibilidadeDoRepo` devolve `desconhecida` e a chave diz `privada`, os achados `termo-privado` caem; os padrões com forma (telefone, JID, CPF, credencial, caminho de home…) continuam barrando como hoje. Quando o `gh` responde `publica`, a declaração é ignorada** — porquê: decisão do Luís (opção B da Issue): sem ferramenta externa (`glab`), declarada e legível; a resposta do `gh` vence porque é medida, e a declaração só preenche o `desconhecida` que o GitLab sempre dá.
+- **D23 — modelo de ameaça de D22: protege contra termo privado bloquear trabalho legítimo em repo de trabalho privado fora do GitHub; fica fora o repo declarado privado que depois vira público — a declaração é do usuário e o gate confia nela. A mensagem de bloqueio, em visibilidade `desconhecida` com só termo privado, passa a citar a chave como saída** — porquê: a #417 tirou o arquivo `.rainforest-gate-off`, que era o contorno usado nesse caso e desligava o gate inteiro.
 
 ### Fechamento
 - **D21 — versão 1.45.0 (MINOR) em `.claude-plugin/plugin.json`, manifesto do Codex, `CHANGELOG.md` e `README.md`** — porquê: chave de config e flag novas são funcionalidade.

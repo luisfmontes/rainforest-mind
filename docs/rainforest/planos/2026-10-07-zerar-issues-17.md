@@ -1,4 +1,4 @@
-# Plano: Zerar issues: #409-#414, #417
+# Plano: Zerar issues: #409-#414, #417, #419
 
 Design: docs/rainforest/design/2026-10-07-zerar-issues-17.md
 
@@ -121,11 +121,25 @@ mutacao: n/a
   motivo: texto de skill e agente, sem comportamento executável a inverter; a falsificação é o texto mandar rodar o comando que a tarefa 7 criou e a regra de COBERTURA casar com D4
 pronto quando: com o repo como fica depois da tarefa 7, cada um dos oito arquivos manda obter o caminho por `node scripts/pastas-docs.cjs caminho --tipo <t> [--slug <s>]` em vez de fixar `docs/rainforest/{mapas,design,planos}`; o `agents/arqueologo.md` tem a condição de parada "escreve só na pasta de mapas que `pastas-docs.cjs` devolve"; `skills/arqueologia/SKILL.md` diz que em `docs/legado/` a linha do `COBERTURA.md` é uma por fatia nas quatro colunas de lá e o detalhe por bloco fica no mapa, e que fora disso vale a tabela de 6 colunas atual (D4); o comando rodado literalmente em cada skill imprime caminho neste repo — provado por `grep -rnE "docs/rainforest/(mapas|design|planos)" skills/arqueologia skills/brainstorm skills/plano skills/executar skills/revisar agents/arqueologo.md commands/arqueologia.md commands/brainstorm.md` sem linha que prescreva o caminho fixo (exemplos históricos marcados como tal ficam) e por `node scripts/pastas-docs.cjs caminho --tipo design --slug x` imprimindo `docs/rainforest/design/x.md` neste repo
 
+### 10. visibilidade-repo declarada para remoto fora do GitHub [tipo: implementar]
+atende: D22, D23
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/lib/config.cjs`, `hooks/testa-gate-publicacao-destino.sh`, `hooks/testa-config.sh`
+depende de: 6
+paralela: nao
+prova-na-base: verde — a bateria existe na base e passa; os casos que medem a tarefa ainda nao existem nela, e entram com a entrega
+mutacao:
+  arquivo: `hooks/gate-publicacao-destino.cjs`
+  de: `if (visibilidade === "desconhecida" && declaradaPrivada(gitTop)) achados = achados.filter((a) => a.id !== "termo-privado");`
+  para: `if (false) achados = achados.filter((a) => a.id !== "termo-privado");`
+  bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  fixture: `testa-gate-publicacao-destino.sh, caso "419 visibilidade-repo privada libera termo privado com remoto sem gh"`
+pronto quando: num repo de `mktemp -d` com `origin` apontando para um host que o `gh` não resolve (ou com `RAINFOREST_GATE_SEM_REDE=1`), termo da lista privada de teste no conteúdo e `.rainforest/config.json` com `{"visibilidade-repo":"privada"}` na raiz do principal, o payload PreToolUse real de Write de um `.md` versionado sai 0 — também a partir de um worktree linkado; sem a chave, sai 2; com a chave e um telefone mascarado no mesmo conteúdo, sai 2 com `telefone`; com `{"visibilidade-repo":"publica"}` a chave é inválida e sai 2; a mensagem de bloqueio de `desconhecida` cita `visibilidade-repo` — provado por `bash hooks/testa-gate-publicacao-destino.sh` e `bash hooks/testa-config.sh` com os casos novos ok e `0 falha(s)`
+
 ### 9. versão 1.45.0 [tipo: configurar]
 atende: D21
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`
-depende de: 1, 2, 3, 4, 5, 6, 7, 8
+depende de: 1, 2, 3, 4, 5, 6, 7, 8, 10
 paralela: nao
 mutacao: n/a
   motivo: troca de número de versão e texto de changelog, sem comportamento a inverter
-pronto quando: com o repo integrado, `node scripts/conferir-versao.cjs` sai 0 com 1.45.0 em todos os manifestos, o `CHANGELOG.md` tem a entrada 1.45.0 citando #409, #410, #411, #412, #413, #414, #417 e a retirada do append do sec-default, e `claude plugin validate .claude-plugin/plugin.json` sai 0 — provado pelos dois comandos
+pronto quando: com o repo integrado, `node scripts/conferir-versao.cjs` sai 0 com 1.45.0 em todos os manifestos, o `CHANGELOG.md` tem a entrada 1.45.0 citando #409, #410, #411, #412, #413, #414, #417, #419 e a retirada do append do sec-default, e `claude plugin validate .claude-plugin/plugin.json` sai 0 — provado pelos dois comandos
