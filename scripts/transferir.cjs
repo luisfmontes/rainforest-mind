@@ -51,7 +51,7 @@ function main() {
   }
 
   // Executa filho com stdio herdado
-  const resultado = spawnSync('node', [scriptPath, ...childArgs], {
+  const resultado = spawnSync(process.execPath, [scriptPath, ...childArgs], {
     stdio: 'inherit',
     cwd: process.cwd(),
   });
