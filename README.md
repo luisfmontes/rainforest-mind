@@ -36,10 +36,13 @@ Python e do orçamento de contexto em [`docs/runtime-e-orcamento.md`](docs/runti
 
 **Claude Code 2.1, patch 287 em diante, para a abertura inteira.** Nessa versão o plugin entrega
 as regras e as elaborações como seção do system prompt (`hooks/register.ts`). Sem
-ela, ou no Codex, a abertura vem pelo hook com o núcleo, como antes. A mesma versão desenha,
-no terminal e no desktop, a faixa acima do prompt (`hooks/mod.tsx`): foco, fluxo em curso e as Q
-abertas da última resposta. O mesmo mod acende os avisos de jornada (regra 8) e de janela parada
-(regra 17) numa linha do relógio. Sem o mod, não há faixa nem aviso por relógio, e nada mais muda.
+ela, ou no Codex, a abertura vem pelo hook com o núcleo, como antes. A mesma versão desenha
+a barra de sessão acima do prompt (`hooks/mod.tsx`): estado, tokens, custo, contexto, cache,
+subagentes, erros e o relógio ⏰ dos avisos de jornada (regra 8) e de janela parada (regra 17), mais o
+comando `/painel`. **O painel pede o Claude Code 2.1.292 ou mais novo**, a versão em que foi medido,
+no terminal, nas duas contas; no desktop o desenho não foi medido. Sem o mod, não há barra, painel
+nem aviso por relógio, e nada mais muda. Parte do painel é adaptada do terminal-desk (MIT);
+crédito em [`NOTICE`](NOTICE).
 
 Não precisa configurar nada para começar. Quando quiser foco próprio num
 repositório, crie `.rainforest/FOCO.md` nele — é só isso.

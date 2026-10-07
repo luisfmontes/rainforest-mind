@@ -147,44 +147,71 @@ a lista edita o JSON. Falha do mod é falha aberta: a seção não entra, nada s
 `SessionStart` e o hook segue entregando. O mod só vale a partir da sessão
 seguinte à atualização do plugin.
 
-**A faixa do mod.** A entrada do mod é `hooks/mod.tsx`: liga a abertura
-(`hooks/register.ts`, intacto) e desenha a faixa acima do prompt (`ui.render` em
-`AbovePrompt`). São no máximo 4 linhas (`MAX_LINHAS` em `hooks/faixa-puro.mjs`):
-foco, fluxo, relógio e Q, cada uma cortada em `bodyColumns`. Com menos espaço, sobra
-primeiro a Q, depois o relógio, depois o fluxo. A faixa só aparece com fluxo em curso, Q aberta
-ou relógio aceso, e o foco sozinho não a acende. O fluxo vem de todos os worktrees do repositório,
-por `scripts/faixa-dados.cjs` (somente leitura, reusa `proximo` e
-`tituloDoFocoAtivo`). Quando o mesmo slug aparece em mais de um worktree, vale a
-cópia mais avançada, e a de worktree de subagente (`.claude/worktrees/agent-*`)
-só vale quando é a única. As Q saem do texto final do turno (`e.answer` do
-`turn.complete`, só da sessão principal) pelos dois marcadores de `MARCADORES_Q`,
-`❓ **Q<n> — título**` e `**Q<n>.**` (também em blockquote e item de lista), fora
-de cerca de código (```` ``` ```` ou `~~~`). O título é só a pergunta (corta no
-primeiro `?`, `:`, ` — ` ou `. `), e cada Q ganha uma fatia da largura para todas
-aparecerem. Uma resposta sem Q zera a linha, e a mensagem do usuário
-(`prompt.submit`) também: as Q respondidas saem na hora. "Esconder" vale até a assinatura mudar: Q nova ou resolvida,
-etapa nova ou mudança nos agentes em voo. A faixa atualiza em `session.start`, em `turn.complete` e ao
-pressionar; no meio do turno, só a limpeza das Q no envio da mensagem. Falha de leitura apaga só a linha afetada e
-nunca quebra a sessão. Controle de terminal (ESC, C1, bidi) é trocado por espaço
-antes de desenhar. A faixa não repete a statusline (jornada, prazo, versão). A
-prova de engine é `claude plugin test .` (`hooks/mod-faixa.test.tsx`, terminal e
-desktop); a lógica, `node hooks/testa-mod-faixa.cjs`.
+**A barra e o painel do mod.** A entrada do mod é `hooks/mod.tsx`: liga a abertura
+(`hooks/register.ts`, intacto), desenha a barra de sessão acima do prompt (`ui.render` em
+`AbovePrompt`) e registra o comando `/painel`. A barra substitui a antiga faixa de foco, fluxo e
+Q: foco, fluxo e Q saem dela, e o relógio ⏰ é uma figura da barra. A parte do painel é adaptada
+do terminal-desk 0.2.1 (MIT, ClariSortAi); o crédito e o texto da licença estão em `NOTICE`.
+A lógica pura mora em `hooks/painel-puro.mjs`, `hooks/deixado-puro.mjs` e `hooks/relogio-puro.mjs`
+(sem Node e sem `$`), e `hooks/mod.tsx` só liga os eventos. Eventos ligados: `session.start`,
+`session.end`, `command.run`, `agent.spawn`, `prompt.submit`, `turn.step`, `tool.call`,
+`turn.complete`, `session.compact`, `ui.render`.
 
-**O relógio do mod.** A quarta linha da faixa é `⏰ jornada 9h12 · 20h40 | <pasta> parada há 32 min`
-(`hooks/relogio-puro.mjs`, sem Node e sem `$`). A jornada (efetiva e hora) aparece quando as
-efetivas passam de 9 h (`LIMITE_EFETIVA_MIN`), ou de noite (das 19 h às 5 h, `HORA_NOITE` e
-`HORA_FIM_MADRUGADA`) com mensagem do usuário nos últimos 30 min (`JANELA_MSG_MIN`). A janela
-parada mais antiga além da `Ociosidade máxima:` do `FOCO.md` (45 min se ausente,
-`OCIOSIDADE_PADRAO_MIN`) é nomeada pela pasta, e ` (+k)` conta as demais; só entram janelas
-esperando você há menos de 6 h (`JANELA_VIVA_MS` em `scripts/relogio-sessoes.cjs`). O relógio lê
-`sessoes.json` a cada 1 min (`scripts/relogio-sessoes.cjs`) e a jornada a cada 5 min
-(`scripts/jornada.cjs --json`) por `$.clock.every`, ligado no `session.start` e cancelado no
-`session.end`, e só nasce em sessão interativa. "Esconder" não volta com os minutos: a assinatura
-(`assinaturaRelogio`) leva só o dia da jornada e a pasta e a contagem da janela mais parada, então a
-faixa volta no dia seguinte ou quando outra janela vira a mais parada ou uma nova cruza o limite;
-como o esconder vale para a faixa inteira, ela volta inteira, jornada inclusive. Quando a jornada acende, uma nota de uma vez por dia vai no prompt seguinte digitado no
+*A barra.* Figuras, da esquerda para a direita: estado (`● trabalhando` ou `○ pronto`),
+`Tokens`, `Custo`, `Contexto` (0 a 100 com a porcentagem), `Cache` (quente com a contagem e o custo
+do reenvio, ou frio), `Deixado` (só quando há item aberto), `Ferram./min`, `Subagentes`, `Turnos`,
+`Erros` e o relógio ⏰. As que não cabem em `bodyColumns` caem da direita; o estado e o ⏰
+são as últimas a cair, o ⏰ por último. Com o transcript de um subagente em tela, a barra é a dele.
+Custo, contexto e cache vêm de `$.session.usage` com `breakdown: 'summary'` (estimativa local), e
+o preço do cache é estimativa a preço de lista (cotações do desk de 2026-09-25, não reconferidas
+contra a tabela oficial).
+
+*O comando `/painel`.* Sem argumento, abre o pane. Subcomandos: `esconder`, `mostrar`,
+`cache 5m|1h`, `checar ligar|desligar`. Esconder é alternância explícita: a barra só volta com
+`/painel mostrar`, nunca por mudança de conteúdo. `cache 5m|1h` troca a vida do cache usada na
+contagem; `checar` liga ou desliga o segundo modelo (abaixo). Argumento que não é um deles devolve a ajuda.
+
+*O pane.* Sete painéis, nesta ordem: Fluxos em curso (lidos por `scripts/faixa-dados.cjs`, somente
+leitura, de todos os worktrees do repositório), Deixado para depois, Mapa da sessão, contexto por
+fatia ("Onde foi o contexto"), Cache de prompt (com a nota de que é estimativa), Subagentes e
+Custo e tokens.
+
+*O mapa e o desvio do plano.* O mapa lista arquivos escritos, skills, serviços MCP e subagentes
+chamados. "Escrever" é só `Edit`, `Write` e `NotebookEdit`: escrita feita por `Bash` ou por servidor
+MCP não é detectada, e o pane diz isso. Cada escrita roda `scripts/desvio-do-plano.cjs` em segundo
+plano, que compara o arquivo com a soma dos `arquivos:` de todas as tarefas do plano do fluxo em
+curso neste worktree (mais os isentos do `creep`). Arquivo fora do plano acende uma linha vermelha no
+mapa e um único toast por arquivo; o aviso vai só ao usuário, nada vai ao modelo. Fora de fluxo, ou
+com fluxo sem plano, o mapa só lista e nada fica vermelho.
+
+*Deixado para depois.* Três origens: as frases de adiamento da resposta (português e inglês), os
+marcadores de pendência escritos em arquivo, e um segundo modelo (alias `haiku`, por
+`$.model.complete`) que recebe o pedido, o fim do relato e a lista de ferramentas do turno com as
+falhas, para pegar "feito" sem comando que o sustente. O checker roda em turno com
+`CHECAR_MIN_FERRAMENTAS` = 5 ou mais ferramentas, sem esperar: o item chega quando chegar.
+O botão "Faz agora" só preenche o prompt (`$.prompt.fill`); quem envia é a pessoa.
+
+*Falhas e disco.* Falha de qualquer leitura (`$.session.usage`, `$.model.complete`, `$.ui.open`,
+`$.process.run`) apaga só a peça afetada; exceção no desenho da barra ou do pane cai em `next(e)` e nunca
+quebra a sessão. O mod não grava em disco: o estado é do `$.state`, e o desvio e os fluxos só
+leem. Só vale a partir da sessão seguinte à atualização do plugin. A prova de engine é
+`claude plugin test .` (`hooks/mod-painel.test.tsx`, terminal e desktop); a lógica, `node
+hooks/testa-mod-painel.cjs`, `node hooks/testa-mod-deixado.cjs` e `node hooks/testa-mod-mapa.cjs`.
+
+**O relógio do mod.** O relógio é a figura `⏰ jornada 9h12 · 20h40 | <pasta> parada há 32 min` da
+barra (`hooks/relogio-puro.mjs`, sem Node e sem `$`). A jornada (efetiva e hora) aparece quando as
+efetivas passam de 9 h (`LIMITE_EFETIVA_MIN` = 540 minutos), ou de noite (a partir de
+`HORA_NOITE` = 19 h até `HORA_FIM_MADRUGADA` = 5 h) com mensagem do usuário nos últimos
+`JANELA_MSG_MIN` = 30 minutos. A janela parada mais antiga além da `Ociosidade máxima:` do
+`FOCO.md` (`OCIOSIDADE_PADRAO_MIN` = 45 minutos se ausente) é nomeada pela pasta, e ` (+k)` conta as
+demais; só entram janelas esperando você há menos de 6 h (`JANELA_VIVA_MS` em
+`scripts/relogio-sessoes.cjs`). O relógio lê `sessoes.json` a cada 1 min
+(`scripts/relogio-sessoes.cjs`) e a jornada a cada 5 min (`scripts/jornada.cjs --json`) por
+`$.clock.every`, ligado no `session.start` e cancelado no `session.end`, e só nasce em sessão
+interativa. Esconder a barra (`/painel esconder`) esconde o ⏰ junto, e só `/painel mostrar` o
+devolve. Quando a jornada acende, uma nota de uma vez por dia vai no prompt seguinte digitado no
 composer, como `context` do `prompt.submit` (o modelo lê, o usuário não vê); avisar ou calar
-continua sendo decisão do modelo, pela regra 8. Falha de leitura apaga só a linha do relógio. A
+continua sendo decisão do modelo, pela regra 8. Falha de leitura apaga só a figura do relógio. A
 prova de engine é `hooks/mod-relogio.test.tsx` (`claude plugin test .`); a lógica,
 `node hooks/testa-mod-relogio.cjs`.
 
