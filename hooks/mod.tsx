@@ -10,12 +10,14 @@ import type {
   RainforestMindFaixaDados,
   RainforestMindPainelAgente,
   RainforestMindPainelFatia,
+  RainforestMindPainelMapa,
   RainforestMindPainelStats,
   RainforestMindRelogioJornada,
   RainforestMindRelogioSessoes,
 } from '../types'
 import { register as abertura } from './register.ts'
 import { largura, cortar } from './faixa-puro.mjs'
+import { escritaDe, mapaVazio, registrar } from './mapa-puro.mjs'
 import { cacheDe, compacto, dinheiro, fatias, figurasDaBarra, restante, ritmoPorMinuto, rotuloSubagente } from './painel-puro.mjs'
 import { avaliarRelogio, linhaRelogio, notaJornada } from './relogio-puro.mjs'
 
@@ -49,6 +51,7 @@ const VAZIO: RainforestMindPainelStats = {
 const faixaDados = atom({ plugin: 'rainforest-mind', key: 'faixaDados' } as const, null as RainforestMindFaixaDados | null)
 const painelStats = atom({ plugin: 'rainforest-mind', key: 'painelStats' } as const, VAZIO)
 const painelOculto = atom({ plugin: 'rainforest-mind', key: 'painelOculto' } as const, false)
+const painelMapa = atom({ plugin: 'rainforest-mind', key: 'painelMapa' } as const, mapaVazio() as RainforestMindPainelMapa)
 const relogioJornada = atom({ plugin: 'rainforest-mind', key: 'relogioJornada' } as const, null as RainforestMindRelogioJornada | null)
 const relogioSessoes = atom({ plugin: 'rainforest-mind', key: 'relogioSessoes' } as const, null as RainforestMindRelogioSessoes | null)
 const relogioNotaPendente = atom({ plugin: 'rainforest-mind', key: 'relogioNotaPendente' } as const, null as string | null)
@@ -450,6 +453,11 @@ export const register: Register = (on, options) => {
     } catch {
       // o contador nunca quebra o spawn
     }
+    try {
+      await update($, painelMapa, raw => registrar(raw, { agente: true, description: e.description }).mapa as RainforestMindPainelMapa)
+    } catch {
+      // o mapa nunca quebra o spawn
+    }
     return criado
   })
 
@@ -519,6 +527,59 @@ export const register: Register = (on, options) => {
       })
     } catch {
       // o contador nunca quebra a ferramenta
+    }
+    try {
+      if (ran.deny === undefined && ran.isError !== true) {
+        const escrita = escritaDe(e) as string | null
+        if (escrita === null) {
+          await update($, painelMapa, raw => registrar(raw, e).mapa as RainforestMindPainelMapa)
+        } else {
+          // Escrita: o script do desvio roda em segundo plano (leva 1,5 a 2,4 s) e o resultado
+          // da ferramenta nao espera por ele. O arquivo entra no mapa quando a resposta chega,
+          // para o `novo` do desvio valer uma vez por arquivo (D15). Nada daqui vai ao modelo.
+          const raiz = $.plugin.root
+          void (async () => {
+            let desvio: { veredito?: string; rel?: string | null } | null = null
+            try {
+              const cwd = await $.session.cwd()
+              const r = await $.process.run(
+                ['node', `${raiz}/scripts/desvio-do-plano.cjs`, '--cwd', cwd, '--arquivo', escrita],
+                { cwd: raiz, env: { CLAUDE_PROJECT_DIR: cwd }, timeoutMs: 5000 },
+              )
+              const lido = r.exitCode === 0 ? JSON.parse(r.stdout) : null
+              desvio = lido !== null && typeof lido === 'object' && typeof lido.veredito === 'string' ? lido : null
+            } catch (err) {
+              try {
+                $.ui.log(`painel: desvio: ${String(err)}`, { to: 'debug' })
+              } catch {
+                // sem log, sem problema
+              }
+            }
+            try {
+              const caminho: string = typeof desvio?.rel === 'string' && desvio.rel !== '' ? desvio.rel : escrita
+              const escreveu = { tool: e.tool, file_path: caminho, notebook_path: caminho }
+              let avisar = false
+              await update($, painelMapa, raw => {
+                if (desvio === null) return registrar(raw, escreveu).mapa as RainforestMindPainelMapa
+                const marcado = registrar(raw, { desvio: true, caminho })
+                if (desvio.veredito === 'fora' && marcado.novo) {
+                  avisar = true
+                }
+                return (desvio.veredito === 'fora' ? marcado.mapa : registrar(raw, escreveu).mapa) as RainforestMindPainelMapa
+              })
+              if (avisar) $.ui.toast(`Fora dos arquivos do plano: ${caminho}`)
+            } catch (err) {
+              try {
+                $.ui.log(`painel: desvio: ${String(err)}`, { to: 'debug' })
+              } catch {
+                // sem log, sem problema
+              }
+            }
+          })()
+        }
+      }
+    } catch {
+      // o mapa nunca quebra a ferramenta
     }
     return ran
   })
@@ -731,11 +792,33 @@ export const register: Register = (on, options) => {
         <Text key="nota" dimColor>{`Estimativa: reenvio da conversa a preço de lista, cache de ${s.ttlMs > 5 * MIN ? '1h' : '5m'}`}</Text>,
       ])
 
+      // Mapa da sessao (D13): so o que foi escrito por Edit, Write e NotebookEdit, skills, servicos
+      // MCP e subagentes. Ler e Bash nao entram; fora de fluxo nada fica vermelho.
+      const mapa = { ...mapaVazio(), ...(await read($, painelMapa)) } as RainforestMindPainelMapa
+      const fim = (texto: string, max: number): string => (largura(texto) > max ? `…${texto.slice(-(Math.max(4, max) - 1))}` : texto)
+      const secao = (chave: string, titulo: string, itens: unknown[], vazio: string) => [
+        <Text key={`mt-${chave}`} color={COR.ambar} dimColor>{titulo}</Text>,
+        ...(itens.length === 0 ? [<Text key={`mv-${chave}`} dimColor>{`  ${vazio}`}</Text>] : itens),
+      ]
+      const painelMapa_ = painel('p-mapa', COR.ciano, 'Mapa da sessão', [
+        ...secao('arq', 'Arquivos escritos', mapa.arquivos.map((a, i) => (
+          <Box key={`ma-${i}`} flexDirection="column">
+            <Text color={a.desvio ? COR.vermelho : COR.verde} bold={a.desvio}>{fim(`${a.desvio ? '✗' : '✓'} ${a.caminho}`, interior - 2)}</Text>
+            {a.desvio ? <Text color={COR.vermelho}>{'  fora dos arquivos do plano'}</Text> : null}
+          </Box>
+        )), 'nenhum'),
+        ...secao('sk', 'Skills', mapa.skills.map((x, i) => <Text key={`ms-${i}`} color={COR.ciano}>{fim(`  ${x}`, interior)}</Text>), 'nenhuma'),
+        ...secao('sv', 'Serviços MCP', mapa.servicos.map((x, i) => <Text key={`mc-${i}`} color={COR.ciano}>{fim(`  ${x}`, interior)}</Text>), 'nenhum'),
+        ...secao('sa', 'Subagentes chamados', mapa.subagentes.map((x, i) => <Text key={`mg-${i}`} color={COR.ciano}>{fim(`  ${x}`, interior)}</Text>), 'nenhum'),
+        <Text key="mnota" dimColor>Escrita feita por Bash não é detectada; só Edit, Write e NotebookEdit entram aqui.</Text>,
+      ])
+
       const lidos = s.tokensNovos + s.tokensCacheLido + s.tokensCacheEscrito
       const doCache = lidos === 0 ? 0 : Math.round((s.tokensCacheLido / lidos) * 100)
       return (
         <Box flexDirection="column">
           {painelFluxos}
+          {painelMapa_}
           {painelContexto}
           {painelCache}
           {painel('p-agentes', COR.ambar, 'Subagentes', s.agentes.length === 0 ? <Text dimColor>Nenhum iniciado ainda</Text> : linhasAgentes(AGENTES_NO_PANE))}

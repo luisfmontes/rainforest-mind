@@ -22,6 +22,14 @@ const FIXTURE_DADOS = {"fluxos":[{"slug":"2026-10-07-painel-pane","titulo":"Pane
 const FIXTURE_SESSOES = {"ociosidade_min":45,"janelas":[{"cwd":"/projetos/painel","desde":0},{"cwd":"/projetos/loja-api","desde":0}]}
 const FIXTURE_JORNADA = {"escopo":"s.jsonl","mensagens":13,"efetiva_min":552,"bruto_min":552,"primeiro":"2026-10-03T11:18:00-03:00","ultimo":"2026-10-03T20:30:00-03:00","corte_min":55,"descartadas":[]}
 
+// Saidas REAIS de `node scripts/desvio-do-plano.cjs --cwd <worktree> --arquivo <abs>` sobre repo
+// temporario montado como em scripts/testa-desvio-do-plano.sh (git init + git worktree add, plano
+// real 2026-10-03-mod-faixa-foco.md via `git show`, estado em executar); SEMFLUXO e o mesmo
+// script num repo sem estado nenhum.
+const DESVIO_DENTRO = '{"veredito":"dentro","rel":"hooks/faixa-puro.mjs","slug":"2026-10-03-mod-faixa-foco"}'
+const DESVIO_FORA = '{"veredito":"fora","rel":"scripts/estado.cjs","slug":"2026-10-03-mod-faixa-foco"}'
+const DESVIO_SEM_FLUXO = '{"veredito":"sem-fluxo","rel":null,"slug":null}'
+
 const USAGE_REAL = { input_tokens: 2, cache_creation_input_tokens: 45815, cache_read_input_tokens: 30782, output_tokens: 273, model: 'claude-opus-5-5' }
 
 const SESSION_USAGE = (percent: number, tokens: number, usd: number) => ({
@@ -109,10 +117,26 @@ async function montar($: any, on: any, surface: Surface, inicio: number, comUi =
     dados: [] as { argv: readonly string[]; cwd: unknown }[],
     runs: 0,
     passos: 0,
+    // Desvio do plano: cada execucao do script, o modo da resposta e o atraso (ms do relogio simulado).
+    desvios: [] as { argv: readonly string[]; cwd: unknown; env: unknown; timeoutMs: unknown }[],
+    modoDesvio: 'plano' as 'plano' | 'sem-fluxo' | 'exit1' | 'json-ruim' | 'rejeita',
+    atrasoDesvio: 0,
+    toasts: [] as string[],
+    logs: [] as string[],
+    submits: 0,
   }
   on('process.run', async (_$: any, e: any) => {
     s.runs += 1
     const alvo = String(e.argv[1] ?? '')
+    if (alvo.endsWith('desvio-do-plano.cjs')) {
+      s.desvios.push({ argv: [...e.argv], cwd: e.init?.cwd, env: e.init?.env, timeoutMs: e.init?.timeoutMs })
+      if (s.atrasoDesvio > 0) await relogio.sleep(s.atrasoDesvio)
+      if (s.modoDesvio === 'rejeita') return ({ deny: 'recusado pelo sec-default' }) as never
+      if (s.modoDesvio === 'exit1') return saida('', 1)
+      if (s.modoDesvio === 'json-ruim') return saida('isto nao e json {')
+      if (s.modoDesvio === 'sem-fluxo') return saida(DESVIO_SEM_FLUXO)
+      return saida(String(e.argv[e.argv.indexOf('--arquivo') + 1]).endsWith('faixa-puro.mjs') ? DESVIO_DENTRO : DESVIO_FORA)
+    }
     if (alvo.endsWith('relogio-sessoes.cjs')) return saida(JSON.stringify(s.sessoes))
     if (alvo.endsWith('jornada.cjs')) return s.modoJornada === 'falha' ? saida('', 1) : saida(JSON.stringify(s.jornada))
     s.dados.push({ argv: [...e.argv], cwd: e.init?.cwd })
@@ -132,7 +156,18 @@ async function montar($: any, on: any, surface: Surface, inicio: number, comUi =
     return { value: { isPlaced: s.modoOpen === 'ok' } } as never
   })
   on('turn.complete', async () => ({ text: '' }))
-  on('prompt.submit', async (_$: any, e: any) => e as never)
+  on('prompt.submit', async (_$: any, e: any) => {
+    s.submits += 1
+    return e as never
+  })
+  on('ui.toast', async (_$: any, e: any) => {
+    s.toasts.push(String(e.text))
+    return { value: undefined } as never
+  })
+  on('ui.log', async (_$: any, e: any) => {
+    s.logs.push(String(e.text))
+    return { value: undefined } as never
+  })
   on('tool.call', async (_$: any, e: any) => ({ result: 'ok', isError: e.command === 'comando-que-falha' }) as never)
   on('agent.spawn', async () => ({ model: 'haiku', agentId: 'ag-1' }) as never)
   on('turn.step', async function* (_$: any, e: any) {
@@ -557,6 +592,121 @@ for (const surface of ['terminal', 'desktop'] as const) {
       expect(t).not.toContain('Cache de prompt')
       await m.ui.redraw({ ...PANE_PROPS, view: { agentId: 'ag-novo' } })
       expect(await juntos()).toContain('Sem atividade vista ainda')
+    })
+
+    await m.ui.unmount()
+  })
+
+  test(`painel (${surface}): mapa da sessao, desvio do plano e um toast por arquivo`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40), false)
+    const { relogio, s, textos, juntos, comecar, caso } = m
+    const vermelhos = async () => (await m.ui.findAll({ type: 'Text' })).filter((x: any) => x.props.color === '#ff4d4d').map((x: any) => x.text as string)
+    let ran: any
+
+    await caso(`mapa (${surface}): escritas, leitura, Bash, MCP, skill e subagente`, async () => {
+      await comecar()
+      await m.abrirPane()
+      const antes = s.submits
+      ran = await $.tool.call({ tool: 'Write', file_path: '/projeto/hooks/faixa-puro.mjs', content: 'x' } as never)
+      await $.tool.call({ tool: 'Edit', file_path: '/projeto/scripts/estado.cjs', old_string: 'a', new_string: 'b' } as never)
+      await $.tool.call({ tool: 'Edit', file_path: '/projeto/scripts/estado.cjs', old_string: 'b', new_string: 'c' } as never)
+      await $.tool.call({ tool: 'Read', file_path: '/projeto/hooks/mod.tsx' } as never)
+      await $.tool.call({ tool: 'Bash', command: 'echo oi > bash-escreveu.txt' } as never)
+      await $.tool.call({ tool: 'mcp__claude_ai_Claude_Docs__guide', items: [] } as never)
+      await $.tool.call({ tool: 'Skill', skill: 'plano' } as never)
+      await $.agent.spawn({ prompt: 'p', description: 'revisar o diff', subagentType: 'general-purpose', tool_use_id: 'u1' } as never)
+      await relogio.settle()
+      expect(ran.result).toBe('ok')
+      expect(ran.context).toBeUndefined()
+      expect(s.submits).toBe(antes) // o desvio nunca vira prompt nem contexto
+      const t = await textos()
+      expect(t).toContain(' Mapa da sessão ')
+      expect(t).toContain('✓ hooks/faixa-puro.mjs')
+      expect(t.filter(x => x === '✗ scripts/estado.cjs')).toHaveLength(1)
+      expect(t).toContain('  plano')
+      expect(t).toContain('  claude_ai_Claude_Docs')
+      expect(t).toContain('  revisar o diff')
+      expect(t.some(x => x.includes('mod.tsx'))).toBe(false) // Read nao entra
+      expect(t.some(x => x.includes('bash-escreveu') || x.includes('echo oi'))).toBe(false) // Bash nao entra
+      expect(t.some(x => x.startsWith('Escrita feita por Bash não é detectada'))).toBe(true)
+    })
+
+    await caso(`mapa (${surface}): o que esta fora do plano fica vermelho e so ele`, async () => {
+      const v = await vermelhos()
+      expect(v).toContain('✗ scripts/estado.cjs')
+      expect(v).toContain('  fora dos arquivos do plano')
+      expect(v.some(x => x.includes('faixa-puro'))).toBe(false)
+    })
+
+    await caso(`mapa (${surface}): um toast por arquivo, nao por escrita`, async () => {
+      expect(s.toasts).toEqual(['Fora dos arquivos do plano: scripts/estado.cjs'])
+      expect(s.desvios).toHaveLength(3) // so escrita dispara o script: 3 escritas, nenhuma leitura nem Bash
+    })
+
+    await caso(`mapa (${surface}): o script roda com o argv, o cwd e o env do contrato`, async () => {
+      const d = s.desvios[0]
+      expect(d.argv.slice(0, 1)).toEqual(['node'])
+      expect(String(d.argv[1]).endsWith('/scripts/desvio-do-plano.cjs')).toBe(true)
+      expect(d.argv.slice(2)).toEqual(['--cwd', '/projeto', '--arquivo', '/projeto/hooks/faixa-puro.mjs'])
+      expect(d.env).toEqual({ CLAUDE_PROJECT_DIR: '/projeto' })
+      expect(d.timeoutMs).toBe(5000)
+      expect(String(d.cwd)).toBe(String(d.argv[1]).replace(/\/scripts\/desvio-do-plano\.cjs$/, ''))
+    })
+
+    await m.ui.unmount()
+  })
+
+  test(`painel (${surface}): desvio em segundo plano, fora de fluxo e falha aberta do script`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40), false)
+    const { relogio, s, textos, comecar, caso } = m
+    const escrever = (arquivo: string) => $.tool.call({ tool: 'Write', file_path: arquivo, content: 'x' } as never) as Promise<any>
+
+    await caso(`mapa (${surface}): o resultado do tool.call chega antes do script`, async () => {
+      await comecar()
+      await m.abrirPane()
+      s.atrasoDesvio = 3000
+      const ran = await escrever('/projeto/scripts/estado.cjs')
+      expect(ran.result).toBe('ok')
+      await relogio.settle()
+      expect(s.desvios).toHaveLength(1) // o script ja saiu...
+      expect(s.toasts).toEqual([]) // ...mas ainda nao respondeu
+      expect((await textos()).some(x => x.includes('estado.cjs'))).toBe(false)
+      await relogio.advance(3000)
+      expect(s.toasts).toEqual(['Fora dos arquivos do plano: scripts/estado.cjs'])
+      expect(await textos()).toContain('✗ scripts/estado.cjs')
+      s.atrasoDesvio = 0
+    })
+
+    await caso(`mapa (${surface}): fora de fluxo o mapa lista sem vermelho e sem toast`, async () => {
+      s.modoDesvio = 'sem-fluxo'
+      await escrever('/projeto/lista-sem-fluxo.txt')
+      await relogio.settle()
+      expect(s.toasts).toHaveLength(1) // so o da escrita anterior
+      const t = await textos()
+      expect(t).toContain('✓ /projeto/lista-sem-fluxo.txt')
+      expect((await m.ui.findAll({ type: 'Text' })).filter((x: any) => x.props.color === '#ff4d4d' && x.text.includes('lista-sem-fluxo'))).toHaveLength(0)
+    })
+
+    await caso(`mapa (${surface}): exit 1, JSON invalido e process.run rejeitado nao acusam nem quebram`, async () => {
+      const toasts = s.toasts.length
+      for (const [modo, arquivo] of [['exit1', '/projeto/a-exit1.txt'], ['json-ruim', '/projeto/b-json.txt'], ['rejeita', '/projeto/c-rejeita.txt']] as const) {
+        s.modoDesvio = modo
+        const ran = await escrever(arquivo)
+        expect(ran.result).toBe('ok')
+        await relogio.settle()
+        expect(await textos()).toContain(`✓ ${arquivo}`)
+      }
+      expect(s.toasts).toHaveLength(toasts)
+      expect(s.logs.some(l => l.startsWith('painel: desvio: '))).toBe(true)
+    })
+
+    await caso(`mapa (${surface}): escrita que falhou nao dispara o script nem entra no mapa`, async () => {
+      const antes = s.desvios.length
+      const ran = await $.tool.call({ tool: 'Write', file_path: '/projeto/falhou.txt', command: 'comando-que-falha' } as never) as any
+      expect(ran.isError).toBe(true)
+      await relogio.settle()
+      expect(await textos()).not.toContain('✓ /projeto/falhou.txt')
+      expect(s.desvios).toHaveLength(antes)
     })
 
     await m.ui.unmount()

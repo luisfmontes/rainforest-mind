@@ -64,12 +64,22 @@ export type RainforestMindPainelStats = {
   medirDeNovo: boolean
 }
 
+// Mapa da sessao (D13): o que foi escrito (por Edit, Write ou NotebookEdit), que skill rodou, que
+// servico MCP respondeu e que subagente entrou. `desvio` = fora dos `arquivos:` do plano do fluxo.
+export type RainforestMindPainelMapa = {
+  arquivos: { caminho: string; desvio: boolean }[]
+  skills: string[]
+  servicos: string[]
+  subagentes: string[]
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'rainforest-mind': {
       faixaDados: RainforestMindFaixaDados | null
       painelStats: RainforestMindPainelStats
       painelOculto: boolean
+      painelMapa: RainforestMindPainelMapa
       relogioJornada: RainforestMindRelogioJornada | null
       relogioSessoes: RainforestMindRelogioSessoes | null
       relogioNotaPendente: string | null
