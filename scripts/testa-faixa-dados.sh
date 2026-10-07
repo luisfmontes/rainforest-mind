@@ -126,5 +126,9 @@ rodar "$REPO"
 DEPOIS=$(cd "$REPO" && find . -path ./.git -prune -o -type f -print | sort | md5sum)
 if [ "$ANTES" = "$DEPOIS" ]; then passa "somente leitura: nenhum arquivo novo"; else falha "somente leitura: nenhum arquivo novo"; fi
 
+# require mudo: o modulo exporta lerFluxos e worktrees e nao imprime nada.
+MUDO=$(node -e "const d=require(process.argv[1]);console.log(typeof d.lerFluxos,typeof d.worktrees)" "$SCRIPT" 2>&1)
+if [ "$MUDO" = "function function" ]; then passa "require mudo: exporta lerFluxos e worktrees sem imprimir"; else falha "require mudo" "saida: $MUDO"; fi
+
 echo "$OK ok, $FALHA falha(s), 0 skipped"
 [ "$FALHA" -eq 0 ]

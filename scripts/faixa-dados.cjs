@@ -119,4 +119,6 @@ function main() {
   process.stdout.write(`${JSON.stringify({ foco: lerFoco(cwd), fluxos: lerFluxos(cwd) })}\n`);
 }
 
-main();
+if (require.main === module) main();
+
+module.exports = { lerFluxos, worktrees };
