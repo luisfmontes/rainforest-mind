@@ -3069,12 +3069,34 @@ printf 'sh -c "gh -R a/b issue close 1; $X"\n' > "$SBP/lit414-x.sh"
 rodar414 '. ./lit414-x.sh'
 E414=$?
 [ $E414 -eq 2 ] && test_ok "414-11 sh -c com gh -R literal e variavel barra" || test_fail "414-11 sh -c com gh -R literal e variavel barra (exit $E414)"
+# Revisao rodada 3: aspas escapadas e ofuscacao por aspas nao escondem o literal.
+cat > "$SBP/lit414-esc.sh" <<'ESC414'
+bash -c "gh -R \"a/b\" issue close 1; echo $X"
+ESC414
+rodar414 '. ./lit414-esc.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-11 aspas escapadas no -R nao escondem o literal" || test_fail "414-11 aspas escapadas no -R nao escondem o literal (exit $E414)"
+cat > "$SBP/lit414-ofusca.sh" <<'OFU414'
+bash -c "gh issue c''lose 1 $X"
+OFU414
+rodar414 '. ./lit414-ofusca.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-11 close ofuscado por aspas barra" || test_fail "414-11 close ofuscado por aspas barra (exit $E414)"
 # Encadeado: `.` dentro do arquivo resolve contra o cwd de quem carregou.
 mkdir -p "$SBP/sub414"
 printf '. ./fecha414.sh\n' > "$SBP/sub414/encadeia.sh"
 rodar414 '. ./sub414/encadeia.sh'
 E414=$?
 [ $E414 -eq 2 ] && test_ok "414-12 ponto encadeado resolve contra o cwd e barra" || test_fail "414-12 ponto encadeado resolve contra o cwd e barra (exit $E414)"
+# O mesmo arquivo carregado de dois cwds encadeia arquivos diferentes: a
+# segunda carga nao pode ser pulada pelo corte de ciclo.
+mkdir -p "$SBP/a414" "$SBP/b414"
+printf '. ./alvo.sh\n' > "$SBP/a414/x.sh"
+printf 'echo oi\n' > "$SBP/a414/alvo.sh"
+printf 'gh issue close 12\n' > "$SBP/b414/alvo.sh"
+rodar414 'cd a414 && . ./x.sh; cd ../b414 && . ../a414/x.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-13 mesmo arquivo carregado de outro cwd e relido" || test_fail "414-13 mesmo arquivo carregado de outro cwd e relido (exit $E414)"
 
 # Resultado final
 echo

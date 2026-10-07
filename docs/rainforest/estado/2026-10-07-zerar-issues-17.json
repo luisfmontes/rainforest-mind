@@ -24,7 +24,7 @@
     "em": "2026-10-07"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-07",
     "tarefas_ok": 10,
     "tarefas": 10,
@@ -154,31 +154,35 @@
         "resultado": "vermelho",
         "fixture": "419 visibilidade-repo privada libera termo privado com remoto sem gh"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-07"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "646a66a5503e3fbc690db4d1a56e94dfe6252cb7",
+      "head": "a38483a5ea43a7f03411bc55e7d935aa41f8f5a1",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a65681698cb7d6906",
+        "agente_id": "aa70b0cefa5803c60",
         "veredito": "reprovado",
         "em": "2026-10-07",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/8a92195d-02e9-4689-a92d-ece42b872931/subagents/agent-a65681698cb7d6906.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/8a92195d-02e9-4689-a92d-ece42b872931/subagents/agent-aa70b0cefa5803c60.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-07",
     "achados": [
-      "bloqueante: LENDO_SOURCE deixava passar gh literal ao lado de variavel no arquivo carregado",
-      "encadeado resolvia contra a pasta do arquivo",
-      "ssh com porta/ssh.github.com nao reconhecido"
+      "bloqueante: aspas escapadas e ofuscacao por aspas escondiam gh literal no arquivo carregado",
+      "chave do corte de ciclo sem o cwd (revisao de seguranca)",
+      "--hostname nao pulava valor; ssh com www"
     ],
-    "tentativas": 2
+    "tentativas": 3
   },
   "verificar": {
     "status": "pendente"

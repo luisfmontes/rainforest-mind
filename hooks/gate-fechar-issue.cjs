@@ -946,12 +946,14 @@ const RE_MUDA_DIRETORIO = /(?:^|[\s;&|({])(?:cd|pushd)(?=\s|$)/;
 // viram espaco). Serve so para nao deixar passar literal dentro de arquivo
 // carregado por `.`; nao decide evidencia, so impede o atalho do ilegivel.
 function temGhLiteralQueEscreve(texto) {
-  const v = String(texto).replace(/["'\x60]/g, " ").split(/[\s;&|(){}]+/).filter(Boolean);
+  // Aspas, crase e contrabarra SOMEM (nao viram espaco): `c''lose`, `\"close\"`
+  // e `-R \"a/b\"` voltam a ser as palavras que o shell ve.
+  const v = String(texto).replace(/["'\x60\\]/g, "").split(/[\s;&|(){}]+/).filter(Boolean);
   const escreve = { issue: ["close", "create", "comment"], pr: ["create", "edit", "merge"] };
   for (let i = 0; i < v.length; i++) {
     if (normalizarExecutavel(v[i]) !== "gh") continue;
     let j = i + 1;
-    while (j < v.length && v[j].startsWith("-")) j += (/^(-R|--repo)$/.test(v[j]) ? 2 : 1);
+    while (j < v.length && v[j].startsWith("-")) j += (/^(-R|--repo|-h|--hostname)$/.test(v[j]) ? 2 : 1);
     const sub = escreve[v[j]];
     if (sub && sub.includes(v[j + 1])) return true;
   }
@@ -1034,8 +1036,11 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
     if (cwdSource == null && !RE_MUDA_DIRETORIO.test(COMANDO_INTEIRO)) cwdSource = CWD_DO_EVENTO || null;
     if (!path.isAbsolute(arquivoSource) && cwdSource == null) return;
     const resolvidoSource = path.isAbsolute(arquivoSource) ? arquivoSource : path.resolve(cwdSource, arquivoSource);
-    if (ARQUIVOS_SOURCE_VISTOS.has(resolvidoSource)) return;
-    ARQUIVOS_SOURCE_VISTOS.add(resolvidoSource);
+    // Chave = arquivo + cwd: o mesmo arquivo carregado de outro cwd encadeia
+    // outros arquivos (caminho relativo resolve contra o cwd), e tem de ser lido.
+    const chaveSource = resolvidoSource + "|" + (cwdSource || "");
+    if (ARQUIVOS_SOURCE_VISTOS.has(chaveSource)) return;
+    ARQUIVOS_SOURCE_VISTOS.add(chaveSource);
     let conteudoSource;
     try { conteudoSource = fs.readFileSync(resolvidoSource, "utf8"); } catch { return; }
     // O conteudo passa pelo MESMO caminho de um comando digitado: segmentos de
