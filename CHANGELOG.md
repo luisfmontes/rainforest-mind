@@ -10,6 +10,14 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.44.1 — 2026-10-07
+
+- **O aviso de agente em voo só barra a sessão que despachou.** Antes, qualquer sessão aberta no mesmo
+  worktree era bloqueada no fim do turno por um agente que outra janela tinha despachado. Agora o
+  `estado.cjs marcar` grava a sessão dona em cada item de `em_voo`, e o aviso só conta os da sessão que
+  está parando; registro antigo, sem dono, segue barrando como antes. Vale a partir da sessão seguinte
+  à atualização.
+
 ## 1.43.0 — 2026-10-06
 
 Fecha as doze Issues abertas pela revisão bimestral (#396 a #405, #407, #408).
