@@ -23,7 +23,7 @@
     "em": "2026-10-07"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-07",
     "tarefas_ok": 14,
     "tarefas": 14,
@@ -365,12 +365,12 @@
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-mod-painel.cjs, cache frio quando o TTL acabou"
+        "fixture": "testa-mod-painel.cjs, 22 colunas (continue->break)"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "testa-mod-deixado.cjs, frase entre aspas nao conta"
+        "fixture": "testa-mod-deixado.cjs, ESC/BEL/bidi nao chegam ao item"
       },
       {
         "tarefa": 3,
@@ -425,7 +425,7 @@
       {
         "tarefa": 13,
         "resultado": "n/a",
-        "motivo": "documentacao; checker de coerencia ficou vermelho com HORA_NOITE mutado"
+        "motivo": "documentacao; checker de coerencia vermelho com HORA_NOITE mutado"
       },
       {
         "tarefa": 14,
@@ -433,12 +433,19 @@
         "motivo": "versao; sensor conferir-versao"
       }
     ],
-    "comando": "node scripts/conferir-mutacao.cjs (10 tarefas, re-rodadas na integracao)",
-    "saida": "tarefas 1-10 exit 0 (6 e 10 exit 4 sob concorrencia, exit 0 sozinhas; baseline 3x 0 fail)",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-07"
-    }
+    "comando": "node scripts/conferir-mutacao.cjs (A x2, B) + baterias com exit",
+    "saida": "mutacoes exit 0; baterias exit 0; claude plugin test 64 pass 0 fail",
+    "rodada": 2,
+    "achados_corrigidos": [
+      "A semControle no deixado",
+      "B relogio ultimo a cair",
+      "C desvio em fila sem repeticao",
+      "D turn.complete sem await",
+      "E sem-arquivos",
+      "F dedup semControle/ESCRITORAS",
+      "G frases",
+      "H Faça agora"
+    ]
   },
   "revisar": {
     "status": "reprovado",
