@@ -9,6 +9,8 @@ import type { Register } from 'claude-code'
 import type {
   RainforestMindFaixaDados,
   RainforestMindPainelAgente,
+  RainforestMindPainelDeixado,
+  RainforestMindPainelDeixadoOrigem,
   RainforestMindPainelFatia,
   RainforestMindPainelMapa,
   RainforestMindPainelStats,
@@ -16,6 +18,7 @@ import type {
   RainforestMindRelogioSessoes,
 } from '../types'
 import { register as abertura } from './register.ts'
+import { CHECAR_MIN_FERRAMENTAS, deferimentos, lerRespostaChecker, marcadoresEmArquivo, montarPromptChecker, rascunhoFazAgora } from './deixado-puro.mjs'
 import { largura, cortar } from './faixa-puro.mjs'
 import { escritaDe, mapaVazio, registrar } from './mapa-puro.mjs'
 import { cacheDe, compacto, dinheiro, fatias, figurasDaBarra, restante, ritmoPorMinuto, rotuloSubagente } from './painel-puro.mjs'
@@ -57,6 +60,14 @@ const relogioSessoes = atom({ plugin: 'rainforest-mind', key: 'relogioSessoes' }
 const relogioNotaPendente = atom({ plugin: 'rainforest-mind', key: 'relogioNotaPendente' } as const, null as string | null)
 const relogioNotaEntregue = atom({ plugin: 'rainforest-mind', key: 'relogioNotaEntregue' } as const, null as string | null)
 
+// `PARADO` = nenhum checker em voo. O literal que desce o aviso mora so no `finally` da checagem,
+// a linha unica que a prova de mutacao troca.
+const PARADO = false
+const DEIXADO_VAZIO: RainforestMindPainelDeixado = { itens: [], proximo: 1, checando: PARADO, checar: true, pedido: '', ferramentas: [] }
+const painelDeixado = atom({ plugin: 'rainforest-mind', key: 'painelDeixado' } as const, DEIXADO_VAZIO)
+
+const deixadoInteiro = (d: RainforestMindPainelDeixado | null | undefined): RainforestMindPainelDeixado => ({ ...DEIXADO_VAZIO, ...(d ?? {}) })
+
 const inteiro = (s: RainforestMindPainelStats | null | undefined): RainforestMindPainelStats => ({ ...VAZIO, ...(s ?? {}) })
 
 type Io = {
@@ -80,6 +91,30 @@ async function buscar(io: Io): Promise<RainforestMindFaixaDados | null> {
 }
 
 type IoRodar = { rodar: Io['rodar']; raiz: string }
+
+type IoAnotar = {
+  gravar: (f: (d: RainforestMindPainelDeixado) => RainforestMindPainelDeixado) => Promise<unknown>
+  avisar: (texto: string) => void
+}
+
+// Itens novos do "deixado para depois": o mesmo texto nao entra duas vezes, guarda os 40 mais
+// recentes e avisa com um toast so quando entrou algo. Recebe so valores e lambdas (o engine
+// recusa `$` como argumento).
+async function anotar(io: IoAnotar, achados: string[], origem: RainforestMindPainelDeixadoOrigem): Promise<void> {
+  if (achados.length === 0) return
+  let novos: string[] = []
+  await io.gravar(raw => {
+    const d = deixadoInteiro(raw)
+    novos = [...new Set(achados)].filter(texto => !d.itens.some(i => i.texto === texto))
+    if (novos.length === 0) return d
+    return {
+      ...d,
+      proximo: d.proximo + novos.length,
+      itens: [...d.itens, ...novos.map((texto, i) => ({ id: d.proximo + i, texto, origem, estado: 'aberto' as const }))].slice(-40),
+    }
+  })
+  if (novos.length > 0) io.avisar(`Deixado para depois: ${(novos[0] ?? '').slice(0, 80)}`)
+}
 
 // Falha aberta: exit != 0 (jornada.cjs exit 2 = sem linha), JSON invalido, timeout ou excecao
 // devolvem null (apaga so a leitura).
@@ -203,6 +238,7 @@ const AGENTES_NO_PANE = 6
 const slugSemData = (slug: string): string => slug.replace(/^\d{4}-\d{2}-\d{2}-/, '')
 
 const AJUDA = 'Subcomandos: esconder, mostrar, cache 5m|1h, checar ligar|desligar. Sem argumento abre o painel.'
+const ESCRITORAS = ['Edit', 'Write', 'NotebookEdit']
 
 export const register: Register = (on, options) => {
   abertura(on, options)
@@ -399,6 +435,10 @@ export const register: Register = (on, options) => {
       await update($, painelStats, s => ({ ...inteiro(s), ttlMs: palavra === 'cache 5m' ? 5 * MIN : HORA }))
       return { text: `Vida do cache em ${palavra.slice(6)}.` }
     }
+    if (palavra === 'checar ligar' || palavra === 'checar desligar') {
+      await update($, painelDeixado, d => ({ ...deixadoInteiro(d), checar: palavra === 'checar ligar' }))
+      return { text: palavra === 'checar ligar' ? 'Checagem do segundo modelo ligada.' : 'Checagem do segundo modelo desligada.' }
+    }
     if (palavra !== '') return { text: AJUDA }
     // Sem argumento: abre o pane, mede o contexto e atualiza os fluxos. Cada peca que falha
     // some sozinha; o comando sempre devolve o texto.
@@ -466,6 +506,16 @@ export const register: Register = (on, options) => {
   // o `prompt.submit` porque o gancho classico de envio (UserPromptSubmit) nao roda, em mod, no
   // composer do REPL.
   on('prompt.submit', async ($, e, next) => {
+    // O pedido da pessoa fica guardado para o checker do fim do turno (so o que ela mesma mandou).
+    try {
+      const tipo: string | undefined = e.origin?.kind
+      if (tipo === undefined || tipo === 'composer' || tipo === 'bridge' || tipo === 'sdk') {
+        const pedido = String(e.text ?? '').slice(0, 4000)
+        await update($, painelDeixado, d => ({ ...deixadoInteiro(d), pedido }))
+      }
+    } catch {
+      // o pedido guardado nunca quebra o envio
+    }
     let nota: string | null = null
     try {
       if (e.origin === undefined || e.origin.kind === 'composer') {
@@ -527,6 +577,30 @@ export const register: Register = (on, options) => {
       })
     } catch {
       // o contador nunca quebra a ferramenta
+    }
+    try {
+      const falhou = ran.deny !== undefined || ran.isError === true
+      if (e.agentId === undefined) {
+        await update($, painelDeixado, d => {
+          const x = deixadoInteiro(d)
+          return { ...x, ferramentas: [...x.ferramentas, { tool: String(e.tool), deny: ran.deny !== undefined, isError: ran.isError === true }] }
+        })
+      }
+      if (!falhou && ESCRITORAS.includes(String(e.tool))) {
+        const entrada = e as unknown as Record<string, unknown>
+        const escrito = String(entrada.new_string ?? entrada.content ?? entrada.new_source ?? '')
+        const linha = (marcadoresEmArquivo(escrito) as string[])[0]
+        if (linha !== undefined) {
+          const arquivo = String(entrada.file_path ?? entrada.notebook_path ?? 'arquivo').split(/[\\/]/).pop() ?? 'arquivo'
+          await anotar(
+            { gravar: f => update($, painelDeixado, f), avisar: t => $.ui.toast(t) },
+            [`Escreveu "${linha.slice(0, 90)}" em ${arquivo}`],
+            'em arquivo',
+          )
+        }
+      }
+    } catch {
+      // o deixado nunca quebra a ferramenta
     }
     try {
       if (ran.deny === undefined && ran.isError !== true) {
@@ -635,6 +709,56 @@ export const register: Register = (on, options) => {
     } catch {
       // a barra nunca quebra o turno
     }
+    if (agentId === undefined) {
+      try {
+        const d = deixadoInteiro(await read($, painelDeixado))
+        await update($, painelDeixado, x => ({ ...deixadoInteiro(x), ferramentas: [] }))
+        if (e.reason === 'answer') {
+          const relato = String(e.answer ?? '')
+          const log = (m: string) => {
+            try {
+              $.ui.log(m, { to: 'debug' })
+            } catch {
+              // sem log, sem problema
+            }
+          }
+          const io = { gravar: (f: (x: RainforestMindPainelDeixado) => RainforestMindPainelDeixado) => update($, painelDeixado, f), avisar: (t: string) => $.ui.toast(t) }
+          await anotar(io, deferimentos(relato) as string[], 'Claude disse')
+          const ligado = d.checar
+          const ferramentas = d.ferramentas
+          const pedido = d.pedido
+          const deveChecar = ligado && ferramentas.length >= CHECAR_MIN_FERRAMENTAS && pedido !== '';
+          if (deveChecar) {
+            // Sem await: o turno acaba agora e o achado chega quando chegar.
+            await update($, painelDeixado, x => ({ ...deixadoInteiro(x), checando: true }))
+            const checagem = async () => {
+              try {
+                const r = await $.model.complete({
+                  model: 'haiku',
+                  prompt: montarPromptChecker({ pedido, relato, ferramentas }),
+                  maxTokens: 300,
+                  timeoutMs: 30000,
+                })
+                if (!r.isAnswered) {
+                  log(`painel: checker: o modelo nao respondeu (${r.reason})`)
+                  return
+                }
+                await anotar(io, lerRespostaChecker(r.text) as string[], 'segundo modelo')
+              } finally {
+                try {
+                  await update($, painelDeixado, (d) => ({ ...d, checando: false }));
+                } catch {
+                  // sem estado, o aviso de checando some quando o pane redesenhar
+                }
+              }
+            }
+            checagem().catch((err: unknown) => log(`painel: checker: ${String(err)}`))
+          }
+        }
+      } catch {
+        // o deixado nunca quebra o turno
+      }
+    }
     return next(e)
   })
 
@@ -670,9 +794,10 @@ export const register: Register = (on, options) => {
   // leitura que falta vira uma frase no proprio painel; excecao devolve next(e).
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e, next) => {
     try {
-      const { Box, Text } = $.ui.resolve(e)
+      const { Box, Text, Button } = $.ui.resolve(e)
       const s = inteiro(await read($, painelStats))
       const dados = await read($, faixaDados)
+      const deixado = deixadoInteiro(await read($, painelDeixado))
       const agora = await $.clock.now()
       const interior = Math.max(16, e.props.bodyColumns - 4)
       const visto = e.props.view?.agentId
@@ -813,11 +938,48 @@ export const register: Register = (on, options) => {
         <Text key="mnota" dimColor>Escrita feita por Bash não é detectada; só Edit, Write e NotebookEdit entram aqui.</Text>,
       ])
 
+      // Deixado para depois (D7): o que Claude adiou, escreveu como pendencia ou o segundo modelo
+      // achou faltando. "Faz agora" so preenche o prompt; quem envia e a pessoa.
+      const abertos = deixado.itens.filter(i => i.estado === 'aberto')
+      const fazAgora = async (id: number, texto: string): Promise<void> => {
+        try {
+          await $.prompt.fill({ text: rascunhoFazAgora(texto) as string, mode: 'append' })
+          await update($, painelDeixado, d => ({ ...deixadoInteiro(d), itens: deixadoInteiro(d).itens.map(i => (i.id === id ? { ...i, estado: 'enviado' as const } : i)) }))
+        } catch (err) {
+          try {
+            $.ui.log(`painel: deixado: ${String(err)}`, { to: 'debug' })
+          } catch {
+            // sem log, sem problema
+          }
+        }
+      }
+      const limpar = async (): Promise<void> => {
+        try {
+          await update($, painelDeixado, d => ({ ...deixadoInteiro(d), itens: [] }))
+        } catch {
+          // limpar nunca quebra o pane
+        }
+      }
+      const painelDeixadoTela = painel('p-deixado', COR.vermelho, 'Deixado para depois', [
+        deixado.checando ? <Text key="checando" color={COR.ambar}>Checando com o segundo modelo…</Text> : null,
+        abertos.length === 0 && !deixado.checando ? <Text key="nada" dimColor>Nada marcado. O trabalho que Claude deixar para depois aparece aqui.</Text> : null,
+        ...abertos.map((item, i) => (
+          <Box key={`dx-${item.id}`} flexDirection="column" marginTop={i === 0 ? 0 : 1}>
+            <Text color={COR.vermelho} bold>{`D${item.id} · ${item.origem}`}</Text>
+            <Text wrap="wrap">{item.texto}</Text>
+            <Button key={`faz-${item.id}`} label="Faz agora (só preenche o prompt)" onPress={() => fazAgora(item.id, item.texto)} />
+          </Box>
+        )),
+        abertos.length > 0 ? <Button key="deixado-limpar" label="Limpar tudo" onPress={limpar} /> : null,
+        <Text key="dnota" dimColor>{`Checagem do segundo modelo: ${deixado.checar ? 'ligada' : 'desligada'} (/painel checar ligar|desligar)`}</Text>,
+      ])
+
       const lidos = s.tokensNovos + s.tokensCacheLido + s.tokensCacheEscrito
       const doCache = lidos === 0 ? 0 : Math.round((s.tokensCacheLido / lidos) * 100)
       return (
         <Box flexDirection="column">
           {painelFluxos}
+          {painelDeixadoTela}
           {painelMapa_}
           {painelContexto}
           {painelCache}
@@ -907,6 +1069,7 @@ export const register: Register = (on, options) => {
           subagentes: s.agentes.filter(a => emAndamento(a, agora)).length,
           turnos: s.turnos,
           erros: s.falhas,
+          deixado: deixadoInteiro(await read($, painelDeixado)).itens.filter(i => i.estado === 'aberto').length,
         },
         relogio,
         cols,

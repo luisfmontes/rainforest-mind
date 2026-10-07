@@ -65,6 +65,9 @@ cada pergunta **já com a resposta recomendada**:
 > ➡️ **Recomendo:** sessão no servidor — você já tem Redis.
 `
 
+// Texto real de docs/rainforest/design/LEIA-PRIMEIRO-CONSOLIDADO-v2.md:111.
+const ADIAMENTO_REAL = '9. **Fluxo 4 (território)** fica para depois do núcleo estável —'
+
 const MIN = 60000
 const em = (h: number, m: number, dia = 3) => new Date(2026, 9, dia, h, m).getTime()
 
@@ -124,6 +127,13 @@ async function montar($: any, on: any, surface: Surface, inicio: number, comUi =
     toasts: [] as string[],
     logs: [] as string[],
     submits: 0,
+    // Deixado para depois: as chamadas do segundo modelo, o modo e o texto da resposta dele, o
+    // atraso (ms do relogio simulado) e os rascunhos que o botao "Faz agora" preencheu.
+    modelos: [] as { model: unknown; prompt: unknown; maxTokens: unknown; timeoutMs: unknown }[],
+    modoModelo: 'ok' as 'ok' | 'sem-resposta',
+    textoModelo: 'NENHUM',
+    atrasoModelo: 0,
+    fills: [] as { text: unknown; mode: unknown }[],
   }
   on('process.run', async (_$: any, e: any) => {
     s.runs += 1
@@ -159,6 +169,17 @@ async function montar($: any, on: any, surface: Surface, inicio: number, comUi =
   on('prompt.submit', async (_$: any, e: any) => {
     s.submits += 1
     return e as never
+  })
+  on('model.complete', async (_$: any, e: any) => {
+    s.modelos.push({ model: e.model, prompt: e.prompt, maxTokens: e.maxTokens, timeoutMs: e.timeoutMs })
+    if (s.atrasoModelo > 0) await relogio.sleep(s.atrasoModelo)
+    const usage = { input_tokens: 1, output_tokens: 1 }
+    if (s.modoModelo === 'sem-resposta') return { value: { isAnswered: false, reason: 'empty-reply', usage } } as never
+    return { value: { isAnswered: true, text: s.textoModelo, usage } } as never
+  })
+  on('prompt.fill', async (_$: any, e: any) => {
+    s.fills.push({ text: e.text, mode: e.mode })
+    return { isFilled: true } as never
   })
   on('ui.toast', async (_$: any, e: any) => {
     s.toasts.push(String(e.text))
@@ -743,6 +764,158 @@ for (const surface of ['terminal', 'desktop'] as const) {
       const r = await painel('xyz')
       for (const sub of ['esconder', 'mostrar', 'cache 5m|1h', 'checar ligar|desligar']) expect(r.text).toContain(sub)
       expect(s.opens.length).toBe(2) // so os dois /painel sem argumento abriram o pane
+    })
+
+    await m.ui.unmount()
+  })
+
+  test(`painel (${surface}): deixado para depois, varredura, marcadores e checker do segundo modelo`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40), false)
+    const { relogio, s, textos, juntos, comecar, terminar, painel, caso } = m
+    const pedir = (texto: string, origem: Record<string, unknown> | undefined = { kind: 'composer' }) =>
+      $.prompt.submit({ text: texto, ...(origem === undefined ? {} : { origin: origem }) } as never)
+    const ferramentas = async (...chamadas: Record<string, unknown>[]) => {
+      for (const c of chamadas) await $.tool.call(c as never)
+      await relogio.settle()
+    }
+    const bash = { tool: 'Bash', command: 'ls' }
+    const falha = { tool: 'Bash', command: 'comando-que-falha' }
+    const edit = { tool: 'Edit', file_path: '/projeto/hooks/faixa-puro.mjs', old_string: 'a', new_string: 'b' }
+    const itens = async () => (await textos()).filter(t => /^D\d+ · /.test(t))
+
+    await caso(`varredura (${surface}): a frase real vira 1 item Claude disse e Faz agora so preenche o prompt`, async () => {
+      await comecar()
+      await m.abrirPane()
+      const submits = s.submits
+      await pedir('me diga o status do fluxo 4')
+      await terminar(ADIAMENTO_REAL)
+      expect(await itens()).toEqual(['D1 · Claude disse'])
+      const t = await textos()
+      expect(t).toContain('Fluxo 4 (território) fica para depois do núcleo estável —')
+      expect(s.toasts.filter(x => x.startsWith('Deixado para depois: Fluxo 4'))).toHaveLength(1)
+      await m.ui.press({ key: 'faz-1' })
+      expect(s.fills).toHaveLength(1)
+      expect(s.fills[0].mode).toBe('append')
+      expect(String(s.fills[0].text)).toContain('Fluxo 4 (território) fica para depois do núcleo estável')
+      expect(String(s.fills[0].text)).toContain('Faca agora')
+      expect(s.submits).toBe(submits + 1) // so o prompt.submit do pedido: o botao nunca envia
+      expect(await itens()).toEqual([])
+    })
+
+    await caso(`checker (${surface}): so com 5 ou mais ferramentas`, async () => {
+      expect(s.modelos).toHaveLength(0) // o turno anterior teve 0 ferramentas
+      await pedir('rode a bateria e corrija')
+      await ferramentas(bash, bash, falha, edit)
+      await terminar('Tudo certo, terminei.')
+      expect(s.modelos).toHaveLength(0)
+      await pedir('rode a bateria e corrija o que falhar')
+      await ferramentas(bash, bash, falha, edit, edit)
+      s.textoModelo = 'Rodar a bateria da tarefa 2'
+      await terminar('Tudo certo, terminei.')
+      await relogio.settle()
+      expect(s.modelos).toHaveLength(1)
+      const c = s.modelos[0]
+      const prompt = String(c.prompt)
+      expect(c.model).toBe('haiku')
+      expect(c.maxTokens).toBe(300)
+      expect(c.timeoutMs).toBe(30000)
+      expect(prompt).toContain('rode a bateria e corrija o que falhar')
+      expect(prompt).toContain('Tudo certo, terminei.')
+      expect(prompt).toContain('Bash x3 (1 erro), Edit x2')
+    })
+
+    await caso(`checker (${surface}): a resposta vira item segundo modelo e toast`, async () => {
+      expect(await itens()).toEqual(['D2 · segundo modelo'])
+      expect(await textos()).toContain('Rodar a bateria da tarefa 2')
+      expect(s.toasts).toContain('Deixado para depois: Rodar a bateria da tarefa 2')
+    })
+
+    await caso(`checker (${surface}): NENHUM nao gera nada e a lista do turno foi zerada`, async () => {
+      const toasts = s.toasts.length
+      s.textoModelo = 'NENHUM'
+      await pedir('faça de novo')
+      await ferramentas(bash, bash, bash, bash, bash)
+      await terminar('Tudo certo, terminei.')
+      await relogio.settle()
+      expect(s.modelos).toHaveLength(2)
+      expect(String(s.modelos[1].prompt)).toContain('Bash x5')
+      expect(String(s.modelos[1].prompt)).not.toContain('Edit')
+      expect(await itens()).toEqual(['D2 · segundo modelo'])
+      expect(s.toasts).toHaveLength(toasts)
+    })
+
+    await caso(`checker (${surface}): /painel checar desligar impede a chamada e ligar a restaura`, async () => {
+      expect((await painel('checar desligar')).text).toContain('desligada')
+      expect(await juntos()).toContain('Checagem do segundo modelo: desligada')
+      await pedir('mais uma')
+      await ferramentas(bash, bash, bash, bash, bash)
+      await terminar('Tudo certo, terminei.')
+      await relogio.settle()
+      expect(s.modelos).toHaveLength(2)
+      expect((await painel('checar ligar')).text).toContain('ligada')
+      await pedir('mais uma')
+      await ferramentas(bash, bash, bash, bash, bash)
+      await terminar('Tudo certo, terminei.')
+      await relogio.settle()
+      expect(s.modelos).toHaveLength(3)
+    })
+
+    await caso(`checker (${surface}): isAnswered falso nao gera item nem toast e grava painel: checker no debug`, async () => {
+      s.modoModelo = 'sem-resposta'
+      const toasts = s.toasts.length
+      await pedir('outra')
+      await ferramentas(bash, bash, bash, bash, bash)
+      await terminar('Tudo certo, terminei.')
+      await relogio.settle()
+      expect(s.modelos).toHaveLength(4)
+      expect(s.logs.some(l => l.startsWith('painel: checker: '))).toBe(true)
+      expect(await itens()).toEqual(['D2 · segundo modelo'])
+      expect(s.toasts).toHaveLength(toasts)
+      s.modoModelo = 'ok'
+    })
+
+    await caso(`checker (${surface}): checando aparece enquanto o modelo pensa e some depois`, async () => {
+      s.atrasoModelo = 5000
+      s.textoModelo = 'Conferir a tarefa 3'
+      await pedir('devagar')
+      await ferramentas(bash, bash, bash, bash, bash)
+      await terminar('Tudo certo, terminei.')
+      await relogio.settle()
+      expect(await textos()).toContain('Checando com o segundo modelo…')
+      await relogio.advance(5000)
+      expect(await textos()).not.toContain('Checando com o segundo modelo…')
+      expect(await itens()).toEqual(['D2 · segundo modelo', 'D3 · segundo modelo'])
+      s.atrasoModelo = 0
+    })
+
+    await caso(`marcador (${surface}): TODO com dois pontos em arquivo escrito vira item em arquivo e TODO heredoc nao`, async () => {
+      await ferramentas({ tool: 'Write', file_path: '/projeto/hooks/faixa-puro.mjs', content: 'x\n// TODO: tratar timeout\ny' })
+      expect(await itens()).toEqual(['D2 · segundo modelo', 'D3 · segundo modelo', 'D4 · em arquivo'])
+      expect(await textos()).toContain('Escreveu "// TODO: tratar timeout" em faixa-puro.mjs')
+      await ferramentas({ tool: 'Write', file_path: '/projeto/hooks/faixa-puro.mjs', content: 'corpo de TODO heredoc' })
+      expect(await itens()).toHaveLength(3)
+    })
+
+    await caso(`subagente (${surface}): o turno do subagente nao dispara varredura nem checker`, async () => {
+      const chamadas = s.modelos.length
+      const itensAntes = (await itens()).length
+      await ferramentas(...[1, 2, 3, 4, 5, 6].map(() => ({ tool: 'Bash', command: 'ls', agentId: 'ag-1' })))
+      await terminar(ADIAMENTO_REAL, { agentId: 'ag-1', usage: { ...USAGE_REAL, model: 'haiku' } })
+      await relogio.settle()
+      expect(s.modelos).toHaveLength(chamadas)
+      expect(await itens()).toHaveLength(itensAntes)
+    })
+
+    await caso(`barra (${surface}): Deixado N conta os itens abertos`, async () => {
+      await m.ui.unmount()
+      await m.abrir()
+      expect(await juntos()).toContain('Deixado 3')
+      await m.abrirPane()
+      await m.ui.press({ key: 'deixado-limpar' })
+      expect(await itens()).toEqual([])
+      await m.ui.unmount()
+      await m.abrir()
+      expect(await juntos()).not.toContain('Deixado')
     })
 
     await m.ui.unmount()

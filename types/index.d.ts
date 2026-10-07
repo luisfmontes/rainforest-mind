@@ -73,6 +73,19 @@ export type RainforestMindPainelMapa = {
   subagentes: string[]
 }
 
+// "Deixado para depois" (D7): itens abertos, se o checker esta rodando e ligado, o ultimo pedido
+// da pessoa (ate 4000 caracteres) e as ferramentas do turno da sessao principal (nome e falha).
+export type RainforestMindPainelDeixadoOrigem = 'Claude disse' | 'em arquivo' | 'segundo modelo'
+
+export type RainforestMindPainelDeixado = {
+  itens: { id: number; texto: string; origem: RainforestMindPainelDeixadoOrigem; estado: 'aberto' | 'enviado' }[]
+  proximo: number
+  checando: boolean
+  checar: boolean
+  pedido: string
+  ferramentas: { tool: string; deny: boolean; isError: boolean }[]
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'rainforest-mind': {
@@ -80,6 +93,7 @@ declare module 'claude-code' {
       painelStats: RainforestMindPainelStats
       painelOculto: boolean
       painelMapa: RainforestMindPainelMapa
+      painelDeixado: RainforestMindPainelDeixado
       relogioJornada: RainforestMindRelogioJornada | null
       relogioSessoes: RainforestMindRelogioSessoes | null
       relogioNotaPendente: string | null
