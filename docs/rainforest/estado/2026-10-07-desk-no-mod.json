@@ -25,7 +25,7 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-07",
-    "tarefas_ok": 10,
+    "tarefas_ok": 11,
     "tarefas": 14,
     "em_voo": [],
     "em": "2026-10-07",
@@ -367,7 +367,8 @@
       "revisar: mapa-puro tem copia local de semControle (faixa-puro ja exporta)",
       "revisar: rascunho Faz agora sem acento",
       "medir: desvio-do-plano.cjs leva 1,5-2,4 s por escrita"
-    ]
+    ],
+    "tarefa11": "REPL real nas duas contas: barra, /painel, fatias, toast, Haiku (trabalho 835 ms) ok; desvio sessao pessoal 2026-10-07T15:04:53 Edit -> 15:04:58 toast unico (2o Edit sem toast), ~5 s; conta de trabalho bloqueia so prompt.compose e classic.SessionStart"
   },
   "revisar": {
     "status": "pendente"
