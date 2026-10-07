@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // @categoria: guia
 /**
- * PreToolUse (Bash, PowerShell; o registro ainda casa Write/Edit/MultiEdit/
- * NotebookEdit, que passam sem exame desde #417) — nega, dentro de subagente,
+ * PreToolUse (Bash, PowerShell; o registro em hooks.json casa só esses dois,
+ * desde que a trava do arquivo saiu em #417) — nega, dentro de subagente,
  * comandos de instalação de pacotes e a definição de `RAINFOREST_GATE_OFF`.
  *
  * Protege contra: subagente rodando `npm install`, `pip install`, e variações de

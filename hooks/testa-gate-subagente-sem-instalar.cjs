@@ -206,12 +206,6 @@ caso("touch .rainforest-gate-off passa (arquivo não desliga gate)", r.status, 0
 r = rodar("echo 1 > .rainforest-gate-off");
 caso("echo 1 > .rainforest-gate-off passa", r.status, 0);
 
-r = rodar("dummy", { toolName: "Write", toolInput: { file_path: ".rainforest-gate-off" } });
-caso("Write com file_path .rainforest-gate-off passa", r.status, 0);
-
-r = rodar("dummy", { toolName: "Edit", toolInput: { file_path: ".rainforest-gate-off" } });
-caso("Edit com file_path .rainforest-gate-off passa", r.status, 0);
-
 // === D7: RAINFOREST_GATE_OFF em environment é negado ===
 
 r = rodar("export RAINFOREST_GATE_OFF=1 && npm install x");
@@ -344,11 +338,6 @@ const ARQUIVO_PASSA = [
 ];
 for (const [ferramenta, cmd] of ARQUIVO_PASSA) {
   caso(`[${ferramenta}] ${cmd} passa (arquivo não desliga gate)`, rodar(cmd, { toolName: ferramenta }).status, 0);
-}
-for (const ferramenta of ["MultiEdit", "NotebookEdit"]) {
-  const campo = ferramenta === "NotebookEdit" ? { notebook_path: path.join(projeto, ".rainforest-gate-off") }
-    : { file_path: path.join(projeto, ".rainforest-gate-off") };
-  caso(`${ferramenta} em .rainforest-gate-off passa`, rodar("", { toolName: ferramenta, toolInput: campo }).status, 0);
 }
 
 // === Resultado ===

@@ -148,7 +148,7 @@ function repositoriosDoGitHub(gitTop) {
   for (const nome of nomes) {
     const url = git(gitTop, ["remote", "get-url", nome]);
     if (!url) continue;
-    const m = url.match(/(?:https:\/\/|git@)(?:www\.)?github\.com[:/]([\w.-]+)\/([\w.-]+?)(?:\.git)?$/);
+    const m = url.match(/(?:https:\/\/(?:[^@/\s]+@)?|ssh:\/\/git@|git@)(?:www\.)?github\.com[:/]([\w.-]+)\/([\w.-]+?)(?:\.git)?$/);
     if (!m) continue;
     const ownerRepo = `${m[1]}/${m[2]}`;
     if (!achados.includes(ownerRepo)) achados.push(ownerRepo);
@@ -422,7 +422,7 @@ function soIntroduzidos(achados, textoNovo, textoAntigo) {
 /**
  * Formata a mensagem de bloqueio com os achados.
  */
-function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade) {
+function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade, temRemotoGitHub) {
   let msg = `BLOQUEADO pelo gate de publicação do rainforest-mind.\n\n` +
     `Arquivo: ${arquivo}\n` +
     `Razão: este arquivo é versionado (rastreado por git) e contém dados sensíveis.\n\n` +
@@ -439,7 +439,8 @@ function mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade) {
     msgVisibilidade = `\n\nRepositório: visibilidade pública, apurada por 'gh repo view'. `;
   } else if (visibilidade === "desconhecida") {
     msgVisibilidade = `\n\nRepositório: visibilidade desconhecida — bloqueado por precaução. `;
-    if (!ehSubagente) {
+    // Com remoto GitHub a declaracao nao vale (declaradaPrivada), entao nao se sugere.
+    if (!ehSubagente && !temRemotoGitHub) {
       msgVisibilidade += `Repositório privado fora do GitHub? Declare \`"visibilidade-repo": "privada"\` em ` +
         `.rainforest/config.json do projeto (vale só para termos da lista privada; telefone, JID, CPF e credencial continuam barrando). `;
     }
@@ -499,9 +500,11 @@ function bloqueia(achados, arquivo, agente, gitTop, preambulo) {
   const visibilidade = visibilidadeDoRepo(gitTop);
   if (visibilidade === "privada") process.exit(0);
   if (visibilidade === "desconhecida" && declaradaPrivada(gitTop)) achados = achados.filter((a) => a.id !== "termo-privado");
-  if (achados.length === 0) process.exit(0);
+  // Sem achado depois do filtro, este arquivo/edit esta liberado e o laco do
+  // chamador CONTINUA: sair aqui deixaria os seguintes sem exame.
+  if (achados.length === 0) return;
   if (preambulo) process.stderr.write(preambulo);
-  process.stderr.write(mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade));
+  process.stderr.write(mensagemBloqueio(achados, arquivo, ehSubagente, visibilidade, repositoriosDoGitHub(gitTop).length > 0));
   process.exit(2);
 }
 

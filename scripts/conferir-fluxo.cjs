@@ -722,7 +722,9 @@ function extrairCamposDesconhecidos(corpo, cerca) {
 /**
  * Detecta arquivos no diff que não casam com glob de tarefa nenhuma.
  * Globs: *, **, ?
- * Isenção: docs/rainforest/design/**, docs/rainforest/planos/**, docs/rainforest/estado/**
+ * Isenção: só o rastro DESTE slug — design e plano nos caminhos que `caminhoDoc`
+ * (hooks/lib/pastas-docs.cjs) resolve (ou `--design`/`--plano`), mais
+ * `docs/rainforest/estado/<slug>.json`. Não há pasta isenta fixa.
  */
 function cmdCreep() {
   const slug = arg('slug');
@@ -756,6 +758,8 @@ function cmdCreep() {
   // dentro da pasta isenta. É a mesma forma do glob largo que a decisão D6 proíbe
   // numa tarefa, só que embutida no checador, onde nenhum `revisar` a veria.
   // Achado 4 da revisão de 2026-08-13.
+  // (A pasta do design e do plano vem de `caminhoDoc`, nao e fixa em
+  // `docs/rainforest/design/`.)
   // Os dois primeiros saem do caminho REAL quando ele veio por `--design`/`--plano`.
   // Quase nenhum design deste repositório se chama `<slug>.md`
   // (`fluxo-9-design-portaria.md`, `fluxo-6-design-portoes.md`), e derivar do slug

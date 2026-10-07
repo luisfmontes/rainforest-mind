@@ -19,7 +19,7 @@ node scripts/estado.cjs exigir --slug <slug> --estagio plano
 Sai com exit 2 se `design` não estiver `aprovado` — não insista, volte para
 o `brainstorm`. Leia o design inteiro (`node scripts/pastas-docs.cjs caminho --tipo design --slug <slug>`) antes da primeira tarefa.
 
-## Template — `pastas-docs.cjs caminho --tipo planos --slug <slug>`
+## Template — `node scripts/pastas-docs.cjs caminho --tipo planos --slug <slug>`
 
 Caminho relativo à **raiz do projeto em que se trabalha**.
 

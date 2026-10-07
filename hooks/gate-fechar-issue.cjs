@@ -935,6 +935,11 @@ function cwdDoSegmento(segmento, mapaCwd, ordem) {
 
 // Arquivos ja lidos por `source`/`.` neste processo (corta ciclo `. a` -> `. a`).
 const ARQUIVOS_SOURCE_VISTOS = new Set();
+// Profundidade de leitura de arquivo carregado por `source`/`.`: dentro dela o
+// veredito `ilegivel` nao barra (o limite de D16 vale para o arquivo carregado).
+let LENDO_SOURCE = 0;
+let CWD_DO_EVENTO = "";
+const RE_MUDA_DIRETORIO = /(?:^|[\s;&|({])(?:cd|pushd)(?=\s|$)/;
 
 function ehSourceDeArquivo(toks, pos) {
   if (pos === null) return false;
@@ -1003,28 +1008,35 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   if (ehSourceDeArquivo(toksComAspas, pos)) {
     const alvoSource = toksComAspas[pos + 1];
     if (!alvoSource || /[$\x60]/.test(alvoSource.v)) return;
-    const cwdSource = cwdDoSegmento(segmento, mapaCwd, ordem);
+    let cwdSource = cwdDoSegmento(segmento, mapaCwd, ordem);
     const arquivoSource = normalizarMsys(alvoSource.v);
+    // Cwd incerto (subshell, `{ }`, `bash -c`, `eval`: sub-segmento sem
+    // correspondencia no mapa): usa o cwd do EVENTO, que e onde o comando
+    // comeca. So segue passando quando a linha tem `cd`/`pushd`, porque ai o
+    // cwd do evento pode estar errado.
+    if (cwdSource == null && !RE_MUDA_DIRETORIO.test(COMANDO_INTEIRO)) cwdSource = CWD_DO_EVENTO || null;
     if (!path.isAbsolute(arquivoSource) && cwdSource == null) return;
     const resolvidoSource = path.isAbsolute(arquivoSource) ? arquivoSource : path.resolve(cwdSource, arquivoSource);
     if (ARQUIVOS_SOURCE_VISTOS.has(resolvidoSource)) return;
     ARQUIVOS_SOURCE_VISTOS.add(resolvidoSource);
     let conteudoSource;
     try { conteudoSource = fs.readFileSync(resolvidoSource, "utf8"); } catch { return; }
-    const PADROES_SOURCE = [["gh", "issue", "close"], ["gh", "issue", "create"], ["gh", "issue", "comment"], ["gh", "pr", "create"], ["gh", "pr", "edit"], ["gh", "pr", "merge"]];
-    for (const linha of conteudoSource.split("\n")) {
-      if (!linha.trim()) continue;
-      let toks;
-      try { toks = tokensComAspas(linha); } catch { toks = linha.split(/\s+/).filter(Boolean).map((v) => ({ v, q: false })); }
-      const idxCom = toks.findIndex((t) => !t.q && t.v.startsWith("#"));
-      const valores = (idxCom === -1 ? toks : toks.slice(0, idxCom)).map((t) => t.v);
-      for (const padrao of PADROES_SOURCE) {
-        const idx = indiceSequencia(valores, padrao);
-        if (idx !== -1) {
-          verificarComandoGh(linha, valores.slice(idx + 1), path.dirname(resolvidoSource));
-          break;
-        }
+    // O conteudo passa pelo MESMO caminho de um comando digitado: segmentos de
+    // `segmentosParaGate` (`if ...; then gh ...`) e `processarSegmento` (`gh -R a/b
+    // issue close`, wrappers, prefixos), com o cwd do proprio arquivo. O que o
+    // arquivo tem de ilegivel (variavel, `$(...)`) segue passando (D16).
+    const comandoAnterior = COMANDO_INTEIRO;
+    COMANDO_INTEIRO = conteudoSource;
+    LENDO_SOURCE += 1;
+    try {
+      const mapaArquivo = cwdPorSegmento(conteudoSource, path.dirname(resolvidoSource));
+      const contadoresArquivo = new Map();
+      for (const sub of segmentosParaGate(conteudoSource)) {
+        processarSegmento(sub, mapaArquivo, contadoresArquivo, ferramenta);
       }
+    } finally {
+      LENDO_SOURCE -= 1;
+      COMANDO_INTEIRO = comandoAnterior;
     }
     return;
   }
@@ -1046,6 +1058,7 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
     ? { interno: null, ilegivel: false }
     : desempacotarWrapperDeString(textoAPartir(toksComAspas, pos), { ferramenta, scriptComVariavel: 'desconhecido' });
   if (ilegivel) {
+    if (LENDO_SOURCE > 0) return;
     bloqueia(
       `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
       (/[$\x60]/.test(segmento) || /encodedcommand|-enc\b/i.test(segmento)
@@ -1165,6 +1178,7 @@ function main() {
   // docblock de `cwdDoSegmento`.
   const contadores = new Map();
   COMANDO_INTEIRO = comando;
+  CWD_DO_EVENTO = cwdDoEvento;
   for (const segmento of segmentosParaGate(comando)) {
     processarSegmento(segmento, mapaCwd, contadores, nome);
   }

@@ -3021,6 +3021,42 @@ rodar414 'source fecha414.sh'
 E414=$?
 [ $E414 -eq 2 ] && test_ok "414-4 source de script que fecha issue barra" || test_fail "414-4 source de script que fecha issue barra (exit $E414)"
 
+# Emenda da revisao: o ramo exigia `gh issue close` contiguo e, com cwd incerto,
+# passava. O conteudo do arquivo agora segue o caminho de um comando digitado.
+echo
+echo "== (414-5..7) ponto de script com variantes de gh que fecham barra =="
+printf 'gh -R a/b issue close 12\n' > "$SBP/fecha414-r.sh"
+rodar414 '. ./fecha414-r.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-5 ponto de script com gh -R issue close barra" || test_fail "414-5 ponto de script com gh -R issue close barra (exit $E414)"
+printf 'gh --repo a/b issue close 12\n' > "$SBP/fecha414-repo.sh"
+rodar414 '. ./fecha414-repo.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-6 ponto de script com gh --repo issue close barra" || test_fail "414-6 ponto de script com gh --repo issue close barra (exit $E414)"
+printf 'if true; then gh -R a/b issue close 12; fi\n' > "$SBP/fecha414-if.sh"
+rodar414 '. ./fecha414-if.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-7 ponto de script com if/then gh issue close barra" || test_fail "414-7 ponto de script com if/then gh issue close barra (exit $E414)"
+
+echo
+echo "== (414-8..9) cwd incerto usa o cwd do evento =="
+rodar414 '(. ./fecha414.sh)'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-8 subshell com ponto de script que fecha barra" || test_fail "414-8 subshell com ponto de script que fecha barra (exit $E414)"
+rodar414 '{ . ./fecha414.sh; }'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-8 chaves com ponto de script que fecha barra" || test_fail "414-8 chaves com ponto de script que fecha barra (exit $E414)"
+rodar414 'bash -c ". ./fecha414.sh"'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-9 bash -c com ponto de script que fecha barra" || test_fail "414-9 bash -c com ponto de script que fecha barra (exit $E414)"
+rodar414 'eval ". ./fecha414.sh"'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-9 eval com ponto de script que fecha barra" || test_fail "414-9 eval com ponto de script que fecha barra (exit $E414)"
+printf 'FOO=bar\neval "$(echo x)"\nbash -c "$FOO"\n' > "$SBP/ilegivel414.sh"
+rodar414 '. ./ilegivel414.sh'
+E414=$?
+[ $E414 -eq 0 ] && test_ok "414-10 script carregado com variavel ilegivel segue passando" || test_fail "414-10 script carregado com variavel ilegivel segue passando (exit $E414: $(cat "$SBP/err-414"))"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

@@ -750,6 +750,27 @@ S419=""; confere419 "419 gh diz publica: a declaracao e ignorada" 2
 g419 "$R419" "$R419/docs/x.md" "$CONT419"
 confere419 "419 remoto GitHub sem rede: a declaracao nao libera" 2
 
+# Achado 1 da emenda: o filtro de `termo-privado` rodava dentro de `bloqueia()`, que
+# saia 0 quando o arquivo ficava sem achado -- e os arquivos/edits SEGUINTES nunca
+# eram examinados. Remoto fora do GitHub + declaracao privada de novo.
+git -C "$R419" remote set-url origin "https://gitlab.example.invalid/x/y.git"
+printf '{"visibilidade-repo":"privada"}' > "$R419/.rainforest/config.json"
+printf '%s\n' "$CONT419" > "$R419/docs/a1.md"
+printf 'contato %s\n' "$TEL419" > "$R419/docs/b2.md"
+git -C "$R419" add docs/a1.md docs/b2.md
+S419=$(PAY_CWD="$(esc "$R419")" payBash 'git commit -m x' "$(esc "$R419")" | env HOME="$H419" RFM_ROOT="$SANDBOX_DATA" RAINFOREST_GATE_SEM_REDE=1 node "$GATE" 2>&1); RC419=$?
+confere419 "419 commit com termo num arquivo e telefone noutro barra" 2
+git -C "$R419" rm --cached -q docs/a1.md docs/b2.md
+S419=$(PAY_CWD="$(esc "$R419")" payMulti "$(esc "$R419")/docs/m1.md" "x" "$CONT419" "$(esc "$R419")/docs/m2.md" "x" "contato $TEL419" | env HOME="$H419" RFM_ROOT="$SANDBOX_DATA" RAINFOREST_GATE_SEM_REDE=1 node "$GATE" 2>&1); RC419=$?
+confere419 "419 MultiEdit termo primeiro e telefone depois barra" 2
+# Achado 4: credencial na URL do remoto GitHub nao pode esconder o remoto.
+for U419 in "https://tok""en@github.com/test/p419.git" "https://user:x@github.com/test/p419" "ssh://git@github.com/test/p419.git"; do
+  git -C "$R419" remote set-url origin "$U419"
+  g419 "$R419" "$R419/docs/x.md" "$CONT419"
+  confere419 "419 remoto GitHub com usuario na URL ($(printf '%s' "$U419" | sed 's|//[^@]*@|//***@|')): a declaracao nao libera" 2
+done
+if printf '%s' "$S419" | grep -q "visibilidade-repo"; then falhou=$((falhou+1)); echo "    FALHA remoto GitHub: a mensagem sugere 'visibilidade-repo'"; else ok=$((ok+1)); echo "    ok   remoto GitHub: mensagem nao sugere 'visibilidade-repo'"; fi
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
