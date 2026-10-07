@@ -10,6 +10,16 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.42.0 — 2026-10-06
+
+- **`/transferir claude`: a sessão muda de conta com o contexto inteiro.** Copia o transcript da sessão atual
+  (e a pasta dos subagentes e das saídas de ferramenta) da conta em que ela roda para a outra conta do Claude
+  Code nesta máquina, e imprime a linha `cd` + `claude --resume <id>` para continuar lá. Não resume nada nem
+  gasta token; a origem fica intacta; cópia que já existe no destino só é sobrescrita com `--forcar`. Sem chave
+  no `/setup`. `/transferir` sem argumento continua indo para o Codex.
+- **Conserto:** o `/transferir` para Codex recusava (exit 2) toda sessão da conta pessoal, porque só aceitava
+  transcript em `~/.claude/projects`; agora aceita as duas contas.
+
 ## 1.41.0 — 2026-10-05
 
 - **Revisão bimestral das regras.** As 214 observações registradas desde 2026-08-08 foram triadas por conteúdo:
