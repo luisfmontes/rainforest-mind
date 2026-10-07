@@ -831,7 +831,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
 
     await caso(`pane (${surface}): /painel xyz devolve a lista de subcomandos`, async () => {
       const r = await painel('xyz')
-      for (const sub of ['esconder', 'mostrar', 'cache 5m|1h', 'checar ligar|desligar']) expect(r.text).toContain(sub)
+      for (const sub of ['esconder', 'mostrar', 'cache 5m|1h', 'checar ligar|desligar', 'limpar']) expect(r.text).toContain(sub)
       expect(s.opens.length).toBe(2) // so os dois /painel sem argumento abriram o pane
     })
 
@@ -985,6 +985,84 @@ for (const surface of ['terminal', 'desktop'] as const) {
       await m.ui.unmount()
       await m.abrir()
       expect(await juntos()).not.toContain('Deixado')
+    })
+
+    await m.ui.unmount()
+  })
+
+  // Issue #424: item resolvido no fluxo da conversa sai dos abertos, e decisao `Q<n>` nao conta.
+  test(`painel (${surface}): deixado fecha o resolvido, ignora Q de decisao e /painel limpar zera`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40), false)
+    const { relogio, s, textos, juntos, comecar, terminar, painel, caso } = m
+    const pedir = (texto: string) => $.prompt.submit({ text: texto, origin: { kind: 'composer' } } as never)
+    const bash = { tool: 'Bash', command: 'ls' }
+    const cinco = async () => {
+      for (const c of [bash, bash, bash, bash, bash]) await $.tool.call(c as never)
+      await relogio.settle()
+    }
+    const itens = async () => (await textos()).filter(t => /^D\d+ · /.test(t))
+
+    await caso(`resolvido (${surface}): turno sem ferramenta cujo pedido resolve D1 tira o item dos abertos`, async () => {
+      await comecar()
+      await m.abrirPane()
+      await pedir('me diga o status do fluxo 4')
+      await terminar(ADIAMENTO_REAL)
+      expect(await itens()).toEqual(['D1 · Claude disse'])
+      expect(s.modelos).toHaveLength(0) // 0 ferramentas e nada aberto antes: o checker nao roda
+      s.textoModelo = 'RESOLVIDO 1: pessoa diz que o fluxo 4 entrou\nRESOLVIDO 9: id que nao existe'
+      await pedir('o fluxo 4 ja entrou, fechei agora')
+      await terminar('Certo, anotado.')
+      await relogio.settle()
+      expect(s.modelos).toHaveLength(1)
+      const prompt = String(s.modelos[0].prompt)
+      expect(prompt).toContain('PENDENCIAS ABERTAS:')
+      expect(prompt).toContain('1: Fluxo 4 (território) fica para depois do núcleo estável')
+      expect(prompt).toContain('o fluxo 4 ja entrou, fechei agora')
+      expect(await itens()).toEqual([])
+      await m.ui.unmount()
+      await m.abrir()
+      expect(await juntos()).not.toContain('Deixado')
+      await m.abrirPane()
+    })
+
+    await caso(`Q de decisao (${surface}): turno de 5 ferramentas que termina em Q1 nao aumenta a contagem`, async () => {
+      const toasts = s.toasts.length
+      s.textoModelo = 'Enviar mensagem WhatsApp pendente de confirmação do usuário'
+      await pedir('monte a mensagem e me mostre')
+      await cinco()
+      await terminar('Montei a mensagem.\n\n**Q1.** Fica para depois o envio, ou mando agora? Recomendo mandar agora.')
+      await relogio.settle()
+      expect(await itens()).toEqual([])
+      expect(s.toasts).toHaveLength(toasts)
+    })
+
+    await caso(`Q de decisao (${surface}): com item aberto o checker ainda fecha resolvido, sem anotar novo`, async () => {
+      await pedir('rode e corrija')
+      await cinco()
+      s.textoModelo = 'Rodar a bateria da tarefa 2'
+      await terminar('Tudo certo, terminei.')
+      await relogio.settle()
+      const [d] = await itens()
+      expect(d).toMatch(/^D\d+ · segundo modelo$/)
+      const id = Number(String(d).slice(1, String(d).indexOf(' ')))
+      s.textoModelo = `RESOLVIDO ${id}: bateria rodou\nConferir o deploy da tarefa 3`
+      await pedir('rode a bateria')
+      await cinco()
+      await terminar('Rodei a bateria.\n\nQ1. Faço o deploy? Recomendo sim.')
+      await relogio.settle()
+      expect(await itens()).toEqual([])
+    })
+
+    await caso(`limpar (${surface}): /painel limpar zera os abertos e a barra`, async () => {
+      s.textoModelo = 'Conferir a tarefa 4'
+      await pedir('mais uma')
+      await cinco()
+      await terminar('Tudo certo, terminei.')
+      await relogio.settle()
+      expect(await itens()).toHaveLength(1)
+      expect((await painel('limpar')).text).toContain('zerado')
+      expect(await itens()).toEqual([])
+      expect((await painel('xyz')).text).toContain('limpar')
     })
 
     await m.ui.unmount()

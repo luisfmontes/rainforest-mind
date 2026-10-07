@@ -73,12 +73,13 @@ export type RainforestMindPainelMapa = {
   subagentes: string[]
 }
 
-// "Deixado para depois" (D7): itens abertos, se o checker esta rodando e ligado, o ultimo pedido
+// "Deixado para depois" (D7): itens (aberto, enviado pelo Faz agora ou resolvido pelo
+// checker), se o checker esta rodando e ligado, o ultimo pedido
 // da pessoa (ate 4000 caracteres) e as ferramentas do turno da sessao principal (nome e falha).
 export type RainforestMindPainelDeixadoOrigem = 'Claude disse' | 'em arquivo' | 'segundo modelo'
 
 export type RainforestMindPainelDeixado = {
-  itens: { id: number; texto: string; origem: RainforestMindPainelDeixadoOrigem; estado: 'aberto' | 'enviado' }[]
+  itens: { id: number; texto: string; origem: RainforestMindPainelDeixadoOrigem; estado: 'aberto' | 'enviado' | 'resolvido' }[]
   proximo: number
   checando: boolean
   checar: boolean

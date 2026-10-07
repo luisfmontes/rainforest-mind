@@ -167,7 +167,7 @@ o preço do cache é estimativa a preço de lista (cotações do desk de 2026-09
 contra a tabela oficial).
 
 *O comando `/painel`.* Sem argumento, abre o pane. Subcomandos: `esconder`, `mostrar`,
-`cache 5m|1h`, `checar ligar|desligar`. Esconder é alternância explícita: a barra só volta com
+`cache 5m|1h`, `checar ligar|desligar`, `limpar`. Esconder é alternância explícita: a barra só volta com
 `/painel mostrar`, nunca por mudança de conteúdo. `cache 5m|1h` troca a vida do cache usada na
 contagem; `checar` liga ou desliga o segundo modelo (abaixo). Argumento que não é um deles devolve a ajuda.
 
@@ -187,9 +187,14 @@ com fluxo sem plano, o mapa só lista e nada fica vermelho.
 *Deixado para depois.* Três origens: as frases de adiamento da resposta (português e inglês), os
 marcadores de pendência escritos em arquivo, e um segundo modelo (alias `haiku`, por
 `$.model.complete`) que recebe o pedido, o fim do relato e a lista de ferramentas do turno com as
-falhas, para pegar "feito" sem comando que o sustente. O checker roda em turno com
-`CHECAR_MIN_FERRAMENTAS` = 5 ou mais ferramentas, sem esperar: o item chega quando chegar.
-O botão "Faz agora" só preenche o prompt (`$.prompt.fill`); quem envia é a pessoa.
+falhas, para pegar "feito" sem comando que o sustente. O checker roda sem esperar (o item chega
+quando chegar) e tem duas metades. Achar pendência nova pede turno com `CHECAR_MIN_FERRAMENTAS` = 5
+ou mais ferramentas e relato sem decisão `Q<n>` para a pessoa: a `Q` espera a palavra dela, não é
+trabalho adiado, e a linha `Q<n>` também sai da varredura de frases. Fechar item resolvido roda em
+todo turno com item aberto: o checker recebe os abertos com id e devolve `RESOLVIDO <id>`, só id
+aberto vale, e o item passa a `resolvido` e sai da contagem. O botão "Faz agora" só preenche o
+prompt (`$.prompt.fill`); quem envia é a pessoa. `/painel limpar` e o botão "Limpar tudo" zeram a
+lista.
 
 *Falhas e disco.* Falha de qualquer leitura (`$.session.usage`, `$.model.complete`, `$.ui.open`,
 `$.process.run`) apaga só a peça afetada; exceção no desenho da barra ou do pane cai em `next(e)` e nunca
