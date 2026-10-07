@@ -448,30 +448,37 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "2405aa4ada0eafb202ad6e85d364af43c8fb9654",
+      "head": "d3e270714b9e65a3167da5b3bf9199142a58a766",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "aa5b8b5775fe27d22",
-        "veredito": "reprovado",
+        "agente_id": "a27cf34e382ea7551",
+        "veredito": "ok",
         "em": "2026-10-07",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/08016e29-f51c-41aa-af56-118d8eab5f72/subagents/agent-aa5b8b5775fe27d22.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/08016e29-f51c-41aa-af56-118d8eab5f72/subagents/agent-a27cf34e382ea7551.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-07",
-    "achados": 9,
+    "achados": 0,
     "bloqueantes": [
       "1: texto do deixado sem semControle no pane/toast/prompt.fill"
     ],
-    "tentativas": 1
+    "nao_bloqueantes": 5,
+    "base": "0656db336900f0af358cf5e535f577f64b35f6aa",
+    "head": "d3e270714b9e65a3167da5b3bf9199142a58a766"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-07-desk-no-mod",
+    "saida": "exit 0; tarefas 1-10 vermelho, 11-14 n/a",
+    "criterios": "T1 [true,3000000,$0.02,$0.61,false,[4,2,1]]; T2 [1,1,0,0]; T3 [true,true,true] e function function; T5 [null,hooks/mod.tsx,claude_ai_Claude_Docs,null]; validate 0 com eventos e state; greps negativos 0; D11 intacto; T12 sha256 ok; T13 checker verde; T14 versao 1.45.0; plugin test 64/0; T11 medicao real nas duas contas",
+    "emenda": "mutacao das tarefas 2 e 8 reancorada (rodada 2 tornou a de 8 neutra)",
+    "em": "2026-10-07"
   },
   "fechar": {
     "status": "pendente"

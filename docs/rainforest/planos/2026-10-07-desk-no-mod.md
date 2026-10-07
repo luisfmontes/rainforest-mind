@@ -95,8 +95,8 @@ paralela: sim
 prova: `node hooks/testa-mod-deixado.cjs`
 mutacao:
   arquivo: `hooks/deixado-puro.mjs`
-  de: `.filter(parte => parte.length > 12 && DITO.test(semCitacao(parte)))`
-  para: `.filter(parte => parte.length > 12 && DITO.test(parte))`
+  de: `.filter(parte => parte.length > 12 && DITO.test(semCitacao(parte).replace(NEGADO, ' ')))`
+  para: `.filter(parte => parte.length > 12 && DITO.test(parte.replace(NEGADO, ' ')))`
   bateria: `node hooks/testa-mod-deixado.cjs`
   fixture: `testa-mod-deixado.cjs, caso "frase entre aspas ou crase nao conta como adiamento"`
 pronto quando: com as linhas reais do repo como texto de resposta, `deferimentos` acha 1 adiamento em `docs/rainforest/design/LEIA-PRIMEIRO-CONSOLIDADO-v2.md:111` ("9. **Fluxo 4 (território)** fica para depois do núcleo estável —") e 1 em `referencias/advpl-graph/HANDOVER-advpl-graph.md:60` ("... sem HTML bonito por enquanto; INDEX.md + graph.json bastam"), 0 nas linhas 33 e 34 de `docs/rainforest/design/2026-10-07-desk-no-mod.md` (as mesmas frases, mas entre aspas: `("por enquanto", "não rodei", "fica para depois", "próxima fase", "placeholder"…)`), e `marcadoresEmArquivo` acha 0 em `hooks/gate-git-verificacao.cjs:67` ("corpo de TODO heredoc", `TODO` como palavra portuguesa, achado 6) — provado por `node --input-type=module -e 'import("./hooks/deixado-puro.mjs").then(async m=>{const fs=await import("node:fs");const l=(f,n)=>fs.readFileSync(f,"utf8").split(/\r?\n/)[n-1];const d="docs/rainforest/design/2026-10-07-desk-no-mod.md";console.log(JSON.stringify([m.deferimentos(l("docs/rainforest/design/LEIA-PRIMEIRO-CONSOLIDADO-v2.md",111)).length,m.deferimentos(l("referencias/advpl-graph/HANDOVER-advpl-graph.md",60)).length,m.deferimentos(l(d,33)+" "+l(d,34)).length,m.marcadoresEmArquivo(l("hooks/gate-git-verificacao.cjs",67)).length]))})'` imprimindo `[1,1,0,0]`; e a bateria cobre, além disso, o positivo em inglês ("I haven't run the tests yet"), "não rodei" com e sem acento, bloco de código ignorado, no máximo 3 por resposta, `marcadoresEmArquivo` com `// TODO: tratar timeout` (sintético: não existe marcador positivo real no repo), `FIXME(ana)`, `.skip(`, e o prompt do checker (`montarPromptChecker`) que leva o pedido, o fim do relato (últimos 6000 caracteres) **e a lista de ferramentas do turno com as falhas** (`Bash x12 (2 erros)`, `Edit x3`, `Write x1 (1 negada)`), em português, pedindo no máximo 3 linhas começando por verbo e a palavra `NENHUM` quando não houver nada, e `lerRespostaChecker("NENHUM")` vazio.
@@ -191,8 +191,8 @@ paralela: nao
 prova: `grep -q "desvio-do-plano.cjs" hooks/mod.tsx`
 mutacao:
   arquivo: `hooks/mod.tsx`
-  de: `if (desvio.veredito === 'fora' && marcado.novo) {`
-  para: `if (desvio.veredito === 'fora') {`
+  de: `if (desvioConsultado.has(escrita) || desvioPendente.has(escrita)) {`
+  para: `if (false) {`
   bateria: `claude plugin test .`
   fixture: `mod-painel.test.tsx, caso "mapa (<surface>): um toast por arquivo, nao por escrita"`
 pronto quando: com o plano real `docs/rainforest/planos/2026-10-03-mod-faixa-foco.md` como fonte dos `arquivos:` (servido pela saída REAL de `scripts/desvio-do-plano.cjs` sobre repo temporário, colada como fixture e servida por `on('process.run')` conforme o `argv`), `tool.call` de `Write` em `hooks/faixa-puro.mjs` (veredito `dentro`), de `Edit` em `scripts/estado.cjs` duas vezes (veredito `fora`), de `Read` em `hooks/mod.tsx`, de `Bash`, de `mcp__claude_ai_Claude_Docs__guide` e de `Skill` com `skill: "plano"`, e um `agent.spawn` com `description` "revisar o diff", `claude plugin test .` sai 0 com 0 fail nos dois surfaces e o pane "Mapa da sessão" lista os dois arquivos escritos (o fora do plano em vermelho, `scripts/estado.cjs` aparecendo uma vez), a skill `plano`, o serviço `claude_ai_Claude_Docs` e o subagente, **não lista** o `Read` nem o `Bash`, e diz na própria tela que escrita por Bash não é detectada (D16); `$.ui.toast` é chamado uma única vez para `scripts/estado.cjs` mesmo com as duas escritas (D15), nenhum `prompt.submit` nem `context` sai do desvio (nada vai ao modelo); fora de fluxo (veredito `sem-fluxo`) o mapa lista e nada fica vermelho nem gera toast; script com exit 1, JSON inválido ou `process.run` rejeitado não acusam nada e não quebram o `tool.call` — provado por `claude plugin test .`; o `tool.call` devolve o resultado de `next(e)` sem esperar o script (o teste faz o `process.run` do desvio demorar com `relogio.sleep` e confere que o resultado da ferramenta chega antes); `grep -c "desvio-do-plano" hooks/mod.tsx` devolve pelo menos 1 e `claude plugin validate .claude-plugin/plugin.json` sai 0 e lista `$.ui.toast` e `tool.call`.
@@ -278,6 +278,11 @@ Nota: se a 1.44.0 mesclar antes, a versão é 1.45.0 e o CHANGELOG deste lote en
 ## Cobertura
 
 D1 → 6, 10, 12, 14. D2 → 6, 13. D3 → 1, 6, 10, 13. D4 → 3, 7. D5 → 1, 6, 7, 11, 13. D6 → 6, 10. D7 → 2, 9, 11, 13. D8 → 6, 7, 9, 13. D9 → 6, 13. D10 → 6, 7, 8, 9, 10, 11. D11 → 6, 10, 14. D12 → 1, 2, 5. D13 → 5, 8, 11, 13. D14 → 3, 4, 8, 11, 13. D15 → 3, 4, 8. D16 → 4, 5, 8, 13.
+
+## Emenda de 2026-10-07 (verificar)
+
+- **Mutação da tarefa 2**: a correção G da 2ª rodada (negação) reescreveu a linha do `filter`; o `de:` acompanha a linha nova, a inversão é a mesma (tirar `semCitacao`).
+- **Mutação da tarefa 8**: a correção C (desvio em fila, um spawn por arquivo) tornou o `&& marcado.novo` redundante — a segunda escrita do mesmo arquivo não chega mais ao veredito, e a mutação antiga ficou neutra (`conferir-fluxo mutacoes`: mutante sobreviveu). Quem garante "um toast por arquivo" agora é o filtro de `desvioConsultado`/`desvioPendente`, e é ele que a mutação inverte.
 
 ## Lacunas conhecidas
 
