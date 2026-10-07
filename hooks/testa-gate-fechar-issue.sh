@@ -3057,6 +3057,25 @@ rodar414 '. ./ilegivel414.sh'
 E414=$?
 [ $E414 -eq 0 ] && test_ok "414-10 script carregado com variavel ilegivel segue passando" || test_fail "414-10 script carregado com variavel ilegivel segue passando (exit $E414: $(cat "$SBP/err-414"))"
 
+# Revisao rodada 2: dentro do arquivo carregado, o ilegivel passava inteiro, e
+# um `gh issue close` LITERAL ao lado de uma variavel alheia passava junto.
+echo
+echo "== (414-11..12) literal que fecha, ao lado de variavel, barra =="
+printf 'bash -c "gh issue close 1 && echo $HOME"\n' > "$SBP/lit414-home.sh"
+rodar414 '. ./lit414-home.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-11 bash -c com literal e variavel alheia barra" || test_fail "414-11 bash -c com literal e variavel alheia barra (exit $E414)"
+printf 'sh -c "gh -R a/b issue close 1; $X"\n' > "$SBP/lit414-x.sh"
+rodar414 '. ./lit414-x.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-11 sh -c com gh -R literal e variavel barra" || test_fail "414-11 sh -c com gh -R literal e variavel barra (exit $E414)"
+# Encadeado: `.` dentro do arquivo resolve contra o cwd de quem carregou.
+mkdir -p "$SBP/sub414"
+printf '. ./fecha414.sh\n' > "$SBP/sub414/encadeia.sh"
+rodar414 '. ./sub414/encadeia.sh'
+E414=$?
+[ $E414 -eq 2 ] && test_ok "414-12 ponto encadeado resolve contra o cwd e barra" || test_fail "414-12 ponto encadeado resolve contra o cwd e barra (exit $E414)"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

@@ -764,7 +764,7 @@ git -C "$R419" rm --cached -q docs/a1.md docs/b2.md
 S419=$(PAY_CWD="$(esc "$R419")" payMulti "$(esc "$R419")/docs/m1.md" "x" "$CONT419" "$(esc "$R419")/docs/m2.md" "x" "contato $TEL419" | env HOME="$H419" RFM_ROOT="$SANDBOX_DATA" RAINFOREST_GATE_SEM_REDE=1 node "$GATE" 2>&1); RC419=$?
 confere419 "419 MultiEdit termo primeiro e telefone depois barra" 2
 # Achado 4: credencial na URL do remoto GitHub nao pode esconder o remoto.
-for U419 in "https://tok""en@github.com/test/p419.git" "https://user:x@github.com/test/p419" "ssh://git@github.com/test/p419.git"; do
+for U419 in "https://tok""en@github.com/test/p419.git" "https://user:x@github.com/test/p419" "ssh://git@github.com/test/p419.git" "ssh://git@ssh.github.com:443/test/p419.git" "ssh://git@github.com:22/test/p419"; do
   git -C "$R419" remote set-url origin "$U419"
   g419 "$R419" "$R419/docs/x.md" "$CONT419"
   confere419 "419 remoto GitHub com usuario na URL ($(printf '%s' "$U419" | sed 's|//[^@]*@|//***@|')): a declaracao nao libera" 2

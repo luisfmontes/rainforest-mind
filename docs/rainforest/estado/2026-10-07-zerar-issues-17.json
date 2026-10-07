@@ -24,7 +24,7 @@
     "em": "2026-10-07"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-07",
     "tarefas_ok": 10,
     "tarefas": 10,
@@ -155,33 +155,35 @@
         "fixture": "419 visibilidade-repo privada libera termo privado com remoto sem gh"
       }
     ],
-    "em_voo": []
+    "em_voo": [],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-07"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "f3b367a5570830d2eae73f54b2ec89183f3852ef",
+      "head": "646a66a5503e3fbc690db4d1a56e94dfe6252cb7",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a4a54a92ad2bcaffc",
+        "agente_id": "a65681698cb7d6906",
         "veredito": "reprovado",
         "em": "2026-10-07",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/8a92195d-02e9-4689-a92d-ece42b872931/subagents/agent-a4a54a92ad2bcaffc.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/8a92195d-02e9-4689-a92d-ece42b872931/subagents/agent-a65681698cb7d6906.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-07",
     "achados": [
-      "bloqueante: gate-publicacao-destino bloqueia() sai 0 no meio do laco com visibilidade-repo (commit/MultiEdit com termo e telefone)",
-      "bloqueante: gate-fechar-issue ramo source nao pega gh -R o/r issue close",
-      "subshell/bash -c com . relativo passa (cwd incerto)",
-      "repositoriosDoGitHub nao reconhece https://user@github.com",
-      "hooks.json matcher morto do sem-instalar; docblocks conferir-fluxo; titulo skill plano"
+      "bloqueante: LENDO_SOURCE deixava passar gh literal ao lado de variavel no arquivo carregado",
+      "encadeado resolvia contra a pasta do arquivo",
+      "ssh com porta/ssh.github.com nao reconhecido"
     ],
-    "tentativas": 1
+    "tentativas": 2
   },
   "verificar": {
     "status": "pendente"

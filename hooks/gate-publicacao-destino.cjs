@@ -148,7 +148,8 @@ function repositoriosDoGitHub(gitTop) {
   for (const nome of nomes) {
     const url = git(gitTop, ["remote", "get-url", nome]);
     if (!url) continue;
-    const m = url.match(/(?:https:\/\/(?:[^@/\s]+@)?|ssh:\/\/git@|git@)(?:www\.)?github\.com[:/]([\w.-]+)\/([\w.-]+?)(?:\.git)?$/);
+    // `ssh://` aceita porta (`:22`, `:443`) e o host `ssh.github.com` (SSH pela 443).
+    const m = url.match(/(?:https:\/\/(?:[^@/\s]+@)?(?:www\.)?github\.com[:/]|ssh:\/\/git@(?:ssh\.)?github\.com(?::\d+)?\/|git@github\.com:)([\w.-]+)\/([\w.-]+?)(?:\.git)?$/);
     if (!m) continue;
     const ownerRepo = `${m[1]}/${m[2]}`;
     if (!achados.includes(ownerRepo)) achados.push(ownerRepo);
