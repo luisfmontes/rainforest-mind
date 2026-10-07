@@ -10,6 +10,15 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.45.1 — 2026-10-07
+
+- **"Deixado para depois" fecha o que se resolveu.** O segundo modelo passa a receber os itens abertos e
+  diz quais o turno resolveu — por ferramenta, pelo relato ou pela sua resposta — e esses saem da lista e da
+  contagem da barra. Roda em todo turno com item aberto, mesmo sem ferramenta.
+- **Pergunta de decisão não é pendência.** Turno que termina com `Q1.`, `Q2:`… para você não gera item: a
+  linha `Q` sai da varredura de frases e o segundo modelo não anota pendência nova nesse turno.
+- **`/painel limpar`** zera a lista, como o botão "Limpar tudo".
+
 ## 1.45.0 — 2026-10-07
 
 Uma barra de sessão acima do prompt e um painel que abre sob demanda.
