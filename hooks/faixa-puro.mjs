@@ -59,5 +59,5 @@ export function cortar(str, cols) {
 // C0/C1 e override bidi nunca chegam crus ao terminal.
 const CONTROLES = /[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u2028\u2029\u202a-\u202e\u2060-\u2069\ufeff]/g;
 export function semControle(s) {
-  return s.replace(CONTROLES, ' ');
+  return String(s ?? '').replace(CONTROLES, ' ');
 }

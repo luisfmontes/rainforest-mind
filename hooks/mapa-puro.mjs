@@ -2,15 +2,13 @@
 // e que subagente entrou. Sem `$`, sem Node, sem relogio: o mod chama com valores.
 // D16: so Edit, Write e NotebookEdit contam como escrita; escrita por Bash fica fora.
 
+import { semControle } from './faixa-puro.mjs';
+
 export const ESCRITORAS = new Set(['Edit', 'Write', 'NotebookEdit']);
 export const TETO = 50;
 
-// Controles C0/C1 e override bidi nunca chegam crus ao terminal (mesma classe de
-// faixa-puro.mjs; la a funcao ainda nao e exportada, entao fica local e minima).
-const CONTROLES = /[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u2028\u2029\u202a-\u202e\u2060-\u2069\ufeff]/g;
-export function semControle(s) {
-  return String(s ?? '').replace(CONTROLES, ' ');
-}
+// Controles C0/C1 e override bidi nunca chegam crus ao terminal: a funcao e a de faixa-puro.mjs.
+export { semControle };
 
 /** Caminho escrito pela chamada, ou null (leitura, Bash e o resto nao escrevem). */
 export function escritaDe(e) {
