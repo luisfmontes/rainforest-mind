@@ -20,17 +20,10 @@
     "em": "2026-10-06"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-06",
-    "tarefas_ok": 3,
+    "tarefas_ok": 4,
     "tarefas": 4,
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "3: medicao real nas duas contas",
-        "desde": "2026-10-06T20:40"
-      }
-    ],
     "carimbos": [
       {
         "tarefa": 1,
@@ -108,14 +101,49 @@
         "iteracao": 3,
         "sessao": "42fa8a5e-dc19-4a78-b86e-05d10364fd47",
         "ts": "2026-10-07T00:42:12.624Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "a85f9315343c82bb53d035368d44c8f4bc2fead0",
+        "iteracao": 8,
+        "sessao": "42fa8a5e-dc19-4a78-b86e-05d10364fd47",
+        "ts": "2026-10-07T10:23:53.630Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "f1565ba11b4da325ea40a0fb35e13d6d304e70fd",
+        "iteracao": 4,
+        "sessao": "42fa8a5e-dc19-4a78-b86e-05d10364fd47",
+        "ts": "2026-10-07T10:23:53.630Z"
       }
     ],
-    "em": "2026-10-06",
-    "pendentes": [
-      "tarefa-4: /clear e /compact no REPL, feito pelo usuario"
-    ],
+    "em": "2026-10-07",
     "nao_aplicavel": [
       "tarefa-2: claude-code/testing nao intercepta session.append vindo de plugin (HooksError: no implementation for session.append); n/a por decisao do usuario 2026-10-06; ideia harness-testing-nao-intercepta-session-append-de-plugin"
+    ],
+    "comando": "node hooks/testa-mod-abertura-append.cjs",
+    "saida": "== resultado: 8 ok, 0 falha(s), 0 skipped ==",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-mod-abertura-append.cjs, caso resume com a marca no transcript nao anexa de novo"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "claude-code/testing nao intercepta session.append vindo de plugin (HooksError: no implementation for session.append); decisao do usuario 2026-10-06"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "medicao real em claude -p; inversoes moram na tarefa 1"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "medicao no REPL feita pelo usuario; clear e compact invertidos pela mutacao de pendente na bateria"
+      }
     ]
   },
   "revisar": {
