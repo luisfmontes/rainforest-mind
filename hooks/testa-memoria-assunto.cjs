@@ -7,7 +7,7 @@ const os = require('os');
 const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
 const { criarSchema } = require(path.join(__dirname, '..', 'scripts', 'memoria.cjs'));
-const { LIMIAR_BM25, construirQueryAssunto, buscarPorAssunto, montarBlocoAssunto } = require('./lib/memoria-assunto.cjs');
+const { LIMIAR_BM25, TETO_DF_FRACAO, construirQueryAssunto, buscarPorAssunto, montarBlocoAssunto } = require('./lib/memoria-assunto.cjs');
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'testa-memoria-assunto-'));
 const caminho = path.join(tmp, 'teste.db');
@@ -22,7 +22,16 @@ function inserir(projeto, conteudo, extra = {}) {
   ).run(projeto, conteudo, '2026-10-01T10:00:00.000Z', 'o' + seq, extra.consolidada || null, extra.substituida || null);
   return Number(r.lastInsertRowid);
 }
-function limpar() { db.exec('DELETE FROM observacoes'); }
+// Enchimento: o teto de df e fracao do total de vivas; com corpus de 2-6 linhas todo termo
+// passaria do teto. Cada limpar() deixa ENCHIMENTO linhas de palavras unicas (df 1, sem relacao).
+const ENCHIMENTO = 1000;
+function limpar() {
+  db.exec('DELETE FROM observacoes');
+  const ins = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
+  db.exec('BEGIN');
+  for (let i = 0; i < ENCHIMENTO; i++) ins.run('enchimento', 'Fundo ' + i + '\n\nenchimento' + i + ' fundo' + i, '2026-10-01T10:00:00.000Z', 'f' + i);
+  db.exec('COMMIT');
+}
 
 const PERMISSIVO = 1e9; // aceita qualquer bm25: isola o que cada caso mede
 let ok = 0, falha = 0;
@@ -62,7 +71,7 @@ caso('bm25 acima do limiar nao entra', () => {
   inserir('p1', 'Axolote\n\naxolote regenera');
   const sem = buscarPorAssunto(db, 'axolote', { projetoAtual: 'p1', jaServidos: new Set(), limiar: PERMISSIVO });
   const padrao = buscarPorAssunto(db, 'axolote', { projetoAtual: 'p1', jaServidos: new Set() });
-  return LIMIAR_BM25 === -16 && sem.length === 1 && sem[0].bm25 > LIMIAR_BM25 && padrao.length === 0;
+  return LIMIAR_BM25 < 0 && sem.length === 1 && sem[0].bm25 > LIMIAR_BM25 && padrao.length === 0;
 });
 caso('texto sem termo util devolve vazio', () => {
   limpar();
@@ -96,25 +105,30 @@ caso('bloco comeca por cabecalho e cabe em 1500 bytes', () => {
     partes.length > 1 && partes.slice(1).every((p) => p.startsWith('['));
 });
 caso('lista vazia vira string vazia', () => montarBlocoAssunto([]) === '');
-// Corpus do briefing longo: 150 palavras medias (cada uma em 80 de 200 memorias, idf baixo) +
-// 2 alvos de termos raros. Com o limiar REAL: 30 termos medios somam < 16 (nao entra), mas os
-// 150 somariam bem mais (entraria) — por isso o caso mede o LIMITE_TERMOS.
+// Corpus do briefing longo: 150 palavras comuns, cada uma em COMUNS memorias — um pouco acima do
+// teto de df (TETO_DF_FRACAO x vivas) — + 2 alvos de termos raros. Sem o teto, as palavras comuns
+// somariam bm25 muito alem do limiar (o primeiro caso prova isso na consulta sem teto).
+const COMUNS = Math.ceil(TETO_DF_FRACAO * ENCHIMENTO * 1.2) + 3;
 function corpusBriefingLongo() {
   limpar();
   const palavras = [];
   for (let i = 0; i < 150; i++) palavras.push('termo' + i + 'comum');
-  for (let i = 0; i < 80; i++) inserir('p1', 'Registro amplo ' + i + '\n\n' + palavras.join(' '));
-  for (let i = 0; i < 118; i++) inserir('p1', 'Nota curta ' + i + '\n\nnada a ver aqui ' + i);
+  for (let i = 0; i < COMUNS; i++) inserir('p1', 'Registro amplo ' + i + '\n\n' + palavras.join(' '));
   const alvo = inserir('p2', 'Reconciliacao zarquon\n\n' + 'zarquon flibbertigibbet quasar '.repeat(6));
   inserir('p2', 'Outro assunto\n\nbananeira jabuticaba ' + 'bananeira jabuticaba '.repeat(3));
   return { briefing: palavras.join(' '), alvo };
 }
-caso('briefing longo de termos comuns, sem termo raro de nenhum alvo, devolve vazio', () => {
+caso('texto so com palavras comuns do corpus nao injeta', () => {
   const { briefing } = corpusBriefingLongo();
   const o = { projetoAtual: 'p1', jaServidos: new Set() };
-  return buscarPorAssunto(db, briefing, o).length === 0 &&
-    // o corpus e valido: os 150 termos, sem corte, passariam do limiar (o limite de termos e que impede)
-    buscarPorAssunto(db, briefing, { ...o, limiar: PERMISSIVO }).length > 0;
+  // controle: sem teto (fracao 1) a consulta existe e a melhor candidata passa do limiar real
+  const semTeto = construirQueryAssunto(db, briefing, 1);
+  const melhor = semTeto && db.prepare(
+    'SELECT bm25(observacoes_fts) AS b FROM observacoes_fts WHERE observacoes_fts MATCH ? ORDER BY b LIMIT 1'
+  ).get(semTeto).b;
+  return semTeto !== null && melhor <= LIMIAR_BM25 &&
+    construirQueryAssunto(db, briefing) === null &&
+    buscarPorAssunto(db, briefing, o).length === 0;
 });
 caso('o mesmo briefing com um termo raro de um alvo acha o alvo', () => {
   const { briefing, alvo } = corpusBriefingLongo();

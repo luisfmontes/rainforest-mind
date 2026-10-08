@@ -20,18 +20,19 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
-const { calcularNota, construirQueryFts5DoTexto } = require('./lib/utilidade.cjs');
+const { calcularNota } = require('./lib/utilidade.cjs');
 const { filtroVivas } = require('./memoria.cjs');
+const { construirQueryAssunto, TETO_DF_FRACAO } = require('../hooks/lib/memoria-assunto.cjs');
 
 const NOTA_UTIL = 0.5;
 const TETO_POR_PEDIDO = 3;
-const TERMOS_QUERY = 30;
 
 function argumentos(argv) {
-  const a = { db: null, limiares: null, semFiltroTemporal: false, casoNota: false };
+  const a = { db: null, limiares: null, tetos: [TETO_DF_FRACAO], semFiltroTemporal: false, casoNota: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--db') a.db = argv[++i];
     else if (argv[i] === '--limiares') a.limiares = argv[++i];
+    else if (argv[i] === '--tetos') a.tetos = argv[++i].split(',').map(Number);
     else if (argv[i] === '--sem-filtro-temporal') a.semFiltroTemporal = true;
     else if (argv[i] === '--caso-nota') a.casoNota = true;
   }
@@ -40,8 +41,8 @@ function argumentos(argv) {
     process.exit(2);
   }
   a.limiares = a.limiares.split(',').map(Number);
-  if (a.limiares.some((n) => !Number.isFinite(n))) {
-    console.error('limiar invalido em --limiares');
+  if (a.limiares.some((n) => !Number.isFinite(n)) || a.tetos.some((n) => !Number.isFinite(n))) {
+    console.error('valor invalido em --limiares ou --tetos');
     process.exit(2);
   }
   return a;
@@ -120,7 +121,7 @@ function main() {
   const sessoes = db.prepare('SELECT sessao FROM uso_memoria_sessoes').all().map((r) => r.sessao);
   let ausentes = 0;
   let pedidos = 0;
-  const candidatasPorPedido = []; // [{bm25, nota}[]]
+  const candidatasPorTeto = new Map(a.tetos.map((t) => [t, []])); // teto -> [{bm25, nota}[]] por pedido
   let casoNota = null;
 
   for (const id of sessoes) {
@@ -134,44 +135,55 @@ function main() {
       const ev = eventos[i];
       if (ev.tipo !== 'pedido' || !ev.digitado || !ev.ts) continue;
       pedidos++;
-      const query = construirQueryFts5DoTexto(ev.texto, TERMOS_QUERY);
-      let linhas = [];
-      if (query) {
+      let posterior = null;
+      const notas = new Map(); // obs.id -> nota (a nota nao depende do teto)
+      for (const teto of a.tetos) {
+        // Consulta montada pela funcao do hook, com o teto em calibracao.
+        let query = null;
         try {
-          linhas = a.semFiltroTemporal ? busca.all(query) : busca.all(query, ev.ts);
+          query = construirQueryAssunto(db, ev.texto, teto);
         } catch (err) {
-          linhas = [];
+          query = null;
         }
-      }
-      const cands = [];
-      if (linhas.length) {
-        const posterior = eventos.slice(i + 1).map((x) => x.texto).join('\n');
+        let linhas = [];
+        if (query) {
+          try {
+            linhas = a.semFiltroTemporal ? busca.all(query) : busca.all(query, ev.ts);
+          } catch (err) {
+            linhas = [];
+          }
+        }
+        const cands = [];
         for (const l of linhas) {
-          const nota = calcularNota(db, l.conteudo, posterior);
+          if (posterior === null) posterior = eventos.slice(i + 1).map((x) => x.texto).join('\n');
+          if (!notas.has(l.id)) notas.set(l.id, calcularNota(db, l.conteudo, posterior));
+          const nota = notas.get(l.id);
           cands.push({ bm25: l.bm25, nota });
           if (a.casoNota && !casoNota) {
             const notaCom = calcularNota(db, l.conteudo, ev.texto + '\n' + posterior);
             if (notaCom > nota) casoNota = { sessao: id, pedido: pedidos, obs: l.id, notaCom, notaSem: nota };
           }
         }
+        candidatasPorTeto.get(teto).push(cands);
       }
-      candidatasPorPedido.push(cands);
     }
   }
 
-  console.log('limiar | injecoes | fracao_util(nota>=0.5) | media_por_pedido | fracao_pedidos_sem_injecao');
-  for (const L of a.limiares) {
-    let inj = 0;
-    let uteis = 0;
-    let semInj = 0;
-    for (const cands of candidatasPorPedido) {
-      const dentro = cands.filter((c) => c.bm25 <= L);
-      inj += dentro.length;
-      uteis += dentro.filter((c) => c.nota >= NOTA_UTIL).length;
-      if (dentro.length === 0) semInj++;
+  console.log('teto | limiar | injecoes | fracao_util(nota>=0.5) | media_por_pedido | fracao_pedidos_sem_injecao');
+  for (const teto of a.tetos) {
+    for (const L of a.limiares) {
+      let inj = 0;
+      let uteis = 0;
+      let semInj = 0;
+      for (const cands of candidatasPorTeto.get(teto)) {
+        const dentro = cands.filter((c) => c.bm25 <= L);
+        inj += dentro.length;
+        uteis += dentro.filter((c) => c.nota >= NOTA_UTIL).length;
+        if (dentro.length === 0) semInj++;
+      }
+      const f = (n, d) => (d ? (n / d).toFixed(3) : 'n/a');
+      console.log(`${teto} | ${L} | ${inj} | ${f(uteis, inj)} | ${f(inj, pedidos)} | ${f(semInj, pedidos)}`);
     }
-    const f = (n, d) => (d ? (n / d).toFixed(3) : 'n/a');
-    console.log(`${L} | ${inj} | ${f(uteis, inj)} | ${f(inj, pedidos)} | ${f(semInj, pedidos)}`);
   }
   console.log(`sessoes=${sessoes.length} pedidos=${pedidos} transcritos_ausentes=${ausentes}`);
   if (a.casoNota) {

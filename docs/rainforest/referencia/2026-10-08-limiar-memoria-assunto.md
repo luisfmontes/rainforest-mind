@@ -70,4 +70,70 @@ do que não serve; o limiar corta volume mais do que melhora precisão. Mais rig
 80% ou mais dos pedidos sem memória, abaixo do mínimo de cobertura. A decisão de usar bm25 como único critério fica
 com quem decide o desenho.
 
-LIMIAR_BM25 = -16
+(O limiar -16 desta primeira calibração, sem teto de frequência, foi substituído pela recalibração abaixo.)
+
+## Recalibração (teto de frequência)
+
+Motivo: sem teto, as palavras comuns do pedido (df alto) somavam bm25 até o limiar sem serem assunto. Agora
+`construirQueryAssunto` descarta termo com df > `TETO_DF_FRACAO` × (observações vivas e não consolidadas) e a consulta
+da calibração é montada por essa mesma função (teto como parâmetro opcional). Mesma cópia do banco, mesmos
+transcritos, mesmo filtro temporal e mesma nota (sem o pedido) da primeira calibração.
+
+Comando rodado:
+
+```
+node scripts/calibrar-limiar-assunto.cjs --db <copia-do-rainforest.db> --tetos 0.005,0.01,0.02 --limiares -1,-2,-3,-4,-5,-6,-8,-10,-12,-14,-16,-20
+```
+
+```
+teto | limiar | injecoes | fracao_util(nota>=0.5) | media_por_pedido | fracao_pedidos_sem_injecao
+0.005 | -1 | 5360 | 0.099 | 2.577 | 0.119
+0.005 | -2 | 5350 | 0.099 | 2.572 | 0.119
+0.005 | -3 | 5214 | 0.101 | 2.507 | 0.119
+0.005 | -4 | 5009 | 0.105 | 2.408 | 0.120
+0.005 | -5 | 4905 | 0.106 | 2.358 | 0.129
+0.005 | -6 | 4665 | 0.107 | 2.243 | 0.144
+0.005 | -8 | 1723 | 0.189 | 0.828 | 0.585
+0.005 | -10 | 628 | 0.252 | 0.302 | 0.823
+0.005 | -12 | 286 | 0.311 | 0.138 | 0.912
+0.005 | -14 | 125 | 0.304 | 0.060 | 0.958
+0.005 | -16 | 80 | 0.350 | 0.038 | 0.971
+0.005 | -20 | 30 | 0.200 | 0.014 | 0.990
+0.01 | -1 | 5668 | 0.107 | 2.725 | 0.079
+0.01 | -2 | 5665 | 0.107 | 2.724 | 0.079
+0.01 | -3 | 5548 | 0.109 | 2.667 | 0.079
+0.01 | -4 | 5377 | 0.113 | 2.585 | 0.080
+0.01 | -5 | 5314 | 0.113 | 2.555 | 0.082
+0.01 | -6 | 4981 | 0.111 | 2.395 | 0.103
+0.01 | -8 | 2242 | 0.179 | 1.078 | 0.512
+0.01 | -10 | 1119 | 0.217 | 0.538 | 0.716
+0.01 | -12 | 508 | 0.262 | 0.244 | 0.856
+0.01 | -14 | 235 | 0.234 | 0.113 | 0.926
+0.01 | -16 | 137 | 0.270 | 0.066 | 0.952
+0.01 | -20 | 50 | 0.140 | 0.024 | 0.985
+0.02 | -1 | 5974 | 0.116 | 2.872 | 0.036
+0.02 | -2 | 5972 | 0.116 | 2.871 | 0.036
+0.02 | -3 | 5856 | 0.118 | 2.815 | 0.036
+0.02 | -4 | 5700 | 0.121 | 2.740 | 0.036
+0.02 | -5 | 5681 | 0.121 | 2.731 | 0.037
+0.02 | -6 | 5162 | 0.116 | 2.482 | 0.083
+0.02 | -8 | 2757 | 0.175 | 1.325 | 0.430
+0.02 | -10 | 1655 | 0.190 | 0.796 | 0.619
+0.02 | -12 | 806 | 0.203 | 0.388 | 0.798
+0.02 | -14 | 397 | 0.207 | 0.191 | 0.887
+0.02 | -16 | 217 | 0.212 | 0.104 | 0.933
+0.02 | -20 | 83 | 0.108 | 0.040 | 0.975
+sessoes=535 pedidos=2080 transcritos_ausentes=386
+```
+
+Critério (o mesmo da primeira calibração): maior fração útil com pelo menos 30% dos pedidos com alguma injeção
+(fração sem injeção <= 0.70). Dentre os pares que cumprem, o maior é teto 0.02 com limiar -10 (fração útil 0.190,
+61,9% dos pedidos sem injeção, 0.796 por pedido); o segundo é teto 0.005 com limiar -8 (0.189, 58,5% sem injeção). A
+diferença entre os dois é de 0.001, dentro do ruído; vale o critério mecânico. Os pares com fração útil maior
+(por exemplo teto 0.005 com limiar -16, 0.350) deixam 82% ou mais dos pedidos sem memória e ficam fora do critério.
+
+Ressalvas: o teto sobe a fração útil de 0.140 (sem teto, limiar -16) para 0.190, ganho real mas modesto; a contagem de
+vivas do teto é a da cópia inteira, não a do instante do pedido; 386 de 535 transcritos não existem na máquina.
+
+LIMIAR_BM25 = -10
+TETO_DF_FRACAO = 0.02

@@ -10,16 +10,21 @@ const { formatarObservacao } = require('./memoria-sessao.cjs');
 
 // bm25 do FTS5 é negativo (mais negativo = mais relevante). Entra a candidata
 // com bm25 <= LIMIAR_BM25. Calibrado em docs/rainforest/referencia/2026-10-08-limiar-memoria-assunto.md.
-const LIMIAR_BM25 = -16;
+const LIMIAR_BM25 = -10;
 const TETO_BYTES = 1500;
 const CABECALHO = '## Memória do assunto';
+// Termo com df acima desta fracao das observacoes vivas e comum demais: nao entra na consulta.
+// Calibrado junto com o limiar no mesmo documento.
+const TETO_DF_FRACAO = 0.02;
 const LIMITE_TERMOS = 30;
 const LIMITE_SQL = 50;
 
 // Query OR dos LIMITE_TERMOS termos MAIS RAROS do texto: menor document frequency > 0 em
 // observacoes_fts (termo com df 0 nao casa nada e nao entra). Briefing longo nao dilui a
-// consulta com palavras comuns. Desempate estavel (ordem de aparicao). Lanca se o FTS faltar.
-function construirQueryAssunto(conexao, texto) {
+// consulta com palavras comuns. Termo com df > tetoFracao x (observacoes vivas) tambem sai: palavra
+// comum demais soma bm25 ate o limiar sem ser assunto. Desempate estavel (ordem de aparicao).
+// Lanca se o FTS faltar. `tetoFracao` existe so para a calibracao varrer tetos.
+function construirQueryAssunto(conexao, texto, tetoFracao = TETO_DF_FRACAO) {
   const brutos = String(texto || '').match(/[\p{L}\p{N}]+/gu) || [];
   const unicos = Array.from(new Set(brutos.map((t) => t.toLowerCase())));
   if (unicos.length === 0) return null;
@@ -27,11 +32,15 @@ function construirQueryAssunto(conexao, texto) {
   const comDf = [];
   unicos.forEach((t, i) => {
     const n = Number(contar.get('"' + t.replace(/"/g, '""') + '"').n);
-    if (n > 0) comDf.push({ t, n, i });
+    if (n > 0) comDf.push({ t, df: n, i });
   });
   if (comDf.length === 0) return null;
-  comDf.sort((a, b) => (a.n - b.n) || (a.i - b.i));
-  return comDf.slice(0, LIMITE_TERMOS).map((x) => '"' + x.t.replace(/"/g, '""') + '"').join(' OR ');
+  const vivas = Number(conexao.prepare(`SELECT count(*) AS n FROM observacoes o WHERE o.consolidada_em IS NULL ${filtroVivas('o.')}`).get().n);
+  const tetoDf = tetoFracao * vivas;
+  const raros = comDf.filter((t) => t.df <= tetoDf);
+  if (raros.length === 0) return null;
+  raros.sort((a, b) => (a.df - b.df) || (a.i - b.i));
+  return raros.slice(0, LIMITE_TERMOS).map((x) => '"' + x.t.replace(/"/g, '""') + '"').join(' OR ');
 }
 
 function buscarPorAssunto(conexao, texto, { projetoAtual, jaServidos = new Set(), max = 3, limiar = LIMIAR_BM25 } = {}) {
@@ -73,4 +82,4 @@ function montarBlocoAssunto(linhas) {
   return algumaLinha ? bloco : '';
 }
 
-module.exports = { LIMIAR_BM25, construirQueryAssunto, buscarPorAssunto, montarBlocoAssunto };
+module.exports = { LIMIAR_BM25, TETO_DF_FRACAO, construirQueryAssunto, buscarPorAssunto, montarBlocoAssunto };
