@@ -49,6 +49,9 @@ const { acharExecutavelClaude } = require('./lib/achar-executavel-claude.cjs');
 // Chave de grupo de origem de uma observação — consolidação por grupo (D7).
 const { sqlGrupoDeOrigem } = require('./lib/grupo-de-origem.cjs');
 
+// Migração 7 do esquema: nome canônico de projeto (#435). Módulo folha, sem require de volta.
+const { migrarProjetoCanonico } = require('./lib/migrar-projeto-canonico.cjs');
+
 // Sinal de utilidade da memória (Tarefas 1, 3 e 4, D1-D11). Sentido único:
 // utilidade.cjs nunca requer este arquivo de volta (evitaria require
 // circular — ver o comentário no topo de scripts/lib/utilidade.cjs).
@@ -368,7 +371,7 @@ function limparMarcaDagua(conexao) {
 }
 
 // Executa o schema SQL no banco.
-function criarSchema(conexao) {
+function criarSchema(conexao, opcoes = {}) {
   const caminhoSchema = path.resolve(__dirname, 'esquema-memoria.sql');
   if (!fs.existsSync(caminhoSchema)) {
     console.error(`ERRO: ${caminhoSchema} não encontrado`);
@@ -617,6 +620,10 @@ function criarSchema(conexao) {
       // Nota: não relançamos — a coluna pode estar parcialmente aplicada.
     }
   }
+
+  // Migração 7: nome canônico de projeto (#435, D5-D7). Nunca lança; o backup entra por
+  // injeção (opcoes.fazerBackup, usado pelo teste). Sem opcoes, vale o backup do banco.
+  migrarProjetoCanonico(conexao, { fazerBackup: opcoes.fazerBackup || fazerBackupDoBanco });
 }
 
 // Migração de observacoes: garantir que tem UNIQUE(projeto, origem).
