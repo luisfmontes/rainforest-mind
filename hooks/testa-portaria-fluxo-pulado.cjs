@@ -319,6 +319,125 @@ console.log("== F. trilho protheus: .gates.json recente libera ==");
   descartar(repo);
 }
 
+// Leva o fluxo ate o estagio `ate` pelo scripts/estado.cjs real. design aprovado e
+// plano ok; para chegar a revisar, `exigir executar` (arma a catraca) e executar ok
+// com `mutacao`; para verificar, revisar ok; para fechar, verificar ok com comando e
+// saida. Devolve null quando chegou, ou a saida do passo que recusou.
+const ORDEM_FLUXO = ["design", "plano", "executar", "revisar", "verificar", "fechar"];
+function fluxoAberto(repo, wt, ate) {
+  const passos = [
+    ["iniciar", "--slug", SLUG, "--titulo", "teste"],
+    ["marcar", "--slug", SLUG, "--estagio", "design", "--status", "aprovado"],
+    ["marcar", "--slug", SLUG, "--estagio", "plano", "--status", "ok"],
+  ];
+  const idx = ORDEM_FLUXO.indexOf(ate);
+  if (idx >= ORDEM_FLUXO.indexOf("revisar")) {
+    passos.push(["exigir", "--slug", SLUG, "--estagio", "executar"]);
+    passos.push(["marcar", "--slug", SLUG, "--estagio", "executar", "--status", "ok", "--json",
+      JSON.stringify({ comando: "node hooks/testa-portaria-fluxo-pulado.cjs", saida: "ok: 1 falhou: 0",
+        mutacao: [{ tarefa: 1, resultado: "vermelho", fixture: "caso-de-teste" }] })]);
+  }
+  if (idx >= ORDEM_FLUXO.indexOf("verificar")) {
+    passos.push(["marcar", "--slug", SLUG, "--estagio", "revisar", "--status", "ok"]);
+  }
+  if (idx >= ORDEM_FLUXO.indexOf("fechar")) {
+    // O `verificar` exige comando que cite uma peca de sensor do repositorio (D3, D6 do estado).
+    passos.push(["marcar", "--slug", SLUG, "--estagio", "verificar", "--status", "ok", "--json",
+      JSON.stringify({ comando: "node scripts/conferir-categoria.cjs", saida: "ok: 1 falhou: 0" })]);
+  }
+  for (const passo of passos) {
+    const r = estado(repo, wt, passo);
+    if (r.status !== 0) return `${passo.join(" ")}: exit=${r.status} stderr=${r.stderr}`;
+  }
+  return null;
+}
+
+// == G. estagios do manifesto: tester em revisar, documentador em fechar ==
+console.log("== G. estagios do manifesto: tester em revisar, documentador em fechar ==");
+{
+  const repo = novoRepo();
+  const wt = comWorktree(repo);
+
+  const erro = fluxoAberto(repo, wt, "revisar");
+  caso("G0 fluxo levado a revisar pelo estado.cjs real",
+    erro === null, erro);
+  const prox = estado(repo, wt, ["proximo", "--slug", SLUG]);
+  caso("G0 estagio aberto apos executar ok e revisar",
+    /revisar/.test(prox.stdout || ""), `exit=${prox.status} stdout=${prox.stdout} stderr=${prox.stderr}`);
+
+  const tester = despachar(repo, wt, "rainforest-mind:tester");
+  caso("tester despacha com fluxo em revisar (mutacao do revisar): exit 0",
+    tester.status === 0, `exit=${tester.status} stderr=${tester.stderr}`);
+  caso("tester despacha com fluxo em revisar (mutacao do revisar): grava allow no log",
+    ultimaDecisao(repo) && ultimaDecisao(repo).decisao === "allow", JSON.stringify(ultimaDecisao(repo)));
+
+  const exec = despachar(repo, wt, "rainforest-mind:executor");
+  caso("executor em revisar sai 2",
+    exec.status === 2, `exit=${exec.status} stderr=${exec.stderr}`);
+  caso("executor em revisar: stderr diz o estagio aberto revisar",
+    /estagio aberto: revisar/.test(exec.stderr || ""), exec.stderr);
+
+  descartar(repo);
+}
+
+// == H. estagios do manifesto: documentador em fechar ==
+console.log("== H. documentador em fechar ==");
+{
+  const repo = novoRepo();
+  const wt = comWorktree(repo);
+
+  const erro = fluxoAberto(repo, wt, "fechar");
+  caso("H0 fluxo levado a fechar pelo estado.cjs real",
+    erro === null, erro);
+  const prox = estado(repo, wt, ["proximo", "--slug", SLUG]);
+  caso("H0 estagio aberto apos verificar ok e fechar",
+    /fechar/.test(prox.stdout || ""), `exit=${prox.status} stdout=${prox.stdout} stderr=${prox.stderr}`);
+
+  const doc = despachar(repo, wt, "rainforest-mind:documentador");
+  caso("documentador despacha com fluxo em fechar: exit 0",
+    doc.status === 0, `exit=${doc.status} stderr=${doc.stderr}`);
+
+  const exec = despachar(repo, wt, "rainforest-mind:executor");
+  caso("executor em fechar sai 2",
+    exec.status === 2, `exit=${exec.status} stderr=${exec.stderr}`);
+  caso("executor em fechar: stderr diz o estagio aberto fechar",
+    /estagio aberto: fechar/.test(exec.stderr || ""), exec.stderr);
+
+  descartar(repo);
+}
+
+// == I. mensagem de bloqueio: HEAD destacado e branch padrao ==
+console.log("== I. mensagem de bloqueio no HEAD destacado e na branch padrao ==");
+{
+  const repo = novoRepo();
+  const wt = comWorktree(repo);
+  git(wt, ["checkout", "-q", "--detach"]);
+
+  const r = despachar(repo, wt, "rainforest-mind:executor");
+  caso("I1 HEAD destacado: executor sem fluxo sai 2",
+    r.status === 2, `exit=${r.status} stderr=${r.stderr}`);
+  caso("I1 HEAD destacado: a saida 2 manda trocar para uma branch (git switch -c)",
+    /saida 2: HEAD destacado.*git switch -c fluxo\//.test(r.stderr || ""), r.stderr);
+  caso("I1 HEAD destacado: nao oferece o leve",
+    !/leve --motivo/.test(r.stderr || ""), r.stderr);
+
+  descartar(repo);
+}
+{
+  const repo = novoRepo();
+  fs.mkdirSync(path.join(repo.main, "docs", "rainforest", "estado"), { recursive: true });
+
+  const r = despachar(repo, repo.main, "rainforest-mind:executor");
+  caso("I2 branch padrao (main) de repo rainforest: executor sem fluxo sai 2",
+    r.status === 2, `exit=${r.status} stderr=${r.stderr}`);
+  caso("I2 branch padrao: a saida 2 manda despachar de dentro do worktree do fluxo",
+    /saida 2: 'main' e a branch padrao.*despache de dentro do worktree do fluxo/.test(r.stderr || ""), r.stderr);
+  caso("I2 branch padrao: diz que o leve e recusado nela pela regra 11",
+    /leve e recusado nela \(regra 11\)/.test(r.stderr || ""), r.stderr);
+
+  descartar(repo);
+}
+
 console.log("");
 console.log(`ok: ${ok}   falhou: ${falhou}   skipped: 0`);
 process.exit(falhou > 0 ? 1 : 0);
