@@ -117,7 +117,8 @@
       "tarefa-10: pulada por decisao do Luis; memorias sao conduta, nao so termo (ganharam linha de ponteiro)",
       "revisar: P1 hook do pedido sai sem raiz de dados antes do glossario (memoria-assunto-prompt.cjs:139)",
       "revisar: cenario de worktree de agente cita worktree temporario",
-      "revisar: D4 nao distingue memoria de termo de memoria de conduta"
+      "revisar: D4 nao distingue memoria de termo de memoria de conduta (nota no design, Em aberto)",
+      "revisar: conferir-ponte mensagens antigas mandam regerar com --agente agents (path.basename do alvo), chave invalida; anterior a este fluxo"
     ]
   },
   "revisar": {
