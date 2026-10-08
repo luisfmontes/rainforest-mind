@@ -73,7 +73,7 @@ pronto quando: no ramo que a tarefa 1 decidir — **se `D5: updatedInput VALE`**
 
 ### 6. Extrator e pontuação com canal, sem nota tautológica [tipo: implementar]
 atende: D8, D10
-arquivos: `scripts/lib/utilidade.cjs`, `scripts/memoria.cjs`, `scripts/esquema-memoria.sql`, `scripts/testa-utilidade-canais.sh`
+arquivos: `scripts/lib/utilidade.cjs`, `scripts/memoria.cjs`, `scripts/esquema-memoria.sql`, `scripts/testa-utilidade-canais.sh`, `scripts/testa-utilidade.sh`
 depende de: 1
 paralela: nao
 prova: `bash scripts/testa-utilidade-canais.sh`
@@ -110,7 +110,7 @@ pronto quando: com a versão do fluxo já descrita no CHANGELOG (tarefa 9), `nod
 
 ### 9. Documentação, CHANGELOG e versão [tipo: docs]
 atende: D1, D2, D3, D5, D7, D9
-arquivos: `README.md`, `docs/runtime-e-orcamento.md`, `CHANGELOG.md`, `.claude-plugin/plugin.json`
+arquivos: `README.md`, `docs/runtime-e-orcamento.md`, `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`
 depende de: 4, 5, 7
 paralela: nao
 mutacao: n/a
@@ -129,3 +129,5 @@ pronto quando: com o banco real, a Issue no `luisfmontes/rainforest-mind` mostra
 ## Emendas
 
 **Emenda 1 de 2026-10-08 — versão 1.49.0, não 1.48.0 (tarefa 9).** A `origin/main` publicou a 1.48.0 no mesmo dia (PR #432), depois da base deste fluxo; `node scripts/conferir-versao.cjs` recusa bump que não supera a `origin/main`. O critério da tarefa 9 passa a ler `1.49.0` onde diz `1.48.0`, nos dois `plugin.json` e no CHANGELOG. Nada mais muda.
+
+**Emenda 2 de 2026-10-08 — dois arquivos que o revisar achou fora de `arquivos:`.** `scripts/testa-utilidade.sh` entra na tarefa 6: o caso D10 antigo compara a lista EXATA de colunas de `uso_memoria`, e a coluna `canal` exigiu acrescentar `"canal"` a ela (uma linha; a lista continua exata). `.codex-plugin/plugin.json` entra na tarefa 9: o `CONTRIBUTING.md`, seção Versão, manda subir os dois `plugin.json` juntos, e `conferir-versao.cjs` confere os dois.
