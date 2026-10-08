@@ -22,7 +22,75 @@
     "em": "2026-10-08"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-08",
+    "tarefas_ok": 3,
+    "tarefas": 11,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "33a0d6b1",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-08T20:27:34.975Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "33a0d6b1",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-08T20:27:34.975Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "33a0d6b1",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-08T20:27:34.975Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "c0ff1ce9",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-08T20:33:59.540Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "c0ff1ce9",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-08T20:33:59.540Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "c0ff1ce9",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-08T20:33:59.540Z"
+      }
+    ],
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "4 gravador observar",
+        "desde": "2026-10-08T17:33:59-03:00",
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "5 migracao v2",
+        "desde": "2026-10-08T17:33:59-03:00",
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "9 importador",
+        "desde": "2026-10-08T17:33:59-03:00",
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76"
+      }
+    ],
+    "em": "2026-10-08"
   },
   "revisar": {
     "status": "pendente"
