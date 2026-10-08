@@ -24,6 +24,7 @@
  *   node scripts/semear.cjs <slug>              # de outro, posicional
  *   node scripts/semear.cjs --projeto <slug>   # de outro, com flag
  *   node scripts/semear.cjs --json
+ *   node scripts/semear.cjs --sessoes 10       # quantos transcripts listar (padrao 5)
  */
 
 const fs = require('fs');
@@ -144,6 +145,69 @@ function slugDoAlvo(alvo, vocab, dir) {
   return null;
 }
 
+/**
+ * A SESSAO REAL, a fonte que faltava. Observacao e relatorio sao o que alguem
+ * NOTOU; o transcript e o que ACONTECEU — e o agente esconde os proprios
+ * tropecos, porque a persistencia dele entrega a feature mesmo assim. Enxerto
+ * da skill `retro` (mattpocock/skills v1.3, MIT; video BsJGo1wFTvQ, 09:37).
+ *
+ * O Claude Code grava cada sessao em `<config>/projects/<cwd-com-nao-alfanumerico-
+ * virando-hifen>/<id>.jsonl`; sessao aberta num worktree do projeto ganha pasta
+ * propria, `<slug>--claude-worktrees-<nome>` — e e la que mora o subagente. O
+ * script so LISTA e conta o barato (chamadas de ferramenta, as que voltaram com
+ * erro); ler o transcript e julgamento, e fica com a skill.
+ */
+function sessoesRecentes(dirProjeto, n) {
+  const config = process.env.CLAUDE_CONFIG_DIR || path.join(require('os').homedir(), '.claude');
+  const base = path.join(config, 'projects');
+  const slug = dirProjeto.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+  let pastas;
+  try {
+    pastas = fs.readdirSync(base).filter((p) => {
+      const l = p.toLowerCase();
+      return l === slug || l.startsWith(`${slug}--claude-worktrees-`);
+    });
+  } catch {
+    return { total: 0, lista: [] };
+  }
+  const arquivos = [];
+  for (const p of pastas) {
+    let nomes = [];
+    try { nomes = fs.readdirSync(path.join(base, p)).filter((f) => f.endsWith('.jsonl')); } catch { continue; }
+    for (const f of nomes) {
+      const arq = path.join(base, p, f);
+      try { arquivos.push({ arq, st: fs.statSync(arq) }); } catch { /* sumiu entre listar e ler */ }
+    }
+  }
+  arquivos.sort((a, b) => b.st.mtimeMs - a.st.mtimeMs);
+  const lista = arquivos.slice(0, n).map(({ arq, st }) => {
+    let chamadas = 0;
+    let erros = 0;
+    try {
+      for (const linha of fs.readFileSync(arq, 'utf8').split('\n')) {
+        if (!linha.includes('tool_result')) continue;
+        let o;
+        try { o = JSON.parse(linha); } catch { continue; }
+        const conteudo = o && o.message && Array.isArray(o.message.content) ? o.message.content : [];
+        for (const c of conteudo) {
+          if (c && c.type === 'tool_result') {
+            chamadas += 1;
+            if (c.is_error === true) erros += 1;
+          }
+        }
+      }
+    } catch { /* ilegivel: fica com zero, e o tamanho ainda diz algo */ }
+    return {
+      arquivo: arq,
+      quando: (() => { const d = new Date(st.mtimeMs); const p = (x) => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; })(), // relogio LOCAL, como o resto do repo
+      kb: Math.round(st.size / 1024),
+      chamadas,
+      erros,
+    };
+  });
+  return { total: arquivos.length, lista };
+}
+
 function combina(valorDoRegistro, alvo) {
   const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const a = norm(valorDoRegistro);
@@ -163,8 +227,9 @@ function main() {
   const raiz = raizDados();
   const saida = {
     projeto: alvo, observacoes: [], totalObservacoes: 0, abertas: [], totalAbertas: 0,
-    relatorios: [], mapas: [], avisos: [],
+    relatorios: [], mapas: [], sessoes: [], totalSessoes: 0, avisos: [],
   };
+  let dirSessoes = slugExplicito ? null : projetoRaiz;
 
   if (!raiz) {
     saida.avisos.push('sem pasta de dados — rode: node scripts/setup.cjs --criar');
@@ -200,6 +265,7 @@ function main() {
       process.exit(1);
     }
 
+    if (slugExplicito && slug && vocab[slug] && vocab[slug].caminho) dirSessoes = vocab[slug].caminho;
     if (slug && slug !== alvo) saida.projeto = `${slug} (pedido como '${alvo}')`;
     const doProjeto = slug
       ? linhas.filter((o) => o.projeto === slug || combina(o.projeto, slug))
@@ -268,6 +334,15 @@ function main() {
     } catch { /* sem mapa legivel */ }
   }
 
+  if (dirSessoes) {
+    const n = Number.parseInt(arg('sessoes'), 10);
+    const s = sessoesRecentes(dirSessoes, Number.isFinite(n) && n > 0 ? n : 5);
+    saida.sessoes = s.lista;
+    saida.totalSessoes = s.total;
+  } else {
+    saida.avisos.push('sessoes: projeto pedido por slug sem `caminho` no projetos.json — sem transcript para listar');
+  }
+
   if (process.argv.includes('--json')) {
     console.log(JSON.stringify(saida, null, 2));
     return;
@@ -300,11 +375,20 @@ function main() {
     for (const m of saida.mapas) console.log(`  ${m.trim()}`);
   }
 
+  if (saida.sessoes.length) {
+    console.log('');
+    console.log(`SESSOES RECENTES (${saida.sessoes.length} de ${saida.totalSessoes}) — o que aconteceu, nao o que alguem notou`);
+    for (const s of saida.sessoes) {
+      console.log(`  ${s.quando}  ${s.kb} KB  ${s.chamadas} chamadas, ${s.erros} com erro`);
+      console.log(`     ${s.arquivo}`);
+    }
+  }
+
   // Historico vazio e o caso de QUEM ACABOU DE INSTALAR, nao uma anomalia. Devolver
   // tres blocos vazios e honesto e inutil: a skill precisa dizer o que fazer a
   // respeito, senao o primeiro uso dela ensina que ela nao serve.
   const nada = !saida.observacoes.length && !saida.abertas.length
-    && !saida.relatorios.length && !saida.mapas.length;
+    && !saida.relatorios.length && !saida.mapas.length && !saida.sessoes.length;
   if (nada) {
     console.log('');
     console.log('SEM HISTORICO NESTE PROJETO — nao ha o que semear a partir dele.');

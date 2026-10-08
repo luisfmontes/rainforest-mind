@@ -27,6 +27,17 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 Vale a partir da sessão seguinte à atualização.
 
+## 1.48.0 — 2026-10-08
+
+- **O `semear` lê a sessão real.** Além de observações e relatórios, lista os transcripts recentes do projeto
+  (inclusive os dos worktrees, onde roda o subagente), com quantas chamadas de ferramenta cada um fez e quantas
+  deram erro (`--sessoes N`, padrão 5). A skill traz as lentes para ler o transcript: navegação, checagem que
+  faltou, regra mecânica que vira trava, economia de ferramenta, instrução sem efeito, informação que faltou.
+- **Corpo de PR com Resumo, Evidência e Perigo de merge.** O `fechar` passa a escrever o PR com o menor visual que
+  explica a mudança, a saída antes/depois e se o merge é porta de mão dupla ou única, com o raio de impacto.
+- **Pergunta em que "sim" aceita a recomendada** (`brainstorm`) e **prova de que a mutação pousou**
+  antes de confiar no vermelho (`depurar`).
+
 ## 1.47.3 — 2026-10-08
 
 - **O cabeçalho do `aviso-fluxo` diz o que ele faz.** O aviso dispara quando o repositório tem fluxo e nenhum

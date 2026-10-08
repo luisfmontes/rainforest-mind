@@ -132,6 +132,13 @@ Havendo costura: virar o repro mínimo em teste que falha → ver falhar →
 aplicar a correção → ver passar → rodar de novo o loop da fase 1 contra o
 cenário **original**, não o minimizado.
 
+Vermelho forçado — você mutou código ou fixture para ver o teste falhar — só
+vale depois de provar que a mutação **pousou**: `diff` (ou `cmp`) contra uma
+cópia intacta, saída colada. Edição que não casou com o alvo não muda nada, e o
+vermelho que vier é de outra causa — veredito certo pelo motivo errado. No
+fluxo, o `conferir-mutacao.cjs` já recusa com `MUTACAO NAO APLICADA`; aqui,
+fora dele, a prova é sua.
+
 ## Fase 6 — limpar e fechar
 
 - Repro original não reproduz mais (rodando o loop, não por dedução).

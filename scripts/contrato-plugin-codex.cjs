@@ -32,7 +32,9 @@ const DOCUMENTOS_DO_FLUXO = new Set([
 // certo e sempre o da main, e um vermelho aqui significa ou corpo alterado por
 // engano, ou base velha depois que a main andou.
 const ANCORA_CORPOS_SKILLS = {
-  fechar: { bytes: 10317, sha256: 'c854c623b0b1d1487cd542867fb9d78248c66d149b4810cedf16e1898f4d451f' },
+  // fechar re-medido em 2026-10-07: o enxerto da skill `pr` (mattpocock v1.3)
+  // acrescentou de proposito o template do corpo do PR.
+  fechar: { bytes: 11730, sha256: '39b71d2d15734aca7063a0353fd296e87e4a42fc0d4c0f4dad222bd6efad7965' },
   // fechar, modo-dev e regua re-medidos em 2026-10-05: a revisao bimestral
   // acrescentou texto de proposito (E4, E25, E27, E30).
   // modo-dev re-medido em 2026-09-30: o fluxo semear-travas (tarefa 9) acrescentou

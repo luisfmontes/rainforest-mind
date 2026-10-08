@@ -24,19 +24,13 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-08",
-    "tarefas_ok": 6,
+    "tarefas_ok": 8,
     "tarefas": 10,
     "em_voo": [
       {
-        "agente": "executor",
-        "tarefa": "5: memoria no briefing do subagente",
-        "desde": "2026-10-08T09:30:00-03:00",
-        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae"
-      },
-      {
-        "agente": "executor",
-        "tarefa": "7: relatorio por canal e regua D7",
-        "desde": "2026-10-08T09:30:00-03:00",
+        "agente": "documentador",
+        "tarefa": "9: docs, changelog, versao 1.48.0",
+        "desde": "2026-10-08T10:20:00-03:00",
         "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae"
       }
     ],
@@ -96,6 +90,13 @@
         "iteracao": 1,
         "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
         "ts": "2026-10-08T12:00:52.079Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "25837ea0162bd5916a1c895ba27c880dc3a5da3d",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T12:23:07.937Z"
       }
     ],
     "em": "2026-10-08"

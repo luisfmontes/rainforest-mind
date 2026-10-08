@@ -125,3 +125,7 @@ paralela: sim
 mutacao: n/a
   motivo: abre Issue; nenhum código muda.
 pronto quando: com o banco real, a Issue no `luisfmontes/rainforest-mind` mostra as contagens do par `rainforest-mind` (3.182) / `C--Projetos-rainforest-mind` (1.266), saídas de `SELECT projeto, count(*) FROM observacoes GROUP BY 1 ORDER BY 2 DESC` filtradas para esse par (o repo é público: nenhum outro nome de projeto entra no corpo), diz que o mesmo padrão aparece em outros projetos do banco, e explica que a D4 contorna mas não corrige — provado por `gh issue list --repo luisfmontes/rainforest-mind --search "nome duplicado de projeto" --json number,title,state` devolvendo uma Issue `OPEN`.
+
+## Emendas
+
+**Emenda 1 de 2026-10-08 — versão 1.49.0, não 1.48.0 (tarefa 9).** A `origin/main` publicou a 1.48.0 no mesmo dia (PR #432), depois da base deste fluxo; `node scripts/conferir-versao.cjs` recusa bump que não supera a `origin/main`. O critério da tarefa 9 passa a ler `1.49.0` onde diz `1.48.0`, nos dois `plugin.json` e no CHANGELOG. Nada mais muda.
