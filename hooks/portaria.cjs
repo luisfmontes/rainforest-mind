@@ -26,6 +26,7 @@ const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
 const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
+const { leveDaBranch } = require(path.join(__dirname, "lib", "caminho-leve.cjs"));
 
 /**
  * Agentes que pertencem ao Claude Code, não a este repositório. Podem ser
@@ -194,6 +195,35 @@ function negar(motivo) {
 function agenteFolhaLigado(raiz) {
   const { ligado } = require("./lib/config.cjs");
   return ligado('agente-folha', { projeto: raiz });
+}
+
+/* Trilho de fluxo do repositorio (Issue #430, D3): "rainforest" se existe
+ * docs/rainforest/estado/, "protheus" se ha docs/plans/*.gates.json, null se nao
+ * ha trilho. Mesmo criterio de detectarTrilho em hooks/aviso-fluxo.cjs. Sem como
+ * ler docs/plans, nao ha trilho: a portaria nao barra por palpite. */
+function detectarTrilhoFluxo(raiz) {
+  if (fs.existsSync(path.join(raiz, "docs", "rainforest", "estado"))) return "rainforest";
+  const dirPlans = path.join(raiz, "docs", "plans");
+  if (!fs.existsSync(dirPlans)) return null;
+  let arquivos;
+  try {
+    arquivos = fs.readdirSync(dirPlans);
+  } catch (_) {
+    return null;
+  }
+  return arquivos.some((f) => f.endsWith(".gates.json")) ? "protheus" : null;
+}
+
+/* Trilho protheus com fluxo aberto: algum .gates.json com menos de 24 h (mesmo
+ * criterio de fluXoAberto em hooks/aviso-fluxo.cjs). Protheus nao tem estagio a
+ * comparar, so o aberto ou fechado. Chamada so quando detectarTrilhoFluxo
+ * devolveu "protheus", entao o diretorio ja foi lido com sucesso. */
+function fluxoProtheusAberto(raiz) {
+  const dirPlans = path.join(raiz, "docs", "plans");
+  const umDia = 24 * 3600 * 1000;
+  return fs.readdirSync(dirPlans).some(
+    (f) => f.endsWith(".gates.json") && Date.now() - fs.statSync(path.join(dirPlans, f)).mtimeMs < umDia
+  );
 }
 
 function normalizarNomeAgente(nome) {
@@ -903,6 +933,27 @@ function main() {
   const estagioForaDoDeclarado =
     estagiosDeclarados !== null && !estagiosDeclarados.includes(estagioAtivo);
 
+  // Issue #430, D3/D4/D5 — o despacho de agente que ESCREVE sai do estagio dele
+  // sem `leve` na branch e e barrado. Reverte a #264 so para `declarado &&
+  // escreve: true`: agente nao declarado (outro plugin), `escreve: false`, repo
+  // sem trilho de fluxo ou com a chave `aviso-fluxo` desligada seguem como estao
+  // (a portaria so registra). A barreira mora no ramo `escreve === true`, depois
+  // da regra 11 (isolation) e da regra 10 (name) e antes do allow, para a
+  // mensagem da regra 11 continuar sendo a que sai quando ela falha.
+  //
+  // A DECISAO INTEIRA MORA NESTA LINHA: trilho ausente zera `trilhoComFluxo`,
+  // `leve` da branch libera, estagio aberto dentro dos `estagios` do agente libera.
+  const escreveDeclarado = declarado && agentConfig.escreve === true;
+  const trilho = detectarTrilhoFluxo(raiz);
+  const trilhoComFluxo = trilho !== null && require("./lib/config.cjs").ligado("aviso-fluxo", { projeto: raiz });
+  const leve = trilhoComFluxo && escreveDeclarado
+    ? Boolean(leveDaBranch({ gitTop: raiz, branch: obterBranch(raiz) }))
+    : false;
+  const estagioPermitido = trilho === "protheus"
+    ? fluxoProtheusAberto(raiz)
+    : Boolean(estResult) && Array.isArray(estagiosDeclarados) && estagiosDeclarados.includes(estResult.estagio);
+  const bloqueiaFluxoPulado = trilhoComFluxo && escreveDeclarado && !leve && !estagioPermitido;
+
 
   // D3 passo 6: escreve: false com tools fora de allowlist → nega.
   //
@@ -1062,6 +1113,21 @@ function main() {
         `agente '${nomeAgente}' declara 'escreve: true' e foi despachado com name: ${JSON.stringify(nomeDado)}` +
         ` — agente que edita nunca e nomeado (regra 10): nomeado vira teammate, o isolamento nao se aplica` +
         ` e a entrega para de voltar inline`;
+      gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
+      negar(motivo);
+    }
+
+    // Issue #430, D3/D5: agente que escreve, fora do estagio aberto e sem `leve`
+    // na branch, e barrado com as duas saidas que o proprio fluxo oferece. A
+    // mensagem nomeia o agente, o estagio exigido e as saidas; o deny vai ao log.
+    if (bloqueiaFluxoPulado) {
+      const exige = Array.isArray(estagiosDeclarados) ? estagiosDeclarados.join(" ou ") : "(manifesto sem 'estagios')";
+      const caminhoEstado = path.join(path.resolve(__dirname, ".."), "scripts", "estado.cjs");
+      const motivo =
+        `agente '${nomeAgente}' escreve (escreve: true) e so roda no estagio que declara: exige ${exige}; ` +
+        `estagio aberto: ${estagioAtivo} (Issue #430, D3/D5)` +
+        `\n  saida 1: abrir ou avancar o fluxo ate ${exige} (rainforest: /rainforest-mind:brainstorm ou node scripts/estado.cjs iniciar --slug <slug>; protheus: /protheus:trabalhar)` +
+        `\n  saida 2: caminho leve, para hotfix mecanico: node ${caminhoEstado} leve --motivo "<por que>"`;
       gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
       negar(motivo);
     }
