@@ -2485,6 +2485,10 @@ function main() {
       // do 'verificar' (linha acima) e a janela de vereditos (D6, zerada so
       // no proximo 'exigir revisar') nao mudam aqui.
       if (estagio === 'verificar' && estado.revisar) estado.revisar = { ...estado.revisar, status: 'pendente', em: hoje() };
+      // Issue #441: o CI do PR pode reprovar DEPOIS do 'fechar' em 'ok'. Sem
+      // reabrir o 'fechar' aqui, 'marcar executar parcial' era recusado
+      // ("executar nao pode voltar a parcial com fechar em ok").
+      if (estagio === 'verificar' && estado.fechar && estado.fechar.status === 'ok') estado.fechar = { ...estado.fechar, status: 'pendente', em: hoje() };
     }
     // Limpar tentativas e liberado_em quando fecha com ok
     if (status === (FECHADO[estagio] || 'ok')) {
