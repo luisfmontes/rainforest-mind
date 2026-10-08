@@ -31,6 +31,7 @@
  *   node scripts/estado.cjs proximo  --slug <slug>
  *   node scripts/estado.cjs exigir   --slug <slug> --estagio <e>
  *   node scripts/estado.cjs liberar  --slug <slug> --estagio <e>
+ *   node scripts/estado.cjs leve     --motivo "<por quê>"
  *   node scripts/estado.cjs listar
  *   node scripts/estado.cjs concluido [--slug <slug>]
  *   node scripts/estado.cjs veredito  --slug <slug> --estagio <e> --veredito <ok|reprovado|invalido> --agente <tipo> --agente-id <id> --transcrito <caminho>
@@ -70,6 +71,10 @@ const { comTrava } = require(path.join(__dirname, '..', 'hooks', 'lib', 'trava-j
 // fecha — modulo ausente tem de derrubar o script, nao virar bypass silencioso.
 const { primeiroPrompt, extrairSlug, ultimaMensagemAssistente } = require(path.join(__dirname, 'lib', 'primeiro-prompt-jsonl.cjs'));
 const { extrairUltimaLinha, validarVocabulario } = require(path.join(__dirname, 'lib', 'extrair-veredito.cjs'));
+// Leitor do caminho leve (D6, D7): o predicado de "só leve", o casamento de branch e o
+// mapa do trilho protheus moram lá, uma cópia só, para o leitor do hook e o gravador
+// daqui não divergirem.
+const { soLeve, casaComBranch, caminhoMapaProtheus } = require(path.join(__dirname, '..', 'hooks', 'lib', 'caminho-leve.cjs'));
 // Defensivo, igual ao require de config.cjs mais abaixo: plugin antigo ou
 // cópia parcial não pode derrubar o script inteiro por um efeito colateral
 // best-effort. Sem o ledger, carimbarFluxo vira no-op.
@@ -306,6 +311,10 @@ function imprimirReprovado(estado, estagio_reprovador) {
 
 /** O primeiro estágio de execução ainda não fechado. É a definição de retomada. */
 function proximo(estado) {
+  // Registro só de `leve` não é fluxo: sem bloco de estágio nenhum, `proximo` daria
+  // 'design' e listar/concluido/resolver o leriam como trabalho aberto. Aqui é o
+  // ponto único que os três usam — por isso a correção mora nele.
+  if (soLeve(estado)) return null;
   // `arqueologia` fica FORA desta lista: se entrasse, todo projeto sem mapa
   // ficaria eternamente com "proximo: arqueologia", e o estagio opcional viraria
   // obrigatorio pela porta dos fundos.
@@ -1327,6 +1336,32 @@ function conferirFechamento(estagio, slug, extra, estado) {
  * @param {string} raiz - diretório do projeto
  * @returns {object|null} {branch, padrao} se deve recusar, ou null se passou
  */
+/** Branch padrão do repositório em `raiz`: origin/HEAD, senão main, senão master.
+ *  Extraída de checkoutPrincipalForaDaPadrao para o `leve` recusar a mesma branch
+ *  que a trava protege (D7) — uma noção só de "padrão". */
+function branchPadrao(raiz) {
+  let padrao = 'main';
+  const symRef = spawnSync(caminhoExecutavel('git'), ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'], {
+    cwd: raiz,
+    encoding: 'utf8',
+    stdio: 'pipe',
+  });
+  if (symRef.status === 0) {
+    // Remover prefixo origin/
+    padrao = symRef.stdout.trim().replace(/^origin\//, '');
+  } else {
+    // Fallback: main se existir, senão master
+    const mainTest = spawnSync(caminhoExecutavel('git'), ['show-ref', '--verify', 'refs/heads/main'], {
+      cwd: raiz,
+      stdio: 'pipe',
+    });
+    if (mainTest.status !== 0) {
+      padrao = 'master';
+    }
+  }
+  return padrao;
+}
+
 function checkoutPrincipalForaDaPadrao(raiz) {
   // CI é o "clone dedicado a uma frente" por definição: o actions/checkout
   // deixa o repositório num checkout principal com HEAD solto no merge-ref do
@@ -1365,26 +1400,7 @@ function checkoutPrincipalForaDaPadrao(raiz) {
     // Se são diferentes, é worktree linkado
     if (realGitDir !== realCommonDir) return null;
 
-    // Detectar branch padrão: symbolic-ref, ou main/master
-    let padrao = 'main';
-    const symRef = spawnSync(caminhoExecutavel('git'), ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'], {
-      cwd: raiz,
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
-    if (symRef.status === 0) {
-      // Remover prefixo origin/
-      padrao = symRef.stdout.trim().replace(/^origin\//, '');
-    } else {
-      // Fallback: main se existir, senão master
-      const mainTest = spawnSync(caminhoExecutavel('git'), ['show-ref', '--verify', 'refs/heads/main'], {
-        cwd: raiz,
-        stdio: 'pipe',
-      });
-      if (mainTest.status !== 0) {
-        padrao = 'master';
-      }
-    }
+    const padrao = branchPadrao(raiz);
 
     // Obter branch atual
     const branch = spawnSync(caminhoExecutavel('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
@@ -1590,6 +1606,7 @@ const FLAGS_POR_SUBCOMANDO = {
   listar: [],
   concluido: ['slug'],
   veredito: ['slug', 'estagio', 'veredito', 'agente', 'agente-id', 'transcrito'],
+  leve: ['motivo'],
 };
 
 function arg(nome, obrigatorio = true) {
@@ -1642,11 +1659,15 @@ function main() {
     if (!fs.existsSync(DIR_ESTADO)) return console.log('(nenhum trabalho em andamento)');
     const arquivos = fs.readdirSync(DIR_ESTADO).filter((f) => f.endsWith('.json'));
     if (!arquivos.length) return console.log('(nenhum trabalho em andamento)');
+    let impressos = 0;
     for (const f of arquivos) {
       const e = JSON.parse(fs.readFileSync(path.join(DIR_ESTADO, f), 'utf8'));
+      if (soLeve(e)) continue; // registro de `leve` não é trabalho em andamento
       const p = proximo(e);
       console.log(`${e.slug}  ${p ? `-> ${p}` : '(completo)'}  ${e.titulo}`);
+      impressos++;
     }
+    if (!impressos) console.log('(nenhum trabalho em andamento)');
     return;
   }
 
@@ -1723,6 +1744,94 @@ function main() {
     process.exit(2);
   }
 
+  if (cmd === 'leve') {
+    // Caminho declarado do hotfix mecânico (D6, D7). Toda recusa sai 2 ANTES de gravar.
+    const motivo = arg('motivo', false);
+    if (motivo === null || motivo.trim() === '') {
+      console.error('RECUSADO: falta --motivo "<por quê>" (texto não vazio). O motivo é o rastro do caminho leve.');
+      process.exit(2);
+    }
+    const cwd = process.cwd();
+    const ref = spawnSync(caminhoExecutavel('git'), ['symbolic-ref', '-q', '--short', 'HEAD'], {
+      cwd,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+    if (ref.status !== 0) {
+      console.error('RECUSADO: HEAD destacado. O leve vale por branch: crie a sua antes (git switch -c fluxo/<nome>).');
+      process.exit(2);
+    }
+    const branch = ref.stdout.trim();
+    const registro = { motivo: motivo.trim(), data: hoje() };
+    const temEstado = fs.existsSync(DIR_ESTADO);
+    const pastaPlanos = path.join(RAIZ, 'docs', 'plans');
+    const temGates = fs.existsSync(pastaPlanos) && fs.readdirSync(pastaPlanos).some((f) => f.endsWith('.gates.json'));
+    if (!temEstado && !temGates) {
+      console.error('RECUSADO: nem docs/rainforest/estado/ nem docs/plans/*.gates.json neste repositório. Sem trilho de fluxo não há o que pular.');
+      process.exit(2);
+    }
+    if (!temEstado) {
+      // Trilho protheus (D6): o registro vai ao mapa sob o git-common-dir, nunca à
+      // árvore de trabalho; aceito em qualquer branch, inclusive a padrão (D7).
+      const arq = caminhoMapaProtheus(cwd);
+      if (!arq) {
+        console.error('RECUSADO: não consegui achar o git-common-dir deste repositório.');
+        process.exit(2);
+      }
+      let mapa = {};
+      if (fs.existsSync(arq)) {
+        try {
+          mapa = JSON.parse(fs.readFileSync(arq, 'utf8'));
+        } catch (_) {
+          mapa = null;
+        }
+        if (!mapa || typeof mapa !== 'object' || Array.isArray(mapa)) {
+          console.error(`RECUSADO: ${arq} existe e não é um mapa JSON válido. Não sobrescrevo: conserte ou apague o arquivo.`);
+          process.exit(2);
+        }
+      }
+      mapa[branch] = registro;
+      fs.writeFileSync(`${arq}.tmp`, `${JSON.stringify(mapa, null, 2)}\n`, 'utf8');
+      fs.renameSync(`${arq}.tmp`, arq);
+      console.log(`leve: '${branch}' registrado em ${arq}`);
+      return;
+    }
+    // Trilho rainforest (D7): a regra 11 manda trabalho em worktree, então o leve não
+    // vale na branch padrão.
+    if (['main', 'master', branchPadrao(cwd)].includes(branch)) {
+      console.error(`RECUSADO: '${branch}' é a branch padrão. A regra 11 manda trabalho em worktree: crie a de trabalho (git worktree add .claude/worktrees/<nome> -b fluxo/<nome>) e declare o leve nela.`);
+      process.exit(2);
+    }
+    const branchBase = branch.replace(/^.*?\//, '');
+    if (branchBase === '' || branchBase.includes('/')) {
+      console.error(`RECUSADO: a branch '${branch}' não vira nome de arquivo de estado (esperado uma barra só, como fluxo/<nome>).`);
+      process.exit(2);
+    }
+    // Mesmo casamento do resolver, sem olhar se o fluxo está aberto: o leve segue a branch.
+    const casam = fs.readdirSync(DIR_ESTADO).filter((f) => f.endsWith('.json') && casaComBranch(f.replace(/\.json$/, ''), branchBase));
+    if (casam.length > 1) {
+      console.error(`RECUSADO: mais de um arquivo de estado casa com '${branch}' (${casam.join(', ')}). O leve não escolhe sozinho em qual gravar.`);
+      process.exit(2);
+    }
+    const slugAlvo = casam.length === 1 ? casam[0].replace(/\.json$/, '') : `${hoje()}-${branchBase}`;
+    let estado = { slug: slugAlvo, titulo: branch, criado_em: hoje() };
+    if (casam.length === 1) {
+      try {
+        estado = ler(slugAlvo);
+      } catch (_) {
+        estado = null;
+      }
+      if (!estado || typeof estado !== 'object' || Array.isArray(estado)) {
+        console.error(`RECUSADO: ${caminho(slugAlvo)} não é um estado legível. Não sobrescrevo: conserte o arquivo.`);
+        process.exit(2);
+      }
+    }
+    estado.leve = registro;
+    gravar(slugAlvo, estado);
+    console.log(`leve: '${branch}' registrado em ${caminho(slugAlvo)}`);
+    return;
+  }
+
   const slug = arg('slug');
   try {
     validarSlug(slug);
@@ -1732,7 +1841,9 @@ function main() {
   }
 
   if (cmd === 'iniciar') {
-    if (ler(slug)) {
+    // Arquivo só com `leve` não é fluxo: iniciar sobre ele abre o fluxo e preserva o leve.
+    const existente = ler(slug);
+    if (existente && !soLeve(existente)) {
       console.error(`erro: ${slug} ja existe — use 'ler' ou 'marcar'`);
       process.exit(1);
     }
@@ -1751,6 +1862,7 @@ function main() {
       process.exit(2);
     }
     const e = novo(slug, arg('titulo', false));
+    if (existente) e.leve = existente.leve;
     gravar(slug, e);
     console.log(`iniciado: ${caminho(slug)}`);
     console.log('commite este arquivo junto com o trabalho — e por ele que outra');
