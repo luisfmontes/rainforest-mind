@@ -165,8 +165,10 @@ paralela: sim
 prova: `bash scripts/testa-utilidade-canais.sh`
 mutacao:
   arquivo: `scripts/lib/utilidade.cjs`
-  de: `if (formatarObservacao(row, apelidos, TETO_LINHA_ASSUNTO) === linhaServida) return { origem: 'observacao', refId: row.id };`
-  para: `if (false) return { origem: 'observacao', refId: row.id };`
+  de: `if (formatarObservacao(row, apelidos, TETO_LINHA_ASSUNTO) === linhaServida) return { origem: 'observacao', id: row.id, conteudo: row.conteudo };`
+  para: `if (false) return { origem: 'observacao', id: row.id, conteudo: row.conteudo };`
   bateria: `bash scripts/testa-utilidade-canais.sh`
   fixture: `testa-utilidade-canais.sh, caso "servida do canal assunto cortada em 300 caracteres casa com o id"`
 pronto quando: com uma observação cujo texto passa de 300 caracteres servida pelo bloco `## Memória do assunto` (linha formatada com teto 300, terminando em `…`), `acharAlvo` devolve o id dela (comparando também com `formatarObservacao(row, apelidos, TETO_LINHA_ASSUNTO)`, `TETO_LINHA_ASSUNTO = 300` importado ou espelhado de `hooks/lib/memoria-assunto.cjs`), ela entra em `uso_memoria` com nota e `canal = 'pedido'`, e não reaparece como não-servida no contrafactual — provado por `bash scripts/testa-utilidade-canais.sh` com o caso novo `ok` e `0 falha(s)`, e `bash scripts/testa-utilidade.sh` com `19 ok, 0 falha(s)`.
+
+**Emenda 4 de 2026-10-08 — alvo de mutação da tarefa 13 com o retorno real.** O plano escreveu o retorno de `acharAlvo` como `{ origem, refId }`; o real é `{ origem, id, conteudo }` (o chamador lê `alvo.id` e `alvo.conteudo`). O `de:`/`para:` da tarefa 13 passa a usar o retorno real.

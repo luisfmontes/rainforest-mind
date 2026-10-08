@@ -25,8 +25,21 @@
     "status": "parcial",
     "catraca_mutacao": "2026-10-08",
     "tarefas_ok": 10,
-    "tarefas": 10,
-    "em_voo": [],
+    "tarefas": 13,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "11: hooks (achados 1, 2, 4)",
+        "desde": "2026-10-08T11:05:00-03:00",
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "13: extrator linha cortada (achado 3)",
+        "desde": "2026-10-08T11:05:00-03:00",
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae"
+      }
+    ],
     "carimbos": [
       {
         "tarefa": 1,
@@ -90,6 +103,20 @@
         "iteracao": 1,
         "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
         "ts": "2026-10-08T12:23:07.937Z"
+      },
+      {
+        "tarefa": 11,
+        "hash_base": "9f69d0d5e41429b042ad14df578e217b11a805f4",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T12:47:39.000Z"
+      },
+      {
+        "tarefa": 13,
+        "hash_base": "9f69d0d5e41429b042ad14df578e217b11a805f4",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T12:47:39.000Z"
       }
     ],
     "em": "2026-10-08",
