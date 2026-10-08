@@ -159,8 +159,8 @@ paralela: nao
 prova: `node hooks/testa-portaria-fluxo-pulado.cjs`
 mutacao:
   arquivo: `hooks/portaria.cjs`
-  de: `const leveDaMensagem = \`node ${caminhoEstado} leve --motivo "<por que>" --repo "${raizBarras}"\`;`
-  para: `const leveDaMensagem = \`node ${caminhoEstado} leve --motivo "<por que>"\`;`
+  de: `const leveDaMensagem = `node ${caminhoEstado} leve --motivo "<por que>" --repo "${raizBarras}"`;`
+  para: `const leveDaMensagem = `node ${caminhoEstado} leve --motivo "<por que>"`;`
   bateria: `node hooks/testa-portaria-fluxo-pulado.cjs`
   fixture: caso "o leve impresso pela portaria, rodado de outro cwd, libera o despacho"
 pronto quando: com o payload real do harness para `Agent` bloqueado por fluxo, o stderr traz o `estado.cjs` por caminho absoluto com barras `/` (nenhuma contrabarra no comando) nas duas saídas — a de abrir o fluxo (`iniciar`) e a do `leve` com `--repo "<raiz>"` —, e a bateria **roda o comando `leve` impresso** a partir de um `cwd` diferente e o despacho seguinte passa (exit 0). A linha da mutação é escrita literalmente como no `de:`. Provado por `node hooks/testa-portaria-fluxo-pulado.cjs` (`falhou: 0`, `skipped: 0`) e todas as `hooks/testa-portaria-*.cjs` com exit 0.

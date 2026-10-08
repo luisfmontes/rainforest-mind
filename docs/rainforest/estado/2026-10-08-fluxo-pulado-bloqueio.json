@@ -129,24 +129,26 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "8c8d16ba7c535b6d0bc232ae83690d103e44db5b",
+      "head": "f3147c09e8ed0bc253b631f06e95898c3abcb0d1",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a6b9ad1f134902a5f",
-        "veredito": "reprovado",
+        "agente_id": "ab9dda2ce9e00ea75",
+        "veredito": "ok",
         "em": "2026-10-08",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/3a3f9560-730f-4a9e-bf04-673ed4a7e03d/subagents/agent-a6b9ad1f134902a5f.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/3a3f9560-730f-4a9e-bf04-673ed4a7e03d/subagents/agent-ab9dda2ce9e00ea75.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-08",
-    "achados": 4,
-    "tentativas": 2
+    "achados": 2,
+    "achados_baixos_para_issue": 2,
+    "base": "37f786d56984670887956074439278a2137268a5",
+    "head": "f3147c09e8ed0bc253b631f06e95898c3abcb0d1"
   },
   "verificar": {
     "status": "pendente"
