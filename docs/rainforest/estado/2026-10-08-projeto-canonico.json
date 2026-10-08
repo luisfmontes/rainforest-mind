@@ -6,7 +6,9 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-08-projeto-canonico.md",
+    "em": "2026-10-08"
   },
   "plano": {
     "status": "pendente"
