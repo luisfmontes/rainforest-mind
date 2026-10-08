@@ -10,6 +10,12 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.47.3 — 2026-10-08
+
+- **O cabeçalho do `aviso-fluxo` diz o que ele faz.** O aviso dispara quando o repositório tem fluxo e nenhum
+  está aberto; o comentário dizia o contrário e já levou a propor um hook duplicado. Só texto, nada muda no
+  comportamento.
+
 ## 1.47.2 — 2026-10-08
 
 - **Painel do mod confere de novo o que ainda não tinha resposta.** Escrever um arquivo antes de o plano existir
