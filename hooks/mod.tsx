@@ -22,7 +22,7 @@ import type {
 import { register as abertura } from './register.ts'
 import { CHECAR_MIN_FERRAMENTAS, deferimentos, lerResolvidosChecker, lerRespostaChecker, marcadoresEmArquivo, montarPromptChecker, perguntaDecisao, rascunhoFazAgora } from './deixado-puro.mjs'
 import { largura, cortar, semControle } from './faixa-puro.mjs'
-import { ESCRITORAS, escritaDe, mapaVazio, registrar } from './mapa-puro.mjs'
+import { ESCRITORAS, escritaDe, mapaVazio, registrar, trocarCaminho } from './mapa-puro.mjs'
 import { cacheDe, compacto, dinheiro, fatias, figurasDaBarra, restante, ritmoPorMinuto, rotuloSubagente } from './painel-puro.mjs'
 import { avaliarRelogio, linhaRelogio, notaJornada } from './relogio-puro.mjs'
 
@@ -242,6 +242,7 @@ const slugSemData = (slug: string): string => slug.replace(/^\d{4}-\d{2}-\d{2}-/
 const AJUDA = 'Subcomandos: esconder, mostrar, cache 5m|1h, checar ligar|desligar, limpar, erros [horas]. Sem argumento abre o painel.'
 // Ate tantas escritas esperam a vez do script do desvio; as demais entram no mapa sem veredito.
 const FILA_DESVIO_MAX = 50
+const VEREDITOS_DEFINITIVOS = new Set(['dentro', 'fora', 'isento'])
 
 export const register: Register = (on, options) => {
   abertura(on, options)
@@ -252,6 +253,9 @@ export const register: Register = (on, options) => {
   const filaDesvio: { escrita: string; rodar: () => Promise<boolean> }[] = []
   const desvioPendente = new Set<string>()
   const desvioConsultado = new Set<string>()
+  // Relativo que o script ja devolveu para cada caminho absoluto: a falha aberta e a fila cheia
+  // registram com ele, para o mesmo arquivo nao aparecer duas vezes no mapa.
+  const relConhecido = new Map<string, string>()
   let desvioRodando = false
   const drenarDesvios = async (): Promise<void> => {
     if (desvioRodando) return
@@ -314,7 +318,6 @@ export const register: Register = (on, options) => {
   }
 
   on('session.start', async ($, e, next) => {
-    desvioConsultado.clear()
     try {
       await $.command.register({
         name: 'painel',
@@ -326,6 +329,10 @@ export const register: Register = (on, options) => {
     // claude -p, SDK e subagente nao desenham a barra: sem timer, sem ler os fluxos do painel,
     // e sem cancelar o relogio da sessao interativa que compartilha esta instancia do mod.
     if (!e.isInteractive) return next(e)
+    // Depois do guard: sessao nao interativa (claude -p, SDK) que compartilha a instancia nao
+    // zera o cache da interativa.
+    desvioConsultado.clear()
+    relConhecido.clear()
     try {
       const dados = await buscar({
         rodar: (argv, init) => $.process.run(argv, init),
@@ -690,7 +697,10 @@ export const register: Register = (on, options) => {
           if (desvioConsultado.has(escrita) || desvioPendente.has(escrita)) {
             // ja tem veredito, ou ja espera a vez
           } else if (filaDesvio.length >= FILA_DESVIO_MAX) {
-            await update($, painelMapa, raw => registrar(raw, e).mapa as RainforestMindPainelMapa)
+            // Fila cheia: lista sem veredito. O caminho nao fica marcado, entao a proxima escrita
+            // nele tenta de novo; arquivo que nao for reescrito nao tem o desvio checado.
+            const rel = relConhecido.get(escrita)
+            await update($, painelMapa, raw => registrar(raw, rel === undefined ? e : { tool: e.tool, file_path: rel, notebook_path: rel }).mapa as RainforestMindPainelMapa)
           } else {
             const raiz = $.plugin.root
             const log = (err: unknown) => {
@@ -716,10 +726,12 @@ export const register: Register = (on, options) => {
                 log(err)
               }
               try {
-                const caminho: string = typeof desvio?.rel === 'string' && desvio.rel !== '' ? desvio.rel : escrita
+                if (typeof desvio?.rel === 'string' && desvio.rel !== '') relConhecido.set(escrita, desvio.rel)
+                const caminho: string = relConhecido.get(escrita) ?? escrita
                 const escreveu = { tool: e.tool, file_path: caminho, notebook_path: caminho }
                 let avisar = false
-                await update($, painelMapa, raw => {
+                await update($, painelMapa, cru => {
+                  const raw = trocarCaminho(cru, escrita, caminho)
                   if (desvio === null) return registrar(raw, escreveu).mapa as RainforestMindPainelMapa
                   const marcado = registrar(raw, { desvio: true, caminho })
                   if (desvio.veredito === 'fora' && marcado.novo) {
@@ -731,7 +743,9 @@ export const register: Register = (on, options) => {
               } catch (err) {
                 log(err)
               }
-              return desvio !== null
+              // So veredito definitivo vai ao cache: sem-fluxo, sem-plano, sem-arquivos e fora-da-raiz
+              // mudam na mesma sessao (o plano nasce depois da escrita), e a reescrita checa de novo.
+              return desvio !== null && VEREDITOS_DEFINITIVOS.has(String(desvio.veredito))
             }
             desvioPendente.add(escrita)
             filaDesvio.push({ escrita, rodar })

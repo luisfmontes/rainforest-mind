@@ -77,3 +77,27 @@ export function registrar(mapa, evento) {
   }
   return { mapa: m, novo: false };
 }
+
+/**
+ * Troca a chave de um arquivo do mapa: `de` (o caminho absoluto da escrita, que a falha aberta
+ * e a fila cheia registram) vira `para` (o relativo que o veredito devolveu), no mesmo lugar.
+ * Se `para` ja existe, a entrada de `de` some e o vermelho de qualquer uma das duas fica.
+ */
+export function trocarCaminho(mapa, de, para) {
+  const m = { ...mapaVazio(), ...mapa };
+  const origem = semControle(de);
+  const destino = semControle(para);
+  const i = m.arquivos.findIndex(a => a.caminho === origem);
+  if (i < 0 || origem === destino) return m;
+  const velho = m.arquivos[i];
+  const j = m.arquivos.findIndex(a => a.caminho === destino);
+  const arquivos = m.arquivos.slice();
+  if (j < 0) {
+    arquivos[i] = { ...velho, caminho: destino };
+  } else {
+    arquivos[j] = { ...arquivos[j], desvio: arquivos[j].desvio || velho.desvio };
+    arquivos.splice(i, 1);
+  }
+  return { ...m, arquivos };
+}
+

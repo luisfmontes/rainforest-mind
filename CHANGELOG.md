@@ -21,6 +21,19 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 - **Pergunta em que "sim" aceita a recomendada** (`brainstorm`) e **prova de que a mutação pousou**
   antes de confiar no vermelho (`depurar`).
 
+## 1.47.3 — 2026-10-08
+
+- **O cabeçalho do `aviso-fluxo` diz o que ele faz.** O aviso dispara quando o repositório tem fluxo e nenhum
+  está aberto; o comentário dizia o contrário e já levou a propor um hook duplicado. Só texto, nada muda no
+  comportamento.
+
+## 1.47.2 — 2026-10-08
+
+- **Painel do mod confere de novo o que ainda não tinha resposta.** Escrever um arquivo antes de o plano existir
+  e reescrevê-lo depois agora checa o desvio na reescrita; antes o "sem plano" ficava guardado e o arquivo
+  fora do plano passava sem aviso. Um arquivo cuja checagem falhou e depois respondeu aparece uma vez só no
+  mapa, e uma sessão `claude -p` aberta ao lado não zera mais a memória da sua sessão.
+
 ## 1.47.1 — 2026-10-07
 
 - **Pasta com acento não acusa mais creep falso.** Num repo com caminho acentuado (`Transferencia Serviço/`),
@@ -89,7 +102,8 @@ Uma barra de sessão acima do prompt e um painel que abre sob demanda.
   ignorava; o relógio ⏰ (jornada e janela parada) fica, agora como uma figura da barra, e a nota da
   regra 8 segue como estava. A barra mostra estado (trabalhando ou pronto), tokens, custo, contexto de 0
   a 100, cache (quente ou frio, com a estimativa do reenvio), itens deixados, ferramentas por minuto,
-  subagentes, turnos e erros; o que não cabe cai da direita, e o ⏰ é o último a cair.
+  subagentes, turnos e erros; cada figura entra se couber no que sobra, então o corte não é contíguo, e o ⏰
+  é o último a cair.
 - **`/painel` abre o pane** com os fluxos em curso, o mapa da sessão, o contexto por fatia, o cache, os
   subagentes e o custo. Subcomandos: `esconder`, `mostrar` (a barra só volta quando você manda),
   `cache 5m|1h` e `checar ligar|desligar`. O mapa lista os arquivos escritos, as skills, os serviços MCP e os

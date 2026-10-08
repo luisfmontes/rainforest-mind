@@ -3,9 +3,10 @@
 /**
  * Aviso de fluxo no primeiro Edit de código da sessão.
  *
- * Dispara uma única vez por sessão quando há um fluxo aberto (rainforest ou
- * protheus) no repositório e o usuário edita um arquivo de código, alertando
- * que precisa abrir ou pular o fluxo.
+ * Dispara uma única vez por sessão quando o repositório tem fluxo (rainforest ou
+ * protheus) e NENHUM está aberto, e o usuário edita um arquivo de código,
+ * alertando que precisa abrir ou pular o fluxo. Com fluxo aberto, silencia
+ * (critério 7 em main()).
  *
  * Não bloqueia (exit 0 sempre). Memória por sessão em <git-dir>/rainforest-aviso-fluxo.json,
  * com teto de 50 sessões (molde de gate-agente-em-voo).
