@@ -141,14 +141,17 @@ OUT_GOLD="$BASE_POSIX/gold.json"
 rodar_hook "$GOLD_POSIX" > "$OUT_GOLD" 2>/dev/null; COD_GOLD=$?
 [ "$COD_GOLD" = "0" ] && passa "o hook do golden roda (exit 0)" || falha "o hook do golden saiu com exit $COD_GOLD"
 
-# O unico texto que difere por construcao e a raiz do plugin (a abertura cita
+# Os textos que diferem por construcao sao a raiz do plugin e o aviso de revisao da skill (a abertura cita
 # `<raiz>/skills/.../references`): troca-se a raiz de cada lado por <RAIZ> antes do cmp.
 normalizar() {
   node -e "
 const fs = require('fs');
 const raiz = process.argv[2];
 const formas = [raiz, raiz.replace(/\//g, '\\\\')];
-const norm = (v) => typeof v === 'string' ? formas.reduce((t, f) => t.split(f).join('<RAIZ>'), v) : v;
+// O aviso de skill sem revisao depende da data de hoje contra a revisao gravada em cada
+// arvore: o golden envelhece e passa a avisar sozinho (2026-10-08, 61 dias). Sai dos dois lados.
+const semRevisao = (t) => t.replace(/\n\n⚠ A skill [^\n]* não é revisada há \d+ dias[^\n]*/g, '');
+const norm = (v) => typeof v === 'string' ? semRevisao(formas.reduce((t, f) => t.split(f).join('<RAIZ>'), v)) : v;
 const j = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
 j.hookSpecificOutput.additionalContext = norm(j.hookSpecificOutput.additionalContext);
 if (j.systemMessage != null) j.systemMessage = norm(j.systemMessage);

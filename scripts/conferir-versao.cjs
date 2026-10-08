@@ -85,7 +85,7 @@ const TETO_PADRAO = 5;
 
 function git(args) {
   try {
-    return execFileSync(caminhoExecutavel("git"), ["-C", RAIZ, ...args], {
+    return execFileSync(caminhoExecutavel("git"), ["-C", RAIZ, "-c", "core.quotepath=false", ...args], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();

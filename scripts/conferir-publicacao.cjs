@@ -572,7 +572,7 @@ function conferir(texto) {
 function runGit(args) {
   let r;
   try {
-    r = spawnSync(caminhoExecutavel('git'), args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    r = spawnSync(caminhoExecutavel('git'), ['-c', 'core.quotepath=false', ...args], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   } catch (e) {
     return { status: 127, stdout: '', stderr: 'git nao encontrado no PATH' };
   }

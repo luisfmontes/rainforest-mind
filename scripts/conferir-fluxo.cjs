@@ -834,7 +834,7 @@ function cmdCreep() {
   // `execFileSync` — era assimetria dentro da mesma base de código.
   let diff_arquivos = [];
   try {
-    const output = execFileSync(caminhoExecutavel('git'), ['diff', '--name-only', `${base}...${head}`], { cwd: RAIZ, encoding: 'utf8' });
+    const output = execFileSync(caminhoExecutavel('git'), ['-c', 'core.quotepath=false', 'diff', '--name-only', `${base}...${head}`], { cwd: RAIZ, encoding: 'utf8' });
     diff_arquivos = output.trim().split('\n').filter(f => f.length > 0);
   } catch (err) {
     if (err.code === 'ENOENT') {
