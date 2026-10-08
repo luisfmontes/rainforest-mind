@@ -131,3 +131,42 @@ pronto quando: com o banco real, a Issue no `luisfmontes/rainforest-mind` mostra
 **Emenda 1 de 2026-10-08 — versão 1.49.0, não 1.48.0 (tarefa 9).** A `origin/main` publicou a 1.48.0 no mesmo dia (PR #432), depois da base deste fluxo; `node scripts/conferir-versao.cjs` recusa bump que não supera a `origin/main`. O critério da tarefa 9 passa a ler `1.49.0` onde diz `1.48.0`, nos dois `plugin.json` e no CHANGELOG. Nada mais muda.
 
 **Emenda 2 de 2026-10-08 — dois arquivos que o revisar achou fora de `arquivos:`.** `scripts/testa-utilidade.sh` entra na tarefa 6: o caso D10 antigo compara a lista EXATA de colunas de `uso_memoria`, e a coluna `canal` exigiu acrescentar `"canal"` a ela (uma linha; a lista continua exata). `.codex-plugin/plugin.json` entra na tarefa 9: o `CONTRIBUTING.md`, seção Versão, manda subir os dois `plugin.json` juntos, e `conferir-versao.cjs` confere os dois.
+
+**Emenda 3 de 2026-10-08 — revisar reprovou com 4 achados medidos.** As tarefas 11 a 13 abaixo consertam os achados; nenhuma decisão do design muda.
+
+### 11. Hooks: transcrito não re-lido, 30 termos mais raros, subagente sem dedupe da sessão [tipo: implementar]
+atende: D3, D5, D6
+arquivos: `hooks/lib/memoria-assunto.cjs`, `hooks/memoria-assunto-prompt.cjs`, `hooks/memoria-assunto-agente.cjs`, `hooks/testa-memoria-assunto.cjs`, `hooks/testa-memoria-assunto-prompt.cjs`, `hooks/testa-memoria-assunto-agente.cjs`
+depende de: nenhuma
+paralela: sim
+prova: `node hooks/testa-memoria-assunto-prompt.cjs`
+mutacao:
+  arquivo: `hooks/memoria-assunto-prompt.cjs`
+  de: `persistirServidos(arquivo, servidos);`
+  para: `void 0;`
+  bateria: `node hooks/testa-memoria-assunto-prompt.cjs`
+  fixture: `testa-memoria-assunto-prompt.cjs, caso "pedido sem acerto grava o arquivo da sessao e o segundo nao rele o transcrito"`
+pronto quando: (achado 1) depois do primeiro pedido da sessão, com ou sem acerto, o arquivo `<raiz>/memoria-assunto/<sessao>.json` existe (a semeadura roda uma vez por sessão), gravado por uma única chamada `persistirServidos(arquivo, servidos);` ANTES do teste de bloco vazio, e a semeadura lê só os primeiros 2 MiB do transcrito (o attachment de SessionStart vem no começo) — provado por um caso com transcrito sintético de 40 MB (SessionStart no início + enchimento) em que o hook sai 0 em < 1,5 s nas duas primeiras chamadas; (achado 2) a consulta FTS usa os **30 termos mais raros** do texto (menor document frequency > 0 em `observacoes_fts`), montada por uma função exportada `construirQueryAssunto(conexao, texto)` que a calibração também usará, com `const LIMITE_TERMOS = 30;` — provado por um caso em que um briefing de ~150 termos comuns ao corpus e sem os termos raros de nenhum alvo devolve `[]`; (achado 4) o hook do `Agent` não lê nem grava o arquivo da sessão (cada subagente é contexto novo): na mesma sessão, pedido seguido de `Agent` do mesmo assunto entrega ao subagente as mesmas memórias que o pedido recebeu, e o pedido seguinte não perde nada por causa do subagente — provado por `node hooks/testa-memoria-assunto.cjs`, `node hooks/testa-memoria-assunto-prompt.cjs` e `node hooks/testa-memoria-assunto-agente.cjs` com `0 falha(s)` cada, os casos novos nomeados.
+
+### 12. Recalibrar o limiar com a consulta dos 30 termos mais raros [tipo: pesquisar]
+atende: D3, D7
+arquivos: `scripts/calibrar-limiar-assunto.cjs`, `docs/rainforest/referencia/2026-10-08-limiar-memoria-assunto.md`, `hooks/lib/memoria-assunto.cjs`
+depende de: 11
+paralela: nao
+mutacao: n/a
+  motivo: medição; o número sai da tabela, e a constante só muda se a tabela mandar.
+pronto quando: com a mesma cópia do banco e os mesmos transcritos da tarefa 2, `scripts/calibrar-limiar-assunto.cjs` monta a consulta por `construirQueryAssunto` (a mesma do hook), a tabela é refeita para ≥ 5 limiares, o documento ganha a seção "Recalibração (consulta dos 30 termos mais raros)" com a tabela, o limiar escolhido pelo mesmo critério e a linha `LIMIAR_BM25 = <n>` atualizada, e `LIMIAR_BM25` em `hooks/lib/memoria-assunto.cjs` igual ao do documento — provado por `grep -E '^LIMIAR_BM25 = ' docs/rainforest/referencia/2026-10-08-limiar-memoria-assunto.md` e `node -p "require('./hooks/lib/memoria-assunto.cjs').LIMIAR_BM25"` devolvendo o mesmo número, e as baterias da tarefa 11 continuando com `0 falha(s)`.
+
+### 13. Extrator reconhece a linha cortada em 300 caracteres [tipo: implementar]
+atende: D7, D8
+arquivos: `scripts/lib/utilidade.cjs`, `scripts/testa-utilidade-canais.sh`
+depende de: nenhuma
+paralela: sim
+prova: `bash scripts/testa-utilidade-canais.sh`
+mutacao:
+  arquivo: `scripts/lib/utilidade.cjs`
+  de: `if (formatarObservacao(row, apelidos, TETO_LINHA_ASSUNTO) === linhaServida) return { origem: 'observacao', refId: row.id };`
+  para: `if (false) return { origem: 'observacao', refId: row.id };`
+  bateria: `bash scripts/testa-utilidade-canais.sh`
+  fixture: `testa-utilidade-canais.sh, caso "servida do canal assunto cortada em 300 caracteres casa com o id"`
+pronto quando: com uma observação cujo texto passa de 300 caracteres servida pelo bloco `## Memória do assunto` (linha formatada com teto 300, terminando em `…`), `acharAlvo` devolve o id dela (comparando também com `formatarObservacao(row, apelidos, TETO_LINHA_ASSUNTO)`, `TETO_LINHA_ASSUNTO = 300` importado ou espelhado de `hooks/lib/memoria-assunto.cjs`), ela entra em `uso_memoria` com nota e `canal = 'pedido'`, e não reaparece como não-servida no contrafactual — provado por `bash scripts/testa-utilidade-canais.sh` com o caso novo `ok` e `0 falha(s)`, e `bash scripts/testa-utilidade.sh` com `19 ok, 0 falha(s)`.

@@ -22,7 +22,7 @@
     "em": "2026-10-08"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-08",
     "tarefas_ok": 10,
     "tarefas": 10,
@@ -146,15 +146,37 @@
         "resultado": "n/a",
         "motivo": "abre Issue #435"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-08"
+    }
   },
   "revisar": {
-    "status": "pendente",
+    "status": "reprovado",
     "snapshot": {
-      "head": "fe78af1ced790f59f1ea1bd1ab8ba1e98be9dee3",
+      "head": "82a2bac5d99575aa6f5d03bd96ac0792e02c0797",
       "caminhos_sujos": []
     },
-    "vereditos": []
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ab778b98d8f9f8b57",
+        "veredito": "reprovado",
+        "em": "2026-10-08",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind--claude-worktrees-memoria-por-assunto/722539d9-b368-4e3f-9f32-6a3fd43848ae/subagents/agent-ab778b98d8f9f8b57.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-08",
+    "achados": 4,
+    "pendentes": [
+      "1: hook sem acerto re-parseia o transcrito inteiro a cada pedido (95 MB = 12 s, passa do timeout 5 s)",
+      "2: LIMITE_TERMOS 200 no hook x 30 na calibracao; briefing longo recebe memoria sem relacao",
+      "3: formatarObservacao com teto 300 nao casa no acharAlvo; servida longa vira sem-id e enviesa a regua D7",
+      "4: pedido e subagente dividem o arquivo da sessao e um suprime o outro"
+    ],
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
