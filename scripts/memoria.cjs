@@ -436,6 +436,29 @@ function criarSchema(conexao) {
     }
   }
 
+  // Migração 0: canal da servida em uso_memoria (memória por assunto, D10:
+  // enumeração, sem texto). Só adiciona se faltar; banco antigo lê 'abertura'.
+  try {
+    const cols = conexao.prepare('PRAGMA table_info(uso_memoria)').all();
+    if (cols.length > 0 && !cols.some((c) => c.name === 'canal')) {
+      conexao.exec(`ALTER TABLE uso_memoria ADD COLUMN canal TEXT NOT NULL DEFAULT 'abertura'`);
+    }
+  } catch (e) {
+    // não trava a abertura do banco; pontuarSessao falharia e a sessão seria marcada
+  }
+
+  // Migração 0b: contagem de buscas ativas por sessão (D9/D10: só inteiros).
+  try {
+    const cols = conexao.prepare('PRAGMA table_info(uso_memoria_sessoes)').all();
+    if (cols.length > 0) {
+      for (const nome of ['buscas_principal', 'buscas_subagente', 'subagentes']) {
+        if (!cols.some((c) => c.name === nome)) conexao.exec(`ALTER TABLE uso_memoria_sessoes ADD COLUMN ${nome} INTEGER`);
+      }
+    }
+  } catch (e) {
+    // idem acima
+  }
+
   // Migração 1: separar "visto" de "processado" na marca_dagua.
   // Tarefa 11 (D12, D13) decidiu que:
   // - offset_visto: tamanho do transcrito conforme visto pelo harness (Stop/SessionEnd)

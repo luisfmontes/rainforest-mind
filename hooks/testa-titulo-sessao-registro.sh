@@ -76,7 +76,10 @@ echo "contagem: $RES3"
 # Em 2026-10-06 (zerar-issues-16): SessionStart 6 -> 7 com
 # hooks/idioma-session-start.cjs (matcher compact, #401) e PreToolUse 13 -> 15
 # com hooks/gate-subagente-sem-instalar.cjs (#402) e hooks/aviso-fluxo.cjs (#396).
-if [ "$RES3" = '{"SessionStart":7,"PreToolUse":15,"Stop":5,"UserPromptSubmit":1}' ]; then
+# Em 2026-10-08 (memoria-por-assunto): PreToolUse 15 -> 16 com
+# hooks/memoria-assunto-agente.cjs (matcher Task|Agent) e UserPromptSubmit 1 -> 2
+# com hooks/memoria-assunto-prompt.cjs.
+if [ "$RES3" = '{"SessionStart":7,"PreToolUse":16,"Stop":5,"UserPromptSubmit":2}' ]; then
   ok=$((ok+1)); echo "  ok    JSON valido e contagem de SessionStart/PreToolUse/Stop/UserPromptSubmit preservada"
 else
   falhou=$((falhou+1)); echo "  FALHA contagem mudou (ou JSON invalido): $RES3"

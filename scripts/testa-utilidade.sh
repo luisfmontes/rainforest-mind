@@ -225,7 +225,7 @@ else
   falhou=$((falhou+1)); echo "  FALHA pontuacao real nao bateu: $RESULTADO_PONTUACAO"
 fi
 
-if echo "$RESULTADO_PONTUACAO" | grep -q '"colunas":\["nota","origem","pontuada_em","ref_id","servida","sessao"\]'; then
+if echo "$RESULTADO_PONTUACAO" | grep -q '"colunas":\["canal","nota","origem","pontuada_em","ref_id","servida","sessao"\]'; then
   ok=$((ok+1)); echo "  ok   nenhuma coluna de texto em uso_memoria"
 else
   falhou=$((falhou+1)); echo "  FALHA colunas de uso_memoria fora do esperado (D10): $RESULTADO_PONTUACAO"
