@@ -67,7 +67,7 @@ function executar() {
   const cwd = entrada.cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const { raiz } = resolverRaiz({ cwd, plugin: path.resolve(__dirname, '..') });
   if (!raiz) throw new Error('sem raiz de dados');
-  const { caminhoDb, projetos } = resolverCaminhos(cwd);
+  const { caminhoDb, canonico, projeto } = resolverCaminhos(cwd);
   if (!fs.existsSync(caminhoDb)) throw new Error('banco ausente');
   const conexao = abrirBancoSomenteLeitura(caminhoDb);
   if (!conexao) throw new Error('banco indisponivel');
@@ -80,7 +80,7 @@ function executar() {
     } else {
       // Primeiro pedido da sessao: semeia com o que a abertura ja serviu (transcrito).
       servidos = new Set();
-      const apelidos = projetos.length > 1 ? { [projetos[0]]: projetos[projetos.length - 1] } : null;
+      const apelidos = { [canonico]: projeto };
       for (const linha of lerServidasDoInicio(String(entrada.transcript_path || ''))) {
         const alvo = acharAlvo(conexao, linha, apelidos);
         if (alvo && alvo.origem === 'observacao') servidos.add(alvo.id);
@@ -90,7 +90,7 @@ function executar() {
       persistirServidos(arquivo, servidos);
     }
 
-    const achadas = buscarPorAssunto(conexao, prompt, { projetoAtual: projetos[0], jaServidos: servidos, max: 3 });
+    const achadas = buscarPorAssunto(conexao, prompt, { projetoAtual: canonico, jaServidos: servidos, max: 3 });
     const bloco = montarBlocoAssunto(achadas);
     if (!bloco) return '';
 

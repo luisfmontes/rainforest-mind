@@ -10,7 +10,7 @@
 #   3. o systemMessage e o mesmo nos dois destinos
 #
 # Fixture: banco em diretorio temporario, no idioma de testa-memoria-session-start.sh
-# (RFM_ROOT + chaveHarness da pasta); nunca o banco vivo do usuario.
+# (RFM_ROOT + slugDoCaminho da pasta); nunca o banco vivo do usuario.
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -39,13 +39,13 @@ RFM_ROOT="$CAIXA" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
 # chave EXATA que o harness usaria para a pasta.
 (cd "$PASTA" && RFM_ROOT="$CAIXA" SRC="$SRC" node -e "
   const { DatabaseSync } = require('node:sqlite');
-  const { chaveHarness } = require(process.env.SRC + '/scripts/memoria.cjs');
+  const { slugDoCaminho } = require(process.env.SRC + '/scripts/lib/projeto-canonico.cjs');
   const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
   const ins = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
   for (let i = 1; i <= 14; i++) {
     const dia = String(10 + i).padStart(2, '0');
     const sub = ('Subtitulo longo numero ' + i + ' com varias palavras para passar de cento e noventa bytes e forcar a escada de corte por linha ').padEnd(200, 'z').slice(0, 199) + String(i % 10);
-    ins.run(chaveHarness(process.cwd()), '## Obs ' + i + '\n\n' + sub + '\n\n### Detalhe\n\ncorpo', '2026-09-' + dia + 'T10:00:00Z', 'sessao:teste:offset:' + i);
+    ins.run(slugDoCaminho(process.cwd()),'## Obs ' + i + '\n\n' + sub + '\n\n### Detalhe\n\ncorpo', '2026-09-' + dia + 'T10:00:00Z', 'sessao:teste:offset:' + i);
   }
   db.close();
 ")

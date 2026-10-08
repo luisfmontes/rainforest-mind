@@ -89,12 +89,12 @@ function montarBancoDeMemoria() {
   const env = { ...process.env, RFM_ROOT: DADOS };
   require("node:child_process").execFileSync(process.execPath, [path.join(SRC, "scripts", "memoria.cjs"), "iniciar"], { env, stdio: "ignore" });
   const { DatabaseSync } = require("node:sqlite");
-  const { chaveHarness } = require(path.join(SRC, "scripts", "memoria.cjs"));
+  const { slugDoCaminho } = require(path.join(SRC, "scripts", "lib", "projeto-canonico.cjs"));
   const db = new DatabaseSync(path.join(DADOS, "rainforest.db"));
   const ins = db.prepare("INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)");
   for (let i = 1; i <= 14; i++) {
     const dia = String(10 + i).padStart(2, "0");
-    ins.run(chaveHarness(PROJ), `## Obs ${i}\n\nSubtitulo da observacao ${i}\n\n### Detalhe\n\ncorpo`, `2026-09-${dia}T10:00:00Z`, `sessao:teste:offset:${i}`);
+    ins.run(slugDoCaminho(PROJ),`## Obs ${i}\n\nSubtitulo da observacao ${i}\n\n### Detalhe\n\ncorpo`, `2026-09-${dia}T10:00:00Z`, `sessao:teste:offset:${i}`);
   }
   db.close();
 }

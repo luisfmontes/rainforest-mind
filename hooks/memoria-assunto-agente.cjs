@@ -24,7 +24,7 @@ function executar() {
   const cwd = payload.cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const { raiz } = resolverRaiz({ cwd, plugin: path.resolve(__dirname, '..') });
   if (!raiz) throw new Error('sem raiz de dados');
-  const { caminhoDb, projetos } = resolverCaminhos(cwd);
+  const { caminhoDb, canonico } = resolverCaminhos(cwd);
   if (!fs.existsSync(caminhoDb)) throw new Error('banco ausente');
   const conexao = abrirBancoSomenteLeitura(caminhoDb);
   if (!conexao) throw new Error('banco indisponivel');
@@ -32,7 +32,7 @@ function executar() {
   try {
     // Subagente e contexto isolado: nao recebeu o que o pai recebeu, entao nao ha dedupe da sessao
     // (nao le nem grava o arquivo da sessao; o pedido seguinte nao perde nada por causa dele).
-    const achadas = buscarPorAssunto(conexao, original.prompt, { projetoAtual: projetos[0], jaServidos: new Set(), max: 3 });
+    const achadas = buscarPorAssunto(conexao, original.prompt, { projetoAtual: canonico, jaServidos: new Set(), max: 3 });
     const bloco = montarBlocoAssunto(achadas);
     if (!bloco) return '';
 

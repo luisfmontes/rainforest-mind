@@ -12,6 +12,10 @@ const { tituloDoFocoAtivo } = require('./lib/contexto-sessao.cjs');
 const { resolverRaiz } = require('./lib/raiz.cjs');
 const { abrirBanco, abrirBancoSomenteLeitura, resolverCaminhos, filtroVivas } = require(path.join(__dirname, '..', 'scripts', 'memoria.cjs'));
 
+// Nome canônico de projeto (#435, D3): toda comparação de `projeto` do hook passa por aqui, sem
+// diferenciar caixa (caminho no Windows não diferencia, e o drive pode chegar em outra caixa).
+const PROJETO_NOCASE = 'projeto COLLATE NOCASE';
+
 // Extrai termos de busca do título do foco ativo.
 // Retorna array de termos (palavras com >2 caracteres, em minúsculas).
 // Tarefa 3 (D2): os termos vêm do TÍTULO do foco ativo (primeira linha em negrito).
@@ -58,7 +62,7 @@ function lerObservacoesComFTS(caminhoDb, projetosList, termos) {
         ? `
           SELECT id, projeto, conteudo, criada_em
           FROM observacoes
-          WHERE projeto IN (${projetosList.map(() => '?').join(', ')})
+          WHERE ${PROJETO_NOCASE} IN (${projetosList.map(() => '?').join(', ')})
           AND consolidada_em IS NULL
           ${filtroVivas()}
           ORDER BY criada_em DESC
@@ -118,7 +122,7 @@ function lerObservacoesComFTS(caminhoDb, projetosList, termos) {
           const queryFallback = `
             SELECT id, projeto, conteudo, criada_em
             FROM observacoes
-            WHERE projeto IN (${placeholders})
+            WHERE ${PROJETO_NOCASE} IN (${placeholders})
             AND consolidada_em IS NULL
             ${filtroVivas()}
             ORDER BY criada_em DESC
@@ -137,7 +141,7 @@ function lerObservacoesComFTS(caminhoDb, projetosList, termos) {
           const queryOutros = `
             SELECT id, projeto, conteudo, criada_em
             FROM observacoes
-            WHERE projeto NOT IN (${placeholdersNot})
+            WHERE ${PROJETO_NOCASE} NOT IN (${placeholdersNot})
             AND consolidada_em IS NULL
             ${filtroVivas()}
             ORDER BY criada_em DESC
@@ -216,7 +220,7 @@ function lerObservacoes(caminhoDb, projetosList, limiteTotal = 5) {
       const queryPropio = `
         SELECT id, projeto, conteudo, criada_em
         FROM observacoes
-        WHERE projeto IN (${placeholders})
+        WHERE ${PROJETO_NOCASE} IN (${placeholders})
         AND consolidada_em IS NULL
         ${filtroVivas()}
         ORDER BY criada_em DESC
@@ -236,7 +240,7 @@ function lerObservacoes(caminhoDb, projetosList, limiteTotal = 5) {
       const queryOutros = `
         SELECT id, projeto, conteudo, criada_em
         FROM observacoes
-        WHERE projeto NOT IN (${placeholdersNot})
+        WHERE ${PROJETO_NOCASE} NOT IN (${placeholdersNot})
         AND consolidada_em IS NULL
         ${filtroVivas()}
         ORDER BY criada_em DESC
@@ -348,21 +352,16 @@ const { raiz: RAIZ_RESOLVIDA } = resolverRaiz({
 const ROOT = RAIZ_RESOLVIDA || path.resolve(__dirname, '..');
 const caminhoDb = path.join(ROOT, 'rainforest.db');
 
-// Tarefa 3 (D3): Resolve os projetos da sessão atual para filtro.
-// Retorna array com chave harness + chave curta (sem duplicatas).
-// Se não conseguir resolver (fora de repositório), usa null e a consulta devolve todas.
-// Correção D13b: consultar ambas as chaves para não perder histórico sob chave curta.
+// Projeto da sessão atual para filtro (#435, D4): só o canônico (slug do repositório principal).
+// Se não conseguir resolver, usa null e a consulta devolve todas.
 let projetosList = null;
-// Apelidos de exibição: o banco guarda a chave de pasta do harness, que é longa.
-// O rótulo mostra o nome curto do projeto, e o teto de bytes rende mais linhas.
+// Apelido de exibição: o canônico é longo; o rótulo mostra o nome curto do projeto, e o teto de
+// bytes rende mais linhas. Linha de outro projeto não tem apelido: sai com o próprio nome gravado.
 let apelidos = null;
 try {
-  const { projetos } = resolverCaminhos(process.env.CLAUDE_PROJECT_DIR || process.cwd());
-  projetosList = projetos;
-  if (Array.isArray(projetos) && projetos.length > 1) {
-    // projetos = [chaveHarness, nomeCurto]; o primeiro exibe como o segundo.
-    apelidos = { [projetos[0]]: projetos[projetos.length - 1] };
-  }
+  const { canonico, projeto } = resolverCaminhos(process.env.CLAUDE_PROJECT_DIR || process.cwd());
+  projetosList = [canonico];
+  apelidos = { [canonico]: projeto };
 } catch {
   // Não conseguir resolver não é erro — continua sem filtro.
 }
@@ -378,7 +377,7 @@ function buscarResumosRecentes(caminhoDb, projetosList, limite = 5) {
 
     try {
       const placeholders = projetosList && projetosList.length > 0
-        ? `WHERE projeto IN (${projetosList.map(() => '?').join(', ')})`
+        ? `WHERE ${PROJETO_NOCASE} IN (${projetosList.map(() => '?').join(', ')})`
         : '';
 
       const query = `

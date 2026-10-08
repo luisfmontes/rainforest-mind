@@ -51,6 +51,8 @@ const { sqlGrupoDeOrigem } = require('./lib/grupo-de-origem.cjs');
 
 // Migração 7 do esquema: nome canônico de projeto (#435). Módulo folha, sem require de volta.
 const { migrarProjetoCanonico } = require('./lib/migrar-projeto-canonico.cjs');
+// Nome canônico de projeto (#435, D1/D2): a regra do harness e o topo do repositório principal.
+const { canonicoDoCaminho } = require('./lib/projeto-canonico.cjs');
 
 // Sinal de utilidade da memória (Tarefas 1, 3 e 4, D1-D11). Sentido único:
 // utilidade.cjs nunca requer este arquivo de volta (evitaria require
@@ -81,17 +83,6 @@ function encontrarGit(inicio = process.cwd()) {
   return null;
 }
 
-// Deriva a chave de projeto que o harness do Claude Code usa para armazenar projetos.
-// Formato harness: paths com \ / e : são trocados por -.
-// Ex: C:\Projetos\rainforest-mind → C--Projetos-rainforest-mind
-//     C:\Microsiga\erp-trabalho\inovacao → C--Microsiga-erp-trabalho-inovacao
-// Função pura, sem I/O.
-function chaveHarness(diretorio) {
-  if (!diretorio) return '';
-  // Normalizar separadores (\ e /) e : para -
-  return diretorio.replace(/[\\/:]/g, '-');
-}
-
 // Ponto único de inversão (Tarefa 3, D3): observação substituída
 // (substituida_por IS NOT NULL) sai da injeção e da busca, sem ser apagada.
 // Todo caminho de leitura em observacoes usa esta função em vez de escrever
@@ -117,31 +108,15 @@ function resolverCaminhos(cwd) {
     process.exit(1);
   }
 
-  // Tarefa 1 (D13): O projeto vem do diretório da sessão, não da raiz de dados.
-  // Suba a árvore procurando .git (arquivo ou diretório); basename desse diretório é o projeto.
-  // Fallback: basename do cwd se .git não encontrado (sessão fora de repositório).
-  // Decisão D13 define que a matéria-prima é projects/<projeto>/<sessão>.jsonl no harness.
-  let projeto;
+  // Nome canônico (#435, D1/D2): o `canonico` é o slug do topo do repositório principal
+  // (worktree junta-se à principal); `projeto` é o nome curto para exibir (basename desse topo).
+  // Sem `.git` acima de `cwd`, `canonico` é o slug do próprio cwd e `projeto` o basename.
   const dirProjeto = cwd || process.cwd();
-  const topLevel = encontrarGit(dirProjeto);
-  if (topLevel) {
-    projeto = path.basename(topLevel);
-  } else {
-    projeto = path.basename(dirProjeto);
-  }
+  const { canonico, curto } = canonicoDoCaminho(dirProjeto);
 
   const caminhoDb = path.join(raiz, 'rainforest.db');
 
-  // Retornar AMBAS as chaves: `projeto` (curta, para compatibilidade) e `projetos`
-  // (array com chave harness + chave curta, sem duplicatas, sem vazias).
-  // Permite que o leitor consulte ambas, mantendo histórico sob chave curta
-  // enquanto novos dados vêm em chave harness.
-  const chaveHarness_valor = topLevel ? chaveHarness(topLevel) : '';
-  const projetosCandidatas = [chaveHarness_valor, projeto].filter(
-    (p, i, arr) => p && arr.indexOf(p) === i // sem duplicatas, sem vazias
-  );
-
-  return { raiz, caminhoDb, projeto, projetos: projetosCandidatas };
+  return { raiz, caminhoDb, projeto: curto, canonico };
 }
 
 // Abre conexão com o banco. Cria se não existe. Retorna a conexão.
@@ -2332,7 +2307,7 @@ if (require.main === module) {
 }
 
 module.exports = {
-  abrirBanco, abrirBancoSomenteLeitura, chaveHarness, criarSchema, extrairSchema, popularFts5,
+  abrirBanco, abrirBancoSomenteLeitura, criarSchema, extrairSchema, popularFts5,
   resolverCaminhos, verificarConstraintUniqueProjetoOrigem, encontrarGit, fazerBackupDoBanco,
   K_CANDIDATAS, TETO_RECONCILIAR, construirQueryFts5, buscarCandidatas,
   interpretarDecisaoReconciliacao, aplicarDecisaoReconciliacao,

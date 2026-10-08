@@ -28,7 +28,7 @@
  * (`CWD_FIXTURE` / `CWD_FIXTURE_BOGUS`) — `lerProjetoDoTranscrito` sobe a
  * árvore procurando `.git`, não encontra (caminho inexistente), e cai no
  * fallback "usa o cwd cru": `curto = basename(cwd)`, `harnessKey =
- * chaveHarness(cwd)`. Isso torna o rótulo de projeto 100% determinístico,
+ * slugDoCaminho(cwd)`. Isso torna o rótulo de projeto 100% determinístico,
  * sem depender de onde o repositório está checked out (worktree, clone do
  * CI, máquina do Luís) — ao contrário de usar um diretório REAL como cwd, que
  * faria `curto` variar por ambiente. A única exceção fica na seção da Tarefa 9
@@ -39,7 +39,7 @@
 
 const path = require('path');
 const { formatarObservacao } = require('../../../hooks/lib/memoria-sessao.cjs');
-const { chaveHarness } = require('../../memoria.cjs');
+const { slugDoCaminho } = require('../../lib/projeto-canonico.cjs');
 
 // cwd sintético do "projeto próprio" — inexistente em disco de propósito
 // (ver comentário acima). path.win32 explícito: o fixture é consumido por
@@ -48,7 +48,7 @@ const { chaveHarness } = require('../../memoria.cjs');
 const CWD_FIXTURE = 'C:\\Projetos\\fixture-utilidade-proj';
 const CWD_FIXTURE_BOGUS = 'C:\\Projetos\\projeto-que-nao-existe-forcado-t9';
 
-const HARNESS_KEY = chaveHarness(CWD_FIXTURE);
+const HARNESS_KEY = slugDoCaminho(CWD_FIXTURE);
 const CURTO = path.win32.basename(CWD_FIXTURE);
 const APELIDOS = { [HARNESS_KEY]: CURTO };
 

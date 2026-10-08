@@ -13,12 +13,15 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { DatabaseSync } = require('node:sqlite');
 const { criarSchema } = require(path.join(__dirname, '..', 'scripts', 'memoria.cjs'));
+const { slugDoCaminho } = require(path.join(__dirname, '..', 'scripts', 'lib', 'projeto-canonico.cjs'));
 
 const HOOK = path.join(__dirname, 'memoria-assunto-agente.cjs');
 const PORTARIA = path.join(__dirname, 'portaria.cjs');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'testa-memoria-assunto-agente-'));
 const raiz = path.join(tmp, 'raiz');
 const cwdSessao = path.join(tmp, 'projeto-teste');
+// O projeto atual da sessão é o canônico do cwd (#435): sem .git, o slug da própria pasta.
+const PROJ_ATUAL = slugDoCaminho(cwdSessao);
 fs.mkdirSync(raiz);
 fs.mkdirSync(cwdSessao);
 
@@ -28,12 +31,12 @@ const db = new DatabaseSync(caminhoDb);
 criarSchema(db);
 const ins = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
 for (let i = 0; i < 400; i++) {
-  ins.run('projeto-teste', 'Registro generico ' + i + '\n\nrotina comum de trabalho numero ' + i + ' sem relevancia', '2026-10-01T10:00:00.000Z', 'f' + i);
+  ins.run(PROJ_ATUAL, 'Registro generico ' + i + '\n\nrotina comum de trabalho numero ' + i + ' sem relevancia', '2026-10-01T10:00:00.000Z', 'f' + i);
 }
 let n = 0;
 for (const nome of ['Alfa', 'Bravo', 'Charlie', 'Delta']) {
   ins.run(
-    nome === 'Alfa' ? 'projeto-teste' : 'outro-projeto',
+    nome === 'Alfa' ? PROJ_ATUAL : 'outro-projeto',
     'Reconciliacao ' + nome + ' zarquon flibbertigibbet\n\n' + ('zarquon flibbertigibbet zarquon flibbertigibbet quasar ' + nome + ' ').repeat(3),
     '2026-10-0' + (2 + n++) + 'T10:00:00.000Z', 'alvo-' + nome);
 }
