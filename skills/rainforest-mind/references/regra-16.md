@@ -13,7 +13,7 @@ entra no escopo. Havendo mais de uma decisão aberta, perguntar **a rodada
 inteira de uma vez** — só as decisões cujos pré-requisitos já estão
 resolvidos (pergunta que depende de outra ainda aberta pertence a uma rodada
 posterior), numeradas, **cada uma com a resposta recomendada**, para ele
-responder "1 ok, 2 não, usa X" em vez de compor do zero — e redigida para que "sim" aceite a recomendada. `Q` numerada é para decisões **independentes**:
+responder "1 ok, 2 não, usa X" em vez de compor do zero. `Q` numerada é para decisões **independentes**:
 alternativas mutuamente exclusivas da mesma escolha são **uma** `Q` com opções
 A/B (duas `Q` com recomendação cada tornam o "recomendado" dele ambíguo). E
 item sem recomendada só passa dizendo por que não há opinião; se já medi o
