@@ -159,6 +159,8 @@ console.log("== A. rainforest sem fluxo aberto e sem leve ==");
     /exige executar/.test(r.stderr || ""), r.stderr);
   caso("A1 stderr traz a saida do caminho leve (estado.cjs leve --motivo)",
     /scripts[\\/]estado\.cjs" leve --motivo/.test(r.stderr || ""), r.stderr);
+  caso("A1 stderr traz a dica do prefixo & para PowerShell (Issue #442)",
+    /em PowerShell, prefixe `& `/.test(r.stderr || ""), r.stderr);
   caso("A1 stderr traz a saida de abrir o fluxo",
     /brainstorm|estado\.cjs iniciar/.test(r.stderr || ""), r.stderr);
   caso("A1 a negacao entra no log como deny",

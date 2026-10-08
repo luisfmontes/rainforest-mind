@@ -1146,7 +1146,9 @@ function main() {
         `agente '${nomeAgente}' escreve (escreve: true) e so roda no estagio que declara: exige ${exige}; ` +
         `estagio aberto: ${estagioAtivo} (Issue #430, D3/D5)` +
         `\n  saida 1: abrir ou avancar o fluxo ate ${exige} (rainforest: /rainforest-mind:brainstorm ou "${nodeBarras}" "${caminhoEstado}" iniciar --slug <slug>; protheus: /protheus:trabalhar)` +
-        saida2;
+        saida2 +
+        // Issue #442: o comando comeca por string entre aspas, que PowerShell so roda com `& `.
+        "\n  em PowerShell, prefixe `& ` aos comandos acima";
       gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
       negar(motivo);
     }

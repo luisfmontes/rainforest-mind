@@ -224,6 +224,7 @@ caso('rainforest sem fluxo: a mensagem nomeia as duas saidas com comando pronto'
       `"${ESTADO_BARRAS}" iniciar`,
       '/rainforest-mind:brainstorm',
       `"${ESTADO_BARRAS}" leve --motivo`,
+      'Em PowerShell, prefixe `& `', // Issue #442
     ]);
   } finally { limparSandbox(s); }
 });
@@ -347,6 +348,7 @@ caso('protheus sem fluxo: sai 2 nomeando /protheus:trabalhar e o leve', () => {
     return bloqueado(rodarHook(payload({ cwd: s, file: arq }), s), [
       '/protheus:trabalhar',
       `"${ESTADO_BARRAS}" leve --motivo`,
+      'Em PowerShell, prefixe `& `', // Issue #442
     ]);
   } finally { limparSandbox(s); }
 });

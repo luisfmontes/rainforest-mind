@@ -1,0 +1,9 @@
+{
+  "slug": "2026-10-08-ps-prefixo",
+  "titulo": "fluxo/ps-prefixo",
+  "criado_em": "2026-10-08",
+  "leve": {
+    "motivo": "Issue #442: conferencia do comando em PowerShell com prefixo &",
+    "data": "2026-10-08"
+  }
+}

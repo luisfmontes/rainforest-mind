@@ -26,11 +26,14 @@ const { resolver } = require('./lib/estagio-ativo.cjs');
 const { leveDaBranch, protheusAberto } = require('./lib/caminho-leve.cjs');
 
 // Caminho absoluto do estado.cjs do plugin, com barras normais: o comando da mensagem
-// roda em bash e em PowerShell sem escapar contrabarra.
+// cola em bash sem escapar contrabarra. Em PowerShell, linha que começa por string entre
+// aspas só roda com `& ` na frente, e não há forma única para os dois shells (`&` à frente
+// é erro em bash): a mensagem leva a dica (Issue #442).
 const SCRIPT_ESTADO = path.resolve(__dirname, '..', 'scripts', 'estado.cjs').split(path.sep).join('/');
 // O node vai pelo caminho do processo, entre aspas (#430, emenda 4): nome nu resolve pela
 // busca do SO, e caminho com espaço quebra sem aspas.
 const NODE_BARRAS = process.execPath.split(path.sep).join('/');
+const DICA_POWERSHELL = 'Em PowerShell, prefixe `& ` ao comando.';
 
 const EXTENSOES_CODIGO = new Set([
   '.js', '.cjs', '.mjs', '.ts', '.tsx', '.jsx',
@@ -94,7 +97,8 @@ function ehBranchPadraoDoRepo(gitTop, branch) {
   }
 }
 
-// Caminho com barras normais, para colar em comando que roda em bash e em PowerShell.
+// Caminho com barras normais, para colar em comando sem escapar contrabarra (em PowerShell,
+// com `& ` na frente: DICA_POWERSHELL).
 function barras(p) {
   return p.split(path.sep).join('/');
 }
@@ -151,18 +155,21 @@ function mensagemBloqueio(trilho, branch, ofereceLeve, gitTop) {
       return [
         `BLOQUEADO: este repositório tem fluxo rainforest e nenhum está aberto na branch '${branch}', que é a branch padrão. Edição de código direto nela não passa.`,
         `Saída: trabalhe num worktree e abra o fluxo nele: \`git worktree add .claude/worktrees/<nome> -b fluxo/<nome>\`, entre no worktree e rode /rainforest-mind:brainstorm (roda \`${iniciar}\`).`,
+        DICA_POWERSHELL,
       ].join('\n');
     }
     return [
       `BLOQUEADO: este repositório tem fluxo rainforest e nenhum está aberto na branch '${branch}'. Edição de código sem fluxo não passa.`,
       `Saída 1, abrir o fluxo: /rainforest-mind:brainstorm (roda \`${iniciar}\`).`,
       `Saída 2, caminho leve declarado para hotfix mecânico: \`${leve}\``,
+      DICA_POWERSHELL,
     ].join('\n');
   }
   return [
     `BLOQUEADO: este repositório tem fluxo protheus e nenhum está aberto na branch '${branch}'. Edição de código sem fluxo não passa.`,
     `Saída 1, abrir o fluxo: /protheus:trabalhar.`,
     `Saída 2, caminho leve declarado para hotfix mecânico: \`${leve}\``,
+    DICA_POWERSHELL,
   ].join('\n');
 }
 
