@@ -20,10 +20,10 @@
     "em": "2026-10-08"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-08",
-    "tarefas_ok": 12,
-    "tarefas": 12,
+    "tarefas_ok": 14,
+    "tarefas": 14,
     "em_voo": [],
     "carimbos": [
       {
@@ -63,8 +63,8 @@
       }
     ],
     "em": "2026-10-08",
-    "comando": "node scripts/conferir-mutacao.cjs (tarefas 9 e 10, re-rodado pela integracao) + baterias do branch integrado",
-    "saida": "T9: bateria VERMELHA com o comportamento invertido (exit 1), caso 'rainforest na branch padrao: mensagem manda abrir worktree e nao oferece leve'; T10: bateria VERMELHA (exit 1), casos J1/J2/J4/J5; conferir-entrega T9/T10: APROVADO; T12: bateria VERMELHA (exit 1), 2 casos incluindo o fixture; conferir-entrega T12 APROVADO",
+    "comando": "bash scripts/varrer-baterias.sh",
+    "saida": "as 190 baterias passaram; conferir-entrega T13/T14 APROVADO; T13 mutacao vermelha (7 casos, inclusive o fixture)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -125,12 +125,18 @@
         "tarefa": 12,
         "resultado": "vermelho",
         "fixture": "protheus: gates.json recente de outra branch nao abre o fluxo desta"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "plugin em pasta com espaco: o leve impresso pela portaria roda e libera o despacho"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "n/a",
+        "motivo": "so texto e constantes de tamanho; a falsificacao sao as catracas de bytes"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "verificar",
-      "data": "2026-10-08"
-    }
+    ]
   },
   "revisar": {
     "status": "pendente",
@@ -165,9 +171,11 @@
     "tentativas": 1
   },
   "fechar": {
-    "status": "ok",
+    "status": "reprovado",
     "acao": "pr",
     "pr": 440,
-    "em": "2026-10-08"
+    "em": "2026-10-08",
+    "motivo": "CI do PR #440 vermelho; verificar reprovado, emenda 4",
+    "tentativas": 1
   }
 }
