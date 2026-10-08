@@ -50,6 +50,35 @@ uma anomalia. Aí não há o que semear, e o script diz isso com os caminhos: es
 o histórico nascer, levantar o terreno com a `arqueologia`, ou — para pergunta de
 stack — o recomendador oficial.
 
+### A sessão real
+
+O bloco **SESSOES RECENTES** lista os transcripts deste projeto (os da raiz e os
+dos worktrees, onde mora o subagente), com quantas chamadas de ferramenta cada
+um fez e quantas voltaram com erro. Observação e relatório são o que alguém
+**notou**; o transcript é o que **aconteceu** — e o agente não reclama dos
+próprios tropeços, porque a persistência dele entrega a feature mesmo assim.
+
+Leia a sessão quando ele nomear uma ("a de ontem deu errado"), quando pedir uma
+retrospectiva, ou quando o histórico estiver ralo. Transcript é grande: a
+leitura vai para um agente de leitura (regra 10), com estas lentes no briefing:
+
+- **Navegação**: demorou para achar arquivo ou informação? Um ponteiro resolveria?
+- **Checagem automática**: o erro cometido seria pego por lint, teste ou hook?
+  Leia antes o que o repo já tem — checagem que existe e não está ligada é o
+  achado, não uma invenção nova.
+- **Regra mecânica**: violação de padrão fixo (API proibida, forma de import,
+  lugar de arquivo) vira **checagem**, nunca regra escrita.
+- **Economia de ferramenta**: chamada cara que dava para enxugar, script ou MCP
+  que gasta token à toa.
+- **Instrução que não muda nada**: trecho de CLAUDE.md ou skill que o agente
+  seguiria igual sem ele.
+- **Acesso a informação**: o fato que faltou e onde ele estava.
+
+O achado entra no mesmo método abaixo, e a citação é o transcript com a linha.
+**Não automatize a leitura**: rodar em laço faz o agente perseguir falso
+positivo e levar o repo para onde não devia — ele escolhe as sessões, e escolhe
+o que vira trabalho. Lente da skill `retro` (mattpocock/skills v1.3, MIT).
+
 ## O método
 
 1. **Agrupe por família, não por item.** Três observações sobre relato de agente

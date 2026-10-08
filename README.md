@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.47.3-1e5c3f?style=flat-square" alt="versão 1.47.3">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.48.0-1e5c3f?style=flat-square" alt="versão 1.48.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -375,7 +375,7 @@ As três restrições nasceram de uma necessidade pessoal e valem pra qualquer u
 - *Your Rainforest Mind* — Paula Prober, a metáfora que dá nome ao plugin.
 - [i-have-adhd](https://github.com/ayghri/i-have-adhd) — inspiração de formato e prova de que skill de neurodivergência funciona.
 - [task-observer](https://github.com/rebelytics/one-skill-to-rule-them-all) — Eoghan Henn (rebelytics.com), CC BY 4.0: o gatilho "correção do usuário = observação" e o ciclo de revisão que viraram a regra 13.
-- [mattpocock/skills](https://github.com/mattpocock/skills) — MIT: a árvore de decisão e a fronteira de `grilling` (regra 16 e `/brainstorm`), o loop vermelho-capaz de `diagnosing-bugs` (skill `depurar`), expandir–contrair de `to-tickets`, e o portão triplo do registro de decisão de `domain-modeling`. Acoplado por compressão — nenhuma das 35 skills instalada.
+- [mattpocock/skills](https://github.com/mattpocock/skills) — MIT: a árvore de decisão e a fronteira de `grilling` (regra 16 e `/brainstorm`), o loop vermelho-capaz de `diagnosing-bugs` (skill `depurar`), expandir–contrair de `to-tickets`, o portão triplo do registro de decisão de `domain-modeling`, e da v1.3: o corpo de PR de `pr` (skill `fechar`), as lentes de `retro` sobre o transcript real (skill `semear`), a pergunta redigida para "sim" aceitar a recomendada (`grilling`) e a prova de que a mutação pousou (`diagnosing-bugs`). Acoplado por compressão — nenhuma skill dele instalada.
 - [andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills) — a rastreabilidade de cada linha do diff até o pedido, no `modo-dev`.
 - [karpathy/autoresearch](https://github.com/karpathy/autoresearch) — MIT: as duas peças da `regua` 1.22 — o juiz que o agente avaliado não pode editar (aqui, a régua selada pelo commit que a adicionou) e o keep/discard automático contra o melhor guardado. Reimplementado a partir da descrição, sem copiar arquivo.
 - [dietrichgebert/ponytail](https://github.com/dietrichgebert/ponytail) — MIT: a escada YAGNI e as carve-outs de "onde a escada não desce" (`modo-dev`), a convenção de marcador `atalho:` com teto e caminho de upgrade mais o ledger que a colhe (`scripts/atalhos.cjs`), a fronteira que mantém revisão de excesso separada de revisão de correção (skill `enxugar`), e o hook de `SubagentStart` — que é dele o achado de que `SessionStart` não alcança subagente e de que ali só a forma `hookSpecificOutput` entrega, texto cru sendo descartado em silêncio. A fronteira de honestidade da `regua` ("nunca imprimir economia estimada sobre repo vivo: a versão não construída nunca foi escrita") também vem de lá.
