@@ -411,6 +411,92 @@ caso('PRAGMA table_info(uso_memoria_sessoes) sem coluna de texto nova', () => {
   afirma(novas.length === 3 && novas.every((c) => c.type === 'INTEGER'), 'as tres colunas novas deveriam ser INTEGER');
 });
 
+// ---- tarefa 14: apelido, contagem so de Bash/PowerShell, corte por mais:, ordem do attachment ----
+function comCwd(f, cwd) {
+  const novas = fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => {
+    const o = JSON.parse(l);
+    if (o.cwd) o.cwd = cwd;
+    return JSON.stringify(o);
+  });
+  fs.writeFileSync(f, novas.join('\n') + '\n');
+}
+
+caso('servida do assunto com projeto pelo nome do harness casa com o id mesmo com apelido', () => {
+  const repo = path.join(CAIXA, 'repo-curto');
+  fs.mkdirSync(repo, { recursive: true });
+  execFileSync('git', ['init', '-q', repo]);
+  const raroL = 'zzraroapelidolongo zzraroapelidolongodois';
+  const raroC = 'zzraroapelidocurto zzraroapelidocurtodois';
+  const criada = '2026-10-05T12:00:00.000Z';
+  const longo = Array.from({ length: 80 }, (_, i) => 'trecho' + i).join(' ');
+  const conteudoL = 'titulo apelidolongo corpusfiller\nsubtitulo ' + longo + ' ' + raroL;
+  const conteudoC = 'titulo apelidocurto corpusfiller\nsubtitulo curto ' + raroC;
+  const f = montarTres('t-apelido', { ab: [], pe: [], su: [], prompt1: 'trate de ' + raroL + ' e ' + raroC, prompt2: 'agora aprofunde ' + raroL + ' e ' + raroC, toolFilho: null });
+  comCwd(f, repo);
+  const { harnessKey, curto } = U.lerProjetoDoTranscrito(f);
+  afirma(harnessKey && curto && harnessKey !== curto, 'precondicao: sessao deveria ter apelido, veio ' + harnessKey + ' / ' + curto);
+  const idL = Number(ins.run(harnessKey, conteudoL, criada, 'obs-apelido-l').lastInsertRowid);
+  const idC = Number(ins.run(harnessKey, conteudoC, criada, 'obs-apelido-c').lastInsertRowid);
+  const obsL = { conteudo: conteudoL, projeto: harnessKey, criada_em: criada };
+  const obsC = { conteudo: conteudoC, projeto: harnessKey, criada_em: criada };
+  const linhaL = formatarObservacao(obsL, null, 300);
+  const linhaC = formatarObservacao(obsC, null, 300);
+  afirma(linhaL.endsWith('…') && linhaL !== formatarObservacao(obsL, null) && linhaL.indexOf('(' + harnessKey + ')') !== -1, 'precondicao: linha longa cortada e com projeto cru');
+  const g = montarTres('t-apelido2', { ab: [], pe: [linhaL, linhaC], su: [], prompt1: 'trate de ' + raroL + ' e ' + raroC, prompt2: 'agora aprofunde ' + raroL + ' e ' + raroC, toolFilho: null });
+  comCwd(g, repo);
+  rodar('s-apelido', g);
+  const todas = db.prepare('SELECT ref_id, servida, nota, canal FROM uso_memoria WHERE sessao = ? AND ref_id IN (?, ?) ORDER BY ref_id').all('s-apelido', idL, idC);
+  console.log('  saida: ' + JSON.stringify(todas));
+  afirma(todas.length === 2 && todas.every((x) => x.servida === 1 && x.canal === 'pedido'), 'as duas servidas (longa cortada e curta) deveriam casar com o id: ' + JSON.stringify(todas));
+});
+
+caso('buscas ativas ignora Agent, Write e Edit que citam o comando e conta Bash e PowerShell que o executam', () => {
+  const cita = 'rode node scripts/memoria.cjs buscar --texto alfa';
+  const f = escreverTranscrito('t-busca-cita', [
+    linhaUser('procure'),
+    linhaAssistant({ type: 'tool_use', id: 'toolu_ag', name: 'Agent', input: { description: 'x', prompt: cita } }),
+    linhaAssistant({ type: 'tool_use', id: 'toolu_wr', name: 'Write', input: { file_path: 'a.md', content: cita } }),
+    linhaAssistant({ type: 'tool_use', id: 'toolu_ed', name: 'Edit', input: { file_path: 'a.md', old_string: 'a', new_string: cita } }),
+  ]);
+  const antes = U.contarBuscas(f);
+  console.log('  saida: citando=' + JSON.stringify(antes));
+  afirma(antes.buscasPrincipal === 0, 'Agent/Write/Edit citando deveria contar 0, contou ' + antes.buscasPrincipal);
+  const g = escreverTranscrito('t-busca-exec', [
+    linhaUser('procure'),
+    linhaAssistant({ type: 'tool_use', id: 'toolu_ag', name: 'Agent', input: { prompt: cita } }),
+    toolBash('node scripts/memoria.cjs buscar --texto beta'),
+    linhaAssistant({ type: 'tool_use', id: 'toolu_ps', name: 'PowerShell', input: { command: 'node scripts/memoria.cjs buscar --texto gama' } }),
+  ]);
+  const depois = U.contarBuscas(g);
+  console.log('  saida: executando=' + JSON.stringify(depois));
+  afirma(depois.buscasPrincipal === 2, 'Bash e PowerShell executando deveriam contar 2, contou ' + depois.buscasPrincipal);
+});
+
+caso('bloco do assunto com jamais: no texto mantem as duas linhas inteiras', () => {
+  const l1 = '[2026-10-05 (p)] decisao: jamais: apagar o banco — subtitulo longo';
+  const l2 = '[2026-10-04 (p)] segunda linha que nao pode sumir';
+  const r = U.extrairLinhasServidas(bloco([l1, l2]));
+  console.log('  saida: ' + JSON.stringify(r));
+  afirma(r.length === 2 && r[0] === l1 && r[1] === l2, 'as duas linhas deveriam voltar inteiras');
+  const ab = U.extrairLinhasServidas(blocoAbertura([l2]) + '\n[2026-10-03 (p)] depois do rodape');
+  console.log('  saida: ' + JSON.stringify(ab));
+  afirma(ab.length === 1 && ab[0] === l2, 'a abertura continua cortando no mais:');
+});
+
+caso('attachment antes ou depois da linha user do pedido da a mesma nota', () => {
+  const p1 = 'trate de ' + OBS.pedido.raro;
+  const p2 = 'agora so conversa sem o termo';
+  const a = escreverTranscrito('t-ordem-a', [linhaSessionStart([]), linhaUser(p1), linhaPedido([OBS.pedido.linha]), linhaUser(p2)]);
+  const b = escreverTranscrito('t-ordem-b', [linhaSessionStart([]), linhaPedido([OBS.pedido.linha]), linhaUser(p1), linhaUser(p2)]);
+  rodar('s-ordem-a', a);
+  rodar('s-ordem-b', b);
+  const na = linhasUso('s-ordem-a').find((x) => x.ref_id === OBS.pedido.id);
+  const nb = linhasUso('s-ordem-b').find((x) => x.ref_id === OBS.pedido.id);
+  console.log('  saida: a=' + JSON.stringify(na) + ' b=' + JSON.stringify(nb));
+  afirma(na && nb && na.canal === 'pedido' && nb.canal === 'pedido', 'as duas ordens deveriam gravar o canal pedido');
+  afirma(na.nota === nb.nota && nb.nota === 0, 'mesma nota (0, o pedido nao pontua a propria injecao) nas duas ordens');
+});
+
 let ok = 0, falha = 0;
 for (const [nome, fn] of casos) {
   try {

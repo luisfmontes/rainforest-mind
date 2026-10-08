@@ -66,7 +66,9 @@ function extrairLinhasServidas(additionalContext, cabecalhos = [CAB_ABERTURA, CA
     const inicio = texto.indexOf(cabecalho);
     if (inicio === -1) continue;
     const apos = inicio + cabecalho.length;
-    const marcaMais = texto.indexOf('mais:', inicio);
+    // O rodapé `mais:` só existe no bloco da abertura; o do assunto não tem rodapé
+    // (um `jamais:` no texto de uma observação não pode cortá-lo).
+    const marcaMais = cabecalho === CAB_ABERTURA ? texto.indexOf('mais:', inicio) : -1;
     const proxCabecalho = texto.indexOf('\n## ', apos);
     const fins = [marcaMais, proxCabecalho].filter((p) => p !== -1);
     const fim = fins.length === 0 ? texto.length : Math.min(...fins);
@@ -147,6 +149,15 @@ function extrairSessao(caminhoTranscrito) {
   const injecoes = [];
   const doSubagente = [];
   let ultimoPedido = -1;
+  const marcarPedido = () => {
+    ultimoPedido = partesTexto.length - 1;
+    for (const i of injecoes) {
+      if (i.pendente) {
+        i.indiceInjecao = ultimoPedido;
+        i.pendente = false;
+      }
+    }
+  };
 
   for (const linhaArquivo of linhasArquivo) {
     if (!linhaArquivo.trim()) continue;
@@ -184,7 +195,8 @@ function extrairSessao(caminhoTranscrito) {
       const c = entrada.attachment.content;
       const ctx = Array.isArray(c) ? c.join('\n') : String(c || '');
       for (const linha of extrairLinhasServidas(ctx, [CAB_ASSUNTO])) {
-        injecoes.push({ linha, indiceInjecao: ultimoPedido });
+        // Sem pedido anterior (attachment antes da linha `user`): ancora no próximo pedido.
+        injecoes.push({ linha, indiceInjecao: ultimoPedido, pendente: ultimoPedido === -1 });
       }
       continue;
     }
@@ -203,7 +215,7 @@ function extrairSessao(caminhoTranscrito) {
       if (typeof conteudoMsg === 'string') {
         // Prompt do usuário digitado direto, sem blocos estruturados.
         partesTexto.push(conteudoMsg);
-        if (entrada.type === 'user') ultimoPedido = partesTexto.length - 1;
+        if (entrada.type === 'user') marcarPedido();
         continue;
       }
 
@@ -214,7 +226,7 @@ function extrairSessao(caminhoTranscrito) {
           if (entrada.type === 'assistant' && bloco.type === 'text') continue;
           if (bloco.type === 'text' && typeof bloco.text === 'string') {
             partesTexto.push(bloco.text);
-            if (entrada.type === 'user') ultimoPedido = partesTexto.length - 1;
+            if (entrada.type === 'user') marcarPedido();
           } else if (bloco.type === 'tool_use' && bloco.input !== undefined) {
             try {
               partesTexto.push(JSON.stringify(bloco.input));
@@ -383,6 +395,9 @@ function acharAlvo(conexao, linhaServida, apelidos) {
       return { origem: 'observacao', id: row.id, conteudo: row.conteudo };
     }
     if (formatarObservacao(row, apelidos, TETO_LINHA_ASSUNTO) === linhaServida) return { origem: 'observacao', id: row.id, conteudo: row.conteudo };
+    // O hook do assunto monta a linha com o projeto CRU (sem apelido): com apelido na sessão, só estas casam.
+    if (formatarObservacao(row, null, TETO_LINHA_ASSUNTO) === linhaServida) return { origem: 'observacao', id: row.id, conteudo: row.conteudo };
+    if (formatarObservacao(row, null) === linhaServida) return { origem: 'observacao', id: row.id, conteudo: row.conteudo };
   }
 
   const resumoRows = doDia(`SELECT id, projeto, titulo, conteudo, criada_em FROM resumos WHERE criada_em LIKE ?`);
@@ -516,7 +531,7 @@ function buscarContrafactual(conexao, texto, jaServidos, textosServidos) {
   return resultado;
 }
 
-// Buscas ativas (D9): conta os tool_use cujo input contém `memoria.cjs buscar`
+// Buscas ativas (D9): conta os tool_use de Bash/PowerShell cujo `input.command` contém `memoria.cjs buscar`
 // no transcrito principal e, somados, nos subagents/*.jsonl da sessão. Só
 // inteiros saem daqui (D10).
 const PADRAO_BUSCA = 'memoria.cjs buscar';
@@ -539,7 +554,7 @@ function contarBuscasArquivo(arquivo) {
     const c = e.message && e.message.content;
     if (e.type !== 'assistant' || !Array.isArray(c)) continue;
     for (const b of c) {
-      if (b && b.type === 'tool_use' && b.input !== undefined && JSON.stringify(b.input).includes(PADRAO_BUSCA)) n++;
+      if (b && b.type === 'tool_use' && (b.name === 'Bash' || b.name === 'PowerShell') && b.input && typeof b.input.command === 'string' && b.input.command.includes(PADRAO_BUSCA)) n++;
     }
   }
   return n;

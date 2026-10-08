@@ -5,7 +5,7 @@
 // como processo filho recebendo no stdin o JSON que o harness envia (prompt, session_id, cwd,
 // transcript_path, hook_event_name — docs/rainforest/referencia/2026-10-08-harness-prompt-e-agent.md).
 // Limiar: o corpus tem 400 memorias de enchimento + alvos de termos raros repetidos, entao os
-// alvos passam do LIMIAR_BM25 (-16) de verdade; nenhuma variavel de ambiente afrouxa o limiar.
+// alvos passam do LIMIAR_BM25 de verdade; nenhuma variavel de ambiente afrouxa o limiar.
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
