@@ -42,6 +42,11 @@ const SQL_OBS_DO_DIA = 'SELECT id, projeto, conteudo, criada_em FROM observacoes
 
 // ---- Tarefa 1: extrator do transcrito ----
 
+const CAB_ABERTURA = '## Memória (corpus residentes)';
+const CAB_ASSUNTO = '## Memória do assunto';
+// Prioridade quando a mesma memória chega por mais de um canal na sessão.
+const ORDEM_CANAL = { abertura: 0, pedido: 1, subagente: 2 };
+
 /**
  * Extrai as linhas servidas (`[AAAA-MM-DD (projeto)] ...`) de UM texto de
  * `additionalContext` — o bloco entre `## Memória (corpus residentes)` e a
@@ -52,17 +57,58 @@ const SQL_OBS_DO_DIA = 'SELECT id, projeto, conteudo, criada_em FROM observacoes
  *   apareceram no bloco (mais recente primeiro — é assim que montarMemoria as
  *   grava).
  */
-function extrairLinhasServidas(additionalContext) {
+function extrairLinhasServidas(additionalContext, cabecalhos = [CAB_ABERTURA, CAB_ASSUNTO]) {
   const texto = String(additionalContext || '');
-  const inicio = texto.indexOf('## Memória (corpus residentes)');
-  if (inicio === -1) return [];
-  const marcaMais = texto.indexOf('mais:', inicio);
-  const fim = marcaMais === -1 ? texto.length : marcaMais;
-  const bloco = texto.slice(inicio, fim);
-  return bloco
-    .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => l.startsWith('['));
+  const linhas = [];
+  for (const cabecalho of cabecalhos) {
+    const inicio = texto.indexOf(cabecalho);
+    if (inicio === -1) continue;
+    const apos = inicio + cabecalho.length;
+    const marcaMais = texto.indexOf('mais:', inicio);
+    const proxCabecalho = texto.indexOf('\n## ', apos);
+    const fins = [marcaMais, proxCabecalho].filter((p) => p !== -1);
+    const fim = fins.length === 0 ? texto.length : Math.min(...fins);
+    for (const l of texto.slice(inicio, fim).split('\n')) {
+      const t = l.trim();
+      if (t.startsWith('[')) linhas.push(t);
+    }
+  }
+  return linhas;
+}
+
+// Texto dos tool_use.input de um transcrito de subagente + o briefing (primeira
+// linha `user`), que NÃO pontua (D8) mas é de onde sai o bloco servido.
+function lerTranscritoFilho(arquivo) {
+  const r = { briefing: '', textoTools: '' };
+  let conteudo;
+  try {
+    conteudo = fs.readFileSync(arquivo, 'utf8');
+  } catch (e) {
+    return null;
+  }
+  const partes = [];
+  let viuUser = false;
+  for (const l of conteudo.split('\n')) {
+    if (!l.trim()) continue;
+    let e;
+    try {
+      e = JSON.parse(l);
+    } catch (err) {
+      continue;
+    }
+    const c = e.message && e.message.content;
+    if (e.type === 'user' && !viuUser) {
+      viuUser = true;
+      if (typeof c === 'string') r.briefing = c;
+      else if (Array.isArray(c)) r.briefing = c.map((b) => (b && typeof b.text === 'string' ? b.text : '')).join('\n');
+    } else if (e.type === 'assistant' && Array.isArray(c)) {
+      for (const b of c) {
+        if (b && b.type === 'tool_use' && b.input !== undefined) partes.push(JSON.stringify(b.input));
+      }
+    }
+  }
+  r.textoTools = partes.join('\n');
+  return r;
 }
 
 /**
@@ -92,6 +138,13 @@ function extrairSessao(caminhoTranscrito) {
 
   const servidas = [];
   const partesTexto = [];
+  // Canais novos (memória por assunto): `pedido` guarda a posição, em
+  // partesTexto, do pedido do usuário ao qual a injeção se anexou (o
+  // attachment vem DEPOIS da linha `user` do prompt — fixture prompt-submit);
+  // `subagente` guarda o agentId para achar o transcrito do filho.
+  const injecoes = [];
+  const doSubagente = [];
+  let ultimoPedido = -1;
 
   for (const linhaArquivo of linhasArquivo) {
     if (!linhaArquivo.trim()) continue;
@@ -114,9 +167,31 @@ function extrairSessao(caminhoTranscrito) {
       }
       const ctx = parsed && parsed.hookSpecificOutput && parsed.hookSpecificOutput.additionalContext;
       if (ctx) {
-        for (const linha of extrairLinhasServidas(ctx)) servidas.push(linha);
+        for (const linha of extrairLinhasServidas(ctx, [CAB_ABERTURA])) servidas.push(linha);
       }
       continue; // attachment nunca entra no texto (D4)
+    }
+
+    // Canal `pedido`: contexto adicional do UserPromptSubmit (D8).
+    if (
+      entrada.type === 'attachment' &&
+      entrada.attachment &&
+      entrada.attachment.hookEvent === 'UserPromptSubmit' &&
+      entrada.attachment.type === 'hook_additional_context'
+    ) {
+      const c = entrada.attachment.content;
+      const ctx = Array.isArray(c) ? c.join('\n') : String(c || '');
+      for (const linha of extrairLinhasServidas(ctx, [CAB_ASSUNTO])) {
+        injecoes.push({ linha, indiceInjecao: ultimoPedido });
+      }
+      continue;
+    }
+
+    // Canal `subagente`: o prompt (já com a memória) devolvido ao pai.
+    if (entrada.toolUseResult && typeof entrada.toolUseResult.prompt === 'string') {
+      for (const linha of extrairLinhasServidas(entrada.toolUseResult.prompt, [CAB_ASSUNTO])) {
+        doSubagente.push({ linha, agentId: entrada.toolUseResult.agentId || null });
+      }
     }
 
     // Texto: prompts do usuário e entradas de tool_use do assistente.
@@ -126,6 +201,7 @@ function extrairSessao(caminhoTranscrito) {
       if (typeof conteudoMsg === 'string') {
         // Prompt do usuário digitado direto, sem blocos estruturados.
         partesTexto.push(conteudoMsg);
+        if (entrada.type === 'user') ultimoPedido = partesTexto.length - 1;
         continue;
       }
 
@@ -136,6 +212,7 @@ function extrairSessao(caminhoTranscrito) {
           if (entrada.type === 'assistant' && bloco.type === 'text') continue;
           if (bloco.type === 'text' && typeof bloco.text === 'string') {
             partesTexto.push(bloco.text);
+            if (entrada.type === 'user') ultimoPedido = partesTexto.length - 1;
           } else if (bloco.type === 'tool_use' && bloco.input !== undefined) {
             try {
               partesTexto.push(JSON.stringify(bloco.input));
@@ -148,7 +225,40 @@ function extrairSessao(caminhoTranscrito) {
     }
   }
 
-  return { servidas, texto: partesTexto.join('\n') };
+  const texto = partesTexto.join('\n');
+  const servidasCanal = servidas.map((linha) => ({ linha, canal: 'abertura', texto }));
+
+  for (const { linha, indiceInjecao } of injecoes) {
+    // D8: o pedido que disparou a injeção não pontua a própria injeção.
+    const textoPosterior = partesTexto.slice(indiceInjecao + 1).join('\n');
+    servidasCanal.push({ linha, canal: 'pedido', texto: textoPosterior });
+  }
+
+  // Subagente: texto = tool_use do transcrito do filho; o briefing não conta.
+  const dirFilhos = path.join(path.dirname(caminhoTranscrito), path.basename(caminhoTranscrito, '.jsonl'), 'subagents');
+  const vistos = new Set();
+  for (const { linha, agentId } of doSubagente) {
+    const filho = agentId ? lerTranscritoFilho(path.join(dirFilhos, `agent-${agentId}.jsonl`)) : null;
+    if (agentId) vistos.add(agentId);
+    servidasCanal.push({ linha, canal: 'subagente', texto: filho ? filho.textoTools : '' });
+  }
+  let arquivosFilhos = [];
+  try {
+    arquivosFilhos = fs.readdirSync(dirFilhos).filter((f) => /^agent-.+\.jsonl$/.test(f));
+  } catch (e) {
+    // sem diretório de subagentes: nada a ler
+  }
+  for (const arq of arquivosFilhos) {
+    const agentId = arq.replace(/^agent-/, '').replace(/\.jsonl$/, '');
+    if (vistos.has(agentId)) continue; // o pai já trouxe o bloco deste filho
+    const filho = lerTranscritoFilho(path.join(dirFilhos, arq));
+    if (!filho) continue;
+    for (const linha of extrairLinhasServidas(filho.briefing, [CAB_ASSUNTO])) {
+      servidasCanal.push({ linha, canal: 'subagente', texto: filho.textoTools });
+    }
+  }
+
+  return { servidas: servidasCanal.map((s) => s.linha), servidasCanal, texto };
 }
 
 // ---- Tarefa 2: pontuação ----
@@ -405,13 +515,13 @@ function buscarContrafactual(conexao, texto, jaServidos, textosServidos) {
 
 // Grava (ou substitui) uma linha de uso — idempotente via INSERT OR REPLACE
 // sobre UNIQUE(origem, ref_id, sessao) (Tarefa 2).
-function gravarUso(conexao, { origem, refId, sessao, servida, nota, pontuadaEm }) {
+function gravarUso(conexao, { origem, refId, sessao, servida, nota, pontuadaEm, canal = 'abertura' }) {
   conexao
     .prepare(
-      `INSERT OR REPLACE INTO uso_memoria (origem, ref_id, sessao, servida, nota, pontuada_em)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT OR REPLACE INTO uso_memoria (origem, ref_id, sessao, servida, nota, pontuada_em, canal)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
-    .run(origem, refId, sessao, servida, nota, pontuadaEm);
+    .run(origem, refId, sessao, servida, nota, pontuadaEm, canal);
 }
 
 /**
@@ -440,18 +550,20 @@ function gravarUso(conexao, { origem, refId, sessao, servida, nota, pontuadaEm }
  */
 function pontuarSessao(conexao, sessao, caminhoTranscrito) {
   const agora = new Date().toISOString();
-  const { servidas, texto } = extrairSessao(caminhoTranscrito);
+  const { servidasCanal, texto } = extrairSessao(caminhoTranscrito);
+  // Mesma memória por dois canais: grava uma vez, abertura > pedido > subagente.
+  const servidas = servidasCanal.slice().sort((a, b) => ORDEM_CANAL[a.canal] - ORDEM_CANAL[b.canal]);
   const { harnessKey, curto } = lerProjetoDoTranscrito(caminhoTranscrito);
   const apelidos = harnessKey && curto && harnessKey !== curto ? { [harnessKey]: curto } : null;
 
   conexao.exec('BEGIN IMMEDIATE');
   try {
     const jaGravados = new Set();
-    const textosServidos = new Set(servidas.map(semPrefixo));
+    const textosServidos = new Set(servidas.map((s) => semPrefixo(s.linha)));
     let servidasComId = 0;
     let servidasSemId = 0;
 
-    for (const linha of servidas) {
+    for (const { linha, canal, texto: textoServida } of servidas) {
       const alvo = acharAlvo(conexao, linha, apelidos);
       if (!alvo) {
         servidasSemId++;
@@ -460,8 +572,8 @@ function pontuarSessao(conexao, sessao, caminhoTranscrito) {
       const chave = `${alvo.origem}:${alvo.id}`;
       if (jaGravados.has(chave)) continue; // linha duplicada no bloco — grava uma vez
       jaGravados.add(chave);
-      const nota = calcularNota(conexao, alvo.conteudo, texto);
-      gravarUso(conexao, { origem: alvo.origem, refId: alvo.id, sessao, servida: 1, nota, pontuadaEm: agora });
+      const nota = calcularNota(conexao, alvo.conteudo, textoServida);
+      gravarUso(conexao, { origem: alvo.origem, refId: alvo.id, sessao, servida: 1, nota, pontuadaEm: agora, canal });
       servidasComId++;
     }
 

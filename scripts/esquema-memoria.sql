@@ -105,6 +105,7 @@ CREATE TABLE IF NOT EXISTS uso_memoria (
   servida INTEGER NOT NULL,
   nota REAL,
   pontuada_em TEXT NOT NULL,
+  canal TEXT NOT NULL DEFAULT 'abertura',
   UNIQUE(origem, ref_id, sessao)
 );
 
