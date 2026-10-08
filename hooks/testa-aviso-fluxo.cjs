@@ -2,8 +2,10 @@
 /**
  * Bateria de testes para aviso-fluxo.cjs
  *
- * Cria sandboxes git reais com ou sem fluxo rainforest/protheus,
- * e verifica o comportamento do hook em cada caso.
+ * Cria sandboxes git reais com ou sem fluxo rainforest/protheus e verifica o
+ * comportamento do hook em cada caso. Desde #430 (design 2026-10-08-fluxo-pulado-bloqueio)
+ * o hook bloqueia (exit 2, mensagem em stderr) em vez de avisar. Os casos de bloqueio
+ * e de passe estão na bateria testa-bloqueio-fluxo.cjs; aqui ficam os vizinhos.
  */
 
 const fs = require('fs');
@@ -103,9 +105,6 @@ function rodarHook(payload, cwd) {
     cwd,
     env: { ...process.env, CLAUDE_PROJECT_DIR: cwd, RFM_ROOT: path.join(cwd, '.dados-teste') },
   });
-  if (result.status !== 0) {
-    throw new Error(`hook saiu ${result.status}, stderr: ${result.stderr}`);
-  }
   return {
     stdout: result.stdout || '',
     stderr: result.stderr || '',
@@ -113,13 +112,17 @@ function rodarHook(payload, cwd) {
   };
 }
 
-function extrairAdditionalContext(jsonString) {
-  try {
-    const obj = JSON.parse(jsonString);
-    return obj?.hookSpecificOutput?.additionalContext || null;
-  } catch {
-    return null;
-  }
+// Dois ramos: bloqueio (exit 2 + stderr) e passe (exit 0 + saída vazia).
+function bloqueou(result, trecho) {
+  if (result.status !== 2) return `esperado exit 2, obtido ${result.status}: ${result.stdout}${result.stderr}`;
+  if (trecho && !result.stderr.includes(trecho)) return `stderr sem "${trecho}": ${result.stderr}`;
+  return null;
+}
+
+function passou(result) {
+  if (result.status !== 0) return `esperado exit 0, obtido ${result.status}: ${result.stderr}`;
+  if (result.stdout !== '' || result.stderr !== '') return `esperado saida vazia: ${result.stdout}${result.stderr}`;
+  return null;
 }
 
 // ============================================================================
@@ -128,7 +131,7 @@ function extrairAdditionalContext(jsonString) {
 
 const casos = {};
 
-casos['rainforest sem fluxo aberto: aviso na primeira edicao'] = function () {
+casos['rainforest sem fluxo aberto: bloqueia na primeira edicao'] = function () {
   const sandbox = criarSandbox();
   try {
     // Criar diretório de estado vazio (repo tem fluxo, mas nenhum aberto)
@@ -140,22 +143,15 @@ casos['rainforest sem fluxo aberto: aviso na primeira edicao'] = function () {
     fs.mkdirSync(path.dirname(scriptPath), { recursive: true });
     fs.writeFileSync(scriptPath, 'console.log("test");\n', 'utf8');
 
-    // Rodar hook com Edit de scripts/x.cjs
     const payload = {
       session_id: 'sess-1',
       cwd: sandbox,
+      hook_event_name: 'PreToolUse',
       tool_name: 'Edit',
-      tool_input: { file_path: scriptPath },
+      tool_input: { file_path: scriptPath, old_string: 'a', new_string: 'b' },
     };
-    const result = rodarHook(payload, sandbox);
-
-    // Deve conter "fluxo rainforest"
-    const ctx = extrairAdditionalContext(result.stdout);
-    if (!ctx || !ctx.includes('fluxo rainforest')) {
-      throw new Error(
-        `esperado contexto com "fluxo rainforest", obtido: ${result.stdout}`
-      );
-    }
+    const erro = bloqueou(rodarHook(payload, sandbox), 'fluxo rainforest');
+    if (erro) throw new Error(erro);
   } finally {
     limparSandbox(sandbox);
   }
@@ -171,22 +167,18 @@ casos['config aviso-fluxo false e silencio'] = function () {
     const scriptPath = path.join(sandbox, 'scripts', 'x.cjs');
     fs.mkdirSync(path.dirname(scriptPath), { recursive: true });
     fs.writeFileSync(scriptPath, 'console.log("test");\n', 'utf8');
-    const payload = { session_id: 'sess-cfg', cwd: sandbox, tool_name: 'Edit', tool_input: { file_path: scriptPath } };
-    const result = rodarHook(payload, sandbox);
-    if (result.stdout.trim() !== '') {
-      throw new Error(`config false: esperado vazio, obtido: ${result.stdout}`);
-    }
+    const payload = { session_id: 'sess-cfg', cwd: sandbox, hook_event_name: 'PreToolUse', tool_name: 'Edit', tool_input: { file_path: scriptPath, old_string: 'a', new_string: 'b' } };
+    const erro = passou(rodarHook(payload, sandbox));
+    if (erro) throw new Error(`config false: ${erro}`);
   } finally {
     limparSandbox(sandbox);
   }
 };
 
-casos['segunda edicao de codigo na mesma sessao e silencio'] = function () {
+casos['segunda edicao de codigo na mesma sessao tambem bloqueia (D8)'] = function () {
   const sandbox = criarSandbox();
   try {
-    // Criar diretório de estado vazio (repo tem fluxo rainforest, mas nenhum aberto)
     criarDirEstadoVazio(sandbox);
-
     criarBranch(sandbox, 'test');
     const scriptPath = path.join(sandbox, 'scripts', 'x.cjs');
     fs.mkdirSync(path.dirname(scriptPath), { recursive: true });
@@ -195,30 +187,17 @@ casos['segunda edicao de codigo na mesma sessao e silencio'] = function () {
     const payload = {
       session_id: 'sess-2',
       cwd: sandbox,
+      hook_event_name: 'PreToolUse',
       tool_name: 'Edit',
-      tool_input: { file_path: scriptPath },
+      tool_input: { file_path: scriptPath, old_string: 'a', new_string: 'b' },
     };
 
-    // Primeira chamada: deve avisar
-    const result1 = rodarHook(payload, sandbox);
-    const ctx1 = extrairAdditionalContext(result1.stdout);
-    if (!ctx1 || !ctx1.includes('fluxo')) {
-      throw new Error(`primeira edição: esperado aviso, obtido vazio`);
-    }
+    const erro1 = bloqueou(rodarHook(payload, sandbox), 'fluxo rainforest');
+    if (erro1) throw new Error(`primeira edição: ${erro1}`);
 
-    // Segunda chamada com mesma sessão: deve estar silencioso
-    const result2 = rodarHook(payload, sandbox);
-    const ctx2 = extrairAdditionalContext(result2.stdout);
-    if (ctx2) {
-      throw new Error(`segunda edição: esperado vazio, obtido: ${result2.stdout}`);
-    }
-
-    // Verificar que a memória foi gravada em <git-dir>/rainforest-aviso-fluxo.json
-    const gitDirPath = path.join(sandbox, '.git');
-    const memoriaPath = path.join(gitDirPath, 'rainforest-aviso-fluxo.json');
-    if (!fs.existsSync(memoriaPath)) {
-      throw new Error(`memória não gravada em ${memoriaPath}`);
-    }
+    // Segunda chamada, mesma sessão: continua bloqueando (a memória não decide mais)
+    const erro2 = bloqueou(rodarHook(payload, sandbox), 'fluxo rainforest');
+    if (erro2) throw new Error(`segunda edição: ${erro2}`);
   } finally {
     limparSandbox(sandbox);
   }
@@ -239,14 +218,12 @@ casos['.md ou arquivo sob docs/ e silencio'] = function () {
     const payload1 = {
       session_id: 'sess-3',
       cwd: sandbox,
+      hook_event_name: 'PreToolUse',
       tool_name: 'Edit',
-      tool_input: { file_path: mdPath },
+      tool_input: { file_path: mdPath, old_string: 'a', new_string: 'b' },
     };
-    const result1 = rodarHook(payload1, sandbox);
-    const ctx1 = extrairAdditionalContext(result1.stdout);
-    if (ctx1) {
-      throw new Error(`arquivo .md: esperado vazio, obtido: ${result1.stdout}`);
-    }
+    const erro1 = passou(rodarHook(payload1, sandbox));
+    if (erro1) throw new Error(`arquivo .md: ${erro1}`);
 
     // Arquivo sob docs/
     const docsPath = path.join(sandbox, 'docs', 'design', 'x.cjs');
@@ -256,14 +233,12 @@ casos['.md ou arquivo sob docs/ e silencio'] = function () {
     const payload2 = {
       session_id: 'sess-4',
       cwd: sandbox,
+      hook_event_name: 'PreToolUse',
       tool_name: 'Edit',
-      tool_input: { file_path: docsPath },
+      tool_input: { file_path: docsPath, old_string: 'a', new_string: 'b' },
     };
-    const result2 = rodarHook(payload2, sandbox);
-    const ctx2 = extrairAdditionalContext(result2.stdout);
-    if (ctx2) {
-      throw new Error(`arquivo em docs/: esperado vazio, obtido: ${result2.stdout}`);
-    }
+    const erro2 = passou(rodarHook(payload2, sandbox));
+    if (erro2) throw new Error(`arquivo em docs/: ${erro2}`);
   } finally {
     limparSandbox(sandbox);
   }
@@ -286,14 +261,12 @@ casos['fluxo aberto na branch e silencio'] = function () {
     const payload = {
       session_id: 'sess-5',
       cwd: sandbox,
+      hook_event_name: 'PreToolUse',
       tool_name: 'Edit',
-      tool_input: { file_path: scriptPath },
+      tool_input: { file_path: scriptPath, old_string: 'a', new_string: 'b' },
     };
-    const result = rodarHook(payload, sandbox);
-    const ctx = extrairAdditionalContext(result.stdout);
-    if (ctx) {
-      throw new Error(`fluxo fechado: esperado vazio, obtido: ${result.stdout}`);
-    }
+    const erro = passou(rodarHook(payload, sandbox));
+    if (erro) throw new Error(`fluxo aberto: ${erro}`);
   } finally {
     limparSandbox(sandbox);
   }
@@ -314,24 +287,22 @@ casos['agent_id presente e silencio'] = function () {
       agent_id: 'subagent-123',
       session_id: 'sess-6',
       cwd: sandbox,
+      hook_event_name: 'PreToolUse',
       tool_name: 'Edit',
-      tool_input: { file_path: scriptPath },
+      tool_input: { file_path: scriptPath, old_string: 'a', new_string: 'b' },
     };
-    const result = rodarHook(payload, sandbox);
-    const ctx = extrairAdditionalContext(result.stdout);
-    if (ctx) {
-      throw new Error(`com agent_id: esperado vazio, obtido: ${result.stdout}`);
-    }
+    const erro = passou(rodarHook(payload, sandbox));
+    if (erro) throw new Error(`com agent_id: ${erro}`);
   } finally {
     limparSandbox(sandbox);
   }
 };
 
-casos['protheus: aviso nomeando o trilho e skill'] = function () {
+casos['protheus: bloqueia nomeando o trilho e skill'] = function () {
   const sandbox = criarSandbox();
   try {
     // Criar gates.json protheus com mtime > 24h (para simular fluxo não ativo)
-    const gatesPath = criarGatesJsonProtheus(sandbox, true);
+    criarGatesJsonProtheus(sandbox, true);
 
     // Arquivo de código (já em main, que foi criado em criarSandbox)
     const scriptPath = path.join(sandbox, 'scripts', 'x.cjs');
@@ -341,17 +312,14 @@ casos['protheus: aviso nomeando o trilho e skill'] = function () {
     const payload = {
       session_id: 'sess-7',
       cwd: sandbox,
+      hook_event_name: 'PreToolUse',
       tool_name: 'Edit',
-      tool_input: { file_path: scriptPath },
+      tool_input: { file_path: scriptPath, old_string: 'a', new_string: 'b' },
     };
-    const result = rodarHook(payload, sandbox);
-
-    const ctx = extrairAdditionalContext(result.stdout);
-    if (!ctx || !ctx.includes('protheus') || !ctx.includes('/protheus:trabalhar')) {
-      throw new Error(
-        `protheus: esperado contexto com "protheus" e "/protheus:trabalhar", obtido: ${result.stdout}`
-      );
-    }
+    const erro = bloqueou(rodarHook(payload, sandbox), '/protheus:trabalhar');
+    if (erro) throw new Error(`protheus: ${erro}`);
+    const erroTrilho = bloqueou(rodarHook(payload, sandbox), 'protheus');
+    if (erroTrilho) throw new Error(`protheus sem o nome do trilho: ${erroTrilho}`);
   } finally {
     limparSandbox(sandbox);
   }
@@ -368,16 +336,12 @@ casos['sem rainforest nem protheus e silencio'] = function () {
     const payload = {
       session_id: 'sess-8',
       cwd: sandbox,
+      hook_event_name: 'PreToolUse',
       tool_name: 'Edit',
-      tool_input: { file_path: scriptPath },
+      tool_input: { file_path: scriptPath, old_string: 'a', new_string: 'b' },
     };
-    const result = rodarHook(payload, sandbox);
-    const ctx = extrairAdditionalContext(result.stdout);
-    if (ctx) {
-      throw new Error(
-        `sem fluxo nenhum: esperado vazio, obtido: ${result.stdout}`
-      );
-    }
+    const erro = passou(rodarHook(payload, sandbox));
+    if (erro) throw new Error(`sem fluxo nenhum: ${erro}`);
   } finally {
     limparSandbox(sandbox);
   }
@@ -388,17 +352,14 @@ casos['payload vazio e silencio'] = function () {
   try {
     criarDirEstadoVazio(sandbox);
 
-    const result = rodarHook({}, sandbox);
-    const ctx = extrairAdditionalContext(result.stdout);
-    if (ctx) {
-      throw new Error(`payload vazio: esperado vazio, obtido: ${result.stdout}`);
-    }
+    const erro = passou(rodarHook({}, sandbox));
+    if (erro) throw new Error(`payload vazio: ${erro}`);
   } finally {
     limparSandbox(sandbox);
   }
 };
 
-casos['sem session_id: avisa mas nao memoriza'] = function () {
+casos['sem session_id: bloqueia tambem sem memoria'] = function () {
   const sandbox = criarSandbox();
   try {
     // Criar diretório de estado vazio
@@ -409,24 +370,18 @@ casos['sem session_id: avisa mas nao memoriza'] = function () {
     fs.mkdirSync(path.dirname(scriptPath), { recursive: true });
     fs.writeFileSync(scriptPath, 'console.log("test");\n', 'utf8');
 
-    // Primeira chamada sem session_id
+    // Sem session_id: a memória por sessão não existe, e o bloqueio vale do mesmo jeito
     const payload1 = {
       cwd: sandbox,
+      hook_event_name: 'PreToolUse',
       tool_name: 'Edit',
-      tool_input: { file_path: scriptPath },
+      tool_input: { file_path: scriptPath, old_string: 'a', new_string: 'b' },
     };
-    const result1 = rodarHook(payload1, sandbox);
-    const ctx1 = extrairAdditionalContext(result1.stdout);
-    if (!ctx1 || !ctx1.includes('fluxo')) {
-      throw new Error(`sem session_id primeira: esperado aviso`);
-    }
+    const erro1 = bloqueou(rodarHook(payload1, sandbox), 'fluxo');
+    if (erro1) throw new Error(`sem session_id primeira: ${erro1}`);
 
-    // Segunda chamada também sem session_id (não memoriza, então avisa novamente)
-    const result2 = rodarHook(payload1, sandbox);
-    const ctx2 = extrairAdditionalContext(result2.stdout);
-    if (!ctx2 || !ctx2.includes('fluxo')) {
-      throw new Error(`sem session_id segunda: esperado aviso (sem memória)`);
-    }
+    const erro2 = bloqueou(rodarHook(payload1, sandbox), 'fluxo');
+    if (erro2) throw new Error(`sem session_id segunda: ${erro2}`);
   } finally {
     limparSandbox(sandbox);
   }
