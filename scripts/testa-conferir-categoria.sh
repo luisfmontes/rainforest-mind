@@ -24,6 +24,8 @@
 #      53 e 21 guia desde 2026-10-06: entraram hooks/gate-subagente-sem-instalar.cjs,
 #      hooks/aviso-fluxo.cjs e hooks/idioma-session-start.cjs — os tres agem antes
 #      do ato (negam ou injetam contexto), guia.
+#      56 e 30 sensor desde 2026-10-08: entrou scripts/conferir-glossario.cjs —
+#      CLI sob demanda (todo conferir-*.cjs é sensor), sensor.
 #      55 e 23 guia desde 2026-10-08: entraram hooks/memoria-assunto-prompt.cjs
 #      e hooks/memoria-assunto-agente.cjs — injetam memoria antes do ato, guia.
 #   2. peca REAL copiada para arvore temporaria, com a linha de marca apagada,
@@ -67,17 +69,17 @@ montar_copia() {
   cp "$RAIZ"/vigias/*.md "$destino/vigias/" 2>/dev/null
 }
 
-echo "== 1. repositorio real na base — exit 0, 55 pecas, distribuicao 23/29/3 =="
+echo "== 1. repositorio real na base — exit 0, 56 pecas, distribuicao 23/30/3 =="
 S1="$(roda --raiz "$RAIZ")"
 saiu "repositorio real passa (exit 0)" "$(codigo --raiz "$RAIZ")" "0"
-tem  "conta as 55 pecas"               "$S1" "Total de peças varridas: 55"
+tem  "conta as 56 pecas"               "$S1" "Total de peças varridas: 56"
 N_GUIA="$(printf '%s' "$S1" | grep -cF '>  guia')"
 N_SENSOR="$(printf '%s' "$S1" | grep -cF '>  sensor')"
 N_DADO="$(printf '%s' "$S1" | grep -cF '>  dado')"
-if [ "$N_GUIA" = "23" ] && [ "$N_SENSOR" = "29" ] && [ "$N_DADO" = "3" ]; then
-  ok=$((ok+1)); echo "  ok   distribuicao 23 guia / 29 sensor / 3 dado confere"
+if [ "$N_GUIA" = "23" ] && [ "$N_SENSOR" = "30" ] && [ "$N_DADO" = "3" ]; then
+  ok=$((ok+1)); echo "  ok   distribuicao 23 guia / 30 sensor / 3 dado confere"
 else
-  falhou=$((falhou+1)); echo "  FALHA distribuicao: guia=$N_GUIA sensor=$N_SENSOR dado=$N_DADO (esperava 23/29/3)"
+  falhou=$((falhou+1)); echo "  FALHA distribuicao: guia=$N_GUIA sensor=$N_SENSOR dado=$N_DADO (esperava 23/30/3)"
 fi
 
 echo

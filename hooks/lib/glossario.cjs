@@ -9,6 +9,12 @@
  *   Cenário: um caso real, concreto.
  *   Evite: sinônimo errado; outro sinônimo errado
  *
+ * Parada declarada (tarefa 1 do plano 2026-10-08-glossario-compartilhado): o
+ * parser só entende cerca de código (três crases ou três tis na coluna 0),
+ * cabeçalho `## ` e linha `Rótulo:`. Comentário HTML, tabela, cabeçalho
+ * sublinhado, código indentado e front matter ficam FORA; caso fora dessa lista
+ * que morda volta para o brainstorm, não ganha gramática aqui.
+ *
  * Sem banco e sem efeito colateral de escrita: o glossário é arquivo do repo.
  */
 
@@ -79,7 +85,8 @@ function lerVerbetes(texto) {
   let campo = null;
   let cerca = null;
 
-  for (const linha of linhas) {
+  for (const [i, linha] of linhas.entries()) {
+    const n = i + 1;
     if (cerca) {
       if (linha.startsWith(cerca)) {
         cerca = null;
@@ -95,7 +102,10 @@ function lerVerbetes(texto) {
     if (cab) {
       atual = {
         termo: cab[1].trim(),
+        linha: n,
         campos: { definicao: [], ondeMora: [], cenario: [], evite: [] },
+        campoLinha: { definicao: null, ondeMora: null, cenario: null, evite: null },
+        desconhecidos: [],
       };
       campo = null;
       verbetes.push(atual);
@@ -109,13 +119,22 @@ function lerVerbetes(texto) {
     if (chave) {
       campo = chave;
       atual.campos[chave].push(rot[2]);
-    } else if (campo) {
-      atual.campos[campo].push(linha);
+      if (atual.campoLinha[chave] === null) {
+        atual.campoLinha[chave] = n;
+      }
+    } else {
+      if (rot) {
+        atual.desconhecidos.push({ linha: n, rotulo: rot[1] });
+      }
+      if (campo) {
+        atual.campos[campo].push(linha);
+      }
     }
   }
 
   return verbetes.map(v => ({
     termo: v.termo,
+    linha: v.linha,
     definicao: juntar(v.campos.definicao),
     ondeMora: juntar(v.campos.ondeMora),
     cenario: juntar(v.campos.cenario),
@@ -123,6 +142,8 @@ function lerVerbetes(texto) {
       .split(';')
       .map(s => s.trim())
       .filter(s => s.length > 0),
+    campoLinha: v.campoLinha,
+    desconhecidos: v.desconhecidos,
   }));
 }
 
@@ -233,6 +254,8 @@ module.exports = {
   casarVerbetes,
   montarBlocoGlossario,
   chaveDe,
+  normalizar,
+  placeholder,
   CABECALHO,
   VERBETES_MAX,
   TETO_BYTES_GLOSSARIO,
