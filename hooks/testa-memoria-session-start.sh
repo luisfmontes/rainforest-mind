@@ -13,6 +13,7 @@ SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LIB="$SRC/hooks/lib/memoria-sessao.cjs"
 HOOK="$SRC/hooks/memoria-session-start.cjs"
 SCRIPT_MEMORIA="$SRC/scripts/memoria.cjs"
+export LIB_CANONICO="$SRC/scripts/lib/projeto-canonico.cjs"
 # memoria-sessao.cjs importa cortarBytes de ./bytes.cjs (Issue #259) — uma
 # cópia mutada do lib escrita isolada num sandbox precisa da mesma vizinhança
 # para o require relativo resolver.
@@ -372,6 +373,11 @@ mkdir -p "$CAIXA_HOOK"
 export RFM_ROOT="$CAIXA_HOOK"
 node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
 
+# O projeto-b e o canonico da pasta que a 10.a2 abre: slug do caminho dela (#435).
+PASTA_B="$CAIXA_HOOK/projeto-b"; mkdir -p "$PASTA_B"; git init -q "$PASTA_B"
+PASTA_B_WIN="$(cygpath -m "$PASTA_B" 2>/dev/null || printf '%s' "$PASTA_B")"
+export PROJ_B_SLUG="$(node -e 'process.stdout.write(require(process.env.LIB_CANONICO).slugDoCaminho(process.argv[1]))' "$PASTA_B_WIN")"
+
 # Inserir dados de teste: 8 de projeto-a, 8 de projeto-b
 node <<'SETUP_HOOK_TEST'
 const { DatabaseSync } = require('node:sqlite');
@@ -397,7 +403,7 @@ for (let i = 1; i <= 8; i++) {
     INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
     VALUES (?, ?, ?, ?)
   `).run(
-    'projeto-b',
+    process.env.PROJ_B_SLUG,
     '## Obs B' + i + '\n\nConteúdo projeto B',
     '2026-08-' + String(i).padStart(2, '0') + 'T10:00:00Z',
     'origem-b-' + i
@@ -455,8 +461,6 @@ echo "  10.a2 — cwd fora do projeto e CLAUDE_PROJECT_DIR no projeto-b (o mais 
 # projeto-b tem 8 obs mais antigas que as 8 de projeto-a: sem o filtro entram so 6 de projeto-b
 # no bloco de 14 (as 8 de projeto-a ocupam as vagas recentes); com o filtro entram as 8.
 FORA_B="$(novo_sandbox)"
-PASTA_B="$CAIXA_HOOK/projeto-b"; mkdir -p "$PASTA_B"; git init -q "$PASTA_B"
-PASTA_B_WIN="$(cygpath -m "$PASTA_B" 2>/dev/null || printf '%s' "$PASTA_B")"
 SAIDA_FORA=$(cd "$FORA_B" && echo "{}" | RFM_ROOT="$CAIXA_HOOK" CLAUDE_PROJECT_DIR="$PASTA_B_WIN" node "$HOOK" 2>/dev/null)
 BLOCO_FORA=$(echo "$SAIDA_FORA" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
 TOTAL_B_FORA=$(echo "$BLOCO_FORA" | grep "\\[2026" | grep -c "(projeto-b)")
@@ -569,79 +573,94 @@ fi
 rm -rf "$COPIA_MUT"
 
 echo
-echo "11. chaveHarness — transforma caminhos em chaves de pasta do Claude Code"
+echo "11. slugDoCaminho — a regra do harness: caminho vira nome de pasta do Claude Code"
 
 # 11.a — caminho Windows com : e \
-TESTE_CHAVE_A="$(SCRIPT_PATH="$SCRIPT_MEMORIA" node -e "
+TESTE_CHAVE_A="$(SCRIPT_PATH="$LIB_CANONICO" node -e "
 const m = require(process.env.SCRIPT_PATH);
-process.stdout.write(m.chaveHarness('C:\\\\Projetos\\\\rainforest-mind'));
+process.stdout.write(m.slugDoCaminho('C:\\\\Projetos\\\\rainforest-mind'));
 ")"
 if [ "$TESTE_CHAVE_A" = "C--Projetos-rainforest-mind" ]; then
-  ok=$((ok+1)); echo "  ok    chaveHarness transforma C:\\\\Projetos\\\\rainforest-mind → C--Projetos-rainforest-mind"
+  ok=$((ok+1)); echo "  ok    slugDoCaminho transforma C:\\\\Projetos\\\\rainforest-mind → C--Projetos-rainforest-mind"
 else
-  falhou=$((falhou+1)); echo "  FALHA chaveHarness deu '$TESTE_CHAVE_A', esperado C--Projetos-rainforest-mind"
+  falhou=$((falhou+1)); echo "  FALHA slugDoCaminho deu '$TESTE_CHAVE_A', esperado C--Projetos-rainforest-mind"
 fi
 
 # 11.b — caminho Windows com : e / misto
-TESTE_CHAVE_B="$(SCRIPT_PATH="$SCRIPT_MEMORIA" node -e "
+TESTE_CHAVE_B="$(SCRIPT_PATH="$LIB_CANONICO" node -e "
 const m = require(process.env.SCRIPT_PATH);
-process.stdout.write(m.chaveHarness('C:/Microsiga/erp-trabalho/inovacao'));
+process.stdout.write(m.slugDoCaminho('C:/Microsiga/erp-trabalho/inovacao'));
 ")"
 if [ "$TESTE_CHAVE_B" = "C--Microsiga-erp-trabalho-inovacao" ]; then
-  ok=$((ok+1)); echo "  ok    chaveHarness transforma C:/Microsiga/erp-trabalho/inovacao"
+  ok=$((ok+1)); echo "  ok    slugDoCaminho transforma C:/Microsiga/erp-trabalho/inovacao"
 else
-  falhou=$((falhou+1)); echo "  FALHA chaveHarness deu '$TESTE_CHAVE_B'"
+  falhou=$((falhou+1)); echo "  FALHA slugDoCaminho deu '$TESTE_CHAVE_B'"
 fi
 
 # 11.c — caminho sem : (POSIX-like). Fixture usa $USUARIO (placeholder, não
 # nome real) para não trombar com a regra `caminho-de-home` do verificador de
 # publicação — a isenção é por FORMA (começa com $), e aspas simples aqui
 # impedem o bash de expandir a variável antes de chegar ao node.
-TESTE_CHAVE_C="$(SCRIPT_PATH="$SCRIPT_MEMORIA" node -e '
+TESTE_CHAVE_C="$(SCRIPT_PATH="$LIB_CANONICO" node -e '
 const m = require(process.env.SCRIPT_PATH);
-process.stdout.write(m.chaveHarness("/home/$USUARIO/projetos/rainforest-mind"));
+process.stdout.write(m.slugDoCaminho("/home/$USUARIO/projetos/rainforest-mind"));
 ')"
-if [ "$TESTE_CHAVE_C" = '-home-$USUARIO-projetos-rainforest-mind' ]; then
-  ok=$((ok+1)); echo '  ok    chaveHarness transforma /home/$USUARIO/projetos/rainforest-mind'
+if [ "$TESTE_CHAVE_C" = '-home--USUARIO-projetos-rainforest-mind' ]; then
+  ok=$((ok+1)); echo '  ok    slugDoCaminho transforma /home/$USUARIO/projetos/rainforest-mind ($ vira hifen)'
 else
-  falhou=$((falhou+1)); echo "  FALHA chaveHarness deu '$TESTE_CHAVE_C'"
+  falhou=$((falhou+1)); echo "  FALHA slugDoCaminho deu '$TESTE_CHAVE_C'"
+fi
+
+# 11.d — a regra do harness troca TUDO que nao e letra ou digito (ponto, sublinhado, espaco),
+# nao so separador e dois-pontos: e o caso de mktemp (tmp.XXXX) e da raiz do CI (D:/a/_temp).
+TESTE_CHAVE_D="$(SCRIPT_PATH="$LIB_CANONICO" node -e '
+const m = require(process.env.SCRIPT_PATH);
+process.stdout.write(m.slugDoCaminho("D:/a/_temp/tmp.AbC d"));
+')"
+if [ "$TESTE_CHAVE_D" = 'D--a--temp-tmp-AbC-d' ]; then
+  ok=$((ok+1)); echo '  ok    slugDoCaminho troca ponto, sublinhado e espaco por hifen'
+else
+  falhou=$((falhou+1)); echo "  FALHA slugDoCaminho deu '$TESTE_CHAVE_D', esperado D--a--temp-tmp-AbC-d"
 fi
 
 echo
-echo "12. Leitura com chave harness (D13b) — observações gravadas em chave harness são encontradas"
+echo "12. Leitura pelo canonico (#435) — observações gravadas no slug da pasta são encontradas"
 
-# Setup: criar banco, inserir observações em DUAS chaves diferentes
+# Setup: criar banco, inserir observações em UM nome só: o canonico (slug) da pasta da sessão
 CAIXA_HARNESS="$(novo_sandbox)"
 mkdir -p "$CAIXA_HARNESS"
 
 export RFM_ROOT="$CAIXA_HARNESS"
 node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
 
-# Inserir observações sob DOIS projetos diferentes:
-# - Chave curta: "rainforest-mind" (histórico do claude-mem)
-# - Chave harness: "C--Projetos-rainforest-mind" (dados novos neste ciclo)
+# A pasta da sessão e o repositório; as duas observações (a mais antiga e a nova) levam o MESMO nome,
+# o slug do caminho dela. Depois da migração 7 não há mais um nome curto paralelo.
+PASTA_HARNESS="$CAIXA_HARNESS/test-rainforest-mind"
+mkdir -p "$PASTA_HARNESS"
+git init -q "$PASTA_HARNESS"
+export PROJ_HARNESS_SLUG="$(node -e 'process.stdout.write(require(process.env.LIB_CANONICO).slugDoCaminho(process.argv[1]))' "$(cygpath -m "$PASTA_HARNESS" 2>/dev/null || printf '%s' "$PASTA_HARNESS")")"
 node <<'SETUP_HARNESS_TEST'
 const { DatabaseSync } = require('node:sqlite');
 
 const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
 
-// Observação sob chave curta (histórico)
+// Observação mais antiga (histórico)
 db.prepare(`
   INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
   VALUES (?, ?, ?, ?)
 `).run(
-  'rainforest-mind',
+  process.env.PROJ_HARNESS_SLUG,
   '## Histórico\n\nConteúdo sob chave curta',
   '2026-08-20T10:00:00Z',
   'origem-historico'
 );
 
-// Observação sob chave harness (novo)
+// Observação nova
 db.prepare(`
   INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
   VALUES (?, ?, ?, ?)
 `).run(
-  'C--Projetos-rainforest-mind',
+  process.env.PROJ_HARNESS_SLUG,
   '## Novo\n\nConteúdo sob chave harness',
   '2026-08-21T10:00:00Z',
   'origem-novo'
@@ -650,11 +669,7 @@ db.prepare(`
 db.close();
 SETUP_HARNESS_TEST
 
-# 12.a — sessionStart de uma pasta que resolveria para "rainforest-mind"
-# Deve achar AMBAS as observações (histórico + novo)
-PASTA_HARNESS="$CAIXA_HARNESS/test-rainforest-mind"
-mkdir -p "$PASTA_HARNESS"
-git init -q "$PASTA_HARNESS"
+# 12.a — sessionStart da pasta: deve achar AMBAS as observações (histórico + novo)
 
 SAIDA_HARNESS=$(cd "$PASTA_HARNESS" && RFM_ROOT="$CAIXA_HARNESS" echo '{}' | node "$HOOK" 2>/dev/null)
 BLOCO_HARNESS=$(echo "$SAIDA_HARNESS" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf-8')); process.stdout.write((d.hookSpecificOutput||{}).additionalContext||'')")
@@ -663,15 +678,15 @@ ACHOU_HISTORICO=$(echo "$BLOCO_HARNESS" | grep -c "Histórico" || true)
 ACHOU_NOVO=$(echo "$BLOCO_HARNESS" | grep -c "Novo" || true)
 
 if [ "$ACHOU_HISTORICO" -ge 1 ]; then
-  ok=$((ok+1)); echo "  ok    encontra observação sob chave curta (histórico)"
+  ok=$((ok+1)); echo "  ok    encontra a observação mais antiga (histórico)"
 else
-  falhou=$((falhou+1)); echo "  FALHA não encontrou observação sob chave curta"
+  falhou=$((falhou+1)); echo "  FALHA não encontrou a observação mais antiga"
 fi
 
 if [ "$ACHOU_NOVO" -ge 1 ]; then
-  ok=$((ok+1)); echo "  ok    encontra observação sob chave harness (novo)"
+  ok=$((ok+1)); echo "  ok    encontra a observação nova"
 else
-  falhou=$((falhou+1)); echo "  FALHA não encontrou observação sob chave harness"
+  falhou=$((falhou+1)); echo "  FALHA não encontrou a observação nova"
 fi
 
 echo
@@ -688,7 +703,7 @@ process.stdout.write(String(cnt));
 ")"
 
 if [ "$CNT_BANCO" = "2" ]; then
-  ok=$((ok+1)); echo "  ok    banco tem 2 observações (das 2 chaves)"
+  ok=$((ok+1)); echo "  ok    banco tem 2 observações (do nome único)"
 else
   falhou=$((falhou+1)); echo "  FALHA banco tem $CNT_BANCO observações"
 fi
@@ -724,13 +739,13 @@ PASTA_APELIDO="$CAIXA_APELIDO/projeto-de-teste"
 mkdir -p "$PASTA_APELIDO"
 git init -q "$PASTA_APELIDO"
 
-# Grava a observação sob a chave EXATA que o harness usaria para essa pasta.
+# Grava a observação sob o canônico dessa pasta (slug do caminho).
 (cd "$PASTA_APELIDO" && SRC="$SRC" node -e "
   const { DatabaseSync } = require('node:sqlite');
-  const { chaveHarness } = require(process.env.SRC + '/scripts/memoria.cjs');
+  const { slugDoCaminho } = require(process.env.LIB_CANONICO);
   const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
   db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)')
-    .run(chaveHarness(process.cwd()), '## Marcador de apelido', '2026-08-22T10:00:00Z', 'sessao:teste:offset:1');
+    .run(slugDoCaminho(process.cwd()), '## Marcador de apelido', '2026-08-22T10:00:00Z', 'sessao:teste:offset:1');
   db.close();
 ")
 
@@ -927,8 +942,8 @@ const path = require('path');
 
 const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
 
-// Derive the project key from the RFM_ROOT directory name (basename)
-const projectKey = path.basename(process.env.RFM_ROOT);
+// Projeto atual = canonico da pasta da sessao (slug do caminho; #435), a caixa e o cwd
+const projectKey = require(process.env.LIB_CANONICO).slugDoCaminho(process.env.RFM_ROOT);
 
 // 15 observações
 for (let i = 1; i <= 15; i++) {
@@ -1129,7 +1144,7 @@ node <<'SETUP_RESUMO'
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
-const projectKey = path.basename(process.env.RFM_ROOT);
+const projectKey = require(process.env.LIB_CANONICO).slugDoCaminho(process.env.RFM_ROOT);
 const NL = String.fromCharCode(10);
 // 3 observacoes CONSOLIDADAS (nao podem aparecer) + 4 vivas
 for (let i = 1; i <= 3; i++) {
@@ -1174,7 +1189,7 @@ node <<'SETUP_SEMRES'
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
-const projectKey = path.basename(process.env.RFM_ROOT);
+const projectKey = require(process.env.LIB_CANONICO).slugDoCaminho(process.env.RFM_ROOT);
 const NL = String.fromCharCode(10);
 for (let i = 1; i <= 3; i++) {
   db.prepare("INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?,?,?,?)")
@@ -1206,7 +1221,7 @@ echo "  18.f — sem resumo no banco, o bloco e BYTE-IDENTICO ao de antes do C3"
 # criada_em. Qualquer byte diferente e regressao do C3 no caminho sem resumo.
 BLOCO_ESPERADO_SEMRES="$(OBS="$(node -e "
 const path = require('path');
-const projectKey = path.basename(process.env.RFM_ROOT);
+const projectKey = require(process.env.LIB_CANONICO).slugDoCaminho(process.env.RFM_ROOT);
 const NL = String.fromCharCode(10);
 const obs = [3, 2, 1].map(i => ({
   id: i,
@@ -1214,7 +1229,8 @@ const obs = [3, 2, 1].map(i => ({
   conteudo: '## Obs ' + i + NL + NL + 'conteudo ' + i,
   criada_em: '2026-08-2' + i + 'T10:00:00Z',
 }));
-process.stdout.write(JSON.stringify({ observacoes: obs }));
+// O hook rotula o projeto atual pelo nome curto (apelido do canonico): o motor puro recebe o mesmo.
+process.stdout.write(JSON.stringify({ observacoes: obs, apelidos: { [projectKey]: path.basename(process.env.RFM_ROOT) } }));
 ")" LIB_PATH="$LIB" node "$RAIZ_POSIX/driver-memoria.cjs" 2>/dev/null)"
 
 if [ -n "$BLOCO_ESPERADO_SEMRES" ] && [ "$BLOCO_SEMRES" = "$BLOCO_ESPERADO_SEMRES" ]; then
@@ -1318,7 +1334,7 @@ node <<'SETUP_SUBST'
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
-const projectKey = path.basename(process.env.RFM_ROOT);
+const projectKey = require(process.env.LIB_CANONICO).slugDoCaminho(process.env.RFM_ROOT);
 const NL = String.fromCharCode(10);
 // ids 1-14: vivas (mais antigas). ids 15-20: substituidas (mais recentes).
 for (let i = 1; i <= 20; i++) {
