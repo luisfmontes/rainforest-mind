@@ -77,3 +77,44 @@ paralela: nao
 mutacao: n/a
   motivo: só texto e número de versão; a falsificação é a coerência com o design e o `testa-versao.sh`.
 pronto quando: com o design aprovado ao lado, o README deixa de listar o `aviso-fluxo` entre os hooks que "avisam sem barrar" e o descreve na tabela de travas com as duas saídas (abrir fluxo, `leve`) e a chave `aviso-fluxo` (a descrição da chave em `hooks/lib/config.cjs` deixa de dizer "avisa"); a linha da regra 10 no README e o núcleo em `skills/rainforest-mind/SKILL.md` deixam de dizer que estágio é só log e nomeiam a exceção do D5 (`escreve: true` fora do estágio dele, sem `leve`, é barrado); o CHANGELOG ganha a versão **1.49.0** dizendo o que muda para quem usa (bloqueio nos dois trilhos, `leve` por branch, despacho barrado, chave para desligar) e o que fica de fora (Bash, D2); `plugin.json` dos dois manifestos e o badge do README em 1.49.0 — provado por `bash scripts/testa-versao.sh` com `falhou: 0`, `bash hooks/testa-abertura-mod-foco.sh` com `falhou: 0` (o núcleo injetado mudou) e leitura lado a lado de cada D1–D9 contra o texto novo, registrada no relato do `executar` com a linha do doc que realiza cada uma.
+
+## Emenda 1 — achados do revisar (2026-10-08)
+
+O `revisar` reprovou com 7 achados. As tarefas 5 a 7 fecham os achados 1, 2, 3, 5, 6 e 7 dentro das decisões já aprovadas. O achado 4 (o que conta como "aberto" no trilho protheus) espera decisão do usuário e entra como emenda própria.
+
+### 5. `aviso-fluxo` decide pelo repositório do arquivo, não pelo `cwd` [tipo: implementar]
+atende: D1, D2, D9
+arquivos: `hooks/aviso-fluxo.cjs`, `hooks/testa-bloqueio-fluxo.cjs`
+depende de: nenhuma
+paralela: sim
+prova: `node hooks/testa-bloqueio-fluxo.cjs`
+mutacao:
+  arquivo: `hooks/aviso-fluxo.cjs`
+  de: `const gitTop = toplevel(diretorioExistente(path.resolve(ev.cwd, filePath)));`
+  para: `const gitTop = toplevel(ev.cwd);`
+  bateria: `node hooks/testa-bloqueio-fluxo.cjs`
+  fixture: caso "arquivo de codigo fora de qualquer repositorio passa com cwd num repo sem fluxo"
+pronto quando: com o payload real do harness, (a) `cwd` num repositório rainforest sem fluxo e `Write` de um `.js` num diretório temporário fora de qualquer repositório sai **0**; (b) `cwd` fora de qualquer repositório e `Edit` de `<repo>/hooks/x.cjs` (repo com trilho, sem fluxo, sem `leve`) sai **2**; (c) `cwd` no checkout principal (`main`) e `Edit` de um `.cjs` dentro de um worktree cuja branch tem fluxo aberto sai **0**, e o mesmo sem fluxo nem `leve` sai **2**; (d) `Write` de `<repo>/pasta-nova/sub/x.cjs` (diretório ainda inexistente) sem fluxo sai **2** — o repositório se acha subindo até o primeiro diretório que existe; (e) `FONTE.PRW` e `A.CJS` sem fluxo saem **2** (extensão comparada em minúsculas) e `.c`, `.h`, `.cpp`, `.bat`, `.cmd` entram na lista; (f) HEAD destacado sem fluxo sai 2 com mensagem que manda trocar para uma branch, sem oferecer `leve` (que recusaria). A linha da mutação é escrita literalmente como no `de:`. Provado por `node hooks/testa-bloqueio-fluxo.cjs` (`falhou: 0`, `skipped: 0`) e `node hooks/testa-aviso-fluxo.cjs` sem falha.
+
+### 6. Portaria: estágios do manifesto e mensagem sem beco [tipo: implementar]
+atende: D3, D5, D9
+arquivos: `.rainforest/agentes.padrao.json`, `hooks/portaria.cjs`, `hooks/testa-portaria-fluxo-pulado.cjs`
+depende de: nenhuma
+paralela: sim
+prova: `node hooks/testa-portaria-fluxo-pulado.cjs`
+mutacao:
+  arquivo: `.rainforest/agentes.padrao.json`
+  de: `"estagios": ["executar", "revisar", "verificar"],`
+  para: `"estagios": ["executar", "verificar"],`
+  bateria: `node hooks/testa-portaria-fluxo-pulado.cjs`
+  fixture: caso "tester despacha com fluxo em revisar (mutacao do revisar)"
+pronto quando: com o payload real do harness para `Agent` e o manifesto padrão do plugin, `tester` despachado com fluxo aberto em `revisar` passa (exit 0) — a skill `revisar` manda o `tester` executar a mutação — e `documentador` com fluxo em `fechar` passa; `executor` em `revisar` e em `fechar` continua saindo **2**. Com HEAD destacado, a mensagem de bloqueio manda trocar para uma branch em vez de oferecer `leve`; com o `cwd` na branch padrão de repo rainforest, a mensagem diz para despachar de dentro do worktree do fluxo (o `leve` é recusado ali). O lint do manifesto que `hooks/testa-portaria-lint.cjs` exercita aceita o manifesto novo. Provado por `node hooks/testa-portaria-fluxo-pulado.cjs` (`falhou: 0`, `skipped: 0`) e as baterias `hooks/testa-portaria-*.cjs` todas com exit 0.
+
+### 7. `regra-10-portaria.md` acompanha o código [tipo: docs]
+atende: D3, D5
+arquivos: `skills/rainforest-mind/references/regra-10-portaria.md`
+depende de: 6
+paralela: nao
+mutacao: n/a
+  motivo: só texto de referência; a falsificação é a coerência com `hooks/portaria.cjs` e o manifesto.
+pronto quando: com `hooks/portaria.cjs` e `.rainforest/agentes.padrao.json` ao lado, a tabela de `regra-10-portaria.md` deixa de dizer que "estágio fora da lista do agente" sempre passa — passa para agente que lê; agente declarado com `escreve: true` fora dos `estagios` dele, sem `leve`, é barrado (#430) — e a frase "a portaria barra um caso só" passa a nomear os dois casos (escreve sem worktree; escreve fora do estágio sem `leve`). Provado por leitura lado a lado registrada no relato, com a linha do código que sustenta cada frase.
