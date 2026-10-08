@@ -22,18 +22,11 @@
     "em": "2026-10-08"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-08",
-    "tarefas_ok": 11,
+    "tarefas_ok": 13,
     "tarefas": 13,
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "11: hooks (achados 1, 2, 4)",
-        "desde": "2026-10-08T11:05:00-03:00",
-        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae"
-      }
-    ],
+    "em_voo": [],
     "carimbos": [
       {
         "tarefa": 1,
@@ -114,8 +107,8 @@
       }
     ],
     "em": "2026-10-08",
-    "comando": "bash scripts/testa-utilidade-canais.sh; bash scripts/testa-utilidade.sh; node hooks/testa-memoria-assunto.cjs; node hooks/testa-memoria-assunto-prompt.cjs; node hooks/testa-memoria-assunto-agente.cjs",
-    "saida": "17 ok, 0 falha(s); 19 ok, 0 falha(s); 11 ok, 0 falha(s); 13 ok, 0 falha(s); 13 ok, 0 falha(s)",
+    "comando": "bash scripts/testa-utilidade-canais.sh; node hooks/testa-memoria-assunto.cjs; node hooks/testa-memoria-assunto-prompt.cjs; node hooks/testa-memoria-assunto-agente.cjs",
+    "saida": "18 ok, 0 falha(s); 14 ok, 0 falha(s); 14 ok, 0 falha(s); 14 ok, 0 falha(s)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -125,7 +118,7 @@
       {
         "tarefa": 2,
         "resultado": "n/a",
-        "motivo": "instrumento de medicao, reconferido rodando de novo"
+        "motivo": "instrumento de medicao, reconferido"
       },
       {
         "tarefa": 3,
@@ -166,12 +159,23 @@
         "tarefa": 10,
         "resultado": "n/a",
         "motivo": "abre Issue #435"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-assunto-prompt.cjs, caso pedido sem acerto grava o arquivo da sessao e o segundo nao rele o transcrito"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-assunto.cjs, caso texto so com palavras comuns do corpus nao injeta"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade-canais.sh, caso servida do canal assunto cortada em 300 caracteres casa com o id"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-08"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
