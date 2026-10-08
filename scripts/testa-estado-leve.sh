@@ -252,6 +252,51 @@ OUT=$(est "$REPO" iniciar --slug "$DATA-z" 2>"$SBX/err"); RC=$?
 afirma "F2 iniciar sobre fluxo ja aberto continua recusando (sai 1)" 1 "$RC"
 echo ""
 
+# ---------------------------------------------------------------- G. --repo (#430, emenda 2)
+echo "== G. leve --repo <raiz>: grava no repositorio indicado, nao no do cwd"
+novo_rf rfg
+REPO_A="$REPO"
+(cd "$REPO_A" && git worktree add -q "$SBX/wtg" -b fluxo/v)
+WTB="$SBX/wtg"
+OUT=$(est "$REPO_A" leve --motivo "via repo" --repo "$WTB" 2>"$SBX/err"); RC=$?
+afirma "G1 leve --repo com cwd no repo A sai 0" 0 "$RC"
+afirma "G2 o leve cai no worktree B, branch fluxo/v (leveDaBranch acha)" 1 \
+  "$(tem "$(ler_leve "$WTB" fluxo/v)" '"motivo":"via repo"')"
+afirma "G3 o repo do cwd (A) nao devolve leve para fluxo/v" null "$(ler_leve "$REPO_A" fluxo/v)"
+afirma "G4 A nao ganha arquivo de estado" 0 "$(arquivos_json "$REPO_A")"
+afirma "G4 A fica com arvore limpa" "" "$(porcelain "$REPO_A")"
+
+mkdir -p "$SBX/nao-repo"
+OUT=$(est "$REPO_A" leve --motivo x --repo "$SBX/nao-repo" 2>"$SBX/err"); RC=$?
+ERR=$(cat "$SBX/err")
+afirma "G5 --repo que nao e repositorio git sai 2" 2 "$RC"
+afirma "G5 o stderr diz que nao e a raiz de um repositorio" 1 "$(tem "$ERR" 'raiz de um reposit')"
+afirma "G5 nada gravado no diretorio indicado" 0 "$([ -e "$SBX/nao-repo/docs" ] && echo 1 || echo 0)"
+
+mkdir -p "$REPO_A/sub"
+OUT=$(est "$REPO_A" leve --motivo x --repo "$REPO_A/sub" 2>"$SBX/err"); RC=$?
+afirma "G6 --repo subdiretorio de um repositorio sai 2 (git nao sobe ao pai)" 2 "$RC"
+afirma "G6 nada gravado no repo A" 0 "$(arquivos_json "$REPO_A")"
+afirma "G6 A segue com arvore limpa" "" "$(porcelain "$REPO_A")"
+
+OUT=$(est "$REPO_A" leve --motivo x --repo 2>"$SBX/err"); RC=$?
+afirma "G7 --repo sem caminho sai 2" 2 "$RC"
+afirma "G7 nada gravado no repo A" 0 "$(arquivos_json "$REPO_A")"
+
+novo_pr prg
+PR_P="$REPO"
+(cd "$PR_P" && git checkout -qb fluxo/pg)
+OUT=$(est "$REPO_A" leve --motivo "pr-repo" --repo "$PR_P" 2>"$SBX/err"); RC=$?
+afirma "G8 trilho protheus com --repo sai 0" 0 "$RC"
+afirma "G8 o mapa fica sob o git-common-dir do repo indicado" 1 \
+  "$([ -f "$PR_P/.git/rainforest-leve.json" ] && echo 1 || echo 0)"
+afirma "G8 leveDaBranch le o leve de fluxo/pg no repo indicado" 1 \
+  "$(tem "$(ler_leve "$PR_P" fluxo/pg)" '"motivo":"pr-repo"')"
+afirma "G8 o repo do cwd nao ganha mapa" 0 \
+  "$([ -f "$REPO_A/.git/rainforest-leve.json" ] && echo 1 || echo 0)"
+afirma "G8 e a arvore do cwd fica limpa" "" "$(porcelain "$REPO_A")"
+echo ""
+
 echo "ok: $OK   falhou: $FALHOU   skipped: 0"
 if [ "$FALHOU" -ne 0 ]; then
   exit 1

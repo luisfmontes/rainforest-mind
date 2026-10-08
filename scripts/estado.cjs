@@ -31,7 +31,7 @@
  *   node scripts/estado.cjs proximo  --slug <slug>
  *   node scripts/estado.cjs exigir   --slug <slug> --estagio <e>
  *   node scripts/estado.cjs liberar  --slug <slug> --estagio <e>
- *   node scripts/estado.cjs leve     --motivo "<por quê>"
+ *   node scripts/estado.cjs leve     --motivo "<por quê>" [--repo <raiz>]
  *   node scripts/estado.cjs listar
  *   node scripts/estado.cjs concluido [--slug <slug>]
  *   node scripts/estado.cjs veredito  --slug <slug> --estagio <e> --veredito <ok|reprovado|invalido> --agente <tipo> --agente-id <id> --transcrito <caminho>
@@ -1606,7 +1606,7 @@ const FLAGS_POR_SUBCOMANDO = {
   listar: [],
   concluido: ['slug'],
   veredito: ['slug', 'estagio', 'veredito', 'agente', 'agente-id', 'transcrito'],
-  leve: ['motivo'],
+  leve: ['motivo', 'repo'],
 };
 
 function arg(nome, obrigatorio = true) {
@@ -1751,9 +1751,31 @@ function main() {
       console.error('RECUSADO: falta --motivo "<por quê>" (texto não vazio). O motivo é o rastro do caminho leve.');
       process.exit(2);
     }
-    const cwd = process.cwd();
+    // --repo (#430, emenda 2): o leve grava no repositório indicado, não no do cwd.
+    // Sem a flag, os caminhos seguem RAIZ e o git lê a branch do cwd, como antes.
+    const repoArg = arg('repo', false);
+    if (process.argv.includes('--repo') && (repoArg === null || repoArg.trim() === '')) {
+      console.error('RECUSADO: falta o caminho em --repo "<raiz do repositório>".');
+      process.exit(2);
+    }
+    const raizLeve = repoArg ? path.resolve(repoArg) : RAIZ;
+    const dirGit = repoArg ? raizLeve : process.cwd();
+    if (repoArg) {
+      // Tem de ser a raiz do repositório: `git` sobe até o pai em silêncio, e o leve
+      // iria parar no repositório errado.
+      const top = spawnSync(caminhoExecutavel('git'), ['rev-parse', '--show-toplevel'], {
+        cwd: raizLeve,
+        encoding: 'utf8',
+        stdio: 'pipe',
+      });
+      const ehRaiz = top.status === 0 && fs.realpathSync.native(top.stdout.trim()) === fs.realpathSync.native(raizLeve);
+      if (!ehRaiz) {
+        console.error(`RECUSADO: --repo ${repoArg} não é a raiz de um repositório git. Aponte para o diretório de topo do repositório.`);
+        process.exit(2);
+      }
+    }
     const ref = spawnSync(caminhoExecutavel('git'), ['symbolic-ref', '-q', '--short', 'HEAD'], {
-      cwd,
+      cwd: dirGit,
       encoding: 'utf8',
       stdio: 'pipe',
     });
@@ -1763,8 +1785,9 @@ function main() {
     }
     const branch = ref.stdout.trim();
     const registro = { motivo: motivo.trim(), data: hoje() };
-    const temEstado = fs.existsSync(DIR_ESTADO);
-    const pastaPlanos = path.join(RAIZ, 'docs', 'plans');
+    const dirEstadoLeve = path.join(raizLeve, 'docs', 'rainforest', 'estado');
+    const temEstado = fs.existsSync(dirEstadoLeve);
+    const pastaPlanos = path.join(raizLeve, 'docs', 'plans');
     const temGates = fs.existsSync(pastaPlanos) && fs.readdirSync(pastaPlanos).some((f) => f.endsWith('.gates.json'));
     if (!temEstado && !temGates) {
       console.error('RECUSADO: nem docs/rainforest/estado/ nem docs/plans/*.gates.json neste repositório. Sem trilho de fluxo não há o que pular.');
@@ -1773,7 +1796,7 @@ function main() {
     if (!temEstado) {
       // Trilho protheus (D6): o registro vai ao mapa sob o git-common-dir, nunca à
       // árvore de trabalho; aceito em qualquer branch, inclusive a padrão (D7).
-      const arq = caminhoMapaProtheus(cwd);
+      const arq = caminhoMapaProtheus(dirGit);
       if (!arq) {
         console.error('RECUSADO: não consegui achar o git-common-dir deste repositório.');
         process.exit(2);
@@ -1798,7 +1821,7 @@ function main() {
     }
     // Trilho rainforest (D7): a regra 11 manda trabalho em worktree, então o leve não
     // vale na branch padrão.
-    if (['main', 'master', branchPadrao(cwd)].includes(branch)) {
+    if (['main', 'master', branchPadrao(dirGit)].includes(branch)) {
       console.error(`RECUSADO: '${branch}' é a branch padrão. A regra 11 manda trabalho em worktree: crie a de trabalho (git worktree add .claude/worktrees/<nome> -b fluxo/<nome>) e declare o leve nela.`);
       process.exit(2);
     }
@@ -1807,8 +1830,13 @@ function main() {
       console.error(`RECUSADO: a branch '${branch}' não vira nome de arquivo de estado (esperado uma barra só, como fluxo/<nome>).`);
       process.exit(2);
     }
+    // Caminho do estado DENTRO do repositório do leve (raizLeve), nunca o da RAIZ do módulo.
+    const arqLeve = (slug) => {
+      validarSlug(slug);
+      return path.join(dirEstadoLeve, `${slug}.json`);
+    };
     // Mesmo casamento do resolver, sem olhar se o fluxo está aberto: o leve segue a branch.
-    const casam = fs.readdirSync(DIR_ESTADO).filter((f) => f.endsWith('.json') && casaComBranch(f.replace(/\.json$/, ''), branchBase));
+    const casam = fs.readdirSync(dirEstadoLeve).filter((f) => f.endsWith('.json') && casaComBranch(f.replace(/\.json$/, ''), branchBase));
     if (casam.length > 1) {
       console.error(`RECUSADO: mais de um arquivo de estado casa com '${branch}' (${casam.join(', ')}). O leve não escolhe sozinho em qual gravar.`);
       process.exit(2);
@@ -1817,18 +1845,21 @@ function main() {
     let estado = { slug: slugAlvo, titulo: branch, criado_em: hoje() };
     if (casam.length === 1) {
       try {
-        estado = ler(slugAlvo);
+        estado = JSON.parse(fs.readFileSync(arqLeve(slugAlvo), 'utf8'));
       } catch (_) {
         estado = null;
       }
       if (!estado || typeof estado !== 'object' || Array.isArray(estado)) {
-        console.error(`RECUSADO: ${caminho(slugAlvo)} não é um estado legível. Não sobrescrevo: conserte o arquivo.`);
+        console.error(`RECUSADO: ${arqLeve(slugAlvo)} não é um estado legível. Não sobrescrevo: conserte o arquivo.`);
         process.exit(2);
       }
     }
     estado.leve = registro;
-    gravar(slugAlvo, estado);
-    console.log(`leve: '${branch}' registrado em ${caminho(slugAlvo)}`);
+    fs.mkdirSync(dirEstadoLeve, { recursive: true });
+    const tmpLeve = `${arqLeve(slugAlvo)}.tmp`;
+    fs.writeFileSync(tmpLeve, `${JSON.stringify(estado, null, 2)}\n`, 'utf8');
+    fs.renameSync(tmpLeve, arqLeve(slugAlvo)); // atômico, como gravar()
+    console.log(`leve: '${branch}' registrado em ${arqLeve(slugAlvo)}`);
     return;
   }
 
