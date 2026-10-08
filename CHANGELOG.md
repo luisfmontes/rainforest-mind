@@ -10,6 +10,18 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.50.2 — 2026-10-08
+
+- **Mensagem dos gates de fluxo diz como colar em PowerShell.** O comando de `iniciar` e de `leve` impresso pelo
+  bloqueio de edição e pela portaria começa por string entre aspas, que PowerShell só roda com `& ` na frente. A
+  mensagem agora traz a dica (Issue #442).
+
+## 1.50.1 — 2026-10-08
+
+- **`verificar` reprovado depois do `fechar` reabre o `fechar`.** Quando o CI do PR reprova com o fluxo já fechado,
+  `marcar --estagio verificar --status reprovado` devolve o `fechar` a `pendente`, e o `executar` pode voltar a
+  `parcial` sem o contorno manual de reprovar o `fechar` antes (Issue #441).
+
 ## 1.50.0 — 2026-10-08
 
 - **O aviso de fluxo virou bloqueio.** Editar arquivo de código (fora de `docs/`) num repositório com fluxo

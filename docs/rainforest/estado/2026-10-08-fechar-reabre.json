@@ -1,0 +1,9 @@
+{
+  "slug": "2026-10-08-fechar-reabre",
+  "titulo": "fluxo/fechar-reabre",
+  "criado_em": "2026-10-08",
+  "leve": {
+    "motivo": "Issue #441: verificar reprovado tambem devolve fechar a pendente; uma linha + caso de bateria, especificado na issue",
+    "data": "2026-10-08"
+  }
+}

@@ -2246,6 +2246,19 @@ esperado "marcar revisar ok fecha de novo" 0 $ED marcar --slug d10-reabre --esta
 esperado "exigir verificar passa apos revisar fechar de novo" 0 \
   $ED exigir --slug d10-reabre --estagio verificar
 
+# Issue #441: o CI do PR reprova DEPOIS do 'fechar' em 'ok'. 'verificar'
+# reprovado devolve tambem o 'fechar' a 'pendente'; sem isso, 'marcar executar
+# parcial' era recusado ("executar nao pode voltar a parcial com fechar em ok").
+esperado "setup #441: marcar verificar ok" 0 \
+  $ED marcar --slug d10-reabre --estagio verificar --status ok --json '{"comando":"x","saida":"y"}'
+esperado "setup #441: marcar fechar ok" 0 $ED marcar --slug d10-reabre --estagio fechar --status ok
+esperado "marcar verificar reprovado com fechar ok fecha (#441)" 0 \
+  $ED marcar --slug d10-reabre --estagio verificar --status reprovado \
+    --json '{"comando":"gh pr checks 1","saida":"fail","sensor_externo":"gh pr checks 1"}'
+igual "fechar volta a pendente (#441)" "pendente" "$(campo_d10 .fechar.status)"
+esperado "marcar executar parcial passa com fechar reaberto (#441)" 0 \
+  $ED marcar --slug d10-reabre --estagio executar --status parcial
+
 unset RFM_ESTADO_ROOT
 
 echo
