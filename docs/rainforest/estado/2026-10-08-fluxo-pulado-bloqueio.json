@@ -22,9 +22,22 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-08",
-    "tarefas_ok": 7,
-    "tarefas": 7,
-    "em_voo": [],
+    "tarefas_ok": 8,
+    "tarefas": 11,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "T9 mensagem do Edit sem beco",
+        "desde": "2026-10-08T10:52:09-03:00",
+        "sessao": "3a3f9560-730f-4a9e-bf04-673ed4a7e03d"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "T10 mensagem da portaria",
+        "desde": "2026-10-08T10:52:09-03:00",
+        "sessao": "3a3f9560-730f-4a9e-bf04-673ed4a7e03d"
+      }
+    ],
     "carimbos": [
       {
         "tarefa": 1,

@@ -17,7 +17,7 @@ Não é mais.** O que mudou e por quê:
 | Agente fora do manifesto | nega | **passa**, com `declarado: false` no log |
 | Sem estágio ativo | nega, ou exige frase digitada | **passa**, com `fora_de_fluxo: true` no log |
 | Estágio fora da lista do agente que **lê** (`escreve: false`) | nega | **passa**, com `estagio_declarado` no log |
-| Agente declarado com `escreve: true` fora dos `estagios` dele (ou sem fluxo), sem `leve` na branch | nega | **nega** de novo desde a 1.49.0 (Issue #430) |
+| Agente declarado com `escreve: true` fora dos `estagios` dele (ou sem fluxo), sem `leve` na branch, em repositório com trilho de fluxo e com a chave `aviso-fluxo` ligada | nega | **nega** de novo desde a 1.49.0 (Issue #430) |
 | `escreve: true` sem `isolation: "worktree"` | nega | **nega** (regra 11) |
 | `escreve: true` com `name` | nega | **nega** (regra 10) |
 | Manifesto malformado | nega | **nega** |
