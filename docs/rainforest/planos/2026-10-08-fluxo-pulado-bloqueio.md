@@ -118,3 +118,58 @@ paralela: nao
 mutacao: n/a
   motivo: só texto de referência; a falsificação é a coerência com `hooks/portaria.cjs` e o manifesto.
 pronto quando: com `hooks/portaria.cjs` e `.rainforest/agentes.padrao.json` ao lado, a tabela de `regra-10-portaria.md` deixa de dizer que "estágio fora da lista do agente" sempre passa — passa para agente que lê; agente declarado com `escreve: true` fora dos `estagios` dele, sem `leve`, é barrado (#430) — e a frase "a portaria barra um caso só" passa a nomear os dois casos (escreve sem worktree; escreve fora do estágio sem `leve`). Provado por leitura lado a lado registrada no relato, com a linha do código que sustenta cada frase.
+
+## Emenda 2 — achados da rodada 2 do revisar (2026-10-08)
+
+Rodada 2 reprovou com A (caminho do comando na portaria), B1/B2 (becos na mensagem do Edit), C (tabela da regra-10-portaria) e D (NotebookEdit). D fica como dívida declarada: `.ipynb` não está na lista de extensões de código, então o NotebookEdit não é "edição de código" pela D2 — o design passa a dizê-lo. O achado 4 (aberto no protheus) segue à espera da decisão do usuário.
+
+### 8. `estado.cjs leve --repo <raiz>` [tipo: implementar]
+atende: D6, D7
+arquivos: `scripts/estado.cjs`, `scripts/testa-estado-leve.sh`
+depende de: 1
+paralela: nao
+prova: `bash scripts/testa-estado-leve.sh`
+mutacao:
+  arquivo: `scripts/estado.cjs`
+  de: `const raizLeve = repoArg ? path.resolve(repoArg) : RAIZ;`
+  para: `const raizLeve = RAIZ;`
+  bateria: `bash scripts/testa-estado-leve.sh`
+  fixture: caso "leve --repo grava no repositorio indicado, nao no do cwd"
+pronto quando: com `cwd` num repositório A (branch padrão `main`) e `--repo <raiz de B>` apontando para um worktree B na branch `fluxo/v` com `docs/rainforest/estado/`, `node scripts/estado.cjs leve --motivo x --repo <B>` sai 0, grava o `leve` no estado de B para `fluxo/v` e nada em A (`git -C A status --porcelain` vazio); sem `--repo`, o comportamento de hoje (cwd) não muda; `--repo` para caminho que não é repositório git sai 2 com stderr dizendo isso; trilho protheus com `--repo` grava sob o `git-common-dir` de B. A linha da mutação é escrita literalmente como no `de:`. Provado por `bash scripts/testa-estado-leve.sh` (`falhou: 0`, `skipped: 0`) e `bash scripts/testa-estado.sh` sem falha.
+
+### 9. Mensagem do gate do Edit sem beco [tipo: implementar]
+atende: D9
+arquivos: `hooks/aviso-fluxo.cjs`, `hooks/testa-bloqueio-fluxo.cjs`
+depende de: 8
+paralela: nao
+prova: `node hooks/testa-bloqueio-fluxo.cjs`
+mutacao:
+  arquivo: `hooks/aviso-fluxo.cjs`
+  de: `const ofereceLeve = !headDestacado && !(trilho === 'rainforest' && ehBranchPadrao);`
+  para: `const ofereceLeve = !headDestacado;`
+  bateria: `node hooks/testa-bloqueio-fluxo.cjs`
+  fixture: caso "rainforest na branch padrao: mensagem manda abrir worktree e nao oferece leve"
+pronto quando: com o payload real do harness, (a) repo rainforest na branch padrão sem fluxo: sai 2 e a mensagem manda trabalhar num worktree (`git worktree add`) e abrir o fluxo lá, sem oferecer `leve`; (b) em qualquer caso que ofereça `leve`, o comando impresso é `node <abs>/scripts/estado.cjs leve --motivo "<por quê>" --repo "<raiz do repositório do arquivo>"`, com barras `/`, e **rodado de verdade pela bateria a partir de outro `cwd`** libera a próxima edição (exit 0); (c) o caminho do `estado.cjs iniciar` impresso também é absoluto com `/`. A linha da mutação é escrita literalmente como no `de:`. Provado por `node hooks/testa-bloqueio-fluxo.cjs` (`falhou: 0`, `skipped: 0`) e `node hooks/testa-aviso-fluxo.cjs` sem falha.
+
+### 10. Mensagem da portaria com comando que roda [tipo: implementar]
+atende: D9
+arquivos: `hooks/portaria.cjs`, `hooks/testa-portaria-fluxo-pulado.cjs`
+depende de: 8
+paralela: nao
+prova: `node hooks/testa-portaria-fluxo-pulado.cjs`
+mutacao:
+  arquivo: `hooks/portaria.cjs`
+  de: `const leveDaMensagem = \`node ${caminhoEstado} leve --motivo "<por que>" --repo "${raizBarras}"\`;`
+  para: `const leveDaMensagem = \`node ${caminhoEstado} leve --motivo "<por que>"\`;`
+  bateria: `node hooks/testa-portaria-fluxo-pulado.cjs`
+  fixture: caso "o leve impresso pela portaria, rodado de outro cwd, libera o despacho"
+pronto quando: com o payload real do harness para `Agent` bloqueado por fluxo, o stderr traz o `estado.cjs` por caminho absoluto com barras `/` (nenhuma contrabarra no comando) nas duas saídas — a de abrir o fluxo (`iniciar`) e a do `leve` com `--repo "<raiz>"` —, e a bateria **roda o comando `leve` impresso** a partir de um `cwd` diferente e o despacho seguinte passa (exit 0). A linha da mutação é escrita literalmente como no `de:`. Provado por `node hooks/testa-portaria-fluxo-pulado.cjs` (`falhou: 0`, `skipped: 0`) e todas as `hooks/testa-portaria-*.cjs` com exit 0.
+
+### 11. Doc: tabela da portaria e NotebookEdit [tipo: docs]
+atende: D2, D5
+arquivos: `skills/rainforest-mind/references/regra-10-portaria.md`, `docs/rainforest/design/2026-10-08-fluxo-pulado-bloqueio.md`
+depende de: 10
+paralela: nao
+mutacao: n/a
+  motivo: só texto; a falsificação é a coerência com `hooks/portaria.cjs` e `hooks/aviso-fluxo.cjs`.
+pronto quando: a linha nova da tabela de `regra-10-portaria.md` diz que o bloqueio vale **em repositório com trilho de fluxo e com a chave `aviso-fluxo` ligada**, coerente com `trilhoComFluxo` em `hooks/portaria.cjs`; a D2 do design diz que `.ipynb` não está na lista de extensões de código e por isso o NotebookEdit fica fora, coerente com `EXTENSOES_CODIGO` em `hooks/aviso-fluxo.cjs`. Provado por leitura lado a lado registrada no relato, com a linha do código que sustenta cada frase.

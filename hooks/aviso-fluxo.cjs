@@ -210,7 +210,7 @@ function main() {
   const branch = branchAtual(gitTop);
   if (branch === 'HEAD') {
     fs.writeSync(2, mensagemHeadDestacado(trilho) + '\n');
-    process.exit(2); // bloqueio-fluxo
+    process.exit(2); // bloqueio-head-destacado
   }
 
   // Critério 8: a branch tem o caminho leve declarado (D6, D7)
