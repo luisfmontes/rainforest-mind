@@ -148,14 +148,7 @@ mutacao:
   fixture: `testa-memoria-assunto-prompt.cjs, caso "pedido sem acerto grava o arquivo da sessao e o segundo nao rele o transcrito"`
 pronto quando: (achado 1) depois do primeiro pedido da sessão, com ou sem acerto, o arquivo `<raiz>/memoria-assunto/<sessao>.json` existe (a semeadura roda uma vez por sessão), gravado por uma única chamada `persistirServidos(arquivo, servidos);` ANTES do teste de bloco vazio, e a semeadura lê só os primeiros 2 MiB do transcrito (o attachment de SessionStart vem no começo) — provado por um caso com transcrito sintético de 40 MB (SessionStart no início + enchimento) em que o hook sai 0 em < 1,5 s nas duas primeiras chamadas; (achado 2) a consulta FTS usa os **30 termos mais raros** do texto (menor document frequency > 0 em `observacoes_fts`), montada por uma função exportada `construirQueryAssunto(conexao, texto)` que a calibração também usará, com `const LIMITE_TERMOS = 30;` — provado por um caso em que um briefing de ~150 termos comuns ao corpus e sem os termos raros de nenhum alvo devolve `[]`; (achado 4) o hook do `Agent` não lê nem grava o arquivo da sessão (cada subagente é contexto novo): na mesma sessão, pedido seguido de `Agent` do mesmo assunto entrega ao subagente as mesmas memórias que o pedido recebeu, e o pedido seguinte não perde nada por causa do subagente — provado por `node hooks/testa-memoria-assunto.cjs`, `node hooks/testa-memoria-assunto-prompt.cjs` e `node hooks/testa-memoria-assunto-agente.cjs` com `0 falha(s)` cada, os casos novos nomeados.
 
-### 12. Recalibrar o limiar com a consulta dos 30 termos mais raros [tipo: pesquisar]
-atende: D3, D7
-arquivos: `scripts/calibrar-limiar-assunto.cjs`, `docs/rainforest/referencia/2026-10-08-limiar-memoria-assunto.md`, `hooks/lib/memoria-assunto.cjs`
-depende de: 11
-paralela: nao
-mutacao: n/a
-  motivo: medição; o número sai da tabela, e a constante só muda se a tabela mandar.
-pronto quando: com a mesma cópia do banco e os mesmos transcritos da tarefa 2, `scripts/calibrar-limiar-assunto.cjs` monta a consulta por `construirQueryAssunto` (a mesma do hook), a tabela é refeita para ≥ 5 limiares, o documento ganha a seção "Recalibração (consulta dos 30 termos mais raros)" com a tabela, o limiar escolhido pelo mesmo critério e a linha `LIMIAR_BM25 = <n>` atualizada, e `LIMIAR_BM25` em `hooks/lib/memoria-assunto.cjs` igual ao do documento — provado por `grep -E '^LIMIAR_BM25 = ' docs/rainforest/referencia/2026-10-08-limiar-memoria-assunto.md` e `node -p "require('./hooks/lib/memoria-assunto.cjs').LIMIAR_BM25"` devolvendo o mesmo número, e as baterias da tarefa 11 continuando com `0 falha(s)`.
+(A tarefa 12 original foi substituída pela da emenda 5, mais abaixo.)
 
 ### 13. Extrator reconhece a linha cortada em 300 caracteres [tipo: implementar]
 atende: D7, D8
@@ -172,3 +165,19 @@ mutacao:
 pronto quando: com uma observação cujo texto passa de 300 caracteres servida pelo bloco `## Memória do assunto` (linha formatada com teto 300, terminando em `…`), `acharAlvo` devolve o id dela (comparando também com `formatarObservacao(row, apelidos, TETO_LINHA_ASSUNTO)`, `TETO_LINHA_ASSUNTO = 300` importado ou espelhado de `hooks/lib/memoria-assunto.cjs`), ela entra em `uso_memoria` com nota e `canal = 'pedido'`, e não reaparece como não-servida no contrafactual — provado por `bash scripts/testa-utilidade-canais.sh` com o caso novo `ok` e `0 falha(s)`, e `bash scripts/testa-utilidade.sh` com `19 ok, 0 falha(s)`.
 
 **Emenda 4 de 2026-10-08 — alvo de mutação da tarefa 13 com o retorno real.** O plano escreveu o retorno de `acharAlvo` como `{ origem, refId }`; o real é `{ origem, id, conteudo }` (o chamador lê `alvo.id` e `alvo.conteudo`). O `de:`/`para:` da tarefa 13 passa a usar o retorno real.
+
+**Emenda 5 de 2026-10-08 — a tarefa 12 passa a `implementar` e ganha o teto de frequência.** Medido na integração da tarefa 11, na cópia do banco real: um briefing de receita de bolo recebeu 2 memórias sem relação (bm25 -16,9 e -16,0). As palavras do assunto (`bolo`, `cenoura`, `chocolate`) têm df 0 e saem da consulta; sobram palavras comuns (`a`, `e`, `de`, `com`, `uma`), cuja soma encosta no limiar. A tarefa 12 abaixo substitui a anterior: além de recalibrar, a consulta descarta termo com df acima de um teto (fração do corpus), e a calibração escolhe teto e limiar juntos.
+
+### 12. Recalibrar o limiar com teto de frequência na consulta [tipo: implementar]
+atende: D3, D7
+arquivos: `scripts/calibrar-limiar-assunto.cjs`, `docs/rainforest/referencia/2026-10-08-limiar-memoria-assunto.md`, `hooks/lib/memoria-assunto.cjs`, `hooks/testa-memoria-assunto.cjs`
+depende de: 11
+paralela: nao
+prova: `node hooks/testa-memoria-assunto.cjs`
+mutacao:
+  arquivo: `hooks/lib/memoria-assunto.cjs`
+  de: `const raros = comDf.filter((t) => t.df <= tetoDf);`
+  para: `const raros = comDf.filter((t) => true);`
+  bateria: `node hooks/testa-memoria-assunto.cjs`
+  fixture: `testa-memoria-assunto.cjs, caso "texto so com palavras comuns do corpus nao injeta"`
+pronto quando: `construirQueryAssunto` descarta termos com df > `TETO_DF_FRACAO` × total de observações vivas (uma expressão só, na forma do `de:` acima; nenhum caso lê o fonte), e a calibração (mesma cópia do banco e transcritos da tarefa 2, consulta montada pela função do hook) mede pelo menos 3 tetos (0,5%, 1%, 2%) × pelo menos 5 limiares, escolhe o par pelo critério da tarefa 2 (maior fração útil com ≥ 30% dos pedidos com alguma injeção) e grava no documento a seção "Recalibração (teto de frequência)" com a tabela e as linhas `LIMIAR_BM25 = <n>` e `TETO_DF_FRACAO = <f>`, iguais às constantes exportadas pelo hook; o briefing "Escreva uma receita de bolo de cenoura com cobertura de chocolate, farinha, ovos, açúcar, forno a 180 graus por quarenta minutos, e explique como untar a forma." contra a cópia do banco real devolve `[]` — provado por `node hooks/testa-memoria-assunto.cjs` com o caso novo `ok` e `0 falha(s)`, `node -p "const L=require('./hooks/lib/memoria-assunto.cjs');L.LIMIAR_BM25+' '+L.TETO_DF_FRACAO"` batendo com o documento, e a saída de `buscarPorAssunto` do briefing do bolo colada (`[]`).
