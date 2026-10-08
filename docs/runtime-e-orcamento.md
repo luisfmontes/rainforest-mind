@@ -105,6 +105,22 @@ hooks injetam memória durante a sessão, sob o cabeçalho `## Memória do assun
   **≤ 1/3**; senão sai. Leitura: `node scripts/memoria.cjs utilidade --relatorio`
   (por canal, buscas ativas e a linha `régua D7`).
 
+## Glossário do repo: o que é injetado e quanto
+
+O `GLOSSARIO.md` da raiz do repositório entra em dois canais, sob o cabeçalho `## Glossário do repo`. Ele não entra na abertura da sessão: entre os hooks de `hooks/*.cjs`, só os dois abaixo leem o arquivo.
+
+| Canal | Hook (`hooks/hooks.json`) | Evento | Como entrega |
+|---|---|---|---|
+| Pedido | `memoria-assunto-prompt.cjs` | `UserPromptSubmit` | `additionalContext` |
+| Subagente | `memoria-assunto-agente.cjs` | `PreToolUse`, matcher `Task\|Agent` (`hooks/hooks.json:122`) | `updatedInput`: o bloco do glossário vai ao fim do `prompt` do briefing, antes do bloco de memória |
+
+- **Teto:** 3 verbetes (`VERBETES_MAX = 3`, `hooks/lib/glossario.cjs:25`) e 1.800 B no bloco inteiro (`TETO_BYTES_GLOSSARIO = 1800`, `:26`). Cada linha de verbete tem no máximo 900 B (`BYTES_MAX_VERBETE = 900`, `:27`); linha maior não entra (`:238`), e se o bloco passar de 1.800 B a última linha sai (`:243-244`).
+- **Casamento:** só entra verbete cujo termo casa com o texto do pedido ou do briefing (`casarVerbetes`, `memoria-assunto-prompt.cjs:83` e `memoria-assunto-agente.cjs:24`).
+- **Arquivo do repo:** o `GLOSSARIO.md` é procurado subindo a partir do diretório atual até o primeiro que tenha `.git`, e só ali (`hooks/lib/glossario.cjs:169-181`).
+- **Sem repetir, só no pedido:** o hook do pedido grava em `<raiz>/memoria-assunto/<sessão>.glossario.json` só as chaves dos verbetes já servidos (`memoria-assunto-prompt.cjs:81`, `:88`), nunca o texto do pedido. O hook do subagente não lê esse arquivo: cada briefing é contexto novo.
+- **Sem banco:** o glossário é lido antes de qualquer acesso ao banco (`memoria-assunto-prompt.cjs:141-143`), e o caminho do glossário no subagente não passa pelo banco (`memoria-assunto-agente.cjs:19-27`).
+- **Raiz de dados, no pedido:** o hook do pedido ainda exige uma raiz de dados: sem ela, sai com `sem raiz de dados` antes do glossário (`memoria-assunto-prompt.cjs:139`). A raiz é `.rainforest/` com `FOCO.md` ou `ideias.jsonl`, `~/.rainforest`, ou o próprio plugin (`hooks/lib/raiz.cjs:40`); sem nenhum deles, `resolverRaiz` devolve `raiz: null` (`hooks/lib/raiz.cjs:99`). O hook do subagente não depende disso.
+
 ## Orçamento de token
 
 O rainforest-mind é injetado em toda sessão, então o custo dele é real e precisa de medição contínua. O `scripts/orcamento.cjs` mede as fontes (hook, skills, commands, agentes) em byte e acusa quando passa do teto de **15.000 B** — subiu de 14.000 em 2026-08-25, com a conta escrita no cabeçalho do script. Ele entra no laço de testes do `CONTRIBUTING.md:11` pela convenção de nome, via `scripts/testa-orcamento.sh` — o workflow `.github/workflows/baterias.yml` roda todas as baterias (`scripts/testa-*.sh` e `hooks/testa-*.sh`) automaticamente **a cada PR**, e sob demanda por `workflow_dispatch`; o gatilho de push na `main` saiu em 2026-08-25, quando a conta de Actions bateu 90% da cota:
