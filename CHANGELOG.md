@@ -18,7 +18,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   faltou, regra mecânica que vira trava, economia de ferramenta, instrução sem efeito, informação que faltou.
 - **Corpo de PR com Resumo, Evidência e Perigo de merge.** O `fechar` passa a escrever o PR com o menor visual que
   explica a mudança, a saída antes/depois e se o merge é porta de mão dupla ou única, com o raio de impacto.
-- **Pergunta em que "sim" aceita a recomendada** (`brainstorm`, regra 16) e **prova de que a mutação pousou**
+- **Pergunta em que "sim" aceita a recomendada** (`brainstorm`) e **prova de que a mutação pousou**
   antes de confiar no vermelho (`depurar`).
 
 ## 1.47.0 — 2026-10-07
