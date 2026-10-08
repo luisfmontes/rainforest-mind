@@ -160,8 +160,10 @@ A lógica pura mora em `hooks/painel-puro.mjs`, `hooks/deixado-puro.mjs` e `hook
 *A barra.* Figuras, da esquerda para a direita: estado (`● trabalhando` ou `○ pronto`),
 `Tokens`, `Custo`, `Contexto` (0 a 100 com a porcentagem), `Cache` (quente com a contagem e o custo
 do reenvio, ou frio), `Deixado` (só quando há item aberto), `Ferram./min`, `Subagentes`, `Turnos`,
-`Erros` e o relógio ⏰. As que não cabem em `bodyColumns` caem da direita; o estado e o ⏰
-são as últimas a cair, o ⏰ por último. Com o transcript de um subagente em tela, a barra é a dele.
+`Erros` e o relógio ⏰. O corte não é contíguo: o ⏰ tenta entrar primeiro, o estado em
+seguida, e as demais na ordem de exibição, cada uma se couber no que sobra de `bodyColumns` — a que
+não cabe não impede uma menor depois dela (em 44 colunas ficam estado, `Deixado` e ⏰, sem `Tokens`).
+O ⏰ é o último a cair. Com o transcript de um subagente em tela, a barra é a dele.
 Custo, contexto e cache vêm de `$.session.usage` com `breakdown: 'summary'` (estimativa local), e
 o preço do cache é estimativa a preço de lista (cotações do desk de 2026-09-25, não reconferidas
 contra a tabela oficial).
@@ -182,7 +184,11 @@ MCP não é detectada, e o pane diz isso. Cada escrita roda `scripts/desvio-do-p
 plano, que compara o arquivo com a soma dos `arquivos:` de todas as tarefas do plano do fluxo em
 curso neste worktree (mais os isentos do `creep`). Arquivo fora do plano acende uma linha vermelha no
 mapa e um único toast por arquivo; o aviso vai só ao usuário, nada vai ao modelo. Fora de fluxo, ou
-com fluxo sem plano, o mapa só lista e nada fica vermelho.
+com fluxo sem plano, o mapa só lista e nada fica vermelho. Cada caminho roda o script uma vez, mas
+só veredito definitivo (`dentro`, `fora`, `isento`) fica guardado: `sem-fluxo`, `sem-plano`,
+`sem-arquivos` e `fora-da-raiz` mudam na mesma sessão, e a reescrita do arquivo checa de novo. A fila
+espera até 50 caminhos; da 51ª escrita distinta em diante o arquivo entra no mapa sem veredito, e só
+uma reescrita dele o checa — arquivo escrito uma vez com a fila cheia não tem o desvio conferido.
 
 *Deixado para depois.* Três origens: as frases de adiamento da resposta (português e inglês), os
 marcadores de pendência escritos em arquivo, e um segundo modelo (alias `haiku`, por
