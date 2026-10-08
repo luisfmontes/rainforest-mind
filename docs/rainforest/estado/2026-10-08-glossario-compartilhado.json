@@ -21,7 +21,104 @@
     "em": "2026-10-08"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-08",
+    "tarefas_ok": 13,
+    "tarefas": 14,
+    "em_voo": [],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "33a0d6b",
+        "iteracao": 1,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:22:32.360Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "33a0d6b",
+        "iteracao": 1,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:22:32.360Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "33a0d6b",
+        "iteracao": 2,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:29:49.229Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "65404dd",
+        "iteracao": 1,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:29:49.229Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "33a0d6b",
+        "iteracao": 2,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:30:57.196Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "33a0d6b",
+        "iteracao": 3,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:30:57.196Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "3e592eb",
+        "iteracao": 1,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:30:57.196Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "3e592eb",
+        "iteracao": 1,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:30:57.196Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "3e592eb",
+        "iteracao": 1,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:30:57.196Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "3e592eb",
+        "iteracao": 2,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:30:57.196Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "36335a3",
+        "iteracao": 1,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:44:01.300Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "36335a3",
+        "iteracao": 1,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:44:01.300Z"
+      }
+    ],
+    "em": "2026-10-08",
+    "pendentes": [
+      "tarefa-10: pulada por decisao do Luis; memorias sao conduta, nao so termo (ganharam linha de ponteiro)",
+      "revisar: P1 hook do pedido sai sem raiz de dados antes do glossario (memoria-assunto-prompt.cjs:139)",
+      "revisar: cenario de worktree de agente cita worktree temporario",
+      "revisar: D4 nao distingue memoria de termo de memoria de conduta"
+    ]
   },
   "revisar": {
     "status": "pendente"
