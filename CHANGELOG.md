@@ -10,7 +10,7 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
-## 1.48.0 — 2026-10-07
+## 1.48.0 — 2026-10-08
 
 - **O `semear` lê a sessão real.** Além de observações e relatórios, lista os transcripts recentes do projeto
   (inclusive os dos worktrees, onde roda o subagente), com quantas chamadas de ferramenta cada um fez e quantas
