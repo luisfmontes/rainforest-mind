@@ -438,6 +438,44 @@ console.log("== I. mensagem de bloqueio no HEAD destacado e na branch padrao =="
   descartar(repo);
 }
 
+// == J. leve impresso pela portaria roda de outro cwd e libera o despacho ==
+console.log("== J. leve impresso pela portaria roda de outro cwd ==");
+{
+  const repo = novoRepo();
+  const wt = comWorktree(repo);
+
+  const bloq = despachar(repo, wt, "rainforest-mind:executor");
+  caso("J0 sem fluxo e sem leve, executor sai 2",
+    bloq.status === 2, `exit=${bloq.status} stderr=${bloq.stderr}`);
+  const leveImpresso = /node (\S+estado\.cjs) (leve --motivo "[^"]*" --repo "[^"]*")/.exec(bloq.stderr || "");
+  const iniciarImpresso = /node (\S+estado\.cjs) iniciar --slug/.exec(bloq.stderr || "");
+  caso("J1 o leve impresso traz estado.cjs absoluto e --repo com a raiz",
+    leveImpresso !== null && path.isAbsolute(leveImpresso[1]) && /--repo "/.test(leveImpresso[2]), bloq.stderr);
+  caso("J2 nenhuma contrabarra no comando leve nem no iniciar impressos",
+    leveImpresso !== null && iniciarImpresso !== null
+      && !leveImpresso[0].includes("\\") && !iniciarImpresso[0].includes("\\"), bloq.stderr);
+  caso("J3 o iniciar impresso usa o estado.cjs absoluto",
+    iniciarImpresso !== null && path.isAbsolute(iniciarImpresso[1]), bloq.stderr);
+
+  // Roda o leve IMPRESSO, de verdade: sem shell, a partir de um cwd fora do repositorio.
+  // Sem o leve impresso no formato certo nao ha o que rodar: J4/J5 caem vermelhos, sem derrubar a bateria.
+  const args = leveImpresso === null ? [] : [...leveImpresso[2].matchAll(/"([^"]*)"|(\S+)/g)].map((m) => (m[1] !== undefined ? m[1] : m[2]));
+  const leve = leveImpresso === null ? { status: null, stdout: "", stderr: "leve nao impresso" } : spawnSync(process.execPath, [leveImpresso[1], ...args], {
+    cwd: repo.dados,
+    encoding: "utf8",
+    env: ambiente(repo, wt),
+    timeout: TIMEOUT_MS,
+  });
+  caso("J4 o leve impresso, rodado de outro cwd, grava o registro: exit 0",
+    leve.status === 0, `exit=${leve.status} stdout=${leve.stdout} stderr=${leve.stderr}`);
+
+  const depois = despachar(repo, wt, "rainforest-mind:executor");
+  caso("J5 com o leve impresso rodado, o despacho seguinte do executor passa: exit 0",
+    depois.status === 0, `exit=${depois.status} stderr=${depois.stderr}`);
+
+  descartar(repo);
+}
+
 console.log("");
 console.log(`ok: ${ok}   falhou: ${falhou}   skipped: 0`);
 process.exit(falhou > 0 ? 1 : 0);

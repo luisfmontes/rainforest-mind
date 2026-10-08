@@ -1137,7 +1137,11 @@ function main() {
     // mensagem nomeia o agente, o estagio exigido e as saidas; o deny vai ao log.
     if (bloqueiaFluxoPulado) {
       const exige = Array.isArray(estagiosDeclarados) ? estagiosDeclarados.join(" ou ") : "(manifesto sem 'estagios')";
-      const caminhoEstado = path.join(path.resolve(__dirname, ".."), "scripts", "estado.cjs");
+      // Caminho absoluto com barras `/`: o comando impresso roda de qualquer cwd e
+      // sem contrabarra que o shell do agente engula (Issue #430, emenda 2).
+      const caminhoEstado = path.join(path.resolve(__dirname, ".."), "scripts", "estado.cjs").split(path.sep).join("/");
+      const raizBarras = raiz.split(path.sep).join("/");
+      const leveDaMensagem = `node ${caminhoEstado} leve --motivo "<por que>" --repo "${raizBarras}"`;
       // Saida 2 depende da branch. HEAD destacado: o leve vale por branch, entao manda
       // trocar para uma. Branch padrao de repo rainforest: o leve e recusado ali (regra 11),
       // entao manda despachar de dentro do worktree do fluxo. Demais casos: o leve direto.
@@ -1145,12 +1149,12 @@ function main() {
       const saida2 = branchAtual === "HEAD"
         ? `\n  saida 2: HEAD destacado, e o leve vale por branch: troque para uma branch de trabalho (git switch -c fluxo/<nome>) e despache dela`
         : trilho === "rainforest" && branchEhPadrao(raiz, branchAtual)
-          ? `\n  saida 2: '${branchAtual}' e a branch padrao, e o leve e recusado nela (regra 11): despache de dentro do worktree do fluxo, onde o leve vale: node ${caminhoEstado} leve --motivo "<por que>"`
-          : `\n  saida 2: caminho leve, para hotfix mecanico: node ${caminhoEstado} leve --motivo "<por que>"`;
+          ? `\n  saida 2: '${branchAtual}' e a branch padrao, e o leve e recusado nela (regra 11): despache de dentro do worktree do fluxo, onde o leve vale: ${leveDaMensagem}`
+          : `\n  saida 2: caminho leve, para hotfix mecanico: ${leveDaMensagem}`;
       const motivo =
         `agente '${nomeAgente}' escreve (escreve: true) e so roda no estagio que declara: exige ${exige}; ` +
         `estagio aberto: ${estagioAtivo} (Issue #430, D3/D5)` +
-        `\n  saida 1: abrir ou avancar o fluxo ate ${exige} (rainforest: /rainforest-mind:brainstorm ou node scripts/estado.cjs iniciar --slug <slug>; protheus: /protheus:trabalhar)` +
+        `\n  saida 1: abrir ou avancar o fluxo ate ${exige} (rainforest: /rainforest-mind:brainstorm ou node ${caminhoEstado} iniciar --slug <slug>; protheus: /protheus:trabalhar)` +
         saida2;
       gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
       negar(motivo);
