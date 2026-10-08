@@ -25,7 +25,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   as duas saídas. Agente que não está no manifesto (de outro plugin) segue só registrado.
 - **Chave `aviso-fluxo` desliga tudo.** No config do projeto, ela desliga a trava de edição e a de despacho.
 - **Fica de fora:** escrita feita por Bash (`sed`, `node -e`, redirecionamento) não é barrada. O bloqueio pega o
-  Edit, o Write e o MultiEdit.
+  Edit, o Write e o MultiEdit. O motivo do `leve` não é julgado: fica no rastro para auditar depois.
 
 ## 1.48.0 — 2026-10-08
 

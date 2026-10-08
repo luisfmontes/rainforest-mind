@@ -71,7 +71,7 @@ pronto quando: com o payload real do harness para `Agent` (`{"session_id","cwd",
 
 ### 4. Doc, regra 10 e versão [tipo: docs]
 atende: D1, D2, D3, D4, D5, D6, D7, D8, D9
-arquivos: `README.md`, `CHANGELOG.md`, `skills/rainforest-mind/SKILL.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `hooks/lib/config.cjs`
+arquivos: `README.md`, `CHANGELOG.md`, `skills/rainforest-mind/SKILL.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `hooks/lib/config.cjs`, `hooks/testa-abertura-mod-foco.sh`
 depende de: 2, 3
 paralela: nao
 mutacao: n/a
