@@ -10,6 +10,17 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.48.0 — 2026-10-07
+
+- **O `semear` lê a sessão real.** Além de observações e relatórios, lista os transcripts recentes do projeto
+  (inclusive os dos worktrees, onde roda o subagente), com quantas chamadas de ferramenta cada um fez e quantas
+  deram erro (`--sessoes N`, padrão 5). A skill traz as lentes para ler o transcript: navegação, checagem que
+  faltou, regra mecânica que vira trava, economia de ferramenta, instrução sem efeito, informação que faltou.
+- **Corpo de PR com Resumo, Evidência e Perigo de merge.** O `fechar` passa a escrever o PR com o menor visual que
+  explica a mudança, a saída antes/depois e se o merge é porta de mão dupla ou única, com o raio de impacto.
+- **Pergunta em que "sim" aceita a recomendada** (`brainstorm`, regra 16) e **prova de que a mutação pousou**
+  antes de confiar no vermelho (`depurar`).
+
 ## 1.47.0 — 2026-10-07
 
 - **Erros de ferramenta ficam registrados.** O "Erros N" do mod zerava com a sessão. Agora cada falha (comando que
