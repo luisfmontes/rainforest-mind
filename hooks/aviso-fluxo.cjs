@@ -73,6 +73,29 @@ function branchAtual(gitTop) {
   }
 }
 
+// Branch padrão do repositório do arquivo: origin/HEAD, e main/master sempre. É o mesmo critério
+// que o `leve` do scripts/estado.cjs aplica (branchPadrao + ['main','master'], D7): se o gate
+// oferecesse o leve onde o estado recusa, a mensagem levaria a um beco. Cópia local porque o
+// estado.cjs é script com efeito ao ser carregado e não exporta o helper.
+function ehBranchPadraoDoRepo(gitTop, branch) {
+  if (!branch) return false;
+  if (branch === 'main' || branch === 'master') return true;
+  try {
+    const ref = execFileSync(caminhoExecutavel('git'), ['-C', gitTop, 'symbolic-ref', '--short', 'refs/remotes/origin/HEAD'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    return ref.replace(/^origin\//, '') === branch;
+  } catch {
+    return false;
+  }
+}
+
+// Caminho com barras normais, para colar em comando que roda em bash e em PowerShell.
+function barras(p) {
+  return p.split(path.sep).join('/');
+}
+
 function detectarTrilho(gitTop) {
   // Rainforest: docs/rainforest/estado/ existe
   const dirEstado = path.join(gitTop, 'docs', 'rainforest', 'estado');
@@ -129,12 +152,21 @@ function mensagemHeadDestacado(trilho) {
   ].join('\n');
 }
 
-function mensagemBloqueio(trilho, branch) {
-  const leve = `node ${SCRIPT_ESTADO} leve --motivo "<por quê>"`;
+// `ofereceLeve` false só no rainforest na branch padrão: lá o `leve` é recusado (D7), então a
+// saída é o worktree. O `--repo` aponta o repositório do arquivo (emenda 2, #430).
+function mensagemBloqueio(trilho, branch, ofereceLeve, gitTop) {
+  const iniciar = `node ${SCRIPT_ESTADO} iniciar --slug <slug>`;
+  const leve = `node ${SCRIPT_ESTADO} leve --motivo "<por quê>" --repo "${barras(gitTop)}"`;
   if (trilho === 'rainforest') {
+    if (!ofereceLeve) {
+      return [
+        `BLOQUEADO: este repositório tem fluxo rainforest e nenhum está aberto na branch '${branch}', que é a branch padrão. Edição de código direto nela não passa.`,
+        `Saída: trabalhe num worktree e abra o fluxo nele: \`git worktree add .claude/worktrees/<nome> -b fluxo/<nome>\`, entre no worktree e rode /rainforest-mind:brainstorm (roda \`${iniciar}\`).`,
+      ].join('\n');
+    }
     return [
       `BLOQUEADO: este repositório tem fluxo rainforest e nenhum está aberto na branch '${branch}'. Edição de código sem fluxo não passa.`,
-      `Saída 1, abrir o fluxo: /rainforest-mind:brainstorm (roda \`node ${SCRIPT_ESTADO} iniciar --slug <slug>\`).`,
+      `Saída 1, abrir o fluxo: /rainforest-mind:brainstorm (roda \`${iniciar}\`).`,
       `Saída 2, caminho leve declarado para hotfix mecânico: \`${leve}\``,
     ].join('\n');
   }
@@ -206,20 +238,24 @@ function main() {
     process.exit(0);
   }
 
-  // HEAD destacado: sem branch não há fluxo nem `leve` possível; bloqueia sem oferecer o leve
+  // HEAD destacado: sem branch não há fluxo nem `leve` possível (o estado.cjs recusa).
   const branch = branchAtual(gitTop);
-  if (branch === 'HEAD') {
-    fs.writeSync(2, mensagemHeadDestacado(trilho) + '\n');
-    process.exit(2); // bloqueio-head-destacado
-  }
+  const headDestacado = branch === 'HEAD';
 
   // Critério 8: a branch tem o caminho leve declarado (D6, D7)
-  if (branch && leveDaBranch({ gitTop, branch })) {
+  if (!headDestacado && branch && leveDaBranch({ gitTop, branch })) {
     process.exit(0);
   }
 
-  // Bloqueio: fs.writeSync garante que a mensagem sai antes do exit.
-  fs.writeSync(2, mensagemBloqueio(trilho, branch || 'desconhecida') + '\n');
+  // Bloqueio (D7, D9): o leve só é oferecido onde o estado.cjs o aceita.
+  const ehBranchPadrao = ehBranchPadraoDoRepo(gitTop, branch);
+  const ofereceLeve = !headDestacado && !(trilho === 'rainforest' && ehBranchPadrao);
+  const texto = headDestacado
+    ? mensagemHeadDestacado(trilho)
+    : mensagemBloqueio(trilho, branch || 'desconhecida', ofereceLeve, gitTop);
+
+  // fs.writeSync garante que a mensagem sai antes do exit.
+  fs.writeSync(2, texto + '\n');
   process.exit(2); // bloqueio-fluxo
 }
 

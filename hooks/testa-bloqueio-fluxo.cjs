@@ -486,6 +486,49 @@ caso('HEAD destacado sem fluxo sai 2 mandando trocar para uma branch, sem oferec
   } finally { limparSandbox(s); }
 });
 
+caso('rainforest na branch padrao: mensagem manda abrir worktree e nao oferece leve', () => {
+  const s = criarSandbox();
+  try {
+    criarDirEstado(s);
+    // criarSandbox ja deixa a branch main, que e a padrao: nenhum branch() aqui.
+    const arq = escreverCodigo(s, 'scripts/x.cjs');
+    const r = rodarHook(payload({ cwd: s, file: arq }), s);
+    const erro = bloqueado(r, ['git worktree add', '/rainforest-mind:brainstorm', `${ESTADO_BARRAS} iniciar`]);
+    if (erro) return erro;
+    if (/estado\.cjs leve/.test(r.stderr)) return `mensagem oferece leve na branch padrao: ${r.stderr}`;
+    return null;
+  } finally { limparSandbox(s); }
+});
+
+caso('o comando leve impresso, rodado por spawn de outro cwd, libera a proxima edicao', () => {
+  const s = criarSandbox();
+  const fora = criarForaDeRepo();
+  try {
+    criarDirEstado(s);
+    branch(s, 'fluxo/x');
+    const arq = escreverCodigo(s, 'scripts/x.cjs');
+    const r = rodarHook(payload({ cwd: s, file: arq }), s);
+    const erro = bloqueado(r, []);
+    if (erro) return erro;
+    // Extrai do stderr o comando como foi impresso; o motivo fica com o texto literal do
+    // placeholder, que é o que o comando impresso carrega.
+    const m = /node (.+?estado\.cjs) leve --motivo "([^"]*)" --repo "([^"]*)"/.exec(r.stderr);
+    if (!m) return `comando leve nao extraido do stderr: ${r.stderr}`;
+    const [, script, motivo, repo] = m;
+    if (script !== ESTADO_BARRAS) return `caminho do estado.cjs impresso nao e o absoluto com barras: ${script}`;
+    if (repo.includes('\\')) return `--repo impresso com contrabarra: ${repo}`;
+    if (fs.realpathSync.native(repo) !== fs.realpathSync.native(s)) return `--repo nao aponta a raiz do sandbox: ${repo}`;
+    const leve = spawnSync(process.execPath, [script, 'leve', '--motivo', motivo, '--repo', repo], {
+      cwd: fora,
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+    if (leve.status !== 0) return `leve impresso saiu ${leve.status} a partir de outro cwd: ${leve.stderr}`;
+    if (!leve.stdout.includes("leve: 'fluxo/x' registrado")) return `leve sem confirmacao: ${leve.stdout}`;
+    return passa(rodarHook(payload({ cwd: s, file: arq }), s));
+  } finally { limparSandbox(s); limparSandbox(fora); }
+});
+
 // ============================================================================
 // EXECUÇÃO
 // ============================================================================
