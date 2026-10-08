@@ -164,8 +164,15 @@ const TETOS = {
    * CI (issue #81) — o mesmo tipo de descuido, de novo. Se esta margem cair
    * perto de zero, é hora de decidir encurtar `references/regra-NN.md` ou
    * subir o teto de propósito — nunca de deixar a folga sumir calada.
+   *
+   * 2026-10-08: subiu de 10.500 para 11.500 B, de propósito (decisão do Luís).
+   * O `regra-12.md` estava a 5 B do teto, e o índice no topo das references
+   * longas (`scripts/conferir-indice-referencias.cjs`) custa ~700 B de leitura:
+   * 7 de 16 leituras medidas nos transcripts pararam no meio do arquivo, e o
+   * índice é o que diz a quem parou o que ficou para trás. Maior hoje:
+   * `regra-12.md`, 11.200 B — 2,6% de folga.
    */
-  REFERENCE_MAX_BYTES: 10500,
+  REFERENCE_MAX_BYTES: 11500,
   /**
    * Teto do `skills/rainforest-mind/SKILL.md` inteiro, em BYTES — é o custo de
    * carregar o ÍNDICE (núcleos + ponteiros) antes de decidir qual
