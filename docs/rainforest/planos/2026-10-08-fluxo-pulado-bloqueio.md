@@ -159,8 +159,8 @@ paralela: nao
 prova: `node hooks/testa-portaria-fluxo-pulado.cjs`
 mutacao:
   arquivo: `hooks/portaria.cjs`
-  de: `const leveDaMensagem = `node ${caminhoEstado} leve --motivo "<por que>" --repo "${raizBarras}"`;`
-  para: `const leveDaMensagem = `node ${caminhoEstado} leve --motivo "<por que>"`;`
+  de: `const leveDaMensagem = `"${nodeBarras}" "${caminhoEstado}" leve --motivo "<por que>" --repo "${raizBarras}"`;`
+  para: `const leveDaMensagem = `"${nodeBarras}" "${caminhoEstado}" leve --motivo "<por que>"`;`
   bateria: `node hooks/testa-portaria-fluxo-pulado.cjs`
   fixture: caso "o leve impresso pela portaria, rodado de outro cwd, libera o despacho"
 pronto quando: com o payload real do harness para `Agent` bloqueado por fluxo, o stderr traz o `estado.cjs` por caminho absoluto com barras `/` (nenhuma contrabarra no comando) nas duas saídas — a de abrir o fluxo (`iniciar`) e a do `leve` com `--repo "<raiz>"` —, e a bateria **roda o comando `leve` impresso** a partir de um `cwd` diferente e o despacho seguinte passa (exit 0). A linha da mutação é escrita literalmente como no `de:`. Provado por `node hooks/testa-portaria-fluxo-pulado.cjs` (`falhou: 0`, `skipped: 0`) e todas as `hooks/testa-portaria-*.cjs` com exit 0.
@@ -191,3 +191,30 @@ mutacao:
   bateria: `node hooks/testa-bloqueio-fluxo.cjs`
   fixture: caso "protheus: gates.json recente de outra branch nao abre o fluxo desta"
 pronto quando: em repositório protheus (`docs/plans/x.gates.json`), com a sessão na branch `b1`: (a) `.gates.json` com `"branch": "b2"` e mtime de agora → Edit de `.prw` sai 2 e despacho de `executor` sai 2; (b) `"branch": "b1"` com mtime de 3 dias atrás → Edit sai 0 e despacho sai 0; (c) sem campo `branch`, mtime de agora → sai 0; (d) sem campo `branch`, mtime de 3 dias → sai 2; (e) `.gates.json` ilegível não derruba o hook (é ignorado). A decisão por arquivo mora numa função exportada de `hooks/lib/caminho-leve.cjs` usada pelos dois hooks, e a linha da mutação é escrita literalmente como no `de:`. Provado por `node hooks/testa-bloqueio-fluxo.cjs` e `node hooks/testa-portaria-fluxo-pulado.cjs` (`falhou: 0`, `skipped: 0`).
+
+## Emenda 4 — o CI do PR #440 reprovou (2026-10-08)
+
+O laço inteiro de baterias pegou três vermelhas que as baterias do plano não rodam: `scripts/testa-node-por-nome.sh` (as mensagens montam `` `node ${...}` ``, a forma que o detector barra), e `hooks/testa-abertura-mod-config.sh` / `hooks/testa-contexto-sessao.sh` (núcleo das regras em 6022 B, teto 6000; `regra-10-portaria.md` em 10612 B, teto 10500). Os dois achados baixos da rodada 3 (Issue #438) entram aqui porque tocam as mesmas linhas. O `de:`/`para:` da tarefa 10 passa a citar a linha nova.
+
+### 13. Mensagens dos gates chamam o node pelo caminho do processo, entre aspas [tipo: implementar]
+atende: D9
+arquivos: `hooks/aviso-fluxo.cjs`, `hooks/portaria.cjs`, `hooks/testa-bloqueio-fluxo.cjs`, `hooks/testa-portaria-fluxo-pulado.cjs`
+depende de: 12
+paralela: nao
+prova: `bash scripts/testa-node-por-nome.sh`
+mutacao:
+  arquivo: `hooks/portaria.cjs`
+  de: `const leveDaMensagem = `"${nodeBarras}" "${caminhoEstado}" leve --motivo "<por que>" --repo "${raizBarras}"`;`
+  para: `const leveDaMensagem = `${nodeBarras} ${caminhoEstado} leve --motivo "<por que>" --repo "${raizBarras}"`;`
+  bateria: `node hooks/testa-portaria-fluxo-pulado.cjs`
+  fixture: caso "plugin em pasta com espaco: o leve impresso pela portaria roda e libera o despacho"
+pronto quando: os comandos `iniciar` e `leve` impressos pelos dois gates começam por `"<process.execPath com />" "<estado.cjs absoluto com />"` (as duas aspas), nunca por `node `; `bash scripts/testa-node-por-nome.sh` sai 0; com o plugin copiado para uma pasta cujo caminho tem espaço, o comando `leve` extraído do stderr e rodado de verdade (spawn sem shell, quebrando por aspas) sai 0 e a edição/despacho seguinte passa — nos dois gates. Provado por `bash scripts/testa-node-por-nome.sh`, `node hooks/testa-bloqueio-fluxo.cjs` e `node hooks/testa-portaria-fluxo-pulado.cjs` (`falhou: 0`, `skipped: 0`).
+
+### 14. Núcleo e referência da regra 10 dentro do teto [tipo: docs]
+atende: D3, D5
+arquivos: `skills/rainforest-mind/SKILL.md`, `skills/rainforest-mind/references/regra-10-portaria.md`, `hooks/testa-abertura-mod-config.sh`, `hooks/testa-contexto-sessao.sh`
+depende de: nenhuma
+paralela: sim
+mutacao: n/a
+  motivo: só texto e as constantes de tamanho que o contrato D7 da abertura fixa; a falsificação são as próprias catracas de bytes.
+pronto quando: o núcleo da regra 10 continua dizendo que agente que escreve fora do estágio dele e sem `leve` é barrado (coerente com `bloqueiaFluxoPulado` em `hooks/portaria.cjs`), e o núcleo emitido fica ≤ 6000 B com a folga da 22.1 respeitada (piso 700 B); `regra-10-portaria.md` ≤ 10500 B e a seção "Fail-closed" deixa de dizer "quatro casos" (há o de fluxo pulado); `NUCLEO_ESPERADO` e as constantes de `testa-abertura-mod-config.sh` são atualizadas para o valor medido, com a linha de histórico datada no padrão das anteriores. Provado por `bash hooks/testa-contexto-sessao.sh` e `bash hooks/testa-abertura-mod-config.sh` com zero falha.
