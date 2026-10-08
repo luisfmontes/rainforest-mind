@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.48.0-1e5c3f?style=flat-square" alt="versão 1.48.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.49.0-1e5c3f?style=flat-square" alt="versão 1.49.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -343,6 +343,44 @@ do acervo real (74,6% na metade em português, 89,2% na metade em inglês) —
 acima do limiar de 70% definido para as duas metades, então segue sem índice
 vetorial por ora:
 [`relatorios/2026-09-18-recall-fts5-reconciliacao.md`](relatorios/2026-09-18-recall-fts5-reconciliacao.md).
+
+### Memória pelo assunto: três canais
+
+A memória chega por três caminhos, cada um com o seu evento:
+
+| Canal | Evento | O que entra |
+|---|---|---|
+| **Abertura** | `SessionStart` (ou o mod) | O bloco `## Memória (corpus residentes)`, escolhido pela recência. **Não mudou.** |
+| **Pedido** | `UserPromptSubmit` | Até **3 memórias** de qualquer projeto que tratam do assunto do pedido, sob o cabeçalho `## Memória do assunto`. Não repete o que a sessão já recebeu (nem o que a abertura serviu) e só entra o que passa do limiar de relevância (bm25 ≤ -10, buscando pelos 30 termos mais raros do pedido e descartando palavras presentes em mais de 2% das memórias). Pedido que começa por `/` ou com menos de 3 palavras úteis é ignorado. |
+| **Subagente** | `PreToolUse` da ferramenta `Agent` | O mesmo bloco, acrescentado ao **fim do briefing** do subagente, pelo `updatedInput`. O hook só reescreve o texto do briefing; não decide permissão. Cada subagente começa do zero, então recebe a memória do assunto mesmo que a sessão já a tenha recebido. |
+
+Sem candidata acima do limiar, nada é injetado. Cada bloco tem no máximo
+**1.500 bytes**. O projeto atual só desempata entre candidatas de mesma
+relevância. Os hooks só leem o banco: o que gravam é a lista de ids já
+servidos da sessão, sem texto.
+
+**Falha calada.** Banco ausente ou travado e qualquer erro saem com exit 0 e sem
+injeção, e o hook tem teto de 5 s no `hooks.json`: o pedido ou o despacho do
+subagente segue como se o canal não existisse.
+
+**Régua D7: o canal novo tem que se pagar.** A medição de 2026-10-08 deu base de
+**27%** das sessões com memória útil (nota ≥ 0,5) e **171** de 255 sessões
+com perda para a recência. Catorze dias depois de a versão estar viva no
+cache, o canal fica se as sessões com memória útil (em qualquer canal)
+chegarem a **≥ 40%** e as perdas caírem para **≤ 1/3**; abaixo disso, o canal
+sai. Para ler:
+
+```bash
+node scripts/memoria.cjs utilidade --relatorio
+```
+
+O relatório separa a utilidade por canal, conta as buscas ativas (quando a
+sessão ou o subagente consultou a memória por conta própria) e fecha com a
+linha `régua D7: FICA` ou `SAI`. A janela começa na primeira memória servida
+pelo canal novo; sem canal novo servido, ou com o banco ainda sem a migração,
+a linha diz `sem dado`. A conta dos 14 dias é de quem lê: o relatório não
+espera por ela. O design, com o porquê de cada número:
+[`docs/rainforest/design/2026-10-08-memoria-por-assunto.md`](docs/rainforest/design/2026-10-08-memoria-por-assunto.md).
 
 ## Mais fundo
 

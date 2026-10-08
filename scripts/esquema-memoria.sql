@@ -105,6 +105,7 @@ CREATE TABLE IF NOT EXISTS uso_memoria (
   servida INTEGER NOT NULL,
   nota REAL,
   pontuada_em TEXT NOT NULL,
+  canal TEXT NOT NULL DEFAULT 'abertura',
   UNIQUE(origem, ref_id, sessao)
 );
 
@@ -112,7 +113,11 @@ CREATE TABLE IF NOT EXISTS uso_memoria (
 -- manutenção (Tarefa 3, D7).
 CREATE TABLE IF NOT EXISTS uso_memoria_sessoes (
   sessao TEXT PRIMARY KEY,
-  pontuada_em TEXT NOT NULL
+  pontuada_em TEXT NOT NULL,
+  -- Buscas ativas (D9, memória por assunto): só inteiros, nunca texto (D10).
+  buscas_principal INTEGER,
+  buscas_subagente INTEGER,
+  subagentes INTEGER
 );
 
 -- Índices para acesso rápido

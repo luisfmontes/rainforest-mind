@@ -31,6 +31,8 @@ const LIMIAR_DF = 3;
 
 // Quantas do contrafactual o relatório grava por sessão (D6).
 const TETO_CONTRAFACTUAL = 14;
+// Espelha o teto de texto por linha de hooks/lib/memoria-assunto.cjs (canal assunto).
+const TETO_LINHA_ASSUNTO = 300;
 
 // Observações do dia (Tarefa 6, D8): SEM o filtro de substituida_por. A
 // reconciliação roda ANTES da pontuação na mesma passada e pode marcar
@@ -42,6 +44,11 @@ const SQL_OBS_DO_DIA = 'SELECT id, projeto, conteudo, criada_em FROM observacoes
 
 // ---- Tarefa 1: extrator do transcrito ----
 
+const CAB_ABERTURA = '## Memória (corpus residentes)';
+const CAB_ASSUNTO = '## Memória do assunto';
+// Prioridade quando a mesma memória chega por mais de um canal na sessão.
+const ORDEM_CANAL = { abertura: 0, pedido: 1, subagente: 2 };
+
 /**
  * Extrai as linhas servidas (`[AAAA-MM-DD (projeto)] ...`) de UM texto de
  * `additionalContext` — o bloco entre `## Memória (corpus residentes)` e a
@@ -52,17 +59,60 @@ const SQL_OBS_DO_DIA = 'SELECT id, projeto, conteudo, criada_em FROM observacoes
  *   apareceram no bloco (mais recente primeiro — é assim que montarMemoria as
  *   grava).
  */
-function extrairLinhasServidas(additionalContext) {
+function extrairLinhasServidas(additionalContext, cabecalhos = [CAB_ABERTURA, CAB_ASSUNTO]) {
   const texto = String(additionalContext || '');
-  const inicio = texto.indexOf('## Memória (corpus residentes)');
-  if (inicio === -1) return [];
-  const marcaMais = texto.indexOf('mais:', inicio);
-  const fim = marcaMais === -1 ? texto.length : marcaMais;
-  const bloco = texto.slice(inicio, fim);
-  return bloco
-    .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => l.startsWith('['));
+  const linhas = [];
+  for (const cabecalho of cabecalhos) {
+    const inicio = texto.indexOf(cabecalho);
+    if (inicio === -1) continue;
+    const apos = inicio + cabecalho.length;
+    // O rodapé `mais:` só existe no bloco da abertura; o do assunto não tem rodapé
+    // (um `jamais:` no texto de uma observação não pode cortá-lo).
+    const marcaMais = cabecalho === CAB_ABERTURA ? texto.indexOf('mais:', inicio) : -1;
+    const proxCabecalho = texto.indexOf('\n## ', apos);
+    const fins = [marcaMais, proxCabecalho].filter((p) => p !== -1);
+    const fim = fins.length === 0 ? texto.length : Math.min(...fins);
+    for (const l of texto.slice(inicio, fim).split('\n')) {
+      const t = l.trim();
+      if (t.startsWith('[')) linhas.push(t);
+    }
+  }
+  return linhas;
+}
+
+// Texto dos tool_use.input de um transcrito de subagente + o briefing (primeira
+// linha `user`), que NÃO pontua (D8) mas é de onde sai o bloco servido.
+function lerTranscritoFilho(arquivo) {
+  const r = { briefing: '', textoTools: '' };
+  let conteudo;
+  try {
+    conteudo = fs.readFileSync(arquivo, 'utf8');
+  } catch (e) {
+    return null;
+  }
+  const partes = [];
+  let viuUser = false;
+  for (const l of conteudo.split('\n')) {
+    if (!l.trim()) continue;
+    let e;
+    try {
+      e = JSON.parse(l);
+    } catch (err) {
+      continue;
+    }
+    const c = e.message && e.message.content;
+    if (e.type === 'user' && !viuUser) {
+      viuUser = true;
+      if (typeof c === 'string') r.briefing = c;
+      else if (Array.isArray(c)) r.briefing = c.map((b) => (b && typeof b.text === 'string' ? b.text : '')).join('\n');
+    } else if (e.type === 'assistant' && Array.isArray(c)) {
+      for (const b of c) {
+        if (b && b.type === 'tool_use' && b.input !== undefined) partes.push(JSON.stringify(b.input));
+      }
+    }
+  }
+  r.textoTools = partes.join('\n');
+  return r;
 }
 
 /**
@@ -92,6 +142,22 @@ function extrairSessao(caminhoTranscrito) {
 
   const servidas = [];
   const partesTexto = [];
+  // Canais novos (memória por assunto): `pedido` guarda a posição, em
+  // partesTexto, do pedido do usuário ao qual a injeção se anexou (o
+  // attachment vem DEPOIS da linha `user` do prompt — fixture prompt-submit);
+  // `subagente` guarda o agentId para achar o transcrito do filho.
+  const injecoes = [];
+  const doSubagente = [];
+  let ultimoPedido = -1;
+  const marcarPedido = () => {
+    ultimoPedido = partesTexto.length - 1;
+    for (const i of injecoes) {
+      if (i.pendente) {
+        i.indiceInjecao = ultimoPedido;
+        i.pendente = false;
+      }
+    }
+  };
 
   for (const linhaArquivo of linhasArquivo) {
     if (!linhaArquivo.trim()) continue;
@@ -114,9 +180,32 @@ function extrairSessao(caminhoTranscrito) {
       }
       const ctx = parsed && parsed.hookSpecificOutput && parsed.hookSpecificOutput.additionalContext;
       if (ctx) {
-        for (const linha of extrairLinhasServidas(ctx)) servidas.push(linha);
+        for (const linha of extrairLinhasServidas(ctx, [CAB_ABERTURA])) servidas.push(linha);
       }
       continue; // attachment nunca entra no texto (D4)
+    }
+
+    // Canal `pedido`: contexto adicional do UserPromptSubmit (D8).
+    if (
+      entrada.type === 'attachment' &&
+      entrada.attachment &&
+      entrada.attachment.hookEvent === 'UserPromptSubmit' &&
+      entrada.attachment.type === 'hook_additional_context'
+    ) {
+      const c = entrada.attachment.content;
+      const ctx = Array.isArray(c) ? c.join('\n') : String(c || '');
+      for (const linha of extrairLinhasServidas(ctx, [CAB_ASSUNTO])) {
+        // Sem pedido anterior (attachment antes da linha `user`): ancora no próximo pedido.
+        injecoes.push({ linha, indiceInjecao: ultimoPedido, pendente: ultimoPedido === -1 });
+      }
+      continue;
+    }
+
+    // Canal `subagente`: o prompt (já com a memória) devolvido ao pai.
+    if (entrada.toolUseResult && typeof entrada.toolUseResult.prompt === 'string') {
+      for (const linha of extrairLinhasServidas(entrada.toolUseResult.prompt, [CAB_ASSUNTO])) {
+        doSubagente.push({ linha, agentId: entrada.toolUseResult.agentId || null });
+      }
     }
 
     // Texto: prompts do usuário e entradas de tool_use do assistente.
@@ -126,6 +215,7 @@ function extrairSessao(caminhoTranscrito) {
       if (typeof conteudoMsg === 'string') {
         // Prompt do usuário digitado direto, sem blocos estruturados.
         partesTexto.push(conteudoMsg);
+        if (entrada.type === 'user') marcarPedido();
         continue;
       }
 
@@ -136,6 +226,7 @@ function extrairSessao(caminhoTranscrito) {
           if (entrada.type === 'assistant' && bloco.type === 'text') continue;
           if (bloco.type === 'text' && typeof bloco.text === 'string') {
             partesTexto.push(bloco.text);
+            if (entrada.type === 'user') marcarPedido();
           } else if (bloco.type === 'tool_use' && bloco.input !== undefined) {
             try {
               partesTexto.push(JSON.stringify(bloco.input));
@@ -148,7 +239,40 @@ function extrairSessao(caminhoTranscrito) {
     }
   }
 
-  return { servidas, texto: partesTexto.join('\n') };
+  const texto = partesTexto.join('\n');
+  const servidasCanal = servidas.map((linha) => ({ linha, canal: 'abertura', texto }));
+
+  for (const { linha, indiceInjecao } of injecoes) {
+    // D8: o pedido que disparou a injeção não pontua a própria injeção.
+    const textoPosterior = partesTexto.slice(indiceInjecao + 1).join('\n');
+    servidasCanal.push({ linha, canal: 'pedido', texto: textoPosterior });
+  }
+
+  // Subagente: texto = tool_use do transcrito do filho; o briefing não conta.
+  const dirFilhos = path.join(path.dirname(caminhoTranscrito), path.basename(caminhoTranscrito, '.jsonl'), 'subagents');
+  const vistos = new Set();
+  for (const { linha, agentId } of doSubagente) {
+    const filho = agentId ? lerTranscritoFilho(path.join(dirFilhos, `agent-${agentId}.jsonl`)) : null;
+    if (agentId) vistos.add(agentId);
+    servidasCanal.push({ linha, canal: 'subagente', texto: filho ? filho.textoTools : '' });
+  }
+  let arquivosFilhos = [];
+  try {
+    arquivosFilhos = fs.readdirSync(dirFilhos).filter((f) => /^agent-.+\.jsonl$/.test(f));
+  } catch (e) {
+    // sem diretório de subagentes: nada a ler
+  }
+  for (const arq of arquivosFilhos) {
+    const agentId = arq.replace(/^agent-/, '').replace(/\.jsonl$/, '');
+    if (vistos.has(agentId)) continue; // o pai já trouxe o bloco deste filho
+    const filho = lerTranscritoFilho(path.join(dirFilhos, arq));
+    if (!filho) continue;
+    for (const linha of extrairLinhasServidas(filho.briefing, [CAB_ASSUNTO])) {
+      servidasCanal.push({ linha, canal: 'subagente', texto: filho.textoTools });
+    }
+  }
+
+  return { servidas: servidasCanal.map((s) => s.linha), servidasCanal, texto };
 }
 
 // ---- Tarefa 2: pontuação ----
@@ -270,6 +394,9 @@ function acharAlvo(conexao, linhaServida, apelidos) {
     if (formatarObservacao(row, apelidos) === linhaServida) {
       return { origem: 'observacao', id: row.id, conteudo: row.conteudo };
     }
+    // O hook do assunto monta a linha com o projeto CRU (sem apelido): com apelido na sessão, só estas casam.
+    if (formatarObservacao(row, null, TETO_LINHA_ASSUNTO) === linhaServida) return { origem: 'observacao', id: row.id, conteudo: row.conteudo };
+    if (formatarObservacao(row, null) === linhaServida) return { origem: 'observacao', id: row.id, conteudo: row.conteudo };
   }
 
   const resumoRows = doDia(`SELECT id, projeto, titulo, conteudo, criada_em FROM resumos WHERE criada_em LIKE ?`);
@@ -403,15 +530,56 @@ function buscarContrafactual(conexao, texto, jaServidos, textosServidos) {
   return resultado;
 }
 
+// Buscas ativas (D9): conta os tool_use de Bash/PowerShell cujo `input.command` contém `memoria.cjs buscar`
+// no transcrito principal e, somados, nos subagents/*.jsonl da sessão. Só
+// inteiros saem daqui (D10).
+const PADRAO_BUSCA = 'memoria.cjs buscar';
+function contarBuscasArquivo(arquivo) {
+  let conteudo;
+  try {
+    conteudo = fs.readFileSync(arquivo, 'utf8');
+  } catch (e) {
+    return 0;
+  }
+  let n = 0;
+  for (const l of conteudo.split('\n')) {
+    if (!l.trim()) continue;
+    let e;
+    try {
+      e = JSON.parse(l);
+    } catch (err) {
+      continue;
+    }
+    const c = e.message && e.message.content;
+    if (e.type !== 'assistant' || !Array.isArray(c)) continue;
+    for (const b of c) {
+      if (b && b.type === 'tool_use' && (b.name === 'Bash' || b.name === 'PowerShell') && b.input && typeof b.input.command === 'string' && b.input.command.includes(PADRAO_BUSCA)) n++;
+    }
+  }
+  return n;
+}
+function contarBuscas(caminhoTranscrito) {
+  const dir = path.join(path.dirname(caminhoTranscrito), path.basename(caminhoTranscrito, '.jsonl'), 'subagents');
+  let filhos = [];
+  try {
+    filhos = fs.readdirSync(dir).filter((f) => /^agent-.+\.jsonl$/.test(f));
+  } catch (e) {
+    // sem subagents
+  }
+  let buscasSubagente = 0;
+  for (const f of filhos) buscasSubagente += contarBuscasArquivo(path.join(dir, f));
+  return { buscasPrincipal: contarBuscasArquivo(caminhoTranscrito), buscasSubagente, subagentes: filhos.length };
+}
+
 // Grava (ou substitui) uma linha de uso — idempotente via INSERT OR REPLACE
 // sobre UNIQUE(origem, ref_id, sessao) (Tarefa 2).
-function gravarUso(conexao, { origem, refId, sessao, servida, nota, pontuadaEm }) {
+function gravarUso(conexao, { origem, refId, sessao, servida, nota, pontuadaEm, canal = 'abertura' }) {
   conexao
     .prepare(
-      `INSERT OR REPLACE INTO uso_memoria (origem, ref_id, sessao, servida, nota, pontuada_em)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT OR REPLACE INTO uso_memoria (origem, ref_id, sessao, servida, nota, pontuada_em, canal)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
-    .run(origem, refId, sessao, servida, nota, pontuadaEm);
+    .run(origem, refId, sessao, servida, nota, pontuadaEm, canal);
 }
 
 /**
@@ -440,18 +608,20 @@ function gravarUso(conexao, { origem, refId, sessao, servida, nota, pontuadaEm }
  */
 function pontuarSessao(conexao, sessao, caminhoTranscrito) {
   const agora = new Date().toISOString();
-  const { servidas, texto } = extrairSessao(caminhoTranscrito);
+  const { servidasCanal, texto } = extrairSessao(caminhoTranscrito);
+  // Mesma memória por dois canais: grava uma vez, abertura > pedido > subagente.
+  const servidas = servidasCanal.slice().sort((a, b) => ORDEM_CANAL[a.canal] - ORDEM_CANAL[b.canal]);
   const { harnessKey, curto } = lerProjetoDoTranscrito(caminhoTranscrito);
   const apelidos = harnessKey && curto && harnessKey !== curto ? { [harnessKey]: curto } : null;
 
   conexao.exec('BEGIN IMMEDIATE');
   try {
     const jaGravados = new Set();
-    const textosServidos = new Set(servidas.map(semPrefixo));
+    const textosServidos = new Set(servidas.map((s) => semPrefixo(s.linha)));
     let servidasComId = 0;
     let servidasSemId = 0;
 
-    for (const linha of servidas) {
+    for (const { linha, canal, texto: textoServida } of servidas) {
       const alvo = acharAlvo(conexao, linha, apelidos);
       if (!alvo) {
         servidasSemId++;
@@ -460,8 +630,8 @@ function pontuarSessao(conexao, sessao, caminhoTranscrito) {
       const chave = `${alvo.origem}:${alvo.id}`;
       if (jaGravados.has(chave)) continue; // linha duplicada no bloco — grava uma vez
       jaGravados.add(chave);
-      const nota = calcularNota(conexao, alvo.conteudo, texto);
-      gravarUso(conexao, { origem: alvo.origem, refId: alvo.id, sessao, servida: 1, nota, pontuadaEm: agora });
+      const nota = calcularNota(conexao, alvo.conteudo, textoServida);
+      gravarUso(conexao, { origem: alvo.origem, refId: alvo.id, sessao, servida: 1, nota, pontuadaEm: agora, canal });
       servidasComId++;
     }
 
@@ -471,9 +641,13 @@ function pontuarSessao(conexao, sessao, caminhoTranscrito) {
       gravarUso(conexao, { origem: cand.origem, refId: cand.id, sessao, servida: 0, nota, pontuadaEm: agora });
     }
 
+    const b = contarBuscas(caminhoTranscrito);
     conexao
-      .prepare(`INSERT OR REPLACE INTO uso_memoria_sessoes (sessao, pontuada_em) VALUES (?, ?)`)
-      .run(sessao, agora);
+      .prepare(
+        `INSERT OR REPLACE INTO uso_memoria_sessoes (sessao, pontuada_em, buscas_principal, buscas_subagente, subagentes)
+         VALUES (?, ?, ?, ?, ?)`
+      )
+      .run(sessao, agora, b.buscasPrincipal, b.buscasSubagente, b.subagentes);
 
     conexao.exec('COMMIT');
     return { servidasComId, servidasSemId, contrafactuais: contrafactuais.length };
@@ -620,6 +794,13 @@ function idadeEmDias(conexao, origem, refId) {
  * @param {object} conexao conexão de banco já aberta (leitura basta)
  * @returns {string} relatório pronto para imprimir
  */
+// Régua D7 (memória por assunto): o canal do assunto FICA só se as duas
+// condições valem — fração de sessões com servida útil >= util E fração de
+// sessões com perda <= perda.
+const REGUA_D7 = { util: 0.4, perda: 1 / 3 };
+const BASE_D7 = { dia: '2026-10-08', util: '27%', perdas: '171 de 255' };
+const NOTA_UTIL = 0.5;
+
 function gerarRelatorio(conexao) {
   let sessoes = [];
   try {
@@ -648,6 +829,7 @@ function gerarRelatorio(conexao) {
   }
 
   let sessoesComPerda = 0;
+  const comPerda = new Set();
   const naoServidasComPerda = [];
 
   for (const { sessao } of sessoesComServida) {
@@ -664,6 +846,7 @@ function gerarRelatorio(conexao) {
 
     if (naoServidas.length > 0) {
       sessoesComPerda++;
+      comPerda.add(sessao);
       for (const linha of naoServidas) {
         naoServidasComPerda.push({ sessao, origem: linha.origem, refId: linha.ref_id, nota: linha.nota });
       }
@@ -691,6 +874,79 @@ function gerarRelatorio(conexao) {
       : `régua D9: NÃO liga — recência basta (${sessoesComPerda} de ${total} sessões)`
   );
 
+  // Banco que ainda não passou pela manutenção não tem a coluna canal: avisa e
+  // fica na régua D9, em vez de morrer no meio do relatório.
+  const temCanal = conexao.prepare('PRAGMA table_info(uso_memoria)').all().some((c) => c.name === 'canal');
+  if (!temCanal) {
+    linhas.push('régua D7: sem dado — banco ainda não migrado (rode `node scripts/memoria.cjs manutencao`)');
+    return linhas.join('\n');
+  }
+
+  // Por canal: sessões com ao menos uma servida do canal (Y) e, dentre elas,
+  // as com servida útil (nota >= NOTA_UTIL).
+  for (const canal of ['abertura', 'pedido', 'subagente']) {
+    const r = conexao
+      .prepare(
+        `SELECT COUNT(DISTINCT sessao) y,
+                COUNT(DISTINCT CASE WHEN nota >= ? THEN sessao END) x
+         FROM uso_memoria WHERE servida = 1 AND canal = ?`
+      )
+      .get(NOTA_UTIL, canal);
+    const pct = r.y > 0 ? Math.round((100 * r.x) / r.y) : 0;
+    linhas.push(`canal ${canal}: sessões com servida útil ${r.x} de ${r.y} (${pct}%)`);
+  }
+
+  // Buscas ativas (colunas podem faltar em banco antigo que ainda não migrou).
+  try {
+    const b = conexao
+      .prepare(
+        `SELECT COUNT(buscas_principal) medidas,
+                COALESCE(SUM(buscas_principal > 0), 0) a,
+                COALESCE(SUM(subagentes > 0), 0) d,
+                COALESCE(SUM(buscas_subagente > 0), 0) c
+         FROM uso_memoria_sessoes`
+      )
+      .get();
+    linhas.push(
+      `buscas ativas: ${b.a} sessão(ões) principal(is) de ${b.medidas}, ${b.c} subagente(s) de ${b.d} (subagente aproximado por sessão: as contagens são por sessão)`
+    );
+  } catch (e) {
+    linhas.push('buscas ativas: sem dado (colunas ausentes — rode `manutencao` para migrar)');
+  }
+
+  // Janela da régua D7: só sessões pontuadas desde a primeira servida do canal
+  // novo — sem ela, o histórico anterior ao canal dilui (ou decide) o número.
+  const inicio = conexao
+    .prepare(`SELECT MIN(pontuada_em) m FROM uso_memoria WHERE servida = 1 AND canal IN ('pedido', 'subagente')`)
+    .get().m;
+  if (!inicio) {
+    linhas.push('régua D7: sem dado do canal do assunto (nenhuma sessão serviu memória pelo pedido ou pelo subagente)');
+    return linhas.join('\n');
+  }
+  const janela = sessoesComServida.filter((s) => s.pontuada_em >= inicio).map((s) => s.sessao);
+  const totalJanela = janela.length;
+  const utilNaSessao = conexao.prepare(`SELECT 1 FROM uso_memoria WHERE sessao = ? AND servida = 1 AND nota >= ? LIMIT 1`);
+  const comUtil = janela.filter((s) => utilNaSessao.get(s, NOTA_UTIL)).length;
+  const perdaJanela = janela.filter((s) => comPerda.has(s)).length;
+  const fracaoUtil = comUtil / totalJanela;
+  const fracaoPerda = perdaJanela / totalJanela;
+  linhas.push(`janela da régua D7: ${totalJanela} sessão(ões) com servida desde ${inicio}`);
+  linhas.push(
+    `sessões com servida útil em qualquer canal: ${comUtil} de ${totalJanela} (${Math.round(fracaoUtil * 100)}%) — base ${BASE_D7.dia}: ${BASE_D7.util} útil`
+  );
+  linhas.push(
+    `sessões com perda: ${perdaJanela} de ${totalJanela} (${Math.round(fracaoPerda * 100)}%) — base ${BASE_D7.dia}: ${BASE_D7.perdas} com perda`
+  );
+
+  const fica = fracaoUtil >= REGUA_D7.util && fracaoPerda <= REGUA_D7.perda;
+  const zTxt = `${Math.round(fracaoUtil * 100)}%`;
+  const pTxt = `${perdaJanela}/${totalJanela}`;
+  linhas.push(
+    fica
+      ? `régua D7: FICA o canal do assunto (útil ${zTxt} ≥ 40%, perdas ${pTxt} ≤ 1/3)`
+      : `régua D7: SAI o canal do assunto (útil ${zTxt}, perdas ${pTxt})`
+  );
+
   return linhas.join('\n');
 }
 
@@ -710,4 +966,6 @@ module.exports = {
   pontuarSessoesPendentes,
   idadeEmDias,
   gerarRelatorio,
+  contarBuscas,
+  REGUA_D7,
 };

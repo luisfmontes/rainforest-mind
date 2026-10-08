@@ -1,0 +1,230 @@
+{
+  "slug": "2026-10-08-memoria-por-assunto",
+  "titulo": "Memória escolhida pelo assunto: primeiro pedido, subagente e antes/depois",
+  "criado_em": "2026-10-08",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-08-memoria-por-assunto.md",
+    "em": "2026-10-08"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-08-memoria-por-assunto.md",
+    "tarefas": 10,
+    "paralelas": [
+      1,
+      2,
+      10
+    ],
+    "em": "2026-10-08"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-08",
+    "tarefas_ok": 14,
+    "tarefas": 14,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "23c52948f6b8bec54b473c4373753b96594248c3",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T11:28:09.632Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "23c52948f6b8bec54b473c4373753b96594248c3",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T11:28:09.632Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "23c52948f6b8bec54b473c4373753b96594248c3",
+        "iteracao": 2,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T11:47:40.078Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "6c44822d50ac8a930d387b4a7f3abea1d28e1d38",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T11:47:40.078Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "6c44822d50ac8a930d387b4a7f3abea1d28e1d38",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T11:47:40.078Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "e869e9958aa08436d85abfd6ead7ba5ef551d076",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T11:52:04.205Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "94bc53d0d3278530a1cf2bb666ac6c97fa85d5d6",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T12:00:52.079Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "94bc53d0d3278530a1cf2bb666ac6c97fa85d5d6",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T12:00:52.079Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "25837ea0162bd5916a1c895ba27c880dc3a5da3d",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T12:23:07.937Z"
+      },
+      {
+        "tarefa": 11,
+        "hash_base": "9f69d0d5e41429b042ad14df578e217b11a805f4",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T12:47:39.000Z"
+      },
+      {
+        "tarefa": 13,
+        "hash_base": "9f69d0d5e41429b042ad14df578e217b11a805f4",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T12:47:39.000Z"
+      },
+      {
+        "tarefa": 14,
+        "hash_base": "183e0b2dbf12af47bc7fa2c352fd62e71b3ac61f",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T13:26:21.438Z"
+      }
+    ],
+    "em": "2026-10-08",
+    "comando": "bash scripts/testa-utilidade-canais.sh; bash scripts/testa-utilidade.sh; node hooks/testa-memoria-assunto.cjs; node hooks/testa-memoria-assunto-prompt.cjs; node hooks/testa-memoria-assunto-agente.cjs",
+    "saida": "22 ok, 0 falha(s); 19 ok, 0 falha(s); 14 ok, 0 falha(s); 14 ok, 0 falha(s); 14 ok, 0 falha(s)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "n/a",
+        "motivo": "pesquisa do harness, sem codigo"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "instrumento de medicao, reconferido"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-assunto.cjs, caso memoria ja servida na sessao nao volta"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-assunto-prompt.cjs, caso banco ausente sai 0 e calado"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-assunto-agente.cjs, caso falha sai 0 e calada (banco ausente)"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade-canais.sh, caso nota do canal pedido exclui o pedido que disparou"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade-canais.sh, caso regua D7 exige as duas condicoes"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "registro de ideia pelo script com trava"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "documentacao e versao"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "abre Issue #435"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-assunto-prompt.cjs, caso pedido sem acerto grava o arquivo da sessao e o segundo nao rele o transcrito"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-assunto.cjs, caso texto so com palavras comuns do corpus nao injeta"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade-canais.sh, caso servida do canal assunto cortada em 300 caracteres casa com o id"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade-canais.sh, caso servida do assunto com projeto pelo nome do harness casa com o id mesmo com apelido"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "1e2c100b5127022fb1fb050c62e5130a11a5b2ff",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a2b9499c8c3dfb2f3",
+        "veredito": "ok",
+        "em": "2026-10-08",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind--claude-worktrees-memoria-por-assunto/722539d9-b368-4e3f-9f32-6a3fd43848ae/subagents/agent-a2b9499c8c3dfb2f3.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-08",
+    "achados": 0,
+    "base": "37f786d56984670887956074439278a2137268a5",
+    "head": "1e2c100b5127022fb1fb050c62e5130a11a5b2ff",
+    "ressalvas": 7
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/testa-utilidade-canais.sh; bash scripts/testa-utilidade.sh; node hooks/testa-memoria-assunto.cjs; node hooks/testa-memoria-assunto-prompt.cjs; node hooks/testa-memoria-assunto-agente.cjs; node scratchpad/medir-hooks.cjs (payload real UserPromptSubmit/PreToolUse Agent, copia do banco real, transcrito real de 20 MB)",
+    "saida": "22 ok, 0 falha(s); 19 ok, 0 falha(s); 14 ok, 0 falha(s); 14 ok, 0 falha(s); 14 ok, 0 falha(s); pedido longo 2343 ms exit=0 memorias=2; pedido curto 82 ms exit=0 memorias=3; agente longo 113 ms exit=0 memorias=2; agente bolo 60 ms exit=0 memorias=0",
+    "sensor_externo": "bash scripts/testa-utilidade-canais.sh",
+    "riscos_residuais": [
+      "buscas ativas contam heredoc que so cita memoria.cjs buscar",
+      "nota do canal novo conta tool_use posterior com termos do proprio pedido",
+      "abertura cortada pela escada 200/160/120 nao semeia o dedupe",
+      "peso do projeto atual so desempata",
+      "regua D7 so rodou em dado sintetico"
+    ],
+    "em": "2026-10-08"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

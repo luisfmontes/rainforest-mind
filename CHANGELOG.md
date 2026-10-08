@@ -10,6 +10,23 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.49.0 — 2026-10-08
+
+- **A memória chega pelo assunto, não só pela recência.** Em cada pedido que você digita, o plugin busca no banco
+  as memórias de qualquer projeto que tratam do mesmo assunto e junta até 3 delas ao contexto, sob
+  `## Memória do assunto`. O subagente recebe o mesmo bloco no fim do briefing, quando a sessão o despacha pela
+  ferramenta `Agent`. Só entra o que passa de um limiar de relevância (palavras comuns não contam), o pedido nunca repete o que a sessão já recebeu
+  (nem o que a abertura serviu), e o bloco tem no máximo 1.500 bytes. A abertura não mudou.
+- **Se o banco falhar, o pedido segue.** Banco ausente ou travado ou qualquer erro do hook saem sem injetar nada
+  e sem bloquear o pedido nem o despacho do subagente.
+- **O relatório de utilidade separa por canal e tem régua.** `node scripts/memoria.cjs utilidade --relatorio`
+  passa a mostrar a utilidade da abertura, do pedido e do subagente, quantas sessões e subagentes buscaram memória
+  por conta própria, e a régua D7: o canal novo fica se, 14 dias depois de a versão estar viva, houver ao menos 40%
+  de sessões com memória útil (base 27%) e perdas de no máximo 1/3 (base 171 de 255); senão sai. O relatório só
+  conta desde a primeira memória servida pelo canal novo e diz "sem dado" enquanto não houver.
+
+Vale a partir da sessão seguinte à atualização.
+
 ## 1.48.0 — 2026-10-08
 
 - **O `semear` lê a sessão real.** Além de observações e relatórios, lista os transcripts recentes do projeto
