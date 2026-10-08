@@ -186,7 +186,7 @@ paralela: nao
 prova: `node hooks/testa-bloqueio-fluxo.cjs`
 mutacao:
   arquivo: `hooks/lib/caminho-leve.cjs`
-  de: `if (typeof dados.branch === string) return dados.branch === branch;`
+  de: `if (typeof dados.branch === 'string') return dados.branch === branch;`
   para: `if (false) return false;`
   bateria: `node hooks/testa-bloqueio-fluxo.cjs`
   fixture: caso "protheus: gates.json recente de outra branch nao abre o fluxo desta"
