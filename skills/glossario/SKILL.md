@@ -23,6 +23,9 @@ Evite: sinônimo errado; outro sinônimo errado
 
 `Evite` é opcional. Definição, Onde mora e Cenário são obrigatórios.
 
+O conferidor é `scripts/conferir-glossario.cjs`. Use `$CLAUDE_PLUGIN_ROOT/scripts/`
+e, se a variável estiver vazia, o `scripts/` do próprio repo, se ele existir.
+
 Exemplo de verbete completo, verdadeiro sobre este repo:
 
 ```markdown verbete-exemplo
