@@ -29,7 +29,7 @@ o harness manda no stdin do `PreToolUse` — `session_id`, `cwd`,
 
 ### 1. `estado.cjs leve --motivo` e o leitor `caminho-leve` [tipo: implementar]
 atende: D6, D7
-arquivos: `scripts/estado.cjs`, `hooks/lib/caminho-leve.cjs`, `scripts/testa-estado-leve.sh`
+arquivos: `scripts/estado.cjs`, `hooks/lib/caminho-leve.cjs`, `scripts/testa-estado-leve.sh`, `scripts/testa-estado.sh`, `scripts/testa-estado-territorio.sh`
 depende de: nenhuma
 paralela: sim
 prova: `bash scripts/testa-estado-leve.sh`
