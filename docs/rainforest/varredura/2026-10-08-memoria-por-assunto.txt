@@ -1,0 +1,313 @@
+Data: 2026-10-08
+Termos: memoria, ranking, utilidade, UserPromptSubmit, SubagentStart, bm25
+
+$ gh issue list --state all --search "memoria" --limit 200 --json number,title,state
+[{"number":408,"state":"CLOSED","title":"memória: legenda e bloco exibem a data UTC da observação — depois das 21h (UTC-3) aparece o dia seguinte"},{"number":430,"state":"OPEN","title":"Fluxo pulado: escalar o aviso-fluxo para bloqueio com caminho leve declarado"},{"number":401,"state":"CLOSED","title":"Idioma da resposta escorrega depois da compactação ou do retorno de agente"},{"number":403,"state":"CLOSED","title":"Baterias de hook montam payload JSON com printf e ficam verdes sem o gate olhar"},{"number":259,"state":"CLOSED","title":"cortarBytes duplicado entre memoria-sessao.cjs e contexto-sessao.cjs, com comentario afirmando reuso que nao existe"},{"number":396,"state":"CLOSED","title":"Aviso de fluxo no primeiro Write/Edit de código da sessão"},{"number":282,"state":"CLOSED","title":"Captura parada desde 03/09: spawn do claude.cmd dá EINVAL e a fila trava calada"},{"number":298,"state":"CLOSED","title":"gate-agente-em-voo promete avisar UMA vez e repete a cada turno em sessao interativa"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":216,"state":"CLOSED","title":"1.252 sandboxes orfas no temp: rm -rf no fim do bloco nao sobrevive a saida antecipada, e so o primeiro mktemp tem trap"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"},{"number":225,"state":"CLOSED","title":"portaria: negação 'sem estágio ativo' lista o mesmo slug uma vez por worktree (~170 linhas repetidas)"},{"number":199,"state":"CLOSED","title":".ideias-backups sem rodizio: 430 copias e 232 MB medidos, com o molde do rodizio pronto no foco.cjs"},{"number":243,"state":"CLOSED","title":"foco-session-start.cjs leva 6-8 s nesta maquina e estoura o timeout 5 do hooks.json: testa-memoria-somente-leitura fica vermelha e nada diz que foi timeout"},{"number":23,"state":"CLOSED","title":"limpar-branches.cjs remove a branch padrao do repo quando --base aponta para outra ref"},{"number":174,"state":"CLOSED","title":"Nada barra \"Fecha #N\" no corpo do PR — a regra está escrita há 10 dias e o erro repetiu"},{"number":73,"state":"CLOSED","title":"As 16 skills sao arquivo unico e plano: consultar o detalhe de UMA regra custa ~16,8k tokens"},{"number":198,"state":"CLOSED","title":"observar.cjs no SessionEnd estoura o orcamento COMPARTILHADO de 60s do CLI e mata os outros hooks — 19 sessoes vazadas"},{"number":21,"state":"CLOSED","title":"Criterio 'a bateria sai 0' e satisfazivel por fora, e tres instrumentos de conferencia falharam junto"},{"number":335,"state":"CLOSED","title":"13 baterias .cjs nunca rodam no CI: varrer-baterias.sh so descobre testa-*.sh"},{"number":81,"state":"CLOSED","title":"testa-orcamento.sh mede a mesa, nao o repo: verde no CI e vermelho local pelo mesmo commit"},{"number":230,"state":"CLOSED","title":"conferir-mutacao.cjs entrega a --bateria ao cmd.exe no Windows: 'rm ...; python ...' apagou o venv e o arquivo de teste, e o baseline saiu VERDE"},{"number":25,"state":"CLOSED","title":"A regra de branch so conhece `main`, e nao tem nocao de dono — commitei em cima de outra sessao"},{"number":249,"state":"CLOSED","title":"O laco das 114 baterias so existe no YAML da CI: nao ha varredura local, e o verificar mede a ferramenta em vez do teste dela"},{"number":299,"state":"CLOSED","title":"Rota com emoji de status por etapa: formato de acompanhamento que a regra 4 nao tem"},{"number":221,"state":"CLOSED","title":"saude.cjs quebra com 'path argument undefined' quando ha duas config dirs e a versao do repo esta a frente da instalada"},{"number":86,"state":"CLOSED","title":"observar.cjs sem argumento processa TODAS as marcas pendentes, mas o cabeçalho diz que processa só a mais recente"},{"number":187,"state":"CLOSED","title":"testa-segunda-opiniao.sh vaza processo: 7 vivos por 95h, 531s de CPU, bateria verde"},{"number":51,"state":"CLOSED","title":"As tres travas de isolamento falharam na borda: retomada de agente, janela principal, e o rastro da propria esteira"}]
+
+
+$ gh issue list --state all --search "ranking" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "utilidade" --limit 200 --json number,title,state
+[{"number":408,"state":"CLOSED","title":"memória: legenda e bloco exibem a data UTC da observação — depois das 21h (UTC-3) aparece o dia seguinte"}]
+
+
+$ gh issue list --state all --search "UserPromptSubmit" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "SubagentStart" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "bm25" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "memoria" --limit 200 --json number,title,state
+[{"number":305,"state":"MERGED","title":"Memória: reconciliação na escrita e consolidação automática"},{"number":381,"state":"MERGED","title":"Versao 1.37.0: abertura inteira pelo mod via prompt.compose"},{"number":326,"state":"MERGED","title":"memoria: sinal de utilidade da injecao, medicao de duas semanas"},{"number":325,"state":"MERGED","title":"memoria: aviso de captura parada ignora marca de transcrito apagado"},{"number":320,"state":"MERGED","title":"memoria: buscar com pontuacao no texto nao devolve mais vazio"},{"number":338,"state":"MERGED","title":"memoria: encurta o texto das linhas antes de cortar (1.23.15)"},{"number":283,"state":"MERGED","title":"Captura volta: claude.cmd resolve para o claude.exe real"},{"number":284,"state":"MERGED","title":"Main volta ao verde: mutante do importar leva o achar-claude"},{"number":406,"state":"MERGED","title":"Revisao bimestral 2026-10-05: 214 observacoes triadas, v1.41.0"},{"number":418,"state":"MERGED","title":"Abertura inteira na conta de trabalho via session.append"},{"number":133,"state":"MERGED","title":"Fluxo 2 — memoria com indice vivo, leitura por relevancia e ciclo de vida"},{"number":22,"state":"MERGED","title":"Memoria e dados do rainforest saem de dependencia fragil"},{"number":49,"state":"MERGED","title":"A memoria volta a ler o que ela mesma escreve"},{"number":416,"state":"MERGED","title":"Zerar as 12 Issues da revisao bimestral (1.42.0)"},{"number":389,"state":"MERGED","title":"Versao 1.39.0: relogio do mod acende jornada e janela parada"},{"number":212,"state":"MERGED","title":"O orcamento do observar.cjs cabe no teto real do SessionEnd"},{"number":24,"state":"MERGED","title":"A captura passa a ser nossa, e a memoria passa a ter projeto"},{"number":103,"state":"MERGED","title":"Legenda: o teto estava em BYTES, e quem corta na tela conta CARACTERE"},{"number":28,"state":"MERGED","title":"O padrao de evidencia do usuario chega ao subagente"},{"number":90,"state":"MERGED","title":"Abertura: os hooks passam a pintar na tela, nao so no contexto do modelo"},{"number":247,"state":"MERGED","title":"zerar-issues rodada 3: heredoc no gate de Issue e radar em 4 chamadas (1.13.2)"},{"number":92,"state":"MERGED","title":"Somente-leitura de verdade: o banco abria em modo ESCRITA e nada avisava"},{"number":154,"state":"MERGED","title":"README: porta de entrada em vez de diario de bordo"},{"number":304,"state":"MERGED","title":"Notas de atualizacao (CHANGELOG) e o adendo que mede o D2 do contrato de territorio"},{"number":242,"state":"MERGED","title":"Zerar Issues, rodada 2: as 6 que faltavam e as 6 novas (1.12.0)"},{"number":116,"state":"MERGED","title":"Fecha #76: a janela sabe que a ferramenta falta antes de tentar"},{"number":10,"state":"MERGED","title":"Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa"},{"number":188,"state":"MERGED","title":"Lote 4: instrumento que mede o codigo, e nao a maquina de quem roda"},{"number":85,"state":"MERGED","title":"Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79)"},{"number":128,"state":"MERGED","title":"A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo"}]
+
+
+$ gh pr list --state all --search "ranking" --limit 200 --json number,title,state
+[{"number":326,"state":"MERGED","title":"memoria: sinal de utilidade da injecao, medicao de duas semanas"},{"number":137,"state":"MERGED","title":"Fluxo 11 — Conselho: debate estruturado com membros Claude, Codex e Gemini"}]
+
+
+$ gh pr list --state all --search "utilidade" --limit 200 --json number,title,state
+[{"number":326,"state":"MERGED","title":"memoria: sinal de utilidade da injecao, medicao de duas semanas"}]
+
+
+$ gh pr list --state all --search "UserPromptSubmit" --limit 200 --json number,title,state
+[{"number":384,"state":"MERGED","title":"1.38.1: Q da faixa somem no envio e cabem na linha"},{"number":389,"state":"MERGED","title":"Versao 1.39.0: relogio do mod acende jornada e janela parada"},{"number":84,"state":"MERGED","title":"batedor: tres repos no livro — OpenViking, deepseek-harness e MiroFish"}]
+
+
+$ gh pr list --state all --search "SubagentStart" --limit 200 --json number,title,state
+[{"number":84,"state":"MERGED","title":"batedor: tres repos no livro — OpenViking, deepseek-harness e MiroFish"},{"number":224,"state":"MERGED","title":"Enxerta os sete mecanismos do ponytail, e fecha a fronteira que o gate de código de modelo não tinha"}]
+
+
+$ gh pr list --state all --search "bm25" --limit 200 --json number,title,state
+[{"number":305,"state":"MERGED","title":"Memória: reconciliação na escrita e consolidação automática"}]
+
+
+$ git ls-remote --heads origin | grep -F "memoria"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "ranking"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "utilidade"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "UserPromptSubmit"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "SubagentStart"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "bm25"
+(vazio)
+
+$ git log --all --grep="memoria" --oneline
+99c5e5b7 Zerar as 12 Issues da revisao bimestral (1.43.0) (#416)
+3cc618f3 Abertura roda geradores na raiz do plugin e mantem o projeto
+969c16a7 plano zerar-issues-15: tarefa 11, emenda da 7
+d9405fa7 mod: process.run do relogio e da faixa roda com cwd na raiz do plugin
+13131a86 Mod da abertura: reconhece foco em estouro e remonta no resume
+9c4b07a3 Versao 1.37.0: abertura inteira pelo mod via prompt.compose
+e1f9d8e4 estado: tarefas 2 a 9 integradas, 7 nao aplicavel
+5f8db56e Mod definitivo da abertura substitui o canario do mod
+b9fa812d Config fixa da abertura do mod e a lib que a valida
+14b442fc design: abertura inteira por mod via prompt.compose
+ece512fa Tarefa 4: Varredor descobre baterias .cjs (#335)
+5d59d36e Merge pull request #338 from luisfmontes/fluxo/memoria-encurta
+576654c7 estado: memoria-encurta fechado
+989e36c5 estado: memoria-encurta revisado e verificado
+9fbb7cbd estado: memoria-encurta executado
+13c9828e memoria: encurta o texto das linhas antes de cortar (1.23.15)
+07e2e436 testa-estado-principal: sandbox copia lib/ inteira
+dec421f5 Merge pull request #326 from luisfmontes/fluxo/memoria-sinal-de-utilidade
+455953db estado: memoria-sinal-de-utilidade verificado e fechado
+9caf9bc0 Merge commit '109b2d61296804470efa7235358a071bf0c279da' into fluxo/memoria-sinal-de-utilidade
+4aed1052 utilidade: bateria hermetica, sem banco/transcrito reais (Tarefa 13, Emenda 4)
+a04c4f0e testa-importar-claude-mem: mutante copia lib/ inteira, nao irmao a irmao
+141050bd versao 1.23.8: sinal de utilidade da memoria (medicao)
+02d42ce4 plano: tarefa 11 — banco ocupado adia sessao, escrita de sessao atomica
+e6d24f4b utilidade: sessao que falha e marcada e a fila anda (Tarefa 10)
+2bff3d9e utilidade: servida sem id nunca vira nao-servida no contrafactual (Tarefa 9)
+7de9cdcb Merge remote-tracking branch 'origin/main' into fluxo/memoria-sinal-de-utilidade
+200f4732 utilidade: denominador da regua so conta sessao com servida (tarefa 8)
+8fb97623 Merge pull request #325 from luisfmontes/fix/aviso-captura-parada
+a3472b11 Merge remote-tracking branch 'origin/main' into fluxo/memoria-sinal-de-utilidade
+24884038 plano: tarefa 2 cobre o esquema-memoria.sql
+02adbb7e memoria: aviso de captura parada ignora marca de transcrito apagado
+1b6156d4 tarefa 4: relatório com a régua D9
+ed03c4a2 tarefa 3: pontuação dentro da manutenção, sessões pendentes
+e2343a10 tarefa 2: pontuação — nota crua das servidas e do contrafactual
+343c5ff4 tarefa 1: extrator do transcrito real (servidas/texto)
+2ac92476 depurar: teste de regressao para o falso aviso de captura parada
+5c77dcef design e plano: sinal de utilidade da memoria
+77479b8d Merge pull request #320 from luisfmontes/fix/memoria-buscar-texto-cru
+418f1846 versao 1.23.4: buscar da memoria aceita texto com pontuacao
+c7973560 memoria: buscar com pontuacao no texto nao devolve mais vazio
+4f714ef6 Merge pull request #305 from luisfmontes/fluxo/memoria-reconciliacao-e-consolidacao
+1a93708e bump 1.19.1 -> 1.20.0
+3bdb0ffa fluxo memoria-reconciliacao: fecha com PR #305
+039e1d04 fluxo memoria-reconciliacao: verificar fecha ok, 9 de 9 criterios
+afd22083 fluxo memoria-reconciliacao: revisar fecha ok, zero achados
+552b2d01 fluxo memoria-reconciliacao: integra conserto dos 2 achados e reabre executar ok
+3cecf174 fluxo memoria-reconciliacao: guarda de candidata oferecida e de direcao temporal
+95f74499 fluxo memoria-reconciliacao: revisar reprova com 2 achados bloqueantes
+46f93fec fluxo memoria-reconciliacao: executar fecha ok, 8 de 8
+71d574c0 conserta 5 regressoes da entrega memoria-reconciliacao-e-consolidacao
+89c6c2c6 Merge branch 'worktree-agent-ac05784f6cdb476ec' into fluxo/memoria-reconciliacao-e-consolidacao
+2eb66112 docs: corrige limiar de 48h no README da memória
+4cd8b0cd docs: memória, reconciliação e consolidação automáticas
+631efe88 memoria: aviso de pipeline entra no orcamento, nunca fica de fora
+832b17af memoria: pipeline parado vira linha na abertura da sessao (D8)
+655ea6cd manutencao: garante esquema antes de rodar e nao morre no meio
+eb6251b7 agenda a manutencao diaria (reconciliar+consolidar) no SessionStart
+14bc3f5e consolidar por grupo de origem a partir de 30 dias (D7, tarefa 4)
+1060ed9c memoria: substituida_por IS NULL em todo caminho de leitura
+0ed69b90 memoria: reconciliar relê o estado antes de sondar cada observacao
+413525e1 memoria: reconciliar store/update/merge/skip do acervo pendente
+74e99672 memoria: colunas substituida_por e reconciliada_em em observacoes
+d3b7889f Plano: reconciliacao e consolidacao da memoria, em 8 tarefas
+a811fb18 Merge remote-tracking branch 'origin/main' into fluxo/memoria-reconciliacao-e-consolidacao
+73b5eb37 Notas de atualizacao passam a existir, e o D2 medido de fora
+5cc4a0a6 fluxo zerar-issues-6: executar ok apos a revisao 3
+19bd8d85 gate-agente-em-voo: memoria por sessao em mapa, nao slot unico
+8b48c302 saude: pendencia de marca d'agua mais antiga por ordem explicita
+2386d68c Merge pull request #284 from luisfmontes/fix/bateria-mutante-memoria
+736a9ae4 Bateria do importar: mutante leva o achar-executavel-claude junto
+5dcc18a6 Design: reconciliacao e consolidacao automatica da memoria
+4b3e643b Versao 1.16.1: captura de memoria volta a rodar
+da8617ae Livro de repos: ruflo e TencentDB-Agent-Memory
+4a23147d Extrai acharExecutavelClaude e resolve .cmd/.bat para o .exe real
+5a43d1fc plano e design emendados apos o revisar reprovar, e a peca nova marcada
+ceb2d14b regua: fixa os sete mecanismos do conferidor de CLI, rodada 1
+ae681310 integra o conserto da #259: cortarBytes tem fonte unico, e o inventario ve hooks/
+0ef8cc97 extrai cortarBytes para hooks/lib/bytes.cjs, corrige comentario mentiroso
+0730206d conferir-duplicacao --funcoes passa a varrer hooks/ (incluindo hooks/lib/)
+e1b87680 integra tarefa 3: o bloco de memoria corta por observacao e avisa no topo
+36e24861 memoria-sessao: trava o orcamento do bloco de memoria com aviso no topo
+f873a8df testa-memoria-session-start: fixture do teste 11.c usa placeholder $USUARIO
+55e396a6 orcamento: modo --agregado mede o teto real do SessionStart inteiro (Tarefa 2)
+aa7ff34b Timeout do exportador: 60 s como em producao, e estouro que se anuncia
+b4bd122a D3: exportador de hooks distingue timeout de falha
+cede6b0a Estado: verificar ok com a catraca completa; handover aponta para a rodada 2
+d0a3af00 Verificar: testa-config conta oito gates sem matcher, com o gate novo
+6afc1315 Trocar no travas-mecanicas o numero sem lastro pelo que o design registra
+3175f374 Trocar no travas-mecanicas o numero sem lastro pelo que o design registra
+47b48f9e Tarefa 10 (D10): sandbox sempre no trap, com guarda estatica
+3378f623 Tarefa 10: guarda estatica de sandbox-com-trap e idioma SANDBOXES nas baterias
+b1b798cf T7: poda-estagio delega resolver a estagio-ativo; suporta fluxo/ prefix
+cfe66844 O orcamento do observar.cjs cabe no teto real do SessionEnd (fecha #198)
+9c2b5888 Plano ganha as tarefas 11 e 12, que nasceram depois dele
+c4515c38 Revisao do lote 4: sete afrouxamentos que o proprio lote introduziu
+386d772a Merge pull request #133 from luisfmontes/fluxo/memoria
+8d654ad9 Merge pull request #133 from luisfmontes/fluxo/memoria
+69a02844 Emenda do plano da memoria: tarefa 6 cobre os consertos do observar
+fcc8a776 Emenda do plano da memoria: tarefa 6 cobre os consertos do observar
+121622b2 Observar: janela vazia e processada — a marca avanca no prompt vazio
+11b622fc Observar: janela vazia e processada — a marca avanca no prompt vazio
+a5ed485c Merge branch 'worktree-agent-a7ba968d2dd637253' into fluxo/memoria
+44634f1b Merge branch 'worktree-agent-a7ba968d2dd637253' into fluxo/memoria
+f2f494db Conserto da revisao do fluxo memoria: migracao FTS real, saude sem fallthrough, injecao prefere resumo, consolidar atomico
+d4755ee7 Conserto da revisao do fluxo memoria: migracao FTS real, saude sem fallthrough, injecao prefere resumo, consolidar atomico
+8e00c75c Fluxo 2 executar ok 5/5: T5 integrada — saude ganha a secao do banco de memoria
+acbdd122 Fluxo 2 executar ok 5/5: T5 integrada — saude ganha a secao do banco de memoria
+7f9e21e5 Merge branch 'worktree-agent-a349c23ea4bc321fc' into fluxo/memoria
+358b2021 Merge branch 'worktree-agent-a349c23ea4bc321fc' into fluxo/memoria
+b3caf463 Tarefa 5 da memoria: saude ganha a secao do banco — schema, indice vivo e pipeline
+6c4fcf11 Tarefa 5 da memoria: saude ganha a secao do banco — schema, indice vivo e pipeline
+32554be5 Merge branch 'worktree-agent-a6020a43aa0a48cd3' into fluxo/memoria
+1915227c Merge branch 'worktree-agent-a6020a43aa0a48cd3' into fluxo/memoria
+740ca62e Tarefa 3 da memoria: adiciona casos 17.d (FTS indisponível) e 17.e (bytes com casadas)
+8e046ffa Tarefa 3 da memoria: adiciona casos 17.d (FTS indisponível) e 17.e (bytes com casadas)
+cecb71f8 Tarefa 3 da memoria: abertura com 9 recentes + ate 5 casadas pelo foco, fallback intacto
+9aab714f Tarefa 3 da memoria: abertura com 9 recentes + ate 5 casadas pelo foco, fallback intacto
+0064a1a6 Tarefa 4 da memoria: consolidar produz resumos em lote e marca, nunca apaga
+dc2612a2 Tarefa 4 da memoria: consolidar produz resumos em lote e marca, nunca apaga
+cc80005f Fluxo 2 executar 2/5: T2 integrada — rodape do bloco ensina buscar --texto
+cadfbd0c Fluxo 2 executar 2/5: T2 integrada — rodape do bloco ensina buscar --texto
+7c2fe332 Merge branch 'worktree-agent-a98cd0cff88837139' into fluxo/memoria
+680b76a6 Merge branch 'worktree-agent-a98cd0cff88837139' into fluxo/memoria
+0945d68c Corrige interface do rodapé: buscar --texto em vez de argumento posicional
+14f544e0 Corrige interface do rodapé: buscar --texto em vez de argumento posicional
+6d6b06a0 Tarefa 1 da memoria: FTS de conteudo externo com triggers, migracao idempotente
+9c6adeb1 Tarefa 1 da memoria: FTS de conteudo externo com triggers, migracao idempotente
+42c76adf Tarefa 2 da memoria: rodape do bloco injetado ensina o buscar, dentro do teto
+e8b359c5 Tarefa 2 da memoria: rodape do bloco injetado ensina o buscar, dentro do teto
+71545a04 Fluxo 2 (memoria) aberto: design aprovado na estrutura canonica, plano ok
+adddd596 Fluxo 2 (memoria) aberto: design aprovado na estrutura canonica, plano ok
+d485d55c Revalidacao contra os originais rebaixados: fluxo 1 restaurado, fluxos 2-8 instalados, plano do fluxo 9
+3727df50 Revalidacao contra os originais rebaixados: fluxo 1 restaurado, fluxos 2-8 instalados, plano do fluxo 9
+63afa051 A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo (#128)
+1b18a725 A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo (#128)
+889ff9c9 Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+56ea03cc Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+cc9de8ee Legenda: o teto estava em BYTES, e quem corta na tela conta CARACTERE (#103)
+1c7133b0 Legenda: o teto estava em BYTES, e quem corta na tela conta CARACTERE (#103)
+f6d4552c Abertura: os hooks passam a pintar na tela, nao so no contexto do modelo (#90)
+3ee8b32f Abertura: os hooks passam a pintar na tela, nao so no contexto do modelo (#90)
+20c88be7 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+d427f732 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+d9cb884f Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79) (#85)
+9b7ee00d Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79) (#85)
+2a1f6f5f A memoria volta a ler o que ela mesma escreve (#49)
+e26ba7e0 A memoria volta a ler o que ela mesma escreve (#49)
+e1d2592c A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+bfc034d2 A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+5e576099 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+d5261da4 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+4de6f58a README coerente com a entrega: a evidencia tem que ser do objeto sobre o qual se afirma
+34dee33f README coerente com a entrega: a evidencia tem que ser do objeto sobre o qual se afirma
+398b8451 Sete repos entram no livro, e o que promete ler o codigo manda o agente nao perguntar
+e69bb2b2 Sete repos entram no livro, e o que promete ler o codigo manda o agente nao perguntar
+7118d701 Arqueologia: o estagio ZERO que faltava, e opcional de forma mecanica
+b3d3220f Arqueologia: o estagio ZERO que faltava, e opcional de forma mecanica
+cfd62bfc A esteira ganha maquina de estados que RECUSA, em vez de pedir por favor
+deb1411b A esteira ganha maquina de estados que RECUSA, em vez de pedir por favor
+eaaa585e ideias.py: andamento no iniciar, e backup que nao se sobrescreve
+24f77503 ideias.py: andamento no iniciar, e backup que nao se sobrescreve
+
+$ git log --all --grep="ranking" --oneline
+1b6156d4 tarefa 4: relatório com a régua D9
+5c77dcef design e plano: sinal de utilidade da memoria
+f025a2bb T8: fecha cobertura da bateria do conselho — desempate real e lint de dependência
+b76ed64b T8: fecha cobertura da bateria do conselho — desempate real e lint de dependência
+aa56f101 Tarefa 7: Documentação opt-in do conselho no estágio design
+685c837b Tarefa 7: Documentação opt-in do conselho no estágio design
+2cecbb66 Correção semântica crítica: inverter lógica de validação de divergências
+3418bfc6 Correção semântica crítica: inverter lógica de validação de divergências
+05a82c0b Task 4: Fase 3 — chairman mecânico e síntese
+43fa62bb Task 4: Fase 3 — chairman mecânico e síntese
+08663197 Tarefa 3: Fase 2 (anonimização e revisões) — subcomando revisar + conferir --fase revisao
+66a348a2 Tarefa 3: Fase 2 (anonimização e revisões) — subcomando revisar + conferir --fase revisao
+
+$ git log --all --grep="utilidade" --oneline
+99c5e5b7 Zerar as 12 Issues da revisao bimestral (1.43.0) (#416)
+dec421f5 Merge pull request #326 from luisfmontes/fluxo/memoria-sinal-de-utilidade
+455953db estado: memoria-sinal-de-utilidade verificado e fechado
+9caf9bc0 Merge commit '109b2d61296804470efa7235358a071bf0c279da' into fluxo/memoria-sinal-de-utilidade
+109b2d61 utilidade: fixture com envelope real, liga gerar-banco.cjs --popular
+4aed1052 utilidade: bateria hermetica, sem banco/transcrito reais (Tarefa 13, Emenda 4)
+a04c4f0e testa-importar-claude-mem: mutante copia lib/ inteira, nao irmao a irmao
+5a7f7955 plano: emenda 4, baterias da utilidade independentes da maquina
+141050bd versao 1.23.8: sinal de utilidade da memoria (medicao)
+02d42ce4 plano: tarefa 11 — banco ocupado adia sessao, escrita de sessao atomica
+e6d24f4b utilidade: sessao que falha e marcada e a fila anda (Tarefa 10)
+2bff3d9e utilidade: servida sem id nunca vira nao-servida no contrafactual (Tarefa 9)
+7de9cdcb Merge remote-tracking branch 'origin/main' into fluxo/memoria-sinal-de-utilidade
+200f4732 utilidade: denominador da regua so conta sessao com servida (tarefa 8)
+d5f4baab utilidade: teto por passada e servidas_sem_id no log (tarefa 7)
+8b12d51d utilidade: servida substituida pela reconciliacao ainda casa com o id (tarefa 6)
+a3472b11 Merge remote-tracking branch 'origin/main' into fluxo/memoria-sinal-de-utilidade
+1b6156d4 tarefa 4: relatório com a régua D9
+ed03c4a2 tarefa 3: pontuação dentro da manutenção, sessões pendentes
+e2343a10 tarefa 2: pontuação — nota crua das servidas e do contrafactual
+343c5ff4 tarefa 1: extrator do transcrito real (servidas/texto)
+5c77dcef design e plano: sinal de utilidade da memoria
+1bd3f5ed Batedor: doze repos indicados avaliados pelo codigo
+
+$ git log --all --grep="UserPromptSubmit" --oneline
+f7791f58 plano relogio: tarefa 9, nota e Q por prompt.submit
+19027372 mod: relogio de jornada e janela parada na faixa, com nota da regra 8
+a6a7bd68 plano: relogio do mod em 8 tarefas; design emenda D3, D4 e D8
+b848b2ee faixa: Q respondida sai no envio e todas as Q cabem na linha
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+33f1788c O /saude mede o claude-mem pela PORTA, e colhe a ideia que o Luis plantou
+0463af59 O /saude mede o claude-mem pela PORTA, e colhe a ideia que o Luis plantou
+
+$ git log --all --grep="SubagentStart" --oneline
+19f03851 contrato de veredito: registra SubagentStop e toggle contrato-veredito (tarefa 9)
+27fcb1fa Tarefa 6: Dial de intensidade para a escada YAGNI
+140323d8 Tarefa 1: Implementar injeção de escada YAGNI em SubagentStart
+a317711f Plano: 7 tarefas para os 7 itens do acoplamento do ponytail
+6aa48ecc Agente executor (haiku + metodo no system prompt) substitui hook SubagentStart, que nao injeta contexto + v0.13.0
+c06ad792 Agente executor (haiku + metodo no system prompt) substitui hook SubagentStart, que nao injeta contexto + v0.13.0
+a04a57cd Hook SubagentStart injeta metodo em todo agente + guarda-corpo contextual (delegar jogando nao e jornada) + descanso vs expediente + v0.11.0
+9c938139 Hook SubagentStart injeta metodo em todo agente + guarda-corpo contextual (delegar jogando nao e jornada) + descanso vs expediente + v0.11.0
+
+$ git log --all --grep="bm25" --oneline
+e2343a10 tarefa 2: pontuação — nota crua das servidas e do contrafactual
+413525e1 memoria: reconciliar store/update/merge/skip do acervo pendente
+
+$ cat <dados>/ideias.jsonl
+{"id":"mapa-que-ninguem-confere-envelhece-em-silencio","titulo":"Protocolo de reconferencia: FOCO.md e memoria envelhecem sem ninguem desconfiar"}
+{"id":"trazer-a-memoria-pra-dentro-do-rainforest","titulo":"Trazer a memória pra dentro do rainforest: o claude-mem já custou dia demais, e o caminho de LEITURA não precisa dele de pé"}
+{"id":"obs-memoria-indice-nao-e-receita","titulo":"Abrir o arquivo da memoria, nao so a linha do indice"}
+{"id":"abrir-o-arquivo-de-memoria-nao-so-o-indice","titulo":"A linha do MEMORY.md e ponteiro; quando a tarefa depende da memoria, abrir o arquivo"}
+{"id":"sabia-limite-de-memoria-por-job-object-do-windows","titulo":"Sabia: limite de memoria imposto pelo kernel (Job Object), em vez de amostragem pelo processo pai"}
+{"id":"memoria-sinal-de-utilidade-no-ranking","titulo":"Memória injetada que foi útil sobe no ranking da abertura"}
+{"id":"obs-arvore-de-tela-nao-se-escreve-de-memoria","titulo":"Arvore de tela nao se escreve de memoria - le-se do fonte que a monta"}
+{"id":"memoria-encurta-antes-de-cortar-e-superada-sai-primeiro","titulo":"Bloco de memoria do SessionStart encurta cada observacao antes de cortar alguma, e a superada sai antes da so antiga"}
+{"id":"rodar-relatorio-de-utilidade-da-memoria","titulo":"Rodar o relatorio de utilidade da memoria e decidir pela regua D9"}
+{"id":"mods-ferramenta-buscar-memoria","titulo":"Ferramenta buscar_memoria do mod (via $.tool.register) no lugar de 'node scripts/memoria.cjs buscar' pelo Bash"}
+{"id":"obs-2026-10-05-relato-em-ingles","titulo":"Relato de fim de turno em ingles apesar da memoria falar-em-portugues"}
+{"id":"obs-base-compartilhada-virou-q-stec272","titulo":"Subi como decisao o que a memoria ja respondia"}
+
+
