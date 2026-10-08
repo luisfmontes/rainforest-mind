@@ -32,11 +32,11 @@
       "escreve": true
     },
     "tester": {
-      "estagios": ["executar", "verificar"],
+      "estagios": ["executar", "revisar", "verificar"],
       "escreve": true
     },
     "documentador": {
-      "estagios": ["executar"],
+      "estagios": ["executar", "fechar"],
       "escreve": true
     },
     "Explore": {

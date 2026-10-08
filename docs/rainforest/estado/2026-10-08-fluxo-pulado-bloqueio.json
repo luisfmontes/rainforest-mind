@@ -1,0 +1,179 @@
+{
+  "slug": "2026-10-08-fluxo-pulado-bloqueio",
+  "titulo": "Fluxo pulado: bloquear com caminho leve declarado (#430)",
+  "criado_em": "2026-10-07",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-08-fluxo-pulado-bloqueio.md",
+    "em": "2026-10-08"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-08-fluxo-pulado-bloqueio.md",
+    "tarefas": 4,
+    "paralelas": [
+      1
+    ],
+    "em": "2026-10-08"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-08",
+    "tarefas_ok": 14,
+    "tarefas": 14,
+    "em_voo": [],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "23c52948",
+        "iteracao": 1,
+        "sessao": "3a3f9560-730f-4a9e-bf04-673ed4a7e03d",
+        "ts": "2026-10-08T10:29:34.245Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "23c52948",
+        "iteracao": 2,
+        "sessao": "3a3f9560-730f-4a9e-bf04-673ed4a7e03d",
+        "ts": "2026-10-08T12:17:14.473Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "da3e7095",
+        "iteracao": 1,
+        "sessao": "3a3f9560-730f-4a9e-bf04-673ed4a7e03d",
+        "ts": "2026-10-08T12:17:14.473Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "da3e7095",
+        "iteracao": 1,
+        "sessao": "3a3f9560-730f-4a9e-bf04-673ed4a7e03d",
+        "ts": "2026-10-08T12:17:14.473Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "c8f1d8a3",
+        "iteracao": 1,
+        "sessao": "3a3f9560-730f-4a9e-bf04-673ed4a7e03d",
+        "ts": "2026-10-08T12:42:16.611Z"
+      }
+    ],
+    "em": "2026-10-08",
+    "comando": "bash scripts/varrer-baterias.sh",
+    "saida": "as 190 baterias passaram; conferir-entrega T13/T14 APROVADO; T13 mutacao vermelha (7 casos, inclusive o fixture)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "registro de leve com motivo vazio gravado a mao nao libera a branch"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "rainforest sem fluxo: Edit de .cjs sai 2 na primeira e na segunda edicao"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "repo rainforest sem fluxo: despacho de executor sai 2"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "so texto e numero de versao; falsificacao e testa-versao.sh e coerencia com o design"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "arquivo de codigo fora de qualquer repositorio passa com cwd num repo sem fluxo"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "tester despacha com fluxo em revisar (mutacao do revisar)"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "so texto de referencia; coerencia com hooks/portaria.cjs e o manifesto"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "leve --repo grava no repositorio indicado, nao no do cwd"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "rainforest na branch padrao: mensagem manda abrir worktree e nao oferece leve"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "o leve impresso pela portaria, rodado de outro cwd, libera o despacho"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "n/a",
+        "motivo": "so texto; coerencia com trilhoComFluxo em hooks/portaria.cjs e EXTENSOES_CODIGO em hooks/aviso-fluxo.cjs"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "protheus: gates.json recente de outra branch nao abre o fluxo desta"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "plugin em pasta com espaco: o leve impresso pela portaria roda e libera o despacho"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "n/a",
+        "motivo": "so texto e constantes de tamanho; a falsificacao sao as catracas de bytes"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "21b7b824d3c485dc13af6be2e97569458aaad2b1",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "afe8dbf7d455d1aad",
+        "veredito": "ok",
+        "em": "2026-10-08",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/3a3f9560-730f-4a9e-bf04-673ed4a7e03d/subagents/agent-afe8dbf7d455d1aad.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-08",
+    "achados": 3,
+    "achados_baixos_para_issue": 2,
+    "base": "3d1d3ba99c98afee60923366201d639c526a1643",
+    "head": "21b7b824d3c485dc13af6be2e97569458aaad2b1"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/varrer-baterias.sh && node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-08-fluxo-pulado-bloqueio + payload real do Edit",
+    "saida": "varrer: as 190 baterias passaram. mutacoes exit=0: tarefas 1,2,3,5,6,8,9,10,12,13 vermelho; 4,7,11,14 n/a. Payload real: Edit de hooks/mod.tsx na main -> exit 2 com comando de worktree; Edit no worktree com fluxo aberto -> exit 0.",
+    "sensor_externo": "bash scripts/varrer-baterias.sh",
+    "em": "2026-10-08",
+    "criterio": "CI do PR #440 (laco inteiro de baterias)",
+    "faltou": "o verificar rodou so as baterias do plano, nao o laco inteiro"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 440,
+    "em": "2026-10-08",
+    "motivo": "CI do PR #440 vermelho; verificar reprovado, emenda 4"
+  }
+}

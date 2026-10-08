@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.49.0-1e5c3f?style=flat-square" alt="versão 1.49.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.50.0-1e5c3f?style=flat-square" alt="versão 1.50.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -185,13 +185,12 @@ As baterias dos gates rodam em Windows + Git Bash (ambiente do CI: `runs-on: win
 | `gate-verificador-staged.cjs` | `git commit` cujo conteúdo **staged** o verificador do repositório reprova — descoberta nesta ordem: chave `"verificador-staged"` em `.rainforest/config.json`; senão `scripts/check-personal-data.py|.cjs|.sh|.js`; senão `scripts/conferir-publicacao.cjs`. Materializa os blobs (`git show :<caminho>`) numa pasta temporária e chama o verificador com esses caminhos; a saída dele vai no stderr. Repo sem verificador passa |
 | `gate-subagente-sem-gh.cjs` | dentro de subagente, `gh` que escreve no GitHub (`issue close/comment/edit/create…`, `pr create/merge/comment…`, `release`, `gist`, `alias set`, `extension install`, `workflow run`, `run rerun`, família que não é do `gh` — alias ou extensão —, `api` com método ≠ GET ou com campo) — no comando, atrás de wrapper, em `bash -c` (ilegível também nega), em heredoc e **dentro do script executado**, que é lido antes de rodar (`bash`/`sh`/`source`/`python3`/`node`/`pwsh`, `./x.sh`, `./x.ps1`, `bash < x.sh`, `cat x.sh \| bash`), e o código inline de `node -e`, `python -c`, `pwsh -Command` e `cmd /c`. Isenta só bateria `testa-*` rastreada pelo git; `scripts/fechar-issue.cjs` é negado pelo nome. A janela principal passa sempre. Toggle `subagente-sem-gh` |
 | `gate-subagente-sem-instalar.cjs` | dentro de subagente, instalação de pacote (`npm/pnpm/yarn/bun/pip/pipx/poetry/uv/cargo/go/gem/brew/apt/choco/scoop/winget`, `python -m pip`, `npx -y`, `Install-Module`…) — também atrás de `bash -c`, `sudo`, `env`, `FOO=1` e no PowerShell, decidido pelo subcomando (`npm test`, `yarn build` passam) —, e definir `RAINFOREST_GATE_OFF` — a chave de desligar gate não é do subagente. Não honra as próprias saídas de emergência. Toggle `subagente-sem-instalar` |
-| `portaria.cjs` | despacho de subagente não declarado em `.rainforest/agentes.json`, ou sem `isolation: "worktree"` quando ele escreve |
+| `portaria.cjs` | despacho de subagente não declarado em `.rainforest/agentes.json`, ou sem `isolation: "worktree"` quando ele escreve; agente que escreve (`escreve: true`) fora dos `estagios` dele, sem `leve` na branch, em repo com fluxo |
+| `aviso-fluxo.cjs` (`PreToolUse` em Edit/Write/MultiEdit) | edição de arquivo de código fora de `docs/` sem fluxo aberto nem `leve` na branch, nos trilhos rainforest e protheus. A mensagem dá as duas saídas: abrir o fluxo (`/rainforest-mind:brainstorm`, ou `/protheus:trabalhar`) ou `node <plugin>/scripts/estado.cjs leve --motivo "..."`. Chave `aviso-fluxo` do config desliga |
 
-Dois hooks avisam sem barrar (exit 0 com `additionalContext`): `aviso-fluxo.cjs`
-(`PreToolUse` em Write/Edit) lembra, no primeiro arquivo de código editado numa
-sessão sem fluxo aberto, de abrir o fluxo ou dizer por que pula (chave
-`aviso-fluxo`); `idioma-session-start.cjs` (`SessionStart` na compactação)
-reinjeta o idioma da chave `idioma` do config, que escorregava depois de compactar.
+Um hook avisa sem barrar (exit 0 com `additionalContext`): `idioma-session-start.cjs`
+(`SessionStart` na compactação) reinjeta o idioma da chave `idioma` do config,
+que escorregava depois de compactar.
 
 Fora da tabela porque o mecanismo é outro (`Stop`, exit 0 com
 `{"decision":"block"}`, e **opt-in** pela chave `gate-review-codex`):
@@ -298,7 +297,7 @@ incidente datado, em [`references/regra-<n>.md`](skills/rainforest-mind/referenc
 | 7 | Tom sênior | Policia ponta solta e escopo, nunca o mérito |
 | 8 | Guarda-corpo de jornada | Jornada **medida**, não estimada; um aviso, uma vez |
 | 9 | Freio de Pareto | Polimento do que já está pronto → "alguém que recebe fica prejudicado?" |
-| 10 | Agentes baratos, e a portaria registra | Só a regra 11 barra; manifesto e estágio viram linha de log, não portão |
+| 10 | Agentes baratos, e a portaria registra | Só a regra 11 barra, e o agente que escreve fora do estágio dele sem `leve` (#430); manifesto e estágio, nos demais casos, viram linha de log, não portão |
 | 11 | Worktree: principal na `main` | Checkout principal fica na branch padrão, todo trabalho nasce em worktree; hash de base conferido na fonte |
 | 12 | Entrega se valida na saída real | Critério falsificável no briefing; suíte verde não é evidência |
 | 13 | Correção vira observação | Você corrigir a saída já é o sinal: registra silenciosamente |

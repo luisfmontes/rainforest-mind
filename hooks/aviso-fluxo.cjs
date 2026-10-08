@@ -1,17 +1,21 @@
 #!/usr/bin/env node
 // @categoria: guia
 /**
- * Aviso de fluxo no primeiro Edit de código da sessão.
+ * Bloqueio de edição de código sem fluxo e sem caminho leve (#430).
  *
- * Dispara uma única vez por sessão quando o repositório tem fluxo (rainforest ou
- * protheus) e NENHUM está aberto, e o usuário edita um arquivo de código,
- * alertando que precisa abrir ou pular o fluxo. Com fluxo aberto, silencia
- * (critério 7 em main()).
+ * Bloqueia (exit 2, mensagem em stderr) o Edit/Write/MultiEdit de arquivo de código
+ * fora de docs/ quando o repositório tem fluxo (rainforest ou protheus), nenhum está
+ * aberto e a branch não tem o registro `leve` (`estado.cjs leve --motivo`). Repete a
+ * cada edição: não há memória por sessão (D8 do design 2026-10-08-fluxo-pulado-bloqueio).
  *
- * Não bloqueia (exit 0 sempre). Memória por sessão em <git-dir>/rainforest-aviso-fluxo.json,
- * com teto de 50 sessões (molde de gate-agente-em-voo).
+ * A mensagem nomeia as duas saídas com comando pronto (D9): abrir o fluxo, ou o caminho
+ * leve declarado. Chave `aviso-fluxo` do config desliga tudo (D4). Subagente (agent_id)
+ * não é barrado aqui: quem barra o despacho de agente que edita é a portaria.
  *
- * Extensões de código: .js .cjs .mjs .ts .tsx .jsx .py .sh .ps1 .psm1 .prw .prx .tlpp .ch .go .rs .java .cs .rb .php .sql
+ * O repositório é o do ARQUIVO editado, não o do cwd da sessão (emenda 1 do plano, D1/D9):
+ * sessão no checkout principal editando um worktree de fluxo aberto passa.
+ *
+ * Extensões de código (comparadas em minúsculas): .js .cjs .mjs .ts .tsx .jsx .py .sh .ps1 .psm1 .prw .prx .tlpp .ch .go .rs .java .cs .rb .php .sql .c .h .cpp .bat .cmd
  */
 
 const fs = require('node:fs');
@@ -19,12 +23,36 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { caminhoExecutavel } = require(path.join(__dirname, 'lib', 'resolver-executavel.cjs'));
 const { resolver } = require('./lib/estagio-ativo.cjs');
+const { leveDaBranch, protheusAberto } = require('./lib/caminho-leve.cjs');
+
+// Caminho absoluto do estado.cjs do plugin, com barras normais: o comando da mensagem
+// roda em bash e em PowerShell sem escapar contrabarra.
+const SCRIPT_ESTADO = path.resolve(__dirname, '..', 'scripts', 'estado.cjs').split(path.sep).join('/');
+// O node vai pelo caminho do processo, entre aspas (#430, emenda 4): nome nu resolve pela
+// busca do SO, e caminho com espaço quebra sem aspas.
+const NODE_BARRAS = process.execPath.split(path.sep).join('/');
 
 const EXTENSOES_CODIGO = new Set([
   '.js', '.cjs', '.mjs', '.ts', '.tsx', '.jsx',
   '.py', '.sh', '.ps1', '.psm1', '.prw', '.prx', '.tlpp', '.ch',
-  '.go', '.rs', '.java', '.cs', '.rb', '.php', '.sql'
+  '.go', '.rs', '.java', '.cs', '.rb', '.php', '.sql',
+  '.c', '.h', '.cpp', '.bat', '.cmd'
 ]);
+
+// Primeiro diretório que existe, subindo a partir de `p` (o próprio `p` se já for diretório).
+// Arquivo novo, ou em diretório ainda inexistente, cai no pai: o repositório do arquivo é
+// achado por ele.
+function diretorioExistente(p) {
+  let atual = p;
+  for (;;) {
+    try {
+      if (fs.statSync(atual).isDirectory()) return atual;
+    } catch {}
+    const pai = path.dirname(atual);
+    if (pai === atual) return atual;
+    atual = pai;
+  }
+}
 
 function toplevel(cwd) {
   try {
@@ -37,50 +65,38 @@ function toplevel(cwd) {
   }
 }
 
-function gitDir(gitTop) {
+function branchAtual(gitTop) {
   try {
-    const saida = execFileSync(caminhoExecutavel('git'), ['-C', gitTop, 'rev-parse', '--git-dir'], {
+    return execFileSync(caminhoExecutavel('git'), ['-C', gitTop, 'rev-parse', '--abbrev-ref', 'HEAD'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+// Branch padrão do repositório do arquivo: origin/HEAD, e main/master sempre. É o mesmo critério
+// que o `leve` do scripts/estado.cjs aplica (branchPadrao + ['main','master'], D7): se o gate
+// oferecesse o leve onde o estado recusa, a mensagem levaria a um beco. Cópia local porque o
+// estado.cjs é script com efeito ao ser carregado e não exporta o helper.
+function ehBranchPadraoDoRepo(gitTop, branch) {
+  if (!branch) return false;
+  if (branch === 'main' || branch === 'master') return true;
+  try {
+    const ref = execFileSync(caminhoExecutavel('git'), ['-C', gitTop, 'symbolic-ref', '--short', 'refs/remotes/origin/HEAD'], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     }).trim();
-    if (!saida) return null;
-    return path.isAbsolute(saida) ? saida : path.resolve(gitTop, saida);
+    return ref.replace(/^origin\//, '') === branch;
   } catch {
-    return null;
+    return false;
   }
 }
 
-function leAviso(caminho) {
-  try {
-    return JSON.parse(fs.readFileSync(caminho, 'utf8'));
-  } catch {
-    return null;
-  }
-}
-
-function sessaoJaAvisada(memoria, sessionId) {
-  if (!sessionId) return false;
-  if (!memoria || typeof memoria !== 'object' || !memoria.sessoes) return false;
-  return sessionId in memoria.sessoes;
-}
-
-const MAX_SESSOES_LEMBRADAS = 50;
-
-function gravaAviso(caminho, memoria, sessionId) {
-  try {
-    const sessoes = memoria && typeof memoria === 'object' && memoria.sessoes && typeof memoria.sessoes === 'object'
-      ? { ...memoria.sessoes }
-      : {};
-    sessoes[sessionId] = new Date().toISOString();
-    const recentes = Object.entries(sessoes)
-      .sort((a, b) => {
-        const timeA = new Date(a[1]).getTime() || 0;
-        const timeB = new Date(b[1]).getTime() || 0;
-        return timeB - timeA;
-      })
-      .slice(0, MAX_SESSOES_LEMBRADAS);
-    fs.writeFileSync(caminho, JSON.stringify({ sessoes: Object.fromEntries(recentes) }, null, 2) + '\n');
-  } catch {}
+// Caminho com barras normais, para colar em comando que roda em bash e em PowerShell.
+function barras(p) {
+  return p.split(path.sep).join('/');
 }
 
 function detectarTrilho(gitTop) {
@@ -110,24 +126,44 @@ function fluXoAberto(gitTop, trilho) {
     const ativo = resolver({ cwd: gitTop });
     return ativo !== null;
   } else if (trilho === 'protheus') {
-    // Protheus: qualquer .gates.json com mtime < 24h significa aberto
-    const dirPlans = path.join(gitTop, 'docs', 'plans');
-    try {
-      const arquivos = fs.readdirSync(dirPlans);
-      const agora = Date.now();
-      const umDiaEm_ms = 24 * 3600 * 1000;
-      for (const f of arquivos) {
-        if (f.endsWith('.gates.json')) {
-          const pCompleto = path.join(dirPlans, f);
-          const stats = fs.statSync(pCompleto);
-          if (agora - stats.mtimeMs < umDiaEm_ms) {
-            return true;
-          }
-        }
-      }
-    } catch {}
+    // Protheus: o predicado por arquivo (campo `branch`, senão mtime < 24 h) mora em caminho-leve.cjs (D10)
+    return protheusAberto({ gitTop, branch: branchAtual(gitTop) });
   }
   return false;
+}
+
+// HEAD destacado: não há branch para o `leve` (o estado.cjs recusa), então a única saída é trocar.
+function mensagemHeadDestacado(trilho) {
+  const abrir = trilho === 'rainforest' ? '/rainforest-mind:brainstorm' : '/protheus:trabalhar';
+  return [
+    `BLOQUEADO: este repositório tem fluxo ${trilho} e a sessão está em HEAD destacado (sem branch). Edição de código sem branch não passa.`,
+    `Saída: troque para uma branch e abra o fluxo nela: \`git switch -c fluxo/<nome>\`, depois ${abrir}.`,
+  ].join('\n');
+}
+
+// `ofereceLeve` false só no rainforest na branch padrão: lá o `leve` é recusado (D7), então a
+// saída é o worktree. O `--repo` aponta o repositório do arquivo (emenda 2, #430).
+function mensagemBloqueio(trilho, branch, ofereceLeve, gitTop) {
+  const iniciar = `"${NODE_BARRAS}" "${SCRIPT_ESTADO}" iniciar --slug <slug>`;
+  const leve = `"${NODE_BARRAS}" "${SCRIPT_ESTADO}" leve --motivo "<por quê>" --repo "${barras(gitTop)}"`;
+  if (trilho === 'rainforest') {
+    if (!ofereceLeve) {
+      return [
+        `BLOQUEADO: este repositório tem fluxo rainforest e nenhum está aberto na branch '${branch}', que é a branch padrão. Edição de código direto nela não passa.`,
+        `Saída: trabalhe num worktree e abra o fluxo nele: \`git worktree add .claude/worktrees/<nome> -b fluxo/<nome>\`, entre no worktree e rode /rainforest-mind:brainstorm (roda \`${iniciar}\`).`,
+      ].join('\n');
+    }
+    return [
+      `BLOQUEADO: este repositório tem fluxo rainforest e nenhum está aberto na branch '${branch}'. Edição de código sem fluxo não passa.`,
+      `Saída 1, abrir o fluxo: /rainforest-mind:brainstorm (roda \`${iniciar}\`).`,
+      `Saída 2, caminho leve declarado para hotfix mecânico: \`${leve}\``,
+    ].join('\n');
+  }
+  return [
+    `BLOQUEADO: este repositório tem fluxo protheus e nenhum está aberto na branch '${branch}'. Edição de código sem fluxo não passa.`,
+    `Saída 1, abrir o fluxo: /protheus:trabalhar.`,
+    `Saída 2, caminho leve declarado para hotfix mecânico: \`${leve}\``,
+  ].join('\n');
 }
 
 function main() {
@@ -137,8 +173,9 @@ function main() {
   } catch {
     process.exit(0); // payload ilegível — não impacta a sessão
   }
+  if (!ev || typeof ev !== 'object') process.exit(0);
 
-  // Critério 1: sem agent_id (subagentes não recebem aviso)
+  // Critério 1: sem agent_id (subagentes são barrados pela portaria, não aqui)
   if (typeof ev.agent_id === 'string' && ev.agent_id) {
     process.exit(0);
   }
@@ -148,14 +185,14 @@ function main() {
     process.exit(0);
   }
   const filePath = ev.tool_input.file_path;
-  const ext = path.extname(filePath);
+  const ext = path.extname(filePath).toLowerCase();
   if (!EXTENSOES_CODIGO.has(ext)) {
     process.exit(0);
   }
 
-  // Critério 4: repositório git
+  // Critério 4: repositório git do ARQUIVO (não do cwd): emenda 1 do plano, D1
   if (!ev.cwd) process.exit(0);
-  const gitTop = toplevel(ev.cwd);
+  const gitTop = toplevel(diretorioExistente(path.resolve(ev.cwd, filePath)));
   if (!gitTop) process.exit(0);
 
   // Critério 3: arquivo não sob docs/
@@ -178,60 +215,37 @@ function main() {
     process.exit(0);
   }
 
-  // Critério 6: config permite aviso
+  // Critério 6: config permite a trava (chave `aviso-fluxo`, padrão ligada)
   try {
     if (!require('./lib/config.cjs').ligado('aviso-fluxo', { projeto: gitTop })) {
       process.exit(0);
     }
   } catch {}
 
-  // Critério 7: não há fluxo aberto (se houver fluxo aberto, silencia)
+  // Critério 7: há fluxo aberto na branch
   if (fluXoAberto(gitTop, trilho)) {
     process.exit(0);
   }
 
-  // Critério 8: primeira edição da sessão (memória)
-  let sessionId = typeof ev.session_id === 'string' && ev.session_id ? ev.session_id : null;
-  let caminhoAviso = null;
-  let memoria = null;
+  // HEAD destacado: sem branch não há fluxo nem `leve` possível (o estado.cjs recusa).
+  const branch = branchAtual(gitTop);
+  const headDestacado = branch === 'HEAD';
 
-  if (sessionId) {
-    const gd = gitDir(gitTop);
-    if (gd) {
-      caminhoAviso = path.join(gd, 'rainforest-aviso-fluxo.json');
-      memoria = leAviso(caminhoAviso);
-      if (sessaoJaAvisada(memoria, sessionId)) process.exit(0);
-    }
+  // Critério 8: a branch tem o caminho leve declarado (D6, D7)
+  if (!headDestacado && branch && leveDaBranch({ gitTop, branch })) {
+    process.exit(0);
   }
 
-  // Montar mensagem de aviso
-  let aviso = '';
-  if (trilho === 'rainforest') {
-    aviso = 'Este repositório tem fluxo rainforest e nenhum está aberto nesta sessão. Abra o fluxo (`/rainforest-mind:brainstorm`, que roda `node scripts/estado.cjs iniciar --slug <slug>`) ou diga ao usuário que pula, e por quê.';
-  } else if (trilho === 'protheus') {
-    aviso = 'Este repositório tem fluxo protheus e nenhum está aberto nesta sessão. Abra o fluxo com `/protheus:trabalhar` ou diga ao usuário que pula, e por quê.';
-  }
+  // Bloqueio (D7, D9): o leve só é oferecido onde o estado.cjs o aceita.
+  const ehBranchPadrao = ehBranchPadraoDoRepo(gitTop, branch);
+  const ofereceLeve = !headDestacado && !(trilho === 'rainforest' && ehBranchPadrao);
+  const texto = headDestacado
+    ? mensagemHeadDestacado(trilho)
+    : mensagemBloqueio(trilho, branch || 'desconhecida', ofereceLeve, gitTop);
 
-  // Truncar em 400 B
-  if (aviso.length > 400) {
-    aviso = aviso.substring(0, 400);
-  }
-
-  // Gravar memória antes de emitir (para que erro de escrita não mude stdout)
-  if (sessionId && caminhoAviso) {
-    gravaAviso(caminhoAviso, memoria, sessionId);
-  }
-
-  // Emitir aviso
-  const saida = {
-    hookSpecificOutput: {
-      hookEventName: 'PreToolUse',
-      additionalContext: aviso,
-    },
-  };
-
-  console.log(JSON.stringify(saida));
-  process.exit(0);
+  // fs.writeSync garante que a mensagem sai antes do exit.
+  fs.writeSync(2, texto + '\n');
+  process.exit(2); // bloqueio-fluxo
 }
 
 main();

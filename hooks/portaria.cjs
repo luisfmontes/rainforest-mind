@@ -26,6 +26,7 @@ const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
 const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
+const { leveDaBranch, protheusAberto } = require(path.join(__dirname, "lib", "caminho-leve.cjs"));
 
 /**
  * Agentes que pertencem ao Claude Code, não a este repositório. Podem ser
@@ -91,6 +92,21 @@ function obterBranch(raiz) {
     return branch || null;
   } catch {
     return null;
+  }
+}
+
+/* Branch padrao do repositorio (origin/HEAD, senao main ou master): o mesmo criterio
+ * que o `leve` aplica no scripts/estado.cjs (branchPadrao la, nao exportada). Issue #430, D7. */
+function branchEhPadrao(raiz, branch) {
+  if (branch === "main" || branch === "master") return true;
+  try {
+    const ref = execFileSync(caminhoExecutavel("git"), ["-C", raiz, "symbolic-ref", "--short", "refs/remotes/origin/HEAD"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    return ref.replace(/^origin\//, "") === branch;
+  } catch {
+    return false;
   }
 }
 
@@ -194,6 +210,23 @@ function negar(motivo) {
 function agenteFolhaLigado(raiz) {
   const { ligado } = require("./lib/config.cjs");
   return ligado('agente-folha', { projeto: raiz });
+}
+
+/* Trilho de fluxo do repositorio (Issue #430, D3): "rainforest" se existe
+ * docs/rainforest/estado/, "protheus" se ha docs/plans/*.gates.json, null se nao
+ * ha trilho. Mesmo criterio de detectarTrilho em hooks/aviso-fluxo.cjs. Sem como
+ * ler docs/plans, nao ha trilho: a portaria nao barra por palpite. */
+function detectarTrilhoFluxo(raiz) {
+  if (fs.existsSync(path.join(raiz, "docs", "rainforest", "estado"))) return "rainforest";
+  const dirPlans = path.join(raiz, "docs", "plans");
+  if (!fs.existsSync(dirPlans)) return null;
+  let arquivos;
+  try {
+    arquivos = fs.readdirSync(dirPlans);
+  } catch (_) {
+    return null;
+  }
+  return arquivos.some((f) => f.endsWith(".gates.json")) ? "protheus" : null;
 }
 
 function normalizarNomeAgente(nome) {
@@ -903,6 +936,27 @@ function main() {
   const estagioForaDoDeclarado =
     estagiosDeclarados !== null && !estagiosDeclarados.includes(estagioAtivo);
 
+  // Issue #430, D3/D4/D5 — o despacho de agente que ESCREVE sai do estagio dele
+  // sem `leve` na branch e e barrado. Reverte a #264 so para `declarado &&
+  // escreve: true`: agente nao declarado (outro plugin), `escreve: false`, repo
+  // sem trilho de fluxo ou com a chave `aviso-fluxo` desligada seguem como estao
+  // (a portaria so registra). A barreira mora no ramo `escreve === true`, depois
+  // da regra 11 (isolation) e da regra 10 (name) e antes do allow, para a
+  // mensagem da regra 11 continuar sendo a que sai quando ela falha.
+  //
+  // A DECISAO INTEIRA MORA NESTA LINHA: trilho ausente zera `trilhoComFluxo`,
+  // `leve` da branch libera, estagio aberto dentro dos `estagios` do agente libera.
+  const escreveDeclarado = declarado && agentConfig.escreve === true;
+  const trilho = detectarTrilhoFluxo(raiz);
+  const trilhoComFluxo = trilho !== null && require("./lib/config.cjs").ligado("aviso-fluxo", { projeto: raiz });
+  const leve = trilhoComFluxo && escreveDeclarado
+    ? Boolean(leveDaBranch({ gitTop: raiz, branch: obterBranch(raiz) }))
+    : false;
+  const estagioPermitido = trilho === "protheus"
+    ? protheusAberto({ gitTop: raiz, branch: obterBranch(raiz) })
+    : Boolean(estResult) && Array.isArray(estagiosDeclarados) && estagiosDeclarados.includes(estResult.estagio);
+  const bloqueiaFluxoPulado = trilhoComFluxo && escreveDeclarado && !leve && !estagioPermitido;
+
 
   // D3 passo 6: escreve: false com tools fora de allowlist → nega.
   //
@@ -1062,6 +1116,37 @@ function main() {
         `agente '${nomeAgente}' declara 'escreve: true' e foi despachado com name: ${JSON.stringify(nomeDado)}` +
         ` — agente que edita nunca e nomeado (regra 10): nomeado vira teammate, o isolamento nao se aplica` +
         ` e a entrega para de voltar inline`;
+      gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
+      negar(motivo);
+    }
+
+    // Issue #430, D3/D5: agente que escreve, fora do estagio aberto e sem `leve`
+    // na branch, e barrado com as duas saidas que o proprio fluxo oferece. A
+    // mensagem nomeia o agente, o estagio exigido e as saidas; o deny vai ao log.
+    if (bloqueiaFluxoPulado) {
+      const exige = Array.isArray(estagiosDeclarados) ? estagiosDeclarados.join(" ou ") : "(manifesto sem 'estagios')";
+      // Caminho absoluto com barras `/`: o comando impresso roda de qualquer cwd e
+      // sem contrabarra que o shell do agente engula (Issue #430, emenda 2).
+      const caminhoEstado = path.join(path.resolve(__dirname, ".."), "scripts", "estado.cjs").split(path.sep).join("/");
+      // O node vai pelo caminho do processo, entre aspas (Issue #430, emenda 4): nome nu
+      // resolve pela busca do SO, e caminho com espaco quebra sem aspas.
+      const nodeBarras = process.execPath.split(path.sep).join("/");
+      const raizBarras = raiz.split(path.sep).join("/");
+      const leveDaMensagem = `"${nodeBarras}" "${caminhoEstado}" leve --motivo "<por que>" --repo "${raizBarras}"`;
+      // Saida 2 depende da branch. HEAD destacado: o leve vale por branch, entao manda
+      // trocar para uma. Branch padrao de repo rainforest: o leve e recusado ali (regra 11),
+      // entao manda despachar de dentro do worktree do fluxo. Demais casos: o leve direto.
+      const branchAtual = obterBranch(raiz);
+      const saida2 = branchAtual === "HEAD"
+        ? `\n  saida 2: HEAD destacado, e o leve vale por branch: troque para uma branch de trabalho (git switch -c fluxo/<nome>) e despache dela`
+        : trilho === "rainforest" && branchEhPadrao(raiz, branchAtual)
+          ? `\n  saida 2: '${branchAtual}' e a branch padrao, e o leve e recusado nela (regra 11): despache de dentro do worktree do fluxo, onde o leve vale: ${leveDaMensagem}`
+          : `\n  saida 2: caminho leve, para hotfix mecanico: ${leveDaMensagem}`;
+      const motivo =
+        `agente '${nomeAgente}' escreve (escreve: true) e so roda no estagio que declara: exige ${exige}; ` +
+        `estagio aberto: ${estagioAtivo} (Issue #430, D3/D5)` +
+        `\n  saida 1: abrir ou avancar o fluxo ate ${exige} (rainforest: /rainforest-mind:brainstorm ou "${nodeBarras}" "${caminhoEstado}" iniciar --slug <slug>; protheus: /protheus:trabalhar)` +
+        saida2;
       gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
       negar(motivo);
     }

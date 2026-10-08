@@ -134,6 +134,10 @@ echo "2. sem a flag, a saida e identica ao commit base $BASE_GOLDEN"
 GOLD_POSIX="$(novo_sandbox)"
 if (cd "$SRC" && git archive "$BASE_GOLDEN" hooks scripts skills) | tar -x -C "$GOLD_POSIX"; then
   passa "golden montado por git archive $BASE_GOLDEN (hooks scripts skills)"
+  # O caso mede o CODIGO do hook (a flag nao muda a saida padrao), nao o texto das
+  # regras: o skills/ do golden vira o atual, senao toda edicao de regra (o nucleo
+  # injetado mora em skills/rainforest-mind/SKILL.md) reprova aqui (#430, 2026-10-08).
+  rm -rf "$GOLD_POSIX/skills" && cp -r "$SRC/skills" "$GOLD_POSIX/skills"
 else
   falha "nao consegui montar o golden com git archive $BASE_GOLDEN"
 fi

@@ -16,7 +16,8 @@ Não é mais.** O que mudou e por quê:
 |---|---|---|
 | Agente fora do manifesto | nega | **passa**, com `declarado: false` no log |
 | Sem estágio ativo | nega, ou exige frase digitada | **passa**, com `fora_de_fluxo: true` no log |
-| Estágio fora da lista do agente | nega | **passa**, com `estagio_declarado` no log |
+| Estágio fora da lista do agente que **lê** (`escreve: false`) | nega | **passa**, com `estagio_declarado` no log |
+| Agente declarado com `escreve: true` fora dos `estagios` dele (ou sem fluxo), sem `leve` na branch, em repositório com trilho de fluxo e com a chave `aviso-fluxo` ligada | nega | **nega** de novo desde a 1.50.0 (Issue #430) |
 | `escreve: true` sem `isolation: "worktree"` | nega | **nega** (regra 11) |
 | `escreve: true` com `name` | nega | **nega** (regra 10) |
 | Manifesto malformado | nega | **nega** |
@@ -30,14 +31,17 @@ frase "autorizo subagentes" custava uma digitação por sessão sem decidir nada
 O critério que separa o portão que fica do que sai: **ele defende a árvore de
 trabalho do usuário, ou a ordem do fluxo?** A regra 11 defende a árvore, e fica.
 Ordem de fluxo agora se registra — as marcas acima entram no log, que o
-`conferir-fluxo` já lê.
+`conferir-fluxo` já lê. A exceção é o despacho de agente que **escreve** fora do
+estágio dele: pular o fluxo assim reincidiu onze vezes em dois meses (#396, #430),
+e o registro não segurou. Ele volta a negar, com duas saídas na mensagem — abrir
+ou avançar o fluxo, ou `estado.cjs leve --motivo` na branch — e a chave
+`aviso-fluxo` desliga. Agente de outro plugin (fora do manifesto) segue só
+registrado.
 
 > **Regra 10 (reescrita em 2026-09-15):** o manifesto é **declaração**, não
-> admissão. A portaria barra um caso só — agente que escreve sem worktree
-> isolado, ou nomeado. Todo o resto ela deixa passar e registra. A decisão
-> continua sendo por código (hook `PreToolUse` sobre a tool `Task`), e o humano
-> continua não sendo perguntado em runtime — a diferença é que agora ele também
-> não é **cobrado** em runtime.
+> admissão. A portaria barra agente que escreve sem worktree
+> isolado, ou nomeado — e, desde a #430, agente declarado que escreve fora do
+> estágio dele sem `leve`. Todo o resto ela deixa passar e registra.
 
 **Agente não declarado tem o `escreve` INFERIDO** do frontmatter, quando o
 arquivo está ao alcance: tool fora da allowlist read-only → `escreve: true`, e a
@@ -63,9 +67,9 @@ Exemplo:
 }
 ```
 
-**A FORMA do manifesto é conferida antes do conteúdo.** `escreve` tem de ser o booleano `false` — string `"false"`, ausente, ou qualquer outra coisa **nega**, com motivo instrutivo, no runtime e no `--lint`. `estagios` ausente, não-lista ou vazio é **erro** no lint; lista que só contém estágio que nunca fica ativo (`arqueologia`) é **aviso**, porque o manifesto não está malformado, está inútil — o runtime negaria todo despacho daquele agente. O porquê (crítico da rodada 5: `escreve === false` é igualdade estrita, e qualquer outro valor desligava a checagem inteira em silêncio) está no `git log` de `hooks/portaria.cjs`.
+**A FORMA do manifesto é conferida antes do conteúdo.** `escreve` tem de ser o booleano `false` — string `"false"`, ausente, ou qualquer outra coisa **nega**, com motivo instrutivo, no runtime e no `--lint`. `estagios` ausente, não-lista ou vazio é **erro** no lint; lista que só contém estágio que nunca fica ativo (`arqueologia`) é **aviso**, porque o manifesto não está malformado, está inútil — o runtime negaria todo despacho daquele agente. O porquê está no `git log` de `hooks/portaria.cjs`.
 
-**Fail-closed, sempre com motivo.** Depois da revogação acima a portaria nega em quatro casos, e todos são forma ou regra 11: manifesto do repo inválido — **nega, não cai no padrão**, senão o repo ganharia agentes que não declarou; `agentes.extra.json` do usuário inválido; campo `escreve`, `runtime` ou `sensores` com valor que não dá para interpretar em agente **declarado**; e `escreve: true` sem `isolation: "worktree"` ou com `name`. Agente declarado com `escreve: false` cujo `agents/<nome>.md` declara tool fora da allowlist read-only (`Read`, `Grep`, `Glob`) também nega — é declaração que contradiz o arquivo. Toda negação sai com motivo não vazio: negação muda é bug.
+**Fail-closed, sempre com motivo.** Depois da revogação acima a portaria nega em cinco casos, e quatro são forma ou regra 11: manifesto do repo inválido — **nega, não cai no padrão**, senão o repo ganharia agentes que não declarou; `agentes.extra.json` do usuário inválido; campo `escreve`, `runtime` ou `sensores` com valor que não dá para interpretar em agente **declarado**; e `escreve: true` sem `isolation: "worktree"` ou com `name`. O quinto é de fluxo: agente declarado com `escreve: true` fora do estágio dele, sem `leve` (#430; Issue #438, achado 2). Agente declarado com `escreve: false` cujo `agents/<nome>.md` declara tool fora da allowlist read-only (`Read`, `Grep`, `Glob`) também nega — é declaração que contradiz o arquivo. Toda negação sai com motivo não vazio: negação muda é bug.
 
 **Log de despacho** — `<raiz de dados>/portaria/despachos.jsonl`, **fora do repositório** desde 2026-09-13 (raiz por `hooks/lib/raiz.cjs`; ver `-escopo.md`): append-only, uma linha JSON por decisão, autocontida. Depois da #264 é ele que responde pelos portões que saíram — o exemplo antigo mostrava um deny por "não consta no manifesto", que deixou de existir:
 ```json
