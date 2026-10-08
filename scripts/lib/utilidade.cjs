@@ -394,7 +394,6 @@ function acharAlvo(conexao, linhaServida, apelidos) {
     if (formatarObservacao(row, apelidos) === linhaServida) {
       return { origem: 'observacao', id: row.id, conteudo: row.conteudo };
     }
-    if (formatarObservacao(row, apelidos, TETO_LINHA_ASSUNTO) === linhaServida) return { origem: 'observacao', id: row.id, conteudo: row.conteudo };
     // O hook do assunto monta a linha com o projeto CRU (sem apelido): com apelido na sessão, só estas casam.
     if (formatarObservacao(row, null, TETO_LINHA_ASSUNTO) === linhaServida) return { origem: 'observacao', id: row.id, conteudo: row.conteudo };
     if (formatarObservacao(row, null) === linhaServida) return { origem: 'observacao', id: row.id, conteudo: row.conteudo };

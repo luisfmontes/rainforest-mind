@@ -189,31 +189,26 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "e06cbe5c043a52a17ab41de28e67c7b10d32621d",
+      "head": "351a2cf675a3f0af768bd79fe5d015cf86fe09c0",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a8be931d59dac02dd",
-        "veredito": "reprovado",
+        "agente_id": "a9605ee6941ba26c2",
+        "veredito": "ok",
         "em": "2026-10-08",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind--claude-worktrees-memoria-por-assunto/722539d9-b368-4e3f-9f32-6a3fd43848ae/subagents/agent-a8be931d59dac02dd.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind--claude-worktrees-memoria-por-assunto/722539d9-b368-4e3f-9f32-6a3fd43848ae/subagents/agent-a9605ee6941ba26c2.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-08",
-    "achados": 5,
-    "pendentes": [
-      "1: linha do assunto com projeto cru nao casa no acharAlvo com apelido; some da medicao e fabrica perda",
-      "2: buscas ativas conta Agent/Write/Edit que so citam memoria.cjs buscar",
-      "3: corte por mais: corta o bloco do assunto",
-      "4: comentario diz LIMIAR -16",
-      "5: matcher do hook do subagente so Agent, nao Task|Agent"
-    ],
-    "tentativas": 2
+    "achados": 0,
+    "base": "37f786d56984670887956074439278a2137268a5",
+    "head": "351a2cf675a3f0af768bd79fe5d015cf86fe09c0",
+    "ressalvas": 7
   },
   "verificar": {
     "status": "pendente"

@@ -158,7 +158,7 @@ paralela: sim
 prova: `bash scripts/testa-utilidade-canais.sh`
 mutacao:
   arquivo: `scripts/lib/utilidade.cjs`
-  de: `if (formatarObservacao(row, apelidos, TETO_LINHA_ASSUNTO) === linhaServida) return { origem: 'observacao', id: row.id, conteudo: row.conteudo };`
+  de: `if (formatarObservacao(row, null, TETO_LINHA_ASSUNTO) === linhaServida) return { origem: 'observacao', id: row.id, conteudo: row.conteudo };`
   para: `if (false) return { origem: 'observacao', id: row.id, conteudo: row.conteudo };`
   bateria: `bash scripts/testa-utilidade-canais.sh`
   fixture: `testa-utilidade-canais.sh, caso "servida do canal assunto cortada em 300 caracteres casa com o id"`
@@ -197,3 +197,5 @@ mutacao:
   bateria: `bash scripts/testa-utilidade-canais.sh`
   fixture: `testa-utilidade-canais.sh, caso "servida do assunto com projeto pelo nome do harness casa com o id mesmo com apelido"`
 pronto quando: (1) `acharAlvo` casa a linha do canal do assunto montada com o projeto cru (`formatarObservacao(row, null, 300)`, como o hook monta) mesmo quando a sessão tem apelido de projeto — numa linha só, na forma do `de:` acima; caso com transcrito de `cwd` num repositório git cujo nome curto difere do projeto gravado na observação; (2) `contarBuscasArquivo` só conta `tool_use` de `Bash`/`PowerShell` cujo `input.command` executa `memoria.cjs buscar` — caso com `Agent`, `Write` e `Edit` que citam o comando contando 0; (3) o corte por `mais:` vale só para o bloco da abertura; o do assunto vai até o próximo `\n## ` ou o fim — caso com observação contendo `jamais:` no texto mantendo as duas linhas inteiras; (4) se o attachment `hook_additional_context` vier ANTES da linha `user` do pedido no transcrito, a injeção se ancora no pedido seguinte (nunca `indiceInjecao = -1` com o próprio pedido no texto posterior) — caso com as duas ordens dando a mesma nota; (5) `hooks/hooks.json` registra o hook do subagente com matcher `Task|Agent`; e o comentário de `hooks/testa-memoria-assunto-prompt.cjs` não cita mais -16 — provado por `bash scripts/testa-utilidade-canais.sh` com os casos novos `ok` e `0 falha(s)`, `bash scripts/testa-utilidade.sh` com `19 ok, 0 falha(s)`, e `node -e "const h=require('./hooks/hooks.json');const p=(h.hooks||h).PreToolUse;console.log(p.some(e=>e.matcher==='Task|Agent'&&JSON.stringify(e).includes('memoria-assunto-agente')))"` imprimindo `true`.
+
+**Emenda 7 de 2026-10-08 — verificar: mutante da tarefa 13 sobreviveu.** Depois da tarefa 14, a comparação `formatarObservacao(row, apelidos, TETO_LINHA_ASSUNTO)` virou código morto: o hook do assunto monta a linha sempre com o projeto cru, e nenhuma linha servida tem apelido e teto 300 ao mesmo tempo. A linha sai de `scripts/lib/utilidade.cjs`, e a mutação da tarefa 13 passa a mirar a comparação viva, `formatarObservacao(row, null, TETO_LINHA_ASSUNTO)`, a mesma da tarefa 14, cada uma com o próprio caso de teste. Nenhuma decisão do design muda.
