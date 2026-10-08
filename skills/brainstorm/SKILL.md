@@ -23,6 +23,10 @@ resposta recomendada:
 ➡️ **Recomendo:** <sua resposta, com o porquê em uma linha>
 ```
 
+Redija cada pergunta para que **"sim" aceite a recomendada** — "Fica no hook,
+como recomendo?", não "Hook ou script?". Assim "1 sim, 2 sim, 3 não, usa X"
+fecha a rodada sem ele reescrever o que você já escreveu.
+
 E então **pare e espere**. Cada rodada de respostas remodela a árvore:
 decisão fechada empurra a fronteira para fora — recalcule e faça a rodada
 seguinte. Você nunca responde as próprias perguntas.

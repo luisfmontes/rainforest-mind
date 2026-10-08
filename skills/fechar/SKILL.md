@@ -95,6 +95,37 @@ Isso não tira a palavra do usuário: se **ele** disser outra coisa (mergear
 direto, manter a branch), vale o que ele disse, e é isso que vai em `acao` no
 fechamento do estágio.
 
+**Corpo do PR — três seções, nesta ordem.** O PR é o gargalo da revisão humana;
+o corpo existe para torná-la barata. Sem preâmbulo, prosa curta:
+
+```markdown
+## Resumo
+<o menor visual que deixa a mudança clara>
+
+## Evidência
+- **Antes:** <saída, teste vermelho, print>
+  **Depois:** <a mesma coisa, agora certa>
+
+## Perigo de merge
+**Porta:** <mão dupla | mão única> — <uma linha, se precisar>
+**Raio de impacto:** <uma palavra> — <o que pode quebrar, se precisar>
+```
+
+- **Resumo**: escolha a menor vista que serve — pseudocódigo para lógica, árvore
+  de chamadas para fluxo, árvore de arquivos para refatoração ampla, `diff` da
+  *forma* (não do código) quando a estrutura já existe, Mermaid para interação.
+  Uma, às vezes duas; nunca todas.
+- **Evidência**: execução real, antes e depois — o mesmo comando, as duas
+  saídas. O `EVIDENCIA:` que o `verificar` gravou nos portões é a fonte
+  natural; "li o código e deve funcionar" não é evidência (regra 12).
+- **Perigo de merge**: **mão dupla** é o que se desfaz com um revert; **mão
+  única** é o que age no mundo e não volta (dado apagado, publicação, migração,
+  mensagem enviada). Mão dupla com raio pequeno pede revisão leve — dizer isso
+  é o que poupa o tempo de quem revisa.
+
+Template enxertado da skill `pr` (mattpocock/skills v1.3, MIT), que adapta o
+`show-me` de Dex Horthy (HumanLayer).
+
 **Corpo do PR — palavras-chave de fechamento.** O GitHub reconhece, em
 **inglês e case-insensitive**, estas palavras antes de cada número de issue:
 `close`, `closes`, `closed`, `fix`, `fixes`, `fixed`, `resolve`, `resolves`,

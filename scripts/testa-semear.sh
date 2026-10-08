@@ -261,5 +261,55 @@ JS
   fi
 fi
 
+echo
+echo "== 14. lista os transcripts do projeto, com chamadas e erros, e so os dele =="
+# A fonte que veio do `retro` (mattpocock/skills v1.3): o transcript e o que
+# ACONTECEU, nao o que alguem notou. Pasta do Claude Code = cwd com todo nao
+# alfanumerico virando hifen; sessao de worktree ganha `<slug>--claude-worktrees-*`.
+# A pasta `<slug>-vizinho` existe de verdade no disco dele (projeto cujo nome
+# comeca igual) e NAO pode entrar.
+SLUG14="$(node -e 'process.stdout.write(process.argv[1].replace(/[^a-zA-Z0-9]/g,"-"))' "$SB/proj")"
+mkdir -p "$SBP/cfg/projects/$SLUG14" "$SBP/cfg/projects/$SLUG14--claude-worktrees-agente" "$SBP/cfg/projects/$SLUG14-vizinho"
+cat > "$SBP/cfg/projects/$SLUG14/sessao-principal.jsonl" <<'J'
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"a","is_error":false,"content":"ok"}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"b","is_error":true,"content":"falhou"}]}}
+{"type":"assistant","message":{"content":[{"type":"text","text":"tool_result citado em prosa nao conta"}]}}
+linha que nao e json e menciona tool_result
+J
+printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"c","content":"ok"}]}}' \
+  > "$SBP/cfg/projects/$SLUG14--claude-worktrees-agente/sessao-do-agente.jsonl"
+printf '%s\n' '{"type":"user","message":{"content":"x"}}' > "$SBP/cfg/projects/$SLUG14-vizinho/sessao-alheia.jsonl"
+roda14() { ( cd "$SBP/proj" && RFM_ROOT="$SB/dados" CLAUDE_PROJECT_DIR="$SB/proj" CLAUDE_CONFIG_DIR="$SB/cfg" \
+  node "$1" 2>&1 ); }
+S14="$(roda14 "$SRC/scripts/semear.cjs")"
+tem     "bloco de sessoes aparece, 2 de 2"            "$S14" "SESSOES RECENTES (2 de 2)"
+tem     "a sessao principal entra"                    "$S14" "sessao-principal.jsonl"
+tem     "a sessao do worktree (subagente) entra"      "$S14" "sessao-do-agente.jsonl"
+tem     "conta so tool_result de verdade, e o erro"   "$S14" "2 chamadas, 1 com erro"
+nao_tem "a pasta vizinha de prefixo igual fica fora"  "$S14" "sessao-alheia.jsonl"
+
+echo
+echo "== 14b. MUTACAO — casar a pasta so pelo prefixo deixa o vizinho entrar =="
+cp "$SRC/scripts/semear.cjs" "$SBP/mut/scripts/semear-mutante-14.cjs"
+node - "$SBP/mut/scripts/semear-mutante-14.cjs" <<'JS'
+const fs = require("fs");
+const alvo = process.argv[2];
+const antes = fs.readFileSync(alvo, "utf8");
+const de = "return l === slug || l.startsWith(`${slug}--claude-worktrees-`);";
+if (!antes.includes(de)) throw new Error("ancora do filtro de pastas sumiu");
+fs.writeFileSync(alvo, antes.split(de).join("return l.startsWith(slug); // MUTADO"), "utf8");
+JS
+# Prova de que a mutacao pousou antes de confiar no vermelho (diagnosing-bugs, #955).
+if cmp -s "$SRC/scripts/semear.cjs" "$SBP/mut/scripts/semear-mutante-14.cjs"; then
+  falhou=$((falhou+1)); echo "  FALHA mutacao NAO aplicada — o mutante e identico ao original"
+else
+  MUT14="$(roda14 "$SBP/mut/scripts/semear-mutante-14.cjs")"
+  if echo "$MUT14" | grep -qF "sessao-alheia.jsonl"; then
+    ok=$((ok+1)); echo "  ok   com prefixo puro o vizinho ENTRA (o sufixo --claude-worktrees- e load-bearing)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA mutacao sem efeito — nao e o filtro de pastas que barra o vizinho"
+  fi
+fi
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
