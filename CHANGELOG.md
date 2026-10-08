@@ -24,6 +24,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   roda sem fluxo no estágio que ele declara, nem sem `leve` na branch. A mensagem diz o agente, o estágio exigido e
   as duas saídas. Agente que não está no manifesto (de outro plugin) segue só registrado.
 - **Chave `aviso-fluxo` desliga tudo.** No config do projeto, ela desliga a trava de edição e a de despacho.
+- **Protheus: fluxo aberto pelo campo `branch` do `.gates.json`.** Um `docs/plans/*.gates.json` com `branch` no topo abre o fluxo só na branch que ele nomeia, sem olhar o mtime; sem o campo, vale o mtime de menos de 24 h; arquivo ilegível é ignorado.
 - **Fica de fora:** escrita feita por Bash (`sed`, `node -e`, redirecionamento) não é barrada. O bloqueio pega o
   Edit, o Write e o MultiEdit. O motivo do `leve` não é julgado: fica no rastro para auditar depois.
 

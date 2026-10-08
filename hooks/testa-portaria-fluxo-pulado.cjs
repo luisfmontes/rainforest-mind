@@ -319,6 +319,37 @@ console.log("== F. trilho protheus: .gates.json recente libera ==");
   descartar(repo);
 }
 
+// == G. trilho protheus: o campo `branch` do .gates.json decide (D10) ==
+console.log("== G. trilho protheus: campo branch do .gates.json ==");
+{
+  const repo = novoRepo();
+  const plans = path.join(repo.main, "docs", "plans");
+  fs.mkdirSync(plans, { recursive: true });
+  const gates = path.join(plans, "2026-10-08-teste.gates.json");
+  const mtime = (horas) => (Date.now() - horas * 3600 * 1000) / 1000;
+  const gravar = (texto, horas) => {
+    fs.writeFileSync(gates, texto, "utf8");
+    fs.utimesSync(gates, mtime(horas), mtime(horas));
+  };
+
+  gravar(JSON.stringify({ branch: "outra-branch", gates: [] }), 0);
+  const outra = despachar(repo, repo.main, "rainforest-mind:executor");
+  caso("G1 gates de outra branch com mtime de agora: executor sai 2",
+    outra.status === 2, `exit=${outra.status} stderr=${outra.stderr}`);
+
+  gravar(JSON.stringify({ branch: "main", gates: [] }), 72);
+  const igual = despachar(repo, repo.main, "rainforest-mind:executor");
+  caso("G2 gates com a branch atual e mtime de 3 dias: executor passa: exit 0",
+    igual.status === 0, `exit=${igual.status} stderr=${igual.stderr}`);
+
+  gravar("{ isto nao e json", 0);
+  const ilegivel = despachar(repo, repo.main, "rainforest-mind:executor");
+  caso("G3 gates ilegivel com mtime de agora e ignorado: executor sai 2, sem queda do hook",
+    ilegivel.status === 2, `exit=${ilegivel.status} stderr=${ilegivel.stderr}`);
+
+  descartar(repo);
+}
+
 // Leva o fluxo ate o estagio `ate` pelo scripts/estado.cjs real. design aprovado e
 // plano ok; para chegar a revisar, `exigir executar` (arma a catraca) e executar ok
 // com `mutacao`; para verificar, revisar ok; para fechar, verificar ok com comando e

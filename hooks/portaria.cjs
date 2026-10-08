@@ -26,7 +26,7 @@ const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
 const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
-const { leveDaBranch } = require(path.join(__dirname, "lib", "caminho-leve.cjs"));
+const { leveDaBranch, protheusAberto } = require(path.join(__dirname, "lib", "caminho-leve.cjs"));
 
 /**
  * Agentes que pertencem ao Claude Code, não a este repositório. Podem ser
@@ -227,18 +227,6 @@ function detectarTrilhoFluxo(raiz) {
     return null;
   }
   return arquivos.some((f) => f.endsWith(".gates.json")) ? "protheus" : null;
-}
-
-/* Trilho protheus com fluxo aberto: algum .gates.json com menos de 24 h (mesmo
- * criterio de fluXoAberto em hooks/aviso-fluxo.cjs). Protheus nao tem estagio a
- * comparar, so o aberto ou fechado. Chamada so quando detectarTrilhoFluxo
- * devolveu "protheus", entao o diretorio ja foi lido com sucesso. */
-function fluxoProtheusAberto(raiz) {
-  const dirPlans = path.join(raiz, "docs", "plans");
-  const umDia = 24 * 3600 * 1000;
-  return fs.readdirSync(dirPlans).some(
-    (f) => f.endsWith(".gates.json") && Date.now() - fs.statSync(path.join(dirPlans, f)).mtimeMs < umDia
-  );
 }
 
 function normalizarNomeAgente(nome) {
@@ -965,7 +953,7 @@ function main() {
     ? Boolean(leveDaBranch({ gitTop: raiz, branch: obterBranch(raiz) }))
     : false;
   const estagioPermitido = trilho === "protheus"
-    ? fluxoProtheusAberto(raiz)
+    ? protheusAberto({ gitTop: raiz, branch: obterBranch(raiz) })
     : Boolean(estResult) && Array.isArray(estagiosDeclarados) && estagiosDeclarados.includes(estResult.estagio);
   const bloqueiaFluxoPulado = trilhoComFluxo && escreveDeclarado && !leve && !estagioPermitido;
 

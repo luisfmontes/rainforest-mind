@@ -90,6 +90,16 @@ function criarGates(sandbox, horasAtras) {
   fs.utimesSync(arq, t, t);
 }
 
+// Grava um .gates.json com conteúdo cru (texto), com o mtime `horasAtras` no passado.
+function gravarGates(sandbox, texto, horasAtras) {
+  const dir = path.join(sandbox, 'docs', 'plans');
+  fs.mkdirSync(dir, { recursive: true });
+  const arq = path.join(dir, 'x.gates.json');
+  fs.writeFileSync(arq, texto);
+  const t = (Date.now() - horasAtras * 3600 * 1000) / 1000;
+  fs.utimesSync(arq, t, t);
+}
+
 function desligarAvisoFluxo(sandbox) {
   fs.mkdirSync(path.join(sandbox, '.rainforest'), { recursive: true });
   fs.writeFileSync(path.join(sandbox, '.rainforest', 'config.json'), JSON.stringify({ 'aviso-fluxo': false }));
@@ -347,6 +357,67 @@ caso('protheus: estado.cjs leve libera a branch, sem fluxo aberto', () => {
     if (leve.status !== 0) return `leve saiu ${leve.status}: ${leve.stderr}`;
     const arq = escreverCodigo(s, 'scripts/x.cjs');
     return passa(rodarHook(payload({ cwd: s, file: arq }), s));
+  } finally { limparSandbox(s); }
+});
+
+// D10: no trilho protheus, o campo `branch` do .gates.json decide; sem ele, vale o mtime < 24 h.
+caso('protheus: gates.json recente de outra branch nao abre o fluxo desta', () => {
+  const s = criarSandbox();
+  try {
+    gravarGates(s, JSON.stringify({ branch: 'b2', gates: [] }), 0);
+    branch(s, 'b1');
+    const arq = escreverCodigo(s, 'scripts/x.prw');
+    return bloqueado(rodarHook(payload({ cwd: s, file: arq }), s), ['BLOQUEADO']);
+  } finally { limparSandbox(s); }
+});
+
+caso('protheus: gates.json com a branch atual abre o fluxo mesmo com mtime de 3 dias', () => {
+  const s = criarSandbox();
+  try {
+    gravarGates(s, JSON.stringify({ branch: 'b1', gates: [] }), 72);
+    branch(s, 'b1');
+    const arq = escreverCodigo(s, 'scripts/x.prw');
+    return passa(rodarHook(payload({ cwd: s, file: arq }), s));
+  } finally { limparSandbox(s); }
+});
+
+caso('protheus: gates.json sem campo branch e de agora abre o fluxo (regra antiga)', () => {
+  const s = criarSandbox();
+  try {
+    gravarGates(s, JSON.stringify({ gates: [] }), 1);
+    branch(s, 'b1');
+    const arq = escreverCodigo(s, 'scripts/x.prw');
+    return passa(rodarHook(payload({ cwd: s, file: arq }), s));
+  } finally { limparSandbox(s); }
+});
+
+caso('protheus: gates.json sem campo branch e de 3 dias nao abre o fluxo', () => {
+  const s = criarSandbox();
+  try {
+    gravarGates(s, JSON.stringify({ gates: [] }), 72);
+    branch(s, 'b1');
+    const arq = escreverCodigo(s, 'scripts/x.prw');
+    return bloqueado(rodarHook(payload({ cwd: s, file: arq }), s), ['BLOQUEADO']);
+  } finally { limparSandbox(s); }
+});
+
+caso('protheus: gates.json ilegivel e ignorado, o hook nao cai', () => {
+  const s = criarSandbox();
+  try {
+    gravarGates(s, '{ isto nao e json', 0);
+    branch(s, 'b1');
+    const arq = escreverCodigo(s, 'scripts/x.prw');
+    return bloqueado(rodarHook(payload({ cwd: s, file: arq }), s), ['BLOQUEADO']);
+  } finally { limparSandbox(s); }
+});
+
+caso('protheus: gates.json com JSON que nao e objeto e ignorado, o hook nao cai', () => {
+  const s = criarSandbox();
+  try {
+    gravarGates(s, 'null', 0);
+    branch(s, 'b1');
+    const arq = escreverCodigo(s, 'scripts/x.prw');
+    return bloqueado(rodarHook(payload({ cwd: s, file: arq }), s), ['BLOQUEADO']);
   } finally { limparSandbox(s); }
 });
 

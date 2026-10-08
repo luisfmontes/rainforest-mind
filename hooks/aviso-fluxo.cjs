@@ -23,7 +23,7 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { caminhoExecutavel } = require(path.join(__dirname, 'lib', 'resolver-executavel.cjs'));
 const { resolver } = require('./lib/estagio-ativo.cjs');
-const { leveDaBranch } = require('./lib/caminho-leve.cjs');
+const { leveDaBranch, protheusAberto } = require('./lib/caminho-leve.cjs');
 
 // Caminho absoluto do estado.cjs do plugin, com barras normais: o comando da mensagem
 // roda em bash e em PowerShell sem escapar contrabarra.
@@ -123,22 +123,8 @@ function fluXoAberto(gitTop, trilho) {
     const ativo = resolver({ cwd: gitTop });
     return ativo !== null;
   } else if (trilho === 'protheus') {
-    // Protheus: qualquer .gates.json com mtime < 24h significa aberto
-    const dirPlans = path.join(gitTop, 'docs', 'plans');
-    try {
-      const arquivos = fs.readdirSync(dirPlans);
-      const agora = Date.now();
-      const umDiaEm_ms = 24 * 3600 * 1000;
-      for (const f of arquivos) {
-        if (f.endsWith('.gates.json')) {
-          const pCompleto = path.join(dirPlans, f);
-          const stats = fs.statSync(pCompleto);
-          if (agora - stats.mtimeMs < umDiaEm_ms) {
-            return true;
-          }
-        }
-      }
-    } catch {}
+    // Protheus: o predicado por arquivo (campo `branch`, senão mtime < 24 h) mora em caminho-leve.cjs (D10)
+    return protheusAberto({ gitTop, branch: branchAtual(gitTop) });
   }
   return false;
 }

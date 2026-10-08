@@ -97,4 +97,41 @@ function leveDaBranch({ gitTop, branch }) {
   return lerLeveRainforest(gitTop, branchBase) || lerLeveProtheus(gitTop, branch);
 }
 
-module.exports = { leveDaBranch, leveValido, casaComBranch, soLeve, caminhoMapaProtheus };
+const UM_DIA_MS = 24 * 3600 * 1000;
+
+/** Um `.gates.json` decide sozinho se a branch está num fluxo protheus aberto (D10). Campo
+ *  `branch` no topo: decide pela igualdade com a branch atual, sem olhar o mtime. Sem o campo:
+ *  cai na regra antiga, mtime de menos de 24 h. */
+function gateAbreFluxo(dados, { branch, mtimeMs, agora }) {
+  if (typeof dados.branch === 'string') return dados.branch === branch;
+  return agora - mtimeMs < UM_DIA_MS;
+}
+
+/** Trilho protheus com fluxo aberto na `branch`: algum `docs/plans/*.gates.json` decide aberto.
+ *  Arquivo ilegível (ou JSON que não é objeto) é ignorado, não derruba a leitura. */
+function protheusAberto({ gitTop, branch, agora = Date.now() }) {
+  const dirPlans = path.join(gitTop, 'docs', 'plans');
+  let arquivos;
+  try {
+    arquivos = fs.readdirSync(dirPlans);
+  } catch (_) {
+    return false;
+  }
+  for (const f of arquivos) {
+    if (!f.endsWith('.gates.json')) continue;
+    const arq = path.join(dirPlans, f);
+    let dados;
+    let mtimeMs;
+    try {
+      dados = JSON.parse(fs.readFileSync(arq, 'utf8'));
+      mtimeMs = fs.statSync(arq).mtimeMs;
+    } catch (_) {
+      continue;
+    }
+    if (!dados || typeof dados !== 'object') continue;
+    if (gateAbreFluxo(dados, { branch, mtimeMs, agora })) return true;
+  }
+  return false;
+}
+
+module.exports = { leveDaBranch, leveValido, casaComBranch, soLeve, caminhoMapaProtheus, protheusAberto };
