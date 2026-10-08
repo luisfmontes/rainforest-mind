@@ -1,5 +1,17 @@
 # Regra 10 — portaria
 
+<!-- indice -->
+**Índice** — arquivo longo: quem parou no meio não leu a regra inteira. Seções na ordem; cada item é o começo da seção, sem a marcação:
+
+- 2026-09-15 — a portaria deixou de admitir (issue #264)
+- O manifesto declara por agente
+- Fail-closed, sempre com motivo.
+- Log de despacho
+- Dívida nomeada: escreve: false é declaração, não trava.
+- Emenda de 2026-09-02 — escreve: true admitido, com worktree obrigatório
+- Emenda de 2026-09-08 — campo runtime
+<!-- /indice -->
+
 A admissão de subagente por manifesto (fluxo 9), separada de `regra-10.md` em
 2026-09-01 pelo mesmo motivo que partiu a regra 12: a regra e o histórico dela
 cresceram juntos e estouraram o teto de bytes de um `reference`. A regra em si —

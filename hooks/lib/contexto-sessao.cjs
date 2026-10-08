@@ -436,6 +436,16 @@ function normalizarFimDeLinha(texto) {
   return String(texto || '').replace(/\r\n/g, '\n');
 }
 
+/**
+ * Tira o bloco `<!-- indice -->` ... `<!-- /indice -->` de uma reference. O
+ * indice serve a quem LE o arquivo e pode parar no meio (Read com limit); a
+ * regra injetada inteira ja esta toda no contexto, e o indice so gastaria o
+ * teto da parte das regras. Conferido por scripts/testa-indice-referencias.sh.
+ */
+function tirarIndice(texto) {
+  return texto.replace(/<!-- indice -->[\s\S]*?<!-- \/indice -->\n*/g, '');
+}
+
 function resumirFoco(focoText, agora) {
   // CRLF -> LF ANTES de qualquer coisa, pelo mesmo motivo que `filtrarRegras` faz
   // no bloco de regras — e o FOCO.md ficou de fora daquele conserto, em
@@ -1109,7 +1119,7 @@ function montarContexto(o) {
   const inteiras = o.destino === 'mod' && Array.isArray(o.elaboracoes) ? o.elaboracoes : [];
   const blocoInteiras = inteiras.length
     ? `\n\n## Elaboração inteira das regras ${inteiras.map((e) => e.n).join(', ')}\n\n` +
-      inteiras.map((e) => normalizarFimDeLinha(e.texto).trim()).join('\n\n')
+      inteiras.map((e) => tirarIndice(normalizarFimDeLinha(e.texto)).trim()).join('\n\n')
     : '';
   const nomesInteiras = inteiras.map((e) => e.n).join(', ');
   const caminho = o.caminhoSkill || `${o.root || ''}\\skills\\rainforest-mind\\SKILL.md`;
