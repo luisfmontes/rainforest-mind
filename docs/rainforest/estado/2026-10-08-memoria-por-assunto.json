@@ -22,11 +22,10 @@
     "em": "2026-10-08"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-08",
-    "tarefas_ok": 13,
-    "tarefas": 13,
-    "em_voo": [],
+    "tarefas_ok": 14,
+    "tarefas": 14,
     "carimbos": [
       {
         "tarefa": 1,
@@ -104,11 +103,18 @@
         "iteracao": 1,
         "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
         "ts": "2026-10-08T12:47:39.000Z"
+      },
+      {
+        "tarefa": 14,
+        "hash_base": "183e0b2dbf12af47bc7fa2c352fd62e71b3ac61f",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T13:26:21.438Z"
       }
     ],
     "em": "2026-10-08",
-    "comando": "bash scripts/testa-utilidade-canais.sh; node hooks/testa-memoria-assunto.cjs; node hooks/testa-memoria-assunto-prompt.cjs; node hooks/testa-memoria-assunto-agente.cjs",
-    "saida": "18 ok, 0 falha(s); 14 ok, 0 falha(s); 14 ok, 0 falha(s); 14 ok, 0 falha(s)",
+    "comando": "bash scripts/testa-utilidade-canais.sh; bash scripts/testa-utilidade.sh; node hooks/testa-memoria-assunto.cjs; node hooks/testa-memoria-assunto-prompt.cjs; node hooks/testa-memoria-assunto-agente.cjs",
+    "saida": "22 ok, 0 falha(s); 19 ok, 0 falha(s); 14 ok, 0 falha(s); 14 ok, 0 falha(s); 14 ok, 0 falha(s)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -174,12 +180,13 @@
         "tarefa": 13,
         "resultado": "vermelho",
         "fixture": "testa-utilidade-canais.sh, caso servida do canal assunto cortada em 300 caracteres casa com o id"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade-canais.sh, caso servida do assunto com projeto pelo nome do harness casa com o id mesmo com apelido"
       }
-    ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-08"
-    }
+    ]
   },
   "revisar": {
     "status": "reprovado",
