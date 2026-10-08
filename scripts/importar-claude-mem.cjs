@@ -24,6 +24,9 @@ const os = require('os');
 // Importar funções reutilizáveis de memoria.cjs (D2, D8 — zero duplicação de lógica,
 // driver isolado no adaptador).
 const { resolverCaminhos, abrirBanco, abrirBancoSomenteLeitura, criarSchema, popularFts5 } = require('./memoria.cjs');
+// Nome canônico (#435, D2 e D10): nome curto casa com o slug canônico do destino só
+// quando é a única correspondência; senão fica como está.
+const { casarCurto, canonicoDoCaminho, ehSlugDeCaminho } = require('./lib/projeto-canonico.cjs');
 
 // Encontrar o banco de origem (claude-mem.db) em ~/.claude-mem/
 // Por testes: permite override via TESTADOR_ORIGEM_CLAUDE_MEM
@@ -116,6 +119,13 @@ function importarObservacoes(conexaoOrigem, conexaoDestino, projetoFallback) {
   let importadas = 0;
   let duplicadas = 0;
 
+  // Canônicos já gravados no destino (slug de caminho): alvo possível do nome curto.
+  const canonicosDoDestino = conexaoDestino
+    .prepare('SELECT DISTINCT projeto FROM observacoes')
+    .all()
+    .map((r) => r.projeto)
+    .filter(ehSlugDeCaminho);
+
   for (const obs of observacoes) {
     try {
       // Tarefa 2 (D2): Se a observação tem projeto, normalizar e usar.
@@ -124,7 +134,9 @@ function importarObservacoes(conexaoOrigem, conexaoDestino, projetoFallback) {
       if (obs.project) {
         const normalizado = normalizarProjeto(obs.project);
         if (normalizado) {
+          const alvo = casarCurto(normalizado, canonicosDoDestino);
           projetoFinal = normalizado;
+          if (alvo.tipo === 'unico') projetoFinal = alvo.canonico;
         }
       }
 
@@ -178,7 +190,9 @@ function main() {
 
   try {
     // Resolver raiz de dados do destino (D9 — cadeia de 4 níveis)
-    const { caminhoDb, projeto } = resolverCaminhos();
+    const { caminhoDb } = resolverCaminhos();
+    // Observação sem `project` vai para o canônico do cwd (repositório principal), não para o nome curto.
+    const projetoCwd = canonicoDoCaminho(process.cwd()).canonico;
 
     // Criar diretório se não existe
     const raiz = path.dirname(caminhoDb);
@@ -189,7 +203,7 @@ function main() {
     criarSchema(conexaoDestino);
 
     try {
-      const importadas = importarObservacoes(conexaoOrigem, conexaoDestino, projeto);
+      const importadas = importarObservacoes(conexaoOrigem, conexaoDestino, projetoCwd);
 
       if (importadas > 0) {
         // O índice FTS5 NÃO se mantém sozinho: o INSERT acima não passa por
