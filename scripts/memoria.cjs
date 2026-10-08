@@ -1038,17 +1038,16 @@ function cmdBuscar() {
   }
 }
 
-// Comando: backup — copiar o banco para pasta de backup com timestamp.
-// Garante consistência com WAL ativo (D7) usando VACUUM INTO.
-function cmdBackup() {
-  const { raiz, caminhoDb } = resolverCaminhos();
-
+// Backup do banco como função reutilizável. Copia o rainforest.db para
+// <raiz>/.rainforest-backups/rainforest-<AAAA-MM-DDTHH-MM-SS>.db, aplica a rotação
+// e DEVOLVE o caminho da cópia. Não chama process.exit: LANÇA Error quando o banco
+// não existe, está corrompido/inacessível ou a cópia falha — quem chama decide.
+function fazerBackupDoBanco(caminhoDb) {
   if (!fs.existsSync(caminhoDb)) {
-    console.error(`ERRO: banco não existe em ${caminhoDb}`);
-    process.exit(1);
+    throw new Error(`banco não existe em ${caminhoDb}`);
   }
 
-  const dirBackup = path.join(raiz, '.rainforest-backups');
+  const dirBackup = path.join(path.dirname(caminhoDb), '.rainforest-backups');
   fs.mkdirSync(dirBackup, { recursive: true });
 
   // Timestamp ISO local (não UTC).
@@ -1075,8 +1074,7 @@ function cmdBackup() {
   try {
     conexao = abrirBanco(caminhoDb);
   } catch (e) {
-    console.error(`ERRO: banco corrompido ou inacessível (${e.message})`);
-    process.exit(1);
+    throw new Error(`banco corrompido ou inacessível (${e.message})`);
   }
 
   // Agora que temos conexão válida, tentar consolidar (nice-to-have)
@@ -1098,11 +1096,8 @@ function cmdBackup() {
   try {
     fs.copyFileSync(caminhoDb, caminhoBackup);
   } catch (e) {
-    console.error(`ERRO: não consegui copiar banco para backup: ${e.message}`);
-    process.exit(1);
+    throw new Error(`não consegui copiar banco para backup: ${e.message}`);
   }
-
-  console.log(`backup: ${caminhoBackup}`);
 
   // Rotação: manter apenas os N backups mais recentes, nunca apagando o mais recente.
   // Teto conservador (5 cópias) para não encher disco — cada banco é ~MB.
@@ -1117,6 +1112,23 @@ function cmdBackup() {
     const antigo = path.join(dirBackup, arquivos[i]);
     fs.unlinkSync(antigo);
   }
+
+  return caminhoBackup;
+}
+
+// Comando: backup — copiar o banco para pasta de backup com timestamp.
+function cmdBackup() {
+  const { caminhoDb } = resolverCaminhos();
+
+  let caminhoBackup;
+  try {
+    caminhoBackup = fazerBackupDoBanco(caminhoDb);
+  } catch (e) {
+    console.error(`ERRO: ${e.message}`);
+    process.exit(1);
+  }
+
+  console.log(`backup: ${caminhoBackup}`);
 }
 
 // Função auxiliar: ler FOCO.md e extrair campos estruturados (datas, prazos, pastas).
@@ -2314,7 +2326,7 @@ if (require.main === module) {
 
 module.exports = {
   abrirBanco, abrirBancoSomenteLeitura, chaveHarness, criarSchema, extrairSchema, popularFts5,
-  resolverCaminhos, verificarConstraintUniqueProjetoOrigem, encontrarGit,
+  resolverCaminhos, verificarConstraintUniqueProjetoOrigem, encontrarGit, fazerBackupDoBanco,
   K_CANDIDATAS, TETO_RECONCILIAR, construirQueryFts5, buscarCandidatas,
   interpretarDecisaoReconciliacao, aplicarDecisaoReconciliacao,
   formatarPromptReconciliacao,
