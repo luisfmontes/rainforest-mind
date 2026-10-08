@@ -21,6 +21,13 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 - **Pergunta em que "sim" aceita a recomendada** (`brainstorm`) e **prova de que a mutação pousou**
   antes de confiar no vermelho (`depurar`).
 
+## 1.47.1 — 2026-10-07
+
+- **Pasta com acento não acusa mais creep falso.** Num repo com caminho acentuado (`Transferencia Serviço/`),
+  o `marcar revisar` recusava por "arquivo no diff sem tarefa correspondente": o git devolve o nome escapado em
+  octal e o plano o traz em UTF-8. As listagens de caminho do fluxo (`conferir-fluxo`, `estado`, `conferir-entrega`,
+  `conferir-versao`, `conferir-publicacao`) passam a pedir o nome literal ao git, sem mexer na sua config.
+
 ## 1.47.0 — 2026-10-07
 
 - **Erros de ferramenta ficam registrados.** O "Erros N" do mod zerava com a sessão. Agora cada falha (comando que

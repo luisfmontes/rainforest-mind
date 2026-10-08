@@ -404,7 +404,7 @@ function caminhosDaPropriaTrava(slug) {
 
 /** Caminhos sujos do repo, normalizados. Sem `.trim()` no bloco: ver defeito 1. */
 function caminhosSujos() {
-  const saida = execFileSync(caminhoExecutavel('git'), ['status', '--porcelain'], { cwd: RAIZ, encoding: 'utf8' });
+  const saida = execFileSync(caminhoExecutavel('git'), ['-c', 'core.quotepath=false', 'status', '--porcelain'], { cwd: RAIZ, encoding: 'utf8' });
   return saida
     .split(/\r?\n/)
     .filter((linha) => linha.length > 0)

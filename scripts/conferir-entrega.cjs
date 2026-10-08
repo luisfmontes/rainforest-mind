@@ -90,7 +90,7 @@ class Conferencia {
   git(dir, ...args) {
     let r;
     try {
-      r = spawnSync(caminhoExecutavel("git"), ["-C", String(dir), ...args], {
+      r = spawnSync(caminhoExecutavel("git"), ["-C", String(dir), "-c", "core.quotepath=false", ...args], {
         encoding: "utf8",
         maxBuffer: 32 * 1024 * 1024,
       });

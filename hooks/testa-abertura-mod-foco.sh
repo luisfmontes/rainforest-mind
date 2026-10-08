@@ -141,19 +141,16 @@ OUT_GOLD="$BASE_POSIX/gold.json"
 rodar_hook "$GOLD_POSIX" > "$OUT_GOLD" 2>/dev/null; COD_GOLD=$?
 [ "$COD_GOLD" = "0" ] && passa "o hook do golden roda (exit 0)" || falha "o hook do golden saiu com exit $COD_GOLD"
 
-# O unico texto que difere por construcao e a raiz do plugin (a abertura cita
+# Os textos que diferem por construcao sao a raiz do plugin e o aviso de revisao da skill (a abertura cita
 # `<raiz>/skills/.../references`): troca-se a raiz de cada lado por <RAIZ> antes do cmp.
 normalizar() {
   node -e "
 const fs = require('fs');
 const raiz = process.argv[2];
 const formas = [raiz, raiz.replace(/\//g, '\\\\')];
-// O aviso de revisao vencida tambem difere por construcao: depende do RELOGIO e
-// da data de revisao de cada lado. Em 2026-10-08 o golden cruzou os 60 dias e a
-// bateria ficou vermelha sozinha, na main, sem diff nenhum — sai dos dois lados.
-// So ASCII no padrao: este node -e recebe o texto pela linha de comando do
-// Windows, e acento ali chega trocado e o padrao nunca casa.
-const semRevisao = (t) => t.replace(/\n[^\n]*A skill rainforest-mind [^\n]*\(limite: 60\)[^\n]*\n/g, '');
+// O aviso de skill sem revisao depende da data de hoje contra a revisao gravada em cada
+// arvore: o golden envelhece e passa a avisar sozinho (2026-10-08, 61 dias). Sai dos dois lados.
+const semRevisao = (t) => t.replace(/\n\n⚠ A skill [^\n]* não é revisada há \d+ dias[^\n]*/g, '');
 const norm = (v) => typeof v === 'string' ? semRevisao(formas.reduce((t, f) => t.split(f).join('<RAIZ>'), v)) : v;
 const j = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
 j.hookSpecificOutput.additionalContext = norm(j.hookSpecificOutput.additionalContext);

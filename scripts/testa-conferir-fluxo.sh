@@ -591,7 +591,7 @@ cat > "$CAIXA_INJ/sabotar-injecao.cjs" <<'SABOTA_INJ_EOF'
 const fs = require('fs');
 const alvo = process.argv[2];
 let t = fs.readFileSync(alvo, 'utf8');
-const achar = "const output = execFileSync(caminhoExecutavel('git'), ['diff', '--name-only', `${base}...${head}`], { cwd: RAIZ, encoding: 'utf8' });";
+const achar = "const output = execFileSync(caminhoExecutavel('git'), ['-c', 'core.quotepath=false', 'diff', '--name-only', `${base}...${head}`], { cwd: RAIZ, encoding: 'utf8' });";
 const trocar = "const output = require('child_process').execSync(`git diff --name-only ${base}...${head}`, { cwd: RAIZ, encoding: 'utf8' });";
 if (!t.includes(achar)) { console.error('ANCORA NAO BATE em ' + alvo); process.exit(1); }
 fs.writeFileSync(alvo, t.replace(achar, trocar));
@@ -686,6 +686,35 @@ if [ -n "$BASE_D" ] && [ -n "$FORA" ] && [ "$BASE_D" != "$FORA" ]; then
     env RFM_ESTADO_ROOT="$DW" node "$CHECADOR" creep --slug t --base "$DENTRO" --head "$PORTAO"
   exige 2 "arquivo fora de toda declaracao continua sendo creep" \
     env RFM_ESTADO_ROOT="$DW" node "$CHECADOR" creep --slug t --base "$PORTAO" --head "$FORA"
+else
+  echo "  FALHA nao consegui montar o repositorio de fixture"; falhou=$((falhou+1))
+fi
+rm -rf "$D"
+
+echo
+echo "== 10b. caminho acentuado nao vira creep falso (Issue #423) =="
+# Com `core.quotepath=true` (padrao do git), `git diff --name-only` devolve
+# `"src/Servi\303\247o/um.cjs"` entre aspas e o plano declara `src/Serviço/` em
+# UTF-8: a comparacao falhava e o `marcar revisar` recusava por creep. O sandbox
+# FORCA quotepath=true no config local para o caso morder mesmo em maquina cujo
+# config global ja desliga — o conserto (`-c core.quotepath=false`) vence o local.
+D="$(novo_sandbox)"; DW="$(cygpath -m "$D" 2>/dev/null || printf '%s' "$D")"
+mkdir -p "$D/docs/rainforest/design" "$D/docs/rainforest/planos"
+cp "$REAL_D" "$D/docs/rainforest/design/t.md"
+sed 's|^arquivos: `scripts/conferir-esteira.cjs`$|arquivos: `src/Serviço/`|' \
+  "$REAL_P" > "$D/docs/rainforest/planos/t.md"
+git -C "$D" init -q . >/dev/null 2>&1
+git -C "$D" config user.email t@t; git -C "$D" config user.name t
+git -C "$D" config core.quotepath true
+git -C "$D" add docs >/dev/null 2>&1; git -C "$D" commit -qm base >/dev/null 2>&1
+BASE_A="$(git -C "$D" rev-parse HEAD 2>/dev/null)"
+mkdir -p "$D/src/Serviço"
+echo "conteudo" > "$D/src/Serviço/um.cjs"
+git -C "$D" add src >/dev/null 2>&1; git -C "$D" commit -qm acentuado >/dev/null 2>&1
+ACENTO="$(git -C "$D" rev-parse HEAD 2>/dev/null)"
+if [ -n "$BASE_A" ] && [ -n "$ACENTO" ] && [ "$BASE_A" != "$ACENTO" ]; then
+  exige 0 "pasta acentuada declarada cobre o arquivo do diff" \
+    env RFM_ESTADO_ROOT="$DW" node "$CHECADOR" creep --slug t --base "$BASE_A" --head "$ACENTO"
 else
   echo "  FALHA nao consegui montar o repositorio de fixture"; falhou=$((falhou+1))
 fi
