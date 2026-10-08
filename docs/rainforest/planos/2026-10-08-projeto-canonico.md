@@ -14,11 +14,11 @@ Base: 97758368. Versão alvo: 1.51.0 (os dois `plugin.json` estão em 1.50.2; `o
 - **A7. Efeito transitório na colheita da #436.** Sessão aberta antes da migração e pontuada depois tem linhas de outros projetos rotuladas pelo nome curto antigo; `acharAlvo` não casa essas linhas. Medido numa cópia: 0 sessões de worktree pendentes de pontuação. Entra no CHANGELOG. Publicar cedo mantém a janela de 2026-10-23 limpa.
 - **A8. Worktree fora de `.claude/worktrees/`.** A pasta de transcritos só carrega o marcador `--claude-worktrees-` nessa convenção. O leitor (por cwd) resolve qualquer worktree pelo `commondir`; o gravador, que só vê o nome da pasta (D2/D8), não. Linhas de worktree fora da convenção seguem sob o slug do próprio worktree (limite aceito).
 
-## Decisões do usuário
+## Decisões do usuário (fechadas em 2026-10-08: as três como recomendado)
 
-- **U1. Migrar `resumos` junto (A1).** Padrão assumido pelas tarefas 5 e 6: sim, mesma regra do D6, mesma transação.
-- **U2. Rótulo de linha de outro projeto na abertura (A5).** Padrão assumido: slug cru nas linhas que completam o bloco; tabela manual de apelidos fica fora de escopo (como no design).
-- **U3. Alcance do D7.** Padrão assumido: reescrever a origem só das linhas de worktree que colidiriam (9 no banco real), como o D7 está escrito.
+- **U1. Migrar `resumos` junto (A1).** Decidido: sim, mesma regra do D6, mesma transação.
+- **U2. Rótulo de linha de outro projeto na abertura (A5).** Decidido: slug cru nas linhas que completam o bloco; tabela manual de apelidos fica fora de escopo (como no design).
+- **U3. Alcance do D7.** Decidido: reescrever a origem só das linhas de worktree que colidiriam (9 no banco real), como o D7 está escrito.
 
 Decisões técnicas assumidas (sem impacto de produto): a biblioteca nova mora em `scripts/lib/projeto-canonico.cjs`, módulo folha que nunca requer `memoria.cjs` (evita o circular descrito em `scripts/lib/utilidade.cjs:283`). No par que difere só em caixa, vence a grafia com mais linhas (empate: ordem alfabética crescente). Slug armazenado pela regra antiga é renormalizado pela regra do harness no mesmo `UPDATE`. `COLLATE NOCASE` sem índice novo (medido: 5,5 ms por consulta em 13.765 linhas; o hook de abertura tem teto de 5 s). `scripts/semear.cjs:163` mantém a própria cópia da regra: só lista pastas de transcritos, não grava nem lê `projeto`, e a regra dele já é a correta.
 

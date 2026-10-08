@@ -11,7 +11,15 @@
     "em": "2026-10-08"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-08-projeto-canonico.md",
+    "tarefas": 11,
+    "paralelas": [
+      1,
+      2,
+      3
+    ],
+    "em": "2026-10-08"
   },
   "executar": {
     "status": "pendente"
