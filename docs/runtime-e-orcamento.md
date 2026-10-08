@@ -77,6 +77,34 @@ consequências disso, as duas de 2026-08-12:
   mudou.)
 - O hook avisa quando a skill passa de **60 dias sem revisão**.
 
+## Memória pelo assunto: o que é injetado e quanto
+
+Além do bloco de abertura (`## Memória (corpus residentes)`, que não mudou), dois
+hooks injetam memória durante a sessão, sob o cabeçalho `## Memória do assunto`:
+
+| Canal | Hook (`hooks/hooks.json`) | Evento | Como entrega |
+|---|---|---|---|
+| Pedido | `memoria-assunto-prompt.cjs` | `UserPromptSubmit` | `additionalContext` |
+| Subagente | `memoria-assunto-agente.cjs` | `PreToolUse`, matcher `Agent` | `updatedInput`: o bloco vai ao fim do `prompt` do briefing, sem `permissionDecision` |
+
+- **Teto:** 3 memórias por pedido ou briefing, bloco de no máximo **1.500 bytes**
+  (`TETO_BYTES` em `hooks/lib/memoria-assunto.cjs`) — por volta de 480 tokens no
+  pior caso, pelo fator 3,11 byte/token indicativo desta página. Só entra
+  candidata com bm25 ≤ -16 (calibração em
+  [`docs/rainforest/referencia/2026-10-08-limiar-memoria-assunto.md`](rainforest/referencia/2026-10-08-limiar-memoria-assunto.md));
+  sem candidata, custo zero.
+- **Sem repetir:** os ids servidos ficam em `<raiz de dados>/memoria-assunto/<sessão>.json`
+  (só números); o primeiro uso da sessão semeia a lista com o que a abertura já serviu.
+- **Orçamento:** isto não entra no teto de 15.000 B do `orcamento.cjs`, que mede só
+  a abertura (fontes do repositório); é custo por pedido, limitado pelo teto acima.
+- **Falha calada:** banco ausente ou travado e qualquer erro saem com exit 0 e sem injeção;
+  o teto de cada hook no `hooks.json` é de 5 s.
+- **Régua D7:** a medição de 2026-10-08 tem base de **27%** de sessões com memória
+  útil e **171** de 255 sessões com perda. O canal fica se, 14 dias depois de a
+  versão estar viva, houver **≥ 40%** de sessões com memória útil e perdas
+  **≤ 1/3**; senão sai. Leitura: `node scripts/memoria.cjs utilidade --relatorio`
+  (por canal, buscas ativas e a linha `régua D7`).
+
 ## Orçamento de token
 
 O rainforest-mind é injetado em toda sessão, então o custo dele é real e precisa de medição contínua. O `scripts/orcamento.cjs` mede as fontes (hook, skills, commands, agentes) em byte e acusa quando passa do teto de **15.000 B** — subiu de 14.000 em 2026-08-25, com a conta escrita no cabeçalho do script. Ele entra no laço de testes do `CONTRIBUTING.md:11` pela convenção de nome, via `scripts/testa-orcamento.sh` — o workflow `.github/workflows/baterias.yml` roda todas as baterias (`scripts/testa-*.sh` e `hooks/testa-*.sh`) automaticamente **a cada PR**, e sob demanda por `workflow_dispatch`; o gatilho de push na `main` saiu em 2026-08-25, quando a conta de Actions bateu 90% da cota:
