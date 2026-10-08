@@ -803,6 +803,44 @@ for (const surface of ['terminal', 'desktop'] as const) {
       s.atrasoDesvio = 0
     })
 
+    await caso(`mapa (${surface}): veredito provisorio (sem-fluxo) nao vai ao cache e a reescrita checa de novo (#421)`, async () => {
+      s.modoDesvio = 'sem-fluxo'
+      await escrever('/projeto/scripts/nasce-depois.cjs')
+      await relogio.settle()
+      const antes = s.desvios.length
+      s.modoDesvio = 'plano' // o plano nasceu na mesma sessao
+      await escrever('/projeto/scripts/nasce-depois.cjs')
+      await relogio.settle()
+      expect(s.desvios).toHaveLength(antes + 1)
+      await escrever('/projeto/scripts/nasce-depois.cjs') // agora o veredito e definitivo
+      await relogio.settle()
+      expect(s.desvios).toHaveLength(antes + 1)
+    })
+
+    await caso(`mapa (${surface}): escrita que falhou no script e depois teve veredito aparece uma vez so (#421)`, async () => {
+      s.modoDesvio = 'exit1'
+      await escrever('/projeto/dup/faixa-puro.mjs')
+      await relogio.settle()
+      expect(await textos()).toContain('✓ /projeto/dup/faixa-puro.mjs')
+      s.modoDesvio = 'plano'
+      await escrever('/projeto/dup/faixa-puro.mjs')
+      await relogio.settle()
+      const t = await textos()
+      expect(t.some(x => x.includes('/projeto/dup/faixa-puro.mjs'))).toBe(false)
+      expect(t.filter(x => x.includes('hooks/faixa-puro.mjs'))).toHaveLength(1)
+    })
+
+    await caso(`mapa (${surface}): session.start nao interativo nao zera o cache da sessao interativa (#421)`, async () => {
+      s.modoDesvio = 'plano'
+      await escrever('/projeto/hooks/faixa-puro.mjs')
+      await relogio.settle()
+      const antes = s.desvios.length
+      await comecar(false)
+      await escrever('/projeto/hooks/faixa-puro.mjs')
+      await relogio.settle()
+      expect(s.desvios).toHaveLength(antes)
+    })
+
     await m.ui.unmount()
   })
 

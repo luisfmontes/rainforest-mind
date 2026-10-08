@@ -101,6 +101,15 @@ caso("caminho com caractere de controle limpo", async () => {
   igual(m.semControle(`x${esc}y`), "x y", "semControle");
 });
 
+caso("trocarCaminho: absoluto vira relativo no mesmo lugar, e funde com o relativo que ja existe (#421)", async () => {
+  const m = await mod();
+  let mapa = m.registrar(m.mapaVazio(), { tool: "Write", file_path: "/p/a.cjs" }).mapa;
+  mapa = m.registrar(mapa, { desvio: true, caminho: "b.cjs" }).mapa;
+  igual(m.trocarCaminho(mapa, "/p/a.cjs", "a.cjs").arquivos, [{ caminho: "a.cjs", desvio: false }, { caminho: "b.cjs", desvio: true }], "renomeia");
+  igual(m.trocarCaminho(mapa, "/p/a.cjs", "b.cjs").arquivos, [{ caminho: "b.cjs", desvio: true }], "funde sem perder o vermelho");
+  igual(m.trocarCaminho(mapa, "/p/nada.cjs", "x").arquivos, mapa.arquivos, "sem a origem nada muda");
+});
+
 (async () => {
   let ok = 0, falhou = 0;
   for (const [nome, fn] of casos) {
