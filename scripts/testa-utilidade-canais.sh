@@ -239,6 +239,27 @@ caso('mesma memoria em dois canais grava uma vez, abertura > pedido > subagente'
   afirma(r3.length === 1 && r3[0].canal === 'subagente', 'so subagente -> subagente');
 });
 
+caso('servida do canal assunto cortada em 300 caracteres casa com o id', () => {
+  const raro = 'zzrarocortadaum zzrarocortadados';
+  const longo = 'palavra'.repeat(1) + ' ' + Array.from({ length: 80 }, (_, i) => 'trecho' + i).join(' ');
+  const conteudo = 'titulo cortada corpusfiller\nsubtitulo ' + longo + ' ' + raro;
+  const criada = '2026-10-05T12:00:00.000Z';
+  const r = ins.run(PROJ, conteudo, criada, 'obs-cortada');
+  const id = Number(r.lastInsertRowid);
+  const obs = { conteudo, projeto: PROJ, criada_em: criada };
+  const cortada = formatarObservacao(obs, null, 300);
+  const inteira = formatarObservacao(obs, null);
+  afirma(inteira.length > 300 && cortada !== inteira && cortada.endsWith('…'), 'precondicao: linha deveria ser cortada em ...');
+  const f = montarTres('t-cortada', { ab: [], pe: [cortada], su: [], prompt1: 'trate de ' + raro, prompt2: 'agora aprofunde ' + raro, toolFilho: null });
+  rodar('s-cortada', f);
+  const servidas = linhasUso('s-cortada');
+  const todas = db.prepare('SELECT ref_id, servida, nota, canal FROM uso_memoria WHERE sessao = ? AND ref_id = ?').all('s-cortada', id);
+  console.log('  saida: ' + JSON.stringify(todas));
+  afirma(servidas.length === 1 && servidas[0].ref_id === id, 'servida cortada deveria casar com o id ' + id + ', veio ' + JSON.stringify(servidas));
+  afirma(servidas[0].canal === 'pedido' && typeof servidas[0].nota === 'number', 'canal pedido com nota numerica');
+  afirma(todas.every((x) => x.servida === 1), 'nao pode reaparecer com servida = 0: ' + JSON.stringify(todas));
+});
+
 // ---- tarefa 7: buscas ativas (D9) e regua D7 ----
 const { execFileSync } = require('child_process');
 

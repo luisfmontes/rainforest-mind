@@ -31,6 +31,8 @@ const LIMIAR_DF = 3;
 
 // Quantas do contrafactual o relatório grava por sessão (D6).
 const TETO_CONTRAFACTUAL = 14;
+// Espelha o teto de texto por linha de hooks/lib/memoria-assunto.cjs (canal assunto).
+const TETO_LINHA_ASSUNTO = 300;
 
 // Observações do dia (Tarefa 6, D8): SEM o filtro de substituida_por. A
 // reconciliação roda ANTES da pontuação na mesma passada e pode marcar
@@ -380,6 +382,7 @@ function acharAlvo(conexao, linhaServida, apelidos) {
     if (formatarObservacao(row, apelidos) === linhaServida) {
       return { origem: 'observacao', id: row.id, conteudo: row.conteudo };
     }
+    if (formatarObservacao(row, apelidos, TETO_LINHA_ASSUNTO) === linhaServida) return { origem: 'observacao', id: row.id, conteudo: row.conteudo };
   }
 
   const resumoRows = doDia(`SELECT id, projeto, titulo, conteudo, criada_em FROM resumos WHERE criada_em LIKE ?`);
