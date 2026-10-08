@@ -22,9 +22,16 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-08",
-    "tarefas_ok": 0,
+    "tarefas_ok": 2,
     "tarefas": 4,
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "T3 portaria barra escreve fora do estagio (redespacho)",
+        "desde": "2026-10-08T09:17:14-03:00",
+        "sessao": "3a3f9560-730f-4a9e-bf04-673ed4a7e03d"
+      }
+    ],
     "carimbos": [
       {
         "tarefa": 1,
@@ -32,6 +39,27 @@
         "iteracao": 1,
         "sessao": "3a3f9560-730f-4a9e-bf04-673ed4a7e03d",
         "ts": "2026-10-08T10:29:34.245Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "23c52948",
+        "iteracao": 2,
+        "sessao": "3a3f9560-730f-4a9e-bf04-673ed4a7e03d",
+        "ts": "2026-10-08T12:17:14.473Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "da3e7095",
+        "iteracao": 1,
+        "sessao": "3a3f9560-730f-4a9e-bf04-673ed4a7e03d",
+        "ts": "2026-10-08T12:17:14.473Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "da3e7095",
+        "iteracao": 1,
+        "sessao": "3a3f9560-730f-4a9e-bf04-673ed4a7e03d",
+        "ts": "2026-10-08T12:17:14.473Z"
       }
     ],
     "em": "2026-10-08"
