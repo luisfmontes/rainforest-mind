@@ -10,6 +10,13 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.47.2 — 2026-10-08
+
+- **Painel do mod confere de novo o que ainda não tinha resposta.** Escrever um arquivo antes de o plano existir
+  e reescrevê-lo depois agora checa o desvio na reescrita; antes o "sem plano" ficava guardado e o arquivo
+  fora do plano passava sem aviso. Um arquivo cuja checagem falhou e depois respondeu aparece uma vez só no
+  mapa, e uma sessão `claude -p` aberta ao lado não zera mais a memória da sua sessão.
+
 ## 1.47.1 — 2026-10-07
 
 - **Pasta com acento não acusa mais creep falso.** Num repo com caminho acentuado (`Transferencia Serviço/`),
