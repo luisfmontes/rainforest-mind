@@ -256,20 +256,33 @@ const toolBash = (cmd) => linhaAssistant({ type: 'tool_use', id: 'toolu_x' + cmd
 // tambem uma nao-servida com nota 0.95 (acima da melhor servida => perda).
 // Perda e util sao independentes (nUtil/nPerda contam a partir do indice 0 e
 // do fim, respectivamente), para provar que a regua olha as DUAS fracoes.
-function bancoRegua(nome, nSess, nUtil, nPerda) {
+// As linhas de uso_memoria nascem no mesmo instante da sessao (pontuarSessao
+// grava as duas juntas); a primeira sessao serve pelo canal pedido, entao a
+// janela da regua D7 cobre as nSess. A opcao antigas acrescenta sessoes so de
+// abertura ANTES do canal novo existir (dia 2026-10-07), uteis e sem perda.
+function bancoRegua(nome, nSess, nUtil, nPerda, opcoes) {
+  const { antigas = 0, soAbertura = false } = opcoes || {};
   const dir = path.join(CAIXA, nome);
   fs.mkdirSync(dir, { recursive: true });
   const b = new DatabaseSync(path.join(dir, 'rainforest.db'));
   criarSchema(b);
-  const canais = ['abertura', 'pedido', 'subagente'];
+  const canais = soAbertura ? ['abertura'] : ['pedido', 'abertura', 'subagente'];
   const iU = b.prepare('INSERT INTO uso_memoria (origem, ref_id, sessao, servida, nota, pontuada_em, canal) VALUES (?,?,?,?,?,?,?)');
   const iS = b.prepare('INSERT INTO uso_memoria_sessoes (sessao, pontuada_em, buscas_principal, buscas_subagente, subagentes) VALUES (?,?,?,?,?)');
   const esperado = { abertura: [0, 0], pedido: [0, 0], subagente: [0, 0] };
+  for (let i = 0; i < antigas; i++) {
+    const t = '2026-10-07T00:00:' + String(i % 60).padStart(2, '0') + '.000Z';
+    iU.run('observacao', 1, 'old' + i, 1, 0.8, t, 'abertura');
+    iS.run('old' + i, t, 0, 0, 0);
+    esperado.abertura[1]++;
+    esperado.abertura[0]++;
+  }
   for (let i = 0; i < nSess; i++) {
-    const s = 's' + i, canal = canais[i % 3], util = i < nUtil;
-    iU.run('observacao', 1, s, 1, util ? 0.8 : 0.1, '2026-10-08T00:00:0' + (i % 10) + '.000Z', canal);
-    if (i >= nSess - nPerda) iU.run('observacao', 2, s, 0, 0.95, '2026-10-08T00:00:00.000Z', 'abertura');
-    iS.run(s, '2026-10-08T00:00:' + String(i % 60).padStart(2, '0') + '.000Z', i % 2 === 0 ? 1 : 0, i % 4 === 0 ? 1 : 0, i % 4 === 0 ? 1 : 0);
+    const s = 's' + i, canal = canais[i % canais.length], util = i < nUtil;
+    const t = '2026-10-08T00:00:' + String(i % 60).padStart(2, '0') + '.000Z';
+    iU.run('observacao', 1, s, 1, util ? 0.8 : 0.1, t, canal);
+    if (i >= nSess - nPerda) iU.run('observacao', 2, s, 0, 0.95, t, 'abertura');
+    iS.run(s, t, i % 2 === 0 ? 1 : 0, i % 4 === 0 ? 1 : 0, i % 4 === 0 ? 1 : 0);
     esperado[canal][1]++;
     if (util) esperado[canal][0]++;
   }
@@ -296,6 +309,20 @@ function casoRegua(titulo, nUtil, nPerda, veredito) {
 casoRegua('45% util + 50% perdas -> SAI', 9, 10, 'SAI');
 casoRegua('45% util + 30% perdas -> FICA', 9, 6, 'FICA');
 casoRegua('35% util + 20% perdas -> SAI', 7, 4, 'SAI');
+
+caso('regua D7 sem sessao do canal novo diz sem dado, nunca FICA', () => {
+  const { dir } = bancoRegua('regua-so-abertura', 20, 20, 0, { soAbertura: true });
+  const txt = relatorioCli(dir);
+  afirma(ultima(txt).indexOf('régua D7: sem dado do canal do assunto') === 0, 'ultima linha: ' + ultima(txt));
+});
+
+caso('regua D7 conta so a janela desde o canal novo', () => {
+  // 30 sessoes antigas, todas uteis, puxariam 7/20 (35%, SAI) para 37/50 (74%, FICA)
+  const { dir } = bancoRegua('regua-janela', 20, 7, 4, { antigas: 30 });
+  const txt = relatorioCli(dir);
+  afirma(txt.indexOf('janela da régua D7: 20 sessão(ões)') >= 0, 'janela deveria ter 20 sessoes');
+  afirma(ultima(txt).indexOf('régua D7: SAI o canal do assunto') === 0, 'ultima linha: ' + ultima(txt));
+});
 
 caso('relatorio traz uma linha por canal, a base e as duas fracoes', () => {
   const { dir, esperado } = bancoRegua('regua-linhas', 20, 9, 6);

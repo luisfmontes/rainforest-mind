@@ -812,6 +812,7 @@ function gerarRelatorio(conexao) {
   }
 
   let sessoesComPerda = 0;
+  const comPerda = new Set();
   const naoServidasComPerda = [];
 
   for (const { sessao } of sessoesComServida) {
@@ -828,6 +829,7 @@ function gerarRelatorio(conexao) {
 
     if (naoServidas.length > 0) {
       sessoesComPerda++;
+      comPerda.add(sessao);
       for (const linha of naoServidas) {
         naoServidasComPerda.push({ sessao, origem: linha.origem, refId: linha.ref_id, nota: linha.nota });
       }
@@ -854,6 +856,14 @@ function gerarRelatorio(conexao) {
       ? `régua D9: LIGA o ranking (${sessoesComPerda} de ${total} sessões)`
       : `régua D9: NÃO liga — recência basta (${sessoesComPerda} de ${total} sessões)`
   );
+
+  // Banco que ainda não passou pela manutenção não tem a coluna canal: avisa e
+  // fica na régua D9, em vez de morrer no meio do relatório.
+  const temCanal = conexao.prepare('PRAGMA table_info(uso_memoria)').all().some((c) => c.name === 'canal');
+  if (!temCanal) {
+    linhas.push('régua D7: sem dado — banco ainda não migrado (rode `node scripts/memoria.cjs manutencao`)');
+    return linhas.join('\n');
+  }
 
   // Por canal: sessões com ao menos uma servida do canal (Y) e, dentre elas,
   // as com servida útil (nota >= NOTA_UTIL).
@@ -887,22 +897,33 @@ function gerarRelatorio(conexao) {
     linhas.push('buscas ativas: sem dado (colunas ausentes — rode `manutencao` para migrar)');
   }
 
-  // Os dois números que decidem a régua D7.
-  const comUtil = conexao
-    .prepare(`SELECT COUNT(DISTINCT sessao) n FROM uso_memoria WHERE servida = 1 AND nota >= ?`)
-    .get(NOTA_UTIL).n;
-  const fracaoUtil = comUtil / total;
-  const fracaoPerda = sessoesComPerda / total;
+  // Janela da régua D7: só sessões pontuadas desde a primeira servida do canal
+  // novo — sem ela, o histórico anterior ao canal dilui (ou decide) o número.
+  const inicio = conexao
+    .prepare(`SELECT MIN(pontuada_em) m FROM uso_memoria WHERE servida = 1 AND canal IN ('pedido', 'subagente')`)
+    .get().m;
+  if (!inicio) {
+    linhas.push('régua D7: sem dado do canal do assunto (nenhuma sessão serviu memória pelo pedido ou pelo subagente)');
+    return linhas.join('\n');
+  }
+  const janela = sessoesComServida.filter((s) => s.pontuada_em >= inicio).map((s) => s.sessao);
+  const totalJanela = janela.length;
+  const utilNaSessao = conexao.prepare(`SELECT 1 FROM uso_memoria WHERE sessao = ? AND servida = 1 AND nota >= ? LIMIT 1`);
+  const comUtil = janela.filter((s) => utilNaSessao.get(s, NOTA_UTIL)).length;
+  const perdaJanela = janela.filter((s) => comPerda.has(s)).length;
+  const fracaoUtil = comUtil / totalJanela;
+  const fracaoPerda = perdaJanela / totalJanela;
+  linhas.push(`janela da régua D7: ${totalJanela} sessão(ões) com servida desde ${inicio}`);
   linhas.push(
-    `sessões com servida útil em qualquer canal: ${comUtil} de ${total} (${Math.round(fracaoUtil * 100)}%) — base ${BASE_D7.dia}: ${BASE_D7.util} útil`
+    `sessões com servida útil em qualquer canal: ${comUtil} de ${totalJanela} (${Math.round(fracaoUtil * 100)}%) — base ${BASE_D7.dia}: ${BASE_D7.util} útil`
   );
   linhas.push(
-    `sessões com perda: ${sessoesComPerda} de ${total} (${Math.round(fracaoPerda * 100)}%) — base ${BASE_D7.dia}: ${BASE_D7.perdas} com perda`
+    `sessões com perda: ${perdaJanela} de ${totalJanela} (${Math.round(fracaoPerda * 100)}%) — base ${BASE_D7.dia}: ${BASE_D7.perdas} com perda`
   );
 
   const fica = fracaoUtil >= REGUA_D7.util && fracaoPerda <= REGUA_D7.perda;
   const zTxt = `${Math.round(fracaoUtil * 100)}%`;
-  const pTxt = `${sessoesComPerda}/${total}`;
+  const pTxt = `${perdaJanela}/${totalJanela}`;
   linhas.push(
     fica
       ? `régua D7: FICA o canal do assunto (útil ${zTxt} ≥ 40%, perdas ${pTxt} ≤ 1/3)`
