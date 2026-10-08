@@ -151,7 +151,11 @@
     "head": "f3147c09e8ed0bc253b631f06e95898c3abcb0d1"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-08-fluxo-pulado-bloqueio && node hooks/testa-bloqueio-fluxo.cjs && node hooks/testa-portaria-fluxo-pulado.cjs && bash scripts/testa-estado-leve.sh + payload real do Edit no repo",
+    "saida": "mutacoes exit=0: tarefas 1,2,3,5,6,8,9,10,12 vermelho; 4,7,11 n/a. testa-bloqueio-fluxo ok:34 falhou:0 skipped:0; testa-portaria-fluxo-pulado ok:65 falhou:0; testa-estado-leve ok:74 falhou:0; testa-estado 316 ok; testa-versao ok:5; testa-config 63 ok; testa-aviso-fluxo 10 ok; testa-portaria-nucleo OK; testa-estado-territorio vermelhas:[]; testa-abertura-mod-foco passou; testa-conferir-fluxo ok:106. Payload real: Edit de hooks/mod.tsx na main -> exit 2 sem oferecer leve; Edit no worktree com fluxo aberto -> exit 0; docs/x.md -> exit 0.",
+    "sensor_externo": "node hooks/testa-bloqueio-fluxo.cjs",
+    "em": "2026-10-08"
   },
   "fechar": {
     "status": "pendente"
