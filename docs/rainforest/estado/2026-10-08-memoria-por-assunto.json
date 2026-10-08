@@ -22,7 +22,69 @@
     "em": "2026-10-08"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-08",
+    "tarefas_ok": 4,
+    "tarefas": 10,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "6: extrator com canal",
+        "desde": "2026-10-08T08:55:00-03:00",
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "4: hook UserPromptSubmit",
+        "desde": "2026-10-08T09:05:00-03:00",
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae"
+      }
+    ],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "23c52948f6b8bec54b473c4373753b96594248c3",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T11:28:09.632Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "23c52948f6b8bec54b473c4373753b96594248c3",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T11:28:09.632Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "23c52948f6b8bec54b473c4373753b96594248c3",
+        "iteracao": 2,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T11:47:40.078Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "6c44822d50ac8a930d387b4a7f3abea1d28e1d38",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T11:47:40.078Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "6c44822d50ac8a930d387b4a7f3abea1d28e1d38",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T11:47:40.078Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "e869e9958aa08436d85abfd6ead7ba5ef551d076",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T11:52:04.205Z"
+      }
+    ],
+    "em": "2026-10-08"
   },
   "revisar": {
     "status": "pendente"
