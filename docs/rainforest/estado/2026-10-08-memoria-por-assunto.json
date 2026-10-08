@@ -191,27 +191,38 @@
   "revisar": {
     "status": "ok",
     "snapshot": {
-      "head": "351a2cf675a3f0af768bd79fe5d015cf86fe09c0",
+      "head": "1e2c100b5127022fb1fb050c62e5130a11a5b2ff",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a9605ee6941ba26c2",
+        "agente_id": "a2b9499c8c3dfb2f3",
         "veredito": "ok",
         "em": "2026-10-08",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind--claude-worktrees-memoria-por-assunto/722539d9-b368-4e3f-9f32-6a3fd43848ae/subagents/agent-a9605ee6941ba26c2.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind--claude-worktrees-memoria-por-assunto/722539d9-b368-4e3f-9f32-6a3fd43848ae/subagents/agent-a2b9499c8c3dfb2f3.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-08",
     "achados": 0,
     "base": "37f786d56984670887956074439278a2137268a5",
-    "head": "351a2cf675a3f0af768bd79fe5d015cf86fe09c0",
+    "head": "1e2c100b5127022fb1fb050c62e5130a11a5b2ff",
     "ressalvas": 7
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-utilidade-canais.sh; bash scripts/testa-utilidade.sh; node hooks/testa-memoria-assunto.cjs; node hooks/testa-memoria-assunto-prompt.cjs; node hooks/testa-memoria-assunto-agente.cjs; node scratchpad/medir-hooks.cjs (payload real UserPromptSubmit/PreToolUse Agent, copia do banco real, transcrito real de 20 MB)",
+    "saida": "22 ok, 0 falha(s); 19 ok, 0 falha(s); 14 ok, 0 falha(s); 14 ok, 0 falha(s); 14 ok, 0 falha(s); pedido longo 2343 ms exit=0 memorias=2; pedido curto 82 ms exit=0 memorias=3; agente longo 113 ms exit=0 memorias=2; agente bolo 60 ms exit=0 memorias=0",
+    "sensor_externo": "bash scripts/testa-utilidade-canais.sh",
+    "riscos_residuais": [
+      "buscas ativas contam heredoc que so cita memoria.cjs buscar",
+      "nota do canal novo conta tool_use posterior com termos do proprio pedido",
+      "abertura cortada pela escada 200/160/120 nao semeia o dedupe",
+      "peso do projeto atual so desempata",
+      "regua D7 so rodou em dado sintetico"
+    ],
+    "em": "2026-10-08"
   },
   "fechar": {
     "status": "pendente"
