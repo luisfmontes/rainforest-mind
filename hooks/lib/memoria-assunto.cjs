@@ -57,9 +57,10 @@ function buscarPorAssunto(conexao, texto, { projetoAtual, jaServidos = new Set()
       .all(query)
       .filter((l) => l.bm25 <= limiar);
     const candidatas = linhas.filter((l) => !jaServidos.has(l.id));
+    const atual = String(projetoAtual).toLowerCase();
     candidatas.sort((a, b) =>
       (a.bm25 - b.bm25) ||
-      ((b.projeto === projetoAtual) - (a.projeto === projetoAtual)) ||
+      ((String(b.projeto).toLowerCase() === atual) - (String(a.projeto).toLowerCase() === atual)) ||
       (a.id - b.id));
     return candidatas.slice(0, max).map((l) => ({
       id: l.id, projeto: l.projeto, conteudo: l.conteudo, criada_em: l.criada_em, bm25: l.bm25,
