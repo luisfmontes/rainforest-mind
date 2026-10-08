@@ -12,7 +12,10 @@
  * leve declarado. Chave `aviso-fluxo` do config desliga tudo (D4). Subagente (agent_id)
  * não é barrado aqui: quem barra o despacho de agente que edita é a portaria.
  *
- * Extensões de código: .js .cjs .mjs .ts .tsx .jsx .py .sh .ps1 .psm1 .prw .prx .tlpp .ch .go .rs .java .cs .rb .php .sql
+ * O repositório é o do ARQUIVO editado, não o do cwd da sessão (emenda 1 do plano, D1/D9):
+ * sessão no checkout principal editando um worktree de fluxo aberto passa.
+ *
+ * Extensões de código (comparadas em minúsculas): .js .cjs .mjs .ts .tsx .jsx .py .sh .ps1 .psm1 .prw .prx .tlpp .ch .go .rs .java .cs .rb .php .sql .c .h .cpp .bat .cmd
  */
 
 const fs = require('node:fs');
@@ -29,8 +32,24 @@ const SCRIPT_ESTADO = path.resolve(__dirname, '..', 'scripts', 'estado.cjs').spl
 const EXTENSOES_CODIGO = new Set([
   '.js', '.cjs', '.mjs', '.ts', '.tsx', '.jsx',
   '.py', '.sh', '.ps1', '.psm1', '.prw', '.prx', '.tlpp', '.ch',
-  '.go', '.rs', '.java', '.cs', '.rb', '.php', '.sql'
+  '.go', '.rs', '.java', '.cs', '.rb', '.php', '.sql',
+  '.c', '.h', '.cpp', '.bat', '.cmd'
 ]);
+
+// Primeiro diretório que existe, subindo a partir de `p` (o próprio `p` se já for diretório).
+// Arquivo novo, ou em diretório ainda inexistente, cai no pai: o repositório do arquivo é
+// achado por ele.
+function diretorioExistente(p) {
+  let atual = p;
+  for (;;) {
+    try {
+      if (fs.statSync(atual).isDirectory()) return atual;
+    } catch {}
+    const pai = path.dirname(atual);
+    if (pai === atual) return atual;
+    atual = pai;
+  }
+}
 
 function toplevel(cwd) {
   try {
@@ -101,6 +120,15 @@ function fluXoAberto(gitTop, trilho) {
   return false;
 }
 
+// HEAD destacado: não há branch para o `leve` (o estado.cjs recusa), então a única saída é trocar.
+function mensagemHeadDestacado(trilho) {
+  const abrir = trilho === 'rainforest' ? '/rainforest-mind:brainstorm' : '/protheus:trabalhar';
+  return [
+    `BLOQUEADO: este repositório tem fluxo ${trilho} e a sessão está em HEAD destacado (sem branch). Edição de código sem branch não passa.`,
+    `Saída: troque para uma branch e abra o fluxo nela: \`git switch -c fluxo/<nome>\`, depois ${abrir}.`,
+  ].join('\n');
+}
+
 function mensagemBloqueio(trilho, branch) {
   const leve = `node ${SCRIPT_ESTADO} leve --motivo "<por quê>"`;
   if (trilho === 'rainforest') {
@@ -136,14 +164,14 @@ function main() {
     process.exit(0);
   }
   const filePath = ev.tool_input.file_path;
-  const ext = path.extname(filePath);
+  const ext = path.extname(filePath).toLowerCase();
   if (!EXTENSOES_CODIGO.has(ext)) {
     process.exit(0);
   }
 
-  // Critério 4: repositório git
+  // Critério 4: repositório git do ARQUIVO (não do cwd): emenda 1 do plano, D1
   if (!ev.cwd) process.exit(0);
-  const gitTop = toplevel(ev.cwd);
+  const gitTop = toplevel(diretorioExistente(path.resolve(ev.cwd, filePath)));
   if (!gitTop) process.exit(0);
 
   // Critério 3: arquivo não sob docs/
@@ -178,8 +206,14 @@ function main() {
     process.exit(0);
   }
 
-  // Critério 8: a branch tem o caminho leve declarado (D6, D7)
+  // HEAD destacado: sem branch não há fluxo nem `leve` possível; bloqueia sem oferecer o leve
   const branch = branchAtual(gitTop);
+  if (branch === 'HEAD') {
+    fs.writeSync(2, mensagemHeadDestacado(trilho) + '\n');
+    process.exit(2); // bloqueio-fluxo
+  }
+
+  // Critério 8: a branch tem o caminho leve declarado (D6, D7)
   if (branch && leveDaBranch({ gitTop, branch })) {
     process.exit(0);
   }

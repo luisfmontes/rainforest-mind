@@ -384,6 +384,108 @@ caso('cwd num subdiretorio do repo continua bloqueado', () => {
   } finally { limparSandbox(s); }
 });
 
+// Diretório temporário fora de qualquer repositório. Confere a precondição: se o tmp
+// caísse dentro de um repo, o caso mediria outra coisa.
+function criarForaDeRepo() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fora-repo-'));
+  const r = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: dir, encoding: 'utf8', stdio: 'pipe' });
+  if (r.status === 0) {
+    limparSandbox(dir);
+    throw new Error(`diretorio temporario dentro de repositorio: ${r.stdout.trim()}`);
+  }
+  return dir;
+}
+
+// `iniciar` com o scripts/estado.cjs real. Tira as variáveis de sessão do harness: o
+// ledger de fluxos (carimbarFluxo) só grava com elas, e o teste não toca o ledger do usuário.
+function iniciarFluxo(cwd, slug) {
+  const env = { ...process.env, RFM_ESTADO_ROOT: cwd, CLAUDE_PROJECT_DIR: cwd };
+  delete env.CLAUDE_CODE_SESSION_ID;
+  delete env.CLAUDE_SESSION_ID;
+  const r = spawnSync(process.execPath, [ESTADO, 'iniciar', '--slug', slug], { cwd, encoding: 'utf8', env });
+  return { status: r.status, stdout: r.stdout || '', stderr: r.stderr || '' };
+}
+
+caso('arquivo de codigo fora de qualquer repositorio passa com cwd num repo sem fluxo', () => {
+  const s = criarSandbox();
+  const fora = criarForaDeRepo();
+  try {
+    criarDirEstado(s);
+    branch(s, 'fluxo/x');
+    const arq = path.join(fora, 'novo.js');
+    return passa(rodarHook(payload({ cwd: s, file: arq, tool: 'Write' }), s));
+  } finally { limparSandbox(s); limparSandbox(fora); }
+});
+
+caso('cwd fora de qualquer repositorio e Edit de .cjs de repo com trilho sem fluxo sai 2', () => {
+  const s = criarSandbox();
+  const fora = criarForaDeRepo();
+  try {
+    criarDirEstado(s);
+    branch(s, 'fluxo/x');
+    const arq = escreverCodigo(s, 'hooks/x.cjs');
+    return bloqueado(rodarHook(payload({ cwd: fora, file: arq }), fora));
+  } finally { limparSandbox(s); limparSandbox(fora); }
+});
+
+caso('worktree com fluxo aberto passa com cwd no checkout principal; worktree sem fluxo sai 2', () => {
+  const s = criarSandbox();
+  const pai = fs.mkdtempSync(path.join(os.tmpdir(), 'wt-fluxo-'));
+  try {
+    const wtAberto = path.join(pai, 'aberto');
+    const wtSem = path.join(pai, 'sem');
+    git(s, ['worktree', 'add', '-q', '-b', 'fluxo/w', wtAberto]);
+    git(s, ['worktree', 'add', '-q', '-b', 'fluxo/v', wtSem]);
+    fs.mkdirSync(path.join(wtSem, 'docs', 'rainforest', 'estado'), { recursive: true });
+    const ini = iniciarFluxo(wtAberto, '2026-10-08-w');
+    if (ini.status !== 0) return `iniciar saiu ${ini.status}: ${ini.stderr}`;
+    const arqAberto = escreverCodigo(wtAberto, 'scripts/x.cjs');
+    const arqSem = escreverCodigo(wtSem, 'scripts/x.cjs');
+    const aberto = passa(rodarHook(payload({ cwd: s, file: arqAberto }), s));
+    if (aberto) return `worktree com fluxo aberto: ${aberto}`;
+    return bloqueado(rodarHook(payload({ cwd: s, file: arqSem }), s));
+  } finally { limparSandbox(s); limparSandbox(pai); }
+});
+
+caso('Write em diretorio ainda inexistente do repo sem fluxo, com cwd fora do repo, sai 2', () => {
+  const s = criarSandbox();
+  const fora = criarForaDeRepo();
+  try {
+    criarDirEstado(s);
+    branch(s, 'fluxo/x');
+    const arq = path.join(s, 'pasta-nova', 'sub', 'x.cjs');
+    return bloqueado(rodarHook(payload({ cwd: fora, file: arq, tool: 'Write' }), fora));
+  } finally { limparSandbox(s); limparSandbox(fora); }
+});
+
+caso('extensao em maiusculas e as extensoes novas (.c .h .cpp .bat .cmd) sem fluxo saem 2', () => {
+  const s = criarSandbox();
+  try {
+    criarDirEstado(s);
+    branch(s, 'fluxo/x');
+    for (const nome of ['FONTE.PRW', 'A.CJS', 'a.c', 'b.h', 'c.cpp', 'd.bat', 'e.cmd']) {
+      const arq = escreverCodigo(s, `scripts/${nome}`);
+      const erro = bloqueado(rodarHook(payload({ cwd: s, file: arq }), s));
+      if (erro) return `${nome}: ${erro}`;
+    }
+    return null;
+  } finally { limparSandbox(s); }
+});
+
+caso('HEAD destacado sem fluxo sai 2 mandando trocar para uma branch, sem oferecer leve', () => {
+  const s = criarSandbox();
+  try {
+    criarDirEstado(s);
+    git(s, ['checkout', '-q', '--detach']);
+    const arq = escreverCodigo(s, 'scripts/x.cjs');
+    const r = rodarHook(payload({ cwd: s, file: arq }), s);
+    const erro = bloqueado(r, ['HEAD destacado', 'git switch -c fluxo/']);
+    if (erro) return erro;
+    if (r.stderr.includes('leve')) return `mensagem oferece leve em HEAD destacado: ${r.stderr}`;
+    return null;
+  } finally { limparSandbox(s); }
+});
+
 // ============================================================================
 // EXECUÇÃO
 // ============================================================================
