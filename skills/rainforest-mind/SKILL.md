@@ -125,7 +125,8 @@ Elaboração: references/regra-09.md
 agente da **função**; abaixo disso despachar sai mais caro que fazer, e a janela
 principal pensa. Barram só a 11 (`isolation: "worktree"`, nunca nomeado) e a
 folha: não despacha. Manifesto e estágio são **declaração**: só log, não
-portão, sem frase digitada por sessão. `ListAgents` fecha rodada parando a
+portão, sem frase digitada por sessão. **Exceção (#430):** agente que escreve
+(`escreve: true`), fora do estágio dele e sem `leve`, é barrado. `ListAgents` fecha rodada parando a
 sobra.
 <!-- detalhe -->
 Elaboração: references/regra-10.md

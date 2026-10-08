@@ -110,7 +110,7 @@ const CHAVES = {
   'aviso-fluxo': {
     tipo: 'boolean',
     padrao: true,
-    descricao: 'avisa no primeiro Edit de código da sessão quando o repositório tem fluxo e nenhum está aberto',
+    descricao: 'bloqueia edição de código (Edit/Write/MultiEdit) e despacho de agente que escreve, sem fluxo aberto nem `leve` na branch, quando o repositório tem fluxo',
   },
   fluxo: {
     tipo: 'boolean',

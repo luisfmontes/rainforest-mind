@@ -10,6 +10,23 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.49.0 — 2026-10-08
+
+- **O aviso de fluxo virou bloqueio.** Editar arquivo de código (fora de `docs/`) num repositório com fluxo
+  rainforest ou protheus, sem fluxo aberto nem caminho leve na branch, sai com erro. A mensagem traz as duas
+  saídas com o comando pronto: abrir o fluxo, ou declarar o caminho leve. Repete a cada edição, não só na primeira
+  da sessão.
+- **Caminho leve declarado: `estado.cjs leve --motivo "<por quê>"`.** Registra, por branch, que aquela branch é um
+  hotfix mecânico sem fluxo. O motivo é obrigatório e fica no rastro: no trilho rainforest, no arquivo de estado
+  versionado da branch; no protheus, sob o `.git` do repositório. Na branch padrão de repositório rainforest o
+  comando é recusado, porque a regra 11 manda trabalho em worktree.
+- **Despacho de agente que escreve é barrado fora do estágio dele.** Agente com `escreve: true` no manifesto não
+  roda sem fluxo no estágio que ele declara, nem sem `leve` na branch. A mensagem diz o agente, o estágio exigido e
+  as duas saídas. Agente que não está no manifesto (de outro plugin) segue só registrado.
+- **Chave `aviso-fluxo` desliga tudo.** No config do projeto, ela desliga a trava de edição e a de despacho.
+- **Fica de fora:** escrita feita por Bash (`sed`, `node -e`, redirecionamento) não é barrada. O bloqueio pega o
+  Edit, o Write e o MultiEdit.
+
 ## 1.48.0 — 2026-10-08
 
 - **O `semear` lê a sessão real.** Além de observações e relatórios, lista os transcripts recentes do projeto
