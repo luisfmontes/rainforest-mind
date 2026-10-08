@@ -22,16 +22,9 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-08",
-    "tarefas_ok": 2,
+    "tarefas_ok": 3,
     "tarefas": 4,
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "T3 portaria barra escreve fora do estagio (redespacho)",
-        "desde": "2026-10-08T09:17:14-03:00",
-        "sessao": "3a3f9560-730f-4a9e-bf04-673ed4a7e03d"
-      }
-    ],
+    "em_voo": [],
     "carimbos": [
       {
         "tarefa": 1,

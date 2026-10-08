@@ -801,6 +801,8 @@ console.log("== 15. falha interna nega (exit 2) em vez de crashar (exit 1) ==");
   // git pelo caminho (Issue #392): portaria e estagio-ativo fazem require do resolvedor.
   fs.copyFileSync(daqui("hooks/lib/resolver-executavel.cjs"), path.join(arvore, "hooks", "lib", "resolver-executavel.cjs"));
   fs.copyFileSync(daqui("scripts/estado.cjs"), path.join(arvore, "scripts", "estado.cjs"));
+  // leve da branch (Issue #430): portaria faz require no topo.
+  fs.copyFileSync(daqui("hooks/lib/caminho-leve.cjs"), path.join(arvore, "hooks", "lib", "caminho-leve.cjs"));
 
   const hookCopia = path.join(arvore, "hooks", "portaria.cjs");
   const payload = JSON.stringify({ session_id: "t15", cwd: raiz, tool_input: { subagent_type: "revisor" } });
@@ -934,16 +936,26 @@ console.log("== 17. escreve:true exige isolation worktree e recusa name ==");
     linhas.filter((l) => l.decisao === "deny").length === 3,
     JSON.stringify(linhas.map((l) => l.decisao)));
 
-  // Agora estágio fora da lista NÃO nega mais — passa com `estagio_declarado`
+  // Estágio fora da lista NÃO nega agente que LÊ — passa com `estagio_declarado`.
+  // Agente que ESCREVE fora do estágio dele voltou a ser barrado (Issue #430, D3/D5).
   const raiz2 = caixa();
   iniciarGit(raiz2, "fluxo/teste");
   criarEstadoAtivo(raiz2, "teste", "revisar");
-  criarManifesto(raiz2, manifestoD2({ escritor: { estagios: ["executar"], escreve: true } }));
-  const foraDoEstagio = rodaHook(raiz2, JSON.stringify({
-    session_id: "t17b",
+  criarManifesto(raiz2, manifestoD2({
+    leitor: { estagios: ["executar"], escreve: false },
+    escritor: { estagios: ["executar"], escreve: true },
+  }));
+  const escritorFora = rodaHook(raiz2, JSON.stringify({
+    session_id: "t17a",
     tool_input: { subagent_type: "escritor", isolation: "worktree" },
   }));
-  caso("estagio fora da lista agora passa", foraDoEstagio.status === 0,
+  caso("escritor fora do estagio dele e barrado (#430)", escritorFora.status === 2,
+    `exit=${escritorFora.status} stderr=${escritorFora.stderr}`);
+  const foraDoEstagio = rodaHook(raiz2, JSON.stringify({
+    session_id: "t17b",
+    tool_input: { subagent_type: "leitor" },
+  }));
+  caso("leitor fora da lista agora passa", foraDoEstagio.status === 0,
     `exit=${foraDoEstagio.status} stderr=${foraDoEstagio.stderr}`);
 
   const logPath2 = path.join(raiz2, ".rainforest", "portaria", "despachos.jsonl");

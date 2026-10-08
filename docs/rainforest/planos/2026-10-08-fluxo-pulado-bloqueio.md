@@ -57,7 +57,7 @@ pronto quando: com o payload real do harness (`{"session_id","cwd","hook_event_n
 
 ### 3. Portaria recusa despacho de agente que escreve fora do estágio dele [tipo: implementar]
 atende: D3, D4, D5
-arquivos: `hooks/portaria.cjs`, `hooks/testa-portaria-fluxo-pulado.cjs`
+arquivos: `hooks/portaria.cjs`, `hooks/testa-portaria-fluxo-pulado.cjs`, `hooks/testa-portaria-nucleo.cjs`
 depende de: 1
 paralela: nao
 prova: `node hooks/testa-portaria-fluxo-pulado.cjs`
