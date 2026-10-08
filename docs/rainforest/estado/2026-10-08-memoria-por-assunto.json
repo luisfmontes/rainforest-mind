@@ -22,7 +22,7 @@
     "em": "2026-10-08"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-08",
     "tarefas_ok": 13,
     "tarefas": 13,
@@ -175,33 +175,38 @@
         "resultado": "vermelho",
         "fixture": "testa-utilidade-canais.sh, caso servida do canal assunto cortada em 300 caracteres casa com o id"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-08"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "82a2bac5d99575aa6f5d03bd96ac0792e02c0797",
+      "head": "e06cbe5c043a52a17ab41de28e67c7b10d32621d",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ab778b98d8f9f8b57",
+        "agente_id": "a8be931d59dac02dd",
         "veredito": "reprovado",
         "em": "2026-10-08",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind--claude-worktrees-memoria-por-assunto/722539d9-b368-4e3f-9f32-6a3fd43848ae/subagents/agent-ab778b98d8f9f8b57.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind--claude-worktrees-memoria-por-assunto/722539d9-b368-4e3f-9f32-6a3fd43848ae/subagents/agent-a8be931d59dac02dd.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-08",
-    "achados": 4,
+    "achados": 5,
     "pendentes": [
-      "1: hook sem acerto re-parseia o transcrito inteiro a cada pedido (95 MB = 12 s, passa do timeout 5 s)",
-      "2: LIMITE_TERMOS 200 no hook x 30 na calibracao; briefing longo recebe memoria sem relacao",
-      "3: formatarObservacao com teto 300 nao casa no acharAlvo; servida longa vira sem-id e enviesa a regua D7",
-      "4: pedido e subagente dividem o arquivo da sessao e um suprime o outro"
+      "1: linha do assunto com projeto cru nao casa no acharAlvo com apelido; some da medicao e fabrica perda",
+      "2: buscas ativas conta Agent/Write/Edit que so citam memoria.cjs buscar",
+      "3: corte por mais: corta o bloco do assunto",
+      "4: comentario diz LIMIAR -16",
+      "5: matcher do hook do subagente so Agent, nao Task|Agent"
     ],
-    "tentativas": 1
+    "tentativas": 2
   },
   "verificar": {
     "status": "pendente"
