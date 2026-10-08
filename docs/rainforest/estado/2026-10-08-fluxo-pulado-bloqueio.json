@@ -139,43 +139,41 @@
     ]
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "f3147c09e8ed0bc253b631f06e95898c3abcb0d1",
+      "head": "21b7b824d3c485dc13af6be2e97569458aaad2b1",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ab9dda2ce9e00ea75",
+        "agente_id": "afe8dbf7d455d1aad",
         "veredito": "ok",
         "em": "2026-10-08",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/3a3f9560-730f-4a9e-bf04-673ed4a7e03d/subagents/agent-ab9dda2ce9e00ea75.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/3a3f9560-730f-4a9e-bf04-673ed4a7e03d/subagents/agent-afe8dbf7d455d1aad.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-08",
-    "achados": 2,
+    "achados": 3,
     "achados_baixos_para_issue": 2,
-    "base": "37f786d56984670887956074439278a2137268a5",
-    "head": "f3147c09e8ed0bc253b631f06e95898c3abcb0d1"
+    "base": "3d1d3ba99c98afee60923366201d639c526a1643",
+    "head": "21b7b824d3c485dc13af6be2e97569458aaad2b1"
   },
   "verificar": {
-    "status": "reprovado",
-    "comando": "gh run view 37798135972 --log-failed",
-    "saida": "vermelhas: scripts/testa-node-por-nome.sh (aviso-fluxo.cjs:144,145 portaria.cjs:1132 montam `node ${...}`); hooks/testa-abertura-mod-config.sh e hooks/testa-contexto-sessao.sh (nucleo 6022 B > 6000; regra-10-portaria.md 10612 B > 10500)",
-    "sensor_externo": "node hooks/testa-bloqueio-fluxo.cjs",
+    "status": "ok",
+    "comando": "bash scripts/varrer-baterias.sh && node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-08-fluxo-pulado-bloqueio + payload real do Edit",
+    "saida": "varrer: as 190 baterias passaram. mutacoes exit=0: tarefas 1,2,3,5,6,8,9,10,12,13 vermelho; 4,7,11,14 n/a. Payload real: Edit de hooks/mod.tsx na main -> exit 2 com comando de worktree; Edit no worktree com fluxo aberto -> exit 0.",
+    "sensor_externo": "bash scripts/varrer-baterias.sh",
     "em": "2026-10-08",
     "criterio": "CI do PR #440 (laco inteiro de baterias)",
-    "faltou": "o verificar rodou so as baterias do plano, nao o laco inteiro",
-    "tentativas": 1
+    "faltou": "o verificar rodou so as baterias do plano, nao o laco inteiro"
   },
   "fechar": {
-    "status": "reprovado",
+    "status": "ok",
     "acao": "pr",
     "pr": 440,
     "em": "2026-10-08",
-    "motivo": "CI do PR #440 vermelho; verificar reprovado, emenda 4",
-    "tentativas": 1
+    "motivo": "CI do PR #440 vermelho; verificar reprovado, emenda 4"
   }
 }
