@@ -15,7 +15,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 - **A memória chega pelo assunto, não só pela recência.** Em cada pedido que você digita, o plugin busca no banco
   as memórias de qualquer projeto que tratam do mesmo assunto e junta até 3 delas ao contexto, sob
   `## Memória do assunto`. O subagente recebe o mesmo bloco no fim do briefing, quando a sessão o despacha pela
-  ferramenta `Agent`. Só entra o que passa de um limiar de relevância, nunca repete o que a sessão já recebeu
+  ferramenta `Agent`. Só entra o que passa de um limiar de relevância (palavras comuns não contam), o pedido nunca repete o que a sessão já recebeu
   (nem o que a abertura serviu), e o bloco tem no máximo 1.500 bytes. A abertura não mudou.
 - **Se o banco falhar, o pedido segue.** Banco ausente ou travado ou qualquer erro do hook saem sem injetar nada
   e sem bloquear o pedido nem o despacho do subagente.

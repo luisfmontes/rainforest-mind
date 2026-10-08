@@ -90,11 +90,11 @@ hooks injetam memória durante a sessão, sob o cabeçalho `## Memória do assun
 - **Teto:** 3 memórias por pedido ou briefing, bloco de no máximo **1.500 bytes**
   (`TETO_BYTES` em `hooks/lib/memoria-assunto.cjs`) — por volta de 480 tokens no
   pior caso, pelo fator 3,11 byte/token indicativo desta página. Só entra
-  candidata com bm25 ≤ -16 (calibração em
+  candidata com bm25 ≤ -10 numa consulta pelos 30 termos mais raros do texto, sem termos presentes em mais de 2% das memórias vivas (`LIMIAR_BM25` e `TETO_DF_FRACAO`; calibração em
   [`docs/rainforest/referencia/2026-10-08-limiar-memoria-assunto.md`](rainforest/referencia/2026-10-08-limiar-memoria-assunto.md));
   sem candidata, custo zero.
 - **Sem repetir:** os ids servidos ficam em `<raiz de dados>/memoria-assunto/<sessão>.json`
-  (só números); o primeiro uso da sessão semeia a lista com o que a abertura já serviu.
+  (só números); o primeiro uso da sessão semeia a lista com o que a abertura já serviu. Vale só para o canal do pedido: o subagente é contexto novo e não deduplica.
 - **Orçamento:** isto não entra no teto de 15.000 B do `orcamento.cjs`, que mede só
   a abertura (fontes do repositório); é custo por pedido, limitado pelo teto acima.
 - **Falha calada:** banco ausente ou travado e qualquer erro saem com exit 0 e sem injeção;
