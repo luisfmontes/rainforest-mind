@@ -148,7 +148,13 @@ normalizar() {
 const fs = require('fs');
 const raiz = process.argv[2];
 const formas = [raiz, raiz.replace(/\//g, '\\\\')];
-const norm = (v) => typeof v === 'string' ? formas.reduce((t, f) => t.split(f).join('<RAIZ>'), v) : v;
+// O aviso de revisao vencida tambem difere por construcao: depende do RELOGIO e
+// da data de revisao de cada lado. Em 2026-10-08 o golden cruzou os 60 dias e a
+// bateria ficou vermelha sozinha, na main, sem diff nenhum — sai dos dois lados.
+// So ASCII no padrao: este node -e recebe o texto pela linha de comando do
+// Windows, e acento ali chega trocado e o padrao nunca casa.
+const semRevisao = (t) => t.replace(/\n[^\n]*A skill rainforest-mind [^\n]*\(limite: 60\)[^\n]*\n/g, '');
+const norm = (v) => typeof v === 'string' ? semRevisao(formas.reduce((t, f) => t.split(f).join('<RAIZ>'), v)) : v;
 const j = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
 j.hookSpecificOutput.additionalContext = norm(j.hookSpecificOutput.additionalContext);
 if (j.systemMessage != null) j.systemMessage = norm(j.systemMessage);
