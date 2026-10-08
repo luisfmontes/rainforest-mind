@@ -513,6 +513,47 @@ function buscarContrafactual(conexao, texto, jaServidos, textosServidos) {
   return resultado;
 }
 
+// Buscas ativas (D9): conta os tool_use cujo input contém `memoria.cjs buscar`
+// no transcrito principal e, somados, nos subagents/*.jsonl da sessão. Só
+// inteiros saem daqui (D10).
+const PADRAO_BUSCA = 'memoria.cjs buscar';
+function contarBuscasArquivo(arquivo) {
+  let conteudo;
+  try {
+    conteudo = fs.readFileSync(arquivo, 'utf8');
+  } catch (e) {
+    return 0;
+  }
+  let n = 0;
+  for (const l of conteudo.split('\n')) {
+    if (!l.trim()) continue;
+    let e;
+    try {
+      e = JSON.parse(l);
+    } catch (err) {
+      continue;
+    }
+    const c = e.message && e.message.content;
+    if (e.type !== 'assistant' || !Array.isArray(c)) continue;
+    for (const b of c) {
+      if (b && b.type === 'tool_use' && b.input !== undefined && JSON.stringify(b.input).includes(PADRAO_BUSCA)) n++;
+    }
+  }
+  return n;
+}
+function contarBuscas(caminhoTranscrito) {
+  const dir = path.join(path.dirname(caminhoTranscrito), path.basename(caminhoTranscrito, '.jsonl'), 'subagents');
+  let filhos = [];
+  try {
+    filhos = fs.readdirSync(dir).filter((f) => /^agent-.+\.jsonl$/.test(f));
+  } catch (e) {
+    // sem subagents
+  }
+  let buscasSubagente = 0;
+  for (const f of filhos) buscasSubagente += contarBuscasArquivo(path.join(dir, f));
+  return { buscasPrincipal: contarBuscasArquivo(caminhoTranscrito), buscasSubagente, subagentes: filhos.length };
+}
+
 // Grava (ou substitui) uma linha de uso — idempotente via INSERT OR REPLACE
 // sobre UNIQUE(origem, ref_id, sessao) (Tarefa 2).
 function gravarUso(conexao, { origem, refId, sessao, servida, nota, pontuadaEm, canal = 'abertura' }) {
@@ -583,9 +624,13 @@ function pontuarSessao(conexao, sessao, caminhoTranscrito) {
       gravarUso(conexao, { origem: cand.origem, refId: cand.id, sessao, servida: 0, nota, pontuadaEm: agora });
     }
 
+    const b = contarBuscas(caminhoTranscrito);
     conexao
-      .prepare(`INSERT OR REPLACE INTO uso_memoria_sessoes (sessao, pontuada_em) VALUES (?, ?)`)
-      .run(sessao, agora);
+      .prepare(
+        `INSERT OR REPLACE INTO uso_memoria_sessoes (sessao, pontuada_em, buscas_principal, buscas_subagente, subagentes)
+         VALUES (?, ?, ?, ?, ?)`
+      )
+      .run(sessao, agora, b.buscasPrincipal, b.buscasSubagente, b.subagentes);
 
     conexao.exec('COMMIT');
     return { servidasComId, servidasSemId, contrafactuais: contrafactuais.length };
@@ -732,6 +777,13 @@ function idadeEmDias(conexao, origem, refId) {
  * @param {object} conexao conexão de banco já aberta (leitura basta)
  * @returns {string} relatório pronto para imprimir
  */
+// Régua D7 (memória por assunto): o canal do assunto FICA só se as duas
+// condições valem — fração de sessões com servida útil >= util E fração de
+// sessões com perda <= perda.
+const REGUA_D7 = { util: 0.4, perda: 1 / 3 };
+const BASE_D7 = { dia: '2026-10-08', util: '27%', perdas: '171 de 255' };
+const NOTA_UTIL = 0.5;
+
 function gerarRelatorio(conexao) {
   let sessoes = [];
   try {
@@ -803,6 +855,60 @@ function gerarRelatorio(conexao) {
       : `régua D9: NÃO liga — recência basta (${sessoesComPerda} de ${total} sessões)`
   );
 
+  // Por canal: sessões com ao menos uma servida do canal (Y) e, dentre elas,
+  // as com servida útil (nota >= NOTA_UTIL).
+  for (const canal of ['abertura', 'pedido', 'subagente']) {
+    const r = conexao
+      .prepare(
+        `SELECT COUNT(DISTINCT sessao) y,
+                COUNT(DISTINCT CASE WHEN nota >= ? THEN sessao END) x
+         FROM uso_memoria WHERE servida = 1 AND canal = ?`
+      )
+      .get(NOTA_UTIL, canal);
+    const pct = r.y > 0 ? Math.round((100 * r.x) / r.y) : 0;
+    linhas.push(`canal ${canal}: sessões com servida útil ${r.x} de ${r.y} (${pct}%)`);
+  }
+
+  // Buscas ativas (colunas podem faltar em banco antigo que ainda não migrou).
+  try {
+    const b = conexao
+      .prepare(
+        `SELECT COUNT(buscas_principal) medidas,
+                COALESCE(SUM(buscas_principal > 0), 0) a,
+                COALESCE(SUM(subagentes > 0), 0) d,
+                COALESCE(SUM(buscas_subagente > 0), 0) c
+         FROM uso_memoria_sessoes`
+      )
+      .get();
+    linhas.push(
+      `buscas ativas: ${b.a} sessão(ões) principal(is) de ${b.medidas}, ${b.c} subagente(s) de ${b.d} (subagente aproximado por sessão: as contagens são por sessão)`
+    );
+  } catch (e) {
+    linhas.push('buscas ativas: sem dado (colunas ausentes — rode `manutencao` para migrar)');
+  }
+
+  // Os dois números que decidem a régua D7.
+  const comUtil = conexao
+    .prepare(`SELECT COUNT(DISTINCT sessao) n FROM uso_memoria WHERE servida = 1 AND nota >= ?`)
+    .get(NOTA_UTIL).n;
+  const fracaoUtil = comUtil / total;
+  const fracaoPerda = sessoesComPerda / total;
+  linhas.push(
+    `sessões com servida útil em qualquer canal: ${comUtil} de ${total} (${Math.round(fracaoUtil * 100)}%) — base ${BASE_D7.dia}: ${BASE_D7.util} útil`
+  );
+  linhas.push(
+    `sessões com perda: ${sessoesComPerda} de ${total} (${Math.round(fracaoPerda * 100)}%) — base ${BASE_D7.dia}: ${BASE_D7.perdas} com perda`
+  );
+
+  const fica = fracaoUtil >= REGUA_D7.util && fracaoPerda <= REGUA_D7.perda;
+  const zTxt = `${Math.round(fracaoUtil * 100)}%`;
+  const pTxt = `${sessoesComPerda}/${total}`;
+  linhas.push(
+    fica
+      ? `régua D7: FICA o canal do assunto (útil ${zTxt} ≥ 40%, perdas ${pTxt} ≤ 1/3)`
+      : `régua D7: SAI o canal do assunto (útil ${zTxt}, perdas ${pTxt})`
+  );
+
   return linhas.join('\n');
 }
 
@@ -822,4 +928,6 @@ module.exports = {
   pontuarSessoesPendentes,
   idadeEmDias,
   gerarRelatorio,
+  contarBuscas,
+  REGUA_D7,
 };

@@ -239,6 +239,130 @@ caso('mesma memoria em dois canais grava uma vez, abertura > pedido > subagente'
   afirma(r3.length === 1 && r3[0].canal === 'subagente', 'so subagente -> subagente');
 });
 
+// ---- tarefa 7: buscas ativas (D9) e regua D7 ----
+const { execFileSync } = require('child_process');
+
+// linha assistant real (copiada do pai) com um unico bloco; so o bloco muda
+function linhaAssistant(bloco) {
+  const a = JSON.parse(PAI[0]);
+  a.message.content = [bloco];
+  delete a.wireToolInputs;
+  return JSON.stringify(a);
+}
+const toolBash = (cmd) => linhaAssistant({ type: 'tool_use', id: 'toolu_x' + cmd.length, name: 'Bash', input: { command: cmd } });
+
+// banco de regua: nSess sessoes, cada uma com 1 servida (canal rotativo); as
+// primeiras nUtil tem nota 0.8 (util), as demais 0.1; as primeiras nPerda tem
+// tambem uma nao-servida com nota 0.95 (acima da melhor servida => perda).
+// Perda e util sao independentes (nUtil/nPerda contam a partir do indice 0 e
+// do fim, respectivamente), para provar que a regua olha as DUAS fracoes.
+function bancoRegua(nome, nSess, nUtil, nPerda) {
+  const dir = path.join(CAIXA, nome);
+  fs.mkdirSync(dir, { recursive: true });
+  const b = new DatabaseSync(path.join(dir, 'rainforest.db'));
+  criarSchema(b);
+  const canais = ['abertura', 'pedido', 'subagente'];
+  const iU = b.prepare('INSERT INTO uso_memoria (origem, ref_id, sessao, servida, nota, pontuada_em, canal) VALUES (?,?,?,?,?,?,?)');
+  const iS = b.prepare('INSERT INTO uso_memoria_sessoes (sessao, pontuada_em, buscas_principal, buscas_subagente, subagentes) VALUES (?,?,?,?,?)');
+  const esperado = { abertura: [0, 0], pedido: [0, 0], subagente: [0, 0] };
+  for (let i = 0; i < nSess; i++) {
+    const s = 's' + i, canal = canais[i % 3], util = i < nUtil;
+    iU.run('observacao', 1, s, 1, util ? 0.8 : 0.1, '2026-10-08T00:00:0' + (i % 10) + '.000Z', canal);
+    if (i >= nSess - nPerda) iU.run('observacao', 2, s, 0, 0.95, '2026-10-08T00:00:00.000Z', 'abertura');
+    iS.run(s, '2026-10-08T00:00:' + String(i % 60).padStart(2, '0') + '.000Z', i % 2 === 0 ? 1 : 0, i % 4 === 0 ? 1 : 0, i % 4 === 0 ? 1 : 0);
+    esperado[canal][1]++;
+    if (util) esperado[canal][0]++;
+  }
+  b.close();
+  return { dir, esperado };
+}
+function relatorioCli(dir) {
+  // pelo comando real, apontando a raiz de dados para a caixa (nunca o banco real)
+  return execFileSync(process.execPath, ['--no-warnings', SRC + '/scripts/memoria.cjs', 'utilidade', '--relatorio'], {
+    env: Object.assign({}, process.env, { RFM_ROOT: dir }), cwd: dir, encoding: 'utf8',
+  });
+}
+const ultima = (txt) => txt.trimEnd().split('\n').pop();
+
+function casoRegua(titulo, nUtil, nPerda, veredito) {
+  caso('regua D7 exige as duas condicoes: ' + titulo, () => {
+    const { dir } = bancoRegua('regua-' + nUtil + '-' + nPerda, 20, nUtil, nPerda);
+    const txt = relatorioCli(dir);
+    console.log(txt.trimEnd().split('\n').map((l) => '  | ' + l).join('\n'));
+    afirma(ultima(txt).indexOf('régua D7: ' + veredito + ' o canal do assunto') === 0, 'ultima linha: ' + ultima(txt));
+    afirma(U.REGUA_D7.util === 0.4 && U.REGUA_D7.perda === 1 / 3, 'REGUA_D7 exportada com os limites do design');
+  });
+}
+casoRegua('45% util + 50% perdas -> SAI', 9, 10, 'SAI');
+casoRegua('45% util + 30% perdas -> FICA', 9, 6, 'FICA');
+casoRegua('35% util + 20% perdas -> SAI', 7, 4, 'SAI');
+
+caso('relatorio traz uma linha por canal, a base e as duas fracoes', () => {
+  const { dir, esperado } = bancoRegua('regua-linhas', 20, 9, 6);
+  const txt = relatorioCli(dir);
+  for (const c of ['abertura', 'pedido', 'subagente']) {
+    const [x, y] = esperado[c];
+    const pct = Math.round((100 * x) / y);
+    const alvo = 'canal ' + c + ': sessões com servida útil ' + x + ' de ' + y + ' (' + pct + '%)';
+    afirma(txt.indexOf(alvo) >= 0, 'faltou "' + alvo + '"');
+  }
+  afirma(txt.indexOf('base 2026-10-08: 27% útil') >= 0 && txt.indexOf('base 2026-10-08: 171 de 255 com perda') >= 0, 'faltou a base de 2026-10-08');
+  afirma(txt.indexOf('buscas ativas: 10 sessão(ões) principal(is) de 20, 5 subagente(s) de 5') >= 0, 'buscas ativas no relatorio');
+  afirma(txt.indexOf('em qualquer canal: 9 de 20 (45%)') >= 0, 'fracao util');
+  afirma(txt.indexOf('sessões com perda: 6 de 20 (30%)') >= 0, 'fracao perda');
+  const linhas = txt.trimEnd().split('\n');
+  afirma(/^régua D7/.test(linhas[linhas.length - 1]) && /^sessões com perda/.test(linhas[linhas.length - 2]), 'ordem: as duas fracoes imediatamente antes da regua D7');
+});
+
+caso('buscas ativas conta 2 no principal e 1 no subagente', () => {
+  const f = escreverTranscrito('t-busca', [
+    linhaUser('procure algo'),
+    toolBash('node scripts/memoria.cjs buscar --texto alfa'),
+    toolBash('cd x && node scripts/memoria.cjs buscar --texto beta'),
+    toolBash('echo nada a ver'),
+    linhaAssistant({ type: 'text', text: 'poderia rodar memoria.cjs buscar mas so estou falando' }),
+  ]);
+  const dir = f.replace(/\.jsonl\$/, '') + '/subagents';
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'agent-' + AGENT_ID + '.jsonl'), [FILHO, toolBash('node scripts/memoria.cjs buscar --texto gama')].join('\n') + '\n');
+  const b = U.contarBuscas(f);
+  console.log('  saida: contarBuscas=' + JSON.stringify(b));
+  afirma(b.buscasPrincipal === 2 && b.buscasSubagente === 1 && b.subagentes === 1, 'contagem errada');
+  rodar('s-busca', f);
+  const l = db.prepare('SELECT buscas_principal, buscas_subagente, subagentes FROM uso_memoria_sessoes WHERE sessao = ?').get('s-busca');
+  console.log('  saida: linha gravada=' + JSON.stringify(l));
+  afirma(l.buscas_principal === 2 && l.buscas_subagente === 1 && l.subagentes === 1, 'gravacao errada');
+  const semBusca = escreverTranscrito('t-sembusca', [linhaUser('nada'), toolBash('echo oi')]);
+  rodar('s-sembusca', semBusca);
+  const z = db.prepare('SELECT buscas_principal, buscas_subagente, subagentes FROM uso_memoria_sessoes WHERE sessao = ?').get('s-sembusca');
+  afirma(z.buscas_principal === 0 && z.buscas_subagente === 0 && z.subagentes === 0, 'sessao sem busca deveria gravar zeros');
+});
+
+caso('migracao das colunas de buscas preserva linhas', () => {
+  const dbVelho = new DatabaseSync(path.join(CAIXA, 'velho2.db'));
+  dbVelho.exec('CREATE TABLE uso_memoria_sessoes (sessao TEXT PRIMARY KEY, pontuada_em TEXT NOT NULL)');
+  dbVelho.prepare('INSERT INTO uso_memoria_sessoes VALUES (?, ?)').run('sv', '2026-01-01T00:00:00.000Z');
+  const antes = dbVelho.prepare('PRAGMA table_info(uso_memoria_sessoes)').all().map((c) => c.name);
+  criarSchema(dbVelho);
+  criarSchema(dbVelho); // idempotente
+  const depois = dbVelho.prepare('PRAGMA table_info(uso_memoria_sessoes)').all().map((c) => c.name);
+  const linhas = dbVelho.prepare('SELECT * FROM uso_memoria_sessoes').all().map((r) => Object.assign({}, r));
+  console.log('  saida: antes=' + JSON.stringify(antes) + ' depois=' + JSON.stringify(depois) + ' linhas=' + JSON.stringify(linhas));
+  afirma(!antes.includes('buscas_principal'), 'banco antigo deveria nascer sem a coluna');
+  afirma(['buscas_principal', 'buscas_subagente', 'subagentes'].every((n) => depois.includes(n)), 'colunas novas ausentes');
+  afirma(linhas.length === 1 && linhas[0].sessao === 'sv' && linhas[0].buscas_principal === null, 'linha antiga perdida ou alterada');
+  dbVelho.close();
+});
+
+caso('PRAGMA table_info(uso_memoria_sessoes) sem coluna de texto nova', () => {
+  const cols = db.prepare('PRAGMA table_info(uso_memoria_sessoes)').all();
+  console.log('  saida: ' + JSON.stringify(cols.map((c) => c.name + ':' + c.type)));
+  const textos = cols.filter((c) => /TEXT/i.test(c.type)).map((c) => c.name).sort();
+  afirma(JSON.stringify(textos) === JSON.stringify(['pontuada_em', 'sessao']), 'coluna TEXT inesperada: ' + textos);
+  const novas = cols.filter((c) => ['buscas_principal', 'buscas_subagente', 'subagentes'].includes(c.name));
+  afirma(novas.length === 3 && novas.every((c) => c.type === 'INTEGER'), 'as tres colunas novas deveriam ser INTEGER');
+});
+
 let ok = 0, falha = 0;
 for (const [nome, fn] of casos) {
   try {
