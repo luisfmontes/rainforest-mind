@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @categoria: sensor
 /**
  * Confere que toda reference longa (> 100 linhas) de `skills/<skill>/references/`
  * abre com um indice de secoes. Uso: node scripts/conferir-indice-referencias.cjs [pasta-skills]
