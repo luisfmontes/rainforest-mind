@@ -33,6 +33,7 @@ const { abrirBanco, criarSchema, resolverCaminhos } = require(
   path.join(__dirname, 'memoria.cjs')
 );
 const { acharExecutavelClaude } = require(path.join(__dirname, 'lib', 'achar-executavel-claude.cjs'));
+const { canonicoDaPasta } = require(path.join(__dirname, 'lib', 'projeto-canonico.cjs'));
 
 // Teto conservador de argumento para CLI claude
 // Medição: ENAMETOOLONG ocorre entre 16.908 e 33.708 caracteres
@@ -337,6 +338,18 @@ async function chamarLLM(textoDaPassada) {
   });
 }
 
+// Destino de uma observação: o projeto canônico (#435, D1) e a origem. A pasta de worktree
+// (`<slug>--claude-worktrees-<nome>`) grava no canônico, com o nome do worktree na origem:
+// a mesma sessão em duas pastas repete offsets, e sem o nome o UNIQUE(projeto, origem) colidiria (D7).
+// A marca d'água não passa por aqui (D8): continua pelo nome da pasta.
+function destinoDaObservacao(marca, offsetFim) {
+  const { canonico, worktree } = canonicoDaPasta(marca.projeto);
+  return {
+    projeto: canonico,
+    origem: `sessao:${marca.sessao}${worktree ? ':wt:' + worktree : ''}:offset:${offsetFim}`,
+  };
+}
+
 // Grava observação no banco.
 // Retorna true se sucesso, false se falha.
 function gravarObservacao(conexao, { projeto, conteudo, origem }) {
@@ -528,10 +541,11 @@ async function processarMarca(conexao, marca) {
     // Gravar observação
     // Origem inclui offset_fim para granularidade — permite múltiplas observações
     // por sessão sem colisão (Achado 5 revisado: discriminador granular, não por sessão inteira).
+    const destino = destinoDaObservacao(marca, offsetFim);
     const gravouOk = gravarObservacao(conexao, {
-      projeto: marca.projeto,
+      projeto: destino.projeto,
       conteudo: observacao,
-      origem: `sessao:${marca.sessao}:offset:${offsetFim}`,
+      origem: destino.origem,
     });
     debug(`gravou ok (fatia ${i + 1}): ${gravouOk}`);
 
