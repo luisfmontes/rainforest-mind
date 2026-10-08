@@ -24,19 +24,19 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-08",
-    "tarefas_ok": 4,
+    "tarefas_ok": 6,
     "tarefas": 10,
     "em_voo": [
       {
         "agente": "executor",
-        "tarefa": "6: extrator com canal",
-        "desde": "2026-10-08T08:55:00-03:00",
+        "tarefa": "5: memoria no briefing do subagente",
+        "desde": "2026-10-08T09:30:00-03:00",
         "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae"
       },
       {
         "agente": "executor",
-        "tarefa": "4: hook UserPromptSubmit",
-        "desde": "2026-10-08T09:05:00-03:00",
+        "tarefa": "7: relatorio por canal e regua D7",
+        "desde": "2026-10-08T09:30:00-03:00",
         "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae"
       }
     ],
@@ -82,6 +82,20 @@
         "iteracao": 1,
         "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
         "ts": "2026-10-08T11:52:04.205Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "94bc53d0d3278530a1cf2bb666ac6c97fa85d5d6",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T12:00:52.079Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "94bc53d0d3278530a1cf2bb666ac6c97fa85d5d6",
+        "iteracao": 1,
+        "sessao": "722539d9-b368-4e3f-9f32-6a3fd43848ae",
+        "ts": "2026-10-08T12:00:52.079Z"
       }
     ],
     "em": "2026-10-08"
