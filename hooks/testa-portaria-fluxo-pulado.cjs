@@ -90,7 +90,7 @@ function estado(repo, cwd, args) {
   });
 }
 
-function despachar(repo, cwd, subagente, opcoes = {}) {
+function despachar(repo, cwd, subagente, opcoes = {}, hook = HOOK) {
   const toolInput = { subagent_type: subagente, prompt: "Tarefa de teste do fluxo pulado." };
   if (!opcoes.semIsolation) toolInput.isolation = "worktree";
   const payload = {
@@ -100,7 +100,7 @@ function despachar(repo, cwd, subagente, opcoes = {}) {
     tool_name: "Agent",
     tool_input: toolInput,
   };
-  return spawnSync(process.execPath, [HOOK], {
+  return spawnSync(process.execPath, [hook], {
     input: JSON.stringify(payload),
     encoding: "utf8",
     env: ambiente(repo, cwd),
@@ -119,6 +119,31 @@ function descartar(repo) {
   fs.rmSync(repo.sbx, { recursive: true, force: true });
 }
 
+// Copia o plugin (hooks/, scripts/ e .rainforest/, sem as baterias testa-*) para `destino`.
+// O hook e o estado.cjs copiados carregam os `require` relativos do plugin inteiro, e a
+// portaria le o manifesto padrao em `.rainforest/agentes.padrao.json` da raiz do plugin.
+function copiarPlugin(destino) {
+  const raizPlugin = path.join(__dirname, "..");
+  for (const sub of ["hooks", "scripts", ".rainforest"]) {
+    fs.cpSync(path.join(raizPlugin, sub), path.join(destino, sub), {
+      recursive: true,
+      filter: (origem) => !path.basename(origem).startsWith("testa-"),
+    });
+  }
+}
+
+// Comandos impressos no formato com aspas: "<node>" "<estado.cjs>" <resto>. As duas
+// partes entre aspas são o que o detector e o agente leem; o teste confere as duas.
+const RE_LEVE = /"([^"]+)" "([^"]*estado\.cjs)" (leve --motivo "[^"]*" --repo "[^"]*")/;
+const RE_INICIAR = /"([^"]+)" "([^"]*estado\.cjs)" iniciar --slug/;
+function noExecPath(p) {
+  return p === process.execPath.split(path.sep).join("/");
+}
+// Quebra o comando em argumentos respeitando aspas, para rodar sem shell.
+function argumentosDoComando(texto) {
+  return [...texto.matchAll(/"([^"]*)"|(\S+)/g)].map((m) => (m[1] !== undefined ? m[1] : m[2]));
+}
+
 // == A. rainforest com trilho, sem fluxo e sem leve ==
 console.log("== A. rainforest sem fluxo aberto e sem leve ==");
 {
@@ -133,7 +158,7 @@ console.log("== A. rainforest sem fluxo aberto e sem leve ==");
   caso("A1 stderr nomeia o estagio exigido (executar)",
     /exige executar/.test(r.stderr || ""), r.stderr);
   caso("A1 stderr traz a saida do caminho leve (estado.cjs leve --motivo)",
-    /scripts[\\/]estado\.cjs leve --motivo/.test(r.stderr || ""), r.stderr);
+    /scripts[\\/]estado\.cjs" leve --motivo/.test(r.stderr || ""), r.stderr);
   caso("A1 stderr traz a saida de abrir o fluxo",
     /brainstorm|estado\.cjs iniciar/.test(r.stderr || ""), r.stderr);
   caso("A1 a negacao entra no log como deny",
@@ -305,7 +330,7 @@ console.log("== F. trilho protheus: .gates.json recente libera ==");
   caso("F2 protheus com .gates.json de ha 2 dias: executor sai 2",
     antigo.status === 2, `exit=${antigo.status} stderr=${antigo.stderr}`);
   caso("F2 stderr traz as saidas do fluxo protheus e do caminho leve",
-    /protheus/.test(antigo.stderr || "") && /scripts[\\/]estado\.cjs leve --motivo/.test(antigo.stderr || ""),
+    /protheus/.test(antigo.stderr || "") && /scripts[\\/]estado\.cjs" leve --motivo/.test(antigo.stderr || ""),
     antigo.stderr);
 
   const leve = estado(repo, repo.main, ["leve", "--motivo", "hotfix mecanico de teste"]);
@@ -478,20 +503,20 @@ console.log("== J. leve impresso pela portaria roda de outro cwd ==");
   const bloq = despachar(repo, wt, "rainforest-mind:executor");
   caso("J0 sem fluxo e sem leve, executor sai 2",
     bloq.status === 2, `exit=${bloq.status} stderr=${bloq.stderr}`);
-  const leveImpresso = /node (\S+estado\.cjs) (leve --motivo "[^"]*" --repo "[^"]*")/.exec(bloq.stderr || "");
-  const iniciarImpresso = /node (\S+estado\.cjs) iniciar --slug/.exec(bloq.stderr || "");
-  caso("J1 o leve impresso traz estado.cjs absoluto e --repo com a raiz",
-    leveImpresso !== null && path.isAbsolute(leveImpresso[1]) && /--repo "/.test(leveImpresso[2]), bloq.stderr);
+  const leveImpresso = RE_LEVE.exec(bloq.stderr || "");
+  const iniciarImpresso = RE_INICIAR.exec(bloq.stderr || "");
+  caso("J1 o leve impresso traz node e estado.cjs absolutos, entre aspas, e --repo com a raiz",
+    leveImpresso !== null && noExecPath(leveImpresso[1]) && path.isAbsolute(leveImpresso[2]) && /--repo "/.test(leveImpresso[3]), bloq.stderr);
   caso("J2 nenhuma contrabarra no comando leve nem no iniciar impressos",
     leveImpresso !== null && iniciarImpresso !== null
       && !leveImpresso[0].includes("\\") && !iniciarImpresso[0].includes("\\"), bloq.stderr);
-  caso("J3 o iniciar impresso usa o estado.cjs absoluto",
-    iniciarImpresso !== null && path.isAbsolute(iniciarImpresso[1]), bloq.stderr);
+  caso("J3 o iniciar impresso usa o node e o estado.cjs absolutos, entre aspas",
+    iniciarImpresso !== null && noExecPath(iniciarImpresso[1]) && path.isAbsolute(iniciarImpresso[2]), bloq.stderr);
 
   // Roda o leve IMPRESSO, de verdade: sem shell, a partir de um cwd fora do repositorio.
   // Sem o leve impresso no formato certo nao ha o que rodar: J4/J5 caem vermelhos, sem derrubar a bateria.
-  const args = leveImpresso === null ? [] : [...leveImpresso[2].matchAll(/"([^"]*)"|(\S+)/g)].map((m) => (m[1] !== undefined ? m[1] : m[2]));
-  const leve = leveImpresso === null ? { status: null, stdout: "", stderr: "leve nao impresso" } : spawnSync(process.execPath, [leveImpresso[1], ...args], {
+  const args = leveImpresso === null ? [] : argumentosDoComando(leveImpresso[3]);
+  const leve = leveImpresso === null ? { status: null, stdout: "", stderr: "leve nao impresso" } : spawnSync(leveImpresso[1], [leveImpresso[2], ...args], {
     cwd: repo.dados,
     encoding: "utf8",
     env: ambiente(repo, wt),
@@ -503,6 +528,33 @@ console.log("== J. leve impresso pela portaria roda de outro cwd ==");
   const depois = despachar(repo, wt, "rainforest-mind:executor");
   caso("J5 com o leve impresso rodado, o despacho seguinte do executor passa: exit 0",
     depois.status === 0, `exit=${depois.status} stderr=${depois.stderr}`);
+  descartar(repo);
+}
+
+// == K. plugin copiado em pasta com espaco: o leve impresso roda e libera o despacho ==
+console.log("== K. plugin copiado em pasta com espaco ==");
+{
+  const repo = novoRepo();
+  const wt = comWorktree(repo);
+  const copia = path.join(repo.sbx, "plug in");
+  fs.mkdirSync(copia);
+  copiarPlugin(copia);
+  const hookCopia = path.join(copia, "hooks", "portaria.cjs");
+
+  const bloq = despachar(repo, wt, "rainforest-mind:executor", {}, hookCopia);
+  const leveImpresso = RE_LEVE.exec(bloq.stderr || "");
+  const args = leveImpresso === null ? [] : argumentosDoComando(leveImpresso[3]);
+  const leve = leveImpresso === null ? { status: null, stdout: "", stderr: "leve nao impresso" } : spawnSync(leveImpresso[1], [leveImpresso[2], ...args], {
+    cwd: repo.dados,
+    encoding: "utf8",
+    env: ambiente(repo, wt),
+    timeout: TIMEOUT_MS,
+  });
+  const depois = despachar(repo, wt, "rainforest-mind:executor", {}, hookCopia);
+  caso("plugin em pasta com espaco: o leve impresso pela portaria roda e libera o despacho",
+    copia.includes(" ") && bloq.status === 2 && leveImpresso !== null && leveImpresso[2].includes(" ")
+      && leve.status === 0 && depois.status === 0,
+    `copia=${copia} bloq=${bloq.status} stderr=${bloq.stderr} leve=${leve.status} ${leve.stderr} depois=${depois.status} ${depois.stderr}`);
 
   descartar(repo);
 }

@@ -1128,8 +1128,11 @@ function main() {
       // Caminho absoluto com barras `/`: o comando impresso roda de qualquer cwd e
       // sem contrabarra que o shell do agente engula (Issue #430, emenda 2).
       const caminhoEstado = path.join(path.resolve(__dirname, ".."), "scripts", "estado.cjs").split(path.sep).join("/");
+      // O node vai pelo caminho do processo, entre aspas (Issue #430, emenda 4): nome nu
+      // resolve pela busca do SO, e caminho com espaco quebra sem aspas.
+      const nodeBarras = process.execPath.split(path.sep).join("/");
       const raizBarras = raiz.split(path.sep).join("/");
-      const leveDaMensagem = `node ${caminhoEstado} leve --motivo "<por que>" --repo "${raizBarras}"`;
+      const leveDaMensagem = `"${nodeBarras}" "${caminhoEstado}" leve --motivo "<por que>" --repo "${raizBarras}"`;
       // Saida 2 depende da branch. HEAD destacado: o leve vale por branch, entao manda
       // trocar para uma. Branch padrao de repo rainforest: o leve e recusado ali (regra 11),
       // entao manda despachar de dentro do worktree do fluxo. Demais casos: o leve direto.
@@ -1142,7 +1145,7 @@ function main() {
       const motivo =
         `agente '${nomeAgente}' escreve (escreve: true) e so roda no estagio que declara: exige ${exige}; ` +
         `estagio aberto: ${estagioAtivo} (Issue #430, D3/D5)` +
-        `\n  saida 1: abrir ou avancar o fluxo ate ${exige} (rainforest: /rainforest-mind:brainstorm ou node ${caminhoEstado} iniciar --slug <slug>; protheus: /protheus:trabalhar)` +
+        `\n  saida 1: abrir ou avancar o fluxo ate ${exige} (rainforest: /rainforest-mind:brainstorm ou "${nodeBarras}" "${caminhoEstado}" iniciar --slug <slug>; protheus: /protheus:trabalhar)` +
         saida2;
       gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
       negar(motivo);

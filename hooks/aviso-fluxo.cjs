@@ -28,6 +28,9 @@ const { leveDaBranch, protheusAberto } = require('./lib/caminho-leve.cjs');
 // Caminho absoluto do estado.cjs do plugin, com barras normais: o comando da mensagem
 // roda em bash e em PowerShell sem escapar contrabarra.
 const SCRIPT_ESTADO = path.resolve(__dirname, '..', 'scripts', 'estado.cjs').split(path.sep).join('/');
+// O node vai pelo caminho do processo, entre aspas (#430, emenda 4): nome nu resolve pela
+// busca do SO, e caminho com espaço quebra sem aspas.
+const NODE_BARRAS = process.execPath.split(path.sep).join('/');
 
 const EXTENSOES_CODIGO = new Set([
   '.js', '.cjs', '.mjs', '.ts', '.tsx', '.jsx',
@@ -141,8 +144,8 @@ function mensagemHeadDestacado(trilho) {
 // `ofereceLeve` false só no rainforest na branch padrão: lá o `leve` é recusado (D7), então a
 // saída é o worktree. O `--repo` aponta o repositório do arquivo (emenda 2, #430).
 function mensagemBloqueio(trilho, branch, ofereceLeve, gitTop) {
-  const iniciar = `node ${SCRIPT_ESTADO} iniciar --slug <slug>`;
-  const leve = `node ${SCRIPT_ESTADO} leve --motivo "<por quê>" --repo "${barras(gitTop)}"`;
+  const iniciar = `"${NODE_BARRAS}" "${SCRIPT_ESTADO}" iniciar --slug <slug>`;
+  const leve = `"${NODE_BARRAS}" "${SCRIPT_ESTADO}" leve --motivo "<por quê>" --repo "${barras(gitTop)}"`;
   if (trilho === 'rainforest') {
     if (!ofereceLeve) {
       return [
