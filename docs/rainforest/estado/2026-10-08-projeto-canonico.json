@@ -24,7 +24,7 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-08",
-    "tarefas_ok": 6,
+    "tarefas_ok": 7,
     "tarefas": 11,
     "carimbos": [
       {
@@ -80,8 +80,14 @@
     "em_voo": [
       {
         "agente": "executor",
-        "tarefa": "6 leitores canonicos",
-        "desde": "2026-10-08T17:53:09-03:00",
+        "tarefa": "7 utilidade canonico",
+        "desde": "2026-10-08T20:11:15-03:00",
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "8 buscar --projeto",
+        "desde": "2026-10-08T20:11:15-03:00",
         "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76"
       }
     ],
