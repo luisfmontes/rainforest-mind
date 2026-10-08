@@ -173,3 +173,21 @@ paralela: nao
 mutacao: n/a
   motivo: só texto; a falsificação é a coerência com `hooks/portaria.cjs` e `hooks/aviso-fluxo.cjs`.
 pronto quando: a linha nova da tabela de `regra-10-portaria.md` diz que o bloqueio vale **em repositório com trilho de fluxo e com a chave `aviso-fluxo` ligada**, coerente com `trilhoComFluxo` em `hooks/portaria.cjs`; a D2 do design diz que `.ipynb` não está na lista de extensões de código e por isso o NotebookEdit fica fora, coerente com `EXTENSOES_CODIGO` em `hooks/aviso-fluxo.cjs`. Provado por leitura lado a lado registrada no relato, com a linha do código que sustenta cada frase.
+
+## Emenda 3 — achado 4: o que é "aberto" no protheus (2026-10-08)
+
+O usuário decidiu a Q1 pela opção A (D10). As duas cópias da regra das 24 h (`hooks/aviso-fluxo.cjs` e `hooks/portaria.cjs`) passam a chamar uma função só.
+
+### 12. Protheus: fluxo aberto pelo campo `branch` do `.gates.json` [tipo: implementar]
+atende: D1, D10
+arquivos: `hooks/lib/caminho-leve.cjs`, `hooks/aviso-fluxo.cjs`, `hooks/portaria.cjs`, `hooks/testa-bloqueio-fluxo.cjs`, `hooks/testa-portaria-fluxo-pulado.cjs`, `CHANGELOG.md`
+depende de: 10
+paralela: nao
+prova: `node hooks/testa-bloqueio-fluxo.cjs`
+mutacao:
+  arquivo: `hooks/lib/caminho-leve.cjs`
+  de: `if (typeof dados.branch === string) return dados.branch === branch;`
+  para: `if (false) return false;`
+  bateria: `node hooks/testa-bloqueio-fluxo.cjs`
+  fixture: caso "protheus: gates.json recente de outra branch nao abre o fluxo desta"
+pronto quando: em repositório protheus (`docs/plans/x.gates.json`), com a sessão na branch `b1`: (a) `.gates.json` com `"branch": "b2"` e mtime de agora → Edit de `.prw` sai 2 e despacho de `executor` sai 2; (b) `"branch": "b1"` com mtime de 3 dias atrás → Edit sai 0 e despacho sai 0; (c) sem campo `branch`, mtime de agora → sai 0; (d) sem campo `branch`, mtime de 3 dias → sai 2; (e) `.gates.json` ilegível não derruba o hook (é ignorado). A decisão por arquivo mora numa função exportada de `hooks/lib/caminho-leve.cjs` usada pelos dois hooks, e a linha da mutação é escrita literalmente como no `de:`. Provado por `node hooks/testa-bloqueio-fluxo.cjs` e `node hooks/testa-portaria-fluxo-pulado.cjs` (`falhou: 0`, `skipped: 0`).
