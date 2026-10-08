@@ -7,7 +7,7 @@ const os = require('os');
 const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
 const { criarSchema } = require(path.join(__dirname, '..', 'scripts', 'memoria.cjs'));
-const { LIMIAR_BM25, buscarPorAssunto, montarBlocoAssunto } = require('./lib/memoria-assunto.cjs');
+const { LIMIAR_BM25, construirQueryAssunto, buscarPorAssunto, montarBlocoAssunto } = require('./lib/memoria-assunto.cjs');
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'testa-memoria-assunto-'));
 const caminho = path.join(tmp, 'teste.db');
@@ -96,6 +96,43 @@ caso('bloco comeca por cabecalho e cabe em 1500 bytes', () => {
     partes.length > 1 && partes.slice(1).every((p) => p.startsWith('['));
 });
 caso('lista vazia vira string vazia', () => montarBlocoAssunto([]) === '');
+// Corpus do briefing longo: 150 palavras medias (cada uma em 80 de 200 memorias, idf baixo) +
+// 2 alvos de termos raros. Com o limiar REAL: 30 termos medios somam < 16 (nao entra), mas os
+// 150 somariam bem mais (entraria) — por isso o caso mede o LIMITE_TERMOS.
+function corpusBriefingLongo() {
+  limpar();
+  const palavras = [];
+  for (let i = 0; i < 150; i++) palavras.push('termo' + i + 'comum');
+  for (let i = 0; i < 80; i++) inserir('p1', 'Registro amplo ' + i + '\n\n' + palavras.join(' '));
+  for (let i = 0; i < 118; i++) inserir('p1', 'Nota curta ' + i + '\n\nnada a ver aqui ' + i);
+  const alvo = inserir('p2', 'Reconciliacao zarquon\n\n' + 'zarquon flibbertigibbet quasar '.repeat(6));
+  inserir('p2', 'Outro assunto\n\nbananeira jabuticaba ' + 'bananeira jabuticaba '.repeat(3));
+  return { briefing: palavras.join(' '), alvo };
+}
+caso('briefing longo de termos comuns, sem termo raro de nenhum alvo, devolve vazio', () => {
+  const { briefing } = corpusBriefingLongo();
+  const o = { projetoAtual: 'p1', jaServidos: new Set() };
+  return buscarPorAssunto(db, briefing, o).length === 0 &&
+    // o corpus e valido: os 150 termos, sem corte, passariam do limiar (o limite de termos e que impede)
+    buscarPorAssunto(db, briefing, { ...o, limiar: PERMISSIVO }).length > 0;
+});
+caso('o mesmo briefing com um termo raro de um alvo acha o alvo', () => {
+  const { briefing, alvo } = corpusBriefingLongo();
+  const r = buscarPorAssunto(db, briefing + ' zarquon flibbertigibbet', { projetoAtual: 'p1', jaServidos: new Set() });
+  return ids(r).includes(alvo);
+});
+caso('construirQueryAssunto: 30 termos mais raros, df 0 fora, desempate estavel', () => {
+  limpar();
+  inserir('p1', 'a\n\nraroum raroum comum1 comum1 comum2');
+  inserir('p1', 'b\n\ncomum1 comum2');
+  inserir('p1', 'c\n\ncomum1');
+  const q = construirQueryAssunto(db, 'comum1 comum2 raroum inexistente comum1');
+  if (q !== '"raroum" OR "comum2" OR "comum1"') return false;
+  const muitos = [];
+  for (let i = 0; i < 40; i++) { inserir('p1', 'm' + i + '\n\nlote' + i); muitos.push('lote' + i); }
+  const q2 = construirQueryAssunto(db, muitos.join(' '));
+  return q2.split(' OR ').length === 30 && q2.startsWith('"lote0"') && construirQueryAssunto(db, 'so inexistentes') === null;
+});
 caso('FTS ausente devolve vazio sem lancar', () => {
   const nu = new DatabaseSync(':memory:');
   try {

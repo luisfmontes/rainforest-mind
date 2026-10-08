@@ -126,6 +126,30 @@ caso('arquivo da sessao so tem ids (inclui o semeado pela abertura)', () => {
   return Array.isArray(dado) && dado.length === 4 && dado.every((n) => Number.isInteger(n)) &&
     dado.includes(alvos.Alfa) && !/[A-Za-z]/.test(fs.readFileSync(arq, 'utf8'));
 });
+caso('pedido sem acerto grava o arquivo da sessao e o segundo nao rele o transcrito', () => {
+  const grande = path.join(tmp, 'sessao-m.jsonl');
+  const servida = linhaDoAlvo('Alfa');
+  transcritoComAbertura(grande, [servida]);
+  const enchimento = JSON.stringify({ type: 'user', message: { role: 'user', content: 'x'.repeat(1000) } }) + '\n';
+  const bloco = enchimento.repeat(1000); // ~1 MB
+  for (let i = 0; i < 40; i++) fs.appendFileSync(grande, bloco);
+  if (fs.statSync(grande).size < 40 * 1000 * 1000) return false;
+  const arq = path.join(raiz, 'memoria-assunto', 'sessao-m.json');
+  const semAcerto = { session_id: 'sessao-m', transcript_path: grande, prompt: 'qual a previsao do tempo amanha cedo' };
+  const t1 = Date.now();
+  const r1 = rodar(payload(semAcerto));
+  const d1 = Date.now() - t1;
+  const existeApos1 = fs.existsSync(arq);
+  const t2 = Date.now();
+  const r2 = rodar(payload(semAcerto));
+  const d2 = Date.now() - t2;
+  console.log('  tempos (ms): 1a=' + d1 + ' 2a=' + d2);
+  const ids = existeApos1 ? JSON.parse(fs.readFileSync(arq, 'utf8')) : [];
+  const r3 = rodar(payload({ session_id: 'sessao-m', transcript_path: grande }));
+  const linhas3 = linhasDe(contexto(r3.saida));
+  return vazioSaiu0(r1) && vazioSaiu0(r2) && d1 < 1500 && d2 < 1500 && existeApos1 &&
+    ids.includes(alvos.Alfa) && linhas3.length === 3 && !linhas3.includes(servida);
+});
 caso('pedido que comeca por barra nao injeta', () => vazioSaiu0(rodar(payload({ session_id: 'sessao-e', prompt: '/zarquon flibbertigibbet quasar reconciliacao' }))));
 caso('pedido curto (menos de 3 termos uteis) nao injeta', () => vazioSaiu0(rodar(payload({ session_id: 'sessao-f', prompt: 'zarquon flibbertigibbet' }))));
 caso('pedido sem assunto no corpus nao injeta', () => vazioSaiu0(rodar(payload({ session_id: 'sessao-g', prompt: 'qual a previsao do tempo amanha cedo' }))));

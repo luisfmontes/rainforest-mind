@@ -5,7 +5,6 @@
  * monta o bloco injetável. Sem I/O além da conexão recebida; nunca lança.
  */
 const path = require('path');
-const { construirQueryFts5DoTexto } = require(path.join(__dirname, '..', '..', 'scripts', 'lib', 'utilidade.cjs'));
 const { filtroVivas } = require(path.join(__dirname, '..', '..', 'scripts', 'memoria.cjs'));
 const { formatarObservacao } = require('./memoria-sessao.cjs');
 
@@ -14,12 +13,30 @@ const { formatarObservacao } = require('./memoria-sessao.cjs');
 const LIMIAR_BM25 = -16;
 const TETO_BYTES = 1500;
 const CABECALHO = '## Memória do assunto';
-const LIMITE_TERMOS = 200;
+const LIMITE_TERMOS = 30;
 const LIMITE_SQL = 50;
+
+// Query OR dos LIMITE_TERMOS termos MAIS RAROS do texto: menor document frequency > 0 em
+// observacoes_fts (termo com df 0 nao casa nada e nao entra). Briefing longo nao dilui a
+// consulta com palavras comuns. Desempate estavel (ordem de aparicao). Lanca se o FTS faltar.
+function construirQueryAssunto(conexao, texto) {
+  const brutos = String(texto || '').match(/[\p{L}\p{N}]+/gu) || [];
+  const unicos = Array.from(new Set(brutos.map((t) => t.toLowerCase())));
+  if (unicos.length === 0) return null;
+  const contar = conexao.prepare('SELECT count(*) AS n FROM observacoes_fts WHERE observacoes_fts MATCH ?');
+  const comDf = [];
+  unicos.forEach((t, i) => {
+    const n = Number(contar.get('"' + t.replace(/"/g, '""') + '"').n);
+    if (n > 0) comDf.push({ t, n, i });
+  });
+  if (comDf.length === 0) return null;
+  comDf.sort((a, b) => (a.n - b.n) || (a.i - b.i));
+  return comDf.slice(0, LIMITE_TERMOS).map((x) => '"' + x.t.replace(/"/g, '""') + '"').join(' OR ');
+}
 
 function buscarPorAssunto(conexao, texto, { projetoAtual, jaServidos = new Set(), max = 3, limiar = LIMIAR_BM25 } = {}) {
   try {
-    const query = construirQueryFts5DoTexto(texto, LIMITE_TERMOS);
+    const query = construirQueryAssunto(conexao, texto);
     if (!query) return [];
     const linhas = conexao
       .prepare(
@@ -56,4 +73,4 @@ function montarBlocoAssunto(linhas) {
   return algumaLinha ? bloco : '';
 }
 
-module.exports = { LIMIAR_BM25, buscarPorAssunto, montarBlocoAssunto };
+module.exports = { LIMIAR_BM25, construirQueryAssunto, buscarPorAssunto, montarBlocoAssunto };
