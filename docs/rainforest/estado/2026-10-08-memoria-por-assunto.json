@@ -11,7 +11,15 @@
     "em": "2026-10-08"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-08-memoria-por-assunto.md",
+    "tarefas": 10,
+    "paralelas": [
+      1,
+      2,
+      10
+    ],
+    "em": "2026-10-08"
   },
   "executar": {
     "status": "pendente"
