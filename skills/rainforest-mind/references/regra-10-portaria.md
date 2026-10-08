@@ -16,7 +16,8 @@ Não é mais.** O que mudou e por quê:
 |---|---|---|
 | Agente fora do manifesto | nega | **passa**, com `declarado: false` no log |
 | Sem estágio ativo | nega, ou exige frase digitada | **passa**, com `fora_de_fluxo: true` no log |
-| Estágio fora da lista do agente | nega | **passa**, com `estagio_declarado` no log |
+| Estágio fora da lista do agente que **lê** (`escreve: false`) | nega | **passa**, com `estagio_declarado` no log |
+| Agente declarado com `escreve: true` fora dos `estagios` dele (ou sem fluxo), sem `leve` na branch | nega | **nega** de novo desde a 1.49.0 (Issue #430) |
 | `escreve: true` sem `isolation: "worktree"` | nega | **nega** (regra 11) |
 | `escreve: true` com `name` | nega | **nega** (regra 10) |
 | Manifesto malformado | nega | **nega** |
@@ -30,11 +31,17 @@ frase "autorizo subagentes" custava uma digitação por sessão sem decidir nada
 O critério que separa o portão que fica do que sai: **ele defende a árvore de
 trabalho do usuário, ou a ordem do fluxo?** A regra 11 defende a árvore, e fica.
 Ordem de fluxo agora se registra — as marcas acima entram no log, que o
-`conferir-fluxo` já lê.
+`conferir-fluxo` já lê. A exceção é o despacho de agente que **escreve** fora do
+estágio dele: pular o fluxo assim reincidiu onze vezes em dois meses (#396, #430),
+e o registro não segurou. Ele volta a negar, com duas saídas na mensagem — abrir
+ou avançar o fluxo, ou `estado.cjs leve --motivo` na branch — e a chave
+`aviso-fluxo` desliga. Agente de outro plugin (fora do manifesto) segue só
+registrado.
 
 > **Regra 10 (reescrita em 2026-09-15):** o manifesto é **declaração**, não
-> admissão. A portaria barra um caso só — agente que escreve sem worktree
-> isolado, ou nomeado. Todo o resto ela deixa passar e registra. A decisão
+> admissão. A portaria barra agente que escreve sem worktree
+> isolado, ou nomeado — e, desde a #430, agente declarado que escreve fora do
+> estágio dele sem `leve`. Todo o resto ela deixa passar e registra. A decisão
 > continua sendo por código (hook `PreToolUse` sobre a tool `Task`), e o humano
 > continua não sendo perguntado em runtime — a diferença é que agora ele também
 > não é **cobrado** em runtime.
