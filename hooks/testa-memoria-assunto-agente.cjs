@@ -103,18 +103,30 @@ caso('nao emite permissionDecision', () => {
 });
 caso('sem candidata nao emite nada', () =>
   vazioSaiu0(rodar(payload({ session_id: 'sessao-d' }, { prompt: 'qual a previsao do tempo amanha cedo' }))));
-caso('segunda chamada na sessao nao repete memoria', () => {
+caso('segunda chamada na sessao recebe as mesmas memorias (subagente nao deduplica)', () => {
   const r1 = rodar(payload({ session_id: 'sessao-e' }));
   const r2 = rodar(payload({ session_id: 'sessao-e' }));
   const l1 = blocoDe(saidaJson(r1.saida).updatedInput.prompt).split('\n').slice(1);
   const l2 = blocoDe(saidaJson(r2.saida).updatedInput.prompt).split('\n').slice(1);
-  const r3 = rodar(payload({ session_id: 'sessao-e' }));
-  return l1.length === 3 && l2.length === 1 && l2.every((l) => !l1.includes(l)) && vazioSaiu0(r3);
+  return l1.length === 3 && l1.join('\n') === l2.join('\n');
 });
-caso('arquivo da sessao so tem ids', () => {
-  const arq = path.join(raiz, 'memoria-assunto', 'sessao-e.json');
-  const dado = JSON.parse(fs.readFileSync(arq, 'utf8'));
-  return Array.isArray(dado) && dado.length === 4 && dado.every((x) => Number.isInteger(x)) && !/[A-Za-z]/.test(fs.readFileSync(arq, 'utf8'));
+caso('pedido e depois Agent do mesmo assunto: o subagente recebe as memorias do pedido e o arquivo da sessao nao muda', () => {
+  const PROMPT_HOOK = path.join(__dirname, 'memoria-assunto-prompt.cjs');
+  const rp = spawnar(PROMPT_HOOK, JSON.stringify({
+    session_id: 'sessao-k', transcript_path: transcrito, cwd: cwdSessao, hook_event_name: 'UserPromptSubmit',
+    prompt: 'investigue a reconciliacao zarquon flibbertigibbet quasar e responda',
+  }));
+  const lp = JSON.parse(rp.saida).hookSpecificOutput.additionalContext.split('\n').slice(1);
+  const arq = path.join(raiz, 'memoria-assunto', 'sessao-k.json');
+  const antes = fs.readFileSync(arq, 'utf8');
+  const ra = rodar(payload({ session_id: 'sessao-k' }));
+  const la = blocoDe(saidaJson(ra.saida).updatedInput.prompt).split('\n').slice(1);
+  const depois = fs.readFileSync(arq, 'utf8');
+  return lp.length === 3 && la.join('\n') === lp.join('\n') && antes === depois;
+});
+caso('subagente nao cria o arquivo da sessao', () => {
+  rodar(payload({ session_id: 'sessao-l' }));
+  return !fs.existsSync(path.join(raiz, 'memoria-assunto', 'sessao-l.json'));
 });
 caso('prompt vazio nao emite nada', () => vazioSaiu0(rodar(payload({ session_id: 'sessao-f' }, { prompt: '   ' }))));
 caso('tool_name diferente nao injeta', () => {
