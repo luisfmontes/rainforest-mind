@@ -24,8 +24,39 @@
     "status": "parcial",
     "catraca_mutacao": "2026-10-08",
     "tarefas_ok": 14,
-    "tarefas": 14,
-    "em_voo": [],
+    "tarefas": 22,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "15 pedido sem raiz",
+        "desde": "2026-10-08T22:10",
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "17 teto de tamanho",
+        "desde": "2026-10-08T22:10",
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "18 migrar conduta",
+        "desde": "2026-10-08T22:10",
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "19 cenarios GLOSSARIO",
+        "desde": "2026-10-08T22:10",
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "20 conferir-ponte chave",
+        "desde": "2026-10-08T22:10",
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c"
+      }
+    ],
     "carimbos": [
       {
         "tarefa": 1,
