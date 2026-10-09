@@ -21,7 +21,7 @@
     "em": "2026-10-08"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-08",
     "tarefas_ok": 14,
     "tarefas": 14,
@@ -193,10 +193,40 @@
       "cenario de worktree de agente cita worktree temporario",
       "D4 nao distingue memoria de termo de memoria de conduta (design, Em aberto)",
       "conferir-ponte mensagens antigas mandam regerar com --agente agents; anterior a este fluxo"
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-08"
+    }
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "1d44239bfcfd070d7a4f7b9342d8d8dfd4c5af90",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ad66cb48c4bf27834",
+        "veredito": "reprovado",
+        "em": "2026-10-08",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/95ff1d9f-c2ab-42e8-a083-1e340333150c/subagents/agent-ad66cb48c4bf27834.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-08",
+    "achados": 7,
+    "lista": [
+      "1 alta: memoria-assunto-prompt.cjs:139 sem raiz de dados nao injeta glossario",
+      "2 media: dedup corrompido ou sem permissao mata o glossario",
+      "3 media: skill migrar sem excecao para memoria de conduta (D4)",
+      "4 media/baixa: GLOSSARIO worktree de agente cita worktree removido",
+      "5 baixa: GLOSSARIO fluxo cita mensagem do marcar, nao do exigir",
+      "6 baixa pre-existente: conferir-ponte:521/545/565 --agente agents",
+      "7 baixa: readFileSync do glossario sem limite de tamanho; conteudo entra verbatim"
+    ],
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

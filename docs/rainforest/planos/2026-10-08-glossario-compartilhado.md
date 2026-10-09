@@ -211,3 +211,100 @@ pronto quando: com a árvore das tarefas 1 a 13 integrada na branch do fluxo, ro
 - A conta de trabalho (`~/.claude`) não tem cópia dos dois arquivos de memória a migrar (lacuna acima).
 - O tempo de 5 s do hook comporta ler e analisar um `GLOSSARIO.md` de dezenas de verbetes; nenhuma medição de tamanho real foi feita, e arquivo de centenas de KB não é tratado.
 - O diretório de dados por sessão `memoria-assunto/` não tem poda hoje (nenhum `poda` o cita) e os arquivos `.glossario.json` herdam essa lacuna; fica fora do escopo.
+
+## Rodada 2 — achados do revisar (2026-10-08, VEREDITO: reprovado, 7 achados)
+
+Os achados vêm de `revisar.lista` no estado do fluxo. Cada um vira uma tarefa abaixo. O achado 7 (conteúdo do `GLOSSARIO.md` entra no contexto verbatim) fica aceito como risco: o arquivo tem a mesma confiança de um `CLAUDE.md` do repo que o dev abriu, a injeção tem teto de 3 verbetes e 1.800 B, e só entra quando o termo casa. A tarefa 17 fecha a parte de tamanho.
+
+### 15. Hook do pedido injeta glossário sem pasta de dados [tipo: implementar]
+atende: D1, D9
+arquivos: `hooks/memoria-assunto-prompt.cjs`, `hooks/testa-glossario-prompt.cjs`
+depende de: nenhuma
+paralela: sim
+prova-na-base: verde — a bateria ja existe e passa na base; o caso novo que a falsifica nasce com esta tarefa
+mutacao:
+  arquivo: `hooks/memoria-assunto-prompt.cjs`
+  de: const arquivoChaves = raiz ? path.join(raiz, 'memoria-assunto', sessao + '.glossario.json') : null;
+  para: const arquivoChaves = path.join(raiz, 'memoria-assunto', sessao + '.glossario.json');
+  bateria: `node hooks/testa-glossario-prompt.cjs`
+  fixture: `testa-glossario-prompt.cjs, caso "sem raiz de dados injeta o glossario sem dedup"`
+pronto quando: com o payload real de `UserPromptSubmit` (cwd num repo de caixa com `.git` e `GLOSSARIO.md`, prompt "o que significa esteira aqui?"), com `RFM_ROOT` ausente, `HOME`/`USERPROFILE` apontando para uma pasta vazia e o plugin resolvido de forma que `resolverRaiz` devolva `raiz: null`, o hook sai 0 com `additionalContext` começando por `## Glossário do repo` e contendo `**fluxo**`. Sem raiz não há dedup: duas chamadas na mesma sessão recebem o bloco as duas vezes, e nenhum arquivo é criado. A memória por assunto continua exigindo raiz e banco: sem raiz, `## Memória do assunto` não aparece. Com raiz, o comportamento da rodada 1 não muda: os 17 casos de `hooks/testa-glossario-prompt.cjs` seguem verdes, e `hooks/testa-memoria-assunto-prompt.cjs` e `hooks/testa-memoria-assunto.cjs` seguem com `0 falha(s)` sem edição. Provado por `node hooks/testa-glossario-prompt.cjs` imprimindo `0 falha(s)`. Forma do alvo de mutação (código a nascer): `executar()` deixa de lançar `sem raiz de dados` antes do glossário; o caminho do dedup é a linha única `const arquivoChaves = raiz ? path.join(raiz, 'memoria-assunto', sessao + '.glossario.json') : null;` e, com `arquivoChaves` nulo, o glossário é montado sem ler nem gravar dedup. Nenhum caso de teste lê o texto do fonte.
+
+### 16. Dedup corrompido ou sem permissão não apaga o glossário [tipo: implementar]
+atende: D1, D9
+arquivos: `hooks/memoria-assunto-prompt.cjs`, `hooks/testa-glossario-prompt.cjs`
+depende de: 15
+paralela: nao
+prova-na-base: verde — a bateria ja existe e passa na base; o caso novo que a falsifica nasce com esta tarefa
+mutacao:
+  arquivo: `hooks/memoria-assunto-prompt.cjs`
+  de: const jaGlossario = new Set(arquivoChaves ? lerChavesOuVazio(arquivoChaves) : []);
+  para: const jaGlossario = new Set(arquivoChaves ? lerChaves(arquivoChaves) : []);
+  bateria: `node hooks/testa-glossario-prompt.cjs`
+  fixture: `testa-glossario-prompt.cjs, caso "dedup corrompido ainda injeta e e regravado"`
+pronto quando: com `<raiz>/memoria-assunto/<sessão>.glossario.json` contendo `{`, o mesmo payload real injeta `**fluxo**`, e depois da chamada o arquivo é JSON válido contendo só `["fluxo"]`, de modo que a segunda chamada sai vazia. Com a pasta `<raiz>/memoria-assunto` impossível de criar (um ARQUIVO comum com esse nome no lugar da pasta), o hook ainda injeta o glossário e sai 0. A falha de gravação do dedup nunca apaga o bloco. Provado por `node hooks/testa-glossario-prompt.cjs` imprimindo `0 falha(s)`. Forma do alvo de mutação (código a nascer): a leitura do dedup é a linha única `const jaGlossario = new Set(arquivoChaves ? lerChavesOuVazio(arquivoChaves) : []);`, em que `lerChavesOuVazio` devolve `[]` em qualquer erro de leitura ou de parse; a gravação fica num `try` próprio, depois do bloco montado. Nenhum caso de teste lê o texto do fonte.
+
+### 17. Teto de tamanho na leitura do GLOSSARIO.md [tipo: implementar]
+atende: D1, D13
+arquivos: `hooks/lib/glossario.cjs`, `hooks/testa-glossario.cjs`, `scripts/conferir-glossario.cjs`, `scripts/testa-conferir-glossario.sh`
+depende de: 1
+paralela: nao
+prova-na-base: verde — a bateria ja existe e passa na base; o caso novo que a falsifica nasce com esta tarefa
+mutacao:
+  arquivo: `hooks/lib/glossario.cjs`
+  de: if (st.size > GLOSSARIO_MAX_BYTES) return null;
+  para: if (false) return null;
+  bateria: `node hooks/testa-glossario.cjs`
+  fixture: `testa-glossario.cjs, caso "GLOSSARIO.md acima do teto nao e lido pelo hook"`
+pronto quando: `hooks/lib/glossario.cjs` exporta `GLOSSARIO_MAX_BYTES` (262144) e `acharGlossario(cwd)` devolve `null` quando o `GLOSSARIO.md` passa desse tamanho, de modo que os dois hooks não o leem. Um arquivo de exatamente 262144 B é lido; um de 262145 B não. `node scripts/conferir-glossario.cjs --raiz <caixa>` com um arquivo acima do teto sai 1 dizendo o tamanho e o teto, sem tentar parsear. Os 37 casos anteriores de `hooks/testa-glossario.cjs` e os 76 de `scripts/testa-conferir-glossario.sh` seguem verdes. Provado por `node hooks/testa-glossario.cjs` e `bash scripts/testa-conferir-glossario.sh` imprimindo `0 falha(s)`. Forma do alvo de mutação (código a nascer): dentro de `acharGlossario`, depois do `statSync`, a linha única `if (st.size > GLOSSARIO_MAX_BYTES) return null;`. Nenhum caso de teste lê o texto do fonte.
+
+### 18. Skill migrar: memória de conduta fica inteira [tipo: docs]
+atende: D4, D8
+arquivos: `skills/glossario/SKILL.md`
+depende de: nenhuma
+paralela: sim
+mutacao: n/a
+  motivo: texto de skill; a falsificação é a coerência com a decisão registrada em "Em aberto" do design.
+pronto quando: a seção `## migrar` de `skills/glossario/SKILL.md` ganha, antes do passo que troca o corpo por ponteiro, um teste: "a memória também orienta como a sessão escreve fora deste repo (termo a evitar em chat, commit, briefing)?". Se sim, a memória fica inteira e ganha só uma linha de ponteiro para o verbete; o corpo não é substituído. O exemplo citado é o da decisão de 2026-10-08 (`dizer-fluxo-nao-esteira`, `vocabulario-enxertar-nao-roubar`). Provado por `node -e "const s=require('fs').readFileSync('skills/glossario/SKILL.md','utf8');const m=s.slice(s.indexOf('## migrar'),s.indexOf('## listar'));console.log(/fora deste repo/.test(m),/fica inteira/.test(m))"` imprimindo `true true`, pelo critério 1 da tarefa 7 seguindo `0 true true`, e por `bash scripts/testa-teto-skills.sh` sem falha. O `revisar` lê a seção contra a nota de "Em aberto".
+
+### 19. GLOSSARIO.md: cenários de fluxo e de worktree de agente verdadeiros [tipo: docs]
+atende: D7, D12
+arquivos: `GLOSSARIO.md`
+depende de: nenhuma
+paralela: sim
+mutacao: n/a
+  motivo: documento de domínio; a falsificação é a frase citada existir no código e o cenário ser reproduzível por quem clona.
+pronto quando: o Cenário de `fluxo` cita a saída real do `exigir`, copiada de `scripts/estado.cjs` (a linha `RECUSADO: '<estágio>' exige <pré-requisitos> fechado(s).`, com o texto instanciado para `plano`), conferida por `grep -n "exige" scripts/estado.cjs`. O Cenário de `worktree de agente` deixa de citar um worktree de agente específico e descreve um caso que qualquer clone reproduz: o worktree nasce de `git worktree add .claude/worktrees/<slug> -b fluxo/<slug> origin/main` ou do `isolation: "worktree"` do despacho, e o `preparar-worktree.cjs --hash` avança a base. Nenhum caminho com id de agente. Provado por `node scripts/conferir-glossario.cjs --exigir --caminhos` imprimindo `GLOSSARIO.md: 9 verbete(s) conforme(s)`, `grep -c "agent-a" GLOSSARIO.md` devolvendo `0`, e `grep -F` da frase de `exige` citada no GLOSSARIO.md achando a linha correspondente em `scripts/estado.cjs`.
+
+### 20. conferir-ponte: mensagens antigas com a chave de agente certa [tipo: implementar]
+atende: D9
+arquivos: `scripts/conferir-ponte.cjs`, `scripts/testa-conferir-ponte-glossario.sh`
+depende de: nenhuma
+paralela: sim
+prova-na-base: verde — a bateria ja existe e passa na base; o caso novo que a falsifica nasce com esta tarefa
+mutacao:
+  arquivo: `scripts/conferir-ponte.cjs`
+  de: const agenteDoAlvo = agenteDoArquivo(alvo);
+  para: const agenteDoAlvo = path.basename(alvo, '.md').toLowerCase();
+  bateria: `bash scripts/testa-conferir-ponte-glossario.sh`
+  fixture: `testa-conferir-ponte-glossario.sh, caso "edicao a mao em AGENTS.md sugere --agente codex"`
+pronto quando: com uma ponte gerada por `node scripts/ponte.cjs --alvo <caixa> --agente codex --aplicar` e uma linha de regra editada à mão no `AGENTS.md`, `node scripts/conferir-ponte.cjs <caixa>/AGENTS.md` sai 2 e o comando de regeração impresso traz `--agente codex`, nunca `--agente agents`. O mesmo vale para `CLAUDE.md` (`--agente claude`) e `GEMINI.md` (`--agente gemini`), e o comando impresso, colado, roda sem o erro "desconhecido". Provado por `bash scripts/testa-conferir-ponte-glossario.sh` imprimindo `0 falha(s)` e por `bash scripts/testa-conferir-ponte.sh` seguindo verde. Forma do alvo de mutação (código a nascer): uma única atribuição `const agenteDoAlvo = agenteDoArquivo(alvo);`, usada pelas três mensagens antigas (hoje `scripts/conferir-ponte.cjs:521`, `:545` e `:565`), em que `agenteDoArquivo` mapeia `AGENTS.md`→`codex`, `CLAUDE.md`→`claude` e `GEMINI.md`→`gemini`. Nenhum caso de teste lê o texto do fonte.
+
+### 21. CHANGELOG e runtime: o glossário no pedido vale sem pasta de dados [tipo: docs]
+atende: D1, D9
+arquivos: `CHANGELOG.md`, `docs/runtime-e-orcamento.md`
+depende de: 15, 16, 17
+paralela: nao
+mutacao: n/a
+  motivo: documentação; a falsificação é a frase bater com o código entregue nas tarefas 15 a 17.
+pronto quando: a seção 1.51.0 do `CHANGELOG.md` deixa de dizer que a injeção no pedido exige a pasta de dados e passa a dizer que, sem ela, o glossário entra sem deduplicação. Ela também corrige "cada verbete entra uma vez por sessão" para valer só no pedido, já que o subagente recebe a cada despacho. `docs/runtime-e-orcamento.md` diz o mesmo e cita o teto de 256 KB do arquivo. Provado por `grep -c "exige a pasta de dados" CHANGELOG.md docs/runtime-e-orcamento.md` devolvendo 0 nos dois, por `node -e "const c=require('./hooks/lib/glossario.cjs');console.log(require('fs').readFileSync('docs/runtime-e-orcamento.md','utf8').includes(String(c.GLOSSARIO_MAX_BYTES/1024)+' KB'))"` imprimindo `true`, e por `node scripts/conferir-encoding.cjs CHANGELOG.md docs/runtime-e-orcamento.md` saindo 0.
+
+### 22. Laço inteiro de baterias da rodada 2 [tipo: teste]
+atende: D2, D5, D13
+arquivos: nenhum arquivo novo (roda a suíte que já existe)
+depende de: 15, 16, 17, 18, 19, 20, 21
+paralela: nao
+prova: `node scripts/conferir-glossario.cjs --exigir --caminhos`
+mutacao: n/a
+  motivo: tarefa de integração; roda a suíte inteira sobre a árvore pronta.
+pronto quando: a janela principal roda `bash scripts/varrer-baterias.sh --shard 1/2` e `--shard 2/2`, e cada um termina com `as N baterias passaram`, somando o total de `--listar`. `node scripts/conferir-versao.cjs` e `node scripts/conferir-glossario.cjs --exigir --caminhos` saem 0. As não-regressões da tarefa 14 continuam valendo: abertura e `hooks.json` sem diff contra `origin/main`, e 56 peças.
