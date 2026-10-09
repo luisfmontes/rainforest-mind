@@ -2209,7 +2209,10 @@ function cmdUtilidade() {
     const conexao = abrirBanco(caminhoDb);
     let r;
     try {
-      r = repontuarJanela(conexao, desde);
+      // Progresso no stderr (o stdout é o resumo que a bateria lê): a janela real leva minutos.
+      r = repontuarJanela(conexao, desde, (feitas, total) => {
+        if (feitas % 5 === 0 || feitas === total) process.stderr.write(`repontuar: ${feitas} de ${total} sessões com transcrito\n`);
+      });
     } finally {
       conexao.close();
     }

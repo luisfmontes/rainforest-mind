@@ -9,7 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 const { resolverRaiz } = require('./lib/raiz.cjs');
-const { buscarPorAssunto, montarBlocoAssuntoComIds } =require('./lib/memoria-assunto.cjs');
+const { buscarPorAssunto, montarBlocoAssuntoComIds } = require('./lib/memoria-assunto.cjs');
 const { lerVerbetes, verbeteValido, acharGlossario, casarVerbetes, montarBlocoGlossario, chaveDe } = require('./lib/glossario.cjs');
 const { abrirBancoSomenteLeitura, resolverCaminhos } = require(path.join(__dirname, '..', 'scripts', 'memoria.cjs'));
 const { extrairLinhasServidas, acharAlvo } = require(path.join(__dirname, '..', 'scripts', 'lib', 'utilidade.cjs'));

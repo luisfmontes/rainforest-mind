@@ -786,10 +786,11 @@ function pontuarSessoesPendentes(conexao) {
  * crescente, preservando o `pontuada_em` original. Sessão sem transcrito fica intocada (nota
  * antiga) e é contada. Banco ocupado interrompe e conta a sessão atual e o resto como adiadas;
  * outro erro conta `falharam` e mantém as linhas antigas (o DELETE está na transação).
+ * `aoProgresso(feitas, total)`, opcional, é chamado depois de cada sessão do lote com transcrito.
  *
  * @returns {{total: number, refeitas: number, semTranscrito: number, falharam: number, adiadas: number, foraDaConta: number}}
  */
-function repontuarJanela(conexao, desde) {
+function repontuarJanela(conexao, desde, aoProgresso) {
   const janela = conexao
     .prepare('SELECT sessao, pontuada_em FROM uso_memoria_sessoes WHERE pontuada_em >= ? ORDER BY pontuada_em ASC, sessao ASC')
     .all(desde);
@@ -816,6 +817,7 @@ function repontuarJanela(conexao, desde) {
       if (ehBancoOcupado(e)) { adiadas = lote.length - i; break; }
       falharam++;
     }
+    if (aoProgresso) aoProgresso(i + 1, lote.length);
   }
   return { total: janela.length, refeitas, semTranscrito, falharam, adiadas, foraDaConta };
 }

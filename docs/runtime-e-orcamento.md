@@ -109,8 +109,9 @@ hooks injetam memória durante a sessão, sob o cabeçalho `## Memória do assun
   (backup antes, `pontuada_em` preservado, sessão sem transcrito intocada e contada).
 - **O que a nota mede (1.54.0):** a busca ativa é a instrução `node <caminho>memoria.cjs buscar`
   (`scripts/lib/busca-ativa.cjs`); texto citado e corpo de heredoc não contam. Limites declarados
-  no código: caminho entre aspas, prefixos `time`/`timeout` e here-string do PowerShell não são
-  reconhecidos. Nos canais pedido e subagente a nota mede só os termos raros que o texto que
+  no código (todos subcontam): caminho entre aspas, prefixos `time`/`timeout`/`env`, flag do node
+  antes do script, chamada dentro de `$(...)`/`(...)`/depois de `then`, continuação com `\`, `<<`
+  dentro de outro comando e here-string do PowerShell não são reconhecidos. Nos canais pedido e subagente a nota mede só os termos raros que o texto que
   disparou a injeção não tinha; sem termo raro fora dele, a servida fica com nota nula e sai do
   numerador e do denominador (o relatório conta quantas, em `servidas fora da conta`).
 
