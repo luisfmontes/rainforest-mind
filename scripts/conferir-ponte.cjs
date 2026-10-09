@@ -62,7 +62,7 @@ const path = require('path');
 const crypto = require('crypto');
 
 // Importar funções compartilhadas de ponte
-const { corpo, raizDeDados: raizDeDadosShared, AGENTES: AGENTES_SHARED, lerProjetoMd, hashDoArquivo } =
+const { corpo, raizDeDados: raizDeDadosShared, AGENTES: AGENTES_SHARED, lerProjetoMd, hashDoArquivo, LINHA_GLOSSARIO } =
   require('../hooks/lib/ponte-corpo.cjs');
 
 const CODIGO_ROOT = path.resolve(__dirname, '..');
@@ -307,6 +307,44 @@ function conferirBlocoProjetoGerado(texto, caminhoProjetoMd, raizAlvo) {
   }
 }
 
+/**
+ * Chave do agente (claude, codex ou gemini) pelo nome do arquivo conferido. Vem de
+ * AGENTES, a mesma tabela que o `--agente` da ponte aceita — por isso o comando de
+ * regeração sugerido sai com a chave certa. Usar o nome do arquivo sem o `.md`
+ * (`AGENTS` -> `agents`) sugeria um agente que não existe.
+ */
+function agenteDoArquivo(arquivo) {
+  const nome = path.basename(arquivo).toLowerCase();
+  return Object.keys(AGENTES).find((k) => AGENTES[k].arquivo.toLowerCase() === nome) || null;
+}
+
+/**
+ * O GLOSSARIO.md entra na ponte como UMA linha (LINHA_GLOSSARIO), que o corpo() põe
+ * quando o alvo tem o arquivo. Se essa linha é a ÚNICA diferença, o glossário surgiu
+ * ou sumiu depois da geração. O hash do SKILL.md não muda com isso, então chamar de
+ * "editado à mão" seria acusação falsa. Devolve 'surgiu', 'sumiu' ou null.
+ */
+function divergenciaSoNoGlossario(linhasAtuais, linhasEsperadas, dirDoAlvo) {
+  if (!dirDoAlvo) return null;
+  const caminho = path.join(dirDoAlvo, 'GLOSSARIO.md');
+  const temGlossario = fs.existsSync(caminho) && fs.statSync(caminho).isFile();
+  const pontaAponta = linhasAtuais.includes(LINHA_GLOSSARIO);
+  if (pontaAponta === temGlossario) return null;
+  const semGlossario = (linhas) => linhas.filter((l) => l !== LINHA_GLOSSARIO).join('\n');
+  if (!textoIgual(semGlossario(linhasAtuais), semGlossario(linhasEsperadas))) return null;
+  return temGlossario ? 'surgiu' : 'sumiu';
+}
+
+function mensagemGlossario(veredito, chaveAgente) {
+  const regere = `  node scripts/ponte.cjs --alvo . --agente ${chaveAgente} --aplicar`;
+  const cabeca = veredito === 'surgiu'
+    ? 'RECUSADO — o GLOSSARIO.md existe na raiz do alvo, e a ponte não aponta para ele.\n\n' +
+      'O arquivo surgiu depois da geração: o bloco não tem a linha que manda ler o glossário.'
+    : 'RECUSADO — a ponte aponta para o GLOSSARIO.md, mas o arquivo não existe mais na raiz do alvo.\n\n' +
+      'O arquivo sumiu depois da geração: o bloco ainda tem a linha que manda ler o glossário.';
+  return `${cabeca}\nNenhuma linha de regra mudou. Regere com:\n\n${regere}`;
+}
+
 function main() {
   const args = process.argv.slice(2);
   const json = args.includes('--json');
@@ -387,8 +425,12 @@ function main() {
     process.exit(1);
   }
 
+  // Chave do agente para o comando de regeração sugerido nas mensagens abaixo.
+  const agenteDoAlvo = agenteDoArquivo(alvo);
+
   // Gera o conteúdo esperado
-  const conteudoEsperadoFull = corpo(agente, nucleoEsperado, dados).trim();
+  const dirDoAlvo = alvo === '-' ? null : path.dirname(path.resolve(alvo));
+  const conteudoEsperadoFull = corpo(agente, nucleoEsperado, dados, dirDoAlvo).trim();
   const linhasEsperadas = conteudoEsperadoFull.split(/\r?\n/).map(l => l.trim());
 
   // Três casos de veredito
@@ -457,6 +499,24 @@ function main() {
 
   if (hashNoMarcador) {
     if (hashNoMarcador === hashAtual) {
+      // Glossário surgiu ou sumiu: a linha do GLOSSARIO.md é a única diferença.
+      const glossario = divergenciaSoNoGlossario(linhasAtuais, linhasEsperadas, dirDoAlvo);
+      if (glossario) {
+        const chaveAgente = Object.keys(AGENTES).find((k) => AGENTES[k] === agente);
+        const msg = mensagemGlossario(glossario, chaveAgente);
+        if (json) {
+          console.log(JSON.stringify({
+            arquivo: alvo,
+            situacao: `glossario-${glossario}`,
+            hashNoMarcador,
+            hashAtual,
+            msg
+          }, null, 2));
+        } else {
+          console.log(msg);
+        }
+        process.exit(2);
+      }
       // CASO 2: Hash bate, conteúdo não -> editado à mão
       const divergentes = linhasDivergentes(conteudoAtual, conteudoEsperado);
       const resultado = {
@@ -472,7 +532,7 @@ function main() {
         console.log('RECUSADO — bloco foi editado à mão.\n');
         console.log(`O conteúdo diverge do SKILL.md, mas o hash ${hashNoMarcador} ainda bate, o que significa`);
         console.log('que você editou manualmente o arquivo gerado. Mude o SKILL.md e regere com:');
-        console.log(`\n  node scripts/ponte.cjs --alvo . --agente ${path.basename(alvo, '.md').toLowerCase()} --aplicar\n`);
+        console.log(`\n  node scripts/ponte.cjs --alvo . --agente ${agenteDoAlvo} --aplicar\n`);
         if (divergentes.length > 0) {
           console.log('Primeiras linhas divergentes:');
           for (const div of divergentes.slice(0, 3)) {
@@ -496,7 +556,7 @@ function main() {
         console.log('RECUSADO — o SKILL.md mudou.\n');
         console.log(`O bloco foi gerado com hash ${hashNoMarcador}, mas o SKILL.md atual tem hash ${hashAtual}.`);
         console.log('Regere o arquivo com:\n');
-        console.log(`  node scripts/ponte.cjs --alvo . --agente ${path.basename(alvo, '.md').toLowerCase()} --aplicar`);
+        console.log(`  node scripts/ponte.cjs --alvo . --agente ${agenteDoAlvo} --aplicar`);
       }
       process.exit(2);
     }
@@ -516,7 +576,7 @@ function main() {
       console.log('O bloco foi gerado ANTES de a catraca de hash ser implementada, e diverge do SKILL.md atual.');
       console.log('Não dá para saber se o arquivo foi editado à mão ou se o SKILL.md mudou.\n');
       console.log('Para que a catraca passe a valer e ganhar diagnóstico fino, regere o arquivo com:\n');
-      console.log(`  node scripts/ponte.cjs --alvo . --agente ${path.basename(alvo, '.md').toLowerCase()} --aplicar`);
+      console.log(`  node scripts/ponte.cjs --alvo . --agente ${agenteDoAlvo} --aplicar`);
     }
     process.exit(2);
   }

@@ -178,6 +178,13 @@ jobs:
         if: matrix.shard == 1
         run: node scripts/conferir-versao.cjs
 
+      # A CI le o GLOSSARIO.md por conta propria: a injecao por maquina so casa
+      # verbete no formato certo, e um verbete fora dele deixaria de ser casado
+      # em silencio (D13). Conferir aqui torna o defeito visivel antes do merge.
+      - name: Glossario do repo segue o formato (D13)
+        if: matrix.shard == 1
+        run: node scripts/conferir-glossario.cjs --exigir --caminhos
+
       - name: Rodar as baterias (shard ${{ matrix.shard }}/2)
         run: bash scripts/varrer-baterias.sh --shard ${{ matrix.shard }}/2
 

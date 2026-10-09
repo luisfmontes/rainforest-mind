@@ -10,6 +10,17 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.52.0 — 2026-10-08
+
+- **Glossário de domínio por repositório.** Cada repo pode ter um `GLOSSARIO.md` na raiz com os termos do seu domínio: o que o termo é, onde ele mora, um cenário real e a forma "evite". Quem trabalha no repo passa a receber os verbetes certos sem precisar pedir.
+- **Injeção pelo assunto, no pedido e no briefing do subagente.** Quando o pedido cita um termo do glossário, o verbete entra no contexto; o subagente recebe os verbetes casados no briefing. No pedido, cada verbete entra uma vez por sessão; o subagente recebe os verbetes casados a cada despacho, porque cada briefing é contexto novo. Sem a pasta de dados do rainforest, o glossário entra no pedido do mesmo jeito, só que sem deduplicação; dedup corrompido ou impossível de gravar também não derruba o bloco. `GLOSSARIO.md` acima de 256 KB não é lido. Vale a partir da sessão seguinte à atualização.
+- **Ponte: linha do GLOSSARIO.md.** Quando o repo-alvo tem `GLOSSARIO.md`, a ponte acrescenta uma linha que aponta para ele no corpo levado ao Codex ou ao Gemini CLI. O `conferir-ponte` acusa quando o glossário surge ou some no alvo sem a ponte acompanhar.
+- **Skill `/glossario`.** Propõe verbetes, migra termos já espalhados para o arquivo e lista os verbetes existentes. Nada grava sozinho: o verbete entra por commit e PR, com aprovação do Luís.
+- **Conferidor na CI.** `scripts/conferir-glossario.cjs` roda no shard 1 da bateria e recusa verbete fora do formato.
+- **Regra 13 (referência).** Quando uma correção de termo de domínio aparece na conversa, ela vai para um verbete proposto via `/glossario`, que o Luís aprova. A elaboração mora em `references/regra-13.md`.
+- **Semente do próprio plugin.** O repositório do plugin ganha seu `GLOSSARIO.md` com nove verbetes do vocabulário dele.
+- **Fica de fora:** nenhum repo de trabalho da squad foi tocado. O glossário entra em cada repo só quando alguém o propõe nele.
+
 ## 1.50.2 — 2026-10-08
 
 - **Mensagem dos gates de fluxo diz como colar em PowerShell.** O comando de `iniciar` e de `leve` impresso pelo

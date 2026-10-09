@@ -75,3 +75,7 @@ para testar os quatro cenários:
 Use `node scripts/conferir-ponte.cjs <arquivo>` para verificar se um
 `CLAUDE.md`, `AGENTS.md` ou `GEMINI.md` está em sincronia com o `SKILL.md`
 do repositório (ou do plugin, se não existir SKILL.md local).
+
+Se a raiz do alvo tem `GLOSSARIO.md`, o bloco ganha a linha que manda ler o glossário.
+Se o arquivo surgir ou sumir depois da geração, o `conferir-ponte` recusa e pede para
+regerar, porque essa linha é a única diferença.

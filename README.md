@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.51.0-1e5c3f?style=flat-square" alt="versão 1.51.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.52.0-1e5c3f?style=flat-square" alt="versão 1.52.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -224,6 +224,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `scripts/recibo.cjs` | Congela identidade do entregável com sha256 + bytes; chamado pelo `fechar` quando plano declara `entregaveis` (opt-in, sem manifesto sai exit 0). Obriga `nao_provado` listado — recibo que alega provar tudo é suspeito. Re-executa portões com `--reverificar` se `docs/rainforest/portoes/<slug>.md` existe. Grava atomicamente em `.rainforest/colheita/<slug>-recibo.json` (fora do git). `mostrar <slug>` imprime; `conferir <slug>` recalcula hash e compara. |
 | `scripts/conferir-duplicacao.cjs` | Dois arquivos byte a byte iguais fora de `fixtures/`, `node_modules/`, `.git/` e `.claude/worktrees/` → **exit 2** com os dois caminhos na mesma linha; `--funcoes` inventaria nomes repetidos entre `scripts/*.cjs` (exit 0, é inventário). Chamado pelo `conferir-publicacao.cjs --commit` e pelo `/saude` |
 | `scripts/conferir-publicacao.cjs --commit <rev>` ou `a..b` | Varre o conteúdo **commitado**, não o disco: dado sensível que já saiu do arquivo mas ficou no histórico é achado; disco ≠ commit vira `diverge-do-commit`. Exit 2 achado, **69** quando o ambiente impede |
+| `scripts/conferir-glossario.cjs` | Confere o `GLOSSARIO.md` da raiz do repo e recusa verbete com campo obrigatório faltando (Definição, Onde mora, Cenário), termo duplicado ou linha injetada acima de 900 B: **exit 1**, cada defeito nomeado como `GLOSSARIO.md:<linha>`. `--exigir` torna a ausência do arquivo defeito; `--caminhos` confere caminho em crase. A CI roda com `--exigir --caminhos` (`.github/workflows/baterias.yml`) |
 | `scripts/estado.cjs marcar --json {"carimbos":…}` | Grava por tarefa o hash de base em que ela foi aceita (`iteracao` cresce, nada se apaga); `proximo` e `ler` avisam quando esse hash não é ancestral do HEAD |
 | `scripts/testa-teto-skills.sh` | Nenhum `SKILL.md` acima de 500 linhas ou 16.384 B — a falha diz o que mover para `references/` |
 | `scripts/testa-mapa-regras.sh` | Cada uma das 17 regras tem linha em `## Regra → trava` de `docs/travas-mecanicas.md` (hook/script existente **ou** `disciplina`), e todo arquivo citado existe |
@@ -260,6 +261,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `/saude` | Só o que os checadores oficiais não sabem |
 | `/setup` | Monta a pasta de dados, liga/desliga gates e fluxo |
 | `/semear` | Propõe o que criar **neste** repo a partir do que ele já tropeçou |
+| `glossario` | Propõe, migra ou lista verbetes do `GLOSSARIO.md` do repo; grava só depois de aprovação ([skill](skills/glossario/SKILL.md)) |
 | `/vigiar <contato>` | Acompanha uma conversa de WhatsApp sem gastar token e acorda a sessão quando a pessoa escreve. Exige a integração `integracao-whatsapp-mcp` ligada e a bridge da conta de pé; o fluxo mora no repo [whatsapp-mcp](https://github.com/luisfmontes/whatsapp-mcp) |
 | `/regua` | Régua externa nomeada, builder contra crítico cego — para o que não tem teste. A Fase 0 destila a régua em 5-7 mecanismos conferíveis por olho em `docs/rainforest/reguas/<slug>.md` (o builder não os vê; o crítico sim) e faz o preflight de renderização, nomeando qual crítico ficaria cego. A régua é **selada pelo commit que a adicionou**: `scripts/conferir-regua.cjs` (`validar` antes de selar, `conferir`, `mostrar`) recusa régua alterada depois, e `mostrar` é o único caminho que a imprime. A partir da 2ª rodada, um segundo crítico cego compara o novo com o melhor guardado e decide **keep/discard** sozinho; as rodadas ficam num TSV versionado |
 | `/transferir` | Leva a sessão atual para outro lugar. Sem argumento: uma thread Codex retomável por `codex resume <id>`, exige `transfer-codex` ligado no `/setup`. `/transferir claude`: copia a conversa inteira para a **outra conta** do Claude Code nesta máquina (`~/.claude` ↔ `~/.claude-personal`), sem chave, e imprime o `cd` + `claude --resume <id>` para rodar lá; `--para pessoal\|trabalho` força o destino, `--forcar` sobrescreve uma cópia que já existe. A origem nunca é apagada |

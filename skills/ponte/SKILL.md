@@ -39,6 +39,10 @@ O bloco gerado contém um **hash curto do SKILL.md** (16 caracteres), que permit
 detectar se alguém editou à mão depois. Use `node scripts/conferir-ponte.cjs`
 para verificar.
 
+Se a raiz do alvo tem `GLOSSARIO.md`, o bloco ganha a linha que manda ler o glossário.
+Se o arquivo surgir ou sumir depois da geração, o `conferir-ponte` recusa e pede para
+regerar, porque essa linha é a única diferença.
+
 **Quem escolhe o agente é o `/setup`, não este comando.** As chaves `ponte-claude`,
 `ponte-codex` e `ponte-gemini` (todas desligadas por padrão) dizem o que esta
 máquina usa. Sem nenhuma ligada, o comando recusa — gerar arquivo em repositório

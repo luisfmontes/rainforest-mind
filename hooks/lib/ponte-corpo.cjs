@@ -155,6 +155,13 @@ const AGENTES = {
 };
 
 /**
+ * Ponteiro para o GLOSSARIO.md do repo-alvo (D9 de docs/rainforest/design/2026-10-08-glossario-compartilhado.md).
+ * Entra só quando o alvo tem GLOSSARIO.md como arquivo; pasta com esse nome não conta.
+ */
+const LINHA_GLOSSARIO =
+  "termos de domínio: leia `GLOSSARIO.md` na raiz do repositório antes de nomear um conceito do domínio.";
+
+/**
  * Gera o corpo do bloco de regras (idêntico em ponte.cjs e conferir-ponte.cjs).
  *
  * @param {object} agente - definição do agente (nome, arquivo, etc)
@@ -194,6 +201,13 @@ function corpo(agente, nucleo, dados, alvo = null) {
     .map(([c, p]) => `| ${c} | ${p} |`)
     .join("\n");
 
+  let temGlossario = false;
+  if (alvo) {
+    const caminhoGlossario = path.join(alvo, "GLOSSARIO.md");
+    temGlossario = fs.existsSync(caminhoGlossario) && fs.statSync(caminhoGlossario).isFile();
+  }
+  const linhaGlossario = temGlossario ? `${LINHA_GLOSSARIO}\n\n` : "";
+
   return `# rainforest-mind — ponte para o ${agente.nome}
 
 ${agente.comoLe} Este bloco e **gerado**: as regras moram em
@@ -220,7 +234,7 @@ ${cli}
 Caminho de home dentro de arquivo versionado vaza a maquina de quem gerou — e este
 arquivo nasce para ser commitado no repo de outra pessoa.
 
-## As regras
+${linhaGlossario}## As regras
 
 O que segue e o **nucleo** de cada regra. Regra marcada com \`↳\` tem elaboracao
 que nao esta aqui — criterio fino, comando exato, incidente datado —, e ela mora
@@ -229,4 +243,4 @@ em \`skills/rainforest-mind/references/regra-<n>.md\` (onde \`<n>\` e o numero d
 ${nucleo}`;
 }
 
-module.exports = { corpo, raizDeDados, AGENTES, nucleoDasRegras, lerProjetoMd, hashDoArquivo };
+module.exports = { corpo, raizDeDados, AGENTES, nucleoDasRegras, lerProjetoMd, hashDoArquivo, LINHA_GLOSSARIO };

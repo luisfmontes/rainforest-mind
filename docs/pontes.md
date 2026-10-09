@@ -46,6 +46,11 @@ com `ideias.cjs conferir`, porque nasce para ser commitado no repo de outra
 pessoa. Se o arquivo já existir escrito à mão, o bloco entra delimitado e nada do
 que estava lá é apagado; regenerar substitui só o bloco.
 
+**Glossário do repo.** Se a raiz do alvo tem `GLOSSARIO.md` como arquivo, o bloco ganha
+uma linha que manda ler o glossário antes de nomear um conceito do domínio. Pasta com
+esse nome não conta. Se o `GLOSSARIO.md` surgir ou sumir depois da geração, o
+`conferir-ponte` recusa e pede para regerar, porque essa linha é a única diferença.
+
 ## Duas frentes com o Codex
 
 O Codex chega em duas formas: como **runtime de subagente dentro do Claude** — quando você despacha agentes do rainforest para rodarem em Codex via `scripts/despachar-codex.cjs` (ativado pela primeira linha `Runtime: codex` no briefing, mapeado por `codex-modelo-*` do `/setup`, sandbox `read-only`/`workspace-write` conforme `escreve`, retornando stdout para o Claude) — e como **agente paralelo com rainforest instalado como host dentro do Codex**, usando branches `codex/*` do mesmo repositório de trabalho.
