@@ -10,6 +10,39 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.54.0 — 2026-10-09
+
+A régua D7 da memória por assunto (Issue #436) passa a medir o que diz medir. Os limiares (40% e 1/3), a base (27%, 171 de
+255) e a colheita de 2026-10-23 ficam como estavam; muda o que entra no número que o `--relatorio` lê.
+
+- **Busca ativa é instrução, não texto.** "Buscas ativas" conta só o comando em que alguma instrução começa por
+  `node <caminho>memoria.cjs buscar`. Citar o comando num `grep`, num `echo`, no corpo de um heredoc ou numa mensagem de
+  commit deixa de contar.
+- **A nota do pedido e do subagente desconta o que o pedido já tinha.** Só os termos raros da memória que não estavam no
+  texto que disparou a injeção medem uso. A abertura não muda.
+- **Memória sem termo raro fora do pedido sai da conta.** Não conta como útil nem como inútil; o relatório diz quantas
+  saíram na linha `servidas fora da conta`.
+- **A abertura grava o que serviu.** Os ids das memórias que de fato entraram no bloco vão para o arquivo de "já servidos"
+  da sessão (somando, na sessão retomada), e a memória que a abertura serviu não volta pelo canal do pedido. Se a gravação
+  falhar, a abertura sai como sempre.
+- **Só marca como servido o que entrou no bloco do pedido.** A memória cortada pelo teto de 1.500 bytes deixa de ficar
+  marcada.
+- **Banco ocupado não tira a sessão da fila.** Se a migração das colunas de utilidade pega o banco ocupado, o erro
+  sobe e a sessão fica para a próxima passada, em vez de ser marcada como falha definitiva.
+- **O peso do projeto atual continua como estava:** só desempata o bm25 igual. A parte das duas grafias do mesmo projeto
+  já saiu com o nome canônico (1.53.0, #435).
+- **Novo: `node scripts/memoria.cjs utilidade --repontuar --desde AAAA-MM-DD`.** Refaz, com as regras novas, as sessões
+  pontuadas a partir da data. Faz backup antes, preserva o `pontuada_em` de cada sessão, não toca a sessão sem transcrito
+  (ela aparece contada) e dá o mesmo resultado se rodar duas vezes. Sai com 2 se o banco estava ocupado e sobraram sessões.
+
+**Efeito prático.** Num ensaio sobre uma cópia do banco real (2026-10-09), `--repontuar --desde 2026-10-08` refez 46 das 56
+sessões da janela (as 10 sem transcrito ficaram com a nota antiga) e tirou 60 servidas da conta; "buscas ativas" passou a
+contar só chamada real do comando. O número do `--relatorio` muda, e "buscas ativas" cai.
+
+**Como atualizar o que já foi pontuado.** Depois de atualizar o plugin, rode
+`node scripts/memoria.cjs utilidade --repontuar --desde 2026-10-08` antes do `--relatorio`. Vale para as sessões abertas
+depois da atualização; a sessão aberta antes dela segue pela leitura do transcrito.
+
 ## 1.53.2 — 2026-10-09
 
 - **O gate de staging deixa passar script rodado por `& "$pasta\script.ps1"`.** Com a variável só no diretório e o nome do
