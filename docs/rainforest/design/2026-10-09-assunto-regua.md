@@ -52,11 +52,32 @@ Tudo tem que estar no `main` e repontuado antes da colheita, sem mover a data.
   "rodar `--repontuar --desde 2026-10-08` antes do `--relatorio`". Porquê: as sessões já pontuadas carregam as
   distorções, e os transcritos ainda existem. Decisão do usuário, 2026-10-09 (Q4 A).
 
+## Avaliado e descartado
+- **Memória sem termo raro fora do pedido entra com nota 0** (Q1 B): puniria o canal novo pela limitação do
+  instrumento, não pelo uso.
+- **`acharAlvo` tentar também as formas cortadas em 200/160/120** (Q2 B): remendo que depende de reconstruir o
+  corte da escada e deixa a retomada além dos 2 MiB sem conserto.
+- **Reabrir o peso do projeto atual (D4 do design original)** (Q3 B): a parte que distorcia (duas grafias) já saiu
+  com a #435.
+- **Reiniciar a janela da régua na data da versão nova** (Q4 B): empurra a colheita para ~14 dias depois do merge,
+  sem ganho sobre repontuar com os transcritos que ainda existem.
+- **Manter a pontuação e descontar na leitura** (Q4 C): a decisão da colheita sairia de um número que se sabe
+  errado.
+
 ## Fora de escopo
 - Mudar a régua (limiares 40% e 1/3, base 27%) ou o critério de seleção do canal do assunto.
 - Usar o arquivo de ids da abertura (D4) na pontuação da utilidade da abertura. Ela continua casando pelo
   `acharAlvo`, e a linha cortada da abertura segue sem id na **pontuação**: a régua conta sessões com alguma
   memória útil, e a abertura serve até 14.
+
+## Varredura
+docs/rainforest/varredura/2026-10-09-assunto-regua.txt — dos resultados, só o PR #437 (a entrega da memória por
+assunto, 1.49.0) e a própria #436 tratam do assunto. Os outros (#109, #224, #299, #304, #379) casaram pela
+palavra "régua" em outro sentido. A busca no `ideias.jsonl` voltou vazia, mas a ideia
+`regua-d7-memoria-por-assunto` existe no arquivo de dados (gancho 2026-10-23): é ela que o D8 emenda.
+
+## Em aberto
+Nada. As quatro decisões de produto foram fechadas na rodada 1 (Q1–Q4, 2026-10-09).
 
 ## Critério de pronto
 Cada item tem um caso de teste que falha com o comportamento atual (a Issue pede isso). O `--repontuar` roda

@@ -6,7 +6,10 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-10-09-assunto-regua.md",
+    "decisoes": 8,
+    "em": "2026-10-09"
   },
   "plano": {
     "status": "pendente"
