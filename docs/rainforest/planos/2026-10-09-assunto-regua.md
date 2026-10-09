@@ -82,8 +82,8 @@ As quatro decisões de produto do design (Q1 a Q4) estão fechadas. Os dois pont
 - **U1. Sessão da janela sem transcrito (10 de 56 na cópia de hoje).** O design diz que "fica de fora e aparece contada".
   - Opção A (recomendada, é o texto do design): fica **sem tocar**, com a nota antiga, e a saída do `--repontuar` conta quantas são.
   - Opção B: marcar essas sessões para saírem do relatório. Tiraria do denominador com base num critério que nada mediu (a falta do arquivo).
-  - O plano implementa A. Essas sessões podem carregar as distorções, e a saída diz isso.
-- **U2. Memória sem nenhum termo raro (A10).** A (recomendada): nota nula nos canais `pedido`/`subagente`. B: manter 0. O plano implementa A e conta essa classe à parte no relato.
+  - Decidido A pelo usuário em 2026-10-09. Essas sessões podem carregar as distorções, e a saída diz isso.
+- **U2. Memória sem nenhum termo raro (A10).** A (recomendada): nota nula nos canais `pedido`/`subagente`. B: manter 0. Decidido A pelo usuário em 2026-10-09; conta essa classe à parte no relato.
 
 ## Fatos apurados
 
