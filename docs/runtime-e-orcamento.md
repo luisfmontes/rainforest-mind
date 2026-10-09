@@ -94,7 +94,7 @@ hooks injetam memória durante a sessão, sob o cabeçalho `## Memória do assun
   [`docs/rainforest/referencia/2026-10-08-limiar-memoria-assunto.md`](rainforest/referencia/2026-10-08-limiar-memoria-assunto.md));
   sem candidata, custo zero.
 - **Sem repetir:** os ids servidos ficam em `<raiz de dados>/memoria-assunto/<sessão>.json`
-  (só números); o primeiro uso da sessão semeia a lista com o que a abertura já serviu. Vale só para o canal do pedido: o subagente é contexto novo e não deduplica.
+  (só números). Quem grava é a abertura (`hooks/memoria-session-start.cjs`), com os ids das observações que de fato entraram no bloco, somados aos já existentes na sessão retomada, e o hook do pedido, só com o que `montarBlocoAssuntoComIds` pôs no bloco (a candidata cortada pelo teto não conta como servida). A leitura do transcrito (`lerServidasDoInicio`, `hooks/memoria-assunto-prompt.cjs`) fica só para a sessão aberta antes da atualização, quando o arquivo ainda não existe. Vale só para o canal do pedido: o subagente é contexto novo e não deduplica.
 - **Orçamento:** isto não entra no teto de 15.000 B do `orcamento.cjs`, que mede só
   a abertura (fontes do repositório); é custo por pedido, limitado pelo teto acima.
 - **Falha calada:** banco ausente ou travado e qualquer erro saem com exit 0 e sem injeção;
@@ -103,7 +103,16 @@ hooks injetam memória durante a sessão, sob o cabeçalho `## Memória do assun
   útil e **171** de 255 sessões com perda. O canal fica se, 14 dias depois de a
   versão estar viva, houver **≥ 40%** de sessões com memória útil e perdas
   **≤ 1/3**; senão sai. Leitura: `node scripts/memoria.cjs utilidade --relatorio`
-  (por canal, buscas ativas e a linha `régua D7`).
+  (por canal, buscas ativas e a linha `régua D7`). A pontuação feita antes da
+  1.54.0 carrega as regras antigas; para refazer a janela, rode antes do
+  relatório `node scripts/memoria.cjs utilidade --repontuar --desde 2026-10-08`
+  (backup antes, `pontuada_em` preservado, sessão sem transcrito intocada e contada).
+- **O que a nota mede (1.54.0):** a busca ativa é a instrução `node <caminho>memoria.cjs buscar`
+  (`scripts/lib/busca-ativa.cjs`); texto citado e corpo de heredoc não contam. Limites declarados
+  no código: caminho entre aspas, prefixos `time`/`timeout` e here-string do PowerShell não são
+  reconhecidos. Nos canais pedido e subagente a nota mede só os termos raros que o texto que
+  disparou a injeção não tinha; sem termo raro fora dele, a servida fica com nota nula e sai do
+  numerador e do denominador (o relatório conta quantas, em `servidas fora da conta`).
 
 ## Glossário do repo: o que é injetado e quanto
 

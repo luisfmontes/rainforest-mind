@@ -297,7 +297,7 @@ function travarOrcamentoMemoria(linhas, cabecalho, rodape, maxBytes, maxTexto) {
  *   pra o aviso de CORTE (`travarOrcamentoMemoria`), generalizado.
  * @returns {string} bloco montado, dentro do teto de bytes
  */
-function montarMemoria(o) {
+function montarTextoMemoria(o) {
   const observacoes = Array.isArray(o?.observacoes) ? o.observacoes : [];
   const apelidos = (o && typeof o.apelidos === 'object' && o.apelidos) || null;
   const avisos = Array.isArray(o?.avisos) ? o.avisos.filter(Boolean) : [];
@@ -354,6 +354,56 @@ function montarMemoria(o) {
   // estar dentro do `cabecalho`, nunca é ele que sai — é sempre a observação
   // mais antiga que cede lugar primeiro.
   return travarOrcamentoMemoria(linhasDoDegrau, cabecalho, rodape, tetoBytes, degrau);
+}
+
+/**
+ * Quantas linhas de observação/resumo o bloco impresso traz: as que começam por `[`
+ * entre o cabeçalho do corpus e o rodapé `mais:`. Conta o TEXTO FINAL, então vale para
+ * os três regimes (inteiro, escada de texto, corte por observação) sem tocar na escada.
+ *
+ * @param {string} texto bloco devolvido por `montarTextoMemoria`
+ * @returns {number}
+ */
+function linhasNoBloco(texto) {
+  const t = String(texto || '');
+  const i = t.indexOf('## Memória (corpus residentes)');
+  if (i < 0) return 0;
+  let n = 0;
+  for (const linha of t.slice(i).split('\n').slice(1)) {
+    if (linha.startsWith('mais:')) break;
+    if (linha.startsWith('[')) n++;
+  }
+  return n;
+}
+
+/**
+ * Ids de observação que de fato entraram no bloco. As linhas saem na ordem de `observacoes`
+ * e o corte tira sempre as últimas, então as `n` primeiras são as que entraram. Resumo
+ * (id `resumo_<n>`) ocupa posição mas não é id inteiro: sai pelo filtro.
+ *
+ * @param {array} observacoes as mesmas observações passadas a `montarMemoria`
+ * @param {string} texto o bloco já montado
+ * @returns {number[]}
+ */
+function idsQueEntraram(observacoes, texto) {
+  return observacoes.slice(0, linhasNoBloco(texto)).map((o) => o.id).filter(Number.isInteger);
+}
+
+/**
+ * Como `montarMemoria`, mas devolve também os ids das observações que entraram no bloco
+ * (a abertura grava esses ids no arquivo de dedupe do canal do pedido).
+ *
+ * @param {object} o mesmos parâmetros de `montarMemoria`
+ * @returns {{texto: string, ids: number[]}}
+ */
+function montarMemoriaComIds(o) {
+  const texto = montarTextoMemoria(o);
+  const observacoes = Array.isArray(o?.observacoes) ? o.observacoes : [];
+  return { texto, ids: idsQueEntraram(observacoes, texto) };
+}
+
+function montarMemoria(o) {
+  return montarMemoriaComIds(o).texto;
 }
 
 /**
@@ -453,6 +503,9 @@ function avisoDeManutencaoFalhou(horasDesde) {
 module.exports = {
   TETOS,
   montarMemoria,
+  montarMemoriaComIds,
+  idsQueEntraram,
+  linhasNoBloco,
   montarLegendaMemoria,
   formatarObservacao,
   apelidoDe,

@@ -23,6 +23,7 @@
  *   node scripts/memoria.cjs reconciliar             store/update/merge/skip contra o acervo pendente
  *   node scripts/memoria.cjs utilidade --extrair <transcrito>   inspecionar servidas/texto de um transcrito
  *   node scripts/memoria.cjs utilidade --relatorio  régua D9: liga ou não o ranking por utilidade
+ *   node scripts/memoria.cjs utilidade --repontuar --desde AAAA-MM-DD   refaz a nota das sessões da janela (backup antes; rode antes do --relatorio)
  */
 
 const fs = require('fs');
@@ -57,7 +58,7 @@ const { canonicoDaPasta, canonicoDoCaminho, casarCurto, slugDoCaminho } = requir
 // Sinal de utilidade da memória (Tarefas 1, 3 e 4, D1-D11). Sentido único:
 // utilidade.cjs nunca requer este arquivo de volta (evitaria require
 // circular — ver o comentário no topo de scripts/lib/utilidade.cjs).
-const { extrairSessao, pontuarSessoesPendentes, gerarRelatorio } = require('./lib/utilidade.cjs');
+const { extrairSessao, pontuarSessoesPendentes, repontuarJanela, gerarRelatorio } = require('./lib/utilidade.cjs');
 
 // Encontra o diretório .git subindo a árvore de diretórios.
 // Retorna o caminho do diretório que contém .git, ou null se não encontrado.
@@ -345,6 +346,13 @@ function limparMarcaDagua(conexao) {
   }
 }
 
+// Migrações 0 e 0b: só "coluna duplicada" (corrida entre duas conexões) é ok. Qualquer outro
+// erro, em especial banco ocupado, sobe: engolir deixaria a coluna ausente e a sessão seguinte
+// seria marcada como falha permanente (#436, D6).
+function engolirSoColunaDuplicada(e) {
+  if (!String(e.message).includes('duplicate column')) throw e;
+}
+
 // Executa o schema SQL no banco.
 function criarSchema(conexao, opcoes = {}) {
   const caminhoSchema = path.resolve(__dirname, 'esquema-memoria.sql');
@@ -422,7 +430,7 @@ function criarSchema(conexao, opcoes = {}) {
       conexao.exec(`ALTER TABLE uso_memoria ADD COLUMN canal TEXT NOT NULL DEFAULT 'abertura'`);
     }
   } catch (e) {
-    // não trava a abertura do banco; pontuarSessao falharia e a sessão seria marcada
+    engolirSoColunaDuplicada(e);
   }
 
   // Migração 0b: contagem de buscas ativas por sessão (D9/D10: só inteiros).
@@ -434,7 +442,7 @@ function criarSchema(conexao, opcoes = {}) {
       }
     }
   } catch (e) {
-    // idem acima
+    engolirSoColunaDuplicada(e);
   }
 
   // Migração 1: separar "visto" de "processado" na marca_dagua.
@@ -2143,9 +2151,10 @@ async function cmdReconciliar() {
 }
 
 // Comando `utilidade` (Tarefas 1 e 4, D1-D11): inspeção do extrator
-// (`--extrair <transcrito>`) e relatório da régua D9 (`--relatorio`). Nunca
-// escreve no banco — quem grava é `pontuarSessoesPendentes`, chamada só de
-// dentro de `cmdManutencao`.
+// (`--extrair <transcrito>`) e relatório da régua D9 (`--relatorio`) não
+// escrevem no banco — quem grava é `pontuarSessoesPendentes`, chamada de
+// dentro de `cmdManutencao`, e `--repontuar --desde` (D8), que faz backup
+// antes e refaz só as sessões da janela.
 function cmdUtilidade() {
   const args = process.argv.slice(3);
 
@@ -2182,7 +2191,39 @@ function cmdUtilidade() {
     return;
   }
 
-  console.error('Use: utilidade --extrair <transcrito> | utilidade --relatorio');
+  if (args.includes('--repontuar')) {
+    // D8: refaz a janela com as regras atuais. Valida o uso ANTES de tocar qualquer arquivo.
+    const iDesde = args.indexOf('--desde');
+    const desde = iDesde === -1 ? '' : String(args[iDesde + 1] || '');
+    const [ano, mes, dia] = desde.split('-').map(Number);
+    const quando = new Date(Date.UTC(ano, mes - 1, dia));
+    const dataValida = /^\d{4}-\d{2}-\d{2}$/.test(desde) && quando.getUTCFullYear() === ano && quando.getUTCMonth() === mes - 1 && quando.getUTCDate() === dia;
+    if (!dataValida) {
+      console.error('Use: utilidade --repontuar --desde AAAA-MM-DD (data real, ex.: 2026-10-08)');
+      process.exit(1);
+    }
+    garantirEsquema();
+    const { caminhoDb } = resolverCaminhos();
+    console.log(`repontuar desde ${desde}`);
+    console.log(`backup: ${fazerBackupDoBanco(caminhoDb)}`);
+    const conexao = abrirBanco(caminhoDb);
+    let r;
+    try {
+      r = repontuarJanela(conexao, desde);
+    } finally {
+      conexao.close();
+    }
+    console.log(`sessões na janela: ${r.total}`);
+    console.log(`refeitas: ${r.refeitas}`);
+    console.log(`sem transcrito (mantidas com a nota antiga): ${r.semTranscrito}`);
+    console.log(`falharam (mantidas com a nota antiga): ${r.falharam}`);
+    console.log(`adiadas (banco ocupado): ${r.adiadas}`);
+    console.log(`servidas fora da conta pela regra nova nas refeitas: ${r.foraDaConta}`);
+    if (r.adiadas > 0) process.exit(2);
+    return;
+  }
+
+  console.error('Use: utilidade --extrair <transcrito> | utilidade --relatorio | utilidade --repontuar --desde AAAA-MM-DD');
   process.exit(1);
 }
 
