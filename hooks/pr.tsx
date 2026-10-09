@@ -10,11 +10,12 @@ import type { EngineInterface, Register } from 'claude-code'
 import type {
   RainforestMindPrAcompanhado,
   RainforestMindPrEvento,
+  RainforestMindPrFerramentas,
   RainforestMindPrOrigem,
   RainforestMindPrPendente,
   RainforestMindPrResumo,
 } from '../types'
-import { POLL_MS, QUIETO_MS, deveAcordar, eventos, nota, resumir, virada } from './pr-puro.mjs'
+import { POLL_MS, QUIETO_MS, deveAcordar, donoConfere, escolherExecutavel, eventos, nota, resumir, virada } from './pr-puro.mjs'
 
 const PANE = 'rainforest-mind-pr'
 const AJUDA = 'Uso: /pr [numero | url | fechar]'
@@ -26,13 +27,15 @@ const prEventos = atom({ plugin: 'rainforest-mind', key: 'prEventos' } as const,
 const prErro = atom({ plugin: 'rainforest-mind', key: 'prErro' } as const, '')
 const prPendente = atom({ plugin: 'rainforest-mind', key: 'prPendente' } as const, null as RainforestMindPrPendente | null)
 
-const CAMPOS = 'number,title,url,state,isDraft,headRefOid,headRefName,baseRefName,author,updatedAt,mergeable,mergeStateStatus,reviewDecision,latestReviews,statusCheckRollup,comments'
+const prFerramentas = atom({ plugin: 'rainforest-mind', key: 'prFerramentas' } as const, { gh: '', eu: '' } as RainforestMindPrFerramentas)
+
+const CAMPOS = 'number,title,url,state,isDraft,isCrossRepository,headRefOid,headRefName,baseRefName,author,updatedAt,mergeable,mergeStateStatus,reviewDecision,latestReviews,statusCheckRollup,comments'
 const QUERY_THREADS = 'query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){totalCount nodes{isResolved}}}}}'
 
 const GH_PR = /\bgh(\.exe)?\s+pr\s+(create|merge|checks|ready|view)\b/
 const GH_PR_CREATE = /\bgh(\.exe)?\s+pr\s+create\b/
 const PR_URL = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+$/
-const PR_URL_G = /https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/
+const PR_URL_G = /https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/g
 const PR_PARTES = /^https:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d+)$/
 
 // Timer do polling e travas contra consulta e despertar em paralelo: nao sao dado de sessao.
@@ -88,14 +91,56 @@ async function acordarSePreciso($: EngineInterface): Promise<void> {
   }
 }
 
-async function gh($: EngineInterface, argv: string[]) {
-  let cwd: string | undefined
+async function cwdDaSessao($: EngineInterface): Promise<string | undefined> {
   try {
-    cwd = await $.session.cwd()
+    return await $.session.cwd()
   } catch {
-    cwd = undefined
+    return undefined
   }
-  return $.process.run(['gh', ...argv], { cwd, timeoutMs: 30_000 })
+}
+
+// Caminho absoluto do `gh`, achado UMA vez por sessao e fora do repositorio da sessao: o
+// Windows procura o executavel primeiro na pasta atual, e um repo com gh.exe/gh.cmd na raiz
+// rodaria codigo dele. O localizador roda na pasta do plugin (confiavel), nunca no repo.
+async function caminhoDoGh($: EngineInterface, cwd: string | undefined): Promise<string | null> {
+  const guardado = (await read($, prFerramentas)).gh
+  if (guardado !== '') return guardado
+  for (const argv of [['where.exe', 'gh.exe', 'gh.cmd', 'gh.bat'], ['which', '-a', 'gh']]) {
+    try {
+      const r = await $.process.run(argv, { cwd: $.plugin.root, timeoutMs: 10_000 })
+      if (r.exitCode !== 0) continue
+      const achado = escolherExecutavel(r.stdout, cwd ?? '') as string | null
+      if (achado !== null) {
+        await update($, prFerramentas, f => ({ ...f, gh: achado }))
+        return achado
+      }
+    } catch {
+      // este localizador nao existe nesta maquina; o outro tenta
+    }
+  }
+  return null
+}
+
+// `cwd` e o repo da sessao (o gh precisa da branch dele); o executavel e que nunca vem dele.
+async function gh($: EngineInterface, argv: string[], cwdPreferido?: string) {
+  const cwd = cwdPreferido ?? (await cwdDaSessao($))
+  const caminho = await caminhoDoGh($, cwd)
+  if (caminho === null) throw new Error('gh nao encontrado fora do repositorio')
+  return $.process.run([caminho, ...argv], { cwd, timeoutMs: 30_000 })
+}
+
+// Login de quem esta logado no gh, uma vez por sessao. Vazio quando nao deu para saber.
+async function quemSouEu($: EngineInterface): Promise<string> {
+  const guardado = (await read($, prFerramentas)).eu
+  if (guardado !== '') return guardado
+  try {
+    const r = await gh($, ['api', 'user', '--jq', '.login'])
+    const eu = r.exitCode === 0 ? String(r.stdout).trim() : ''
+    if (eu !== '') await update($, prFerramentas, f => ({ ...f, eu }))
+    return eu
+  } catch {
+    return ''
+  }
 }
 
 async function lerThreads($: EngineInterface, url: string): Promise<{ totalCount: number; nodes: { isResolved: boolean }[] } | null> {
@@ -133,6 +178,17 @@ async function consultar($: EngineInterface): Promise<void> {
       return
     }
     await update($, prErro, () => '')
+
+    // So acorda a sessao o PR que e dela de fato: autor = quem esta logado no gh e nao de fork.
+    // A origem vem de uma URL achada no comando/saida ou de uma branch fluxo/*, e nenhuma das
+    // duas prova autoria; sem a prova (ou sem saber quem sou), o pane segue, mas nunca acorda.
+    if (ac.origem !== 'manual') {
+      const eu = await quemSouEu($)
+      const autor = (pr.author as { login?: string } | undefined)?.login
+      if (!donoConfere({ autor, eu, cruzado: pr.isCrossRepository })) {
+        await update($, prAcompanhado, a => (a === null ? a : { ...a, origem: 'manual' }))
+      }
+    }
 
     const agora = await $.clock.now()
     const threads = await lerThreads($, String(pr.url ?? ''))
@@ -209,7 +265,7 @@ export const register: Register = on => {
     // Sessao que abre numa branch com PR aberto ja acompanha (retomada de fluxo). Nao bloqueia
     // a abertura; sem PR ou sem gh, nada acontece.
     void (async () => {
-      const r = await $.process.run(['gh', 'pr', 'view', '--json', 'state,url,headRefName'], { cwd: e.cwd, timeoutMs: 20_000 })
+      const r = await gh($, ['pr', 'view', '--json', 'state,url,headRefName'], e.cwd)
       if (r.exitCode !== 0) return
       const pr = JSON.parse(r.stdout) as { state: string; url: string; headRefName: string }
       if (pr.state === 'OPEN' && (await read($, prAcompanhado)) === null) await seguir($, pr.url, 'retomada', pr.headRefName)
@@ -253,7 +309,13 @@ export const register: Register = on => {
       try {
         const cmd = String((e as { command?: unknown }).command ?? '')
         if (!GH_PR.test(cmd) || ran.deny !== undefined || ran.isError) return ran
-        const url = (cmd + ' ' + JSON.stringify(ran.result ?? '')).match(PR_URL_G)?.[0]
+        // `gh pr create` imprime a URL do PR que criou: vale a ULTIMA URL da saida, nunca o texto do
+        // comando (um comando encadeado pode citar PR alheio). Os demais seguem a primeira URL
+        // achada, mas entram como 'manual' e nunca acordam a sessao.
+        const saida = JSON.stringify(ran.result ?? '')
+        const criou = GH_PR_CREATE.test(cmd)
+        const urls = (criou ? saida : cmd + ' ' + saida).match(PR_URL_G)
+        const url = criou ? urls?.[urls.length - 1] : urls?.[0]
         if (url !== undefined) {
           const ac = await read($, prAcompanhado)
           if (ac === null || ac.alvo !== url) void seguir($, url, GH_PR_CREATE.test(cmd) ? 'sessao' : 'manual', '').catch(() => {})

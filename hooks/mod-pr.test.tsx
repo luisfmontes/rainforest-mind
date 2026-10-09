@@ -12,6 +12,9 @@
 import { test, expect, mock } from 'claude-code/testing'
 
 const URL_PR = 'https://github.com/luisfmontes/rainforest-mind/pull/455'
+// Onde o localizador (where.exe) acha o gh e o CLI do Claude, fora de qualquer repositorio.
+const GH_EXE = 'C:\\Program Files\\GitHub CLI\\gh.exe'
+const CLAUDE_CMD = 'C:\\Users\\teste\\AppData\\Roaming\\npm\\claude.cmd'
 
 const PR_455 = {
   number: 455,
@@ -22,6 +25,7 @@ const PR_455 = {
   headRefOid: 'a954e193059d3f392aab8afc1d9de4748b5a2c41',
   headRefName: 'fluxo/gate-call-operator-variavel',
   baseRefName: 'main',
+  isCrossRepository: false,
   author: { login: 'luisfmontes' },
   updatedAt: '2026-10-09T17:11:48Z',
   mergeable: 'UNKNOWN',
@@ -77,11 +81,18 @@ async function montar($: any, on: any, surface: Surface, inicial: Record<string,
     submits: [] as string[],
     toasts: [] as string[],
     cmdTool: 'ok' as string,
+    eu: 'luisfmontes',
+    localizador: `${GH_EXE}\r\n`,
+    rodou: [] as string[],
     toolFalha: false,
   }
   on('process.run', async (_$: any, e: any) => {
-    if (e.argv[0] === 'gh') {
+    s.rodou.push(String(e.argv[0]))
+    // O localizador: where.exe acha o que s.localizador diz; o `which` nao existe aqui (exit 1).
+    if (e.argv[0] === 'where.exe') return saida(s.localizador)
+    if (e.argv[0] === GH_EXE) {
       s.gh.push([...e.argv])
+      if (e.argv[1] === 'api' && e.argv[2] === 'user') return saida(`${s.eu}\n`)
       if (e.argv[1] === 'api') return saida(THREADS_455)
       if (e.argv.includes('state,url,headRefName')) return s.retomada === null ? saida('', 1) : saida(JSON.stringify(s.retomada))
       return s.ghSai1 ? saida('', 1) : saida(JSON.stringify(s.pr))
@@ -315,6 +326,54 @@ for (const surface of ['terminal', 'desktop'] as const) {
       expect(s.opens.length).toBe(0)
     })
   })
+
+  test(`PR de fork aberto pela sessao nao acorda (${surface})`, async ($, on) => {
+    const m = await montar($, on, surface, { ...EM_CURSO, isCrossRepository: true })
+    const { s, relogio, sessao, bash, caso } = m
+    await caso('gh pr create observado: o pane abre, mas o PR de fork rebaixa a origem', async () => {
+      s.cmdTool = `${URL_PR}\n`
+      await bash('gh pr create --fill')
+      await relogio.settle()
+      expect(s.opens.map(o => o.id)).toEqual(['rainforest-mind-pr'])
+    })
+    await caso('a CI terminar grava a nota na conversa, mas nao acorda ninguem', async () => {
+      s.pr = { ...VERDE, isCrossRepository: true }
+      await relogio.advance(MIN)
+      const linhas = sessao.appended().map(r => JSON.stringify(r.message))
+      expect(linhas.filter(l => l.includes(NOTA_VERDE)).length).toBe(1)
+      await relogio.advance(10 * MIN)
+      expect(s.submits).toEqual([])
+    })
+  })
+
+  test(`PR de outro autor aberto pela sessao nao acorda (${surface})`, async ($, on) => {
+    const m = await montar($, on, surface, EM_CURSO)
+    const { s, relogio, bash, caso } = m
+    await caso('o gh logado e outra conta: a URL na saida nao basta', async () => {
+      s.eu = 'outra-conta'
+      s.cmdTool = `${URL_PR}\n`
+      await bash('gh pr create --fill')
+      await relogio.settle()
+      s.pr = VERDE
+      await relogio.advance(10 * MIN)
+      expect(s.submits).toEqual([])
+    })
+  })
+
+  test(`gh no repositorio da sessao nao e executado (${surface})`, async ($, on) => {
+    const m = await montar($, on, surface, EM_CURSO)
+    const { s, relogio, comecar, caso } = m
+    await caso('o localizador so acha gh dentro do cwd: nenhum process.run com esse caminho', async () => {
+      s.localizador = '/projeto/gh.exe\r\n/projeto/sub/gh.cmd\r\n'
+      s.retomada = { state: 'OPEN', url: URL_PR, headRefName: 'fluxo/gate-call-operator-variavel' }
+      await comecar()
+      const r = await $.command.run({ command: 'pr', args: '455' } as never)
+      await relogio.advance(10 * MIN)
+      expect(s.rodou.filter(a => a.startsWith('/projeto'))).toEqual([])
+      expect(s.gh.length).toBe(0)
+      expect(String((r as any).text)).toContain('gh nao encontrado fora do repositorio')
+    })
+  })
 }
 
 // Registro REAL de plugins instalados (forma da versao 2): ids nome@marketplace, lista de
@@ -335,13 +394,14 @@ async function montarPlugins($: any, on: any) {
   const relogio = mock.clock(on, { now: INICIO })
   mock.store(on)
   mock.env(on, { CLAUDE_CONFIG_DIR: 'C:/ContaTeste' })
-  const s = { versao: '1.53.2', lidos: [] as string[], cli: [] as string[][], reloads: 0, toasts: [] as string[] }
+  const s = { versao: '1.53.2', lidos: [] as string[], cli: [] as string[][], reloads: 0, toasts: [] as string[], localizador: `${CLAUDE_CMD}\r\n` }
   on('fs.read', async (_$: any, e: any) => {
     s.lidos.push(String(e.path))
     return { value: registro(s.versao) } as never
   })
   on('process.run', async (_$: any, e: any) => {
-    // O painel de PR tambem roda `gh` na abertura (sem PR aqui): so o `claude` entra na conta.
+    // O localizador responde so pelo CLI do Claude; o gh do painel de PR nao existe aqui (exit 1).
+    if (e.argv[0] === 'where.exe') return e.argv.includes('claude.cmd') ? saida(s.localizador) : saida('', 1)
     if (e.argv[0] !== 'cmd') return saida('', 1)
     s.cli.push([...e.argv])
     if (e.argv[0] === 'cmd' && e.argv.includes('update') && e.argv.includes('rainforest-mind@rainforest-mind')) s.versao = '1.54.0'
@@ -368,10 +428,19 @@ test('plugins-em-dia: sobe a versao, devolve o texto e, sem recarregarSozinho, s
   // o engine normaliza o separador do caminho que o mod montou com barras
   expect(s.lidos[0].replace(/\\/g, '/')).toBe('C:/ContaTeste/plugins/installed_plugins.json')
   // marketplace antes de plugin, com o shim .cmd do npm do Windows
-  expect(s.cli[0]).toEqual(['cmd', '/d', '/c', 'claude', 'plugin', 'marketplace', 'update', 'rainforest-mind'])
-  expect(s.cli[1]).toEqual(['cmd', '/d', '/c', 'claude', 'plugin', 'update', 'rainforest-mind@rainforest-mind', '--scope', 'user'])
+  expect(s.cli[0]).toEqual(['cmd', '/d', '/c', CLAUDE_CMD, 'plugin', 'marketplace', 'update', 'rainforest-mind'])
+  expect(s.cli[1]).toEqual(['cmd', '/d', '/c', CLAUDE_CMD, 'plugin', 'update', 'rainforest-mind@rainforest-mind', '--scope', 'user'])
   expect(s.reloads).toBe(0)
   expect(s.toasts.some(t => t.includes('/reload-plugins'))).toBe(true)
+})
+
+test('plugins-em-dia: claude no repositorio da sessao nao e executado', async ($, on) => {
+  const { s } = await montarPlugins($, on)
+  s.localizador = '/projeto/claude.cmd\r\n'
+  const r = await $.command.run({ command: 'plugins-em-dia', args: '' } as never)
+  expect(String((r as any).text)).toContain('claude nao encontrado fora do repositorio')
+  expect(s.cli.length).toBe(0)
+  expect(s.toasts.some(t => t.includes('claude nao encontrado'))).toBe(true)
 })
 
 test('plugins-em-dia: com recarregarSozinho recarrega pelo comando do engine', { options: { recarregarSozinho: true } }, async ($, on) => {

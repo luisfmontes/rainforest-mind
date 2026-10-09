@@ -151,3 +151,31 @@ export function nota(virada, r) {
 export function deveAcordar({ origem, branch, virada, ultimaMudancaMs, agoraMs }) {
   return ehDaSessao({ origem, branch }) && virada !== null && quieto(ultimaMudancaMs, agoraMs);
 }
+
+// Executavel que o mod pode rodar: `saida` e o que `where.exe` (Windows) ou `which -a` (outros)
+// imprimiu. Vale a primeira linha que e caminho absoluto e que NAO esta dentro do repositorio
+// da sessao (`cwdSessao`): o Windows procura o executavel primeiro na pasta atual, e um
+// repositorio clonado com gh.exe/claude.cmd na raiz rodaria codigo dele a cada consulta.
+// Sem `cwdSessao` nao ha como provar que o caminho esta fora: nada serve (null).
+const barras = (p) => String(p).trim().replace(/\\/g, '/');
+const absoluto = (l) => /^([a-z]:\/|\/)/i.test(barras(l));
+const dentro = (l, base) => {
+  const b = barras(base).replace(/\/+$/, '');
+  if (b === '') return true;
+  const doWindows = /^[a-z]:\//i.test(b) || /^[a-z]:\//i.test(barras(l));
+  const x = doWindows ? barras(l).toLowerCase() : barras(l);
+  const y = doWindows ? b.toLowerCase() : b;
+  return x === y || x.startsWith(y + '/');
+};
+
+export function escolherExecutavel(saida, cwdSessao) {
+  const linhas = String(saida || '').split(/\r?\n/).map((l) => l.trim()).filter((l) => l !== '');
+  const base = cwdSessao;
+  return linhas.find((l) => absoluto(l) && !dentro(l, base)) ?? null;
+}
+
+// O PR so conta como da sessao (acorda o modelo) se o autor e quem esta logado no gh e o PR
+// nao vem de fork: PR de terceiro pode aparecer na saida de um comando ou numa branch fluxo/*.
+export function donoConfere({ autor, eu, cruzado }) {
+  return Boolean(eu) && autor === eu && cruzado === false;
+}

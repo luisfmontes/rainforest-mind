@@ -117,6 +117,10 @@ export type RainforestMindPrEvento = { hora: string; icone: string; texto: strin
 
 export type RainforestMindPrPendente = { virada: string; nota: string; ultimaMudancaMs: number }
 
+// Caminhos absolutos de `gh` (fora do repositorio da sessao) e o login de quem esta logado nele,
+// resolvidos uma vez por sessao. Vazio = ainda nao resolvido.
+export type RainforestMindPrFerramentas = { gh: string; eu: string }
+
 declare module 'claude-code' {
   interface PluginState {
     'rainforest-mind': {
@@ -134,6 +138,8 @@ declare module 'claude-code' {
       prEventos: RainforestMindPrEvento[]
       prErro: string
       prPendente: RainforestMindPrPendente | null
+      prFerramentas: RainforestMindPrFerramentas
+      pluginsEmDiaClaude: string
     }
   }
 }

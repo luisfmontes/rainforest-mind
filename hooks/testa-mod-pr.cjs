@@ -345,6 +345,29 @@ caso("nota merged manda informar e limpar worktree/branch", () => {
   afirma(t.includes("limpar o worktree e a branch"), "sem a limpeza: " + t);
 });
 
+// A mutacao em `escolherExecutavel` (a linha `return linhas.find(...)` -> sem o filtro do cwd) e a
+// de `donoConfere` (`return Boolean(eu) && ...` -> `return true;`) sao rodadas por
+// `scripts/conferir-mutacao.cjs`; os dois casos abaixo precisam ficar vermelhos.
+caso("executavel dentro do repositorio da sessao e recusado", () => {
+  const repo = "C:\\repo\\x\\gh.exe\r\nC:\\Program Files\\GitHub CLI\\gh.exe\r\n";
+  igual(m.escolherExecutavel(repo, "C:/Repo/X"), "C:\\Program Files\\GitHub CLI\\gh.exe", "devia pular o gh.exe do repo (caixa e barras diferentes)");
+  igual(m.escolherExecutavel("C:\\repo\\x\\gh.exe\r\n", "C:/Repo/X"), null, "so o do repo nao serve");
+  igual(m.escolherExecutavel("C:\\repo\\x\\sub\\gh.cmd", "C:/Repo/X/"), null, "subpasta do repo tambem e repo");
+  igual(m.escolherExecutavel("gh.exe\r\n.\\gh.exe\r\nC:\\Program Files\\GitHub CLI\\gh.exe", "C:/Repo/X"), "C:\\Program Files\\GitHub CLI\\gh.exe", "caminho relativo nao vale");
+  igual(m.escolherExecutavel("C:\\repo\\xy\\gh.exe", "C:/Repo/X"), "C:\\repo\\xy\\gh.exe", "irma com o mesmo prefixo nao e o repo");
+  igual(m.escolherExecutavel("/proj/gh\n/usr/bin/gh\n", "/proj"), "/usr/bin/gh", "posix: pula o do repo");
+  igual(m.escolherExecutavel("/usr/bin/gh\n", ""), null, "sem cwd nao se prova nada");
+  igual(m.escolherExecutavel("", "C:/Repo/X"), null, "saida vazia");
+});
+
+caso("PR de outro autor ou de fork nao conta como da sessao", () => {
+  igual(m.donoConfere({ autor: "alheio", eu: "luisfmontes", cruzado: false }), false, "autor diferente");
+  igual(m.donoConfere({ autor: "luisfmontes", eu: "luisfmontes", cruzado: true }), false, "fork");
+  igual(m.donoConfere({ autor: "luisfmontes", eu: "luisfmontes", cruzado: undefined }), false, "sem o campo isCrossRepository");
+  igual(m.donoConfere({ autor: "", eu: "", cruzado: false }), false, "eu vazio");
+  igual(m.donoConfere({ autor: "luisfmontes", eu: "luisfmontes", cruzado: false }), true, "mesmo autor, nao cruzado");
+});
+
 // ------------------------------------------------------------------ execucao
 (async () => {
   m = await import(PR);

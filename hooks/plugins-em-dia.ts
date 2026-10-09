@@ -3,8 +3,12 @@
 // A logica pura (alvos, ordem dos comandos, versoes, janela de intervalo, acao) mora em
 // ./plugins-em-dia-puro.mjs; aqui so se liga os eventos. O engine so aceita `$` passado a
 // funcao declarada no topo deste arquivo; aos `.mjs` vao so valores.
+import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
+import { escolherExecutavel } from './pr-puro.mjs'
 import { LISTA_PADRAO, PERIODO_MS, acaoAposSubir, alvos, comandos, podeRodar, subiram, versoes } from './plugins-em-dia-puro.mjs'
+
+const claudeCaminho = atom({ plugin: 'rainforest-mind', key: 'pluginsEmDiaClaude' } as const, '')
 
 type Registro = { plugins?: Record<string, { scope: string; version: string }[]> }
 
@@ -16,6 +20,34 @@ const listaDe = (valor: unknown): string[] => {
 
 function avisar($: EngineInterface, texto: string): void {
   void Promise.resolve($.ui.toast(texto)).catch(() => {})
+}
+
+// Caminho absoluto do executavel do CLI, achado UMA vez por sessao e fora do repositorio da
+// sessao: o Windows procura o executavel primeiro na pasta atual. O localizador roda na pasta
+// do plugin (confiavel), nunca no repo.
+async function caminhoDoCli($: EngineInterface): Promise<string | null> {
+  const guardado = await read($, claudeCaminho)
+  if (guardado !== '') return guardado
+  let cwd = ''
+  try {
+    cwd = await $.session.cwd()
+  } catch {
+    cwd = ''
+  }
+  for (const argv of [['where.exe', 'claude.exe', 'claude.cmd', 'claude.bat'], ['which', '-a', 'claude']]) {
+    try {
+      const r = await $.process.run(argv, { cwd: $.plugin.root, timeoutMs: 10_000 })
+      if (r.exitCode !== 0) continue
+      const achado = escolherExecutavel(r.stdout, cwd) as string | null
+      if (achado !== null) {
+        await update($, claudeCaminho, () => achado)
+        return achado
+      }
+    } catch {
+      // este localizador nao existe nesta maquina; o outro tenta
+    }
+  }
+  return null
 }
 
 async function atualizar($: EngineInterface, lista: string[], recarregaSeguro: boolean, forcado: boolean): Promise<string> {
@@ -38,10 +70,17 @@ async function atualizar($: EngineInterface, lista: string[], recarregaSeguro: b
   }
   if (ids.length === 0) return 'nenhum plugin da lista instalado no escopo user'
 
+  const cli = await caminhoDoCli($)
+  if (cli === null) {
+    avisar($, 'plugins-em-dia: claude nao encontrado fora do repositorio')
+    return 'claude nao encontrado fora do repositorio; nada feito'
+  }
+  // No Windows o executavel do npm e um shim .cmd/.bat: sem shell o sistema nao o executa direto.
+  const prefixo = /\.(cmd|bat)$/i.test(cli) ? ['cmd', '/d', '/c', cli] : [cli]
+
   const falhas: string[] = []
   for (const argv of comandos(ids) as string[][]) {
-    // claude e um shim .cmd do npm no Windows: sem shell, o sistema nao o executa direto.
-    const r = await $.process.run(['cmd', '/d', '/c', 'claude', ...argv], { timeoutMs: 120_000 }).catch(() => ({ exitCode: -1 }))
+    const r = await $.process.run([...prefixo, ...argv], { cwd: $.plugin.root, timeoutMs: 120_000 }).catch(() => ({ exitCode: -1 }))
     if (r.exitCode !== 0) falhas.push(`${argv.slice(1, 3).join(' ')} ${argv[3] ?? ''}`.trim() + ` (exit ${r.exitCode})`)
   }
 
