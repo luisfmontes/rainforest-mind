@@ -5,7 +5,7 @@ Este arquivo define os termos de domínio do rainforest-mind: o que cada palavra
 ## fluxo
 Definição: a sequência de estágios pela qual um trabalho passa no rainforest-mind: design, plano, executar, revisar, verificar e fechar. Cada estágio exige os que estão antes dele fechados.
 Onde mora: `scripts/estado.cjs`, na tabela PRE_REQUISITOS; o estado de cada trabalho fica em `docs/rainforest/estado/`, um JSON por slug.
-Cenário: `node scripts/estado.cjs exigir --slug <slug> --estagio plano` sai com exit 2 e a linha "RECUSADO: plano exige design fechado." enquanto o design estiver pendente.
+Cenário: `node scripts/estado.cjs exigir --slug <slug> --estagio plano` sai com exit 2 e a linha "RECUSADO: 'plano' exige design fechado(s)." enquanto o design estiver pendente.
 Evite: esteira
 
 ## estágio
@@ -42,7 +42,7 @@ Evite: roubar
 ## worktree de agente
 Definição: o checkout isolado onde roda o subagente que escreve, criado a partir da ponta de `origin/main`, e não da branch de quem despachou.
 Onde mora: `.claude/worktrees/`, onde os worktrees ficam; `hooks/gate-worktree.cjs`, que barra com exit 2 a escrita de subagente fora de worktree; e `skills/rainforest-mind/references/regra-11.md`, que manda criar o worktree a partir de `origin/main`.
-Cenário: a execução desta tarefa roda no worktree `.claude/worktrees/agent-a530e8236a48f72ae`, o que `git rev-parse --show-toplevel` confirma.
+Cenário: em um clone, `git worktree add .claude/worktrees/x -b fluxo/x origin/main` cria o worktree com `origin/main` no commit A; depois `origin/main` avança para B, e `node scripts/preparar-worktree.cjs --hash <B>` faz `merge --ff-only` e sai com 0 imprimindo `base-ok <B em 12 caracteres> <toplevel>`.
 
 ## portaria
 Definição: a decisão que admite ou nega um despacho de subagente, com base no manifesto de agentes e no estágio aberto. Agente que não está no manifesto não é barrado: só fica registrado.
