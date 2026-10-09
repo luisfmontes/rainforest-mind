@@ -81,7 +81,8 @@ function validar(cfg, raiz = RAIZ_PLUGIN) {
       throw new Error(`abertura-mod: campo elaboracoes lista a regra ${n}, mas nao ha arquivo ${path.relative(raiz, arq)}`);
     }
     arquivos[n] = arq;
-    elaboracoesBytes += bytes(texto);
+    // Mede o que a abertura INJETA: o indice das references sai (tirarIndice).
+    elaboracoesBytes += bytes(require(path.join(raiz, 'hooks', 'lib', 'contexto-sessao.cjs')).tirarIndice(texto));
   }
 
   const nucleoBytes = medirNucleo(raiz);

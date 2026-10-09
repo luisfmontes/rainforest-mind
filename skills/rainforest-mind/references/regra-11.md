@@ -1,5 +1,18 @@
 # Regra 11 — Worktree: isolado E com base conferida
 
+<!-- indice -->
+**Índice** — arquivo longo: quem parou no meio não leu a regra inteira. Seções na ordem; cada item é o começo da seção, sem a marcação:
+
+- O checkout principal fica na branch padrão; todo trabalho nasce em worktree
+- Agente que edita não se retoma por SendMessage
+- Um worktree por ATIVIDADE
+- Commite antes de despachar, na branch de trabalho, nunca na main
+- A branch tem dono, e "não é a main" não prova que é sua.
+- Portanto, dupla conferência. (1) O briefing informa o hash esperado
+- (2) O briefing leva o comando de preparo
+- (3) Na integração, a janela principal confere com evidência primária
+<!-- /indice -->
+
 **O checkout principal fica na branch padrão; todo trabalho nasce em worktree**
 — vale para a sessão do usuário, não só para subagente (`git worktree add
 .claude/worktrees/<slug> -b fluxo/<slug> origin/main`, ou `EnterWorktree`).

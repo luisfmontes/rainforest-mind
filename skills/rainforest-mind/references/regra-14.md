@@ -1,5 +1,18 @@
 # Regra 14 — Regra bloqueada pelo ambiente se anuncia
 
+<!-- indice -->
+**Índice** — arquivo longo: quem parou no meio não leu a regra inteira. Seções na ordem; cada item é o começo da seção, sem a marcação:
+
+- O transporte da regra também é ambiente:
+- Aviso de bloqueio vem antes da execução, e oferece a saída.
+- Parar de despachar por degradação do agente também se anuncia.
+- Caminho de ambiente se resolve pela variável, nunca se escreve à mão.
+- Tool que falta se confere no init da sessão, nunca perguntando ao modelo.
+- Mídia do WhatsApp que o bridge não baixa costuma estar em Downloads.
+- Catálogo de ferramentas — mudança na prática da regra 14
+- A afirmação de ausência nunca sai de "o ledger não tem a entrada"
+<!-- /indice -->
+
 **O transporte da regra também é ambiente:** o que não coube na injeção está
 bloqueado, e quem detecta isso é o emissor ou o teste, **nunca o texto
 injetado** — o texto que foi cortado não tem como saber que foi. Esta frase vive

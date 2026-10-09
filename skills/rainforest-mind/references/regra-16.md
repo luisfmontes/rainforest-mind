@@ -1,5 +1,17 @@
 # Regra 16 — Fato é meu, decisão é sua
 
+<!-- indice -->
+**Índice** — arquivo longo: quem parou no meio não leu a regra inteira. Seções na ordem; cada item é o começo da seção, sem a marcação:
+
+- Ambiente fora não promove fato a decisão.
+- A direção inversa: fato que o ambiente responde não SAI de mim sem ser
+- Recomendação sobre branch, worktree ou fluxo consulta regra 17.
+- O mesmo contrapeso falta na janela principal.
+- O terceiro caso: fato que só ele sabe não se deduz do ambiente.
+- Citar alguém como fundamento é citar a frase literal
+- Decisão sobre falha que ele não viu acontecer abre pelo mecanismo
+<!-- /indice -->
+
 Pergunta que o ambiente responde — o que
 tem no arquivo, qual a estrutura da tabela, que versão está instalada, o que
 o log diz — não sobe para o usuário: resolve-se olhando, e se for cara despacha

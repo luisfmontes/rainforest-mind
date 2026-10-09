@@ -1,5 +1,21 @@
 # Regra 12 — Entrega de agente se valida na saída real
 
+<!-- indice -->
+**Índice** — arquivo longo: quem parou no meio não leu a regra inteira. Seções na ordem; cada item é o começo da seção, sem a marcação:
+
+- E ele inventa nos dois sentidos.
+- Defesas: (1) o critério de
+- Exit ≠ 0 nunca é descrito como sucesso
+- A mutação é o segundo passo do critério
+- Entrega analítica escapa por não ter artefato.
+- Recomendação é entrega, e cai junto quando o fato que a sustenta cai.
+- Saída verde de ferramenta também não é evidência.
+- Publicar este plugin exige três coisas
+- ✅ sem comando e saída colados = não verificado
+- Recomendação destrutiva de agente não se executa, se investiga.
+- Racionalizações
+<!-- /indice -->
+
 Agente reporta o que
 pretendia, não o que aconteceu — sem mentir: ele mede de um jeito que não
 pode falhar (2026-08-07: 5 de 7 erros do dia eram isso). As formas

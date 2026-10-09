@@ -1,5 +1,16 @@
 # Regra 10 — Agentes baratos com método
 
+<!-- indice -->
+**Índice** — arquivo longo: quem parou no meio não leu a regra inteira. Seções na ordem; cada item é o começo da seção, sem a marcação:
+
+- Regra permanente, sem precisar ativar
+- Quando despachar — 3.000 tokens.
+- A portaria — admissão por manifesto (fluxo 9)
+- Agente despachado é folha
+- Fechamento de rodada.
+- Racionalizações
+<!-- /indice -->
+
 Regra permanente, sem precisar ativar
 nada: toda task mecânica (implementar, editar, configurar, pesquisar e
 agir) é despachada no agente **`rainforest-mind:executor`** (subagent_type
