@@ -78,14 +78,14 @@ function glossarioDoPedido(cwd, prompt, sessao, raiz) {
   const arquivo = acharGlossario(cwd);
   if (!arquivo) return '';
   const verbetes = lerVerbetes(fs.readFileSync(arquivo, 'utf8')).map((v) => Object.assign(v, { chave: chaveDe(v.termo) }));
-  const arquivoChaves = path.join(raiz, 'memoria-assunto', sessao + '.glossario.json');
-  const jaGlossario = new Set(lerChaves(arquivoChaves));
+  const arquivoChaves = raiz ? path.join(raiz, 'memoria-assunto', sessao + '.glossario.json') : null;
+  const jaGlossario = new Set(arquivoChaves ? lerChaves(arquivoChaves) : []);
   const blocoGlossario = montarBlocoGlossario(casarVerbetes(verbetes, prompt).filter((v) => !jaGlossario.has(v.chave)));
   if (!blocoGlossario) return '';
 
   const linhas = blocoGlossario.split('\n').slice(1);
   const injetados = verbetes.filter((v) => verbeteValido(v) && linhas.some((l) => l.startsWith('- **' + v.termo + '**:')));
-  persistirChaves(arquivoChaves, [...jaGlossario, ...injetados.map((v) => v.chave)]);
+  if (arquivoChaves) persistirChaves(arquivoChaves, [...jaGlossario, ...injetados.map((v) => v.chave)]);
   return blocoGlossario;
 }
 
@@ -136,14 +136,13 @@ function executar() {
 
   const cwd = entrada.cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const { raiz } = resolverRaiz({ cwd, plugin: path.resolve(__dirname, '..') });
-  if (!raiz) throw new Error('sem raiz de dados');
-
+  // Sem raiz o glossario entra, mas sem dedup: a memoria por assunto continua exigindo raiz.
   // Glossario antes de qualquer saida cedo da memoria e antes de qualquer acesso ao banco.
   let blocoGlossario = '';
   try { blocoGlossario = glossarioDoPedido(cwd, prompt, sessao, raiz); } catch (e) { blocoGlossario = ''; }
 
   let blocoMemoria = '';
-  if (termosUteis(prompt) >= MIN_TERMOS) {
+  if (raiz && termosUteis(prompt) >= MIN_TERMOS) {
     try { blocoMemoria = memoriaDoPedido(entrada, prompt, sessao, raiz, cwd); } catch (e) { blocoMemoria = ''; }
   }
 

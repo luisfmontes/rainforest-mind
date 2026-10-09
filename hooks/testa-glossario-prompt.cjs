@@ -77,6 +77,16 @@ function rodar(stdin, { raizAmbiente = raizSemBanco } = {}) {
   const r = spawnSync(process.execPath, [HOOK], { input: stdin, env, encoding: 'utf8', timeout: 20000 });
   return { codigo: r.status, saida: r.stdout, erro: r.stderr };
 }
+// Sem raiz: RFM_ROOT ausente e HOME/USERPROFILE numa pasta vazia (resolverRaiz devolve raiz null).
+const HOME_VAZIO = path.join(tmp, 'home-vazio');
+fs.mkdirSync(HOME_VAZIO);
+function rodarSemRaiz(stdin) {
+  const env = { ...process.env, HOME: HOME_VAZIO, USERPROFILE: HOME_VAZIO };
+  delete env.RFM_ROOT;
+  delete env.CLAUDE_PROJECT_DIR;
+  const r = spawnSync(process.execPath, [HOOK], { input: stdin, env, encoding: 'utf8', timeout: 20000 });
+  return { codigo: r.status, saida: r.stdout, erro: r.stderr };
+}
 function payload(cwd, o) {
   return JSON.stringify(Object.assign({
     session_id: 'sessao-padrao', transcript_path: transcritoVazio, cwd,
@@ -203,6 +213,22 @@ caso('com banco travado: sobra so o glossario', () => {
     try { trava.exec('ROLLBACK'); } catch (e) { /* melhor esforco */ }
     trava.close();
   }
+});
+
+caso('sem raiz de dados injeta o glossario sem dedup', () => {
+  const cwd = CWD_FLUXO;
+  const r1 = rodarSemRaiz(payload(cwd, { session_id: 's-sem-raiz' }));
+  const r2 = rodarSemRaiz(payload(cwd, { session_id: 's-sem-raiz' }));
+  const c1 = contexto(r1.saida);
+  const c2 = contexto(r2.saida);
+  const semArquivo = fs.readdirSync(HOME_VAZIO).length === 0 &&
+    !fs.existsSync(path.join(cwd, '.rainforest')) &&
+    !fs.existsSync(path.join(cwd, 'memoria-assunto')) &&
+    !fs.existsSync(path.join(path.dirname(cwd), 'memoria-assunto'));
+  return bateTudo(r1) && bateTudo(r2) &&
+    c1.startsWith('## Glossário do repo') && c1.includes('**fluxo**') && !c1.includes('## Memória do assunto') &&
+    c2.startsWith('## Glossário do repo') && c2.includes('**fluxo**') && !c2.includes('## Memória do assunto') &&
+    semArquivo;
 });
 
 try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) { /* melhor esforco */ }
