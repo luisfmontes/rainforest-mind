@@ -943,7 +943,7 @@ const path = require('path');
 const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
 
 // Projeto atual = canonico da pasta da sessao (slug do caminho; #435), a caixa e o cwd
-const projectKey = require(process.env.LIB_CANONICO).slugDoCaminho(process.env.RFM_ROOT);
+const projectKey = require(process.env.LIB_CANONICO).slugDoCaminho(require('fs').realpathSync.native(process.env.RFM_ROOT));
 
 // 15 observações
 for (let i = 1; i <= 15; i++) {
@@ -1144,7 +1144,7 @@ node <<'SETUP_RESUMO'
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
-const projectKey = require(process.env.LIB_CANONICO).slugDoCaminho(process.env.RFM_ROOT);
+const projectKey = require(process.env.LIB_CANONICO).slugDoCaminho(require('fs').realpathSync.native(process.env.RFM_ROOT));
 const NL = String.fromCharCode(10);
 // 3 observacoes CONSOLIDADAS (nao podem aparecer) + 4 vivas
 for (let i = 1; i <= 3; i++) {
@@ -1189,7 +1189,7 @@ node <<'SETUP_SEMRES'
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
-const projectKey = require(process.env.LIB_CANONICO).slugDoCaminho(process.env.RFM_ROOT);
+const projectKey = require(process.env.LIB_CANONICO).slugDoCaminho(require('fs').realpathSync.native(process.env.RFM_ROOT));
 const NL = String.fromCharCode(10);
 for (let i = 1; i <= 3; i++) {
   db.prepare("INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?,?,?,?)")
@@ -1221,7 +1221,7 @@ echo "  18.f — sem resumo no banco, o bloco e BYTE-IDENTICO ao de antes do C3"
 # criada_em. Qualquer byte diferente e regressao do C3 no caminho sem resumo.
 BLOCO_ESPERADO_SEMRES="$(OBS="$(node -e "
 const path = require('path');
-const projectKey = require(process.env.LIB_CANONICO).slugDoCaminho(process.env.RFM_ROOT);
+const projectKey = require(process.env.LIB_CANONICO).slugDoCaminho(require('fs').realpathSync.native(process.env.RFM_ROOT));
 const NL = String.fromCharCode(10);
 const obs = [3, 2, 1].map(i => ({
   id: i,
@@ -1334,7 +1334,7 @@ node <<'SETUP_SUBST'
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
-const projectKey = require(process.env.LIB_CANONICO).slugDoCaminho(process.env.RFM_ROOT);
+const projectKey = require(process.env.LIB_CANONICO).slugDoCaminho(require('fs').realpathSync.native(process.env.RFM_ROOT));
 const NL = String.fromCharCode(10);
 // ids 1-14: vivas (mais antigas). ids 15-20: substituidas (mais recentes).
 for (let i = 1; i <= 20; i++) {
