@@ -1,5 +1,16 @@
 # Regra 10 — escopo da portaria e níveis de manifesto
 
+<!-- indice -->
+**Índice** — arquivo longo: quem parou no meio não leu a regra inteira. Seções na ordem; cada item é o começo da seção, sem a marcação:
+
+- Onde a portaria vale
+- Três níveis de manifesto, e só um soma
+- Onde esse arquivo NÃO vai
+- "Manifesto ausente" mudou de significado
+- Destino do log de despacho
+- O que ainda vale
+<!-- /indice -->
+
 Separado de `regra-10-portaria.md` em 2026-09-14 pelo mesmo motivo que partiu
 aquele arquivo do `regra-10.md`: o teto de bytes de um `reference` existe para
 que consultar uma regra custe menos de 3k tokens, e o escopo não cabia lá.

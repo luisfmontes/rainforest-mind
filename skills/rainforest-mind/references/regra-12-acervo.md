@@ -1,5 +1,16 @@
 # Regra 12 — acervo
 
+<!-- indice -->
+**Índice** — arquivo longo: quem parou no meio não leu a regra inteira. Seções na ordem; cada item é o começo da seção, sem a marcação:
+
+- 2026-08-07:
+- 2026-08-09:
+- 2026-08-17:
+- 2026-08-20:
+- 2026-08-24:
+- 2026-09-01:
+<!-- /indice -->
+
 O que aconteceu, com data e custo. A regra em si mora em
 `references/regra-12.md` e se aplica sem este arquivo — aqui está o porquê dela,
 que é o que a torna difícil de desobedecer depois de lida.

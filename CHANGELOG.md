@@ -10,7 +10,7 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
-## 1.51.0 — 2026-10-08
+## 1.52.0 — 2026-10-08
 
 - **Um nome por projeto no banco de memória (Issue #435).** O projeto passa a ser gravado como o slug do repositório
   principal, pela regra que o Claude Code usa na pasta de transcritos, e a sessão em worktree grava no projeto principal.

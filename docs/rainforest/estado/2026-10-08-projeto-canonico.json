@@ -25,7 +25,7 @@
     "status": "parcial",
     "catraca_mutacao": "2026-10-08",
     "tarefas_ok": 11,
-    "tarefas": 11,
+    "tarefas": 12,
     "carimbos": [
       {
         "tarefa": 1,
@@ -75,6 +75,13 @@
         "iteracao": 1,
         "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
         "ts": "2026-10-08T20:53:09.179Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "2f85c61c",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-09T01:47:44.526Z"
       }
     ],
     "em": "2026-10-08",
@@ -140,7 +147,15 @@
     "reaberto_por": {
       "estagio": "revisar",
       "data": "2026-10-08"
-    }
+    },
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "12 emenda migracao",
+        "desde": "2026-10-08T22:47:44-03:00",
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76"
+      }
+    ]
   },
   "revisar": {
     "status": "reprovado",

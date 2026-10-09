@@ -26,6 +26,8 @@
 #      do ato (negam ou injetam contexto), guia.
 #      55 e 23 guia desde 2026-10-08: entraram hooks/memoria-assunto-prompt.cjs
 #      e hooks/memoria-assunto-agente.cjs — injetam memoria antes do ato, guia.
+#      56 e 30 sensor desde 2026-10-08: entrou scripts/conferir-indice-referencias.cjs
+#      (indice nas references longas, confere depois do ato) — sensor.
 #   2. peca REAL copiada para arvore temporaria, com a linha de marca apagada,
 #      reprova (exit 1) e NOMEIA o caminho na saida;
 #   3. peca REAL copiada com valor de marca fora do vocabulario (nem guia, nem
@@ -67,17 +69,17 @@ montar_copia() {
   cp "$RAIZ"/vigias/*.md "$destino/vigias/" 2>/dev/null
 }
 
-echo "== 1. repositorio real na base — exit 0, 55 pecas, distribuicao 23/29/3 =="
+echo "== 1. repositorio real na base — exit 0, 56 pecas, distribuicao 23/30/3 =="
 S1="$(roda --raiz "$RAIZ")"
 saiu "repositorio real passa (exit 0)" "$(codigo --raiz "$RAIZ")" "0"
-tem  "conta as 55 pecas"               "$S1" "Total de peças varridas: 55"
+tem  "conta as 56 pecas"               "$S1" "Total de peças varridas: 56"
 N_GUIA="$(printf '%s' "$S1" | grep -cF '>  guia')"
 N_SENSOR="$(printf '%s' "$S1" | grep -cF '>  sensor')"
 N_DADO="$(printf '%s' "$S1" | grep -cF '>  dado')"
-if [ "$N_GUIA" = "23" ] && [ "$N_SENSOR" = "29" ] && [ "$N_DADO" = "3" ]; then
-  ok=$((ok+1)); echo "  ok   distribuicao 23 guia / 29 sensor / 3 dado confere"
+if [ "$N_GUIA" = "23" ] && [ "$N_SENSOR" = "30" ] && [ "$N_DADO" = "3" ]; then
+  ok=$((ok+1)); echo "  ok   distribuicao 23 guia / 30 sensor / 3 dado confere"
 else
-  falhou=$((falhou+1)); echo "  FALHA distribuicao: guia=$N_GUIA sensor=$N_SENSOR dado=$N_DADO (esperava 23/29/3)"
+  falhou=$((falhou+1)); echo "  FALHA distribuicao: guia=$N_GUIA sensor=$N_SENSOR dado=$N_DADO (esperava 23/30/3)"
 fi
 
 echo
