@@ -195,3 +195,21 @@ pronto quando: com o design e o código entregues, o README ganha, na seção "M
 - Ondas: a 1ª leva as tarefas 1, 2 e 3 em paralelo (arquivos disjuntos). Depois seguem em série 4, 5, 6, 7, 8 e 9 (as tarefas 5, 6 e 8 editam `scripts/memoria.cjs`), depois a 10 e a 11.
 - A integração roda `bash scripts/varrer-baterias.sh` completo e `node scripts/conferir-categoria.cjs`, e confere os placares da base listados em "Fatos".
 - Cada bateria nova usa `mkdtemp` e `RFM_ROOT` explícito. As que precisam de worktree real criam com `git worktree add` e identidade de commit por `-c user.name/-c user.email` (a CI é windows-latest).
+
+## Emenda 1 (revisar rodada 1, reprovado em 2026-10-08)
+
+O revisor confirmou por reprodução: (1) o backup pode sair sem o WAL quando o `wal_checkpoint` volta ocupado (leitor concorrente na mesma abertura, achado A6) e a migração aplica mesmo assim; (4) nome curto órfão é absorvido em silêncio numa passada posterior, quando aparece um repositório de mesmo nome, contra o D6; (5) a grafia vencedora no par só-caixa oscila com o volume e reescreve milhares de linhas; (6) duas aberturas simultâneas na primeira vez podem regravar o relatório com "0 linhas movidas". Os achados (2) e (3) são o resíduo que a U3 aceitou e viram Issue própria.
+
+### 12. Emenda: backup conferido, curtos só na primeira passada, grafia estável [tipo: implementar]
+atende: D3, D5, D6
+arquivos: `scripts/lib/migrar-projeto-canonico.cjs`, `scripts/testa-migrar-emenda.cjs`
+depende de: 5
+paralela: nao
+prova: `node scripts/testa-migrar-emenda.cjs`
+mutacao:
+  arquivo: `scripts/lib/migrar-projeto-canonico.cjs`
+  de: `if (!contagensIguais(antes, contagensDoBackup)) throw new Error('backup incompleto');`
+  para: `if (false) throw new Error('backup incompleto');`
+  bateria: `node scripts/testa-migrar-emenda.cjs`
+  fixture: `testa-migrar-emenda.cjs, caso "backup sem as linhas do WAL nao deixa a migracao aplicar"`
+pronto quando: com um banco de caixa em `user_version = 1` com linhas a mover e uma linha recém-inserida ainda no WAL, e um `fazerBackup` injetado que copia só o arquivo `.db` (sem checkpoint — o efeito real do `wal_checkpoint` ocupado medido pelo revisor), `criarSchema` não aplica a migração: nenhuma linha muda de projeto, `user_version` continua 1, nada sai em stdout, o stderr traz um aviso de backup incompleto e `criarSchema` não lança; com o `fazerBackupDoBanco` real e sem leitor concorrente, a migração aplica como antes. Antes do `BEGIN IMMEDIATE`, a migração abre o arquivo devolvido pelo backup e compara `count(*)` de `observacoes`, `resumos`, `marca_dagua` e `uso_memoria` com os da própria conexão, na forma `if (!contagensIguais(antes, contagensDoBackup)) throw new Error('backup incompleto');`. Num banco já em `user_version = 2` em que o órfão `zeta` ficou na primeira passada, a abertura seguinte com uma linha nova de `C--Q-zeta` deixa `zeta` onde está (nome curto só migra na passada da versão 1→2). No par só-caixa vence a grafia que começa por letra maiúscula seguida de `--`, depois a de mais linhas, depois a ordem alfabética: com `C--P-alfa` (6 linhas) e `c--p-alfa` (1), e depois mais 10 linhas em `c--p-alfa` gravadas pelo plugin antigo, a passada seguinte move as 11 de `c--p-alfa` para `C--P-alfa` e nunca o contrário. A decisão "primeira passada" é relida dentro da transação: uma segunda migração que encontra `user_version = 2` depois de pegar o `BEGIN IMMEDIATE` não reescreve `migracao-projeto-canonico.txt`. Provado por `node scripts/testa-migrar-emenda.cjs` com `0 falha(s)` (exit 1 com falha) e por `node scripts/testa-migrar-projeto-canonico.cjs` sem regressão (16 ok). Forma do alvo de mutação: a conferência é a linha única do `de:`; nenhum caso lê o texto do fonte.
