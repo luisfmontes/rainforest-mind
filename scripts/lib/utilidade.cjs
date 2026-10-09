@@ -118,6 +118,16 @@ function lerTranscritoFilho(arquivo) {
   return r;
 }
 
+// D2: o briefing que chega ao filho (e o prompt que o pai devolve) já traz o
+// glossário e o bloco de memória anexados pelo hook. O texto que DISPAROU a
+// injeção é o que vem antes do primeiro desses cabeçalhos.
+const CAB_GLOSSARIO = '## Glossário do repo';
+function briefingSemInjecao(briefing) {
+  const t = String(briefing || '');
+  const cortes = [CAB_GLOSSARIO, CAB_ASSUNTO].map((c) => t.indexOf(c)).filter((i) => i >= 0);
+  return cortes.length ? t.slice(0, Math.min(...cortes)) : t;
+}
+
 /**
  * Lê um transcrito (.jsonl do harness) e devolve:
  *   - `servidas`: as linhas do bloco de memória que de fato chegaram à
@@ -207,7 +217,7 @@ function extrairSessao(caminhoTranscrito) {
     // Canal `subagente`: o prompt (já com a memória) devolvido ao pai.
     if (entrada.toolUseResult && typeof entrada.toolUseResult.prompt === 'string') {
       for (const linha of extrairLinhasServidas(entrada.toolUseResult.prompt, [CAB_ASSUNTO])) {
-        doSubagente.push({ linha, agentId: entrada.toolUseResult.agentId || null });
+        doSubagente.push({ linha, agentId: entrada.toolUseResult.agentId || null, briefing: entrada.toolUseResult.prompt });
       }
     }
 
@@ -248,16 +258,16 @@ function extrairSessao(caminhoTranscrito) {
   for (const { linha, indiceInjecao } of injecoes) {
     // D8: o pedido que disparou a injeção não pontua a própria injeção.
     const textoPosterior = partesTexto.slice(indiceInjecao + 1).join('\n');
-    servidasCanal.push({ linha, canal: 'pedido', texto: textoPosterior });
+    servidasCanal.push({ linha, canal: 'pedido', texto: textoPosterior, descontar: partesTexto[indiceInjecao] || '' });
   }
 
   // Subagente: texto = tool_use do transcrito do filho; o briefing não conta.
   const dirFilhos = path.join(path.dirname(caminhoTranscrito), path.basename(caminhoTranscrito, '.jsonl'), 'subagents');
   const vistos = new Set();
-  for (const { linha, agentId } of doSubagente) {
+  for (const { linha, agentId, briefing } of doSubagente) {
     const filho = agentId ? lerTranscritoFilho(path.join(dirFilhos, `agent-${agentId}.jsonl`)) : null;
     if (agentId) vistos.add(agentId);
-    servidasCanal.push({ linha, canal: 'subagente', texto: filho ? filho.textoTools : '' });
+    servidasCanal.push({ linha, canal: 'subagente', texto: filho ? filho.textoTools : '', descontar: briefingSemInjecao(briefing) });
   }
   let arquivosFilhos = [];
   try {
@@ -271,7 +281,7 @@ function extrairSessao(caminhoTranscrito) {
     const filho = lerTranscritoFilho(path.join(dirFilhos, arq));
     if (!filho) continue;
     for (const linha of extrairLinhasServidas(filho.briefing, [CAB_ASSUNTO])) {
-      servidasCanal.push({ linha, canal: 'subagente', texto: filho.textoTools });
+      servidasCanal.push({ linha, canal: 'subagente', texto: filho.textoTools, descontar: briefingSemInjecao(filho.briefing) });
     }
   }
 
@@ -412,9 +422,13 @@ function contarDocumentFrequency(conexao, termo) {
  * @param {object} conexao
  * @param {string} conteudo conteúdo da observação/resumo sendo pontuada
  * @param {string} texto texto da sessão (extrairSessao().texto)
+ * @param {string} [textoDoPedido] D2: texto que disparou a injeção (canais
+ *   pedido e subagente). Os termos raros que já estavam nele não medem uso
+ *   (o Read do arquivo citado os repete) e saem da conta. Sem este argumento,
+ *   a nota é a de sempre.
  * @returns {number} nota entre 0 e 1
  */
-function calcularNota(conexao, conteudo, texto) {
+function calcularNota(conexao, conteudo, texto, textoDoPedido) {
   const termos = Array.from(
     new Set((String(conteudo || '').match(/[\p{L}\p{N}]+/gu) || []).map((t) => t.toLowerCase()))
   );
@@ -422,20 +436,21 @@ function calcularNota(conexao, conteudo, texto) {
 
   const tokensTexto = new Set((String(texto || '').match(/[\p{L}\p{N}]+/gu) || []).map((t) => t.toLowerCase()));
 
-  let rarosTotal = 0;
-  let rarosPresentes = 0;
+  const tokensPedido = new Set(
+    textoDoPedido === undefined ? [] : (String(textoDoPedido || '').match(/[\p{L}\p{N}]+/gu) || []).map((t) => t.toLowerCase())
+  );
 
+  const raros = [];
   for (const termo of termos) {
     const df = contarDocumentFrequency(conexao, termo);
     if (df === null) continue; // não deu para medir — não conta a favor nem contra
-    const raro = df <= LIMIAR_DF;
-    if (!raro) continue;
-    rarosTotal++;
-    if (tokensTexto.has(termo)) rarosPresentes++;
+    if (df <= LIMIAR_DF) raros.push(termo);
   }
 
-  if (rarosTotal === 0) return 0;
-  return rarosPresentes / rarosTotal;
+  if (raros.length === 0) return 0;
+  const rarosFora = raros.filter((t) => !tokensPedido.has(t));
+  if (rarosFora.length === 0) return 0; // tarefa 6 troca por null (não medida)
+  return rarosFora.filter((t) => tokensTexto.has(t)).length / rarosFora.length;
 }
 
 // Query MATCH do FTS5 a partir de texto livre — tokeniza por letra/dígito
@@ -595,7 +610,7 @@ function pontuarSessao(conexao, sessao, caminhoTranscrito) {
     let servidasComId = 0;
     let servidasSemId = 0;
 
-    for (const { linha, canal, texto: textoServida } of servidas) {
+    for (const { linha, canal, texto: textoServida, descontar } of servidas) {
       const alvo = acharAlvo(conexao, linha, apelidos);
       if (!alvo) {
         servidasSemId++;
@@ -604,7 +619,7 @@ function pontuarSessao(conexao, sessao, caminhoTranscrito) {
       const chave = `${alvo.origem}:${alvo.id}`;
       if (jaGravados.has(chave)) continue; // linha duplicada no bloco — grava uma vez
       jaGravados.add(chave);
-      const nota = calcularNota(conexao, alvo.conteudo, textoServida);
+      const nota = calcularNota(conexao, alvo.conteudo, textoServida, descontar);
       gravarUso(conexao, { origem: alvo.origem, refId: alvo.id, sessao, servida: 1, nota, pontuadaEm: agora, canal });
       servidasComId++;
     }

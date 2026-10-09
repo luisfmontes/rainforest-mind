@@ -182,7 +182,11 @@ caso('nota do canal pedido exclui o pedido que disparou', () => {
 });
 
 caso('nota do canal pedido sobe com pedido posterior que contem os termos raros', () => {
-  const f = montarTres('t-d8b', { ab: [], pe: [OBS.pedido.linha], su: [], prompt1: 'trate de ' + OBS.pedido.raro, prompt2: 'agora aprofunde ' + OBS.pedido.raro, toolFilho: null });
+  // D2 (assunto-regua): o termo que o pedido 1 ja citou sai da conta; so o que o
+  // pedido 1 NAO citou e o prompt2 traz pode pontuar. Pedido 1 cita o primeiro
+  // raro; prompt2 cita o segundo.
+  const [raro1, raro2] = OBS.pedido.raro.split(' ');
+  const f = montarTres('t-d8b', { ab: [], pe: [OBS.pedido.linha], su: [], prompt1: 'trate de ' + raro1, prompt2: 'agora aprofunde ' + raro2, toolFilho: null });
   rodar('s-d8b', f);
   const l = linhasUso('s-d8b');
   console.log('  saida: ' + JSON.stringify(l));
