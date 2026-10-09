@@ -797,10 +797,14 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
     // para `bash scripts/$b.sh`). O comando segue analisado pelo nome
     // literal, entao `& "$dir\git.exe" add -A` continua barrando pelo git.
     // Barrado em 2026-10-09 rodando um script do scratchpad por `$t`.
+    // So `.ps1`: a revisao de seguranca do commit mostrou que liberar qualquer
+    // nome estendia a esta forma buracos que o gate ja tem com nome literal
+    // (`git.cmd`, `GIT.EXE`, `"git.exe "` passam na main). Script e o caso
+    // que motivou; executavel com variavel no diretorio continua ilegivel.
     if (alvo && alvo.aspa === '"' && !/\$\(|`/.test(alvo.tok)) {
       const sep = Math.max(alvo.tok.lastIndexOf('\\'), alvo.tok.lastIndexOf('/'));
       const nome = sep >= 0 ? alvo.tok.slice(sep + 1) : '';
-      if (nome && !/[$`@]/.test(nome) && /^\$(\{[A-Za-z_][\w:]*\}|[A-Za-z_][\w:]*)/.test(alvo.tok)) {
+      if (/^[\w.-]+\.ps1$/i.test(nome) && /^\$(\{[A-Za-z_][\w:]*\}|[A-Za-z_][\w:]*)/.test(alvo.tok)) {
         return { interno: `"${nome}"${alvo.resto}`.trim(), ilegivel: false };
       }
     }

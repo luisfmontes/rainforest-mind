@@ -14,7 +14,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 - **O gate de staging deixa passar script rodado por `& "$pasta\script.ps1"`.** Com a variável só no diretório e o nome do
   arquivo escrito por extenso, o PowerShell recebe o mesmo veredito do caminho todo literal. `& "$dir\git.exe" add -A`, `& "$t"`
-  sozinho e nome de arquivo em variável continuam barrando.
+  sozinho, nome de arquivo em variável e qualquer executável que não seja `.ps1` continuam barrando.
 
 ## 1.53.1 — 2026-10-09
 

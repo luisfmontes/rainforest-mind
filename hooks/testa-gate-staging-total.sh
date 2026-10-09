@@ -320,6 +320,9 @@ gate '& "$t\x.ps1"; git add -A BARRA (pelo git do segmento seguinte)'      2 "$(
 gate '& "$dir\$exe" add -A BARRA (variavel no nome do arquivo)'            2 "$(p '& "$dir\$exe" add -A')"
 gate '& "$t" estado BARRA (so variavel, sem nome literal)'                 2 "$(p '& "$t" estado')"
 gate '& "$(gerar)\x.ps1" BARRA (substituicao no diretorio)'                2 "$(p '& "$(gerar)\x.ps1"')"
+gate '& "$t\git.cmd" add -A BARRA (so .ps1 libera; revisao de seguranca)'   2 "$(p '& "$t\git.cmd" add -A')"
+gate '& "$t\GIT.EXE" add -A BARRA (maiusculas)'                            2 "$(p '& "$t\GIT.EXE" add -A')"
+gate '& "$t\git.exe " add -A BARRA (espaco no fim do nome)'                2 "$(p '& "$t\git.exe " add -A')"
 gate '. x.ps1 BARRA (dot-source continua opaco)'                             2 "$(p '. x.ps1')"
 # contraprovas de super-bloqueio: chave/parenteses DENTRO de aspas nao muda
 # nada — a mensagem/argumento continua UMA palavra so, igual antes.
