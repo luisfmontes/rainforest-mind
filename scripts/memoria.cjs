@@ -345,6 +345,13 @@ function limparMarcaDagua(conexao) {
   }
 }
 
+// Migrações 0 e 0b: só "coluna duplicada" (corrida entre duas conexões) é ok. Qualquer outro
+// erro, em especial banco ocupado, sobe: engolir deixaria a coluna ausente e a sessão seguinte
+// seria marcada como falha permanente (#436, D6).
+function engolirSoColunaDuplicada(e) {
+  if (!String(e.message).includes('duplicate column')) throw e;
+}
+
 // Executa o schema SQL no banco.
 function criarSchema(conexao, opcoes = {}) {
   const caminhoSchema = path.resolve(__dirname, 'esquema-memoria.sql');
@@ -422,7 +429,7 @@ function criarSchema(conexao, opcoes = {}) {
       conexao.exec(`ALTER TABLE uso_memoria ADD COLUMN canal TEXT NOT NULL DEFAULT 'abertura'`);
     }
   } catch (e) {
-    // não trava a abertura do banco; pontuarSessao falharia e a sessão seria marcada
+    engolirSoColunaDuplicada(e);
   }
 
   // Migração 0b: contagem de buscas ativas por sessão (D9/D10: só inteiros).
@@ -434,7 +441,7 @@ function criarSchema(conexao, opcoes = {}) {
       }
     }
   } catch (e) {
-    // idem acima
+    engolirSoColunaDuplicada(e);
   }
 
   // Migração 1: separar "visto" de "processado" na marca_dagua.
