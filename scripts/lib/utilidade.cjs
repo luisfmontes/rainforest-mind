@@ -687,6 +687,21 @@ function ehBancoOcupado(e) {
   return Boolean(e) && e.code === 'ERR_SQLITE_ERROR' && /database is (locked|busy)/.test(String(e.message || ''));
 }
 
+// D6: o esquema de uso tem de estar completo (coluna `canal` e as 3 de buscas) antes de qualquer
+// INSERT. Banco que ainda não migrou (o ALTER pegou BUSY) falharia com "no column named canal",
+// que não casa `ehBancoOcupado`, e a sessão sairia da fila para sempre.
+function esquemaDeUsoCompleto(conexao) {
+  const nomes = (tabela) => conexao.prepare(`PRAGMA table_info(${tabela})`).all().map((c) => c.name);
+  const uso = nomes('uso_memoria');
+  const sessoes = nomes('uso_memoria_sessoes');
+  return uso.includes('canal') && ['buscas_principal', 'buscas_subagente', 'subagentes'].every((c) => sessoes.includes(c));
+}
+
+// Devolve a fila inteira como adiada: nenhuma sessão é marcada, todas voltam na próxima passada.
+function adiarTudo(pendentes) {
+  return { pontuadas: 0, semTranscrito: 0, servidasSemId: 0, falharam: 0, adiadas: pendentes.length, pendentesParaProxima: 0, total: pendentes.length };
+}
+
 /**
  * Pontua toda sessão da `marca_dagua` sem linha em `uso_memoria_sessoes`
  * (D7), até TETO_PONTUAR sessões COM transcrito por passada (Tarefa 7), as
@@ -716,6 +731,7 @@ function pontuarSessoesPendentes(conexao) {
        ORDER BY m.processada_em ASC`
     )
     .all();
+  if (!esquemaDeUsoCompleto(conexao)) return adiarTudo(pendentes);
 
   let semTranscrito = 0;
   const comTranscrito = [];
