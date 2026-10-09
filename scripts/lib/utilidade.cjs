@@ -791,6 +791,8 @@ function idadeEmDias(conexao, origem, refId) {
 const REGUA_D7 = { util: 0.4, perda: 1 / 3 };
 const BASE_D7 = { dia: '2026-10-08', util: '27%', perdas: '171 de 255' };
 const NOTA_UTIL = 0.5;
+// D3: servida de nota nula (toda a memória estava no pedido) não foi medida e fica fora da conta.
+const SQL_MEDIDA = 'servida = 1 AND nota IS NOT NULL';
 
 function gerarRelatorio(conexao) {
   let sessoes = [];
@@ -802,14 +804,20 @@ function gerarRelatorio(conexao) {
   if (sessoes.length === 0) return 'nenhuma sessão pontuada ainda';
 
   const temServida = new Set(
-    conexao.prepare(`SELECT DISTINCT sessao FROM uso_memoria WHERE servida = 1`).all().map((r) => r.sessao)
+    conexao.prepare(`SELECT DISTINCT sessao FROM uso_memoria WHERE ${SQL_MEDIDA}`).all().map((r) => r.sessao)
   );
   const sessoesComServida = sessoes.filter((s) => temServida.has(s.sessao));
   const semServida = sessoes.length - sessoesComServida.length;
 
+  // Servidas de nota nula: não medidas, fora da conta. Só aparecem quando existem.
+  const nulas = conexao
+    .prepare(`SELECT COUNT(*) n, COUNT(DISTINCT sessao) s FROM uso_memoria WHERE servida = 1 AND nota IS NULL`)
+    .get();
+  const linhaNulas = `servidas fora da conta (toda a memória estava no pedido): ${nulas.n} em ${nulas.s} sessão(ões)`;
+
   const total = sessoesComServida.length;
   if (total === 0) {
-    return `${semServida} sessão(ões) sem servida fora da conta\nnenhuma sessão com servida para medir a régua D9`;
+    return `${semServida} sessão(ões) sem servida fora da conta\n${nulas.n > 0 ? linhaNulas + '\n' : ''}nenhuma sessão com servida para medir a régua D9`;
   }
 
   const linhas = [];
@@ -818,13 +826,14 @@ function gerarRelatorio(conexao) {
   if (semServida > 0) {
     linhas.push(`${semServida} sessão(ões) sem servida fora da conta`);
   }
+  if (nulas.n > 0) linhas.push(linhaNulas);
 
   let sessoesComPerda = 0;
   const comPerda = new Set();
   const naoServidasComPerda = [];
 
   for (const { sessao } of sessoesComServida) {
-    const melhorRow = conexao.prepare(`SELECT MAX(nota) n FROM uso_memoria WHERE sessao = ? AND servida = 1`).get(sessao);
+    const melhorRow = conexao.prepare(`SELECT MAX(nota) n FROM uso_memoria WHERE sessao = ? AND ${SQL_MEDIDA}`).get(sessao);
     const melhorNota = melhorRow && melhorRow.n != null ? melhorRow.n : 0;
 
     const naoServidas = conexao
@@ -880,7 +889,7 @@ function gerarRelatorio(conexao) {
       .prepare(
         `SELECT COUNT(DISTINCT sessao) y,
                 COUNT(DISTINCT CASE WHEN nota >= ? THEN sessao END) x
-         FROM uso_memoria WHERE servida = 1 AND canal = ?`
+         FROM uso_memoria WHERE ${SQL_MEDIDA} AND canal = ?`
       )
       .get(NOTA_UTIL, canal);
     const pct = r.y > 0 ? Math.round((100 * r.x) / r.y) : 0;
