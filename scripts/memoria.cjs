@@ -349,6 +349,16 @@ function limparMarcaDagua(conexao) {
 // Migrações 0 e 0b: só "coluna duplicada" (corrida entre duas conexões) é ok. Qualquer outro
 // erro, em especial banco ocupado, sobe: engolir deixaria a coluna ausente e a sessão seguinte
 // seria marcada como falha permanente (#436, D6).
+// Migrações 1 e 4 (#460): confere a coluna antes do ALTER, como as 0 e 0b.
+function adicionarColunaSeFaltar(conexao, tabela, coluna, tipo) {
+  try {
+    const cols = conexao.prepare(`PRAGMA table_info(${tabela})`).all();
+    if (cols.length > 0 && !cols.some((c) => c.name === coluna)) conexao.exec(`ALTER TABLE ${tabela} ADD COLUMN ${coluna} ${tipo}`);
+  } catch (e) {
+    engolirSoColunaDuplicada(e);
+  }
+}
+
 function engolirSoColunaDuplicada(e) {
   if (!String(e.message).includes('duplicate column')) throw e;
 }
@@ -451,19 +461,10 @@ function criarSchema(conexao, opcoes = {}) {
   // - offset_processado: tamanho processado pela passada de LLM (observar.cjs)
   // - A recuperação detecta (offset_visto > offset_processado) mas não avança offset_processado
   // Esta migração é idempotente: ADD COLUMN IF NOT EXISTS garante segurança.
-  try {
-    // Tentar adicionar offset_processado. Se já existir, será no-op.
-    conexao.exec(`
-      ALTER TABLE marca_dagua ADD COLUMN offset_processado INTEGER DEFAULT 0;
-    `);
-  } catch (e) {
-    // Se falhar com "duplicate column name", é porque já existe — ok.
-    // Qualquer outro erro é inesperado, mas não trava a sessão (é schema creation).
-    if (!e.message.includes('duplicate column')) {
-      // Nota: não relançamos. Schema pode estar parcialmente aplicado
-      // (offset_processado já existe), e é ok continuar.
-    }
-  }
+  // #460: só engole "coluna duplicada"; banco ocupado sobe, e a passada tenta de novo. O ALTER
+  // só roda se a coluna faltar, como nas 0 e 0b (medido: em banco já migrado o SQLite acusa a
+  // duplicada antes de pedir a trava, então a guarda poupa a exceção, não um BUSY).
+  adicionarColunaSeFaltar(conexao, 'marca_dagua', 'offset_processado', 'INTEGER DEFAULT 0');
 
   // Se a tabela é nova, offset e offset_processado são criados da mesma forma
   // na criação inicial. Se é legado, offset já existe (será usado como offset_visto)
@@ -504,17 +505,7 @@ function criarSchema(conexao, opcoes = {}) {
   // Tarefa 4 (D4): consolidar marca observações já consolidadas, para não reconsolidar.
   // ADD COLUMN IF NOT EXISTS garante que roda só uma vez — a coluna já existe em
   // novos bancos (schema acima), e é adicionada em legados (sem erro se já existe).
-  try {
-    conexao.exec(`
-      ALTER TABLE observacoes ADD COLUMN consolidada_em TEXT;
-    `);
-  } catch (e) {
-    // Se falhar com "duplicate column name", é porque já existe — ok.
-    // Qualquer outro erro é inesperado, mas não trava a sessão.
-    if (!e.message.includes('duplicate column')) {
-      // Nota: não relançamos — a coluna pode estar parcialmente aplicada.
-    }
-  }
+  adicionarColunaSeFaltar(conexao, 'observacoes', 'consolidada_em', 'TEXT');
 
   // Migração 5: migração do FTS legado (C1).
   // Achado: CREATE VIRTUAL TABLE IF NOT EXISTS observacoes_fts é no-op quando
