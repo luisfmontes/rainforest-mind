@@ -326,6 +326,8 @@ const registro = (versao: string) =>
       'rainforest-mind@rainforest-mind': [
         { scope: 'user', installPath: `<home>/plugins/cache/rainforest-mind/rainforest-mind/${versao}`, version: versao, installedAt: '2026-08-08T15:56:01.994Z', lastUpdated: '2026-10-09T13:47:15.749Z' },
       ],
+      // Outro plugin instalado no escopo user, fora da lista padrao: so a opcao `plugins` o traz.
+      'plugin-x@mkt-x': [{ scope: 'user', installPath: '<home>/plugins/cache/mkt-x/plugin-x/2.0.0', version: '2.0.0', installedAt: '2026-08-08T15:56:01.994Z', lastUpdated: '2026-10-09T13:47:15.749Z' }],
     },
   })
 
@@ -395,4 +397,12 @@ test('plugins-em-dia: a abertura roda sozinha, a trava de 30 min segura a segund
   const r = await $.command.run({ command: 'plugins-em-dia', args: '' } as never)
   expect(String((r as any).text)).toContain('tudo em dia (rainforest-mind 1.54.0)')
   expect(s.cli.length).toBe(rodou * 2)
+})
+
+test('plugins-em-dia: a opcao plugins chega ao mod e troca a lista', { options: { plugins: ['plugin-x@mkt-x'] } }, async ($, on) => {
+  const { s } = await montarPlugins($, on)
+  const r = await $.command.run({ command: 'plugins-em-dia', args: '' } as never)
+  // so o plugin da opcao entra: o rainforest-mind esta instalado mas nao esta na lista
+  expect(s.cli.map(a => a.slice(4).join(' '))).toEqual(['plugin marketplace update mkt-x', 'plugin update plugin-x@mkt-x --scope user'])
+  expect(String((r as any).text)).toContain('tudo em dia (plugin-x 2.0.0)')
 })
