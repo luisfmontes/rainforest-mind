@@ -24,9 +24,16 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-09",
-    "tarefas_ok": 2,
+    "tarefas_ok": 3,
     "tarefas": 6,
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "auditor-busca",
+        "tarefa": "auditoria do caminho de busca restante em pr.tsx (leitura)",
+        "desde": "2026-10-09T16:10:00-03:00",
+        "sessao": "2fa5b85b-bd65-4f9c-9b7b-9c53e2cc811d"
+      }
+    ],
     "carimbos": [
       {
         "tarefa": 1,
@@ -41,9 +48,20 @@
         "iteracao": 1,
         "sessao": "2fa5b85b-bd65-4f9c-9b7b-9c53e2cc811d",
         "ts": "2026-10-09T18:15:17.480Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "f4a9f21b",
+        "iteracao": 1,
+        "sessao": "2fa5b85b-bd65-4f9c-9b7b-9c53e2cc811d",
+        "ts": "2026-10-09T18:24:09.014Z"
       }
     ],
-    "em": "2026-10-09"
+    "em": "2026-10-09",
+    "pendentes": [
+      "tarefa-3: achado untrusted-search-path restante em pr.tsx sob auditoria",
+      "tarefa-4: medicao na conta de trabalho com o usuario"
+    ]
   },
   "revisar": {
     "status": "pendente"
