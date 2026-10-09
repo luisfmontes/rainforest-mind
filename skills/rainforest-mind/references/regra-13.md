@@ -45,6 +45,15 @@ de uma frase: existe ação futura que isso destrava? Não existindo, não é id
 Episódio misto separa em dois registros, cada metade no seu lugar — nunca
 espremer o fato dentro de um `ao_colher` inventado para preencher o campo.
 
+**Terceiro destino: vocabulário de domínio.** Correção que fixa como se diz um
+termo do domínio do repo não é método nem fato do ambiente — é verbete. Pelo
+mesmo teste de uma frase: método que muda o futuro vira observação no
+`ideias.jsonl`; fato do ambiente vai para a memória ou o `CLAUDE.md`; termo de
+domínio, com o que é, onde mora e um cenário real, vira proposta de verbete via
+`/glossario` (ação `propor`), que o Luís aprova e entra no repo por commit e PR.
+Vocabulário pessoal dele (`pode aprovar = merge`, `atividade = PSA`) e pegadinha
+de ferramenta seguem na memória, fora do glossário (D3, D12).
+
 > 2026-08-14: uma linha escrita à mão no `ideias.jsonl` misturava fato ("o REST
 > volta sozinho em até 2 min") com método ("checar o ciclo normal antes de
 > afirmar falha"). Convertê-la preservando as duas dentro de uma observação foi

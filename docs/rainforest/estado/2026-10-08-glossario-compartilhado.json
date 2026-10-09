@@ -1,0 +1,298 @@
+{
+  "slug": "2026-10-08-glossario-compartilhado",
+  "titulo": "Glossário de domínio compartilhado por repo (GLOSSARY.md)",
+  "criado_em": "2026-10-08",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-08-glossario-compartilhado.md",
+    "em": "2026-10-08"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-08-glossario-compartilhado.md",
+    "tarefas": 14,
+    "paralelas": [
+      1,
+      2
+    ],
+    "em": "2026-10-08"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-08",
+    "tarefas_ok": 22,
+    "tarefas": 22,
+    "em_voo": [],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "33a0d6b",
+        "iteracao": 1,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:22:32.360Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "33a0d6b",
+        "iteracao": 1,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:22:32.360Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "33a0d6b",
+        "iteracao": 2,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:29:49.229Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "65404dd",
+        "iteracao": 1,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:29:49.229Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "33a0d6b",
+        "iteracao": 2,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:30:57.196Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "33a0d6b",
+        "iteracao": 3,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:30:57.196Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "3e592eb",
+        "iteracao": 1,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:30:57.196Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "3e592eb",
+        "iteracao": 1,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:30:57.196Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "3e592eb",
+        "iteracao": 1,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:30:57.196Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "3e592eb",
+        "iteracao": 2,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:30:57.196Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "36335a3",
+        "iteracao": 1,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:44:01.300Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "36335a3",
+        "iteracao": 1,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-08T20:44:01.300Z"
+      },
+      {
+        "tarefa": 16,
+        "hash_base": "97509d5",
+        "iteracao": 1,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-09T01:41:26.427Z"
+      },
+      {
+        "tarefa": 20,
+        "hash_base": "97509d5",
+        "iteracao": 1,
+        "sessao": "95ff1d9f-c2ab-42e8-a083-1e340333150c",
+        "ts": "2026-10-09T01:41:26.427Z"
+      }
+    ],
+    "em": "2026-10-08",
+    "comando": "bash scripts/varrer-baterias.sh --shard 1/2 ; bash scripts/varrer-baterias.sh --shard 2/2",
+    "saida": "as 92 baterias passaram ; as 105 baterias passaram (197 = --listar)",
+    "sensor_externo": "bash scripts/varrer-baterias.sh",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-glossario.cjs, termo no fim de palavra maior nao casa (contrafluxo)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-ponte-glossario.sh, alvo com GLOSSARIO.md recebe a linha nos tres agentes"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-glossario.sh, Territorio e territorio sao o mesmo termo (duplicado recusa)"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-glossario-prompt.cjs, prompt com termo do glossario injeta so o verbete casado"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-glossario-agente.cjs, briefing com termo do glossario ganha o verbete no fim do prompt"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-ponte-glossario.sh, ponte gerada com GLOSSARIO.md confere verde"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "documento de skill; exemplo passa no conferidor real"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "texto de regra na referencia; nucleo intacto por decisao do Luis"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "documento de dominio; conferidor e hook reais leem o arquivo"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "pulada por decisao do Luis: memorias sao conduta, ficaram inteiras com linha de ponteiro"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "n/a",
+        "motivo": "passo de CI; comando extraido do YAML passa no real e reprova o quebrado (0 1)"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "n/a",
+        "motivo": "documentacao conferida contra as constantes do codigo"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "n/a",
+        "motivo": "bump de versao; conferir-versao exit 0"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "n/a",
+        "motivo": "integracao; laco inteiro 196/196"
+      },
+      {
+        "tarefa": 15,
+        "resultado": "vermelho",
+        "fixture": "testa-glossario-prompt.cjs, sem raiz de dados injeta o glossario sem dedup"
+      },
+      {
+        "tarefa": 16,
+        "resultado": "vermelho",
+        "fixture": "testa-glossario-prompt.cjs, dedup corrompido ainda injeta e e regravado"
+      },
+      {
+        "tarefa": 17,
+        "resultado": "vermelho",
+        "fixture": "testa-glossario.cjs, GLOSSARIO.md acima do teto nao e lido pelo hook"
+      },
+      {
+        "tarefa": 18,
+        "resultado": "n/a",
+        "motivo": "texto de skill (excecao de conduta no migrar)"
+      },
+      {
+        "tarefa": 19,
+        "resultado": "n/a",
+        "motivo": "cenarios do GLOSSARIO.md; conferir-glossario exit 0"
+      },
+      {
+        "tarefa": 20,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-ponte-glossario.sh, edicao a mao em AGENTS.md sugere --agente codex"
+      },
+      {
+        "tarefa": 21,
+        "resultado": "n/a",
+        "motivo": "documentacao; grep 0, teto 256 KB true, encoding exit 0"
+      },
+      {
+        "tarefa": 22,
+        "resultado": "n/a",
+        "motivo": "integracao; laco inteiro 197/197 (92+105)"
+      }
+    ],
+    "achados_para_revisar": [
+      "P1 hook do pedido sai sem raiz de dados antes do glossario (memoria-assunto-prompt.cjs:139)",
+      "cenario de worktree de agente cita worktree temporario",
+      "D4 nao distingue memoria de termo de memoria de conduta (design, Em aberto)",
+      "conferir-ponte mensagens antigas mandam regerar com --agente agents; anterior a este fluxo"
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "64c74c05d8dc34c378f95beddaa011458195e0f5",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a1fb301e030863805",
+        "veredito": "ok",
+        "em": "2026-10-08",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/95ff1d9f-c2ab-42e8-a083-1e340333150c/subagents/agent-a1fb301e030863805.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-08",
+    "achados": 2,
+    "lista": [
+      "1 alta: memoria-assunto-prompt.cjs:139 sem raiz de dados nao injeta glossario",
+      "2 media: dedup corrompido ou sem permissao mata o glossario",
+      "3 media: skill migrar sem excecao para memoria de conduta (D4)",
+      "4 media/baixa: GLOSSARIO worktree de agente cita worktree removido",
+      "5 baixa: GLOSSARIO fluxo cita mensagem do marcar, nao do exigir",
+      "6 baixa pre-existente: conferir-ponte:521/545/565 --agente agents",
+      "7 baixa: readFileSync do glossario sem limite de tamanho; conteudo entra verbatim"
+    ],
+    "base": "31c96e47aa1a78b1a7ec37b909d269d3150fa857",
+    "head": "64c74c05d8dc34c378f95beddaa011458195e0f5",
+    "achados_baixos": [
+      "A: nome da empresa na varredura linha 142 (repo publico) -> corrigido no verificar",
+      "B: cenarios de plantar e colher dependem de ideia local -> corrigido no verificar"
+    ]
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-08-glossario-compartilhado ; node scripts/conferir-glossario.cjs --exigir --caminhos ; node scripts/conferir-categoria.cjs ; node scripts/conferir-versao.cjs",
+    "saida": "exit 0: tarefas 1-6, 15, 16, 17, 20 vermelho; demais puladas n/a ; GLOSSARIO.md: 9 verbete(s) conforme(s) ; Total de pecas varridas: 57, CONFERIDO ; ok versao 1.52.0 (origin/main 1.51.0). Laco 197/197 (92+105) na tarefa 22.",
+    "em": "2026-10-08"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 451,
+    "em": "2026-10-08"
+  }
+}

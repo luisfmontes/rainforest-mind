@@ -1,0 +1,148 @@
+Data: 2026-10-08
+Termos: glossario, GLOSSARY, contexto-compartilhado, vocabulario, dominio, CONTEXT.md
+
+$ gh issue list --state all --search "glossario" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "GLOSSARY" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "contexto-compartilhado" --limit 200 --json number,title,state
+[{"number":270,"state":"CLOSED","title":"Linha de mutante sai como 'FALHA <nome real>' e se confunde com falha de verdade no log"},{"number":277,"state":"CLOSED","title":"foco.cjs nao tem comando para registrar avanco: a regra 5 obriga o que a 17 proibe"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"},{"number":27,"state":"CLOSED","title":"testa-saude.sh fica vermelha por rodar de worktree, nao por defeito no codigo — e e onde a esteira roda"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"},{"number":173,"state":"CLOSED","title":"O gate de publicacao barra merge de conteudo que ja esta na main — e engole o git add da mesma chamada"}]
+
+
+$ gh issue list --state all --search "vocabulario" --limit 200 --json number,title,state
+[{"number":397,"state":"CLOSED","title":"conferir-fluxo cobertura aceita plano que o executar não consegue consumir"},{"number":270,"state":"CLOSED","title":"Linha de mutante sai como 'FALHA <nome real>' e se confunde com falha de verdade no log"},{"number":93,"state":"CLOSED","title":"A regua do batedor mede INSTALAR, mas o que a gente faz e ENXERTAR — 29 de 40 vereditos sao 'nao acopla'"},{"number":260,"state":"CLOSED","title":"conferir-publicacao: 'token' sozinho vira credencial, e a mensagem nao mostra o trecho casado"}]
+
+
+$ gh issue list --state all --search "dominio" --limit 200 --json number,title,state
+[{"number":264,"state":"CLOSED","title":"Portaria: manifesto de agentes SUBSTITUI em vez de somar, e agente de outro plugin nunca passa"},{"number":302,"state":"CLOSED","title":"Eval de gatilho: nenhuma bateria prova que uma skill e chamada (nem que precisa existir)"},{"number":260,"state":"CLOSED","title":"conferir-publicacao: 'token' sozinho vira credencial, e a mensagem nao mostra o trecho casado"}]
+
+
+$ gh issue list --state all --search "CONTEXT.md" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "glossario" --limit 200 --json number,title,state
+[{"number":78,"state":"MERGED","title":"design: a camada de conhecimento sai do Obsidian e vira rota, nao migracao"}]
+
+
+$ gh pr list --state all --search "GLOSSARY" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "contexto-compartilhado" --limit 200 --json number,title,state
+[{"number":60,"state":"MERGED","title":"Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture"}]
+
+
+$ gh pr list --state all --search "vocabulario" --limit 200 --json number,title,state
+[{"number":140,"state":"MERGED","title":"Segunda opiniao cross-model: auditor de outra familia no revisar, e o transporte de CLI externo em um lugar so"},{"number":119,"state":"MERGED","title":"Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos"},{"number":109,"state":"MERGED","title":"Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler"},{"number":50,"state":"MERGED","title":"Aposenta o gemeo python do ideias"},{"number":304,"state":"MERGED","title":"Notas de atualizacao (CHANGELOG) e o adendo que mede o D2 do contrato de territorio"},{"number":191,"state":"MERGED","title":"Plano da camada Obsidian: a skill montar-corpus, com dois cortes de escopo"},{"number":177,"state":"MERGED","title":"Fluxo 12: régua absorve o bar.md de mecanismos e o preflight de renderização"},{"number":19,"state":"MERGED","title":"Bateria que so passa na maquina do dono nao e evidencia: as duas ultimas ficam hermeticas (#16)"},{"number":52,"state":"MERGED","title":"Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo"},{"number":87,"state":"MERGED","title":"auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API"}]
+
+
+$ gh pr list --state all --search "dominio" --limit 200 --json number,title,state
+[{"number":406,"state":"MERGED","title":"Revisao bimestral 2026-10-05: 214 observacoes triadas, v1.41.0"},{"number":304,"state":"MERGED","title":"Notas de atualizacao (CHANGELOG) e o adendo que mede o D2 do contrato de territorio"},{"number":217,"state":"MERGED","title":"Contrato de territorio: AdvPL vira o primeiro, e o repo publico perde os identificadores de trabalho"},{"number":310,"state":"MERGED","title":"zerar-issues-8: palavra reservada e bash \"$t\" (#309), gemeo Python (#303), eval (#302)"},{"number":26,"state":"MERGED","title":"Nasce a skill analisar: uma pergunta por vez, e o achado passa pela critica antes de virar conclusao"}]
+
+
+$ gh pr list --state all --search "CONTEXT.md" --limit 200 --json number,title,state
+[]
+
+
+$ git ls-remote --heads origin | grep -F "glossario"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "GLOSSARY"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "contexto-compartilhado"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "vocabulario"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "dominio"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "CONTEXT.md"
+(vazio)
+
+$ git log --all --grep="glossario" --oneline
+4fd6d9e0 design: a camada de conhecimento sai do Obsidian e vira rota, nao migracao (#78)
+29b44c0a design: a camada de conhecimento sai do Obsidian e vira rota, nao migracao (#78)
+
+$ git log --all --grep="GLOSSARY" --oneline
+(vazio)
+
+$ git log --all --grep="contexto-compartilhado" --oneline
+(vazio)
+
+$ git log --all --grep="vocabulario" --oneline
+537ea330 revisar ok; achados menores da revisao corrigidos
+292ac316 extracao de veredito: aceita marcacao so nas pontas da ultima linha (D2/D4)
+5b895414 livro: veredito do beads no vocabulario fechado da trilha
+d95dae8c teste: bateria de hooks/veredito-revisor.cjs (tarefa 12)
+bdf4b453 estado: marcar revisar reprovado exige veredito reprovado gravado (D9)
+8fdb478b design D5: corrige a procedencia que a A1 ja tinha corrigido na tabela
+af46176f executar: corrige os quatro achados do revisar
+510150c2 brainstorm: design do invariante de comportamento nas skills de acao
+73b5eb37 Notas de atualizacao passam a existir, e o D2 medido de fora
+2f339bbb integra tarefa 1: marca de categoria em 41 pecas e o conferidor que a exige
+0e2bc03c guias-sensores: marca @categoria em 40 pecas e o conferidor que exige
+63db97b6 design: guias e sensores, cinco enxertos do Harness Engineering
+3aad5ec5 Ponytail entra no livro de repos, e o plano para de mentir no cabecalho
+3ac0ceff Plano da camada Obsidian: a skill montar-corpus, com dois cortes de escopo
+41220228 Fluxo 12: exit code do segunda-opiniao nao discrimina veredito
+f073833d Verificar fechado: 5/5 mutacoes vermelhas contra o artefato final
+cdcbf5c5 Verificar fechado: 5/5 mutacoes vermelhas contra o artefato final
+af1f9899 Tarefa 4: Segunda opinião cross-model — caminho próprio com contrato de entrada e veredito de uma linha
+2f98b8b6 Tarefa 4: Segunda opinião cross-model — caminho próprio com contrato de entrada e veredito de uma linha
+b2582e39 Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos (#119)
+ea9d0286 Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos (#119)
+ebe9dbb1 Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler (#109)
+2fd34af9 Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler (#109)
+20c88be7 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+d427f732 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+63c8236d Aposenta o gemeo python do ideias (#50)
+fa50f1c5 Aposenta o gemeo python do ideias (#50)
+081c97cd Tres ajustes pos-merge: a regra que convidava o erro, a trava de versao, e o teste que herdava dado quebrado (#11)
+aab67107 Tres ajustes pos-merge: a regra que convidava o erro, a trava de versao, e o teste que herdava dado quebrado (#11)
+08991014 Nasce o status `descartada`: a ideia que nao vai acontecer sai da lista sem virar colhida
+a12edfb7 Nasce o status `descartada`: a ideia que nao vai acontecer sai da lista sem virar colhida
+c9acd299 A regra das tres portas para de ser lembrete e vira lista unica com mutacao
+22963a8e A regra das tres portas para de ser lembrete e vira lista unica com mutacao
+fe9d84bc Caminho de projeto entra no setup, e os vigias ganham interruptor
+c30165a2 Caminho de projeto entra no setup, e os vigias ganham interruptor
+4ef495e6 Versao 0.54.0: a ponte, o port do conferir-entrega e a sonda opt-in
+9314cf13 Versao 0.54.0: a ponte, o port do conferir-entrega e a sonda opt-in
+64fafd7a Um slug por REPO, e o vocabulario ganha como desfazer o slug errado
+f10ae22e Um slug por REPO, e o vocabulario ganha como desfazer o slug errado
+20108ea5 O campo projeto vira slug de vocabulario fechado, e o caminho sai do dado
+e7d48f43 O campo projeto vira slug de vocabulario fechado, e o caminho sai do dado
+7af49225 /semear: propoe o que criar neste repo a partir do que ele ja tropecou
+3a750bf7 /semear: propoe o que criar neste repo a partir do que ele ja tropecou
+cfd62bfc A esteira ganha maquina de estados que RECUSA, em vez de pedir por favor
+deb1411b A esteira ganha maquina de estados que RECUSA, em vez de pedir por favor
+4c3674f5 Quatro agentes novos por funcao, e a regra 10 encolhe carregando sete nomes
+9e96e72c Quatro agentes novos por funcao, e a regra 10 encolhe carregando sete nomes
+
+$ git log --all --grep="dominio" --oneline
+2c1a5a76 E7: brainstorm pergunta alvo, convive-ou-substitui e cenario do dominio
+73b5eb37 Notas de atualizacao passam a existir, e o D2 medido de fora
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+b0133d41 regra 10: diz onde o agentes.extra.json NAO vai, e o caso do outro dev
+dbab58f9 Contrato de territorio: AdvPL vira o primeiro, e a fronteira vira restricao de publicacao
+4c3674f5 Quatro agentes novos por funcao, e a regra 10 encolhe carregando sete nomes
+9e96e72c Quatro agentes novos por funcao, e a regra 10 encolhe carregando sete nomes
+
+$ git log --all --grep="CONTEXT.md" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+{"id":"pedido-de-fluxo-lido-como-pedido-de-dominio","titulo":"Ele pediu o FLUXO do plugin do trabalho mais de uma vez e eu respondi sobre Protheus, mandando deixar pra la"}
+{"id":"estacao-prometida-no-readme-sem-campo-no-script","titulo":"Li o README inteiro e nao vi que a estacao era a unica palavra do vocabulario sem mecanismo"}
+{"id":"vocabulario-do-sistema-estreitou-o-pedido","titulo":"O verbo do sistema ('colher') me fez ler o pedido como operação de arquivo, e o menu de três opções não tinha a resposta dele"}
+{"id":"obs-2026-09-02-dominio-de-codigo-sem-cenario","titulo":"Dominio de codigo proposto so com rotulo travou a decisao"}
+{"id":"glossario-compartilhado-por-repo","titulo":"Glossario de dominio versionado no repo (GLOSSARY.md), lido por quem usar Claude ou Codex ali — contexto compartilhado da squad"}
+
+
