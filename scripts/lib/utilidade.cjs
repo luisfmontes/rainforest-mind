@@ -23,6 +23,7 @@ const path = require('path');
 const { formatarObservacao } = require('../../hooks/lib/memoria-sessao.cjs');
 // Módulo folha (#435, D2): não requer scripts/memoria.cjs, então não reabre o circular acima.
 const { canonicoDoCaminho } = require('./projeto-canonico.cjs');
+const { ehBuscaAtiva } = require('./busca-ativa.cjs');
 
 // Termo raro = aparece em até LIMIAR_DF observações do corpus (Tarefa 2, D5).
 // Sem dado de calibração ainda (a ideia é medir por duas semanas antes de
@@ -504,10 +505,9 @@ function buscarContrafactual(conexao, texto, jaServidos, textosServidos) {
   return resultado;
 }
 
-// Buscas ativas (D9): conta os tool_use de Bash/PowerShell cujo `input.command` contém `memoria.cjs buscar`
+// Buscas ativas (D9): conta os tool_use de Bash/PowerShell cujo `input.command` tem uma instrução `node <...>memoria.cjs buscar` (ehBuscaAtiva)
 // no transcrito principal e, somados, nos subagents/*.jsonl da sessão. Só
 // inteiros saem daqui (D10).
-const PADRAO_BUSCA = 'memoria.cjs buscar';
 function contarBuscasArquivo(arquivo) {
   let conteudo;
   try {
@@ -527,7 +527,7 @@ function contarBuscasArquivo(arquivo) {
     const c = e.message && e.message.content;
     if (e.type !== 'assistant' || !Array.isArray(c)) continue;
     for (const b of c) {
-      if (b && b.type === 'tool_use' && (b.name === 'Bash' || b.name === 'PowerShell') && b.input && typeof b.input.command === 'string' && b.input.command.includes(PADRAO_BUSCA)) n++;
+      if (b && b.type === 'tool_use' && (b.name === 'Bash' || b.name === 'PowerShell') && b.input && typeof b.input.command === 'string' && ehBuscaAtiva(b.input.command)) n++;
     }
   }
   return n;
