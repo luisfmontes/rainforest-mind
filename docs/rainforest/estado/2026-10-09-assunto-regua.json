@@ -26,7 +26,7 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-09",
-    "tarefas_ok": 3,
+    "tarefas_ok": 4,
     "tarefas": 12,
     "carimbos": [
       {
@@ -56,13 +56,20 @@
         "iteracao": 1,
         "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
         "ts": "2026-10-09T16:17:37.311Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "5955f7c0",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-09T16:50:11.451Z"
       }
     ],
     "em_voo": [
       {
         "agente": "executor",
-        "tarefa": "2 abertura grava ids",
-        "desde": "2026-10-09T12:00:00-03:00",
+        "tarefa": "5 nota desconta pedido",
+        "desde": "2026-10-09T13:00:00-03:00",
         "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76"
       }
     ],
