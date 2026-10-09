@@ -10,6 +10,12 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.53.2 — 2026-10-09
+
+- **O gate de staging deixa passar script rodado por `& "$pasta\script.ps1"`.** Com a variável só no diretório e o nome do
+  arquivo escrito por extenso, o PowerShell recebe o mesmo veredito do caminho todo literal. `& "$dir\git.exe" add -A`, `& "$t"`
+  sozinho, nome de arquivo em variável e qualquer executável que não seja `.ps1` continuam barrando.
+
 ## 1.53.1 — 2026-10-09
 
 - **`buscar --projeto` aceita caminho de worktree e barra no fim.** `C:/repo/.claude/worktrees/<nome>` e `C:/repo/` passam a

@@ -1,0 +1,9 @@
+{
+  "slug": "2026-10-09-gate-call-operator-variavel",
+  "titulo": "fluxo/gate-call-operator-variavel",
+  "criado_em": "2026-10-09",
+  "leve": {
+    "motivo": "falso positivo do gate de staging: & \"$t\\x.ps1\" (variavel so no diretorio) barrado como dinamico; conserto de ~10 linhas + testes, mesmo tratamento da #405",
+    "data": "2026-10-09"
+  }
+}
