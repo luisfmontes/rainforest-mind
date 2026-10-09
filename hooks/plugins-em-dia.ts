@@ -5,7 +5,7 @@
 // funcao declarada no topo deste arquivo; aos `.mjs` vao so valores.
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
-import { escolherExecutavel } from './pr-puro.mjs'
+import { escolherExecutavel, interpretadorDeLote, localizadores } from './pr-puro.mjs'
 import { LISTA_PADRAO, PERIODO_MS, acaoAposSubir, alvos, comandos, podeRodar, subiram, versoes } from './plugins-em-dia-puro.mjs'
 
 const claudeCaminho = atom({ plugin: 'rainforest-mind', key: 'pluginsEmDiaClaude' } as const, '')
@@ -34,7 +34,7 @@ async function caminhoDoCli($: EngineInterface): Promise<string | null> {
   } catch {
     cwd = ''
   }
-  for (const argv of [['where.exe', 'claude.exe', 'claude.cmd', 'claude.bat'], ['which', '-a', 'claude']]) {
+  for (const argv of localizadores('claude', await raizDoWindows($)) as string[][]) {
     try {
       const r = await $.process.run(argv, { cwd: $.plugin.root, timeoutMs: 10_000 })
       if (r.exitCode !== 0) continue
@@ -76,7 +76,7 @@ async function atualizar($: EngineInterface, lista: string[], recarregaSeguro: b
     return 'claude nao encontrado fora do repositorio; nada feito'
   }
   // No Windows o executavel do npm e um shim .cmd/.bat: sem shell o sistema nao o executa direto.
-  const prefixo = /\.(cmd|bat)$/i.test(cli) ? ['cmd', '/d', '/c', cli] : [cli]
+  const prefixo = /\.(cmd|bat)$/i.test(cli) ? [interpretadorDeLote(await raizDoWindows($)), '/d', '/c', cli] : [cli]
 
   const falhas: string[] = []
   for (const argv of comandos(ids) as string[][]) {
@@ -139,4 +139,13 @@ export const register: Register = (on, options) => {
       return { text: `plugins-em-dia falhou: ${String(err).slice(0, 160)}` }
     }
   })
+}
+
+// SystemRoot do ambiente; sem ele (ou se a leitura falhar) o localizador cai em C:\Windows.
+async function raizDoWindows($: EngineInterface): Promise<string | undefined> {
+  try {
+    return await $.env.get('SystemRoot')
+  } catch {
+    return undefined
+  }
 }

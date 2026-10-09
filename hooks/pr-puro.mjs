@@ -168,6 +168,34 @@ const dentro = (l, base) => {
   return x === y || x.startsWith(y + '/');
 };
 
+// Os proprios localizadores e o cmd vao por caminho absoluto: chamados pelo nome, o Windows
+// os procura primeiro na pasta atual, e com o plugin carregado de dentro de um repositorio
+// (--plugin-dir, claude plugin test) essa pasta e do repositorio (auditoria de 2026-10-09).
+export function raizDoSistema(systemRoot) {
+  const r = String(systemRoot || '').replace(/[\\/]+$/, '');
+  return /^[A-Za-z]:\\/.test(r + '\\') && absoluto(r) ? r : 'C:\\Windows';
+}
+
+export function localizadores(nome, systemRoot) {
+  const raiz = raizDoSistema(systemRoot);
+  return [
+    [raiz + '\\System32\\where.exe', nome + '.exe', nome + '.cmd', nome + '.bat'],
+    ['/usr/bin/which', '-a', nome],
+  ];
+}
+
+export function interpretadorDeLote(systemRoot) {
+  return raizDoSistema(systemRoot) + '\\System32\\cmd.exe';
+}
+
+// O gh do painel roda sozinho, com a pasta do repositorio como cwd; um core.fsmonitor
+// plantado no .git/config do repositorio rodaria no git que o gh chama. Desligado por env.
+export const AMBIENTE_GIT_SEGURO = {
+  GIT_CONFIG_COUNT: '1',
+  GIT_CONFIG_KEY_0: 'core.fsmonitor',
+  GIT_CONFIG_VALUE_0: 'false',
+};
+
 export function escolherExecutavel(saida, cwdSessao) {
   const linhas = String(saida || '').split(/\r?\n/).map((l) => l.trim()).filter((l) => l !== '');
   const base = cwdSessao;

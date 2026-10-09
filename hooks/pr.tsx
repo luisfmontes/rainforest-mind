@@ -15,7 +15,7 @@ import type {
   RainforestMindPrPendente,
   RainforestMindPrResumo,
 } from '../types'
-import { POLL_MS, QUIETO_MS, deveAcordar, donoConfere, escolherExecutavel, eventos, nota, resumir, virada } from './pr-puro.mjs'
+import { AMBIENTE_GIT_SEGURO, POLL_MS, QUIETO_MS, deveAcordar, donoConfere, escolherExecutavel, eventos, localizadores, nota, resumir, virada } from './pr-puro.mjs'
 
 const PANE = 'rainforest-mind-pr'
 const AJUDA = 'Uso: /pr [numero | url | fechar]'
@@ -105,7 +105,7 @@ async function cwdDaSessao($: EngineInterface): Promise<string | undefined> {
 async function caminhoDoGh($: EngineInterface, cwd: string | undefined): Promise<string | null> {
   const guardado = (await read($, prFerramentas)).gh
   if (guardado !== '') return guardado
-  for (const argv of [['where.exe', 'gh.exe', 'gh.cmd', 'gh.bat'], ['which', '-a', 'gh']]) {
+  for (const argv of localizadores('gh', await raizDoWindows($)) as string[][]) {
     try {
       const r = await $.process.run(argv, { cwd: $.plugin.root, timeoutMs: 10_000 })
       if (r.exitCode !== 0) continue
@@ -126,7 +126,7 @@ async function gh($: EngineInterface, argv: string[], cwdPreferido?: string) {
   const cwd = cwdPreferido ?? (await cwdDaSessao($))
   const caminho = await caminhoDoGh($, cwd)
   if (caminho === null) throw new Error('gh nao encontrado fora do repositorio')
-  return $.process.run([caminho, ...argv], { cwd, timeoutMs: 30_000 })
+  return $.process.run([caminho, ...argv], { cwd, env: AMBIENTE_GIT_SEGURO, timeoutMs: 30_000 })
 }
 
 // Login de quem esta logado no gh, uma vez por sessao. Vazio quando nao deu para saber.
@@ -356,4 +356,13 @@ export const register: Register = on => {
       return next(e)
     }
   })
+}
+
+// SystemRoot do ambiente; sem ele (ou se a leitura falhar) o localizador cai em C:\Windows.
+async function raizDoWindows($: EngineInterface): Promise<string | undefined> {
+  try {
+    return await $.env.get('SystemRoot')
+  } catch {
+    return undefined
+  }
 }

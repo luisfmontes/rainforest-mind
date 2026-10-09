@@ -348,6 +348,18 @@ caso("nota merged manda informar e limpar worktree/branch", () => {
 // A mutacao em `escolherExecutavel` (a linha `return linhas.find(...)` -> sem o filtro do cwd) e a
 // de `donoConfere` (`return Boolean(eu) && ...` -> `return true;`) sao rodadas por
 // `scripts/conferir-mutacao.cjs`; os dois casos abaixo precisam ficar vermelhos.
+caso("localizadores e cmd saem por caminho absoluto do sistema, nunca pelo nome", () => {
+  const raiz = "C:" + String.fromCharCode(92) + "WINDOWS";
+  const [onde, qual] = m.localizadores("gh", raiz);
+  igual(onde[0].toLowerCase(), (raiz + "/System32/where.exe").replace(/\//g, String.fromCharCode(92)).toLowerCase(), "where.exe absoluto");
+  igual(onde.slice(1), ["gh.exe", "gh.cmd", "gh.bat"], "extensoes");
+  igual(qual, ["/usr/bin/which", "-a", "gh"], "which absoluto");
+  afirma(/^[A-Za-z]:\\/.test(m.localizadores("gh", "")[0][0]), "sem SystemRoot o where.exe segue absoluto");
+  afirma(/^[A-Za-z]:\\/.test(m.localizadores("gh", "where")[0][0]), "SystemRoot relativo e descartado");
+  afirma(/\\System32\\cmd\.exe$/.test(m.interpretadorDeLote(raiz)), "cmd.exe absoluto");
+  igual(m.AMBIENTE_GIT_SEGURO, { GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "core.fsmonitor", GIT_CONFIG_VALUE_0: "false" }, "fsmonitor desligado");
+});
+
 caso("executavel dentro do repositorio da sessao e recusado", () => {
   const repo = "C:\\repo\\x\\gh.exe\r\nC:\\Program Files\\GitHub CLI\\gh.exe\r\n";
   igual(m.escolherExecutavel(repo, "C:/Repo/X"), "C:\\Program Files\\GitHub CLI\\gh.exe", "devia pular o gh.exe do repo (caixa e barras diferentes)");

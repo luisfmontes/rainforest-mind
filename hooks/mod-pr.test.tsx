@@ -84,14 +84,16 @@ async function montar($: any, on: any, surface: Surface, inicial: Record<string,
     eu: 'luisfmontes',
     localizador: `${GH_EXE}\r\n`,
     rodou: [] as string[],
+    ghEnv: [] as any[],
     toolFalha: false,
   }
   on('process.run', async (_$: any, e: any) => {
     s.rodou.push(String(e.argv[0]))
     // O localizador: where.exe acha o que s.localizador diz; o `which` nao existe aqui (exit 1).
-    if (e.argv[0] === 'where.exe') return saida(s.localizador)
+    if (/[\\/]system32[\\/]where\.exe$/i.test(String(e.argv[0]))) return saida(s.localizador)
     if (e.argv[0] === GH_EXE) {
       s.gh.push([...e.argv])
+      s.ghEnv.push(e.init?.env ?? null)
       if (e.argv[1] === 'api' && e.argv[2] === 'user') return saida(`${s.eu}\n`)
       if (e.argv[1] === 'api') return saida(THREADS_455)
       if (e.argv.includes('state,url,headRefName')) return s.retomada === null ? saida('', 1) : saida(JSON.stringify(s.retomada))
@@ -374,6 +376,23 @@ for (const surface of ['terminal', 'desktop'] as const) {
       expect(String((r as any).text)).toContain('gh nao encontrado fora do repositorio')
     })
   })
+
+  // Auditoria de 2026-10-09: chamado pelo nome, o localizador e procurado primeiro na pasta
+  // atual; e o gh, que roda na pasta do repositorio, nao pode herdar um core.fsmonitor plantado.
+  test(`todo processo vai por caminho absoluto e o gh com fsmonitor desligado (${surface})`, async ($, on) => {
+    const m = await montar($, on, surface, EM_CURSO)
+    const { s, relogio, comecar, caso } = m
+    await caso('/pr 455 e uma rodada de consulta', async () => {
+      await comecar()
+      await $.command.run({ command: 'pr', args: '455' } as never)
+      await relogio.advance(2 * MIN)
+      expect(s.rodou.length).toBeGreaterThan(0)
+      // `node` pelo nome vem do /painel (hooks/mod.tsx), anterior a este mod: Issue propria.
+      expect(s.rodou.filter(a => a !== 'node' && !/^([A-Za-z]:[\\/]|\/)/.test(a))).toEqual([])
+      expect(s.ghEnv.length).toBeGreaterThan(0)
+      expect(s.ghEnv.filter(env => !(env && env.GIT_CONFIG_KEY_0 === 'core.fsmonitor' && env.GIT_CONFIG_VALUE_0 === 'false'))).toEqual([])
+    })
+  })
 }
 
 // Registro REAL de plugins instalados (forma da versao 2): ids nome@marketplace, lista de
@@ -401,10 +420,11 @@ async function montarPlugins($: any, on: any) {
   })
   on('process.run', async (_$: any, e: any) => {
     // O localizador responde so pelo CLI do Claude; o gh do painel de PR nao existe aqui (exit 1).
-    if (e.argv[0] === 'where.exe') return e.argv.includes('claude.cmd') ? saida(s.localizador) : saida('', 1)
-    if (e.argv[0] !== 'cmd') return saida('', 1)
-    s.cli.push([...e.argv])
-    if (e.argv[0] === 'cmd' && e.argv.includes('update') && e.argv.includes('rainforest-mind@rainforest-mind')) s.versao = '1.54.0'
+    if (/[\\/]system32[\\/]where\.exe$/i.test(String(e.argv[0]))) return e.argv.includes('claude.cmd') ? saida(s.localizador) : saida('', 1)
+    // O cmd vai por caminho absoluto (%SystemRoot%\System32\cmd.exe), nunca pelo nome.
+    if (!/[\\/]system32[\\/]cmd\.exe$/i.test(String(e.argv[0]))) return saida('', 1)
+    s.cli.push(['cmd', ...e.argv.slice(1)])
+    if (e.argv.includes('update') && e.argv.includes('rainforest-mind@rainforest-mind')) s.versao = '1.54.0'
     return saida('ok')
   })
   on('command.run', { command: 'reload-plugins' }, async () => {
