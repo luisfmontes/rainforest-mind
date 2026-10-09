@@ -175,10 +175,33 @@
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "8bbd28ee10c08f045a00e6cfda2263a21f8317d2",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ad101bb8ddb5beb1c",
+        "veredito": "ok",
+        "em": "2026-10-09",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/3f823b5e-a8e7-4f91-bb68-e29874374c76/subagents/agent-ad101bb8ddb5beb1c.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-09",
+    "achados": 0,
+    "base": "279ec07fff11fb84f01293d09ce2cf864618f411",
+    "head": "8bbd28ee10c08f045a00e6cfda2263a21f8317d2",
+    "nao_bloqueantes": 6
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/varrer-baterias.sh",
+    "saida": "as 216 baterias passaram; criterios das tarefas 1-9 e 11 rodados um a um com exit 0 (14, 30, 3, 6, 9, 11, 4, 4, 13 ok; testa-versao 5 ok; conferir-versao 1.54.0); ensaio da tarefa 10 refeito pelo revisor numa copia do banco real: janela 56, refeitas 46, sem transcrito 10, pontuada_em preservado",
+    "sensor_externo": "bash scripts/varrer-baterias.sh",
+    "em": "2026-10-09"
   },
   "fechar": {
     "status": "pendente"
