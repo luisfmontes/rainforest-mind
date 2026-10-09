@@ -22,7 +22,28 @@
     "em": "2026-10-09"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-09",
+    "tarefas_ok": 2,
+    "tarefas": 6,
+    "em_voo": [],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "279ec07f",
+        "iteracao": 1,
+        "sessao": "2fa5b85b-bd65-4f9c-9b7b-9c53e2cc811d",
+        "ts": "2026-10-09T18:15:17.480Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "279ec07f",
+        "iteracao": 1,
+        "sessao": "2fa5b85b-bd65-4f9c-9b7b-9c53e2cc811d",
+        "ts": "2026-10-09T18:15:17.480Z"
+      }
+    ],
+    "em": "2026-10-09"
   },
   "revisar": {
     "status": "pendente"

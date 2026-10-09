@@ -20,7 +20,8 @@ const MOTIVOS = {
 
 function motivoDe(pr) {
   const m = String(pr.mergeStateStatus || '');
-  return MOTIVOS[m] ?? m.toLowerCase();
+  // Fora da tabela, so letras e _: o motivo entra na nota que o modelo le.
+  return MOTIVOS[m] ?? m.toLowerCase().replace(/[^a-z_]/g, '');
 }
 
 function resumirChecks(cs) {
@@ -125,21 +126,24 @@ export function quieto(ultimaMudancaMs, agoraMs) {
 }
 
 export function ehDaSessao({ origem, branch }) {
-  return origem === 'sessao' || /^fluxo\//.test(branch || '');
+  return origem === 'sessao' || (origem === 'retomada' && /^fluxo\//.test(branch || ''));
 }
 
-// Texto para o modelo: numero, titulo e a acao que cabe a cada virada.
+// Texto para o modelo: so o numero e a acao. Titulo, nomes de branch e corpo do PR sao
+// escritos por quem abre o PR e nunca entram aqui — chegariam ao modelo como instrucao
+// (revisao de seguranca do commit 361caeb9). O titulo fica no pane, que e tela do usuario.
 export function nota(virada, r) {
-  const pr = 'PR #' + r.numero + ' (' + r.titulo + ')';
+  const n = Number(r.numero);
+  const pr = 'PR #' + n;
   if (virada === 'checks-ok') {
     if (r.mergavel) {
-      return pr + ': checks ok e mergeável (mergeStateStatus CLEAN). Mande mergear: gh pr merge ' + r.numero + ' --squash --delete-branch';
+      return pr + ': checks ok e mergeável (mergeStateStatus CLEAN). Mande mergear: gh pr merge ' + n + ' --squash --delete-branch';
     }
     return pr + ': checks ok, mas NÃO mande mergear: ' + r.motivo + '.';
   }
-  if (virada === 'checks-falha') return pr + ': checks falharam. Investigue e conserte na branch ' + r.branch + '.';
+  if (virada === 'checks-falha') return pr + ': checks falharam. Investigue e conserte na branch do PR.';
   if (virada === 'mudanca-pedida') return pr + ': mudança pedida na review. Resuma e traga ao usuário, sem alterar nada.';
-  if (virada === 'conflito') return pr + ': conflito com ' + r.base + '. Resuma e traga ao usuário, sem alterar nada.';
+  if (virada === 'conflito') return pr + ': conflito com a base. Resuma e traga ao usuário, sem alterar nada.';
   if (virada === 'merged') return pr + ' foi mergeado. Informe o usuário e diga para limpar o worktree e a branch.';
   return '';
 }
