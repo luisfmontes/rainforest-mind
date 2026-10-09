@@ -276,7 +276,7 @@ pronto quando: com transcritos montados das fixtures reais (`prompt-submit.jsonl
 
 ### 6. Memória toda dentro do pedido sai da conta: nota nula [tipo: implementar]
 atende: D3
-arquivos: `scripts/lib/utilidade.cjs`, `scripts/testa-nota-nula.cjs`
+arquivos: `scripts/lib/utilidade.cjs`, `scripts/testa-nota-nula.cjs`, `scripts/testa-nota-do-pedido.cjs` (emenda na integração: o caso de 3 argumentos da tarefa 5 virou dois — sem e com o 4º argumento — porque a memória sem raro passa a dar nula com pedido)
 depende de: 5
 paralela: nao
 prova: `node scripts/testa-nota-nula.cjs`
