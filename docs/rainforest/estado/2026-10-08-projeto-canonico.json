@@ -152,22 +152,23 @@
     "em_voo": []
   },
   "revisar": {
-    "status": "parcial",
+    "status": "ok",
     "snapshot": {
-      "head": "91abc3b37363e8ed4f3364ea03158b6bbde78c7d",
+      "head": "5d641ecfab43e0d161af60d1c8423c01a10c4d75",
       "caminhos_sujos": []
     },
-    "vereditos": [],
-    "em_voo": [
+    "vereditos": [
       {
-        "agente": "revisor",
-        "tarefa": "revisao rodada 2 (base 31c96e47, head 91abc3b)",
-        "desde": "2026-10-08T23:10:00-03:00",
-        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76"
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ad6471dbc782453f0",
+        "veredito": "ok",
+        "em": "2026-10-09",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/3f823b5e-a8e7-4f91-bb68-e29874374c76/subagents/agent-ad6471dbc782453f0.jsonl"
       }
     ],
-    "em": "2026-10-08",
-    "achados": 6,
+    "em_voo": [],
+    "em": "2026-10-09",
+    "achados": 0,
     "lista": [
       "1 media: backup pode sair sem o WAL (checkpoint ocupado) e a migracao aplica mesmo assim",
       "2 baixa: origem nua migrada pode colidir com INSERT futuro da principal (aceito por U3)",
@@ -176,10 +177,17 @@
       "5 baixa: grafia canonica oscila com o volume",
       "6 muito baixa: relatorio regravado por abertura concorrente"
     ],
-    "tentativas": 1
+    "base": "397aa5a9edc075798beb9199219eab4323e1b989",
+    "head": "5d641ecfab43e0d161af60d1c8423c01a10c4d75",
+    "nao_bloqueantes": 5,
+    "issue_residuos": 452
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/varrer-baterias.sh",
+    "saida": "as 207 baterias passaram; criterios das tarefas 1-9, 11 e 12 rodados um a um com exit 0 (18, 16, 2, 4, 16, 12, 4, 12, 8, 7 ok; testa-versao 5 ok; conferir-versao 1.53.0); ensaio do revisor numa copia do banco real: 13842 linhas antes e depois, 1458 fora do canonico, user_version 2",
+    "sensor_externo": "bash scripts/varrer-baterias.sh",
+    "em": "2026-10-09"
   },
   "fechar": {
     "status": "pendente"
