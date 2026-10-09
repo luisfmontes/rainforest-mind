@@ -49,7 +49,7 @@ function fotografia(conexao) {
 }
 
 // Só lê. Devolve o que mudaria: movimentos de linha, colisões que ficam, nomes que ficam.
-function planejar(conexao) {
+function planejar(conexao, primeira) {
   const porNome = (tabela) => new Map(
     conexao.prepare(`SELECT projeto, COUNT(*) AS n FROM ${tabela} GROUP BY projeto`).all()
       .map((r) => [r.projeto, r.n]),
@@ -70,7 +70,11 @@ function planejar(conexao) {
   }
   const vencedor = new Map();
   for (const [chave, grafias] of grupos) {
-    const ordem = [...grafias].sort((a, b) => ((obsPorNome.get(b) || 0) - (obsPorNome.get(a) || 0))
+    // Grafia estável: a que começa por maiúscula e `--` (a que o harness grava) vence sempre;
+    // só depois contam as linhas e, por fim, a ordem alfabética (ordinal).
+    const forma = (g) => (/^[A-Z]--/.test(g) ? 0 : 1);
+    const ordem = [...grafias].sort((a, b) => (forma(a) - forma(b))
+      || ((obsPorNome.get(b) || 0) - (obsPorNome.get(a) || 0))
       || (a < b ? -1 : a > b ? 1 : 0));
     vencedor.set(chave, ordem[0]);
   }
@@ -92,6 +96,8 @@ function planejar(conexao) {
       });
       continue;
     }
+    // D6: nome curto só migra na passada da versão 1→2; depois disso o órfão fica onde está.
+    if (!primeira) continue;
     const casamento = casarCurto(nome, canonicos);
     const contagem = { nome, obs: obsPorNome.get(nome) || 0, res: resPorNome.get(nome) || 0 };
     if (casamento.tipo === 'unico') {
@@ -220,12 +226,48 @@ function escreverRelatorio(caminhoDb, plano, backup) {
   }
 }
 
+const TABELAS_CONTADAS = ['observacoes', 'resumos', 'marca_dagua', 'uso_memoria'];
+
+function contagensDe(conexao) {
+  const r = {};
+  for (const t of TABELAS_CONTADAS) r[t] = conexao.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get().n;
+  return r;
+}
+
+function contagensIguais(a, b) {
+  return TABELAS_CONTADAS.every((t) => a[t] === b[t]);
+}
+
+// O backup só vale se tiver o que a conexão vê. `wal_checkpoint` ocupado (leitor concorrente)
+// deixa a cópia do `.db` sem as linhas que ainda estão no WAL, sem erro nenhum.
+function conferirBackup(conexao, backup) {
+  const antes = contagensDe(conexao);
+  let contagensDoBackup;
+  try {
+    const { DatabaseSync } = require('node:sqlite');
+    const copia = new DatabaseSync(String(backup), { readOnly: true });
+    try {
+      contagensDoBackup = contagensDe(copia);
+    } finally {
+      copia.close();
+      for (const sufixo of ['-wal', '-shm']) {
+        try { fs.unlinkSync(`${backup}${sufixo}`); } catch (_) { /* não existe */ }
+      }
+    }
+  } catch (e) {
+    throw new Error(`backup incompleto (não consegui conferir a cópia: ${e.message})`);
+  }
+  if (!contagensIguais(antes, contagensDoBackup)) throw new Error('backup incompleto');
+}
+
+const lerVersao = (conexao) => conexao.prepare('PRAGMA user_version').get().user_version;
+
 function executar(conexao, fazerBackup) {
   const caminhoDb = caminhoDoBanco(conexao);
   if (!caminhoDb) return { aplicada: false, motivo: 'banco sem arquivo' };
 
-  const primeira = conexao.prepare('PRAGMA user_version').get().user_version < VERSAO_PROJETO_CANONICO;
-  const plano = planejar(conexao);
+  const primeira = lerVersao(conexao) < VERSAO_PROJETO_CANONICO;
+  const plano = planejar(conexao, primeira);
   const trabalho = temTrabalho(plano);
   if (!primeira && !trabalho) return { aplicada: true, movidas: 0, primeira: false };
 
@@ -237,17 +279,21 @@ function executar(conexao, fazerBackup) {
   if (primeira && trabalho) {
     if (typeof fazerBackup !== 'function') throw new Error('backup não informado');
     backup = fazerBackup(caminhoDb);
+    conferirBackup(conexao, backup);
   }
 
   let feito;
+  let primeiraAgora;
   conexao.exec('BEGIN IMMEDIATE');
   try {
-    const refeito = planejar(conexao);
+    // Outra abertura pode ter terminado a primeira passada enquanto esperávamos a trava.
+    primeiraAgora = lerVersao(conexao) < VERSAO_PROJETO_CANONICO;
+    const refeito = planejar(conexao, primeiraAgora);
     const antes = JSON.stringify(fotografia(conexao));
     aplicar(conexao, refeito);
     const depois = JSON.stringify(fotografia(conexao));
     if (antes !== depois) throw new Error('contagens ou ids divergem; nada foi gravado');
-    if (primeira) conexao.exec(`PRAGMA user_version = ${VERSAO_PROJETO_CANONICO};`);
+    if (primeiraAgora) conexao.exec(`PRAGMA user_version = ${VERSAO_PROJETO_CANONICO};`);
     conexao.exec('COMMIT');
     feito = refeito;
   } catch (e) {
@@ -257,11 +303,11 @@ function executar(conexao, fazerBackup) {
 
   const temRelatorio = feito.movimentos.length > 0 || feito.colisoes.length > 0
     || feito.ficaram.length > 0 || feito.ambiguos.length > 0 || feito.resumosAMover.length > 0;
-  if (primeira && temRelatorio) escreverRelatorio(caminhoDb, feito, backup);
+  if (primeiraAgora && temRelatorio) escreverRelatorio(caminhoDb, feito, backup);
 
   return {
     aplicada: true,
-    primeira,
+    primeira: primeiraAgora,
     movidas: feito.movimentos.length,
     colisoes: feito.colisoes.length,
     backup,
