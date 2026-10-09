@@ -34,13 +34,13 @@ function blocoMemoriaDoSubagente(cwd, prompt) {
   try {
     const { raiz } = resolverRaiz({ cwd, plugin: path.resolve(__dirname, '..') });
     if (!raiz) return '';
-    const { caminhoDb, projetos } = resolverCaminhos(cwd);
+    const { caminhoDb, canonico } = resolverCaminhos(cwd);
     if (!fs.existsSync(caminhoDb)) return '';
     conexao = abrirBancoSomenteLeitura(caminhoDb);
     if (!conexao) return '';
     // Subagente e contexto isolado: nao recebeu o que o pai recebeu, entao nao ha dedupe da sessao
     // (nao le nem grava o arquivo da sessao; o pedido seguinte nao perde nada por causa dele).
-    const achadas = buscarPorAssunto(conexao, prompt, { projetoAtual: projetos[0], jaServidos: new Set(), max: 3 });
+    const achadas = buscarPorAssunto(conexao, prompt, { projetoAtual: canonico, jaServidos: new Set(), max: 3 });
     return montarBlocoAssunto(achadas) || '';
   } catch (e) {
     return '';

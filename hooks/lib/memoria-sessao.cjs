@@ -1,6 +1,15 @@
 'use strict';
 const { cortarBytes } = require('./bytes.cjs');
 
+// Apelido de exibição de um projeto (#435, D3). A chave do mapa é o canônico (slug do repositório);
+// a linha guarda a grafia que gravou, que pode diferir só em caixa. Compara sem diferenciar caixa.
+function apelidoDe(apelidos, projeto) {
+  if (!apelidos || !projeto) return undefined;
+  const alvo = String(projeto).toLowerCase();
+  const chave = Object.keys(apelidos).find((k) => k.toLowerCase() === alvo);
+  return chave === undefined ? undefined : apelidos[chave];
+}
+
 /**
  * memoria-sessao.cjs — motor puro do SessionStart de memória (memoria-session-start.cjs).
  *
@@ -194,7 +203,7 @@ function formatarObservacao(obs, apelidos, maxTexto) {
   // pasta do harness (`C--Projetos-rainforest-mind`), ~12 bytes a mais por linha
   // que o nome curto — e o bloco tem teto duro. Medido em 2026-08-22: a chave
   // longa derrubou a injeção de 15 observações para 12.
-  const nome = (apelidos && apelidos[projeto]) || projeto;
+  const nome = apelidoDe(apelidos, projeto) || projeto;
   const proj = nome ? ` (${nome})` : '';
 
   // Extrai título e subtítulo do conteúdo
@@ -377,7 +386,7 @@ function montarLegendaMemoria(o) {
     const iso = dataLocalDeIso(obs.criada_em);
     const partes = iso.split('-');
     const data = partes.length === 3 ? `${partes[2]}/${partes[1]}` : iso;
-    const nome = (apelidos && apelidos[obs.projeto]) || obs.projeto || '';
+    const nome = apelidoDe(apelidos, obs.projeto) || obs.projeto || '';
     const { titulo, subtitulo } = extrairTituloESubtitulo(obs.conteudo);
     // Título vazio acontece (observação só com corpo): o subtítulo assume, em vez
     // de sair uma linha com data e nada.
@@ -446,6 +455,7 @@ module.exports = {
   montarMemoria,
   montarLegendaMemoria,
   formatarObservacao,
+  apelidoDe,
   extrairTituloESubtitulo,
   limitarBytes,
   cortarBytes,

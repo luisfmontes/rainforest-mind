@@ -21,6 +21,8 @@
 const fs = require('fs');
 const path = require('path');
 const { formatarObservacao } = require('../../hooks/lib/memoria-sessao.cjs');
+// Módulo folha (#435, D2): não requer scripts/memoria.cjs, então não reabre o circular acima.
+const { canonicoDoCaminho, slugDoCaminho } = require('./projeto-canonico.cjs');
 
 // Termo raro = aparece em até LIMIAR_DF observações do corpus (Tarefa 2, D5).
 // Sem dado de calibração ainda (a ideia é medir por duas semanas antes de
@@ -277,42 +279,17 @@ function extrairSessao(caminhoTranscrito) {
 
 // ---- Tarefa 2: pontuação ----
 
-// Sobe a árvore de diretórios procurando `.git` — MESMO algoritmo de
-// `encontrarGit()` em scripts/memoria.cjs (exportada de lá pela Tarefa 9,
-// mas duplicada aqui em vez de importada: mesmo motivo do require circular
-// explicado no topo do arquivo. Não é de 1 linha como `chaveHarness`, mas
-// ainda é função pura sobre o sistema de arquivos — o custo de duplicar é
-// menor que o de amarrar a ordem de carga dos dois módulos).
-function encontrarGitLocal(inicio) {
-  let atual = path.resolve(inicio);
-  const raizVolume = path.parse(atual).root;
-  while (atual !== raizVolume) {
-    const gitPath = path.join(atual, '.git');
-    try {
-      const stats = fs.statSync(gitPath);
-      if (stats.isFile() || stats.isDirectory()) return atual;
-    } catch (e) {
-      // .git não existe neste diretório, sobe mais um nível
-    }
-    atual = path.dirname(atual);
-  }
-  return null;
-}
-
 /**
- * Lê o `cwd` gravado nas entradas do transcrito e deriva as duas formas sob
- * as quais uma observação pode estar gravada em `projeto` — a chave do
- * harness (`C--Projetos-rainforest-mind`) e o nome curto (`rainforest-mind`)
- * — o mesmo par que `resolverCaminhos()` de scripts/memoria.cjs monta a
- * partir do `.git` mais próximo. Deriva do `cwd` em vez de chamar
- * `resolverCaminhos()` porque a sessão de origem pode ter rodado num `cwd`
- * diferente do processo atual (a pontuação roda na manutenção, dias depois).
+ * Lê o `cwd` gravado nas entradas do transcrito e deriva o projeto sob o qual
+ * a memória da sessão está gravada em `projeto`: o nome canônico (slug do
+ * topo do repositório principal) e o nome curto de exibição (#435, D2/D3). É a
+ * mesma função que grava e que lê (`scripts/lib/projeto-canonico.cjs`), então
+ * cwd na raiz, numa subpasta ou num worktree do mesmo repositório resolvem o
+ * MESMO projeto. Deriva do `cwd` do transcrito em vez do processo atual porque
+ * a pontuação roda na manutenção, dias depois, de outro `cwd`. Sem `.git`
+ * (worktree removido), o canônico é o próprio `cwd`.
  *
- * Tarefa 9 (D8): sobe do `cwd` até o `.git` mais próximo, exatamente como a
- * abertura resolve o projeto — um `cwd` de sessão numa subpasta do
- * repositório (ex.: `<raiz>/scripts`) tem que resolver para o MESMO projeto
- * que a raiz, não para "scripts". Sem `.git` encontrado (worktree removido),
- * cai no `cwd` cru, como antes.
+ * O campo se chama `harnessKey` por compatibilidade; o valor é o canônico.
  *
  * @param {string} caminhoTranscrito
  * @returns {{harnessKey: string|null, curto: string|null}}
@@ -331,11 +308,8 @@ function lerProjetoDoTranscrito(caminhoTranscrito) {
       }
       if (entrada.cwd) {
         const cwd = String(entrada.cwd);
-        const topLevel = encontrarGitLocal(cwd);
-        const base = topLevel || cwd; // .git não encontrado -> cwd cru, como antes
-        const curto = path.basename(base);
-        const harnessKey = base.replace(/[\\/:]/g, '-');
-        return { harnessKey, curto };
+        const { canonico, curto } = canonicoDoCaminho(cwd);
+        return { harnessKey: canonico, curto };
       }
     }
   } catch (e) {

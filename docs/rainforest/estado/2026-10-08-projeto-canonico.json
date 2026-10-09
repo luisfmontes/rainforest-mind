@@ -1,0 +1,195 @@
+{
+  "slug": "2026-10-08-projeto-canonico",
+  "titulo": "Nome canonico de projeto no banco de memoria (#435)",
+  "criado_em": "2026-10-08",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-08-projeto-canonico.md",
+    "em": "2026-10-08"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-08-projeto-canonico.md",
+    "tarefas": 11,
+    "paralelas": [
+      1,
+      2,
+      3
+    ],
+    "em": "2026-10-08"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-08",
+    "tarefas_ok": 12,
+    "tarefas": 12,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "33a0d6b1",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-08T20:27:34.975Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "33a0d6b1",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-08T20:27:34.975Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "33a0d6b1",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-08T20:27:34.975Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "c0ff1ce9",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-08T20:33:59.540Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "c0ff1ce9",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-08T20:33:59.540Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "c0ff1ce9",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-08T20:33:59.540Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "649dbe85",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-08T20:53:09.179Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "2f85c61c",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-09T01:47:44.526Z"
+      }
+    ],
+    "em": "2026-10-08",
+    "comando": "bash scripts/varrer-baterias.sh",
+    "saida": "198 de 199 verdes na varredura; testa-conferir-mutacao.sh caiu com exit 5 (corte de shell sob carga) e passou 171/0 em duas rodadas isoladas; a branch nao toca conferir-mutacao",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-projeto-canonico.cjs: caminho com ponto, sublinhado, espaco e acento vira so hifen"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-backup-funcao.cjs: arquivo de backup existe / copia abre (o caso de contagem fica sob o else e nao acende)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-peso-projeto-atual.cjs: desempate favorece o projeto atual mesmo com a caixa do slug diferente"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-observar-canonico.cjs: mesma sessao na pasta principal e na de worktree com o mesmo offset grava duas linhas"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-migrar-projeto-canonico.cjs: marca_dagua intacta na migracao 1 para 2"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-leitores-canonicos.cjs: abertura acha linhas e resumos gravados com o slug em outra caixa"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade-canonico.cjs: sessao em worktree pontua as servidas do projeto principal"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-buscar-projeto.cjs: curto ambiguo sai com exit 2 listando os candidatos"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-importar-canonico.cjs: projeto relativo com barra casa o slug canonico unico"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "ensaio de medicao numa copia do banco real; contagens coladas no relato"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "n/a",
+        "motivo": "documentacao e versao; conferido por testa-versao e coerencia com o D6"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "testa-migrar-emenda.cjs: backup sem as linhas do WAL nao deixa a migracao aplicar"
+      }
+    ],
+    "em_voo": []
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "5d641ecfab43e0d161af60d1c8423c01a10c4d75",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ad6471dbc782453f0",
+        "veredito": "ok",
+        "em": "2026-10-09",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/3f823b5e-a8e7-4f91-bb68-e29874374c76/subagents/agent-ad6471dbc782453f0.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-09",
+    "achados": 0,
+    "lista": [
+      "1 media: backup pode sair sem o WAL (checkpoint ocupado) e a migracao aplica mesmo assim",
+      "2 baixa: origem nua migrada pode colidir com INSERT futuro da principal (aceito por U3)",
+      "3 baixa: colisao de passada posterior fica fora do relatorio",
+      "4 baixa: curto orfao absorvido em silencio por repositorio que aparece depois",
+      "5 baixa: grafia canonica oscila com o volume",
+      "6 muito baixa: relatorio regravado por abertura concorrente"
+    ],
+    "base": "397aa5a9edc075798beb9199219eab4323e1b989",
+    "head": "5d641ecfab43e0d161af60d1c8423c01a10c4d75",
+    "nao_bloqueantes": 5,
+    "issue_residuos": 452
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/varrer-baterias.sh",
+    "saida": "as 207 baterias passaram; criterios das tarefas 1-9, 11 e 12 rodados um a um com exit 0 (18, 16, 2, 4, 16, 12, 4, 12, 8, 7 ok; testa-versao 5 ok; conferir-versao 1.53.0); ensaio do revisor numa copia do banco real: 13842 linhas antes e depois, 1458 fora do canonico, user_version 2",
+    "sensor_externo": "bash scripts/varrer-baterias.sh",
+    "em": "2026-10-09"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

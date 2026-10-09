@@ -49,6 +49,11 @@ const { acharExecutavelClaude } = require('./lib/achar-executavel-claude.cjs');
 // Chave de grupo de origem de uma observação — consolidação por grupo (D7).
 const { sqlGrupoDeOrigem } = require('./lib/grupo-de-origem.cjs');
 
+// Migração 7 do esquema: nome canônico de projeto (#435). Módulo folha, sem require de volta.
+const { migrarProjetoCanonico } = require('./lib/migrar-projeto-canonico.cjs');
+// Nome canônico de projeto (#435, D1/D2): a regra do harness e o topo do repositório principal.
+const { canonicoDoCaminho, casarCurto, slugDoCaminho } = require('./lib/projeto-canonico.cjs');
+
 // Sinal de utilidade da memória (Tarefas 1, 3 e 4, D1-D11). Sentido único:
 // utilidade.cjs nunca requer este arquivo de volta (evitaria require
 // circular — ver o comentário no topo de scripts/lib/utilidade.cjs).
@@ -78,17 +83,6 @@ function encontrarGit(inicio = process.cwd()) {
   return null;
 }
 
-// Deriva a chave de projeto que o harness do Claude Code usa para armazenar projetos.
-// Formato harness: paths com \ / e : são trocados por -.
-// Ex: C:\Projetos\rainforest-mind → C--Projetos-rainforest-mind
-//     C:\Microsiga\erp-trabalho\inovacao → C--Microsiga-erp-trabalho-inovacao
-// Função pura, sem I/O.
-function chaveHarness(diretorio) {
-  if (!diretorio) return '';
-  // Normalizar separadores (\ e /) e : para -
-  return diretorio.replace(/[\\/:]/g, '-');
-}
-
 // Ponto único de inversão (Tarefa 3, D3): observação substituída
 // (substituida_por IS NOT NULL) sai da injeção e da busca, sem ser apagada.
 // Todo caminho de leitura em observacoes usa esta função em vez de escrever
@@ -114,31 +108,15 @@ function resolverCaminhos(cwd) {
     process.exit(1);
   }
 
-  // Tarefa 1 (D13): O projeto vem do diretório da sessão, não da raiz de dados.
-  // Suba a árvore procurando .git (arquivo ou diretório); basename desse diretório é o projeto.
-  // Fallback: basename do cwd se .git não encontrado (sessão fora de repositório).
-  // Decisão D13 define que a matéria-prima é projects/<projeto>/<sessão>.jsonl no harness.
-  let projeto;
+  // Nome canônico (#435, D1/D2): o `canonico` é o slug do topo do repositório principal
+  // (worktree junta-se à principal); `projeto` é o nome curto para exibir (basename desse topo).
+  // Sem `.git` acima de `cwd`, `canonico` é o slug do próprio cwd e `projeto` o basename.
   const dirProjeto = cwd || process.cwd();
-  const topLevel = encontrarGit(dirProjeto);
-  if (topLevel) {
-    projeto = path.basename(topLevel);
-  } else {
-    projeto = path.basename(dirProjeto);
-  }
+  const { canonico, curto } = canonicoDoCaminho(dirProjeto);
 
   const caminhoDb = path.join(raiz, 'rainforest.db');
 
-  // Retornar AMBAS as chaves: `projeto` (curta, para compatibilidade) e `projetos`
-  // (array com chave harness + chave curta, sem duplicatas, sem vazias).
-  // Permite que o leitor consulte ambas, mantendo histórico sob chave curta
-  // enquanto novos dados vêm em chave harness.
-  const chaveHarness_valor = topLevel ? chaveHarness(topLevel) : '';
-  const projetosCandidatas = [chaveHarness_valor, projeto].filter(
-    (p, i, arr) => p && arr.indexOf(p) === i // sem duplicatas, sem vazias
-  );
-
-  return { raiz, caminhoDb, projeto, projetos: projetosCandidatas };
+  return { raiz, caminhoDb, projeto: curto, canonico };
 }
 
 // Abre conexão com o banco. Cria se não existe. Retorna a conexão.
@@ -368,7 +346,7 @@ function limparMarcaDagua(conexao) {
 }
 
 // Executa o schema SQL no banco.
-function criarSchema(conexao) {
+function criarSchema(conexao, opcoes = {}) {
   const caminhoSchema = path.resolve(__dirname, 'esquema-memoria.sql');
   if (!fs.existsSync(caminhoSchema)) {
     console.error(`ERRO: ${caminhoSchema} não encontrado`);
@@ -617,6 +595,10 @@ function criarSchema(conexao) {
       // Nota: não relançamos — a coluna pode estar parcialmente aplicada.
     }
   }
+
+  // Migração 7: nome canônico de projeto (#435, D5-D7). Nunca lança; o backup entra por
+  // injeção (opcoes.fazerBackup, usado pelo teste). Sem opcoes, vale o backup do banco.
+  migrarProjetoCanonico(conexao, { fazerBackup: opcoes.fazerBackup || fazerBackupDoBanco });
 }
 
 // Migração de observacoes: garantir que tem UNIQUE(projeto, origem).
@@ -935,6 +917,39 @@ function cmdEsquema() {
 // Comando: buscar [--texto "..."] [--projeto "..."] [--limite N] [--json]
 // Busca observações usando FTS5. Degradação: banco ausente/vazio/corrompido
 // devolve resultado vazio com exit 0, nunca erro.
+// Resolve o valor de `buscar --projeto` (#435, D3/D6/D9). Ordem: (1) igualdade sem diferenciar
+// caixa com um valor JA gravado (slug, orfao, nomes antigos); (2) valor com barra, contrabarra ou
+// dois-pontos vira slug de caminho e casa do mesmo modo; (3) nome curto por sufixo unico
+// (casarCurto); (4) erro. Devolve { projeto } ou { erro } (texto pronto para o stderr).
+function formatarErroProjeto(valor, r, conhecidos) {
+  const motivo = r.tipo === 'ambiguo' ? 'ambíguo' : 'não encontrado';
+  const lista = r.tipo === 'ambiguo' ? r.candidatos : conhecidos;
+  const linhas = [`ERRO: --projeto "${valor}" ${motivo}.`];
+  linhas.push(r.tipo === 'ambiguo' ? 'Candidatos:' : 'Projetos conhecidos:');
+  for (const c of lista) linhas.push(`  ${c}`);
+  linhas.push('Repita com o nome completo ou o caminho do projeto (--projeto <nome completo>).');
+  return linhas.join('\n');
+}
+
+function resolverProjetoDaBusca(conexao, valor) {
+  const conhecidos = conexao
+    .prepare('SELECT DISTINCT projeto FROM observacoes ORDER BY projeto')
+    .all()
+    .map(l => l.projeto);
+  const igual = alvo => conhecidos.filter(c => c.toLowerCase() === alvo.toLowerCase());
+  const exatos = igual(valor);
+  if (exatos.length === 1) return { projeto: exatos[0] };
+  if (exatos.length > 1) return { erro: formatarErroProjeto(valor, { tipo: 'ambiguo', candidatos: exatos }, conhecidos) };
+  if (/[\/\\:]/.test(valor)) {
+    const doCaminho = igual(slugDoCaminho(valor));
+    if (doCaminho.length === 1) return { projeto: doCaminho[0] };
+    return { erro: formatarErroProjeto(valor, { tipo: 'nenhum', candidatos: [] }, conhecidos) };
+  }
+  const r = casarCurto(valor, conhecidos);
+  if (r.tipo !== 'unico') return { erro: formatarErroProjeto(valor, r, conhecidos) };
+  return { projeto: r.canonico };
+}
+
 function cmdBuscar() {
   const { caminhoDb } = resolverCaminhos();
 
@@ -966,6 +981,18 @@ function cmdBuscar() {
 
     const conexao = abrirBanco(caminhoDb);
 
+    // --projeto aceita curto, slug ou caminho; falha de resolução sai com exit 2.
+    let projetoResolvido = projeto;
+    if (projeto) {
+      const res = resolverProjetoDaBusca(conexao, projeto);
+      if (res.erro) {
+        conexao.close();
+        console.error(res.erro);
+        process.exit(2);
+      }
+      projetoResolvido = res.projeto;
+    }
+
     // Se há texto, usar FTS5; senão, listar recentes.
     let query;
     const params = { limite };
@@ -985,7 +1012,7 @@ function cmdBuscar() {
 
       if (projeto) {
         query += ' AND o.projeto = :projeto';
-        params.projeto = projeto;
+        params.projeto = projetoResolvido;
       }
     } else {
       // Sem texto: listar recentes de um projeto (se fornecido).
@@ -994,7 +1021,7 @@ function cmdBuscar() {
 
       if (projeto) {
         query += ' AND projeto = :projeto';
-        params.projeto = projeto;
+        params.projeto = projetoResolvido;
       }
     }
 
@@ -1038,17 +1065,16 @@ function cmdBuscar() {
   }
 }
 
-// Comando: backup — copiar o banco para pasta de backup com timestamp.
-// Garante consistência com WAL ativo (D7) usando VACUUM INTO.
-function cmdBackup() {
-  const { raiz, caminhoDb } = resolverCaminhos();
-
+// Backup do banco como função reutilizável. Copia o rainforest.db para
+// <raiz>/.rainforest-backups/rainforest-<AAAA-MM-DDTHH-MM-SS>.db, aplica a rotação
+// e DEVOLVE o caminho da cópia. Não chama process.exit: LANÇA Error quando o banco
+// não existe, está corrompido/inacessível ou a cópia falha — quem chama decide.
+function fazerBackupDoBanco(caminhoDb) {
   if (!fs.existsSync(caminhoDb)) {
-    console.error(`ERRO: banco não existe em ${caminhoDb}`);
-    process.exit(1);
+    throw new Error(`banco não existe em ${caminhoDb}`);
   }
 
-  const dirBackup = path.join(raiz, '.rainforest-backups');
+  const dirBackup = path.join(path.dirname(caminhoDb), '.rainforest-backups');
   fs.mkdirSync(dirBackup, { recursive: true });
 
   // Timestamp ISO local (não UTC).
@@ -1075,8 +1101,7 @@ function cmdBackup() {
   try {
     conexao = abrirBanco(caminhoDb);
   } catch (e) {
-    console.error(`ERRO: banco corrompido ou inacessível (${e.message})`);
-    process.exit(1);
+    throw new Error(`banco corrompido ou inacessível (${e.message})`);
   }
 
   // Agora que temos conexão válida, tentar consolidar (nice-to-have)
@@ -1098,11 +1123,8 @@ function cmdBackup() {
   try {
     fs.copyFileSync(caminhoDb, caminhoBackup);
   } catch (e) {
-    console.error(`ERRO: não consegui copiar banco para backup: ${e.message}`);
-    process.exit(1);
+    throw new Error(`não consegui copiar banco para backup: ${e.message}`);
   }
-
-  console.log(`backup: ${caminhoBackup}`);
 
   // Rotação: manter apenas os N backups mais recentes, nunca apagando o mais recente.
   // Teto conservador (5 cópias) para não encher disco — cada banco é ~MB.
@@ -1117,6 +1139,23 @@ function cmdBackup() {
     const antigo = path.join(dirBackup, arquivos[i]);
     fs.unlinkSync(antigo);
   }
+
+  return caminhoBackup;
+}
+
+// Comando: backup — copiar o banco para pasta de backup com timestamp.
+function cmdBackup() {
+  const { caminhoDb } = resolverCaminhos();
+
+  let caminhoBackup;
+  try {
+    caminhoBackup = fazerBackupDoBanco(caminhoDb);
+  } catch (e) {
+    console.error(`ERRO: ${e.message}`);
+    process.exit(1);
+  }
+
+  console.log(`backup: ${caminhoBackup}`);
 }
 
 // Função auxiliar: ler FOCO.md e extrair campos estruturados (datas, prazos, pastas).
@@ -2313,8 +2352,8 @@ if (require.main === module) {
 }
 
 module.exports = {
-  abrirBanco, abrirBancoSomenteLeitura, chaveHarness, criarSchema, extrairSchema, popularFts5,
-  resolverCaminhos, verificarConstraintUniqueProjetoOrigem, encontrarGit,
+  abrirBanco, abrirBancoSomenteLeitura, criarSchema, extrairSchema, popularFts5,
+  resolverCaminhos, verificarConstraintUniqueProjetoOrigem, encontrarGit, fazerBackupDoBanco,
   K_CANDIDATAS, TETO_RECONCILIAR, construirQueryFts5, buscarCandidatas,
   interpretarDecisaoReconciliacao, aplicarDecisaoReconciliacao,
   formatarPromptReconciliacao,

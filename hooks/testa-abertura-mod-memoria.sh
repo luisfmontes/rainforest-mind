@@ -10,7 +10,7 @@
 #   3. o systemMessage e o mesmo nos dois destinos
 #
 # Fixture: banco em diretorio temporario, no idioma de testa-memoria-session-start.sh
-# (RFM_ROOT + chaveHarness da pasta); nunca o banco vivo do usuario.
+# (RFM_ROOT + slugDoCaminho da pasta); nunca o banco vivo do usuario.
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -35,17 +35,22 @@ git init -q "$PASTA"
 
 RFM_ROOT="$CAIXA" node "$SRC/scripts/memoria.cjs" iniciar > /dev/null 2>&1
 
-# 14 observacoes vivas, cada uma com subtitulo >= 190 B (ASCII, 200 caracteres), sob a
-# chave EXATA que o harness usaria para a pasta.
+# 14 observacoes vivas, cada uma com subtitulo >= 190 B (ASCII, 200 caracteres), sob o
+# canonico da pasta (slug do caminho). O golden e o hook do commit base, que le pela chave
+# antiga (so \\ / : viram hifen): quando ela difere do slug (caminho com `.` ou `_`, como o
+# mktemp e a raiz do CI), as mesmas 14 linhas entram tambem sob a chave antiga, com a MESMA
+# origem, para os dois hooks verem o mesmo texto. O que o caso 2 prova e que sem a flag a
+# saida nao muda de forma.
 (cd "$PASTA" && RFM_ROOT="$CAIXA" SRC="$SRC" node -e "
   const { DatabaseSync } = require('node:sqlite');
-  const { chaveHarness } = require(process.env.SRC + '/scripts/memoria.cjs');
+  const { slugDoCaminho } = require(process.env.SRC + '/scripts/lib/projeto-canonico.cjs');
   const db = new DatabaseSync(process.env.RFM_ROOT + '/rainforest.db');
   const ins = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
+  const chaves = [...new Set([slugDoCaminho(process.cwd()), process.cwd().replace(/[\\\\/:]/g, '-')])];
   for (let i = 1; i <= 14; i++) {
     const dia = String(10 + i).padStart(2, '0');
     const sub = ('Subtitulo longo numero ' + i + ' com varias palavras para passar de cento e noventa bytes e forcar a escada de corte por linha ').padEnd(200, 'z').slice(0, 199) + String(i % 10);
-    ins.run(chaveHarness(process.cwd()), '## Obs ' + i + '\n\n' + sub + '\n\n### Detalhe\n\ncorpo', '2026-09-' + dia + 'T10:00:00Z', 'sessao:teste:offset:' + i);
+    for (const chave of chaves) ins.run(chave, '## Obs ' + i + '\n\n' + sub + '\n\n### Detalhe\n\ncorpo', '2026-09-' + dia + 'T10:00:00Z', 'sessao:teste:offset:' + i);
   }
   db.close();
 ")

@@ -1,0 +1,79 @@
+Data: 2026-10-08
+Termos: chaveHarness, observacoes.projeto, nome canonico, projeto duplicado, claude-worktrees
+
+$ gh issue list --state all --search "chaveHarness" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "observacoes.projeto" --limit 200 --json number,title,state
+[{"number":435,"state":"OPEN","title":"memória: nome duplicado de projeto no banco (nome curto e slug de caminho)"}]
+
+
+$ gh issue list --state all --search "nome canonico" --limit 200 --json number,title,state
+[{"number":435,"state":"OPEN","title":"memória: nome duplicado de projeto no banco (nome curto e slug de caminho)"}]
+
+
+$ gh issue list --state all --search "projeto duplicado" --limit 200 --json number,title,state
+[{"number":435,"state":"OPEN","title":"memória: nome duplicado de projeto no banco (nome curto e slug de caminho)"}]
+
+
+$ gh issue list --state all --search "claude-worktrees" --limit 200 --json number,title,state
+[{"number":323,"state":"CLOSED","title":"conferir-duplicacao conta arquivo gitignorado (.claude/marketplaces) e deixa testa-saude vermelho em main limpa"},{"number":411,"state":"CLOSED","title":"setup --desligar gate-publicacao --escopo projeto não vale dentro de worktree do mesmo repo"},{"number":225,"state":"CLOSED","title":"portaria: negação 'sem estágio ativo' lista o mesmo slug uma vez por worktree (~170 linhas repetidas)"},{"number":442,"state":"CLOSED","title":"Comando impresso pelos gates de fluxo nao cola em PowerShell"},{"number":329,"state":"CLOSED","title":"veredito-revisor nao grava quando o estado do fluxo mora so no worktree"},{"number":289,"state":"CLOSED","title":"gate-worktree: cd com caminho MSYS (/c/...) vira incerto e barra commit no scratchpad, chamando o worktree de principal"},{"number":373,"state":"CLOSED","title":"Menores da revisão da rodada 14: docstring do desempate e slug com curinga"},{"number":182,"state":"CLOSED","title":"conferir-mutacao.cjs deixa worktree temporario travado a cada rodada, e o acumulo quebra o despacho de subagente"},{"number":430,"state":"CLOSED","title":"Fluxo pulado: escalar o aviso-fluxo para bloqueio com caminho leve declarado"},{"number":363,"state":"CLOSED","title":"veredito-revisor grava no worktree do revisor, nao no do fluxo"},{"number":392,"state":"CLOSED","title":"git e gh chamados por nome: um git.exe na raiz do repo aberto vence o PATH no Windows"},{"number":264,"state":"CLOSED","title":"Portaria: manifesto de agentes SUBSTITUI em vez de somar, e agente de outro plugin nunca passa"},{"number":142,"state":"CLOSED","title":"O guarda de \"nao remover worktree sujo\" mede o repositorio PAI, e por isso responde \"sujo\" para tudo"},{"number":195,"state":"CLOSED","title":"Nada exige que o checkout principal fique na main, e os vigias agendados rodam contra ele"},{"number":181,"state":"CLOSED","title":"Retomar agente por SendMessage nao restaura o worktree isolado — ele passa a commitar na branch de quem despachou"},{"number":214,"state":"CLOSED","title":"Sessao isolada em worktree nao consegue atualizar o checkout principal — nem o dono pelo prefixo !"},{"number":189,"state":"CLOSED","title":"conferir-versao.cjs nao olha o numero: versao que anda para tras passa verde, e plugin.json ilegivel sai 0"},{"number":303,"state":"CLOSED","title":"Gemeo Python de conferir-entrega congelou: 21 falhas na main e o portao do CONTRIBUTING esta vermelho"},{"number":63,"state":"CLOSED","title":"O foco não chega na injeção, e a isenção da regra 17 é cega para a segunda pasta — 10ª vez que o radar cobra desvio onde não devia"},{"number":143,"state":"CLOSED","title":"Os guardas medem o repositorio do cwd da sessao, nao o worktree onde a operacao roda — tres ocorrencias no mesmo dia"},{"number":51,"state":"CLOSED","title":"As tres travas de isolamento falharam na borda: retomada de agente, janela principal, e o rastro da propria esteira"},{"number":210,"state":"CLOSED","title":"Entrega vazia + --paralelo: o conjunto do agente e vazio, entao a checagem 4 nunca reprova"},{"number":21,"state":"CLOSED","title":"Criterio 'a bateria sai 0' e satisfazivel por fora, e tres instrumentos de conferencia falharam junto"}]
+
+
+$ gh pr list --state all --search "chaveHarness" --limit 200 --json number,title,state
+[{"number":49,"state":"MERGED","title":"A memoria volta a ler o que ela mesma escreve"}]
+
+
+$ gh pr list --state all --search "observacoes.projeto" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "nome canonico" --limit 200 --json number,title,state
+[{"number":304,"state":"MERGED","title":"Notas de atualizacao (CHANGELOG) e o adendo que mede o D2 do contrato de territorio"},{"number":116,"state":"MERGED","title":"Fecha #76: a janela sabe que a ferramenta falta antes de tentar"}]
+
+
+$ gh pr list --state all --search "projeto duplicado" --limit 200 --json number,title,state
+[{"number":437,"state":"MERGED","title":"memoria: injecao pelo assunto no pedido e no subagente (1.49.0)"}]
+
+
+$ gh pr list --state all --search "claude-worktrees" --limit 200 --json number,title,state
+[{"number":370,"state":"MERGED","title":"zerar-issues-13: #362 #363 #364 (1.34.0)"},{"number":383,"state":"MERGED","title":"1.38.0: faixa acima do prompt com foco, fluxo e Q abertas"},{"number":219,"state":"MERGED","title":"limpar-worktrees: a limpeza nao sai do repositorio"},{"number":432,"state":"MERGED","title":"Versao 1.48.0: enxerto do mattpocock/skills v1.3"},{"number":375,"state":"MERGED","title":"Versao 1.35.1: slug sem curinga e premissa do desempate (#373)"},{"number":374,"state":"MERGED","title":"Rodada 14: triagem do Gmail, creep da varredura e dívidas da 13 (1.35.0)"},{"number":226,"state":"MERGED","title":"O limpar-branches era o maior produtor do resíduo que ele existe para limpar"},{"number":416,"state":"MERGED","title":"Zerar as 12 Issues da revisao bimestral (1.42.0)"},{"number":343,"state":"MERGED","title":"zerar-issues-9: #313 #322 #329 #312 #335 #323 (1.24.0)"},{"number":236,"state":"MERGED","title":"Zerar Issues: a fatia revisada e limpa (12 de 18 Issues)"},{"number":256,"state":"MERGED","title":"repo: ignora o cache de marketplace e registra o erro do sentinela de 11/09"},{"number":295,"state":"MERGED","title":"zerar-issues-5: conserta 20 Issues abertas em menos de 24h"},{"number":202,"state":"MERGED","title":"Fluxo 8: plano do handover.cjs, com o regente.cjs cortado e o corte justificado"},{"number":247,"state":"MERGED","title":"zerar-issues rodada 3: heredoc no gate de Issue e radar em 4 chamadas (1.13.2)"},{"number":183,"state":"MERGED","title":"Lote 3 — guardas medem o repositorio da operacao; backup fora da maquina; fechar Issue exige criterio rodado"},{"number":190,"state":"MERGED","title":"Inventario do acervo parado: tres mapas, e o manifesto que admite os cinco agentes negados"},{"number":234,"state":"MERGED","title":"Absorver de um plugin de terceiro o que vira trava: mensagem de commit, --confirmo, exit 69, duplicação, carimbos"},{"number":188,"state":"MERGED","title":"Lote 4: instrumento que mede o codigo, e nao a maquina de quem roda"},{"number":10,"state":"MERGED","title":"Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa"},{"number":12,"state":"MERGED","title":"O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook"}]
+
+
+$ git ls-remote --heads origin | grep -F "chaveHarness"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "observacoes.projeto"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "nome canonico"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "projeto duplicado"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "claude-worktrees"
+(vazio)
+
+$ git log --all --grep="chaveHarness" --oneline
+f873a8df testa-memoria-session-start: fixture do teste 11.c usa placeholder $USUARIO
+2a1f6f5f A memoria volta a ler o que ela mesma escreve (#49)
+e26ba7e0 A memoria volta a ler o que ela mesma escreve (#49)
+
+$ git log --all --grep="observacoes.projeto" --oneline
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+
+$ git log --all --grep="nome canonico" --oneline
+(vazio)
+
+$ git log --all --grep="projeto duplicado" --oneline
+(vazio)
+
+$ git log --all --grep="claude-worktrees" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+(vazio)
+

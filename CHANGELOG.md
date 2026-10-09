@@ -10,6 +10,23 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.53.0 — 2026-10-09
+
+- **Um nome por projeto no banco de memória (Issue #435).** O projeto passa a ser gravado como o slug do repositório
+  principal, pela regra que o Claude Code usa na pasta de transcritos, e a sessão em worktree grava no projeto principal.
+  A tela continua mostrando o nome curto. A abertura, o canal do assunto, a pontuação de utilidade e o `buscar` enxergam
+  o projeto inteiro, sem diferenciar maiúscula.
+- **Migração na primeira abertura do banco.** Faz backup em `.rainforest-backups/`, move observações e resumos de nome
+  curto com correspondência única (no banco medido: 9 nomes, 8.777 linhas), deixa os sem correspondência como estão
+  (17 nomes, 1.458 linhas) e grava o relatório em `migracao-projeto-canonico.txt`. Nenhuma linha some. Depois dela,
+  toda abertura recolhe o que uma versão antiga do plugin gravar fora do padrão.
+- **`buscar --projeto` aceita nome curto, slug ou caminho.** Nome ambíguo ou desconhecido sai com erro listando os
+  candidatos.
+- **Quando vale:** a partir da sessão seguinte à atualização. Para migrar na hora, rode `node scripts/memoria.cjs iniciar`.
+  A primeira abertura depois da atualização pode ainda não ver as memórias de nome curto, se ler o banco antes de o
+  outro hook da mesma abertura migrar; a seguinte vê tudo. Sessão aberta antes da migração e pontuada depois pode ter
+  linhas de outros projetos contadas como servidas sem id.
+
 ## 1.52.0 — 2026-10-08
 
 - **Glossário de domínio por repositório.** Cada repo pode ter um `GLOSSARIO.md` na raiz com os termos do seu domínio: o que o termo é, onde ele mora, um cenário real e a forma "evite". Quem trabalha no repo passa a receber os verbetes certos sem precisar pedir.

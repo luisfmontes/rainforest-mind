@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.52.0-1e5c3f?style=flat-square" alt="versão 1.52.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.53.0-1e5c3f?style=flat-square" alt="versão 1.53.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -382,6 +382,39 @@ pelo canal novo; sem canal novo servido, ou com o banco ainda sem a migração,
 a linha diz `sem dado`. A conta dos 14 dias é de quem lê: o relatório não
 espera por ela. O design, com o porquê de cada número:
 [`docs/rainforest/design/2026-10-08-memoria-por-assunto.md`](docs/rainforest/design/2026-10-08-memoria-por-assunto.md).
+
+### Um nome por projeto no banco
+
+O projeto de cada memória fica gravado com **um nome só**: o caminho do
+repositório principal com todo caractere que não é letra nem número trocado por
+hífen, a mesma regra que o Claude Code usa para a pasta de transcritos
+(`C:\Projetos\alfa` vira `C--Projetos-alfa`). A sessão aberta num worktree
+grava no projeto do repositório principal, e a tela continua mostrando o nome
+curto (`alfa`). A comparação não diferencia maiúscula de minúscula.
+
+Antes, o mesmo projeto aparecia com dois ou mais nomes (o curto, que vinha do
+importador, o slug da pasta e um slug por worktree), e cada leitura enxergava só
+um pedaço. Os dados antigos migram na primeira abertura do banco depois da
+atualização, junto com os resumos:
+
+- **Nome curto com correspondência única** vai para o slug do projeto. No banco
+  medido em 2026-10-08, foram 9 nomes e 8.777 linhas.
+- **Nome curto sem correspondência** fica como está e continua aparecendo na
+  busca sem filtro de projeto. Foram 17 nomes e 1.458 linhas, todos de worktrees
+  antigos cujas pastas de transcritos já não existem.
+- **Memória de sessão em worktree** que repetiria a origem de uma memória da
+  pasta principal recebe o nome do worktree na origem (`sessao:<id>:wt:<nome>:offset:<n>`).
+
+Antes de mexer em qualquer linha, a migração faz backup do banco em
+`.rainforest-backups/` e grava o que fez em `migracao-projeto-canonico.txt`, na
+pasta de dados. Ela roda uma vez; depois disso, toda abertura corrige só o que
+uma versão antiga do plugin (na outra conta, por exemplo) tiver gravado fora do
+padrão.
+
+`node scripts/memoria.cjs buscar --projeto <valor>` aceita o nome curto, o slug
+ou o caminho. Nome curto que casa com mais de um projeto, ou com nenhum, sai com
+erro listando os candidatos. O design:
+[`docs/rainforest/design/2026-10-08-projeto-canonico.md`](docs/rainforest/design/2026-10-08-projeto-canonico.md).
 
 ## Mais fundo
 
