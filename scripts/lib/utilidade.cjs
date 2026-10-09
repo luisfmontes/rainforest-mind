@@ -595,10 +595,14 @@ function gravarUso(conexao, { origem, refId, sessao, servida, nota, pontuadaEm, 
  * @param {object} conexao conexão de banco já aberta (leitura E escrita)
  * @param {string} sessao id da sessão
  * @param {string} caminhoTranscrito
+ * @param {{refazer?: boolean, pontuadaEm?: string}} [opcoes] D8 (--repontuar): `refazer` apaga as
+ *   linhas velhas da sessão DENTRO da mesma transação da regravação (erro no meio mantém a nota
+ *   antiga); `pontuadaEm` preserva a hora original nas duas tabelas (a janela da régua D7 anda
+ *   por `pontuada_em`, então regravar com a hora de hoje a colapsaria).
  * @returns {{servidasComId: number, servidasSemId: number, contrafactuais: number}}
  */
-function pontuarSessao(conexao, sessao, caminhoTranscrito) {
-  const agora = new Date().toISOString();
+function pontuarSessao(conexao, sessao, caminhoTranscrito, opcoes = {}) {
+  const agora = opcoes.pontuadaEm || new Date().toISOString();
   const { servidasCanal, texto } = extrairSessao(caminhoTranscrito);
   // Mesma memória por dois canais: grava uma vez, abertura > pedido > subagente.
   const servidas = servidasCanal.slice().sort((a, b) => ORDEM_CANAL[a.canal] - ORDEM_CANAL[b.canal]);
@@ -607,6 +611,7 @@ function pontuarSessao(conexao, sessao, caminhoTranscrito) {
 
   conexao.exec('BEGIN IMMEDIATE');
   try {
+    if (opcoes.refazer) conexao.prepare('DELETE FROM uso_memoria WHERE sessao = ?').run(sessao);
     const jaGravados = new Set();
     const textosServidos = new Set(servidas.map((s) => semPrefixo(s.linha)));
     let servidasComId = 0;
@@ -771,6 +776,48 @@ function pontuarSessoesPendentes(conexao) {
   }
 
   return { pontuadas, semTranscrito, servidasSemId, falharam, adiadas, pendentesParaProxima, total: pendentes.length };
+}
+
+/**
+ * D8 (--repontuar): refaz com as regras atuais toda sessão de `uso_memoria_sessoes` com
+ * `pontuada_em >= desde` (AAAA-MM-DD, comparado como texto contra o ISO em UTC). Laço próprio,
+ * sem o teto de TETO_PONTUAR: parte de `uso_memoria_sessoes` (uma linha por sessão), acha o
+ * transcrito no primeiro `marca_dagua.arquivo` que existe e processa por `pontuada_em`
+ * crescente, preservando o `pontuada_em` original. Sessão sem transcrito fica intocada (nota
+ * antiga) e é contada. Banco ocupado interrompe e conta a sessão atual e o resto como adiadas;
+ * outro erro conta `falharam` e mantém as linhas antigas (o DELETE está na transação).
+ *
+ * @returns {{total: number, refeitas: number, semTranscrito: number, falharam: number, adiadas: number, foraDaConta: number}}
+ */
+function repontuarJanela(conexao, desde) {
+  const janela = conexao
+    .prepare('SELECT sessao, pontuada_em FROM uso_memoria_sessoes WHERE pontuada_em >= ? ORDER BY pontuada_em ASC, sessao ASC')
+    .all(desde);
+  const arquivos = conexao.prepare('SELECT arquivo FROM marca_dagua WHERE sessao = ? ORDER BY id ASC');
+  let semTranscrito = 0;
+  const lote = [];
+  for (const { sessao, pontuada_em: pontuadaEm } of janela) {
+    const arquivo = arquivos.all(sessao).map((r) => r.arquivo).find((a) => a && fs.existsSync(a));
+    if (arquivo) lote.push({ sessao, pontuadaEm, arquivo });
+    else semTranscrito++;
+  }
+  let refeitas = 0;
+  let falharam = 0;
+  let adiadas = 0;
+  let foraDaConta = 0;
+  const nulas = conexao.prepare('SELECT count(*) AS n FROM uso_memoria WHERE sessao = ? AND servida = 1 AND nota IS NULL');
+  for (let i = 0; i < lote.length; i++) {
+    const { sessao, pontuadaEm, arquivo } = lote[i];
+    try {
+      pontuarSessao(conexao, sessao, arquivo, { refazer: true, pontuadaEm });
+      refeitas++;
+      foraDaConta += nulas.get(sessao).n;
+    } catch (e) {
+      if (ehBancoOcupado(e)) { adiadas = lote.length - i; break; }
+      falharam++;
+    }
+  }
+  return { total: janela.length, refeitas, semTranscrito, falharam, adiadas, foraDaConta };
 }
 
 // ---- Tarefa 4: relatório (régua D9) ----
@@ -980,6 +1027,7 @@ module.exports = {
   buscarContrafactual,
   pontuarSessao,
   pontuarSessoesPendentes,
+  repontuarJanela,
   idadeEmDias,
   gerarRelatorio,
   contarBuscas,
