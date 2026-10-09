@@ -10,6 +10,11 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.53.1 — 2026-10-09
+
+- **`buscar --projeto` aceita caminho de worktree e barra no fim.** `C:/repo/.claude/worktrees/<nome>` e `C:/repo/` passam a
+  achar as memórias do projeto principal, como o nome curto e o slug já achavam. Antes saíam com "não encontrado".
+
 ## 1.53.0 — 2026-10-09
 
 - **Um nome por projeto no banco de memória (Issue #435).** O projeto passa a ser gravado como o slug do repositório

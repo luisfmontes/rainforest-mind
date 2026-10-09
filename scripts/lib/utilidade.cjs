@@ -22,7 +22,7 @@ const fs = require('fs');
 const path = require('path');
 const { formatarObservacao } = require('../../hooks/lib/memoria-sessao.cjs');
 // Módulo folha (#435, D2): não requer scripts/memoria.cjs, então não reabre o circular acima.
-const { canonicoDoCaminho, slugDoCaminho } = require('./projeto-canonico.cjs');
+const { canonicoDoCaminho } = require('./projeto-canonico.cjs');
 
 // Termo raro = aparece em até LIMIAR_DF observações do corpus (Tarefa 2, D5).
 // Sem dado de calibração ainda (a ideia é medir por duas semanas antes de

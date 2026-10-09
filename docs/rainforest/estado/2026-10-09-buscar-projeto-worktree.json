@@ -1,0 +1,9 @@
+{
+  "slug": "2026-10-09-buscar-projeto-worktree",
+  "titulo": "fluxo/buscar-projeto-worktree",
+  "criado_em": "2026-10-09",
+  "leve": {
+    "motivo": "tres consertos pequenos da revisao rodada 2 do #435: buscar --projeto com caminho de worktree e barra final (D9), comentario fora do lugar, import sem uso",
+    "data": "2026-10-09"
+  }
+}
