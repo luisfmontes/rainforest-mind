@@ -139,7 +139,7 @@ $ git log --all --grep="CONTEXT.md" --oneline
 (vazio)
 
 $ cat <dados>/ideias.jsonl
-{"id":"pedido-de-fluxo-lido-como-pedido-de-dominio","titulo":"Ele pediu o FLUXO do plugin da TBC mais de uma vez e eu respondi sobre Protheus, mandando deixar pra la"}
+{"id":"pedido-de-fluxo-lido-como-pedido-de-dominio","titulo":"Ele pediu o FLUXO do plugin do trabalho mais de uma vez e eu respondi sobre Protheus, mandando deixar pra la"}
 {"id":"estacao-prometida-no-readme-sem-campo-no-script","titulo":"Li o README inteiro e nao vi que a estacao era a unica palavra do vocabulario sem mecanismo"}
 {"id":"vocabulario-do-sistema-estreitou-o-pedido","titulo":"O verbo do sistema ('colher') me fez ler o pedido como operação de arquivo, e o menu de três opções não tinha a resposta dele"}
 {"id":"obs-2026-09-02-dominio-de-codigo-sem-cenario","titulo":"Dominio de codigo proposto so com rotulo travou a decisao"}

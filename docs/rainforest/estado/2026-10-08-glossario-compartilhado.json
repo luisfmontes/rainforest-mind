@@ -250,23 +250,23 @@
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "1d44239bfcfd070d7a4f7b9342d8d8dfd4c5af90",
+      "head": "64c74c05d8dc34c378f95beddaa011458195e0f5",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ad66cb48c4bf27834",
-        "veredito": "reprovado",
+        "agente_id": "a1fb301e030863805",
+        "veredito": "ok",
         "em": "2026-10-08",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/95ff1d9f-c2ab-42e8-a083-1e340333150c/subagents/agent-ad66cb48c4bf27834.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/95ff1d9f-c2ab-42e8-a083-1e340333150c/subagents/agent-a1fb301e030863805.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-08",
-    "achados": 7,
+    "achados": 2,
     "lista": [
       "1 alta: memoria-assunto-prompt.cjs:139 sem raiz de dados nao injeta glossario",
       "2 media: dedup corrompido ou sem permissao mata o glossario",
@@ -276,7 +276,12 @@
       "6 baixa pre-existente: conferir-ponte:521/545/565 --agente agents",
       "7 baixa: readFileSync do glossario sem limite de tamanho; conteudo entra verbatim"
     ],
-    "tentativas": 1
+    "base": "31c96e47aa1a78b1a7ec37b909d269d3150fa857",
+    "head": "64c74c05d8dc34c378f95beddaa011458195e0f5",
+    "achados_baixos": [
+      "A: nome da empresa na varredura linha 142 (repo publico) -> corrigido no verificar",
+      "B: cenarios de plantar e colher dependem de ideia local -> corrigido no verificar"
+    ]
   },
   "verificar": {
     "status": "pendente"

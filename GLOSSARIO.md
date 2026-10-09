@@ -16,12 +16,12 @@ Cenário: `arqueologia` fecha como "dispensada" quando alguém olhou o código e
 ## plantar
 Definição: guardar uma ideia no acervo para voltar a ela depois, sem agir agora. É o subcomando `plantar` de `scripts/ideias.cjs`.
 Onde mora: `scripts/ideias.cjs`, que grava em ideias.jsonl dentro da pasta de dados do usuário, `~/.rainforest`, fora do repo.
-Cenário: a ideia `glossario-compartilhado-por-repo` aparece como plantada em `node scripts/ideias.cjs listar`, que mostra as plantadas por padrão.
+Cenário: plantar sem dizer quando voltar é recusado: `echo '{"id":"teste","titulo":"t"}' | node scripts/ideias.cjs plantar` sai 1 com `erro: campo(s) obrigatorio(s) faltando ou vazio(s): descricao, contexto, projeto, gancho`, porque o `gancho` é o que traz a ideia de volta.
 
 ## colher
 Definição: dar uma ideia plantada como entregue, com o resultado do que de fato foi feito. Uma ideia colhida sai da lista das plantadas.
 Onde mora: `scripts/ideias.cjs`, subcomando `colher --id <id>`, com `{"resultado": "..."}` pela entrada padrão; grava no mesmo ideias.jsonl.
-Cenário: `colher` sem resultado é recusado, porque o comando exige o que de fato foi entregue; por isso a ideia `glossario-compartilhado-por-repo` segue plantada e aparece em `listar`.
+Cenário: `echo '{}' | node scripts/ideias.cjs colher --id x` sai 1 com `erro: colher exige {"resultado": "..."} na entrada — o que de fato foi entregue`, antes de tocar o arquivo: não se colhe sem dizer o que foi entregue.
 
 ## acervo
 Definição: os registros que o uso do plugin acumula fora do repo, em `~/.rainforest`: ideias, foco e projetos. Não é o markdown que a skill montar-corpus gera a partir de uma wiki, que ela também chama de acervo. O arquivo `skills/rainforest-mind/references/regra-12-acervo.md` é outra coisa: o histórico de incidentes da regra 12.
