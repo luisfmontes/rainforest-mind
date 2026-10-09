@@ -10,7 +10,7 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
-## 1.51.0 — 2026-10-08
+## 1.52.0 — 2026-10-08
 
 - **Glossário de domínio por repositório.** Cada repo pode ter um `GLOSSARIO.md` na raiz com os termos do seu domínio: o que o termo é, onde ele mora, um cenário real e a forma "evite". Quem trabalha no repo passa a receber os verbetes certos sem precisar pedir.
 - **Injeção pelo assunto, no pedido e no briefing do subagente.** Quando o pedido cita um termo do glossário, o verbete entra no contexto; o subagente recebe os verbetes casados no briefing. Cada verbete entra uma vez por sessão. No pedido, a injeção exige a pasta de dados do rainforest: sem ela, o pedido segue sem o glossário. Vale a partir da sessão seguinte à atualização.
