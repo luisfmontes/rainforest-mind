@@ -64,7 +64,15 @@ Use para levar uma memória pessoal de domínio para o glossário do repo (D4).
    formato D7, com Onde mora e Cenário conferidos no repo, e PARE.
 4. Com a aprovação, grave o verbete no `GLOSSARIO.md` e rode o conferidor com
    `--caminhos`, como em `propor`.
-5. Troque o corpo da memória por um ponteiro de uma linha que cita o termo e o
+5. Antes de trocar o corpo, pergunte: "a memória também orienta como a sessão
+   escreve fora deste repo (termo a evitar em chat, commit, briefing)?". Se sim,
+   a memória fica inteira: não troque o corpo, só acrescente uma linha de ponteiro
+   para o verbete. Exemplo da decisão de 2026-10-08: `dizer-fluxo-nao-esteira` e
+   `vocabulario-enxertar-nao-roubar` são conduta de escrita em qualquer projeto,
+   e o verbete só chega quando o termo aparece no pedido, neste repo; reduzi-las
+   a ponteiro faria a sessão voltar a escrever o termo evitado. Se não, siga o
+   passo 6.
+6. Troque o corpo da memória por um ponteiro de uma linha que cita o termo e o
    repo, por exemplo `fluxo: ver GLOSSARIO.md do rainforest-mind`. Não copie o
    texto do verbete para a memória: duas fontes do mesmo fato divergem em silêncio
    (D4). Faça a troca arquivo por arquivo, só com a palavra do Luís.
