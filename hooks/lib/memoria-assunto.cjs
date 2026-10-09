@@ -70,17 +70,23 @@ function buscarPorAssunto(conexao, texto, { projetoAtual, jaServidos = new Set()
   }
 }
 
-function montarBlocoAssunto(linhas) {
-  if (!Array.isArray(linhas) || linhas.length === 0) return '';
+// Devolve o bloco e os ids das linhas que de fato entraram nele, na ordem, parando no
+// primeiro estouro do teto. Quem grava "ja servido" usa `ids`, nao as candidatas (#436, D5).
+function montarBlocoAssuntoComIds(linhas) {
+  if (!Array.isArray(linhas) || linhas.length === 0) return { bloco: '', ids: [] };
   let bloco = CABECALHO;
-  let algumaLinha = false;
+  const ids = [];
   for (const l of linhas) {
     const proxima = bloco + '\n' + formatarObservacao(l, null, 300);
     if (Buffer.byteLength(proxima, 'utf8') > TETO_BYTES) break;
     bloco = proxima;
-    algumaLinha = true;
+    ids.push(l.id);
   }
-  return algumaLinha ? bloco : '';
+  return ids.length > 0 ? { bloco, ids } : { bloco: '', ids: [] };
 }
 
-module.exports = { LIMIAR_BM25, TETO_DF_FRACAO, construirQueryAssunto, buscarPorAssunto, montarBlocoAssunto };
+function montarBlocoAssunto(linhas) {
+  return montarBlocoAssuntoComIds(linhas).bloco;
+}
+
+module.exports = { LIMIAR_BM25, TETO_DF_FRACAO, construirQueryAssunto, buscarPorAssunto, montarBlocoAssunto, montarBlocoAssuntoComIds };

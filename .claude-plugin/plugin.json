@@ -1,26 +1,11 @@
 {
   "name": "rainforest-mind",
-  "version": "1.54.0",
+  "version": "1.55.0",
   "description": "O problema não é falta de ideia, é o que recebe luz agora — planeja antes de implementar, responde em número, avisa no desvio e não chama de pronto sem a saída que prova",
   "author": {
     "name": "Luís Montes"
   },
   "license": "MIT",
   "types": "./types/index.d.ts",
-  "userConfig": {
-    "plugins": {
-      "type": "string",
-      "title": "Plugins a manter em dia",
-      "description": "Ids nome@marketplace que o /plugins-em-dia atualiza na sessão (só os instalados no escopo user)",
-      "multiple": true,
-      "default": ["rainforest-mind@rainforest-mind"]
-    },
-    "recarregarSozinho": {
-      "type": "boolean",
-      "title": "Recarregar sozinho",
-      "description": "Rodar /reload-plugins quando um plugin subir de versão; desligado, só avisa",
-      "default": false
-    }
-  },
   "homepage": "https://github.com/luisfmontes/rainforest-mind"
 }

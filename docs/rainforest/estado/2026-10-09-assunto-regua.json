@@ -1,0 +1,213 @@
+{
+  "slug": "2026-10-09-assunto-regua",
+  "titulo": "2026-10-09-assunto-regua",
+  "criado_em": "2026-10-09",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-10-09-assunto-regua.md",
+    "decisoes": 8,
+    "em": "2026-10-09"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-09-assunto-regua.md",
+    "tarefas": 12,
+    "paralelas": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "em": "2026-10-09"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-09",
+    "tarefas_ok": 11,
+    "tarefas": 12,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "294ee9fe",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-09T16:17:37.311Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "294ee9fe",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-09T16:17:37.311Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "294ee9fe",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-09T16:17:37.311Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "294ee9fe",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-09T16:17:37.311Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "5955f7c0",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-09T16:50:11.451Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "94d59178",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-09T16:56:00.343Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "94d59178",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-09T16:56:00.343Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "94d59178",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-09T16:56:00.343Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "1f47c9c4",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-09T17:10:28.374Z"
+      },
+      {
+        "tarefa": 11,
+        "hash_base": "022171fc",
+        "iteracao": 1,
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76",
+        "ts": "2026-10-09T17:38:07.360Z"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-09",
+    "ensaio": "copia do banco real: janela 56, refeitas 46, sem transcrito 10, falharam 0, adiadas 0; 60 servidas fora da conta; hash(sessao,pontuada_em) e hash(uso antes de 2026-10-08) iguais antes e depois; 2a rodada so mudou 1 sessao com transcrito vivo; banco real com 0 nulas e sem backup do ensaio",
+    "adiada_para_fechar": [
+      {
+        "tarefa": 12,
+        "motivo": "o plano manda executar depois do merge e da atualizacao do plugin, na janela principal"
+      }
+    ],
+    "comando": "bash scripts/varrer-baterias.sh",
+    "saida": "as 216 baterias passaram",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-busca-ativa.cjs: git commit com heredoc que cita o comando nao conta como busca"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-abertura-grava-servidas.cjs: so os ids das linhas que couberam no bloco entram no arquivo"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-prompt-so-o-que-entrou.cjs: memoria cortada pelo teto de 1500 B volta no pedido seguinte da sessao"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-esquema-ocupado.cjs: uso_memoria legado com banco ocupado: criarSchema lanca em vez de engolir"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-nota-do-pedido.cjs: Read do arquivo que o pedido citou nao pontua a memoria"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-nota-nula.cjs: memoria cujos raros estavam todos no pedido grava a linha com nota nula"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-relatorio-fora-da-conta.cjs: sessao so com servida nula sai do denominador e a linha fora da conta diz quantas"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-pontuacao-esquema-incompleto.cjs: uso_memoria sem canal: a fila inteira fica para a proxima passada"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-repontuar.cjs: linha velha que as regras novas nao produzem some da sessao refeita"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "ensaio de medicao em copia do banco real; contagens e hashes colados no estado"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "n/a",
+        "motivo": "documentacao e versao; coerencia com o design conferida e testa-versao verde"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "n/a",
+        "motivo": "edicao de dado do usuario fora do repo, depois do merge"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "8bbd28ee10c08f045a00e6cfda2263a21f8317d2",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ad101bb8ddb5beb1c",
+        "veredito": "ok",
+        "em": "2026-10-09",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/3f823b5e-a8e7-4f91-bb68-e29874374c76/subagents/agent-ad101bb8ddb5beb1c.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-09",
+    "achados": 0,
+    "base": "279ec07fff11fb84f01293d09ce2cf864618f411",
+    "head": "8bbd28ee10c08f045a00e6cfda2263a21f8317d2",
+    "nao_bloqueantes": 6
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/varrer-baterias.sh",
+    "saida": "as 216 baterias passaram; criterios das tarefas 1-9 e 11 rodados um a um com exit 0 (14, 30, 3, 6, 9, 11, 4, 4, 13 ok; testa-versao 5 ok; conferir-versao 1.54.0); ensaio da tarefa 10 refeito pelo revisor numa copia do banco real: janela 56, refeitas 46, sem transcrito 10, pontuada_em preservado",
+    "sensor_externo": "bash scripts/varrer-baterias.sh",
+    "em": "2026-10-09"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "pr",
+    "pr": 459,
+    "merge": "f11f8100",
+    "em": "2026-10-09"
+  }
+}

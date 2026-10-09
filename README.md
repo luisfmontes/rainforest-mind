@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.54.0-1e5c3f?style=flat-square" alt="versão 1.54.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.55.0-1e5c3f?style=flat-square" alt="versão 1.55.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -360,7 +360,12 @@ A memória chega por três caminhos, cada um com o seu evento:
 Sem candidata acima do limiar, nada é injetado. Cada bloco tem no máximo
 **1.500 bytes**. O projeto atual só desempata entre candidatas de mesma
 relevância. Os hooks só leem o banco: o que gravam é a lista de ids já
-servidos da sessão, sem texto.
+servidos da sessão, sem texto. Quem grava essa lista é a abertura (os ids das
+memórias que de fato entraram no bloco, somados aos que já estavam lá na sessão
+retomada) e o canal do pedido (só o que entrou no bloco, não as candidatas que o
+teto de 1.500 bytes cortou). Se a gravação da abertura falhar, a abertura sai
+como sempre. A sessão aberta antes da atualização segue pela leitura do
+transcrito.
 
 **Falha calada.** Banco ausente ou travado e qualquer erro saem com exit 0 e sem
 injeção, e o hook tem teto de 5 s no `hooks.json`: o pedido ou o despacho do
@@ -384,6 +389,41 @@ pelo canal novo; sem canal novo servido, ou com o banco ainda sem a migração,
 a linha diz `sem dado`. A conta dos 14 dias é de quem lê: o relatório não
 espera por ela. O design, com o porquê de cada número:
 [`docs/rainforest/design/2026-10-08-memoria-por-assunto.md`](docs/rainforest/design/2026-10-08-memoria-por-assunto.md).
+
+A régua em si não mudou (40%, 1/3, base 27% e 171 de 255, colheita em
+2026-10-23). Mudou o que entra no número que ela lê
+([design](docs/rainforest/design/2026-10-09-assunto-regua.md)):
+
+- **Busca ativa é instrução, não texto.** Só conta o comando em que alguma
+  instrução começa por `node <caminho>memoria.cjs buscar`. Citar o comando num
+  `grep`, num `echo`, no corpo de um heredoc ou numa mensagem de commit não
+  conta.
+- **A nota do pedido e do subagente desconta o que o pedido já tinha.** Ela mede
+  só os termos raros da memória que não estavam no texto que disparou a injeção
+  (a linha do pedido, ou o briefing). A abertura não muda.
+- **Memória sem termo raro fora do pedido sai da conta.** Não conta como útil
+  nem como inútil, em nenhum lado da régua nem do relatório por canal. O
+  relatório diz quantas saíram na linha `servidas fora da conta`.
+- **Só vai para os já servidos o que entrou no bloco.** A memória cortada pelo
+  teto de 1.500 bytes não fica marcada como servida.
+- **Banco ocupado não tira a sessão da fila.** Se a migração das colunas de
+  utilidade esbarra em banco ocupado, a sessão fica para a próxima passada em
+  vez de virar falha definitiva.
+- **O peso do projeto atual continua só desempatando o bm25 igual.** A parte
+  das duas grafias do mesmo projeto já foi resolvida pelo nome canônico (#435).
+
+O que já foi pontuado carrega as regras antigas. Para refazer a janela com as
+novas, antes do `--relatorio`:
+
+```bash
+node scripts/memoria.cjs utilidade --repontuar --desde 2026-10-08
+```
+
+Faz backup do banco antes, refaz as sessões pontuadas a partir da data
+(mantendo o `pontuada_em` de cada uma), e imprime quantas refez, quantas ficaram
+sem transcrito e quantas servidas saíram da conta. Sessão sem transcrito não é
+tocada: fica com a nota antiga e aparece contada. Rodar duas vezes dá o mesmo
+resultado. Sai com 2 se o banco estava ocupado e restaram sessões adiadas.
 
 ### Um nome por projeto no banco
 

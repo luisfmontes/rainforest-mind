@@ -1,0 +1,9 @@
+{
+  "slug": "2026-10-09-regua-acabamento",
+  "titulo": "fluxo/regua-acabamento",
+  "criado_em": "2026-10-09",
+  "leve": {
+    "motivo": "achados baixos da revisao do #436: frase do CHANGELOG sobre buscas ativas, limites nao declarados da busca-ativa, --repontuar sem progresso, espaco no require",
+    "data": "2026-10-09"
+  }
+}

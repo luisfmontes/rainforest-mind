@@ -23,6 +23,7 @@ const path = require('path');
 const { formatarObservacao } = require('../../hooks/lib/memoria-sessao.cjs');
 // Módulo folha (#435, D2): não requer scripts/memoria.cjs, então não reabre o circular acima.
 const { canonicoDoCaminho } = require('./projeto-canonico.cjs');
+const { ehBuscaAtiva } = require('./busca-ativa.cjs');
 
 // Termo raro = aparece em até LIMIAR_DF observações do corpus (Tarefa 2, D5).
 // Sem dado de calibração ainda (a ideia é medir por duas semanas antes de
@@ -117,6 +118,16 @@ function lerTranscritoFilho(arquivo) {
   return r;
 }
 
+// D2: o briefing que chega ao filho (e o prompt que o pai devolve) já traz o
+// glossário e o bloco de memória anexados pelo hook. O texto que DISPAROU a
+// injeção é o que vem antes do primeiro desses cabeçalhos.
+const CAB_GLOSSARIO = '## Glossário do repo';
+function briefingSemInjecao(briefing) {
+  const t = String(briefing || '');
+  const cortes = [CAB_GLOSSARIO, CAB_ASSUNTO].map((c) => t.indexOf(c)).filter((i) => i >= 0);
+  return cortes.length ? t.slice(0, Math.min(...cortes)) : t;
+}
+
 /**
  * Lê um transcrito (.jsonl do harness) e devolve:
  *   - `servidas`: as linhas do bloco de memória que de fato chegaram à
@@ -206,7 +217,7 @@ function extrairSessao(caminhoTranscrito) {
     // Canal `subagente`: o prompt (já com a memória) devolvido ao pai.
     if (entrada.toolUseResult && typeof entrada.toolUseResult.prompt === 'string') {
       for (const linha of extrairLinhasServidas(entrada.toolUseResult.prompt, [CAB_ASSUNTO])) {
-        doSubagente.push({ linha, agentId: entrada.toolUseResult.agentId || null });
+        doSubagente.push({ linha, agentId: entrada.toolUseResult.agentId || null, briefing: entrada.toolUseResult.prompt });
       }
     }
 
@@ -247,16 +258,16 @@ function extrairSessao(caminhoTranscrito) {
   for (const { linha, indiceInjecao } of injecoes) {
     // D8: o pedido que disparou a injeção não pontua a própria injeção.
     const textoPosterior = partesTexto.slice(indiceInjecao + 1).join('\n');
-    servidasCanal.push({ linha, canal: 'pedido', texto: textoPosterior });
+    servidasCanal.push({ linha, canal: 'pedido', texto: textoPosterior, descontar: partesTexto[indiceInjecao] || '' });
   }
 
   // Subagente: texto = tool_use do transcrito do filho; o briefing não conta.
   const dirFilhos = path.join(path.dirname(caminhoTranscrito), path.basename(caminhoTranscrito, '.jsonl'), 'subagents');
   const vistos = new Set();
-  for (const { linha, agentId } of doSubagente) {
+  for (const { linha, agentId, briefing } of doSubagente) {
     const filho = agentId ? lerTranscritoFilho(path.join(dirFilhos, `agent-${agentId}.jsonl`)) : null;
     if (agentId) vistos.add(agentId);
-    servidasCanal.push({ linha, canal: 'subagente', texto: filho ? filho.textoTools : '' });
+    servidasCanal.push({ linha, canal: 'subagente', texto: filho ? filho.textoTools : '', descontar: briefingSemInjecao(briefing) });
   }
   let arquivosFilhos = [];
   try {
@@ -270,7 +281,7 @@ function extrairSessao(caminhoTranscrito) {
     const filho = lerTranscritoFilho(path.join(dirFilhos, arq));
     if (!filho) continue;
     for (const linha of extrairLinhasServidas(filho.briefing, [CAB_ASSUNTO])) {
-      servidasCanal.push({ linha, canal: 'subagente', texto: filho.textoTools });
+      servidasCanal.push({ linha, canal: 'subagente', texto: filho.textoTools, descontar: briefingSemInjecao(filho.briefing) });
     }
   }
 
@@ -411,9 +422,13 @@ function contarDocumentFrequency(conexao, termo) {
  * @param {object} conexao
  * @param {string} conteudo conteúdo da observação/resumo sendo pontuada
  * @param {string} texto texto da sessão (extrairSessao().texto)
- * @returns {number} nota entre 0 e 1
+ * @param {string} [textoDoPedido] D2: texto que disparou a injeção (canais
+ *   pedido e subagente). Os termos raros que já estavam nele não medem uso
+ *   (o Read do arquivo citado os repete) e saem da conta. Sem este argumento,
+ *   a nota é a de sempre.
+ * @returns {number|null} nota entre 0 e 1; null = não medida (todos os raros estavam no pedido)
  */
-function calcularNota(conexao, conteudo, texto) {
+function calcularNota(conexao, conteudo, texto, textoDoPedido) {
   const termos = Array.from(
     new Set((String(conteudo || '').match(/[\p{L}\p{N}]+/gu) || []).map((t) => t.toLowerCase()))
   );
@@ -421,20 +436,23 @@ function calcularNota(conexao, conteudo, texto) {
 
   const tokensTexto = new Set((String(texto || '').match(/[\p{L}\p{N}]+/gu) || []).map((t) => t.toLowerCase()));
 
-  let rarosTotal = 0;
-  let rarosPresentes = 0;
+  const tokensPedido = new Set(
+    textoDoPedido === undefined ? [] : (String(textoDoPedido || '').match(/[\p{L}\p{N}]+/gu) || []).map((t) => t.toLowerCase())
+  );
 
+  const raros = [];
   for (const termo of termos) {
     const df = contarDocumentFrequency(conexao, termo);
     if (df === null) continue; // não deu para medir — não conta a favor nem contra
-    const raro = df <= LIMIAR_DF;
-    if (!raro) continue;
-    rarosTotal++;
-    if (tokensTexto.has(termo)) rarosPresentes++;
+    if (df <= LIMIAR_DF) raros.push(termo);
   }
 
-  if (rarosTotal === 0) return 0;
-  return rarosPresentes / rarosTotal;
+  // Sem o texto do pedido (abertura, ou chamada de 3 argumentos) memória sem raro nenhum vale 0.
+  if (textoDoPedido === undefined && raros.length === 0) return 0;
+  const rarosFora = raros.filter((t) => !tokensPedido.has(t));
+  // D3: nada a medir fora do pedido (inclui memória sem raro nenhum): nota nula, fora da conta.
+  if (rarosFora.length === 0) return null;
+  return rarosFora.filter((t) => tokensTexto.has(t)).length / rarosFora.length;
 }
 
 // Query MATCH do FTS5 a partir de texto livre — tokeniza por letra/dígito
@@ -504,10 +522,9 @@ function buscarContrafactual(conexao, texto, jaServidos, textosServidos) {
   return resultado;
 }
 
-// Buscas ativas (D9): conta os tool_use de Bash/PowerShell cujo `input.command` contém `memoria.cjs buscar`
+// Buscas ativas (D9): conta os tool_use de Bash/PowerShell cujo `input.command` tem uma instrução `node <...>memoria.cjs buscar` (ehBuscaAtiva)
 // no transcrito principal e, somados, nos subagents/*.jsonl da sessão. Só
 // inteiros saem daqui (D10).
-const PADRAO_BUSCA = 'memoria.cjs buscar';
 function contarBuscasArquivo(arquivo) {
   let conteudo;
   try {
@@ -527,7 +544,7 @@ function contarBuscasArquivo(arquivo) {
     const c = e.message && e.message.content;
     if (e.type !== 'assistant' || !Array.isArray(c)) continue;
     for (const b of c) {
-      if (b && b.type === 'tool_use' && (b.name === 'Bash' || b.name === 'PowerShell') && b.input && typeof b.input.command === 'string' && b.input.command.includes(PADRAO_BUSCA)) n++;
+      if (b && b.type === 'tool_use' && (b.name === 'Bash' || b.name === 'PowerShell') && b.input && typeof b.input.command === 'string' && ehBuscaAtiva(b.input.command)) n++;
     }
   }
   return n;
@@ -578,10 +595,14 @@ function gravarUso(conexao, { origem, refId, sessao, servida, nota, pontuadaEm, 
  * @param {object} conexao conexão de banco já aberta (leitura E escrita)
  * @param {string} sessao id da sessão
  * @param {string} caminhoTranscrito
+ * @param {{refazer?: boolean, pontuadaEm?: string}} [opcoes] D8 (--repontuar): `refazer` apaga as
+ *   linhas velhas da sessão DENTRO da mesma transação da regravação (erro no meio mantém a nota
+ *   antiga); `pontuadaEm` preserva a hora original nas duas tabelas (a janela da régua D7 anda
+ *   por `pontuada_em`, então regravar com a hora de hoje a colapsaria).
  * @returns {{servidasComId: number, servidasSemId: number, contrafactuais: number}}
  */
-function pontuarSessao(conexao, sessao, caminhoTranscrito) {
-  const agora = new Date().toISOString();
+function pontuarSessao(conexao, sessao, caminhoTranscrito, opcoes = {}) {
+  const agora = opcoes.pontuadaEm || new Date().toISOString();
   const { servidasCanal, texto } = extrairSessao(caminhoTranscrito);
   // Mesma memória por dois canais: grava uma vez, abertura > pedido > subagente.
   const servidas = servidasCanal.slice().sort((a, b) => ORDEM_CANAL[a.canal] - ORDEM_CANAL[b.canal]);
@@ -590,12 +611,13 @@ function pontuarSessao(conexao, sessao, caminhoTranscrito) {
 
   conexao.exec('BEGIN IMMEDIATE');
   try {
+    if (opcoes.refazer) conexao.prepare('DELETE FROM uso_memoria WHERE sessao = ?').run(sessao);
     const jaGravados = new Set();
     const textosServidos = new Set(servidas.map((s) => semPrefixo(s.linha)));
     let servidasComId = 0;
     let servidasSemId = 0;
 
-    for (const { linha, canal, texto: textoServida } of servidas) {
+    for (const { linha, canal, texto: textoServida, descontar } of servidas) {
       const alvo = acharAlvo(conexao, linha, apelidos);
       if (!alvo) {
         servidasSemId++;
@@ -604,7 +626,7 @@ function pontuarSessao(conexao, sessao, caminhoTranscrito) {
       const chave = `${alvo.origem}:${alvo.id}`;
       if (jaGravados.has(chave)) continue; // linha duplicada no bloco — grava uma vez
       jaGravados.add(chave);
-      const nota = calcularNota(conexao, alvo.conteudo, textoServida);
+      const nota = calcularNota(conexao, alvo.conteudo, textoServida, descontar);
       gravarUso(conexao, { origem: alvo.origem, refId: alvo.id, sessao, servida: 1, nota, pontuadaEm: agora, canal });
       servidasComId++;
     }
@@ -670,6 +692,21 @@ function ehBancoOcupado(e) {
   return Boolean(e) && e.code === 'ERR_SQLITE_ERROR' && /database is (locked|busy)/.test(String(e.message || ''));
 }
 
+// D6: o esquema de uso tem de estar completo (coluna `canal` e as 3 de buscas) antes de qualquer
+// INSERT. Banco que ainda não migrou (o ALTER pegou BUSY) falharia com "no column named canal",
+// que não casa `ehBancoOcupado`, e a sessão sairia da fila para sempre.
+function esquemaDeUsoCompleto(conexao) {
+  const nomes = (tabela) => conexao.prepare(`PRAGMA table_info(${tabela})`).all().map((c) => c.name);
+  const uso = nomes('uso_memoria');
+  const sessoes = nomes('uso_memoria_sessoes');
+  return uso.includes('canal') && ['buscas_principal', 'buscas_subagente', 'subagentes'].every((c) => sessoes.includes(c));
+}
+
+// Devolve a fila inteira como adiada: nenhuma sessão é marcada, todas voltam na próxima passada.
+function adiarTudo(pendentes) {
+  return { pontuadas: 0, semTranscrito: 0, servidasSemId: 0, falharam: 0, adiadas: pendentes.length, pendentesParaProxima: 0, total: pendentes.length };
+}
+
 /**
  * Pontua toda sessão da `marca_dagua` sem linha em `uso_memoria_sessoes`
  * (D7), até TETO_PONTUAR sessões COM transcrito por passada (Tarefa 7), as
@@ -699,6 +736,7 @@ function pontuarSessoesPendentes(conexao) {
        ORDER BY m.processada_em ASC`
     )
     .all();
+  if (!esquemaDeUsoCompleto(conexao)) return adiarTudo(pendentes);
 
   let semTranscrito = 0;
   const comTranscrito = [];
@@ -740,6 +778,50 @@ function pontuarSessoesPendentes(conexao) {
   return { pontuadas, semTranscrito, servidasSemId, falharam, adiadas, pendentesParaProxima, total: pendentes.length };
 }
 
+/**
+ * D8 (--repontuar): refaz com as regras atuais toda sessão de `uso_memoria_sessoes` com
+ * `pontuada_em >= desde` (AAAA-MM-DD, comparado como texto contra o ISO em UTC). Laço próprio,
+ * sem o teto de TETO_PONTUAR: parte de `uso_memoria_sessoes` (uma linha por sessão), acha o
+ * transcrito no primeiro `marca_dagua.arquivo` que existe e processa por `pontuada_em`
+ * crescente, preservando o `pontuada_em` original. Sessão sem transcrito fica intocada (nota
+ * antiga) e é contada. Banco ocupado interrompe e conta a sessão atual e o resto como adiadas;
+ * outro erro conta `falharam` e mantém as linhas antigas (o DELETE está na transação).
+ * `aoProgresso(feitas, total)`, opcional, é chamado depois de cada sessão do lote com transcrito.
+ *
+ * @returns {{total: number, refeitas: number, semTranscrito: number, falharam: number, adiadas: number, foraDaConta: number}}
+ */
+function repontuarJanela(conexao, desde, aoProgresso) {
+  const janela = conexao
+    .prepare('SELECT sessao, pontuada_em FROM uso_memoria_sessoes WHERE pontuada_em >= ? ORDER BY pontuada_em ASC, sessao ASC')
+    .all(desde);
+  const arquivos = conexao.prepare('SELECT arquivo FROM marca_dagua WHERE sessao = ? ORDER BY id ASC');
+  let semTranscrito = 0;
+  const lote = [];
+  for (const { sessao, pontuada_em: pontuadaEm } of janela) {
+    const arquivo = arquivos.all(sessao).map((r) => r.arquivo).find((a) => a && fs.existsSync(a));
+    if (arquivo) lote.push({ sessao, pontuadaEm, arquivo });
+    else semTranscrito++;
+  }
+  let refeitas = 0;
+  let falharam = 0;
+  let adiadas = 0;
+  let foraDaConta = 0;
+  const nulas = conexao.prepare('SELECT count(*) AS n FROM uso_memoria WHERE sessao = ? AND servida = 1 AND nota IS NULL');
+  for (let i = 0; i < lote.length; i++) {
+    const { sessao, pontuadaEm, arquivo } = lote[i];
+    try {
+      pontuarSessao(conexao, sessao, arquivo, { refazer: true, pontuadaEm });
+      refeitas++;
+      foraDaConta += nulas.get(sessao).n;
+    } catch (e) {
+      if (ehBancoOcupado(e)) { adiadas = lote.length - i; break; }
+      falharam++;
+    }
+    if (aoProgresso) aoProgresso(i + 1, lote.length);
+  }
+  return { total: janela.length, refeitas, semTranscrito, falharam, adiadas, foraDaConta };
+}
+
 // ---- Tarefa 4: relatório (régua D9) ----
 
 function idadeEmDias(conexao, origem, refId) {
@@ -774,6 +856,8 @@ function idadeEmDias(conexao, origem, refId) {
 const REGUA_D7 = { util: 0.4, perda: 1 / 3 };
 const BASE_D7 = { dia: '2026-10-08', util: '27%', perdas: '171 de 255' };
 const NOTA_UTIL = 0.5;
+// D3: servida de nota nula (toda a memória estava no pedido) não foi medida e fica fora da conta.
+const SQL_MEDIDA = 'servida = 1 AND nota IS NOT NULL';
 
 function gerarRelatorio(conexao) {
   let sessoes = [];
@@ -785,14 +869,20 @@ function gerarRelatorio(conexao) {
   if (sessoes.length === 0) return 'nenhuma sessão pontuada ainda';
 
   const temServida = new Set(
-    conexao.prepare(`SELECT DISTINCT sessao FROM uso_memoria WHERE servida = 1`).all().map((r) => r.sessao)
+    conexao.prepare(`SELECT DISTINCT sessao FROM uso_memoria WHERE ${SQL_MEDIDA}`).all().map((r) => r.sessao)
   );
   const sessoesComServida = sessoes.filter((s) => temServida.has(s.sessao));
   const semServida = sessoes.length - sessoesComServida.length;
 
+  // Servidas de nota nula: não medidas, fora da conta. Só aparecem quando existem.
+  const nulas = conexao
+    .prepare(`SELECT COUNT(*) n, COUNT(DISTINCT sessao) s FROM uso_memoria WHERE servida = 1 AND nota IS NULL`)
+    .get();
+  const linhaNulas = `servidas fora da conta (toda a memória estava no pedido): ${nulas.n} em ${nulas.s} sessão(ões)`;
+
   const total = sessoesComServida.length;
   if (total === 0) {
-    return `${semServida} sessão(ões) sem servida fora da conta\nnenhuma sessão com servida para medir a régua D9`;
+    return `${semServida} sessão(ões) sem servida fora da conta\n${nulas.n > 0 ? linhaNulas + '\n' : ''}nenhuma sessão com servida para medir a régua D9`;
   }
 
   const linhas = [];
@@ -801,13 +891,14 @@ function gerarRelatorio(conexao) {
   if (semServida > 0) {
     linhas.push(`${semServida} sessão(ões) sem servida fora da conta`);
   }
+  if (nulas.n > 0) linhas.push(linhaNulas);
 
   let sessoesComPerda = 0;
   const comPerda = new Set();
   const naoServidasComPerda = [];
 
   for (const { sessao } of sessoesComServida) {
-    const melhorRow = conexao.prepare(`SELECT MAX(nota) n FROM uso_memoria WHERE sessao = ? AND servida = 1`).get(sessao);
+    const melhorRow = conexao.prepare(`SELECT MAX(nota) n FROM uso_memoria WHERE sessao = ? AND ${SQL_MEDIDA}`).get(sessao);
     const melhorNota = melhorRow && melhorRow.n != null ? melhorRow.n : 0;
 
     const naoServidas = conexao
@@ -863,7 +954,7 @@ function gerarRelatorio(conexao) {
       .prepare(
         `SELECT COUNT(DISTINCT sessao) y,
                 COUNT(DISTINCT CASE WHEN nota >= ? THEN sessao END) x
-         FROM uso_memoria WHERE servida = 1 AND canal = ?`
+         FROM uso_memoria WHERE ${SQL_MEDIDA} AND canal = ?`
       )
       .get(NOTA_UTIL, canal);
     const pct = r.y > 0 ? Math.round((100 * r.x) / r.y) : 0;
@@ -938,6 +1029,7 @@ module.exports = {
   buscarContrafactual,
   pontuarSessao,
   pontuarSessoesPendentes,
+  repontuarJanela,
   idadeEmDias,
   gerarRelatorio,
   contarBuscas,

@@ -1,0 +1,77 @@
+Data: 2026-10-09
+Termos: contarBuscasArquivo, calcularNota, lerServidasDoInicio, repontuar, regua D7
+
+$ gh issue list --state all --search "contarBuscasArquivo" --limit 200 --json number,title,state
+[{"number":436,"state":"OPEN","title":"memoria-assunto: medicao da regua D7 com 3 distorcoes antes da colheita"}]
+
+
+$ gh issue list --state all --search "calcularNota" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "lerServidasDoInicio" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "repontuar" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "regua D7" --limit 200 --json number,title,state
+[{"number":436,"state":"OPEN","title":"memoria-assunto: medicao da regua D7 com 3 distorcoes antes da colheita"},{"number":379,"state":"CLOSED","title":"verificar não fecha em monorepo: a catraca roda toda bateria com --raiz na raiz do repo"},{"number":299,"state":"CLOSED","title":"Rota com emoji de status por etapa: formato de acompanhamento que a regra 4 nao tem"}]
+
+
+$ gh pr list --state all --search "contarBuscasArquivo" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "calcularNota" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "lerServidasDoInicio" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "repontuar" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "regua D7" --limit 200 --json number,title,state
+[{"number":437,"state":"MERGED","title":"memoria: injecao pelo assunto no pedido e no subagente (1.49.0)"},{"number":304,"state":"MERGED","title":"Notas de atualizacao (CHANGELOG) e o adendo que mede o D2 do contrato de territorio"},{"number":224,"state":"MERGED","title":"Enxerta os sete mecanismos do ponytail, e fecha a fronteira que o gate de código de modelo não tinha"},{"number":109,"state":"MERGED","title":"Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler"}]
+
+
+$ git ls-remote --heads origin | grep -F "contarBuscasArquivo"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "calcularNota"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "lerServidasDoInicio"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "repontuar"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "regua D7"
+(vazio)
+
+$ git log --all --grep="contarBuscasArquivo" --oneline
+(vazio)
+
+$ git log --all --grep="calcularNota" --oneline
+(vazio)
+
+$ git log --all --grep="lerServidasDoInicio" --oneline
+(vazio)
+
+$ git log --all --grep="repontuar" --oneline
+3a4f7447 Design: regua D7 da memoria por assunto sem distorcoes (#436)
+
+$ git log --all --grep="regua D7" --oneline
+3a4f7447 Design: regua D7 da memoria por assunto sem distorcoes (#436)
+64d5e301 memoria: injecao pelo assunto no pedido e no subagente (1.49.0) (#437)
+
+$ cat <dados>/ideias.jsonl
+(vazio)
+
