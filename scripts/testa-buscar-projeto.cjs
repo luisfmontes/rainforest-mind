@@ -62,7 +62,9 @@ function caso(nome, fn) {
 }
 
 try {
-  for (const valor of ['alfa', 'C--Projetos-alfa', 'C--projetos-ALFA', 'C:/Projetos/alfa', 'C:\\Projetos\\alfa']) {
+  for (const valor of ['alfa', 'C--Projetos-alfa', 'C--projetos-ALFA', 'C:/Projetos/alfa', 'C:\\Projetos\\alfa',
+    'C:/Projetos/alfa/', 'C:\\Projetos\\alfa\\', 'C:/Projetos/alfa/.claude/worktrees/w1',
+    'C:\\Projetos\\alfa\\.claude\\worktrees\\w1']) {
     caso(`--projeto ${valor} devolve as 3 observações do alfa (sem texto)`, () => {
       assert.deepStrictEqual(conteudos(['--projeto', valor, '--json']), ALFA);
     });
