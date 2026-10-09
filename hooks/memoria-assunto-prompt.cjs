@@ -9,7 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 const { resolverRaiz } = require('./lib/raiz.cjs');
-const { buscarPorAssunto, montarBlocoAssunto } = require('./lib/memoria-assunto.cjs');
+const { buscarPorAssunto, montarBlocoAssuntoComIds } =require('./lib/memoria-assunto.cjs');
 const { lerVerbetes, verbeteValido, acharGlossario, casarVerbetes, montarBlocoGlossario, chaveDe } = require('./lib/glossario.cjs');
 const { abrirBancoSomenteLeitura, resolverCaminhos } = require(path.join(__dirname, '..', 'scripts', 'memoria.cjs'));
 const { extrairLinhasServidas, acharAlvo } = require(path.join(__dirname, '..', 'scripts', 'lib', 'utilidade.cjs'));
@@ -124,10 +124,10 @@ function memoriaDoPedido(entrada, prompt, sessao, raiz, cwd) {
     }
 
     const achadas = buscarPorAssunto(conexao, prompt, { projetoAtual: canonico, jaServidos: servidos, max: 3 });
-    const bloco = montarBlocoAssunto(achadas);
+    const { bloco, ids } = montarBlocoAssuntoComIds(achadas);
     if (!bloco) return '';
 
-    for (const a of achadas) servidos.add(a.id);
+    for (const id of ids) servidos.add(id);
     persistirServidos(arquivo, Array.from(servidos));
     return bloco;
   } finally {
