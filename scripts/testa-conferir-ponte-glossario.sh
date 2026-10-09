@@ -12,6 +12,8 @@
 #   7. pasta chamada GLOSSARIO.md nao conta como glossario
 #   8. --json traz situacao glossario-surgiu / glossario-sumiu
 #   9. stdin (-): sai 1 antes de chegar no corpo (comportamento observado e fixado)
+#  10. mensagens antigas (editado, ficou-para-tras, desatualizado) sugerem a chave do agente
+#      (codex, claude, gemini), nunca o nome do arquivo sem .md
 # Nenhum caso le o texto do fonte: cada um roda a ponte ou o conferidor e olha o resultado.
 
 set -u
@@ -127,6 +129,37 @@ echo "== 9. stdin (-) sai 1 antes do corpo, com glossario no arquivo =="
 SAIDA=$(node "$CONF" - < "$(w "$A/AGENTS.md")" 2>&1); GOT=$?
 afirma "stdin: exit 1" saiu 1
 afirma "stdin: recusa o arquivo - como nao sendo CLAUDE/AGENTS/GEMINI" diz "não é CLAUDE.md, AGENTS.md ou GEMINI.md"
+
+echo
+echo "== 10. chave do agente nas mensagens de regeracao (tarefa 20) =="
+# Cada agente tem que sugerir a SUA chave (codex, claude, gemini), nunca o nome do
+# arquivo sem o .md ("agents"). Cobre as tres mensagens antigas: editado, ficou para tras
+# e desatualizado. Nao depende do glossario: e' so' a chave do agente.
+gera_ag() { node "$PONTE" --alvo "$(w "$1")" --agente "$2" --aplicar >/dev/null 2>&1; }
+H="$(nova_caixa agente-editado-codex)"; gera_ag "$H" codex
+sed -i 's/## O que NAO vale/## TESTE MODIFICADO/' "$H/AGENTS.md"
+conferir "$(w "$H/AGENTS.md")"
+afirma "edicao a mao em AGENTS.md sugere --agente codex" diz "--agente codex --aplicar"
+afirma "edicao a mao em AGENTS.md NAO sugere --agente agents" nao_diz "--agente agents"
+I="$(nova_caixa agente-editado-claude)"; gera_ag "$I" claude
+sed -i 's/## O que NAO vale/## TESTE MODIFICADO/' "$I/CLAUDE.md"
+conferir "$(w "$I/CLAUDE.md")"
+afirma "edicao a mao em CLAUDE.md sugere --agente claude" diz "--agente claude --aplicar"
+J="$(nova_caixa agente-editado-gemini)"; gera_ag "$J" gemini
+sed -i 's/## O que NAO vale/## TESTE MODIFICADO/' "$J/GEMINI.md"
+conferir "$(w "$J/GEMINI.md")"
+afirma "edicao a mao em GEMINI.md sugere --agente gemini" diz "--agente gemini --aplicar"
+K="$(nova_caixa agente-ficou-para-tras-codex)"; gera_ag "$K" codex
+sed -i -E 's/hash:[0-9a-f]{16}/hash:0000000000000000/' "$K/AGENTS.md"
+sed -i 's/## O que NAO vale/## TESTE MODIFICADO/' "$K/AGENTS.md"
+conferir "$(w "$K/AGENTS.md")"
+afirma "ficou para tras em AGENTS.md sugere --agente codex" diz "--agente codex --aplicar"
+afirma "ficou para tras em AGENTS.md NAO sugere --agente agents" nao_diz "--agente agents"
+L="$(nova_caixa agente-desatualizado-claude)"; gera_ag "$L" claude
+sed -i -E 's/hash:[0-9a-f]{16}//' "$L/CLAUDE.md"
+sed -i 's/## O que NAO vale/## TESTE MODIFICADO/' "$L/CLAUDE.md"
+conferir "$(w "$L/CLAUDE.md")"
+afirma "desatualizado (sem hash) em CLAUDE.md sugere --agente claude" diz "--agente claude --aplicar"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

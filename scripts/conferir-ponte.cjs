@@ -308,6 +308,17 @@ function conferirBlocoProjetoGerado(texto, caminhoProjetoMd, raizAlvo) {
 }
 
 /**
+ * Chave do agente (claude, codex ou gemini) pelo nome do arquivo conferido. Vem de
+ * AGENTES, a mesma tabela que o `--agente` da ponte aceita — por isso o comando de
+ * regeração sugerido sai com a chave certa. Usar o nome do arquivo sem o `.md`
+ * (`AGENTS` -> `agents`) sugeria um agente que não existe.
+ */
+function agenteDoArquivo(arquivo) {
+  const nome = path.basename(arquivo).toLowerCase();
+  return Object.keys(AGENTES).find((k) => AGENTES[k].arquivo.toLowerCase() === nome) || null;
+}
+
+/**
  * O GLOSSARIO.md entra na ponte como UMA linha (LINHA_GLOSSARIO), que o corpo() põe
  * quando o alvo tem o arquivo. Se essa linha é a ÚNICA diferença, o glossário surgiu
  * ou sumiu depois da geração. O hash do SKILL.md não muda com isso, então chamar de
@@ -414,6 +425,9 @@ function main() {
     process.exit(1);
   }
 
+  // Chave do agente para o comando de regeração sugerido nas mensagens abaixo.
+  const agenteDoAlvo = agenteDoArquivo(alvo);
+
   // Gera o conteúdo esperado
   const dirDoAlvo = alvo === '-' ? null : path.dirname(path.resolve(alvo));
   const conteudoEsperadoFull = corpo(agente, nucleoEsperado, dados, dirDoAlvo).trim();
@@ -518,7 +532,7 @@ function main() {
         console.log('RECUSADO — bloco foi editado à mão.\n');
         console.log(`O conteúdo diverge do SKILL.md, mas o hash ${hashNoMarcador} ainda bate, o que significa`);
         console.log('que você editou manualmente o arquivo gerado. Mude o SKILL.md e regere com:');
-        console.log(`\n  node scripts/ponte.cjs --alvo . --agente ${path.basename(alvo, '.md').toLowerCase()} --aplicar\n`);
+        console.log(`\n  node scripts/ponte.cjs --alvo . --agente ${agenteDoAlvo} --aplicar\n`);
         if (divergentes.length > 0) {
           console.log('Primeiras linhas divergentes:');
           for (const div of divergentes.slice(0, 3)) {
@@ -542,7 +556,7 @@ function main() {
         console.log('RECUSADO — o SKILL.md mudou.\n');
         console.log(`O bloco foi gerado com hash ${hashNoMarcador}, mas o SKILL.md atual tem hash ${hashAtual}.`);
         console.log('Regere o arquivo com:\n');
-        console.log(`  node scripts/ponte.cjs --alvo . --agente ${path.basename(alvo, '.md').toLowerCase()} --aplicar`);
+        console.log(`  node scripts/ponte.cjs --alvo . --agente ${agenteDoAlvo} --aplicar`);
       }
       process.exit(2);
     }
@@ -562,7 +576,7 @@ function main() {
       console.log('O bloco foi gerado ANTES de a catraca de hash ser implementada, e diverge do SKILL.md atual.');
       console.log('Não dá para saber se o arquivo foi editado à mão ou se o SKILL.md mudou.\n');
       console.log('Para que a catraca passe a valer e ganhar diagnóstico fino, regere o arquivo com:\n');
-      console.log(`  node scripts/ponte.cjs --alvo . --agente ${path.basename(alvo, '.md').toLowerCase()} --aplicar`);
+      console.log(`  node scripts/ponte.cjs --alvo . --agente ${agenteDoAlvo} --aplicar`);
     }
     process.exit(2);
   }
