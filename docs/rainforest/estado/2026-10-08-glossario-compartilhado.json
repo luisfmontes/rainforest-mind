@@ -21,9 +21,9 @@
     "em": "2026-10-08"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-08",
-    "tarefas_ok": 13,
+    "tarefas_ok": 14,
     "tarefas": 14,
     "em_voo": [],
     "carimbos": [
@@ -113,12 +113,86 @@
       }
     ],
     "em": "2026-10-08",
-    "pendentes": [
-      "tarefa-10: pulada por decisao do Luis; memorias sao conduta, nao so termo (ganharam linha de ponteiro)",
-      "revisar: P1 hook do pedido sai sem raiz de dados antes do glossario (memoria-assunto-prompt.cjs:139)",
-      "revisar: cenario de worktree de agente cita worktree temporario",
-      "revisar: D4 nao distingue memoria de termo de memoria de conduta (nota no design, Em aberto)",
-      "revisar: conferir-ponte mensagens antigas mandam regerar com --agente agents (path.basename do alvo), chave invalida; anterior a este fluxo"
+    "comando": "bash scripts/varrer-baterias.sh --shard 1/2 && bash scripts/varrer-baterias.sh --shard 2/2",
+    "saida": "as 104 baterias passaram / as 92 baterias passaram (196 de 196)",
+    "sensor_externo": "bash scripts/varrer-baterias.sh",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-glossario.cjs, termo no fim de palavra maior nao casa (contrafluxo)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-ponte-glossario.sh, alvo com GLOSSARIO.md recebe a linha nos tres agentes"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-glossario.sh, Territorio e territorio sao o mesmo termo (duplicado recusa)"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-glossario-prompt.cjs, prompt com termo do glossario injeta so o verbete casado"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-glossario-agente.cjs, briefing com termo do glossario ganha o verbete no fim do prompt"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-ponte-glossario.sh, ponte gerada com GLOSSARIO.md confere verde"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "documento de skill; exemplo passa no conferidor real"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "texto de regra na referencia; nucleo intacto por decisao do Luis"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "documento de dominio; conferidor e hook reais leem o arquivo"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "pulada por decisao do Luis: memorias sao conduta, ficaram inteiras com linha de ponteiro"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "n/a",
+        "motivo": "passo de CI; comando extraido do YAML passa no real e reprova o quebrado (0 1)"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "n/a",
+        "motivo": "documentacao conferida contra as constantes do codigo"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "n/a",
+        "motivo": "bump de versao; conferir-versao exit 0"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "n/a",
+        "motivo": "integracao; laco inteiro 196/196"
+      }
+    ],
+    "achados_para_revisar": [
+      "P1 hook do pedido sai sem raiz de dados antes do glossario (memoria-assunto-prompt.cjs:139)",
+      "cenario de worktree de agente cita worktree temporario",
+      "D4 nao distingue memoria de termo de memoria de conduta (design, Em aberto)",
+      "conferir-ponte mensagens antigas mandam regerar com --agente agents; anterior a este fluxo"
     ]
   },
   "revisar": {
