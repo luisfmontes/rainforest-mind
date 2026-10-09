@@ -10,6 +10,13 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.54.2 — 2026-10-09
+
+- **Banco ocupado não deixa mais colunas da memória faltando em banco antigo (Issue #460).** As migrações de
+  `offset_processado` e `consolidada_em` passam a engolir só "coluna duplicada", como as do #436: com outra sessão
+  escrevendo, a abertura tenta de novo na próxima vez em vez de seguir sem a coluna. Só afeta banco criado por versão
+  bem antiga do plugin.
+
 ## 1.54.1 — 2026-10-09
 
 - **`utilidade --repontuar` mostra o progresso.** A cada 5 sessões refeitas (e na última) sai `repontuar: N de M sessões com

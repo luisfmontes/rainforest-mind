@@ -1,0 +1,9 @@
+{
+  "slug": "2026-10-09-migracoes-busy",
+  "titulo": "fluxo/migracoes-busy",
+  "criado_em": "2026-10-09",
+  "leve": {
+    "motivo": "#460: migracoes 1 e 4 do criarSchema passam a usar engolirSoColunaDuplicada, como as 0 e 0b do #436",
+    "data": "2026-10-09"
+  }
+}

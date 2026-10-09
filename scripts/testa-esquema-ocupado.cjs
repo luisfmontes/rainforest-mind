@@ -162,6 +162,69 @@ caso('terceira chamada nao lanca: coluna duplicada segue sendo engolida', () => 
   assert.strictEqual(contar('SELECT COUNT(*) AS n FROM uso_memoria'), 2);
 });
 
+// #460: migrações 1 (marca_dagua.offset_processado) e 4 (observacoes.consolidada_em).
+// Banco próprio: esquema completo, depois a coluna da migração removida.
+function bancoSem(nome, tabela, coluna) {
+  const arq = path.join(raiz, nome);
+  const db = abrirBanco(arq);
+  try {
+    criarSchema(db);
+    if (tabela) db.exec(`ALTER TABLE ${tabela} DROP COLUMN ${coluna}`);
+  } finally {
+    db.close();
+  }
+  return arq;
+}
+function colunasDe(arq, tabela) {
+  const db = abrirBanco(arq);
+  try {
+    return db.prepare(`PRAGMA table_info(${tabela})`).all().map((c) => c.name);
+  } finally {
+    db.close();
+  }
+}
+// Roda criarSchema com outra conexão segurando BEGIN IMMEDIATE; devolve o erro (ou null).
+function criarSchemaTravado(arq) {
+  const t = abrirBanco(arq);
+  t.exec('BEGIN IMMEDIATE');
+  try {
+    const db = abrirBanco(arq);
+    try {
+      criarSchema(db);
+      return null;
+    } catch (e) {
+      return e;
+    } finally {
+      db.close();
+    }
+  } finally {
+    try { t.exec('ROLLBACK'); } catch (_) { /* solta */ }
+    t.close();
+  }
+}
+
+for (const [tabela, coluna] of [['marca_dagua', 'offset_processado'], ['observacoes', 'consolidada_em']]) {
+  caso(`#460: ${tabela} sem ${coluna} com banco ocupado: criarSchema lanca banco ocupado`, () => {
+    const arq = bancoSem(`sem-${coluna}.db`, tabela, coluna);
+    assert.ok(!colunasDe(arq, tabela).includes(coluna), 'preparo: coluna deveria faltar');
+    const e = criarSchemaTravado(arq);
+    assert.ok(e, 'criarSchema deveria lancar com o banco ocupado');
+    assert.ok(ehBancoOcupado(e), `erro deveria ser banco ocupado: ${e.code} ${e.message}`);
+    assert.ok(!colunasDe(arq, tabela).includes(coluna), 'coluna nao pode nascer com o banco ocupado');
+    const db = abrirBanco(arq);
+    try { criarSchema(db); } finally { db.close(); }
+    assert.ok(colunasDe(arq, tabela).includes(coluna), 'depois da trava a coluna nasce');
+  });
+}
+
+// Guarda de regressão: hoje passa com ou sem o PRAGMA antes do ALTER (o SQLite acusa a
+// coluna duplicada antes de pedir a trava). Fica para pegar o dia em que isso mudar.
+caso('#460: banco ja migrado com outra conexao escrevendo: criarSchema nao lanca', () => {
+  const arq = bancoSem('completo.db', null, null);
+  const e = criarSchemaTravado(arq);
+  assert.strictEqual(e, null, e && `${e.code} ${e.message}`);
+});
+
 try { fs.rmSync(raiz, { recursive: true, force: true }); } catch (_) { /* limpeza best-effort */ }
 
 console.log(`\n${ok} ok, ${falhou} falha(s)`);
