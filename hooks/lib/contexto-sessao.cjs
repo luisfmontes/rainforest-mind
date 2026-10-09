@@ -1688,6 +1688,7 @@ function montarLegenda(o) {
 
 module.exports = {
   TETOS,
+  tirarIndice,
   SECOES_RESIDENTES,
   tituloDoFocoAtivo,
   montarLegenda,
