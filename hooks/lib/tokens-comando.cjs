@@ -791,6 +791,19 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
     // aspas simples (`& $exe`, `& "$dir\x.exe"`). Barrado em 2026-09-22
     // conferindo o Node novo com o caminho escrito por extenso.
     const alvo = extrairPrimeiroToken(p1.resto);
+    // Variavel so no DIRETORIO, entre aspas duplas (`& "$t\x.ps1" args`): o
+    // arquivo que roda e nomeado em literal, e o gate nao le o conteudo de
+    // `& "C:\x\x.ps1"` tambem — mesmo risco, mesmo veredito (#405 fez isso
+    // para `bash scripts/$b.sh`). O comando segue analisado pelo nome
+    // literal, entao `& "$dir\git.exe" add -A` continua barrando pelo git.
+    // Barrado em 2026-10-09 rodando um script do scratchpad por `$t`.
+    if (alvo && alvo.aspa === '"' && !/\$\(|`/.test(alvo.tok)) {
+      const sep = Math.max(alvo.tok.lastIndexOf('\\'), alvo.tok.lastIndexOf('/'));
+      const nome = sep >= 0 ? alvo.tok.slice(sep + 1) : '';
+      if (nome && !/[$`@]/.test(nome) && /^\$(\{[A-Za-z_][\w:]*\}|[A-Za-z_][\w:]*)/.test(alvo.tok)) {
+        return { interno: `"${nome}"${alvo.resto}`.trim(), ilegivel: false };
+      }
+    }
     const naoSeLe = !alvo ||
       /^[{}()]$/.test(alvo.tok) ||
       /^[({]/.test(alvo.resto) ||

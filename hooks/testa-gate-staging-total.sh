@@ -313,6 +313,13 @@ gate '& "C:\Program Files\Git\cmd\git.exe" add -A BARRA (git por caminho)'   2 "
 gate '& $exe add -A BARRA (alvo variavel)'                                   2 "$(p '& $exe add -A')"
 gate '& "$dir\git.exe" add -A BARRA (variavel dentro das aspas duplas)'      2 "$(p '& "$dir\git.exe" add -A')"
 gate '& (Get-Command git) add -A BARRA (subexpressao)'                       2 "$(p '& (Get-Command git) add -A')"
+echo "== variavel so no diretorio do alvo (2026-10-09): analisa pelo nome literal do arquivo =="
+gate '& "$t\trocar.ps1" estado PASSA (variavel so no diretorio)'            0 "$(p '& "$t\trocar.ps1" estado')"
+gate '& "${env:TEMP}\x.ps1" PASSA (variavel de ambiente no diretorio)'      0 "$(p '& "${env:TEMP}\x.ps1"')"
+gate '& "$t\x.ps1"; git add -A BARRA (pelo git do segmento seguinte)'      2 "$(p '& "$t\x.ps1"; git add -A')"
+gate '& "$dir\$exe" add -A BARRA (variavel no nome do arquivo)'            2 "$(p '& "$dir\$exe" add -A')"
+gate '& "$t" estado BARRA (so variavel, sem nome literal)'                 2 "$(p '& "$t" estado')"
+gate '& "$(gerar)\x.ps1" BARRA (substituicao no diretorio)'                2 "$(p '& "$(gerar)\x.ps1"')"
 gate '. x.ps1 BARRA (dot-source continua opaco)'                             2 "$(p '. x.ps1')"
 # contraprovas de super-bloqueio: chave/parenteses DENTRO de aspas nao muda
 # nada — a mensagem/argumento continua UMA palavra so, igual antes.
