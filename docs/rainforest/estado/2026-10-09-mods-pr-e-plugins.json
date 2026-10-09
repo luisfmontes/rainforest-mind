@@ -6,10 +6,20 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-09-mods-pr-e-plugins.md",
+    "em": "2026-10-09"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-09-mods-pr-e-plugins.md",
+    "tarefas": 6,
+    "paralelas": [
+      1,
+      2,
+      4
+    ],
+    "em": "2026-10-09"
   },
   "executar": {
     "status": "pendente"
