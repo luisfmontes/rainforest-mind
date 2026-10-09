@@ -28,6 +28,8 @@
 #      CLI sob demanda (todo conferir-*.cjs é sensor), sensor.
 #      55 e 23 guia desde 2026-10-08: entraram hooks/memoria-assunto-prompt.cjs
 #      e hooks/memoria-assunto-agente.cjs — injetam memoria antes do ato, guia.
+#      56 e 30 sensor desde 2026-10-08: entrou scripts/conferir-indice-referencias.cjs
+#      (indice nas references longas, confere depois do ato) — sensor.
 #   2. peca REAL copiada para arvore temporaria, com a linha de marca apagada,
 #      reprova (exit 1) e NOMEIA o caminho na saida;
 #   3. peca REAL copiada com valor de marca fora do vocabulario (nem guia, nem

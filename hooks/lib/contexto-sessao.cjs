@@ -164,8 +164,15 @@ const TETOS = {
    * CI (issue #81) — o mesmo tipo de descuido, de novo. Se esta margem cair
    * perto de zero, é hora de decidir encurtar `references/regra-NN.md` ou
    * subir o teto de propósito — nunca de deixar a folga sumir calada.
+   *
+   * 2026-10-08: subiu de 10.500 para 11.500 B, de propósito (decisão do Luís).
+   * O `regra-12.md` estava a 5 B do teto, e o índice no topo das references
+   * longas (`scripts/conferir-indice-referencias.cjs`) custa ~700 B de leitura:
+   * 7 de 16 leituras medidas nos transcripts pararam no meio do arquivo, e o
+   * índice é o que diz a quem parou o que ficou para trás. Maior hoje:
+   * `regra-12.md`, 11.200 B — 2,6% de folga.
    */
-  REFERENCE_MAX_BYTES: 10500,
+  REFERENCE_MAX_BYTES: 11500,
   /**
    * Teto do `skills/rainforest-mind/SKILL.md` inteiro, em BYTES — é o custo de
    * carregar o ÍNDICE (núcleos + ponteiros) antes de decidir qual
@@ -434,6 +441,16 @@ function iparAvancoRecente(secao, agora) {
  */
 function normalizarFimDeLinha(texto) {
   return String(texto || '').replace(/\r\n/g, '\n');
+}
+
+/**
+ * Tira o bloco `<!-- indice -->` ... `<!-- /indice -->` de uma reference. O
+ * indice serve a quem LE o arquivo e pode parar no meio (Read com limit); a
+ * regra injetada inteira ja esta toda no contexto, e o indice so gastaria o
+ * teto da parte das regras. Conferido por scripts/testa-indice-referencias.sh.
+ */
+function tirarIndice(texto) {
+  return texto.replace(/<!-- indice -->[\s\S]*?<!-- \/indice -->\n*/g, '');
 }
 
 function resumirFoco(focoText, agora) {
@@ -1109,7 +1126,7 @@ function montarContexto(o) {
   const inteiras = o.destino === 'mod' && Array.isArray(o.elaboracoes) ? o.elaboracoes : [];
   const blocoInteiras = inteiras.length
     ? `\n\n## Elaboração inteira das regras ${inteiras.map((e) => e.n).join(', ')}\n\n` +
-      inteiras.map((e) => normalizarFimDeLinha(e.texto).trim()).join('\n\n')
+      inteiras.map((e) => tirarIndice(normalizarFimDeLinha(e.texto)).trim()).join('\n\n')
     : '';
   const nomesInteiras = inteiras.map((e) => e.n).join(', ');
   const caminho = o.caminhoSkill || `${o.root || ''}\\skills\\rainforest-mind\\SKILL.md`;
@@ -1671,6 +1688,7 @@ function montarLegenda(o) {
 
 module.exports = {
   TETOS,
+  tirarIndice,
   SECOES_RESIDENTES,
   tituloDoFocoAtivo,
   montarLegenda,
