@@ -426,7 +426,7 @@ function contarDocumentFrequency(conexao, termo) {
  *   pedido e subagente). Os termos raros que já estavam nele não medem uso
  *   (o Read do arquivo citado os repete) e saem da conta. Sem este argumento,
  *   a nota é a de sempre.
- * @returns {number} nota entre 0 e 1
+ * @returns {number|null} nota entre 0 e 1; null = não medida (todos os raros estavam no pedido)
  */
 function calcularNota(conexao, conteudo, texto, textoDoPedido) {
   const termos = Array.from(
@@ -447,9 +447,11 @@ function calcularNota(conexao, conteudo, texto, textoDoPedido) {
     if (df <= LIMIAR_DF) raros.push(termo);
   }
 
-  if (raros.length === 0) return 0;
+  // Sem o texto do pedido (abertura, ou chamada de 3 argumentos) memória sem raro nenhum vale 0.
+  if (textoDoPedido === undefined && raros.length === 0) return 0;
   const rarosFora = raros.filter((t) => !tokensPedido.has(t));
-  if (rarosFora.length === 0) return 0; // tarefa 6 troca por null (não medida)
+  // D3: nada a medir fora do pedido (inclui memória sem raro nenhum): nota nula, fora da conta.
+  if (rarosFora.length === 0) return null;
   return rarosFora.filter((t) => tokensTexto.has(t)).length / rarosFora.length;
 }
 

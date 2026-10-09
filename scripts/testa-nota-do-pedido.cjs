@@ -247,8 +247,9 @@ caso('calcularNota de 3 argumentos devolve o mesmo numero de antes', () => {
   // com o pedido citando um raro, so o outro conta
   assert.strictEqual(U.calcularNota(db, M6.conteudo, 'zztrem', 'zztrem'), 0);
   assert.strictEqual(U.calcularNota(db, M6.conteudo, 'zztrem zzponte', 'zztrem'), 1);
-  // e sem nenhum termo raro a nota segue 0
-  assert.strictEqual(U.calcularNota(db, 'titulo corpusfiller', 'titulo', 'x'), 0);
+  // sem nenhum termo raro: 0 sem o pedido (3 argumentos) e nula com ele (D3, tarefa 6)
+  assert.strictEqual(U.calcularNota(db, 'titulo corpusfiller', 'titulo'), 0);
+  assert.strictEqual(U.calcularNota(db, 'titulo corpusfiller', 'titulo', 'x'), null);
 });
 
 db.close();
