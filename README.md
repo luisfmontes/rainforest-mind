@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.53.2-1e5c3f?style=flat-square" alt="versão 1.53.2">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.54.0-1e5c3f?style=flat-square" alt="versão 1.54.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -39,7 +39,9 @@ as regras e as elaborações como seção do system prompt (`hooks/register.ts`)
 ela, ou no Codex, a abertura vem pelo hook com o núcleo, como antes. A mesma versão desenha
 a barra de sessão acima do prompt (`hooks/mod.tsx`): estado, tokens, custo, contexto, cache,
 subagentes, erros e o relógio ⏰ dos avisos de jornada (regra 8) e de janela parada (regra 17), mais o
-comando `/painel`. **O painel pede o Claude Code 2.1, patch 292 em diante**, a versão em que foi medido,
+comando `/painel`, o painel de PR (`/pr`), que abre sozinho a cada `gh pr` e acorda o Claude
+quando o PR da sessão fica verde, vermelho, em conflito ou mergeado, e o `/plugins-em-dia`, que
+mantém os plugins atualizados sem sair da sessão. **O painel pede o Claude Code 2.1, patch 292 em diante**, a versão em que foi medido,
 no terminal, nas duas contas; no desktop o desenho não foi medido. Sem o mod, não há barra, painel
 nem aviso por relógio, e nada mais muda. Parte do painel é adaptada do terminal-desk (MIT);
 crédito em [`NOTICE`](NOTICE).
