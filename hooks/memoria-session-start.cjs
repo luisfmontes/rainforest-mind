@@ -7,7 +7,7 @@
 // que é puro e tem bateria própria (hooks/testa-memoria-session-start.sh).
 const fs = require('fs');
 const path = require('path');
-const { montarMemoria, montarLegendaMemoria, avisoDePipeline, avisoDeManutencaoFalhou } = require('./lib/memoria-sessao.cjs');
+const { montarMemoriaComIds, montarLegendaMemoria, avisoDePipeline, avisoDeManutencaoFalhou } = require('./lib/memoria-sessao.cjs');
 const { tituloDoFocoAtivo } = require('./lib/contexto-sessao.cjs');
 const { resolverRaiz } = require('./lib/raiz.cjs');
 const { abrirBanco, abrirBancoSomenteLeitura, resolverCaminhos, filtroVivas } = require(path.join(__dirname, '..', 'scripts', 'memoria.cjs'));
@@ -463,6 +463,7 @@ try {
 // Bloco próprio (em vez de topo do módulo) só pra não vazar `horasParada` e
 // `ultimaManutencao` pro resto do arquivo depois de já terem sido consumidos.
 let bloco;
+let idsDoBloco = [];
 {
   let horasParada = 0;
   let ultimaManutencao = null;
@@ -487,7 +488,7 @@ let bloco;
   // entrega do hook. O teto vem de hooks/abertura-mod.json (via a lib) e, cabendo nele,
   // as linhas saem inteiras. Sem a flag, o teto e o de sempre e nada muda.
   const tetoMod = destinoMod() ? require('./lib/abertura-mod.cjs').carregar().memoria : undefined;
-  bloco = montarMemoria({ observacoes, apelidos, avisos: linhas, tetoBytes: tetoMod });
+  ({ texto: bloco, ids: idsDoBloco } = montarMemoriaComIds({ observacoes, apelidos, avisos: linhas, tetoBytes: tetoMod }));
 }
 
 // JSON, não texto cru (regra 12 do hook foco-session-start).
@@ -506,3 +507,41 @@ const saida = {
 // Sem marca nenhuma, campo ausente: caixa vazia na tela é pior que tela limpa.
 if (legenda) saida.systemMessage = legenda;
 console.log(JSON.stringify(saida));
+
+// D4 (design 2026-10-09-assunto-regua): grava os ids que a abertura serviu no arquivo de dedupe do
+// canal do pedido (<raiz>/memoria-assunto/<session_id>.json), para a linha que a escada encurtou
+// (e que o acharAlvo nao reconhece) nao ser reinjetada. Roda DEPOIS de imprimir: stdout e exit code
+// ficam como sempre. O stdin e assincrono, com teto de 1 s (timer com unref) e pulado em TTY, porque
+// ha chamadores que nao fecham o stdin. Gravacao em try proprio; soma aos ids que ja estavam la.
+function gravarServidas(entrada) {
+  const sessao = String((entrada && entrada.session_id) || '');
+  if (!/^[A-Za-z0-9_-]+$/.test(sessao)) return;
+  if (!RAIZ_RESOLVIDA || !idsDoBloco.length) return;
+  const pasta = path.join(RAIZ_RESOLVIDA, 'memoria-assunto');
+  const arquivo = path.join(pasta, sessao + '.json');
+  let existentes = [];
+  try {
+    const dado = JSON.parse(fs.readFileSync(arquivo, 'utf8'));
+    if (Array.isArray(dado)) existentes = dado.filter((n) => Number.isInteger(n));
+  } catch { /* ausente ou corrompido: parte do zero */ }
+  fs.mkdirSync(pasta, { recursive: true });
+  fs.writeFileSync(arquivo, JSON.stringify(Array.from(new Set([...existentes, ...idsDoBloco]))));
+}
+
+try {
+  if (!process.stdin.isTTY) {
+    let recebido = '';
+    let feito = false;
+    const concluir = () => {
+      if (feito) return;
+      feito = true;
+      try { process.stdin.destroy(); } catch { /* melhor esforco */ }
+      try { gravarServidas(JSON.parse(recebido)); } catch { /* sem dedupe nesta sessao */ }
+    };
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', (c) => { recebido += c; });
+    process.stdin.on('end', concluir);
+    process.stdin.on('error', concluir);
+    setTimeout(concluir, 1000).unref();
+  }
+} catch { /* stdin indisponivel: a abertura ja saiu */ }
