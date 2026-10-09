@@ -8,8 +8,11 @@
  * chamada `node <caminho>memoria.cjs buscar`. Corpo de heredoc, argumento citado
  * (`grep "memoria.cjs buscar"`, `echo "..."`) e texto de mensagem de commit não contam.
  *
- * Função pura, sem I/O. Limites declarados: caminho entre aspas
- * (`node "x/memoria.cjs" buscar`), prefixos `time`/`timeout` e here-string do PowerShell.
+ * Função pura, sem I/O. Limites declarados (todos subcontam, nenhum conta a mais): caminho entre
+ * aspas (`node "x/memoria.cjs" buscar`), prefixos `time`/`timeout`/`env`, flag do node antes do
+ * script (`node --no-warnings ...`), chamada dentro de `$(...)`, `(...)` ou depois de `then`,
+ * continuação de linha com `\`, `<<` dentro de outro comando lido como heredoc, e here-string
+ * do PowerShell. Medido em 2026-10-09 nos transcritos reais: nenhuma busca real perdida.
  */
 
 // Início da instrução: atribuições de ambiente opcionais, depois `node <caminho sem espaço>memoria.cjs buscar`.

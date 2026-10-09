@@ -339,6 +339,10 @@ caso('janela de 35 sessoes: refeitas = 35, e pendentes alheias nao entram na con
   assert.strictEqual(r.status, 0, r.err);
   assert.ok(r.out.includes('\nsessões na janela: 35\n'), r.out);
   assert.ok(r.out.includes('\nrefeitas: 35\n'), r.out);
+  // Progresso no stderr, a cada 5 e na última; o stdout continua só com o resumo.
+  const progresso = r.err.split('\n').filter((l) => l.startsWith('repontuar: '));
+  assert.deepStrictEqual(progresso, [5, 10, 15, 20, 25, 30, 35].map((k) => `repontuar: ${k} de 35 sessões com transcrito`), r.err);
+  assert.ok(!r.out.includes('repontuar: '), r.out);
   const db = new DatabaseSync(path.join(D.raiz, 'rainforest.db'), { readOnly: true });
   try {
     assert.strictEqual(db.prepare('SELECT count(*) c FROM uso_memoria_sessoes').get().c, 35);

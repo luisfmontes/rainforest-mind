@@ -10,6 +10,16 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.54.1 — 2026-10-09
+
+- **`utilidade --repontuar` mostra o progresso.** A cada 5 sessões refeitas (e na última) sai `repontuar: N de M sessões com
+  transcrito` no stderr. Na janela real o comando leva alguns minutos, e antes ficava mudo. O resumo no stdout não muda.
+- **Limites da busca ativa declarados por inteiro.** Além do que a 1.54.0 já dizia, a regra não reconhece `env`, flag do node
+  antes do script, chamada dentro de `$(...)`, `(...)` ou depois de `then`, continuação com `\` e `<<` dentro de outro comando.
+  Todos subcontam; nos transcritos reais nenhuma busca real ficou de fora.
+- **Correção na nota da 1.54.0:** ela dizia que "buscas ativas" cai. O número absoluto pode subir depois do `--repontuar`,
+  porque sessões antigas sem medida de buscas passam a ter uma.
+
 ## 1.54.0 — 2026-10-09
 
 A régua D7 da memória por assunto (Issue #436) passa a medir o que diz medir. Os limiares (40% e 1/3), a base (27%, 171 de
@@ -37,7 +47,7 @@ A régua D7 da memória por assunto (Issue #436) passa a medir o que diz medir. 
 
 **Efeito prático.** Num ensaio sobre uma cópia do banco real (2026-10-09), `--repontuar --desde 2026-10-08` refez 46 das 56
 sessões da janela (as 10 sem transcrito ficaram com a nota antiga) e tirou 60 servidas da conta; "buscas ativas" passou a
-contar só chamada real do comando. O número do `--relatorio` muda, e "buscas ativas" cai.
+contar só chamada real do comando. O número do `--relatorio` muda.
 
 **Como atualizar o que já foi pontuado.** Depois de atualizar o plugin, rode
 `node scripts/memoria.cjs utilidade --repontuar --desde 2026-10-08` antes do `--relatorio`. Vale para as sessões abertas
