@@ -152,21 +152,20 @@
     "em_voo": []
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "parcial",
     "snapshot": {
-      "head": "b23799c26b9138096e21a4b1c6e8c5f1280c6fb0",
+      "head": "91abc3b37363e8ed4f3364ea03158b6bbde78c7d",
       "caminhos_sujos": []
     },
-    "vereditos": [
+    "vereditos": [],
+    "em_voo": [
       {
-        "agente": "rainforest-mind:revisor",
-        "agente_id": "a00b53e1402564e1c",
-        "veredito": "reprovado",
-        "em": "2026-10-08",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/3f823b5e-a8e7-4f91-bb68-e29874374c76/subagents/agent-a00b53e1402564e1c.jsonl"
+        "agente": "revisor",
+        "tarefa": "revisao rodada 2 (base 31c96e47, head 91abc3b)",
+        "desde": "2026-10-08T23:10:00-03:00",
+        "sessao": "3f823b5e-a8e7-4f91-bb68-e29874374c76"
       }
     ],
-    "em_voo": [],
     "em": "2026-10-08",
     "achados": 6,
     "lista": [
