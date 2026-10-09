@@ -311,6 +311,34 @@ caso('acharGlossario em repo com .git mas sem GLOSSARIO.md devolve null', () => 
   return r === null ? true : { passou: false, detalhe: `devolveu ${r}` };
 });
 
+// Arquivo de tamanho exato gerado em tempo de execução (nada grande é commitado).
+function glossarioDeTamanho(nome, bytes) {
+  const repo = path.join(RAIZ_TESTE, nome);
+  fs.mkdirSync(path.join(repo, '.git'), { recursive: true });
+  const base = GLOSSARIO + '\n';
+  const corpo = base + 'a'.repeat(bytes - Buffer.byteLength(base, 'utf8'));
+  fs.writeFileSync(path.join(repo, 'GLOSSARIO.md'), corpo, 'utf8');
+  return { repo, arq: path.join(repo, 'GLOSSARIO.md') };
+}
+
+caso('GLOSSARIO.md de 262144 B e lido pelo hook (no teto exato)', () => {
+  const { repo, arq } = glossarioDeTamanho('glossario-no-teto', lib.GLOSSARIO_MAX_BYTES);
+  const r = acharGlossario(repo);
+  if (fs.statSync(arq).size !== 262144) {
+    return { passou: false, detalhe: `tamanho gerado: ${fs.statSync(arq).size}` };
+  }
+  return r === arq ? true : { passou: false, detalhe: `devolveu ${r}` };
+});
+
+caso('GLOSSARIO.md acima do teto nao e lido pelo hook (262145 B)', () => {
+  const { repo, arq } = glossarioDeTamanho('glossario-acima-teto', lib.GLOSSARIO_MAX_BYTES + 1);
+  if (fs.statSync(arq).size !== 262145) {
+    return { passou: false, detalhe: `tamanho gerado: ${fs.statSync(arq).size}` };
+  }
+  const r = acharGlossario(repo);
+  return r === null ? true : { passou: false, detalhe: `devolveu ${r}` };
+});
+
 // ============================================================================
 // BLOCO INJETADO (montarBlocoGlossario)
 // ============================================================================

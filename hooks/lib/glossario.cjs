@@ -25,6 +25,7 @@ const CABECALHO = '## Glossário do repo';
 const VERBETES_MAX = 3;
 const TETO_BYTES_GLOSSARIO = 1800;
 const BYTES_MAX_VERBETE = 900;
+const GLOSSARIO_MAX_BYTES = 262144;
 
 const ANTES = '(^|[^\\p{L}\\p{N}])';
 
@@ -171,7 +172,12 @@ function acharGlossario(cwd) {
   for (;;) {
     if (fs.existsSync(path.join(dir, '.git'))) {
       const arq = path.join(dir, 'GLOSSARIO.md');
-      return fs.existsSync(arq) ? arq : null;
+      if (!fs.existsSync(arq)) {
+        return null;
+      }
+      const st = fs.statSync(arq);
+      if (st.size > GLOSSARIO_MAX_BYTES) return null;
+      return arq;
     }
     const pai = path.dirname(dir);
     if (pai === dir) {
@@ -260,4 +266,5 @@ module.exports = {
   VERBETES_MAX,
   TETO_BYTES_GLOSSARIO,
   BYTES_MAX_VERBETE,
+  GLOSSARIO_MAX_BYTES,
 };

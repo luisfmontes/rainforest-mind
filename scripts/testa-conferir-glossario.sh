@@ -329,6 +329,9 @@ EOF
 
 mkdir -p "$SB/vazio"
 
+# Acima do teto de 262144 B: gerado em tempo de execucao, nada grande no repo.
+mkdir -p "$SB/acima" && head -c 262145 /dev/zero | tr '\0' 'a' > "$SB/acima/GLOSSARIO.md"
+
 echo "== 1. verbete conforme sai 0 e legitimos vizinhos NAO sao recusados =="
 rodar --raiz "$SB/d7"
 saiu "D7 em LF: exit 0"                          "$C" 0
@@ -448,6 +451,15 @@ saiu "--listar com verbete invalido: exit 0"     "$C" 0
 tem  "--listar: avisa quantos ignorou"           "$S" "1 verbete(s) inválido(s) ignorado(s)"
 nao_tem "--listar: nao lista o verbete invalido" "$S" "ruim"
 tem  "--listar: lista o verbete valido"          "$S" "bom"
+echo
+echo "== 4. GLOSSARIO.md acima do teto de 262144 B: sai 1 com tamanho e teto, sem parsear =="
+rodar --raiz "$SB/acima"
+saiu "acima do teto (262145 B): exit 1"          "$C" 1
+tem  "acima do teto: diz o tamanho"              "$S" "262145 B"
+tem  "acima do teto: diz o teto"                 "$S" "teto de 262144 B"
+nao_tem "acima do teto: nao parseia (nenhum verbete citado)" "$S" "verbete"
+rodar --raiz "$SB/acima" --listar
+saiu "acima do teto com --listar: exit 1 (checa antes do parse)" "$C" 1
 rodar --raiz
 saiu "--raiz sem valor: exit 2 (uso)"            "$C" 2
 rodar --raiz "$SB/caminho_inexistente"

@@ -4,7 +4,8 @@
  * Confere o GLOSSARIO.md do repo e RECUSA verbete fora do formato D7: campo
  * faltando, campo sem texto ou com placeholder, rótulo digitado errado ou em
  * negrito, termo duplicado, Evite que repete um termo, linha injetada acima de
- * 900 B, e (com --caminhos) caminho em crase que não existe no repo.
+ * 900 B, GLOSSARIO.md acima do teto de 262144 B (sai sem parsear), e (com
+ * --caminhos) caminho em crase que não existe no repo.
  *
  * POR QUE EXISTE. O glossário entra no pedido do usuário e no briefing de
  * subagente. Um verbete sem Cenário ou com rótulo errado não quebra nada: a
@@ -47,6 +48,7 @@ const {
   chaveDe,
   montarBlocoGlossario,
   BYTES_MAX_VERBETE,
+  GLOSSARIO_MAX_BYTES,
 } = require(path.join(__dirname, '..', 'hooks', 'lib', 'glossario.cjs'));
 
 const NOME_ARQUIVO = 'GLOSSARIO.md';
@@ -216,6 +218,12 @@ function main() {
     }
     console.log(`sem ${NOME_ARQUIVO} em ${raiz}: nada a conferir`);
     return 0;
+  }
+
+  const tamanho = fs.statSync(arq).size;
+  if (tamanho > GLOSSARIO_MAX_BYTES) {
+    console.log(`${NOME_ARQUIVO}: ${tamanho} B, acima do teto de ${GLOSSARIO_MAX_BYTES} B; o hook não lê o arquivo nesse tamanho. Encurte o glossário`);
+    return 1;
   }
 
   const verbetes = lerVerbetes(fs.readFileSync(arq, 'utf8'));
