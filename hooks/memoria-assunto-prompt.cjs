@@ -42,6 +42,12 @@ function lerChaves(arquivo) {
   return dado.filter((c) => typeof c === 'string');
 }
 
+// Qualquer erro de leitura ou de parse (arquivo corrompido, sem permissao) = nenhuma chave ja injetada.
+// O bloco do glossario continua saindo; a gravacao em seguida regrava o arquivo com as chaves certas.
+function lerChavesOuVazio(arquivo) {
+  try { return lerChaves(arquivo); } catch (e) { return []; }
+}
+
 function persistirChaves(arquivo, chaves) {
   fs.mkdirSync(path.dirname(arquivo), { recursive: true });
   fs.writeFileSync(arquivo, JSON.stringify(Array.from(new Set(chaves))));
@@ -79,13 +85,16 @@ function glossarioDoPedido(cwd, prompt, sessao, raiz) {
   if (!arquivo) return '';
   const verbetes = lerVerbetes(fs.readFileSync(arquivo, 'utf8')).map((v) => Object.assign(v, { chave: chaveDe(v.termo) }));
   const arquivoChaves = raiz ? path.join(raiz, 'memoria-assunto', sessao + '.glossario.json') : null;
-  const jaGlossario = new Set(arquivoChaves ? lerChaves(arquivoChaves) : []);
+  const jaGlossario = new Set(arquivoChaves ? lerChavesOuVazio(arquivoChaves) : []);
   const blocoGlossario = montarBlocoGlossario(casarVerbetes(verbetes, prompt).filter((v) => !jaGlossario.has(v.chave)));
   if (!blocoGlossario) return '';
 
   const linhas = blocoGlossario.split('\n').slice(1);
   const injetados = verbetes.filter((v) => verbeteValido(v) && linhas.some((l) => l.startsWith('- **' + v.termo + '**:')));
-  if (arquivoChaves) persistirChaves(arquivoChaves, [...jaGlossario, ...injetados.map((v) => v.chave)]);
+  // Gravacao em try proprio: falha de escrita (pasta impossivel, disco cheio) nunca apaga o bloco ja montado.
+  if (arquivoChaves) {
+    try { persistirChaves(arquivoChaves, [...jaGlossario, ...injetados.map((v) => v.chave)]); } catch (e) { /* sem dedup nesta chamada */ }
+  }
   return blocoGlossario;
 }
 

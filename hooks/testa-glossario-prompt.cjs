@@ -231,6 +231,25 @@ caso('sem raiz de dados injeta o glossario sem dedup', () => {
     semArquivo;
 });
 
+caso('dedup corrompido ainda injeta e e regravado', () => {
+  const arq = path.join(raizSemBanco, 'memoria-assunto', 's-corrompido.glossario.json');
+  fs.mkdirSync(path.dirname(arq), { recursive: true });
+  fs.writeFileSync(arq, '{');
+  const r1 = rodar(payload(CWD_FLUXO, { session_id: 's-corrompido' }));
+  const r2 = rodar(payload(CWD_FLUXO, { session_id: 's-corrompido' }));
+  let regravado = false;
+  try { regravado = JSON.stringify(JSON.parse(fs.readFileSync(arq, 'utf8'))) === '["fluxo"]'; } catch (e) { regravado = false; }
+  return bateTudo(r1) && contexto(r1.saida).includes('**fluxo**') && regravado && vazioSaiu0(r2);
+});
+
+caso('pasta memoria-assunto impossivel de criar ainda injeta', () => {
+  const raizArquivo = path.join(tmp, 'raiz-pasta-arquivo');
+  fs.mkdirSync(raizArquivo);
+  fs.writeFileSync(path.join(raizArquivo, 'memoria-assunto'), 'arquivo no lugar da pasta');
+  const r = rodar(payload(CWD_FLUXO, { session_id: 's-pasta-arquivo' }), { raizAmbiente: raizArquivo });
+  return bateTudo(r) && contexto(r.saida).includes('**fluxo**');
+});
+
 try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) { /* melhor esforco */ }
 console.log(`${ok} ok, ${falha} falha(s)`);
 process.exit(falha > 0 ? 1 : 0);
