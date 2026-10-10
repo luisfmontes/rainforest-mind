@@ -7,7 +7,7 @@
 // entao `buscar` e `medir` recebem so valores e lambdas montadas no ponto de chamada de
 // cada hook. Toda leitura do mundo tem falha aberta: so a peca afetada some.
 import { atom, read, update } from 'claude-code'
-import type { Register } from 'claude-code'
+import type { EngineInterface, Register } from 'claude-code'
 import type {
   RainforestMindFaixaDados,
   RainforestMindPainelAgente,
@@ -16,12 +16,15 @@ import type {
   RainforestMindPainelFatia,
   RainforestMindPainelMapa,
   RainforestMindPainelStats,
+  RainforestMindPrResumo,
   RainforestMindRelogioJornada,
   RainforestMindRelogioSessoes,
 } from '../types'
 import { register as abertura } from './register.ts'
 import { register as pluginsEmDia } from './plugins-em-dia.ts'
 import { register as pr } from './pr.tsx'
+import { register as compactar } from './compactar.ts'
+import { escolherExecutavel, linhaPr, localizadores } from './pr-puro.mjs'
 import { CHECAR_MIN_FERRAMENTAS, deferimentos, lerResolvidosChecker, lerRespostaChecker, marcadoresEmArquivo, montarPromptChecker, perguntaDecisao, rascunhoFazAgora } from './deixado-puro.mjs'
 import { largura, cortar, semControle } from './faixa-puro.mjs'
 import { ESCRITORAS, escritaDe, mapaVazio, registrar, trocarCaminho } from './mapa-puro.mjs'
@@ -63,6 +66,11 @@ const relogioJornada = atom({ plugin: 'rainforest-mind', key: 'relogioJornada' }
 const relogioSessoes = atom({ plugin: 'rainforest-mind', key: 'relogioSessoes' } as const, null as RainforestMindRelogioSessoes | null)
 const relogioNotaPendente = atom({ plugin: 'rainforest-mind', key: 'relogioNotaPendente' } as const, null as string | null)
 const relogioNotaEntregue = atom({ plugin: 'rainforest-mind', key: 'relogioNotaEntregue' } as const, null as string | null)
+// Caminho absoluto do node, achado uma vez por sessao ('' = ainda nao achado). O resumo do PR
+// e do hooks/pr.tsx (mesmo ref): aqui so se le, para a linha do PR na barra.
+const nodeCaminho = atom({ plugin: 'rainforest-mind', key: 'nodeCaminho' } as const, '')
+const prResumo = atom({ plugin: 'rainforest-mind', key: 'prResumo' } as const, null as RainforestMindPrResumo | null)
+const PANE_PR = 'rainforest-mind-pr'
 
 // `PARADO` = nenhum checker em voo. O literal que desce o aviso mora so no `finally` da checagem,
 // a linha unica que a prova de mutacao troca.
@@ -77,6 +85,7 @@ const inteiro = (s: RainforestMindPainelStats | null | undefined): RainforestMin
 type Io = {
   rodar: (argv: string[], init: { cwd: string; env: Record<string, string>; timeoutMs: number }) => Promise<{ exitCode: number; stdout: string }>
   cwd: () => Promise<string>
+  node: () => Promise<string | null>
   raiz: string
 }
 
@@ -84,8 +93,10 @@ type Io = {
 async function buscar(io: Io): Promise<RainforestMindFaixaDados | null> {
   try {
     const cwd = await io.cwd()
+    const node = await io.node()
+    if (node === null) return null
     const r = await io.rodar(
-      ['node', `${io.raiz}/scripts/faixa-dados.cjs`, '--cwd', cwd],
+      [node, `${io.raiz}/scripts/faixa-dados.cjs`, '--cwd', cwd],
       { cwd: io.raiz, env: { CLAUDE_PROJECT_DIR: cwd }, timeoutMs: 5000 },
     )
     return r.exitCode === 0 ? JSON.parse(r.stdout) : null
@@ -94,7 +105,7 @@ async function buscar(io: Io): Promise<RainforestMindFaixaDados | null> {
   }
 }
 
-type IoRodar = { rodar: Io['rodar']; raiz: string }
+type IoRodar = { rodar: Io['rodar']; node: Io['node']; raiz: string }
 
 type IoAnotar = {
   gravar: (f: (d: RainforestMindPainelDeixado) => RainforestMindPainelDeixado) => Promise<unknown>
@@ -121,10 +132,12 @@ async function anotar(io: IoAnotar, achados: string[], origem: RainforestMindPai
 }
 
 // Falha aberta: exit != 0 (jornada.cjs exit 2 = sem linha), JSON invalido, timeout ou excecao
-// devolvem null (apaga so a leitura).
+// devolvem null (apaga so a leitura). `argv` e o script e os argumentos: o node vai na frente.
 async function rodarJson(io: IoRodar, argv: string[], timeoutMs: number, env: Record<string, string>): Promise<unknown> {
   try {
-    const r = await io.rodar(argv, { cwd: io.raiz, env, timeoutMs })
+    const node = await io.node()
+    if (node === null) return null
+    const r = await io.rodar([node, ...argv], { cwd: io.raiz, env, timeoutMs })
     return r.exitCode === 0 ? JSON.parse(r.stdout) : null
   } catch {
     return null
@@ -246,10 +259,50 @@ const AJUDA = 'Subcomandos: esconder, mostrar, cache 5m|1h, checar ligar|desliga
 const FILA_DESVIO_MAX = 50
 const VEREDITOS_DEFINITIVOS = new Set(['dentro', 'fora', 'isento'])
 
+// SystemRoot do ambiente; sem ele (ou se a leitura falhar) o localizador cai em C:\Windows.
+async function raizDoWindows($: EngineInterface): Promise<string | undefined> {
+  try {
+    return await $.env.get('SystemRoot')
+  } catch {
+    return undefined
+  }
+}
+
+// Caminho absoluto do node, achado UMA vez por sessao e fora do repositorio da sessao (como o
+// gh em hooks/pr.tsx): chamado pelo nome, o Windows procura o executavel primeiro na pasta atual
+// e um repo com node.exe na raiz rodaria codigo dele. O localizador roda na pasta do plugin.
+// Sem node achado devolve null e quem chama apaga so a propria peca.
+async function caminhoDoNode($: EngineInterface): Promise<string | null> {
+  const guardado = await read($, nodeCaminho)
+  if (guardado !== '') return guardado
+  let cwd = ''
+  try {
+    cwd = await $.session.cwd()
+  } catch {
+    cwd = ''
+  }
+  for (const argv of localizadores('node', await raizDoWindows($)) as string[][]) {
+    try {
+      const r = await $.process.run(argv, { cwd: $.plugin.root, timeoutMs: 10_000 })
+      if (r.exitCode !== 0) continue
+      const achado = escolherExecutavel(r.stdout, cwd) as string | null
+      if (achado !== null) {
+        await update($, nodeCaminho, () => achado)
+        return achado
+      }
+    } catch {
+      // este localizador nao existe nesta maquina; o outro tenta
+    }
+  }
+  return null
+}
+
 export const register: Register = (on, options) => {
   abertura(on, options)
   pr(on, options)
   pluginsEmDia(on, options)
+  // O mesmo criterio da barra para "subagente em andamento": quem decide e `emAndamento`.
+  compactar(on, options, { agenteRodando: (s, agora) => inteiro(s).agentes.some(a => emAndamento(a, agora)) })
 
   // Desvio do plano: no maximo um spawn do script por vez. Escritas que chegam durante ele
   // esperam em `filaDesvio`; `desvioPendente` (na fila ou rodando) e `desvioConsultado` (ja
@@ -341,6 +394,7 @@ export const register: Register = (on, options) => {
       const dados = await buscar({
         rodar: (argv, init) => $.process.run(argv, init),
         cwd: () => $.session.cwd(),
+        node: () => caminhoDoNode($),
         raiz: $.plugin.root,
       })
       await update($, faixaDados, () => dados)
@@ -353,7 +407,7 @@ export const register: Register = (on, options) => {
       armadoPor = id
       const cwd = await $.session.cwd()
       const raiz = $.plugin.root
-      const io = { rodar: (argv: string[], init: { cwd: string; env: Record<string, string>; timeoutMs: number }) => $.process.run(argv, init), raiz }
+      const io = { rodar: (argv: string[], init: { cwd: string; env: Record<string, string>; timeoutMs: number }) => $.process.run(argv, init), node: () => caminhoDoNode($), raiz }
       let sessoesEmCurso = false
       let jornadaEmCurso = false
 
@@ -384,7 +438,7 @@ export const register: Register = (on, options) => {
         try {
           // Depois de /clear o processo segue com outro id: le-o de novo uma vez.
           if (armadoPor === null) armadoPor = await $.session.id()
-          const bruto = await rodarJson(io, ['node', `${raiz}/scripts/relogio-sessoes.cjs`, '--cwd', cwd, '--sessao', armadoPor], 5000, { CLAUDE_PROJECT_DIR: cwd })
+          const bruto = await rodarJson(io, [`${raiz}/scripts/relogio-sessoes.cjs`, '--cwd', cwd, '--sessao', armadoPor], 5000, { CLAUDE_PROJECT_DIR: cwd })
           const dados = sessoesDe(bruto)
           await update($, relogioSessoes, () => dados)
           await reavaliar()
@@ -399,7 +453,7 @@ export const register: Register = (on, options) => {
         if (jornadaEmCurso) return
         jornadaEmCurso = true
         try {
-          const bruto = await rodarJson(io, ['node', `${raiz}/scripts/jornada.cjs`, '--json'], 60000, {})
+          const bruto = await rodarJson(io, [`${raiz}/scripts/jornada.cjs`, '--json'], 60000, {})
           const dados = jornadaDe(bruto)
           await update($, relogioJornada, () => dados)
           await reavaliar()
@@ -482,7 +536,9 @@ export const register: Register = (on, options) => {
       const horas = palavra === 'erros' ? '24' : palavra.slice(6)
       try {
         const cwd = await $.session.cwd()
-        const r = await $.process.run(['node', `${$.plugin.root}/scripts/erros.cjs`, 'listar', '--horas', horas], {
+        const node = await caminhoDoNode($)
+        if (node === null) return { text: 'Log de erros indisponível.' }
+        const r = await $.process.run([node, `${$.plugin.root}/scripts/erros.cjs`, 'listar', '--horas', horas], {
           cwd: $.plugin.root,
           env: { CLAUDE_PROJECT_DIR: cwd },
           timeoutMs: 10000,
@@ -514,6 +570,7 @@ export const register: Register = (on, options) => {
       const dados = await buscar({
         rodar: (argv, init) => $.process.run(argv, init),
         cwd: () => $.session.cwd(),
+        node: () => caminhoDoNode($),
         raiz: $.plugin.root,
       })
       await update($, faixaDados, () => dados)
@@ -652,12 +709,15 @@ export const register: Register = (on, options) => {
           comando: semControle(String(comando)).slice(0, 4000),
           mensagem: semControle(String(ran.deny ?? ran.text ?? '')).slice(0, 4000),
         }
-        await $.process.run(['node', `${$.plugin.root}/scripts/erros.cjs`, 'gravar'], {
-          cwd: $.plugin.root,
-          env: { CLAUDE_PROJECT_DIR: cwd },
-          stdin: JSON.stringify(falha),
-          timeoutMs: 5000,
-        })
+        const node = await caminhoDoNode($)
+        if (node !== null) {
+          await $.process.run([node, `${$.plugin.root}/scripts/erros.cjs`, 'gravar'], {
+            cwd: $.plugin.root,
+            env: { CLAUDE_PROJECT_DIR: cwd },
+            stdin: JSON.stringify(falha),
+            timeoutMs: 5000,
+          })
+        }
       } catch {
         // o log de erros nunca quebra a ferramenta
       }
@@ -719,12 +779,16 @@ export const register: Register = (on, options) => {
               let desvio: { veredito?: string; rel?: string | null } | null = null
               try {
                 const cwd = await $.session.cwd()
-                const r = await $.process.run(
-                  ['node', `${raiz}/scripts/desvio-do-plano.cjs`, '--cwd', cwd, '--arquivo', escrita],
-                  // Roda em segundo plano depois da escrita: sob carga passa de 5 s, e o teto folga.
-                  { cwd: raiz, env: { CLAUDE_PROJECT_DIR: cwd }, timeoutMs: 10000 },
-                )
-                const lido = r.exitCode === 0 ? JSON.parse(r.stdout) : null
+                const node = await caminhoDoNode($)
+                const r =
+                  node === null
+                    ? null
+                    : await $.process.run(
+                        [node, `${raiz}/scripts/desvio-do-plano.cjs`, '--cwd', cwd, '--arquivo', escrita],
+                        // Roda em segundo plano depois da escrita: sob carga passa de 5 s, e o teto folga.
+                        { cwd: raiz, env: { CLAUDE_PROJECT_DIR: cwd }, timeoutMs: 10000 },
+                      )
+                const lido = r !== null && r.exitCode === 0 ? JSON.parse(r.stdout) : null
                 desvio = lido !== null && typeof lido === 'object' && typeof lido.veredito === 'string' ? lido : null
               } catch (err) {
                 log(err)
@@ -830,6 +894,7 @@ export const register: Register = (on, options) => {
         buscar({
           rodar: (argv, init) => $.process.run(argv, init),
           cwd: () => $.session.cwd(),
+          node: () => caminhoDoNode($),
           raiz: $.plugin.root,
         })
           .then(dados => update($, faixaDados, () => dados))
@@ -1214,16 +1279,46 @@ export const register: Register = (on, options) => {
         relogio,
         cols,
       ) as { id: string; texto: string; largura: number }[]
-      if (figuras.length === 0) return next(e)
+      // A linha do PR: so sem o pane do PR a mostra (com ele em tela a informacao se repete).
+      let prPartes: { texto: string; tom: string | null }[] | null = null
+      try {
+        const linha = linhaPr(await read($, prResumo)) as { partes: { texto: string; tom: string | null }[] } | null
+        if (linha !== null) {
+          let painelDoPr = false
+          try {
+            painelDoPr = (await $.ui.panes()).some(p => p.id === PANE_PR && p.isPlaced && p.isShown)
+          } catch {
+            // sem a lista de panes, trata como nao visivel
+          }
+          if (!painelDoPr) prPartes = linha.partes
+        }
+      } catch {
+        // sem a linha do PR, a barra segue
+      }
+      if (figuras.length === 0 && prPartes === null) return next(e)
       const corDe = (id: string): string | undefined =>
         id === 'estado' ? (e.props.isWorking ? COR.verde : COR.ambar) : id === 'erros' ? (s.falhas > 0 ? COR.vermelho : COR.verde) : id === 'relogio' ? COR.ambar : undefined
-      return (
+      const barra = (
         <Box flexDirection="row" height={1} overflow="hidden">
           {figuras.map((f, i) => (
             <Box key={f.id} marginLeft={i === 0 ? 0 : 2}>
               <Text color={corDe(f.id)} wrap="truncate-end">{f.texto}</Text>
             </Box>
           ))}
+        </Box>
+      )
+      if (prPartes === null) return barra
+      const partes = prPartes
+      return (
+        <Box flexDirection="column">
+          {figuras.length > 0 ? barra : null}
+          <Box flexDirection="row" height={1} overflow="hidden">
+            {partes.map((p, i) => (
+              <Box key={`pr${i}`} marginLeft={i === 0 ? 0 : 2}>
+                <Text color={p.tom ?? undefined} dimColor={p.tom === null} wrap="truncate-end">{p.texto}</Text>
+              </Box>
+            ))}
+          </Box>
         </Box>
       )
     } catch {

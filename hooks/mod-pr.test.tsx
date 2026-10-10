@@ -14,7 +14,8 @@ import { test, expect, mock } from 'claude-code/testing'
 const URL_PR = 'https://github.com/luisfmontes/rainforest-mind/pull/455'
 // Onde o localizador (where.exe) acha o gh e o CLI do Claude, fora de qualquer repositorio.
 const GH_EXE = 'C:\\Program Files\\GitHub CLI\\gh.exe'
-const CLAUDE_CMD = 'C:\\Users\\teste\\AppData\\Roaming\\npm\\claude.cmd'
+const NODE_EXE = 'C:\\Program Files\\nodejs\\node.exe'
+const CLAUDE_CMD ='C:\\Users\\teste\\AppData\\Roaming\\npm\\claude.cmd'
 
 const PR_455 = {
   number: 455,
@@ -90,7 +91,9 @@ async function montar($: any, on: any, surface: Surface, inicial: Record<string,
   on('process.run', async (_$: any, e: any) => {
     s.rodou.push(String(e.argv[0]))
     // O localizador: where.exe acha o que s.localizador diz; o `which` nao existe aqui (exit 1).
-    if (/[\\/]system32[\\/]where\.exe$/i.test(String(e.argv[0]))) return saida(s.localizador)
+    if (/[\\/]system32[\\/]where\.exe$/i.test(String(e.argv[0]))) return saida(String(e.argv[1]).startsWith('node') ? `${NODE_EXE}\r\n` : s.localizador)
+    // O node (hooks/mod.tsx) acha-se pelo mesmo localizador; os scripts dele nao tem o que dizer aqui.
+    if (e.argv[0] === NODE_EXE) return saida('', 1)
     if (e.argv[0] === GH_EXE) {
       s.gh.push([...e.argv])
       s.ghEnv.push(e.init?.env ?? null)
@@ -388,8 +391,8 @@ for (const surface of ['terminal', 'desktop'] as const) {
       await $.command.run({ command: 'pr', args: '455' } as never)
       await relogio.advance(2 * MIN)
       expect(s.rodou.length).toBeGreaterThan(0)
-      // `node` pelo nome vem do /painel (hooks/mod.tsx), anterior a este mod: Issue propria.
-      expect(s.rodou.filter(a => a !== 'node' && !/^([A-Za-z]:[\\/]|\/)/.test(a))).toEqual([])
+      // O node tambem vai por caminho absoluto (#457): nenhum argv[0] e um nome solto.
+      expect(s.rodou.filter(a => !/^([A-Za-z]:[\\/]|\/)/.test(a))).toEqual([])
       expect(s.ghEnv.length).toBeGreaterThan(0)
       expect(s.ghEnv.filter(env => !(env && env.GIT_CONFIG_KEY_0 === 'core.fsmonitor' && env.GIT_CONFIG_VALUE_0 === 'false'))).toEqual([])
     })

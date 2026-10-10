@@ -16,6 +16,33 @@
 import { test, expect, mock } from 'claude-code/testing'
 import { largura } from './faixa-puro.mjs'
 
+// Recorte da saida REAL de `gh pr view 455 --json ...` (a de hooks/mod-pr.test.tsx), aberto e com a
+// CI verde; o titulo e a isca da regra "nunca texto de terceiro na barra".
+const PR_ABERTO = {
+  number: 455,
+  title: 'ISCA-TITULO-DE-TERCEIRO',
+  url: 'https://github.com/luisfmontes/rainforest-mind/pull/455',
+  state: 'OPEN',
+  isDraft: false,
+  headRefOid: 'a954e193059d3f392aab8afc1d9de4748b5a2c41',
+  headRefName: 'fluxo/gate-call-operator-variavel',
+  baseRefName: 'main',
+  isCrossRepository: false,
+  author: { login: 'luisfmontes' },
+  updatedAt: '2026-10-09T17:11:48Z',
+  mergeable: 'MERGEABLE',
+  mergeStateStatus: 'CLEAN',
+  reviewDecision: '',
+  latestReviews: [],
+  statusCheckRollup: [
+    { __typename: 'CheckRun', completedAt: '2026-10-09T17:08:20Z', conclusion: 'SUCCESS', name: 'baterias (node 24, shard 1/2)', startedAt: '2026-10-09T16:50:45Z', status: 'COMPLETED', workflowName: 'baterias' },
+    { __typename: 'CheckRun', completedAt: '2026-10-09T17:10:05Z', conclusion: 'SUCCESS', name: 'baterias (node 24, shard 2/2)', startedAt: '2026-10-09T16:50:44Z', status: 'COMPLETED', workflowName: 'baterias' },
+  ],
+  comments: [],
+}
+const THREADS_VAZIAS = '{"data":{"repository":{"pullRequest":{"reviewThreads":{"totalCount":0,"nodes":[]}}}}}'
+const GH_EXE = 'C:\\Program Files\\GitHub CLI\\gh.exe'
+
 // Saida real do script; so o campo `worktree` (caminho da caixa temporaria) foi trocado por um
 // caminho neutro.
 const FIXTURE_DADOS = {"fluxos":[{"slug":"2026-10-07-painel-pane","titulo":"Pane do painel","etapa":"executar","tarefas_ok":1,"tarefas":3,"em_voo":["agente-a"],"criado_em":"2026-10-07","worktree":"C:/tmp/painel-repo-0l2wTg"}]}
@@ -137,6 +164,9 @@ async function montar($: any, on: any, surface: Surface, inicio: number, comUi =
     modoDesvio: 'plano' as 'plano' | 'sem-fluxo' | 'exit1' | 'json-ruim' | 'rejeita',
     atrasoDesvio: 0,
     toasts: [] as string[],
+    // Os panes abertos como `$.ui.panes()` os lista (a linha do PR some com o do PR em tela).
+    panes: [] as unknown[],
+    pr: null as unknown,
     logs: [] as string[],
     submits: 0,
     // Deixado para depois: as chamadas do segundo modelo, o modo e o texto da resposta dele, o
@@ -153,6 +183,15 @@ async function montar($: any, on: any, surface: Surface, inicio: number, comUi =
     erros: [] as { argv: string[]; stdin: unknown; env: unknown }[],
   }
   on('process.run', async (_$: any, e: any) => {
+    // O gh do /pr (hooks/pr.tsx): o localizador o acha, e a consulta devolve o PR de s.pr.
+    if (/[\\/]where\.exe$/i.test(String(e.argv[0])) && String(e.argv[1]).startsWith('gh')) return saida(`${GH_EXE}\r\n`)
+    if (e.argv[0] === GH_EXE) {
+      if (e.argv[1] === 'api' && e.argv[2] === 'user') return saida('luisfmontes\n')
+      if (e.argv[1] === 'api') return saida(THREADS_VAZIAS)
+      return s.pr === null ? saida('', 1) : saida(JSON.stringify(s.pr))
+    }
+    // O localizador (where.exe) acha o node fora de qualquer repositorio; nao e um dos scripts.
+    if (/[\\/]where\.exe$/i.test(String(e.argv[0]))) return saida('C:\\Program Files\\nodejs\\node.exe\r\n')
     s.runs += 1
     const alvo = String(e.argv[1] ?? '')
     if (alvo.endsWith('desvio-do-plano.cjs')) {
@@ -188,6 +227,7 @@ async function montar($: any, on: any, surface: Surface, inicio: number, comUi =
     if (s.modoOpen === 'deny') return { deny: 'recusado pelo sec-default' } as never
     return { value: { isPlaced: s.modoOpen === 'ok' } } as never
   })
+  on('ui.panes', async () => ({ value: s.panes }) as never)
   on('turn.complete', async () => ({ text: '' }))
   on('prompt.submit', async (_$: any, e: any) => {
     s.submits += 1
@@ -552,7 +592,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     await ui.unmount()
   })
 
-  test(`painel (${surface}): pane com fluxos, contexto por fatia, cache, subagentes, custo e subagente em tela`, async ($, on) => {
+  test(`painel (${surface}): pane com fluxos, contexto por fatia, cache, subagentes, custo e subagente em tela`, { timeoutMs: 20000 }, async ($, on) => {
     const m = await montar($, on, surface, em(20, 40), false)
     const { relogio, s, textos, juntos, comecar, terminar, passo, painel, caso } = m
     const soma = (t: string[]) => t.filter(x => /^[█▒░]+$/.test(x)).reduce((n, x) => n + x.length, 0)
@@ -710,7 +750,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
 
     await caso(`mapa (${surface}): o script roda com o argv, o cwd e o env do contrato`, async () => {
       const d = s.desvios[0]
-      expect(d.argv.slice(0, 1)).toEqual(['node'])
+      expect(d.argv.slice(0, 1)).toEqual(['C:\\Program Files\\nodejs\\node.exe'])
       expect(String(d.argv[1]).endsWith('/scripts/desvio-do-plano.cjs')).toBe(true)
       expect(d.argv.slice(2)).toEqual(['--cwd', '/projeto', '--arquivo', '/projeto/hooks/faixa-puro.mjs'])
       expect(d.env).toEqual({ CLAUDE_PROJECT_DIR: '/projeto' })
@@ -1493,4 +1533,65 @@ for (const surface of ['terminal', 'desktop'] as const) {
       expect(s.usageCalls).toBe(antes + 1)
     })
   })
+
+  test(`painel (${surface}): a linha do PR na barra aparece sem o pane do PR e some com ele ou com o PR mergeado`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40))
+    const { s, ui, juntos, textos, relogio, comecar, caso } = m
+    const painelDoPr = (isShown: boolean, isPlaced = true) => ({ id: 'rainforest-mind-pr', title: 'PR', isShown, isFocused: false, isPlaced })
+    // O resumo do PR e o do hooks/pr.tsx, pelo caminho real: `/pr 455` consulta o gh (mock acima).
+    const resumo = async (estado: string) => {
+      s.pr = { ...PR_ABERTO, state: estado }
+      await $.command.run({ command: 'pr', args: '455' } as never)
+    }
+    await comecar()
+
+    await caso(`linha do PR (${surface}): sem PR acompanhado a barra nao traz a linha`, async () => {
+      expect(await juntos()).not.toContain('PR #')
+    })
+
+    await caso(`linha do PR (${surface}): PR aberto e nenhum pane do PR: numero, checks e merge, nunca o titulo`, async () => {
+      await resumo('OPEN')
+      await ui.redraw(PROPS)
+      const t = await juntos()
+      expect(t).toContain('PR #455')
+      expect(t).toContain('checks ok (2)')
+      expect(t).toContain('mergeável')
+      expect(t).not.toContain('ISCA-TITULO-DE-TERCEIRO')
+      expect(t).not.toContain('fluxo/gate-call-operator-variavel')
+    })
+
+    await caso(`linha do PR (${surface}): o pane do PR colocado e em tela esconde a linha`, async () => {
+      s.panes = [painelDoPr(true)]
+      await ui.redraw(PROPS)
+      expect(await juntos()).not.toContain('PR #')
+    })
+
+    await caso(`linha do PR (${surface}): pane do PR atras de outra aba ou sem lugar nao conta como visivel`, async () => {
+      s.panes = [painelDoPr(false)]
+      await ui.redraw(PROPS)
+      expect(await juntos()).toContain('PR #455')
+      s.panes = [painelDoPr(true, false)]
+      await ui.redraw(PROPS)
+      expect(await juntos()).toContain('PR #455')
+    })
+
+    await caso(`linha do PR (${surface}): PR mergeado ou fechado tira a linha`, async () => {
+      s.panes = []
+      for (const estado of ['MERGED', 'CLOSED']) {
+        await resumo(estado)
+        await ui.redraw(PROPS)
+        expect(await juntos()).not.toContain('PR #')
+      }
+    })
+
+    await caso(`linha do PR (${surface}): /painel esconder esconde tudo, a linha do PR tambem`, async () => {
+      await resumo('OPEN')
+      await ui.redraw(PROPS)
+      expect(await juntos()).toContain('PR #455')
+      await $.command.run({ command: 'painel', args: 'esconder' } as never)
+      await ui.redraw(PROPS)
+      expect(await textos()).toEqual([])
+    })
+  })
 }
+
