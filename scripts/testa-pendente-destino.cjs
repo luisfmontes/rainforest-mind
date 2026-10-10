@@ -362,6 +362,16 @@ caso('exigir fechar cita os dois estagios com orfa (a varredura nao para na prim
   assert.ok(r.stderr.includes(A) && r.stderr.includes(B), r.stderr);
 });
 
+caso('M3: destino invalido (sem campo; destino fora dos tres) nao conta: exigir fechar recusa A e B', () => {
+  const slug = fluxoFechadoAMao(cx, (est) => {
+    est.executar.pendentes = [A, B];
+    est.executar.destinos = [{ pendente: A }, { pendente: B, destino: 'adiada', motivo: 'x' }];
+  });
+  const r = exigir(cx, slug, 'fechar');
+  assert.strictEqual(r.status, 2, `esperava exit 2, veio ${r.status}: ${r.stdout}`);
+  assert.ok(r.stderr.includes(A) && r.stderr.includes(B), r.stderr);
+});
+
 caso('exigir fechar ignora chave que nao e estagio (historico)', () => {
   const slug = fluxoFechadoAMao(cx, (est) => { est.revisar_historico_1_23_0 = { status: 'reprovado', pendentes: [A] }; });
   const r = exigir(cx, slug, 'fechar');
@@ -426,6 +436,16 @@ caso('deixado mostra a pendencia orfa como (sem destino) e sai 0', () => {
   const r = deixado(cx, slug);
   assert.strictEqual(r.status, 0, r.stderr);
   assert.strictEqual(r.stdout.trim(), `- executar: ${A} → (sem destino)`);
+});
+
+caso('M3: deixado mostra destino invalido como (sem destino)', () => {
+  const slug = fluxoFechadoAMao(cx, (est) => {
+    est.executar.pendentes = [A, B];
+    est.executar.destinos = [{ pendente: A }, { pendente: B, destino: 'adiada', motivo: 'x' }];
+  });
+  const r = deixado(cx, slug);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.strictEqual(r.stdout.trim().split('\n').join('|'), `- executar: ${A} → (sem destino)|- executar: ${B} → (sem destino)`);
 });
 
 caso('deixado com quebra de linha e espacos repetidos mantem um item por linha', () => {

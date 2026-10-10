@@ -329,9 +329,14 @@ function reconciliarPendencias(estagio, anterior, extra, status) {
   return aviso ? { aviso } : {};
 }
 
-/** Pendencias da lista cujo texto nao aparece em `destinos[].pendente`. */
+/** Destino que passa em `validarDestino` (campo certo, texto nao vazio). Bloco editado a mao pode trazer lixo. */
+function destinoValido(d) {
+  return validarDestino(d, [ehObjetoSimples(d) ? d.pendente : null]) === null;
+}
+
+/** Pendencias da lista sem destino VALIDO em `destinos[].pendente`. */
 function semDestino(pendentes, destinos) {
-  const destinadas = new Set(destinos.map((d) => d.pendente));
+  const destinadas = new Set(destinos.filter(destinoValido).map((d) => d.pendente));
   return pendentes.filter((p) => !destinadas.has(p));
 }
 
@@ -356,7 +361,7 @@ function itensDeixados(estagio, bloco) {
   if (!ehObjetoSimples(bloco)) return [];
   const destinos = Array.isArray(bloco.destinos) ? bloco.destinos.filter(ehObjetoSimples) : [];
   const linhas = destinos
-    .filter((d) => Object.prototype.hasOwnProperty.call(CAMPO_DO_DESTINO, d.destino))
+    .filter(destinoValido)
     .map((d) => `- ${estagio}: ${umaLinha(d.pendente)} → ${d.destino}: ${umaLinha(d[CAMPO_DO_DESTINO[d.destino]])}`);
   const orfas = orfasDoBloco(estagio, bloco).map((o) => `- ${estagio}: ${umaLinha(o.pendente)} → (sem destino)`);
   return [...linhas, ...orfas];
