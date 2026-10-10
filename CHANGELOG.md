@@ -10,6 +10,14 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.54.3 — 2026-10-09
+
+- **A varredura de baterias não deixa mais teste trocar a identidade git do repositório (Issue #446).** Com
+  `GIT_DIR` ou `GIT_WORK_TREE` herdado do ambiente, o git ignora `-C` e `cd`, e o `git config user.email` das caixas
+  de teste caía no repositório de verdade. `scripts/varrer-baterias.sh` limpa essas variáveis antes de rodar, e confere
+  o `user.*` do repositório depois de cada bateria: a que mudar sai vermelha, com o antes e o depois. O que exportou
+  `GIT_DIR` em 2026-10-08 não foi identificado. Nenhuma bateria reproduz a troca sozinha.
+
 ## 1.54.2 — 2026-10-09
 
 - **Banco ocupado não deixa mais colunas da memória faltando em banco antigo (Issue #460).** As migrações de
