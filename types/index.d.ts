@@ -140,6 +140,7 @@ declare module 'claude-code' {
       prPendente: RainforestMindPrPendente | null
       prFerramentas: RainforestMindPrFerramentas
       pluginsEmDiaClaude: string
+      nodeCaminho: string
     }
   }
 }

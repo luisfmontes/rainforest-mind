@@ -20,6 +20,18 @@
       "title": "Recarregar sozinho",
       "description": "Rodar /reload-plugins quando um plugin subir de versão; desligado, só avisa",
       "default": false
+    },
+    "compactarSozinho": {
+      "type": "boolean",
+      "title": "Compactar sozinho",
+      "description": "Compactar a conversa quando o contexto chegar ao limiar; com subagente rodando, só avisa e compacta quando ele voltar",
+      "default": true
+    },
+    "compactarEm": {
+      "type": "number",
+      "title": "Compactar em (%)",
+      "description": "Percentual do contexto em que a compactação sozinha dispara",
+      "default": 60
     }
   },
   "homepage": "https://github.com/luisfmontes/rainforest-mind"

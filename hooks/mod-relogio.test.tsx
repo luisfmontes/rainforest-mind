@@ -80,6 +80,8 @@ async function montar($: any, on: any, surface: Surface, inicio: number, dadosFa
     return saida(JSON.stringify(corpo))
   }
   on('process.run', async (_$: any, e: any) => {
+    // O localizador (where.exe) acha o node fora de qualquer repositorio; nao e um dos scripts.
+    if (/[\\/]where\.exe$/i.test(String(e.argv[0]))) return saida('C:\\Program Files\\nodejs\\node.exe\r\n')
     const alvo = String(e.argv[1] ?? '')
     if (alvo.endsWith('relogio-sessoes.cjs')) {
       s.runsS += 1
