@@ -211,6 +211,78 @@ function baseParaFundir(estagio, blocoAnterior, statusNovo, extra) {
   return base;
 }
 
+// ---------------------------------------------------------------- pendencia com destino (#449)
+//
+// Uma pendencia gravada em `pendentes` nao some em silencio: para o estagio fechar
+// `ok`/`aprovado`, cada uma precisa de um destino em `destinos` — resolvida (com
+// `evidencia`), plantada (com `ref`) ou descartada (com `motivo`). Casa pelo TEXTO
+// exato da pendencia (as `pendentes` continuam strings, nenhum estado migra).
+
+// Os sete estagios do fluxo, na ordem. Lista fixa de proposito: um arquivo de estado
+// pode ter chave que nao e estagio (ex.: `revisar_historico_1_23_0`).
+const ESTAGIOS_DO_FLUXO = ['arqueologia', 'design', 'plano', 'executar', 'revisar', 'verificar', 'fechar'];
+
+// Formas aceitas de `ref` de uma pendencia `plantada`: `#<n>`, URL de issue do GitHub
+// ou `ideia:<id>`. A terceira copia o `RE_ID` de scripts/ideias.cjs:101 (o modulo nao
+// exporta nada, e um `require` o executaria). O id nao e conferido contra o
+// ideias.jsonl, que mora fora do repositorio: o formato e a trava.
+const REF_PLANTADA = [
+  /^#[1-9][0-9]*$/,
+  /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/issues\/[1-9][0-9]*$/,
+  /^ideia:[a-z0-9]+(?:-[a-z0-9]+)*$/,
+];
+const CAMPO_DO_DESTINO = { resolvida: 'evidencia', plantada: 'ref', descartada: 'motivo' };
+
+function ehObjetoSimples(x) {
+  return !!x && typeof x === 'object' && !Array.isArray(x);
+}
+
+/** Valida um item de `destinos`. Devolve o motivo da recusa ou null. */
+function validarDestino(d, universo) {
+  if (!ehObjetoSimples(d)) return `item de 'destinos' nao e objeto: ${JSON.stringify(d)}`;
+  if (typeof d.pendente !== 'string' || !universo.includes(d.pendente)) {
+    return `'pendente' nao casa com nenhuma pendencia do bloco: ${JSON.stringify(d.pendente)}`;
+  }
+  if (!Object.prototype.hasOwnProperty.call(CAMPO_DO_DESTINO, d.destino)) {
+    return `'destino' invalido em ${JSON.stringify(d.pendente)}: ${JSON.stringify(d.destino)} — use resolvida|plantada|descartada`;
+  }
+  const campo = CAMPO_DO_DESTINO[d.destino];
+  const valor = typeof d[campo] === 'string' ? d[campo].trim() : '';
+  const valido = d.destino === 'plantada' ? REF_PLANTADA.some((re) => re.test(valor)) : valor !== '';
+  if (!valido) {
+    const forma = d.destino === 'plantada' ? ' no formato #<n>, URL de issue do GitHub ou ideia:<id>' : ' nao vazio';
+    return `destino '${d.destino}' de ${JSON.stringify(d.pendente)} exige '${campo}'${forma} (recebido: ${JSON.stringify(d[campo])})`;
+  }
+  return null;
+}
+
+/**
+ * Concilia `pendentes` e `destinos` do `--json` de um `marcar` com o bloco anterior.
+ * Funcao pura: devolve `{ recusa }` (o chamador imprime e sai 2) e, quando passa,
+ * pode reescrever `extra.destinos`/`extra.pendentes` com o resultado acumulado.
+ */
+function reconciliarPendencias(estagio, anterior, extra, status) {
+  const temPend = Object.prototype.hasOwnProperty.call(extra, 'pendentes');
+  const temDest = Object.prototype.hasOwnProperty.call(extra, 'destinos');
+  if (temPend && !(Array.isArray(extra.pendentes) && extra.pendentes.every((p) => typeof p === 'string'))) {
+    return { recusa: "RECUSADO: 'pendentes' tem de ser uma lista de textos." };
+  }
+  if (temDest && !(Array.isArray(extra.destinos) && extra.destinos.every(ehObjetoSimples))) {
+    return { recusa: "RECUSADO: 'destinos' tem de ser uma lista de objetos {pendente, destino, evidencia|ref|motivo}." };
+  }
+  const ant = ehObjetoSimples(anterior) ? anterior : {};
+  const antPend = Array.isArray(ant.pendentes) ? ant.pendentes.filter((p) => typeof p === 'string') : [];
+  const antDest = Array.isArray(ant.destinos) ? ant.destinos.filter(ehObjetoSimples) : [];
+  const novasPend = temPend ? extra.pendentes : [];
+  const novosDest = temDest ? extra.destinos : [];
+  const universo = [...new Set([...antPend, ...novasPend, ...antDest.map((d) => d.pendente)])];
+  for (const d of novosDest) {
+    const erro = validarDestino(d, universo);
+    if (erro) return { recusa: `RECUSADO: ${erro}` };
+  }
+  return {};
+}
+
 function hoje() {
   // Relógio LOCAL. toISOString() é UTC e já gravou data no futuro neste repo.
   const d = new Date();
@@ -2266,6 +2338,16 @@ function main() {
       const recusa_carimbos = processarCarimbos(estagio, estado[estagio], extra, estado, slug);
       if (recusa_carimbos) {
         console.error(recusa_carimbos);
+        process.exit(2);
+      }
+    }
+
+    // #449: pendencia so sai com destino — valida `pendentes`/`destinos` do --json
+    // antes de qualquer gate que dispara processo, e antes do `gravar`.
+    {
+      const conciliacao = reconciliarPendencias(estagio, estado[estagio], extra, status);
+      if (conciliacao.recusa) {
+        console.error(conciliacao.recusa);
         process.exit(2);
       }
     }
