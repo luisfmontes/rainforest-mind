@@ -30,6 +30,14 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 - **Fluxo em andamento com `pendentes` num `parcial` precisa gravar `destinos` antes do `ok`.** Estados já fechados
   não mudam, e nenhum migra.
 
+## 1.55.1 — 2026-10-10
+
+- **Worktree do agente pode nascer do commit de trabalho.** Com `"worktree": { "baseRef": "head" }` nas
+  settings do Claude Code, o worktree de `isolation: "worktree"` nasce do HEAD da sessão que despacha, não da ponta
+  de `origin/main`. A regra 11, o `executar` e o glossário descrevem os dois modos; sem a chave (`fresh`, o padrão)
+  nada muda. A conferência de base continua obrigatória nos dois. Despache de dentro do worktree do fluxo, com a
+  árvore limpa.
+
 ## 1.55.0 — 2026-10-09
 
 - **Painel de PR que abre sozinho (`/pr`).** Todo `gh pr create`, `merge`, `checks`, `ready` ou `view` que a sessão
