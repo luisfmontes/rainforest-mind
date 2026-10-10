@@ -56,18 +56,16 @@
   "revisar": {
     "status": "pendente",
     "snapshot": {
-      "head": "8d6c6dc3eeed94f31db8332cb876021bb1149142",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/worktree-baseref-head.json"
-      ]
+      "head": "641d5affe63a484f34977f7213f458addae7a767",
+      "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ab4c0886a8aa6f3c6",
+        "agente_id": "a59086fe8a0250aff",
         "veredito": "ok",
         "em": "2026-10-10",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/6d0b7cb5-6a37-43b8-b9a4-befd7fdd648f/subagents/agent-ab4c0886a8aa6f3c6.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/6d0b7cb5-6a37-43b8-b9a4-befd7fdd648f/subagents/agent-a59086fe8a0250aff.jsonl"
       }
     ]
   },
