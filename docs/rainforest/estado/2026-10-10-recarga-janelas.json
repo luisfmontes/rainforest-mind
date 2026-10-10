@@ -14,7 +14,30 @@
     "em": "2026-10-10"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-10-10",
+    "tarefas_ok": 3,
+    "tarefas": 3,
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-10-recarga-janelas",
+    "saida": "tarefa 1: vermelho; tarefa 2: vermelho; tarefa 3: pulada (n/a)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "o mesmo marcador age uma vez so"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "marcador de outra janela recarrega uma vez"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "documentacao e versao"
+      }
+    ],
+    "em": "2026-10-10"
   },
   "revisar": {
     "status": "pendente"
