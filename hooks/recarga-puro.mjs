@@ -8,12 +8,19 @@
 // que o carregamento do proprio modulo (o /reload-plugins recarrega o modulo e o
 // "carregado em" passa do marcador).
 
-const PASTA_DE_DADOS = 'rainforest-mind-rainforest-mind';
+// Folga para relogio: marcador com `at` mais de 1 min no futuro (relogio que voltou, arquivo
+// editado) e ignorado; sem isso a janela recarregaria a cada conferencia ate o relogio alcancar.
+export const FOLGA_FUTURO_MS = 60_000;
 
-/** <CLAUDE_CONFIG_DIR ou HOME/.claude>/plugins/data/rainforest-mind-rainforest-mind/recarga-pedida.json */
+/**
+ * <CLAUDE_CONFIG_DIR ou HOME/.claude>/plugins/rainforest-mind-recarga.json, ao lado do
+ * installed_plugins.json: a pasta existe em toda conta com plugin instalado, e o engine nao tem
+ * evento para criar pasta. '' sem nenhum dos dois (nada a conferir).
+ */
 export function caminhoMarcador({ CLAUDE_CONFIG_DIR, HOME } = {}) {
+  if (!CLAUDE_CONFIG_DIR && !HOME) return '';
   const config = CLAUDE_CONFIG_DIR || `${HOME}/.claude`;
-  return `${config}/plugins/data/${PASTA_DE_DADOS}/recarga-pedida.json`;
+  return `${config}/plugins/rainforest-mind-recarga.json`;
 }
 
 /** O texto do marcador de uma atualizacao. */
@@ -39,9 +46,10 @@ export function lerMarcador(texto) {
  * O `at` pelo qual esta janela deve recarregar, ou null: so marcador mais novo que o
  * carregamento deste modulo e que o ultimo ja tratado.
  */
-export function deveRecarregar({ marcador, carregadoEm, tratadoEm }) {
+export function deveRecarregar({ marcador, carregadoEm, tratadoEm, agora }) {
   const m = lerMarcador(marcador);
   if (m === null || !(m.at > carregadoEm)) return null;
+  if (typeof agora === 'number' && m.at > agora + FOLGA_FUTURO_MS) return null;
   if (typeof tratadoEm === 'number' && m.at <= tratadoEm) return null;
   return m.at;
 }

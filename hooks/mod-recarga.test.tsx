@@ -28,8 +28,8 @@ async function montar($: any, on: any, env: Record<string, string> = {}) {
   const relogio = mock.clock(on, { now: INICIO })
   mock.store(on)
   mock.env(on, { CLAUDE_CONFIG_DIR: 'C:/ContaTeste', ...env })
-  const s = { versao: '1.54.0', marcador: '', escritas: [] as { path: string; text: string }[], reloads: 0, toasts: [] as string[] }
-  const ehMarcador = (p: unknown) => String(p).replace(/\\/g, '/').endsWith('/recarga-pedida.json')
+  const s = { versao: '1.54.0', marcador: '', escritas: [] as { path: string; text: string }[], reloads: 0, toasts: [] as string[], reloadFalha: false }
+  const ehMarcador = (p: unknown) => String(p).replace(/\\/g, '/').endsWith('/rainforest-mind-recarga.json')
   on('fs.read', async (_$: any, e: any) => ({ value: ehMarcador(e.path) ? s.marcador : registro(s.versao) }) as never)
   on('fs.write', async (_$: any, e: any) => {
     s.escritas.push({ path: String(e.path).replace(/\\/g, '/'), text: String(e.text) })
@@ -44,6 +44,7 @@ async function montar($: any, on: any, env: Record<string, string> = {}) {
   })
   on('command.run', { command: 'reload-plugins' }, async () => {
     s.reloads += 1
+    if (s.reloadFalha) throw new Error('turno em curso')
     return { text: '' }
   })
   on('ui.toast', async (_$: any, e: any) => {
@@ -65,9 +66,9 @@ test('recarga: a rodada que sobe versao grava o marcador no caminho da conta', a
   const { s } = await montar($, on)
   s.versao = '1.53.2'
   await $.command.run({ command: 'plugins-em-dia', args: '' } as never)
-  const m = s.escritas.filter(w => w.path.endsWith('/recarga-pedida.json'))
+  const m = s.escritas.filter(w => w.path.endsWith('/rainforest-mind-recarga.json'))
   expect(m.length).toBe(1)
-  expect(m[0].path).toBe('C:/ContaTeste/plugins/data/rainforest-mind-rainforest-mind/recarga-pedida.json')
+  expect(m[0].path).toBe('C:/ContaTeste/plugins/rainforest-mind-recarga.json')
   expect(JSON.parse(m[0].text).v).toBe(1)
   expect(typeof JSON.parse(m[0].text).at).toBe('number')
 })
@@ -125,9 +126,19 @@ test('recarga: a janela que gravou o marcador nao recarrega de novo por ele', { 
   s.versao = '1.53.2'
   // a abertura roda a rodada: sobe, grava o marcador e recarrega pelo caminho de sempre (1 s)
   await comecar()
-  expect(s.escritas.filter(w => w.path.endsWith('/recarga-pedida.json')).length).toBe(1)
+  expect(s.escritas.filter(w => w.path.endsWith('/rainforest-mind-recarga.json')).length).toBe(1)
   await relogio.advance(SEG)
   expect(s.reloads).toBe(1)
   await relogio.advance(30 * SEG)
   expect(s.reloads).toBe(1)
+})
+
+test('recarga: /reload-plugins recusado cai no aviso, uma vez', { options: { recarregarSozinho: true } }, async ($, on) => {
+  const { s, relogio, comecar, avisosDeOutra } = await montar($, on)
+  await comecar()
+  s.reloadFalha = true
+  s.marcador = textoMarcador(INICIO + 2 * SEG) as string
+  await relogio.advance(30 * SEG)
+  expect(s.reloads).toBe(1)
+  expect(avisosDeOutra()).toBe(1)
 })

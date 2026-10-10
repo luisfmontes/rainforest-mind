@@ -18,6 +18,7 @@ const claudeCaminho = atom({ plugin: 'rainforest-mind', key: 'pluginsEmDiaClaude
 // caminho e desligada sao lidos uma vez, na abertura: a conferencia de 5 s faz so o fs.read.
 type Recarga = { carregadoEm: number; tratadoEm: number | null; ocupado: boolean; recarregaSeguro: boolean; caminho: string; desligada: boolean }
 const CONFERIR_RECARGA_MS = 5000
+const AVISO_OUTRA_JANELA = 'plugins atualizados em outra janela - rode /reload-plugins'
 
 type Registro = { plugins?: Record<string, { scope: string; version: string }[]> }
 
@@ -68,9 +69,11 @@ async function caminhoDoMarcador($: EngineInterface): Promise<string> {
 // Grava o marcador para as outras janelas; esta ja trata a si mesma pelo caminho de sempre.
 async function gravarMarcador($: EngineInterface, recarga: Recarga): Promise<void> {
   try {
+    const caminho = await caminhoDoMarcador($)
+    if (caminho === '') return
     const at = await $.clock.now()
     recarga.tratadoEm = at
-    await $.fs.write(await caminhoDoMarcador($), textoMarcador(at) as string)
+    await $.fs.write(caminho, textoMarcador(at) as string)
   } catch {
     // sem marcador as outras janelas seguem sem saber; a rodada desta segue igual
   }
@@ -87,13 +90,22 @@ async function conferirRecarga($: EngineInterface, recarga: Recarga): Promise<vo
     } catch {
       return
     }
-    const at = deveRecarregar({ marcador, carregadoEm: recarga.carregadoEm, tratadoEm: recarga.tratadoEm }) as number | null
+    const agora = await $.clock.now()
+    const at = deveRecarregar({ marcador, carregadoEm: recarga.carregadoEm, tratadoEm: recarga.tratadoEm, agora }) as number | null
     if (at === null) return
     recarga.tratadoEm = at
-    if (recarga.recarregaSeguro) await $.command.run({ command: 'reload-plugins' })
-    else avisar($, 'plugins atualizados em outra janela - rode /reload-plugins')
+    if (!recarga.recarregaSeguro) {
+      avisar($, AVISO_OUTRA_JANELA)
+      return
+    }
+    try {
+      await $.command.run({ command: 'reload-plugins' })
+    } catch {
+      // o host recusou (ex.: turno em curso): o aviso diz o que fazer, como no caminho de sempre
+      avisar($, AVISO_OUTRA_JANELA)
+    }
   } catch {
-    // falha aberta: a proxima conferencia tenta de novo
+    // falha aberta: marcador ilegivel ou relogio indisponivel; a proxima conferencia tenta de novo
   } finally {
     recarga.ocupado = false
   }

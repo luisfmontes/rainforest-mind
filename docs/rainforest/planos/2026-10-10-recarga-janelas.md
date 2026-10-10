@@ -20,7 +20,7 @@ mutacao:
   para: `if (false) return null;`
   bateria: `node hooks/testa-mod-recarga.cjs`
   fixture: `testa-mod-recarga.cjs, caso "o mesmo marcador age uma vez so"`
-pronto quando: `caminhoMarcador({ CLAUDE_CONFIG_DIR, HOME })` devolve `<config>/plugins/data/rainforest-mind-rainforest-mind/recarga-pedida.json` (com `HOME/.claude` sem `CLAUDE_CONFIG_DIR`); `textoMarcador(at)` e `lerMarcador(texto)` fazem ida e volta, e `lerMarcador` devolve `null` para texto ausente, JSON quebrado, `v` diferente de 1 ou `at` não numérico; `deveRecarregar({ marcador, carregadoEm, tratadoEm })` devolve o `at` só quando ele é maior que `carregadoEm` e que `tratadoEm`, e `null` nos demais — provado por `node hooks/testa-mod-recarga.cjs` imprimindo `N ok, 0 falha(s), 0 skipped`.
+pronto quando: `caminhoMarcador({ CLAUDE_CONFIG_DIR, HOME })` devolve `<config>/plugins/rainforest-mind-recarga.json` (com `HOME/.claude` sem `CLAUDE_CONFIG_DIR`, `''` sem nenhum dos dois; emenda da revisão); `textoMarcador(at)` e `lerMarcador(texto)` fazem ida e volta, e `lerMarcador` devolve `null` para texto ausente, JSON quebrado, `v` diferente de 1 ou `at` não numérico; `deveRecarregar({ marcador, carregadoEm, tratadoEm })` devolve o `at` só quando ele é maior que `carregadoEm` e que `tratadoEm`, e `null` nos demais — provado por `node hooks/testa-mod-recarga.cjs` imprimindo `N ok, 0 falha(s), 0 skipped`.
 
 ### 2. Fiação no plugins-em-dia [tipo: implementar]
 atende: D1, D2, D3

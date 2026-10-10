@@ -22,11 +22,16 @@ const igual = (veio, esperado, rotulo) => {
 
 let m;
 
-caso("caminho do marcador: CLAUDE_CONFIG_DIR, e HOME/.claude sem ele", () => {
+caso("caminho do marcador: ao lado do installed_plugins.json; vazio sem config dir nem HOME", () => {
   igual(m.caminhoMarcador({ CLAUDE_CONFIG_DIR: "<home>/.claude-personal", HOME: "<home>" }),
-    "<home>/.claude-personal/plugins/data/rainforest-mind-rainforest-mind/recarga-pedida.json", "com config dir");
-  igual(m.caminhoMarcador({ HOME: "<home>" }),
-    "<home>/.claude/plugins/data/rainforest-mind-rainforest-mind/recarga-pedida.json", "sem config dir");
+    "<home>/.claude-personal/plugins/rainforest-mind-recarga.json", "com config dir");
+  igual(m.caminhoMarcador({ HOME: "<home>" }), "<home>/.claude/plugins/rainforest-mind-recarga.json", "sem config dir");
+  igual(m.caminhoMarcador({}), "", "sem nenhum");
+});
+
+caso("marcador no futuro alem da folga nao age (sem laco de recarga)", () => {
+  igual(m.deveRecarregar({ marcador: m.textoMarcador(1000 + 120000), carregadoEm: 0, tratadoEm: null, agora: 1000 }), null, "2 min no futuro");
+  igual(m.deveRecarregar({ marcador: m.textoMarcador(1000 + 30000), carregadoEm: 0, tratadoEm: null, agora: 1000 }), 31000, "dentro da folga");
 });
 
 caso("texto e leitura fazem ida e volta", () => {

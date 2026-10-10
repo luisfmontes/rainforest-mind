@@ -256,8 +256,10 @@ host recusa `$.command.run` de dentro de um `command.run`. A prova de engine est
 `hooks/mod-pr.test.tsx`; a lógica, `node hooks/testa-mod-plugins-em-dia.cjs`.
 
 **Recarga nas outras janelas.** Rodada que sobe versão grava `{"v":1,"at":<ms>}` em
-`<config>/plugins/data/rainforest-mind-rainforest-mind/recarga-pedida.json` (`caminhoMarcador()` em
-`hooks/recarga-puro.mjs`, enxerto do `reload_marker.mjs` do wildz-data). Cada sessão interativa confere a
+`<config>/plugins/rainforest-mind-recarga.json`, ao lado do `installed_plugins.json` (`caminhoMarcador()` em
+`hooks/recarga-puro.mjs`, enxerto do `reload_marker.mjs` do wildz-data): o engine não cria pasta, e a de
+dados do plugin não existe em toda conta. `/reload-plugins` recusado cai no aviso; `at` mais de
+`FOLGA_FUTURO_MS` (1 min) no futuro é ignorado. Cada sessão interativa confere a
 cada `CONFERIR_RECARGA_MS` = 5000 ms e age uma vez por marcador mais novo que o carregamento do módulo
 (`deveRecarregar()`); estado de módulo, sem chave no `$.store`. `RAINFOREST_RECARGA=off`, lido na abertura,
 nem cria o timer: o teste do relógio liga essa chave, porque o harness comprime horas e cada disparo de

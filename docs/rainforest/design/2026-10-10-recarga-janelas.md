@@ -15,8 +15,9 @@ dispensada pelo Luís em 2026-10-10 ("o rafael já testou isso e tá funcionando
   trava de 30 min em `$.store` (`ultima`): numa rodada só uma janela atualiza; as outras pulam e
   nunca ficam sabendo que o disco mudou.
 - O engine tem `$.fs.read` e `$.fs.write(path, text)` (eventos `fs.read`/`fs.write`, medido no
-  binário do CLI). A pasta de dados do plugin existe em
-  `<config>/plugins/data/rainforest-mind-rainforest-mind/` nas duas contas.
+  binário do CLI) e nenhum evento para criar pasta. A pasta de dados do plugin
+  (`<config>/plugins/data/rainforest-mind-*`) não existe na conta de trabalho (revisão); a pasta
+  `<config>/plugins/`, onde está o `installed_plugins.json`, existe em toda conta com plugin.
 - `/reload-plugins` recarrega o módulo do mod: o estado de módulo zera e o "carregado em" anda.
 - O harness de `claude plugin test` comprime o tempo: cada disparo de timer custa ~50 ms lá, e o
   timer de 5 s vira centenas de disparos no teste do relógio (~77 min simulados e um salto de 24 h),
@@ -31,14 +32,15 @@ dispensada pelo Luís em 2026-10-10 ("o rafael já testou isso e tá funcionando
 
 - **D1 — Um marcador compartilhado, gravado por quem atualizou**: depois de uma rodada em que algum
 plugin subiu de versão, o `plugins-em-dia` grava `{"v":1,"at":<ms>}` em
-`<CLAUDE_CONFIG_DIR ou HOME/.claude>/plugins/data/rainforest-mind-rainforest-mind/recarga-pedida.json`
-com `$.fs.write`. A janela que gravou marca o próprio `at` como tratado antes de gravar (ela já
+`<CLAUDE_CONFIG_DIR ou HOME/.claude>/plugins/rainforest-mind-recarga.json` (ao lado do
+`installed_plugins.json`) com `$.fs.write`; sem nenhum dos dois não há caminho e nada se grava. A janela que gravou marca o próprio `at` como tratado antes de gravar (ela já
 recarrega ou avisa pelo caminho de hoje). Falha de escrita não quebra a rodada.
 
 - **D2 — Cada janela confere a cada 5 s e age uma vez por marcador**: em sessão interativa, um
 `$.clock.every(5000)` lê o marcador; age quando `at` é mais novo que o carregamento deste módulo e
-que o último `at` tratado. Com `recarregarSozinho` ligado, roda `/reload-plugins`; desligado, um
-toast "plugins atualizados em outra janela - rode /reload-plugins", uma vez por marcador.
+que o último `at` tratado. Com `recarregarSozinho` ligado, roda `/reload-plugins`; desligado (ou com o
+`/reload-plugins` recusado), um toast "plugins atualizados em outra janela - rode /reload-plugins", uma
+vez por marcador. Marcador com `at` mais de 1 min no futuro é ignorado (sem laço de recarga).
 `RAINFOREST_RECARGA=off` no ambiente desliga (o kill switch do Rafael).
 
 - **D3 — Estado de módulo, sem chave no `$.store`**: "carregado em" e "último tratado" vivem no

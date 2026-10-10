@@ -173,7 +173,7 @@ async function montar($: any, on: any, surface: Surface, inicio: number, dadosFa
 }
 
 for (const surface of ['terminal', 'desktop'] as const) {
-  test(`relogio (${surface}): linha, minutos, esconder, nota e virada do dia`, { timeoutMs: 20000 }, async ($, on) => {
+  test(`relogio (${surface}): linha, minutos, esconder, nota e virada do dia`, async ($, on) => {
     const m = await montar($, on, surface, em(20, 40))
     const { relogio, s, ui, juntos, quieta, escondida, painel, comecar, terminarSessao, caso, enviar } = m
 
@@ -302,7 +302,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     await ui.unmount()
   })
 
-  test(`relogio (${surface}): limiares, 8h59 as 14h e 8h00 as 20h com mensagem ha 31 min`, { timeoutMs: 20000 }, async ($, on) => {
+  test(`relogio (${surface}): limiares, 8h59 as 14h e 8h00 as 20h com mensagem ha 31 min`, async ($, on) => {
     const m = await montar($, on, surface, em(14, 0))
     const { relogio, s, ui, quieta, comecar, terminarSessao, caso } = m
 
