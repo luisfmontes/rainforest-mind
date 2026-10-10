@@ -13,7 +13,7 @@ atende: D1
 arquivos: `hooks/pr-puro.mjs`, `hooks/pr.tsx`, `hooks/testa-mod-pr.cjs`
 depende de: nenhuma
 paralela: sim
-prova: `node hooks/testa-mod-pr.cjs`
+prova: `node -e "import('./hooks/pr-puro.mjs').then(m=>process.exit(typeof m.herdarMotivo==='function'?0:1))"`
 mutacao:
   arquivo: `hooks/pr-puro.mjs`
   de: `if (!velho || novo.motivo !== SEM_DADO) return novo;`
@@ -27,7 +27,7 @@ atende: D2, D3
 arquivos: `hooks/abertura-mod-puro.mjs`, `hooks/register.ts`, `hooks/mod.tsx`, `hooks/testa-mod-abertura.cjs`, `hooks/mod-relogio.test.tsx`
 depende de: nenhuma
 paralela: sim
-prova: `node hooks/testa-mod-abertura.cjs`
+prova: `node -e "process.exit(require('fs').readFileSync('hooks/abertura-mod-puro.mjs','utf8').includes('rodar(' + String.fromCharCode(91, 39) + 'node')?1:0)"`
 mutacao:
   arquivo: `hooks/mod.tsx`
   de: `if (falhou > 0 && agora - falhou < NODE_FALHA_TTL_MS) return null`

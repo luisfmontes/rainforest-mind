@@ -10,7 +10,8 @@
     "em": "2026-10-10"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "em": "2026-10-10"
   },
   "executar": {
     "status": "pendente"
