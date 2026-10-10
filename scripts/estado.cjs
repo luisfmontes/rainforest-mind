@@ -2251,7 +2251,10 @@ function main() {
         console.error(
           `RECUSADO: '${estagio_reprovador}' já reprovou ${tentativas} vez(es) — teto de ${TETO_TENTATIVAS} atingido. ` +
           `Suba a decisão ao usuário: ou o critério está errado (plano) ou a decisão está errada (design). ` +
-          `Destrave explícito: node scripts/estado.cjs liberar --slug ${slug} --estagio ${estagio_reprovador}`
+          `Destrave explícito: node scripts/estado.cjs liberar --slug ${slug} --estagio ${estagio_reprovador}` +
+          (estagio_reprovador === 'revisar'
+            ? ` --rodada-extra "<o que o usuario decidiu>", com o impasse escrito antes em docs/rainforest/portoes/${slug}-impasse.md`
+            : '')
         );
         process.exit(2);
       }

@@ -1,0 +1,2 @@
+{"type":"user","isSidechain":true,"message":{"role":"user","content":"Slug: fixture\nRevise."}}
+{"type":"assistant","isSidechain":true,"message":{"role":"assistant","content":[{"type":"text","text":"Achado 1: o texto cita o marcador `[design]` no meio da frase, sem contestar decisao.\n**VEREDITO: reprovado**"}]}}

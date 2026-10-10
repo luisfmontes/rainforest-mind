@@ -214,7 +214,8 @@ node scripts/estado.cjs marcar --slug <slug> --estagio revisar --status reprovad
 Não existe meio-termo: `reprovado` **não libera** `verificar` — `exigir`
 do próximo estágio recusa enquanto `revisar` não fechar `ok` — e devolve o
 trabalho para `executar`, com os achados numerados como a lista de
-pendências da próxima rodada.
+pendências da próxima rodada. O redespacho é o laço de `references/laco.md`:
+crítica literal, teto de 3, parada em achado `[design]`.
 
 **Condição de parada**: sem diff, não há review. Reportar isso — branch
 sem commit novo, `head` que não existe, worktree que não foi integrado —
@@ -274,12 +275,12 @@ rodada não é automática — é decisão do usuário, com rastro escrito:
 node scripts/estado.cjs liberar --slug <slug> --estagio revisar --rodada-extra "<o que o usuário decidiu>"
 ```
 
-exige, antes de destravar (`scripts/estado.cjs:1738-1762`):
+exige, antes de destravar (comando `liberar` de `scripts/estado.cjs`):
 
 1. `--rodada-extra "<texto>"` com o que o usuário decidiu;
 2. o impasse escrito em `docs/rainforest/portoes/<slug>-impasse.md`
-   (`scripts/estado.cjs:1747`, isento de creep —
-   `scripts/conferir-fluxo.cjs:530`) — sem o arquivo, recusa (exit 2) nomeando
+   (`caminhoImpasse` no `estado.cjs`, isento de creep —
+   `globs_isentos` do `conferir-fluxo.cjs`) — sem o arquivo, recusa (exit 2) nomeando
    o caminho esperado.
 
 Não é `exigir revisar --rodada-extra`: quem primeiro bate no teto é `exigir
