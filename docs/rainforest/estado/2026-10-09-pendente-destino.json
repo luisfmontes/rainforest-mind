@@ -6,7 +6,9 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-10-09-pendente-destino.md",
+    "em": "2026-10-09"
   },
   "plano": {
     "status": "pendente"
