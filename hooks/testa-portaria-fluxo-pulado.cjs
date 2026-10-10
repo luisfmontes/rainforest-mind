@@ -561,6 +561,41 @@ console.log("== K. plugin copiado em pasta com espaco ==");
   descartar(repo);
 }
 
+// == L. Issue #447: branch com o slug inteiro (com data) nao casa, e a recusa diz por que ==
+console.log("== L. branch que nao casa com o slug: a recusa nomeia branch, esperado e abertos ==");
+{
+  const repo = novoRepo();
+  const wt = path.join(repo.sbx, "wt-l");
+  git(repo.main, ["worktree", "add", "-q", "-b", "fluxo/2026-10-08-glossario-compartilhado", wt]);
+  fs.mkdirSync(path.join(wt, "docs", "rainforest", "estado"), { recursive: true });
+
+  const ini = estado(repo, wt, ["iniciar", "--slug", "2026-10-08-glossario-compartilhado", "--titulo", "glossario"]);
+  const ini2 = estado(repo, wt, ["iniciar", "--slug", "2026-10-01-outro-trabalho", "--titulo", "outro"]);
+  caso("L0 dois fluxos abertos gravados pelo estado.cjs real",
+    ini.status === 0 && ini2.status === 0, `ini=${ini.status} ${ini.stderr} ini2=${ini2.status} ${ini2.stderr}`);
+
+  const bloq = despachar(repo, wt, "rainforest-mind:executor");
+  const err = bloq.stderr || "";
+  caso("L1 executor sai 2 (fora-de-fluxo)",
+    bloq.status === 2 && /estagio aberto: fora-de-fluxo/.test(err), `exit=${bloq.status} stderr=${err}`);
+  caso("L2 stderr nomeia a branch lida",
+    err.includes("branch lida: 'fluxo/2026-10-08-glossario-compartilhado'"), err);
+  caso("L3 stderr nomeia o nome esperado (fluxo/<slug sem data>)",
+    err.includes("espera fluxo/glossario-compartilhado"), err);
+  caso("L4 stderr lista o slug aberto mais perto primeiro",
+    /Abertos mais perto: 2026-10-08-glossario-compartilhado \(espera fluxo\/glossario-compartilhado\), 2026-10-01-outro-trabalho/.test(err), err);
+
+  // Contraprova: sem fluxo aberto nenhum, a mensagem nao ganha a linha de diagnostico.
+  const repo2 = novoRepo();
+  const wt2 = comWorktree(repo2);
+  const sem = despachar(repo2, wt2, "rainforest-mind:executor");
+  caso("L5 sem fluxo aberto, a recusa nao traz 'branch lida'",
+    sem.status === 2 && !(sem.stderr || "").includes("branch lida"), `exit=${sem.status} stderr=${sem.stderr}`);
+
+  descartar(repo);
+  descartar(repo2);
+}
+
 console.log("");
 console.log(`ok: ${ok}   falhou: ${falhou}   skipped: 0`);
 process.exit(falhou > 0 ? 1 : 0);

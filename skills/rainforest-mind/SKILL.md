@@ -123,9 +123,9 @@ Elaboração: references/regra-09.md
 
 **10. Agentes baratos, e a portaria REGISTRA.** Task de **3.000+ tokens** vai para o
 agente da **função**; abaixo disso, fazer é mais barato. Barram a 11
-(`isolation: "worktree"`, nunca nomeado) e a folha. Agente que escreve
-(`escreve: true`) fora do estágio, sem `leve`, é barrado. Fora isso,
-manifesto e estágio são **declaração**, sem frase digitada por sessão. `ListAgents`
+(`isolation: "worktree"`, nunca nomeado) e a folha. Agente declarado que escreve,
+fora do estágio e sem `leve`, é barrado (com trilho de fluxo e `aviso-fluxo`).
+Fora isso, manifesto e estágio são **declaração**. `ListAgents`
 fecha rodada parando a sobra.
 <!-- detalhe -->
 Elaboração: references/regra-10.md

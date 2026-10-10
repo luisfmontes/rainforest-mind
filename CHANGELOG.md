@@ -17,6 +17,20 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   no plugin. Agora o comando traz o caminho absoluto do `ponte.cjs` do plugin e o diretório do arquivo conferido,
   entre aspas. Vale para as quatro mensagens: editado à mão, SKILL.md que mudou, bloco antigo e glossário.
 
+## 1.56.2 — 2026-10-10
+
+- **O núcleo da regra 10 diz quando a portaria barra agente que escreve (Issue #445).** Ela barra só agente
+  declarado no manifesto, em repositório com trilho de fluxo e com a chave `aviso-fluxo` ligada. Agente de outro
+  plugin, ou repositório sem trilho, segue só registrado. O núcleo não cresceu: a frase "sem frase digitada por
+  sessão" saiu, e o detalhe continua em `references/regra-10-portaria.md`.
+
+## 1.56.1 — 2026-10-10
+
+- **A portaria diz por que a branch ficou fora do fluxo (Issue #447).** Às vezes um agente que escreve é recusado com
+  "estagio aberto: fora-de-fluxo" mesmo havendo fluxo aberto. A recusa agora mostra a branch que leu e quais fluxos
+  abertos estão mais perto, cada um com a branch que casaria (`fluxo/<slug sem a data>`). O caso comum é a branch
+  levar o slug inteiro, com a data.
+
 ## 1.56.0 — 2026-10-10
 
 - **Pendência do fluxo só sai com destino (Issue #449).** Antes, fechar um estágio `ok`/`aprovado` apagava em silêncio
