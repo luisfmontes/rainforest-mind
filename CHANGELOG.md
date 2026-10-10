@@ -10,13 +10,28 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
-## 1.58.0 — 2026-10-10
+## 1.59.0 — 2026-10-10
 
 - **Revisor que reprova devolve o trabalho ao executor sozinho.** Depois de um `revisar` reprovado, a sessão roda
   `scripts/critica-do-revisor.cjs`, que tira os achados do transcrito gravado do revisor, e redespacha o executor com
   essa crítica colada literal — só a da última rodada, sem resumo da sessão. O laço respeita o teto de 3 reprovações
   que já existia (a 4ª rodada continua sendo decisão sua) e para antes quando o revisor marca um achado com
   `[design]`: decisão de design sobe para você, não volta ao executor. Roteiro em `skills/revisar/references/laco.md`.
+
+## 1.58.0 — 2026-10-10
+
+- **Compacta sozinho a 60% de contexto.** Quando o uso da janela passa de 60%, o mod roda o mesmo `/compact` entre
+  turnos e avisa "compactado em N%". Compacta uma vez por subida e volta a armar quando o uso cai abaixo do limiar. Com
+  subagente rodando na sessão, não compacta: avisa "contexto em N%: agente rodando, compacto quando ele voltar (ou faça
+  a passagem)" e compacta quando ele termina. Opções novas: **Compactar sozinho** (ligada) e **Compactar em (%)**
+  (padrão 60). Contorna o limiar fixo que o Claude Code usa com modelo de 1M, que ignora o
+  `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`. Adaptado do mod do wildz-data, de Rafael Lopes, com autorização dele.
+- **Linha do PR na barra.** Com um PR acompanhado e o pane **PR** fora da tela, a barra acima do prompt ganha uma
+  linha com o número, os checks e o merge, nas cores do pane. Some quando o pane aparece ou o PR é mergeado ou fechado.
+  `/painel esconder` esconde junto.
+- **`node` por caminho absoluto no mod (#457).** As seis chamadas do `mod.tsx` a scripts do plugin (barra, relógio,
+  erros e desvio) acham o `node` uma vez por sessão, fora do repositório aberto, como o painel de PR já fazia com o
+  `gh`. A abertura (`hooks/abertura-mod-puro.mjs`) ainda chama pelo nome, com cwd na pasta do plugin (#480).
 
 ## 1.57.4 — 2026-10-10
 

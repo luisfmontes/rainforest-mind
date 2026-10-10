@@ -1,0 +1,158 @@
+Data: 2026-10-10
+Termos: compact, AbovePrompt, faixa, node pelo nome
+
+$ gh issue list --state all --search "compact" --limit 200 --json number,title,state
+[{"number":401,"state":"CLOSED","title":"Idioma da resposta escorrega depois da compactação ou do retorno de agente"}]
+
+
+$ gh issue list --state all --search "AbovePrompt" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "faixa" --limit 200 --json number,title,state
+[{"number":388,"state":"CLOSED","title":"faixa do mod: semControle deixa passar LRM/RLM, ALM e separadores de linha"},{"number":382,"state":"CLOSED","title":"Hooks chamam node sem caminho absoluto: no Windows, node.exe na pasta atual vence o PATH"},{"number":386,"state":"CLOSED","title":"relogio do mod: jornada do dia anterior acende ate 5 min depois da meia-noite"},{"number":149,"state":"CLOSED","title":"A regra jid-whatsapp para em 15 digitos, e JID de GRUPO tem 18 — passou por baixo e o dado ficou no repo publico"},{"number":120,"state":"CLOSED","title":"testa-contexto-sessao.sh esta vermelha na main: 5 falhas em dentroDoExpediente, focoAtivoEmOutraJanela e co-locada"},{"number":63,"state":"CLOSED","title":"O foco não chega na injeção, e a isenção da regra 17 é cega para a segunda pasta — 10ª vez que o radar cobra desvio onde não devia"},{"number":237,"state":"CLOSED","title":"gate-publicacao-destino le id publico do GitHub como telefone, e a mensagem manda confirmar sem haver como"},{"number":215,"state":"CLOSED","title":"Vermelho largo passa por prova: a catraca de mutacao le o exit code da bateria, nunca quantas assercoes cairam"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"}]
+
+
+$ gh issue list --state all --search "node pelo nome" --limit 200 --json number,title,state
+[{"number":457,"state":"OPEN","title":"mod.tsx chama node pelo nome (busca na pasta atual no Windows)"},{"number":435,"state":"CLOSED","title":"memória: nome duplicado de projeto no banco (nome curto e slug de caminho)"},{"number":392,"state":"CLOSED","title":"git e gh chamados por nome: um git.exe na raiz do repo aberto vence o PATH no Windows"},{"number":442,"state":"CLOSED","title":"Comando impresso pelos gates de fluxo nao cola em PowerShell"},{"number":447,"state":"CLOSED","title":"Portaria: fora-de-fluxo nao diz que a branch nao casou com o slug"},{"number":378,"state":"CLOSED","title":"conferir-mutacao.cjs sai 1 sem veredito no Windows quando a raiz tem node_modules como junction"},{"number":157,"state":"CLOSED","title":"REINCIDE #16: o workflow esta disabled_manually ha 232 commits, e a maquina do Actions e mais rica que a de quem instala"},{"number":323,"state":"CLOSED","title":"conferir-duplicacao conta arquivo gitignorado (.claude/marketplaces) e deixa testa-saude vermelho em main limpa"},{"number":159,"state":"CLOSED","title":"testa-medir-injecao quebra em 'python3: command not found' numa maquina com Python instalado — o Windows so cria python"},{"number":342,"state":"CLOSED","title":"testa-saude R5 ainda intermitente no CI (porta não responde)"},{"number":335,"state":"CLOSED","title":"13 baterias .cjs nunca rodam no CI: varrer-baterias.sh so descobre testa-*.sh"},{"number":184,"state":"CLOSED","title":"Wrapper citado (\"env\" FOO=1 git add -A) escapa de posicaoDeComando e os tres gates por texto liberam"},{"number":278,"state":"CLOSED","title":"gate-verificador-staged barra merge por arquivo que ja passou na main"},{"number":275,"state":"CLOSED","title":"gate-verificador-staged barra merge por conteudo que ja esta na main"},{"number":215,"state":"CLOSED","title":"Vermelho largo passa por prova: a catraca de mutacao le o exit code da bateria, nunca quantas assercoes cairam"},{"number":260,"state":"CLOSED","title":"conferir-publicacao: 'token' sozinho vira credencial, e a mensagem nao mostra o trecho casado"},{"number":14,"state":"CLOSED","title":"limpar-branches.cjs da branch de PR mergeado por squash: classificada 'viva', nunca limpa"},{"number":200,"state":"CLOSED","title":"A skill limpar remove worktree LIMPO de outra sessao sem perguntar — classifica por sujeira, nunca por dono"},{"number":127,"state":"CLOSED","title":"gate-worktree e cego para CLI de agente externa: codex exec --yolo passa, git stash nao"},{"number":165,"state":"CLOSED","title":"O gate de publicacao e cego para escrita mediada por Bash — node, sed e heredoc passam"},{"number":270,"state":"CLOSED","title":"Linha de mutante sai como 'FALHA <nome real>' e se confunde com falha de verdade no log"},{"number":120,"state":"CLOSED","title":"testa-contexto-sessao.sh esta vermelha na main: 5 falhas em dentroDoExpediente, focoAtivoEmOutraJanela e co-locada"},{"number":210,"state":"CLOSED","title":"Entrega vazia + --paralelo: o conjunto do agente e vazio, entao a checagem 4 nunca reprova"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"}]
+
+
+$ gh pr list --state all --search "compact" --limit 200 --json number,title,state
+[{"number":319,"state":"MERGED","title":"livro: fast-jev-compaction e laya-coreml avaliados pelo codigo"},{"number":418,"state":"MERGED","title":"Abertura inteira na conta de trabalho via session.append"}]
+
+
+$ gh pr list --state all --search "AbovePrompt" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "faixa" --limit 200 --json number,title,state
+[{"number":383,"state":"MERGED","title":"1.38.0: faixa acima do prompt com foco, fluxo e Q abertas"},{"number":389,"state":"MERGED","title":"Versao 1.39.0: relogio do mod acende jornada e janela parada"},{"number":384,"state":"MERGED","title":"1.38.1: Q da faixa somem no envio e cabem na linha"},{"number":458,"state":"MERGED","title":"Jardineiro: Ronda 1 resume as plantadas em vez de listar as 162"},{"number":390,"state":"MERGED","title":"Relógio do mod: #386, #387, #388 e /clear (1.39.1)"},{"number":422,"state":"MERGED","title":"Versao 1.45.0: barra de sessao e painel /painel no mod (enxerto do terminal-desk)"},{"number":70,"state":"MERGED","title":"dentroDoExpediente aceita N faixas horarias, fechando o buraco do almoco"},{"number":361,"state":"MERGED","title":"Vigias: falha recorrente com impressao digital enxertada do reef"},{"number":156,"state":"MERGED","title":"Pre-publico: JID de grupo, a porta do agente, e fixtures que eram telefone de gente"},{"number":52,"state":"MERGED","title":"Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo"},{"number":297,"state":"MERGED","title":"zerar-issues-6: fronteira de repo na regra 6 e os restos da rodada 5"},{"number":72,"state":"MERGED","title":"Versao 0.75.0: o dia dos sete consertos, e o release que faz eles existirem"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"}]
+
+
+$ gh pr list --state all --search "node pelo nome" --limit 200 --json number,title,state
+[{"number":395,"state":"MERGED","title":"git-por-caminho: git e gh pelo caminho (#392, 1.39.3)"},{"number":453,"state":"MERGED","title":"Um nome por projeto no banco de memoria (#435), versao 1.53.0"},{"number":330,"state":"MERGED","title":"Beads: não acopla — 1 bloqueio em 336 ideias abertas"},{"number":454,"state":"MERGED","title":"buscar --projeto aceita caminho de worktree e barra final (1.53.1)"},{"number":351,"state":"MERGED","title":"gate-subagente-sem-gh: subagente nao escreve no GitHub (1.28.0)"},{"number":437,"state":"MERGED","title":"memoria: injecao pelo assunto no pedido e no subagente (1.49.0)"},{"number":357,"state":"MERGED","title":"zerar-issues-12: gates dizem quando a causa é variável (#350), 1.30.0"},{"number":384,"state":"MERGED","title":"1.38.1: Q da faixa somem no envio e cabem na linha"},{"number":347,"state":"MERGED","title":"gate-bateria-sem-timeout: subagente nao deixa bateria ir para segundo plano (1.26.0)"},{"number":171,"state":"MERGED","title":"A suite media a maquina do dono: 11 Issues da familia, catraca de dependencias, CI em Node 22 e 24"},{"number":204,"state":"MERGED","title":"Issue #187: o vazamento e do transporte, nao da bateria — matarDescendencia no rodarCli"},{"number":106,"state":"MERGED","title":"Fecha #100: execFileSync em setup.cjs, validarSlug em estado.cjs — e o teste que separa os dois"},{"number":217,"state":"MERGED","title":"Contrato de territorio: AdvPL vira o primeiro, e o repo publico perde os identificadores de trabalho"},{"number":242,"state":"MERGED","title":"Zerar Issues, rodada 2: as 6 que faltavam e as 6 novas (1.12.0)"},{"number":20,"state":"MERGED","title":"O verde mais saudavel do painel era falso: o /saude passa a medir o que executa"},{"number":92,"state":"MERGED","title":"Somente-leitura de verdade: o banco abria em modo ESCRITA e nada avisava"},{"number":141,"state":"MERGED","title":"Fluxo 9 — Portaria: admissao de subagente por manifesto"},{"number":50,"state":"MERGED","title":"Aposenta o gemeo python do ideias"},{"number":183,"state":"MERGED","title":"Lote 3 — guardas medem o repositorio da operacao; backup fora da maquina; fechar Issue exige criterio rodado"},{"number":15,"state":"MERGED","title":"A limpeza que nao limpava: squash com remoto vivo, --base <ref>, e um nome de branch que virava comando"},{"number":156,"state":"MERGED","title":"Pre-publico: JID de grupo, a porta do agente, e fixtures que eram telefone de gente"},{"number":56,"state":"MERGED","title":"Fecha a #38: a regra 11 prescreve worktree, e o radar marca a janela co-locada"},{"number":255,"state":"MERGED","title":"A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241)"},{"number":17,"state":"MERGED","title":"Nenhuma bateria roda sozinha: CI que roda as 20 baterias a cada PR (#16)"},{"number":119,"state":"MERGED","title":"Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos"}]
+
+
+$ git ls-remote --heads origin | grep -F "compact"
+62e3fb1c8c686ca24bfcc29af7678202155ae847	refs/heads/fluxo/mods-faixa-compact
+
+$ git ls-remote --heads origin | grep -F "AbovePrompt"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "faixa"
+62e3fb1c8c686ca24bfcc29af7678202155ae847	refs/heads/fluxo/mods-faixa-compact
+
+$ git ls-remote --heads origin | grep -F "node pelo nome"
+(vazio)
+
+$ git log --all --grep="compact" --oneline
+62e3fb1c Design: faixa do PR, compactar a 60% e node por caminho absoluto (#457)
+0656db33 Abertura inteira na conta de trabalho via session.append (#418)
+99c5e5b7 Zerar as 12 Issues da revisao bimestral (1.43.0) (#416)
+704e967a Merge pull request #319 from luisfmontes/docs/livro-jev-laya
+70e2ea3f livro: fast-jev-compaction e laya-coreml avaliados pelo codigo
+b6bce104 Lote 3 rodada 19: injecao no pr merge, chaves como fronteira, apostrofo no conferir
+aaecae53 Vigias: desfaz o desempate de posicao no gate OEM — era a troca errada
+31c8fd08 Vigias: desfaz o desempate de posicao no gate OEM — era a troca errada
+955a3074 Vigias: a rodada de correcoes da revisao — o vazamento, o falso positivo, o custo
+83301c7b Vigias: a rodada de correcoes da revisao — o vazamento, o falso positivo, o custo
+42c76adf Tarefa 2 da memoria: rodape do bloco injetado ensina o buscar, dentro do teto
+e8b359c5 Tarefa 2 da memoria: rodape do bloco injetado ensina o buscar, dentro do teto
+c3ab6cf1 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+62ca78d5 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+5e576099 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+d5261da4 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+5443bc0e A limpeza enxerga a branch que sobrevive ao worktree, e as config dirs param de divergir em silencio
+acc85203 A limpeza enxerga a branch que sobrevive ao worktree, e as config dirs param de divergir em silencio
+7118d701 Arqueologia: o estagio ZERO que faltava, e opcional de forma mecanica
+b3d3220f Arqueologia: o estagio ZERO que faltava, e opcional de forma mecanica
+cfd62bfc A esteira ganha maquina de estados que RECUSA, em vez de pedir por favor
+deb1411b A esteira ganha maquina de estados que RECUSA, em vez de pedir por favor
+
+$ git log --all --grep="AbovePrompt" --oneline
+b2d0069a design: enxertar o terminal-desk no mod do rainforest
+0fff3e22 Versao 1.38.0: faixa acima do prompt com foco, fluxo e Q abertas
+806d3454 Prova de engine da faixa: terminal e desktop com dados reais
+a81762da Fiacao do mod: mod.tsx com a faixa acima do prompt
+
+$ git log --all --grep="faixa" --oneline
+62e3fb1c Design: faixa do PR, compactar a 60% e node por caminho absoluto (#457)
+7bd36fbb Jardineiro: Ronda 1 resume as plantadas em vez de listar as 162 (#458)
+a04220fd Jardineiro resume as plantadas em vez de listar todas (1.54.4)
+847e6048 Mapa importa semControle de faixa-puro em vez de copiar (F)
+0186bdaa Versao 1.45.0: barra de sessao e painel /painel no mod
+4d928805 Documentacao do painel: barra, /painel, mapa, desvio e deixado
+b63018ec painel: leitura de fluxos que falhou nao aparece como nenhum fluxo
+12e91712 mod: Faz agora so descarta o item se o prompt aceitou o texto
+2d966daf Prova de engine transversal do painel (tarefa 10)
+9761d46f estado: tarefas 4 e 6 integradas, 7 em voo
+dd9256ca Integra tarefa 6: a barra de sessao substitui a faixa
+94f0e6cb Barra de sessao no lugar da faixa e comando /painel (tarefa 6)
+1668f575 Integra tarefa 3: globsIsentos exportada e faixa-dados requerivel
+4c468bc5 Exporta globsIsentos e deixa faixa-dados requerivel
+da8396dd Painel puro: cache, preco, fatias e figuras da barra (desk-no-mod 1)
+b2d0069a design: enxertar o terminal-desk no mod do rainforest
+d9405fa7 mod: process.run do relogio e da faixa roda com cwd na raiz do plugin
+04ecdc7c faixa: devolver U+2066-2069 ao CONTROLES e cobrir no teste (#388)
+e9fc2d09 faixa: expandir CONTROLES para cobrir invisíveis e separadores Unicode
+58b42a79 plano e design relogio: emendas da revisao
+097d4767 docs relogio: esconder vale para a faixa inteira
+64ed7b6b Versao 1.39.0: relogio do mod acende jornada e janela parada
+77a21767 docs: relogio do mod (jornada e janela parada) no CONTRIBUTING
+19027372 mod: relogio de jornada e janela parada na faixa, com nota da regra 8
+0215981c faixa: linha do relogio, 4 linhas, prioridade Q > relogio > fluxo
+5b3825e9 Merge pull request #384 from luisfmontes/fix/faixa-q-legivel
+fd356492 Versao 1.38.1: Q da faixa somem no envio e cabem na linha
+b848b2ee faixa: Q respondida sai no envio e todas as Q cabem na linha
+bffe50c0 Merge pull request #383 from luisfmontes/fluxo/mod-faixa-foco
+a4d58afb estado: fechar com PR #383
+6cc3e88b faixa: corrige achados da revisao (teste por conteudo, agente, Q)
+fe3694f7 estado: executar fechado com as 7 tarefas da faixa
+0fff3e22 Versao 1.38.0: faixa acima do prompt com foco, fluxo e Q abertas
+158b97a8 docs: a faixa do mod no CONTRIBUTING e o requisito no README
+806d3454 Prova de engine da faixa: terminal e desktop com dados reais
+603a559a faixa: limpa controle ESC, C1 e bidi antes de desenhar a linha
+a81762da Fiacao do mod: mod.tsx com a faixa acima do prompt
+ebd5a9ba faixa: logica pura (Q, linhas, assinatura, esconder) e bateria
+0fe51d48 faixa: script de dados com foco e fluxos de todos os worktrees
+6ff23e25 plano: faixa do mod em 7 tarefas; D7 le as Q de e.answer
+197a147a design: faixa acima do prompt com foco, fluxos e Q abertas
+117615cb regua selada: fecha os onze achados da rodada 6 do revisar
+5cafc040 Regra 6 sem custo de bytes; 22.1 e 22.3 independem do nucleo
+a6422e04 Corrige falso positivo do gate-git-verificacao: corpo de heredoc e dado, nunca comando
+063bef0f Issue #149: a regra de JID alcanca grupo, e os fixtures deixam de ser telefone de gente
+aa138c70 Issue #149: a regra de JID alcanca grupo, e os fixtures deixam de ser telefone de gente
+b47e60d5 Vigias: JID multi-dispositivo tambem — e ali o JID E o telefone
+d73c5913 Vigias: JID multi-dispositivo tambem — e ali o JID E o telefone
+8c10b296 Vigias: o ERROS.md commitado carregava um JID de WhatsApp, num repo publico
+8d0d4909 Vigias: o ERROS.md commitado carregava um JID de WhatsApp, num repo publico
+955a3074 Vigias: a rodada de correcoes da revisao — o vazamento, o falso positivo, o custo
+83301c7b Vigias: a rodada de correcoes da revisao — o vazamento, o falso positivo, o custo
+b2aa0b07 Vigias T3: a catraca de encoding aprende a assinatura OEM, e o passado e backfill
+d92f27a2 Vigias T3: a catraca de encoding aprende a assinatura OEM, e o passado e backfill
+6098e392 Versao 0.75.0: o dia dos sete consertos, e o release que faz eles existirem (#72)
+c42d1233 Versao 0.75.0: o dia dos sete consertos, e o release que faz eles existirem (#72)
+a71934c5 dentroDoExpediente aceita N faixas horarias, fechando o buraco do almoco (#70)
+a6684976 dentroDoExpediente aceita N faixas horarias, fechando o buraco do almoco (#70)
+f6c4bec0 Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo (#52)
+1d5b6312 Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo (#52)
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+5e576099 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+d5261da4 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+5443bc0e A limpeza enxerga a branch que sobrevive ao worktree, e as config dirs param de divergir em silencio
+acc85203 A limpeza enxerga a branch que sobrevive ao worktree, e as config dirs param de divergir em silencio
+7945fdd3 /saude: so o que o doctor oficial nao sabe, e ponteiro para ele no resto
+6da760f3 /saude: so o que o doctor oficial nao sabe, e ponteiro para ele no resto
+
+$ git log --all --grep="node pelo nome" --oneline
+dc439026 /transferir claude: a sessão muda de conta com o contexto inteiro (1.42.0) (#415)
+
+$ cat <dados>/ideias.jsonl
+{"id":"poda-verbatim-de-tool-calls-na-compaction","titulo":"Enxertar a politica do fast-jev-compaction: compaction que poda pares tool_use/tool_result verbatim em vez de resumir"}
+{"id":"mods-faixa-foco-e-checkpoint","titulo":"Faixa acima do prompt com foco ativo, Q abertas e checkpoint n/total"}
+{"id":"obs-respostas-em-ingles-apos-compactacao","titulo":"Respostas em ingles depois da compactacao"}
+{"id":"mod-pr-faixa-acima-do-prompt","titulo":"Faixa do PR acima do prompt quando o pane esta fechado"}
+{"id":"mod-auto-compact-60","titulo":"Compactar sozinho a 60% de contexto"}
+
+
