@@ -159,6 +159,98 @@ caso('destino aceito fica no bloco executar', () => {
   assert.deepStrictEqual(bloco(cx, slug, 'executar').destinos, [d]);
 });
 
+// ---------------------------------------------------------------- tarefa 2: `ok` so fecha com destino
+
+const DEST_A = { pendente: A, destino: 'resolvida', evidencia: 'rodou: 3 de 3 ok' };
+const DEST_B = { pendente: B, destino: 'descartada', motivo: 'fora do escopo' };
+
+/** Apenas `iniciar`: para os casos de estagios sem pre-requisito. */
+function iniciarSo(cx) {
+  n += 1;
+  const slug = `caso-${n}`;
+  const r = estado(cx, ['iniciar', '--slug', slug]);
+  assert.strictEqual(r.status, 0, r.stderr);
+  return slug;
+}
+
+caso('ok com pendencia sem destino e recusado em vez de apagar em silencio', () => {
+  const slug = abrir(cx);
+  assert.strictEqual(parcial(cx, slug, { pendentes: [A, B] }).status, 0);
+  const antes = bytes(cx, slug);
+  const r = fecharOk(cx, slug);
+  recusado(r, antes, bytes(cx, slug), [A, B]);
+  assert.strictEqual(bloco(cx, slug, 'executar').status, 'parcial');
+});
+
+caso('ok com destino so para A recusa e lista so B', () => {
+  const slug = abrir(cx);
+  assert.strictEqual(parcial(cx, slug, { pendentes: [A, B] }).status, 0);
+  const antes = bytes(cx, slug);
+  const r = fecharOk(cx, slug, { destinos: [DEST_A] });
+  recusado(r, antes, bytes(cx, slug), [B]);
+  assert.ok(!r.stderr.includes(A), `stderr nao devia citar A: ${r.stderr}`);
+});
+
+caso('ok com pendentes e destinos no mesmo json fecha sem pendentes e com destinos', () => {
+  const slug = abrir(cx);
+  const r = fecharOk(cx, slug, { pendentes: [A, B], destinos: [DEST_A, DEST_B] });
+  assert.strictEqual(r.status, 0, r.stderr);
+  const b = bloco(cx, slug, 'executar');
+  assert.strictEqual(b.status, 'ok');
+  assert.ok(!('pendentes' in b), 'pendentes devia sumir');
+  assert.deepStrictEqual(b.destinos, [DEST_A, DEST_B]);
+  assert.ok(b.catraca_mutacao, 'catraca_mutacao devia sobreviver');
+});
+
+caso('parcial com pendentes e ok so com destinos fecha sem pendentes', () => {
+  const slug = abrir(cx);
+  assert.strictEqual(parcial(cx, slug, { pendentes: [A, B] }).status, 0);
+  const r = fecharOk(cx, slug, { destinos: [DEST_A, DEST_B] });
+  assert.strictEqual(r.status, 0, r.stderr);
+  const b = bloco(cx, slug, 'executar');
+  assert.ok(!('pendentes' in b), 'pendentes devia sumir');
+  assert.strictEqual(b.destinos.length, 2);
+});
+
+caso('destinos acumula entre dois parciais e o ok seguinte fecha', () => {
+  const slug = abrir(cx);
+  assert.strictEqual(parcial(cx, slug, { pendentes: [A, B], destinos: [DEST_A] }).status, 0);
+  assert.strictEqual(parcial(cx, slug, { destinos: [DEST_B] }).status, 0);
+  assert.deepStrictEqual(bloco(cx, slug, 'executar').destinos, [DEST_A, DEST_B]);
+  const r = fecharOk(cx, slug);
+  assert.strictEqual(r.status, 0, r.stderr);
+});
+
+caso('o destino mais novo de uma pendencia substitui o antigo', () => {
+  const slug = abrir(cx);
+  const antigo = { pendente: A, destino: 'descartada', motivo: 'achei que nao importava' };
+  assert.strictEqual(parcial(cx, slug, { pendentes: [A], destinos: [antigo] }).status, 0);
+  assert.strictEqual(parcial(cx, slug, { destinos: [DEST_A] }).status, 0);
+  assert.deepStrictEqual(bloco(cx, slug, 'executar').destinos, [DEST_A]);
+});
+
+caso('ok sem pendencia nenhuma fecha e o bloco nao ganha pendentes nem destinos', () => {
+  const slug = abrir(cx);
+  const r = fecharOk(cx, slug);
+  assert.strictEqual(r.status, 0, r.stderr);
+  const b = bloco(cx, slug, 'executar');
+  assert.ok(!('pendentes' in b) && !('destinos' in b), JSON.stringify(b));
+});
+
+caso('design aprovado com pendencia sem destino e recusado (vale em qualquer estagio)', () => {
+  const slug = iniciarSo(cx);
+  const antes = bytes(cx, slug);
+  const r = marcar(cx, slug, 'design', 'aprovado', { pendentes: [A] });
+  recusado(r, antes, bytes(cx, slug), [A]);
+});
+
+caso('arqueologia dispensada com pendencia sem destino e recusada', () => {
+  const slug = iniciarSo(cx);
+  const antes = bytes(cx, slug);
+  const r = marcar(cx, slug, 'arqueologia', 'dispensada', { pendentes: [A] });
+  recusado(r, antes, bytes(cx, slug), [A]);
+});
+
 // ---------------------------------------------------------------- fim
 
 try { fs.rmSync(cx.raiz, { recursive: true, force: true }); } catch (_) { /* limpeza best-effort */ }

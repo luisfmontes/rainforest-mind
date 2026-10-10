@@ -187,6 +187,11 @@ function estaFechado(estagio, bloco) {
 // "Condição de parada" — por isso entram nesta lista. Um campo novo com o mesmo
 // papel entra aqui quando nascer. O rastro histórico da reprovação (criterio,
 // comando, saida, faltou) fica no bloco do estágio que reprovou e não é efêmero.
+//
+// `destinos` (#449) NAO entra aqui, de proposito: ele e o rastro de para onde cada
+// pendencia foi (resolvida, plantada, descartada) e sobrevive ao `ok` para o `fechar`
+// lista-lo no PR. Quem "completar" esta lista com ele apaga justamente o que a
+// trava de pendencia sem destino existe para guardar.
 const CAMPOS_EFEMEROS = ['pendentes', 'reaberto_por', 'em_voo'];
 
 // Teto de tentativas de reprovação consecutiva. Na terceira, `exigir` do upstream
@@ -280,7 +285,34 @@ function reconciliarPendencias(estagio, anterior, extra, status) {
     const erro = validarDestino(d, universo);
     if (erro) return { recusa: `RECUSADO: ${erro}` };
   }
+  // `acum`: destinos do bloco anterior mais os do --json, o mais novo por `pendente`
+  // vence (a fusao do `marcar` e rasa e substituiria a lista inteira).
+  const porPendente = new Map();
+  for (const d of [...antDest, ...novosDest]) porPendente.set(d.pendente, d);
+  const acum = [...porPendente.values()];
+  // O D3 usa o MESMO predicado que decide hoje se `pendentes` e apagado no `ok`.
+  const terminal = estaFechado(estagio, { status });
+  const uniao = [...new Set([...antPend, ...novasPend])];
+  const faltam = terminal ? semDestino(uniao, acum) : [];
+  if (faltam.length) {
+    return {
+      recusa: [
+        `RECUSADO: '${estagio}' nao fecha '${status}' com pendencia sem destino (${faltam.length}):`,
+        ...faltam.map((p) => `  - ${p}`),
+        `Grave o destino de cada uma: --json '{"destinos":[{"pendente":"<texto exato>","destino":"resolvida","evidencia":"..."}]}'`,
+        '(resolvida exige evidencia; plantada exige ref: #<n>, URL de issue ou ideia:<id>; descartada exige motivo)',
+      ].join('\n'),
+    };
+  }
+  if (acum.length) extra.destinos = acum;
+  if (terminal) delete extra.pendentes;
   return {};
+}
+
+/** Pendencias da lista cujo texto nao aparece em `destinos[].pendente`. */
+function semDestino(pendentes, destinos) {
+  const destinadas = new Set(destinos.map((d) => d.pendente));
+  return pendentes.filter((p) => !destinadas.has(p));
 }
 
 function hoje() {
