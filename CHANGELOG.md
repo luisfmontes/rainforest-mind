@@ -10,6 +10,15 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.60.0 — 2026-10-10
+
+- **Atualizar o plugin numa janela chega às outras.** Antes o `/plugins-em-dia` só recarregava (ou avisava) a janela
+  que atualizou; as outras seguiam com a versão velha até alguém rodar `/reload-plugins` nelas. Agora quem atualiza
+  grava um marcador, e cada janela aberta confere a cada 5 s: com **Recarregar sozinho** ligado roda o
+  `/reload-plugins`, desligado avisa "plugins atualizados em outra janela - rode /reload-plugins". Uma vez por
+  atualização, por janela. `RAINFOREST_RECARGA=off` no ambiente desliga. Adaptado do mod do wildz-data, de Rafael
+  Lopes, com autorização dele.
+
 ## 1.59.4 — 2026-10-10
 
 - **O gate de staging total reconhece `git.cmd`, `GIT.EXE`, nome com espaço no fim e `| iex` (Issue #456).** O

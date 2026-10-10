@@ -57,6 +57,10 @@ type Surface = 'terminal' | 'desktop'
 // Monta o mundo por baixo do mod e a tela montada; devolve o que os casos usam.
 async function montar($: any, on: any, surface: Surface, inicio: number, dadosFaixa: unknown = VAZIO) {
   const relogio = mock.clock(on, { now: inicio })
+  // A conferencia de recarga do plugins-em-dia (timer de 5 s) desligada pelo kill switch dela: o
+  // relogio simulado comprime horas, e cada disparo de timer custa ~50 ms no harness (este teste
+  // nao e sobre recarga; a prova dela e hooks/mod-recarga.test.tsx).
+  mock.env(on, { RAINFOREST_RECARGA: 'off' })
   const s = {
     jornada: jornadaJson(552, inicio - 10 * MIN) as unknown,
     sessoes: sessoesJson(45, []) as unknown,
