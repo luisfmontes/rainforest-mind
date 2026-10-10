@@ -1,0 +1,89 @@
+{
+  "slug": "2026-10-10-laco-executor-revisor",
+  "titulo": "Laco executor -> revisor com teto no executar",
+  "criado_em": "2026-10-10",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-10-laco-executor-revisor.md",
+    "em": "2026-10-10"
+  },
+  "plano": {
+    "status": "ok",
+    "em": "2026-10-10"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-10",
+    "tarefas_ok": 4,
+    "tarefas": 4,
+    "comando": "bash scripts/testa-critica-do-revisor.sh",
+    "saida": "ok: 10   falhou: 0",
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "a4599910",
+        "iteracao": 1,
+        "sessao": "6d0b7cb5-6a37-43b8-b9a4-befd7fdd648f",
+        "ts": "2026-10-10T11:37:10.786Z"
+      }
+    ],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "critica-sem-linha-de-veredito"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "instrucao ao agente"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "texto normativo"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "nota de versao"
+      }
+    ],
+    "em": "2026-10-10"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "73dce7543c9d1f9e2bcc8941f68e9dd51597f523",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a686a7faba2fe007d",
+        "veredito": "ok",
+        "em": "2026-10-10",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/6d0b7cb5-6a37-43b8-b9a4-befd7fdd648f/subagents/agent-a686a7faba2fe007d.jsonl"
+      }
+    ],
+    "veredito": "ok",
+    "achados": 4,
+    "base": "7bfc23c4",
+    "head": "73dce754",
+    "em": "2026-10-10"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/testa-critica-do-revisor.sh",
+    "saida": "ok: 11   falhou: 0",
+    "sensor_externo": "bash scripts/testa-critica-do-revisor.sh",
+    "real": "critica-do-revisor.cjs sobre o reprovado real da rodada 1 saiu 3 (falso [design]); corrigido, saiu 0",
+    "em": "2026-10-10"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

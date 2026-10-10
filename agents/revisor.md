@@ -77,7 +77,10 @@ de produção falhos e três PRs.
 (f) **Veredito honesto, resultado primeiro**: a primeira frase diz em prosa
 se integra ou não, e por quê — sem a linha `VEREDITO:` (ela só existe no
 fim). Achados numerados, cada um com arquivo:linha e o cenário de falha.
-Nada de "parece bom" — se não achou nada, diga o que procurou e não achou.
+Achado que contesta uma decisão `D<n>` do design ou o próprio plano — e não
+a implementação deles — começa com `[design]`: o executor não pode mudar
+decisão, então esse achado para o laço de redespacho e sobe ao usuário
+(`scripts/critica-do-revisor.cjs` sai 3). Nada de "parece bom" — se não achou nada, diga o que procurou e não achou.
 A ÚLTIMA linha do relato — depois dos achados e das premissas, nunca antes —
 é exatamente `VEREDITO: ok` ou `VEREDITO: reprovado`, sozinha, sem texto
 depois (negrito, sublinhado ou crase em volta são aceitos). Um hook
