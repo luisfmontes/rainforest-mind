@@ -10,6 +10,13 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.56.3 — 2026-10-10
+
+- **O comando de regenerar do `conferir-ponte` funciona colado no repositório-alvo (Issue #450).** Antes ele imprimia
+  `node scripts/ponte.cjs --alvo . ...`, que no alvo falhava com `MODULE_NOT_FOUND`, porque o `ponte.cjs` só existe
+  no plugin. Agora o comando traz o caminho absoluto do `ponte.cjs` do plugin e o diretório do arquivo conferido,
+  entre aspas. Vale para as quatro mensagens: editado à mão, SKILL.md que mudou, bloco antigo e glossário.
+
 ## 1.56.2 — 2026-10-10
 
 - **O núcleo da regra 10 diz quando a portaria barra agente que escreve (Issue #445).** Ela barra só agente

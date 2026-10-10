@@ -70,7 +70,7 @@ conferir "$(w "$C/AGENTS.md")"
 afirma "surgiu: exit 2" saiu 2
 afirma "surgiu: diz que o GLOSSARIO.md existe" diz "GLOSSARIO.md existe na raiz do alvo"
 afirma "surgiu: diz que a ponte nao aponta para ele" diz "a ponte não aponta para ele"
-afirma "surgiu: traz o comando de regeracao com o agente certo" diz "node scripts/ponte.cjs --alvo . --agente codex --aplicar"
+afirma "surgiu: traz o comando de regeracao com o agente certo" diz "ponte.cjs' --alvo '$(w "$C")' --agente codex --aplicar"
 afirma "surgiu: NAO diz editado" sem_editado
 
 echo
@@ -81,7 +81,7 @@ rm -f "$D/GLOSSARIO.md"
 conferir "$(w "$D/AGENTS.md")"
 afirma "sumiu: exit 2" saiu 2
 afirma "sumiu: diz que a ponte aponta para o glossario que nao existe mais" diz "não existe mais na raiz do alvo"
-afirma "sumiu: traz o comando de regeracao" diz "node scripts/ponte.cjs --alvo . --agente codex --aplicar"
+afirma "sumiu: traz o comando de regeracao" diz "ponte.cjs' --alvo '$(w "$D")' --agente codex --aplicar"
 afirma "sumiu: NAO diz editado" sem_editado
 
 echo
