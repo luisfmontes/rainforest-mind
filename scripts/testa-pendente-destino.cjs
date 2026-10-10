@@ -301,6 +301,29 @@ caso('a pendencia omitida volta a barrar o ok', () => {
   recusado(r, antes, bytes(cx, slug), [A]);
 });
 
+caso('M2: pendencia relistada perde o destino antigo, avisa, e o ok seguinte recusa', () => {
+  const slug = abrir(cx);
+  assert.strictEqual(parcial(cx, slug, { pendentes: [A], destinos: [DEST_A] }).status, 0);
+  const r = parcial(cx, slug, { pendentes: [A] });
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.ok(r.stderr.includes('relistada') && r.stderr.includes(A), r.stderr);
+  const b = bloco(cx, slug, 'executar');
+  assert.deepStrictEqual(b.pendentes, [A]);
+  assert.ok(!(b.destinos || []).some((d) => d.pendente === A), JSON.stringify(b.destinos));
+  const antes = bytes(cx, slug);
+  const r2 = fecharOk(cx, slug);
+  recusado(r2, antes, bytes(cx, slug), [A]);
+});
+
+caso('M2: relistada com destino novo no mesmo json mantem o destino novo e nao avisa', () => {
+  const slug = abrir(cx);
+  assert.strictEqual(parcial(cx, slug, { pendentes: [A], destinos: [{ pendente: A, destino: 'descartada', motivo: 'antigo' }] }).status, 0);
+  const r = parcial(cx, slug, { pendentes: [A], destinos: [DEST_A] });
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.ok(!r.stderr.includes('relistada'), r.stderr);
+  assert.deepStrictEqual(bloco(cx, slug, 'executar').destinos, [DEST_A]);
+});
+
 caso('reprovado nao exige destino e mantem as pendencias gravadas', () => {
   const slug = abrir(cx);
   assert.strictEqual(parcial(cx, slug, { pendentes: [A, B] }).status, 0);

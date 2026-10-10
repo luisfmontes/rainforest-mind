@@ -288,8 +288,13 @@ function reconciliarPendencias(estagio, anterior, extra, status) {
   }
   // `acum`: destinos do bloco anterior mais os do --json, o mais novo por `pendente`
   // vence (a fusao do `marcar` e rasa e substituiria a lista inteira).
+  // Pendencia relistada no --json perde o destino do bloco anterior (volta a ser
+  // pendente), a menos que o MESMO --json traga destino novo para ela.
+  const relistadas = [...new Set(novasPend)].filter((p) => (
+    antDest.some((d) => d.pendente === p && destinoValido(d)) && !novosDest.some((d) => d.pendente === p)
+  ));
   const porPendente = new Map();
-  for (const d of [...antDest, ...novosDest]) porPendente.set(d.pendente, d);
+  for (const d of [...antDest.filter((x) => !relistadas.includes(x.pendente)), ...novosDest]) porPendente.set(d.pendente, d);
   const acum = [...porPendente.values()];
   // O D3 usa o MESMO predicado que decide hoje se `pendentes` e apagado no `ok`.
   const terminal = estaFechado(estagio, { status });
@@ -305,7 +310,7 @@ function reconciliarPendencias(estagio, anterior, extra, status) {
       ].join('\n'),
     };
   }
-  if (acum.length) extra.destinos = acum;
+  if (acum.length || relistadas.length) extra.destinos = acum;
   if (terminal) {
     delete extra.pendentes;
     return {};
@@ -315,18 +320,24 @@ function reconciliarPendencias(estagio, anterior, extra, status) {
   // tira) e o stderr diz qual foi. Fluxo sem pendencia nao ganha o campo.
   const pendNovas = temPend ? extra.pendentes : null;
   const persistem = semDestino(uniao, acum);
-  let aviso = '';
+  const avisos = [];
   if (pendNovas !== null) {
     const omitidas = semDestino(antPend.filter((p) => !pendNovas.includes(p)), acum);
     if (omitidas.length) {
-      aviso = [
+      avisos.push([
         `aviso: '${estagio}': pendencia(s) anterior(es) sem destino ficou(aram) fora do --json e continua(m) pendente(s):`,
         ...omitidas.map((p) => `  - ${p}`),
-      ].join('\n');
+      ].join('\n'));
     }
   }
+  if (relistadas.length) {
+    avisos.push([
+      `aviso: '${estagio}': pendencia relistada perde o destino anterior:`,
+      ...relistadas.map((p) => `  - ${p}`),
+    ].join('\n'));
+  }
   if (Array.isArray(ant.pendentes) || temPend) extra.pendentes = persistem;
-  return aviso ? { aviso } : {};
+  return avisos.length ? { aviso: avisos.join('\n') } : {};
 }
 
 /** Destino que passa em `validarDestino` (campo certo, texto nao vazio). Bloco editado a mao pode trazer lixo. */
