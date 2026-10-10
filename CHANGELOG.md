@@ -10,12 +10,20 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
-## 1.56.4 — 2026-10-10
+## 1.57.1 — 2026-10-10
 
 - **Observação já gravada não trava mais a marca d'água da memória (Issue #452, item 1).** Depois da migração do
   #435, uma observação vinda da pasta de worktree podia já estar gravada no projeto canônico com a mesma origem. O
   gravador falhava com `UNIQUE constraint failed` e a sessão parava de avançar. Agora a linha repetida conta como já
   gravada e a marca avança. Banco antigo, ainda sem a restrição, grava como antes.
+
+## 1.57.0 — 2026-10-10
+
+- **Cada agente roda no effort do seu papel.** O `Agent` não tem parâmetro de effort, e o subagente herdava o da
+  sessão. Agora o frontmatter fixa: `effort: high` para revisor, tester, depurador, auditor-de-segurança,
+  planejador e arqueólogo; `effort: medium` para executor, documentador e resolvedor-de-build. A variável
+  `CLAUDE_CODE_EFFORT_LEVEL`, se você a definir, continua valendo por cima disso para todos os subagentes.
+  A bateria `testa-agentes-effort.sh` reprova agente novo sem a linha.
 
 ## 1.56.3 — 2026-10-10
 

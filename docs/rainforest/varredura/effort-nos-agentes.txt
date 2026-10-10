@@ -1,0 +1,50 @@
+Data: 2026-10-10
+Termos: effort, model: sonnet, model: haiku
+
+$ gh issue list --state all --search "effort" --limit 200 --json number,title,state
+[{"number":223,"state":"CLOSED","title":"despachar-codex monta comando como string de shell: injecao por --saida e por config"}]
+
+
+$ gh issue list --state all --search "model: sonnet" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "model: haiku" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "effort" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "model: sonnet" --limit 200 --json number,title,state
+[{"number":37,"state":"MERGED","title":"A triagem de inbox do sentinela-foco tinha duas causas, nao uma"}]
+
+
+$ gh pr list --state all --search "model: haiku" --limit 200 --json number,title,state
+[{"number":37,"state":"MERGED","title":"A triagem de inbox do sentinela-foco tinha duas causas, nao uma"},{"number":24,"state":"MERGED","title":"A captura passa a ser nossa, e a memoria passa a ter projeto"}]
+
+
+$ git ls-remote --heads origin | grep -F "effort"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "model: sonnet"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "model: haiku"
+(vazio)
+
+$ git log --all --grep="effort" --oneline
+d5a9372d hooks: veredito-revisor.cjs grava o veredito de uma linha do revisor (tarefa 8)
+27fcb1fa Tarefa 6: Dial de intensidade para a escada YAGNI
+140323d8 Tarefa 1: Implementar injeção de escada YAGNI em SubagentStart
+
+$ git log --all --grep="model: sonnet" --oneline
+(vazio)
+
+$ git log --all --grep="model: haiku" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+(vazio)
+
