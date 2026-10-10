@@ -49,7 +49,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 const { caminhoExecutavel } = require(path.join(__dirname, 'lib', 'resolver-executavel.cjs'));
-const { primeiroPrompt, extrairSlug } = require(path.join(__dirname, '..', 'scripts', 'lib', 'primeiro-prompt-jsonl.cjs'));
+const { primeiroPrompt, extrairSlug, ultimaMensagemAssistente } = require(path.join(__dirname, '..', 'scripts', 'lib', 'primeiro-prompt-jsonl.cjs'));
 const { extrairUltimaLinha, validarVocabulario } = require(path.join(__dirname, '..', 'scripts', 'lib', 'extrair-veredito.cjs'));
 const { ehWorktreeDeAgente } = require(path.join(__dirname, 'lib', 'contexto-sessao.cjs'));
 
@@ -210,11 +210,26 @@ function main() {
   // vazia (revisor que saiu sem texto) SEGUE para invalido — D3: a revisao
   // existe e fica registrada, o silencio e so para "nao houve revisor".
   // Na primeira parada, invalido ainda desvia para o bloqueio (D1, abaixo).
-  if (typeof payload.last_assistant_message !== 'string') process.exit(0);
-  const ultimaLinha = extrairUltimaLinha(payload.last_assistant_message);
-  const veredito = validarVocabulario(ultimaLinha, VOCAB_ULTIMA_LINHA)
-    ? (ultimaLinha === 'veredito: ok' ? 'ok' : 'reprovado')
-    : 'invalido'; // D3: fora do vocabulário, mas o registro fica auditável
+  // Issue #465: quando o subagente entrega por `SubagentHandback`, o relato
+  // nao chega em last_assistant_message (vem vazio, ausente ou com o texto do
+  // resultado da ferramenta). Fora do vocabulario ali, vale a ultima entrada
+  // do assistente no transcrito, que le o input do SubagentHandback — a mesma
+  // leitura que `estado.cjs veredito` refaz (D12) antes de gravar.
+  const vereditoDe = (mensagem) => {
+    const ultimaLinha = extrairUltimaLinha(mensagem);
+    return validarVocabulario(ultimaLinha, VOCAB_ULTIMA_LINHA)
+      ? (ultimaLinha === 'veredito: ok' ? 'ok' : 'reprovado')
+      : 'invalido'; // D3: fora do vocabulário, mas o registro fica auditável
+  };
+  const doPayload = typeof payload.last_assistant_message === 'string' ? payload.last_assistant_message : null;
+  let veredito = doPayload === null ? null : vereditoDe(doPayload);
+  if (veredito === null || veredito === 'invalido') {
+    const doTranscrito = ultimaMensagemAssistente(caminhoTranscrito);
+    if (typeof doTranscrito === 'string' && vereditoDe(doTranscrito) !== 'invalido') {
+      veredito = vereditoDe(doTranscrito);
+    }
+  }
+  if (veredito === null) process.exit(0);
 
   if (typeof payload.cwd !== 'string' || !payload.cwd) process.exit(0);
   const repoRoot = toplevel(payload.cwd);

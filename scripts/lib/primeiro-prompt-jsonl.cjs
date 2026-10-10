@@ -112,10 +112,34 @@ function ultimaMensagemAssistente(caminhoJsonl) {
     } else if (Array.isArray(c)) {
       const blocos = c.filter((b) => b && b.type === 'text' && typeof b.text === 'string' && b.text.trim() !== '');
       if (blocos.length > 0) texto = blocos.map((b) => b.text).join('\n');
+      // Issue #465: no Claude Code 2.1.296 o subagente pode entregar o relato
+      // por uma chamada `SubagentHandback`, e ai a ultima entrada do
+      // assistente e essa chamada, nao texto. O relato mora no input dela.
+      const entrega = c.filter((b) => b && b.type === 'tool_use' && b.name === 'SubagentHandback');
+      if (entrega.length > 0) {
+        const relato = textoDoHandback(entrega[entrega.length - 1].input);
+        if (relato !== null) texto = relato;
+      }
     }
     if (texto !== null) ultima = texto;
   }
   return ultima;
 }
 
-module.exports = { primeiroPrompt, extrairSlug, ultimaMensagemAssistente };
+/** Texto do relato dentro do input de um `SubagentHandback`. O nome do campo
+ *  nao e documentado: tenta os nomes provaveis e, sem nenhum deles, o maior
+ *  valor de texto do input. @returns {string|null} */
+function textoDoHandback(input) {
+  if (typeof input === 'string') return input.trim() !== '' ? input : null;
+  if (!input || typeof input !== 'object') return null;
+  for (const chave of ['report', 'message', 'result', 'content', 'text', 'summary', 'output']) {
+    if (typeof input[chave] === 'string' && input[chave].trim() !== '') return input[chave];
+  }
+  let maior = null;
+  for (const v of Object.values(input)) {
+    if (typeof v === 'string' && v.trim() !== '' && (maior === null || v.length > maior.length)) maior = v;
+  }
+  return maior;
+}
+
+module.exports = { primeiroPrompt, extrairSlug, ultimaMensagemAssistente, textoDoHandback };
