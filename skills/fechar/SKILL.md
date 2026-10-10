@@ -16,8 +16,9 @@ estágio ainda tem pendência sem destino — pare, não force `marcar` por cima
 nem edite o arquivo de estado. No segundo caso o remédio é gravar o `destinos`
 da pendência com `node scripts/estado.cjs destinar --slug <slug> --estagio <e> --json '{"destinos":[...]}'`
 (resolvida com `evidencia`, plantada com `ref`, descartada com `motivo`), como a
-mensagem do próprio `exigir` mostra. O `destinar` só acrescenta destinos: não muda
-`status` nem refaz os gates de evidência do estágio.
+mensagem do próprio `exigir` mostra. O `destinar` grava destinos (acrescenta, ou substitui o de uma
+pendência que já tinha) e tira de `pendentes` as destinadas: não muda `status` nem
+refaz os gates de evidência do estágio.
 
 Seis passos, nesta ordem.
 
