@@ -135,6 +135,7 @@ function criar$(run) {
     chamadas,
     plugin: { name: "rainforest-mind", root: SRC.replace(/\\/g, "/") },
     session: { cwd: async () => PROJ },
+    env: { get: async (nome) => process.env[nome] },
     process: {
       run: async (argv, init) => {
         chamadas.push({ argv, init });
@@ -245,17 +246,32 @@ caso("geradores chamados por argv com --destino mod, cwd e CLAUDE_PROJECT_DIR da
   const { criarAbertura } = await modulo();
   const $ = criar$(runReal);
   await criarAbertura().promptCompose($, { traits: [] }, proximo(SECOES_DO_ENGINE));
-  igual($.chamadas.length, 2, "numero de chamadas");
-  const scripts = $.chamadas.map((c) => path.basename(geradorDoArgv(c.argv)));
+  const geradores = $.chamadas.filter((c) => geradorDoArgv(c.argv));
+  igual(geradores.length, 2, "numero de chamadas de gerador");
+  const scripts = geradores.map((c) => path.basename(geradorDoArgv(c.argv)));
   igual(JSON.stringify(scripts), JSON.stringify(["foco-session-start.cjs", "memoria-session-start.cjs"]), "ordem dos geradores");
-  for (const c of $.chamadas) {
-    igual(c.argv[0], "node", "executavel");
+  for (const c of geradores) {
+    // #480: o node vai por caminho absoluto, achado pelo localizador, nunca pelo nome.
+    afirma(path.isAbsolute(c.argv[0]) && path.basename(c.argv[0]).toLowerCase().startsWith("node"), `executavel nao absoluto: ${c.argv[0]}`);
     igual(c.argv.slice(-2).join(" "), "--destino mod", "flag do destino");
     igual(c.init.cwd, SRC.replace(/\\/g, "/"), "cwd");
     igual(c.init.env.CLAUDE_PROJECT_DIR, PROJ, "CLAUDE_PROJECT_DIR");
     igual(c.init.timeoutMs, 60000, "timeout");
     afirma(geradorDoArgv(c.argv).startsWith(SRC.replace(/\\/g, "/") + "/hooks/"), `script fora da raiz do plugin: ${geradorDoArgv(c.argv)}`);
   }
+});
+
+caso("localizador do node: roda na pasta do plugin, e sem node achado nenhum gerador roda", async () => {
+  const { criarAbertura } = await modulo();
+  const $ = criar$(runReal);
+  await criarAbertura().promptCompose($, { traits: [] }, proximo(SECOES_DO_ENGINE));
+  const loc = $.chamadas.filter((c) => !geradorDoArgv(c.argv));
+  afirma(loc.length > 0, "nenhum localizador rodou");
+  for (const c of loc) igual(c.init.cwd, SRC.replace(/\\/g, "/"), "cwd do localizador");
+  const semNode = criar$((argv, init) => (geradorDoArgv(argv) ? runReal(argv, init) : Promise.resolve({ exitCode: 1, stdout: "", stderr: "", isStdoutTruncated: false, isStderrTruncated: false })));
+  const r = await criarAbertura().promptCompose(semNode, { traits: [] }, proximo(SECOES_DO_ENGINE));
+  igual(semNode.chamadas.filter((c) => geradorDoArgv(c.argv)).length, 0, "geradores rodados sem node");
+  igual(JSON.stringify(r.sections), JSON.stringify(SECOES_DO_ENGINE), "secoes intactas");
 });
 
 caso("uma unica secao rainforest-mind:abertura, scope session, no fim de sections", async () => {
@@ -292,7 +308,7 @@ caso("tres composes, um unico par de $.process.run", async () => {
   const $ = criar$(runReal);
   const abertura = criarAbertura();
   for (let i = 0; i < 3; i++) await abertura.promptCompose($, { traits: [] }, proximo(SECOES_DO_ENGINE));
-  igual($.chamadas.length, 2, "3 composes seguidos devem chamar $.process.run so 2 vezes");
+  igual($.chamadas.filter((c) => geradorDoArgv(c.argv)).length, 2, "3 composes seguidos devem chamar $.process.run so 2 vezes");
 });
 
 caso("compose e SessionStart simultaneos compartilham a mesma montagem", async () => {
@@ -304,7 +320,7 @@ caso("compose e SessionStart simultaneos compartilham a mesma montagem", async (
     abertura.promptCompose($, { traits: [] }, proximo(SECOES_DO_ENGINE)),
     abertura.sessionStart($, { source: "startup" }, async () => ({ additionalContext: entradas })),
   ]);
-  igual($.chamadas.length, 2, "montagem unica");
+  igual($.chamadas.filter((c) => geradorDoArgv(c.argv)).length, 2, "montagem unica");
 });
 
 caso("session.end com reason clear remonta: o proximo compose roda os geradores de novo", async () => {
@@ -312,13 +328,13 @@ caso("session.end com reason clear remonta: o proximo compose roda os geradores 
   const $ = criar$(runReal);
   const abertura = criarAbertura();
   await abertura.promptCompose($, { traits: [] }, proximo(SECOES_DO_ENGINE));
-  igual($.chamadas.length, 2, "antes do clear");
+  igual($.chamadas.filter((c) => geradorDoArgv(c.argv)).length, 2, "antes do clear");
   let passou = 0;
   const r = await abertura.sessionEnd($, { reason: "clear" }, async (e) => { passou++; return { ok: e.reason }; });
   igual(passou, 1, "next(e) chamado uma vez");
   igual(r.ok, "clear", "resultado de next repassado");
   const depois = await abertura.promptCompose($, { traits: [] }, proximo(SECOES_DO_ENGINE));
-  igual($.chamadas.length, 4, "depois do clear remonta");
+  igual($.chamadas.filter((c) => geradorDoArgv(c.argv)).length, 4, "depois do clear remonta");
   igual(depois.sections.filter((s) => s.id === "rainforest-mind:abertura").length, 1, "ainda uma secao so");
 });
 
@@ -329,7 +345,7 @@ caso("session.end com outro reason nao remonta", async () => {
   await abertura.promptCompose($, { traits: [] }, proximo(SECOES_DO_ENGINE));
   await abertura.sessionEnd($, { reason: "other" }, async () => ({}));
   await abertura.promptCompose($, { traits: [] }, proximo(SECOES_DO_ENGINE));
-  igual($.chamadas.length, 2, "reason other nao deve remontar");
+  igual($.chamadas.filter((c) => geradorDoArgv(c.argv)).length, 2, "reason other nao deve remontar");
 });
 
 caso("session.end com resume remonta", async () => {
@@ -337,10 +353,10 @@ caso("session.end com resume remonta", async () => {
   const $ = criar$(runReal);
   const abertura = criarAbertura();
   await abertura.promptCompose($, { traits: [] }, proximo(SECOES_DO_ENGINE));
-  igual($.chamadas.length, 2, "antes do resume");
+  igual($.chamadas.filter((c) => geradorDoArgv(c.argv)).length, 2, "antes do resume");
   await abertura.sessionEnd($, { reason: "resume" }, async () => ({}));
   const depois = await abertura.promptCompose($, { traits: [] }, proximo(SECOES_DO_ENGINE));
-  igual($.chamadas.length, 4, "depois do resume remonta (novo par de $.process.run)");
+  igual($.chamadas.filter((c) => geradorDoArgv(c.argv)).length, 4, "depois do resume remonta (novo par de $.process.run)");
   igual(depois.sections.filter((s) => s.id === "rainforest-mind:abertura").length, 1, "ainda uma secao so");
 });
 
@@ -484,9 +500,9 @@ caso("SessionStart ANTES do primeiro compose: espera a montagem, remove, e o com
   const mem = await entradaMemoriaAtual();
   const rs = await abertura.sessionStart($, { source: "startup" }, async () => ({ additionalContext: [foco, ENTRADA_CODEX, mem] }));
   igual(JSON.stringify(rs.additionalContext), JSON.stringify([ENTRADA_CODEX]), "entradas que restam");
-  igual($.chamadas.length, 2, "montou no SessionStart");
+  igual($.chamadas.filter((c) => geradorDoArgv(c.argv)).length, 2, "montou no SessionStart");
   const r = await abertura.promptCompose($, { traits: [] }, proximo(SECOES_DO_ENGINE));
-  igual($.chamadas.length, 2, "o compose reaproveitou a montagem");
+  igual($.chamadas.filter((c) => geradorDoArgv(c.argv)).length, 2, "o compose reaproveitou a montagem");
   igual(r.sections[r.sections.length - 1].id, "rainforest-mind:abertura", "secao presente");
 });
 

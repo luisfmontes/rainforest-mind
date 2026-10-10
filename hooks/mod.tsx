@@ -69,6 +69,11 @@ const relogioNotaEntregue = atom({ plugin: 'rainforest-mind', key: 'relogioNotaE
 // Caminho absoluto do node, achado uma vez por sessao ('' = ainda nao achado). O resumo do PR
 // e do hooks/pr.tsx (mesmo ref): aqui so se le, para a linha do PR na barra.
 const nodeCaminho = atom({ plugin: 'rainforest-mind', key: 'nodeCaminho' } as const, '')
+// Quando os localizadores nao acharam o node (ms do relogio do engine; 0 = nunca falhou).
+const nodeFalhouEm = atom({ plugin: 'rainforest-mind', key: 'nodeFalhouEm' } as const, 0)
+// Dentro deste prazo o fracasso vale: nada de refazer os dois localizadores (teto de 10 s
+// cada) a cada poll do relogio, gravacao de erros ou desvio (#480). Depois tenta de novo.
+const NODE_FALHA_TTL_MS = 300_000
 const prResumo = atom({ plugin: 'rainforest-mind', key: 'prResumo' } as const, null as RainforestMindPrResumo | null)
 const PANE_PR = 'rainforest-mind-pr'
 
@@ -275,6 +280,9 @@ async function raizDoWindows($: EngineInterface): Promise<string | undefined> {
 async function caminhoDoNode($: EngineInterface): Promise<string | null> {
   const guardado = await read($, nodeCaminho)
   if (guardado !== '') return guardado
+  const agora = await $.clock.now()
+  const falhou = await read($, nodeFalhouEm)
+  if (falhou > 0 && agora - falhou < NODE_FALHA_TTL_MS) return null
   let cwd = ''
   try {
     cwd = await $.session.cwd()
@@ -294,6 +302,7 @@ async function caminhoDoNode($: EngineInterface): Promise<string | null> {
       // este localizador nao existe nesta maquina; o outro tenta
     }
   }
+  await update($, nodeFalhouEm, () => agora)
   return null
 }
 

@@ -24,7 +24,7 @@ pronto quando: com resumos reais de `resumir()`, a sequência conflito → `UNKN
 
 ### 2. node absoluto na abertura e cache do fracasso [tipo: implementar]
 atende: D2, D3
-arquivos: `hooks/abertura-mod-puro.mjs`, `hooks/register.ts`, `hooks/mod.tsx`, `hooks/testa-mod-abertura.cjs`, `hooks/mod-relogio.test.tsx`
+arquivos: `hooks/abertura-mod-puro.mjs`, `hooks/register.ts`, `hooks/mod.tsx`, `hooks/testa-mod-abertura.cjs`, `hooks/mod-abertura.test.ts`, `hooks/mod-relogio.test.tsx`, `hooks/mod-painel.test.tsx` (emenda: teto de 20 s no caso de cache do painel, que estoura 5 s com a máquina carregada também na `main`)
 depende de: nenhuma
 paralela: sim
 prova: `node -e "process.exit(require('fs').readFileSync('hooks/abertura-mod-puro.mjs','utf8').includes('rodar(' + String.fromCharCode(91, 39) + 'node')?1:0)"`
@@ -34,7 +34,7 @@ mutacao:
   para: `if (false) return null`
   bateria: `claude plugin test .`
   fixture: `mod-relogio.test.tsx, caso "localizador do node que falhou nao roda de novo no prazo"`
-pronto quando: `node hooks/testa-mod-abertura.cjs` sai `N ok, 0 falha(s), 0 skipped` com os geradores chamados com `argv[0]` igual ao caminho que `deps.node` devolve (absoluto), e com `deps.node` devolvendo `null` a abertura sai `null` sem chamar processo; `claude plugin test .` sai 0 com um caso em que os localizadores do `node` falham, e dentro de 5 minutos de relógio do engine um segundo uso não os chama de novo, e depois do prazo chama.
+pronto quando: `node hooks/testa-mod-abertura.cjs` sai `N ok, 0 falha(s), 0 skipped` com os geradores chamados com `argv[0]` absoluto (achado pelo localizador, que roda com cwd na pasta do plugin), e com os localizadores falhando nenhum gerador roda e as seções ficam intactas; `claude plugin test .` sai 0 com: em `mod-abertura.test.ts`, todo gerador com `argv[0]` igual ao caminho que o localizador devolve e, sem node achado, nenhum gerador; em `mod-relogio.test.tsx`, os localizadores do `node` falhando, dentro de 5 minutos de relógio do engine um segundo uso não os chama de novo, e depois do prazo chama.
 
 ### 3. Versão e docs [tipo: docs]
 atende: D4

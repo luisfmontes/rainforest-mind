@@ -19,6 +19,7 @@ export const register: Register = on => {
     const r = await next(e)
     const texto = await abertura.obter({
       rodar: (argv, init) => $.process.run(argv, init),
+      systemRoot: () => $.env.get('SystemRoot'),
       cwd: () => $.session.cwd(),
       raiz: $.plugin.root,
     })
@@ -29,6 +30,7 @@ export const register: Register = on => {
     const r = await next(e)
     const texto = await abertura.obter({
       rodar: (argv, init) => $.process.run(argv, init),
+      systemRoot: () => $.env.get('SystemRoot'),
       cwd: () => $.session.cwd(),
       raiz: $.plugin.root,
     })

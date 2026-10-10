@@ -29,11 +29,12 @@ com o `motivo` de `velho`; o `mergavel` de `novo` não muda (fica `false`, o lad
 `pr.tsx` aplica antes de gravar, de calcular eventos e a virada. Com isso conflito → sem dado
 → conflito acorda uma vez só e o pane deixa de listar o vaivém.
 
-- **D2 — A abertura recebe o localizador do mod como dependência**: `register(on, options,
-deps)` em `hooks/register.ts`, como o `compactar` já recebe as dele; o `mod.tsx` passa
-`{ node: caminhoDoNode }`. O `Io` da abertura ganha `node: () => Promise<string | null>`; sem
-`node` achado (ou sem `deps`), o gerador lança e a abertura sai `null`, a falha aberta que
-já existe.
+- **D2 — A abertura acha o node ela mesma, com as mesmas funções puras**: `hooks/abertura-mod-puro.mjs`
+roda `localizadores('node', SystemRoot)` + `escolherExecutavel` (de `hooks/pr-puro.mjs`, puro) uma vez por
+abertura, dentro da montagem memoizada, com cwd na pasta do plugin; o `register.ts` passa
+`systemRoot: () => $.env.get('SystemRoot')` no `Io`. Sem `node` achado nenhum gerador roda e a abertura sai
+`null`, a falha aberta que já existe. (Revisto na execução: o desenho anterior, passar o `caminhoDoNode` do
+`mod.tsx` como dependência, o engine recusa — "$ itself is passed as an argument".)
 
 - **D3 — Fracasso do localizador fica guardado por 5 minutos**: átomo `nodeFalhouEm` (ms do
 `$.clock.now()`); dentro de `NODE_FALHA_TTL_MS = 300_000` o `caminhoDoNode` devolve `null` sem
@@ -47,6 +48,9 @@ que muda para quem usa; CONTRIBUTING, na seção do `node` absoluto, cita a aber
 - **Herdar também o `mergavel`**: descartado; leitura sem dado não pode virar "mande mergear".
 - **Mover `caminhoDoNode` para um módulo compartilhado importado pelo `register.ts`**:
   descartado; o módulo dependeria de `claude-code` e a bateria da abertura roda sem engine.
+- **Passar o `caminhoDoNode` do `mod.tsx` ao `register.ts` como dependência**: descartado na execução;
+  o engine não carrega o módulo ("$ itself is passed as an argument").
+- **Cache negativo também na abertura**: desnecessário; a busca roda uma vez por abertura.
 - **Cache negativo em variável de módulo**: descartado; o átomo segue o mesmo ciclo de vida do
   `nodeCaminho` e não vaza entre engines de teste.
 

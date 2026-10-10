@@ -14,7 +14,8 @@
     "em": "2026-10-10"
   },
   "executar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-10-10"
   },
   "revisar": {
     "status": "pendente"

@@ -72,6 +72,9 @@ async function montar($: any, on: any, surface: Surface, inicio: number, dadosFa
     faixa: dadosFaixa,
     ctx: [] as string[],
     sessaoId: 'sessao-atual',
+    // #480: localizadores do node rodados, e o modo em que nenhum acha.
+    loc: 0,
+    semNode: false,
   }
   const resposta = (modo: Modo, corpo: unknown) => {
     if (modo === 'exit1') return saida('', 1)
@@ -80,8 +83,12 @@ async function montar($: any, on: any, surface: Surface, inicio: number, dadosFa
     return saida(JSON.stringify(corpo))
   }
   on('process.run', async (_$: any, e: any) => {
-    // O localizador (where.exe) acha o node fora de qualquer repositorio; nao e um dos scripts.
-    if (/[\\/]where\.exe$/i.test(String(e.argv[0]))) return saida('C:\\Program Files\\nodejs\\node.exe\r\n')
+    // O localizador (where.exe, ou which fora do Windows) acha o node fora de qualquer
+    // repositorio; nao e um dos scripts. Com semNode nenhum dos dois acha.
+    if (/[\\/]where\.exe$/i.test(String(e.argv[0])) || e.argv[0] === '/usr/bin/which') {
+      s.loc += 1
+      return s.semNode ? saida('', 1) : saida('C:\\Program Files\\nodejs\\node.exe\r\n')
+    }
     const alvo = String(e.argv[1] ?? '')
     if (alvo.endsWith('relogio-sessoes.cjs')) {
       s.runsS += 1
@@ -378,6 +385,27 @@ for (const surface of ['terminal', 'desktop'] as const) {
       for (const c of [...s.cwdS, ...s.cwdJ]) expect(c).toBe(raiz)
       // a pasta da sessao segue indo por --cwd
       expect(s.argvS[0][s.argvS[0].indexOf('--cwd') + 1]).toBe('/projeto')
+    })
+
+    await ui.unmount()
+  })
+
+  test(`relogio (${surface}): localizador do node que falhou nao roda de novo no prazo`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40))
+    const { relogio, s, ui, comecar, caso } = m
+
+    await caso('16 sem node: uma busca, nenhuma outra em 5 min, e de novo depois do prazo', async () => {
+      s.semNode = true
+      await comecar()
+      await relogio.advance(2000)
+      const primeira = s.loc
+      expect(primeira).toBeGreaterThan(0)
+      // sem node, os scripts do relogio nao rodam (falha aberta)
+      expect(s.runsS + s.runsJ).toBe(0)
+      await relogio.advance(4 * MIN)
+      expect(s.loc).toBe(primeira)
+      await relogio.advance(2 * MIN)
+      expect(s.loc).toBeGreaterThan(primeira)
     })
 
     await ui.unmount()
