@@ -10,6 +10,11 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.54.4 — 2026-10-09
+
+- **O Jardineiro de ideias resume as plantadas em vez de listar todas.** A Ronda 1 traz o total, a contagem por faixa de
+  idade e as 5 mais antigas; com 162 nomes, a mensagem no WhatsApp tinha virado paredão que escondia as rondas que pedem resposta.
+
 ## 1.54.3 — 2026-10-09
 
 - **A varredura de baterias não deixa mais teste trocar a identidade git do repositório (Issue #446).** Com

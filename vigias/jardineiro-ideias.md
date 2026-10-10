@@ -23,8 +23,10 @@ conteúdo de cada ideia — título, contexto, maturidade —, nunca para contar
 
 ## Ronda 1 — ideias plantadas
 
-Reproduza `IDEIAS PLANTADAS` do bloco apurado: o total e todos os itens,
-agrupados por idade. Nenhum item fora — lista incompleta passa por completa.
+Reproduza `RESUMO DAS PLANTADAS` do bloco apurado, literalmente: o total, a
+contagem por faixa de idade e as 5 mais antigas. **Não** liste as demais — a
+lista inteira de `IDEIAS PLANTADAS` serve à Ronda 2, não à mensagem (com 162
+itens ela virou paredão que escondia as rondas que pedem resposta).
 
 ## Ronda 2 — candidata a colheita
 
