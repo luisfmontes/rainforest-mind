@@ -76,7 +76,12 @@
     "em": "2026-10-10"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-critica-do-revisor.sh",
+    "saida": "ok: 11   falhou: 0",
+    "sensor_externo": "bash scripts/testa-critica-do-revisor.sh",
+    "real": "critica-do-revisor.cjs sobre o reprovado real da rodada 1 saiu 3 (falso [design]); corrigido, saiu 0",
+    "em": "2026-10-10"
   },
   "fechar": {
     "status": "pendente"
