@@ -1,0 +1,27 @@
+{
+  "slug": "2026-10-10-pr-aviso-node",
+  "titulo": "Aviso de PR sem repeticao e node absoluto na abertura",
+  "criado_em": "2026-10-10",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "em": "2026-10-10"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
