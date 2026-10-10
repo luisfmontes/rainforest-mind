@@ -38,7 +38,18 @@ quando o fluxo fecha.
     destino" de todos os estágios, ou `nada ficou para depois`.
   - `skills/fechar/SKILL.md` manda colar essa saída no corpo do PR.
 - **D7 — Contrato documentado.** A seção "Condição de parada" de `skills/executar/SKILL.md` explica o
-  `destinos`, e o CHANGELOG traz a mudança. A versão sobe para MINOR, 1.55.0, porque o contrato muda.
+  `destinos`, e o CHANGELOG traz a mudança. A versão sobe para MINOR porque o contrato muda. Saiu 1.56.0: o PR #464 ocupou a 1.55.0 antes (combinado entre as sessões em 2026-10-10: quem mergeia primeiro leva o número).
+
+## Emendas da revisão (2026-10-10)
+A primeira revisão reprovou a entrega. Duas respostas mudaram o contrato, e o usuário decidiu as duas (Q1 A e Q2 A):
+- **Emenda ao D6 — verbo `destinar`.** Repetir o `marcar --status ok` só para gravar `destinos` refaz os gates de
+  evidência do estágio e falha em `executar` e `verificar`. O remédio passa a ser
+  `estado.cjs destinar --slug <s> --estagio <e> --json '{"destinos":[...]}'`. Ele só acrescenta destinos válidos e não
+  muda `status` nem roda gate.
+- **Emenda ao D4 — pendência relistada perde o destino antigo.** Uma pendência listada de novo no `--json` volta a ser
+  pendente, e o comando avisa no stderr. Só um destino trazido no mesmo `--json` a cobre.
+- Os consertos diretos que vieram junto: destino inválido não conta como destino (`exigir fechar` e `deixado`), o
+  aviso do `parcial` só sai quando a gravação acontece, e `destino` tem de ser texto.
 
 ## Avaliado e descartado
 - **Pendência vira objeto com id (Q2 B):** obrigaria migrar quem grava hoje e os 12 arquivos de estado
