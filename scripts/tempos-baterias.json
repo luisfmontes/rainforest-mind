@@ -87,6 +87,7 @@
   "scripts/testa-conferir-regua.sh": 25,
   "scripts/testa-conferir-versao.sh": 34,
   "scripts/testa-conselho.sh": 61,
+  "scripts/testa-critica-do-revisor.sh": 1,
   "scripts/testa-dados-batedor-repos.sh": 2,
   "scripts/testa-dependencias-de-bateria.sh": 1,
   "scripts/testa-despachar-codex.sh": 8,

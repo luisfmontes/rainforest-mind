@@ -1,0 +1,2 @@
+{"type":"user","isSidechain":true,"message":{"role":"user","content":"Slug: fixture-critica-design\nRevise o diff da tarefa de teste. Responda com a ultima linha exatamente VEREDITO: ok ou VEREDITO: reprovado."}}
+{"type":"assistant","isSidechain":true,"message":{"role":"assistant","content":[{"type":"text","text":"[design] O diff troca o teto de reprovacoes por um contador novo, o que contesta a D2 do design.\nVEREDITO: reprovado"}]}}

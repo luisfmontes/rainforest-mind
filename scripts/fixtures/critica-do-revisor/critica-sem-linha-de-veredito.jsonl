@@ -1,0 +1,3 @@
+{"type":"user","isSidechain":true,"message":{"role":"user","content":"Slug: fixture-critica-comum\nRevise o diff da tarefa de teste. Responda com a ultima linha exatamente VEREDITO: ok ou VEREDITO: reprovado."}}
+{"type":"assistant","isSidechain":true,"message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Read","input":{"file_path":"x"}}]}}
+{"type":"assistant","isSidechain":true,"message":{"role":"assistant","content":[{"type":"text","text":"Achado 1: o teste de borda nao cobre lista vazia.\nAchado 2: a mensagem de erro omite o caminho do arquivo.\nVEREDITO: reprovado"}]}}
