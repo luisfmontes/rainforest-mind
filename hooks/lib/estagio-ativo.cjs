@@ -140,4 +140,58 @@ function resolver({ cwd }) {
   return { slug, estagio };
 }
 
-module.exports = { resolver };
+// Issue #447: quando `resolver` devolve null numa branch de trabalho, a portaria
+// dizia so "fora-de-fluxo", e achar a causa (branch com o slug inteiro, com data,
+// nao casa) exigia ler este arquivo. `diagnosticar` refaz a leitura e devolve o
+// que faltou: a branch lida, a base comparada e os fluxos abertos mais perto, cada
+// um com a branch que casaria. Falha aberta: qualquer erro devolve null e a
+// mensagem sai sem o diagnostico, como antes.
+function distancia(a, b) {
+  const linha = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    let anterior = linha[0];
+    linha[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const guardado = linha[j];
+      linha[j] = Math.min(linha[j] + 1, linha[j - 1] + 1, anterior + (a[i - 1] === b[j - 1] ? 0 : 1));
+      anterior = guardado;
+    }
+  }
+  return linha[b.length];
+}
+
+function diagnosticar({ cwd }, limite = 3) {
+  try {
+    const branch = execFileSync(caminhoExecutavel('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+    if (!branch || branch === 'HEAD') return null;
+    const branchBase = branch.replace(/^.*?\//, '');
+    const dirEstado = path.join(cwd, 'docs', 'rainforest', 'estado');
+    if (!fs.existsSync(dirEstado)) return { branch, branchBase, abertos: [], casados: 0 };
+    const abertos = [];
+    let casados = 0;
+    for (const arquivo of fs.readdirSync(dirEstado).filter((f) => f.endsWith('.json'))) {
+      const slug = arquivo.replace(/\.json$/, '');
+      let estado;
+      try {
+        estado = JSON.parse(fs.readFileSync(path.join(dirEstado, arquivo), 'utf8'));
+      } catch (_) {
+        continue;
+      }
+      if (!estado || typeof estado !== 'object' || proximo(estado) === null) continue;
+      const slugSemData = slug.replace(/^\d{4}-\d{2}-\d{2}-/, '');
+      const semNumero = slugSemData.replace(/^fluxo-\d+-/, '');
+      if (slugSemData === branchBase || semNumero === branchBase) casados++;
+      abertos.push({ slug, esperado: `fluxo/${semNumero}`, d: Math.min(distancia(branchBase, slugSemData), distancia(branchBase, slug)) });
+    }
+    abertos.sort((x, y) => x.d - y.d || x.slug.localeCompare(y.slug));
+    return { branch, branchBase, casados, abertos: abertos.slice(0, limite).map(({ slug, esperado }) => ({ slug, esperado })) };
+  } catch (_) {
+    return null;
+  }
+}
+
+module.exports = { resolver, diagnosticar };
