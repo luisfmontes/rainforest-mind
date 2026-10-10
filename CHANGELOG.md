@@ -10,6 +10,14 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.57.0 — 2026-10-10
+
+- **Cada agente roda no effort do seu papel.** O `Agent` não tem parâmetro de effort, e o subagente herdava o da
+  sessão. Agora o frontmatter fixa: `effort: high` para revisor, tester, depurador, auditor-de-segurança,
+  planejador e arqueólogo; `effort: medium` para executor, documentador e resolvedor-de-build. A variável
+  `CLAUDE_CODE_EFFORT_LEVEL`, se você a definir, continua valendo por cima disso para todos os subagentes.
+  A bateria `testa-agentes-effort.sh` reprova agente novo sem a linha.
+
 ## 1.56.3 — 2026-10-10
 
 - **O comando de regenerar do `conferir-ponte` funciona colado no repositório-alvo (Issue #450).** Antes ele imprimia
