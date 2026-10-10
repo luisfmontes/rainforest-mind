@@ -17,8 +17,55 @@
     "em": "2026-10-09"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-10-09"
+    "status": "ok",
+    "catraca_mutacao": "2026-10-09",
+    "tarefas_ok": 8,
+    "tarefas": 8,
+    "comando": "node scripts/testa-pendente-destino.cjs",
+    "saida": "56 ok, 0 falha(s)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "plantada com ref que nao e issue nem ideia e recusada"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "ok com pendencia sem destino e recusado em vez de apagar em silencio"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "parcial que omite a pendencia anterior continua com ela em pendentes"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "exigir fechar recusa pendencia sem destino num bloco editado a mao"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "deixado lista os destinos de todos os estagios em markdown"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "docs; invariantes 21 ok"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "registro de bateria"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "versao; testa-versao ok 5"
+      }
+    ],
+    "em": "2026-10-10"
   },
   "revisar": {
     "status": "pendente"
