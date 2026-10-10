@@ -263,6 +263,39 @@ caso("virada: merge virou conflito e 'conflito'", () => {
   igual(m.virada(m.resumir(VERDE, REAL_THREADS), m.resumir(CONFLITO, REAL_THREADS)), "conflito", "conflito");
 });
 
+caso("conflito, sem dado, conflito acorda uma vez", () => {
+  const SEM_DADO = { ...VERDE, mergeStateStatus: "UNKNOWN", mergeable: "UNKNOWN" };
+  const seq = [VERDE, CONFLITO, SEM_DADO, CONFLITO, SEM_DADO, CONFLITO].map((p) => m.resumir(p, REAL_THREADS));
+  let velho = null;
+  const viradas = [];
+  for (const lido of seq) {
+    const novo = m.herdarMotivo(velho, lido);
+    viradas.push(m.virada(velho, novo));
+    velho = novo;
+  }
+  igual(JSON.stringify(viradas), JSON.stringify([null, "conflito", null, null, null, null]), "viradas da sequencia");
+});
+
+caso("pr.tsx aplica herdarMotivo antes de eventos, do update do resumo e da virada", () => {
+  const f = require("fs").readFileSync(require("path").join(__dirname, "pr.tsx"), "utf8");
+  const h = f.indexOf("herdarMotivo(velho, lido)");
+  afirma(h > 0, "pr.tsx nao chama herdarMotivo(velho, lido)");
+  for (const depois of ["eventos(velho, novo", "update($, prResumo, () => novo)", "virada(velho, novo)"]) {
+    const i = f.indexOf(depois);
+    afirma(i > h, `${depois} precisa vir depois de herdarMotivo`);
+  }
+});
+
+caso("herdarMotivo: sem leitura anterior devolve a leitura intacta, e nao herda mergavel", () => {
+  const semDado = m.resumir({ ...VERDE, mergeStateStatus: "UNKNOWN", mergeable: "UNKNOWN" }, REAL_THREADS);
+  igual(m.herdarMotivo(null, semDado), semDado, "sem velho");
+  const h = m.herdarMotivo(m.resumir(VERDE, REAL_THREADS), semDado);
+  igual(h.motivo, "mergeável", "motivo herdado");
+  igual(h.mergavel, false, "mergavel nao herdado");
+  const c = m.resumir(CONFLITO, REAL_THREADS);
+  igual(m.herdarMotivo(m.resumir(VERDE, REAL_THREADS), c), c, "leitura com dado passa intacta");
+});
+
 caso("virada: PR mergeado e 'merged'", () => {
   igual(m.virada(m.resumir(EM_CURSO, REAL_THREADS), m.resumir(REAL_PR, REAL_THREADS)), "merged", "merged");
 });

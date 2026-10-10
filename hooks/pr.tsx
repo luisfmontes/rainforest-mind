@@ -15,7 +15,7 @@ import type {
   RainforestMindPrPendente,
   RainforestMindPrResumo,
 } from '../types'
-import { AMBIENTE_GIT_SEGURO, POLL_MS, bloco, tomDoIcone, QUIETO_MS, deveAcordar, donoConfere, ehDaSessao, escolherExecutavel, eventos, localizadores, nota, resumir, virada } from './pr-puro.mjs'
+import { AMBIENTE_GIT_SEGURO, POLL_MS, bloco, tomDoIcone, QUIETO_MS, deveAcordar, donoConfere, ehDaSessao, escolherExecutavel, eventos, herdarMotivo, localizadores, nota, resumir, virada } from './pr-puro.mjs'
 
 type Bloco = {
   label: string
@@ -198,8 +198,9 @@ async function consultar($: EngineInterface): Promise<void> {
 
     const agora = await $.clock.now()
     const threads = await lerThreads($, String(pr.url ?? ''))
-    const novo: RainforestMindPrResumo = { ...resumir(pr, threads), atualizadoEm: hhmm(Date.parse(String(pr.updatedAt ?? ''))) }
     const velho = await read($, prResumo)
+    const lido: RainforestMindPrResumo = { ...resumir(pr, threads), atualizadoEm: hhmm(Date.parse(String(pr.updatedAt ?? ''))) }
+    const novo = herdarMotivo(velho, lido) as RainforestMindPrResumo
     const evs = eventos(velho, novo, agora) as { icone: string; texto: string }[]
     const hora = hhmm(agora)
     await update($, prResumo, () => novo)
