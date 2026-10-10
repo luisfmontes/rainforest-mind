@@ -820,6 +820,71 @@ fi
 git -C "$R" worktree remove --force "$FLZ" 2>/dev/null || true
 git -C "$R" worktree remove --force "$CPZ" 2>/dev/null || true
 
+# ---------------------------------------------------------------- Issue #465
+# Subagente que entrega por `SubagentHandback`: a ultima entrada do assistente
+# no transcrito e uma chamada de ferramenta, nao texto, e o relato (com a
+# linha VEREDITO) mora no input dela. last_assistant_message chega vazio ou
+# ausente. Antes do conserto: H1 bloqueava pedindo a linha que ja existia.
+transcrito_handback() { # input_json, agente_id
+  local input="$1" id="$2"
+  local dir="$HOME_SBOX_POSIX/.claude-personal/projects/p/sess-caixa/subagents"
+  mkdir -p "$dir"
+  node -e '
+const fs = require("fs");
+const [dir, id, input] = process.argv.slice(1);
+const linha1 = JSON.stringify({type:"user", isSidechain:true, message:{role:"user", content:"Slug: revisor-fixture-caixa\nRevise o diff."}});
+const linha2 = JSON.stringify({type:"assistant", isSidechain:true, message:{role:"assistant", content:[{type:"text", text:"Lendo o diff."}]}});
+const linha3 = JSON.stringify({type:"assistant", isSidechain:true, message:{role:"assistant", content:[{type:"tool_use", id:"tu1", name:"SubagentHandback", input: JSON.parse(input)}]}});
+const linha4 = JSON.stringify({type:"user", isSidechain:true, message:{role:"user", content:[{type:"tool_result", tool_use_id:"tu1", content:"Report delivered to your caller."}]}});
+fs.writeFileSync(dir + "/agent-" + id + ".jsonl", [linha1, linha2, linha3, linha4].join("\n") + "\n");
+fs.writeFileSync(dir + "/agent-" + id + ".meta.json", JSON.stringify({agentType:"rainforest-mind:revisor"}));
+' "$dir" "$id" "$input"
+  cygpath -m "$dir/agent-$id.jsonl" 2>/dev/null || printf '%s' "$dir/agent-$id.jsonl"
+}
+
+reset_estado
+TH1=$(transcrito_handback '{"report":"Diff conferido.\nVEREDITO: ok"}' H1)
+P=$(pay "$R" "rainforest-mind:revisor" "H1" "" '{"agent_transcript_path":"'"$TH1"'"}')
+SAIDA=$(printf '%s' "$P" | RFM_ESTADO_ROOT="$R" node "$HOOK" 2>&1); GOT=$?
+V=$(vereditos)
+if [ "$GOT" = 0 ] && printf '%s' "$V" | grep -q '"agente_id":"H1"' && printf '%s' "$V" | grep -q '"veredito":"ok"' && ! printf '%s' "$SAIDA" | grep -q '"decision":"block"'; then
+  ok=$((ok+1)); echo "  ok    (#465) H1 relato no SubagentHandback, mensagem vazia: grava ok"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#465) H1 relato no SubagentHandback: exit=$GOT, V=$V, saida=$SAIDA"
+fi
+
+reset_estado
+TH2=$(transcrito_handback '{"message":"Achado 1 em a.txt:1.\n**VEREDITO: reprovado**"}' H2)
+P=$(pay "$R" "rainforest-mind:revisor" "H2" "" '{"agent_transcript_path":"'"$TH2"'","last_assistant_message":null}')
+SAIDA=$(printf '%s' "$P" | RFM_ESTADO_ROOT="$R" node "$HOOK" 2>&1); GOT=$?
+V=$(vereditos)
+if [ "$GOT" = 0 ] && printf '%s' "$V" | grep -q '"agente_id":"H2"' && printf '%s' "$V" | grep -q '"veredito":"reprovado"'; then
+  ok=$((ok+1)); echo "  ok    (#465) H2 campo de outro nome, mensagem ausente: grava reprovado"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#465) H2 campo de outro nome: exit=$GOT, V=$V, saida=$SAIDA"
+fi
+
+reset_estado
+TH3=$(transcrito_handback '{"report":"Diff conferido, sem linha final."}' H3)
+P=$(pay "$R" "rainforest-mind:revisor" "H3" "" '{"agent_transcript_path":"'"$TH3"'"}')
+SAIDA=$(printf '%s' "$P" | RFM_ESTADO_ROOT="$R" node "$HOOK" 2>&1); GOT=$?
+V=$(vereditos)
+if [ "$GOT" = 0 ] && printf '%s' "$SAIDA" | grep -q '"decision":"block"' && ! printf '%s' "$V" | grep -q '"agente_id":"H3"'; then
+  ok=$((ok+1)); echo "  ok    (#465) H3 handback sem VEREDITO: continua bloqueando, nao grava"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#465) H3 handback sem VEREDITO: exit=$GOT, V=$V, saida=$SAIDA"
+fi
+
+reset_estado
+P=$(pay "$R" "rainforest-mind:revisor" "H1" "Texto livre sem linha final." '{"agent_transcript_path":"'"$TH1"'"}')
+SAIDA=$(printf '%s' "$P" | RFM_ESTADO_ROOT="$R" node "$HOOK" 2>&1); GOT=$?
+V=$(vereditos)
+if [ "$GOT" = 0 ] && printf '%s' "$V" | grep -q '"veredito":"ok"'; then
+  ok=$((ok+1)); echo "  ok    (#465) H4 mensagem do payload fora do vocabulario cede ao handback do transcrito"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#465) H4 payload fora do vocabulario: exit=$GOT, V=$V, saida=$SAIDA"
+fi
+
 echo
 echo "-----------------------------------------"
 echo "== resultado: $ok ok, $falhou falha(s) =="
