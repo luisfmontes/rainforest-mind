@@ -87,6 +87,40 @@ export type RainforestMindPainelDeixado = {
   ferramentas: { tool: string; deny: boolean; isError: boolean }[]
 }
 
+// Painel de PR (/pr): o que se acompanha, a ultima leitura resumida (forma de `resumir` em
+// hooks/pr-puro.mjs mais a hora da ultima atualizacao no GitHub), a linha do tempo e a virada
+// que espera a quietude de 3 min para acordar a sessao. `origem` decide quem pode acordar (D6).
+export type RainforestMindPrOrigem = 'sessao' | 'manual' | 'retomada'
+
+export type RainforestMindPrAcompanhado = { alvo: string; origem: RainforestMindPrOrigem; branch: string }
+
+export type RainforestMindPrResumo = {
+  numero: number
+  titulo: string
+  url: string
+  estado: string
+  branch: string
+  base: string
+  autor: string
+  head: string
+  checks: string
+  mergavel: boolean
+  motivo: string
+  review: string
+  threadsAbertas: number
+  threadsTotal: number
+  comentarios: number
+  atualizadoEm: string
+}
+
+export type RainforestMindPrEvento = { hora: string; icone: string; texto: string }
+
+export type RainforestMindPrPendente = { virada: string; nota: string; ultimaMudancaMs: number }
+
+// Caminhos absolutos de `gh` (fora do repositorio da sessao) e o login de quem esta logado nele,
+// resolvidos uma vez por sessao. Vazio = ainda nao resolvido.
+export type RainforestMindPrFerramentas = { gh: string; eu: string }
+
 declare module 'claude-code' {
   interface PluginState {
     'rainforest-mind': {
@@ -99,6 +133,13 @@ declare module 'claude-code' {
       relogioSessoes: RainforestMindRelogioSessoes | null
       relogioNotaPendente: string | null
       relogioNotaEntregue: string | null
+      prAcompanhado: RainforestMindPrAcompanhado | null
+      prResumo: RainforestMindPrResumo | null
+      prEventos: RainforestMindPrEvento[]
+      prErro: string
+      prPendente: RainforestMindPrPendente | null
+      prFerramentas: RainforestMindPrFerramentas
+      pluginsEmDiaClaude: string
     }
   }
 }
