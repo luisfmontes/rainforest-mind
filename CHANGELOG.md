@@ -27,6 +27,28 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   `/reload-plugins`; a opção **Recarregar sozinho** (desligada) recarrega por conta própria. `/plugins-em-dia`
   força a rodada e responde com as versões.
 
+## 1.54.4 — 2026-10-09
+
+- **O Jardineiro de ideias resume as plantadas em vez de listar todas.** A Ronda 1 traz o total, a contagem por faixa de
+  idade e as 5 mais antigas; com 162 nomes, a mensagem no WhatsApp tinha virado paredão que escondia as rondas que pedem resposta.
+- **A Ronda 5 para de perguntar "algum livro na fila?".** O vault é acervo de consulta; medido em 2026-10-09, a skill
+  `segundo-cerebro` teve zero invocações e os temas dela quase não aparecem nas sessões. Segue conferindo índice x wiki.
+
+## 1.54.3 — 2026-10-09
+
+- **A varredura de baterias não deixa mais teste trocar a identidade git do repositório (Issue #446).** Com
+  `GIT_DIR` ou `GIT_WORK_TREE` herdado do ambiente, o git ignora `-C` e `cd`, e o `git config user.email` das caixas
+  de teste caía no repositório de verdade. `scripts/varrer-baterias.sh` limpa essas variáveis antes de rodar, e confere
+  o `user.*` do repositório depois de cada bateria: a que mudar sai vermelha, com o antes e o depois. O que exportou
+  `GIT_DIR` em 2026-10-08 não foi identificado. Nenhuma bateria reproduz a troca sozinha.
+
+## 1.54.2 — 2026-10-09
+
+- **Banco ocupado não deixa mais colunas da memória faltando em banco antigo (Issue #460).** As migrações de
+  `offset_processado` e `consolidada_em` passam a engolir só "coluna duplicada", como as do #436: com outra sessão
+  escrevendo, a abertura tenta de novo na próxima vez em vez de seguir sem a coluna. Só afeta banco criado por versão
+  bem antiga do plugin.
+
 ## 1.54.1 — 2026-10-09
 
 - **`utilidade --repontuar` mostra o progresso.** A cada 5 sessões refeitas (e na última) sai `repontuar: N de M sessões com

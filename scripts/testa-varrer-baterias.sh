@@ -730,6 +730,51 @@ if ! RFM_BATERIAS_OBRIGATORIAS="$obrig_r" bash "$VARRER" --listar >/dev/null 2>&
 fi
 echo "  PASS (s)"
 
+echo "=== Teste (t): #446 — bateria que muda user.* do repo varrido sai vermelha ==="
+sandbox_t=$(mktemp -d)
+SANDBOXES="$SANDBOXES $sandbox_t"
+git init -q "$sandbox_t/repo"
+git -C "$sandbox_t/repo" config user.email dono@exemplo.invalid
+mkdir -p "$sandbox_t/repo/scripts"
+cat > "$sandbox_t/repo/scripts/testa-suja-config.sh" << 'EOF'
+#!/bin/bash
+git config user.email t@t
+exit 0
+EOF
+saida=$(cd "$sandbox_t/repo" && bash "$VARRER" --so scripts/testa-suja-config.sh 2>&1)
+exitcode=$?
+if [ $exitcode -ne 1 ] || ! echo "$saida" | grep -q "mudou user\.\* do repositorio varrido" || ! echo "$saida" | grep -q "agora: user.email t@t"; then
+  echo "  FAIL (t): bateria que gravou t@t no repo nao saiu vermelha (exit=$exitcode)"
+  echo "$saida"
+  exit 1
+fi
+echo "  PASS (t)"
+
+echo "=== Teste (u): #446 — GIT_DIR herdado nao desvia o git config da caixa para o repo apontado ==="
+sandbox_u=$(mktemp -d)
+SANDBOXES="$SANDBOXES $sandbox_u"
+git init -q "$sandbox_u/alvo"
+git -C "$sandbox_u/alvo" config user.email dono@exemplo.invalid
+git init -q "$sandbox_u/repo"
+mkdir -p "$sandbox_u/repo/scripts"
+cat > "$sandbox_u/repo/scripts/testa-caixa.sh" << 'EOF'
+#!/bin/bash
+caixa=$(mktemp -d)
+git init -q "$caixa" && git -C "$caixa" config user.email t@t
+r=$(git -C "$caixa" config --local --get user.email)
+rm -rf "$caixa"
+[ "$r" = "t@t" ]
+EOF
+saida=$(cd "$sandbox_u/repo" && GIT_DIR="$sandbox_u/alvo/.git" GIT_WORK_TREE="$sandbox_u/alvo" bash "$VARRER" --so scripts/testa-caixa.sh 2>&1)
+exitcode=$?
+email_alvo=$(git -C "$sandbox_u/alvo" config --local --get user.email)
+if [ $exitcode -ne 0 ] || [ "$email_alvo" != "dono@exemplo.invalid" ]; then
+  echo "  FAIL (u): exit=$exitcode, user.email do repo apontado por GIT_DIR virou '$email_alvo'"
+  echo "$saida"
+  exit 1
+fi
+echo "  PASS (u)"
+
 echo ""
 echo "======= TODOS OS TESTES PASSARAM ======="
 exit 0
