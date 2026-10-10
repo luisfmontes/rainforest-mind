@@ -335,8 +335,19 @@ function divergenciaSoNoGlossario(linhasAtuais, linhasEsperadas, dirDoAlvo) {
   return temGlossario ? 'surgiu' : 'sumiu';
 }
 
-function mensagemGlossario(veredito, chaveAgente) {
-  const regere = `  node scripts/ponte.cjs --alvo . --agente ${chaveAgente} --aplicar`;
+// Issue #450: o comando de regenerar roda colado no repo-alvo, onde `scripts/ponte.cjs`
+// nao existe. Vai com o caminho absoluto do ponte.cjs deste plugin e o diretorio do arquivo
+// conferido, entre aspas e com `/` (sem contrabarra que o shell engula). Arquivo lido do
+// stdin (`-`) nao tem diretorio: o `--alvo` fica `.`.
+function comandoRegerar(chaveAgente, dirDoAlvo) {
+  const barras = (c) => c.split(path.sep).join('/');
+  const ponte = barras(path.join(__dirname, 'ponte.cjs'));
+  const alvo = dirDoAlvo ? `"${barras(dirDoAlvo)}"` : '.';
+  return `node "${ponte}" --alvo ${alvo} --agente ${chaveAgente} --aplicar`;
+}
+
+function mensagemGlossario(veredito, chaveAgente, dirDoAlvo) {
+  const regere = `  ${comandoRegerar(chaveAgente, dirDoAlvo)}`;
   const cabeca = veredito === 'surgiu'
     ? 'RECUSADO — o GLOSSARIO.md existe na raiz do alvo, e a ponte não aponta para ele.\n\n' +
       'O arquivo surgiu depois da geração: o bloco não tem a linha que manda ler o glossário.'
@@ -503,7 +514,7 @@ function main() {
       const glossario = divergenciaSoNoGlossario(linhasAtuais, linhasEsperadas, dirDoAlvo);
       if (glossario) {
         const chaveAgente = Object.keys(AGENTES).find((k) => AGENTES[k] === agente);
-        const msg = mensagemGlossario(glossario, chaveAgente);
+        const msg = mensagemGlossario(glossario, chaveAgente, dirDoAlvo);
         if (json) {
           console.log(JSON.stringify({
             arquivo: alvo,
@@ -532,7 +543,7 @@ function main() {
         console.log('RECUSADO — bloco foi editado à mão.\n');
         console.log(`O conteúdo diverge do SKILL.md, mas o hash ${hashNoMarcador} ainda bate, o que significa`);
         console.log('que você editou manualmente o arquivo gerado. Mude o SKILL.md e regere com:');
-        console.log(`\n  node scripts/ponte.cjs --alvo . --agente ${agenteDoAlvo} --aplicar\n`);
+        console.log(`\n  ${comandoRegerar(agenteDoAlvo, dirDoAlvo)}\n`);
         if (divergentes.length > 0) {
           console.log('Primeiras linhas divergentes:');
           for (const div of divergentes.slice(0, 3)) {
@@ -556,7 +567,7 @@ function main() {
         console.log('RECUSADO — o SKILL.md mudou.\n');
         console.log(`O bloco foi gerado com hash ${hashNoMarcador}, mas o SKILL.md atual tem hash ${hashAtual}.`);
         console.log('Regere o arquivo com:\n');
-        console.log(`  node scripts/ponte.cjs --alvo . --agente ${agenteDoAlvo} --aplicar`);
+        console.log(`  ${comandoRegerar(agenteDoAlvo, dirDoAlvo)}`);
       }
       process.exit(2);
     }
@@ -576,7 +587,7 @@ function main() {
       console.log('O bloco foi gerado ANTES de a catraca de hash ser implementada, e diverge do SKILL.md atual.');
       console.log('Não dá para saber se o arquivo foi editado à mão ou se o SKILL.md mudou.\n');
       console.log('Para que a catraca passe a valer e ganhar diagnóstico fino, regere o arquivo com:\n');
-      console.log(`  node scripts/ponte.cjs --alvo . --agente ${agenteDoAlvo} --aplicar`);
+      console.log(`  ${comandoRegerar(agenteDoAlvo, dirDoAlvo)}`);
     }
     process.exit(2);
   }

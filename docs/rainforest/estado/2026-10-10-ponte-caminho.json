@@ -1,0 +1,9 @@
+{
+  "slug": "2026-10-10-ponte-caminho",
+  "titulo": "fluxo/ponte-caminho",
+  "criado_em": "2026-10-10",
+  "leve": {
+    "motivo": "Issue #450: conferir-ponte imprime comando de regenerar com caminho absoluto",
+    "data": "2026-10-10"
+  }
+}
