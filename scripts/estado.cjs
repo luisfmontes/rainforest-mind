@@ -27,6 +27,7 @@
  * Uso:
  *   node scripts/estado.cjs iniciar  --slug <slug> [--titulo "..."]
  *   node scripts/estado.cjs ler      --slug <slug>
+ *   node scripts/estado.cjs deixado  --slug <slug>
  *   node scripts/estado.cjs marcar   --slug <slug> --estagio <e> --status <s> [--json '{...}']
  *   node scripts/estado.cjs proximo  --slug <slug>
  *   node scripts/estado.cjs exigir   --slug <slug> --estagio <e>
@@ -343,6 +344,22 @@ function orfasDoBloco(estagio, bloco) {
   if (!ehObjetoSimples(bloco) || !Array.isArray(bloco.pendentes)) return [];
   const destinos = Array.isArray(bloco.destinos) ? bloco.destinos.filter(ehObjetoSimples) : [];
   return semDestino(bloco.pendentes.filter((p) => typeof p === 'string'), destinos).map((pendente) => ({ estagio, pendente }));
+}
+
+/** Texto numa linha so: quebra de linha e espaco repetido viram um espaco. */
+function umaLinha(x) {
+  return String(x === undefined || x === null ? '' : x).replace(/\s+/g, ' ').trim();
+}
+
+/** Linhas markdown do `deixado` para um bloco: destinos na ordem gravada, depois as orfas. */
+function itensDeixados(estagio, bloco) {
+  if (!ehObjetoSimples(bloco)) return [];
+  const destinos = Array.isArray(bloco.destinos) ? bloco.destinos.filter(ehObjetoSimples) : [];
+  const linhas = destinos
+    .filter((d) => Object.prototype.hasOwnProperty.call(CAMPO_DO_DESTINO, d.destino))
+    .map((d) => `- ${estagio}: ${umaLinha(d.pendente)} → ${d.destino}: ${umaLinha(d[CAMPO_DO_DESTINO[d.destino]])}`);
+  const orfas = orfasDoBloco(estagio, bloco).map((o) => `- ${estagio}: ${umaLinha(o.pendente)} → (sem destino)`);
+  return [...linhas, ...orfas];
 }
 
 function hoje() {
@@ -1733,6 +1750,7 @@ function avisarCarimbosDivergentes(estado) {
 const FLAGS_POR_SUBCOMANDO = {
   iniciar: ['slug', 'titulo'],
   ler: ['slug'],
+  deixado: ['slug'],
   marcar: ['slug', 'estagio', 'status', 'json', 'raiz'],
   proximo: ['slug'],
   exigir: ['slug', 'estagio'],
@@ -2137,6 +2155,13 @@ function main() {
   if (cmd === 'ler') {
     avisarCarimbosDivergentes(estado);
     return console.log(JSON.stringify(estado, null, 2));
+  }
+
+  // #449 (D6): lista markdown "deixado para depois -> destino" de todos os estagios.
+  // Somente leitura: nao grava e nao carimba.
+  if (cmd === 'deixado') {
+    const itens = ESTAGIOS_DO_FLUXO.flatMap((e) => itensDeixados(e, estado[e]));
+    return console.log(itens.length ? itens.join('\n') : 'nada ficou para depois');
   }
 
   if (cmd === 'proximo') {
@@ -2663,7 +2688,7 @@ function main() {
     return;
   }
 
-  console.error('uso: iniciar | ler | marcar | proximo | exigir | liberar | listar | concluido | veredito');
+  console.error('uso: iniciar | ler | deixado | marcar | proximo | exigir | liberar | listar | concluido | veredito');
   process.exit(1);
 }
 

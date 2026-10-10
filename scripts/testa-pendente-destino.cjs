@@ -384,6 +384,80 @@ caso('a checagem de orfa e so do fechar: exigir revisar passa com a mesma orfa',
   assert.strictEqual(r.status, 0, r.stderr);
 });
 
+// ---------------------------------------------------------------- tarefa 5: verbo `deixado`
+
+const deixado = (cx, slug, extra) => estado(cx, ['deixado', '--slug', slug, ...(extra || [])]);
+const DEST_PLANTADA = { pendente: C, destino: 'plantada', ref: '#449' };
+
+caso('deixado de fluxo sem pendencia nem destino diz que nada ficou', () => {
+  const slug = iniciarSo(cx);
+  const r = deixado(cx, slug);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.strictEqual(r.stdout.trim(), 'nada ficou para depois');
+});
+
+caso('deixado lista os destinos de todos os estagios em markdown', () => {
+  const slug = fluxoFechadoAMao(cx, (est) => {
+    est.executar.pendentes = [];
+    est.executar.destinos = [DEST_A, DEST_B, DEST_PLANTADA];
+  });
+  const r = deixado(cx, slug);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.strictEqual(r.stdout.trim().split('\n').join('|'), [
+    `- executar: ${A} → resolvida: rodou: 3 de 3 ok`,
+    `- executar: ${B} → descartada: fora do escopo`,
+    `- executar: ${C} → plantada: #449`,
+  ].join('|'));
+});
+
+caso('deixado poe os destinos do plano antes dos do executar', () => {
+  const slug = fluxoFechadoAMao(cx, (est) => {
+    est.executar.pendentes = []; est.executar.destinos = [DEST_B];
+    est.plano.pendentes = []; est.plano.destinos = [DEST_A];
+  });
+  const linhas = deixado(cx, slug).stdout.trim().split('\n');
+  assert.strictEqual(linhas.length, 2);
+  assert.ok(linhas[0].startsWith('- plano:') && linhas[1].startsWith('- executar:'), linhas.join('|'));
+});
+
+caso('deixado mostra a pendencia orfa como (sem destino) e sai 0', () => {
+  const slug = fluxoFechadoAMao(cx, (est) => { est.executar.pendentes = [A]; });
+  const r = deixado(cx, slug);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.strictEqual(r.stdout.trim(), `- executar: ${A} → (sem destino)`);
+});
+
+caso('deixado com quebra de linha e espacos repetidos mantem um item por linha', () => {
+  const slug = fluxoFechadoAMao(cx, (est) => {
+    est.executar.pendentes = [];
+    est.executar.destinos = [{ pendente: 'x\n- executar: forjado   item', destino: 'resolvida', evidencia: 'linha1\n\nlinha2    fim' }];
+  });
+  const linhas = deixado(cx, slug).stdout.trim().split('\n');
+  assert.strictEqual(linhas.length, 1, linhas.join('|'));
+  assert.strictEqual(linhas[0], '- executar: x - executar: forjado item → resolvida: linha1 linha2 fim');
+});
+
+caso('deixado com slug inexistente sai 1 dizendo que nao existe', () => {
+  const r = deixado(cx, 'slug-que-nao-existe');
+  assert.strictEqual(r.status, 1);
+  assert.ok(r.stderr.includes('nao existe'), r.stderr);
+});
+
+caso('deixado com flag desconhecida sai 1', () => {
+  const slug = iniciarSo(cx);
+  const r = estado(cx, ['deixado', '--slug', slug, '--estagio', 'executar']);
+  assert.strictEqual(r.status, 1);
+  assert.ok(r.stderr.includes('flag desconhecida: --estagio'), r.stderr);
+});
+
+caso('deixado e somente leitura: o arquivo de estado fica igual', () => {
+  const slug = fluxoFechadoAMao(cx, (est) => { est.executar.pendentes = [A, B]; est.executar.destinos = [DEST_A]; });
+  const antes = bytes(cx, slug);
+  const r = deixado(cx, slug);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.strictEqual(bytes(cx, slug), antes);
+});
+
 // ---------------------------------------------------------------- fim
 
 try { fs.rmSync(cx.raiz, { recursive: true, force: true }); } catch (_) { /* limpeza best-effort */ }
