@@ -1132,7 +1132,17 @@ function main() {
       // resolve pela busca do SO, e caminho com espaco quebra sem aspas.
       const nodeBarras = process.execPath.split(path.sep).join("/");
       const raizBarras = raiz.split(path.sep).join("/");
-      const leveDaMensagem = `"${nodeBarras}" "${caminhoEstado}" leve --motivo "<por que>" --repo "${raizBarras}"`;
+      // Issue #474: aspas SIMPLES (literais no bash e no PowerShell); com aspas duplas, um
+      // `$(...)` no nome de uma pasta executaria ao colar. Caminho com aspa simples nao vira comando.
+      const { seguro: colavel, aspas } = require("./lib/comando-colavel.cjs");
+      const podeColar = colavel(nodeBarras, caminhoEstado, raizBarras);
+      const semComando = `(caminho com aspa simples ou caractere de controle: rode o estado.cjs de ${JSON.stringify(caminhoEstado)} com o node de ${JSON.stringify(nodeBarras)})`;
+      const leveDaMensagem = podeColar
+        ? `${aspas(nodeBarras)} ${aspas(caminhoEstado)} leve --motivo '<por que>' --repo ${aspas(raizBarras)}`
+        : `${semComando} leve --motivo '<por que>' --repo ${JSON.stringify(raizBarras)}`;
+      const iniciarDaMensagem = podeColar
+        ? `${aspas(nodeBarras)} ${aspas(caminhoEstado)} iniciar --slug <slug>`
+        : `${semComando} iniciar --slug <slug>`;
       // Saida 2 depende da branch. HEAD destacado: o leve vale por branch, entao manda
       // trocar para uma. Branch padrao de repo rainforest: o leve e recusado ali (regra 11),
       // entao manda despachar de dentro do worktree do fluxo. Demais casos: o leve direto.
@@ -1162,7 +1172,7 @@ function main() {
         `agente '${nomeAgente}' escreve (escreve: true) e so roda no estagio que declara: exige ${exige}; ` +
         `estagio aberto: ${estagioAtivo} (Issue #430, D3/D5)` +
         diagnostico +
-        `\n  saida 1: abrir ou avancar o fluxo ate ${exige} (rainforest: /rainforest-mind:brainstorm ou "${nodeBarras}" "${caminhoEstado}" iniciar --slug <slug>; protheus: /protheus:trabalhar)` +
+        `\n  saida 1: abrir ou avancar o fluxo ate ${exige} (rainforest: /rainforest-mind:brainstorm ou ${iniciarDaMensagem}; protheus: /protheus:trabalhar)` +
         saida2 +
         // Issue #442: o comando comeca por string entre aspas, que PowerShell so roda com `& `.
         "\n  em PowerShell, prefixe `& ` aos comandos acima";

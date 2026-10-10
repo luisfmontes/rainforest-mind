@@ -18,6 +18,21 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   que já existia (a 4ª rodada continua sendo decisão sua) e para antes quando o revisor marca um achado com
   `[design]`: decisão de design sobe para você, não volta ao executor. Roteiro em `skills/revisar/references/laco.md`.
 
+## 1.57.4 — 2026-10-10
+
+- **Os comandos `leve` e `iniciar` que a portaria e o aviso de fluxo imprimem vão entre aspas simples (Issue #474).**
+  Com aspas duplas, colar o comando no bash expandia um `$(...)` que estivesse no nome de uma pasta e executava o que
+  houvesse ali. Aspas simples são literais no bash e no PowerShell, e a dica do `& ` do PowerShell continua valendo.
+  Se o caminho tiver aspa simples, a mensagem mostra os caminhos em vez de um comando para colar.
+
+## 1.57.3 — 2026-10-10
+
+- **Mutação que falhou medindo não vira mais "corte de shell" (Issue #475).** O `conferir-mutacao` suspeitava de
+  corte de shell só pelo tempo, quando a bateria mutada terminava abaixo de 10% do baseline. Com o runner da CI
+  carregado, um baseline lento fazia a mutação legítima sair `pulada`, e a seção 13c de `testa-conferir-fluxo.sh`
+  falhava de vez em quando. Agora, se a saída pós-mutação mostra falha medida (placar com falha, ou o resumo
+  `fail N` do `node --test`), a suspeita não vale.
+
 ## 1.57.1 — 2026-10-10
 
 - **Observação já gravada não trava mais a marca d'água da memória (Issue #452, item 1).** Depois da migração do
