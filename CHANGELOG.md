@@ -21,9 +21,9 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 - **Linha do PR na barra.** Com um PR acompanhado e o pane **PR** fora da tela, a barra acima do prompt ganha uma
   linha com o número, os checks e o merge, nas cores do pane. Some quando o pane aparece ou o PR é mergeado ou fechado.
   `/painel esconder` esconde junto.
-- **`node` por caminho absoluto no mod (#457).** As seis chamadas do mod a scripts do plugin acham o `node` uma vez
-  por sessão, fora do repositório aberto, como o painel de PR já fazia com o `gh`. Um `node.exe` na raiz de um
-  repositório clonado deixa de rodar no lugar dele.
+- **`node` por caminho absoluto no mod (#457).** As seis chamadas do `mod.tsx` a scripts do plugin (barra, relógio,
+  erros e desvio) acham o `node` uma vez por sessão, fora do repositório aberto, como o painel de PR já fazia com o
+  `gh`. A abertura (`hooks/register.ts`) ainda chama pelo nome, com cwd na pasta do plugin (#480).
 
 ## 1.57.1 — 2026-10-10
 

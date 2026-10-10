@@ -39,7 +39,7 @@ pronto quando: com o resumo de `resumir()` sobre as fixtures reais do PR 455 já
 
 ### 3. Fiação no mod: compactar, linha do PR, node absoluto e opções [tipo: implementar]
 atende: D1, D2, D3, D4, D5
-arquivos: `hooks/compactar.ts`, `hooks/mod.tsx`, `hooks/pr.tsx`, `types/index.d.ts`, `.claude-plugin/plugin.json`, `hooks/mod-compactar.test.tsx`, `hooks/mod-pr.test.tsx`, `hooks/mod-painel.test.tsx`
+arquivos: `hooks/compactar.ts`, `hooks/mod.tsx`, `hooks/pr.tsx`, `types/index.d.ts`, `.claude-plugin/plugin.json`, `hooks/mod-compactar.test.tsx`, `hooks/mod-pr.test.tsx`, `hooks/mod-painel.test.tsx`, `hooks/mod-relogio.test.tsx` (emenda: o mock do relógio passa a responder o localizador do node)
 depende de: 1, 2
 paralela: nao
 prova: `bash -c "test -f hooks/mod-compactar.test.tsx && claude plugin test ."`
