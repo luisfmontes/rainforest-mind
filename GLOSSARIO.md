@@ -40,8 +40,8 @@ Cenário: o `trailhq/Graft`, avaliado em 2026-09-01, desceu da trilha instalar p
 Evite: roubar
 
 ## worktree de agente
-Definição: o checkout isolado onde roda o subagente que escreve, criado a partir da ponta de `origin/main`, e não da branch de quem despachou.
-Onde mora: `.claude/worktrees/`, onde os worktrees ficam; `hooks/gate-worktree.cjs`, que barra com exit 2 a escrita de subagente fora de worktree; e `skills/rainforest-mind/references/regra-11.md`, que manda criar o worktree a partir de `origin/main`.
+Definição: o checkout isolado onde roda o subagente que escreve. Nasce do HEAD do diretório da sessão que despacha quando as settings do usuário têm `worktree.baseRef: "head"`; sem a chave (`"fresh"`, o padrão do harness), nasce da ponta de `origin/main`, e não da branch de quem despachou.
+Onde mora: `.claude/worktrees/`, onde os worktrees ficam; `hooks/gate-worktree.cjs`, que barra com exit 2 a escrita de subagente fora de worktree; e `skills/rainforest-mind/references/regra-11.md`, que descreve os dois modos e manda conferir a base em qualquer um deles.
 Cenário: em um clone, `git worktree add .claude/worktrees/x -b fluxo/x origin/main` cria o worktree com `origin/main` no commit A; depois `origin/main` avança para B, e `node scripts/preparar-worktree.cjs --hash <B>` faz `merge --ff-only` e sai com 0 imprimindo `base-ok <B em 12 caracteres> <toplevel>`.
 
 ## portaria

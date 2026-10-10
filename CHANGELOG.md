@@ -10,6 +10,14 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.55.1 — 2026-10-10
+
+- **Worktree do agente pode nascer do commit de trabalho.** Com `"worktree": { "baseRef": "head" }` nas
+  settings do Claude Code, o worktree de `isolation: "worktree"` nasce do HEAD da sessão que despacha, não da ponta
+  de `origin/main`. A regra 11, o `executar` e o glossário descrevem os dois modos; sem a chave (`fresh`, o padrão)
+  nada muda. A conferência de base continua obrigatória nos dois. Despache de dentro do worktree do fluxo, com a
+  árvore limpa.
+
 ## 1.55.0 — 2026-10-09
 
 - **Painel de PR que abre sozinho (`/pr`).** Todo `gh pr create`, `merge`, `checks`, `ready` ou `view` que a sessão

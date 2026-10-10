@@ -1,0 +1,91 @@
+{
+  "slug": "worktree-baseref-head",
+  "titulo": "worktree-baseref-head",
+  "criado_em": "2026-10-10",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "em": "2026-10-10"
+  },
+  "plano": {
+    "status": "ok",
+    "em": "2026-10-10"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-10",
+    "tarefas_ok": 4,
+    "tarefas": 4,
+    "comando": "criterios T1-T4 do plano",
+    "saida": "T1 exit=0, T2 exit=0, T3 1/0, T4 exit=0; prova base condicionadas=0",
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "7bd36fbb",
+        "iteracao": 1,
+        "sessao": "6d0b7cb5-6a37-43b8-b9a4-befd7fdd648f",
+        "ts": "2026-10-10T03:27:38.589Z"
+      }
+    ],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "n/a",
+        "motivo": "so texto normativo"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "so texto normativo"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "so verbete do glossario"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "configuracao do usuario fora do repo"
+      }
+    ],
+    "em": "2026-10-10"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "5650e056865b660ca09fa115cf3c35c150a0ed26",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ac86624f9aa330f57",
+        "veredito": "ok",
+        "em": "2026-10-10",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/6d0b7cb5-6a37-43b8-b9a4-befd7fdd648f/subagents/agent-ac86624f9aa330f57.jsonl"
+      }
+    ],
+    "veredito": "ok",
+    "rodadas": 6,
+    "achados": 1,
+    "base": "7bd36fbb",
+    "head": "5650e05",
+    "achados_abertos": [
+      "nucleo nao nomeia o padrao fresh (baixa)"
+    ],
+    "em": "2026-10-10"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/testa-teto-skills.sh",
+    "saida": "Resultado: 21 OK, 0 FALHA exit=0; criterios T1=0 T2=0 T3=1/0 T4=0; testa-abertura-mod-config 20/0; testa-contexto-sessao 299/0",
+    "sensor_externo": "bash scripts/testa-teto-skills.sh",
+    "em": "2026-10-10"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
