@@ -324,6 +324,24 @@ caso('M2: relistada com destino novo no mesmo json mantem o destino novo e nao a
   assert.deepStrictEqual(bloco(cx, slug, 'executar').destinos, [DEST_A]);
 });
 
+caso('B4: recusa posterior ao reconciliar nao imprime aviso de omissao', () => {
+  const slug = abrir(cx);
+  assert.strictEqual(parcial(cx, slug, { pendentes: [A] }).status, 0);
+  assert.strictEqual(marcar(cx, slug, 'revisar', 'parcial').status, 0);
+  const antes = bytes(cx, slug);
+  const r = parcial(cx, slug, { pendentes: [C] });
+  recusado(r, antes, bytes(cx, slug), ['RECUSADO']);
+  assert.ok(!r.stderr.includes('aviso'), `stderr nao devia ter aviso: ${r.stderr}`);
+});
+
+caso('B4: o aviso de omissao sai quando a gravacao acontece', () => {
+  const slug = abrir(cx);
+  assert.strictEqual(parcial(cx, slug, { pendentes: [A] }).status, 0);
+  const r = parcial(cx, slug, { pendentes: [C] });
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.ok(r.stderr.includes('aviso') && r.stderr.includes(A), r.stderr);
+});
+
 caso('reprovado nao exige destino e mantem as pendencias gravadas', () => {
   const slug = abrir(cx);
   assert.strictEqual(parcial(cx, slug, { pendentes: [A, B] }).status, 0);

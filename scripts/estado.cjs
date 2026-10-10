@@ -2461,13 +2461,14 @@ function main() {
 
     // #449: pendencia so sai com destino — valida `pendentes`/`destinos` do --json
     // antes de qualquer gate que dispara processo, e antes do `gravar`.
+    let avisoPendencias = '';
     {
       const conciliacao = reconciliarPendencias(estagio, estado[estagio], extra, status);
       if (conciliacao.recusa) {
         console.error(conciliacao.recusa);
         process.exit(2);
       }
-      if (conciliacao.aviso) console.error(conciliacao.aviso);
+      avisoPendencias = conciliacao.aviso || ''; // impresso so quando a gravacao vai acontecer (B4)
     }
 
     // D28: voltando a parcial, recusa se há estágio posterior aberto (status ok/aprovado/parcial)
@@ -2696,6 +2697,7 @@ function main() {
       delete blocoNovo.liberado_em;
     }
     estado[estagio] = blocoNovo;
+    if (avisoPendencias) console.error(avisoPendencias);
     gravar(slug, estado);
     console.log(`${estagio}: ${status}`);
     const p = proximo(estado);
