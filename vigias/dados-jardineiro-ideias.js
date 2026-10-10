@@ -40,6 +40,16 @@ for (const o of plantadas) {
   porIdade.get(d).push(o.id);
 }
 
+// Resumo para a mensagem: a lista inteira (162 em 2026-10-09) virou paredão
+// ilegível no WhatsApp e escondia as rondas que pedem resposta. A lista completa
+// continua abaixo, para a Ronda 2 escolher entre todas.
+const faixas = [['ate 7 dias', 0, 7], ['8 a 30 dias', 8, 30], ['31 a 60 dias', 31, 60], ['mais de 60 dias', 61, Infinity]];
+const contagemFaixas = faixas.map(([nome, min, max]) =>
+  nome + ': ' + plantadas.filter((o) => { const d = dia(o.plantada_em); return d >= min && d <= max; }).length);
+const maisAntigas = [...plantadas].sort((a, b) => dia(b.plantada_em) - dia(a.plantada_em)).slice(0, 5);
+console.log('RESUMO DAS PLANTADAS: ' + plantadas.length + ' (' + contagemFaixas.join(' · ') + ')');
+console.log('  5 mais antigas: ' + maisAntigas.map((o) => o.id + ' (' + dia(o.plantada_em) + 'd)').join(', '));
+
 console.log('IDEIAS PLANTADAS: ' + plantadas.length);
 for (const d of [...porIdade.keys()].sort((a, b) => b - a)) {
   console.log('  ' + d + (d === 1 ? ' dia: ' : ' dias: ') + porIdade.get(d).join(', '));
