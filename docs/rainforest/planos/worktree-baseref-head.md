@@ -11,7 +11,7 @@ Design: docs/rainforest/design/worktree-baseref-head.md
 
 ### 1. Regra 11 descreve os dois modos [tipo: docs]
 atende: D2, D3, D4
-arquivos: `skills/rainforest-mind/references/regra-11.md`, `skills/rainforest-mind/SKILL.md`
+arquivos: `skills/rainforest-mind/references/regra-11.md`, `skills/rainforest-mind/SKILL.md`, `skills/rainforest-mind/references/regra-10-runtime.md` (acrescentado após a 1ª revisão: afirmava a base sem condição)
 depende de: nenhuma
 paralela: sim
 mutacao: n/a
