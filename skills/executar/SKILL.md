@@ -301,6 +301,6 @@ próximo estágio recusa com exit 2 enquanto `executar` não estiver `ok`.
 
 **Condição de parada**: tarefa cujo critério de sucesso não dá pra
 verificar — comando que não existe, saída ambígua, agente que não
-completou — não é marcada `ok` por otimismo. Vira pendência nomeada no
-`--json` (ex.: `"pendentes":["tarefa-3: worktree nao respondeu"]`) e o
-estágio fecha `parcial`, não `ok`.
+completou — não vira `ok` por otimismo: vai para `pendentes` e o estágio
+fecha `parcial`. No `ok`, cada pendência precisa de um destino
+(`references/pendencias.md`).

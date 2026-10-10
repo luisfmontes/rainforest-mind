@@ -126,6 +126,7 @@
   "scripts/testa-observar-offset.sh": 2,
   "scripts/testa-observar.sh": 13,
   "scripts/testa-orcamento.sh": 10,
+  "scripts/testa-pendente-destino.cjs": 35,
   "scripts/testa-perfil.sh": 1,
   "scripts/testa-plugin-codex.sh": 1,
   "scripts/testa-poda-dados.sh": 1,

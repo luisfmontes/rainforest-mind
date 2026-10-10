@@ -671,7 +671,7 @@ $E exigir  --slug t-pend --estagio executar >/dev/null
 $E marcar --slug t-pend --estagio executar --status parcial \
   --json '{"tarefas_ok":5,"tarefas":6,"pendentes":["tarefa-6: falta rodar"]}' >/dev/null
 $E marcar --slug t-pend --estagio executar --status ok \
-  --json '{"comando":"tp","saida":"tp-out","tarefas_ok":6,"tarefas":6,"mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"},{"tarefa":2,"resultado":"n/a","motivo":"teste"},{"tarefa":3,"resultado":"n/a","motivo":"teste"},{"tarefa":4,"resultado":"n/a","motivo":"teste"},{"tarefa":5,"resultado":"n/a","motivo":"teste"},{"tarefa":6,"resultado":"n/a","motivo":"teste"}]}' >/dev/null
+  --json '{"comando":"tp","saida":"tp-out","tarefas_ok":6,"tarefas":6,"destinos":[{"pendente":"tarefa-6: falta rodar","destino":"resolvida","evidencia":"rodou: 6 de 6 ok"}],"mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"},{"tarefa":2,"resultado":"n/a","motivo":"teste"},{"tarefa":3,"resultado":"n/a","motivo":"teste"},{"tarefa":4,"resultado":"n/a","motivo":"teste"},{"tarefa":5,"resultado":"n/a","motivo":"teste"},{"tarefa":6,"resultado":"n/a","motivo":"teste"}]}' >/dev/null
 
 igual "pendentes NAO sobrevive ao fechamento ok" "sumiu" "$(node -e "
 const e = JSON.parse(require('fs').readFileSync('$ARQ_T_PEND', 'utf8'));
@@ -685,21 +685,28 @@ igual "catraca_mutacao (armada pelo exigir) sobrevive ao fechamento" "sim" \
   "$(node -e "console.log(JSON.parse(require('fs').readFileSync('$ARQ_T_PEND', 'utf8')).executar.catraca_mutacao ? 'sim' : 'nao')")"
 igual "arquivo do plano sobrevive" "docs/rainforest/planos/t-pend.md" \
   "$(node -e "console.log(JSON.parse(require('fs').readFileSync('$ARQ_T_PEND', 'utf8')).plano.arquivo)")"
+igual "destinos do ok sobrevive ao fechamento" "1" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('$ARQ_T_PEND', 'utf8')).executar.destinos.length)")"
 
-# pendentes REPASSADO explicitamente no --json do fechamento e decisao de quem
-# chama, nao vazamento do merge: continua presente porque foi pedido, nao
-# porque sobrou do bloco anterior.
+# #449: pendentes repassado no --json do `ok` sem destino e RECUSADO (nao e mais
+# "intencao": a pendencia nao pode sumir em silencio nem sobreviver ao fechamento).
+# Com destino para cada uma, o `ok` grava, `pendentes` some mesmo vindo no --json e
+# `destinos` fica.
 $E iniciar --slug t-pend2 >/dev/null
 $E marcar --slug t-pend2 --estagio design --status aprovado >/dev/null
 $E marcar --slug t-pend2 --estagio plano  --status ok >/dev/null
 $E exigir  --slug t-pend2 --estagio executar >/dev/null
 $E marcar --slug t-pend2 --estagio executar --status parcial \
   --json '{"tarefas_ok":1,"tarefas":2,"pendentes":["tarefa-2: falta"]}' >/dev/null
+esperado "ok com pendentes explicito e sem destino e recusado" 2 \
+  $E marcar --slug t-pend2 --estagio executar --status ok \
+  --json '{"comando":"tp2","saida":"tp2-out","tarefas_ok":2,"tarefas":2,"pendentes":["nota: revisado depois"],"mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"},{"tarefa":2,"resultado":"vermelho","fixture":"teste"}]}'
 $E marcar --slug t-pend2 --estagio executar --status ok \
-  --json '{"comando":"tp2","saida":"tp2-out","tarefas_ok":2,"tarefas":2,"pendentes":["nota: revisado depois"],"mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"},{"tarefa":2,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
-igual "pendentes explicito no --json do ok sobrevive (intencao, nao vazamento)" \
-  "nota: revisado depois" \
-  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('docs/rainforest/estado/t-pend2.json', 'utf8')).executar.pendentes[0])")"
+  --json '{"comando":"tp2","saida":"tp2-out","tarefas_ok":2,"tarefas":2,"pendentes":["nota: revisado depois"],"destinos":[{"pendente":"tarefa-2: falta","destino":"resolvida","evidencia":"rodou: 2 de 2 ok"},{"pendente":"nota: revisado depois","destino":"descartada","motivo":"nota informativa"}],"mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"},{"tarefa":2,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
+igual "pendentes some mesmo vindo no --json do ok, quando todas tem destino" "sumiu" \
+  "$(node -e "const e=JSON.parse(require('fs').readFileSync('docs/rainforest/estado/t-pend2.json', 'utf8')).executar; console.log('pendentes' in e ? 'sobreviveu' : 'sumiu')")"
+igual "destinos do ok com pendentes explicito fica com 2 itens" "2" \
+  "$(node -e "console.log(JSON.parse(require('fs').readFileSync('docs/rainforest/estado/t-pend2.json', 'utf8')).executar.destinos.length)")"
 
 # snapshot do revisar (armado pelo exigir) tambem sobrevive ao fechamento ok.
 # Repositorio PROPRIO, nao o "test-repo" da secao 10: aquele leva um "git reset
@@ -737,7 +744,7 @@ $EM exigir  --slug t-pend-mut --estagio executar >/dev/null
 $EM marcar --slug t-pend-mut --estagio executar --status parcial \
   --json '{"tarefas_ok":5,"tarefas":6,"pendentes":["tarefa-6: falta rodar"]}' >/dev/null
 $EM marcar --slug t-pend-mut --estagio executar --status ok \
-  --json '{"comando":"c","saida":"d","tarefas_ok":6,"tarefas":6,"mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
+  --json '{"comando":"c","saida":"d","tarefas_ok":6,"tarefas":6,"destinos":[{"pendente":"tarefa-6: falta rodar","destino":"resolvida","evidencia":"rodou: 6 de 6 ok"}],"mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"teste"}]}' >/dev/null
 mutres=$(node -e "
 const e = JSON.parse(require('fs').readFileSync('docs/rainforest/estado/t-pend-mut.json', 'utf8'));
 console.log('pendentes' in e.executar ? 'sobreviveu' : 'sumiu');

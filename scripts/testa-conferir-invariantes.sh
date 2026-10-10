@@ -217,7 +217,7 @@ assere_base() {
 # lugares —, e quem acrescentasse uma invariante mexeria no número e esqueceria a
 # etiqueta: o placar diria "15" asserindo 16 (achado da quinta revisão).
 ROSTER_ESPERADO="brainstorm executar fechar limpar plano rainforest-mind revisar verificar"
-ROSTER_INVARIANTES=19
+ROSTER_INVARIANTES=21
 ROSTER_ARQUIVOS="$(printf '%s\n' $ROSTER_ESPERADO | wc -l | tr -d ' ')"
 ROSTER_ETIQUETA="ROSTER: as skills protegidas continuam as mesmas ($ROSTER_ARQUIVOS arquivos, $ROSTER_INVARIANTES invariantes)"
 ROSTER_ATUAL=""
@@ -325,8 +325,10 @@ INVARIANTES_ESPERADAS='brainstorm|deve|-|**você** consulta a tool antes da prim
 executar|deve|-|O hash da base é executado `git rev-parse`, nunca digitado
 executar|deve|-|nunca é nomeado
 executar|deve|-|troque o `subagent_type` do despacho pelo agente declarado, mantendo `isolation: "worktree"`
+executar|deve|-|cada pendência precisa de um destino
 fechar|deve|-|O destino da branch é sempre PR
 fechar|deve|-|Árvore suja de algo que não é deste trabalho é condição de parada
+fechar|deve|-|node scripts/estado.cjs deixado --slug <slug>
 fechar|nao_deve|-|CONFIRMO fechar issue
 limpar|deve|-|Nunca entra na remoção
 plano|deve|-|"`bash <bateria>` sai 0" não é critério de pronto

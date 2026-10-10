@@ -10,6 +10,26 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.56.0 — 2026-10-10
+
+- **Pendência do fluxo só sai com destino (Issue #449).** Antes, fechar um estágio `ok`/`aprovado` apagava em silêncio
+  as `pendentes` que o `--json` não repetia. Agora o `marcar` recusa (exit 2) e lista as que faltam. Cada pendência
+  ganha um destino no campo novo `destinos`:
+  - `resolvida`, com `evidencia`;
+  - `plantada`, com `ref` `#<n>`, URL de issue do GitHub ou `ideia:<id>`;
+  - `descartada`, com `motivo`.
+
+  O `destinos` acumula entre chamadas e fica no estado depois do `ok`. Se uma pendência voltar a ser listada, ela
+  perde o destino antigo e o comando avisa no stderr. Destino inválido não conta.
+- **Novo `estado.cjs destinar --slug <s> --estagio <e> --json '{"destinos":[...]}'`.** Grava o destino num estágio
+  já fechado sem mudar o status e sem refazer os gates. É o remédio que o `exigir --estagio fechar` indica.
+- **`parcial` que deixa uma pendência de fora avisa e a mantém.** A pendência só sai da lista com um destino.
+- **`exigir --estagio fechar` recusa pendência sem destino**, também em arquivo de estado antigo ou editado à mão.
+- **Novo `estado.cjs deixado --slug <s>`.** Lista em markdown o que ficou para depois e o destino de cada item.
+  O corpo do PR do `fechar` ganha a seção "Deixado para depois" com essa saída.
+- **Fluxo em andamento com `pendentes` num `parcial` precisa gravar `destinos` antes do `ok`.** Estados já fechados
+  não mudam, e nenhum migra.
+
 ## 1.55.1 — 2026-10-10
 
 - **Worktree do agente pode nascer do commit de trabalho.** Com `"worktree": { "baseRef": "head" }` nas

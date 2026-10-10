@@ -11,8 +11,14 @@ Abre sempre com:
 node scripts/estado.cjs exigir --slug <slug> --estagio fechar
 ```
 
-Exit 2 significa que `verificar` ainda não fechou com `ok` — pare, não
-force `marcar` por cima.
+Exit 2 significa que `verificar` ainda não fechou com `ok`, ou que algum
+estágio ainda tem pendência sem destino — pare, não force `marcar` por cima
+nem edite o arquivo de estado. No segundo caso o remédio é gravar o `destinos`
+da pendência com `node scripts/estado.cjs destinar --slug <slug> --estagio <e> --json '{"destinos":[...]}'`
+(resolvida com `evidencia`, plantada com `ref`, descartada com `motivo`), como a
+mensagem do próprio `exigir` mostra. O `destinar` grava destinos (acrescenta, ou substitui o de uma
+pendência que já tinha) e tira de `pendentes` as destinadas: não muda `status` nem
+refaz os gates de evidência do estágio.
 
 Seis passos, nesta ordem.
 
@@ -95,7 +101,7 @@ Isso não tira a palavra do usuário: se **ele** disser outra coisa (mergear
 direto, manter a branch), vale o que ele disse, e é isso que vai em `acao` no
 fechamento do estágio.
 
-**Corpo do PR — três seções, nesta ordem.** O PR é o gargalo da revisão humana;
+**Corpo do PR — quatro seções, nesta ordem.** O PR é o gargalo da revisão humana;
 o corpo existe para torná-la barata. Sem preâmbulo, prosa curta:
 
 ```markdown
@@ -109,6 +115,9 @@ o corpo existe para torná-la barata. Sem preâmbulo, prosa curta:
 ## Perigo de merge
 **Porta:** <mão dupla | mão única> — <uma linha, se precisar>
 **Raio de impacto:** <uma palavra> — <o que pode quebrar, se precisar>
+
+## Deixado para depois
+<a saída do `deixado`, colada como está>
 ```
 
 - **Resumo**: escolha a menor vista que serve — pseudocódigo para lógica, árvore
@@ -122,6 +131,7 @@ o corpo existe para torná-la barata. Sem preâmbulo, prosa curta:
   única** é o que age no mundo e não volta (dado apagado, publicação, migração,
   mensagem enviada). Mão dupla com raio pequeno pede revisão leve — dizer isso
   é o que poupa o tempo de quem revisa.
+- **Deixado para depois**: cole a saída de `node scripts/estado.cjs deixado --slug <slug>` como está, inclusive a linha `nada ficou para depois`. É a resposta, no PR, ao que o fluxo adiou: cada pendência com o seu destino (resolvida, plantada ou descartada).
 
 Template enxertado da skill `pr` (mattpocock/skills v1.3, MIT), que adapta o
 `show-me` de Dex Horthy (HumanLayer).

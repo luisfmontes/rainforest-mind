@@ -1,0 +1,134 @@
+{
+  "slug": "2026-10-09-pendente-destino",
+  "titulo": "2026-10-09-pendente-destino",
+  "criado_em": "2026-10-09",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-10-09-pendente-destino.md",
+    "em": "2026-10-09"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-09-pendente-destino.md",
+    "decisoes_usuario": "U1 estrito, U2 deixado sai 0",
+    "em": "2026-10-09"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-09",
+    "tarefas_ok": 8,
+    "tarefas": 8,
+    "comando": "node scripts/testa-pendente-destino.cjs",
+    "saida": "71 ok, 0 falha(s)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "plantada com ref que nao e issue nem ideia e recusada"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "ok com pendencia sem destino e recusado em vez de apagar em silencio"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "parcial que omite a pendencia anterior continua com ela em pendentes"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "exigir fechar recusa pendencia sem destino num bloco editado a mao"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "deixado lista os destinos de todos os estagios em markdown"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "docs; invariantes 21 ok"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "registro de bateria"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "versao; testa-versao ok 5"
+      }
+    ],
+    "em": "2026-10-10",
+    "reaberto_por_revisao": "revisor ae5f398938d8f23d4, briefing sem linha Slug",
+    "destinos": [
+      {
+        "pendente": "M1: remedio do exigir fechar falha em executar/verificar (verbo destinar)",
+        "destino": "resolvida",
+        "evidencia": "c4be074c verbo destinar; testa-pendente-destino 71 ok; mutacao vermelha"
+      },
+      {
+        "pendente": "M2: pendencia relistada coberta por destino antigo",
+        "destino": "resolvida",
+        "evidencia": "b89ce0b0; mutacao relistadas.length vermelha (conferida na janela principal)"
+      },
+      {
+        "pendente": "M3: destinos invalido editado a mao passa no fechar e no deixado",
+        "destino": "resolvida",
+        "evidencia": "c9e519ce; mutacao destinoValido vermelha"
+      },
+      {
+        "pendente": "B4: aviso do parcial sai antes dos gates",
+        "destino": "resolvida",
+        "evidencia": "15a82b09; mutacao vermelha"
+      },
+      {
+        "pendente": "B5: destino nao-string aceito",
+        "destino": "resolvida",
+        "evidencia": "476efd31; mutacao typeof vermelha"
+      },
+      {
+        "pendente": "N6: design e plano dizem 1.55.0",
+        "destino": "resolvida",
+        "evidencia": "design D7 e emendas atualizados para 1.56.0"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "fda059e4d82ab5f7cabb9c4bfbee276857d89e08",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a728807e68ea73fe7",
+        "veredito": "ok",
+        "em": "2026-10-10",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/3f823b5e-a8e7-4f91-bb68-e29874374c76/subagents/agent-a728807e68ea73fe7.jsonl"
+      }
+    ],
+    "achados": 0,
+    "base": "1f5007f0",
+    "head": "fda059e",
+    "nota": "2 achados baixos de doc (skills executar/fechar) corrigidos depois do veredito em fda059e: so texto, invariantes 21 ok, fechar-destino 32 ok",
+    "em": "2026-10-10"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/varrer-baterias.sh; bash scripts/testa-plugin-codex.sh; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-09-pendente-destino",
+    "saida": "218 de 219 verdes; a vermelha (testa-plugin-codex, ancora do corpo de fechar) re-medida em commit proprio e verde exit 0; mutacoes tarefas 1-5 vermelho, 6-8 n/a",
+    "exit": 0,
+    "em": "2026-10-10"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

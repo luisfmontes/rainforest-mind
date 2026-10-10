@@ -27,6 +27,8 @@
  * Uso:
  *   node scripts/estado.cjs iniciar  --slug <slug> [--titulo "..."]
  *   node scripts/estado.cjs ler      --slug <slug>
+ *   node scripts/estado.cjs deixado  --slug <slug>
+ *   node scripts/estado.cjs destinar --slug <slug> --estagio <e> --json '{"destinos":[...]}'
  *   node scripts/estado.cjs marcar   --slug <slug> --estagio <e> --status <s> [--json '{...}']
  *   node scripts/estado.cjs proximo  --slug <slug>
  *   node scripts/estado.cjs exigir   --slug <slug> --estagio <e>
@@ -187,6 +189,11 @@ function estaFechado(estagio, bloco) {
 // "Condição de parada" — por isso entram nesta lista. Um campo novo com o mesmo
 // papel entra aqui quando nascer. O rastro histórico da reprovação (criterio,
 // comando, saida, faltou) fica no bloco do estágio que reprovou e não é efêmero.
+//
+// `destinos` (#449) NAO entra aqui, de proposito: ele e o rastro de para onde cada
+// pendencia foi (resolvida, plantada, descartada) e sobrevive ao `ok` para o `fechar`
+// lista-lo no PR. Quem "completar" esta lista com ele apaga justamente o que a
+// trava de pendencia sem destino existe para guardar.
 const CAMPOS_EFEMEROS = ['pendentes', 'reaberto_por', 'em_voo'];
 
 // Teto de tentativas de reprovação consecutiva. Na terceira, `exigir` do upstream
@@ -209,6 +216,167 @@ function baseParaFundir(estagio, blocoAnterior, statusNovo, extra) {
     if (!(campo in extra)) delete base[campo];
   }
   return base;
+}
+
+// ---------------------------------------------------------------- pendencia com destino (#449)
+//
+// Uma pendencia gravada em `pendentes` nao some em silencio: para o estagio fechar
+// `ok`/`aprovado`, cada uma precisa de um destino em `destinos` — resolvida (com
+// `evidencia`), plantada (com `ref`) ou descartada (com `motivo`). Casa pelo TEXTO
+// exato da pendencia (as `pendentes` continuam strings, nenhum estado migra).
+
+// Os sete estagios do fluxo, na ordem. Lista fixa de proposito: um arquivo de estado
+// pode ter chave que nao e estagio (ex.: `revisar_historico_1_23_0`).
+const ESTAGIOS_DO_FLUXO = ['arqueologia', 'design', 'plano', 'executar', 'revisar', 'verificar', 'fechar'];
+
+// Formas aceitas de `ref` de uma pendencia `plantada`: `#<n>`, URL de issue do GitHub
+// ou `ideia:<id>`. A terceira copia o `RE_ID` de scripts/ideias.cjs:101 (o modulo nao
+// exporta nada, e um `require` o executaria). O id nao e conferido contra o
+// ideias.jsonl, que mora fora do repositorio: o formato e a trava.
+const REF_PLANTADA = [
+  /^#[1-9][0-9]*$/,
+  /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/issues\/[1-9][0-9]*$/,
+  /^ideia:[a-z0-9]+(?:-[a-z0-9]+)*$/,
+];
+const CAMPO_DO_DESTINO = { resolvida: 'evidencia', plantada: 'ref', descartada: 'motivo' };
+
+function ehObjetoSimples(x) {
+  return !!x && typeof x === 'object' && !Array.isArray(x);
+}
+
+/** Valida um item de `destinos`. Devolve o motivo da recusa ou null. */
+function validarDestino(d, universo) {
+  if (!ehObjetoSimples(d)) return `item de 'destinos' nao e objeto: ${JSON.stringify(d)}`;
+  if (typeof d.pendente !== 'string' || !universo.includes(d.pendente)) {
+    return `'pendente' nao casa com nenhuma pendencia do bloco: ${JSON.stringify(d.pendente)}`;
+  }
+  if (typeof d.destino !== 'string' || !Object.prototype.hasOwnProperty.call(CAMPO_DO_DESTINO, d.destino)) {
+    return `'destino' invalido em ${JSON.stringify(d.pendente)}: ${JSON.stringify(d.destino)} — use resolvida|plantada|descartada`;
+  }
+  const campo = CAMPO_DO_DESTINO[d.destino];
+  const valor = typeof d[campo] === 'string' ? d[campo].trim() : '';
+  const valido = d.destino === 'plantada' ? REF_PLANTADA.some((re) => re.test(valor)) : valor !== '';
+  if (!valido) {
+    const forma = d.destino === 'plantada' ? ' no formato #<n>, URL de issue do GitHub ou ideia:<id>' : ' nao vazio';
+    return `destino '${d.destino}' de ${JSON.stringify(d.pendente)} exige '${campo}'${forma} (recebido: ${JSON.stringify(d[campo])})`;
+  }
+  return null;
+}
+
+/**
+ * Concilia `pendentes` e `destinos` do `--json` de um `marcar` com o bloco anterior.
+ * Funcao pura: devolve `{ recusa }` (o chamador imprime e sai 2) e, quando passa,
+ * pode reescrever `extra.destinos`/`extra.pendentes` com o resultado acumulado.
+ */
+function reconciliarPendencias(estagio, anterior, extra, status) {
+  const temPend = Object.prototype.hasOwnProperty.call(extra, 'pendentes');
+  const temDest = Object.prototype.hasOwnProperty.call(extra, 'destinos');
+  if (temPend && !(Array.isArray(extra.pendentes) && extra.pendentes.every((p) => typeof p === 'string'))) {
+    return { recusa: "RECUSADO: 'pendentes' tem de ser uma lista de textos." };
+  }
+  if (temDest && !(Array.isArray(extra.destinos) && extra.destinos.every(ehObjetoSimples))) {
+    return { recusa: "RECUSADO: 'destinos' tem de ser uma lista de objetos {pendente, destino, evidencia|ref|motivo}." };
+  }
+  const ant = ehObjetoSimples(anterior) ? anterior : {};
+  const antPend = Array.isArray(ant.pendentes) ? ant.pendentes.filter((p) => typeof p === 'string') : [];
+  const antDest = Array.isArray(ant.destinos) ? ant.destinos.filter(ehObjetoSimples) : [];
+  const novasPend = temPend ? extra.pendentes : [];
+  const novosDest = temDest ? extra.destinos : [];
+  const universo = [...new Set([...antPend, ...novasPend, ...antDest.map((d) => d.pendente)])];
+  for (const d of novosDest) {
+    const erro = validarDestino(d, universo);
+    if (erro) return { recusa: `RECUSADO: ${erro}` };
+  }
+  // `acum`: destinos do bloco anterior mais os do --json, o mais novo por `pendente`
+  // vence (a fusao do `marcar` e rasa e substituiria a lista inteira).
+  // Pendencia relistada no --json perde o destino do bloco anterior (volta a ser
+  // pendente), a menos que o MESMO --json traga destino novo para ela.
+  const relistadas = [...new Set(novasPend)].filter((p) => (
+    antDest.some((d) => d.pendente === p && destinoValido(d)) && !novosDest.some((d) => d.pendente === p)
+  ));
+  const porPendente = new Map();
+  for (const d of [...antDest.filter((x) => !relistadas.includes(x.pendente)), ...novosDest]) porPendente.set(d.pendente, d);
+  const acum = [...porPendente.values()];
+  // O D3 usa o MESMO predicado que decide hoje se `pendentes` e apagado no `ok`.
+  const terminal = estaFechado(estagio, { status });
+  const uniao = [...new Set([...antPend, ...novasPend])];
+  const faltam = terminal ? semDestino(uniao, acum) : [];
+  if (faltam.length) {
+    return {
+      recusa: [
+        `RECUSADO: '${estagio}' nao fecha '${status}' com pendencia sem destino (${faltam.length}):`,
+        ...faltam.map((p) => `  - ${p}`),
+        `Grave o destino de cada uma: --json '{"destinos":[{"pendente":"<texto exato>","destino":"resolvida","evidencia":"..."}]}'`,
+        '(resolvida exige evidencia; plantada exige ref: #<n>, URL de issue ou ideia:<id>; descartada exige motivo)',
+      ].join('\n'),
+    };
+  }
+  if (acum.length || relistadas.length) extra.destinos = acum;
+  if (terminal) {
+    delete extra.pendentes;
+    return {};
+  }
+  // Status nao terminal (D5): `pendentes` e o universo menos as destinadas. Uma
+  // pendencia anterior que o --json deixou de fora continua pendente (so um destino a
+  // tira) e o stderr diz qual foi. Fluxo sem pendencia nao ganha o campo.
+  const pendNovas = temPend ? extra.pendentes : null;
+  const persistem = semDestino(uniao, acum);
+  const avisos = [];
+  if (pendNovas !== null) {
+    const omitidas = semDestino(antPend.filter((p) => !pendNovas.includes(p)), acum);
+    if (omitidas.length) {
+      avisos.push([
+        `aviso: '${estagio}': pendencia(s) anterior(es) sem destino ficou(aram) fora do --json e continua(m) pendente(s):`,
+        ...omitidas.map((p) => `  - ${p}`),
+      ].join('\n'));
+    }
+  }
+  if (relistadas.length) {
+    avisos.push([
+      `aviso: '${estagio}': pendencia relistada perde o destino anterior:`,
+      ...relistadas.map((p) => `  - ${p}`),
+    ].join('\n'));
+  }
+  if (Array.isArray(ant.pendentes) || temPend) extra.pendentes = persistem;
+  return avisos.length ? { aviso: avisos.join('\n') } : {};
+}
+
+/** Destino que passa em `validarDestino` (campo certo, texto nao vazio). Bloco editado a mao pode trazer lixo. */
+function destinoValido(d) {
+  return validarDestino(d, [ehObjetoSimples(d) ? d.pendente : null]) === null;
+}
+
+/** Pendencias da lista sem destino VALIDO em `destinos[].pendente`. */
+function semDestino(pendentes, destinos) {
+  const destinadas = new Set(destinos.filter(destinoValido).map((d) => d.pendente));
+  return pendentes.filter((p) => !destinadas.has(p));
+}
+
+/**
+ * Pendencias de um bloco de estagio que nao tem destino. Ignora bloco ausente e
+ * `pendentes` que nao e lista (arquivo editado a mao). Definicao unica de "orfa",
+ * usada pelo `exigir --estagio fechar` e pelo `deixado`.
+ */
+function orfasDoBloco(estagio, bloco) {
+  if (!ehObjetoSimples(bloco) || !Array.isArray(bloco.pendentes)) return [];
+  const destinos = Array.isArray(bloco.destinos) ? bloco.destinos.filter(ehObjetoSimples) : [];
+  return semDestino(bloco.pendentes.filter((p) => typeof p === 'string'), destinos).map((pendente) => ({ estagio, pendente }));
+}
+
+/** Texto numa linha so: quebra de linha e espaco repetido viram um espaco. */
+function umaLinha(x) {
+  return String(x === undefined || x === null ? '' : x).replace(/\s+/g, ' ').trim();
+}
+
+/** Linhas markdown do `deixado` para um bloco: destinos na ordem gravada, depois as orfas. */
+function itensDeixados(estagio, bloco) {
+  if (!ehObjetoSimples(bloco)) return [];
+  const destinos = Array.isArray(bloco.destinos) ? bloco.destinos.filter(ehObjetoSimples) : [];
+  const linhas = destinos
+    .filter(destinoValido)
+    .map((d) => `- ${estagio}: ${umaLinha(d.pendente)} → ${d.destino}: ${umaLinha(d[CAMPO_DO_DESTINO[d.destino]])}`);
+  const orfas = orfasDoBloco(estagio, bloco).map((o) => `- ${estagio}: ${umaLinha(o.pendente)} → (sem destino)`);
+  return [...linhas, ...orfas];
 }
 
 function hoje() {
@@ -1599,6 +1767,8 @@ function avisarCarimbosDivergentes(estado) {
 const FLAGS_POR_SUBCOMANDO = {
   iniciar: ['slug', 'titulo'],
   ler: ['slug'],
+  deixado: ['slug'],
+  destinar: ['slug', 'estagio', 'json'],
   marcar: ['slug', 'estagio', 'status', 'json', 'raiz'],
   proximo: ['slug'],
   exigir: ['slug', 'estagio'],
@@ -2005,6 +2175,40 @@ function main() {
     return console.log(JSON.stringify(estado, null, 2));
   }
 
+  // #449 (D6): lista markdown "deixado para depois -> destino" de todos os estagios.
+  // Somente leitura: nao grava e nao carimba.
+  if (cmd === 'deixado') {
+    const itens = ESTAGIOS_DO_FLUXO.flatMap((e) => itensDeixados(e, estado[e]));
+    return console.log(itens.length ? itens.join('\n') : 'nada ficou para depois');
+  }
+
+  // #449 (M1): grava so `destinos` num bloco que ja existe — nao muda `status`, `em`
+  // nem outro campo, e nao roda gate de evidencia. E o remedio do `exigir fechar` para
+  // pendencia orfa em estagio ja fechado, onde repetir o `marcar` refaria os gates.
+  if (cmd === 'destinar') {
+    const recusa = (msg) => { console.error(`RECUSADO: ${msg}`); process.exit(2); };
+    const estagio = arg('estagio');
+    const bloco = ESTAGIOS_DO_FLUXO.includes(estagio) ? estado[estagio] : null;
+    if (!ehObjetoSimples(bloco)) recusa(`'${estagio}' nao tem bloco no estado de ${slug}.`);
+    const j = arg('json', false);
+    if (j === null) recusa('destinar exige --json \'{"destinos":[...]}\'.');
+    let extra;
+    try { extra = JSON.parse(j); } catch (err) { console.error(`erro: --json nao e JSON valido: ${err.message}`); process.exit(1); }
+    if (!ehObjetoSimples(extra) || Object.keys(extra).length !== 1 || !Object.prototype.hasOwnProperty.call(extra, 'destinos')) {
+      recusa("destinar aceita so a chave 'destinos' no --json.");
+    }
+    if (!Array.isArray(extra.destinos) || extra.destinos.length === 0) recusa("'destinos' tem de ser uma lista nao vazia.");
+    // Status 'parcial' so escolhe o caminho nao terminal da conciliacao (sem exigir destino de tudo).
+    const conciliacao = reconciliarPendencias(estagio, bloco, extra, 'parcial');
+    if (conciliacao.recusa) { console.error(conciliacao.recusa); process.exit(2); }
+    const novo = { ...bloco, destinos: extra.destinos };
+    if (Object.prototype.hasOwnProperty.call(extra, 'pendentes')) novo.pendentes = extra.pendentes;
+    estado[estagio] = novo;
+    gravar(slug, estado);
+    console.log(`${estagio}: ${extra.destinos.length} destino(s) gravado(s); status ${bloco.status} intacto`);
+    return;
+  }
+
   if (cmd === 'proximo') {
     avisarCarimbosDivergentes(estado);
     const p = proximo(estado);
@@ -2078,6 +2282,21 @@ function main() {
 
     const falta = faltando(estado, estagio);
     if (!falta.length) {
+      // #449 (D6): defesa para arquivo antigo ou editado a mao — o `marcar` ja barra
+      // o caminho normal. So o `fechar`, e so estagios do fluxo (nao toda chave).
+      if (estagio === 'fechar') {
+        const orfas = ESTAGIOS_DO_FLUXO.flatMap((e) => orfasDoBloco(e, estado[e]));
+        if (orfas.length) {
+          const estagiosOrfaos = [...new Set(orfas.map((o) => o.estagio))];
+          console.error([
+            "RECUSADO: 'fechar' exige que toda pendencia tenha destino. Sem destino:",
+            ...orfas.map((o) => `  ${o.estagio}: ${o.pendente}`),
+            'Grave o destino (nao muda status nem refaz gate):',
+            ...estagiosOrfaos.map((e) => `  node scripts/estado.cjs destinar --slug ${slug} --estagio ${e} --json '{"destinos":[...]}'`),
+          ].join('\n'));
+          process.exit(2);
+        }
+      }
       console.log(`ok: pre-requisitos de '${estagio}' fechados`);
       // Capturar snapshot ao exigir revisar, para detectar mutacao depois.
       // Zera a janela de vereditos (D6) — cada `exigir revisar` abre uma
@@ -2268,6 +2487,18 @@ function main() {
         console.error(recusa_carimbos);
         process.exit(2);
       }
+    }
+
+    // #449: pendencia so sai com destino — valida `pendentes`/`destinos` do --json
+    // antes de qualquer gate que dispara processo, e antes do `gravar`.
+    let avisoPendencias = '';
+    {
+      const conciliacao = reconciliarPendencias(estagio, estado[estagio], extra, status);
+      if (conciliacao.recusa) {
+        console.error(conciliacao.recusa);
+        process.exit(2);
+      }
+      avisoPendencias = conciliacao.aviso || ''; // impresso so quando a gravacao vai acontecer (B4)
     }
 
     // D28: voltando a parcial, recusa se há estágio posterior aberto (status ok/aprovado/parcial)
@@ -2496,6 +2727,7 @@ function main() {
       delete blocoNovo.liberado_em;
     }
     estado[estagio] = blocoNovo;
+    if (avisoPendencias) console.error(avisoPendencias);
     gravar(slug, estado);
     console.log(`${estagio}: ${status}`);
     const p = proximo(estado);
@@ -2504,7 +2736,7 @@ function main() {
     return;
   }
 
-  console.error('uso: iniciar | ler | marcar | proximo | exigir | liberar | listar | concluido | veredito');
+  console.error('uso: iniciar | ler | deixado | destinar | marcar | proximo | exigir | liberar | listar | concluido | veredito');
   process.exit(1);
 }
 

@@ -1,0 +1,131 @@
+Data: 2026-10-09
+Termos: pendentes, destinos, deixado para depois, CAMPOS_EFEMEROS
+
+$ gh issue list --state all --search "pendentes" --limit 200 --json number,title,state
+[{"number":449,"state":"OPEN","title":"Deixado para depois evapora: pendentes somem no ok e o fechar nao confere"},{"number":412,"state":"CLOSED","title":"arqueologia: gravar o mapa na pasta de legado que o repo já usa"},{"number":207,"state":"CLOSED","title":"poda-estagio.cjs devolve null em toda branch fluxo/<slug>: copia divergente do resolvedor canonico, bateria verde"},{"number":86,"state":"CLOSED","title":"observar.cjs sem argumento processa TODAS as marcas pendentes, mas o cabeçalho diz que processa só a mais recente"},{"number":148,"state":"CLOSED","title":"reaberto_por aceita texto livre do --json, e exigir recusa onde marcar deixa passar"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"},{"number":303,"state":"CLOSED","title":"Gemeo Python de conferir-entrega congelou: 21 falhas na main e o portao do CONTRIBUTING esta vermelho"}]
+
+
+$ gh issue list --state all --search "destinos" --limit 200 --json number,title,state
+[{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"}]
+
+
+$ gh issue list --state all --search "deixado para depois" --limit 200 --json number,title,state
+[{"number":449,"state":"OPEN","title":"Deixado para depois evapora: pendentes somem no ok e o fechar nao confere"},{"number":424,"state":"CLOSED","title":"Painel: 'Deixado para depois' nunca fecha item resolvido e conta Q de decisão como pendência"},{"number":110,"state":"CLOSED","title":"O batedor nunca ve as ideias: ideias.jsonl mora em ~/.rainforest e o ROOT cai no repo"},{"number":1,"state":"CLOSED","title":"Briefing nao diz o ato de entregar: subagente nomeado termina o trabalho e nao devolve (3 de 3)"}]
+
+
+$ gh issue list --state all --search "CAMPOS_EFEMEROS" --limit 200 --json number,title,state
+[{"number":449,"state":"OPEN","title":"Deixado para depois evapora: pendentes somem no ok e o fechar nao confere"},{"number":298,"state":"CLOSED","title":"gate-agente-em-voo promete avisar UMA vez e repete a cada turno em sessao interativa"},{"number":148,"state":"CLOSED","title":"reaberto_por aceita texto livre do --json, e exigir recusa onde marcar deixa passar"}]
+
+
+$ gh pr list --state all --search "pendentes" --limit 200 --json number,title,state
+[{"number":54,"state":"MERGED","title":"estado.cjs: 'pendentes' nao sobrevive ao fechamento terminal-positivo"},{"number":325,"state":"MERGED","title":"memoria: aviso de captura parada ignora marca de transcrito apagado"},{"number":252,"state":"MERGED","title":"fluxo: fecha o registro da Régua 3 (concluído na janela principal)"},{"number":451,"state":"MERGED","title":"Glossario de dominio por repositorio (GLOSSARIO.md), versao 1.52.0"},{"number":62,"state":"MERGED","title":"As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada"},{"number":96,"state":"MERGED","title":"Fecha #86: cabecalho de observar.cjs alinhado ao codigo, mais --help e --seco"},{"number":59,"state":"MERGED","title":"O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas"}]
+
+
+$ gh pr list --state all --search "destinos" --limit 200 --json number,title,state
+[{"number":66,"state":"MERGED","title":"Fecha a #61: criterio numerado vira contrato de retorno (P1, P2, P3, P4, P7)"}]
+
+
+$ gh pr list --state all --search "deixado para depois" --limit 200 --json number,title,state
+[{"number":425,"state":"MERGED","title":"Versao 1.46.1: deixado para depois fecha item resolvido e ignora Q de decisao"},{"number":422,"state":"MERGED","title":"Versao 1.45.0: barra de sessao e painel /painel no mod (enxerto do terminal-desk)"},{"number":451,"state":"MERGED","title":"Glossario de dominio por repositorio (GLOSSARIO.md), versao 1.52.0"}]
+
+
+$ gh pr list --state all --search "CAMPOS_EFEMEROS" --limit 200 --json number,title,state
+[{"number":132,"state":"CLOSED","title":"Fluxo 1 — o ciclo reprovado->executar vira maquina, e ok sem evidencia nao fecha"},{"number":54,"state":"MERGED","title":"estado.cjs: 'pendentes' nao sobrevive ao fechamento terminal-positivo"}]
+
+
+$ git ls-remote --heads origin | grep -F "pendentes"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "destinos"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "deixado para depois"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "CAMPOS_EFEMEROS"
+(vazio)
+
+$ git log --all --grep="pendentes" --oneline
+61b2ffef E12 regra 16: Q para decisões independentes e recomendada obrigatória
+71208b25 estado: zerar-issues-11 planejado
+5a7f7955 plano: emenda 4, baterias da utilidade independentes da maquina
+d5f4baab utilidade: teto por passada e servidas_sem_id no log (tarefa 7)
+ed03c4a2 tarefa 3: pontuação dentro da manutenção, sessões pendentes
+2ac92476 depurar: teste de regressao para o falso aviso de captura parada
+c1b97a25 Merge origin/main na regua selada: livro de repos com as duas linhas
+c947be97 fluxo invariante-de-comportamento-nas-skills: fecha com PR #306
+3e967643 revisar rodada 4: reprovado, 1 bloqueante e 6 menores
+9dc9c00b Registra a reancoragem e refaz a evidencia de instalacao
+0ed69b90 memoria: reconciliar relê o estado antes de sondar cada observacao
+413525e1 memoria: reconciliar store/update/merge/skip do acervo pendente
+ef77e1e2 A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241) (#255)
+a8e1f639 fluxo: fecha o registro da Régua 3 (concluído na janela principal) (#252)
+c90a0c30 Revisar: REPROVADO com 5 achados; executar reaberto
+a317711f Plano: 7 tarefas para os 7 itens do acoplamento do ponytail
+af79d05e Versao 1.7.0 (MINOR): entra a skill montar-corpus
+30d9105f Plano: regra de parada declarada para a trava
+8dd9f63e Conserte: robustez do verbo concluido no estado.cjs
+ab3776e6 Fluxo 6: os dois achados da auditoria cross-model (codex)
+d50345d8 Fluxo 6: os dois achados da auditoria cross-model (codex)
+5e0a4c4e Fluxo 6 T4+T6: ganchos de portoes no estado, e a cobertura deixa de ser inerte
+aefaa17a Fluxo 6 T4+T6: ganchos de portoes no estado, e a cobertura deixa de ser inerte
+b2aa0b07 Vigias T3: a catraca de encoding aprende a assinatura OEM, e o passado e backfill
+d92f27a2 Vigias T3: a catraca de encoding aprende a assinatura OEM, e o passado e backfill
+4bed4428 Adicionar casos de teste para mutações T10, T11, T12
+d68c53c1 Adicionar casos de teste para mutações T10, T11, T12
+d1a35191 Tarefas 10, 11, 12 - emenda pós-revisão conselho
+4678970f Tarefas 10, 11, 12 - emenda pós-revisão conselho
+839b414a Fecha #86: cabecalho de observar.cjs alinhado ao codigo, mais --help e --seco (#96)
+a79e116d Fecha #86: cabecalho de observar.cjs alinhado ao codigo, mais --help e --seco (#96)
+c3ab6cf1 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+62ca78d5 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+c0508a73 As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada (#62)
+465f2544 As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada (#62)
+1c68627a O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas (#59)
+b4704ff8 O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas (#59)
+bec11b87 Conserta o merge do marcar para nao deixar pendentes sobreviver a um fechamento ok (#54)
+8e284dca Conserta o merge do marcar para nao deixar pendentes sobreviver a um fechamento ok (#54)
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+c25afc4e O verde mais saudavel do painel era falso: o /saude passa a medir o que executa (#20)
+5ab6da43 O verde mais saudavel do painel era falso: o /saude passa a medir o que executa (#20)
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+5e576099 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+d5261da4 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+35441d9e Os vigias nao rodavam: bateria matava a tarefa e o MCP estava desligado no projeto
+db31642c Os vigias nao rodavam: bateria matava a tarefa e o MCP estava desligado no projeto
+b2b22b14 ideias.py ganha 'editar', porque ideia muda antes de ser colhida
+4f9a803a ideias.py ganha 'editar', porque ideia muda antes de ser colhida
+
+$ git log --all --grep="destinos" --oneline
+dc439026 /transferir claude: a sessão muda de conta com o contexto inteiro (1.42.0) (#415)
+c579cf6d Issue #61: Fecha P1-P5 — contrato de retorno, placar de bateria, N destinos, afirmações com comando, e enlace regra 16-17 (#98)
+d976f939 Issue #61: Fecha P1-P5 — contrato de retorno, placar de bateria, N destinos, afirmações com comando, e enlace regra 16-17 (#98)
+f8dc7599 Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture (#60)
+13acf85e Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture (#60)
+
+$ git log --all --grep="deixado para depois" --oneline
+548f59d1 Merge pull request #425 from luisfmontes/fluxo/painel-resolvidos
+5786055f Versao 1.45.1: deixado para depois fecha item resolvido (#424)
+0186bdaa Versao 1.45.0: barra de sessao e painel /painel no mod
+cd1f10ca Painel: deixado para depois com checker Haiku (tarefa 9)
+a0f35b59 estado: tarefa 8 integrada, 9 em voo
+e8915874 Integra tarefa 2: logica pura do deixado para depois
+dede7233 Logica pura do deixado para depois (tarefa 2 do desk no mod)
+b2d0069a design: enxertar o terminal-desk no mod do rainforest
+
+$ git log --all --grep="CAMPOS_EFEMEROS" --oneline
+3efd28e6 Tarefa 9: Gate Stop detecta agentes em voo que morreram
+0a299efc Fluxo 1 executar 2/4: T2 integrada — reprovado rebaixa upstream com rastro, sem deadlock
+e0c85241 Fluxo 1 executar 2/4: T2 integrada — reprovado rebaixa upstream com rastro, sem deadlock
+40a97cc7 Corrigir deadlock: exigir do próprio estagio reaberto passa, reaberto_por é efêmero
+c8517178 Corrigir deadlock: exigir do próprio estagio reaberto passa, reaberto_por é efêmero
+bec11b87 Conserta o merge do marcar para nao deixar pendentes sobreviver a um fechamento ok (#54)
+8e284dca Conserta o merge do marcar para nao deixar pendentes sobreviver a um fechamento ok (#54)
+
+$ cat <dados>/ideias.jsonl
+{"id":"beads-no-lugar-ou-por-cima-do-ideias-jsonl","titulo":"Avaliar o beads como upgrade do ideias.jsonl — apareceu em tres repos independentes"}
+{"id":"q-numerado-so-para-decisoes-independentes","titulo":"Q numerado e para decisoes independentes, nao para opcoes da mesma escolha"}
+
+
