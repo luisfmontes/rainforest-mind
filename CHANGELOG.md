@@ -10,6 +10,14 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.59.4 — 2026-10-10
+
+- **Livro de repos: `claude-cockpit` avaliado para a troca automática de conta.** Ele não instala aqui, porque só roda
+  em macOS, mas fica registrado o que ele mediu e que vale para o fluxo de troca de conta: uma credencial mora em um
+  lugar só, a identidade é perguntada ao servidor, o uso vem de `/api/oauth/usage` guardado em cache e a troca dispara
+  uma vez só. Relatório em `relatorios/2026-10-10-claude-cockpit-troca-de-conta.md`. Nenhum comportamento do plugin
+  mudou.
+
 ## 1.59.3 — 2026-10-10
 
 - **Veredito do revisor gravado quando o subagente entrega por `SubagentHandback` (Issue #465).** No Claude Code
