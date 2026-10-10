@@ -285,7 +285,7 @@ pronto quando: `node scripts/estado.cjs deixado --slug <s>` imprime em markdown,
 
 ### 6. As skills `fechar` e `executar` falam de `destinos` [tipo: docs]
 atende: D6, D7
-arquivos: `skills/fechar/SKILL.md`, `skills/fechar/invariantes.json`, `skills/executar/SKILL.md`, `skills/executar/invariantes.json`
+arquivos: `skills/fechar/SKILL.md`, `skills/fechar/invariantes.json`, `skills/executar/SKILL.md`, `skills/executar/invariantes.json`, `scripts/testa-conferir-invariantes.sh` (acrescentado pelo executor: a "segunda fonte" `INVARIANTES_ESPERADAS` e o `ROSTER_INVARIANTES` precisam declarar as 2 invariantes novas, 19 para 21, senão a bateria fica vermelha)
 depende de: 5
 paralela: nao
 mutacao: n/a

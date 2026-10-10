@@ -10,5 +10,9 @@
   {
     "frase": "troque o `subagent_type` do despacho pelo agente declarado, mantendo `isolation: \"worktree\"`",
     "descricao": "D4. Sem ela o agente do território soma sem substituir, ou perde o isolamento que sustenta o paralelo"
+  },
+  {
+    "frase": "cada pendência precisa de um destino",
+    "descricao": "Sem ela volta o `ok` que apaga a pendência em silêncio"
   }
 ]
