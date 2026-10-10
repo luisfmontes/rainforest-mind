@@ -334,6 +334,17 @@ function semDestino(pendentes, destinos) {
   return pendentes.filter((p) => !destinadas.has(p));
 }
 
+/**
+ * Pendencias de um bloco de estagio que nao tem destino. Ignora bloco ausente e
+ * `pendentes` que nao e lista (arquivo editado a mao). Definicao unica de "orfa",
+ * usada pelo `exigir --estagio fechar` e pelo `deixado`.
+ */
+function orfasDoBloco(estagio, bloco) {
+  if (!ehObjetoSimples(bloco) || !Array.isArray(bloco.pendentes)) return [];
+  const destinos = Array.isArray(bloco.destinos) ? bloco.destinos.filter(ehObjetoSimples) : [];
+  return semDestino(bloco.pendentes.filter((p) => typeof p === 'string'), destinos).map((pendente) => ({ estagio, pendente }));
+}
+
 function hoje() {
   // Relógio LOCAL. toISOString() é UTC e já gravou data no futuro neste repo.
   const d = new Date();
@@ -2201,6 +2212,20 @@ function main() {
 
     const falta = faltando(estado, estagio);
     if (!falta.length) {
+      // #449 (D6): defesa para arquivo antigo ou editado a mao — o `marcar` ja barra
+      // o caminho normal. So o `fechar`, e so estagios do fluxo (nao toda chave).
+      if (estagio === 'fechar') {
+        const orfas = ESTAGIOS_DO_FLUXO.flatMap((e) => orfasDoBloco(e, estado[e]));
+        if (orfas.length) {
+          const primeira = orfas[0].estagio;
+          console.error([
+            "RECUSADO: 'fechar' exige que toda pendencia tenha destino. Sem destino:",
+            ...orfas.map((o) => `  ${o.estagio}: ${o.pendente}`),
+            `Grave o destino: node scripts/estado.cjs marcar --slug ${slug} --estagio ${primeira} --status ${estado[primeira].status} --json '{"destinos":[...]}'`,
+          ].join('\n'));
+          process.exit(2);
+        }
+      }
       console.log(`ok: pre-requisitos de '${estagio}' fechados`);
       // Capturar snapshot ao exigir revisar, para detectar mutacao depois.
       // Zera a janela de vereditos (D6) — cada `exigir revisar` abre uma

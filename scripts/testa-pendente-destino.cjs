@@ -317,6 +317,73 @@ caso('parcial com destino para todas deixa pendentes vazio e guarda os destinos'
   assert.strictEqual(b.destinos.length, 2);
 });
 
+// ---------------------------------------------------------------- tarefa 4: `exigir fechar` recusa orfa
+
+/** Fluxo com os sete estagios fechados, reescrito a mao (cenario "editado a mao"). `mexer(est)` ajusta o objeto. */
+function fluxoFechadoAMao(cx, mexer) {
+  const slug = iniciarSo(cx);
+  const arq = arquivoDe(cx, slug);
+  const est = JSON.parse(fs.readFileSync(arq, 'utf8'));
+  for (const e of ['arqueologia', 'design', 'plano', 'executar', 'revisar', 'verificar', 'fechar']) {
+    est[e] = { ...(est[e] || {}), status: e === 'design' ? 'aprovado' : 'ok', em: '2026-10-09' };
+  }
+  if (mexer) mexer(est);
+  fs.writeFileSync(arq, JSON.stringify(est, null, 2) + '\n', 'utf8');
+  return slug;
+}
+const exigir = (cx, slug, est) => estado(cx, ['exigir', '--slug', slug, '--estagio', est]);
+
+caso('exigir fechar sem pendencia nenhuma passa', () => {
+  const slug = fluxoFechadoAMao(cx);
+  const r = exigir(cx, slug, 'fechar');
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.ok(r.stdout.includes("ok: pre-requisitos de 'fechar' fechados"), r.stdout);
+});
+
+caso('exigir fechar recusa pendencia sem destino num bloco editado a mao', () => {
+  const slug = fluxoFechadoAMao(cx, (est) => { est.executar.pendentes = [A]; });
+  const r = exigir(cx, slug, 'fechar');
+  assert.strictEqual(r.status, 2, `esperava exit 2, veio ${r.status}: ${r.stdout}`);
+  assert.ok(r.stderr.includes('executar') && r.stderr.includes(A), r.stderr);
+});
+
+caso('exigir fechar passa quando destinos cobrem a pendencia', () => {
+  const slug = fluxoFechadoAMao(cx, (est) => { est.executar.pendentes = [A]; est.executar.destinos = [DEST_A]; });
+  const r = exigir(cx, slug, 'fechar');
+  assert.strictEqual(r.status, 0, r.stderr);
+});
+
+caso('exigir fechar cita os dois estagios com orfa (a varredura nao para na primeira)', () => {
+  const slug = fluxoFechadoAMao(cx, (est) => { est.plano.pendentes = [A]; est.verificar.pendentes = [B]; });
+  const r = exigir(cx, slug, 'fechar');
+  assert.strictEqual(r.status, 2, `esperava exit 2, veio ${r.status}`);
+  assert.ok(r.stderr.includes('plano') && r.stderr.includes('verificar'), r.stderr);
+  assert.ok(r.stderr.includes(A) && r.stderr.includes(B), r.stderr);
+});
+
+caso('exigir fechar ignora chave que nao e estagio (historico)', () => {
+  const slug = fluxoFechadoAMao(cx, (est) => { est.revisar_historico_1_23_0 = { status: 'reprovado', pendentes: [A] }; });
+  const r = exigir(cx, slug, 'fechar');
+  assert.strictEqual(r.status, 0, r.stderr);
+});
+
+caso('exigir fechar com pendentes vazio passa', () => {
+  const slug = fluxoFechadoAMao(cx, (est) => { est.executar.pendentes = []; });
+  const r = exigir(cx, slug, 'fechar');
+  assert.strictEqual(r.status, 0, r.stderr);
+});
+
+caso('a checagem de orfa e so do fechar: exigir revisar passa com a mesma orfa', () => {
+  const slug = fluxoFechadoAMao(cx, (est) => { est.executar.pendentes = [A]; });
+  // `exigir revisar` captura snapshot via git: a caixa (tmp, fora do repo) vira repo com um commit.
+  const git = (...a) => spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...a], { cwd: cx.raiz, env: cx.env, encoding: 'utf8' });
+  assert.strictEqual(git('init', '-q').status, 0);
+  git('add', '-A');
+  assert.strictEqual(git('commit', '-q', '-m', 'caixa').status, 0);
+  const r = exigir(cx, slug, 'revisar');
+  assert.strictEqual(r.status, 0, r.stderr);
+});
+
 // ---------------------------------------------------------------- fim
 
 try { fs.rmSync(cx.raiz, { recursive: true, force: true }); } catch (_) { /* limpeza best-effort */ }
