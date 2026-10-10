@@ -40,23 +40,31 @@
     ]
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "454609e48703fc681070305140fc1a4be183a2df",
+      "head": "aee948e587271a9402aadf6ee7634e094ac81217",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a0705eb12d9ba8a90",
-        "veredito": "reprovado",
+        "agente_id": "a53ff1206cbce9e06",
+        "veredito": "ok",
         "em": "2026-10-10",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/2fa5b85b-bd65-4f9c-9b7b-9c53e2cc811d/subagents/agent-a0705eb12d9ba8a90.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/2fa5b85b-bd65-4f9c-9b7b-9c53e2cc811d/subagents/agent-a53ff1206cbce9e06.jsonl"
       }
-    ]
+    ],
+    "achados": 2,
+    "base": "cc1ed7ee9f77e5a23bb211e7441c6c6f797e25d0",
+    "head": "aee948e5",
+    "em": "2026-10-10"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "claude plugin test .",
+    "saida": "112 pass, 0 fail; baterias pr 52, abertura 30, painel 23, relogio 27, compactar 13, todas 0 falha",
+    "sensor_externo": "claude plugin test .",
+    "em": "2026-10-10"
   },
   "fechar": {
     "status": "pendente"
