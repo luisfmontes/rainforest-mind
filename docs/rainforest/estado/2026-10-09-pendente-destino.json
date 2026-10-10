@@ -101,9 +101,9 @@
     ]
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "a829940265d421d86b376dc39d1b9c99a590c2f8",
+      "head": "fda059e4d82ab5f7cabb9c4bfbee276857d89e08",
       "caminhos_sujos": []
     },
     "vereditos": [
@@ -114,7 +114,12 @@
         "em": "2026-10-10",
         "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/3f823b5e-a8e7-4f91-bb68-e29874374c76/subagents/agent-a728807e68ea73fe7.jsonl"
       }
-    ]
+    ],
+    "achados": 0,
+    "base": "1f5007f0",
+    "head": "fda059e",
+    "nota": "2 achados baixos de doc (skills executar/fechar) corrigidos depois do veredito em fda059e: so texto, invariantes 21 ok, fechar-destino 32 ok",
+    "em": "2026-10-10"
   },
   "verificar": {
     "status": "pendente"
