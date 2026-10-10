@@ -1,0 +1,9 @@
+{
+  "slug": "2026-10-09-bateria-config",
+  "titulo": "fluxo/bateria-config",
+  "criado_em": "2026-10-09",
+  "leve": {
+    "motivo": "#446: investigar e consertar a bateria que grava user.email t@t no .git/config real",
+    "data": "2026-10-09"
+  }
+}
