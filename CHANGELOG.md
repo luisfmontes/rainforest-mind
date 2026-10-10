@@ -10,13 +10,28 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
-## 1.57.5 — 2026-10-10
+## 1.58.1 — 2026-10-10
 
 - **Achado que cabe no PR aberto entra nele, sem virar Issue (regra 6 e skill `fechar`).** Desde 09/10, 12 issues
   abertas e 10 fechadas: a fila não descia, porque achado da revisão ou do security-review virava Issue com PR, CI e
   versão próprios. Agora, achado da mesma classe do conserto ou pequeno no repo da sessão é corrigido no PR em curso
   e sai como pendência `resolvida`. Issue fica para o que não cabe (outra área, decisão aberta, trabalho grande) ou é
   de outro dono.
+
+## 1.58.0 — 2026-10-10
+
+- **Compacta sozinho a 60% de contexto.** Quando o uso da janela passa de 60%, o mod roda o mesmo `/compact` entre
+  turnos e avisa "compactado em N%". Compacta uma vez por subida e volta a armar quando o uso cai abaixo do limiar. Com
+  subagente rodando na sessão, não compacta: avisa "contexto em N%: agente rodando, compacto quando ele voltar (ou faça
+  a passagem)" e compacta quando ele termina. Opções novas: **Compactar sozinho** (ligada) e **Compactar em (%)**
+  (padrão 60). Contorna o limiar fixo que o Claude Code usa com modelo de 1M, que ignora o
+  `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`. Adaptado do mod do wildz-data, de Rafael Lopes, com autorização dele.
+- **Linha do PR na barra.** Com um PR acompanhado e o pane **PR** fora da tela, a barra acima do prompt ganha uma
+  linha com o número, os checks e o merge, nas cores do pane. Some quando o pane aparece ou o PR é mergeado ou fechado.
+  `/painel esconder` esconde junto.
+- **`node` por caminho absoluto no mod (#457).** As seis chamadas do `mod.tsx` a scripts do plugin (barra, relógio,
+  erros e desvio) acham o `node` uma vez por sessão, fora do repositório aberto, como o painel de PR já fazia com o
+  `gh`. A abertura (`hooks/abertura-mod-puro.mjs`) ainda chama pelo nome, com cwd na pasta do plugin (#480).
 
 ## 1.57.4 — 2026-10-10
 

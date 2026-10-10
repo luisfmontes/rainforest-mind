@@ -255,6 +255,20 @@ avisa; `recarregarSozinho` (padrão `false`) roda `/reload-plugins` por `$.clock
 host recusa `$.command.run` de dentro de um `command.run`. A prova de engine está em
 `hooks/mod-pr.test.tsx`; a lógica, `node hooks/testa-mod-plugins-em-dia.cjs`.
 
+**Compactar sozinho.** `hooks/compactar.ts` liga o `session.measure` e `hooks/compactar-puro.mjs`
+guarda a decisão (`decidir()`). Só age quando `context` está em `e.changed`; o limiar é a opção
+`compactarEm` (padrão `LIMIAR_PADRAO` = 60, em % de `e.context.percent`), e `compactarSozinho:
+false` desliga. Dispara uma vez por subida (desarma antes de chamar, rearma abaixo do limiar);
+compactação rejeitada (turno em curso) rearma e avisa uma vez. Com subagente em andamento — o mesmo
+`emAndamento` da barra — dá um aviso e compacta no primeiro measure sem agente. `$.session.compact()`
+roda sem `await`, para não segurar o hook enquanto o engine mede dentro da compactação. A prova de
+engine é `hooks/mod-compactar.test.tsx`; a lógica, `node hooks/testa-mod-compactar.cjs`.
+
+**Linha do PR na barra e `node` absoluto.** O `AbovePrompt` do mod acrescenta as `partes` de
+`linhaPr()` (`hooks/pr-puro.mjs`: número, checks e merge, nunca título ou branch) quando o pane
+`rainforest-mind-pr` não está colocado e visível em `$.ui.panes()`. Os `node` do mod saem de
+`localizadores('node', …)` + `escolherExecutavel`, guardado no átomo `nodeCaminho` uma vez por sessão.
+
 ## Versão: o release é entrega própria, e o PATCH existe
 
 O bump vai num **commit próprio**, com título `Versao <x.y.z>: <o que o lote
