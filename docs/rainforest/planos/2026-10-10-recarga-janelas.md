@@ -24,13 +24,13 @@ pronto quando: `caminhoMarcador({ CLAUDE_CONFIG_DIR, HOME })` devolve `<config>/
 
 ### 2. Fiação no plugins-em-dia [tipo: implementar]
 atende: D1, D2, D3
-arquivos: `hooks/plugins-em-dia.ts`, `hooks/mod-recarga.test.tsx`
+arquivos: `hooks/plugins-em-dia.ts`, `hooks/mod-recarga.test.tsx`, `hooks/mod-relogio.test.tsx` (emenda: o teste do relógio desliga a conferência pelo `RAINFOREST_RECARGA=off`; o relógio simulado comprime horas e cada conferência custa uma ida ao harness)
 depende de: 1
 paralela: nao
 prova: `bash -c "test -f hooks/mod-recarga.test.tsx && claude plugin test ."`
 mutacao:
   arquivo: `hooks/plugins-em-dia.ts`
-  de: `if ((await $.env.get('RAINFOREST_RECARGA')) === 'off') return`
+  de: `if (recarga.desligada || recarga.caminho === '') return`
   para: `if (true) return`
   bateria: `claude plugin test .`
   fixture: `mod-recarga.test.tsx, caso "marcador de outra janela recarrega uma vez"`

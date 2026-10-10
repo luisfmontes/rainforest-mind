@@ -18,6 +18,11 @@ dispensada pelo Luís em 2026-10-10 ("o rafael já testou isso e tá funcionando
   binário do CLI). A pasta de dados do plugin existe em
   `<config>/plugins/data/rainforest-mind-rainforest-mind/` nas duas contas.
 - `/reload-plugins` recarrega o módulo do mod: o estado de módulo zera e o "carregado em" anda.
+- O harness de `claude plugin test` comprime o tempo: cada disparo de timer custa ~50 ms lá, e o
+  timer de 5 s vira centenas de disparos no teste do relógio (~77 min simulados e um salto de 24 h),
+  estourando o teto de 5 s dele mesmo com a conferência retornando antes de qualquer chamada. Com
+  `RAINFOREST_RECARGA=off` o timer nem é criado, e o teste do relógio liga essa chave (medido em
+  2026-10-10). Em produção o timer corre em tempo real.
 - O Rafael usa dois marcadores (um por sessão, escrito pelo hook de SessionStart dele, e um
   compartilhado) e uma chave por sessão no `$.store`. Aqui a atualização roda dentro do mod,
   não num hook com trava própria.

@@ -57,6 +57,10 @@ type Surface = 'terminal' | 'desktop'
 // Monta o mundo por baixo do mod e a tela montada; devolve o que os casos usam.
 async function montar($: any, on: any, surface: Surface, inicio: number, dadosFaixa: unknown = VAZIO) {
   const relogio = mock.clock(on, { now: inicio })
+  // A conferencia de recarga do plugins-em-dia (timer de 5 s) desligada pelo kill switch dela: o
+  // relogio simulado comprime horas, e cada disparo de timer custa ~50 ms no harness (este teste
+  // nao e sobre recarga; a prova dela e hooks/mod-recarga.test.tsx).
+  mock.env(on, { RAINFOREST_RECARGA: 'off' })
   const s = {
     jornada: jornadaJson(552, inicio - 10 * MIN) as unknown,
     sessoes: sessoesJson(45, []) as unknown,
@@ -169,7 +173,7 @@ async function montar($: any, on: any, surface: Surface, inicio: number, dadosFa
 }
 
 for (const surface of ['terminal', 'desktop'] as const) {
-  test(`relogio (${surface}): linha, minutos, esconder, nota e virada do dia`, async ($, on) => {
+  test(`relogio (${surface}): linha, minutos, esconder, nota e virada do dia`, { timeoutMs: 20000 }, async ($, on) => {
     const m = await montar($, on, surface, em(20, 40))
     const { relogio, s, ui, juntos, quieta, escondida, painel, comecar, terminarSessao, caso, enviar } = m
 
@@ -298,7 +302,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     await ui.unmount()
   })
 
-  test(`relogio (${surface}): limiares, 8h59 as 14h e 8h00 as 20h com mensagem ha 31 min`, async ($, on) => {
+  test(`relogio (${surface}): limiares, 8h59 as 14h e 8h00 as 20h com mensagem ha 31 min`, { timeoutMs: 20000 }, async ($, on) => {
     const m = await montar($, on, surface, em(14, 0))
     const { relogio, s, ui, quieta, comecar, terminarSessao, caso } = m
 

@@ -7,8 +7,17 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 import { escolherExecutavel, interpretadorDeLote, localizadores } from './pr-puro.mjs'
 import { LISTA_PADRAO, PERIODO_MS, acaoAposSubir, alvos, comandos, podeRodar, subiram, versoes } from './plugins-em-dia-puro.mjs'
+import { caminhoMarcador, deveRecarregar, textoMarcador } from './recarga-puro.mjs'
 
 const claudeCaminho = atom({ plugin: 'rainforest-mind', key: 'pluginsEmDiaClaude' } as const, '')
+
+// Recarga nas outras janelas (enxerto do marcador do wildz-data, de Rafael Lopes): a janela que
+// atualiza grava o marcador; cada janela confere a cada 5 s e age uma vez por marcador mais novo
+// que o carregamento deste modulo. Estado de modulo: o /reload-plugins recarrega o modulo e o
+// carregadoEm passa do marcador.
+// caminho e desligada sao lidos uma vez, na abertura: a conferencia de 5 s faz so o fs.read.
+type Recarga = { carregadoEm: number; tratadoEm: number | null; ocupado: boolean; recarregaSeguro: boolean; caminho: string; desligada: boolean }
+const CONFERIR_RECARGA_MS = 5000
 
 type Registro = { plugins?: Record<string, { scope: string; version: string }[]> }
 
@@ -50,7 +59,47 @@ async function caminhoDoCli($: EngineInterface): Promise<string | null> {
   return null
 }
 
-async function atualizar($: EngineInterface, lista: string[], recarregaSeguro: boolean, forcado: boolean): Promise<string> {
+async function caminhoDoMarcador($: EngineInterface): Promise<string> {
+  const CLAUDE_CONFIG_DIR = await $.env.get('CLAUDE_CONFIG_DIR')
+  const HOME = (await $.env.get('USERPROFILE')) || (await $.env.get('HOME'))
+  return caminhoMarcador({ CLAUDE_CONFIG_DIR, HOME }) as string
+}
+
+// Grava o marcador para as outras janelas; esta ja trata a si mesma pelo caminho de sempre.
+async function gravarMarcador($: EngineInterface, recarga: Recarga): Promise<void> {
+  try {
+    const at = await $.clock.now()
+    recarga.tratadoEm = at
+    await $.fs.write(await caminhoDoMarcador($), textoMarcador(at) as string)
+  } catch {
+    // sem marcador as outras janelas seguem sem saber; a rodada desta segue igual
+  }
+}
+
+async function conferirRecarga($: EngineInterface, recarga: Recarga): Promise<void> {
+  if (recarga.ocupado) return
+  recarga.ocupado = true
+  try {
+    if (recarga.desligada || recarga.caminho === '') return
+    let marcador: string
+    try {
+      marcador = await $.fs.read(recarga.caminho)
+    } catch {
+      return
+    }
+    const at = deveRecarregar({ marcador, carregadoEm: recarga.carregadoEm, tratadoEm: recarga.tratadoEm }) as number | null
+    if (at === null) return
+    recarga.tratadoEm = at
+    if (recarga.recarregaSeguro) await $.command.run({ command: 'reload-plugins' })
+    else avisar($, 'plugins atualizados em outra janela - rode /reload-plugins')
+  } catch {
+    // falha aberta: a proxima conferencia tenta de novo
+  } finally {
+    recarga.ocupado = false
+  }
+}
+
+async function atualizar($: EngineInterface, lista: string[], recarregaSeguro: boolean, forcado: boolean, recarga: Recarga): Promise<string> {
   const agora = await $.clock.now()
   const ultima = Number((await $.store.get('ultima')) ?? 0)
   if (!podeRodar(ultima, agora, forcado)) return 'pulado: rodou ha menos de 30 min'
@@ -95,6 +144,7 @@ async function atualizar($: EngineInterface, lista: string[], recarregaSeguro: b
   const falhou = falhas.length > 0 ? ` | falhou: ${falhas.join(', ')}` : ''
 
   const acao = acaoAposSubir(subidas, recarregaSeguro) as string
+  if (subidas.length > 0) await gravarMarcador($, recarga)
   if (acao === 'nada') {
     if (falhas.length > 0) avisar($, `plugins-em-dia${falhou}`)
     return `tudo em dia (${ids.map(id => `${id.split('@')[0]} ${antes[id]}`).join(', ')})${falhou}`
@@ -116,6 +166,7 @@ async function atualizar($: EngineInterface, lista: string[], recarregaSeguro: b
 export const register: Register = (on, options) => {
   const lista = listaDe(options.plugins)
   const recarregaSeguro = options.recarregarSozinho === true
+  const recarga: Recarga = { carregadoEm: Number.POSITIVE_INFINITY, tratadoEm: null, ocupado: false, recarregaSeguro, caminho: '', desligada: false }
 
   on('session.start', { isInteractive: true }, async ($, e, next) => {
     try {
@@ -126,15 +177,25 @@ export const register: Register = (on, options) => {
     } catch {
       // sem comando, a rodada automatica segue
     }
-    const rodada = () => void atualizar($, lista, recarregaSeguro, false).catch(() => {})
+    const rodada = () => void atualizar($, lista, recarregaSeguro, false, recarga).catch(() => {})
+    try {
+      recarga.carregadoEm = await $.clock.now()
+      // RAINFOREST_RECARGA=off desliga a recarga vinda de outra janela (o kill switch do Rafael).
+      recarga.desligada = (await $.env.get('RAINFOREST_RECARGA')) === 'off'
+      recarga.caminho = await caminhoDoMarcador($)
+    } catch {
+      // sem relogio ou sem caminho nao ha como conferir: a conferencia fica parada
+    }
     rodada()
     $.clock.every(PERIODO_MS, rodada)
+    // Desligada (ou sem caminho), nem o timer existe: zero disparos.
+    if (!recarga.desligada && recarga.caminho !== '') $.clock.every(CONFERIR_RECARGA_MS, () => void conferirRecarga($, recarga))
     return next(e)
   })
 
   on('command.run', { command: 'plugins-em-dia' }, async $ => {
     try {
-      return { text: await atualizar($, lista, recarregaSeguro, true) }
+      return { text: await atualizar($, lista, recarregaSeguro, true, recarga) }
     } catch (err) {
       return { text: `plugins-em-dia falhou: ${String(err).slice(0, 160)}` }
     }
