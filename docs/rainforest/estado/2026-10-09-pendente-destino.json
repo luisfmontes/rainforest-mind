@@ -11,10 +11,14 @@
     "em": "2026-10-09"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-09-pendente-destino.md",
+    "decisoes_usuario": "U1 estrito, U2 deixado sai 0",
+    "em": "2026-10-09"
   },
   "executar": {
-    "status": "pendente"
+    "status": "pendente",
+    "catraca_mutacao": "2026-10-09"
   },
   "revisar": {
     "status": "pendente"
