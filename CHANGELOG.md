@@ -10,6 +10,13 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.56.1 — 2026-10-10
+
+- **A portaria diz por que a branch ficou fora do fluxo (Issue #447).** Às vezes um agente que escreve é recusado com
+  "estagio aberto: fora-de-fluxo" mesmo havendo fluxo aberto. A recusa agora mostra a branch que leu e quais fluxos
+  abertos estão mais perto, cada um com a branch que casaria (`fluxo/<slug sem a data>`). O caso comum é a branch
+  levar o slug inteiro, com a data.
+
 ## 1.56.0 — 2026-10-10
 
 - **Pendência do fluxo só sai com destino (Issue #449).** Antes, fechar um estágio `ok`/`aprovado` apagava em silêncio

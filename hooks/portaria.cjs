@@ -1142,9 +1142,26 @@ function main() {
         : trilho === "rainforest" && branchEhPadrao(raiz, branchAtual)
           ? `\n  saida 2: '${branchAtual}' e a branch padrao, e o leve e recusado nela (regra 11): despache de dentro do worktree do fluxo, onde o leve vale: ${leveDaMensagem}`
           : `\n  saida 2: caminho leve, para hotfix mecanico: ${leveDaMensagem}`;
+      // Issue #447: fora-de-fluxo numa branch de trabalho costuma ser branch que nao
+      // casou com o slug (ex.: `fluxo/<data>-<nome>` quando o esperado e `fluxo/<nome>`).
+      // A mensagem diz a branch lida, a base comparada e os fluxos abertos mais perto.
+      let diagnostico = "";
+      if (foraDeFluxo && trilho === "rainforest") {
+        const diag = require("./lib/estagio-ativo.cjs").diagnosticar({ cwd: raiz });
+        if (diag && diag.abertos.length) {
+          const porque = diag.casados > 1
+            ? `${diag.casados} fluxos abertos casam com ela (ambiguo)`
+            : "nenhum fluxo aberto casa com ela";
+          diagnostico =
+            `\n  branch lida: '${diag.branch}' (comparada como '${diag.branchBase}'); ${porque}. ` +
+            `A branch tem de ser fluxo/<slug sem a data>. Abertos mais perto: ` +
+            diag.abertos.map((a) => `${a.slug} (espera ${a.esperado})`).join(", ");
+        }
+      }
       const motivo =
         `agente '${nomeAgente}' escreve (escreve: true) e so roda no estagio que declara: exige ${exige}; ` +
         `estagio aberto: ${estagioAtivo} (Issue #430, D3/D5)` +
+        diagnostico +
         `\n  saida 1: abrir ou avancar o fluxo ate ${exige} (rainforest: /rainforest-mind:brainstorm ou "${nodeBarras}" "${caminhoEstado}" iniciar --slug <slug>; protheus: /protheus:trabalhar)` +
         saida2 +
         // Issue #442: o comando comeca por string entre aspas, que PowerShell so roda com `& `.
