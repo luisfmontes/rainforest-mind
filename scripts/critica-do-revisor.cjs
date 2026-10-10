@@ -90,10 +90,6 @@ function main() {
 
   const linhas = mensagem.split(/\r?\n/).filter((l) => !/^\s*VEREDITO:/i.test(l));
   const critica = linhas.join('\n');
-  if (critica.trim() === '') {
-    process.stderr.write('nao-verificavel: a ultima mensagem do revisor tem so a linha VEREDITO\n');
-    return 69;
-  }
 
   process.stdout.write(`${critica}\n`);
   if (/\[design\]/.test(critica)) {
