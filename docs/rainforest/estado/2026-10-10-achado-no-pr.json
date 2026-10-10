@@ -1,0 +1,9 @@
+{
+  "slug": "2026-10-10-achado-no-pr",
+  "titulo": "fluxo/achado-no-pr",
+  "criado_em": "2026-10-10",
+  "leve": {
+    "motivo": "regra 6 e fechar: achado que cabe no PR aberto entra nele, nao vira Issue",
+    "data": "2026-10-10"
+  }
+}

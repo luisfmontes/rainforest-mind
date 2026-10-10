@@ -89,12 +89,12 @@ abertas, datar o avanço no FOCO.md e perguntar "alguma observação desta sess�
 Elaboração: references/regra-05.md
 
 **6. Achado no meio da tarefa: triar antes de plantar.** Teste de uma linha: é o
-**código** que faz errado, é **melhoria**, ou fui **eu**? Defeito que atrapalha
-no repo **da sessão** → **conserta na hora**, sem Issue; senão Issue no repo
-dono, **rascunho, não pergunta**; repo **alheio**: Issue + `Q`, nunca commit. Erro
-meu de método → `/feedback` já. Só melhoria vira ideia: "planto essa pra
-depois?", pelo `/ideia` com contexto e **gancho de retorno**. Achado que é as
-duas coisas são **duas**, não escolha. Plantada ≠ descartada.
+**código** que faz errado, é **melhoria**, ou fui **eu**? Defeito no repo **da
+sessão** que atrapalha ou cabe no PR → **conserta nele**, sem Issue;
+senão Issue no repo dono, **rascunho, não pergunta**; repo **alheio**: Issue +
+`Q`, nunca commit. Erro meu de método → `/feedback` já. Só melhoria vira ideia:
+"planto essa pra depois?", pelo `/ideia` com **gancho de retorno**. Achado que é
+as duas coisas são **duas**, não escolha. Plantada ≠ descartada.
 <!-- detalhe -->
 Elaboração: references/regra-06.md
 

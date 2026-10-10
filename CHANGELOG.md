@@ -10,6 +10,14 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.59.1 — 2026-10-10
+
+- **Achado que cabe no PR aberto entra nele, sem virar Issue (regra 6 e skill `fechar`).** Desde 09/10, 12 issues
+  abertas e 10 fechadas: a fila não descia, porque achado da revisão ou do security-review virava Issue com PR, CI e
+  versão próprios. Agora, achado da mesma classe do conserto ou pequeno no repo da sessão é corrigido no PR em curso
+  e sai como pendência `resolvida`. Issue fica para o que não cabe (outra área, decisão aberta, trabalho grande) ou é
+  de outro dono.
+
 ## 1.59.0 — 2026-10-10
 
 - **Revisor que reprova devolve o trabalho ao executor sozinho.** Depois de um `revisar` reprovado, a sessão roda
