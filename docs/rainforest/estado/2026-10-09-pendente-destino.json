@@ -17,12 +17,12 @@
     "em": "2026-10-09"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-09",
     "tarefas_ok": 8,
     "tarefas": 8,
     "comando": "node scripts/testa-pendente-destino.cjs",
-    "saida": "56 ok, 0 falha(s)",
+    "saida": "71 ok, 0 falha(s)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -66,15 +66,39 @@
       }
     ],
     "em": "2026-10-10",
-    "pendentes": [
-      "M1: remedio do exigir fechar falha em executar/verificar (verbo destinar)",
-      "M2: pendencia relistada coberta por destino antigo",
-      "M3: destinos invalido editado a mao passa no fechar e no deixado",
-      "B4: aviso do parcial sai antes dos gates",
-      "B5: destino nao-string aceito",
-      "N6: design e plano dizem 1.55.0"
-    ],
-    "reaberto_por_revisao": "revisor ae5f398938d8f23d4, briefing sem linha Slug"
+    "reaberto_por_revisao": "revisor ae5f398938d8f23d4, briefing sem linha Slug",
+    "destinos": [
+      {
+        "pendente": "M1: remedio do exigir fechar falha em executar/verificar (verbo destinar)",
+        "destino": "resolvida",
+        "evidencia": "c4be074c verbo destinar; testa-pendente-destino 71 ok; mutacao vermelha"
+      },
+      {
+        "pendente": "M2: pendencia relistada coberta por destino antigo",
+        "destino": "resolvida",
+        "evidencia": "b89ce0b0; mutacao relistadas.length vermelha (conferida na janela principal)"
+      },
+      {
+        "pendente": "M3: destinos invalido editado a mao passa no fechar e no deixado",
+        "destino": "resolvida",
+        "evidencia": "c9e519ce; mutacao destinoValido vermelha"
+      },
+      {
+        "pendente": "B4: aviso do parcial sai antes dos gates",
+        "destino": "resolvida",
+        "evidencia": "15a82b09; mutacao vermelha"
+      },
+      {
+        "pendente": "B5: destino nao-string aceito",
+        "destino": "resolvida",
+        "evidencia": "476efd31; mutacao typeof vermelha"
+      },
+      {
+        "pendente": "N6: design e plano dizem 1.55.0",
+        "destino": "resolvida",
+        "evidencia": "design D7 e emendas atualizados para 1.56.0"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente",
