@@ -84,6 +84,10 @@
     "em": "2026-10-10"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "versao": "1.59.0",
+    "pr": 484,
+    "merge": "0e3cc7ff",
+    "em": "2026-10-10"
   }
 }
