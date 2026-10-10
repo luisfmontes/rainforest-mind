@@ -1,0 +1,156 @@
+Data: 2026-10-09
+Termos: painel, plugin update, reload-plugins, gh pr, marketplace update
+
+$ gh issue list --state all --search "painel" --limit 200 --json number,title,state
+[{"number":449,"state":"OPEN","title":"Deixado para depois evapora: pendentes somem no ok e o fechar nao confere"},{"number":424,"state":"CLOSED","title":"Painel: 'Deixado para depois' nunca fecha item resolvido e conta Q de decisão como pendência"},{"number":421,"state":"CLOSED","title":"Painel do mod: bordas do desvio (fila cheia, cache de veredito provisorio, chave do mapa) e texto do corte"}]
+
+
+$ gh issue list --state all --search "plugin update" --limit 200 --json number,title,state
+[{"number":323,"state":"CLOSED","title":"conferir-duplicacao conta arquivo gitignorado (.claude/marketplaces) e deixa testa-saude vermelho em main limpa"},{"number":264,"state":"CLOSED","title":"Portaria: manifesto de agentes SUBSTITUI em vez de somar, e agente de outro plugin nunca passa"},{"number":221,"state":"CLOSED","title":"saude.cjs quebra com 'path argument undefined' quando ha duas config dirs e a versao do repo esta a frente da instalada"},{"number":189,"state":"CLOSED","title":"conferir-versao.cjs nao olha o numero: versao que anda para tras passa verde, e plugin.json ilegivel sai 0"},{"number":244,"state":"CLOSED","title":"Bump de versao e feito a mao no fechar, e o esquecimento e silencioso"},{"number":193,"state":"CLOSED","title":"Duas sessoes bumparam a MESMA versao e o testa-versao nao pode pegar: falta checagem externa (tag e cache)"},{"number":4,"state":"CLOSED","title":"Worktree de agente nasce na base velha em pelo menos 2 de 8 despachos, e conferir-entrega.cjs nao ve arquivo autoexcluido por gitignore"},{"number":27,"state":"CLOSED","title":"testa-saude.sh fica vermelha por rodar de worktree, nao por defeito no codigo — e e onde a esteira roda"},{"number":173,"state":"CLOSED","title":"O gate de publicacao barra merge de conteudo que ja esta na main — e engole o git add da mesma chamada"},{"number":1,"state":"CLOSED","title":"Briefing nao diz o ato de entregar: subagente nomeado termina o trabalho e nao devolve (3 de 3)"}]
+
+
+$ gh issue list --state all --search "reload-plugins" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "gh pr" --limit 200 --json number,title,state
+[{"number":407,"state":"CLOSED","title":"gate-fechar-issue barra --body-file criado por heredoc no mesmo comando"},{"number":344,"state":"CLOSED","title":"gate-fechar-issue: --body-file com caminho MSYS (/c/...) vira ilegivel"},{"number":339,"state":"CLOSED","title":"Tres contrabarras dentro das aspas duplas do wrapper ainda escondem o comando (residuo da #313)"},{"number":174,"state":"CLOSED","title":"Nada barra \"Fecha #N\" no corpo do PR — a regra está escrita há 10 dias e o erro repetiu"},{"number":313,"state":"CLOSED","title":"Contrabarra dupla dentro da string do wrapper ainda esconde o comando dos gates"},{"number":309,"state":"CLOSED","title":"gate de texto barra bash \"$t\" (variavel entre aspas) como comando encapsulado"},{"number":405,"state":"CLOSED","title":"gate-fechar-issue barra laco e bash scripts/$b.sh sem gh"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":342,"state":"CLOSED","title":"testa-saude R5 ainda intermitente no CI (porta não responde)"},{"number":350,"state":"CLOSED","title":"gate-worktree ignora git -C <outro-repo> e barra switch num clone descartavel como se fosse o checkout da sessao"},{"number":419,"state":"CLOSED","title":"gate-publicacao-destino: remoto GitLab sempre sai 'desconhecida' e barra repo privado de trabalho"},{"number":239,"state":"CLOSED","title":"gate-fechar-issue bloqueia heredoc cujo texto fecha frase com parentese: \").\" e lido como subshell + source"},{"number":161,"state":"CLOSED","title":"testa-limpar-branches captura 2>&1 antes de JSON.parse: em Node 24 o DEP0190 contamina o payload (o CI pina o 22)"},{"number":208,"state":"CLOSED","title":"testa-ferramentas-consulta.sh reprova quando o ambiente esta lento: nao tem caso para o caminho 'sem garantia'"},{"number":14,"state":"CLOSED","title":"limpar-branches.cjs da branch de PR mergeado por squash: classificada 'viva', nunca limpa"},{"number":237,"state":"CLOSED","title":"gate-publicacao-destino le id publico do GitHub como telefone, e a mensagem manda confirmar sem haver como"},{"number":173,"state":"CLOSED","title":"O gate de publicacao barra merge de conteudo que ja esta na main — e engole o git add da mesma chamada"},{"number":82,"state":"CLOSED","title":"limpar-branches classifica toda branch de PR squashed como 'trabalho vivo' — e squash e a convencao da main"},{"number":241,"state":"CLOSED","title":"Decisao pendente: a portaria vale so neste repo, mas a regra 10 promete portao em toda sessao"},{"number":269,"state":"CLOSED","title":"gate-fechar-issue dita '--saida <saida-ou-arquivo>', e --saida cola o caminho como se fosse a saida"},{"number":175,"state":"CLOSED","title":"limpar-branches --remoto ignora a classe mergeada-por-squash e afirma que nao havia remoto para apagar"},{"number":145,"state":"CLOSED","title":"A #118 foi fechada com o defeito do titulo vivo — nada exige rodar o criterio de pronto antes de fechar Issue"},{"number":270,"state":"CLOSED","title":"Linha de mutante sai como 'FALHA <nome real>' e se confunde com falha de verdade no log"},{"number":157,"state":"CLOSED","title":"REINCIDE #16: o workflow esta disabled_manually ha 232 commits, e a maquina do Actions e mais rica que a de quem instala"},{"number":346,"state":"CLOSED","title":"gate-bateria-sem-timeout: stdbuf --output L (opcao longa com espaco) escapa"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"}]
+
+
+$ gh issue list --state all --search "marketplace update" --limit 200 --json number,title,state
+[{"number":323,"state":"CLOSED","title":"conferir-duplicacao conta arquivo gitignorado (.claude/marketplaces) e deixa testa-saude vermelho em main limpa"},{"number":221,"state":"CLOSED","title":"saude.cjs quebra com 'path argument undefined' quando ha duas config dirs e a versao do repo esta a frente da instalada"},{"number":264,"state":"CLOSED","title":"Portaria: manifesto de agentes SUBSTITUI em vez de somar, e agente de outro plugin nunca passa"},{"number":189,"state":"CLOSED","title":"conferir-versao.cjs nao olha o numero: versao que anda para tras passa verde, e plugin.json ilegivel sai 0"},{"number":244,"state":"CLOSED","title":"Bump de versao e feito a mao no fechar, e o esquecimento e silencioso"},{"number":193,"state":"CLOSED","title":"Duas sessoes bumparam a MESMA versao e o testa-versao nao pode pegar: falta checagem externa (tag e cache)"},{"number":1,"state":"CLOSED","title":"Briefing nao diz o ato de entregar: subagente nomeado termina o trabalho e nao devolve (3 de 3)"}]
+
+
+$ gh pr list --state all --search "painel" --limit 200 --json number,title,state
+[{"number":422,"state":"MERGED","title":"Versao 1.45.0: barra de sessao e painel /painel no mod (enxerto do terminal-desk)"},{"number":428,"state":"MERGED","title":"Versao 1.47.0: erros de ferramenta gravados e /painel erros"},{"number":433,"state":"MERGED","title":"Versao 1.47.2: painel do mod confere o que ainda nao tinha resposta"},{"number":425,"state":"MERGED","title":"Versao 1.46.1: deixado para depois fecha item resolvido e ignora Q de decisao"},{"number":34,"state":"MERGED","title":"Versao 0.72.0: o painel passa a ver as contas divergirem"},{"number":20,"state":"MERGED","title":"O verde mais saudavel do painel era falso: o /saude passa a medir o que executa"}]
+
+
+$ gh pr list --state all --search "plugin update" --limit 200 --json number,title,state
+[{"number":380,"state":"MERGED","title":"Versao 1.36.0: mod canario para provar carregamento pelo marketplace"},{"number":384,"state":"MERGED","title":"1.38.1: Q da faixa somem no envio e cabem na linha"},{"number":383,"state":"MERGED","title":"1.38.0: faixa acima do prompt com foco, fluxo e Q abertas"},{"number":390,"state":"MERGED","title":"Relógio do mod: #386, #387, #388 e /clear (1.39.1)"},{"number":381,"state":"MERGED","title":"Versao 1.37.0: abertura inteira pelo mod via prompt.compose"},{"number":328,"state":"MERGED","title":"Agente despachado é folha: não despacha agente (1.23.10)"},{"number":425,"state":"MERGED","title":"Versao 1.46.1: deixado para depois fecha item resolvido e ignora Q de decisao"},{"number":267,"state":"MERGED","title":"portaria: deixa de admitir agente e passa a registrar (ver #264)"},{"number":332,"state":"MERGED","title":"Veredito fora da linha: hook devolve a vez uma vez; negrito aceito"},{"number":209,"state":"MERGED","title":"Versao 1.6.0 (MINOR): o lote das Issues #187 e #189 muda contrato"},{"number":304,"state":"MERGED","title":"Notas de atualizacao (CHANGELOG) e o adendo que mede o D2 do contrato de territorio"},{"number":117,"state":"MERGED","title":"Tres defeitos achados apurando as observacoes abertas da regra 13"},{"number":255,"state":"MERGED","title":"A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241)"},{"number":41,"state":"MERGED","title":"Versao 0.73.0: a statusline entra no plugin, e a bateria de saude para de vazar temporario"},{"number":211,"state":"MERGED","title":"conferir-versao: falso positivo na main em sincronia (regressao da #189)"},{"number":48,"state":"MERGED","title":"Versao 0.74.0: solta a skill regua e os outros tres commits represados"},{"number":336,"state":"MERGED","title":"gate-busca-raiz: subagente nao varre o disco; perfil pede timeout"},{"number":334,"state":"MERGED","title":"Skill vigiar: acompanhar conversa de WhatsApp sem gastar token"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"},{"number":33,"state":"MERGED","title":"Versao 0.71.0: as quatro issues abertas"},{"number":256,"state":"MERGED","title":"repo: ignora o cache de marketplace e registra o erro do sentinela de 11/09"},{"number":34,"state":"MERGED","title":"Versao 0.72.0: o painel passa a ver as contas divergirem"},{"number":152,"state":"MERGED","title":"Portaria: escreve:true admitido com worktree obrigatorio (0.82.0)"},{"number":171,"state":"MERGED","title":"A suite media a maquina do dono: 11 Issues da familia, catraca de dependencias, CI em Node 22 e 24"},{"number":222,"state":"MERGED","title":"Agentes em Claude ou Codex, por escolha do usuário (1.8.0)"},{"number":172,"state":"MERGED","title":"Fluxo 7: recibo de colheita — identidade verificavel do artefato entregue (1.1.0)"},{"number":183,"state":"MERGED","title":"Lote 3 — guardas medem o repositorio da operacao; backup fora da maquina; fechar Issue exige criterio rodado"}]
+
+
+$ gh pr list --state all --search "reload-plugins" --limit 200 --json number,title,state
+[{"number":418,"state":"MERGED","title":"Abertura inteira na conta de trabalho via session.append"}]
+
+
+$ gh pr list --state all --search "gh pr" --limit 200 --json number,title,state
+[{"number":376,"state":"MERGED","title":"Versao 1.35.2: recusa do gate de PR nomeia o marcador de evidencia"},{"number":310,"state":"MERGED","title":"zerar-issues-8: palavra reservada e bash \"$t\" (#309), gemeo Python (#303), eval (#302)"},{"number":393,"state":"MERGED","title":"zerar-issues-15: #377 #378 #379 #382 #385 (1.39.2)"},{"number":247,"state":"MERGED","title":"zerar-issues rodada 3: heredoc no gate de Issue e radar em 4 chamadas (1.13.2)"},{"number":183,"state":"MERGED","title":"Lote 3 — guardas medem o repositorio da operacao; backup fora da maquina; fechar Issue exige criterio rodado"},{"number":284,"state":"MERGED","title":"Main volta ao verde: mutante do importar leva o achar-claude"},{"number":15,"state":"MERGED","title":"A limpeza que nao limpava: squash com remoto vivo, --base <ref>, e um nome de branch que virava comando"},{"number":99,"state":"MERGED","title":"Fecha #82: branch squash-mergeada SEM upstream deixa de ser 'trabalho vivo'"},{"number":171,"state":"MERGED","title":"A suite media a maquina do dono: 11 Issues da familia, catraca de dependencias, CI em Node 22 e 24"},{"number":154,"state":"MERGED","title":"README: porta de entrada em vez de diario de bordo"},{"number":105,"state":"MERGED","title":"CI: so no PR, e run superado se cancela — a cota de Actions bateu 90%"},{"number":271,"state":"MERGED","title":"Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador"}]
+
+
+$ gh pr list --state all --search "marketplace update" --limit 200 --json number,title,state
+[{"number":381,"state":"MERGED","title":"Versao 1.37.0: abertura inteira pelo mod via prompt.compose"},{"number":256,"state":"MERGED","title":"repo: ignora o cache de marketplace e registra o erro do sentinela de 11/09"},{"number":380,"state":"MERGED","title":"Versao 1.36.0: mod canario para provar carregamento pelo marketplace"},{"number":384,"state":"MERGED","title":"1.38.1: Q da faixa somem no envio e cabem na linha"},{"number":117,"state":"MERGED","title":"Tres defeitos achados apurando as observacoes abertas da regra 13"},{"number":383,"state":"MERGED","title":"1.38.0: faixa acima do prompt com foco, fluxo e Q abertas"},{"number":267,"state":"MERGED","title":"portaria: deixa de admitir agente e passa a registrar (ver #264)"},{"number":171,"state":"MERGED","title":"A suite media a maquina do dono: 11 Issues da familia, catraca de dependencias, CI em Node 22 e 24"},{"number":222,"state":"MERGED","title":"Agentes em Claude ou Codex, por escolha do usuário (1.8.0)"},{"number":172,"state":"MERGED","title":"Fluxo 7: recibo de colheita — identidade verificavel do artefato entregue (1.1.0)"},{"number":255,"state":"MERGED","title":"A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241)"},{"number":152,"state":"MERGED","title":"Portaria: escreve:true admitido com worktree obrigatorio (0.82.0)"},{"number":183,"state":"MERGED","title":"Lote 3 — guardas medem o repositorio da operacao; backup fora da maquina; fechar Issue exige criterio rodado"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"}]
+
+
+$ git ls-remote --heads origin | grep -F "painel"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "plugin update"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "reload-plugins"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "gh pr"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "marketplace update"
+(vazio)
+
+$ git log --all --grep="painel" --oneline
+18d69da8 Merge pull request #433 from luisfmontes/fluxo/painel-bordas
+5d9042a8 Versao 1.47.2: painel do mod confere o que ainda nao tinha resposta
+1859ea35 Merge pull request #428 from luisfmontes/fluxo/erros-sessao
+b3c6394a Versao 1.47.0: erros de ferramenta gravados e /painel erros
+548f59d1 Merge pull request #425 from luisfmontes/fluxo/painel-resolvidos
+5786055f Versao 1.45.1: deixado para depois fecha item resolvido (#424)
+12d00890 Painel: deixado fecha item resolvido e nao conta Q de decisao (#424)
+8ee17ff6 Merge pull request #422 from luisfmontes/fluxo/desk-no-mod
+0186bdaa Versao 1.45.0: barra de sessao e painel /painel no mod
+4d928805 Documentacao do painel: barra, /painel, mapa, desvio e deixado
+b7b55205 Credito MIT ao terminal-desk: NOTICE e cabecalho nos arquivos adaptados
+b63018ec painel: leitura de fluxos que falhou nao aparece como nenhum fluxo
+2d966daf Prova de engine transversal do painel (tarefa 10)
+cd1f10ca Painel: deixado para depois com checker Haiku (tarefa 9)
+d2c1cac8 Pane /painel: Mapa da sessao e aviso de desvio do plano (tarefa 8)
+2d266d42 estado: tarefa 7 integrada, 8 em voo
+00cbdb71 Pane /painel: contexto por fatia, cache, subagentes e custo
+94f0e6cb Barra de sessao no lugar da faixa e comando /painel (tarefa 6)
+b581162e Mapa da sessao: logica pura da tarefa 5
+6e339d12 design: mapa da sessao no /painel e estagio aprovado
+b2d0069a design: enxertar o terminal-desk no mod do rainforest
+99c5e5b7 Zerar as 12 Issues da revisao bimestral (1.43.0) (#416)
+2c1a5a76 E7: brainstorm pergunta alvo, convive-ou-substitui e cenario do dominio
+7d216861 Conserto da T9: R2b mede o delta do exit, nao o painel inteiro
+3ad4c4a8 Conserto da T9: R2b mede o delta do exit, nao o painel inteiro
+6a9811d4 Tres defeitos achados apurando as observacoes abertas da regra 13 (#117)
+ba19dbed Tres defeitos achados apurando as observacoes abertas da regra 13 (#117)
+7bac3c4a Versao 0.72.0: o painel passa a ver as contas divergirem (#34)
+5b89750b Versao 0.72.0: o painel passa a ver as contas divergirem (#34)
+c25afc4e O verde mais saudavel do painel era falso: o /saude passa a medir o que executa (#20)
+5ab6da43 O verde mais saudavel do painel era falso: o /saude passa a medir o que executa (#20)
+
+$ git log --all --grep="plugin update" --oneline
+397aa5a9 Glossario de dominio por repositorio (GLOSSARIO.md), versao 1.52.0 (#451)
+3c9dab99 Versao 1.51.0: indice nas references longas
+57abbb5d Versao 1.51.0: glossario compartilhado por repo (tarefa 13)
+070e55b4 multihost: sobe para 1.25.0 depois da zerar-issues-9
+ebfd5eba versao 1.23.6: prompts sem arqueologia datada e drift da regra 10
+1b4cd293 versao 1.23.1: conserto do gate para bash "$VAR/caminho"
+9da26213 Versao 1.22.0: regua selada pelo commit e keep/discard automatico
+4813243a Versao 1.21.0: instrucao de comportamento das skills ganha trava
+6ae87b55 Versao 1.19.2: as notas de atualizacao entram publicadas
+db0797dd Versao 1.18.0: zerar-issues-5
+4b3e643b Versao 1.16.1: captura de memoria volta a rodar
+a14ddb78 Subir para 1.13.0: MINOR, porque entrou capacidade nova
+6a9811d4 Tres defeitos achados apurando as observacoes abertas da regra 13 (#117)
+ba19dbed Tres defeitos achados apurando as observacoes abertas da regra 13 (#117)
+c2294de6 Versao 0.74.0: solta a skill regua e os outros tres commits represados (#48)
+eb7860f0 Versao 0.74.0: solta a skill regua e os outros tres commits represados (#48)
+fe42796a Versao 0.73.0: a statusline entra no plugin, e a bateria de saude para de vazar temporario (#41)
+5d17edbc Versao 0.73.0: a statusline entra no plugin, e a bateria de saude para de vazar temporario (#41)
+7bac3c4a Versao 0.72.0: o painel passa a ver as contas divergirem (#34)
+5b89750b Versao 0.72.0: o painel passa a ver as contas divergirem (#34)
+5ccbadd6 Versao 0.71.0: as quatro issues abertas (#33)
+b24ffb21 Versao 0.71.0: as quatro issues abertas (#33)
+214884ed Colhe tres observacoes: saida ff-only na regra 11, ferramenta na 12, hora local na 8
+2d1384d7 Colhe tres observacoes: saida ff-only na regra 11, ferramenta na 12, hora local na 8
+
+$ git log --all --grep="reload-plugins" --oneline
+(vazio)
+
+$ git log --all --grep="gh pr" --oneline
+dd2aa020 Zerar as Issues #409-#414, #417, #419 (1.46.0) (#426)
+b53bc177 E27: fechar troca a base da PR empilhada antes de mergear a de baixo
+49e24ae1 Versao 1.35.2: recusa do gate de PR nomeia o marcador de evidencia
+e0043f71 gate-fechar-issue: exemplo da mensagem de variavel sem linha gh
+8d8b1723 Gate de Issue: linha logica do heredoc e texto do corpo varrido
+93ceca0e Gate de Issue: so o corpo do heredoc e dado; o resto da linha e comando
+b6bce104 Lote 3 rodada 19: injecao no pr merge, chaves como fronteira, apostrofo no conferir
+a1c69355 Merge lote 3 rodada 17 (gh pr edit; descricao real no merge) into fluxo/guardas
+2494e055 Lote 3 rodada 17: gh pr edit e gatilho; gh pr merge le a descricao real do PR via pr view
+4f7298fa Lote 3: revisar reprovado (15a revisao: gh pr edit e descricao real no merge) e emenda D15
+8fad4fa2 Lote 3 T13: Corrigir stub gh para usar Node.js e converter cwd para Windows
+24c0286c Lote 3 T13: Hook barra `gh issue close` e `gh pr create/merge` sem evidência
+10054d1b Fecha #82: branch squash-mergeada SEM upstream deixa de ser 'trabalho vivo' (#99)
+0c9226be Fecha #82: branch squash-mergeada SEM upstream deixa de ser 'trabalho vivo' (#99)
+4fe42088 A limpeza que nao limpava: squash com remoto vivo, --base <ref>, e um nome de branch que virava comando (#15)
+441b2a5a A limpeza que nao limpava: squash com remoto vivo, --base <ref>, e um nome de branch que virava comando (#15)
+5e576099 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+d5261da4 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+
+$ git log --all --grep="marketplace update" --oneline
+b0133d41 regra 10: diz onde o agentes.extra.json NAO vai, e o caso do outro dev
+ef77e1e2 A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241) (#255)
+6a9811d4 Tres defeitos achados apurando as observacoes abertas da regra 13 (#117)
+ba19dbed Tres defeitos achados apurando as observacoes abertas da regra 13 (#117)
+0f7f6782 O /saude para de responder com interrogacao, e ganha bateria
+86b42e21 O /saude para de responder com interrogacao, e ganha bateria
+214884ed Colhe tres observacoes: saida ff-only na regra 11, ferramenta na 12, hora local na 8
+2d1384d7 Colhe tres observacoes: saida ff-only na regra 11, ferramenta na 12, hora local na 8
+
+$ cat <dados>/ideias.jsonl
+{"id":"obs-2026-09-25-painel-substitui-saldos","titulo":"Tratei o painel como complemento quando era substituto da Consulta de Saldos"}
+{"id":"append-conta-org-perde-flag-no-reload","titulo":"Mod da abertura pode perder o append da conta org depois de /reload-plugins"}
+{"id":"mapa-da-sessao-exportado-em-html","titulo":"Exportar o mapa da sessao (Builder Map do /painel) como pagina HTML"}
+
+

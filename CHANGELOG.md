@@ -10,6 +10,23 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.55.0 — 2026-10-09
+
+- **Painel de PR que abre sozinho (`/pr`).** Todo `gh pr create`, `merge`, `checks`, `ready` ou `view` que a sessão
+  rodar com a URL do PR no comando ou na saída abre o pane **PR** ao lado (o `gh pr create` sempre imprime a URL): título, branch → base, autor, commit, checks, merge, review, threads e comentários,
+  com a linha do tempo do que mudou desde que começou a acompanhar. A sessão que abre numa branch com PR aberto já
+  acompanha. O `gh` é consultado a cada 1 min. `/pr <numero|url>` acompanha outro PR, `/pr fechar` para.
+- **O Claude age quando o PR da sessão vira.** Só vale para o PR que esta sessão criou, ou o da branch `fluxo/*` em
+  que ela abriu, com você como autor e sem fork. Checks verdes e mergeável: ele manda mergear. Checks vermelhos:
+  investiga e conserta na branch do PR. Mudança pedida na review ou conflito: resume e traz para você, sem alterar
+  nada. Merge: avisa e lembra de limpar worktree e branch. A virada vira uma nota na conversa, e se a sessão estiver
+  parada e o PR quieto há 3 min, ela acorda sozinha com um turno novo. PR alheio aparece no pane e a nota só informa, sem pedir ação, e nunca acorda.
+- **Plugins em dia dentro da sessão (`/plugins-em-dia`).** Na abertura e a cada 3 h, atualiza o marketplace e os
+  plugins da opção **Plugins a manter em dia** (padrão: `rainforest-mind@rainforest-mind`; só os instalados no
+  escopo user). Várias janelas abertas juntas rodam uma vez só a cada 30 min. Subindo versão, avisa para rodar
+  `/reload-plugins`; a opção **Recarregar sozinho** (desligada) recarrega por conta própria. `/plugins-em-dia`
+  força a rodada e responde com as versões.
+
 ## 1.54.4 — 2026-10-09
 
 - **O Jardineiro de ideias resume as plantadas em vez de listar todas.** A Ronda 1 traz o total, a contagem por faixa de
