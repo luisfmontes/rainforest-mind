@@ -10,13 +10,21 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
-## 1.59.4 — 2026-10-10
+## 1.59.5 — 2026-10-10
 
 - **Livro de repos: `claude-cockpit` avaliado para a troca automática de conta.** Ele não instala aqui, porque só roda
   em macOS, mas fica registrado o que ele mediu e que vale para o fluxo de troca de conta: uma credencial mora em um
   lugar só, a identidade é perguntada ao servidor, o uso vem de `/api/oauth/usage` guardado em cache e a troca dispara
   uma vez só. Relatório em `relatorios/2026-10-10-claude-cockpit-troca-de-conta.md`. Nenhum comportamento do plugin
   mudou.
+
+## 1.59.4 — 2026-10-10
+
+- **O gate de staging total reconhece `git.cmd`, `GIT.EXE`, nome com espaço no fim e `| iex` (Issue #456).** O
+  Windows abre o executável sem diferenciar maiúsculas, aceita as extensões do `PATHEXT` e ignora espaço e ponto no fim
+  do nome. Mas o `ehComando` só reconhecia `git` ou `git.exe` em minúsculas, então `git.cmd add -A`, `GIT.EXE add -A`
+  e `& "C:\x\git.exe " add -A` passavam com exit 0. Já o `iex` sem argumento no fim de um pipeline executa a saída do
+  comando anterior, que não está na linha, e agora conta como conteúdo ilegível e barra.
 
 ## 1.59.3 — 2026-10-10
 
