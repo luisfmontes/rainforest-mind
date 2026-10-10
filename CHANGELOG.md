@@ -10,6 +10,13 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.57.4 — 2026-10-10
+
+- **Os comandos `leve` e `iniciar` que a portaria e o aviso de fluxo imprimem vão entre aspas simples (Issue #474).**
+  Com aspas duplas, colar o comando no bash expandia um `$(...)` que estivesse no nome de uma pasta e executava o que
+  houvesse ali. Aspas simples são literais no bash e no PowerShell, e a dica do `& ` do PowerShell continua valendo.
+  Se o caminho tiver aspa simples, a mensagem mostra os caminhos em vez de um comando para colar.
+
 ## 1.57.3 — 2026-10-10
 
 - **Mutação que falhou medindo não vira mais "corte de shell" (Issue #475).** O `conferir-mutacao` suspeitava de
