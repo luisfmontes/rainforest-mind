@@ -520,6 +520,78 @@ caso('deixado e somente leitura: o arquivo de estado fica igual', () => {
   assert.strictEqual(bytes(cx, slug), antes);
 });
 
+// ---------------------------------------------------------------- M1: verbo `destinar`
+
+const destinar = (cx, slug, est, json) => estado(cx, ['destinar', '--slug', slug, '--estagio', est, '--json', typeof json === 'string' ? json : JSON.stringify(json)]);
+
+caso('M1: destinar grava o destino de executar ok sem mudar status nem em, e exigir fechar passa', () => {
+  const slug = fluxoFechadoAMao(cx, (est) => { est.executar.pendentes = [A]; est.executar.mutacao = EVIDENCIA_OK.mutacao; });
+  assert.strictEqual(exigir(cx, slug, 'fechar').status, 2);
+  const antes = bloco(cx, slug, 'executar');
+  const r = destinar(cx, slug, 'executar', { destinos: [DEST_A] });
+  assert.strictEqual(r.status, 0, r.stderr);
+  const depois = bloco(cx, slug, 'executar');
+  assert.strictEqual(depois.status, antes.status);
+  assert.strictEqual(depois.status, 'ok');
+  assert.strictEqual(depois.em, antes.em);
+  assert.ok(!(depois.pendentes || []).includes(A), JSON.stringify(depois));
+  assert.deepStrictEqual(depois.destinos, [DEST_A]);
+  const { pendentes: _p, destinos: _d, ...restoAntes } = antes;
+  const { pendentes: _p2, destinos: _d2, ...restoDepois } = depois;
+  assert.deepStrictEqual(restoDepois, restoAntes);
+  assert.strictEqual(exigir(cx, slug, 'fechar').status, 0);
+});
+
+caso('M1: destinar com pendente que nao casa e recusado e nao grava', () => {
+  const slug = fluxoFechadoAMao(cx, (est) => { est.executar.pendentes = [A]; });
+  const antes = bytes(cx, slug);
+  const r = destinar(cx, slug, 'executar', { destinos: [{ pendente: 'texto que nao existe', destino: 'descartada', motivo: 'x' }] });
+  recusado(r, antes, bytes(cx, slug), ['texto que nao existe']);
+});
+
+caso('M1: destinar com chave extra no json e recusado e nao grava', () => {
+  const slug = fluxoFechadoAMao(cx, (est) => { est.executar.pendentes = [A]; });
+  const antes = bytes(cx, slug);
+  const r = destinar(cx, slug, 'executar', { destinos: [DEST_A], status: 'parcial' });
+  recusado(r, antes, bytes(cx, slug), ['destinos']);
+});
+
+caso('M1: destinar sem a chave destinos e recusado e nao grava', () => {
+  const slug = fluxoFechadoAMao(cx, (est) => { est.executar.pendentes = [A]; });
+  const antes = bytes(cx, slug);
+  recusado(destinar(cx, slug, 'executar', {}), antes, bytes(cx, slug), ['destinos']);
+});
+
+caso('M1: destinar em estagio sem bloco e recusado e nao grava', () => {
+  const slug = fluxoFechadoAMao(cx, (est) => { delete est.executar; });
+  const antes = bytes(cx, slug);
+  const r = destinar(cx, slug, 'executar', { destinos: [DEST_A] });
+  recusado(r, antes, bytes(cx, slug), ['executar']);
+});
+
+caso('M1: destinar com destino invalido e recusado e nao grava', () => {
+  const slug = fluxoFechadoAMao(cx, (est) => { est.executar.pendentes = [A]; });
+  const antes = bytes(cx, slug);
+  const r = destinar(cx, slug, 'executar', { destinos: [{ pendente: A, destino: 'resolvida' }] });
+  recusado(r, antes, bytes(cx, slug), ['evidencia']);
+});
+
+caso('M1: destinar aceita pendente ja destinada (substitui) e flag desconhecida sai 1', () => {
+  const slug = fluxoFechadoAMao(cx, (est) => { est.executar.pendentes = []; est.executar.destinos = [DEST_A]; });
+  const novo = { pendente: A, destino: 'descartada', motivo: 'mudei de ideia' };
+  assert.strictEqual(destinar(cx, slug, 'executar', { destinos: [novo] }).status, 0);
+  assert.deepStrictEqual(bloco(cx, slug, 'executar').destinos, [novo]);
+  const r = estado(cx, ['destinar', '--slug', slug, '--estagio', 'executar', '--json', '{"destinos":[]}', '--status', 'ok']);
+  assert.strictEqual(r.status, 1);
+});
+
+caso('M1: a mensagem do exigir fechar manda usar destinar', () => {
+  const slug = fluxoFechadoAMao(cx, (est) => { est.executar.pendentes = [A]; });
+  const r = exigir(cx, slug, 'fechar');
+  assert.strictEqual(r.status, 2);
+  assert.ok(r.stderr.includes('estado.cjs destinar --slug') && r.stderr.includes('--estagio executar'), r.stderr);
+});
+
 // ---------------------------------------------------------------- fim
 
 try { fs.rmSync(cx.raiz, { recursive: true, force: true }); } catch (_) { /* limpeza best-effort */ }

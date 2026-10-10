@@ -28,6 +28,7 @@
  *   node scripts/estado.cjs iniciar  --slug <slug> [--titulo "..."]
  *   node scripts/estado.cjs ler      --slug <slug>
  *   node scripts/estado.cjs deixado  --slug <slug>
+ *   node scripts/estado.cjs destinar --slug <slug> --estagio <e> --json '{"destinos":[...]}'
  *   node scripts/estado.cjs marcar   --slug <slug> --estagio <e> --status <s> [--json '{...}']
  *   node scripts/estado.cjs proximo  --slug <slug>
  *   node scripts/estado.cjs exigir   --slug <slug> --estagio <e>
@@ -1767,6 +1768,7 @@ const FLAGS_POR_SUBCOMANDO = {
   iniciar: ['slug', 'titulo'],
   ler: ['slug'],
   deixado: ['slug'],
+  destinar: ['slug', 'estagio', 'json'],
   marcar: ['slug', 'estagio', 'status', 'json', 'raiz'],
   proximo: ['slug'],
   exigir: ['slug', 'estagio'],
@@ -2180,6 +2182,33 @@ function main() {
     return console.log(itens.length ? itens.join('\n') : 'nada ficou para depois');
   }
 
+  // #449 (M1): grava so `destinos` num bloco que ja existe — nao muda `status`, `em`
+  // nem outro campo, e nao roda gate de evidencia. E o remedio do `exigir fechar` para
+  // pendencia orfa em estagio ja fechado, onde repetir o `marcar` refaria os gates.
+  if (cmd === 'destinar') {
+    const recusa = (msg) => { console.error(`RECUSADO: ${msg}`); process.exit(2); };
+    const estagio = arg('estagio');
+    const bloco = ESTAGIOS_DO_FLUXO.includes(estagio) ? estado[estagio] : null;
+    if (!ehObjetoSimples(bloco)) recusa(`'${estagio}' nao tem bloco no estado de ${slug}.`);
+    const j = arg('json', false);
+    if (j === null) recusa('destinar exige --json \'{"destinos":[...]}\'.');
+    let extra;
+    try { extra = JSON.parse(j); } catch (err) { console.error(`erro: --json nao e JSON valido: ${err.message}`); process.exit(1); }
+    if (!ehObjetoSimples(extra) || Object.keys(extra).length !== 1 || !Object.prototype.hasOwnProperty.call(extra, 'destinos')) {
+      recusa("destinar aceita so a chave 'destinos' no --json.");
+    }
+    if (!Array.isArray(extra.destinos) || extra.destinos.length === 0) recusa("'destinos' tem de ser uma lista nao vazia.");
+    // Status 'parcial' so escolhe o caminho nao terminal da conciliacao (sem exigir destino de tudo).
+    const conciliacao = reconciliarPendencias(estagio, bloco, extra, 'parcial');
+    if (conciliacao.recusa) { console.error(conciliacao.recusa); process.exit(2); }
+    const novo = { ...bloco, destinos: extra.destinos };
+    if (Object.prototype.hasOwnProperty.call(extra, 'pendentes')) novo.pendentes = extra.pendentes;
+    estado[estagio] = novo;
+    gravar(slug, estado);
+    console.log(`${estagio}: ${extra.destinos.length} destino(s) gravado(s); status ${bloco.status} intacto`);
+    return;
+  }
+
   if (cmd === 'proximo') {
     avisarCarimbosDivergentes(estado);
     const p = proximo(estado);
@@ -2258,11 +2287,12 @@ function main() {
       if (estagio === 'fechar') {
         const orfas = ESTAGIOS_DO_FLUXO.flatMap((e) => orfasDoBloco(e, estado[e]));
         if (orfas.length) {
-          const primeira = orfas[0].estagio;
+          const estagiosOrfaos = [...new Set(orfas.map((o) => o.estagio))];
           console.error([
             "RECUSADO: 'fechar' exige que toda pendencia tenha destino. Sem destino:",
             ...orfas.map((o) => `  ${o.estagio}: ${o.pendente}`),
-            `Grave o destino: node scripts/estado.cjs marcar --slug ${slug} --estagio ${primeira} --status ${estado[primeira].status} --json '{"destinos":[...]}'`,
+            'Grave o destino (nao muda status nem refaz gate):',
+            ...estagiosOrfaos.map((e) => `  node scripts/estado.cjs destinar --slug ${slug} --estagio ${e} --json '{"destinos":[...]}'`),
           ].join('\n'));
           process.exit(2);
         }
@@ -2706,7 +2736,7 @@ function main() {
     return;
   }
 
-  console.error('uso: iniciar | ler | deixado | marcar | proximo | exigir | liberar | listar | concluido | veredito');
+  console.error('uso: iniciar | ler | deixado | destinar | marcar | proximo | exigir | liberar | listar | concluido | veredito');
   process.exit(1);
 }
 

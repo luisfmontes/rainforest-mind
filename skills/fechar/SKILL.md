@@ -14,8 +14,10 @@ node scripts/estado.cjs exigir --slug <slug> --estagio fechar
 Exit 2 significa que `verificar` ainda não fechou com `ok`, ou que algum
 estágio ainda tem pendência sem destino — pare, não force `marcar` por cima
 nem edite o arquivo de estado. No segundo caso o remédio é gravar o `destinos`
-da pendência com `marcar` (resolvida com `evidencia`, plantada com `ref`,
-descartada com `motivo`), como a mensagem do próprio `exigir` mostra.
+da pendência com `node scripts/estado.cjs destinar --slug <slug> --estagio <e> --json '{"destinos":[...]}'`
+(resolvida com `evidencia`, plantada com `ref`, descartada com `motivo`), como a
+mensagem do próprio `exigir` mostra. O `destinar` só acrescenta destinos: não muda
+`status` nem refaz os gates de evidência do estágio.
 
 Seis passos, nesta ordem.
 
