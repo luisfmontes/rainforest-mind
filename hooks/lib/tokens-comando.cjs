@@ -71,7 +71,11 @@ function ehComando(tok, nome, ehPosicaoDeComando = false) {
   if (tok.q && !ehPosicaoDeComando) return false;
   let v = tok.v;
   if (tok.q && v.startsWith("$")) v = v.slice(1); // ANSI-C (A4), como procuraCLI
-  return new RegExp("(^|[\\\\/])" + nome + "(\\.exe)?$").test(v);
+  // Issue #456: o Windows abre o executavel sem diferenciar caixa, aceita as
+  // extensoes do PATHEXT e ignora espaco e ponto no fim do nome — `GIT.EXE`,
+  // `git.cmd` e `"C:\x\git.exe "` rodam o mesmo git e passavam batido.
+  v = v.replace(/[\s.]+$/, "");
+  return new RegExp("(^|[\\\\/])" + nome + "(\\.(exe|cmd|bat|com))?$", "i").test(v);
 }
 
 /**
@@ -817,6 +821,11 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
   }
 
   if (exe === "eval" || exe === "invoke-expression" || exe === "iex") {
+    // Issue #456: `... | iex` sem argumento executa a SAIDA do comando
+    // anterior do pipeline — texto que nao esta na linha, entao ilegivel.
+    if ((exe === "invoke-expression" || exe === "iex") && p1.resto.trim() === "") {
+      return { interno: null, ilegivel: true };
+    }
     const interno = desempacota(p1.resto);
     return { interno, ilegivel: contemConstrucaoIlegivel(interno) };
   }
