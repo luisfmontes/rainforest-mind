@@ -20,6 +20,8 @@ import type {
   RainforestMindRelogioSessoes,
 } from '../types'
 import { register as abertura } from './register.ts'
+import { register as pluginsEmDia } from './plugins-em-dia.ts'
+import { register as pr } from './pr.tsx'
 import { CHECAR_MIN_FERRAMENTAS, deferimentos, lerResolvidosChecker, lerRespostaChecker, marcadoresEmArquivo, montarPromptChecker, perguntaDecisao, rascunhoFazAgora } from './deixado-puro.mjs'
 import { largura, cortar, semControle } from './faixa-puro.mjs'
 import { ESCRITORAS, escritaDe, mapaVazio, registrar, trocarCaminho } from './mapa-puro.mjs'
@@ -246,6 +248,8 @@ const VEREDITOS_DEFINITIVOS = new Set(['dentro', 'fora', 'isento'])
 
 export const register: Register = (on, options) => {
   abertura(on, options)
+  pr(on, options)
+  pluginsEmDia(on, options)
 
   // Desvio do plano: no maximo um spawn do script por vez. Escritas que chegam durante ele
   // esperam em `filaDesvio`; `desvioPendente` (na fila ou rodando) e `desvioConsultado` (ja

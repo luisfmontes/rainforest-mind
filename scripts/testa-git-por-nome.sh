@@ -32,7 +32,8 @@ const arquivo = process.argv[2];
 const py = /\.py$/.test(arquivo);
 const linhas = fs.readFileSync(arquivo, "utf8").split(/\r?\n/);
 const comentario = py ? /^\s*#/ : /^\s*(\/\/|\*|\/\*)/;
-const SEGUROS = new Set(["executar", "caminhoExecutavel", "resolverExecutavel", "require"]);
+// localizadores (hooks/pr-puro.mjs) devolve o argv do where.exe/which por caminho absoluto: o nome e o alvo da busca.
+const SEGUROS = new Set(["executar", "caminhoExecutavel", "resolverExecutavel", "require", "localizadores"]);
 const NOME = "(git|gh)";
 const Q = "['\"`]";
 const padroes = py
