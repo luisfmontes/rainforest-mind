@@ -24,8 +24,8 @@ não guarda o fracasso).
 ## Decisões fechadas
 
 - **D1 — Leitura sem dado de merge herda o motivo anterior**: `herdarMotivo(velho, novo)` em
-`hooks/pr-puro.mjs`: quando `novo.motivo` é o rótulo de `UNKNOWN` e há `velho`, devolve `novo`
-com o `motivo` de `velho`; o `mergavel` de `novo` não muda (fica `false`, o lado seguro). O
+`hooks/pr-puro.mjs`: quando `novo.motivo` é o rótulo de `UNKNOWN` e o `velho` era conflito, devolve `novo`
+com o motivo conflito (só ele: um "mergeável" herdado poria no pane um merge não verificado — revisão); o `mergavel` de `novo` não muda (fica `false`, o lado seguro). O
 `pr.tsx` aplica antes de gravar, de calcular eventos e a virada. Com isso conflito → sem dado
 → conflito acorda uma vez só e o pane deixa de listar o vaivém.
 

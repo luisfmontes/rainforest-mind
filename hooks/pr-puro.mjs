@@ -150,13 +150,13 @@ export function bloco(r) {
   };
 }
 
-// Leitura sem dado de merge (UNKNOWN: o GitHub recalculando) herda o motivo da anterior.
-// Sem isso conflito -> sem dado -> conflito conta como virada nova e acorda a sessao de
-// novo para o mesmo conflito (#482). O mergavel nao e herdado: sem dado nunca vira
-// "mande mergear".
+// Leitura sem dado de merge (UNKNOWN: o GitHub recalculando) depois de um conflito segue
+// como conflito. Sem isso conflito -> sem dado -> conflito conta como virada nova e acorda
+// a sessao de novo para o mesmo conflito (#482). So o conflito e herdado: um "mergeável"
+// herdado poria no pane um merge que ninguem verificou, e o mergavel nunca e herdado.
 const SEM_DADO = MOTIVOS.UNKNOWN;
 export function herdarMotivo(velho, novo) {
-  if (!velho || novo.motivo !== SEM_DADO) return novo;
+  if (!velho || novo.motivo !== SEM_DADO || velho.motivo !== 'conflito') return novo;
   return { ...novo, motivo: velho.motivo };
 }
 

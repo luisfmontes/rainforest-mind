@@ -10,13 +10,13 @@ Design: docs/rainforest/design/2026-10-10-pr-aviso-node.md
 
 ### 1. Motivo herdado na leitura sem dado de merge [tipo: implementar]
 atende: D1
-arquivos: `hooks/pr-puro.mjs`, `hooks/pr.tsx`, `hooks/testa-mod-pr.cjs`
+arquivos: `hooks/pr-puro.mjs`, `hooks/pr.tsx`, `hooks/testa-mod-pr.cjs`, `hooks/mod-pr.test.tsx` (emenda da revisão: só o conflito é herdado, e a ordem no `pr.tsx` se prova no engine)
 depende de: nenhuma
 paralela: sim
 prova: `node -e "import('./hooks/pr-puro.mjs').then(m=>process.exit(typeof m.herdarMotivo==='function'?0:1))"`
 mutacao:
   arquivo: `hooks/pr-puro.mjs`
-  de: `if (!velho || novo.motivo !== SEM_DADO) return novo;`
+  de: `if (!velho || novo.motivo !== SEM_DADO || velho.motivo !== 'conflito') return novo;`
   para: `return novo;`
   bateria: `node hooks/testa-mod-pr.cjs`
   fixture: `testa-mod-pr.cjs, caso "conflito, sem dado, conflito acorda uma vez"`

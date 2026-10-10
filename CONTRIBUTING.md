@@ -273,8 +273,9 @@ sem `node` achado, o fracasso fica guardado em `nodeFalhouEm` por `NODE_FALHA_TT
 `caminhoDoNode` recebe o `$` e o engine recusa passá-lo ao `register.ts`.
 
 **Leitura sem dado de merge.** `herdarMotivo()` (`hooks/pr-puro.mjs`) faz a leitura com
-`mergeStateStatus: UNKNOWN` herdar o motivo da anterior, antes de `eventos` e `virada`: o vaivém
-conflito → sem dado → conflito não acorda a sessão de novo. O `mergavel` não é herdado.
+`mergeStateStatus: UNKNOWN` logo depois de um conflito seguir como conflito, antes de `eventos` e `virada`:
+o vaivém conflito → sem dado → conflito não acorda a sessão de novo. Nenhum outro motivo, nem o `mergavel`, é
+herdado.
 
 ## Versão: o release é entrega própria, e o PATCH existe
 

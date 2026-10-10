@@ -14,8 +14,8 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 - **O painel de PR não acorda mais a sessão de novo para o mesmo conflito (Issue #482).** Enquanto recalcula o PR, o
   GitHub devolve o estado de merge como desconhecido; a volta para "conflito" contava como novidade e a sessão era
-  acordada outra vez, três vezes no PR #481. Agora a leitura sem dado de merge mantém o último estado conhecido, e o
-  histórico do pane deixa de listar o vaivém. Ela nunca vira "mergeável".
+  acordada outra vez, três vezes no PR #481. Agora a leitura sem dado de merge logo depois de um conflito continua como conflito, e o
+  histórico do pane deixa de listar o vaivém. Só o conflito é mantido; a leitura nunca vira "mergeável".
 - **A abertura do mod chama o `node` por caminho absoluto (Issue #480).** Era o último ponto do mod que chamava o
   `node` pelo nome. E quando o `node` não é achado, o mod espera 5 minutos antes de procurar de novo, em vez de refazer
   a busca a cada leitura do relógio, da barra e do desvio.
