@@ -10,6 +10,15 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.59.3 — 2026-10-10
+
+- **Veredito do revisor gravado quando o subagente entrega por `SubagentHandback` (Issue #465).** No Claude Code
+  2.1.296 o subagente pode entregar o relato numa chamada de ferramenta `SubagentHandback`. Aí a última entrada do
+  assistente no transcrito é essa chamada, o `last_assistant_message` chega vazio e a linha `VEREDITO:` fica no input
+  da ferramenta. O hook e o `estado.cjs veredito` não a enxergavam, e o estágio `revisar` não fechava sem desligar o
+  `contrato-veredito`. Agora os dois leem o relato do input do `SubagentHandback`. Como o nome do campo não é
+  documentado, a leitura tenta os nomes prováveis e, sem nenhum deles, usa o maior texto do input.
+
 ## 1.59.2 — 2026-10-10
 
 - **O painel de PR não acorda mais a sessão de novo para o mesmo conflito (Issue #482).** Enquanto recalcula o PR, o
