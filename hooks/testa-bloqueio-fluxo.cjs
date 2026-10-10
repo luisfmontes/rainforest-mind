@@ -221,9 +221,9 @@ caso('rainforest sem fluxo: a mensagem nomeia as duas saidas com comando pronto'
     branch(s, 'fluxo/x');
     const arq = escreverCodigo(s, 'scripts/x.cjs');
     return bloqueado(rodarHook(payload({ cwd: s, file: arq }), s), [
-      `"${ESTADO_BARRAS}" iniciar`,
+      `'${ESTADO_BARRAS}' iniciar`,
       '/rainforest-mind:brainstorm',
-      `"${ESTADO_BARRAS}" leve --motivo`,
+      `'${ESTADO_BARRAS}' leve --motivo`,
       'Em PowerShell, prefixe `& `', // Issue #442
     ]);
   } finally { limparSandbox(s); }
@@ -347,7 +347,7 @@ caso('protheus sem fluxo: sai 2 nomeando /protheus:trabalhar e o leve', () => {
     const arq = escreverCodigo(s, 'scripts/x.cjs');
     return bloqueado(rodarHook(payload({ cwd: s, file: arq }), s), [
       '/protheus:trabalhar',
-      `"${ESTADO_BARRAS}" leve --motivo`,
+      `'${ESTADO_BARRAS}' leve --motivo`,
       'Em PowerShell, prefixe `& `', // Issue #442
     ]);
   } finally { limparSandbox(s); }
@@ -578,7 +578,7 @@ caso('rainforest na branch padrao: mensagem manda abrir worktree e nao oferece l
     // criarSandbox ja deixa a branch main, que e a padrao: nenhum branch() aqui.
     const arq = escreverCodigo(s, 'scripts/x.cjs');
     const r = rodarHook(payload({ cwd: s, file: arq }), s);
-    const erro = bloqueado(r, ['git worktree add', '/rainforest-mind:brainstorm', `"${ESTADO_BARRAS}" iniciar`]);
+    const erro = bloqueado(r, ['git worktree add', '/rainforest-mind:brainstorm', `'${ESTADO_BARRAS}' iniciar`]);
     if (erro) return erro;
     if (/estado\.cjs" leve/.test(r.stderr)) return `mensagem oferece leve na branch padrao: ${r.stderr}`;
     return null;
@@ -597,7 +597,7 @@ caso('o comando leve impresso, rodado por spawn de outro cwd, libera a proxima e
     if (erro) return erro;
     // Extrai do stderr o comando como foi impresso; o motivo fica com o texto literal do
     // placeholder, que é o que o comando impresso carrega.
-    const m = /"([^"]+)" "(.+?estado\.cjs)" leve --motivo "([^"]*)" --repo "([^"]*)"/.exec(r.stderr);
+    const m = /'([^']+)' '(.+?estado\.cjs)' leve --motivo '([^']*)' --repo '([^']*)'/.exec(r.stderr);
     if (!m) return `comando leve nao extraido do stderr: ${r.stderr}`;
     const [, node, script, motivo, repo] = m;
     if (node !== process.execPath.split(path.sep).join('/')) return `node impresso nao e o process.execPath com barras: ${node}`;
@@ -630,7 +630,7 @@ caso('plugin em pasta com espaco: o leve impresso pelo aviso roda e libera a edi
     const r = rodarHook(payload({ cwd: s, file: arq }), s, hookCopia);
     const erro = bloqueado(r, []);
     if (erro) return erro;
-    const m = /"([^"]+)" "(.+?estado\.cjs)" leve --motivo "([^"]*)" --repo "([^"]*)"/.exec(r.stderr);
+    const m = /'([^']+)' '(.+?estado\.cjs)' leve --motivo '([^']*)' --repo '([^']*)'/.exec(r.stderr);
     if (!m) return `comando leve nao extraido do stderr: ${r.stderr}`;
     const [, node, script, motivo, repo] = m;
     if (!script.includes(' ')) return `o caminho impresso nao tem espaco, o caso nao prova nada: ${script}`;
