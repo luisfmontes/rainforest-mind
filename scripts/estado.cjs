@@ -249,7 +249,7 @@ function validarDestino(d, universo) {
   if (typeof d.pendente !== 'string' || !universo.includes(d.pendente)) {
     return `'pendente' nao casa com nenhuma pendencia do bloco: ${JSON.stringify(d.pendente)}`;
   }
-  if (!Object.prototype.hasOwnProperty.call(CAMPO_DO_DESTINO, d.destino)) {
+  if (typeof d.destino !== 'string' || !Object.prototype.hasOwnProperty.call(CAMPO_DO_DESTINO, d.destino)) {
     return `'destino' invalido em ${JSON.stringify(d.pendente)}: ${JSON.stringify(d.destino)} — use resolvida|plantada|descartada`;
   }
   const campo = CAMPO_DO_DESTINO[d.destino];

@@ -121,7 +121,8 @@ for (const ref of ['#0', '#abc', '#12 x', 'https://github.com/alfa/beta/pull/3',
   casoRecusa(`plantada com ref ${JSON.stringify(ref)} e recusada`, [{ pendente: A, destino: 'plantada', ref }], ['ref']);
 }
 casoRecusa('destino fora dos tres (adiada) e recusado', [{ pendente: A, destino: 'adiada', motivo: 'x' }], ['adiada']);
-casoRecusa('item sem o campo destino e recusado', [{ pendente: A, motivo: 'x' }], ['destino']);
+casoRecusa('destino que e lista com resolvida (nao texto) e recusado', [{ pendente: A, destino: ['resolvida'], evidencia: 'x' }], ['destino']);
+casoRecusa('item sem o campo destino e recusado',[{ pendente: A, motivo: 'x' }], ['destino']);
 casoRecusa('pendente que nao casa com nenhuma pendencia e recusado', [{ pendente: 'texto que nao existe', destino: 'descartada', motivo: 'x' }], ['texto que nao existe']);
 casoRecusa('destinos que e objeto e nao lista e recusado', { pendente: A, destino: 'descartada', motivo: 'x' }, ['destinos']);
 
