@@ -1,0 +1,9 @@
+{
+  "slug": "2026-10-10-gate-staging-formas",
+  "titulo": "fluxo/gate-staging-formas",
+  "criado_em": "2026-10-10",
+  "leve": {
+    "motivo": "Issue #456: gate de staging reconhece git.cmd/GIT.EXE/nome com espaco e iex de pipeline",
+    "data": "2026-10-10"
+  }
+}

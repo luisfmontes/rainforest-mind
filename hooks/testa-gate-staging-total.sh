@@ -536,6 +536,15 @@ echo "== #403: aspas duplas DENTRO do campo avaliado chegam ao gate =="
 # payload invalido, e um caso que esperasse 0 ficava verde sem ser olhado.
 gate "comando com aspas duplas no campo: git add -A barra" 2 "$(b 'git commit -m "msg com \"aspas\"" && git add -A')"
 
+echo "== #456: nome de executavel em outra caixa/extensao, espaco no fim, e iex de pipeline =="
+gate "via PowerShell: git.cmd add -A barra (#456)"                           2 "$(p 'git.cmd add -A')"
+gate "via PowerShell: GIT.EXE add -A barra (#456)"                           2 "$(p 'GIT.EXE add -A')"
+gate "via PowerShell: nome com espaco no fim (\"git.exe \") barra (#456)"    2 "$(p '& "C:\x\git.exe " add -A')"
+gate "via PowerShell: script com a saida em | iex barra (#456)"              2 "$(p '& "C:\x\x.ps1" | iex')"
+gate "via PowerShell: script sem iex passa (#456, controle)"                 0 "$(p '& "C:\x\x.ps1"')"
+gate "via PowerShell: iex como argumento do Select-String passa (#456, controle)" 0 "$(p 'Get-Content f.txt | Select-String iex')"
+gate "via PowerShell: GIT.EXE status passa (#456, controle)"                0 "$(p 'GIT.EXE status --porcelain')"
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

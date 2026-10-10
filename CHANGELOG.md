@@ -19,6 +19,14 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   atualização, por janela. `RAINFOREST_RECARGA=off` no ambiente desliga. Adaptado do mod do wildz-data, de Rafael
   Lopes, com autorização dele.
 
+## 1.59.4 — 2026-10-10
+
+- **O gate de staging total reconhece `git.cmd`, `GIT.EXE`, nome com espaço no fim e `| iex` (Issue #456).** O
+  Windows abre o executável sem diferenciar maiúsculas, aceita as extensões do `PATHEXT` e ignora espaço e ponto no fim
+  do nome. Mas o `ehComando` só reconhecia `git` ou `git.exe` em minúsculas, então `git.cmd add -A`, `GIT.EXE add -A`
+  e `& "C:\x\git.exe " add -A` passavam com exit 0. Já o `iex` sem argumento no fim de um pipeline executa a saída do
+  comando anterior, que não está na linha, e agora conta como conteúdo ilegível e barra.
+
 ## 1.59.3 — 2026-10-10
 
 - **Veredito do revisor gravado quando o subagente entrega por `SubagentHandback` (Issue #465).** No Claude Code
