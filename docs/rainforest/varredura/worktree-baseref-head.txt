@@ -1,0 +1,188 @@
+Data: 2026-10-10
+Termos: origin/main, baseRef, ponta da
+
+$ gh issue list --state all --search "origin/main" --limit 200 --json number,title,state
+[{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"},{"number":446,"state":"CLOSED","title":"Bateria grava user.email t@t no .git/config do repositorio real"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"},{"number":399,"state":"CLOSED","title":"limpar e leitor de estado tratam o inventário como retrato do presente"},{"number":423,"state":"CLOSED","title":"estado.cjs marcar revisar: caminho com acento sai octal-escapado do git e acusa creep falso"},{"number":460,"state":"CLOSED","title":"criarSchema: migracoes 1 e 4 ainda engolem SQLITE_BUSY no ALTER"},{"number":278,"state":"CLOSED","title":"gate-verificador-staged barra merge por arquivo que ja passou na main"},{"number":419,"state":"CLOSED","title":"gate-publicacao-destino: remoto GitLab sempre sai 'desconhecida' e barra repo privado de trabalho"},{"number":214,"state":"CLOSED","title":"Sessao isolada em worktree nao consegue atualizar o checkout principal — nem o dono pelo prefixo !"},{"number":244,"state":"CLOSED","title":"Bump de versao e feito a mao no fechar, e o esquecimento e silencioso"},{"number":309,"state":"CLOSED","title":"gate de texto barra bash \"$t\" (variavel entre aspas) como comando encapsulado"},{"number":196,"state":"CLOSED","title":"conferir-fluxo creep nao isenta relatorios/**, e recusa por arquivo que por construcao nao pode ter tarefa"},{"number":189,"state":"CLOSED","title":"conferir-versao.cjs nao olha o numero: versao que anda para tras passa verde, e plugin.json ilegivel sai 0"},{"number":275,"state":"CLOSED","title":"gate-verificador-staged barra merge por conteudo que ja esta na main"},{"number":23,"state":"CLOSED","title":"limpar-branches.cjs remove a branch padrao do repo quando --base aponta para outra ref"},{"number":195,"state":"CLOSED","title":"Nada exige que o checkout principal fique na main, e os vigias agendados rodam contra ele"},{"number":299,"state":"CLOSED","title":"Rota com emoji de status por etapa: formato de acompanhamento que a regra 4 nao tem"},{"number":257,"state":"CLOSED","title":"Portaria: autorizacao de subagente exige a palavra exata e culpa o estagio quando o usuario erra a digitacao"},{"number":221,"state":"CLOSED","title":"saude.cjs quebra com 'path argument undefined' quando ha duas config dirs e a versao do repo esta a frente da instalada"},{"number":193,"state":"CLOSED","title":"Duas sessoes bumparam a MESMA versao e o testa-versao nao pode pegar: falta checagem externa (tag e cache)"},{"number":303,"state":"CLOSED","title":"Gemeo Python de conferir-entrega congelou: 21 falhas na main e o portao do CONTRIBUTING esta vermelho"},{"number":173,"state":"CLOSED","title":"O gate de publicacao barra merge de conteudo que ja esta na main — e engole o git add da mesma chamada"},{"number":51,"state":"CLOSED","title":"As tres travas de isolamento falharam na borda: retomada de agente, janela principal, e o rastro da propria esteira"},{"number":118,"state":"CLOSED","title":"O backup diario do sentinela nunca fez backup — e empurra sozinho para a main de um repo publico"},{"number":337,"state":"CLOSED","title":"gate-fechar-issue barra bash $t sem aspas como comando encapsulado"},{"number":185,"state":"CLOSED","title":"gate-publicacao: hash de commit vira 'telefone', e a saída de emergência não vale no mesmo comando"},{"number":14,"state":"CLOSED","title":"limpar-branches.cjs da branch de PR mergeado por squash: classificada 'viva', nunca limpa"},{"number":120,"state":"CLOSED","title":"testa-contexto-sessao.sh esta vermelha na main: 5 falhas em dentroDoExpediente, focoAtivoEmOutraJanela e co-locada"},{"number":121,"state":"CLOSED","title":"testa-conferir-mutacao.sh e verde ou vermelha conforme a carga da maquina — a catraca de mutacao depende de relogio de parede"},{"number":243,"state":"CLOSED","title":"foco-session-start.cjs leva 6-8 s nesta maquina e estoura o timeout 5 do hooks.json: testa-memoria-somente-leitura fica vermelha e nada diz que foi timeout"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"},{"number":112,"state":"CLOSED","title":"run-vigia.ps1 grava o ERROS.md em duas raizes diferentes — e com RFM_ROOT definido elas se partem"},{"number":4,"state":"CLOSED","title":"Worktree de agente nasce na base velha em pelo menos 2 de 8 despachos, e conferir-entrega.cjs nao ve arquivo autoexcluido por gitignore"},{"number":313,"state":"CLOSED","title":"Contrabarra dupla dentro da string do wrapper ainda esconde o comando dos gates"},{"number":145,"state":"CLOSED","title":"A #118 foi fechada com o defeito do titulo vivo — nada exige rodar o criterio de pronto antes de fechar Issue"},{"number":259,"state":"CLOSED","title":"cortarBytes duplicado entre memoria-sessao.cjs e contexto-sessao.cjs, com comentario afirmando reuso que nao existe"},{"number":335,"state":"CLOSED","title":"13 baterias .cjs nunca rodam no CI: varrer-baterias.sh so descobre testa-*.sh"},{"number":25,"state":"CLOSED","title":"A regra de branch so conhece `main`, e nao tem nocao de dono — commitei em cima de outra sessao"},{"number":291,"state":"CLOSED","title":"Regra 6: \"conserta na hora\" nao diz em QUE repo, e eu fui consertar o do vizinho"},{"number":241,"state":"CLOSED","title":"Decisao pendente: a portaria vale so neste repo, mas a regra 10 promete portao em toda sessao"},{"number":181,"state":"CLOSED","title":"Retomar agente por SendMessage nao restaura o worktree isolado — ele passa a commitar na branch de quem despachou"}]
+
+
+$ gh issue list --state all --search "baseRef" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "ponta da" --limit 200 --json number,title,state
+[{"number":275,"state":"CLOSED","title":"gate-verificador-staged barra merge por conteudo que ja esta na main"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"},{"number":291,"state":"CLOSED","title":"Regra 6: \"conserta na hora\" nao diz em QUE repo, e eu fui consertar o do vizinho"},{"number":21,"state":"CLOSED","title":"Criterio 'a bateria sai 0' e satisfazivel por fora, e tres instrumentos de conferencia falharam junto"},{"number":244,"state":"CLOSED","title":"Bump de versao e feito a mao no fechar, e o esquecimento e silencioso"},{"number":278,"state":"CLOSED","title":"gate-verificador-staged barra merge por arquivo que ja passou na main"},{"number":262,"state":"CLOSED","title":"conferir-publicacao: credencial em JSON com a chave entre aspas nao e vista, e a trava responde verde"},{"number":276,"state":"CLOSED","title":"despachos.jsonl nao tem leitor: fora_de_fluxo e escreve_conferido nascem divida"},{"number":299,"state":"CLOSED","title":"Rota com emoji de status por etapa: formato de acompanhamento que a regra 4 nao tem"},{"number":51,"state":"CLOSED","title":"As tres travas de isolamento falharam na borda: retomada de agente, janela principal, e o rastro da propria esteira"},{"number":235,"state":"CLOSED","title":"gate-publicacao-destino so ve Write/Edit: valor escrito por script chega ao commit, e so a CI pega — do lado irreversivel"},{"number":63,"state":"CLOSED","title":"O foco não chega na injeção, e a isenção da regra 17 é cega para a segunda pasta — 10ª vez que o radar cobra desvio onde não devia"},{"number":216,"state":"CLOSED","title":"1.252 sandboxes orfas no temp: rm -rf no fim do bloco nao sobrevive a saida antecipada, e so o primeiro mktemp tem trap"},{"number":82,"state":"CLOSED","title":"limpar-branches classifica toda branch de PR squashed como 'trabalho vivo' — e squash e a convencao da main"},{"number":2,"state":"CLOSED","title":"Briefing de dispatch nao cobre dado vivo fora do repositorio git"},{"number":73,"state":"CLOSED","title":"As 16 skills sao arquivo unico e plano: consultar o detalhe de UMA regra custa ~16,8k tokens"},{"number":14,"state":"CLOSED","title":"limpar-branches.cjs da branch de PR mergeado por squash: classificada 'viva', nunca limpa"},{"number":4,"state":"CLOSED","title":"Worktree de agente nasce na base velha em pelo menos 2 de 8 despachos, e conferir-entrega.cjs nao ve arquivo autoexcluido por gitignore"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"}]
+
+
+$ gh pr list --state all --search "origin/main" --limit 200 --json number,title,state
+[{"number":462,"state":"MERGED","title":"Migracoes 1 e 4 do criarSchema so engolem coluna duplicada (#460)"},{"number":211,"state":"MERGED","title":"conferir-versao: falso positivo na main em sincronia (regressao da #189)"},{"number":451,"state":"MERGED","title":"Glossario de dominio por repositorio (GLOSSARIO.md), versao 1.52.0"},{"number":205,"state":"MERGED","title":"Issue #189: conferir-versao olha o numero declarado e nao sai 0 sem ter medido"},{"number":209,"state":"MERGED","title":"Versao 1.6.0 (MINOR): o lote das Issues #187 e #189 muda contrato"},{"number":284,"state":"MERGED","title":"Main volta ao verde: mutante do importar leva o achar-claude"},{"number":288,"state":"MERGED","title":"conferir-versao: PR so de estado de fluxo nao exige bump"},{"number":256,"state":"MERGED","title":"repo: ignora o cache de marketplace e registra o erro do sentinela de 11/09"},{"number":301,"state":"MERGED","title":"Regra 4: rota com emoji de status por etapa (#299) — 1.19.1"},{"number":228,"state":"MERGED","title":"Statusline com tempo até o reset; checkout principal fica na main (regra 11, closes #195) — 1.10.0"},{"number":304,"state":"MERGED","title":"Notas de atualizacao (CHANGELOG) e o adendo que mede o D2 do contrato de territorio"},{"number":224,"state":"MERGED","title":"Enxerta os sete mecanismos do ponytail, e fecha a fronteira que o gate de código de modelo não tinha"},{"number":271,"state":"MERGED","title":"Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador"},{"number":122,"state":"MERGED","title":"Fecha #118: o backup diario do sentinela nunca fez backup — e empurrava sozinho para um repo publico"},{"number":60,"state":"MERGED","title":"Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture"},{"number":30,"state":"MERGED","title":"A classificacao estava certa e apagou a main mesmo assim (#23)"},{"number":190,"state":"MERGED","title":"Inventario do acervo parado: tres mapas, e o manifesto que admite os cinco agentes negados"},{"number":247,"state":"MERGED","title":"zerar-issues rodada 3: heredoc no gate de Issue e radar em 4 chamadas (1.13.2)"},{"number":267,"state":"MERGED","title":"portaria: deixa de admitir agente e passa a registrar (ver #264)"},{"number":234,"state":"MERGED","title":"Absorver de um plugin de terceiro o que vira trava: mensagem de commit, --confirmo, exit 69, duplicação, carimbos"},{"number":255,"state":"MERGED","title":"A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241)"},{"number":117,"state":"MERGED","title":"Tres defeitos achados apurando as observacoes abertas da regra 13"},{"number":31,"state":"MERGED","title":"\"Nao e a main\" nao prova que a branch e sua (#25)"},{"number":15,"state":"MERGED","title":"A limpeza que nao limpava: squash com remoto vivo, --base <ref>, e um nome de branch que virava comando"},{"number":246,"state":"MERGED","title":"Triagem de achado e portaria que le autorizacao explicita do usuario"},{"number":84,"state":"MERGED","title":"batedor: tres repos no livro — OpenViking, deepseek-harness e MiroFish"},{"number":177,"state":"MERGED","title":"Fluxo 12: régua absorve o bar.md de mecanismos e o preflight de renderização"},{"number":188,"state":"MERGED","title":"Lote 4: instrumento que mede o codigo, e nao a maquina de quem roda"},{"number":87,"state":"MERGED","title":"auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API"}]
+
+
+$ gh pr list --state all --search "baseRef" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "ponta da" --limit 200 --json number,title,state
+[{"number":332,"state":"MERGED","title":"Veredito fora da linha: hook devolve a vez uma vez; negrito aceito"},{"number":334,"state":"MERGED","title":"Skill vigiar: acompanhar conversa de WhatsApp sem gastar token"},{"number":228,"state":"MERGED","title":"Statusline com tempo até o reset; checkout principal fica na main (regra 11, closes #195) — 1.10.0"},{"number":217,"state":"MERGED","title":"Contrato de territorio: AdvPL vira o primeiro, e o repo publico perde os identificadores de trabalho"},{"number":52,"state":"MERGED","title":"Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo"},{"number":44,"state":"MERGED","title":"Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada"},{"number":65,"state":"MERGED","title":"Fecha a #63: a identidade do foco e cortada por dentro, e pastasDoFoco le a continuacao indentada"},{"number":70,"state":"MERGED","title":"dentroDoExpediente aceita N faixas horarias, fechando o buraco do almoco"},{"number":24,"state":"MERGED","title":"A captura passa a ser nossa, e a memoria passa a ter projeto"},{"number":32,"state":"MERGED","title":"O criterio apontava para o instrumento (#21)"},{"number":256,"state":"MERGED","title":"repo: ignora o cache de marketplace e registra o erro do sentinela de 11/09"},{"number":60,"state":"MERGED","title":"Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture"},{"number":117,"state":"MERGED","title":"Tres defeitos achados apurando as observacoes abertas da regra 13"},{"number":122,"state":"MERGED","title":"Fecha #118: o backup diario do sentinela nunca fez backup — e empurrava sozinho para um repo publico"},{"number":126,"state":"MERGED","title":"Fecha #121: a catraca de mutacao para de decidir por relogio de parede"},{"number":255,"state":"MERGED","title":"A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241)"},{"number":123,"state":"MERGED","title":"Fecha #112: o vigias/ERROS.md passa a ter UMA raiz, e ela e o plugin"},{"number":150,"state":"MERGED","title":"Vigias: dois mortos ha 20 dias, um backup que nunca rodou, e seis vazamentos num arquivo publico"}]
+
+
+$ git ls-remote --heads origin | grep -F "origin/main"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "baseRef"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "ponta da"
+(vazio)
+
+$ git log --all --grep="origin/main" --oneline
+b5dcff7b Design: agente nasce do HEAD da sessao (worktree.baseRef head)
+ef6a3948 Merge remote-tracking branch 'origin/main' into fluxo/pendente-destino
+1400c565 Merge remote-tracking branch 'origin/main' into fluxo/mods-pr-e-plugins
+8b8255db Merge remote-tracking branch 'origin/main' into fluxo/pendente-destino
+b1cfc49a Merge remote-tracking branch 'origin/main' into fluxo/mods-pr-e-plugins
+022171fc Merge remote-tracking branch 'origin/main' into fluxo/assunto-regua
+5d641ecf Merge origin/main (PR #451) no fluxo projeto-canonico; versao 1.53.0
+397aa5a9 Glossario de dominio por repositorio (GLOSSARIO.md), versao 1.52.0 (#451)
+6961b227 Merge origin/main (PR #448) no fluxo projeto-canonico; versao 1.52.0
+3852e26e GLOSSARIO: cenarios de fluxo e de worktree de agente verdadeiros
+7e27afeb categoria: 57 pecas, 23/31/3 depois do merge da origin/main
+506a7114 Merge remote-tracking branch 'origin/main' into fluxo/glossario-compartilhado
+d1c7d66a estado: rodada 2 do executar aberta
+57abbb5d Versao 1.51.0: glossario compartilhado por repo (tarefa 13)
+ff1596a3 Merge origin/main na branch do glossario
+8170af56 Merge origin/main; versao 1.50.0 (a 1.49.0 saiu com a memoria por assunto)
+8816ed9d Merge remote-tracking branch 'origin/main' into fluxo/fluxo-pulado-bloqueio
+adbbe595 Merge remote-tracking branch 'origin/main' into fluxo/enxerto-mattpocock-v13
+50f00a12 Merge remote-tracking branch 'origin/main' into fluxo/enxerto-mattpocock-v13
+e95a8297 Merge origin/main (1.46.0) no conserto da #424; versao vira 1.46.1
+869352d8 Merge origin/main (1.44.1) no fluxo desk-no-mod; versao segue 1.45.0
+0186bdaa Versao 1.45.0: barra de sessao e painel /painel no mod
+bd283087 Merge origin/main (1.44.0) na branch do desk
+99c5e5b7 Zerar as 12 Issues da revisao bimestral (1.43.0) (#416)
+e8c5e6fa Merge origin/main na revisao bimestral; versao 1.41.0
+e867bdc8 Merge remote-tracking branch 'origin/main' into tmp-bump-140
+91a030d6 Merge remote-tracking branch 'origin/main' into fluxo/git-por-caminho
+c88f6032 Merge remote-tracking branch 'origin/main' into HEAD
+d05393b9 Merge origin/main (1.36.0) em fluxo/mod-regras-inteiras
+cd879349 Merge remote-tracking branch 'origin/main' into fluxo/zerar-issues-14
+6feaff75 Merge remote-tracking branch 'origin/main' into fluxo/zerar-issues-13
+3bb2c77b Merge remote-tracking branch 'origin/main' into fluxo/arrumacao-2026-10-01
+dd610af7 Merge remote-tracking branch 'origin/main' into fluxo/zerar-issues-12
+2b2fee17 Merge remote-tracking branch 'origin/main' into fluxo/zerar-issues-11
+ec6a080a Merge origin/main em gate-subagente-sem-gh
+261b1eeb Merge origin/main em agente-sem-background; versao 1.26.0
+17aefcbf Merge remote-tracking branch 'origin/main' into codex/multihost-1.13
+1d283312 Merge remote-tracking branch 'origin/main' into codex/multihost-1.13
+9ea75b9c Merge remote-tracking branch 'origin/main' into fluxo/contrato-de-veredito
+7de9cdcb Merge remote-tracking branch 'origin/main' into fluxo/memoria-sinal-de-utilidade
+a3472b11 Merge remote-tracking branch 'origin/main' into fluxo/memoria-sinal-de-utilidade
+9a0b4e19 Merge remote-tracking branch 'origin/main' into fix/aviso-captura-parada
+1b6156d4 tarefa 4: relatório com a régua D9
+e0efd80c Merge remote-tracking branch 'origin/main' into batedor/doze-repos-indicados
+06be3273 Merge remote-tracking branch 'origin/main' into codex/multihost-1.13
+7be5f9e7 Merge remote-tracking branch 'origin/main' into codex/multihost-1.13
+fc76be76 Merge remote-tracking branch 'origin/main' into codex/multihost-1.13
+7febefac Merge remote-tracking branch 'origin/main' into codex/multihost-1.13
+2016059a Merge remote-tracking branch 'origin/main' into fluxo/zerar-issues-8
+5d81ebce Merge remote-tracking branch 'origin/main' into codex/multihost-1.13
+9da26213 Versao 1.22.0: regua selada pelo commit e keep/discard automatico
+c1b97a25 Merge origin/main na regua selada: livro de repos com as duas linhas
+c947be97 fluxo invariante-de-comportamento-nas-skills: fecha com PR #306
+eabeb898 Alinha manifesto Codex em 1.19.2 e reancora as ancoras de corpo
+1bc400c3 Traz a main (1.19.2, notas de atualizacao) e mantem o bump em 1.20.0
+1cd74a2e Reancora a entrega multihost na origin/main 1.19.1
+1a93708e bump 1.19.1 -> 1.20.0
+99c38d47 Corrige catraca_mutacao e registra distancia ate a origin/main
+e2fbfde5 Plano: tarefa 9 registra o conserto das cinco regressoes
+6ae87b55 Versao 1.19.2: as notas de atualizacao entram publicadas
+46f93fec fluxo memoria-reconciliacao: executar fecha ok, 8 de 8
+a811fb18 Merge remote-tracking branch 'origin/main' into fluxo/memoria-reconciliacao-e-consolidacao
+73b5eb37 Notas de atualizacao passam a existir, e o D2 medido de fora
+dda36349 principal-atrasado: teto de 2 worktrees mesclados + resumo
+b2ce8497 Plano zerar-issues-5: tarefa 19 limita a lista de worktrees mesclados
+b9c47178 Issue #250: teto proprio para cabecalho+rodape da injecao (Tarefa 17)
+5b298837 conferir-versao: PR so de estado de fluxo nao exige bump
+70d68d79 merge: traz origin/main (#284, bateria do importar) para a CI do #285
+b798c531 Versao 1.17.0: guias e sensores
+803bdea3 merge: traz origin/main (#283, 1.16.1) antes do PR
+f01e01b3 merge: traz origin/main (#271, #267, #274) antes do revisar
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+e1b87680 integra tarefa 3: o bloco de memoria corta por observacao e avisa no topo
+c068369a merge: traz origin/main (#256) para a branch antes de despachar
+ef77e1e2 A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241) (#255)
+1cff69bd Merge remote-tracking branch 'origin/main' into fluxo/zerar-issues-3
+9cfdc8d5 Versao 1.13.1: PATCH do lote de consertos de instrumento
+8025a18b Teto de commits conta so a branch, nao o que veio no merge da main
+789c8c4d Merge remote-tracking branch 'origin/main' into fluxo/triagem-de-achado-e-portaria
+4633219d Merge remote-tracking branch 'origin/main' into fluxo/zerar-issues-3
+fc6f62f6 Fechar o fluxo: PR #246 aberto
+4ee4652d Merge remote-tracking branch 'origin/main' into fluxo/triagem-de-achado-e-portaria
+ef92114a Design e plano: zerar-issues rodada 3 (D1-D5, tarefas 1-5)
+175f02ce Design e plano: rodada 2 do zerar-issues (D20-D29, tarefas 24-33)
+43df8893 Consertar as tres baterias que so a CI viu vermelhas
+63228ff8 Zerar Issues: a fatia revisada e limpa (12 de 18 Issues)
+c90a0c30 Revisar: REPROVADO com 5 achados; executar reaberto
+fa3aa1c8 Apontar os carimbos do estado para os commits reescritos
+08cd37c3 Fechar o fluxo absorver-plugin-terceiro com o PR #233 aberto
+929a9d62 Fechar o verificar do absorver-plugin-terceiro com os 15 criterios rodados
+e8e39632 Merge origin/main (1.8.2, PR #229) na branch do fluxo
+478341d5 Tarefa 12: bateria honesta de principal-atrasado.cjs (Issue #214)
+6cc95825 Tarefa 18: conferir-versao busca origin/main antes de comparar (Issue #193)
+b49bdf5e Ponte-codex: linha opcional Despacho: <caminho> aponta o script quando o worktree nasce sem ele
+e8b35d47 Merge remote-tracking branch 'origin/main' into fluxo/camada-obsidian-para-o-harness
+0ad46c7d conferir-versao nao acusa quando nao ha nada a lancar
+cd37302b Alvo de aresta, recusa antes da escrita, e o plano alinhado ao D9
+ff4e8a17 Merge remote-tracking branch 'origin/main' into fluxo/camada-obsidian-para-o-harness
+01bfd516 Versao 1.6.0 (MINOR)
+1cdfa745 conferir-versao separa nao medi de nao ha o que medir, e olha o numero
+c7853922 Design e plano da Issue #189: conferir-versao passa a olhar o numero
+b6a58245 Conferencia da integracao: corrige a atribuicao do mecanismo no mapa do git
+d82a3255 Mapa de arqueologia: acervo git — branches, worktrees, Issues e residuo
+6a303404 Segunda rodada de revisao: dois consertos tinham efeito colateral que o texto nao dizia
+c4515c38 Revisao do lote 4: sete afrouxamentos que o proprio lote introduziu
+79bf992f Merge remote-tracking branch 'origin/main' into fluxo/nao-mente
+0d3d00b3 Merge remote-tracking branch 'origin/main' into fluxo/guardas
+f90a755c Merge origin/main (PR #179: relatorio da rodada cega) into fluxo/nao-mente
+e8e19976 Lote 3: executar ok (rodada 17 integrada; origin/main 1.2.0 mesclada)
+d9f83c6b Merge origin/main (1.2.0: regua, PR #177/#178) into fluxo/guardas
+f772142a Merge remote-tracking branch 'origin/main' into fluxo/guardas
+1344d89f Merge remote-tracking branch 'origin/main' into fluxo/recibo
+f2c82ba5 Merge remote-tracking branch 'origin/main' into fluxo/recibo
+79ef1ad7 Merge remote-tracking branch 'origin/main' into fluxo/portaria
+74ccf02a Merge remote-tracking branch 'origin/main' into fluxo/portaria
+836140e9 Divida do merge com a main: nucleo da regra 10 encolhido para caber na catraca
+65223a8f Divida do merge com a main: nucleo da regra 10 encolhido para caber na catraca
+05b53c41 Merge remote-tracking branch 'origin/main' into fluxo/portaria
+9ec08f23 Merge remote-tracking branch 'origin/main' into fluxo/portaria
+d36272bf Merge origin/main (PRs #135 e #136) na fluxo/conselho — conflitos resolvidos mantendo os tres lados
+2f6fe099 Merge origin/main (PRs #135 e #136) na fluxo/conselho — conflitos resolvidos mantendo os tres lados
+ef06e279 Merge origin/main (PR #135 da ponte) na fluxo/poda — conflitos resolvidos mantendo os dois lados
+d0b6b359 Merge origin/main (PR #135 da ponte) na fluxo/poda — conflitos resolvidos mantendo os dois lados
+a1993c77 Merge origin/main na fluxo/portaria (branch estava 46 atras)
+1e11402f Merge origin/main na fluxo/portaria (branch estava 46 atras)
+27b3b12e Merge remote-tracking branch 'origin/main' into fluxo/ponte
+760fb610 Merge remote-tracking branch 'origin/main' into fluxo/ponte
+6a9811d4 Tres defeitos achados apurando as observacoes abertas da regra 13 (#117)
+ba19dbed Tres defeitos achados apurando as observacoes abertas da regra 13 (#117)
+f8dc7599 Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture (#60)
+13acf85e Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture (#60)
+bc200f77 A classificacao estava certa e apagou a main mesmo assim (#23) (#30)
+1c2f4457 A classificacao estava certa e apagou a main mesmo assim (#23) (#30)
+
+$ git log --all --grep="baseRef" --oneline
+b5dcff7b Design: agente nasce do HEAD da sessao (worktree.baseRef head)
+
+$ git log --all --grep="ponta da" --oneline
+c068369a merge: traz origin/main (#256) para a branch antes de despachar
+6a9811d4 Tres defeitos achados apurando as observacoes abertas da regra 13 (#117)
+ba19dbed Tres defeitos achados apurando as observacoes abertas da regra 13 (#117)
+f8dc7599 Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture (#60)
+13acf85e Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture (#60)
+
+$ cat <dados>/ideias.jsonl
+{"id":"obs-worktree-nasce-na-main-nao-na-branch-de-trabalho","titulo":"isolation:worktree nasce na ponta da main, entao a regra 11 garante divergencia de base se voce commitar antes de despachar"}
+{"id":"worktree-de-subagente-nasce-na-main-nao-na-branch","titulo":"Worktree de subagente nasce na ponta da main, e o briefing sem autorizacao de ff-only trava o agente"}
+{"id":"executor-pula-ff-only-e-commita-na-base-velha","titulo":"Dois de seis executores leram a conferencia de base ao contrario e commitaram sobre origin/main em vez de dar o ff-only"}
+{"id":"varri-so-a-main-e-duplique-feature-2026-09-15","titulo":"Conclui 'ninguem faz isso' varrendo so a origin/main, e reimplementei a #253 inteira"}
+
+
