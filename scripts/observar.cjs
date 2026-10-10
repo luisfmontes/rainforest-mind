@@ -352,14 +352,26 @@ function destinoDaObservacao(marca, offsetFim) {
 
 // Grava observação no banco.
 // Retorna true se sucesso, false se falha.
+//
+// Issue #452, item 1: a mesma (projeto, origem) já gravada é a mesma observação — mesma
+// sessão, mesmo offset —, por exemplo uma linha que a migração do #435 trouxe da pasta de
+// worktree sem o `:wt:`. Antes, o INSERT estourava o UNIQUE, a gravação falhava e a marca
+// d'água daquela sessão não avançava mais. O conflito vira "já gravada" e a marca avança.
+// Só o UNIQUE(projeto, origem) é engolido: outra falha (NOT NULL, banco travado) continua erro.
 function gravarObservacao(conexao, { projeto, conteudo, origem }) {
   try {
     const agora = new Date().toISOString();
 
-    const stmt = conexao.prepare(`
-      INSERT INTO observacoes (projeto, conteudo, criada_em, origem)
-      VALUES (?, ?, ?, ?)
-    `);
+    const sql = `INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)`;
+    let stmt;
+    try {
+      stmt = conexao.prepare(`${sql} ON CONFLICT(projeto, origem) DO NOTHING`);
+    } catch (e) {
+      // Banco legado ainda sem o UNIQUE(projeto, origem) (a migracao roda no hook do Stop):
+      // a clausula nao tem alvo, e o INSERT volta a ser o de antes.
+      if (!/ON CONFLICT clause does not match/i.test(e.message)) throw e;
+      stmt = conexao.prepare(sql);
+    }
 
     stmt.run(projeto, conteudo, agora, origem || null);
     return true;
