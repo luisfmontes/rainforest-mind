@@ -1,5 +1,7 @@
 # Design: faixa do PR, compactar a 60% e node por caminho absoluto
 
+## Objetivo
+
 Fluxo `2026-10-10-mods-faixa-compact`. Três peças pequenas no mod, duas copiadas do
 plugin `wildz-data` do Rafael Lopes (autorização dele, 2026-10-09) e uma Issue (#457).
 Ideias de origem: `mod-pr-faixa-acima-do-prompt`, `mod-auto-compact-60`.
@@ -20,45 +22,59 @@ Ideias de origem: `mod-pr-faixa-acima-do-prompt`, `mod-auto-compact-60`.
 - `hooks/mod.tsx` chama `node` pelo nome em seis pontos (#457); o painel de PR já
   resolve `gh` por `localizadores` + `escolherExecutavel` (`hooks/pr-puro.mjs`).
 
-## Decisões
+## Decisões fechadas
 
-**D1. A linha do PR entra na barra que já existe** (Q4). Uma linha a mais no
+- **D1 — A linha do PR entra na barra que já existe**: (Q4). Uma linha a mais no
 `AbovePrompt` do mod, com número, estado, checks e merge no mesmo tom dos chips do
 pane. Só aparece quando há PR acompanhado e o pane `rainforest-mind-pr` não está
 colocado e visível (`$.ui.panes()`); some quando o PR fica `MERGED` ou `CLOSED`.
 `/painel esconder` esconde junto com o resto da barra. Sem botão próprio.
 
-**D2. Compactar sozinho a 60% por padrão** (Q1). Opção `compactarEm` (número, padrão
+- **D2 — Compactar sozinho a 60% por padrão**: (Q1). Opção `compactarEm` (número, padrão
 60) no `userConfig`. Mede por `session.measure` (`e.context.percent`), só quando
 `context` está em `e.changed`. Dispara uma vez por subida: desarma antes de chamar e
 rearma quando o uso volta abaixo do limiar. Compactação rejeitada (turno em curso)
 rearma e tenta no próximo `session.measure`, com aviso uma vez por sequência.
 
-**D3. Com subagente rodando, não compacta: avisa** (Q2). Se a sessão tem subagente em
+- **D3 — Com subagente rodando, não compacta: avisa**: (Q2). Se a sessão tem subagente em
 andamento (o mesmo critério da barra), o mod não compacta: dá um aviso (toast) uma vez
 por subida, "contexto em N%: agente rodando, compacto quando ele voltar (ou faça a
 passagem)", e compacta no primeiro `session.measure` sem agente rodando. Fora disso
 compacta e avisa "compactado em N%".
 
-**D4. Ligada por padrão, com opção para desligar** (Q3). `compactarSozinho` (booleano,
+- **D4 — Ligada por padrão, com opção para desligar**: (Q3). `compactarSozinho` (booleano,
 padrão `true`) no `userConfig`.
 
-**D5. `node` por caminho absoluto no mod (#457).** O mod resolve o `node` uma vez por
+- **D5 — `node` por caminho absoluto no mod (#457)**: O mod resolve o `node` uma vez por
 sessão, como o painel de PR resolve o `gh`: `localizadores('node', SystemRoot)` com
 `escolherExecutavel` fora do repositório da sessão, guardado em átomo. Os seis pontos
 passam a usar esse caminho. Sem `node` achado, a peça que dependia dele se apaga (falha
 aberta, como hoje com falha de processo).
 
-**D6. Lógica pura separada e testada.** A decisão de compactar (limiar, armado, agente
+- **D6 — Lógica pura separada e testada**: A decisão de compactar (limiar, armado, agente
 rodando, opção desligada) e o texto da linha do PR moram em módulos `*-puro.mjs` com
 bateria `.cjs`; a fiação tem prova de engine em `*.test.tsx` (`claude plugin test .`).
 
-**D7. Versão e docs.** MINOR (próximo livre na hora do merge; hoje 1.58.0, depois do
+- **D7 — Versão e docs**: MINOR (próximo livre na hora do merge; hoje 1.58.0, depois do
 #476 da outra janela). CHANGELOG, CONTRIBUTING (seções do mod) e README dizem o que
 muda para quem usa, com os números do código. Crédito ao Rafael no código copiado.
 
-## Fora do escopo
+## Avaliado e descartado
+
+- **Botão Hide próprio na linha do PR** (o do Rafael): descartado na Q4; o `/painel esconder` já esconde a barra inteira.
+- **Compactar sempre, mesmo com agente rodando** (o do Rafael): descartado na Q2; o Luís prefere a passagem de sessão quando o contexto enche no meio de trabalho.
+- **Limiar 45%** (o override que ele já tinha): descartado na Q1 pelo de 60% do Rafael, mesmo modelo e janela.
+
+## Fora de escopo
 
 - Recarga em todas as janelas (`plugins-em-dia-recarga-multi-janela`): espera a medição
   na conta de trabalho.
 - Issue #466 (achados menores do painel de PR).
+
+## Varredura
+
+docs/rainforest/varredura/2026-10-10-mods-faixa-compact.txt — nenhuma Issue ou PR compacta pela sessão; a #382 e a #392 (fechadas) tiraram `node`, `git` e `gh` pelo nome dos hooks e scripts, e a #457 é o resto disso dentro do mod; a faixa de foco (#383) existe e a memória `faixa-de-foco-nao-serve` diz que ele ignora o foco nela, por isso a linha do PR entra sem cobrar nada, só informando o estado.
+
+## Em aberto
+
+- Nada. O número da versão sai na hora do merge (próximo MINOR livre).
