@@ -15,8 +15,44 @@
     "em": "2026-10-10"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-10-10"
+    "status": "ok",
+    "catraca_mutacao": "2026-10-10",
+    "tarefas_ok": 4,
+    "tarefas": 4,
+    "comando": "bash scripts/testa-critica-do-revisor.sh",
+    "saida": "ok: 7 falhou: 0; conferir-mutacao exit 0 re-rodado pela integracao; transcrito real do revisor: exit 0, 87 linhas, 0 VEREDITO; teto-skills 21/0; testa-veredito-revisor 35/0",
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "a4599910",
+        "iteracao": 1,
+        "sessao": "6d0b7cb5-6a37-43b8-b9a4-befd7fdd648f",
+        "ts": "2026-10-10T11:37:10.786Z"
+      }
+    ],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "critica-sem-linha-de-veredito"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "instrucao ao agente"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "texto normativo"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "nota de versao"
+      }
+    ],
+    "em": "2026-10-10"
   },
   "revisar": {
     "status": "pendente"
