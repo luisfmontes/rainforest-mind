@@ -54,23 +54,36 @@
     "em": "2026-10-10"
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "3f27012766ab1771122f99f4cdcc99343ae67bc2",
+      "head": "5650e056865b660ca09fa115cf3c35c150a0ed26",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a4437982f3c18553a",
+        "agente_id": "ac86624f9aa330f57",
         "veredito": "ok",
         "em": "2026-10-10",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/6d0b7cb5-6a37-43b8-b9a4-befd7fdd648f/subagents/agent-a4437982f3c18553a.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/6d0b7cb5-6a37-43b8-b9a4-befd7fdd648f/subagents/agent-ac86624f9aa330f57.jsonl"
       }
-    ]
+    ],
+    "veredito": "ok",
+    "rodadas": 6,
+    "achados": 1,
+    "base": "7bd36fbb",
+    "head": "5650e05",
+    "achados_abertos": [
+      "nucleo nao nomeia o padrao fresh (baixa)"
+    ],
+    "em": "2026-10-10"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-teto-skills.sh",
+    "saida": "Resultado: 21 OK, 0 FALHA exit=0; criterios T1=0 T2=0 T3=1/0 T4=0; testa-abertura-mod-config 20/0; testa-contexto-sessao 299/0",
+    "sensor_externo": "bash scripts/testa-teto-skills.sh",
+    "em": "2026-10-10"
   },
   "fechar": {
     "status": "pendente"
