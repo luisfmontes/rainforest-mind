@@ -33,8 +33,9 @@ quem despacha põe essa linha como **primeira** do briefing.
 Linha opcional `Despacho: <caminho>` no mesmo bloco diz ao agente onde está
 `scripts/despachar-codex.cjs`. Sem ela, o agente tenta `$CLAUDE_PLUGIN_ROOT` e
 depois a raiz do repositório atual. Ela existe porque o worktree de um
-subagente nasce da `origin/main`: numa branch que ainda não foi integrada, o
-script não está lá, e o plugin instalado pode ser versão anterior.
+subagente nasce da `origin/main` no modo `worktree.baseRef: "fresh"` (o
+padrão): numa branch que ainda não foi integrada, o script não está lá, e o
+plugin instalado pode ser versão anterior.
 
 ## O que a portaria faz, e o que não faz
 

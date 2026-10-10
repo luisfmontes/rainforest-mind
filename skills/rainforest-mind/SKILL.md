@@ -134,8 +134,7 @@ Elaboração: references/regra-10.md
 branch padrão; trabalho nasce em worktree (`iniciar` recusa; `principal-livre`
 desliga). Subagente que edita usa `isolation: "worktree"`, git destrutivo
 proibido, e commita na branch **sua** — nunca a `main`, nunca a alheia. Base =
-HEAD da sessão (`worktree.baseRef: head`) ou ponta da `origin/main`; o
-briefing dá o hash, `conferir-entrega.cjs` confere.
+segue `worktree.baseRef`; briefing dá o hash, `conferir-entrega.cjs` confere.
 <!-- detalhe -->
 Elaboração: references/regra-11.md
 

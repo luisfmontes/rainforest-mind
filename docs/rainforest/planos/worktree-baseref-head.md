@@ -16,7 +16,7 @@ depende de: nenhuma
 paralela: sim
 mutacao: n/a
   motivo: tarefa só reescreve texto normativo; não há comportamento executável a inverter
-pronto quando: com a regra 11 como a sessão a lê (elaboração e núcleo), toda menção à ponta de `origin/main` como base do agente vem condicionada ao modo `fresh`/padrão, e a elaboração manda manter a conferência nos dois modos — provado por `for f in skills/rainforest-mind/references/regra-11.md skills/rainforest-mind/SKILL.md; do n=$(grep -c "ponta d[ae] \`origin/main\`" $f); c=$(grep -B4 "ponta d[ae] \`origin/main\`" $f | grep -c "fresh\|baseRef"); [ "$c" -ge "$n" ] || exit 1; done; grep -q "a conferência abaixo continua" skills/rainforest-mind/references/regra-11.md` saindo 0 (na base sai 1: condicionadas=0)
+pronto quando: com a regra 11 como a sessão a lê (elaboração e núcleo), toda menção à ponta de `origin/main` como base do agente vem condicionada ao modo `fresh`/padrão, e a elaboração diz por que a conferência vale também em `head` — provado por `for f in skills/rainforest-mind/references/regra-11.md skills/rainforest-mind/SKILL.md; do n=$(grep -c "ponta d[ae] \`origin/main\`" $f); c=$(grep -B4 "ponta d[ae] \`origin/main\`" $f | grep -c "fresh\|baseRef"); [ "$c" -ge "$n" ] || exit 1; done; grep -q "outro escopo de settings pode sobrepor a chave" skills/rainforest-mind/references/regra-11.md` saindo 0 (na base sai 1: condicionadas=0)
 
 ### 2. `executar` despacha conforme a chave [tipo: docs]
 atende: D2, D4
