@@ -21,10 +21,12 @@ revisor dar `ok`, até o teto, ou até um achado de design (D1).
    |---|---|
    | `0` | segue para o passo 3 com a saída como está |
    | `3` | achado `[design]`: **pare o laço** e leve a crítica ao usuário — o executor não pode mudar decisão (D5) |
-   | `4` | não há `reprovado` gravado: o laço não tem o que ler; o revisor não fechou o contrato de veredito |
+   | `4` | não há `reprovado` gravado, ou ele veio sem achado: o laço não tem o que ler; o revisor não fechou o contrato de veredito |
    | `69` | transcrito sumiu: bloqueio de ambiente (regra 14), anuncie e pare |
 
-3. Redespache o executor: **despacho novo** (`isolation: "worktree"`, nunca
+3. `node scripts/estado.cjs exigir --slug <slug> --estagio executar` — é ele
+   que aplica o teto; exit 2 encerra o laço (veja **Teto**). Passando,
+   redespache o executor: **despacho novo** (`isolation: "worktree"`, nunca
    `SendMessage` — regra 11), base = HEAD do worktree do fluxo, briefing
    original **mais** um bloco `## Achados do último revisor` com a saída do
    passo 2 colada **literal**. Só a última crítica, nunca o histórico das
@@ -35,7 +37,8 @@ revisor dar `ok`, até o teto, ou até um achado de design (D1).
 ## Teto
 
 O laço não conta nada: quem conta é o `estado.cjs` (`TETO_TENTATIVAS = 3`).
-Na 4ª reprovação, `exigir --estagio executar` recusa; a próxima volta só com
+Depois da 3ª reprovação, o `exigir --estagio executar` do passo 3 recusa
+(exit 2); a próxima volta só com
 o impasse escrito em `docs/rainforest/portoes/<slug>-impasse.md`, a palavra do
 usuário e `liberar --estagio revisar --rodada-extra "<o que ele disse>"` (D2).
 

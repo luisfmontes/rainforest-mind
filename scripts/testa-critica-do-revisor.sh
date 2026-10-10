@@ -88,5 +88,23 @@ roda f
 if [ "$EXIT" -eq 0 ] && printf '%s' "$OUT" | grep -q 'Achado 1' && ! printf '%s' "$OUT" | grep -q '\[design\]'; then r=0; else r=1; fi
 registra "(f) exit 0 com o achado do ultimo reprovado" $r
 
+echo "-- (g) [design] citado no meio e VEREDITO decorado: exit 0, linha decorada some --"
+estado g "[$(vered reprovado "$FX/design-citado-e-veredito-decorado.jsonl" 1)]"
+roda g
+if [ "$EXIT" -eq 0 ] && printf '%s' "$OUT" | grep -q 'Achado 1' && ! printf '%s' "$OUT" | grep -q 'VEREDITO:'; then r=0; else r=1; fi
+registra "(g) exit 0, sem a linha **VEREDITO:**" $r
+
+echo "-- (h) **A1. [Design]** abrindo o achado: exit 3 --"
+estado h "[$(vered reprovado "$FX/design-rotulado.jsonl" 1)]"
+roda h
+if [ "$EXIT" -eq 3 ]; then r=0; else r=1; fi
+registra "(h) rotulo e caixa nao escondem o [design]" $r
+
+echo "-- (i) reprovado só com a linha VEREDITO: exit 4, stdout vazio --"
+estado i "[$(vered reprovado "$FX/critica-vazia.jsonl" 1)]"
+roda i
+if [ "$EXIT" -eq 4 ] && [ -z "$OUT" ]; then r=0; else r=1; fi
+registra "(i) critica vazia nao vira redespacho" $r
+
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]

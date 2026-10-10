@@ -17,7 +17,7 @@ paralela: nao
 prova: `bash scripts/testa-critica-do-revisor.sh`
 mutacao:
   arquivo: `scripts/critica-do-revisor.cjs`
-  de: .filter((l) => !/^\s*VEREDITO:/i.test(l))
+  de: .filter((l) => !/^[\s*_`]*VEREDITO:/i.test(l))
   para: .filter((l) => l === l)
   bateria: `bash scripts/testa-critica-do-revisor.sh`
   fixture: critica-sem-linha-de-veredito

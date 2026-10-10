@@ -88,11 +88,18 @@ function main() {
     return 69;
   }
 
-  const linhas = mensagem.split(/\r?\n/).filter((l) => !/^\s*VEREDITO:/i.test(l));
+  // A linha VEREDITO: sai mesmo decorada (**, _, crase), como o hook aceita.
+  const linhas = mensagem.split(/\r?\n/).filter((l) => !/^[\s*_`]*VEREDITO:/i.test(l));
   const critica = linhas.join('\n');
+  if (!critica.trim()) {
+    process.stderr.write('reprovado sem achado: a critica so tem a linha VEREDITO:\n');
+    return 4;
+  }
 
   process.stdout.write(`${critica}\n`);
-  if (/\[design\]/.test(critica)) {
+  // [design] só conta abrindo o achado (marcador, negrito ou rótulo A1. antes);
+  // citado no meio da frase, ou entre crases, não para o laço.
+  if (/^\s*(?:[-*]\s+)?(?:\*\*)?(?:[A-Z]?\d+[.):]\s*)?(?:\*\*)?\s*\[design\]/im.test(critica)) {
     process.stderr.write('[design]: achado contesta D<n> do design ou o plano; o laço para e sobe ao usuário (D5)\n');
     return 3;
   }
