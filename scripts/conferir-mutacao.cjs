@@ -458,6 +458,21 @@ function suspeitaDeCorte(baselineDuracao, posDuracao) {
 }
 
 /**
+ * A saida pos-mutacao prova que a bateria MEDIU e encontrou falha? Issue #475: o corte de
+ * shell e suspeita por tempo, e tempo sob carga mente — a bateria de `node --test` da secao
+ * 13c de testa-conferir-fluxo.sh teve baseline frio acima de 1 s e pos-mutacao rapida, e a
+ * mutacao legitima saiu `pulada (suspeita de corte de shell)` na CI. Placar com falha (os
+ * dois formatos de `extrairPlacar`) ou o resumo do `node --test` (`# fail N` / `ℹ fail N`,
+ * N > 0) e prova de que a bateria chegou a medir: nao e corte.
+ */
+function mediuEFalhou(saida) {
+  if (!saida) return false;
+  const placar = extrairPlacar(saida);
+  if (placar && placar.falhou > 0) return true;
+  return /^\s*(?:#|ℹ)\s*fail\s+[1-9]\d*\s*$/m.test(saida);
+}
+
+/**
  * Extrai o placar (ok e falhou) da saída da bateria.
  * Aceita dois formatos:
  *   - "ok: 34   falhou: 0" (espaços variáveis)
@@ -808,7 +823,8 @@ function main() {
   // rápida saía 5 com a mensagem "a bateria saiu com exit != 0", que é falsa
   // sobre o que acabou de acontecer. Veredito certo pelo motivo errado é o
   // defeito que este script inteiro existe para não cometer.
-  if (suspeitaDeCorte(baselineDuracao, posDuracao)) {
+  if (suspeitaDeCorte(baselineDuracao, posDuracao)
+      && !mediuEFalhou(`${posRes.r.stdout || ''}${posRes.r.stderr || ''}`)) {
     const percentual = Math.round((posDuracao / baselineDuracao) * 100);
     console.error(`SUSPEITA DE CORTE DE SHELL: pós-mutação ${posDuracao} ms (${percentual}% do baseline).`);
     console.error(`  Baseline: ${baselineDuracao} ms | Pós-mutação: ${posDuracao} ms`);
@@ -828,4 +844,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { suspeitaDeCorte, PISO_ABSOLUTO_MS, RAZAO_DE_CORTE, extrairPlacar, bateriaColapsou };
+module.exports = { suspeitaDeCorte, mediuEFalhou, PISO_ABSOLUTO_MS, RAZAO_DE_CORTE, extrairPlacar, bateriaColapsou };
