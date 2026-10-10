@@ -262,3 +262,14 @@ export function escolherExecutavel(saida, cwdSessao) {
 export function donoConfere({ autor, eu, cruzado }) {
   return Boolean(eu) && autor === eu && cruzado === false;
 }
+
+// Linha do PR na barra acima do prompt: o numero e os dois primeiros chips (checks e merge).
+// Nunca titulo, branch, base ou autor: sao texto de quem abre o PR (mesma regra de nota()).
+// PR mergeado ou fechado some da barra (null).
+export function linhaPr(r) {
+  if (!r) return null;
+  if (r.estado === 'MERGED' || r.estado === 'CLOSED') return null;
+  const [checks, merge] = bloco(r).chips;
+  const parte = (c) => ({ texto: c.glyph ? c.glyph + ' ' + c.text : c.text, tom: c.tone });
+  return { partes: [{ texto: 'PR #' + r.numero, tom: 'claude' }, parte(checks), parte(merge)] };
+}
