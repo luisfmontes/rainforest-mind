@@ -339,11 +339,22 @@ function divergenciaSoNoGlossario(linhasAtuais, linhasEsperadas, dirDoAlvo) {
 // nao existe. Vai com o caminho absoluto do ponte.cjs deste plugin e o diretorio do arquivo
 // conferido, entre aspas e com `/` (sem contrabarra que o shell engula). Arquivo lido do
 // stdin (`-`) nao tem diretorio: o `--alvo` fica `.`.
+//
+// Aspas SIMPLES, nao duplas: dentro de aspas duplas o bash expande `$(...)` e crase, e um
+// diretorio com esse nome executaria codigo ao ser colado (revisao de seguranca do #450).
+// Aspas simples sao literais no bash e no PowerShell. Caminho com aspa simples ou caractere
+// de controle nao vira comando para colar: a mensagem mostra os caminhos e manda montar.
 function comandoRegerar(chaveAgente, dirDoAlvo) {
   const barras = (c) => c.split(path.sep).join('/');
   const ponte = barras(path.join(__dirname, 'ponte.cjs'));
-  const alvo = dirDoAlvo ? `"${barras(dirDoAlvo)}"` : '.';
-  return `node "${ponte}" --alvo ${alvo} --agente ${chaveAgente} --aplicar`;
+  const alvo = dirDoAlvo ? barras(dirDoAlvo) : '.';
+  const seguro = (c) => !/['\x00-\x1f\x7f]/.test(c);
+  if (!seguro(ponte) || !seguro(alvo)) {
+    return `(caminho com aspa simples ou caractere de controle: monte o comando a mao) ` +
+      `ponte.cjs=${JSON.stringify(ponte)} alvo=${JSON.stringify(alvo)} --agente ${chaveAgente} --aplicar`;
+  }
+  const alvoArg = dirDoAlvo ? `'${alvo}'` : '.';
+  return `node '${ponte}' --alvo ${alvoArg} --agente ${chaveAgente} --aplicar`;
 }
 
 function mensagemGlossario(veredito, chaveAgente, dirDoAlvo) {

@@ -33,8 +33,8 @@ function rodar(args, cwd) {
   return spawnSync(process.execPath, args, { cwd, encoding: 'utf8', timeout: TIMEOUT_MS });
 }
 
-function caixa(nome) {
-  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), `ponte-colado-${nome}-`)));
+function caixa(nome, pai = os.tmpdir()) {
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(pai, `ponte-colado-${nome}-`)));
   spawnSync('git', ['init', '-q'], { cwd: dir, timeout: TIMEOUT_MS });
   const g = rodar([PONTE, '--alvo', dir, '--agente', 'codex', '--aplicar'], dir);
   if (g.status !== 0) throw new Error(`ponte.cjs falhou: ${g.stderr}`);
@@ -45,7 +45,7 @@ function caixa(nome) {
 function comandoImpresso(saida) {
   const linha = saida.split('\n').map((l) => l.trim()).find((l) => /^node .*ponte\.cjs.* --aplicar$/.test(l));
   if (!linha) return null;
-  const args = [...linha.matchAll(/"([^"]*)"|(\S+)/g)].map((m) => (m[1] !== undefined ? m[1] : m[2]));
+  const args = [...linha.matchAll(/'([^']*)'|(\S+)/g)].map((m) => (m[1] !== undefined ? m[1] : m[2]));
   return args[0] === 'node' ? args.slice(1) : null;
 }
 
@@ -87,6 +87,30 @@ cenario('hash-velho', (dir, agents) => {
 cenario('glossario-surgiu', (dir) => {
   fs.writeFileSync(path.join(dir, 'GLOSSARIO.md'), '# Glossario\n');
 });
+
+// Revisao de seguranca do #450: diretorio com `$(...)` no nome. O comando impresso, colado
+// no bash, nao pode executar o trecho: aspas simples sao literais.
+{
+  const pai = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ponte-colado-pai-')));
+  const isca = path.join(pai, 'PWNED');
+  const estranho = path.join(pai, 'x$(touch PWNED)');
+  fs.mkdirSync(estranho);
+  try {
+    const dir = caixa('injecao', estranho);
+    fs.writeFileSync(path.join(dir, 'GLOSSARIO.md'), '# Glossario\n');
+    const antes = rodar([CONFERIR, 'AGENTS.md'], dir);
+    const linha = (antes.stdout || '').split('\n').map((l) => l.trim()).find((l) => /^node .*ponte\.cjs.* --aplicar$/.test(l));
+    caso('injecao: imprime o comando com aspas simples, sem aspas duplas', !!linha && !linha.includes('"'), antes.stdout);
+    if (linha) {
+      const nodeBarras = process.execPath.split(path.sep).join('/');
+      const r = spawnSync('bash', ['-c', linha.replace(/^node /, `'${nodeBarras}' `)], { cwd: pai, encoding: 'utf8', timeout: TIMEOUT_MS });
+      caso('injecao: colado no bash, o $(...) do nome nao roda', !fs.existsSync(isca), `isca criada; exit=${r.status} ${r.stderr}`);
+      caso('injecao: colado no bash, o comando sai 0', r.status === 0, `exit=${r.status} ${r.stderr}`);
+    }
+  } finally {
+    fs.rmSync(pai, { recursive: true, force: true });
+  }
+}
 
 console.log(`\n${ok} ok, ${falhas} falha(s)`);
 process.exit(falhas ? 1 : 0);
