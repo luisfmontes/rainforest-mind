@@ -101,9 +101,19 @@
     ]
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "claude plugin validate .claude-plugin/plugin.json; claude plugin test .; node hooks/testa-mod-compactar.cjs; node hooks/testa-mod-pr.cjs; node hooks/testa-mod-painel.cjs; node hooks/testa-mod-relogio.cjs; node hooks/testa-mod-abertura.cjs; node scripts/conferir-versao.cjs; bash scripts/testa-versao.sh",
+    "saida": "Validation passed + session.measure | 109 pass 0 fail | 13 ok | 50 ok | 23 ok | 27 ok | 29 ok | ok versao 1.58.0 | ok: 5 falhou: 0",
+    "sensor_externo": "node scripts/conferir-versao.cjs",
+    "em": "2026-10-10"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "versao": "1.58.0",
+    "issues": [
+      457,
+      480
+    ],
+    "em": "2026-10-10"
   }
 }
