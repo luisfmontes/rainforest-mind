@@ -13,7 +13,7 @@
  * Saídas:
  *   0   crítica impressa
  *   3   crítica com achado [design]: o laço para e sobe ao usuário (D5, D7)
- *   4   sem veredito reprovado em `revisar`, ou estado inexistente
+ *   4   sem veredito reprovado em `revisar`, estado inexistente, ou crítica vazia
  *   69  transcrito ausente ou sem mensagem do assistente (nao-verificavel)
  *   1   erro de uso
  */
@@ -97,9 +97,10 @@ function main() {
   }
 
   process.stdout.write(`${critica}\n`);
-  // [design] só conta abrindo o achado (marcador, negrito ou rótulo A1. antes);
-  // citado no meio da frase, ou entre crases, não para o laço.
-  if (/^\s*(?:[-*]\s+)?(?:\*\*)?(?:[A-Z]?\d+[.):]\s*)?(?:\*\*)?\s*\[design\]/im.test(critica)) {
+  // [design] só conta abrindo o achado (marcador, citação, título, negrito ou
+  // rótulo "A1." / "Achado 1:" antes); citado no meio da frase, ou entre
+  // crases, não para o laço.
+  if (/^\s*(?:[-*>]\s+|#{1,6}\s+)?(?:\*\*)?(?:(?:[A-Z]|Achado\s+)?\d+[.):]?\s*)?(?:\*\*)?\s*\[design\]/im.test(critica)) {
     process.stderr.write('[design]: achado contesta D<n> do design ou o plano; o laço para e sobe ao usuário (D5)\n');
     return 3;
   }

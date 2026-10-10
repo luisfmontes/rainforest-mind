@@ -275,12 +275,12 @@ rodada não é automática — é decisão do usuário, com rastro escrito:
 node scripts/estado.cjs liberar --slug <slug> --estagio revisar --rodada-extra "<o que o usuário decidiu>"
 ```
 
-exige, antes de destravar (`scripts/estado.cjs:1738-1762`):
+exige, antes de destravar (comando `liberar` de `scripts/estado.cjs`):
 
 1. `--rodada-extra "<texto>"` com o que o usuário decidiu;
 2. o impasse escrito em `docs/rainforest/portoes/<slug>-impasse.md`
-   (`scripts/estado.cjs:1747`, isento de creep —
-   `scripts/conferir-fluxo.cjs:530`) — sem o arquivo, recusa (exit 2) nomeando
+   (`caminhoImpasse` no `estado.cjs`, isento de creep —
+   `globs_isentos` do `conferir-fluxo.cjs`) — sem o arquivo, recusa (exit 2) nomeando
    o caminho esperado.
 
 Não é `exigir revisar --rodada-extra`: quem primeiro bate no teto é `exigir

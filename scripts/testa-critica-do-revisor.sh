@@ -99,6 +99,10 @@ estado h "[$(vered reprovado "$FX/design-rotulado.jsonl" 1)]"
 roda h
 if [ "$EXIT" -eq 3 ]; then r=0; else r=1; fi
 registra "(h) rotulo e caixa nao escondem o [design]" $r
+estado h2 "[$(vered reprovado "$FX/design-achado-rotulado.jsonl" 1)]"
+roda h2
+if [ "$EXIT" -eq 3 ]; then r=0; else r=1; fi
+registra "(h2) 'Achado 1: [design]' tambem para o laco" $r
 
 echo "-- (i) reprovado só com a linha VEREDITO: exit 4, stdout vazio --"
 estado i "[$(vered reprovado "$FX/critica-vazia.jsonl" 1)]"

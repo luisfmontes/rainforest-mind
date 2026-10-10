@@ -34,7 +34,7 @@ pronto quando: com o `agents/revisor.md` que o harness carrega, a seção de sa�
 
 ### 3. O laço escrito, e o ponteiro [tipo: docs]
 atende: D1, D2, D3, D4, D5, D8
-arquivos: `skills/revisar/references/laco.md`, `skills/revisar/SKILL.md`, `skills/executar/SKILL.md`
+arquivos: `skills/revisar/references/laco.md`, `skills/revisar/SKILL.md`, `skills/executar/SKILL.md`, `scripts/estado.cjs`
 depende de: 1, 2
 paralela: nao
 mutacao: n/a
