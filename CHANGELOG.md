@@ -17,6 +17,13 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   houvesse ali. Aspas simples são literais no bash e no PowerShell, e a dica do `& ` do PowerShell continua valendo.
   Se o caminho tiver aspa simples, a mensagem mostra os caminhos em vez de um comando para colar.
 
+## 1.57.1 — 2026-10-10
+
+- **Observação já gravada não trava mais a marca d'água da memória (Issue #452, item 1).** Depois da migração do
+  #435, uma observação vinda da pasta de worktree podia já estar gravada no projeto canônico com a mesma origem. O
+  gravador falhava com `UNIQUE constraint failed` e a sessão parava de avançar. Agora a linha repetida conta como já
+  gravada e a marca avança. Banco antigo, ainda sem a restrição, grava como antes.
+
 ## 1.57.0 — 2026-10-10
 
 - **Cada agente roda no effort do seu papel.** O `Agent` não tem parâmetro de effort, e o subagente herdava o da
