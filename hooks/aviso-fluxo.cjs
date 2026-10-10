@@ -148,8 +148,15 @@ function mensagemHeadDestacado(trilho) {
 // `ofereceLeve` false só no rainforest na branch padrão: lá o `leve` é recusado (D7), então a
 // saída é o worktree. O `--repo` aponta o repositório do arquivo (emenda 2, #430).
 function mensagemBloqueio(trilho, branch, ofereceLeve, gitTop) {
-  const iniciar = `"${NODE_BARRAS}" "${SCRIPT_ESTADO}" iniciar --slug <slug>`;
-  const leve = `"${NODE_BARRAS}" "${SCRIPT_ESTADO}" leve --motivo "<por quê>" --repo "${barras(gitTop)}"`;
+  // Issue #474: aspas SIMPLES, literais no bash e no PowerShell (ver hooks/lib/comando-colavel.cjs).
+  const { seguro: colavel, aspas } = require('./lib/comando-colavel.cjs');
+  const repoBarras = barras(gitTop);
+  const podeColar = colavel(NODE_BARRAS, SCRIPT_ESTADO, repoBarras);
+  const semComando = `(caminho com aspa simples ou caractere de controle: rode o estado.cjs de ${JSON.stringify(SCRIPT_ESTADO)} com o node de ${JSON.stringify(NODE_BARRAS)})`;
+  const iniciar = podeColar ? `${aspas(NODE_BARRAS)} ${aspas(SCRIPT_ESTADO)} iniciar --slug <slug>` : `${semComando} iniciar --slug <slug>`;
+  const leve = podeColar
+    ? `${aspas(NODE_BARRAS)} ${aspas(SCRIPT_ESTADO)} leve --motivo '<por quê>' --repo ${aspas(repoBarras)}`
+    : `${semComando} leve --motivo '<por quê>' --repo ${JSON.stringify(repoBarras)}`;
   if (trilho === 'rainforest') {
     if (!ofereceLeve) {
       return [
