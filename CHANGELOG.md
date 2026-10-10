@@ -10,6 +10,13 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.56.4 — 2026-10-10
+
+- **Observação já gravada não trava mais a marca d'água da memória (Issue #452, item 1).** Depois da migração do
+  #435, uma observação vinda da pasta de worktree podia já estar gravada no projeto canônico com a mesma origem. O
+  gravador falhava com `UNIQUE constraint failed` e a sessão parava de avançar. Agora a linha repetida conta como já
+  gravada e a marca avança. Banco antigo, ainda sem a restrição, grava como antes.
+
 ## 1.56.3 — 2026-10-10
 
 - **O comando de regenerar do `conferir-ponte` funciona colado no repositório-alvo (Issue #450).** Antes ele imprimia

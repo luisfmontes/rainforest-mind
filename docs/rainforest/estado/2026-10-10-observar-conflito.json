@@ -1,0 +1,9 @@
+{
+  "slug": "2026-10-10-observar-conflito",
+  "titulo": "fluxo/observar-conflito",
+  "criado_em": "2026-10-10",
+  "leve": {
+    "motivo": "Issue #452 item 1: INSERT do observar.cjs com ON CONFLICT, marca d'agua avanca",
+    "data": "2026-10-10"
+  }
+}
