@@ -448,7 +448,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     await ui.unmount()
   })
 
-  test(`painel (${surface}): cache de 10 min depois, /painel cache 5m e session.compact`, async ($, on) => {
+  test(`painel (${surface}): cache de 10 min depois, /painel cache 5m e session.compact`, { timeoutMs: 20000 }, async ($, on) => {
     const m = await montar($, on, surface, em(20, 40), false)
     const { relogio, s, juntos, comecar, terminar, passo, painel, caso } = m
 

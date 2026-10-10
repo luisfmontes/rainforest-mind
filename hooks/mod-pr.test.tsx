@@ -265,6 +265,13 @@ for (const surface of ['terminal', 'desktop'] as const) {
       await relogio.advance(10 * MIN)
       expect(s.submits).toEqual(['PR #455: conflito com a base. Resuma e traga ao usuário, sem alterar nada.'])
     })
+    await caso('#482: o GitHub recalculando (UNKNOWN) e o mesmo conflito de volta nao acordam de novo', async () => {
+      s.pr = { ...CONFLITO, mergeStateStatus: 'UNKNOWN', mergeable: 'UNKNOWN' }
+      await relogio.advance(2 * MIN)
+      s.pr = CONFLITO
+      await relogio.advance(10 * MIN)
+      expect(s.submits).toHaveLength(1)
+    })
   })
 
   test(`merged para o polling: nenhum gh depois (${surface})`, async ($, on) => {

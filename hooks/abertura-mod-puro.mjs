@@ -1,6 +1,6 @@
 // Logica do mod da abertura, pura: ES module sem Node. Nao recebe o `$`: o engine nao
 // aceita `$` passado como argumento (so `$.substantivo.evento(...)` no ponto de chamada,
-// medido por `claude plugin validate`). Recebe `io`, tres funcoes que `register.ts` tira
+// medido por `claude plugin validate`). Recebe `io`, as funcoes que `register.ts` tira
 // do `$`. `register.ts` so liga os tres hooks a ela; a bateria
 // `hooks/testa-mod-abertura.cjs` carrega o proprio register.ts com um `$` falso.
 //
@@ -24,10 +24,13 @@
 /**
  * @typedef {{
  *   rodar: (argv: string[], init: object) => Promise<any>,
+ *   systemRoot: () => Promise<string | undefined>,
  *   cwd: () => Promise<string>,
  *   raiz: string,
  * }} Io
  */
+
+import { escolherExecutavel, localizadores } from './pr-puro.mjs';
 
 export const ID_SECAO = 'rainforest-mind:abertura';
 
@@ -72,9 +75,9 @@ export function ehEntradaDaAbertura(texto) {
  * @param {{ nome: string, script: string, obrigatorio: boolean }} g
  * @returns {Promise<string>}
  */
-async function gerar(io, cwd, g) {
+async function gerar(io, cwd, g, node) {
   const script = `${io.raiz}/hooks/${g.script}`;
-  const r = await io.rodar(['node', script, '--destino', 'mod'], {
+  const r = await io.rodar([node, script, '--destino', 'mod'], {
     cwd: io.raiz,
     env: { CLAUDE_PROJECT_DIR: cwd },
     timeoutMs: TIMEOUT_MS,
@@ -88,6 +91,35 @@ async function gerar(io, cwd, g) {
 }
 
 /**
+ * Caminho absoluto do node, fora do repositorio da sessao (#480): pelo nome, o Windows
+ * procura o executavel antes na pasta atual. Mesma busca do `caminhoDoNode` do mod.tsx,
+ * que nao pode ser passado para ca (o engine recusa `$` como argumento); roda uma vez por
+ * abertura, dentro da montagem memoizada. `null` quando nenhum localizador acha.
+ * @param {Io} io
+ * @param {string} cwd
+ * @returns {Promise<string | null>}
+ */
+async function acharNode(io, cwd) {
+  let raiz;
+  try {
+    raiz = await io.systemRoot();
+  } catch {
+    raiz = undefined;
+  }
+  for (const argv of localizadores('node', raiz)) {
+    try {
+      const r = await io.rodar(argv, { cwd: io.raiz, timeoutMs: 10_000 });
+      if (r.exitCode !== 0) continue;
+      const achado = escolherExecutavel(r.stdout, cwd);
+      if (achado !== null) return achado;
+    } catch {
+      // este localizador nao existe nesta maquina; o outro tenta
+    }
+  }
+  return null;
+}
+
+/**
  * Monta o texto da secao: additionalContext do foco, depois o da memoria, sem os
  * systemMessage. `null` quando qualquer gerador falha.
  * @param {Io} io
@@ -96,7 +128,9 @@ async function gerar(io, cwd, g) {
 async function montar(io) {
   try {
     const cwd = await io.cwd();
-    const partes = await Promise.all(GERADORES.map(g => gerar(io, cwd, g)));
+    const node = await acharNode(io, cwd);
+    if (!node) return null;
+    const partes = await Promise.all(GERADORES.map(g => gerar(io, cwd, g, node)));
     const texto = partes.filter(Boolean).join('\n\n');
     return texto || null;
   } catch {

@@ -263,6 +263,31 @@ caso("virada: merge virou conflito e 'conflito'", () => {
   igual(m.virada(m.resumir(VERDE, REAL_THREADS), m.resumir(CONFLITO, REAL_THREADS)), "conflito", "conflito");
 });
 
+caso("conflito, sem dado, conflito acorda uma vez", () => {
+  const SEM_DADO = { ...VERDE, mergeStateStatus: "UNKNOWN", mergeable: "UNKNOWN" };
+  const seq = [VERDE, CONFLITO, SEM_DADO, CONFLITO, SEM_DADO, CONFLITO].map((p) => m.resumir(p, REAL_THREADS));
+  let velho = null;
+  const viradas = [];
+  for (const lido of seq) {
+    const novo = m.herdarMotivo(velho, lido);
+    viradas.push(m.virada(velho, novo));
+    velho = novo;
+  }
+  igual(JSON.stringify(viradas), JSON.stringify([null, "conflito", null, null, null, null]), "viradas da sequencia");
+});
+
+caso("herdarMotivo: so o conflito e herdado, e nunca o mergavel", () => {
+  const semDado = m.resumir({ ...VERDE, mergeStateStatus: "UNKNOWN", mergeable: "UNKNOWN" }, REAL_THREADS);
+  igual(m.herdarMotivo(null, semDado), semDado, "sem velho");
+  // "mergeável" herdado poria no pane um merge que ninguem verificou (revisao do fluxo)
+  igual(m.herdarMotivo(m.resumir(VERDE, REAL_THREADS), semDado), semDado, "mergeavel nao e herdado");
+  const h = m.herdarMotivo(m.resumir(CONFLITO, REAL_THREADS), semDado);
+  igual(h.motivo, "conflito", "conflito herdado");
+  igual(h.mergavel, false, "mergavel nao herdado");
+  const c = m.resumir(CONFLITO, REAL_THREADS);
+  igual(m.herdarMotivo(m.resumir(VERDE, REAL_THREADS), c), c, "leitura com dado passa intacta");
+});
+
 caso("virada: PR mergeado e 'merged'", () => {
   igual(m.virada(m.resumir(EM_CURSO, REAL_THREADS), m.resumir(REAL_PR, REAL_THREADS)), "merged", "merged");
 });
