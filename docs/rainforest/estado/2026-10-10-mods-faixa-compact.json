@@ -76,31 +76,29 @@
     ]
   },
   "revisar": {
-    "status": "parcial",
+    "status": "ok",
     "snapshot": {
-      "head": "ece5b25a323ea31ae89bf4a7edbe4955020629fe",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/2026-10-10-mods-faixa-compact.json"
-      ]
+      "head": "f7b21a367bdd7d402f77645e8222e46e25bf81d4",
+      "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a9d9afa7a3f5c2b10",
+        "agente_id": "a4fd2b746dfb263b0",
         "veredito": "ok",
         "em": "2026-10-10",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/2fa5b85b-bd65-4f9c-9b7b-9c53e2cc811d/subagents/agent-a9d9afa7a3f5c2b10.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/2fa5b85b-bd65-4f9c-9b7b-9c53e2cc811d/subagents/agent-a4fd2b746dfb263b0.jsonl"
       }
     ],
-    "em_voo": [
-      {
-        "agente": "revisor",
-        "tarefa": "revisao do fluxo",
-        "desde": "2026-10-10T11:30:00-03:00",
-        "sessao": "2fa5b85b-bd65-4f9c-9b7b-9c53e2cc811d"
-      }
-    ],
-    "em": "2026-10-10"
+    "em_voo": [],
+    "em": "2026-10-10",
+    "veredito": "aprovado",
+    "achados": 0,
+    "base": "7bfc23c4",
+    "head": "f7b21a36",
+    "issues": [
+      480
+    ]
   },
   "verificar": {
     "status": "pendente"

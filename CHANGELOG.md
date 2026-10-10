@@ -23,7 +23,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   `/painel esconder` esconde junto.
 - **`node` por caminho absoluto no mod (#457).** As seis chamadas do `mod.tsx` a scripts do plugin (barra, relógio,
   erros e desvio) acham o `node` uma vez por sessão, fora do repositório aberto, como o painel de PR já fazia com o
-  `gh`. A abertura (`hooks/register.ts`) ainda chama pelo nome, com cwd na pasta do plugin (#480).
+  `gh`. A abertura (`hooks/abertura-mod-puro.mjs`) ainda chama pelo nome, com cwd na pasta do plugin (#480).
 
 ## 1.57.1 — 2026-10-10
 
