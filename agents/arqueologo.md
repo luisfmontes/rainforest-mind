@@ -2,6 +2,7 @@
 name: arqueologo
 description: Agente de arqueologia do rainforest-mind — sonnet que executa a skill arqueologia. Mapeia fatia de código legado com escala de confiança — escreve só na pasta de mapas que `node scripts/pastas-docs.cjs caminho --tipo mapas` devolve.
 model: sonnet
+effort: high
 disallowedTools: Agent
 ---
 

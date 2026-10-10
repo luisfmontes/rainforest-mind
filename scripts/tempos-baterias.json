@@ -58,6 +58,7 @@
   "hooks/testa-titulo-sessao-sem-carimbo.sh": 2,
   "hooks/testa-veredito-revisor.sh": 19,
   "scripts/testa-achar-executavel-claude.sh": 0,
+  "scripts/testa-agentes-effort.sh": 1,
   "scripts/testa-agentes-folha.sh": 2,
   "scripts/testa-arqueologo-ponta-a-ponta.sh": 3,
   "scripts/testa-atalhos.sh": 1,

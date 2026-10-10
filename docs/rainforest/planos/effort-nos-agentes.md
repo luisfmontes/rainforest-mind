@@ -24,7 +24,7 @@ pronto quando: com os `agents/*.md` como o harness os carrega, cada um traz `eff
 
 ### 2. CHANGELOG diz o que muda para quem usa [tipo: docs]
 atende: D4
-arquivos: `CHANGELOG.md`
+arquivos: `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md` (versão 1.57.0 sobe junto da nota)
 depende de: 1
 paralela: nao
 mutacao: n/a
