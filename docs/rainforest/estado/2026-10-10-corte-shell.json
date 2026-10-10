@@ -1,0 +1,9 @@
+{
+  "slug": "2026-10-10-corte-shell",
+  "titulo": "fluxo/corte-shell",
+  "criado_em": "2026-10-10",
+  "leve": {
+    "motivo": "Issue #475: 13c intermitente por corte de shell",
+    "data": "2026-10-10"
+  }
+}
