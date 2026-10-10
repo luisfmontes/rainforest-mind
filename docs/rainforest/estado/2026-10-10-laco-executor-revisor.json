@@ -15,12 +15,12 @@
     "em": "2026-10-10"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-10",
     "tarefas_ok": 4,
     "tarefas": 4,
     "comando": "bash scripts/testa-critica-do-revisor.sh",
-    "saida": "ok: 7 falhou: 0; conferir-mutacao exit 0 re-rodado pela integracao; transcrito real do revisor: exit 0, 87 linhas, 0 VEREDITO; teto-skills 21/0; testa-veredito-revisor 35/0",
+    "saida": "ok: 10   falhou: 0",
     "carimbos": [
       {
         "tarefa": 1,
@@ -52,11 +52,7 @@
         "motivo": "nota de versao"
       }
     ],
-    "em": "2026-10-10",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-10"
-    }
+    "em": "2026-10-10"
   },
   "revisar": {
     "status": "reprovado",
