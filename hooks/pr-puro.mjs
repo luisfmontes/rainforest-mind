@@ -172,9 +172,13 @@ export function ehDaSessao({ origem, branch }) {
 // Texto para o modelo: so o numero e a acao. Titulo, nomes de branch e corpo do PR sao
 // escritos por quem abre o PR e nunca entram aqui — chegariam ao modelo como instrucao
 // (revisao de seguranca do commit 361caeb9). O titulo fica no pane, que e tela do usuario.
-export function nota(virada, r) {
+export function nota(virada, r, daSessao) {
   const n = Number(r.numero);
   const pr = 'PR #' + n;
+  // PR que nao e desta sessao (acompanhado por /pr, achado na saida de um comando, de fork ou de
+  // outro autor) so informa: ordem de agir sobre ele chegaria por quem controla o PR (revisao
+  // de 2026-10-10).
+  if (!daSessao) return informar(virada, pr, r);
   if (virada === 'checks-ok') {
     if (r.mergavel) {
       return pr + ': checks ok e mergeável (mergeStateStatus CLEAN). Mande mergear: gh pr merge ' + n + ' --squash --delete-branch';
@@ -186,6 +190,17 @@ export function nota(virada, r) {
   if (virada === 'conflito') return pr + ': conflito com a base. Resuma e traga ao usuário, sem alterar nada.';
   if (virada === 'merged') return pr + ' foi mergeado. Informe o usuário e diga para limpar o worktree e a branch.';
   return '';
+}
+
+function informar(virada, pr, r) {
+  const o = {
+    'checks-ok': 'checks ok' + (r.mergavel ? ' e mergeável' : ' (' + r.motivo + ')'),
+    'checks-falha': 'checks falharam',
+    'mudanca-pedida': 'mudança pedida na review',
+    conflito: 'conflito com a base',
+    merged: 'foi mergeado',
+  }[virada];
+  return o ? pr + ' (acompanhado, não é desta sessão): ' + o + '. Só informe o usuário; não aja sobre ele.' : '';
 }
 
 export function deveAcordar({ origem, branch, virada, ultimaMudancaMs, agoraMs }) {

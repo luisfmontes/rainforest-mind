@@ -22,9 +22,9 @@
     "em": "2026-10-09"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-09",
-    "tarefas_ok": 4,
+    "tarefas_ok": 6,
     "tarefas": 6,
     "em_voo": [],
     "carimbos": [
@@ -50,17 +50,61 @@
         "ts": "2026-10-09T18:24:09.014Z"
       }
     ],
-    "em": "2026-10-09",
-    "pendentes": [
-      "tarefa-4: sonda na conta de trabalho (usuario)",
-      "tarefa-6: prova ao vivo (usuario, sessao --plugin-dir)"
-    ],
+    "em": "2026-10-10",
+    "pendentes": [],
     "issues": [
       457
+    ],
+    "comando": "node hooks/testa-mod-pr.cjs && node hooks/testa-mod-plugins-em-dia.cjs && claude plugin test .",
+    "saida": "46 ok, 0 falha(s), 0 skipped | 11 ok, 0 falha(s), 0 skipped | 97 pass 0 fail",
+    "dispensadas": [
+      "tarefa-4: usuario dispensou em 2026-10-10 (Rafael ja testou a recarga); recarregarSozinho segue false e a recarga multi-janela foi plantada",
+      "tarefa-6: usuario dispensou em 2026-10-10; prova parcial ao vivo: pane abriu sozinho no gh pr create do PR #464"
+    ],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-mod-pr.cjs, caso PR alheio em branch fluxo/ acompanhado por /pr nao e da sessao"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-mod-plugins-em-dia.cjs, caso plugin instalado so no escopo local fica fora"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "mod-pr.test.tsx, caso PR acompanhado por /pr nao acorda a sessao"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "pesquisa dispensada pelo usuario"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "docs e versao"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "prova ao vivo dispensada pelo usuario"
+      }
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "parcial",
+    "snapshot": {
+      "head": "5600b2c9cf1572822acaa16952f44a074973d1de",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-10-09-mods-pr-e-plugins.json"
+      ]
+    },
+    "vereditos": [],
+    "em_voo": [],
+    "em": "2026-10-10"
   },
   "verificar": {
     "status": "pendente"

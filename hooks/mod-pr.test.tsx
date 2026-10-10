@@ -149,6 +149,7 @@ async function montar($: any, on: any, surface: Surface, inicial: Record<string,
   return { relogio, s, sessao, abrirPane, textos, comecar, bash, ghDeView, caso }
 }
 
+const NOTA_ALHEIA = 'PR #455 (acompanhado, não é desta sessão): checks ok e mergeável. Só informe o usuário; não aja sobre ele.'
 const NOTA_VERDE = 'PR #455: checks ok e mergeável (mergeStateStatus CLEAN). Mande mergear: gh pr merge 455 --squash --delete-branch'
 
 for (const surface of ['terminal', 'desktop'] as const) {
@@ -238,7 +239,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
       s.pr = VERDE
       await relogio.advance(MIN)
       const linhas = sessao.appended().map(r => JSON.stringify(r.message))
-      expect(linhas.filter(l => l.includes(NOTA_VERDE)).length).toBe(1)
+      expect(linhas.filter(l => l.includes(NOTA_ALHEIA)).length).toBe(1)
       expect(s.notifies.length).toBe(1)
       await relogio.advance(10 * MIN)
       expect(s.submits).toEqual([])
@@ -342,7 +343,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
       s.pr = { ...VERDE, isCrossRepository: true }
       await relogio.advance(MIN)
       const linhas = sessao.appended().map(r => JSON.stringify(r.message))
-      expect(linhas.filter(l => l.includes(NOTA_VERDE)).length).toBe(1)
+      expect(linhas.filter(l => l.includes(NOTA_ALHEIA)).length).toBe(1)
       await relogio.advance(10 * MIN)
       expect(s.submits).toEqual([])
     })

@@ -15,7 +15,7 @@ import type {
   RainforestMindPrPendente,
   RainforestMindPrResumo,
 } from '../types'
-import { AMBIENTE_GIT_SEGURO, POLL_MS, bloco, tomDoIcone, QUIETO_MS, deveAcordar, donoConfere, escolherExecutavel, eventos, localizadores, nota, resumir, virada } from './pr-puro.mjs'
+import { AMBIENTE_GIT_SEGURO, POLL_MS, bloco, tomDoIcone, QUIETO_MS, deveAcordar, donoConfere, ehDaSessao, escolherExecutavel, eventos, localizadores, nota, resumir, virada } from './pr-puro.mjs'
 
 type Bloco = {
   label: string
@@ -153,7 +153,7 @@ async function lerThreads($: EngineInterface, url: string): Promise<{ totalCount
   const m = PR_PARTES.exec(url)
   if (m === null) return null
   try {
-    const r = await gh($, ['api', 'graphql', '-F', `owner=${m[1]}`, '-F', `name=${m[2]}`, '-F', `number=${m[3]}`, '-f', `query=${QUERY_THREADS}`])
+    const r = await gh($, ['api', 'graphql', '-f', `owner=${m[1]}`, '-f', `name=${m[2]}`, '-F', `number=${m[3]}`, '-f', `query=${QUERY_THREADS}`])
     if (r.exitCode !== 0) return null
     const t = JSON.parse(r.stdout)?.data?.repository?.pullRequest?.reviewThreads
     return t && Array.isArray(t.nodes) ? t : null
@@ -213,7 +213,9 @@ async function consultar($: EngineInterface): Promise<void> {
 
     const v = virada(velho, novo) as string | null
     if (v !== null) {
-      const texto = nota(v, novo) as string
+      const atual = await read($, prAcompanhado)
+      const daSessao = atual !== null && (ehDaSessao({ origem: atual.origem, branch: atual.branch }) as boolean)
+      const texto = nota(v, novo, daSessao) as string
       await update($, prPendente, () => ({ virada: v, nota: texto, ultimaMudancaMs: agora }))
       try {
         await $.session.append({ message: { type: 'user', content: [{ type: 'text', text: texto }] } })
@@ -302,7 +304,7 @@ export const register: Register = on => {
       // o texto abaixo diz o que faltou
     }
     const r = await read($, prResumo)
-    const onde = r ? `#${r.numero} ${r.titulo}` : (await read($, prErro)) || 'nenhum PR'
+    const onde = r ? `#${r.numero}` : (await read($, prErro)) || 'nenhum PR'
     return { text: colocado ? `Acompanhando ${onde}.` : `Acompanhando ${onde} (alargue o terminal para ver o painel).` }
   }).catch(() => ({ text: 'Painel do PR indisponível agora.' }))
 

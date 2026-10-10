@@ -229,12 +229,14 @@ prova de engine é `hooks/mod-relogio.test.tsx` (`claude plugin test .`); a lóg
 
 **O painel de PR do mod.** `hooks/pr.tsx` liga os eventos e `hooks/pr-puro.mjs` guarda a lógica
 (sem Node e sem `$`). O pane `rainforest-mind-pr` abre por `/pr`, por todo `gh pr
-create|merge|checks|ready|view` que passe por Bash ou PowerShell e, no `session.start`, quando a
+create|merge|checks|ready|view` que passe por Bash ou PowerShell com a URL do PR no comando ou
+na saída e, no `session.start`, quando a
 branch da sessão tem PR aberto. O `gh` é consultado a cada `POLL_MS` = 60000 ms (1 min) por
 `$.clock.every`. A **virada** (`virada()`: merge, conflito, checks falhando, mudança pedida,
 checks ok) gera a nota de `nota()`, que leva só o número do PR e a ação, nunca título, branch ou
 corpo (texto de quem abre o PR chegaria ao modelo como instrução). A nota entra por
-`$.session.append` e só acorda a sessão (`$.prompt.submit`) se o PR for **desta sessão** —
+`$.session.append`; para PR que não é desta sessão ela só informa, sem comando nem pedido de
+ação. Só acorda a sessão (`$.prompt.submit`) se o PR for **desta sessão** —
 `ehDaSessao()`: criado pela sessão, ou o PR em aberto da branch `fluxo/*` em que a sessão abriu —,
 se `donoConfere()` (autor = quem está logado no `gh`, PR sem fork) e se o PR está quieto há
 `QUIETO_MS` = 180000 ms (3 min). Os executáveis (`where.exe`, `which`, `cmd.exe`, `gh`, `claude`)
