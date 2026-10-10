@@ -1,0 +1,77 @@
+{
+  "slug": "effort-nos-agentes",
+  "titulo": "effort-nos-agentes",
+  "criado_em": "2026-10-10",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "em": "2026-10-10"
+  },
+  "plano": {
+    "status": "ok",
+    "em": "2026-10-10"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-10",
+    "tarefas_ok": 2,
+    "tarefas": 2,
+    "comando": "bash scripts/testa-agentes-effort.sh",
+    "saida": "ok: 12 falhou: 0; folha 13/0; criterio T1 exit 0; T2 1/4; conferir-mutacao exit 0",
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "cb45d075",
+        "iteracao": 1,
+        "sessao": "6d0b7cb5-6a37-43b8-b9a4-befd7fdd648f",
+        "ts": "2026-10-10T10:19:41.686Z"
+      }
+    ],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "revisor-com-effort-errado"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "nota de versao"
+      }
+    ],
+    "em": "2026-10-10"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "4116803c17f409af3d691dcc5f91f85cd353b30e",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ae5f0f5e2b17c5b73",
+        "veredito": "ok",
+        "em": "2026-10-10",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/6d0b7cb5-6a37-43b8-b9a4-befd7fdd648f/subagents/agent-ae5f0f5e2b17c5b73.jsonl"
+      }
+    ],
+    "veredito": "ok",
+    "achados": 0,
+    "base": "cb45d075",
+    "head": "4116803c",
+    "em": "2026-10-10"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/testa-agentes-effort.sh",
+    "saida": "ok: 12   falhou: 0 exit=0; T1 criterio exit 0; T2 1/4",
+    "sensor_externo": "bash scripts/testa-agentes-effort.sh",
+    "em": "2026-10-10"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
