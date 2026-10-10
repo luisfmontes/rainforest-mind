@@ -209,7 +209,7 @@ pronto quando: um status não terminal grava `pendentes` como a união com a ant
   - **7 casos novos** (dois `parcial` seguidos na mesma caixa, salvo onde dito):
     1. `parcial` com [A,B], depois `parcial` com [B]: exit 0. O stderr cita o texto de A e **não** o de B. O bloco tem `pendentes` = [A,B]. **É o caso da mutação.**
     2. `parcial` com [A,B], depois `parcial` com [B] e destino para A: sem aviso (stderr não cita A) e `pendentes` = [B].
-    3. `parcial` com [A,B], depois `parcial` com [B,C]: sem aviso. `pendentes` = [A,B,C], nessa ordem.
+    3. `parcial` com [A,B], depois `parcial` com [B,C]: o aviso cita A (omitida, D5/A5, igual ao caso 1) e não cita B nem C. `pendentes` = [A,B,C], nessa ordem. (Corrigido pelo executor: o texto antigo dizia "sem aviso", o que contradiz o caso 1 e o D5, pois A fica fora do `--json` sem destino.)
     4. `parcial` com [A,B], depois `parcial` com `{"tarefas_ok":1}` (sem a chave `pendentes`): sem aviso. `pendentes` continua [A,B].
     5. a omitida volta a barrar: `parcial` [A,B], `parcial` [B], `ok` com destino só para B: exit 2, o stderr lista A.
     6. `reprovado` com [A,B] já gravadas e `--json '{}'`: exit 0 (só o terminal exige destino) e `pendentes` continua [A,B]. CONFIRMADO que na base já é assim (exit 0, `pendentes` no bloco). O caso guarda que a tarefa não estrague isso.

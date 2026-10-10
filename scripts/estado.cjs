@@ -305,8 +305,27 @@ function reconciliarPendencias(estagio, anterior, extra, status) {
     };
   }
   if (acum.length) extra.destinos = acum;
-  if (terminal) delete extra.pendentes;
-  return {};
+  if (terminal) {
+    delete extra.pendentes;
+    return {};
+  }
+  // Status nao terminal (D5): `pendentes` e o universo menos as destinadas. Uma
+  // pendencia anterior que o --json deixou de fora continua pendente (so um destino a
+  // tira) e o stderr diz qual foi. Fluxo sem pendencia nao ganha o campo.
+  const pendNovas = temPend ? extra.pendentes : null;
+  const persistem = semDestino(uniao, acum);
+  let aviso = '';
+  if (pendNovas !== null) {
+    const omitidas = semDestino(antPend.filter((p) => !pendNovas.includes(p)), acum);
+    if (omitidas.length) {
+      aviso = [
+        `aviso: '${estagio}': pendencia(s) anterior(es) sem destino ficou(aram) fora do --json e continua(m) pendente(s):`,
+        ...omitidas.map((p) => `  - ${p}`),
+      ].join('\n');
+    }
+  }
+  if (Array.isArray(ant.pendentes) || temPend) extra.pendentes = persistem;
+  return aviso ? { aviso } : {};
 }
 
 /** Pendencias da lista cujo texto nao aparece em `destinos[].pendente`. */
@@ -2382,6 +2401,7 @@ function main() {
         console.error(conciliacao.recusa);
         process.exit(2);
       }
+      if (conciliacao.aviso) console.error(conciliacao.aviso);
     }
 
     // D28: voltando a parcial, recusa se há estágio posterior aberto (status ok/aprovado/parcial)

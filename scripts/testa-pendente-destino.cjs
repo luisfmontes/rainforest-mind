@@ -251,6 +251,72 @@ caso('arqueologia dispensada com pendencia sem destino e recusada', () => {
   recusado(r, antes, bytes(cx, slug), [A]);
 });
 
+// ---------------------------------------------------------------- tarefa 3: `parcial` que omite avisa e mantem
+
+caso('parcial que omite a pendencia anterior continua com ela em pendentes', () => {
+  const slug = abrir(cx);
+  assert.strictEqual(parcial(cx, slug, { pendentes: [A, B] }).status, 0);
+  const r = parcial(cx, slug, { pendentes: [B] });
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.ok(r.stderr.includes(A), `stderr devia citar A: ${r.stderr}`);
+  assert.ok(!r.stderr.includes(B), `stderr nao devia citar B: ${r.stderr}`);
+  assert.deepStrictEqual(bloco(cx, slug, 'executar').pendentes, [A, B]);
+});
+
+caso('parcial que omite A mas traz destino para A nao avisa e fica so com B', () => {
+  const slug = abrir(cx);
+  assert.strictEqual(parcial(cx, slug, { pendentes: [A, B] }).status, 0);
+  const r = parcial(cx, slug, { pendentes: [B], destinos: [DEST_A] });
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.ok(!r.stderr.includes(A), `stderr nao devia citar A: ${r.stderr}`);
+  assert.deepStrictEqual(bloco(cx, slug, 'executar').pendentes, [B]);
+});
+
+caso('parcial com pendencia nova avisa so da omitida e mantem a ordem A,B,C', () => {
+  const slug = abrir(cx);
+  assert.strictEqual(parcial(cx, slug, { pendentes: [A, B] }).status, 0);
+  const r = parcial(cx, slug, { pendentes: [B, C] });
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.ok(r.stderr.includes(A), `stderr devia citar A (omitida): ${r.stderr}`);
+  assert.ok(!r.stderr.includes(B) && !r.stderr.includes(C), `stderr nao devia citar B nem C: ${r.stderr}`);
+  assert.deepStrictEqual(bloco(cx, slug, 'executar').pendentes, [A, B, C]);
+});
+
+caso('parcial sem a chave pendentes nao avisa e mantem as anteriores', () => {
+  const slug = abrir(cx);
+  assert.strictEqual(parcial(cx, slug, { pendentes: [A, B] }).status, 0);
+  const r = parcial(cx, slug, { tarefas_ok: 1 });
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.ok(!r.stderr.includes(A) && !r.stderr.includes(B), `stderr nao devia citar pendencia: ${r.stderr}`);
+  assert.deepStrictEqual(bloco(cx, slug, 'executar').pendentes, [A, B]);
+});
+
+caso('a pendencia omitida volta a barrar o ok', () => {
+  const slug = abrir(cx);
+  assert.strictEqual(parcial(cx, slug, { pendentes: [A, B] }).status, 0);
+  assert.strictEqual(parcial(cx, slug, { pendentes: [B] }).status, 0);
+  const antes = bytes(cx, slug);
+  const r = fecharOk(cx, slug, { destinos: [DEST_B] });
+  recusado(r, antes, bytes(cx, slug), [A]);
+});
+
+caso('reprovado nao exige destino e mantem as pendencias gravadas', () => {
+  const slug = abrir(cx);
+  assert.strictEqual(parcial(cx, slug, { pendentes: [A, B] }).status, 0);
+  const r = marcar(cx, slug, 'executar', 'reprovado', '{}');
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.deepStrictEqual(bloco(cx, slug, 'executar').pendentes, [A, B]);
+});
+
+caso('parcial com destino para todas deixa pendentes vazio e guarda os destinos', () => {
+  const slug = abrir(cx);
+  const r = parcial(cx, slug, { pendentes: [A, B], destinos: [DEST_A, DEST_B] });
+  assert.strictEqual(r.status, 0, r.stderr);
+  const b = bloco(cx, slug, 'executar');
+  assert.deepStrictEqual(b.pendentes, []);
+  assert.strictEqual(b.destinos.length, 2);
+});
+
 // ---------------------------------------------------------------- fim
 
 try { fs.rmSync(cx.raiz, { recursive: true, force: true }); } catch (_) { /* limpeza best-effort */ }
