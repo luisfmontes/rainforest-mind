@@ -214,7 +214,8 @@ node scripts/estado.cjs marcar --slug <slug> --estagio revisar --status reprovad
 Não existe meio-termo: `reprovado` **não libera** `verificar` — `exigir`
 do próximo estágio recusa enquanto `revisar` não fechar `ok` — e devolve o
 trabalho para `executar`, com os achados numerados como a lista de
-pendências da próxima rodada.
+pendências da próxima rodada. O redespacho é o laço de `references/laco.md`:
+crítica literal, teto de 3, parada em achado `[design]`.
 
 **Condição de parada**: sem diff, não há review. Reportar isso — branch
 sem commit novo, `head` que não existe, worktree que não foi integrado —

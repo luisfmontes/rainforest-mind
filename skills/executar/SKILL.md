@@ -268,10 +268,11 @@ que `estado.cjs` aceita:
 --json '{"carimbos":[{"tarefa":1,"hash_base":"1dd8f3d"}]}'
 ```
 
-`hash_base` sai de `git rev-parse` no briefing do agente, nunca digitado; na
-retomada, `proximo`/`ler` avisam em stderr (sem mudar o exit) quando essa
-base não é mais ancestral do HEAD. **Prova o exemplo em sandbox**
-(`iniciar --slug caixa`), **não em produção**.
+`hash_base` sai de `git rev-parse` no briefing, nunca digitado; `proximo`/`ler`
+avisam se a base deixou de ser ancestral do HEAD.
+Teste o exemplo em sandbox (`iniciar --slug caixa`), não em produção.
+
+Reaberto pelo `revisar`: laço em `skills/revisar/references/laco.md`.
 
 Todas fechadas, e só então:
 
