@@ -20,6 +20,11 @@ mensagem do próprio `exigir` mostra. O `destinar` grava destinos (acrescenta, o
 pendência que já tinha) e tira de `pendentes` as destinadas: não muda `status` nem
 refaz os gates de evidência do estágio.
 
+O destino padrão é `resolvida`: o achado que cabe neste PR (mesma classe do
+conserto, ou pequeno) se corrige aqui antes do merge. `plantada` com ref de Issue
+fica para o que não cabe: outra área, decisão aberta do usuário, trabalho grande
+ou repo de outro dono (regra 6).
+
 Seis passos, nesta ordem.
 
 ## 1. Commitar o pendente

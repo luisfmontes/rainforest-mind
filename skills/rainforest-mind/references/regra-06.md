@@ -17,6 +17,21 @@ Razão: plantio resgata tópicos depois; semente plantada é prioridade baixa. D
 > **2026-09-16 (Issue #291):** sessão no repo A, pedido para gerar um relatório quinzenal. No meio, achou dois defeitos reais no gerador — mas o gerador mora num plugin de um repo vizinho, com outra sessão ativa nele. O texto da regra dizia o quê e quando ("atrapalha a tarefa em curso, conserta na hora") mas não **onde**; a leitura literal autorizou worktree, commit e teste novo no repo vizinho antes de o usuário decidir. Ele cortou no meio — "por que você tá corrigindo erro de outro repo?" — e estava certo: a regra 11 protegia o **como** (worktree isolado, base conferida, nada commitado até a decisão), mas nenhuma regra protegia a **autorização** de mexer fora do repo da sessão.
 > re-verificar: `gh issue view 291 --json title`
 
+### Achado que cabe no PR aberto entra nele
+
+Defeito que não atrapalha, mas que **cabe no PR em curso**, também não vira Issue: corrige-se ali, antes do merge.
+Cabe quando é da **mesma classe** do conserto (o mesmo erro em outro ponto) ou é **pequeno** no repo da sessão.
+Vale para achado da revisão e do security-review. No fluxo, ele sai como pendência com destino `resolvida`, nunca
+como `plantada`. Issue fica para o que não cabe: outra área, decisão aberta do usuário, trabalho grande, ou repo
+de outro dono. Cada Issue nova custa um ciclo inteiro de PR, CI, versão e conflito com as outras janelas. O
+mesmo conserto feito dentro do PR aberto custa um commit.
+
+> **2026-10-10:** desde 09/10, 12 issues abertas e 10 fechadas; a fila não descia. Duas eram desta regra mal
+> aplicada: o security-review do #450 achou a mesma injeção por aspas duplas em mais dois hooks, que virou a #474,
+> e uma intermitência da CI no caminho virou a #475. As outras quatro (#465, #466, #480, #482) eram "achados menores
+> fora do merge" de revisões. O Luís: "olha cada vez que corrige algo esta abrindo mais Issue".
+> re-verificar: `gh issue view 474 --json title`
+
 ### O que sobe é rascunho escrito, não pergunta
 
 A tentação ao achar defeito é perguntar: "quer que eu registre?" — essa pergunta transfere a decisão de registrar um erro da ferramenta para quem a usa, e a resposta óbvia é sim. A pergunta só adia. Issue tem uma **confirmação depois de escrito** (é irreversível e indexada), mas o rascunho já vai completo no fluxo do comando — nunca como pergunta pendente.
