@@ -15,7 +15,15 @@ import type {
   RainforestMindPrPendente,
   RainforestMindPrResumo,
 } from '../types'
-import { AMBIENTE_GIT_SEGURO, POLL_MS, QUIETO_MS, deveAcordar, donoConfere, escolherExecutavel, eventos, localizadores, nota, resumir, virada } from './pr-puro.mjs'
+import { AMBIENTE_GIT_SEGURO, POLL_MS, bloco, tomDoIcone, QUIETO_MS, deveAcordar, donoConfere, escolherExecutavel, eventos, localizadores, nota, resumir, virada } from './pr-puro.mjs'
+
+type Bloco = {
+  label: string
+  labelTone: string | null
+  sub: string
+  url: string
+  chips: { glyph: string; text: string; tone: string | null }[]
+}
 
 const PANE = 'rainforest-mind-pr'
 const AJUDA = 'Uso: /pr [numero | url | fechar]'
@@ -49,8 +57,6 @@ const hhmm = (ms: number): string => {
   return Number.isNaN(d.getTime()) ? '' : `${dois(d.getHours())}:${dois(d.getMinutes())}`
 }
 
-const corDoIcone = (icone: string): string | undefined => (icone === '✓' ? 'green' : icone === '×' ? 'red' : icone === '◐' ? 'yellow' : undefined)
-const corDosChecks = (c: string): string | undefined => (c.startsWith('checks ok') ? 'green' : c.includes('falharam') ? 'red' : c.includes('rodando') ? 'yellow' : undefined)
 
 function parar(): void {
   if (timer !== null) {
@@ -330,25 +336,52 @@ export const register: Register = on => {
   // O pane: titulo, branch -> base, estado, checks, merge, threads, head e a linha do tempo.
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e, next) => {
     try {
-      const { Box, Text } = $.ui.resolve(e)
+      const { Box, Link, Text } = $.ui.resolve(e)
       const r = await read($, prResumo)
       const lista = await read($, prEventos)
       const msg = await read($, prErro)
-      const sala = Math.max(3, (e.props.scroll?.bodyRows ?? 24) - 8)
+      const largura = e.props.bodyColumns
+      // Cabecalho, sub, branco, chips, meta, branco (e o erro, se houver): o resto e da linha do tempo.
+      const sala = Math.max(3, (e.props.scroll?.bodyRows ?? 24) - 6 - (msg ? 1 : 0))
       if (r === null) return <Text dimColor>{msg || 'Consultando o PR...'}</Text>
+      const b = bloco(r) as Bloco
       return (
-        <Box flexDirection="column">
-          <Text bold>{`#${r.numero} ${r.titulo}`}</Text>
-          <Text dimColor>{`${r.branch} → ${r.base} · @${r.autor}`}</Text>
-          <Text color={corDosChecks(r.checks)}>{`${r.estado.toLowerCase()} · ${r.checks} · ${r.motivo} · threads ${r.threadsAbertas}/${r.threadsTotal}`}</Text>
-          <Text dimColor>{`${r.head} · atualizado ${r.atualizadoEm}`}</Text>
-          {msg ? <Text color="red">{msg}</Text> : null}
+        <Box flexDirection="column" width={largura}>
+          <Box justifyContent="space-between">
+            <Box flexShrink={1}>
+              <Text wrap="truncate">
+                <Text bold color="claude">{`#${r.numero}`}</Text>
+                <Text bold>{`  ${r.titulo}`}</Text>
+              </Text>
+            </Box>
+            <Box flexShrink={0} marginLeft={2}>
+              <Text color={b.labelTone ?? undefined}>{`● ${b.label}`}</Text>
+            </Box>
+          </Box>
+          <Text wrap="truncate">
+            <Text dimColor>{b.sub}</Text>
+            {b.url ? <Text dimColor>{' · '}</Text> : null}
+            {b.url ? <Link href={b.url} label="abrir ↗" /> : null}
+          </Text>
+          <Text> </Text>
+          <Text wrap="truncate">
+            {b.chips.map((c, j) => (
+              <Text key={`chip-${j}`} color={c.tone ?? undefined} dimColor={c.tone === null}>
+                {`${j > 0 ? '   ' : ''}${c.glyph ? `${c.glyph} ` : ''}${c.text}`}
+              </Text>
+            ))}
+          </Text>
+          <Text dimColor wrap="truncate">{`${r.head} · atualizado ${r.atualizadoEm}`}</Text>
+          {msg ? <Text color="error" wrap="truncate">{msg}</Text> : null}
           <Text> </Text>
           {[...lista]
             .slice(-sala)
             .reverse()
             .map((ev, i) => (
-              <Text key={`ev-${i}`} color={corDoIcone(ev.icone)}>{`${ev.hora} ${ev.icone} ${ev.texto}`}</Text>
+              <Text key={`ev-${i}`} wrap="truncate">
+                <Text dimColor>{`${ev.hora}  `}</Text>
+                <Text color={tomDoIcone(ev.icone) ?? undefined} dimColor={tomDoIcone(ev.icone) === null}>{`${ev.icone} ${ev.texto}`}</Text>
+              </Text>
             ))}
         </Box>
       )

@@ -110,6 +110,46 @@ export function eventos(velho, novo, agoraMs) {
   return lista;
 }
 
+// O que o pane desenha do resumo: o estado em destaque e os chips com glifo e tom (nome de
+// tema do engine; null = apagado). Formato adaptado do painel de MR do wildz-data, de
+// Rafael Lopes, copiado com autorizacao dele (2026-10-09).
+const TOM_DO_ICONE = { '✓': 'success', '×': 'error', '◐': 'warning' };
+
+export function tomDoIcone(icone) {
+  return TOM_DO_ICONE[icone] ?? null;
+}
+
+function tomDoMotivo(m) {
+  if (m === 'mergeável') return { glyph: '✓', tone: 'success' };
+  if (m === 'conflito' || m === 'bloqueado') return { glyph: '×', tone: 'error' };
+  if (m === 'desatualizado' || m === 'checks não passaram' || m === 'draft') return { glyph: '◐', tone: 'warning' };
+  return { glyph: '○', tone: null };
+}
+
+export function bloco(r) {
+  const tons = { OPEN: 'success', MERGED: 'merged', CLOSED: 'error' };
+  const iconeC = iconeChecks(r.checks);
+  const chips = [
+    { glyph: iconeC === '·' ? '○' : iconeC, text: r.checks, tone: tomDoIcone(iconeC) },
+    { ...tomDoMotivo(r.motivo), text: r.motivo },
+  ];
+  if (r.review === 'approved') chips.push({ glyph: '✓', text: 'aprovado', tone: 'success' });
+  else if (r.review === 'changes requested') chips.push({ glyph: '×', text: 'mudança pedida', tone: 'error' });
+  else if (r.review === 'review required') chips.push({ glyph: '◐', text: 'review pendente', tone: 'warning' });
+  chips.push({
+    glyph: '',
+    text: 'threads ' + r.threadsAbertas + '/' + r.threadsTotal + ' · ' + r.comentarios + ' coment.',
+    tone: r.threadsAbertas > 0 ? 'warning' : null,
+  });
+  return {
+    label: String(r.estado || '').toLowerCase(),
+    labelTone: tons[r.estado] ?? null,
+    sub: r.branch + ' → ' + r.base + ' · @' + r.autor,
+    url: r.url,
+    chips,
+  };
+}
+
 // A leitura que pede acao: null para mudanca nao decisiva e quando nao ha leitura anterior.
 export function virada(velho, novo) {
   if (!velho) return null;

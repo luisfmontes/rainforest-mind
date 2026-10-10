@@ -380,6 +380,24 @@ caso("PR de outro autor ou de fork nao conta como da sessao", () => {
   igual(m.donoConfere({ autor: "luisfmontes", eu: "luisfmontes", cruzado: false }), true, "mesmo autor, nao cruzado");
 });
 
+caso("bloco do pane: estado em destaque e chips com o tom de cada leitura", () => {
+  const verde = m.bloco(m.resumir(VERDE, REAL_THREADS));
+  igual([verde.label, verde.labelTone], ["open", "success"], "aberto");
+  igual(m.bloco({ ...m.resumir(VERDE, REAL_THREADS), estado: "MERGED" }).labelTone, "merged", "mergeado no tom merged");
+  igual(verde.chips[0], { glyph: "✓", text: "checks ok (2)", tone: "success" }, "checks verdes");
+  igual(verde.url, REAL_PR.url, "link do PR");
+  afirma(verde.sub.includes(" → main · @luisfmontes"), "branch -> base e autor: " + verde.sub);
+  const conflito = m.bloco(m.resumir({ ...CONFLITO, state: "OPEN" }, REAL_THREADS));
+  igual([conflito.label, conflito.labelTone], ["open", "success"], "aberto");
+  igual(conflito.chips[1], { glyph: "×", tone: "error", text: "conflito" }, "conflito vermelho");
+  const falha = m.bloco(m.resumir(FALHA, REAL_THREADS));
+  igual([falha.chips[0].glyph, falha.chips[0].tone], ["×", "error"], "checks falhando");
+  igual(m.bloco(m.resumir(MUDANCA, REAL_THREADS)).chips[2], { glyph: "×", text: "mudança pedida", tone: "error" }, "review");
+  const abertas = m.bloco(m.resumir(VERDE, THREADS_ABERTAS));
+  igual(abertas.chips[abertas.chips.length - 1].tone, "warning", "thread aberta acende");
+  igual([m.tomDoIcone("✓"), m.tomDoIcone("×"), m.tomDoIcone("·")], ["success", "error", null], "tom dos eventos");
+});
+
 // ------------------------------------------------------------------ execucao
 (async () => {
   m = await import(PR);
