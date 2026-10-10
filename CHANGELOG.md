@@ -12,11 +12,11 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 ## 1.59.5 — 2026-10-10
 
-- **Livro de repos: `claude-cockpit` avaliado para a troca automática de conta.** Ele não instala aqui, porque só roda
-  em macOS, mas fica registrado o que ele mediu e que vale para o fluxo de troca de conta: uma credencial mora em um
-  lugar só, a identidade é perguntada ao servidor, o uso vem de `/api/oauth/usage` guardado em cache e a troca dispara
-  uma vez só. Relatório em `relatorios/2026-10-10-claude-cockpit-troca-de-conta.md`. Nenhum comportamento do plugin
-  mudou.
+- **Registrar um repo avaliado não exige mais versão nova.** O `conferir-versao.cjs` já dispensava o bump quando só
+  mudava estado de fluxo (`docs/rainforest/estado/`). Agora dispensa também quando só mudam o livro de repos
+  (`vigias/livro-de-repos.md`) e `relatorios/`, porque nada disso é executado pelo plugin. Qualquer outro arquivo junto,
+  inclusive outro arquivo de `vigias/`, continua exigindo bump. Neste mesmo PR entrou a avaliação do `claude-cockpit`
+  para a troca automática de conta (`relatorios/2026-10-10-claude-cockpit-troca-de-conta.md`).
 
 ## 1.59.4 — 2026-10-10
 
