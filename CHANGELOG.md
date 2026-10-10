@@ -10,6 +10,13 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.56.2 — 2026-10-10
+
+- **O núcleo da regra 10 diz quando a portaria barra agente que escreve (Issue #445).** Ela barra só agente
+  declarado no manifesto, em repositório com trilho de fluxo e com a chave `aviso-fluxo` ligada. Agente de outro
+  plugin, ou repositório sem trilho, segue só registrado. O núcleo não cresceu: a frase "sem frase digitada por
+  sessão" saiu, e o detalhe continua em `references/regra-10-portaria.md`.
+
 ## 1.56.1 — 2026-10-10
 
 - **A portaria diz por que a branch ficou fora do fluxo (Issue #447).** Às vezes um agente que escreve é recusado com
