@@ -19,7 +19,10 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   - `plantada`, com `ref` `#<n>`, URL de issue do GitHub ou `ideia:<id>`;
   - `descartada`, com `motivo`.
 
-  O `destinos` acumula entre chamadas e fica no estado depois do `ok`.
+  O `destinos` acumula entre chamadas e fica no estado depois do `ok`. Se uma pendência voltar a ser listada, ela
+  perde o destino antigo e o comando avisa no stderr. Destino inválido não conta.
+- **Novo `estado.cjs destinar --slug <s> --estagio <e> --json '{"destinos":[...]}'`.** Grava o destino num estágio
+  já fechado sem mudar o status e sem refazer os gates. É o remédio que o `exigir --estagio fechar` indica.
 - **`parcial` que deixa uma pendência de fora avisa e a mantém.** A pendência só sai da lista com um destino.
 - **`exigir --estagio fechar` recusa pendência sem destino**, também em arquivo de estado antigo ou editado à mão.
 - **Novo `estado.cjs deixado --slug <s>`.** Lista em markdown o que ficou para depois e o destino de cada item.
