@@ -1,0 +1,29 @@
+{
+  "slug": "2026-10-10-laco-executor-revisor",
+  "titulo": "Laco executor -> revisor com teto no executar",
+  "criado_em": "2026-10-10",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-10-laco-executor-revisor.md",
+    "em": "2026-10-10"
+  },
+  "plano": {
+    "status": "ok",
+    "em": "2026-10-10"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
