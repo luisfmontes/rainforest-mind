@@ -85,7 +85,7 @@ terminal-positivo (é `CAMPOS_EFEMEROS`). Em sessão não interativa, o turno po
 acabar com agente em voo — o gate `Stop` bloqueia a próxima volta até que você
 registre que viu.
 
-**Antes de despachar:** com `worktree.baseRef: "head"` nas settings do usuário, o worktree do agente nasce do HEAD do diretório desta sessão — despache de dentro do worktree do fluxo, com o trabalho commitado, e o hash do briefing é `git rev-parse HEAD` dali (regra 11); `git status --porcelain` vazio antes do despacho, e o preparo de base abaixo continua valendo. Sem a chave (`"fresh"`, o padrão), a base do worktree nasce na ponta da `origin/main`, não no commit de trabalho. Confira com `git merge-base --is-ancestor origin/main HEAD`; não sendo ancestral, traga a `main` para a branch com `git merge --ff-only origin/main` antes de despachar — a branch de trabalho tem que estar adiantada (ou igualada) em relação ao `origin/main`.
+**Antes de despachar:** a base segue `worktree.baseRef` (regra 11). Em `head`, é o HEAD desta sessão: despache de dentro do worktree do fluxo, com a árvore limpa. Em `fresh` (padrão), é a ponta da `origin/main`: confira com `git merge-base --is-ancestor origin/main HEAD` e, não sendo ancestral, `git merge --ff-only origin/main` antes de despachar. O preparo de base vale nos dois.
 
 **Runtime do agente:** primeira linha do briefing, `Runtime: codex` ou `Runtime: claude` (default). Ver `references/runtime-do-agente.md`.
 
