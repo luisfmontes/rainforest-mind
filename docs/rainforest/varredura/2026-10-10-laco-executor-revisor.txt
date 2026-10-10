@@ -1,0 +1,271 @@
+Data: 2026-10-10
+Termos: laco, reprovado, TETO_TENTATIVAS, redespach, ultima critica
+
+$ gh issue list --state all --search "laco" --limit 200 --json number,title,state
+[{"number":405,"state":"CLOSED","title":"gate-fechar-issue barra laco e bash scripts/$b.sh sem gh"},{"number":362,"state":"CLOSED","title":"gate-fechar-issue barra laco sem gh quando a variavel esta sem aspas"},{"number":414,"state":"CLOSED","title":"gate-fechar-issue barra comando sem gh que carrega env com set -a e ponto"},{"number":249,"state":"CLOSED","title":"O laco das 114 baterias so existe no YAML da CI: nao ha varredura local, e o verificar mede a ferramenta em vez do teste dela"},{"number":346,"state":"CLOSED","title":"gate-bateria-sem-timeout: stdbuf --output L (opcao longa com espaco) escapa"},{"number":243,"state":"CLOSED","title":"foco-session-start.cjs leva 6-8 s nesta maquina e estoura o timeout 5 do hooks.json: testa-memoria-somente-leitura fica vermelha e nada diz que foi timeout"},{"number":342,"state":"CLOSED","title":"testa-saude R5 ainda intermitente no CI (porta não responde)"},{"number":292,"state":"CLOSED","title":"testa-foco.sh: mutantes dos itens 9 e 13 morrem por MODULE_NOT_FOUND, nao pelo comportamento mutado"},{"number":337,"state":"CLOSED","title":"gate-fechar-issue barra bash $t sem aspas como comando encapsulado"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"},{"number":244,"state":"CLOSED","title":"Bump de versao e feito a mao no fechar, e o esquecimento e silencioso"},{"number":180,"state":"CLOSED","title":"Fluxo: o estagio que despacha agente aposta que o turno dura mais que o agente"},{"number":298,"state":"CLOSED","title":"gate-agente-em-voo promete avisar UMA vez e repete a cada turno em sessao interativa"},{"number":309,"state":"CLOSED","title":"gate de texto barra bash \"$t\" (variavel entre aspas) como comando encapsulado"},{"number":192,"state":"CLOSED","title":"Proibir background no briefing falhou duas vezes, com a proibicao escrita duas vezes no mesmo texto — falta checar a FORMA do retorno"},{"number":261,"state":"CLOSED","title":"gate-staging-total: mensagem citaria o repo errado com -C — nao reproduz, falta a linha exata"},{"number":142,"state":"CLOSED","title":"O guarda de \"nao remover worktree sujo\" mede o repositorio PAI, e por isso responde \"sujo\" para tudo"},{"number":239,"state":"CLOSED","title":"gate-fechar-issue bloqueia heredoc cujo texto fecha frase com parentese: \").\" e lido como subshell + source"},{"number":118,"state":"CLOSED","title":"O backup diario do sentinela nunca fez backup — e empurra sozinho para a main de um repo publico"},{"number":127,"state":"CLOSED","title":"gate-worktree e cego para CLI de agente externa: codex exec --yolo passa, git stash nao"},{"number":175,"state":"CLOSED","title":"limpar-branches --remoto ignora a classe mergeada-por-squash e afirma que nao havia remoto para apagar"},{"number":260,"state":"CLOSED","title":"conferir-publicacao: 'token' sozinho vira credencial, e a mensagem nao mostra o trecho casado"},{"number":21,"state":"CLOSED","title":"Criterio 'a bateria sai 0' e satisfazivel por fora, e tres instrumentos de conferencia falharam junto"}]
+
+
+$ gh issue list --state all --search "reprovado" --limit 200 --json number,title,state
+[{"number":441,"state":"CLOSED","title":"estado: verificar reprovado depois do fechar ok nao reabre o fechar"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"},{"number":238,"state":"CLOSED","title":"estado.cjs marcar reabre executar por baixo do revisar em voo e aceita carimbo de tarefa inexistente"},{"number":378,"state":"CLOSED","title":"conferir-mutacao.cjs sai 1 sem veredito no Windows quando a raiz tem node_modules como junction"},{"number":197,"state":"CLOSED","title":"Substituicao de texto sem assercao de contagem entregou mecanismo morto com a bateria VERDE (exige_e2e nunca chamada)"},{"number":335,"state":"CLOSED","title":"13 baterias .cjs nunca rodam no CI: varrer-baterias.sh so descobre testa-*.sh"},{"number":278,"state":"CLOSED","title":"gate-verificador-staged barra merge por arquivo que ja passou na main"},{"number":189,"state":"CLOSED","title":"conferir-versao.cjs nao olha o numero: versao que anda para tras passa verde, e plugin.json ilegivel sai 0"},{"number":303,"state":"CLOSED","title":"Gemeo Python de conferir-entrega congelou: 21 falhas na main e o portao do CONTRIBUTING esta vermelho"},{"number":148,"state":"CLOSED","title":"reaberto_por aceita texto livre do --json, e exigir recusa onde marcar deixa passar"},{"number":210,"state":"CLOSED","title":"Entrega vazia + --paralelo: o conjunto do agente e vazio, entao a checagem 4 nunca reprova"},{"number":51,"state":"CLOSED","title":"As tres travas de isolamento falharam na borda: retomada de agente, janela principal, e o rastro da propria esteira"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"}]
+
+
+$ gh issue list --state all --search "TETO_TENTATIVAS" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "redespach" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "ultima critica" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "laco" --limit 200 --json number,title,state
+[{"number":451,"state":"MERGED","title":"Glossario de dominio por repositorio (GLOSSARIO.md), versao 1.52.0"},{"number":318,"state":"MERGED","title":"gates: & com alvo literal no PowerShell e comando comum, nao ilegivel"},{"number":365,"state":"MERGED","title":"Seis travas semeadas do historico (1.32.0)"},{"number":226,"state":"MERGED","title":"O limpar-branches era o maior produtor do resíduo que ele existe para limpar"},{"number":332,"state":"MERGED","title":"Veredito fora da linha: hook devolve a vez uma vez; negrito aceito"},{"number":347,"state":"MERGED","title":"gate-bateria-sem-timeout: subagente nao deixa bateria ir para segundo plano (1.26.0)"},{"number":179,"state":"MERGED","title":"Relatorio: rodada cega de 2026-09-04 (com errata de entrada)"},{"number":242,"state":"MERGED","title":"Zerar Issues, rodada 2: as 6 que faltavam e as 6 novas (1.12.0)"},{"number":84,"state":"MERGED","title":"batedor: tres repos no livro — OpenViking, deepseek-harness e MiroFish"},{"number":224,"state":"MERGED","title":"Enxerta os sete mecanismos do ponytail, e fecha a fronteira que o gate de código de modelo não tinha"},{"number":32,"state":"MERGED","title":"O criterio apontava para o instrumento (#21)"},{"number":247,"state":"MERGED","title":"zerar-issues rodada 3: heredoc no gate de Issue e radar em 4 chamadas (1.13.2)"},{"number":271,"state":"MERGED","title":"Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador"},{"number":213,"state":"MERGED","title":"Skill montar-corpus: wiki em markdown vira acervo, com o grafo tratado como entrada nao confiavel"},{"number":188,"state":"MERGED","title":"Lote 4: instrumento que mede o codigo, e nao a maquina de quem roda"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"},{"number":122,"state":"MERGED","title":"Fecha #118: o backup diario do sentinela nunca fez backup — e empurrava sozinho para um repo publico"},{"number":128,"state":"MERGED","title":"A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo"}]
+
+
+$ gh pr list --state all --search "reprovado" --limit 200 --json number,title,state
+[{"number":443,"state":"MERGED","title":"estado: verificar reprovado reabre o fechar (#441, 1.50.1)"},{"number":327,"state":"MERGED","title":"Contrato de veredito de uma linha no revisar (1.23.9)"},{"number":134,"state":"MERGED","title":"Fluxo 1 — o ciclo reprovado->executar vira maquina, e ok sem evidencia nao fecha"},{"number":201,"state":"MERGED","title":"Fluxo 10 (critico): arquivado como superado, com a substituicao provada item a item"},{"number":132,"state":"CLOSED","title":"Fluxo 1 — o ciclo reprovado->executar vira maquina, e ok sem evidencia nao fecha"},{"number":332,"state":"MERGED","title":"Veredito fora da linha: hook devolve a vez uma vez; negrito aceito"},{"number":234,"state":"MERGED","title":"Absorver de um plugin de terceiro o que vira trava: mensagem de commit, --confirmo, exit 69, duplicação, carimbos"},{"number":59,"state":"MERGED","title":"O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas"},{"number":139,"state":"MERGED","title":"Gate de worktree: decidir escrita por token, e isentar o scratchpad da sessao"},{"number":18,"state":"MERGED","title":"O til no meio do caminho barrava commit legitimo, e o 8.3 mandava nao integrar (#16)"},{"number":85,"state":"MERGED","title":"Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79)"},{"number":9,"state":"MERGED","title":"As tres costuras da esteira: decisao, opcao morta e creep deixam de evaporar"},{"number":17,"state":"MERGED","title":"Nenhuma bateria roda sozinha: CI que roda as 20 baterias a cada PR (#16)"}]
+
+
+$ gh pr list --state all --search "TETO_TENTATIVAS" --limit 200 --json number,title,state
+[{"number":132,"state":"CLOSED","title":"Fluxo 1 — o ciclo reprovado->executar vira maquina, e ok sem evidencia nao fecha"}]
+
+
+$ gh pr list --state all --search "redespach" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "ultima critica" --limit 200 --json number,title,state
+[]
+
+
+$ git ls-remote --heads origin | grep -F "laco"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "reprovado"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "TETO_TENTATIVAS"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "redespach"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "ultima critica"
+(vazio)
+
+$ git log --all --grep="laco" --oneline
+f11f8100 Regua D7 da memoria por assunto sem as distorcoes (#436), versao 1.54.0 (#459)
+bb343975 utilidade --repontuar --desde refaz a janela (D8)
+397aa5a9 Glossario de dominio por repositorio (GLOSSARIO.md), versao 1.52.0 (#451)
+64c74c05 estado: executar ok na rodada 2 (22/22, laco 197/197)
+b11ff9e6 estado: executar 13 de 14 do glossario
+dd2aa020 Zerar as Issues #409-#414, #417, #419 (1.46.0) (#426)
+055a33e1 B3 + I3: bateria completa para varrer.cjs
+2ef22ae1 Suite completa: duas baterias alheias acertadas
+bb30eb48 gate-publicacao: padrao sem /g fica fora do laco (#322)
+82f1c62a testa-poda-metricas: esperar 10 s pela porta do proxy e afirmar
+406dac66 segunda fonte simetrica: a declaracao fixa as QUINZE invariantes
+f4d617a0 registra a decisao sobre os literais repetidos e completa o item 20
+210a7233 segunda fonte: typo em frase nao_deve passa a derrubar a bateria
+94e60a3c executar rodada 6: parcial; o conserto que eu prescrevi nao fecha o bloqueante
+b45c4ab3 invariantes: numeros e fronteira coerentes com a forma que ficou aberta
+045ded97 executar rodada 5: fecha ok; a classe do degrau desconhecido fechou
+0ed69b90 memoria: reconciliar relê o estado antes de sondar cada observacao
+aa103b41 testa-foco.sh: itens 9, 13 e 15 param de aceitar MODULE_NOT_FOUND como deteccao
+da8617ae Livro de repos: ruflo e TencentDB-Agent-Memory
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+a446e0f7 integra tarefa 2: orcamento --agregado mede o SessionStart inteiro
+cc1e10ce Gate de Issue: interpretador atras de wrapper e escapes no here-string nu
+d0ade68b Gate de Issue: com <<- a linha de fechamento fecha sem as TABs, como no bash
+82ab605c Espaco a mais e erro de digitacao, nao mudanca de sentido
+ecc9735d Tirar a ancora de comeco: depois do verbo, e so ai
+e8570bec Atalho que decide e atalho errado
+38f4d267 Handover: o que a CI e o laco completo pegaram na rodada 2
+cede6b0a Estado: verificar ok com a catraca completa; handover aponta para a rodada 2
+d0a3af00 Verificar: testa-config conta oito gates sem matcher, com o gate novo
+607965a2 Devolver a condicao pendurada para dentro do laco por frase
+3ae555cb Verificar: caso 20 da catraca resolve o Python em $PY, como a guarda exige
+42942858 limpar-branches para de vazar o worktree temporario que ele cria
+080f7916 D9: o teto de tempo do CI para de ser cara ou coroa
+8eb02f36 Fecha o buraco do relogio e trava o isolamento com payload hostil
+cd37302b Alvo de aresta, recusa antes da escrita, e o plano alinhado ao D9
+2448df0d Tarefa 1, rodada 3: o caso media o instrumento errado, e a isencao media o valor inteiro
+bb495646 Lote 4: design e plano — dez Issues de guarda que afirma o que nao mediu
+81fdfc69 Relatorio: rodada cega de 2026-09-04, com errata de entrada
+a7ce1619 Lote 3 rodada 3: R3 estagio do outro worktree lido no worktree dele
+3c8a8542 Scripts entregues derivam o home de quem roda, com trava
+2a5149d8 Scripts entregues derivam o home de quem roda, com trava
+63afa051 A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo (#128)
+1b18a725 A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo (#128)
+9e58a6a5 Livro: a cegueira do gate nao e "duas listas" — sao tres, e a prova agora e execucao
+6d90d470 Livro: a cegueira do gate nao e "duas listas" — sao tres, e a prova agora e execucao
+6a9811d4 Tres defeitos achados apurando as observacoes abertas da regra 13 (#117)
+ba19dbed Tres defeitos achados apurando as observacoes abertas da regra 13 (#117)
+20c88be7 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+d427f732 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+6e842694 gitCommitSha ausente do registro vira aviso de indeterminacao, nao ok silencioso (#71)
+917c697c gitCommitSha ausente do registro vira aviso de indeterminacao, nao ok silencioso (#71)
+1c68627a O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas (#59)
+b4704ff8 O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas (#59)
+89a53f4b O criterio apontava para o instrumento, e o instrumento e escrito por quem precisa dele verde (#21) (#32)
+83d61946 O criterio apontava para o instrumento, e o instrumento e escrito por quem precisa dele verde (#21) (#32)
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+5e576099 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+d5261da4 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+7a0369d5 A esteira de sete estagios, e o /grill vira /brainstorm
+60252094 A esteira de sete estagios, e o /grill vira /brainstorm
+
+$ git log --all --grep="reprovado" --oneline
+658b2c8a Um nome por projeto no banco de memoria (#435), versao 1.53.0 (#453)
+2f85c61c Plano: emenda 1 do projeto-canonico (revisar reprovado)
+ab9b1cb7 Merge pull request #443 from luisfmontes/fluxo/fechar-reabre
+481966cd estado: verificar reprovado reabre o fechar em ok (1.50.1)
+dd2aa020 Zerar as Issues #409-#414, #417, #419 (1.46.0) (#426)
+5dca5411 estado: revisar reprovado (1 bloqueante, 8 nao bloqueantes)
+09123d1b semear-travas: revisar reprovado (12 achados), executar reaberto
+292ac316 extracao de veredito: aceita marcacao so nas pontas da ultima linha (D2/D4)
+5a554201 estado: revisar reprovado 3x, impasse escrito
+e91f78db fix(estado): toggle contrato-veredito desligado desarma as travas do marcar revisar (D11, Tarefa 15)
+35c339de estado: verificar reprovado devolve revisar a pendente (D10, tarefa 14)
+0a37e2e1 docs: contrato de veredito em skills/revisar e agents/revisor (tarefas 10-11)
+bdf4b453 estado: marcar revisar reprovado exige veredito reprovado gravado (D9)
+604ac590 plano contrato-de-veredito: tarefa 3, subcomando veredito com upsert e trava
+da908a62 plano: tarefa 14, verificar reprovado reabre o revisar (D10)
+7d601d3d estado: verificar reprovado pela CI do PR 326
+f6872939 revisar rodada 7: primeira com 0 bloqueantes; reprovado por 6 menores
+eaae2a6f revisar rodada 6: reprovado, 1 bloqueante e 5 menores
+cefad9d1 revisar rodada 5: reprovado, 1 bloqueante e 4 menores
+3e967643 revisar rodada 4: reprovado, 1 bloqueante e 6 menores
+4fbc6e9e revisar rodada 3: reprovado, 2 bloqueantes
+a98f38b3 revisar rodada 2: reprovado, 1 bloqueante e 9 nao bloqueantes
+206437f1 Plano: o \s do criterio da tarefa 8 nao sobrevive ao shell
+cb15742c fluxo zerar-issues-6: executar parcial com a tarefa 10 em voo
+5ade88a1 fluxo zerar-issues-6: reabre executar para a tarefa 10
+f1225a97 Estado: revisar reprovado pelos 3 achados, executar refechado com a catraca
+c73ded65 Estado: revisar reprovado (rodada 2) e executar ok (rodada 3)
+f083a7b3 Estado: revisar reprovado (rodada 1, 3 achados) e executar ok de novo
+33579cee Estado: revisar reprovado, executar reaberto — registro da rodada
+2184eed9 Fluxo 10 (critico) arquivado como superado, com a substituicao provada item a item
+d6980c5e Fluxo: revisar reprovado — a origem do token e decidida por varredura, nao pelo token
+8abeb53f Fluxo: revisar reprovado — aspa escapada depois do NUL funde o token
+5dad7948 Fluxo: revisar reprovado — o modelo do NUL estava errado, e o setimo nao-objetivo caiu junto
+a9128f01 Fluxo: revisar reprovado — NUL octal trunca o argv e o gate nao ve
+82bbcab1 Fluxo: revisar reprovado — escape ANSI-C numerico nao e decodificado
+7666a5e2 Revisar reprovado (3 achados) e sexto nao-objetivo registrado
+9aaade4c Revisar reprovado na 3a rodada: o conserto do falso positivo abriu um buraco
+f954817b Revisar reprovado na 2a rodada: falso positivo em corpo de heredoc
+763dcd64 Revisar reprovado (2 achados) — plano emendado, executar reaberto
+deefbd42 Lote 3: handover da rodada 18 e estado (revisar reprovado pela 16a revisao; revisor interrompido)
+4f7298fa Lote 3: revisar reprovado (15a revisao: gh pr edit e descricao real no merge) e emenda D15
+5927fe05 Lote 3: revisar reprovado (14a revisao: cwdDoSegmento por texto) — executar reaberto
+54443215 Lote 3: revisar reprovado (13a revisao: --body-file relativo ao cwd errado) — executar reaberto
+3895cfe2 Lote 3: revisar reprovado (12a revisao: bash -o pipefail -c) — executar reaberto
+86a5cf1b Lote 3: revisar reprovado (11a revisao: prefixo + wrapper de string nao compostos) — executar reaberto
+fb89dae6 Lote 3: revisar reprovado (10a revisao: bash -xc) — executar reaberto
+a62263db Lote 3: revisar reprovado (9a revisao: timeout -s, iex nos gates de git) — executar reaberto
+58f28bb2 Lote 3: revisar reprovado (8a revisao: Set-Location -Path:, lista de exclusao do limpar) — executar reaberto
+a091a8ce Lote 3: revisar reprovado (7a revisao: env -u + --chdir, iex, gates so em Bash) e emenda — gates cobrem a ferramenta PowerShell
+70f61235 Lote 3: revisar reprovado (6a revisao) — executar reaberto
+140bd737 Lote 3: revisar reprovado (6a revisao: env -u, apostrofo no --body, $( ) em aspas, cd mascarado, truncar antes de sanear) e emenda — modelo de ameaca dos gates por texto
+95d77b98 Lote 3: revisar reprovado (5a revisao: revisor ok, auditor 3 — env -C git, closes por URL, bateria gravou no OneDrive real)
+4b232244 Lote 3: revisar reprovado (4a revisao: & simples, includes(git) com -C alheio, data UTC no zip) — executar reaberto
+1064b74a Lote 3: revisar reprovado (3a revisao: 8 itens) e emenda no plano — handover e rastro, D14 declarada, rodada 5 dentro das tarefas
+7fe43a6e Lote 3: revisar reprovado (rodada 2 de revisao: 6 achados, 5 bloqueiam) — executar reaberto
+a66661cb Fluxo 6: o gate do verificar RE-EXECUTA os portoes, nao le a evidencia gravada
+086ae814 Fluxo 6: o gate do verificar RE-EXECUTA os portoes, nao le a evidencia gravada
+65821514 Gate de worktree: decidir escrita por token, e isentar o scratchpad
+a461e9dc Gate de worktree: decidir escrita por token, e isentar o scratchpad
+da01580b Revisar rodada 2 reprovado: revisar --membro corrompe o mapa — plano emendado com a 13
+7edd81fd Revisar rodada 2 reprovado: revisar --membro corrompe o mapa — plano emendado com a 13
+851bb6a7 Revisar do fluxo 11 reprovado: C1 quoting de caminho, C2 fase eternamente pendente, A3 sem retry seletivo — plano emendado com 10-12
+d25495d3 Revisar do fluxo 11 reprovado: C1 quoting de caminho, C2 fase eternamente pendente, A3 sem retry seletivo — plano emendado com 10-12
+2cc4950f Revisar da poda rodada 2 reprovado: port vs porta no checarPoda — tarefa 12
+f6802dd3 Revisar da poda rodada 2 reprovado: port vs porta no checarPoda — tarefa 12
+2779b007 Revisar da poda reprovado: Host vaza ao upstream (403 na borda em uso real) — emendas 10-11
+5b134663 Revisar da poda reprovado: Host vaza ao upstream (403 na borda em uso real) — emendas 10-11
+78d828ec Revisar rodada 9 reprovado: corte do bloco adjacente sem ancora no fim — plano emendado com a 25
+4e2c2ca6 Revisar rodada 9 reprovado: corte do bloco adjacente sem ancora no fim — plano emendado com a 25
+2ce74a53 Revisar rodada 8 reprovado: bloco de regras sem ancora (pre-existente) — plano emendado com a 24
+b44b7713 Revisar rodada 8 reprovado: bloco de regras sem ancora (pre-existente) — plano emendado com a 24
+6d923b9d Revisar rodada 7 reprovado: lerProjetoMd sem ancora corrompe a escrita — plano emendado com 22-23
+124854cb Revisar rodada 7 reprovado: lerProjetoMd sem ancora corrompe a escrita — plano emendado com 22-23
+b79be781 Revisar rodada 6 reprovado: catraca le por primeira ocorrencia — plano emendado com a 21
+9a66ee42 Revisar rodada 6 reprovado: catraca le por primeira ocorrencia — plano emendado com a 21
+5b803e78 Revisar rodada 5 reprovado: bloco truncado duplica calado — plano emendado com a 20
+aff56fef Revisar rodada 5 reprovado: bloco truncado duplica calado — plano emendado com a 20
+28636581 Revisar rodada 4 reprovado: vetor do inicio na mesma familia — plano emendado com a 19
+31d9cf1d Revisar rodada 4 reprovado: vetor do inicio na mesma familia — plano emendado com a 19
+0477901d Revisar rodada 3 reprovado: corte cego do bloco de projeto na regeneracao apaga texto manual — plano emendado com a 18
+01f10f3b Revisar rodada 3 reprovado: corte cego do bloco de projeto na regeneracao apaga texto manual — plano emendado com a 18
+b7ae7b6e Revisar rodada 2 reprovado: bypass por tipo na sanitizacao e catraca cega a caminho relativo — plano emendado com 15-17
+128a8ed8 Revisar rodada 2 reprovado: bypass por tipo na sanitizacao e catraca cega a caminho relativo — plano emendado com 15-17
+4dd97310 Revisar da ponte: reprovado, 2 criticos reproduzidos com controle
+44cdbdcd Revisar da ponte: reprovado, 2 criticos reproduzidos com controle
+5cfb4d10 Merge pull request #134 from luisfmontes/fluxo/ciclo-por-maquina
+95ac0903 Merge pull request #134 from luisfmontes/fluxo/ciclo-por-maquina
+0db8d8e6 Conserto dos achados da revisao: recusa por reaberto so vale dentro da execucao
+d74d849c Conserto dos achados da revisao: recusa por reaberto so vale dentro da execucao
+5474b55f Fluxo 1 executar ok 4/4: T4 integrada — proximo cola o bloco do ultimo reprovado
+0d286731 Fluxo 1 executar ok 4/4: T4 integrada — proximo cola o bloco do ultimo reprovado
+a3099867 Tarefa 4 do ciclo-por-maquina: proximo cola o bloco do ultimo reprovado
+caee620f Tarefa 4 do ciclo-por-maquina: proximo cola o bloco do ultimo reprovado
+30d354af Tarefa 3: teto de tentativas na catraca de reaberto — arquitectura corrigida
+92f16a72 Tarefa 3: teto de tentativas na catraca de reaberto — arquitectura corrigida
+3e61bab1 Corrige verifica de tentativas: checa no estagio reprovador, nao no upstream
+64330036 Corrige verifica de tentativas: checa no estagio reprovador, nao no upstream
+4d471fa7 Tarefa 3 do ciclo-por-maquina: teto de 3 tentativas com destrave explicito por liberar
+96f5f745 Tarefa 3 do ciclo-por-maquina: teto de 3 tentativas com destrave explicito por liberar
+0a299efc Fluxo 1 executar 2/4: T2 integrada — reprovado rebaixa upstream com rastro, sem deadlock
+e0c85241 Fluxo 1 executar 2/4: T2 integrada — reprovado rebaixa upstream com rastro, sem deadlock
+40a97cc7 Corrigir deadlock: exigir do próprio estagio reaberto passa, reaberto_por é efêmero
+c8517178 Corrigir deadlock: exigir do próprio estagio reaberto passa, reaberto_por é efêmero
+d49dbadf Tarefa 2 do ciclo-por-maquina: reprovado rebaixa o upstream imediato para parcial com rastro
+cbd64859 Tarefa 2 do ciclo-por-maquina: reprovado rebaixa o upstream imediato para parcial com rastro
+1c68627a O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas (#59)
+b4704ff8 O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas (#59)
+e1d2592c A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+bfc034d2 A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+5e576099 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+d5261da4 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+0391bbbf As tres costuras da esteira: decisao, opcao morta e creep deixam de evaporar (#9)
+6dbe53cf As tres costuras da esteira: decisao, opcao morta e creep deixam de evaporar (#9)
+7a0369d5 A esteira de sete estagios, e o /grill vira /brainstorm
+60252094 A esteira de sete estagios, e o /grill vira /brainstorm
+cfd62bfc A esteira ganha maquina de estados que RECUSA, em vez de pedir por favor
+deb1411b A esteira ganha maquina de estados que RECUSA, em vez de pedir por favor
+c0da97ba gstack reprova em 3 das 6, e sobra o /codex
+63d54b4f gstack reprova em 3 das 6, e sobra o /codex
+
+$ git log --all --grep="TETO_TENTATIVAS" --oneline
+571df42b estado: liberar --estagio revisar exige impasse + --rodada-extra (D4, D7)
+30d354af Tarefa 3: teto de tentativas na catraca de reaberto — arquitectura corrigida
+92f16a72 Tarefa 3: teto de tentativas na catraca de reaberto — arquitectura corrigida
+4d471fa7 Tarefa 3 do ciclo-por-maquina: teto de 3 tentativas com destrave explicito por liberar
+96f5f745 Tarefa 3 do ciclo-por-maquina: teto de 3 tentativas com destrave explicito por liberar
+
+$ git log --all --grep="redespach" --oneline
+8783a3f2 Integra tarefa 8 do zerar-issues-6 (redespacho, fixture /c/proj/x)
+05919c37 Documentar exit 69, carimbo de base e gate de release nas skills
+e095d5a6 Separar bloqueio de ambiente (69) de reprovacao nos conferir-*
+89143cff Estado da poda: 3/9, T3 rejeitada e redespachada
+0a584cd9 Estado da poda: 3/9, T3 rejeitada e redespachada
+2e6b337e Tarefa 1 da fase 0: poda-dados.cjs resolve a raiz pela cadeia do raiz.cjs
+b08cd58a Tarefa 1 da fase 0: poda-dados.cjs resolve a raiz pela cadeia do raiz.cjs
+
+$ git log --all --grep="ultima critica" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+{"id":"reprovado-sem-diff-deixa-achado-auto-relatado","titulo":"Fechar `revisar` como reprovado nao exige diff — e ai o `achados: N` fica tao auto-relatado quanto o que a esteira existe para consertar"}
+{"id":"quebra-laco-advisory-com-argumento-canonicalizado","titulo":"Vigia que conta chamadas consecutivas identicas e da empurrao escalonado, sem vetar nada"}
+{"id":"contrato-de-veredito-de-uma-linha-no-revisar","titulo":"Veredito de revisao vira UMA linha grepavel, e o `revisar` reprovado deixa de ser prosa que ninguem consegue registrar"}
+{"id":"obs-2026-10-08-verificar-nao-roda-o-laco-inteiro","titulo":"verificar fecha ok sem o laco inteiro de baterias"}
+{"id":"executar-laco-executor-revisor","titulo":"Laco executor -> gates -> revisor com teto, redespacho sem a mao da janela"}
+
+

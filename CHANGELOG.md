@@ -10,6 +10,14 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.59.0 — 2026-10-10
+
+- **Revisor que reprova devolve o trabalho ao executor sozinho.** Depois de um `revisar` reprovado, a sessão roda
+  `scripts/critica-do-revisor.cjs`, que tira os achados do transcrito gravado do revisor, e redespacha o executor com
+  essa crítica colada literal — só a da última rodada, sem resumo da sessão. O laço respeita o teto de 3 reprovações
+  que já existia (a 4ª rodada continua sendo decisão sua) e para antes quando o revisor marca um achado com
+  `[design]`: decisão de design sobe para você, não volta ao executor. Roteiro em `skills/revisar/references/laco.md`.
+
 ## 1.58.0 — 2026-10-10
 
 - **Compacta sozinho a 60% de contexto.** Quando o uso da janela passa de 60%, o mod roda o mesmo `/compact` entre
