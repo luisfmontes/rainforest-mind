@@ -14,8 +14,30 @@
     "em": "2026-10-10"
   },
   "executar": {
-    "status": "pendente",
-    "em": "2026-10-10"
+    "status": "ok",
+    "em": "2026-10-10",
+    "catraca_mutacao": "2026-10-10",
+    "tarefas_ok": 3,
+    "tarefas": 3,
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-10-pr-aviso-node",
+    "saida": "tarefa 1: vermelho; tarefa 2: vermelho; tarefa 3: pulada (n/a)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "conflito, sem dado, conflito acorda uma vez"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "localizador do node que falhou nao roda de novo no prazo"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "documentacao e versao"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
