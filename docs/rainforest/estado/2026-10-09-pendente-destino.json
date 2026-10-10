@@ -122,7 +122,11 @@
     "em": "2026-10-10"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/varrer-baterias.sh; bash scripts/testa-plugin-codex.sh; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-09-pendente-destino",
+    "saida": "218 de 219 verdes; a vermelha (testa-plugin-codex, ancora do corpo de fechar) re-medida em commit proprio e verde exit 0; mutacoes tarefas 1-5 vermelho, 6-8 n/a",
+    "exit": 0,
+    "em": "2026-10-10"
   },
   "fechar": {
     "status": "pendente"
