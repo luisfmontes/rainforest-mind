@@ -189,6 +189,14 @@ else
   fi
 fi
 
+# Issue #446: com GIT_DIR (ou GIT_WORK_TREE etc.) herdado do ambiente, o git ignora `-C` e `cd`
+# e o `git config user.email t@t` das caixas de teste cai no repositorio apontado. A varredura
+# limpa essas variaveis, e a identidade (user.*) do repositorio varrido e conferida depois de
+# cada bateria: quem a mudar sai vermelha, com o antes e o depois.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX GIT_OBJECT_DIRECTORY
+identidade_repo() { git config --local --get-regexp '^user\.' 2>/dev/null | sort; }
+identidade_antes="$(identidade_repo)"
+
 vermelhas=()
 for f in "${baterias[@]}"; do
   echo ""
@@ -205,6 +213,14 @@ for f in "${baterias[@]}"; do
     codigo=$?
     echo "  >> VERMELHA $f (exit $codigo)"
     vermelhas+=("$f")
+  fi
+  identidade_agora="$(identidade_repo)"
+  if [ "$identidade_agora" != "$identidade_antes" ]; then
+    echo "  >> VERMELHA $f (mudou user.* do repositorio varrido)"
+    echo "     antes: ${identidade_antes:-<vazio>}"
+    echo "     agora: ${identidade_agora:-<vazio>}"
+    [[ " ${vermelhas[*]} " == *" $f "* ]] || vermelhas+=("$f")
+    identidade_antes="$identidade_agora"
   fi
 done
 
