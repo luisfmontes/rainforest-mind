@@ -267,7 +267,14 @@ engine é `hooks/mod-compactar.test.tsx`; a lógica, `node hooks/testa-mod-compa
 **Linha do PR na barra e `node` absoluto.** O `AbovePrompt` do mod acrescenta as `partes` de
 `linhaPr()` (`hooks/pr-puro.mjs`: número, checks e merge, nunca título ou branch) quando o pane
 `rainforest-mind-pr` não está colocado e visível em `$.ui.panes()`. Os `node` do mod saem de
-`localizadores('node', …)` + `escolherExecutavel`, guardado no átomo `nodeCaminho` uma vez por sessão.
+`localizadores('node', …)` + `escolherExecutavel`, guardado no átomo `nodeCaminho` uma vez por sessão;
+sem `node` achado, o fracasso fica guardado em `nodeFalhouEm` por `NODE_FALHA_TTL_MS` (5 min). A abertura
+(`hooks/abertura-mod-puro.mjs`) faz a mesma busca uma vez por abertura, dentro da montagem memoizada: o
+`caminhoDoNode` recebe o `$` e o engine recusa passá-lo ao `register.ts`.
+
+**Leitura sem dado de merge.** `herdarMotivo()` (`hooks/pr-puro.mjs`) faz a leitura com
+`mergeStateStatus: UNKNOWN` herdar o motivo da anterior, antes de `eventos` e `virada`: o vaivém
+conflito → sem dado → conflito não acorda a sessão de novo. O `mergavel` não é herdado.
 
 ## Versão: o release é entrega própria, e o PATCH existe
 
