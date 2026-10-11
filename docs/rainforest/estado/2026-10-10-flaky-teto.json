@@ -23,19 +23,19 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-10",
-    "tarefas_ok": 2,
+    "tarefas_ok": 4,
     "tarefas": 12,
     "em_voo": [
       {
         "agente": "executor",
-        "tarefa": "3 status flaky",
-        "desde": "2026-10-11T02:19:20Z",
+        "tarefa": "4 liberar-teto",
+        "desde": "2026-10-11T02:38:32Z",
         "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466"
       },
       {
         "agente": "executor",
-        "tarefa": "5 catraca flaky",
-        "desde": "2026-10-11T02:19:20Z",
+        "tarefa": "6 rodar-gate",
+        "desde": "2026-10-11T02:38:32Z",
         "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466"
       }
     ],
@@ -54,6 +54,20 @@
         "iteracao": 1,
         "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466",
         "ts": "2026-10-11T02:19:20.738Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "e767fcd14a38f00da7c60da572817b859b8e3ae6",
+        "iteracao": 1,
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466",
+        "ts": "2026-10-11T02:38:32.866Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "e767fcd14a38f00da7c60da572817b859b8e3ae6",
+        "iteracao": 1,
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466",
+        "ts": "2026-10-11T02:38:32.866Z"
       }
     ]
   },
