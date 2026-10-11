@@ -84,7 +84,14 @@
         "ts": "2026-10-11T01:35:36.859Z"
       }
     ],
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "T10 sai o /transferir claude",
+        "desde": "2026-10-11T07:40",
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
+      }
+    ],
     "em": "2026-10-11",
     "pendentes": [
       "reagendar o vigia do clone instalado no fechar (hoje aponta para o worktree)"
