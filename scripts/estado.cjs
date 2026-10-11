@@ -2304,6 +2304,14 @@ function main() {
     // Teto de tentativas: se ESTE estágio foi reaberto e quem o reprovou já
     // acumulou TETO_TENTATIVAS, insistir precisa de decisão humana (liberar).
     const blocoExigido = estado[estagio] || {};
+    // `flaky` (D6) nao e reprovacao: nao tem teto, tem a decisao do usuario (`liberar`).
+    if (estagio === 'executar' && blocoExigido.status === 'flaky' && !blocoExigido.liberado_em) {
+      console.error(
+        `RECUSADO: 'executar' fechou como 'flaky' — suba ao usuario. ` +
+        `Destrave explicito: node scripts/estado.cjs liberar --slug ${slug} --estagio executar`
+      );
+      process.exit(2);
+    }
     if (blocoExigido.reaberto_por) {
       const estagio_reprovador = blocoExigido.reaberto_por.estagio;
       const bloco_reprovador = estado[estagio_reprovador] || {};
@@ -2481,10 +2489,33 @@ function main() {
       console.error(`erro: estagio desconhecido '${estagio}'`);
       process.exit(1);
     }
-    const permitidos = DECISAO[estagio] || STATUS_EXECUCAO;
+    // `flaky` (D6) so existe para o `executar`; STATUS_EXECUCAO serve aos quatro estagios.
+    const permitidos = (DECISAO[estagio] || STATUS_EXECUCAO).concat(estagio === 'executar' ? ['flaky'] : []);
     if (!permitidos.includes(status)) {
       console.error(`erro: status '${status}' invalido para '${estagio}' — use ${permitidos.join('|')}`);
       process.exit(1);
+    }
+    // `flaky` (D6): fechar com ele exige o terminal gravado; sair dele (ou fechar `ok` com o
+    // terminal ainda de pe) exige o `liberar`, que vale uma rodada. Nao consome tentativa.
+    if (estagio === 'executar') {
+      const blocoFlaky = estado.executar || {};
+      const terminalFlaky = flakyTerminal(estado);
+      const comoLiberar = `node scripts/estado.cjs liberar --slug ${slug} --estagio executar`;
+      if (status === 'flaky' && !terminalFlaky) {
+        console.error("RECUSADO: 'flaky' exige o flake terminal gravado (o mesmo tarefa+gate em duas voltas seguidas, via 'registrar-flake').");
+        process.exit(2);
+      }
+      if (blocoFlaky.status === 'flaky' && status !== 'flaky' && !blocoFlaky.liberado_em) {
+        console.error(`RECUSADO: 'executar' fechou como 'flaky' e so a decisao do usuario reabre. Destrave: ${comoLiberar}`);
+        process.exit(2);
+      }
+      if (status === 'ok' && terminalFlaky && !blocoFlaky.liberado_em) {
+        console.error(
+          `RECUSADO: ha flake terminal (tarefa ${terminalFlaky.tarefa}, gate '${terminalFlaky.gate}'): fechar 'executar' com 'ok' pede a decisao do usuario. ` +
+          `Suba o flaky (marcar --estagio executar --status flaky) ou, com a palavra dele, destrave: ${comoLiberar}`
+        );
+        process.exit(2);
+      }
     }
     // #413: `--raiz <dir>` aponta a árvore do CÓDIGO quando ela não é a do estado
     // (worktree de uma branch do upstream). Só vale em 'verificar' — é lá que a
