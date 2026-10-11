@@ -645,13 +645,26 @@ function refDoPRMergeValido(ref) {
  */
 const REPO_GH_CONSERVADOR = /^(?:[A-Za-z0-9.-]+\/)?[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 
+// Diferencial de parser (revisao de seguranca do #496): o gate nao pode ler a
+// descricao de um PR enquanto o `gh` mergeia outro. Por isso (1) o valor de
+// flag que consome o proximo token (`--body -R`) nunca e lido como repo, e
+// (2) repo repetido com valores diferentes, ou `-R` grudado (`-Rx`, `-R=x`),
+// nao e resolvido por palpite: devolve "" e o chamador barra.
 function extrairRepoDoGh(subcomandos) {
+  const valores = [];
   for (let i = 0; i < subcomandos.length; i += 1) {
     const tok = subcomandos[i];
-    if (tok === "-R" || tok === "--repo") return subcomandos[i + 1] ?? "";
-    if (tok.startsWith("--repo=")) return tok.slice("--repo=".length);
+    if (tok === "-R" || tok === "--repo") {
+      valores.push(subcomandos[i + 1] ?? "");
+      i += 1;
+      continue;
+    }
+    if (tok.startsWith("--repo=")) { valores.push(tok.slice("--repo=".length)); continue; }
+    if (/^-R./.test(tok)) return "";
+    if (!tok.includes("=") && FLAGS_COM_VALOR_PR_MERGE.has(tok)) i += 1;
   }
-  return null;
+  if (!valores.length) return null;
+  return new Set(valores).size === 1 ? valores[0] : "";
 }
 
 /**

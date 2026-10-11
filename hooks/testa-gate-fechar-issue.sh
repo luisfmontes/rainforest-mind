@@ -1148,6 +1148,35 @@ for forma496 in "--repo dono/outro" "-R dono/outro" "--repo=dono/outro"; do
   [ $E496 -eq 0 ] && test_ok "#496 $forma496 repassado ao pr view" || test_fail "#496 $forma496 nao chegou ao pr view (exit $E496: $(head -c 200 "$SBP/err-496"))"
 done
 
+# (#496, revisao de seguranca) Diferencial de parser: o gate nao pode ler a
+# descricao de um PR e deixar o `gh` mergear outro. Dois jeitos:
+#  - `-R` como VALOR de outra flag (`--body -R`) nao e o repo do merge;
+#  - repo repetido com valores diferentes: o gate nao escolhe por conta, barra.
+echo
+echo "== (#496-seg) --body -R ... --repo dono/outro: o -R do body nao vira repo =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  export GH_PR_VIEW_BODY="descrição sem palavra-chave de fechamento"
+  export GH_PR_VIEW_EXIGE="--repo dono/outro"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge 1 --body -R --repo dono/outro --merge"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-496s1"
+E496S1=$?
+[ $E496S1 -eq 0 ] && test_ok "#496-seg valor de --body nao e lido como repo" || test_fail "#496-seg valor de --body lido como repo (exit $E496S1: $(head -c 200 "$SBP/err-496s1"))"
+
+echo
+echo "== (#496-seg) -R dono/limpo ... -R dono/real: repo repetido e divergente barra =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  export GH_PR_VIEW_BODY="descrição sem palavra-chave de fechamento"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh -R dono/limpo pr merge 1 -R dono/real --merge"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-496s2"
+E496S2=$?
+[ $E496S2 -eq 2 ] && test_ok "#496-seg repo divergente barra" || test_fail "#496-seg repo divergente passou (exit $E496S2)"
+
 # Caso (by): R18 (auditor, 16a revisao, lote 3, 2026-09-04) — `source fechar.sh`
 # executa um ARQUIVO opaco ao parser; mesma postura conservadora que
 # `bash x.sh` (sem `-c`) ja recebe do laco W1 — exit 2.
