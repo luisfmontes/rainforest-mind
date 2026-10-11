@@ -1401,7 +1401,10 @@ function verificarTextosDeHeredoc(mapaCwd, contadores, ferramenta) {
       // comentario de evidencia), so a partir do `gh` (revisoes 3 e 4).
       // `export GH_REPO` numa linha de cima fica fora (limite escrito).
       if (idx !== -1) {
-        const ehComando = posicaoDeComando(toks) === idx;
+        // Atribuicao antes do gh (`GH_REPO=x doas gh pr merge 5`, wrapper
+        // que posicaoDeComando nao conhece) tambem e comando, nao prosa.
+        const ehComando = posicaoDeComando(toks) === idx ||
+          toks.slice(0, idx).some((t) => !t.q && /^[A-Za-z_][A-Za-z0-9_]*=/.test(t.v));
         verificarComandoGh(linha, valores.slice(idx + 1), cwdDoSegmento(linha, mapaCwd, contadores.get(linha.trim()) || 0), ehComando ? linha : textoAPartir(toks, idx));
       }
     }

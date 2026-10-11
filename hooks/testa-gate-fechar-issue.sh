@@ -1375,6 +1375,7 @@ pm "PowerShell: --body-file com caminho Windows passa" 0 "gh pr merge 5 --squash
 pm "Bash: contrabarra fora do primeiro token barra" 2 'gh pr merge 5 --squash --body-file C:\x\msg.md'
 pm "PowerShell: contrabarra antes de espaco barra" 2 'gh pr merge 5 --body x\ -Rdono/outro' PowerShell
 pm "gh help pr merge passa" 0 'gh help pr merge'
+pm "heredoc: GH_REPO= antes de wrapper desconhecido e gh pr merge barra" 2 "$(printf "cat > s.sh <<'EOF'\nGH_REPO=dono/real doas gh pr merge 5 --merge\nEOF")"
 pm "--author-email com @ no meio passa" 0 'gh pr merge 5 --squash --author-email nome@dominio.test'
 
 # Caso (by): R18 (auditor, 16a revisao, lote 3, 2026-09-04) — `source fechar.sh`
