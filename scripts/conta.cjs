@@ -62,6 +62,17 @@ function ctx() {
 const credArq = (c, P) => path.join(c.pastas[P], '.credentials.json');
 const claudeArq = (c, P) => path.join(c.pastas[P], '.claude.json');
 const reservaArq = (c, conta) => path.join(c.contas, `reserva-${conta}.json`);
+// Login da pasta guardado enquanto ela está fora de casa: um por pasta (P = trabalho | pessoal).
+const estacionadoArq = (c, P) => path.join(c.contas, `estacionado-${P}.json`);
+
+// Quatro lugares para quatro logins: duas pastas, reserva-<conta> por conta e estacionado-<pasta>.
+// Troca da pasta P (casa A) para B: entra reserva-B, sai estacionado-P.
+// Volta da pasta P (hoje em B) para A: entra estacionado-P, sai reserva-B.
+function arqsDaTroca(c, P, de, para) {
+  return para === CONTA_CLI[P]
+    ? { entra: estacionadoArq(c, P), sai: reservaArq(c, de) }
+    : { entra: reservaArq(c, para), sai: estacionadoArq(c, P) };
+}
 
 function sair(codigo, msg) {
   (codigo ? process.stderr : process.stdout).write(msg + '\n');
@@ -191,10 +202,20 @@ function tokenDaConta(c, estado, conta) {
   return r.claudeAiOauth.accessToken;
 }
 
+function estacionadoPronto(c, P) {
+  const r = lerJson(estacionadoArq(c, P), null);
+  return r && r.claudeAiOauth ? r : null;
+}
+
 function infoPasta(c, estado, P) {
   const cred = credDaPasta(c, P);
   if (!cred) throw new Error(`pasta ${P} sem credencial`);
-  return { ...estado.pastas[P], expiresAt: cred.claudeAiOauth.expiresAt };
+  const est = estacionadoPronto(c, P);
+  return {
+    ...estado.pastas[P],
+    expiresAt: cred.claudeAiOauth.expiresAt,
+    estacionado: est ? { expiresAt: est.claudeAiOauth.expiresAt } : undefined,
+  };
 }
 
 async function coletarUsos(c, estado) {
@@ -241,7 +262,9 @@ async function aplicarTroca(c, estado, { P, para, tipo, manual, travouPor, motiv
   if (!dono) return { ok: false, motivo: `conta ${NOME[para]} sem registro: rode status com ela em casa` };
   const pasta = c.pastas[P];
   const claudeAntes = lerJson(claudeArq(c, P));
-  const r = mover({ pasta, reservaEntra: reservaArq(c, para), reservaSai: reservaArq(c, de), dono });
+  const { entra, sai } = arqsDaTroca(c, P, de, para);
+  if (!fs.existsSync(sai)) gravarAtomico(sai, {});
+  const r = mover({ pasta, reservaEntra: entra, reservaSai: sai, dono });
   if (!r.ok) return r;
 
   const esperado = estado.contas[para].email;
@@ -252,10 +275,11 @@ async function aplicarTroca(c, estado, { P, para, tipo, manual, travouPor, motiv
     confirmado = `erro na conferência: ${e.message}`;
   }
   if (confirmado !== esperado) {
+    // Desfaz exatamente o que foi feito: o login que saiu volta, o que entrou é esvaziado.
     const volta = mover({
       pasta,
-      reservaEntra: reservaArq(c, de),
-      reservaSai: reservaArq(c, para),
+      reservaEntra: sai,
+      reservaSai: entra,
       dono: claudeAntes.oauthAccount,
     });
     registrarEvento(c, {
@@ -310,6 +334,8 @@ async function status(c) {
   }
   const res = (conta) => (reservaPronta(c, conta) ? 'presente' : 'ausente');
   linhas.push(`reservas: trabalho ${res('team')} · pessoal ${res('pessoal')}`);
+  const est = (P) => (estacionadoPronto(c, P) ? 'presente' : 'ausente');
+  linhas.push(`estacionados: trabalho ${est('trabalho')} · pessoal ${est('pessoal')}`);
   linhas.push(`troca automática: ${estado.automatico ? 'ligada' : 'desligada'}`);
   console.log(linhas.join('\n'));
   return 0;
@@ -341,7 +367,11 @@ async function trocar(c, args) {
     if (estado.pastas[outra].conta !== estado.pastas[outra].casa) {
       return sair(1, `a pasta ${outra} está fora de casa: não troco as duas ao mesmo tempo`);
     }
-    if (!reservaPronta(c, para)) return sair(1, `sem reserva de ${NOME[para]}`);
+    const volta = para === casa;
+    const pronta = volta ? estacionadoPronto(c, P) : reservaPronta(c, para);
+    if (!pronta) {
+      return sair(1, volta ? `sem login estacionado da pasta ${P}` : `sem reserva de ${NOME[para]}`);
+    }
 
     const r = await aplicarTroca(c, estado, {
       P,

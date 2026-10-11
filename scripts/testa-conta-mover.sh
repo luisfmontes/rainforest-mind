@@ -66,7 +66,9 @@ function cenario(nome) {
   escrever(arqs.cred, credencial('pasta'));
   escrever(arqs.claude, { numStartups: 3, oauthAccount: ANTIGO, projects: {} });
   escrever(arqs.entra, credencial('entra'));
-  escrever(arqs.sai, credencial('sai'));
+  // A reserva de saída começa VAZIA: no modelo de quatro lugares ela é o estacionado ou a reserva
+  // que acabou de receber o login de volta (conta-mover recusa saída ocupada).
+  escrever(arqs.sai, {});
   return { pasta, arqs };
 }
 
@@ -161,6 +163,44 @@ function cenario(nome) {
   console.log(`   sha256 depois: ${depois.join(' ')}`);
 
   afirma('erro de gravação no meio desfaz as anteriores', r.ok === false && r.motivo === 'gravacao' && depois.every((h, i) => h === hs[i]));
+}
+
+// (e) reserva de saída já com login é recusada e nada muda
+{
+  const { pasta, arqs } = cenario('e');
+  escrever(arqs.sai, credencial('sai'));
+  const hs = [arqs.cred, arqs.claude, arqs.entra, arqs.sai].map(shaBytes);
+  console.log(`   sha256 antes: ${hs.join(' ')}`);
+
+  const r = mover({ pasta, reservaEntra: arqs.entra, reservaSai: arqs.sai, dono: DONO });
+  const depois = [arqs.cred, arqs.claude, arqs.entra, arqs.sai].map(shaBytes);
+  console.log(`   sha256 depois: ${depois.join(' ')}`);
+
+  afirma('reserva de saída ocupada é recusada e nada muda', r.ok === false && r.motivo === 'saida_ocupada' && depois.every((h, i) => h === hs[i]));
+}
+
+// (f) caminho temporário já existente (plantado) não é seguido nem apagado: a gravação falha e
+// o arquivo plantado fica intacto. O tmp tem pid e Date.now; fixa-se o relógio para plantar o nome.
+{
+  const { pasta, arqs } = cenario('f');
+  const hs = [arqs.cred, arqs.claude, arqs.entra, arqs.sai].map(shaBytes);
+  const tmpSai = path.join(path.dirname(arqs.sai), `.${path.basename(arqs.sai)}.${process.pid}.424242.tmp`);
+  fs.writeFileSync(tmpSai, 'PLANTADO');
+
+  const agora = Date.now;
+  let r;
+  try {
+    Date.now = () => 424242;
+    r = mover({ pasta, reservaEntra: arqs.entra, reservaSai: arqs.sai, dono: DONO });
+  } finally {
+    Date.now = agora;
+  }
+  const depois = [arqs.cred, arqs.claude, arqs.entra, arqs.sai].map(shaBytes);
+
+  afirma('tmp já existente: a gravação falha, o arquivo plantado fica intacto e nada muda',
+    r.ok === false && r.motivo === 'gravacao' && fs.readFileSync(tmpSai, 'utf8') === 'PLANTADO'
+    && depois.every((h, i) => h === hs[i]));
+  fs.rmSync(tmpSai, { force: true });
 }
 
 console.log(`ok: ${ok}   falhou: ${falhas}`);
