@@ -235,3 +235,50 @@ Achados 9 e 10: README diz que `/conta` age na pasta da sessão; fixture sem dat
 mutacao: n/a
   motivo: texto e dado de fixture, sem comportamento a inverter.
 pronto quando: `README.md` descreve a pasta da sessão como `commands/conta.md`; `grep -E '2026-0[38]-' scripts/fixtures/conta/profile.json` sem resultado; o relatório não cita `require_trusted_devices` nem `allow_quick_web_setup` — provado pelos dois `grep` sem resultado.
+
+## Rodada 3 (revisão rodada 2 reprovou com 7 achados; exceção da D11 decidida pelo Luís)
+
+### 16. Preparar confere a conta pelo registro e a volta destrava [tipo: implementar]
+atende: D9, D10, D11
+arquivos: `scripts/conta.cjs`, `scripts/lib/conta-decidir.cjs`, `scripts/testa-conta-preparar.sh`, `scripts/testa-conta-decidir.cjs`, `scripts/testa-conta.sh`
+depende de: 15
+paralela: nao
+Achado 1: `preparar` tira o e-mail esperado de `estado.contas[conta].email` (registrado sob a trava), nunca do `.claude.json` da pasta, e recusa quando a pasta `alvo` está fora de casa. Achado 5 (exceção da D11): em `checarVida`, o login que sai dispensa a guarda quando `expiresAt` passou há mais de 10 min; contém literalmente `const saiOcioso = agoraMs - ms(pasta.expiresAt) > OCIOSO_MS;`. Achado 2: o uso de uma conta é lido com o token da pasta e, se der 401 ou estiver vencido, com o da reserva daquela conta.
+prova: `bash -c "grep -q saiOcioso scripts/lib/conta-decidir.cjs"`
+mutacao:
+  arquivo: `scripts/lib/conta-decidir.cjs`
+  de: `const saiOcioso = agoraMs - ms(pasta.expiresAt) > OCIOSO_MS;`
+  para: `const saiOcioso = false;`
+  bateria: `node scripts/testa-conta-decidir.cjs`
+  fixture: caso "volta com o login da pasta vencido há mais de 10 min não espera"
+pronto quando: com a pasta trabalho trocada, `preparar trabalho` sai 1 sem rodar o `claude`; com o e-mail registrado da team e o navegador autorizando a pessoal, nada é gravado; com a pasta trocada, o login dela vencido há 20 min e o reset passado, `decidir` devolve `voltar` (e vencido há 5 min devolve `esperar`); com o token da pasta pessoal vencido e a `reserva-pessoal` válida, `vigiar` lê o uso da pessoal e troca — provado pelos casos nomeados em `testa-conta-preparar.sh`, `testa-conta-decidir.cjs` e `testa-conta.sh` e pela mutação acima vermelha.
+
+### 17. Falha visível e reserva refazível [tipo: implementar]
+atende: D6, D9, D11, D13
+arquivos: `scripts/conta.cjs`, `hooks/conta-puro.mjs`, `hooks/testa-mod-conta.cjs`, `scripts/testa-conta.sh`, `scripts/testa-conta-preparar.sh`
+depende de: 16
+paralela: nao
+Achados 3, 4, 7. Evento `falhou` com `desfazer_falhou` leva `pendentes` (nomes de arquivo, sem caminho absoluto nem credencial) e o aviso diz que a troca ficou pela metade e quais arquivos; contém literalmente `if (r.motivo === 'desfazer_falhou') return fraseMetade(ev);` em `conta-puro.mjs`. `renovacao_falhou`, `credencial_duplicada` e `identidade_divergente` viram aviso; `status` mostra a última falha de renovação por conta. `preparar --refazer` substitui uma reserva existente quando ela não está em uso por troca e o login dela não renova (o servidor recusa). Mensagens de erro de leitura de arquivo de credencial nunca levam `e.message` de `JSON.parse`, só o nome do arquivo.
+prova: `bash -c "grep -q fraseMetade hooks/conta-puro.mjs"`
+mutacao:
+  arquivo: `hooks/conta-puro.mjs`
+  de: `if (r.motivo === 'desfazer_falhou') return fraseMetade(ev);`
+  para: `if (false) return fraseMetade(ev);`
+  bateria: `node hooks/testa-mod-conta.cjs`
+  fixture: caso "desfazer_falhou avisa troca pela metade com os arquivos"
+pronto quando: com um evento `falhou` de `desfazer_falhou`, a frase diz "pela metade" e nomeia os arquivos pendentes; com `renovacao_falhou`, sai aviso; com a reserva morta (servidor recusa a renovação), `preparar --refazer pessoal` grava a nova; com `reserva-team.json` corrompido contendo um trecho de token, nenhuma saída contém o trecho — provado pelos casos nomeados e pela mutação acima vermelha.
+
+### 18. Trava e lacunas de bateria [tipo: implementar]
+atende: D5, D11, D13
+arquivos: `scripts/conta.cjs`, `scripts/testa-conta.sh`, `scripts/testa-conta-api.cjs`, `scripts/fixtures/conta/servidor.cjs`
+depende de: 17
+paralela: nao
+Achado 6: tomada de trava vencida sem janela para um terceiro (ex.: o vencedor do rename grava a trava nova direto, sem devolver a antiga; ou trava por diretório com `mkdir` atômico). Lacunas: caso com `vigia.lock` fresco e `status` que não grava `estado.json` nem eventos; caso com o login da PASTA a menos de 1 h de vencer e o servidor falso contando POSTs em `/v1/oauth/token`, que tem de ficar em zero; caso de timeout com servidor que não responde (timeout reduzido por variável de teste só com `RFM_TEST=1`). Contém literalmente `if (!/^(reserva|estacionado)-[\w-]+\.json$/.test(nome)) continue;` no laço de `renovarOciosos`.
+prova-na-base: verde — a linha do laço já existe; a tarefa acrescenta o caso que a protege e o conserto da trava
+mutacao:
+  arquivo: `scripts/conta.cjs`
+  de: `if (!/^(reserva|estacionado)-[\w-]+\.json$/.test(nome)) continue;`
+  para: `if (false) continue;`
+  bateria: `bash scripts/testa-conta.sh`
+  fixture: caso "renovarOciosos nunca renova o login de uma pasta"
+pronto quando: com a pasta a 30 min de vencer, um `vigiar` faz zero POSTs de token; com a trava fresca, `status` não muda `estado.json`; com o servidor mudo, `uso` falha dentro do timeout de teste — provado pelos casos nomeados e pela mutação acima vermelha.

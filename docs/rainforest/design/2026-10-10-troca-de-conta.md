@@ -42,6 +42,10 @@ Luís também troca na mão quando quiser.
 - **D11 — Antes de mover, os dois logins precisam de 30 min de vida no access token; mover relê os dois arquivos
   logo antes de gravar e desiste se algum mudou; cada gravação é relida e, se não bater, desfeita** — porquê: sessão
   renovando no meio do movimento gasta o refresh token que acabou de sair (claude-cockpit, desenho da troca).
+  **Exceção (2026-10-11, revisão rodada 2, achado 5):** login que sai da pasta já vencido há mais de 10 min dispensa
+  a guarda — sessão aberta renova antes de vencer, então vencido há 10 min quer dizer que nenhuma sessão usa a pasta
+  e não há corrida; sem a exceção, pasta trocada e sem sessão nunca volta. O login de quem entra segue exigindo a
+  vida (a D13 o mantém renovado).
 - **D12 — O `/transferir claude` sai neste fluxo, depois que a troca estiver provada em uso real; o
   `/transferir codex` fica** — porquê: com a conta trocando por baixo da pasta, mudar a sessão de pasta perde o
   motivo; tirar só depois evita ficar sem nenhum dos dois.
