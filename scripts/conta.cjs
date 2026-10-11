@@ -21,7 +21,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { decidir } = require('./lib/conta-decidir.cjs');
 const { spawnSync } = require('node:child_process');
-const { mover, gravarAtomico: gravarCred } = require('./lib/conta-mover.cjs');
+const { mover, gravarAtomico: gravarCred, prefixo: prefixoDoLogin } = require('./lib/conta-mover.cjs');
 const { acharExecutavelClaude } = require('./lib/achar-executavel-claude.cjs');
 const API = require('./lib/conta-api.cjs');
 
@@ -29,6 +29,7 @@ const API = require('./lib/conta-api.cjs');
 const PADRAO_CONFIG = { trocarEm: 97, destinoMax5h: 60, destinoMaxSemana: 85 };
 const TAREFA = '\\ClaudeVigias\\troca-de-conta';
 const TRAVA_MS = 5 * 60 * 1000;
+const ESPERA_TRAVA_MS = 30 * 1000;
 const RENOVAR_ANTES_MS = 60 * 60 * 1000;
 const LEITURA_MAX_MS = 15 * 60 * 1000;
 // Aviso repetido (mesmo tipo e motivo) não vira uma linha por minuto: 1 por hora.
@@ -179,6 +180,17 @@ function pegarTrava(lock) {
     }
   }
   return false;
+}
+
+// Para quem já gastou minutos (o login do preparar) e não quer perder o resultado por uma rodada
+// curta do vigia: tenta de novo por até `ms`.
+async function pegarTravaEspera(lock, ms) {
+  const fim = Date.now() + ms;
+  for (;;) {
+    if (pegarTrava(lock)) return true;
+    if (Date.now() >= fim) return false;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
 }
 
 function travaVencida(lock) {
@@ -334,9 +346,12 @@ async function renovarOciosos(c, _estado) {
   }
 }
 
-// Pasta em casa: copia o oauthAccount para a conta de casa, desde que o e-mail do
-// .claude.json confira com o que o servidor diz do token. Devolve true se gravou algo.
-async function registrarCasas(c, estado) {
+// Pasta em casa: registra o oauthAccount na conta de casa, desde que o e-mail do .claude.json
+// confira com o que o servidor diz do token. Registro existente NUNCA é sobrescrito: se o login
+// da pasta "em casa" não é o registrado (ex.: um desfazer que falhou deixou o login do outro lá),
+// vira o evento identidade_divergente e nada é gravado. Devolve true se registrou uma conta.
+// Sem a trava (sobTrava falso) só se lê: nenhum evento, nenhuma gravação cabe ao chamador.
+async function registrarCasas(c, estado, sobTrava) {
   let mudou = false;
   for (const P of PASTAS) {
     const info = estado.pastas[P];
@@ -344,12 +359,72 @@ async function registrarCasas(c, estado) {
     const cred = credDaPasta(c, P);
     const claude = lerJson(claudeArq(c, P), null);
     if (!cred || !claude || !claude.oauthAccount) continue;
-    const d = await API.dono(cred.claudeAiOauth.accessToken);
+    let d;
+    try {
+      d = await API.dono(cred.claudeAiOauth.accessToken);
+    } catch {
+      continue;
+    }
     if (claude.oauthAccount.emailAddress !== d.email) continue;
+    const registrada = estado.contas[info.casa];
+    if (registrada && registrada.email) {
+      if (registrada.email !== d.email && sobTrava) {
+        registrarAviso(c, {
+          tipo: 'identidade_divergente',
+          pasta: P,
+          motivo: `a pasta ${P} está em casa (conta ${NOME[info.casa]}) mas o login dela é de outra conta`,
+          manual: false,
+        });
+      }
+      continue;
+    }
     estado.contas[info.casa] = { email: d.email, oauthAccount: claude.oauthAccount };
     mudou = true;
   }
   return mudou;
+}
+
+// Todo login guardado em arquivo: as duas pastas, as duas reservas e os dois estacionados.
+function loginsGuardados(c) {
+  const itens = [];
+  for (const P of PASTAS) {
+    const cred = credDaPasta(c, P);
+    if (cred) itens.push([`pasta-${P}`, cred]);
+  }
+  for (const conta of CONTAS) {
+    const r = reservaPronta(c, conta);
+    if (r) itens.push([`reserva-${conta}`, r]);
+  }
+  for (const P of PASTAS) {
+    const e = estacionadoPronto(c, P);
+    if (e) itens.push([`estacionado-${P}`, e]);
+  }
+  return itens;
+}
+
+// Refresh token é de uso único: o mesmo em dois arquivos é troca que falhou pela metade (ou
+// processo morto entre gravações). Só o prefixo do sha256 sai daqui, nunca o token.
+function credenciaisDuplicadas(c) {
+  const porLogin = new Map();
+  for (const [nome, cred] of loginsGuardados(c)) {
+    const h = prefixoDoLogin(cred);
+    if (h) porLogin.set(h, [...(porLogin.get(h) || []), nome]);
+  }
+  return [...porLogin].filter(([, nomes]) => nomes.length > 1).map(([h, nomes]) => ({ h, nomes }));
+}
+
+function avisarDuplicadas(c, duplicadas) {
+  for (const { h, nomes } of duplicadas) {
+    registrarAviso(c, { tipo: 'credencial_duplicada', motivo: `login ${h} em ${nomes.join(' e ')}`, manual: false });
+  }
+}
+
+// A reserva de <conta> fica vazia enquanto uma pasta fora de casa usa aquela conta: o login
+// dela está na pasta. Gravar um login novo ali faria a volta recusar a saída (saida_ocupada).
+const MSG_SLOT_EM_USO = (alvo) => `a reserva de ${alvo} está em uso numa pasta trocada: volte a pasta antes de preparar`;
+function slotEmUso(c, conta) {
+  const estado = lerEstado(c);
+  return PASTAS.some((P) => estado.pastas[P].conta === conta && estado.pastas[P].conta !== estado.pastas[P].casa);
 }
 
 function contaDoEmail(estado, email) {
@@ -365,14 +440,19 @@ function limiteQueTravou(uso, config) {
 // estado e registra o evento só quando a conferência bate. Usado por trocar e vigiar.
 async function aplicarTroca(c, estado, { P, para, tipo, manual, travouPor, motivo, voltaEm }) {
   const de = estado.pastas[P].conta;
+  // Toda troca ou volta que não acontece deixa o evento falhou (não só uma linha de stdout).
+  const falhou = (motivoFalha) => {
+    registrarEvento(c, { tipo: 'falhou', pasta: P, de, para, motivo: motivoFalha, manual: false, voltaEm: null });
+    return { ok: false, motivo: motivoFalha };
+  };
   const dono = (estado.contas[para] || {}).oauthAccount;
-  if (!dono) return { ok: false, motivo: `conta ${NOME[para]} sem registro: rode status com ela em casa` };
+  if (!dono) return falhou(`conta ${NOME[para]} sem registro: rode status com ela em casa`);
   const pasta = c.pastas[P];
   const claudeAntes = lerJson(claudeArq(c, P));
   const { entra, sai } = arqsDaTroca(c, P, de, para);
   if (!fs.existsSync(sai)) gravarAtomico(sai, {});
   const r = mover({ pasta, reservaEntra: entra, reservaSai: sai, dono });
-  if (!r.ok) return r;
+  if (!r.ok) return falhou(r.motivo);
 
   const esperado = estado.contas[para].email;
   let confirmado;
@@ -411,18 +491,42 @@ function pct(limite) {
   return limite && typeof limite.utilization === 'number' ? `${limite.utilization}%` : 'sem dado';
 }
 
+// Grava o estado e os eventos só com a trava; sem ela (vigia no meio de uma rodada) mostra o que
+// leu e não grava nada: leitura + rede + gravação sem a trava restaurava estado velho por cima
+// de uma troca do vigia.
 async function status(c) {
+  fs.mkdirSync(c.contas, { recursive: true });
+  const sobTrava = pegarTrava(c.lock);
+  try {
+    return await statusLido(c, sobTrava);
+  } finally {
+    if (sobTrava) soltarTrava(c.lock);
+  }
+}
+
+async function statusLido(c, sobTrava) {
   const estado = lerEstado(c);
-  if (await registrarCasas(c, estado)) gravarEstado(c, estado);
+  if (await registrarCasas(c, estado, sobTrava) && sobTrava) gravarEstado(c, estado);
+  const duplicadas = credenciaisDuplicadas(c);
+  if (sobTrava) avisarDuplicadas(c, duplicadas);
   const usos = await coletarUsos(c, estado);
   const linhas = [];
+  for (const d of duplicadas) {
+    linhas.push(`aviso: o mesmo login (${d.h}) está em ${d.nomes.join(' e ')}: não troque nem renove até separar`);
+  }
   for (const P of PASTAS) {
     const cred = credDaPasta(c, P);
     if (!cred) {
       linhas.push(`pasta ${P}: sem credencial`);
       continue;
     }
-    const d = await API.dono(cred.claudeAiOauth.accessToken);
+    let d;
+    try {
+      d = await API.dono(cred.claudeAiOauth.accessToken);
+    } catch (e) {
+      linhas.push(`pasta ${P}: conta em uso desconhecida (${e.message})`);
+      continue;
+    }
     const conta = contaDoEmail(estado, d.email);
     const info = estado.pastas[P];
     let linha = `pasta ${P}: conta em uso ${conta ? NOME[conta] : 'desconhecida'} (${d.email})`;
@@ -464,7 +568,7 @@ async function trocar(c, args) {
   if (!pegarTrava(lock)) return sair(1, 'outra rodada em curso: tente de novo em instantes');
   try {
     const estado = lerEstado(c);
-    if (await registrarCasas(c, estado)) gravarEstado(c, estado);
+    if (await registrarCasas(c, estado, true)) gravarEstado(c, estado);
     const { casa, conta: de } = estado.pastas[P];
 
     if (de === para) {
@@ -505,7 +609,13 @@ async function vigiar(c) {
   try {
     const estado = lerEstado(c);
     if (!estado.automatico) return sair(0, 'troca automática desligada: nada a fazer');
-    if (await registrarCasas(c, estado)) gravarEstado(c, estado);
+    if (await registrarCasas(c, estado, true)) gravarEstado(c, estado);
+    // Antes de renovar: renovar um login que está em dois arquivos mata a cópia do outro.
+    const duplicadas = credenciaisDuplicadas(c);
+    if (duplicadas.length) {
+      avisarDuplicadas(c, duplicadas);
+      return sair(1, 'o mesmo login está em dois arquivos: nada movido nem renovado');
+    }
     await renovarOciosos(c, estado);
 
     const pastas = {};
@@ -569,10 +679,21 @@ async function preparar(c, args) {
   const alvo = args[0];
   if (!Object.hasOwn(CONTA_CLI, alvo)) return sair(2, 'uso: preparar <pessoal|trabalho>');
   const conta = CONTA_CLI[alvo];
-  if (reservaPronta(c, conta)) return sair(1, `reserva de ${alvo} já existe: não sobrescrevo`);
-  const claude = lerJson(claudeArq(c, alvo), null);
-  const esperado = claude && claude.oauthAccount && claude.oauthAccount.emailAddress;
-  if (!esperado) return sair(1, `pasta ${alvo} sem oauthAccount: rode status com ela em casa`);
+
+  // As recusas que dependem do estado rodam sob a trava, para o vigia não trocar pasta no meio.
+  // O login em si (minutos de navegador) roda FORA dela: a trava vence em 5 min.
+  fs.mkdirSync(c.contas, { recursive: true });
+  if (!pegarTrava(c.lock)) return sair(1, 'outra rodada em curso: tente de novo em instantes');
+  let esperado;
+  try {
+    if (slotEmUso(c, conta)) return sair(1, MSG_SLOT_EM_USO(alvo));
+    if (reservaPronta(c, conta)) return sair(1, `reserva de ${alvo} já existe: não sobrescrevo`);
+    const claude = lerJson(claudeArq(c, alvo), null);
+    esperado = claude && claude.oauthAccount && claude.oauthAccount.emailAddress;
+    if (!esperado) return sair(1, `pasta ${alvo} sem oauthAccount: rode status com ela em casa`);
+  } finally {
+    soltarTrava(c.lock);
+  }
 
   // RFM_CONTA_CLAUDE (só com RFM_TEST=1) é um script node: roda pelo node, como o CLI real.
   const exe = (process.env.RFM_TEST === '1' && process.env.RFM_CONTA_CLAUDE) || acharExecutavelClaude();
@@ -580,7 +701,6 @@ async function preparar(c, args) {
   const argsLogin = ['auth', 'login', '--claudeai', '--email', esperado];
   const opcoes = { stdio: 'inherit', env: {} };
 
-  fs.mkdirSync(c.contas, { recursive: true });
   const tmp = fs.mkdtempSync(path.join(c.contas, 'login-'));
   try {
     fs.writeFileSync(path.join(tmp, '.claude.json'), '{}\n');
@@ -595,18 +715,30 @@ async function preparar(c, args) {
     if (!cred || !cred.claudeAiOauth) return sair(1, 'o login não gravou credencial: nada gravado');
     const veio = await API.dono(cred.claudeAiOauth.accessToken);
     if (veio.email !== esperado) return sair(3, 'o navegador autorizou ' + veio.email);
-    gravarCred(reservaArq(c, conta), JSON.stringify({ claudeAiOauth: cred.claudeAiOauth }, null, 2) + '\n');
 
-    const faltam = [['trabalho', 'team'], ['pessoal', 'pessoal']]
-      .filter(([, k]) => !reservaPronta(c, k))
-      .map(([nome]) => nome);
-    if (!faltam.length) {
-      const estado = lerEstado(c);
-      estado.automatico = true;
-      gravarEstado(c, estado);
-      return sair(0, `reserva de ${alvo} gravada · troca automática ligada (as duas reservas existem)`);
+    // Grava sob a trava e reconfere: durante o login o vigia pode ter trocado a pasta.
+    if (!(await pegarTravaEspera(c.lock, ESPERA_TRAVA_MS))) {
+      return sair(1, 'outra rodada em curso: o login não foi gravado; rode preparar de novo');
     }
-    return sair(0, `reserva de ${alvo} gravada · falta a reserva de ${faltam.join(' e ')}`);
+    try {
+      if (slotEmUso(c, conta) || reservaPronta(c, conta)) {
+        return sair(1, 'o estado mudou durante o login: nada gravado; rode preparar de novo');
+      }
+      gravarCred(reservaArq(c, conta), JSON.stringify({ claudeAiOauth: cred.claudeAiOauth }, null, 2) + '\n');
+
+      const faltam = [['trabalho', 'team'], ['pessoal', 'pessoal']]
+        .filter(([, k]) => !reservaPronta(c, k))
+        .map(([nome]) => nome);
+      if (!faltam.length) {
+        const estado = lerEstado(c);
+        estado.automatico = true;
+        gravarEstado(c, estado);
+        return sair(0, `reserva de ${alvo} gravada · troca automática ligada (as duas reservas existem)`);
+      }
+      return sair(0, `reserva de ${alvo} gravada · falta a reserva de ${faltam.join(' e ')}`);
+    } finally {
+      soltarTrava(c.lock);
+    }
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

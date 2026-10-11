@@ -156,5 +156,45 @@ afirma "(f) pasta sem oauthAccount: o claude nem roda" test ! -f "$C_F/claude-ar
 afirma "(f) pasta sem oauthAccount: nada gravado" test ! -f "$C_F/dados/contas/reserva-team.json"
 afirma "(e) a credencial falsa não aparece na saída" caso_e
 
+# (g) a pasta trabalho (casa: team) foi trocada para a conta pessoal: a reserva-pessoal está
+# esvaziada (o login dela está na pasta). preparar pessoal recusa com a frase e não grava nada
+# (gravar ali faria a volta devolver saida_ocupada rodada após rodada).
+C_G="$(novo_caso g "")"
+mkdir -p "$C_G/dados/contas"
+node -e "require('fs').writeFileSync(process.argv[1], JSON.stringify({ pastas: { trabalho: { conta: 'pessoal' } } }))" "$C_G/dados/contas/estado.json"
+echo '{}' > "$C_G/dados/contas/reserva-pessoal.json"
+SHA_G="$(sha "$C_G/dados/contas/reserva-pessoal.json")"
+RC_G=0
+preparar "$C_G" falso-login-pessoal pessoal > "$RAIZ/g.txt" 2>&1 || RC_G=$?
+caso_g_slot() {
+  [ "$RC_G" -eq 1 ] \
+    && contem "$(cat "$RAIZ/g.txt")" "a reserva de pessoal está em uso numa pasta trocada: volte a pasta antes de preparar" \
+    && [ ! -f "$C_G/claude-args.txt" ] \
+    && [ "$(sha "$C_G/dados/contas/reserva-pessoal.json")" = "$SHA_G" ] \
+    && sem_login "$C_G/dados/contas" && [ ! -e "$C_G/dados/contas/vigia.lock" ]
+}
+afirma "preparar recusa o slot esvaziado pela troca" caso_g_slot
+
+# (h) preparar roda sob a trava: com outra rodada em curso (trava recente de outro processo), sai 1
+# sem rodar o claude e sem mexer na trava alheia.
+C_H="$(novo_caso h "")"
+mkdir -p "$C_H/dados/contas"
+node -e "require('fs').writeFileSync(process.argv[1], JSON.stringify({ pid: 999999, em: Date.now() }))" "$C_H/dados/contas/vigia.lock"
+RC_H=0
+preparar "$C_H" falso-login-team trabalho > "$RAIZ/h.txt" 2>&1 || RC_H=$?
+caso_h_trava() {
+  [ "$RC_H" -eq 1 ] && contem "$(cat "$RAIZ/h.txt")" "outra rodada em curso" \
+    && [ ! -f "$C_H/claude-args.txt" ] && [ -e "$C_H/dados/contas/vigia.lock" ] \
+    && [ ! -f "$C_H/dados/contas/reserva-team.json" ]
+}
+afirma "preparar roda sob a trava: outra rodada em curso recusa sem rodar o claude" caso_h_trava
+
+caso_e2() {
+  local rc=0
+  grep -qF "falso-" "$RAIZ/g.txt" "$RAIZ/h.txt" || rc=$?
+  [ "$rc" -eq 1 ]
+}
+afirma "(e) a credencial falsa não aparece na saída das recusas" caso_e2
+
 echo "ok: $OK   falhou: $FALHOU"
 if [ "$FALHOU" -ne 0 ]; then exit 1; fi

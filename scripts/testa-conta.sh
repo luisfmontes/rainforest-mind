@@ -129,6 +129,33 @@ if (acao === 'trocado') {
     contas: { team: { email: oauthTeam.emailAddress, oauthAccount: oauthTeam }, pessoal: { email: oauthPessoal.emailAddress, oauthAccount: oauthPessoal } },
   });
 }
+const VIDA = 4102444800000;
+const loginPessoalOutro = () => ({ accessToken: 'falso-pessoal-reserva', refreshToken: 'falso-refresh-pessoal-outro', expiresAt: VIDA, scopes: ['user:inference', 'user:profile'] });
+// ocupada: depois de 'trocado', a reserva-pessoal (que deveria estar vazia) tem outro login.
+if (acao === 'ocupada') {
+  gravar(path.join(contas, 'reserva-pessoal.json'), { claudeAiOauth: loginPessoalOutro() });
+}
+// divergente: a pasta trabalho (em casa, conta team) tem o login de outro: o da conta pessoal.
+// O estado já registra as duas contas.
+if (acao === 'divergente') {
+  const credT = ler(path.join(pastaT, '.credentials.json'));
+  credT.claudeAiOauth = { ...credT.claudeAiOauth, ...loginPessoalOutro() };
+  gravar(path.join(pastaT, '.credentials.json'), credT);
+  const claudeT = ler(path.join(pastaT, '.claude.json'));
+  const oauthTeam = claudeT.oauthAccount;
+  const oauthPessoal = ler(path.join(pastaP, '.claude.json')).oauthAccount;
+  claudeT.oauthAccount = oauthPessoal;
+  gravar(path.join(pastaT, '.claude.json'), claudeT);
+  gravar(path.join(contas, 'estado.json'), {
+    automatico: false,
+    contas: { team: { email: oauthTeam.emailAddress, oauthAccount: oauthTeam }, pessoal: { email: oauthPessoal.emailAddress, oauthAccount: oauthPessoal } },
+  });
+}
+// duplicada: a reserva-team recebe o MESMO login da pasta trabalho (mesmo refresh token).
+if (acao === 'duplicada') {
+  const credT = ler(path.join(pastaT, '.credentials.json'));
+  gravar(path.join(contas, 'reserva-team.json'), { claudeAiOauth: credT.claudeAiOauth });
+}
 JS
 GIROS='{"falso-refresh-team-pasta":{"de":"falso-team-pasta"},"falso-refresh-team-reserva":{"de":"falso-team-reserva"}}'
 
@@ -376,12 +403,72 @@ caso_n() {
 }
 afirma "(n) leitura de uso de 3 h atrás não decide troca" caso_n
 
+# (o) o estado diz "em casa" mas a pasta trabalho tem o login da conta pessoal (um desfazer que
+# falhou deixa isso): status NÃO reescreve contas.team, nem o estado, e grava identidade_divergente.
+C_O="$(novo_caso o nao)"
+node "$RAIZ/ajustar.cjs" divergente "$C_O"
+EST_O="$C_O/dados/contas/estado.json"
+EV_O="$C_O/dados/contas/eventos.jsonl"
+cp "$EST_O" "$RAIZ/estado-o-antes.json"
+RC_O=0
+cli "$C_O" status > "$RAIZ/o.txt" 2>&1 || RC_O=$?
+caso_o() {
+  [ "$RC_O" -eq 0 ] && [ "$(ler "$EST_O" contas.team.email)" = team@exemplo.invalid ] \
+    && cmp -s "$EST_O" "$RAIZ/estado-o-antes.json" \
+    && grep -qF '"tipo":"identidade_divergente"' "$EV_O" && grep -qF '"pasta":"trabalho"' "$EV_O"
+}
+afirma "(o) status não sobrescreve o e-mail registrado e grava identidade_divergente" caso_o
+
+# (p) o mesmo refresh token na pasta trabalho e na reserva-team: o vigia grava credencial_duplicada
+# e não move nada (a team está a 97% na semana: sem a checagem, trocaria); o status avisa.
+C_P="$(novo_caso p sim)"
+node "$RAIZ/ajustar.cjs" duplicada "$C_P"
+EV_P="$C_P/dados/contas/eventos.jsonl"
+cp "$C_P/trabalho/.claude/.credentials.json" "$RAIZ/cred-p-antes.json"
+cp "$C_P/dados/contas/reserva-team.json" "$RAIZ/reserva-p-antes.json"
+RC_P=0
+cli "$C_P" vigiar > "$RAIZ/p.txt" 2>&1 || RC_P=$?
+cli "$C_P" status > "$RAIZ/p-status.txt" 2>&1 || true
+caso_p() {
+  [ "$RC_P" -eq 1 ] && grep -qF '"tipo":"credencial_duplicada"' "$EV_P" \
+    && grep -qF 'pasta-trabalho e reserva-team' "$EV_P" \
+    && [ "$(ler "$C_P/dados/contas/estado.json" pastas.trabalho.conta)" = team ] \
+    && cmp -s "$C_P/trabalho/.claude/.credentials.json" "$RAIZ/cred-p-antes.json" \
+    && cmp -s "$C_P/dados/contas/reserva-team.json" "$RAIZ/reserva-p-antes.json" \
+    && ! grep -qF '"tipo":"trocar"' "$EV_P" \
+    && contem "$(cat "$RAIZ/p-status.txt")" "aviso: o mesmo login"
+}
+afirma "(p) credencial_duplicada: o vigia grava o evento, não move e o status avisa" caso_p
+
+# (q) volta que falha (a reserva-pessoal, que devia estar vazia, tem outro login → saida_ocupada)
+# grava o evento falhou com o motivo, não só uma linha no stdout, e sai 1.
+C_Q="$(novo_caso q sim)"
+node "$RAIZ/ajustar.cjs" trocado "$C_Q"
+node "$RAIZ/ajustar.cjs" ocupada "$C_Q"
+iniciar_servidor "$RAIZ/mapa-k.json" "$RAIZ/porta-q.txt"
+API_Q="$API"
+API="$API_PRINCIPAL"
+EV_Q="$C_Q/dados/contas/eventos.jsonl"
+cp "$C_Q/trabalho/.claude/.credentials.json" "$RAIZ/cred-q-antes.json"
+RC_Q=0
+API="$API_Q"
+cli "$C_Q" vigiar > "$RAIZ/q.txt" 2>&1 || RC_Q=$?
+API="$API_PRINCIPAL"
+caso_q() {
+  [ "$RC_Q" -eq 1 ] && [ "$(ler "$C_Q/dados/contas/estado.json" pastas.trabalho.conta)" = pessoal ] \
+    && cmp -s "$C_Q/trabalho/.claude/.credentials.json" "$RAIZ/cred-q-antes.json" \
+    && grep -F '"tipo":"falhou"' "$EV_Q" | grep -qF 'saida_ocupada' \
+    && contem "$(cat "$RAIZ/q.txt")" "não feita: saida_ocupada"
+}
+afirma "(q) volta que falha grava o evento falhou com o motivo" caso_q
+
 # (g) nenhuma credencial (valor falso ou não) aparece na saída nem no log
 caso_g() {
   local rc=0
   grep -qF "falso-" "$RAIZ/a-vigiar.txt" "$RAIZ/b1.txt" "$RAIZ/b2.txt" "$RAIZ/c1.txt" "$RAIZ/c2.txt" \
     "$RAIZ/f.txt" "$RAIZ/h.txt" "$RAIZ/status-a.txt" "$EV_A" "$EV_H" \
-    "$RAIZ/k.txt" "$RAIZ/k2.txt" "$RAIZ/k2-status.txt" "$RAIZ/n.txt" "$EV_K" "$EV_K2" || rc=$?
+    "$RAIZ/k.txt" "$RAIZ/k2.txt" "$RAIZ/k2-status.txt" "$RAIZ/n.txt" "$EV_K" "$EV_K2" \
+    "$RAIZ/o.txt" "$RAIZ/p.txt" "$RAIZ/p-status.txt" "$RAIZ/q.txt" "$EV_O" "$EV_P" "$EV_Q" || rc=$?
   [ "$rc" -eq 1 ]
 }
 afirma "(g) credencial nunca aparece na saída nem no log" caso_g
