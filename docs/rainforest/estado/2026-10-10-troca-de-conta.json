@@ -23,9 +23,9 @@
   },
   "executar": {
     "status": "parcial",
-    "catraca_mutacao": "2026-10-10",
-    "tarefas_ok": 10,
-    "tarefas": 10,
+    "catraca_mutacao": "2026-10-11",
+    "tarefas_ok": 11,
+    "tarefas": 15,
     "carimbos": [
       {
         "tarefa": 1,
@@ -84,7 +84,14 @@
         "ts": "2026-10-11T01:35:36.859Z"
       }
     ],
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "rodada 2: tarefas 11 a 14",
+        "desde": "2026-10-11T09:00",
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
+      }
+    ],
     "em": "2026-10-11",
     "mutacao": [
       {
