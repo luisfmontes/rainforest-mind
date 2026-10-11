@@ -623,14 +623,29 @@ const FLAGS_COM_VALOR_PR_MERGE = new Set([
 ]);
 
 /**
- * O token consome o seguinte como valor? Inclui flag curta AGRUPADA, que o gh
- * (pflag) aceita: `-sF arquivo` e `--squash --body-file arquivo`, entao o que
- * decide e a ULTIMA letra. `R` agrupado nao passa por aqui: quem trata e
- * `extrairRepoDoGh`, que barra.
+ * Flag curta agrupada, lida como o pflag do gh le: da esquerda para a direita,
+ * e a PRIMEIRA letra que leva valor come o resto do token. `-sF x` e
+ * `--squash --body-file x`; `-FA 5` e `--body-file A` com ref 5 — o `A` no
+ * fim e valor, nao flag. Devolve a letra que leva valor (ou null) e se ela
+ * consome o PROXIMO token (resto vazio). Token que nao e agrupada: null.
  */
+const LETRAS_COM_VALOR_PR_MERGE = "AbFtR";
+
+function analisarAgrupada(tok) {
+  if (!/^-[^-]/.test(tok) || tok.length < 3) return null;
+  for (let k = 1; k < tok.length; k += 1) {
+    if (LETRAS_COM_VALOR_PR_MERGE.includes(tok[k])) {
+      return { letra: tok[k], consome: k === tok.length - 1 };
+    }
+  }
+  return { letra: null, consome: false };
+}
+
+/** O token consome o seguinte como valor? (`-R`/`--repo` incluidos.) */
 function consomeValorPrMerge(tok) {
-  if (FLAGS_COM_VALOR_PR_MERGE.has(tok)) return true;
-  return /^-[A-Za-z]{2,}$/.test(tok) && "AbFt".includes(tok[tok.length - 1]);
+  if (FLAGS_COM_VALOR_PR_MERGE.has(tok) || tok === "-R" || tok === "--repo") return true;
+  const ag = analisarAgrupada(tok);
+  return !!(ag && ag.consome);
 }
 
 /**
@@ -659,6 +674,10 @@ function refDoPRMergeValido(ref) {
  */
 const REPO_GH_CONSERVADOR = /^(?:[A-Za-z0-9.-]+\/)?[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 
+// Texto inteiro do comando inspecionado, gravado no `main`. O caso GH_REPO
+// precisa dele: a atribuicao pode estar em outro segmento que o `gh pr merge`.
+let comandoInteiro = "";
+
 // Diferencial de parser (revisao de seguranca do #496): o gate nao pode ler a
 // descricao de um PR enquanto o `gh` mergeia outro. Por isso (1) o valor de
 // flag que consome o proximo token (`--body -R`) nunca e lido como repo, e
@@ -674,10 +693,14 @@ function extrairRepoDoGh(subcomandos) {
       continue;
     }
     if (tok.startsWith("--repo=")) { valores.push(tok.slice("--repo=".length)); continue; }
-    // `-Rx`, `-R=x` e qualquer agrupada com R (`-sR x`, `-sRx`): o gh le um
-    // repo ali, e o gate nao reconstroi agrupamento por palpite.
-    if (/^-R./.test(tok) || (/^-[A-Za-z]{2,}/.test(tok) && tok.includes("R"))) return "";
-    if (!tok.includes("=") && consomeValorPrMerge(tok)) i += 1;
+    // `-Rx`, `-R=x`, `-sR x`: agrupada cuja primeira letra de valor e o R
+    // define o repo ali. O gate nao reconstroi isso: barra. (`-bR` e body
+    // "R", nao repo, e segue a regra comum.)
+    const ag = analisarAgrupada(tok);
+    if (ag && ag.letra === "R") return "";
+    if (!tok.startsWith("--") || !tok.includes("=")) {
+      if (consomeValorPrMerge(tok)) i += 1;
+    }
   }
   if (!valores.length) return null;
   return new Set(valores).size === 1 ? valores[0] : "";
@@ -699,7 +722,7 @@ function extrairRefDoPRMerge(subcomandos) {
       const chave = temIgual ? tok.slice(0, tok.indexOf("=")) : tok;
       // `-R`/`--repo` tambem consomem valor: sem pular, `--repo dono/x 1`
       // devolvia "dono/x" como o ref do PR (#496).
-      if (!temIgual && (consomeValorPrMerge(chave) || chave === "-R" || chave === "--repo")) {
+      if (!temIgual && consomeValorPrMerge(chave)) {
         i += 1; // pula o valor da flag
       }
       continue;
@@ -868,6 +891,19 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento) {
         `Razão: não consegui ler a descrição real do PR ('gh pr view --json body' falhou).\n\n` +
         `Sem a descrição não dá pra saber se o merge fecha alguma Issue sem evidência.\n` +
         `Confira se o PR existe e se 'gh' tem acesso à rede/API.\n`
+      );
+    }
+
+    // GH_REPO/GH_HOST definidos no proprio comando (prefixo, export, $env:)
+    // mudam o repo do gh sem flag nenhuma, e o `gh pr view` daqui nao herda
+    // isso. Olha o comando INTEIRO: `export GH_REPO=x; gh pr merge 5` poe a
+    // atribuicao em outro segmento (#496, revisao de seguranca).
+    if (/\bGH_(?:REPO|HOST)\s*=/i.test(comandoInteiro)) {
+      bloqueia(
+        `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+        `Razão: o comando define GH_REPO/GH_HOST, que muda o repositório do 'gh pr merge'\n` +
+        `sem passar pela flag que o gate lê.\n\n` +
+        `Use --repo dono/repo, ou a URL completa do PR.\n`
       );
     }
 
@@ -1260,6 +1296,7 @@ function main() {
 
   const comando = (ev.tool_input && ev.tool_input.command) || "";
   if (!comando) process.exit(0);
+  comandoInteiro = comando;
 
   // Rodada 15, lote 3, 2026-09-04: cwd de CADA segmento da linha, calculado
   // uma vez sobre a linha inteira (mesma função que `gate-worktree.cjs` e

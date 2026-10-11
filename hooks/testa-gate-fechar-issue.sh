@@ -1229,6 +1229,35 @@ echo "== (#496-seg) gh pr merge --repo dono/outro 1: ref e 1, nao dono/outro =="
 E496S5=$?
 [ $E496S5 -eq 0 ] && test_ok "#496-seg valor de --repo nao vira ref" || test_fail "#496-seg valor de --repo virou ref (exit $E496S5: $(head -c 200 "$SBP/err-496s5"))"
 
+# Agrupada: o pflag le da esquerda para a direita, e a PRIMEIRA letra que
+# leva valor come o resto do token. `-FA 5` e `--body-file A`, ref 5 — o
+# "A" no fim nao consome o 5.
+echo
+echo "== (#496-seg) gh pr merge -FA 5: ref e 5 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  export GH_PR_VIEW_BODY="descrição sem palavra-chave de fechamento"
+  export GH_PR_VIEW_EXIGE="view 5"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge -FA 5 --merge"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-496s6"
+E496S6=$?
+[ $E496S6 -eq 0 ] && test_ok "#496-seg agrupada -FA nao consome o ref" || test_fail "#496-seg agrupada -FA consumiu o ref (exit $E496S6: $(head -c 200 "$SBP/err-496s6"))"
+
+# GH_REPO no proprio comando muda o repo do gh sem flag nenhuma.
+echo
+echo "== (#496-seg) GH_REPO=dono/real gh pr merge 5: barra =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  export GH_PR_VIEW_BODY="descrição sem palavra-chave de fechamento"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"GH_REPO=dono/real gh pr merge 5 --merge"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-496s7"
+E496S7=$?
+[ $E496S7 -eq 2 ] && test_ok "#496-seg GH_REPO no comando barra" || test_fail "#496-seg GH_REPO no comando passou (exit $E496S7)"
+
 # Caso (by): R18 (auditor, 16a revisao, lote 3, 2026-09-04) — `source fechar.sh`
 # executa um ARQUIVO opaco ao parser; mesma postura conservadora que
 # `bash x.sh` (sem `-c`) ja recebe do laco W1 — exit 2.
