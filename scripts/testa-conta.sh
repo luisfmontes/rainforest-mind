@@ -12,6 +12,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 win() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi; }
+REPO="$(win "$PWD")"
 RAIZ="$(win "$(mktemp -d)")"
 PIDS=()
 trap 'for p in ${PIDS[@]+"${PIDS[@]}"}; do kill "$p" 2>/dev/null || true; done; rm -rf "$RAIZ"' EXIT
@@ -462,13 +463,117 @@ caso_q() {
 }
 afirma "(q) volta que falha grava o evento falhou com o motivo" caso_q
 
+# (m) a team a 99% nas duas janelas, a de 5 h resetando antes da semana: a volta espera o reset
+# MAIS TARDIO. travouPor.limite tem de ser seven_day (e o evento, voltaEm = o reset da semana).
+RESET5_M="$(node -e 'process.stdout.write(new Date(Date.now() + 3 * 3600000).toISOString())')"
+RESET7_M="$(node -e 'process.stdout.write(new Date(Date.now() + 2 * 86400000).toISOString())')"
+node "$RAIZ/derivar.cjs" "$RAIZ/mapa.json" "$RAIZ/mapa-m.json" \
+  "{\"tokens\":{\"falso-team-pasta\":{\"uso5\":99,\"uso7\":99,\"reset5\":\"$RESET5_M\",\"reset7\":\"$RESET7_M\"}}}"
+iniciar_servidor "$RAIZ/mapa-m.json" "$RAIZ/porta-m.txt"
+API_M="$API"
+API="$API_PRINCIPAL"
+C_M="$(novo_caso m sim)"
+EST_M="$C_M/dados/contas/estado.json"
+RC_M=0
+API="$API_M"
+cli "$C_M" vigiar > "$RAIZ/m.txt" 2>&1 || RC_M=$?
+API="$API_PRINCIPAL"
+caso_m() {
+  [ "$RC_M" -eq 0 ] && [ "$(ler "$EST_M" pastas.trabalho.conta)" = pessoal ] \
+    && [ "$(ler "$EST_M" pastas.trabalho.travouPor.limite)" = seven_day ] \
+    && [ "$(ler "$EST_M" pastas.trabalho.travouPor.resetsAt)" = "$RESET7_M" ]
+}
+afirma "(m) com os dois limites passados, a volta espera o reset mais tardio" caso_m
+
+# (r) recuo: o /profile da reserva-pessoal responde 500, então a conferência da troca falha e a
+# troca é desfeita. Duas rodadas seguidas fazem UMA tentativa só (um evento falhou); a segunda
+# espera o recuo de 15 min em vez de trocar e desfazer de novo.
+node "$RAIZ/derivar.cjs" "$RAIZ/mapa.json" "$RAIZ/mapa-r.json" '{"tokens":{"falso-pessoal-reserva":{"perfilStatus":500}}}'
+iniciar_servidor "$RAIZ/mapa-r.json" "$RAIZ/porta-r.txt"
+API_R="$API"
+API="$API_PRINCIPAL"
+C_R="$(novo_caso r sim)"
+EV_R="$C_R/dados/contas/eventos.jsonl"
+RC_R1=0; RC_R2=0
+API="$API_R"
+cli "$C_R" vigiar > "$RAIZ/r1.txt" 2>&1 || RC_R1=$?
+cp "$C_R/trabalho/.claude/.credentials.json" "$RAIZ/cred-r-antes.json"
+cli "$C_R" vigiar > "$RAIZ/r2.txt" 2>&1 || RC_R2=$?
+API="$API_PRINCIPAL"
+caso_r() {
+  [ "$RC_R1" -eq 1 ] && [ "$RC_R2" -eq 0 ] \
+    && [ "$(grep -cF '"tipo":"falhou"' "$EV_R")" = 1 ] \
+    && contem "$(cat "$RAIZ/r2.txt")" "recuo de 15 min" \
+    && cmp -s "$C_R/trabalho/.claude/.credentials.json" "$RAIZ/cred-r-antes.json" \
+    && [ "$(ler "$C_R/dados/contas/estado.json" pastas.trabalho.conta)" = team ]
+}
+afirma "(r) com o /profile falhando, duas rodadas fazem uma tentativa só (recuo)" caso_r
+
+# (s) a pasta de dados é a do usuário mesmo com o cwd num projeto que tem .rainforest/FOCO.md:
+# o status lê as reservas do home, e nada é criado dentro do projeto.
+C_S="$(novo_caso s nao)"
+HOME_S="$C_S/home"
+PROJ_S="$C_S/projeto"
+mkdir -p "$HOME_S" "$PROJ_S/.rainforest"
+cp -r "$C_S/dados" "$HOME_S/.rainforest"
+: > "$HOME_S/.rainforest/FOCO.md"
+: > "$PROJ_S/.rainforest/FOCO.md"
+RC_S=0
+( cd "$PROJ_S" && env -u RFM_ROOT -u RFM_CONTA_DADOS \
+    HOME="$(win "$HOME_S")" USERPROFILE="$(win "$HOME_S")" CLAUDE_PROJECT_DIR="$(win "$PROJ_S")" \
+    RFM_TEST=1 \
+    RFM_CONTA_PASTA_TRABALHO="$(win "$C_S/trabalho/.claude")" \
+    RFM_CONTA_PASTA_PESSOAL="$(win "$C_S/pessoal/.claude-personal")" \
+    RFM_CONTA_API="$API" \
+    node "$REPO/scripts/conta.cjs" status ) > "$RAIZ/s.txt" 2>&1 || RC_S=$?
+caso_s() {
+  [ "$RC_S" -eq 0 ] && contem "$(cat "$RAIZ/s.txt")" "reservas: trabalho presente · pessoal presente" \
+    && [ ! -e "$PROJ_S/.rainforest/contas" ] && [ -d "$HOME_S/.rainforest/contas" ]
+}
+afirma "(s) a pasta de dados é a do usuário, não a do projeto com .rainforest/FOCO.md" caso_s
+
+# (t) eventos com linhas corrompidas (lixo, null, número): sai 0 e lista só as válidas.
+C_T="$(novo_caso t nao)"
+mkdir -p "$C_T/dados/contas"
+printf '%s\n' '{"em":100,"tipo":"trocar","pasta":"trabalho"}' 'isto{não é json' 'null' '42' '{"em":200,"tipo":"voltar","pasta":"trabalho"}' \
+  > "$C_T/dados/contas/eventos.jsonl"
+RC_T=0
+cli "$C_T" eventos --desde 0 > "$RAIZ/t.txt" 2>&1 || RC_T=$?
+caso_t() {
+  [ "$RC_T" -eq 0 ] && [ "$(grep -c . "$RAIZ/t.txt")" = 2 ] && grep -qF '"em":200' "$RAIZ/t.txt"
+}
+afirma "(t) eventos com linha corrompida sai 0 e lista as válidas" caso_t
+
+# (u) trava vencida: quatro rodadas largam juntas, todas a veem vencida, e só uma a toma. O resto
+# imprime 'outra rodada em curso'; a troca acontece uma vez só e não sobra arquivo da tomada.
+C_U="$(novo_caso u sim)"
+mkdir -p "$C_U/dados/contas"
+node -e "require('fs').writeFileSync(process.argv[1], JSON.stringify({ pid: 999999, em: 0 }))" "$C_U/dados/contas/vigia.lock"
+: > "$RAIZ/segurar"
+PIDS_U=()
+for n in 1 2 3 4; do
+  cli "$C_U" vigiar > "$RAIZ/u$n.txt" 2>&1 &
+  PIDS_U+=("$!")
+  PIDS+=("$!")
+done
+for p in "${PIDS_U[@]}"; do wait "$p" || true; done
+rm -f "$RAIZ/segurar"
+caso_u() {
+  local cont
+  cont="$(cat "$RAIZ"/u[1-4].txt | grep -cF 'outra rodada em curso' || true)"
+  [ "$cont" = 3 ] && [ "$(grep -c . "$C_U/dados/contas/eventos.jsonl")" = 1 ] \
+    && [ -z "$(ls -A "$C_U/dados/contas" | grep -F 'tomada' || true)" ]
+}
+afirma "(u) trava vencida é tomada por um processo só" caso_u
+
 # (g) nenhuma credencial (valor falso ou não) aparece na saída nem no log
 caso_g() {
   local rc=0
   grep -qF "falso-" "$RAIZ/a-vigiar.txt" "$RAIZ/b1.txt" "$RAIZ/b2.txt" "$RAIZ/c1.txt" "$RAIZ/c2.txt" \
     "$RAIZ/f.txt" "$RAIZ/h.txt" "$RAIZ/status-a.txt" "$EV_A" "$EV_H" \
     "$RAIZ/k.txt" "$RAIZ/k2.txt" "$RAIZ/k2-status.txt" "$RAIZ/n.txt" "$EV_K" "$EV_K2" \
-    "$RAIZ/o.txt" "$RAIZ/p.txt" "$RAIZ/p-status.txt" "$RAIZ/q.txt" "$EV_O" "$EV_P" "$EV_Q" || rc=$?
+    "$RAIZ/o.txt" "$RAIZ/p.txt" "$RAIZ/p-status.txt" "$RAIZ/q.txt" "$EV_O" "$EV_P" "$EV_Q" \
+    "$RAIZ/m.txt" "$RAIZ/r1.txt" "$RAIZ/r2.txt" "$RAIZ/s.txt" "$RAIZ/t.txt" "$RAIZ"/u[1-4].txt "$EV_R" || rc=$?
   [ "$rc" -eq 1 ]
 }
 afirma "(g) credencial nunca aparece na saída nem no log" caso_g

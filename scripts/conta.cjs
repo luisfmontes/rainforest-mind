@@ -30,6 +30,7 @@ const PADRAO_CONFIG = { trocarEm: 97, destinoMax5h: 60, destinoMaxSemana: 85 };
 const TAREFA = '\\ClaudeVigias\\troca-de-conta';
 const TRAVA_MS = 5 * 60 * 1000;
 const ESPERA_TRAVA_MS = 30 * 1000;
+const RECUO_MS = 15 * 60 * 1000;
 const RENOVAR_ANTES_MS = 60 * 60 * 1000;
 const LEITURA_MAX_MS = 15 * 60 * 1000;
 // Aviso repetido (mesmo tipo e motivo) não vira uma linha por minuto: 1 por hora.
@@ -59,9 +60,16 @@ function pastaDaSessao() {
   return PASTAS.find((p) => norm(dirs[p]) === atual) || 'trabalho';
 }
 
+// A pasta de dados da conta é SEMPRE a do usuário. A resolução padrão do plugin prefere
+// <projeto>/.rainforest quando o projeto tem FOCO.md: um /conta num projeto assim gravaria
+// credencial dentro do repositório dele, separada da que o vigia agendado lê. Por isso o
+// "projeto" aqui é o home (nível 2 e 3 da cadeia coincidem em ~/.rainforest).
 function dadosDir() {
   if (process.env.RFM_CONTA_DADOS) return process.env.RFM_CONTA_DADOS;
-  const raiz = require('../hooks/lib/ponte-corpo.cjs').raizDeDados(path.resolve(__dirname, '..'));
+  const raiz = require('../hooks/lib/raiz.cjs').resolverRaiz({
+    cwd: os.homedir(),
+    plugin: path.resolve(__dirname, '..'),
+  }).raiz;
   if (!raiz) throw new Error('sem pasta de dados do rainforest (defina RFM_CONTA_DADOS)');
   return raiz;
 }
@@ -175,10 +183,33 @@ function pegarTrava(lock) {
       return true;
     } catch (e) {
       if (e.code !== 'EEXIST') throw e;
-      if (!travaVencida(lock)) return false;
-      fs.rmSync(lock, { force: true });
+      if (!travaVencida(lock) || !tomarVencida(lock)) return false;
     }
   }
+  return false;
+}
+
+// Trava vencida só é tomada por quem consegue renomeá-la: o rename é atômico, então de dois
+// processos que a viram vencida só um a leva (o outro vê ENOENT e desiste). Quem renomeou
+// confere o que pegou: se foi uma trava nova (alguém a recriou entre a checagem e o rename),
+// devolve ao lugar e desiste.
+function tomarVencida(lock) {
+  const tomada = `${lock}.tomada.${process.pid}.${Date.now()}`;
+  try {
+    fs.renameSync(lock, tomada);
+  } catch {
+    return false;
+  }
+  if (travaVencida(tomada)) {
+    fs.rmSync(tomada, { force: true });
+    return true;
+  }
+  try {
+    fs.linkSync(tomada, lock);
+  } catch {
+    // o lugar já foi ocupado por outra trava: não há o que devolver
+  }
+  fs.rmSync(tomada, { force: true });
   return false;
 }
 
@@ -431,9 +462,21 @@ function contaDoEmail(estado, email) {
   return CONTAS.find((conta) => estado.contas[conta] && estado.contas[conta].email === email) || null;
 }
 
+// Com os dois limites passados, a volta espera o que reseta por último: voltar quando só o de
+// 5 h zerou devolve a pasta a uma conta ainda travada na semana, e a troca se repete.
 function limiteQueTravou(uso, config) {
-  const l = LIMITES.find((x) => uso && uso[x] && uso[x].utilization >= config.trocarEm);
-  return l ? { limite: l, resetsAt: uso[l].resets_at } : null;
+  const passaram = LIMITES
+    .filter((x) => uso && uso[x] && uso[x].utilization >= config.trocarEm)
+    .map((x) => ({ limite: x, resetsAt: uso[x].resets_at }));
+  if (!passaram.length) return null;
+  return passaram.reduce((a, b) => (Date.parse(b.resetsAt) > Date.parse(a.resetsAt) ? b : a));
+}
+
+// Depois de um falhou nesta pasta o vigia espera 15 min: sem isso, um /profile fora do ar fazia
+// troca + desfazer (8 gravações e um evento) a cada minuto.
+function emRecuo(c, P) {
+  const agora = Date.now();
+  return lerEventos(c).some(({ ev }) => ev.tipo === 'falhou' && ev.pasta === P && agora - ev.em < RECUO_MS);
 }
 
 // Move a credencial da pasta P para a conta `para` e confere no servidor. Atualiza o
@@ -635,6 +678,10 @@ async function vigiar(c) {
         console.log(`esperar ${a.pasta}: ${a.motivo}`);
         continue;
       }
+      if (emRecuo(c, a.pasta)) {
+        console.log(`esperar ${a.pasta}: recuo de 15 min depois de uma ${a.tipo} que falhou`);
+        continue;
+      }
       const de = estado.pastas[a.pasta].conta;
       let r;
       if (a.tipo === 'trocar') {
@@ -806,10 +853,8 @@ function eventos(c, args) {
   const bruto = valorDe(args, '--desde');
   const desde = Number(bruto);
   if (bruto === undefined || !Number.isFinite(desde)) return sair(2, 'uso: eventos --desde <ms>');
-  if (!fs.existsSync(c.eventos)) return 0;
-  for (const linha of fs.readFileSync(c.eventos, 'utf8').split('\n')) {
-    if (!linha.trim()) continue;
-    if (JSON.parse(linha).em > desde) console.log(linha);
+  for (const { ev, linha } of lerEventos(c)) {
+    if (ev.em > desde) console.log(linha);
   }
   return 0;
 }
