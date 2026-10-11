@@ -688,7 +688,10 @@ function comandoUnicoSemShell(texto) {
     // `@` so e splatting no comeco do token; no meio (o --author-email)
     // passa (revisao 4).
     if (c === "@" && (i === 0 || t[i - 1] === " " || t[i - 1] === "\t")) return false;
-    if (";&|<>(){}$`#*?[]~!%^,".includes(c)) return false;
+    // `~` so expande no comeco da palavra (e, no bash, depois de `=`/`:`);
+    // no meio e literal, como no nome curto `RUNNER~1` do Windows.
+    if (c === "~" && (i === 0 || /[ \t=:]/.test(t[i - 1]))) return false;
+    if (";&|<>(){}$`#*?[]!%^,".includes(c)) return false;
   }
   return aspa === null;
 }

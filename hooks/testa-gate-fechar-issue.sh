@@ -1372,6 +1372,11 @@ pm "heredoc de doc com gh pr merge em linha de comando passa" 0 "$(printf "cat >
 pm "comentario de evidencia com 'comando: gh pr merge' passa" 0 "$(printf "gh issue comment 12 --body-file - <<'EOF'\ncomando: gh pr merge 5 --squash\nEOF")"
 printf 'merge limpo\n' > "$SBP/msg-ps.md"
 pm "PowerShell: --body-file com caminho Windows passa" 0 "gh pr merge 5 --squash --body-file $(cygpath -w "$SBP/msg-ps.md")" PowerShell
+# `~` no meio do token e literal (nome curto 8.3 do Windows, como RUNNER~1 no CI);
+# no comeco da palavra expande para a home e barra.
+mkdir -p "$SBP/CURTO~1" && printf 'merge limpo\n' > "$SBP/CURTO~1/m.md"
+pm "PowerShell: --body-file com ~1 no meio do caminho passa" 0 "gh pr merge 5 --squash --body-file $(cygpath -w "$SBP/CURTO~1/m.md")" PowerShell
+pm "--body-file comecando com ~ barra" 2 'gh pr merge 5 --squash --body-file ~/m.md'
 pm "Bash: contrabarra fora do primeiro token barra" 2 'gh pr merge 5 --squash --body-file C:\x\msg.md'
 pm "PowerShell: contrabarra antes de espaco barra" 2 'gh pr merge 5 --body x\ -Rdono/outro' PowerShell
 pm "gh help pr merge passa" 0 'gh help pr merge'
