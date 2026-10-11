@@ -29,6 +29,10 @@ const API = require('./lib/conta-api.cjs');
 const PADRAO_CONFIG = { trocarEm: 97, destinoMax5h: 60, destinoMaxSemana: 85 };
 const TAREFA = '\\ClaudeVigias\\troca-de-conta';
 const TRAVA_MS = 5 * 60 * 1000;
+const RENOVAR_ANTES_MS = 60 * 60 * 1000;
+const LEITURA_MAX_MS = 15 * 60 * 1000;
+// Aviso repetido (mesmo tipo e motivo) não vira uma linha por minuto: 1 por hora.
+const AVISO_REPETIDO_MS = 60 * 60 * 1000;
 const CONTAS = ['team', 'pessoal'];
 const PASTAS = ['trabalho', 'pessoal'];
 const LIMITES = ['five_hour', 'seven_day'];
@@ -220,6 +224,37 @@ function registrarEvento(c, ev) {
   fs.appendFileSync(c.eventos, JSON.stringify(linha) + '\n', 'utf8');
 }
 
+// Eventos válidos do log, na ordem. Linha que não é JSON (ou não é um objeto com `em`) é
+// pulada: uma linha ruim não pode calar o mod nem o vigia para sempre.
+function lerEventos(c) {
+  let bruto;
+  try {
+    bruto = fs.readFileSync(c.eventos, 'utf8');
+  } catch (e) {
+    if (e.code === 'ENOENT') return [];
+    throw e;
+  }
+  const validos = [];
+  for (const linha of bruto.split('\n')) {
+    if (!linha.trim()) continue;
+    try {
+      const ev = JSON.parse(linha);
+      if (ev && typeof ev === 'object' && typeof ev.em === 'number') validos.push({ ev, linha });
+    } catch {
+      // linha corrompida: pula
+    }
+  }
+  return validos;
+}
+
+// Evento de diagnóstico que pode se repetir enquanto o problema durar.
+function registrarAviso(c, ev) {
+  const agora = Date.now();
+  const repetido = lerEventos(c).some(({ ev: x }) => x.tipo === ev.tipo && x.motivo === ev.motivo
+    && x.pasta === ev.pasta && agora - x.em < AVISO_REPETIDO_MS);
+  if (!repetido) registrarEvento(c, ev);
+}
+
 function credDaPasta(c, P) {
   const cred = lerJson(credArq(c, P), null);
   return cred && cred.claudeAiOauth ? cred : null;
@@ -255,13 +290,48 @@ function infoPasta(c, estado, P) {
   };
 }
 
+// Uma conta que não responde fica sem dado (decidir espera); nunca derruba a rodada das duas.
+// Leitura antiga (429 devolve a última, com a idade) também vira "sem dado": não decide troca.
 async function coletarUsos(c, estado) {
   const usos = {};
   for (const conta of CONTAS) {
     const tok = tokenDaConta(c, estado, conta);
-    if (tok) usos[conta] = (await API.uso(conta, tok, { dados: c.dados })).dados;
+    if (!tok) continue;
+    try {
+      const r = await API.uso(conta, tok, { dados: c.dados });
+      if (r.dados && !(r.idadeMs > LEITURA_MAX_MS)) usos[conta] = r.dados;
+    } catch (e) {
+      process.stderr.write(`aviso: uso de ${NOME[conta]} indisponível: ${e.message}\n`);
+    }
   }
   return usos;
+}
+
+// Os logins guardados (reserva-* e estacionado-*) ninguém usa, então ninguém renova: o access
+// token vence (~8 h) e a conta fica sem dado e sem volta (D13). O vigia renova os que vencem em
+// menos de 1 h e grava o mesmo arquivo na hora (o refresh token antigo deixa de valer). Falha
+// vira evento, nunca derruba a rodada.
+async function renovarOciosos(c, _estado) {
+  let nomes;
+  try {
+    nomes = fs.readdirSync(c.contas).sort();
+  } catch {
+    return;
+  }
+  for (const nome of nomes) {
+    if (!/^(reserva|estacionado)-[\w-]+\.json$/.test(nome)) continue;
+    const arq = path.join(c.contas, nome);
+    try {
+      const obj = lerJson(arq, null);
+      const login = obj && obj.claudeAiOauth;
+      if (!login || !login.refreshToken) continue;
+      if (!(Number(login.expiresAt) - Date.now() < RENOVAR_ANTES_MS)) continue;
+      const novo = await API.renovar(login);
+      gravarCred(arq, JSON.stringify({ ...obj, claudeAiOauth: novo }, null, 2) + '\n');
+    } catch (e) {
+      registrarAviso(c, { tipo: 'renovacao_falhou', motivo: `${nome.replace(/\.json$/, '')}: ${e.message}`, manual: false });
+    }
+  }
 }
 
 // Pasta em casa: copia o oauthAccount para a conta de casa, desde que o e-mail do
@@ -436,6 +506,7 @@ async function vigiar(c) {
     const estado = lerEstado(c);
     if (!estado.automatico) return sair(0, 'troca automática desligada: nada a fazer');
     if (await registrarCasas(c, estado)) gravarEstado(c, estado);
+    await renovarOciosos(c, estado);
 
     const pastas = {};
     for (const P of PASTAS) pastas[P] = infoPasta(c, estado, P);

@@ -75,6 +75,63 @@ JS
 node "$RAIZ/semear.cjs" mapa "$RAIZ/mapa.json"
 node -e "const fs=require('fs');const m=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));m.tokens['falso-pessoal-reserva'].email='outro@exemplo.invalid';fs.writeFileSync(process.argv[2],JSON.stringify(m))" "$RAIZ/mapa.json" "$RAIZ/mapa-h.json"
 
+# Ajuda das rodadas 2 e seguintes. derivar.cjs copia um mapa e aplica um ajuste (tokens vencidos,
+# refresh tokens girando, resets_at e uso por caso). post.cjs imprime o HTTP que o servidor falso
+# devolve a uma renovação com o refresh token dado (prova que o antigo deixou de valer).
+cat > "$RAIZ/derivar.cjs" <<'JS'
+const fs = require('fs');
+const [, , entrada, saida, ajuste] = process.argv;
+const m = JSON.parse(fs.readFileSync(entrada, 'utf8'));
+const a = JSON.parse(ajuste);
+for (const t of a.venceu || []) m.tokens[t].venceu = true;
+for (const [t, extra] of Object.entries(a.tokens || {})) Object.assign(m.tokens[t], extra);
+if (a.refresh) m.refresh = a.refresh;
+if (a.renovacaoStatus) m.renovacaoStatus = a.renovacaoStatus;
+fs.writeFileSync(saida, JSON.stringify(m));
+JS
+cat > "$RAIZ/post.cjs" <<'JS'
+const [, , api, velho] = process.argv;
+const corpo = { grant_type: 'refresh_token', client_id: '9d1c250a-e61b-44d9-88ed-5944d1962f5e', scope: 'user:inference user:profile', refresh_token: velho };
+fetch(api + '/v1/oauth/token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) })
+  .then((r) => console.log(r.status));
+JS
+# ajustar.cjs trocado <caso>: põe a pasta trabalho (casa: team) na conta pessoal, com o login da
+# reserva-pessoal; o login dela vai para estacionado-trabalho e a reserva-pessoal fica vazia.
+# reserva-team e estacionado-trabalho ficam com o access token VENCIDO (expiresAt no passado).
+cat > "$RAIZ/ajustar.cjs" <<'JS'
+const fs = require('fs');
+const path = require('path');
+const [, , acao, caso] = process.argv;
+const ler = (a) => JSON.parse(fs.readFileSync(a, 'utf8'));
+const gravar = (a, o) => fs.writeFileSync(a, JSON.stringify(o, null, 2) + '\n');
+const pastaT = path.join(caso, 'trabalho', '.claude');
+const pastaP = path.join(caso, 'pessoal', '.claude-personal');
+const contas = path.join(caso, 'dados', 'contas');
+if (acao === 'trocado') {
+  const passado = Date.now() - 60000;
+  const credT = ler(path.join(pastaT, '.credentials.json'));
+  const resP = ler(path.join(contas, 'reserva-pessoal.json'));
+  gravar(path.join(contas, 'estacionado-trabalho.json'), { claudeAiOauth: { ...credT.claudeAiOauth, expiresAt: passado } });
+  credT.claudeAiOauth = resP.claudeAiOauth;
+  gravar(path.join(pastaT, '.credentials.json'), credT);
+  gravar(path.join(contas, 'reserva-pessoal.json'), {});
+  const resT = ler(path.join(contas, 'reserva-team.json'));
+  resT.claudeAiOauth.expiresAt = passado;
+  gravar(path.join(contas, 'reserva-team.json'), resT);
+  const claudeT = ler(path.join(pastaT, '.claude.json'));
+  const oauthTeam = claudeT.oauthAccount;
+  const oauthPessoal = ler(path.join(pastaP, '.claude.json')).oauthAccount;
+  claudeT.oauthAccount = oauthPessoal;
+  gravar(path.join(pastaT, '.claude.json'), claudeT);
+  gravar(path.join(contas, 'estado.json'), {
+    automatico: true,
+    pastas: { trabalho: { conta: 'pessoal', manual: false, travouPor: { limite: 'seven_day', resetsAt: new Date(Date.now() - 3600000).toISOString() } } },
+    contas: { team: { email: oauthTeam.emailAddress, oauthAccount: oauthTeam }, pessoal: { email: oauthPessoal.emailAddress, oauthAccount: oauthPessoal } },
+  });
+}
+JS
+GIROS='{"falso-refresh-team-pasta":{"de":"falso-team-pasta"},"falso-refresh-team-reserva":{"de":"falso-team-reserva"}}'
+
 # Servidores de teste: porta livre, mortos no trap. A rodada (b) segura o /usage com o arquivo
 # 'segurar'. O segundo servidor (caso h) confere outro e-mail para a reserva de pessoal.
 API=""
@@ -245,11 +302,86 @@ caso_j() {
 }
 afirma "(j) sessão da pasta pessoal: /conta trabalho troca a pasta pessoal, não a de trabalho" caso_j
 
+# (k) volta automática com credencial VENCIDA: a pasta trabalho está na conta pessoal, o limite
+# que a travou já resetou, e a reserva-team e o estacionado-trabalho têm o access token vencido
+# (o servidor falso responde 401 a ele). O vigia renova os dois (o refresh token gira no mesmo
+# arquivo e o antigo passa a ser recusado) e só então volta a pasta à conta team.
+C_K="$(novo_caso k sim)"
+node "$RAIZ/ajustar.cjs" trocado "$C_K"
+node "$RAIZ/derivar.cjs" "$RAIZ/mapa.json" "$RAIZ/mapa-k.json" \
+  "{\"venceu\":[\"falso-team-pasta\",\"falso-team-reserva\"],\"refresh\":$GIROS}"
+iniciar_servidor "$RAIZ/mapa-k.json" "$RAIZ/porta-k.txt"
+API_K="$API"
+API="$API_PRINCIPAL"
+EST_K="$C_K/dados/contas/estado.json"
+EV_K="$C_K/dados/contas/eventos.jsonl"
+PASTA_K="$C_K/trabalho/.claude/.credentials.json"
+REF_ESTAC_K="$(ler "$C_K/dados/contas/estacionado-trabalho.json" claudeAiOauth.refreshToken)"
+REF_RESERVA_K="$(ler "$C_K/dados/contas/reserva-team.json" claudeAiOauth.refreshToken)"
+RC_K=0
+API="$API_K"
+cli "$C_K" vigiar > "$RAIZ/k.txt" 2>&1 || RC_K=$?
+API="$API_PRINCIPAL"
+AGORA_MS="$(node -e 'process.stdout.write(String(Date.now()))')"
+caso_k() {
+  [ "$RC_K" -eq 0 ] && [ "$(ler "$EST_K" pastas.trabalho.conta)" = team ] \
+    && grep -qF '"tipo":"voltar"' "$EV_K" \
+    && [ "$(ler "$PASTA_K" claudeAiOauth.refreshToken)" != "$REF_ESTAC_K" ] \
+    && [ "$(ler "$C_K/dados/contas/reserva-team.json" claudeAiOauth.refreshToken)" != "$REF_RESERVA_K" ] \
+    && [ "$(ler "$PASTA_K" claudeAiOauth.expiresAt)" -gt "$AGORA_MS" ] \
+    && [ "$(ler "$C_K/dados/contas/reserva-team.json" claudeAiOauth.expiresAt)" -gt "$AGORA_MS" ] \
+    && [ "$(node "$RAIZ/post.cjs" "$API_K" "$REF_ESTAC_K")" = 400 ] \
+    && [ "$(node "$RAIZ/post.cjs" "$API_K" "$REF_RESERVA_K")" = 400 ]
+}
+afirma "(k) volta automática com reserva e estacionado vencidos" caso_k
+
+# (k2) a renovação responde 500: a rodada não cai (sai 0), a pasta fica onde está, o evento
+# renovacao_falhou é gravado sem credencial, e o status também funciona.
+C_K2="$(novo_caso k2 sim)"
+node "$RAIZ/ajustar.cjs" trocado "$C_K2"
+node "$RAIZ/derivar.cjs" "$RAIZ/mapa.json" "$RAIZ/mapa-k2.json" \
+  "{\"venceu\":[\"falso-team-pasta\",\"falso-team-reserva\"],\"refresh\":$GIROS,\"renovacaoStatus\":500}"
+iniciar_servidor "$RAIZ/mapa-k2.json" "$RAIZ/porta-k2.txt"
+API_K2="$API"
+API="$API_PRINCIPAL"
+EV_K2="$C_K2/dados/contas/eventos.jsonl"
+cp "$C_K2/trabalho/.claude/.credentials.json" "$RAIZ/cred-k2-antes.json"
+RC_K2=0; RC_K2S=0
+API="$API_K2"
+cli "$C_K2" vigiar > "$RAIZ/k2.txt" 2>&1 || RC_K2=$?
+cli "$C_K2" status > "$RAIZ/k2-status.txt" 2>&1 || RC_K2S=$?
+API="$API_PRINCIPAL"
+caso_k2() {
+  [ "$RC_K2" -eq 0 ] && [ "$RC_K2S" -eq 0 ] \
+    && [ "$(ler "$C_K2/dados/contas/estado.json" pastas.trabalho.conta)" = pessoal ] \
+    && cmp -s "$C_K2/trabalho/.claude/.credentials.json" "$RAIZ/cred-k2-antes.json" \
+    && grep -qF '"tipo":"renovacao_falhou"' "$EV_K2" \
+    && contem "$(cat "$RAIZ/k2.txt")" "esperar trabalho"
+}
+afirma "(k2) renovação 500 não derruba a rodada: grava renovacao_falhou e espera" caso_k2
+
+# (n) leitura de uso velha (429 devolve a última, de 3 h atrás, a 99%) não decide troca: a conta
+# fica sem dado e a pasta fica onde está.
+C_N="$(novo_caso n sim)"
+node -e "
+const fs = require('fs');
+const velho = { five_hour: { utilization: 99, resets_at: new Date(Date.now() + 3600000).toISOString() }, seven_day: { utilization: 99, resets_at: new Date(Date.now() + 86400000).toISOString() } };
+fs.writeFileSync(process.argv[1], JSON.stringify({ team: { esperaAte: Date.now() + 600000, leitura: { em: Date.now() - 3 * 3600000, dados: velho } } }));
+" "$C_N/dados/contas/uso-cache.json"
+RC_N=0
+cli "$C_N" vigiar > "$RAIZ/n.txt" 2>&1 || RC_N=$?
+caso_n() {
+  [ "$RC_N" -eq 0 ] && [ "$(ler "$C_N/dados/contas/estado.json" pastas.trabalho.conta)" = team ] \
+    && [ ! -e "$C_N/dados/contas/eventos.jsonl" ] && contem "$(cat "$RAIZ/n.txt")" "esperar trabalho: sem dado de uso de team"
+}
+afirma "(n) leitura de uso de 3 h atrás não decide troca" caso_n
+
 # (g) nenhuma credencial (valor falso ou não) aparece na saída nem no log
 caso_g() {
   local rc=0
   grep -qF "falso-" "$RAIZ/a-vigiar.txt" "$RAIZ/b1.txt" "$RAIZ/b2.txt" "$RAIZ/c1.txt" "$RAIZ/c2.txt" \
-    "$RAIZ/f.txt" "$RAIZ/h.txt" "$RAIZ/status-a.txt" "$EV_A" "$EV_H" || rc=$?
+    "$RAIZ/f.txt" "$RAIZ/h.txt" "$RAIZ/status-a.txt" "$EV_A" "$EV_H" \
+    "$RAIZ/k.txt" "$RAIZ/k2.txt" "$RAIZ/k2-status.txt" "$RAIZ/n.txt" "$EV_K" "$EV_K2" || rc=$?
   [ "$rc" -eq 1 ]
 }
 afirma "(g) credencial nunca aparece na saída nem no log" caso_g

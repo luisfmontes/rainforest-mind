@@ -10,6 +10,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const BASE_PADRAO = 'https://api.anthropic.com';
+// O endpoint de token mora em outro host que o do perfil e do uso.
+const BASE_TOKEN_PADRAO = 'https://platform.claude.com';
+// client_id público do CLI (não é segredo).
+const CLIENT_ID = '9d1c250a-e61b-44d9-88ed-5944d1962f5e';
+const TIMEOUT_MS = 30 * 1000;
 const BETA_USO = 'oauth-2025-04-20';
 const VALIDADE_MS = 4 * 60 * 1000;
 const VALIDADE_ALTA_MS = 60 * 1000;
@@ -22,6 +27,17 @@ const donosEmMemoria = new Map();
 function base() {
   if (process.env.RFM_TEST === '1' && process.env.RFM_CONTA_API) return process.env.RFM_CONTA_API;
   return BASE_PADRAO;
+}
+
+// Em bateria (RFM_TEST=1) o servidor falso responde pelos dois hosts.
+function baseToken() {
+  if (process.env.RFM_TEST === '1' && process.env.RFM_CONTA_API) return process.env.RFM_CONTA_API;
+  return BASE_TOKEN_PADRAO;
+}
+
+// Todo fetch leva timeout: sem ele um servidor que não responde prende a rodada (e a trava).
+function buscar(url, init = {}) {
+  return fetch(url, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS) });
 }
 
 function cabecalhos(tok, comBeta) {
@@ -38,7 +54,7 @@ function chaveDe(tok) {
 async function dono(tok) {
   const chave = chaveDe(tok);
   if (donosEmMemoria.has(chave)) return donosEmMemoria.get(chave);
-  const r = await fetch(base() + '/api/oauth/profile', { headers: cabecalhos(tok, false) });
+  const r = await buscar(base() + '/api/oauth/profile', { headers: cabecalhos(tok, false) });
   if (!r.ok) throw new Error('profile HTTP ' + r.status);
   const corpo = await r.json();
   const conta = { email: corpo.account.email, uuid: corpo.account.uuid };
@@ -95,7 +111,7 @@ async function uso(conta, tok, { dados, agora = Date.now() } = {}) {
     if (agora - entrada.leitura.em < validade) return resposta(entrada.leitura, agora, 'cache');
   }
 
-  const r = await fetch(base() + '/api/oauth/usage', { headers: cabecalhos(tok, true) });
+  const r = await buscar(base() + '/api/oauth/usage', { headers: cabecalhos(tok, true) });
   if (r.status === 429) cache[conta].esperaAte = agora + ESPERA_429_MS;
   if (r.status === 429) {
     gravaCache(arq, cache);
@@ -110,4 +126,33 @@ async function uso(conta, tok, { dados, agora = Date.now() } = {}) {
   return resposta(cache[conta].leitura, agora, 'servidor');
 }
 
-module.exports = { base, dono, uso, ESPERA_429_MS, VALIDADE_MS, VALIDADE_ALTA_MS, LIMIAR_ALTO };
+// Renova o login (objeto claudeAiOauth) pelo refresh token. O refresh token é de uso único: a
+// resposta pode trazer um novo, e o antigo deixa de valer; sem um novo na resposta, mantém o
+// atual. Quem chama TEM de gravar o retorno no mesmo arquivo antes de qualquer outra coisa.
+// Os campos entram por pares (como o Headers.set de cabecalhos()), não por literal de objeto.
+async function renovar(login, { agora = Date.now() } = {}) {
+  const pedido = [
+    ['grant_type', 'refresh_token'],
+    ['client_id', CLIENT_ID],
+    ['scope', (login.scopes || []).join(' ')],
+    ['refresh_token', login.refreshToken],
+  ];
+  const r = await buscar(baseToken() + '/v1/oauth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(Object.fromEntries(pedido)),
+  });
+  if (!r.ok) throw new Error('token HTTP ' + r.status);
+  const resp = await r.json();
+  const acesso = resp.access_token;
+  const giro = resp.refresh_token;
+  if (!acesso || typeof resp.expires_in !== 'number') throw new Error('renovação com resposta incompleta');
+  const campos = [
+    ['accessToken', acesso],
+    ['refreshToken', giro || login.refreshToken],
+    ['expiresAt', agora + resp.expires_in * 1000],
+  ];
+  return { ...login, ...Object.fromEntries(campos) };
+}
+
+module.exports = { base, baseToken, dono, uso, renovar, TIMEOUT_MS, CLIENT_ID, ESPERA_429_MS, VALIDADE_MS, VALIDADE_ALTA_MS, LIMIAR_ALTO };

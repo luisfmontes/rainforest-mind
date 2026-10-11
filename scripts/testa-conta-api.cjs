@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @categoria: bateria
+// rainforest-gate: dados-de-exemplo — tokens FALSOS (falsa-, falso-); nenhum valor real.
 //
 // Bateria do servidor da conta (scripts/lib/conta-api.cjs): identidade e uso com cache.
 // Uso: node scripts/testa-conta-api.cjs
@@ -41,8 +42,22 @@ function enviar(res, status, obj) {
 // Servidor local com contagem por rota. `modo` '429' faz o servidor responder 429 ao uso.
 function comServidor(fn, usoServidor = fixUso) {
   return new Promise((resolve, reject) => {
-    const est = { perfilReqs: 0, usoReqs: 0, modo: 'ok', usoDados: usoServidor, betaOk: null, autOk: null };
+    const est = {
+      perfilReqs: 0, usoReqs: 0, modo: 'ok', usoDados: usoServidor, betaOk: null, autOk: null,
+      tokenReqs: 0, tokenCorpo: null, tokenTipo: null, tokenStatus: 200, tokenResposta: null,
+    };
     const srv = http.createServer((req, res) => {
+      if (req.method === 'POST' && req.url === '/v1/oauth/token') {
+        est.tokenReqs++;
+        est.tokenTipo = req.headers['content-type'];
+        let corpo = '';
+        req.on('data', (d) => { corpo += d; });
+        req.on('end', () => {
+          est.tokenCorpo = JSON.parse(corpo);
+          enviar(res, est.tokenStatus, est.tokenResposta || {});
+        });
+        return undefined;
+      }
       if (req.url === '/api/oauth/profile') {
         est.perfilReqs++;
         return enviar(res, 200, fixPerfil);
@@ -151,6 +166,84 @@ caso('(f) sem RFM_TEST=1 a base fica na Anthropic, RFM_CONTA_API é ignorada', a
   if (antes.t === undefined) delete process.env.RFM_TEST; else process.env.RFM_TEST = antes.t;
   if (antes.a === undefined) delete process.env.RFM_CONTA_API; else process.env.RFM_CONTA_API = antes.a;
   const ok = semFlag === 'https://api.anthropic.com' && comFlag === 'http://127.0.0.1:9';
+  return { ok, reqs: 0, linha: 'semFlag=' + semFlag + ' comFlag=' + comFlag };
+});
+
+// Login falso no formato do claudeAiOauth.
+function loginFalso() {
+  return {
+    accessToken: 'falso-acesso-velho',
+    refreshToken: 'falso-giro-velho',
+    expiresAt: 1,
+    scopes: ['user:inference', 'user:profile'],
+    subscriptionType: 'max',
+  };
+}
+
+caso('(g) renovar manda o POST JSON do CLI e devolve o login girado', () =>
+  comServidor(async ({ est }) => {
+    est.tokenResposta = { access_token: 'falso-acesso-novo', refresh_token: 'falso-giro-novo', expires_in: 28800, scope: 'user:inference user:profile' };
+    const novo = await API.renovar(loginFalso(), { agora: T0 });
+    const b = est.tokenCorpo;
+    const ok = est.tokenReqs === 1 && est.tokenTipo === 'application/json'
+      && b.grant_type === 'refresh_token' && b.refresh_token === 'falso-giro-velho'
+      && b.client_id === '9d1c250a-e61b-44d9-88ed-5944d1962f5e' && b.scope === 'user:inference user:profile'
+      && novo.accessToken === 'falso-acesso-novo' && novo.refreshToken === 'falso-giro-novo'
+      && novo.expiresAt === T0 + 28800 * 1000 && novo.subscriptionType === 'max'
+      && JSON.stringify(novo.scopes) === JSON.stringify(loginFalso().scopes);
+    return { ok, reqs: est.tokenReqs, linha: 'tipo=' + est.tokenTipo + ' expiresAt-T0=' + (novo.expiresAt - T0) };
+  }));
+
+caso('(h) renovar sem refresh token na resposta mantém o atual', () =>
+  comServidor(async ({ est }) => {
+    est.tokenResposta = { access_token: 'falso-acesso-novo', expires_in: 3600 };
+    const novo = await API.renovar(loginFalso(), { agora: T0 });
+    const ok = novo.refreshToken === 'falso-giro-velho' && novo.accessToken === 'falso-acesso-novo' && novo.expiresAt === T0 + 3600 * 1000;
+    return { ok, reqs: est.tokenReqs, linha: 'refreshIgual=' + (novo.refreshToken === 'falso-giro-velho') };
+  }));
+
+caso('(i) renovar com HTTP 500 lança sem a credencial na mensagem', () =>
+  comServidor(async ({ est }) => {
+    est.tokenStatus = 500;
+    let msg = null;
+    try {
+      await API.renovar(loginFalso(), { agora: T0 });
+    } catch (e) {
+      msg = e.message;
+    }
+    const ok = msg === 'token HTTP 500' && !msg.includes('falso-');
+    return { ok, reqs: est.tokenReqs, linha: 'erro=' + msg };
+  }));
+
+caso('(j) todo fetch (perfil, uso, token) leva timeout por signal', () =>
+  comServidor(async ({ dados }) => {
+    const original = global.fetch;
+    const sinais = [];
+    global.fetch = (url, init = {}) => {
+      sinais.push(init.signal instanceof AbortSignal);
+      return original(url, init);
+    };
+    try {
+      await API.dono('falso-para-sinal');
+      await API.uso('pessoal', credFalsa, { dados, agora: T0 });
+      await API.renovar(loginFalso(), { agora: T0 }).catch(() => {});
+    } finally {
+      global.fetch = original;
+    }
+    const ok = sinais.length === 3 && sinais.every(Boolean) && API.TIMEOUT_MS === 30000;
+    return { ok, reqs: sinais.length, linha: 'sinais=' + sinais.join(',') };
+  }));
+
+caso('(l) o endpoint de token real é o platform.claude.com; em bateria vale RFM_CONTA_API', async () => {
+  const antes = { t: process.env.RFM_TEST, a: process.env.RFM_CONTA_API };
+  process.env.RFM_CONTA_API = 'http://127.0.0.1:9';
+  delete process.env.RFM_TEST;
+  const semFlag = API.baseToken();
+  process.env.RFM_TEST = '1';
+  const comFlag = API.baseToken();
+  if (antes.t === undefined) delete process.env.RFM_TEST; else process.env.RFM_TEST = antes.t;
+  if (antes.a === undefined) delete process.env.RFM_CONTA_API; else process.env.RFM_CONTA_API = antes.a;
+  const ok = semFlag === 'https://platform.claude.com' && comFlag === 'http://127.0.0.1:9';
   return { ok, reqs: 0, linha: 'semFlag=' + semFlag + ' comFlag=' + comFlag };
 });
 
