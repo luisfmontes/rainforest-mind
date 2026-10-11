@@ -143,7 +143,10 @@ todo mundo.
   para conferir se o worktree correspondente já devia ter sumido no passo 2.
 - **Arquivo temporário**: log de comando, harness descartável, artefato de
   teste que sobrou de uma sessão que não passou pelo `fechar`. Mesma regra
-  do passo 2: confira de quem é antes de apagar.
+  do passo 2: confira de quem é antes de apagar. Também é removível o
+  contador de despachos `<dados>/fluxos/<slug>/` de um fluxo que o `estado.cjs
+  listar` mostra `(completo)` (D16): é rastro fora do repo, sem histórico a
+  preservar.
 
 ## Condição de parada
 
