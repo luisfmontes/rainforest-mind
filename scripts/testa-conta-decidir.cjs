@@ -144,6 +144,26 @@ caso("limite de troca vem da config, não é fixo (trocarEm 50 troca a team em 5
   return r.length === 1 && r[0].tipo === "trocar" && r[0].pasta === "trabalho";
 });
 
+// pasta em casa não troca enquanto a outra está fora (evita as duas presas)
+caso("pasta em casa não troca enquanto a outra está fora (evita as duas presas)", () => {
+  // trabalho trocada para pessoal; pessoal em casa com a própria conta em 97% na 5 h;
+  // team zerou (5 h 10, semana 10); agora antes do reset que travou a trabalho
+  const agora = Date.parse("2026-10-13T12:00:00Z");
+  const usos = deriva("pessoal", "five_hour", "utilization", 97,
+    deriva("team", "five_hour", "utilization", 10, deriva("team", "seven_day", "utilization", 10)));
+  const r = rodar(trocadaParaPessoal(), usos, { agora });
+  return !r.some((a) => a.tipo === "trocar" && a.pasta === "pessoal");
+});
+
+caso("mesmo cenário depois do reset da trabalho: volta da trabalho, e nenhum trocar da pessoal no mesmo tique", () => {
+  const agora = Date.parse("2026-10-14T00:00:00Z");
+  const usos = deriva("pessoal", "five_hour", "utilization", 97,
+    deriva("team", "five_hour", "utilization", 10, deriva("team", "seven_day", "utilization", 10)));
+  const r = rodar(trocadaParaPessoal(), usos, { agora });
+  return r.length === 1 && r[0].tipo === "voltar" && r[0].pasta === "trabalho"
+    && !r.some((a) => a.tipo === "trocar");
+});
+
 // (c) volta depois do resets_at do limite que travou; e antes, nada
 caso("volta depois do resets_at do limite que travou", () => {
   const agora = Date.parse("2026-10-14T00:00:00Z");

@@ -25,6 +25,8 @@
 //   - pasta em casa: troca para a outra conta quando a em uso chega a trocarEm (>=) na
 //     five_hour OU na seven_day, SÓ se a outra está abaixo de destinoMax5h (<) na 5 h E
 //     abaixo de destinoMaxSemana (<) na semana, E tem reserva;
+//   - pasta em casa não troca enquanto outra pasta está fora de casa: evita as duas presas
+//     (cada volta pede a reserva que está na outra, e nenhuma das duas volta);
 //   - pasta trocada: volta à conta de casa quando agora passou do resetsAt do limite que
 //     travou (estritamente depois). Pasta trocada não recebe nova troca nesta função:
 //     a troca seguinte fica para quando a volta acontecer;
@@ -46,7 +48,7 @@ function decidir({ pastas, usos, reservas, config, agora }) {
     const pasta = pastas[nome];
     if (pasta.manual) continue;
     const acao = pasta.conta === pasta.casa
-      ? decidirEmCasa(nome, pasta, usos, reservas, config, agoraMs)
+      ? decidirEmCasa(nome, pasta, pastas, usos, reservas, config, agoraMs)
       : decidirVolta(nome, pasta, reservas, agoraMs);
     if (acao) acoes.push(acao);
   }
@@ -63,11 +65,13 @@ function decidirVolta(nome, pasta, reservas, agoraMs) {
     `${t.limite} zerou em ${t.resetsAt}`);
 }
 
-function decidirEmCasa(nome, pasta, usos, reservas, config, agoraMs) {
+function decidirEmCasa(nome, pasta, pastas, usos, reservas, config, agoraMs) {
   const uso = usos[pasta.conta];
   if (!dadosCompletos(uso)) return esperar(nome, pasta.conta, `sem dado de uso de ${pasta.conta}`);
   const limite = LIMITES.find((l) => uso[l].utilization >= config.trocarEm);
   if (!limite) return null;
+  const outraFora = Object.keys(pastas).some((k) => k !== nome && pastas[k].conta !== pastas[k].casa);
+  if (outraFora) return null;
   const destino = outraConta(pasta.conta);
   if (!dadosCompletos(usos[destino])) return esperar(nome, destino, `sem dado de uso de ${destino}`);
   const d = usos[destino];
