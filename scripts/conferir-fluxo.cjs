@@ -36,6 +36,7 @@ const { execFileSync } = require('child_process');
 const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 const { contarOcorrencias } = require(path.join(__dirname, '..', 'hooks', 'lib', 'contar-ocorrencias.cjs'));
 const { caminhoDoc } = require(path.join(__dirname, '..', 'hooks', 'lib', 'pastas-docs.cjs'));
+const { lerTetoDeclarado } = require(path.join(__dirname, '..', 'hooks', 'lib', 'teto-despachos.cjs'));
 
 // A raiz é a do PROJETO em que se trabalha, mesma cadeia do estado.cjs
 const RAIZ = process.env.RFM_ESTADO_ROOT
@@ -231,6 +232,10 @@ function cmdCobertura() {
   const decisoes_citadas = new Set();
   const erros = [];
   const paralelasComArquivos = []; // Para checar overlaps
+
+  // D14: o mesmo leitor do hook gate-teto-despachos; cabeçalho ilegível recusa aqui, não só no despacho.
+  const tetoDeclarado = lerTetoDeclarado(conteudo_plano);
+  if (tetoDeclarado.erro) erros.push(`plano ${arquivo_plano}: ${tetoDeclarado.erro}`);
 
   for (const tarefa of tarefas) {
     const { numero, nome, atende, tipo, paralela, dependeDe, arquivos, mutacao } = tarefa;
