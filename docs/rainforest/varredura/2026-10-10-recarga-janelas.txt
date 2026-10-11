@@ -1,0 +1,55 @@
+Data: 2026-10-10
+Termos: reload-plugins, recarregar, plugins-em-dia
+
+$ gh issue list --state all --search "reload-plugins" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "recarregar" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "plugins-em-dia" --limit 200 --json number,title,state
+[{"number":466,"state":"OPEN","title":"Painel de PR e plugins-em-dia: achados menores da revisao do PR #464"},{"number":457,"state":"CLOSED","title":"mod.tsx chama node pelo nome (busca na pasta atual no Windows)"},{"number":221,"state":"CLOSED","title":"saude.cjs quebra com 'path argument undefined' quando ha duas config dirs e a versao do repo esta a frente da instalada"},{"number":174,"state":"CLOSED","title":"Nada barra \"Fecha #N\" no corpo do PR — a regra está escrita há 10 dias e o erro repetiu"},{"number":258,"state":"CLOSED","title":"gate-staging-total: bloqueia texto que cita comando git, e resolve o repo errado com -C"},{"number":3,"state":"CLOSED","title":"conferir esta vermelho desde 11/08 e nao tem como ficar verde: 35 abertas sem gancho, e o reparar recusa sem texto a mao"}]
+
+
+$ gh pr list --state all --search "reload-plugins" --limit 200 --json number,title,state
+[{"number":418,"state":"MERGED","title":"Abertura inteira na conta de trabalho via session.append"}]
+
+
+$ gh pr list --state all --search "recarregar" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "plugins-em-dia" --limit 200 --json number,title,state
+[{"number":464,"state":"MERGED","title":"Mods: painel de PR e plugins-em-dia (1.55.0)"},{"number":71,"state":"MERGED","title":"gitCommitSha ausente do registro vira aviso de indeterminacao, nao ok silencioso"},{"number":20,"state":"MERGED","title":"O verde mais saudavel do painel era falso: o /saude passa a medir o que executa"},{"number":217,"state":"MERGED","title":"Contrato de territorio: AdvPL vira o primeiro, e o repo publico perde os identificadores de trabalho"},{"number":8,"state":"MERGED","title":"Regra 17 estava cega por construcao: o pid gravado era uma shell efemera"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"}]
+
+
+$ git ls-remote --heads origin | grep -F "reload-plugins"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "recarregar"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "plugins-em-dia"
+(vazio)
+
+$ git log --all --grep="reload-plugins" --oneline
+(vazio)
+
+$ git log --all --grep="recarregar" --oneline
+1f5007f0 Mods: painel de PR e plugins-em-dia (1.55.0) (#464)
+289837d8 design: mods do painel de PR e plugins em dia
+
+$ git log --all --grep="plugins-em-dia" --oneline
+1f5007f0 Mods: painel de PR e plugins-em-dia (1.55.0) (#464)
+527b9e98 Versao 1.55.0: docs do painel de PR e do plugins-em-dia; userConfig restaurado
+1bba97c5 Teste: a opcao plugins do userConfig chega ao mod e troca a lista
+a0832f5c Mod: painel de PR (/pr) e /plugins-em-dia ligados ao mod do plugin
+8a052cf4 plugins-em-dia: logica pura e bateria do filtro de instalacao user
+
+$ cat <dados>/ideias.jsonl
+{"id":"append-conta-org-perde-flag-no-reload","titulo":"Mod da abertura pode perder o append da conta org depois de /reload-plugins"}
+{"id":"plugins-em-dia-recarga-multi-janela","titulo":"Recarga de plugin em todas as janelas por marcador"}
+
+

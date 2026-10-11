@@ -1,0 +1,73 @@
+{
+  "slug": "2026-10-10-recarga-janelas",
+  "titulo": "Recarga do plugin em todas as janelas por marcador",
+  "criado_em": "2026-10-10",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "em": "2026-10-10"
+  },
+  "plano": {
+    "status": "ok",
+    "em": "2026-10-10"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-10",
+    "tarefas_ok": 3,
+    "tarefas": 3,
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-10-recarga-janelas",
+    "saida": "tarefa 1: vermelho; tarefa 2: vermelho; tarefa 3: pulada (n/a)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "o mesmo marcador age uma vez so"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "marcador de outra janela recarrega uma vez"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "documentacao e versao"
+      }
+    ],
+    "em": "2026-10-10"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "46abec197879a396cacc118be51b8b84a763874a",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "abedd99a8236ea4da",
+        "veredito": "ok",
+        "em": "2026-10-10",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/2fa5b85b-bd65-4f9c-9b7b-9c53e2cc811d/subagents/agent-abedd99a8236ea4da.jsonl"
+      }
+    ],
+    "achados": 7,
+    "base": "a4e4b3e27e886ada68c8e805fbef1415c37f5524",
+    "head": "46abec19",
+    "em": "2026-10-10"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "claude plugin test .",
+    "saida": "120 pass, 0 fail; baterias recarga 7, plugins-em-dia 11, relogio 27, painel 23, todas 0 falha",
+    "sensor_externo": "claude plugin test .",
+    "em": "2026-10-10"
+  },
+  "fechar": {
+    "status": "ok",
+    "em": "2026-10-10"
+  }
+}
