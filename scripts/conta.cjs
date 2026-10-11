@@ -8,6 +8,8 @@
 //   node scripts/conta.cjs vigiar
 //   node scripts/conta.cjs eventos --desde <ms>
 //   node scripts/conta.cjs preparar <pessoal|trabalho>
+//   node scripts/conta.cjs pessoal|trabalho [--pasta trabalho|pessoal]   (atalho de trocar)
+//   node scripts/conta.cjs agendar [--imprimir]  |  desagendar
 //
 // Nunca imprime nem grava credencial. Quem diz a conta de uma pasta é o servidor
 // (conta-api.dono), nunca o .claude.json. Toda troca e volta vira uma linha em
@@ -23,7 +25,9 @@ const { mover, gravarAtomico: gravarCred } = require('./lib/conta-mover.cjs');
 const { acharExecutavelClaude } = require('./lib/achar-executavel-claude.cjs');
 const API = require('./lib/conta-api.cjs');
 
-const CONFIG = { trocarEm: 97, destinoMax5h: 60, destinoMaxSemana: 85 };
+// Padrão dos limiares (D4). Vale o que o arquivo <dados>/contas/config.json diz, chave a chave.
+const PADRAO_CONFIG = { trocarEm: 97, destinoMax5h: 60, destinoMaxSemana: 85 };
+const TAREFA = '\\ClaudeVigias\\troca-de-conta';
 const TRAVA_MS = 5 * 60 * 1000;
 const CONTAS = ['team', 'pessoal'];
 const PASTAS = ['trabalho', 'pessoal'];
@@ -57,6 +61,7 @@ function ctx() {
     contas,
     pastas: pastasDir(),
     estado: path.join(contas, 'estado.json'),
+    config: path.join(contas, 'config.json'),
     eventos: path.join(contas, 'eventos.jsonl'),
     lock: path.join(contas, 'vigia.lock'),
   };
@@ -127,6 +132,27 @@ function lerEstado(c) {
 }
 
 const gravarEstado = (c, estado) => gravarAtomico(c.estado, estado);
+
+// Limiares em uso (D4): padrão, com as chaves do config.json por cima. Arquivo ausente ou
+// ilegível = padrão. Chave que não é número de 1 a 100 = padrão, com aviso no stderr.
+function lerConfig(c) {
+  const config = { ...PADRAO_CONFIG };
+  let bruto;
+  try {
+    bruto = JSON.parse(fs.readFileSync(c.config, 'utf8'));
+  } catch (e) {
+    if (e.code !== 'ENOENT') process.stderr.write(`aviso: ${c.config} ilegível; usando os padrões\n`);
+    return config;
+  }
+  if (!bruto || typeof bruto !== 'object' || Array.isArray(bruto)) return config;
+  for (const chave of Object.keys(PADRAO_CONFIG)) {
+    if (!Object.hasOwn(bruto, chave)) continue;
+    const v = bruto[chave];
+    if (typeof v === 'number' && v >= 1 && v <= 100) config[chave] = v;
+    else process.stderr.write(`aviso: config.json ${chave}=${JSON.stringify(v)} inválido (1 a 100); usando ${PADRAO_CONFIG[chave]}\n`);
+  }
+  return config;
+}
 
 // Trava com dono pelo PID e validade de 5 min. O arquivo fica fechado depois de gravado.
 function pegarTrava(lock) {
@@ -252,8 +278,8 @@ function contaDoEmail(estado, email) {
   return CONTAS.find((conta) => estado.contas[conta] && estado.contas[conta].email === email) || null;
 }
 
-function limiteQueTravou(uso) {
-  const l = LIMITES.find((x) => uso && uso[x] && uso[x].utilization >= CONFIG.trocarEm);
+function limiteQueTravou(uso, config) {
+  const l = LIMITES.find((x) => uso && uso[x] && uso[x].utilization >= config.trocarEm);
   return l ? { limite: l, resetsAt: uso[l].resets_at } : null;
 }
 
@@ -340,6 +366,8 @@ async function status(c) {
   const est = (P) => (estacionadoPronto(c, P) ? 'presente' : 'ausente');
   linhas.push(`estacionados: trabalho ${est('trabalho')} · pessoal ${est('pessoal')}`);
   linhas.push(`troca automática: ${estado.automatico ? 'ligada' : 'desligada'}`);
+  const config = lerConfig(c);
+  linhas.push(`limites: trocar em ${config.trocarEm}% · destino abaixo de ${config.destinoMax5h}% (5 h) e ${config.destinoMaxSemana}% (semana)`);
   console.log(linhas.join('\n'));
   return 0;
 }
@@ -409,7 +437,8 @@ async function vigiar(c) {
       const r = reservaPronta(c, conta);
       if (r) reservas[conta] = { expiresAt: r.claudeAiOauth.expiresAt };
     }
-    const acoes = decidir({ pastas, usos, reservas, config: CONFIG, agora: Date.now() });
+    const config = lerConfig(c);
+    const acoes = decidir({ pastas, usos, reservas, config, agora: Date.now() });
 
     let codigo = 0;
     for (const a of acoes) {
@@ -420,7 +449,7 @@ async function vigiar(c) {
       const de = estado.pastas[a.pasta].conta;
       let r;
       if (a.tipo === 'trocar') {
-        const travou = limiteQueTravou(usos[de]);
+        const travou = limiteQueTravou(usos[de], config);
         r = await aplicarTroca(c, estado, {
           P: a.pasta,
           para: a.conta,
@@ -504,6 +533,60 @@ async function preparar(c, args) {
   }
 }
 
+// Vigia agendado (D5): a cada 1 minuto, sem /ED (um EndBoundary vencido já matou vigias desta
+// máquina em silêncio). Caminhos absolutos achados na hora.
+function raizWindows() {
+  return process.env.SystemRoot || process.env.windir || 'C:\\Windows';
+}
+
+function schtasksExe() {
+  if (process.env.RFM_TEST === '1' && process.env.RFM_CONTA_SCHTASKS) return process.env.RFM_CONTA_SCHTASKS;
+  return path.join(raizWindows(), 'System32', 'schtasks.exe');
+}
+
+// Igual ao preparar: um executável .js/.cjs (só em bateria) roda pelo node.
+function chamarSchtasks(argv) {
+  const exe = schtasksExe();
+  const opcoes = { stdio: 'inherit' };
+  return /\.(c|m)?js$/i.test(exe)
+    ? spawnSync(process.execPath, [exe, ...argv], opcoes)
+    : spawnSync(exe, argv, opcoes);
+}
+
+function linhaDoComando(exe, argv) {
+  return [exe, ...argv].map((a) => (/[\s"]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a)).join(' ');
+}
+
+function montarAgendamento() {
+  const conhost = path.join(raizWindows(), 'System32', 'conhost.exe');
+  const acao = `"${conhost}" --headless "${process.execPath}" "${__filename}" vigiar`;
+  const argv = ['/Create', '/TN', TAREFA, '/SC', 'MINUTE', '/MO', '1', '/F', '/TR', acao];
+  return argv;
+}
+
+function agendar(c, args) {
+  const argv = montarAgendamento();
+  if (args.includes('--imprimir')) {
+    console.log(linhaDoComando(schtasksExe(), argv));
+    return 0;
+  }
+  const faltam = ['team', 'pessoal'].filter((conta) => !reservaPronta(c, conta));
+  if (faltam.length) {
+    return sair(1, `não agendo: falta a reserva de ${faltam.map((k) => NOME[k]).join(' e ')} (rode preparar antes)`);
+  }
+  const r = chamarSchtasks(argv);
+  if (r.error) return sair(1, 'não consegui rodar o schtasks: ' + r.error.message);
+  const codigo = r.status === null ? 1 : r.status;
+  return sair(codigo, codigo ? 'schtasks não agendou o vigia' : 'vigia agendado: a cada 1 minuto');
+}
+
+function desagendar() {
+  const r = chamarSchtasks(['/Delete', '/TN', TAREFA, '/F']);
+  if (r.error) return sair(1, 'não consegui rodar o schtasks: ' + r.error.message);
+  const codigo = r.status === null ? 1 : r.status;
+  return sair(codigo, codigo ? 'schtasks não removeu o vigia' : 'vigia desagendado');
+}
+
 function eventos(c, args) {
   const bruto = valorDe(args, '--desde');
   const desde = Number(bruto);
@@ -521,10 +604,14 @@ async function main(argv) {
   const c = ctx();
   if (cmd === 'status') return status(c);
   if (cmd === 'trocar') return trocar(c, resto);
+  // Atalho do D7: /conta pessoal e /conta trabalho são trocar <conta>, com as mesmas flags.
+  if (cmd === 'pessoal' || cmd === 'trabalho') return trocar(c, [cmd, ...resto]);
   if (cmd === 'vigiar') return vigiar(c);
   if (cmd === 'eventos') return eventos(c, resto);
   if (cmd === 'preparar') return preparar(c, resto);
-  return sair(2, 'uso: conta.cjs [status | trocar <pessoal|trabalho> [--pasta trabalho|pessoal] | vigiar | eventos --desde <ms> | preparar <pessoal|trabalho>]');
+  if (cmd === 'agendar') return agendar(c, resto);
+  if (cmd === 'desagendar') return desagendar();
+  return sair(2, 'uso: conta.cjs [status | pessoal|trabalho [--pasta trabalho|pessoal] | trocar <pessoal|trabalho> [--pasta trabalho|pessoal] | vigiar | eventos --desde <ms> | preparar <pessoal|trabalho> | agendar [--imprimir] | desagendar]');
 }
 
 main(process.argv.slice(2)).catch((e) => {
