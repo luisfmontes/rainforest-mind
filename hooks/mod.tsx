@@ -25,7 +25,8 @@ import { register as pluginsEmDia } from './plugins-em-dia.ts'
 import { register as pr } from './pr.tsx'
 import { register as conta } from './conta.ts'
 import { register as compactar } from './compactar.ts'
-import { escolherExecutavel, linhaPr, localizadores } from './pr-puro.mjs'
+import { linhaPr } from './pr-puro.mjs'
+import { acharNode } from './conta-puro.mjs'
 import { CHECAR_MIN_FERRAMENTAS, deferimentos, lerResolvidosChecker, lerRespostaChecker, marcadoresEmArquivo, montarPromptChecker, perguntaDecisao, rascunhoFazAgora } from './deixado-puro.mjs'
 import { largura, cortar, semControle } from './faixa-puro.mjs'
 import { ESCRITORAS, escritaDe, mapaVazio, registrar, trocarCaminho } from './mapa-puro.mjs'
@@ -74,7 +75,6 @@ const nodeCaminho = atom({ plugin: 'rainforest-mind', key: 'nodeCaminho' } as co
 const nodeFalhouEm = atom({ plugin: 'rainforest-mind', key: 'nodeFalhouEm' } as const, 0)
 // Dentro deste prazo o fracasso vale: nada de refazer os dois localizadores (teto de 10 s
 // cada) a cada poll do relogio, gravacao de erros ou desvio (#480). Depois tenta de novo.
-const NODE_FALHA_TTL_MS = 300_000
 const prResumo = atom({ plugin: 'rainforest-mind', key: 'prResumo' } as const, null as RainforestMindPrResumo | null)
 const PANE_PR = 'rainforest-mind-pr'
 
@@ -278,33 +278,24 @@ async function raizDoWindows($: EngineInterface): Promise<string | undefined> {
 // gh em hooks/pr.tsx): chamado pelo nome, o Windows procura o executavel primeiro na pasta atual
 // e um repo com node.exe na raiz rodaria codigo dele. O localizador roda na pasta do plugin.
 // Sem node achado devolve null e quem chama apaga so a propria peca.
+// O localizador e o prazo moram em conta-puro.mjs (acharNode), compartilhados com o aviso de conta.
 async function caminhoDoNode($: EngineInterface): Promise<string | null> {
-  const guardado = await read($, nodeCaminho)
-  if (guardado !== '') return guardado
-  const agora = await $.clock.now()
-  const falhou = await read($, nodeFalhouEm)
-  if (falhou > 0 && agora - falhou < NODE_FALHA_TTL_MS) return null
-  let cwd = ''
-  try {
-    cwd = await $.session.cwd()
-  } catch {
-    cwd = ''
-  }
-  for (const argv of localizadores('node', await raizDoWindows($)) as string[][]) {
-    try {
-      const r = await $.process.run(argv, { cwd: $.plugin.root, timeoutMs: 10_000 })
-      if (r.exitCode !== 0) continue
-      const achado = escolherExecutavel(r.stdout, cwd) as string | null
-      if (achado !== null) {
-        await update($, nodeCaminho, () => achado)
-        return achado
+  return acharNode({
+    guardado: await read($, nodeCaminho),
+    falhouEm: await read($, nodeFalhouEm),
+    agora: await $.clock.now(),
+    lerCwd: async () => {
+      try {
+        return await $.session.cwd()
+      } catch {
+        return ''
       }
-    } catch {
-      // este localizador nao existe nesta maquina; o outro tenta
-    }
-  }
-  await update($, nodeFalhouEm, () => agora)
-  return null
+    },
+    lerRaiz: () => raizDoWindows($),
+    rodar: argv => $.process.run(argv, { cwd: $.plugin.root, timeoutMs: 10_000 }),
+    gravarCaminho: achado => update($, nodeCaminho, () => achado),
+    gravarFalha: agora => update($, nodeFalhouEm, () => agora),
+  }) as Promise<string | null>
 }
 
 export const register: Register = (on, options) => {

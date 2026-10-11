@@ -1534,6 +1534,21 @@ for (const surface of ['terminal', 'desktop'] as const) {
     })
   })
 
+  test(`conta (${surface}): o aviso da troca de conta tambem para no session.end da sessao`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40))
+    const { relogio, s, comecar, caso } = m
+
+    await caso('conta: session.end cancela o tique do aviso de troca', async () => {
+      await comecar()
+      await relogio.advance(2 * MIN) // relogio e aviso de conta armados: o aviso roda a cada 60 s
+      expect(s.runs).toBeGreaterThan(0)
+      await $.session.end({ reason: 'other', sessionId: 'sessao-atual' } as never)
+      const runs = s.runs
+      await relogio.advance(10 * MIN)
+      expect(s.runs).toBe(runs) // nem o aviso de conta nem o relogio rodam depois do fim da sessao
+    })
+  })
+
   test(`painel (${surface}): a linha do PR na barra aparece sem o pane do PR e some com ele ou com o PR mergeado`, async ($, on) => {
     const m = await montar($, on, surface, em(20, 40))
     const { s, ui, juntos, textos, relogio, comecar, caso } = m
