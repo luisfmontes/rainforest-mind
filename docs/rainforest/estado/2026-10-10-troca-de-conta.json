@@ -22,9 +22,9 @@
     "em": "2026-10-10"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-11",
-    "tarefas_ok": 15,
+    "tarefas_ok": 18,
     "tarefas": 18,
     "carimbos": [
       {
@@ -82,14 +82,27 @@
         "iteracao": 1,
         "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f",
         "ts": "2026-10-11T01:35:36.859Z"
-      }
-    ],
-    "em_voo": [
+      },
       {
-        "agente": "executor",
-        "tarefa": "rodada 3: tarefas 16 a 18",
-        "desde": "2026-10-11T11:00",
-        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
+        "tarefa": 16,
+        "hash_base": "04c82b06",
+        "iteracao": 1,
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f",
+        "ts": "2026-10-11T15:13:12.810Z"
+      },
+      {
+        "tarefa": 17,
+        "hash_base": "04c82b06",
+        "iteracao": 1,
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f",
+        "ts": "2026-10-11T15:13:12.810Z"
+      },
+      {
+        "tarefa": 18,
+        "hash_base": "04c82b06",
+        "iteracao": 1,
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f",
+        "ts": "2026-10-11T15:13:12.810Z"
       }
     ],
     "em": "2026-10-11",
@@ -168,6 +181,21 @@
         "tarefa": 15,
         "resultado": "n/a",
         "motivo": "texto e dado de fixture, sem comportamento a inverter"
+      },
+      {
+        "tarefa": 16,
+        "resultado": "vermelho",
+        "fixture": "caso \"volta com o login da pasta vencido há mais de 10 min não espera\""
+      },
+      {
+        "tarefa": 17,
+        "resultado": "vermelho",
+        "fixture": "caso \"desfazer_falhou avisa troca pela metade com os arquivos\""
+      },
+      {
+        "tarefa": 18,
+        "resultado": "vermelho",
+        "fixture": "caso \"renovarOciosos nunca renova o login de uma pasta\""
       }
     ],
     "destinos": [
@@ -177,12 +205,8 @@
         "motivo": "não é código: vira passo do fechar desta sessão (rodar agendar do clone instalado depois do merge)"
       }
     ],
-    "comando": "node scripts/conferir-mutacao.cjs (tarefas 11 a 14, re-rodadas na integração)",
-    "saida": "T11..T14 exit=0: ok: bateria VERMELHA com o comportamento invertido; baterias da troca 18/26/23/7/11/21/13 ok, 0 falha",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-11"
-    }
+    "comando": "bash scripts/testa-conta.sh; bash scripts/testa-conta-preparar.sh; node scripts/testa-conta-decidir.cjs; node hooks/testa-mod-conta.cjs; node scripts/testa-conta-api.cjs; bash scripts/testa-conta-mover.sh; bash scripts/testa-conta-agendar.sh; bash scripts/testa-transferir.sh; conferir-mutacao x3 (T16,T17,T18)",
+    "saida": "ok: 42 falhou: 0 | ok: 33 falhou: 0 | 27 ok, 0 falha(s) | 23 ok, 0 falha(s) | 12 ok, 0 falha(s) | ok: 18 falhou: 0 | ok: 7 falhou: 0 | 5 passaram, 0 falharam | mutações exit=0 vermelhas nos casos nomeados"
   },
   "revisar": {
     "status": "reprovado",
