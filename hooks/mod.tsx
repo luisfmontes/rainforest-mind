@@ -23,6 +23,7 @@ import type {
 import { register as abertura } from './register.ts'
 import { register as pluginsEmDia } from './plugins-em-dia.ts'
 import { register as pr } from './pr.tsx'
+import { register as conta } from './conta.ts'
 import { register as compactar } from './compactar.ts'
 import { escolherExecutavel, linhaPr, localizadores } from './pr-puro.mjs'
 import { CHECAR_MIN_FERRAMENTAS, deferimentos, lerResolvidosChecker, lerRespostaChecker, marcadoresEmArquivo, montarPromptChecker, perguntaDecisao, rascunhoFazAgora } from './deixado-puro.mjs'
@@ -309,6 +310,7 @@ async function caminhoDoNode($: EngineInterface): Promise<string | null> {
 export const register: Register = (on, options) => {
   abertura(on, options)
   pr(on, options)
+  conta(on, options)
   pluginsEmDia(on, options)
   // O mesmo criterio da barra para "subagente em andamento": quem decide e `emAndamento`.
   compactar(on, options, { agenteRodando: (s, agora) => inteiro(s).agentes.some(a => emAndamento(a, agora)) })
