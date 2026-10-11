@@ -1,0 +1,160 @@
+#!/bin/bash
+# rainforest-gate: dados-de-exemplo — tokens e identificadores FALSOS; nenhum valor real.
+# Bateria do preparar (tarefa 5 de 2026-10-10-troca-de-conta): scripts/conta.cjs preparar.
+# Casos: (a) dono bate: reserva gravada, pasta temporária some, sem automático enquanto falta a
+# reserva de pessoal; (b) login da conta errada não grava reserva: exit 3, a saída cita o e-mail
+# que veio, pasta temporária some; (c) reserva já existente: exit 1, arquivo intacto (sha256), claude
+# nem roda; (d) com as duas reservas, estado.json fica automatico true; (e) a credencial falsa não
+# aparece na saída; (f) pasta sem oauthAccount: exit 1, claude nem roda.
+# Tudo em mktemp -d com trap; o servidor é node local, morto no trap pelo PID dele. O claude é um
+# script node falso (RFM_CONTA_CLAUDE). Nunca toca ~/.claude nem a pasta de dados real.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+win() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi; }
+RAIZ="$(win "$(mktemp -d)")"
+PIDS=()
+trap 'for p in ${PIDS[@]+"${PIDS[@]}"}; do kill "$p" 2>/dev/null || true; wait "$p" 2>/dev/null || true; done; rm -rf "$RAIZ"' EXIT
+
+OK=0
+FALHOU=0
+afirma() {
+  local nome="$1"; shift
+  if "$@"; then
+    OK=$((OK + 1)); echo "ok   $nome"
+  else
+    FALHOU=$((FALHOU + 1)); echo "FALHA $nome"
+  fi
+}
+contem() { printf '%s\n' "$1" | grep -qF -- "$2"; }
+ler() { node "$RAIZ/ler.cjs" "$@"; }
+sha() { node -e "process.stdout.write(require('crypto').createHash('sha256').update(require('fs').readFileSync(process.argv[1])).digest('hex'))" "$1"; }
+sem_login() { [ -d "$1" ] && ! ls -A "$1" | grep -q '^login-'; }
+
+# Fixtures: pastas de conta com .claude.json (oauthAccount falso), reservas opcionais e um
+# estado vazio. Reservas: lista 'team' e/ou 'pessoal'. Terceiro argumento 'trabalho' = pasta sem oauthAccount.
+cat > "$RAIZ/semear.cjs" <<'JS'
+const fs = require('fs');
+const path = require('path');
+const [, , destino, reservas = '', semOauth = ''] = process.argv;
+const escrever = (arq, obj) => { fs.mkdirSync(path.dirname(arq), { recursive: true }); fs.writeFileSync(arq, JSON.stringify(obj, null, 2) + '\n'); };
+const oauth = (email) => ({ accountUuid: '00000000-0000-0000-0000-000000000000', emailAddress: email, organizationUuid: '00000000-0000-0000-0000-000000000000', displayName: 'Conta Falsa' });
+escrever(path.join(destino, 'trabalho', '.claude', '.claude.json'),
+  semOauth === 'trabalho' ? { numStartups: 1 } : { numStartups: 1, oauthAccount: oauth('team@exemplo.invalid') });
+escrever(path.join(destino, 'pessoal', '.claude-personal', '.claude.json'), { numStartups: 1, oauthAccount: oauth('pessoal@exemplo.invalid') });
+for (const conta of reservas.split(',').filter(Boolean)) {
+  escrever(path.join(destino, 'dados', 'contas', `reserva-${conta}.json`),
+    { claudeAiOauth: { accessToken: 'falso-reserva-' + conta, refreshToken: 'falso-refresh-reserva-' + conta, expiresAt: 4102444800000 } });
+}
+JS
+cat > "$RAIZ/ler.cjs" <<'JS'
+const fs = require('fs');
+const [, , arq, campo] = process.argv;
+const o = JSON.parse(fs.readFileSync(arq, 'utf8'));
+const v = campo.split('.').reduce((x, k) => (x == null ? undefined : x[k]), o);
+console.log(v === undefined ? 'AUSENTE' : typeof v === 'object' ? JSON.stringify(v) : String(v));
+JS
+
+# Claude falso: grava .credentials.json no formato real em CLAUDE_CONFIG_DIR, com o token de
+# RFM_FAKE_TOKEN, e guarda os argumentos recebidos em RFM_FAKE_LOG (prova o chamador).
+cat > "$RAIZ/claude-falso.cjs" <<'JS'
+const fs = require('fs');
+const path = require('path');
+fs.appendFileSync(process.env.RFM_FAKE_LOG, JSON.stringify(process.argv.slice(2)) + '\n');
+const tok = process.env.RFM_FAKE_TOKEN;
+const cred = {
+  mcpOAuth: { 'servidor-falso': { accessToken: 'falso-mcp-' + tok, refreshToken: 'falso-mcp-refresh-' + tok, expiresAt: 1, scope: 'a b' } },
+  claudeAiOauth: { accessToken: tok, refreshToken: 'falso-refresh-' + tok, expiresAt: 4102444800000, refreshTokenExpiresAt: 4102444800000, scopes: ['user:inference', 'user:profile'], subscriptionType: 'max', rateLimitTier: 'default_claude_max_20x' },
+  trustedDeviceToken: 'falso-tdt-' + tok,
+};
+fs.writeFileSync(path.join(process.env.CLAUDE_CONFIG_DIR, '.credentials.json'), JSON.stringify(cred, null, 2) + '\n');
+JS
+
+# Mapa token -> dono no servidor de teste. 'falso-login-outro' é o login de outra conta.
+cat > "$RAIZ/mapa.json" <<'JSON'
+{ "tokens": {
+  "falso-login-team": { "email": "team@exemplo.invalid", "uuid": "00000000-0000-0000-0000-00000000000a", "uso": "team" },
+  "falso-login-pessoal": { "email": "pessoal@exemplo.invalid", "uuid": "00000000-0000-0000-0000-00000000000b", "uso": "pessoal" },
+  "falso-login-outro": { "email": "outro@exemplo.invalid", "uuid": "00000000-0000-0000-0000-00000000000c", "uso": "pessoal" }
+} }
+JSON
+
+RFM_CONTA_SERVIDOR_MAPA="$(win "$RAIZ/mapa.json")" \
+  node scripts/fixtures/conta/servidor.cjs > "$RAIZ/porta.txt" 2> "$RAIZ/servidor-erro.txt" &
+PIDS+=("$!")
+for _ in $(seq 1 100); do [ -s "$RAIZ/porta.txt" ] && break; sleep 0.1; done
+API="http://127.0.0.1:$(head -n1 "$RAIZ/porta.txt")"
+
+novo_caso() { # $1 = nome; $2 = reservas; $3 = 'trabalho' para pasta sem oauthAccount
+  local c="$RAIZ/caso-$1"
+  mkdir -p "$c"
+  node "$RAIZ/semear.cjs" "$(win "$c")" "$2" "${3:-}"
+  printf '%s' "$c"
+}
+preparar() { # $1 = caso; $2 = token que o claude falso grava; $3... = argumentos de conta.cjs
+  local c="$1" tok="$2"; shift 2
+  RFM_TEST=1 \
+  RFM_CONTA_PASTA_TRABALHO="$(win "$c/trabalho/.claude")" \
+  RFM_CONTA_PASTA_PESSOAL="$(win "$c/pessoal/.claude-personal")" \
+  RFM_CONTA_DADOS="$(win "$c/dados")" \
+  RFM_CONTA_API="$API" \
+  RFM_CONTA_CLAUDE="$(win "$RAIZ/claude-falso.cjs")" \
+  RFM_FAKE_TOKEN="$tok" \
+  RFM_FAKE_LOG="$(win "$c/claude-args.txt")" \
+  node scripts/conta.cjs preparar "$@"
+}
+
+# (a) dono bate: reserva gravada, pasta temporária some, sem automático com uma reserva só
+C_A="$(novo_caso a "")"
+RC_A=0
+preparar "$C_A" falso-login-team trabalho > "$RAIZ/a.txt" 2>&1 || RC_A=$?
+afirma "(a) dono bate: preparar trabalho sai 0" test "$RC_A" -eq 0
+afirma "(a) dono bate: reserva-team gravada com o login" test "$(ler "$C_A/dados/contas/reserva-team.json" claudeAiOauth.accessToken)" = falso-login-team
+afirma "(a) dono bate: pediu o login com --claudeai e o e-mail da conta" grep -qF -- '"--email","team@exemplo.invalid"' "$C_A/claude-args.txt"
+afirma "(a) dono bate: pasta temporária sumiu" sem_login "$C_A/dados/contas"
+afirma "(a) sem a reserva de pessoal, estado.json não liga o automático" test ! -f "$C_A/dados/contas/estado.json"
+afirma "(a) imprime qual reserva falta" contem "$(cat "$RAIZ/a.txt")" "falta a reserva de pessoal"
+
+# (b) login da conta errada não grava reserva: exit 3, a saída cita o e-mail que veio
+C_B="$(novo_caso b "")"
+RC_B=0
+preparar "$C_B" falso-login-outro trabalho > "$RAIZ/b.txt" 2>&1 || RC_B=$?
+afirma "(b) login da conta errada não grava reserva: sai 3" test "$RC_B" -eq 3
+afirma "(b) login da conta errada não grava reserva: a saída cita o e-mail que veio" contem "$(cat "$RAIZ/b.txt")" "o navegador autorizou outro@exemplo.invalid"
+afirma "(b) login da conta errada não grava reserva: reserva-team ausente" test ! -f "$C_B/dados/contas/reserva-team.json"
+afirma "(b) login da conta errada não grava reserva: pasta temporária sumiu" sem_login "$C_B/dados/contas"
+
+# (c) reserva já existente: exit 1, arquivo intacto, claude nem roda
+C_C="$(novo_caso c team)"
+SHA_C="$(sha "$C_C/dados/contas/reserva-team.json")"
+RC_C=0
+preparar "$C_C" falso-login-team trabalho > "$RAIZ/c.txt" 2>&1 || RC_C=$?
+afirma "(c) reserva já existente: sai 1" test "$RC_C" -eq 1
+afirma "(c) reserva já existente: arquivo intacto (sha256)" test "$(sha "$C_C/dados/contas/reserva-team.json")" = "$SHA_C"
+afirma "(c) reserva já existente: o claude nem roda" test ! -f "$C_C/claude-args.txt"
+
+# (d) com as duas reservas, estado.json fica automatico true
+C_D="$(novo_caso d pessoal)"
+RC_D=0
+preparar "$C_D" falso-login-team trabalho > "$RAIZ/d.txt" 2>&1 || RC_D=$?
+afirma "(d) com as duas reservas: sai 0" test "$RC_D" -eq 0
+afirma "(d) com as duas reservas: estado.json automatico true" test "$(ler "$C_D/dados/contas/estado.json" automatico)" = true
+afirma "(d) com as duas reservas: imprime que a troca automática foi ligada" contem "$(cat "$RAIZ/d.txt")" "troca automática ligada"
+
+# (e) a credencial falsa não aparece na saída de nenhum caso
+caso_e() {
+  local rc=0
+  grep -qF "falso-" "$RAIZ/a.txt" "$RAIZ/b.txt" "$RAIZ/c.txt" "$RAIZ/d.txt" "$RAIZ/f.txt" || rc=$?
+  [ "$rc" -eq 1 ]
+}
+# (f) pasta sem oauthAccount: exit 1, nada gravado, claude nem roda
+C_F="$(novo_caso f "" trabalho)"
+RC_F=0
+preparar "$C_F" falso-login-team trabalho > "$RAIZ/f.txt" 2>&1 || RC_F=$?
+afirma "(f) pasta sem oauthAccount: sai 1" test "$RC_F" -eq 1
+afirma "(f) pasta sem oauthAccount: o claude nem roda" test ! -f "$C_F/claude-args.txt"
+afirma "(f) pasta sem oauthAccount: nada gravado" test ! -f "$C_F/dados/contas/reserva-team.json"
+afirma "(e) a credencial falsa não aparece na saída" caso_e
+
+echo "ok: $OK   falhou: $FALHOU"
+if [ "$FALHOU" -ne 0 ]; then exit 1; fi

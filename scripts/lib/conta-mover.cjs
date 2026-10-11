@@ -155,4 +155,4 @@ function mover({ pasta, reservaEntra, reservaSai, dono }) {
   return { ok: true, entrou: prefixo(obj.entra), saiu: prefixo(obj.cred) };
 }
 
-module.exports = { mover };
+module.exports = { mover, gravarAtomico };
