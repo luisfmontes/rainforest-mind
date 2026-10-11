@@ -1,0 +1,143 @@
+#!/bin/bash
+# rainforest-gate: dados-de-exemplo — fixtures com credenciais FALSAS no formato do .credentials.json; nenhum valor real.
+# Testa scripts/lib/conta-mover.cjs (tarefa 2 de 2026-10-10-troca-de-conta, D2 e D11).
+# Casos: (a) troca normal: mcpOAuth e trustedDeviceToken com o mesmo sha256,
+# claudeAiOauth trocado entre pasta e reservas, reserva de entrada sem a chave,
+# oauthAccount do dono; (b) arquivo alterado entre leitura e gravação: sai com
+# `mudou` e nenhum dos três arquivos de credencial muda; (c) reserva que entra
+# igual ao login da pasta é recusada e nada muda.
+# Tudo em mktemp -d com trap; nunca toca ~/.claude nem ~/.claude-personal.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+node - <<'JS'
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const crypto = require('crypto');
+const { mover } = require('./scripts/lib/conta-mover.cjs');
+
+const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'testa-conta-mover-'));
+process.on('exit', () => fs.rmSync(raiz, { recursive: true, force: true }));
+let ok = 0, falhas = 0;
+
+function afirma(nome, cond) {
+  if (cond) { ok++; console.log(`ok   ${nome}`); }
+  else { falhas++; console.log(`FALHA ${nome}`); }
+}
+const shaBytes = (arq) => crypto.createHash('sha256').update(fs.readFileSync(arq)).digest('hex');
+const shaValor = (v) => crypto.createHash('sha256').update(JSON.stringify(v)).digest('hex');
+const ler = (arq) => JSON.parse(fs.readFileSync(arq, 'utf8'));
+const escrever = (arq, obj) => {
+  fs.mkdirSync(path.dirname(arq), { recursive: true });
+  fs.writeFileSync(arq, JSON.stringify(obj, null, 2) + '\n');
+};
+
+// Fixtures falsas no formato real do .credentials.json e do .claude.json.
+function credencial(s) {
+  return {
+    mcpOAuth: { 'servidor-falso': { accessToken: `falso-access-mcp-${s}`, refreshToken: `falso-refresh-mcp-${s}`, expiresAt: 1, scope: 'a b' } },
+    claudeAiOauth: {
+      accessToken: `falso-access-${s}`,
+      refreshToken: `falso-refresh-${s}`,
+      expiresAt: 4102444800000,
+      refreshTokenExpiresAt: 4102444800000,
+      scopes: ['user:inference', 'user:profile'],
+      subscriptionType: 'max',
+      rateLimitTier: 'default_claude_max_20x',
+    },
+    trustedDeviceToken: `falso-tdt-${s}`,
+  };
+}
+const DONO = { accountUuid: '00000000-0000-0000-0000-000000000001', emailAddress: 'y@exemplo.invalid', organizationUuid: '00000000-0000-0000-0000-000000000000', displayName: 'Conta Falsa B' };
+const ANTIGO = { accountUuid: '00000000-0000-0000-0000-000000000002', emailAddress: 'x@exemplo.invalid', organizationUuid: '00000000-0000-0000-0000-000000000000', displayName: 'Conta Falsa A' };
+
+// Monta um cenário numa subpasta própria de raiz (nunca em ~/.claude).
+function cenario(nome) {
+  const base = path.join(raiz, nome);
+  const pasta = path.join(base, 'pasta');
+  const reservas = path.join(base, 'reservas');
+  const arqs = {
+    cred: path.join(pasta, '.credentials.json'),
+    claude: path.join(pasta, '.claude.json'),
+    entra: path.join(reservas, 'entra.json'),
+    sai: path.join(reservas, 'sai.json'),
+  };
+  escrever(arqs.cred, credencial('pasta'));
+  escrever(arqs.claude, { numStartups: 3, oauthAccount: ANTIGO, projects: {} });
+  escrever(arqs.entra, credencial('entra'));
+  escrever(arqs.sai, credencial('sai'));
+  return { pasta, arqs };
+}
+
+// (a) troca normal
+{
+  const { pasta, arqs } = cenario('a');
+  const antesCred = ler(arqs.cred), antesEntra = ler(arqs.entra);
+  const hMcpAntes = shaValor(antesCred.mcpOAuth), hTdtAntes = shaValor(antesCred.trustedDeviceToken);
+  console.log(`   sha256 mcpOAuth antes=${hMcpAntes} trustedDeviceToken antes=${shaValor(antesCred.trustedDeviceToken)}`);
+
+  const r = mover({ pasta, reservaEntra: arqs.entra, reservaSai: arqs.sai, dono: DONO });
+  const depoisCred = ler(arqs.cred), depoisEntra = ler(arqs.entra), depoisSai = ler(arqs.sai), depoisClaude = ler(arqs.claude);
+  console.log(`   sha256 mcpOAuth depois=${shaValor(depoisCred.mcpOAuth)} trustedDeviceToken depois=${shaValor(depoisCred.trustedDeviceToken)}`);
+
+  afirma('(a) troca normal devolve ok', r.ok === true);
+  afirma('(a) mcpOAuth com o mesmo sha256 de antes', shaValor(depoisCred.mcpOAuth) === hMcpAntes);
+  afirma('(a) trustedDeviceToken com o mesmo sha256 de antes', shaValor(depoisCred.trustedDeviceToken) === hTdtAntes);
+  afirma('(a) claudeAiOauth da reserva foi para a pasta', shaValor(depoisCred.claudeAiOauth) === shaValor(antesEntra.claudeAiOauth));
+  afirma('(a) claudeAiOauth da pasta foi para a reserva de saída', shaValor(depoisSai.claudeAiOauth) === shaValor(antesCred.claudeAiOauth));
+  afirma('(a) reserva de entrada ficou sem claudeAiOauth', !('claudeAiOauth' in depoisEntra));
+  afirma('(a) oauthAccount do .claude.json = dono', JSON.stringify(depoisClaude.oauthAccount) === JSON.stringify(DONO));
+  afirma('(a) prefixos devolvidos batem com os refreshToken', r.entrou === crypto.createHash('sha256').update(antesEntra.claudeAiOauth.refreshToken).digest('hex').slice(0, 12) && r.saiu === crypto.createHash('sha256').update(antesCred.claudeAiOauth.refreshToken).digest('hex').slice(0, 12));
+}
+
+// (b) arquivo alterado entre leitura e gravação
+{
+  const { pasta, arqs } = cenario('b');
+  const hCred = shaBytes(arqs.cred), hEntra = shaBytes(arqs.entra), hSai = shaBytes(arqs.sai);
+  console.log(`   sha256 antes: credenciais=${hCred} entra=${hEntra} sai=${hSai}`);
+
+  // Na segunda leitura do .claude.json (a releitura antes de gravar), o arquivo muda em disco.
+  const original = fs.readFileSync;
+  let leiturasClaude = 0;
+  fs.readFileSync = function (arq, ...resto) {
+    if (path.resolve(String(arq)) === path.resolve(arqs.claude) && ++leiturasClaude === 2) {
+      const atual = JSON.parse(original.call(fs, arq, 'utf8'));
+      atual.numStartups = 99;
+      fs.writeFileSync(arq, JSON.stringify(atual, null, 2) + '\n');
+    }
+    return original.call(fs, arq, ...resto);
+  };
+  let r;
+  try {
+    r = mover({ pasta, reservaEntra: arqs.entra, reservaSai: arqs.sai, dono: DONO });
+  } finally {
+    fs.readFileSync = original;
+  }
+  console.log(`   sha256 depois: credenciais=${shaBytes(arqs.cred)} entra=${shaBytes(arqs.entra)} sai=${shaBytes(arqs.sai)}`);
+
+  afirma('(b) arquivo alterado devolve motivo mudou', r.ok === false && r.motivo === 'mudou');
+  afirma('(b) .credentials.json com o mesmo sha256 de antes', shaBytes(arqs.cred) === hCred);
+  afirma('(b) reserva de entrada com o mesmo sha256 de antes', shaBytes(arqs.entra) === hEntra);
+  afirma('(b) reserva de saída com o mesmo sha256 de antes', shaBytes(arqs.sai) === hSai);
+}
+
+// (c) reserva que entra igual ao login da pasta é recusada e nada muda
+{
+  const { pasta, arqs } = cenario('c');
+  // A reserva de entrada passa a ter o MESMO login (mesmo refreshToken) que a pasta.
+  escrever(arqs.entra, { claudeAiOauth: credencial('pasta').claudeAiOauth, trustedDeviceToken: 'falso-tdt-entra' });
+  const hs = [arqs.cred, arqs.claude, arqs.entra, arqs.sai].map(shaBytes);
+  console.log(`   sha256 antes: ${hs.join(' ')}`);
+
+  const r = mover({ pasta, reservaEntra: arqs.entra, reservaSai: arqs.sai, dono: DONO });
+  const depois = [arqs.cred, arqs.claude, arqs.entra, arqs.sai].map(shaBytes);
+  console.log(`   sha256 depois: ${depois.join(' ')}`);
+
+  afirma('reserva que entra igual ao login da pasta é recusada e nada muda: motivo duplicada', r.ok === false && r.motivo === 'duplicada');
+  afirma('reserva que entra igual ao login da pasta é recusada e nada muda: arquivos intactos', depois.every((h, i) => h === hs[i]));
+}
+
+console.log(`ok: ${ok}   falhou: ${falhas}`);
+process.exit(falhas ? 1 : 0);
+JS
