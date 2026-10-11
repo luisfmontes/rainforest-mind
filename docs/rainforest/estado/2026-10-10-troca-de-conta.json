@@ -149,7 +149,12 @@
     "saida": "ok: bateria VERMELHA com o comportamento invertido (exit 1). | testa-transferir: 5 passaram, 0 falharam | testa-transferir-para-codex: 13 ok, 0 falha(s) | testa-conta: 15 ok"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "2484398c63d62d39f07a59c37dd71f1c79e8010b",
+      "caminhos_sujos": []
+    },
+    "vereditos": []
   },
   "verificar": {
     "status": "pendente"

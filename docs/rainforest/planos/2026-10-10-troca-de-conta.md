@@ -71,7 +71,7 @@ pronto quando: com um servidor local servindo as fixtures reais, duas chamadas a
 
 ### 4. CLI `conta.cjs`: status, trocar, vigiar, eventos [tipo: implementar]
 atende: D2, D3, D5, D6, D7, D8
-arquivos: `scripts/conta.cjs`, `scripts/testa-conta.sh`
+arquivos: `scripts/conta.cjs`, `scripts/testa-conta.sh`, `scripts/fixtures/conta/servidor.cjs` (servidor falso da bateria, emenda da revisão)
 depende de: 1, 2, 3
 paralela: nao
 Subcomandos: `status` (uso das duas contas, que login está em cada pasta perguntado ao servidor, reservas, se a troca automática está ligada); `trocar <pessoal|trabalho> [--pasta trabalho|pessoal]` (troca manual, marca a pasta `manual: true`; trocar a pasta para a própria conta desmarca); `vigiar` (uma rodada: trava em `<dados>/contas/vigia.lock` com dono pelo PID e validade de 5 min, lê uso, chama `decidir`, executa com `mover`, confere o dono no servidor depois de mover e desfaz se não bater); `eventos --desde <ms>` (linhas de `<dados>/contas/eventos.jsonl` mais novas). Toda troca e volta acrescenta uma linha `{em, tipo, pasta, de, para, motivo, manual}` ao `eventos.jsonl`. Estado (`manual`, conta atual de cada pasta, limite que travou) em `<dados>/contas/estado.json`, escrito atômico. A trava contém literalmente `if (!pegarTrava(lock)) return sair(0, 'outra rodada em curso');`.
@@ -126,7 +126,7 @@ pronto quando: com `node scripts/conta.cjs agendar --imprimir`, a saída traz `/
 
 ### 8. Aviso nas sessões abertas [tipo: implementar]
 atende: D6
-arquivos: `hooks/conta.ts`, `hooks/conta-puro.mjs`, `hooks/mod.tsx`, `hooks/testa-mod-conta.cjs`
+arquivos: `hooks/conta.ts`, `hooks/conta-puro.mjs`, `hooks/mod.tsx`, `hooks/testa-mod-conta.cjs`, `hooks/mod-painel.test.tsx` (caso do `claude plugin test` que o T8c exigiu, emenda da revisão)
 depende de: 4
 paralela: nao
 Módulo do mod, importado por `hooks/mod.tsx` como `pr.tsx`: a cada 60 s roda `node <raiz>/scripts/conta.cjs eventos --desde <ultima>` e, para cada evento novo, mostra `$.ui.notify` com a frase de `frase(evento)` (em `conta-puro.mjs`), por exemplo "Conta: a pasta trabalho passou para a conta pessoal (team em 97% na semana). Volta às 19h59.". `ultima` começa no momento em que a sessão abriu, para não repetir eventos antigos. `frase` contém literalmente `if (e.tipo === 'voltar') return 'Conta: a pasta ' + e.pasta + ' voltou para a conta ' + e.para + '.';`.
