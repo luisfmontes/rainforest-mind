@@ -687,28 +687,23 @@ function comandoUnicoSemShell(texto) {
 }
 
 /**
- * O segmento menciona `pr merge`, mesmo escondido de `posicaoDeComando`
- * (`env -S 'gh pr merge 5'`, `p\r`, aspas partindo a palavra)? Rede do
- * `main`: segmento que menciona passa o comando INTEIRO por `analisarPrMerge`,
- * e so a forma permitida sobrevive. Comentario shell (`#` nao citado) sai.
+ * Indice do `gh` cujo subcomando e um dos que o gate confere, ou -1. Pula o
+ * `-R`/`--repo` entre substantivo e verbo (`xyz gh issue -R x close 12`):
+ * a rede de wrapper desconhecido e o varredor de heredoc exigiam o verbo
+ * colado e deixavam essa forma passar (revisao de seguranca 3, #496).
  */
-function mencionaPrMerge(segmento) {
-  const toks = tokensComAspas(segmento);
-  const idx = toks.findIndex((t) => !t.q && t.v.startsWith("#"));
-  const palavras = (idx === -1 ? toks : toks.slice(0, idx))
-    .flatMap((t) => t.v.split(/\s+/))
-    .map((p) => p.replace(/[\\"'`]/g, "").toLowerCase())
-    .filter(Boolean);
-  // `gh pr -R x merge` (revisao 2): flag entre `pr` e `merge` nao esconde o
-  // verbo — pula flags, e o valor de `-R`/`--repo`.
-  return palavras.some((p, i) => {
-    if (p !== "pr") return false;
-    let j = i + 1;
-    while (j < palavras.length && palavras[j].startsWith("-")) {
-      j += palavras[j] === "-r" || palavras[j] === "--repo" ? 2 : 1;
-    }
-    return palavras[j] === "merge";
-  });
+const VERBOS_DO_GATE = [
+  ["issue", "close"], ["issue", "create"], ["issue", "comment"],
+  ["pr", "create"], ["pr", "edit"], ["pr", "merge"],
+];
+
+function indiceGhComVerbo(valores) {
+  for (let i = 0; i < valores.length; i += 1) {
+    if (normalizarExecutavel(valores[i]) !== "gh") continue;
+    const subs = semRepoGlobal(valores.slice(i + 1)).map((t) => t.toLowerCase());
+    if (VERBOS_DO_GATE.some(([a, b]) => subs[0] === a && subs[1] === b)) return i;
+  }
+  return -1;
 }
 
 /**
@@ -723,7 +718,8 @@ function semRepoGlobal(subcomandos) {
     const t = subcomandos[i];
     if (t === "-R" || t === "--repo") { i += 2; continue; }
     if (t.startsWith("--repo=") || /^-R./.test(t)) { i += 1; continue; }
-    palavras.push(t);
+    // `p\r`, `a\pi`: o bash tira a contrabarra e roda `pr`/`api` (revisao 3).
+    palavras.push(t.replace(/\\/g, ""));
     i += 1;
   }
   return palavras.concat(subcomandos.slice(i));
@@ -750,6 +746,13 @@ function analisarPrMerge(texto) {
       `o 'gh pr merge' não está sozinho no comando, ou tem caractere de shell ` +
       `(; & | $ crase redirecionamento, aspa tipográfica, quebra de linha).`
     );
+  }
+  // PowerShell 5.1 nao escapa aspa dupla nem contrabarra dentro de aspa
+  // simples ao montar a linha do .exe, e descarta argumento vazio:
+  // `--body 'x " -R o/r'` chega ao gh com um -R a mais, e `--body "" 497`
+  // engole o PR (revisao 3). Ali o merge so passa sem aspas.
+  if (FERRAMENTA === "PowerShell" && /["']/.test(texto)) {
+    barraFormaPrMerge(`no PowerShell, o 'gh pr merge' só passa sem aspas (o PowerShell 5.1 remonta os argumentos com aspas de outro jeito). Use a ferramenta Bash para --body com espaço, ou --body-file.`);
   }
   const toks = tokensComAspas(texto.trim()).map((t) => t.v);
   if (toks.length < 3 || normalizarExecutavel(toks[0]) !== "gh" || toks[1] !== "pr" || toks[2] !== "merge") {
@@ -870,7 +873,8 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento, textoDoComando =
   // `q=state:closed` e busca.
   if (subcomandos[0] === "api" && (
       (/pulls\/\d+\/merge/.test(segmento) && /(?:-X|--method)[\s=]*["']?put\b/i.test(segmento)) ||
-      /(?:^|\s)(?:-[fF]|--(?:raw-)?field)[\s=]+["']?state=closed/.test(segmento) ||
+      (/(?:^|\s)(?:-[fF]|--(?:raw-)?field)[\s=]+["']?state=closed/.test(segmento) &&
+        !/(?:-X|--method)[\s=]*["']?get\b/i.test(segmento)) ||
       /closeIssue|mergePullRequest/.test(segmento))) {
     bloqueia(
       `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
@@ -1120,6 +1124,8 @@ const ARQUIVOS_SOURCE_VISTOS = new Set();
 // veredito `ilegivel` nao barra (o limite de D16 vale para o arquivo carregado).
 let LENDO_SOURCE = 0;
 let CWD_DO_EVENTO = "";
+// Bash ou PowerShell: o PowerShell 5.1 monta o argv do .exe a seu modo.
+let FERRAMENTA = "";
 const RE_MUDA_DIRETORIO = /(?:^|[\s;&|({])(?:cd|pushd)(?=\s|$)/;
 
 // Busca TEXTUAL de `gh [-R x|--repo x] issue close|create|comment` ou `gh ... pr
@@ -1246,9 +1252,7 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
       // quem carregou (`.` nao muda de diretorio), nao contra a pasta do arquivo.
       const mapaArquivo = cwdPorSegmento(conteudoSource, cwdSource || path.dirname(resolvidoSource));
       const contadoresArquivo = new Map();
-      const subsSource = segmentosParaGate(conteudoSource);
-      if (subsSource.some(mencionaPrMerge)) analisarPrMerge(conteudoSource);
-      for (const sub of subsSource) {
+      for (const sub of segmentosParaGate(conteudoSource)) {
         processarSegmento(sub, mapaArquivo, contadoresArquivo, ferramenta);
       }
     } finally {
@@ -1318,12 +1322,10 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   const valores = toksSemComentario.map((t) => t.v);
   const primeiro = valores.length ? normalizarExecutavel(valores[0]) : null;
   if (primeiro !== null && !ehPrefixoOuWrapperConhecido(primeiro)) {
-    for (const padrao of [["gh", "issue", "close"], ["gh", "issue", "create"], ["gh", "issue", "comment"], ["gh", "pr", "create"], ["gh", "pr", "edit"], ["gh", "pr", "merge"]]) {
-      const idx = indiceSequencia(valores, padrao);
-      if (idx !== -1) {
-        verificarComandoGh(segmento, valores.slice(idx + 1), cwdDoSegmento(segmento, mapaCwd, ordem));
-        return;
-      }
+    const idx = indiceGhComVerbo(valores);
+    if (idx !== -1) {
+      verificarComandoGh(segmento, valores.slice(idx + 1), cwdDoSegmento(segmento, mapaCwd, ordem));
+      return;
     }
   }
 }
@@ -1339,7 +1341,6 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
  * busca, como na W2.
  */
 function verificarTextosDeHeredoc(mapaCwd, contadores, ferramenta) {
-  const PADROES = [["gh", "issue", "close"], ["gh", "issue", "create"], ["gh", "issue", "comment"], ["gh", "pr", "create"], ["gh", "pr", "edit"], ["gh", "pr", "merge"]];
   for (const corpo of TEXTOS_DE_HEREDOC) {
     for (const linha of corpo.split('\n')) {
       if (!linha.trim()) continue;
@@ -1347,13 +1348,11 @@ function verificarTextosDeHeredoc(mapaCwd, contadores, ferramenta) {
       try { toks = tokensComAspas(linha); } catch { toks = linha.split(/\s+/).filter(Boolean).map((v) => ({ v, q: false })); }
       const idxComentario = toks.findIndex((t) => !t.q && t.v.startsWith("#"));
       const valores = (idxComentario === -1 ? toks : toks.slice(0, idxComentario)).map((t) => t.v);
-      for (const padrao of PADROES) {
-        const idx = indiceSequencia(valores, padrao);
-        if (idx !== -1) {
-          verificarComandoGh(linha, valores.slice(idx + 1), cwdDoSegmento(linha, mapaCwd, contadores.get(linha.trim()) || 0), textoAPartir(toks, idx));
-          break;
-        }
-      }
+      const idx = indiceGhComVerbo(valores);
+      // `gh pr merge` no corpo confere o CORPO inteiro contra a lista: o
+      // script pode ser rodado depois, e `GH_REPO=x` (na linha ou na de cima)
+      // muda o repo do merge (revisao 3).
+      if (idx !== -1) verificarComandoGh(linha, valores.slice(idx + 1), cwdDoSegmento(linha, mapaCwd, contadores.get(linha.trim()) || 0), corpo);
     }
   }
 }
@@ -1399,9 +1398,8 @@ function main() {
   const contadores = new Map();
   COMANDO_INTEIRO = comando;
   CWD_DO_EVENTO = cwdDoEvento;
-  const segmentos = segmentosParaGate(comando);
-  if (segmentos.some(mencionaPrMerge)) analisarPrMerge(comando);
-  for (const segmento of segmentos) {
+  FERRAMENTA = nome;
+  for (const segmento of segmentosParaGate(comando)) {
     processarSegmento(segmento, mapaCwd, contadores, nome);
   }
   verificarTextosDeHeredoc(mapaCwd, contadores, nome);

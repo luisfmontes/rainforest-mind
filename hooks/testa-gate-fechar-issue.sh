@@ -1342,6 +1342,23 @@ pm "gh api GET .../pulls/5/merge passa (so pergunta se foi mergeado)" 0 'gh api 
 pm "gh api busca com state:closed passa" 0 "gh api 'search/issues?q=repo:dono/repo+state:closed'"
 pm "gh -R x issue view 495 passa" 0 'gh -R dono/repo issue view 495'
 pm "PowerShell: gh pr merge 497 --squash --delete-branch passa" 0 'gh pr merge 497 --squash --delete-branch' PowerShell
+# Terceira revisao de seguranca (2026-10-11): furos do commit a75d2fc0 e
+# os falsos positivos que ele criou.
+pm "PowerShell: aspa dupla dentro de aspa simples no merge barra" 2 "gh pr merge 497 --squash --body 'x \" -R dono/outro'" PowerShell
+pm "PowerShell: string vazia no merge barra" 2 "gh pr merge --squash --body '' 497" PowerShell
+pm "heredoc gravado com GH_REPO= gh pr merge barra" 2 "$(printf "cat > s.sh <<'EOF'\nGH_REPO=dono/real gh pr merge 497 --merge\nEOF\nbash s.sh")"
+pm "heredoc com export GH_REPO na linha de cima barra" 2 "$(printf "cat > s.sh <<'EOF'\nexport GH_REPO=dono/real\ngh pr merge 497 --merge\nEOF\nbash s.sh")"
+pm "heredoc com gh issue -R x close barra" 2 "$(printf "cat > s.sh <<'EOF'\ngh issue -R dono/outro close 12\nEOF\nbash s.sh")"
+pm "env -S '-S' 'gh issue close 12' barra" 2 "env -S '-S' 'gh issue close 12'"
+pm "env -S -S 'gh issue close 12' barra" 2 "env -S -S 'gh issue close 12'"
+pm "wrapper desconhecido: xyz gh issue -R x close 12 barra" 2 'xyz gh issue -R dono/outro close 12'
+pm "gh issue clo\\se 12: contrabarra no verbo barra" 2 'gh issue clo\se 12'
+pm "gh a\\pi PATCH state=closed barra" 2 'gh a\pi -X PATCH repos/dono/repo/issues/12 -f state=closed'
+pm "gh api GET com -f state=closed passa (listar fechadas)" 0 'gh api repos/dono/repo/issues -X GET -f state=closed -f per_page=100'
+pm "gh api --method GET -F state=closed passa" 0 'gh api --method GET repos/dono/repo/issues -F state=closed'
+pm "git commit -m com 'PR merge' no texto passa" 0 'git commit -m "fix PR merge conflict"'
+pm "grep por 'pr merge' passa" 0 'grep -rn "pr merge" hooks'
+pm "gh issue comment citando pr merge passa" 0 'gh issue comment 496 --body "ver pr merge"'
 
 # Caso (by): R18 (auditor, 16a revisao, lote 3, 2026-09-04) — `source fechar.sh`
 # executa um ARQUIVO opaco ao parser; mesma postura conservadora que

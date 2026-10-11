@@ -773,7 +773,8 @@ function contemConstrucaoIlegivel(str) {
  * forma que nao se le com seguranca: valor com `$`, contrabarra ou aspa, que
  * o env expande/escapa a seu modo, ou `#`, que o env le como comentario e
  * descarta o resto do valor: `env -S 'gh issue #' close 12` roda `gh issue
- * close 12`) ou `{valor, resto}`.
+ * close 12`; ou valor que comeca com `-`, como `env -S -S 'gh x'`, que o env
+ * le como outra flag) ou `{valor, resto}`.
  * Formas: `-S X`, `-SX`, agrupada (`-iS X`, `-0iSX`), `--split-string X`,
  * `--split-string=X` e prefixos unicos (`--s`, `--sp`...), como o getopt
  * aceita. `-u`/`-C`/`-a` (e `--unset`/`--chdir`/`--argv0`) consomem valor e
@@ -784,7 +785,7 @@ function lerSplitStringDoEnv(texto) {
   // Flag com aspa grudada (`-S'gh x'`, `--split-string='gh x'`) chega aqui
   // como UM token citado: o valor veio por aspa que o gate nao separou.
   const valorLido = (valor, resto) =>
-    atual.citado || /[$`\\"'#]/.test(valor) ? { ilegivel: true } : { valor, resto };
+    atual.citado || /[$`\\"'#]/.test(valor) || valor.startsWith("-") ? { ilegivel: true } : { valor, resto };
   while (atual) {
     const t = atual.tok;
     if (!t.startsWith("-")) {

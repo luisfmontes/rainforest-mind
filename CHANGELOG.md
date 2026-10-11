@@ -30,7 +30,9 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 - **Mais seis caminhos para fechar Issue sem evidência foram fechados**, achados pela revisão de segurança: `-R` entre
   `pr`/`issue` e o verbo (`gh issue -R x close 12`); no PowerShell, vírgula, `@`, aspas coladas e espaço Unicode que
   partem um argumento em dois; `Closes #12` no `--body` ou `--subject` do próprio `gh pr merge` (a mensagem do commit
-  de merge também fecha a Issue); subcomando montado por variável (`gh pr $m`); e `gh api` que mergeia PR ou fecha Issue.
+  de merge também fecha a Issue); subcomando montado por variável (`gh pr $m`) ou com contrabarra (`gh issue clo\se`);
+  `gh api` que mergeia PR ou fecha Issue; e script gravado por heredoc com `GH_REPO=` antes do merge. No PowerShell, o
+  `gh pr merge` só passa sem aspas. Os limites que ficaram de fora estão em `docs/travas-mecanicas.md`.
 - No mesmo PR: três repos contra texto de IA avaliados no livro de repos
   (`relatorios/2026-10-10-anti-slop-tres-repos.md`).
 
