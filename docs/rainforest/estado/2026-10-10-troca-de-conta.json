@@ -22,9 +22,9 @@
     "em": "2026-10-10"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-10",
-    "tarefas_ok": 9,
+    "tarefas_ok": 10,
     "tarefas": 10,
     "carimbos": [
       {
@@ -84,18 +84,69 @@
         "ts": "2026-10-11T01:35:36.859Z"
       }
     ],
-    "em_voo": [
+    "em_voo": [],
+    "em": "2026-10-11",
+    "mutacao": [
       {
-        "agente": "executor",
-        "tarefa": "T10 sai o /transferir claude",
-        "desde": "2026-10-11T07:40",
-        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "caso \"pasta trocada na mão não volta sozinha mesmo depois do reset\""
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "caso \"reserva que entra igual ao login da pasta é recusada e nada muda\""
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "caso \"depois de um 429 a segunda chamada não chega ao servidor\""
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "caso \"duas rodadas de vigiar simultâneas fazem uma troca só\""
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "caso \"login da conta errada não grava reserva\""
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "arquivo de comando e documentação, sem lógica"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "caso \"agendar --imprimir roda a cada 1 minuto\""
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "caso \"evento de volta vira aviso com a pasta e a conta\""
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "medição em ambiente real com as credenciais do usuário"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "caso \"transferir claude recusa e aponta o /conta\""
       }
     ],
-    "em": "2026-10-11",
-    "pendentes": [
-      "reagendar o vigia do clone instalado no fechar (hoje aponta para o worktree)"
-    ]
+    "destinos": [
+      {
+        "pendente": "reagendar o vigia do clone instalado no fechar (hoje aponta para o worktree)",
+        "destino": "descartada",
+        "motivo": "não é código: vira passo do fechar desta sessão (rodar agendar do clone instalado depois do merge)"
+      }
+    ],
+    "comando": "node scripts/conferir-mutacao.cjs --arquivo scripts/transferir.cjs ... --bateria \"bash scripts/testa-transferir.sh\"",
+    "saida": "ok: bateria VERMELHA com o comportamento invertido (exit 1). | testa-transferir: 5 passaram, 0 falharam | testa-transferir-para-codex: 13 ok, 0 falha(s) | testa-conta: 15 ok"
   },
   "revisar": {
     "status": "pendente"
