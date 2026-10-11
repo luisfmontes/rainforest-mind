@@ -1,8 +1,8 @@
 ---
-description: Transfere a sessão entre Claude Code (local) ou Codex CLI
+description: Transfere a sessão para o Codex CLI (troca de conta do Claude Code é com /conta)
 ---
 
-Transfere o histórico desta sessão para outro destino. O destino determina como.
+Transfere o histórico desta sessão para o Codex CLI.
 
 ```
 node "${CLAUDE_PLUGIN_ROOT}/scripts/transferir.cjs" $ARGUMENTS
