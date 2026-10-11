@@ -235,6 +235,16 @@ caso_i() {
 }
 afirma "troca e volta preservam as duas reservas" caso_i
 
+# (j) sem --pasta, a troca manual age na pasta da sessão que chamou (CLAUDE_CONFIG_DIR)
+C_J="$(novo_caso j nao)"
+EST_J="$C_J/dados/contas/estado.json"
+RC_J=0
+CLAUDE_CONFIG_DIR="$(win "$C_J/pessoal/.claude-personal")" cli "$C_J" trabalho > "$RAIZ/j.txt" 2>&1 || RC_J=$?
+caso_j() {
+  [ "$RC_J" -eq 0 ] && [ "$(ler "$EST_J" pastas.pessoal.conta)" = team ]     && [ "$(ler "$EST_J" pastas.trabalho.conta)" = team ]
+}
+afirma "(j) sessão da pasta pessoal: /conta trabalho troca a pasta pessoal, não a de trabalho" caso_j
+
 # (g) nenhuma credencial (valor falso ou não) aparece na saída nem no log
 caso_g() {
   local rc=0

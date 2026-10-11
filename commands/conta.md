@@ -1,6 +1,6 @@
 ---
 description: Mostra a conta em uso de cada pasta do Claude Code e troca a pasta de conta na mão
-argument-hint: [pessoal | trabalho [--pasta pessoal] | preparar pessoal|trabalho | agendar [--imprimir] | desagendar]
+argument-hint: [pessoal | trabalho [--pasta trabalho|pessoal] | preparar pessoal|trabalho | agendar [--imprimir] | desagendar]
 ---
 
 Rode o CLI da troca de conta com os argumentos recebidos:
@@ -13,8 +13,9 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/conta.cjs" $ARGUMENTS
 percentuais de 5 h e da semana das duas contas; quais reservas de login existem; se a troca automática está
 ligada; e os limites em uso.
 
-**`/conta pessoal` ou `/conta trabalho`**: troca a pasta `trabalho` (`~/.claude`) para a conta pedida, na hora.
-Para mexer na outra pasta, use `/conta pessoal --pasta pessoal`. `trocar <conta>` continua valendo como sinônimo
+**`/conta pessoal` ou `/conta trabalho`**: troca a pasta **desta sessão** (a do `CLAUDE_CONFIG_DIR`;
+sem ele, `~/.claude`) para a conta pedida, na hora. Para mexer na outra pasta, use `--pasta trabalho` ou
+`--pasta pessoal`. `trocar <conta>` continua valendo como sinônimo
 (`node "${CLAUDE_PLUGIN_ROOT}/scripts/conta.cjs" trocar pessoal`). Troca manual não volta sozinha: a pasta fica
 na conta escolhida até a próxima troca manual.
 

@@ -46,6 +46,14 @@ function pastasDir() {
   };
 }
 
+// Pasta da sessão que chamou (D7): a do CLAUDE_CONFIG_DIR; sem ele, o Claude Code usa ~/.claude.
+function pastaDaSessao() {
+  const norm = (p) => path.resolve(p).split(path.sep).join('/').toLowerCase();
+  const dirs = pastasDir();
+  const atual = norm(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'));
+  return PASTAS.find((p) => norm(dirs[p]) === atual) || 'trabalho';
+}
+
 function dadosDir() {
   if (process.env.RFM_CONTA_DADOS) return process.env.RFM_CONTA_DADOS;
   const raiz = require('../hooks/lib/ponte-corpo.cjs').raizDeDados(path.resolve(__dirname, '..'));
@@ -377,7 +385,7 @@ async function trocar(c, args) {
   if (!Object.hasOwn(CONTA_CLI, alvo)) {
     return sair(2, 'uso: trocar <pessoal|trabalho> [--pasta trabalho|pessoal]');
   }
-  const P = valorDe(args, '--pasta') || 'trabalho';
+  const P = valorDe(args, '--pasta') || pastaDaSessao();
   if (!PASTAS.includes(P)) return sair(2, '--pasta: use trabalho ou pessoal');
   const para = CONTA_CLI[alvo];
 
@@ -573,6 +581,10 @@ function agendar(c, args) {
   const faltam = ['team', 'pessoal'].filter((conta) => !reservaPronta(c, conta));
   if (faltam.length) {
     return sair(1, `não agendo: falta a reserva de ${faltam.map((k) => NOME[k]).join(' e ')} (rode preparar antes)`);
+  }
+  // O vigia roda este arquivo pelo caminho absoluto: agendado de um worktree, morre com ele.
+  if (/[\\/]\.claude[\\/]worktrees[\\/]/i.test(__filename)) {
+    console.error('aviso: agendado de um worktree; reagende do clone instalado antes de removê-lo');
   }
   const r = chamarSchtasks(argv);
   if (r.error) return sair(1, 'não consegui rodar o schtasks: ' + r.error.message);
