@@ -16,5 +16,5 @@ consegue consumir — antes, ele passava e a falha só aparecia no despacho:
   sairia 4 sem medir. Zero ocorrências só **avisa**: é o código que a tarefa vai
   criar.
 
-Cabeçalho `teto-despachos:` do plano (valor aceito e o que o hook faz com ele):
+Cabeçalho `teto-despachos:` ilegível no plano: a cobertura recusa (exit 2), como o hook (valor aceito):
 `references/teto-despachos.md`.

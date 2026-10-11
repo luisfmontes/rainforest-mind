@@ -32,6 +32,11 @@ Duas linhas `teto-despachos:`, ou um valor fora do que está acima (`0`, `-5`,
 qual linha leu: ilegível nunca vira o teto padrão (D12). Conserte o
 cabeçalho do plano; o hook lê o plano a cada despacho.
 
+O erro aparece antes, no próprio plano: `node scripts/conferir-fluxo.cjs
+cobertura` (e o `marcar --estagio plano` que a roda) recusa com exit 2 o
+mesmo cabeçalho ilegível, pelo mesmo leitor do hook
+(`hooks/lib/teto-despachos.cjs`, D14).
+
 Plano ainda inexistente (fluxo em `design`) vale o padrão de 40.
 
 ## Teto efetivo
