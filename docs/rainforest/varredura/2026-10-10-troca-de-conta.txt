@@ -1,0 +1,105 @@
+Data: 2026-10-10
+Termos: troca de conta, credentials, oauth/usage, CLIProxyAPI, duas contas, limite de uso
+
+$ gh issue list --state all --search "troca de conta" --limit 200 --json number,title,state
+[{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"},{"number":1,"state":"CLOSED","title":"Briefing nao diz o ato de entregar: subagente nomeado termina o trabalho e nao devolve (3 de 3)"}]
+
+
+$ gh issue list --state all --search "credentials" --limit 200 --json number,title,state
+[{"number":262,"state":"CLOSED","title":"conferir-publicacao: credencial em JSON com a chave entre aspas nao e vista, e a trava responde verde"}]
+
+
+$ gh issue list --state all --search "oauth/usage" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "CLIProxyAPI" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "duas contas" --limit 200 --json number,title,state
+[{"number":331,"state":"CLOSED","title":"Skill vigiar: acompanhar conversa de WhatsApp sem gastar token esperando (integração opcional)"},{"number":221,"state":"CLOSED","title":"saude.cjs quebra com 'path argument undefined' quando ha duas config dirs e a versao do repo esta a frente da instalada"},{"number":83,"state":"CLOSED","title":"Critério de plano só mede o que a máquina lê — passou verde com feature inutilizável e com dado pessoal em repo público"},{"number":272,"state":"CLOSED","title":"Hooks de SessionEnd quebram com exit 1 quando o payload e o JSON null"}]
+
+
+$ gh issue list --state all --search "limite de uso" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "troca de conta" --limit 200 --json number,title,state
+[{"number":490,"state":"OPEN","title":"Livro de repos: claude-cockpit (troca de conta)"},{"number":464,"state":"MERGED","title":"Mods: painel de PR e plugins-em-dia (1.55.0)"},{"number":217,"state":"MERGED","title":"Contrato de territorio: AdvPL vira o primeiro, e o repo publico perde os identificadores de trabalho"},{"number":90,"state":"MERGED","title":"Abertura: os hooks passam a pintar na tela, nao so no contexto do modelo"},{"number":60,"state":"MERGED","title":"Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture"}]
+
+
+$ gh pr list --state all --search "credentials" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "oauth/usage" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "CLIProxyAPI" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "duas contas" --limit 200 --json number,title,state
+[{"number":415,"state":"MERGED","title":"/transferir claude: a sessão muda de conta com o contexto inteiro (1.42.0)"},{"number":422,"state":"MERGED","title":"Versao 1.45.0: barra de sessao e painel /painel no mod (enxerto do terminal-desk)"},{"number":356,"state":"MERGED","title":"fix(abertura): sonda uma bridge WhatsApp por conta"},{"number":336,"state":"MERGED","title":"gate-busca-raiz: subagente nao varre o disco; perfil pede timeout"},{"number":380,"state":"MERGED","title":"Versao 1.36.0: mod canario para provar carregamento pelo marketplace"},{"number":332,"state":"MERGED","title":"Veredito fora da linha: hook devolve a vez uma vez; negrito aceito"},{"number":381,"state":"MERGED","title":"Versao 1.37.0: abertura inteira pelo mod via prompt.compose"},{"number":328,"state":"MERGED","title":"Agente despachado é folha: não despacha agente (1.23.10)"},{"number":334,"state":"MERGED","title":"Skill vigiar: acompanhar conversa de WhatsApp sem gastar token"},{"number":41,"state":"MERGED","title":"Versao 0.73.0: a statusline entra no plugin, e a bateria de saude para de vazar temporario"},{"number":34,"state":"MERGED","title":"Versao 0.72.0: o painel passa a ver as contas divergirem"},{"number":94,"state":"MERGED","title":"Versao 0.76.0: a abertura passa a aparecer, e o \"somente leitura\" passa a ser verdade"}]
+
+
+$ gh pr list --state all --search "limite de uso" --limit 200 --json number,title,state
+[{"number":327,"state":"MERGED","title":"Contrato de veredito de uma linha no revisar (1.23.9)"}]
+
+
+$ git ls-remote --heads origin | grep -F "troca de conta"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "credentials"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "oauth/usage"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "CLIProxyAPI"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "duas contas"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "limite de uso"
+(vazio)
+
+$ git log --all --grep="troca de conta" --oneline
+(vazio)
+
+$ git log --all --grep="credentials" --oneline
+5e3d06851 medir-tokens le a chave do arquivo de credenciais fora dos repos
+8f3737ed7 medir-tokens le a chave do arquivo de credenciais fora dos repos
+
+$ git log --all --grep="oauth/usage" --oneline
+da0d3f3a Livro de repos: claude-cockpit (Instalar -> Enxertar: enxerta)
+
+$ git log --all --grep="CLIProxyAPI" --oneline
+(vazio)
+
+$ git log --all --grep="duas contas" --oneline
+0186bdaa Versao 1.45.0: barra de sessao e painel /painel no mod
+d32b006a estado: tarefa 11 medida nas duas contas (desvio com toast unico)
+ff3d1b16 estado: tarefa 10 integrada, parada na medicao real
+dc439026 /transferir claude: a sessão muda de conta com o contexto inteiro (1.42.0) (#415)
+df0ab018 fix(abertura): sonda uma bridge WhatsApp por conta
+ff5d3026 rodada 8: consistencia de numeros nos comentarios da bateria
+081b6cf1 Batedor: seis repos indicados — e o gate-worktree e cego para CLI de agente externa
+9980cac0 Batedor: seis repos indicados — e o gate-worktree e cego para CLI de agente externa
+980d99fb Versao 0.76.0: a abertura passa a aparecer, e o "somente leitura" passa a ser verdade (#94)
+11d72093 Versao 0.76.0: a abertura passa a aparecer, e o "somente leitura" passa a ser verdade (#94)
+7bac3c4a Versao 0.72.0: o painel passa a ver as contas divergirem (#34)
+5b89750b Versao 0.72.0: o painel passa a ver as contas divergirem (#34)
+4e055f1c A orquestracao sai da CLAUDE.md duplicada e vira regra do plugin
+12ca0281 A orquestracao sai da CLAUDE.md duplicada e vira regra do plugin
+
+$ git log --all --grep="limite de uso" --oneline
+293b5645 Estado: T9 integrada; T8 pendente do limite de uso do Codex
+
+$ cat <dados>/ideias.jsonl
+{"id":"multiconta-duas-contas-mesma-porta","titulo":"Nada impede duas contas do accounts.json de apontarem para a mesma porta"}
+
+
