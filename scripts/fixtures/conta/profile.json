@@ -6,7 +6,7 @@
     "email": "x@exemplo.invalid",
     "has_claude_max": true,
     "has_claude_pro": false,
-    "created_at": "2026-03-29T20:00:17.122282Z"
+    "created_at": "2026-01-01T00:00:00.000000Z"
   },
   "organization": {
     "uuid": "00000000-0000-0000-0000-000000000000",
@@ -17,7 +17,7 @@
     "seat_tier": null,
     "has_extra_usage_enabled": false,
     "subscription_status": "active",
-    "subscription_created_at": "2026-08-08T13:51:42.148216Z",
+    "subscription_created_at": "2026-01-01T00:00:00.000000Z",
     "cc_onboarding_flags": {},
     "claude_code_trial_ends_at": null,
     "claude_code_trial_duration_days": null,

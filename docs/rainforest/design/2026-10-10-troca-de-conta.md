@@ -45,8 +45,19 @@ Luís também troca na mão quando quiser.
 - **D12 — O `/transferir claude` sai neste fluxo, depois que a troca estiver provada em uso real; o
   `/transferir codex` fica** — porquê: com a conta trocando por baixo da pasta, mudar a sessão de pasta perde o
   motivo; tirar só depois evita ficar sem nenhum dos dois.
+- **D13 — O vigia renova, ele mesmo, os logins guardados fora das pastas (reservas e estacionados) quando o access
+  token tem menos de 1 h de vida, e grava o par novo no mesmo arquivo antes de qualquer outra leitura** — porquê:
+  login parado vence em ~8 h; com ele vencido, a consulta de uso do login de reserva recebe 401 e a volta (D3) fica
+  presa na guarda da D11 para sempre (revisão de 2026-10-11, achado 1). Login guardado não está em pasta nenhuma, então
+  não há sessão disputando o refresh token de uso único. Renovação é a do próprio CLI (`POST` em
+  `platform.claude.com/v1/oauth/token`, `grant_type: refresh_token`, o `client_id` público do CLI e os `scopes`
+  da credencial; resposta sem `refresh_token` mantém o atual). Falha de renovação não derruba a rodada: aquela conta
+  fica sem dado, e as outras seguem.
 
 ## Avaliado e descartado
+
+- **Só tratar o 401 como "sem dado" e tirar a guarda de vida do login que entra** (opção B da revisão): menos código,
+  mas reserva parada há semanas pode morrer e só se descobre na hora da troca — D13.
 
 - **Copiar o `.credentials.json` de uma pasta para a outra** (era a forma registrada em
   `2026-10-09-mods-pr-e-plugins.md`): derruba as duas contas pelo refresh token de uso único — D2.

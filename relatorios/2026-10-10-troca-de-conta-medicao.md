@@ -57,11 +57,8 @@ Desvio do plano: em vez de `claude -p --debug`, a prova é o `policy-limits.json
 com a política da conta que está no login (o `cc-plugin-sec-default` sai dessa política).
 
 ```
-antes (22:22:39, login org):
-{"restrictions":{"allow_quick_web_setup":{"allowed":false},"enforce_web_search_mcp_isolation":{"allowed":false},"require_trusted_devices":{"allowed":true}}, ...}
-
-com a pasta trocada (23:22:39, login pessoal):
-{"restrictions":{"enforce_web_search_mcp_isolation":{"allowed":false}}, ...}
+antes (22:22:39, login org):        3 restrições em "restrictions"
+com a pasta trocada (23:22:39, login pessoal): 1 restrição, a da conta pessoal
 ```
 
 As restrições da organização caem enquanto a pasta está no login pessoal, e voltam na próxima atualização depois

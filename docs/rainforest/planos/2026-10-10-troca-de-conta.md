@@ -163,3 +163,75 @@ mutacao:
   bateria: `bash scripts/testa-transferir.sh`
   fixture: caso "transferir claude recusa e aponta o /conta"
 pronto quando: com `node scripts/transferir.cjs claude`, exit 2 e a frase que aponta o `/conta`; `node scripts/transferir.cjs` sem argumento segue indo para o Codex; nenhum arquivo rastreado fora de `docs/` (o histórico de design e plano fica) cita `transferir-entre-contas` — provado por `bash scripts/testa-transferir.sh` e `bash scripts/testa-transferir-para-codex.sh` com `0 falha(s)` e `git grep -c transferir-entre-contas -- ':!docs'` sem resultado.
+
+## Rodada 2 (revisão de 2026-10-11 reprovou com 11 achados; D13 decidida pelo Luís)
+
+### 11. Desfazer que falha não lança [tipo: implementar]
+atende: D2, D11
+arquivos: `scripts/lib/conta-mover.cjs`, `scripts/testa-conta-mover.sh`
+depende de: 10
+paralela: nao
+Achado 4: `desfazer()` que falha propaga exceção e deixa a troca pela metade. O `mover` passa a nunca lançar depois da primeira gravação: tenta desfazer tudo, e se alguma gravação do desfazer falhar devolve `{ ok: false, motivo: 'desfazer_falhou', pendentes }` (`pendentes` = arquivos não restaurados). Contém literalmente `if (!desfeito) return { ok: false, motivo: 'desfazer_falhou', pendentes };`.
+prova: `bash -c "grep -q desfazer_falhou scripts/lib/conta-mover.cjs"`
+mutacao:
+  arquivo: `scripts/lib/conta-mover.cjs`
+  de: `if (!desfeito) return { ok: false, motivo: 'desfazer_falhou', pendentes };`
+  para: `if (false) return { ok: false, motivo: 'desfazer_falhou', pendentes };`
+  bateria: `bash scripts/testa-conta-mover.sh`
+  fixture: caso "desfazer que falha não lança e devolve desfazer_falhou"
+pronto quando: com a 2ª gravação e uma gravação do desfazer falhando (rename forçado a falhar no teste), `mover` devolve `motivo: desfazer_falhou` sem lançar — provado pelo caso nomeado de `bash scripts/testa-conta-mover.sh` e pela mutação acima vermelha.
+
+### 12. O vigia renova os logins guardados [tipo: implementar]
+atende: D13, D3, D10
+arquivos: `scripts/lib/conta-api.cjs`, `scripts/conta.cjs`, `scripts/fixtures/conta/servidor.cjs`, `scripts/testa-conta-api.cjs`, `scripts/testa-conta.sh`
+depende de: 10
+paralela: nao
+Achados 1a, 1b, 8 e o timeout do 11. `conta-api.cjs` ganha `renovar(cred)` (POST JSON em `<base>/v1/oauth/token`, `grant_type: refresh_token`, `client_id` público do CLI, `scope` = `cred.scopes.join(' ')`; resposta sem `refresh_token` mantém o atual; `expiresAt = agora + expires_in*1000`), e todo `fetch` leva timeout de 30 s. `conta.cjs` chama, antes de coletar usos e de decidir, `await renovarOciosos(c, estado);`: para cada `reserva-*.json` e `estacionado-*.json` com `expiresAt` a menos de 1 h, renova e grava atômico no mesmo arquivo (0o600); falha de renovação vira evento `renovacao_falhou` sem credencial e não derruba a rodada. `coletarUsos` não aborta mais a rodada por erro de uma conta: aquela conta fica sem dado. Leitura de uso com `idadeMs` acima de 15 min não decide troca (a conta fica sem dado). O servidor falso passa a rejeitar com 401 token vencido, responder `/v1/oauth/token` girando o refresh token (o antigo deixa de valer) e ter `resets_at` configurável por caso.
+prova: `bash -c "grep -q renovarOciosos scripts/conta.cjs"`
+mutacao:
+  arquivo: `scripts/conta.cjs`
+  de: `await renovarOciosos(c, estado);`
+  para: `await Promise.resolve(estado);`
+  bateria: `bash scripts/testa-conta.sh`
+  fixture: caso "(k) volta automática com reserva e estacionado vencidos"
+pronto quando: com a pasta trabalho trocada para a pessoal, `reserva-team` e `estacionado-trabalho` com access token vencido e `resets_at` do limite já passado, um `vigiar` renova os dois (refresh token girado no arquivo, o antigo recusado pelo servidor) e volta a pasta à conta team; com a renovação respondendo 500, a rodada sai 0 e grava `renovacao_falhou` sem credencial — provado pelos casos (k) e (k2) de `bash scripts/testa-conta.sh` e pela mutação acima vermelha.
+
+### 13. Estado e identidade sob a trava [tipo: implementar]
+atende: D9, D10, D11
+arquivos: `scripts/conta.cjs`, `scripts/testa-conta.sh`, `scripts/testa-conta-preparar.sh`
+depende de: 12
+paralela: nao
+Achados 2, 3 e a duplicata do 4. `preparar` roda sob a trava e recusa quando o slot de reserva daquela conta foi esvaziado por troca em curso (alguma pasta fora de casa usando aquela conta), com a frase `a reserva de <conta> está em uso numa pasta trocada: volte a pasta antes de preparar`; contém literalmente `if (slotEmUso(c, conta)) return sair(1, MSG_SLOT_EM_USO(alvo));`. `registrarCasas` nunca sobrescreve um e-mail já registrado para a conta; divergência vira evento `identidade_divergente` e nada é gravado. `status` grava o estado só sob a trava (sem a trava: mostra, não grava). `vigiar` e `status` detectam o mesmo refresh token (por `sha256[0:12]`) em dois arquivos e gravam evento `credencial_duplicada` sem mover nada. Volta que falha passa a gravar evento `falhou`, não só stdout.
+prova: `bash -c "grep -q slotEmUso scripts/conta.cjs"`
+mutacao:
+  arquivo: `scripts/conta.cjs`
+  de: `if (slotEmUso(c, conta)) return sair(1, MSG_SLOT_EM_USO(alvo));`
+  para: `if (false) return sair(1, MSG_SLOT_EM_USO(alvo));`
+  bateria: `bash scripts/testa-conta-preparar.sh`
+  fixture: caso "preparar recusa o slot esvaziado pela troca"
+pronto quando: com a pasta trabalho trocada, `preparar pessoal` sai 1 com a frase e não grava; com o estado dizendo "em casa" e a pasta com login de outra conta, `status` não altera `contas.<conta>.email` e grava `identidade_divergente`; com o mesmo refresh token em pasta e reserva, `vigiar` grava `credencial_duplicada` e não move — provado pelos casos nomeados em `testa-conta-preparar.sh` e `testa-conta.sh` e pela mutação acima vermelha.
+
+### 14. Limite certo, recuo e dados fixos [tipo: implementar]
+atende: D3, D4, D6
+arquivos: `scripts/conta.cjs`, `scripts/testa-conta.sh`
+depende de: 13
+paralela: nao
+Achados 5, 6, 7 e o resto do 11. Com os dois limites passados, `travouPor` é o de `resets_at` mais tardio; contém literalmente `return passaram.reduce((a, b) => (Date.parse(b.resetsAt) > Date.parse(a.resetsAt) ? b : a));`. Depois de um evento `falhou` de troca automática numa pasta, o vigia não tenta de novo nessa pasta por 15 min. `dadosDir()` ignora a raiz de projeto (`<cwd>/.rainforest`): fora de `RFM_CONTA_DADOS` (teste), é sempre a raiz de dados do usuário. `eventos` pula linha que não é JSON em vez de sair 1. Trava vencida só é tomada por quem consegue renomeá-la (rename atômico), nunca por dois.
+prova: `bash -c "grep -q 'passaram.reduce' scripts/conta.cjs"`
+mutacao:
+  arquivo: `scripts/conta.cjs`
+  de: `return passaram.reduce((a, b) => (Date.parse(b.resetsAt) > Date.parse(a.resetsAt) ? b : a));`
+  para: `return passaram[0];`
+  bateria: `bash scripts/testa-conta.sh`
+  fixture: caso "(m) com os dois limites passados, a volta espera o reset mais tardio"
+pronto quando: com a team a 99% nas duas janelas (5 h reseta antes da semana), `vigiar` troca e grava `travouPor.limite = seven_day`; com `/profile` falhando, duas rodadas seguidas fazem uma tentativa só; com o cwd num projeto que tem `.rainforest/FOCO.md`, `status` lê a pasta de dados do usuário; `eventos` com uma linha corrompida sai 0 e lista as válidas — provado pelos casos nomeados de `testa-conta.sh` e pela mutação acima vermelha.
+
+### 15. Doc e dados da rodada 2 [tipo: docs]
+atende: D7, D13
+arquivos: `README.md`, `scripts/fixtures/conta/profile.json`, `relatorios/2026-10-10-troca-de-conta-medicao.md`, `docs/rainforest/design/2026-10-10-troca-de-conta.md`
+depende de: 10
+paralela: nao
+Achados 9 e 10: README diz que `/conta` age na pasta da sessão; fixture sem datas de conta real; relatório sem os nomes das restrições da organização; design com a D13.
+mutacao: n/a
+  motivo: texto e dado de fixture, sem comportamento a inverter.
+pronto quando: `README.md` descreve a pasta da sessão como `commands/conta.md`; `grep -E '2026-0[38]-' scripts/fixtures/conta/profile.json` sem resultado; o relatório não cita `require_trusted_devices` nem `allow_quick_web_setup` — provado pelos dois `grep` sem resultado.
