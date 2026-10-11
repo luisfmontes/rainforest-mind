@@ -213,7 +213,11 @@
     ]
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/varrer-baterias.sh; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-10-flaky-teto",
+    "saida": "varrer exit 1 com 2 vermelhas fora do diff (scripts/testa-cli-externo.cjs: eco do stdin exit null sob carga; hooks/testa-memoria-assunto-prompt.cjs: tempo 1a=3173ms sob carga); reroda isolada: testa-cli-externo exit 0 ok 15 falhou 0, testa-memoria-assunto-prompt exit 0 sem FALHA; git diff 1a25e96c...HEAD nao toca nenhuma das duas. mutacoes exit 0: tarefas 1-7 e 12 vermelho, 8-11 puladas n/a",
+    "sensor_externo": "bash scripts/varrer-baterias.sh",
+    "em": "2026-10-11"
   },
   "fechar": {
     "status": "pendente"
