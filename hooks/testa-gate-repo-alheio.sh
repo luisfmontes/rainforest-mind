@@ -85,6 +85,28 @@ gate "JANELA PRINCIPAL escreve em outro repo (incidente)" 2 "$(p Write "$R2/novo
 gate "JANELA PRINCIPAL edita em outro repo"            2 "$(p Edit "$R2/b.txt" "$R1")"
 gate "comando com aspas duplas no campo: escrita no repo alheio barra" 2 "$(j Write "$R2/\"new\".txt" "$R1")"
 
+# Worktree linkado do OUTRO repo continua sendo o outro repo (#495): a
+# comparacao e contra o repo da sessao. A mensagem chegou a receitar isso como
+# saida, e quem seguia gastava o worktree e tomava o mesmo bloqueio.
+WT2="$RAIZ/wt-outro"; git -C "$R2" worktree add -q -b ramo "$WT2" >/dev/null 2>&1
+gate "JANELA PRINCIPAL em worktree do OUTRO repo barra" 2 "$(p Edit "$WT2/b.txt" "$R1")"
+
+# Texto do bloqueio por quem o recebe (#495). Com `!!agente`, o rotulo
+# "janela principal" (string verdadeira) mandava a janela principal parar e
+# reportar a si mesma, e as saidas dela nunca apareciam.
+texto() { # nome, json, deve-conter, nao-deve-conter
+  local nome="$1" json="$2" tem="$3" naotem="$4"
+  local saida; saida=$(printf '%s' "$json" | node "$GATE" 2>&1)
+  if printf '%s' "$saida" | grep -qF -- "$tem" && ! printf '%s' "$saida" | grep -qF -- "$naotem"; then
+    ok=$((ok+1)); echo "  ok   $nome"
+  else
+    falhou=$((falhou+1)); echo "  FALHA $nome: esperava '$tem' e nao '$naotem'"; printf '%s\n' "$saida" | sed 's/^/         /' | tail -6
+  fi
+}
+texto "janela principal recebe as saidas dela" "$(p Edit "$WT2/b.txt" "$R1")" "--desligar gate-repo-alheio" "PARE e reporte"
+texto "subagente recebe PARE e reporte"         "$(j Edit "$R2/b.txt" "$R1")"  "PARE e reporte" "--desligar gate-repo-alheio"
+texto "mensagem nao receita worktree do outro repo" "$(p Edit "$WT2/b.txt" "$R1")" "Um worktree daquele repo" "usar um worktree próprio naquele repo"
+
 echo
 echo "== deve PASSAR (exit 0) — repo da sessao, fora de git, worktree do mesmo repo =="
 gate "escreve no repo da sessao (Write)"             0 "$(j Write "$R1/novo.txt" "$R1")"
