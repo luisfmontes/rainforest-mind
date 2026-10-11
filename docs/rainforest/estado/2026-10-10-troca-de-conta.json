@@ -22,7 +22,7 @@
     "em": "2026-10-10"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-10",
     "tarefas_ok": 10,
     "tarefas": 10,
@@ -146,15 +146,31 @@
       }
     ],
     "comando": "node scripts/conferir-mutacao.cjs --arquivo scripts/transferir.cjs ... --bateria \"bash scripts/testa-transferir.sh\"",
-    "saida": "ok: bateria VERMELHA com o comportamento invertido (exit 1). | testa-transferir: 5 passaram, 0 falharam | testa-transferir-para-codex: 13 ok, 0 falha(s) | testa-conta: 15 ok"
+    "saida": "ok: bateria VERMELHA com o comportamento invertido (exit 1). | testa-transferir: 5 passaram, 0 falharam | testa-transferir-para-codex: 13 ok, 0 falha(s) | testa-conta: 15 ok",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-11"
+    }
   },
   "revisar": {
-    "status": "pendente",
+    "status": "reprovado",
     "snapshot": {
-      "head": "2484398c63d62d39f07a59c37dd71f1c79e8010b",
+      "head": "7e0c35cb3b551caaac6cc3e81ae5d9d023c45112",
       "caminhos_sujos": []
     },
-    "vereditos": []
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a7dee5f94184a5237",
+        "veredito": "reprovado",
+        "em": "2026-10-11",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/170b1915-c063-4fe8-912c-a4d1b50b044f/subagents/agent-a7dee5f94184a5237.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-11",
+    "achados": 11,
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
