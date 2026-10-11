@@ -1,0 +1,9 @@
+{
+  "slug": "2026-10-10-livro-claude-cockpit",
+  "titulo": "fluxo/livro-claude-cockpit",
+  "criado_em": "2026-10-10",
+  "leve": {
+    "motivo": "conferir-versao isenta livro de repos e relatorios: registro nao exige bump (pedido do Luis no PR 490)",
+    "data": "2026-10-10"
+  }
+}

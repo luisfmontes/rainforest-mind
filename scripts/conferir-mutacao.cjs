@@ -35,13 +35,24 @@
  * rodava com `</dev/null`. Aqui o filho nasce sem stdin e com teto — pendurar
  * deixaria o fonte MUTADO na árvore por tempo indeterminado.
  *
+ * NOVA TENTATIVA (flaky-teto, D4, D7, D8): bateria instável decide por acaso, e
+ * a catraca existe para não deixar o acaso decidir. Por isso os exits 2 e 4 só
+ * saem DEPOIS de uma nova tentativa (nunca 1, 3, 5, 6 e 69, que não são acaso),
+ * e o exit 0 só sai com a bateria vermelha em DUAS rodadas pós-mutação (vermelho
+ * por acaso é aprovação falsa). Rodada mista (verde e vermelho em qualquer
+ * ordem) sai 2 e imprime `FLAKE: baseline` ou `FLAKE: pos-mutacao`; com
+ * `--slug` e `--tarefa` o flake é gravado no estado do fluxo (`estado.cjs
+ * registrar-flake`) e falhar ao gravar é só aviso, nunca muda o exit.
+ *
  * Uso:
  *   node scripts/conferir-mutacao.cjs --arquivo <caminho> --de <trecho> \
- *        --para <trecho> --bateria <comando> [--raiz <pasta>] [--timeout <ms>]
+ *        --para <trecho> --bateria <comando> [--raiz <pasta>] [--timeout <ms>] \
+ *        [--slug <slug> --tarefa <n>]
  *
  * Exit:
- *   0  mutação casou E bateria VERMELHA  — a bateria sabe falhar
- *   2  mutação casou e bateria VERDE     — recusa: a bateria não mede o conserto
+ *   0  mutação casou E bateria VERMELHA nas duas rodadas — a bateria sabe falhar
+ *   2  mutação casou e bateria VERDE (depois da nova tentativa, ou vermelho e verde
+ *      misturados) — recusa: a bateria não mede o conserto
  *   3  MUTACAO NAO APLICADA              — o trecho `--de` não existe no fonte
  *   4  não dá para MEDIR                  — recusa antes de mutar: a bateria já falha
  *                                          no fonte íntegro (baseline não-verde,
@@ -92,8 +103,11 @@ const USO = `uso: node scripts/conferir-mutacao.cjs --arquivo <caminho> --de <tr
   --bateria  <comando>  linha de comando da bateria, rodada via shell
   --raiz     <pasta>    diretório de trabalho da bateria (padrão: cwd)
   --timeout  <ms>       teto de tempo da bateria (padrão: ${TIMEOUT_PADRAO})
+  --slug     <slug>     fluxo onde gravar o flake (junto de --tarefa; os dois ou nenhum)
+  --tarefa   <n>        tarefa do plano a que o flake pertence
 
-exit: 0 mutação casou e bateria VERMELHA | 2 bateria VERDE | 3 MUTACAO NAO APLICADA |
+exit (2 e 4 só valem depois de uma nova tentativa; 0 exige vermelho em duas rodadas):
+     0 mutação casou e bateria VERMELHA | 2 bateria VERDE | 3 MUTACAO NAO APLICADA |
      4 não dá para medir (baseline não-verde, ou --de ambíguo) | 5 corte de shell
      (pós-mutação < 10% do baseline ou < 1 s) | 6 bateria colapsou (zero asserção
      sobreviveu à mutação, ou ela parou de imprimir o próprio placar) | 1 erro de
@@ -355,6 +369,26 @@ function limparTemporariosOrfaos() {
   }
 }
 
+// ============================== Flake gravado no estado do fluxo (D4)
+
+/**
+ * Grava no estado do fluxo que (tarefa, gate) só passou na nova tentativa.
+ * Sem `--slug` não faz nada. Falhar ao gravar é AVISO no stderr e nunca muda o
+ * exit da catraca: o veredito da bateria não depende do estado do fluxo.
+ */
+function gravarFlake(slug, tarefa, gate, raiz) {
+  if (slug === null) return;
+  const r = spawnSync(process.execPath, [
+    path.join(__dirname, 'estado.cjs'), 'registrar-flake',
+    '--slug', slug, '--tarefa', tarefa, '--gate', gate,
+  ], { cwd: raiz, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  if (r.stdout) process.stdout.write(r.stdout);
+  if (r.error || r.status !== 0) {
+    const motivo = r.error ? r.error.message : `exit ${r.status}: ${String(r.stderr || '').trim()}`;
+    console.error(`aviso: nao consegui registrar o flake no estado de ${slug} — ${motivo}`);
+  }
+}
+
 // ============================== Comando da bateria (D24, D25)
 
 /**
@@ -559,6 +593,23 @@ function bateriaColapsou(placarBase, placarPos) {
   return placarPos.ok === 0 && placarPos.falhou === 0;
 }
 
+/**
+ * RECUSADO por colapso, comum à primeira rodada pós-mutação e à confirmação
+ * do vermelho (D7): sai 6. `rodada` nomeia a rodada no diagnóstico.
+ */
+function recusaColapso(placarBase, placarRodada, rodada) {
+  console.error('RECUSADO: a bateria colapsou — não mediu nada.');
+  console.error(`  Baseline: ok=${placarBase.ok} falhou=${placarBase.falhou}`);
+  console.error(placarRodada
+    ? `  ${rodada}: ok=${placarRodada.ok} falhou=${placarRodada.falhou}`
+    : `  ${rodada}: placar ausente — a bateria parou de se reportar.`);
+  console.error('  Isto não é "a bateria discordou" (isso seria vermelha normal, exit 0)');
+  console.error('  — é o mecanismo de teste morrendo antes de exercitar qualquer');
+  console.error('  comportamento (ReferenceError, exceção não tratada). Refine a mutação');
+  console.error('  ou a bateria.');
+  process.exit(6);
+}
+
 function main() {
   if (process.argv.length <= 2) {
     console.error(USO);
@@ -570,6 +621,9 @@ function main() {
   const de = ler('de');
   const para = ler('para');
   const bateria = ler('bateria');
+  const slug = ler('slug');
+  const tarefa = ler('tarefa');
+  if ((slug === null) !== (tarefa === null)) erroUso('--slug e --tarefa vão juntos: os dois ou nenhum');
 
   if (rel === null) erroUso('falta --arquivo');
   if (de === null) erroUso('falta --de');
@@ -648,9 +702,9 @@ function main() {
   // Roda a bateria no fonte ÍNTEGRO. Se não sair 0, a prova não será válida,
   // porque qualquer alteração pode deixar a bateria vermelha sem relação com
   // o comportamento que você quer testar. D11 estendido.
-  const baselineRes = rodaBateria(bateria, raizExecucao, timeout, 'baseline');
+  let baselineRes = rodaBateria(bateria, raizExecucao, timeout, 'baseline');
   const baselineExit = baselineRes.r.status;
-  const baselineDuracao = baselineRes.duracao;
+  let baselineDuracao = baselineRes.duracao;
 
   const baselineSaida = ultimasLinhas(`${baselineRes.r.stdout || ''}${baselineRes.r.stderr || ''}`, 20);
   console.log(`--- bateria baseline (fonte íntegro) em ${baselineDuracao} ms ---`);
@@ -687,16 +741,28 @@ function main() {
     process.exit(69);
   }
   if (baselineExit !== 0) {
-    console.error(`RECUSADO: baseline NAO-VERDE (exit ${baselineExit}).`);
-    console.error('  A bateria não sai 0 no fonte íntegro. Qualquer mutação pode deixá-la');
-    console.error('  vermelha por motivo diverso do comportamento que você quer medir.');
-    // Superfície humana (tarefa 20): a bateria roda dentro da CÓPIA temporária
-    // (Issue #266, D5), não no fonte real — se falhar aqui por motivo de
-    // ambiente (ex.: git ausente da cópia), quem lê não pode confundir com
-    // bateria quebrada no fonte de `--raiz`.
-    console.error(`  A falha foi NA CÓPIA temporária (${raizExecucao}), não em ${raiz}.`);
-    console.error('  Conserte a bateria ou o source antes de invocar esta catraca.');
-    process.exit(4);
+    // Nova tentativa (D8): baseline vermelho pode ser acaso. Roda UMA vez mais, na
+    // mesma cópia, ainda sem mutar. Verde agora = flake do baseline e a catraca
+    // segue; vermelho de novo (ou rodada sem exit) = a recusa 4 de sempre.
+    const nova = rodaBateria(bateria, raizExecucao, timeout, 'baseline (nova tentativa)');
+    if (!nova.r.error && nova.r.status === 0) {
+      console.log(`--- baseline: exit ${baselineExit} na 1a rodada e exit 0 na nova tentativa ---`);
+      console.log('FLAKE: baseline');
+      gravarFlake(slug, tarefa, `catraca: ${bateria}`, raiz);
+      baselineRes = nova;
+      baselineDuracao = nova.duracao;
+    } else {
+      console.error(`RECUSADO: baseline NAO-VERDE (exit ${baselineExit}; nova tentativa: ${nova.r.error ? nova.r.error.message : `exit ${nova.r.status}`}).`);
+      console.error('  A bateria não sai 0 no fonte íntegro. Qualquer mutação pode deixá-la');
+      console.error('  vermelha por motivo diverso do comportamento que você quer medir.');
+      // Superfície humana (tarefa 20): a bateria roda dentro da CÓPIA temporária
+      // (Issue #266, D5), não no fonte real — se falhar aqui por motivo de
+      // ambiente (ex.: git ausente da cópia), quem lê não pode confundir com
+      // bateria quebrada no fonte de `--raiz`.
+      console.error(`  A falha foi NA CÓPIA temporária (${raizExecucao}), não em ${raiz}.`);
+      console.error('  Conserte a bateria ou o source antes de invocar esta catraca.');
+      process.exit(4);
+    }
   }
 
   console.log(`ok: baseline VERDE (exit 0 após ${baselineDuracao} ms).`);
@@ -766,9 +832,10 @@ function main() {
     console.log('');
   }
 
-  // Apaga a cópia temporária ANTES de decidir e imprimir: nenhum caminho
-  // abaixo precisa dela, e o fonte real nunca esteve mutado (Issue #266).
-  limpar();
+  // A cópia temporária NÃO é apagada aqui: o exit 2 (nova tentativa) e a
+  // confirmação do vermelho (D7) rodam a bateria de novo, na mesma cópia mutada.
+  // O `process.on('exit')` de `armarLimpeza` a apaga em todo caminho de saída, e
+  // o fonte real nunca esteve mutado (Issue #266).
 
   // ============================================== Fase 5: veredito final
   const estourou = posRes.r.error && posRes.r.error.code === 'ETIMEDOUT';
@@ -787,6 +854,14 @@ function main() {
   }
 
   if (posExit === 0) {
+    // Nova tentativa (D8): verde pós-mutação pode ser acaso. Roda UMA vez mais e
+    // sai 2 em qualquer resultado; vermelho agora é rodada MISTA (flake).
+    const nova = rodaBateria(bateria, raizExecucao, timeout, 'pós-mutação (nova tentativa)');
+    if (!nova.r.error && nova.r.status !== null && nova.r.status !== 0) {
+      console.log(`--- pós-mutação: exit 0 na 1a rodada e exit ${nova.r.status} na nova tentativa ---`);
+      console.log('FLAKE: pos-mutacao');
+      gravarFlake(slug, tarefa, `catraca: ${bateria}`, raiz);
+    }
     console.error('RECUSADO: bateria VERDE com o comportamento invertido (exit 0).');
     console.error('  A mutação casou e foi aplicada — o fonte estava se comportando ao');
     console.error('  contrário enquanto a bateria rodava, e ela aprovou assim mesmo.');
@@ -800,18 +875,7 @@ function main() {
   // viva?").
   const placarBase = extrairPlacar(`${baselineRes.r.stdout || ''}${baselineRes.r.stderr || ''}`);
   const placarPos = extrairPlacar(`${posRes.r.stdout || ''}${posRes.r.stderr || ''}`);
-  if (bateriaColapsou(placarBase, placarPos)) {
-    console.error('RECUSADO: a bateria colapsou — não mediu nada.');
-    console.error(`  Baseline: ok=${placarBase.ok} falhou=${placarBase.falhou}`);
-    console.error(placarPos
-      ? `  Pós-mutação: ok=${placarPos.ok} falhou=${placarPos.falhou}`
-      : '  Pós-mutação: placar ausente — a bateria parou de se reportar.');
-    console.error('  Isto não é "a bateria discordou" (isso seria vermelha normal, exit 0)');
-    console.error('  — é o mecanismo de teste morrendo antes de exercitar qualquer');
-    console.error('  comportamento (ReferenceError, exceção não tratada). Refine a mutação');
-    console.error('  ou a bateria.');
-    process.exit(6);
-  }
+  if (bateriaColapsou(placarBase, placarPos)) recusaColapso(placarBase, placarPos, 'Pós-mutação');
 
   // Verificação de corte de shell: suspeita quando pós-mutação é desproporcionalmente
   // curta (< 10% do baseline), sugerindo que a bateria morreu antes de medir.
@@ -836,7 +900,33 @@ function main() {
     process.exit(5);
   }
 
-  console.log(`ok: bateria VERMELHA com o comportamento invertido (exit ${posExit}).`);
+  // Confirmação do vermelho (D7): vermelho por acaso é aprovação falsa. Só sai 0
+  // com a bateria vermelha também numa segunda rodada pós-mutação; verde agora é
+  // rodada MISTA (flake) e sai 2. Estouro de tempo ou sinal na segunda rodada é
+  // sem veredito (1), como na primeira.
+  const confRes = rodaBateria(bateria, raizExecucao, timeout, 'pós-mutação (confirmação)');
+  const confirmouVermelho = !confRes.r.error && confRes.r.status !== null && confRes.r.status !== 0;
+  // A confirmação passa pela mesma checagem de colapso da primeira rodada: crash
+  // sem placar não é vermelho confirmado (exit 6). Sinal ou estouro não tem exit
+  // numérico, não entra aqui e segue para o BATERIA SEM VEREDITO (exit 1).
+  const placarConf = extrairPlacar(`${confRes.r.stdout || ''}${confRes.r.stderr || ''}`);
+  if (confirmouVermelho && bateriaColapsou(placarBase, placarConf)) recusaColapso(placarBase, placarConf, 'Confirmação');
+  if (!confirmouVermelho) {
+    if (confRes.r.error || confRes.r.status === null) {
+      const porque = confRes.r.error ? confRes.r.error.message : `morta pelo sinal ${confRes.r.signal}`;
+      console.error(`BATERIA SEM VEREDITO: a segunda rodada pós-mutação não terminou — ${porque}.`);
+      process.exit(1);
+    }
+    console.log(`--- pós-mutação: exit ${posExit} na 1a rodada e exit 0 na confirmação ---`);
+    console.log('FLAKE: pos-mutacao');
+    gravarFlake(slug, tarefa, `catraca: ${bateria}`, raiz);
+    console.error('RECUSADO: o vermelho pós-mutação não se repetiu (vermelho e depois verde).');
+    console.error('  Vermelho que a segunda rodada desmente pode ser acaso, e aprovar por acaso');
+    console.error('  é aprovação falsa. A bateria é instável ou não mede o conserto.');
+    process.exit(2);
+  }
+
+  console.log(`ok: bateria VERMELHA com o comportamento invertido (exit ${posExit}), confirmada em duas rodadas.`);
   console.log(`    Baseline: ${baselineDuracao} ms (exit 0) → Mutação: ${posDuracao} ms (exit ${posExit})`);
   console.log('    A bateria sabe falhar, e o fonte foi restaurado.');
   process.exit(0);
@@ -844,4 +934,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { suspeitaDeCorte, mediuEFalhou, PISO_ABSOLUTO_MS, RAZAO_DE_CORTE, extrairPlacar, bateriaColapsou };
+module.exports = { rodaBateria, suspeitaDeCorte, mediuEFalhou, PISO_ABSOLUTO_MS, RAZAO_DE_CORTE, extrairPlacar, bateriaColapsou, gravarFlake };

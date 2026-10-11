@@ -75,6 +75,12 @@ ferramentas.jsonl
 # linha e cobre quem clonar esta arvore com log antigo ja no disco.
 .rainforest/portaria/despachos.jsonl
 
+# Contador do teto de despachos, um por fluxo (D11). Sem raiz de dados resolvida,
+# o hook cai em `<repo>/.rainforest` e gravaria aqui; fica fora do diff, como o
+# log da portaria. Nao e' rastro de execucao versionado: so o estado do fluxo
+# (`docs/rainforest/estado/`) e' versionado.
+.rainforest/fluxos/
+
 # Recibos colhidos: sha256 + bytes do momento da entrega. E' RASTRO DE EXECUCAO
 # desta maquina — um snapshot de hash de uma execucao num instante, nao veredito.
 # Outro dev em outro ambiente refaz a colheita e obtem hash diferente: normal e

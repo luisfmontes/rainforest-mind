@@ -9,9 +9,13 @@
  * - `gh issue close <n>` direto → exit 2, stderr aponta para scripts/fechar-issue.cjs
  * - `gh pr create`/`gh pr edit`/`gh issue create`/`gh issue comment` com corpo citando palavras-chave falsas (português): `fecha`, `encerra`, `conclui`, `corrige`, `resolvida`, etc. → exit 2 com instruções
  * - `gh pr create`/`gh pr edit`/`gh pr merge` com corpo citando `closes #N` para Issue sem marcador → exit 2
- * - `gh pr merge`: NÃO usa o `--body` (é a mensagem do merge commit, não a descrição
- *   do PR) — lê a descrição real via `gh pr view <ref> --json body` e verifica as
+ * - `gh pr merge`: lê a descrição real via `gh pr view <ref> --json body` e verifica as
  *   Issues citadas ali. Leitura falhou (exit ≠ 0, JSON inválido, sem rede) → bloqueia.
+ *   O `--body`/`--subject`/`--body-file` do merge (mensagem do commit de merge, que
+ *   também fecha Issue na branch padrão) é verificado à parte. Só passa a forma da
+ *   lista de formas permitidas (`analisarPrMerge`, #496).
+ * - `gh api` que mergeia PR (`PUT pulls/N/merge`) ou fecha Issue (`state=closed`,
+ *   `closeIssue`, `mergePullRequest`) → exit 2. Corpo vindo de `--input` fica de fora.
  * - Corpo ilegível (editor interativo) → exit 2 dizendo isso
  * - Saídas de emergência: `RAINFOREST_GATE_OFF=1` e a chave do config (o arquivo `.rainforest-gate-off` deixou de ser lido, #417)
  *
@@ -609,55 +613,238 @@ function bloqueia(motivo) {
 // la para o comportamento completo (incluindo `-EncodedCommand`).
 
 /**
- * Flags de `gh pr merge` que consomem o token seguinte como valor — usadas
- * só para pular corretamente até achar o `<ref>` posicional (número, branch
- * ou URL do PR). Booleanas (`--squash`, `--merge`, `--rebase`, `--admin`,
- * `--auto`, `-d`/`--delete-branch`, ...) não entram aqui: não consomem o
- * próximo token.
- */
-const FLAGS_COM_VALOR_PR_MERGE = new Set([
-  "--body", "-b", "--body-file", "--subject", "-t", "--match-head-commit", "--author-email",
-]);
-
-/**
- * Rodada 19 (lote 3), defesa específica em cima da causa raiz em
- * `resolver-executavel.cjs`: o `ref` extraído de `gh pr merge <ref>` é texto
- * CRU vindo do comando inspecionado (não da API) e ia direto para
- * `executar("gh", ["pr","view", ref, ...])`. Mesmo com `executar` recusando
- * metacaractere de cmd.exe, valida aqui também — defesa em profundidade, e
- * evita que qualquer ref esquisito chegue perto do `gh`. Aceita só: número
- * (`/^\d+$/`), URL de PR do GitHub, ou nome de branch conservador — mesmo
- * padrão de `scripts/fechar-issue.cjs:~88` para o número de Issue.
+ * #496, Q1 da revisao de seguranca (2026-10-11): `gh pr merge` so passa numa
+ * forma que o gate entende por INTEIRO — lista de formas permitidas, nao de
+ * formas proibidas. Tres rodadas de revisao acharam diferencial de parser
+ * entre o gate e o pflag do gh (`--body -R`, `-FA 5`, `-sR`, `GH_REPO=`), e
+ * cada conserto por denylist deixava a proxima (`export GH_RE""PO=x`,
+ * `env -S`). A invariante: o PR que o `gh pr view` do gate le e o mesmo que
+ * o `gh pr merge` mergeia. Ela so vale se o comando inteiro for o merge,
+ * sozinho, sem nada antes do `gh` (atribuicao de ambiente, wrapper, flag
+ * global) e sem caractere de shell que crie outro comando.
  */
 const REF_URL_PR_GITHUB = /^https:\/\/github\.com\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/pull\/\d+$/;
-const REF_BRANCH_CONSERVADOR = /^[A-Za-z0-9._\/-]+$/;
+const REPO_GH_CONSERVADOR = /^(?:[A-Za-z0-9.-]+\/)?[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 
-function refDoPRMergeValido(ref) {
-  return /^\d+$/.test(ref) || REF_URL_PR_GITHUB.test(ref) || REF_BRANCH_CONSERVADOR.test(ref);
+// Conferido contra o manual (cli.github.com/manual/gh_pr_merge, 2026-10-10).
+const BOOLEANAS_PR_MERGE = new Set([
+  "--squash", "-s", "--merge", "-m", "--rebase", "-r",
+  "--delete-branch", "-d", "--admin", "--auto", "--disable-auto",
+]);
+// O valor vai num token SEPARADO; o pflag o consome mesmo comecando com `-`.
+const COM_VALOR_PR_MERGE = new Set([
+  "--body", "-b", "--body-file", "-F", "--subject", "-t",
+  "--author-email", "-A", "--match-head-commit",
+]);
+const AJUDA_PR_MERGE = new Set(["--help", "-h"]);
+const FORMA_PERMITIDA_PR_MERGE =
+  "gh pr merge <número ou URL do PR> [--squash|--merge|--rebase] [--delete-branch] [--repo dono/repo]";
+
+/**
+ * O texto e um comando so, sem nada que o shell (bash ou PowerShell) leia
+ * como separador, expansao, redirecionamento ou escape? Fora de aspas:
+ * nenhum metacaractere; contrabarra so no primeiro token (caminho Windows do
+ * gh), nunca antes de aspa ou espaco. Dentro de aspas duplas: sem `$`, crase
+ * nem contrabarra (expansao e escape de aspa). Aspa tipografica e aspa para o
+ * PowerShell e nao para o gate: barra.
+ *
+ * Segunda revisao de seguranca (2026-10-11), formas em que o PowerShell parte
+ * argumentos de um jeito e o gate de outro: virgula (`x,-R,y` vira tres
+ * argumentos), splatting (`@x` some), aspa colada em outra coisa (`'x'"y"` e
+ * `'x'y` viram dois argumentos; no bash, um) e espaco Unicode fora de aspas
+ * (NEL separa para o PowerShell e nao e `\s` no JS). Fora de aspas, so ASCII
+ * visivel, espaco e tab; aspa so abre no inicio de token e so fecha no fim.
+ */
+function comandoUnicoSemShell(texto) {
+  const t = texto.trim();
+  if (/[‘-‟]/.test(t)) return false;
+  let aspa = null;
+  let primeiroToken = true;
+  for (let i = 0; i < t.length; i += 1) {
+    const c = t[i];
+    if (c === "\n" || c === "\r") return false;
+    if (aspa) {
+      if (c === aspa) {
+        aspa = null;
+        if (i + 1 < t.length && t[i + 1] !== " " && t[i + 1] !== "\t") return false;
+      } else if (aspa === '"' && (c === "$" || c === "`" || c === "\\")) return false;
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      if (i > 0 && t[i - 1] !== " " && t[i - 1] !== "\t") return false;
+      aspa = c;
+      continue;
+    }
+    if (c === " " || c === "\t") { primeiroToken = false; continue; }
+    if (c < "!" || c > "~") return false;
+    // Contrabarra: no PowerShell e literal (`--body-file C:\x\m.md`); no bash
+    // escapa o caractere seguinte, entao so no primeiro token (caminho do gh).
+    // Antes de aspa ou espaco, nunca: junta ou parte argumento (revisao 4).
+    if (c === "\\") {
+      if (/["'\s]/.test(t[i + 1] || " ")) return false;
+      if (!primeiroToken && FERRAMENTA !== "PowerShell") return false;
+      continue;
+    }
+    // `@` so e splatting no comeco do token; no meio (o --author-email)
+    // passa (revisao 4).
+    if (c === "@" && (i === 0 || t[i - 1] === " " || t[i - 1] === "\t")) return false;
+    // `~` so expande no comeco da palavra (e, no bash, depois de `=`/`:`);
+    // no meio e literal, como no nome curto `RUNNER~1` do Windows.
+    if (c === "~" && (i === 0 || /[ \t=:]/.test(t[i - 1]))) return false;
+    if (";&|<>(){}$`#*?[]!%^,".includes(c)) return false;
+  }
+  return aspa === null;
 }
 
 /**
- * Extrai o `<ref>` posicional de `gh pr merge [<ref>] [flags]` (número,
- * branch ou URL do PR) — ou `null` se nenhum foi passado (o `merge` então
- * age sobre o PR da branch atual, e é assim que `gh pr view` sem argumento
- * também se comporta).
+ * Indice do `gh` cujo subcomando e um dos que o gate confere, ou -1. Pula o
+ * `-R`/`--repo` entre substantivo e verbo (`xyz gh issue -R x close 12`):
+ * a rede de wrapper desconhecido e o varredor de heredoc exigiam o verbo
+ * colado e deixavam essa forma passar (revisao de seguranca 3, #496).
  */
-function extrairRefDoPRMerge(subcomandos) {
-  const idx = indiceSequencia(subcomandos, ["pr", "merge"]);
-  if (idx === -1) return null;
-  for (let i = idx + 2; i < subcomandos.length; i += 1) {
-    const tok = subcomandos[i];
-    if (tok.startsWith("-")) {
-      const temIgual = tok.includes("=");
-      const chave = temIgual ? tok.slice(0, tok.indexOf("=")) : tok;
-      if (!temIgual && FLAGS_COM_VALOR_PR_MERGE.has(chave)) {
-        i += 1; // pula o valor da flag
-      }
+const VERBOS_DO_GATE = [
+  ["issue", "close"], ["issue", "create"], ["issue", "comment"],
+  ["pr", "create"], ["pr", "edit"], ["pr", "merge"],
+];
+
+function indiceGhComVerbo(valores) {
+  for (let i = 0; i < valores.length; i += 1) {
+    // `g\h` e `gh` para o bash: a contrabarra sai antes (revisao 4).
+    if (normalizarExecutavel(semContrabarra(valores[i])) !== "gh") continue;
+    const subs = semRepoGlobal(valores.slice(i + 1)).map((t) => t.toLowerCase());
+    if (VERBOS_DO_GATE.some(([a, b]) => subs[0] === a && subs[1] === b)) return i;
+  }
+  return -1;
+}
+
+/**
+ * Metodo que o `gh api` usa de verdade: o ULTIMO `-X`/`--method` vence
+ * (`-X GET -X PATCH` e PATCH), e sem metodo explicito o gh manda POST quando
+ * ha campo (-f/-F) e GET quando nao ha. Le os tokens, nao o texto: `get` no
+ * corpo de um campo nao conta (revisao do commit a5386cbc).
+ */
+// Flags do `gh api` (manual, gh 2.96): as que levam valor consomem o token
+// seguinte — `-H -XGET` e um cabecalho, nao um metodo. Flag fora da tabela
+// devolve "?", e quem chama trata como escrita (revisao do commit a5386cbc).
+const GH_API_COM_VALOR = new Set([
+  "-H", "--header", "-q", "--jq", "-t", "--template", "-p", "--preview",
+  "--cache", "--hostname", "--input",
+]);
+const GH_API_BOOLEANAS = new Set(["-i", "--include", "--paginate", "--silent", "--slurp", "--verbose"]);
+
+function metodoDoGhApi(subcomandos) {
+  let metodo = null;
+  let temCampo = false;
+  for (let i = 1; i < subcomandos.length; i += 1) {
+    const t = subcomandos[i];
+    if (!t.startsWith("-") || t === "-") continue;
+    if (t === "-X" || t === "--method") { metodo = subcomandos[i + 1] ?? ""; i += 1; continue; }
+    if (t.startsWith("--method=")) { metodo = t.slice("--method=".length); continue; }
+    if (/^-X./.test(t)) { metodo = t.slice(2); continue; }
+    if (/^(?:-[fF]|--field|--raw-field)$/.test(t)) { temCampo = true; i += 1; continue; }
+    if (/^(?:-[fF].|--field=|--raw-field=)/.test(t)) { temCampo = true; continue; }
+    if (GH_API_COM_VALOR.has(t)) { i += 1; continue; }
+    const eq = t.indexOf("=");
+    if (eq !== -1 && GH_API_COM_VALOR.has(t.slice(0, eq))) continue;
+    if (/^-[Hqtp]./.test(t)) continue;
+    if (GH_API_BOOLEANAS.has(t)) continue;
+    return "?";
+  }
+  if (metodo === null) return temCampo ? "POST" : "GET";
+  return metodo.toUpperCase();
+}
+
+/**
+ * Tira o `-R`/`--repo` global de antes do verbo: `gh issue -R x close 12` e
+ * `gh issue close 12` em outro repo, e `temSubcomando` exige o verbo colado
+ * no substantivo (revisao 2). So mexe ate achar as duas primeiras palavras.
+ */
+function semRepoGlobal(subcomandos) {
+  const palavras = [];
+  let i = 0;
+  while (i < subcomandos.length && palavras.length < 2) {
+    const t = subcomandos[i];
+    if (t === "-R" || t === "--repo") { i += 2; continue; }
+    if (t.startsWith("--repo=") || /^-R./.test(t)) { i += 1; continue; }
+    // `p\r`, `a\pi`: o bash tira a contrabarra e roda `pr`/`api` (revisao 3).
+    palavras.push(t.replace(/\\/g, ""));
+    i += 1;
+  }
+  return palavras.concat(subcomandos.slice(i));
+}
+
+function barraFormaPrMerge(razao) {
+  bloqueia(
+    `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+    `Razão: ${razao}\n\n` +
+    `O gate só confere 'gh pr merge' numa forma que entende por inteiro, sozinho no comando:\n` +
+    `  ${FORMA_PERMITIDA_PR_MERGE}\n` +
+    `A URL completa do PR (https://github.com/dono/repo/pull/N) é a forma mais segura.\n`
+  );
+}
+
+/**
+ * Le `gh pr merge` contra a lista de formas permitidas. Devolve
+ * `{ajuda: true}` (so mostra o manual, nao mergeia) ou `{ref, repo}`; fora da
+ * lista, barra. `texto` e o comando INTEIRO, nao o segmento.
+ */
+function analisarPrMerge(texto) {
+  if (!comandoUnicoSemShell(texto)) {
+    barraFormaPrMerge(
+      `o 'gh pr merge' não está sozinho no comando, ou tem caractere de shell ` +
+      `(; & | $ crase redirecionamento, aspa tipográfica, quebra de linha).`
+    );
+  }
+  // PowerShell 5.1 nao escapa aspa dupla nem contrabarra dentro de aspa
+  // simples ao montar a linha do .exe, e descarta argumento vazio:
+  // `--body 'x " -R o/r'` chega ao gh com um -R a mais, e `--body "" 497`
+  // engole o PR (revisao 3). Ali o merge so passa sem aspas.
+  if (FERRAMENTA === "PowerShell" && /["']/.test(texto)) {
+    barraFormaPrMerge(`no PowerShell, o 'gh pr merge' só passa sem aspas (o PowerShell 5.1 remonta os argumentos com aspas de outro jeito). Use a ferramenta Bash para --body com espaço, ou --body-file.`);
+  }
+  const toks = tokensComAspas(texto.trim()).map((t) => t.v);
+  if (toks.length < 3 || normalizarExecutavel(toks[0]) !== "gh" || toks[1] !== "pr" || toks[2] !== "merge") {
+    barraFormaPrMerge(
+      `há algo antes de 'gh pr merge' (variável de ambiente como GH_REPO, flag global, wrapper).`
+    );
+  }
+  let ref = null;
+  let repo = null;
+  const mensagens = [];
+  const arquivos = [];
+  for (let i = 3; i < toks.length; i += 1) {
+    const tok = toks[i];
+    if (AJUDA_PR_MERGE.has(tok)) return { ajuda: true };
+    if (BOOLEANAS_PR_MERGE.has(tok)) continue;
+    if (COM_VALOR_PR_MERGE.has(tok)) {
+      if (i + 1 >= toks.length) barraFormaPrMerge(`'${tok}' sem valor.`);
+      // A mensagem do commit de merge tambem fecha Issue (`Closes #12` no
+      // --body ou no --subject entra na branch padrao): o gate le (revisao 2).
+      if (tok === "--body" || tok === "-b" || tok === "--subject" || tok === "-t") mensagens.push(toks[i + 1]);
+      if (tok === "--body-file" || tok === "-F") arquivos.push(toks[i + 1]);
+      i += 1;
       continue;
     }
-    return tok;
+    if (tok === "--repo" || tok === "-R") {
+      if (repo !== null) barraFormaPrMerge(`--repo repetido.`);
+      repo = toks[i + 1] ?? "";
+      if (!REPO_GH_CONSERVADOR.test(repo)) barraFormaPrMerge(`--repo fora da forma dono/repo ('${repo}').`);
+      i += 1;
+      continue;
+    }
+    if (tok.startsWith("-")) {
+      barraFormaPrMerge(`'${tok}' não está na lista (flag agrupada, --x=valor e -- também não estão).`);
+    }
+    if (ref !== null) barraFormaPrMerge(`mais de um PR no comando ('${ref}', '${tok}').`);
+    if (!/^\d+$/.test(tok) && !REF_URL_PR_GITHUB.test(tok)) {
+      barraFormaPrMerge(`o PR tem de ser número ou URL completa ('${tok}').`);
+    }
+    ref = tok;
   }
-  return null;
+  if (ref !== null && repo !== null && REF_URL_PR_GITHUB.test(ref)) {
+    barraFormaPrMerge(`URL do PR junto de --repo: a URL já diz o repositório, tire o --repo.`);
+  }
+  return { ref, repo, mensagens, arquivos };
 }
 
 /**
@@ -709,9 +896,41 @@ function verificarFalsasChaves(corpo) {
  * `segmento` é o texto bruto (para extrair `--body`/`--body-file`),
  * `subcomandos` são os tokens que vêm depois de `gh`, e `cwdSegmento` é o
  * diretório efetivo deste segmento (ou `null` se incerto) — ver o docblock
- * de `extrairCorpoDoPR`.
+ * de `extrairCorpoDoPR`. `textoDoComando` e o que `gh pr merge` confere
+ * contra a lista de formas permitidas: o comando inteiro, ou a linha do
+ * corpo de heredoc a partir do `gh`.
  */
-function verificarComandoGh(segmento, subcomandos, cwdSegmento) {
+function verificarComandoGh(segmento, subcomandos, cwdSegmento, textoDoComando = COMANDO_INTEIRO) {
+  subcomandos = semRepoGlobal(subcomandos);
+
+  // Subcomando montado por variavel (`m=merge; gh pr $m 5`, `gh issue $c 12`,
+  // `gh pr "$(echo merge)"`): o gate nao sabe o verbo, barra (revisao 2).
+  if (subcomandos.slice(0, 2).some((t) => /[$`@]/.test(t))) {
+    bloqueia(
+      `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+      `Razão: o subcomando do 'gh' vem de variável ou substituição ('${subcomandos.slice(0, 2).join(" ")}'),\n` +
+      `e o gate não sabe se é um merge ou um fechamento de Issue.\n\n` +
+      `Escreva o subcomando por extenso (ex.: 'gh pr merge 5', 'gh issue view 12').\n`
+    );
+  }
+
+  // `gh api` que mergeia PR ou fecha Issue faz pela API o que `gh pr merge` e
+  // `gh issue close` fazem pela CLI, sem a checagem de evidencia (revisao 2).
+  // Le o texto do segmento: corpo vindo de arquivo (`--input`) fica de fora.
+  // Leitura passa: `GET pulls/5/merge` so pergunta se foi mergeado, e
+  // `q=state:closed` e busca.
+  if (subcomandos[0] === "api" && (
+      (/pulls\/\d+\/merge/.test(segmento) && /(?:-X|--method)[\s=]*["']?put\b/i.test(segmento)) ||
+      (/(?:^|\s)(?:-[fF]|--(?:raw-)?field)[\s=]+["']?state=closed/.test(segmento) &&
+        metodoDoGhApi(subcomandos) !== "GET") ||
+      /closeIssue|mergePullRequest/.test(segmento))) {
+    bloqueia(
+      `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+      `Razão: 'gh api' mergeando PR ou fechando Issue passa por fora da checagem de evidência.\n\n` +
+      `Use 'gh pr merge <n>' (o gate confere a descrição) ou\n` +
+      `  node scripts/fechar-issue.cjs <número> --comando "<seu-comando>" --saida "<texto colado>"\n`
+    );
+  }
   // Caso (a): `gh issue close <n>` → exit 2
   if (temSubcomando(subcomandos, ["issue", "close"])) {
     bloqueia(
@@ -810,20 +1029,35 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento) {
   // Caso (c): `gh pr merge` → NÃO ler o `--body` (é a mensagem do merge
   // commit); ler a descrição REAL do PR via `gh pr view <ref> --json body`
   // (leitura, mesma família de `gh issue view` usada em `temMarcadorEvidencia`).
-  if (temSubcomando(subcomandos, ["pr", "merge"])) {
-    const ref = extrairRefDoPRMerge(subcomandos);
-
-    if (ref !== null && !refDoPRMergeValido(ref)) {
-      bloqueia(
-        `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-        `Razão: não consegui ler a descrição real do PR ('gh pr view --json body' falhou).\n\n` +
-        `Sem a descrição não dá pra saber se o merge fecha alguma Issue sem evidência.\n` +
-        `Confira se o PR existe e se 'gh' tem acesso à rede/API.\n`
-      );
+  // So `gh pr merge` de fato: `gh help pr merge` so mostra o manual (revisao 4).
+  if (subcomandos[0] === "pr" && subcomandos[1] === "merge") {
+    // Lista de formas permitidas (#496, Q1): fora dela, barra. Ver o docblock
+    // de `analisarPrMerge`.
+    const forma = analisarPrMerge(textoDoComando);
+    if (forma.ajuda) return;
+    const { ref, repo, mensagens, arquivos } = forma;
+    for (const arquivo of arquivos) {
+      const caminho = arquivo === "-" ? null
+        : path.isAbsolute(normalizarMsys(arquivo)) ? normalizarMsys(arquivo)
+        : cwdSegmento ? path.resolve(cwdSegmento, normalizarMsys(arquivo)) : null;
+      let conteudo = null;
+      try { if (caminho) conteudo = fs.readFileSync(caminho, "utf8"); } catch { conteudo = null; }
+      if (conteudo === null) {
+        barraFormaPrMerge(`não consegui ler o --body-file do merge ('${arquivo}'): a mensagem do commit de merge também fecha Issue, e o gate a lê antes.`);
+      }
+      mensagens.push(conteudo);
+    }
+    for (const mensagem of mensagens) {
+      verificarFalsasChaves(mensagem);
+      verificarIssuesCitadas(mensagem);
+    }
+    if (ref === null && !cwdSegmento) {
+      barraFormaPrMerge(`sem número do PR, o merge age no PR da branch do diretório, e o diretório deste comando não pôde ser determinado.`);
     }
 
     const args = ["pr", "view"];
     if (ref) args.push(ref);
+    if (repo) args.push("--repo", repo);
     args.push("--json", "body");
 
     let resultado;
@@ -939,6 +1173,8 @@ const ARQUIVOS_SOURCE_VISTOS = new Set();
 // veredito `ilegivel` nao barra (o limite de D16 vale para o arquivo carregado).
 let LENDO_SOURCE = 0;
 let CWD_DO_EVENTO = "";
+// Bash ou PowerShell: o PowerShell 5.1 monta o argv do .exe a seu modo.
+let FERRAMENTA = "";
 const RE_MUDA_DIRETORIO = /(?:^|[\s;&|({])(?:cd|pushd)(?=\s|$)/;
 
 // Busca TEXTUAL de `gh [-R x|--repo x] issue close|create|comment` ou `gh ... pr
@@ -1135,12 +1371,10 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   const valores = toksSemComentario.map((t) => t.v);
   const primeiro = valores.length ? normalizarExecutavel(valores[0]) : null;
   if (primeiro !== null && !ehPrefixoOuWrapperConhecido(primeiro)) {
-    for (const padrao of [["gh", "issue", "close"], ["gh", "issue", "create"], ["gh", "issue", "comment"], ["gh", "pr", "create"], ["gh", "pr", "edit"], ["gh", "pr", "merge"]]) {
-      const idx = indiceSequencia(valores, padrao);
-      if (idx !== -1) {
-        verificarComandoGh(segmento, valores.slice(idx + 1), cwdDoSegmento(segmento, mapaCwd, ordem));
-        return;
-      }
+    const idx = indiceGhComVerbo(valores);
+    if (idx !== -1) {
+      verificarComandoGh(segmento, valores.slice(idx + 1), cwdDoSegmento(segmento, mapaCwd, ordem));
+      return;
     }
   }
 }
@@ -1156,7 +1390,6 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
  * busca, como na W2.
  */
 function verificarTextosDeHeredoc(mapaCwd, contadores, ferramenta) {
-  const PADROES = [["gh", "issue", "close"], ["gh", "issue", "create"], ["gh", "issue", "comment"], ["gh", "pr", "create"], ["gh", "pr", "edit"], ["gh", "pr", "merge"]];
   for (const corpo of TEXTOS_DE_HEREDOC) {
     for (const linha of corpo.split('\n')) {
       if (!linha.trim()) continue;
@@ -1164,12 +1397,18 @@ function verificarTextosDeHeredoc(mapaCwd, contadores, ferramenta) {
       try { toks = tokensComAspas(linha); } catch { toks = linha.split(/\s+/).filter(Boolean).map((v) => ({ v, q: false })); }
       const idxComentario = toks.findIndex((t) => !t.q && t.v.startsWith("#"));
       const valores = (idxComentario === -1 ? toks : toks.slice(0, idxComentario)).map((t) => t.v);
-      for (const padrao of PADROES) {
-        const idx = indiceSequencia(valores, padrao);
-        if (idx !== -1) {
-          verificarComandoGh(linha, valores.slice(idx + 1), cwdDoSegmento(linha, mapaCwd, contadores.get(linha.trim()) || 0));
-          break;
-        }
+      const idx = indiceGhComVerbo(valores);
+      // `gh pr merge` no corpo: quando o `gh` e o COMANDO da linha
+      // (`GH_REPO=x gh pr merge 5`, script rodado depois), a linha inteira
+      // passa pela lista; quando e prosa (`comando: gh pr merge 5` num doc ou
+      // comentario de evidencia), so a partir do `gh` (revisoes 3 e 4).
+      // `export GH_REPO` numa linha de cima fica fora (limite escrito).
+      if (idx !== -1) {
+        // Atribuicao antes do gh (`GH_REPO=x doas gh pr merge 5`, wrapper
+        // que posicaoDeComando nao conhece) tambem e comando, nao prosa.
+        const ehComando = posicaoDeComando(toks) === idx ||
+          toks.slice(0, idx).some((t) => !t.q && /^[A-Za-z_][A-Za-z0-9_]*=/.test(t.v));
+        verificarComandoGh(linha, valores.slice(idx + 1), cwdDoSegmento(linha, mapaCwd, contadores.get(linha.trim()) || 0), ehComando ? linha : textoAPartir(toks, idx));
       }
     }
   }
@@ -1216,6 +1455,7 @@ function main() {
   const contadores = new Map();
   COMANDO_INTEIRO = comando;
   CWD_DO_EVENTO = cwdDoEvento;
+  FERRAMENTA = nome;
   for (const segmento of segmentosParaGate(comando)) {
     processarSegmento(segmento, mapaCwd, contadores, nome);
   }

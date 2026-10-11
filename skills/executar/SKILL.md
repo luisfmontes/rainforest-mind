@@ -272,7 +272,7 @@ que `estado.cjs` aceita:
 avisam se a base deixou de ser ancestral do HEAD.
 Teste o exemplo em sandbox (`iniciar --slug caixa`), não em produção.
 
-Reaberto pelo `revisar`: laço em `skills/revisar/references/laco.md`.
+Reaberto (`revisar`), `flaky` ou teto: `skills/revisar/references/laco.md`.
 
 Todas fechadas, e só então:
 

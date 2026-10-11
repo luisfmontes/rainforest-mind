@@ -256,6 +256,9 @@ function posicaoDeComando(toks, captura) {
     }
     if (i < toks.length && WRAPPERS_QUE_REPASSAM.has(nomeDeWrapper(toks[i]))) {
       const wrapper = nomeDeWrapper(toks[i]);
+      // `env -S X` roda o X partido em argumentos: a posicao de comando fica
+      // no `env`, e `desempacotarWrapperDeString` abre o X (#497).
+      if (wrapper === "env" && lerSplitStringDoEnv(textoAPartir(toks, i + 1)) !== null) break;
       i += 1;
       i = pularFlagsDoWrapper(toks, i, wrapper, captura);
       if (wrapper === "timeout" && i < toks.length) i += 1; // a duracao
@@ -761,6 +764,66 @@ function contemConstrucaoIlegivel(str) {
  * mesma postura conservadora que `$(`/crase solto ja recebe nos tres gates.
  */
 /**
+ * `env -S X` / `env --split-string X` (#497): o env PARTE o valor X em
+ * argumentos e roda o resultado — `env -S 'gh issue close 12'` e o mesmo
+ * comando que `gh issue close 12`. `pularFlagsDoWrapper` tratava `-S` como
+ * flag sem valor e a posicao de comando caia no token citado: os gates de
+ * texto liberavam com exit 0. Recebe o texto DEPOIS do `env` e devolve:
+ * `null` (nao ha split-string antes do comando), `{ilegivel: true}` (ha, numa
+ * forma que nao se le com seguranca: valor com `$`, contrabarra ou aspa, que
+ * o env expande/escapa a seu modo, ou `#`, que o env le como comentario e
+ * descarta o resto do valor: `env -S 'gh issue #' close 12` roda `gh issue
+ * close 12`; ou valor que comeca com `-`, como `env -S -S 'gh x'`, que o env
+ * le como outra flag) ou `{valor, resto}`.
+ * Formas: `-S X`, `-SX`, agrupada (`-iS X`, `-0iSX`), `--split-string X`,
+ * `--split-string=X` e prefixos unicos (`--s`, `--sp`...), como o getopt
+ * aceita. `-u`/`-C`/`-a` (e `--unset`/`--chdir`/`--argv0`) consomem valor e
+ * param a leitura da agrupada.
+ */
+function lerSplitStringDoEnv(texto) {
+  let atual = extrairPrimeiroToken(texto);
+  // Flag com aspa grudada (`-S'gh x'`, `--split-string='gh x'`) chega aqui
+  // como UM token citado: o valor veio por aspa que o gate nao separou.
+  const valorLido = (valor, resto) =>
+    atual.citado || /[$`\\"'#]/.test(valor) || valor.startsWith("-") ? { ilegivel: true } : { valor, resto };
+  while (atual) {
+    const t = atual.tok;
+    if (!t.startsWith("-")) {
+      if (!atual.citado && ehAtribuicao(t)) { atual = extrairPrimeiroToken(atual.resto); continue; }
+      return null;
+    }
+    if (t === "-" || t === "--") return null;
+    if (t.startsWith("--")) {
+      const eq = t.indexOf("=");
+      const nome = eq === -1 ? t : t.slice(0, eq);
+      if (nome.length > 2 && "--split-string".startsWith(nome)) {
+        if (eq !== -1) return valorLido(t.slice(eq + 1), atual.resto);
+        const v = extrairPrimeiroToken(atual.resto);
+        return v ? valorLido(v.tok, v.resto) : { ilegivel: true };
+      }
+      const consome = eq === -1 && nome.length > 2 && ("--unset".startsWith(nome) || "--chdir".startsWith(nome) || "--argv0".startsWith(nome));
+      atual = extrairPrimeiroToken(atual.resto);
+      if (consome && atual) atual = extrairPrimeiroToken(atual.resto);
+      continue;
+    }
+    let pulaProximo = false;
+    for (let k = 1; k < t.length; k += 1) {
+      const c = t[k];
+      if (c === "S") {
+        const colado = t.slice(k + 1);
+        if (colado) return valorLido(colado, atual.resto);
+        const v = extrairPrimeiroToken(atual.resto);
+        return v ? valorLido(v.tok, v.resto) : { ilegivel: true };
+      }
+      if (c === "u" || c === "C" || c === "a") { pulaProximo = k === t.length - 1; break; }
+    }
+    atual = extrairPrimeiroToken(atual.resto);
+    if (pulaProximo && atual) atual = extrairPrimeiroToken(atual.resto);
+  }
+  return null;
+}
+
+/**
  * #405: caminho de script que MISTURA texto literal com expansao de variavel
  * (`scripts/$b.sh`, `"scripts/$b.sh"`) — a variavel escolhe QUAL script roda,
  * e isso e o mesmo caso de um script literal que o gate nao le por inteiro.
@@ -783,6 +846,12 @@ function desempacotarWrapperDeString(segmento, opcoes = {}) {
 
   if (exe === "source" || exe === ".") {
     return { interno: null, ilegivel: true };
+  }
+  if (exe === "env") {
+    const split = lerSplitStringDoEnv(p1.resto);
+    if (!split) return { interno: null, ilegivel: false };
+    if (split.ilegivel) return { interno: null, ilegivel: true };
+    return { interno: (split.valor + " " + split.resto.trim()).trim(), ilegivel: false };
   }
   if (exe === "&" && ferramenta === "PowerShell") {
     // `& <caminho literal> args` e o mesmo comando que `<caminho> args`: o

@@ -469,6 +469,34 @@ else
   falhou=$((falhou+1)); echo "  FALHA estado mais codigo: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
 fi
 
+echo
+echo "== so livro de repos e relatorio mudaram: nao ha o que lancar =="
+# PR #490 (2026-10-10): registrar um repo avaliado custava bump de versao.
+SO_LIVRO="$RAIZ/so-livro"
+git clone -q "$EM_DIA_REMOTO" "$SO_LIVRO"
+git -C "$SO_LIVRO" config user.email t@t; git -C "$SO_LIVRO" config user.name t
+git -C "$SO_LIVRO" config commit.gpgsign false
+mkdir -p "$SO_LIVRO/vigias" "$SO_LIVRO/relatorios"
+echo '| `x/y` | 2026-10-10 | fora da ancora | 1 | 2026-10-10 |' > "$SO_LIVRO/vigias/livro-de-repos.md"
+echo '# y' > "$SO_LIVRO/relatorios/2026-10-10-y.md"
+git -C "$SO_LIVRO" add vigias relatorios; git -C "$SO_LIVRO" commit -qm "livro: y"
+saida=$(cd "$SO_LIVRO" && node "scripts/conferir-versao.cjs" --teto 999 2>&1); rc=$?
+if [ "$rc" = 0 ] && printf '%s' "$saida" | grep -qF "nada que o cache execute"; then
+  ok=$((ok+1)); echo "  ok   so livro de repos e relatorio a frente nao exige bump (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA so livro a frente: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
+# Arquivo exato, nao a pasta: outro arquivo de vigias/ e' lido pelo vigia.
+echo vigia > "$SO_LIVRO/vigias/batedor-repos.md"
+git -C "$SO_LIVRO" add vigias; git -C "$SO_LIVRO" commit -qm "livro e vigia juntos"
+saida=$(cd "$SO_LIVRO" && node "scripts/conferir-versao.cjs" --teto 999 2>&1); rc=$?
+if [ "$rc" = 2 ] && printf '%s' "$saida" | grep -qF "nao e' maior"; then
+  ok=$((ok+1)); echo "  ok   livro MAIS outro arquivo de vigias/ continua recusando (exit $rc)"
+else
+  falhou=$((falhou+1)); echo "  FALHA livro mais vigia: exit $rc"; printf '%s\n' "$saida" | sed 's/^/         /'
+fi
+
 # Prefixo, nao substring: um arquivo cujo caminho so CONTEM o nome da pasta nao isenta.
 SO_ESTADO2="$RAIZ/so-estado-falso"
 git clone -q "$EM_DIA_REMOTO" "$SO_ESTADO2"

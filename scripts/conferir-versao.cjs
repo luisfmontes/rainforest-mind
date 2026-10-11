@@ -215,6 +215,16 @@ function compararSemver(a, b) {
  * Quem pegou foi rodar o artefato real no repositorio real depois do merge.
  */
 const PREFIXO_ESTADO = "docs/rainforest/estado/";
+// Registro que nada executa: o livro de repos e os relatorios das avaliacoes.
+// Em 2026-10-10 o PR #490 (so a linha do claude-cockpit no livro) precisou de
+// dois bumps e um conflito de versao com o #491; o Luis cortou: "nao faz
+// sentido mudar versao so pq adicionou algo no livro".
+const PREFIXOS_REGISTRO = [PREFIXO_ESTADO, "relatorios/"];
+const ARQUIVOS_REGISTRO = ["vigias/livro-de-repos.md"];
+
+function eRegistro(f) {
+  return ARQUIVOS_REGISTRO.includes(f) || PREFIXOS_REGISTRO.some((p) => f.startsWith(p));
+}
 
 /**
  * Verdadeiro quando TUDO o que a branch mudou desde `origin/main` e' arquivo de
@@ -234,7 +244,7 @@ function soEstadoDeFluxo() {
   const saida = git(["diff", "--name-only", "origin/main...HEAD"]);
   if (!saida) return false;
   const arquivos = saida.split("\n").map((l) => l.trim()).filter(Boolean);
-  return arquivos.length > 0 && arquivos.every((f) => f.startsWith(PREFIXO_ESTADO));
+  return arquivos.length > 0 && arquivos.every(eRegistro);
 }
 
 function compararComOrigemMain(versaoLocal) {
@@ -250,7 +260,7 @@ function compararComOrigemMain(versaoLocal) {
   if (soEstadoDeFluxo()) {
     return {
       comparouVersao: false,
-      motivoNaoComparou: `so ${PREFIXO_ESTADO} mudou desde origin/main — nada que o cache execute`,
+      motivoNaoComparou: `so registro (${PREFIXOS_REGISTRO.concat(ARQUIVOS_REGISTRO).join(", ")}) mudou desde origin/main — nada que o cache execute`,
       versaoOrigemMain: versaoDeOrigemMain(),
       versaoMaior: null,
     };

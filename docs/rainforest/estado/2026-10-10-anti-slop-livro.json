@@ -1,0 +1,9 @@
+{
+  "slug": "2026-10-10-anti-slop-livro",
+  "titulo": "fluxo/anti-slop-livro",
+  "criado_em": "2026-10-10",
+  "leve": {
+    "motivo": "hotfix de dois gates com Issue e criterio falsificavel (#495, #496), junto do livro de repos",
+    "data": "2026-10-10"
+  }
+}

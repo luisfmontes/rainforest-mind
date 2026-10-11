@@ -10,6 +10,57 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.61.0 — 2026-10-11
+
+- **Gate que falha por acaso não decide mais a entrega: nova tentativa e estado `flaky`.** A bateria do critério
+  passa a rodar por `scripts/rodar-gate.cjs`, e a catraca de mutação (`conferir-mutacao.cjs`) repete uma vez o que o
+  acaso pode ter produzido (exit 2 e 4). A aprovação da catraca também exige o vermelho duas vezes. Verde só na nova
+  tentativa sai como aprovação e grava um flake no estado do fluxo (`estado.cjs registrar-flake`, com `--slug` e
+  `--tarefa`). Quando o mesmo gate só passa na nova tentativa em duas voltas seguidas do laço executor → revisor, o
+  `executar` fecha como `flaky`. Esse status é distinto de `reprovado`, não consome as 3 tentativas do laço e sobe a
+  você; sair dele pede o `liberar` de sempre, que vale uma rodada.
+- **Teto de despachos de agente por fluxo.** O hook novo `gate-teto-despachos.cjs` conta todo despacho de agente do
+  fluxo ativo, em todos os estágios e inclusive o que a portaria nega, e nega o que passa do teto. O padrão é 40
+  despachos (acima do maior fluxo medido, 36); o plano declara outro com `teto-despachos: N` no cabeçalho, e a
+  `cobertura` recusa o cabeçalho ilegível. Acima do teto, a única porta é
+  `estado.cjs liberar-teto --slug <slug> --motivo "<a sua palavra>"`, que soma +10 por liberação; não há liga/desliga.
+  O contador mora fora do repo, em `<dados>/fluxos/<slug>/despachos.json`, e fora de fluxo nada é contado.
+  Enxerto do orquestrador do plugin `wildz-data` (Rafael Siqueira).
+
+## 1.60.2 — 2026-10-10
+
+- **O bloqueio de escrita em outro repositório agora mostra saídas que funcionam.** Antes ele mandava usar um worktree
+  daquele repo, e o próprio gate barrava a escrita nesse worktree. Além disso, a janela principal recebia o texto
+  escrito para subagente ("PARE e reporte à janela principal") e nunca via as saídas que eram dela (#495).
+- **`gh pr merge <n> --repo dono/outro` não é mais barrado por engano.** O gate lia a descrição do PR sem o `--repo`,
+  e por isso procurava o número no repositório da sessão. Quando o número não existia ali, barrava um merge legítimo.
+  Quando existia, conferia o PR errado (#496).
+- **`gh pr merge` só passa numa forma que o gate entende por inteiro.** É o comando sozinho, com o PR por número ou URL
+  completa, as flags do manual em token separado e no máximo um `--repo dono/repo`. Prefixo de ambiente (`GH_REPO=`),
+  `env`, `--x=valor`, flag agrupada e ref de branch barram, e a mensagem mostra a forma aceita. As revisões de
+  segurança acharam quatro jeitos de o gate conferir um PR enquanto o `gh` mergeava outro; a lista fecha a classe
+  em vez de mais um caso (#496). `gh pr merge --help` deixou de ser barrado.
+- **`env -S '...'` não esconde mais comando dos gates.** O `env -S` (`--split-string`) parte o texto em argumentos e roda
+  o resultado, mas os gates paravam no `env` e liberavam: `env -S 'gh issue close 12'` e `env -S 'git add -A'`
+  saíam com exit 0. Agora o texto é aberto e conferido como comando; forma que não se lê com segurança (aspa grudada,
+  `$`, contrabarra, `#`) barra. Vale para todos os gates que usam o tokenizador compartilhado.
+- **Mais seis caminhos para fechar Issue sem evidência foram fechados**, achados pela revisão de segurança: `-R` entre
+  `pr`/`issue` e o verbo (`gh issue -R x close 12`); no PowerShell, vírgula, `@`, aspas coladas e espaço Unicode que
+  partem um argumento em dois; `Closes #12` no `--body` ou `--subject` do próprio `gh pr merge` (a mensagem do commit
+  de merge também fecha a Issue); subcomando montado por variável (`gh pr $m`) ou com contrabarra (`gh issue clo\se`);
+  `gh api` que mergeia PR ou fecha Issue; e script gravado por heredoc com `GH_REPO=` antes do merge. No PowerShell, o
+  `gh pr merge` só passa sem aspas. Os limites que ficaram de fora estão em `docs/travas-mecanicas.md`.
+- No mesmo PR: três repos contra texto de IA avaliados no livro de repos
+  (`relatorios/2026-10-10-anti-slop-tres-repos.md`).
+
+## 1.60.1 — 2026-10-10
+
+- **Registrar um repo avaliado não exige mais versão nova.** O `conferir-versao.cjs` já dispensava o bump quando só
+  mudava estado de fluxo (`docs/rainforest/estado/`). Agora dispensa também quando só mudam o livro de repos
+  (`vigias/livro-de-repos.md`) e `relatorios/`, porque nada disso é executado pelo plugin. Qualquer outro arquivo junto,
+  inclusive outro arquivo de `vigias/`, continua exigindo bump. Neste mesmo PR entrou a avaliação do `claude-cockpit`
+  para a troca automática de conta (`relatorios/2026-10-10-claude-cockpit-troca-de-conta.md`).
+
 ## 1.60.0 — 2026-10-10
 
 - **Atualizar o plugin numa janela chega às outras.** Antes o `/plugins-em-dia` só recarregava (ou avisava) a janela

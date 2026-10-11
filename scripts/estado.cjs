@@ -529,10 +529,20 @@ function rebaixarUpstream(estado, estagio) {
       estagio: estagio,
       data: hoje(),
     },
+    // Volta do laco: soma 1 a cada reabertura e NENHUM `ok` apaga (fora de
+    // CAMPOS_EFEMEROS). `tentativas` nao serve de volta: o `ok` a zera.
+    reaberturas: (bloco_upstream.reaberturas || 0) + 1,
     em: hoje(),
   };
 
   return upstream;
+}
+
+/** Flake terminal: o mesmo (tarefa + gate) gravado na volta atual E na anterior. */
+function flakyTerminal(estado) {
+  const flakes = (estado.executar && estado.executar.flakes) || [];
+  const volta = (estado.executar && estado.executar.reaberturas) || 0;
+  return flakes.find((f) => f.voltas.includes(volta) && f.voltas.includes(volta - 1)) || null;
 }
 
 // ---------------------------------------- backstop de mutação no revisar (Issue #4)
@@ -1776,6 +1786,8 @@ const FLAGS_POR_SUBCOMANDO = {
   listar: [],
   concluido: ['slug'],
   veredito: ['slug', 'estagio', 'veredito', 'agente', 'agente-id', 'transcrito'],
+  'registrar-flake': ['slug', 'tarefa', 'gate'],
+  'liberar-teto': ['slug', 'motivo'],
   leve: ['motivo', 'repo'],
 };
 
@@ -2164,6 +2176,56 @@ function main() {
     return;
   }
 
+  // `registrar-flake` (D4, D6): grava que (tarefa, gate) so passou na nova tentativa
+  // nesta volta do laco e acha o flake terminal. Mesmo padrao do `veredito`:
+  // grava sob trava, relendo o estado dentro dela.
+  if (cmd === 'registrar-flake') {
+    const tarefaTxt = arg('tarefa');
+    const gate = arg('gate');
+    if (!/^[1-9][0-9]*$/.test(tarefaTxt)) {
+      console.error(`erro: --tarefa deve ser inteiro positivo, veio '${tarefaTxt}'`);
+      process.exit(1);
+    }
+    if (!gate.trim()) {
+      console.error('erro: --gate vazio');
+      process.exit(1);
+    }
+    const tarefa = Number(tarefaTxt);
+    if (!fs.existsSync(caminho(slug))) {
+      console.error(`erro: ${slug} nao existe — rode 'iniciar' primeiro`);
+      process.exit(1);
+    }
+    const lockPath = path.join(DIR_ESTADO, '.' + slug + '.flake.lock');
+    const saida = comTrava(lockPath, () => {
+      const vivo = ler(slug);
+      if (!vivo) return { sumiu: true };
+      const bloco = vivo.executar || {};
+      const volta = bloco.reaberturas || 0;
+      const flakes = Array.isArray(bloco.flakes) ? bloco.flakes.map((f) => ({ ...f, voltas: [...f.voltas] })) : [];
+      const item = flakes.find((f) => f.tarefa === tarefa && f.gate === gate);
+      if (!item) flakes.push({ tarefa, gate, voltas: [volta] });
+      else if (!item.voltas.includes(volta)) item.voltas.push(volta);
+      vivo.executar = { ...bloco, flakes };
+      const terminal = flakyTerminal(vivo);
+      // O terminal anula um `liberar` anterior: o `liberar` vale uma rodada.
+      if (terminal) delete vivo.executar.liberado_em;
+      gravar(slug, vivo);
+      return { volta, terminal };
+    });
+    if (saida.sumiu) {
+      console.error(`erro: ${slug} nao existe — rode 'iniciar' primeiro`);
+      process.exit(1);
+    }
+    console.log(`flake registrado: tarefa ${tarefa}, volta ${saida.volta}`);
+    if (saida.terminal) {
+      console.log(
+        `FLAKY TERMINAL: tarefa ${saida.terminal.tarefa}, gate '${saida.terminal.gate}' so passou na nova tentativa em voltas ${saida.terminal.voltas.join(', ')}. ` +
+        `Feche com: node scripts/estado.cjs marcar --slug ${slug} --estagio executar --status flaky`
+      );
+    }
+    return;
+  }
+
   const estado = ler(slug);
   if (!estado) {
     console.error(`erro: ${slug} nao existe — rode 'iniciar' primeiro`);
@@ -2243,6 +2305,14 @@ function main() {
     // Teto de tentativas: se ESTE estágio foi reaberto e quem o reprovou já
     // acumulou TETO_TENTATIVAS, insistir precisa de decisão humana (liberar).
     const blocoExigido = estado[estagio] || {};
+    // `flaky` (D6) nao e reprovacao: nao tem teto, tem a decisao do usuario (`liberar`).
+    if (estagio === 'executar' && blocoExigido.status === 'flaky' && !blocoExigido.liberado_em) {
+      console.error(
+        `RECUSADO: 'executar' fechou como 'flaky' — suba ao usuario. ` +
+        `Destrave explicito: node scripts/estado.cjs liberar --slug ${slug} --estagio executar`
+      );
+      process.exit(2);
+    }
     if (blocoExigido.reaberto_por) {
       const estagio_reprovador = blocoExigido.reaberto_por.estagio;
       const bloco_reprovador = estado[estagio_reprovador] || {};
@@ -2329,6 +2399,24 @@ function main() {
     }
     console.error(`Rode o estagio '${falta[0]}' antes. Retomada: node scripts/estado.cjs proximo --slug ${slug}`);
     process.exit(2);
+  }
+
+  // `liberar-teto` (D13): +10 despachos para o fluxo, com o motivo por escrito.
+  // So registra a liberacao; quem soma o +10 ao teto e o hook (tarefa 7).
+  if (cmd === 'liberar-teto') {
+    const motivo = arg('motivo').trim();
+    if (!motivo) {
+      console.error('RECUSADO: --motivo vazio. A liberacao do teto e decisao do usuario, com o motivo por escrito.');
+      process.exit(2);
+    }
+    const anteriores = Array.isArray(estado.teto_despachos && estado.teto_despachos.liberacoes)
+      ? estado.teto_despachos.liberacoes
+      : [];
+    const liberacoes = [...anteriores, { motivo, em: hoje() }];
+    estado.teto_despachos = { ...estado.teto_despachos, liberacoes };
+    gravar(slug, estado);
+    console.log(`teto de despachos liberado (+10): ${liberacoes.length} liberacao(oes) em ${slug}`);
+    return;
   }
 
   if (cmd === 'liberar') {
@@ -2420,10 +2508,33 @@ function main() {
       console.error(`erro: estagio desconhecido '${estagio}'`);
       process.exit(1);
     }
-    const permitidos = DECISAO[estagio] || STATUS_EXECUCAO;
+    // `flaky` (D6) so existe para o `executar`; STATUS_EXECUCAO serve aos quatro estagios.
+    const permitidos = (DECISAO[estagio] || STATUS_EXECUCAO).concat(estagio === 'executar' ? ['flaky'] : []);
     if (!permitidos.includes(status)) {
       console.error(`erro: status '${status}' invalido para '${estagio}' — use ${permitidos.join('|')}`);
       process.exit(1);
+    }
+    // `flaky` (D6): fechar com ele exige o terminal gravado; sair dele (ou fechar `ok` com o
+    // terminal ainda de pe) exige o `liberar`, que vale uma rodada. Nao consome tentativa.
+    if (estagio === 'executar') {
+      const blocoFlaky = estado.executar || {};
+      const terminalFlaky = flakyTerminal(estado);
+      const comoLiberar = `node scripts/estado.cjs liberar --slug ${slug} --estagio executar`;
+      if (status === 'flaky' && !terminalFlaky) {
+        console.error("RECUSADO: 'flaky' exige o flake terminal gravado (o mesmo tarefa+gate em duas voltas seguidas, via 'registrar-flake').");
+        process.exit(2);
+      }
+      if (blocoFlaky.status === 'flaky' && status !== 'flaky' && !blocoFlaky.liberado_em) {
+        console.error(`RECUSADO: 'executar' fechou como 'flaky' e so a decisao do usuario reabre. Destrave: ${comoLiberar}`);
+        process.exit(2);
+      }
+      if (status === 'ok' && terminalFlaky && !blocoFlaky.liberado_em) {
+        console.error(
+          `RECUSADO: ha flake terminal (tarefa ${terminalFlaky.tarefa}, gate '${terminalFlaky.gate}'): fechar 'executar' com 'ok' pede a decisao do usuario. ` +
+          `Suba o flaky (marcar --estagio executar --status flaky) ou, com a palavra dele, destrave: ${comoLiberar}`
+        );
+        process.exit(2);
+      }
     }
     // #413: `--raiz <dir>` aponta a árvore do CÓDIGO quando ela não é a do estado
     // (worktree de uma branch do upstream). Só vale em 'verificar' — é lá que a
@@ -2739,7 +2850,7 @@ function main() {
     return;
   }
 
-  console.error('uso: iniciar | ler | deixado | destinar | marcar | proximo | exigir | liberar | listar | concluido | veredito');
+  console.error('uso: iniciar | ler | deixado | destinar | marcar | proximo | exigir | liberar | listar | concluido | veredito | registrar-flake | liberar-teto');
   process.exit(1);
 }
 

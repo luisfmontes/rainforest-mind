@@ -15,3 +15,6 @@ consegue consumir — antes, ele passava e a falha só aparecia no despacho:
 - `de:` do bloco `mutacao:` que casa **mais de uma vez** no `arquivo:` — a catraca
   sairia 4 sem medir. Zero ocorrências só **avisa**: é o código que a tarefa vai
   criar.
+
+Cabeçalho `teto-despachos:` ilegível no plano: a cobertura recusa (exit 2), como o hook (valor aceito):
+`references/teto-despachos.md`.

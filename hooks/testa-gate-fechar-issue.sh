@@ -50,6 +50,12 @@ if "%1"=="pr" if "%2"=="view" (
   if "%GH_PR_VIEW_FAIL%"=="1" (
     exit /b 1
   )
+  if defined GH_PR_VIEW_EXIGE (
+    echo %* | findstr /C:"%GH_PR_VIEW_EXIGE%" >nul || exit /b 1
+  )
+  if defined GH_PR_VIEW_PROIBE (
+    echo %* | findstr /C:"%GH_PR_VIEW_PROIBE%" >nul && exit /b 1
+  )
   node -e "console.log(JSON.stringify({body: process.env.GH_PR_VIEW_BODY || ''}))"
   exit /b 0
 )
@@ -70,6 +76,14 @@ fi
 if [ "$1" = "pr" ] && [ "$2" = "view" ]; then
   if [ "$GH_PR_VIEW_FAIL" = "1" ]; then
     exit 1
+  fi
+  # (#496) o PR so "existe" se o pr view vier com estes argumentos.
+  if [ -n "${GH_PR_VIEW_EXIGE:-}" ]; then
+    case " $* " in *"$GH_PR_VIEW_EXIGE"*) ;; *) exit 1 ;; esac
+  fi
+  # (#496) ...e deixa de existir se vier com estes.
+  if [ -n "${GH_PR_VIEW_PROIBE:-}" ]; then
+    case " $* " in *"$GH_PR_VIEW_PROIBE"*) exit 1 ;; esac
   fi
   node -e "console.log(JSON.stringify({body: process.env.GH_PR_VIEW_BODY || ''}))"
   exit 0
@@ -1122,6 +1136,253 @@ echo "== (bx) gh pr merge 5 com pr view devolvendo body sem Issue citada → exi
 EXIT_BX=$?
 [ $EXIT_BX -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_BX)"
 
+# Caso (#496): `gh pr merge 1 --repo dono/outro` — o `pr view` do gate tem que
+# levar o mesmo repo. O stub so acha o PR quando os argumentos trazem
+# `--repo dono/outro`; sem o repasse, ele falha como o `gh` real falhou no
+# repo da sessao, e o gate barrava um merge legitimo.
+for forma496 in "--repo dono/outro" "-R dono/outro"; do
+  echo
+  echo "== (#496) gh pr merge 1 $forma496 --merge → pr view leva o repo, exit 0 =="
+  (
+    export PATH="$SBP/bin:$PATH"
+    export GH_COM_MARCADOR=""
+    export GH_PR_VIEW_BODY="descrição sem palavra-chave de fechamento"
+    export GH_PR_VIEW_EXIGE="--repo dono/outro"
+    PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge 1 '"$forma496"' --merge"}}'
+    echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+  ) 2>"$SBP/err-496"
+  E496=$?
+  [ $E496 -eq 0 ] && test_ok "#496 $forma496 repassado ao pr view" || test_fail "#496 $forma496 nao chegou ao pr view (exit $E496: $(head -c 200 "$SBP/err-496"))"
+done
+
+# (#496, revisao de seguranca) Diferencial de parser: o gate nao pode ler a
+# descricao de um PR e deixar o `gh` mergear outro. Dois jeitos:
+#  - `-R` como VALOR de outra flag (`--body -R`) nao e o repo do merge;
+#  - repo repetido com valores diferentes: o gate nao escolhe por conta, barra.
+echo
+echo "== (#496-seg) --body -R ... --repo dono/outro: o -R do body nao vira repo =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  export GH_PR_VIEW_BODY="descrição sem palavra-chave de fechamento"
+  export GH_PR_VIEW_EXIGE="--repo dono/outro"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge 1 --body -R --repo dono/outro --merge"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-496s1"
+E496S1=$?
+[ $E496S1 -eq 0 ] && test_ok "#496-seg valor de --body nao e lido como repo" || test_fail "#496-seg valor de --body lido como repo (exit $E496S1: $(head -c 200 "$SBP/err-496s1"))"
+
+echo
+echo "== (#496-seg) -R dono/limpo ... -R dono/real: repo repetido e divergente barra =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  export GH_PR_VIEW_BODY="descrição sem palavra-chave de fechamento"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh -R dono/limpo pr merge 1 -R dono/real --merge"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-496s2"
+E496S2=$?
+[ $E496S2 -eq 2 ] && test_ok "#496-seg repo divergente barra" || test_fail "#496-seg repo divergente passou (exit $E496S2)"
+
+# (#496, segunda revisao) Flags que consomem valor segundo o manual do gh
+# (cli.github.com/manual/gh_pr_merge): -A, -b, -F, -t, --match-head-commit.
+# `-F -R dono/limpo`: o gh le "-R" como arquivo do corpo e "dono/limpo" como
+# BRANCH do PR no repo da sessao; o gate nao pode mandar --repo ao pr view.
+echo
+echo "== (#496-seg) -F -R dono/limpo: o -R e o arquivo do -F e dono/limpo seria branch: barra =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  export GH_PR_VIEW_BODY="descrição sem palavra-chave de fechamento"
+  export GH_PR_VIEW_PROIBE="--repo"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge -F -R dono/limpo --merge"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-496s3"
+E496S3=$?
+[ $E496S3 -eq 2 ] && grep -q "número ou URL" "$SBP/err-496s3" && test_ok "#496-seg -F -R: ref de branch fora da lista barra" || test_fail "#496-seg -F -R nao barrou pela forma (exit $E496S3: $(head -c 200 "$SBP/err-496s3"))"
+
+# Flag curta agrupada: `-sR dono/real` e `--squash --repo dono/real` para o
+# gh. O gate nao resolve agrupamento com R por palpite: barra.
+echo
+echo "== (#496-seg) -sR dono/real: -R agrupado barra =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  export GH_PR_VIEW_BODY="descrição sem palavra-chave de fechamento"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge 1 -sR dono/real"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-496s4"
+E496S4=$?
+[ $E496S4 -eq 2 ] && test_ok "#496-seg -R agrupado barra" || test_fail "#496-seg -R agrupado passou (exit $E496S4)"
+
+# `--repo` ANTES do numero: o valor do --repo nao e o ref do PR.
+echo
+echo "== (#496-seg) gh pr merge --repo dono/outro 1: ref e 1, nao dono/outro =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  export GH_PR_VIEW_BODY="descrição sem palavra-chave de fechamento"
+  export GH_PR_VIEW_EXIGE="view 1 --repo dono/outro"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge --repo dono/outro 1 --merge"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-496s5"
+E496S5=$?
+[ $E496S5 -eq 0 ] && test_ok "#496-seg valor de --repo nao vira ref" || test_fail "#496-seg valor de --repo virou ref (exit $E496S5: $(head -c 200 "$SBP/err-496s5"))"
+
+# Agrupada: o pflag le da esquerda para a direita, e a PRIMEIRA letra que
+# leva valor come o resto do token. `-FA 5` e `--body-file A`, ref 5 — o
+# "A" no fim nao consome o 5.
+echo
+echo "== (#496-seg) gh pr merge -FA 5: flag agrupada fora da lista barra =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  export GH_PR_VIEW_BODY="descrição sem palavra-chave de fechamento"
+  export GH_PR_VIEW_EXIGE="view 5"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge -FA 5 --merge"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-496s6"
+E496S6=$?
+[ $E496S6 -eq 2 ] && grep -q "não está na lista" "$SBP/err-496s6" && test_ok "#496-seg agrupada -FA barra" || test_fail "#496-seg agrupada -FA passou (exit $E496S6: $(head -c 200 "$SBP/err-496s6"))"
+
+# GH_REPO no proprio comando muda o repo do gh sem flag nenhuma.
+echo
+echo "== (#496-seg) GH_REPO=dono/real gh pr merge 5: barra =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  export GH_PR_VIEW_BODY="descrição sem palavra-chave de fechamento"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"GH_REPO=dono/real gh pr merge 5 --merge"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-496s7"
+E496S7=$?
+[ $E496S7 -eq 2 ] && test_ok "#496-seg GH_REPO no comando barra" || test_fail "#496-seg GH_REPO no comando passou (exit $E496S7)"
+
+# (#496, Q1 da revisao de seguranca, 2026-10-11) Lista de formas permitidas:
+# `gh pr merge` so passa sozinho no comando, sem nada antes do `gh`, com ref
+# numero ou URL e flags da lista. Os casos abaixo separam lista de formas
+# permitidas de lista de formas proibidas: cada um escapava da versao por
+# denylist (atribuicao com aspas no meio do nome, `env -S`, palavra partida
+# por contrabarra) ou e a forma legitima que tem de continuar passando.
+# O payload sai do node com o comando em argv: sem escape de JSON a mao
+# (contrabarra some em heredoc de teste) e sem conversao de caminho do MSYS.
+pm() {
+  local rotulo="$1" esperado="$2" comando="$3" ferramenta="${4:-Bash}"
+  (
+    export PATH="$SBP/bin:$PATH"
+    export GH_COM_MARCADOR=""
+    export GH_PR_VIEW_BODY="${GH_PR_VIEW_BODY-descrição sem palavra-chave de fechamento}"
+    MSYS_NO_PATHCONV=1 node -e 'console.log(JSON.stringify({cwd:process.argv[2],tool_name:process.argv[3],tool_input:{command:process.argv[1].replace(/<NEL>/g,"\u0085")}}))' "$comando" "$SBP_WIN" "$ferramenta" \
+      | node "$SRC/hooks/gate-fechar-issue.cjs"
+  ) 2>"$SBP/err-pm"
+  local e=$?
+  [ $e -eq "$esperado" ] && test_ok "$rotulo" || test_fail "$rotulo (exit $e: $(head -c 200 "$SBP/err-pm"))"
+}
+
+echo
+echo "== (#496-Q1) lista de formas permitidas do gh pr merge =="
+pm "export GH_RE\"\"PO=x; gh pr merge 5 barra" 2 'export GH_RE""PO=dono/real; gh pr merge 5 --merge'
+pm "env -S 'GH_REPO=x gh pr merge 5' barra" 2 "env -S 'GH_REPO=dono/real gh pr merge 5'"
+pm "env -S 'GH_REPO=x' gh pr merge 5 barra" 2 "env -S 'GH_REPO=dono/real' gh pr merge 5"
+pm "gh p\\r merge escondido barra" 2 'gh p\r merge 5'
+pm "--repo=dono/outro (forma colada) barra" 2 'gh pr merge 1 --repo=dono/outro --merge'
+pm "URL do PR junto de --repo barra" 2 'gh pr merge https://github.com/dono/outro/pull/7 --repo dono/outro'
+GH_PR_VIEW_EXIGE="view https://github.com/dono/outro/pull/7" \
+  pm "URL completa chega inteira ao pr view, exit 0" 0 'gh pr merge https://github.com/dono/outro/pull/7 --squash --delete-branch'
+pm "gh pr merge 497 --squash --delete-branch (a forma que o plugin manda) passa" 0 'gh pr merge 497 --squash --delete-branch'
+pm "gh pr merge --squash sem ref (PR da branch do diretório) passa" 0 'gh pr merge --squash'
+GH_PR_VIEW_FAIL=1 pm "gh pr merge --help passa sem chamar o pr view" 0 'gh pr merge --help'
+GH_PR_VIEW_BODY="Closes #321" pm "forma permitida segue conferindo a descrição (Closes #321 sem marcador)" 2 'gh pr merge 5 --squash'
+printf "env -S 'gh pr merge 5'\n" > "$SBP/merge-escondido.sh"
+pm "source de arquivo com env -S 'gh pr merge 5' barra" 2 'source merge-escondido.sh'
+# Merge escondido em $() no valor de --body: a lista de tokens pula o valor,
+# so a checagem de comando unico (sem $ nem crase) o pega.
+pm 'merge com $() no --body barra (comando unico)' 2 'gh pr merge 5 --body "$(GH_REPO=dono/real gh pr merge 7)"'
+# #497: env -S nos outros comandos do gate (lib compartilhada).
+pm "env -S 'gh issue close 12' barra" 2 "env -S 'gh issue close 12'"
+pm "env -iS 'gh issue close 12' barra" 2 "env -iS 'gh issue close 12'"
+pm "env --split-string='gh issue close 12' barra" 2 "env --split-string='gh issue close 12'"
+pm "env -S'gh issue close 12' barra" 2 "env -S'gh issue close 12'"
+pm "env -u X -S 'gh issue close 12' barra" 2 "env -u X -S 'gh issue close 12'"
+pm "env -u S gh issue view 3 passa (controle: S e valor do -u)" 0 "env -u S gh issue view 3"
+# Segunda revisao de seguranca (2026-10-11): cada caso abaixo saia com exit 0
+# antes do conserto e o auditor provou o efeito no gh ou no PowerShell real.
+pm "gh pr -R x merge 497: -R entre pr e merge barra" 2 'gh pr -R dono/outro merge 497'
+pm "gh pr --repo=x merge: barra" 2 'gh pr --repo=dono/outro merge 497'
+pm "gh issue -R x close 12: -R entre issue e close barra" 2 'gh issue -R dono/outro close 12'
+pm "PowerShell: virgula no --body vira argumentos, barra" 2 'gh pr merge 497 --body x,-R,dono/outro' PowerShell
+pm "PowerShell: splatting @x no --body barra" 2 'gh pr merge --body @x 497' PowerShell
+pm "PowerShell: aspas coladas ('x'\"-R...\") barra" 2 "gh pr merge 497 --body 'x'\"-Rdono/outro\"" PowerShell
+pm "PowerShell: aspas coladas (\"x\"'-R...') barra" 2 "gh pr merge 497 --body \"x\"'-Rdono/outro'" PowerShell
+pm "PowerShell: NEL (U+0085) separa argumento, barra" 2 'gh pr merge 497 --body x<NEL>-Rdono/outro' PowerShell
+pm "PowerShell: aspa que fecha colada ('x'-R...) barra" 2 "gh pr merge 497 --body 'x'-Rdono/outro" PowerShell
+pm "PowerShell: aspa que abre colada (x'-R...') barra" 2 "gh pr merge 497 --body x'-Rdono/outro'" PowerShell
+# Wrapper desconhecido na frente: so a rede do main ve o merge, e ela tem de
+# pular o -R entre pr e merge.
+pm "wrapper desconhecido: xyz gh pr -R x merge 5 barra" 2 'xyz gh pr -R dono/outro merge 5'
+pm "env -S 'gh issue #' close 12: o # do env barra" 2 "env -S 'gh issue #' close 12"
+pm "env -S 'gh pr #' merge: barra" 2 "env -S 'gh pr #' merge 5 --repo dono/outro"
+pm "env -a foo -S 'gh issue close 12' barra" 2 "env -a foo -S 'gh issue close 12'"
+pm "env --argv0 foo -S 'gh issue close 12' barra" 2 "env --argv0 foo -S 'gh issue close 12'"
+pm "merge com --body 'Closes #12' sem marcador barra (mensagem do merge fecha Issue)" 2 'gh pr merge 5 --squash --body "Closes #12"'
+pm "merge com --subject 'closes #12' sem marcador barra" 2 "gh pr merge 5 --squash --subject 'closes #12'"
+printf 'Closes #12\n' > "$SBP/msg-merge-fecha.txt"
+printf 'merge sem palavra-chave\n' > "$SBP/msg-merge-limpa.txt"
+pm "merge com --body-file que cita Closes #12 barra" 2 'gh pr merge 5 --squash --body-file msg-merge-fecha.txt'
+pm "merge com --body-file limpo passa" 0 'gh pr merge 5 --squash --body-file msg-merge-limpa.txt'
+pm "merge com --body-file inexistente barra" 2 'gh pr merge 5 --squash --body-file nao-existe.txt'
+pm "merge com --body limpo passa" 0 'gh pr merge 5 --squash --body "merge do anti-slop"'
+pm 'm=merge; gh pr $m: subcomando por variavel barra' 2 'm=merge; gh pr $m 5'
+pm 'c=close; gh issue $c 12: barra' 2 'c=close; gh issue $c 12'
+pm 'gh pr "$(echo merge)": barra' 2 'gh pr "$(echo merge)" 5'
+pm "gh api -X PUT .../pulls/5/merge barra" 2 'gh api -X PUT repos/dono/repo/pulls/5/merge'
+pm "gh api -X PATCH .../issues/12 -f state=closed barra" 2 'gh api -X PATCH repos/dono/repo/issues/12 -f state=closed'
+pm "gh api graphql closeIssue barra" 2 "gh api graphql -f query='mutation{closeIssue(input:{issueId:\"x\"}){clientMutationId}}'"
+pm "gh api GET .../pulls/5/merge passa (so pergunta se foi mergeado)" 0 'gh api repos/dono/repo/pulls/5/merge'
+pm "gh api busca com state:closed passa" 0 "gh api 'search/issues?q=repo:dono/repo+state:closed'"
+pm "gh -R x issue view 495 passa" 0 'gh -R dono/repo issue view 495'
+pm "PowerShell: gh pr merge 497 --squash --delete-branch passa" 0 'gh pr merge 497 --squash --delete-branch' PowerShell
+# Terceira revisao de seguranca (2026-10-11): furos do commit a75d2fc0 e
+# os falsos positivos que ele criou.
+pm "PowerShell: aspa dupla dentro de aspa simples no merge barra" 2 "gh pr merge 497 --squash --body 'x \" -R dono/outro'" PowerShell
+pm "PowerShell: string vazia no merge barra" 2 "gh pr merge --squash --body '' 497" PowerShell
+pm "heredoc gravado com GH_REPO= gh pr merge barra" 2 "$(printf "cat > s.sh <<'EOF'\nGH_REPO=dono/real gh pr merge 497 --merge\nEOF\nbash s.sh")"
+pm "heredoc com gh issue -R x close barra" 2 "$(printf "cat > s.sh <<'EOF'\ngh issue -R dono/outro close 12\nEOF\nbash s.sh")"
+pm "env -S '-S' 'gh issue close 12' barra" 2 "env -S '-S' 'gh issue close 12'"
+pm "env -S -S 'gh issue close 12' barra" 2 "env -S -S 'gh issue close 12'"
+pm "wrapper desconhecido: xyz gh issue -R x close 12 barra" 2 'xyz gh issue -R dono/outro close 12'
+pm "gh issue clo\\se 12: contrabarra no verbo barra" 2 'gh issue clo\se 12'
+pm "gh a\\pi PATCH state=closed barra" 2 'gh a\pi -X PATCH repos/dono/repo/issues/12 -f state=closed'
+pm "gh api GET com -f state=closed passa (listar fechadas)" 0 'gh api repos/dono/repo/issues -X GET -f state=closed -f per_page=100'
+pm "gh api --method GET -F state=closed passa" 0 'gh api --method GET repos/dono/repo/issues -F state=closed'
+# O gh usa o ULTIMO -X; sem -X e com campo, manda POST (revisao do commit a5386cbc).
+pm "gh api -X GET -X PATCH state=closed barra" 2 'gh api -X GET -X PATCH repos/dono/repo/issues/12 -f state=closed'
+pm "gh api sem -X com -f body=get state=closed barra (POST)" 2 'gh api repos/dono/repo/issues/12 -f state=closed -f body=get'
+pm "gh api -XGET colado com state=closed passa" 0 'gh api -XGET repos/dono/repo/issues -f state=closed'
+pm "gh api -H -XGET: valor de cabecalho nao e metodo, barra" 2 'gh api -X PATCH -H -XGET repos/dono/repo/issues/12 -f state=closed'
+pm "gh api com flag desconhecida e state=closed barra" 2 'gh api --desconhecida -X GET repos/dono/repo/issues/12 -f state=closed'
+pm "gh api GET com -H, --paginate e --jq passa" 0 'gh api -X GET -H "Accept: application/json" --paginate repos/dono/repo/issues -f state=closed --jq ".[].number"'
+pm "git commit -m com 'PR merge' no texto passa" 0 'git commit -m "fix PR merge conflict"'
+pm "grep por 'pr merge' passa" 0 'grep -rn "pr merge" hooks'
+pm "gh issue comment citando pr merge passa" 0 'gh issue comment 496 --body "ver pr merge"'
+# Quarta revisao (passada de regressoes sobre a5386cbc).
+pm "g\\h issue close 12: contrabarra no nome do gh barra" 2 'g\h issue close 12'
+pm "xyz g\\h issue close 12 barra" 2 'xyz g\h issue close 12'
+pm "heredoc de doc com gh pr merge em linha de comando passa" 0 "$(printf "cat > docs-x.md <<'EOF'\n# Deploy\ngh pr merge 5 --squash\nEOF")"
+pm "comentario de evidencia com 'comando: gh pr merge' passa" 0 "$(printf "gh issue comment 12 --body-file - <<'EOF'\ncomando: gh pr merge 5 --squash\nEOF")"
+printf 'merge limpo\n' > "$SBP/msg-ps.md"
+pm "PowerShell: --body-file com caminho Windows passa" 0 "gh pr merge 5 --squash --body-file $(cygpath -w "$SBP/msg-ps.md")" PowerShell
+# `~` no meio do token e literal (nome curto 8.3 do Windows, como RUNNER~1 no CI);
+# no comeco da palavra expande para a home e barra.
+mkdir -p "$SBP/CURTO~1" && printf 'merge limpo\n' > "$SBP/CURTO~1/m.md"
+pm "PowerShell: --body-file com ~1 no meio do caminho passa" 0 "gh pr merge 5 --squash --body-file $(cygpath -w "$SBP/CURTO~1/m.md")" PowerShell
+pm "--body-file comecando com ~ barra" 2 'gh pr merge 5 --squash --body-file ~/m.md'
+pm "Bash: contrabarra fora do primeiro token barra" 2 'gh pr merge 5 --squash --body-file C:\x\msg.md'
+pm "PowerShell: contrabarra antes de espaco barra" 2 'gh pr merge 5 --body x\ -Rdono/outro' PowerShell
+pm "gh help pr merge passa" 0 'gh help pr merge'
+pm "heredoc: GH_REPO= antes de wrapper desconhecido e gh pr merge barra" 2 "$(printf "cat > s.sh <<'EOF'\nGH_REPO=dono/real doas gh pr merge 5 --merge\nEOF")"
+pm "--author-email com @ no meio passa" 0 'gh pr merge 5 --squash --author-email nome@dominio.test'
+
 # Caso (by): R18 (auditor, 16a revisao, lote 3, 2026-09-04) — `source fechar.sh`
 # executa um ARQUIVO opaco ao parser; mesma postura conservadora que
 # `bash x.sh` (sem `-c`) ja recebe do laco W1 — exit 2.
@@ -1206,7 +1467,7 @@ EXIT_BZ3=$?
 # continua sendo aceito e verificado normalmente — a validação de D16 não
 # pode recusar um nome de branch legítimo.
 echo
-echo "== (bz4) gh pr merge com ref de branch conservador (fluxo/guardas) → segue verificando (regressão) =="
+echo "== (bz4) gh pr merge com ref de branch (fluxo/guardas) → barra pela forma: só número ou URL (#496, Q1) =="
 (
   export PATH="$SBP/bin:$PATH"
   export GH_COM_MARCADOR=""
@@ -1215,7 +1476,7 @@ echo "== (bz4) gh pr merge com ref de branch conservador (fluxo/guardas) → seg
   echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
 ) 2>"$SBP/err-bz4"
 EXIT_BZ4=$?
-[ $EXIT_BZ4 -eq 2 ] && test_ok "exit 2 (Issue #321 sem marcador — a checagem de verdade rodou)" || test_fail "exit code (foi $EXIT_BZ4)"
+[ $EXIT_BZ4 -eq 2 ] && grep -q "número ou URL" "$SBP/err-bz4" && test_ok "exit 2 pela forma (branch fora da lista)" || test_fail "exit code/mensagem (foi $EXIT_BZ4: $(head -c 200 "$SBP/err-bz4"))"
 
 # Caso (bz5): causa raiz — `executar()` de resolver-executavel.cjs recusa
 # QUALQUER argumento com metacaractere de cmd.exe quando o alvo é .cmd/.bat,

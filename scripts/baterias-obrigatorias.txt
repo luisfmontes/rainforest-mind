@@ -31,3 +31,13 @@ scripts/testa-conferir-fluxo.sh
 scripts/testa-conferir-mutacao.sh
 scripts/testa-conferir-entrega.sh
 scripts/testa-pastas-docs.sh
+
+# Flaky e teto de despachos (fluxo 2026-10-10-flaky-teto)
+hooks/testa-gate-teto-despachos.cjs
+hooks/testa-gate-teto-declarado.cjs
+scripts/testa-cobertura-teto.sh
+scripts/testa-estado-flaky.sh
+scripts/testa-estado-flaky-status.sh
+scripts/testa-estado-teto.sh
+scripts/testa-conferir-mutacao-flaky.sh
+scripts/testa-rodar-gate.sh

@@ -1,0 +1,228 @@
+{
+  "slug": "2026-10-10-flaky-teto",
+  "titulo": "Estado flaky e teto de despachos no executar",
+  "criado_em": "2026-10-10",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-10-flaky-teto.md",
+    "em": "2026-10-10"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-10-flaky-teto.md",
+    "tarefas": 12,
+    "paralelas": [
+      1,
+      2
+    ],
+    "em": "2026-10-10"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-11",
+    "tarefas_ok": 12,
+    "tarefas": 12,
+    "em_voo": [],
+    "em": "2026-10-11",
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "d583022b638080f14c70dd24709a4c788fd9ff32",
+        "iteracao": 1,
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466",
+        "ts": "2026-10-11T02:19:20.738Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "d583022b638080f14c70dd24709a4c788fd9ff32",
+        "iteracao": 1,
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466",
+        "ts": "2026-10-11T02:19:20.738Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "e767fcd14a38f00da7c60da572817b859b8e3ae6",
+        "iteracao": 1,
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466",
+        "ts": "2026-10-11T02:38:32.866Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "e767fcd14a38f00da7c60da572817b859b8e3ae6",
+        "iteracao": 1,
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466",
+        "ts": "2026-10-11T02:38:32.866Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "ffab25e4995b56d8b67a6f2f76b0fc21c543cdfc",
+        "iteracao": 1,
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466",
+        "ts": "2026-10-11T02:52:51.623Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "ffab25e4995b56d8b67a6f2f76b0fc21c543cdfc",
+        "iteracao": 1,
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466",
+        "ts": "2026-10-11T02:52:51.623Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "7765902e20acc966f2d29ce7fc2baa0f82909564",
+        "iteracao": 1,
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466",
+        "ts": "2026-10-11T03:01:13.355Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "770399141aa12809ff9fd7d1beac6229b43ad1f4",
+        "iteracao": 1,
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466",
+        "ts": "2026-10-11T04:18:38.091Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "770399141aa12809ff9fd7d1beac6229b43ad1f4",
+        "iteracao": 1,
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466",
+        "ts": "2026-10-11T04:18:38.091Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "770399141aa12809ff9fd7d1beac6229b43ad1f4",
+        "iteracao": 1,
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466",
+        "ts": "2026-10-11T04:18:38.091Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "4d8839ffc75faaa8ef01afbe98b2a115f8113ae5",
+        "iteracao": 2,
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466",
+        "ts": "2026-10-11T11:36:34.206Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "4d8839ffc75faaa8ef01afbe98b2a115f8113ae5",
+        "iteracao": 2,
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466",
+        "ts": "2026-10-11T11:36:34.206Z"
+      }
+    ],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-estado-flaky.sh, secao \"flake de uma volta so nao e terminal\""
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-teto-despachos.cjs, caso \"contador com total invalido nega\""
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-estado-flaky-status.sh, secao \"flaky nao consome tentativas\""
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-estado-teto.sh, secao \"segunda liberacao acumula\""
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao-flaky.sh, secao \"vermelho e depois verde nao confirma\""
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-rodar-gate.sh, secao \"vermelho na primeira rodada repete uma vez\""
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-teto-declarado.cjs, caso \"liberar-teto soma 10 e a segunda soma mais 10\""
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "arquivo de lista; o comportamento e do varrer-baterias.sh, coberto por testa-varrer-baterias.sh"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "texto normativo; o comportamento executavel esta nas tarefas 1 a 7"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "documentacao; o comportamento do hook e provado pela bateria da tarefa 2"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "n/a",
+        "motivo": "nota de versao"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "testa-cobertura-teto.sh, caso \"teto-despachos: abc recusa na cobertura\""
+      }
+    ],
+    "comando": "node scripts/conferir-mutacao.cjs (tarefas 2 e 5) + bash scripts/testa-conferir-mutacao-flaky.sh + node hooks/testa-gate-teto-despachos.cjs + bash scripts/testa-conferir-mutacao.sh",
+    "saida": "mutacoes t2/t5/colapso exit 0; baterias 45/0, 78/0, 167/0",
+    "reaberturas": 1
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "1784856c7835a6e1e15335979bba3e311277843f",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a63ebb0ed800d5356",
+        "veredito": "ok",
+        "em": "2026-10-11",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/e3d89e95-f290-41aa-92fb-3d9eae821466/subagents/agent-a63ebb0ed800d5356.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-11",
+    "achados": 0,
+    "base": "1a25e96c9c36fbcd02c315e639b24b3d5c533db0",
+    "head": "b2abeef33b36f3ae03e434048b52c6265f3652f4",
+    "destinos": [
+      {
+        "pendente": "1: conferir-mutacao.cjs:900 confirmacao do vermelho sem bateriaColapsou; falta caso 0 1 c",
+        "destino": "resolvida",
+        "evidencia": "5f068da1; caso 0 1 c sai 6 em testa-conferir-mutacao-flaky.sh (45/0); mutacao bateriaColapsou(placarBase, placarConf)->false exit 0; revisor volta 2 VEREDITO ok"
+      },
+      {
+        "pendente": "2 [design]: gate-teto-despachos.cjs:69 fallback grava .rainforest/fluxos/ no repo sem gitignore (D11)",
+        "destino": "resolvida",
+        "evidencia": "5f068da1; .gitignore ignora .rainforest/fluxos/; secao 12 de testa-gate-teto-despachos.cjs (78/0) vermelha sem a linha; revisor volta 2 VEREDITO ok"
+      }
+    ]
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/varrer-baterias.sh; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-10-flaky-teto",
+    "saida": "varrer exit 1 com 2 vermelhas fora do diff (scripts/testa-cli-externo.cjs: eco do stdin exit null sob carga; hooks/testa-memoria-assunto-prompt.cjs: tempo 1a=3173ms sob carga); reroda isolada: testa-cli-externo exit 0 ok 15 falhou 0, testa-memoria-assunto-prompt exit 0 sem FALHA; git diff 1a25e96c...HEAD nao toca nenhuma das duas. mutacoes exit 0: tarefas 1-7 e 12 vermelho, 8-11 puladas n/a",
+    "sensor_externo": "bash scripts/varrer-baterias.sh",
+    "em": "2026-10-11"
+  },
+  "fechar": {
+    "status": "ok",
+    "pr": 499,
+    "merge": "74c0b126",
+    "em": "2026-10-11"
+  }
+}

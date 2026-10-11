@@ -1,0 +1,144 @@
+Data: 2026-10-10
+Termos: flaky, teto-de-despachos, despachos, instavel, intermitente, teto de despacho
+
+$ gh issue list --state all --search "flaky" --limit 200 --json number,title,state
+[{"number":302,"state":"CLOSED","title":"Eval de gatilho: nenhuma bateria prova que uma skill e chamada (nem que precisa existir)"}]
+
+
+$ gh issue list --state all --search "teto-de-despachos" --limit 200 --json number,title,state
+[{"number":276,"state":"CLOSED","title":"despachos.jsonl nao tem leitor: fora_de_fluxo e escreve_conferido nascem divida"},{"number":101,"state":"CLOSED","title":"P6 da #61: verificacao comparativa tem de declarar ONDE rodou — o cwd do shell persiste entre chamadas"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"}]
+
+
+$ gh issue list --state all --search "despachos" --limit 200 --json number,title,state
+[{"number":276,"state":"CLOSED","title":"despachos.jsonl nao tem leitor: fora_de_fluxo e escreve_conferido nascem divida"},{"number":241,"state":"CLOSED","title":"Decisao pendente: a portaria vale so neste repo, mas a regra 10 promete portao em toda sessao"},{"number":4,"state":"CLOSED","title":"Worktree de agente nasce na base velha em pelo menos 2 de 8 despachos, e conferir-entrega.cjs nao ve arquivo autoexcluido por gitignore"},{"number":192,"state":"CLOSED","title":"Proibir background no briefing falhou duas vezes, com a proibicao escrita duas vezes no mesmo texto — falta checar a FORMA do retorno"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"},{"number":51,"state":"CLOSED","title":"As tres travas de isolamento falharam na borda: retomada de agente, janela principal, e o rastro da propria esteira"},{"number":101,"state":"CLOSED","title":"P6 da #61: verificacao comparativa tem de declarar ONDE rodou — o cwd do shell persiste entre chamadas"},{"number":264,"state":"CLOSED","title":"Portaria: manifesto de agentes SUBSTITUI em vez de somar, e agente de outro plugin nunca passa"}]
+
+
+$ gh issue list --state all --search "instavel" --limit 200 --json number,title,state
+[{"number":302,"state":"CLOSED","title":"Eval de gatilho: nenhuma bateria prova que uma skill e chamada (nem que precisa existir)"},{"number":16,"state":"CLOSED","title":"Nenhuma bateria roda sozinha: sem CI, a catraca depende de alguem lembrar (a de nucleos ficou vermelha 3 dias)"}]
+
+
+$ gh issue list --state all --search "intermitente" --limit 200 --json number,title,state
+[{"number":475,"state":"CLOSED","title":"testa-conferir-fluxo 13c intermitente na CI: mutacao vira 'pulada (corte de shell)'"},{"number":342,"state":"CLOSED","title":"testa-saude R5 ainda intermitente no CI (porta não responde)"},{"number":273,"state":"CLOSED","title":"testa-cli-externo Teste 3: teto de 8s contra fixture de 60s vermelha intermitente na CI"},{"number":76,"state":"CLOSED","title":"A regra 14 descobre ferramenta ausente tropecando: falta um catalogo do que existe na maquina"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"},{"number":4,"state":"CLOSED","title":"Worktree de agente nasce na base velha em pelo menos 2 de 8 despachos, e conferir-entrega.cjs nao ve arquivo autoexcluido por gitignore"},{"number":51,"state":"CLOSED","title":"As tres travas de isolamento falharam na borda: retomada de agente, janela principal, e o rastro da propria esteira"}]
+
+
+$ gh issue list --state all --search "teto de despacho" --limit 200 --json number,title,state
+[{"number":276,"state":"CLOSED","title":"despachos.jsonl nao tem leitor: fora_de_fluxo e escreve_conferido nascem divida"},{"number":101,"state":"CLOSED","title":"P6 da #61: verificacao comparativa tem de declarar ONDE rodou — o cwd do shell persiste entre chamadas"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"}]
+
+
+$ gh pr list --state all --search "flaky" --limit 200 --json number,title,state
+[{"number":234,"state":"MERGED","title":"Absorver de um plugin de terceiro o que vira trava: mensagem de commit, --confirmo, exit 69, duplicação, carimbos"}]
+
+
+$ gh pr list --state all --search "teto-de-despachos" --limit 200 --json number,title,state
+[{"number":295,"state":"MERGED","title":"zerar-issues-5: conserta 20 Issues abertas em menos de 24h"},{"number":222,"state":"MERGED","title":"Agentes em Claude ou Codex, por escolha do usuário (1.8.0)"},{"number":255,"state":"MERGED","title":"A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241)"},{"number":267,"state":"MERGED","title":"portaria: deixa de admitir agente e passa a registrar (ver #264)"},{"number":141,"state":"MERGED","title":"Fluxo 9 — Portaria: admissao de subagente por manifesto"}]
+
+
+$ gh pr list --state all --search "despachos" --limit 200 --json number,title,state
+[{"number":295,"state":"MERGED","title":"zerar-issues-5: conserta 20 Issues abertas em menos de 24h"},{"number":227,"state":"MERGED","title":"Ponte Codex validada ao vivo; Codex sem cota sai 75 legível (1.8.1)"},{"number":66,"state":"MERGED","title":"Fecha a #61: criterio numerado vira contrato de retorno (P1, P2, P3, P4, P7)"},{"number":267,"state":"MERGED","title":"portaria: deixa de admitir agente e passa a registrar (ver #264)"},{"number":246,"state":"MERGED","title":"Triagem de achado e portaria que le autorizacao explicita do usuario"},{"number":222,"state":"MERGED","title":"Agentes em Claude ou Codex, por escolha do usuário (1.8.0)"},{"number":172,"state":"MERGED","title":"Fluxo 7: recibo de colheita — identidade verificavel do artefato entregue (1.1.0)"},{"number":59,"state":"MERGED","title":"O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas"},{"number":141,"state":"MERGED","title":"Fluxo 9 — Portaria: admissao de subagente por manifesto"},{"number":255,"state":"MERGED","title":"A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241)"}]
+
+
+$ gh pr list --state all --search "instavel" --limit 200 --json number,title,state
+[{"number":310,"state":"MERGED","title":"zerar-issues-8: palavra reservada e bash \"$t\" (#309), gemeo Python (#303), eval (#302)"},{"number":19,"state":"MERGED","title":"Bateria que so passa na maquina do dono nao e evidencia: as duas ultimas ficam hermeticas (#16)"},{"number":17,"state":"MERGED","title":"Nenhuma bateria roda sozinha: CI que roda as 20 baterias a cada PR (#16)"}]
+
+
+$ gh pr list --state all --search "intermitente" --limit 200 --json number,title,state
+[{"number":361,"state":"MERGED","title":"Vigias: falha recorrente com impressao digital enxertada do reef"},{"number":353,"state":"MERGED","title":"1.28.1 — vigia que nao chega ao claude nao sai mais com sucesso"},{"number":37,"state":"MERGED","title":"A triagem de inbox do sentinela-foco tinha duas causas, nao uma"},{"number":117,"state":"MERGED","title":"Tres defeitos achados apurando as observacoes abertas da regra 13"},{"number":60,"state":"MERGED","title":"Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture"},{"number":5,"state":"MERGED","title":"Premissa nao-olhada ganha contrapeso, e a Issue #4 ganha a checagem que faltava"},{"number":126,"state":"MERGED","title":"Fecha #121: a catraca de mutacao para de decidir por relogio de parede"}]
+
+
+$ gh pr list --state all --search "teto de despacho" --limit 200 --json number,title,state
+[{"number":484,"state":"MERGED","title":"Laco executor -> revisor com teto e parada por [design] (1.58.0)"},{"number":130,"state":"MERGED","title":"Designs 9-11 e o indice consolidado v2 entram no repo"},{"number":152,"state":"MERGED","title":"Portaria: escreve:true admitido com worktree obrigatorio (0.82.0)"},{"number":255,"state":"MERGED","title":"A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241)"},{"number":117,"state":"MERGED","title":"Tres defeitos achados apurando as observacoes abertas da regra 13"},{"number":222,"state":"MERGED","title":"Agentes em Claude ou Codex, por escolha do usuário (1.8.0)"},{"number":58,"state":"MERGED","title":"Fecha a #51: as tres travas de isolamento passam a valer na borda"},{"number":98,"state":"MERGED","title":"Fecha a P5 da #61: enlace bidirecional entre as regras 16 e 17"},{"number":5,"state":"MERGED","title":"Premissa nao-olhada ganha contrapeso, e a Issue #4 ganha a checagem que faltava"},{"number":141,"state":"MERGED","title":"Fluxo 9 — Portaria: admissao de subagente por manifesto"}]
+
+
+$ git ls-remote --heads origin | grep -F "flaky"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "teto-de-despachos"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "despachos"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "instavel"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "intermitente"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "teto de despacho"
+(vazio)
+
+$ git log --all --grep="flaky" --oneline
+43df8893 Consertar as tres baterias que so a CI viu vermelhas
+05919c37 Documentar exit 69, carimbo de base e gate de release nas skills
+e095d5a6 Separar bloqueio de ambiente (69) de reprovacao nos conferir-*
+
+$ git log --all --grep="teto-de-despachos" --oneline
+(vazio)
+
+$ git log --all --grep="despachos" --oneline
+f71e6061 Estado: rodada 3 em voo
+da94151c gate-turno-prometido: normalizacao de texto e aceitacao de vigias/despachos ampliados
+f9cb568e pesquisa: SubagentStop bloqueia e libera ao vivo, isolado do plugin real
+96053ecc Tarefa 4: Fase 2, keep/discard e quatro paradas da skill regua
+13a91945 saude: resume despachos.jsonl da portaria (Issue #276)
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+421e6218 catracas de bytes: paga a regra 10 por subtracao, e corta o que a #264 tornou falso
+d1b57b8b regra 10: manifesto vira declaracao, e so a regra 11 barra (#264)
+dd2e7ccd portaria: deixa de admitir agente e passa a registrar (fecha #264)
+ef77e1e2 A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241) (#255)
+faffa3f9 Manifesto admite os cinco agentes que faltavam, e abre o fluxo do inventario
+1a6f5cc7 Fluxo 9: conserto dos 2 críticos — portaria.cjs alinhado com os gates irmãos
+b44f129f Fluxo 9: conserto dos 2 críticos — portaria.cjs alinhado com os gates irmãos
+c18181f0 Fluxo 9 T9: verificacao manual unica, com o log de despacho como evidencia primaria
+2dc5c2fa Fluxo 9 T9: verificacao manual unica, com o log de despacho como evidencia primaria
+a14d675a Fluxo 9 T4: o log de despacho sai do git, o manifesto e a amostra ficam
+f3d22fee Fluxo 9 T4: o log de despacho sai do git, o manifesto e a amostra ficam
+df8fafdf Tarefa 3: Nucleo de portaria — decisao fail-closed + bateria
+8bc3958f Tarefa 3: Nucleo de portaria — decisao fail-closed + bateria
+bf402723 Fecha a #61: critério numerado vira contrato de retorno (P1, P2, P3, P4, P7) (#66)
+d61965d4 Fecha a #61: critério numerado vira contrato de retorno (P1, P2, P3, P4, P7) (#66)
+1c68627a O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas (#59)
+b4704ff8 O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas (#59)
+8badb9c1 Issue #4: a checagem 6 pergunta ao COMMIT, e as outras duas frentes ganham caminho
+cc8d542d Issue #4: a checagem 6 pergunta ao COMMIT, e as outras duas frentes ganham caminho
+
+$ git log --all --grep="instavel" --oneline
+0000c875d Bateria que so passa na maquina do dono nao e evidencia: as duas ultimas ficam hermeticas (#19)
+c34cb7ed8 Bateria que so passa na maquina do dono nao e evidencia: as duas ultimas ficam hermeticas (#19)
+5e576099d Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+d5261da4f Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+
+$ git log --all --grep="intermitente" --oneline
+7e42a353 Mutacao que falhou medindo nao vira corte de shell (#475) (#479)
+5dbcf459 Mutacao que falhou medindo nao vira corte de shell (#475)
+331c8ad5 Impressao de falha: rotulo unico recorrente, lib sem leitura de log
+e64150c2 enxertos-poda-impressao: impasse e rotulo unico (4a rodada)
+fa415093 Impressao de falha: intermitente exige ronda limpa provada (D5 emendada)
+556c0b8f enxertos-poda-impressao: emenda D5 e tarefa 7 pelo revisar rodada 2
+2f637b44 saude: vigias-recorrentes mostra falha que voltou com a mesma causa
+dd5caf7f Batedor: secao FALHAS RECORRENTES na ancora da ronda
+cd2e83c1 Lib de impressao digital de falha de vigia com dois rotulos
+c7f2fd5e vigias: falha do backup externo registra o motivo, nao RemoteException
+2b625ca8 Estado: executar fecha ok na rodada 3, com B1 e B2 medidos
+6a9811d4 Tres defeitos achados apurando as observacoes abertas da regra 13 (#117)
+ba19dbed Tres defeitos achados apurando as observacoes abertas da regra 13 (#117)
+f8dc7599 Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture (#60)
+13acf85e Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture (#60)
+e912f7d5 "Nao e a main" nao prova que a branch e sua (#25) (#31)
+8a8ee5d8 "Nao e a main" nao prova que a branch e sua (#25) (#31)
+8badb9c1 Issue #4: a checagem 6 pergunta ao COMMIT, e as outras duas frentes ganham caminho
+cc8d542d Issue #4: a checagem 6 pergunta ao COMMIT, e as outras duas frentes ganham caminho
+214884ed Colhe tres observacoes: saida ff-only na regra 11, ferramenta na 12, hora local na 8
+2d1384d7 Colhe tres observacoes: saida ff-only na regra 11, ferramenta na 12, hora local na 8
+ca5382e0 Skill depurar: loop de feedback vermelho-capaz antes de qualquer hipotese
+299f4fb6 Skill depurar: loop de feedback vermelho-capaz antes de qualquer hipotese
+
+$ git log --all --grep="teto de despacho" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+{"id":"despachos-jsonl-rotacao-e-cli","titulo":"despachos.jsonl: rotacao/teto e CLI de leitura"}
+{"id":"recorrencia-de-vigia-com-prova-por-passo","titulo":"Separar falha persistente de intermitente no ERROS.md por prova de passo, nao por ronda de log"}
+{"id":"executar-flaky-e-teto-de-despachos","titulo":"Estado flaky e teto de despachos por hook no executar"}
+
+
