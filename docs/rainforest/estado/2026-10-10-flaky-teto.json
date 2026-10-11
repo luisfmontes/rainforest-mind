@@ -23,23 +23,29 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-10",
-    "tarefas_ok": 6,
+    "tarefas_ok": 7,
     "tarefas": 12,
     "em_voo": [
       {
         "agente": "executor",
-        "tarefa": "7 teto declarado",
-        "desde": "2026-10-11T02:52:51Z",
+        "tarefa": "12 cobertura teto",
+        "desde": "2026-10-11T03:01:13Z",
         "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466"
       },
       {
-        "agente": "executor",
-        "tarefa": "gravarFlake unico",
-        "desde": "2026-10-11T02:52:51Z",
+        "agente": "documentador",
+        "tarefa": "9 laco docs",
+        "desde": "2026-10-11T03:01:13Z",
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466"
+      },
+      {
+        "agente": "documentador",
+        "tarefa": "10 travas e README",
+        "desde": "2026-10-11T03:01:13Z",
         "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466"
       }
     ],
-    "em": "2026-10-10",
+    "em": "2026-10-11",
     "carimbos": [
       {
         "tarefa": 1,
@@ -82,6 +88,13 @@
         "iteracao": 1,
         "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466",
         "ts": "2026-10-11T02:52:51.623Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "7765902e20acc966f2d29ce7fc2baa0f82909564",
+        "iteracao": 1,
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466",
+        "ts": "2026-10-11T03:01:13.355Z"
       }
     ]
   },
