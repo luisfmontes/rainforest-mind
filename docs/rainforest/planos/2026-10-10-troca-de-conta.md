@@ -247,11 +247,11 @@ Achado 1: `preparar` tira o e-mail esperado de `estado.contas[conta].email` (reg
 prova: `bash -c "grep -q saiOcioso scripts/lib/conta-decidir.cjs"`
 mutacao:
   arquivo: `scripts/lib/conta-decidir.cjs`
-  de: `const saiOcioso = agoraMs - ms(pasta.expiresAt) > OCIOSO_MS;`
+  de: `const saiOcioso = agoraMs - ms(expiraSai) > OCIOSO_MS;`
   para: `const saiOcioso = false;`
   bateria: `node scripts/testa-conta-decidir.cjs`
   fixture: caso "volta com o login da pasta vencido há mais de 10 min não espera"
-pronto quando: com a pasta trabalho trocada, `preparar trabalho` sai 1 sem rodar o `claude`; com o e-mail registrado da team e o navegador autorizando a pessoal, nada é gravado; com a pasta trocada, o login dela vencido há 20 min e o reset passado, `decidir` devolve `voltar` (e vencido há 5 min devolve `esperar`); com o token da pasta pessoal vencido e a `reserva-pessoal` válida, `vigiar` lê o uso da pessoal e troca — provado pelos casos nomeados em `testa-conta-preparar.sh`, `testa-conta-decidir.cjs` e `testa-conta.sh` e pela mutação acima vermelha.
+pronto quando: com a pasta trabalho trocada, `preparar trabalho` sai 1 sem rodar o `claude`; com o e-mail registrado da team e o navegador autorizando a pessoal, nada é gravado; com a pasta trocada, o login dela vencido há 20 min e o reset passado, `decidir` devolve `voltar` (e vencido há 5 min devolve `esperar`); com o token da pasta pessoal vencido e a `reserva-pessoal` válida, `vigiar` lê o uso da pessoal e troca — provado pelos casos nomeados em `testa-conta-preparar.sh`, `testa-conta-decidir.cjs` e `testa-conta.sh` e pela mutação acima vermelha. (Emenda de 2026-10-11: a tarefa 19 levou a linha para `avaliarVida`, com o parâmetro `expiraSai`; o alvo de mutação acompanha.)
 
 ### 17. Falha visível e reserva refazível [tipo: implementar]
 atende: D6, D9, D11, D13
