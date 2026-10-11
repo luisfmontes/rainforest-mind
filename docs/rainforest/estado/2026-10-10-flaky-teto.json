@@ -180,9 +180,9 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "parcial",
+    "status": "ok",
     "snapshot": {
-      "head": "b2abeef33b36f3ae03e434048b52c6265f3652f4",
+      "head": "1784856c7835a6e1e15335979bba3e311277843f",
       "caminhos_sujos": []
     },
     "vereditos": [
@@ -194,21 +194,23 @@
         "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/e3d89e95-f290-41aa-92fb-3d9eae821466/subagents/agent-a63ebb0ed800d5356.jsonl"
       }
     ],
-    "em_voo": [
-      {
-        "agente": "revisor",
-        "tarefa": "revisao volta 2",
-        "desde": "2026-10-11T11:30:00Z",
-        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466"
-      }
-    ],
+    "em_voo": [],
     "em": "2026-10-11",
-    "achados": 2,
-    "pendentes": [
-      "1: conferir-mutacao.cjs:900 confirmacao do vermelho sem bateriaColapsou; falta caso 0 1 c",
-      "2 [design]: gate-teto-despachos.cjs:69 fallback grava .rainforest/fluxos/ no repo sem gitignore (D11)"
-    ],
-    "tentativas": 1
+    "achados": 0,
+    "base": "1a25e96c9c36fbcd02c315e639b24b3d5c533db0",
+    "head": "b2abeef33b36f3ae03e434048b52c6265f3652f4",
+    "destinos": [
+      {
+        "pendente": "1: conferir-mutacao.cjs:900 confirmacao do vermelho sem bateriaColapsou; falta caso 0 1 c",
+        "destino": "resolvida",
+        "evidencia": "5f068da1; caso 0 1 c sai 6 em testa-conferir-mutacao-flaky.sh (45/0); mutacao bateriaColapsou(placarBase, placarConf)->false exit 0; revisor volta 2 VEREDITO ok"
+      },
+      {
+        "pendente": "2 [design]: gate-teto-despachos.cjs:69 fallback grava .rainforest/fluxos/ no repo sem gitignore (D11)",
+        "destino": "resolvida",
+        "evidencia": "5f068da1; .gitignore ignora .rainforest/fluxos/; secao 12 de testa-gate-teto-despachos.cjs (78/0) vermelha sem a linha; revisor volta 2 VEREDITO ok"
+      }
+    ]
   },
   "verificar": {
     "status": "pendente"
