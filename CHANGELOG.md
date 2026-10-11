@@ -10,6 +10,20 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.62.0 — 2026-10-11
+
+- **Troca automática de conta Claude pelo uso, sem reiniciar sessão.** Quando a conta de uma pasta de configuração
+  (`~/.claude` ou `~/.claude-personal`) passa de 97% na janela de 5 h ou na semana, um vigia (tarefa agendada do
+  Windows, a cada 1 min) move para ela o login de reserva da outra conta, e volta sozinho quando o limite zera.
+  As sessões abertas seguem no login novo sem reiniciar e recebem um aviso a cada troca. O login nunca é copiado,
+  só movido, e a troca exige 30 min de vida nos dois logins. O vigia renova sozinho os logins guardados.
+- **`/conta`:** mostra o uso das duas contas e o login de cada pasta. `/conta pessoal|trabalho` troca na mão a pasta
+  da sessão (troca manual não volta sozinha e segue a mesma guarda de vida). `/conta preparar <conta>` grava a reserva
+  com um login no navegador, e `--refazer` substitui uma reserva morta. Com as duas reservas,
+  `node scripts/conta.cjs agendar` liga o vigia.
+- **O `/transferir claude` saiu:** com a conta trocando por baixo da pasta, mudar a sessão de pasta perdeu o motivo.
+  O `/transferir codex` fica.
+
 ## 1.61.0 — 2026-10-11
 
 - **Gate que falha por acaso não decide mais a entrega: nova tentativa e estado `flaky`.** A bateria do critério
