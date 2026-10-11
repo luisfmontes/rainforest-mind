@@ -188,7 +188,7 @@ Nota: minor porque é recurso novo (hook, subcomandos e status), não correção
 
 ### 12. A `cobertura` recusa `teto-despachos:` ilegível [tipo: implementar]
 atende: D14
-arquivos: `scripts/conferir-fluxo.cjs`, `scripts/testa-cobertura-teto.sh`
+arquivos: `scripts/conferir-fluxo.cjs`, `scripts/testa-cobertura-teto.sh`, `scripts/testa-estado.sh`, `scripts/testa-conferir-fluxo.sh`
 depende de: 7
 paralela: nao
 prova: `bash scripts/testa-cobertura-teto.sh`
@@ -201,3 +201,5 @@ mutacao:
 pronto quando: com um design e um plano reais num repo-caixa (copiados de `docs/rainforest/design/2026-10-10-flaky-teto.md` e deste plano, só o cabeçalho variando), `node scripts/conferir-fluxo.cjs cobertura --slug <s>` sai 2 citando o texto lido e o caminho do plano para `teto-despachos: abc`, `0`, `-1`, `1.5`, `10000`, valor vazio e duas linhas `teto-despachos:` no cabeçalho; sai 0 sem a linha, com `teto-despachos: 5` e com a linha depois do primeiro `## ` (ignorada, como no hook); e o mesmo texto de plano dá a mesma resposta (aceita/recusa) no hook da tarefa 7 e na `cobertura`, porque os dois chamam `lerTetoDeclarado` de `hooks/lib/teto-despachos.cjs` — provado por `bash scripts/testa-cobertura-teto.sh` com `falhou: 0` e por `node scripts/conferir-fluxo.cjs cobertura --slug 2026-10-10-flaky-teto` saindo 0 neste repositório
 
 Nota: código a nascer, e nenhum caso de teste afirma sobre o texto do fonte. Forma prescrita: em `cmdCobertura`, depois de ler o plano, `const tetoDeclarado = lerTetoDeclarado(conteudo_plano);` e, numa linha só, `if (tetoDeclarado.erro) erros.push(` com a mensagem — uma ocorrência. O erro entra na mesma lista `erros` que já recusa com exit 2; nenhum leitor de cabeçalho próprio no `conferir-fluxo.cjs`.
+
+Emenda (revisar, 2026-10-11): `testa-estado.sh` e `testa-conferir-fluxo.sh` montam caixas com uma lista fixa de libs de `hooks/lib/`; com o `require` de `teto-despachos.cjs` desta tarefa, as duas quebraram (`Cannot find module`) e a lib entrou nas listas. Pronto quando as duas saem com zero falhas: `bash scripts/testa-estado.sh` e `bash scripts/testa-conferir-fluxo.sh`.
