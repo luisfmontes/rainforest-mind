@@ -53,6 +53,9 @@ if "%1"=="pr" if "%2"=="view" (
   if defined GH_PR_VIEW_EXIGE (
     echo %* | findstr /C:"%GH_PR_VIEW_EXIGE%" >nul || exit /b 1
   )
+  if defined GH_PR_VIEW_PROIBE (
+    echo %* | findstr /C:"%GH_PR_VIEW_PROIBE%" >nul && exit /b 1
+  )
   node -e "console.log(JSON.stringify({body: process.env.GH_PR_VIEW_BODY || ''}))"
   exit /b 0
 )
@@ -77,6 +80,10 @@ if [ "$1" = "pr" ] && [ "$2" = "view" ]; then
   # (#496) o PR so "existe" se o pr view vier com estes argumentos.
   if [ -n "${GH_PR_VIEW_EXIGE:-}" ]; then
     case " $* " in *"$GH_PR_VIEW_EXIGE"*) ;; *) exit 1 ;; esac
+  fi
+  # (#496) ...e deixa de existir se vier com estes.
+  if [ -n "${GH_PR_VIEW_PROIBE:-}" ]; then
+    case " $* " in *"$GH_PR_VIEW_PROIBE"*) exit 1 ;; esac
   fi
   node -e "console.log(JSON.stringify({body: process.env.GH_PR_VIEW_BODY || ''}))"
   exit 0
@@ -1176,6 +1183,51 @@ echo "== (#496-seg) -R dono/limpo ... -R dono/real: repo repetido e divergente b
 ) 2>"$SBP/err-496s2"
 E496S2=$?
 [ $E496S2 -eq 2 ] && test_ok "#496-seg repo divergente barra" || test_fail "#496-seg repo divergente passou (exit $E496S2)"
+
+# (#496, segunda revisao) Flags que consomem valor segundo o manual do gh
+# (cli.github.com/manual/gh_pr_merge): -A, -b, -F, -t, --match-head-commit.
+# `-F -R dono/limpo`: o gh le "-R" como arquivo do corpo e "dono/limpo" como
+# BRANCH do PR no repo da sessao; o gate nao pode mandar --repo ao pr view.
+echo
+echo "== (#496-seg) -F -R dono/limpo: o -R e o arquivo do -F, nao o repo =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  export GH_PR_VIEW_BODY="descrição sem palavra-chave de fechamento"
+  export GH_PR_VIEW_PROIBE="--repo"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge -F -R dono/limpo --merge"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-496s3"
+E496S3=$?
+[ $E496S3 -eq 0 ] && test_ok "#496-seg valor de -F nao e lido como repo" || test_fail "#496-seg valor de -F lido como repo (exit $E496S3: $(head -c 200 "$SBP/err-496s3"))"
+
+# Flag curta agrupada: `-sR dono/real` e `--squash --repo dono/real` para o
+# gh. O gate nao resolve agrupamento com R por palpite: barra.
+echo
+echo "== (#496-seg) -sR dono/real: -R agrupado barra =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  export GH_PR_VIEW_BODY="descrição sem palavra-chave de fechamento"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge 1 -sR dono/real"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-496s4"
+E496S4=$?
+[ $E496S4 -eq 2 ] && test_ok "#496-seg -R agrupado barra" || test_fail "#496-seg -R agrupado passou (exit $E496S4)"
+
+# `--repo` ANTES do numero: o valor do --repo nao e o ref do PR.
+echo
+echo "== (#496-seg) gh pr merge --repo dono/outro 1: ref e 1, nao dono/outro =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=""
+  export GH_PR_VIEW_BODY="descrição sem palavra-chave de fechamento"
+  export GH_PR_VIEW_EXIGE="view 1 --repo dono/outro"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge --repo dono/outro 1 --merge"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-496s5"
+E496S5=$?
+[ $E496S5 -eq 0 ] && test_ok "#496-seg valor de --repo nao vira ref" || test_fail "#496-seg valor de --repo virou ref (exit $E496S5: $(head -c 200 "$SBP/err-496s5"))"
 
 # Caso (by): R18 (auditor, 16a revisao, lote 3, 2026-09-04) — `source fechar.sh`
 # executa um ARQUIVO opaco ao parser; mesma postura conservadora que

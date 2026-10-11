@@ -615,9 +615,23 @@ function bloqueia(motivo) {
  * `--auto`, `-d`/`--delete-branch`, ...) não entram aqui: não consomem o
  * próximo token.
  */
+// Conferido contra o manual (cli.github.com/manual/gh_pr_merge, 2026-10-10):
+// `-F` e `-A` faltavam, e cada uma deixava o valor dela ser lido como `<ref>`
+// ou `--repo` — diferencial entre o PR conferido e o mergeado (#496).
 const FLAGS_COM_VALOR_PR_MERGE = new Set([
-  "--body", "-b", "--body-file", "--subject", "-t", "--match-head-commit", "--author-email",
+  "--body", "-b", "--body-file", "-F", "--subject", "-t", "--match-head-commit", "--author-email", "-A",
 ]);
+
+/**
+ * O token consome o seguinte como valor? Inclui flag curta AGRUPADA, que o gh
+ * (pflag) aceita: `-sF arquivo` e `--squash --body-file arquivo`, entao o que
+ * decide e a ULTIMA letra. `R` agrupado nao passa por aqui: quem trata e
+ * `extrairRepoDoGh`, que barra.
+ */
+function consomeValorPrMerge(tok) {
+  if (FLAGS_COM_VALOR_PR_MERGE.has(tok)) return true;
+  return /^-[A-Za-z]{2,}$/.test(tok) && "AbFt".includes(tok[tok.length - 1]);
+}
 
 /**
  * Rodada 19 (lote 3), defesa específica em cima da causa raiz em
@@ -660,8 +674,10 @@ function extrairRepoDoGh(subcomandos) {
       continue;
     }
     if (tok.startsWith("--repo=")) { valores.push(tok.slice("--repo=".length)); continue; }
-    if (/^-R./.test(tok)) return "";
-    if (!tok.includes("=") && FLAGS_COM_VALOR_PR_MERGE.has(tok)) i += 1;
+    // `-Rx`, `-R=x` e qualquer agrupada com R (`-sR x`, `-sRx`): o gh le um
+    // repo ali, e o gate nao reconstroi agrupamento por palpite.
+    if (/^-R./.test(tok) || (/^-[A-Za-z]{2,}/.test(tok) && tok.includes("R"))) return "";
+    if (!tok.includes("=") && consomeValorPrMerge(tok)) i += 1;
   }
   if (!valores.length) return null;
   return new Set(valores).size === 1 ? valores[0] : "";
@@ -681,7 +697,9 @@ function extrairRefDoPRMerge(subcomandos) {
     if (tok.startsWith("-")) {
       const temIgual = tok.includes("=");
       const chave = temIgual ? tok.slice(0, tok.indexOf("=")) : tok;
-      if (!temIgual && FLAGS_COM_VALOR_PR_MERGE.has(chave)) {
+      // `-R`/`--repo` tambem consomem valor: sem pular, `--repo dono/x 1`
+      // devolvia "dono/x" como o ref do PR (#496).
+      if (!temIgual && (consomeValorPrMerge(chave) || chave === "-R" || chave === "--repo")) {
         i += 1; // pula o valor da flag
       }
       continue;
