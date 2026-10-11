@@ -10,6 +10,14 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.60.1 — 2026-10-10
+
+- **Registrar um repo avaliado não exige mais versão nova.** O `conferir-versao.cjs` já dispensava o bump quando só
+  mudava estado de fluxo (`docs/rainforest/estado/`). Agora dispensa também quando só mudam o livro de repos
+  (`vigias/livro-de-repos.md`) e `relatorios/`, porque nada disso é executado pelo plugin. Qualquer outro arquivo junto,
+  inclusive outro arquivo de `vigias/`, continua exigindo bump. Neste mesmo PR entrou a avaliação do `claude-cockpit`
+  para a troca automática de conta (`relatorios/2026-10-10-claude-cockpit-troca-de-conta.md`).
+
 ## 1.60.0 — 2026-10-10
 
 - **Atualizar o plugin numa janela chega às outras.** Antes o `/plugins-em-dia` só recarregava (ou avisava) a janela
