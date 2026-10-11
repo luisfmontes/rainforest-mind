@@ -2,8 +2,9 @@
 # Bateria para transferir.cjs — despacho de /transferir por destino
 # Uso: bash scripts/testa-transferir.sh
 #
-# Testa despacho entre transferir-entre-contas.cjs e transferir-para-codex.cjs
-# contra dublês que gravam argv e saem com código conhecido.
+# Testa o despacho de transferir.cjs: 'claude' é recusado (aponta o /conta),
+# o resto segue para transferir-para-codex.cjs.
+# Contra dublê que grava argv e sai com código conhecido.
 
 set -u
 
@@ -45,26 +46,8 @@ cp "$SRC/scripts/transferir.cjs" "$PLUGIN/scripts/transferir.cjs"
 # Copia lib de contas
 cp "$SRC/hooks/lib/contas-claude.cjs" "$PLUGIN/hooks/lib/contas-claude.cjs"
 
-# Cria dublês para os dois filhos
-# Dublê transferir-entre-contas.cjs: exit code 7, grava argv em arquivo
-mkdir -p "$RAIZ/logs"
-DUBLE_CLAUDE="$RAIZ/duble-claude.cjs"
-cat > "$DUBLE_CLAUDE" << 'DUBLEEOF'
-#!/usr/bin/env node
-const fs = require('fs');
-const path = require('path');
-
-const argv = process.argv.slice(2);
-const logFile = process.env.DUBLE_CLAUDE_LOG || '/tmp/duble-claude.log';
-
-// Grava argv como JSON
-fs.writeFileSync(logFile, JSON.stringify(argv), 'utf8');
-
-process.exit(7);
-DUBLEEOF
-chmod +x "$DUBLE_CLAUDE"
-
 # Dublê transferir-para-codex.cjs: exit code 9, grava argv em arquivo
+mkdir -p "$RAIZ/logs"
 DUBLE_CODEX="$RAIZ/duble-codex.cjs"
 cat > "$DUBLE_CODEX" << 'DUBLEEOF'
 #!/usr/bin/env node
@@ -83,76 +66,57 @@ chmod +x "$DUBLE_CODEX"
 
 # ===== CASOS =====
 
-echo "== CASO 1: primeiro argumento claude despacha para transferir-entre-contas ==="
+echo "== CASO 1: transferir claude recusa e aponta o /conta ==="
 
-LOG_CLAUDE_1="$RAIZ/claude-1.log"
 LOG_CODEX_1="$RAIZ/codex-1.log"
-rm -f "$LOG_CLAUDE_1" "$LOG_CODEX_1"
+rm -f "$LOG_CODEX_1"
 
 saida_1=$(RFM_TEST=1 \
-  RFM_TRANSFERIR_CLAUDE="$DUBLE_CLAUDE" \
   RFM_TRANSFERIR_CODEX="$DUBLE_CODEX" \
-  DUBLE_CLAUDE_LOG="$LOG_CLAUDE_1" \
   DUBLE_CODEX_LOG="$LOG_CODEX_1" \
   node "$PLUGIN/scripts/transferir.cjs" claude 2>&1)
 exit_1=$?
 
-if [ "$exit_1" = "7" ] && [ -f "$LOG_CLAUDE_1" ]; then
-  argv_1=$(cat "$LOG_CLAUDE_1")
-  if [ "$argv_1" = "[]" ]; then
-    ok=$((ok + 1))
-    echo "  ok   caso 1: primeiro argumento claude despacha para transferir-entre-contas (exit 7, argv vazio)"
-  else
-    falhou=$((falhou + 1))
-    echo "  FALHA caso 1: transferir-entre-contas recebeu argv não vazio: $argv_1"
-  fi
+if [ "$exit_1" = "2" ] && echo "$saida_1" | grep -qF '/conta' && [ ! -f "$LOG_CODEX_1" ]; then
+  ok=$((ok + 1))
+  echo "  ok   caso 1: transferir claude recusa com exit 2 e aponta o /conta (dublê codex não chamado)"
 else
   falhou=$((falhou + 1))
-  echo "  FALHA caso 1: esperava exit 7 e dublê claude chamado, veio exit $exit_1"
-  [ ! -f "$LOG_CLAUDE_1" ] && echo "    (dublê claude não foi chamado)"
+  echo "  FALHA caso 1: esperava exit 2 com /conta e sem dublê codex, veio exit $exit_1"
+  echo "    saída: $saida_1"
   [ -f "$LOG_CODEX_1" ] && echo "    (dublê codex foi chamado por engano)"
 fi
 
 echo ""
-echo "== CASO 2: claude --para trabalho passa os argumentos ==="
+echo "== CASO 2: claude --para trabalho também recusa com o /conta ==="
 
-LOG_CLAUDE_2="$RAIZ/claude-2.log"
 LOG_CODEX_2="$RAIZ/codex-2.log"
-rm -f "$LOG_CLAUDE_2" "$LOG_CODEX_2"
+rm -f "$LOG_CODEX_2"
 
 saida_2=$(RFM_TEST=1 \
-  RFM_TRANSFERIR_CLAUDE="$DUBLE_CLAUDE" \
   RFM_TRANSFERIR_CODEX="$DUBLE_CODEX" \
-  DUBLE_CLAUDE_LOG="$LOG_CLAUDE_2" \
   DUBLE_CODEX_LOG="$LOG_CODEX_2" \
   node "$PLUGIN/scripts/transferir.cjs" claude --para trabalho 2>&1)
 exit_2=$?
 
-if [ "$exit_2" = "7" ] && [ -f "$LOG_CLAUDE_2" ]; then
-  argv_2=$(cat "$LOG_CLAUDE_2")
-  if echo "$argv_2" | grep -q '"\-\-para"' && echo "$argv_2" | grep -q '"trabalho"'; then
-    ok=$((ok + 1))
-    echo "  ok   caso 2: claude --para trabalho passa argumentos para transferir-entre-contas"
-  else
-    falhou=$((falhou + 1))
-    echo "  FALHA caso 2: argv não contém --para trabalho: $argv_2"
-  fi
+if [ "$exit_2" = "2" ] && echo "$saida_2" | grep -qF '/conta' && [ ! -f "$LOG_CODEX_2" ]; then
+  ok=$((ok + 1))
+  echo "  ok   caso 2: claude --para trabalho recusa com exit 2 e aponta o /conta"
 else
   falhou=$((falhou + 1))
-  echo "  FALHA caso 2: esperava exit 7 com dublê claude, veio exit $exit_2"
+  echo "  FALHA caso 2: esperava exit 2 com /conta, veio exit $exit_2"
+  echo "    saída: $saida_2"
+  [ -f "$LOG_CODEX_2" ] && echo "    (dublê codex foi chamado por engano)"
 fi
 
 echo ""
 echo "== CASO 3: sem argumento despacha para transferir-para-codex ==="
 
-LOG_CLAUDE_3="$RAIZ/claude-3.log"
 LOG_CODEX_3="$RAIZ/codex-3.log"
-rm -f "$LOG_CLAUDE_3" "$LOG_CODEX_3"
+rm -f "$LOG_CODEX_3"
 
 saida_3=$(RFM_TEST=1 \
-  RFM_TRANSFERIR_CLAUDE="$DUBLE_CLAUDE" \
   RFM_TRANSFERIR_CODEX="$DUBLE_CODEX" \
-  DUBLE_CLAUDE_LOG="$LOG_CLAUDE_3" \
   DUBLE_CODEX_LOG="$LOG_CODEX_3" \
   node "$PLUGIN/scripts/transferir.cjs" 2>&1)
 exit_3=$?
@@ -170,20 +134,16 @@ else
   falhou=$((falhou + 1))
   echo "  FALHA caso 3: esperava exit 9 com dublê codex, veio exit $exit_3"
   [ ! -f "$LOG_CODEX_3" ] && echo "    (dublê codex não foi chamado)"
-  [ -f "$LOG_CLAUDE_3" ] && echo "    (dublê claude foi chamado por engano)"
 fi
 
 echo ""
 echo "== CASO 4: --ultimas 3 despacha para transferir-para-codex com argumento ==="
 
-LOG_CLAUDE_4="$RAIZ/claude-4.log"
 LOG_CODEX_4="$RAIZ/codex-4.log"
-rm -f "$LOG_CLAUDE_4" "$LOG_CODEX_4"
+rm -f "$LOG_CODEX_4"
 
 saida_4=$(RFM_TEST=1 \
-  RFM_TRANSFERIR_CLAUDE="$DUBLE_CLAUDE" \
   RFM_TRANSFERIR_CODEX="$DUBLE_CODEX" \
-  DUBLE_CLAUDE_LOG="$LOG_CLAUDE_4" \
   DUBLE_CODEX_LOG="$LOG_CODEX_4" \
   node "$PLUGIN/scripts/transferir.cjs" --ultimas 3 2>&1)
 exit_4=$?
