@@ -49,6 +49,7 @@ export function frase(ev) {
     // Motivo cru do mover (e.motivo já passou por motivoLegivel).
     const r = { motivo: ev.motivo };
     if (r.motivo === 'desfazer_falhou') return fraseMetade(ev);
+    if (/desfeito=false/.test(String(ev.motivo || ''))) return fraseNaoDesfeita(e);
     return 'Conta: a troca da pasta ' + e.pasta + ' foi desfeita (' + e.motivo + ').';
   }
   if (e.tipo === 'renovacao_falhou') {
@@ -72,6 +73,13 @@ function fraseMetade(ev) {
   const quais = nomes.length ? ' Arquivos não restaurados: ' + nomes.join(', ') + '.' : '';
   return 'Conta: a troca da pasta ' + ev.pasta + ' ficou pela metade (o desfazer também falhou).' + quais
     + ' Confira esses arquivos antes de trocar de novo.';
+}
+
+// A conferência no servidor não bateu e o desfazer não restaurou (desfeito=false no motivo): a pasta
+// pode ter ficado com o login de outra conta. Nunca "foi desfeita": o aviso manda conferir no /conta.
+function fraseNaoDesfeita(e) {
+  const motivo = String(e.motivo).replace(/;?\s*desfeito=false/, '');
+  return 'Conta: a troca da pasta ' + e.pasta + ' não pôde ser desfeita (' + motivo + '); a pasta pode ter ficado com o login de outra conta. Confira com /conta antes de trocar de novo.';
 }
 
 // Localizador do node, UM so para o relogio (mod.tsx) e o aviso de conta (conta.ts): os dois leem

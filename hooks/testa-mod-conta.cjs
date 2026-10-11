@@ -232,6 +232,13 @@ async function main() {
       /^Conta: a pasta trabalho está em casa/.test(fi), 'frase: ' + fi);
     afirma('falhou comum segue dizendo que a troca foi desfeita',
       frase({ em: 1, tipo: 'falhou', pasta: 'trabalho', motivo: 'saida_ocupada' }) === 'Conta: a troca da pasta trabalho foi desfeita (saida_ocupada).');
+    const fnd = frase({ em: 1, tipo: 'falhou', pasta: 'trabalho', de: 'team', para: 'pessoal', motivo: 'servidor confirmou a@exemplo.invalid, esperado b@exemplo.invalid; desfeito=false' });
+    afirma('falhou com desfeito=false não diz que a troca foi desfeita',
+      !/foi desfeita/.test(fnd) && /não pôde ser desfeita/.test(fnd) && /\/conta/.test(fnd) && /pasta trabalho/.test(fnd)
+        && !/desfeito=false/.test(fnd), 'frase: ' + fnd);
+    const fdt = frase({ em: 1, tipo: 'falhou', pasta: 'trabalho', de: 'team', para: 'pessoal', motivo: 'servidor confirmou a@exemplo.invalid, esperado b@exemplo.invalid; desfeito=true' });
+    afirma('falhou com desfeito=true segue dizendo que a troca foi desfeita',
+      /^Conta: a troca da pasta trabalho foi desfeita \(/.test(fdt) && !/\/conta/.test(fdt), 'frase: ' + fdt);
     afirma('desfazer_falhou sem pendentes (evento antigo) ainda avisa pela metade, sem lista',
       /ficou pela metade/.test(frase({ em: 1, tipo: 'falhou', pasta: 'trabalho', motivo: 'desfazer_falhou' }))
         && !/não restaurados/.test(frase({ em: 1, tipo: 'falhou', pasta: 'trabalho', motivo: 'desfazer_falhou' })));
