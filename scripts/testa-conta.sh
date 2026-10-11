@@ -209,6 +209,32 @@ caso_h() {
 }
 afirma "(h) conferência diferente no servidor desfaz a troca e registra falhou" caso_h
 
+# (i) troca automática e depois volta manual: a pasta volta com o login original dela, as duas
+# reservas ficam com os refreshToken de antes e os dois estacionados ficam vazios.
+ler_ou_ausente() { if [ -f "$1" ]; then ler "$1" claudeAiOauth.refreshToken; else echo AUSENTE; fi; }
+C_I="$(novo_caso i sim)"
+EST_I="$C_I/dados/contas/estado.json"
+RES_TEAM_I="$C_I/dados/contas/reserva-team.json"
+RES_PES_I="$C_I/dados/contas/reserva-pessoal.json"
+PASTA_CRED_I="$C_I/trabalho/.claude/.credentials.json"
+REF_PASTA_I="$(ler "$PASTA_CRED_I" claudeAiOauth.refreshToken)"
+REF_TEAM_I="$(ler "$RES_TEAM_I" claudeAiOauth.refreshToken)"
+REF_PES_I="$(ler "$RES_PES_I" claudeAiOauth.refreshToken)"
+RC_I1=0
+cli "$C_I" vigiar > "$RAIZ/i-vigiar.txt" 2>&1 || RC_I1=$?
+MEIO_I="$(ler "$EST_I" pastas.trabalho.conta)"
+RC_I2=0
+cli "$C_I" trocar trabalho --pasta trabalho > "$RAIZ/i-trocar.txt" 2>&1 || RC_I2=$?
+caso_i() {
+  [ "$RC_I1" -eq 0 ] && [ "$MEIO_I" = pessoal ] && [ "$RC_I2" -eq 0 ] \
+    && [ "$(ler "$PASTA_CRED_I" claudeAiOauth.refreshToken)" = "$REF_PASTA_I" ] \
+    && [ "$(ler "$RES_TEAM_I" claudeAiOauth.refreshToken)" = "$REF_TEAM_I" ] \
+    && [ "$(ler "$RES_PES_I" claudeAiOauth.refreshToken)" = "$REF_PES_I" ] \
+    && [ "$(ler_ou_ausente "$C_I/dados/contas/estacionado-trabalho.json")" = AUSENTE ] \
+    && [ "$(ler_ou_ausente "$C_I/dados/contas/estacionado-pessoal.json")" = AUSENTE ]
+}
+afirma "troca e volta preservam as duas reservas" caso_i
+
 # (g) nenhuma credencial (valor falso ou não) aparece na saída nem no log
 caso_g() {
   local rc=0

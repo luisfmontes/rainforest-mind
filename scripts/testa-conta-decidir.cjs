@@ -61,6 +61,7 @@ const trocadaParaPessoal = (extra = {}) => ({
     manual: false,
     travouPor: { limite: "seven_day", resetsAt: RESET_TEAM_7D },
     expiresAt: VIDA_LONGA,
+    estacionado: { expiresAt: VIDA_LONGA },
     ...extra,
   },
   pessoal: { casa: "pessoal", conta: "pessoal", manual: false, travouPor: null, expiresAt: VIDA_LONGA },
@@ -74,6 +75,7 @@ const rodar = (pastas, usos, extra = {}) => {
   const pastasComVida = JSON.parse(JSON.stringify(pastas));
   for (const p of Object.values(pastasComVida)) {
     if (p.expiresAt === VIDA_LONGA) p.expiresAt = vida;
+    if (p.estacionado && p.estacionado.expiresAt === VIDA_LONGA) p.estacionado.expiresAt = vida;
   }
   const reservas = extra.reservas || { team: { expiresAt: vida }, pessoal: { expiresAt: vida } };
   return decidir({ pastas: pastasComVida, usos, reservas, config: extra.config || CFG, agora });
@@ -219,6 +221,16 @@ caso("esperar na volta com access token a 29 min", () => {
   pastas.trabalho.expiresAt = new Date(agora + 29 * MIN).toISOString();
   const r = rodar(pastas, USO_REAL, { agora });
   return r.length === 1 && r[0].tipo === "esperar" && r[0].pasta === "trabalho";
+});
+
+// volta sem login estacionado: espera, mesmo com a reserva da conta de casa presente
+caso("volta sem login estacionado vira esperar, sem usar a reserva da conta de casa", () => {
+  const agora = Date.parse("2026-10-14T00:00:00Z");
+  const pastas = trocadaParaPessoal();
+  delete pastas.trabalho.estacionado;
+  const r = rodar(pastas, USO_REAL, { agora });
+  return r.length === 1 && r[0].tipo === "esperar" && r[0].pasta === "trabalho"
+    && r[0].motivo === "volta sem login estacionado";
 });
 
 // ------------------------------------------------------------------ execução

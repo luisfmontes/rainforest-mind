@@ -14,6 +14,7 @@
  *   { ok: false, motivo: 'duplicada' }    o login da reserva que entra é o da pasta
  *   { ok: false, motivo: 'gravacao' }     uma gravação não releu igual; tudo desfeito
  *   { ok: false, motivo: 'sem_credencial' } a reserva que entra não tem claudeAiOauth
+ *   { ok: false, motivo: 'saida_ocupada' } a reserva que sai já tem claudeAiOauth; nada gravado
  *
  * Refresh token é de uso único: o login nunca pode ficar em dois arquivos ao
  * mesmo tempo. Por isso MOVER, nunca copiar. Nunca imprime token.
@@ -55,10 +56,11 @@ function comChave(obj, valor) {
 function gravarAtomico(arq, texto) {
   const tmp = path.join(path.dirname(arq), `.${path.basename(arq)}.${process.pid}.${Date.now()}.tmp`);
   try {
-    fs.writeFileSync(tmp, texto, 'utf8');
+    fs.writeFileSync(tmp, texto, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
     fs.renameSync(tmp, arq);
   } catch (e) {
-    fs.rmSync(tmp, { force: true });
+    // EEXIST: o caminho temporário já existia e não é nosso; não se apaga o que não criamos.
+    if (e.code !== 'EEXIST') fs.rmSync(tmp, { force: true });
     throw e;
   }
 }
@@ -85,6 +87,7 @@ function mover({ pasta, reservaEntra, reservaSai, dono }) {
   for (const k of ordem) obj[k] = JSON.parse(lido[k]);
 
   if (!obj.entra[CHAVE]) return { ok: false, motivo: 'sem_credencial' };
+  if (obj.sai[CHAVE]) return { ok: false, motivo: 'saida_ocupada' };
 
   const novo = {
     cred: comChave(obj.cred, obj.entra[CHAVE]),
