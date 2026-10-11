@@ -169,6 +169,8 @@ async function main() {
     afirma('volta manual sai 0 e grava o evento', r4.rc === 0 && e4.length === 1, r4.out);
     afirma('volta manual (trocar --pasta) vira aviso de volta com a pasta, a conta e a marca de troca manual',
       f4 === 'Conta: a pasta trabalho voltou para a conta trabalho (troca manual).', 'frase: ' + f4);
+    afirma('motivo com porcentagem fracionada (utilization cru do conta-decidir) sai em português, sem o limiar',
+      motivoLegivel('seven_day de team em 97.5% (>= 97)') === 'semana da conta trabalho em 97.5%', 'motivoLegivel: ' + motivoLegivel('seven_day de team em 97.5% (>= 97)'));
     afirma('motivo desconhecido passa como veio, só com os nomes internos trocados',
       motivoLegivel('algo de team') === 'algo de trabalho', 'motivoLegivel: ' + motivoLegivel('algo de team'));
 

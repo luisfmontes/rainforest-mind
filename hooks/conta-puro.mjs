@@ -24,7 +24,7 @@ const JANELA = { seven_day: 'semana', five_hour: 'janela de 5 h' };
 // so com os nomes internos trocados.
 export function motivoLegivel(motivo) {
   const texto = String(motivo ?? '');
-  const m = /^(seven_day|five_hour) de (\w+) em (\d+%)(?: \(>= \d+\))?$/.exec(texto.trim());
+  const m = /^(seven_day|five_hour) de (\w+) em ([\d.,]+%)(?: \(>= [\d.,]+\))?$/.exec(texto.trim());
   if (m) return JANELA[m[1]] + ' da conta ' + nomeConta(m[2]) + ' em ' + m[3];
   return texto.replace(/\b(team|pessoal)\b/g, (c) => NOME[c]);
 }
