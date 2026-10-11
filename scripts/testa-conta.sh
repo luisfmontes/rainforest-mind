@@ -566,6 +566,79 @@ caso_u() {
 }
 afirma "(u) trava vencida é tomada por um processo só" caso_u
 
+# (v) o token da pasta pessoal (ociosa) venceu: o servidor responde 401 a ele. A reserva-pessoal
+# está válida (a D13 a mantém renovada), então o uso da pessoal tem de ser lido com ela, a team a
+# 97% na semana troca a pasta trabalho para a pessoal, e o status mostra os percentuais da pessoal.
+# Antes o 401 virava "sem dado de uso de pessoal" e a troca nunca acontecia.
+node "$RAIZ/derivar.cjs" "$RAIZ/mapa.json" "$RAIZ/mapa-v.json" '{"venceu":["falso-pessoal-pasta"]}'
+iniciar_servidor "$RAIZ/mapa-v.json" "$RAIZ/porta-v.txt"
+API_V="$API"
+API="$API_PRINCIPAL"
+C_V="$(novo_caso v sim)"
+EST_V="$C_V/dados/contas/estado.json"
+# As duas contas já registradas (o status as registra com a pasta em casa e o token válido): com o
+# token da pasta pessoal vencido, o registro dela não se refaz agora.
+registrar_contas() { # $1 = caso
+  node -e "
+const fs = require('fs');
+const j = (a) => JSON.parse(fs.readFileSync(a, 'utf8'));
+const c = process.argv[1];
+const o = (a) => j(c + a).oauthAccount;
+const t = o('/trabalho/.claude/.claude.json');
+const p = o('/pessoal/.claude-personal/.claude.json');
+fs.writeFileSync(c + '/dados/contas/estado.json', JSON.stringify({ automatico: true, contas: { team: { email: t.emailAddress, oauthAccount: t }, pessoal: { email: p.emailAddress, oauthAccount: p } } }));
+" "$1"
+}
+registrar_contas "$C_V"
+RC_V=0
+API="$API_V"
+cli "$C_V" vigiar > "$RAIZ/v.txt" 2>&1 || RC_V=$?
+C_VS="$(novo_caso vs nao)"
+cli "$C_VS" status > "$RAIZ/vs.txt" 2>&1 || true
+API="$API_PRINCIPAL"
+caso_v() {
+  [ "$RC_V" -eq 0 ] && [ "$(ler "$EST_V" pastas.trabalho.conta)" = pessoal ] \
+    && grep -qF '"tipo":"trocar"' "$C_V/dados/contas/eventos.jsonl" \
+    && ! contem "$(cat "$RAIZ/v.txt")" "sem dado de uso de pessoal"
+}
+afirma "uso cai para a reserva quando o token da pasta venceu" caso_v
+afirma "uso cai para a reserva: o status mostra os percentuais da conta pessoal" contem "$(cat "$RAIZ/vs.txt")" "  pessoal: 5 h 2% · semana 7%"
+
+# (v2) o mesmo, com o vencimento pelo RELÓGIO (expiresAt no passado na credencial da pasta pessoal):
+# o token da pasta nem é mandado ao servidor, e a reserva responde pela conta.
+C_V2="$(novo_caso v2 sim)"
+node -e "
+const fs = require('fs');
+const arq = process.argv[1];
+const j = JSON.parse(fs.readFileSync(arq, 'utf8'));
+j.claudeAiOauth.expiresAt = Date.now() - 3600000;
+fs.writeFileSync(arq, JSON.stringify(j));
+" "$C_V2/pessoal/.claude-personal/.credentials.json"
+registrar_contas "$C_V2"
+RC_V2=0
+cli "$C_V2" vigiar > "$RAIZ/v2.txt" 2>&1 || RC_V2=$?
+caso_v2() {
+  [ "$RC_V2" -eq 0 ] && [ "$(ler "$C_V2/dados/contas/estado.json" pastas.trabalho.conta)" = pessoal ] \
+    && ! contem "$(cat "$RAIZ/v2.txt")" "sem dado de uso de pessoal"
+}
+afirma "uso cai para a reserva quando a pasta tem o token vencido pelo relógio" caso_v2
+
+# (v3) sem reserva e com o token da pasta vencido (401), a conta fica sem dado e o aviso não vaza o token.
+C_V3="$(novo_caso v3 sim)"
+rm -f "$C_V3/dados/contas/reserva-pessoal.json"
+registrar_contas "$C_V3"
+RC_V3=0
+API="$API_V"
+cli "$C_V3" vigiar > "$RAIZ/v3.txt" 2>&1 || RC_V3=$?
+API="$API_PRINCIPAL"
+caso_v3() {
+  [ "$RC_V3" -eq 0 ] && [ "$(ler "$C_V3/dados/contas/estado.json" pastas.trabalho.conta)" = AUSENTE ] \
+    && [ ! -e "$C_V3/dados/contas/eventos.jsonl" ] \
+    && contem "$(cat "$RAIZ/v3.txt")" "aviso: uso de pessoal indisponível: usage HTTP 401" \
+    && contem "$(cat "$RAIZ/v3.txt")" "esperar trabalho: sem dado de uso de pessoal"
+}
+afirma "sem reserva e com o token da pasta vencido, a conta fica sem dado e nada troca" caso_v3
+
 # (g) nenhuma credencial (valor falso ou não) aparece na saída nem no log
 caso_g() {
   local rc=0
@@ -573,7 +646,8 @@ caso_g() {
     "$RAIZ/f.txt" "$RAIZ/h.txt" "$RAIZ/status-a.txt" "$EV_A" "$EV_H" \
     "$RAIZ/k.txt" "$RAIZ/k2.txt" "$RAIZ/k2-status.txt" "$RAIZ/n.txt" "$EV_K" "$EV_K2" \
     "$RAIZ/o.txt" "$RAIZ/p.txt" "$RAIZ/p-status.txt" "$RAIZ/q.txt" "$EV_O" "$EV_P" "$EV_Q" \
-    "$RAIZ/m.txt" "$RAIZ/r1.txt" "$RAIZ/r2.txt" "$RAIZ/s.txt" "$RAIZ/t.txt" "$RAIZ"/u[1-4].txt "$EV_R" || rc=$?
+    "$RAIZ/m.txt" "$RAIZ/r1.txt" "$RAIZ/r2.txt" "$RAIZ/s.txt" "$RAIZ/t.txt" "$RAIZ"/u[1-4].txt "$EV_R" \
+    "$RAIZ/v.txt" "$RAIZ/vs.txt" "$RAIZ/v2.txt" "$RAIZ/v3.txt" "$C_V/dados/contas/eventos.jsonl" || rc=$?
   [ "$rc" -eq 1 ]
 }
 afirma "(g) credencial nunca aparece na saída nem no log" caso_g

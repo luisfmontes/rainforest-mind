@@ -36,9 +36,11 @@
 //     Pasta trocada não recebe nova troca nesta função: a troca seguinte fica para quando a
 //     volta acontecer;
 //   - ação que move credencial (da pasta ou da reserva de entrada) com menos de 30 min de
-//     vida até expiresAt sai como 'esperar' (D11).
+//     vida até expiresAt sai como 'esperar' (D11); exceção: o login que sai da pasta, vencido
+//     há mais de 10 min, dispensa essa guarda (o que entra continua exigindo os 30 min).
 
 const MIN_VIDA_MS = 30 * 60 * 1000;
+const OCIOSO_MS = 10 * 60 * 1000;
 const LIMITES = ['five_hour', 'seven_day'];
 
 const ms = (x) => (typeof x === 'number' ? x : Date.parse(x));
@@ -88,8 +90,13 @@ function decidirEmCasa(nome, pasta, pastas, usos, reservas, config, agoraMs) {
 }
 
 // expiraEntra: validade do login que entra na pasta (reserva na troca, estacionado na volta).
+// Exceção da D11 (2026-10-11): o login que SAI da pasta, vencido há mais de 10 min, dispensa a
+// guarda de 30 min. Sessão aberta renova antes de vencer, então vencido há tanto tempo quer dizer
+// que nenhuma sessão usa a pasta e não há corrida; nada renova login de pasta, e sem a exceção a
+// pasta trocada nunca volta. O login que entra segue exigindo os 30 min (a D13 o mantém renovado).
 function checarVida(nome, destino, pasta, expiraEntra, agoraMs, tipo, motivo) {
-  const vidas = [pasta.expiresAt, expiraEntra];
+  const saiOcioso = agoraMs - ms(pasta.expiresAt) > OCIOSO_MS;
+  const vidas = saiOcioso ? [expiraEntra] : [pasta.expiresAt, expiraEntra];
   if (vidas.some((v) => !(ms(v) - agoraMs >= MIN_VIDA_MS))) {
     return esperar(nome, destino, `${tipo} adiada: access token com menos de 30 min de vida`);
   }

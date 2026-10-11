@@ -114,6 +114,12 @@ function valorDe(args, flag) {
   return i >= 0 ? args[i + 1] : undefined;
 }
 
+// Texto de erro que pode ir para stderr, evento ou log. O `e.message` de um JSON.parse carrega um
+// trecho do texto lido, e o texto pode ser um arquivo de credencial editado à mão: nunca sai.
+function msgSegura(e) {
+  return e instanceof SyntaxError ? 'JSON inválido' : e.message;
+}
+
 function lerJson(arq, padrao) {
   try {
     return JSON.parse(fs.readFileSync(arq, 'utf8'));
@@ -308,13 +314,16 @@ function reservaPronta(c, conta) {
   return r && r.claudeAiOauth ? r : null;
 }
 
-// Conta em uso: a primeira pasta que a tem; senão, a reserva dela.
-function tokenDaConta(c, estado, conta) {
+// Logins que dizem o uso de uma conta, na ordem de tentativa: o da primeira pasta que a tem e,
+// depois, o da reserva dela. A pasta ociosa (sem sessão) não renova o próprio token e ele vence;
+// a reserva a D13 mantém renovada, então o uso da conta continua legível e a troca não fica cega.
+function loginsDaConta(c, estado, conta) {
+  const logins = [];
   const P = PASTAS.find((p) => estado.pastas[p].conta === conta && credDaPasta(c, p));
-  if (P) return credDaPasta(c, P).claudeAiOauth.accessToken;
+  if (P) logins.push(credDaPasta(c, P).claudeAiOauth);
   const r = reservaPronta(c, conta);
-  if (!r) return null;
-  return r.claudeAiOauth.accessToken;
+  if (r) logins.push(r.claudeAiOauth);
+  return logins;
 }
 
 function estacionadoPronto(c, P) {
@@ -335,17 +344,29 @@ function infoPasta(c, estado, P) {
 
 // Uma conta que não responde fica sem dado (decidir espera); nunca derruba a rodada das duas.
 // Leitura antiga (429 devolve a última, com a idade) também vira "sem dado": não decide troca.
+// Token vencido (pelo relógio ou por um 401) passa para o login seguinte da conta (a reserva); só o
+// 401 faz isso: qualquer outra falha (500, rede) é da conta, não do token, e para por aí.
 async function coletarUsos(c, estado) {
   const usos = {};
   for (const conta of CONTAS) {
-    const tok = tokenDaConta(c, estado, conta);
-    if (!tok) continue;
-    try {
-      const r = await API.uso(conta, tok, { dados: c.dados });
-      if (r.dados && !(r.idadeMs > LEITURA_MAX_MS)) usos[conta] = r.dados;
-    } catch (e) {
-      process.stderr.write(`aviso: uso de ${NOME[conta]} indisponível: ${e.message}\n`);
+    let erro = null;
+    for (const login of loginsDaConta(c, estado, conta)) {
+      if (!login.accessToken) continue;
+      if (Number(login.expiresAt) <= Date.now()) {
+        erro = new Error('login vencido');
+        continue;
+      }
+      try {
+        const r = await API.uso(conta, login.accessToken, { dados: c.dados });
+        if (r.dados && !(r.idadeMs > LEITURA_MAX_MS)) usos[conta] = r.dados;
+        erro = null;
+        break;
+      } catch (e) {
+        erro = e;
+        if (!/HTTP 401$/.test(e.message)) break;
+      }
     }
+    if (erro) process.stderr.write(`aviso: uso de ${NOME[conta]} indisponível: ${msgSegura(erro)}\n`);
   }
   return usos;
 }
@@ -456,6 +477,14 @@ const MSG_SLOT_EM_USO = (alvo) => `a reserva de ${alvo} está em uso numa pasta 
 function slotEmUso(c, conta) {
   const estado = lerEstado(c);
   return PASTAS.some((P) => estado.pastas[P].conta === conta && estado.pastas[P].conta !== estado.pastas[P].casa);
+}
+
+// Pasta trocada guarda no .claude.json o oauthAccount da conta que entrou (o mover o reescreve):
+// preparar com ela fora de casa pediria o login da conta errada e gravaria a reserva errada.
+const MSG_PASTA_FORA = (alvo) => `a pasta ${alvo} está fora de casa: volte a pasta antes de preparar`;
+function pastaForaDeCasa(c, P) {
+  const info = lerEstado(c).pastas[P];
+  return info.conta !== info.casa;
 }
 
 function contaDoEmail(estado, email) {
@@ -719,9 +748,11 @@ async function vigiar(c) {
   }
 }
 
-// Login novo para a reserva de uma conta. O e-mail esperado é o da pasta dona da conta
-// (oauthAccount do .claude.json dela); o servidor diz de quem é o login que o navegador
-// autorizou, e só então a reserva é gravada. Login de conta errada não grava nada.
+// Login novo para a reserva de uma conta. O e-mail esperado é o REGISTRADO da conta
+// (estado.contas[conta].email, gravado sob a trava com o servidor confirmando a pasta em casa),
+// nunca o .claude.json da pasta: o mover o reescreve com a conta que entrou (D10). O servidor diz
+// de quem é o login que o navegador autorizou, e só então a reserva é gravada. Login de conta
+// errada não grava nada.
 async function preparar(c, args) {
   const alvo = args[0];
   if (!Object.hasOwn(CONTA_CLI, alvo)) return sair(2, 'uso: preparar <pessoal|trabalho>');
@@ -733,11 +764,13 @@ async function preparar(c, args) {
   if (!pegarTrava(c.lock)) return sair(1, 'outra rodada em curso: tente de novo em instantes');
   let esperado;
   try {
+    const estado = lerEstado(c);
+    if (await registrarCasas(c, estado, true)) gravarEstado(c, estado);
+    if (pastaForaDeCasa(c, alvo)) return sair(1, MSG_PASTA_FORA(alvo));
     if (slotEmUso(c, conta)) return sair(1, MSG_SLOT_EM_USO(alvo));
     if (reservaPronta(c, conta)) return sair(1, `reserva de ${alvo} já existe: não sobrescrevo`);
-    const claude = lerJson(claudeArq(c, alvo), null);
-    esperado = claude && claude.oauthAccount && claude.oauthAccount.emailAddress;
-    if (!esperado) return sair(1, `pasta ${alvo} sem oauthAccount: rode status com ela em casa`);
+    esperado = (estado.contas[conta] || {}).email;
+    if (!esperado) return sair(1, `conta ${alvo} sem registro: rode status com a pasta ${alvo} em casa`);
   } finally {
     soltarTrava(c.lock);
   }
@@ -768,7 +801,7 @@ async function preparar(c, args) {
       return sair(1, 'outra rodada em curso: o login não foi gravado; rode preparar de novo');
     }
     try {
-      if (slotEmUso(c, conta) || reservaPronta(c, conta)) {
+      if (pastaForaDeCasa(c, alvo) || slotEmUso(c, conta) || reservaPronta(c, conta)) {
         return sair(1, 'o estado mudou durante o login: nada gravado; rode preparar de novo');
       }
       gravarCred(reservaArq(c, conta), JSON.stringify({ claudeAiOauth: cred.claudeAiOauth }, null, 2) + '\n');

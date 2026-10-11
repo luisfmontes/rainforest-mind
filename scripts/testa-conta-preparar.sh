@@ -42,6 +42,11 @@ const oauth = (email) => ({ accountUuid: '00000000-0000-0000-0000-000000000000',
 escrever(path.join(destino, 'trabalho', '.claude', '.claude.json'),
   semOauth === 'trabalho' ? { numStartups: 1 } : { numStartups: 1, oauthAccount: oauth('team@exemplo.invalid') });
 escrever(path.join(destino, 'pessoal', '.claude-personal', '.claude.json'), { numStartups: 1, oauthAccount: oauth('pessoal@exemplo.invalid') });
+// Estado como o status o deixa: as contas registradas (e-mail), que é de onde o preparar tira o
+// e-mail esperado. Pasta sem oauthAccount nunca teve a conta registrada.
+const contasRegistradas = { pessoal: { email: 'pessoal@exemplo.invalid' } };
+if (semOauth !== 'trabalho') contasRegistradas.team = { email: 'team@exemplo.invalid' };
+escrever(path.join(destino, 'dados', 'contas', 'estado.json'), { contas: contasRegistradas });
 for (const conta of reservas.split(',').filter(Boolean)) {
   escrever(path.join(destino, 'dados', 'contas', `reserva-${conta}.json`),
     { claudeAiOauth: { accessToken: 'falso-reserva-' + conta, refreshToken: 'falso-refresh-reserva-' + conta, expiresAt: 4102444800000 } });
@@ -112,7 +117,7 @@ afirma "(a) dono bate: preparar trabalho sai 0" test "$RC_A" -eq 0
 afirma "(a) dono bate: reserva-team gravada com o login" test "$(ler "$C_A/dados/contas/reserva-team.json" claudeAiOauth.accessToken)" = falso-login-team
 afirma "(a) dono bate: pediu o login com --claudeai e o e-mail da conta" grep -qF -- '"--email","team@exemplo.invalid"' "$C_A/claude-args.txt"
 afirma "(a) dono bate: pasta temporária sumiu" sem_login "$C_A/dados/contas"
-afirma "(a) sem a reserva de pessoal, estado.json não liga o automático" test ! -f "$C_A/dados/contas/estado.json"
+afirma "(a) sem a reserva de pessoal, estado.json não liga o automático" test "$(ler "$C_A/dados/contas/estado.json" automatico)" = AUSENTE
 afirma "(a) imprime qual reserva falta" contem "$(cat "$RAIZ/a.txt")" "falta a reserva de pessoal"
 
 # (b) login da conta errada não grava reserva: exit 3, a saída cita o e-mail que veio
@@ -151,9 +156,10 @@ caso_e() {
 C_F="$(novo_caso f "" trabalho)"
 RC_F=0
 preparar "$C_F" falso-login-team trabalho > "$RAIZ/f.txt" 2>&1 || RC_F=$?
-afirma "(f) pasta sem oauthAccount: sai 1" test "$RC_F" -eq 1
-afirma "(f) pasta sem oauthAccount: o claude nem roda" test ! -f "$C_F/claude-args.txt"
-afirma "(f) pasta sem oauthAccount: nada gravado" test ! -f "$C_F/dados/contas/reserva-team.json"
+afirma "(f) conta sem registro (pasta sem oauthAccount): sai 1" test "$RC_F" -eq 1
+afirma "(f) conta sem registro: a saída manda rodar o status" contem "$(cat "$RAIZ/f.txt")" "sem registro: rode status"
+afirma "(f) conta sem registro: o claude nem roda" test ! -f "$C_F/claude-args.txt"
+afirma "(f) conta sem registro: nada gravado" test ! -f "$C_F/dados/contas/reserva-team.json"
 afirma "(e) a credencial falsa não aparece na saída" caso_e
 
 # (g) a pasta trabalho (casa: team) foi trocada para a conta pessoal: a reserva-pessoal está
@@ -161,7 +167,7 @@ afirma "(e) a credencial falsa não aparece na saída" caso_e
 # (gravar ali faria a volta devolver saida_ocupada rodada após rodada).
 C_G="$(novo_caso g "")"
 mkdir -p "$C_G/dados/contas"
-node -e "require('fs').writeFileSync(process.argv[1], JSON.stringify({ pastas: { trabalho: { conta: 'pessoal' } } }))" "$C_G/dados/contas/estado.json"
+node -e "require('fs').writeFileSync(process.argv[1], JSON.stringify({ pastas: { trabalho: { conta: 'pessoal' } }, contas: { team: { email: 'team@exemplo.invalid' }, pessoal: { email: 'pessoal@exemplo.invalid' } } }))" "$C_G/dados/contas/estado.json"
 echo '{}' > "$C_G/dados/contas/reserva-pessoal.json"
 SHA_G="$(sha "$C_G/dados/contas/reserva-pessoal.json")"
 RC_G=0
@@ -189,9 +195,65 @@ caso_h_trava() {
 }
 afirma "preparar roda sob a trava: outra rodada em curso recusa sem rodar o claude" caso_h_trava
 
+# poe_oauth <caso> <pasta> <email>: o oauthAccount do .claude.json da pasta passa a dizer <email>
+# (o que o mover faz com a pasta trocada: grava ali a conta que entrou).
+poe_oauth() {
+  node -e "
+const fs = require('fs');
+const j = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
+j.oauthAccount.emailAddress = process.argv[2];
+fs.writeFileSync(process.argv[1], JSON.stringify(j));
+" "$1" "$2"
+}
+
+# (i) a pasta trabalho (casa: team) está na conta pessoal, e o .claude.json dela já diz pessoal
+# (o mover o reescreveu). A reserva-team está ausente. preparar trabalho tem de recusar sem rodar
+# o claude: antes tirava o e-mail esperado desse .claude.json, o navegador autorizava a pessoal, o
+# servidor confirmava, e a reserva de trabalho era gravada com o login pessoal (D10).
+C_I="$(novo_caso i "")"
+node -e "require('fs').writeFileSync(process.argv[1], JSON.stringify({ pastas: { trabalho: { conta: 'pessoal' } }, contas: { team: { email: 'team@exemplo.invalid' }, pessoal: { email: 'pessoal@exemplo.invalid' } } }))" "$C_I/dados/contas/estado.json"
+poe_oauth "$C_I/trabalho/.claude/.claude.json" pessoal@exemplo.invalid
+SHA_I="$(sha "$C_I/dados/contas/estado.json")"
+RC_I=0
+preparar "$C_I" falso-login-pessoal trabalho > "$RAIZ/i.txt" 2>&1 || RC_I=$?
+caso_i_fora() {
+  [ "$RC_I" -eq 1 ] \
+    && contem "$(cat "$RAIZ/i.txt")" "a pasta trabalho está fora de casa: volte a pasta antes de preparar" \
+    && [ ! -f "$C_I/claude-args.txt" ] && [ ! -f "$C_I/dados/contas/reserva-team.json" ] \
+    && [ "$(sha "$C_I/dados/contas/estado.json")" = "$SHA_I" ] \
+    && sem_login "$C_I/dados/contas" && [ ! -e "$C_I/dados/contas/vigia.lock" ]
+}
+afirma "preparar com a pasta trocada recusa" caso_i_fora
+
+# (j) o e-mail esperado vem do registro (estado.contas.team = team@), não do .claude.json da pasta,
+# que aqui diz pessoal@. O claude é chamado com o e-mail registrado; o navegador autoriza a
+# pessoal: sai 3 e nada é gravado.
+C_J="$(novo_caso j "")"
+poe_oauth "$C_J/trabalho/.claude/.claude.json" pessoal@exemplo.invalid
+RC_J=0
+preparar "$C_J" falso-login-pessoal trabalho > "$RAIZ/j.txt" 2>&1 || RC_J=$?
+caso_j_registro() {
+  [ "$RC_J" -eq 3 ] && contem "$(cat "$RAIZ/j.txt")" "o navegador autorizou pessoal@exemplo.invalid" \
+    && grep -qF -- '"--email","team@exemplo.invalid"' "$C_J/claude-args.txt" \
+    && [ ! -f "$C_J/dados/contas/reserva-team.json" ] && sem_login "$C_J/dados/contas"
+}
+afirma "preparar confere a conta pelo registro" caso_j_registro
+
+# (j2) o lado oposto: mesmo .claude.json adulterado, mas o login que o navegador autoriza é o da
+# conta registrada (team): a reserva é gravada.
+C_J2="$(novo_caso j2 "")"
+poe_oauth "$C_J2/trabalho/.claude/.claude.json" pessoal@exemplo.invalid
+RC_J2=0
+preparar "$C_J2" falso-login-team trabalho > "$RAIZ/j2.txt" 2>&1 || RC_J2=$?
+caso_j2_registro() {
+  [ "$RC_J2" -eq 0 ] && [ "$(ler "$C_J2/dados/contas/reserva-team.json" claudeAiOauth.accessToken)" = falso-login-team ] \
+    && grep -qF -- '"--email","team@exemplo.invalid"' "$C_J2/claude-args.txt"
+}
+afirma "preparar com o login da conta registrada grava a reserva mesmo com o .claude.json adulterado" caso_j2_registro
+
 caso_e2() {
   local rc=0
-  grep -qF "falso-" "$RAIZ/g.txt" "$RAIZ/h.txt" || rc=$?
+  grep -qF "falso-" "$RAIZ/g.txt" "$RAIZ/h.txt" "$RAIZ/i.txt" "$RAIZ/j.txt" "$RAIZ/j2.txt" || rc=$?
   [ "$rc" -eq 1 ]
 }
 afirma "(e) a credencial falsa não aparece na saída das recusas" caso_e2

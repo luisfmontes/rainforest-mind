@@ -223,6 +223,56 @@ caso("esperar na volta com access token a 29 min", () => {
   return r.length === 1 && r[0].tipo === "esperar" && r[0].pasta === "trabalho";
 });
 
+// Exceção da D11: o login que SAI da pasta, vencido há mais de 10 min, dispensa a guarda de 30 min
+// (nenhuma sessão usa a pasta; nada renova login de pasta). O que ENTRA segue exigindo os 30 min.
+const VOLTA_AGORA = Date.parse("2026-10-14T00:00:00Z");
+caso("volta com o login da pasta vencido há mais de 10 min não espera", () => {
+  const pastas = trocadaParaPessoal();
+  pastas.trabalho.expiresAt = new Date(VOLTA_AGORA - 20 * MIN).toISOString();
+  const r = rodar(pastas, USO_REAL, { agora: VOLTA_AGORA });
+  return r.length === 1 && r[0].tipo === "voltar" && r[0].pasta === "trabalho" && r[0].conta === "team";
+});
+
+caso("volta com o login da pasta vencido há 5 min espera (a janela de 10 min ainda não passou)", () => {
+  const pastas = trocadaParaPessoal();
+  pastas.trabalho.expiresAt = new Date(VOLTA_AGORA - 5 * MIN).toISOString();
+  const r = rodar(pastas, USO_REAL, { agora: VOLTA_AGORA });
+  return r.length === 1 && r[0].tipo === "esperar" && r[0].pasta === "trabalho"
+    && /menos de 30 min/.test(r[0].motivo);
+});
+
+caso("volta com o login da pasta vencido há 11 min não espera; há 9 min espera (lados da fronteira de 10 min)", () => {
+  const com = (min) => {
+    const pastas = trocadaParaPessoal();
+    pastas.trabalho.expiresAt = new Date(VOLTA_AGORA - min * MIN).toISOString();
+    return rodar(pastas, USO_REAL, { agora: VOLTA_AGORA });
+  };
+  return com(11)[0].tipo === "voltar" && com(9)[0].tipo === "esperar";
+});
+
+caso("volta com o login da pasta vencido há 20 min mas o estacionado com 29 min de vida ainda espera", () => {
+  const pastas = trocadaParaPessoal();
+  pastas.trabalho.expiresAt = new Date(VOLTA_AGORA - 20 * MIN).toISOString();
+  pastas.trabalho.estacionado = { expiresAt: new Date(VOLTA_AGORA + 29 * MIN).toISOString() };
+  const r = rodar(pastas, USO_REAL, { agora: VOLTA_AGORA });
+  return r.length === 1 && r[0].tipo === "esperar";
+});
+
+caso("volta com o login da pasta vencido há 20 min mas o estacionado vencido também ainda espera", () => {
+  const pastas = trocadaParaPessoal();
+  pastas.trabalho.expiresAt = new Date(VOLTA_AGORA - 20 * MIN).toISOString();
+  pastas.trabalho.estacionado = { expiresAt: new Date(VOLTA_AGORA - 1 * MIN).toISOString() };
+  const r = rodar(pastas, USO_REAL, { agora: VOLTA_AGORA });
+  return r.length === 1 && r[0].tipo === "esperar";
+});
+
+caso("o login da pasta a 10 min de vencer (ainda não vencido) não dispensa a guarda", () => {
+  const pastas = trocadaParaPessoal();
+  pastas.trabalho.expiresAt = new Date(VOLTA_AGORA + 10 * MIN).toISOString();
+  const r = rodar(pastas, USO_REAL, { agora: VOLTA_AGORA });
+  return r.length === 1 && r[0].tipo === "esperar";
+});
+
 // volta sem login estacionado: espera, mesmo com a reserva da conta de casa presente
 caso("volta sem login estacionado vira esperar, sem usar a reserva da conta de casa", () => {
   const agora = Date.parse("2026-10-14T00:00:00Z");
