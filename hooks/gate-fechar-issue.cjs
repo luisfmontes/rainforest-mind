@@ -707,6 +707,43 @@ function indiceGhComVerbo(valores) {
 }
 
 /**
+ * Metodo que o `gh api` usa de verdade: o ULTIMO `-X`/`--method` vence
+ * (`-X GET -X PATCH` e PATCH), e sem metodo explicito o gh manda POST quando
+ * ha campo (-f/-F) e GET quando nao ha. Le os tokens, nao o texto: `get` no
+ * corpo de um campo nao conta (revisao do commit a5386cbc).
+ */
+// Flags do `gh api` (manual, gh 2.96): as que levam valor consomem o token
+// seguinte — `-H -XGET` e um cabecalho, nao um metodo. Flag fora da tabela
+// devolve "?", e quem chama trata como escrita (revisao do commit a5386cbc).
+const GH_API_COM_VALOR = new Set([
+  "-H", "--header", "-q", "--jq", "-t", "--template", "-p", "--preview",
+  "--cache", "--hostname", "--input",
+]);
+const GH_API_BOOLEANAS = new Set(["-i", "--include", "--paginate", "--silent", "--slurp", "--verbose"]);
+
+function metodoDoGhApi(subcomandos) {
+  let metodo = null;
+  let temCampo = false;
+  for (let i = 1; i < subcomandos.length; i += 1) {
+    const t = subcomandos[i];
+    if (!t.startsWith("-") || t === "-") continue;
+    if (t === "-X" || t === "--method") { metodo = subcomandos[i + 1] ?? ""; i += 1; continue; }
+    if (t.startsWith("--method=")) { metodo = t.slice("--method=".length); continue; }
+    if (/^-X./.test(t)) { metodo = t.slice(2); continue; }
+    if (/^(?:-[fF]|--field|--raw-field)$/.test(t)) { temCampo = true; i += 1; continue; }
+    if (/^(?:-[fF].|--field=|--raw-field=)/.test(t)) { temCampo = true; continue; }
+    if (GH_API_COM_VALOR.has(t)) { i += 1; continue; }
+    const eq = t.indexOf("=");
+    if (eq !== -1 && GH_API_COM_VALOR.has(t.slice(0, eq))) continue;
+    if (/^-[Hqtp]./.test(t)) continue;
+    if (GH_API_BOOLEANAS.has(t)) continue;
+    return "?";
+  }
+  if (metodo === null) return temCampo ? "POST" : "GET";
+  return metodo.toUpperCase();
+}
+
+/**
  * Tira o `-R`/`--repo` global de antes do verbo: `gh issue -R x close 12` e
  * `gh issue close 12` em outro repo, e `temSubcomando` exige o verbo colado
  * no substantivo (revisao 2). So mexe ate achar as duas primeiras palavras.
@@ -874,7 +911,7 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento, textoDoComando =
   if (subcomandos[0] === "api" && (
       (/pulls\/\d+\/merge/.test(segmento) && /(?:-X|--method)[\s=]*["']?put\b/i.test(segmento)) ||
       (/(?:^|\s)(?:-[fF]|--(?:raw-)?field)[\s=]+["']?state=closed/.test(segmento) &&
-        !/(?:-X|--method)[\s=]*["']?get\b/i.test(segmento)) ||
+        metodoDoGhApi(subcomandos) !== "GET") ||
       /closeIssue|mergePullRequest/.test(segmento))) {
     bloqueia(
       `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
