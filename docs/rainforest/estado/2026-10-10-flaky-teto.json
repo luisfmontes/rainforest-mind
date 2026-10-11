@@ -21,30 +21,11 @@
     "em": "2026-10-10"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-10",
-    "tarefas_ok": 7,
+    "tarefas_ok": 12,
     "tarefas": 12,
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "12 cobertura teto",
-        "desde": "2026-10-11T03:01:13Z",
-        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466"
-      },
-      {
-        "agente": "documentador",
-        "tarefa": "9 laco docs",
-        "desde": "2026-10-11T03:01:13Z",
-        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466"
-      },
-      {
-        "agente": "documentador",
-        "tarefa": "10 travas e README",
-        "desde": "2026-10-11T03:01:13Z",
-        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466"
-      }
-    ],
+    "em_voo": [],
     "em": "2026-10-11",
     "carimbos": [
       {
@@ -95,8 +76,93 @@
         "iteracao": 1,
         "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466",
         "ts": "2026-10-11T03:01:13.355Z"
+      },
+      {
+        "tarefa": 9,
+        "hash_base": "770399141aa12809ff9fd7d1beac6229b43ad1f4",
+        "iteracao": 1,
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466",
+        "ts": "2026-10-11T04:18:38.091Z"
+      },
+      {
+        "tarefa": 10,
+        "hash_base": "770399141aa12809ff9fd7d1beac6229b43ad1f4",
+        "iteracao": 1,
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466",
+        "ts": "2026-10-11T04:18:38.091Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "770399141aa12809ff9fd7d1beac6229b43ad1f4",
+        "iteracao": 1,
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466",
+        "ts": "2026-10-11T04:18:38.091Z"
       }
-    ]
+    ],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-estado-flaky.sh, secao \"flake de uma volta so nao e terminal\""
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-teto-despachos.cjs, caso \"contador com total invalido nega\""
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-estado-flaky-status.sh, secao \"flaky nao consome tentativas\""
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-estado-teto.sh, secao \"segunda liberacao acumula\""
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao-flaky.sh, secao \"vermelho e depois verde nao confirma\""
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-rodar-gate.sh, secao \"vermelho na primeira rodada repete uma vez\""
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-teto-declarado.cjs, caso \"liberar-teto soma 10 e a segunda soma mais 10\""
+      },
+      {
+        "tarefa": 8,
+        "resultado": "n/a",
+        "motivo": "arquivo de lista; o comportamento e do varrer-baterias.sh, coberto por testa-varrer-baterias.sh"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "texto normativo; o comportamento executavel esta nas tarefas 1 a 7"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "documentacao; o comportamento do hook e provado pela bateria da tarefa 2"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "n/a",
+        "motivo": "nota de versao"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "testa-cobertura-teto.sh, caso \"teto-despachos: abc recusa na cobertura\""
+      }
+    ],
+    "comando": "bash scripts/varrer-baterias.sh",
+    "saida": "as 233 baterias passaram (exit 0)"
   },
   "revisar": {
     "status": "pendente"
