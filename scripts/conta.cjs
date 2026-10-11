@@ -701,7 +701,7 @@ function recusaDeVida(P, de, para, volta, expiraSai, expiraEntra) {
   if (!curto) return null;
   if (curto.quem === 'entra') {
     const quem = volta ? `o login estacionado da pasta ${P}` : `a reserva de ${NOME[para]}`;
-    return `troca adiada: ${quem} tem menos de 30 min de vida no access token; o vigia o renova na próxima rodada, tente de novo em 1 min`;
+    return `troca adiada: ${quem} tem menos de 30 min de vida no access token; o vigia o renova na próxima rodada, tente de novo em 1 min (se continuar recusando, /conta mostra se a renovação falhou e como refazer)`;
   }
   const depois = curto.ate === null ? '' : ` depois das ${new Date(Math.ceil(curto.ate / 60000) * 60000)
     .toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}, quando ele completa 10 min vencido`;
