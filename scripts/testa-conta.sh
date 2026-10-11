@@ -895,6 +895,76 @@ afirma "trava vencida: C criando entre a remoção e a criação deixa um dono s
 afirma "trava vencida: guarda esquecida é recolhida e a rodada seguinte toma" contem "$(cat "$RAIZ/trava.txt")" "guarda-esquecida ok"
 afirma "trava vencida: guarda fresca de outro processo é respeitada" contem "$(cat "$RAIZ/trava.txt")" "guarda-fresca ok"
 
+# (mv) a troca manual aplica a guarda de vida da D11, igual ao vigia. snap resume todos os arquivos
+# de credencial (as duas pastas, as reservas e os estacionados): recusar tem de deixar o resumo igual.
+snap() { # $1 = caso
+  local c="$1"
+  { cat "$c"/trabalho/.claude/.credentials.json "$c"/trabalho/.claude/.claude.json \
+      "$c"/pessoal/.claude-personal/.credentials.json "$c"/pessoal/.claude-personal/.claude.json
+    cat "$c"/dados/contas/reserva-*.json
+    cat "$c"/dados/contas/estacionado-*.json 2>/dev/null || true
+  } | cksum
+}
+manual_vida() { # $1 = nome; $2 = minutos até vencer o login da pasta trabalho; $3 = idem a reserva-pessoal
+  local c
+  c="$(novo_caso "$1" nao)"
+  vence_em "$c/trabalho/.claude/.credentials.json" "$2"
+  vence_em "$c/dados/contas/reserva-pessoal.json" "$3"
+  registrar_contas "$c"
+  printf '%s' "$c"
+}
+HORA_RE='depois das [0-9][0-9]:[0-9][0-9], quando ele completa 10 min vencido'
+
+# o login que SAI da pasta a 2 min de vencer: recusa, diz quando voltar e não move nada
+C_MV1="$(manual_vida mv1 2 600)"
+SNAP_MV1="$(snap "$C_MV1")"
+RC_MV1=0
+cli "$C_MV1" trocar pessoal --pasta trabalho > "$RAIZ/mv1.txt" 2>&1 || RC_MV1=$?
+caso_mv1() {
+  [ "$RC_MV1" -eq 1 ] && [ "$(snap "$C_MV1")" = "$SNAP_MV1" ] \
+    && [ "$(ler "$C_MV1/dados/contas/estado.json" pastas.trabalho.conta)" = AUSENTE ] \
+    && [ ! -e "$C_MV1/dados/contas/eventos.jsonl" ] \
+    && contem "$(cat "$RAIZ/mv1.txt")" "troca adiada: o login da pasta trabalho (conta trabalho) tem menos de 30 min de vida" \
+    && printf '%s\n' "$(cat "$RAIZ/mv1.txt")" | grep -qE "$HORA_RE"
+}
+afirma "troca manual com o login da pasta a 2 min de vencer recusa e não move" caso_mv1
+echo "     recusa (login que sai): $(cat "$RAIZ/mv1.txt")"
+
+# o login da pasta vencido há 20 min: ninguém usa a pasta, a guarda se dispensa e a troca sai
+C_MV2="$(manual_vida mv2 -20 600)"
+RC_MV2=0
+cli "$C_MV2" trocar pessoal --pasta trabalho > "$RAIZ/mv2.txt" 2>&1 || RC_MV2=$?
+caso_mv2() {
+  [ "$RC_MV2" -eq 0 ] && [ "$(ler "$C_MV2/dados/contas/estado.json" pastas.trabalho.conta)" = pessoal ] \
+    && grep -qF '"tipo":"trocar"' "$C_MV2/dados/contas/eventos.jsonl"
+}
+afirma "troca manual com o login da pasta vencido há 20 min troca" caso_mv2
+
+# a reserva que ENTRA a 2 min de vencer: recusa e diz que o vigia a renova (em 1 min)
+C_MV3="$(manual_vida mv3 600 2)"
+SNAP_MV3="$(snap "$C_MV3")"
+RC_MV3=0
+cli "$C_MV3" trocar pessoal --pasta trabalho > "$RAIZ/mv3.txt" 2>&1 || RC_MV3=$?
+caso_mv3() {
+  [ "$RC_MV3" -eq 1 ] && [ "$(snap "$C_MV3")" = "$SNAP_MV3" ] \
+    && [ ! -e "$C_MV3/dados/contas/eventos.jsonl" ] \
+    && contem "$(cat "$RAIZ/mv3.txt")" "troca adiada: a reserva de pessoal tem menos de 30 min de vida" \
+    && contem "$(cat "$RAIZ/mv3.txt")" "o vigia o renova na próxima rodada, tente de novo em 1 min"
+}
+afirma "troca manual com a reserva que entra a 2 min de vencer recusa e não move" caso_mv3
+echo "     recusa (login que entra): $(cat "$RAIZ/mv3.txt")"
+
+# o login da pasta vencido há 20 min não salva um login que entra curto
+C_MV4="$(manual_vida mv4 -20 2)"
+SNAP_MV4="$(snap "$C_MV4")"
+RC_MV4=0
+cli "$C_MV4" trocar pessoal --pasta trabalho > "$RAIZ/mv4.txt" 2>&1 || RC_MV4=$?
+caso_mv4() {
+  [ "$RC_MV4" -eq 1 ] && [ "$(snap "$C_MV4")" = "$SNAP_MV4" ] \
+    && contem "$(cat "$RAIZ/mv4.txt")" "troca adiada: a reserva de pessoal"
+}
+afirma "troca manual com o login da pasta vencido há 20 min mas a reserva a 2 min recusa" caso_mv4
+
 # (g) nenhuma credencial (valor falso ou não) aparece na saída nem no log
 caso_g() {
   local rc=0
@@ -904,7 +974,7 @@ caso_g() {
     "$RAIZ/o.txt" "$RAIZ/p.txt" "$RAIZ/p-status.txt" "$RAIZ/q.txt" "$EV_O" "$EV_P" "$EV_Q" \
     "$RAIZ/m.txt" "$RAIZ/r1.txt" "$RAIZ/r2.txt" "$RAIZ/s.txt" "$RAIZ/t.txt" "$RAIZ"/u[1-4].txt "$EV_R" \
     "$RAIZ/v.txt" "$RAIZ/vs.txt" "$RAIZ/v2.txt" "$RAIZ/v3.txt" "$C_V/dados/contas/eventos.jsonl" \
-    "$RAIZ/x.txt" "$EV_X" "$RAIZ/z.txt" "$RAIZ/z2.txt" "$RAIZ/w.txt" "$RAIZ/w2.txt" "$RAIZ/trava.txt" || rc=$?
+    "$RAIZ/x.txt" "$EV_X" "$RAIZ/z.txt" "$RAIZ/z2.txt" "$RAIZ/w.txt" "$RAIZ/w2.txt" "$RAIZ/trava.txt" "$RAIZ"/mv[1-4].txt || rc=$?
   [ "$rc" -eq 1 ]
 }
 afirma "(g) credencial nunca aparece na saída nem no log" caso_g

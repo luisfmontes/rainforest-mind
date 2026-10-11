@@ -19,7 +19,7 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { decidir } = require('./lib/conta-decidir.cjs');
+const { decidir, avaliarVida } = require('./lib/conta-decidir.cjs');
 const { spawnSync } = require('node:child_process');
 const { mover, gravarAtomico: gravarCred, prefixo: prefixoDoLogin } = require('./lib/conta-mover.cjs');
 const { acharExecutavelClaude } = require('./lib/achar-executavel-claude.cjs');
@@ -693,6 +693,21 @@ async function statusLido(c, sobTrava) {
   return 0;
 }
 
+// Recusa da troca manual pela guarda de vida da D11; null quando pode mover. Diz qual login está
+// curto e quando tentar de novo: o que entra, o vigia renova na próxima rodada; o que sai, só
+// quando completa 10 min vencido (aí a pasta não tem sessão e a guarda se dispensa).
+function recusaDeVida(P, de, para, volta, expiraSai, expiraEntra) {
+  const curto = avaliarVida(expiraSai, expiraEntra, Date.now());
+  if (!curto) return null;
+  if (curto.quem === 'entra') {
+    const quem = volta ? `o login estacionado da pasta ${P}` : `a reserva de ${NOME[para]}`;
+    return `troca adiada: ${quem} tem menos de 30 min de vida no access token; o vigia o renova na próxima rodada, tente de novo em 1 min`;
+  }
+  const depois = curto.ate === null ? '' : ` depois das ${new Date(Math.ceil(curto.ate / 60000) * 60000)
+    .toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}, quando ele completa 10 min vencido`;
+  return `troca adiada: o login da pasta ${P} (conta ${NOME[de]}) tem menos de 30 min de vida no access token; tente de novo${depois}`;
+}
+
 async function trocar(c, args) {
   const alvo = args[0];
   if (!Object.hasOwn(CONTA_CLI, alvo)) {
@@ -724,6 +739,12 @@ async function trocar(c, args) {
     if (!pronta) {
       return sair(1, volta ? `sem login estacionado da pasta ${P}` : `sem reserva de ${NOME[para]}`);
     }
+
+    // Mesma guarda de vida do vigia (D11): não move com um dos dois logins curto, e diz quando voltar.
+    const credPasta = credDaPasta(c, P);
+    if (!credPasta) return sair(1, `pasta ${P} sem credencial`);
+    const adiada = recusaDeVida(P, de, para, volta, credPasta.claudeAiOauth.expiresAt, pronta.claudeAiOauth.expiresAt);
+    if (adiada) return sair(1, adiada);
 
     const r = await aplicarTroca(c, estado, {
       P,

@@ -95,12 +95,25 @@ function decidirEmCasa(nome, pasta, pastas, usos, reservas, config, agoraMs) {
 // que nenhuma sessão usa a pasta e não há corrida; nada renova login de pasta, e sem a exceção a
 // pasta trocada nunca volta. O login que entra segue exigindo os 30 min (a D13 o mantém renovado).
 function checarVida(nome, destino, pasta, expiraEntra, agoraMs, tipo, motivo) {
-  const saiOcioso = agoraMs - ms(pasta.expiresAt) > OCIOSO_MS;
-  const vidas = saiOcioso ? [expiraEntra] : [pasta.expiresAt, expiraEntra];
-  if (vidas.some((v) => !(ms(v) - agoraMs >= MIN_VIDA_MS))) {
+  if (avaliarVida(pasta.expiresAt, expiraEntra, agoraMs)) {
     return esperar(nome, destino, `${tipo} adiada: access token com menos de 30 min de vida`);
   }
   return { tipo, pasta: nome, conta: destino, motivo };
 }
 
-module.exports = { decidir, MIN_VIDA_MS };
+// A regra de vida da D11 num lugar só, para o vigia (checarVida) e para a troca manual (conta.cjs).
+// Devolve null quando pode mover, ou { quem: 'sai' | 'entra', ate } com o que está curto: 'ate' é o
+// instante (ms) em que o login que SAI completa 10 min vencido e dispensa a guarda; no login que
+// ENTRA não há instante (só a renovação da D13 o resolve), então 'ate' é null.
+function avaliarVida(expiraSai, expiraEntra, agora) {
+  const agoraMs = ms(agora);
+  const saiOcioso = agoraMs - ms(expiraSai) > OCIOSO_MS;
+  if (!saiOcioso && !(ms(expiraSai) - agoraMs >= MIN_VIDA_MS)) {
+    const fim = ms(expiraSai) + OCIOSO_MS;
+    return { quem: 'sai', ate: Number.isFinite(fim) ? fim : null };
+  }
+  if (!(ms(expiraEntra) - agoraMs >= MIN_VIDA_MS)) return { quem: 'entra', ate: null };
+  return null;
+}
+
+module.exports = { decidir, avaliarVida, MIN_VIDA_MS, OCIOSO_MS };

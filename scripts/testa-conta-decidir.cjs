@@ -14,7 +14,7 @@
 // Cada caso deriva da fixture trocando só utilization ou resets_at (e expiresAt quando o caso é de vida).
 
 const path = require("node:path");
-const { decidir } = require(path.join(__dirname, "lib", "conta-decidir.cjs"));
+const { decidir, avaliarVida } = require(path.join(__dirname, "lib", "conta-decidir.cjs"));
 
 const AGORA = Date.parse("2026-10-10T12:00:00Z");
 const MIN = 60 * 1000;
@@ -281,6 +281,33 @@ caso("volta sem login estacionado vira esperar, sem usar a reserva da conta de c
   const r = rodar(pastas, USO_REAL, { agora });
   return r.length === 1 && r[0].tipo === "esperar" && r[0].pasta === "trabalho"
     && r[0].motivo === "volta sem login estacionado";
+});
+
+// avaliarVida: a mesma regra de vida, usada também pela troca manual (conta.cjs).
+caso("avaliarVida: dois logins com 31 min podem mover; a 29 min, o que sai está curto", () => {
+  const livre = avaliarVida(VOLTA_AGORA + 31 * MIN, VOLTA_AGORA + 31 * MIN, VOLTA_AGORA);
+  const curto = avaliarVida(VOLTA_AGORA + 29 * MIN, VOLTA_AGORA + 31 * MIN, VOLTA_AGORA);
+  return livre === null && curto.quem === "sai";
+});
+
+caso("avaliarVida: o que entra a 29 min está curto, sem instante para tentar de novo", () => {
+  const r = avaliarVida(VOLTA_AGORA + 31 * MIN, VOLTA_AGORA + 29 * MIN, VOLTA_AGORA);
+  return r.quem === "entra" && r.ate === null;
+});
+
+caso("avaliarVida: o que sai a 2 min de vencer diz o instante em que completa 10 min vencido", () => {
+  const r = avaliarVida(VOLTA_AGORA + 2 * MIN, VOLTA_AGORA + 60 * MIN, VOLTA_AGORA);
+  return r.quem === "sai" && r.ate === VOLTA_AGORA + 12 * MIN;
+});
+
+caso("avaliarVida: o que sai vencido há 11 min dispensa a guarda e há 9 min não (fronteira de 10 min)", () => {
+  const com = (min) => avaliarVida(VOLTA_AGORA - min * MIN, VOLTA_AGORA + 60 * MIN, VOLTA_AGORA);
+  return com(11) === null && com(9).quem === "sai";
+});
+
+caso("avaliarVida: o que sai vencido há 20 min dispensa a guarda mas o que entra curto ainda recusa", () => {
+  const r = avaliarVida(VOLTA_AGORA - 20 * MIN, VOLTA_AGORA + 2 * MIN, VOLTA_AGORA);
+  return r.quem === "entra";
 });
 
 // ------------------------------------------------------------------ execução
