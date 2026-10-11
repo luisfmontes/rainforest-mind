@@ -10,6 +10,23 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.61.0 — 2026-10-11
+
+- **Gate que falha por acaso não decide mais a entrega: nova tentativa e estado `flaky`.** A bateria do critério
+  passa a rodar por `scripts/rodar-gate.cjs`, e a catraca de mutação (`conferir-mutacao.cjs`) repete uma vez o que o
+  acaso pode ter produzido (exit 2 e 4). A aprovação da catraca também exige o vermelho duas vezes. Verde só na nova
+  tentativa sai como aprovação e grava um flake no estado do fluxo (`estado.cjs registrar-flake`, com `--slug` e
+  `--tarefa`). Quando o mesmo gate só passa na nova tentativa em duas voltas seguidas do laço executor → revisor, o
+  `executar` fecha como `flaky`. Esse status é distinto de `reprovado`, não consome as 3 tentativas do laço e sobe a
+  você; sair dele pede o `liberar` de sempre, que vale uma rodada.
+- **Teto de despachos de agente por fluxo.** O hook novo `gate-teto-despachos.cjs` conta todo despacho de agente do
+  fluxo ativo, em todos os estágios e inclusive o que a portaria nega, e nega o que passa do teto. O padrão é 40
+  despachos (acima do maior fluxo medido, 36); o plano declara outro com `teto-despachos: N` no cabeçalho, e a
+  `cobertura` recusa o cabeçalho ilegível. Acima do teto, a única porta é
+  `estado.cjs liberar-teto --slug <slug> --motivo "<a sua palavra>"`, que soma +10 por liberação; não há liga/desliga.
+  O contador mora fora do repo, em `<dados>/fluxos/<slug>/despachos.json`, e fora de fluxo nada é contado.
+  Enxerto do orquestrador do plugin `wildz-data` (Rafael Siqueira).
+
 ## 1.60.1 — 2026-10-10
 
 - **Registrar um repo avaliado não exige mais versão nova.** O `conferir-versao.cjs` já dispensava o bump quando só
