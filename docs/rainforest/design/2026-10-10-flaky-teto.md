@@ -20,6 +20,10 @@ e estado `flaky`) e `hooks/ceiling-check.sh` (teto de despachos).
 - **D11 — O contador mora fora do repo, em `<dados>/fluxos/<slug>/despachos.json`, gravado sob a trava de `hooks/lib/trava-jsonl.cjs`; os flakes e o `liberar` ficam no estado versionado** — porquê: hook a cada despacho sujaria o diff e correria contra commits no mesmo worktree; flakes são poucos e são rastro de auditoria.
 - **D12 — Contador ou teto declarado ilegível, com fluxo ativo resolvido: o hook nega com motivo (fail-closed)** — porquê: contador corrompido lido como 0 zera o teto em silêncio (`ceiling-check.sh`, `is_uint`).
 - **D13 — Cada `liberar` do teto destrava +10 despachos e grava o motivo (a palavra do usuário)** — porquê: `liberar` que desarma para sempre já foi achado de revisão no `TETO_TENTATIVAS`; 10 cobre uma volta completa do laço com folga.
+- **D14 — A `cobertura` do plano recusa `teto-despachos:` ilegível, com o mesmo leitor que o hook usa** — porquê: sem isso o erro só aparece no primeiro despacho, negando o fluxo inteiro, longe de quem escreveu o cabeçalho (achado do plano, fechado pelo usuário em 2026-10-10).
+- **D15 — O hook não tem liga/desliga nem variável de escape; a única porta acima do teto é o `liberar-teto`** — porquê: toggle desarma para sempre, o defeito que D13 evita.
+- **D16 — O contador é por slug, sem o repo no caminho; a limpeza de `<dados>/fluxos/<slug>/` de fluxo `completo` é do `limpar`, como arquivo temporário** — porquê: slug leva data, a colisão é improvável, e pôr o repo no caminho complica o resolvedor sem caso medido.
+- **D17 — Despacho que a portaria nega no mesmo `PreToolUse` também conta no teto** — porquê: D10 diz todo despacho; contar só o admitido exigiria `PostToolUse`, o que muda D5.
 
 ## Avaliado e descartado
 - Contador de despachos dentro do estado JSON versionado: descartado por D11 — gravação a cada despacho no arquivo que o agente também commita.
