@@ -61,18 +61,38 @@
         "iteracao": 1,
         "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f",
         "ts": "2026-10-11T01:17:19.822Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "f82dd373",
+        "iteracao": 1,
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f",
+        "ts": "2026-10-11T01:25:59.936Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "f82dd373",
+        "iteracao": 1,
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f",
+        "ts": "2026-10-11T01:25:59.936Z"
       }
     ],
     "em_voo": [
       {
         "agente": "executor",
-        "tarefa": "T4b reservas e estacionado",
+        "tarefa": "T5 preparar",
         "desde": "2026-10-10",
         "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
       },
       {
         "agente": "executor",
-        "tarefa": "T8 aviso no mod",
+        "tarefa": "T6 comando e README",
+        "desde": "2026-10-10",
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "T8 frases (3a volta)",
         "desde": "2026-10-10",
         "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
       }
