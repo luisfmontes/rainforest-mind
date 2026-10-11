@@ -25,7 +25,7 @@
     "status": "parcial",
     "catraca_mutacao": "2026-10-11",
     "tarefas_ok": 15,
-    "tarefas": 15,
+    "tarefas": 18,
     "carimbos": [
       {
         "tarefa": 1,
@@ -84,7 +84,14 @@
         "ts": "2026-10-11T01:35:36.859Z"
       }
     ],
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "rodada 3: tarefas 16 a 18",
+        "desde": "2026-10-11T11:00",
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
+      }
+    ],
     "em": "2026-10-11",
     "mutacao": [
       {
