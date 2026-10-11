@@ -22,7 +22,7 @@
     "em": "2026-10-10"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-11",
     "tarefas_ok": 15,
     "tarefas": 15,
@@ -171,19 +171,31 @@
       }
     ],
     "comando": "node scripts/conferir-mutacao.cjs (tarefas 11 a 14, re-rodadas na integração)",
-    "saida": "T11..T14 exit=0: ok: bateria VERMELHA com o comportamento invertido; baterias da troca 18/26/23/7/11/21/13 ok, 0 falha"
+    "saida": "T11..T14 exit=0: ok: bateria VERMELHA com o comportamento invertido; baterias da troca 18/26/23/7/11/21/13 ok, 0 falha",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-11"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "96b552e036e56f97d14c1e29f40a39623044cc94",
+      "head": "2185749b6055d884ea9512c0f96edc7304b8fbfc",
       "caminhos_sujos": []
     },
-    "vereditos": [],
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "aeda5171655fc726e",
+        "veredito": "reprovado",
+        "em": "2026-10-11",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/170b1915-c063-4fe8-912c-a4d1b50b044f/subagents/agent-aeda5171655fc726e.jsonl"
+      }
+    ],
     "em_voo": [],
     "em": "2026-10-11",
-    "achados": 11,
-    "tentativas": 1
+    "achados": 7,
+    "tentativas": 2
   },
   "verificar": {
     "status": "pendente"
