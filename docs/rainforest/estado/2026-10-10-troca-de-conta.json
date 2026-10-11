@@ -230,7 +230,14 @@
     "em_voo": [],
     "em": "2026-10-11",
     "achados": 2,
-    "tentativas": 3
+    "tentativas": 3,
+    "liberado_em": "2026-10-11",
+    "rodadas_extra": [
+      {
+        "texto": "Luis 2026-10-11: libera a 4a rodada e escolhe a opcao 1 (troca manual com a mesma guarda de vida do vigia) mais o conserto do aviso desfeito=false",
+        "em": "2026-10-11"
+      }
+    ]
   },
   "verificar": {
     "status": "pendente"

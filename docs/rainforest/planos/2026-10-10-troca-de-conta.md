@@ -282,3 +282,35 @@ mutacao:
   bateria: `bash scripts/testa-conta.sh`
   fixture: caso "renovarOciosos nunca renova o login de uma pasta"
 pronto quando: com a pasta a 30 min de vencer, um `vigiar` faz zero POSTs de token; com a trava fresca, `status` não muda `estado.json`; com o servidor mudo, `uso` falha dentro do timeout de teste — provado pelos casos nomeados e pela mutação acima vermelha.
+
+## Rodada 4 (revisão rodada 3 reprovou com 2 achados; 4ª rodada liberada pelo Luís, impasse em `docs/rainforest/portoes/2026-10-10-troca-de-conta-impasse.md`)
+
+### 19. A troca manual aplica a guarda de vida [tipo: implementar]
+atende: D7, D11
+arquivos: `scripts/conta.cjs`, `scripts/lib/conta-decidir.cjs`, `scripts/testa-conta.sh`, `scripts/testa-conta-decidir.cjs`, `README.md`
+depende de: 18
+paralela: nao
+Achado 1 da revisão rodada 3. A regra de vida da D11 (os dois logins com 30 min; o login que sai, vencido há mais de 10 min, dispensa a guarda) sai de `checarVida` para uma função pura exportada por `conta-decidir.cjs`, usada pelo `checarVida` do vigia e pelo `trocar` manual, sem duplicar a conta. No `trocar`, depois de conferir que o login que entra existe e antes de `aplicarTroca`, `adiada` é a mensagem de recusa (ou `null`); contém literalmente `if (adiada) return sair(1, adiada);`. A mensagem diz qual login está curto e quando tentar de novo (login que entra: o vigia o renova na próxima rodada, "em 1 min"; login que sai: o horário em que ele completa 10 min vencido). O README (linha do "Uma credencial nunca fica em dois lugares") passa a citar a exceção dos 10 min e que a troca manual segue a mesma guarda.
+prova: `bash -c "grep -qF 'if (adiada) return sair(1, adiada);' scripts/conta.cjs"`
+mutacao:
+  arquivo: `scripts/conta.cjs`
+  de: `if (adiada) return sair(1, adiada);`
+  para: `if (false) return sair(1, adiada);`
+  bateria: `bash scripts/testa-conta.sh`
+  fixture: caso "troca manual com o login da pasta a 2 min de vencer recusa e não move"
+pronto quando: com o login da pasta trabalho a 2 min de vencer e a reserva pessoal viva, `trocar pessoal --pasta trabalho` sai 1, a mensagem diz quando tentar de novo e nenhum arquivo de credencial muda (hash igual antes e depois); com o login da pasta vencido há 20 min, a mesma troca sai 0; com a reserva que entra a 2 min de vencer, sai 1; o vigia continua com os casos de fronteira de 9 e 11 min verdes — provado pelos casos nomeados de `testa-conta.sh` e `testa-conta-decidir.cjs` e pela mutação acima vermelha.
+
+### 20. Aviso de troca não desfeita [tipo: implementar]
+atende: D6
+arquivos: `hooks/conta-puro.mjs`, `hooks/testa-mod-conta.cjs`
+depende de: 19
+paralela: nao
+Achado 2 da revisão rodada 3. Evento `falhou` cujo motivo traz `desfeito=false` vira aviso de que a troca NÃO foi desfeita e a pasta pode ter ficado com o login de outra conta, com o caminho para conferir (`/conta`); nunca "foi desfeita". Contém literalmente `if (/desfeito=false/.test(String(ev.motivo || ''))) return fraseNaoDesfeita(e);` antes do retorno "foi desfeita".
+prova: `bash -c "grep -q fraseNaoDesfeita hooks/conta-puro.mjs"`
+mutacao:
+  arquivo: `hooks/conta-puro.mjs`
+  de: `if (/desfeito=false/.test(String(ev.motivo || ''))) return fraseNaoDesfeita(e);`
+  para: `if (false) return fraseNaoDesfeita(e);`
+  bateria: `node hooks/testa-mod-conta.cjs`
+  fixture: caso "falhou com desfeito=false não diz que a troca foi desfeita"
+pronto quando: com o evento `falhou` de motivo "servidor confirmou X, esperado Y; desfeito=false", a frase não contém "foi desfeita", diz que a troca não foi desfeita e aponta o `/conta`; com "desfeito=true", segue "foi desfeita" — provado pelos casos nomeados de `testa-mod-conta.cjs` e pela mutação acima vermelha.
