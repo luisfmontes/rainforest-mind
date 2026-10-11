@@ -98,3 +98,20 @@ troca automática: ligada
   `testa-conta.sh`, vermelho com a reversão.
 - O vigia roda `conta.cjs` pelo caminho absoluto de onde foi agendado; agendado de um worktree, morre quando ele é
   removido. O `agendar` agora avisa, e o fechamento do fluxo reagenda do clone instalado do plugin.
+
+## (e) Renovação real dos logins guardados (D13, 2026-10-11)
+
+Com o vigia desagendado desde a revisão 1, as duas reservas estavam vencidas desde as 07:17 (horário local), o caso
+que a D13 resolve. Uma rodada real do vigia, sem `RFM_TEST`:
+
+```
+$ node scripts/conta.cjs vigiar
+sem ação
+rodada concluída
+reserva-pessoal.json  vence +8 h  refresh token girado (sha256 e3813cf874ce -> bb9322a6f78d)
+reserva-team.json     vence +8 h  refresh token girado (sha256 045db4039c0f -> aaae07bb3b5c)
+```
+
+Nenhum evento `renovacao_falhou`. Depois, `/api/oauth/profile` com o access token novo de cada reserva respondeu a
+conta registrada para ela (team e pessoal: confere). O formato da requisição (`POST` JSON em
+`platform.claude.com/v1/oauth/token`, `client_id` público do CLI e `scope`) vale no servidor real.
