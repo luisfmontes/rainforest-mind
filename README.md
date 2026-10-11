@@ -267,6 +267,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `/vigiar <contato>` | Acompanha uma conversa de WhatsApp sem gastar token e acorda a sessão quando a pessoa escreve. Exige a integração `integracao-whatsapp-mcp` ligada e a bridge da conta de pé; o fluxo mora no repo [whatsapp-mcp](https://github.com/luisfmontes/whatsapp-mcp) |
 | `/regua` | Régua externa nomeada, builder contra crítico cego — para o que não tem teste. A Fase 0 destila a régua em 5-7 mecanismos conferíveis por olho em `docs/rainforest/reguas/<slug>.md` (o builder não os vê; o crítico sim) e faz o preflight de renderização, nomeando qual crítico ficaria cego. A régua é **selada pelo commit que a adicionou**: `scripts/conferir-regua.cjs` (`validar` antes de selar, `conferir`, `mostrar`) recusa régua alterada depois, e `mostrar` é o único caminho que a imprime. A partir da 2ª rodada, um segundo crítico cego compara o novo com o melhor guardado e decide **keep/discard** sozinho; as rodadas ficam num TSV versionado |
 | `/transferir` | Leva a sessão atual para outro lugar. Sem argumento: uma thread Codex retomável por `codex resume <id>`, exige `transfer-codex` ligado no `/setup`. `/transferir claude`: copia a conversa inteira para a **outra conta** do Claude Code nesta máquina (`~/.claude` ↔ `~/.claude-personal`), sem chave, e imprime o `cd` + `claude --resume <id>` para rodar lá; `--para pessoal\|trabalho` força o destino, `--forcar` sobrescreve uma cópia que já existe. A origem nunca é apagada |
+| `/conta` | Sem argumento: a conta em uso de cada pasta e o uso das duas contas. `/conta pessoal` ou `/conta trabalho`: troca a pasta `trabalho` na mão (sem volta automática até a próxima troca manual). `/conta preparar pessoal\|trabalho`: prepara o login de reserva. Detalhe na seção [Troca automática de conta](#troca-automática-de-conta) |
 | `/ponte` | Gera `CLAUDE.md`, `AGENTS.md` ou `GEMINI.md` ([detalhe](docs/pontes.md)) |
 | `modo-dev` | Escada YAGNI, causa raiz antes de remendo, rastreabilidade do diff |
 | `depurar` | Constrói o loop de feedback **antes** de qualquer hipótese |
@@ -283,6 +284,18 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 O `auditor-de-seguranca` roda duas réguas OWASP (Top 10 2025 + API Security 2023) e uma **Régua 3 de técnicas** — [`referencias/reguas-tecnicas-ofensivas.md`](referencias/reguas-tecnicas-ofensivas.md), 30 lentes de detecção defensiva derivadas do repositório `SnailSploit/claude-red` (MIT) e reescritas report-only — que afia as duas no nível de técnica de ataque.
 
 **Agentes em Claude ou Codex** — cada agente tem um `runtime:` no manifesto (ausente = `claude`); a primeira linha do briefing pode ser `Runtime: codex` ou `Runtime: claude` para override (case-insensitive). Quando o usuário diz "faz no codex", "roda no codex" ou equivalente, o despacho põe `Runtime: codex` na primeira linha. Transporte via `codex exec` usa sandbox `read-only` ou `workspace-write` conforme `escreve`, modelo por `codex-modelo-<haiku|sonnet|opus>` no `/setup` (padrão do `~/.codex/config.toml`). As skills `review`, `adversarial-review` e `rescue` do `openai/codex-plugin-cc` não ganharam comando aqui porque já existem como função neste plugin: `revisor`, segunda opinião cross-model, `depurador`.
+
+## Troca automática de conta
+
+Uma conta do Claude Code tem limite de 5 h e de semana. Quando a conta de uma pasta de configuração (`~/.claude`, a de trabalho, ou `~/.claude-personal`, a pessoal) chega ao limite, as sessões dessa pasta seguem na outra conta sem reiniciar, e voltam sozinhas quando o limite zerar.
+
+- **Na troca:** a pasta troca de conta quando passa de 97% na janela de 5 h ou na semana. O destino só entra se estiver abaixo de 60% (5 h) e de 85% (semana). A troca vale nos dois sentidos, e misturar a conta da organização com a pessoal é permitido.
+- **Na volta:** a pasta volta para a conta dela quando o limite que travou zera, pela data de reset que o servidor devolve.
+- **Na troca manual:** `/conta pessoal` ou `/conta trabalho` troca a pasta na hora. Troca manual não volta sozinha: a pasta fica na conta escolhida até a próxima troca manual.
+- **Nas sessões:** toda troca e toda volta aparece como aviso nas sessões abertas e gera uma linha em `<dados>/contas/eventos.jsonl`.
+- **O vigia:** uma tarefa agendada do Windows roda a cada 1 minuto (`schtasks`), consulta o uso das duas contas e faz a troca. Cada rodada leva ~0,7 s e não fica nenhum processo residente; uma trava impede duas rodadas ao mesmo tempo.
+- **Uma credencial nunca fica em dois lugares:** a troca move o login, nunca copia. Cada conta tem uma reserva guardada fora das duas pastas, e antes de mover os dois logins precisam ter pelo menos 30 min de vida no access token. A conferência é feita no servidor depois da troca; se não bater, a troca é desfeita.
+- **Pré-requisito:** a troca automática só liga depois de `/conta preparar pessoal` e `/conta preparar trabalho`, um login no navegador por conta.
 
 ## As 17 regras
 
