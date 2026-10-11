@@ -22,8 +22,54 @@
     "em": "2026-10-10"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-10-10"
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-10",
+    "tarefas_ok": 0,
+    "tarefas": 10,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "539332c5",
+        "iteracao": 1,
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f",
+        "ts": "2026-10-11T00:29:05.730Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "539332c5",
+        "iteracao": 1,
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f",
+        "ts": "2026-10-11T00:29:05.730Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "539332c5",
+        "iteracao": 1,
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f",
+        "ts": "2026-10-11T00:29:05.730Z"
+      }
+    ],
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "T1 decidir",
+        "desde": "2026-10-10",
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "T2 mover",
+        "desde": "2026-10-10",
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "T3 api",
+        "desde": "2026-10-10",
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
+      }
+    ],
+    "em": "2026-10-10"
   },
   "revisar": {
     "status": "pendente"
