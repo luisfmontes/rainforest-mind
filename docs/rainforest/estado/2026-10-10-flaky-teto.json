@@ -180,23 +180,28 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "parcial",
     "snapshot": {
-      "head": "ec435a9526525e9e5e3c85133c7849eb28fef694",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/2026-10-10-flaky-teto.json"
-      ]
+      "head": "b2abeef33b36f3ae03e434048b52c6265f3652f4",
+      "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "af86c92ec016f8176",
-        "veredito": "reprovado",
+        "agente_id": "a63ebb0ed800d5356",
+        "veredito": "ok",
         "em": "2026-10-11",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/e3d89e95-f290-41aa-92fb-3d9eae821466/subagents/agent-af86c92ec016f8176.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/e3d89e95-f290-41aa-92fb-3d9eae821466/subagents/agent-a63ebb0ed800d5356.jsonl"
       }
     ],
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "revisor",
+        "tarefa": "revisao volta 2",
+        "desde": "2026-10-11T11:30:00Z",
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466"
+      }
+    ],
     "em": "2026-10-11",
     "achados": 2,
     "pendentes": [
