@@ -241,6 +241,10 @@ else falhou=$((falhou+1)); echo "  FALHA \\cd <principal> && git add -A do workt
 echo
 echo "== R1/R3 (rodada 9, lote 3, 2026-09-04): env --chdir por tokens, e ferramenta PowerShell =="
 gate "SUBAGENTE do worktree: env -u OneDrive --chdir=<principal> git add -A BARRA (R1)" 2 "$(ba 'env -u OneDrive --chdir='"$R"' git add -A' "$WT")"
+# #497: `env -S X` parte o X em argumentos e roda: e o mesmo `git add -A`.
+gate "env -S 'git add -A' BARRA (#497)" 2 "$(b "env -S 'git add -A'")"
+gate "env --split-string='git add -A' BARRA (#497)" 2 "$(b "env --split-string='git add -A'")"
+gate "env -S 'echo x' passa (#497, controle)" 0 "$(b "env -S 'echo x'")"
 gate "via PowerShell no principal: git add -A BARRA (R3)"                               2 "$(p 'git add -A')"
 gate "via PowerShell: Set-Location <worktree>; git add -A com cwd no principal PASSA (R3)" 0 "$(p 'Set-Location '"$WT"'; git add -A')"
 gate "via PowerShell: git status PASSA (R3)"                                            0 "$(p 'git status --porcelain')"

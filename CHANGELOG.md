@@ -18,6 +18,19 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 - **`gh pr merge <n> --repo dono/outro` não é mais barrado por engano.** O gate lia a descrição do PR sem o `--repo`,
   e por isso procurava o número no repositório da sessão. Quando o número não existia ali, barrava um merge legítimo.
   Quando existia, conferia o PR errado (#496).
+- **`gh pr merge` só passa numa forma que o gate entende por inteiro.** É o comando sozinho, com o PR por número ou URL
+  completa, as flags do manual em token separado e no máximo um `--repo dono/repo`. Prefixo de ambiente (`GH_REPO=`),
+  `env`, `--x=valor`, flag agrupada e ref de branch barram, e a mensagem mostra a forma aceita. As revisões de
+  segurança acharam quatro jeitos de o gate conferir um PR enquanto o `gh` mergeava outro; a lista fecha a classe
+  em vez de mais um caso (#496). `gh pr merge --help` deixou de ser barrado.
+- **`env -S '...'` não esconde mais comando dos gates.** O `env -S` (`--split-string`) parte o texto em argumentos e roda
+  o resultado, mas os gates paravam no `env` e liberavam: `env -S 'gh issue close 12'` e `env -S 'git add -A'`
+  saíam com exit 0. Agora o texto é aberto e conferido como comando; forma que não se lê com segurança (aspa grudada,
+  `$`, contrabarra, `#`) barra. Vale para todos os gates que usam o tokenizador compartilhado.
+- **Mais seis caminhos para fechar Issue sem evidência foram fechados**, achados pela revisão de segurança: `-R` entre
+  `pr`/`issue` e o verbo (`gh issue -R x close 12`); no PowerShell, vírgula, `@`, aspas coladas e espaço Unicode que
+  partem um argumento em dois; `Closes #12` no `--body` ou `--subject` do próprio `gh pr merge` (a mensagem do commit
+  de merge também fecha a Issue); subcomando montado por variável (`gh pr $m`); e `gh api` que mergeia PR ou fecha Issue.
 - No mesmo PR: três repos contra texto de IA avaliados no livro de repos
   (`relatorios/2026-10-10-anti-slop-tres-repos.md`).
 
