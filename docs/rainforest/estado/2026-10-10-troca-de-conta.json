@@ -6,7 +6,9 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-10-troca-de-conta.md",
+    "em": "2026-10-10"
   },
   "plano": {
     "status": "pendente"
