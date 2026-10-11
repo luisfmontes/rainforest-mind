@@ -529,10 +529,20 @@ function rebaixarUpstream(estado, estagio) {
       estagio: estagio,
       data: hoje(),
     },
+    // Volta do laco: soma 1 a cada reabertura e NENHUM `ok` apaga (fora de
+    // CAMPOS_EFEMEROS). `tentativas` nao serve de volta: o `ok` a zera.
+    reaberturas: (bloco_upstream.reaberturas || 0) + 1,
     em: hoje(),
   };
 
   return upstream;
+}
+
+/** Flake terminal: o mesmo (tarefa + gate) gravado na volta atual E na anterior. */
+function flakyTerminal(estado) {
+  const flakes = (estado.executar && estado.executar.flakes) || [];
+  const volta = (estado.executar && estado.executar.reaberturas) || 0;
+  return flakes.find((f) => f.voltas.includes(volta) && f.voltas.includes(volta - 1)) || null;
 }
 
 // ---------------------------------------- backstop de mutação no revisar (Issue #4)
@@ -1776,6 +1786,7 @@ const FLAGS_POR_SUBCOMANDO = {
   listar: [],
   concluido: ['slug'],
   veredito: ['slug', 'estagio', 'veredito', 'agente', 'agente-id', 'transcrito'],
+  'registrar-flake': ['slug', 'tarefa', 'gate'],
   leve: ['motivo', 'repo'],
 };
 
@@ -2161,6 +2172,56 @@ function main() {
       estadoVivo[estagio] = { ...bloco, vereditos };
       gravar(slug, estadoVivo);
     });
+    return;
+  }
+
+  // `registrar-flake` (D4, D6): grava que (tarefa, gate) so passou na nova tentativa
+  // nesta volta do laco e acha o flake terminal. Mesmo padrao do `veredito`:
+  // grava sob trava, relendo o estado dentro dela.
+  if (cmd === 'registrar-flake') {
+    const tarefaTxt = arg('tarefa');
+    const gate = arg('gate');
+    if (!/^[1-9][0-9]*$/.test(tarefaTxt)) {
+      console.error(`erro: --tarefa deve ser inteiro positivo, veio '${tarefaTxt}'`);
+      process.exit(1);
+    }
+    if (!gate.trim()) {
+      console.error('erro: --gate vazio');
+      process.exit(1);
+    }
+    const tarefa = Number(tarefaTxt);
+    if (!fs.existsSync(caminho(slug))) {
+      console.error(`erro: ${slug} nao existe — rode 'iniciar' primeiro`);
+      process.exit(1);
+    }
+    const lockPath = path.join(DIR_ESTADO, '.' + slug + '.flake.lock');
+    const saida = comTrava(lockPath, () => {
+      const vivo = ler(slug);
+      if (!vivo) return { sumiu: true };
+      const bloco = vivo.executar || {};
+      const volta = bloco.reaberturas || 0;
+      const flakes = Array.isArray(bloco.flakes) ? bloco.flakes.map((f) => ({ ...f, voltas: [...f.voltas] })) : [];
+      const item = flakes.find((f) => f.tarefa === tarefa && f.gate === gate);
+      if (!item) flakes.push({ tarefa, gate, voltas: [volta] });
+      else if (!item.voltas.includes(volta)) item.voltas.push(volta);
+      vivo.executar = { ...bloco, flakes };
+      const terminal = flakyTerminal(vivo);
+      // O terminal anula um `liberar` anterior: o `liberar` vale uma rodada.
+      if (terminal) delete vivo.executar.liberado_em;
+      gravar(slug, vivo);
+      return { volta, terminal };
+    });
+    if (saida.sumiu) {
+      console.error(`erro: ${slug} nao existe — rode 'iniciar' primeiro`);
+      process.exit(1);
+    }
+    console.log(`flake registrado: tarefa ${tarefa}, volta ${saida.volta}`);
+    if (saida.terminal) {
+      console.log(
+        `FLAKY TERMINAL: tarefa ${saida.terminal.tarefa}, gate '${saida.terminal.gate}' so passou na nova tentativa em voltas ${saida.terminal.voltas.join(', ')}. ` +
+        `Feche com: node scripts/estado.cjs marcar --slug ${slug} --estagio executar --status flaky`
+      );
+    }
     return;
   }
 
@@ -2739,7 +2800,7 @@ function main() {
     return;
   }
 
-  console.error('uso: iniciar | ler | deixado | destinar | marcar | proximo | exigir | liberar | listar | concluido | veredito');
+  console.error('uso: iniciar | ler | deixado | destinar | marcar | proximo | exigir | liberar | listar | concluido | veredito | registrar-flake');
   process.exit(1);
 }
 
