@@ -234,6 +234,48 @@ caso('(j) todo fetch (perfil, uso, token) leva timeout por signal', () =>
     return { ok, reqs: sinais.length, linha: 'sinais=' + sinais.join(',') };
   }));
 
+// Servidor que aceita a conexão e nunca responde. O (j) só confere que o signal está ANEXADO; aqui o
+// signal tem de ABORTAR de verdade, nas três chamadas (perfil, uso, token). O prazo real é 30 s: a
+// bateria troca AbortSignal.timeout por um de 300 ms (só dentro deste caso) e confere que o valor
+// pedido pelo código de produção é o TIMEOUT_MS. Se algum fetch não levasse o signal, a chamada
+// penduraria e a guarda de 5 s a marcaria como "pendurou".
+caso('(m) servidor mudo: dono, uso e renovar abortam pelo timeout, e o prazo pedido é o TIMEOUT_MS', async () => {
+  const mudo = http.createServer(() => {});
+  const porta = await new Promise((pronto) => mudo.listen(0, '127.0.0.1', () => pronto(mudo.address().port)));
+  const dados = fs.mkdtempSync(path.join(os.tmpdir(), 'rfm-conta-api-mudo-'));
+  const antes = { t: process.env.RFM_TEST, a: process.env.RFM_CONTA_API, timeout: AbortSignal.timeout };
+  process.env.RFM_TEST = '1';
+  process.env.RFM_CONTA_API = 'http://127.0.0.1:' + porta;
+  const pedidos = [];
+  AbortSignal.timeout = (ms) => { pedidos.push(ms); return antes.timeout.call(AbortSignal, 300); };
+  const medir = async (fn) => {
+    const t0 = Date.now();
+    let limite;
+    const guarda = new Promise((resolve) => { limite = setTimeout(() => resolve('pendurou'), 5000); });
+    const r = await Promise.race([fn().then(() => 'respondeu', (e) => e.name), guarda]);
+    clearTimeout(limite);
+    return { r, ms: Date.now() - t0 };
+  };
+  let medidas;
+  try {
+    medidas = [
+      await medir(() => API.dono('falso-para-mudo')),
+      await medir(() => API.uso('pessoal', credFalsa, { dados, agora: T0 })),
+      await medir(() => API.renovar(loginFalso(), { agora: T0 })),
+    ];
+  } finally {
+    AbortSignal.timeout = antes.timeout;
+    if (antes.t === undefined) delete process.env.RFM_TEST; else process.env.RFM_TEST = antes.t;
+    if (antes.a === undefined) delete process.env.RFM_CONTA_API; else process.env.RFM_CONTA_API = antes.a;
+    mudo.closeAllConnections();
+    await new Promise((fechou) => mudo.close(fechou));
+    fs.rmSync(dados, { recursive: true, force: true });
+  }
+  const ok = medidas.every((m) => (m.r === 'TimeoutError' || m.r === 'AbortError') && m.ms < 4000)
+    && pedidos.length === 3 && pedidos.every((ms) => ms === API.TIMEOUT_MS);
+  return { ok, reqs: pedidos.length, linha: medidas.map((m) => m.r + '@' + m.ms + 'ms').join(' ') + ' pedido=' + pedidos.join(',') };
+});
+
 caso('(l) o endpoint de token real é o platform.claude.com; em bateria vale RFM_CONTA_API', async () => {
   const antes = { t: process.env.RFM_TEST, a: process.env.RFM_CONTA_API };
   process.env.RFM_CONTA_API = 'http://127.0.0.1:9';

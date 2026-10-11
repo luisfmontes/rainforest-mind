@@ -19,7 +19,10 @@
 //              um refresh token novo, que também vale uma vez; o antigo passa a dar 400.
 //     renovacaoStatus   se existir, /v1/oauth/token responde esse HTTP sem renovar nada.
 //   RFM_CONTA_SERVIDOR_CONTROLE  enquanto este arquivo existir, /api/oauth/usage segura a
-//                                resposta por 2 s (a bateria usa para segurar a primeira rodada).
+//                                resposta (a bateria usa para segurar a primeira rodada até a
+//                                segunda terminar, e apaga o arquivo para soltá-la); teto de 20 s.
+//   RFM_CONTA_SERVIDOR_CONTAGEM  se existir, cada POST em /v1/oauth/token acrescenta uma linha a
+//                                este arquivo (a bateria conta as renovações que o vigia pediu).
 'use strict';
 
 const fs = require('node:fs');
@@ -30,6 +33,8 @@ const perfil = JSON.parse(fs.readFileSync(path.join(__dirname, 'profile.json'), 
 const usoBase = JSON.parse(fs.readFileSync(path.join(__dirname, 'usage.json'), 'utf8'));
 const mapa = JSON.parse(fs.readFileSync(process.env.RFM_CONTA_SERVIDOR_MAPA, 'utf8'));
 const CONTROLE = process.env.RFM_CONTA_SERVIDOR_CONTROLE;
+const CONTAGEM = process.env.RFM_CONTA_SERVIDOR_CONTAGEM;
+const SEGURAR_MAX_MS = 20 * 1000;
 // client_id público do CLI: a renovação que não o manda é recusada.
 const CLIENT_ID = '9d1c250a-e61b-44d9-88ed-5944d1962f5e';
 const VIDA_NOVA_S = 8 * 3600;
@@ -60,7 +65,18 @@ function enviar(res, status, obj) {
   res.end(JSON.stringify(obj));
 }
 
+// Segura a resposta enquanto o arquivo de controle existir (ou até o teto), depois responde.
+function segurarEResponder(responder) {
+  const limite = Date.now() + SEGURAR_MAX_MS;
+  const tique = () => {
+    if (CONTROLE && fs.existsSync(CONTROLE) && Date.now() < limite) setTimeout(tique, 50);
+    else responder();
+  };
+  tique();
+}
+
 function renovar(req, res) {
+  if (CONTAGEM) fs.appendFileSync(CONTAGEM, 'POST /v1/oauth/token\n');
   let corpo = '';
   req.on('data', (d) => { corpo += d; });
   req.on('end', () => {
@@ -107,7 +123,7 @@ const server = http.createServer((req, res) => {
   }
   if (req.url === '/api/oauth/usage') {
     const responder = () => enviar(res, 200, usoDe(id));
-    if (CONTROLE && fs.existsSync(CONTROLE)) setTimeout(responder, 2000);
+    if (CONTROLE && fs.existsSync(CONTROLE)) segurarEResponder(responder);
     else responder();
     return undefined;
   }

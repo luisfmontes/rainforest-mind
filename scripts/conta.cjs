@@ -29,6 +29,7 @@ const API = require('./lib/conta-api.cjs');
 const PADRAO_CONFIG = { trocarEm: 97, destinoMax5h: 60, destinoMaxSemana: 85 };
 const TAREFA = '\\ClaudeVigias\\troca-de-conta';
 const TRAVA_MS = 5 * 60 * 1000;
+const GUARDA_MS = 30 * 1000;
 const ESPERA_TRAVA_MS = 30 * 1000;
 const RECUO_MS = 15 * 60 * 1000;
 const RENOVAR_ANTES_MS = 60 * 60 * 1000;
@@ -183,42 +184,46 @@ function lerConfig(c) {
   return config;
 }
 
+const donoDaTrava = () => JSON.stringify({ pid: process.pid, em: Date.now() });
+
 // Trava com dono pelo PID e validade de 5 min. O arquivo fica fechado depois de gravado.
 function pegarTrava(lock) {
-  for (let tentativa = 0; tentativa < 2; tentativa++) {
-    try {
-      fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, em: Date.now() }), { flag: 'wx' });
-      return true;
-    } catch (e) {
-      if (e.code !== 'EEXIST') throw e;
-      if (!travaVencida(lock) || !tomarVencida(lock)) return false;
-    }
+  try {
+    fs.writeFileSync(lock, donoDaTrava(), { flag: 'wx' });
+    return true;
+  } catch (e) {
+    if (e.code !== 'EEXIST') throw e;
   }
-  return false;
+  return travaVencida(lock) && tomarVencida(lock);
 }
 
-// Trava vencida só é tomada por quem consegue renomeá-la: o rename é atômico, então de dois
-// processos que a viram vencida só um a leva (o outro vê ENOENT e desiste). Quem renomeou
-// confere o que pegou: se foi uma trava nova (alguém a recriou entre a checagem e o rename),
-// devolve ao lugar e desiste.
+// Trava vencida só sai do lugar por quem está DENTRO da guarda `<lock>.tomada`, criada com wx (um
+// processo só por vez): dentro dela a validade é conferida de novo, e só então a trava velha é
+// apagada e a nova criada com wx. A leitura "vencida" de antes da guarda pode ser velha (outro
+// processo já tomou e recriou a trava) e não decide nada; sem a guarda, quem apagava a trava nova
+// de outro a devolvia depois com um link, e nessa janela um terceiro criava a sua: dois donos.
+// A guarda dura milissegundos; a que ficou para trás (processo morto dentro dela) vence em 30 s e é
+// recolhida pela rodada seguinte.
 function tomarVencida(lock) {
-  const tomada = `${lock}.tomada.${process.pid}.${Date.now()}`;
+  const guarda = `${lock}.tomada`;
   try {
-    fs.renameSync(lock, tomada);
-  } catch {
+    fs.writeFileSync(guarda, donoDaTrava(), { flag: 'wx' });
+  } catch (e) {
+    if (e.code !== 'EEXIST') throw e;
+    if (travaVencida(guarda, GUARDA_MS)) fs.rmSync(guarda, { force: true });
     return false;
   }
-  if (travaVencida(tomada)) {
-    fs.rmSync(tomada, { force: true });
-    return true;
-  }
   try {
-    fs.linkSync(tomada, lock);
-  } catch {
-    // o lugar já foi ocupado por outra trava: não há o que devolver
+    if (!travaVencida(lock)) return false;
+    fs.rmSync(lock, { force: true });
+    fs.writeFileSync(lock, donoDaTrava(), { flag: 'wx' });
+    return true;
+  } catch (e) {
+    if (e.code === 'EEXIST') return false;
+    throw e;
+  } finally {
+    fs.rmSync(guarda, { force: true });
   }
-  fs.rmSync(tomada, { force: true });
-  return false;
 }
 
 // Para quem já gastou minutos (o login do preparar) e não quer perder o resultado por uma rodada
@@ -232,7 +237,7 @@ async function pegarTravaEspera(lock, ms) {
   }
 }
 
-function travaVencida(lock) {
+function travaVencida(lock, validadeMs = TRAVA_MS) {
   let em;
   try {
     em = JSON.parse(fs.readFileSync(lock, 'utf8')).em;
@@ -246,7 +251,7 @@ function travaVencida(lock) {
       return true;
     }
   }
-  return Date.now() - em > TRAVA_MS;
+  return Date.now() - em > validadeMs;
 }
 
 // Só apaga a trava se o PID gravado nela é o deste processo.
@@ -998,7 +1003,13 @@ async function main(argv) {
   return sair(2, 'uso: conta.cjs [status | pessoal|trabalho [--pasta trabalho|pessoal] | trocar <pessoal|trabalho> [--pasta trabalho|pessoal] | vigiar | eventos --desde <ms> | preparar <pessoal|trabalho> | agendar [--imprimir] | desagendar]');
 }
 
-main(process.argv.slice(2)).catch((e) => {
-  process.stderr.write(`erro: ${msgSegura(e)}\n`);
-  process.exitCode = 1;
-});
+// A bateria da trava (scripts/testa-conta.sh) carrega este arquivo para exercitar pegarTrava em
+// um só processo, com a ordem das leituras e gravações escolhida por ela.
+if (require.main === module) {
+  main(process.argv.slice(2)).catch((e) => {
+    process.stderr.write(`erro: ${msgSegura(e)}\n`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { pegarTrava, soltarTrava };

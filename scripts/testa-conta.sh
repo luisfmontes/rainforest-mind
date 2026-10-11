@@ -166,6 +166,7 @@ API=""
 iniciar_servidor() { # $1 = mapa token -> conta; $2 = arquivo onde sai a porta
   RFM_CONTA_SERVIDOR_MAPA="$(win "$1")" \
   RFM_CONTA_SERVIDOR_CONTROLE="$(win "$RAIZ/segurar")" \
+  RFM_CONTA_SERVIDOR_CONTAGEM="${CONTAGEM_POSTS:-}" \
     node scripts/fixtures/conta/servidor.cjs > "$2" 2> "$RAIZ/servidor-erro.txt" &
   PIDS+=("$!")
   for _ in $(seq 1 100); do [ -s "$2" ] && break; sleep 0.1; done
@@ -219,9 +220,12 @@ for _ in $(seq 1 30); do [ -e "$C_B/dados/contas/vigia.lock" ] && break; sleep 0
 cli "$C_B" vigiar > "$RAIZ/b2.txt" 2>&1 &
 P2=$!
 PIDS+=("$P2")
-RC_B1=0; wait "$P1" || RC_B1=$?
+# O servidor segura o /usage da primeira rodada enquanto o arquivo existir: a segunda bate na trava
+# e termina sozinha; só então o arquivo sai e a primeira segue. Sem isso, a janela em que a trava
+# fica ocupada dependia da velocidade da máquina.
 RC_B2=0; wait "$P2" || RC_B2=$?
 rm -f "$RAIZ/segurar"
+RC_B1=0; wait "$P1" || RC_B1=$?
 caso_b() {
   contem "$(cat "$RAIZ/b1.txt" "$RAIZ/b2.txt")" "outra rodada em curso" \
     && [ -f "$EV_B" ] && [ "$(wc -l < "$EV_B" | tr -d ' ')" = 1 ]
@@ -564,8 +568,13 @@ for n in 1 2 3 4; do
   PIDS_U+=("$!")
   PIDS+=("$!")
 done
-for p in "${PIDS_U[@]}"; do wait "$p" || true; done
+# Quem toma a trava fica preso no /usage até o arquivo sair: espera as outras três recusarem.
+for _ in $(seq 1 200); do
+  [ "$(cat "$RAIZ"/u[1-4].txt 2>/dev/null | grep -cF 'outra rodada em curso' || true)" = 3 ] && break
+  sleep 0.1
+done
 rm -f "$RAIZ/segurar"
+for p in "${PIDS_U[@]}"; do wait "$p" || true; done
 caso_u() {
   local cont
   cont="$(cat "$RAIZ"/u[1-4].txt | grep -cF 'outra rodada em curso' || true)"
@@ -720,6 +729,172 @@ caso_y() {
 afirma "trecho de token de arquivo corrompido não aparece em nenhuma saída nem evento" caso_y
 afirma "arquivo corrompido: a trava é solta e nada é movido" test ! -e "$C_Y/dados/contas/vigia.lock" -a ! -e "$C_Y/dados/contas/eventos.jsonl"
 
+# (z) renovarOciosos só renova o que o vigia guarda (reserva-* e estacionado-*), nunca o login de uma
+# pasta: quem usa a pasta é uma sessão, que renova o próprio token, e o refresh token é de uso único
+# (renovar por fora mataria o dela). O servidor falso conta os POSTs em /v1/oauth/token. As duas
+# pastas estão a 25 min de vencer (menos de 1 h) e há um arquivo isca em contas/ com o mesmo login da
+# pasta trabalho: sem o filtro do nome, o laço o renovaria. O controle (z2) tem a reserva-team a
+# 25 min: aí o contador TEM de marcar 1, senão o zero do primeiro caso não provaria nada.
+vence_em() { # $1 = arquivo; $2 = minutos até vencer (claudeAiOauth.expiresAt)
+  node -e "
+const fs = require('fs');
+const j = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
+j.claudeAiOauth.expiresAt = Date.now() + Number(process.argv[2]) * 60000;
+fs.writeFileSync(process.argv[1], JSON.stringify(j, null, 2) + '\n');
+" "$1" "$2"
+}
+posts() { if [ -s "$1" ]; then grep -c . "$1"; else echo 0; fi; }
+node "$RAIZ/derivar.cjs" "$RAIZ/mapa.json" "$RAIZ/mapa-z.json" "{\"refresh\":$GIROS}"
+: > "$RAIZ/posts-z.txt"
+CONTAGEM_POSTS="$(win "$RAIZ/posts-z.txt")"
+iniciar_servidor "$RAIZ/mapa-z.json" "$RAIZ/porta-z.txt"
+CONTAGEM_POSTS=""
+API_Z="$API"
+API="$API_PRINCIPAL"
+C_Z="$(novo_caso z sim)"
+vence_em "$C_Z/trabalho/.claude/.credentials.json" 25
+vence_em "$C_Z/pessoal/.claude-personal/.credentials.json" 25
+cp "$C_Z/trabalho/.claude/.credentials.json" "$C_Z/dados/contas/pasta-trabalho.json"
+cp "$C_Z/trabalho/.claude/.credentials.json" "$RAIZ/cred-z-t.json"
+cp "$C_Z/pessoal/.claude-personal/.credentials.json" "$RAIZ/cred-z-p.json"
+cp "$C_Z/dados/contas/pasta-trabalho.json" "$RAIZ/isca-z.json"
+POSTS_ANTES="$(posts "$RAIZ/posts-z.txt")"
+RC_Z=0
+API="$API_Z"
+cli "$C_Z" vigiar > "$RAIZ/z.txt" 2>&1 || RC_Z=$?
+API="$API_PRINCIPAL"
+caso_z() {
+  [ "$RC_Z" -eq 0 ] && [ "$POSTS_ANTES" = 0 ] && [ "$(posts "$RAIZ/posts-z.txt")" = 0 ] \
+    && cmp -s "$C_Z/trabalho/.claude/.credentials.json" "$RAIZ/cred-z-t.json" \
+    && cmp -s "$C_Z/pessoal/.claude-personal/.credentials.json" "$RAIZ/cred-z-p.json" \
+    && cmp -s "$C_Z/dados/contas/pasta-trabalho.json" "$RAIZ/isca-z.json" \
+    && contem "$(cat "$RAIZ/z.txt")" "esperar trabalho: trocar adiada: access token com menos de 30 min de vida" \
+    && ! grep -qF '"tipo":"renovacao_falhou"' "$C_Z/dados/contas/eventos.jsonl" 2>/dev/null
+}
+afirma "renovarOciosos nunca renova o login de uma pasta" caso_z
+
+POSTS_Z="$(posts "$RAIZ/posts-z.txt")"
+C_Z2="$(novo_caso z2 sim)"
+vence_em "$C_Z2/dados/contas/reserva-team.json" 25
+REF_Z2="$(ler "$C_Z2/dados/contas/reserva-team.json" claudeAiOauth.refreshToken)"
+RC_Z2=0
+API="$API_Z"
+cli "$C_Z2" vigiar > "$RAIZ/z2.txt" 2>&1 || RC_Z2=$?
+API="$API_PRINCIPAL"
+caso_z2() {
+  [ "$RC_Z2" -eq 0 ] && [ "$(posts "$RAIZ/posts-z.txt")" = "$((POSTS_Z + 1))" ] \
+    && [ "$(ler "$C_Z2/dados/contas/reserva-team.json" claudeAiOauth.refreshToken)" != "$REF_Z2" ]
+}
+afirma "renovarOciosos renova a reserva a menos de 1 h de vencer (o contador de POSTs conta)" caso_z2
+
+# (w) com a trava fresca de outra rodada, o status só lê: nada de estado.json novo, nenhum evento, e
+# a trava alheia segue lá. (w1) estado sem `contas` e dois arquivos com o mesmo login: com a trava, o
+# status registraria as contas e gravaria credencial_duplicada. (w2) a pasta em casa com o login da
+# outra conta: com a trava, gravaria identidade_divergente.
+fresca() { node -e "require('fs').writeFileSync(process.argv[1], JSON.stringify({ pid: 999999, em: Date.now() }))" "$1/dados/contas/vigia.lock"; }
+C_W="$(novo_caso w sim)"
+node "$RAIZ/ajustar.cjs" duplicada "$C_W"
+fresca "$C_W"
+cp "$C_W/dados/contas/estado.json" "$RAIZ/estado-w-antes.json"
+cp "$C_W/dados/contas/vigia.lock" "$RAIZ/lock-w-antes.json"
+RC_W=0
+cli "$C_W" status > "$RAIZ/w.txt" 2>&1 || RC_W=$?
+caso_w() {
+  [ "$RC_W" -eq 0 ] && cmp -s "$C_W/dados/contas/estado.json" "$RAIZ/estado-w-antes.json" \
+    && [ "$(ler "$C_W/dados/contas/estado.json" contas)" = AUSENTE ] \
+    && [ ! -e "$C_W/dados/contas/eventos.jsonl" ] \
+    && cmp -s "$C_W/dados/contas/vigia.lock" "$RAIZ/lock-w-antes.json" \
+    && contem "$(cat "$RAIZ/w.txt")" "aviso: o mesmo login"
+}
+afirma "status com trava fresca não grava estado.json nem eventos" caso_w
+
+C_W2="$(novo_caso w2 nao)"
+node "$RAIZ/ajustar.cjs" divergente "$C_W2"
+fresca "$C_W2"
+cp "$C_W2/dados/contas/estado.json" "$RAIZ/estado-w2-antes.json"
+RC_W2=0
+cli "$C_W2" status > "$RAIZ/w2.txt" 2>&1 || RC_W2=$?
+caso_w2() {
+  [ "$RC_W2" -eq 0 ] && cmp -s "$C_W2/dados/contas/estado.json" "$RAIZ/estado-w2-antes.json" \
+    && [ ! -e "$C_W2/dados/contas/eventos.jsonl" ] && [ -e "$C_W2/dados/contas/vigia.lock" ]
+}
+afirma "status com trava fresca não grava identidade_divergente" caso_w2
+
+# (t3) tomada de trava vencida com três processos, em uma ordem escolhida (um só processo, com as
+# leituras e remoções da trava interceptadas): A toma a trava vencida DEPOIS que B a leu vencida, e C
+# chega no instante em que o lugar da trava fica vazio. Só um dos três pode sair dono. Antes o B
+# arrancava a trava nova do A e a devolvia com um link; nessa janela o C criava a sua.
+cat > "$RAIZ/trava-corrida.cjs" <<'JS'
+'use strict';
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { pegarTrava } = require(process.argv[2]);
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rfm-trava-'));
+const lock = path.join(dir, 'vigia.lock');
+const velha = () => fs.writeFileSync(lock, JSON.stringify({ pid: 999999, em: 0 }));
+const mesmo = (p) => path.resolve(String(p)) === path.resolve(lock);
+
+let gancho = null;
+let dentro = false;
+const original = { read: fs.readFileSync, rename: fs.renameSync, rm: fs.rmSync };
+const avisa = (evento, p) => { if (!dentro && gancho && mesmo(p)) gancho(evento); };
+fs.readFileSync = function (p, ...resto) { const v = original.read.call(this, p, ...resto); avisa('leu', p); return v; };
+fs.renameSync = function (de, para) { const v = original.rename.call(this, de, para); avisa('saiu', de); return v; };
+fs.rmSync = function (p, ...resto) { const v = original.rm.call(this, p, ...resto); avisa('saiu', p); return v; };
+const intercepta = (fn) => (evento) => { dentro = true; try { fn(evento); } finally { dentro = false; } };
+
+function cenario(nome, montar, confere) {
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
+  velha();
+  const r = {};
+  gancho = intercepta(montar(r));
+  r.B = pegarTrava(lock);
+  gancho = null;
+  console.log(nome + ' ' + (confere(r) ? 'ok' : 'FALHA') + ' ' + JSON.stringify(r));
+}
+
+// A toma depois da leitura velha do B; C chega quando a trava de A (ou a velha) sai do lugar.
+cenario('tres-processos', (r) => {
+  let leu = false;
+  let saiu = false;
+  return (evento) => {
+    if (evento === 'leu' && !leu) { leu = true; r.A = pegarTrava(lock); }
+    if (evento === 'saiu' && !saiu) { saiu = true; r.C = pegarTrava(lock); }
+  };
+}, (r) => r.A === true && r.B === false && r.C !== true);
+
+// Sem A: C cria a trava no instante em que B tirou a velha do lugar; B não pode ficar dono também.
+cenario('c-entre-remover-e-criar', (r) => {
+  let saiu = false;
+  return (evento) => { if (evento === 'saiu' && !saiu) { saiu = true; r.C = pegarTrava(lock); } };
+}, (r) => [r.B, r.C].filter((v) => v === true).length === 1);
+
+// Guarda esquecida (processo morto dentro dela) já vencida: recolhida, e a rodada seguinte toma.
+fs.rmSync(dir, { recursive: true, force: true });
+fs.mkdirSync(dir, { recursive: true });
+velha();
+fs.writeFileSync(lock + '.tomada', JSON.stringify({ pid: 999999, em: Date.now() - 60000 }));
+const esquecida1 = pegarTrava(lock);
+const esquecida2 = pegarTrava(lock);
+console.log('guarda-esquecida ' + (esquecida1 === false && esquecida2 === true && !fs.existsSync(lock + '.tomada') ? 'ok' : 'FALHA') + ' ' + esquecida1 + ' ' + esquecida2);
+
+// Guarda fresca (alguém está tomando agora): não entra, e não mexe na guarda alheia.
+fs.rmSync(dir, { recursive: true, force: true });
+fs.mkdirSync(dir, { recursive: true });
+velha();
+fs.writeFileSync(lock + '.tomada', JSON.stringify({ pid: 999999, em: Date.now() }));
+const fresca = pegarTrava(lock);
+console.log('guarda-fresca ' + (fresca === false && fs.existsSync(lock + '.tomada') ? 'ok' : 'FALHA') + ' ' + fresca);
+fs.rmSync(dir, { recursive: true, force: true });
+JS
+node "$RAIZ/trava-corrida.cjs" "$REPO/scripts/conta.cjs" > "$RAIZ/trava.txt" 2>&1 || true
+afirma "trava vencida com três processos: A toma, B com leitura antiga não a derruba e C não entra" contem "$(cat "$RAIZ/trava.txt")" "tres-processos ok"
+afirma "trava vencida: C criando entre a remoção e a criação deixa um dono só" contem "$(cat "$RAIZ/trava.txt")" "c-entre-remover-e-criar ok"
+afirma "trava vencida: guarda esquecida é recolhida e a rodada seguinte toma" contem "$(cat "$RAIZ/trava.txt")" "guarda-esquecida ok"
+afirma "trava vencida: guarda fresca de outro processo é respeitada" contem "$(cat "$RAIZ/trava.txt")" "guarda-fresca ok"
+
 # (g) nenhuma credencial (valor falso ou não) aparece na saída nem no log
 caso_g() {
   local rc=0
@@ -729,7 +904,7 @@ caso_g() {
     "$RAIZ/o.txt" "$RAIZ/p.txt" "$RAIZ/p-status.txt" "$RAIZ/q.txt" "$EV_O" "$EV_P" "$EV_Q" \
     "$RAIZ/m.txt" "$RAIZ/r1.txt" "$RAIZ/r2.txt" "$RAIZ/s.txt" "$RAIZ/t.txt" "$RAIZ"/u[1-4].txt "$EV_R" \
     "$RAIZ/v.txt" "$RAIZ/vs.txt" "$RAIZ/v2.txt" "$RAIZ/v3.txt" "$C_V/dados/contas/eventos.jsonl" \
-    "$RAIZ/x.txt" "$EV_X" || rc=$?
+    "$RAIZ/x.txt" "$EV_X" "$RAIZ/z.txt" "$RAIZ/z2.txt" "$RAIZ/w.txt" "$RAIZ/w2.txt" "$RAIZ/trava.txt" || rc=$?
   [ "$rc" -eq 1 ]
 }
 afirma "(g) credencial nunca aparece na saída nem no log" caso_g
