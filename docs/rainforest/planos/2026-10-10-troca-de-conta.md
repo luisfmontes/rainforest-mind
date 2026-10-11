@@ -155,11 +155,11 @@ arquivos: `scripts/transferir.cjs`, `scripts/transferir-entre-contas.cjs`, `scri
 depende de: 9
 paralela: nao
 `transferir.cjs claude` passa a recusar com exit 2 e a frase "o /transferir claude saiu: use /conta para trocar a conta da pasta". Apagar `transferir-entre-contas.cjs` e a bateria dele; `commands/transferir.md` e README deixam de citar o destino `claude`. O despachante contém literalmente `if (paraClaude) return sair(2, MSG_SAIU);`.
-prova: `bash -c "! git grep -q transferir-entre-contas"`
+prova: `bash -c "! git grep -q transferir-entre-contas -- ':!docs'"`
 mutacao:
   arquivo: `scripts/transferir.cjs`
   de: `if (paraClaude) return sair(2, MSG_SAIU);`
   para: `if (false) return sair(2, MSG_SAIU);`
   bateria: `bash scripts/testa-transferir.sh`
   fixture: caso "transferir claude recusa e aponta o /conta"
-pronto quando: com `node scripts/transferir.cjs claude`, exit 2 e a frase que aponta o `/conta`; `node scripts/transferir.cjs` sem argumento segue indo para o Codex; nenhum arquivo rastreado cita `transferir-entre-contas` — provado por `bash scripts/testa-transferir.sh` e `bash scripts/testa-transferir-para-codex.sh` com `0 falha(s)` e `git grep -c transferir-entre-contas` sem resultado.
+pronto quando: com `node scripts/transferir.cjs claude`, exit 2 e a frase que aponta o `/conta`; `node scripts/transferir.cjs` sem argumento segue indo para o Codex; nenhum arquivo rastreado fora de `docs/` (o histórico de design e plano fica) cita `transferir-entre-contas` — provado por `bash scripts/testa-transferir.sh` e `bash scripts/testa-transferir-para-codex.sh` com `0 falha(s)` e `git grep -c transferir-entre-contas -- ':!docs'` sem resultado.
