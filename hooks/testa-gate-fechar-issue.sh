@@ -50,6 +50,9 @@ if "%1"=="pr" if "%2"=="view" (
   if "%GH_PR_VIEW_FAIL%"=="1" (
     exit /b 1
   )
+  if defined GH_PR_VIEW_EXIGE (
+    echo %* | findstr /C:"%GH_PR_VIEW_EXIGE%" >nul || exit /b 1
+  )
   node -e "console.log(JSON.stringify({body: process.env.GH_PR_VIEW_BODY || ''}))"
   exit /b 0
 )
@@ -70,6 +73,10 @@ fi
 if [ "$1" = "pr" ] && [ "$2" = "view" ]; then
   if [ "$GH_PR_VIEW_FAIL" = "1" ]; then
     exit 1
+  fi
+  # (#496) o PR so "existe" se o pr view vier com estes argumentos.
+  if [ -n "${GH_PR_VIEW_EXIGE:-}" ]; then
+    case " $* " in *"$GH_PR_VIEW_EXIGE"*) ;; *) exit 1 ;; esac
   fi
   node -e "console.log(JSON.stringify({body: process.env.GH_PR_VIEW_BODY || ''}))"
   exit 0
@@ -1121,6 +1128,25 @@ echo "== (bx) gh pr merge 5 com pr view devolvendo body sem Issue citada → exi
 ) 2>"$SBP/err-bx"
 EXIT_BX=$?
 [ $EXIT_BX -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_BX)"
+
+# Caso (#496): `gh pr merge 1 --repo dono/outro` — o `pr view` do gate tem que
+# levar o mesmo repo. O stub so acha o PR quando os argumentos trazem
+# `--repo dono/outro`; sem o repasse, ele falha como o `gh` real falhou no
+# repo da sessao, e o gate barrava um merge legitimo.
+for forma496 in "--repo dono/outro" "-R dono/outro" "--repo=dono/outro"; do
+  echo
+  echo "== (#496) gh pr merge 1 $forma496 --merge → pr view leva o repo, exit 0 =="
+  (
+    export PATH="$SBP/bin:$PATH"
+    export GH_COM_MARCADOR=""
+    export GH_PR_VIEW_BODY="descrição sem palavra-chave de fechamento"
+    export GH_PR_VIEW_EXIGE="--repo dono/outro"
+    PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge 1 '"$forma496"' --merge"}}'
+    echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+  ) 2>"$SBP/err-496"
+  E496=$?
+  [ $E496 -eq 0 ] && test_ok "#496 $forma496 repassado ao pr view" || test_fail "#496 $forma496 nao chegou ao pr view (exit $E496: $(head -c 200 "$SBP/err-496"))"
+done
 
 # Caso (by): R18 (auditor, 16a revisao, lote 3, 2026-09-04) — `source fechar.sh`
 # executa um ARQUIVO opaco ao parser; mesma postura conservadora que

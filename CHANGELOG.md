@@ -10,6 +10,17 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.60.2 — 2026-10-10
+
+- **O bloqueio de escrita em outro repositório agora mostra saídas que funcionam.** Antes ele mandava usar um worktree
+  daquele repo, e o próprio gate barrava a escrita nesse worktree. Além disso, a janela principal recebia o texto
+  escrito para subagente ("PARE e reporte à janela principal") e nunca via as saídas que eram dela (#495).
+- **`gh pr merge <n> --repo dono/outro` não é mais barrado por engano.** O gate lia a descrição do PR sem o `--repo`,
+  e por isso procurava o número no repositório da sessão. Quando o número não existia ali, barrava um merge legítimo.
+  Quando existia, conferia o PR errado (#496).
+- No mesmo PR: três repos contra texto de IA avaliados no livro de repos
+  (`relatorios/2026-10-10-anti-slop-tres-repos.md`).
+
 ## 1.60.1 — 2026-10-10
 
 - **Registrar um repo avaliado não exige mais versão nova.** O `conferir-versao.cjs` já dispensava o bump quando só

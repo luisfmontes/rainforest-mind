@@ -637,6 +637,24 @@ function refDoPRMergeValido(ref) {
 }
 
 /**
+ * #496: o `-R`/`--repo` de `gh [-R x] pr merge <n> [--repo x]` tem que chegar
+ * ao `gh pr view` que le a descricao. Sem ele, o numero era resolvido no repo
+ * da SESSAO: PR inexistente aqui barrava um merge legitimo, e PR existente
+ * aqui era conferido no lugar do PR que ia ser mergeado. Devolve o valor, ou
+ * null se nao ha flag. Texto CRU do comando: valida antes de usar, como o ref.
+ */
+const REPO_GH_CONSERVADOR = /^(?:[A-Za-z0-9.-]+\/)?[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
+
+function extrairRepoDoGh(subcomandos) {
+  for (let i = 0; i < subcomandos.length; i += 1) {
+    const tok = subcomandos[i];
+    if (tok === "-R" || tok === "--repo") return subcomandos[i + 1] ?? "";
+    if (tok.startsWith("--repo=")) return tok.slice("--repo=".length);
+  }
+  return null;
+}
+
+/**
  * Extrai o `<ref>` posicional de `gh pr merge [<ref>] [flags]` (número,
  * branch ou URL do PR) — ou `null` se nenhum foi passado (o `merge` então
  * age sobre o PR da branch atual, e é assim que `gh pr view` sem argumento
@@ -822,8 +840,18 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento) {
       );
     }
 
+    const repo = extrairRepoDoGh(subcomandos);
+    if (repo !== null && !REPO_GH_CONSERVADOR.test(repo)) {
+      bloqueia(
+        `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+        `Razão: não consegui ler o --repo do 'gh pr merge' com segurança ('${repo}').\n\n` +
+        `Use a forma dono/repo, ou a URL completa do PR no lugar do número.\n`
+      );
+    }
+
     const args = ["pr", "view"];
     if (ref) args.push(ref);
+    if (repo) args.push("--repo", repo);
     args.push("--json", "body");
 
     let resultado;

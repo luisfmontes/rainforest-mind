@@ -112,8 +112,11 @@ function dirDe(alvo, cwdDoEvento) {
   }
 }
 
-function bloqueia(motivo, repoAlheio, agente) {
-  const ehSubagente = !!agente;
+// `ehSubagente` vem do `agent_id` do evento, nunca do rotulo: o rotulo da
+// janela principal e a string "janela principal", que e verdadeira, e com
+// `!!agente` a janela principal recebia o texto de subagente e nunca via as
+// saidas que sao dela (#495).
+function bloqueia(motivo, repoAlheio, agente, ehSubagente) {
   const saidas = ehSubagente
     ? `PARE e reporte isto para a janela principal — ela decide como seguir.\n` +
       `NÃO crie arquivo nem variável para desativar esta trava: a decisão não é sua,\n` +
@@ -129,8 +132,12 @@ function bloqueia(motivo, repoAlheio, agente) {
     `Agente: ${agente}\n\n` +
     `Esta escrita seria para dentro de OUTRO repositório git, diferente da sessão\n` +
     `que está sendo executada.\n\n` +
-    `A saída correta é usar um worktree próprio naquele repo — ou deixar para a\n` +
-    `sessão que já está lá trabalhar nele.\n\n` +
+    // Worktree do outro repo NAO e saida: a comparacao e contra o repo da
+    // SESSAO, e um worktree linkado do outro repo continua sendo o outro repo
+    // (#495). So entram aqui saidas que este gate deixa passar.
+    `Para escrever ali, a mudança precisa vir de uma sessão aberta naquele repo\n` +
+    `(cwd dentro dele), ou ser aplicada pelo usuário. Um worktree daquele repo\n` +
+    `não resolve: continua sendo outro repositório para esta sessão.\n\n` +
     saidas
   );
   process.exit(2);
@@ -218,7 +225,7 @@ function main() {
 
     // É repo alheio: barra
     const motivo = `Escrita (${nome}) em ${alvo}`;
-    bloqueia(motivo, estadoAlvo.toplevel, (ev.agent_id ? `${ev.agent_type || "?"} (${ev.agent_id})` : "janela principal"));
+    bloqueia(motivo, estadoAlvo.toplevel, (ev.agent_id ? `${ev.agent_type || "?"} (${ev.agent_id})` : "janela principal"), !!ev.agent_id);
   }
 
   process.exit(0);
