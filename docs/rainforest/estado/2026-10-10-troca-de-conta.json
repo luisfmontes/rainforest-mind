@@ -24,7 +24,7 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-10",
-    "tarefas_ok": 8,
+    "tarefas_ok": 9,
     "tarefas": 10,
     "carimbos": [
       {
@@ -85,7 +85,10 @@
       }
     ],
     "em_voo": [],
-    "em": "2026-10-10"
+    "em": "2026-10-11",
+    "pendentes": [
+      "reagendar o vigia do clone instalado no fechar (hoje aponta para o worktree)"
+    ]
   },
   "revisar": {
     "status": "pendente"
