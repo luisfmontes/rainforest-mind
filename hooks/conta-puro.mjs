@@ -3,6 +3,8 @@
 // Os eventos chegam de `scripts/conta.cjs eventos --desde <ms>`, com `de`/`para` nos nomes
 // internos (team/pessoal); aqui viram os nomes que o Luis usa (trabalho/pessoal).
 
+import { escolherExecutavel, localizadores } from './pr-puro.mjs';
+
 const NOME = { team: 'trabalho', pessoal: 'pessoal' };
 // Casa fixa de cada pasta, nos nomes internos: trocar uma pasta para a casa dela e uma volta.
 const CASA = { trabalho: 'team', pessoal: 'pessoal' };
@@ -45,6 +47,33 @@ export function frase(ev) {
   if (e.tipo === 'voltar') return 'Conta: a pasta ' + e.pasta + ' voltou para a conta ' + e.para + '.';
   if (e.tipo === 'falhou') return 'Conta: a troca da pasta ' + e.pasta + ' foi desfeita (' + e.motivo + ').';
   return '';
+}
+
+// Localizador do node, UM so para o relogio (mod.tsx) e o aviso de conta (conta.ts): os dois leem
+// os mesmos atoms (nodeCaminho, nodeFalhouEm), entao o node achado vale para os dois e uma falha
+// de um vale para o outro. Depois de uma falha, ninguem procura de novo antes de 5 min.
+// Os valores de estado e os `$` ficam com quem chama: aqui entram so funcoes.
+export const NODE_FALHA_TTL_MS = 300_000;
+
+export async function acharNode({ guardado, falhouEm, agora, lerCwd, lerRaiz, rodar, gravarCaminho, gravarFalha }) {
+  if (guardado !== '') return guardado;
+  if (falhouEm > 0 && agora - falhouEm < NODE_FALHA_TTL_MS) return null;
+  const cwd = await lerCwd();
+  for (const argv of localizadores('node', await lerRaiz())) {
+    try {
+      const r = await rodar(argv);
+      if (r.exitCode !== 0) continue;
+      const achado = escolherExecutavel(r.stdout, cwd);
+      if (achado !== null) {
+        await gravarCaminho(achado);
+        return achado;
+      }
+    } catch {
+      // este localizador nao existe nesta maquina; o outro tenta
+    }
+  }
+  await gravarFalha(agora);
+  return null;
 }
 
 // Eventos (linhas JSON) com `em` depois de `desde`. Linha ilegivel e pulada, nao derruba as outras.
