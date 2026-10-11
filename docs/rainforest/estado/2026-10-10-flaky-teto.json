@@ -21,7 +21,7 @@
     "em": "2026-10-10"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-10",
     "tarefas_ok": 12,
     "tarefas": 12,
@@ -162,10 +162,38 @@
       }
     ],
     "comando": "bash scripts/varrer-baterias.sh",
-    "saida": "as 233 baterias passaram (exit 0)"
+    "saida": "as 233 baterias passaram (exit 0)",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-11"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "ec435a9526525e9e5e3c85133c7849eb28fef694",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-10-10-flaky-teto.json"
+      ]
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "af86c92ec016f8176",
+        "veredito": "reprovado",
+        "em": "2026-10-11",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/e3d89e95-f290-41aa-92fb-3d9eae821466/subagents/agent-af86c92ec016f8176.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-11",
+    "achados": 2,
+    "pendentes": [
+      "1: conferir-mutacao.cjs:900 confirmacao do vermelho sem bateriaColapsou; falta caso 0 1 c",
+      "2 [design]: gate-teto-despachos.cjs:69 fallback grava .rainforest/fluxos/ no repo sem gitignore (D11)"
+    ],
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
