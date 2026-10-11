@@ -143,6 +143,11 @@ confere "--de que casa duas vezes sai 4" 4 1
 catraca "0 c" fonte.cjs
 confere "bateria que colapsa sai 6 sem terceira rodada" 6 2
 
+# a confirmacao do vermelho passa pela mesma checagem de colapso da primeira rodada
+catraca "0 1 c" fonte.cjs
+confere "confirmacao que colapsa sai 6, nao 0" 6 3
+contem "confirmacao que colapsa recusa com a mensagem de colapso" "a bateria colapsou" "$ERR"
+
 # comando inexistente: o shell resolve e devolve 127 -> 69 (ambiente), sem nova tentativa
 export SEQ="0"; rm -f "$CNT"
 OUT=$(node scripts/conferir-mutacao.cjs --raiz "$SBP" --arquivo fonte.cjs --de 'alvo = 1' --para 'alvo = 0' \

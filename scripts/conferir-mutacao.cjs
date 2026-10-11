@@ -593,6 +593,23 @@ function bateriaColapsou(placarBase, placarPos) {
   return placarPos.ok === 0 && placarPos.falhou === 0;
 }
 
+/**
+ * RECUSADO por colapso, comum à primeira rodada pós-mutação e à confirmação
+ * do vermelho (D7): sai 6. `rodada` nomeia a rodada no diagnóstico.
+ */
+function recusaColapso(placarBase, placarRodada, rodada) {
+  console.error('RECUSADO: a bateria colapsou — não mediu nada.');
+  console.error(`  Baseline: ok=${placarBase.ok} falhou=${placarBase.falhou}`);
+  console.error(placarRodada
+    ? `  ${rodada}: ok=${placarRodada.ok} falhou=${placarRodada.falhou}`
+    : `  ${rodada}: placar ausente — a bateria parou de se reportar.`);
+  console.error('  Isto não é "a bateria discordou" (isso seria vermelha normal, exit 0)');
+  console.error('  — é o mecanismo de teste morrendo antes de exercitar qualquer');
+  console.error('  comportamento (ReferenceError, exceção não tratada). Refine a mutação');
+  console.error('  ou a bateria.');
+  process.exit(6);
+}
+
 function main() {
   if (process.argv.length <= 2) {
     console.error(USO);
@@ -858,18 +875,7 @@ function main() {
   // viva?").
   const placarBase = extrairPlacar(`${baselineRes.r.stdout || ''}${baselineRes.r.stderr || ''}`);
   const placarPos = extrairPlacar(`${posRes.r.stdout || ''}${posRes.r.stderr || ''}`);
-  if (bateriaColapsou(placarBase, placarPos)) {
-    console.error('RECUSADO: a bateria colapsou — não mediu nada.');
-    console.error(`  Baseline: ok=${placarBase.ok} falhou=${placarBase.falhou}`);
-    console.error(placarPos
-      ? `  Pós-mutação: ok=${placarPos.ok} falhou=${placarPos.falhou}`
-      : '  Pós-mutação: placar ausente — a bateria parou de se reportar.');
-    console.error('  Isto não é "a bateria discordou" (isso seria vermelha normal, exit 0)');
-    console.error('  — é o mecanismo de teste morrendo antes de exercitar qualquer');
-    console.error('  comportamento (ReferenceError, exceção não tratada). Refine a mutação');
-    console.error('  ou a bateria.');
-    process.exit(6);
-  }
+  if (bateriaColapsou(placarBase, placarPos)) recusaColapso(placarBase, placarPos, 'Pós-mutação');
 
   // Verificação de corte de shell: suspeita quando pós-mutação é desproporcionalmente
   // curta (< 10% do baseline), sugerindo que a bateria morreu antes de medir.
@@ -900,6 +906,11 @@ function main() {
   // sem veredito (1), como na primeira.
   const confRes = rodaBateria(bateria, raizExecucao, timeout, 'pós-mutação (confirmação)');
   const confirmouVermelho = !confRes.r.error && confRes.r.status !== null && confRes.r.status !== 0;
+  // A confirmação passa pela mesma checagem de colapso da primeira rodada: crash
+  // sem placar não é vermelho confirmado (exit 6). Sinal ou estouro não tem exit
+  // numérico, não entra aqui e segue para o BATERIA SEM VEREDITO (exit 1).
+  const placarConf = extrairPlacar(`${confRes.r.stdout || ''}${confRes.r.stderr || ''}`);
+  if (confirmouVermelho && bateriaColapsou(placarBase, placarConf)) recusaColapso(placarBase, placarConf, 'Confirmação');
   if (!confirmouVermelho) {
     if (confRes.r.error || confRes.r.status === null) {
       const porque = confRes.r.error ? confRes.r.error.message : `morta pelo sinal ${confRes.r.signal}`;

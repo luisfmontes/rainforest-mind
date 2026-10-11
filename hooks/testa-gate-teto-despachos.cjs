@@ -354,6 +354,29 @@ async function main() {
     caso("o grupo do registro e o da portaria.cjs", comTeto.length === 1 && usa(comTeto[0], "portaria.cjs"));
   }
 
+  // == 12. sem raiz de dados, o contador cai no repo e precisa sair do git status ==
+  console.log("== 12. sem RFM_ROOT e sem raiz de dados, o contador fica fora do git status ==");
+  {
+    const repo = caixa();
+    fs.copyFileSync(path.join(__dirname, "..", ".gitignore"), path.join(repo, ".gitignore"));
+    git(repo, "add", ".gitignore");
+    git(repo, "commit", "-q", "-m", "gitignore do repo");
+    // HOME vazio e sem RFM_ROOT: nenhum nivel da cadeia de raiz acha dados.
+    const casa = fs.mkdtempSync(path.join(os.tmpdir(), "teto-casa-"));
+    caixas.push(casa);
+    const env = { ...process.env, CLAUDE_PROJECT_DIR: repo, HOME: casa, USERPROFILE: casa, CLAUDE_CONFIG_DIR: casa };
+    delete env.RFM_ROOT;
+    const r = spawnSync(process.execPath, [HOOK], { input: JSON.stringify(janela(repo)), encoding: "utf8", env });
+    caso("sem raiz de dados o hook conta e sai 0", r.status === 0, `exit=${r.status} ${r.stderr}`);
+    // Precondicao: o contador caiu no fallback DENTRO do repo, nao no plugin nem na casa.
+    const dentro = path.join(repo, ".rainforest", "fluxos", SLUG, "despachos.json");
+    caso("precondicao: o contador foi para <repo>/.rainforest/fluxos", fs.existsSync(dentro), `nao existe ${dentro}`);
+    const sujo = git(repo, "status", "--porcelain", "-uall").stdout.split("\n").filter((l) => l.includes(".rainforest/fluxos/"));
+    caso("git status --porcelain -uall nao lista .rainforest/fluxos/", sujo.length === 0, sujo.join(" | "));
+    const ign = git(repo, "check-ignore", "-q", `.rainforest/fluxos/${SLUG}/despachos.json`);
+    caso("git check-ignore -q do contador sai 0", ign.status === 0, `exit=${ign.status}`);
+  }
+
   for (const repo of caixas) fs.rmSync(repo, { recursive: true, force: true });
   console.log(`\nok: ${ok}   falhou: ${falhou}`);
   process.exit(falhou === 0 ? 0 : 1);
