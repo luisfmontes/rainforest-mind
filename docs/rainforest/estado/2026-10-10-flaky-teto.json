@@ -21,8 +21,25 @@
     "em": "2026-10-10"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-10-10"
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-10",
+    "tarefas_ok": 0,
+    "tarefas": 12,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "1 registrar-flake",
+        "desde": "2026-10-11T01:59:08Z",
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "2 gate-teto-despachos",
+        "desde": "2026-10-11T01:59:08Z",
+        "sessao": "e3d89e95-f290-41aa-92fb-3d9eae821466"
+      }
+    ],
+    "em": "2026-10-10"
   },
   "revisar": {
     "status": "pendente"
