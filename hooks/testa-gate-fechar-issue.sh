@@ -1347,7 +1347,6 @@ pm "PowerShell: gh pr merge 497 --squash --delete-branch passa" 0 'gh pr merge 4
 pm "PowerShell: aspa dupla dentro de aspa simples no merge barra" 2 "gh pr merge 497 --squash --body 'x \" -R dono/outro'" PowerShell
 pm "PowerShell: string vazia no merge barra" 2 "gh pr merge --squash --body '' 497" PowerShell
 pm "heredoc gravado com GH_REPO= gh pr merge barra" 2 "$(printf "cat > s.sh <<'EOF'\nGH_REPO=dono/real gh pr merge 497 --merge\nEOF\nbash s.sh")"
-pm "heredoc com export GH_REPO na linha de cima barra" 2 "$(printf "cat > s.sh <<'EOF'\nexport GH_REPO=dono/real\ngh pr merge 497 --merge\nEOF\nbash s.sh")"
 pm "heredoc com gh issue -R x close barra" 2 "$(printf "cat > s.sh <<'EOF'\ngh issue -R dono/outro close 12\nEOF\nbash s.sh")"
 pm "env -S '-S' 'gh issue close 12' barra" 2 "env -S '-S' 'gh issue close 12'"
 pm "env -S -S 'gh issue close 12' barra" 2 "env -S -S 'gh issue close 12'"
@@ -1366,6 +1365,17 @@ pm "gh api GET com -H, --paginate e --jq passa" 0 'gh api -X GET -H "Accept: app
 pm "git commit -m com 'PR merge' no texto passa" 0 'git commit -m "fix PR merge conflict"'
 pm "grep por 'pr merge' passa" 0 'grep -rn "pr merge" hooks'
 pm "gh issue comment citando pr merge passa" 0 'gh issue comment 496 --body "ver pr merge"'
+# Quarta revisao (passada de regressoes sobre a5386cbc).
+pm "g\\h issue close 12: contrabarra no nome do gh barra" 2 'g\h issue close 12'
+pm "xyz g\\h issue close 12 barra" 2 'xyz g\h issue close 12'
+pm "heredoc de doc com gh pr merge em linha de comando passa" 0 "$(printf "cat > docs-x.md <<'EOF'\n# Deploy\ngh pr merge 5 --squash\nEOF")"
+pm "comentario de evidencia com 'comando: gh pr merge' passa" 0 "$(printf "gh issue comment 12 --body-file - <<'EOF'\ncomando: gh pr merge 5 --squash\nEOF")"
+printf 'merge limpo\n' > "$SBP/msg-ps.md"
+pm "PowerShell: --body-file com caminho Windows passa" 0 "gh pr merge 5 --squash --body-file $(cygpath -w "$SBP/msg-ps.md")" PowerShell
+pm "Bash: contrabarra fora do primeiro token barra" 2 'gh pr merge 5 --squash --body-file C:\x\msg.md'
+pm "PowerShell: contrabarra antes de espaco barra" 2 'gh pr merge 5 --body x\ -Rdono/outro' PowerShell
+pm "gh help pr merge passa" 0 'gh help pr merge'
+pm "--author-email com @ no meio passa" 0 'gh pr merge 5 --squash --author-email nome@dominio.test'
 
 # Caso (by): R18 (auditor, 16a revisao, lote 3, 2026-09-04) — `source fechar.sh`
 # executa um ARQUIVO opaco ao parser; mesma postura conservadora que

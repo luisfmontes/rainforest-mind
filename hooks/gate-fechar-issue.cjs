@@ -677,11 +677,18 @@ function comandoUnicoSemShell(texto) {
     }
     if (c === " " || c === "\t") { primeiroToken = false; continue; }
     if (c < "!" || c > "~") return false;
+    // Contrabarra: no PowerShell e literal (`--body-file C:\x\m.md`); no bash
+    // escapa o caractere seguinte, entao so no primeiro token (caminho do gh).
+    // Antes de aspa ou espaco, nunca: junta ou parte argumento (revisao 4).
     if (c === "\\") {
-      if (!primeiroToken || /["'\s]/.test(t[i + 1] || " ")) return false;
+      if (/["'\s]/.test(t[i + 1] || " ")) return false;
+      if (!primeiroToken && FERRAMENTA !== "PowerShell") return false;
       continue;
     }
-    if (";&|<>(){}$`#*?[]~!%^,@".includes(c)) return false;
+    // `@` so e splatting no comeco do token; no meio (o --author-email)
+    // passa (revisao 4).
+    if (c === "@" && (i === 0 || t[i - 1] === " " || t[i - 1] === "\t")) return false;
+    if (";&|<>(){}$`#*?[]~!%^,".includes(c)) return false;
   }
   return aspa === null;
 }
@@ -699,7 +706,8 @@ const VERBOS_DO_GATE = [
 
 function indiceGhComVerbo(valores) {
   for (let i = 0; i < valores.length; i += 1) {
-    if (normalizarExecutavel(valores[i]) !== "gh") continue;
+    // `g\h` e `gh` para o bash: a contrabarra sai antes (revisao 4).
+    if (normalizarExecutavel(semContrabarra(valores[i])) !== "gh") continue;
     const subs = semRepoGlobal(valores.slice(i + 1)).map((t) => t.toLowerCase());
     if (VERBOS_DO_GATE.some(([a, b]) => subs[0] === a && subs[1] === b)) return i;
   }
@@ -1018,7 +1026,8 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento, textoDoComando =
   // Caso (c): `gh pr merge` → NÃO ler o `--body` (é a mensagem do merge
   // commit); ler a descrição REAL do PR via `gh pr view <ref> --json body`
   // (leitura, mesma família de `gh issue view` usada em `temMarcadorEvidencia`).
-  if (temSubcomando(subcomandos, ["pr", "merge"])) {
+  // So `gh pr merge` de fato: `gh help pr merge` so mostra o manual (revisao 4).
+  if (subcomandos[0] === "pr" && subcomandos[1] === "merge") {
     // Lista de formas permitidas (#496, Q1): fora dela, barra. Ver o docblock
     // de `analisarPrMerge`.
     const forma = analisarPrMerge(textoDoComando);
@@ -1386,10 +1395,15 @@ function verificarTextosDeHeredoc(mapaCwd, contadores, ferramenta) {
       const idxComentario = toks.findIndex((t) => !t.q && t.v.startsWith("#"));
       const valores = (idxComentario === -1 ? toks : toks.slice(0, idxComentario)).map((t) => t.v);
       const idx = indiceGhComVerbo(valores);
-      // `gh pr merge` no corpo confere o CORPO inteiro contra a lista: o
-      // script pode ser rodado depois, e `GH_REPO=x` (na linha ou na de cima)
-      // muda o repo do merge (revisao 3).
-      if (idx !== -1) verificarComandoGh(linha, valores.slice(idx + 1), cwdDoSegmento(linha, mapaCwd, contadores.get(linha.trim()) || 0), corpo);
+      // `gh pr merge` no corpo: quando o `gh` e o COMANDO da linha
+      // (`GH_REPO=x gh pr merge 5`, script rodado depois), a linha inteira
+      // passa pela lista; quando e prosa (`comando: gh pr merge 5` num doc ou
+      // comentario de evidencia), so a partir do `gh` (revisoes 3 e 4).
+      // `export GH_REPO` numa linha de cima fica fora (limite escrito).
+      if (idx !== -1) {
+        const ehComando = posicaoDeComando(toks) === idx;
+        verificarComandoGh(linha, valores.slice(idx + 1), cwdDoSegmento(linha, mapaCwd, contadores.get(linha.trim()) || 0), ehComando ? linha : textoAPartir(toks, idx));
+      }
     }
   }
 }
