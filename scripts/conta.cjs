@@ -7,6 +7,7 @@
 //   node scripts/conta.cjs trocar <pessoal|trabalho> [--pasta trabalho|pessoal]
 //   node scripts/conta.cjs vigiar
 //   node scripts/conta.cjs eventos --desde <ms>
+//   node scripts/conta.cjs preparar <pessoal|trabalho>
 //
 // Nunca imprime nem grava credencial. Quem diz a conta de uma pasta é o servidor
 // (conta-api.dono), nunca o .claude.json. Toda troca e volta vira uma linha em
@@ -17,7 +18,9 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { decidir } = require('./lib/conta-decidir.cjs');
-const { mover } = require('./lib/conta-mover.cjs');
+const { spawnSync } = require('node:child_process');
+const { mover, gravarAtomico: gravarCred } = require('./lib/conta-mover.cjs');
+const { acharExecutavelClaude } = require('./lib/achar-executavel-claude.cjs');
 const API = require('./lib/conta-api.cjs');
 
 const CONFIG = { trocarEm: 97, destinoMax5h: 60, destinoMaxSemana: 85 };
@@ -451,6 +454,56 @@ async function vigiar(c) {
   }
 }
 
+// Login novo para a reserva de uma conta. O e-mail esperado é o da pasta dona da conta
+// (oauthAccount do .claude.json dela); o servidor diz de quem é o login que o navegador
+// autorizou, e só então a reserva é gravada. Login de conta errada não grava nada.
+async function preparar(c, args) {
+  const alvo = args[0];
+  if (!Object.hasOwn(CONTA_CLI, alvo)) return sair(2, 'uso: preparar <pessoal|trabalho>');
+  const conta = CONTA_CLI[alvo];
+  if (reservaPronta(c, conta)) return sair(1, `reserva de ${alvo} já existe: não sobrescrevo`);
+  const claude = lerJson(claudeArq(c, alvo), null);
+  const esperado = claude && claude.oauthAccount && claude.oauthAccount.emailAddress;
+  if (!esperado) return sair(1, `pasta ${alvo} sem oauthAccount: rode status com ela em casa`);
+
+  // RFM_CONTA_CLAUDE (só com RFM_TEST=1) é um script node: roda pelo node, como o CLI real.
+  const exe = (process.env.RFM_TEST === '1' && process.env.RFM_CONTA_CLAUDE) || acharExecutavelClaude();
+  if (!exe) return sair(1, 'claude não encontrado no PATH (defina RFM_CLAUDE_EXECUTAVEL)');
+  const argsLogin = ['auth', 'login', '--claudeai', '--email', esperado];
+  const opcoes = { stdio: 'inherit', env: {} };
+
+  fs.mkdirSync(c.contas, { recursive: true });
+  const tmp = fs.mkdtempSync(path.join(c.contas, 'login-'));
+  try {
+    fs.writeFileSync(path.join(tmp, '.claude.json'), '{}\n');
+    opcoes.env = { ...process.env, CLAUDE_CONFIG_DIR: tmp };
+    const r = /\.(c|m)?js$/i.test(exe)
+      ? spawnSync(process.execPath, [exe, ...argsLogin], opcoes)
+      : spawnSync(exe, argsLogin, opcoes);
+    if (r.error) return sair(1, 'não consegui rodar o claude: ' + r.error.message);
+    if (r.status !== 0) return sair(1, 'login não concluído: nada gravado');
+
+    const cred = lerJson(path.join(tmp, '.credentials.json'), null);
+    if (!cred || !cred.claudeAiOauth) return sair(1, 'o login não gravou credencial: nada gravado');
+    const veio = await API.dono(cred.claudeAiOauth.accessToken);
+    if (veio.email !== esperado) return sair(3, 'o navegador autorizou ' + veio.email);
+    gravarCred(reservaArq(c, conta), JSON.stringify({ claudeAiOauth: cred.claudeAiOauth }, null, 2) + '\n');
+
+    const faltam = [['trabalho', 'team'], ['pessoal', 'pessoal']]
+      .filter(([, k]) => !reservaPronta(c, k))
+      .map(([nome]) => nome);
+    if (!faltam.length) {
+      const estado = lerEstado(c);
+      estado.automatico = true;
+      gravarEstado(c, estado);
+      return sair(0, `reserva de ${alvo} gravada · troca automática ligada (as duas reservas existem)`);
+    }
+    return sair(0, `reserva de ${alvo} gravada · falta a reserva de ${faltam.join(' e ')}`);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
 function eventos(c, args) {
   const bruto = valorDe(args, '--desde');
   const desde = Number(bruto);
@@ -470,7 +523,8 @@ async function main(argv) {
   if (cmd === 'trocar') return trocar(c, resto);
   if (cmd === 'vigiar') return vigiar(c);
   if (cmd === 'eventos') return eventos(c, resto);
-  return sair(2, 'uso: conta.cjs [status | trocar <pessoal|trabalho> [--pasta trabalho|pessoal] | vigiar | eventos --desde <ms>]');
+  if (cmd === 'preparar') return preparar(c, resto);
+  return sair(2, 'uso: conta.cjs [status | trocar <pessoal|trabalho> [--pasta trabalho|pessoal] | vigiar | eventos --desde <ms> | preparar <pessoal|trabalho>]');
 }
 
 main(process.argv.slice(2)).catch((e) => {
