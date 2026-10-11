@@ -1787,6 +1787,7 @@ const FLAGS_POR_SUBCOMANDO = {
   concluido: ['slug'],
   veredito: ['slug', 'estagio', 'veredito', 'agente', 'agente-id', 'transcrito'],
   'registrar-flake': ['slug', 'tarefa', 'gate'],
+  'liberar-teto': ['slug', 'motivo'],
   leve: ['motivo', 'repo'],
 };
 
@@ -2400,6 +2401,24 @@ function main() {
     process.exit(2);
   }
 
+  // `liberar-teto` (D13): +10 despachos para o fluxo, com o motivo por escrito.
+  // So registra a liberacao; quem soma o +10 ao teto e o hook (tarefa 7).
+  if (cmd === 'liberar-teto') {
+    const motivo = arg('motivo').trim();
+    if (!motivo) {
+      console.error('RECUSADO: --motivo vazio. A liberacao do teto e decisao do usuario, com o motivo por escrito.');
+      process.exit(2);
+    }
+    const anteriores = Array.isArray(estado.teto_despachos && estado.teto_despachos.liberacoes)
+      ? estado.teto_despachos.liberacoes
+      : [];
+    const liberacoes = [...anteriores, { motivo, em: hoje() }];
+    estado.teto_despachos = { ...estado.teto_despachos, liberacoes };
+    gravar(slug, estado);
+    console.log(`teto de despachos liberado (+10): ${liberacoes.length} liberacao(oes) em ${slug}`);
+    return;
+  }
+
   if (cmd === 'liberar') {
     const estagio = arg('estagio');
     if (!(estagio in PRE_REQUISITOS)) {
@@ -2831,7 +2850,7 @@ function main() {
     return;
   }
 
-  console.error('uso: iniciar | ler | deixado | destinar | marcar | proximo | exigir | liberar | listar | concluido | veredito | registrar-flake');
+  console.error('uso: iniciar | ler | deixado | destinar | marcar | proximo | exigir | liberar | listar | concluido | veredito | registrar-flake | liberar-teto');
   process.exit(1);
 }
 
