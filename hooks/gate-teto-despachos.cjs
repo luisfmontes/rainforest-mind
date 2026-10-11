@@ -16,7 +16,9 @@
  * como zero zeraria o teto em silêncio. Despacho que a portaria nega também conta (D17).
  *
  * Sem toggle e sem variável de escape (D15): a única porta acima do teto é o
- * `liberar-teto` (tarefa 4). A leitura do teto declarado no plano é da tarefa 7.
+ * `liberar-teto` (tarefa 4). Teto efetivo (tarefa 7): o declarado no cabeçalho do plano
+ * (`teto-despachos: N`, D9; 40 sem a linha) mais 10 por liberação gravada no estado (D13).
+ * Cabeçalho ou liberação ilegível NEGA (D12).
  */
 
 const fs = require("fs");
@@ -24,8 +26,11 @@ const path = require("path");
 const { execFileSync } = require("child_process");
 const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
 const { comTrava } = require(path.join(__dirname, "lib", "trava-jsonl.cjs"));
+const { lerTetoDeclarado } = require(path.join(__dirname, "lib", "teto-despachos.cjs"));
+const { caminhoDoc } = require(path.join(__dirname, "lib", "pastas-docs.cjs"));
 
 const TETO_PADRAO = 40;
+const DESPACHOS_POR_LIBERACAO = 10;
 const ESPERA_TRAVA_SEG = 10;
 
 function dizer(texto) {
@@ -64,6 +69,54 @@ function raizDeDados(raiz) {
   return path.join(raiz, ".rainforest");
 }
 
+// Teto do fluxo: { teto } ou { erro }. Falha de leitura nunca vira o teto padrão (D12).
+function tetoDoFluxo(raiz, slug) {
+  const relPlano = caminhoDoc("planos", slug, { raiz });
+  const plano = path.join(raiz, relPlano);
+  let declarado = TETO_PADRAO;
+  let st = null;
+  try {
+    st = fs.statSync(plano);
+  } catch (err) {
+    if (!err || err.code !== "ENOENT") return { erro: `o plano ${plano} nao pode ser examinado (${err && err.code})` };
+  }
+  if (st) {
+    let texto;
+    try {
+      if (!st.isFile()) throw new Error("nao e um arquivo");
+      texto = fs.readFileSync(plano, "utf8");
+    } catch (err) {
+      return { erro: `o plano ${plano} existe mas nao e um arquivo legivel (${err && err.message})` };
+    }
+    const lido = lerTetoDeclarado(texto, TETO_PADRAO);
+    if (lido.erro) return { erro: `plano ${plano}: ${lido.erro}` };
+    declarado = lido.teto;
+  }
+
+  const arquivoEstado = path.join(raiz, "docs", "rainforest", "estado", `${slug}.json`);
+  let liberacoes = [];
+  try {
+    const estado = JSON.parse(fs.readFileSync(arquivoEstado, "utf8"));
+    const bloco = estado && typeof estado === "object" ? estado.teto_despachos : undefined;
+    if (bloco !== undefined && bloco !== null) {
+      if (typeof bloco !== "object" || Array.isArray(bloco)) throw new Error("teto_despachos nao e objeto");
+      if (bloco.liberacoes !== undefined) {
+        if (!Array.isArray(bloco.liberacoes)) throw new Error("liberacoes nao e lista");
+        const ruim = bloco.liberacoes.findIndex(
+          (l) => !l || typeof l !== "object" || typeof l.motivo !== "string" || !l.motivo.trim()
+        );
+        if (ruim !== -1) throw new Error(`liberacao ${ruim} sem motivo`);
+        liberacoes = bloco.liberacoes;
+      }
+    }
+  } catch (err) {
+    return { erro: `as liberacoes do teto em ${arquivoEstado} estao ilegiveis (${err && err.message}); nada foi liberado` };
+  }
+
+  const teto = declarado + DESPACHOS_POR_LIBERACAO * liberacoes.length;
+  return { teto, declarado, liberacoes: liberacoes.length };
+}
+
 function lerPayload() {
   let bruto;
   try {
@@ -99,7 +152,11 @@ function main() {
 
   const slug = fluxo.slug;
   const daJanela = !Object.prototype.hasOwnProperty.call(payload, "agent_id");
-  const teto = TETO_PADRAO;
+  const decidido = tetoDoFluxo(raiz, slug);
+  if (decidido.erro) {
+    negar(`o teto do fluxo ${slug} esta ilegivel e o despacho foi NEGADO. ${decidido.erro}. Nada foi contado.`);
+  }
+  const teto = decidido.teto;
   const dir = path.join(raizDeDados(raiz), "fluxos", slug);
   const arquivo = path.join(dir, "despachos.json");
   fs.mkdirSync(dir, { recursive: true });
@@ -126,7 +183,7 @@ function main() {
     }
     if (total >= teto) {
       const saida = daJanela
-        ? ` Para liberar mais 10 despachos, com a palavra do usuario: node scripts/estado.cjs liberar-teto --slug ${slug} --motivo "<motivo>"`
+        ? ` Para destravar, com a palavra do usuario: declarar \`teto-despachos: N\` no cabecalho do plano, ou node scripts/estado.cjs liberar-teto --slug ${slug} --motivo "<motivo>" (+${DESPACHOS_POR_LIBERACAO}).`
         : " A decisao de liberar mais despachos e do usuario, na janela principal; pare e reporte.";
       return `o fluxo ${slug} ja admitiu ${total} despachos, o teto e ${teto}, e este despacho foi NEGADO.${saida}`;
     }
