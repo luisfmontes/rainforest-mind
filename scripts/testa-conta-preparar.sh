@@ -251,9 +251,107 @@ caso_j2_registro() {
 }
 afirma "preparar com o login da conta registrada grava a reserva mesmo com o .claude.json adulterado" caso_j2_registro
 
+# Servidores extras para o --refazer: o principal não conhece nenhum refresh token (recusa toda
+# renovação com 400, como um login morto); o "vivo" renova o refresh token da reserva-team; o
+# "mudo" responde 500 a toda renovação (não dá para saber se o login morreu).
+node -e "
+const fs = require('fs');
+const m = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
+m.refresh = { 'falso-refresh-reserva-team': { de: 'falso-login-team' } };
+fs.writeFileSync(process.argv[2], JSON.stringify(m));
+m.refresh = {};
+m.renovacaoStatus = 500;
+fs.writeFileSync(process.argv[3], JSON.stringify(m));
+" "$RAIZ/mapa.json" "$RAIZ/mapa-vivo.json" "$RAIZ/mapa-500.json"
+iniciar_extra() { # $1 = mapa; $2 = arquivo da porta; sai com a URL em API_EXTRA
+  RFM_CONTA_SERVIDOR_MAPA="$(win "$1")" node scripts/fixtures/conta/servidor.cjs > "$2" 2> "$RAIZ/servidor-extra-erro.txt" &
+  PIDS+=("$!")
+  for _ in $(seq 1 100); do [ -s "$2" ] && break; sleep 0.1; done
+  API_EXTRA="http://127.0.0.1:$(head -n1 "$2")"
+}
+API_PRINCIPAL="$API"
+iniciar_extra "$RAIZ/mapa-vivo.json" "$RAIZ/porta-vivo.txt"; API_VIVO="$API_EXTRA"
+iniciar_extra "$RAIZ/mapa-500.json" "$RAIZ/porta-500.txt"; API_500="$API_EXTRA"
+
+# (k) --refazer com a reserva-team morta (o servidor recusa a renovação): o login novo substitui o velho.
+C_K="$(novo_caso k team)"
+RC_K=0
+preparar "$C_K" falso-login-team trabalho --refazer > "$RAIZ/k.txt" 2>&1 || RC_K=$?
+caso_k_refazer() {
+  [ "$RC_K" -eq 0 ] && [ "$(ler "$C_K/dados/contas/reserva-team.json" claudeAiOauth.accessToken)" = falso-login-team ] \
+    && grep -qF -- '"--email","team@exemplo.invalid"' "$C_K/claude-args.txt" \
+    && contem "$(cat "$RAIZ/k.txt")" "reserva de trabalho refeita" && sem_login "$C_K/dados/contas" \
+    && [ ! -e "$C_K/dados/contas/vigia.lock" ]
+}
+afirma "preparar --refazer substitui a reserva morta" caso_k_refazer
+
+# (k2) sem --refazer a reserva existente continua intocada, e a saída diz o caminho.
+C_K2="$(novo_caso k2 team)"
+SHA_K2="$(sha "$C_K2/dados/contas/reserva-team.json")"
+RC_K2=0
+preparar "$C_K2" falso-login-team trabalho > "$RAIZ/k2.txt" 2>&1 || RC_K2=$?
+caso_k2_sem() {
+  [ "$RC_K2" -eq 1 ] && contem "$(cat "$RAIZ/k2.txt")" "use --refazer" && [ ! -f "$C_K2/claude-args.txt" ] \
+    && [ "$(sha "$C_K2/dados/contas/reserva-team.json")" = "$SHA_K2" ]
+}
+afirma "preparar sem --refazer deixa a reserva existente intocada e aponta o --refazer" caso_k2_sem
+
+# (k3) --refazer com a reserva VIVA: o servidor renova, o par novo vai para o mesmo arquivo (o refresh
+# token antigo deixou de valer) e nada é refeito: o claude nem roda.
+C_K3="$(novo_caso k3 team)"
+RC_K3=0
+API="$API_VIVO"
+preparar "$C_K3" falso-login-team trabalho --refazer > "$RAIZ/k3.txt" 2>&1 || RC_K3=$?
+API="$API_PRINCIPAL"
+caso_k3_viva() {
+  [ "$RC_K3" -eq 1 ] && contem "$(cat "$RAIZ/k3.txt")" "está viva" && [ ! -f "$C_K3/claude-args.txt" ] \
+    && [ "$(ler "$C_K3/dados/contas/reserva-team.json" claudeAiOauth.refreshToken)" = falso-renovado-refresh-1 ] \
+    && [ "$(ler "$C_K3/dados/contas/reserva-team.json" claudeAiOauth.accessToken)" = falso-renovado-acesso-1 ]
+}
+afirma "preparar --refazer com a reserva viva grava a renovada e não refaz" caso_k3_viva
+
+# (k4) --refazer sem saber se morreu (o servidor responde 500): nada muda, o claude nem roda.
+C_K4="$(novo_caso k4 team)"
+SHA_K4="$(sha "$C_K4/dados/contas/reserva-team.json")"
+RC_K4=0
+API="$API_500"
+preparar "$C_K4" falso-login-team trabalho --refazer > "$RAIZ/k4.txt" 2>&1 || RC_K4=$?
+API="$API_PRINCIPAL"
+caso_k4_incerta() {
+  [ "$RC_K4" -eq 1 ] && contem "$(cat "$RAIZ/k4.txt")" "não consegui confirmar que a reserva de trabalho morreu" \
+    && [ ! -f "$C_K4/claude-args.txt" ] && [ "$(sha "$C_K4/dados/contas/reserva-team.json")" = "$SHA_K4" ]
+}
+afirma "preparar --refazer sem confirmar a morte da reserva não troca nada" caso_k4_incerta
+
+# (k5) reserva-team corrompida, com um trecho que parece token: sem --refazer sai 1 só com o NOME do
+# arquivo; com --refazer ela é refeita. O trecho não aparece em nenhuma saída.
+C_K5="$(novo_caso k5 "")"
+printf '%s' 'falso-trecho-secreto-0123456789' > "$C_K5/dados/contas/reserva-team.json"
+RC_K5=0; RC_K5R=0
+preparar "$C_K5" falso-login-team trabalho > "$RAIZ/k5.txt" 2>&1 || RC_K5=$?
+preparar "$C_K5" falso-login-team trabalho --refazer > "$RAIZ/k5r.txt" 2>&1 || RC_K5R=$?
+caso_k5_corrompida() {
+  [ "$RC_K5" -eq 1 ] && contem "$(cat "$RAIZ/k5.txt")" "JSON inválido em reserva-team.json" \
+    && [ "$RC_K5R" -eq 0 ] && contem "$(cat "$RAIZ/k5r.txt")" "reserva de trabalho refeita" \
+    && [ "$(ler "$C_K5/dados/contas/reserva-team.json" claudeAiOauth.accessToken)" = falso-login-team ] \
+    && ! grep -qF -e "falso-trec" -e "secreto" "$RAIZ/k5.txt" "$RAIZ/k5r.txt"
+}
+afirma "preparar com a reserva corrompida: erro só com o nome do arquivo e --refazer a refaz" caso_k5_corrompida
+
+# (k6) --refazer sem reserva nenhuma: igual ao preparar (grava, sem dizer "refeita").
+C_K6="$(novo_caso k6 "")"
+RC_K6=0
+preparar "$C_K6" falso-login-team --refazer trabalho > "$RAIZ/k6.txt" 2>&1 || RC_K6=$?
+caso_k6_sem_reserva() {
+  [ "$RC_K6" -eq 0 ] && contem "$(cat "$RAIZ/k6.txt")" "reserva de trabalho gravada" \
+    && [ "$(ler "$C_K6/dados/contas/reserva-team.json" claudeAiOauth.accessToken)" = falso-login-team ]
+}
+afirma "preparar --refazer sem reserva grava como o preparar comum" caso_k6_sem_reserva
+
 caso_e2() {
   local rc=0
-  grep -qF "falso-" "$RAIZ/g.txt" "$RAIZ/h.txt" "$RAIZ/i.txt" "$RAIZ/j.txt" "$RAIZ/j2.txt" || rc=$?
+  grep -qF "falso-" "$RAIZ/g.txt" "$RAIZ/h.txt" "$RAIZ/i.txt" "$RAIZ/j.txt" "$RAIZ/j2.txt" \
+    "$RAIZ/k.txt" "$RAIZ/k2.txt" "$RAIZ/k3.txt" "$RAIZ/k4.txt" "$RAIZ/k5.txt" "$RAIZ/k5r.txt" "$RAIZ/k6.txt" || rc=$?
   [ "$rc" -eq 1 ]
 }
 afirma "(e) a credencial falsa não aparece na saída das recusas" caso_e2

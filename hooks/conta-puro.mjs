@@ -45,8 +45,33 @@ export function frase(ev) {
   }
   if (e.tipo === 'voltar' && e.manual) return 'Conta: a pasta ' + e.pasta + ' voltou para a conta ' + e.para + ' (troca manual).';
   if (e.tipo === 'voltar') return 'Conta: a pasta ' + e.pasta + ' voltou para a conta ' + e.para + '.';
-  if (e.tipo === 'falhou') return 'Conta: a troca da pasta ' + e.pasta + ' foi desfeita (' + e.motivo + ').';
+  if (e.tipo === 'falhou') {
+    // Motivo cru do mover (e.motivo já passou por motivoLegivel).
+    const r = { motivo: ev.motivo };
+    if (r.motivo === 'desfazer_falhou') return fraseMetade(ev);
+    return 'Conta: a troca da pasta ' + e.pasta + ' foi desfeita (' + e.motivo + ').';
+  }
+  if (e.tipo === 'renovacao_falhou') {
+    return 'Conta: não consegui renovar um login guardado (' + e.motivo + '). Se o servidor recusar de novo, a reserva morreu: refaça com "preparar <conta> --refazer".';
+  }
+  if (e.tipo === 'credencial_duplicada') {
+    return 'Conta: o mesmo login está em dois arquivos (' + e.motivo + '); a troca automática não move nem renova nada até você separar.';
+  }
+  if (e.tipo === 'identidade_divergente') {
+    return 'Conta: ' + e.motivo + '; nada foi gravado.';
+  }
   return '';
+}
+
+// Troca que parou no meio e não conseguiu se desfazer: arquivos de credencial ficaram divergentes.
+// Só nomes de arquivo (o evento já os traz sem caminho; o que sobrar de caminho é cortado aqui).
+function fraseMetade(ev) {
+  const nomes = Array.isArray(ev.pendentes)
+    ? ev.pendentes.map((p) => String(p).split(/[\\/]/).pop()).filter((n) => n !== '')
+    : [];
+  const quais = nomes.length ? ' Arquivos não restaurados: ' + nomes.join(', ') + '.' : '';
+  return 'Conta: a troca da pasta ' + ev.pasta + ' ficou pela metade (o desfazer também falhou).' + quais
+    + ' Confira esses arquivos antes de trocar de novo.';
 }
 
 // Localizador do node, UM so para o relogio (mod.tsx) e o aviso de conta (conta.ts): os dois leem

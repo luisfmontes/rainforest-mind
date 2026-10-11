@@ -81,13 +81,14 @@ function iniciarServidor(raiz) {
   });
 }
 
-function conta(caso, api, args) {
+function conta(caso, api, args, extraEnv = {}) {
   const r = spawnSync(process.execPath, [CONTA, ...args], {
     cwd: SRC,
     encoding: 'utf8',
     timeout: 60000,
     env: {
       ...process.env,
+      ...extraEnv,
       RFM_TEST: '1',
       RFM_CONTA_PASTA_TRABALHO: caso.trabalho,
       RFM_CONTA_PASTA_PESSOAL: caso.pessoal,
@@ -180,6 +181,62 @@ async function main() {
     afirma('eventos com em anterior ou igual a desde não geram aviso',
       novos(todas, maior).length === 0 && novos(todas, 0).length === todas.length,
       'novos(todas, maior)=' + novos(todas, maior).length + ' novos(todas, 0)=' + novos(todas, 0).length);
+
+    // 6. Troca que falha e não consegue se desfazer. O evento é REAL: um preload faz o rename para
+    // .claude.json falhar (a quarta gravação do mover) e o segundo rename para .credentials.json
+    // também (o desfazer da segunda gravação). O aviso tem de dizer que a troca ficou pela metade
+    // e nomear o arquivo que não voltou, sem caminho; não pode dizer que a troca foi desfeita.
+    const raiz2 = path.join(raiz, 'metade');
+    fs.mkdirSync(raiz2, { recursive: true });
+    const caso2 = semear(raiz2);
+    const preload = path.join(raiz2, 'falha-gravacao.cjs');
+    fs.writeFileSync(preload, [
+      "const fs = require('fs');",
+      "const path = require('path');",
+      'const original = fs.renameSync;',
+      'let credenciais = 0;',
+      'fs.renameSync = function renameSync(de, para) {',
+      '  const alvo = path.basename(String(para));',
+      "  const erro = () => Object.assign(new Error('EPERM simulado'), { code: 'EPERM' });",
+      "  if (alvo === '.claude.json') throw erro();",
+      "  if (alvo === '.credentials.json' && ++credenciais === 2) throw erro();",
+      '  return original.apply(this, arguments);',
+      '};',
+      '',
+    ].join('\n'));
+    const rm = conta(caso2, api, ['vigiar'], { NODE_OPTIONS: '--require=' + preload.replace(/\\/g, '/') });
+    const em = linhasEventos(caso2).map((l) => JSON.parse(l));
+    const evM = em.find((x) => x.tipo === 'falhou');
+    const fm = evM ? frase(evM) : '';
+    console.log('frase metade: ' + fm);
+    afirma('troca que falha e não se desfaz sai 1 e grava o evento falhou com desfazer_falhou e os pendentes',
+      rm.rc === 1 && !!evM && evM.motivo === 'desfazer_falhou'
+        && Array.isArray(evM.pendentes) && evM.pendentes.join(',') === '.credentials.json',
+      'rc=' + rm.rc + ' evento=' + JSON.stringify(evM) + ' saida=' + rm.out);
+    afirma('desfazer_falhou avisa troca pela metade com os arquivos',
+      /ficou pela metade/.test(fm) && fm.includes('.credentials.json'), 'frase: ' + fm);
+    afirma('desfazer_falhou: o aviso não diz que a troca foi desfeita, nem traz caminho de pasta',
+      !/foi desfeita/.test(fm) && !/[\\/]/.test(fm), 'frase: ' + fm);
+    afirma('desfazer_falhou: a saída do vigiar nomeia o arquivo pendente',
+      rm.out.includes('arquivos pendentes: .credentials.json'), 'saida: ' + rm.out);
+
+    // 7. Os eventos de diagnóstico do vigia viram aviso (antes a frase era vazia e a falha era invisível).
+    const fr = frase({ em: 1, tipo: 'renovacao_falhou', motivo: 'reserva-team: token HTTP 400', manual: false });
+    afirma('renovacao_falhou vira aviso com o login e o caminho para refazer',
+      /^Conta: .*reserva-trabalho: token HTTP 400/.test(fr) && /--refazer/.test(fr), 'frase: ' + fr);
+    const fd = frase({ em: 1, tipo: 'credencial_duplicada', motivo: 'login ab12cd34ef56 em pasta-trabalho e reserva-team', manual: false });
+    afirma('credencial_duplicada vira aviso com os dois arquivos',
+      /dois arquivos/.test(fd) && fd.includes('pasta-trabalho e reserva-trabalho'), 'frase: ' + fd);
+    const fi = frase({ em: 1, tipo: 'identidade_divergente', pasta: 'trabalho', motivo: 'a pasta trabalho está em casa (conta trabalho) mas o login dela é de outra conta', manual: false });
+    afirma('identidade_divergente vira aviso com o motivo',
+      /^Conta: a pasta trabalho está em casa/.test(fi), 'frase: ' + fi);
+    afirma('falhou comum segue dizendo que a troca foi desfeita',
+      frase({ em: 1, tipo: 'falhou', pasta: 'trabalho', motivo: 'saida_ocupada' }) === 'Conta: a troca da pasta trabalho foi desfeita (saida_ocupada).');
+    afirma('desfazer_falhou sem pendentes (evento antigo) ainda avisa pela metade, sem lista',
+      /ficou pela metade/.test(frase({ em: 1, tipo: 'falhou', pasta: 'trabalho', motivo: 'desfazer_falhou' }))
+        && !/não restaurados/.test(frase({ em: 1, tipo: 'falhou', pasta: 'trabalho', motivo: 'desfazer_falhou' })));
+    afirma('pendentes com caminho no evento saem só como nome de arquivo',
+      !/[\\/]/.test(frase({ em: 1, tipo: 'falhou', pasta: 'trabalho', motivo: 'desfazer_falhou', pendentes: ['C:\\x\\y\\.credentials.json', '/a/b/reserva-pessoal.json'] })));
   } finally {
     if (servidor) servidor.filho.kill();
     fs.rmSync(raiz, { recursive: true, force: true });

@@ -125,6 +125,8 @@ function lerJson(arq, padrao) {
     return JSON.parse(fs.readFileSync(arq, 'utf8'));
   } catch (e) {
     if (e.code === 'ENOENT' && padrao !== undefined) return padrao;
+    // Só o nome do arquivo: a mensagem do JSON.parse traz um trecho do conteúdo (talvez um token).
+    if (e instanceof SyntaxError) throw new Error(`JSON inválido em ${path.basename(arq)}`);
     throw e;
   }
 }
@@ -269,6 +271,10 @@ function registrarEvento(c, ev) {
     motivo: ev.motivo,
     manual: ev.manual,
     voltaEm: ev.voltaEm,
+    // Só no falhou de uma troca que ficou pela metade: nomes de arquivo (sem caminho) que o
+    // desfazer não restaurou, e a causa da troca desfeita. Nunca credencial.
+    pendentes: ev.pendentes,
+    causa: ev.causa,
   };
   fs.appendFileSync(c.eventos, JSON.stringify(linha) + '\n', 'utf8');
 }
@@ -393,7 +399,7 @@ async function renovarOciosos(c, _estado) {
       const novo = await API.renovar(login);
       gravarCred(arq, JSON.stringify({ ...obj, claudeAiOauth: novo }, null, 2) + '\n');
     } catch (e) {
-      registrarAviso(c, { tipo: 'renovacao_falhou', motivo: `${nome.replace(/\.json$/, '')}: ${e.message}`, manual: false });
+      registrarAviso(c, { tipo: 'renovacao_falhou', motivo: `${nome.replace(/\.json$/, '')}: ${msgSegura(e)}`, manual: false });
     }
   }
 }
@@ -434,6 +440,32 @@ async function registrarCasas(c, estado, sobTrava) {
     mudou = true;
   }
   return mudou;
+}
+
+// Última falha de renovação de cada login guardado, enquanto ele ainda precisa renovar (vence em
+// menos de 1 h): login que já foi renovado depois da falha, ou que sumiu, não aparece. Lê só os
+// eventos (que não levam credencial) e o expiresAt do arquivo.
+function falhasDeRenovacao(c) {
+  const ultima = new Map();
+  for (const { ev } of lerEventos(c)) {
+    if (ev.tipo !== 'renovacao_falhou' || typeof ev.motivo !== 'string') continue;
+    const m = /^([\w-]+): (.*)$/.exec(ev.motivo);
+    if (m) ultima.set(m[1], { em: ev.em, erro: m[2] });
+  }
+  const linhas = [];
+  for (const [nome, f] of ultima) {
+    let login;
+    try {
+      login = (lerJson(path.join(c.contas, `${nome}.json`), null) || {}).claudeAiOauth;
+    } catch {
+      continue;
+    }
+    if (!login || !(Number(login.expiresAt) - Date.now() < RENOVAR_ANTES_MS)) continue;
+    const conta = /^reserva-(\w+)$/.exec(nome);
+    const refazer = conta && NOME[conta[1]] ? `; se o servidor recusa, refaça: preparar ${NOME[conta[1]]} --refazer` : '';
+    linhas.push(`aviso: a renovação de ${nome} falhou em ${new Date(f.em).toISOString()} (${f.erro})${refazer}`);
+  }
+  return linhas;
 }
 
 // Todo login guardado em arquivo: as duas pastas, as duas reservas e os dois estacionados.
@@ -479,6 +511,23 @@ function slotEmUso(c, conta) {
   return PASTAS.some((P) => estado.pastas[P].conta === conta && estado.pastas[P].conta !== estado.pastas[P].casa);
 }
 
+// Reserva de <conta> como o preparar a vê: { obj, ilegivel }. Arquivo que não é JSON conta como
+// existente e ilegível (é o caso que --refazer existe para consertar), em vez de derrubar o comando.
+function reservaExistente(c, conta) {
+  try {
+    return { obj: reservaPronta(c, conta), ilegivel: false };
+  } catch (e) {
+    if (!/^JSON inválido em /.test(e.message)) throw e;
+    return { obj: null, ilegivel: true };
+  }
+}
+
+// Identidade da reserva existente (prefixo do refresh token, ou 'ilegivel'); null = não há reserva.
+function marcaDaReserva(r) {
+  if (r.obj) return prefixoDoLogin(r.obj) || 'sem-refresh';
+  return r.ilegivel ? 'ilegivel' : null;
+}
+
 // Pasta trocada guarda no .claude.json o oauthAccount da conta que entrou (o mover o reescreve):
 // preparar com ela fora de casa pediria o login da conta errada e gravaria a reserva errada.
 const MSG_PASTA_FORA = (alvo) => `a pasta ${alvo} está fora de casa: volte a pasta antes de preparar`;
@@ -513,9 +562,11 @@ function emRecuo(c, P) {
 async function aplicarTroca(c, estado, { P, para, tipo, manual, travouPor, motivo, voltaEm }) {
   const de = estado.pastas[P].conta;
   // Toda troca ou volta que não acontece deixa o evento falhou (não só uma linha de stdout).
-  const falhou = (motivoFalha) => {
-    registrarEvento(c, { tipo: 'falhou', pasta: P, de, para, motivo: motivoFalha, manual: false, voltaEm: null });
-    return { ok: false, motivo: motivoFalha };
+  // `pendentes` (só no desfazer_falhou): arquivos que o desfazer não restaurou, sem o caminho.
+  const falhou = (motivoFalha, pendentes, causa) => {
+    const extra = pendentes ? { pendentes: pendentes.map((p) => path.basename(p)), causa } : {};
+    registrarEvento(c, { tipo: 'falhou', pasta: P, de, para, motivo: motivoFalha, manual: false, voltaEm: null, ...extra });
+    return { ok: false, motivo: motivoFalha, ...extra };
   };
   const dono = (estado.contas[para] || {}).oauthAccount;
   if (!dono) return falhou(`conta ${NOME[para]} sem registro: rode status com ela em casa`);
@@ -524,14 +575,14 @@ async function aplicarTroca(c, estado, { P, para, tipo, manual, travouPor, motiv
   const { entra, sai } = arqsDaTroca(c, P, de, para);
   if (!fs.existsSync(sai)) gravarAtomico(sai, {});
   const r = mover({ pasta, reservaEntra: entra, reservaSai: sai, dono });
-  if (!r.ok) return falhou(r.motivo);
+  if (!r.ok) return falhou(r.motivo, r.pendentes);
 
   const esperado = estado.contas[para].email;
   let confirmado;
   try {
     confirmado = (await API.dono(credDaPasta(c, P).claudeAiOauth.accessToken)).email;
   } catch (e) {
-    confirmado = `erro na conferência: ${e.message}`;
+    confirmado = `erro na conferência: ${msgSegura(e)}`;
   }
   if (confirmado !== esperado) {
     // Desfaz exatamente o que foi feito: o login que saiu volta, o que entrou é esvaziado.
@@ -541,12 +592,15 @@ async function aplicarTroca(c, estado, { P, para, tipo, manual, travouPor, motiv
       reservaSai: entra,
       dono: claudeAntes.oauthAccount,
     });
+    const causa = `servidor confirmou ${confirmado}, esperado ${esperado}`;
+    // O desfazer também falhou: a troca ficou pela metade e o aviso precisa dos arquivos pendentes.
+    if (volta.motivo === 'desfazer_falhou') return falhou('desfazer_falhou', volta.pendentes, causa);
     registrarEvento(c, {
       tipo: 'falhou',
       pasta: P,
       de,
       para,
-      motivo: `servidor confirmou ${confirmado}, esperado ${esperado}; desfeito=${volta.ok}`,
+      motivo: `${causa}; desfeito=${volta.ok}`,
       manual: false,
       voltaEm: null,
     });
@@ -557,6 +611,13 @@ async function aplicarTroca(c, estado, { P, para, tipo, manual, travouPor, motiv
   gravarEstado(c, estado);
   registrarEvento(c, { tipo, pasta: P, de, para, motivo, manual, voltaEm });
   return { ok: true };
+}
+
+// Motivo da falha para a saída; troca pela metade diz quais arquivos ficaram sem restaurar.
+function descreverFalha(r) {
+  return r.pendentes && r.pendentes.length
+    ? `${r.motivo} (arquivos pendentes: ${r.pendentes.join(', ')})`
+    : r.motivo;
 }
 
 function pct(limite) {
@@ -596,7 +657,7 @@ async function statusLido(c, sobTrava) {
     try {
       d = await API.dono(cred.claudeAiOauth.accessToken);
     } catch (e) {
-      linhas.push(`pasta ${P}: conta em uso desconhecida (${e.message})`);
+      linhas.push(`pasta ${P}: conta em uso desconhecida (${msgSegura(e)})`);
       continue;
     }
     const conta = contaDoEmail(estado, d.email);
@@ -619,6 +680,7 @@ async function statusLido(c, sobTrava) {
   linhas.push(`reservas: trabalho ${res('team')} · pessoal ${res('pessoal')}`);
   const est = (P) => (estacionadoPronto(c, P) ? 'presente' : 'ausente');
   linhas.push(`estacionados: trabalho ${est('trabalho')} · pessoal ${est('pessoal')}`);
+  linhas.push(...falhasDeRenovacao(c));
   linhas.push(`troca automática: ${estado.automatico ? 'ligada' : 'desligada'}`);
   const config = lerConfig(c);
   linhas.push(`limites: trocar em ${config.trocarEm}% · destino abaixo de ${config.destinoMax5h}% (5 h) e ${config.destinoMaxSemana}% (semana)`);
@@ -667,7 +729,7 @@ async function trocar(c, args) {
       motivo: 'manual',
       voltaEm: null,
     });
-    if (!r.ok) return sair(1, `troca não feita: ${r.motivo}`);
+    if (!r.ok) return sair(1, `troca não feita: ${descreverFalha(r)}`);
     return sair(0, `pasta ${P}: ${NOME[de]} -> ${NOME[para]} (manual)`);
   } finally {
     soltarTrava(lock);
@@ -737,7 +799,7 @@ async function vigiar(c) {
       }
       if (r.ok) console.log(`${a.tipo} ${a.pasta}: ${de} -> ${a.conta}`);
       else {
-        console.log(`${a.tipo} ${a.pasta} não feita: ${r.motivo}`);
+        console.log(`${a.tipo} ${a.pasta} não feita: ${descreverFalha(r)}`);
         codigo = 1;
       }
     }
@@ -753,9 +815,15 @@ async function vigiar(c) {
 // nunca o .claude.json da pasta: o mover o reescreve com a conta que entrou (D10). O servidor diz
 // de quem é o login que o navegador autorizou, e só então a reserva é gravada. Login de conta
 // errada não grava nada.
+//
+// --refazer troca uma reserva que já existe quando ela está morta (o servidor recusa renovar o
+// login dela, ou o arquivo nem é JSON): reserva morta não se refazia pelo CLI. Para saber, tenta
+// renová-la; se renova, ela está viva: o par novo vai para o mesmo arquivo (o refresh token antigo
+// já não vale) e nada é refeito.
 async function preparar(c, args) {
-  const alvo = args[0];
-  if (!Object.hasOwn(CONTA_CLI, alvo)) return sair(2, 'uso: preparar <pessoal|trabalho>');
+  const alvo = args.find((a) => !a.startsWith('--'));
+  const refazer = args.includes('--refazer');
+  if (!Object.hasOwn(CONTA_CLI, alvo)) return sair(2, 'uso: preparar <pessoal|trabalho> [--refazer]');
   const conta = CONTA_CLI[alvo];
 
   // As recusas que dependem do estado rodam sob a trava, para o vigia não trocar pasta no meio.
@@ -763,12 +831,33 @@ async function preparar(c, args) {
   fs.mkdirSync(c.contas, { recursive: true });
   if (!pegarTrava(c.lock)) return sair(1, 'outra rodada em curso: tente de novo em instantes');
   let esperado;
+  let antes = null;
   try {
     const estado = lerEstado(c);
     if (await registrarCasas(c, estado, true)) gravarEstado(c, estado);
     if (pastaForaDeCasa(c, alvo)) return sair(1, MSG_PASTA_FORA(alvo));
     if (slotEmUso(c, conta)) return sair(1, MSG_SLOT_EM_USO(alvo));
-    if (reservaPronta(c, conta)) return sair(1, `reserva de ${alvo} já existe: não sobrescrevo`);
+    const velha = reservaExistente(c, conta);
+    antes = marcaDaReserva(velha);
+    if (antes && !refazer) {
+      return sair(1, velha.ilegivel
+        ? `reserva de ${alvo} ilegível (JSON inválido em ${path.basename(reservaArq(c, conta))}): use --refazer para refazê-la`
+        : `reserva de ${alvo} já existe: não sobrescrevo (se ela morreu, use --refazer)`);
+    }
+    if (velha.obj) {
+      let novo = null;
+      let incerto = null;
+      try {
+        novo = await API.renovar(velha.obj.claudeAiOauth);
+      } catch (e) {
+        if (!/^token HTTP (400|401|403)$/.test(e.message)) incerto = msgSegura(e);
+      }
+      if (novo) {
+        gravarCred(reservaArq(c, conta), JSON.stringify({ ...velha.obj, claudeAiOauth: novo }, null, 2) + '\n');
+        return sair(1, `a reserva de ${alvo} está viva (renovei): nada a refazer`);
+      }
+      if (incerto) return sair(1, `não consegui confirmar que a reserva de ${alvo} morreu (${incerto}): tente de novo`);
+    }
     esperado = (estado.contas[conta] || {}).email;
     if (!esperado) return sair(1, `conta ${alvo} sem registro: rode status com a pasta ${alvo} em casa`);
   } finally {
@@ -801,10 +890,12 @@ async function preparar(c, args) {
       return sair(1, 'outra rodada em curso: o login não foi gravado; rode preparar de novo');
     }
     try {
-      if (pastaForaDeCasa(c, alvo) || slotEmUso(c, conta) || reservaPronta(c, conta)) {
+      // A reserva tem de estar como estava antes do login (ausente, ou a mesma que --refazer vai trocar).
+      if (pastaForaDeCasa(c, alvo) || slotEmUso(c, conta) || marcaDaReserva(reservaExistente(c, conta)) !== antes) {
         return sair(1, 'o estado mudou durante o login: nada gravado; rode preparar de novo');
       }
       gravarCred(reservaArq(c, conta), JSON.stringify({ claudeAiOauth: cred.claudeAiOauth }, null, 2) + '\n');
+      const verbo = antes ? 'refeita' : 'gravada';
 
       const faltam = [['trabalho', 'team'], ['pessoal', 'pessoal']]
         .filter(([, k]) => !reservaPronta(c, k))
@@ -813,9 +904,9 @@ async function preparar(c, args) {
         const estado = lerEstado(c);
         estado.automatico = true;
         gravarEstado(c, estado);
-        return sair(0, `reserva de ${alvo} gravada · troca automática ligada (as duas reservas existem)`);
+        return sair(0, `reserva de ${alvo} ${verbo} · troca automática ligada (as duas reservas existem)`);
       }
-      return sair(0, `reserva de ${alvo} gravada · falta a reserva de ${faltam.join(' e ')}`);
+      return sair(0, `reserva de ${alvo} ${verbo} · falta a reserva de ${faltam.join(' e ')}`);
     } finally {
       soltarTrava(c.lock);
     }
@@ -908,6 +999,6 @@ async function main(argv) {
 }
 
 main(process.argv.slice(2)).catch((e) => {
-  process.stderr.write(`erro: ${e.message}\n`);
+  process.stderr.write(`erro: ${msgSegura(e)}\n`);
   process.exitCode = 1;
 });

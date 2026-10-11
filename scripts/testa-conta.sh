@@ -387,6 +387,14 @@ caso_k2() {
     && contem "$(cat "$RAIZ/k2.txt")" "esperar trabalho"
 }
 afirma "(k2) renovação 500 não derruba a rodada: grava renovacao_falhou e espera" caso_k2
+# A falha de renovação não pode ficar invisível: o status mostra a última, por login guardado, com o
+# caminho para refazer a reserva, e o evento leva o login e o erro (sem credencial).
+caso_k2_visivel() {
+  contem "$(cat "$RAIZ/k2-status.txt")" "aviso: a renovação de reserva-team falhou em " \
+    && contem "$(cat "$RAIZ/k2-status.txt")" "(token HTTP 500); se o servidor recusa, refaça: preparar trabalho --refazer" \
+    && grep -F '"tipo":"renovacao_falhou"' "$EV_K2" | grep -qF '"motivo":"reserva-team: token HTTP 500"'
+}
+afirma "status mostra a última falha de renovação por login e como refazer" caso_k2_visivel
 
 # (n) leitura de uso velha (429 devolve a última, de 3 h atrás, a 99%) não decide troca: a conta
 # fica sem dado e a pasta fica onde está.
@@ -639,6 +647,79 @@ caso_v3() {
 }
 afirma "sem reserva e com o token da pasta vencido, a conta fica sem dado e nada troca" caso_v3
 
+# (x) troca que falha e NÃO consegue se desfazer. Um preload faz o rename para .claude.json falhar
+# (a quarta gravação do mover) e o segundo rename para .credentials.json também (o desfazer da
+# segunda gravação): sobra o arquivo da pasta sem restaurar. O evento falhou tem de levar o motivo
+# desfazer_falhou e o NOME do arquivo pendente (nunca o caminho), e a saída tem de nomeá-lo. Antes o
+# aplicarTroca jogava os pendentes fora e ninguém sabia qual arquivo limpar.
+cat > "$RAIZ/falha-gravacao.cjs" <<'JS'
+const fs = require('fs');
+const path = require('path');
+const original = fs.renameSync;
+let credenciais = 0;
+fs.renameSync = function renameSync(de, para) {
+  const alvo = path.basename(String(para));
+  const erro = () => Object.assign(new Error('EPERM simulado'), { code: 'EPERM' });
+  if (alvo === '.claude.json') throw erro();
+  if (alvo === '.credentials.json' && ++credenciais === 2) throw erro();
+  return original.apply(this, arguments);
+};
+JS
+C_X="$(novo_caso x sim)"
+EV_X="$C_X/dados/contas/eventos.jsonl"
+RC_X=0
+NODE_OPTIONS="--require=$(win "$RAIZ/falha-gravacao.cjs")" cli "$C_X" vigiar > "$RAIZ/x.txt" 2>&1 || RC_X=$?
+caso_x() {
+  [ "$RC_X" -eq 1 ] \
+    && grep -F '"tipo":"falhou"' "$EV_X" | grep -qF '"motivo":"desfazer_falhou"' \
+    && grep -F '"tipo":"falhou"' "$EV_X" | grep -qF '"pendentes":[".credentials.json"]' \
+    && contem "$(cat "$RAIZ/x.txt")" "não feita: desfazer_falhou (arquivos pendentes: .credentials.json)" \
+    && ! grep -qE '[\\/][^"]*credentials' "$EV_X"
+}
+afirma "desfazer_falhou leva os arquivos pendentes (só o nome) no evento e na saída" caso_x
+
+# (y) arquivo de credencial corrompido (texto que parece token, sem ser JSON): a mensagem do
+# JSON.parse traz um trecho do texto, e ele não pode sair em stdout, stderr nem evento. Cada comando
+# tem de nomear só o arquivo.
+C_Y="$(novo_caso y sim)"
+printf '%s' 'falso-trecho-secreto-0123456789' > "$C_Y/dados/contas/reserva-team.json"
+RC_Y1=0; RC_Y2=0; RC_Y3=0
+cli "$C_Y" status > "$RAIZ/y1.txt" 2>&1 || RC_Y1=$?
+cli "$C_Y" vigiar > "$RAIZ/y2.txt" 2>&1 || RC_Y2=$?
+cli "$C_Y" trocar trabalho --pasta pessoal > "$RAIZ/y3.txt" 2>&1 || RC_Y3=$?
+# renovarOciosos lê tudo o que parece reserva-*.json: um arquivo que o resto não lê (reserva-extra)
+# corrompido leva a mensagem do JSON.parse para o evento renovacao_falhou.
+C_Y4="$(novo_caso y4 sim)"
+printf '%s' 'falso-trecho-secreto-0123456789' > "$C_Y4/dados/contas/reserva-extra.json"
+RC_Y4=0
+cli "$C_Y4" vigiar > "$RAIZ/y4.txt" 2>&1 || RC_Y4=$?
+# o mover (que lê o estacionado direto, sem passar pelo lerJson) levanta o SyntaxError cru: o
+# trecho só deixa de sair porque o erro final passa pelo msgSegura.
+C_Y6="$(novo_caso y6 nao)"
+printf '%s' 'falso-trecho-secreto-0123456789' > "$C_Y6/dados/contas/estacionado-trabalho.json"
+RC_Y6=0
+cli "$C_Y6" trocar pessoal --pasta trabalho > "$RAIZ/y6.txt" 2>&1 || RC_Y6=$?
+# a credencial da própria pasta corrompida
+C_Y5="$(novo_caso y5 sim)"
+printf '%s' 'falso-trecho-secreto-0123456789' > "$C_Y5/trabalho/.claude/.credentials.json"
+RC_Y5=0
+cli "$C_Y5" status > "$RAIZ/y5.txt" 2>&1 || RC_Y5=$?
+caso_y() {
+  local lixo=0
+  cat "$RAIZ"/y[1-6].txt "$C_Y"/dados/contas/eventos.jsonl "$C_Y4"/dados/contas/eventos.jsonl > "$RAIZ/y-tudo.txt" 2>/dev/null || true
+  [ -s "$RAIZ/y-tudo.txt" ] || return 1
+  grep -qF -e "falso-trec" -e "secreto" "$RAIZ/y-tudo.txt" || lixo=$?
+  [ "$lixo" -eq 1 ] \
+    && [ "$RC_Y1" -eq 1 ] && contem "$(cat "$RAIZ/y1.txt")" "erro: JSON inválido em reserva-team.json" \
+    && [ "$RC_Y2" -eq 1 ] && contem "$(cat "$RAIZ/y2.txt")" "erro: JSON inválido em reserva-team.json" \
+    && [ "$RC_Y3" -eq 1 ] && contem "$(cat "$RAIZ/y3.txt")" "erro: JSON inválido em reserva-team.json" \
+    && [ "$RC_Y4" -eq 0 ] && grep -F '"tipo":"renovacao_falhou"' "$C_Y4/dados/contas/eventos.jsonl" | grep -qF '"motivo":"reserva-extra: JSON inválido em reserva-extra.json"' \
+    && [ "$RC_Y5" -eq 1 ] && contem "$(cat "$RAIZ/y5.txt")" "erro: JSON inválido em .credentials.json" \
+    && [ "$RC_Y6" -eq 1 ] && contem "$(cat "$RAIZ/y6.txt")" "erro: JSON inválido" && [ ! -e "$C_Y6/dados/contas/eventos.jsonl" ]
+}
+afirma "trecho de token de arquivo corrompido não aparece em nenhuma saída nem evento" caso_y
+afirma "arquivo corrompido: a trava é solta e nada é movido" test ! -e "$C_Y/dados/contas/vigia.lock" -a ! -e "$C_Y/dados/contas/eventos.jsonl"
+
 # (g) nenhuma credencial (valor falso ou não) aparece na saída nem no log
 caso_g() {
   local rc=0
@@ -647,7 +728,8 @@ caso_g() {
     "$RAIZ/k.txt" "$RAIZ/k2.txt" "$RAIZ/k2-status.txt" "$RAIZ/n.txt" "$EV_K" "$EV_K2" \
     "$RAIZ/o.txt" "$RAIZ/p.txt" "$RAIZ/p-status.txt" "$RAIZ/q.txt" "$EV_O" "$EV_P" "$EV_Q" \
     "$RAIZ/m.txt" "$RAIZ/r1.txt" "$RAIZ/r2.txt" "$RAIZ/s.txt" "$RAIZ/t.txt" "$RAIZ"/u[1-4].txt "$EV_R" \
-    "$RAIZ/v.txt" "$RAIZ/vs.txt" "$RAIZ/v2.txt" "$RAIZ/v3.txt" "$C_V/dados/contas/eventos.jsonl" || rc=$?
+    "$RAIZ/v.txt" "$RAIZ/vs.txt" "$RAIZ/v2.txt" "$RAIZ/v3.txt" "$C_V/dados/contas/eventos.jsonl" \
+    "$RAIZ/x.txt" "$EV_X" || rc=$?
   [ "$rc" -eq 1 ]
 }
 afirma "(g) credencial nunca aparece na saída nem no log" caso_g
