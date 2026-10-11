@@ -138,6 +138,31 @@ function cenario(nome) {
   afirma('reserva que entra igual ao login da pasta é recusada e nada muda: arquivos intactos', depois.every((h, i) => h === hs[i]));
 }
 
+// (d) erro de gravação no meio desfaz as anteriores: a 2ª chamada de renameSync
+// (gravação do .credentials.json) lança; sai já gravou e tem de voltar ao original.
+{
+  const { pasta, arqs } = cenario('d');
+  const hs = [arqs.cred, arqs.claude, arqs.entra, arqs.sai].map(shaBytes);
+  console.log(`   sha256 antes: ${hs.join(' ')}`);
+
+  const renomear = fs.renameSync;
+  let chamadas = 0;
+  fs.renameSync = function (...args) {
+    if (++chamadas === 2) throw Object.assign(new Error('EPERM simulado'), { code: 'EPERM' });
+    return renomear.apply(fs, args);
+  };
+  let r;
+  try {
+    r = mover({ pasta, reservaEntra: arqs.entra, reservaSai: arqs.sai, dono: DONO });
+  } finally {
+    fs.renameSync = renomear;
+  }
+  const depois = [arqs.cred, arqs.claude, arqs.entra, arqs.sai].map(shaBytes);
+  console.log(`   sha256 depois: ${depois.join(' ')}`);
+
+  afirma('erro de gravação no meio desfaz as anteriores', r.ok === false && r.motivo === 'gravacao' && depois.every((h, i) => h === hs[i]));
+}
+
 console.log(`ok: ${ok}   falhou: ${falhas}`);
 process.exit(falhas ? 1 : 0);
 JS

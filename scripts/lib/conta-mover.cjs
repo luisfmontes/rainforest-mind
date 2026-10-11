@@ -120,10 +120,17 @@ function mover({ pasta, reservaEntra, reservaSai, dono }) {
     for (const e of escritas.slice().reverse()) gravarAtomico(e.arq, e.original);
   };
 
+  // Erro de gravação (ex.: EPERM no Windows) no meio do laço: as anteriores voltam.
+  let gravou = true;
   for (const k of ['sai', 'cred', 'entra', 'claude']) {
-    gravarAtomico(arqs[k], textos[k]);
-    escritas.push({ arq: arqs[k], original: lido[k] });
-    if (fs.readFileSync(arqs[k], 'utf8') !== textos[k]) {
+    try {
+      gravarAtomico(arqs[k], textos[k]);
+      escritas.push({ arq: arqs[k], original: lido[k] });
+      gravou = fs.readFileSync(arqs[k], 'utf8') === textos[k];
+    } catch {
+      gravou = false;
+    }
+    if (!gravou) {
       desfazer();
       return { ok: false, motivo: 'gravacao' };
     }
