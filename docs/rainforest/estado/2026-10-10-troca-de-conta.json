@@ -22,9 +22,9 @@
     "em": "2026-10-10"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-11",
-    "tarefas_ok": 11,
+    "tarefas_ok": 15,
     "tarefas": 15,
     "carimbos": [
       {
@@ -84,14 +84,7 @@
         "ts": "2026-10-11T01:35:36.859Z"
       }
     ],
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "rodada 2: tarefas 11 a 14",
-        "desde": "2026-10-11T09:00",
-        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
-      }
-    ],
+    "em_voo": [],
     "em": "2026-10-11",
     "mutacao": [
       {
@@ -143,6 +136,31 @@
         "tarefa": 10,
         "resultado": "vermelho",
         "fixture": "caso \"transferir claude recusa e aponta o /conta\""
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "caso \"desfazer que falha não lança e devolve desfazer_falhou\""
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "caso \"(k) volta automática com reserva e estacionado vencidos\""
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "caso \"preparar recusa o slot esvaziado pela troca\""
+      },
+      {
+        "tarefa": 14,
+        "resultado": "vermelho",
+        "fixture": "caso \"(m) com os dois limites passados, a volta espera o reset mais tardio\""
+      },
+      {
+        "tarefa": 15,
+        "resultado": "n/a",
+        "motivo": "texto e dado de fixture, sem comportamento a inverter"
       }
     ],
     "destinos": [
@@ -152,12 +170,8 @@
         "motivo": "não é código: vira passo do fechar desta sessão (rodar agendar do clone instalado depois do merge)"
       }
     ],
-    "comando": "node scripts/conferir-mutacao.cjs --arquivo scripts/transferir.cjs ... --bateria \"bash scripts/testa-transferir.sh\"",
-    "saida": "ok: bateria VERMELHA com o comportamento invertido (exit 1). | testa-transferir: 5 passaram, 0 falharam | testa-transferir-para-codex: 13 ok, 0 falha(s) | testa-conta: 15 ok",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-11"
-    }
+    "comando": "node scripts/conferir-mutacao.cjs (tarefas 11 a 14, re-rodadas na integração)",
+    "saida": "T11..T14 exit=0: ok: bateria VERMELHA com o comportamento invertido; baterias da troca 18/26/23/7/11/21/13 ok, 0 falha"
   },
   "revisar": {
     "status": "reprovado",
