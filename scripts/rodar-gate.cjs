@@ -26,7 +26,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { rodaBateria } = require(path.join(__dirname, 'conferir-mutacao.cjs'));
+const { rodaBateria, gravarFlake } = require(path.join(__dirname, 'conferir-mutacao.cjs'));
 
 const TIMEOUT_PADRAO = 300000; // 5 min, o mesmo da catraca
 
@@ -41,21 +41,6 @@ function ler(nome) {
   if (i === -1) return null;
   if (i + 1 >= process.argv.length) erroUso(`--${nome} veio sem valor`);
   return process.argv[i + 1];
-}
-
-// Mesmo padrão do `gravarFlake` da catraca (que não é exportado): sem --slug não
-// faz nada, e falhar ao gravar é AVISO — o exit não depende do estado do fluxo.
-function gravarFlake(slug, tarefa, gate, raiz) {
-  if (slug === null) return;
-  const r = spawnSync(process.execPath, [
-    path.join(__dirname, 'estado.cjs'), 'registrar-flake',
-    '--slug', slug, '--tarefa', tarefa, '--gate', gate,
-  ], { cwd: raiz, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-  if (r.stdout) process.stdout.write(r.stdout);
-  if (r.error || r.status !== 0) {
-    const motivo = r.error ? r.error.message : `exit ${r.status}: ${String(r.stderr || '').trim()}`;
-    console.error(`aviso: nao consegui registrar o flake no estado de ${slug} — ${motivo}`);
-  }
 }
 
 function cauda(res, n) {

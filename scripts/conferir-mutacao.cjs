@@ -923,4 +923,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { rodaBateria, suspeitaDeCorte, mediuEFalhou, PISO_ABSOLUTO_MS, RAZAO_DE_CORTE, extrairPlacar, bateriaColapsou };
+module.exports = { rodaBateria, suspeitaDeCorte, mediuEFalhou, PISO_ABSOLUTO_MS, RAZAO_DE_CORTE, extrairPlacar, bateriaColapsou, gravarFlake };
