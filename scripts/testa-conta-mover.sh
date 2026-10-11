@@ -203,6 +203,29 @@ function cenario(nome) {
   fs.rmSync(tmpSai, { force: true });
 }
 
+// (g) a gravação do .credentials.json falha (2ª rename) e uma gravação do próprio desfazer também
+// (3ª rename, a restauração de sai): nada lança, devolve desfazer_falhou com o que não voltou.
+{
+  const { pasta, arqs } = cenario('g');
+  const renomear = fs.renameSync;
+  let chamadas = 0;
+  fs.renameSync = function (...args) {
+    if (++chamadas === 2 || chamadas === 3) throw Object.assign(new Error('EPERM simulado'), { code: 'EPERM' });
+    return renomear.apply(fs, args);
+  };
+  let r, lancou = false;
+  try {
+    r = mover({ pasta, reservaEntra: arqs.entra, reservaSai: arqs.sai, dono: DONO });
+  } catch {
+    lancou = true;
+  } finally {
+    fs.renameSync = renomear;
+  }
+  afirma('desfazer que falha não lança e devolve desfazer_falhou',
+    !lancou && r && r.ok === false && r.motivo === 'desfazer_falhou'
+    && Array.isArray(r.pendentes) && r.pendentes.length === 1 && path.resolve(r.pendentes[0]) === path.resolve(arqs.sai));
+}
+
 console.log(`ok: ${ok}   falhou: ${falhas}`);
 process.exit(falhas ? 1 : 0);
 JS

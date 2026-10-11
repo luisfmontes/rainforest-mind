@@ -15,6 +15,7 @@
  *   { ok: false, motivo: 'gravacao' }     uma gravação não releu igual; tudo desfeito
  *   { ok: false, motivo: 'sem_credencial' } a reserva que entra não tem claudeAiOauth
  *   { ok: false, motivo: 'saida_ocupada' } a reserva que sai já tem claudeAiOauth; nada gravado
+ *   { ok: false, motivo: 'desfazer_falhou', pendentes } o desfazer também falhou; pendentes = arquivos não restaurados
  *
  * Refresh token é de uso único: o login nunca pode ficar em dois arquivos ao
  * mesmo tempo. Por isso MOVER, nunca copiar. Nunca imprime token.
@@ -119,8 +120,26 @@ function mover({ pasta, reservaEntra, reservaSai, dono }) {
     claude: JSON.stringify(novo.claude, null, 2) + fimDeLinha(lido.claude),
   };
   const escritas = [];
+  // Tenta restaurar TODAS as gravações; uma que falha não impede as outras. Devolve os arquivos
+  // que não voltaram (vazio = tudo desfeito).
   const desfazer = () => {
-    for (const e of escritas.slice().reverse()) gravarAtomico(e.arq, e.original);
+    const pendentes = [];
+    for (const e of escritas.slice().reverse()) {
+      try {
+        gravarAtomico(e.arq, e.original);
+      } catch {
+        pendentes.push(e.arq);
+      }
+    }
+    return pendentes;
+  };
+  // Depois da primeira gravação o mover nunca lança: desfaz e devolve o motivo, ou
+  // desfazer_falhou com os arquivos que ficaram pela metade.
+  const encerrar = (motivo) => {
+    const pendentes = desfazer();
+    const desfeito = pendentes.length === 0;
+    if (!desfeito) return { ok: false, motivo: 'desfazer_falhou', pendentes };
+    return { ok: false, motivo };
   };
 
   // Erro de gravação (ex.: EPERM no Windows) no meio do laço: as anteriores voltam.
@@ -133,10 +152,7 @@ function mover({ pasta, reservaEntra, reservaSai, dono }) {
     } catch {
       gravou = false;
     }
-    if (!gravou) {
-      desfazer();
-      return { ok: false, motivo: 'gravacao' };
-    }
+    if (!gravou) return encerrar('gravacao');
   }
 
   // Conferência final sobre o que ficou em disco.
@@ -147,9 +163,7 @@ function mover({ pasta, reservaEntra, reservaSai, dono }) {
       JSON.parse(fs.readFileSync(arqs.entra, 'utf8')),
     ]);
   } catch (e) {
-    if (e.message !== 'credencial em dois lugares') throw e;
-    desfazer();
-    return { ok: false, motivo: 'duplicada' };
+    return encerrar(e.message === 'credencial em dois lugares' ? 'duplicada' : 'gravacao');
   }
 
   return { ok: true, entrou: prefixo(obj.entra), saiu: prefixo(obj.cred) };
