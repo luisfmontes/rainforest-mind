@@ -272,9 +272,9 @@ function estaGitignorado(dir, arquivo) {
  * Marcador: `rainforest-gate: dados-de-exemplo` nas 5 primeiras linhas do
  * arquivo (hooks/lib/marcador-dados.cjs, Issue #293) — fora dessa janela não conta.
  *
- * LEITURA DO DISCO, não do conteúdo que chega: isto fecha dois furos:
- *   - Edit no arquivo com marcador passa, mesmo se new_string não o tem;
- *   - Write de arquivo novo com marcador embutido é barrado, porque não tem arquivo em disco.
+ * LEITURA DO DISCO, não do conteúdo que chega: isto fecha o furo de Edit no
+ * arquivo com marcador (passa, mesmo se new_string não o tem). Write não passa
+ * por esta função: o conteúdo dele é o arquivo inteiro (ver main).
  *
  * Arquivo inexistente, sem permissão ou erro de leitura → sem marcador → segue para
  * conferência. Errar para o lado de conferir, nunca de liberar.
@@ -799,7 +799,10 @@ function main() {
   if (estaGitignorado(dir, arquivo)) process.exit(0); // ignorado passa
 
   // Confere se tem marcador de dados-de-exemplo (para testes de bateria)
-  if (temMarcadorDados(arquivo)) process.exit(0); // marcador dispensa conferência
+  // Write traz o arquivo INTEIRO, então as 5 primeiras linhas do conteúdo são as do arquivo
+  // e o marcador ali vale. Edit/MultiEdit trazem só um fragmento (não é o topo do arquivo),
+  // então para eles só o disco conta.
+  if (temMarcadorDados(arquivo) || (nome === "Write" && temMarcadorNoConteudo(conteudo))) process.exit(0);
 
   // Roda a conferência de publicação
   let resultado = conferirConteudo(conteudo);

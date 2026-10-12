@@ -238,9 +238,10 @@ gate "Edit em arquivo COM marcador em disco, fragmento sem marcador -> passa" 0 
 # caso fica verde por engano e a troca tem de ser refeita.
 gate "Edit em arquivo vizinho SEM marcador, mesmo conteudo -> barrado" 2   "$(pay Edit "$(esc "$SRC")/scripts/conferir-entrega.cjs" 'jid="5500900000001@s.whatsapp.net"')"
 
-# Arquivo novo trazendo o marcador no proprio conteudo: nao existe em disco,
-# entao nao ha marcador — auto-isencao num unico write nao passa.
-gate "Write de arquivo novo com marcador embutido -> barrado" 2   "$(pay Write "$(esc "$R")/arquivo-com-marcador.sh" '# rainforest-gate: dados-de-exemplo
+# Arquivo novo: o Write traz o arquivo INTEIRO, entao o marcador nas 5 primeiras
+# linhas do content vale mesmo sem arquivo em disco (plano, tarefa 6).
+gate "Write de arquivo NOVO com marcador no topo do conteudo -> passa" 0   "$(pay Write "$(esc "$R")/arquivo-com-marcador.sh" 'cabecalho de teste
+# rainforest-gate: dados-de-exemplo
 jid="5500900000001@s.whatsapp.net"')"
 
 echo
@@ -251,6 +252,22 @@ echo "== CASO 11: marcador so conta nas 5 primeiras linhas (Issue #293) =="
 printf 'linha um\nlinha dois\nlinha tres\nlinha quatro\nlinha cinco\n# rainforest-gate: dados-de-exemplo\n' > "$R/marcador-tardio.sh"
 git -C "$R" add marcador-tardio.sh; git -C "$R" commit -qm "marcador tardio"
 gate "Edit em arquivo com marcador so na linha 6 -> barrado" 2   "$(pay Edit "$(esc "$R")/marcador-tardio.sh" 'jid="5500900000001@s.whatsapp.net"')"
+
+# Write traz o arquivo inteiro: marcador na linha 6 do content esta FORA da janela
+# de 5 linhas, mesmo com Write. O marcador na linha 2 passa (caso acima).
+gate "Write com marcador na linha 6 -> barrado" 2   "$(pay Write "$(esc "$R")/marcador-linha-6.sh" 'linha um
+linha dois
+linha tres
+linha quatro
+linha cinco
+# rainforest-gate: dados-de-exemplo
+jid="5500900000001@s.whatsapp.net"')"
+
+# Edit so le o DISCO. O new_string comeca com o marcador, mas o arquivo existente
+# NAO o tem em disco, e o fragmento nao e o topo do arquivo -> barrado.
+printf 'linha um\nlinha dois\n' > "$R/sem-marcador-disco.sh"
+gate "Edit com marcador no topo do new_string, arquivo sem marcador em disco -> barrado" 2   "$(pay Edit "$(esc "$R")/sem-marcador-disco.sh" '# rainforest-gate: dados-de-exemplo
+jid="5500900000001@s.whatsapp.net"')"
 
 # Entrada malformada nunca derruba a sessao: sai 0. E o comportamento certo, e
 # tambem o que escondeu os casos acima quando o payload vinha quebrado — por isso
