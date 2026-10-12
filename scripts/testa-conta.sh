@@ -983,5 +983,35 @@ caso_g() {
 }
 afirma "(g) credencial nunca aparece na saída nem no log" caso_g
 
+# (z) recusa (rodada 5, achado 1): com a pasta de trabalho sobrescrita e SEM RFM_CONTA_CLAUDE_JSON, a CLI sai
+# com erro antes de ler ou gravar qualquer .claude.json. O home é falso e tem um canário: nada pode mudar nele.
+C_Z="$(novo_caso z nao)"
+CAN_Z="$RAIZ/home-canario-z"
+mkdir -p "$CAN_Z"
+printf '%s\n' '{"canario":true,"oauthAccount":{"emailAddress":"canario@exemplo.invalido"}}' > "$CAN_Z/.claude.json"
+HASH_CAN_Z="$(sha256sum "$CAN_Z/.claude.json" | cut -d' ' -f1)"
+RC_Z=0
+HOME="$(win "$CAN_Z")" USERPROFILE="$(win "$CAN_Z")" RFM_TEST=1 \
+  RFM_CONTA_PASTA_TRABALHO="$(win "$C_Z/trabalho/.claude")" \
+  RFM_CONTA_PASTA_PESSOAL="$(win "$C_Z/pessoal/.claude-personal")" \
+  RFM_CONTA_DADOS="$(win "$C_Z/dados")" \
+  RFM_CONTA_API="$API" \
+  node scripts/conta.cjs trocar pessoal --pasta trabalho > "$RAIZ/z.txt" 2>&1 || RC_Z=$?
+caso_z() { [ "$RC_Z" -ne 0 ] && [ "$(sha256sum "$CAN_Z/.claude.json" | cut -d' ' -f1)" = "$HASH_CAN_Z" ]; }
+afirma "(z) sem RFM_CONTA_CLAUDE_JSON a CLI recusa (exit ≠ 0) e o .claude.json do home fica intacto" caso_z
+
+# (p2) modo duas pastas (rodada 5, achado 2): trocar trabalho --pasta pessoal grava o oauthAccount no .claude.json
+# de DENTRO da pasta pessoal, e o .claude.json de trabalho (fora da pasta) fica byte a byte igual.
+C_P2="$(novo_caso p2 nao)"
+HASH_TR_P2="$(sha256sum "$C_P2/trabalho/.claude.json" | cut -d' ' -f1)"
+RC_P2=0
+cli "$C_P2" trocar trabalho --pasta pessoal > "$RAIZ/p2.txt" 2>&1 || RC_P2=$?
+caso_p2() {
+  [ "$RC_P2" -eq 0 ] \
+    && [ "$(ler "$C_P2/pessoal/.claude-personal/.claude.json" oauthAccount.emailAddress)" = team@exemplo.invalid ] \
+    && [ "$(sha256sum "$C_P2/trabalho/.claude.json" | cut -d' ' -f1)" = "$HASH_TR_P2" ]
+}
+afirma "(p2) duas pastas: trocar trabalho --pasta pessoal grava o oauthAccount no .claude.json de dentro da pasta pessoal; o de trabalho fica igual" caso_p2
+
 echo "ok: $OK   falhou: $FALHOU"
 if [ "$FALHOU" -ne 0 ]; then exit 1; fi

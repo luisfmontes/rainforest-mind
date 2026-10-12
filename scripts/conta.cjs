@@ -1306,6 +1306,11 @@ function eventos(c, args) {
 
 async function main(argv) {
   const [cmd = 'status', ...resto] = argv;
+  // Bateria com a pasta de trabalho sobrescrita e sem RFM_CONTA_CLAUDE_JSON cairia no ~/.claude.json de quem roda:
+  // recusa antes de ler ou gravar qualquer .claude.json (rodada 5, achado 1).
+  if (process.env.RFM_TEST === '1' && process.env.RFM_CONTA_PASTA_TRABALHO && !process.env.RFM_CONTA_CLAUDE_JSON) {
+    return sair(2, 'recusa: bateria sem RFM_CONTA_CLAUDE_JSON (o .claude.json da pasta de trabalho cairia no home de quem roda)');
+  }
   const c = ctx();
   if (cmd === 'status') return status(c);
   if (cmd === 'trocar') return trocar(c, resto);

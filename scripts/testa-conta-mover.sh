@@ -226,6 +226,35 @@ function cenario(nome) {
     && Array.isArray(r.pendentes) && r.pendentes.length === 1 && path.resolve(r.pendentes[0]) === path.resolve(arqs.sai));
 }
 
+// (g) rodada 5, achado 5: uma chave alheia muda no .claude.json entre a conferência e a gravação dele (sessão viva).
+// A alteração entra no ponto da troca em que a reserva de saída acabou de ser gravada, antes da vez do .claude.json:
+// o oauthAccount tem de ser o do dono, e a chave alheia tem de sobreviver.
+{
+  const { pasta, arqs } = cenario('g');
+  const renomear = fs.renameSync;
+  let injetou = false;
+  fs.renameSync = function (de, para, ...resto) {
+    if (!injetou && path.resolve(String(para)) === path.resolve(arqs.sai)) {
+      injetou = true;
+      const atual = ler(arqs.claude);
+      atual.chaveAlheia = 'alterada-na-janela';
+      escrever(arqs.claude, atual);
+    }
+    return renomear.call(fs, de, para, ...resto);
+  };
+  let r;
+  try {
+    r = mover({ pasta, reservaEntra: arqs.entra, reservaSai: arqs.sai, dono: DONO });
+  } finally {
+    fs.renameSync = renomear;
+  }
+  const depois = ler(arqs.claude);
+  afirma('(g) a alteração de chave alheia entrou na janela, antes da gravação do .claude.json', injetou === true);
+  afirma('(g) a troca sai ok com a chave alheia alterada na janela', r.ok === true);
+  afirma('(g) a chave alheia alterada na janela sobrevive, e o oauthAccount é o do dono',
+    depois.chaveAlheia === 'alterada-na-janela' && JSON.stringify(depois.oauthAccount) === JSON.stringify(DONO));
+}
+
 console.log(`ok: ${ok}   falhou: ${falhas}`);
 process.exit(falhas ? 1 : 0);
 JS

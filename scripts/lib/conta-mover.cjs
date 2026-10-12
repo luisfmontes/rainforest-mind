@@ -55,6 +55,15 @@ function comChave(obj, valor) {
   return copia;
 }
 
+// Só o oauthAccount muda: aplica a troca sobre o texto que está em disco agora (rodada 5, achado 5). Regravar o
+// arquivo inteiro a partir de uma leitura antiga perderia o que outra escrita (uma sessão viva) fez na janela.
+function comOauth(texto, valor) {
+  const copia = { ...JSON.parse(texto) };
+  if (valor === undefined) delete copia.oauthAccount;
+  else copia.oauthAccount = valor;
+  return JSON.stringify(copia, null, 2) + fimDeLinha(texto);
+}
+
 function gravarAtomico(arq, texto) {
   const tmp = path.join(path.dirname(arq), `.${path.basename(arq)}.${process.pid}.${Date.now()}.tmp`);
   try {
@@ -95,8 +104,9 @@ function mover({ pasta, reservaEntra, reservaSai, dono, claudeJson }) {
     cred: comChave(obj.cred, obj.entra[CHAVE]),
     sai: comChave(obj.sai, obj.cred[CHAVE]),
     entra: comChave(obj.entra, undefined),
-    claude: { ...obj.claude, oauthAccount: dono },
   };
+  // O .claude.json não entra aqui: é relido e regravado só no oauthAccount, na hora da gravação dele.
+  const oauthAntes = obj.claude.oauthAccount;
 
   // Recusa antes de qualquer gravação: o estado planejado não pode repetir login.
   try {
@@ -118,16 +128,16 @@ function mover({ pasta, reservaEntra, reservaSai, dono, claudeJson }) {
     sai: JSON.stringify(novo.sai, null, 2) + fimDeLinha(lido.sai),
     cred: JSON.stringify(novo.cred, null, 2) + fimDeLinha(lido.cred),
     entra: JSON.stringify(novo.entra, null, 2) + fimDeLinha(lido.entra),
-    claude: JSON.stringify(novo.claude, null, 2) + fimDeLinha(lido.claude),
   };
   const escritas = [];
   // Tenta restaurar TODAS as gravações; uma que falha não impede as outras. Devolve os arquivos
-  // que não voltaram (vazio = tudo desfeito).
+  // que não voltaram (vazio = tudo desfeito). O .claude.json volta só no oauthAccount, sobre o que está em disco.
   const desfazer = () => {
     const pendentes = [];
     for (const e of escritas.slice().reverse()) {
       try {
-        gravarAtomico(e.arq, e.original);
+        if (e.claude) gravarAtomico(e.arq, comOauth(fs.readFileSync(e.arq, 'utf8'), oauthAntes));
+        else gravarAtomico(e.arq, e.original);
       } catch {
         pendentes.push(e.arq);
       }
@@ -147,9 +157,17 @@ function mover({ pasta, reservaEntra, reservaSai, dono, claudeJson }) {
   let gravou = true;
   for (const k of ['sai', 'cred', 'entra', 'claude']) {
     try {
-      gravarAtomico(arqs[k], textos[k]);
-      escritas.push({ arq: arqs[k], original: lido[k] });
-      gravou = fs.readFileSync(arqs[k], 'utf8') === textos[k];
+      if (k === 'claude') {
+        // Relê imediatamente antes desta gravação: a troca do oauthAccount vai sobre o que está em disco agora.
+        gravarAtomico(arqs.claude, comOauth(fs.readFileSync(arqs.claude, 'utf8'), dono));
+        escritas.push({ arq: arqs.claude, claude: true });
+        const depois = JSON.parse(fs.readFileSync(arqs.claude, 'utf8'));
+        gravou = JSON.stringify(depois.oauthAccount) === JSON.stringify(dono);
+      } else {
+        gravarAtomico(arqs[k], textos[k]);
+        escritas.push({ arq: arqs[k], original: lido[k] });
+        gravou = fs.readFileSync(arqs[k], 'utf8') === textos[k];
+      }
     } catch {
       gravou = false;
     }

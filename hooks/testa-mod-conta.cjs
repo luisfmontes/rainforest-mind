@@ -45,6 +45,10 @@ const escrever = (arq, obj) => {
   fs.writeFileSync(arq, JSON.stringify(obj, null, 2) + '\n');
 };
 
+// .claude.json da pasta de trabalho: fica fora da pasta, como em ~/.claude.json. A bateria aponta para ele
+// por RFM_CONTA_CLAUDE_JSON; sem a variável, o conta.cjs recusa (nunca cai no home de quem roda).
+const claudeJsonDoCaso = (caso) => path.join(path.dirname(caso.trabalho), '.claude.json');
+
 // Arranjo: duas pastas no formato real, duas reservas e o estado inicial (troca automática ligada).
 function semear(raiz) {
   const caso = {
@@ -53,7 +57,8 @@ function semear(raiz) {
     dados: path.join(raiz, 'dados'),
   };
   escrever(path.join(caso.trabalho, '.credentials.json'), cred('falso-team-pasta', 'falso-refresh-team-pasta'));
-  escrever(path.join(caso.trabalho, '.claude.json'), { numStartups: 3, oauthAccount: OAUTH.team, projects: {} });
+  // Formato real: o .claude.json da pasta padrão mora no home, fora da pasta (~/.claude.json).
+  escrever(claudeJsonDoCaso(caso), { numStartups: 3, oauthAccount: OAUTH.team, projects: {} });
   escrever(path.join(caso.pessoal, '.credentials.json'), cred('falso-pessoal-pasta', 'falso-refresh-pessoal-pasta'));
   escrever(path.join(caso.pessoal, '.claude.json'), { numStartups: 3, oauthAccount: OAUTH.pessoal, projects: {} });
   escrever(path.join(caso.dados, 'contas', 'reserva-team.json'), { claudeAiOauth: cred('falso-team-reserva', 'falso-refresh-team-reserva').claudeAiOauth });
@@ -92,6 +97,7 @@ function conta(caso, api, args, extraEnv = {}) {
       RFM_TEST: '1',
       RFM_CONTA_PASTA_TRABALHO: caso.trabalho,
       RFM_CONTA_PASTA_PESSOAL: caso.pessoal,
+      RFM_CONTA_CLAUDE_JSON: claudeJsonDoCaso(caso),
       RFM_CONTA_DADOS: caso.dados,
       RFM_CONTA_API: api,
     },

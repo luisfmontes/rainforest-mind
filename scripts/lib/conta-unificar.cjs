@@ -320,17 +320,17 @@ function aplicar(plano, ops) {
     const st = ops.desagendar();
     if (st) throw new Error(`schtasks não removeu o vigia (status ${st})`);
   });
-  // O progresso é gravado mesmo se a cópia falha no meio: a retomada sabe o que já foi copiado com o mesmo nome.
+  // O progresso é gravado ANTES de cada cópia (rodada 5, achado 4): um processo morto no meio do laço, sem finally,
+  // deixa no progresso o que já começou a copiar com o mesmo nome. Se o alvo não chegou ao disco, a retomada copia de novo.
   const copiadosNesta = [];
   etapa('copiar arquivos', () => {
-    try {
-      for (const c of plano.copias) {
-        if (c.acao === 'igual') continue;
-        copiarArq(c.origem, c.destino);
-        if (c.acao === 'copiar') copiadosNesta.push(c.rel);
+    for (const c of plano.copias) {
+      if (c.acao === 'igual') continue;
+      if (c.acao === 'copiar') {
+        copiadosNesta.push(c.rel);
+        gravarProgresso(plano, copiadosNesta);
       }
-    } finally {
-      gravarProgresso(plano, copiadosNesta);
+      copiarArq(c.origem, c.destino);
     }
   });
   etapa('índices de memória', () => {

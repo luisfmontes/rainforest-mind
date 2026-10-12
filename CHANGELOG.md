@@ -14,7 +14,8 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 - **Uma pasta só, quando não existe `~/.claude-personal`.** Sem a pasta pessoal, a troca de conta passa a acontecer
   dentro de `~/.claude`: a conta da casa é a team, e a pasta vai para a pessoal quando a team passa de 97% (5 h ou
-  semana) e a pessoal está abaixo de 60% (5 h) e de 85% (semana). Com as duas pastas, nada muda.
+  semana) e a pessoal está abaixo de 60% (5 h) e de 85% (semana). A pasta padrão (`~/.claude`) passa a gravar a conta
+  em uso no `~/.claude.json`, que é o arquivo que o Claude Code lê, também no modo duas pastas.
 - **`conta.cjs unificar`: a pasta pessoal vira parte da pasta única.** Sem `--aplicar` só relata. Com ele, copia
   transcritos, memória e histórico sem sobrescrever (conflito vira `<nome>.pessoal.<ext>`), une os MCP e os projetos
   do `.claude.json`, instala os plugins que só a pessoal tinha, recusa com janela do Claude aberta, reagenda o vigia e

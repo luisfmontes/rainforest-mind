@@ -491,5 +491,34 @@ afirma "(rodada 4, achado 1, variante) a.md idêntico nas duas pastas: --aplicar
 afirma "(rodada 4, achado 1, variante) a.md idêntico desde o início: nenhuma linha pessoal de a.md entra no índice" test "$(grep -cF '[A2]' "$MEM_AI")" -eq 0
 afirma "(rodada 4, achado 1, variante) a linha de b.md (copiado agora) continua entrando" test "$(grep -cF '(b.md)' "$MEM_AI")" -eq 1
 
+# Rodada 5, achado 4: o processo morre no meio da cópia. Um preload de teste (--require) faz process.exit logo depois
+# de copiar b.md (memória copiada com o mesmo nome), sem finally, como um kill. A retomada tem de deixar o MEMORY.md
+# igual ao de uma rodada única limpa: o que já foi copiado tem de estar no progresso antes da cópia seguinte.
+cat > "$RAIZ/morte5.cjs" <<'JS'
+// Morte de processo no meio da cópia (rodada 5, achado 4): sai logo depois de copiar b.md, sem finally.
+const fs = require('fs');
+const copiar = fs.copyFileSync;
+fs.copyFileSync = function (origem, destino, modo) {
+  const r = copiar.call(fs, origem, destino, modo);
+  if (/[\\/]memory[\\/]b\.md$/.test(String(destino))) process.exit(9);
+  return r;
+};
+JS
+C_M5="$(novo_caso morte5)"
+RC_M5=0
+export NODE_OPTIONS="--require $(win "$RAIZ/morte5.cjs")"
+unif "$C_M5" --aplicar > "$RAIZ/morte5-1.txt" 2>&1 || RC_M5=$?
+unset NODE_OPTIONS
+RC_M5R=0
+# A trava que o processo morto deixou sai pela regra de validade (caso u de testa-conta.sh); aqui ela é apagada
+# para a retomada não esperar o relógio. O resto da retomada não depende dela.
+rm -f "$C_M5/dados/contas/vigia.lock"
+unif "$C_M5" --aplicar > "$RAIZ/morte5-2.txt" 2>&1 || RC_M5R=$?
+MEM_M5="$C_M5/trabalho/.claude/projects/-proj-x/memory/MEMORY.md"
+afirma "(rodada 5, achado 4) a morte injetada no meio da cópia sai ≠ 0 (a injeção disparou)" test "$RC_M5" -ne 0
+afirma "(rodada 5, achado 4) retomada depois da morte: a 2ª rodada sai 0" test "$RC_M5R" -eq 0
+[ "$RC_M5R" -eq 0 ] || { echo "      saída da 2ª rodada:"; tail -n 3 "$RAIZ/morte5-2.txt"; }
+afirma "(rodada 5, achado 4) retomada depois da morte: MEMORY.md igual ao de uma rodada única limpa" mesmo_hash "$MEM_M5" "$(hash_de "$MEM_REF")"
+
 echo "ok: $OK   falhou: $FALHOU"
 if [ "$FALHOU" -ne 0 ]; then exit 1; fi
