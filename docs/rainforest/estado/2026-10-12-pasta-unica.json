@@ -22,13 +22,13 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-12",
-    "tarefas_ok": 3,
+    "tarefas_ok": 4,
     "tarefas": 6,
     "em_voo": [
       {
-        "agente": "executor",
-        "tarefa": "T3 profile claude unico",
-        "desde": "2026-10-12T11:36:35-03:00",
+        "agente": "documentador",
+        "tarefa": "T4 README e versao 1.63.0",
+        "desde": "2026-10-12T12:06:28-03:00",
         "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
       }
     ],
@@ -67,6 +67,13 @@
         "iteracao": 1,
         "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f",
         "ts": "2026-10-12T14:36:35.557Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "0ea423cc",
+        "iteracao": 1,
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f",
+        "ts": "2026-10-12T15:06:28.583Z"
       }
     ],
     "em": "2026-10-12"
