@@ -1,0 +1,159 @@
+Data: 2026-10-12
+Termos: claude-personal, CLAUDE_CONFIG_DIR, config dir, pasta unica, unificar
+
+$ gh issue list --state all --search "claude-personal" --limit 200 --json number,title,state
+[{"number":404,"state":"CLOSED","title":"/saude: avisar skill de usuário divergente entre os dois config dirs"},{"number":331,"state":"CLOSED","title":"Skill vigiar: acompanhar conversa de WhatsApp sem gastar token esperando (integração opcional)"},{"number":221,"state":"CLOSED","title":"saude.cjs quebra com 'path argument undefined' quando ha duas config dirs e a versao do repo esta a frente da instalada"},{"number":495,"state":"CLOSED","title":"gate-repo-alheio receita uma saída que ele mesmo barra, e dá à janela principal o texto de subagente"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"},{"number":21,"state":"CLOSED","title":"Criterio 'a bateria sai 0' e satisfazivel por fora, e tres instrumentos de conferencia falharam junto"}]
+
+
+$ gh issue list --state all --search "CLAUDE_CONFIG_DIR" --limit 200 --json number,title,state
+[{"number":221,"state":"CLOSED","title":"saude.cjs quebra com 'path argument undefined' quando ha duas config dirs e a versao do repo esta a frente da instalada"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"}]
+
+
+$ gh issue list --state all --search "config dir" --limit 200 --json number,title,state
+[{"number":404,"state":"CLOSED","title":"/saude: avisar skill de usuário divergente entre os dois config dirs"},{"number":446,"state":"CLOSED","title":"Bateria grava user.email t@t no .git/config do repositorio real"},{"number":411,"state":"CLOSED","title":"setup --desligar gate-publicacao --escopo projeto não vale dentro de worktree do mesmo repo"},{"number":221,"state":"CLOSED","title":"saude.cjs quebra com 'path argument undefined' quando ha duas config dirs e a versao do repo esta a frente da instalada"},{"number":195,"state":"CLOSED","title":"Nada exige que o checkout principal fique na main, e os vigias agendados rodam contra ele"},{"number":153,"state":"CLOSED","title":"A main esta vermelha no CI: 4 baterias que so falham no runner"},{"number":268,"state":"CLOSED","title":"Mensagem do gate de publicacao nao oferece o toggle do setup, so as saidas de emergencia"},{"number":235,"state":"CLOSED","title":"gate-publicacao-destino so ve Write/Edit: valor escrito por script chega ao commit, e so a CI pega — do lado irreversivel"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"},{"number":253,"state":"CLOSED","title":"Gate de publicacao bloqueia repo PRIVADO citando \"repo publico\" — nao checa visibilidade"}]
+
+
+$ gh issue list --state all --search "pasta unica" --limit 200 --json number,title,state
+[{"number":452,"state":"OPEN","title":"Projeto canonico: residuos aceitos na revisao do #435"},{"number":379,"state":"CLOSED","title":"verificar não fecha em monorepo: a catraca roda toda bateria com --raiz na raiz do repo"},{"number":176,"state":"CLOSED","title":"O conferir-versao.cjs mede a propria pasta de instalacao, entao no plugin instalado ele nunca roda"},{"number":153,"state":"CLOSED","title":"A main esta vermelha no CI: 4 baterias que so falham no runner"},{"number":214,"state":"CLOSED","title":"Sessao isolada em worktree nao consegue atualizar o checkout principal — nem o dono pelo prefixo !"},{"number":77,"state":"CLOSED","title":"A ponte gera o arquivo derivado e ninguem confere que ele nao derivou depois — ha um caso real em producao perdendo a regra de encoding"},{"number":73,"state":"CLOSED","title":"As 16 skills sao arquivo unico e plano: consultar o detalhe de UMA regra custa ~16,8k tokens"},{"number":193,"state":"CLOSED","title":"Duas sessoes bumparam a MESMA versao e o testa-versao nao pode pegar: falta checagem externa (tag e cache)"},{"number":192,"state":"CLOSED","title":"Proibir background no briefing falhou duas vezes, com a proibicao escrita duas vezes no mesmo texto — falta checar a FORMA do retorno"},{"number":3,"state":"CLOSED","title":"conferir esta vermelho desde 11/08 e nao tem como ficar verde: 35 abertas sem gancho, e o reparar recusa sem texto a mao"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"},{"number":4,"state":"CLOSED","title":"Worktree de agente nasce na base velha em pelo menos 2 de 8 despachos, e conferir-entrega.cjs nao ve arquivo autoexcluido por gitignore"}]
+
+
+$ gh issue list --state all --search "unificar" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "claude-personal" --limit 200 --json number,title,state
+[{"number":415,"state":"MERGED","title":"/transferir claude: a sessão muda de conta com o contexto inteiro (1.42.0)"},{"number":501,"state":"MERGED","title":"Troca automatica de conta Claude pelo uso e /conta (1.62.0)"},{"number":229,"state":"MERGED","title":"fix(statusline): barra sumiu dos dois perfis — cwd faltando no segmento da escada"},{"number":49,"state":"MERGED","title":"A memoria volta a ler o que ela mesma escreve"},{"number":20,"state":"MERGED","title":"O verde mais saudavel do painel era falso: o /saude passa a medir o que executa"},{"number":34,"state":"MERGED","title":"Versao 0.72.0: o painel passa a ver as contas divergirem"}]
+
+
+$ gh pr list --state all --search "CLAUDE_CONFIG_DIR" --limit 200 --json number,title,state
+[{"number":432,"state":"MERGED","title":"Versao 1.48.0: enxerto do mattpocock/skills v1.3"},{"number":415,"state":"MERGED","title":"/transferir claude: a sessão muda de conta com o contexto inteiro (1.42.0)"},{"number":501,"state":"MERGED","title":"Troca automatica de conta Claude pelo uso e /conta (1.62.0)"},{"number":327,"state":"MERGED","title":"Contrato de veredito de uma linha no revisar (1.23.9)"},{"number":20,"state":"MERGED","title":"O verde mais saudavel do painel era falso: o /saude passa a medir o que executa"},{"number":34,"state":"MERGED","title":"Versao 0.72.0: o painel passa a ver as contas divergirem"},{"number":35,"state":"MERGED","title":"A bateria de saude parava de mutar o produto que ela mede"}]
+
+
+$ gh pr list --state all --search "config dir" --limit 200 --json number,title,state
+[{"number":463,"state":"MERGED","title":"Varredura limpa GIT_* e acusa bateria que muda user.* (#446)"},{"number":327,"state":"MERGED","title":"Contrato de veredito de uma linha no revisar (1.23.9)"},{"number":427,"state":"MERGED","title":"Versao 1.46.2: relogio do mod ignora janela fechada"},{"number":416,"state":"MERGED","title":"Zerar as 12 Issues da revisao bimestral (1.42.0)"},{"number":432,"state":"MERGED","title":"Versao 1.48.0: enxerto do mattpocock/skills v1.3"},{"number":222,"state":"MERGED","title":"Agentes em Claude ou Codex, por escolha do usuário (1.8.0)"},{"number":415,"state":"MERGED","title":"/transferir claude: a sessão muda de conta com o contexto inteiro (1.42.0)"},{"number":20,"state":"MERGED","title":"O verde mais saudavel do painel era falso: o /saude passa a medir o que executa"},{"number":501,"state":"MERGED","title":"Troca automatica de conta Claude pelo uso e /conta (1.62.0)"},{"number":34,"state":"MERGED","title":"Versao 0.72.0: o painel passa a ver as contas divergirem"},{"number":71,"state":"MERGED","title":"gitCommitSha ausente do registro vira aviso de indeterminacao, nao ok silencioso"},{"number":179,"state":"MERGED","title":"Relatorio: rodada cega de 2026-09-04 (com errata de entrada)"},{"number":228,"state":"MERGED","title":"Statusline com tempo até o reset; checkout principal fica na main (regra 11, closes #195) — 1.10.0"},{"number":297,"state":"MERGED","title":"zerar-issues-6: fronteira de repo na regra 6 e os restos da rodada 5"},{"number":49,"state":"MERGED","title":"A memoria volta a ler o que ela mesma escreve"},{"number":91,"state":"MERGED","title":"Livro: ChristopherKahler/base nao acopla — reprova em 2, 3 e 5, com peca forte"},{"number":29,"state":"MERGED","title":"A bateria de saude cobrava do produto a regra que ela mesma quebrava (#27)"},{"number":35,"state":"MERGED","title":"A bateria de saude parava de mutar o produto que ela mede"},{"number":128,"state":"MERGED","title":"A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo"}]
+
+
+$ gh pr list --state all --search "pasta unica" --limit 200 --json number,title,state
+[{"number":29,"state":"MERGED","title":"A bateria de saude cobrava do produto a regra que ela mesma quebrava (#27)"},{"number":123,"state":"MERGED","title":"Fecha #112: o vigias/ERROS.md passa a ter UMA raiz, e ela e o plugin"},{"number":255,"state":"MERGED","title":"A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241)"},{"number":267,"state":"MERGED","title":"portaria: deixa de admitir agente e passa a registrar (ver #264)"},{"number":69,"state":"MERGED","title":"Trava de encoding: conferir-encoding.cjs pega mojibake, BOM e CRLF em arquivo rastreado"},{"number":102,"state":"MERGED","title":"Fecha #77: catraca da ponte — e a ponte passa a gerar saida deterministica"},{"number":19,"state":"MERGED","title":"Bateria que so passa na maquina do dono nao e evidencia: as duas ultimas ficam hermeticas (#16)"},{"number":150,"state":"MERGED","title":"Vigias: dois mortos ha 20 dias, um backup que nunca rodou, e seis vazamentos num arquivo publico"},{"number":188,"state":"MERGED","title":"Lote 4: instrumento que mede o codigo, e nao a maquina de quem roda"}]
+
+
+$ gh pr list --state all --search "unificar" --limit 200 --json number,title,state
+[{"number":62,"state":"MERGED","title":"As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada"},{"number":204,"state":"MERGED","title":"Issue #187: o vazamento e do transporte, nao da bateria — matarDescendencia no rodarCli"},{"number":128,"state":"MERGED","title":"A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo"}]
+
+
+$ git ls-remote --heads origin | grep -F "claude-personal"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "CLAUDE_CONFIG_DIR"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "config dir"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "pasta unica"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "unificar"
+(vazio)
+
+$ git log --all --grep="claude-personal" --oneline
+99c5e5b7 Zerar as 12 Issues da revisao bimestral (1.43.0) (#416)
+dc439026 /transferir claude: a sessão muda de conta com o contexto inteiro (1.42.0) (#415)
+4aed1052 utilidade: bateria hermetica, sem banco/transcrito reais (Tarefa 13, Emenda 4)
+13b552c6 Titulo da sessao marca se o fluxo fechou ou onde parou (#274)
+e3a701c1 Adicionar conferir-duplicacao e avisos de allowlist/duplicata no saude
+c3d775c0 Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada (#44)
+3e615363 Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada (#44)
+7bac3c4a Versao 0.72.0: o painel passa a ver as contas divergirem (#34)
+5b89750b Versao 0.72.0: o painel passa a ver as contas divergirem (#34)
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+c25afc4e O verde mais saudavel do painel era falso: o /saude passa a medir o que executa (#20)
+5ab6da43 O verde mais saudavel do painel era falso: o /saude passa a medir o que executa (#20)
+5443bc0e A limpeza enxerga a branch que sobrevive ao worktree, e as config dirs param de divergir em silencio
+acc85203 A limpeza enxerga a branch que sobrevive ao worktree, e as config dirs param de divergir em silencio
+7614f473 A raiz dos dados vira cadeia de cinco niveis: um foco por projeto, sem configurar nada
+b2d7b271 A raiz dos dados vira cadeia de cinco niveis: um foco por projeto, sem configurar nada
+4e055f1c A orquestracao sai da CLAUDE.md duplicada e vira regra do plugin
+12ca0281 A orquestracao sai da CLAUDE.md duplicada e vira regra do plugin
+266a9a1d Valida as colhidas contra o artefato, em vez de acreditar no resultado
+45c6255e Valida as colhidas contra o artefato, em vez de acreditar no resultado
+8e0973bd Parametrizar caminhos e porta no codigo; corrige hook lendo settings.json da pasta antiga
+30729e4e Parametrizar caminhos e porta no codigo; corrige hook lendo settings.json da pasta antiga
+d0048071 Regra 8: raiz do cache vem do CLAUDE_CONFIG_DIR, nao de caminho fixo
+52c741bc Regra 8: raiz do cache vem do CLAUDE_CONFIG_DIR, nao de caminho fixo
+
+$ git log --all --grep="CLAUDE_CONFIG_DIR" --oneline
+de4220d4 Troca automatica de conta Claude pelo uso e /conta (1.62.0) (#501)
+54e3c00d Versao 1.60.0: recarga do plugin em todas as janelas (#492)
+dc439026 /transferir claude: a sessão muda de conta com o contexto inteiro (1.42.0) (#415)
+5410b560 A bateria de saude parava de mutar o produto que ela mede (#35)
+195ba759 A bateria de saude parava de mutar o produto que ela mede (#35)
+7bac3c4a Versao 0.72.0: o painel passa a ver as contas divergirem (#34)
+5b89750b Versao 0.72.0: o painel passa a ver as contas divergirem (#34)
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+c25afc4e O verde mais saudavel do painel era falso: o /saude passa a medir o que executa (#20)
+5ab6da43 O verde mais saudavel do painel era falso: o /saude passa a medir o que executa (#20)
+5e576099 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+d5261da4 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+e81703b2 README acompanha o dia, e a varredura que dizia "limpo" era cega
+1e1f876b README acompanha o dia, e a varredura que dizia "limpo" era cega
+2708b8f2 Os dados saem do repo para ~/.rainforest, e tres defeitos aparecem no caminho
+d7310af3 Os dados saem do repo para ~/.rainforest, e tres defeitos aparecem no caminho
+7614f473 A raiz dos dados vira cadeia de cinco niveis: um foco por projeto, sem configurar nada
+b2d7b271 A raiz dos dados vira cadeia de cinco niveis: um foco por projeto, sem configurar nada
+8e0973bd Parametrizar caminhos e porta no codigo; corrige hook lendo settings.json da pasta antiga
+30729e4e Parametrizar caminhos e porta no codigo; corrige hook lendo settings.json da pasta antiga
+45ff3cdd Revisao pos-mudanca: ponteiro morto na regra 2, licao de caminho sobe pra 14, regra 12 cobre relatorio analitico
+713ea3a1 Revisao pos-mudanca: ponteiro morto na regra 2, licao de caminho sobe pra 14, regra 12 cobre relatorio analitico
+d0048071 Regra 8: raiz do cache vem do CLAUDE_CONFIG_DIR, nao de caminho fixo
+52c741bc Regra 8: raiz do cache vem do CLAUDE_CONFIG_DIR, nao de caminho fixo
+
+$ git log --all --grep="config dir" --oneline
+ec1e962d Versao 1.46.2: relogio do mod ignora janela fechada
+99c5e5b7 Zerar as 12 Issues da revisao bimestral (1.43.0) (#416)
+e2fc28bc estado: recusa de veredito cita a config dir em uso
+f12c066e estado: transcrito so vale na config dir em uso (impasse da 3a revisao)
+bf01851a ﻿Tarefa 3: correção de Issue #221 — avaliarConfigDir devolve dir quando há installed_plugins.json
+81fdfc69 Relatorio: rodada cega de 2026-09-04, com errata de entrada
+20c88be7 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+d427f732 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+7bac3c4a Versao 0.72.0: o painel passa a ver as contas divergirem (#34)
+5b89750b Versao 0.72.0: o painel passa a ver as contas divergirem (#34)
+c4918934 A bateria de saude cobrava do produto a regra que ela mesma quebrava (#27) (#29)
+22de9e55 A bateria de saude cobrava do produto a regra que ela mesma quebrava (#27) (#29)
+c25afc4e O verde mais saudavel do painel era falso: o /saude passa a medir o que executa (#20)
+5ab6da43 O verde mais saudavel do painel era falso: o /saude passa a medir o que executa (#20)
+b302fd5b A ponte para Codex e Gemini: GERADA do SKILL.md, e declarando o que nao atravessa
+2ed9cec1 A ponte para Codex e Gemini: GERADA do SKILL.md, e declarando o que nao atravessa
+e81703b2 README acompanha o dia, e a varredura que dizia "limpo" era cega
+1e1f876b README acompanha o dia, e a varredura que dizia "limpo" era cega
+5443bc0e A limpeza enxerga a branch que sobrevive ao worktree, e as config dirs param de divergir em silencio
+acc85203 A limpeza enxerga a branch que sobrevive ao worktree, e as config dirs param de divergir em silencio
+2708b8f2 Os dados saem do repo para ~/.rainforest, e tres defeitos aparecem no caminho
+d7310af3 Os dados saem do repo para ~/.rainforest, e tres defeitos aparecem no caminho
+7bad9650 Corrige o que o ECC injeta na abertura: nao e o caminho, e nada
+83a1ace7 Corrige o que o ECC injeta na abertura: nao e o caminho, e nada
+4e055f1c A orquestracao sai da CLAUDE.md duplicada e vira regra do plugin
+12ca0281 A orquestracao sai da CLAUDE.md duplicada e vira regra do plugin
+266a9a1d Valida as colhidas contra o artefato, em vez de acreditar no resultado
+45c6255e Valida as colhidas contra o artefato, em vez de acreditar no resultado
+
+$ git log --all --grep="pasta unica" --oneline
+(vazio)
+
+$ git log --all --grep="unificar" --oneline
+99536b9d Falso negativo no gate: unificar máquina de estado de aspas entre segmentos() e tokens()
+c0508a73 As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada (#62)
+465f2544 As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada (#62)
+b2b22b14 ideias.py ganha 'editar', porque ideia muda antes de ser colhida
+4f9a803a ideias.py ganha 'editar', porque ideia muda antes de ser colhida
+b6e97315 A escrita segura do ideias.jsonl vira codigo: scripts/ideias.py
+2120dba6 A escrita segura do ideias.jsonl vira codigo: scripts/ideias.py
+
+$ cat <dados>/ideias.jsonl
+{"id":"busca-de-sessao-esqueceu-o-config-dir-pessoal","titulo":"Buscar sessao do usuario so em ~/.claude/projects da resposta errada: existe o config dir pessoal"}
+{"id":"unificar-a-resolucao-de-raiz-de-dados-da-statusline","titulo":"A statusline resolve a raiz de dados de dois jeitos no mesmo arquivo"}
+
+
