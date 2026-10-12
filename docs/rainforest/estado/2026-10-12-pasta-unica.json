@@ -22,13 +22,13 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-12",
-    "tarefas_ok": 2,
+    "tarefas_ok": 3,
     "tarefas": 6,
     "em_voo": [
       {
         "agente": "executor",
-        "tarefa": "T2 unificar",
-        "desde": "2026-10-12T11:07:38-03:00",
+        "tarefa": "T3 profile claude unico",
+        "desde": "2026-10-12T11:36:35-03:00",
         "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
       }
     ],
@@ -60,6 +60,13 @@
         "iteracao": 1,
         "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f",
         "ts": "2026-10-12T14:07:38.898Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "0ee70f9a",
+        "iteracao": 1,
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f",
+        "ts": "2026-10-12T14:36:35.557Z"
       }
     ],
     "em": "2026-10-12"
