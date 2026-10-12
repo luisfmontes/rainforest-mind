@@ -22,15 +22,9 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-12",
-    "tarefas_ok": 1,
+    "tarefas_ok": 2,
     "tarefas": 6,
     "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "T6 gate marcador no Write",
-        "desde": "2026-10-12T11:05:00-03:00",
-        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
-      },
       {
         "agente": "executor",
         "tarefa": "T2 unificar",
