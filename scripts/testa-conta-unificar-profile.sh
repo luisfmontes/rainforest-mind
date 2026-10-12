@@ -97,6 +97,8 @@ semear_home() { # $1 = caso
   mkdir -p "$c/trabalho/.claude/plugins/marketplaces/rainforest-mind/scripts"
   printf '// clone falso\n' > "$c/trabalho/.claude/plugins/marketplaces/rainforest-mind/scripts/conta.cjs"
   printf '{"enabledPlugins":{"security-guidance@claude-plugins-official":true}}\n' > "$c/pessoal/.claude-personal/settings.json"
+  # Pessoal com login: sem oauthAccount o unificar recusa (rodada 6, achado 1).
+  printf '{"oauthAccount":{"emailAddress":"pessoal@exemplo.invalid","accountUuid":"00000000-0000-0000-0000-000000000001"}}\n' > "$c/pessoal/.claude-personal/.claude.json"
   printf '{"automatico":false,"contas":{}}\n' > "$c/dados/contas/estado.json"
   printf '%s' "$c"
 }

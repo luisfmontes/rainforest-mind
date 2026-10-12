@@ -520,6 +520,34 @@ afirma "(rodada 5, achado 4) retomada depois da morte: a 2ª rodada sai 0" test 
 [ "$RC_M5R" -eq 0 ] || { echo "      saída da 2ª rodada:"; tail -n 3 "$RAIZ/morte5-2.txt"; }
 afirma "(rodada 5, achado 4) retomada depois da morte: MEMORY.md igual ao de uma rodada única limpa" mesmo_hash "$MEM_M5" "$(hash_de "$MEM_REF")"
 
+# Rodada 6, achado 3: o progresso virou append-only (uma linha por cópia). A morte agora vem na cópia SEGUINTE à de
+# b.md: o progresso tem de guardar b.md E as cópias posteriores. Se cada gravação substituísse o arquivo, só a
+# última sobraria, b.md voltaria como "já existia no destino" e a linha dele sumiria do índice.
+cat > "$RAIZ/morte6.cjs" <<'JS'
+// Morte de processo na cópia seguinte à de b.md (rodada 6, achado 3), sem finally.
+const fs = require('fs');
+const copiar = fs.copyFileSync;
+let depoisDeB = false;
+fs.copyFileSync = function (origem, destino, modo) {
+  if (depoisDeB) process.exit(9);
+  const r = copiar.call(fs, origem, destino, modo);
+  if (/[\\/]memory[\\/]b\.md$/.test(String(destino))) depoisDeB = true;
+  return r;
+};
+JS
+C_M6="$(novo_caso morte6)"
+RC_M6=0
+export NODE_OPTIONS="--require $(win "$RAIZ/morte6.cjs")"
+unif "$C_M6" --aplicar > "$RAIZ/morte6-1.txt" 2>&1 || RC_M6=$?
+unset NODE_OPTIONS
+rm -f "$C_M6/dados/contas/vigia.lock"
+RC_M6R=0
+unif "$C_M6" --aplicar > "$RAIZ/morte6-2.txt" 2>&1 || RC_M6R=$?
+MEM_M6="$C_M6/trabalho/.claude/projects/-proj-x/memory/MEMORY.md"
+afirma "(rodada 6, achado 3) a morte na cópia seguinte à de b.md sai ≠ 0 (a injeção disparou)" test "$RC_M6" -ne 0
+afirma "(rodada 6, achado 3) retomada: a 2ª rodada sai 0" test "$RC_M6R" -eq 0
+afirma "(rodada 6, achado 3) retomada: MEMORY.md igual ao de uma rodada única limpa (b.md continua no progresso)" mesmo_hash "$MEM_M6" "$(hash_de "$MEM_REF")"
+
 # Rodada 6, achado 1: estado.json sem contas.pessoal. --aplicar registra a conta pessoal (do oauthAccount da pasta
 # pessoal) ANTES de a pasta sair; depois, trocar pessoal não diz "sem registro". A API falsa só existe neste bloco
 # (trocar confere a identidade por ela); sem RFM_CONTA_API a bateria cairia na rede real.
