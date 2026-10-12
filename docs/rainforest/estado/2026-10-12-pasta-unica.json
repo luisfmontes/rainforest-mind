@@ -20,7 +20,7 @@
     "em": "2026-10-12"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-12",
     "tarefas_ok": 5,
     "tarefas": 6,
@@ -109,10 +109,47 @@
         "resultado": "vermelho",
         "fixture": "testa-gate-publicacao-destino.sh, caso Write de arquivo NOVO com marcador no topo do conteudo -> passa"
       }
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-12"
+    },
+    "reaberturas": 1,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "rodada 2: achados 1-8 do revisor",
+        "desde": "2026-10-12T12:26:32-03:00",
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
+      }
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "37997370b94d1577a9046ffa737020ef6eb48ab3",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a53b02aeb7049d8a2",
+        "veredito": "reprovado",
+        "em": "2026-10-12",
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/170b1915-c063-4fe8-912c-a4d1b50b044f/subagents/agent-a53b02aeb7049d8a2.jsonl"
+      }
+    ],
+    "em_voo": [
+      {
+        "agente": "revisor",
+        "tarefa": "rodada 1",
+        "desde": "2026-10-12T12:15:41-03:00",
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
+      }
+    ],
+    "em": "2026-10-12",
+    "achados": 8,
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
