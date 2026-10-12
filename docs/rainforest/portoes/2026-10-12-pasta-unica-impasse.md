@@ -37,3 +37,7 @@ Os 5 achados da 4ª revisão foram conferidos como consertados (inclusive o grav
 3. **[baixo]** progresso reescrito inteiro a cada cópia: O(n²) (medido 22 s contra 7 s com 4000 arquivos).
 4. **[baixo]** ramo do desfazer do `.claude.json` no `mover` sem teste que falhe.
 5. **[baixo]** guarda de `RFM_CONTA_CLAUDE_JSON` só olha a pasta de trabalho; nome de caso `(z)` reaproveitado na bateria.
+
+## Rodada 6 (liberada pelo Luís: "recomendado" = opção A)
+
+Consertar os 5 achados da 5ª revisão; a 6ª revisão fica restrita a conferir esses consertos e o que eles mudaram.
