@@ -29,7 +29,7 @@ mutacao:
   para: true
   bateria: `bash scripts/testa-conta-uma-pasta.sh`
   fixture: `testa-conta-uma-pasta.sh, caso "uma pasta: status lista só trabalho e vigiar troca para a reserva pessoal"`
-Forma prescrita: uma função `pastasAtivas()` devolve `['trabalho']` ou `['trabalho', 'pessoal']`, e a decisão contém a expressão literal `fs.existsSync(dirs.pessoal)` (a pasta pessoal conta só se existir; `.claude-personal.aposentada` não é ela). Todo uso de `PASTAS` listado nos fatos passa a usar `pastasAtivas()`. Modo uma pasta: `--pasta pessoal` sai 2 dizendo que a pasta não existe; `trocar` não exige "a outra pasta em casa"; `preparar` e `agendar` exigem só a reserva da conta que não é a casa de nenhuma pasta ativa mais as das casas que tenham outra pasta para onde ir (uma pasta → só `reserva-pessoal`); `/conta` mostra uma linha de pasta. Nenhum caso de teste afirma sobre o texto do fonte.
+Forma prescrita: uma função `pastasAtivas()` devolve `['trabalho']` ou `['trabalho', 'pessoal']`, e a decisão contém a expressão literal `fs.existsSync(dirs.pessoal)` (a pasta pessoal conta só se existir; `.claude-personal.aposentada` não é ela). Todo uso de `PASTAS` listado nos fatos passa a usar `pastasAtivas()`. Modo uma pasta: `--pasta pessoal` sai 2 dizendo que a pasta não existe; `trocar` não exige "a outra pasta em casa"; `preparar` e `agendar` exigem só a reserva da conta que não é a casa de nenhuma pasta ativa mais as das casas que tenham outra pasta para onde ir (uma pasta → só `reserva-pessoal`); `/conta` mostra uma linha de pasta; `preparar pessoal` em modo uma pasta registra a conta pessoal pelo `/api/oauth/profile` do login recém-feito quando ela ainda não está registrada (a pessoal não é casa de pasta nenhuma, então `registrarCasas` não a registra). Nenhum caso de teste afirma sobre o texto do fonte.
 pronto quando: com home falso contendo só `.claude` (sem `.claude-personal`), servidor falso devolvendo team a 98% na `five_hour` e pessoal a 10%/10%, e as reservas gravadas, `conta.cjs vigiar` move a reserva pessoal para `.claude/.credentials.json` e grava `estacionado-trabalho.json`; `conta.cjs` sem argumento imprime exatamente uma linha de pasta (`trabalho`); `conta.cjs agendar --imprimir` com só `reserva-pessoal.json` presente sai 0; `conta.cjs trocar pessoal --pasta pessoal` sai 2 citando que a pasta não existe — provado por `bash scripts/testa-conta-uma-pasta.sh` (zero `skipped`) e, sem regressão, por `bash scripts/testa-conta.sh` com o mesmo placar da base (46/0).
 
 ### 2. `conta.cjs unificar`: migração para a pasta única [tipo: implementar]
@@ -79,3 +79,18 @@ paralela: nao
 mutacao: n/a
   motivo: execução em ambiente real com as credenciais e pastas do usuário; não há linha de produção a inverter.
 pronto quando: com o Luís presente e todas as janelas do Claude fechadas, rodando do clone instalado da versão nova: `conta.cjs unificar` (relatório sem escrita) e depois `conta.cjs unificar --aplicar` saem 0; `Test-Path ~/.claude-personal` dá `False` e `~/.claude-personal.aposentada` existe; uma sessão aberta com `claude` (sem `CLAUDE_CONFIG_DIR`) mostra a memória pessoal do `rainforest-mind` no índice; `conta.cjs` mostra uma pasta só, com a conta team; `schtasks /query /tn \ClaudeVigias\troca-de-conta /v /fo list` mostra o comando apontando para `.claude\plugins\marketplaces\` e próxima execução preenchida; `claude mcp list` lista `github` e `protheus` — tudo colado em `relatorios/2026-10-12-pasta-unica-migracao.md` com caminhos da máquina trocados por `~`.
+
+### 6. Gate de publicação lê o marcador no conteúdo de um Write [tipo: implementar]
+atende: D6
+arquivos: `hooks/gate-publicacao-destino.cjs`, `hooks/testa-gate-publicacao-destino.sh`
+depende de: nenhuma
+paralela: sim
+prova: `bash hooks/testa-gate-publicacao-destino.sh`
+mutacao:
+  arquivo: `hooks/gate-publicacao-destino.cjs`
+  de: nome === "Write" && temMarcadorNoConteudo(conteudo)
+  para: false
+  bateria: `bash hooks/testa-gate-publicacao-destino.sh`
+  fixture: `testa-gate-publicacao-destino.sh, caso "Write de arquivo NOVO com marcador no topo do conteudo -> passa"`
+Achado na execução da tarefa 1 (regra 6, cabe no PR): a bateria nova da tarefa 1, com dados falsos e o marcador de dados de exemplo na linha 2, foi barrada porque o gate, no caminho Write/Edit, só procura o marcador no DISCO (`temMarcadorDados(arquivo)`), e arquivo novo ainda não existe no disco. O caminho de commit já lê o conteúdo (`if (temMarcadorNoConteudo(conteudo)) continue;`). Forma prescrita: a linha `if (temMarcadorDados(arquivo)) process.exit(0);` passa a dispensar também quando `nome === "Write" && temMarcadorNoConteudo(conteudo)` (Write traz o arquivo inteiro, então as 5 primeiras linhas do conteúdo são as do arquivo); Edit e MultiEdit continuam lendo só o disco (o fragmento não é o topo do arquivo).
+pronto quando: com o payload PreToolUse real de Write (`tool_name: "Write"`, `tool_input.file_path` num arquivo NOVO dentro de um repo git público de teste, `tool_input.content` com o marcador na linha 2 e um JID falso adiante), o gate sai 0; o mesmo Write com o marcador na linha 6 sai 2; um Edit cujo `new_string` começa com o marcador, em arquivo existente sem marcador no disco, sai 2; os casos já existentes (marcador lido do disco no Edit, linha 6 ignorada) seguem com o mesmo exit — provado por `bash hooks/testa-gate-publicacao-destino.sh` com placar sem falha.

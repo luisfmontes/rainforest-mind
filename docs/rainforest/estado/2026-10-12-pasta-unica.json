@@ -23,12 +23,18 @@
     "status": "parcial",
     "catraca_mutacao": "2026-10-12",
     "tarefas_ok": 0,
-    "tarefas": 5,
+    "tarefas": 6,
     "em_voo": [
       {
         "agente": "executor",
-        "tarefa": "T1 conta.cjs modo uma pasta",
-        "desde": "2026-10-12T10:39:14-03:00",
+        "tarefa": "T1 retomada: bateria uma pasta + registro pessoal",
+        "desde": "2026-10-12T10:53:38-03:00",
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "T6 gate marcador no Write",
+        "desde": "2026-10-12T10:53:38-03:00",
         "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
       }
     ],
@@ -39,6 +45,20 @@
         "iteracao": 1,
         "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f",
         "ts": "2026-10-12T13:39:14.636Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "4dbbfcf",
+        "iteracao": 2,
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f",
+        "ts": "2026-10-12T13:53:38.704Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "4dbbfcf",
+        "iteracao": 1,
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f",
+        "ts": "2026-10-12T13:53:38.704Z"
       }
     ],
     "em": "2026-10-12"
