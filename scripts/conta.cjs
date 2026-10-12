@@ -1072,10 +1072,14 @@ function haSessaoViva(c) {
 }
 
 // Igual ao chamarSchtasks: .js/.cjs (só em bateria) roda pelo node. Erro de execução vira código 1.
-function chamarClaude(argv, configDir) {
+// Sem CLAUDE_CONFIG_DIR no ambiente: a CLI cai na pasta padrão (~/.claude), que é a pasta de trabalho.
+// Herdar a da sessão que chamou (a pessoal, se o /conta roda de lá) instalaria o plugin na conta errada.
+function chamarClaude(argv) {
   const exe = (process.env.RFM_TEST === '1' && process.env.RFM_CONTA_CLAUDE_BIN) || acharExecutavelClaude();
   if (!exe) return 1;
-  const opcoes = { stdio: 'inherit', env: { ...process.env, CLAUDE_CONFIG_DIR: configDir } };
+  const env = { ...process.env };
+  delete env.CLAUDE_CONFIG_DIR;
+  const opcoes = { stdio: 'inherit', env };
   const r = /\.(c|m)?js$/i.test(exe) ? spawnSync(process.execPath, [exe, ...argv], opcoes) : spawnSync(exe, argv, opcoes);
   return r.error || r.status === null ? 1 : r.status;
 }
@@ -1096,9 +1100,61 @@ function unificar(c, args) {
     return sair(2, '--profile pede o caminho do arquivo do perfil do PowerShell');
   }
   const pessoal = c.pastas.pessoal;
+  if (!fs.existsSync(pessoal)) {
+    // Migração já feita (a pessoal está aposentada): --profile ainda refaz o perfil, e só ele.
+    if (perfilArq && fs.existsSync(`${pessoal}.aposentada`)) return perfilSo(perfilArq, args.includes('--aplicar'));
+    return sair(2, 'não há pasta pessoal para unificar: nada a fazer');
+  }
+  if (!args.includes('--aplicar')) return migrar(c, args, perfilArq);
+  // O --aplicar segura a trava do vigia do planejamento ao fim: o vigia não troca pasta nem renova
+  // credencial no meio da migração. Com a trava ocupada, recusa sem escrever.
+  if (!pegarTrava(c.lock)) return sair(2, 'outra rodada do vigia em curso: unificar não escreveu nada. tente de novo em instantes');
+  try {
+    return migrar(c, args, perfilArq);
+  } finally {
+    soltarTrava(c.lock);
+  }
+}
+
+// Só o perfil, com a pasta pessoal já aposentada. Mesmas checagens do caminho completo.
+function perfilSo(perfilArq, aplicar) {
+  if (!fs.existsSync(perfilArq)) return sair(2, `perfil não encontrado: ${perfilArq}. unificar não escreveu nada`);
+  const perfil = UNIFICAR.perfilUnico(fs.readFileSync(perfilArq, 'utf8'));
+  if (!perfil.ok) return sair(2, perfil.motivo);
+  if (!aplicar) {
+    console.log('a pasta pessoal já foi aposentada: só o perfil');
+    console.log(`perfil ${perfilArq} (sem --aplicar: nada gravado):`);
+    for (const linha of UNIFICAR.diffLinhas(fs.readFileSync(perfilArq, 'utf8'), perfil.texto)) console.log(linha);
+    return 0;
+  }
+  const bak = `${perfilArq}.bak-pasta-unica`;
+  if (fs.existsSync(bak)) return sair(2, 'já existe <arquivo>.bak-pasta-unica: apague ou mova antes. unificar não escreveu nada');
+  try {
+    fs.copyFileSync(perfilArq, bak, fs.constants.COPYFILE_EXCL);
+    UNIFICAR.gravarTexto(perfilArq, perfil.texto);
+  } catch (e) {
+    return sair(1, `perfil não trocado: ${msgSegura(e)}`);
+  }
+  console.log(`perfil: funções trocadas por claude; original em ${bak}`);
+  return 0;
+}
+
+// Mensagem de quem parou no meio: o que já foi gravado, se o vigia ficou desagendado e o comando para continuar.
+function falhaDaMigracao(e) {
+  const feito = e.feito || [];
+  const linhas = [`migração interrompida em "${e.falhou || 'início'}": ${msgSegura(e)}`];
+  linhas.push(feito.length ? `já feito: ${feito.join('; ')}.` : 'nada foi escrito.');
+  if (feito.includes('desagendar o vigia')) linhas.push('o vigia está desagendado: nenhum agendamento roda até a migração terminar.');
+  linhas.push('para continuar, rode `conta.cjs unificar --aplicar` de novo: o que já foi copiado não é copiado outra vez.');
+  return linhas.join('\n');
+}
+
+function migrar(c, args, perfilArq) {
+  const pessoal = c.pastas.pessoal;
   const trabalho = c.pastas.trabalho;
-  if (!fs.existsSync(pessoal)) return sair(2, 'não há pasta pessoal para unificar: nada a fazer');
   const reserva = reservaArq(c, 'pessoal');
+  // O vigia aponta para o clone instalado em ~/.claude, não para este arquivo (que pode estar num worktree).
+  const scriptInstalado = path.join(trabalho, 'plugins', 'marketplaces', 'rainforest-mind', 'scripts', 'conta.cjs');
   const plano = UNIFICAR.planejar({
     trabalho,
     pessoal,
@@ -1110,6 +1166,7 @@ function unificar(c, args) {
     processosVivos: processosClaudeVivos(),
     sessoesVivas: haSessaoViva(c),
     pastaForaDeCasa: pastaForaDeCasa(c, 'pessoal'),
+    scriptInstalado,
   });
   if (plano.recusas.length) {
     for (const r of plano.recusas) process.stderr.write(`recusa: ${r.motivo} (${r.detalhe})\n`);
@@ -1135,20 +1192,35 @@ function unificar(c, args) {
     }
     return 0;
   }
-  const aplicado = UNIFICAR.aplicar(plano, {
-    desagendar: () => chamarSchtasks(['/Delete', '/TN', TAREFA, '/F']).status,
-    instalarPlugin: (chave) => chamarClaude(['plugin', 'install', chave, '--scope', 'user'], trabalho),
-    // O vigia aponta para o clone instalado em ~/.claude, não para este arquivo (que pode estar num worktree).
-    reagendar: () => {
-      const script = path.join(trabalho, 'plugins', 'marketplaces', 'rainforest-mind', 'scripts', 'conta.cjs');
-      const r = chamarSchtasks(montarAgendamento(script));
-      return r.error || r.status === null ? 1 : r.status;
-    },
-  });
+  let aplicado;
+  try {
+    aplicado = UNIFICAR.aplicar(plano, {
+      desagendar: () => chamarSchtasks(['/Delete', '/TN', TAREFA, '/F']).status,
+      instalarPlugin: (chave) => chamarClaude(['plugin', 'install', chave, '--scope', 'user']),
+      // Falha simulada do rename só em bateria (RFM_TEST=1): prova o caminho de recuperação do achado 3.
+      renomearPasta: (de, para) => {
+        if (process.env.RFM_TEST === '1' && process.env.RFM_CONTA_FALHA === 'renomear') {
+          throw new Error('falha simulada no rename da pasta (RFM_CONTA_FALHA)');
+        }
+        fs.renameSync(de, para);
+      },
+      reagendar: () => {
+        const r = chamarSchtasks(montarAgendamento(scriptInstalado));
+        return r.error || r.status === null ? 1 : r.status;
+      },
+    });
+  } catch (e) {
+    return sair(1, falhaDaMigracao(e));
+  }
   for (const linha of UNIFICAR.relatorio(plano, aplicado)) console.log(linha);
+  const aviso = perfil ? '; o perfil não foi trocado' : '';
   if (aplicado.reagendado) {
-    const aviso = perfil ? '; o perfil não foi trocado' : '';
     return sair(1, `migração feita, mas o vigia não foi reagendado: rode agendar do clone instalado${aviso}`);
+  }
+  const falhos = aplicado.plugins.filter((p) => p.status !== 0);
+  if (falhos.length) {
+    const comandos = falhos.map((p) => `claude plugin install ${p.chave} --scope user`);
+    return sair(1, `migração feita, mas plugin não instalou. rode: ${comandos.join(' e ')}${aviso}`);
   }
   // Último passo: o perfil só muda depois da migração inteira. Backup por COPYFILE_EXCL (nunca sobrescreve).
   if (perfil) {

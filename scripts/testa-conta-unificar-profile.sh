@@ -93,6 +93,9 @@ semear_home() { # $1 = caso
   mkdir -p "$c/trabalho/.claude" "$c/pessoal/.claude-personal" "$c/dados/contas"
   printf '{}\n' > "$c/trabalho/.claude/settings.json"
   printf '{}\n' > "$c/trabalho/.claude.json"
+  # Clone instalado (destino do reagendamento): sem ele, unificar --aplicar recusa (clone_ausente).
+  mkdir -p "$c/trabalho/.claude/plugins/marketplaces/rainforest-mind/scripts"
+  printf '// clone falso\n' > "$c/trabalho/.claude/plugins/marketplaces/rainforest-mind/scripts/conta.cjs"
   printf '{"enabledPlugins":{"security-guidance@claude-plugins-official":true}}\n' > "$c/pessoal/.claude-personal/settings.json"
   printf '{"automatico":false,"contas":{}}\n' > "$c/dados/contas/estado.json"
   printf '%s' "$c"

@@ -15,6 +15,7 @@
  *   processosVivos                       nomes de processo claude vivos (lista; vazia = nenhum)
  *   sessoesVivas                         boolean: há sessão viva no sessoes.json
  *   pastaForaDeCasa                      boolean: a pessoal está com login de outra conta
+ *   scriptInstalado                      conta.cjs do clone instalado (destino do reagendamento)
  * }
  *
  * Nunca sobrescreve: arquivo de mesmo nome e conteúdo diferente vira <nome>.pessoal.<ext>.
@@ -62,7 +63,12 @@ function lerJsonOpcional(arq, padrao) {
 function decidirArquivo(origem, destino) {
   const conflito = fs.existsSync(destino) && !mesmoConteudo(origem, destino);
   if (fs.existsSync(destino) && !conflito) return { acao: 'igual', destino };
-  if (conflito) return { acao: 'conflito', destino: renomeado(destino) };
+  if (conflito) {
+    // Rodada anterior já gravou o <nome>.pessoal.<ext> com o conteúdo desta origem: já migrado, não é conflito.
+    const alt = renomeado(destino);
+    if (fs.existsSync(alt) && mesmoConteudo(origem, alt)) return { acao: 'igual', destino: alt };
+    return { acao: 'conflito', destino: alt };
+  }
   return { acao: 'copiar', destino };
 }
 
@@ -71,7 +77,8 @@ function mesmoConteudo(a, b) {
 }
 
 function classeDe(rel) {
-  const partes = rel.split('/');
+  // rel vem de path.relative: no Windows o separador é \, e a classe não pode ser o caminho inteiro.
+  const partes = rel.split(/[\\/]/);
   if (partes.includes('memory')) return 'memoria';
   if (partes[0] === 'projects' && rel.endsWith('.jsonl')) return 'transcritos';
   return partes[0];
@@ -110,6 +117,10 @@ function planejar(e) {
   if (fs.existsSync(e.aposentada)) recusas.push({ motivo: 'aposentada_existe', detalhe: 'a pasta .claude-personal.aposentada já existe' });
   if (e.reservaExiste && !e.reservaPessoalPronta) {
     recusas.push({ motivo: 'reserva_ocupada', detalhe: 'reserva-pessoal.json existe sem credencial' });
+  }
+  // O vigia é reagendado apontando para o clone instalado: sem ele, o agendamento roda uma tarefa morta.
+  if (!fs.existsSync(e.scriptInstalado)) {
+    recusas.push({ motivo: 'clone_ausente', detalhe: 'o clone instalado (plugins/marketplaces) não existe; o vigia não teria para onde apontar' });
   }
 
   const copias = [];
@@ -188,6 +199,26 @@ function planejar(e) {
   else if (temCred) reserva = { acao: 'gravar', claudeAiOauth: credPessoal.claudeAiOauth };
   else reserva = { acao: 'sem_credencial' };
 
+  // Credencial que fica na pasta aposentada. O refresh token NUNCA pode estar em dois arquivos de uso:
+  // se é o mesmo login da reserva (gravado agora ou de antes), a aposentada perde a claudeAiOauth e
+  // as outras chaves ficam. Outro login (refresh token diferente) não está na reserva: fica como está.
+  let tirarCredPessoal = null;
+  let credencial = 'nenhuma';
+  if (temCred) {
+    const refreshPessoal = credPessoal.claudeAiOauth.refreshToken;
+    const refreshReserva = reserva.acao === 'gravar'
+      ? refreshPessoal
+      : (lerJsonOpcional(e.reservaArq, {}).claudeAiOauth || {}).refreshToken;
+    if (refreshPessoal && refreshReserva === refreshPessoal) {
+      const restante = { ...credPessoal };
+      delete restante.claudeAiOauth;
+      tirarCredPessoal = { arq: path.join(e.pessoal, '.credentials.json'), restante };
+      credencial = 'sai';
+    } else {
+      credencial = 'fica';
+    }
+  }
+
   return {
     trabalho: e.trabalho,
     pessoal: e.pessoal,
@@ -201,6 +232,8 @@ function planejar(e) {
     claude: { destino: e.claudeJsonTrabalho, novo: claudeNovo, mcpNovos, projNovos },
     plugins,
     reserva,
+    credencial,
+    tirarCredPessoal,
   };
 }
 
@@ -230,26 +263,58 @@ function copiarArq(origem, destino) {
 
 // Ordem de D7: vigia desagendado primeiro; cópias; índices; histórico; .claude.json; plugins; reserva;
 // rename da pessoal; vigia reagendado por último (apontando para o clone instalado).
+// Cada etapa registra o próprio nome em `feito` quando termina. Se uma falha, o erro sai com `falhou`
+// (a etapa que parou) e `feito` (o que já foi gravado): quem chama diz ao usuário onde a migração parou.
 function aplicar(plano, ops) {
   if (plano.recusas.length) throw new Error('aplicar com recusas pendentes');
-  ops.desagendar();
-  for (const c of plano.copias) {
-    if (c.acao === 'igual') continue;
-    copiarArq(c.origem, c.destino);
-  }
-  for (const i of plano.indices) {
-    if (i.acao === 'copiar') copiarArq(i.origem, i.destino);
-    else if (i.linhas.length) acrescentarLinhas(i.destino, i.linhas.map((l) => l.linha));
-  }
-  if (plano.historico.novas.length) acrescentarLinhas(plano.historico.destino, plano.historico.novas);
-  if (plano.claude.novo) gravarTexto(plano.claude.destino, JSON.stringify(plano.claude.novo, null, 2) + '\n');
+  const feito = [];
+  const etapa = (nome, fn) => {
+    try {
+      const r = fn();
+      feito.push(nome);
+      return r;
+    } catch (err) {
+      err.falhou = nome;
+      err.feito = [...feito];
+      throw err;
+    }
+  };
+  // Sem o vigia desagendado não se copia nada: o status do /Delete é conferido, não ignorado.
+  etapa('desagendar o vigia', () => {
+    const st = ops.desagendar();
+    if (st) throw new Error(`schtasks não removeu o vigia (status ${st})`);
+  });
+  etapa('copiar arquivos', () => {
+    for (const c of plano.copias) {
+      if (c.acao === 'igual') continue;
+      copiarArq(c.origem, c.destino);
+    }
+  });
+  etapa('índices de memória', () => {
+    for (const i of plano.indices) {
+      if (i.acao === 'copiar') copiarArq(i.origem, i.destino);
+      else if (i.linhas.length) acrescentarLinhas(i.destino, i.linhas.map((l) => l.linha));
+    }
+  });
+  etapa('histórico', () => {
+    if (plano.historico.novas.length) acrescentarLinhas(plano.historico.destino, plano.historico.novas);
+  });
+  etapa('.claude.json', () => {
+    if (plano.claude.novo) gravarTexto(plano.claude.destino, JSON.stringify(plano.claude.novo, null, 2) + '\n');
+  });
   // A instalação usa a chave completa <plugin>@<marketplace>: nome nu é ambíguo entre marketplaces.
-  const plugins = plano.plugins.map((p) => ({ chave: p.chave, status: ops.instalarPlugin(p.chave) }));
-  if (plano.reserva.acao === 'gravar') {
-    gravarCred(plano.reservaArq, JSON.stringify({ claudeAiOauth: plano.reserva.claudeAiOauth }, null, 2) + '\n');
-  }
-  fs.renameSync(plano.pessoal, plano.aposentada);
-  const reagendado = ops.reagendar();
+  const plugins = etapa('plugins', () => plano.plugins.map((p) => ({ chave: p.chave, status: ops.instalarPlugin(p.chave) })));
+  etapa('reserva', () => {
+    if (plano.reserva.acao === 'gravar') {
+      gravarCred(plano.reservaArq, JSON.stringify({ claudeAiOauth: plano.reserva.claudeAiOauth }, null, 2) + '\n');
+    }
+  });
+  // Depois da reserva gravada (o login não some), e antes do rename: a aposentada não guarda o mesmo refresh token.
+  etapa('credencial da pasta pessoal', () => {
+    if (plano.tirarCredPessoal) gravarCred(plano.tirarCredPessoal.arq, JSON.stringify(plano.tirarCredPessoal.restante, null, 2) + '\n');
+  });
+  etapa('rename da pasta pessoal', () => ops.renomearPasta(plano.pessoal, plano.aposentada));
+  const reagendado = etapa('vigia reagendado', () => ops.reagendar());
   return { plugins, reagendado };
 }
 
@@ -291,6 +356,12 @@ function relatorio(plano, aplicado) {
     sem_credencial: 'sem credencial na pasta pessoal',
   }[plano.reserva.acao];
   linhas.push(`reserva pessoal: ${reservaTxt}`);
+  const credTxt = {
+    sai: 'sai da pasta aposentada (o mesmo login ficou na reserva)',
+    fica: 'fica na pasta aposentada (outro login, que não está na reserva)',
+    nenhuma: 'nenhuma na pasta pessoal',
+  }[plano.credencial];
+  linhas.push(`credencial da pasta pessoal: ${credTxt}`);
   linhas.push(aplicado ? `pasta pessoal aposentada: ${plano.aposentada}` : `pasta pessoal seria aposentada: ${plano.aposentada}`);
   return linhas;
 }
