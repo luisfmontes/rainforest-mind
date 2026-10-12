@@ -181,7 +181,7 @@ afirma "(f) history.jsonl sem linha duplicada: linha nova entra uma vez" test "$
 afirma "(f) history.jsonl sem linha duplicada: linha já existente não repete" test "$(grep -cF 'falso-linha-um' "$C_B/trabalho/.claude/history.jsonl")" -eq 1
 afirma "(g) github entra em .claude.json de trabalho" test "$(ler "$C_B/trabalho/.claude.json" mcpServers.github.command)" = falso-gh
 afirma "(g) whatsapp em .claude.json fica igual" test "$(ler "$C_B/trabalho/.claude.json" mcpServers.whatsapp)" = "$H_WA"
-afirma "(h) CLI falsa chamada com plugin install security-guidance" grep -qF '"install","security-guidance"' "$C_B/cli-args.txt"
+afirma "(h) CLI falsa chamada com plugin install security-guidance@claude-plugins-official" grep -qF '"install","security-guidance@claude-plugins-official"' "$C_B/cli-args.txt"
 afirma "(i) schtasks falso chamado com /Delete antes de /Create" ordem_delete_create
 afirma "(i) /Create aponta para plugins/marketplaces da pasta de trabalho" create_no_marketplace
 afirma "(o) nada de cache/, sessions/ e plugins/ copiado" cache_plugins_sessions_ausentes

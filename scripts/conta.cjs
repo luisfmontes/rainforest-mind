@@ -1039,7 +1039,14 @@ function desagendar() {
 }
 
 // Migração para a pasta única (plano 2026-10-12-pasta-unica, tarefa 2; D7). Sem --aplicar só relata.
-const FLAGS_UNIFICAR = ['--aplicar', '--ajuda'];
+const FLAGS_UNIFICAR = ['--aplicar', '--ajuda', '--profile <arquivo>'];
+// Explicação do --profile no --ajuda. Sem --profile o perfil do PowerShell não é tocado: a bateria
+// e qualquer uso sem a flag nunca resolvem o $PROFILE real.
+const AJUDA_PERFIL = [
+  'perfil: sem --aplicar, mostra as linhas do perfil do PowerShell que mudariam, sem gravar nada;',
+  'com --aplicar, grava depois da migração e guarda o original em <arquivo>.bak-pasta-unica.',
+  'Sem --profile o perfil do PowerShell não é tocado.',
+];
 
 // Processos claude.exe vivos. Em bateria (RFM_TEST=1) a lista vem de RFM_CONTA_PROCESSOS e o tasklist
 // nunca roda. Não saber a lista é motivo para não migrar: falha fechada.
@@ -1077,10 +1084,17 @@ function unificar(c, args) {
   if (args.includes('--ajuda')) {
     console.log('flags de unificar:');
     for (const f of FLAGS_UNIFICAR) console.log(f);
+    for (const linha of AJUDA_PERFIL) console.log(linha);
     return 0;
   }
-  const desconhecida = args.find((a) => !FLAGS_UNIFICAR.includes(a));
-  if (desconhecida) return sair(2, 'uso: conta.cjs unificar [--aplicar] [--ajuda]');
+  // O valor de --profile é o caminho, não uma flag desconhecida.
+  const sobra = args.filter((a, i) => a !== '--profile' && args[i - 1] !== '--profile');
+  const desconhecida = sobra.find((a) => !FLAGS_UNIFICAR.includes(a));
+  if (desconhecida) return sair(2, 'uso: conta.cjs unificar [--aplicar] [--profile <arquivo>] [--ajuda]');
+  const perfilArq = valorDe(args, '--profile');
+  if (args.includes('--profile') && (!perfilArq || perfilArq.startsWith('--'))) {
+    return sair(2, '--profile pede o caminho do arquivo do perfil do PowerShell');
+  }
   const pessoal = c.pastas.pessoal;
   const trabalho = c.pastas.trabalho;
   if (!fs.existsSync(pessoal)) return sair(2, 'não há pasta pessoal para unificar: nada a fazer');
@@ -1101,13 +1115,29 @@ function unificar(c, args) {
     for (const r of plano.recusas) process.stderr.write(`recusa: ${r.motivo} (${r.detalhe})\n`);
     return sair(2, 'unificar não escreveu nada');
   }
+  // Perfil: só com --profile, e a recusa sai antes de qualquer escrita (tudo ou nada).
+  let perfil = null;
+  if (perfilArq) {
+    if (!fs.existsSync(perfilArq)) return sair(2, `perfil não encontrado: ${perfilArq}. unificar não escreveu nada`);
+    perfil = UNIFICAR.perfilUnico(fs.readFileSync(perfilArq, 'utf8'));
+    if (!perfil.ok) return sair(2, perfil.motivo);
+    if (args.includes('--aplicar') && fs.existsSync(`${perfilArq}.bak-pasta-unica`)) {
+      return sair(2, 'já existe <arquivo>.bak-pasta-unica: apague ou mova antes. unificar não escreveu nada');
+    }
+  }
   if (!args.includes('--aplicar')) {
     for (const linha of UNIFICAR.relatorio(plano)) console.log(linha);
+    if (perfil) {
+      console.log(`perfil ${perfilArq} (sem --aplicar: nada gravado):`);
+      for (const linha of UNIFICAR.diffLinhas(fs.readFileSync(perfilArq, 'utf8'), perfil.texto)) console.log(linha);
+    } else {
+      console.log('perfil do PowerShell: não tratado (passe --profile <arquivo> para trocar as funções)');
+    }
     return 0;
   }
   const aplicado = UNIFICAR.aplicar(plano, {
     desagendar: () => chamarSchtasks(['/Delete', '/TN', TAREFA, '/F']).status,
-    instalarPlugin: (nome) => chamarClaude(['plugin', 'install', nome, '--scope', 'user'], trabalho),
+    instalarPlugin: (chave) => chamarClaude(['plugin', 'install', chave, '--scope', 'user'], trabalho),
     // O vigia aponta para o clone instalado em ~/.claude, não para este arquivo (que pode estar num worktree).
     reagendar: () => {
       const script = path.join(trabalho, 'plugins', 'marketplaces', 'rainforest-mind', 'scripts', 'conta.cjs');
@@ -1116,7 +1146,21 @@ function unificar(c, args) {
     },
   });
   for (const linha of UNIFICAR.relatorio(plano, aplicado)) console.log(linha);
-  if (aplicado.reagendado) return sair(1, 'migração feita, mas o vigia não foi reagendado: rode agendar do clone instalado');
+  if (aplicado.reagendado) {
+    const aviso = perfil ? '; o perfil não foi trocado' : '';
+    return sair(1, `migração feita, mas o vigia não foi reagendado: rode agendar do clone instalado${aviso}`);
+  }
+  // Último passo: o perfil só muda depois da migração inteira. Backup por COPYFILE_EXCL (nunca sobrescreve).
+  if (perfil) {
+    const bak = `${perfilArq}.bak-pasta-unica`;
+    try {
+      fs.copyFileSync(perfilArq, bak, fs.constants.COPYFILE_EXCL);
+      UNIFICAR.gravarTexto(perfilArq, perfil.texto);
+    } catch (e) {
+      return sair(1, `migração feita, mas o perfil não foi trocado: ${e.message}`);
+    }
+    console.log(`perfil: funções trocadas por claude; original em ${bak}`);
+  }
   return 0;
 }
 

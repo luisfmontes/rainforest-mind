@@ -178,7 +178,7 @@ function planejar(e) {
   const setD = lerJsonOpcional(path.join(e.trabalho, 'settings.json'), {}).enabledPlugins || {};
   const plugins = Object.keys(setP)
     .filter((chave) => setP[chave] === true && setD[chave] !== true)
-    .map((chave) => ({ chave, nome: chave.split('@')[0] }));
+    .map((chave) => ({ chave }));
 
   // Reserva: a credencial da pessoal vira reserva-pessoal.json só se ainda não há reserva pronta.
   const credPessoal = lerJsonOpcional(path.join(e.pessoal, '.credentials.json'), null);
@@ -243,7 +243,8 @@ function aplicar(plano, ops) {
   }
   if (plano.historico.novas.length) acrescentarLinhas(plano.historico.destino, plano.historico.novas);
   if (plano.claude.novo) gravarTexto(plano.claude.destino, JSON.stringify(plano.claude.novo, null, 2) + '\n');
-  const plugins = plano.plugins.map((p) => ({ nome: p.nome, status: ops.instalarPlugin(p.nome) }));
+  // A instalação usa a chave completa <plugin>@<marketplace>: nome nu é ambíguo entre marketplaces.
+  const plugins = plano.plugins.map((p) => ({ chave: p.chave, status: ops.instalarPlugin(p.chave) }));
   if (plano.reserva.acao === 'gravar') {
     gravarCred(plano.reservaArq, JSON.stringify({ claudeAiOauth: plano.reserva.claudeAiOauth }, null, 2) + '\n');
   }
@@ -281,8 +282,8 @@ function relatorio(plano, aplicado) {
   linhas.push(`mcp em .claude.json: +${plano.claude.mcpNovos.length} (${plano.claude.mcpNovos.join(', ') || 'nenhum'})`);
   linhas.push(`projetos em .claude.json: +${plano.claude.projNovos.length}`);
   for (const p of plano.plugins) {
-    const st = aplicado && aplicado.plugins ? aplicado.plugins.find((x) => x.nome === p.nome) : null;
-    linhas.push(st ? `plugin ${p.nome}: ${st.status === 0 ? 'instalado' : `falhou (status ${st.status})`}` : `plugin a instalar: ${p.nome}`);
+    const st = aplicado && aplicado.plugins ? aplicado.plugins.find((x) => x.chave === p.chave) : null;
+    linhas.push(st ? `plugin ${p.chave}: ${st.status === 0 ? 'instalado' : `falhou (status ${st.status})`}` : `plugin a instalar: ${p.chave}`);
   }
   const reservaTxt = {
     gravar: 'gravar reserva-pessoal (credencial da pasta pessoal)',
@@ -294,4 +295,76 @@ function relatorio(plano, aplicado) {
   return linhas;
 }
 
-module.exports = { planejar, aplicar, relatorio, decidirArquivo, mesmoConteudo, DIRS_COPIA };
+// ---------------------------------------------------------------------------------------------
+// Perfil do PowerShell (tarefa 3; design D5). Função pura: recebe o texto do perfil e devolve o
+// texto novo. Quem lê e grava o arquivo é scripts/conta.cjs.
+//
+// As funções claude-pessoal e claude-trabalho saem; entra uma função claude só. Dentro de
+// Update-ClaudePlugins, cada `& claude ` vira a aplicação: no PowerShell a função vence a aplicação,
+// então sem isso `claude` -> Update-ClaudePlugins -> `& claude plugin ...` -> `claude` recursa.
+
+// Trecho que chama a aplicação (não a função). Usado nas duas trocas abaixo.
+const CHAMADA_APP = '& (Get-Command claude -CommandType Application | Select-Object -First 1) ';
+
+// Bloco `function <cabeça> { ... }` por contagem de chaves. As funções do perfil não têm chave em string.
+function acharBloco(texto, cabeca) {
+  const ini = texto.indexOf(cabeca);
+  if (ini < 0) return null;
+  let prof = 0;
+  for (let i = texto.indexOf('{', ini); i < texto.length; i += 1) {
+    if (texto[i] === '{') prof += 1;
+    else if (texto[i] === '}') {
+      prof -= 1;
+      if (prof === 0) return { ini, fim: i + 1 };
+    }
+  }
+  return null;
+}
+
+function perfilUnico(texto) {
+  const eol = texto.includes('\r\n') ? '\r\n' : '\n';
+  const pessoal = acharBloco(texto, 'function claude-pessoal');
+  const trabalho = acharBloco(texto, 'function claude-trabalho');
+  const atualiza = acharBloco(texto, 'function Update-ClaudePlugins');
+  if (!pessoal || !trabalho) {
+    return { ok: false, motivo: 'o perfil não tem as funções claude-pessoal e claude-trabalho: nada foi alterado' };
+  }
+  if (!atualiza) return { ok: false, motivo: 'o perfil não tem Update-ClaudePlugins: nada foi alterado' };
+
+  const claudeUnico = [
+    'function claude {',
+    '    Remove-Item Env:CLAUDE_CONFIG_DIR -ErrorAction SilentlyContinue',
+    '    Update-ClaudePlugins',
+    `    ${CHAMADA_APP}--dangerously-skip-permissions @args`,
+    '}',
+  ].join(eol);
+  const atualizaNovo = texto.slice(atualiza.ini, atualiza.fim).split('& claude ').join(CHAMADA_APP);
+  let fimTrabalho = trabalho.fim;
+  if (texto.startsWith(eol, fimTrabalho)) fimTrabalho += eol.length;
+
+  // Trocas em ordem decrescente de posição, para os índices anteriores continuarem válidos.
+  const trocas = [
+    { ini: atualiza.ini, fim: atualiza.fim, novo: atualizaNovo },
+    { ini: pessoal.ini, fim: pessoal.fim, novo: claudeUnico },
+    { ini: trabalho.ini, fim: fimTrabalho, novo: '' },
+  ].sort((a, b) => b.ini - a.ini);
+  let saida = texto;
+  for (const t of trocas) saida = saida.slice(0, t.ini) + t.novo + saida.slice(t.fim);
+  return { ok: true, texto: saida };
+}
+
+// Diff por conjunto de linhas (não é unificado): o que sai (`- `) e o que entra (`+ `).
+function diffLinhas(antes, depois) {
+  const a = antes.split(/\r?\n/);
+  const b = depois.split(/\r?\n/);
+  const emA = new Set(a);
+  const emB = new Set(b);
+  return [
+    ...a.filter((l) => !emB.has(l)).map((l) => `- ${l}`),
+    ...b.filter((l) => !emA.has(l)).map((l) => `+ ${l}`),
+  ];
+}
+
+module.exports = {
+  planejar, aplicar, relatorio, decidirArquivo, mesmoConteudo, DIRS_COPIA, perfilUnico, diffLinhas, gravarTexto,
+};
