@@ -24,6 +24,8 @@ const { spawnSync } = require('node:child_process');
 const { mover, gravarAtomico: gravarCred, prefixo: prefixoDoLogin } = require('./lib/conta-mover.cjs');
 const { acharExecutavelClaude } = require('./lib/achar-executavel-claude.cjs');
 const API = require('./lib/conta-api.cjs');
+const UNIFICAR = require('./lib/conta-unificar.cjs');
+const { sessoesVivas, JANELA_COLOCADA_MS } = require('../hooks/lib/contexto-sessao.cjs');
 
 // Padrão dos limiares (D4). Vale o que o arquivo <dados>/contas/config.json diz, chave a chave.
 const PADRAO_CONFIG = { trocarEm: 97, destinoMax5h: 60, destinoMaxSemana: 85 };
@@ -50,6 +52,11 @@ function pastasDir() {
     trabalho: (teste && process.env.RFM_CONTA_PASTA_TRABALHO) || path.join(os.homedir(), '.claude'),
     pessoal: (teste && process.env.RFM_CONTA_PASTA_PESSOAL) || path.join(os.homedir(), '.claude-personal'),
   };
+}
+
+// O .claude.json da pasta de trabalho mora fora dela, em ~/.claude.json (só bateria troca o caminho).
+function claudeJsonTrabalho() {
+  return (process.env.RFM_TEST === '1' && process.env.RFM_CONTA_CLAUDE_JSON) || path.join(os.homedir(), '.claude.json');
 }
 
 // Pastas que existem nesta máquina (D6). A de trabalho sempre conta; a pessoal só se a pasta existir.
@@ -997,9 +1004,9 @@ function linhaDoComando(exe, argv) {
   return [exe, ...argv].map((a) => (/[\s"]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a)).join(' ');
 }
 
-function montarAgendamento() {
+function montarAgendamento(script = __filename) {
   const conhost = path.join(raizWindows(), 'System32', 'conhost.exe');
-  const acao = `"${conhost}" --headless "${process.execPath}" "${__filename}" vigiar`;
+  const acao = `"${conhost}" --headless "${process.execPath}" "${script}" vigiar`;
   const argv = ['/Create', '/TN', TAREFA, '/SC', 'MINUTE', '/MO', '1', '/F', '/TR', acao];
   return argv;
 }
@@ -1031,6 +1038,88 @@ function desagendar() {
   return sair(codigo, codigo ? 'schtasks não removeu o vigia' : 'vigia desagendado');
 }
 
+// Migração para a pasta única (plano 2026-10-12-pasta-unica, tarefa 2; D7). Sem --aplicar só relata.
+const FLAGS_UNIFICAR = ['--aplicar', '--ajuda'];
+
+// Processos claude.exe vivos. Em bateria (RFM_TEST=1) a lista vem de RFM_CONTA_PROCESSOS e o tasklist
+// nunca roda. Não saber a lista é motivo para não migrar: falha fechada.
+function processosClaudeVivos() {
+  if (process.env.RFM_TEST === '1') {
+    return (process.env.RFM_CONTA_PROCESSOS || '').split(',').map((s) => s.trim()).filter(Boolean);
+  }
+  const r = spawnSync(path.join(raizWindows(), 'System32', 'tasklist.exe'), ['/FI', 'IMAGENAME eq claude.exe', '/FO', 'CSV', '/NH'], { encoding: 'utf8' });
+  if (r.error || r.status !== 0) throw new Error('não consegui listar os processos (tasklist)');
+  return /"claude\.exe"/i.test(r.stdout) ? ['claude.exe'] : [];
+}
+
+// Sessão viva no sessoes.json da pasta de dados, pela mesma regra de janela do contexto (sem pid morto).
+// Arquivo ilegível não diz que nenhuma sessão está viva: falha fechada.
+function haSessaoViva(c) {
+  let state = {};
+  try {
+    state = JSON.parse(fs.readFileSync(path.join(c.dados, 'sessoes.json'), 'utf8'));
+  } catch (e) {
+    if (e.code !== 'ENOENT') throw new Error('sessoes.json ilegível: não dá para confirmar que nenhuma sessão está viva');
+  }
+  return sessoesVivas(state, Date.now(), JANELA_COLOCADA_MS).length > 0;
+}
+
+// Igual ao chamarSchtasks: .js/.cjs (só em bateria) roda pelo node. Erro de execução vira código 1.
+function chamarClaude(argv, configDir) {
+  const exe = (process.env.RFM_TEST === '1' && process.env.RFM_CONTA_CLAUDE_BIN) || acharExecutavelClaude();
+  if (!exe) return 1;
+  const opcoes = { stdio: 'inherit', env: { ...process.env, CLAUDE_CONFIG_DIR: configDir } };
+  const r = /\.(c|m)?js$/i.test(exe) ? spawnSync(process.execPath, [exe, ...argv], opcoes) : spawnSync(exe, argv, opcoes);
+  return r.error || r.status === null ? 1 : r.status;
+}
+
+function unificar(c, args) {
+  if (args.includes('--ajuda')) {
+    console.log('flags de unificar:');
+    for (const f of FLAGS_UNIFICAR) console.log(f);
+    return 0;
+  }
+  const desconhecida = args.find((a) => !FLAGS_UNIFICAR.includes(a));
+  if (desconhecida) return sair(2, 'uso: conta.cjs unificar [--aplicar] [--ajuda]');
+  const pessoal = c.pastas.pessoal;
+  const trabalho = c.pastas.trabalho;
+  if (!fs.existsSync(pessoal)) return sair(2, 'não há pasta pessoal para unificar: nada a fazer');
+  const reserva = reservaArq(c, 'pessoal');
+  const plano = UNIFICAR.planejar({
+    trabalho,
+    pessoal,
+    aposentada: `${pessoal}.aposentada`,
+    claudeJsonTrabalho: claudeJsonTrabalho(),
+    reservaArq: reserva,
+    reservaExiste: fs.existsSync(reserva),
+    reservaPessoalPronta: Boolean(reservaPronta(c, 'pessoal')),
+    processosVivos: processosClaudeVivos(),
+    sessoesVivas: haSessaoViva(c),
+    pastaForaDeCasa: pastaForaDeCasa(c, 'pessoal'),
+  });
+  if (plano.recusas.length) {
+    for (const r of plano.recusas) process.stderr.write(`recusa: ${r.motivo} (${r.detalhe})\n`);
+    return sair(2, 'unificar não escreveu nada');
+  }
+  if (!args.includes('--aplicar')) {
+    for (const linha of UNIFICAR.relatorio(plano)) console.log(linha);
+    return 0;
+  }
+  const aplicado = UNIFICAR.aplicar(plano, {
+    desagendar: () => chamarSchtasks(['/Delete', '/TN', TAREFA, '/F']).status,
+    instalarPlugin: (nome) => chamarClaude(['plugin', 'install', nome, '--scope', 'user'], trabalho),
+    // O vigia aponta para o clone instalado em ~/.claude, não para este arquivo (que pode estar num worktree).
+    reagendar: () => {
+      const script = path.join(trabalho, 'plugins', 'marketplaces', 'rainforest-mind', 'scripts', 'conta.cjs');
+      const r = chamarSchtasks(montarAgendamento(script));
+      return r.error || r.status === null ? 1 : r.status;
+    },
+  });
+  for (const linha of UNIFICAR.relatorio(plano, aplicado)) console.log(linha);
+  if (aplicado.reagendado) return sair(1, 'migração feita, mas o vigia não foi reagendado: rode agendar do clone instalado');
+  return 0;
+}
+
 function eventos(c, args) {
   const bruto = valorDe(args, '--desde');
   const desde = Number(bruto);
@@ -1053,7 +1142,8 @@ async function main(argv) {
   if (cmd === 'preparar') return preparar(c, resto);
   if (cmd === 'agendar') return agendar(c, resto);
   if (cmd === 'desagendar') return desagendar();
-  return sair(2, 'uso: conta.cjs [status | pessoal|trabalho [--pasta trabalho|pessoal] | trocar <pessoal|trabalho> [--pasta trabalho|pessoal] | vigiar | eventos --desde <ms> | preparar <pessoal|trabalho> | agendar [--imprimir] | desagendar]');
+  if (cmd === 'unificar') return unificar(c, resto);
+  return sair(2, 'uso: conta.cjs [status | pessoal|trabalho [--pasta trabalho|pessoal] | trocar <pessoal|trabalho> [--pasta trabalho|pessoal] | vigiar | eventos --desde <ms> | preparar <pessoal|trabalho> | agendar [--imprimir] | desagendar | unificar [--aplicar]]');
 }
 
 // A bateria da trava (scripts/testa-conta.sh) carrega este arquivo para exercitar pegarTrava em
