@@ -33,7 +33,9 @@ uso. A `~/.claude-personal` é absorvida e aposentada sem perder memória, hist�
   - Fica de fora o que é cache ou estado de máquina: `cache/`, `daemon*`, `session-env/`, `sessions/`,
     `shell-snapshots/`, `telemetry/`, `debug/`, `statsig/`, `stats-cache.json`, `plugins/` (reinstalado pelo CLI).
 - **D3 — A pessoal é renomeada para `.claude-personal.aposentada`, nunca apagada pela migração** — porquê: rollback é
-  renomear de volta; apagar é decisão posterior e explícita do Luís.
+  renomear de volta e refazer o login nela (`/login` com `CLAUDE_CONFIG_DIR` na pasta), porque a credencial sai da
+  pasta na migração para não ficar em dois arquivos (emenda da revisão, 2026-10-12); apagar é decisão posterior e
+  explícita do Luís.
 - **D4 — Com uma pasta, a conta da casa é a team: a pasta passa para a max quando a team passa de 97% (5 h ou
   semana) e a max está abaixo de 60%/85%, e volta para a team quando o limite que travou zerar** — porquê: o
   trabalho da TOTVS fica a maior parte do tempo sob a conta da organização e a max é o transbordo. Custo aceito:
