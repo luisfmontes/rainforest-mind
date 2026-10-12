@@ -280,7 +280,10 @@ function aplicar(plano, ops) {
     }
   };
   // Sem o vigia desagendado não se copia nada: o status do /Delete é conferido, não ignorado.
+  // Vigia que não estava agendado (plano.vigiaAgendado === false, descoberto por /Query antes da escrita):
+  // nada a desagendar, e no fim nada a reagendar.
   etapa('desagendar o vigia', () => {
+    if (plano.vigiaAgendado === false) return;
     const st = ops.desagendar();
     if (st) throw new Error(`schtasks não removeu o vigia (status ${st})`);
   });
@@ -314,7 +317,7 @@ function aplicar(plano, ops) {
     if (plano.tirarCredPessoal) gravarCred(plano.tirarCredPessoal.arq, JSON.stringify(plano.tirarCredPessoal.restante, null, 2) + '\n');
   });
   etapa('rename da pasta pessoal', () => ops.renomearPasta(plano.pessoal, plano.aposentada));
-  const reagendado = etapa('vigia reagendado', () => ops.reagendar());
+  const reagendado = etapa('vigia reagendado', () => (plano.vigiaAgendado === false ? null : ops.reagendar()));
   return { plugins, reagendado };
 }
 
@@ -363,6 +366,7 @@ function relatorio(plano, aplicado) {
   }[plano.credencial];
   linhas.push(`credencial da pasta pessoal: ${credTxt}`);
   linhas.push(aplicado ? `pasta pessoal aposentada: ${plano.aposentada}` : `pasta pessoal seria aposentada: ${plano.aposentada}`);
+  if (aplicado && plano.vigiaAgendado === false) linhas.push('vigia não estava agendado: nada a desagendar nem reagendar');
   return linhas;
 }
 

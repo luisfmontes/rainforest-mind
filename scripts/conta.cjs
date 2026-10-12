@@ -1192,6 +1192,11 @@ function migrar(c, args, perfilArq) {
     }
     return 0;
   }
+  // Antes de qualquer escrita: o vigia está agendado? Exit 0 = existe; qualquer outro código = não agendado
+  // (medido em 2026-10-12: tarefa inexistente sai 1). Falha de execução do schtasks recusa sem escrever.
+  const consulta = chamarSchtasks(['/Query', '/TN', TAREFA]);
+  if (consulta.error || consulta.status === null) return sair(1, 'não consegui consultar o vigia (schtasks /Query). unificar não escreveu nada');
+  plano.vigiaAgendado = consulta.status === 0;
   let aplicado;
   try {
     aplicado = UNIFICAR.aplicar(plano, {

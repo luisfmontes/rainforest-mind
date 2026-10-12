@@ -112,10 +112,12 @@ fs.appendFileSync(process.env.RFM_FAKE_ENV, `${estado} ${argv.join(' ')}\n`);
 if (process.env.RFM_FAKE_FALHA === '1' && argv[0] === 'plugin' && argv[1] === 'install') process.exit(3);
 JS
 # Schtasks falso: registra os argumentos em RFM_SCHTASKS_LOG e sai 0. RFM_SCHTASKS_FALHA=1 faz o /Delete
-# sair 1 sem registrar nada. O schtasks real nunca roda.
+# sair 1 sem registrar nada. O /Query é consulta: não registra nada (não escreve), responde 0 (vigia agendado)
+# e, com RFM_SCHTASKS_NAO_AGENDADO=1, responde 1 (tarefa inexistente, medido em 2026-10-12). O schtasks real nunca roda.
 cat > "$RAIZ/schtasks-falso.cjs" <<'JS'
 const fs = require('fs');
 if (process.env.RFM_SCHTASKS_FALHA === '1' && process.argv.includes('/Delete')) process.exit(1);
+if (process.argv.includes('/Query')) process.exit(process.env.RFM_SCHTASKS_NAO_AGENDADO === '1' ? 1 : 0);
 fs.appendFileSync(process.env.RFM_SCHTASKS_LOG, JSON.stringify(process.argv.slice(2)) + '\n');
 JS
 
@@ -199,6 +201,18 @@ afirma "(i) /Create aponta para plugins/marketplaces da pasta de trabalho" creat
 afirma "(o) nada de cache/, sessions/ e plugins/ copiado" cache_plugins_sessions_ausentes
 afirma "(o) file-history copiado (controle positivo da cópia)" test -f "$C_B/trabalho/.claude/file-history/h/1.txt"
 afirma "(p) stdout do --aplicar sem token falso de credencial" sem_token "$RAIZ/b.txt"
+
+# Vigia NÃO agendado (/Query sai 1): a migração segue, sem /Delete nem /Create, e o relatório diz isso.
+C_NA="$(novo_caso na)"
+RC_NA=0
+export RFM_SCHTASKS_NAO_AGENDADO=1
+unif "$C_NA" --aplicar > "$RAIZ/na.txt" 2>&1 || RC_NA=$?
+unset RFM_SCHTASKS_NAO_AGENDADO
+afirma "(na) vigia não agendado: --aplicar sai 0" test "$RC_NA" -eq 0
+afirma "(na) vigia não agendado: a pasta pessoal é aposentada" test -d "$C_NA/pessoal/.claude-personal.aposentada"
+afirma "(na) vigia não agendado: nenhum /Delete" bash -c "! grep -qF '\"/Delete\"' '$C_NA/schtasks-args.txt'"
+afirma "(na) vigia não agendado: nenhum /Create" bash -c "! grep -qF '\"/Create\"' '$C_NA/schtasks-args.txt'"
+afirma "(na) vigia não agendado: o relatório diz que não estava agendado" grep -qF 'vigia não estava agendado: nada a desagendar nem reagendar' "$RAIZ/na.txt"
 
 # (j) reserva-pessoal.json não é sobrescrita quando já existe pronta.
 C_J="$(novo_caso j reserva-pronta)"
