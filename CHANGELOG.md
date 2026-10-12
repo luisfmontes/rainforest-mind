@@ -10,6 +10,22 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.63.0 — 2026-10-12
+
+- **Uma pasta só, quando não existe `~/.claude-personal`.** Sem a pasta pessoal, a troca de conta passa a acontecer
+  dentro de `~/.claude`: a conta da casa é a team, e a pasta vai para a pessoal quando a team passa de 97% (5 h ou
+  semana) e a pessoal está abaixo de 60% (5 h) e de 85% (semana). Com as duas pastas, nada muda.
+- **`conta.cjs unificar`: a pasta pessoal vira parte da pasta única.** Sem `--aplicar` só relata. Com ele, copia
+  transcritos, memória e histórico sem sobrescrever (conflito vira `<nome>.pessoal.<ext>`), une os MCP e os projetos
+  do `.claude.json`, instala os plugins que só a pessoal tinha, recusa com janela do Claude aberta, reagenda o vigia e
+  renomeia a pessoal para `.claude-personal.aposentada`. `--profile <arquivo>` troca as funções `claude-pessoal` e
+  `claude-trabalho` do perfil do PowerShell por um `claude` só, com backup `.bak-pasta-unica`.
+- **`/conta preparar pessoal` em modo uma pasta** registra a conta pela própria reserva quando ela ainda não está
+  registrada, já que a pessoal não é casa de pasta nenhuma.
+- **Gate de publicação lê o marcador no conteúdo de um `Write`.** Antes só olhava o disco, e um arquivo novo ainda
+  não está lá: um `Write` de arquivo novo com o marcador de dados de exemplo no conteúdo passa a ser dispensado,
+  como já era com o arquivo no disco.
+
 ## 1.62.0 — 2026-10-11
 
 - **Troca automática de conta Claude pelo uso, sem reiniciar sessão.** Quando a conta de uma pasta de configuração

@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.62.0-1e5c3f?style=flat-square" alt="versão 1.62.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.63.0-1e5c3f?style=flat-square" alt="versão 1.63.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -269,7 +269,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `/vigiar <contato>` | Acompanha uma conversa de WhatsApp sem gastar token e acorda a sessão quando a pessoa escreve. Exige a integração `integracao-whatsapp-mcp` ligada e a bridge da conta de pé; o fluxo mora no repo [whatsapp-mcp](https://github.com/luisfmontes/whatsapp-mcp) |
 | `/regua` | Régua externa nomeada, builder contra crítico cego — para o que não tem teste. A Fase 0 destila a régua em 5-7 mecanismos conferíveis por olho em `docs/rainforest/reguas/<slug>.md` (o builder não os vê; o crítico sim) e faz o preflight de renderização, nomeando qual crítico ficaria cego. A régua é **selada pelo commit que a adicionou**: `scripts/conferir-regua.cjs` (`validar` antes de selar, `conferir`, `mostrar`) recusa régua alterada depois, e `mostrar` é o único caminho que a imprime. A partir da 2ª rodada, um segundo crítico cego compara o novo com o melhor guardado e decide **keep/discard** sozinho; as rodadas ficam num TSV versionado |
 | `/transferir` | Leva a sessão atual para o Codex. Sem argumento: uma thread Codex retomável por `codex resume <id>`, exige `transfer-codex` ligado no `/setup`. `/transferir claude` foi retirado: sai com exit 2 e aponta o `/conta` |
-| `/conta` | Sem argumento: a conta em uso de cada pasta e o uso das duas contas. `/conta pessoal` ou `/conta trabalho`: troca na mão a pasta da sessão (`--pasta` escolhe a outra) (sem volta automática até a próxima troca manual). `/conta preparar pessoal\|trabalho`: prepara o login de reserva. É a forma de trocar a conta de uma pasta, no lugar do antigo `/transferir claude`. Detalhe na seção [Troca automática de conta](#troca-automática-de-conta) |
+| `/conta` | Sem argumento: a conta em uso de cada pasta e o uso das duas contas. `/conta pessoal` ou `/conta trabalho`: troca na mão a pasta da sessão (`--pasta` escolhe a outra) (sem volta automática até a próxima troca manual). `/conta preparar pessoal\|trabalho`: prepara o login de reserva. `/conta unificar [--aplicar] [--profile <arquivo>]`: junta a pasta pessoal na de trabalho, com relatório antes de gravar ([passo a passo](#juntar-as-duas-pastas-numa-só)). É a forma de trocar a conta de uma pasta, no lugar do antigo `/transferir claude`. Detalhe na seção [Troca automática de conta](#troca-automática-de-conta) |
 | `/ponte` | Gera `CLAUDE.md`, `AGENTS.md` ou `GEMINI.md` ([detalhe](docs/pontes.md)) |
 | `modo-dev` | Escada YAGNI, causa raiz antes de remendo, rastreabilidade do diff |
 | `depurar` | Constrói o loop de feedback **antes** de qualquer hipótese |
@@ -297,8 +297,27 @@ Uma conta do Claude Code tem limite de 5 h e de semana. Quando a conta de uma pa
 - **Nas sessões:** toda troca e toda volta aparece como aviso nas sessões abertas e gera uma linha em `<dados>/contas/eventos.jsonl`.
 - **O vigia:** uma tarefa agendada do Windows roda a cada 1 minuto (`schtasks`), consulta o uso das duas contas e faz a troca. Cada rodada leva ~0,7 s e não fica nenhum processo residente; uma trava impede duas rodadas ao mesmo tempo. `node scripts/conta.cjs agendar` cria a tarefa `\ClaudeVigias\troca-de-conta` com `/SC MINUTE /MO 1`, sem data de fim (`/ED`), e só roda depois que as duas reservas existem; `agendar --imprimir` só mostra o comando, sem chamar o `schtasks`; `desagendar` remove a tarefa.
 - **Uma credencial nunca fica em dois lugares:** a troca move o login, nunca copia. Cada conta tem uma reserva guardada fora das duas pastas, e antes de mover os dois logins precisam ter pelo menos 30 min de vida no access token (exceção: o login que sai da pasta, vencido há mais de 10 min, dispensa a guarda, porque nenhuma sessão usa a pasta). A troca manual (`/conta pessoal|trabalho`) segue a mesma guarda e, ao recusar, diz qual login está curto e quando tentar de novo. A conferência é feita no servidor depois da troca; se não bater, a troca é desfeita; se nem o desfazer der certo, o aviso diz que a troca ficou pela metade ou não pôde ser desfeita e manda conferir com `/conta`.
-- **Pré-requisito:** a troca automática só liga depois de `/conta preparar pessoal` e `/conta preparar trabalho`, um login no navegador por conta.
+- **Pré-requisito:** com as duas pastas, a troca automática só liga depois de `/conta preparar pessoal` e `/conta preparar trabalho`, um login no navegador por conta. Com uma pasta só, basta `/conta preparar pessoal`.
 - **Os limites:** 97% para trocar, 60% (5 h) e 85% (semana) para o destino, em `<dados>/contas/config.json` (`trocarEm`, `destinoMax5h`, `destinoMaxSemana`; chave ausente ou fora de 1 a 100 usa o padrão). `/conta` mostra os valores em uso.
+
+**Duas pastas ou uma.** A detecção é pela pasta pessoal: se `~/.claude-personal` existe, são duas pastas, como descrito acima. Se não existe, a máquina tem uma pasta só (`~/.claude`), e a troca de login acontece dentro dela. A pasta aposentada (`.claude-personal.aposentada`) não conta como pasta pessoal.
+
+**Modo uma pasta.** A conta da casa da pasta é a team. A pasta passa para a pessoal quando a team passa de 97% (5 h ou semana) e a pessoal está abaixo de 60% (5 h) e de 85% (semana); volta para a team quando o limite que travou zera. Não há "outra pasta" a conferir: a reserva da team não é exigida, só a da pessoal, pelo `/conta preparar pessoal`.
+
+### Juntar as duas pastas numa só
+
+Quem tem as duas pastas pode juntar tudo em `~/.claude` e aposentar a pessoal. A migração não apaga nada, e sem `--aplicar` só relata o que faria.
+
+1. Feche todas as janelas do Claude Code. A migração recusa se houver `claude` rodando; dentro de uma sessão, o próprio `claude` aparece na lista e ela recusa.
+2. Veja o relatório, sem escrever nada: `node <clone instalado>/scripts/conta.cjs unificar`.
+3. Aplique: `node <clone instalado>/scripts/conta.cjs unificar --aplicar --profile $PROFILE`. O `--profile` troca no perfil do PowerShell as funções `claude-pessoal` e `claude-trabalho` por um `claude` só, que atualiza os plugins e abre sem `CLAUDE_CONFIG_DIR`; o original fica em `<perfil>.bak-pasta-unica`. Sem `--profile`, o perfil não é tocado.
+4. Abra com `claude`.
+
+O que migra: transcritos e memória de cada projeto (`projects/`), `file-history`, `plans`, `todos` e `tasks`; as linhas do `history.jsonl`; os servidores MCP e os projetos do `~/.claude.json` que só a pessoal tinha; os plugins habilitados só na pessoal, instalados pela própria CLI. O login da pessoal vira a reserva da conta pessoal, se ainda não houver uma. Não migra cache, sessões, telemetria nem a pasta `plugins/`, que a CLI reinstala.
+
+Nada é sobrescrito. Arquivo de mesmo nome e conteúdo diferente vira `<nome>.pessoal.<ext>`, e o original fica intacto. Linhas do índice de memória que apontam para arquivo que não existia no destino entram no fim do `MEMORY.md`. A migração recusa, sem escrever nada, se houver `claude` vivo, sessão viva, a pasta pessoal com login de outra conta, ou um servidor MCP de mesmo nome com definição diferente. O vigia é desagendado antes de qualquer cópia e reagendado no fim, apontando para o clone em `~/.claude`.
+
+A pasta pessoal é renomeada para `~/.claude-personal.aposentada`. A migração nunca a apaga: apagar essa pasta é decisão sua, e só quando a pasta única estiver funcionando.
 
 ## As 17 regras
 
