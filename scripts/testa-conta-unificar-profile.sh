@@ -258,5 +258,73 @@ else
   pula "(g) PowerShell: claude --version chama a aplicação uma vez (powershell ausente no PATH)"
 fi
 
+# ---------------------------------------------------------------------------------------------
+# Revisão 3: achado 3 (flags), achado 5 (retomada com --profile) e lacuna (a) (codificação do perfil).
+mesmo_hash() { [ "$(hash_de "$1")" = "$2" ]; }
+# Bloco do claude novo, e a linha que o chama (a aplicação, não a função).
+linha_app_claude() { bloco_claude "$1" | grep -F 'CommandType Application'; }
+
+# Codificação: gera o perfil em UTF-8 com BOM, UTF-16 LE com BOM ou CP-1252 sem BOM, com "ação" no comentário.
+cat > "$RAIZ/codif.cjs" <<'JS'
+const fs = require('fs');
+const [, , origem, cod, destino] = process.argv;
+const txt = fs.readFileSync(origem, 'utf8') + '# Configuração de ação (perfil de exemplo)\n';
+let buf;
+if (cod === 'utf8bom') buf = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(txt, 'utf8')]);
+else if (cod === 'utf16') buf = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(txt, 'utf16le')]);
+else buf = Buffer.from(txt, 'latin1');
+fs.writeFileSync(destino, buf);
+JS
+# Lê o perfil com a codificação esperada e confere o BOM (sai 3 se não bater): a leitura é independente do fonte.
+cat > "$RAIZ/ler-perfil.cjs" <<'JS'
+const fs = require('fs');
+const [, , arq, cod] = process.argv;
+const b = fs.readFileSync(arq);
+const bomUtf8 = b[0] === 0xef && b[1] === 0xbb && b[2] === 0xbf;
+const bomUtf16 = b[0] === 0xff && b[1] === 0xfe;
+let texto;
+if (cod === 'utf8bom') { if (!bomUtf8) process.exit(3); texto = new TextDecoder('utf-8').decode(b.subarray(3)); }
+else if (cod === 'utf16') { if (!bomUtf16) process.exit(3); texto = b.subarray(2).toString('utf16le'); }
+else { if (bomUtf8 || bomUtf16) process.exit(3); texto = new TextDecoder('windows-1252').decode(b); }
+process.stdout.write(texto);
+JS
+perfil_cod_ok() { node "$RAIZ/ler-perfil.cjs" "$1/perfil.ps1" "$2" 2>/dev/null | grep -qF 'Configuração de ação'; }
+backup_igual() { [ "$(hash_de "$1/perfil.ps1.bak-pasta-unica")" = "$2" ]; }
+
+for cod in utf8bom utf16 cp1252; do
+  C_C="$(semear_home cod-$cod)"
+  node "$RAIZ/codif.cjs" "$RAIZ/perfil-original.ps1" "$cod" "$C_C/perfil.ps1"
+  H_C="$(hash_de "$C_C/perfil.ps1")"
+  RC_C=0
+  unif "$C_C" --profile "$(win "$C_C/perfil.ps1")" --aplicar > "$RAIZ/cod-$cod.txt" 2>&1 || RC_C=$?
+  afirma "(lacuna a) perfil $cod: --aplicar sai 0" test "$RC_C" -eq 0
+  afirma "(lacuna a) perfil $cod: o perfil novo mantém a codificação e o acento de ação" perfil_cod_ok "$C_C" "$cod"
+  afirma "(lacuna a) perfil $cod: o backup é o original, byte a byte" backup_igual "$C_C" "$H_C"
+done
+
+# Achado 3: a flag do claude-trabalho é copiada para o claude novo. Aqui, --model opus no lugar do bypass.
+C_F="$(semear_home x4)"
+awk '/^function claude-trabalho/{t=1} t && /& claude --dangerously-skip-permissions/{sub(/--dangerously-skip-permissions/,"--model opus"); t=0} {print}' "$RAIZ/perfil-original.ps1" > "$C_F/perfil.ps1"
+unif "$C_F" --profile "$(win "$C_F/perfil.ps1")" --aplicar > "$RAIZ/x4.txt" 2>&1 || true
+caso_x4_ok() { linha_app_claude "$C_F/perfil.ps1" | grep -qF -- '--model opus @args' && ! linha_app_claude "$C_F/perfil.ps1" | grep -qF -- '--dangerously-skip-permissions'; }
+afirma "(achado 3) claude novo traz --model opus do claude-trabalho e não o bypass fixo" caso_x4_ok
+
+# Achado 3: claude-trabalho sem flag nenhuma gera claude sem flag.
+C_G3="$(semear_home x5)"
+awk '/^function claude-trabalho/{t=1} t && /& claude --dangerously-skip-permissions/{sub(/ --dangerously-skip-permissions/,""); t=0} {print}' "$RAIZ/perfil-original.ps1" > "$C_G3/perfil.ps1"
+unif "$C_G3" --profile "$(win "$C_G3/perfil.ps1")" --aplicar > "$RAIZ/x5.txt" 2>&1 || true
+caso_x5_ok() { linha_app_claude "$C_G3/perfil.ps1" | grep -qF '@args' && ! linha_app_claude "$C_G3/perfil.ps1" | grep -qF -- '--'; }
+afirma "(achado 3) claude-trabalho sem flag: o claude novo não ganha flag nenhuma" caso_x5_ok
+
+# Achado 5: a falha com --profile repete o comando exato, com --profile <arquivo>.
+C_R="$(semear_home x6)"
+cp "$RAIZ/perfil-original.ps1" "$C_R/perfil.ps1"
+export RFM_CONTA_FALHA=renomear
+RC_R=0
+unif "$C_R" --aplicar --profile "$(win "$C_R/perfil.ps1")" > "$RAIZ/x6.txt" 2>&1 || RC_R=$?
+unset RFM_CONTA_FALHA
+afirma "(achado 5) falha com --profile sai diferente de 0" test "$RC_R" -ne 0
+afirma "(achado 5) a retomada repete o comando com --profile <arquivo>" grep -qF "unificar --aplicar --profile $(win "$C_R/perfil.ps1")" "$RAIZ/x6.txt"
+
 echo "ok: $OK   falhou: $FALHOU   pulado: $PULADO"
 if [ "$FALHOU" -ne 0 ]; then exit 1; fi

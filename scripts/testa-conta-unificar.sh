@@ -43,21 +43,24 @@ const oauth = (email) => ({ accountUuid: '00000000-0000-0000-0000-000000000001',
 const WA = { type: 'stdio', command: 'falso-whatsapp', args: ['--modo-falso'] };
 const WA_OUTRA = { type: 'stdio', command: 'falso-whatsapp-outra', args: ['--modo-falso'] };
 // Pasta de trabalho (destino).
-j(path.join(H, '.claude.json'), { numStartups: 2, oauthAccount: oauth('team@exemplo.invalid'), mcpServers: { whatsapp: WA }, projects: { '/falso/trabalho': {} } });
+j(path.join(H, '.claude.json'), { numStartups: 2, oauthAccount: oauth('team@exemplo.invalid'), mcpServers: { whatsapp: WA }, projects: variante === 'projeto-comum' ? { '/falso/trabalho': {}, '/falso/comum': {} } : { '/falso/trabalho': {} } });
 j(path.join(T, '.credentials.json'), { claudeAiOauth: { accessToken: 'falso-token-team', refreshToken: 'falso-refresh-team', expiresAt: VIDA, scopes: ['user:inference'], subscriptionType: 'max' } });
 j(path.join(T, 'settings.json'), { model: 'falso' });
 w(path.join(T, 'history.jsonl'), '{"display":"falso-linha-um"}\n');
 w(path.join(T, 'projects', '-proj-x', 'memory', 'MEMORY.md'), '- [A](a.md) — trabalho\n');
 w(path.join(T, 'projects', '-proj-x', 'memory', 'a.md'), 'trabalho a\n');
+// memoria-pre: b.md já foi copiada (igual à da pessoal) por uma rodada anterior, e o índice ainda não tem a linha.
+if (variante === 'memoria-pre') w(path.join(T, 'projects', '-proj-x', 'memory', 'b.md'), 'pessoal b\n');
 // Clone instalado (destino do reagendamento, D7). A variante sem-clone não o cria.
 if (variante !== 'sem-clone') w(path.join(T, 'plugins', 'marketplaces', 'rainforest-mind', 'scripts', 'conta.cjs'), '// clone falso\n');
 // Pasta pessoal (origem).
 j(path.join(P, '.credentials.json'), { claudeAiOauth: { accessToken: 'falso-token-pessoal-cred', refreshToken: 'falso-refresh-pessoal-cred', expiresAt: VIDA, scopes: ['user:inference'], subscriptionType: 'max' }, mcpOAuth: { falso: { accessToken: 'falso-mcp-oauth' } } });
-j(path.join(P, '.claude.json'), { numStartups: 1, oauthAccount: oauth('pessoal@exemplo.invalid'), mcpServers: { whatsapp: variante === 'whatsapp-divergente' ? WA_OUTRA : WA, github: { type: 'stdio', command: 'falso-gh', env: { GH_TOKEN_FALSO: 'falso-gh-token-xyz' } } }, projects: { '/falso/pessoal': {} } });
+j(path.join(P, '.claude.json'), { numStartups: 1, oauthAccount: oauth('pessoal@exemplo.invalid'), mcpServers: { whatsapp: variante === 'whatsapp-divergente' ? WA_OUTRA : WA, github: { type: 'stdio', command: 'falso-gh', env: { GH_TOKEN_FALSO: 'falso-gh-token-xyz' } } }, projects: variante === 'projeto-comum' ? { '/falso/pessoal': {}, '/falso/comum': {} } : { '/falso/pessoal': {} } });
 j(path.join(P, 'settings.json'), { enabledPlugins: { 'security-guidance@claude-plugins-official': true } });
 w(path.join(P, 'history.jsonl'), '{"display":"falso-linha-um"}\n{"display":"falso-linha-dois"}\n{"display":"falso-linha-dois"}\n');
 w(path.join(P, 'projects', '-proj-x', '11111111-1111-4111-8111-111111111111.jsonl'), '{"falso":"transcrito-pessoal"}\n');
-w(path.join(P, 'projects', '-proj-x', 'memory', 'MEMORY.md'), '- [A2](a.md) — pessoal\n- [B](b.md) — nova\n');
+// indice-z: a linha aponta para um z.md que não existe em nenhuma pasta (não pode entrar, nem repetir).
+w(path.join(P, 'projects', '-proj-x', 'memory', 'MEMORY.md'), '- [A2](a.md) — pessoal\n- [B](b.md) — nova\n' + (variante === 'indice-z' ? '- [Z](z.md) — sem alvo\n' : ''));
 w(path.join(P, 'projects', '-proj-x', 'memory', 'a.md'), 'pessoal a\n');
 w(path.join(P, 'projects', '-proj-x', 'memory', 'b.md'), 'pessoal b\n');
 w(path.join(P, 'file-history', 'h', '1.txt'), 'falso-historico\n');
@@ -67,7 +70,9 @@ w(path.join(P, 'plugins', 'cache', 'p.txt'), 'falso-plugin-cache\n');
 // Dados do rainforest.
 j(path.join(D, 'contas', 'estado.json'), variante === 'estado-fora'
   ? { automatico: false, pastas: { pessoal: { conta: 'team' } }, contas: {} }
-  : { automatico: false, contas: {} });
+  : variante === 'estado-fora-trabalho'
+    ? { automatico: false, pastas: { trabalho: { conta: 'pessoal' } }, contas: {} }
+    : { automatico: false, contas: {} });
 if (variante === 'reserva-pronta' || variante === 'reserva-mesmo-token') {
   // reserva-mesmo-token: a reserva já tem o MESMO refresh token da credencial pessoal.
   const refresh = variante === 'reserva-mesmo-token' ? 'falso-refresh-pessoal-cred' : 'falso-refresh-reserva-pronta';
@@ -111,14 +116,25 @@ const estado = process.env.CLAUDE_CONFIG_DIR === undefined ? 'UNSET' : 'SET';
 fs.appendFileSync(process.env.RFM_FAKE_ENV, `${estado} ${argv.join(' ')}\n`);
 if (process.env.RFM_FAKE_FALHA === '1' && argv[0] === 'plugin' && argv[1] === 'install') process.exit(3);
 JS
-# Schtasks falso: registra os argumentos em RFM_SCHTASKS_LOG e sai 0. RFM_SCHTASKS_FALHA=1 faz o /Delete
-# sair 1 sem registrar nada. O /Query é consulta: não registra nada (não escreve), responde 0 (vigia agendado)
-# e, com RFM_SCHTASKS_NAO_AGENDADO=1, responde 1 (tarefa inexistente, medido em 2026-10-12). O schtasks real nunca roda.
+# Schtasks falso: lembra se a tarefa existe entre chamadas (arquivo <log>.estado). Começa agendada, ou
+# ausente com RFM_SCHTASKS_NAO_AGENDADO=1 (tarefa inexistente, medido em 2026-10-12). /Delete numa tarefa
+# ausente sai 1, como o real; /Create agenda; /Query sai 0 se agendada e 1 se ausente. RFM_SCHTASKS_FALHA=1
+# faz o /Delete sair 1 sem mudar nada. Só /Create e /Delete entram no log. O schtasks real nunca roda.
 cat > "$RAIZ/schtasks-falso.cjs" <<'JS'
 const fs = require('fs');
-if (process.env.RFM_SCHTASKS_FALHA === '1' && process.argv.includes('/Delete')) process.exit(1);
-if (process.argv.includes('/Query')) process.exit(process.env.RFM_SCHTASKS_NAO_AGENDADO === '1' ? 1 : 0);
-fs.appendFileSync(process.env.RFM_SCHTASKS_LOG, JSON.stringify(process.argv.slice(2)) + '\n');
+const log = process.env.RFM_SCHTASKS_LOG;
+const arqEstado = log + '.estado';
+const lido = fs.existsSync(arqEstado) ? fs.readFileSync(arqEstado, 'utf8').trim() : '';
+const estado = lido || (process.env.RFM_SCHTASKS_NAO_AGENDADO === '1' ? 'ausente' : 'agendada');
+const acao = process.argv.includes('/Query') ? 'query' : process.argv.includes('/Delete') ? 'delete' : 'create';
+if (acao === 'query') process.exit(estado === 'ausente' ? 1 : 0);
+if (acao === 'delete') {
+  if (process.env.RFM_SCHTASKS_FALHA === '1' || estado === 'ausente') process.exit(1);
+  fs.writeFileSync(arqEstado, 'ausente');
+} else {
+  fs.writeFileSync(arqEstado, 'agendada');
+}
+fs.appendFileSync(log, JSON.stringify(process.argv.slice(2)) + '\n');
 JS
 
 novo_caso() { # $1 = nome; $2 = variante (opcional)
@@ -380,6 +396,66 @@ export CLAUDE_CONFIG_DIR="$(win "$C_8/pessoal/.claude-personal")"
 unif "$C_8" --aplicar > "$RAIZ/ach8.txt" 2>&1 || true
 unset CLAUDE_CONFIG_DIR
 afirma "(achado 8) plugin install recebe a CLI sem CLAUDE_CONFIG_DIR no ambiente" bash -c "grep -q '^UNSET plugin install security-guidance@claude-plugins-official' '$C_8/cli-env.txt' && ! grep -q '^SET ' '$C_8/cli-env.txt'"
+
+# ---------------------------------------------------------------------------------------------
+# Revisão 3 (rodada 3 de 2026-10-12-pasta-unica): um caso por achado 1 a 6 e por lacuna (a) a (c) que cabe aqui.
+# Predicados tolerantes a arquivo ausente: nenhum comando fora de afirma pode abortar a bateria (set -e).
+um_create() { [ "$(grep -c '"/Create"' "$1" || true)" = "1" ]; }
+sem_linha_repetida() { [ "$(grep -cF "$2" "$1" || true)" -le 1 ]; }
+
+# Achado 1: a 1ª rodada apaga a tarefa e falha no rename. A 2ª tem de reagendar (/Create), mesmo com o
+# /Query devolvendo 1 (a tarefa já foi apagada pela 1ª rodada).
+C_1R="$(novo_caso ach1r)"
+export RFM_CONTA_FALHA=renomear
+RC_1R1=0
+unif "$C_1R" --aplicar > "$RAIZ/ach1r1.txt" 2>&1 || RC_1R1=$?
+unset RFM_CONTA_FALHA
+RC_1R2=0
+unif "$C_1R" --aplicar > "$RAIZ/ach1r2.txt" 2>&1 || RC_1R2=$?
+afirma "(achado 1) a 1ª rodada, com rename que falha depois do /Delete, sai diferente de 0" test "$RC_1R1" -ne 0
+afirma "(achado 1) a 2ª rodada, com a tarefa já apagada, sai 0" test "$RC_1R2" -eq 0
+afirma "(achado 1) a 2ª rodada reagenda: exatamente um /Create no log" um_create "$C_1R/schtasks-args.txt"
+
+# Achado 2: pasta de trabalho fora de casa (login de outra conta) recusa antes de escrever.
+C_T="$(novo_caso trab-fora estado-fora-trabalho)"
+H_T="$(hash_de "$C_T")"
+RC_T=0
+unif "$C_T" --aplicar > "$RAIZ/trab.txt" 2>&1 || RC_T=$?
+afirma "(achado 2) pasta de trabalho fora de casa sai 2" test "$RC_T" -eq 2
+afirma "(achado 2) pasta de trabalho fora de casa: nenhum byte muda" mesmo_hash "$C_T" "$H_T"
+
+# Achado 4: b.md já copiada numa rodada anterior (igual à da pessoal) e a linha (b.md) ainda fora do índice:
+# a linha entra, uma vez.
+C_M4="$(novo_caso ach4m memoria-pre)"
+RC_M4=0
+unif "$C_M4" --aplicar > "$RAIZ/ach4m.txt" 2>&1 || RC_M4=$?
+afirma "(achado 4) b.md copiada antes: --aplicar sai 0" test "$RC_M4" -eq 0
+afirma "(achado 4) b.md copiada antes: a linha (b.md) entra no índice, exatamente uma vez" test "$(grep -cF '(b.md)' "$C_M4/trabalho/.claude/projects/-proj-x/memory/MEMORY.md")" -eq 1
+
+# Achado 4: linha do índice cujo alvo não existe em lugar nenhum: a 1ª rodada falha depois do índice e a 2ª
+# roda de novo. A linha não pode aparecer duas vezes.
+C_Z4="$(novo_caso ach4z indice-z)"
+export RFM_CONTA_FALHA=renomear
+unif "$C_Z4" --aplicar > "$RAIZ/ach4z1.txt" 2>&1 || true
+unset RFM_CONTA_FALHA
+RC_Z4=0
+unif "$C_Z4" --aplicar > "$RAIZ/ach4z2.txt" 2>&1 || RC_Z4=$?
+afirma "(achado 4) linha sem alvo, com retomada: a 2ª rodada sai 0" test "$RC_Z4" -eq 0
+afirma "(achado 4) linha sem alvo, com retomada: nunca duplicada no índice" sem_linha_repetida "$C_Z4/trabalho/.claude/projects/-proj-x/memory/MEMORY.md" '(z.md)'
+
+# Achado 5: --aplicar sem --profile diz que o perfil ficou intocado (e a linha exata do briefing).
+afirma "(achado 5) --aplicar sem --profile diz que o perfil não foi tocado" grep -qF 'perfil do PowerShell: não tocado (passe --profile <arquivo> para trocar)' "$RAIZ/b.txt"
+
+# Achado 6: a falha em que a credencial já saiu da pasta pessoal (rename depois dela) diz que a pasta ficou sem login.
+afirma "(achado 6) falha depois de a credencial sair da pasta pessoal diz que ela ficou sem login" grep -qF 'sem login' "$RAIZ/ach3.txt"
+
+# Lacuna (b): processo claude vivo recusa com a instrução de uma linha para rodar num terminal sem Claude.
+afirma "(lacuna b) processo claude vivo: a recusa diz para rodar num terminal sem Claude aberto" grep -qF 'terminal sem Claude aberto' "$RAIZ/k.txt"
+
+# Lacuna (c): caminho de projects que já existe nas duas pastas aparece no relatório como não mesclado.
+C_PC="$(novo_caso comum projeto-comum)"
+unif "$C_PC" > "$RAIZ/comum.txt" 2>&1 || true
+afirma "(lacuna c) relatório lista o caminho de projects já existente nas duas pastas como não mesclado" grep -qF 'não mesclados: /falso/comum' "$RAIZ/comum.txt"
 
 echo "ok: $OK   falhou: $FALHOU"
 if [ "$FALHOU" -ne 0 ]; then exit 1; fi

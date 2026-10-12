@@ -29,7 +29,7 @@ só liga quando as duas reservas existem (com uma pasta só, basta a reserva da 
 **`unificar`**: junta a pasta pessoal na de trabalho (pasta única). Sem `--aplicar` só relata o que faria. Com
 `--aplicar`, migra e renomeia a pessoal para `.claude-personal.aposentada`. `--profile <arquivo>` troca as funções
 `claude-pessoal` e `claude-trabalho` do perfil do PowerShell por um `claude` só, com backup `<arquivo>.bak-pasta-unica`.
-Recusa se houver `claude` aberto, então rode-o com todas as janelas fechadas. O passo a passo está na seção
+Recusa se houver `claude` aberto, inclusive dentro de uma sessão: rode-o num terminal sem Claude aberto. O passo a passo está na seção
 "Juntar as duas pastas numa só" do README.
 
 A troca automática e a volta são descritas na seção "Troca automática de conta" do README.

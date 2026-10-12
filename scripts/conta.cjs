@@ -106,6 +106,13 @@ function ctx() {
 const credArq = (c, P) => path.join(c.pastas[P], '.credentials.json');
 const claudeArq = (c, P) => path.join(c.pastas[P], '.claude.json');
 const reservaArq = (c, conta) => path.join(c.contas, `reserva-${conta}.json`);
+// Marca do vigia desagendado por unificar: gravada antes do /Delete, apagada só depois do /Create. Rodada nova
+// que a encontra sabe que o reagendamento ficou para trás, mesmo com /Query 1 (a tarefa já foi apagada).
+const marcaVigioArq = (c) => path.join(c.contas, 'vigia-desagendado-por-unificar.json');
+function gravarMarcaVigio(c) {
+  fs.mkdirSync(c.contas, { recursive: true });
+  fs.writeFileSync(marcaVigioArq(c), JSON.stringify({ em: Date.now() }) + '\n');
+}
 // Login da pasta guardado enquanto ela está fora de casa: um por pasta (P = trabalho | pessoal).
 const estacionadoArq = (c, P) => path.join(c.contas, `estacionado-${P}.json`);
 
@@ -1119,19 +1126,20 @@ function unificar(c, args) {
 // Só o perfil, com a pasta pessoal já aposentada. Mesmas checagens do caminho completo.
 function perfilSo(perfilArq, aplicar) {
   if (!fs.existsSync(perfilArq)) return sair(2, `perfil não encontrado: ${perfilArq}. unificar não escreveu nada`);
-  const perfil = UNIFICAR.perfilUnico(fs.readFileSync(perfilArq, 'utf8'));
+  const lido = UNIFICAR.lerPerfil(perfilArq);
+  const perfil = { ...UNIFICAR.perfilUnico(lido.texto), codificacao: lido.codificacao };
   if (!perfil.ok) return sair(2, perfil.motivo);
   if (!aplicar) {
     console.log('a pasta pessoal já foi aposentada: só o perfil');
     console.log(`perfil ${perfilArq} (sem --aplicar: nada gravado):`);
-    for (const linha of UNIFICAR.diffLinhas(fs.readFileSync(perfilArq, 'utf8'), perfil.texto)) console.log(linha);
+    for (const linha of UNIFICAR.diffLinhas(lido.texto, perfil.texto)) console.log(linha);
     return 0;
   }
   const bak = `${perfilArq}.bak-pasta-unica`;
   if (fs.existsSync(bak)) return sair(2, 'já existe <arquivo>.bak-pasta-unica: apague ou mova antes. unificar não escreveu nada');
   try {
     fs.copyFileSync(perfilArq, bak, fs.constants.COPYFILE_EXCL);
-    UNIFICAR.gravarTexto(perfilArq, perfil.texto);
+    UNIFICAR.gravarPerfil(perfilArq, perfil.texto, perfil.codificacao);
   } catch (e) {
     return sair(1, `perfil não trocado: ${msgSegura(e)}`);
   }
@@ -1139,19 +1147,25 @@ function perfilSo(perfilArq, aplicar) {
   return 0;
 }
 
-// Mensagem de quem parou no meio: o que já foi gravado, se o vigia ficou desagendado e o comando para continuar.
-function falhaDaMigracao(e) {
+// Mensagem de quem parou no meio: o que já foi gravado, se o vigia ficou desagendado e o comando para continuar
+// (o mesmo que o usuário rodou, com as flags que ele passou).
+function falhaDaMigracao(e, comando, plano) {
   const feito = e.feito || [];
   const linhas = [`migração interrompida em "${e.falhou || 'início'}": ${msgSegura(e)}`];
   linhas.push(feito.length ? `já feito: ${feito.join('; ')}.` : 'nada foi escrito.');
   if (feito.includes('desagendar o vigia')) linhas.push('o vigia está desagendado: nenhum agendamento roda até a migração terminar.');
-  linhas.push('para continuar, rode `conta.cjs unificar --aplicar` de novo: o que já foi copiado não é copiado outra vez.');
+  // A credencial sai da pasta pessoal antes do rename: se o rename falha, a pasta fica sem login (o login está na reserva).
+  if (plano.tirarCredPessoal && feito.includes('credencial da pasta pessoal')) {
+    linhas.push('a pasta pessoal já ficou sem login: o login está em reserva-pessoal.json. Para usar essa pasta sem a migração, refaça o login nela (claude com CLAUDE_CONFIG_DIR e /login).');
+  }
+  linhas.push(`para continuar, rode \`${comando}\` de novo: o que já foi copiado não é copiado outra vez.`);
   return linhas.join('\n');
 }
 
 function migrar(c, args, perfilArq) {
   const pessoal = c.pastas.pessoal;
   const trabalho = c.pastas.trabalho;
+  const comando = `conta.cjs unificar ${args.join(' ')}`.trimEnd();
   const reserva = reservaArq(c, 'pessoal');
   // O vigia aponta para o clone instalado em ~/.claude, não para este arquivo (que pode estar num worktree).
   const scriptInstalado = path.join(trabalho, 'plugins', 'marketplaces', 'rainforest-mind', 'scripts', 'conta.cjs');
@@ -1165,7 +1179,8 @@ function migrar(c, args, perfilArq) {
     reservaPessoalPronta: Boolean(reservaPronta(c, 'pessoal')),
     processosVivos: processosClaudeVivos(),
     sessoesVivas: haSessaoViva(c),
-    pastaForaDeCasa: pastaForaDeCasa(c, 'pessoal'),
+    // Qualquer pasta ativa fora de casa recusa: a volta do mover encontraria a saída ocupada (achado 2).
+    pastaForaDeCasa: pastasAtivas().some((P) => pastaForaDeCasa(c, P)),
     scriptInstalado,
   });
   if (plano.recusas.length) {
@@ -1174,9 +1189,11 @@ function migrar(c, args, perfilArq) {
   }
   // Perfil: só com --profile, e a recusa sai antes de qualquer escrita (tudo ou nada).
   let perfil = null;
+  let perfilLido = null;
   if (perfilArq) {
     if (!fs.existsSync(perfilArq)) return sair(2, `perfil não encontrado: ${perfilArq}. unificar não escreveu nada`);
-    perfil = UNIFICAR.perfilUnico(fs.readFileSync(perfilArq, 'utf8'));
+    perfilLido = UNIFICAR.lerPerfil(perfilArq);
+    perfil = { ...UNIFICAR.perfilUnico(perfilLido.texto), codificacao: perfilLido.codificacao };
     if (!perfil.ok) return sair(2, perfil.motivo);
     if (args.includes('--aplicar') && fs.existsSync(`${perfilArq}.bak-pasta-unica`)) {
       return sair(2, 'já existe <arquivo>.bak-pasta-unica: apague ou mova antes. unificar não escreveu nada');
@@ -1186,7 +1203,7 @@ function migrar(c, args, perfilArq) {
     for (const linha of UNIFICAR.relatorio(plano)) console.log(linha);
     if (perfil) {
       console.log(`perfil ${perfilArq} (sem --aplicar: nada gravado):`);
-      for (const linha of UNIFICAR.diffLinhas(fs.readFileSync(perfilArq, 'utf8'), perfil.texto)) console.log(linha);
+      for (const linha of UNIFICAR.diffLinhas(perfilLido.texto, perfil.texto)) console.log(linha);
     } else {
       console.log('perfil do PowerShell: não tratado (passe --profile <arquivo> para trocar as funções)');
     }
@@ -1197,10 +1214,20 @@ function migrar(c, args, perfilArq) {
   const consulta = chamarSchtasks(['/Query', '/TN', TAREFA]);
   if (consulta.error || consulta.status === null) return sair(1, 'não consegui consultar o vigia (schtasks /Query). unificar não escreveu nada');
   plano.vigiaAgendado = consulta.status === 0;
+  // Marca de rodada anterior: apagou a tarefa e parou antes do reagendamento. Então /Query 1 não quer dizer
+  // "nunca esteve agendado": a tarefa a reagendar é esta.
+  plano.reagendar = plano.vigiaAgendado || fs.existsSync(marcaVigioArq(c));
   let aplicado;
   try {
     aplicado = UNIFICAR.aplicar(plano, {
-      desagendar: () => chamarSchtasks(['/Delete', '/TN', TAREFA, '/F']).status,
+      desagendar: () => {
+        // Marca antes do /Delete: se o processo cair depois dele, a próxima rodada sabe que falta reagendar.
+        gravarMarcaVigio(c);
+        const r = chamarSchtasks(['/Delete', '/TN', TAREFA, '/F']);
+        const st = r.error || r.status === null ? 1 : r.status;
+        if (st) fs.rmSync(marcaVigioArq(c), { force: true });
+        return st;
+      },
       instalarPlugin: (chave) => chamarClaude(['plugin', 'install', chave, '--scope', 'user']),
       // Falha simulada do rename só em bateria (RFM_TEST=1): prova o caminho de recuperação do achado 3.
       renomearPasta: (de, para) => {
@@ -1211,14 +1238,18 @@ function migrar(c, args, perfilArq) {
       },
       reagendar: () => {
         const r = chamarSchtasks(montarAgendamento(scriptInstalado));
-        return r.error || r.status === null ? 1 : r.status;
+        const st = r.error || r.status === null ? 1 : r.status;
+        if (st === 0) fs.rmSync(marcaVigioArq(c), { force: true });
+        return st;
       },
     });
   } catch (e) {
-    return sair(1, falhaDaMigracao(e));
+    return sair(1, falhaDaMigracao(e, comando, plano));
   }
   for (const linha of UNIFICAR.relatorio(plano, aplicado)) console.log(linha);
-  const aviso = perfil ? '; o perfil não foi trocado' : '';
+  if (!perfil) console.log('perfil do PowerShell: não tocado (passe --profile <arquivo> para trocar)');
+  // Sem --profile o perfil não foi tocado; com ele, a falha diz o comando que refaz a troca do perfil.
+  const aviso = perfil ? `; o perfil não foi trocado: rode \`${comando}\` para trocá-lo` : '';
   if (aplicado.reagendado) {
     return sair(1, `migração feita, mas o vigia não foi reagendado: rode agendar do clone instalado${aviso}`);
   }
@@ -1232,9 +1263,9 @@ function migrar(c, args, perfilArq) {
     const bak = `${perfilArq}.bak-pasta-unica`;
     try {
       fs.copyFileSync(perfilArq, bak, fs.constants.COPYFILE_EXCL);
-      UNIFICAR.gravarTexto(perfilArq, perfil.texto);
+      UNIFICAR.gravarPerfil(perfilArq, perfil.texto, perfil.codificacao);
     } catch (e) {
-      return sair(1, `migração feita, mas o perfil não foi trocado: ${e.message}`);
+      return sair(1, `migração feita, mas o perfil não foi trocado: ${e.message}; rode \`${comando}\` para trocá-lo`);
     }
     console.log(`perfil: funções trocadas por claude; original em ${bak}`);
   }

@@ -93,14 +93,19 @@ function mcpDivergentes(pessoal, destino) {
   return divergentes;
 }
 
-// Índice de memória: as linhas da pessoal cujo alvo NÃO existia na pasta de destino (snapshot
-// feito antes de qualquer cópia). Linha sem alvo .md não entra.
-function linhasDeIndice(textoPessoal, nomesNoDestino) {
+// Índice de memória: a linha da pessoal entra se (a) o texto dela ainda não está no MEMORY.md de destino
+// e (b) o alvo .md foi copiado — nesta rodada ou numa anterior (copiados = caminhos da pessoal com acao
+// 'copiar' ou 'igual'). Alvo que ficou em conflito, ou que não existe na pessoal, não entra. Como o critério
+// lê o destino, uma rodada repetida não duplica a linha, e a linha de uma rodada interrompida não se perde.
+function linhasDeIndice(textoPessoal, textoDestino, dirRel, copiados) {
+  const semCR = (l) => l.replace(/\r$/, '');
+  const jaNoDestino = new Set(textoDestino.split('\n').map(semCR));
   const vistas = new Set();
   const novas = [];
   for (const linha of textoPessoal.split('\n')) {
     const m = linha.match(LINK_MD);
-    if (!m || nomesNoDestino.has(m[1]) || vistas.has(linha)) continue;
+    if (!m || jaNoDestino.has(semCR(linha)) || vistas.has(linha)) continue;
+    if (!copiados.has(path.join(dirRel, m[1]))) continue;
     vistas.add(linha);
     novas.push({ linha, alvo: m[1] });
   }
@@ -110,10 +115,12 @@ function linhasDeIndice(textoPessoal, nomesNoDestino) {
 function planejar(e) {
   const recusas = [];
   if (e.processosVivos && e.processosVivos.length) {
-    recusas.push({ motivo: 'processo_claude', detalhe: e.processosVivos.join(', ') });
+    recusas.push({ motivo: 'processo_claude', detalhe: `feche o Claude e rode unificar num terminal sem Claude aberto (vivos: ${e.processosVivos.join(', ')})` });
   }
   if (e.sessoesVivas) recusas.push({ motivo: 'sessao_viva', detalhe: 'há sessão viva no sessoes.json' });
-  if (e.pastaForaDeCasa) recusas.push({ motivo: 'pasta_fora_de_casa', detalhe: 'a pasta pessoal está com login de outra conta' });
+  // Qualquer pasta ativa fora de casa recusa (o chamador passa o resultado de todas): a volta do mover
+  // encontraria a saída ocupada e a pasta única ficaria presa na conta pessoal.
+  if (e.pastaForaDeCasa) recusas.push({ motivo: 'pasta_fora_de_casa', detalhe: 'uma pasta ativa está com login de outra conta: volte a pasta antes de unificar' });
   if (fs.existsSync(e.aposentada)) recusas.push({ motivo: 'aposentada_existe', detalhe: 'a pasta .claude-personal.aposentada já existe' });
   if (e.reservaExiste && !e.reservaPessoalPronta) {
     recusas.push({ motivo: 'reserva_ocupada', detalhe: 'reserva-pessoal.json existe sem credencial' });
@@ -141,12 +148,12 @@ function planejar(e) {
     }
   }
 
-  // Índice: o snapshot dos nomes do destino vem daqui, antes de qualquer cópia.
+  // Índice: lê o destino agora, antes de qualquer cópia; o que foi copiado (ou já era igual) conta como migrado.
+  const copiados = new Set(copias.filter((c) => c.acao === 'copiar' || c.acao === 'igual').map((c) => c.rel));
   for (const i of indices) {
     i.linhas = [];
     if (i.acao === 'mesclar') {
-      const nomes = new Set(fs.readdirSync(path.dirname(i.destino)));
-      i.linhas = linhasDeIndice(fs.readFileSync(i.origem, 'utf8'), nomes);
+      i.linhas = linhasDeIndice(fs.readFileSync(i.origem, 'utf8'), fs.readFileSync(i.destino, 'utf8'), path.dirname(i.rel), copiados);
     }
   }
 
@@ -175,6 +182,8 @@ function planejar(e) {
   const projP = claudePessoal.projects || {};
   const projD = claudeDestino.projects || {};
   const projNovos = Object.keys(projP).filter((k) => !Object.hasOwn(projD, k));
+  // Mesmo caminho nas duas pastas: o destino fica como está, e o relatório lista o caminho (não mesclado).
+  const projRepetidos = Object.keys(projP).filter((k) => Object.hasOwn(projD, k));
   let claudeNovo = null;
   if (mcpNovos.length || projNovos.length) {
     claudeNovo = { ...claudeDestino };
@@ -229,7 +238,7 @@ function planejar(e) {
     copias,
     indices,
     historico: { destino: historicoDestino, novas: novasHistorico },
-    claude: { destino: e.claudeJsonTrabalho, novo: claudeNovo, mcpNovos, projNovos },
+    claude: { destino: e.claudeJsonTrabalho, novo: claudeNovo, mcpNovos, projNovos, projRepetidos },
     plugins,
     reserva,
     credencial,
@@ -237,11 +246,12 @@ function planejar(e) {
   };
 }
 
-function gravarTexto(arq, texto) {
+// Grava texto (UTF-8) ou bytes (Buffer), por arquivo temporário e renomeação.
+function gravarTexto(arq, dados) {
   fs.mkdirSync(path.dirname(arq), { recursive: true });
   const tmp = `${arq}.${process.pid}.${Date.now()}.tmp`;
   try {
-    fs.writeFileSync(tmp, texto, { encoding: 'utf8', flag: 'wx' });
+    fs.writeFileSync(tmp, dados, { flag: 'wx' });
     fs.renameSync(tmp, arq);
   } catch (err) {
     fs.rmSync(tmp, { force: true });
@@ -317,7 +327,8 @@ function aplicar(plano, ops) {
     if (plano.tirarCredPessoal) gravarCred(plano.tirarCredPessoal.arq, JSON.stringify(plano.tirarCredPessoal.restante, null, 2) + '\n');
   });
   etapa('rename da pasta pessoal', () => ops.renomearPasta(plano.pessoal, plano.aposentada));
-  const reagendado = etapa('vigia reagendado', () => (plano.vigiaAgendado === false ? null : ops.reagendar()));
+  // plano.reagendar: o vigia estava agendado, ou a marca de uma rodada anterior diz que o reagendamento falta.
+  const reagendado = etapa('vigia reagendado', () => (plano.reagendar ? ops.reagendar() : null));
   return { plugins, reagendado };
 }
 
@@ -348,7 +359,8 @@ function relatorio(plano, aplicado) {
   }
   linhas.push(`historico: +${plano.historico.novas.length} linha(s)`);
   linhas.push(`mcp em .claude.json: +${plano.claude.mcpNovos.length} (${plano.claude.mcpNovos.join(', ') || 'nenhum'})`);
-  linhas.push(`projetos em .claude.json: +${plano.claude.projNovos.length}`);
+  const repetidos = plano.claude.projRepetidos;
+  linhas.push(`projetos em .claude.json: +${plano.claude.projNovos.length} (já existiam nas duas pastas, não mesclados: ${repetidos.join(', ') || 'nenhum'})`);
   for (const p of plano.plugins) {
     const st = aplicado && aplicado.plugins ? aplicado.plugins.find((x) => x.chave === p.chave) : null;
     linhas.push(st ? `plugin ${p.chave}: ${st.status === 0 ? 'instalado' : `falhou (status ${st.status})`}` : `plugin a instalar: ${p.chave}`);
@@ -366,7 +378,8 @@ function relatorio(plano, aplicado) {
   }[plano.credencial];
   linhas.push(`credencial da pasta pessoal: ${credTxt}`);
   linhas.push(aplicado ? `pasta pessoal aposentada: ${plano.aposentada}` : `pasta pessoal seria aposentada: ${plano.aposentada}`);
-  if (aplicado && plano.vigiaAgendado === false) linhas.push('vigia não estava agendado: nada a desagendar nem reagendar');
+  if (aplicado && plano.vigiaAgendado === false && !plano.reagendar) linhas.push('vigia não estava agendado: nada a desagendar nem reagendar');
+  if (aplicado && plano.vigiaAgendado === false && plano.reagendar) linhas.push('vigia desagendado por uma rodada anterior: reagendado agora');
   return linhas;
 }
 
@@ -396,6 +409,15 @@ function acharBloco(texto, cabeca) {
   return null;
 }
 
+// Flags da linha `& claude ...` do claude-trabalho que sai (sem o @args). O claude novo recebe ESSAS flags,
+// copiadas do perfil de origem; nada é escrito aqui. Sem linha de chamada ou sem flags, devolve ''.
+function flagsDoTrabalho(blocoTrabalho) {
+  const linha = blocoTrabalho.split(/\r?\n/).find((l) => /&\s+claude(\s|$)/.test(l));
+  if (!linha) return '';
+  const depois = linha.slice(linha.search(/&\s+claude/)).replace(/^&\s+claude/, '');
+  return depois.replace(/@args/, '').trim();
+}
+
 function perfilUnico(texto) {
   const eol = texto.includes('\r\n') ? '\r\n' : '\n';
   const pessoal = acharBloco(texto, 'function claude-pessoal');
@@ -406,11 +428,13 @@ function perfilUnico(texto) {
   }
   if (!atualiza) return { ok: false, motivo: 'o perfil não tem Update-ClaudePlugins: nada foi alterado' };
 
+  const flags = flagsDoTrabalho(texto.slice(trabalho.ini, trabalho.fim));
+  const chamada = flags ? `${CHAMADA_APP}${flags} @args` : `${CHAMADA_APP}@args`;
   const claudeUnico = [
     'function claude {',
     '    Remove-Item Env:CLAUDE_CONFIG_DIR -ErrorAction SilentlyContinue',
     '    Update-ClaudePlugins',
-    `    ${CHAMADA_APP}--dangerously-skip-permissions @args`,
+    `    ${chamada}`,
     '}',
   ].join(eol);
   const atualizaNovo = texto.slice(atualiza.ini, atualiza.fim).split('& claude ').join(CHAMADA_APP);
@@ -440,6 +464,37 @@ function diffLinhas(antes, depois) {
   ];
 }
 
+// Codificação do perfil do PowerShell: BOM UTF-8, UTF-16 LE com BOM, ou sem BOM = CP-1252 (o PowerShell 5.1
+// lê assim). O texto volta aos mesmos bytes, exceto no que a troca mexe: CP-1252 é decodificado byte a byte.
+const CP1252 = new TextDecoder('windows-1252');
+const BYTE_DE_CP1252 = new Map();
+for (let b = 0; b < 256; b += 1) BYTE_DE_CP1252.set(CP1252.decode(Uint8Array.of(b)), b);
+
+function lerPerfil(arq) {
+  const b = fs.readFileSync(arq);
+  if (b[0] === 0xef && b[1] === 0xbb && b[2] === 0xbf) return { texto: b.subarray(3).toString('utf8'), codificacao: 'utf8bom' };
+  if (b[0] === 0xff && b[1] === 0xfe) return { texto: b.subarray(2).toString('utf16le'), codificacao: 'utf16' };
+  return { texto: CP1252.decode(b), codificacao: 'cp1252' };
+}
+
+// Recusa, antes de gravar, o caractere que o CP-1252 não tem (não troca em silêncio por "?").
+function codificarPerfil(texto, codificacao) {
+  if (codificacao === 'utf8bom') return Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(texto, 'utf8')]);
+  if (codificacao === 'utf16') return Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(texto, 'utf16le')]);
+  const bytes = [];
+  for (const ch of texto) {
+    const byte = BYTE_DE_CP1252.get(ch);
+    if (byte === undefined) throw new Error(`caractere fora do CP-1252 (U+${ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}): perfil não gravado`);
+    bytes.push(byte);
+  }
+  return Buffer.from(bytes);
+}
+
+function gravarPerfil(arq, texto, codificacao) {
+  gravarTexto(arq, codificarPerfil(texto, codificacao));
+}
+
 module.exports = {
   planejar, aplicar, relatorio, decidirArquivo, mesmoConteudo, DIRS_COPIA, perfilUnico, diffLinhas, gravarTexto,
+  lerPerfil, gravarPerfil, codificarPerfil, flagsDoTrabalho,
 };
