@@ -20,9 +20,9 @@
     "em": "2026-10-12"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-12",
-    "tarefas_ok": 5,
+    "tarefas_ok": 6,
     "tarefas": 7,
     "carimbos": [
       {
@@ -69,8 +69,8 @@
       }
     ],
     "em": "2026-10-12",
-    "comando": "bash scripts/testa-conta.sh; bash scripts/testa-conta-unificar.sh; bash scripts/testa-conta-mover.sh; bash scripts/testa-conta-uma-pasta.sh; bash scripts/testa-conta-unificar-profile.sh",
-    "saida": "ok: 48 falhou: 0 | ok: 92 falhou: 0 | ok: 21 falhou: 0 | ok: 20 falhou: 0 | ok: 34 falhou: 0 pulado: 0",
+    "comando": "bash scratchpad/rodar-baterias.sh (HOME falso, canario) + bash scripts/testa-conta-unificar.sh",
+    "saida": "testa-conta 49/0; unificar 105/0; unificar-profile 34/0/0 pulados; mover 26/0; uma-pasta 20/0; preparar 33/0; agendar 7/0; versao 5/0; gate 80/0; mod-conta 25/0; CANARIO-INTACTO",
     "destinos": [
       {
         "pendente": "T5 migracao real: depende da 1.63.0 instalada (o vigia e reagendado para o clone instalado); roda depois do merge, com o Luis e as janelas fechadas",
@@ -82,52 +82,42 @@
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-conta-uma-pasta.sh, caso uma pasta: status lista só trabalho e vigiar troca para a reserva pessoal"
+        "fixture": "testa-conta-uma-pasta.sh, caso \"uma pasta: status lista só trabalho e vigiar troca para a reserva pessoal\""
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "testa-conta-unificar.sh, caso memoria de mesmo nome e conteudo diferente vira .pessoal.md e o destino fica intacto"
+        "fixture": "testa-conta-unificar.sh, casos \"memoria de mesmo nome...\" e rodada 6 achados 1, 2 e 3 (registro pessoal, releitura do .claude.json, morte6)"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "testa-conta-unificar-profile.sh, caso profile real reescrito: claude unico remove CLAUDE_CONFIG_DIR e chama o binario"
+        "fixture": "testa-conta-unificar-profile.sh, caso \"profile real reescrito: claude unico remove CLAUDE_CONFIG_DIR e chama o binario\""
       },
       {
         "tarefa": 4,
         "resultado": "n/a",
-        "motivo": "texto e versao, sem comportamento a inverter"
+        "motivo": "texto e numero de versao, sem comportamento a inverter"
       },
       {
         "tarefa": 5,
         "resultado": "n/a",
-        "motivo": "execucao em ambiente real do usuario"
+        "motivo": "migracao real na maquina do Luis; sem linha de producao a inverter"
       },
       {
         "tarefa": 6,
         "resultado": "vermelho",
-        "fixture": "testa-gate-publicacao-destino.sh, caso Write de arquivo NOVO com marcador no topo do conteudo -> passa"
+        "fixture": "testa-gate-publicacao-destino.sh, caso \"Write de arquivo NOVO com marcador no topo do conteudo -> passa\" (mutacao a mao: catraca exit 4 por baseline na copia temporaria)"
       },
       {
         "tarefa": 7,
         "resultado": "vermelho",
-        "fixture": "testa-conta-uma-pasta.sh, caso pasta padrão: a troca grava o oauthAccount no .claude.json de fora da pasta"
+        "fixture": "testa-conta-uma-pasta.sh, caso \"pasta padrão: a troca grava o oauthAccount no .claude.json de fora da pasta\"; rodada 6: testa-conta-mover.sh caso (h) e testa-conta.sh caso (zq)"
       }
     ],
     "reaberturas": 5,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-12"
-    },
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "rodada 6: 5 achados da 5a revisao",
-        "desde": "2026-10-12T19:15:00-03:00",
-        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
-      }
-    ]
+    "em_voo": [],
+    "rodada": 6
   },
   "revisar": {
     "status": "reprovado",
