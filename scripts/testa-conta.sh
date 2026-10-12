@@ -985,20 +985,35 @@ afirma "(g) credencial nunca aparece na saída nem no log" caso_g
 
 # (z) recusa (rodada 5, achado 1): com a pasta de trabalho sobrescrita e SEM RFM_CONTA_CLAUDE_JSON, a CLI sai
 # com erro antes de ler ou gravar qualquer .claude.json. O home é falso e tem um canário: nada pode mudar nele.
-C_Z="$(novo_caso z nao)"
-CAN_Z="$RAIZ/home-canario-z"
-mkdir -p "$CAN_Z"
-printf '%s\n' '{"canario":true,"oauthAccount":{"emailAddress":"canario@exemplo.invalido"}}' > "$CAN_Z/.claude.json"
-HASH_CAN_Z="$(sha256sum "$CAN_Z/.claude.json" | cut -d' ' -f1)"
-RC_Z=0
-HOME="$(win "$CAN_Z")" USERPROFILE="$(win "$CAN_Z")" RFM_TEST=1 \
-  RFM_CONTA_PASTA_TRABALHO="$(win "$C_Z/trabalho/.claude")" \
-  RFM_CONTA_PASTA_PESSOAL="$(win "$C_Z/pessoal/.claude-personal")" \
-  RFM_CONTA_DADOS="$(win "$C_Z/dados")" \
+C_ZP="$(novo_caso zp nao)"
+CAN_ZP="$RAIZ/home-canario-zp"
+mkdir -p "$CAN_ZP"
+printf '%s\n' '{"canario":true,"oauthAccount":{"emailAddress":"canario@exemplo.invalido"}}' > "$CAN_ZP/.claude.json"
+HASH_CAN_ZP="$(sha256sum "$CAN_ZP/.claude.json" | cut -d' ' -f1)"
+RC_ZP=0
+HOME="$(win "$CAN_ZP")" USERPROFILE="$(win "$CAN_ZP")" RFM_TEST=1 \
+  RFM_CONTA_PASTA_TRABALHO="$(win "$C_ZP/trabalho/.claude")" \
+  RFM_CONTA_PASTA_PESSOAL="$(win "$C_ZP/pessoal/.claude-personal")" \
+  RFM_CONTA_DADOS="$(win "$C_ZP/dados")" \
   RFM_CONTA_API="$API" \
-  node scripts/conta.cjs trocar pessoal --pasta trabalho > "$RAIZ/z.txt" 2>&1 || RC_Z=$?
-caso_z() { [ "$RC_Z" -ne 0 ] && [ "$(sha256sum "$CAN_Z/.claude.json" | cut -d' ' -f1)" = "$HASH_CAN_Z" ]; }
-afirma "(z) sem RFM_CONTA_CLAUDE_JSON a CLI recusa (exit ≠ 0) e o .claude.json do home fica intacto" caso_z
+  node scripts/conta.cjs trocar pessoal --pasta trabalho > "$RAIZ/zp.txt" 2>&1 || RC_ZP=$?
+caso_zp() { [ "$RC_ZP" -ne 0 ] && [ "$(sha256sum "$CAN_ZP/.claude.json" | cut -d' ' -f1)" = "$HASH_CAN_ZP" ]; }
+afirma "(zp) sem RFM_CONTA_CLAUDE_JSON a CLI recusa (exit ≠ 0) e o .claude.json do home fica intacto" caso_zp
+
+# (zq) rodada 6, achado 5: só RFM_CONTA_PASTA_PESSOAL definida e SEM RFM_CONTA_CLAUDE_JSON. A guarda antiga olhava só
+# a de trabalho, e a pessoal passava para o home de quem roda. Recusa com exit 2 antes de qualquer leitura de .claude.json.
+C_ZQ="$(novo_caso zq nao)"
+CAN_ZQ="$RAIZ/home-canario-zq"
+mkdir -p "$CAN_ZQ"
+printf '%s\n' '{"canario":true,"oauthAccount":{"emailAddress":"canario@exemplo.invalido"}}' > "$CAN_ZQ/.claude.json"
+HASH_CAN_ZQ="$(sha256sum "$CAN_ZQ/.claude.json" | cut -d' ' -f1)"
+RC_ZQ=0
+HOME="$(win "$CAN_ZQ")" USERPROFILE="$(win "$CAN_ZQ")" RFM_TEST=1 \
+  RFM_CONTA_PASTA_PESSOAL="$(win "$C_ZQ/pessoal/.claude-personal")" \
+  RFM_CONTA_DADOS="$(win "$C_ZQ/dados")" \
+  node scripts/conta.cjs status > "$RAIZ/zq.txt" 2>&1 || RC_ZQ=$?
+caso_zq() { [ "$RC_ZQ" -eq 2 ] && [ "$(sha256sum "$CAN_ZQ/.claude.json" | cut -d' ' -f1)" = "$HASH_CAN_ZQ" ] && contem "$(cat "$RAIZ/zq.txt")" "RFM_CONTA_CLAUDE_JSON"; }
+afirma "(zq) só RFM_CONTA_PASTA_PESSOAL, sem RFM_CONTA_CLAUDE_JSON: exit 2, a recusa nomeia a variável, e o .claude.json do home fica intacto" caso_zq
 
 # (p2) modo duas pastas (rodada 5, achado 2): trocar trabalho --pasta pessoal grava o oauthAccount no .claude.json
 # de DENTRO da pasta pessoal, e o .claude.json de trabalho (fora da pasta) fica byte a byte igual.

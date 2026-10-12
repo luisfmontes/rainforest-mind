@@ -11,7 +11,7 @@ unset RFM_CONTA_PROCESSOS
 
 win() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi; }
 RAIZ="$(win "$(mktemp -d)")"
-trap 'rm -rf "$RAIZ"' EXIT
+trap 'kill "${SRV_R1:-}" 2>/dev/null || true; rm -rf "$RAIZ"' EXIT
 
 OK=0
 FALHOU=0
@@ -53,7 +53,7 @@ w(path.join(T, 'projects', '-proj-x', 'memory', 'a.md'), 'trabalho a\n');
 if (variante === 'memoria-pre') {
   w(path.join(T, 'projects', '-proj-x', 'memory', 'b.md'), 'pessoal b\n');
   // A rodada anterior gravou o progresso da cópia (só o que copiou com o mesmo nome).
-  j(path.join(D, 'contas', 'unificar-progresso.json'), { copiados: ['projects/-proj-x/memory/b.md'] });
+  w(path.join(D, 'contas', 'unificar-progresso.jsonl'), JSON.stringify('projects/-proj-x/memory/b.md') + '\n');
 }
 // a-identico: a.md já é igual ao da pessoal nas duas pastas desde o início (não foi copiado por ninguém).
 if (variante === 'a-identico') w(path.join(T, 'projects', '-proj-x', 'memory', 'a.md'), 'pessoal a\n');
@@ -519,6 +519,87 @@ afirma "(rodada 5, achado 4) a morte injetada no meio da cópia sai ≠ 0 (a inj
 afirma "(rodada 5, achado 4) retomada depois da morte: a 2ª rodada sai 0" test "$RC_M5R" -eq 0
 [ "$RC_M5R" -eq 0 ] || { echo "      saída da 2ª rodada:"; tail -n 3 "$RAIZ/morte5-2.txt"; }
 afirma "(rodada 5, achado 4) retomada depois da morte: MEMORY.md igual ao de uma rodada única limpa" mesmo_hash "$MEM_M5" "$(hash_de "$MEM_REF")"
+
+# Rodada 6, achado 1: estado.json sem contas.pessoal. --aplicar registra a conta pessoal (do oauthAccount da pasta
+# pessoal) ANTES de a pasta sair; depois, trocar pessoal não diz "sem registro". A API falsa só existe neste bloco
+# (trocar confere a identidade por ela); sem RFM_CONTA_API a bateria cairia na rede real.
+cat > "$RAIZ/servidor-r1.cjs" <<'JS'
+const fs = require('fs');
+const http = require('http');
+const mapa = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const srv = http.createServer((req, res) => {
+  const m = /^Bearer (.+)$/.exec(req.headers.authorization || '');
+  const id = m && mapa[m[1]];
+  const enviar = (codigo, obj) => { res.writeHead(codigo, { 'content-type': 'application/json' }); res.end(JSON.stringify(obj)); };
+  if (!id) return enviar(401, {});
+  if (req.url === '/api/oauth/profile') return enviar(200, { account: { uuid: id.uuid, email: id.email } });
+  if (req.url === '/api/oauth/usage') return enviar(200, id.uso);
+  return enviar(404, {});
+});
+srv.listen(0, '127.0.0.1', () => process.stdout.write(srv.address().port + '\n'));
+JS
+USO_R1='{"five_hour": {"utilization": 2, "resets_at": "2030-01-01T00:00:00+00:00"}, "seven_day": {"utilization": 7, "resets_at": "2030-01-01T00:00:00+00:00"}}'
+cat > "$RAIZ/mapa-r1.json" <<JSON
+{
+  "falso-token-team": {"email": "team@exemplo.invalid", "uuid": "00000000-0000-0000-0000-00000000000a", "uso": $USO_R1},
+  "falso-token-pessoal-cred": {"email": "pessoal@exemplo.invalid", "uuid": "00000000-0000-0000-0000-00000000000b", "uso": $USO_R1}
+}
+JSON
+node "$RAIZ/servidor-r1.cjs" "$RAIZ/mapa-r1.json" > "$RAIZ/porta-r1.txt" 2> "$RAIZ/servidor-r1-erro.txt" &
+SRV_R1=$!
+for _ in $(seq 1 100); do [ -s "$RAIZ/porta-r1.txt" ] && break; sleep 0.1; done
+API_R1="http://127.0.0.1:$(head -n1 "$RAIZ/porta-r1.txt")"
+C_R1="$(novo_caso r1)"
+RC_R1=0
+unif "$C_R1" --aplicar > "$RAIZ/r1.txt" 2>&1 || RC_R1=$?
+afirma "(rodada 6, achado 1) fixture sem contas.pessoal: --aplicar sai 0" test "$RC_R1" -eq 0
+afirma "(rodada 6, achado 1) após --aplicar, estado.json tem contas.pessoal.email" test "$(ler "$C_R1/dados/contas/estado.json" contas.pessoal.email)" = pessoal@exemplo.invalid
+afirma "(rodada 6, achado 1) após --aplicar, o oauthAccount registrado é o da pessoal" test "$(ler "$C_R1/dados/contas/estado.json" contas.pessoal.oauthAccount.emailAddress)" = pessoal@exemplo.invalid
+RC_R1T=0
+RFM_TEST=1 \
+RFM_CONTA_PASTA_TRABALHO="$(win "$C_R1/trabalho/.claude")" \
+RFM_CONTA_PASTA_PESSOAL="$(win "$C_R1/pessoal/.claude-personal")" \
+RFM_CONTA_CLAUDE_JSON="$(win "$C_R1/trabalho/.claude.json")" \
+RFM_CONTA_DADOS="$(win "$C_R1/dados")" \
+RFM_CONTA_API="$API_R1" \
+node scripts/conta.cjs trocar pessoal --pasta trabalho > "$RAIZ/r1-trocar.txt" 2>&1 || RC_R1T=$?
+echo "      trocar pessoal (saída, exit $RC_R1T):"; sed 's/^/        /' "$RAIZ/r1-trocar.txt"
+afirma "(rodada 6, achado 1) trocar pessoal não diz 'sem registro'" bash -c "! grep -qF 'sem registro' '$RAIZ/r1-trocar.txt'"
+kill "$SRV_R1" 2>/dev/null || true
+unset SRV_R1
+
+# Rodada 6, achado 2: uma sessão grava o .claude.json de trabalho DEPOIS do planejar e ANTES da etapa dele.
+# Um preload de teste (--require) faz essa gravação na primeira cópia: a chave nova e o numStartups da sessão têm
+# de sobreviver, e os mcpServers/projects da pessoal têm de entrar.
+cat > "$RAIZ/sessao2.cjs" <<'JS'
+// Gravação concorrente do .claude.json de trabalho (rodada 6, achado 2): na primeira cópia, a "sessão" escreve.
+const fs = require('fs');
+const copiar = fs.copyFileSync;
+let feito = false;
+fs.copyFileSync = function (...args) {
+  if (!feito && process.env.RFM_GANCHO_CLAUDE) {
+    feito = true;
+    const atual = JSON.parse(fs.readFileSync(process.env.RFM_GANCHO_CLAUDE, 'utf8'));
+    atual.chaveDaSessao = 1;
+    atual.numStartups = 7;
+    fs.writeFileSync(process.env.RFM_GANCHO_CLAUDE, JSON.stringify(atual, null, 2) + '\n');
+  }
+  return copiar.apply(fs, args);
+};
+JS
+C_2B="$(novo_caso ach2b)"
+export RFM_GANCHO_CLAUDE="$(win "$C_2B/trabalho/.claude.json")"
+export NODE_OPTIONS="--require $(win "$RAIZ/sessao2.cjs")"
+RC_2B=0
+unif "$C_2B" --aplicar > "$RAIZ/ach2b.txt" 2>&1 || RC_2B=$?
+unset NODE_OPTIONS RFM_GANCHO_CLAUDE
+CJ_2B="$C_2B/trabalho/.claude.json"
+afirma "(rodada 6, achado 2) --aplicar sai 0" test "$RC_2B" -eq 0
+afirma "(rodada 6, achado 2) a chave nova gravada pela sessão sobrevive" test "$(ler "$CJ_2B" chaveDaSessao)" = 1
+afirma "(rodada 6, achado 2) o numStartups gravado pela sessão (7) sobrevive, não volta ao valor antigo (2)" test "$(ler "$CJ_2B" numStartups)" = 7
+afirma "(rodada 6, achado 2) mcpServers da pessoal entram (github)" test "$(ler "$CJ_2B" mcpServers.github.command)" = falso-gh
+afirma "(rodada 6, achado 2) projects da pessoal entram (/falso/pessoal)" test "$(ler "$CJ_2B" 'projects./falso/pessoal')" != AUSENTE
+afirma "(rodada 6, achado 2) o whatsapp do destino continua igual" test "$(ler "$CJ_2B" mcpServers.whatsapp.command)" = falso-whatsapp
 
 echo "ok: $OK   falhou: $FALHOU"
 if [ "$FALHOU" -ne 0 ]; then exit 1; fi

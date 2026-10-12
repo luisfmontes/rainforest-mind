@@ -16,7 +16,7 @@
  *   sessoesVivas                         boolean: há sessão viva no sessoes.json
  *   pastaForaDeCasa                      boolean: a pessoal está com login de outra conta
  *   scriptInstalado                      conta.cjs do clone instalado (destino do reagendamento)
- *   progressoArq                         unificar-progresso.json na pasta de dados da conta (lido na retomada, apagado ao fim)
+ *   progressoArq                         unificar-progresso.jsonl na pasta de dados da conta (uma linha por cópia; lido na retomada, apagado ao fim)
  * }
  *
  * Nunca sobrescreve: arquivo de mesmo nome e conteúdo diferente vira <nome>.pessoal.<ext>.
@@ -80,15 +80,29 @@ function mesmoConteudo(a, b) {
 // Progresso da cópia (rodada 4, achado 1): caminhos copiados com o MESMO nome por uma rodada que não chegou ao
 // fim. Só a cópia com o mesmo nome entra; alvo que virou .pessoal.<ext> nunca entra. Sem ele, a retomada não
 // distingue "copiado na rodada anterior" de "já existia no destino".
+// Formato (rodada 6, achado 3): uma string JSON por linha, acrescentada por appendFileSync antes de cada cópia.
+// Gravar a lista inteira a cada cópia custava O(n²) (4000 arquivos: 22 s). Linha truncada (morte no meio da
+// escrita) não parseia e é ignorada: o caminho dela não entra, e a retomada copia de novo.
 function lerProgresso(arq) {
   if (!arq || !fs.existsSync(arq)) return [];
-  return (lerJsonOpcional(arq, {}).copiados || []).map((r) => path.normalize(r));
+  const saida = [];
+  for (const linha of fs.readFileSync(arq, 'utf8').split('\n')) {
+    if (!linha) continue;
+    let rel;
+    try {
+      rel = JSON.parse(linha);
+    } catch {
+      continue;
+    }
+    if (typeof rel === 'string') saida.push(path.normalize(rel));
+  }
+  return saida;
 }
 
-function gravarProgresso(plano, novos) {
+function gravarProgresso(plano, rel) {
   if (!plano.progressoArq) return;
-  const todos = [...new Set([...plano.progressoAntes, ...novos])];
-  gravarTexto(plano.progressoArq, JSON.stringify({ copiados: todos.map((r) => r.split(path.sep).join('/')) }, null, 2) + '\n');
+  fs.mkdirSync(path.dirname(plano.progressoArq), { recursive: true });
+  fs.appendFileSync(plano.progressoArq, JSON.stringify(rel.split(path.sep).join('/')) + '\n');
 }
 
 function classeDe(rel) {
@@ -205,14 +219,10 @@ function planejar(e) {
   const projNovos = Object.keys(projP).filter((k) => !Object.hasOwn(projD, k));
   // Mesmo caminho nas duas pastas: o destino fica como está, e o relatório lista o caminho (não mesclado).
   const projRepetidos = Object.keys(projP).filter((k) => Object.hasOwn(projD, k));
-  let claudeNovo = null;
-  if (mcpNovos.length || projNovos.length) {
-    claudeNovo = { ...claudeDestino };
-    claudeNovo.mcpServers = { ...mcpD };
-    for (const n of mcpNovos) claudeNovo.mcpServers[n] = mcpP[n];
-    claudeNovo.projects = { ...projD };
-    for (const k of projNovos) claudeNovo.projects[k] = projP[k];
-  }
+  // Só as entradas a acrescentar ficam no plano. O arquivo inteiro NÃO é montado aqui: a etapa .claude.json
+  // relê o destino na hora de gravar (rodada 6, achado 2), para não apagar o que uma sessão gravou depois.
+  const mcpAdd = Object.fromEntries(mcpNovos.map((n) => [n, mcpP[n]]));
+  const projAdd = Object.fromEntries(projNovos.map((k) => [k, projP[k]]));
 
   // Plugins habilitados só na pessoal: instalados pela CLI, nunca copiando o cache (D2).
   const setP = lerJsonOpcional(path.join(e.pessoal, 'settings.json'), {}).enabledPlugins || {};
@@ -261,7 +271,7 @@ function planejar(e) {
     copias,
     indices,
     historico: { destino: historicoDestino, novas: novasHistorico },
-    claude: { destino: e.claudeJsonTrabalho, novo: claudeNovo, mcpNovos, projNovos, projRepetidos },
+    claude: { destino: e.claudeJsonTrabalho, mcpAdd, projAdd, mcpNovos, projNovos, projRepetidos },
     plugins,
     reserva,
     credencial,
@@ -320,16 +330,17 @@ function aplicar(plano, ops) {
     const st = ops.desagendar();
     if (st) throw new Error(`schtasks não removeu o vigia (status ${st})`);
   });
+  // Conta pessoal registrada (rodada 6, achado 1): depois do vigia desagendado (se o /Delete falha, nada é escrito)
+  // e antes da cópia: a pasta pessoal sai no rename, e o modo uma pasta não tem outra forma de registrá-la.
+  etapa('conta pessoal registrada', () => {
+    if (plano.registroPessoal) ops.registrarPessoal(plano.registroPessoal);
+  });
   // O progresso é gravado ANTES de cada cópia (rodada 5, achado 4): um processo morto no meio do laço, sem finally,
   // deixa no progresso o que já começou a copiar com o mesmo nome. Se o alvo não chegou ao disco, a retomada copia de novo.
-  const copiadosNesta = [];
   etapa('copiar arquivos', () => {
     for (const c of plano.copias) {
       if (c.acao === 'igual') continue;
-      if (c.acao === 'copiar') {
-        copiadosNesta.push(c.rel);
-        gravarProgresso(plano, copiadosNesta);
-      }
+      if (c.acao === 'copiar') gravarProgresso(plano, c.rel);
       copiarArq(c.origem, c.destino);
     }
   });
@@ -342,8 +353,17 @@ function aplicar(plano, ops) {
   etapa('histórico', () => {
     if (plano.historico.novas.length) acrescentarLinhas(plano.historico.destino, plano.historico.novas);
   });
+  // Relido AGORA (rodada 6, achado 2): uma sessão pode ter gravado o destino depois do planejar (chave nova,
+  // numStartups). Só entra o que é da pessoal e ainda não existe no destino; o resto do arquivo atual fica como está.
   etapa('.claude.json', () => {
-    if (plano.claude.novo) gravarTexto(plano.claude.destino, JSON.stringify(plano.claude.novo, null, 2) + '\n');
+    const { mcpAdd, projAdd, destino } = plano.claude;
+    if (!Object.keys(mcpAdd).length && !Object.keys(projAdd).length) return;
+    const atual = lerJsonOpcional(destino, {});
+    const mcpServers = { ...(atual.mcpServers || {}) };
+    const projects = { ...(atual.projects || {}) };
+    for (const [n, def] of Object.entries(mcpAdd)) if (!Object.hasOwn(mcpServers, n)) mcpServers[n] = def;
+    for (const [k, def] of Object.entries(projAdd)) if (!Object.hasOwn(projects, k)) projects[k] = def;
+    gravarTexto(destino, JSON.stringify({ ...atual, mcpServers, projects }, null, 2) + '\n');
   });
   // A instalação usa a chave completa <plugin>@<marketplace>: nome nu é ambíguo entre marketplaces.
   const plugins = etapa('plugins', () => plano.plugins.map((p) => ({ chave: p.chave, status: ops.instalarPlugin(p.chave) })));

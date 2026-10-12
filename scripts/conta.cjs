@@ -1204,7 +1204,7 @@ function migrar(c, args, perfilArq) {
     // Qualquer pasta ativa fora de casa recusa: a volta do mover encontraria a saída ocupada (achado 2).
     pastaForaDeCasa: pastasAtivas().some((P) => pastaForaDeCasa(c, P)),
     scriptInstalado,
-    progressoArq: path.join(c.contas, 'unificar-progresso.json'),
+    progressoArq: path.join(c.contas, 'unificar-progresso.jsonl'),
   });
   if (plano.recusas.length) {
     for (const r of plano.recusas) process.stderr.write(`recusa: ${r.motivo} (${r.detalhe})\n`);
@@ -1240,6 +1240,18 @@ function migrar(c, args, perfilArq) {
   // Marca de rodada anterior: apagou a tarefa e parou antes do reagendamento. Então /Query 1 não quer dizer
   // "nunca esteve agendado": a tarefa a reagendar é esta.
   plano.reagendar = plano.vigiaAgendado || fs.existsSync(marcaVigioArq(c));
+  // Conta pessoal sem registro (rodada 6, achado 1): o modo uma pasta não tem como registrá-la depois, porque a
+  // pasta pessoal some nesta migração. O registro vai no aplicar (etapa depois do vigia desagendado), do oauthAccount
+  // do próprio .claude.json da pessoal: sem API, porque a bateria não tem servidor falso e a regra proíbe rede. A
+  // primeira troca confere a identidade pela API e desfaz se divergir. Sem oauthAccount, recusa ANTES de escrever.
+  const estado = lerEstado(c);
+  if (!(estado.contas.pessoal || {}).email) {
+    const oauth = (lerJson(claudeArq(c, 'pessoal'), null) || {}).oauthAccount;
+    if (!oauth || !oauth.emailAddress) {
+      return sair(2, 'conta pessoal sem registro e sem oauthAccount na pasta pessoal: rode status com a pasta pessoal em casa (registra a conta pela API) e depois unificar de novo. unificar não escreveu nada');
+    }
+    plano.registroPessoal = { email: oauth.emailAddress, oauthAccount: oauth };
+  }
   let aplicado;
   try {
     aplicado = UNIFICAR.aplicar(plano, {
@@ -1250,6 +1262,11 @@ function migrar(c, args, perfilArq) {
         const st = r.error || r.status === null ? 1 : r.status;
         if (st) fs.rmSync(marcaVigioArq(c), { force: true });
         return st;
+      },
+      registrarPessoal: (reg) => {
+        const atual = lerEstado(c);
+        atual.contas.pessoal = reg;
+        gravarEstado(c, atual);
       },
       instalarPlugin: (chave) => chamarClaude(['plugin', 'install', chave, '--scope', 'user']),
       // Falha simulada do rename só em bateria (RFM_TEST=1): prova o caminho de recuperação do achado 3.
@@ -1306,9 +1323,11 @@ function eventos(c, args) {
 
 async function main(argv) {
   const [cmd = 'status', ...resto] = argv;
-  // Bateria com a pasta de trabalho sobrescrita e sem RFM_CONTA_CLAUDE_JSON cairia no ~/.claude.json de quem roda:
-  // recusa antes de ler ou gravar qualquer .claude.json (rodada 5, achado 1).
-  if (process.env.RFM_TEST === '1' && process.env.RFM_CONTA_PASTA_TRABALHO && !process.env.RFM_CONTA_CLAUDE_JSON) {
+  // Bateria com qualquer pasta sobrescrita (RFM_CONTA_PASTA_*) e sem RFM_CONTA_CLAUDE_JSON cairia no ~/.claude.json
+  // de quem roda: recusa antes de ler ou gravar qualquer .claude.json (rodada 5, achado 1; rodada 6, achado 5:
+  // o teste era só RFM_CONTA_PASTA_TRABALHO, e só RFM_CONTA_PASTA_PESSOAL passava).
+  const pastaSobrescrita = Object.keys(process.env).some((k) => k.startsWith('RFM_CONTA_PASTA_'));
+  if (process.env.RFM_TEST === '1' && pastaSobrescrita && !process.env.RFM_CONTA_CLAUDE_JSON) {
     return sair(2, 'recusa: bateria sem RFM_CONTA_CLAUDE_JSON (o .claude.json da pasta de trabalho cairia no home de quem roda)');
   }
   const c = ctx();
