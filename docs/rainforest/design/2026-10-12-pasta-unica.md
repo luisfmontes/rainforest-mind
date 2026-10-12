@@ -43,9 +43,10 @@ uso. A `~/.claude-personal` é absorvida e aposentada sem perder memória, hist�
 - **D5 — Um comando só: `claude-pessoal` e `claude-trabalho` saem do `$PROFILE` e entra um único `claude` que atualiza
   os plugins e abre sem `CLAUDE_CONFIG_DIR`** — porquê: é o "não escolher" pedido; a atualização de plugins
   (marketplace antes de plugin) continua valendo para a pasta única. O `$PROFILE` é ambiente do Luís: a migração
-  mostra a mudança e só a grava com `--aplicar`.
-- **D6 — O plugin funciona nos dois modos e detecta sozinho: existe `~/.claude-personal` (ou `CLAUDE_CONFIG_DIR`
-  apontando para outra pasta) → modo duas pastas, como na 1.62.0; não existe → modo uma pasta** — porquê: o repo é
+  mostra a mudança e só a grava com `--aplicar`. Emenda (executar, 2026-10-12): o perfil só é tocado com
+  `--profile <arquivo>` explícito (o README manda `--profile $PROFILE`); sem a flag, nada no perfil muda — o
+  padrão de resolver o `$PROFILE` sozinho foi descartado por gravar fora do pedido explícito.
+- **D6 — O plugin funciona nos dois modos e detecta sozinho: existe `~/.claude-personal` → modo duas pastas, como na 1.62.0; não existe → modo uma pasta** — porquê: o repo é
   público e outros usuários podem manter o par. O que hoje supõe exatamente duas pastas (`scripts/conta.cjs:39-61` e
   `:733`, `scripts/lib/conta-decidir.cjs:6` e `:47`, `hooks/lib/contas-claude.cjs:44` e `:84-86`) passa a ler a lista
   de pastas existentes. A pasta aposentada (`.claude-personal.aposentada`) não conta como pasta.

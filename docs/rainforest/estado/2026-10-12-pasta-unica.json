@@ -20,18 +20,10 @@
     "em": "2026-10-12"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-12",
-    "tarefas_ok": 4,
+    "tarefas_ok": 5,
     "tarefas": 6,
-    "em_voo": [
-      {
-        "agente": "documentador",
-        "tarefa": "T4 README e versao 1.63.0",
-        "desde": "2026-10-12T12:06:28-03:00",
-        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
-      }
-    ],
     "carimbos": [
       {
         "tarefa": 1,
@@ -76,7 +68,48 @@
         "ts": "2026-10-12T15:06:28.583Z"
       }
     ],
-    "em": "2026-10-12"
+    "em": "2026-10-12",
+    "comando": "bash scripts/testa-conta-uma-pasta.sh; bash scripts/testa-conta-unificar.sh; bash scripts/testa-conta-unificar-profile.sh; bash scripts/testa-conta.sh",
+    "saida": "ok: 19 falhou: 0 | ok: 36 falhou: 0 | ok: 16 falhou: 0 pulado: 0 | ok: 46 falhou: 0",
+    "destinos": [
+      {
+        "pendente": "T5 migracao real: depende da 1.63.0 instalada (o vigia e reagendado para o clone instalado); roda depois do merge, com o Luis e as janelas fechadas",
+        "destino": "descartada",
+        "motivo": "nao e codigo: vira passo do fechar desta sessao (merge, atualizar plugin, unificar --aplicar --profile com o Luis), relatorio no PR de fechamento"
+      }
+    ],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-conta-uma-pasta.sh, caso uma pasta: status lista só trabalho e vigiar troca para a reserva pessoal"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-conta-unificar.sh, caso memoria de mesmo nome e conteudo diferente vira .pessoal.md e o destino fica intacto"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-conta-unificar-profile.sh, caso profile real reescrito: claude unico remove CLAUDE_CONFIG_DIR e chama o binario"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "texto e versao, sem comportamento a inverter"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "execucao em ambiente real do usuario"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-publicacao-destino.sh, caso Write de arquivo NOVO com marcador no topo do conteudo -> passa"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
