@@ -27,3 +27,13 @@ Os três achados da 3ª revisão foram conferidos como consertados. A tarefa 7 a
 3. **[baixo]** CHANGELOG diz "com as duas pastas, nada muda" — falso desde a tarefa 7.
 4. **[baixo]** O progresso da cópia só é gravado ao fim do laço; um travamento no meio perde o registro (sem perda de arquivo).
 5. **[baixo]** Janela entre conferir e gravar o `~/.claude.json`, que sessões vivas também escrevem.
+
+## Rodada 5 (liberada pelo Luís: "sim") — reprovada com 5 achados novos
+
+Os 5 achados da 4ª revisão foram conferidos como consertados (inclusive o grave: nenhuma bateria alcança o `~/.claude.json` real; observado com canário). Achados novos:
+
+1. **[médio]** `unificar` não registra a conta pessoal no `estado.json`; quem migra sem ela registrada fica sem troca e sem comando que conserte. Medido em 2026-10-12: nesta máquina `team` e `pessoal` já estão registradas, então não afeta a migração do Luís.
+2. **[baixo]** `unificar` regrava o `~/.claude.json` a partir da leitura feita no planejamento (sessão aberta no meio perde a escrita dela).
+3. **[baixo]** progresso reescrito inteiro a cada cópia: O(n²) (medido 22 s contra 7 s com 4000 arquivos).
+4. **[baixo]** ramo do desfazer do `.claude.json` no `mover` sem teste que falhe.
+5. **[baixo]** guarda de `RFM_CONTA_CLAUDE_JSON` só olha a pasta de trabalho; nome de caso `(z)` reaproveitado na bateria.
