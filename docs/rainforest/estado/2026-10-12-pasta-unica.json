@@ -20,7 +20,7 @@
     "em": "2026-10-12"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-12",
     "tarefas_ok": 6,
     "tarefas": 7,
@@ -69,8 +69,8 @@
       }
     ],
     "em": "2026-10-12",
-    "comando": "bash scripts/testa-conta-unificar.sh; bash scripts/testa-conta-unificar-profile.sh; bash scripts/testa-conta-uma-pasta.sh; bash scripts/testa-conta.sh",
-    "saida": "ok: 89 falhou: 0 | ok: 34 falhou: 0 pulado: 0 | ok: 20 falhou: 0 | ok: 46 falhou: 0",
+    "comando": "bash scripts/testa-conta.sh; bash scripts/testa-conta-unificar.sh; bash scripts/testa-conta-mover.sh; bash scripts/testa-conta-uma-pasta.sh; bash scripts/testa-conta-unificar-profile.sh",
+    "saida": "ok: 48 falhou: 0 | ok: 92 falhou: 0 | ok: 21 falhou: 0 | ok: 20 falhou: 0 | ok: 34 falhou: 0 pulado: 0",
     "destinos": [
       {
         "pendente": "T5 migracao real: depende da 1.63.0 instalada (o vigia e reagendado para o clone instalado); roda depois do merge, com o Luis e as janelas fechadas",
@@ -115,19 +115,7 @@
         "fixture": "testa-conta-uma-pasta.sh, caso pasta padrão: a troca grava o oauthAccount no .claude.json de fora da pasta"
       }
     ],
-    "reaberturas": 4,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-12"
-    },
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "rodada 5: 5 achados da 4a revisao",
-        "desde": "2026-10-12T16:42:23-03:00",
-        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
-      }
-    ]
+    "reaberturas": 4
   },
   "revisar": {
     "status": "reprovado",
