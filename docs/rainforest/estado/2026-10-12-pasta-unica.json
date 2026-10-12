@@ -22,7 +22,7 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-12",
-    "tarefas_ok": 6,
+    "tarefas_ok": 5,
     "tarefas": 7,
     "carimbos": [
       {
@@ -119,7 +119,15 @@
     "reaberto_por": {
       "estagio": "revisar",
       "data": "2026-10-12"
-    }
+    },
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "rodada 6: 5 achados da 5a revisao",
+        "desde": "2026-10-12T19:15:00-03:00",
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
+      }
+    ]
   },
   "revisar": {
     "status": "reprovado",
@@ -155,8 +163,13 @@
       {
         "texto": "Luis (2026-10-12): sim, 5a rodada para os 5 achados da 4a revisao",
         "em": "2026-10-12"
+      },
+      {
+        "texto": "Luis: recomendado (opcao A) - 6a rodada para os 5 achados da 5a revisao; revisao seguinte restrita aos consertos",
+        "em": "2026-10-12"
       }
-    ]
+    ],
+    "liberado_em": "2026-10-12"
   },
   "verificar": {
     "status": "pendente"
