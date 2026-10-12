@@ -17,3 +17,13 @@ Três reprovações seguidas no `revisar`, com achados decrescendo em quantidade
 ## Decisão pedida ao Luís
 
 Liberar a 4ª rodada para consertar 1 e 3 (pequenos, no mesmo arquivo), e levar o 2 para uma Issue própria (anterior a este fluxo e não quebra a migração nesta máquina) — ou outra saída.
+
+## Rodada 4 (liberada pelo Luís: "ajustar tudo") — reprovada com 5 achados
+
+Os três achados da 3ª revisão foram conferidos como consertados. A tarefa 7 abriu um defeito novo:
+
+1. **[grave]** `hooks/testa-mod-conta.cjs` não passa `RFM_CONTA_CLAUDE_JSON` e, com a tarefa 7, lê e grava o `~/.claude.json` real de quem roda a bateria (troca o `oauthAccount` por uma conta falsa). Medido em 2026-10-12 nesta máquina: o `~/.claude.json` real não tem dado falso (a bateria não rodou aqui). Conserto: a bateria passa a variável, e o `conta.cjs` recusa quando `RFM_TEST=1` define as pastas mas não o JSON.
+2. **[médio]** Falta teste provando que a pasta pessoal (modo duas pastas) segue usando o `.claude.json` de dentro dela.
+3. **[baixo]** CHANGELOG diz "com as duas pastas, nada muda" — falso desde a tarefa 7.
+4. **[baixo]** O progresso da cópia só é gravado ao fim do laço; um travamento no meio perde o registro (sem perda de arquivo).
+5. **[baixo]** Janela entre conferir e gravar o `~/.claude.json`, que sessões vivas também escrevem.

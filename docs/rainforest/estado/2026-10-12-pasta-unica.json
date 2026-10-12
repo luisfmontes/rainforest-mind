@@ -20,7 +20,7 @@
     "em": "2026-10-12"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-12",
     "tarefas_ok": 6,
     "tarefas": 7,
@@ -115,35 +115,38 @@
         "fixture": "testa-conta-uma-pasta.sh, caso pasta padrão: a troca grava o oauthAccount no .claude.json de fora da pasta"
       }
     ],
-    "reaberturas": 3
+    "reaberturas": 4,
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-12"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "afb5506c29b83d4b9c4f3ab168b1be7967293264",
+      "head": "8cd3bde79bed8696f5b19e720494f5087ef3ee8d",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a600d15ef39c2f622",
+        "agente_id": "a39b49913aa5ca4bf",
         "veredito": "reprovado",
         "em": "2026-10-12",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/170b1915-c063-4fe8-912c-a4d1b50b044f/subagents/agent-a600d15ef39c2f622.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/170b1915-c063-4fe8-912c-a4d1b50b044f/subagents/agent-a39b49913aa5ca4bf.jsonl"
       }
     ],
     "em_voo": [
       {
         "agente": "revisor",
-        "tarefa": "rodada 3",
-        "desde": "2026-10-12T14:37:39-03:00",
+        "tarefa": "rodada 4",
+        "desde": "2026-10-12T16:07:56-03:00",
         "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
       }
     ],
     "em": "2026-10-12",
-    "achados": 3,
-    "tentativas": 3,
-    "liberado_em": "2026-10-12",
+    "achados": 5,
+    "tentativas": 4,
     "rodadas_extra": [
       {
         "texto": "Luis (2026-10-12): ajustar tudo na 4a rodada — achados 1, 2 e 3 da 3a revisao; o 2 vira tarefa 7 do plano",
