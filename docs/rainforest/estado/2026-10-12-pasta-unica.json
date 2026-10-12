@@ -20,7 +20,28 @@
     "em": "2026-10-12"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-12",
+    "tarefas_ok": 0,
+    "tarefas": 5,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "T1 conta.cjs modo uma pasta",
+        "desde": "2026-10-12T10:39:14-03:00",
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
+      }
+    ],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "f2edcee4",
+        "iteracao": 1,
+        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f",
+        "ts": "2026-10-12T13:39:14.636Z"
+      }
+    ],
+    "em": "2026-10-12"
   },
   "revisar": {
     "status": "pendente"
