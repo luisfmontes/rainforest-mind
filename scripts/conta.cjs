@@ -873,6 +873,7 @@ async function preparar(c, args) {
   if (!pegarTrava(c.lock)) return sair(1, 'outra rodada em curso: tente de novo em instantes');
   let esperado;
   let antes = null;
+  let registrar = false;
   try {
     const estado = lerEstado(c);
     if (await registrarCasas(c, estado, true)) gravarEstado(c, estado);
@@ -900,7 +901,10 @@ async function preparar(c, args) {
       if (incerto) return sair(1, `não consegui confirmar que a reserva de ${alvo} morreu (${incerto}): tente de novo`);
     }
     esperado = (estado.contas[conta] || {}).email;
-    if (!esperado) return sair(1, `conta ${alvo} sem registro: rode status com a pasta ${alvo} em casa`);
+    // Uma pasta só (D6): a pessoal não é casa de pasta nenhuma, então registrarCasas não a registra.
+    // Sem registro, o login segue sem e-mail e a conta vem do /profile dele (abaixo, sob a trava).
+    registrar = !esperado && alvo === 'pessoal' && pastasAtivas().length === 1;
+    if (!esperado && !registrar) return sair(1, `conta ${alvo} sem registro: rode status com a pasta ${alvo} em casa`);
   } finally {
     soltarTrava(c.lock);
   }
@@ -908,7 +912,7 @@ async function preparar(c, args) {
   // RFM_CONTA_CLAUDE (só com RFM_TEST=1) é um script node: roda pelo node, como o CLI real.
   const exe = (process.env.RFM_TEST === '1' && process.env.RFM_CONTA_CLAUDE) || acharExecutavelClaude();
   if (!exe) return sair(1, 'claude não encontrado no PATH (defina RFM_CLAUDE_EXECUTAVEL)');
-  const argsLogin = ['auth', 'login', '--claudeai', '--email', esperado];
+  const argsLogin = esperado ? ['auth', 'login', '--claudeai', '--email', esperado] : ['auth', 'login', '--claudeai'];
   const opcoes = { stdio: 'inherit', env: {} };
 
   const tmp = fs.mkdtempSync(path.join(c.contas, 'login-'));
@@ -924,7 +928,12 @@ async function preparar(c, args) {
     const cred = lerJson(path.join(tmp, '.credentials.json'), null);
     if (!cred || !cred.claudeAiOauth) return sair(1, 'o login não gravou credencial: nada gravado');
     const veio = await API.dono(cred.claudeAiOauth.accessToken);
-    if (veio.email !== esperado) return sair(3, 'o navegador autorizou ' + veio.email);
+    if (esperado && veio.email !== esperado) return sair(3, 'o navegador autorizou ' + veio.email);
+    // Sem conta registrada, o registro sai do login: o oauthAccount que o CLI gravou tem de ser dele.
+    const oauthDoLogin = registrar ? (lerJson(path.join(tmp, '.claude.json'), {}) || {}).oauthAccount : null;
+    if (registrar && (!oauthDoLogin || oauthDoLogin.emailAddress !== veio.email)) {
+      return sair(1, 'o login não trouxe a conta dele (oauthAccount): nada gravado');
+    }
 
     // Grava sob a trava e reconfere: durante o login o vigia pode ter trocado a pasta.
     if (!(await pegarTravaEspera(c.lock, ESPERA_TRAVA_MS))) {
@@ -934,6 +943,14 @@ async function preparar(c, args) {
       // A reserva tem de estar como estava antes do login (ausente, ou a mesma que --refazer vai trocar).
       if (pastaForaDeCasa(c, alvo) || slotEmUso(c, conta) || marcaDaReserva(reservaExistente(c, conta)) !== antes) {
         return sair(1, 'o estado mudou durante o login: nada gravado; rode preparar de novo');
+      }
+      if (registrar) {
+        const agora = lerEstado(c);
+        if (Object.values(agora.contas).some((x) => x.email === veio.email)) {
+          return sair(3, `o navegador autorizou ${veio.email}, que já é a conta de trabalho: nada gravado`);
+        }
+        agora.contas[conta] = { email: veio.email, oauthAccount: oauthDoLogin };
+        gravarEstado(c, agora);
       }
       gravarCred(reservaArq(c, conta), JSON.stringify({ claudeAiOauth: cred.claudeAiOauth }, null, 2) + '\n');
       const verbo = antes ? 'refeita' : 'gravada';
