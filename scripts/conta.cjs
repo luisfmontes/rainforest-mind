@@ -37,7 +37,6 @@ const LEITURA_MAX_MS = 15 * 60 * 1000;
 // Aviso repetido (mesmo tipo e motivo) não vira uma linha por minuto: 1 por hora.
 const AVISO_REPETIDO_MS = 60 * 60 * 1000;
 const CONTAS = ['team', 'pessoal'];
-const PASTAS = ['trabalho', 'pessoal'];
 const LIMITES = ['five_hour', 'seven_day'];
 // Nome da CLI -> conta interna. A casa de cada pasta é a conta de mesmo nome.
 const CONTA_CLI = { trabalho: 'team', pessoal: 'pessoal' };
@@ -53,12 +52,20 @@ function pastasDir() {
   };
 }
 
+// Pastas que existem nesta máquina (D6). A de trabalho sempre conta; a pessoal só se a pasta existir.
+// Nome exato: a aposentada (.claude-personal.aposentada) não é a pessoal.
+function pastasAtivas() {
+  const dirs = pastasDir();
+  const pessoal = fs.existsSync(dirs.pessoal);
+  return pessoal ? ['trabalho', 'pessoal'] : ['trabalho'];
+}
+
 // Pasta da sessão que chamou (D7): a do CLAUDE_CONFIG_DIR; sem ele, o Claude Code usa ~/.claude.
 function pastaDaSessao() {
   const norm = (p) => path.resolve(p).split(path.sep).join('/').toLowerCase();
   const dirs = pastasDir();
   const atual = norm(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'));
-  return PASTAS.find((p) => norm(dirs[p]) === atual) || 'trabalho';
+  return pastasAtivas().find((p) => norm(dirs[p]) === atual) || 'trabalho';
 }
 
 // A pasta de dados da conta é SEMPRE a do usuário. A resolução padrão do plugin prefere
@@ -148,7 +155,7 @@ function gravarAtomico(arq, obj) {
 function lerEstado(c) {
   const e = lerJson(c.estado, {});
   const pastas = {};
-  for (const P of PASTAS) {
+  for (const P of pastasAtivas()) {
     const gravado = (e.pastas || {})[P] || {};
     pastas[P] = {
       manual: false,
@@ -330,7 +337,7 @@ function reservaPronta(c, conta) {
 // a reserva a D13 mantém renovada, então o uso da conta continua legível e a troca não fica cega.
 function loginsDaConta(c, estado, conta) {
   const logins = [];
-  const P = PASTAS.find((p) => estado.pastas[p].conta === conta && credDaPasta(c, p));
+  const P = pastasAtivas().find((p) => estado.pastas[p].conta === conta && credDaPasta(c, p));
   if (P) logins.push(credDaPasta(c, P).claudeAiOauth);
   const r = reservaPronta(c, conta);
   if (r) logins.push(r.claudeAiOauth);
@@ -416,7 +423,7 @@ async function renovarOciosos(c, _estado) {
 // Sem a trava (sobTrava falso) só se lê: nenhum evento, nenhuma gravação cabe ao chamador.
 async function registrarCasas(c, estado, sobTrava) {
   let mudou = false;
-  for (const P of PASTAS) {
+  for (const P of pastasAtivas()) {
     const info = estado.pastas[P];
     if (info.conta !== info.casa) continue;
     const cred = credDaPasta(c, P);
@@ -476,7 +483,7 @@ function falhasDeRenovacao(c) {
 // Todo login guardado em arquivo: as duas pastas, as duas reservas e os dois estacionados.
 function loginsGuardados(c) {
   const itens = [];
-  for (const P of PASTAS) {
+  for (const P of pastasAtivas()) {
     const cred = credDaPasta(c, P);
     if (cred) itens.push([`pasta-${P}`, cred]);
   }
@@ -484,7 +491,7 @@ function loginsGuardados(c) {
     const r = reservaPronta(c, conta);
     if (r) itens.push([`reserva-${conta}`, r]);
   }
-  for (const P of PASTAS) {
+  for (const P of pastasAtivas()) {
     const e = estacionadoPronto(c, P);
     if (e) itens.push([`estacionado-${P}`, e]);
   }
@@ -513,7 +520,7 @@ function avisarDuplicadas(c, duplicadas) {
 const MSG_SLOT_EM_USO = (alvo) => `a reserva de ${alvo} está em uso numa pasta trocada: volte a pasta antes de preparar`;
 function slotEmUso(c, conta) {
   const estado = lerEstado(c);
-  return PASTAS.some((P) => estado.pastas[P].conta === conta && estado.pastas[P].conta !== estado.pastas[P].casa);
+  return pastasAtivas().some((P) => estado.pastas[P].conta === conta && estado.pastas[P].conta !== estado.pastas[P].casa);
 }
 
 // Reserva de <conta> como o preparar a vê: { obj, ilegivel }. Arquivo que não é JSON conta como
@@ -538,7 +545,13 @@ function marcaDaReserva(r) {
 const MSG_PASTA_FORA = (alvo) => `a pasta ${alvo} está fora de casa: volte a pasta antes de preparar`;
 function pastaForaDeCasa(c, P) {
   const info = lerEstado(c).pastas[P];
-  return info.conta !== info.casa;
+  return Boolean(info) && info.conta !== info.casa;
+}
+
+// Contas cuja reserva precisa estar pronta: uma pasta entra na conta que não é a casa dela (D9).
+// Duas pastas: team e pessoal. Só a de trabalho (casa team): só pessoal.
+function contasDeReserva() {
+  return CONTAS.filter((conta) => pastasAtivas().some((P) => CONTA_CLI[P] !== conta));
 }
 
 function contaDoEmail(estado, email) {
@@ -652,7 +665,7 @@ async function statusLido(c, sobTrava) {
   for (const d of duplicadas) {
     linhas.push(`aviso: o mesmo login (${d.h}) está em ${d.nomes.join(' e ')}: não troque nem renove até separar`);
   }
-  for (const P of PASTAS) {
+  for (const P of pastasAtivas()) {
     const cred = credDaPasta(c, P);
     if (!cred) {
       linhas.push(`pasta ${P}: sem credencial`);
@@ -714,7 +727,8 @@ async function trocar(c, args) {
     return sair(2, 'uso: trocar <pessoal|trabalho> [--pasta trabalho|pessoal]');
   }
   const P = valorDe(args, '--pasta') || pastaDaSessao();
-  if (!PASTAS.includes(P)) return sair(2, '--pasta: use trabalho ou pessoal');
+  if (!Object.hasOwn(CONTA_CLI, P)) return sair(2, '--pasta: use trabalho ou pessoal');
+  if (!pastasAtivas().includes(P)) return sair(2, `--pasta ${P}: a pasta não existe nesta máquina`);
   const para = CONTA_CLI[alvo];
 
   const lock = c.lock;
@@ -730,8 +744,9 @@ async function trocar(c, args) {
       gravarEstado(c, estado);
       return sair(0, `pasta ${P} já está na conta ${NOME[para]}`);
     }
-    const outra = PASTAS.find((p) => p !== P);
-    if (estado.pastas[outra].conta !== estado.pastas[outra].casa) {
+    // Com uma pasta só não há outra para olhar: trocar não exige "a outra pasta em casa".
+    const outra = pastasAtivas().find((p) => p !== P);
+    if (outra && estado.pastas[outra].conta !== estado.pastas[outra].casa) {
       return sair(1, `a pasta ${outra} está fora de casa: não troco as duas ao mesmo tempo`);
     }
     const volta = para === casa;
@@ -779,7 +794,7 @@ async function vigiar(c) {
     await renovarOciosos(c, estado);
 
     const pastas = {};
-    for (const P of PASTAS) pastas[P] = infoPasta(c, estado, P);
+    for (const P of pastasAtivas()) pastas[P] = infoPasta(c, estado, P);
     const usos = await coletarUsos(c, estado);
     const reservas = {};
     for (const conta of CONTAS) {
@@ -923,9 +938,9 @@ async function preparar(c, args) {
       gravarCred(reservaArq(c, conta), JSON.stringify({ claudeAiOauth: cred.claudeAiOauth }, null, 2) + '\n');
       const verbo = antes ? 'refeita' : 'gravada';
 
-      const faltam = [['trabalho', 'team'], ['pessoal', 'pessoal']]
-        .filter(([, k]) => !reservaPronta(c, k))
-        .map(([nome]) => nome);
+      const faltam = contasDeReserva()
+        .filter((k) => !reservaPronta(c, k))
+        .map((k) => NOME[k]);
       if (!faltam.length) {
         const estado = lerEstado(c);
         estado.automatico = true;
@@ -978,7 +993,7 @@ function agendar(c, args) {
     console.log(linhaDoComando(schtasksExe(), argv));
     return 0;
   }
-  const faltam = ['team', 'pessoal'].filter((conta) => !reservaPronta(c, conta));
+  const faltam = contasDeReserva().filter((conta) => !reservaPronta(c, conta));
   if (faltam.length) {
     return sair(1, `não agendo: falta a reserva de ${faltam.map((k) => NOME[k]).join(' e ')} (rode preparar antes)`);
   }
