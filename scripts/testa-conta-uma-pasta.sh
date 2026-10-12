@@ -49,7 +49,8 @@ function cred(tok, refresh) {
 const escrever = (arq, obj) => { fs.mkdirSync(path.dirname(arq), { recursive: true }); fs.writeFileSync(arq, JSON.stringify(obj, null, 2) + '\n'); };
 const [, , destino, pessoal, reservas, contas, auto] = process.argv;
 escrever(path.join(destino, 'trabalho', '.claude', '.credentials.json'), cred('falso-team-pasta', 'falso-refresh-team-pasta'));
-escrever(path.join(destino, 'trabalho', '.claude', '.claude.json'), { numStartups: 3, oauthAccount: OAUTH.team, projects: {} });
+// Formato real: o .claude.json da pasta padrão mora no home, fora da pasta (~/.claude.json), não dentro dela.
+escrever(path.join(destino, 'trabalho', '.claude.json'), { numStartups: 3, oauthAccount: OAUTH.team, projects: {} });
 if (pessoal === 'sim') {
   escrever(path.join(destino, 'pessoal', '.claude-personal', '.credentials.json'), cred('falso-pessoal-pasta', 'falso-refresh-pessoal-pasta'));
   escrever(path.join(destino, 'pessoal', '.claude-personal', '.claude.json'), { numStartups: 3, oauthAccount: OAUTH.pessoal, projects: {} });
@@ -126,6 +127,7 @@ cli() { # $1 = caso; $2... = argumentos de conta.cjs (com RFM_TEST=1: pastas e A
   RFM_CONTA_PASTA_TRABALHO="$(win "$c/trabalho/.claude")" \
   RFM_CONTA_PASTA_PESSOAL="$(win "$c/pessoal/.claude-personal")" \
   RFM_CONTA_DADOS="$(win "$c/dados")" \
+  RFM_CONTA_CLAUDE_JSON="$(win "$c/trabalho/.claude.json")" \
   RFM_CONTA_API="$API" \
   RFM_CONTA_SCHTASKS="$(win "$RAIZ/schtasks-falso.cjs")" \
   RFM_SCHTASKS_LOG="$(win "$c/schtasks-args.txt")" \
@@ -136,6 +138,7 @@ preparar_pessoal() { # $1 = caso; $2 = token do login falso; $3 = e-mail do logi
   RFM_TEST=1 \
   RFM_CONTA_PASTA_TRABALHO="$(win "$c/trabalho/.claude")" \
   RFM_CONTA_PASTA_PESSOAL="$(win "$c/pessoal/.claude-personal")" \
+  RFM_CONTA_CLAUDE_JSON="$(win "$c/trabalho/.claude.json")" \
   RFM_CONTA_DADOS="$(win "$c/dados")" \
   RFM_CONTA_API="$API" \
   RFM_CONTA_CLAUDE="$(win "$RAIZ/claude-falso.cjs")" \
@@ -160,6 +163,18 @@ a_completo() {
 }
 C_A="$(novo_caso a nao 'team,pessoal' ambas sim)"
 afirma "uma pasta: status lista só trabalho e vigiar troca para a reserva pessoal" a_completo "$C_A"
+
+# Pasta padrão (achado 2, rodada 4): o .claude.json dela mora fora da pasta, em <home>/.claude.json. A troca tem de
+# gravar o oauthAccount da pessoal nesse arquivo e não criar <pasta>/.claude.json (que o Claude Code não lê).
+C_G="$(novo_caso g nao 'team,pessoal' ambas sim)"
+RC_G=0
+cli "$C_G" vigiar > "$RAIZ/g.txt" 2>&1 || RC_G=$?
+troca_grava_fora_da_pasta() {
+  [ "$RC_G" -eq 0 ] &&
+  [ "$(ler "$C_G/trabalho/.claude.json" oauthAccount.emailAddress)" = pessoal@exemplo.invalid ] &&
+  [ ! -e "$C_G/trabalho/.claude/.claude.json" ]
+}
+afirma "pasta padrão: a troca grava o oauthAccount no .claude.json de fora da pasta" troca_grava_fora_da_pasta
 
 # (b) agendar real com schtasks falso.
 C_B1="$(novo_caso b1 nao 'pessoal' nenhuma nao)"

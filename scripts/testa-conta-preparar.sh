@@ -39,7 +39,8 @@ const path = require('path');
 const [, , destino, reservas = '', semOauth = ''] = process.argv;
 const escrever = (arq, obj) => { fs.mkdirSync(path.dirname(arq), { recursive: true }); fs.writeFileSync(arq, JSON.stringify(obj, null, 2) + '\n'); };
 const oauth = (email) => ({ accountUuid: '00000000-0000-0000-0000-000000000000', emailAddress: email, organizationUuid: '00000000-0000-0000-0000-000000000000', displayName: 'Conta Falsa' });
-escrever(path.join(destino, 'trabalho', '.claude', '.claude.json'),
+// Formato real: o .claude.json da pasta padrão mora no home, fora da pasta (~/.claude.json).
+escrever(path.join(destino, 'trabalho', '.claude.json'),
   semOauth === 'trabalho' ? { numStartups: 1 } : { numStartups: 1, oauthAccount: oauth('team@exemplo.invalid') });
 escrever(path.join(destino, 'pessoal', '.claude-personal', '.claude.json'), { numStartups: 1, oauthAccount: oauth('pessoal@exemplo.invalid') });
 // Estado como o status o deixa: as contas registradas (e-mail), que é de onde o preparar tira o
@@ -101,6 +102,7 @@ preparar() { # $1 = caso; $2 = token que o claude falso grava; $3... = argumento
   RFM_TEST=1 \
   RFM_CONTA_PASTA_TRABALHO="$(win "$c/trabalho/.claude")" \
   RFM_CONTA_PASTA_PESSOAL="$(win "$c/pessoal/.claude-personal")" \
+  RFM_CONTA_CLAUDE_JSON="$(win "$c/trabalho/.claude.json")" \
   RFM_CONTA_DADOS="$(win "$c/dados")" \
   RFM_CONTA_API="$API" \
   RFM_CONTA_CLAUDE="$(win "$RAIZ/claude-falso.cjs")" \
@@ -212,7 +214,7 @@ fs.writeFileSync(process.argv[1], JSON.stringify(j));
 # servidor confirmava, e a reserva de trabalho era gravada com o login pessoal (D10).
 C_I="$(novo_caso i "")"
 node -e "require('fs').writeFileSync(process.argv[1], JSON.stringify({ pastas: { trabalho: { conta: 'pessoal' } }, contas: { team: { email: 'team@exemplo.invalid' }, pessoal: { email: 'pessoal@exemplo.invalid' } } }))" "$C_I/dados/contas/estado.json"
-poe_oauth "$C_I/trabalho/.claude/.claude.json" pessoal@exemplo.invalid
+poe_oauth "$C_I/trabalho/.claude.json" pessoal@exemplo.invalid
 SHA_I="$(sha "$C_I/dados/contas/estado.json")"
 RC_I=0
 preparar "$C_I" falso-login-pessoal trabalho > "$RAIZ/i.txt" 2>&1 || RC_I=$?
@@ -229,7 +231,7 @@ afirma "preparar com a pasta trocada recusa" caso_i_fora
 # que aqui diz pessoal@. O claude é chamado com o e-mail registrado; o navegador autoriza a
 # pessoal: sai 3 e nada é gravado.
 C_J="$(novo_caso j "")"
-poe_oauth "$C_J/trabalho/.claude/.claude.json" pessoal@exemplo.invalid
+poe_oauth "$C_J/trabalho/.claude.json" pessoal@exemplo.invalid
 RC_J=0
 preparar "$C_J" falso-login-pessoal trabalho > "$RAIZ/j.txt" 2>&1 || RC_J=$?
 caso_j_registro() {
@@ -242,7 +244,7 @@ afirma "preparar confere a conta pelo registro" caso_j_registro
 # (j2) o lado oposto: mesmo .claude.json adulterado, mas o login que o navegador autoriza é o da
 # conta registrada (team): a reserva é gravada.
 C_J2="$(novo_caso j2 "")"
-poe_oauth "$C_J2/trabalho/.claude/.claude.json" pessoal@exemplo.invalid
+poe_oauth "$C_J2/trabalho/.claude.json" pessoal@exemplo.invalid
 RC_J2=0
 preparar "$C_J2" falso-login-team trabalho > "$RAIZ/j2.txt" 2>&1 || RC_J2=$?
 caso_j2_registro() {

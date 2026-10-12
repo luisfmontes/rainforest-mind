@@ -104,7 +104,8 @@ function ctx() {
 }
 
 const credArq = (c, P) => path.join(c.pastas[P], '.credentials.json');
-const claudeArq = (c, P) => path.join(c.pastas[P], '.claude.json');
+// A pasta padrão lê o .claude.json de fora dela (~/.claude.json); a pessoal, o de dentro (tarefa 7, rodada 4).
+const claudeArq = (c, P) => (P === 'trabalho' ? claudeJsonTrabalho() : path.join(c.pastas[P], '.claude.json'));
 const reservaArq = (c, conta) => path.join(c.contas, `reserva-${conta}.json`);
 // Marca do vigia desagendado por unificar: gravada antes do /Delete, apagada só depois do /Create. Rodada nova
 // que a encontra sabe que o reagendamento ficou para trás, mesmo com /Query 1 (a tarefa já foi apagada).
@@ -606,7 +607,7 @@ async function aplicarTroca(c, estado, { P, para, tipo, manual, travouPor, motiv
   const claudeAntes = lerJson(claudeArq(c, P));
   const { entra, sai } = arqsDaTroca(c, P, de, para);
   if (!fs.existsSync(sai)) gravarAtomico(sai, {});
-  const r = mover({ pasta, reservaEntra: entra, reservaSai: sai, dono });
+  const r = mover({ pasta, reservaEntra: entra, reservaSai: sai, dono, claudeJson: claudeArq(c, P) });
   if (!r.ok) return falhou(r.motivo, r.pendentes);
 
   const esperado = estado.contas[para].email;
@@ -623,6 +624,7 @@ async function aplicarTroca(c, estado, { P, para, tipo, manual, travouPor, motiv
       reservaEntra: sai,
       reservaSai: entra,
       dono: claudeAntes.oauthAccount,
+      claudeJson: claudeArq(c, P),
     });
     const causa = `servidor confirmou ${confirmado}, esperado ${esperado}`;
     // O desfazer também falhou: a troca ficou pela metade e o aviso precisa dos arquivos pendentes.
@@ -1123,6 +1125,27 @@ function unificar(c, args) {
   }
 }
 
+// Troca o perfil e guarda o original em <arquivo>.bak-pasta-unica. Se a gravação falha, remove o .bak que ESTA
+// chamada criou (nunca um pré-existente): sem isso, a retomada indicada (o mesmo comando) sai 2 por "já existe .bak".
+function trocarPerfil(perfilArq, perfil) {
+  const bak = `${perfilArq}.bak-pasta-unica`;
+  let criou = false;
+  try {
+    fs.copyFileSync(perfilArq, bak, fs.constants.COPYFILE_EXCL);
+    criou = true;
+    // Falha simulada só em bateria (RFM_TEST=1): prova a limpeza do .bak depois de uma gravação que falha.
+    if (process.env.RFM_TEST === '1' && process.env.RFM_CONTA_FALHA === 'perfil') throw new Error('falha simulada na gravação do perfil (RFM_CONTA_FALHA)');
+    UNIFICAR.gravarPerfil(perfilArq, perfil.texto, perfil.codificacao);
+  } catch (e) {
+    if (criou) fs.rmSync(bak, { force: true });
+    e.bakRemovido = criou;
+    throw e;
+  }
+  return bak;
+}
+// Nota para a mensagem de erro: só afirma a remoção do .bak quando esta chamada o criou e o removeu.
+const notaBak = (e) => (e.bakRemovido ? ' (o .bak desta tentativa foi removido)' : '');
+
 // Só o perfil, com a pasta pessoal já aposentada. Mesmas checagens do caminho completo.
 function perfilSo(perfilArq, aplicar) {
   if (!fs.existsSync(perfilArq)) return sair(2, `perfil não encontrado: ${perfilArq}. unificar não escreveu nada`);
@@ -1138,10 +1161,9 @@ function perfilSo(perfilArq, aplicar) {
   const bak = `${perfilArq}.bak-pasta-unica`;
   if (fs.existsSync(bak)) return sair(2, 'já existe <arquivo>.bak-pasta-unica: apague ou mova antes. unificar não escreveu nada');
   try {
-    fs.copyFileSync(perfilArq, bak, fs.constants.COPYFILE_EXCL);
-    UNIFICAR.gravarPerfil(perfilArq, perfil.texto, perfil.codificacao);
+    trocarPerfil(perfilArq, perfil);
   } catch (e) {
-    return sair(1, `perfil não trocado: ${msgSegura(e)}`);
+    return sair(1, `perfil não trocado: ${msgSegura(e)}${notaBak(e)}. rode o mesmo comando de novo`);
   }
   console.log(`perfil: funções trocadas por claude; original em ${bak}`);
   return 0;
@@ -1182,6 +1204,7 @@ function migrar(c, args, perfilArq) {
     // Qualquer pasta ativa fora de casa recusa: a volta do mover encontraria a saída ocupada (achado 2).
     pastaForaDeCasa: pastasAtivas().some((P) => pastaForaDeCasa(c, P)),
     scriptInstalado,
+    progressoArq: path.join(c.contas, 'unificar-progresso.json'),
   });
   if (plano.recusas.length) {
     for (const r of plano.recusas) process.stderr.write(`recusa: ${r.motivo} (${r.detalhe})\n`);
@@ -1260,12 +1283,11 @@ function migrar(c, args, perfilArq) {
   }
   // Último passo: o perfil só muda depois da migração inteira. Backup por COPYFILE_EXCL (nunca sobrescreve).
   if (perfil) {
-    const bak = `${perfilArq}.bak-pasta-unica`;
+    let bak;
     try {
-      fs.copyFileSync(perfilArq, bak, fs.constants.COPYFILE_EXCL);
-      UNIFICAR.gravarPerfil(perfilArq, perfil.texto, perfil.codificacao);
+      bak = trocarPerfil(perfilArq, perfil);
     } catch (e) {
-      return sair(1, `migração feita, mas o perfil não foi trocado: ${e.message}; rode \`${comando}\` para trocá-lo`);
+      return sair(1, `migração feita, mas o perfil não foi trocado: ${e.message}${notaBak(e)}; rode \`${comando}\` para trocá-lo`);
     }
     console.log(`perfil: funções trocadas por claude; original em ${bak}`);
   }

@@ -50,7 +50,13 @@ w(path.join(T, 'history.jsonl'), '{"display":"falso-linha-um"}\n');
 w(path.join(T, 'projects', '-proj-x', 'memory', 'MEMORY.md'), '- [A](a.md) — trabalho\n');
 w(path.join(T, 'projects', '-proj-x', 'memory', 'a.md'), 'trabalho a\n');
 // memoria-pre: b.md já foi copiada (igual à da pessoal) por uma rodada anterior, e o índice ainda não tem a linha.
-if (variante === 'memoria-pre') w(path.join(T, 'projects', '-proj-x', 'memory', 'b.md'), 'pessoal b\n');
+if (variante === 'memoria-pre') {
+  w(path.join(T, 'projects', '-proj-x', 'memory', 'b.md'), 'pessoal b\n');
+  // A rodada anterior gravou o progresso da cópia (só o que copiou com o mesmo nome).
+  j(path.join(D, 'contas', 'unificar-progresso.json'), { copiados: ['projects/-proj-x/memory/b.md'] });
+}
+// a-identico: a.md já é igual ao da pessoal nas duas pastas desde o início (não foi copiado por ninguém).
+if (variante === 'a-identico') w(path.join(T, 'projects', '-proj-x', 'memory', 'a.md'), 'pessoal a\n');
 // Clone instalado (destino do reagendamento, D7). A variante sem-clone não o cria.
 if (variante !== 'sem-clone') w(path.join(T, 'plugins', 'marketplaces', 'rainforest-mind', 'scripts', 'conta.cjs'), '// clone falso\n');
 // Pasta pessoal (origem).
@@ -456,6 +462,34 @@ afirma "(lacuna b) processo claude vivo: a recusa diz para rodar num terminal se
 C_PC="$(novo_caso comum projeto-comum)"
 unif "$C_PC" > "$RAIZ/comum.txt" 2>&1 || true
 afirma "(lacuna c) relatório lista o caminho de projects já existente nas duas pastas como não mesclado" grep -qF 'não mesclados: /falso/comum' "$RAIZ/comum.txt"
+
+# Rodada 4, achado 1: retomada com conflito de memória. O índice tem de sair igual ao de uma rodada única limpa:
+# o alvo que ficou em conflito (a.md -> a.pessoal.md) não entra no MEMORY.md, nem na 2ª rodada.
+C_REF="$(novo_caso ach1ref)"
+RC_REF=0
+unif "$C_REF" --aplicar > "$RAIZ/ach1ref.txt" 2>&1 || RC_REF=$?
+C_1X="$(novo_caso ach1x)"
+export RFM_CONTA_FALHA=renomear
+unif "$C_1X" --aplicar > "$RAIZ/ach1x1.txt" 2>&1 || true
+unset RFM_CONTA_FALHA
+RC_1X=0
+unif "$C_1X" --aplicar > "$RAIZ/ach1x2.txt" 2>&1 || RC_1X=$?
+MEM_REF="$C_REF/trabalho/.claude/projects/-proj-x/memory/MEMORY.md"
+MEM_1X="$C_1X/trabalho/.claude/projects/-proj-x/memory/MEMORY.md"
+afirma "(rodada 4, achado 1) referência de rodada única: --aplicar sai 0" test "$RC_REF" -eq 0
+afirma "(rodada 4, achado 1) retomada com conflito: a 2ª rodada sai 0" test "$RC_1X" -eq 0
+afirma "(rodada 4, achado 1) retomada com conflito: MEMORY.md igual ao de uma rodada única limpa" mesmo_hash "$MEM_1X" "$(hash_de "$MEM_REF")"
+afirma "(rodada 4, achado 1) retomada com conflito: a linha do alvo renomeado (a.md) não entra no índice" test "$(grep -cF '[A2]' "$MEM_1X")" -eq 0
+
+# Rodada 4, achado 1, variante: a.md idêntico nas duas pastas desde o início. Numa rodada limpa, a linha pessoal
+# de a.md não entra (o destino já tinha o alvo); a de b.md (copiado agora) entra.
+C_AI="$(novo_caso ach1ident a-identico)"
+RC_AI=0
+unif "$C_AI" --aplicar > "$RAIZ/ach1ident.txt" 2>&1 || RC_AI=$?
+MEM_AI="$C_AI/trabalho/.claude/projects/-proj-x/memory/MEMORY.md"
+afirma "(rodada 4, achado 1, variante) a.md idêntico nas duas pastas: --aplicar sai 0" test "$RC_AI" -eq 0
+afirma "(rodada 4, achado 1, variante) a.md idêntico desde o início: nenhuma linha pessoal de a.md entra no índice" test "$(grep -cF '[A2]' "$MEM_AI")" -eq 0
+afirma "(rodada 4, achado 1, variante) a linha de b.md (copiado agora) continua entrando" test "$(grep -cF '(b.md)' "$MEM_AI")" -eq 1
 
 echo "ok: $OK   falhou: $FALHOU"
 if [ "$FALHOU" -ne 0 ]; then exit 1; fi

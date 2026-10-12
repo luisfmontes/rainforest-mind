@@ -45,7 +45,8 @@ function cred(tok, refresh) {
 const escrever = (arq, obj) => { fs.mkdirSync(path.dirname(arq), { recursive: true }); fs.writeFileSync(arq, JSON.stringify(obj, null, 2) + '\n'); };
 const [, , destino, reservas, auto, config] = process.argv;
 escrever(path.join(destino, 'trabalho', '.claude', '.credentials.json'), cred('falso-team-pasta', 'falso-refresh-team-pasta'));
-escrever(path.join(destino, 'trabalho', '.claude', '.claude.json'), { numStartups: 3, oauthAccount: OAUTH.team, projects: {} });
+// Formato real: o .claude.json da pasta padrão mora no home, fora da pasta (~/.claude.json).
+escrever(path.join(destino, 'trabalho', '.claude.json'), { numStartups: 3, oauthAccount: OAUTH.team, projects: {} });
 escrever(path.join(destino, 'pessoal', '.claude-personal', '.credentials.json'), cred('falso-pessoal-pasta', 'falso-refresh-pessoal-pasta'));
 escrever(path.join(destino, 'pessoal', '.claude-personal', '.claude.json'), { numStartups: 3, oauthAccount: OAUTH.pessoal, projects: {} });
 if (reservas !== 'nenhuma') escrever(path.join(destino, 'dados', 'contas', 'reserva-team.json'), { claudeAiOauth: cred('falso-team-reserva', 'falso-refresh-team-reserva').claudeAiOauth });
@@ -108,6 +109,7 @@ cli() {
   RFM_TEST=1 \
   RFM_CONTA_PASTA_TRABALHO="$(win "$c/trabalho/.claude")" \
   RFM_CONTA_PASTA_PESSOAL="$(win "$c/pessoal/.claude-personal")" \
+  RFM_CONTA_CLAUDE_JSON="$(win "$c/trabalho/.claude.json")" \
   RFM_CONTA_DADOS="$(win "$c/dados")" \
   RFM_CONTA_API="$API" \
   RFM_CONTA_SCHTASKS="$(win "$RAIZ/schtasks-falso.cjs")" \

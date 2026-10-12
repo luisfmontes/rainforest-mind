@@ -7,6 +7,7 @@
  *   - reservaEntra: reserva cujo login vai para a pasta ({ claudeAiOauth: {...} })
  *   - reservaSai: reserva que recebe o login que a pasta tinha
  *   - dono: objeto oauthAccount gravado no .claude.json da pasta
+ *   - claudeJson: caminho do .claude.json (padrão: o de dentro da pasta; a pasta padrão usa o de fora dela)
  *
  * Retorno:
  *   { ok: true, entrou, saiu }            prefixos sha256(refreshToken), 12 chars
@@ -70,13 +71,13 @@ function fimDeLinha(bruto) {
   return bruto.endsWith('\n') ? '\n' : '';
 }
 
-function mover({ pasta, reservaEntra, reservaSai, dono }) {
+function mover({ pasta, reservaEntra, reservaSai, dono, claudeJson }) {
   if (!dono) throw new Error('dono ausente');
   if (path.resolve(reservaEntra) === path.resolve(reservaSai)) throw new Error('reservas iguais');
 
   const arqs = {
     cred: path.join(pasta, '.credentials.json'),
-    claude: path.join(pasta, '.claude.json'),
+    claude: claudeJson || path.join(pasta, '.claude.json'),
     entra: reservaEntra,
     sai: reservaSai,
   };

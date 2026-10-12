@@ -326,5 +326,26 @@ unset RFM_CONTA_FALHA
 afirma "(achado 5) falha com --profile sai diferente de 0" test "$RC_R" -ne 0
 afirma "(achado 5) a retomada repete o comando com --profile <arquivo>" grep -qF "unificar --aplicar --profile $(win "$C_R/perfil.ps1")" "$RAIZ/x6.txt"
 
+# Rodada 4, achado 3: a gravação do perfil falha (falha injetada só com RFM_TEST=1) depois da migração. O .bak que
+# esta rodada criou não pode ficar, e a retomada indicada (o mesmo comando) tem de funcionar.
+C_B3="$(semear_home ach3p)"
+cp "$RAIZ/perfil-original.ps1" "$C_B3/perfil.ps1"
+H_B3="$(hash_de "$C_B3/perfil.ps1")"
+RC_B31=0
+export RFM_CONTA_FALHA=perfil
+unif "$C_B3" --aplicar --profile "$(win "$C_B3/perfil.ps1")" > "$RAIZ/ach3p1.txt" 2>&1 || RC_B31=$?
+unset RFM_CONTA_FALHA
+# Estado logo depois da 1ª rodada (antes da retomada, que mudaria os dois).
+BAK_B31=1
+[ -e "$C_B3/perfil.ps1.bak-pasta-unica" ] || BAK_B31=0
+H_B31="$(hash_de "$C_B3/perfil.ps1")"
+RC_B32=0
+unif "$C_B3" --aplicar --profile "$(win "$C_B3/perfil.ps1")" > "$RAIZ/ach3p2.txt" 2>&1 || RC_B32=$?
+afirma "(rodada 4, achado 3) gravação do perfil falha: sai diferente de 0" test "$RC_B31" -ne 0
+afirma "(rodada 4, achado 3) gravação do perfil falha: o .bak que a rodada criou não fica" test "$BAK_B31" -eq 0
+afirma "(rodada 4, achado 3) gravação do perfil falha: o perfil fica como estava (hash)" test "$H_B31" = "$H_B3"
+afirma "(rodada 4, achado 3) a retomada indicada (o mesmo comando) sai 0" test "$RC_B32" -eq 0
+afirma "(rodada 4, achado 3) a retomada troca o perfil e deixa o .bak da retomada" bash -c "[ -f '$C_B3/perfil.ps1.bak-pasta-unica' ] && ! grep -qF 'function claude-pessoal' '$C_B3/perfil.ps1'"
+
 echo "ok: $OK   falhou: $FALHOU   pulado: $PULADO"
 if [ "$FALHOU" -ne 0 ]; then exit 1; fi

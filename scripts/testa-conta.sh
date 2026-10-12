@@ -58,7 +58,8 @@ if (modo === 'mapa') {
   escrever(destino, { tokens: TOKENS });
 } else {
   escrever(path.join(destino, 'trabalho', '.claude', '.credentials.json'), cred('falso-team-pasta', 'falso-refresh-team-pasta'));
-  escrever(path.join(destino, 'trabalho', '.claude', '.claude.json'), { numStartups: 3, oauthAccount: OAUTH.team, projects: {} });
+  // Formato real: o .claude.json da pasta padrão mora no home, fora da pasta (~/.claude.json).
+  escrever(path.join(destino, 'trabalho', '.claude.json'), { numStartups: 3, oauthAccount: OAUTH.team, projects: {} });
   escrever(path.join(destino, 'pessoal', '.claude-personal', '.credentials.json'), cred('falso-pessoal-pasta', 'falso-refresh-pessoal-pasta'));
   escrever(path.join(destino, 'pessoal', '.claude-personal', '.claude.json'), { numStartups: 3, oauthAccount: OAUTH.pessoal, projects: {} });
   escrever(path.join(destino, 'dados', 'contas', 'reserva-team.json'), { claudeAiOauth: cred('falso-team-reserva', 'falso-refresh-team-reserva').claudeAiOauth });
@@ -107,6 +108,7 @@ const ler = (a) => JSON.parse(fs.readFileSync(a, 'utf8'));
 const gravar = (a, o) => fs.writeFileSync(a, JSON.stringify(o, null, 2) + '\n');
 const pastaT = path.join(caso, 'trabalho', '.claude');
 const pastaP = path.join(caso, 'pessoal', '.claude-personal');
+const homeT = path.join(caso, 'trabalho');
 const contas = path.join(caso, 'dados', 'contas');
 if (acao === 'trocado') {
   const passado = Date.now() - 60000;
@@ -119,11 +121,11 @@ if (acao === 'trocado') {
   const resT = ler(path.join(contas, 'reserva-team.json'));
   resT.claudeAiOauth.expiresAt = passado;
   gravar(path.join(contas, 'reserva-team.json'), resT);
-  const claudeT = ler(path.join(pastaT, '.claude.json'));
+  const claudeT = ler(path.join(homeT, '.claude.json'));
   const oauthTeam = claudeT.oauthAccount;
   const oauthPessoal = ler(path.join(pastaP, '.claude.json')).oauthAccount;
   claudeT.oauthAccount = oauthPessoal;
-  gravar(path.join(pastaT, '.claude.json'), claudeT);
+  gravar(path.join(homeT, '.claude.json'), claudeT);
   gravar(path.join(contas, 'estado.json'), {
     automatico: true,
     pastas: { trabalho: { conta: 'pessoal', manual: false, travouPor: { limite: 'seven_day', resetsAt: new Date(Date.now() - 3600000).toISOString() } } },
@@ -142,11 +144,11 @@ if (acao === 'divergente') {
   const credT = ler(path.join(pastaT, '.credentials.json'));
   credT.claudeAiOauth = { ...credT.claudeAiOauth, ...loginPessoalOutro() };
   gravar(path.join(pastaT, '.credentials.json'), credT);
-  const claudeT = ler(path.join(pastaT, '.claude.json'));
+  const claudeT = ler(path.join(homeT, '.claude.json'));
   const oauthTeam = claudeT.oauthAccount;
   const oauthPessoal = ler(path.join(pastaP, '.claude.json')).oauthAccount;
   claudeT.oauthAccount = oauthPessoal;
-  gravar(path.join(pastaT, '.claude.json'), claudeT);
+  gravar(path.join(homeT, '.claude.json'), claudeT);
   gravar(path.join(contas, 'estado.json'), {
     automatico: false,
     contas: { team: { email: oauthTeam.emailAddress, oauthAccount: oauthTeam }, pessoal: { email: oauthPessoal.emailAddress, oauthAccount: oauthPessoal } },
@@ -189,6 +191,7 @@ cli() {
   RFM_TEST=1 \
   RFM_CONTA_PASTA_TRABALHO="$(win "$c/trabalho/.claude")" \
   RFM_CONTA_PASTA_PESSOAL="$(win "$c/pessoal/.claude-personal")" \
+  RFM_CONTA_CLAUDE_JSON="$(win "$c/trabalho/.claude.json")" \
   RFM_CONTA_DADOS="$(win "$c/dados")" \
   RFM_CONTA_API="$API" \
   node scripts/conta.cjs "$@"
@@ -535,6 +538,7 @@ RC_S=0
     HOME="$(win "$HOME_S")" USERPROFILE="$(win "$HOME_S")" CLAUDE_PROJECT_DIR="$(win "$PROJ_S")" \
     RFM_TEST=1 \
     RFM_CONTA_PASTA_TRABALHO="$(win "$C_S/trabalho/.claude")" \
+    RFM_CONTA_CLAUDE_JSON="$(win "$C_S/trabalho/.claude.json")" \
     RFM_CONTA_PASTA_PESSOAL="$(win "$C_S/pessoal/.claude-personal")" \
     RFM_CONTA_API="$API" \
     node "$REPO/scripts/conta.cjs" status ) > "$RAIZ/s.txt" 2>&1 || RC_S=$?
@@ -601,7 +605,7 @@ const fs = require('fs');
 const j = (a) => JSON.parse(fs.readFileSync(a, 'utf8'));
 const c = process.argv[1];
 const o = (a) => j(c + a).oauthAccount;
-const t = o('/trabalho/.claude/.claude.json');
+const t = o('/trabalho/.claude.json');
 const p = o('/pessoal/.claude-personal/.claude.json');
 fs.writeFileSync(c + '/dados/contas/estado.json', JSON.stringify({ automatico: true, contas: { team: { email: t.emailAddress, oauthAccount: t }, pessoal: { email: p.emailAddress, oauthAccount: p } } }));
 " "$1"
@@ -899,7 +903,7 @@ afirma "trava vencida: guarda fresca de outro processo é respeitada" contem "$(
 # de credencial (as duas pastas, as reservas e os estacionados): recusar tem de deixar o resumo igual.
 snap() { # $1 = caso
   local c="$1"
-  { cat "$c"/trabalho/.claude/.credentials.json "$c"/trabalho/.claude/.claude.json \
+  { cat "$c"/trabalho/.claude/.credentials.json "$c"/trabalho/.claude.json \
       "$c"/pessoal/.claude-personal/.credentials.json "$c"/pessoal/.claude-personal/.claude.json
     cat "$c"/dados/contas/reserva-*.json
     cat "$c"/dados/contas/estacionado-*.json 2>/dev/null || true

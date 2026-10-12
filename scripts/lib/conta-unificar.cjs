@@ -16,6 +16,7 @@
  *   sessoesVivas                         boolean: há sessão viva no sessoes.json
  *   pastaForaDeCasa                      boolean: a pessoal está com login de outra conta
  *   scriptInstalado                      conta.cjs do clone instalado (destino do reagendamento)
+ *   progressoArq                         unificar-progresso.json na pasta de dados da conta (lido na retomada, apagado ao fim)
  * }
  *
  * Nunca sobrescreve: arquivo de mesmo nome e conteúdo diferente vira <nome>.pessoal.<ext>.
@@ -76,6 +77,20 @@ function mesmoConteudo(a, b) {
   return hashArq(a) === hashArq(b);
 }
 
+// Progresso da cópia (rodada 4, achado 1): caminhos copiados com o MESMO nome por uma rodada que não chegou ao
+// fim. Só a cópia com o mesmo nome entra; alvo que virou .pessoal.<ext> nunca entra. Sem ele, a retomada não
+// distingue "copiado na rodada anterior" de "já existia no destino".
+function lerProgresso(arq) {
+  if (!arq || !fs.existsSync(arq)) return [];
+  return (lerJsonOpcional(arq, {}).copiados || []).map((r) => path.normalize(r));
+}
+
+function gravarProgresso(plano, novos) {
+  if (!plano.progressoArq) return;
+  const todos = [...new Set([...plano.progressoAntes, ...novos])];
+  gravarTexto(plano.progressoArq, JSON.stringify({ copiados: todos.map((r) => r.split(path.sep).join('/')) }, null, 2) + '\n');
+}
+
 function classeDe(rel) {
   // rel vem de path.relative: no Windows o separador é \, e a classe não pode ser o caminho inteiro.
   const partes = rel.split(/[\\/]/);
@@ -94,8 +109,8 @@ function mcpDivergentes(pessoal, destino) {
 }
 
 // Índice de memória: a linha da pessoal entra se (a) o texto dela ainda não está no MEMORY.md de destino
-// e (b) o alvo .md foi copiado — nesta rodada ou numa anterior (copiados = caminhos da pessoal com acao
-// 'copiar' ou 'igual'). Alvo que ficou em conflito, ou que não existe na pessoal, não entra. Como o critério
+// e (b) o alvo .md foi copiado com o mesmo nome — nesta rodada ou numa anterior (copiados: ver planejar).
+// Alvo que ficou em conflito, ou que não existe na pessoal, não entra. Como o critério
 // lê o destino, uma rodada repetida não duplica a linha, e a linha de uma rodada interrompida não se perde.
 function linhasDeIndice(textoPessoal, textoDestino, dirRel, copiados) {
   const semCR = (l) => l.replace(/\r$/, '');
@@ -144,12 +159,18 @@ function planejar(e) {
       if (d.acao === 'conflito' && fs.existsSync(d.destino)) {
         recusas.push({ motivo: 'conflito_ocupado', detalhe: path.relative(e.trabalho, d.destino) });
       }
-      copias.push({ classe: classeDe(rel), rel, origem, destino: d.destino, acao: d.acao });
+      copias.push({ classe: classeDe(rel), rel, origem, destino: d.destino, acao: d.acao, mesmoNome: d.destino === destino });
     }
   }
 
-  // Índice: lê o destino agora, antes de qualquer cópia; o que foi copiado (ou já era igual) conta como migrado.
-  const copiados = new Set(copias.filter((c) => c.acao === 'copiar' || c.acao === 'igual').map((c) => c.rel));
+  // Índice: lê o destino agora, antes de qualquer cópia. Conta como migrado o que esta rodada copiou com o mesmo
+  // nome, e o que uma rodada anterior copiou (progresso) e já está igual. Alvo que já era igual sem progresso
+  // (a.md idêntico desde o início) não entra: o destino já tinha o alvo. Alvo em conflito nunca entra.
+  const progressoAntes = lerProgresso(e.progressoArq);
+  const copiadosAntes = new Set(progressoAntes);
+  const copiados = new Set(copias
+    .filter((c) => c.acao === 'copiar' || (c.acao === 'igual' && c.mesmoNome && copiadosAntes.has(c.rel)))
+    .map((c) => c.rel));
   for (const i of indices) {
     i.linhas = [];
     if (i.acao === 'mesclar') {
@@ -232,6 +253,8 @@ function planejar(e) {
     trabalho: e.trabalho,
     pessoal: e.pessoal,
     aposentada: e.aposentada,
+    progressoArq: e.progressoArq || null,
+    progressoAntes,
     claudeJsonTrabalho: e.claudeJsonTrabalho,
     reservaArq: e.reservaArq,
     recusas,
@@ -297,10 +320,17 @@ function aplicar(plano, ops) {
     const st = ops.desagendar();
     if (st) throw new Error(`schtasks não removeu o vigia (status ${st})`);
   });
+  // O progresso é gravado mesmo se a cópia falha no meio: a retomada sabe o que já foi copiado com o mesmo nome.
+  const copiadosNesta = [];
   etapa('copiar arquivos', () => {
-    for (const c of plano.copias) {
-      if (c.acao === 'igual') continue;
-      copiarArq(c.origem, c.destino);
+    try {
+      for (const c of plano.copias) {
+        if (c.acao === 'igual') continue;
+        copiarArq(c.origem, c.destino);
+        if (c.acao === 'copiar') copiadosNesta.push(c.rel);
+      }
+    } finally {
+      gravarProgresso(plano, copiadosNesta);
     }
   });
   etapa('índices de memória', () => {
@@ -327,6 +357,8 @@ function aplicar(plano, ops) {
     if (plano.tirarCredPessoal) gravarCred(plano.tirarCredPessoal.arq, JSON.stringify(plano.tirarCredPessoal.restante, null, 2) + '\n');
   });
   etapa('rename da pasta pessoal', () => ops.renomearPasta(plano.pessoal, plano.aposentada));
+  // Cópia concluída e pasta aposentada: a retomada não precisa mais do progresso. Apagado só aqui.
+  if (plano.progressoArq) fs.rmSync(plano.progressoArq, { force: true });
   // plano.reagendar: o vigia estava agendado, ou a marca de uma rodada anterior diz que o reagendamento falta.
   const reagendado = etapa('vigia reagendado', () => (plano.reagendar ? ops.reagendar() : null));
   return { plugins, reagendado };
