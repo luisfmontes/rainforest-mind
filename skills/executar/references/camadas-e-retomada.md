@@ -55,8 +55,9 @@ e `proxima_camada`. O `estado` de cada tarefa é `integrada`, `em_voo` ou `pende
 - `redespachar`: a tarefa está em `em_voo`, mas não tem trailer. Despache do zero,
   com base nova. O worktree do agente anterior é sobra: confira-o pelo caminho antes
   de removê-lo.
-- `proxima_camada`: o que falta despachar agora. `null` quer dizer que tudo está
-  integrado e o `executar` pode fechar `ok`.
+- `proxima_camada`: as tarefas ainda não marcadas da primeira camada incompleta.
+  Uma tarefa que também está em `re_marcar` só se marca, não se despacha. `null`
+  quer dizer que tudo está integrado e marcado, e o `executar` pode fechar `ok`.
 
 ## Painel
 
