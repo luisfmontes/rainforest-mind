@@ -113,6 +113,11 @@
     "em": "2026-10-13"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "merge",
+    "pr": 512,
+    "comando": "node scripts/publicar-branch.cjs confirmar-merge --pr 512",
+    "saida": "merge confirmado: PR 512 MERGED",
+    "em": "2026-10-13"
   }
 }
