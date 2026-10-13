@@ -88,7 +88,11 @@
     ]
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-13-timeout-memoria-assunto; node scripts/testa-utilidade-cache.cjs; node hooks/testa-memoria-assunto-prompt.cjs; node scripts/conferir-versao.cjs",
+    "saida": "tarefa 1: vermelho, 2 e 3 puladas n/a; 4 ok, 0 falha(s); 14 ok, 0 falha(s) teto1a=10000 (com timeout 0.001: 13 ok, 1 falha, exit 1); hooks.json 10 true; versao 1.64.1 exit 0; medicao 1o pedido mediana 1737 -> 333 ms",
+    "sensor_externo": "node scripts/testa-utilidade-cache.cjs",
+    "em": "2026-10-13"
   },
   "fechar": {
     "status": "pendente"
