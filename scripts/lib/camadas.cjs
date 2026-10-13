@@ -8,8 +8,12 @@
  * compartilhado na mesma camada mora aqui, para a `cobertura` e o
  * `conferir-fluxo camadas` lerem a mesma conta.
  *
- * Entrada: [{numero, dependeDe: number[], arquivos: string[]}]
- * Saída: {camadas: number[][], conflitos: [{camada, a, b, arquivo}]}
+ * Entrada: [{numero, dependeDe: number[], arquivos: string[], paralelaDeclarada?: boolean}]
+ * Saída: {camadas: number[][], conflitos: [{camada, a, b, arquivo}],
+ *         recusas: [...], avisos: [...]}
+ * `conflitos` lista todo arquivo em comum na mesma camada. `recusas` são os que
+ * nenhuma das duas tarefas declara `paralela:`; `avisos`, os que alguma declara
+ * (emenda D2 de 2026-10-13: plano antigo serializado por `paralela: nao` passa com aviso).
  * Ciclo e dependência inexistente lançam ErroCamadas, nomeando as tarefas.
  */
 
@@ -78,6 +82,7 @@ function calcularCamadas(tarefas) {
     }
   }
 
+  const declaradaDe = new Map(tarefas.map((t) => [t.numero, t.paralelaDeclarada === true]));
   const conflitos = [];
   camadas.forEach((camada, indice) => {
     for (let i = 0; i < camada.length; i++) {
@@ -95,7 +100,10 @@ function calcularCamadas(tarefas) {
     }
   });
 
-  return { camadas, conflitos };
+  const alguemDeclara = (c) => declaradaDe.get(c.a) || declaradaDe.get(c.b);
+  const recusas = conflitos.filter((c) => !alguemDeclara(c));
+  const avisos = conflitos.filter(alguemDeclara);
+  return { camadas, conflitos, recusas, avisos };
 }
 
 /**

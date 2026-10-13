@@ -585,6 +585,7 @@ echo "  -- SABOTAGEM: devolver o execSync com string e exigir que a assercao cai
 # montar o comando como string; se o sentinela NAO aparecer nele, este teste esta
 # medindo outra coisa.
 mkdir -p "$CAIXA_INJ/mut/scripts" "$CAIXA_INJ/mut/hooks/lib" && cp "$RAIZ/hooks/lib/resolver-executavel.cjs" "$RAIZ/hooks/lib/contar-ocorrencias.cjs" "$RAIZ/hooks/lib/pastas-docs.cjs" "$RAIZ/hooks/lib/config.cjs" "$RAIZ/hooks/lib/raiz.cjs" "$RAIZ/hooks/lib/teto-despachos.cjs" "$CAIXA_INJ/mut/hooks/lib/"   # o mutante faz require do resolvedor (Issue #392), da contagem do #397 e do leitor do teto (D14)
+mkdir -p "$CAIXA_INJ/mut/scripts/lib" && cp "$RAIZ/scripts/lib/"*.cjs "$CAIXA_INJ/mut/scripts/lib/"   # o mutante faz require de scripts/lib/camadas.cjs (emenda D2, 2026-10-13)
 MUT_CHECADOR="$CAIXA_INJ/mut/scripts/conferir-fluxo-mut.cjs"
 cp "$CHECADOR" "$MUT_CHECADOR"
 cat > "$CAIXA_INJ/sabotar-injecao.cjs" <<'SABOTA_INJ_EOF'
@@ -1190,8 +1191,7 @@ qbase
 exige 0 "plano serializado passa (controle)" QCHK cobertura --slug t
 
 qbase; qtarefa 1 "depende de: nenhuma" "depende de: 2"
-exige 2 "cobertura recusa paralela sim com depende de" QCHK cobertura --slug t
-exige_msg "paralela: sim mas depende de" "a recusa diz paralela com dependencia" QCHK cobertura --slug t
+exige_msg "aviso: tarefa 1\. .*marca paralela: sim e depende de: 2" "o aviso diz paralela com dependencia (emenda D2: aviso, nao recusa)" QCHK cobertura --slug t
 
 qbase; qtarefa 1 'arquivos: `hooks/lib/contexto-sessao.cjs`' 'arquivos: `scripts/conferir-mutacao.cjs`, `hooks/lib/contexto-sessao.cjs`'
 exige 2 "duas paralelas com o mesmo caminho em arquivos: recusam" QCHK cobertura --slug t

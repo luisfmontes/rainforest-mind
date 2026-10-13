@@ -15,8 +15,10 @@ PLANO_FECHAR="$RAIZ/docs/rainforest/planos/2026-10-13-fechar-push-merge.md"
 DESIGN_FECHAR="$RAIZ/docs/rainforest/design/2026-10-13-fechar-push-merge.md"
 PLANO_FLAKY="$RAIZ/docs/rainforest/planos/2026-10-10-flaky-teto.md"
 DESIGN_FLAKY="$RAIZ/docs/rainforest/design/2026-10-10-flaky-teto.md"
+PLANO_GATE="$RAIZ/docs/rainforest/planos/2026-08-21-gate-de-sessao-co-locada-e-catraca-de-mutacao.md"
+DESIGN_GATE="$RAIZ/docs/rainforest/design/2026-08-21-gate-de-sessao-co-locada-e-catraca-de-mutacao.md"
 
-for f in "$CHECADOR" "$PLANO_FECHAR" "$DESIGN_FECHAR" "$PLANO_FLAKY" "$DESIGN_FLAKY"; do
+for f in "$CHECADOR" "$PLANO_FECHAR" "$DESIGN_FECHAR" "$PLANO_FLAKY" "$DESIGN_FLAKY" "$PLANO_GATE" "$DESIGN_GATE"; do
   [ -f "$f" ] || { echo "FALHA: nao achei $f"; exit 1; }
 done
 
@@ -54,6 +56,8 @@ caixa() {
   W="$(cygpath -m "$CX" 2>/dev/null || printf '%s' "$CX")"
 }
 plano() { printf '%s/docs/rainforest/planos/s.md' "$W"; }
+# Tira as linhas `paralela:` do plano da caixa: sem declaracao, conflito na camada e recusa.
+sem_paralela() { sed -i '/^paralela:/d' "$CX/docs/rainforest/planos/s.md"; }
 EDITAR="$(cygpath -m "$TMP/editar.cjs" 2>/dev/null || printf '%s' "$TMP/editar.cjs")"
 editar() { node "$EDITAR" "$(plano)" "$@" || { echo "FALHA: editar $*"; falhou=$((falhou+1)); }; }
 
@@ -99,16 +103,24 @@ esperar "depende de: 9 inexistente recusa nomeando o 9" 2 - 'tarefa 3 depende de
 
 caixa "$PLANO_FECHAR" "$DESIGN_FECHAR"
 editar 2 "depende de" nenhuma
-esperar "1 e 2 na mesma camada com arquivo em comum recusa" 2 '"conflitos":\[\{"camada":1,"a":1,"b":2,"arquivo":"hooks/lib/config.cjs"\}\]' 'compartilham arquivos: hooks/lib/config.cjs' camadas
+sem_paralela
+esperar "1 e 2 na mesma camada com arquivo em comum, nenhuma declara paralela: recusa" 2 '"conflitos":\[\{"camada":1,"a":1,"b":2,"arquivo":"hooks/lib/config.cjs"\}\]' 'compartilham arquivos: hooks/lib/config.cjs' camadas
+
+caixa "$PLANO_FECHAR" "$DESIGN_FECHAR"
+editar 2 "depende de" nenhuma
+editar 2 paralela nao
+esperar "1 e 2 na mesma camada com paralela: nao declarado: aviso, exit 0, JSON lista o conflito" 0 '"conflitos":\[\{"camada":1,"a":1,"b":2,"arquivo":"hooks/lib/config.cjs"\}\]' 'aviso: tarefa 1 e tarefa 2 .*compartilham arquivos: hooks/lib/config.cjs' camadas
 
 caixa "$PLANO_FECHAR" "$DESIGN_FECHAR"
 editar 2 "depende de" nenhuma
 editar 2 arquivos '`hooks/lib/*.cjs`, `hooks/testa-gate-merge-auto.sh`'
+sem_paralela
 esperar "glob na tarefa 2 casa o literal da tarefa 1: recusa" 2 - 'compartilham arquivos: hooks/lib/config.cjs' camadas
 
 caixa "$PLANO_FECHAR" "$DESIGN_FECHAR"
 editar 2 "depende de" nenhuma
 editar 1 arquivos '`hooks/lib/*.cjs`'
+sem_paralela
 esperar "glob na tarefa 1 casa o literal da tarefa 2: recusa" 2 - 'compartilham arquivos: hooks/lib/\*.cjs ~ hooks/lib/config.cjs' camadas
 
 echo "== cobertura"
@@ -136,7 +148,16 @@ esperar "cobertura recusa depende de: 9 inexistente" 2 - 'depende de: 9' cobertu
 
 caixa "$PLANO_FECHAR" "$DESIGN_FECHAR"
 editar 2 "depende de" nenhuma
-esperar "cobertura recusa arquivo em comum na mesma camada" 2 - 'compartilham arquivos: hooks/lib/config.cjs' cobertura
+sem_paralela
+esperar "cobertura recusa arquivo em comum na mesma camada, sem paralela: declarada" 2 - 'compartilham arquivos: hooks/lib/config.cjs' cobertura
+
+caixa "$PLANO_FECHAR" "$DESIGN_FECHAR"
+editar 2 "depende de" nenhuma
+editar 2 paralela nao
+esperar "cobertura: arquivo em comum com paralela: nao declarado vira aviso e passa" 0 'ok: cobertura' 'aviso: tarefa 1 e tarefa 2 .*compartilham arquivos: hooks/lib/config.cjs' cobertura
+
+caixa "$PLANO_GATE" "$DESIGN_GATE"
+esperar "cobertura aceita o gate-de-sessao com aviso de conflito declarado" 0 'ok: cobertura' 'aviso: tarefa [0-9]+' cobertura
 
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"

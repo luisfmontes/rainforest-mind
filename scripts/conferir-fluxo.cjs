@@ -249,7 +249,7 @@ function cmdCobertura() {
     } catch (e) {
       erros.push(`tarefa ${numero}. ${nome} ${e.message}`);
     }
-    tarefasDag.push({ numero, dependeDe: deps, arquivos });
+    tarefasDag.push({ numero, dependeDe: deps, arquivos, paralelaDeclarada: tarefa.paralelaDeclarada === true });
     if (paralela === 'sim' && deps.length > 0) {
       console.error(`aviso: tarefa ${numero}. ${nome} marca paralela: sim e depende de: ${dependeDe}; a camada sai do depende de:, e o paralela: é ignorado`);
     }
@@ -342,9 +342,12 @@ function cmdCobertura() {
   // D2/D3 (2026-10-13): a recusa é por camada. Ciclo, dependência inexistente e
   // arquivo em comum entre tarefas da mesma camada saem do calcularCamadas.
   try {
-    const { conflitos } = calcularCamadas(tarefasDag);
-    for (const c of conflitos) {
+    const { recusas, avisos } = calcularCamadas(tarefasDag);
+    for (const c of recusas) {
       erros.push(`tarefa ${c.a} e tarefa ${c.b} estão na mesma camada ${c.camada} e compartilham arquivos: ${c.arquivo}`);
+    }
+    for (const c of avisos) {
+      console.error(`aviso: tarefa ${c.a} e tarefa ${c.b} estão na mesma camada ${c.camada} e compartilham arquivos: ${c.arquivo} (alguma declara paralela:, não recusa)`);
     }
   } catch (e) {
     if (!(e instanceof ErroCamadas)) throw e;
@@ -520,15 +523,18 @@ function extrairTarefas(conteudo) {
       }
 
       // Procura campo paralela:
+      // paralelaDeclarada: a linha existe, qualquer valor (D2 emendado: conflito com ela vira aviso).
       let paralela = 'nao';
+      let paralelaDeclarada = false;
       for (let k = 0; k < corpo.length; k++) {
         if (!corpo_cerca[k] && corpo[k].startsWith('paralela:')) {
           paralela = corpo[k].substring('paralela:'.length).trim().toLowerCase();
+          paralelaDeclarada = true;
           break;
         }
       }
 
-      tarefas.push({ numero, nome, atende, tipo, prova, provaMalformada, provaNaBase, arquivos, dependeDe, paralela, mutacao: extrairMutacao(corpo, corpo_cerca) });
+      tarefas.push({ numero, nome, atende, tipo, prova, provaMalformada, provaNaBase, arquivos, dependeDe, paralela, paralelaDeclarada, mutacao: extrairMutacao(corpo, corpo_cerca) });
     }
   }
 
@@ -1135,8 +1141,9 @@ function cmdMutacoes() {
 
 /**
  * Mostra as camadas do plano (as tarefas que o `executar` despacha juntas) e
- * recusa o que o calcularCamadas recusa. Stdout: JSON {camadas, conflitos}.
- * Exit 0 sem conflito; 2 com conflito, ciclo ou dependência inexistente.
+ * recusa o que o calcularCamadas recusa. Stdout: JSON {camadas, conflitos, recusas, avisos}.
+ * Exit 0 sem recusa (aviso de conflito com paralela: declarada não muda o exit); 2 com
+ * recusa, ciclo ou dependência inexistente.
  */
 function cmdCamadas() {
   const slug = arg('slug');
@@ -1153,6 +1160,7 @@ function cmdCamadas() {
       numero: t.numero,
       dependeDe: parseDependencias(t.dependeDe),
       arquivos: t.arquivos,
+      paralelaDeclarada: t.paralelaDeclarada === true,
     }));
     resultado = calcularCamadas(tarefas);
   } catch (e) {
@@ -1162,8 +1170,11 @@ function cmdCamadas() {
   }
 
   console.log(JSON.stringify(resultado));
-  if (resultado.conflitos.length > 0) {
-    for (const c of resultado.conflitos) {
+  for (const c of resultado.avisos) {
+    console.error(`aviso: tarefa ${c.a} e tarefa ${c.b} estão na mesma camada ${c.camada} e compartilham arquivos: ${c.arquivo} (alguma declara paralela:, não recusa)`);
+  }
+  if (resultado.recusas.length > 0) {
+    for (const c of resultado.recusas) {
       console.error(`RECUSADO: tarefa ${c.a} e tarefa ${c.b} estão na mesma camada ${c.camada} e compartilham arquivos: ${c.arquivo}`);
     }
     process.exit(2);
