@@ -18,9 +18,9 @@
     "em": "2026-10-13"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-13",
-    "tarefas_ok": 3,
+    "tarefas_ok": 4,
     "tarefas": 4,
     "carimbos": [
       {
@@ -57,7 +57,32 @@
     "integradas": [
       1,
       2,
-      3
+      3,
+      4
+    ],
+    "comando": "node scripts/estado.cjs retomar --slug 2026-10-13-executar-dag-painel",
+    "saida": "tarefas 1-4 integrada (trailer na branch); re_marcar [4] antes deste marcar; baterias: camadas 17/0, estado-retomar 30/0, painel 33/0, estado 324/0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-camadas.sh: ciclo 1->2->1 recusa nomeando as duas"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-estado-retomar.sh: tarefa integrada e nao marcada vai para re_marcar"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-painel-fluxo.sh: titulo com <script> sai escapado"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "texto de skill e documentacao, sem comportamento a inverter"
+      }
     ]
   },
   "revisar": {
