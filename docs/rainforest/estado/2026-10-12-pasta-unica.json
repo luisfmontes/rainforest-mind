@@ -120,31 +120,23 @@
     "rodada": 6
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "fa019d23a3298b695ddffbff3dc44f3f99d71c17",
+      "head": "e2b84ae9ed4f46f76fece43bd56cb396f58103f1",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a31ad3315a5e508dd",
-        "veredito": "reprovado",
+        "agente_id": "ab0bb38e07319bd1e",
+        "veredito": "ok",
         "em": "2026-10-12",
-        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/170b1915-c063-4fe8-912c-a4d1b50b044f/subagents/agent-a31ad3315a5e508dd.jsonl"
+        "transcrito": "~/.claude-personal/projects/C--Projetos-rainforest-mind/170b1915-c063-4fe8-912c-a4d1b50b044f/subagents/agent-ab0bb38e07319bd1e.jsonl"
       }
     ],
-    "em_voo": [
-      {
-        "agente": "revisor",
-        "tarefa": "rodada 5",
-        "desde": "2026-10-12T17:28:25-03:00",
-        "sessao": "170b1915-c063-4fe8-912c-a4d1b50b044f"
-      }
-    ],
+    "em_voo": [],
     "em": "2026-10-12",
     "achados": 5,
-    "tentativas": 5,
     "rodadas_extra": [
       {
         "texto": "Luis (2026-10-12): ajustar tudo na 4a rodada — achados 1, 2 e 3 da 3a revisao; o 2 vira tarefa 7 do plano",
@@ -159,10 +151,29 @@
         "em": "2026-10-12"
       }
     ],
-    "liberado_em": "2026-10-12"
+    "severidade": "todos baixos",
+    "base": "86df17857ccf051ba05fa4b19ec257a0db02e7f7",
+    "head": "e2b84ae9ed4f46f76fece43bd56cb396f58103f1",
+    "escopo": "rodada 6 restrita (decisao do Luis)"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "RFM_TEST=1 bash scripts/testa-conta-unificar.sh (e demais baterias de conta com HOME falso)",
+    "saida": "testa-conta 49/0; testa-conta-unificar 105/0; unificar-profile 34/0/0; mover 26/0; uma-pasta 20/0; preparar 33/0; agendar 7/0; versao 5/0; gate-publicacao 80/0; mod-conta 25/0; canario do home falso intacto",
+    "sensor_externo": "bash scripts/testa-conta-unificar.sh",
+    "destinos": [
+      {
+        "pendente": "T5 migracao real com o Luis (janelas fechadas)",
+        "destino": "descartada",
+        "motivo": "nao e codigo: passo do fechar, depois do merge e do plugin 1.63.0 instalado"
+      },
+      {
+        "pendente": "5 achados baixos da 6a revisao",
+        "destino": "plantada",
+        "ref": "#503"
+      }
+    ],
+    "em": "2026-10-13"
   },
   "fechar": {
     "status": "pendente"
