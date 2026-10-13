@@ -1802,8 +1802,7 @@ function tarefasComTrailer(slug) {
     cwd: RAIZ, encoding: 'utf8', stdio: 'pipe',
   });
   if (mb.status !== 0) {
-    console.error(`RECUSADO: sem base para ler o trailer (git merge-base HEAD origin/${padrao} falhou).`);
-    process.exit(1);
+    throw new Error(`RECUSADO: sem base para ler o trailer (git merge-base HEAD origin/${padrao} falhou).`);
   }
   const base = mb.stdout.trim();
   const log = execFileSync(caminhoExecutavel('git'), [
@@ -1830,23 +1829,20 @@ function tarefasComTrailer(slug) {
  * Convenção do `em_voo`: cada item traz `tarefa` começando pelo número ("3 painel").
  * Só o número importa aqui. `em_voo` é efêmero e some no `ok`: ausente conta como vazio.
  */
-function retomar(slug) {
+function calcularRetomada(slug) {
   if (!slug || !fs.existsSync(caminho(slug))) {
-    console.error(`erro: ${slug || '(sem slug)'} nao existe — rode 'iniciar' primeiro`);
-    process.exit(1);
+    throw new Error(`erro: ${slug || '(sem slug)'} nao existe — rode 'iniciar' primeiro`);
   }
   const estado = ler(slug);
   const planoArq = docDoEstagio('planos', slug, estado);
   if (!planoArq || !fs.existsSync(planoArq)) {
-    console.error(`erro: plano de ${slug} nao existe em ${planoArq}`);
-    process.exit(1);
+    throw new Error(`erro: plano de ${slug} nao existe em ${planoArq}`);
   }
   const { extrairTarefas, lerMarkdown } = require('./conferir-fluxo.cjs');
   const { calcularCamadas, ErroCamadas, parseDependencias } = require('./lib/camadas.cjs');
   const conteudo = lerMarkdown(planoArq);
   if (conteudo === null) {
-    console.error(`erro: nao consegui ler o plano ${planoArq}`);
-    process.exit(1);
+    throw new Error(`erro: nao consegui ler o plano ${planoArq}`);
   }
   let calc;
   try {
@@ -1858,8 +1854,7 @@ function retomar(slug) {
     })));
   } catch (e) {
     if (!(e instanceof ErroCamadas)) throw e;
-    console.error(`RECUSADO: ${e.message}`);
-    process.exit(1);
+    throw new Error(`RECUSADO: ${e.message}`);
   }
 
   const comTrailer = tarefasComTrailer(slug);
@@ -1892,12 +1887,81 @@ function retomar(slug) {
     if (faltam.length) { proxima = faltam; break; }
   }
 
-  console.log(JSON.stringify({
+  return {
     tarefas: numeros.map((n) => ({ numero: n, estado: estadoDe(n), camada: camadaDe.get(n) })),
     re_marcar: reMarcar,
     redespachar,
     proxima_camada: proxima,
-  }, null, 2));
+  };
+}
+
+function retomar(slug) {
+  let r;
+  try {
+    r = calcularRetomada(slug);
+  } catch (e) {
+    console.error(e.message);
+    process.exit(1);
+  }
+  console.log(JSON.stringify(r, null, 2));
+}
+
+/**
+ * Modelo do painel (D6, D7): o que `scripts/painel-fluxo.cjs` desenha. Sai de
+ * `calcularRetomada` (uma leitura de camada e estado por tarefa, não duas) e do estado,
+ * e não depende de módulo nenhum do painel, para o `marcar` e o CLI do painel não
+ * formarem ciclo de `require`. `parado` lista o estágio que travou (reprovado ou flaky),
+ * para o painel dizer se o fluxo parou sem o leitor adivinhar pela cor.
+ */
+function modeloDoPainel(slug) {
+  const ret = calcularRetomada(slug);
+  const estado = ler(slug);
+  const { extrairTarefas, lerMarkdown } = require('./conferir-fluxo.cjs');
+  const titulos = new Map(extrairTarefas(lerMarkdown(docDoEstagio('planos', slug, estado)))
+    .map((t) => [t.numero, t.nome]));
+  const emVoo = new Map();
+  for (const a of Array.isArray((estado.executar || {}).em_voo) ? estado.executar.em_voo : []) {
+    const m = a && typeof a.tarefa === 'string' ? a.tarefa.match(/^\s*(\d+)/) : null;
+    if (m) emVoo.set(Number(m[1]), typeof a.agente === 'string' ? a.agente : null);
+  }
+  const etapas = ['arqueologia', 'design', 'plano', ...EXECUCAO];
+  const datas = etapas.map((e) => (estado[e] && estado[e].em) || '').filter(Boolean).sort();
+  const parado = etapas
+    .filter((e) => estado[e] && (estado[e].status === 'reprovado' || estado[e].status === 'flaky'))
+    .map((e) => ({ estagio: e, status: estado[e].status }));
+  const revisar = estado.revisar || {};
+  return {
+    slug,
+    titulo: estado.titulo || slug,
+    projeto: RAIZ,
+    estagio_atual: proximo(estado),
+    ultimo_marcar: datas.length ? datas[datas.length - 1] : null,
+    parado,
+    veredito_revisar: revisar.status === 'ok' || revisar.status === 'reprovado' ? revisar.status : null,
+    tarefas: ret.tarefas.map((t) => ({
+      numero: t.numero,
+      titulo: titulos.get(t.numero) || '',
+      camada: t.camada,
+      estado: t.estado,
+      agente: emVoo.get(t.numero) || null,
+    })),
+    re_marcar: ret.re_marcar,
+    proxima_camada: ret.proxima_camada,
+  };
+}
+
+/**
+ * Regenera o painel ao fim de `marcar` de executar, revisar e verificar (D6). Falha em
+ * qualquer ponto vira aviso no stderr, e o `marcar` segue com o mesmo exit: o painel é
+ * leitura do estado, não parte da gravação.
+ */
+function regenerarPainel(slug) {
+  try {
+    const { gravarPainel } = require(path.join(__dirname, 'painel-fluxo.cjs'));
+    gravarPainel(modeloDoPainel(slug));
+  } catch (e) {
+    console.error(`aviso: painel: ${e && e.message ? e.message : e}`);
+  }
 }
 
 // ---------------------------------------------------------------- CLI
@@ -2993,6 +3057,7 @@ function main() {
     const p = proximo(estado);
     console.log(p ? `proximo: ${p}` : 'completo');
     carimbarFluxo({ slug, estagio, aberto: p });
+    if (['executar', 'revisar', 'verificar'].includes(estagio)) regenerarPainel(slug);
     return;
   }
 
@@ -3001,4 +3066,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { novo, proximo, faltando, estaFechado, EXECUCAO, PRE_REQUISITOS, DIR_ESTADO, caminhoComTil };
+module.exports = { novo, proximo, faltando, estaFechado, EXECUCAO, PRE_REQUISITOS, DIR_ESTADO, caminhoComTil, calcularRetomada, modeloDoPainel };
