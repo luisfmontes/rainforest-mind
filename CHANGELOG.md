@@ -10,6 +10,18 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.64.0 — 2026-10-13
+
+- **O `fechar` publica por script, com conferência antes e depois.** `scripts/publicar-branch.cjs publicar` roda
+  `git merge-tree` contra a base antes do push e para com a lista de arquivos se houver conflito (nada é empurrado).
+  Depois do push, confere `HEAD == @{u}` e reaproveita o PR aberto da branch em vez de criar outro. Enxerto do skill
+  `commit` do wildz-data (Rafael Siqueira).
+- **Merge só com CI verde e confirmado pelo state do PR.** `esperar-ci` espera o `gh pr checks --watch`, e
+  `confirmar-merge` só sai 0 quando o PR está `MERGED`, nunca pela linha de sucesso do `gh`. O `fechar` só mergeia
+  com a chave nova `fechar-mergear` ligada (padrão desligado; ligada neste repositório). Desligada, para no PR aberto.
+- **`gh pr merge --auto` é barrado** pelo `gate-fechar-issue`: sem check obrigatório na branch, ele mergeia na hora,
+  sem esperar o CI (aconteceu no #178 e no #426). Toggle `gate-merge-auto`.
+
 ## 1.63.0 — 2026-10-12
 
 - **Uma pasta só, quando não existe `~/.claude-personal`.** Sem a pasta pessoal, a troca de conta passa a acontecer

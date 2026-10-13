@@ -106,6 +106,38 @@ Isso não tira a palavra do usuário: se **ele** disser outra coisa (mergear
 direto, manter a branch), vale o que ele disse, e é isso que vai em `acao` no
 fechamento do estágio.
 
+**Publicar é um script, não prosa.** O push e o merge passam por
+`scripts/publicar-branch.cjs`. Ele confere o que a sessão costumava declarar pelo
+texto do CLI. Os dois comandos `gh` que escrevem continuam com você, pelo Bash,
+para o `gate-fechar-issue` conferir a evidência das Issues que o PR fecha.
+
+1. `node scripts/publicar-branch.cjs publicar` faz `fetch`, `merge-tree` contra a
+   base, push e confere `HEAD == @{u}`. Última linha `PR aberto: <n>`: o PR já
+   existe, use esse número. `PR aberto: nenhum`: rode `gh pr create` com o corpo
+   abaixo. `PR aberto: n/a`: o remoto não é GitHub, o passo termina no push.
+2. `node scripts/publicar-branch.cjs esperar-ci --pr <n>`, sempre em background
+   (Monitor ou `run_in_background`), porque as baterias levam minutos. Diga ao
+   usuário de quem é a bola enquanto espera.
+3. Com `esperar-ci` saindo 0, rode `gh pr merge <n> --squash`, nunca `--auto`. Sem
+   check obrigatório na branch, o `--auto` mergeia na hora, sem esperar o CI, e o
+   gate o barra. Depois rode
+   `node scripts/publicar-branch.cjs confirmar-merge --pr <n>`. Só o exit 0 dele
+   (state `MERGED`) prova o merge. A linha de sucesso do `gh` não prova.
+
+| exit | quem sai | o que fazer |
+|---|---|---|
+| `0` | qualquer um | segue para o próximo item |
+| `1` | qualquer um | uso errado; corrija o comando |
+| `3` | `publicar` | conflito com a base, nada foi empurrado: traga a base (merge ou rebase, ato seu) e rode de novo |
+| `4` | `publicar` | push recusado ou `HEAD != @{u}`: não abra PR; leia o stderr |
+| `5` | `esperar-ci` | CI vermelho ou sem check: conserte na branch, não mergeie |
+| `6` | `confirmar-merge` | o state não virou `MERGED` (ou o PR fechou): não declare merge; mostre o `gh pr view` |
+| `7` | `esperar-ci` | CI verde, mas a chave `fechar-mergear` está desligada: pare no PR aberto e informe o número |
+| `69` | qualquer um | ambiente (rede, `gh` ausente ou sem auth, remoto não GitHub): anuncie em uma linha (regra 14) |
+
+A chave `fechar-mergear` vem desligada por padrão: em repositório de cliente, o
+merge é do humano. Neste repositório ela está ligada em `.rainforest/config.json`.
+
 **Corpo do PR — quatro seções, nesta ordem.** O PR é o gargalo da revisão humana;
 o corpo existe para torná-la barata. Sem preâmbulo, prosa curta:
 
@@ -228,8 +260,10 @@ node scripts/estado.cjs marcar --slug <slug> --estagio fechar --status ok \
   --json '{"acao":"merge|pr|manteve"}'
 ```
 
-`acao` é o que **de fato aconteceu** no passo 5: `pr` no caminho normal, e
-`merge` ou `manteve` só quando o usuário pediu outra coisa. Nunca a que
+`acao` é o que **de fato aconteceu** no passo 5. `merge` só vale com o
+`confirmar-merge` saindo 0. `pr` vale quando o PR ficou aberto (chave
+`fechar-mergear` desligada, ou CI ainda sem veredito). `manteve` vale quando o
+usuário pediu para não abrir o PR. Nunca a que
 pareceria mais razoável em retrospecto — o registro serve para saber o que foi
 feito, não para justificar.
 
