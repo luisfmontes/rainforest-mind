@@ -163,7 +163,7 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/memoria-assunto-prompt.cjs\"",
-            "timeout": 5
+            "timeout": 10
           }
         ]
       }
