@@ -1,0 +1,157 @@
+Data: 2026-10-13
+Termos: acharAlvo, memoria-assunto-prompt, timeout, semeadura
+
+$ gh issue list --state all --search "acharAlvo" --limit 200 --json number,title,state
+[{"number":436,"state":"CLOSED","title":"memoria-assunto: medicao da regua D7 com 3 distorcoes antes da colheita"}]
+
+
+$ gh issue list --state all --search "memoria-assunto-prompt" --limit 200 --json number,title,state
+[{"number":509,"state":"OPEN","title":"memoria-assunto-prompt.cjs estoura o timeout de 5 s sob carga (UserPromptSubmit)"},{"number":507,"state":"OPEN","title":"testa-memoria-assunto-prompt: teto de 1500 ms na 1a chamada fica vermelho em runner lento"},{"number":436,"state":"CLOSED","title":"memoria-assunto: medicao da regua D7 com 3 distorcoes antes da colheita"}]
+
+
+$ gh issue list --state all --search "timeout" --limit 200 --json number,title,state
+[{"number":509,"state":"OPEN","title":"memoria-assunto-prompt.cjs estoura o timeout de 5 s sob carga (UserPromptSubmit)"},{"number":507,"state":"OPEN","title":"testa-memoria-assunto-prompt: teto de 1500 ms na 1a chamada fica vermelho em runner lento"},{"number":367,"state":"CLOSED","title":"sentinela-foco: triagem de inbox nao roda, MCP do Gmail da CONNECT_TIMEOUT"},{"number":346,"state":"CLOSED","title":"gate-bateria-sem-timeout: stdbuf --output L (opcao longa com espaco) escapa"},{"number":243,"state":"CLOSED","title":"foco-session-start.cjs leva 6-8 s nesta maquina e estoura o timeout 5 do hooks.json: testa-memoria-somente-leitura fica vermelha e nada diz que foi timeout"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":388,"state":"CLOSED","title":"faixa do mod: semControle deixa passar LRM/RLM, ALM e separadores de linha"},{"number":187,"state":"CLOSED","title":"testa-segunda-opiniao.sh vaza processo: 7 vivos por 95h, 531s de CPU, bateria verde"},{"number":198,"state":"CLOSED","title":"observar.cjs no SessionEnd estoura o orcamento COMPARTILHADO de 60s do CLI e mata os outros hooks — 19 sessoes vazadas"},{"number":362,"state":"CLOSED","title":"gate-fechar-issue barra laco sem gh quando a variavel esta sem aspas"},{"number":379,"state":"CLOSED","title":"verificar não fecha em monorepo: a catraca roda toda bateria com --raiz na raiz do repo"},{"number":273,"state":"CLOSED","title":"testa-cli-externo Teste 3: teto de 8s contra fixture de 60s vermelha intermitente na CI"},{"number":342,"state":"CLOSED","title":"testa-saude R5 ainda intermitente no CI (porta não responde)"},{"number":344,"state":"CLOSED","title":"gate-fechar-issue: --body-file com caminho MSYS (/c/...) vira ilegivel"},{"number":339,"state":"CLOSED","title":"Tres contrabarras dentro das aspas duplas do wrapper ainda escondem o comando (residuo da #313)"},{"number":208,"state":"CLOSED","title":"testa-ferramentas-consulta.sh reprova quando o ambiente esta lento: nao tem caso para o caminho 'sem garantia'"},{"number":239,"state":"CLOSED","title":"gate-fechar-issue bloqueia heredoc cujo texto fecha frase com parentese: \").\" e lido como subshell + source"},{"number":294,"state":"CLOSED","title":"Achados menores do revisar zerar-issues-5 (catraca em copia, pyc, MSYS)"},{"number":302,"state":"CLOSED","title":"Eval de gatilho: nenhuma bateria prova que uma skill e chamada (nem que precisa existir)"},{"number":249,"state":"CLOSED","title":"O laco das 114 baterias so existe no YAML da CI: nao ha varredura local, e o verificar mede a ferramenta em vez do teste dela"},{"number":184,"state":"CLOSED","title":"Wrapper citado (\"env\" FOO=1 git add -A) escapa de posicaoDeComando e os tres gates por texto liberam"},{"number":266,"state":"CLOSED","title":"conferir-mutacao muta a arvore compartilhada: quem ler naquela janela mede o mutante"},{"number":192,"state":"CLOSED","title":"Proibir background no briefing falhou duas vezes, com a proibicao escrita duas vezes no mesmo texto — falta checar a FORMA do retorno"}]
+
+
+$ gh issue list --state all --search "semeadura" --limit 200 --json number,title,state
+[{"number":436,"state":"CLOSED","title":"memoria-assunto: medicao da regua D7 com 3 distorcoes antes da colheita"}]
+
+
+$ gh pr list --state all --search "acharAlvo" --limit 200 --json number,title,state
+[{"number":459,"state":"MERGED","title":"Regua D7 da memoria por assunto sem as distorcoes (#436), versao 1.54.0"}]
+
+
+$ gh pr list --state all --search "memoria-assunto-prompt" --limit 200 --json number,title,state
+[{"number":437,"state":"MERGED","title":"memoria: injecao pelo assunto no pedido e no subagente (1.49.0)"},{"number":451,"state":"MERGED","title":"Glossario de dominio por repositorio (GLOSSARIO.md), versao 1.52.0"},{"number":461,"state":"MERGED","title":"Acabamento da regua D7: progresso do --repontuar e limites (1.54.1)"},{"number":499,"state":"MERGED","title":"Gate flaky com nova tentativa e teto de despachos por fluxo (1.61.0)"}]
+
+
+$ gh pr list --state all --search "timeout" --limit 200 --json number,title,state
+[{"number":336,"state":"MERGED","title":"gate-busca-raiz: subagente nao varre o disco; perfil pede timeout"},{"number":347,"state":"MERGED","title":"gate-bateria-sem-timeout: subagente nao deixa bateria ir para segundo plano (1.26.0)"},{"number":366,"state":"MERGED","title":"Arrumacao: erros das vigias e estado vazio do inventario"},{"number":348,"state":"MERGED","title":"zerar-issues-10: #346 #344 #342 #341 #340 #339 (1.27.0)"},{"number":212,"state":"MERGED","title":"O orcamento do observar.cjs cabe no teto real do SessionEnd"},{"number":247,"state":"MERGED","title":"zerar-issues rodada 3: heredoc no gate de Issue e radar em 4 chamadas (1.13.2)"},{"number":311,"state":"CLOSED","title":"eval de gatilho (#302): suite de 21 casos, sem trava ainda"},{"number":374,"state":"MERGED","title":"Rodada 14: triagem do Gmail, creep da varredura e dívidas da 13 (1.35.0)"},{"number":204,"state":"MERGED","title":"Issue #187: o vazamento e do transporte, nao da bateria — matarDescendencia no rodarCli"},{"number":437,"state":"MERGED","title":"memoria: injecao pelo assunto no pedido e no subagente (1.49.0)"},{"number":224,"state":"MERGED","title":"Enxerta os sete mecanismos do ponytail, e fecha a fronteira que o gate de código de modelo não tinha"},{"number":222,"state":"MERGED","title":"Agentes em Claude ou Codex, por escolha do usuário (1.8.0)"},{"number":274,"state":"MERGED","title":"Titulo da sessao marca se o fluxo fechou ou onde parou"},{"number":140,"state":"MERGED","title":"Segunda opiniao cross-model: auditor de outra familia no revisar, e o transporte de CLI externo em um lugar so"},{"number":137,"state":"MERGED","title":"Fluxo 11 — Conselho: debate estruturado com membros Claude, Codex e Gemini"},{"number":242,"state":"MERGED","title":"Zerar Issues, rodada 2: as 6 que faltavam e as 6 novas (1.12.0)"},{"number":99,"state":"MERGED","title":"Fecha #82: branch squash-mergeada SEM upstream deixa de ser 'trabalho vivo'"},{"number":35,"state":"MERGED","title":"A bateria de saude parava de mutar o produto que ela mede"},{"number":141,"state":"MERGED","title":"Fluxo 9 — Portaria: admissao de subagente por manifesto"},{"number":108,"state":"MERGED","title":"Fecha #101: catraca de comparação — ela RODA os dois lados em vez de ler o relato"}]
+
+
+$ gh pr list --state all --search "semeadura" --limit 200 --json number,title,state
+[{"number":437,"state":"MERGED","title":"memoria: injecao pelo assunto no pedido e no subagente (1.49.0)"}]
+
+
+$ git ls-remote --heads origin | grep -F "acharAlvo"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "memoria-assunto-prompt"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "timeout"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "semeadura"
+(vazio)
+
+$ git log --all --grep="acharAlvo" --oneline
+64d5e301 memoria: injecao pelo assunto no pedido e no subagente (1.49.0) (#437)
+99c5e5b7 Zerar as 12 Issues da revisao bimestral (1.43.0) (#416)
+8b12d51d utilidade: servida substituida pela reconciliacao ainda casa com o id (tarefa 6)
+
+$ git log --all --grep="memoria-assunto-prompt" --oneline
+64d5e301 memoria: injecao pelo assunto no pedido e no subagente (1.49.0) (#437)
+
+$ git log --all --grep="timeout" --oneline
+de4220d4 Troca automatica de conta Claude pelo uso e /conta (1.62.0) (#501)
+6b276c32 Gates de repo alheio e de PR em outro repo, e livro anti-slop (1.60.2) (#497)
+dd2aa020 Zerar as Issues #409-#414, #417, #419 (1.46.0) (#426)
+91dce397 gate-bateria-sem-timeout: --listar nao roda bateria
+259f24f3 relogio-sessoes: limitar leitura de sessoes.json a 256 KB
+1509f27b I5 + I6 rodada 2: controle positivo nos 10 gates e caso --max 1
+4d3c9283 Tarefa 13: replay de corpus comandos contra 10 gates
+32c15463 enxertos-poda-impressao: verificar ok, mutacao das tarefas superadas
+02d5d99a gate-subagente-sem-gh: nega gh de escrita em subagente (tarefa 1)
+cd6c6e30 zerar-issues-10: emenda do criterio da tarefa 1
+f184ed83 zerar-issues-10: stdbuf em wrappers e flags comuns
+c630a3e5 Merge pull request #347 from luisfmontes/fluxo/agente-sem-background
+e48caf5d gate-bateria-sem-timeout: stdbuf e checagem de sintaxe (revisao 3)
+cb0fb31b agente-sem-background: conserta achados da revisão 2
+e75eb2c8 agente-sem-background: gate nega bateria sem timeout em subagente
+1ae9f1fb Tarefa 3 (agente-sem-background): texto acompanha mecanismo, versão e changelog
+683ee573 agente-sem-background: design e plano
+506c0c03 Merge pull request #336 from luisfmontes/fluxo/busca-raiz
+b714affa gate-busca-raiz: subagente nao varre o disco; perfil pede timeout
+b6391f00 Documenta reexecucao do portao multihost com timeout medido
+e4e62c25 Plano zerar-issues-5: timeout de 1h nas mutacoes
+13b552c6 Titulo da sessao marca se o fluxo fechou ou onde parou (#274)
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+9cfdc8d5 Versao 1.13.1: PATCH do lote de consertos de instrumento
+aa7ff34b Timeout do exportador: 60 s como em producao, e estouro que se anuncia
+cc1e10ce Gate de Issue: interpretador atras de wrapper e escapes no here-string nu
+b4bd122a D3: exportador de hooks distingue timeout de falha
+ef92114a Design e plano: zerar-issues rodada 3 (D1-D5, tarefas 1-5)
+f099da39 Estado: fechar ok — PR #242 aberto, fluxo zerar-issues completo
+d0a3af00 Verificar: testa-config conta oito gates sem matcher, com o gate novo
+993c7174 Tarefa 27 (D23): a bateria da consulta captura o exit do hook, nao do unset
+59ea514b Tarefa 23 (D9): bloco `mutacao:` aceita `timeout:`, e a pulada diz por que
+6cc95825 Tarefa 18: conferir-versao busca origin/main antes de comparar (Issue #193)
+51d0afce Tarefa 13: ferramentas-consulta com timeout configurável e testes de incerteza
+080f7916 D9: o teto de tempo do CI para de ser cara ou coroa
+8eb02f36 Fecha o buraco do relogio e trava o isolamento com payload hostil
+05dec528 Correção de segurança: elimina injeção de template literal e eval sem isolamento
+0101b4f6 Revisar (rodada 1): ponte com timeout 600000 na Bash, README fora da tabela PreToolUse, emenda do design e evidencia (b) da T8
+9a495658 T4: scripts/testa-despachar-codex.sh + codex-duble.cjs — bateria com dublê
+0a5e4e24 T3: scripts/despachar-codex.cjs — transporte do agente para Codex CLI
+0beec0f3 testa-cli-externo: separa "nao deu para medir" de "o codigo errou"
+f37d840d Fecha o estado do fluxo: revisar e verificar com evidencia
+3d0cfebb Caso 20 diz o motivo certo quando o caso 18 nao acha a declaracao
+cfe66844 O orcamento do observar.cjs cabe no teto real do SessionEnd (fecha #198)
+404d4449 Achado da revisao: a guarda de reuso de PID nao cobria o PID RAIZ
+11712945 Margem do teste 3: a fixture dorme 60s, nao 10s
+897b5d2c Mata a descendencia orfa quando o timeout do spawnSync corta o filho direto
+7513384a Tarefa 3 da #187: um unico trap de EXIT na bateria, e a limpeza sai de dentro
+9d927bf2 Design e plano da Issue #187: o vazamento e do transporte, nao da bateria
+8b6b78c7 Merge lote 3 rodada 11 (timeout -s/-k; wrapper de string nos tres gates) into fluxo/guardas
+743835e8 Lote 3 rodada 11: timeout -s/-k na tabela de flags; wrapper de string (eval, -c, iex) desempacotado nos tres gates
+a62263db Lote 3: revisar reprovado (9a revisao: timeout -s, iex nos gates de git) — executar reaberto
+97327d16 Lote 3 rodada 5: cwd por segmento, pushd/env -C, procuraCLI so em posicao de comando
+858ae9a5 Fluxo 6 T2+T3: lint de autoria e rodar com evidencia por fingerprint
+7b7d280e Fluxo 6 T2+T3: lint de autoria e rodar com evidencia por fingerprint
+714a15c6 Fluxo 9: auditoria externa (codex) fecha dois buracos que a rede sincrona deixava
+0843a7fb Fluxo 9: auditoria externa (codex) fecha dois buracos que a rede sincrona deixava
+9ce11b52 Consertados achados 1 e 5 da reprova: cobertura de diff e ancoragem de log
+51b01b8c Consertados achados 1 e 5 da reprova: cobertura de diff e ancoragem de log
+b6d30cab Corrigir CASO 30 e adicionar CASO 31 para testes de timeout dirigidos
+b1e20139 Corrigir CASO 30 e adicionar CASO 31 para testes de timeout dirigidos
+b20b10ad Tarefa 5: Falha fechada e registro de divergência com motivo
+f7ee053e Tarefa 5: Falha fechada e registro de divergência com motivo
+7d5adfb1 Tarefa 3: Refatorar orquestrador para consumir rodarCli
+353d9b46 Tarefa 3: Refatorar orquestrador para consumir rodarCli
+83c3c271 Correção da tarefa 4: três defeitos em segunda-opiniao.cjs
+5f10bb2a Correção da tarefa 4: três defeitos em segunda-opiniao.cjs
+e4815530 Tarefa 1: transporte de CLI externo com bateria
+411067b5 Tarefa 1: transporte de CLI externo com bateria
+5eecae53 T9 (preparo): contrato JSON nos prompts, parse tolerante a cerca e timeout configuravel
+aa117b4b T9 (preparo): contrato JSON nos prompts, parse tolerante a cerca e timeout configuravel
+b71ecea1 T2: Implementar Fase 1 — pareceres e falha fechada
+0b91bf65 T2: Implementar Fase 1 — pareceres e falha fechada
+329be454 Fluxo 3 (ponte) aberto: Q1 fechada com os fatos do ambiente, design aprovado
+761c2928 Fluxo 3 (ponte) aberto: Q1 fechada com os fatos do ambiente, design aprovado
+889ff9c9 Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+56ea03cc Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+10054d1b Fecha #82: branch squash-mergeada SEM upstream deixa de ser 'trabalho vivo' (#99)
+0c9226be Fecha #82: branch squash-mergeada SEM upstream deixa de ser 'trabalho vivo' (#99)
+20c88be7 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+d427f732 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+40e3f3bd Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+2cc8788c Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+5410b560 A bateria de saude parava de mutar o produto que ela mede (#35)
+195ba759 A bateria de saude parava de mutar o produto que ela mede (#35)
+e1d2592c A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+bfc034d2 A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+54d5e5b2 Os dois consertos que o dev de fora sente no dia um
+c2f583e5 Os dois consertos que o dev de fora sente no dia um
+33f1788c O /saude mede o claude-mem pela PORTA, e colhe a ideia que o Luis plantou
+0463af59 O /saude mede o claude-mem pela PORTA, e colhe a ideia que o Luis plantou
+
+$ git log --all --grep="semeadura" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+{"id":"deadline-de-hook-com-force-exit-por-dentro","titulo":"Hook que pendura mata o prompt, e o `timeout` do hooks.json mata o processo PAI -- falta o backstop de dentro"}
+
+

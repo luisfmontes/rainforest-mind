@@ -1,0 +1,28 @@
+{
+  "slug": "2026-10-13-timeout-memoria-assunto",
+  "titulo": "memoria-assunto-prompt dentro do timeout (#509)",
+  "criado_em": "2026-10-13",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-13-timeout-memoria-assunto.md",
+    "em": "2026-10-13"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
