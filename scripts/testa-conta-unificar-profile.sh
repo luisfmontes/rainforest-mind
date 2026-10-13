@@ -224,7 +224,9 @@ if command -v powershell >/dev/null 2>&1; then
 
   # Claude falso (claude.cmd) à frente no PATH; registro falso com um plugin do usuário, para o
   # Update-ClaudePlugins de fato atualizar antes de chamar a aplicação.
-  FAKE_POSIX="$(mktemp -d)"
+  # Dentro de RAIZ (o trap EXIT apaga): um segundo mktemp -d exigiria o idioma SANDBOXES.
+  FAKE_POSIX="$(cygpath -u "$RAIZ")/fake-bin"
+  mkdir -p "$FAKE_POSIX"
   FAKE="$(win "$FAKE_POSIX")"
   NODE_WIN="$(win "$(command -v node)")"
   cat > "$FAKE_POSIX/claude.cmd" <<CMD
