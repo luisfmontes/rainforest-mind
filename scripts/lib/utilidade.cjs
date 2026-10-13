@@ -344,6 +344,38 @@ function resumoComoPseudoObservacao(row) {
 }
 
 /**
+ * Candidatas de UM dia (um LIKE) de uma consulta. Com `cache` (Map criado por
+ * quem chama), cada (sql, like) roda uma vez só: as ~14 linhas da abertura do
+ * mesmo dia pedem os mesmos três LIKEs, e sem isto cada linha refazia tudo.
+ */
+function candidatasDoDia(conexao, sql, like, cache) {
+  const chave = `${sql}\u0000${like}`;
+  if (cache && cache.has(chave)) return cache.get(chave);
+  let linhas = [];
+  try {
+    linhas = conexao.prepare(sql).all(like);
+  } catch (e) {
+    // tabela ausente ou banco degradado: sem candidatas deste dia
+  }
+  if (cache) cache.set(chave, linhas);
+  return linhas;
+}
+
+/**
+ * Formatação de UMA candidata, memoizada no mesmo `cache`: a candidata é comparada
+ * com cada linha do laço, e formatá-la de novo a cada linha era o custo que sobrava
+ * depois de reaproveitar as consultas (um dia tem ~200 observações).
+ */
+function formatadaCom(cache, chave, fn) {
+  if (!cache) return fn();
+  const k = `fmt\u0000${chave}`;
+  if (cache.has(k)) return cache.get(k);
+  const v = fn();
+  cache.set(k, v);
+  return v;
+}
+
+/**
  * Acha a observação ou resumo (vivos, mesmo dia) cuja formatação
  * (`formatarObservacao`) é IGUAL à linha servida — a mesma igualdade que a
  * abertura usou para desenhar essa linha. Sem par, devolve `null`: nunca
@@ -352,9 +384,11 @@ function resumoComoPseudoObservacao(row) {
  * @param {object} conexao conexão de banco já aberta
  * @param {string} linhaServida
  * @param {object|null} apelidos mapa chave-do-banco -> nome curto
+ * @param {Map|undefined} cache opcional, criado por quem chama e reaproveitado entre
+ *   chamadas do mesmo laço; sem ele, o comportamento é o de sempre
  * @returns {{origem: 'observacao'|'resumo', id: number, conteudo: string}|null}
  */
-function acharAlvo(conexao, linhaServida, apelidos) {
+function acharAlvo(conexao, linhaServida, apelidos, cache) {
   const m = /^\[(\d{4}-\d{2}-\d{2})(?: \(([^)]*)\))?\]/.exec(linhaServida);
   if (!m) return null;
   // A linha mostra a data LOCAL (#408) e o banco guarda `criada_em` em UTC: a
@@ -364,31 +398,32 @@ function acharAlvo(conexao, linhaServida, apelidos) {
   const likes = [-1, 0, 1].map((d) => `${new Date(dia + d * 86400000).toISOString().slice(0, 10)}%`);
   const doDia = (sql) => {
     const linhas = [];
-    for (const like of likes) {
-      try {
-        linhas.push(...conexao.prepare(sql).all(like));
-      } catch (e) {
-        // tabela ausente ou banco degradado: sem candidatas deste dia
-      }
-    }
+    for (const like of likes) linhas.push(...candidatasDoDia(conexao, sql, like, cache));
     return linhas;
   };
 
+  // Formata a candidata (memoizada no cache, se houver): `tabela` separa observação de resumo.
+  const formatar = (row, tabela, apel, maxTexto) =>
+    formatadaCom(cache, `${tabela}:${row.id}:${JSON.stringify(apel)}:${maxTexto || 0}`, () =>
+      tabela === 'resumo'
+        ? formatarObservacao(resumoComoPseudoObservacao(row), apel, maxTexto)
+        : formatarObservacao(row, apel, maxTexto)
+    );
+
   const obsRows = doDia(SQL_OBS_DO_DIA);
   for (const row of obsRows) {
-    if (formatarObservacao(row, apelidos) === linhaServida) {
+    if (formatar(row, 'observacao', apelidos) === linhaServida) {
       return { origem: 'observacao', id: row.id, conteudo: row.conteudo };
     }
     // O hook do assunto monta a linha com o projeto CRU (sem apelido): com apelido na sessão, só estas casam.
-    if (formatarObservacao(row, null, TETO_LINHA_ASSUNTO) === linhaServida) return { origem: 'observacao', id: row.id, conteudo: row.conteudo };
-    if (formatarObservacao(row, null) === linhaServida) return { origem: 'observacao', id: row.id, conteudo: row.conteudo };
+    if (formatar(row, 'observacao', null, TETO_LINHA_ASSUNTO) === linhaServida) return { origem: 'observacao', id: row.id, conteudo: row.conteudo };
+    if (formatar(row, 'observacao', null) === linhaServida) return { origem: 'observacao', id: row.id, conteudo: row.conteudo };
   }
 
   const resumoRows = doDia(`SELECT id, projeto, titulo, conteudo, criada_em FROM resumos WHERE criada_em LIKE ?`);
   for (const row of resumoRows) {
-    const pseudo = resumoComoPseudoObservacao(row);
-    if (formatarObservacao(pseudo, apelidos) === linhaServida) {
-      return { origem: 'resumo', id: row.id, conteudo: pseudo.conteudo };
+    if (formatar(row, 'resumo', apelidos) === linhaServida) {
+      return { origem: 'resumo', id: row.id, conteudo: resumoComoPseudoObservacao(row).conteudo };
     }
   }
 
@@ -617,8 +652,9 @@ function pontuarSessao(conexao, sessao, caminhoTranscrito, opcoes = {}) {
     let servidasComId = 0;
     let servidasSemId = 0;
 
+    const cache = new Map();
     for (const { linha, canal, texto: textoServida, descontar } of servidas) {
-      const alvo = acharAlvo(conexao, linha, apelidos);
+      const alvo = acharAlvo(conexao, linha, apelidos, cache);
       if (!alvo) {
         servidasSemId++;
         continue;
@@ -1023,6 +1059,7 @@ module.exports = {
   extrairSessao,
   lerProjetoDoTranscrito,
   acharAlvo,
+  resumoComoPseudoObservacao,
   contarDocumentFrequency,
   calcularNota,
   construirQueryFts5DoTexto,
