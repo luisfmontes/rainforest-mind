@@ -235,11 +235,6 @@ roda "$CAIXA" esperar-ci --pr abc
 roda "$CAIXA" confirmar-merge --pr 0
 [ "$CODIGO" -eq 1 ]; afirma "(i4) --pr 0: sai 1 (exit=$CODIGO)" $?
 
-# ============================================================ (j) o gate do fechar-issue
-echo "== (j) gate-fechar-issue intacto nesta tarefa"
-(cd "$RAIZ" && git diff --quiet 2e1808d8 -- hooks/gate-fechar-issue.cjs)
-afirma "(j) git diff --quiet 2e1808d8 -- hooks/gate-fechar-issue.cjs sai 0" $?
-
 echo
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]

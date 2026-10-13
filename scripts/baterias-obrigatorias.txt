@@ -41,3 +41,7 @@ scripts/testa-estado-flaky-status.sh
 scripts/testa-estado-teto.sh
 scripts/testa-conferir-mutacao-flaky.sh
 scripts/testa-rodar-gate.sh
+
+# Publicar e merge no fechar (fluxo 2026-10-13-fechar-push-merge)
+hooks/testa-gate-merge-auto.sh
+scripts/testa-publicar-branch.sh
