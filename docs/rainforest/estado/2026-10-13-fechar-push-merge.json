@@ -82,21 +82,34 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "d036fdb5574d29060d2c42a09b47e82174d7aac0",
+      "head": "5db71f7b86bd9fd520933e38630bdff6471066d8",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-10-13-fechar-push-merge.json"
       ]
     },
-    "vereditos": [],
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "abc6c097bb7e41af0",
+        "veredito": "ok",
+        "em": "2026-10-13",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/4224a79a-6d1d-4488-8ee0-c5ec5c25d3b1/subagents/agent-abc6c097bb7e41af0.jsonl"
+      }
+    ],
     "em_voo": [],
     "em": "2026-10-13",
-    "achados": 5,
-    "tentativas": 1
+    "achados": 0,
+    "base": "2e1808d8",
+    "head": "5db71f7b"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-publicar-branch.sh && bash hooks/testa-gate-merge-auto.sh && bash hooks/testa-gate-fechar-issue.sh && bash hooks/testa-config.sh && bash scripts/testa-versao.sh && bash scripts/testa-teto-skills.sh && node scripts/conferir-versao.cjs && node scripts/publicar-branch.cjs publicar",
+    "saida": "ok: 46 falhou: 0 | ok: 14 falhou: 0 | 386 ok, 0 falha | 63 ok, 0 falha | ok: 5 falhou: 0 | 21 OK, 0 FALHA | ok versao 1.64.0 | publicado: fluxo/fechar-push-merge em 5db71f7b; PR aberto: nenhum (exit 0); gate real com gh pr merge 999 --squash --auto: exit 2",
+    "sensor_externo": "bash scripts/testa-publicar-branch.sh",
+    "em": "2026-10-13"
   },
   "fechar": {
     "status": "pendente"
