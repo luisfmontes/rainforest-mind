@@ -1769,6 +1769,137 @@ function avisarCarimbosDivergentes(estado) {
   }
 }
 
+// ---------------------------------------------------------------- integradas e retomada (D4, D5)
+
+/**
+ * `integradas` (D4): tarefas já integradas E marcadas, no bloco `executar`. Funde com a
+ * lista anterior, como `carimbos`: cada `marcar` acrescenta, nunca troca. Recusa antes
+ * de gravar se não for lista de inteiros positivos.
+ *
+ * @returns {string|null} mensagem de recusa, ou null
+ */
+function processarIntegradas(estagio, blocoAnterior, extra) {
+  if (estagio !== 'executar') return null;
+  if (!Object.prototype.hasOwnProperty.call(extra, 'integradas')) return null;
+  const forma = 'Ex.: --json \'{"integradas":[1,2]}\'';
+  const entrada = extra.integradas;
+  if (!Array.isArray(entrada) || entrada.some((n) => !Number.isInteger(n) || n < 1)) {
+    return `RECUSADO: 'integradas' precisa ser uma lista de inteiros positivos.\n${forma}`;
+  }
+  const existentes = Array.isArray(blocoAnterior && blocoAnterior.integradas) ? blocoAnterior.integradas : [];
+  extra.integradas = [...new Set([...existentes, ...entrada])].sort((a, b) => a - b);
+  return null;
+}
+
+/**
+ * Números de tarefa com trailer `Rainforest-Tarefa: <slug>#<n>` nos commits da branch
+ * que não estão na padrão (`<merge-base>..HEAD`). Trailer de outro slug não conta: o
+ * número só vale para o fluxo que o escreveu. A sentinela é o git, não o JSON (D4).
+ */
+function tarefasComTrailer(slug) {
+  const padrao = branchPadrao(RAIZ);
+  const mb = spawnSync(caminhoExecutavel('git'), ['merge-base', 'HEAD', `origin/${padrao}`], {
+    cwd: RAIZ, encoding: 'utf8', stdio: 'pipe',
+  });
+  if (mb.status !== 0) {
+    console.error(`RECUSADO: sem base para ler o trailer (git merge-base HEAD origin/${padrao} falhou).`);
+    process.exit(1);
+  }
+  const base = mb.stdout.trim();
+  const log = execFileSync(caminhoExecutavel('git'), [
+    'log', `${base}..HEAD`, '--format=%(trailers:key=Rainforest-Tarefa,valueonly)',
+  ], { cwd: RAIZ, encoding: 'utf8' });
+  const nums = new Set();
+  for (const linha of log.split('\n')) {
+    const t = linha.trim();
+    const i = t.lastIndexOf('#');
+    if (i < 0 || t.slice(0, i) !== slug) continue;
+    const n = t.slice(i + 1);
+    if (/^[1-9][0-9]*$/.test(n)) nums.add(Number(n));
+  }
+  return nums;
+}
+
+/**
+ * `retomar` (D5): o que a sessão nova faz ao pegar um `executar` pela metade. Lê as
+ * camadas do plano (`depende de:`), o trailer dos commits e o bloco `executar`, e
+ * devolve JSON. `re_marcar`: integrada no git e não marcada no estado. `redespachar`:
+ * em voo sem trailer, que volta do zero. `proxima_camada`: a primeira camada com tarefa
+ * ainda não marcada, listando o que nela falta (null quando tudo está marcado).
+ *
+ * Convenção do `em_voo`: cada item traz `tarefa` começando pelo número ("3 painel").
+ * Só o número importa aqui. `em_voo` é efêmero e some no `ok`: ausente conta como vazio.
+ */
+function retomar(slug) {
+  if (!slug || !fs.existsSync(caminho(slug))) {
+    console.error(`erro: ${slug || '(sem slug)'} nao existe — rode 'iniciar' primeiro`);
+    process.exit(1);
+  }
+  const estado = ler(slug);
+  const planoArq = docDoEstagio('planos', slug, estado);
+  if (!planoArq || !fs.existsSync(planoArq)) {
+    console.error(`erro: plano de ${slug} nao existe em ${planoArq}`);
+    process.exit(1);
+  }
+  const { extrairTarefas, lerMarkdown } = require('./conferir-fluxo.cjs');
+  const { calcularCamadas, ErroCamadas, parseDependencias } = require('./lib/camadas.cjs');
+  const conteudo = lerMarkdown(planoArq);
+  if (conteudo === null) {
+    console.error(`erro: nao consegui ler o plano ${planoArq}`);
+    process.exit(1);
+  }
+  let calc;
+  try {
+    calc = calcularCamadas(extrairTarefas(conteudo).map((t) => ({
+      numero: t.numero,
+      dependeDe: parseDependencias(t.dependeDe),
+      arquivos: t.arquivos,
+      paralelaDeclarada: t.paralelaDeclarada,
+    })));
+  } catch (e) {
+    if (!(e instanceof ErroCamadas)) throw e;
+    console.error(`RECUSADO: ${e.message}`);
+    process.exit(1);
+  }
+
+  const comTrailer = tarefasComTrailer(slug);
+  const exec = estado.executar || {};
+  const contadas = new Set(Array.isArray(exec.integradas) ? exec.integradas : []);
+  const emVooNums = new Set();
+  for (const a of Array.isArray(exec.em_voo) ? exec.em_voo : []) {
+    const m = a && typeof a.tarefa === 'string' ? a.tarefa.match(/^\s*(\d+)/) : null;
+    if (m) emVooNums.add(Number(m[1]));
+  }
+
+  const numeros = calc.camadas.flat().sort((a, b) => a - b);
+  const camadaDe = new Map();
+  calc.camadas.forEach((c, i) => c.forEach((n) => camadaDe.set(n, i + 1)));
+
+  const reMarcar = [];
+  const redespachar = [];
+  for (const n of numeros) {
+    if (comTrailer.has(n) && !contadas.has(n)) reMarcar.push(n);
+    if (!comTrailer.has(n) && emVooNums.has(n)) redespachar.push(n);
+  }
+
+  const estadoDe = (n) => (comTrailer.has(n) ? 'integrada' : emVooNums.has(n) ? 'em_voo' : 'pendente');
+  const feita = (n) => comTrailer.has(n) && contadas.has(n);
+  // A camada é a primeira com tarefa ainda não marcada; lista o que falta nela. Uma tarefa
+  // integrada no git e não marcada aparece aqui e também em `re_marcar`.
+  let proxima = null;
+  for (const c of calc.camadas) {
+    const faltam = c.filter((n) => !feita(n));
+    if (faltam.length) { proxima = faltam; break; }
+  }
+
+  console.log(JSON.stringify({
+    tarefas: numeros.map((n) => ({ numero: n, estado: estadoDe(n), camada: camadaDe.get(n) })),
+    re_marcar: reMarcar,
+    redespachar,
+    proxima_camada: proxima,
+  }, null, 2));
+}
+
 // ---------------------------------------------------------------- CLI
 
 // Flags aceitas por subcomando. Qualquer flag fora desta lista e recusada ANTES
@@ -1788,6 +1919,7 @@ const FLAGS_POR_SUBCOMANDO = {
   veredito: ['slug', 'estagio', 'veredito', 'agente', 'agente-id', 'transcrito'],
   'registrar-flake': ['slug', 'tarefa', 'gate'],
   'liberar-teto': ['slug', 'motivo'],
+  retomar: ['slug'],
   leve: ['motivo', 'repo'],
 };
 
@@ -1924,6 +2056,11 @@ function main() {
     if (!p) return;
     console.log(p);
     process.exit(2);
+  }
+
+  if (cmd === 'retomar') {
+    retomar(arg('slug'));
+    return;
   }
 
   if (cmd === 'leve') {
@@ -2599,6 +2736,15 @@ function main() {
       const recusa_carimbos = processarCarimbos(estagio, estado[estagio], extra, estado, slug);
       if (recusa_carimbos) {
         console.error(recusa_carimbos);
+        process.exit(2);
+      }
+    }
+
+    // D4/D5: `integradas` funde com a lista anterior e recusa antes de gravar.
+    {
+      const recusa_integradas = processarIntegradas(estagio, estado[estagio], extra);
+      if (recusa_integradas) {
+        console.error(recusa_integradas);
         process.exit(2);
       }
     }

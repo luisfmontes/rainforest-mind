@@ -56,7 +56,7 @@ Nota: código a nascer, e nenhum caso de teste afirma sobre o texto do fonte. Fo
 
 ### 2. `estado.cjs retomar` e o trailer de integração [tipo: implementar]
 atende: D1, D4, D5
-arquivos: `scripts/estado.cjs`, `scripts/testa-estado-retomar.sh`
+arquivos: `scripts/estado.cjs`, `scripts/testa-estado-retomar.sh`, `scripts/testa-estado.sh`
 depende de: 1
 prova: `bash scripts/testa-estado-retomar.sh`
 mutacao:
@@ -117,3 +117,5 @@ pronto quando: com os scripts das tarefas 1 a 3 na branch, as quatro coisas abai
 Cada comando e campo citado nas skills existe nos scripts (`conferir-fluxo.cjs camadas`, `estado.cjs retomar`, `integradas`, `painel-fluxo.cjs gerar`). Provado por `bash scripts/testa-versao.sh`, `bash scripts/testa-teto-skills.sh`, `bash scripts/testa-plugin-codex.sh`, `node scripts/orcamento.cjs` e `bash scripts/testa-varrer-baterias.sh` saindo 0.
 
 Emenda (executar, tarefa 1, 2026-10-13): conflito de arquivo na mesma camada em que alguma das duas tarefas declara `paralela:` é aviso, não recusa (D2); sem `paralela:` em nenhuma das duas, recusa (D3). `scripts/testa-conferir-fluxo.sh` entra na tarefa 1: a asserção da mensagem `paralela: sim mas depende de` passa a conferir o aviso, e a sabotagem da seção 7 copia também `scripts/lib/`. Critério acrescido: `bash scripts/testa-conferir-fluxo.sh` volta a sair 0. Ajuste da integração (volta 2): só `paralela: nao` explícito amolece o conflito para aviso; `paralela: sim` com arquivo em comum continua recusa, como na base — o plano de 2026-08-21 (tarefas 3 e 8, ambas `sim`) já era recusado pela base `5ebeb3e5` e continua sendo.
+
+Emenda (executar, tarefa 2, 2026-10-13): `scripts/testa-estado.sh` entra na tarefa 2 — a caixa dela passa a copiar `scripts/lib/camadas.cjs`, que o `conferir-fluxo.cjs` importa desde a tarefa 1 (sem a cópia, 15 casos caíam com o `marcar plano ok` falhando). A tarefa 1 só rodou `testa-conferir-fluxo.sh`; a regressão apareceu aqui.

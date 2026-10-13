@@ -34,6 +34,7 @@ cp "$SRC/scripts/conferir-mutacao.cjs" "$SBP/scripts/"
 # sem eles, QUALQUER subcomando (nao so 'veredito') derruba com MODULE_NOT_FOUND.
 cp "$SRC/scripts/lib/primeiro-prompt-jsonl.cjs" "$SBP/scripts/lib/"
 cp "$SRC/scripts/lib/extrair-veredito.cjs" "$SBP/scripts/lib/"
+cp "$SRC/scripts/lib/camadas.cjs" "$SBP/scripts/lib/"   # conferir-fluxo calcula as camadas do plano (2026-10-13-executar-dag-painel)
 cp "$SRC/hooks/lib/raiz.cjs" "$SBP/hooks/lib/"
 cp "$SRC/hooks/lib/config.cjs" "$SBP/hooks/lib/"
 cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SBP/hooks/lib/"
