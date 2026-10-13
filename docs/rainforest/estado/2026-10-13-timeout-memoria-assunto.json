@@ -21,8 +21,47 @@
     "em": "2026-10-13"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-10-13"
+    "status": "ok",
+    "catraca_mutacao": "2026-10-13",
+    "tarefas_ok": 3,
+    "tarefas": 3,
+    "em_voo": [],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "27d2816d",
+        "iteracao": 1,
+        "sessao": "89a983bb-5cf1-4bca-99b5-92a4440d1637",
+        "ts": "2026-10-13T20:20:06.325Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "27d2816d",
+        "iteracao": 1,
+        "sessao": "89a983bb-5cf1-4bca-99b5-92a4440d1637",
+        "ts": "2026-10-13T20:20:06.325Z"
+      }
+    ],
+    "em": "2026-10-13",
+    "comando": "node scripts/testa-utilidade-cache.cjs && node hooks/testa-memoria-assunto-prompt.cjs",
+    "saida": "4 ok, 0 falha(s); 14 ok, 0 falha(s) tempos 1a=689 teto1a=10000; medicao 1o pedido base 2080 1737 1425 1627 2083 -> novo 333 293 633 322 645 ms",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade-cache.cjs, caso 14 linhas do mesmo dia com cache fazem no maximo 3 consultas LIKE em observacoes"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "limite de tempo; falsificacao feita trocando timeout para 0.001 e vendo o caso em FALHA (exit 1)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "versao e changelog, sem comportamento"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
