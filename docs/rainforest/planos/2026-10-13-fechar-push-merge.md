@@ -60,7 +60,7 @@ Nota: a chave `gate-merge-auto` (`tipo: 'boolean'`, `padrao: true`) entra logo d
 
 ### 3. Passo 5 do `fechar`, README, CHANGELOG e versão 1.64.0 [tipo: docs]
 atende: D1, D2, D3, D6, D7
-arquivos: `skills/fechar/SKILL.md`, `README.md`, `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `.codex-plugin/plugin.json`, `scripts/baterias-obrigatorias.txt`
+arquivos: `skills/fechar/SKILL.md`, `README.md`, `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `.codex-plugin/plugin.json`, `scripts/baterias-obrigatorias.txt`, `scripts/contrato-plugin-codex.cjs`
 depende de: 1, 2
 paralela: nao
 mutacao: n/a
@@ -68,3 +68,5 @@ mutacao: n/a
 pronto quando: com o script da tarefa 1 na branch, todo subcomando e todo código de saída que `skills/fechar/SKILL.md` cita existem no script e batem com o D6 (os subcomandos `publicar`, `esperar-ci` e `confirmar-merge` e os exits 0, 1, 3, 4, 5, 6, 7 e 69, cada um com a ação que a skill toma), o passo 5 manda rodar `gh pr create` só quando o `publicar` imprimiu `PR aberto: nenhum`, manda `esperar-ci` em background e só depois `gh pr merge <n> --squash` (nunca `--auto`) seguido de `confirmar-merge`, e diz o que fazer com a chave `fechar-mergear` desligada (parar no PR aberto); o README cita o script e as duas chaves novas, o CHANGELOG tem a entrada 1.64.0, e a versão é 1.64.0 nos dois manifestos — provado por `node scripts/conferir-versao.cjs`, `bash scripts/testa-teto-skills.sh` e `node scripts/orcamento.cjs` saindo 0, e por leitura cruzada na revisão: cada exit citado na skill procurado com `grep -n "process.exit(<n>)\|exit(<n>)" scripts/publicar-branch.cjs`
 
 Emenda (revisar volta 1, 2026-10-13): (1) a versão 1.64.0 vale também no `.codex-plugin/plugin.json` e no selo do `README.md`, e a tarefa 3 passa a ser provada também por `bash scripts/testa-versao.sh` saindo 0; (2) as baterias novas entram em `scripts/baterias-obrigatorias.txt` (tarefa 3); (3) na tarefa 1, exit 1 do `merge-tree` só é conflito com o OID da árvore na 1ª linha e ao menos um arquivo; sem isso sai 69 — casos novos `(d2)` (fetch passa, `origin/<base>` ausente) e `(d3)` (base sem história em comum, exit 128) em `scripts/testa-publicar-branch.sh`, e a mutação `if (mt.status !== 0) {` → `if (false) {` também tem de deixar a bateria vermelha.
+
+Emenda (CI do PR #506, 2026-10-13): mudar o corpo de `skills/fechar/SKILL.md` exige re-medir a âncora binária `fechar` em `scripts/contrato-plugin-codex.cjs` (tarefa 3); provado por `bash scripts/testa-plugin-codex.sh` saindo 0.

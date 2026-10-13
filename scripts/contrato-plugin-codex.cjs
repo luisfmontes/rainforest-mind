@@ -32,11 +32,12 @@ const DOCUMENTOS_DO_FLUXO = new Set([
 // certo e sempre o da main, e um vermelho aqui significa ou corpo alterado por
 // engano, ou base velha depois que a main andou.
 const ANCORA_CORPOS_SKILLS = {
-  // fechar re-medido em 2026-10-10 (2a vez): a regra 6 nova acrescentou de proposito
+  // fechar re-medido em 2026-10-13: o passo 5 passou a publicar pelo
+  // `publicar-branch.cjs` (fluxo fechar-push-merge, 1.64.0). Antes: re-medido em 2026-10-10 (2a vez): a regra 6 nova acrescentou de proposito
   // o destino padrao `resolvida`. Antes, no mesmo dia: a Issue #449 acrescentou a secao
   // "Deixado para depois" e o verbo `destinar`. Antes (2026-10-07): o enxerto da
   // skill `pr` (mattpocock v1.3) acrescentou o template do corpo do PR.
-  fechar: { bytes: 12895, sha256: '8cd51bcc339627a5dce42e62d51e6ba35dfb3f1888129bebd0e10beeeb0322db' },
+  fechar: { bytes: 15173, sha256: '12d42092ea495aefdbc8cf9b45ff5111a66d43e615674c88d3e47fa1877125e4' },
   // fechar, modo-dev e regua re-medidos em 2026-10-05: a revisao bimestral
   // acrescentou texto de proposito (E4, E25, E27, E30).
   // modo-dev re-medido em 2026-09-30: o fluxo semear-travas (tarefa 9) acrescentou
