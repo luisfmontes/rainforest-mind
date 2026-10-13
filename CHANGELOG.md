@@ -10,6 +10,16 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.64.1 — 2026-10-13
+
+- **O 1º pedido da sessão não estoura mais o timeout da memória por assunto (#509).** A semeadura pelo transcrito
+  refazia, para cada linha servida na abertura, as 3 consultas do dia e a formatação de todas as candidatas. Agora
+  `acharAlvo` reaproveita consultas e formatação dentro do laço: 14 linhas do mesmo dia fazem no máximo 3 consultas
+  em vez de 42, e o 1º pedido caiu de ~1,7 s para ~0,3 s (mediana de 5 rodadas no Windows). A pontuação de sessão
+  (`pontuarSessao`) usa o mesmo cache. O `timeout` do hook subiu de 5 para 10 s, como folga para a partida do node sob carga.
+- **A bateria do hook parou de medir a máquina (#507).** O caso da 1ª chamada compara o tempo com o timeout do hook
+  lido do `hooks.json`, não com 1500 ms fixos.
+
 ## 1.64.0 — 2026-10-13
 
 - **O `fechar` publica por script, com conferência antes e depois.** `scripts/publicar-branch.cjs publicar` roda
