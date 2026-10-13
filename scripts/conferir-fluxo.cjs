@@ -21,6 +21,7 @@
  * Uso:
  *   node scripts/conferir-fluxo.cjs design --slug <s>
  *   node scripts/conferir-fluxo.cjs cobertura --slug <s>
+ *   node scripts/conferir-fluxo.cjs camadas --slug <s>
  *   node scripts/conferir-fluxo.cjs creep --slug <s> --base <ref> --head <ref>
  *
  * Exit: 0 passou, 2 recusa deliberada, 1 erro de uso, 69 nao-verificavel —
@@ -37,6 +38,7 @@ const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib',
 const { contarOcorrencias } = require(path.join(__dirname, '..', 'hooks', 'lib', 'contar-ocorrencias.cjs'));
 const { caminhoDoc } = require(path.join(__dirname, '..', 'hooks', 'lib', 'pastas-docs.cjs'));
 const { lerTetoDeclarado } = require(path.join(__dirname, '..', 'hooks', 'lib', 'teto-despachos.cjs'));
+const { calcularCamadas, ErroCamadas, parseDependencias, globMatches } = require(path.join(__dirname, 'lib', 'camadas.cjs'));
 
 // A raiz é a do PROJETO em que se trabalha, mesma cadeia do estado.cjs
 const RAIZ = process.env.RFM_ESTADO_ROOT
@@ -231,7 +233,7 @@ function cmdCobertura() {
   // Extrai D<n> mencionados em tarefas
   const decisoes_citadas = new Set();
   const erros = [];
-  const paralelasComArquivos = []; // Para checar overlaps
+  const tarefasDag = []; // entrada do calcularCamadas: numero, dependeDe, arquivos
 
   // D14: o mesmo leitor do hook gate-teto-despachos; cabeçalho ilegível recusa aqui, não só no despacho.
   const tetoDeclarado = lerTetoDeclarado(conteudo_plano);
@@ -239,6 +241,18 @@ function cmdCobertura() {
 
   for (const tarefa of tarefas) {
     const { numero, nome, atende, tipo, paralela, dependeDe, arquivos, mutacao } = tarefa;
+
+    // D2 (2026-10-13): a camada sai do depende de:. paralela: só avisa quando contradiz.
+    let deps = [];
+    try {
+      deps = parseDependencias(dependeDe);
+    } catch (e) {
+      erros.push(`tarefa ${numero}. ${nome} ${e.message}`);
+    }
+    tarefasDag.push({ numero, dependeDe: deps, arquivos });
+    if (paralela === 'sim' && deps.length > 0) {
+      console.error(`aviso: tarefa ${numero}. ${nome} marca paralela: sim e depende de: ${dependeDe}; a camada sai do depende de:, e o paralela: é ignorado`);
+    }
 
     // Verifica se atende está vazio/ausente
     if (!atende || atende.trim() === '') {
@@ -277,11 +291,6 @@ function cmdCobertura() {
       erros.push(`tarefa ${numero}. ${nome} ${falha_mutacao}`);
     }
 
-    // D14: paralela: sim com depende de ≠ nenhuma
-    if (paralela === 'sim' && dependeDe !== 'nenhuma') {
-      erros.push(`tarefa ${numero}. ${nome} paralela: sim mas depende de: ${dependeDe}`);
-    }
-
     // D14: tipo fora da lista permitida
     const tipos_permitidos = ['implementar', 'configurar', 'pesquisar', 'pesquisa', 'teste', 'docs'];
     if (tipo && !tipos_permitidos.includes(tipo)) {
@@ -296,11 +305,6 @@ function cmdCobertura() {
       if (arquivo.split(/[\\/]/).includes('..')) {
         erros.push(`tarefa ${numero}. ${nome} arquivos: ${arquivo} sai do repositório`);
       }
-    }
-
-    // Guarda tarefas paralela: sim para checar overlaps depois
-    if (paralela === 'sim') {
-      paralelasComArquivos.push({ numero, nome, arquivos });
     }
 
     // D14: Campos desconhecidos na tarefa
@@ -335,20 +339,16 @@ function cmdCobertura() {
     }
   }
 
-  // D14: Duas tarefas paralela: sim com overlap em arquivos
-  for (let i = 0; i < paralelasComArquivos.length; i++) {
-    for (let j = i + 1; j < paralelasComArquivos.length; j++) {
-      const t1 = paralelasComArquivos[i];
-      const t2 = paralelasComArquivos[j];
-      for (const arq1 of t1.arquivos) {
-        for (const arq2 of t2.arquivos) {
-          // Mesmo arquivo ou glob que casa
-          if (arq1 === arq2 || globMatches(arq1, arq2) || globMatches(arq2, arq1)) {
-            erros.push(`tarefa ${t1.numero}. ${t1.nome} e tarefa ${t2.numero}. ${t2.nome} compartilham arquivos: ${arq1}`);
-          }
-        }
-      }
+  // D2/D3 (2026-10-13): a recusa é por camada. Ciclo, dependência inexistente e
+  // arquivo em comum entre tarefas da mesma camada saem do calcularCamadas.
+  try {
+    const { conflitos } = calcularCamadas(tarefasDag);
+    for (const c of conflitos) {
+      erros.push(`tarefa ${c.a} e tarefa ${c.b} estão na mesma camada ${c.camada} e compartilham arquivos: ${c.arquivo}`);
     }
+  } catch (e) {
+    if (!(e instanceof ErroCamadas)) throw e;
+    erros.push(e.message);
   }
 
   // Verifica decisões sem tarefa (D que nenhuma tarefa atende)
@@ -935,54 +935,6 @@ function extrairArquivos(conteudo_plano, numero_tarefa) {
   return globs;
 }
 
-/**
- * Glob simples: *, **, ?
- * * não cruza /
- * ** cruza /
- * ? é qualquer caractere (não /)
- */
-function globMatches(arquivo, glob) {
-  // Barra no fim é PASTA: cobre tudo abaixo dela. Sem isto, `arquivos:
-  // scripts/fixtures/escada/` no plano lia como cobertura da pasta e não
-  // cobria arquivo nenhum — comparação literal contra um caminho de pasta
-  // nunca casa com um caminho de arquivo. O `revisar` recusava por creep os
-  // dez arquivos que o plano declarava, sem dizer por quê. Achado em
-  // 2026-09-08, fechando o fluxo aclopar-ponytail.
-  if (glob.endsWith('/')) {
-    return arquivo.startsWith(glob);
-  }
-
-  // Simples: se não tem *, **, ou ?, é match literal
-  if (!glob.includes('*') && !glob.includes('?')) {
-    return arquivo === glob;
-  }
-
-  // Converte glob para regex
-  let pattern = glob
-    .replace(/\./g, '\\.')
-    .replace(/\//g, '/');
-
-  // ** em qualquer lugar cruza /
-  pattern = pattern.replace(/\*\*/g, '<<<DOUBLESTAR>>>');
-  // * em qualquer lugar não cruza /
-  pattern = pattern.replace(/\*/g, '[^/]*');
-  // ? é qualquer caractere (não /)
-  pattern = pattern.replace(/\?/g, '[^/]');
-  // Restaura **
-  pattern = pattern.replace(/<<<DOUBLESTAR>>>/g, '.*');
-
-  // Âncora: se não começar com *, é desde o início
-  if (!glob.startsWith('*')) {
-    pattern = '^' + pattern;
-  }
-  // Se não terminar com *, é até o final
-  if (!glob.endsWith('*')) {
-    pattern = pattern + '$';
-  }
-
-  const regex = new RegExp(pattern);
-  return regex.test(arquivo);
-}
 
 // ================================================================ mutacoes
 
@@ -1179,6 +1131,45 @@ function cmdMutacoes() {
 
 // ================================================================ main
 
+// ================================================================ camadas
+
+/**
+ * Mostra as camadas do plano (as tarefas que o `executar` despacha juntas) e
+ * recusa o que o calcularCamadas recusa. Stdout: JSON {camadas, conflitos}.
+ * Exit 0 sem conflito; 2 com conflito, ciclo ou dependência inexistente.
+ */
+function cmdCamadas() {
+  const slug = arg('slug');
+  const arquivo_plano = arg('plano', false) || path.join(RAIZ, caminhoDoc('planos', slug, { raiz: RAIZ }));
+  const conteudo_plano = lerMarkdown(arquivo_plano);
+  if (!conteudo_plano) {
+    console.error(`RECUSADO: plano não existe: ${arquivo_plano}`);
+    process.exit(2);
+  }
+
+  let resultado;
+  try {
+    const tarefas = extrairTarefas(conteudo_plano).map((t) => ({
+      numero: t.numero,
+      dependeDe: parseDependencias(t.dependeDe),
+      arquivos: t.arquivos,
+    }));
+    resultado = calcularCamadas(tarefas);
+  } catch (e) {
+    if (!(e instanceof ErroCamadas)) throw e;
+    console.error(`RECUSADO: ${e.message}`);
+    process.exit(2);
+  }
+
+  console.log(JSON.stringify(resultado));
+  if (resultado.conflitos.length > 0) {
+    for (const c of resultado.conflitos) {
+      console.error(`RECUSADO: tarefa ${c.a} e tarefa ${c.b} estão na mesma camada ${c.camada} e compartilham arquivos: ${c.arquivo}`);
+    }
+    process.exit(2);
+  }
+}
+
 function main() {
   const cmd = process.argv[2];
 
@@ -1190,6 +1181,10 @@ function main() {
     return cmdCobertura();
   }
 
+  if (cmd === 'camadas') {
+    return cmdCamadas();
+  }
+
   if (cmd === 'creep') {
     return cmdCreep();
   }
@@ -1198,7 +1193,7 @@ function main() {
     return cmdMutacoes();
   }
 
-  console.error('uso: design | cobertura | creep | mutacoes');
+  console.error('uso: design | cobertura | camadas | creep | mutacoes');
   process.exit(1);
 }
 
