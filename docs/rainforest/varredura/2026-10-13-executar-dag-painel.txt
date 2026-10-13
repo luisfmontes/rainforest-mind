@@ -1,0 +1,204 @@
+Data: 2026-10-13
+Termos: depends_on, touches, retomada, sentinela, painel, camadas
+
+$ gh issue list --state all --search "depends_on" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "touches" --limit 200 --json number,title,state
+[{"number":303,"state":"CLOSED","title":"Gemeo Python de conferir-entrega congelou: 21 falhas na main e o portao do CONTRIBUTING esta vermelho"},{"number":193,"state":"CLOSED","title":"Duas sessoes bumparam a MESMA versao e o testa-versao nao pode pegar: falta checagem externa (tag e cache)"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":214,"state":"CLOSED","title":"Sessao isolada em worktree nao consegue atualizar o checkout principal — nem o dono pelo prefixo !"},{"number":210,"state":"CLOSED","title":"Entrega vazia + --paralelo: o conjunto do agente e vazio, entao a checagem 4 nunca reprova"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"},{"number":220,"state":"CLOSED","title":"Tres dos quatro gates ainda nomeiam .rainforest-gate-off pro subagente que bloqueiam"},{"number":298,"state":"CLOSED","title":"gate-agente-em-voo promete avisar UMA vez e repete a cada turno em sessao interativa"},{"number":200,"state":"CLOSED","title":"A skill limpar remove worktree LIMPO de outra sessao sem perguntar — classifica por sujeira, nunca por dono"}]
+
+
+$ gh issue list --state all --search "retomada" --limit 200 --json number,title,state
+[{"number":503,"state":"OPEN","title":"conta unificar: 5 achados baixos da 6a revisao (pasta-unica)"},{"number":436,"state":"CLOSED","title":"memoria-assunto: medicao da regua D7 com 3 distorcoes antes da colheita"},{"number":181,"state":"CLOSED","title":"Retomar agente por SendMessage nao restaura o worktree isolado — ele passa a commitar na branch de quem despachou"},{"number":51,"state":"CLOSED","title":"As tres travas de isolamento falharam na borda: retomada de agente, janela principal, e o rastro da propria esteira"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"}]
+
+
+$ gh issue list --state all --search "sentinela" --limit 200 --json number,title,state
+[{"number":367,"state":"CLOSED","title":"sentinela-foco: triagem de inbox nao roda, MCP do Gmail da CONNECT_TIMEOUT"},{"number":372,"state":"CLOSED","title":"Log da ronda do sentinela-foco sem a saida do modelo de 03 a 28/09"},{"number":118,"state":"CLOSED","title":"O backup diario do sentinela nunca fez backup — e empurra sozinho para a main de um repo publico"},{"number":145,"state":"CLOSED","title":"A #118 foi fechada com o defeito do titulo vivo — nada exige rodar o criterio de pronto antes de fechar Issue"},{"number":195,"state":"CLOSED","title":"Nada exige que o checkout principal fique na main, e os vigias agendados rodam contra ele"},{"number":89,"state":"CLOSED","title":"conferir-fluxo monta 'git diff' com execSync e nome de branch interpolado: injecao de comando pelo --head do revisar"},{"number":112,"state":"CLOSED","title":"run-vigia.ps1 grava o ERROS.md em duas raizes diferentes — e com RFM_ROOT definido elas se partem"},{"number":146,"state":"CLOSED","title":"O _comum.md manda o vigia escrever direto no ERROS.md — um chamador vivo por fora da porta unica"},{"number":125,"state":"CLOSED","title":"Nenhum dado do rainforest tem copia fora da maquina — e a primeira pergunta e para onde"},{"number":124,"state":"CLOSED","title":"O vigias/ERROS.md e rastreado num repo PUBLICO e recebe caminho de maquina interpolado"},{"number":266,"state":"CLOSED","title":"conferir-mutacao muta a arvore compartilhada: quem ler naquela janela mede o mutante"}]
+
+
+$ gh issue list --state all --search "painel" --limit 200 --json number,title,state
+[{"number":470,"state":"OPEN","title":"Painel 'Deixado para depois' do mod e pendentes do fluxo: duas fontes"},{"number":466,"state":"OPEN","title":"Painel de PR e plugins-em-dia: achados menores da revisao do PR #464"},{"number":482,"state":"CLOSED","title":"Painel de PR acorda a sessão de novo no mesmo conflito (UNKNOWN entre leituras)"},{"number":424,"state":"CLOSED","title":"Painel: 'Deixado para depois' nunca fecha item resolvido e conta Q de decisão como pendência"},{"number":449,"state":"CLOSED","title":"Deixado para depois evapora: pendentes somem no ok e o fechar nao confere"},{"number":421,"state":"CLOSED","title":"Painel do mod: bordas do desvio (fila cheia, cache de veredito provisorio, chave do mapa) e texto do corte"}]
+
+
+$ gh issue list --state all --search "camadas" --limit 200 --json number,title,state
+[{"number":1,"state":"CLOSED","title":"Briefing nao diz o ato de entregar: subagente nomeado termina o trabalho e nao devolve (3 de 3)"}]
+
+
+$ gh pr list --state all --search "depends_on" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "touches" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "retomada" --limit 200 --json number,title,state
+[{"number":464,"state":"MERGED","title":"Mods: painel de PR e plugins-em-dia (1.55.0)"},{"number":459,"state":"MERGED","title":"Regua D7 da memoria por assunto sem as distorcoes (#436), versao 1.54.0"},{"number":437,"state":"MERGED","title":"memoria: injecao pelo assunto no pedido e no subagente (1.49.0)"},{"number":179,"state":"MERGED","title":"Relatorio: rodada cega de 2026-09-04 (com errata de entrada)"},{"number":58,"state":"MERGED","title":"Fecha a #51: as tres travas de isolamento passam a valer na borda"}]
+
+
+$ gh pr list --state all --search "sentinela" --limit 200 --json number,title,state
+[{"number":366,"state":"MERGED","title":"Arrumacao: erros das vigias e estado vazio do inventario"},{"number":256,"state":"MERGED","title":"repo: ignora o cache de marketplace e registra o erro do sentinela de 11/09"},{"number":374,"state":"MERGED","title":"Rodada 14: triagem do Gmail, creep da varredura e dívidas da 13 (1.35.0)"},{"number":361,"state":"MERGED","title":"Vigias: falha recorrente com impressao digital enxertada do reef"},{"number":359,"state":"MERGED","title":"backup-db-vivo: backup externo com o rainforest.db aberto, 1.30.1"},{"number":122,"state":"MERGED","title":"Fecha #118: o backup diario do sentinela nunca fez backup — e empurrava sozinho para um repo publico"},{"number":37,"state":"MERGED","title":"A triagem de inbox do sentinela-foco tinha duas causas, nao uma"},{"number":95,"state":"MERGED","title":"Fecha #89: creep monta o git diff sem shell, com execFileSync e lista"},{"number":183,"state":"MERGED","title":"Lote 3 — guardas medem o repositorio da operacao; backup fora da maquina; fechar Issue exige criterio rodado"},{"number":123,"state":"MERGED","title":"Fecha #112: o vigias/ERROS.md passa a ter UMA raiz, e ela e o plugin"},{"number":96,"state":"MERGED","title":"Fecha #86: cabecalho de observar.cjs alinhado ao codigo, mais --help e --seco"},{"number":156,"state":"MERGED","title":"Pre-publico: JID de grupo, a porta do agente, e fixtures que eram telefone de gente"},{"number":150,"state":"MERGED","title":"Vigias: dois mortos ha 20 dias, um backup que nunca rodou, e seis vazamentos num arquivo publico"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"}]
+
+
+$ gh pr list --state all --search "painel" --limit 200 --json number,title,state
+[{"number":422,"state":"MERGED","title":"Versao 1.45.0: barra de sessao e painel /painel no mod (enxerto do terminal-desk)"},{"number":487,"state":"MERGED","title":"Versao 1.59.2: aviso de PR sem repeticao e node absoluto na abertura"},{"number":464,"state":"MERGED","title":"Mods: painel de PR e plugins-em-dia (1.55.0)"},{"number":428,"state":"MERGED","title":"Versao 1.47.0: erros de ferramenta gravados e /painel erros"},{"number":433,"state":"MERGED","title":"Versao 1.47.2: painel do mod confere o que ainda nao tinha resposta"},{"number":481,"state":"MERGED","title":"Versao 1.58.0: compactar a 60%, linha do PR na barra, node absoluto"},{"number":492,"state":"MERGED","title":"Versao 1.60.0: recarga do plugin em todas as janelas"},{"number":425,"state":"MERGED","title":"Versao 1.46.1: deixado para depois fecha item resolvido e ignora Q de decisao"},{"number":469,"state":"MERGED","title":"Pendencia do fluxo so sai com destino (#449), versao 1.56.0"},{"number":34,"state":"MERGED","title":"Versao 0.72.0: o painel passa a ver as contas divergirem"},{"number":20,"state":"MERGED","title":"O verde mais saudavel do painel era falso: o /saude passa a medir o que executa"}]
+
+
+$ gh pr list --state all --search "camadas" --limit 200 --json number,title,state
+[{"number":308,"state":"MERGED","title":"regua: regua selada por construcao e keep/discard automatico (enxerto do autoresearch)"},{"number":56,"state":"MERGED","title":"Fecha a #38: a regra 11 prescreve worktree, e o radar marca a janela co-locada"},{"number":62,"state":"MERGED","title":"As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada"}]
+
+
+$ git ls-remote --heads origin | grep -F "depends_on"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "touches"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "retomada"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "sentinela"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "painel"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "camadas"
+(vazio)
+
+$ git log --all --grep="depends_on" --oneline
+(vazio)
+
+$ git log --all --grep="touches" --oneline
+(vazio)
+
+$ git log --all --grep="retomada" --oneline
+687a0b23 Versao 1.63.0: uma pasta so de config e conta.cjs unificar (#504)
+1f5007f0 Mods: painel de PR e plugins-em-dia (1.55.0) (#464)
+dc439026 /transferir claude: a sessão muda de conta com o contexto inteiro (1.42.0) (#415)
+604ac590 plano contrato-de-veredito: tarefa 3, subcomando veredito com upsert e trava
+52245a7f Torna retomada multihost fail-closed
+44ac4c2a Corrige retomada final do handover multihost
+05919c37 Documentar exit 69, carimbo de base e gate de release nas skills
+77ca5425 Carimba a base de aceite de cada tarefa em executar (D8)
+14bec820 T6: transferência de sessão para Codex via transfer-codex
+3d03436a Regra 11: conferência de base sem envelhecimento, retomada só para leitura
+01cbf1bc Fecha a #51: as tres travas de isolamento passam a valer na borda (#58)
+5948bc61 Fecha a #51: as tres travas de isolamento passam a valer na borda (#58)
+7118d701 Arqueologia: o estagio ZERO que faltava, e opcional de forma mecanica
+b3d3220f Arqueologia: o estagio ZERO que faltava, e opcional de forma mecanica
+42da4f49 O estado vira versionado, e o prazo de sexta volta a chegar na abertura
+e1fd7004 O estado vira versionado, e o prazo de sexta volta a chegar na abertura
+cfd62bfc A esteira ganha maquina de estados que RECUSA, em vez de pedir por favor
+deb1411b A esteira ganha maquina de estados que RECUSA, em vez de pedir por favor
+
+$ git log --all --grep="sentinela" --oneline
+3cde092f zerar-issues-14 t7: sentinela le pelo gmail-leitura e avisa
+d475701e Arrumacao: erros das vigias de 21 a 30/09 e estado vazio do inventario
+2f637b44 saude: vigias-recorrentes mostra falha que voltou com a mesma causa
+f0025a2c integra tarefa 4: a abertura avisa quando o FOCO.md esta 7+ dias sem avanco
+3a9e88c6 sensor: avisa na abertura quando FOCO.md esta 7+ dias sem avanco (tarefa 4)
+63db97b6 design: guias e sensores, cinco enxertos do Harness Engineering
+14c471ed repo: ignora o cache de marketplace e registra o erro do sentinela de 11/09 (#256)
+fa4a7ebf Lote 3 T11: o sentinela agendado grava o backup fora da maquina
+f91de472 Issue #146: o agente registra erro por comando, e uma trava le a prosa
+fb28aa68 Issue #146: o agente registra erro por comando, e uma trava le a prosa
+ec8dec09 Handover: o principal fica sempre na main, trabalho vai para worktree
+7dc929f1 Vigias: terceira rodada do saneamento — a regra deixa de ser lista e passa a ser a do sistema de arquivos
+88f1b654 Vigias: terceira rodada do saneamento — a regra deixa de ser lista e passa a ser a do sistema de arquivos
+268d3ce8 Vigias T4+T5: campo vazio nao e campo ok, e erro registrado que ninguem le
+cc1dc7a7 Vigias T4+T5: campo vazio nao e campo ok, e erro registrado que ninguem le
+b700381e Vigias T1+T2: a raiz do backup, e uma porta unica de escrita no ERROS.md
+bcc79088 Vigias T1+T2: a raiz do backup, e uma porta unica de escrita no ERROS.md
+49a38ed7 T12: sentinela prova que retry --membro nao reexecuta os outros
+0635e961 T12: sentinela prova que retry --membro nao reexecuta os outros
+03b23bf5 T19: Remoção posicional do bloco de projeto — startsWith em vez de indexOf
+b81154e1 T19: Remoção posicional do bloco de projeto — startsWith em vez de indexOf
+28af8fc4 Tarefa 18: regeneração só remove bloco de projeto REAL — texto manual que menciona o marcador sobrevive
+e27bf311 Tarefa 18: regeneração só remove bloco de projeto REAL — texto manual que menciona o marcador sobrevive
+6e07275c Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README (#129)
+be0332c9 Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README (#129)
+c21bd779 Fecha #118: o backup diario do sentinela nunca fez backup — e empurrava sozinho para um repo publico (#122)
+d7111a7f Fecha #118: o backup diario do sentinela nunca fez backup — e empurrava sozinho para um repo publico (#122)
+454ed439 Fecha #89: creep monta o git diff sem shell, com execFileSync e lista (#95)
+6da92f4e Fecha #89: creep monta o git diff sem shell, com execFileSync e lista (#95)
+762b4abb A triagem de inbox do sentinela-foco tinha duas causas, nao uma (#37)
+0f0f0793 A triagem de inbox do sentinela-foco tinha duas causas, nao uma (#37)
+6bd68620 Registro do sentinela: triagem de inbox nao roda em sessao nao-interativa
+44dc15cc Registro do sentinela: triagem de inbox nao roda em sessao nao-interativa
+77ec8d2e O FOCO.md ganha teto: avanco que passa vai para o AVANCOS.md, e o caminho para de ser chumbado
+83d8698d O FOCO.md ganha teto: avanco que passa vai para o AVANCOS.md, e o caminho para de ser chumbado
+3bcaa4e3 Tira da versao os dados desta maquina: destino, caminhos e raiz
+8b58a5fc Tira da versao os dados desta maquina: destino, caminhos e raiz
+ac4fdee0 O vigia ganha -Cwd: o diretorio de trabalho decide quais MCPs ele tem
+9cc41e3d O vigia ganha -Cwd: o diretorio de trabalho decide quais MCPs ele tem
+35441d9e Os vigias nao rodavam: bateria matava a tarefa e o MCP estava desligado no projeto
+db31642c Os vigias nao rodavam: bateria matava a tarefa e o MCP estava desligado no projeto
+113c7181 Backup diario do estado (sentinela)
+ee3eef3e Backup diario do estado (sentinela)
+b3b2a2e9 Causa raiz dos passos que sumiam: prompt chegava cortado e em mojibake
+0b9cd2eb Causa raiz dos passos que sumiam: prompt chegava cortado e em mojibake
+bd45f373 Declaracao de passo e contagem por campo sobem para o _comum (vale nos 4 vigias)
+b63e9bb7 Declaracao de passo e contagem por campo sobem para o _comum (vale nos 4 vigias)
+c04f70b8 Backup diario do estado (sentinela)
+c278e05d Backup diario do estado (sentinela)
+98a900d7 Vigias: StartWhenAvailable, sentinela reporta ERROS.md, backup diario do estado + ideia plantada + v0.9.0
+75984612 Vigias: StartWhenAvailable, sentinela reporta ERROS.md, backup diario do estado + ideia plantada + v0.9.0
+
+$ git log --all --grep="painel" --oneline
+de4220d4 Troca automatica de conta Claude pelo uso e /conta (1.62.0) (#501)
+e9f8bff6 Versao 1.59.2: aviso de PR sem repeticao e node absoluto na abertura (#487)
+f29d4dde Versao 1.58.0: compactar a 60%, linha do PR na barra, node absoluto (#481)
+1f5007f0 Mods: painel de PR e plugins-em-dia (1.55.0) (#464)
+18d69da8 Merge pull request #433 from luisfmontes/fluxo/painel-bordas
+5d9042a8 Versao 1.47.2: painel do mod confere o que ainda nao tinha resposta
+1859ea35 Merge pull request #428 from luisfmontes/fluxo/erros-sessao
+b3c6394a Versao 1.47.0: erros de ferramenta gravados e /painel erros
+548f59d1 Merge pull request #425 from luisfmontes/fluxo/painel-resolvidos
+5786055f Versao 1.45.1: deixado para depois fecha item resolvido (#424)
+12d00890 Painel: deixado fecha item resolvido e nao conta Q de decisao (#424)
+8ee17ff6 Merge pull request #422 from luisfmontes/fluxo/desk-no-mod
+0186bdaa Versao 1.45.0: barra de sessao e painel /painel no mod
+4d928805 Documentacao do painel: barra, /painel, mapa, desvio e deixado
+b7b55205 Credito MIT ao terminal-desk: NOTICE e cabecalho nos arquivos adaptados
+b63018ec painel: leitura de fluxos que falhou nao aparece como nenhum fluxo
+2d966daf Prova de engine transversal do painel (tarefa 10)
+cd1f10ca Painel: deixado para depois com checker Haiku (tarefa 9)
+d2c1cac8 Pane /painel: Mapa da sessao e aviso de desvio do plano (tarefa 8)
+2d266d42 estado: tarefa 7 integrada, 8 em voo
+00cbdb71 Pane /painel: contexto por fatia, cache, subagentes e custo
+94f0e6cb Barra de sessao no lugar da faixa e comando /painel (tarefa 6)
+b581162e Mapa da sessao: logica pura da tarefa 5
+6e339d12 design: mapa da sessao no /painel e estagio aprovado
+b2d0069a design: enxertar o terminal-desk no mod do rainforest
+99c5e5b7 Zerar as 12 Issues da revisao bimestral (1.43.0) (#416)
+2c1a5a76 E7: brainstorm pergunta alvo, convive-ou-substitui e cenario do dominio
+7d216861 Conserto da T9: R2b mede o delta do exit, nao o painel inteiro
+3ad4c4a8 Conserto da T9: R2b mede o delta do exit, nao o painel inteiro
+6a9811d4 Tres defeitos achados apurando as observacoes abertas da regra 13 (#117)
+ba19dbed Tres defeitos achados apurando as observacoes abertas da regra 13 (#117)
+7bac3c4a Versao 0.72.0: o painel passa a ver as contas divergirem (#34)
+5b89750b Versao 0.72.0: o painel passa a ver as contas divergirem (#34)
+c25afc4e O verde mais saudavel do painel era falso: o /saude passa a medir o que executa (#20)
+5ab6da43 O verde mais saudavel do painel era falso: o /saude passa a medir o que executa (#20)
+
+$ git log --all --grep="camadas" --oneline
+6bfa8f95 docs: regra 10 e briefing — agente despachado é folha (tarefa 5)
+1e66a455 docs(revisar): documenta toggle contrato-veredito, --transcrito e o risco do Slug errado (D11-D13, Tarefa 17)
+52d789ec Estado: executar fecha ok na rodada 4, com a sonda em camadas medida
+65c00807 C1 e C2: sonda em camadas, e o limite que sobra fica declarado
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+7614f473 A raiz dos dados vira cadeia de cinco niveis: um foco por projeto, sem configurar nada
+b2d7b271 A raiz dos dados vira cadeia de cinco niveis: um foco por projeto, sem configurar nada
+
+$ cat <dados>/ideias.jsonl
+{"id":"literal-com-escape-e-erro-que-nao-da-erro","titulo":"Editar fonte com literal escapado por camadas de shell falhou TRES vezes num dia, e a pior nao deu erro"}
+{"id":"recomendar-retomada-sem-conferir-janela-viva","titulo":"Recomendei retomar a fatia Codex sem conferir se o Codex estava vivo"}
+{"id":"obs-2026-09-25-painel-substitui-saldos","titulo":"Tratei o painel como complemento quando era substituto da Consulta de Saldos"}
+{"id":"mapa-da-sessao-exportado-em-html","titulo":"Exportar o mapa da sessao (Builder Map do /painel) como pagina HTML"}
+{"id":"executar-dag-touches-e-retomada","titulo":"DAG com touches e retomada por sentinela no executar"}
+{"id":"painel-do-fluxo-html","titulo":"Painel HTML do fluxo em execucao"}
+
+
