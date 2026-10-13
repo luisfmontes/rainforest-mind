@@ -62,6 +62,11 @@ const CHAVES = {
     padrao: true,
     descricao: 'barra `gh issue close` direto, palavras-chave falsas em português, e `gh pr create/edit/merge`, `gh issue create/comment` sem evidência/com falsa chave',
   },
+  'gate-merge-auto': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'barra `gh pr merge --auto`: neste repo sem check obrigatório mergeia na hora, sem esperar o CI',
+  },
   'gate-agente-em-voo': {
     tipo: 'boolean',
     padrao: true,

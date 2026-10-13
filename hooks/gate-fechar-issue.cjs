@@ -812,9 +812,21 @@ function analisarPrMerge(texto) {
   let repo = null;
   const mensagens = [];
   const arquivos = [];
+  // Neste repositório não há check obrigatório: `--auto` mergeia na hora, sem
+  // esperar o CI. Trava ligada por `gate-merge-auto` (config do projeto ou do
+  // usuário). O cwd é o do evento, o mesmo que o toggle do gate usa.
+  const autoBarrado = require("./lib/config.cjs").ligado("gate-merge-auto", { projeto: CWD_DO_EVENTO });
   for (let i = 3; i < toks.length; i += 1) {
     const tok = toks[i];
     if (AJUDA_PR_MERGE.has(tok)) return { ajuda: true };
+    if (tok === "--auto" && autoBarrado) {
+      bloqueia(
+        "BLOQUEADO pelo gate de merge do rainforest-mind.\n\n" +
+        "Razão: neste repositório não há check obrigatório, então 'gh pr merge --auto' mergeia na hora, sem esperar o CI.\n\n" +
+        "Espere o CI com 'node scripts/publicar-branch.cjs esperar-ci --pr <n>' e depois rode 'gh pr merge <n> --squash'.\n" +
+        "Para desligar esta trava: chave 'gate-merge-auto' como false no .rainforest/config.json, ou RAINFOREST_GATE_OFF=1.\n"
+      );
+    }
     if (BOOLEANAS_PR_MERGE.has(tok)) continue;
     if (COM_VALOR_PR_MERGE.has(tok)) {
       if (i + 1 >= toks.length) barraFormaPrMerge(`'${tok}' sem valor.`);
