@@ -46,7 +46,10 @@ try {
 
   const inserirObs = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
   for (let i = 0; i < 14; i++) {
-    const titulo = `Observacao ${i} sobre assunto distinto numero ${i}`;
+    // Titulo acima de 300 caracteres em parte das linhas: so assim a forma "cru com teto" difere da "cru",
+    // e uma chave de memo de formatacao que ignore o teto devolveria a forma errada.
+    const longo = i % 3 === 2 ? ' ' + 'detalhe longo do titulo '.repeat(15) : '';
+    const titulo = `Observacao ${i} sobre assunto distinto numero ${i}${longo}`;
     const corpo = `# ${titulo}\n\nSubtitulo da observacao ${i}\n\nCorpo com algum texto para a linha.`;
     inserirObs.run(PROJETOS[i % PROJETOS.length], corpo, CRIADA_EM, `origem-${i}`);
   }

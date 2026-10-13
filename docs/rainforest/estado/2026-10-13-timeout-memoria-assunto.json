@@ -64,7 +64,28 @@
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "dd73f1d43cfcda2e36254b9480e9007a948cf105",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a8713480934f75666",
+        "veredito": "ok",
+        "em": "2026-10-13",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/89a983bb-5cf1-4bca-99b5-92a4440d1637/subagents/agent-a8713480934f75666.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-13",
+    "achados": 1,
+    "base": "5ebeb3e520ae701a3282422938b389a04b091d7f",
+    "head": "dd73f1d43cfcda2e36254b9480e9007a948cf105",
+    "nao_bloqueantes": [
+      "testa-utilidade-cache.cjs sem titulo >300: chave de memo sem maxTexto passaria verde — consertado no mesmo PR"
+    ]
   },
   "verificar": {
     "status": "pendente"
