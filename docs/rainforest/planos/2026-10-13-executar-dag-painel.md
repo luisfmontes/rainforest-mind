@@ -28,7 +28,7 @@ Design: docs/rainforest/design/2026-10-13-executar-dag-painel.md
 
 ### 1. Camadas do `depende de:` e recusa por camada [tipo: implementar]
 atende: D2, D3, D8
-arquivos: `scripts/lib/camadas.cjs`, `scripts/conferir-fluxo.cjs`, `scripts/testa-camadas.sh`
+arquivos: `scripts/lib/camadas.cjs`, `scripts/conferir-fluxo.cjs`, `scripts/testa-camadas.sh`, `scripts/testa-conferir-fluxo.sh`
 depende de: nenhuma
 prova: `bash scripts/testa-camadas.sh`
 mutacao:
@@ -115,3 +115,5 @@ pronto quando: com os scripts das tarefas 1 a 3 na branch, as quatro coisas abai
 - **Versão e baterias:** a versão é 1.65.0 em `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json` e no selo do README. As três baterias novas estão em `scripts/baterias-obrigatorias.txt`.
 
 Cada comando e campo citado nas skills existe nos scripts (`conferir-fluxo.cjs camadas`, `estado.cjs retomar`, `integradas`, `painel-fluxo.cjs gerar`). Provado por `bash scripts/testa-versao.sh`, `bash scripts/testa-teto-skills.sh`, `bash scripts/testa-plugin-codex.sh`, `node scripts/orcamento.cjs` e `bash scripts/testa-varrer-baterias.sh` saindo 0.
+
+Emenda (executar, tarefa 1, 2026-10-13): conflito de arquivo na mesma camada em que alguma das duas tarefas declara `paralela:` é aviso, não recusa (D2); sem `paralela:` em nenhuma das duas, recusa (D3). `scripts/testa-conferir-fluxo.sh` entra na tarefa 1: a asserção da mensagem `paralela: sim mas depende de` passa a conferir o aviso, e a sabotagem da seção 7 copia também `scripts/lib/`. Critério acrescido: o plano `docs/rainforest/planos/2026-08-21-gate-de-sessao-co-locada-e-catraca-de-mutacao.md` passa na cobertura com aviso, e `bash scripts/testa-conferir-fluxo.sh` volta a sair 0.
