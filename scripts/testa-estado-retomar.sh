@@ -189,6 +189,7 @@ igual "integradas grava [1,2]" "[1,2]" "$(J 'j.executar.integradas' < "docs/rain
 saida=$($RET 2>&1)
 igual "contadas sem trailer [1,2]" "[1,2]" "$(echo "$saida" | J 'j.contadas_sem_trailer')"
 igual "contada sem trailer segue pendente" "pendente,pendente,pendente" "$(echo "$saida" | J 'j.tarefas.map(t=>t.estado).join()')"
+igual "contada sem trailer nao sai da proxima camada" "[1,2]" "$(echo "$saida" | J 'j.proxima_camada')"
 
 echo "== sem origin, le o trailer do historico do HEAD =="
 caixa_nova

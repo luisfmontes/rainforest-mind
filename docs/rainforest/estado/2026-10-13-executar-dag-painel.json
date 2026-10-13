@@ -18,7 +18,7 @@
     "em": "2026-10-13"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-13",
     "tarefas_ok": 4,
     "tarefas": 4,
@@ -83,27 +83,31 @@
         "motivo": "texto de skill e documentacao, sem comportamento a inverter"
       }
     ],
-    "reaberturas": 1
+    "reaberturas": 2,
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-13"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "61884f344e6bf8c4c5df1e2a6d1bfb9ef16f0878",
+      "head": "1eaf4bb08bfddea029e269d8abebfa36cbfc0d52",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "abec31970eda2c414",
+        "agente_id": "ad469933f88fb06d4",
         "veredito": "reprovado",
         "em": "2026-10-13",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/4224a79a-6d1d-4488-8ee0-c5ec5c25d3b1/subagents/agent-abec31970eda2c414.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/4224a79a-6d1d-4488-8ee0-c5ec5c25d3b1/subagents/agent-ad469933f88fb06d4.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-13",
-    "achados": 6,
-    "tentativas": 1
+    "achados": 2,
+    "tentativas": 2
   },
   "verificar": {
     "status": "pendente"

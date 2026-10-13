@@ -128,3 +128,7 @@ Emenda (revisar, volta 1, 2026-10-13): seis achados corrigidos na branch.
 - O cartão do painel traz a iteração do laço, pelo carimbo mais recente. O veredito fica no resumo, porque o `revisar` julga a branch, não a tarefa: D6 fica cumprido assim (tarefa 3).
 - A doc de `integradas` diz que o `ok` não o apaga (tarefa 4).
 - Critério acrescido: `testa-camadas.sh` cobre `nenhuma` com prosa, lista com parêntese e intervalo. `testa-estado-retomar.sh` cobre `proxima_camada` com tarefa não marcada, `em_voo` com trailer, `contadas_sem_trailer` e repo sem `origin`. `testa-painel-fluxo.sh` cobre a iteração no cartão.
+
+Emenda (revisar, volta 2, 2026-10-13): dois achados.
+- O parser da volta 1 cortava a lista no primeiro `(`, e `1 (design), 2` perdia o 2. Agora os grupos entre parênteses saem e os itens são lidos até o primeiro que não é número (tarefa 1). No corpus, 96 formas distintas de `depende de:`, e só `todas` recusa, como a base já recusava.
+- `testa-estado-retomar.sh` passa a assertar `proxima_camada` com tarefa contada sem trailer (tarefa 2). Critério acrescido: `testa-camadas.sh` cobre `1 (design), 2` e `2, após 17:41`.

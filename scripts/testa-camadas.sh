@@ -103,6 +103,14 @@ caixa "$PLANO_FECHAR" "$DESIGN_FECHAR"
 editar 3 "depende de" "1, 2 (a 2 precisa do gate pronto em 2026-09-08)"
 esperar "lista seguida de prosa entre parenteses: so 1 e 2 contam" 0 '"camadas":\[\[1\],\[2\],\[3\]\]' - camadas
 
+caixa "$PLANO_FECHAR" "$DESIGN_FECHAR"
+editar 3 "depende de" "1 (design), 2"
+esperar "parentese no meio da lista nao corta o resto: 3 depois da 2" 0 '"camadas":\[\[1\],\[2\],\[3\]\]' - camadas
+
+caixa "$PLANO_FECHAR" "$DESIGN_FECHAR"
+editar 3 "depende de" "2, após 17:41"
+esperar "prosa com hora depois da virgula nao vira tarefa" 0 '"camadas":\[\[1\],\[2\],\[3\]\]' - camadas
+
 LIBCAMADAS="$(cygpath -m "$RAIZ/scripts/lib/camadas.cjs" 2>/dev/null || printf '%s' "$RAIZ/scripts/lib/camadas.cjs")"
 esperar "intervalo 1-4 vale 1, 2, 3 e 4" 0 '^\[1,2,3,4\]$' - node -e 'console.log(JSON.stringify(require(process.argv[1]).parseDependencias("1-4")))' "$LIBCAMADAS"
 

@@ -27,24 +27,27 @@ class ErroCamadas extends Error {
 
 /**
  * Lê o valor de `depende de:`. `nenhuma` (ou vazio) vira [], mesmo com prosa depois
- * ("nenhuma (roda quando a cota voltar, 17:41)"). Senão vale só a lista do começo,
- * antes de parêntese ou travessão: números separados por vírgula, espaço ou "e", e
- * intervalo `a-b`. A prosa depois da lista não vira dependência: data e hora em
- * comentário seriam lidas como tarefa. Lista sem número lança ErroCamadas.
+ * ("nenhuma (roda quando a cota voltar, 17:41)"). Senão, tira os parênteses e lê os
+ * itens separados por vírgula, espaço ou "e" (`3`, `#3`, intervalo `1-4`) até o
+ * primeiro que não é número: dali em diante é prosa ("2, após 17:41" vale [2]), e
+ * data ou hora na prosa não vira tarefa. Sem número nenhum, lança ErroCamadas.
  */
 function parseDependencias(texto) {
   const t = (texto || '').trim();
   if (t === '' || /^nenhuma\b/i.test(t)) return [];
-  const lista = t.split(/[(—–]/)[0];
-  if (!/\d/.test(lista)) {
-    throw new ErroCamadas(`depende de: "${t}" não lista tarefa nenhuma (use "nenhuma" ou números)`);
-  }
   const nums = [];
-  for (const m of lista.matchAll(/(\d+)\s*-\s*(\d+)|(\d+)/g)) {
-    if (m[3]) { nums.push(parseInt(m[3], 10)); continue; }
-    const a = parseInt(m[1], 10);
-    const b = parseInt(m[2], 10);
+  for (const item of t.replace(/\([^)]*\)/g, ' ').split(/[\s,;]+/).filter(Boolean)) {
+    if (/^e$/i.test(item)) continue;
+    const um = item.match(/^#?(\d+)$/);
+    if (um) { nums.push(parseInt(um[1], 10)); continue; }
+    const faixa = item.match(/^(\d+)-(\d+)$/);
+    if (!faixa) break;
+    const a = parseInt(faixa[1], 10);
+    const b = parseInt(faixa[2], 10);
     for (let n = Math.min(a, b); n <= Math.max(a, b); n++) nums.push(n);
+  }
+  if (!nums.length) {
+    throw new ErroCamadas(`depende de: "${t}" não lista tarefa nenhuma (use "nenhuma" ou números)`);
   }
   return [...new Set(nums)];
 }
