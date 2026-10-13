@@ -159,6 +159,26 @@ roda "$CAIXA" publicar --base nao-existe
 [ "$CODIGO" -eq 69 ]; afirma "(d) sai 69 (exit=$CODIGO)" $?
 [ -z "$(caixa_git ls-remote origin refs/heads/feat-d)" ]; afirma "(d) sem push: feat-d nao existe no bare" $?
 
+# (d2) o fetch passa, mas origin/<base> nao vira ref de tracking (refspec estreito):
+# o merge-tree sai 1 sem arvore ("not something we can merge"), e isso nao e conflito.
+echo "== (d2) fetch ok, origin/<base> ausente"
+(cd "$BASEWC" && git push -q origin main:outra) >/dev/null 2>&1
+afirma "fixture (d2): branch outra existe no bare" $?
+caixa_git config remote.origin.fetch "+refs/heads/main:refs/remotes/origin/main"
+roda "$CAIXA" publicar --base outra
+[ "$CODIGO" -eq 69 ]; afirma "(d2) sai 69, nao 3 (exit=$CODIGO)" $?
+! grep -q "CONFLITO" "$SAIDA"; afirma "(d2) nao anuncia conflito" $?
+[ -z "$(caixa_git ls-remote origin refs/heads/feat-d)" ]; afirma "(d2) sem push" $?
+caixa_git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
+
+# (d3) base de historia sem relacao: o merge-tree sai 128, falha do comando, nunca "limpo".
+echo "== (d3) base sem historia em comum"
+(cd "$BASEWC" && git checkout -q --orphan orfa && git rm -rq --cached . && git commit -q --allow-empty -m orfa && git push -q origin orfa && git checkout -q -f main) >/dev/null 2>&1
+afirma "fixture (d3): branch orfa existe no bare" $?
+roda "$CAIXA" publicar --base orfa
+[ "$CODIGO" -eq 69 ]; afirma "(d3) sai 69 (exit=$CODIGO)" $?
+[ -z "$(caixa_git ls-remote origin refs/heads/feat-d)" ]; afirma "(d3) sem push" $?
+
 # ============================================================ (e) push recusado
 echo "== (e) push recusado pelo remoto"
 caixa_git checkout -q -b feat-e main && (cd "$CAIXA" && echo "feat-e" > novo-e.txt) && caixa_git add novo-e.txt && caixa_git commit -q -m feat-e

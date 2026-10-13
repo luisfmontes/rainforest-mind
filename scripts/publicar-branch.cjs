@@ -115,10 +115,17 @@ function publicar(argBase) {
   // exit é falha do comando, e falha do comando não vira "passou".
   const mt = git(['merge-tree', '--write-tree', '--name-only', 'HEAD', `origin/${base}`]);
   if (mt.status === 1) {
+    // Exit 1 também sai de ref que não existe ("not something we can merge"):
+    // conflito de verdade imprime o OID da árvore na 1ª linha e ao menos um arquivo.
+    const linhas = mt.stdout.split(/\r?\n/);
     const arquivos = [];
-    for (const linha of mt.stdout.split('\n').slice(1)) {
+    for (const linha of linhas.slice(1)) {
       if (linha.trim() === '') break;
       arquivos.push(linha);
+    }
+    if (!/^[0-9a-f]{40,64}$/.test((linhas[0] || '').trim()) || arquivos.length === 0) {
+      erro(`git merge-tree saiu 1 sem árvore de conflito (origin/${base} não resolve?): nada foi empurrado`, mt.stderr);
+      return 69;
     }
     process.stdout.write(`CONFLITO com origin/${base}: a branch ${nome} NAO foi empurrada.\n`);
     for (const a of arquivos) process.stdout.write(`conflito em: ${a}\n`);

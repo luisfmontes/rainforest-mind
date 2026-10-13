@@ -77,7 +77,7 @@ done
 echo
 echo "== desligar: RAINFOREST_GATE_OFF e chave gate-merge-auto =="
 gate Bash "gh pr merge 5 --squash --auto" "$SBP_WIN" RAINFOREST_GATE_OFF=1; E=$?
-if [ "$E" -eq 0 ]; then test_ok "RAINFOREST_GATE_OFF=1 → --auto passa (exit 0)"; else test_fail "RAINFOREST_GATE_OFF=1 → exit $E (esperado 0)"; fi
+if [ "$E" -eq 0 ]; then test_ok "RAINFOREST_GATE_OFF=1 desliga o gate inteiro, --auto incluso (exit 0; a chave propria e o caso seguinte)"; else test_fail "RAINFOREST_GATE_OFF=1 → exit $E (esperado 0)"; fi
 
 mkdir -p "$SBP/proj/.rainforest"
 echo '{"gate-merge-auto": false}' > "$SBP/proj/.rainforest/config.json"
