@@ -20,7 +20,7 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-13",
-    "tarefas_ok": 2,
+    "tarefas_ok": 3,
     "tarefas": 4,
     "carimbos": [
       {
@@ -52,18 +52,12 @@
         "ts": "2026-10-13T18:31:17.840Z"
       }
     ],
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "3 painel",
-        "desde": "2026-10-13T16:40:00-03:00",
-        "sessao": "4224a79a-6d1d-4488-8ee0-c5ec5c25d3b1"
-      }
-    ],
+    "em_voo": [],
     "em": "2026-10-13",
     "integradas": [
       1,
-      2
+      2,
+      3
     ]
   },
   "revisar": {
