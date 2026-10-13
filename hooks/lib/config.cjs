@@ -254,6 +254,15 @@ const CHAVES = {
     padrao: false,
     descricao: 'o revisor em Codex revisa a última resposta no Stop; falha fechada',
   },
+  // Sentido invertido como `branch-forcar`: ligada, AUTORIZA o merge do PR pelo
+  // `fechar` depois do CI verde. Quem lê (`scripts/publicar-branch.cjs`) não usa
+  // `ligado()`, que devolve `true` em erro; lê `resolverConfig().valores` e trata
+  // falha como `false`. Padrão falso: merge sem revisão humana é mão única.
+  'fechar-mergear': {
+    tipo: 'boolean',
+    padrao: false,
+    descricao: 'o fechar mergeia o PR (squash) depois do CI verde; desligada, para no PR aberto',
+  },
 };
 
 /**
