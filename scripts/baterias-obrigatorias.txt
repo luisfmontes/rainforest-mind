@@ -45,3 +45,8 @@ scripts/testa-rodar-gate.sh
 # Publicar e merge no fechar (fluxo 2026-10-13-fechar-push-merge)
 hooks/testa-gate-merge-auto.sh
 scripts/testa-publicar-branch.sh
+
+# Camadas, retomada e painel do executar (fluxo 2026-10-13-executar-dag-painel)
+scripts/testa-camadas.sh
+scripts/testa-estado-retomar.sh
+scripts/testa-painel-fluxo.sh

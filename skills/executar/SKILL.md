@@ -40,10 +40,10 @@ Ao fechar, os agentes despachados vão no `--json`: `"territorio":{"agentes":[{"
 
 ## O paralelismo é o ponto
 
-O plano marca quais tarefas são independentes entre si; essas vão **em
-paralelo**, o resto serial. Antes de despachar, leia as regras **10, 11 e
-12** em `skills/rainforest-mind/references/regra-<n>.md` (leia os arquivos
-se precisar do detalhe) e os sete agentes em `agents/` — `executor`,
+As camadas do `depende de:` dizem o que vai **em paralelo** — despacho,
+trailer, retomada e painel em `references/camadas-e-retomada.md`. Antes
+de despachar, leia as regras **10, 11 e 12** em
+`skills/rainforest-mind/references/regra-<n>.md` e os sete agentes em `agents/` — `executor`,
 `revisor`, `tester`, `planejador`, `depurador`, `resolvedor-de-build`,
 `documentador`. A escolha do agente é por **função**, nunca por domínio.
 
@@ -51,8 +51,8 @@ se precisar do detalhe) e os sete agentes em `agents/` — `executor`,
 chamada de `Agent` por resposta, esperando a volta antes da próxima, é
 serial — mesmo que as tasks fossem independentes no plano. Tarefa com
 ordem entre si (a segunda lê o resultado da primeira) vai serial de
-propósito; tarefa sem ordem que sai uma chamada por resposta é
-paralelismo desperdiçado, não cautela.
+propósito; sem ordem, uma chamada por resposta é paralelismo
+desperdiçado.
 
 ## Todo agente que edita roda isolado
 

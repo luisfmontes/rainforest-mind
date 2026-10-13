@@ -10,6 +10,18 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.65.0 — 2026-10-13
+
+- **O `executar` calcula as camadas do `depende de:`.** `conferir-fluxo.cjs camadas` monta a ordem de despacho e recusa
+  ciclo, dependência inexistente e duas tarefas da mesma camada com arquivo em comum. O `paralela:` deixou de ser exigido;
+  plano antigo que ainda o traz passa com aviso. Enxerto do `plan_state.mjs` do wildz-data (Rafael Siqueira).
+- **Retomar um `executar` pela metade é um comando.** Cada tarefa integrada leva o trailer
+  `Rainforest-Tarefa: <slug>#<n>` no commit, e `estado.cjs retomar` lê o git para dizer o que re-marcar, o que
+  redespachar e qual camada vem agora. O JSON de estado não prova integração; o trailer prova.
+- **Painel HTML do fluxo.** Cada `marcar` de executar, revisar e verificar regenera
+  `<dados>/fluxos/<slug>/painel.html`, com o estado de cada tarefa e se o fluxo parou. Gerar à mão:
+  `painel-fluxo.cjs gerar --slug <slug>`.
+
 ## 1.64.0 — 2026-10-13
 
 - **O `fechar` publica por script, com conferência antes e depois.** `scripts/publicar-branch.cjs publicar` roda

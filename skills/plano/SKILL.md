@@ -38,7 +38,6 @@ Design: <caminho do design>
 atende: D1, D2
 arquivos: `<padrão ou caminho>`
 depende de: nenhuma
-paralela: sim
 mutacao:
   arquivo: `<arquivo onde a mutação entra>`
   de: <o padrão exato a inverter>
@@ -51,13 +50,12 @@ pronto quando: com `<entrada real do sistema>`, `<efeito verificável>` — prov
 atende: D3
 arquivos: `<padrão ou caminho>`
 depende de: 1
-paralela: nao
 mutacao: n/a
   motivo: <por que esta tarefa não tem comportamento a inverter>
 pronto quando: com `<entrada real do sistema>`, `<efeito verificável>` — provado por `<comando exato>` devolvendo `<saída esperada>`
 ```
 
-Cada tarefa leva: **tipo**, `atende:` (lista de `D<n>` do design que esta tarefa realiza), `arquivos:` (caminhos ou globs que ela pode tocar), `depende de:` (números das tarefas antecessoras ou "nenhuma"), `paralela: sim|nao` (só "sim" quando `depende de: nenhuma`), `mutacao:` (o alvo da validação por mutação, abaixo) e critério de pronto **falsificável** — comando e saída esperada, nunca "funcionar bem" ou "funcionar corretamente", e nunca "a bateria sai 0" (ver abaixo: o critério nomeia a entrada real do sistema, não o instrumento).
+Cada tarefa leva: **tipo**, `atende:` (lista de `D<n>` do design que esta tarefa realiza), `arquivos:` (caminhos ou globs que ela pode tocar), `depende de:` (números das tarefas antecessoras ou "nenhuma"; as camadas de paralelo saem daqui), `mutacao:` (o alvo da validação por mutação, abaixo) e critério de pronto **falsificável** — comando e saída esperada, nunca "funcionar bem" ou "funcionar corretamente", e nunca "a bateria sai 0" (ver abaixo: o critério nomeia a entrada real do sistema, não o instrumento).
 
 ### Campos obrigatórios: `atende:` e `arquivos:`
 
