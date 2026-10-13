@@ -1,0 +1,35 @@
+{
+  "slug": "2026-10-13-jornada-presenca-humana",
+  "titulo": "Jornada: prompt de máquina não conta como presença humana (#485)",
+  "criado_em": "2026-10-13",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-13-jornada-presenca-humana.md",
+    "em": "2026-10-13"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-13-jornada-presenca-humana.md",
+    "tarefas": 3,
+    "paralelas": [
+      1
+    ],
+    "em": "2026-10-13"
+  },
+  "executar": {
+    "status": "pendente",
+    "catraca_mutacao": "2026-10-13"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
