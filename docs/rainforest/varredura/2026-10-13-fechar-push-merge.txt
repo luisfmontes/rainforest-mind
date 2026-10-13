@@ -1,0 +1,96 @@
+Data: 2026-10-13
+Termos: merge-tree, auto-merge, MERGED, checks --watch, @{u}, pr create
+
+$ gh issue list --state all --search "merge-tree" --limit 200 --json number,title,state
+[{"number":399,"state":"CLOSED","title":"limpar e leitor de estado tratam o inventário como retrato do presente"},{"number":173,"state":"CLOSED","title":"O gate de publicacao barra merge de conteudo que ja esta na main — e engole o git add da mesma chamada"},{"number":165,"state":"CLOSED","title":"O gate de publicacao e cego para escrita mediada por Bash — node, sed e heredoc passam"},{"number":193,"state":"CLOSED","title":"Duas sessoes bumparam a MESMA versao e o testa-versao nao pode pegar: falta checagem externa (tag e cache)"},{"number":82,"state":"CLOSED","title":"limpar-branches classifica toda branch de PR squashed como 'trabalho vivo' — e squash e a convencao da main"},{"number":38,"state":"CLOSED","title":"CORRIGE #25: a saida prescrita (branch nova) e o que derruba a outra sessao em diretorio compartilhado"},{"number":4,"state":"CLOSED","title":"Worktree de agente nasce na base velha em pelo menos 2 de 8 despachos, e conferir-entrega.cjs nao ve arquivo autoexcluido por gitignore"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"},{"number":21,"state":"CLOSED","title":"Criterio 'a bateria sai 0' e satisfazivel por fora, e tres instrumentos de conferencia falharam junto"}]
+
+
+$ gh issue list --state all --search "auto-merge" --limit 200 --json number,title,state
+[{"number":275,"state":"CLOSED","title":"gate-verificador-staged barra merge por conteudo que ja esta na main"},{"number":278,"state":"CLOSED","title":"gate-verificador-staged barra merge por arquivo que ja passou na main"},{"number":331,"state":"CLOSED","title":"Skill vigiar: acompanhar conversa de WhatsApp sem gastar token esperando (integração opcional)"},{"number":4,"state":"CLOSED","title":"Worktree de agente nasce na base velha em pelo menos 2 de 8 despachos, e conferir-entrega.cjs nao ve arquivo autoexcluido por gitignore"},{"number":21,"state":"CLOSED","title":"Criterio 'a bateria sai 0' e satisfazivel por fora, e tres instrumentos de conferencia falharam junto"}]
+
+
+$ gh issue list --state all --search "MERGED" --limit 200 --json number,title,state
+[{"number":466,"state":"OPEN","title":"Painel de PR e plugins-em-dia: achados menores da revisao do PR #464"},{"number":14,"state":"CLOSED","title":"limpar-branches.cjs da branch de PR mergeado por squash: classificada 'viva', nunca limpa"},{"number":243,"state":"CLOSED","title":"foco-session-start.cjs leva 6-8 s nesta maquina e estoura o timeout 5 do hooks.json: testa-memoria-somente-leitura fica vermelha e nada diz que foi timeout"},{"number":241,"state":"CLOSED","title":"Decisao pendente: a portaria vale so neste repo, mas a regra 10 promete portao em toda sessao"}]
+
+
+$ gh issue list --state all --search "checks --watch" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "@{u}" --limit 200 --json number,title,state
+[{"number":388,"state":"CLOSED","title":"faixa do mod: semControle deixa passar LRM/RLM, ALM e separadores de linha"},{"number":408,"state":"CLOSED","title":"memória: legenda e bloco exibem a data UTC da observação — depois das 21h (UTC-3) aparece o dia seguinte"},{"number":446,"state":"CLOSED","title":"Bateria grava user.email t@t no .git/config do repositorio real"},{"number":249,"state":"CLOSED","title":"O laco das 114 baterias so existe no YAML da CI: nao ha varredura local, e o verificar mede a ferramenta em vez do teste dela"},{"number":173,"state":"CLOSED","title":"O gate de publicacao barra merge de conteudo que ja esta na main — e engole o git add da mesma chamada"},{"number":216,"state":"CLOSED","title":"1.252 sandboxes orfas no temp: rm -rf no fim do bloco nao sobrevive a saida antecipada, e so o primeiro mktemp tem trap"},{"number":192,"state":"CLOSED","title":"Proibir background no briefing falhou duas vezes, com a proibicao escrita duas vezes no mesmo texto — falta checar a FORMA do retorno"},{"number":344,"state":"CLOSED","title":"gate-fechar-issue: --body-file com caminho MSYS (/c/...) vira ilegivel"},{"number":339,"state":"CLOSED","title":"Tres contrabarras dentro das aspas duplas do wrapper ainda escondem o comando (residuo da #313)"},{"number":258,"state":"CLOSED","title":"gate-staging-total: bloqueia texto que cita comando git, e resolve o repo errado com -C"}]
+
+
+$ gh issue list --state all --search "pr create" --limit 200 --json number,title,state
+[{"number":407,"state":"CLOSED","title":"gate-fechar-issue barra --body-file criado por heredoc no mesmo comando"},{"number":344,"state":"CLOSED","title":"gate-fechar-issue: --body-file com caminho MSYS (/c/...) vira ilegivel"},{"number":339,"state":"CLOSED","title":"Tres contrabarras dentro das aspas duplas do wrapper ainda escondem o comando (residuo da #313)"},{"number":174,"state":"CLOSED","title":"Nada barra \"Fecha #N\" no corpo do PR — a regra está escrita há 10 dias e o erro repetiu"},{"number":350,"state":"CLOSED","title":"gate-worktree ignora git -C <outro-repo> e barra switch num clone descartavel como se fosse o checkout da sessao"},{"number":239,"state":"CLOSED","title":"gate-fechar-issue bloqueia heredoc cujo texto fecha frase com parentese: \").\" e lido como subshell + source"},{"number":269,"state":"CLOSED","title":"gate-fechar-issue dita '--saida <saida-ou-arquivo>', e --saida cola o caminho como se fosse a saida"},{"number":346,"state":"CLOSED","title":"gate-bateria-sem-timeout: stdbuf --output L (opcao longa com espaco) escapa"},{"number":258,"state":"CLOSED","title":"gate-staging-total: bloqueia texto que cita comando git, e resolve o repo errado com -C"}]
+
+
+$ gh pr list --state all --search "merge-tree" --limit 200 --json number,title,state
+[{"number":463,"state":"MERGED","title":"Varredura limpa GIT_* e acusa bateria que muda user.* (#446)"},{"number":267,"state":"MERGED","title":"portaria: deixa de admitir agente e passa a registrar (ver #264)"},{"number":234,"state":"MERGED","title":"Absorver de um plugin de terceiro o que vira trava: mensagem de commit, --confirmo, exit 69, duplicação, carimbos"},{"number":186,"state":"MERGED","title":"R1 (frente 2) + R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao"},{"number":6,"state":"MERGED","title":"Nasce o /divergir, e o CRLF para de custar byte na injecao"}]
+
+
+$ gh pr list --state all --search "auto-merge" --limit 200 --json number,title,state
+[{"number":284,"state":"MERGED","title":"Main volta ao verde: mutante do importar leva o achar-claude"},{"number":489,"state":"MERGED","title":"Veredito do revisor lido tambem do SubagentHandback (#465)"},{"number":234,"state":"MERGED","title":"Absorver de um plugin de terceiro o que vira trava: mensagem de commit, --confirmo, exit 69, duplicação, carimbos"},{"number":267,"state":"MERGED","title":"portaria: deixa de admitir agente e passa a registrar (ver #264)"}]
+
+
+$ gh pr list --state all --search "MERGED" --limit 200 --json number,title,state
+[{"number":481,"state":"MERGED","title":"Versao 1.58.0: compactar a 60%, linha do PR na barra, node absoluto"},{"number":15,"state":"MERGED","title":"A limpeza que nao limpava: squash com remoto vivo, --base <ref>, e um nome de branch que virava comando"},{"number":247,"state":"MERGED","title":"zerar-issues rodada 3: heredoc no gate de Issue e radar em 4 chamadas (1.13.2)"}]
+
+
+$ gh pr list --state all --search "checks --watch" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "@{u}" --limit 200 --json number,title,state
+[{"number":390,"state":"MERGED","title":"Relógio do mod: #386, #387, #388 e /clear (1.39.1)"},{"number":463,"state":"MERGED","title":"Varredura limpa GIT_* e acusa bateria que muda user.* (#446)"},{"number":389,"state":"MERGED","title":"Versao 1.39.0: relogio do mod acende jornada e janela parada"},{"number":245,"state":"MERGED","title":"Versao 1.12.1: gate de staging le argumento citado e -- encerra opcoes"},{"number":274,"state":"MERGED","title":"Titulo da sessao marca se o fluxo fechou ou onde parou"},{"number":64,"state":"MERGED","title":"Desfaz a corrupcao de encoding do README (entrou na #55)"},{"number":109,"state":"MERGED","title":"Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler"}]
+
+
+$ gh pr list --state all --search "pr create" --limit 200 --json number,title,state
+[{"number":376,"state":"MERGED","title":"Versao 1.35.2: recusa do gate de PR nomeia o marcador de evidencia"},{"number":418,"state":"MERGED","title":"Abertura inteira na conta de trabalho via session.append"}]
+
+
+$ git ls-remote --heads origin | grep -F "merge-tree"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "auto-merge"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "MERGED"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "checks --watch"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "@{u}"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "pr create"
+(vazio)
+
+$ git log --all --grep="merge-tree" --oneline
+(vazio)
+
+$ git log --all --grep="auto-merge" --oneline
+f01e01b3 merge: traz origin/main (#271, #267, #274) antes do revisar
+
+$ git log --all --grep="MERGED" --oneline
+(vazio)
+
+$ git log --all --grep="checks --watch" --oneline
+(vazio)
+
+$ git log --all --grep="@{u}" --oneline
+(vazio)
+
+$ git log --all --grep="pr create" --oneline
+1f5007f0 Mods: painel de PR e plugins-em-dia (1.55.0) (#464)
+49e24ae1 Versao 1.35.2: recusa do gate de PR nomeia o marcador de evidencia
+e0043f71 gate-fechar-issue: exemplo da mensagem de variavel sem linha gh
+93ceca0e Gate de Issue: so o corpo do heredoc e dado; o resto da linha e comando
+2494e055 Lote 3 rodada 17: gh pr edit e gatilho; gh pr merge le a descricao real do PR via pr view
+8fad4fa2 Lote 3 T13: Corrigir stub gh para usar Node.js e converter cwd para Windows
+24c0286c Lote 3 T13: Hook barra `gh issue close` e `gh pr create/merge` sem evidência
+
+$ cat <dados>/ideias.jsonl
+(vazio)
+
