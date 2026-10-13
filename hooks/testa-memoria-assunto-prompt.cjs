@@ -16,6 +16,15 @@ const { formatarObservacao } = require('./lib/memoria-sessao.cjs');
 const { slugDoCaminho } = require(path.join(__dirname, '..', 'scripts', 'lib', 'projeto-canonico.cjs'));
 
 const HOOK = path.join(__dirname, 'memoria-assunto-prompt.cjs');
+// Teto da primeira chamada = timeout do proprio hook, lido do hooks.json do repo (em ms).
+// Timeout ausente ou nao finito/positivo devolve null e o caso falha.
+function tetoHookMs() {
+  const h = JSON.parse(fs.readFileSync(path.join(__dirname, 'hooks.json'), 'utf8'));
+  const e = h.hooks.UserPromptSubmit.flatMap((x) => x.hooks)
+    .find((x) => typeof x.command === 'string' && x.command.includes('memoria-assunto-prompt.cjs'));
+  const t = e && e.timeout;
+  return typeof t === 'number' && Number.isFinite(t) && t > 0 ? t * 1000 : null;
+}
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'testa-memoria-assunto-prompt-'));
 const raiz = path.join(tmp, 'raiz');
 const cwdSessao = path.join(tmp, 'projeto-teste');
@@ -139,6 +148,7 @@ caso('pedido sem acerto grava o arquivo da sessao e o segundo nao rele o transcr
   if (fs.statSync(grande).size < 40 * 1000 * 1000) return false;
   const arq = path.join(raiz, 'memoria-assunto', 'sessao-m.json');
   const semAcerto = { session_id: 'sessao-m', transcript_path: grande, prompt: 'qual a previsao do tempo amanha cedo' };
+  const teto1 = tetoHookMs();
   const t1 = Date.now();
   const r1 = rodar(payload(semAcerto));
   const d1 = Date.now() - t1;
@@ -146,11 +156,11 @@ caso('pedido sem acerto grava o arquivo da sessao e o segundo nao rele o transcr
   const t2 = Date.now();
   const r2 = rodar(payload(semAcerto));
   const d2 = Date.now() - t2;
-  console.log('  tempos (ms): 1a=' + d1 + ' 2a=' + d2);
+  console.log('  tempos (ms): 1a=' + d1 + ' 2a=' + d2 + ' teto1a=' + teto1);
   const ids = existeApos1 ? JSON.parse(fs.readFileSync(arq, 'utf8')) : [];
   const r3 = rodar(payload({ session_id: 'sessao-m', transcript_path: grande }));
   const linhas3 = linhasDe(contexto(r3.saida));
-  return vazioSaiu0(r1) && vazioSaiu0(r2) && d1 < 1500 && d2 < 1500 && existeApos1 &&
+  return vazioSaiu0(r1) && vazioSaiu0(r2) && teto1 !== null && d1 < teto1 && d2 < 1500 && existeApos1 &&
     ids.includes(alvos.Alfa) && linhas3.length === 3 && !linhas3.includes(servida);
 });
 caso('pedido que comeca por barra nao injeta', () => vazioSaiu0(rodar(payload({ session_id: 'sessao-e', prompt: '/zarquon flibbertigibbet quasar reconciliacao' }))));

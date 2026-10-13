@@ -114,8 +114,9 @@ function memoriaDoPedido(entrada, prompt, sessao, raiz, cwd) {
       // Primeiro pedido da sessao: semeia com o que a abertura ja serviu (transcrito).
       servidos = new Set();
       const apelidos = { [canonico]: projeto };
+      const cache = new Map();
       for (const linha of lerServidasDoInicio(String(entrada.transcript_path || ''))) {
-        const alvo = acharAlvo(conexao, linha, apelidos);
+        const alvo = acharAlvo(conexao, linha, apelidos, cache);
         if (alvo && alvo.origem === 'observacao') servidos.add(alvo.id);
       }
       // A semeadura roda uma vez por sessao: grava ja, com ou sem acerto, para o proximo

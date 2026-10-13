@@ -1,0 +1,100 @@
+{
+  "slug": "2026-10-13-timeout-memoria-assunto",
+  "titulo": "memoria-assunto-prompt dentro do timeout (#509)",
+  "criado_em": "2026-10-13",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-13-timeout-memoria-assunto.md",
+    "em": "2026-10-13"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-13-timeout-memoria-assunto.md",
+    "tarefas": 3,
+    "paralelas": [
+      1,
+      2
+    ],
+    "em": "2026-10-13"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-13",
+    "tarefas_ok": 3,
+    "tarefas": 3,
+    "em_voo": [],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "27d2816d",
+        "iteracao": 1,
+        "sessao": "89a983bb-5cf1-4bca-99b5-92a4440d1637",
+        "ts": "2026-10-13T20:20:06.325Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "27d2816d",
+        "iteracao": 1,
+        "sessao": "89a983bb-5cf1-4bca-99b5-92a4440d1637",
+        "ts": "2026-10-13T20:20:06.325Z"
+      }
+    ],
+    "em": "2026-10-13",
+    "comando": "node scripts/testa-utilidade-cache.cjs && node hooks/testa-memoria-assunto-prompt.cjs",
+    "saida": "4 ok, 0 falha(s); 14 ok, 0 falha(s) tempos 1a=689 teto1a=10000; medicao 1o pedido base 2080 1737 1425 1627 2083 -> novo 333 293 633 322 645 ms",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade-cache.cjs, caso 14 linhas do mesmo dia com cache fazem no maximo 3 consultas LIKE em observacoes"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "limite de tempo; falsificacao feita trocando timeout para 0.001 e vendo o caso em FALHA (exit 1)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "versao e changelog, sem comportamento"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "dd73f1d43cfcda2e36254b9480e9007a948cf105",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a8713480934f75666",
+        "veredito": "ok",
+        "em": "2026-10-13",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/89a983bb-5cf1-4bca-99b5-92a4440d1637/subagents/agent-a8713480934f75666.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-13",
+    "achados": 1,
+    "base": "5ebeb3e520ae701a3282422938b389a04b091d7f",
+    "head": "dd73f1d43cfcda2e36254b9480e9007a948cf105",
+    "nao_bloqueantes": [
+      "testa-utilidade-cache.cjs sem titulo >300: chave de memo sem maxTexto passaria verde — consertado no mesmo PR"
+    ]
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-13-timeout-memoria-assunto; node scripts/testa-utilidade-cache.cjs; node hooks/testa-memoria-assunto-prompt.cjs; node scripts/conferir-versao.cjs",
+    "saida": "tarefa 1: vermelho, 2 e 3 puladas n/a; 4 ok, 0 falha(s); 14 ok, 0 falha(s) teto1a=10000 (com timeout 0.001: 13 ok, 1 falha, exit 1); hooks.json 10 true; versao 1.64.1 exit 0; medicao 1o pedido mediana 1737 -> 333 ms",
+    "sensor_externo": "node scripts/testa-utilidade-cache.cjs",
+    "em": "2026-10-13"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
