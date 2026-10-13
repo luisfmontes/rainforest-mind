@@ -86,27 +86,31 @@
     "reaberturas": 2
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "1eaf4bb08bfddea029e269d8abebfa36cbfc0d52",
+      "head": "6d201b44d414fd837ff64d48e37752f53fd31892",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ad469933f88fb06d4",
-        "veredito": "reprovado",
+        "agente_id": "acdc7c3edfeac4262",
+        "veredito": "ok",
         "em": "2026-10-13",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/4224a79a-6d1d-4488-8ee0-c5ec5c25d3b1/subagents/agent-ad469933f88fb06d4.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/4224a79a-6d1d-4488-8ee0-c5ec5c25d3b1/subagents/agent-acdc7c3edfeac4262.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-13",
-    "achados": 2,
-    "tentativas": 2
+    "achados": 0,
+    "base": "5ebeb3e520ae701a3282422938b389a04b091d7f",
+    "head": "6d201b44d414fd837ff64d48e37752f53fd31892"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-camadas.sh; bash scripts/testa-conferir-fluxo.sh; bash scripts/testa-estado-retomar.sh; bash scripts/testa-estado.sh; bash scripts/testa-painel-fluxo.sh; bash scripts/testa-versao.sh; bash scripts/testa-teto-skills.sh; bash scripts/testa-plugin-codex.sh; bash scripts/testa-varrer-baterias.sh; node scripts/orcamento.cjs; node scripts/conferir-fluxo.cjs mutacoes",
+    "saida": "camadas ok 22 falhou 0; conferir-fluxo ok 105 falhou 0; estado-retomar ok 39 falhou 0; estado 324 ok 0 falhas; painel ok 34 falhou 0; versao ok 5; teto-skills 21 OK 0 FALHA; plugin-codex exit 0; varrer-baterias TODOS OS TESTES PASSARAM; orcamento exit 0; mutacoes tarefa 1-3 vermelho, 4 pulada (n/a)",
+    "em": "2026-10-13"
   },
   "fechar": {
     "status": "pendente"
