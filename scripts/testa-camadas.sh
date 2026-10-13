@@ -157,7 +157,10 @@ editar 2 paralela nao
 esperar "cobertura: arquivo em comum com paralela: nao declarado vira aviso e passa" 0 'ok: cobertura' 'aviso: tarefa 1 e tarefa 2 .*compartilham arquivos: hooks/lib/config.cjs' cobertura
 
 caixa "$PLANO_GATE" "$DESIGN_GATE"
-esperar "cobertura aceita o gate-de-sessao com aviso de conflito declarado" 0 'ok: cobertura' 'aviso: tarefa [0-9]+' cobertura
+# Tarefas 3 e 8 do plano de 2026-08-21 sao as duas `paralela: sim` e declaram
+# scripts/conferir-mutacao.cjs: a base (5ebeb3e5) ja recusava; `paralela: sim`
+# com arquivo em comum continua recusa, so `paralela: nao` vira aviso.
+esperar "cobertura recusa o gate-de-sessao: duas paralela: sim com arquivo em comum" 2 - 'tarefa 3 e tarefa 8 .*compartilham arquivos: scripts/conferir-mutacao.cjs' cobertura
 
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"

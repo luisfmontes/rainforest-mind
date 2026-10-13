@@ -8,11 +8,11 @@
  * compartilhado na mesma camada mora aqui, para a `cobertura` e o
  * `conferir-fluxo camadas` lerem a mesma conta.
  *
- * Entrada: [{numero, dependeDe: number[], arquivos: string[], paralelaDeclarada?: boolean}]
+ * Entrada: [{numero, dependeDe: number[], arquivos: string[], paralelaDeclarada?: boolean (true = `paralela: nao` explícito)}]
  * Saída: {camadas: number[][], conflitos: [{camada, a, b, arquivo}],
  *         recusas: [...], avisos: [...]}
  * `conflitos` lista todo arquivo em comum na mesma camada. `recusas` são os que
- * nenhuma das duas tarefas declara `paralela:`; `avisos`, os que alguma declara
+ * nenhuma das duas tarefas traz `paralela: nao` explícito; `avisos`, os que alguma traz
  * (emenda D2 de 2026-10-13: plano antigo serializado por `paralela: nao` passa com aviso).
  * Ciclo e dependência inexistente lançam ErroCamadas, nomeando as tarefas.
  */

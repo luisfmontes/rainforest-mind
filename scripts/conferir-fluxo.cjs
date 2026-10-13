@@ -523,13 +523,13 @@ function extrairTarefas(conteudo) {
       }
 
       // Procura campo paralela:
-      // paralelaDeclarada: a linha existe, qualquer valor (D2 emendado: conflito com ela vira aviso).
+      // paralelaDeclarada: `paralela: nao` explícito, a forma legada de serializar (D2 emendado: conflito com ela vira aviso; `paralela: sim` com conflito continua recusa).
       let paralela = 'nao';
       let paralelaDeclarada = false;
       for (let k = 0; k < corpo.length; k++) {
         if (!corpo_cerca[k] && corpo[k].startsWith('paralela:')) {
           paralela = corpo[k].substring('paralela:'.length).trim().toLowerCase();
-          paralelaDeclarada = true;
+          paralelaDeclarada = paralela === 'nao';
           break;
         }
       }
