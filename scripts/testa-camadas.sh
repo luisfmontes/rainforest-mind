@@ -91,6 +91,21 @@ esperar "1 e 2 sem dependencia, 3 depende das duas: [[1,2],[3]]" 0 '"camadas":\[
 caixa "$PLANO_FECHAR" "$DESIGN_FECHAR"
 esperar "dependencia so em 1: [[1],[2],[3]]" 0 '"camadas":\[\[1\],\[2\],\[3\]\]' - camadas
 
+echo "== camadas: leitura do depende de:"
+# Prosa depois de `nenhuma` nao vira dependencia (plano 2026-09-08-validar-ponte-codex-ao-vivo:
+# "nenhuma (roda quando a cota voltar, 17:41 de 2026-09-08)" era lido como tarefas 17, 41...).
+caixa "$PLANO_FECHAR" "$DESIGN_FECHAR"
+editar 2 "depende de" "nenhuma (roda quando a cota voltar, 17:41 de 2026-09-08)"
+editar 2 arquivos '`hooks/testa-camadas-b.sh`'
+esperar "nenhuma seguida de prosa com data e hora: [[1,2],[3]]" 0 '"camadas":\[\[1,2\],\[3\]\]' - camadas
+
+caixa "$PLANO_FECHAR" "$DESIGN_FECHAR"
+editar 3 "depende de" "1, 2 (a 2 precisa do gate pronto em 2026-09-08)"
+esperar "lista seguida de prosa entre parenteses: so 1 e 2 contam" 0 '"camadas":\[\[1\],\[2\],\[3\]\]' - camadas
+
+LIBCAMADAS="$(cygpath -m "$RAIZ/scripts/lib/camadas.cjs" 2>/dev/null || printf '%s' "$RAIZ/scripts/lib/camadas.cjs")"
+esperar "intervalo 1-4 vale 1, 2, 3 e 4" 0 '^\[1,2,3,4\]$' - node -e 'console.log(JSON.stringify(require(process.argv[1]).parseDependencias("1-4")))' "$LIBCAMADAS"
+
 echo "== camadas: recusas"
 # ciclo 1->2->1 recusa nomeando as duas
 caixa "$PLANO_FECHAR" "$DESIGN_FECHAR"

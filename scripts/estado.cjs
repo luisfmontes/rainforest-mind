@@ -1801,12 +1801,11 @@ function tarefasComTrailer(slug) {
   const mb = spawnSync(caminhoExecutavel('git'), ['merge-base', 'HEAD', `origin/${padrao}`], {
     cwd: RAIZ, encoding: 'utf8', stdio: 'pipe',
   });
-  if (mb.status !== 0) {
-    throw new Error(`RECUSADO: sem base para ler o trailer (git merge-base HEAD origin/${padrao} falhou).`);
-  }
-  const base = mb.stdout.trim();
+  // Sem `origin/<padrão>` (repo só local), lê o histórico inteiro do HEAD: o trailer
+  // carrega o slug, então commit de outro fluxo continua não contando.
+  const intervalo = mb.status === 0 ? `${mb.stdout.trim()}..HEAD` : 'HEAD';
   const log = execFileSync(caminhoExecutavel('git'), [
-    'log', `${base}..HEAD`, '--format=%(trailers:key=Rainforest-Tarefa,valueonly)',
+    'log', intervalo, '--format=%(trailers:key=Rainforest-Tarefa,valueonly)',
   ], { cwd: RAIZ, encoding: 'utf8' });
   const nums = new Set();
   for (const linha of log.split('\n')) {
@@ -1872,9 +1871,13 @@ function calcularRetomada(slug) {
 
   const reMarcar = [];
   const redespachar = [];
+  // Contada no JSON sem commit com trailer: o estado afirma uma integração que o git não
+  // tem (D4). Não vira `integrada`; sai listada para a sessão olhar.
+  const semTrailer = [];
   for (const n of numeros) {
     if (comTrailer.has(n) && !contadas.has(n)) reMarcar.push(n);
     if (!comTrailer.has(n) && emVooNums.has(n)) redespachar.push(n);
+    if (!comTrailer.has(n) && contadas.has(n)) semTrailer.push(n);
   }
 
   const estadoDe = (n) => (comTrailer.has(n) ? 'integrada' : emVooNums.has(n) ? 'em_voo' : 'pendente');
@@ -1891,6 +1894,7 @@ function calcularRetomada(slug) {
     tarefas: numeros.map((n) => ({ numero: n, estado: estadoDe(n), camada: camadaDe.get(n) })),
     re_marcar: reMarcar,
     redespachar,
+    contadas_sem_trailer: semTrailer,
     proxima_camada: proxima,
   };
 }
@@ -1930,6 +1934,9 @@ function modeloDoPainel(slug) {
     .filter((e) => estado[e] && (estado[e].status === 'reprovado' || estado[e].status === 'flaky'))
     .map((e) => ({ estagio: e, status: estado[e].status }));
   const revisar = estado.revisar || {};
+  // Iteração do laço por tarefa (D6): o carimbo mais recente de cada uma. Sem carimbo, não há número.
+  const iteracoes = new Map(carimbosMaisRecentes(Array.isArray((estado.executar || {}).carimbos)
+    ? estado.executar.carimbos : []).map((c) => [c.tarefa, c.iteracao]));
   return {
     slug,
     titulo: estado.titulo || slug,
@@ -1944,6 +1951,7 @@ function modeloDoPainel(slug) {
       camada: t.camada,
       estado: t.estado,
       agente: emVoo.get(t.numero) || null,
+      iteracao: Number.isInteger(iteracoes.get(t.numero)) ? iteracoes.get(t.numero) : null,
     })),
     re_marcar: ret.re_marcar,
     proxima_camada: ret.proxima_camada,

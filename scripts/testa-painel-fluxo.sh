@@ -142,6 +142,13 @@ tem "resumo: estagio atual" '<dd>executar</dd>' "$P"
 tem "resumo: data do ultimo marcar" "<dd>$(date +%Y-%m-%d)</dd>" "$P"
 tem "resumo: fluxo em andamento" '<dd>em andamento</dd>' "$P"
 tem "resumo: veredito de revisar ainda nao" '<dd>ainda não</dd>' "$P"
+# Iteracao do laco (D6): dois carimbos da tarefa 1 = iteracao 2 no cartao dela.
+BASE1="$(git -C "$CX" rev-parse HEAD~1)"
+for _ in 1 2; do
+  $E marcar --slug "$SLUG" --estagio executar --status parcial --json "{\"carimbos\":[{\"tarefa\":1,\"hash_base\":\"$BASE1\"}]}" >/dev/null 2>&1 \
+    || { echo "FALHA preparo: carimbo"; falhou=$((falhou+1)); }
+done
+tem "cartao da tarefa 1 traz a iteracao do laco" 'camada 1 · iteração 2</span>' "$P"
 
 echo "== titulo com <script> sai escapado =="
 caixa_nova

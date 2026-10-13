@@ -121,3 +121,10 @@ Emenda (executar, tarefa 1, 2026-10-13): conflito de arquivo na mesma camada em 
 Emenda (executar, tarefa 2, 2026-10-13): `scripts/testa-estado.sh` entra na tarefa 2 — a caixa dela passa a copiar `scripts/lib/camadas.cjs`, que o `conferir-fluxo.cjs` importa desde a tarefa 1 (sem a cópia, 15 casos caíam com o `marcar plano ok` falhando). A tarefa 1 só rodou `testa-conferir-fluxo.sh`; a regressão apareceu aqui.
 
 Emenda (executar, tarefa 4, 2026-10-13): `skills/plano/references/recusas-da-cobertura.md` entra na tarefa 4. Ela listava a recusa antiga ("`paralela: sim` com `depende de`" e "duas tarefas paralelas"), que deixou de valer com a tarefa 1; agora lista ciclo, dependência inexistente e conflito por camada.
+
+Emenda (revisar, volta 1, 2026-10-13): seis achados corrigidos na branch.
+- O `depende de:` passa a ler só a lista do começo. `nenhuma` seguida de prosa vale vazio, e `a-b` é intervalo (tarefa 1). O plano `2026-09-08-validar-ponte-codex-ao-vivo` voltou a passar na cobertura.
+- O `retomar` devolve `contadas_sem_trailer` e, sem `origin/<padrão>`, lê o trailer no histórico do HEAD (tarefa 2).
+- O cartão do painel traz a iteração do laço, pelo carimbo mais recente. O veredito fica no resumo, porque o `revisar` julga a branch, não a tarefa: D6 fica cumprido assim (tarefa 3).
+- A doc de `integradas` diz que o `ok` não o apaga (tarefa 4).
+- Critério acrescido: `testa-camadas.sh` cobre `nenhuma` com prosa, lista com parêntese e intervalo. `testa-estado-retomar.sh` cobre `proxima_camada` com tarefa não marcada, `em_voo` com trailer, `contadas_sem_trailer` e repo sem `origin`. `testa-painel-fluxo.sh` cobre a iteração no cartão.

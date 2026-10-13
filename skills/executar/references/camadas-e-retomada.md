@@ -31,7 +31,7 @@ Cada tarefa entra na branch do fluxo nesta ordem, e só nela:
 node scripts/estado.cjs marcar --slug <slug> --estagio executar --status parcial --json '{"tarefas_ok":N,"tarefas":M,"integradas":[<n>]}'
 ```
 
-`integradas` se funde com o que já estava lá e persiste até o `ok`, como `carimbos`.
+`integradas` se funde com o que já estava lá e persiste, como `carimbos`: o `ok` não o apaga.
 É o trailer que prova a integração, não o JSON: tarefa sem commit com trailer nunca
 conta como `integrada`, mesmo que apareça no estado.
 
@@ -47,14 +47,18 @@ de despachar qualquer coisa:
 node scripts/estado.cjs retomar --slug <slug>
 ```
 
-A saída é JSON: `tarefas` (`numero`, `estado`, `camada`), `re_marcar`, `redespachar`
-e `proxima_camada`. O `estado` de cada tarefa é `integrada`, `em_voo` ou `pendente`.
+A saída é JSON: `tarefas` (`numero`, `estado`, `camada`), `re_marcar`, `redespachar`,
+`contadas_sem_trailer` e `proxima_camada`. O trailer é lido em `<merge-base com origin/<padrão>>..HEAD`;
+sem esse remoto, no histórico inteiro do HEAD. O `estado` de cada tarefa é `integrada`, `em_voo` ou `pendente`.
 
 - `re_marcar`: o trailer já está na branch, mas o estado não contou. Rode o `marcar`
   com esses números em `integradas` e não despache de novo.
 - `redespachar`: a tarefa está em `em_voo`, mas não tem trailer. Despache do zero,
   com base nova. O worktree do agente anterior é sobra: confira-o pelo caminho antes
   de removê-lo.
+- `contadas_sem_trailer`: o estado conta a tarefa em `integradas`, mas não há commit
+  com o trailer. O JSON está errado, e a tarefa continua `pendente`: confira o `git log`
+  antes de despachar, porque o commit pode ter saído sem `--trailer`.
 - `proxima_camada`: as tarefas ainda não marcadas da primeira camada incompleta.
   Uma tarefa que também está em `re_marcar` só se marca, não se despacha. `null`
   quer dizer que tudo está integrado e marcado, e o `executar` pode fechar `ok`.
@@ -69,8 +73,8 @@ Cada `marcar` de `executar`, `revisar` e `verificar` regenera
 node scripts/painel-fluxo.cjs gerar --slug <slug>
 ```
 
-O comando imprime o caminho. O painel mostra um cartão por tarefa (estado, camada e o
-agente em voo) e um resumo: o que está em voo, o que falta, o estágio atual, o último
+O comando imprime o caminho. O painel mostra um cartão por tarefa (estado, camada, iteração
+do laço, pelo carimbo mais recente, e o agente em voo) e um resumo: o que está em voo, o que falta, o estágio atual, o último
 `marcar`, o veredito do `revisar` e se o fluxo parou. Se a geração falhar, sai um
 `aviso: painel` no stderr, e o exit do `marcar` não muda.
 

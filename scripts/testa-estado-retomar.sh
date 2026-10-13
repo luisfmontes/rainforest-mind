@@ -143,6 +143,15 @@ saida=$($RET 2>&1)
 igual "re_marcar [2]" "[2]" "$(echo "$saida" | J 'j.re_marcar')"
 igual "tarefa 2 integrada pelo git" "integrada" "$(echo "$saida" | J 'j.tarefas[1].estado')"
 igual "redespachar vazio" "[]" "$(echo "$saida" | J 'j.redespachar')"
+igual "proxima_camada [1,2]: a 2 ainda falta marcar" "[1,2]" "$(echo "$saida" | J 'j.proxima_camada')"
+
+echo "== em voo com trailer nao se redespacha =="
+caixa_nova
+esperado "marcar em_voo da tarefa 1 sai 0" 0 $E marcar --slug "$SLUG" --estagio executar --status parcial --json '{"em_voo":[{"tarefa":"1 primeira","agente":"a1"}]}'
+commit_tarefa "a.txt" "tarefa 1" "$SLUG#1"
+saida=$($RET 2>&1)
+igual "redespachar vazio" "[]" "$(echo "$saida" | J 'j.redespachar')"
+igual "re_marcar [1]" "[1]" "$(echo "$saida" | J 'j.re_marcar')"
 
 echo "== em voo sem trailer volta para redespachar =="
 caixa_nova
@@ -177,6 +186,17 @@ $E marcar --slug "$SLUG" --estagio executar --status parcial --json '{"integrada
 $E marcar --slug "$SLUG" --estagio executar --status parcial --json '{"integradas":[2]}' >/dev/null 2>&1 \
   || { echo "FALHA preparo: integradas [2]"; exit 1; }
 igual "integradas grava [1,2]" "[1,2]" "$(J 'j.executar.integradas' < "docs/rainforest/estado/$SLUG.json")"
+saida=$($RET 2>&1)
+igual "contadas sem trailer [1,2]" "[1,2]" "$(echo "$saida" | J 'j.contadas_sem_trailer')"
+igual "contada sem trailer segue pendente" "pendente,pendente,pendente" "$(echo "$saida" | J 'j.tarefas.map(t=>t.estado).join()')"
+
+echo "== sem origin, le o trailer do historico do HEAD =="
+caixa_nova
+git -C "$CX" remote remove origin
+commit_tarefa "a.txt" "tarefa 1" "$SLUG#1"
+saida=$($RET 2>&1); rc=$?
+igual "retomar sem origin sai 0" "0" "$rc"
+igual "tarefa 1 integrada sem origin" "integrada" "$(echo "$saida" | J 'j.tarefas[0].estado')"
 
 echo "== integradas invalido recusa e nao grava =="
 caixa_nova

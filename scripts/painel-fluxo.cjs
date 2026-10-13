@@ -66,8 +66,9 @@ function cartao(t) {
   const estado = ROTULO_ESTADO[t.estado] ? t.estado : 'pendente';
   const agente = t.estado === 'em_voo' && t.agente
     ? `<span class="agente">agente ${escapar(t.agente)}</span>` : '';
+  const iteracao = t.iteracao ? ` · iteração ${escapar(t.iteracao)}` : '';
   return `<article class="cartao">
-  <h2>Tarefa ${escapar(t.numero)} <span class="camada">camada ${escapar(t.camada)}</span></h2>
+  <h2>Tarefa ${escapar(t.numero)} <span class="camada">camada ${escapar(t.camada)}${iteracao}</span></h2>
   <p class="titulo">${escapar(t.titulo)}</p>
   <p><span class="chip ${estado}">${escapar(ROTULO_ESTADO[estado])}</span>${agente}</p>
 </article>`;

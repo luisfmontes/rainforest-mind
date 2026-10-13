@@ -26,16 +26,27 @@ class ErroCamadas extends Error {
 }
 
 /**
- * Lê o valor de `depende de:`. `nenhuma` (ou vazio) vira []; números separados
- * por vírgula ou espaço viram a lista. Texto sem número lança ErroCamadas.
+ * Lê o valor de `depende de:`. `nenhuma` (ou vazio) vira [], mesmo com prosa depois
+ * ("nenhuma (roda quando a cota voltar, 17:41)"). Senão vale só a lista do começo,
+ * antes de parêntese ou travessão: números separados por vírgula, espaço ou "e", e
+ * intervalo `a-b`. A prosa depois da lista não vira dependência: data e hora em
+ * comentário seriam lidas como tarefa. Lista sem número lança ErroCamadas.
  */
 function parseDependencias(texto) {
   const t = (texto || '').trim();
-  if (t === '' || /^nenhuma$/i.test(t)) return [];
-  if (!/\d/.test(t)) {
+  if (t === '' || /^nenhuma\b/i.test(t)) return [];
+  const lista = t.split(/[(—–]/)[0];
+  if (!/\d/.test(lista)) {
     throw new ErroCamadas(`depende de: "${t}" não lista tarefa nenhuma (use "nenhuma" ou números)`);
   }
-  return [...new Set((t.match(/\d+/g) || []).map((n) => parseInt(n, 10)))];
+  const nums = [];
+  for (const m of lista.matchAll(/(\d+)\s*-\s*(\d+)|(\d+)/g)) {
+    if (m[3]) { nums.push(parseInt(m[3], 10)); continue; }
+    const a = parseInt(m[1], 10);
+    const b = parseInt(m[2], 10);
+    for (let n = Math.min(a, b); n <= Math.max(a, b); n++) nums.push(n);
+  }
+  return [...new Set(nums)];
 }
 
 /** Uma cadeia de dependências que volta a si mesma, nomeada tarefa por tarefa. */
