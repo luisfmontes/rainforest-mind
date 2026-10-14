@@ -967,8 +967,15 @@ function cmdMutacoes() {
     process.exit(2);
   }
 
-  // Extrai tarefas
-  const tarefas = extrairTarefas(conteudo_plano);
+  // Extrai tarefas. `--tarefa N` mede só a tarefa N (a integração mede uma entrega
+  // por vez). Sem tarefa de número N, recusa: laço vazio sairia 0, o mesmo buraco
+  // do #281 descrito logo abaixo.
+  const soTarefa = arg('tarefa', false);
+  const tarefas = extrairTarefas(conteudo_plano).filter(t => !soTarefa || String(t.numero) === soTarefa);
+  if (soTarefa && tarefas.length === 0) {
+    console.error(`RECUSADO: o plano não tem a tarefa ${soTarefa}`);
+    process.exit(2);
+  }
 
   // Processa cada tarefa
   let algumSobreviveu = false;
