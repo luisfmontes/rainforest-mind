@@ -6,10 +6,16 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-14-gate-matar-por-nome.md",
+    "em": "2026-10-14"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-14-gate-matar-por-nome.md",
+    "tarefas": 2,
+    "paralelas": [],
+    "em": "2026-10-14"
   },
   "executar": {
     "status": "pendente"
