@@ -18,8 +18,35 @@
     "em": "2026-10-14"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-10-14"
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-14",
+    "tarefas_ok": 0,
+    "tarefas": 2,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "1 gate matar-por-nome (redespacho, base 4622144f)",
+        "desde": "2026-10-14T11:50:00-03:00",
+        "sessao": "bfd7468b-e589-43c6-9e09-04528a1dc829"
+      }
+    ],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "c1816afed5add4f343d24194e46a84fa58094fc4",
+        "iteracao": 1,
+        "sessao": "bfd7468b-e589-43c6-9e09-04528a1dc829",
+        "ts": "2026-10-14T14:27:21.489Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "4622144fbea04bac6edaf80171d1b37152fe9572",
+        "iteracao": 2,
+        "sessao": "bfd7468b-e589-43c6-9e09-04528a1dc829",
+        "ts": "2026-10-14T14:28:53.887Z"
+      }
+    ],
+    "em": "2026-10-14"
   },
   "revisar": {
     "status": "pendente"
