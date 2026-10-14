@@ -10,6 +10,17 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.67.0 — 2026-10-14
+
+- **Matar processo por nome passa a ser barrado, na janela e no subagente.** Um revisor rodou `taskkill /IM python.exe` em
+  2026-10-13, matou 3 processos que não eram dele e derrubou o MCP do WhatsApp. O gate `gate-matar-por-nome.cjs` nega
+  `taskkill /IM` e `/FI IMAGENAME`, `pkill`, `killall`, `Stop-Process -Name`, `Get-Process <nome> | Stop-Process` e `kill`
+  alimentado por `pgrep`/`pidof`, também quando vêm atrás de `bash -c`, `sudo`, `env` ou `pwsh -Command` (#517). Matar pelo
+  PID continua passando (`taskkill /PID`, `kill <pid>`, `Stop-Process -Id`). A mensagem de bloqueio ensina listar o processo,
+  conferir que é desta sessão e matar pelo PID. A saída é o toggle `matar-por-nome`; `RAINFOREST_GATE_OFF` desliga o gate só na
+  janela principal, nunca no subagente. Fica fora: matar por porta, `wmic`, `Invoke-CimMethod … Terminate` e matar de dentro de
+  script (`python -c`, `node -e`).
+
 ## 1.66.1 — 2026-10-14
 
 - **O painel de PR não manda fazer o que a sessão já fez.** O despertar da sessão (`prompt.submit`, 3 min depois de o PR
