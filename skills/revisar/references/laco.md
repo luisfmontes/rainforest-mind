@@ -1,5 +1,15 @@
 # Reprovado: o laço
 
+<!-- indice -->
+**Índice** — arquivo longo: quem parou no meio não leu o laço inteiro. Seções na ordem; cada item é o começo da seção, sem a marcação:
+
+- Cada volta
+- Teto
+- O que o laço não protege
+- Flaky
+- Teto de despachos
+<!-- /indice -->
+
 Design: `docs/rainforest/design/2026-10-10-laco-executor-revisor.md`
 (enxerto do `execute` do plugin `wildz-data`, de Rafael Siqueira).
 

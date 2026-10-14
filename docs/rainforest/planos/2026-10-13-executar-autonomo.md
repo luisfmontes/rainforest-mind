@@ -115,3 +115,10 @@ Emenda (revisar, volta 1, 2026-10-13): o revisor reprovou com 8 achados. Mudou o
 Emenda (revisar, volta 2, 2026-10-13): na tarefa 1, a retomada só reconhece um commit com o trailer feito depois da `--base` (`base..HEAD`). Assim, um redespacho da mesma tarefa no laço integra a correção em vez de ser tomado por retomada. A retomada também não exige mais o worktree do agente. O `desfazer` lê os caminhos com `-z`, então caminho com acento ou espaço sai na recusa. A bateria ganhou os três cenários.
 
 Emenda (rodada extra, 2026-10-14, liberada pelo Luís; impasse em `docs/rainforest/portoes/2026-10-13-executar-autonomo-impasse.md`): na tarefa 1, a retomada com o worktree do agente presente confere com `git apply --check -R --cached` que a entrega do agente já está no HEAD. Se não estiver (base velha, fluxo rebaseado), recusa no passo `retomada` e o worktree fica. A recusa remove as pastas que ficaram vazias. Sem o worktree, a branch do agente não tem como ser achada pelo nome, e o script avisa no stderr para apagá-la à mão.
+
+Emenda (fechar, CI do PR #520, 2026-10-14): o CI pegou três baterias vizinhas que a mudança afetou e que o teste local não rodou.
+- O `laco.md` passou de 100 linhas e ganhou o bloco de índice (`testa-indice-referencias`).
+- A exceção da D4 aumentou a regra 16 em 405 B. Os números fixados em `hooks/testa-abertura-mod-config.sh` foram para 33246 (elaborações) e 39168 (regras), ainda abaixo do teto de 40960.
+- O `testa-rodar-longo.sh` ganhou o `trap ... EXIT` do `mktemp -d` (`testa-sandbox-com-trap`).
+
+A tarefa 4 passa a incluir `hooks/testa-abertura-mod-config.sh`.

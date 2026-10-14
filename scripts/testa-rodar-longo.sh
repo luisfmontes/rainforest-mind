@@ -14,6 +14,7 @@ falhou=0
 
 # Pasta temporária fora do worktree. Node recebe caminho Windows (cygpath -m).
 TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
 if command -v cygpath >/dev/null 2>&1; then TMP="$(cygpath -m "$TMP")"; fi
 
 PIDS_REGISTRADOS=()
