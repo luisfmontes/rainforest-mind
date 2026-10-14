@@ -239,7 +239,10 @@ corpo (texto de quem abre o PR chegaria ao modelo como instrução). A nota entr
 ação. Só acorda a sessão (`$.prompt.submit`) se o PR for **desta sessão** —
 `ehDaSessao()`: criado pela sessão, ou o PR em aberto da branch `fluxo/*` em que a sessão abriu —,
 se `donoConfere()` (autor = quem está logado no `gh`, PR sem fork) e se o PR está quieto há
-`QUIETO_MS` = 180000 ms (3 min). Os executáveis (`where.exe`, `which`, `cmd.exe`, `gh`, `claude`)
+`QUIETO_MS` = 180000 ms (3 min). O despertar serve só à sessão parada: ferramenta ou turno da
+sessão principal (sem `agentId`) depois da nota o cancela (`sessaoAtiva()`, chamada pelos hooks de
+`tool.call` e `turn.complete` do `mod.tsx`), e `gh pr merge` deste PR rodado pela sessão
+(`mergeDoAlvo()`, com qualquer exit) deixa a virada para merged só no pane. Os executáveis (`where.exe`, `which`, `cmd.exe`, `gh`, `claude`)
 vão por caminho absoluto resolvido fora do repositório da sessão, porque o Windows procura
 primeiro na pasta atual; o `gh` roda com `core.fsmonitor=false` (`AMBIENTE_GIT_SEGURO`). A prova
 de engine é `hooks/mod-pr.test.tsx` (`claude plugin test .`); a lógica, `node

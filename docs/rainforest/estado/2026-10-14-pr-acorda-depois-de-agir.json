@@ -1,0 +1,9 @@
+{
+  "slug": "2026-10-14-pr-acorda-depois-de-agir",
+  "titulo": "fix/pr-acorda-depois-de-agir",
+  "criado_em": "2026-10-14",
+  "leve": {
+    "motivo": "defeito: painel de PR acorda a sessao com nota de acao depois que ela ja agiu (merge feito pela propria sessao, turno ja ativo); 10+ ocorrencias relatadas pelo Luis",
+    "data": "2026-10-14"
+  }
+}

@@ -22,7 +22,7 @@ import type {
 } from '../types'
 import { register as abertura } from './register.ts'
 import { register as pluginsEmDia } from './plugins-em-dia.ts'
-import { register as pr } from './pr.tsx'
+import { register as pr, sessaoAtiva } from './pr.tsx'
 import { register as conta } from './conta.ts'
 import { register as compactar } from './compactar.ts'
 import { linhaPr } from './pr-puro.mjs'
@@ -677,6 +677,7 @@ export const register: Register = (on, options) => {
   on('tool.call', async ($, e, next) => {
     const ran = await next(e)
     acordar()
+    if (e.agentId === undefined) await sessaoAtiva($)
     try {
       const at = await $.clock.now()
       const agentId = e.agentId
@@ -832,6 +833,7 @@ export const register: Register = (on, options) => {
   on('turn.complete', async ($, e, next) => {
     const agentId = e.agentId
     acordar()
+    if (agentId === undefined) await sessaoAtiva($)
     const log = (m: string) => {
       try {
         $.ui.log(m, { to: 'debug' })

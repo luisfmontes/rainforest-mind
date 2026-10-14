@@ -15,7 +15,7 @@ import type {
   RainforestMindPrPendente,
   RainforestMindPrResumo,
 } from '../types'
-import { AMBIENTE_GIT_SEGURO, POLL_MS, bloco, tomDoIcone, QUIETO_MS, deveAcordar, donoConfere, ehDaSessao, escolherExecutavel, eventos, herdarMotivo, localizadores, nota, resumir, virada } from './pr-puro.mjs'
+import { AMBIENTE_GIT_SEGURO, POLL_MS, bloco, tomDoIcone, QUIETO_MS, deveAcordar, donoConfere, ehDaSessao, escolherExecutavel, eventos, herdarMotivo, localizadores, mergeDoAlvo, nota, resumir, virada } from './pr-puro.mjs'
 
 type Bloco = {
   label: string
@@ -94,6 +94,20 @@ async function acordarSePreciso($: EngineInterface): Promise<void> {
     // acordar e conveniencia: a nota ja esta na conversa
   } finally {
     acordando = false
+  }
+}
+
+// Despertar so serve a sessao parada. Ferramenta que termina ou turno que fecha na sessao
+// principal depois de a nota entrar na conversa provam que ela esta ativa: a proxima requisicao
+// do modelo ja leva a nota, e o prompt.submit de depois da quietude chegaria como ordem repetida,
+// com a acao ja feita (defeito de 2026-10-14, mais de 10 vezes). Chamada pelos hooks de
+// tool.call e turn.complete do mod.tsx (o engine aceita um so de cada, sem matcher, por plugin),
+// e so com agentId vazio: subagente em segundo plano chama ferramenta com a sessao parada.
+export async function sessaoAtiva($: EngineInterface): Promise<void> {
+  try {
+    if ((await read($, prPendente)) !== null) await update($, prPendente, () => null)
+  } catch {
+    // descartar o despertar e conveniencia
   }
 }
 
@@ -213,7 +227,10 @@ async function consultar($: EngineInterface): Promise<void> {
     }
 
     const v = virada(velho, novo) as string | null
-    if (v !== null) {
+    // Merge que a propria sessao pediu: so o pane registra; nota e despertar seriam ordem de
+    // limpar chegando depois de a sessao ja ter limpado.
+    const pedido = v === 'merged' && (await read($, prAcompanhado))?.mergePedido === true
+    if (v !== null && !pedido) {
       const atual = await read($, prAcompanhado)
       const daSessao = atual !== null && (ehDaSessao({ origem: atual.origem, branch: atual.branch }) as boolean)
       const texto = nota(v, novo, daSessao) as string
@@ -317,6 +334,11 @@ export const register: Register = on => {
       const ran = await next(e)
       try {
         const cmd = String((e as { command?: unknown }).command ?? '')
+        // Antes do teste de erro: `gh pr merge` sai 1 quando so o checkout local falha.
+        if (ran.deny === undefined) {
+          const r = await read($, prResumo)
+          if (r !== null && mergeDoAlvo(cmd, r.numero)) await update($, prAcompanhado, a => (a === null ? a : { ...a, mergePedido: true }))
+        }
         if (!GH_PR.test(cmd) || ran.deny !== undefined || ran.isError) return ran
         // `gh pr create` imprime a URL do PR que criou: vale a ULTIMA URL da saida, nunca o texto do
         // comando (um comando encadeado pode citar PR alheio). Os demais seguem a primeira URL

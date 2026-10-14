@@ -189,6 +189,75 @@ for (const surface of ['terminal', 'desktop'] as const) {
     })
   })
 
+  // Defeito de 2026-10-14: o despertar chegava depois de a sessao ja ter agido (mais de 10 vezes).
+  test(`sessao ativa depois da nota nao e acordada; subagente nao conta (${surface})`, async ($, on) => {
+    const m = await montar($, on, surface)
+    const { s, relogio, bash, caso, sessao } = m
+    const verde = async () => {
+      s.pr = EM_CURSO
+      await relogio.advance(MIN)
+      s.pr = VERDE
+      await relogio.advance(MIN)
+      expect(sessao.appended().map(r => JSON.stringify(r.message)).filter(l => l.includes(NOTA_VERDE)).length).toBeGreaterThan(0)
+    }
+    s.cmdTool = `${URL_PR}\n`
+    await bash('gh pr create --fill')
+    await relogio.settle()
+    await caso('ferramenta da sessao principal depois da nota: nenhum despertar', async () => {
+      await verde()
+      await bash('git status')
+      await relogio.advance(10 * MIN)
+      expect(s.submits).toEqual([])
+    })
+    await caso('ferramenta de subagente nao prova sessao ativa: acorda', async () => {
+      await verde()
+      await $.tool.call({ tool: 'Bash', command: 'ls', agentId: 'ag-1' } as never)
+      await relogio.advance(10 * MIN)
+      expect(s.submits).toEqual([NOTA_VERDE])
+    })
+    await caso('turno da sessao principal que fecha depois da nota: nenhum despertar', async () => {
+      await verde()
+      await $.turn.complete({ answer: 'ok', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' } as never)
+      await relogio.advance(10 * MIN)
+      expect(s.submits).toEqual([NOTA_VERDE])
+    })
+  })
+
+  test(`merge pedido pela sessao nao vira nota nem despertar; merge alheio vira (${surface})`, async ($, on) => {
+    const m = await montar($, on, surface, VERDE)
+    const { s, relogio, bash, abrirPane, textos, caso, sessao } = m
+    const notasMerged = () => sessao.appended().map(r => JSON.stringify(r.message)).filter(l => l.includes('foi mergeado'))
+    await caso('gh pr merge que sai 1 (so o checkout local falhou) e o merge remoto passou', async () => {
+      s.cmdTool = `${URL_PR}\n`
+      await bash('gh pr create --fill')
+      await relogio.settle()
+      s.toolFalha = true
+      s.cmdTool = "failed to run git: fatal: 'main' is already used by worktree"
+      await bash('gh pr merge https://github.com/luisfmontes/rainforest-mind/pull/455 --squash --delete-branch')
+      s.toolFalha = false
+      s.pr = MERGEADO
+      await relogio.advance(10 * MIN)
+      expect(s.submits).toEqual([])
+      expect(notasMerged()).toEqual([])
+      const t = (await textos(await abrirPane())).join('\n')
+      expect(t).toContain('open → merged')
+    })
+  })
+
+  test(`merge feito fora da sessao ainda acorda com a nota de merged (${surface})`, async ($, on) => {
+    const m = await montar($, on, surface, VERDE)
+    const { s, relogio, bash, caso } = m
+    await caso('ninguem rodou gh pr merge aqui: a nota de merged acorda', async () => {
+      s.cmdTool = `${URL_PR}\n`
+      await bash('gh pr create --fill')
+      await relogio.settle()
+      await bash('gh pr merge 999 --squash')
+      s.pr = MERGEADO
+      await relogio.advance(10 * MIN)
+      expect(s.submits).toEqual(['PR #455 foi mergeado. Informe o usuário e diga para limpar o worktree e a branch.'])
+    })
+  })
+
   test(`gh pr view 455 observado tambem abre o pane (${surface})`, async ($, on) => {
     const m = await montar($, on, surface)
     const { s, relogio, bash, caso } = m
