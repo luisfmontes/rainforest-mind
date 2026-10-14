@@ -124,6 +124,10 @@ const CONTORNOS = [
   ["& taskkill /IM node.exe /F", BASH],
   ["(Get-Process node) | Stop-Process", AMBAS],
   ["Stop-Process -n node", AMBAS],
+  ["Stop-Process -Name node -ErrorAction SilentlyContinue", AMBAS],
+  // heredoc de delimitador citado com interpretador: o corpo é executado
+  ["bash <<'EOF'\npkill node\nEOF", BASH],
+  ["bash <<'EOF'\nuse `pkill node` x\nEOF", BASH],
 ];
 
 const LEGITIMOS = [
@@ -182,6 +186,29 @@ const LEGITIMOS = [
   ["$p | Stop-Process", AMBAS],
   // ps como fonte de PID em pipe com xargs kill: fora do escopo (docstring)
   ["ps -p 1234 -o pid= | xargs kill", BASH],
+  // parâmetros comuns do PowerShell com valor não são nome de processo
+  ["Stop-Process -Id 1234 -ErrorAction SilentlyContinue", AMBAS],
+  ["Stop-Process -Id 1234 -Force -ErrorAction Stop", AMBAS],
+  ["Stop-Process -Id 1234 -ea SilentlyContinue", AMBAS],
+  ["Stop-Process -Id $pid -Force -ErrorAction Ignore", AMBAS],
+  ["Stop-Process -Force -ErrorAction SilentlyContinue -Id 1234", AMBAS],
+  ["Stop-Process -InputObject $p -ErrorAction SilentlyContinue", AMBAS],
+  ["Stop-Process -Id 1234 -ErrorVariable e", AMBAS],
+  ["Stop-Process -Id 1234 -WarningAction SilentlyContinue", AMBAS],
+  ["Stop-Process -Id 1234 -InformationAction SilentlyContinue -OutVariable saida", AMBAS],
+  ["$procs | Stop-Process -Force -ErrorAction SilentlyContinue", AMBAS],
+  ["Get-Process -Id 1234 | Stop-Process -ErrorAction SilentlyContinue", AMBAS],
+  ['pwsh -NoProfile -Command "Stop-Process -Id 1234 -Force -ErrorAction SilentlyContinue"', BASH],
+  // -Id com dois-pontos colado ao valor é o mesmo parâmetro
+  ["Get-Process -Id:1234 | Stop-Process", AMBAS],
+  ["Stop-Process -Id:1234", AMBAS],
+  // redirecionamento não é argumento: o alvo de `<` é arquivo, não nome
+  ["xargs kill -9 < pids.txt", BASH],
+  // texto entre aspas simples e corpo de heredoc citado é literal, não comando
+  ["git commit -m 'uso de `pkill node` no gate'", BASH],
+  ["echo 'text $(pkill node)'", BASH],
+  ["cat > a.md <<'EOF'\nuse `pkill node` no lugar\nEOF", BASH],
+  ["cat > a.md <<'EOF'\ntexto $(pkill node) citado\nEOF", BASH],
 ];
 
 console.log("== gate-matar-por-nome: contornos (esperado 2, subagente e janela) ==");

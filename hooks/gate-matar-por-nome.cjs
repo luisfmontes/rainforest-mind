@@ -5,10 +5,13 @@
  * principal e dentro de subagente. Matar pelo PID passa.
  *
  * Protege contra: `taskkill /IM` e `taskkill /FI "IMAGENAME …"`, `pkill`,
- * `killall`, `Stop-Process -Name`/`-ProcessName`/`-n` (e `spps`/`kill` no mesmo
- * jeito), `Stop-Process <nome>` (primeiro posicional que não é número nem
- * variável: `$p`, `$(…)`, `@`, `%` ficam de fora), pipeline `Get-Process
- * <nome> | Stop-Process` sem `-Id` (com ou sem `Where-Object` no meio),
+ * `killall`, `Stop-Process -Name`/`-ProcessName`/`-n` (e `spps`/`kill` com
+ * `-Name`/`-ProcessName`; `kill -n` é sinal do Bash, ver lacunas),
+ * `Stop-Process <nome>` (primeiro posicional que não é número, variável nem
+ * expansão: `$p`, `$(…)`, `@`, `%`, `(` e crase ficam de fora; os parâmetros
+ * comuns com valor, como `-ErrorAction SilentlyContinue`, são pulados), pipeline
+ * `Get-Process <nome> | Stop-Process` sem `-Id` (com `-Id:1234` também conta
+ * como `-Id`; com ou sem `Where-Object` no meio),
  * `pgrep`/`pidof` alimentando `xargs kill`, e `kill $(pgrep …)` / ``kill
  * `pidof …` ``. Matar por nome derruba processo de outra sessão (regra 15).
  *
@@ -17,6 +20,21 @@
  * arquivo, matar por porta, e `ps … | xargs kill` (o `ps` não entra no pipe
  * que termina em `xargs`; o pgrep/pidof entra).
  *
+ * Lacunas declaradas (passam, de propósito, sem parser novo):
+ * - `Stop-Process (Get-Process node)` e `-InputObject (Get-Process node)`: o `(`
+ *   faz o argumento parecer expansão. A forma de pipe `Get-Process <nome> |
+ *   Stop-Process` continua barrada, e o vetor do incidente era `taskkill /IM`.
+ * - `kill -n node`: `-n` é sinal do Bash, não `-Name`. No PowerShell, `-n`
+ *   abrevia `-Name` do Stop-Process, e essa forma passa.
+ * - `kill $(ps … | grep … | awk …)` e `pgrep … | while read p; do kill $p; done`:
+ *   o PID chega por `ps` ou por variável.
+ * - Abreviação de parâmetro comum (`-ErrorA SilentlyContinue`): só a grafia
+ *   listada em `COMUNS_COM_VALOR` é reconhecida (`-ea`, `-ErrorAction` sim).
+ * - Heredoc de delimitador citado (`<<'EOF'`): o corpo é texto, exceto quando a
+ *   linha chama interpretador (`bash`, `sh`, `python`, `node`…; reconhecido por
+ *   palavra, não por parser). Heredoc SEM aspas com `pkill` no corpo não é
+ *   barrado hoje (sai 0) e não entra no gate.
+ *
  * Como lê o comando: primeiro o texto é cortado em unidades (`;`, `&&`, `||`,
  * `&`, quebra de linha, fora de aspas) e cada unidade em estágios de pipe
  * (`|`), para que `Get-Process x | Stop-Process` seja olhado JUNTO — o
@@ -24,8 +42,11 @@
  * relação. Cada estágio desce em `bash -c`/`sh -c`/`eval`/`pwsh -Command`/
  * `powershell -Command` pelos helpers de `lib/tokens-comando.cjs` (posição de
  * comando, pulando `sudo`/`env`/`FOO=1`), e `$(…)`/crase são lidos como comando
- * próprio. Os segmentos de `segmentosParaGate` ainda passam pela checagem de
- * comando simples, para cobrir parêntese e chave que o corte de pipe não vê.
+ * próprio. Esse `$(…)`/crase NÃO vale dentro de aspa simples nem no corpo de
+ * heredoc citado: ali é texto (`mascararLiteral`). A exceção é o argumento de
+ * `-c`/`-Command`/`eval`, que é código e desce no wrapper. Os segmentos de
+ * `segmentosParaGate` ainda passam pela checagem de comando simples, para cobrir
+ * parêntese e chave que o corte de pipe não vê.
  *
  * Toggle `matar-por-nome` (padrão ligado), lido com `ligado()` na cadeia de
  * config do projeto e do usuário. `RAINFOREST_GATE_OFF` vale só na janela
@@ -43,16 +64,36 @@ const { segmentosParaGate } = require("./gate-subagente-sem-gh.cjs");
 
 const STOP = new Set(["stop-process", "spps", "kill"]);
 const OBTEM_PROCESSO = new Set(["get-process", "gps", "ps"]);
+// Parâmetros comuns do PowerShell que também levam valor. Sem eles,
+// `-ErrorAction SilentlyContinue` faria `SilentlyContinue` passar por nome.
+const COMUNS_COM_VALOR = [
+  "-erroraction", "-ea", "-warningaction", "-wa", "-errorvariable", "-ev",
+  "-warningvariable", "-wv", "-informationaction", "-infa", "-informationvariable", "-iv",
+  "-outvariable", "-ov", "-outbuffer", "-ob", "-pipelinevariable", "-pv",
+];
 // Flags que consomem o token seguinte como valor (não é nome nem PID).
-const VALOR_STOP = new Set(["-id", "-inputobject", "-timeout"]);
-const VALOR_KILL = new Set(["-s", "-n"]);
-
+const VALOR_STOP = new Set(["-id", "-inputobject", "-timeout", ...COMUNS_COM_VALOR]);
+// `kill` é alias de Stop-Process no PowerShell, então herda o conjunto. `-s` e
+// `-n` são do Bash (sinal de `kill`).
+const VALOR_KILL = new Set([...VALOR_STOP, "-s", "-n"]);
+// Redirecionamento sem aspas (`<`, `>`, `2>`, `&>`): o alvo não é argumento.
+const RE_REDIRECIONAMENTO = /^\d*(?:<|>|&>)/;
+// Operador sozinho (`<`, `2>`, `<<`, `>>`): o alvo é o token seguinte.
+const RE_REDIRECIONAMENTO_SOLTO = /^\d*(?:<<?-?|>>?|&>>?)$/;
+// `-Id` e `-Id:1234` (valor colado com dois-pontos) são o mesmo parâmetro.
+const RE_PARAM_ID = /^-id(:|$)/i;
 // Posicional que começa com `$`, `(`, `@`, `%` ou crase: variável, subexpressão,
 // array ou job spec, expandido pelo shell/PowerShell. Não é nome de processo.
 const RE_VARIAVEL_OU_EXPANSAO = /^[$(@%`]/;
 // Argumento que é `$(pgrep …)`/`$(pidof …)` (ou crase), lido como argumento de
 // comando. O texto citado em `echo "kill $(pgrep x)"` não é comando e não casa.
 const RE_SUBSTITUICAO_PGREP = /^(?:\$\(|`)\s*(?:pgrep|pidof)\b/i;
+// Heredoc de delimitador citado (`<<'EOF'`, `<<"EOF"`, `<<\EOF`): corpo literal.
+const RE_HEREDOC_CITADO = /<<-?\s*(?:'(\w+)'|"(\w+)"|\\(\w+))/g;
+// Linha que chama interpretador: o corpo do heredoc é executado, não é literal.
+const RE_INTERPRETADOR_NA_LINHA = /\b(?:bash|sh|zsh|dash|ksh|pwsh|powershell|cmd|python3?|node|perl|ruby|eval|source)\b/i;
+// Palavra antes de uma aspa simples que faz o conteúdo ser código (`bash -c '…'`).
+const RE_PALAVRA_DE_WRAPPER = /^(?:-c|-command|\/c|\/\/c|eval)$/i;
 
 function normalizarExecutavel(nome) {
   const semAspas = String(nome).replace(/^["']|["']$/g, "");
@@ -65,6 +106,58 @@ function conteudoDeSubstituicao(texto) {
   for (const m of texto.matchAll(/\$\(([^()]*)\)/g)) dentro.push(m[1]);
   for (const m of texto.matchAll(/`([^`]*)`/g)) dentro.push(m[1]);
   return dentro;
+}
+
+/**
+ * Cópia do comando em que o texto literal do shell vira espaço: o conteúdo de
+ * aspa simples (`'…'`) e o corpo de heredoc de delimitador citado (`<<'EOF'`),
+ * que não expandem `$(…)` nem crase. Só `conteudoDeSubstituicao` lê a cópia; o
+ * resto do gate lê o texto cru, porque o argumento de `bash -c '…'` é código e
+ * precisa chegar à descida do wrapper (por isso o argumento de `-c`/`-Command`/
+ * `eval` não é mascarado). Aspa sem fecho não é mascarada. Corpo de heredoc
+ * citado de linha que chama interpretador também não é, porque o interpretador
+ * executa o corpo.
+ */
+function mascararLiteral(cmd) {
+  const chars = cmd.split("");
+  const apaga = (ini, fim) => {
+    for (let k = ini; k < fim; k += 1) if (chars[k] !== "\n") chars[k] = " ";
+  };
+  for (const m of cmd.matchAll(RE_HEREDOC_CITADO)) {
+    const fimDaLinha = cmd.indexOf("\n", m.index);
+    if (fimDaLinha === -1) continue;
+    const inicioDaLinha = cmd.lastIndexOf("\n", m.index) + 1;
+    if (RE_INTERPRETADOR_NA_LINHA.test(cmd.slice(inicioDaLinha, fimDaLinha))) continue;
+    const delimitador = m[1] || m[2] || m[3];
+    const corpoIni = fimDaLinha + 1;
+    let fim = cmd.length;
+    let p = corpoIni;
+    while (p < cmd.length) {
+      const nl = cmd.indexOf("\n", p);
+      const fimLinha = nl === -1 ? cmd.length : nl;
+      if (cmd.slice(p, fimLinha).trim() === delimitador) { fim = p; break; }
+      if (nl === -1) break;
+      p = nl + 1;
+    }
+    apaga(corpoIni, fim);
+  }
+  // Aspas são lidas no texto já sem o corpo do heredoc, para que um apóstrofo
+  // dentro do corpo não abra uma aspa falsa sobre código de verdade.
+  const s = chars.join("");
+  let dupla = false;
+  for (let i = 0; i < s.length; i += 1) {
+    const c = s[i];
+    if (c === "\\") { i += 1; continue; }
+    if (dupla) { if (c === '"') dupla = false; continue; }
+    if (c === '"') { dupla = true; continue; }
+    if (c !== "'") continue;
+    const fecha = s.indexOf("'", i + 1);
+    if (fecha === -1) break;
+    const antes = s.slice(0, i).match(/(\S+)\s*$/);
+    if (!(antes && RE_PALAVRA_DE_WRAPPER.test(antes[1]))) apaga(i + 1, fecha);
+    i = fecha;
+  }
+  return chars.join("");
 }
 
 /**
@@ -120,7 +213,13 @@ function comandoDe(trecho) {
 /** Primeiro argumento que não é flag, pulando o valor das flags de `comValor`. */
 function primeiroNaoFlag(args, comValor) {
   for (let i = 0; i < args.length; i += 1) {
-    const v = args[i].v;
+    const { v, q } = args[i];
+    // Redirecionamento sem aspas não é argumento: `kill -9 < pids.txt` lê o PID de
+    // arquivo (fora do escopo), e `pids.txt` é o alvo do `<`, não um nome.
+    if (!q && RE_REDIRECIONAMENTO.test(v)) {
+      if (RE_REDIRECIONAMENTO_SOLTO.test(v)) i += 1;
+      continue;
+    }
     if (v.startsWith("-")) {
       if (comValor.has(v.toLowerCase())) i += 1;
       continue;
@@ -141,7 +240,7 @@ function formaDoPipe(estagios) {
     const a = cmds[i];
     if (!a) continue;
     const depois = cmds.slice(i + 1).filter(Boolean);
-    if (OBTEM_PROCESSO.has(a.exe) && !a.args.some((t) => t.v.toLowerCase() === "-id")) {
+    if (OBTEM_PROCESSO.has(a.exe) && !a.args.some((t) => RE_PARAM_ID.test(t.v))) {
       // `ps` não casa com parada que vem atrás de `xargs`: `ps -p 1234 | xargs kill` é por PID.
       const parada = depois.find((b) => STOP.has(b.exe) && !b.cabeca.includes("xargs"));
       if (parada) return `${a.exe} sem -Id | ${parada.exe}`;
@@ -205,7 +304,7 @@ function formaDoComando(trecho, profundidade) {
  */
 function formaPorNome(comando, profundidade = 0) {
   if (typeof comando !== "string" || profundidade > 8) return null;
-  for (const dentro of conteudoDeSubstituicao(comando)) {
+  for (const dentro of conteudoDeSubstituicao(mascararLiteral(comando))) {
     const forma = formaPorNome(dentro, profundidade + 1);
     if (forma) return forma;
   }
