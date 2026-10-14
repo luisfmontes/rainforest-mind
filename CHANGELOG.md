@@ -20,7 +20,8 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 - **Decisão no meio vira registro.** `estado.cjs decidir` aplica a recomendada e grava o porquê, e `decididos` imprime a
   seção "Decidido sem você" do PR. Decisão que muda uma `D<n>` do design continua parando o fluxo.
 - **Integração de tarefa num comando:** `integrar-tarefa.cjs` faz a conferência, a mutação, o commit com trailer, o `marcar` e a
-  limpeza, e desfaz tudo na recusa. **Processo longo fora do teto do Bash:** `rodar-longo.cjs`.
+  limpeza; traz todos os commits do agente de uma vez (`git apply --index`, atômico), recusa índice com stage prévio,
+  desfaz tudo na recusa e retoma do `marcar` se ele falhou depois do commit. **Processo longo fora do teto do Bash:** `rodar-longo.cjs`.
 
 ## 1.65.0 — 2026-10-13
 

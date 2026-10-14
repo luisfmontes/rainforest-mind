@@ -216,6 +216,71 @@ igual "arquivo novo trazido saiu do disco" "nao" "$([ -e "$CX/src/nova.cjs" ] &&
 igual "nada no indice" "" "$(cd "$CX" && git diff --cached --name-only)"
 igual "beta volta ao conteudo do HEAD" "0" "$(cd "$CX" && git diff --quiet HEAD -- src/beta.cjs; echo $?)"
 
+echo "== entrega que nao encaixa recusa sem deixar conflito =="
+caixa_nova
+abrir_fluxo
+despachar conflito
+printf "module.exports = () => 'alfa-ok'; // agente\n" > "$WT/src/alfa.cjs"
+agente_commita "alfa na mesma linha"
+# Outra tarefa entrou no fluxo depois do despacho, mexendo na mesma linha.
+(cd "$CX" && printf "module.exports = () => 'alfa-ok'; // fluxo\n" > src/alfa.cjs && git commit -q -am "outra tarefa")
+HEAD_ANTES="$(cd "$CX" && git rev-parse HEAD)"
+{ printf '# toplevel: %s\n' "$(cd "$CX" && git rev-parse --show-toplevel)"; (cd "$CX" && git status --porcelain); } > "$SUJO"
+PORC_ANTES="$(cd "$CX" && git status --porcelain)"
+integrar 1
+igual "integrar tarefa 1 sai 2" "2" "$RC"
+igual "passo apply" "apply" "$(echo "$SAIDA" | J 'j.passo')"
+igual "HEAD nao se move" "$HEAD_ANTES" "$(cd "$CX" && git rev-parse HEAD)"
+igual "git status igual ao de antes" "$PORC_ANTES" "$(cd "$CX" && git status --porcelain)"
+igual "nenhum caminho em conflito" "" "$(cd "$CX" && git ls-files -u)"
+igual "sem marcador de conflito no arquivo" "0" "$(grep -c '^<<<<<<<' "$CX/src/alfa.cjs")"
+
+echo "== agente com 2 commits traz os dois =="
+caixa_nova
+abrir_fluxo
+despachar dois
+{ printf '// c1\n'; cat "$WT/src/alfa.cjs"; } > "$WT/src/alfa.tmp" && mv "$WT/src/alfa.tmp" "$WT/src/alfa.cjs"
+agente_commita "c1"
+printf '// c2\n' >> "$WT/src/alfa.cjs"
+agente_commita "c2"
+integrar 1
+igual "integrar tarefa 1 sai 0" "0" "$RC"
+igual "c1 chegou" "1" "$(grep -c '^// c1$' "$CX/src/alfa.cjs")"
+igual "c2 chegou" "1" "$(grep -c '^// c2$' "$CX/src/alfa.cjs")"
+igual "1 commit novo na branch" "1" "$(cd "$CX" && git rev-list --count "$HEAD_ANTES..HEAD")"
+
+echo "== indice com stage previo recusa antes de trazer =="
+caixa_nova
+abrir_fluxo
+printf 'preparado\n' > "$CX/preparado.txt"
+(cd "$CX" && git add preparado.txt)
+despachar indice
+printf '// integrada\n' >> "$WT/src/alfa.cjs"
+agente_commita "alfa"
+integrar 1
+igual "integrar tarefa 1 sai 2" "2" "$RC"
+igual "passo indice-sujo" "indice-sujo" "$(echo "$SAIDA" | J 'j.passo')"
+igual "HEAD nao se move" "$HEAD_ANTES" "$(cd "$CX" && git rev-parse HEAD)"
+igual "git status igual ao de antes" "$PORC_ANTES" "$(cd "$CX" && git status --porcelain)"
+
+echo "== marcar que falhou depois do commit retoma sem commit novo =="
+caixa_nova
+abrir_fluxo
+despachar retoma
+printf '// integrada\n' >> "$WT/src/alfa.cjs"
+agente_commita "alfa"
+VAZIO="$(mktemp -d)"; SANDBOXES+=("$VAZIO")
+RFM_ESTADO_ROOT="$(cygpath -m "$VAZIO")" integrar 1
+igual "1a chamada sem estado sai 69" "69" "$RC"
+igual "1a chamada ja commitou" "1" "$(cd "$CX" && git rev-list --count "$HEAD_ANTES..HEAD")"
+integrar 1
+igual "2a chamada sai 0" "0" "$RC"
+igual "2a chamada diz aceito" "aceito" "$(echo "$SAIDA" | J 'j.resultado')"
+igual "stderr diz retomada" "1" "$(echo "$ERR" | grep -c '^retomada:')"
+igual "continua 1 commit so" "1" "$(cd "$CX" && git rev-list --count "$HEAD_ANTES..HEAD")"
+igual "integradas [1] no estado" "[1]" "$(estado_de 'j.executar.integradas')"
+igual "worktree do agente removido" "nao" "$([ -e "$WT" ] && echo sim || echo nao)"
+
 echo "== worktree inexistente sai 69 =="
 caixa_nova
 abrir_fluxo

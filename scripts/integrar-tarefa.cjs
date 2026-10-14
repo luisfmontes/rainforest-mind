@@ -10,7 +10,8 @@
  *
  * ORDEM FIXA. Cada passo só roda se o anterior passou:
  *   1. conferir-entrega, com o `arquivos:` da tarefa como escopo;
- *   2. git cherry-pick --no-commit do HEAD do worktree do agente;
+ *   2. git apply --index do diff base..HEAD do agente (todos os commits dele, de uma vez;
+ *      o apply é atômico: se não encaixa, nada entra no índice nem no disco);
  *   3. conferir-fluxo mutacoes --tarefa N (a bateria precisa ficar vermelha);
  *   4. git commit com o trailer `Rainforest-Tarefa: <slug>#<N>`;
  *   5. estado marcar executar parcial, com integradas e em_voo sem a tarefa N;
@@ -18,7 +19,11 @@
  *
  * RECUSA. Um passo que reprova desfaz o que trouxe (passos 2 e 3) e não commita. Nenhum
  * commit sai de uma entrega que o conferir-entrega recusou, nem de uma cuja mutação
- * sobreviveu.
+ * sobreviveu. Índice já com stage no worktree do fluxo é recusado antes do passo 2, para
+ * que o commit leve só o que veio do agente.
+ *
+ * RETOMADA. Se a branch do fluxo já tem um commit com o trailer da tarefa (o marcar falhou
+ * numa chamada anterior), os passos 1 a 4 são pulados e o script segue do 5.
  *
  * Uso:
  *   node scripts/integrar-tarefa.cjs --slug <s> --tarefa <N> --worktree <dir> --base <h> \
@@ -29,10 +34,11 @@
  * fluxo: arquivo sujo no worktree do fluxo não é sujeira do principal.
  *
  * Exit:
- *   0   aceito (commit feito, estado marcado, worktree do agente removido)
+ *   0   aceito (commit feito e estado marcado; se o worktree do agente não saiu, o JSON
+ *       traz "worktree_removido":false e o stderr diz por quê)
  *   2   recusado no passo indicado; o stderr traz o passo e a saída dele
  *   69  nao-verificavel: falta ambiente (worktree sumiu, não é repositório git, ou o
- *       marcar falhou depois do commit)
+ *       marcar falhou depois do commit; rodar de novo retoma do marcar)
  *   1   erro de uso
  *
  * Saída: uma linha JSON em stdout, {"tarefa":N,"resultado":"aceito|recusado","passo":"...","commit":"<hash>|null"}.
@@ -88,6 +94,17 @@ function desfazer(trazidos, topo) {
   }
 }
 
+// Commit da branch do fluxo que já carrega o trailer desta tarefa, ou null.
+function commitDaTarefa(slug, numero, topo) {
+  const log = saidaGit(['log', '--format=%H %(trailers:key=Rainforest-Tarefa,valueonly,separator=%x2C)'], topo);
+  if (!log) return null;
+  for (const linha of log.split(/\r?\n/)) {
+    const [hash, valores = ''] = linha.split(' ');
+    if (valores.split(',').map((v) => v.trim()).includes(`${slug}#${numero}`)) return hash;
+  }
+  return null;
+}
+
 // Lê o estado pelo mesmo caminho que o estado.cjs usa (RFM_ESTADO_ROOT, depois CLAUDE_PROJECT_DIR).
 function emVooDoEstado(slug) {
   const raiz = process.env.RFM_ESTADO_ROOT || process.env.CLAUDE_PROJECT_DIR || CWD;
@@ -141,6 +158,14 @@ function main() {
     return recusar('escopo', { stderr: `tarefa ${numero} sem arquivos: declarados\n` });
   }
 
+  let hash = commitDaTarefa(slug, numero, topo);
+  if (hash) {
+    console.error(`retomada: a branch já tem o commit ${hash} da tarefa ${numero}; seguindo do marcar`);
+  } else {
+    hash = integrarCommit();
+  }
+
+  function integrarCommit() {
   // 1. conferir-entrega, com o arquivos: da tarefa como escopo.
   const escopo = tarefa.arquivos.flatMap((a) => ['--escopo', a]);
   const entrega = spawnSync(NODE, [
@@ -158,13 +183,25 @@ function main() {
   }
   if (entrega.status !== 0) return recusar('conferir-entrega', entrega);
 
-  // 2. Traz o commit do agente para o índice, sem commitar.
-  const cp = git(['cherry-pick', '--no-commit', agenteHead], topo);
-  if (cp.status !== 0) {
-    git(['cherry-pick', '--abort'], topo);
-    return recusar('cherry-pick', cp);
+  // O commit tem de levar só o que veio do agente: índice com stage prévio é recusado.
+  const indice = git(['diff', '--cached', '--quiet'], topo);
+  if (indice.status !== 0) {
+    return recusar('indice-sujo', { stderr: `o índice do worktree do fluxo já tem stage; o commit levaria junto:\n${saidaGit(['diff', '--cached', '--name-status'], topo)}\n` });
   }
-  const trazidos = saidaGit(['diff', '--cached', '--no-renames', '--name-status'], topo)
+  if (git(['merge-base', '--is-ancestor', base, agenteHead], topo).status !== 0) {
+    return recusar('base', { stderr: `a base ${base} não é ancestral do HEAD do agente ${agenteHead}\n` });
+  }
+
+  // 2. Traz TODOS os commits do agente (base..HEAD) para o índice e o disco, sem commitar.
+  // O apply é atômico: se algum trecho não encaixa, nada é escrito.
+  const diff = git(['diff', '--binary', '--no-renames', base, agenteHead], topo);
+  if (diff.status !== 0) return recusar('diff', diff);
+  const remendo = path.join(fs.mkdtempSync(path.join(require('os').tmpdir(), 'integrar-')), 'entrega.patch');
+  fs.writeFileSync(remendo, diff.stdout);
+  const ap = git(['apply', '--index', '--binary', remendo], topo);
+  fs.rmSync(path.dirname(remendo), { recursive: true, force: true });
+  if (ap.status !== 0) return recusar('apply', ap);
+  const trazidos = (saidaGit(['diff', '--cached', '--no-renames', '--name-status'], topo) || '')
     .split('\n').filter(Boolean).map((linha) => {
       const [status, arquivo] = linha.split('\t');
       return { status, arquivo };
@@ -179,11 +216,12 @@ function main() {
 
   // 4. Commit com o trailer da tarefa.
   const corpo = `Integra a tarefa ${numero} do fluxo ${slug}, trazida do worktree do agente.\n\n`
-    + 'A entrega passou pelo conferir-entrega (escopo: arquivos: da tarefa) e pela mutação '
+    +'A entrega passou pelo conferir-entrega (escopo: arquivos: da tarefa) e pela mutação '
     + `da tarefa ${numero}: a bateria ficou vermelha com o trecho invertido.`;
   const commit = git(['commit', '-m', titulo, '-m', corpo, '--trailer', `Rainforest-Tarefa: ${slug}#${numero}`], topo);
   if (commit.status !== 0) return recusar('commit', commit, trazidos);
-  const hash = saidaGit(['rev-parse', 'HEAD'], topo);
+  return saidaGit(['rev-parse', 'HEAD'], topo);
+  }
 
   // 5. Marca a tarefa como integrada e tira ela do em_voo.
   const restantes = emVooDoEstado(slug).filter((a) => Number.parseInt(String(a && a.tarefa), 10) !== numero);
@@ -194,18 +232,19 @@ function main() {
     ambiente(`commit ${hash} feito, mas o marcar falhou; a tarefa ${numero} ficou sem marca`);
   }
 
-  // 6. Remove o worktree do agente e a branch dele.
+  // 6. Remove o worktree do agente e a branch dele. A tarefa já está integrada: falha aqui
+  // é aviso, não parada.
   const branchAgente = saidaGit(['rev-parse', '--abbrev-ref', 'HEAD'], worktree);
   const branchFluxo = saidaGit(['rev-parse', '--abbrev-ref', 'HEAD'], topo);
-  console.log(JSON.stringify({ tarefa: numero, resultado: 'aceito', passo: 'integrada', commit: hash }));
   const rem = git(['worktree', 'remove', '--force', worktree], topo);
-  if (rem.status !== 0) {
+  const removido = rem.status === 0;
+  if (!removido) {
     process.stderr.write(rem.stderr);
-    ambiente(`tarefa ${numero} integrada, mas o worktree ${worktree} não saiu`);
-  }
-  if (branchAgente && branchAgente !== 'HEAD' && branchAgente !== branchFluxo && branchAgente !== 'main') {
+    console.error(`aviso: tarefa ${numero} integrada, mas o worktree ${worktree} não saiu; remova por caminho`);
+  } else if (branchAgente && branchAgente !== 'HEAD' && branchAgente !== branchFluxo && branchAgente !== 'main') {
     git(['branch', '-D', branchAgente], topo);
   }
+  console.log(JSON.stringify({ tarefa: numero, resultado: 'aceito', passo: 'integrada', commit: hash, worktree_removido: removido }));
   process.exit(0);
 }
 

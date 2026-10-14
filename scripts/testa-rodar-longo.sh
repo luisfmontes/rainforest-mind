@@ -109,6 +109,27 @@ registra $(registra_pids_do_arquivo "$SAIDA_X")
 finalx="$(esperar_fim "$SAIDA_X")"; rc=$?
 caso "estado final do comando inexistente e exit N com N diferente de 0 (saida='$finalx')" $(echo "$finalx" | grep -Eq '^exit [1-9][0-9]*$' && [ "$rc" -eq 0 ] && echo 0 || echo 1)
 
+echo "== linha 'exit N' impressa pelo comando nao e confundida com o fim"
+SAIDA_F="$TMP/falso.txt"
+pidf="$($RL iniciar --saida "$SAIDA_F" -- bash -c 'echo "exit 5"; sleep 2; exit 0')"
+registra "$pidf"
+registra $(registra_pids_do_arquivo "$SAIDA_F")
+sleep 0.5
+out="$($RL estado --saida "$SAIDA_F")"; rc=$?
+caso "com 'exit 5' na saida e o comando vivo, estado diz rodando (saida='$out' rc=$rc)" $([ "$out" = "rodando" ] && [ "$rc" -eq 3 ] && echo 0 || echo 1)
+finalf="$(esperar_fim "$SAIDA_F")"; rc=$?
+caso "no fim, estado diz o exit real 'exit 0' (saida='$finalf')" $([ "$finalf" = "exit 0" ] && [ "$rc" -eq 0 ] && echo 0 || echo 1)
+
+echo "== vigia morto sem registrar o exit: estado diz morto"
+SAIDA_M="$TMP/morto.txt"
+$RL iniciar --saida "$SAIDA_M" -- bash -c 'sleep 30' >/dev/null
+pids_m="$(registra_pids_do_arquivo "$SAIDA_M")"
+registra $pids_m
+for p in $pids_m; do node -e 'try{process.kill(Number(process.argv[1]))}catch{}' "$p"; done
+sleep 0.5
+out="$($RL estado --saida "$SAIDA_M")"; rc=$?
+caso "estado com o vigia morto imprime 'morto' e sai 4 (saida='$out' rc=$rc)" $([ "$out" = "morto" ] && [ "$rc" -eq 4 ] && echo 0 || echo 1)
+
 echo "-- nenhum processo registrado pela bateria fica vivo no fim"
 vivos=0
 for p in "${PIDS_REGISTRADOS[@]}"; do

@@ -6,8 +6,9 @@
 //   iniciar --saida <arq> -- <comando...>   sobe o comando destacado, com
 //                                           stdout e stderr no arquivo, e sai
 //                                           na hora imprimindo o PID do comando.
-//   estado  --saida <arq>                   imprime `rodando` (exit 3) ou
-//                                           `exit <N>` (exit 0).
+//   estado  --saida <arq>                   imprime `rodando` (exit 3),
+//                                           `exit <N>` (exit 0) ou `morto`
+//                                           (exit 4).
 //   vigiar  (interno)                       processo destacado que é PAI do
 //                                           comando e escreve `exit <N>` quando
 //                                           ele termina.
@@ -21,7 +22,11 @@
 // que o PATH resolve primeiro (resolverExecutavel, mesma regra de
 // hooks/lib/resolver-executavel.cjs), e a janela nunca abre: windowsHide.
 //
-// Exit: 0 ok; 2 uso; 69 ambiente (bash ausente ou PID que não apareceu).
+// O exit vai também para `<arq>.exit`: o comando pode imprimir uma linha
+// `exit N` no `<arq>`, e o estado não pode confundir as duas. Sem `.exit` e com
+// o vigia do `.pid` morto, o estado diz `morto` em vez de `rodando` para sempre.
+//
+// Exit: 0 ok; 2 uso; 4 morto; 69 ambiente (bash ausente ou PID que não apareceu).
 
 const fs = require("fs");
 const path = require("path");
@@ -54,6 +59,7 @@ function comandoApos(argv) {
 
 const citar = (s) => "'" + String(s).replace(/'/g, "'\\''") + "'";
 const pidPath = (saida) => saida + ".pid";
+const exitPath = (saida) => saida + ".exit";
 
 function dormir(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
@@ -81,6 +87,7 @@ function iniciar(flags, comando) {
 
   fs.writeFileSync(arq, "");
   fs.rmSync(pidPath(arq), { force: true });
+  fs.rmSync(exitPath(arq), { force: true });
 
   const vigia = spawn(process.execPath, [__filename, "vigiar", "--saida", arq, "--", ...comando], {
     detached: true,
@@ -122,27 +129,56 @@ function vigiar(flags, comando) {
     if (feito) return;
     feito = true;
     fs.appendFileSync(saida, `\nexit ${codigo}\n`);
+    fs.writeFileSync(exitPath(saida), String(codigo));
   }
 }
 
 function estado(flags) {
   const saida = flags.saida;
   if (!saida) erro(2, "uso: estado --saida <arq>");
-  let texto;
-  try {
-    texto = fs.readFileSync(path.resolve(saida), "utf8");
-  } catch {
-    erro(2, `saida nao existe: ${saida}`);
-  }
-  const linhas = texto.split(/\r?\n/).filter((l) => l.trim() !== "");
-  const ultima = linhas[linhas.length - 1] || "";
-  const m = /^exit (\d+)$/.exec(ultima);
-  if (m) {
-    process.stdout.write(`exit ${m[1]}\n`);
+  const arq = path.resolve(saida);
+  if (!fs.existsSync(arq)) erro(2, `saida nao existe: ${saida}`);
+  const codigo = lerExit(arq);
+  if (codigo !== null) {
+    process.stdout.write(`exit ${codigo}\n`);
     process.exit(0);
+  }
+  let vigia = null;
+  try {
+    vigia = JSON.parse(fs.readFileSync(pidPath(arq), "utf8")).vigia;
+  } catch {
+    // .pid ainda não gravado: conta como rodando
+  }
+  if (Number.isInteger(vigia) && !vivo(vigia)) {
+    // o vigia pode ter gravado o .exit entre a primeira leitura e agora
+    const tardio = lerExit(arq);
+    if (tardio !== null) {
+      process.stdout.write(`exit ${tardio}\n`);
+      process.exit(0);
+    }
+    process.stdout.write("morto\n");
+    process.exit(4);
   }
   process.stdout.write("rodando\n");
   process.exit(3);
+}
+
+function lerExit(arq) {
+  try {
+    const c = fs.readFileSync(exitPath(arq), "utf8").trim();
+    return /^\d+$/.test(c) ? c : null;
+  } catch {
+    return null;
+  }
+}
+
+function vivo(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return e.code === "EPERM";
+  }
 }
 
 const sub = process.argv[2];

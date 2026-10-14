@@ -56,8 +56,8 @@ depende de: nenhuma
 prova: `bash scripts/testa-rodar-longo.sh`
 mutacao:
   arquivo: `scripts/rodar-longo.cjs`
-  de: fs.appendFileSync(saida, `\nexit ${codigo}\n`);
-  para: fs.appendFileSync(saida, `\nexit 0\n`);
+  de: fs.writeFileSync(exitPath(saida), String(codigo));
+  para: fs.writeFileSync(exitPath(saida), "0");
   bateria: `bash scripts/testa-rodar-longo.sh`
   fixture: `testa-rodar-longo.sh, secao "comando que sai 3 registra exit 3"`
 pronto quando: `node scripts/rodar-longo.cjs iniciar --saida <arq> -- bash -c 'sleep 3; echo oi; exit 3'`:
@@ -66,7 +66,7 @@ pronto quando: `node scripts/rodar-longo.cjs iniciar --saida <arq> -- bash -c 's
 - depois de o comando terminar, o arquivo contém `oi` e a última linha é `exit 3`, e o `estado` imprime `exit 3` e sai 0;
 - comando inexistente registra exit ≠ 0, sem travar.
 
-O código tem a linha ``fs.appendFileSync(saida, `\nexit ${codigo}\n`);`` exatamente uma vez. Provado por `bash scripts/testa-rodar-longo.sh`.
+O código tem a linha `fs.writeFileSync(exitPath(saida), String(codigo));` exatamente uma vez. Provado por `bash scripts/testa-rodar-longo.sh`.
 
 ### 3. Chave executar-autonomo e registro do decidido sem você [tipo: implementar]
 atende: D4, D5
@@ -107,3 +107,7 @@ pronto quando: com os scripts das tarefas 1 a 3 na branch, a sessão que lê as 
 Cada comando e flag citado existe nos scripts. Provado por `bash scripts/testa-teto-skills.sh`, `bash scripts/testa-versao.sh`, `bash scripts/testa-plugin-codex.sh`, `bash scripts/testa-varrer-baterias.sh` e `node scripts/orcamento.cjs` saindo 0.
 
 Emenda (executar, tarefa 1, 2026-10-13): na integração, o `integrar-tarefa.cjs` passava o worktree do fluxo como `--repo-principal` do `conferir-entrega`. Só que o `--sujo-antes` vem do checkout principal, e com isso qualquer arquivo sujo no worktree do fluxo reprovava toda entrega. O padrão passou a ser o checkout principal (o pai do `git-common-dir`), e entrou a flag opcional `--repo-principal`. A bateria da tarefa roda num repo-caixa em que os dois coincidem, então o caso do worktree vinculado fica para o revisor.
+
+Emenda (revisar, volta 1, 2026-10-13): o revisor reprovou com 8 achados. Mudou o que as tarefas 1 e 2 entregam, sem mudar os arquivos:
+- Tarefa 1: o passo 2 deixou de ser `cherry-pick --no-commit` do HEAD do agente e virou `git apply --index` do diff `base..HEAD`. Assim entram todos os commits do agente, e uma entrega que não encaixa é recusada sem deixar conflito. Antes do apply, o índice com stage prévio é recusado (`indice-sujo`). Se a branch já tem o commit com o trailer da tarefa, o script retoma do `marcar`. Falha ao remover o worktree do agente não é mais exit 69: vira `"worktree_removido":false` com exit 0. A bateria ganhou os quatro cenários.
+- Tarefa 2: o exit vai também para `<arq>.exit`, e o `estado` lê dali, então uma linha `exit N` impressa pelo comando não é confundida com o fim. Com o vigia do `.pid` morto e sem `.exit`, o `estado` diz `morto` (exit 4). O alvo de mutação passou para a linha que grava o `.exit`.
