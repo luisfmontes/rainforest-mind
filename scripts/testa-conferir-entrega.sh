@@ -673,6 +673,17 @@ esperado "escopo: a/**/b.txt NAO casa a/b.txt (zero pastas, D2) -> reprova" 1 \
   "${CONF_CMD[@]}" --worktree "$WT_GLOB_D" --base "$(git -C "$WT_GLOB_D" rev-parse HEAD~1)" \
   --commit "$(git -C "$WT_GLOB_D" rev-parse HEAD)" --escopo "a/**/b.txt"
 
+# metacaracteres de regex no glob sao literais (#518, volta 2): colchetes e c++
+WT_GLOB_E=$(novo_commit_glob glob-colchete 'app/[id]/page.tsx')
+esperado "escopo: app/[id]/** cobre app/[id]/page.tsx (colchetes literais) -> aprova" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT_GLOB_E" --base "$(git -C "$WT_GLOB_E" rev-parse HEAD~1)" \
+  --commit "$(git -C "$WT_GLOB_E" rev-parse HEAD)" --escopo "app/[id]/**"
+
+WT_GLOB_F=$(novo_commit_glob glob-cmais c++/x.txt)
+esperado "escopo: c++/* cobre c++/x.txt (sem SyntaxError) -> aprova" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT_GLOB_F" --base "$(git -C "$WT_GLOB_F" rev-parse HEAD~1)" \
+  --commit "$(git -C "$WT_GLOB_F" rev-parse HEAD)" --escopo "c++/*"
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

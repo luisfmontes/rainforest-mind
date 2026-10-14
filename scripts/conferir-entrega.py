@@ -208,8 +208,9 @@ def glob_casa(arquivo: str, glob: str) -> bool:
     # Simples: sem * nem ? e match literal
     if "*" not in glob and "?" not in glob:
         return arquivo == glob
-    # Escapa so o ponto, como o original
-    pattern = glob.replace(".", "\\.")
+    # Escapa todo metacaractere de regex antes dos curingas (#518, volta 2),
+    # na mesma ordem do globMatches. `*` e `?` ficam de fora do escape.
+    pattern = re.sub(r"[.+^${}()|\[\]\\]", lambda m: "\\" + m.group(0), glob)
     # ** marca com placeholder antes de converter o * simples
     pattern = pattern.replace("**", "\x00")
     # * nao cruza /

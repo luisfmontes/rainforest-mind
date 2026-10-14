@@ -1251,6 +1251,19 @@ exige 0 "*.md casa x.md (raiz)" \
 exige 0 "src/* casa src/b.txt (um nivel)" \
   node -e "const g=require(process.argv[1]).globMatches; process.exit(g('src/b.txt','src/*')===true?0:1)" "$GM"
 
+# Metacaracteres de regex sao literais (#518, volta 2): colchetes, parenteses e + nao quebram
+exige 0 "app/[id]/** casa app/[id]/page.tsx (colchetes literais)" \
+  node -e "const g=require(process.argv[1]).globMatches; process.exit(g('app/[id]/page.tsx','app/[id]/**')===true?0:1)" "$GM"
+exige 0 "src/novo (1)/*.prw casa src/novo (1)/x.prw (parenteses literais)" \
+  node -e "const g=require(process.argv[1]).globMatches; process.exit(g('src/novo (1)/x.prw','src/novo (1)/*.prw')===true?0:1)" "$GM"
+exige 0 "c++/* casa c++/x.txt (sem SyntaxError)" \
+  node -e "const g=require(process.argv[1]).globMatches; process.exit(g('c++/x.txt','c++/*')===true?0:1)" "$GM"
+# ? e um caractere que nao cruza / (o titulo da 8b promete isso)
+exige 0 "a?.txt casa ab.txt (? e um caractere)" \
+  node -e "const g=require(process.argv[1]).globMatches; process.exit(g('ab.txt','a?.txt')===true?0:1)" "$GM"
+exige 0 "a?.txt NAO casa a/b.txt (? nao cruza /)" \
+  node -e "const g=require(process.argv[1]).globMatches; process.exit(g('a/b.txt','a?.txt')===false?0:1)" "$GM"
+
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]

@@ -142,9 +142,12 @@ function globMatches(arquivo, glob) {
     return arquivo === glob;
   }
 
-  // Converte glob para regex
+  // Converte glob para regex. Escapa TODO metacaractere de regex antes de
+  // converter os curingas (#518, volta 2): sem isto `app/[id]/**` não casava
+  // `app/[id]/page.tsx`, `c++/*` lançava SyntaxError e `(1)` virava grupo.
+  // `*` e `?` ficam de fora do escape: são os curingas convertidos abaixo.
   let pattern = glob
-    .replace(/\./g, '\\.')
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
     .replace(/\//g, '/');
 
   // ** em qualquer lugar cruza /
