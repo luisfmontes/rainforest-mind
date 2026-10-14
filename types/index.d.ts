@@ -92,7 +92,8 @@ export type RainforestMindPainelDeixado = {
 // que espera a quietude de 3 min para acordar a sessao. `origem` decide quem pode acordar (D6).
 export type RainforestMindPrOrigem = 'sessao' | 'manual' | 'retomada'
 
-export type RainforestMindPrAcompanhado = { alvo: string; origem: RainforestMindPrOrigem; branch: string }
+// `mergePedido`: a sessao rodou `gh pr merge` deste PR; a virada para merged entao so vai ao pane.
+export type RainforestMindPrAcompanhado = { alvo: string; origem: RainforestMindPrOrigem; branch: string; mergePedido?: boolean }
 
 export type RainforestMindPrResumo = {
   numero: number

@@ -10,6 +10,14 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.66.1 — 2026-10-14
+
+- **O painel de PR não manda fazer o que a sessão já fez.** O despertar da sessão (`prompt.submit`, 3 min depois de o PR
+  parar de mudar) chegava mesmo com a sessão trabalhando, e o "foi mergeado, limpe o worktree e a branch" chegava depois de
+  a própria sessão mergear e limpar. Agora ferramenta ou turno da sessão principal depois da nota cancela o despertar (a
+  nota já está na conversa), e `gh pr merge` do PR rodado pela sessão deixa a virada para merged só no painel. Subagente
+  em segundo plano não conta como sessão ativa.
+
 ## 1.66.0 — 2026-10-13
 
 - **Modo autônomo: com o plano aprovado, o fluxo vai sozinho até o PR mergeado.** Com a chave `executar-autonomo` ligada

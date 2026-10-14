@@ -175,6 +175,23 @@ export function quieto(ultimaMudancaMs, agoraMs) {
   return agoraMs - ultimaMudancaMs >= QUIETO_MS;
 }
 
+// O comando e um `gh pr merge` deste PR? Sem alvo no comando, vale o PR da branch, que e o
+// acompanhado. Com alvo, so se a URL ou o numero baterem. Merge que a sessao pediu nao vira
+// nota "foi mergeado, limpe": a sessao sabe, e avisar depois dela agir e o defeito de 2026-10-14.
+// O exit nao importa: `gh pr merge` sai 1 quando o merge remoto passa e so o checkout local
+// falha (main presa noutro worktree), e merge que nao passou nao produz virada.
+const GH_PR_MERGE = /\bgh(?:\.exe)?\s+pr\s+merge\b([^\n;&|]*)/;
+export function mergeDoAlvo(cmd, numero) {
+  const m = GH_PR_MERGE.exec(String(cmd || ''));
+  if (!m) return false;
+  const resto = m[1];
+  const url = /\/pull\/(\d+)\b/.exec(resto);
+  if (url) return Number(url[1]) === Number(numero);
+  const n = /(?:^|\s)#?(\d+)(?=\s|$)/.exec(resto);
+  if (n) return Number(n[1]) === Number(numero);
+  return true;
+}
+
 export function ehDaSessao({ origem, branch }) {
   return origem === 'sessao' || (origem === 'retomada' && /^fluxo\//.test(branch || ''));
 }

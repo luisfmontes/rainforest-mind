@@ -453,6 +453,16 @@ caso("linha da barra nao carrega texto de terceiro", () => {
   afirma(!t.includes("IGNORE"), "isca vazou na barra: " + t);
 });
 
+caso("mergeDoAlvo: so gh pr merge deste PR (sem alvo = PR da branch)", () => {
+  igual(m.mergeDoAlvo("gh pr merge 455 --squash --delete-branch", 455), true, "numero igual");
+  igual(m.mergeDoAlvo("gh pr merge https://github.com/luisfmontes/rainforest-mind/pull/455 --squash", 455), true, "URL igual");
+  igual(m.mergeDoAlvo("gh pr merge --squash --delete-branch", 455), true, "sem alvo e o da branch");
+  igual(m.mergeDoAlvo("gh pr merge 999 --squash", 455), false, "outro numero");
+  igual(m.mergeDoAlvo("gh pr merge https://github.com/o/r/pull/45 --squash", 455), false, "outra URL (prefixo do numero)");
+  igual(m.mergeDoAlvo("gh pr view 455", 455), false, "nao e merge");
+  igual(m.mergeDoAlvo("echo gh pr mergeado 455", 455), false, "palavra parecida");
+});
+
 // ------------------------------------------------------------------ execucao
 (async () => {
   m = await import(PR);
