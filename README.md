@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.65.1-1e5c3f?style=flat-square" alt="versão 1.65.1">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.65.2-1e5c3f?style=flat-square" alt="versão 1.65.2">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -382,7 +382,8 @@ cima disso sozinhas, sem você chamar nada:
 - **Manutenção diária** (`node scripts/memoria.cjs manutencao`) — dispara uma
   vez por dia no `SessionStart`, em processo destacado (nunca dentro do hook
   de captura, que tem orçamento curto): garante o esquema, reconcilia e
-  consolida, e grava em `manutencao.log`. Falha da manutenção, ou captura
+  consolida, e grava em `manutencao.log`. O processo roda fora da pasta do
+  projeto (cwd temporário, raiz fixada em `RFM_ROOT`), então não impede apagá-la. Falha da manutenção, ou captura
   parada há mais de 48h, vira uma linha na abertura da sessão seguinte.
 
 O FTS5 como buscador de candidatas mediu recall de 82,0% contra 200 sondagens

@@ -10,6 +10,13 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.65.2 — 2026-10-14
+
+- **A manutenção diária não prende mais a pasta do projeto.** O processo destacado da `manutencao` herdava o diretório
+  da sessão e, como a passada leva até uma hora, o Windows recusava apagar a pasta do projeto mesmo com a sessão fechada
+  ("em uso por outro processo"). Agora ele roda no diretório temporário, com a raiz de dados fixada em `RFM_ROOT` para
+  continuar achando a mesma raiz de quando a sessão abriu.
+
 ## 1.65.1 — 2026-10-13
 
 - **A jornada só conta o que você digitou (#485).** `jornada.cjs` aceitava como presença todo prompt `user` que não fosse
