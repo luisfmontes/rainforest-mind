@@ -24,46 +24,78 @@
   },
   "executar": {
     "status": "ok",
-    "catraca_mutacao": "2026-10-13",
+    "catraca_mutacao": "2026-10-14",
     "tarefas_ok": 4,
     "tarefas": 4,
-    "em": "2026-10-13",
+    "em": "2026-10-14",
     "integradas": [
       1,
       2,
       3,
       4
     ],
-    "comando": "bash scripts/testa-integrar-tarefa.sh; bash scripts/testa-rodar-longo.sh; bash scripts/testa-estado-decididos.sh",
-    "saida": "integrar 35/0, rodar-longo 12/0, decididos 33/0; testa-estado 324/0 e conferir-fluxo 105/0 nos agentes; mutacoes 1-3 vermelhas",
+    "comando": "bash scripts/testa-integrar-tarefa.sh; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-13-executar-autonomo --tarefa 1",
+    "saida": "ok: 74 falhou: 0; tarefa 1: vermelho",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-integrar-tarefa.sh: entrega fora do escopo recusa e nao commita"
+        "fixture": "testa-integrar-tarefa.sh, secao entrega fora do escopo recusa e nao commita"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "testa-rodar-longo.sh: comando que sai 3 registra exit 3"
+        "fixture": "testa-rodar-longo.sh, secao comando que sai 3 registra exit 3"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "testa-estado-decididos.sh: decidir sem porque recusa e nao grava"
+        "fixture": "testa-estado-decididos.sh, secao decidir sem porque recusa e nao grava"
       },
       {
         "tarefa": 4,
         "resultado": "n/a",
-        "motivo": "texto de skill e documentacao, sem comportamento a inverter"
+        "motivo": "texto de skill e documentacao"
       }
-    ]
+    ],
+    "reaberturas": 3,
+    "em_voo": []
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "05d554b1de326122fd069fc866b3e85d89b9fe6d",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-10-13-executar-autonomo.json"
+      ]
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "aa858ca2bffd49992",
+        "veredito": "ok",
+        "em": "2026-10-14",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/4224a79a-6d1d-4488-8ee0-c5ec5c25d3b1/subagents/agent-aa858ca2bffd49992.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-14",
+    "achados": 2,
+    "rodadas_extra": [
+      {
+        "texto": "Luis: recomendado (A) - 4a rodada com conserto da retomada (apply --check -R), branch do agente, pasta vazia e comentarios",
+        "em": "2026-10-14"
+      }
+    ],
+    "base": "dcf3ac1c",
+    "head": "05d554b1de326122fd069fc866b3e85d89b9fe6d"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-integrar-tarefa.sh; bash scripts/testa-rodar-longo.sh; bash scripts/testa-estado-decididos.sh; bash scripts/testa-teto-skills.sh; bash scripts/testa-versao.sh; bash scripts/testa-plugin-codex.sh; bash scripts/testa-varrer-baterias.sh",
+    "saida": "ok: 74 falhou: 0; ok: 15 falhou: 0; ok: 33 falhou: 0; 21 OK 0 FALHA; ok: 5 falhou: 0; plugin-codex exit 0; TODOS OS TESTES PASSARAM",
+    "sensor_externo": "bash scripts/testa-integrar-tarefa.sh",
+    "em": "2026-10-14"
   },
   "fechar": {
     "status": "pendente"
