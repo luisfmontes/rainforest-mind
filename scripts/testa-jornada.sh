@@ -44,9 +44,9 @@ naocheca() { # nome, padrao que NAO pode aparecer, comando
 
 echo "== 1. filtro de mensagem humana: toolUseResult nao conta =="
 cat > tool.jsonl <<'EOF'
-{"type":"user","timestamp":"2026-08-11T10:00:00.000Z","message":{"role":"user"}}
+{"type":"user","timestamp":"2026-08-11T10:00:00.000Z","entrypoint":"cli","origin":{"kind":"human"},"message":{"role":"user"}}
 {"type":"user","toolUseResult":{"ok":true},"timestamp":"2026-08-11T10:01:00.000Z"}
-{"type":"user","timestamp":"2026-08-11T10:10:00.000Z","message":{"role":"user"}}
+{"type":"user","timestamp":"2026-08-11T10:10:00.000Z","entrypoint":"cli","origin":{"kind":"human"},"message":{"role":"user"}}
 EOF
 checa "so as 2 mensagens humanas contam (toolUseResult descartado)" '"mensagens":2' \
   "$JORNADA --transcript tool.jsonl --json"
@@ -54,17 +54,17 @@ checa "so as 2 mensagens humanas contam (toolUseResult descartado)" '"mensagens"
 echo
 echo "== 2. filtro de mensagem humana: isMeta e isCompactSummary nao contam =="
 cat > meta.jsonl <<'EOF'
-{"type":"user","timestamp":"2026-08-11T10:00:00.000Z","message":{"role":"user"}}
+{"type":"user","timestamp":"2026-08-11T10:00:00.000Z","entrypoint":"cli","origin":{"kind":"human"},"message":{"role":"user"}}
 {"type":"user","isMeta":true,"timestamp":"2026-08-11T10:01:00.000Z"}
-{"type":"user","timestamp":"2026-08-11T10:10:00.000Z","message":{"role":"user"}}
+{"type":"user","timestamp":"2026-08-11T10:10:00.000Z","entrypoint":"cli","origin":{"kind":"human"},"message":{"role":"user"}}
 EOF
 checa "isMeta descartado (mensagens=2)" '"mensagens":2' "$JORNADA --transcript meta.jsonl --json"
 
 cat > resumo.jsonl <<'EOF'
-{"type":"user","timestamp":"2026-08-11T10:00:00.000Z","message":{"role":"user"}}
+{"type":"user","timestamp":"2026-08-11T10:00:00.000Z","entrypoint":"cli","origin":{"kind":"human"},"message":{"role":"user"}}
 {"type":"user","isCompactSummary":true,"timestamp":"2026-08-11T10:01:00.000Z"}
 {"type":"assistant","timestamp":"2026-08-11T10:05:00.000Z"}
-{"type":"user","timestamp":"2026-08-11T10:10:00.000Z","message":{"role":"user"}}
+{"type":"user","timestamp":"2026-08-11T10:10:00.000Z","entrypoint":"cli","origin":{"kind":"human"},"message":{"role":"user"}}
 EOF
 checa "isCompactSummary e type!=user descartados (mensagens=2)" '"mensagens":2' \
   "$JORNADA --transcript resumo.jsonl --json"
@@ -89,10 +89,10 @@ echo "  (meia-noite local de 2026-01-15 = ${BOUNDARY_MS}ms UTC; antes=$TS_ANTES/
 
 mkdir -p "$SB/fakehome/.claude/projects/proj1"
 cat > "$SB/fakehome/.claude/projects/proj1/sessao.jsonl" <<EOF
-{"type":"user","timestamp":"$TS_ANTES2","message":{"role":"user"}}
-{"type":"user","timestamp":"$TS_ANTES","message":{"role":"user"}}
-{"type":"user","timestamp":"$TS_DEPOIS","message":{"role":"user"}}
-{"type":"user","timestamp":"$TS_DEPOIS2","message":{"role":"user"}}
+{"type":"user","timestamp":"$TS_ANTES2","entrypoint":"cli","origin":{"kind":"human"},"message":{"role":"user"}}
+{"type":"user","timestamp":"$TS_ANTES","entrypoint":"cli","origin":{"kind":"human"},"message":{"role":"user"}}
+{"type":"user","timestamp":"$TS_DEPOIS","entrypoint":"cli","origin":{"kind":"human"},"message":{"role":"user"}}
+{"type":"user","timestamp":"$TS_DEPOIS2","entrypoint":"cli","origin":{"kind":"human"},"message":{"role":"user"}}
 EOF
 
 checa "1h/2h antes da meia-noite local caem no dia 14 (nao no 15)" '"mensagens":2' \
@@ -105,9 +105,9 @@ checa "dia 14 nao contem a mensagem de depois da virada" '"escopo":"dia 2026-01-
 echo
 echo "== 4. lacuna acima do corte sai da conta e e listada; abaixo fica =="
 cat > gaps.jsonl <<'EOF'
-{"type":"user","timestamp":"2026-01-01T12:00:00.000Z","message":{"role":"user"}}
-{"type":"user","timestamp":"2026-01-01T12:30:00.000Z","message":{"role":"user"}}
-{"type":"user","timestamp":"2026-01-01T13:40:00.000Z","message":{"role":"user"}}
+{"type":"user","timestamp":"2026-01-01T12:00:00.000Z","entrypoint":"cli","origin":{"kind":"human"},"message":{"role":"user"}}
+{"type":"user","timestamp":"2026-01-01T12:30:00.000Z","entrypoint":"cli","origin":{"kind":"human"},"message":{"role":"user"}}
+{"type":"user","timestamp":"2026-01-01T13:40:00.000Z","entrypoint":"cli","origin":{"kind":"human"},"message":{"role":"user"}}
 EOF
 # gaps: 30 min (abaixo do corte padrao 55, fica) e 70 min (acima, descartada)
 checa "corte padrao (55): efetiva conta so os 30 min" '"efetiva_min":30' \
@@ -134,11 +134,11 @@ echo "== 6. MUTACAO: desligar o filtro de mensagem humana explode a contagem =="
 # mas SEM presenca humana nenhuma) - o caso real medido no cabecalho: 377
 # entradas "user", so 42 humanas.
 {
-  echo '{"type":"user","timestamp":"2026-08-11T09:00:00.000Z","message":{"role":"user"}}'
+  echo '{"type":"user","timestamp":"2026-08-11T09:00:00.000Z","entrypoint":"cli","origin":{"kind":"human"},"message":{"role":"user"}}'
   for i in $(seq 1 20); do
-    printf '{"type":"user","toolUseResult":{"n":%d},"timestamp":"2026-08-11T09:%02d:00.000Z"}\n' "$i" "$i"
+    printf '{"type":"user","toolUseResult":{"n":%d},"timestamp":"2026-08-11T09:%02d:00.000Z","entrypoint":"cli","origin":{"kind":"human"}}\n' "$i" "$i"
   done
-  echo '{"type":"user","timestamp":"2026-08-11T09:59:00.000Z","message":{"role":"user"}}'
+  echo '{"type":"user","timestamp":"2026-08-11T09:59:00.000Z","entrypoint":"cli","origin":{"kind":"human"},"message":{"role":"user"}}'
 } > mutacao.jsonl
 
 checa "SEM mutante: filtro liga e conta so as 2 humanas" '"mensagens":2' \

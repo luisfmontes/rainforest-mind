@@ -94,6 +94,22 @@ function transcriptsDisponiveis(desdeMs = 0) {
 // mensagens humanas — carimbos do usuario, em hora LOCAL, ordenados
 // --------------------------------------------------------------------------
 
+// Texto do prompt: content string, ou o `text` do primeiro item se for array.
+function textoDoPrompt(d) {
+  const c = d.message && d.message.content;
+  if (typeof c === "string") return c;
+  if (Array.isArray(c) && c[0] && typeof c[0].text === "string") return c[0].text;
+  return "";
+}
+
+// D1: origin.kind === "human" conta. Sem origin (CLI antigo), conta so entrypoint
+// "cli" fora de subagente e fora de <task-notification>. isSidechain nunca conta.
+function ehPresencaHumana(d) {
+  if (d.isSidechain) return false;
+  if (d.origin && typeof d.origin === "object") return d.origin.kind === "human";
+  return d.entrypoint === "cli" && !textoDoPrompt(d).startsWith("<task-notification>");
+}
+
 function mensagensHumanas(caminho) {
   // Descarta retorno de ferramenta (`toolUseResult`), meta e resumo de
   // compactacao — os tres chegam como type "user" e nao provam presenca
@@ -118,6 +134,7 @@ function mensagensHumanas(caminho) {
     if (Object.prototype.hasOwnProperty.call(d, "toolUseResult") || d.isMeta || d.isCompactSummary) {
       continue;
     }
+    if (!ehPresencaHumana(d)) continue;
     const ts = d.timestamp;
     if (!ts) continue;
     const utc = new Date(ts);
@@ -335,4 +352,4 @@ if (require.main === module) {
   process.exit(main());
 }
 
-module.exports = { transcriptsDisponiveis, mensagensHumanas, medir, hhmm, isoformatLocal, CORTE_PADRAO_MIN };
+module.exports = { transcriptsDisponiveis, mensagensHumanas, ehPresencaHumana, medir, hhmm, isoformatLocal, CORTE_PADRAO_MIN };

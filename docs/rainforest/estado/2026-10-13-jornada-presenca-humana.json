@@ -20,8 +20,28 @@
     "em": "2026-10-13"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-10-13"
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-13",
+    "tarefas_ok": 0,
+    "tarefas": 3,
+    "em_voo": [
+      {
+        "agente": "executor-tarefa1",
+        "tarefa": "1 filtro de origem jornada",
+        "desde": "2026-10-13T20:55:00-03:00",
+        "sessao": "5e5b6a6b-bd8f-4cc4-b6b7-86a41f01bf80"
+      }
+    ],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "dfdc7bc",
+        "iteracao": 1,
+        "sessao": "5e5b6a6b-bd8f-4cc4-b6b7-86a41f01bf80",
+        "ts": "2026-10-13T23:58:02.512Z"
+      }
+    ],
+    "em": "2026-10-13"
   },
   "revisar": {
     "status": "pendente"

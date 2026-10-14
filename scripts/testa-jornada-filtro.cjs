@@ -40,7 +40,7 @@ function caso(nome, cond, detalhe) {
 function pad2(n) { return String(n).padStart(2, '0'); }
 function dia(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
 function transcrito(...datas) {
-  return datas.map((d) => JSON.stringify({ type: 'user', timestamp: d.toISOString(), message: { role: 'user' } })).join('\n') + '\n';
+  return datas.map((d) => JSON.stringify({ type: 'user', entrypoint: 'cli', origin: { kind: 'human' }, timestamp: d.toISOString(), message: { role: 'user' } })).join('\n') + '\n';
 }
 
 const caixa = fs.mkdtempSync(path.join(os.tmpdir(), 'jornada-filtro-'));
