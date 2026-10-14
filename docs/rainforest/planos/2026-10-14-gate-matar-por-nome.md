@@ -15,7 +15,7 @@ O gate reimplementa um pedaço da gramática de shell. O conjunto coberto é a l
 
 ### 1. Gate matar-por-nome, bateria, registro e toggle [tipo: implementar]
 atende: D1, D2, D3, D4, D5, D6
-arquivos: `hooks/gate-matar-por-nome.cjs`, `hooks/testa-gate-matar-por-nome.cjs`, `hooks/hooks.json`, `hooks/lib/config.cjs`, `scripts/baterias-obrigatorias.txt`, `scripts/testa-conferir-categoria.sh`
+arquivos: `hooks/gate-matar-por-nome.cjs`, `hooks/testa-gate-matar-por-nome.cjs`, `hooks/hooks.json`, `hooks/lib/config.cjs`, `scripts/baterias-obrigatorias.txt`, `scripts/testa-conferir-categoria.sh`, `hooks/testa-titulo-sessao-registro.sh`
 depende de: nenhuma
 prova: `node hooks/testa-gate-matar-por-nome.cjs`
 mutacao:
@@ -50,6 +50,8 @@ Saídas (D4):
 Mensagem (D5): stderr do bloqueio contém o comando visto, uma forma de listar (`tasklist`/`Get-Process`/`pgrep -a`) e a instrução de matar pelo PID; só a da janela cita `RAINFOREST_GATE_OFF`.
 
 Emenda 2026-10-14, volta 2 do revisar: o hook novo leva `// @categoria: guia`, e `scripts/testa-conferir-categoria.sh` fixa a contagem de peças (58; guia/sensor/dado = 24/31/3). A contagem passa a 59 e 25/31/3, com a linha de histórico no cabeçalho dela; por isso o arquivo entrou em `arquivos:`.
+
+Emenda 2026-10-14, volta 4 (rodada extra liberada pelo Luís): `hooks/testa-titulo-sessao-registro.sh` fixa a contagem de hooks por evento do `hooks/hooks.json` (`"PreToolUse":17`), e o gate novo leva para 18. A contagem passa a 18, com a linha de histórico no cabeçalho dela; por isso o arquivo entrou em `arquivos:`. A varredura completa (`bash scripts/varrer-baterias.sh`) no HEAD 04caf2b7 deu 252 verdes e só essa vermelha.
 
 Registro: entrada nova no grupo `"matcher": "Bash|PowerShell"` de `hooks/hooks.json`; chave `matar-por-nome` (boolean, padrão `true`) em `hooks/lib/config.cjs`; `hooks/testa-gate-matar-por-nome.cjs` na seção de gates de `scripts/baterias-obrigatorias.txt`.
 
