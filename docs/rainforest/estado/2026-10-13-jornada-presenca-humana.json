@@ -20,18 +20,11 @@
     "em": "2026-10-13"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-13",
-    "tarefas_ok": 1,
+    "tarefas_ok": 3,
     "tarefas": 3,
-    "em_voo": [
-      {
-        "agente": "executor-tarefa2",
-        "tarefa": "2 contagem de descartados",
-        "desde": "2026-10-13T21:20:00-03:00",
-        "sessao": "5e5b6a6b-bd8f-4cc4-b6b7-86a41f01bf80"
-      }
-    ],
+    "em_voo": [],
     "carimbos": [
       {
         "tarefa": 1,
@@ -53,15 +46,65 @@
         "iteracao": 1,
         "sessao": "5e5b6a6b-bd8f-4cc4-b6b7-86a41f01bf80",
         "ts": "2026-10-14T00:10:18.785Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "0e27f89",
+        "iteracao": 2,
+        "sessao": "5e5b6a6b-bd8f-4cc4-b6b7-86a41f01bf80",
+        "ts": "2026-10-14T00:23:01.627Z"
       }
     ],
-    "em": "2026-10-13"
+    "em": "2026-10-13",
+    "comando": "node scripts/testa-jornada-origem.cjs; bash scripts/testa-jornada.sh; node scripts/testa-jornada-filtro.cjs; node hooks/testa-mod-relogio.cjs",
+    "saida": "total=11 vermelhas:[]; 15 ok 0 falha; 7 ok 0 falha; 27 ok 0 falha; conferir-mutacao exit 0 nas tarefas 1 e 2; dia 2026-10-10: 613 = 142 + 471",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-jornada-origem.cjs: task-notification nao conta, headless sdk-cli nao conta, sdk-py nao conta, plugin nao conta, isSidechain nao conta"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-jornada-origem.cjs: linha de descartados mostra a contagem de entradas de maquina"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "tarefa de versao e doc, sem comportamento a inverter"
+      }
+    ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "ebaf72867ec444807ac5e5b977765000a9ebbee8",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-10-13-jornada-presenca-humana.json"
+      ]
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a5d926e944456f31c",
+        "veredito": "ok",
+        "em": "2026-10-13",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/5e5b6a6b-bd8f-4cc4-b6b7-86a41f01bf80/subagents/agent-a5d926e944456f31c.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-13",
+    "achados": 4,
+    "base": "eb36be92940a4d5de0b2ec237313d4e1bfb6ef8f",
+    "head": "ebaf72867ec444807ac5e5b977765000a9ebbee8"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node scripts/testa-jornada-origem.cjs && bash scripts/testa-jornada.sh && node scripts/testa-jornada-filtro.cjs && node hooks/testa-mod-relogio.cjs && node scripts/jornada.cjs --dia 2026-10-10 --json",
+    "saida": "total=11 vermelhas:[]; 15 ok 0 falha; 7 ok 0 falha; 27 ok 0 falha; 10/10: antigo 613 = 142 + 471, efetiva 1055 -> 612.2; tarefa 3 ok; mutacoes: t1 vermelho, t2 vermelho, t3 pulada",
+    "sensor_externo": "node scripts/testa-jornada-origem.cjs",
+    "em": "2026-10-13"
   },
   "fechar": {
     "status": "pendente"

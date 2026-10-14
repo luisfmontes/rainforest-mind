@@ -133,7 +133,16 @@ const casos = [
     nome: 'interrupcao Esc sem origin conta',
     esperado: 3,
     entradas: [
-      { entrypoint: 'cli', message: { role: 'user', content: '[Request interrupted by user]' } },
+      // Formato real: o Esc chega como array de blocos, nao como string.
+      { entrypoint: 'cli', message: { role: 'user', content: [{ type: 'text', text: '[Request interrupted by user]' }] } },
+    ],
+  },
+  {
+    nome: 'origin null cai no ramo de entrypoint',
+    esperado: 3,
+    entradas: [
+      { origin: null, entrypoint: 'cli', message: { role: 'user', content: 'origin nulo' } },
+      { origin: null, entrypoint: 'sdk-cli', message: { role: 'user', content: 'origin nulo headless' } },
     ],
   },
   {
@@ -211,6 +220,23 @@ try {
     'toolUseResult e isMeta nao entram na contagem de maquina',
     linhasSo.includes('sinais de maquina descartados ..... 0') && jsonSo.maquina === 0,
     `linhas=${JSON.stringify(linhasSo.filter((l) => l.startsWith('sinais')))} json.maquina=${jsonSo.maquina}`
+  );
+
+  // Dia so de maquina: zero humanos e o modo texto ainda mostra quantos sinais
+  // foram descartados (e o caso em que um filtro quebrado zeraria a jornada).
+  const arqSoMaquina = path.join(caixa, 'so_maquina.jsonl');
+  fs.writeFileSync(
+    arqSoMaquina,
+    [
+      { entrypoint: 'sdk-cli', message: { role: 'user', content: 'Responda apenas com OK' } },
+      { origin: { kind: 'task-notification' }, entrypoint: 'cli', message: { role: 'user', content: '<task-notification>x</task-notification>' } },
+    ].map((e, i) => JSON.stringify({ type: 'user', timestamp: carimbo(i), ...e })).join('\n') + '\n'
+  );
+  const linhasSoMaq = linhasTexto(arqSoMaquina);
+  caso(
+    'sem humanos o modo texto ainda mostra os descartados',
+    linhasSoMaq.includes('sinais de maquina descartados ..... 2'),
+    `linhas=${JSON.stringify(linhasSoMaq)}`
   );
 } finally {
   fs.rmSync(caixa, { recursive: true, force: true });

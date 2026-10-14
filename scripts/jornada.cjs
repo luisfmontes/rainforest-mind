@@ -318,6 +318,7 @@ function main() {
     } else {
       console.log(
         `${escopo}: nenhuma mensagem humana encontrada.\n` +
+          `sinais de maquina descartados ..... ${maquina}\n` +
           "Sem medicao, a regra 8 PERGUNTA — nunca afirma jornada por outro sinal."
       );
     }
