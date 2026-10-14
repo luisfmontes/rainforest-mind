@@ -1,0 +1,158 @@
+Data: 2026-10-13
+Termos: jornada, presenca, isSidechain, task-notification, mensagensHumanas
+
+$ gh issue list --state all --search "jornada" --limit 200 --json number,title,state
+[{"number":485,"state":"OPEN","title":"jornada conta prompt de máquina como presença humana: sessão headless, subagente e task-notification fazem a madrugada virar jornada"},{"number":386,"state":"CLOSED","title":"relogio do mod: jornada do dia anterior acende ate 5 min depois da meia-noite"},{"number":387,"state":"CLOSED","title":"relogio do mod: session.end de sessao nao interativa pode cancelar o relogio"},{"number":388,"state":"CLOSED","title":"faixa do mod: semControle deixa passar LRM/RLM, ALM e separadores de linha"},{"number":194,"state":"CLOSED","title":"atualizar-cli.sh sem o lock por mkdir que os dois refreshers ja tem — e nenhuma bateria exercita esse lock"},{"number":385,"state":"CLOSED","title":"marcar plano ok passa com o arquivo declarado ausente do disco"},{"number":165,"state":"CLOSED","title":"O gate de publicacao e cego para escrita mediada por Bash — node, sed e heredoc passam"}]
+
+
+$ gh issue list --state all --search "presenca" --limit 200 --json number,title,state
+[{"number":485,"state":"OPEN","title":"jornada conta prompt de máquina como presença humana: sessão headless, subagente e task-notification fazem a madrugada virar jornada"},{"number":494,"state":"OPEN","title":"gate-publicacao barra header Authorization com variavel (Bearer ${token}) como credencial"},{"number":417,"state":"CLOSED","title":"Desligar gate so por variavel de ambiente, sem o arquivo .rainforest-gate-off"},{"number":160,"state":"CLOSED","title":"Quatro baterias leem o config.json real de quem as roda, e quem desliga um gate para si ve a suite vermelha sem pista da causa"},{"number":153,"state":"CLOSED","title":"A main esta vermelha no CI: 4 baterias que so falham no runner"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"},{"number":163,"state":"CLOSED","title":"REGRESSAO em testa-conferir-fluxo (verde em 0bb922c), mais duas vermelhas: uma bateria que nunca rodou em CI e um bloco sumido"}]
+
+
+$ gh issue list --state all --search "isSidechain" --limit 200 --json number,title,state
+[{"number":485,"state":"OPEN","title":"jornada conta prompt de máquina como presença humana: sessão headless, subagente e task-notification fazem a madrugada virar jornada"}]
+
+
+$ gh issue list --state all --search "task-notification" --limit 200 --json number,title,state
+[{"number":485,"state":"OPEN","title":"jornada conta prompt de máquina como presença humana: sessão headless, subagente e task-notification fazem a madrugada virar jornada"}]
+
+
+$ gh issue list --state all --search "mensagensHumanas" --limit 200 --json number,title,state
+[{"number":485,"state":"OPEN","title":"jornada conta prompt de máquina como presença humana: sessão headless, subagente e task-notification fazem a madrugada virar jornada"}]
+
+
+$ gh pr list --state all --search "jornada" --limit 200 --json number,title,state
+[{"number":389,"state":"MERGED","title":"Versao 1.39.0: relogio do mod acende jornada e janela parada"},{"number":390,"state":"MERGED","title":"Relógio do mod: #386, #387, #388 e /clear (1.39.1)"},{"number":164,"state":"MERGED","title":"Scripts entregues derivam o home de quem roda, com trava"},{"number":229,"state":"MERGED","title":"fix(statusline): barra sumiu dos dois perfis — cwd faltando no segmento da escada"},{"number":166,"state":"MERGED","title":"Gate: placeholder de usuario nao e nome de ninguem"},{"number":50,"state":"MERGED","title":"Aposenta o gemeo python do ideias"},{"number":44,"state":"MERGED","title":"Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada"},{"number":40,"state":"MERGED","title":"A statusline sai de ~/.claude e entra no plugin, e a bateria de saude para de vazar temporario"}]
+
+
+$ gh pr list --state all --search "presenca" --limit 200 --json number,title,state
+[{"number":306,"state":"MERGED","title":"Invariante de comportamento nas skills: 15 frases travadas em 7 SKILL.md"},{"number":132,"state":"CLOSED","title":"Fluxo 1 — o ciclo reprovado->executar vira maquina, e ok sem evidencia nao fecha"},{"number":90,"state":"MERGED","title":"Abertura: os hooks passam a pintar na tela, nao so no contexto do modelo"},{"number":45,"state":"CLOSED","title":"Gate de sessao co-locada e catraca de mutacao: duas familias reincidentes viram exit code"},{"number":60,"state":"MERGED","title":"Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture"}]
+
+
+$ gh pr list --state all --search "isSidechain" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "task-notification" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "mensagensHumanas" --limit 200 --json number,title,state
+[]
+
+
+$ git ls-remote --heads origin | grep -F "jornada"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "presenca"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "isSidechain"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "task-notification"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "mensagensHumanas"
+(vazio)
+
+$ git log --all --grep="jornada" --oneline
+8688f582 relogio: corrigir acensao apos meia-noite com verificacao de dia
+12a6f3ed Merge pull request #389 from luisfmontes/fluxo/mod-jornada-relogio
+097d4767 docs relogio: esconder vale para a faixa inteira
+64ed7b6b Versao 1.39.0: relogio do mod acende jornada e janela parada
+77a21767 docs: relogio do mod (jornada e janela parada) no CONTRIBUTING
+19027372 mod: relogio de jornada e janela parada na faixa, com nota da regra 8
+1eabb0a3 relogio: logica pura de jornada, parada, assinatura e nota
+ab822798 jornada: ler so transcript tocado no dia (14-18 s para ~2 s)
+a6a7bd68 plano: relogio do mod em 8 tarefas; design emenda D3, D4 e D8
+d2dba6cd estado: design do mod de jornada aprovado
+1c5b6c28 design: mod de jornada e janela parada por relogio (D1-D9)
+ebd5a9ba faixa: logica pura (Q, linhas, assinatura, esconder) e bateria
+b73a3c4d Tarefa 17 (#194): Adicionar lock a scripts/atualizar-cli.sh
+fa68491c Gate: placeholder de usuario nao e nome de ninguem
+5a282ae2 Gate: placeholder de usuario nao e nome de ninguem
+3c8a8542 Scripts entregues derivam o home de quem roda, com trava
+2a5149d8 Scripts entregues derivam o home de quem roda, com trava
+63c8236d Aposenta o gemeo python do ideias (#50)
+fa50f1c5 Aposenta o gemeo python do ideias (#50)
+c3d775c0 Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada (#44)
+3e615363 Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada (#44)
+7dc1a9bf A statusline sai de ~/.claude e entra no plugin, e a bateria de saude para de vazar temporario (#40)
+e265afc5 A statusline sai de ~/.claude e entra no plugin, e a bateria de saude para de vazar temporario (#40)
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+54d5e5b2 Os dois consertos que o dev de fora sente no dia um
+c2f583e5 Os dois consertos que o dev de fora sente no dia um
+edac8168 Semear consome o mapa, nao dispara a arqueologia — e para de vazar relatorio alheio
+f1b97626 Semear consome o mapa, nao dispara a arqueologia — e para de vazar relatorio alheio
+7118d701 Arqueologia: o estagio ZERO que faltava, e opcional de forma mecanica
+b3d3220f Arqueologia: o estagio ZERO que faltava, e opcional de forma mecanica
+7af49225 /semear: propoe o que criar neste repo a partir do que ele ja tropecou
+3a750bf7 /semear: propoe o que criar neste repo a partir do que ele ja tropecou
+563ccb0d P1: a escotilha do gate para de ser revelada a quem esta sendo bloqueado
+9b493ecf P1: a escotilha do gate para de ser revelada a quem esta sendo bloqueado
+3848ff5d /setup: a pasta de dados nasce, e o que incomoda em repo de terceiro pode ser desligado
+0539c6c8 /setup: a pasta de dados nasce, e o que incomoda em repo de terceiro pode ser desligado
+baf3fe48 A jornada passa a medir em Node: nenhuma regra depende mais de Python
+9492c707 A jornada passa a medir em Node: nenhuma regra depende mais de Python
+d8b72ed0 A regra 8 desacopla do plugin de cliente, e o corte de lacuna para de engolir almoco
+4ff3da28 A regra 8 desacopla do plugin de cliente, e o corte de lacuna para de engolir almoco
+f01960e9 O /ideia passa a chamar Node: uma dependencia no caminho de execucao, nao duas
+90cc9cab O /ideia passa a chamar Node: uma dependencia no caminho de execucao, nao duas
+ef76b391 v0.46.0: a checagem de corpo pega carona no aviso da regra 8, e nao vira gatilho
+838995bc v0.46.0: a checagem de corpo pega carona no aviso da regra 8, e nao vira gatilho
+abaca49c Colhe a regra 8 e a do executor, com a checagem de cada uma no validador
+c7591bf3 Colhe a regra 8 e a do executor, com a checagem de cada uma no validador
+c8654b2e v0.42.0: regra 8 mede jornada no transcript, nunca em carimbo de commit
+3edac49e v0.42.0: regra 8 mede jornada no transcript, nunca em carimbo de commit
+45ff3cdd Revisao pos-mudanca: ponteiro morto na regra 2, licao de caminho sobe pra 14, regra 12 cobre relatorio analitico
+713ea3a1 Revisao pos-mudanca: ponteiro morto na regra 2, licao de caminho sobe pra 14, regra 12 cobre relatorio analitico
+d0048071 Regra 8: raiz do cache vem do CLAUDE_CONFIG_DIR, nao de caminho fixo
+52c741bc Regra 8: raiz do cache vem do CLAUDE_CONFIG_DIR, nao de caminho fixo
+b40a690d Regra 15 (agente nao mexe na maquina) e regra 3 com natureza do foco; v0.23.0
+6a433e9b Regra 15 (agente nao mexe na maquina) e regra 3 com natureza do foco; v0.23.0
+03ba99fb Regra 8 usa jornada real do apontamento-horas (complementar, com fallback) + regra 1 confirma itens ok + v0.12.0
+085acf3b Regra 8 usa jornada real do apontamento-horas (complementar, com fallback) + regra 1 confirma itens ok + v0.12.0
+a04a57cd Hook SubagentStart injeta metodo em todo agente + guarda-corpo contextual (delegar jogando nao e jornada) + descanso vs expediente + v0.11.0
+9c938139 Hook SubagentStart injeta metodo em todo agente + guarda-corpo contextual (delegar jogando nao e jornada) + descanso vs expediente + v0.11.0
+eb425489 Regra 8 (guarda-corpo de jornada), marketplace.json e registro de acompanhamento profissional
+
+$ git log --all --grep="presenca" --oneline
+613ca072 Indice no topo das references com mais de 100 linhas
+19fa0fd1 portaria: nega pela presenca de agent_id, nao pelo valor
+c947be97 fluxo invariante-de-comportamento-nas-skills: fecha com PR #306
+36baf71f executar rodada 10: fecha ok; o degrau skill ganha o caso que faltava
+820983a3 executar rodada 9: fecha ok; o mutante sobrevivente do ramo onde morreu
+406dac66 segunda fonte simetrica: a declaracao fixa as QUINZE invariantes
+eaae2a6f revisar rodada 6: reprovado, 1 bloqueante e 5 menores
+3b599f5f invariantes: caixa por bloco, trava de roster, chave desconhecida
+73c11d4d Plano: os criterios passam a ser comandos que rodam
+6dd373fa Corrige a tarefa 4 do plano: dependencia declarada nao batia com o criterio
+2ef886ee Rodada de decisoes fechada nas recomendadas: fluxo 9 plano ok (Opcao A), conselho e passo do design
+b4fde61c Rodada de decisoes fechada nas recomendadas: fluxo 9 plano ok (Opcao A), conselho e passo do design
+f6d4552c Abertura: os hooks passam a pintar na tela, nao so no contexto do modelo (#90)
+3ee8b32f Abertura: os hooks passam a pintar na tela, nao so no contexto do modelo (#90)
+1c68627a O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas (#59)
+b4704ff8 O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas (#59)
+
+$ git log --all --grep="isSidechain" --oneline
+(vazio)
+
+$ git log --all --grep="task-notification" --oneline
+ec5986ab Fechar os cinco achados da revisao independente
+59354206 Bateria da autorizacao do usuario na portaria (tarefa 7)
+e0754737 So a voz do usuario autoriza, e ler a cauda apagava a autorizacao
+
+$ git log --all --grep="mensagensHumanas" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+{"id":"jornada-inferida-de-carimbo-de-commit","titulo":"Guarda-corpo da regra 8 disparado por carimbo de commit, sem olhar o intervalo"}
+{"id":"jornada-medida-no-transcript-nao-em-carimbo","titulo":"Regra 8 nunca infere jornada de carimbo: mede o intervalo entre mensagens do Luis"}
+{"id":"jornada-dita-nao-e-endereco-do-rainforest","titulo":"Fala sobre horario nao e, por si so, endereco do rainforest"}
+{"id":"obs-jornada-inferida-de-mensagens-infla-hora","titulo":"Jornada inferida de janela de mensagens inflou 26/09 para 9h"}
+{"id":"mods-jornada-e-janela-parada-por-relogio","titulo":"Jornada (regra 8) e janela parada (regra 17) medidas por relogio do mod, com aviso em toast/status"}
+{"id":"aviso-de-jornada-repetido-vira-cobranca","titulo":"Aviso de jornada repetido em todo turno vira cobranca"}
+
+

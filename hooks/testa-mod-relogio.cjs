@@ -84,7 +84,7 @@ function jornadaReal(n, gap, ultimo) {
   const linhas = [];
   for (let i = n; i >= 0; i--) {
     const d = new Date(ultimo.getTime() - i * gap * 60000);
-    linhas.push(JSON.stringify({ type: "user", timestamp: d.toISOString(), message: { role: "user" } }));
+    linhas.push(JSON.stringify({ type: "user", entrypoint: "cli", origin: { kind: "human" }, timestamp: d.toISOString(), message: { role: "user" } }));
   }
   fs.writeFileSync(f, linhas.join("\n") + "\n");
   const r = spawnSync(process.execPath, [SCRIPT_JORNADA, "--json", "--transcript", f], {
@@ -343,7 +343,7 @@ caso("FIXTURE_SESSOES e FIXTURE_JORNADA de mod-relogio.test.tsx tem as chaves ex
   const f = path.join(dir, "s.jsonl");
   const linhas = [];
   for (let i = 2; i >= 0; i--) {
-    linhas.push(JSON.stringify({ type: "user", timestamp: new Date(Date.now() - i * 20 * 60000).toISOString(), message: { role: "user" } }));
+    linhas.push(JSON.stringify({ type: "user", entrypoint: "cli", origin: { kind: "human" }, timestamp: new Date(Date.now() - i * 20 * 60000).toISOString(), message: { role: "user" } }));
   }
   fs.writeFileSync(f, linhas.join("\n") + "\n");
   const r = spawnSync(process.execPath, [SCRIPT_JORNADA, "--json", "--transcript", f], {

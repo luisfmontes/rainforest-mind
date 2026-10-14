@@ -23,6 +23,15 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   limpeza; traz todos os commits do agente de uma vez (`git apply --index`, atômico), recusa índice com stage prévio,
   desfaz tudo na recusa e retoma do `marcar` se ele falhou depois do commit. **Processo longo fora do teto do Bash:** `rodar-longo.cjs`.
 
+## 1.65.1 — 2026-10-13
+
+- **A jornada só conta o que você digitou (#485).** `jornada.cjs` aceitava como presença todo prompt `user` que não fosse
+  retorno de ferramenta: sessão headless, revisão de segurança, `<task-notification>` e mensagem de plugin entravam na
+  conta, e o aviso de excesso da regra 8 disparava com você longe do teclado. Agora conta `origin.kind = human`; sem
+  `origin` (CLI antigo), só `entrypoint = cli` fora de subagente e de `<task-notification>`. O script imprime
+  `sinais de maquina descartados` (e o `--json` traz `maquina_descartadas`) para um filtro quebrado aparecer como número.
+  Em 2026-10-10: 613 mensagens pelo filtro antigo, 142 digitadas e 471 de máquina; jornada efetiva de 17h35 para 10h12.
+
 ## 1.65.0 — 2026-10-13
 
 - **O `executar` calcula as camadas do `depende de:`.** `conferir-fluxo.cjs camadas` monta a ordem de despacho e recusa

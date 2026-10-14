@@ -30,7 +30,7 @@ Dois scripts ficam como **gêmeos** dos ports, e não como legado morto:
 | Gêmeo | O que ele prova |
 |---|---|
 | `conferir-entrega.py` | a mesma bateria roda contra os dois — `CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh` — **23 casos / 43 asserções** (o rodapé imprime `43 ok`), e as falhas encenadas (as seis dos relatórios mais o arquivo que some por `.gitignore`) reprovam nos dois |
-| `jornada.py` | os dois medem o mesmo dia e devolvem os mesmos números, lacuna por lacuna |
+| `jornada.py` | até a 1.65.0, os dois mediam o mesmo dia e devolviam os mesmos números, lacuna por lacuna. Desde a 1.65.1 o `.cjs` descarta prompt de máquina por `origin`/`entrypoint` (#485) e o `.py` não, então o `.py` conta a mais em dia com sessão headless ou `<task-notification>` |
 
 Apagar o gêmeo seria apagar a única prova de que o port está certo. O
 terceiro gêmeo — o do `ideias.cjs` — foi aposentado em 2026-08-22: a bateria
