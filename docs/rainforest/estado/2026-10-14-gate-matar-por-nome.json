@@ -22,7 +22,14 @@
     "catraca_mutacao": "2026-10-14",
     "tarefas_ok": 2,
     "tarefas": 2,
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "1 volta 2: achados do revisor",
+        "desde": "2026-10-14T12:55:00-03:00",
+        "sessao": "bfd7468b-e589-43c6-9e09-04528a1dc829"
+      }
+    ],
     "carimbos": [
       {
         "tarefa": 1,
@@ -44,6 +51,13 @@
         "iteracao": 1,
         "sessao": "bfd7468b-e589-43c6-9e09-04528a1dc829",
         "ts": "2026-10-14T14:37:10.108Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "c709b0fd6539e95649cb59e5833d7064d2547fa9",
+        "iteracao": 3,
+        "sessao": "bfd7468b-e589-43c6-9e09-04528a1dc829",
+        "ts": "2026-10-14T14:54:41.344Z"
       }
     ],
     "em": "2026-10-14",
