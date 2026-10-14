@@ -6,7 +6,10 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-10-13-executar-autonomo.md",
+    "decisoes": 7,
+    "em": "2026-10-13"
   },
   "plano": {
     "status": "pendente"
