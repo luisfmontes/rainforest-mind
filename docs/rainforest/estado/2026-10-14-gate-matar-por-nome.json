@@ -18,18 +18,11 @@
     "em": "2026-10-14"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-14",
     "tarefas_ok": 2,
     "tarefas": 2,
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "1 volta 3: achados do revisor",
-        "desde": "2026-10-14T13:45:00-03:00",
-        "sessao": "bfd7468b-e589-43c6-9e09-04528a1dc829"
-      }
-    ],
+    "em_voo": [],
     "carimbos": [
       {
         "tarefa": 1,
@@ -73,12 +66,12 @@
       2
     ],
     "comando": "node hooks/testa-gate-matar-por-nome.cjs",
-    "saida": "235 ok, 0 falha(s)",
+    "saida": "307 ok, 0 falha(s)",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-gate-matar-por-nome.cjs, casos contorno: (105 cairam com if (false))"
+        "fixture": "testa-gate-matar-por-nome.cjs, casos contorno: (if (false) bloqueia)"
       },
       {
         "tarefa": 2,
@@ -86,11 +79,7 @@
         "motivo": "tarefa de documentacao e numero de versao"
       }
     ],
-    "reaberturas": 2,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-14"
-    }
+    "reaberturas": 2
   },
   "revisar": {
     "status": "reprovado",
