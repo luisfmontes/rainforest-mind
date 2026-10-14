@@ -67,7 +67,13 @@ function contar(arquivo) {
   } catch {
     return { mensagens: null, detalhe: `saida nao e JSON (exit ${r.status}): ${r.stdout}${r.stderr}` };
   }
-  return { mensagens: j.mensagens, detalhe: `exit ${r.status}` };
+  return { mensagens: j.mensagens, maquina: j.maquina_descartadas, detalhe: `exit ${r.status}` };
+}
+
+// Saida em modo texto, linha a linha (#485, tarefa 2).
+function linhasTexto(arquivo) {
+  const r = cp.spawnSync(process.execPath, [JORNADA, '--transcript', arquivo], { encoding: 'utf8' });
+  return r.stdout.split('\n');
 }
 
 // Cada caso: `entradas` extras ao lado das duas ancoras, e `esperado` = total
@@ -159,6 +165,53 @@ try {
     const r = contar(arquivo);
     caso(c.nome, r.mensagens === c.esperado, `mensagens=${r.mensagens} esperado=${c.esperado} (${r.detalhe})`);
   }
+
+  // Tres entradas de maquina (sdk-cli, task-notification, plugin) e duas que os
+  // filtros antigos descartam antes da contagem (toolUseResult e isMeta).
+  const arqMaquina = path.join(caixa, 'linha_descartados.jsonl');
+  fs.writeFileSync(
+    arqMaquina,
+    transcrito([
+      { entrypoint: 'sdk-cli', message: { role: 'user', content: 'Responda apenas com OK' } },
+      {
+        origin: { kind: 'task-notification' },
+        entrypoint: 'cli',
+        message: { role: 'user', content: '<task-notification>sub-agente terminou</task-notification>' },
+      },
+      { origin: { kind: 'plugin' }, entrypoint: 'cli', message: { role: 'user', content: 'prompt de plugin' } },
+      { toolUseResult: { ok: true }, entrypoint: 'cli', message: { role: 'user', content: 'retorno de tool' } },
+      { isMeta: true, entrypoint: 'cli', message: { role: 'user', content: 'meta' } },
+    ])
+  );
+  const linhas = linhasTexto(arqMaquina);
+  const iMensagens = linhas.findIndex((l) => l.startsWith('mensagens do usuario'));
+  const jsonMaquina = contar(arqMaquina);
+  caso(
+    'linha de descartados mostra a contagem de entradas de maquina',
+    iMensagens >= 0 &&
+      linhas[iMensagens + 1] === 'sinais de maquina descartados ..... 3' &&
+      jsonMaquina.maquina === 3 &&
+      jsonMaquina.mensagens === 2,
+    `linha=${JSON.stringify(linhas[iMensagens + 1])} json.maquina=${jsonMaquina.maquina} json.mensagens=${jsonMaquina.mensagens}`
+  );
+
+  // So toolUseResult e isMeta, ambos com entrypoint sdk-cli: se o filtro antigo
+  // deixasse passar, eles virariam maquina e a contagem sairia 2, nao 0.
+  const arqSoDescartes = path.join(caixa, 'so_descartes.jsonl');
+  fs.writeFileSync(
+    arqSoDescartes,
+    transcrito([
+      { toolUseResult: { ok: true }, entrypoint: 'sdk-cli', message: { role: 'user', content: 'retorno' } },
+      { isMeta: true, origin: { kind: 'plugin' }, entrypoint: 'cli', message: { role: 'user', content: 'meta' } },
+    ])
+  );
+  const linhasSo = linhasTexto(arqSoDescartes);
+  const jsonSo = contar(arqSoDescartes);
+  caso(
+    'toolUseResult e isMeta nao entram na contagem de maquina',
+    linhasSo.includes('sinais de maquina descartados ..... 0') && jsonSo.maquina === 0,
+    `linhas=${JSON.stringify(linhasSo.filter((l) => l.startsWith('sinais')))} json.maquina=${jsonSo.maquina}`
+  );
 } finally {
   fs.rmSync(caixa, { recursive: true, force: true });
 }

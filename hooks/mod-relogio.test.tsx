@@ -15,7 +15,7 @@ import { test, expect, mock } from 'claude-code/testing'
 import { largura } from './faixa-puro.mjs'
 
 const FIXTURE_SESSOES = {"ociosidade_min":45,"janelas":[{"cwd":"/projetos/painel","desde":0},{"cwd":"/projetos/loja-api","desde":0}]}
-const FIXTURE_JORNADA = {"escopo":"s.jsonl","mensagens":13,"efetiva_min":552,"bruto_min":552,"primeiro":"2026-10-03T11:18:00-03:00","ultimo":"2026-10-03T20:30:00-03:00","corte_min":55,"descartadas":[]}
+const FIXTURE_JORNADA = {"escopo":"s.jsonl","mensagens":13,"maquina_descartadas":0,"efetiva_min":552,"bruto_min":552,"primeiro":"2026-10-03T11:18:00-03:00","ultimo":"2026-10-03T20:30:00-03:00","corte_min":55,"descartadas":[]}
 
 const DADOS_FAIXA = { fluxos: [{ slug: '2026-10-03-faixa-teste', etapa: 'executar', tarefas_ok: 1, tarefas: 3, em_voo: ['agente-a'] }] }
 const VAZIO = { fluxos: [] }

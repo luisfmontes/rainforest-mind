@@ -22,13 +22,13 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-13",
-    "tarefas_ok": 0,
+    "tarefas_ok": 1,
     "tarefas": 3,
     "em_voo": [
       {
-        "agente": "executor-tarefa1",
-        "tarefa": "1 filtro de origem jornada",
-        "desde": "2026-10-13T20:55:00-03:00",
+        "agente": "executor-tarefa2",
+        "tarefa": "2 contagem de descartados",
+        "desde": "2026-10-13T21:20:00-03:00",
         "sessao": "5e5b6a6b-bd8f-4cc4-b6b7-86a41f01bf80"
       }
     ],
@@ -39,6 +39,20 @@
         "iteracao": 1,
         "sessao": "5e5b6a6b-bd8f-4cc4-b6b7-86a41f01bf80",
         "ts": "2026-10-13T23:58:02.512Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "dfdc7bc",
+        "iteracao": 2,
+        "sessao": "5e5b6a6b-bd8f-4cc4-b6b7-86a41f01bf80",
+        "ts": "2026-10-14T00:09:53.203Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "0e27f89",
+        "iteracao": 1,
+        "sessao": "5e5b6a6b-bd8f-4cc4-b6b7-86a41f01bf80",
+        "ts": "2026-10-14T00:10:18.785Z"
       }
     ],
     "em": "2026-10-13"

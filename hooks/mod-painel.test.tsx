@@ -47,7 +47,7 @@ const GH_EXE = 'C:\\Program Files\\GitHub CLI\\gh.exe'
 // caminho neutro.
 const FIXTURE_DADOS = {"fluxos":[{"slug":"2026-10-07-painel-pane","titulo":"Pane do painel","etapa":"executar","tarefas_ok":1,"tarefas":3,"em_voo":["agente-a"],"criado_em":"2026-10-07","worktree":"C:/tmp/painel-repo-0l2wTg"}]}
 const FIXTURE_SESSOES = {"ociosidade_min":45,"janelas":[{"cwd":"/projetos/painel","desde":0},{"cwd":"/projetos/loja-api","desde":0}]}
-const FIXTURE_JORNADA = {"escopo":"s.jsonl","mensagens":13,"efetiva_min":552,"bruto_min":552,"primeiro":"2026-10-03T11:18:00-03:00","ultimo":"2026-10-03T20:30:00-03:00","corte_min":55,"descartadas":[]}
+const FIXTURE_JORNADA = {"escopo":"s.jsonl","mensagens":13,"maquina_descartadas":0,"efetiva_min":552,"bruto_min":552,"primeiro":"2026-10-03T11:18:00-03:00","ultimo":"2026-10-03T20:30:00-03:00","corte_min":55,"descartadas":[]}
 
 // Saidas REAIS de `node scripts/desvio-do-plano.cjs --cwd <worktree> --arquivo <abs>` sobre repo
 // temporario montado como em scripts/testa-desvio-do-plano.sh (git init + git worktree add, plano

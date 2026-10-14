@@ -110,17 +110,19 @@ function ehPresencaHumana(d) {
   return d.entrypoint === "cli" && !textoDoPrompt(d).startsWith("<task-notification>");
 }
 
-function mensagensHumanas(caminho) {
-  // Descarta retorno de ferramenta (`toolUseResult`), meta e resumo de
-  // compactacao — os tres chegam como type "user" e nao provam presenca
-  // humana nenhuma.
+// Uma passada só pelo transcript. `humanos` = [[Date, caminho]] de presenca humana
+// (D1). `maquina` = Date de cada entrada de maquina que passou os filtros antigos e
+// foi recusada por ehPresencaHumana (D3). toolUseResult, isMeta e isCompactSummary
+// nao entram em maquina: sao descartados antes, como antes.
+function classificarTranscript(caminho) {
   let conteudo;
   try {
     conteudo = fs.readFileSync(caminho, "utf-8");
   } catch {
-    return [];
+    return { humanos: [], maquina: [] };
   }
-  const carimbos = [];
+  const humanos = [];
+  const maquina = [];
   for (const linha of conteudo.split("\n")) {
     if (!linha.trim()) continue;
     let d;
@@ -134,14 +136,21 @@ function mensagensHumanas(caminho) {
     if (Object.prototype.hasOwnProperty.call(d, "toolUseResult") || d.isMeta || d.isCompactSummary) {
       continue;
     }
-    if (!ehPresencaHumana(d)) continue;
     const ts = d.timestamp;
     if (!ts) continue;
     const utc = new Date(ts);
     if (Number.isNaN(utc.getTime())) continue;
-    carimbos.push([utc, caminho]);
+    if (ehPresencaHumana(d)) {
+      humanos.push([utc, caminho]);
+    } else {
+      maquina.push(utc);
+    }
   }
-  return carimbos;
+  return { humanos, maquina };
+}
+
+function mensagensHumanas(caminho) {
+  return classificarTranscript(caminho).humanos;
 }
 
 // --------------------------------------------------------------------------
@@ -270,8 +279,11 @@ function main() {
 
   let carimbos;
   let escopo;
+  let maquina = 0;
   if (args.transcript) {
-    carimbos = mensagensHumanas(args.transcript);
+    const cls = classificarTranscript(args.transcript);
+    carimbos = cls.humanos;
+    maquina = cls.maquina.length;
     escopo = path.basename(args.transcript);
   } else {
     const dia = args.dia || hoje();
@@ -280,8 +292,12 @@ function main() {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dia);
     const desde = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime() : 0;
     for (const t of transcriptsDisponiveis(Number.isNaN(desde) ? 0 : desde)) {
-      for (const c of mensagensHumanas(t)) {
+      const cls = classificarTranscript(t);
+      for (const c of cls.humanos) {
         if (diaLocal(c[0]) === dia) carimbos.push(c);
+      }
+      for (const d of cls.maquina) {
+        if (diaLocal(d) === dia) maquina++;
       }
     }
     escopo = `dia ${dia}, todas as janelas`;
@@ -291,7 +307,14 @@ function main() {
 
   if (carimbos.length === 0) {
     if (args.json) {
-      console.log(JSON.stringify({ escopo, mensagens: 0, erro: "nenhuma mensagem humana encontrada" }));
+      console.log(
+        JSON.stringify({
+          escopo,
+          mensagens: 0,
+          erro: "nenhuma mensagem humana encontrada",
+          maquina_descartadas: maquina,
+        })
+      );
     } else {
       console.log(
         `${escopo}: nenhuma mensagem humana encontrada.\n` +
@@ -312,6 +335,7 @@ function main() {
       JSON.stringify({
         escopo,
         mensagens: carimbos.length,
+        maquina_descartadas: maquina,
         efetiva_min: Math.round(efetiva * 10) / 10,
         bruto_min: Math.round(bruto * 10) / 10,
         primeiro: isoformatLocal(primeiro),
@@ -329,6 +353,7 @@ function main() {
 
   console.log(`escopo ................. ${escopo}`);
   console.log(`mensagens do usuario ...... ${carimbos.length}`);
+  console.log("sinais de maquina descartados ..... " + maquina);
   console.log(`primeiro sinal humano .. ${hhmmRelogio(primeiro)} (local)`);
   console.log(`ultimo sinal humano .... ${hhmmRelogio(ultimo)} (local)`);
   console.log(`intervalo bruto ........ ${hhmm(bruto)}  <- ponta a ponta, NAO e jornada`);
