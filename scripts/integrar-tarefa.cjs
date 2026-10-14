@@ -22,8 +22,10 @@
  * sobreviveu. Índice já com stage no worktree do fluxo é recusado antes do passo 2, para
  * que o commit leve só o que veio do agente.
  *
- * RETOMADA. Se a branch do fluxo já tem um commit com o trailer da tarefa (o marcar falhou
- * numa chamada anterior), os passos 1 a 4 são pulados e o script segue do 5.
+ * RETOMADA. Se a branch do fluxo já tem, depois da --base, um commit com o trailer da tarefa
+ * (o marcar falhou numa chamada anterior), os passos 1 a 4 são pulados e o script segue do 5.
+ * Com o worktree do agente presente, a entrega dele tem de já estar no HEAD (apply --check
+ * -R); se não estiver, recusa no passo `retomada`. Sem o worktree, retoma do mesmo jeito.
  *
  * Uso:
  *   node scripts/integrar-tarefa.cjs --slug <s> --tarefa <N> --worktree <dir> --base <h> \
@@ -37,8 +39,8 @@
  *   0   aceito (commit feito e estado marcado; se o worktree do agente não saiu, o JSON
  *       traz "worktree_removido":false e o stderr diz por quê)
  *   2   recusado no passo indicado; o stderr traz o passo e a saída dele
- *   69  nao-verificavel: falta ambiente (worktree sumiu, não é repositório git, ou o
- *       marcar falhou depois do commit; rodar de novo retoma do marcar)
+ *   69  nao-verificavel: falta ambiente (worktree sumiu fora da retomada, não é repositório
+ *       git, ou o marcar falhou depois do commit; rodar de novo retoma do marcar)
  *   1   erro de uso
  *
  * Saída: uma linha JSON em stdout, {"tarefa":N,"resultado":"aceito|recusado","passo":"...","commit":"<hash>|null"}.
@@ -81,13 +83,16 @@ function ambiente(motivo) {
   process.exit(69);
 }
 
-// Desfaz o que o cherry-pick trouxe: arquivo novo sai do índice e do disco; arquivo
-// modificado ou apagado volta ao HEAD, índice e árvore.
+// Desfaz o que o apply trouxe: arquivo novo sai do índice e do disco, junto com as pastas que
+// ficarem vazias; arquivo modificado ou apagado volta ao HEAD, índice e árvore.
 function desfazer(trazidos, topo) {
   for (const t of trazidos) {
     if (t.status === 'A') {
       git(['rm', '-q', '--cached', '-f', '--', t.arquivo], topo);
       fs.rmSync(path.join(topo, t.arquivo), { force: true });
+      for (let dir = path.dirname(path.join(topo, t.arquivo)); path.relative(topo, dir) && !path.relative(topo, dir).startsWith('..'); dir = path.dirname(dir)) {
+        try { fs.rmdirSync(dir); } catch { break; }
+      }
     } else {
       git(['restore', '--source=HEAD', '--staged', '--worktree', '--', t.arquivo], topo);
     }
@@ -162,6 +167,26 @@ function main() {
   let agenteHead = null;
   let hash = commitDaTarefa(slug, numero, base, topo);
   if (hash) {
+    // O trailer sozinho não prova que ESTE trabalho do agente entrou (base velha, fluxo
+    // rebaseado). Com o worktree presente, o diff do agente tem de já estar no HEAD; se não
+    // estiver, recusa e o worktree fica, porque o passo 6 o apagaria com a correção dentro.
+    if (fs.existsSync(worktree)) {
+      const head = saidaGit(['rev-parse', 'HEAD'], worktree);
+      const d = head && git(['diff', '--binary', '--no-renames', base, head], topo);
+      if (!d || d.status !== 0) {
+        return recusar('retomada', { stderr: `não consegui ler o diff ${base}..${head} do agente\n` });
+      }
+      if (d.stdout.trim()) {
+        const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'integrar-'));
+        const remendo = path.join(dir, 'entrega.patch');
+        fs.writeFileSync(remendo, d.stdout);
+        const contido = git(['apply', '--check', '-R', '--cached', remendo], topo);
+        fs.rmSync(dir, { recursive: true, force: true });
+        if (contido.status !== 0) {
+          return recusar('retomada', { stderr: `o commit ${hash} tem o trailer da tarefa ${numero}, mas a entrega do agente não está no HEAD; confira a --base\n` });
+        }
+      }
+    }
     console.error(`retomada: a branch já tem o commit ${hash} da tarefa ${numero}; seguindo do marcar`);
   } else {
     if (!fs.existsSync(worktree)) ambiente(`worktree do agente não existe: ${worktree}`);
@@ -241,6 +266,8 @@ function main() {
   // 6. Remove o worktree do agente e a branch dele. A tarefa já está integrada: falha aqui
   // é aviso, não parada.
   if (!fs.existsSync(worktree)) {
+    // Sem o worktree não há como saber o nome da branch do agente: fica para remoção por nome.
+    console.error(`aviso: o worktree ${worktree} já não existia; se a branch do agente sobrou, apague-a por nome`);
     console.log(JSON.stringify({ tarefa: numero, resultado: 'aceito', passo: 'integrada', commit: hash, worktree_removido: true }));
     process.exit(0);
   }

@@ -77,7 +77,7 @@ node scripts/rodar-longo.cjs iniciar --saida <arq> -- node scripts/integrar-tare
   `--base` é o HEAD do fluxo que foi no briefing. `--head-antes` e `--sujo-antes` são do checkout principal (a `main`), não do fluxo. É o principal que o script confere, a menos que venha `--repo-principal`. Escrita do agente no worktree do fluxo não é vigiada aqui: quem a pega é o índice com stage prévio, recusado, e o `creep` do revisor.
 
   - Exit 0: a tarefa está integrada, com todos os commits do agente num commit com trailer, mais o `marcar`. Se o JSON trouxer `"worktree_removido":false`, remova o worktree do agente por caminho.
-  - Exit 2: recusado. O passo vem no JSON (`conferir-entrega`, `indice-sujo`, `base`, `apply`, `mutacao`, `commit`). A branch fica como estava, e o executor é redespachado com o motivo, como no laço. Se o passo for `apply`, a entrega não encaixa no fluxo atual: redespache a partir do HEAD novo do fluxo.
+  - Exit 2: recusado. O passo vem no JSON (`conferir-entrega`, `indice-sujo`, `base`, `apply`, `mutacao`, `commit`, `retomada`). A branch fica como estava, e o executor é redespachado com o motivo, como no laço. Se o passo for `apply`, a entrega não encaixa no fluxo atual: redespache a partir do HEAD novo do fluxo.
   - Exit 69: é parada. Se o commit já saiu e só o `marcar` falhou, rodar o mesmo comando de novo retoma sem commit novo.
 
 - **Processo longo.** Bateria ou mutação que pode passar de 10 minutos não roda direto no Bash:

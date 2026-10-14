@@ -215,6 +215,7 @@ igual "HEAD nao se move" "$HEAD_ANTES" "$(cd "$CX" && git rev-parse HEAD)"
 igual "git status igual ao de antes" "$PORC_ANTES" "$(cd "$CX" && git status --porcelain)"
 igual "arquivo novo trazido saiu do disco" "nao" "$([ -e "$CX/src/nova.cjs" ] && echo sim || echo nao)"
 igual "arquivo novo com acento e espaco saiu do disco" "nao" "$([ -e "$CX/src/gestão/contrato final.txt" ] && echo sim || echo nao)"
+igual "pasta que ficou vazia saiu do disco" "nao" "$([ -e "$CX/src/gestão" ] && echo sim || echo nao)"
 igual "nada no indice" "" "$(cd "$CX" && git diff --cached --name-only)"
 igual "beta volta ao conteudo do HEAD" "0" "$(cd "$CX" && git diff --quiet HEAD -- src/beta.cjs; echo $?)"
 
@@ -301,6 +302,40 @@ igual "redespacho sai 0" "0" "$RC"
 igual "sem retomada no redespacho" "0" "$(echo "$ERR" | grep -c '^retomada:')"
 igual "1 commit novo depois do redespacho" "1" "$(cd "$CX" && git rev-list --count "$BASE..HEAD")"
 igual "a correcao chegou" "1" "$(grep -c '^// v2 correcao$' "$CX/src/alfa.cjs")"
+
+echo "== retomada com o worktree do agente presente confere a entrega e segue =="
+caixa_nova
+abrir_fluxo
+despachar presente
+printf '// integrada\n' >> "$WT/src/alfa.cjs"
+agente_commita "alfa"
+VAZIO2="$(mktemp -d)"; SANDBOXES+=("$VAZIO2")
+RFM_ESTADO_ROOT="$(cygpath -m "$VAZIO2")" integrar 1
+igual "1a chamada sem estado sai 69" "69" "$RC"
+integrar 1
+igual "retomada com worktree sai 0" "0" "$RC"
+igual "stderr diz retomada" "1" "$(echo "$ERR" | grep -c '^retomada:')"
+igual "integradas [1] no estado" "[1]" "$(estado_de 'j.executar.integradas')"
+igual "worktree do agente removido" "nao" "$([ -e "$WT" ] && echo sim || echo nao)"
+
+echo "== redespacho com --base velha recusa e mantem a correcao =="
+caixa_nova
+abrir_fluxo
+despachar velha1
+BASE_VELHA="$BASE"
+printf '// v1\n' >> "$WT/src/alfa.cjs"
+agente_commita "alfa v1"
+integrar 1
+igual "1a integracao sai 0" "0" "$RC"
+despachar velha2
+printf '// v2 correcao\n' >> "$WT/src/alfa.cjs"
+agente_commita "alfa v2"
+BASE="$BASE_VELHA"
+integrar 1
+igual "redespacho com base velha sai 2" "2" "$RC"
+igual "passo retomada" "retomada" "$(echo "$SAIDA" | J 'j.passo')"
+igual "worktree com a correcao continua" "sim" "$([ -e "$WT" ] && echo sim || echo nao)"
+igual "a correcao continua no worktree do agente" "1" "$(grep -c '^// v2 correcao$' "$WT/src/alfa.cjs")"
 
 echo "== worktree inexistente sai 69 =="
 caixa_nova
