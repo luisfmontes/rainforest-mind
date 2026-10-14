@@ -71,7 +71,7 @@ A exceção à regra 16 tem um limite. Decisão que muda uma `D<n>` do design n�
 - **Integração.** Cada tarefa entra por um comando só, rodado no worktree do fluxo. Como a mutação roda dentro dele, ele vai sempre pelo `rodar-longo` (abaixo):
 
 ```
-node scripts/rodar-longo.cjs iniciar --saida <arq> -- node scripts/integrar-tarefa.cjs --slug <slug> --tarefa <n> --worktree <worktree do agente> --base <hash do briefing> --head-antes <HEAD do principal no despacho> --sujo-antes <porcelain do principal no despacho> --titulo "<assunto do commit>"
+node scripts/rodar-longo.cjs iniciar --saida <arq> -- node scripts/integrar-tarefa.cjs --slug <slug> --tarefa <n> --worktree <worktree do agente> --base <hash do briefing> --head-antes <HEAD do principal no despacho> --sujo-antes <arquivo com o porcelain do principal no despacho> --titulo "<assunto do commit>"
 ```
 
   `--base` é o HEAD do fluxo que foi no briefing. `--head-antes` e `--sujo-antes` são do checkout principal (a `main`), não do fluxo. É o principal que o script confere, a menos que venha `--repo-principal`. Escrita do agente no worktree do fluxo não é vigiada aqui: quem a pega é o índice com stage prévio, recusado, e o `creep` do revisor.

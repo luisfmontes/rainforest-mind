@@ -94,9 +94,11 @@ function desfazer(trazidos, topo) {
   }
 }
 
-// Commit da branch do fluxo que já carrega o trailer desta tarefa, ou null.
-function commitDaTarefa(slug, numero, topo) {
-  const log = saidaGit(['log', '--format=%H %(trailers:key=Rainforest-Tarefa,valueonly,separator=%x2C)'], topo);
+// Commit da branch do fluxo, feito DEPOIS da base do briefing, que já carrega o trailer
+// desta tarefa, ou null. Só depois da base: um redespacho da mesma tarefa no laço nasce do
+// HEAD novo, e o commit da integração anterior fica antes da base dele.
+function commitDaTarefa(slug, numero, base, topo) {
+  const log = saidaGit(['log', '--format=%H %(trailers:key=Rainforest-Tarefa,valueonly,separator=%x2C)', `${base}..HEAD`], topo);
   if (!log) return null;
   for (const linha of log.split(/\r?\n/)) {
     const [hash, valores = ''] = linha.split(' ');
@@ -133,9 +135,6 @@ function main() {
 
   const topo = saidaGit(['rev-parse', '--show-toplevel']);
   if (topo === null) ambiente(`${CWD} não é repositório git`);
-  if (!fs.existsSync(worktree)) ambiente(`worktree do agente não existe: ${worktree}`);
-  const agenteHead = saidaGit(['rev-parse', 'HEAD'], worktree);
-  if (agenteHead === null) ambiente(`${worktree} não é worktree git`);
   const comum = saidaGit(['rev-parse', '--path-format=absolute', '--git-common-dir'], topo);
   if (comum === null) ambiente('não consegui achar o checkout principal (git-common-dir)');
   const repoPrincipal = repoPrincipalArg || path.dirname(comum);
@@ -158,10 +157,16 @@ function main() {
     return recusar('escopo', { stderr: `tarefa ${numero} sem arquivos: declarados\n` });
   }
 
-  let hash = commitDaTarefa(slug, numero, topo);
+  // Retomada vem antes da checagem do worktree: depois de um 69 no marcar, o worktree do
+  // agente pode já ter sido removido à mão.
+  let agenteHead = null;
+  let hash = commitDaTarefa(slug, numero, base, topo);
   if (hash) {
     console.error(`retomada: a branch já tem o commit ${hash} da tarefa ${numero}; seguindo do marcar`);
   } else {
+    if (!fs.existsSync(worktree)) ambiente(`worktree do agente não existe: ${worktree}`);
+    agenteHead = saidaGit(['rev-parse', 'HEAD'], worktree);
+    if (agenteHead === null) ambiente(`${worktree} não é worktree git`);
     hash = integrarCommit();
   }
 
@@ -201,11 +206,12 @@ function main() {
   const ap = git(['apply', '--index', '--binary', remendo], topo);
   fs.rmSync(path.dirname(remendo), { recursive: true, force: true });
   if (ap.status !== 0) return recusar('apply', ap);
-  const trazidos = (saidaGit(['diff', '--cached', '--no-renames', '--name-status'], topo) || '')
-    .split('\n').filter(Boolean).map((linha) => {
-      const [status, arquivo] = linha.split('\t');
-      return { status, arquivo };
-    });
+  // -z: caminho com acento ou espaço vem cru, sem as aspas e os escapes octais do git.
+  const campos = (git(['diff', '--cached', '--no-renames', '--name-status', '-z'], topo).stdout || '').split('\0');
+  const trazidos = [];
+  for (let i = 0; i + 1 < campos.length; i += 2) {
+    if (campos[i]) trazidos.push({ status: campos[i], arquivo: campos[i + 1] });
+  }
 
   // 3. Mutação: a bateria da tarefa tem de ficar vermelha com o trecho invertido.
   const mut = rodar('conferir-fluxo.cjs', [
@@ -234,6 +240,10 @@ function main() {
 
   // 6. Remove o worktree do agente e a branch dele. A tarefa já está integrada: falha aqui
   // é aviso, não parada.
+  if (!fs.existsSync(worktree)) {
+    console.log(JSON.stringify({ tarefa: numero, resultado: 'aceito', passo: 'integrada', commit: hash, worktree_removido: true }));
+    process.exit(0);
+  }
   const branchAgente = saidaGit(['rev-parse', '--abbrev-ref', 'HEAD'], worktree);
   const branchFluxo = saidaGit(['rev-parse', '--abbrev-ref', 'HEAD'], topo);
   const rem = git(['worktree', 'remove', '--force', worktree], topo);

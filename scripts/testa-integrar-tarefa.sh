@@ -109,7 +109,7 @@ mutacao:
   bateria: `node scripts/prova-alfa.cjs`
 
 ### 2. Beta [tipo: implementar]
-arquivos: `src/beta.cjs`, `src/nova.cjs`
+arquivos: `src/beta.cjs`, `src/nova.cjs`, `src/gestão/contrato final.txt`
 depende de: nenhuma
 prova: `node scripts/prova-frouxa.cjs`
 mutacao:
@@ -205,7 +205,8 @@ abrir_fluxo
 despachar sobrevive
 printf '// comentario\n' >> "$WT/src/beta.cjs"
 printf 'module.exports = 1;\n' > "$WT/src/nova.cjs"
-agente_commita "beta e nova"
+mkdir -p "$WT/src/gestão" && printf 'x\n' > "$WT/src/gestão/contrato final.txt"
+agente_commita "beta, nova e acentuado"
 integrar 2
 igual "integrar tarefa 2 sai 2" "2" "$RC"
 igual "passo mutacao" "mutacao" "$(echo "$SAIDA" | J 'j.passo')"
@@ -213,6 +214,7 @@ igual "stderr traz o veredito da mutacao" "1" "$(echo "$ERR" | grep -c 'tarefa 2
 igual "HEAD nao se move" "$HEAD_ANTES" "$(cd "$CX" && git rev-parse HEAD)"
 igual "git status igual ao de antes" "$PORC_ANTES" "$(cd "$CX" && git status --porcelain)"
 igual "arquivo novo trazido saiu do disco" "nao" "$([ -e "$CX/src/nova.cjs" ] && echo sim || echo nao)"
+igual "arquivo novo com acento e espaco saiu do disco" "nao" "$([ -e "$CX/src/gestão/contrato final.txt" ] && echo sim || echo nao)"
 igual "nada no indice" "" "$(cd "$CX" && git diff --cached --name-only)"
 igual "beta volta ao conteudo do HEAD" "0" "$(cd "$CX" && git diff --quiet HEAD -- src/beta.cjs; echo $?)"
 
@@ -273,6 +275,8 @@ VAZIO="$(mktemp -d)"; SANDBOXES+=("$VAZIO")
 RFM_ESTADO_ROOT="$(cygpath -m "$VAZIO")" integrar 1
 igual "1a chamada sem estado sai 69" "69" "$RC"
 igual "1a chamada ja commitou" "1" "$(cd "$CX" && git rev-list --count "$HEAD_ANTES..HEAD")"
+# O worktree do agente foi removido à mão entre as chamadas: a retomada não depende dele.
+(cd "$CX" && git worktree remove --force "$(cygpath -m "$WT")")
 integrar 1
 igual "2a chamada sai 0" "0" "$RC"
 igual "2a chamada diz aceito" "aceito" "$(echo "$SAIDA" | J 'j.resultado')"
@@ -280,6 +284,23 @@ igual "stderr diz retomada" "1" "$(echo "$ERR" | grep -c '^retomada:')"
 igual "continua 1 commit so" "1" "$(cd "$CX" && git rev-list --count "$HEAD_ANTES..HEAD")"
 igual "integradas [1] no estado" "[1]" "$(estado_de 'j.executar.integradas')"
 igual "worktree do agente removido" "nao" "$([ -e "$WT" ] && echo sim || echo nao)"
+
+echo "== redespacho da mesma tarefa integra a correcao, sem retomada falsa =="
+caixa_nova
+abrir_fluxo
+despachar alfa1
+printf '// v1\n' >> "$WT/src/alfa.cjs"
+agente_commita "alfa v1"
+integrar 1
+igual "1a integracao sai 0" "0" "$RC"
+despachar alfa2
+printf '// v2 correcao\n' >> "$WT/src/alfa.cjs"
+agente_commita "alfa v2"
+integrar 1
+igual "redespacho sai 0" "0" "$RC"
+igual "sem retomada no redespacho" "0" "$(echo "$ERR" | grep -c '^retomada:')"
+igual "1 commit novo depois do redespacho" "1" "$(cd "$CX" && git rev-list --count "$BASE..HEAD")"
+igual "a correcao chegou" "1" "$(grep -c '^// v2 correcao$' "$CX/src/alfa.cjs")"
 
 echo "== worktree inexistente sai 69 =="
 caixa_nova
