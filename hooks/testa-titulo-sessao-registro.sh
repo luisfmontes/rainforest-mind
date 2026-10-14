@@ -81,7 +81,9 @@ echo "contagem: $RES3"
 # com hooks/memoria-assunto-prompt.cjs.
 # Em 2026-10-10 (flaky-teto, tarefa 2): PreToolUse 16 -> 17 com
 # hooks/gate-teto-despachos.cjs (matcher Task|Agent, no grupo da portaria).
-if [ "$RES3" = '{"SessionStart":7,"PreToolUse":17,"Stop":5,"UserPromptSubmit":2}' ]; then
+# Em 2026-10-14 (gate-matar-por-nome, #517): PreToolUse 17 -> 18 com
+# hooks/gate-matar-por-nome.cjs (matcher Bash|PowerShell, no fim do grupo).
+if [ "$RES3" = '{"SessionStart":7,"PreToolUse":18,"Stop":5,"UserPromptSubmit":2}' ]; then
   ok=$((ok+1)); echo "  ok    JSON valido e contagem de SessionStart/PreToolUse/Stop/UserPromptSubmit preservada"
 else
   falhou=$((falhou+1)); echo "  FALHA contagem mudou (ou JSON invalido): $RES3"
