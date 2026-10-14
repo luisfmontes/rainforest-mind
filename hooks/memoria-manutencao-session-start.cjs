@@ -30,6 +30,7 @@
  */
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 const { resolverRaiz } = require('./lib/raiz.cjs');
@@ -86,7 +87,13 @@ function main() {
   try {
     const script = path.join(__dirname, '..', 'scripts', 'memoria.cjs');
     const processo = process.execPath;
+    // cwd neutro: a passada leva até ~1h (reconciliar) e sobrevive à sessão de
+    // propósito; herdando o cwd, prendia a pasta do projeto e o Windows recusava
+    // apagá-la (2026-10-14). Fora do projeto a raiz deixaria de ser achada pelo
+    // `.rainforest` do cwd, por isso ela vai fixada em RFM_ROOT.
     const filho = spawn(processo, [script, 'manutencao'], {
+      cwd: os.tmpdir(),
+      env: { ...process.env, RFM_ROOT: raiz },
       detached: true,
       stdio: 'ignore',
       windowsHide: true,

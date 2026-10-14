@@ -1,0 +1,9 @@
+{
+  "slug": "2026-10-14-manutencao-cwd-raiz",
+  "titulo": "fix/manutencao-cwd-raiz",
+  "criado_em": "2026-10-14",
+  "leve": {
+    "motivo": "hotfix: filho destacado da manutencao herdava o cwd da sessao e prendia a pasta do projeto por ~1h; cwd neutro + RFM_ROOT fixado, com caso na bateria",
+    "data": "2026-10-14"
+  }
+}

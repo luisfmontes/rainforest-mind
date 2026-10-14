@@ -389,6 +389,42 @@ ULTIMA_LINHA9=$(tail -1 "$LOG9" 2>/dev/null | sed -E 's/^[^ ]+ //')
 igual "linha final diz que a passada NAO completou limpa" "manutencao: completa com falhas" "$ULTIMA_LINHA9"
 
 echo
+echo "== 10. o filho destacado nao prende o diretorio do projeto =="
+# Achado de 2026-10-14: o filho herdava o cwd da sessao e, como a passada
+# leva quase uma hora (reconciliar), segurava a pasta do projeto depois da
+# sessao fechada — `rmdir` falhava com "em uso por outro processo". O cwd do
+# filho e lido DE DENTRO do filho real, por um --require em NODE_OPTIONS que
+# o node do hook e o do filho herdam; so o filho (argv com memoria.cjs
+# manutencao) grava. Sem RFM_ROOT nem CLAUDE_PROJECT_DIR, a raiz vem do
+# `.rainforest` do cwd do hook — o filho, num cwd neutro, so acha a mesma
+# raiz se o hook a fixar. HOME/USERPROFILE falsos: se a fixacao quebrar, o
+# filho cai num home vazio, nunca no ~/.rainforest real.
+PROJ10_POSIX=$(mktemp -d); SANDBOXES+=("$PROJ10_POSIX")
+PROJ10="$(cygpath -m "$PROJ10_POSIX" 2>/dev/null || printf '%s' "$PROJ10_POSIX")"
+HOME10="$(novo_sandbox)"
+RAIZ10="$PROJ10/.rainforest"
+mkdir -p "$RAIZ10" && echo "# Foco" > "$RAIZ10/FOCO.md"
+RFM_ROOT="$RAIZ10" $MEMORIA iniciar > /dev/null 2>&1
+ESPIA10="$(novo_sandbox)"
+cat > "$ESPIA10/espia.cjs" <<'ESPIA'
+if (process.argv.includes('manutencao') && /memoria\.cjs$/.test(process.argv[1] || '')) {
+  require('fs').writeFileSync(process.env.ESPIA_SAIDA, process.cwd());
+}
+ESPIA
+(cd "$PROJ10_POSIX" && env -u RFM_ROOT -u CLAUDE_PROJECT_DIR HOME="$HOME10" USERPROFILE="$HOME10" \
+  ESPIA_SAIDA="$ESPIA10/cwd.txt" NODE_OPTIONS="--require $ESPIA10/espia.cjs" \
+  node "$HOOK_WIN" < /dev/null > /dev/null 2>&1)
+esperar_filho "$RAIZ10/manutencao-$(date +%F).lock" > /dev/null
+CWD10=$(cat "$ESPIA10/cwd.txt" 2>/dev/null)
+echo "  cwd do filho (lido no filho real): ${CWD10:-<vazio>}"
+echo "  projeto: $PROJ10"
+DENTRO10=$(node -e "const p=require('path');const [c,d]=process.argv.slice(1).map(x=>p.resolve(x).toLowerCase());console.log(c===d||c.startsWith(d+p.sep))" "${CWD10:-.}" "$PROJ10")
+afirma "[ -n \"$CWD10\" ]" "a espia leu o cwd do filho (nao veio vazio)"
+igual "cwd do filho fora do diretorio do projeto" "false" "$DENTRO10"
+afirma "grep -q 'manutencao: completa' '$RAIZ10/manutencao.log' 2>/dev/null" "filho achou a mesma raiz (log completo em <projeto>/.rainforest)"
+afirma "[ ! -e '$HOME10/.rainforest' ]" "filho nao caiu na raiz do home"
+
+echo
 echo "== resumo =="
 echo "ok: $ok, falhou: $falhou"
 if [ "$falhou" -gt 0 ]; then
