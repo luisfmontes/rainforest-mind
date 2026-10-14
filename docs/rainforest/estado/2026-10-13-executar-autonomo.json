@@ -25,18 +25,12 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-13",
-    "tarefas_ok": 2,
+    "tarefas_ok": 3,
     "tarefas": 4,
-    "em_voo": [
-      {
-        "tarefa": "1 integrar-tarefa",
-        "agente": "executor",
-        "desde": "2026-10-13T22:30:00-03:00",
-        "sessao": "4224a79a-6d1d-4488-8ee0-c5ec5c25d3b1"
-      }
-    ],
+    "em_voo": [],
     "em": "2026-10-13",
     "integradas": [
+      1,
       2,
       3
     ]

@@ -34,7 +34,12 @@ pendência subiu sem recomendada e ele gastou um turno escrevendo
 "recomendado"). Busca rodando não
 trava a rodada: só o que depende dela espera, o resto vai agora. E enquanto
 sobrar decisão aberta o que se faz é perguntar, não supor — suposição
-silenciosa aqui é o mesmo que a regra 2 barra na emenda dele. Entrevista
+silenciosa aqui é o mesmo que a regra 2 barra na emenda dele. **Exceção:** com a chave
+`executar-autonomo` ligada, entre `plano ok` e o merge, a decisão que surge no meio não
+sobe como `Q`. Aplica-se a recomendada e ela é registrada com `estado.cjs decidir`. A
+lista sai no PR em "Decidido sem você", e ele revisa ali. Decisão que muda uma `D<n>` do
+design fica fora da exceção: é achado `[design]` e para o fluxo (design
+2026-10-13-executar-autonomo, D4). Entrevista
 longa (várias rodadas, o plano inteiro na mesa) é o `/brainstorm`, sob demanda; a
 regra sozinha vale em toda conversa. Mecânica da skill `grilling` de Matt
 Pocock (github.com/mattpocock/skills, MIT): árvore de decisão e fronteira.

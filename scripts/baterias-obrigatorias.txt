@@ -50,3 +50,8 @@ scripts/testa-publicar-branch.sh
 scripts/testa-camadas.sh
 scripts/testa-estado-retomar.sh
 scripts/testa-painel-fluxo.sh
+
+# Modo autonomo (fluxo 2026-10-13-executar-autonomo)
+scripts/testa-integrar-tarefa.sh
+scripts/testa-rodar-longo.sh
+scripts/testa-estado-decididos.sh

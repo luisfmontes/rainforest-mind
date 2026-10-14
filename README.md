@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.65.0-1e5c3f?style=flat-square" alt="versão 1.65.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.66.0-1e5c3f?style=flat-square" alt="versão 1.66.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -235,6 +235,9 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `scripts/conferir-fluxo.cjs camadas --slug <slug>` | Camadas do `executar` calculadas do `depende de:` do plano (Kahn), em JSON. **Exit 2** com ciclo, `depende de:` citando tarefa inexistente ou duas tarefas da mesma camada com `arquivos:` em comum; `paralela:` deixou de ser exigido e, em plano antigo, só avisa |
 | `scripts/estado.cjs retomar --slug <slug>` | Estado por tarefa (`integrada`, `em_voo`, `pendente`). Só é `integrada` a tarefa com commit `Rainforest-Tarefa: <slug>#<n>` na branch, nunca pelo JSON. Devolve `re_marcar`, `redespachar`, `contadas_sem_trailer` (contada no JSON sem commit) e `proxima_camada`; o `marcar` de executar aceita `integradas: [n]` |
 | `scripts/painel-fluxo.cjs gerar --slug <slug>` | Painel HTML local do fluxo em `<dados>/fluxos/<slug>/painel.html`: um cartão por tarefa (estado, camada, iteração do laço) e um resumo (em voo, falta, estágio, veredito, parado). O `marcar` de executar, revisar e verificar o regenera; falha vira aviso e não muda o exit |
+| `scripts/integrar-tarefa.cjs --slug <s> --tarefa <n> --worktree <w> --base <h> --head-antes <h0> --sujo-antes <f> --titulo <t> [--repo-principal <dir>]` | Integra uma tarefa do `executar` num comando só, nesta ordem: `conferir-entrega` com o `arquivos:` da tarefa, cherry-pick sem commit, mutação da tarefa (`conferir-fluxo.cjs mutacoes --tarefa <n>`), commit com o trailer `Rainforest-Tarefa`, `marcar` com `integradas` e remoção do worktree do agente. **Exit 0** aceito; **exit 2** recusado, com o passo no JSON e a branch como estava; **exit 69** ambiente |
+| `scripts/rodar-longo.cjs iniciar --saida <arq> -- <cmd>` / `estado --saida <arq>` | Roda bateria ou mutação fora do teto de 10 min do Bash. O `iniciar` sobe um vigia destacado e volta na hora. O `estado` imprime `rodando` (**exit 3**) ou `exit <N>` (**exit 0**) |
+| `scripts/estado.cjs decidir --slug <s> --pergunta <p> --escolha <e> --porque <m>` / `decididos --slug <s>` | Modo autônomo (chave `executar-autonomo`, padrão desligado): a decisão que surge entre `plano ok` e o merge vai para `decididos` em vez de virar pergunta. O `decididos` imprime a seção `## Decidido sem você` do corpo do PR. Sem `--porque`, **exit 2** |
 | `scripts/estado.cjs marcar --json {"carimbos":…}` | Grava por tarefa o hash de base em que ela foi aceita (`iteracao` cresce, nada se apaga); `proximo` e `ler` avisam quando esse hash não é ancestral do HEAD |
 | `scripts/testa-teto-skills.sh` | Nenhum `SKILL.md` acima de 500 linhas ou 16.384 B — a falha diz o que mover para `references/` |
 | `scripts/testa-mapa-regras.sh` | Cada uma das 17 regras tem linha em `## Regra → trava` de `docs/travas-mecanicas.md` (hook/script existente **ou** `disciplina`), e todo arquivo citado existe |

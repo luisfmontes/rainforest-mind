@@ -124,6 +124,10 @@ para o `gate-fechar-issue` conferir a evidência das Issues que o PR fecha.
    `node scripts/publicar-branch.cjs confirmar-merge --pr <n>`. Só o exit 0 dele
    (state `MERGED`) prova o merge. A linha de sucesso do `gh` não prova.
 
+Com a chave `executar-autonomo` ligada, há três diferenças: o conflito que fica só em versão ou CHANGELOG
+se resolve sem parar, a saída de `estado.cjs decididos` entra no corpo do PR, e o fim avisa por
+push. Ver `skills/executar/references/modo-autonomo.md`.
+
 | exit | quem sai | o que fazer |
 |---|---|---|
 | `0` | qualquer um | segue para o próximo item |

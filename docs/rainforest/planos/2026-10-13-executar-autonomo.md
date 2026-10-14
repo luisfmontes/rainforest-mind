@@ -105,3 +105,5 @@ pronto quando: com os scripts das tarefas 1 a 3 na branch, a sessão que lê as 
 - **README, CHANGELOG e versão.** O README cita a chave e os três comandos novos. O CHANGELOG tem a 1.66.0, e a versão é 1.66.0 nos dois `plugin.json` e no selo. As três baterias novas estão em `baterias-obrigatorias.txt`. A âncora do `fechar` em `contrato-plugin-codex.cjs` é medida de novo.
 
 Cada comando e flag citado existe nos scripts. Provado por `bash scripts/testa-teto-skills.sh`, `bash scripts/testa-versao.sh`, `bash scripts/testa-plugin-codex.sh`, `bash scripts/testa-varrer-baterias.sh` e `node scripts/orcamento.cjs` saindo 0.
+
+Emenda (executar, tarefa 1, 2026-10-13): na integração, o `integrar-tarefa.cjs` passava o worktree do fluxo como `--repo-principal` do `conferir-entrega`. Só que o `--sujo-antes` vem do checkout principal, e com isso qualquer arquivo sujo no worktree do fluxo reprovava toda entrega. O padrão passou a ser o checkout principal (o pai do `git-common-dir`), e entrou a flag opcional `--repo-principal`. A bateria da tarefa roda num repo-caixa em que os dois coincidem, então o caso do worktree vinculado fica para o revisor.

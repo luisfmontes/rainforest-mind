@@ -15,9 +15,9 @@ projeto na mão, pare: a task era pra um agente.
 node scripts/estado.cjs exigir --slug <slug> --estagio executar
 ```
 
-Exit ≠ 0 (recusa por `design` ou `plano` em aberto) encerra aqui — não se
-improvisa plano na cabeça pra contornar. Passou: leia o plano inteiro antes
-de despachar a primeira task.
+Exit ≠ 0 encerra aqui; não se improvisa plano para contornar. Passou: leia o
+plano inteiro antes do primeiro despacho. Chave `executar-autonomo` ligada:
+siga até o merge por `references/modo-autonomo.md`.
 
 ## Território
 

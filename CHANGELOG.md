@@ -10,6 +10,18 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.66.0 — 2026-10-13
+
+- **Modo autônomo: com o plano aprovado, o fluxo vai sozinho até o PR mergeado.** Com a chave `executar-autonomo` ligada
+  (padrão desligado), `executar`, o laço do `revisar`, `verificar` e `fechar` seguem sem perguntar entre estágios. O fluxo só
+  para e chama em seis casos: achado `[design]`, 3ª reprovação, `flaky` terminal, teto de despachos, ambiente quebrado e
+  conflito real com a `main`. Cada parada e o fim avisam por `PushNotification`. Enxerto do `execute` do wildz-data
+  (Rafael Siqueira). Guia em `skills/executar/references/modo-autonomo.md`.
+- **Decisão no meio vira registro.** `estado.cjs decidir` aplica a recomendada e grava o porquê, e `decididos` imprime a
+  seção "Decidido sem você" do PR. Decisão que muda uma `D<n>` do design continua parando o fluxo.
+- **Integração de tarefa num comando:** `integrar-tarefa.cjs` faz a conferência, a mutação, o commit com trailer, o `marcar` e a
+  limpeza, e desfaz tudo na recusa. **Processo longo fora do teto do Bash:** `rodar-longo.cjs`.
+
 ## 1.65.0 — 2026-10-13
 
 - **O `executar` calcula as camadas do `depende de:`.** `conferir-fluxo.cjs camadas` monta a ordem de despacho e recusa

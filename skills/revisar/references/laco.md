@@ -7,6 +7,10 @@ Revisor que reprova devolve o trabalho ao executor **sem esperar o usuário e
 sem a mão da janela na crítica**. A janela principal gira o laço até o
 revisor dar `ok`, até o teto, ou até um achado de design (D1).
 
+Com a chave `executar-autonomo` ligada, cada parada daqui (achado `[design]`, teto, `flaky`, teto de
+despachos) avisa por `PushNotification`, e fora delas o fluxo segue até o merge sem perguntar:
+`skills/executar/references/modo-autonomo.md`.
+
 ## Cada volta
 
 1. `marcar --estagio revisar --status reprovado` como sempre — ele exige o
