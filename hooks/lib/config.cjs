@@ -112,6 +112,11 @@ const CHAVES = {
     padrao: true,
     descricao: 'nega instalação de pacotes e desligamento de gate dentro de subagente',
   },
+  'matar-por-nome': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'barra matar processo por nome (taskkill /IM, pkill, killall, Stop-Process -Name) na janela e no subagente; mata-se pelo PID',
+  },
   'aviso-fluxo': {
     tipo: 'boolean',
     padrao: true,

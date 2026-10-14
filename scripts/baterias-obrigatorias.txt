@@ -9,6 +9,7 @@ hooks/testa-gate-busca-raiz.cjs
 hooks/testa-gate-commit.cjs
 hooks/testa-gate-fechar-issue.sh
 hooks/testa-gate-git-verificacao.sh
+hooks/testa-gate-matar-por-nome.cjs
 hooks/testa-gate-mensagem-commit.sh
 hooks/testa-gate-publicacao-destino.sh
 hooks/testa-gate-repo-alheio.sh
