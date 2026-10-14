@@ -81,34 +81,37 @@
     "reaberturas": 3
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "e8c53d5ee6b8bfa3bad18c8ee7da82e8fc8a9722",
+      "head": "c093ce573bae459eadfae36144a6a7ff09715b91",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ac324dff8a62a53f3",
-        "veredito": "reprovado",
+        "agente_id": "a0ace630d48ba89cc",
+        "veredito": "ok",
         "em": "2026-10-14",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-ac324dff8a62a53f3.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a0ace630d48ba89cc.jsonl"
       }
     ],
-    "em_voo": [],
     "em": "2026-10-14",
-    "achados": 1,
-    "tentativas": 3,
-    "liberado_em": "2026-10-14",
+    "achados": 0,
     "rodadas_extra": [
       {
         "texto": "Luis respondeu 'recomendado' a Q1 em 2026-10-14: liberar volta 4 para atualizar hooks/testa-titulo-sessao-registro.sh (PreToolUse 17->18) e qualquer outra bateria de contagem que a varredura completa apontar; observacoes baixas so se baratas",
         "em": "2026-10-14"
       }
-    ]
+    ],
+    "base": "c1816afed5add4f343d24194e46a84fa58094fc4",
+    "head": "c093ce573bae459eadfae36144a6a7ff09715b91"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node hooks/testa-gate-matar-por-nome.cjs",
+    "saida": "307 ok, 0 falha(s); payload real taskkill /IM python.exe /F -> exit=2; criterio tarefa 2 -> 1.67.0,1.67.0 true true true true; testa-titulo-sessao-registro 3 ok",
+    "sensor_externo": "node hooks/testa-gate-matar-por-nome.cjs",
+    "em": "2026-10-14"
   },
   "fechar": {
     "status": "pendente"
