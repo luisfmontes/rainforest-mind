@@ -5,17 +5,17 @@
  * principal e dentro de subagente. Matar pelo PID passa.
  *
  * Protege contra: `taskkill /IM` e `taskkill /FI "IMAGENAME …"`, `pkill`,
- * `killall`, `Stop-Process -Name`/`-ProcessName` (e `spps`/`kill` no mesmo
- * jeito), `Stop-Process <nome>` (primeiro posicional que não é número),
- * pipeline `Get-Process <nome> | Stop-Process` sem `-Id` (com ou sem
- * `Where-Object` no meio), `pgrep`/`pidof` alimentando `xargs kill`, e
- * `kill $(pgrep …)` / ``kill `pidof …` ``. Matar por nome derruba processo de
- * outra sessão (regra 15).
+ * `killall`, `Stop-Process -Name`/`-ProcessName`/`-n` (e `spps`/`kill` no mesmo
+ * jeito), `Stop-Process <nome>` (primeiro posicional que não é número nem
+ * variável: `$p`, `$(…)`, `@`, `%` ficam de fora), pipeline `Get-Process
+ * <nome> | Stop-Process` sem `-Id` (com ou sem `Where-Object` no meio),
+ * `pgrep`/`pidof` alimentando `xargs kill`, e `kill $(pgrep …)` / ``kill
+ * `pidof …` ``. Matar por nome derruba processo de outra sessão (regra 15).
  *
  * Fora do escopo (não tenta cobrir): `wmic … delete`, `Invoke-CimMethod …
  * Terminate`, matar de dentro de script (`python -c`, `node -e`), PID lido de
- * arquivo, matar por porta, `ps … | xargs kill` (sem pgrep/pidof), e a
- * abreviação `-n` de `-Name` no Stop-Process.
+ * arquivo, matar por porta, e `ps … | xargs kill` (o `ps` não entra no pipe
+ * que termina em `xargs`; o pgrep/pidof entra).
  *
  * Como lê o comando: primeiro o texto é cortado em unidades (`;`, `&&`, `||`,
  * `&`, quebra de linha, fora de aspas) e cada unidade em estágios de pipe
@@ -47,8 +47,12 @@ const OBTEM_PROCESSO = new Set(["get-process", "gps", "ps"]);
 const VALOR_STOP = new Set(["-id", "-inputobject", "-timeout"]);
 const VALOR_KILL = new Set(["-s", "-n"]);
 
-// `$(pgrep …)`, `$(pidof …)` ou crase com pgrep/pidof, depois de kill/spps/Stop-Process.
-const RE_KILL_SUBSTITUICAO = /\b(?:kill|spps|stop-process)\b[^;&|\n]*?(?:\$\(\s*(?:pgrep|pidof)\b|`\s*(?:pgrep|pidof)\b)/i;
+// Posicional que começa com `$`, `(`, `@`, `%` ou crase: variável, subexpressão,
+// array ou job spec, expandido pelo shell/PowerShell. Não é nome de processo.
+const RE_VARIAVEL_OU_EXPANSAO = /^[$(@%`]/;
+// Argumento que é `$(pgrep …)`/`$(pidof …)` (ou crase), lido como argumento de
+// comando. O texto citado em `echo "kill $(pgrep x)"` não é comando e não casa.
+const RE_SUBSTITUICAO_PGREP = /^(?:\$\(|`)\s*(?:pgrep|pidof)\b/i;
 
 function normalizarExecutavel(nome) {
   const semAspas = String(nome).replace(/^["']|["']$/g, "");
@@ -98,7 +102,9 @@ function unidadesDePipe(cmd) {
 
 /** Posição de comando de um estágio: o executável, o que veio antes dele e os argumentos. */
 function comandoDe(trecho) {
-  const toks = tokensComAspas(trecho);
+  // `(Get-Process x)` e `& taskkill …`: o parêntese e o call operator não são o
+  // comando; sem tirá-los o estágio nunca chega à posição de comando.
+  const toks = tokensComAspas(trecho.replace(/^[\s(&]+/, ""));
   if (!toks.length) return null;
   const pos = posicaoDeComando(toks);
   if (pos === null) return null;
@@ -136,7 +142,8 @@ function formaDoPipe(estagios) {
     if (!a) continue;
     const depois = cmds.slice(i + 1).filter(Boolean);
     if (OBTEM_PROCESSO.has(a.exe) && !a.args.some((t) => t.v.toLowerCase() === "-id")) {
-      const parada = depois.find((b) => STOP.has(b.exe));
+      // `ps` não casa com parada que vem atrás de `xargs`: `ps -p 1234 | xargs kill` é por PID.
+      const parada = depois.find((b) => STOP.has(b.exe) && !b.cabeca.includes("xargs"));
       if (parada) return `${a.exe} sem -Id | ${parada.exe}`;
     }
     if ((a.exe === "pgrep" || a.exe === "pidof")
@@ -150,7 +157,8 @@ function formaDoPipe(estagios) {
 /** Forma de um comando simples (já na posição de comando, sem wrapper de string). */
 function formaDoComandoSimples(exe, args) {
   if (exe === "taskkill") {
-    if (args.some((t) => /^[\/-]im([:=].*)?$/i.test(t.v))) return "taskkill /IM";
+    // Git Bash converte `/IM` em caminho, então a forma idiomática é `//IM`.
+    if (args.some((t) => /^[\/-]{1,2}im([:=].*)?$/i.test(t.v))) return "taskkill /IM";
     if (args.some((t) => /imagename/i.test(t.v))) return "taskkill /FI IMAGENAME";
     return null;
   }
@@ -158,8 +166,11 @@ function formaDoComandoSimples(exe, args) {
   if (exe === "killall") return "killall";
   if (STOP.has(exe)) {
     if (args.some((t) => /^-(name|processname)$/i.test(t.v))) return `${exe} -Name`;
+    if (args.some((t) => RE_SUBSTITUICAO_PGREP.test(t.v))) return `${exe} com $(pgrep|pidof)`;
     const achado = primeiroNaoFlag(args, exe === "kill" ? VALOR_KILL : VALOR_STOP);
-    if (achado && !/^%?\d+$/.test(achado.v)) return `${exe} <nome>`;
+    if (achado && !RE_VARIAVEL_OU_EXPANSAO.test(achado.v) && !/^%?\d+$/.test(achado.v)) {
+      return `${exe} <nome>`;
+    }
   }
   return null;
 }
@@ -178,6 +189,11 @@ function formaDoComando(trecho, profundidade) {
     const i = toks.findIndex((t, k) => k > pos && !t.q && /^-(c|command)$/i.test(t.v));
     if (i !== -1) return formaPorNome(toks.slice(i + 1).map((t) => t.v).join(" "), profundidade + 1);
   }
+  if (exe === "cmd") {
+    // `cmd.exe //c "taskkill …"`: o helper compartilhado só lê `/c` e `/k`, não a barra dupla.
+    const i = toks.findIndex((t, k) => k > pos && !t.q && /^\/\/?[ck]$/i.test(t.v));
+    if (i !== -1) return formaPorNome(toks.slice(i + 1).map((t) => t.v).join(" "), profundidade + 1);
+  }
   const { interno } = desempacotarWrapperDeString(textoAPartir(toks, pos));
   if (interno !== null) return formaPorNome(interno, profundidade + 1);
   return formaDoComandoSimples(exe, c.args);
@@ -189,7 +205,6 @@ function formaDoComando(trecho, profundidade) {
  */
 function formaPorNome(comando, profundidade = 0) {
   if (typeof comando !== "string" || profundidade > 8) return null;
-  if (RE_KILL_SUBSTITUICAO.test(comando)) return "kill com $(pgrep|pidof)";
   for (const dentro of conteudoDeSubstituicao(comando)) {
     const forma = formaPorNome(dentro, profundidade + 1);
     if (forma) return forma;
@@ -198,7 +213,15 @@ function formaPorNome(comando, profundidade = 0) {
     const forma = formaDoPipe(estagios);
     if (forma) return forma;
   }
-  for (const trecho of segmentosParaGate(comando)) {
+  const segmentos = segmentosParaGate(comando);
+  // `kill $(pgrep x)`: o segmentador corta no `(` e devolve "kill $" seguido de
+  // "pgrep x". Só conta se o `$` fecha um estágio de parada, na posição de comando.
+  for (let k = 0; k < segmentos.length - 1; k += 1) {
+    if (!/\$\s*$/.test(segmentos[k]) || !/^\s*(?:pgrep|pidof)\b/i.test(segmentos[k + 1])) continue;
+    const c = comandoDe(segmentos[k]);
+    if (c && STOP.has(c.exe)) return `${c.exe} com $(pgrep|pidof)`;
+  }
+  for (const trecho of segmentos) {
     const forma = formaDoComando(trecho, profundidade);
     if (forma) return forma;
   }

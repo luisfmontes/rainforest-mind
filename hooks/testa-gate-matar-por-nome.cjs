@@ -115,6 +115,15 @@ const CONTORNOS = [
   // wrappers de PowerShell
   ['pwsh -NoProfile -Command "Stop-Process -Name node"', BASH],
   ['powershell -Command "Get-Process node | Stop-Process"', BASH],
+  // barra dupla do Git Bash (`//IM`), e cmd /c com ela
+  ["taskkill //IM python.exe //F", BASH],
+  ["taskkill //F //IM node.exe", BASH],
+  ["taskkill //im node.exe", BASH],
+  ['cmd.exe //c "taskkill /im node.exe"', BASH],
+  // call operator e parêntese na frente do comando; abreviação -n de -Name
+  ["& taskkill /IM node.exe /F", BASH],
+  ["(Get-Process node) | Stop-Process", AMBAS],
+  ["Stop-Process -n node", AMBAS],
 ];
 
 const LEGITIMOS = [
@@ -139,6 +148,40 @@ const LEGITIMOS = [
   ['grep -rn "taskkill /IM" hooks', BASH],
   ['git commit -m "barra pkill e killall"', BASH],
   ["cat notas.txt | grep Stop-Process", BASH],
+  ['git commit -m "kill $(pgrep x)"', BASH],
+  ["git commit -m 'kill $(pgrep x)'", BASH],
+  ["grep -rn 'kill $(pgrep' hooks", BASH],
+  ['echo "kill $(pgrep node)"', BASH],
+  // matar pelo PID em variável, em substituição ou em expansão: o shell troca
+  // pelo número antes de rodar, então o argumento nunca é nome de processo
+  ["kill $PID", BASH],
+  ["kill -9 $pid", BASH],
+  ["kill -s TERM $pid", BASH],
+  ["kill -TERM $pid", BASH],
+  ["kill $!", BASH],
+  ["kill $$", BASH],
+  ['kill "$pid"', BASH],
+  ["kill ${pid}", BASH],
+  ["kill -0 $pid", BASH],
+  ["kill $SERVER_PID 2>/dev/null", BASH],
+  ["node server.js & PID=$!; sleep 2; kill $PID", BASH],
+  ["kill $(cat pid)", BASH],
+  ["kill -9 $(cat pid)", BASH],
+  ["kill $(jobs -p)", BASH],
+  ["kill ${PIDS[@]}", BASH],
+  ['bash -c "kill $PID"', BASH],
+  ["for p in $pids; do kill $p; done", BASH],
+  ["Stop-Process $p.Id", AMBAS],
+  ["Stop-Process $p -Force", AMBAS],
+  ["Stop-Process $proc", AMBAS],
+  ["Stop-Process -Id $p.Id", AMBAS],
+  ["kill $p.Id", AMBAS],
+  ["Stop-Process -Id $x", AMBAS],
+  ["Stop-Process -InputObject $p", AMBAS],
+  ["taskkill /PID $pid /F", BASH],
+  ["$p | Stop-Process", AMBAS],
+  // ps como fonte de PID em pipe com xargs kill: fora do escopo (docstring)
+  ["ps -p 1234 -o pid= | xargs kill", BASH],
 ];
 
 console.log("== gate-matar-por-nome: contornos (esperado 2, subagente e janela) ==");
