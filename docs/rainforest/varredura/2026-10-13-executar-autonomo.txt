@@ -1,0 +1,11 @@
+Varredura 2026-10-13-executar-autonomo (2026-10-13)
+Termos: autonomo, "rodar sozinho", "sem o usuario", PushNotification, ScheduleWakeup, integrar, "laco autonomo", overnight.
+
+Issues (gh search, luisfmontes/rainforest-mind): nenhuma sobre execução autônoma. Casamentos sem relação: #257 (portaria), #2, #173, #4 (integração de entrega/worktree, fechadas).
+
+Ideias (~/.rainforest/ideias.jsonl):
+- 2026-09-03-run-autonomo-gastou-a-janela-principal [colhida no #406]: janela principal chegou a 96% de contexto re-rodando baterias e lendo relatórios inteiros. Lição já na regra 10 (mutação por script, relatório curto).
+- trabalho-autonomo-comecou-fora-do-fluxo [plantada]: delegação "faz sozinho" começou sem fluxo.
+- perguntei-se-seguia-estagio-com-run-autonomo [plantada]: entre estágios não perguntar, seguir; só o design pede a palavra dele. Toca diretamente este fluxo.
+
+Fonte do enxerto: wildz-data 1.0.126, skills/execute/SKILL.md:3,139,664 (autonomia por instrução, um turno com Agent em primeiro plano, sem hook Stop/loop/ScheduleWakeup); paradas em SKILL.md:349,359,514,525,601,651-653; PushNotification só em teto e fim (SKILL.md:640-643).
