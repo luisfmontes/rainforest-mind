@@ -1993,6 +1993,8 @@ const FLAGS_POR_SUBCOMANDO = {
   'liberar-teto': ['slug', 'motivo'],
   retomar: ['slug'],
   leve: ['motivo', 'repo'],
+  decidir: ['slug', 'pergunta', 'escolha', 'porque'],
+  decididos: ['slug'],
 };
 
 function arg(nome, obrigatorio = true) {
@@ -3069,7 +3071,66 @@ function main() {
     return;
   }
 
-  console.error('uso: iniciar | ler | deixado | destinar | marcar | proximo | exigir | liberar | listar | concluido | veredito | registrar-flake | liberar-teto');
+  if (cmd === 'decidir') {
+    // D4 (design executar-autonomo): decisão tomada sem perguntar fica no estado com o
+    // porquê. Toda recusa sai 2 ANTES de gravar: sem porquê não há registro, só palpite.
+    const pergunta = arg('pergunta');
+    const escolha = arg('escolha');
+    const porque = arg('porque', false);
+    if (!pergunta.trim() || !escolha.trim()) {
+      console.error('RECUSADO: --pergunta e --escolha são textos não vazios.');
+      process.exit(2);
+    }
+    if (!porque || !porque.trim()) {
+      console.error('RECUSADO: falta --porque "<por quê>" (texto não vazio). Sem o porquê, a decisão não é registrada.');
+      process.exit(2);
+    }
+    const slug = arg('slug');
+    try {
+      validarSlug(slug);
+    } catch (err) {
+      console.error(`erro: ${err.message}`);
+      process.exit(1);
+    }
+    const lockPath = path.join(DIR_ESTADO, '.' + slug + '.decidir.lock');
+    const saida = comTrava(lockPath, () => {
+      const vivo = ler(slug);
+      if (!vivo) return { sumiu: true };
+      const lista = Array.isArray(vivo.decididos) ? vivo.decididos : [];
+      const item = { pergunta, escolha, porque, estagio: proximo(vivo), em: new Date().toISOString() };
+      vivo.decididos = [...lista, item];
+      gravar(slug, vivo);
+      return { item };
+    });
+    if (saida.sumiu) {
+      console.error(`erro: ${slug} nao existe — rode 'iniciar' primeiro`);
+      process.exit(1);
+    }
+    console.log(`decidido: ${pergunta} → ${escolha}`);
+    return;
+  }
+
+  if (cmd === 'decididos') {
+    const slug = arg('slug');
+    try {
+      validarSlug(slug);
+    } catch (err) {
+      console.error(`erro: ${err.message}`);
+      process.exit(1);
+    }
+    const estado = ler(slug);
+    if (!estado) {
+      console.error(`erro: ${slug} nao existe — rode 'iniciar' primeiro`);
+      process.exit(1);
+    }
+    const lista = Array.isArray(estado.decididos) ? estado.decididos : [];
+    if (!lista.length) return; // sem decisão, a seção não existe no corpo do PR
+    console.log('## Decidido sem você');
+    for (const d of lista) console.log(`- ${d.pergunta} → ${d.escolha}. Porquê: ${d.porque}`);
+    return;
+  }
+
+  console.error('uso: iniciar | ler | deixado | destinar | marcar | proximo | exigir | liberar | listar | concluido | veredito | registrar-flake | liberar-teto | decidir | decididos');
   process.exit(1);
 }
 

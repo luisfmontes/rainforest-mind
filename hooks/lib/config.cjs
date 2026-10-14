@@ -268,6 +268,15 @@ const CHAVES = {
     padrao: false,
     descricao: 'o fechar mergeia o PR (squash) depois do CI verde; desligada, para no PR aberto',
   },
+  // Sentido igual ao de `fechar-mergear`: ligada, a sessão segue entre `plano ok` e o
+  // merge sem perguntar, e registra cada decisão com `estado.cjs decidir` (D4 e D5 do
+  // design executar-autonomo). Padrão falso: repo de cliente ou de outra pessoa não
+  // passa a rodar sozinho por atualizar o plugin. Quem lê deve tratar falha como `false`.
+  'executar-autonomo': {
+    tipo: 'boolean',
+    padrao: false,
+    descricao: 'entre plano ok e o merge, a sessão decide sem perguntar e registra com `estado.cjs decidir`; desligada, pergunta como hoje',
+  },
 };
 
 /**
