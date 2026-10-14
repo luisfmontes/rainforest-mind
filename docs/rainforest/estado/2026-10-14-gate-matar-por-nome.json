@@ -18,11 +18,10 @@
     "em": "2026-10-14"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-14",
     "tarefas_ok": 2,
     "tarefas": 2,
-    "em_voo": [],
     "carimbos": [
       {
         "tarefa": 1,
@@ -65,8 +64,8 @@
       1,
       2
     ],
-    "comando": "node hooks/testa-gate-matar-por-nome.cjs",
-    "saida": "307 ok, 0 falha(s)",
+    "comando": "node hooks/testa-gate-matar-por-nome.cjs && bash hooks/testa-titulo-sessao-registro.sh",
+    "saida": "307 ok, 0 falha(s) / Resumo: 3 ok, 0 falhas",
     "mutacao": [
       {
         "tarefa": 1,
@@ -79,11 +78,7 @@
         "motivo": "tarefa de documentacao e numero de versao"
       }
     ],
-    "reaberturas": 3,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-14"
-    }
+    "reaberturas": 3
   },
   "revisar": {
     "status": "reprovado",
