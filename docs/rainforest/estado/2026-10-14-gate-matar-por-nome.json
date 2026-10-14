@@ -18,7 +18,7 @@
     "em": "2026-10-14"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-14",
     "tarefas_ok": 2,
     "tarefas": 2,
@@ -79,27 +79,31 @@
         "motivo": "tarefa de documentacao e numero de versao"
       }
     ],
-    "reaberturas": 2
+    "reaberturas": 3,
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-14"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "26560fb628485fa0bb483c33dffeb9a1f1518558",
+      "head": "e8c53d5ee6b8bfa3bad18c8ee7da82e8fc8a9722",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "abc69be45fdc6342c",
+        "agente_id": "ac324dff8a62a53f3",
         "veredito": "reprovado",
         "em": "2026-10-14",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-abc69be45fdc6342c.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-ac324dff8a62a53f3.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-14",
-    "achados": 5,
-    "tentativas": 2
+    "achados": 1,
+    "tentativas": 3
   },
   "verificar": {
     "status": "pendente"
