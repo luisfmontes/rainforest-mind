@@ -633,5 +633,46 @@ contem "  ... e diz nao-verificavel" "nao-verificavel: git status falhou no repo
   "${CONF_CMD[@]}" --worktree "$WT" --base "$BASE" --head-antes "$HEAD_ANTES" --repo-principal "$NAO_REPO"
 
 echo
+echo "== --escopo: ** atravessa pastas e barra final cobre a pasta (#518) =="
+
+# Cada caso tem o seu repo e worktree: o escopo confere todo arquivo do commit.
+novo_commit_glob() { # $1 = nome, $2 = arquivo a criar; imprime o caminho do worktree
+  local WT="$RAIZ/wt-$1" R
+  R=$(novo_repo "$1-repo")
+  git -C "$R" worktree add -q -b "$1" "$WT" >/dev/null 2>&1
+  mkdir -p "$WT/$(dirname "$2")"
+  echo v > "$WT/$2"
+  git -C "$WT" add . >/dev/null 2>&1; git -C "$WT" commit -qm "entrega $2"
+  echo "$WT"
+}
+
+# src/** tem de cobrir arquivo dois niveis abaixo (mesma regra do creep)
+WT_GLOB_A=$(novo_commit_glob glob-src src/a/b.txt)
+esperado "escopo: src/** cobre src/a/b.txt (dois niveis) -> aprova" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT_GLOB_A" --base "$(git -C "$WT_GLOB_A" rev-parse HEAD~1)" \
+  --commit "$(git -C "$WT_GLOB_A" rev-parse HEAD)" --escopo "src/**"
+
+# barra final = pasta: cobre tudo abaixo dela
+WT_GLOB_B=$(novo_commit_glob glob-pasta docs/x/y.md)
+esperado "escopo: docs/x/ cobre docs/x/y.md (pasta com barra final) -> aprova" 0 \
+  "${CONF_CMD[@]}" --worktree "$WT_GLOB_B" --base "$(git -C "$WT_GLOB_B" rev-parse HEAD~1)" \
+  --commit "$(git -C "$WT_GLOB_B" rev-parse HEAD)" --escopo "docs/x/"
+
+# * nao cruza / : src/* recusa dois niveis e nomeia o arquivo
+WT_GLOB_C=$(novo_commit_glob glob-estrela src/a/b.txt)
+esperado "escopo: src/* NAO cobre src/a/b.txt (dois niveis) -> reprova" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT_GLOB_C" --base "$(git -C "$WT_GLOB_C" rev-parse HEAD~1)" \
+  --commit "$(git -C "$WT_GLOB_C" rev-parse HEAD)" --escopo "src/*"
+contem "  ... e nomeia src/a/b.txt como fora do escopo" "fora do(s) escopo(s): src/a/b.txt" \
+  "${CONF_CMD[@]}" --worktree "$WT_GLOB_C" --base "$(git -C "$WT_GLOB_C" rev-parse HEAD~1)" \
+  --commit "$(git -C "$WT_GLOB_C" rev-parse HEAD)" --escopo "src/*"
+
+# a/**/b.txt exige ao menos uma pasta no meio: nao casa a/b.txt (D2)
+WT_GLOB_D=$(novo_commit_glob glob-meio a/b.txt)
+esperado "escopo: a/**/b.txt NAO casa a/b.txt (zero pastas, D2) -> reprova" 1 \
+  "${CONF_CMD[@]}" --worktree "$WT_GLOB_D" --base "$(git -C "$WT_GLOB_D" rev-parse HEAD~1)" \
+  --commit "$(git -C "$WT_GLOB_D" rev-parse HEAD)" --escopo "a/**/b.txt"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

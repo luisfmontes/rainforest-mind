@@ -156,14 +156,10 @@ function globMatches(arquivo, glob) {
   // Restaura **
   pattern = pattern.replace(/<<<DOUBLESTAR>>>/g, '.*');
 
-  // Âncora: se não começar com *, é desde o início
-  if (!glob.startsWith('*')) {
-    pattern = '^' + pattern;
-  }
-  // Se não terminar com *, é até o final
-  if (!glob.endsWith('*')) {
-    pattern = pattern + '$';
-  }
+  // Âncora sempre (#518, D5): o glob casa o caminho inteiro, nunca um
+  // prefixo. Sem isto, `src/*` casava `src/a/b.txt` (* não cruza / só vale
+  // se a âncora existir) e `*.md` casava `docs/x.md`.
+  pattern = '^' + pattern + '$';
 
   const regex = new RegExp(pattern);
   return regex.test(arquivo);
