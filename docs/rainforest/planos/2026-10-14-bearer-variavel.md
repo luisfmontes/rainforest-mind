@@ -35,7 +35,7 @@ Continuam barrados (exit 2):
 - `` const h = { Authorization: `Bearer <32 hex>` }; `` (literal no lugar da referência)
 - `const h = { Authorization: 'Bearer ' + '<32 hex>' };` (literal concatenado)
 - `const h = { Authorization: 'Bearer ' + getToken('<32 hex>') };` (chamada com argumento literal)
-- `password: 'x' + y` (D3: só `Authorization`)
+- `api_key: 'Bearer ' + tok` (D3: só `Authorization`; emenda 2026-10-14: o `password: 'x' + y` original já passava na base pela isenção de prosa curta e não separava D3)
 
 Forma do código (alvo de mutação em código a nascer): dentro do ramo `chave === 'authorization'` da #410, (a) o reconhecimento do esquema aceita crase de abertura além de `f`, `"` e `'`, e o template segue a mesma régua da referência `${ident}` sem literal colado; (b) a concatenação é decidida numa constante `concatVariavel`, calculada a partir do texto da linha depois do esquema (fecha-aspa, `+`, expressão), e o ramo tem exatamente uma linha `if (concatVariavel) return false;`. Expressão aceita: identificador ou cadeia de membros (`a.b.c`), opcionalmente terminada em chamada cujos argumentos são só identificadores/membros ou vazios. Nenhum caso de teste lê o texto do fonte; as linhas de teste montam chave e esquema em pedaços, como a seção 10c já faz.
 
