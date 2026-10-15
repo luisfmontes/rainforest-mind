@@ -201,6 +201,25 @@ function esperarCi(pr) {
     return 5;
   }
 
+  // O exit 0 do `gh pr checks` não prova verde: o gh 2.96 sai 0 com um check
+  // CANCELLED (bucket `cancel`, impresso como `fail`), e um shard que estourou o
+  // timeout-minutes virou "CI verde: merge autorizado" no PR #537. Só `pass` e
+  // `skipping` contam; qualquer outro bucket, ou leitura que falha, não é verde.
+  const lidos = executar('gh', ['pr', 'checks', String(pr), '--json', 'name,bucket']);
+  let naoVerdes;
+  try {
+    const lista = JSON.parse(lidos.stdout);
+    if (!Array.isArray(lista) || lista.length === 0) throw new Error('lista vazia');
+    naoVerdes = lista.filter((c) => c.bucket !== 'pass' && c.bucket !== 'skipping');
+  } catch {
+    erro(`CI não verde no PR ${pr}: não deu para ler os checks em JSON`, lidos.stderr);
+    return 5;
+  }
+  if (naoVerdes.length) {
+    erro(`CI não verde no PR ${pr}: ${naoVerdes.map((c) => `${c.name} (${c.bucket})`).join(', ')}`);
+    return 5;
+  }
+
   if (!mergeAutorizado()) {
     process.stdout.write('CI verde: merge não autorizado (fechar-mergear desligada) — pare no PR aberto\n');
     return 7;

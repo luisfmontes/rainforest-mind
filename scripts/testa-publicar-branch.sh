@@ -60,6 +60,10 @@ if (args[0] === 'pr' && args[1] === 'list') {
   process.stdout.write((process.env.STUB_PR === undefined ? '' : process.env.STUB_PR) + '\n');
   process.exit(0);
 }
+if (args[0] === 'pr' && args[1] === 'checks' && args.includes('--json')) {
+  process.stdout.write((process.env.STUB_CHECKS_JSON || '[{"name":"baterias","bucket":"pass"}]') + '\n');
+  process.exit(0);
+}
 if (args[0] === 'pr' && args[1] === 'checks') process.exit(Number(process.env.STUB_CHECKS_EXIT || 0));
 if (args[0] === 'pr' && args[1] === 'view') {
   process.stdout.write(JSON.stringify({ state: process.env.STUB_STATE || 'OPEN' }) + '\n');
@@ -226,6 +230,26 @@ export STUB_CHECKS_EXIT=1
 roda "$CAIXA" esperar-ci --pr 7
 [ "$CODIGO" -eq 5 ]; afirma "(g5) CI vermelho: sai 5 (exit=$CODIGO)" $?
 export STUB_CHECKS_EXIT=0
+
+# gh 2.96 sai 0 do --watch com um check CANCELLED (PR #537): o bucket decide.
+export STUB_CHECKS_JSON='[{"name":"shard 1/2","bucket":"cancel"},{"name":"shard 2/2","bucket":"pass"}]'
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 5 ]; afirma "(g7) watch sai 0 com check cancelado: sai 5 (exit=$CODIGO)" $?
+grep -q "shard 1/2 (cancel)" "$ERRO"; afirma "(g7) stderr nomeia o check cancelado" $?
+! grep -q "merge autorizado" "$SAIDA"; afirma "(g7) nao imprime 'merge autorizado'" $?
+
+export STUB_CHECKS_JSON='[{"name":"a","bucket":"pass"},{"name":"b","bucket":"skipping"}]'
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 0 ]; afirma "(g8) pass + skipping: sai 0 (exit=$CODIGO)" $?
+
+export STUB_CHECKS_JSON='[]'
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 5 ]; afirma "(g9) lista de checks vazia: sai 5 (exit=$CODIGO)" $?
+
+export STUB_CHECKS_JSON='nao e json'
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 5 ]; afirma "(g10) JSON ilegivel: sai 5 (exit=$CODIGO)" $?
+unset STUB_CHECKS_JSON
 
 roda_sem_gh "$CAIXA" esperar-ci --pr 7
 [ "$CODIGO" -eq 69 ]; afirma "(g6) gh ausente do PATH: sai 69 (exit=$CODIGO)" $?
