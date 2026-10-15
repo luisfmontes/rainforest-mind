@@ -45,27 +45,31 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "9ce818732ffb89601319c42440a3a4c34b9a243e",
+      "head": "64f00bc018ae4580daa0bea05502b75120734833",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "af5569f082be79b2a",
-        "veredito": "reprovado",
+        "agente_id": "ab426d45fea72c040",
+        "veredito": "ok",
         "em": "2026-10-14",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-af5569f082be79b2a.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-ab426d45fea72c040.jsonl"
       }
     ],
-    "em_voo": [],
     "em": "2026-10-14",
-    "achados": 2,
-    "tentativas": 1
+    "achados": 0,
+    "base": "0977e4000874f01e044ba40deaf221ea5f7966e8",
+    "head": "64f00bc018ae4580daa0bea05502b75120734833"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-conferir-entrega.sh",
+    "saida": "91 ok, 0 falha(s) no .cjs e no .py; testa-conferir-fluxo 114 ok; conferir-versao ok 1.67.1; globMatches src/** e docs/x/ casam, src/* e a/**/b.txt nao casam dois niveis/zero pastas",
+    "sensor_externo": "bash scripts/testa-conferir-entrega.sh",
+    "em": "2026-10-14"
   },
   "fechar": {
     "status": "pendente"
