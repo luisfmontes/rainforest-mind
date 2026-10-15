@@ -19,7 +19,7 @@
     "em": "2026-10-15"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-15",
     "integradas": [
       1,
@@ -29,7 +29,7 @@
     "tarefas_ok": 3,
     "tarefas": 3,
     "comando": "bash scripts/testa-conta-unificar.sh",
-    "saida": "ok: 123   falhou: 0",
+    "saida": "ok: 126   falhou: 0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -39,18 +39,14 @@
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "testa-conta-unificar.sh, caso #503 D4"
+        "fixture": "testa-conta-unificar.sh, caso #503 D4 e #503 D2/D3 (mensagem /login)"
       },
       {
         "tarefa": 3,
         "resultado": "n/a",
-        "motivo": "tarefa de documentacao e numero de versao"
+        "motivo": "tarefa de documentacao e versao"
       }
     ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-15"
-    },
     "reaberturas": 1
   },
   "revisar": {
