@@ -12,14 +12,18 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 ## 1.67.2 — 2026-10-14
 
-- **`Authorization` montado com variável deixa de ser barrado como credencial.** O gate de publicação (`conferir-publicacao`)
-  barrava o header montado como template de esquema `Bearer` com variável dentro, e a concatenação de `Bearer` com um
-  identificador, embora as duas formas, as mais comuns de montar header OAuth em JavaScript, não carreguem segredo. O agente
-  ficava sem saída honesta e a tarefa caía em redespacho (#494). Agora a isenção vale só em `Authorization` com esquema
-  (`Bearer`, `Basic` ou `Token`): template com `${variavel}` (crase de abertura conta como esquema) e concatenação com
-  identificador, membro ou chamada sem argumento literal passam. Literal continua barrado em qualquer lugar: colado depois da
-  referência no template, no lugar dela, como lado direito da concatenação ou como argumento da chamada. Outras chaves de
-  credencial não ganham isenção; `api_key` com concatenação segue barrado.
+- **`Authorization` montado com variável deixa de ser barrado como credencial, por lista de permissão.** O gate de publicação
+  (`conferir-publicacao`) barrava o header montado como template de esquema `Bearer` com variável dentro, e a concatenação
+  de `Bearer` com um identificador, embora as duas formas, as mais comuns de montar header OAuth em JavaScript, não carreguem
+  segredo. O agente ficava sem saída honesta e a tarefa caía em redespacho (#494). A isenção agora é uma régua fechada:
+  - vale só na chave `Authorization` com esquema (`Bearer`, `Basic` ou `Token`); outras chaves de credencial não ganham
+    isenção, e `api_key` com concatenação segue barrado;
+  - passam o template com crase em que o trecho entre chaves é só uma variável ou uma cadeia de membros (ex.: `this.token`),
+    fechado logo depois, e a concatenação do esquema com uma variável, um membro ou uma chamada sem argumento literal;
+  - depois da expressão só pode vir fim de linha ou `, ; ) ] }`, sem `+` adiante. Por isso continuam barrados o literal
+    colado depois da expressão, `.concat(...)`, comentário seguido de `+` e expressão com literal dentro das chaves do
+    template;
+  - fica de fora o literal que continua na linha seguinte, porque a checagem é por linha.
 
 ## 1.67.1 — 2026-10-14
 
