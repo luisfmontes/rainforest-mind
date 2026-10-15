@@ -152,7 +152,14 @@
     "em_voo": [],
     "em": "2026-10-15",
     "achados": 9,
-    "tentativas": 3
+    "tentativas": 3,
+    "liberado_em": "2026-10-15",
+    "rodadas_extra": [
+      {
+        "texto": "usuario: recomendado = (a) uniao em subcomandoGit, git conta se aparece no texto cru ou no normalizado; aceite = zero 2->0 contra a base no corpus do revisor",
+        "em": "2026-10-15"
+      }
+    ]
   },
   "verificar": {
     "status": "pendente"

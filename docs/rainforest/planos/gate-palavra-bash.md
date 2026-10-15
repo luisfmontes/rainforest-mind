@@ -239,3 +239,31 @@ pronto quando: no `cwdPorSegmento`, o segmento cujo texto cru já é `git` em po
 - `{git,-C,P,status}` e `'git' -C P status` continuam dando P (casos da tarefa 2 verdes).
 
 Provado por `bash hooks/testa-cwd-efetivo.sh` com 0 falhas.
+
+### 9. União no reconhecimento do git: o cru ou o normalizado (rodada extra, decisão (a) do impasse) [tipo: implementar]
+atende: D4, D6
+arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`, `CHANGELOG.md`
+depende de: 8
+prova: `P=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && W=$(git rev-parse --show-toplevel) && node -e 'const B=String.fromCharCode(92);process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:process.argv[1],hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"powershell -c \"echo a; C:"+B+"PROGRA~1"+B+"Git"+B+"cmd"+B+"git.exe -C "+process.argv[2]+" commit --allow-empty -m x\""}}))' "$W" "$P" | node hooks/gate-worktree.cjs >/dev/null 2>&1; test $? -eq 2`
+mutacao:
+  arquivo: `hooks/gate-worktree.cjs`
+  de: `return [palavras(String(texto)), palavras(textoLido(texto, ferramenta).seg)];`
+  para: `return [palavras(textoLido(texto, ferramenta).seg)];`
+  bateria: `bash hooks/testa-gate-worktree.sh`
+  timeout: `900000`
+  fixture: testa-gate-worktree.sh, secao "(#530) rodada extra: git reconhecido no texto cru ou no normalizado"
+pronto quando: a leitura do bash só acrescenta bloqueio, nunca tira. Uma função `leiturasDoComando(texto, ferramenta)` devolve as duas listas de palavras: a do texto cru, exatamente como a base 9f6b9ca3 lia, e a da palavra normalizada. A última linha dela é exatamente `return [palavras(String(texto)), palavras(textoLido(texto, ferramenta).seg)];`, alvo da mutação; com a ferramenta PowerShell as duas listas coincidem. Nenhum caso de teste lê o texto do fonte.
+- `subcomandoGit` procura o git nas duas leituras. Quem decide por verbo (`verboNaLinha`, `linhaDeRestauro` e quem mais chamar `subcomandoGit`) barra se **qualquer** leitura der verbo no conjunto. Ou seja, `subcomandoGit` devolve o subcomando de cada leitura que achou git (lista) e o chamador testa todos, ou um equivalente com o mesmo efeito.
+- Pelo gate real, tool Bash, cwd W, sai **2**:
+  - `powershell -c "echo a; C:\PROGRA~1\Git\cmd\git.exe -C P commit --allow-empty -m x"`;
+  - `powershell -c "& C:\PROGRA~1\Git\cmd\git.exe -C P commit --allow-empty -m x"`;
+  - `pwsh -c "echo a; C:\Git\cmd\git.exe -C P commit -m x"`;
+  - `cmd /c "echo a & C:\Git\cmd\git.exe -C P commit -m x"`;
+  - `x=$(powershell -c "cd P; C:\Git\cmd\git.exe commit -m x")`.
+
+  Todos eram 2 na base e 0 na rodada 3. A contrabarra é montada no teste por `String.fromCharCode(92)` ou equivalente, e o teste falha se ela sumir.
+- Vizinhos legítimos continuam **0**: `git status` e `git -C W log` a partir de W, e `powershell -Command "git -C W status"`. Os casos das tarefas 3, 6, 7 e 8 seguem verdes.
+- **Diferencial:** o corpus do revisor (`r3diff.cjs`, 995 comandos × Bash e PowerShell × cwd W e W/hooks), rodado contra a base 9f6b9ca3 e o HEAD, dá **zero** linhas `2->nao2`. A integração roda e cola esse resultado.
+- CHANGELOG 1.67.6: uma linha dizendo que o reconhecimento do git é a união da leitura crua com a do bash, e que por isso `C:\Git\cmd\git.exe -C P …` sem aspas no Bash continua barrado, como na base (conservador).
+
+Provado por `bash hooks/testa-gate-worktree.sh` com 0 falhas e pelo diferencial com zero `2->nao2`.
