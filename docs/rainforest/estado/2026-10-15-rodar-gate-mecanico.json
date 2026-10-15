@@ -19,7 +19,7 @@
     "em": "2026-10-15"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-15",
     "em_voo": [],
     "carimbos": [
@@ -34,6 +34,22 @@
     "em": "2026-10-15",
     "integradas": [
       1
+    ],
+    "tarefas_ok": 2,
+    "tarefas": 2,
+    "comando": "bash scripts/testa-conferir-fluxo.sh",
+    "saida": "ok: 121   falhou: 0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-fluxo.sh, secao 17 #498 caso (a)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "remocao de script sem chamador e documentacao"
+      }
     ]
   },
   "revisar": {
