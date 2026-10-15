@@ -661,8 +661,8 @@ printf 'const h = { %s: %s%s %s{this.token}%s };\n' "$AU" "$BT" "$BE" "$D" "$BT"
 nao_tem '494 template com ${this.token} passa' "$(roda "$SBP/494-tpl-this.cjs")" "credencial"
 saiu    "e passa (exit 0)"                               "$(codigo "$SBP/494-tpl-this.cjs")" "0"
 
-# Issue #494 (volta 4): sem aspa de abertura a regua e a da base; lista de
-# permissao so com aspa ou crase. Casos em pedacos, como os vizinhos.
+# Issue #494 (volta 3b): sem aspa de abertura a regua e a da base; lista de
+# permissao so na crase e na concatenacao. Casos em pedacos, como os vizinhos.
 LB='{'; Q="'"
 printf 'curl -H "%s: %s $TOKEN" https://api.x.com/v1\n' "$AU" "$BE" > "$SBP/494v4-curl-var.txt"
 nao_tem 'curl com Bearer $TOKEN sem aspa de abertura passa'      "$(roda "$SBP/494v4-curl-var.txt")" "credencial"
@@ -693,6 +693,40 @@ printf 'const h = { %s: %s%s %s{TOKEN:-%s}%s };\n' "$AU" "$BT" "$BE" "$D" "$HEX3
 tem  'crase com ${TOKEN:-literal hex} continua credencial'       "$(roda "$SBP/494v4-crase-recuo.cjs")" "credencial"
 saiu "e RECUSA (exit 2)"                                         "$(codigo "$SBP/494v4-crase-recuo.cjs")" "2"
 
+# Issue #494 (rodada extra): aspa comum volta a regua da #410. Cada linha abaixo
+# passa na main e nao carrega literal; a lista de permissao da volta 3 barrava.
+regua_410_passa() {
+  nao_tem "$1" "$(roda "$2")" "credencial"
+  saiu    "e passa (exit 0)" "$(codigo "$2")" "0"
+}
+printf '    %s: %s%s %s{TOKEN}%s # comentario\n' "$AU" "$DQ" "$BE" "$D" "$DQ" > "$SBP/494x-hash.txt"
+regua_410_passa 'aspa dupla com ${TOKEN} e comentario # no fim passa' "$SBP/494x-hash.txt"
+printf '%s%s%s: %s%s %s{TOKEN}%s // c\n' "$DQ" "$AU" "$DQ" "$DQ" "$BE" "$D" "$DQ" > "$SBP/494x-barras.txt"
+regua_410_passa 'aspa dupla com ${TOKEN} e comentario // no fim passa' "$SBP/494x-barras.txt"
+printf '%s%s%s: %s%s %s{TOKEN}%s \\\n' "$DQ" "$AU" "$DQ" "$DQ" "$BE" "$D" "$DQ" > "$SBP/494x-continua.txt"
+regua_410_passa 'aspa dupla com ${TOKEN} e barra de continuacao passa' "$SBP/494x-continua.txt"
+printf '%s=%s%s %s{TOKEN}%s curl x\n' "$AU" "$DQ" "$BE" "$D" "$DQ" > "$SBP/494x-env-cmd.txt"
+regua_410_passa 'variavel de ambiente antes de comando passa' "$SBP/494x-env-cmd.txt"
+printf '%s%s%s: %s%s %s{TOKEN}%s.trim()\n' "$DQ" "$AU" "$DQ" "$DQ" "$BE" "$D" "$DQ" > "$SBP/494x-trim.cjs"
+regua_410_passa 'aspa dupla com ${TOKEN} seguida de .trim() passa' "$SBP/494x-trim.cjs"
+printf '{"%s": "%s {}".format(token).strip()}\n' "$AU" "$BE" > "$SBP/494x-format-strip.py"
+regua_410_passa '.format(token).strip() passa' "$SBP/494x-format-strip.py"
+printf '{"%s": f"%s {token}" if token else None}\n' "$AU" "$BE" > "$SBP/494x-fstring-if.py"
+regua_410_passa 'f-string seguida de if token else None passa' "$SBP/494x-fstring-if.py"
+printf 'Use o header %s%s: %s%s %s{TOKEN}%s%s na chamada.\n' "$BT" "$AU" "$DQ" "$BE" "$D" "$DQ" "$BT" > "$SBP/494x-prosa.md"
+regua_410_passa 'prosa markdown citando o header entre crases passa' "$SBP/494x-prosa.md"
+printf '%s: %s%s %s{{ secrets.TOKEN || %sx%s }}%s\n' "$AU" "$DQ" "$BE" "$D" "$Q" "$Q" "$DQ" > "$SBP/494x-actions-ou.yml"
+regua_410_passa 'Actions com ${{ secrets.X || literal curto }} passa' "$SBP/494x-actions-ou.yml"
+
+# Superficie nova: comentario ate o fim da linha e barra de continuacao valem
+# depois do template e da concatenacao.
+printf 'headers.%s = %s%s %s{token}%s // c\n' "$AU" "$BT" "$BE" "$D" "$BT" > "$SBP/494x-tpl-barras.cjs"
+regua_410_passa 'template com comentario // no fim passa' "$SBP/494x-tpl-barras.cjs"
+printf 'const h = { %s: %s%s %s + tok // c\n' "$AU" "$Q" "$BE" "$Q" > "$SBP/494x-cat-barras.cjs"
+regua_410_passa 'concatenacao com comentario // no fim passa' "$SBP/494x-cat-barras.cjs"
+printf 'const h = { %s: %s%s %s{token}%s \\\n' "$AU" "$BT" "$BE" "$D" "$BT" > "$SBP/494x-tpl-continua.cjs"
+regua_410_passa 'template com barra de continuacao passa' "$SBP/494x-tpl-continua.cjs"
+
 # Robustez (item 3): cada entrada degenerada sai 0 ou 2, nunca outro codigo, e
 # termina em menos de 2 s (timeout devolve 124, que reprova).
 saiu_0_ou_2() {
@@ -718,6 +752,10 @@ saiu_0_ou_2 'deg: Authorization: "Bearer {}".format(' "$SBP/494v4-deg-8.txt"
 printf '%s: %s%s ' "$AU" "$DQ" "$BE" > "$SBP/494v4-deg-9.txt"
 head -c 50000 /dev/zero | tr '\0' 'a' >> "$SBP/494v4-deg-9.txt"; printf '\n' >> "$SBP/494v4-deg-9.txt"
 saiu_0_ou_2 'deg: linha de 50000 caracteres depois do esquema' "$SBP/494v4-deg-9.txt"
+# Espacos, nao letras: o regex da concatenacao era quadratico em espacos (9 s).
+printf "%s: %s%s%s" "$AU" "$Q" "$BE" "$Q" > "$SBP/494v4-deg-10.txt"
+head -c 100000 /dev/zero | tr '\0' ' ' >> "$SBP/494v4-deg-10.txt"; printf 'x\n' >> "$SBP/494v4-deg-10.txt"
+saiu_0_ou_2 'deg: 100000 espacos depois do esquema fechado' "$SBP/494v4-deg-10.txt"
 
 echo
 echo "== 9. termos privados — o que nao tem FORMA e so uma lista reconhece =="
