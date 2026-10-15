@@ -60,7 +60,7 @@ Provado por `bash hooks/testa-palavra-bash.sh`, que imprime cada caso com 0 falh
 
 ### 2. `cwd-efetivo`: a palavra de chaves não é fronteira e o movedor lê a palavra normalizada [tipo: implementar]
 atende: D4, D5
-arquivos: `hooks/lib/cwd-efetivo.cjs`, `hooks/testa-cwd-efetivo.sh`
+arquivos: `hooks/lib/cwd-efetivo.cjs`, `hooks/testa-cwd-efetivo.sh`, `hooks/testa-gate-worktree.sh`
 depende de: 1
 prova: `P=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && W=$(git rev-parse --show-toplevel) && node -e 'process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:process.argv[1],hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"'"'"'cd'"'"' "+process.argv[2]+"; echo x > f"}}))' "$W" "$P" | node hooks/gate-worktree.cjs >/dev/null 2>&1; test $? -eq 2`
 mutacao:
