@@ -718,6 +718,21 @@ regua_410_passa 'prosa markdown citando o header entre crases passa' "$SBP/494x-
 printf '%s: %s%s %s{{ secrets.TOKEN || %sx%s }}%s\n' "$AU" "$DQ" "$BE" "$D" "$Q" "$Q" "$DQ" > "$SBP/494x-actions-ou.yml"
 regua_410_passa 'Actions com ${{ secrets.X || literal curto }} passa' "$SBP/494x-actions-ou.yml"
 
+# Aspa comum: a referencia tem de terminar na propria aspa de fechamento. Literal
+# separado dela por espaco, dentro das mesmas aspas, e barrado (a main deixava).
+printf '{"%s": "%s %s{tok} %s"}\n' "$AU" "$BE" "$D" "$HEX32" > "$SBP/494x-dq-espaco-hex.txt"
+tem  'aspa dupla com ${tok} + espaco + literal hex continua credencial' "$(roda "$SBP/494x-dq-espaco-hex.txt")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494x-dq-espaco-hex.txt")" "2"
+printf "%s: %s%s %sTOK %s%s\n" "$AU" "$Q" "$BE" "$D" "$HEX32" "$Q" > "$SBP/494x-sq-espaco-hex.txt"
+tem  'aspa simples com $TOK + espaco + literal hex continua credencial' "$(roda "$SBP/494x-sq-espaco-hex.txt")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494x-sq-espaco-hex.txt")" "2"
+printf '{"%s": f"%s {token} %s"}\n' "$AU" "$BE" "$HEX32" > "$SBP/494x-fstring-espaco-hex.py"
+tem  'f-string com {token} + espaco + literal hex continua credencial' "$(roda "$SBP/494x-fstring-espaco-hex.py")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494x-fstring-espaco-hex.py")" "2"
+printf '%s: "%s %s{{ secrets.T }} %s"\n' "$AU" "$BE" "$D" "$HEX32" > "$SBP/494x-actions-espaco-hex.yml"
+tem  'Actions ${{ }} + espaco + literal hex continua credencial' "$(roda "$SBP/494x-actions-espaco-hex.yml")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494x-actions-espaco-hex.yml")" "2"
+
 # Superficie nova: comentario ate o fim da linha e barra de continuacao valem
 # depois do template e da concatenacao.
 printf 'headers.%s = %s%s %s{token}%s // c\n' "$AU" "$BT" "$BE" "$D" "$BT" > "$SBP/494x-tpl-barras.cjs"

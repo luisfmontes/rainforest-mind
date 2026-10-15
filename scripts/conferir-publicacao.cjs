@@ -126,21 +126,35 @@ function referenciaTemplate(t) {
   return !!r && fimPermitido(t.slice(r[0].length));
 }
 
-// Aspa comum ou sem aspa: a régua da #410 como na base. Referência inteira
-// (`${VAR}`, `$VAR`, `%VAR%`, `{}` + `.format(VAR)`, `{VAR}` só em f-string) e o
-// caractere seguinte não é de palavra. Com aspa, um `+ <aspa>` logo depois da
-// aspa de fechamento cancela: `"Bearer ${tok}" + '<hex>'` não isenta.
+// Aspa comum ou sem aspa: a régua da #410. Referência inteira (`${VAR}`, `$VAR`,
+// `%VAR%`, `{}` + `.format(VAR)`, `{VAR}` só em f-string) e o caractere seguinte
+// não é de palavra. Com aspa, duas adições da #494, ambas só ANTES da aspa de
+// fechamento ou colado nela: a referência tem de terminar na própria aspa de
+// fechamento (`"Bearer ${tok} <hex>"` não isenta), e um `+ <aspa>` logo depois
+// dela cancela (`"Bearer ${tok}" + '<hex>'` não isenta). O que vem depois da aspa
+// de fechamento (comentário, `\`, `.trim()`, prosa) segue livre, como na base.
 function referenciaRegua410(cauda, aspa, fstring) {
   const prox = /^\s+(\S+)/.exec(cauda);
   if (!prox) return false;
   const v2 = prox[1].replace(/^["']+/, '');
   const r2 = FORMAT_VAR.exec(v2) || (fstring && FSTRING_VAR.exec(v2)) || REFERENCIA_DE_VARIAVEL.exec(v2);
   if (!r2 || /^[A-Za-z0-9_]/.test(v2.slice(r2[0].length))) return false;
-  if (aspa) {
-    const fecho = cauda.indexOf(aspa);
-    if (fecho >= 0 && /^\s*\+\s*["'`]/.test(cauda.slice(fecho + 1))) return false;
+  if (!aspa || v2 !== prox[1]) return true;
+  // A referência medida sobre o resto da linha, não sobre a palavra: `${{ x }}` e
+  // `${A:-um padrao}` têm espaço dentro.
+  const t = cauda.slice(prox[0].length - prox[1].length);
+  const fmt = FORMAT_VAR.exec(t);
+  let fecho;
+  if (fmt) {
+    // `{}".format(VAR)`: a aspa de fechamento está dentro do casamento.
+    fecho = t.indexOf(aspa);
+    if (fecho !== 2) return false;
+  } else {
+    const r3 = (fstring && FSTRING_VAR.exec(t)) || REFERENCIA_DE_VARIAVEL.exec(t);
+    if (!r3 || t[r3[0].length] !== aspa) return false;
+    fecho = r3[0].length;
   }
-  return true;
+  return !/^\s*\+\s*["'`]/.test(t.slice(fecho + 1));
 }
 
 // Esquema do valor capturado: { aspa, fstring } ou null se nao for Bearer, Basic
