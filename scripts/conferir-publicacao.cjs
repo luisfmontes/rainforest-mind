@@ -92,6 +92,85 @@ const REFERENCIA_DE_VARIAVEL = new RegExp(
   ].join('')
 );
 
+// Issue #494: `Authorization` com esquema. Dois regimes, conforme a abertura do
+// valor (D1 e D2 do design, volta 4):
+//  - aspa comum (`"`, `'`, f-string) ou sem aspa: a régua da #410
+//    (referenciaRegua410), com duas adições que só olham até a aspa de
+//    fechamento: a referência termina nela, e um literal entre aspas emendado por
+//    `+` logo depois dela cancela a isenção.
+//  - superfície nova, template com crase e concatenação `<aspa> + <expr>`: lista
+//    de PERMISSÃO. Depois da expressão só vale o que fimPermitido aceita.
+const FORMAT_VAR = /^\{\}["']?\.format\(\s*[A-Za-z_]\w*\s*\)/;
+const FSTRING_VAR = /^\{[A-Za-z_]\w*\}/;
+const MEMBROS = /[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*/.source;
+// `${ident}` ou `${a.b.c}` seguido da crase de fechamento.
+const TEMPLATE_REF = new RegExp(/^\$\{\s*/.source + MEMBROS + /\s*\}`/.source);
+// Identificador, cadeia de membros, ou chamada cujos argumentos são só isso.
+const EXPR_CONCAT = new RegExp('^' + MEMBROS + '(?:\\((?:\\s*' + MEMBROS + '(?:\\s*,\\s*' + MEMBROS + ')*)?\\s*\\))?');
+
+// Fim permitido depois da expressão da superfície nova: fim de linha; comentário
+// até o fim da linha (`//` ou `#` precedido de espaço); barra de continuação; ou
+// pontuação `, ; ) ] }` sem `+` emendado em seguida (o que vem depois da
+// pontuação já está fora do valor). Qualquer outra coisa (`.concat`, `/* */ +`,
+// espaço + texto, `-`, letra) não isenta.
+function fimPermitido(resto) {
+  if (resto.trim() === '') return true;
+  if (/^\s+(?:\/\/|#)/.test(resto)) return true;
+  if (/^\s*\\\s*$/.test(resto)) return true;
+  if (!/^\s*[;,)\]}]/.test(resto)) return false;
+  return !/^[\s;,)\]}]*\+/.test(resto);
+}
+
+// Template com crase. `t` começa logo depois do espaço que segue o esquema.
+function referenciaTemplate(t) {
+  const r = TEMPLATE_REF.exec(t);
+  return !!r && fimPermitido(t.slice(r[0].length));
+}
+
+// Aspa comum ou sem aspa: a régua da #410. Referência inteira (`${VAR}`, `$VAR`,
+// `%VAR%`, `{}` + `.format(VAR)`, `{VAR}` só em f-string) e o caractere seguinte
+// não é de palavra. Com aspa, duas adições da #494, ambas só ANTES da aspa de
+// fechamento ou colado nela: a referência tem de terminar na própria aspa de
+// fechamento (`"Bearer ${tok} <hex>"` não isenta), e um `+ <aspa>` logo depois
+// dela cancela (`"Bearer ${tok}" + '<hex>'` não isenta). O que vem depois da aspa
+// de fechamento (comentário, `\`, `.trim()`, prosa) segue livre, como na base.
+function referenciaRegua410(cauda, aspa, fstring) {
+  const prox = /^\s+(\S+)/.exec(cauda);
+  if (!prox) return false;
+  const v2 = prox[1].replace(/^["']+/, '');
+  const r2 = FORMAT_VAR.exec(v2) || (fstring && FSTRING_VAR.exec(v2)) || REFERENCIA_DE_VARIAVEL.exec(v2);
+  if (!r2 || /^[A-Za-z0-9_]/.test(v2.slice(r2[0].length))) return false;
+  if (!aspa || v2 !== prox[1]) return true;
+  // A referência medida sobre o resto da linha, não sobre a palavra: `${{ x }}` e
+  // `${A:-um padrao}` têm espaço dentro.
+  const t = cauda.slice(prox[0].length - prox[1].length);
+  const fmt = FORMAT_VAR.exec(t);
+  let fecho;
+  if (fmt) {
+    // `{}".format(VAR)`: a aspa de fechamento está dentro do casamento.
+    fecho = t.indexOf(aspa);
+    if (fecho !== 2) return false;
+  } else {
+    const r3 = (fstring && FSTRING_VAR.exec(t)) || REFERENCIA_DE_VARIAVEL.exec(t);
+    if (!r3 || t[r3[0].length] !== aspa) return false;
+    fecho = r3[0].length;
+  }
+  return !/^\s*\+\s*["'`]/.test(t.slice(fecho + 1));
+}
+
+// Esquema do valor capturado: { aspa, fstring } ou null se nao for Bearer, Basic
+// ou Token. `aspaPre` e a aspa que a regex de credencial consumiu antes do valor.
+// f-string so vale com f/rf/fr (qualquer caixa) logo antes de aspa simples ou
+// dupla; crase nunca e f-string.
+function esquemaAuthorization(valor, aspaPre) {
+  const c = /^(?:(rf|fr|f)(["'])|(["'`]))?(?:bearer|basic|token)$/i.exec(valor);
+  if (c && c[1]) return aspaPre ? null : { aspa: c[2], fstring: true };
+  if (c && c[3]) return aspaPre ? null : { aspa: c[3], fstring: false };
+  if (c) return { aspa: aspaPre, fstring: false };
+  if (/^f?(?:bearer|basic|token)$/i.test(valor)) return { aspa: aspaPre, fstring: false };
+  return null;
+}
+
 /**
  * Prefixo de identificador de plataforma (GitHub Actions run, job, comment, PR, commit, discussion).
  * Ancorada no FIM do trecho anterior ao match, casando exatamente um destes:
@@ -292,17 +371,38 @@ const PADROES = [
       // INTEIRO referencia de variavel: `{VAR}` / `${VAR}` ou `{}` + `.format(VAR)`.
       // Literal colado depois da referencia, ou literal no lugar dela, continua
       // caindo no restante da regra e e acusado.
-      if (chave === 'authorization' && /^f?["']?(?:Bearer|Basic|Token)$/i.test(valor)) {
-        const prox = /^\s+(\S+)/.exec(linha.slice(m.index + m[0].length));
-        if (prox) {
-          const v2 = prox[1].replace(/^["']+/, '');
-          const fmt = /^\{\}["']?\.format\(\s*[A-Za-z_]\w*\s*\)/.exec(v2);
-          // `{VAR}` so e referencia quando o esquema veio de f-string (`f"Bearer`).
-          // Fora dela, chaves com um nome dentro sao texto literal: na lista
-          // global, `password={abc}` saia isento em qualquer chave.
-          const fstr = /^f["']/i.test(valor) ? /^\{[A-Za-z_]\w*\}/.exec(v2) : null;
-          const r2 = fmt || fstr || REFERENCIA_DE_VARIAVEL.exec(v2);
-          if (r2 && !/^[A-Za-z0-9_]/.test(v2.slice(r2[0].length))) return false;
+      // Issue #494: crase de abertura (template JS) também conta como esquema, e a
+      // concatenação `<aspa> + <expr>` também isenta. Os dois regimes estão no
+      // bloco de referenciaRegua410 e fimPermitido, no topo do arquivo.
+      // Limite conhecido: a varredura é por linha. Um literal `+ '<hex>'` que
+      // começa na linha seguinte não é visto aqui; o design nunca prometeu isso.
+      // Ramo inteiro em try: erro aqui NÃO isenta, cai no restante da regra e acusa.
+      if (chave === 'authorization') {
+        try {
+          const pre = m[0].slice(0, m[0].length - m[1].length);
+          const aspaPre = /["']$/.test(pre) ? pre.slice(-1) : '';
+          const esq = esquemaAuthorization(valor, aspaPre);
+          if (esq) {
+            const cauda = linha.slice(m.index + m[0].length);
+            if (esq.aspa === '`') {
+              if (/^\s/.test(cauda) && referenciaTemplate(cauda.replace(/^\s+/, ''))) return false;
+            } else if (referenciaRegua410(cauda, esq.aspa, esq.fstring)) {
+              return false;
+            }
+            // Concatenação: só com aspa ou crase de abertura, que torna o esquema
+            // um literal; sem ela o `+` é texto colado. A aspa de fechamento pode
+            // estar na captura (`'Bearer' + tok`) ou ainda na cauda.
+            if (esq.aspa !== '') {
+              const fechado = m[1].endsWith(esq.aspa);
+              const abre = fechado ? /^\s*\+\s*/ : new RegExp('^\\s*' + esq.aspa + '\\s*\\+\\s*');
+              const a = abre.exec(cauda);
+              const expr = a && EXPR_CONCAT.exec(cauda.slice(a[0].length));
+              const concatVariavel = !!expr && fimPermitido(cauda.slice(a[0].length + expr[0].length));
+              if (concatVariavel) return false;
+            }
+          }
+        } catch (_erro) {
+          // Erro no ramo não isenta: segue para o restante da regra, que acusa.
         }
       }
 

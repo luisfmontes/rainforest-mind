@@ -550,6 +550,228 @@ saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/chave
 printf '{"%s": "%s {KEY}"}\n' "$AU" "$BE" > "$SBP/auth-chaves-sem-f.md"
 tem  "410 Bearer {KEY} sem f-string continua credencial"   "$(roda "$SBP/auth-chaves-sem-f.md")" "credencial"
 
+# Issue #494: template JS (crase) e concatenacao `'<esquema> ' + <expr>` no mesmo
+# ramo. Mesma regua da #410: referencia inteira passa; literal colado depois dela,
+# ou literal no lugar dela, continua barrado. Arquivos .cjs, como o caso real.
+printf 'const h = { %s: `%s ${token}` };\n' "$AU" "$BE" > "$SBP/494-tpl-ok.cjs"
+nao_tem "494 template com \${token} passa"               "$(roda "$SBP/494-tpl-ok.cjs")" "credencial"
+saiu    "e passa (exit 0)"                               "$(codigo "$SBP/494-tpl-ok.cjs")" "0"
+
+printf "const h = { %s: '%s ' + tok };\n" "$AU" "$BE" > "$SBP/494-cat-var.cjs"
+nao_tem "494 concatenação com identificador passa"       "$(roda "$SBP/494-cat-var.cjs")" "credencial"
+saiu    "e passa (exit 0)"                               "$(codigo "$SBP/494-cat-var.cjs")" "0"
+
+printf 'const h = { %s: "%s " + this.token };\n' "$AU" "$BE" > "$SBP/494-cat-this.cjs"
+nao_tem "494 concatenação com this.token passa"          "$(roda "$SBP/494-cat-this.cjs")" "credencial"
+saiu    "e passa (exit 0)"                               "$(codigo "$SBP/494-cat-this.cjs")" "0"
+
+printf "const h = { %s: '%s ' + process.env.API_TOKEN };\n" "$AU" "$BE" > "$SBP/494-cat-env.cjs"
+nao_tem "494 concatenação com process.env passa"         "$(roda "$SBP/494-cat-env.cjs")" "credencial"
+saiu    "e passa (exit 0)"                               "$(codigo "$SBP/494-cat-env.cjs")" "0"
+
+printf "const h = { %s: '%s ' + getToken() };\n" "$AU" "$BE" > "$SBP/494-cat-call.cjs"
+nao_tem "494 concatenação com chamada sem argumento passa" "$(roda "$SBP/494-cat-call.cjs")" "credencial"
+saiu    "e passa (exit 0)"                               "$(codigo "$SBP/494-cat-call.cjs")" "0"
+
+BA="Ba""sic"
+printf "const h = { %s: '%s ' + obterToken(conta) };\n" "$AU" "$BA" > "$SBP/494-cat-basic.cjs"
+nao_tem "494 concatenação com Basic e chamada com identificador passa" "$(roda "$SBP/494-cat-basic.cjs")" "credencial"
+saiu    "e passa (exit 0)"                               "$(codigo "$SBP/494-cat-basic.cjs")" "0"
+
+# O lado que importa: literal colado depois da referencia, ou no lugar dela, barra.
+printf 'const h = { %s: `%s ${token}%s` };\n' "$AU" "$BE" "abc123""literal" > "$SBP/494-tpl-colado.cjs"
+tem  "494 template com literal colado continua credencial" "$(roda "$SBP/494-tpl-colado.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-tpl-colado.cjs")" "2"
+
+printf 'const h = { %s: `%s %s` };\n' "$AU" "$BE" "$HEX32" > "$SBP/494-tpl-hex.cjs"
+tem  "494 template com literal hex no lugar da referencia continua credencial" "$(roda "$SBP/494-tpl-hex.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-tpl-hex.cjs")" "2"
+
+printf "const h = { %s: '%s ' + '%s' };\n" "$AU" "$BE" "$HEX32" > "$SBP/494-cat-hex.cjs"
+tem  "494 concatenação com literal entre aspas continua credencial" "$(roda "$SBP/494-cat-hex.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-cat-hex.cjs")" "2"
+
+printf "const h = { %s: '%s ' + getToken('%s') };\n" "$AU" "$BE" "$HEX32" > "$SBP/494-cat-arg-hex.cjs"
+tem  "494 concatenação com chamada de argumento literal continua credencial" "$(roda "$SBP/494-cat-arg-hex.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-cat-arg-hex.cjs")" "2"
+
+# D3: a concatenacao so isenta Authorization com esquema; outra chave continua barrada.
+AK="api""_key"
+printf "const x = { %s: '%s ' + tok };\n" "$AK" "$BE" > "$SBP/494-apikey-concat.cjs"
+tem  "494 concatenação fora de Authorization continua credencial (D3)" "$(roda "$SBP/494-apikey-concat.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-apikey-concat.cjs")" "2"
+
+# Achados da revisão de 494 (volta 2). Peças separadas para o gate não ler a escrita.
+# Sem aspa de abertura, o `+` cola o valor: header HTTP com token que começa por `+`.
+printf '%s: %s +%s\n' "$AU" "$BE" "$HEX32" > "$SBP/494-sem-aspas.txt"
+tem  "494 Authorization sem aspas com + colado continua credencial" "$(roda "$SBP/494-sem-aspas.txt")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-sem-aspas.txt")" "2"
+
+# Referência seguida de + depois da aspa de fechamento: literal emendado, não isenta.
+BT='`'; DQ='"'; Q="'"; D='$'
+printf 'const h = { %s: %s%s %s{tok}%s + %s%s%s };\n' "$AU" "$BT" "$BE" "$D" "$BT" "$Q" "$HEX32" "$Q" > "$SBP/494-tpl-mais-hex.cjs"
+tem  '494 template com ${tok} + literal hex continua credencial' "$(roda "$SBP/494-tpl-mais-hex.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-tpl-mais-hex.cjs")" "2"
+
+printf 'const h = { %s: %s%s %s{tok}%s + %s%s%s };\n' "$AU" "$DQ" "$BE" "$D" "$DQ" "$Q" "$HEX32" "$Q" > "$SBP/494-dq-mais-hex.cjs"
+tem  '494 aspas duplas com ${tok} + literal hex continua credencial' "$(roda "$SBP/494-dq-mais-hex.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-dq-mais-hex.cjs")" "2"
+
+# Concatenação seguida de pontuação e de novo + (fecha-parênteses ou chave antes do +).
+printf "const h = { %s: %s%s %s + tok) + %s%s%s };\n" "$AU" "$Q" "$BE" "$Q" "$Q" "$HEX32" "$Q" > "$SBP/494-cat-paren-mais.cjs"
+tem  "494 concatenação com tok) + literal hex continua credencial" "$(roda "$SBP/494-cat-paren-mais.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-cat-paren-mais.cjs")" "2"
+
+# Outras chaves depois da vírgula não são emenda: template seguido de Content-Type passa.
+printf 'const h = { %s: %s%s %s{t}%s, %s%s%s: %s%s%s };\n' "$AU" "$BT" "$BE" "$D" "$BT" "$Q" "Content-Type" "$Q" "$Q" "application/json" "$Q" > "$SBP/494-tpl-virgula.cjs"
+nao_tem "494 template seguido de vírgula e outra chave passa" "$(roda "$SBP/494-tpl-virgula.cjs")" "credencial"
+saiu    "e passa (exit 0)"                                   "$(codigo "$SBP/494-tpl-virgula.cjs")" "0"
+
+# Issue #494 (volta 3): lista de PERMISSAO. Cada forma abaixo era isenta na volta 2
+# por causa da lista de proibicao. Montadas em pedacos; o literal e $HEX32.
+printf 'const h = { %s: %s%s %s{tok}%s.concat(%s%s%s) };\n' "$AU" "$BT" "$BE" "$D" "$BT" "$Q" "$HEX32" "$Q" > "$SBP/494-tpl-concat.cjs"
+tem  '494 template + .concat(literal hex) continua credencial' "$(roda "$SBP/494-tpl-concat.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-tpl-concat.cjs")" "2"
+
+printf 'const h = { %s: %s%s %s{tok}%s /* c */ + %s%s%s };\n' "$AU" "$BT" "$BE" "$D" "$BT" "$Q" "$HEX32" "$Q" > "$SBP/494-tpl-comentario.cjs"
+tem  '494 template + /* c */ + literal hex continua credencial' "$(roda "$SBP/494-tpl-comentario.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-tpl-comentario.cjs")" "2"
+
+printf 'const h = { %s: %s%s %s{tok||%s%s%s}%s };\n' "$AU" "$BT" "$BE" "$D" "$Q" "$HEX32" "$Q" "$BT" > "$SBP/494-tpl-ou-hex.cjs"
+tem  '494 ${tok||literal hex} continua credencial' "$(roda "$SBP/494-tpl-ou-hex.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-tpl-ou-hex.cjs")" "2"
+
+printf 'const h = { %s: %s%s %s{%s%s%s}%s };\n' "$AU" "$BT" "$BE" "$D" "$Q" "$HEX32" "$Q" "$BT" > "$SBP/494-tpl-so-hex.cjs"
+tem  '494 ${literal hex} continua credencial' "$(roda "$SBP/494-tpl-so-hex.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-tpl-so-hex.cjs")" "2"
+
+printf 'const h = { %s: %s%s %s{tok} %s%s };\n' "$AU" "$BT" "$BE" "$D" "$HEX32" "$BT" > "$SBP/494-tpl-espaco-hex.cjs"
+tem  '494 template ${tok} + espaco + literal hex continua credencial' "$(roda "$SBP/494-tpl-espaco-hex.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-tpl-espaco-hex.cjs")" "2"
+
+printf 'const h = { %s: %s%s %s{tok}-%s%s };\n' "$AU" "$BT" "$BE" "$D" "$HEX32" "$BT" > "$SBP/494-tpl-hifen-hex.cjs"
+tem  '494 template ${tok}-literal hex continua credencial' "$(roda "$SBP/494-tpl-hifen-hex.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-tpl-hifen-hex.cjs")" "2"
+
+printf "headers['%s'] = '%s ' + tok;\n" "$AU" "$BE" > "$SBP/494-headers-concat.cjs"
+nao_tem '494 headers[Authorization] = Bearer + identificador passa' "$(roda "$SBP/494-headers-concat.cjs")" "credencial"
+saiu    "e passa (exit 0)"                               "$(codigo "$SBP/494-headers-concat.cjs")" "0"
+
+printf 'const h = { %s: %s%s %s{this.token}%s };\n' "$AU" "$BT" "$BE" "$D" "$BT" > "$SBP/494-tpl-this.cjs"
+nao_tem '494 template com ${this.token} passa' "$(roda "$SBP/494-tpl-this.cjs")" "credencial"
+saiu    "e passa (exit 0)"                               "$(codigo "$SBP/494-tpl-this.cjs")" "0"
+
+# Issue #494 (volta 3b): sem aspa de abertura a regua e a da base; lista de
+# permissao so na crase e na concatenacao. Casos em pedacos, como os vizinhos.
+LB='{'; Q="'"
+printf 'curl -H "%s: %s $TOKEN" https://api.x.com/v1\n' "$AU" "$BE" > "$SBP/494v4-curl-var.txt"
+nao_tem 'curl com Bearer $TOKEN sem aspa de abertura passa'      "$(roda "$SBP/494v4-curl-var.txt")" "credencial"
+saiu    "e passa (exit 0)"                                       "$(codigo "$SBP/494v4-curl-var.txt")" "0"
+
+printf 'curl -H "%s: %s ${API_KEY}" \\\n' "$AU" "$BE" > "$SBP/494v4-curl-chave.txt"
+nao_tem 'curl com Bearer ${API_KEY} e barra de continuacao passa' "$(roda "$SBP/494v4-curl-chave.txt")" "credencial"
+saiu    "e passa (exit 0)"                                       "$(codigo "$SBP/494v4-curl-chave.txt")" "0"
+
+printf '{"%s": "%s ${DEFAULT_VALUE:-changeme}"}\n' "$AU" "$BE" > "$SBP/494v4-recuo.txt"
+nao_tem 'Bearer com ${DEFAULT_VALUE:-changeme} entre aspas comuns passa' "$(roda "$SBP/494v4-recuo.txt")" "credencial"
+saiu    "e passa (exit 0)"                                       "$(codigo "$SBP/494v4-recuo.txt")" "0"
+
+printf "{ %s: f'%s {token}', 'Accept': 'json' }\n" "$AU" "$BE" > "$SBP/494v4-fstring-py.txt"
+nao_tem "f-string Python com {token} e aspa simples passa"       "$(roda "$SBP/494v4-fstring-py.txt")" "credencial"
+saiu    "e passa (exit 0)"                                       "$(codigo "$SBP/494v4-fstring-py.txt")" "0"
+
+# Barrados: Ref" nao e f-string, f` nunca e, e crase nao aceita recuo com literal.
+printf '{"%s": Ref"%s {%s}"}\n' "$AU" "$BE" "$HEX32" > "$SBP/494v4-ref-prefixo.txt"
+tem  'Ref"Bearer {hex} como valor continua credencial'           "$(roda "$SBP/494v4-ref-prefixo.txt")" "credencial"
+saiu "e RECUSA (exit 2)"                                         "$(codigo "$SBP/494v4-ref-prefixo.txt")" "2"
+
+printf 'const h = { %s: f%s%s {x}%s };\n' "$AU" "$BT" "$BE" "$BT" > "$SBP/494v4-crase-f.cjs"
+tem  'f`Bearer {x}` como valor continua credencial'              "$(roda "$SBP/494v4-crase-f.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                         "$(codigo "$SBP/494v4-crase-f.cjs")" "2"
+
+printf 'const h = { %s: %s%s %s{TOKEN:-%s}%s };\n' "$AU" "$BT" "$BE" "$D" "$HEX32" "$BT" > "$SBP/494v4-crase-recuo.cjs"
+tem  'crase com ${TOKEN:-literal hex} continua credencial'       "$(roda "$SBP/494v4-crase-recuo.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                         "$(codigo "$SBP/494v4-crase-recuo.cjs")" "2"
+
+# Issue #494 (rodada extra): aspa comum volta a regua da #410. Cada linha abaixo
+# passa na main e nao carrega literal; a lista de permissao da volta 3 barrava.
+regua_410_passa() {
+  nao_tem "$1" "$(roda "$2")" "credencial"
+  saiu    "e passa (exit 0)" "$(codigo "$2")" "0"
+}
+printf '    %s: %s%s %s{TOKEN}%s # comentario\n' "$AU" "$DQ" "$BE" "$D" "$DQ" > "$SBP/494x-hash.txt"
+regua_410_passa 'aspa dupla com ${TOKEN} e comentario # no fim passa' "$SBP/494x-hash.txt"
+printf '%s%s%s: %s%s %s{TOKEN}%s // c\n' "$DQ" "$AU" "$DQ" "$DQ" "$BE" "$D" "$DQ" > "$SBP/494x-barras.txt"
+regua_410_passa 'aspa dupla com ${TOKEN} e comentario // no fim passa' "$SBP/494x-barras.txt"
+printf '%s%s%s: %s%s %s{TOKEN}%s \\\n' "$DQ" "$AU" "$DQ" "$DQ" "$BE" "$D" "$DQ" > "$SBP/494x-continua.txt"
+regua_410_passa 'aspa dupla com ${TOKEN} e barra de continuacao passa' "$SBP/494x-continua.txt"
+printf '%s=%s%s %s{TOKEN}%s curl x\n' "$AU" "$DQ" "$BE" "$D" "$DQ" > "$SBP/494x-env-cmd.txt"
+regua_410_passa 'variavel de ambiente antes de comando passa' "$SBP/494x-env-cmd.txt"
+printf '%s%s%s: %s%s %s{TOKEN}%s.trim()\n' "$DQ" "$AU" "$DQ" "$DQ" "$BE" "$D" "$DQ" > "$SBP/494x-trim.cjs"
+regua_410_passa 'aspa dupla com ${TOKEN} seguida de .trim() passa' "$SBP/494x-trim.cjs"
+printf '{"%s": "%s {}".format(token).strip()}\n' "$AU" "$BE" > "$SBP/494x-format-strip.py"
+regua_410_passa '.format(token).strip() passa' "$SBP/494x-format-strip.py"
+printf '{"%s": f"%s {token}" if token else None}\n' "$AU" "$BE" > "$SBP/494x-fstring-if.py"
+regua_410_passa 'f-string seguida de if token else None passa' "$SBP/494x-fstring-if.py"
+printf 'Use o header %s%s: %s%s %s{TOKEN}%s%s na chamada.\n' "$BT" "$AU" "$DQ" "$BE" "$D" "$DQ" "$BT" > "$SBP/494x-prosa.md"
+regua_410_passa 'prosa markdown citando o header entre crases passa' "$SBP/494x-prosa.md"
+printf '%s: %s%s %s{{ secrets.TOKEN || %sx%s }}%s\n' "$AU" "$DQ" "$BE" "$D" "$Q" "$Q" "$DQ" > "$SBP/494x-actions-ou.yml"
+regua_410_passa 'Actions com ${{ secrets.X || literal curto }} passa' "$SBP/494x-actions-ou.yml"
+
+# Aspa comum: a referencia tem de terminar na propria aspa de fechamento. Literal
+# separado dela por espaco, dentro das mesmas aspas, e barrado (a main deixava).
+printf '{"%s": "%s %s{tok} %s"}\n' "$AU" "$BE" "$D" "$HEX32" > "$SBP/494x-dq-espaco-hex.txt"
+tem  'aspa dupla com ${tok} + espaco + literal hex continua credencial' "$(roda "$SBP/494x-dq-espaco-hex.txt")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494x-dq-espaco-hex.txt")" "2"
+printf "%s: %s%s %sTOK %s%s\n" "$AU" "$Q" "$BE" "$D" "$HEX32" "$Q" > "$SBP/494x-sq-espaco-hex.txt"
+tem  'aspa simples com $TOK + espaco + literal hex continua credencial' "$(roda "$SBP/494x-sq-espaco-hex.txt")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494x-sq-espaco-hex.txt")" "2"
+printf '{"%s": f"%s {token} %s"}\n' "$AU" "$BE" "$HEX32" > "$SBP/494x-fstring-espaco-hex.py"
+tem  'f-string com {token} + espaco + literal hex continua credencial' "$(roda "$SBP/494x-fstring-espaco-hex.py")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494x-fstring-espaco-hex.py")" "2"
+printf '%s: "%s %s{{ secrets.T }} %s"\n' "$AU" "$BE" "$D" "$HEX32" > "$SBP/494x-actions-espaco-hex.yml"
+tem  'Actions ${{ }} + espaco + literal hex continua credencial' "$(roda "$SBP/494x-actions-espaco-hex.yml")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494x-actions-espaco-hex.yml")" "2"
+
+# Superficie nova: comentario ate o fim da linha e barra de continuacao valem
+# depois do template e da concatenacao.
+printf 'headers.%s = %s%s %s{token}%s // c\n' "$AU" "$BT" "$BE" "$D" "$BT" > "$SBP/494x-tpl-barras.cjs"
+regua_410_passa 'template com comentario // no fim passa' "$SBP/494x-tpl-barras.cjs"
+printf 'const h = { %s: %s%s %s + tok // c\n' "$AU" "$Q" "$BE" "$Q" > "$SBP/494x-cat-barras.cjs"
+regua_410_passa 'concatenacao com comentario // no fim passa' "$SBP/494x-cat-barras.cjs"
+printf 'const h = { %s: %s%s %s{token}%s \\\n' "$AU" "$BT" "$BE" "$D" "$BT" > "$SBP/494x-tpl-continua.cjs"
+regua_410_passa 'template com barra de continuacao passa' "$SBP/494x-tpl-continua.cjs"
+
+# Robustez (item 3): cada entrada degenerada sai 0 ou 2, nunca outro codigo, e
+# termina em menos de 2 s (timeout devolve 124, que reprova).
+saiu_0_ou_2() {
+  local c; c=$(timeout 2 node "$SRC/scripts/conferir-publicacao.cjs" "$2" >/dev/null 2>&1; echo $?)
+  if [ "$c" = 0 ] || [ "$c" = 2 ]; then ok=$((ok+1)); echo "  ok   $1 (exit $c)"; else falhou=$((falhou+1)); echo "  FALHA $1 (exit $c, esperava 0 ou 2 em menos de 2 s)"; fi
+}
+printf '%s: %s\n' "$AU" "$BE" > "$SBP/494v4-deg-1.txt"
+saiu_0_ou_2 'deg: Authorization: Bearer no fim de linha' "$SBP/494v4-deg-1.txt"
+printf '%s: %s%s\n' "$AU" "$BT" "$BE" > "$SBP/494v4-deg-2.txt"
+saiu_0_ou_2 'deg: Authorization: `Bearer (crase, fim de linha)' "$SBP/494v4-deg-2.txt"
+printf "%s: %s%s %s +\n" "$AU" "$Q" "$BE" "$Q" > "$SBP/494v4-deg-3.txt"
+saiu_0_ou_2 "deg: Authorization: 'Bearer ' +" "$SBP/494v4-deg-3.txt"
+printf "%s: %s%s %s + (\n" "$AU" "$Q" "$BE" "$Q" > "$SBP/494v4-deg-4.txt"
+saiu_0_ou_2 "deg: Authorization: 'Bearer ' + (" "$SBP/494v4-deg-4.txt"
+printf '%s: %s%s %s%s\n' "$AU" "$DQ" "$BE" "$D" "$LB" > "$SBP/494v4-deg-5.txt"
+saiu_0_ou_2 'deg: Authorization: "Bearer ${' "$SBP/494v4-deg-5.txt"
+printf '%s: %s%s %s%s%s\n' "$AU" "$DQ" "$BE" "$D" "$LB" "$LB" > "$SBP/494v4-deg-6.txt"
+saiu_0_ou_2 'deg: Authorization: "Bearer ${{' "$SBP/494v4-deg-6.txt"
+printf '%s: f%s%s %s\n' "$AU" "$DQ" "$BE" "$LB" > "$SBP/494v4-deg-7.txt"
+saiu_0_ou_2 'deg: Authorization: f"Bearer {' "$SBP/494v4-deg-7.txt"
+printf '%s: %s%s %s}%s.format(\n' "$AU" "$DQ" "$BE" "$LB" "$DQ" > "$SBP/494v4-deg-8.txt"
+saiu_0_ou_2 'deg: Authorization: "Bearer {}".format(' "$SBP/494v4-deg-8.txt"
+printf '%s: %s%s ' "$AU" "$DQ" "$BE" > "$SBP/494v4-deg-9.txt"
+head -c 50000 /dev/zero | tr '\0' 'a' >> "$SBP/494v4-deg-9.txt"; printf '\n' >> "$SBP/494v4-deg-9.txt"
+saiu_0_ou_2 'deg: linha de 50000 caracteres depois do esquema' "$SBP/494v4-deg-9.txt"
+# Espacos, nao letras: o regex da concatenacao era quadratico em espacos (9 s).
+printf "%s: %s%s%s" "$AU" "$Q" "$BE" "$Q" > "$SBP/494v4-deg-10.txt"
+head -c 100000 /dev/zero | tr '\0' ' ' >> "$SBP/494v4-deg-10.txt"; printf 'x\n' >> "$SBP/494v4-deg-10.txt"
+saiu_0_ou_2 'deg: 100000 espacos depois do esquema fechado' "$SBP/494v4-deg-10.txt"
+
 echo
 echo "== 9. termos privados — o que nao tem FORMA e so uma lista reconhece =="
 # Nome de empregador, de cliente e de projeto interno nao tem regex. A lista mora

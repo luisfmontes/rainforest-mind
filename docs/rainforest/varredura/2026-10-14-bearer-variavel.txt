@@ -1,0 +1,13 @@
+Varredura 2026-10-14 para #494 (gate-publicacao barra Bearer com variavel)
+
+- scripts/conferir-publicacao.cjs:248 regra `credencial`; ramo da Issue #410 (~linha 289)
+  isenta Authorization com esquema (Bearer/Basic/Token) quando a proxima palavra e
+  INTEIRA referencia de variavel: f"Bearer {VAR}", "Bearer {}".format(VAR), "Bearer ${VAR}".
+- O esquema e reconhecido por /^f?["']?(?:Bearer|Basic|Token)$/ — crase (template JS)
+  fica de fora; concatenacao `'Bearer ' + x` nunca foi coberta.
+- Reproduzido em 2026-10-14 (origin/main 0977e400), todos exit 2:
+  `Bearer ${token}` em template, 'Bearer ' + tok, 'Bearer ' + getToken(),
+  'Bearer ' + '<literal>'.
+- hooks/gate-publicacao-destino.cjs chama conferir-publicacao.cjs; o conserto mora no script.
+- Bateria: scripts/testa-conferir-publicacao.sh secao 10c (#410).
+- Issues: #410 (fechada, f-string/format/${VAR}); nenhuma outra sobre template JS ou concatenacao.

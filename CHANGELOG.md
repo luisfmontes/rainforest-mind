@@ -10,7 +10,7 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
-## 1.67.2 — 2026-10-15
+## 1.67.3 — 2026-10-15
 
 - **Agente que só lê no checkout principal não leva mais trava por `2>/dev/null` junto de `{a,b}`.** O `gate-worktree`
   cortava a linha em `{` mesmo no meio de `a/{b,c}/d`. O pedaço `{` marcava a linha como incerta e, com qualquer
@@ -25,6 +25,27 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   seguinte dentro do bloco (`then true; cd X`) e depois de `&&`/`||` continua tratado como certo, como antes; isso fica na #530.
 - **`memoria.cjs buscar --texto` traz o mais relevante primeiro (bm25), não o mais recente que casa.** Sem `--texto`
   continua listando por recência. A injeção da abertura e a por assunto não mudam: já ranqueavam.
+
+## 1.67.2 — 2026-10-14
+
+- **`Authorization` montado com variável em JavaScript deixa de ser barrado como credencial.** O gate de publicação
+  (`conferir-publicacao`) barrava o header montado como template de esquema `Bearer` com variável dentro, e a concatenação
+  de `Bearer` com um identificador, embora as duas formas, as mais comuns de montar header OAuth em JavaScript, não carreguem
+  segredo. O agente ficava sem saída honesta e a tarefa caía em redespacho (#494). A isenção nova é uma régua fechada:
+  - vale só na chave `Authorization` com esquema (`Bearer`, `Basic` ou `Token`); outras chaves de credencial não ganham
+    isenção, e `api_key` com concatenação segue barrado;
+  - passam o template com crase em que o trecho entre chaves é só uma variável ou uma cadeia de membros (ex.: `this.token`),
+    fechado logo depois, e a concatenação do esquema com uma variável, um membro ou uma chamada sem argumento literal;
+  - depois do template ou da concatenação vale só: fim de linha, comentário até o fim da linha (`//` ou `#` precedido de
+    espaço), barra de continuação, ou `, ; ) ] }` sem `+` emendado em seguida. Por isso continuam barrados o literal colado
+    depois da expressão, `.concat(...)`, comentário de bloco seguido de `+` e expressão com literal dentro das chaves do
+    template;
+  - o header entre aspas comuns (dupla, simples, f-string, `.format`) e sem aspa segue a régua de antes, da #410: o que
+    passava sem literal continua passando, com dois apertos que só olham até a aspa de fechamento: a referência tem de
+    terminar nela (`"Bearer ${tok} <literal>"` passa a ser barrado, e também uma segunda referência ou espaço antes do
+    fechamento), e um literal entre aspas emendado por `+` logo
+    depois dela também;
+  - fica de fora o literal que continua na linha seguinte, porque a checagem é por linha.
 
 ## 1.67.1 — 2026-10-14
 
