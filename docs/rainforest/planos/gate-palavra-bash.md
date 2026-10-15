@@ -203,3 +203,39 @@ pronto quando: três consertos.
 - **Docblocks.** Os comentários de `fimDaExpansaoDeChaves` e `semRedirecionamentos` em `cwd-efetivo.cjs` são corrigidos para o código atual.
 
 Provado por `bash hooks/testa-gate-worktree.sh` e `bash hooks/testa-cwd-efetivo.sh`, com 0 falhas.
+
+### 7. Texto de `powershell -Command`/`cmd /c` lido como PowerShell, não como bash (rodada 3, achado 1 da revisão 2) [tipo: implementar]
+atende: D4, D6, D8
+arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`, `CHANGELOG.md`
+depende de: 6
+prova: `P=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && W=$(git rev-parse --show-toplevel) && node -e 'const B=String.fromCharCode(92);process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:process.argv[1],hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"powershell -Command \"C:"+B+"Git"+B+"cmd"+B+"git.exe -C "+process.argv[2]+" commit -m x\""}}))' "$W" "$P" | node hooks/gate-worktree.cjs >/dev/null 2>&1; test $? -eq 2`
+mutacao:
+  arquivo: `hooks/gate-worktree.cjs`
+  de: `return ehShellWindows ? "PowerShell" : ferramenta;`
+  para: `return ferramenta;`
+  bateria: `bash hooks/testa-gate-worktree.sh`
+  timeout: `900000`
+  fixture: testa-gate-worktree.sh, secao "(#530) rodada 3: interno de powershell -Command e cmd /c nao passa pela leitura do bash"
+pronto quando: o texto interno de um wrapper de shell Windows (`pwsh`, `powershell`, `cmd`, com ou sem `.exe`) é analisado com `ferramenta` = `"PowerShell"` (texto cru, sem `normalizarComando`) nos três pontos que recursam sobre `desempacotarWrapperDeString` em `hooks/gate-worktree.cjs` (hoje linhas ~157, ~556 e ~645). A decisão mora numa função pequena, `ferramentaDoInterno(segmento, ferramenta)`, cuja última linha é exatamente `return ehShellWindows ? "PowerShell" : ferramenta;` (alvo da mutação). Nenhum caso de teste lê o texto do fonte.
+- Pelo gate real, tool Bash, cwd W: `powershell -Command "C:\Git\cmd\git.exe -C P commit -m x"` → **2** (era 2 na base 9f6b9ca3 e 0 na rodada 2); `powershell.exe -c "C:\PROGRA~1\Git\cmd\git.exe -C P commit --allow-empty -m x"` → **2**. Casos na bateria, com a contrabarra montada por `String.fromCharCode(92)` ou equivalente que o teste confira (o teste falha se a contrabarra sumir).
+- Vizinhos legítimos continuam: `powershell -Command "git -C W status"` → 0; `bash -c 'echo x > f'` a partir de W → 0; os casos das tarefas 3 e 6 seguem verdes.
+- CHANGELOG 1.67.6: o item "Limite conhecido" ganha o falso positivo residual `cd hooks; x=$(echo a; echo b > ../c)` (substituição sem aspas que cruza `;` é resolvida a partir do cwd inicial, e barra) e o primo `bash -c '…'` dentro da ferramenta PowerShell, os dois remetidos à #530.
+
+Provado por `bash hooks/testa-gate-worktree.sh` com 0 falhas.
+
+### 8. `git` de caminho Windows sem aspas mantém o `-C` no `cwdPorSegmento` (rodada 3, achado 3 da revisão 2) [tipo: implementar]
+atende: D4
+arquivos: `hooks/lib/cwd-efetivo.cjs`, `hooks/testa-cwd-efetivo.sh`
+depende de: 7
+prova: `P=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && W=$(git rev-parse --show-toplevel) && node -e 'const path=require("path");const {cwdPorSegmento}=require("./hooks/lib/cwd-efetivo.cjs");const B=String.fromCharCode(92);const r=cwdPorSegmento("C:"+B+"Git"+B+"cmd"+B+"git.exe -C "+process.argv[2]+" status",process.argv[1]);const n=(x)=>path.resolve(x).toLowerCase();process.exit(n(r[0].cwd)===n(process.argv[2])?0:1)' "$W" "$P"`
+mutacao:
+  arquivo: `hooks/lib/cwd-efetivo.cjs`
+  de: `const segGit = comandoEhGit(seg) ? seg : normalizarComando(seg).seg;`
+  para: `const segGit = normalizarComando(seg).seg;`
+  bateria: `bash hooks/testa-cwd-efetivo.sh`
+  fixture: testa-cwd-efetivo.sh, secao "(#530) rodada 3: git de caminho Windows sem aspas mantem o -C"
+pronto quando: no `cwdPorSegmento`, o segmento cujo texto cru já é `git` em posição de comando é lido cru; só o que não é git cru passa pela palavra normalizada (linha exata acima, alvo da mutação).
+- `cwdPorSegmento("C:\Git\cmd\git.exe -C P status", W)[0].cwd` → P (na rodada 2 dava W; na base dava P). Mesmo para o segmento antes de `; codex exec x`.
+- `{git,-C,P,status}` e `'git' -C P status` continuam dando P (casos da tarefa 2 verdes).
+
+Provado por `bash hooks/testa-cwd-efetivo.sh` com 0 falhas.
