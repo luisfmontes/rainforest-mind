@@ -20,7 +20,14 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-15",
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "2 cwd-efetivo movedor normalizado",
+        "desde": "2026-10-15T15:51:04-03:00",
+        "sessao": "d39ef955-529f-4604-9440-a7d2fbc14edb"
+      }
+    ],
     "carimbos": [
       {
         "tarefa": 1,
@@ -28,6 +35,20 @@
         "iteracao": 1,
         "sessao": "d39ef955-529f-4604-9440-a7d2fbc14edb",
         "ts": "2026-10-15T18:45:20.726Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "cc71805d39db209cbc29001e109bb894992ee2de",
+        "iteracao": 1,
+        "sessao": "d39ef955-529f-4604-9440-a7d2fbc14edb",
+        "ts": "2026-10-15T18:49:46.568Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "cacdfb2659420ce4998f664d13ae79c9e0ccdb6a",
+        "iteracao": 2,
+        "sessao": "d39ef955-529f-4604-9440-a7d2fbc14edb",
+        "ts": "2026-10-15T18:51:04.170Z"
       }
     ],
     "em": "2026-10-15",
@@ -43,5 +64,14 @@
   },
   "fechar": {
     "status": "pendente"
-  }
+  },
+  "decididos": [
+    {
+      "pergunta": "Palavra de chaves que nao e movedor ({echo,hi}, {ls,-la} P) deixa de ser incerta e passa a W certo: aceitar?",
+      "escolha": "Aceito: W certo",
+      "porque": "No bash nenhuma dessas muda o cwd; o incerto antigo vinha da chave ser fronteira, nao de duvida real. Nenhuma linha piorou de P/W certo para incerto.",
+      "estagio": "executar",
+      "em": "2026-10-15T19:16:18.707Z"
+    }
+  ]
 }
