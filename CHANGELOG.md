@@ -14,8 +14,9 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 - **O flake da bateria passa a ser gravado sem depender da janela (#498).** A integração de cada tarefa
   (`integrar-tarefa.cjs`) roda a catraca com `conferir-fluxo.cjs mutacoes --gravar-flake`, que repassa `--slug` e
-  `--tarefa` ao `conferir-mutacao.cjs`. Bateria que só passa na nova tentativa agora fica gravada no estado do fluxo, e
-  o status `flaky` pode disparar. Antes a catraca rodava sem os dois, e nenhum flake era gravado. O `verificar` continua
+  `--tarefa` ao `conferir-mutacao.cjs`, com a raiz do estado do fluxo (`--raiz-estado`, também quando a tarefa declara
+  `raiz:`). Bateria que só passa na nova tentativa agora fica gravada no estado do fluxo, e o status `flaky` pode
+  disparar; o flake terminal aparece na recusa do `marcar --estagio executar --status ok`. Antes a catraca rodava sem os dois, e nenhum flake era gravado. O `verificar` continua
   sem gravar: o laço do flaky é `executar` e `revisar`.
 - **`scripts/rodar-gate.cjs` saiu**, com a bateria dele. Nada o chamava: a nova tentativa dependia de a janela lembrar
   de rodá-lo. A seção Flaky do `laco.md` aponta a integração.

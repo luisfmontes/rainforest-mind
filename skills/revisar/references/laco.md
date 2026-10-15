@@ -79,8 +79,10 @@ aviso e não muda o exit. O `verificar` roda a mesma catraca sem
 `mutacao: n/a` não tem bateria declarada, e por isso não tem flake.
 
 O mesmo gate (tarefa mais bateria) que só passa na nova tentativa em duas
-voltas seguidas é terminal. O `registrar-flake` imprime `FLAKY TERMINAL` e o
-comando que fecha o estágio:
+voltas seguidas é terminal. A saída da integração não mostra isso (ela só
+imprime `tarefa N: vermelho`): quem avisa é o `marcar --estagio executar
+--status ok`, que recusa com exit 2 enquanto houver flake terminal, nomeando
+a tarefa e o gate. Feche então com:
 
 ```
 node scripts/estado.cjs marcar --slug <slug> --estagio executar --status flaky
