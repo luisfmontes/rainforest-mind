@@ -49,13 +49,29 @@
         "iteracao": 1,
         "sessao": "d39ef955-529f-4604-9440-a7d2fbc14edb",
         "ts": "2026-10-15T19:18:03.757Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "ad31d6efdc1c6f59b78aba6c79490af88ff77621",
+        "iteracao": 1,
+        "sessao": "d39ef955-529f-4604-9440-a7d2fbc14edb",
+        "ts": "2026-10-15T19:55:51.641Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "ad31d6efdc1c6f59b78aba6c79490af88ff77621",
+        "iteracao": 1,
+        "sessao": "d39ef955-529f-4604-9440-a7d2fbc14edb",
+        "ts": "2026-10-15T19:55:51.641Z"
       }
     ],
     "em": "2026-10-15",
     "integradas": [
       1,
       2,
-      3
+      3,
+      4,
+      5
     ]
   },
   "revisar": {
