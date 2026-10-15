@@ -23,6 +23,8 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   - depois da expressão só pode vir fim de linha ou `, ; ) ] }`, sem `+` adiante. Por isso continuam barrados o literal
     colado depois da expressão, `.concat(...)`, comentário seguido de `+` e expressão com literal dentro das chaves do
     template;
+  - quando o esquema não abre com aspa (a linha do `curl -H` com a variável de shell), vale a régua de antes, da #410:
+    referência inteira e nada colado nela;
   - fica de fora o literal que continua na linha seguinte, porque a checagem é por linha.
 
 ## 1.67.1 — 2026-10-14
