@@ -70,10 +70,12 @@ const POP_LOCATION = /^\s*Pop-Location\s*$/i;
  * #514 (P2) fez a chave em ARGUMENTO deixar de ser fronteira. #530 (D4) faz o
  * mesmo em POSICAO DE COMANDO: `{cd,X}` expande para `cd X` e nao pode ser
  * cortado em `{`, `cd,X`, `}` — o `cd` que o bash roda ficaria invisivel. Por
- * isso a regra nao olha a posicao: a palavra inteira `{...}` sem espaco, aspa,
- * `$`, crase, parentese, operador ou barra invertida, com `,` no nivel dela (ou
- * sequencia `x..y`), e expansao em qualquer lugar. Chave com aspa, `$`, crase
- * ou parentese dentro continua fronteira, e portanto incerta.
+ * isso a regra nao olha a posicao: a palavra inteira `{...}` sem espaco, `$`,
+ * crase, parentese, operador ou barra invertida, com `,` no nivel dela (ou
+ * sequencia `x..y`), e expansao em qualquer lugar. Aspa so entra BALANCEADA, com
+ * miolo sem espaco, `$`, crase, parentese ou barra invertida (ver o trecho de
+ * aspas no corpo da funcao). Qualquer outra coisa continua fronteira, e portanto
+ * incerta.
  *
  * Chaves aninhadas contam pelo nivel: em `{{cd,X},}` a `}` que fecha a palavra
  * e a de fora, e a virgula que conta e a do nivel de fora.
@@ -308,22 +310,6 @@ function comandoEhGit(seg) {
 }
 
 /**
- * Remove, do INÍCIO do segmento, prefixos que só mudam COMO o comando
- * seguinte é resolvido sem criar processo novo (`command`/`builtin`,
- * repetidos ou combinados) e uma barra invertida colada no NOME do comando
- * (`\cd`, `\pushd`, `\popd`). Devolve o segmento "normalizado" para casar
- * com `CD`/`PUSHD`/`POPD`.
- *
- * P5 (rodada 8, lote 3, 2026-09-04): `CD`/`PUSHD` só casavam no INÍCIO puro
- * do segmento (`cd X`) — `\cd X`, `command cd X`, `builtin cd X` passavam
- * batido, o cwd efetivo ficava desatualizado, e o gate liberava um
- * commit/escrita que de verdade rodava no lugar errado.
- *
- * `sudo cd X` fica de fora DE PROPÓSITO: sudo cria um processo novo, um
- * `cd` "dentro" dele nunca muda o cwd do shell que chamou — não entra nesta
- * lista, e o efeito (não casar `CD`/`PUSHD`/`POPD`) é o correto.
- */
-/**
  * Tira os redirecionamentos FORA de aspas do segmento, para o movedor casar o
  * `cd`/`pushd`/`popd` que vem com eles: `cd X > /dev/null`, `cd X 2>/dev/null`,
  * `>/dev/null cd X`, `2>&1 cd X` (#530, emenda). Redirecionamento nao muda o
@@ -366,6 +352,22 @@ function semRedirecionamentos(seg) {
   return saida;
 }
 
+/**
+ * Remove, do INÍCIO do segmento, prefixos que só mudam COMO o comando
+ * seguinte é resolvido sem criar processo novo (`command`/`builtin`,
+ * repetidos ou combinados) e uma barra invertida colada no NOME do comando
+ * (`\cd`, `\pushd`, `\popd`). Devolve o segmento "normalizado" para casar
+ * com `CD`/`PUSHD`/`POPD`.
+ *
+ * P5 (rodada 8, lote 3, 2026-09-04): `CD`/`PUSHD` só casavam no INÍCIO puro
+ * do segmento (`cd X`) — `\cd X`, `command cd X`, `builtin cd X` passavam
+ * batido, o cwd efetivo ficava desatualizado, e o gate liberava um
+ * commit/escrita que de verdade rodava no lugar errado.
+ *
+ * `sudo cd X` fica de fora DE PROPÓSITO: sudo cria um processo novo, um
+ * `cd` "dentro" dele nunca muda o cwd do shell que chamou — não entra nesta
+ * lista, e o efeito (não casar `CD`/`PUSHD`/`POPD`) é o correto.
+ */
 function semPrefixoSintaticoDeBuiltin(seg) {
   let s = seg;
   // #530 (D4): tira os prefixos sintaticos sem normalizar o comando. Palavra

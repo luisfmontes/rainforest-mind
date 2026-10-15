@@ -25,6 +25,9 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   cmdlet de escrita do PowerShell e `cd` em ramo condicional. Esses casos seguem nas issues #530 e #533.
 - **Comandos legítimos seguem passando:** `echo a{b,c}` com chave em argumento, `bash -c 'echo x > f'` e
   `cd hooks > /dev/null` dentro do worktree.
+- **Limite conhecido:** a leitura do bash é parcial. Ainda passam, por exemplo: `bash -c '...' _`, `env bash -c ...`,
+  `t\ee P/f`, `{cp,a,P/f}` e `tee {P/f,}`. A família inteira está na #530, e a abordagem por caminho do principal fica
+  para um fluxo próprio.
 - **Crédito:** a montagem da palavra e a expansão de chaves vêm de `hooks/lib/palavra-bash.cjs`, enxertada de
   `plugins/ruflo-mods/hooks/guard/dangerous-command.ts` do ruflo (`ruvnet/ruflo`, licença MIT).
 

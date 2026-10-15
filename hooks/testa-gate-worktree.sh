@@ -1050,5 +1050,17 @@ gate "(#530) bash -c 'cd \$X; echo x > f'"               2 "$(wt "bash -c 'cd \$
 gate "(#530) bash -c 'echo \$HOME > f'"                  2 "$(wt "bash -c 'echo \$HOME > f'")"
 gate "(#530) eval \"\$(ssh-agent -s)\""                  2 "$(wt "eval \"\$(ssh-agent -s)\"")"
 
+echo "-- (#530) rodada 2: PowerShell nao passa pela leitura do bash; substituicao no cwd do segmento --"
+# PowerShell le o texto cru, como na base: a contrabarra de `C:\Git\cmd\git.exe` e
+# argumento, nao escape. Valores em aspa simples, para o bash nao tocar na barra.
+gate "(#530) rodada 2: PowerShell C:\\PROGRA~1\\Git\\cmd\\git.exe -C P commit barra" 2 \
+  "$(pj agent_id ag-530 agent_type executor cwd "$WT" hook_event_name PreToolUse tool_name PowerShell tool_input.command 'C:\PROGRA~1\Git\cmd\git.exe -C '"$R"' commit --allow-empty -m x')"
+gate "(#530) rodada 2: PowerShell \\Git\\cmd\\git.exe -C P commit barra" 2 \
+  "$(pj agent_id ag-530 agent_type executor cwd "$WT" hook_event_name PreToolUse tool_name PowerShell tool_input.command '\Git\cmd\git.exe -C '"$R"' commit --allow-empty -m x')"
+gate "(#530) rodada 2: PowerShell cd P; C:\\Git\\cmd\\git.exe commit barra" 2 \
+  "$(pj agent_id ag-530 agent_type executor cwd "$WT" hook_event_name PreToolUse tool_name PowerShell tool_input.command 'cd '"$R"'; C:\Git\cmd\git.exe commit --allow-empty -m x')"
+gate "(#530) rodada 2: cd hooks; echo \"\$(echo x > ../f)\" passa (cwd do segmento)" 0 "$(wt 'cd hooks; echo "$(echo x > ../f)"')"
+gate "(#530) rodada 2: cd P; echo \"\$(echo x > f)\" barra (cwd do segmento)" 2 "$(wt "cd $R; echo \"\$(echo x > f)\"")"
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
