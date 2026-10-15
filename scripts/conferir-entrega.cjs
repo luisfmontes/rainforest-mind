@@ -78,6 +78,7 @@ const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
 const { caminhoExecutavel } = require(path.join(__dirname, "..", "hooks", "lib", "resolver-executavel.cjs"));
+const { globMatches } = require(path.join(__dirname, "lib", "camadas.cjs"));
 
 class Conferencia {
   constructor() {
@@ -209,27 +210,9 @@ function erroArgs(msg) {
   process.exit(2); // 2 = erro de uso, igual ao argparse do gemeo em Python
 }
 
-/** Converte um glob simples em regex. Suporta *, **, e ?. */
-function globToRegex(glob) {
-  // Primeiro, marca ** com um placeholder temporário antes de escapar
-  let pattern = glob.replace(/\*\*/g, "\x00");
-
-  // Escapa caracteres especiais de regex, exceto *, ?, e /
-  pattern = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&");
-
-  // Agora restaura ** e converte em regex
-  pattern = pattern.replace(/\x00/g, ".*");
-
-  // * (em qualquer posição) = qualquer coisa EXCETO /
-  pattern = pattern.replace(/\*/g, "[^/]*");
-
-  // ? = um caractere qualquer EXCETO /
-  pattern = pattern.replace(/\?/g, "[^/]");
-
-  return "^" + pattern + "$";
-}
-
 /** Verifica se um caminho bate com algum dos globs fornecidos.
+ * Usa a mesma regra do creep (globMatches de lib/camadas.cjs), para o mesmo
+ * arquivos: do plano valer nos dois instrumentos (#518).
  * Retorna true se bate com algum, false caso contrário.
  * Se nenhum glob foi fornecido, retorna true (sem filtro). */
 function bateComEscopo(caminh, globs) {
@@ -239,10 +222,7 @@ function bateComEscopo(caminh, globs) {
   const cami = caminh.replace(/\\/g, "/").toLowerCase();
   for (const glob of globs) {
     const g = glob.replace(/\\/g, "/").toLowerCase();
-    const regex = new RegExp(globToRegex(g));
-    if (regex.test(cami)) {
-      return true;
-    }
+    if (globMatches(cami, g)) return true;
   }
   return false;
 }

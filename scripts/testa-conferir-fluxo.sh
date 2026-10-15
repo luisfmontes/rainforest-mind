@@ -1239,6 +1239,31 @@ exige 0 "globsIsentos inclui relatorios/ e references/ da skill declarada" \
 exige 0 "globsIsentos usa design e plano reais quando vieram, nao os derivados do slug" \
   node -e "const g=require(process.argv[1]).globsIsentos({slug:'s-x',design:'d/real.md',plano:'p/real.md',globsDoPlano:[]});process.exit(g[0]==='d/real.md'&&g[1]==='p/real.md'&&!g.includes('docs/rainforest/design/s-x.md')?0:1)" "$CHECADOR"
 
+echo
+echo "== 8b. globMatches ancora sempre: * e ? nao cruzam / (#518, D5) =="
+GM="$RAIZ/scripts/lib/camadas.cjs"
+exige 0 "src/* nao casa src/a/b.txt (dois niveis)" \
+  node -e "const g=require(process.argv[1]).globMatches; process.exit(g('src/a/b.txt','src/*')===false?0:1)" "$GM"
+exige 0 "*.md nao casa docs/x.md (pasta acima)" \
+  node -e "const g=require(process.argv[1]).globMatches; process.exit(g('docs/x.md','*.md')===false?0:1)" "$GM"
+exige 0 "*.md casa x.md (raiz)" \
+  node -e "const g=require(process.argv[1]).globMatches; process.exit(g('x.md','*.md')===true?0:1)" "$GM"
+exige 0 "src/* casa src/b.txt (um nivel)" \
+  node -e "const g=require(process.argv[1]).globMatches; process.exit(g('src/b.txt','src/*')===true?0:1)" "$GM"
+
+# Metacaracteres de regex sao literais (#518, volta 2): colchetes, parenteses e + nao quebram
+exige 0 "app/[id]/** casa app/[id]/page.tsx (colchetes literais)" \
+  node -e "const g=require(process.argv[1]).globMatches; process.exit(g('app/[id]/page.tsx','app/[id]/**')===true?0:1)" "$GM"
+exige 0 "src/novo (1)/*.prw casa src/novo (1)/x.prw (parenteses literais)" \
+  node -e "const g=require(process.argv[1]).globMatches; process.exit(g('src/novo (1)/x.prw','src/novo (1)/*.prw')===true?0:1)" "$GM"
+exige 0 "c++/* casa c++/x.txt (sem SyntaxError)" \
+  node -e "const g=require(process.argv[1]).globMatches; process.exit(g('c++/x.txt','c++/*')===true?0:1)" "$GM"
+# ? e um caractere que nao cruza / (o titulo da 8b promete isso)
+exige 0 "a?.txt casa ab.txt (? e um caractere)" \
+  node -e "const g=require(process.argv[1]).globMatches; process.exit(g('ab.txt','a?.txt')===true?0:1)" "$GM"
+exige 0 "a?.txt NAO casa a/b.txt (? nao cruza /)" \
+  node -e "const g=require(process.argv[1]).globMatches; process.exit(g('a/b.txt','a?.txt')===false?0:1)" "$GM"
+
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]

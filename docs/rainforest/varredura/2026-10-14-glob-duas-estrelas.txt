@@ -1,0 +1,11 @@
+Varredura 2026-10-14 para #518 (conferir-entrega: ** casa so um nivel)
+
+git grep "function globToRegex|def globToRegex|globMatches" (origin/main 0977e400):
+- scripts/conferir-entrega.cjs:213 globToRegex -> usado em bateComEscopo (:235), --escopo
+- scripts/conferir-entrega.py:201 globToRegex -> gemeo, mesma conversao, mesmo defeito
+- scripts/lib/camadas.cjs:129 globMatches -> usado por conferir-fluxo.cjs creep; ** = .* certo,
+  barra final = pasta, glob que comeca com * nao ancora no inicio
+
+Issues: nenhuma anterior sobre ** no conferir-entrega (#196, #279, #397 sao do creep/cobertura).
+Bateria: scripts/testa-conferir-entrega.sh, casos --escopo nas linhas 381-432, so "gerado/**"
+com um nivel; o CI roda o gemeo .py por CONFERIR="python scripts/conferir-entrega.py".

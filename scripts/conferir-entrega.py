@@ -198,19 +198,30 @@ def arquivosAgentComStatus(c: Conferencia, wt: str, base: str | None, commit: st
     return mapa
 
 
-def globToRegex(glob: str) -> str:
-    """Converte um glob simples em regex. Suporta *, **, e ?."""
-    # Primeiro, marca ** com um placeholder temporário antes de escapar
-    pattern = glob.replace("**", "\x00")
-    # Escapa caracteres especiais de regex, exceto *, ?, e /
-    pattern = re.sub(r"[.+^${}()|\[\]\\]", lambda m: "\\" + m.group(0), pattern)
-    # Agora restaura ** e converte em regex
-    pattern = pattern.replace("\x00", ".*")
-    # * (em qualquer posicao) = qualquer coisa EXCETO /
+def glob_casa(arquivo: str, glob: str) -> bool:
+    """Porta globMatches de scripts/lib/camadas.cjs, linha a linha (#518).
+    Mesma regra do creep: barra no fim e pasta; sem curinga e igualdade;
+    ** cruza /, * e ? nao cruzam /."""
+    # Barra no fim e PASTA: cobre tudo abaixo dela
+    if glob.endswith("/"):
+        return arquivo.startswith(glob)
+    # Simples: sem * nem ? e match literal
+    if "*" not in glob and "?" not in glob:
+        return arquivo == glob
+    # Escapa todo metacaractere de regex antes dos curingas (#518, volta 2),
+    # na mesma ordem do globMatches. `*` e `?` ficam de fora do escape.
+    pattern = re.sub(r"[.+^${}()|\[\]\\]", lambda m: "\\" + m.group(0), glob)
+    # ** marca com placeholder antes de converter o * simples
+    pattern = pattern.replace("**", "\x00")
+    # * nao cruza /
     pattern = pattern.replace("*", "[^/]*")
-    # ? = um caractere qualquer EXCETO /
+    # ? e qualquer caractere exceto /
     pattern = pattern.replace("?", "[^/]")
-    return "^" + pattern + "$"
+    # Restaura ** como cruzamento de pastas
+    pattern = pattern.replace("\x00", ".*")
+    # Ancora sempre (#518, D5): casa o caminho inteiro, como o globMatches
+    pattern = "^" + pattern + "$"
+    return re.search(pattern, arquivo) is not None
 
 
 def bateComEscopo(caminho: str, globs: list[str]) -> bool:
@@ -221,7 +232,7 @@ def bateComEscopo(caminho: str, globs: list[str]) -> bool:
     cami = caminho.replace("\\", "/").lower()
     for glob in globs:
         g = glob.replace("\\", "/").lower()
-        if re.match(globToRegex(g), cami):
+        if glob_casa(cami, g):
             return True
     return False
 

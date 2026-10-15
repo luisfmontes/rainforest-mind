@@ -10,6 +10,15 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.67.1 — 2026-10-14
+
+- **O `--escopo` do `conferir-entrega` aceita `**` entre pastas, com a mesma regra do `creep`.** `arquivos: src/**` recusava
+  `src/a/b.txt` como fora do escopo, porque `**` só casava um nível de pasta. Agora o `conferir-entrega` (e o gêmeo `.py`)
+  usa `globMatches` de `scripts/lib/camadas.cjs`, o mesmo que o `creep` usa: `**` atravessa pastas, e barra no fim cobre a
+  pasta inteira. Junto, o `globMatches` passou a ancorar sempre: `*` e `?` nunca cruzam `/`. Antes, `src/*` casava
+  `src/a/b.txt` e `*.md` casava `docs/x.md`, no `creep` também. E o `globMatches` passou a escapar `[ ] ( ) + $ ^ { } |`:
+  no `creep`, `app/[id]/**` virava classe de caracteres e `c++/*` derrubava a checagem. `a/**/b` continua sem casar `a/b` (#518).
+
 ## 1.67.0 — 2026-10-14
 
 - **Matar processo por nome passa a ser barrado, na janela e no subagente.** Um revisor rodou `taskkill /IM python.exe` em

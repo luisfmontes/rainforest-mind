@@ -142,9 +142,12 @@ function globMatches(arquivo, glob) {
     return arquivo === glob;
   }
 
-  // Converte glob para regex
+  // Converte glob para regex. Escapa TODO metacaractere de regex antes de
+  // converter os curingas (#518, volta 2): sem isto `app/[id]/**` não casava
+  // `app/[id]/page.tsx`, `c++/*` lançava SyntaxError e `(1)` virava grupo.
+  // `*` e `?` ficam de fora do escape: são os curingas convertidos abaixo.
   let pattern = glob
-    .replace(/\./g, '\\.')
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
     .replace(/\//g, '/');
 
   // ** em qualquer lugar cruza /
@@ -156,14 +159,10 @@ function globMatches(arquivo, glob) {
   // Restaura **
   pattern = pattern.replace(/<<<DOUBLESTAR>>>/g, '.*');
 
-  // Âncora: se não começar com *, é desde o início
-  if (!glob.startsWith('*')) {
-    pattern = '^' + pattern;
-  }
-  // Se não terminar com *, é até o final
-  if (!glob.endsWith('*')) {
-    pattern = pattern + '$';
-  }
+  // Âncora sempre (#518, D5): o glob casa o caminho inteiro, nunca um
+  // prefixo. Sem isto, `src/*` casava `src/a/b.txt` (* não cruza / só vale
+  // se a âncora existir) e `*.md` casava `docs/x.md`.
+  pattern = '^' + pattern + '$';
 
   const regex = new RegExp(pattern);
   return regex.test(arquivo);

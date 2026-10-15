@@ -1,0 +1,77 @@
+{
+  "slug": "2026-10-14-glob-duas-estrelas",
+  "titulo": "2026-10-14-glob-duas-estrelas",
+  "criado_em": "2026-10-14",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-10-14-glob-duas-estrelas.md",
+    "decisoes": 4,
+    "em": "2026-10-14"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-14-glob-duas-estrelas.md",
+    "tarefas": 2,
+    "paralelas": [],
+    "em": "2026-10-14"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-14",
+    "tarefas_ok": 2,
+    "tarefas": 2,
+    "em": "2026-10-14",
+    "integradas": [
+      1,
+      2
+    ],
+    "comando": "bash scripts/testa-conferir-entrega.sh",
+    "saida": "91 ok, 0 falha(s) (.cjs e .py); testa-conferir-fluxo 114 ok; camadas, desvio-do-plano, integrar-tarefa VERDE",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-entrega.sh, casos --escopo src/**, app/[id]/**, c++/* (if (cami === g))"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "tarefa de documentacao e numero de versao"
+      }
+    ],
+    "reaberturas": 1
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "64f00bc018ae4580daa0bea05502b75120734833",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ab426d45fea72c040",
+        "veredito": "ok",
+        "em": "2026-10-14",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-ab426d45fea72c040.jsonl"
+      }
+    ],
+    "em": "2026-10-14",
+    "achados": 0,
+    "base": "0977e4000874f01e044ba40deaf221ea5f7966e8",
+    "head": "64f00bc018ae4580daa0bea05502b75120734833"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/testa-conferir-entrega.sh",
+    "saida": "91 ok, 0 falha(s) no .cjs e no .py; testa-conferir-fluxo 114 ok; conferir-versao ok 1.67.1; globMatches src/** e docs/x/ casam, src/* e a/**/b.txt nao casam dois niveis/zero pastas",
+    "sensor_externo": "bash scripts/testa-conferir-entrega.sh",
+    "em": "2026-10-14"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
