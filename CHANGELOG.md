@@ -10,6 +10,16 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.67.6 — 2026-10-15
+
+- **O flake da bateria passa a ser gravado sem depender da janela (#498).** A integração de cada tarefa
+  (`integrar-tarefa.cjs`) roda a catraca com `conferir-fluxo.cjs mutacoes --gravar-flake`, que repassa `--slug` e
+  `--tarefa` ao `conferir-mutacao.cjs`. Bateria que só passa na nova tentativa agora fica gravada no estado do fluxo, e
+  o status `flaky` pode disparar. Antes a catraca rodava sem os dois, e nenhum flake era gravado. O `verificar` continua
+  sem gravar: o laço do flaky é `executar` e `revisar`.
+- **`scripts/rodar-gate.cjs` saiu**, com a bateria dele. Nada o chamava: a nova tentativa dependia de a janela lembrar
+  de rodá-lo. A seção Flaky do `laco.md` aponta a integração.
+
 ## 1.67.5 — 2026-10-15
 
 - **`publicar-branch.cjs esperar-ci` não dá mais CI verde com check cancelado.** O `gh pr checks --watch` (gh 2.96) sai 0
