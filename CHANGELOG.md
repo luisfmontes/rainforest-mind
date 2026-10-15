@@ -21,6 +21,8 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   referência no template, no lugar dela, como lado direito da concatenação ou como argumento da chamada. Outras chaves de
   credencial não ganham isenção; `api_key` com concatenação segue barrado.
 
+## 1.67.1 — 2026-10-14
+
 - **O `--escopo` do `conferir-entrega` aceita `**` entre pastas, com a mesma regra do `creep`.** `arquivos: src/**` recusava
   `src/a/b.txt` como fora do escopo, porque `**` só casava um nível de pasta. Agora o `conferir-entrega` (e o gêmeo `.py`)
   usa `globMatches` de `scripts/lib/camadas.cjs`, o mesmo que o `creep` usa: `**` atravessa pastas, e barra no fim cobre a
