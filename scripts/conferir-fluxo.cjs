@@ -1056,6 +1056,8 @@ function cmdMutacoes() {
     ];
     if (timeout) argumentos.push('--timeout', timeout);
     if (gravaFlake) argumentos.push('--slug', slug, '--tarefa', String(numero));
+    // #498: o estado fica na RAIZ do fluxo, não na `--raiz` da tarefa (que pode ser `raiz: app`).
+    if (gravaFlake) argumentos.push('--raiz-estado', RAIZ);
     const resultado = spawnSync(process.execPath, argumentos, {
       stdio: 'pipe',
       encoding: 'utf8',

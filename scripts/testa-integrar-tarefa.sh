@@ -361,5 +361,48 @@ node scripts/conferir-fluxo.cjs mutacoes --slug "$SLUG" --tarefa 9 >/dev/null 2>
 igual "tarefa inexistente sai 2" "2" "$RC9"
 igual "tarefa inexistente nomeia o numero" "1" "$(grep -c 'tarefa 9' "$AUX/e9.txt")"
 
+echo "== #498: integrar grava o flake da mutacao (integracao de verdade) =="
+# Bateria de exit VARIAVEL 1 0 1 1 (baseline vermelho, nova tentativa verde = flake,
+# pos-mutacao vermelho nas duas). O contador fica FORA da caixa: a catraca copia a
+# arvore, e um contador dentro dela recomecaria a cada rodada.
+caixa_nova
+cd "$CX" || exit 1
+cat > "$CX/bat-flaky.sh" <<'FIM'
+n=$(cat "$FLAKY_CNT" 2>/dev/null || echo 0); n=$((n+1)); echo "$n" > "$FLAKY_CNT"
+arr=($FLAKY_SEQ); i=$((n-1)); [ "$i" -ge "${#arr[@]}" ] && i=$((${#arr[@]}-1))
+v="${arr[$i]}"
+if [ "$v" = "0" ]; then echo "ok: 5   falhou: 0"; else echo "ok: 4   falhou: 1"; fi
+exit "$v"
+FIM
+cat > "$CX/docs/rainforest/planos/$SLUG.md" <<'EOF'
+# Plano: teste da integracao com flake
+
+## Tarefas
+
+### 1. Alfa [tipo: implementar]
+arquivos: `src/alfa.cjs`
+depende de: nenhuma
+prova: `node scripts/prova-alfa.cjs`
+mutacao:
+  arquivo: `src/alfa.cjs`
+  de: `'alfa-ok'`
+  para: `'alfa-x'`
+  bateria: `bash bat-flaky.sh`
+EOF
+git add -A && git commit -q -m "plano e bateria de flake" || { echo "FALHA preparo: commit do plano"; exit 1; }
+abrir_fluxo
+despachar flake
+printf '// integrada\n' >> "$WT/src/alfa.cjs"
+agente_commita "alfa: comentario do caso de flake"
+rm -f "$AUX/contador-flake"
+export FLAKY_SEQ="1 0 1 1" FLAKY_CNT="$(cygpath -m "$AUX")/contador-flake"
+integrar 1
+RC_FLAKE="$RC"; SAIDA_FLAKE="$SAIDA"
+unset FLAKY_SEQ FLAKY_CNT
+igual "integrar tarefa com bateria de flake sai 0" "0" "$RC_FLAKE"
+igual "JSON diz aceito" "aceito" "$(echo "$SAIDA_FLAKE" | J 'j.resultado')"
+igual "estado ganha executar.flakes com a tarefa 1" "1" "$(estado_de '(j.executar.flakes||[]).filter(f=>f.tarefa===1).length')"
+igual "gate do flake e a catraca" "1" "$(estado_de '(j.executar.flakes||[]).filter(f=>String(f.gate).startsWith("catraca: ")).length')"
+
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]

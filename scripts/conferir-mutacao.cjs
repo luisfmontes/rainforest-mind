@@ -42,12 +42,14 @@
  * por acaso é aprovação falsa). Rodada mista (verde e vermelho em qualquer
  * ordem) sai 2 e imprime `FLAKE: baseline` ou `FLAKE: pos-mutacao`; com
  * `--slug` e `--tarefa` o flake é gravado no estado do fluxo (`estado.cjs
- * registrar-flake`) e falhar ao gravar é só aviso, nunca muda o exit.
+ * registrar-flake`) e falhar ao gravar é só aviso, nunca muda o exit. Com
+ * `--raiz-estado <pasta>` (#498) o estado é gravado na pasta dada, e não na
+ * `--raiz` da bateria (tarefa com `raiz:` grava na pasta do app, que não tem estado).
  *
  * Uso:
  *   node scripts/conferir-mutacao.cjs --arquivo <caminho> --de <trecho> \
  *        --para <trecho> --bateria <comando> [--raiz <pasta>] [--timeout <ms>] \
- *        [--slug <slug> --tarefa <n>]
+ *        [--slug <slug> --tarefa <n> [--raiz-estado <pasta>]]
  *
  * Exit:
  *   0  mutação casou E bateria VERMELHA nas duas rodadas — a bateria sabe falhar
@@ -105,6 +107,7 @@ const USO = `uso: node scripts/conferir-mutacao.cjs --arquivo <caminho> --de <tr
   --timeout  <ms>       teto de tempo da bateria (padrão: ${TIMEOUT_PADRAO})
   --slug     <slug>     fluxo onde gravar o flake (junto de --tarefa; os dois ou nenhum)
   --tarefa   <n>        tarefa do plano a que o flake pertence
+  --raiz-estado <pasta> onde o estado do fluxo está (padrão: --raiz); só vale com --slug
 
 exit (2 e 4 só valem depois de uma nova tentativa; 0 exige vermelho em duas rodadas):
      0 mutação casou e bateria VERMELHA | 2 bateria VERDE | 3 MUTACAO NAO APLICADA |
@@ -376,12 +379,15 @@ function limparTemporariosOrfaos() {
  * Sem `--slug` não faz nada. Falhar ao gravar é AVISO no stderr e nunca muda o
  * exit da catraca: o veredito da bateria não depende do estado do fluxo.
  */
-function gravarFlake(slug, tarefa, gate, raiz) {
+function gravarFlake(slug, tarefa, gate, raiz, raizEstado) {
   if (slug === null) return;
+  // #498: `raizEstado` (de `--raiz-estado`) vai SÓ para este filho, como RFM_ESTADO_ROOT.
+  // Sem ela, o ambiente segue como veio (env undefined = herdado), como antes.
+  const env = raizEstado === null ? undefined : { ...process.env, RFM_ESTADO_ROOT: raizEstado };
   const r = spawnSync(process.execPath, [
     path.join(__dirname, 'estado.cjs'), 'registrar-flake',
     '--slug', slug, '--tarefa', tarefa, '--gate', gate,
-  ], { cwd: raiz, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  ], { cwd: raiz, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   if (r.stdout) process.stdout.write(r.stdout);
   if (r.error || r.status !== 0) {
     const motivo = r.error ? r.error.message : `exit ${r.status}: ${String(r.stderr || '').trim()}`;
@@ -624,6 +630,8 @@ function main() {
   const slug = ler('slug');
   const tarefa = ler('tarefa');
   if ((slug === null) !== (tarefa === null)) erroUso('--slug e --tarefa vão juntos: os dois ou nenhum');
+  const raizEstadoArg = ler('raiz-estado');
+  const raizEstado = raizEstadoArg === null ? null : path.resolve(raizEstadoArg);
 
   if (rel === null) erroUso('falta --arquivo');
   if (de === null) erroUso('falta --de');
@@ -748,7 +756,7 @@ function main() {
     if (!nova.r.error && nova.r.status === 0) {
       console.log(`--- baseline: exit ${baselineExit} na 1a rodada e exit 0 na nova tentativa ---`);
       console.log('FLAKE: baseline');
-      gravarFlake(slug, tarefa, `catraca: ${bateria}`, raiz);
+      gravarFlake(slug, tarefa, `catraca: ${bateria}`, raiz, raizEstado);
       baselineRes = nova;
       baselineDuracao = nova.duracao;
     } else {
@@ -860,7 +868,7 @@ function main() {
     if (!nova.r.error && nova.r.status !== null && nova.r.status !== 0) {
       console.log(`--- pós-mutação: exit 0 na 1a rodada e exit ${nova.r.status} na nova tentativa ---`);
       console.log('FLAKE: pos-mutacao');
-      gravarFlake(slug, tarefa, `catraca: ${bateria}`, raiz);
+      gravarFlake(slug, tarefa, `catraca: ${bateria}`, raiz, raizEstado);
     }
     console.error('RECUSADO: bateria VERDE com o comportamento invertido (exit 0).');
     console.error('  A mutação casou e foi aplicada — o fonte estava se comportando ao');
@@ -919,7 +927,7 @@ function main() {
     }
     console.log(`--- pós-mutação: exit ${posExit} na 1a rodada e exit 0 na confirmação ---`);
     console.log('FLAKE: pos-mutacao');
-    gravarFlake(slug, tarefa, `catraca: ${bateria}`, raiz);
+    gravarFlake(slug, tarefa, `catraca: ${bateria}`, raiz, raizEstado);
     console.error('RECUSADO: o vermelho pós-mutação não se repetiu (vermelho e depois verde).');
     console.error('  Vermelho que a segunda rodada desmente pode ser acaso, e aprovar por acaso');
     console.error('  é aprovação falsa. A bateria é instável ou não mede o conserto.');
