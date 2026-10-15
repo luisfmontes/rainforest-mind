@@ -2,30 +2,34 @@
 
 ## Objetivo
 
-Fechar as oito formas medidas em 2026-10-15 (base `9f6b9ca3`) pelas quais um subagente num worktree linkado escreve no checkout principal sem o `gate-worktree` barrar. O desenho reaproveita a peça de desembrulhar que o repo já tem e enxerta do `ruvnet/ruflo` (MIT) a montagem da palavra e a expansão de chaves.
+Fechar as nove formas medidas em 2026-10-15 (base `9f6b9ca3`) pelas quais um subagente num worktree linkado escreve no checkout principal sem o `gate-worktree` barrar. O desenho reaproveita a peça de desembrulhar que o repo já tem e enxerta do `ruvnet/ruflo` (MIT) a montagem da palavra e a expansão de chaves.
 
 Medição de partida. O payload tem `agent_id`, `agent_type: executor` e `cwd` igual ao worktree, e `<P>` é o principal:
 
 ```
 exit=2 :: cd <P> && echo x > f                      (referência)
 exit=0 :: {cd,<P>} && echo x > f
-exit=0 :: {c,}d <P>; echo x > f
 exit=0 :: 'cd' <P>; echo x > f
 exit=0 :: c\d <P>; echo x > f
 exit=0 :: $'\x63d' <P>; echo x > f
 exit=0 :: bash -c 'cd <P>; echo x > f'
 exit=0 :: bash -c 'echo x > <P>/f'                  (escrita absoluta dentro de bash -c)
 exit=0 :: echo `cd <P>; echo x > f`                 ($(...) equivalente já sai 2)
+exit=0 :: echo "$(cd <P>; echo x > f)"              (substituição dentro de aspas duplas)
+exit=0 :: echo "`cd <P>; echo x > f`"               (idem, com crase)
 ```
+
+Cada forma foi conferida no bash real (Git Bash, script em arquivo), e todas mudam o cwd. **`{c,}d <P>` não entra**: o bash a expande para `cd d <P>`, que falha com `cd: too many arguments` sem mudar o cwd. O exit 0 do gate nesse caso está certo, e a forma vira caso vizinho na bateria. A primeira medição (comentário na #530) a listava como buraco porque eu tinha medido só o exit do gate.
 
 ## Decisões fechadas
 
 - **D1 — Modelo de ameaça: o subagente que reescreve o comando até passar, não um adversário com shell livre.** — porquê: é o padrão observado (agente barrado reescreve até o gate liberar). O que fica de fora vira critério de parada da revisão: `GIT_DIR`/`--git-dir`, `cd` por função, alias ou script, `cd $VAR` e `cd $(...)` (hoje `incerto`, liberado a partir do worktree), cmdlet de escrita do PowerShell (#533) e semântica de união para `cd` condicional (item 4 da #530). Achado de revisão nessas classes não reprova a entrega: vai para a #530 ou a #533.
 - **D2 — A escrita dentro de `bash -c` entra no escopo, junto com o `cd`.** — porquê: as duas se fecham pelo mesmo mecanismo, que é desembrulhar e passar o texto interno pelo mesmo cálculo de alvos de escrita (`alvosBashEscrita`, com `cwdPorSegmento`). `bash -c 'echo x > <P>/f'` com caminho absoluto é a forma mais grave das oito.
 - **D3 — `bash -c`, `sh -c`, `eval` e afins passam por `desempacotarWrapperDeString` (`hooks/lib/tokens-comando.cjs`), com no máximo 4 níveis.** — porquê: a peça já é usada por `subcomandoGit` neste mesmo gate e por outros gates. Duas leituras do mesmo wrapper divergiriam. Conteúdo `ilegivel` (com `$`, crase, `$(`, ou arquivo de `source`/`.`) **barra**, como o caminho do git já faz. Passar de 4 níveis também barra.
-- **D4 — Montagem da palavra e expansão de chaves numa lib nova, `hooks/lib/palavra-bash.cjs`, enxertada de `plugins/ruflo-mods/hooks/guard/dangerous-command.ts` (ruflo, MIT, crédito no cabeçalho).** — porquê: a lib junta pedaços de aspas, aplica `\` e decodifica `$'...'` com os escapes ANSI-C, guardando uma máscara paralela (`u` para sem aspas, `q` para com aspas ou escapado). Expande `{a,b}` só com chave e vírgula sem aspas, sem `{1..3}` e sem nada dentro de `${...}`. A expansão é aplicada **só à palavra em posição de comando** dentro de `resolverMovedor`. Isso preserva o conserto da #514 (chave em argumento não vira fronteira) e fecha `'cd'`, `c\d`, `$'\x63d'`, `{cd,<P>}` e `{c,}d`. Cada palavra expandida passa pelo teste de movedor; o primeiro `cd` certo vale.
+- **D4 — Montagem da palavra e expansão de chaves numa lib nova, `hooks/lib/palavra-bash.cjs`, enxertada de `plugins/ruflo-mods/hooks/guard/dangerous-command.ts` (ruflo, MIT, crédito no cabeçalho).** — porquê: a lib junta pedaços de aspas, aplica `\` e decodifica `$'...'` com os escapes ANSI-C, guardando uma máscara paralela (`u` para sem aspas, `q` para com aspas ou escapado). Expande `{a,b}` só com chave e vírgula sem aspas, sem `{1..3}` e sem nada dentro de `${...}`. A expansão é aplicada **só à palavra em posição de comando** dentro de `resolverMovedor`. Isso preserva o conserto da #514 (chave em argumento não vira fronteira) e fecha `'cd'`, `c\d`, `$'\x63d'` e `{cd,<P>}`. As palavras expandidas substituem a primeira palavra do segmento, e o resto fica cru. Assim `{c,}d <P>` vira `cd d <P>`, que não casa com o `cd` de um argumento, como no bash. A palavra de expansão de chaves (`{` colado, fechando na mesma palavra, com vírgula) deixa de ser fronteira de segmento também em posição de comando, e o `incerto` que o #535 punha ali vira resolução exata. Chave com aspa, `$` ou crase dentro continua fronteira, e portanto `incerto`, como hoje.
 - **D5 — Expansão que estoura o teto barra com exit 2, e a mensagem diz o motivo.** — porquê: o teto é de 4.096 palavras e 1.000.000 de caracteres de trabalho, como no ruflo. Nenhum comando legítimo chega perto disso, e liberar sem olhar contradiz o gate.
-- **D6 — Crase passa pelo mesmo caminho que já barra `$(...)`.** — porquê: hoje `echo $(cd <P>; echo x > f)` sai 2 e a forma com crase sai 0. A assimetria é buraco, não escolha.
+- **D6 — Corpo de substituição de comando lido como comando próprio: crase sem aspas, e `$(...)` e crase dentro de aspas duplas.** — porquê: hoje `echo $(cd <P>; echo x > f)` sai 2, e a crase e as duas formas entre aspas duplas saem 0, mas o bash executa as três do mesmo jeito. O corpo passa pelo mesmo cálculo de alvos do `bash -c` (D2/D3), partindo do cwd do segmento, até 4 níveis. Aspas simples não executam nada, e o texto ali continua sendo texto.
+- **D8 — Entrega PATCH (1.67.x), com CHANGELOG e README.** — porquê: conserta um gate sem mudar contrato, e o README cita a versão.
 - **D7 — Diferencial base × branch nos consumidores de `cwd-efetivo.cjs`, como no #535.** — porquê: `resolverMovedor` e o caminho de escrita são lib comum a 5 gates. Os casos que passam de 2 para 0 têm que ser zero. Os que passam de 0 para 2 têm que ser só as oito formas e seus gêmeos.
 
 ## Avaliado e descartado
