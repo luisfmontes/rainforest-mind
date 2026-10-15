@@ -57,10 +57,34 @@
     "em": "2026-10-15"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ae9e0e944454364b8",
+        "veredito": "ok",
+        "em": "2026-10-15",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/d39ef955-529f-4604-9440-a7d2fbc14edb/subagents/agent-ae9e0e944454364b8.jsonl"
+      }
+    ],
+    "snapshot": {
+      "head": "6e44b720a7fb71bd5f2a41f7f545b6487e8525ea",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/revisita-context-mode.json"
+      ]
+    },
+    "achados": 0,
+    "base": "bae41ad3",
+    "head": "6e44b720",
+    "em": "2026-10-15"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash hooks/testa-gate-worktree.sh",
+    "saida": "243 ok, 0 falha (mais cwd-efetivo 55, fechar-issue 386, mensagem-commit 47, staging-total 189, testa-memoria 42, todos 0 falha; provas T1/T2 exit 0, T3 ok bm25; livro, 4 ideias ELv2, #530 aberta, versao 1.67.2 conferidos)",
+    "sensor_externo": "bash hooks/testa-gate-worktree.sh",
+    "head": "6e44b720",
+    "em": "2026-10-15"
   },
   "fechar": {
     "status": "pendente"
