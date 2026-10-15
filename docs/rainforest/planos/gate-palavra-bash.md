@@ -1,0 +1,168 @@
+# Plano: gate-worktree — palavra do bash reconstruída, chaves, `bash -c` e substituição (#530, itens 1 a 3)
+
+Design: docs/rainforest/design/gate-palavra-bash.md
+
+## O que não pode quebrar
+- Tudo o que o `gate-worktree` barra hoje continua barrado. A partir do worktree:
+  - `cd <P> && echo x > f`;
+  - `echo $(cd <P>; echo x > f)`;
+  - `(cd <P>; echo x > f)`;
+  - `bash -c 'cd $X; echo x > f'`;
+  - `bash -c 'echo $HOME > f'`, que é ilegível;
+  - `eval "$(ssh-agent -s)"`.
+- O conserto da #514 (PR #535) continua valendo. Chave em argumento não vira fronteira: a partir do principal, com agente Explore, `ls 2>/tmp/x.log; echo a/{b,c}/d`, `wc -l skills/{a,b}/SKILL.md` e `echo {1..3}` saem 0.
+- As baterias dos consumidores de `cwd-efetivo.cjs` seguem com 0 falhas: `testa-cwd-efetivo.sh`, `testa-gate-worktree.sh`, `testa-gate-fechar-issue.sh`, `testa-gate-mensagem-commit.sh` e `testa-gate-staging-total.sh`.
+
+## Regra de parada (critério de trava)
+
+Esta entrega reimplementa um pedaço da gramática do bash, onde o conjunto de contraexemplos não fecha. A parada é o D1. O revisor recebe o D1 desde a rodada 1. Contorno novo nas classes fora de escopo (`GIT_DIR`, função ou alias, `cd $VAR`, cmdlet do PowerShell, `cd` condicional) vira comentário na #530 ou na #533 e não reprova a entrega. Contorno novo **dentro** das classes do design (palavra reconstruída, chaves, `bash -c`/`eval`, substituição) é defeito desta entrega. Se a terceira rodada de revisão ainda achar contorno dentro do escopo, o fluxo volta ao `brainstorm` em vez de somar parser.
+
+## Tarefas
+
+### 1. Lib `hooks/lib/palavra-bash.cjs`: palavra, chaves e corpos de substituição [tipo: implementar]
+atende: D4, D5, D6
+arquivos: `hooks/lib/palavra-bash.cjs`, `hooks/testa-palavra-bash.sh`
+depende de: nenhuma
+prova: `bash hooks/testa-palavra-bash.sh`
+mutacao:
+  arquivo: `hooks/lib/palavra-bash.cjs`
+  de: `if (marcas[k] !== "u") continue;`
+  para: `if (false) continue;`
+  bateria: `bash hooks/testa-palavra-bash.sh`
+  fixture: testa-palavra-bash.sh, secao "chave entre aspas ou escapada nao expande"
+pronto quando: a lib exporta três funções puras, sem disco nem processo.
+
+- **`normalizarComando(seg)` devolve `{ seg, estouro }`.** Lê a **primeira palavra** do segmento como o bash a lê: espaços à esquerda, pedaços entre aspas simples e duplas juntados, `\` escapando o caractere seguinte e `$'...'` com os escapes ANSI-C (`\xHH`, `\NNN` octal, `\uHHHH`, `\n`, `\t` e afins). A palavra termina em espaço ou em `;&|()<>` sem aspas. A máscara é paralela, `u` para caractere sem aspas e `q` para caractere com aspas ou escapado. A palavra é expandida por chaves, e as palavras expandidas, juntadas por um espaço, substituem a primeira palavra. **O resto do segmento fica cru, byte a byte.** Palavra sem aspa, `\`, `$'` nem chave devolve `seg` idêntico ao de entrada.
+- **`expandirChaves(texto, marcas)` devolve `string[]` ou `undefined`.** Expande `{a,b}` aninhado ou colado no texto, nesta ordem da esquerda para a direita. Só conta chave e vírgula marcadas `u`, e a função tem uma linha `if (marcas[k] !== "u") continue;` no laço que procura o grupo. Não expande `{1..3}` nem nada dentro de `${...}`. É iterativa, com teto de 4.096 palavras e 1.000.000 de caracteres de trabalho, e passar do teto devolve `undefined`. Com `undefined`, `normalizarComando` devolve `{ seg, estouro: true }`.
+- **`corposDeSubstituicao(texto)` devolve `string[]`.** Devolve o corpo de cada crase e de cada `$(...)` fora de aspas simples, inclusive dentro de aspas duplas. Os parênteses são balanceados e ignoram parêntese entre aspas dentro do corpo. Crase escapada (`` \` ``) não abre corpo.
+- O cabeçalho credita `ruvnet/ruflo`, `plugins/ruflo-mods/hooks/guard/dangerous-command.ts`, licença MIT. Nenhum caso de teste lê o fonte.
+
+Casos, cada um como `assert` na bateria:
+
+| entrada | saída |
+|---|---|
+| `normalizarComando("'cd' /x")` | `.seg === "cd /x"` |
+| `normalizarComando("c\\d /x")` | `"cd /x"` |
+| `normalizarComando("$'\\x63d' /x")` | `"cd /x"` |
+| `normalizarComando("{cd,/x} && y")` | `"cd /x && y"` |
+| `normalizarComando("{c,}d /x")` | `"cd d /x"` |
+| `normalizarComando("'{cd,/x}'")` | `"{cd,/x}"` (chave entre aspas não expande) |
+| `normalizarComando("\\{cd,/x}")` | `"{cd,/x}"` (escapada) |
+| `normalizarComando("cd /x")` | idêntico |
+| `normalizarComando("echo {1..3}")` | idêntico |
+| `normalizarComando("${a,b}")` | idêntico |
+| `expandirChaves` com `{a,b}{c,d}{e,f}…` em 13 grupos (8.192 palavras) | `undefined` |
+| `corposDeSubstituicao('echo "$(cd /x; y)"')` | `["cd /x; y"]` |
+| ``corposDeSubstituicao("echo `cd /x`")`` | `["cd /x"]` |
+| ``corposDeSubstituicao("echo 'a`b`'")`` | `[]` |
+
+Provado por `bash hooks/testa-palavra-bash.sh`, que imprime cada caso com 0 falhas. Na base o arquivo não existe, e a prova falha.
+
+### 2. `cwd-efetivo`: a palavra de chaves não é fronteira e o movedor lê a palavra normalizada [tipo: implementar]
+atende: D4, D5
+arquivos: `hooks/lib/cwd-efetivo.cjs`, `hooks/testa-cwd-efetivo.sh`
+depende de: 1
+prova: `P=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && W=$(git rev-parse --show-toplevel) && node -e 'process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:process.argv[1],hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"'"'"'cd'"'"' "+process.argv[2]+"; echo x > f"}}))' "$W" "$P" | node hooks/gate-worktree.cjs >/dev/null 2>&1; test $? -eq 2`
+mutacao:
+  arquivo: `hooks/lib/cwd-efetivo.cjs`
+  de: `const segMovedor = normalizado.seg;`
+  para: `const segMovedor = semPrefixoSintaticoDeBuiltin(seg);`
+  bateria: `bash hooks/testa-cwd-efetivo.sh`
+  fixture: testa-cwd-efetivo.sh, secao "(#530) palavra de comando reconstruida: aspas, escape, ANSI-C e chaves"
+pronto quando: a mudança tem duas partes.
+
+- **Segmentação.** Em `segmentosComAspas`, uma `{` sem aspas que abre expansão de chaves (sem espaço logo depois, fechando na mesma palavra, com vírgula no nível dela e sem aspa, `$`, crase ou parêntese dentro) **não é fronteira em posição nenhuma**: a palavra inteira fica no segmento. Com aspa, `$` ou crase dentro, continua fronteira, e portanto `incerto`, como hoje. `{ cd x; }`, com espaço depois da chave, continua grupo.
+- **Movedor.** `resolverMovedor` passa a ter, nesta ordem:
+  ```
+  const normalizado = normalizarComando(semPrefixoSintaticoDeBuiltin(seg));
+  if (normalizado.estouro) estado.estouro = true;
+  const segMovedor = normalizado.seg;
+  ```
+  `estado.estouro` nasce `false` onde o `estado` nasce, e `cwdPorSegmento` o propaga no item devolvido.
+
+Com `cwdPorSegmento`, em `testa-cwd-efetivo.sh`, a partir de um worktree temporário W, com o principal P:
+
+- `'cd' P`, `c\d P`, `$'\x63d' P`, `{cd,P}`, `A=1 {cd,P}` e `then {cd,P}` têm o cwd do segmento seguinte igual a P. O último é `incerto`, como o `then cd` de hoje.
+- `{c,}d P` mantém W, como o bash, que falha com `too many arguments`.
+- `{cd,"P"}`, com aspa dentro da chave, fica `incerto`, como hoje.
+- Uma linha com 13 grupos de chaves em posição de comando sai com `estouro: true`.
+
+Pelo gate real, com payload PreToolUse (`agent_id`, `agent_type: executor`, `cwd` = W), `'cd' P; echo x > f` → 2, que era 0 na base. Provado por `bash hooks/testa-cwd-efetivo.sh && bash hooks/testa-gate-fechar-issue.sh && bash hooks/testa-gate-mensagem-commit.sh && bash hooks/testa-gate-staging-total.sh`, todas com 0 falhas.
+
+### 3. `gate-worktree`: escrita dentro de `bash -c`/`eval` e de substituição, e estouro barrado [tipo: implementar]
+atende: D1, D2, D3, D5, D6
+arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`
+depende de: 2
+prova: `P=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && W=$(git rev-parse --show-toplevel) && node -e 'process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:process.argv[1],hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"bash -c '"'"'echo x > "+process.argv[2]+"/f'"'"'"}}))' "$W" "$P" | node hooks/gate-worktree.cjs >/dev/null 2>&1; test $? -eq 2`
+mutacao:
+  arquivo: `hooks/gate-worktree.cjs`
+  de: `if (interno !== null && !ilegivel) alvos.push(`
+  para: `if (false) alvos.push(`
+  bateria: `bash hooks/testa-gate-worktree.sh`
+  timeout: `600000`
+  fixture: testa-gate-worktree.sh, secao "(#530) escrita dentro de bash -c, eval e substituicao de comando"
+pronto quando: `alvosBashEscrita(comando, cwdInicial, ehPowerShell, profundidade = 0)` recebe três acréscimos, em cada segmento e depois de resolver o `base`.
+
+- **Wrapper.** `const { interno, ilegivel } = desempacotarWrapperDeString(seg, { ferramenta: ehPowerShell ? "PowerShell" : "Bash" });`, seguido de `if (interno !== null && !ilegivel) alvos.push(...alvosBashEscrita(interno, base, ehPowerShell, profundidade + 1));`. O ilegível não recursa: segue para o caminho de hoje (`procuraCLI`), que já barra.
+- **Substituição.** Para cada corpo de `corposDeSubstituicao(seg)`, aplica a mesma recursão, partindo de `base`.
+- **Barrar.** Com `profundidade > 4`, ou com `estado.estouro` (tarefa 2), devolve um alvo `{ tipo: "barrar", motivo }`. O motivo é `"wrapper aninhado demais para conferir (mais de 4 niveis)"` ou `"expansao de chaves grande demais para conferir"`. Em `main`, alvo `barrar` chama `bloqueia(motivo, <toplevel do cwd>, <agente>)`, como o ramo `incerto` de `procuraCLI`. A pessoa lê a mensagem no stderr e o motivo aparece nela.
+
+Pelo gate real, com payload PreToolUse (`agent_id`, `agent_type: executor`, `cwd` = worktree W, principal P).
+
+**Os nove contornos → 2** (todos 0 na base):
+- `{cd,P} && echo x > f`
+- `'cd' P; echo x > f`
+- `c\d P; echo x > f`
+- `$'\x63d' P; echo x > f`
+- `bash -c 'cd P; echo x > f'`
+- `bash -c 'echo x > P/f'`
+- ``echo `cd P; echo x > f` ``
+- `echo "$(cd P; echo x > f)"`
+- ``echo "`cd P; echo x > f`"``
+
+**Barrados por motivo, com o motivo no stderr → 2:**
+- `bash -c` aninhado em cinco níveis, com `echo x > f` no centro. A bateria monta a string por código, aplicando aspas nível a nível, e não por literal digitado. Com quatro níveis, a mesma construção sai **0**;
+- uma linha com 13 grupos de chaves em posição de comando.
+
+**Vizinhos legítimos → 0** (cada um conferido antes como 0 na base):
+- `bash -c 'echo x > f'`
+- `eval 'echo x > f'`
+- `echo "$(git rev-parse HEAD)" > f`
+- ``echo 'a`b`' > f``
+- `echo '{cd,x}' > f`
+- `echo a{b,c} > f`
+- `{c,}d P; echo x > f`, porque o bash não muda de cwd
+- `'cd' hooks && echo x > f`, dentro do próprio W
+
+**Continuam como hoje:** os seis "não pode quebrar" do topo. Provado por `bash hooks/testa-gate-worktree.sh` com 0 falhas e os casos impressos.
+
+### 4. Diferencial base × branch nos consumidores [tipo: teste]
+atende: D7
+arquivos: `docs/rainforest/estado/gate-palavra-bash-diferencial.txt`
+depende de: 3
+prova-na-base: verde — compara a base com a branch pronta, e na base não há branch para comparar
+mutacao: n/a
+  motivo: a tarefa mede o efeito das tarefas 1 a 3, e não tem ramo próprio a inverter. As mutações estão nas tarefas 1 a 3
+pronto quando: um script no scratchpad (fora do repo) roda o mesmo corpus de comandos contra o gate da base `9f6b9ca3` e contra o da branch, nos cinco hooks que carregam `cwd-efetivo.cjs` (`grep -l cwd-efetivo hooks/*.cjs`): `gate-worktree`, `gate-fechar-issue`, `gate-mensagem-commit`, `gate-staging-total` e `gate-subagente-sem-gh`.
+
+- O corpus é a união dos comandos das baterias desses gates com as formas desta entrega, rodado com `cwd` no worktree e no principal.
+- O arquivo `docs/rainforest/estado/gate-palavra-bash-diferencial.txt` registra a contagem total, cada mudança `base→branch` com hook, comando e `cwd`, e o comando que gerou o arquivo.
+- **Pronto quando:**
+  - nenhuma linha `2→0`;
+  - toda linha `0→2` é um dos nove contornos, uma das duas formas de barrar por motivo, ou um gêmeo deles (mesma forma com outro alvo ou outro `cwd`), cada gêmeo explicado na linha.
+
+Provado por `grep -c "2→0" docs/rainforest/estado/gate-palavra-bash-diferencial.txt` devolvendo `0`.
+
+### 5. Versão, CHANGELOG e README [tipo: docs]
+atende: D8
+arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`
+depende de: 3
+mutacao: n/a
+  motivo: metadados de versão e texto, sem comportamento. O comportamento está provado nas tarefas 1 a 3
+pronto quando: a entrada nova do `CHANGELOG.md` cumpre três coisas.
+
+- Nomeia as nove formas fechadas e os dois motivos de barrar.
+- Diz o que fica fora (D1) com os números da #530 e da #533.
+- Credita o enxerto do ruflo (MIT).
+
+`plugin.json`, nos dois arquivos, e o topo do `CHANGELOG.md` mostram a mesma versão, um patch acima da `origin/main` no momento do commit. O README cita a versão nova onde cita a atual. Provado por `node -e 'const a=require("./.claude-plugin/plugin.json").version,b=require("./.codex-plugin/plugin.json").version;process.exit(a===b?0:1)'` e por `git diff origin/main -- CHANGELOG.md | grep -c "#530"` ≥ 1, com a leitura do texto contra os D1 a D6.
