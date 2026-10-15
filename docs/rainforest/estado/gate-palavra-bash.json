@@ -81,7 +81,7 @@
       6
     ],
     "tarefas_ok": 6,
-    "tarefas": 6,
+    "tarefas": 8,
     "comando": "node scripts/conferir-mutacao.cjs --raiz . --arquivo hooks/gate-worktree.cjs --de 'const ehBash = ferramenta !== \"PowerShell\";' --para 'const ehBash = true;' --bateria 'bash hooks/testa-gate-worktree.sh' --timeout 900000",
     "saida": "ok: bateria VERMELHA com o comportamento invertido (exit 1), confirmada em duas rodadas. Baseline: 88657 ms (exit 0) -> Mutacao: 87148 ms (exit 1). Integracao T6: resultado aceito, commit 0993c21d. Prova T6 (PowerShell git.exe -C P commit) gate=2.",
     "mutacao": [
@@ -120,7 +120,15 @@
     "reaberto_por": {
       "estagio": "revisar",
       "data": "2026-10-15"
-    }
+    },
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "tarefas 7 e 8 rodada 3",
+        "desde": "2026-10-15T00:00:00Z",
+        "sessao": "d39ef955-529f-4604-9440-a7d2fbc14edb"
+      }
+    ]
   },
   "revisar": {
     "status": "reprovado",
