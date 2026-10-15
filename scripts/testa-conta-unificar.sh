@@ -61,7 +61,8 @@ if (variante === 'a-identico') w(path.join(T, 'projects', '-proj-x', 'memory', '
 if (variante !== 'sem-clone') w(path.join(T, 'plugins', 'marketplaces', 'rainforest-mind', 'scripts', 'conta.cjs'), '// clone falso\n');
 // Pasta pessoal (origem).
 j(path.join(P, '.credentials.json'), { claudeAiOauth: { accessToken: 'falso-token-pessoal-cred', refreshToken: 'falso-refresh-pessoal-cred', expiresAt: VIDA, scopes: ['user:inference'], subscriptionType: 'max' }, mcpOAuth: { falso: { accessToken: 'falso-mcp-oauth' } } });
-j(path.join(P, '.claude.json'), { numStartups: 1, oauthAccount: oauth('pessoal@exemplo.invalid'), mcpServers: { whatsapp: variante === 'whatsapp-divergente' ? WA_OUTRA : WA, github: { type: 'stdio', command: 'falso-gh', env: { GH_TOKEN_FALSO: 'falso-gh-token-xyz' } } }, projects: variante === 'projeto-comum' ? { '/falso/pessoal': {}, '/falso/comum': {} } : { '/falso/pessoal': {} } });
+// #503 D2/D4: pessoal-sem-oauth não tem oauthAccount; pessoal-email-team tem o e-mail da team.
+j(path.join(P, '.claude.json'), { numStartups: 1, ...(variante === 'pessoal-sem-oauth' ? {} : { oauthAccount: oauth(variante === 'pessoal-email-team' ? 'team@exemplo.invalid' : 'pessoal@exemplo.invalid') }), mcpServers: { whatsapp: variante === 'whatsapp-divergente' ? WA_OUTRA : WA, github: { type: 'stdio', command: 'falso-gh', env: { GH_TOKEN_FALSO: 'falso-gh-token-xyz' } } }, projects: variante === 'projeto-comum' ? { '/falso/pessoal': {}, '/falso/comum': {} } : { '/falso/pessoal': {} } });
 j(path.join(P, 'settings.json'), { enabledPlugins: { 'security-guidance@claude-plugins-official': true } });
 w(path.join(P, 'history.jsonl'), '{"display":"falso-linha-um"}\n{"display":"falso-linha-dois"}\n{"display":"falso-linha-dois"}\n');
 w(path.join(P, 'projects', '-proj-x', '11111111-1111-4111-8111-111111111111.jsonl'), '{"falso":"transcrito-pessoal"}\n');
@@ -78,7 +79,9 @@ j(path.join(D, 'contas', 'estado.json'), variante === 'estado-fora'
   ? { automatico: false, pastas: { pessoal: { conta: 'team' } }, contas: {} }
   : variante === 'estado-fora-trabalho'
     ? { automatico: false, pastas: { trabalho: { conta: 'pessoal' } }, contas: {} }
-    : { automatico: false, contas: {} });
+    : variante === 'pessoal-email-team'
+      ? { automatico: false, contas: { team: { email: 'team@exemplo.invalid' } } }
+      : { automatico: false, contas: {} });
 if (variante === 'reserva-pronta' || variante === 'reserva-mesmo-token') {
   // reserva-mesmo-token: a reserva já tem o MESMO refresh token da credencial pessoal.
   const refresh = variante === 'reserva-mesmo-token' ? 'falso-refresh-pessoal-cred' : 'falso-refresh-reserva-pronta';
@@ -628,6 +631,94 @@ afirma "(rodada 6, achado 2) o numStartups gravado pela sessão (7) sobrevive, n
 afirma "(rodada 6, achado 2) mcpServers da pessoal entram (github)" test "$(ler "$CJ_2B" mcpServers.github.command)" = falso-gh
 afirma "(rodada 6, achado 2) projects da pessoal entram (/falso/pessoal)" test "$(ler "$CJ_2B" 'projects./falso/pessoal')" != AUSENTE
 afirma "(rodada 6, achado 2) o whatsapp do destino continua igual" test "$(ler "$CJ_2B" mcpServers.whatsapp.command)" = falso-whatsapp
+
+# #503 D1: linha rasgada no progresso (sem aspa de fecho e sem \n), deixada por uma morte no meio da escrita.
+# Uma rodada única não lê o progresso (ele só é lido na retomada e apagado ao fim), então o caso morre na cópia
+# seguinte à de b.md (morte6.cjs) e a 2ª rodada retoma. Sem o \n na frente de cada gravação, a entrada de b.md cai
+# na linha rasgada, a retomada não a reconhece e a linha do índice some. MEMORY.md tem de sair igual à rodada limpa.
+# O transcrito já vem igual no destino (não grava progresso), para que a primeira gravação depois da linha rasgada
+# seja a de b.md: com o \n que falta, ela cai na linha rasgada (um transcrito copiado antes lhe daria um \n de sobra).
+C_D1="$(novo_caso d1)"
+mkdir -p "$C_D1/trabalho/.claude/projects/-proj-x"
+cp "$C_D1/pessoal/.claude-personal/projects/-proj-x/11111111-1111-4111-8111-111111111111.jsonl" "$C_D1/trabalho/.claude/projects/-proj-x/"
+printf '%s' '"projects/-proj-x/memory/b.md' > "$C_D1/dados/contas/unificar-progresso.jsonl"
+RC_D1=0
+export NODE_OPTIONS="--require $(win "$RAIZ/morte6.cjs")"
+unif "$C_D1" --aplicar > "$RAIZ/d1-1.txt" 2>&1 || RC_D1=$?
+unset NODE_OPTIONS
+rm -f "$C_D1/dados/contas/vigia.lock"
+RC_D1R=0
+unif "$C_D1" --aplicar > "$RAIZ/d1-2.txt" 2>&1 || RC_D1R=$?
+MEM_D1="$C_D1/trabalho/.claude/projects/-proj-x/memory/MEMORY.md"
+afirma "(#503 D1) a morte injetada sai ≠ 0 (a injeção disparou)" test "$RC_D1" -ne 0
+afirma "(#503 D1) retomada sobre progresso com linha rasgada: a 2ª rodada sai 0" test "$RC_D1R" -eq 0
+afirma "(#503 D1) retomada: MEMORY.md igual ao de uma rodada única limpa" mesmo_hash "$MEM_D1" "$(hash_de "$MEM_REF")"
+
+# #503 D5: uma sessão grava mcpServers.github com outra definição DEPOIS do planejar e ANTES da etapa .claude.json.
+# A definição do destino tem de sobreviver, a saída tem de dizer que github foi mantido, e a linha de gravados não
+# pode listar github.
+cat > "$RAIZ/sessao503.cjs" <<'JS'
+// Gravação concorrente do .claude.json de trabalho (#503 D5): na primeira cópia, a "sessão" grava mcpServers.github.
+const fs = require('fs');
+const copiar = fs.copyFileSync;
+let feito = false;
+fs.copyFileSync = function (...args) {
+  if (!feito && process.env.RFM_GANCHO_CLAUDE) {
+    feito = true;
+    const atual = JSON.parse(fs.readFileSync(process.env.RFM_GANCHO_CLAUDE, 'utf8'));
+    atual.mcpServers = { ...(atual.mcpServers || {}), github: { type: 'stdio', command: 'outro-gh' } };
+    fs.writeFileSync(process.env.RFM_GANCHO_CLAUDE, JSON.stringify(atual, null, 2) + '\n');
+  }
+  return copiar.apply(fs, args);
+};
+JS
+C_D5="$(novo_caso d5)"
+export RFM_GANCHO_CLAUDE="$(win "$C_D5/trabalho/.claude.json")"
+export NODE_OPTIONS="--require $(win "$RAIZ/sessao503.cjs")"
+RC_D5=0
+unif "$C_D5" --aplicar > "$RAIZ/d5.txt" 2>&1 || RC_D5=$?
+unset NODE_OPTIONS RFM_GANCHO_CLAUDE
+afirma "(#503 D5) --aplicar sai 0" test "$RC_D5" -eq 0
+afirma "(#503 D5) a definição do destino (outro-gh) sobrevive ao mesclar" test "$(ler "$C_D5/trabalho/.claude.json" mcpServers.github.command)" = outro-gh
+afirma "(#503 D5) a saída diz que github foi mantido do destino" grep -qF 'mcp mantido do destino: github' "$RAIZ/d5.txt"
+afirma "(#503 D5) a linha 'mcp em .claude.json' não lista github como gravado" bash -c "grep '^mcp em .claude.json:' '$RAIZ/d5.txt' | grep -qvF '(github)'"
+
+# #503 D2/D3: pessoal sem oauthAccount. O relatório (sem --aplicar) já recusa com a mensagem que manda fazer login na
+# pasta pessoal; o --aplicar recusa com a mesma mensagem. Nada é gravado: os hashes de antes valem depois. A mensagem
+# não manda para preparar nem status: com as duas pastas, os dois devolvem à mesma recusa.
+C_D23="$(novo_caso d23 pessoal-sem-oauth)"
+H_D23_ESTADO="$(hash_de "$C_D23/dados/contas/estado.json")"
+H_D23_CJ="$(hash_de "$C_D23/trabalho/.claude.json")"
+RC_D23R=0
+unif "$C_D23" > "$RAIZ/d23-rel.txt" 2>&1 || RC_D23R=$?
+RC_D23=0
+unif "$C_D23" --aplicar > "$RAIZ/d23-apl.txt" 2>&1 || RC_D23=$?
+afirma "(#503 D2) relatório sem --aplicar com pessoal sem oauthAccount sai 2" test "$RC_D23R" -eq 2
+afirma "(#503 D2) a recusa do relatório manda fazer login na pasta pessoal" grep -qF '/login' "$RAIZ/d23-rel.txt"
+afirma "(#503 D2) a recusa do relatório não manda rodar status" bash -c "! grep -qF 'rode status' '$RAIZ/d23-rel.txt'"
+afirma "(#503 D3) a recusa do relatório não manda rodar preparar" bash -c "! grep -qF 'preparar' '$RAIZ/d23-rel.txt'"
+afirma "(#503 D3) --aplicar com pessoal sem oauthAccount sai 2" test "$RC_D23" -eq 2
+afirma "(#503 D3) a recusa do --aplicar manda fazer login na pasta pessoal" grep -qF '/login' "$RAIZ/d23-apl.txt"
+afirma "(#503 D2/D3) estado.json igual ao de antes da recusa" mesmo_hash "$C_D23/dados/contas/estado.json" "$H_D23_ESTADO"
+afirma "(#503 D2/D3) .claude.json de trabalho igual ao de antes da recusa" mesmo_hash "$C_D23/trabalho/.claude.json" "$H_D23_CJ"
+# O caminho que a mensagem indica termina: o login grava oauthAccount no .claude.json da pasta pessoal, e o unificar
+# seguinte aceita (relatório sai 0) sem pedir outro passo.
+node -e "const fs=require('fs');const a=process.argv[1];const o=JSON.parse(fs.readFileSync(a,'utf8'));o.oauthAccount={accountUuid:'00000000-0000-0000-0000-000000000002',emailAddress:'pessoal@exemplo.invalid',organizationUuid:'00000000-0000-0000-0000-000000000000',displayName:'Conta Falsa'};fs.writeFileSync(a,JSON.stringify(o,null,2)+'\n');" "$(win "$C_D23/pessoal/.claude-personal/.claude.json")"
+RC_D23L=0
+unif "$C_D23" > "$RAIZ/d23-login.txt" 2>&1 || RC_D23L=$?
+afirma "(#503 D3) depois do login na pasta pessoal, o relatório do unificar sai 0" test "$RC_D23L" -eq 0
+afirma "(#503 D3) depois do login, a saída não recusa mais a conta pessoal" bash -c "! grep -qF 'sem oauthAccount' '$RAIZ/d23-login.txt'"
+
+# #503 D4: a pessoal tem o mesmo e-mail da team registrada. Recusa no relatório e no --aplicar, sem registrar a pessoal.
+C_D4="$(novo_caso d4 pessoal-email-team)"
+RC_D4R=0
+unif "$C_D4" > "$RAIZ/d4-rel.txt" 2>&1 || RC_D4R=$?
+RC_D4=0
+unif "$C_D4" --aplicar > "$RAIZ/d4-apl.txt" 2>&1 || RC_D4=$?
+afirma "(#503 D4) relatório sem --aplicar com e-mail da team sai 2" test "$RC_D4R" -eq 2
+afirma "(#503 D4) a recusa do relatório nomeia team@exemplo.invalid" grep -qF 'team@exemplo.invalid' "$RAIZ/d4-rel.txt"
+afirma "(#503 D4) --aplicar com e-mail da team sai 2" test "$RC_D4" -eq 2
+afirma "(#503 D4) estado.json não ganha contas.pessoal" test "$(ler "$C_D4/dados/contas/estado.json" contas.pessoal.email)" = AUSENTE
 
 echo "ok: $OK   falhou: $FALHOU"
 if [ "$FALHOU" -ne 0 ]; then exit 1; fi

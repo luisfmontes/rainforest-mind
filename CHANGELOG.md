@@ -10,6 +10,22 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.67.4 — 2026-10-15
+
+- **`conta unificar` mais seguro para quem ainda vai migrar para a pasta única (#503).** Nada muda para quem já migrou.
+  - O relatório (sem `--aplicar`) passa a recusar com saída 2 quando a conta pessoal não tem registro nem
+    `oauthAccount` na pasta pessoal, como o `--aplicar` já fazia. Antes o relatório saía 0 e prometia uma migração que o
+    `--aplicar` recusava.
+  - A mensagem dessa recusa manda fazer login na pasta pessoal (`claude` com `CLAUDE_CONFIG_DIR` apontando para ela e
+    `/login`) e rodar `unificar` de novo: o login grava o `oauthAccount` que o `unificar` lê. Antes ela mandava rodar
+    `status`, que exige o mesmo `oauthAccount` e devolvia à mesma recusa.
+  - O registro da conta pessoal recusa, com saída 2 e antes de escrever qualquer coisa, o e-mail igual ao da conta de
+    trabalho já registrada. Sem a recusa, as duas contas ficavam com o mesmo e-mail e o CLI não tinha como desfazer.
+  - O progresso da cópia resiste a uma linha rasgada por um processo morto no meio da gravação: a retomada não perde mais
+    a cópia seguinte.
+  - Na mescla do `.claude.json`, o relatório do `--aplicar` conta só os servidores MCP que gravou e nomeia os que ficaram
+    com a definição já existente no destino (`mcp mantido do destino: ...`). Antes contava também os que não gravou.
+
 ## 1.67.3 — 2026-10-15
 
 - **Agente que só lê no checkout principal não leva mais trava por `2>/dev/null` junto de `{a,b}`.** O `gate-worktree`
