@@ -50,26 +50,32 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "283062f3517673a2e0e3ee5b87ca57d333ca5bb9",
+      "head": "693a55631afa775ed826f719cdac736f96ea0100",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ade4914f1984a5906",
-        "veredito": "reprovado",
+        "agente_id": "a46ee26223524205c",
+        "veredito": "ok",
         "em": "2026-10-15",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-ade4914f1984a5906.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a46ee26223524205c.jsonl"
       }
     ],
-    "achados": 1,
+    "achados": 0,
     "em": "2026-10-15",
-    "tentativas": 1
+    "em_voo": [],
+    "base": "9f6b9ca31c93dfed92e638c9f1354e032d113802",
+    "head": "693a55631afa775ed826f719cdac736f96ea0100"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-conta-unificar.sh",
+    "saida": "ok: 126   falhou: 0",
+    "sensor_externo": "bash scripts/testa-conta-unificar.sh",
+    "em": "2026-10-15"
   },
   "fechar": {
     "status": "pendente"
