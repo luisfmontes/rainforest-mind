@@ -951,5 +951,18 @@ gate "(#514) ls 2>/tmp/x.log; builtin {cd,x} continua barrando" 2 "$(ex 'ls 2>/t
 gate "(#514) echo a/{b,c}/d > f.txt continua barrando"         2 "$(ex 'echo a/{b,c}/d > f.txt')"
 
 echo
+echo "== (#514/#530) cd depois de atribuicao ou palavra reservada e movedor =="
+# Antes do #514 a chave inocente marcava a linha incerta e barrava estes por
+# acaso (security review); sem chave, ja passavam (#530 P1). Do worktree.
+wt() { pj agent_id ag-530 agent_type executor cwd "$WT" hook_event_name PreToolUse tool_name Bash tool_input.command "$1"; }
+gate "(#530) echo {a,b}; A=1 cd <principal>; git commit barra"       2 "$(wt "echo {a,b}; A=1 cd '$R'; git commit -m x")"
+gate "(#530) echo {a,b}; if true; then cd <principal>; fi; commit barra" 2 "$(wt "echo {a,b}; if true; then cd '$R'; fi; git commit -m x")"
+gate "(#530) A=1 cd <principal>; echo x > f barra"                    2 "$(wt "A=1 cd '$R'; echo x > f")"
+gate "(#530) if cd <principal>; then echo x > f; fi barra"            2 "$(wt "if cd '$R'; then echo x > f; fi")"
+gate "(#530) ! cd <principal>; git commit barra"                      2 "$(wt "! cd '$R'; git commit -m x")"
+gate "(#530) A=1 cd <worktree>; git commit passa"                     0 "$(wt "A=1 cd '$WT'; git commit -m x")"
+gate "(#514) echo {a,b}; git commit no worktree passa"                0 "$(wt 'echo {a,b}; git commit -m x')"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

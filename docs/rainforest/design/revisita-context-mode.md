@@ -47,6 +47,7 @@ Também registra a revisita no livro e planta os enxertos.
   `{cd,<principal>}`, `A=1 cd <principal>` e `if …; then cd <principal>; fi`. Os três saem 0 na base,
   medidos a partir do worktree.**
   - Porquê: é defeito do repo, mas alheio à #514. D2 não pode piorá-los, e pela condição (c) não piora.
+  - *Emenda de 2026-10-15 (security review do commit `79a6a60c`):* D2 piorava, sim, por outro caminho. Na base, uma chave inocente **antes** na linha (`echo {a,b}; A=1 cd <principal>; git commit`) marcava a linha toda como incerta e barrava por acaso, e sem isso esses casos passavam (medido: base 2, branch 0). A P1 da #530 entra nesta entrega: `semPrefixoSintaticoDeBuiltin` pula atribuição (`A=1`, `A="a b"`) e palavra reservada (`then do else elif if while until time !`) antes de testar `cd`/`pushd`. `{cd,X}` e a P2 da #530 continuam fora.
 - **D6 — Entrega num PR só, com bump de patch sobre `origin/main` no `fechar`. A #514 é fechada pelo
   `fechar-issue.cjs` depois do merge.**
   - Porquê: são consertos pequenos e independentes.

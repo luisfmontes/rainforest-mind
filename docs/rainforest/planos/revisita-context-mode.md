@@ -65,7 +65,7 @@ Continuam **2**:
 A partir do worktree, `A=1 {cd,<principal>}; echo x > f` e `if true; then {cd,<principal>}; fi; echo x > f`
 têm o mesmo exit da base: a tarefa não piora os contornos do D5. Provado por
 `bash hooks/testa-cwd-efetivo.sh && bash hooks/testa-gate-worktree.sh && bash hooks/testa-gate-fechar-issue.sh && bash hooks/testa-gate-mensagem-commit.sh && bash hooks/testa-gate-staging-total.sh`,
-tudo com 0 falhas.
+tudo com 0 falhas. *(Emenda de 2026-10-15, D5: do worktree, `echo {a,b}; A=1 cd <principal>; git commit`, `echo {a,b}; if true; then cd <principal>; fi; git commit`, `A=1 cd <principal>; echo x > f`, `if cd <principal>; then echo x > f; fi` e `! cd <principal>; git commit` → **2**, e `A=1 cd <worktree>; git commit` → **0**. Seção "(#514/#530) cd depois de atribuicao ou palavra reservada e movedor" do `testa-gate-worktree.sh`. Diferencial base × branch em 40 candidatos: nenhuma passagem de 2 para 0 além de `echo {a,b}; git commit` no worktree, que é o falso positivo pretendido.)*
 
 ### 3. `buscar --texto` ordena por relevância (bm25) [tipo: implementar]
 atende: D3

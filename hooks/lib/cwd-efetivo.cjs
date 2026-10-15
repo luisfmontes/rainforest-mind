@@ -23,7 +23,11 @@ const CD = /^\s*cd\s+(?:--\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/;
 // `cd`/`pushd`/`popd` de verdade ainda roda no MESMO shell e MUDA o cwd
 // dele. `sudo cd X` fica de fora de proposito: sudo cria um processo NOVO,
 // entao um `cd` "dentro" dele nunca muda o cwd do shell que chamou.
-const PREFIXO_SINTATICO_DE_BUILTIN = /^\s*(?:command|builtin)\s+/;
+// Atribuicao na frente (`A=1 cd X`) e palavra reservada (`then cd X`, `if cd X`,
+// `! cd X`, `time cd X`) tambem: o `cd` roda no MESMO shell. Sem isto os dois
+// passavam como "nao e movedor" (#530); antes do #514 a chave inocente de
+// `echo {a,b}; A=1 cd X; ...` marcava a linha incerta e barrava por acaso.
+const PREFIXO_SINTATICO_DE_BUILTIN = /^\s*(?:command\s+|builtin\s+|[A-Za-z_][A-Za-z0-9_]*=(?:"[^"]*"|'[^']*'|[^\s"';&|]*)\s+|(?:then|do|else|elif|if|while|until|time|!)\s+)/;
 const BARRA_NO_NOME_DO_MOVEDOR = /^(\s*)\\(cd|pushd|popd)\b/;
 // Diretorio que o proprio git recebe, e que vence o cwd do shell.
 const GIT_DIR_EXPLICITO = /\bgit\b[^\n;&|]*?(?:-C|--work-tree(?:=|\s+))\s*(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))/;
