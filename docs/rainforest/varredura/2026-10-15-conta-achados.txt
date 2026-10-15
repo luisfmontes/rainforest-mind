@@ -1,0 +1,64 @@
+Data: 2026-10-15
+Termos: gravarProgresso, registroPessoal, mcpServers, conta pessoal sem registro
+
+$ gh issue list --state all --search "gravarProgresso" --limit 200 --json number,title,state
+[{"number":503,"state":"OPEN","title":"conta unificar: 5 achados baixos da 6a revisao (pasta-unica)"}]
+
+
+$ gh issue list --state all --search "registroPessoal" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "mcpServers" --limit 200 --json number,title,state
+[{"number":503,"state":"OPEN","title":"conta unificar: 5 achados baixos da 6a revisao (pasta-unica)"}]
+
+
+$ gh issue list --state all --search "conta pessoal sem registro" --limit 200 --json number,title,state
+[{"number":503,"state":"OPEN","title":"conta unificar: 5 achados baixos da 6a revisao (pasta-unica)"},{"number":83,"state":"CLOSED","title":"Critério de plano só mede o que a máquina lê — passou verde com feature inutilizável e com dado pessoal em repo público"}]
+
+
+$ gh pr list --state all --search "gravarProgresso" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "registroPessoal" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "mcpServers" --limit 200 --json number,title,state
+[{"number":504,"state":"MERGED","title":"Versao 1.63.0: uma pasta so de config e conta.cjs unificar"},{"number":24,"state":"MERGED","title":"A captura passa a ser nossa, e a memoria passa a ter projeto"}]
+
+
+$ gh pr list --state all --search "conta pessoal sem registro" --limit 200 --json number,title,state
+[{"number":138,"state":"MERGED","title":"Rastro dos vigias e handover do fluxo 11 que ficaram sem versionar"},{"number":119,"state":"MERGED","title":"Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos"}]
+
+
+$ git ls-remote --heads origin | grep -F "gravarProgresso"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "registroPessoal"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "mcpServers"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "conta pessoal sem registro"
+(vazio)
+
+$ git log --all --grep="gravarProgresso" --oneline
+(vazio)
+
+$ git log --all --grep="registroPessoal" --oneline
+(vazio)
+
+$ git log --all --grep="mcpServers" --oneline
+687a0b23 Versao 1.63.0: uma pasta so de config e conta.cjs unificar (#504)
+e1d2592c A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+bfc034d2 A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+
+$ git log --all --grep="conta pessoal sem registro" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+(vazio)
+

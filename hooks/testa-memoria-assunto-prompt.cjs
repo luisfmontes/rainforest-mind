@@ -38,9 +38,12 @@ const caminhoDb = path.join(raiz, 'rainforest.db');
 const db = new DatabaseSync(caminhoDb);
 criarSchema(db);
 const ins = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
+// Uma transacao: fora dela cada INSERT e um fsync, e no runner Windows os 400 levam de 14 s a 140 s (#541).
+db.exec('BEGIN');
 for (let i = 0; i < 400; i++) {
   ins.run(PROJ_ATUAL, 'Registro generico ' + i + '\n\nrotina comum de trabalho numero ' + i + ' sem relevancia', '2026-10-01T10:00:00.000Z', 'f' + i);
 }
+db.exec('COMMIT');
 const alvos = {};
 for (const nome of ['Alfa', 'Bravo', 'Charlie', 'Delta']) {
   const r = ins.run(

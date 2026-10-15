@@ -32,9 +32,12 @@ fs.mkdirSync(pristina);
 const db = new DatabaseSync(path.join(pristina, 'rainforest.db'));
 criarSchema(db);
 const ins = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
+// Uma transacao: fora dela cada INSERT e um fsync, e no runner Windows os 400 levam de 14 s a 140 s (#541).
+db.exec('BEGIN');
 for (let i = 0; i < 400; i++) {
   ins.run(PROJ, 'Registro generico ' + i + '\n\nrotina comum de trabalho numero ' + i + ' sem relevancia', '2026-08-01T10:00:00.000Z', 'f' + i);
 }
+db.exec('COMMIT');
 const idsObs = [];
 for (let i = 1; i <= 30; i++) {
   const dia = String(i).padStart(2, '0');
