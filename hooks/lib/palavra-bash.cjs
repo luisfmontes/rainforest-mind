@@ -132,7 +132,10 @@ function normalizarComando(seg) {
       precisa = true;
       j++;
       while (j < s.length && s[j] !== '"') {
-        if (s[j] === "\\" && j + 1 < s.length && '"\\$`'.includes(s[j + 1])) {
+        if (s[j] === "\\" && s[j + 1] === "\n") {
+          // Continuação de linha dentro de aspas duplas: o par some (confirmado no bash).
+          j += 2;
+        } else if (s[j] === "\\" && j + 1 < s.length && '"\\$`'.includes(s[j + 1])) {
           valor += s[j + 1];
           marcas += "q";
           j += 2;
@@ -145,23 +148,39 @@ function normalizarComando(seg) {
       j++;
     } else if (c === "\\") {
       precisa = true;
-      if (j + 1 < s.length) {
-        valor += s[j + 1];
-        marcas += "q";
+      if (s[j + 1] === "\n") {
+        // Continuação de linha fora de aspas: o par some (confirmado no bash).
+        j += 2;
+      } else {
+        if (j + 1 < s.length) {
+          valor += s[j + 1];
+          marcas += "q";
+        }
+        j += 2;
       }
-      j += 2;
+    } else if (c === "$" && s[j + 1] === '"') {
+      // $"..." é aspa dupla de locale: o $ some, e o laço seguinte lê a aspa.
+      precisa = true;
+      j++;
     } else if (c === "$" && s[j + 1] === "'") {
       precisa = true;
       j += 2;
+      // NUL corta a string no bash: o resto do $'...' some, mas o laço segue até a aspa de fechamento.
+      let cortado = false;
       while (j < s.length && s[j] !== "'") {
         if (s[j] === "\\" && j + 1 < s.length) {
           const [txt, ultimo] = decodificarEscapeAnsi(s, j + 1);
-          valor += txt;
-          marcas += "q".repeat(txt.length);
+          if (txt === "\0") cortado = true;
+          if (!cortado) {
+            valor += txt;
+            marcas += "q".repeat(txt.length);
+          }
           j = ultimo + 1;
         } else {
-          valor += s[j];
-          marcas += "q";
+          if (!cortado) {
+            valor += s[j];
+            marcas += "q";
+          }
           j++;
         }
       }
@@ -211,6 +230,9 @@ function fechaParenteses(t, i) {
 
 // Corpo de cada crase e de cada `$(...)` fora de aspas simples (dentro de aspas
 // duplas conta). Crase escapada não abre corpo.
+// Lê um nível só: crase dentro de `$(...)` e `$(...)` dentro de crase saem como
+// texto do corpo, e quem chama recursa sobre cada corpo até não sobrar nenhum.
+// `$((1+2))` sai como corpo `(1+2)`: é espúrio, mas não come o resto da linha.
 function corposDeSubstituicao(texto) {
   const corpos = [];
   let sq = false;

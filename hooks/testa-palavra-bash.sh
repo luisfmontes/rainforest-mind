@@ -78,6 +78,39 @@ caso("echo `cd /x` devolve [\"cd /x\"]", () =>
   assert.deepStrictEqual(corposDeSubstituicao("echo `cd /x`"), ["cd /x"]));
 caso("echo 'a`b`' devolve []", () =>
   assert.deepStrictEqual(corposDeSubstituicao("echo 'a`b`'"), []));
+caso('echo "a $(cd /x) b" devolve ["cd /x"]', () =>
+  assert.deepStrictEqual(corposDeSubstituicao('echo "a $(cd /x) b"'), ["cd /x"]));
+caso("x=`cd /x` devolve [\"cd /x\"]", () =>
+  assert.deepStrictEqual(corposDeSubstituicao("x=`cd /x`"), ["cd /x"]));
+caso("${y:-$(cd /x)} devolve o corpo de dentro", () =>
+  assert.ok(corposDeSubstituicao("echo ${y:-$(cd /x)}").includes("cd /x")));
+// Crase dentro de $(...) e $(...) dentro de crase saem como corpo de um nivel
+// so. O chamador recursa sobre o corpo (ver o cabecalho da lib): todos() junta
+// os niveis, e o `cd /x` do centro tem que aparecer no fim.
+const todos = (t) => { const c = corposDeSubstituicao(t); return c.concat(...c.map(todos)); };
+caso("crase dentro de $(...) chega ao cd por recursao", () =>
+  assert.ok(todos("echo $(echo `cd /x`)").includes("cd /x")));
+caso("$(...) dentro de crase chega ao cd por recursao", () =>
+  assert.ok(todos("echo `echo $(cd /x)`").includes("cd /x")));
+caso("$((1+2)) nao quebra a leitura do resto: $(cd /x) depois ainda sai", () =>
+  assert.ok(corposDeSubstituicao("echo $((1+2)) && echo $(cd /x)").includes("cd /x")));
+caso("$((1+$(cd /x))) sai o cd de dentro da aritmetica", () =>
+  assert.ok(todos("echo $((1+$(cd /x)))").includes("cd /x")));
+
+secao("diferencas contra o bash real (#530, parte A)");
+// Cada caso foi confirmado no bash real com script em arquivo (ver o relato).
+caso('$"cd" /x vira cd /x (aspas de locale sao aspas duplas)', () =>
+  assert.strictEqual(normalizarComando('$"cd" /x').seg, "cd /x"));
+caso("$'cd\\x00zz' /x: o NUL corta a string, sobra cd /x", () =>
+  assert.strictEqual(normalizarComando("$'cd" + B + "x00zz' /x").seg, "cd /x"));
+caso("$'cd\\0zz' /x: NUL octal corta a string, sobra cd /x", () =>
+  assert.strictEqual(normalizarComando("$'cd" + B + "0zz' /x").seg, "cd /x"));
+caso("c\\<NL>d /x: contrabarra + quebra de linha some (continuacao)", () =>
+  assert.strictEqual(normalizarComando("c" + B + "\nd /x").seg, "cd /x"));
+caso('"c\\<NL>d" /x: continuacao dentro de aspas duplas tambem some', () =>
+  assert.strictEqual(normalizarComando('"c' + B + '\nd" /x').seg, "cd /x"));
+caso("$'...' com NUL no meio: o que vem depois do NUL nao entra na palavra", () =>
+  assert.strictEqual(normalizarComando("$'a" + B + "x00b' /x").seg, "a /x"));
 
 console.log("\nok: " + ok + "   falhou: " + falhou);
 process.exit(falhou > 0 ? 1 : 0);

@@ -468,9 +468,13 @@ console.log("== #514 (P2): expansao de chaves em argumento nao e fronteira ==");
   const n = (c) => segmentosComAspas(c).length;
   test("(514a) echo a/{b,c}/d -> 1 segmento", () => eq(n("echo a/{b,c}/d"), 1, "argumento com chaves fica inteiro"));
   test("(514b) wc -l s/{a,b}/S.md; echo {1..3} -> 2 segmentos", () => eq(n("wc -l s/{a,b}/S.md; echo {1..3}"), 2, "so o ; separa"));
-  test("(514c) {cd,x} em posicao de comando continua cortando", () => eq(n("{cd,x}") > 1, true, "chave em posicao de comando e fronteira"));
-  test("(514d) A=1 {cd,x} / then {cd,x} / builtin {cd,x} continuam cortando", () => {
-    for (const c of ["A=1 {cd,x}", "then {cd,x}", "then A=1 {cd,x}", "builtin {cd,x}", "env -i {cd,x}"]) eq(n(c) > 1, true, c);
+  // #530 (D4) mudou esta asserção: `{cd,x}` em posição de comando é expansão
+  // de chaves (`cd x`), não fronteira. Antes afirmava `n > 1` (cortava).
+  test("(514c) {cd,x} em posicao de comando nao corta (#530, D4): e uma palavra so", () => eq(n("{cd,x}"), 1, "expansao de chaves inteira no segmento"));
+  // #530 (D4) mudou esta asserção: as cinco formas viraram um segmento só. Antes
+  // afirmavam `n > 1` (cortavam). O cwd delas fica na seção (#530) abaixo.
+  test("(514d) A=1 {cd,x} / then {cd,x} / builtin {cd,x} nao cortam (#530, D4)", () => {
+    for (const c of ["A=1 {cd,x}", "then {cd,x}", "then A=1 {cd,x}", "builtin {cd,x}", "env -i {cd,x}"]) eq(n(c), 1, c);
   });
   test("(514e) { cd x; } e &{git checkout main} continuam cortando", () => {
     eq(n("{ cd x; }") > 1, true, "grupo com espaco");
@@ -479,6 +483,46 @@ console.log("== #514 (P2): expansao de chaves em argumento nao e fronteira ==");
   test("(514f) chave sem , nem x..y, ou com $ dentro, continua cortando", () => {
     eq(n("echo {abc}") > 1, true, "sem virgula");
     eq(n("echo {a,$x}") > 1, true, "com $");
+  });
+}
+
+console.log();
+console.log("== (#530) palavra de comando reconstruida: aspas, escape, ANSI-C e chaves ==");
+{
+  // W: worktree temporario (cwd inicial). P: outro diretorio existente.
+  // P vai com barra normal: `{...}` nao aceita barra invertida dentro.
+  const B = String.fromCharCode(92);
+  const W = path.join(testDir, "wt-530");
+  const P = path.join(testDir, "p-530");
+  fs.mkdirSync(W, { recursive: true });
+  fs.mkdirSync(P, { recursive: true });
+  const Pf = P.split(B).join("/");
+  // Segmento seguinte: o `echo x > f` que o gate pergunta. O cwd dele vem do
+  // movedor que rodou antes na mesma linha.
+  const seguinte = (cmd) => { const r = cwdPorSegmento(cmd + "; echo x > f", W); return r[r.length - 1]; };
+  const cwdEhP = (cmd) => eq(seguinte(cmd).cwd, path.resolve(P), cmd + ": cwd do segmento seguinte");
+  const cwdEhW = (cmd) => eq(seguinte(cmd).cwd, path.resolve(W), cmd + ": cwd do segmento seguinte");
+  test("(530a) 'cd' P -> cwd do segmento seguinte = P", () => cwdEhP(`'cd' ${Pf}`));
+  test("(530b) c\\d P -> cwd = P", () => cwdEhP(`c${B}d ${Pf}`));
+  test("(530c) $'\\x63d' P -> cwd = P", () => cwdEhP(`$'${B}x63d' ${Pf}`));
+  test("(530d) {cd,P} -> cwd = P", () => cwdEhP(`{cd,${Pf}}`));
+  test("(530e) A=1 {cd,P} -> cwd = P", () => cwdEhP(`A=1 {cd,${Pf}}`));
+  test('(530f) A="a b" {cd,P} -> cwd = P', () => cwdEhP(`A="a b" {cd,${Pf}}`));
+  test("(530g) builtin {cd,P} -> cwd = P", () => cwdEhP(`builtin {cd,${Pf}}`));
+  test("(530h) then {cd,P} -> incerto (then ja faz incerto na base)", () => {
+    eq(seguinte(`then {cd,${Pf}}`).incerto, true, "then {cd,P} incerto");
+  });
+  test("(530i) {c,}d P -> continua W (o bash roda 'cd d P', que falha)", () => cwdEhW(`{c,}d ${Pf}`));
+  test('(530j) {cd,"P"} -> incerto (aspa dentro da chave ainda e fronteira)', () => {
+    eq(seguinte(`{cd,"${Pf}"}`).incerto, true, '{cd,"P"} incerto');
+  });
+  test("(530k) 13 grupos {a,b} em posicao de comando -> estouro: true", () => {
+    const r = cwdPorSegmento("{a,b}".repeat(13) + " /x", W);
+    eq(r[0].estouro, true, "estouro do teto de 4096 palavras");
+  });
+  test("(530l) echo {a,b} (argumento, 2 palavras) nao estoura", () => {
+    const r = cwdPorSegmento("echo {a,b}", W);
+    eq(r[0].estouro, false, "estouro em argumento pequeno");
   });
 }
 
