@@ -18,7 +18,7 @@
     "em": "2026-10-15"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-15",
     "em_voo": [],
     "carimbos": [
@@ -72,6 +72,37 @@
       3,
       4,
       5
+    ],
+    "tarefas_ok": 5,
+    "tarefas": 5,
+    "comando": "node scratchpad/niveis.cjs <W> hooks/gate-worktree.cjs; bash hooks/testa-palavra-bash.sh",
+    "saida": "1 niveis -> exit 0  2 niveis -> exit 0  3 niveis -> exit 0  4 niveis -> exit 0  5 niveis -> exit 2 wrapper aninhado demais para conferir (mais de 4 niveis) 6 niveis -> exit 2 wrapper aninhado demais para conferir (mais de 4 niveis) ",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-palavra-bash.sh, secao chave entre aspas ou escapada nao expande"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-cwd-efetivo.sh, secao (#530) palavra de comando reconstruida"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-worktree.sh, secao (#530) escrita dentro de bash -c, eval e substituicao de comando"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "diferencial mede o efeito das tarefas 1 a 3, sem ramo proprio"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "metadados de versao e texto"
+      }
     ]
   },
   "revisar": {
