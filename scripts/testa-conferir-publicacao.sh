@@ -627,6 +627,40 @@ printf 'const h = { %s: %s%s %s{t}%s, %s%s%s: %s%s%s };\n' "$AU" "$BT" "$BE" "$D
 nao_tem "494 template seguido de vírgula e outra chave passa" "$(roda "$SBP/494-tpl-virgula.cjs")" "credencial"
 saiu    "e passa (exit 0)"                                   "$(codigo "$SBP/494-tpl-virgula.cjs")" "0"
 
+# Issue #494 (volta 3): lista de PERMISSAO. Cada forma abaixo era isenta na volta 2
+# por causa da lista de proibicao. Montadas em pedacos; o literal e $HEX32.
+printf 'const h = { %s: %s%s %s{tok}%s.concat(%s%s%s) };\n' "$AU" "$BT" "$BE" "$D" "$BT" "$Q" "$HEX32" "$Q" > "$SBP/494-tpl-concat.cjs"
+tem  '494 template + .concat(literal hex) continua credencial' "$(roda "$SBP/494-tpl-concat.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-tpl-concat.cjs")" "2"
+
+printf 'const h = { %s: %s%s %s{tok}%s /* c */ + %s%s%s };\n' "$AU" "$BT" "$BE" "$D" "$BT" "$Q" "$HEX32" "$Q" > "$SBP/494-tpl-comentario.cjs"
+tem  '494 template + /* c */ + literal hex continua credencial' "$(roda "$SBP/494-tpl-comentario.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-tpl-comentario.cjs")" "2"
+
+printf 'const h = { %s: %s%s %s{tok||%s%s%s}%s };\n' "$AU" "$BT" "$BE" "$D" "$Q" "$HEX32" "$Q" "$BT" > "$SBP/494-tpl-ou-hex.cjs"
+tem  '494 ${tok||literal hex} continua credencial' "$(roda "$SBP/494-tpl-ou-hex.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-tpl-ou-hex.cjs")" "2"
+
+printf 'const h = { %s: %s%s %s{%s%s%s}%s };\n' "$AU" "$BT" "$BE" "$D" "$Q" "$HEX32" "$Q" "$BT" > "$SBP/494-tpl-so-hex.cjs"
+tem  '494 ${literal hex} continua credencial' "$(roda "$SBP/494-tpl-so-hex.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-tpl-so-hex.cjs")" "2"
+
+printf 'const h = { %s: %s%s %s{tok} %s%s };\n' "$AU" "$BT" "$BE" "$D" "$HEX32" "$BT" > "$SBP/494-tpl-espaco-hex.cjs"
+tem  '494 template ${tok} + espaco + literal hex continua credencial' "$(roda "$SBP/494-tpl-espaco-hex.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-tpl-espaco-hex.cjs")" "2"
+
+printf 'const h = { %s: %s%s %s{tok}-%s%s };\n' "$AU" "$BT" "$BE" "$D" "$HEX32" "$BT" > "$SBP/494-tpl-hifen-hex.cjs"
+tem  '494 template ${tok}-literal hex continua credencial' "$(roda "$SBP/494-tpl-hifen-hex.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-tpl-hifen-hex.cjs")" "2"
+
+printf "headers['%s'] = '%s ' + tok;\n" "$AU" "$BE" > "$SBP/494-headers-concat.cjs"
+nao_tem '494 headers[Authorization] = Bearer + identificador passa' "$(roda "$SBP/494-headers-concat.cjs")" "credencial"
+saiu    "e passa (exit 0)"                               "$(codigo "$SBP/494-headers-concat.cjs")" "0"
+
+printf 'const h = { %s: %s%s %s{this.token}%s };\n' "$AU" "$BT" "$BE" "$D" "$BT" > "$SBP/494-tpl-this.cjs"
+nao_tem '494 template com ${this.token} passa' "$(roda "$SBP/494-tpl-this.cjs")" "credencial"
+saiu    "e passa (exit 0)"                               "$(codigo "$SBP/494-tpl-this.cjs")" "0"
+
 echo
 echo "== 9. termos privados — o que nao tem FORMA e so uma lista reconhece =="
 # Nome de empregador, de cliente e de projeto interno nao tem regex. A lista mora

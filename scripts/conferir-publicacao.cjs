@@ -92,6 +92,53 @@ const REFERENCIA_DE_VARIAVEL = new RegExp(
   ].join('')
 );
 
+// Issue #494: isenção de referência em `Authorization` com esquema, por lista de
+// PERMISSÃO. O ramo em conferir() chama referenciaIsenta() com o texto depois do
+// esquema; o que vem depois da expressão tem de ser exatamente o permitido aqui.
+const IDENT_CADEIA = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$/;
+const FORMAT_VAR = /^\{\}["']?\.format\(\s*[A-Za-z_]\w*\s*\)/;
+const FSTRING_VAR = /^\{[A-Za-z_]\w*\}/;
+const CHAVE_DUPLA = /^\$\{\{\s*([^{}]*?)\s*\}\}/;
+
+// Fim permitido depois da expressão: fim de linha, ou pontuação `, ; ) ] }` sem
+// um `+` emendado depois. Qualquer outro caractere (espaço + texto, `.`, `-`,
+// `/*`, `//`, letra, `${`) não isenta.
+function fimPermitido(resto) {
+  if (resto.trim() === '') return true;
+  if (!/^\s*[;,)\]}]/.test(resto)) return false;
+  return !/^[\s;,)\]}]*\+/.test(resto);
+}
+
+// `aspa` e a aspa de abertura do esquema ('' se nao houver). Com ela, o
+// fechamento tem de ser a mesma aspa logo depois da referencia.
+function depoisDaReferencia(resto, aspa) {
+  if (aspa) {
+    if (resto[0] !== aspa) return false;
+    return fimPermitido(resto.slice(1));
+  }
+  return fimPermitido(resto);
+}
+
+// `t` comeca logo depois do espaco que segue o esquema.
+function referenciaIsenta(t, aspa, fstring) {
+  const fmt = FORMAT_VAR.exec(t);
+  if (fmt) return fimPermitido(t.slice(fmt[0].length));
+  const ref = (fstring && FSTRING_VAR.exec(t)) || REFERENCIA_DE_VARIAVEL.exec(t);
+  if (!ref) return false;
+  let tam = ref[0].length;
+  if (ref[0].startsWith('${{')) {
+    // Actions `${{ secrets.X }}`: o conteudo tem de ser cadeia de membros.
+    const cheia = CHAVE_DUPLA.exec(t);
+    if (!cheia || !IDENT_CADEIA.test(cheia[1])) return false;
+    tam = cheia[0].length;
+  } else if (ref[0].startsWith('${')) {
+    if (!IDENT_CADEIA.test(ref[0].slice(2, -1).trim())) return false;
+  } else if (ref[0].startsWith('%')) {
+    if (!IDENT_CADEIA.test(ref[0].slice(1, -1))) return false;
+  }
+  return depoisDaReferencia(t.slice(tam), aspa);
+}
+
 /**
  * Prefixo de identificador de plataforma (GitHub Actions run, job, comment, PR, commit, discussion).
  * Ancorada no FIM do trecho anterior ao match, casando exatamente um destes:
@@ -293,34 +340,27 @@ const PADROES = [
       // Literal colado depois da referencia, ou literal no lugar dela, continua
       // caindo no restante da regra e e acusado.
       // Issue #494: crase de abertura (template JS) conta como esquema. Duas
-      // isenções, e as duas exigem que NADA emendado venha depois da expressão:
-      //  - referência (`${tok}`, `{VAR}` em f-string, `{}.format(VAR)`) seguida de
-      //    aspa de fechamento opcional, pontuação `[\s;,)\]}]*` e, se vier `+`,
-      //    não isenta (`` `Bearer ${tok}` + '<hex>' `` é literal concatenado);
-      //  - concatenação `<aspa> + <expr>`, com <expr> identificador, cadeia de
-      //    membros ou chamada sem argumento literal, mesma regra do `+` depois.
+      // isenções, ambas por LISTA DE PERMISSÃO (referenciaIsenta, acima):
+      //  - referência (`${tok}`, `{VAR}` em f-string, `{}.format(VAR)`): o conteúdo
+      //    de `${}` tem de ser identificador ou cadeia de membros; logo depois vem a
+      //    mesma aspa de fechamento; e depois dela só fim de linha ou `, ; ) ] }`.
+      //    `` `Bearer ${tok}`.concat(...) ``, `` `Bearer ${tok} <hex>` `` e
+      //    `` `Bearer ${tok||'<hex>'}` `` não isentam.
+      //  - concatenação `<aspa> + <expr>` (abaixo), com <expr> identificador, cadeia
+      //    de membros ou chamada sem argumento literal, e o mesmo fim permitido.
+      // Limite conhecido: a varredura é por linha. Um literal `+ '<hex>'` que
+      // começa na linha seguinte não é visto aqui; o design nunca prometeu isso.
       // Sem aspa ou crase de abertura (`Authorization: Bearer +tok`), não há
       // concatenação isenta: o esquema segue como na base, e o `+` cola o valor.
       // A aspa de fechamento pode estar dentro da captura (`'Bearer'`) ou ainda
       // na cauda (`'Bearer' + tok`); se não estiver em nenhum dos dois, não isenta.
       if (chave === 'authorization' && /^f?["'`]?(?:Bearer|Basic|Token)$/i.test(valor)) {
         const cauda = linha.slice(m.index + m[0].length);
-        const prox = /^\s+(\S+)/.exec(cauda);
-        // Depois da expressão isenta: fecha a aspa (se ainda não veio), pula
-        // pontuação, e um `+` aqui cancela a isenção.
-        const emendado = (resto) => /^["'`]?[\s;,)\]}]*\+/.test(resto);
-        if (prox) {
-          const v2 = prox[1].replace(/^["']+/, '');
-          const fmt = /^\{\}["']?\.format\(\s*[A-Za-z_]\w*\s*\)/.exec(v2);
-          // `{VAR}` so e referencia quando o esquema veio de f-string (`f"Bearer`).
-          // Fora dela, chaves com um nome dentro sao texto literal: na lista
-          // global, `password={abc}` saia isento em qualquer chave.
-          const fstr = /^f["']/i.test(valor) ? /^\{[A-Za-z_]\w*\}/.exec(v2) : null;
-          const r2 = fmt || fstr || REFERENCIA_DE_VARIAVEL.exec(v2);
-          if (r2 && !/^[A-Za-z0-9_]/.test(v2.slice(r2[0].length))) {
-            const depois = v2.slice(r2[0].length) + cauda.slice(prox[0].length);
-            if (!emendado(depois)) return false;
-          }
+        // A aspa de abertura fica em m[0]: a captura `valor` já a consumiu (`"Bearer`
+        // vira `Bearer`), e `f"Bearer` mantém o f na captura.
+        const esquema = /(f?)(["'`]?)(?:Bearer|Basic|Token)$/i.exec(m[0]);
+        if (/^\s+/.test(cauda) && referenciaIsenta(cauda.replace(/^\s+/, ''), esquema[2], esquema[1] !== '')) {
+          return false;
         }
         // Concatenação: a aspa de abertura é o que torna o esquema um literal de
         // string; sem ela, o `+` é texto colado e não isenta. Depois da expressão,
