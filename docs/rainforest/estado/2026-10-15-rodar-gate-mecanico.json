@@ -19,7 +19,7 @@
     "em": "2026-10-15"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-15",
     "em_voo": [],
     "carimbos": [
@@ -50,10 +50,31 @@
         "resultado": "n/a",
         "motivo": "remocao de script sem chamador e documentacao"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-15"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "77fd6cce2ca93a5cab9b259e017c496a1b3de509",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "aafc9ac618653bd63",
+        "veredito": "reprovado",
+        "em": "2026-10-15",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-aafc9ac618653bd63.jsonl"
+      }
+    ],
+    "achados": 4,
+    "em": "2026-10-15",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

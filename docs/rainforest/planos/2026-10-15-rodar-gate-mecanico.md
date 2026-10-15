@@ -11,7 +11,7 @@ Design: docs/rainforest/design/2026-10-15-rodar-gate-mecanico.md
 
 ### 1. A integração pede o repasse de `--slug`/`--tarefa` à catraca [tipo: implementar]
 atende: D1
-arquivos: `scripts/conferir-fluxo.cjs`, `scripts/integrar-tarefa.cjs`, `scripts/testa-conferir-fluxo.sh`
+arquivos: `scripts/conferir-fluxo.cjs`, `scripts/integrar-tarefa.cjs`, `scripts/testa-conferir-fluxo.sh`, `scripts/conferir-mutacao.cjs`, `scripts/testa-integrar-tarefa.sh`
 depende de: nenhuma
 prova-na-base: verde — o caso novo usa a flag `--gravar-flake`, que só passa a existir nesta tarefa; na base o `mutacoes` não a conhece
 mutacao:
@@ -21,6 +21,8 @@ mutacao:
   bateria: `bash scripts/testa-conferir-fluxo.sh`
   fixture: testa-conferir-fluxo.sh, caso novo "#498: mutacoes com --gravar-flake grava o flake do baseline"
 pronto quando: com um estado de fluxo real (criado por `node scripts/estado.cjs iniciar` numa caixa) e um plano cuja tarefa 1 declara uma bateria de exit variável por chamada (contador FORA da cópia que a catraca faz, sequência `1 0 1 1`: baseline vermelho, nova tentativa verde, pós-mutação vermelho nas duas), (a) `node scripts/conferir-fluxo.cjs mutacoes --slug <s> --tarefa 1 --plano <p> --gravar-flake` sai 0 com `tarefa 1: vermelho` e o JSON do estado passa a ter `executar.flakes` com `{"tarefa":1,"gate":"catraca: <bateria>"}`; (b) o mesmo comando SEM `--gravar-flake`, com o contador zerado, sai 0 e o estado não ganha `executar.flakes`; (c) `scripts/integrar-tarefa.cjs` passa `--gravar-flake` na chamada de `mutacoes` (o caso existente de integração em `testa-integrar-tarefa.sh` segue verde); (d) a chamada de `mutacoes` do `verificar` em `scripts/estado.cjs` não muda — provado por `bash scripts/testa-conferir-fluxo.sh` e `bash scripts/testa-integrar-tarefa.sh` com zero falha e por `git diff <base> -- scripts/estado.cjs` vazio.
+
+Emenda depois da 1ª revisão (achados 1 e 2): (e) a raiz do estado onde o flake é gravado é a do `conferir-fluxo` (`RAIZ`), não a `--raiz` da tarefa: o `conferir-mutacao.cjs` ganha `--raiz-estado <pasta>` (opcional, padrão a `--raiz`, como hoje), e o `gravarFlake` roda o `estado.cjs registrar-flake` com `RFM_ESTADO_ROOT` igual a ela, só nesse processo filho (a bateria não herda); o `conferir-fluxo` passa `--raiz-estado RAIZ` junto com `--slug`/`--tarefa`. Provado por um caso em `testa-conferir-fluxo.sh` SEM `RFM_ESTADO_ROOT` no ambiente, com `cwd` no topo da caixa, tarefa com `raiz: app` e `--raiz-codigo <topo>`: o estado do topo ganha `executar.flakes`. (f) `testa-integrar-tarefa.sh` ganha um caso que roda o `integrar-tarefa.cjs` de verdade com uma tarefa cuja bateria é de exit variável (`1 0 1 1`) e exige `executar.flakes` no estado depois da integração; esse caso cai se o `'--gravar-flake'` sair do `integrar-tarefa.cjs`.
 
 Forma do código: em `cmdMutacoes`, `const gravaFlake = process.argv.includes('--gravar-flake') && Boolean(slug);` lido uma vez; dentro do laço, logo depois de montar `argumentos` (e do `--timeout`), a linha exata `if (gravaFlake) argumentos.push('--slug', slug, '--tarefa', String(numero));`. O uso do `conferir-fluxo.cjs` (mensagem de uso e comentário do cabeçalho de `mutacoes`) cita a flag. Em `integrar-tarefa.cjs`, a lista de `rodar('conferir-fluxo.cjs', [...])` ganha `'--gravar-flake'`. Nenhum caso de teste lê o texto do fonte.
 
