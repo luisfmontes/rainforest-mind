@@ -19,8 +19,22 @@
     "em": "2026-10-15"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-10-15"
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-15",
+    "em_voo": [],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "2f99f857ed698a87182888349516f1b76f66ad0a",
+        "iteracao": 1,
+        "sessao": "bfd7468b-e589-43c6-9e09-04528a1dc829",
+        "ts": "2026-10-15T19:31:27.373Z"
+      }
+    ],
+    "em": "2026-10-15",
+    "integradas": [
+      1
+    ]
   },
   "revisar": {
     "status": "pendente"
