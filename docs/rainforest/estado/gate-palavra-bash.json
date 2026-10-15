@@ -18,7 +18,7 @@
     "em": "2026-10-15"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-15",
     "carimbos": [
       {
@@ -78,12 +78,14 @@
       3,
       4,
       5,
-      6
+      6,
+      7,
+      8
     ],
-    "tarefas_ok": 6,
+    "tarefas_ok": 8,
     "tarefas": 8,
-    "comando": "node scripts/conferir-mutacao.cjs --raiz . --arquivo hooks/gate-worktree.cjs --de 'const ehBash = ferramenta !== \"PowerShell\";' --para 'const ehBash = true;' --bateria 'bash hooks/testa-gate-worktree.sh' --timeout 900000",
-    "saida": "ok: bateria VERMELHA com o comportamento invertido (exit 1), confirmada em duas rodadas. Baseline: 88657 ms (exit 0) -> Mutacao: 87148 ms (exit 1). Integracao T6: resultado aceito, commit 0993c21d. Prova T6 (PowerShell git.exe -C P commit) gate=2.",
+    "comando": "node scripts/integrar-tarefa.cjs --slug gate-palavra-bash --tarefa 7|8 (mutacoes re-rodadas pela integracao)",
+    "saida": "T7 aceito commit 3acf91bd; T8 aceito commit 082f22b4; mutacao das duas vermelha na integracao.",
     "mutacao": [
       {
         "tarefa": 1,
@@ -114,21 +116,19 @@
         "tarefa": 6,
         "resultado": "vermelho",
         "fixture": "testa-gate-worktree.sh, secao \"(#530) rodada 2: PowerShell nao passa pela leitura do bash; substituicao no cwd do segmento\""
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-worktree.sh, secao \"(#530) rodada 3: interno de powershell -Command e cmd /c nao passa pela leitura do bash\""
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-cwd-efetivo.sh, secao \"(#530) rodada 3: git de caminho Windows sem aspas mantem o -C\""
       }
     ],
-    "reaberturas": 2,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-15"
-    },
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "tarefas 7 e 8 rodada 3",
-        "desde": "2026-10-15T00:00:00Z",
-        "sessao": "d39ef955-529f-4604-9440-a7d2fbc14edb"
-      }
-    ]
+    "reaberturas": 2
   },
   "revisar": {
     "status": "reprovado",
