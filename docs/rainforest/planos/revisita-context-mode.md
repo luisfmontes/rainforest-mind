@@ -24,8 +24,8 @@ paralela: nao
 prova: `P=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && node -e 'process.stdout.write(JSON.stringify({session_id:"p",agent_id:"a",agent_type:"Explore",cwd:process.argv[1],tool_name:"Bash",tool_input:{command:"(ls x) 2>/dev/null"}}))' "$P" | node hooks/gate-worktree.cjs`
 mutacao:
   arquivo: `hooks/gate-worktree.cjs`
-  de: `function ehDescarteDeSaida(alvo) {`
-  para: `function ehDescarteDeSaida(alvo) { return false;`
+  de: `function ehDescarteDeSaida(alvo, ehPowerShell) {`
+  para: `function ehDescarteDeSaida(alvo, ehPowerShell) { return false;`
   bateria: `bash hooks/testa-gate-worktree.sh`
   timeout: `600000`
   fixture: testa-gate-worktree.sh, secao "(#514) redirecionamento para descarte nao e escrita"
@@ -36,7 +36,7 @@ pronto quando: com payload PreToolUse real (`agent_type: Explore`, `cwd` = check
 - `echo x > f.txt` → **2**.
 
 Provado por `bash hooks/testa-gate-worktree.sh` com 0 falhas, com os casos impressos. `alvosBashEscrita`
-chama `ehDescarteDeSaida` antes de `empurra` no ramo de redirecionamento.
+chama `ehDescarteDeSaida` antes de `empurra` no ramo de redirecionamento. *(Emenda de 2026-10-15, security review do commit `ebc926fd`: no bash `$null` é variável comum — `null=a.txt; echo x > $null` escreve —, então `$null` só é descarte com `tool_name: PowerShell`; no bash, `(ls x) > $null` e `null=a.txt; echo x > $null` → **2**. A âncora da mutação ganhou o parâmetro `ehPowerShell`.)*
 
 ### 2. Expansão de chaves em argumento não corta segmento (#514 P2) [tipo: implementar]
 atende: D2

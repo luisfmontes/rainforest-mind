@@ -937,5 +937,19 @@ gate "(#514) bash: (ls x) > \$null continua barrando"            2 "$(ex '(ls x)
 gate "(#514) echo x > f.txt no principal continua barrando"     2 "$(ex 'echo x > f.txt')"
 
 echo
+echo "== (#514) expansao de chaves em argumento nao e grupo =="
+# So P2 conserta o primeiro: o alvo e real (fora do repo), nao descarte.
+gate "(#514) ls 2>/tmp/x.log; echo a/{b,c}/d passa"            0 "$(ex 'ls 2>/tmp/x.log; echo a/{b,c}/d')"
+gate "(#514) ls x 2>/dev/null | head; wc -l a/{b,c}/d passa"   0 "$(ex 'ls x 2>/dev/null | head; wc -l a/{b,c}/d')"
+gate "(#514) ls x 2>/dev/null; echo a/{b,c}/d passa"           0 "$(ex 'ls x 2>/dev/null; echo a/{b,c}/d')"
+gate "(#514) ls x > /dev/null; echo {b,c} passa"               0 "$(ex 'ls x > /dev/null; echo {b,c}')"
+gate "(#514) ls 2>/tmp/x.log; echo {1..3} passa"               0 "$(ex 'ls 2>/tmp/x.log; echo {1..3}')"
+gate "(#514) &{git checkout main} (PowerShell) continua barrando" 2 "$(ex '&{git checkout main}' PowerShell)"
+gate "(#514) { cd x; } > f continua barrando"                  2 "$(ex '{ cd x; } > f')"
+gate "(#514) ls 2>/tmp/x.log; A=1 {cd,x} continua barrando"    2 "$(ex 'ls 2>/tmp/x.log; A=1 {cd,x}')"
+gate "(#514) ls 2>/tmp/x.log; builtin {cd,x} continua barrando" 2 "$(ex 'ls 2>/tmp/x.log; builtin {cd,x}')"
+gate "(#514) echo a/{b,c}/d > f.txt continua barrando"         2 "$(ex 'echo a/{b,c}/d > f.txt')"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

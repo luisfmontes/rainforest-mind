@@ -55,6 +55,56 @@ const SET_LOCATION = /^\s*(?:Set-Location|sl|chdir)\s+(?:-(?:Path|LiteralPath)(?
 const PUSH_LOCATION = /^\s*Push-Location\s+(?:-(?:Path|LiteralPath)(?:\s+|:))?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/i;
 const POP_LOCATION = /^\s*Pop-Location\s*$/i;
 
+// Palavras que, antes da chave, NAO fazem dela um argumento: reservadas do
+// bash (a palavra seguinte e comando) e wrappers que executam o que vem depois
+// (`builtin {cd,X}` vira `builtin cd X`). Com elas, a chave segue sendo
+// fronteira, como antes do #514.
+const NAO_E_COMANDO_ANTES_DA_CHAVE = new Set([
+  "!", "if", "then", "else", "elif", "do", "while", "until", "time", "{",
+  "builtin", "command", "exec", "eval", "env", "sudo", "nohup", "nice", "xargs",
+  "timeout", "bash", "sh", "zsh", "pwsh", "powershell", "&", ".",
+]);
+
+/**
+ * `cmd[i]` abre uma expansao de chaves em posicao de ARGUMENTO? Devolve o
+ * indice do `}` que a fecha, ou -1 (#514, P2).
+ *
+ * Expansao: fecha na mesma palavra, sem espaco, aspa, `$`, crase, parentese,
+ * operador ou outra chave dentro, e tem `,` ou e sequencia `x..y`. Argumento:
+ * o segmento ja tem palavra de comando antes — pulando atribuicao (`A=1`),
+ * redirecionamento e as palavras de `NAO_E_COMANDO_ANTES_DA_CHAVE`; se a
+ * primeira palavra que sobra e uma delas, ou nao sobra nenhuma, e -1. Em
+ * posicao de comando `{cd,X}` expande para `cd X`, e la a chave tem de
+ * continuar marcando a travessia incerta.
+ */
+function fimDaExpansaoDeChaves(cmd, i, atual) {
+  let fim = -1;
+  for (let j = i + 1; j < cmd.length; j += 1) {
+    const c = cmd[j];
+    if (c === "}") { fim = j; break; }
+    if (/[\s'"$`(){};|&<>\\]/.test(c)) return -1;
+  }
+  if (fim === -1) return -1;
+  const dentro = cmd.slice(i + 1, fim);
+  if (!dentro.includes(",") && !/^[A-Za-z0-9]+\.\.[A-Za-z0-9]+(\.\.-?\d+)?$/.test(dentro)) return -1;
+
+  // Palavras completas antes da palavra corrente (a que contem a chave).
+  const palavras = atual.replace(/\S*$/, "").trim().split(/\s+/).filter(Boolean);
+  const RESERVADAS = ["!", "if", "then", "else", "elif", "do", "while", "until", "{"];
+  let k = 0;
+  while (k < palavras.length) {
+    const p = palavras[k];
+    if (RESERVADAS.includes(p)) { k += 1; continue; }
+    if (/^[A-Za-z_][A-Za-z0-9_]*\+?=/.test(p)) { k += 1; continue; }
+    if (/^\d*(>>?|<|&>)$/.test(p)) { k += 2; continue; }
+    if (/^\d*(>>?|<|&>)/.test(p)) { k += 1; continue; }
+    break;
+  }
+  if (k >= palavras.length) return -1;
+  if (NAO_E_COMANDO_ANTES_DA_CHAVE.has(palavras[k].toLowerCase())) return -1;
+  return fim;
+}
+
 /**
  * Quebra a linha de comando em segmentos respeitando aspas.
  *
@@ -135,6 +185,12 @@ function segmentosComAspas(cmd) {
         segmentos.push(atual);
       }
       atual = "";
+    } else if (c === "{" && fimDaExpansaoDeChaves(cmd, i, atual) !== -1) {
+      // #514 (P2): `a/{b,c}/d` em posicao de argumento e expansao de chaves,
+      // nao grupo — a palavra inteira fica no segmento, sem virar fronteira.
+      const fim = fimDaExpansaoDeChaves(cmd, i, atual);
+      atual += cmd.slice(i, fim + 1);
+      i = fim;
     } else if (c === "(" || c === ")" || c === "{" || c === "}") {
       // Rodada 19 (lote 3): `{`/`}`/`(`/`)` FORA de aspas viram fronteira de
       // segmento — sem isto, `&{git checkout main}` (call operator do
