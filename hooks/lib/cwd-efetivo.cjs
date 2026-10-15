@@ -398,6 +398,14 @@ function resolverMovedor(seg, estado) {
   // o segmento NORMALIZADO (prefixo sintatico removido, barra do nome
   // tirada). `sudo cd X` fica de fora (a normalizacao nao mexe nele).
   const segMovedor = semPrefixoSintaticoDeBuiltin(seg);
+  // `then cd X`, `else cd X`, `do cd X`: o `cd` esta num ramo/corpo que pode nao
+  // rodar (`if false; then cd <wt>; fi; echo x > f` no principal escreve no
+  // principal). Movedor sim, mas INCERTO — nunca certeza (security review do #530).
+  const condicional = /^\s*(?:then|else|elif|do)\s/.test(seg);
+  if (condicional && segMovedor !== seg && (PUSHD.test(segMovedor) || PUSH_LOCATION.test(segMovedor) ||
+      POPD.test(segMovedor) || POP_LOCATION.test(segMovedor) || CD.test(segMovedor) || SET_LOCATION.test(segMovedor))) {
+    estado.incerto = true;
+  }
 
   // `pushd X` / `Push-Location X` (PowerShell, R3) — muda o cwd corrente
   // igual `cd X`, guardando o de antes.

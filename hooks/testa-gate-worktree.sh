@@ -964,5 +964,14 @@ gate "(#530) A=1 cd <worktree>; git commit passa"                     0 "$(wt "A
 gate "(#514) echo {a,b}; git commit no worktree passa"                0 "$(wt 'echo {a,b}; git commit -m x')"
 
 echo
+echo "== (#530) cd em ramo/corpo condicional e incerto, nunca certeza =="
+# Do principal: o `cd` para o worktree pode nao rodar, e a escrita cai no
+# principal. Tomado como certeza, o gate liberava (security review).
+gate "(#530) if false; then cd <wt>; fi; echo x > f no principal barra"   2 "$(ex "if false; then cd '$WT'; fi; echo x > f")"
+gate "(#530) if true; then :; else cd <wt>; fi; echo x > f barra"         2 "$(ex "if true; then :; else cd '$WT'; fi; echo x > f")"
+gate "(#530) for d in; do cd <wt>; done; echo x > f barra"                2 "$(ex "for d in; do cd '$WT'; done; echo x > f")"
+gate "(#530) A=1 cd <wt>; echo x > f no principal passa (cd roda)"        0 "$(ex "A=1 cd '$WT'; echo x > f")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
