@@ -6,7 +6,9 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/gate-palavra-bash.md",
+    "em": "2026-10-15"
   },
   "plano": {
     "status": "pendente"
