@@ -6,10 +6,17 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-10-15-conta-achados.md",
+    "decisoes": 5,
+    "em": "2026-10-15"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-15-conta-achados.md",
+    "tarefas": 3,
+    "paralelas": [],
+    "em": "2026-10-15"
   },
   "executar": {
     "status": "pendente"
