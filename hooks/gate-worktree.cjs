@@ -155,7 +155,7 @@ function subcomandoGit(cmd, ferramenta) {
     return j < w.length ? { verbo: w[j], args: w.slice(j + 1) } : null;
   }
   const { interno, ilegivel } = desempacotarWrapperDeString(cmd, { ferramenta });
-  if (interno !== null && !ilegivel) return subcomandoGit(interno, ferramenta);
+  if (interno !== null && !ilegivel) return subcomandoGit(interno, ferramentaDoInterno(cmd, ferramenta));
   return null;
 }
 
@@ -168,6 +168,21 @@ function subcomandoGit(cmd, ferramenta) {
 function textoLido(texto, ferramenta) {
   const ehBash = ferramenta !== "PowerShell";
   return { ehBash, seg: ehBash ? normalizarComando(texto).seg : String(texto) };
+}
+
+/**
+ * #530 rodada 3: o texto dentro de `powershell -Command "..."`, `pwsh -c` ou `cmd /c`
+ * e sintaxe do PowerShell, mesmo quando o wrapper veio de uma chamada Bash. Le-se
+ * cru, como o PowerShell le: a palavra do bash apagava as barras de
+ * `C:\Git\cmd\git.exe` e o git deixava de ser reconhecido. O primeiro token sai por
+ * regex, porque `normalizarNomeExecutavel` nao e exportado por `tokens-comando.cjs`.
+ */
+function ferramentaDoInterno(segmento, ferramenta) {
+  const m = /^\s*(?:"([^"]*)"|'([^']*)'|(\S+))/.exec(String(segmento));
+  const tok = m ? (m[1] !== undefined ? m[1] : m[2] !== undefined ? m[2] : m[3]) : "";
+  const exe = tok.split(/[\\/]/).pop().replace(/\.exe$/i, "").toLowerCase();
+  const ehShellWindows = exe === "pwsh" || exe === "powershell" || exe === "cmd";
+  return ehShellWindows ? "PowerShell" : ferramenta;
 }
 
 /** Primeiro verbo de git da linha inteira que caia no conjunto dado, ou null. */
@@ -559,7 +574,7 @@ function procuraCLI(comando, clis, ferramenta) {
       return;
     }
     if (interno !== null) {
-      for (const a of achadasEmString(interno, clis, ferramenta)) achadas.push({ ...a, indiceSegmento });
+      for (const a of achadasEmString(interno, clis, ferramentaDoInterno(textoAPartir(toks, i), ferramenta))) achadas.push({ ...a, indiceSegmento });
       return;
     }
 
@@ -643,7 +658,7 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false, profundidad
     const lido = textoLido(seg, ferramenta);
     if (lido.ehBash) {
       const { interno, ilegivel } = desempacotarWrapperDeString(lido.seg, { ferramenta });
-      if (interno !== null && !ilegivel) alvos.push(...alvosBashEscrita(interno, base, ehPowerShell, profundidade + 1));
+      if (interno !== null && !ilegivel) alvos.push(...alvosBashEscrita(interno, base, ferramentaDoInterno(lido.seg, ferramenta) === "PowerShell", profundidade + 1));
       // #530 (D6): cada corpo de crase ou `$(...)` roda como comando, a partir do cwd deste segmento.
       for (const corpo of corposDeSubstituicao(seg)) {
         alvos.push(...alvosBashEscrita(corpo, base, ehPowerShell, profundidade + 1));

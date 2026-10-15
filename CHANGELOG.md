@@ -28,6 +28,9 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 - **Limite conhecido:** a leitura do bash é parcial. Ainda passam, por exemplo: `bash -c '...' _`, `env bash -c ...`,
   `t\ee P/f`, `{cp,a,P/f}` e `tee {P/f,}`. A família inteira está na #530, e a abordagem por caminho do principal fica
   para um fluxo próprio.
+- **Falsos positivos residuais, remetidos à #530:** `cd hooks; x=$(echo a; echo b > ../c)` barra por engano, porque o
+  corpo de `$(` sem aspas cruza `;` e é resolvido a partir do cwd inicial. E `bash -c '...'` dentro da ferramenta
+  PowerShell passa sem ser lido, pelo mesmo gap.
 - **Crédito:** a montagem da palavra e a expansão de chaves vêm de `hooks/lib/palavra-bash.cjs`, enxertada de
   `plugins/ruflo-mods/hooks/guard/dangerous-command.ts` do ruflo (`ruvnet/ruflo`, licença MIT).
 

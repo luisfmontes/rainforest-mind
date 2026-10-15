@@ -1062,5 +1062,19 @@ gate "(#530) rodada 2: PowerShell cd P; C:\\Git\\cmd\\git.exe commit barra" 2 \
 gate "(#530) rodada 2: cd hooks; echo \"\$(echo x > ../f)\" passa (cwd do segmento)" 0 "$(wt 'cd hooks; echo "$(echo x > ../f)"')"
 gate "(#530) rodada 2: cd P; echo \"\$(echo x > f)\" barra (cwd do segmento)" 2 "$(wt "cd $R; echo \"\$(echo x > f)\"")"
 
+echo "-- (#530) rodada 3: interno de powershell -Command e cmd /c nao passa pela leitura do bash --"
+# O texto dentro de `powershell -Command "..."` e PowerShell: a contrabarra de
+# `C:\Git\cmd\git.exe` e caractere, nao escape. Sem ela o interno vira `C:Gitcmdgit.exe`,
+# o git nao casa e o gate acusa 0 onde a base barra. Valores em aspa simples, para o bash
+# nao tocar na barra; o caso falha se ela sumir.
+gate "(#530) rodada 3: powershell -Command C:\\Git\\cmd\\git.exe -C P commit barra" 2 "$(wt 'powershell -Command "C:\Git\cmd\git.exe -C '"$R"' commit -m x"')"
+gate "(#530) rodada 3: powershell.exe -c C:\\PROGRA~1\\Git\\cmd\\git.exe -C P commit barra" 2 "$(wt 'powershell.exe -c "C:\PROGRA~1\Git\cmd\git.exe -C '"$R"' commit --allow-empty -m x"')"
+gate "(#530) rodada 3: pwsh -Command C:\\Git\\cmd\\git.exe -C P commit barra" 2 "$(wt 'pwsh -Command "C:\Git\cmd\git.exe -C '"$R"' commit -m x"')"
+gate "(#530) rodada 3: cmd /c C:\\Git\\cmd\\git.exe -C P commit barra" 2 "$(wt 'cmd /c "C:\Git\cmd\git.exe -C '"$R"' commit -m x"')"
+gate "(#530) rodada 3: cmd.exe /c C:\\Git\\cmd\\git.exe -C P commit barra" 2 "$(wt 'cmd.exe /c "C:\Git\cmd\git.exe -C '"$R"' commit -m x"')"
+echo "-- (#530) rodada 3: vizinhos legitimos do interno continuam a 0 --"
+gate "(#530) rodada 3: powershell -Command git -C W status passa" 0 "$(wt 'powershell -Command "git -C '"$WT"' status"')"
+gate "(#530) rodada 3: bash -c 'echo x > f' a partir de W passa" 0 "$(wt "bash -c 'echo x > f'")"
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
