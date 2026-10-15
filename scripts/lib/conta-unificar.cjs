@@ -102,7 +102,7 @@ function lerProgresso(arq) {
 function gravarProgresso(plano, rel) {
   if (!plano.progressoArq) return;
   fs.mkdirSync(path.dirname(plano.progressoArq), { recursive: true });
-  fs.appendFileSync(plano.progressoArq, JSON.stringify(rel.split(path.sep).join('/')) + '\n');
+  fs.appendFileSync(plano.progressoArq, '\n' + JSON.stringify(rel.split(path.sep).join('/')) + '\n');
 }
 
 function classeDe(rel) {
@@ -355,15 +355,22 @@ function aplicar(plano, ops) {
   });
   // Relido AGORA (rodada 6, achado 2): uma sessão pode ter gravado o destino depois do planejar (chave nova,
   // numStartups). Só entra o que é da pessoal e ainda não existe no destino; o resto do arquivo atual fica como está.
-  etapa('.claude.json', () => {
+  const claudeJson = etapa('.claude.json', () => {
     const { mcpAdd, projAdd, destino } = plano.claude;
-    if (!Object.keys(mcpAdd).length && !Object.keys(projAdd).length) return;
+    const gravados = [];
+    const mantidos = [];
+    if (!Object.keys(mcpAdd).length && !Object.keys(projAdd).length) return { gravados, mantidos };
     const atual = lerJsonOpcional(destino, {});
     const mcpServers = { ...(atual.mcpServers || {}) };
     const projects = { ...(atual.projects || {}) };
-    for (const [n, def] of Object.entries(mcpAdd)) if (!Object.hasOwn(mcpServers, n)) mcpServers[n] = def;
+    for (const [n, def] of Object.entries(mcpAdd)) {
+      if (Object.hasOwn(mcpServers, n)) { mantidos.push(n); continue; }
+      mcpServers[n] = def;
+      gravados.push(n);
+    }
     for (const [k, def] of Object.entries(projAdd)) if (!Object.hasOwn(projects, k)) projects[k] = def;
     gravarTexto(destino, JSON.stringify({ ...atual, mcpServers, projects }, null, 2) + '\n');
+    return { gravados, mantidos };
   });
   // A instalação usa a chave completa <plugin>@<marketplace>: nome nu é ambíguo entre marketplaces.
   const plugins = etapa('plugins', () => plano.plugins.map((p) => ({ chave: p.chave, status: ops.instalarPlugin(p.chave) })));
@@ -381,7 +388,7 @@ function aplicar(plano, ops) {
   if (plano.progressoArq) fs.rmSync(plano.progressoArq, { force: true });
   // plano.reagendar: o vigia estava agendado, ou a marca de uma rodada anterior diz que o reagendamento falta.
   const reagendado = etapa('vigia reagendado', () => (plano.reagendar ? ops.reagendar() : null));
-  return { plugins, reagendado };
+  return { plugins, reagendado, claudeJson };
 }
 
 function relatorio(plano, aplicado) {
@@ -410,7 +417,11 @@ function relatorio(plano, aplicado) {
     }
   }
   linhas.push(`historico: +${plano.historico.novas.length} linha(s)`);
-  linhas.push(`mcp em .claude.json: +${plano.claude.mcpNovos.length} (${plano.claude.mcpNovos.join(', ') || 'nenhum'})`);
+  const mcpGravados = aplicado && aplicado.claudeJson ? aplicado.claudeJson.gravados : plano.claude.mcpNovos;
+  linhas.push(`mcp em .claude.json: +${mcpGravados.length} (${mcpGravados.join(', ') || 'nenhum'})`);
+  if (aplicado && aplicado.claudeJson && aplicado.claudeJson.mantidos.length) {
+    linhas.push(`mcp mantido do destino: ${aplicado.claudeJson.mantidos.join(', ')}`);
+  }
   const repetidos = plano.claude.projRepetidos;
   linhas.push(`projetos em .claude.json: +${plano.claude.projNovos.length} (já existiam nas duas pastas, não mesclados: ${repetidos.join(', ') || 'nenhum'})`);
   for (const p of plano.plugins) {
