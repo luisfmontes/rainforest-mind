@@ -45,21 +45,45 @@
     "reaberturas": 3
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "051038123dfabeba40d68690a84463d12d631d92",
+      "head": "51f3f8c92806dcd436e15e10f76ce5d612fde25a",
       "caminhos_sujos": []
     },
-    "vereditos": [],
-    "em_voo": [],
-    "em": "2026-10-14",
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a17ec7e2f92c655c8",
+        "veredito": "ok",
+        "em": "2026-10-15",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a17ec7e2f92c655c8.jsonl"
+      }
+    ],
+    "em": "2026-10-15",
     "achados": 5,
-    "tentativas": 3,
-    "liberado_em": "2026-10-15",
     "rodadas_extra": [
       {
         "texto": "Luis (15/10): volta 4 com lista de permissao so na superficie nova (template com crase e concatenacao), aceitando depois dela comentario ate o fim da linha e barra de continuacao; aspas comuns voltam exatamente a regua da main; junto, regex quadratico, comentarios de referenciaIsenta e CHANGELOG alinhado; lacuna das aspas comuns vira ideia plantada",
         "em": "2026-10-15"
+      }
+    ],
+    "base": "45c221a3b6addd2436dc1235e179ec2c53dc0a2b",
+    "head": "51f3f8c92806dcd436e15e10f76ce5d612fde25a",
+    "destinos": [
+      {
+        "pendente": "aperto da aspa aplicado com esquema ja fechado",
+        "destino": "descartada",
+        "motivo": "forma irreal (Bearer fechado seguido de variavel solta nao e JS, Python, shell nem YAML validos); revisor INFERIDO, sem uso real"
+      },
+      {
+        "pendente": "f-string com aspa de abertura ja consumida devolve null",
+        "destino": "descartada",
+        "motivo": "forma irreal (aspa antes do prefixo f); sem uso real"
+      },
+      {
+        "pendente": "regra alheia lenta com 100 mil trechos a. (pre-existente)",
+        "destino": "plantada",
+        "ref": "#531"
       }
     ]
   },

@@ -26,10 +26,10 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
     template;
   - o header entre aspas comuns (dupla, simples, f-string, `.format`) e sem aspa segue a régua de antes, da #410: o que
     passava sem literal continua passando, com dois apertos que só olham até a aspa de fechamento: a referência tem de
-    terminar nela (`"Bearer ${tok} <literal>"` passa a ser barrado), e um literal entre aspas emendado por `+` logo
+    terminar nela (`"Bearer ${tok} <literal>"` passa a ser barrado, e também uma segunda referência ou espaço antes do
+    fechamento), e um literal entre aspas emendado por `+` logo
     depois dela também;
   - fica de fora o literal que continua na linha seguinte, porque a checagem é por linha.
-- O mesmo trecho deixou de levar segundos numa linha com muitos espaços depois do esquema.
 
 ## 1.67.1 — 2026-10-14
 

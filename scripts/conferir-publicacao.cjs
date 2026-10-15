@@ -94,9 +94,10 @@ const REFERENCIA_DE_VARIAVEL = new RegExp(
 
 // Issue #494: `Authorization` com esquema. Dois regimes, conforme a abertura do
 // valor (D1 e D2 do design, volta 4):
-//  - aspa comum (`"`, `'`, f-string) ou sem aspa: a régua da #410, sem mudança
-//    (referenciaRegua410). Única adição: um literal entre aspas emendado por `+`
-//    depois da aspa de fechamento cancela a isenção.
+//  - aspa comum (`"`, `'`, f-string) ou sem aspa: a régua da #410
+//    (referenciaRegua410), com duas adições que só olham até a aspa de
+//    fechamento: a referência termina nela, e um literal entre aspas emendado por
+//    `+` logo depois dela cancela a isenção.
 //  - superfície nova, template com crase e concatenação `<aspa> + <expr>`: lista
 //    de PERMISSÃO. Depois da expressão só vale o que fimPermitido aceita.
 const FORMAT_VAR = /^\{\}["']?\.format\(\s*[A-Za-z_]\w*\s*\)/;
