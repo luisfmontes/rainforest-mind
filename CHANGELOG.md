@@ -12,20 +12,24 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 ## 1.67.2 — 2026-10-14
 
-- **`Authorization` montado com variável deixa de ser barrado como credencial, por lista de permissão.** O gate de publicação
+- **`Authorization` montado com variável em JavaScript deixa de ser barrado como credencial.** O gate de publicação
   (`conferir-publicacao`) barrava o header montado como template de esquema `Bearer` com variável dentro, e a concatenação
   de `Bearer` com um identificador, embora as duas formas, as mais comuns de montar header OAuth em JavaScript, não carreguem
-  segredo. O agente ficava sem saída honesta e a tarefa caía em redespacho (#494). A isenção agora é uma régua fechada:
+  segredo. O agente ficava sem saída honesta e a tarefa caía em redespacho (#494). A isenção nova é uma régua fechada:
   - vale só na chave `Authorization` com esquema (`Bearer`, `Basic` ou `Token`); outras chaves de credencial não ganham
     isenção, e `api_key` com concatenação segue barrado;
   - passam o template com crase em que o trecho entre chaves é só uma variável ou uma cadeia de membros (ex.: `this.token`),
     fechado logo depois, e a concatenação do esquema com uma variável, um membro ou uma chamada sem argumento literal;
-  - depois da expressão só pode vir fim de linha ou `, ; ) ] }`, sem `+` adiante. Por isso continuam barrados o literal
-    colado depois da expressão, `.concat(...)`, comentário seguido de `+` e expressão com literal dentro das chaves do
+  - depois do template ou da concatenação vale só: fim de linha, comentário até o fim da linha (`//` ou `#` precedido de
+    espaço), barra de continuação, ou `, ; ) ] }` sem `+` emendado em seguida. Por isso continuam barrados o literal colado
+    depois da expressão, `.concat(...)`, comentário de bloco seguido de `+` e expressão com literal dentro das chaves do
     template;
-  - quando o esquema não abre com aspa (a linha do `curl -H` com a variável de shell), vale a régua de antes, da #410:
-    referência inteira e nada colado nela;
+  - o header entre aspas comuns (dupla, simples, f-string, `.format`) e sem aspa segue a régua de antes, da #410: o que
+    passava sem literal continua passando, com dois apertos que só olham até a aspa de fechamento: a referência tem de
+    terminar nela (`"Bearer ${tok} <literal>"` passa a ser barrado), e um literal entre aspas emendado por `+` logo
+    depois dela também;
   - fica de fora o literal que continua na linha seguinte, porque a checagem é por linha.
+- O mesmo trecho deixou de levar segundos numa linha com muitos espaços depois do esquema.
 
 ## 1.67.1 — 2026-10-14
 
