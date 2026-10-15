@@ -54,26 +54,31 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "77fd6cce2ca93a5cab9b259e017c496a1b3de509",
+      "head": "273bb6919a7a81e6bb2ee04368ba94dac0442c22",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "aafc9ac618653bd63",
-        "veredito": "reprovado",
+        "agente_id": "a4566ec1d9df5b777",
+        "veredito": "ok",
         "em": "2026-10-15",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-aafc9ac618653bd63.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a4566ec1d9df5b777.jsonl"
       }
     ],
-    "achados": 4,
+    "achados": 0,
     "em": "2026-10-15",
-    "tentativas": 1
+    "base": "6b145a4cae8d4439fe96d3ae18529016bd844365",
+    "head": "273bb6919a7a81e6bb2ee04368ba94dac0442c22"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-integrar-tarefa.sh",
+    "saida": "ok: 78   falhou: 0",
+    "sensor_externo": "bash scripts/testa-integrar-tarefa.sh",
+    "em": "2026-10-15"
   },
   "fechar": {
     "status": "pendente"

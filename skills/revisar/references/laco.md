@@ -45,8 +45,9 @@ despachos) avisa por `PushNotification`, e fora delas o fluxo segue até o merge
    original **mais** um bloco `## Achados do último revisor` com a saída do
    passo 2 colada **literal**. Só a última crítica, nunca o histórico das
    voltas anteriores; nenhuma paráfrase sua (D3).
-4. Integre e confira como em qualquer entrega (`conferir-entrega`, critério,
-   catraca de mutação), feche o `executar` e rode o revisor de novo.
+4. Integre pelo `node scripts/integrar-tarefa.cjs`, que roda o
+   `conferir-entrega` e a catraca de mutação (com o flake gravado, seção
+   Flaky), feche o `executar` e rode o revisor de novo.
 
 ## Teto
 
