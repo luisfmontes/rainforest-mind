@@ -42,12 +42,20 @@
         "iteracao": 2,
         "sessao": "d39ef955-529f-4604-9440-a7d2fbc14edb",
         "ts": "2026-10-15T18:51:04.170Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "9c12fbbf709510480676145d85df0e753355a3c0",
+        "iteracao": 1,
+        "sessao": "d39ef955-529f-4604-9440-a7d2fbc14edb",
+        "ts": "2026-10-15T19:18:03.757Z"
       }
     ],
     "em": "2026-10-15",
     "integradas": [
       1,
-      2
+      2,
+      3
     ]
   },
   "revisar": {
