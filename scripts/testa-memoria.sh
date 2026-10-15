@@ -950,5 +950,29 @@ else
   falhou=$((falhou+1)); echo "  FALHA sem argumento, cwd fora do projeto: esperado $rc_esp, veio $rc_db"
 fi
 echo
+echo "== buscar --texto ordena por bm25 (revisita do context-mode) =="
+# A antiga tem o termo tres vezes, a nova uma: por relevancia a antiga vem
+# primeiro; sem --texto, a nova (recencia).
+CAIXA_BM25="$(novo_sandbox)"
+RFM_ROOT="$CAIXA_BM25" $MEMORIA iniciar > /dev/null 2>&1
+RFM_ROOT="$CAIXA_BM25" node -e "
+  const { abrirBanco } = require('./scripts/memoria.cjs');
+  const path = require('path');
+  const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+  const ins = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
+  ins.run('p-bm25', 'ANTIGA RELEVANCIA RELEVANCIA RELEVANCIA', '2026-01-01T00:00:00.000Z', 'bm25-a');
+  ins.run('p-bm25', 'NOVA RELEVANCIA com muito texto de enchimento ao redor do termo', '2026-10-01T00:00:00.000Z', 'bm25-b');
+  db.close();
+" 2>/dev/null
+primeiro_txt=$(RFM_ROOT="$CAIXA_BM25" $MEMORIA buscar --texto RELEVANCIA --json 2>/dev/null | node -e 'const a=JSON.parse(require("fs").readFileSync(0,"utf8")||"[]");process.stdout.write(String(a[0]&&a[0].conteudo).split(" ")[0])')
+primeiro_rec=$(RFM_ROOT="$CAIXA_BM25" $MEMORIA buscar --projeto p-bm25 --json 2>/dev/null | node -e 'const a=JSON.parse(require("fs").readFileSync(0,"utf8")||"[]");process.stdout.write(String(a[0]&&a[0].conteudo).split(" ")[0])')
+echo "  comando: RFM_ROOT=<sandbox> node scripts/memoria.cjs buscar --texto RELEVANCIA --json -> primeiro: $primeiro_txt; sem --texto -> primeiro: $primeiro_rec"
+if [ "$primeiro_txt" = "ANTIGA" ] && [ "$primeiro_rec" = "NOVA" ]; then
+  ok=$((ok+1)); echo "  ok   buscar --texto ordena por bm25 (e sem --texto segue por recencia)"
+else
+  falhou=$((falhou+1)); echo "  FALHA buscar --texto ordena por bm25: esperado ANTIGA/NOVA, veio $primeiro_txt/$primeiro_rec"
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

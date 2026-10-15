@@ -462,6 +462,27 @@ test("(msys-2) plataforma injetada 'win32': /c/proj/x vira c:/proj/x", () => {
 });
 
 console.log();
+console.log("== #514 (P2): expansao de chaves em argumento nao e fronteira ==");
+{
+  const { segmentosComAspas } = require(process.argv[2]);
+  const n = (c) => segmentosComAspas(c).length;
+  test("(514a) echo a/{b,c}/d -> 1 segmento", () => eq(n("echo a/{b,c}/d"), 1, "argumento com chaves fica inteiro"));
+  test("(514b) wc -l s/{a,b}/S.md; echo {1..3} -> 2 segmentos", () => eq(n("wc -l s/{a,b}/S.md; echo {1..3}"), 2, "so o ; separa"));
+  test("(514c) {cd,x} em posicao de comando continua cortando", () => eq(n("{cd,x}") > 1, true, "chave em posicao de comando e fronteira"));
+  test("(514d) A=1 {cd,x} / then {cd,x} / builtin {cd,x} continuam cortando", () => {
+    for (const c of ["A=1 {cd,x}", "then {cd,x}", "then A=1 {cd,x}", "builtin {cd,x}", "env -i {cd,x}"]) eq(n(c) > 1, true, c);
+  });
+  test("(514e) { cd x; } e &{git checkout main} continuam cortando", () => {
+    eq(n("{ cd x; }") > 1, true, "grupo com espaco");
+    eq(n("&{git checkout main}") > 1, true, "scriptblock do PowerShell");
+  });
+  test("(514f) chave sem , nem x..y, ou com $ dentro, continua cortando", () => {
+    eq(n("echo {abc}") > 1, true, "sem virgula");
+    eq(n("echo {a,$x}") > 1, true, "com $");
+  });
+}
+
+console.log();
 console.log(`== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 process.exit(falhou);
 NODESCRIPT

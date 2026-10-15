@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.67.2-1e5c3f?style=flat-square" alt="versão 1.67.2">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.67.3-1e5c3f?style=flat-square" alt="versão 1.67.3">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -506,6 +506,8 @@ padrão.
 ou o caminho. Nome curto que casa com mais de um projeto, ou com nenhum, sai com
 erro listando os candidatos. O design:
 [`docs/rainforest/design/2026-10-08-projeto-canonico.md`](docs/rainforest/design/2026-10-08-projeto-canonico.md).
+Com `--texto`, o resultado vem pelo mais relevante (bm25 do FTS5), e o empate fica com o mais
+recente; sem `--texto`, a lista é dos mais recentes.
 
 ## Mais fundo
 

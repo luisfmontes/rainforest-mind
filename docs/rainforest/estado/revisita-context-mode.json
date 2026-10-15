@@ -1,0 +1,95 @@
+{
+  "slug": "revisita-context-mode",
+  "titulo": "Revisita do context-mode: #514 (gate barra leitura com chaves), ranking bm25 no buscar, livro de repos",
+  "criado_em": "2026-10-15",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/revisita-context-mode.md",
+    "em": "2026-10-15"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/revisita-context-mode.md",
+    "tarefas": 5,
+    "paralelas": [
+      3,
+      4
+    ],
+    "em": "2026-10-15"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-15",
+    "comando": "bash hooks/testa-cwd-efetivo.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-fechar-issue.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-staging-total.sh; bash scripts/testa-memoria.sh",
+    "saida": "55 ok 0 falha; 230 ok 0 falha; 386 ok 0 falha; 47 ok 0 falha; 189 ok 0 falha; 42 ok 0 falha",
+    "tarefas_ok": 5,
+    "tarefas": 5,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-worktree.sh, secao (#514) redirecionamento para descarte nao e escrita"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-worktree.sh, secao (#514) expansao de chaves em argumento nao e grupo"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria.sh, secao buscar --texto ordena por bm25"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "texto de registro e ideias plantadas por script"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "metadados de versao e Issue no GitHub"
+      }
+    ],
+    "em": "2026-10-15"
+  },
+  "revisar": {
+    "status": "ok",
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ae9e0e944454364b8",
+        "veredito": "ok",
+        "em": "2026-10-15",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/d39ef955-529f-4604-9440-a7d2fbc14edb/subagents/agent-ae9e0e944454364b8.jsonl"
+      }
+    ],
+    "snapshot": {
+      "head": "6e44b720a7fb71bd5f2a41f7f545b6487e8525ea",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/revisita-context-mode.json"
+      ]
+    },
+    "achados": 0,
+    "base": "bae41ad3",
+    "head": "6e44b720",
+    "em": "2026-10-15"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash hooks/testa-gate-worktree.sh",
+    "saida": "243 ok, 0 falha (mais cwd-efetivo 55, fechar-issue 386, mensagem-commit 47, staging-total 189, testa-memoria 42, todos 0 falha; provas T1/T2 exit 0, T3 ok bm25; livro, 4 ideias ELv2, #530 aberta, versao 1.67.2 conferidos)",
+    "sensor_externo": "bash hooks/testa-gate-worktree.sh",
+    "head": "6e44b720",
+    "em": "2026-10-15"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "merge",
+    "pr": 535,
+    "em": "2026-10-15"
+  }
+}

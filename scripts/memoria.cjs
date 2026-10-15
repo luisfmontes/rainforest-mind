@@ -955,6 +955,9 @@ function resolverProjetoDaBusca(conexao, valor) {
 // Comando: buscar [--texto "..."] [--projeto "..."] [--limite N] [--json]
 // Busca observações usando FTS5. Degradação: banco ausente/vazio/corrompido
 // devolve resultado vazio com exit 0, nunca erro.
+// `buscar --texto`: mais relevante primeiro; empate (mesmo bm25) pelo mais recente.
+const ORDEM_BUSCA_TEXTO = 'ORDER BY bm25(observacoes_fts), o.criada_em DESC';
+
 function cmdBuscar() {
   const { caminhoDb } = resolverCaminhos();
 
@@ -1005,12 +1008,14 @@ function cmdBuscar() {
     if (texto) {
       // Busca FTS5: combinar conteúdo com projeto se fornecido.
       // Tarefa 3 (D3): filtroVivas('o.') tira a substituída da busca.
+      // Ranking por relevância (bm25), não por data: com `IN (SELECT rowid ...)`
+      // o FTS só filtrava, e o primeiro resultado era o mais recente que casava
+      // (revisita do context-mode, 2026-10-15). Mesma forma de `buscarCandidatas`.
       query = `
         SELECT o.id, o.projeto, o.conteudo, o.criada_em
-        FROM observacoes o
-        WHERE o.id IN (
-          SELECT rowid FROM observacoes_fts WHERE conteudo MATCH :fts_query
-        )
+        FROM observacoes_fts
+        JOIN observacoes o ON o.id = observacoes_fts.rowid
+        WHERE observacoes_fts MATCH :fts_query
         ${filtroVivas('o.')}
       `;
       params.fts_query = texto; // FTS5 syntax: "palavra" ou "palavra1 AND palavra2"
@@ -1030,7 +1035,7 @@ function cmdBuscar() {
       }
     }
 
-    query += ' ORDER BY criada_em DESC LIMIT :limite';
+    query += (texto ? ` ${ORDEM_BUSCA_TEXTO}` : ' ORDER BY criada_em DESC') + ' LIMIT :limite';
 
     const stmt = conexao.prepare(query);
     try {

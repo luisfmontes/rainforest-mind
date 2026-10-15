@@ -10,6 +10,22 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.67.3 — 2026-10-15
+
+- **Agente que só lê no checkout principal não leva mais trava por `2>/dev/null` junto de `{a,b}`.** O `gate-worktree`
+  cortava a linha em `{` mesmo no meio de `a/{b,c}/d`. O pedaço `{` marcava a linha como incerta e, com qualquer
+  redirecionamento na linha, o cwd do principal virava alvo de escrita (#514). Agora a expansão de chaves só fica inteira
+  quando está em argumento de um comando simples, sem aspas, `\`, `$` ou redirecionamento antes dela na linha. Em posição
+  de comando (`{cd,X}`), depois de `A=1`, de palavra reservada ou de wrapper (`builtin`, `eval`, `env`…), ou com prefixo
+  que não dá para ler com segurança (`A="a b" {cd,X}`, `\builtin {cd,X}`), a chave continua barrando como antes. `/dev/null` deixou de ser alvo de escrita, e `$null` também, só na ferramenta PowerShell (no bash é
+  variável comum). `NUL` continua sendo alvo, porque no MSYS `> nul` pode criar um arquivo.
+- **`A=1 cd <principal>`, `then cd <principal>`, `if cd …` e `! cd …` passam a contar como mudança de pasta.** Antes
+  esses `cd` não eram vistos, e um subagente no worktree podia escrever no principal por eles (#530, parte 1). O `cd`
+  logo depois de `then`, `else`, `elif` ou `do` conta como incerto, porque o ramo pode não rodar. O `cd` em comando
+  seguinte dentro do bloco (`then true; cd X`) e depois de `&&`/`||` continua tratado como certo, como antes; isso fica na #530.
+- **`memoria.cjs buscar --texto` traz o mais relevante primeiro (bm25), não o mais recente que casa.** Sem `--texto`
+  continua listando por recência. A injeção da abertura e a por assunto não mudam: já ranqueavam.
+
 ## 1.67.2 — 2026-10-14
 
 - **`Authorization` montado com variável em JavaScript deixa de ser barrado como credencial.** O gate de publicação

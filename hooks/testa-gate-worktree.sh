@@ -178,7 +178,7 @@ GATE_MUTADO="$RAIZ/gate-sem-escrita.cjs"
 node -e '
 const fs = require("fs");
 let t = fs.readFileSync(process.argv[1], "utf8");
-const achar = "function alvosBashEscrita(comando, cwdInicial) {";
+const achar = "function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {";
 if (!t.includes(achar)) { console.error("ANCORA NAO BATE"); process.exit(1); }
 t = t.replace(achar, achar + "\n  return [];");
 fs.writeFileSync(process.argv[2], t);
@@ -922,6 +922,62 @@ echo "== #403: aspas duplas DENTRO do campo avaliado chegam ao gate =="
 # payload invalido, e um caso que esperasse 0 ficava verde sem ser olhado.
 gate "comando com aspas duplas no campo: escrita fora do worktree barra" 2 \
   "$(b 'echo "a \"b\"" > '"$R"'/novo.txt' "$WT")"
+
+echo
+echo "== (#514) redirecionamento para descarte nao e escrita =="
+# Agente de leitura no principal. O parentese marca `incerto`; antes, o
+# `/dev/null` virava alvo e o `incerto` puxava o cwd do principal junto.
+ex() { pj agent_id ag-514 agent_type Explore cwd "$R" hook_event_name PreToolUse tool_name "${2:-Bash}" tool_input.command "$1"; }
+gate "(#514) (ls x) 2>/dev/null no principal passa"            0 "$(ex '(ls x) 2>/dev/null')"
+gate "(#514) (ls x) > \$null (PowerShell) no principal passa"   0 "$(ex '(ls x) > $null' PowerShell)"
+gate "(#514) (ls x) > nul continua barrando (MSYS cria arquivo)" 2 "$(ex '(ls x) > nul')"
+# No bash `$null` e variavel comum: isentar ali seria contorno (security review).
+gate "(#514) bash: null=a.txt; echo x > \$null continua barrando" 2 "$(ex 'null=a.txt; echo x > $null')"
+gate "(#514) bash: (ls x) > \$null continua barrando"            2 "$(ex '(ls x) > $null')"
+gate "(#514) echo x > f.txt no principal continua barrando"     2 "$(ex 'echo x > f.txt')"
+
+echo
+echo "== (#514) expansao de chaves em argumento nao e grupo =="
+# So P2 conserta o primeiro: o alvo e real (fora do repo), nao descarte.
+gate "(#514) ls 2>/tmp/x.log; echo a/{b,c}/d passa"            0 "$(ex 'ls 2>/tmp/x.log; echo a/{b,c}/d')"
+gate "(#514) ls x 2>/dev/null | head; wc -l a/{b,c}/d passa"   0 "$(ex 'ls x 2>/dev/null | head; wc -l a/{b,c}/d')"
+gate "(#514) ls x 2>/dev/null; echo a/{b,c}/d passa"           0 "$(ex 'ls x 2>/dev/null; echo a/{b,c}/d')"
+gate "(#514) ls x > /dev/null; echo {b,c} passa"               0 "$(ex 'ls x > /dev/null; echo {b,c}')"
+gate "(#514) ls 2>/tmp/x.log; echo {1..3} passa"               0 "$(ex 'ls 2>/tmp/x.log; echo {1..3}')"
+gate "(#514) &{git checkout main} (PowerShell) continua barrando" 2 "$(ex '&{git checkout main}' PowerShell)"
+gate "(#514) { cd x; } > f continua barrando"                  2 "$(ex '{ cd x; } > f')"
+gate "(#514) ls 2>/tmp/x.log; A=1 {cd,x} continua barrando"    2 "$(ex 'ls 2>/tmp/x.log; A=1 {cd,x}')"
+gate "(#514) ls 2>/tmp/x.log; builtin {cd,x} continua barrando" 2 "$(ex 'ls 2>/tmp/x.log; builtin {cd,x}')"
+gate "(#514) echo a/{b,c}/d > f.txt continua barrando"         2 "$(ex 'echo a/{b,c}/d > f.txt')"
+
+echo
+echo "== (#514/#530) cd depois de atribuicao ou palavra reservada e movedor =="
+# Antes do #514 a chave inocente marcava a linha incerta e barrava estes por
+# acaso (security review); sem chave, ja passavam (#530 P1). Do worktree.
+wt() { pj agent_id ag-530 agent_type executor cwd "$WT" hook_event_name PreToolUse tool_name Bash tool_input.command "$1"; }
+gate "(#530) echo {a,b}; A=1 cd <principal>; git commit barra"       2 "$(wt "echo {a,b}; A=1 cd '$R'; git commit -m x")"
+gate "(#530) echo {a,b}; if true; then cd <principal>; fi; commit barra" 2 "$(wt "echo {a,b}; if true; then cd '$R'; fi; git commit -m x")"
+gate "(#530) A=1 cd <principal>; echo x > f barra"                    2 "$(wt "A=1 cd '$R'; echo x > f")"
+gate "(#530) if cd <principal>; then echo x > f; fi barra"            2 "$(wt "if cd '$R'; then echo x > f; fi")"
+gate "(#530) ! cd <principal>; git commit barra"                      2 "$(wt "! cd '$R'; git commit -m x")"
+gate "(#530) A=1 cd <worktree>; git commit passa"                     0 "$(wt "A=1 cd '$WT'; git commit -m x")"
+gate "(#514) echo {a,b}; git commit no worktree passa"                0 "$(wt 'echo {a,b}; git commit -m x')"
+# Revisor: prefixo com aspas/barra partia errado e a chave virava argumento;
+# o bash roda `cd <principal>` (base 2, branch 0 antes do conserto).
+for pre in 'A="a b"' "A='a b'" 'A=a\ b' '> "a b"' '<<<"a b"' '\builtin' '"builtin"' "'command'" '"eval"'; do
+  # Caminho SEM aspas dentro da chave: com aspas a chave ja e fronteira por
+  # outra regra, e o caso nao mediria este conserto (mutacao sobrevivia).
+  gate "(revisor) $pre {cd,<principal>}; git commit barra" 2 "$(wt "$pre {cd,$R}; git commit -m x")"
+done
+
+echo
+echo "== (#530) cd em ramo/corpo condicional e incerto, nunca certeza =="
+# Do principal: o `cd` para o worktree pode nao rodar, e a escrita cai no
+# principal. Tomado como certeza, o gate liberava (security review).
+gate "(#530) if false; then cd <wt>; fi; echo x > f no principal barra"   2 "$(ex "if false; then cd '$WT'; fi; echo x > f")"
+gate "(#530) if true; then :; else cd <wt>; fi; echo x > f barra"         2 "$(ex "if true; then :; else cd '$WT'; fi; echo x > f")"
+gate "(#530) for d in; do cd <wt>; done; echo x > f barra"                2 "$(ex "for d in; do cd '$WT'; done; echo x > f")"
+gate "(#530) A=1 cd <wt>; echo x > f no principal passa (cd roda)"        0 "$(ex "A=1 cd '$WT'; echo x > f")"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
