@@ -21,7 +21,40 @@
     "em": "2026-10-15"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-10-15",
+    "comando": "bash hooks/testa-cwd-efetivo.sh; bash hooks/testa-gate-worktree.sh; bash hooks/testa-gate-fechar-issue.sh; bash hooks/testa-gate-mensagem-commit.sh; bash hooks/testa-gate-staging-total.sh; bash scripts/testa-memoria.sh",
+    "saida": "55 ok 0 falha; 230 ok 0 falha; 386 ok 0 falha; 47 ok 0 falha; 189 ok 0 falha; 42 ok 0 falha",
+    "tarefas_ok": 5,
+    "tarefas": 5,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-worktree.sh, secao (#514) redirecionamento para descarte nao e escrita"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-worktree.sh, secao (#514) expansao de chaves em argumento nao e grupo"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria.sh, secao buscar --texto ordena por bm25"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "texto de registro e ideias plantadas por script"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "metadados de versao e Issue no GitHub"
+      }
+    ],
+    "em": "2026-10-15"
   },
   "revisar": {
     "status": "pendente"
