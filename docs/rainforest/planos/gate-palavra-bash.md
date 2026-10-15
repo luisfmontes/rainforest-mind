@@ -91,7 +91,7 @@ Pelo gate real, com payload PreToolUse (`agent_id`, `agent_type: executor`, `cwd
 
 ### 3. `gate-worktree`: escrita dentro de `bash -c`/`eval` e de substituição, e estouro barrado [tipo: implementar]
 atende: D1, D2, D3, D5, D6
-arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`
+arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`, `hooks/lib/cwd-efetivo.cjs`, `hooks/testa-cwd-efetivo.sh`, `hooks/lib/palavra-bash.cjs`, `hooks/testa-palavra-bash.sh`
 depende de: 2
 prova: `P=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && W=$(git rev-parse --show-toplevel) && node -e 'process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:process.argv[1],hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"bash -c '"'"'echo x > "+process.argv[2]+"/f'"'"'"}}))' "$W" "$P" | node hooks/gate-worktree.cjs >/dev/null 2>&1; test $? -eq 2`
 mutacao:
@@ -133,6 +133,18 @@ Pelo gate real, com payload PreToolUse (`agent_id`, `agent_type: executor`, `cwd
 - `echo a{b,c} > f`
 - `{c,}d P; echo x > f`, porque o bash não muda de cwd
 - `'cd' hooks && echo x > f`, dentro do próprio W
+
+**Também → 2** (emenda de 2026-10-15, sondagem depois da tarefa 2; 0 na base e na branch da tarefa 2, e o bash muda o cwd ou roda o git em P em todos):
+- `cd P > /dev/null; echo x > f`
+- `cd P 2>/dev/null && echo x > f`
+- `>/dev/null cd P; echo x > f`
+- `2>&1 cd P; echo x > f`
+- `A=a b cd P; echo x > f`
+- `{"cd",P}; echo x > f`
+- `{git,-C,P,commit,-m,x}`
+- `{env,-C,P,git,commit}`
+
+O vizinho legítimo correspondente, `cd hooks > /dev/null; echo x > f` dentro de W, → **0**.
 
 **Continuam como hoje:** os seis "não pode quebrar" do topo. Provado por `bash hooks/testa-gate-worktree.sh` com 0 falhas e os casos impressos.
 
