@@ -18,9 +18,8 @@
     "em": "2026-10-15"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-15",
-    "em_voo": [],
     "carimbos": [
       {
         "tarefa": 1,
@@ -63,6 +62,13 @@
         "iteracao": 1,
         "sessao": "d39ef955-529f-4604-9440-a7d2fbc14edb",
         "ts": "2026-10-15T19:55:51.641Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "6c724bce066c1afbf53815ca53eb20fcec553a78",
+        "iteracao": 1,
+        "sessao": "d39ef955-529f-4604-9440-a7d2fbc14edb",
+        "ts": "2026-10-15T21:09:15.314Z"
       }
     ],
     "em": "2026-10-15",
@@ -71,43 +77,45 @@
       2,
       3,
       4,
-      5
+      5,
+      6
     ],
-    "tarefas_ok": 5,
-    "tarefas": 5,
-    "comando": "node scratchpad/niveis.cjs <W> hooks/gate-worktree.cjs; bash hooks/testa-palavra-bash.sh",
-    "saida": "1 niveis -> exit 0  2 niveis -> exit 0  3 niveis -> exit 0  4 niveis -> exit 0  5 niveis -> exit 2 wrapper aninhado demais para conferir (mais de 4 niveis) 6 niveis -> exit 2 wrapper aninhado demais para conferir (mais de 4 niveis) ",
+    "tarefas_ok": 6,
+    "tarefas": 6,
+    "comando": "node scripts/conferir-mutacao.cjs --raiz . --arquivo hooks/gate-worktree.cjs --de 'const ehBash = ferramenta !== \"PowerShell\";' --para 'const ehBash = true;' --bateria 'bash hooks/testa-gate-worktree.sh' --timeout 900000",
+    "saida": "ok: bateria VERMELHA com o comportamento invertido (exit 1), confirmada em duas rodadas. Baseline: 88657 ms (exit 0) -> Mutacao: 87148 ms (exit 1). Integracao T6: resultado aceito, commit 0993c21d. Prova T6 (PowerShell git.exe -C P commit) gate=2.",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-palavra-bash.sh, secao chave entre aspas ou escapada nao expande"
+        "fixture": "testa-palavra-bash.sh, secao \"chave entre aspas ou escapada nao expande\""
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "testa-cwd-efetivo.sh, secao (#530) palavra de comando reconstruida"
+        "fixture": "testa-cwd-efetivo.sh, secao \"(#530) palavra de comando reconstruida: aspas, escape, ANSI-C e chaves\""
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "testa-gate-worktree.sh, secao (#530) escrita dentro de bash -c, eval e substituicao de comando"
+        "fixture": "testa-gate-worktree.sh, secao \"(#530) escrita dentro de bash -c, eval e substituicao de comando\""
       },
       {
         "tarefa": 4,
         "resultado": "n/a",
-        "motivo": "diferencial mede o efeito das tarefas 1 a 3, sem ramo proprio"
+        "motivo": "a tarefa mede o efeito das tarefas 1 a 3, sem ramo proprio a inverter"
       },
       {
         "tarefa": 5,
         "resultado": "n/a",
-        "motivo": "metadados de versao e texto"
+        "motivo": "metadados de versao e texto, sem comportamento"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-worktree.sh, secao \"(#530) rodada 2: PowerShell nao passa pela leitura do bash; substituicao no cwd do segmento\""
       }
     ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-15"
-    },
     "reaberturas": 1
   },
   "revisar": {
