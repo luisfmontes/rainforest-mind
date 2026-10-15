@@ -1,0 +1,35 @@
+{
+  "slug": "revisita-context-mode",
+  "titulo": "Revisita do context-mode: #514 (gate barra leitura com chaves), ranking bm25 no buscar, livro de repos",
+  "criado_em": "2026-10-15",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/revisita-context-mode.md",
+    "em": "2026-10-15"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/revisita-context-mode.md",
+    "tarefas": 5,
+    "paralelas": [
+      3,
+      4
+    ],
+    "em": "2026-10-15"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
