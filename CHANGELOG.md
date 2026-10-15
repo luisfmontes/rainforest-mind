@@ -10,6 +10,20 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.67.2 — 2026-10-15
+
+- **Agente que só lê no checkout principal não leva mais trava por `2>/dev/null` junto de `{a,b}`.** O `gate-worktree`
+  cortava a linha em `{` mesmo no meio de `a/{b,c}/d`. O pedaço `{` marcava a linha como incerta e, com qualquer
+  redirecionamento na linha, o cwd do principal virava alvo de escrita (#514). Agora a expansão de chaves em posição de
+  argumento fica inteira; em posição de comando (`{cd,X}`) ou depois de `A=1`, palavra reservada ou wrapper, continua
+  como antes. `/dev/null` deixou de ser alvo de escrita, e `$null` também, só na ferramenta PowerShell (no bash é
+  variável comum). `NUL` continua sendo alvo, porque no MSYS `> nul` pode criar um arquivo.
+- **`A=1 cd <principal>`, `then cd <principal>`, `if cd …` e `! cd …` passam a contar como mudança de pasta.** Antes
+  esses `cd` não eram vistos, e um subagente no worktree podia escrever no principal por eles (#530, parte 1).
+  `{cd,<principal>}` em posição de comando continua aberto na #530.
+- **`memoria.cjs buscar --texto` traz o mais relevante primeiro (bm25), não o mais recente que casa.** Sem `--texto`
+  continua listando por recência. A injeção da abertura e a por assunto não mudam: já ranqueavam.
+
 ## 1.67.1 — 2026-10-14
 
 - **O `--escopo` do `conferir-entrega` aceita `**` entre pastas, com a mesma regra do `creep`.** `arquivos: src/**` recusava
