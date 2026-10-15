@@ -10,7 +10,16 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
-## 1.67.1 — 2026-10-14
+## 1.67.2 — 2026-10-14
+
+- **`Authorization` montado com variável deixa de ser barrado como credencial.** O gate de publicação (`conferir-publicacao`)
+  barrava o header montado como template de esquema `Bearer` com variável dentro, e a concatenação de `Bearer` com um
+  identificador, embora as duas formas, as mais comuns de montar header OAuth em JavaScript, não carreguem segredo. O agente
+  ficava sem saída honesta e a tarefa caía em redespacho (#494). Agora a isenção vale só em `Authorization` com esquema
+  (`Bearer`, `Basic` ou `Token`): template com `${variavel}` (crase de abertura conta como esquema) e concatenação com
+  identificador, membro ou chamada sem argumento literal passam. Literal continua barrado em qualquer lugar: colado depois da
+  referência no template, no lugar dela, como lado direito da concatenação ou como argumento da chamada. Outras chaves de
+  credencial não ganham isenção; `api_key` com concatenação segue barrado.
 
 - **O `--escopo` do `conferir-entrega` aceita `**` entre pastas, com a mesma regra do `creep`.** `arquivos: src/**` recusava
   `src/a/b.txt` como fora do escopo, porque `**` só casava um nível de pasta. Agora o `conferir-entrega` (e o gêmeo `.py`)
