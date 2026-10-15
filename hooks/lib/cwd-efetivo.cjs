@@ -93,7 +93,13 @@ function fimDaExpansaoDeChaves(cmd, i, atual) {
   if (!dentro.includes(",") && !/^[A-Za-z0-9]+\.\.[A-Za-z0-9]+(\.\.-?\d+)?$/.test(dentro)) return -1;
 
   // Palavras completas antes da palavra corrente (a que contem a chave).
-  const palavras = atual.replace(/\S*$/, "").trim().split(/\s+/).filter(Boolean);
+  // O split por espaco so e fiel sem aspas, `\`, `$`, crase ou redirecionamento:
+  // `A="a b" {cd,X}` partia em `A="a` + `b"` e `b"` virava "comando";
+  // `\builtin {cd,X}` escapava da lista. Prefixo fora do conjunto simples:
+  // a chave segue fronteira (revisor da revisita-context-mode).
+  const prefixo = atual.replace(/\S*$/, "");
+  if (/[^\w\s.\/:=+,@%-]/.test(prefixo)) return -1;
+  const palavras = prefixo.trim().split(/\s+/).filter(Boolean);
   const RESERVADAS = ["!", "if", "then", "else", "elif", "do", "while", "until", "{"];
   let k = 0;
   while (k < palavras.length) {

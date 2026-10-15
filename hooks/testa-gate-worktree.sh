@@ -962,6 +962,13 @@ gate "(#530) if cd <principal>; then echo x > f; fi barra"            2 "$(wt "i
 gate "(#530) ! cd <principal>; git commit barra"                      2 "$(wt "! cd '$R'; git commit -m x")"
 gate "(#530) A=1 cd <worktree>; git commit passa"                     0 "$(wt "A=1 cd '$WT'; git commit -m x")"
 gate "(#514) echo {a,b}; git commit no worktree passa"                0 "$(wt 'echo {a,b}; git commit -m x')"
+# Revisor: prefixo com aspas/barra partia errado e a chave virava argumento;
+# o bash roda `cd <principal>` (base 2, branch 0 antes do conserto).
+for pre in 'A="a b"' "A='a b'" 'A=a\ b' '> "a b"' '<<<"a b"' '\builtin' '"builtin"' "'command'" '"eval"'; do
+  # Caminho SEM aspas dentro da chave: com aspas a chave ja e fronteira por
+  # outra regra, e o caso nao mediria este conserto (mutacao sobrevivia).
+  gate "(revisor) $pre {cd,<principal>}; git commit barra" 2 "$(wt "$pre {cd,$R}; git commit -m x")"
+done
 
 echo
 echo "== (#530) cd em ramo/corpo condicional e incerto, nunca certeza =="
