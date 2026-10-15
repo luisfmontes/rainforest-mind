@@ -1,0 +1,38 @@
+# Diferencial base x branch do gate-palavra-bash (tarefa 4 do plano)
+# base: commit 9f6b9ca3, extraido com git archive para a pasta do scratchpad (hooks e scripts)
+# branch: worktree agent-a88fce1f7f5478e9c, HEAD ad31d6efdc1c6f59b78aba6c79490af88ff77621 (base-ok)
+# P = C:/Projetos/rainforest-mind (dirname do git-common-dir); W = C:/Projetos/rainforest-mind/.claude/worktrees/agent-a88fce1f7f5478e9c
+# hooks: gate-worktree, gate-fechar-issue, gate-mensagem-commit, gate-staging-total, gate-subagente-sem-gh
+# corpus: 555 comandos unicos; 555 rodados (fonte: extrair.cjs)
+# execucoes: 11100 (555 comandos x 5 hooks x 2 cwd x 2 lados)
+# mudancas: 26 (26 de 0 para 2, 0 de 2 para 0)
+# gerado por: node <scratchpad>/gate-palavra-bash-dif/rodar.cjs (blocos bloco1 e bloco2), depois gerar.cjs
+# RFM_ROOT: pasta neutra fora do repo, igual nos dois lados (como a bateria, #160)
+# 2 para 0: nenhuma
+# emenda 5 (A=a b cd P; echo x > f) nao muda: sai 0 nos dois lados com cwd=W, e o bash le b como comando, nao cd (divergencia do relatorio)
+0→2 | gate-worktree | cwd=W | {cd,C:/Projetos/rainforest-mind} && echo x > f | contorno 1: palavra com chaves em posicao de comando, {cd,P}
+0→2 | gate-worktree | cwd=W | 'cd' C:/Projetos/rainforest-mind; echo x > f | contorno 2: palavra com aspas simples em posicao de comando
+0→2 | gate-worktree | cwd=W | c\d C:/Projetos/rainforest-mind; echo x > f | contorno 3: barra invertida no meio da palavra (c\d)
+0→2 | gate-worktree | cwd=W | $'\x63d' C:/Projetos/rainforest-mind; echo x > f | contorno 4: ANSI-C $'\x63d' em posicao de comando
+0→2 | gate-worktree | cwd=P | bash -c 'cd C:/Projetos/rainforest-mind; echo x > f' | contorno 5: bash -c com cd para o principal, escrita depois
+0→2 | gate-worktree | cwd=W | bash -c 'cd C:/Projetos/rainforest-mind; echo x > f' | contorno 5: bash -c com cd para o principal, escrita depois
+0→2 | gate-worktree | cwd=P | bash -c 'echo x > C:/Projetos/rainforest-mind/f' | contorno 6: bash -c com escrita em caminho absoluto do principal
+0→2 | gate-worktree | cwd=W | bash -c 'echo x > C:/Projetos/rainforest-mind/f' | contorno 6: bash -c com escrita em caminho absoluto do principal
+0→2 | gate-worktree | cwd=W | echo `cd C:/Projetos/rainforest-mind; echo x > f` | contorno 7: cd dentro de crase sem aspas
+0→2 | gate-worktree | cwd=P | echo "$(cd C:/Projetos/rainforest-mind; echo x > f)" | contorno 8: cd dentro de $(...) entre aspas duplas
+0→2 | gate-worktree | cwd=W | echo "$(cd C:/Projetos/rainforest-mind; echo x > f)" | contorno 8: cd dentro de $(...) entre aspas duplas
+0→2 | gate-worktree | cwd=P | echo "`cd C:/Projetos/rainforest-mind; echo x > f`" | contorno 9: cd dentro de crase entre aspas duplas
+0→2 | gate-worktree | cwd=W | echo "`cd C:/Projetos/rainforest-mind; echo x > f`" | contorno 9: cd dentro de crase entre aspas duplas
+0→2 | gate-worktree | cwd=W | cd C:/Projetos/rainforest-mind > /dev/null; echo x > f | emenda 1: redirecionamento depois do cd
+0→2 | gate-worktree | cwd=W | cd C:/Projetos/rainforest-mind 2>/dev/null && echo x > f | emenda 2: redirecionamento de erro depois do cd, com &&
+0→2 | gate-worktree | cwd=W | >/dev/null cd C:/Projetos/rainforest-mind; echo x > f | emenda 3: redirecionamento antes do cd
+0→2 | gate-worktree | cwd=W | 2>&1 cd C:/Projetos/rainforest-mind; echo x > f | emenda 4: redirecionamento de erro antes do cd
+0→2 | gate-worktree | cwd=W | {"cd",C:/Projetos/rainforest-mind}; echo x > f | emenda 6: aspas dentro das chaves
+0→2 | gate-worktree | cwd=P | {git,-C,C:/Projetos/rainforest-mind,commit,-m,x} | emenda 7: git -C principal commit, em chaves (D1: git em P)
+0→2 | gate-worktree | cwd=W | {git,-C,C:/Projetos/rainforest-mind,commit,-m,x} | emenda 7: git -C principal commit, em chaves (D1: git em P)
+0→2 | gate-worktree | cwd=P | {env,-C,C:/Projetos/rainforest-mind,git,commit} | emenda 8: env -C principal git commit, em chaves
+0→2 | gate-worktree | cwd=W | {env,-C,C:/Projetos/rainforest-mind,git,commit} | emenda 8: env -C principal git commit, em chaves
+0→2 | gate-worktree | cwd=P | bash -c 'bash -c '\''bash -c '\''\'\'''\''bash -c '\''\'\'''\''\'\''\'\'''\'''\''\'\'''\''bash -c '\''\'\'''\''\'\''\'\'''\'''\''\'\'''\''\'\''\'\'''\''\'\''\'\'''\'''\''\'\'''\'''\''\'\'''\''\'\''\'\'''\'''\''\'\'''\''echo x > f'\''\'\'''\''\'\''\'\'''\'''\''\'\'''\''\'\''\'\'''\''\'\''\'\'''\'''\''\'\'''\'''\''\'\'''\''\'\''\'\'''\'''\''\'\'''\'''\''\'\'''\''\'\''\'\'''\'''\''\'\'''\'''\''\'\'''\'''\''' | motivo 1: bash -c aninhado 5 niveis, barrado por escrita generica em cwd=P (stderr sem frase de profundidade: divergencia do relatorio)
+0→2 | gate-worktree | cwd=W | {a,b}{c,d}{e,f}{g,h}{i,j}{k,l}{m,n}{o,p}{q,r}{s,t}{u,v}{w,x}{y,z} echo x > f | motivo 2: 13 grupos de chaves em posicao de comando, estouro; stderr traz a frase de estouro
+0→2 | gate-worktree | cwd=P | bash -c 'echo x > f' | gemeo do contorno 6: mesma forma (escrita dentro de bash -c), alvo relativo f, que em cwd=P cai no principal
+0→2 | gate-worktree | cwd=P | eval 'echo x > f' | gemeo do contorno 6: mesma forma com eval (D3), alvo relativo f, em cwd=P cai no principal
