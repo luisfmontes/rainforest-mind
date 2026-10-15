@@ -178,7 +178,7 @@ GATE_MUTADO="$RAIZ/gate-sem-escrita.cjs"
 node -e '
 const fs = require("fs");
 let t = fs.readFileSync(process.argv[1], "utf8");
-const achar = "function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {";
+const achar = "function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false, profundidade = 0) {";
 if (!t.includes(achar)) { console.error("ANCORA NAO BATE"); process.exit(1); }
 t = t.replace(achar, achar + "\n  return [];");
 fs.writeFileSync(process.argv[2], t);
@@ -980,5 +980,75 @@ gate "(#530) for d in; do cd <wt>; done; echo x > f barra"                2 "$(e
 gate "(#530) A=1 cd <wt>; echo x > f no principal passa (cd roda)"        0 "$(ex "A=1 cd '$WT'; echo x > f")"
 
 echo
+echo
+echo "== (#530) escrita dentro de bash -c, eval e substituicao de comando =="
+# Sondagem de 2026-10-15 (base 9f6b9ca3): as nove formas que o gate deixava passar,
+# as oito da emenda, e o que tem que continuar passando ou barrando como antes.
+# `aninhado` monta a profundidade por codigo, com aspas DUPLAS e escape por nivel:
+# reduzEscapeAspasDuplas desfaz `\\` e `\"`. O `'\''` de aspas simples nao e
+# desfeito pelo desempacotador, e o teste mediria outra coisa.
+aninhado() { # n, centro -> `bash -c` aninhado n vezes
+  node -e 'let s=process.argv[2];for(let i=0;i<+process.argv[1];i++)s="bash -c \""+s.replace(/\\/g,"\\\\").replace(/"/g,"\\\"")+"\"";process.stdout.write(s)' "$1" "$2"
+}
+# Barrado com um trecho do motivo no stderr: a pessoa le o porque, nao so o exit.
+gate_motivo() { # nome, trecho do motivo, json
+  local nome="$1" trecho="$2" json="$3"
+  if [ -z "$json" ]; then falhou=$((falhou+1)); echo "  FALHA $nome: payload vazio"; return; fi
+  local saida; saida=$(printf '%s' "$json" | node "$GATE" 2>&1); local got=$?
+  if [ "$got" = 2 ] && printf '%s' "$saida" | grep -q "$trecho"; then
+    ok=$((ok+1)); echo "  ok   $nome (exit 2, motivo: $trecho)"
+  else falhou=$((falhou+1)); echo "  FALHA $nome: esperava exit 2 com '$trecho', veio $got"; echo "$saida" | sed 's/^/         /' | head -6; fi
+}
+# `hooks/` existe no worktree: sem ele `'cd' hooks` vira incerto e o caso nao mede nada.
+mkdir -p "$WT/hooks"
+G13=$(node -e 'process.stdout.write("{a,b}".repeat(13))')
+
+echo "-- as nove formas (item 1): 2 --"
+gate "(#530) {cd,P} && echo x > f"                       2 "$(wt "{cd,$R} && echo x > f")"
+gate "(#530) 'cd' P; echo x > f"                         2 "$(wt "'cd' $R; echo x > f")"
+gate "(#530) c\\d P; echo x > f"                         2 "$(wt "c\\d $R; echo x > f")"
+gate "(#530) \$'\\x63d' P; echo x > f"                   2 "$(wt "\$'\\x63d' $R; echo x > f")"
+gate "(#530) bash -c 'cd P; echo x > f'"                 2 "$(wt "bash -c 'cd $R; echo x > f'")"
+gate "(#530) bash -c 'echo x > P/f'"                     2 "$(wt "bash -c 'echo x > $R/f'")"
+gate "(#530) crase com cd P; echo x > f"                 2 "$(wt "echo \`cd $R; echo x > f\`")"
+gate "(#530) echo \"\$(cd P; echo x > f)\""              2 "$(wt "echo \"\$(cd $R; echo x > f)\"")"
+gate "(#530) echo \"crase com cd P; echo x > f\""        2 "$(wt "echo \"\`cd $R; echo x > f\`\"")"
+
+echo "-- as oito da emenda (item 2): 2 --"
+gate "(#530) cd P > /dev/null; echo x > f"               2 "$(wt "cd $R > /dev/null; echo x > f")"
+gate "(#530) cd P 2>/dev/null && echo x > f"             2 "$(wt "cd $R 2>/dev/null && echo x > f")"
+gate "(#530) >/dev/null cd P; echo x > f"                2 "$(wt ">/dev/null cd $R; echo x > f")"
+gate "(#530) 2>&1 cd P; echo x > f"                      2 "$(wt "2>&1 cd $R; echo x > f")"
+gate "(#530) A=a\\ b cd P; echo x > f"                   2 "$(wt "A=a\\ b cd $R; echo x > f")"
+gate "(#530) {\"cd\",P}; echo x > f"                     2 "$(wt "{\"cd\",$R}; echo x > f")"
+gate "(#530) {git,-C,P,commit,-m,x}"                     2 "$(wt "{git,-C,$R,commit,-m,x}")"
+gate "(#530) {env,-C,P,git,commit}"                      2 "$(wt "{env,-C,$R,git,commit}")"
+
+echo "-- barrados por motivo (item 3) --"
+N5=$(aninhado 5 "echo x > f"); N4=$(aninhado 4 "echo x > f"); N2P=$(aninhado 2 "echo x > $R/f")
+gate_motivo "(#530) bash -c aninhado em 5 niveis"        "mais de 4 niveis"   "$(wt "$N5")"
+gate        "(#530) bash -c aninhado em 4 niveis passa"  0                     "$(wt "$N4")"
+gate        "(#530) bash -c aninhado em 2 niveis, escreve em P" 2             "$(wt "$N2P")"
+gate_motivo "(#530) 13 grupos {a,b} em posicao de comando" "grande demais"    "$(wt "$G13 echo x > f")"
+
+echo "-- vizinhos legitimos (item 4): 0 --"
+gate "(#530) bash -c 'echo x > f'"                       0 "$(wt "bash -c 'echo x > f'")"
+gate "(#530) eval 'echo x > f'"                          0 "$(wt "eval 'echo x > f'")"
+gate "(#530) echo \"\$(git rev-parse HEAD)\" > f"        0 "$(wt "echo \"\$(git rev-parse HEAD)\" > f")"
+gate "(#530) echo 'a\`b\`' > f"                          0 "$(wt "echo 'a\`b\`' > f")"
+gate "(#530) echo '{cd,x}' > f"                          0 "$(wt "echo '{cd,x}' > f")"
+gate "(#530) echo a{b,c} > f"                            0 "$(wt "echo a{b,c} > f")"
+gate "(#530) {c,}d P; echo x > f (bash nao muda o cwd)"  0 "$(wt "{c,}d $R; echo x > f")"
+gate "(#530) 'cd' hooks && echo x > f (no worktree)"     0 "$(wt "'cd' hooks && echo x > f")"
+gate "(#530) cd hooks > /dev/null; echo x > f"           0 "$(wt "cd hooks > /dev/null; echo x > f")"
+
+echo "-- continuam barrados como antes (item 5): 2 --"
+gate "(#530) cd P && echo x > f"                         2 "$(wt "cd $R && echo x > f")"
+gate "(#530) echo \$(cd P; echo x > f)"                  2 "$(wt "echo \$(cd $R; echo x > f)")"
+gate "(#530) (cd P; echo x > f)"                         2 "$(wt "(cd $R; echo x > f)")"
+gate "(#530) bash -c 'cd \$X; echo x > f'"               2 "$(wt "bash -c 'cd \$X; echo x > f'")"
+gate "(#530) bash -c 'echo \$HOME > f'"                  2 "$(wt "bash -c 'echo \$HOME > f'")"
+gate "(#530) eval \"\$(ssh-agent -s)\""                  2 "$(wt "eval \"\$(ssh-agent -s)\"")"
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

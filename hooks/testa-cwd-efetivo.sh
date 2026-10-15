@@ -513,8 +513,19 @@ console.log("== (#530) palavra de comando reconstruida: aspas, escape, ANSI-C e 
     eq(seguinte(`then {cd,${Pf}}`).incerto, true, "then {cd,P} incerto");
   });
   test("(530i) {c,}d P -> continua W (o bash roda 'cd d P', que falha)", () => cwdEhW(`{c,}d ${Pf}`));
-  test('(530j) {cd,"P"} -> incerto (aspa dentro da chave ainda e fronteira)', () => {
-    eq(seguinte(`{cd,"${Pf}"}`).incerto, true, '{cd,"P"} incerto');
+  // #530 (emenda, 2026-10-15): aspa BALANCEADA dentro da chave nao e mais fronteira.
+  // O bash expande `{cd,"P"}` para `cd P`, entao o movedor e exato, nao incerto.
+  // (Antes era incerto; a expectativa mudou junto com a regra, de proposito.)
+  test('(530j) {cd,"P"} -> cwd = P, exato (aspa balanceada na chave nao e fronteira)', () => {
+    cwdEhP(`{cd,"${Pf}"}`);
+    eq(seguinte(`{cd,"${Pf}"}`).incerto, false, '{cd,"P"} exato');
+  });
+  test('(530j2) {"cd",P} -> cwd = P, exato (aspa na palavra de comando)', () => {
+    cwdEhP(`{"cd",${Pf}}`);
+    eq(seguinte(`{"cd",${Pf}}`).incerto, false, '{"cd",P} exato');
+  });
+  test('(530j3) {cd,"P x"} com espaco dentro da aspa continua fronteira (incerto)', () => {
+    eq(seguinte(`{cd,"${Pf} x"}`).incerto, true, '{cd,"P x"} incerto');
   });
   test("(530k) 13 grupos {a,b} em posicao de comando -> estouro: true", () => {
     const r = cwdPorSegmento("{a,b}".repeat(13) + " /x", W);
@@ -523,6 +534,22 @@ console.log("== (#530) palavra de comando reconstruida: aspas, escape, ANSI-C e 
   test("(530l) echo {a,b} (argumento, 2 palavras) nao estoura", () => {
     const r = cwdPorSegmento("echo {a,b}", W);
     eq(r[0].estouro, false, "estouro em argumento pequeno");
+  });
+  // #530 (emenda, 2026-10-15): redirecionamento antes ou depois do destino nao
+  // muda o movedor. O cd roda no MESMO shell; so o destino do redirecionamento e
+  // outro assunto (quem le e alvosBashEscrita, no segmento cru).
+  test("(530m) cd P > /dev/null -> cwd = P", () => cwdEhP(`cd ${Pf} > /dev/null`));
+  test("(530n) cd P 2>/dev/null -> cwd = P", () => cwdEhP(`cd ${Pf} 2>/dev/null`));
+  test("(530o) >/dev/null cd P -> cwd = P", () => cwdEhP(`>/dev/null cd ${Pf}`));
+  test("(530p) 2>&1 cd P -> cwd = P", () => cwdEhP(`2>&1 cd ${Pf}`));
+  test("(530q) A=a\\ b cd P -> cwd = P", () => cwdEhP(`A=a${B} b cd ${Pf}`));
+  // `cd hooks` muda para W/hooks (o cd roda, mesmo com o redirecionamento). Nao e W.
+  test("(530r) cd hooks > /dev/null -> cwd = W/hooks", () => {
+    eq(seguinte(`cd hooks > /dev/null`).cwd, path.resolve(W, "hooks"), "cd hooks > /dev/null -> W/hooks");
+  });
+  test("(530s) dir2>x nao e descritor: cd dir2>x muda para dir2", () => {
+    const r = seguinte(`cd dir2>x`);
+    eq(r.cwd, path.resolve(W, "dir2"), "cd dir2>x -> dir2");
   });
 }
 

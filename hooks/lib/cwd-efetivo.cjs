@@ -83,6 +83,16 @@ function fimDaExpansaoDeChaves(cmd, i) {
   let virgula = false;
   for (let j = i + 1; j < cmd.length; j += 1) {
     const c = cmd[j];
+    // #530 (emenda): aspas BALANCEADAS dentro da palavra de chaves (`{"cd",X}`)
+    // expandem como o bash: o miolo entra literal, e a virgula dentro delas nao
+    // conta. Miolo com espaco, `$`, crase, parentese ou contrabarra continua
+    // recusado (fronteira, portanto incerto), como antes.
+    if (c === '"' || c === "'") {
+      const k = cmd.indexOf(c, j + 1);
+      if (k < 0 || /[\s$`()\\]/.test(cmd.slice(j + 1, k))) return -1;
+      j = k;
+      continue;
+    }
     if (c === "{") { prof += 1; continue; }
     if (c === "}") {
       if (prof > 0) { prof -= 1; continue; }
@@ -313,6 +323,49 @@ function comandoEhGit(seg) {
  * `cd` "dentro" dele nunca muda o cwd do shell que chamou — não entra nesta
  * lista, e o efeito (não casar `CD`/`PUSHD`/`POPD`) é o correto.
  */
+/**
+ * Tira os redirecionamentos FORA de aspas do segmento, para o movedor casar o
+ * `cd`/`pushd`/`popd` que vem com eles: `cd X > /dev/null`, `cd X 2>/dev/null`,
+ * `>/dev/null cd X`, `2>&1 cd X` (#530, emenda). Redirecionamento nao muda o
+ * cwd; o destino dele continua sendo lido por `alvosBashEscrita` no segmento
+ * cru. Numero colado a palavra (`dir2>x`) nao e descritor: fica como texto.
+ */
+function semRedirecionamentos(seg) {
+  let saida = "";
+  let aspa = null;
+  for (let i = 0; i < seg.length; i += 1) {
+    const c = seg[i];
+    if (aspa) {
+      if (c === aspa) aspa = null;
+      saida += c;
+      continue;
+    }
+    if (c === "\\") { saida += seg.slice(i, i + 2); i += 1; continue; }
+    if (c === '"' || c === "'") { aspa = c; saida += c; continue; }
+    const m = /^(?:\d+|&)?(?:>>?|<<?<?)(?:&(?:\d+|-))?/.exec(seg.slice(i));
+    const ehDescritor = /^\d/.test(m ? m[0] : "");
+    if (!m || (ehDescritor && i > 0 && !/[\s;&|()]/.test(seg[i - 1]))) {
+      saida += c;
+      continue;
+    }
+    i += m[0].length - 1;
+    // `>&1` / `2>&-` nao tem destino: o `&N` ja e o fim do operador.
+    if (!/&(?:\d+|-)$/.test(m[0])) {
+      let k = i + 1;
+      while (k < seg.length && /\s/.test(seg[k])) k += 1;
+      if (seg[k] === '"' || seg[k] === "'") {
+        const fecha = seg.indexOf(seg[k], k + 1);
+        k = fecha < 0 ? seg.length : fecha + 1;
+      } else {
+        while (k < seg.length && !/[\s;&|()<>]/.test(seg[k])) k += 1;
+      }
+      i = k - 1;
+    }
+    saida += " ";
+  }
+  return saida;
+}
+
 function semPrefixoSintaticoDeBuiltin(seg) {
   let s = seg;
   // #530 (D4): tira os prefixos sintaticos sem normalizar o comando. Palavra
@@ -400,7 +453,9 @@ function resolverMovedor(seg, estado) {
   // tirada). `sudo cd X` fica de fora (a normalizacao nao mexe nele).
   // #530 (D4): a primeira palavra e lida como o bash (aspa, escape, ANSI-C e
   // expansao de chaves). Estouro do teto barra por quem chama (`estouro`).
-  const normalizado = normalizarComando(semPrefixoSintaticoDeBuiltin(seg));
+  // #530 (emenda): o redirecionamento sai antes (`>/dev/null cd X`, `2>&1 cd X`)
+  // e depois (`cd X 2>/dev/null`), porque o bash o le fora do comando.
+  const normalizado = normalizarComando(semPrefixoSintaticoDeBuiltin(semRedirecionamentos(seg)));
   if (normalizado.estouro) estado.estouro = true;
   const segMovedor = normalizado.seg;
   // `then cd X`, `else cd X`, `do cd X`: o `cd` esta num ramo/corpo que pode nao

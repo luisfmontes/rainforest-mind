@@ -66,6 +66,9 @@ const path = require("node:path");
 const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
 const { cwdPorSegmento, resolverMovedor, toplevelConfinado, extrairUltimoDirGit, segmentosComAspas, SEPARADORES } = require(path.join(__dirname, "lib", "cwd-efetivo.cjs"));
 const CLIS_QUE_ESCREVEM = require(path.join(__dirname, "lib", "clis-que-escrevem.cjs"));
+// #530 (D4, D6): a palavra de comando como o bash a le, e o corpo de cada
+// substituicao de comando (crase e `$(...)`), para o gate conferir o que roda la dentro.
+const { normalizarComando, corposDeSubstituicao } = require(path.join(__dirname, "lib", "palavra-bash.cjs"));
 const {
   tokensComAspas, ehComando, WRAPPERS_QUE_REPASSAM, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
 } = require(path.join(__dirname, "lib", "tokens-comando.cjs"));
@@ -139,7 +142,9 @@ function palavras(cmd) {
  * @returns {{verbo: string, args: string[]}|null}
  */
 function subcomandoGit(cmd, ferramenta) {
-  const w = palavras(cmd);
+  // #530 (D4): `{git,-C,X,commit}` e `'git' commit` sao git para o bash; le-se a
+  // palavra normalizada, nao o texto cru. O `verboNaLinha` e o `alvosBash` passam por aqui.
+  const w = palavras(normalizarComando(cmd).seg);
   for (let i = 0; i < w.length; i += 1) {
     if (w[i] !== "git" && !/[\\/]git(\.exe)?$/.test(w[i])) continue;
     let j = i + 1;
@@ -439,7 +444,9 @@ function alvosBash(comando, cwdInicial, casa = (seg) => {
     // antigo so achava a PRIMEIRA ocorrencia (`.match` unico e lazy), entao
     // `git -C <worktree> -C <principal> commit` classificava o alvo como
     // worktree e liberava, com o commit caindo no principal de verdade.
-    const p = extrairUltimoDirGit(seg);
+    // #530 (D4): sobre a palavra normalizada. No cru, `{git,-C,X,commit}` casaria
+    // o `-C` e capturaria `X,commit,-m,x}` como diretorio.
+    const p = extrairUltimoDirGit(normalizarComando(seg).seg);
     if (p) {
       // `-C` com variavel: nao da para resolver — cai no conservador.
       if (/[$`]/.test(p)) { alvos.push({ dir: cwdInicial, verbo, incerto: true }); continue; }
@@ -578,12 +585,25 @@ function ehDescarteDeSaida(alvo, ehPowerShell) {
   return alvo === "/dev/null" || (ehPowerShell === true && /^\$null$/i.test(alvo));
 }
 
-function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
+function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false, profundidade = 0) {
+  // #530 (D3): mais de 4 niveis de wrapper/substituicao nao sao conferidos. Barrar,
+  // nao liberar sem olhar (D5 do design). O motivo chega ao stderr por `main`.
+  if (profundidade > 4) {
+    return [{ dir: cwdInicial, tipo: "barrar", motivo: "wrapper aninhado demais para conferir (mais de 4 niveis)" }];
+  }
+  const ferramenta = ehPowerShell ? "PowerShell" : "Bash";
   // `segmentosComAspas` pelo mesmo motivo de `alvosBash`: respeita aspas e
   // reconhece `&` simples como separador (K1, rodada 6, lote 3, 2026-09-03).
   const segmentos = segmentosComAspas(comando);
-  const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [] };
+  const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [], estouro: false };
   const alvos = [];
+
+  // #530 (D6, emenda do advisor): crase SEM aspas nao fecha segmento, mas
+  // `segmentosComAspas` corta no `;` dentro dela. Por isso o corpo tambem e lido
+  // sobre o comando INTEIRO, a partir do cwd inicial. Alvo repetido e inofensivo.
+  for (const corpo of corposDeSubstituicao(comando)) {
+    alvos.push(...alvosBashEscrita(corpo, cwdInicial, ehPowerShell, profundidade + 1));
+  }
 
   // Resolve o alvo contra o cwd EFETIVO deste segmento (`base` — o de
   // `env -C`, se houver, senao o `estado.atual` corrente); construcao com
@@ -599,6 +619,16 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
     const mov = resolverMovedor(seg, estado);
     if (mov.soMovedor) continue; // cd/pushd/popd: o segmento INTEIRO e o movedor
     const base = mov.cwd;
+
+    // #530 (D3): `bash -c`, `sh -c`, `eval` etc. com a escrita DENTRO da string. A
+    // palavra e lida normalizada (`'bash' -c` conta). Conteudo ilegivel nao
+    // recursa: quem barra e `procuraCLI`, como antes.
+    const { interno, ilegivel } = desempacotarWrapperDeString(normalizarComando(seg).seg, { ferramenta });
+    if (interno !== null && !ilegivel) alvos.push(...alvosBashEscrita(interno, base, ehPowerShell, profundidade + 1));
+    // #530 (D6): cada corpo de crase ou `$(...)` roda como comando, a partir do cwd deste segmento.
+    for (const corpo of corposDeSubstituicao(seg)) {
+      alvos.push(...alvosBashEscrita(corpo, base, ehPowerShell, profundidade + 1));
+    }
 
     const toks = tokensComAspas(seg);
 
@@ -652,6 +682,11 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
         break;
       }
     }
+  }
+
+  // #530 (D5): expansao de chaves que estourou o teto nao e conferida. Barrar.
+  if (estado.estouro) {
+    alvos.push({ dir: cwdInicial, tipo: "barrar", motivo: "expansao de chaves grande demais para conferir" });
   }
 
   // Conservadorismo: se houver `cd`/`pushd`/`popd` nao-resolvivel, incluir
@@ -805,12 +840,25 @@ function main() {
   const nome = ev.tool_name;
   const cwd = cwdDoEvento;
   let alvos = [];
+  // #530 (D3/D5): comando que nao se consegue conferir (estouro de chaves, wrapper
+  // fundo demais) barra como o ramo incerto de `procuraCLI`: so dentro de repo,
+  // e o motivo vai ao stderr pela `bloqueia`.
+  const barraSemConferir = (motivo) => {
+    if (ehScratchpad(cwd)) return;
+    const estadoAqui = estadoDoRepo(cwd);
+    if (estadoAqui) bloqueia(motivo, estadoAqui.toplevel, `${ev.agent_type || "?"} (${ev.agent_id})`);
+  };
   let motivo = null;
 
   if (FERRAMENTAS_DE_ESCRITA.has(nome)) {
     const alvo = entrada.file_path || entrada.notebook_path || null;
     if (alvo) { alvos = [{ dir: alvo, incerto: false }]; motivo = `Escrita (${nome}) em ${alvo}`; }
   } else if ((nome === "Bash" || nome === "PowerShell") && typeof entrada.command === "string") {
+    // #530 (D5): expansao de chaves que estoura o teto nao e conferida em nenhum
+    // segmento. Barrar antes de qualquer outra conta, com o motivo no stderr.
+    if (cwdPorSegmento(entrada.command, cwd).some((s) => s.estouro)) {
+      barraSemConferir("expansao de chaves grande demais para conferir");
+    }
     const verbo = verboNaLinha(entrada.command, VERBOS_QUE_MEXEM, nome);
     if (verbo) {
       // `incerto` viaja junto (nao so como alvo extra em cwdInicial) — ver o
@@ -820,8 +868,12 @@ function main() {
     } else {
       // Inspecionar redirecionamentos e ferramentas de escrita
       const alvosEscrita = alvosBashEscrita(entrada.command, cwd, nome === "PowerShell");
-      if (alvosEscrita.length > 0) {
-        alvos = alvosEscrita.map((a) => ({ dir: a.dir, incerto: false }));
+      // #530 (D3/D5): `barrar` nao e destino de escrita, e sim "nao deu para conferir".
+      const barrar = alvosEscrita.find((a) => a.tipo === "barrar");
+      if (barrar) barraSemConferir(barrar.motivo);
+      const escritaReal = alvosEscrita.filter((a) => a.tipo !== "barrar");
+      if (escritaReal.length > 0) {
+        alvos = escritaReal.map((a) => ({ dir: a.dir, incerto: false }));
         motivo = `Escrita via Bash (redirecionamento ou ferramenta)`;
       } else {
         // Procurar por CLI externa que escreve. H1 (rodada 5): cada CLI
