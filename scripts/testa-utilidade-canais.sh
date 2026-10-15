@@ -291,6 +291,7 @@ function bancoRegua(nome, nSess, nUtil, nPerda, opcoes) {
   fs.mkdirSync(dir, { recursive: true });
   const b = new DatabaseSync(path.join(dir, 'rainforest.db'));
   criarSchema(b);
+  b.exec('BEGIN'); // fora de transacao cada INSERT e um fsync (#541)
   const canais = soAbertura ? ['abertura'] : ['pedido', 'abertura', 'subagente'];
   const iU = b.prepare('INSERT INTO uso_memoria (origem, ref_id, sessao, servida, nota, pontuada_em, canal) VALUES (?,?,?,?,?,?,?)');
   const iS = b.prepare('INSERT INTO uso_memoria_sessoes (sessao, pontuada_em, buscas_principal, buscas_subagente, subagentes) VALUES (?,?,?,?,?)');
@@ -311,6 +312,7 @@ function bancoRegua(nome, nSess, nUtil, nPerda, opcoes) {
     esperado[canal][1]++;
     if (util) esperado[canal][0]++;
   }
+  b.exec('COMMIT');
   b.close();
   return { dir, esperado };
 }

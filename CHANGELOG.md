@@ -10,6 +10,16 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.67.5 — 2026-10-15
+
+- **`publicar-branch.cjs esperar-ci` não dá mais CI verde com check cancelado.** O `gh pr checks --watch` (gh 2.96) sai 0
+  quando um check foi `CANCELLED` (por exemplo, um shard cortado pelo `timeout-minutes`), e o `esperar-ci` dizia
+  `CI verde: merge autorizado` em cima disso (PR #537). Agora ele lê o estado de cada check em JSON: só `pass` e
+  `skipping` contam como verde. Check cancelado, lista vazia ou resposta ilegível saem 5, nomeando o check.
+- **Baterias de memória mais rápidas no CI (#541).** Sete baterias inseriam centenas de linhas no SQLite fora de
+  transação, um fsync por linha. No runner Windows isso variava de 14 s a 140 s por bateria e fazia o shard 1 estourar o
+  `timeout-minutes` sem nenhum teste falhar. As inserções agora vão numa transação.
+
 ## 1.67.4 — 2026-10-15
 
 - **`conta unificar` mais seguro para quem ainda vai migrar para a pasta única (#503).** Nada muda para quem já migrou.

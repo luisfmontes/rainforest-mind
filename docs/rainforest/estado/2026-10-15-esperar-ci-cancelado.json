@@ -1,0 +1,9 @@
+{
+  "slug": "2026-10-15-esperar-ci-cancelado",
+  "titulo": "esperar-ci-cancelado",
+  "criado_em": "2026-10-15",
+  "leve": {
+    "motivo": "hotfix: esperar-ci deu verde com check CANCELLED (gh pr checks sai 0), visto no PR 537; uma funcao, bateria com 4 casos",
+    "data": "2026-10-15"
+  }
+}
