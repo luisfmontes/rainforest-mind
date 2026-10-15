@@ -568,16 +568,17 @@ function procuraCLI(comando, clis, ferramenta) {
 /**
  * O destino do redirecionamento descarta a saida — nao e escrita em lugar nenhum?
  *
- * `/dev/null` (bash) e `$null` (PowerShell; no bash expande para vazio e da
- * "ambiguous redirect", sem escrever) (#514, P1). Sem isto, `(ls x) 2>/dev/null`
+ * `/dev/null` sempre; `$null` SO na ferramenta PowerShell, onde e automatico e
+ * nao aceita atribuicao (#514, P1). No bash `$null` e variavel comum —
+ * `null=a.txt; echo x > $null` escreve —, entao la segue como alvo. Sem isto, `(ls x) 2>/dev/null`
  * no principal dava alvo + `incerto` (do parentese) e barrava um agente de leitura.
  * `NUL` NAO entra: no MSYS/Cygwin `> nul` pode criar um arquivo literal `nul`.
  */
-function ehDescarteDeSaida(alvo) {
-  return alvo === "/dev/null" || /^\$null$/i.test(alvo);
+function ehDescarteDeSaida(alvo, ehPowerShell) {
+  return alvo === "/dev/null" || (ehPowerShell === true && /^\$null$/i.test(alvo));
 }
 
-function alvosBashEscrita(comando, cwdInicial) {
+function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
   // `segmentosComAspas` pelo mesmo motivo de `alvosBash`: respeita aspas e
   // reconhece `&` simples como separador (K1, rodada 6, lote 3, 2026-09-03).
   const segmentos = segmentosComAspas(comando);
@@ -616,7 +617,7 @@ function alvosBashEscrita(comando, cwdInicial) {
         alvo = prox.v;
         i += 1;
       }
-      if (ehDescarteDeSaida(alvo)) continue;
+      if (ehDescarteDeSaida(alvo, ehPowerShell)) continue;
       empurra(base, alvo, tipo);
     }
 
@@ -818,7 +819,7 @@ function main() {
       motivo = `Comando que mexe no estado do repo: git ${verbo}`;
     } else {
       // Inspecionar redirecionamentos e ferramentas de escrita
-      const alvosEscrita = alvosBashEscrita(entrada.command, cwd);
+      const alvosEscrita = alvosBashEscrita(entrada.command, cwd, nome === "PowerShell");
       if (alvosEscrita.length > 0) {
         alvos = alvosEscrita.map((a) => ({ dir: a.dir, incerto: false }));
         motivo = `Escrita via Bash (redirecionamento ou ferramenta)`;

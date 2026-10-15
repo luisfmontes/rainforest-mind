@@ -178,7 +178,7 @@ GATE_MUTADO="$RAIZ/gate-sem-escrita.cjs"
 node -e '
 const fs = require("fs");
 let t = fs.readFileSync(process.argv[1], "utf8");
-const achar = "function alvosBashEscrita(comando, cwdInicial) {";
+const achar = "function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {";
 if (!t.includes(achar)) { console.error("ANCORA NAO BATE"); process.exit(1); }
 t = t.replace(achar, achar + "\n  return [];");
 fs.writeFileSync(process.argv[2], t);
@@ -931,6 +931,9 @@ ex() { pj agent_id ag-514 agent_type Explore cwd "$R" hook_event_name PreToolUse
 gate "(#514) (ls x) 2>/dev/null no principal passa"            0 "$(ex '(ls x) 2>/dev/null')"
 gate "(#514) (ls x) > \$null (PowerShell) no principal passa"   0 "$(ex '(ls x) > $null' PowerShell)"
 gate "(#514) (ls x) > nul continua barrando (MSYS cria arquivo)" 2 "$(ex '(ls x) > nul')"
+# No bash `$null` e variavel comum: isentar ali seria contorno (security review).
+gate "(#514) bash: null=a.txt; echo x > \$null continua barrando" 2 "$(ex 'null=a.txt; echo x > $null')"
+gate "(#514) bash: (ls x) > \$null continua barrando"            2 "$(ex '(ls x) > $null')"
 gate "(#514) echo x > f.txt no principal continua barrando"     2 "$(ex 'echo x > f.txt')"
 
 echo
