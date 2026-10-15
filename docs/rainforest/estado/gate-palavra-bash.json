@@ -18,7 +18,7 @@
     "em": "2026-10-15"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-15",
     "carimbos": [
       {
@@ -128,27 +128,31 @@
         "fixture": "testa-cwd-efetivo.sh, secao \"(#530) rodada 3: git de caminho Windows sem aspas mantem o -C\""
       }
     ],
-    "reaberturas": 2
+    "reaberturas": 3,
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-15"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "251e53417b10bb61e8210988bf275b78367aeaf4",
+      "head": "318504b1994f01d2c7528ed177a4ef11b8c280fa",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a8d2b02870061d777",
+        "agente_id": "ad047a9b2a319cd36",
         "veredito": "reprovado",
         "em": "2026-10-15",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/d39ef955-529f-4604-9440-a7d2fbc14edb/subagents/agent-a8d2b02870061d777.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/d39ef955-529f-4604-9440-a7d2fbc14edb/subagents/agent-ad047a9b2a319cd36.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-15",
     "achados": 9,
-    "tentativas": 2
+    "tentativas": 3
   },
   "verificar": {
     "status": "pendente"
