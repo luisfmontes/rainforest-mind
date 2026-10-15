@@ -565,6 +565,18 @@ function procuraCLI(comando, clis, ferramenta) {
  * Tudo aqui decide por TOKEN, nunca por match no texto cru — ver o docblock de
  * `tokensComAspas`.
  */
+/**
+ * O destino do redirecionamento descarta a saida — nao e escrita em lugar nenhum?
+ *
+ * `/dev/null` (bash) e `$null` (PowerShell; no bash expande para vazio e da
+ * "ambiguous redirect", sem escrever) (#514, P1). Sem isto, `(ls x) 2>/dev/null`
+ * no principal dava alvo + `incerto` (do parentese) e barrava um agente de leitura.
+ * `NUL` NAO entra: no MSYS/Cygwin `> nul` pode criar um arquivo literal `nul`.
+ */
+function ehDescarteDeSaida(alvo) {
+  return alvo === "/dev/null" || /^\$null$/i.test(alvo);
+}
+
 function alvosBashEscrita(comando, cwdInicial) {
   // `segmentosComAspas` pelo mesmo motivo de `alvosBash`: respeita aspas e
   // reconhece `&` simples como separador (K1, rodada 6, lote 3, 2026-09-03).
@@ -604,6 +616,7 @@ function alvosBashEscrita(comando, cwdInicial) {
         alvo = prox.v;
         i += 1;
       }
+      if (ehDescarteDeSaida(alvo)) continue;
       empurra(base, alvo, tipo);
     }
 

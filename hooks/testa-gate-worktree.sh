@@ -924,5 +924,15 @@ gate "comando com aspas duplas no campo: escrita fora do worktree barra" 2 \
   "$(b 'echo "a \"b\"" > '"$R"'/novo.txt' "$WT")"
 
 echo
+echo "== (#514) redirecionamento para descarte nao e escrita =="
+# Agente de leitura no principal. O parentese marca `incerto`; antes, o
+# `/dev/null` virava alvo e o `incerto` puxava o cwd do principal junto.
+ex() { pj agent_id ag-514 agent_type Explore cwd "$R" hook_event_name PreToolUse tool_name "${2:-Bash}" tool_input.command "$1"; }
+gate "(#514) (ls x) 2>/dev/null no principal passa"            0 "$(ex '(ls x) 2>/dev/null')"
+gate "(#514) (ls x) > \$null (PowerShell) no principal passa"   0 "$(ex '(ls x) > $null' PowerShell)"
+gate "(#514) (ls x) > nul continua barrando (MSYS cria arquivo)" 2 "$(ex '(ls x) > nul')"
+gate "(#514) echo x > f.txt no principal continua barrando"     2 "$(ex 'echo x > f.txt')"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
