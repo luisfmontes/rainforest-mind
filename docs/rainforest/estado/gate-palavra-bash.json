@@ -18,7 +18,7 @@
     "em": "2026-10-15"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-15",
     "em_voo": [],
     "carimbos": [
@@ -103,10 +103,32 @@
         "resultado": "n/a",
         "motivo": "metadados de versao e texto"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-15"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "03b29bc22f452ff65ef93795ca9738f72fccfe22",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ad6018fca68b5884b",
+        "veredito": "reprovado",
+        "em": "2026-10-15",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/d39ef955-529f-4604-9440-a7d2fbc14edb/subagents/agent-ad6018fca68b5884b.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-15",
+    "achados": 9,
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
