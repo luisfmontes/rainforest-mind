@@ -1,0 +1,33 @@
+{
+  "slug": "2026-10-14-bearer-variavel",
+  "titulo": "2026-10-14-bearer-variavel",
+  "criado_em": "2026-10-14",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-10-14-bearer-variavel.md",
+    "decisoes": 4,
+    "em": "2026-10-14"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-14-bearer-variavel.md",
+    "tarefas": 2,
+    "paralelas": [],
+    "em": "2026-10-14"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
