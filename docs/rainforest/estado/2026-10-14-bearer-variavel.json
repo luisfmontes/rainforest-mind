@@ -88,7 +88,11 @@
     ]
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-conferir-publicacao.sh",
+    "saida": "== resultado: 266 ok, 0 falha(s) == (gate: bash hooks/testa-gate-publicacao-destino.sh -> 80 ok, 0 falha(s))",
+    "sensor_externo": "bash scripts/testa-conferir-publicacao.sh",
+    "em": "2026-10-15"
   },
   "fechar": {
     "status": "pendente"
