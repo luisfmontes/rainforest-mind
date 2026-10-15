@@ -47,18 +47,10 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "4ceeed32e4d91fb98e060c60e4e40b9d2d0c5f32",
+      "head": "051038123dfabeba40d68690a84463d12d631d92",
       "caminhos_sujos": []
     },
-    "vereditos": [
-      {
-        "agente": "rainforest-mind:revisor",
-        "agente_id": "aac5669e2dd0c8c55",
-        "veredito": "reprovado",
-        "em": "2026-10-14",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-aac5669e2dd0c8c55.jsonl"
-      }
-    ],
+    "vereditos": [],
     "em_voo": [],
     "em": "2026-10-14",
     "achados": 5,
