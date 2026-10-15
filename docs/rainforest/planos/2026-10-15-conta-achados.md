@@ -47,7 +47,7 @@ mutacao:
   para: if (false) {
   bateria: `bash scripts/testa-conta-unificar.sh`
   fixture: testa-conta-unificar.sh, caso novo "#503 D4" (pessoal com o e-mail da team)
-pronto quando: com a fixture real da bateria, (a) sem `contas.pessoal` e sem `oauthAccount` na pasta pessoal, `conta.cjs unificar` SEM `--aplicar` sai 2 e a mensagem contém `preparar pessoal` e não contém `rode status`; (b) com `--aplicar`, a mesma fixture sai 2 com a mesma mensagem e o disco fica igual (mesmo hash do `estado.json` e do `.claude.json` de trabalho); (c) com `contas.team.email` = `team@exemplo.invalid` e `oauthAccount.emailAddress` da pessoal também `team@exemplo.invalid`, o relatório e o `--aplicar` saem 2, a mensagem nomeia o e-mail duplicado, e o `estado.json` não ganha `contas.pessoal` — provado por `bash scripts/testa-conta-unificar.sh` com zero falha.
+pronto quando: com a fixture real da bateria, (a) sem `contas.pessoal` e sem `oauthAccount` na pasta pessoal, `conta.cjs unificar` SEM `--aplicar` sai 2 e a mensagem contém `/login` e não contém `rode status` nem `preparar` (emenda D3 depois da 1ª revisão); gravado então o `oauthAccount` no `.claude.json` da pasta pessoal, como o login faz, o mesmo relatório sai 0; (b) com `--aplicar`, a mesma fixture sai 2 com a mesma mensagem e o disco fica igual (mesmo hash do `estado.json` e do `.claude.json` de trabalho); (c) com `contas.team.email` = `team@exemplo.invalid` e `oauthAccount.emailAddress` da pessoal também `team@exemplo.invalid`, o relatório e o `--aplicar` saem 2, a mensagem nomeia o e-mail duplicado, e o `estado.json` não ganha `contas.pessoal` — provado por `bash scripts/testa-conta-unificar.sh` com zero falha.
 
 Forma do código: em `conta.cjs`, o bloco que hoje fica depois do `schtasks /Query` ("Conta pessoal sem registro (rodada 6, achado 1)") sobe para antes do `if (!args.includes('--aplicar'))` que imprime o relatório, e decide `plano.registroPessoal` igual. Dentro dele, depois de achar o `oauth`, entra a guarda:
 ```
@@ -55,7 +55,7 @@ if (oauth.emailAddress === (estado.contas.team || {}).email) {
   return sair(2, `...o e-mail ${oauth.emailAddress} já é o da conta de trabalho...unificar não escreveu nada`);
 }
 ```
-A mensagem da recusa sem `oauthAccount` passa a mandar rodar `node scripts/conta.cjs preparar pessoal` (registra a conta pelo login) e depois `unificar` de novo, e continua terminando com `unificar não escreveu nada`. Nenhum caso de teste lê o texto do fonte.
+A mensagem da recusa sem `oauthAccount` passa a mandar fazer login na pasta pessoal (`claude` com `CLAUDE_CONFIG_DIR` apontando para ela e `/login`) e depois `unificar` de novo, e continua terminando com `unificar não escreveu nada`. Nenhum caso de teste lê o texto do fonte.
 
 ### 3. CHANGELOG, README e versão [tipo: docs]
 atende: D1, D2, D3, D4, D5

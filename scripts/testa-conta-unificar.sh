@@ -683,8 +683,9 @@ afirma "(#503 D5) a definição do destino (outro-gh) sobrevive ao mesclar" test
 afirma "(#503 D5) a saída diz que github foi mantido do destino" grep -qF 'mcp mantido do destino: github' "$RAIZ/d5.txt"
 afirma "(#503 D5) a linha 'mcp em .claude.json' não lista github como gravado" bash -c "grep '^mcp em .claude.json:' '$RAIZ/d5.txt' | grep -qvF '(github)'"
 
-# #503 D2/D3: pessoal sem oauthAccount. O relatório (sem --aplicar) já recusa com a mensagem que manda preparar pessoal;
-# o --aplicar recusa com a mesma mensagem. Nada é gravado: os hashes de antes valem depois.
+# #503 D2/D3: pessoal sem oauthAccount. O relatório (sem --aplicar) já recusa com a mensagem que manda fazer login na
+# pasta pessoal; o --aplicar recusa com a mesma mensagem. Nada é gravado: os hashes de antes valem depois. A mensagem
+# não manda para preparar nem status: com as duas pastas, os dois devolvem à mesma recusa.
 C_D23="$(novo_caso d23 pessoal-sem-oauth)"
 H_D23_ESTADO="$(hash_de "$C_D23/dados/contas/estado.json")"
 H_D23_CJ="$(hash_de "$C_D23/trabalho/.claude.json")"
@@ -693,12 +694,20 @@ unif "$C_D23" > "$RAIZ/d23-rel.txt" 2>&1 || RC_D23R=$?
 RC_D23=0
 unif "$C_D23" --aplicar > "$RAIZ/d23-apl.txt" 2>&1 || RC_D23=$?
 afirma "(#503 D2) relatório sem --aplicar com pessoal sem oauthAccount sai 2" test "$RC_D23R" -eq 2
-afirma "(#503 D2) a recusa do relatório manda rodar preparar pessoal" grep -qF 'preparar pessoal' "$RAIZ/d23-rel.txt"
+afirma "(#503 D2) a recusa do relatório manda fazer login na pasta pessoal" grep -qF '/login' "$RAIZ/d23-rel.txt"
 afirma "(#503 D2) a recusa do relatório não manda rodar status" bash -c "! grep -qF 'rode status' '$RAIZ/d23-rel.txt'"
+afirma "(#503 D3) a recusa do relatório não manda rodar preparar" bash -c "! grep -qF 'preparar' '$RAIZ/d23-rel.txt'"
 afirma "(#503 D3) --aplicar com pessoal sem oauthAccount sai 2" test "$RC_D23" -eq 2
-afirma "(#503 D3) a recusa do --aplicar manda rodar preparar pessoal" grep -qF 'preparar pessoal' "$RAIZ/d23-apl.txt"
+afirma "(#503 D3) a recusa do --aplicar manda fazer login na pasta pessoal" grep -qF '/login' "$RAIZ/d23-apl.txt"
 afirma "(#503 D2/D3) estado.json igual ao de antes da recusa" mesmo_hash "$C_D23/dados/contas/estado.json" "$H_D23_ESTADO"
 afirma "(#503 D2/D3) .claude.json de trabalho igual ao de antes da recusa" mesmo_hash "$C_D23/trabalho/.claude.json" "$H_D23_CJ"
+# O caminho que a mensagem indica termina: o login grava oauthAccount no .claude.json da pasta pessoal, e o unificar
+# seguinte aceita (relatório sai 0) sem pedir outro passo.
+node -e "const fs=require('fs');const a=process.argv[1];const o=JSON.parse(fs.readFileSync(a,'utf8'));o.oauthAccount={accountUuid:'00000000-0000-0000-0000-000000000002',emailAddress:'pessoal@exemplo.invalid',organizationUuid:'00000000-0000-0000-0000-000000000000',displayName:'Conta Falsa'};fs.writeFileSync(a,JSON.stringify(o,null,2)+'\n');" "$(win "$C_D23/pessoal/.claude-personal/.claude.json")"
+RC_D23L=0
+unif "$C_D23" > "$RAIZ/d23-login.txt" 2>&1 || RC_D23L=$?
+afirma "(#503 D3) depois do login na pasta pessoal, o relatório do unificar sai 0" test "$RC_D23L" -eq 0
+afirma "(#503 D3) depois do login, a saída não recusa mais a conta pessoal" bash -c "! grep -qF 'sem oauthAccount' '$RAIZ/d23-login.txt'"
 
 # #503 D4: a pessoal tem o mesmo e-mail da team registrada. Recusa no relatório e no --aplicar, sem registrar a pessoal.
 C_D4="$(novo_caso d4 pessoal-email-team)"

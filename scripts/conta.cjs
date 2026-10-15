@@ -1231,7 +1231,7 @@ function migrar(c, args, perfilArq) {
   if (!(estado.contas.pessoal || {}).email) {
     const oauth = (lerJson(claudeArq(c, 'pessoal'), null) || {}).oauthAccount;
     if (!oauth || !oauth.emailAddress) {
-      return sair(2, 'conta pessoal sem registro e sem oauthAccount na pasta pessoal: rode node scripts/conta.cjs preparar pessoal (registra a conta pelo login) e depois unificar de novo. unificar não escreveu nada');
+      return sair(2, 'conta pessoal sem registro e sem oauthAccount na pasta pessoal: faça login nela (claude com CLAUDE_CONFIG_DIR apontando para a pasta pessoal e /login) e rode unificar de novo. unificar não escreveu nada');
     }
     if (oauth.emailAddress === (estado.contas.team || {}).email) {
       return sair(2, `conta pessoal com o e-mail ${oauth.emailAddress}, que já é o da conta de trabalho registrada: entre na pasta pessoal com a conta pessoal e rode unificar de novo. unificar não escreveu nada`);
