@@ -61,7 +61,8 @@ if (variante === 'a-identico') w(path.join(T, 'projects', '-proj-x', 'memory', '
 if (variante !== 'sem-clone') w(path.join(T, 'plugins', 'marketplaces', 'rainforest-mind', 'scripts', 'conta.cjs'), '// clone falso\n');
 // Pasta pessoal (origem).
 j(path.join(P, '.credentials.json'), { claudeAiOauth: { accessToken: 'falso-token-pessoal-cred', refreshToken: 'falso-refresh-pessoal-cred', expiresAt: VIDA, scopes: ['user:inference'], subscriptionType: 'max' }, mcpOAuth: { falso: { accessToken: 'falso-mcp-oauth' } } });
-j(path.join(P, '.claude.json'), { numStartups: 1, oauthAccount: oauth('pessoal@exemplo.invalid'), mcpServers: { whatsapp: variante === 'whatsapp-divergente' ? WA_OUTRA : WA, github: { type: 'stdio', command: 'falso-gh', env: { GH_TOKEN_FALSO: 'falso-gh-token-xyz' } } }, projects: variante === 'projeto-comum' ? { '/falso/pessoal': {}, '/falso/comum': {} } : { '/falso/pessoal': {} } });
+// #503 D2/D4: pessoal-sem-oauth não tem oauthAccount; pessoal-email-team tem o e-mail da team.
+j(path.join(P, '.claude.json'), { numStartups: 1, ...(variante === 'pessoal-sem-oauth' ? {} : { oauthAccount: oauth(variante === 'pessoal-email-team' ? 'team@exemplo.invalid' : 'pessoal@exemplo.invalid') }), mcpServers: { whatsapp: variante === 'whatsapp-divergente' ? WA_OUTRA : WA, github: { type: 'stdio', command: 'falso-gh', env: { GH_TOKEN_FALSO: 'falso-gh-token-xyz' } } }, projects: variante === 'projeto-comum' ? { '/falso/pessoal': {}, '/falso/comum': {} } : { '/falso/pessoal': {} } });
 j(path.join(P, 'settings.json'), { enabledPlugins: { 'security-guidance@claude-plugins-official': true } });
 w(path.join(P, 'history.jsonl'), '{"display":"falso-linha-um"}\n{"display":"falso-linha-dois"}\n{"display":"falso-linha-dois"}\n');
 w(path.join(P, 'projects', '-proj-x', '11111111-1111-4111-8111-111111111111.jsonl'), '{"falso":"transcrito-pessoal"}\n');
@@ -78,7 +79,9 @@ j(path.join(D, 'contas', 'estado.json'), variante === 'estado-fora'
   ? { automatico: false, pastas: { pessoal: { conta: 'team' } }, contas: {} }
   : variante === 'estado-fora-trabalho'
     ? { automatico: false, pastas: { trabalho: { conta: 'pessoal' } }, contas: {} }
-    : { automatico: false, contas: {} });
+    : variante === 'pessoal-email-team'
+      ? { automatico: false, contas: { team: { email: 'team@exemplo.invalid' } } }
+      : { automatico: false, contas: {} });
 if (variante === 'reserva-pronta' || variante === 'reserva-mesmo-token') {
   // reserva-mesmo-token: a reserva já tem o MESMO refresh token da credencial pessoal.
   const refresh = variante === 'reserva-mesmo-token' ? 'falso-refresh-pessoal-cred' : 'falso-refresh-reserva-pronta';
@@ -679,6 +682,34 @@ afirma "(#503 D5) --aplicar sai 0" test "$RC_D5" -eq 0
 afirma "(#503 D5) a definição do destino (outro-gh) sobrevive ao mesclar" test "$(ler "$C_D5/trabalho/.claude.json" mcpServers.github.command)" = outro-gh
 afirma "(#503 D5) a saída diz que github foi mantido do destino" grep -qF 'mcp mantido do destino: github' "$RAIZ/d5.txt"
 afirma "(#503 D5) a linha 'mcp em .claude.json' não lista github como gravado" bash -c "grep '^mcp em .claude.json:' '$RAIZ/d5.txt' | grep -qvF '(github)'"
+
+# #503 D2/D3: pessoal sem oauthAccount. O relatório (sem --aplicar) já recusa com a mensagem que manda preparar pessoal;
+# o --aplicar recusa com a mesma mensagem. Nada é gravado: os hashes de antes valem depois.
+C_D23="$(novo_caso d23 pessoal-sem-oauth)"
+H_D23_ESTADO="$(hash_de "$C_D23/dados/contas/estado.json")"
+H_D23_CJ="$(hash_de "$C_D23/trabalho/.claude.json")"
+RC_D23R=0
+unif "$C_D23" > "$RAIZ/d23-rel.txt" 2>&1 || RC_D23R=$?
+RC_D23=0
+unif "$C_D23" --aplicar > "$RAIZ/d23-apl.txt" 2>&1 || RC_D23=$?
+afirma "(#503 D2) relatório sem --aplicar com pessoal sem oauthAccount sai 2" test "$RC_D23R" -eq 2
+afirma "(#503 D2) a recusa do relatório manda rodar preparar pessoal" grep -qF 'preparar pessoal' "$RAIZ/d23-rel.txt"
+afirma "(#503 D2) a recusa do relatório não manda rodar status" bash -c "! grep -qF 'rode status' '$RAIZ/d23-rel.txt'"
+afirma "(#503 D3) --aplicar com pessoal sem oauthAccount sai 2" test "$RC_D23" -eq 2
+afirma "(#503 D3) a recusa do --aplicar manda rodar preparar pessoal" grep -qF 'preparar pessoal' "$RAIZ/d23-apl.txt"
+afirma "(#503 D2/D3) estado.json igual ao de antes da recusa" mesmo_hash "$C_D23/dados/contas/estado.json" "$H_D23_ESTADO"
+afirma "(#503 D2/D3) .claude.json de trabalho igual ao de antes da recusa" mesmo_hash "$C_D23/trabalho/.claude.json" "$H_D23_CJ"
+
+# #503 D4: a pessoal tem o mesmo e-mail da team registrada. Recusa no relatório e no --aplicar, sem registrar a pessoal.
+C_D4="$(novo_caso d4 pessoal-email-team)"
+RC_D4R=0
+unif "$C_D4" > "$RAIZ/d4-rel.txt" 2>&1 || RC_D4R=$?
+RC_D4=0
+unif "$C_D4" --aplicar > "$RAIZ/d4-apl.txt" 2>&1 || RC_D4=$?
+afirma "(#503 D4) relatório sem --aplicar com e-mail da team sai 2" test "$RC_D4R" -eq 2
+afirma "(#503 D4) a recusa do relatório nomeia team@exemplo.invalid" grep -qF 'team@exemplo.invalid' "$RAIZ/d4-rel.txt"
+afirma "(#503 D4) --aplicar com e-mail da team sai 2" test "$RC_D4" -eq 2
+afirma "(#503 D4) estado.json não ganha contas.pessoal" test "$(ler "$C_D4/dados/contas/estado.json" contas.pessoal.email)" = AUSENTE
 
 echo "ok: $OK   falhou: $FALHOU"
 if [ "$FALHOU" -ne 0 ]; then exit 1; fi
