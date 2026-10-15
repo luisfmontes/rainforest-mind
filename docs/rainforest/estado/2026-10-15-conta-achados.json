@@ -1,0 +1,83 @@
+{
+  "slug": "2026-10-15-conta-achados",
+  "titulo": "conta unificar: 5 achados baixos da pasta-unica (#503)",
+  "criado_em": "2026-10-15",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-10-15-conta-achados.md",
+    "decisoes": 5,
+    "em": "2026-10-15"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-15-conta-achados.md",
+    "tarefas": 3,
+    "paralelas": [],
+    "em": "2026-10-15"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-15",
+    "integradas": [
+      1,
+      2
+    ],
+    "em": "2026-10-15",
+    "tarefas_ok": 3,
+    "tarefas": 3,
+    "comando": "bash scripts/testa-conta-unificar.sh",
+    "saida": "ok: 126   falhou: 0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-conta-unificar.sh, caso #503 D5"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-conta-unificar.sh, caso #503 D4 e #503 D2/D3 (mensagem /login)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "tarefa de documentacao e versao"
+      }
+    ],
+    "reaberturas": 1
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "693a55631afa775ed826f719cdac736f96ea0100",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a46ee26223524205c",
+        "veredito": "ok",
+        "em": "2026-10-15",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a46ee26223524205c.jsonl"
+      }
+    ],
+    "achados": 0,
+    "em": "2026-10-15",
+    "em_voo": [],
+    "base": "9f6b9ca31c93dfed92e638c9f1354e032d113802",
+    "head": "693a55631afa775ed826f719cdac736f96ea0100"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/testa-conta-unificar.sh",
+    "saida": "ok: 126   falhou: 0",
+    "sensor_externo": "bash scripts/testa-conta-unificar.sh",
+    "em": "2026-10-15"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

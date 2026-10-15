@@ -1222,6 +1222,22 @@ function migrar(c, args, perfilArq) {
       return sair(2, 'já existe <arquivo>.bak-pasta-unica: apague ou mova antes. unificar não escreveu nada');
     }
   }
+  // Conta pessoal sem registro (rodada 6, achado 1): o modo uma pasta não tem como registrá-la depois, porque a
+  // pasta pessoal some nesta migração. O registro vai no aplicar (etapa depois do vigia desagendado), do oauthAccount
+  // do próprio .claude.json da pessoal: sem API, porque a bateria não tem servidor falso e a regra proíbe rede. A
+  // primeira troca confere a identidade pela API e desfaz se divergir. Sem oauthAccount, recusa ANTES de escrever.
+  // Fica antes do relatório (#503 D2): o relatório sem --aplicar recusa o mesmo estado que o --aplicar recusa.
+  const estado = lerEstado(c);
+  if (!(estado.contas.pessoal || {}).email) {
+    const oauth = (lerJson(claudeArq(c, 'pessoal'), null) || {}).oauthAccount;
+    if (!oauth || !oauth.emailAddress) {
+      return sair(2, 'conta pessoal sem registro e sem oauthAccount na pasta pessoal: faça login nela (claude com CLAUDE_CONFIG_DIR apontando para a pasta pessoal e /login) e rode unificar de novo. unificar não escreveu nada');
+    }
+    if (oauth.emailAddress === (estado.contas.team || {}).email) {
+      return sair(2, `conta pessoal com o e-mail ${oauth.emailAddress}, que já é o da conta de trabalho registrada: entre na pasta pessoal com a conta pessoal e rode unificar de novo. unificar não escreveu nada`);
+    }
+    plano.registroPessoal = { email: oauth.emailAddress, oauthAccount: oauth };
+  }
   if (!args.includes('--aplicar')) {
     for (const linha of UNIFICAR.relatorio(plano)) console.log(linha);
     if (perfil) {
@@ -1240,18 +1256,6 @@ function migrar(c, args, perfilArq) {
   // Marca de rodada anterior: apagou a tarefa e parou antes do reagendamento. Então /Query 1 não quer dizer
   // "nunca esteve agendado": a tarefa a reagendar é esta.
   plano.reagendar = plano.vigiaAgendado || fs.existsSync(marcaVigioArq(c));
-  // Conta pessoal sem registro (rodada 6, achado 1): o modo uma pasta não tem como registrá-la depois, porque a
-  // pasta pessoal some nesta migração. O registro vai no aplicar (etapa depois do vigia desagendado), do oauthAccount
-  // do próprio .claude.json da pessoal: sem API, porque a bateria não tem servidor falso e a regra proíbe rede. A
-  // primeira troca confere a identidade pela API e desfaz se divergir. Sem oauthAccount, recusa ANTES de escrever.
-  const estado = lerEstado(c);
-  if (!(estado.contas.pessoal || {}).email) {
-    const oauth = (lerJson(claudeArq(c, 'pessoal'), null) || {}).oauthAccount;
-    if (!oauth || !oauth.emailAddress) {
-      return sair(2, 'conta pessoal sem registro e sem oauthAccount na pasta pessoal: rode status com a pasta pessoal em casa (registra a conta pela API) e depois unificar de novo. unificar não escreveu nada');
-    }
-    plano.registroPessoal = { email: oauth.emailAddress, oauthAccount: oauth };
-  }
   let aplicado;
   try {
     aplicado = UNIFICAR.aplicar(plano, {
