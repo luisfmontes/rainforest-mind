@@ -619,8 +619,10 @@ function cwdPorSegmento(comando, cwdInicial) {
     // Usa o ÚLTIMO se houver múltiplos. `comandoEhGit` (K2): só lê o `-C`
     // quando o COMANDO do segmento é `git` de verdade, nunca por substring.
     // #530 (D4): `{git,-C,X,commit}` expande para `git -C X commit`; o git e o
-    // -C saem da palavra normalizada, nao do texto cru.
-    const segGit = normalizarComando(seg).seg;
+    // -C saem da palavra normalizada. Um git de caminho Windows sem aspas
+    // (`C:\Git\cmd\git.exe -C X status`) e lido cru: a normalizacao apaga as barras,
+    // o git deixa de ser reconhecido e o `-C` se perde (rodada 3, achado 3).
+    const segGit = comandoEhGit(seg) ? seg : normalizarComando(seg).seg;
     if (comandoEhGit(segGit)) {
       const p = extrairUltimoDirGit(segGit);
       if (p) {

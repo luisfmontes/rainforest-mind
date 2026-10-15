@@ -487,6 +487,33 @@ console.log("== #514 (P2): expansao de chaves em argumento nao e fronteira ==");
 }
 
 console.log();
+console.log("== (#530) rodada 3: git de caminho Windows sem aspas mantem o -C ==");
+{
+  // Achado 3 da revisao 2: `C:\Git\cmd\git.exe -C P status`, sem aspas. A normalizacao
+  // apagava as barras, o git deixava de ser reconhecido e o `-C` se perdia (cwd = W).
+  // A contrabarra vem de String.fromCharCode(92): sem ela o caso falha, e e isso que prova.
+  const B = String.fromCharCode(92);
+  const W = path.join(testDir, "wt-r3");
+  const P = path.join(testDir, "p-r3");
+  fs.mkdirSync(W, { recursive: true });
+  fs.mkdirSync(P, { recursive: true });
+  const Pf = P.split(B).join("/");
+  const GIT_WIN = "C:" + B + "Git" + B + "cmd" + B + "git.exe";
+  const primeiroCwd = (cmd) => cwdPorSegmento(cmd, W)[0].cwd;
+  test("(r3a) caminho Windows sem aspas: git.exe -C P status -> cwd = P", () => {
+    eq(primeiroCwd(GIT_WIN + " -C " + Pf + " status"), path.resolve(P), "cwd do segmento");
+  });
+  test("(r3b) caminho Windows sem aspas antes de '; codex exec x' -> cwd = P", () => {
+    eq(primeiroCwd(GIT_WIN + " -C " + Pf + " status; codex exec x"), path.resolve(P), "cwd do primeiro segmento");
+  });
+  test("(r3c) contraprova: {git,-C,P,status} continua -> cwd = P", () => {
+    eq(primeiroCwd("{git,-C," + Pf + ",status}"), path.resolve(P), "cwd do segmento");
+  });
+  test("(r3d) contraprova: 'git' -C P status continua -> cwd = P", () => {
+    eq(primeiroCwd("'git' -C " + Pf + " status"), path.resolve(P), "cwd do segmento");
+  });
+}
+
 console.log("== (#530) palavra de comando reconstruida: aspas, escape, ANSI-C e chaves ==");
 {
   // W: worktree temporario (cwd inicial). P: outro diretorio existente.
