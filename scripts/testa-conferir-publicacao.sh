@@ -661,6 +661,64 @@ printf 'const h = { %s: %s%s %s{this.token}%s };\n' "$AU" "$BT" "$BE" "$D" "$BT"
 nao_tem '494 template com ${this.token} passa' "$(roda "$SBP/494-tpl-this.cjs")" "credencial"
 saiu    "e passa (exit 0)"                               "$(codigo "$SBP/494-tpl-this.cjs")" "0"
 
+# Issue #494 (volta 4): sem aspa de abertura a regua e a da base; lista de
+# permissao so com aspa ou crase. Casos em pedacos, como os vizinhos.
+LB='{'; Q="'"
+printf 'curl -H "%s: %s $TOKEN" https://api.x.com/v1\n' "$AU" "$BE" > "$SBP/494v4-curl-var.txt"
+nao_tem 'curl com Bearer $TOKEN sem aspa de abertura passa'      "$(roda "$SBP/494v4-curl-var.txt")" "credencial"
+saiu    "e passa (exit 0)"                                       "$(codigo "$SBP/494v4-curl-var.txt")" "0"
+
+printf 'curl -H "%s: %s ${API_KEY}" \\\n' "$AU" "$BE" > "$SBP/494v4-curl-chave.txt"
+nao_tem 'curl com Bearer ${API_KEY} e barra de continuacao passa' "$(roda "$SBP/494v4-curl-chave.txt")" "credencial"
+saiu    "e passa (exit 0)"                                       "$(codigo "$SBP/494v4-curl-chave.txt")" "0"
+
+printf '{"%s": "%s ${DEFAULT_VALUE:-changeme}"}\n' "$AU" "$BE" > "$SBP/494v4-recuo.txt"
+nao_tem 'Bearer com ${DEFAULT_VALUE:-changeme} entre aspas comuns passa' "$(roda "$SBP/494v4-recuo.txt")" "credencial"
+saiu    "e passa (exit 0)"                                       "$(codigo "$SBP/494v4-recuo.txt")" "0"
+
+printf "{ %s: f'%s {token}', 'Accept': 'json' }\n" "$AU" "$BE" > "$SBP/494v4-fstring-py.txt"
+nao_tem "f-string Python com {token} e aspa simples passa"       "$(roda "$SBP/494v4-fstring-py.txt")" "credencial"
+saiu    "e passa (exit 0)"                                       "$(codigo "$SBP/494v4-fstring-py.txt")" "0"
+
+# Barrados: Ref" nao e f-string, f` nunca e, e crase nao aceita recuo com literal.
+printf '{"%s": Ref"%s {%s}"}\n' "$AU" "$BE" "$HEX32" > "$SBP/494v4-ref-prefixo.txt"
+tem  'Ref"Bearer {hex} como valor continua credencial'           "$(roda "$SBP/494v4-ref-prefixo.txt")" "credencial"
+saiu "e RECUSA (exit 2)"                                         "$(codigo "$SBP/494v4-ref-prefixo.txt")" "2"
+
+printf 'const h = { %s: f%s%s {x}%s };\n' "$AU" "$BT" "$BE" "$BT" > "$SBP/494v4-crase-f.cjs"
+tem  'f`Bearer {x}` como valor continua credencial'              "$(roda "$SBP/494v4-crase-f.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                         "$(codigo "$SBP/494v4-crase-f.cjs")" "2"
+
+printf 'const h = { %s: %s%s %s{TOKEN:-%s}%s };\n' "$AU" "$BT" "$BE" "$D" "$HEX32" "$BT" > "$SBP/494v4-crase-recuo.cjs"
+tem  'crase com ${TOKEN:-literal hex} continua credencial'       "$(roda "$SBP/494v4-crase-recuo.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                         "$(codigo "$SBP/494v4-crase-recuo.cjs")" "2"
+
+# Robustez (item 3): cada entrada degenerada sai 0 ou 2, nunca outro codigo, e
+# termina em menos de 2 s (timeout devolve 124, que reprova).
+saiu_0_ou_2() {
+  local c; c=$(timeout 2 node "$SRC/scripts/conferir-publicacao.cjs" "$2" >/dev/null 2>&1; echo $?)
+  if [ "$c" = 0 ] || [ "$c" = 2 ]; then ok=$((ok+1)); echo "  ok   $1 (exit $c)"; else falhou=$((falhou+1)); echo "  FALHA $1 (exit $c, esperava 0 ou 2 em menos de 2 s)"; fi
+}
+printf '%s: %s\n' "$AU" "$BE" > "$SBP/494v4-deg-1.txt"
+saiu_0_ou_2 'deg: Authorization: Bearer no fim de linha' "$SBP/494v4-deg-1.txt"
+printf '%s: %s%s\n' "$AU" "$BT" "$BE" > "$SBP/494v4-deg-2.txt"
+saiu_0_ou_2 'deg: Authorization: `Bearer (crase, fim de linha)' "$SBP/494v4-deg-2.txt"
+printf "%s: %s%s %s +\n" "$AU" "$Q" "$BE" "$Q" > "$SBP/494v4-deg-3.txt"
+saiu_0_ou_2 "deg: Authorization: 'Bearer ' +" "$SBP/494v4-deg-3.txt"
+printf "%s: %s%s %s + (\n" "$AU" "$Q" "$BE" "$Q" > "$SBP/494v4-deg-4.txt"
+saiu_0_ou_2 "deg: Authorization: 'Bearer ' + (" "$SBP/494v4-deg-4.txt"
+printf '%s: %s%s %s%s\n' "$AU" "$DQ" "$BE" "$D" "$LB" > "$SBP/494v4-deg-5.txt"
+saiu_0_ou_2 'deg: Authorization: "Bearer ${' "$SBP/494v4-deg-5.txt"
+printf '%s: %s%s %s%s%s\n' "$AU" "$DQ" "$BE" "$D" "$LB" "$LB" > "$SBP/494v4-deg-6.txt"
+saiu_0_ou_2 'deg: Authorization: "Bearer ${{' "$SBP/494v4-deg-6.txt"
+printf '%s: f%s%s %s\n' "$AU" "$DQ" "$BE" "$LB" > "$SBP/494v4-deg-7.txt"
+saiu_0_ou_2 'deg: Authorization: f"Bearer {' "$SBP/494v4-deg-7.txt"
+printf '%s: %s%s %s}%s.format(\n' "$AU" "$DQ" "$BE" "$LB" "$DQ" > "$SBP/494v4-deg-8.txt"
+saiu_0_ou_2 'deg: Authorization: "Bearer {}".format(' "$SBP/494v4-deg-8.txt"
+printf '%s: %s%s ' "$AU" "$DQ" "$BE" > "$SBP/494v4-deg-9.txt"
+head -c 50000 /dev/zero | tr '\0' 'a' >> "$SBP/494v4-deg-9.txt"; printf '\n' >> "$SBP/494v4-deg-9.txt"
+saiu_0_ou_2 'deg: linha de 50000 caracteres depois do esquema' "$SBP/494v4-deg-9.txt"
+
 echo
 echo "== 9. termos privados — o que nao tem FORMA e so uma lista reconhece =="
 # Nome de empregador, de cliente e de projeto interno nao tem regex. A lista mora

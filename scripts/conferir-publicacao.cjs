@@ -96,7 +96,7 @@ const REFERENCIA_DE_VARIAVEL = new RegExp(
 // PERMISSÃO. O ramo em conferir() chama referenciaIsenta() com o texto depois do
 // esquema; o que vem depois da expressão tem de ser exatamente o permitido aqui.
 const IDENT_CADEIA = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$/;
-const FORMAT_VAR = /^\{\}["']?\.format\(\s*[A-Za-z_]\w*\s*\)/;
+const FORMAT_VAR = /^\{\}(["']?)\.format\(\s*[A-Za-z_]\w*\s*\)/;
 const FSTRING_VAR = /^\{[A-Za-z_]\w*\}/;
 const CHAVE_DUPLA = /^\$\{\{\s*([^{}]*?)\s*\}\}/;
 
@@ -109,20 +109,18 @@ function fimPermitido(resto) {
   return !/^[\s;,)\]}]*\+/.test(resto);
 }
 
-// `aspa` e a aspa de abertura do esquema ('' se nao houver). Com ela, o
-// fechamento tem de ser a mesma aspa logo depois da referencia.
-function depoisDaReferencia(resto, aspa) {
-  if (aspa) {
-    if (resto[0] !== aspa) return false;
-    return fimPermitido(resto.slice(1));
-  }
-  return fimPermitido(resto);
+// Com aspa ou crase de abertura, o fechamento e a MESMA aspa logo depois da
+// referencia, e depois dela so fim de trecho ou pontuacao permitida.
+function fechoPermitido(resto, aspa) {
+  if (resto[0] !== aspa) return false;
+  return fimPermitido(resto.slice(1));
 }
 
-// `t` comeca logo depois do espaco que segue o esquema.
-function referenciaIsenta(t, aspa, fstring) {
+// Lista de permissao, so para esquema que abriu com aspa ou crase. `t` comeca
+// logo depois do espaco que segue o esquema.
+function referenciaQuotada(t, aspa, fstring) {
   const fmt = FORMAT_VAR.exec(t);
-  if (fmt) return fimPermitido(t.slice(fmt[0].length));
+  if (fmt) return fmt[1] === aspa && fimPermitido(t.slice(fmt[0].length));
   const ref = (fstring && FSTRING_VAR.exec(t)) || REFERENCIA_DE_VARIAVEL.exec(t);
   if (!ref) return false;
   let tam = ref[0].length;
@@ -132,11 +130,36 @@ function referenciaIsenta(t, aspa, fstring) {
     if (!cheia || !IDENT_CADEIA.test(cheia[1])) return false;
     tam = cheia[0].length;
   } else if (ref[0].startsWith('${')) {
-    if (!IDENT_CADEIA.test(ref[0].slice(2, -1).trim())) return false;
+    // So o template JS (crase) restringe o conteudo de `${}`. Com aspa comum,
+    // `${VAR:-padrao}` e a forma de docker-compose e .env: o recuo nao e olhado.
+    if (aspa === '`' && !IDENT_CADEIA.test(ref[0].slice(2, -1).trim())) return false;
   } else if (ref[0].startsWith('%')) {
     if (!IDENT_CADEIA.test(ref[0].slice(1, -1))) return false;
   }
-  return depoisDaReferencia(t.slice(tam), aspa);
+  return fechoPermitido(t.slice(tam), aspa);
+}
+
+// Sem aspa ou crase de abertura (`Authorization: Bearer $TOKEN`) a regra e a da
+// base, sem mudanca: referencia inteira, e o caractere seguinte nao e de palavra.
+function referenciaSemAspa(cauda) {
+  const prox = /^\s+(\S+)/.exec(cauda);
+  if (!prox) return false;
+  const v2 = prox[1].replace(/^["']+/, '');
+  const r2 = FORMAT_VAR.exec(v2) || REFERENCIA_DE_VARIAVEL.exec(v2);
+  return !!r2 && !/^[A-Za-z0-9_]/.test(v2.slice(r2[0].length));
+}
+
+// Esquema do valor capturado: { aspa, fstring } ou null se nao for Bearer, Basic
+// ou Token. `aspaPre` e a aspa que a regex de credencial consumiu antes do valor.
+// f-string so vale com f/rf/fr (qualquer caixa) logo antes de aspa simples ou
+// dupla; crase nunca e f-string.
+function esquemaAuthorization(valor, aspaPre) {
+  const c = /^(?:(rf|fr|f)(["'])|(["'`]))?(?:bearer|basic|token)$/i.exec(valor);
+  if (c && c[1]) return aspaPre ? null : { aspa: c[2], fstring: true };
+  if (c && c[3]) return aspaPre ? null : { aspa: c[3], fstring: false };
+  if (c) return { aspa: aspaPre, fstring: false };
+  if (/^f?(?:bearer|basic|token)$/i.test(valor)) return { aspa: aspaPre, fstring: false };
+  return null;
 }
 
 /**
@@ -354,26 +377,38 @@ const PADROES = [
       // concatenação isenta: o esquema segue como na base, e o `+` cola o valor.
       // A aspa de fechamento pode estar dentro da captura (`'Bearer'`) ou ainda
       // na cauda (`'Bearer' + tok`); se não estiver em nenhum dos dois, não isenta.
-      if (chave === 'authorization' && /^f?["'`]?(?:Bearer|Basic|Token)$/i.test(valor)) {
-        const cauda = linha.slice(m.index + m[0].length);
-        // A aspa de abertura fica em m[0]: a captura `valor` já a consumiu (`"Bearer`
-        // vira `Bearer`), e `f"Bearer` mantém o f na captura.
-        const esquema = /(f?)(["'`]?)(?:Bearer|Basic|Token)$/i.exec(m[0]);
-        if (/^\s+/.test(cauda) && referenciaIsenta(cauda.replace(/^\s+/, ''), esquema[2], esquema[1] !== '')) {
-          return false;
-        }
-        // Concatenação: a aspa de abertura é o que torna o esquema um literal de
-        // string; sem ela, o `+` é texto colado e não isenta. Depois da expressão,
-        // só pode vir fim de trecho ou pontuação, e um `+` emendado cancela.
-        const abre = (/[:=]\s*(["'`]?)/.exec(m[0]) || [])[1];
-        if (abre) {
-          const fecha = m[0].endsWith(abre) ? '' : abre;
-          const ident = '[A-Za-z_$][\\w$]*';
-          const membros = `${ident}(?:\\.${ident})*`;
-          const chamada = `(?:\\((?:\\s*${membros}(?:\\s*,\\s*${membros})*\\s*)?\\))?`;
-          const concatRe = new RegExp(`^\\s*${fecha}\\s*\\+\\s*${membros}${chamada}(?=\\s*(?:[;,)\\]}]|$))(?![\\s;,)\\]}]*\\+)`);
-          const concatVariavel = concatRe.test(cauda);
-          if (concatVariavel) return false;
+      // Issue #494 (volta 4): `authorization` com esquema. Ramo inteiro em try:
+      // erro aqui NAO isenta, cai no restante da regra e acusa.
+      if (chave === 'authorization') {
+        try {
+          const pre = m[0].slice(0, m[0].length - m[1].length);
+          const aspaPre = /["']$/.test(pre) ? pre.slice(-1) : '';
+          const esq = esquemaAuthorization(valor, aspaPre);
+          if (esq) {
+            const cauda = linha.slice(m.index + m[0].length);
+            if (esq.aspa === '') {
+              if (referenciaSemAspa(cauda)) return false;
+            } else {
+              // Referencia logo depois do esquema. Se a aspa de fechamento ja veio
+              // na captura (`"Bearer"`), nao ha referencia possivel depois dela.
+              const fechado = m[1].endsWith(esq.aspa);
+              if (/^\s+/.test(cauda) && !fechado && referenciaQuotada(cauda.replace(/^\s+/, ''), esq.aspa, esq.fstring)) {
+                return false;
+              }
+              // Concatenacao: a aspa de abertura torna o esquema um literal; sem
+              // ela o `+` e texto colado. Depois da expressao, so fim de trecho
+              // ou pontuacao, e um `+` emendado cancela.
+              const fecha = fechado ? '' : esq.aspa;
+              const ident = '[A-Za-z_$][\\w$]*';
+              const membros = `${ident}(?:\\.${ident})*`;
+              const chamada = `(?:\\((?:\\s*${membros}(?:\\s*,\\s*${membros})*\\s*)?\\))?`;
+              const concatRe = new RegExp(`^\\s*${fecha}\\s*\\+\\s*${membros}${chamada}(?=\\s*(?:[;,)\\]}]|$))(?![\\s;,)\\]}]*\\+)`);
+              const concatVariavel = concatRe.test(cauda);
+              if (concatVariavel) return false;
+            }
+          }
+        } catch (_erro) {
+          // Erro no ramo nao isenta: segue para o restante da regra, que acusa.
         }
       }
 
