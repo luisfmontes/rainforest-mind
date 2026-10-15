@@ -292,8 +292,13 @@ const PADROES = [
       // INTEIRO referencia de variavel: `{VAR}` / `${VAR}` ou `{}` + `.format(VAR)`.
       // Literal colado depois da referencia, ou literal no lugar dela, continua
       // caindo no restante da regra e e acusado.
-      if (chave === 'authorization' && /^f?["']?(?:Bearer|Basic|Token)$/i.test(valor)) {
-        const prox = /^\s+(\S+)/.exec(linha.slice(m.index + m[0].length));
+      // Issue #494: crase de abertura (template JS) conta como esquema, e a
+      // concatenacao `'Bearer ' + <expr>` passa quando <expr> e so identificador,
+      // cadeia de membros ou chamada sem argumento literal. A aspa de fechamento
+      // pode estar dentro da captura (`'Bearer'`) ou logo depois dela (`'Bearer '`).
+      if (chave === 'authorization' && /^f?["'`]?(?:Bearer|Basic|Token)$/i.test(valor)) {
+        const cauda = linha.slice(m.index + m[0].length);
+        const prox = /^\s+(\S+)/.exec(cauda);
         if (prox) {
           const v2 = prox[1].replace(/^["']+/, '');
           const fmt = /^\{\}["']?\.format\(\s*[A-Za-z_]\w*\s*\)/.exec(v2);
@@ -304,6 +309,18 @@ const PADROES = [
           const r2 = fmt || fstr || REFERENCIA_DE_VARIAVEL.exec(v2);
           if (r2 && !/^[A-Za-z0-9_]/.test(v2.slice(r2[0].length))) return false;
         }
+        // Concatenacao: aspa de fechamento igual a de abertura, `+`, e uma expressao
+        // que e identificador ou cadeia de membros, opcionalmente terminada em UMA
+        // chamada com argumentos vazios ou so identificadores. Literal entre aspas
+        // do lado direito, ou como argumento, nao casa. Depois da expressao so
+        // pode vir fim de trecho ou pontuacao, para `+ 'literal'` no fim nao passar.
+        const abre = (/[:=]\s*(["'`]?)/.exec(m[0]) || [])[1];
+        const ident = '[A-Za-z_$][\\w$]*';
+        const membros = `${ident}(?:\\.${ident})*`;
+        const chamada = `(?:\\((?:\\s*${membros}(?:\\s*,\\s*${membros})*\\s*)?\\))?`;
+        const concatRe = new RegExp(`^\\s*(?:${abre})?\\s*\\+\\s*${membros}${chamada}(?=\\s*(?:[;,)\\]}]|$))`);
+        const concatVariavel = concatRe.test(cauda);
+        if (concatVariavel) return false;
       }
 
 

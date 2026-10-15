@@ -550,6 +550,57 @@ saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/chave
 printf '{"%s": "%s {KEY}"}\n' "$AU" "$BE" > "$SBP/auth-chaves-sem-f.md"
 tem  "410 Bearer {KEY} sem f-string continua credencial"   "$(roda "$SBP/auth-chaves-sem-f.md")" "credencial"
 
+# Issue #494: template JS (crase) e concatenacao `'<esquema> ' + <expr>` no mesmo
+# ramo. Mesma regua da #410: referencia inteira passa; literal colado depois dela,
+# ou literal no lugar dela, continua barrado. Arquivos .cjs, como o caso real.
+printf 'const h = { %s: `%s ${token}` };\n' "$AU" "$BE" > "$SBP/494-tpl-ok.cjs"
+nao_tem "494 template com \${token} passa"               "$(roda "$SBP/494-tpl-ok.cjs")" "credencial"
+saiu    "e passa (exit 0)"                               "$(codigo "$SBP/494-tpl-ok.cjs")" "0"
+
+printf "const h = { %s: '%s ' + tok };\n" "$AU" "$BE" > "$SBP/494-cat-var.cjs"
+nao_tem "494 concatenação com identificador passa"       "$(roda "$SBP/494-cat-var.cjs")" "credencial"
+saiu    "e passa (exit 0)"                               "$(codigo "$SBP/494-cat-var.cjs")" "0"
+
+printf 'const h = { %s: "%s " + this.token };\n' "$AU" "$BE" > "$SBP/494-cat-this.cjs"
+nao_tem "494 concatenação com this.token passa"          "$(roda "$SBP/494-cat-this.cjs")" "credencial"
+saiu    "e passa (exit 0)"                               "$(codigo "$SBP/494-cat-this.cjs")" "0"
+
+printf "const h = { %s: '%s ' + process.env.API_TOKEN };\n" "$AU" "$BE" > "$SBP/494-cat-env.cjs"
+nao_tem "494 concatenação com process.env passa"         "$(roda "$SBP/494-cat-env.cjs")" "credencial"
+saiu    "e passa (exit 0)"                               "$(codigo "$SBP/494-cat-env.cjs")" "0"
+
+printf "const h = { %s: '%s ' + getToken() };\n" "$AU" "$BE" > "$SBP/494-cat-call.cjs"
+nao_tem "494 concatenação com chamada sem argumento passa" "$(roda "$SBP/494-cat-call.cjs")" "credencial"
+saiu    "e passa (exit 0)"                               "$(codigo "$SBP/494-cat-call.cjs")" "0"
+
+BA="Ba""sic"
+printf "const h = { %s: '%s ' + obterToken(conta) };\n" "$AU" "$BA" > "$SBP/494-cat-basic.cjs"
+nao_tem "494 concatenação com Basic e chamada com identificador passa" "$(roda "$SBP/494-cat-basic.cjs")" "credencial"
+saiu    "e passa (exit 0)"                               "$(codigo "$SBP/494-cat-basic.cjs")" "0"
+
+# O lado que importa: literal colado depois da referencia, ou no lugar dela, barra.
+printf 'const h = { %s: `%s ${token}%s` };\n' "$AU" "$BE" "abc123""literal" > "$SBP/494-tpl-colado.cjs"
+tem  "494 template com literal colado continua credencial" "$(roda "$SBP/494-tpl-colado.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-tpl-colado.cjs")" "2"
+
+printf 'const h = { %s: `%s %s` };\n' "$AU" "$BE" "$HEX32" > "$SBP/494-tpl-hex.cjs"
+tem  "494 template com literal hex no lugar da referencia continua credencial" "$(roda "$SBP/494-tpl-hex.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-tpl-hex.cjs")" "2"
+
+printf "const h = { %s: '%s ' + '%s' };\n" "$AU" "$BE" "$HEX32" > "$SBP/494-cat-hex.cjs"
+tem  "494 concatenação com literal entre aspas continua credencial" "$(roda "$SBP/494-cat-hex.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-cat-hex.cjs")" "2"
+
+printf "const h = { %s: '%s ' + getToken('%s') };\n" "$AU" "$BE" "$HEX32" > "$SBP/494-cat-arg-hex.cjs"
+tem  "494 concatenação com chamada de argumento literal continua credencial" "$(roda "$SBP/494-cat-arg-hex.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-cat-arg-hex.cjs")" "2"
+
+# D3: a concatenacao so isenta Authorization com esquema; outra chave continua barrada.
+AK="api""_key"
+printf "const x = { %s: '%s ' + tok };\n" "$AK" "$BE" > "$SBP/494-apikey-concat.cjs"
+tem  "494 concatenação fora de Authorization continua credencial (D3)" "$(roda "$SBP/494-apikey-concat.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-apikey-concat.cjs")" "2"
+
 echo
 echo "== 9. termos privados — o que nao tem FORMA e so uma lista reconhece =="
 # Nome de empregador, de cliente e de projeto interno nao tem regex. A lista mora
