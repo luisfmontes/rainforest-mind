@@ -292,13 +292,23 @@ const PADROES = [
       // INTEIRO referencia de variavel: `{VAR}` / `${VAR}` ou `{}` + `.format(VAR)`.
       // Literal colado depois da referencia, ou literal no lugar dela, continua
       // caindo no restante da regra e e acusado.
-      // Issue #494: crase de abertura (template JS) conta como esquema, e a
-      // concatenacao `'Bearer ' + <expr>` passa quando <expr> e so identificador,
-      // cadeia de membros ou chamada sem argumento literal. A aspa de fechamento
-      // pode estar dentro da captura (`'Bearer'`) ou logo depois dela (`'Bearer '`).
+      // Issue #494: crase de abertura (template JS) conta como esquema. Duas
+      // isenções, e as duas exigem que NADA emendado venha depois da expressão:
+      //  - referência (`${tok}`, `{VAR}` em f-string, `{}.format(VAR)`) seguida de
+      //    aspa de fechamento opcional, pontuação `[\s;,)\]}]*` e, se vier `+`,
+      //    não isenta (`` `Bearer ${tok}` + '<hex>' `` é literal concatenado);
+      //  - concatenação `<aspa> + <expr>`, com <expr> identificador, cadeia de
+      //    membros ou chamada sem argumento literal, mesma regra do `+` depois.
+      // Sem aspa ou crase de abertura (`Authorization: Bearer +tok`), não há
+      // concatenação isenta: o esquema segue como na base, e o `+` cola o valor.
+      // A aspa de fechamento pode estar dentro da captura (`'Bearer'`) ou ainda
+      // na cauda (`'Bearer' + tok`); se não estiver em nenhum dos dois, não isenta.
       if (chave === 'authorization' && /^f?["'`]?(?:Bearer|Basic|Token)$/i.test(valor)) {
         const cauda = linha.slice(m.index + m[0].length);
         const prox = /^\s+(\S+)/.exec(cauda);
+        // Depois da expressão isenta: fecha a aspa (se ainda não veio), pula
+        // pontuação, e um `+` aqui cancela a isenção.
+        const emendado = (resto) => /^["'`]?[\s;,)\]}]*\+/.test(resto);
         if (prox) {
           const v2 = prox[1].replace(/^["']+/, '');
           const fmt = /^\{\}["']?\.format\(\s*[A-Za-z_]\w*\s*\)/.exec(v2);
@@ -307,20 +317,24 @@ const PADROES = [
           // global, `password={abc}` saia isento em qualquer chave.
           const fstr = /^f["']/i.test(valor) ? /^\{[A-Za-z_]\w*\}/.exec(v2) : null;
           const r2 = fmt || fstr || REFERENCIA_DE_VARIAVEL.exec(v2);
-          if (r2 && !/^[A-Za-z0-9_]/.test(v2.slice(r2[0].length))) return false;
+          if (r2 && !/^[A-Za-z0-9_]/.test(v2.slice(r2[0].length))) {
+            const depois = v2.slice(r2[0].length) + cauda.slice(prox[0].length);
+            if (!emendado(depois)) return false;
+          }
         }
-        // Concatenacao: aspa de fechamento igual a de abertura, `+`, e uma expressao
-        // que e identificador ou cadeia de membros, opcionalmente terminada em UMA
-        // chamada com argumentos vazios ou so identificadores. Literal entre aspas
-        // do lado direito, ou como argumento, nao casa. Depois da expressao so
-        // pode vir fim de trecho ou pontuacao, para `+ 'literal'` no fim nao passar.
+        // Concatenação: a aspa de abertura é o que torna o esquema um literal de
+        // string; sem ela, o `+` é texto colado e não isenta. Depois da expressão,
+        // só pode vir fim de trecho ou pontuação, e um `+` emendado cancela.
         const abre = (/[:=]\s*(["'`]?)/.exec(m[0]) || [])[1];
-        const ident = '[A-Za-z_$][\\w$]*';
-        const membros = `${ident}(?:\\.${ident})*`;
-        const chamada = `(?:\\((?:\\s*${membros}(?:\\s*,\\s*${membros})*\\s*)?\\))?`;
-        const concatRe = new RegExp(`^\\s*(?:${abre})?\\s*\\+\\s*${membros}${chamada}(?=\\s*(?:[;,)\\]}]|$))`);
-        const concatVariavel = concatRe.test(cauda);
-        if (concatVariavel) return false;
+        if (abre) {
+          const fecha = m[0].endsWith(abre) ? '' : abre;
+          const ident = '[A-Za-z_$][\\w$]*';
+          const membros = `${ident}(?:\\.${ident})*`;
+          const chamada = `(?:\\((?:\\s*${membros}(?:\\s*,\\s*${membros})*\\s*)?\\))?`;
+          const concatRe = new RegExp(`^\\s*${fecha}\\s*\\+\\s*${membros}${chamada}(?=\\s*(?:[;,)\\]}]|$))(?![\\s;,)\\]}]*\\+)`);
+          const concatVariavel = concatRe.test(cauda);
+          if (concatVariavel) return false;
+        }
       }
 
 

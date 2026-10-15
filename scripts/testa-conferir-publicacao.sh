@@ -601,6 +601,32 @@ printf "const x = { %s: '%s ' + tok };\n" "$AK" "$BE" > "$SBP/494-apikey-concat.
 tem  "494 concatenação fora de Authorization continua credencial (D3)" "$(roda "$SBP/494-apikey-concat.cjs")" "credencial"
 saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-apikey-concat.cjs")" "2"
 
+# Achados da revisão de 494 (volta 2). Peças separadas para o gate não ler a escrita.
+# Sem aspa de abertura, o `+` cola o valor: header HTTP com token que começa por `+`.
+printf '%s: %s +%s\n' "$AU" "$BE" "$HEX32" > "$SBP/494-sem-aspas.txt"
+tem  "494 Authorization sem aspas com + colado continua credencial" "$(roda "$SBP/494-sem-aspas.txt")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-sem-aspas.txt")" "2"
+
+# Referência seguida de + depois da aspa de fechamento: literal emendado, não isenta.
+BT='`'; DQ='"'; Q="'"; D='$'
+printf 'const h = { %s: %s%s %s{tok}%s + %s%s%s };\n' "$AU" "$BT" "$BE" "$D" "$BT" "$Q" "$HEX32" "$Q" > "$SBP/494-tpl-mais-hex.cjs"
+tem  '494 template com ${tok} + literal hex continua credencial' "$(roda "$SBP/494-tpl-mais-hex.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-tpl-mais-hex.cjs")" "2"
+
+printf 'const h = { %s: %s%s %s{tok}%s + %s%s%s };\n' "$AU" "$DQ" "$BE" "$D" "$DQ" "$Q" "$HEX32" "$Q" > "$SBP/494-dq-mais-hex.cjs"
+tem  '494 aspas duplas com ${tok} + literal hex continua credencial' "$(roda "$SBP/494-dq-mais-hex.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-dq-mais-hex.cjs")" "2"
+
+# Concatenação seguida de pontuação e de novo + (fecha-parênteses ou chave antes do +).
+printf "const h = { %s: %s%s %s + tok) + %s%s%s };\n" "$AU" "$Q" "$BE" "$Q" "$Q" "$HEX32" "$Q" > "$SBP/494-cat-paren-mais.cjs"
+tem  "494 concatenação com tok) + literal hex continua credencial" "$(roda "$SBP/494-cat-paren-mais.cjs")" "credencial"
+saiu "e RECUSA (exit 2)"                                   "$(codigo "$SBP/494-cat-paren-mais.cjs")" "2"
+
+# Outras chaves depois da vírgula não são emenda: template seguido de Content-Type passa.
+printf 'const h = { %s: %s%s %s{t}%s, %s%s%s: %s%s%s };\n' "$AU" "$BT" "$BE" "$D" "$BT" "$Q" "Content-Type" "$Q" "$Q" "application/json" "$Q" > "$SBP/494-tpl-virgula.cjs"
+nao_tem "494 template seguido de vírgula e outra chave passa" "$(roda "$SBP/494-tpl-virgula.cjs")" "credencial"
+saiu    "e passa (exit 0)"                                   "$(codigo "$SBP/494-tpl-virgula.cjs")" "0"
+
 echo
 echo "== 9. termos privados — o que nao tem FORMA e so uma lista reconhece =="
 # Nome de empregador, de cliente e de projeto interno nao tem regex. A lista mora
