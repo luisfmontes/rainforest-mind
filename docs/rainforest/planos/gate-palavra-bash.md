@@ -178,3 +178,28 @@ pronto quando: a entrada nova do `CHANGELOG.md` cumpre três coisas.
 - Credita o enxerto do ruflo (MIT).
 
 `plugin.json`, nos dois arquivos, e o topo do `CHANGELOG.md` mostram a mesma versão, um patch acima da `origin/main` no momento do commit. O README cita a versão nova onde cita a atual. Provado por `node -e 'const a=require("./.claude-plugin/plugin.json").version,b=require("./.codex-plugin/plugin.json").version;process.exit(a===b?0:1)'` e por `git diff origin/main -- CHANGELOG.md | grep -c "#530"` ≥ 1, com a leitura do texto contra os D1 a D6.
+
+### 6. Regressão do PowerShell, falso positivo de substituição e CHANGELOG honesto (rodada 2, decisão (a) do usuário) [tipo: implementar]
+atende: D4, D6, D8
+arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`, `hooks/lib/cwd-efetivo.cjs`, `CHANGELOG.md`
+depende de: 5
+prova: `P=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && W=$(git rev-parse --show-toplevel) && node -e 'const B=String.fromCharCode(92);process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:process.argv[1],hook_event_name:"PreToolUse",tool_name:"PowerShell",tool_input:{command:"C:"+B+"PROGRA~1"+B+"Git"+B+"cmd"+B+"git.exe -C "+process.argv[2]+" commit --allow-empty -m x"}}))' "$W" "$P" | node hooks/gate-worktree.cjs >/dev/null 2>&1; test $? -eq 2`
+mutacao:
+  arquivo: `hooks/gate-worktree.cjs`
+  de: `const ehBash = ferramenta !== "PowerShell";`
+  para: `const ehBash = true;`
+  bateria: `bash hooks/testa-gate-worktree.sh`
+  timeout: `900000`
+  fixture: testa-gate-worktree.sh, secao "(#530) rodada 2: PowerShell nao passa pela leitura do bash; substituicao no cwd do segmento"
+pronto quando: três consertos.
+
+- **PowerShell fora da leitura do bash.** `normalizarComando`, `corposDeSubstituicao` e a recursão de wrapper do bash só se aplicam com `tool_name` diferente de `PowerShell`, decidido por uma linha `const ehBash = ferramenta !== "PowerShell";` (ou nome equivalente com esse texto exato, alvo da mutação).
+  - Pelo gate real, a partir de W, com `tool_name: PowerShell`, `C:\PROGRA~1\Git\cmd\git.exe -C P commit --allow-empty -m x` → **2**. Era 2 na base e 0 na branch da rodada 1.
+  - O mesmo para `\Git\cmd\git.exe -C P commit …` e `cd P; C:\Git\cmd\git.exe commit …`.
+- **Substituição no cwd do segmento.** O corpo de substituição resolve contra o cwd do segmento onde ele está, nunca contra o `cwdInicial`. `cd hooks; echo "$(echo x > ../f)"` a partir de W → **0**; na rodada 1 saía 2. A passada extra sobre o comando inteiro (crase que atravessa `;`) só entra para corpo que **não** cabe inteiro num segmento.
+  - `cd P; echo "$(echo x > f)"` → **2**, com caso na bateria.
+  - Os 17 contornos da tarefa 3 continuam → 2.
+- **CHANGELOG 1.67.6 honesto.** A entrada afirma só o que a bateria prova, que são as 17 formas listadas, e ganha um item "Limite conhecido". Esse item diz que a leitura do bash é parcial e cita exemplos que ainda passam: `bash -c '…' _`, `env bash -c`, `t\ee`, `{cp,a,P/f}`, `tee {P/f,}`. Diz também que a família inteira está na #530 e que a abordagem por caminho do principal vem num fluxo próprio.
+- **Docblocks.** Os comentários de `fimDaExpansaoDeChaves` e `semRedirecionamentos` em `cwd-efetivo.cjs` são corrigidos para o código atual.
+
+Provado por `bash hooks/testa-gate-worktree.sh` e `bash hooks/testa-cwd-efetivo.sh`, com 0 falhas.

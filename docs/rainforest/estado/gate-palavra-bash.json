@@ -143,6 +143,13 @@
       "porque": "No bash nenhuma dessas muda o cwd; o incerto antigo vinha da chave ser fronteira, nao de duvida real. Nenhuma linha piorou de P/W certo para incerto.",
       "estagio": "executar",
       "em": "2026-10-15T19:16:18.707Z"
+    },
+    {
+      "pergunta": "Revisor reprovou rodada 1 com ~40 contornos da mesma familia e achado [design]: seguir com parser?",
+      "escolha": "(a) do usuario: consertar regressao PowerShell e falso positivo, CHANGELOG honesto, contornos para a #530, brainstorm novo de checagem pelo caminho do principal",
+      "porque": "Regra de parada do plano: parser de bash nao fecha o conjunto de contornos; o ganho entregue (17 formas, 0 regressao no diferencial) se preserva",
+      "estagio": "executar",
+      "em": "2026-10-15T21:08:40.028Z"
     }
   ]
 }
