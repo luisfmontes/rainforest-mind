@@ -10,6 +10,24 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.67.6 — 2026-10-15
+
+- **`gate-worktree` barra mais formas de escrever no checkout principal (#530).** Um subagente num worktree linkado
+  conseguia escrever no principal por formas que o gate deixava passar. Agora são barradas:
+  - nome do comando com aspas, escape ou `$'...'`: `'cd' P`, `c\d P`, `$'\x63d' P`;
+  - expansão de chaves em posição de comando: `{cd,P}`, `{"cd",P}`, `{git,-C,P,...}`, `{env,-C,P,...}`;
+  - escrita e `cd` dentro de `bash -c` ou `eval`, como `bash -c 'echo x > P/f'`;
+  - substituição de comando com crase, e dentro de aspas duplas: `` echo `cd P; ...` `` e `echo "$(cd P; ...)"`;
+  - `cd` com redirecionamento antes ou depois (`cd P > /dev/null`), e atribuição com escape (`A=a\ b cd P`).
+- **Dois motivos novos de barrar, com a mensagem no stderr:** `wrapper aninhado demais para conferir (mais de 4
+  niveis)` e `expansao de chaves grande demais para conferir`.
+- **Continua de fora (D1, #530 e #533):** `GIT_DIR` e `--git-dir`, `cd` por função, alias ou script, `cd $VAR`,
+  cmdlet de escrita do PowerShell e `cd` em ramo condicional. Esses casos seguem nas issues #530 e #533.
+- **Comandos legítimos seguem passando:** `echo a{b,c}` com chave em argumento, `bash -c 'echo x > f'` e
+  `cd hooks > /dev/null` dentro do worktree.
+- **Crédito:** a montagem da palavra e a expansão de chaves vêm de `hooks/lib/palavra-bash.cjs`, enxertada de
+  `plugins/ruflo-mods/hooks/guard/dangerous-command.ts` do ruflo (`ruvnet/ruflo`, licença MIT).
+
 ## 1.67.5 — 2026-10-15
 
 - **`publicar-branch.cjs esperar-ci` não dá mais CI verde com check cancelado.** O `gh pr checks --watch` (gh 2.96) sai 0
