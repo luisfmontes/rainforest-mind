@@ -1306,6 +1306,11 @@ for c in $'Copy-Item a.txt `\n  __R__/f' $'Move-Item __R__/a.txt `\n  b.txt' "[I
   gate "3a rev: ${c//$'\n'/⏎}, do worktree, BARRA" 2 "$(bp "$cc" "$WT")"
 done
 
+for c in $'# c `\nSet-Content __R__/f x' $'Write-Host "a" # `\nSet-Content __R__/f x' 'Set-Content -Value `'"'"' <##> __R__/f # '"'"; do
+  cc=${c//__R__/$R}
+  gate "3a rev (seguranca): ${c//$'\n'/⏎}, do worktree, BARRA" 2 "$(bp "$cc" "$WT")"
+done
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

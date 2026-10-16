@@ -965,6 +965,40 @@ function alvosNetDoComando(comando) {
   return saida;
 }
 
+/**
+ * Junta a continuacao de linha do PowerShell (crase no fim da linha), so quando a
+ * crase esta fora de aspas e de comentario e nao e escapada (revisao de seguranca):
+ * `# c ` + quebra + `Set-Content ...` nao pode virar uma linha so de comentario. Com
+ * here-string o texto fica como esta. Crase solta no fim do comando sai.
+ */
+function juntaContinuacoesPS(t) {
+  if (/@['"]/.test(t)) return t;
+  let out = "";
+  let aspa = null;
+  let comentario = false;
+  for (let i = 0; i < t.length; i += 1) {
+    const c = t[i];
+    if (comentario) { out += c; if (c === "\n") comentario = false; continue; }
+    if (aspa) {
+      out += c;
+      if (c === "`" && aspa === '"' && i + 1 < t.length) { out += t[i + 1]; i += 1; }
+      else if (c === aspa) aspa = null;
+      continue;
+    }
+    if (c === "'" || c === '"') { aspa = c; out += c; continue; }
+    if (c === "#") { comentario = true; out += c; continue; }
+    if (c === "`") {
+      const m = /^\r?\n/.exec(t.slice(i + 1));
+      if (m) { out += " "; i += m[0].length; continue; }
+      out += c;
+      if (i + 1 < t.length) { out += t[i + 1]; i += 1; } // crase escapa o proximo caractere
+      continue;
+    }
+    out += c;
+  }
+  return aspa === null && !comentario ? out.replace(/\s`\s*$/, "") : out;
+}
+
 /** `trecho` aparece fora de aspas simples e duplas? Aspa desbalanceada: conta como fora (falha fechada). */
 function temForaDeAspas(texto, trecho) {
   let aspa = null;
@@ -986,7 +1020,7 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
   // reconhece `&` simples como separador (K1, rodada 6, lote 3, 2026-09-03).
   // PowerShell: crase no fim da linha e continuacao, a linha seguinte e o mesmo
   // comando; crase solta no fim do comando nao e argumento (3a revisao do fluxo).
-  if (ehPowerShell) comando = comando.replace(/`\r?\n/g, " ").replace(/\s`\s*$/, "");
+  if (ehPowerShell) comando = juntaContinuacoesPS(comando);
   const segmentos = segmentosComAspas(comando, ehPowerShell);
   const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [] };
   const alvos = [];
@@ -1009,7 +1043,9 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
   // Comentario de bloco do PowerShell (`<#...#>`): o tokenizador nao o conhece, e ele
   // pode ocupar a posicao do caminho (`Set-Content <##> <P>/f x`). Incerto (2a revisao).
   // So fora de aspas: `Select-String '<#' a.txt` e texto (3a revisao do fluxo).
-  if (ehPowerShell && temForaDeAspas(comando, "<#")) alvos.push({ dir: cwdInicial, tipo: "cmdlet", incerto: true });
+  // Sem confianca nas aspas (crase, `#` ou here-string fora delas), qualquer `<#` conta.
+  const temBloco = desalinhaAMascara(comando) ? comando.includes("<#") : temForaDeAspas(comando, "<#");
+  if (ehPowerShell && temBloco) alvos.push({ dir: cwdInicial, tipo: "cmdlet", incerto: true });
 
   for (const seg of segmentos) {
     const mov = resolverMovedor(seg, estado, ehPowerShell);
