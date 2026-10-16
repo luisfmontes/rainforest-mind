@@ -45,26 +45,32 @@
     "rodada": 2
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "e651737ba34329338e1ad9e622e0a0a938b45da8",
+      "head": "d1b55d49cc3dacc28f93ddbe661bbccfe0d7c37c",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a203f4cf44951230e",
-        "veredito": "reprovado",
+        "agente_id": "a376a954bdc10f873",
+        "veredito": "ok",
         "em": "2026-10-15",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a203f4cf44951230e.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a376a954bdc10f873.jsonl"
       }
     ],
-    "achados": 4,
+    "achados": 3,
     "em": "2026-10-15",
-    "tentativas": 1
+    "em_voo": [],
+    "base": "2ba55b1214e79ae07044b52d8abffbc7643b3e1c",
+    "head": "d1b55d49cc3dacc28f93ddbe661bbccfe0d7c37c"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node hooks/testa-mod-pr.cjs",
+    "saida": "59 ok, 0 falha(s), 0 skipped",
+    "sensor_externo": "node hooks/testa-mod-pr.cjs",
+    "em": "2026-10-15"
   },
   "fechar": {
     "status": "pendente"
