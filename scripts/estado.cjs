@@ -772,8 +772,12 @@ function verificarMutacao(slug, snapshot_anterior) {
     const propria = caminhosDaPropriaTrava(slug);
     const sujos_antes = new Set(snapshot_anterior.caminhos_sujos || []);
 
+    // A trava do estado e o .tmp da gravação (#545) existem por milissegundos enquanto outro
+    // escritor grava; em repositório sem o .gitignore deste, o git status pode pegá-los.
+    const pastaEstado = path.relative(RAIZ, DIR_ESTADO).replace(/\\/g, '/');
+    const transitorio = (c) => c.startsWith(`${pastaEstado}/`) && /\.(lock|tmp)$/.test(c);
     const novos_sujos = caminhosSujos()
-      .filter((c) => !sujos_antes.has(c) && !propria.has(c));
+      .filter((c) => !sujos_antes.has(c) && !propria.has(c) && !transitorio(c));
     if (novos_sujos.length > 0) {
       return `RECUSADO: novos arquivos sujaram durante a revisao: ${novos_sujos.join(', ')}.\n`
         + `O repositorio foi mutado enquanto voce revisava. O revisor nao edita em lugar nenhum\n`

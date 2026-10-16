@@ -32,7 +32,7 @@ const SLUG = "2026-10-15-trava-teste";
 const PAUSA_MS = "3000";
 const MARCA_PAUSA = "pausa-gravar:";
 const LOCK_FLUXO = `.${SLUG}.lock`;
-const LOCKS_ANTIGOS = [".veredito.lock", ".flake.lock", ".decidir.lock"];
+const LOCKS_ANTIGOS = [`.${SLUG}.veredito.lock`, `.${SLUG}.flake.lock`, `.${SLUG}.decidir.lock`];
 
 let ok = 0;
 let falha = 0;
