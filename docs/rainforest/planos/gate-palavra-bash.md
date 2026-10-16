@@ -291,3 +291,27 @@ pronto quando: `subcomandoGit` coleta os internos das duas leituras e recursa um
 - CHANGELOG 1.67.6: os itens de escrita dentro de `bash -c`/`eval` e de substituição dizem que valem para **escrita** (redirecionamento, `tee`, `cp`). Verbo de git com `cd` dentro do wrapper, como `bash -c 'cd P && git commit'`, fica no "Limite conhecido", remetido ao item 4 da #530.
 
 Provado por `bash hooks/testa-gate-worktree.sh` com 0 falhas e pelo diferencial com zero `2->nao2`.
+
+### 11. Teto do `subcomandoGit` falha fechado (rodada extra 2, achado do security review sobre a tarefa 10) [tipo: implementar]
+atende: D4, D5
+arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`
+depende de: 10
+prova: `P=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && W=$(git rev-parse --show-toplevel) && node -e 'const c="iex ".repeat(5)+"'"'"'git -C "+process.argv[2]+" commit -m x'"'"'";process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:process.argv[1],hook_event_name:"PreToolUse",tool_name:"PowerShell",tool_input:{command:c}}))' "$W" "$P" | node hooks/gate-worktree.cjs >/dev/null 2>&1; test $? -eq 2`
+mutacao:
+  arquivo: `hooks/gate-worktree.cjs`
+  de: `if (profundidade >= 4) achados.push(SUB_ANINHADO);`
+  para: `if (false) achados.push(SUB_ANINHADO);`
+  bateria: `bash hooks/testa-gate-worktree.sh`
+  timeout: `900000`
+  fixture: testa-gate-worktree.sh, secao "(#530) rodada extra 2: teto do subcomandoGit falha fechado"
+pronto quando: no teto, com um wrapper legível ainda a desembrulhar, `subcomandoGit` devolve uma sentinela em vez de nada.
+- A sentinela é a constante `SUB_ANINHADO`, um subcomando marcado `incerto: true`. A linha que a acrescenta vem logo depois da linha do teto da tarefa 10, que fica intacta, e é exatamente `if (profundidade >= 4) achados.push(SUB_ANINHADO);`. É o alvo da mutação.
+- Todo chamador de `subcomandoGit` trata a sentinela como casamento e barra (exit 2): `verboNaLinha`, `linhaDeRestauro`, `moveOHead`, o `casa` de `alvosBash`, `alvosBash` e quem mais a usar. O motivo no stderr é "wrapper aninhado demais para conferir (mais de 4 niveis)". Nenhum caso de teste lê o texto do fonte.
+- Pelo gate real, cwd W, saem **2**. Todos eram 2 na base 9f6b9ca3 e 0 no HEAD 61eef4a6:
+  - `iex ` × 5 + `'git -C P commit -m x'`, na ferramenta PowerShell;
+  - o mesmo × 8;
+  - `Invoke-Expression ` × 5 com a mesma cauda.
+- Vizinhos continuam: `iex 'git status'` → 0, e `iex ` × 3 + `'git -C W log'` → 0. Os casos das tarefas 3 e 6 a 10 seguem verdes.
+- O diferencial do corpus do revisor (`r9diff.cjs`) contra a base continua com **zero** `2->nao2`, e a matriz `sec10.cjs` do scratchpad (`iex`, `cmd`, `powershell` e `eval` em 3 a 8 níveis, nas duas ferramentas) dá zero `base=2 head=0`. A integração roda os dois e cola o resultado.
+
+Provado por `bash hooks/testa-gate-worktree.sh` com 0 falhas, mais o diferencial e a matriz.
