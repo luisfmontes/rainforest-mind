@@ -150,31 +150,23 @@
     "em_voo": []
   },
   "revisar": {
-    "status": "parcial",
+    "status": "ok",
     "snapshot": {
-      "head": "54c6df082c48ad0161acaf76161cdccd15d4ddbd",
+      "head": "c08c4332522c52b37133770133f2dc1a0f704150",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a78e376592b3fe430",
+        "agente_id": "ac07c1ce770139866",
         "veredito": "ok",
         "em": "2026-10-16",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/d39ef955-529f-4604-9440-a7d2fbc14edb/subagents/agent-a78e376592b3fe430.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/d39ef955-529f-4604-9440-a7d2fbc14edb/subagents/agent-ac07c1ce770139866.jsonl"
       }
     ],
-    "em_voo": [
-      {
-        "agente": "revisor",
-        "tarefa": "revisao rodada extra 2 (redespacho; o primeiro travou por watchdog de 600 s)",
-        "desde": "2026-10-16T00:00:00Z",
-        "sessao": "d39ef955-529f-4604-9440-a7d2fbc14edb"
-      }
-    ],
+    "em_voo": [],
     "em": "2026-10-16",
-    "achados": 9,
-    "tentativas": 4,
+    "achados": 2,
     "rodadas_extra": [
       {
         "texto": "usuario: recomendado = (a) uniao em subcomandoGit, git conta se aparece no texto cru ou no normalizado; aceite = zero 2->0 contra a base no corpus do revisor",
@@ -185,10 +177,15 @@
         "em": "2026-10-16"
       }
     ],
-    "liberado_em": "2026-10-16"
+    "base": "6b145a4cae8d4439fe96d3ae18529016bd844365",
+    "head": "c08c4332522c52b37133770133f2dc1a0f704150"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "provas T1,2,3,6-11; bash hooks/testa-palavra-bash.sh; bash hooks/testa-cwd-efetivo.sh; bash hooks/testa-gate-worktree.sh; diferencial r9diff base 9f6b9ca3 x HEAD; node scripts/conferir-fluxo.cjs mutacoes --slug gate-palavra-bash",
+    "saida": "provas exit 0 (9/9); testa-palavra-bash 30/0; testa-cwd-efetivo 80/0; testa-gate-worktree 310/0; diferencial {2>2:1394,0>0:2418,0>2:168}, 0 linhas 2->nao2; matriz 0 casos base2-head0; mutacoes exit 0: T1,2,3,8,9,10,11 vermelho, T4,5,6,7 n/a",
+    "sensor_externo": "bash hooks/testa-gate-worktree.sh",
+    "em": "2026-10-16"
   },
   "fechar": {
     "status": "pendente"
@@ -221,6 +218,13 @@
       "porque": "defeito mecanico de custo, a uniao em si passou no diferencial e no fuzz",
       "estagio": "executar",
       "em": "2026-10-16T09:58:06.210Z"
+    },
+    {
+      "pergunta": "Mutantes T6/T7 sobrevivem no verificar: como fechar?",
+      "escolha": "mutacao de T6/T7 vira n/a, remocao do codigo vai para a #530",
+      "porque": "depois da uniao da T9 as mutacoes so mudam 0->2 (330 casos, todos escrita real no principal), nenhum 2->0; a bateria nao tem como ficar vermelha",
+      "estagio": "verificar",
+      "em": "2026-10-16T16:22:46.332Z"
     }
   ]
 }

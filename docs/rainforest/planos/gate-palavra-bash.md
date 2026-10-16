@@ -184,13 +184,8 @@ atende: D4, D6, D8
 arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`, `hooks/lib/cwd-efetivo.cjs`, `CHANGELOG.md`
 depende de: 5
 prova: `P=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && W=$(git rev-parse --show-toplevel) && node -e 'const B=String.fromCharCode(92);process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:process.argv[1],hook_event_name:"PreToolUse",tool_name:"PowerShell",tool_input:{command:"C:"+B+"PROGRA~1"+B+"Git"+B+"cmd"+B+"git.exe -C "+process.argv[2]+" commit --allow-empty -m x"}}))' "$W" "$P" | node hooks/gate-worktree.cjs >/dev/null 2>&1; test $? -eq 2`
-mutacao:
-  arquivo: `hooks/gate-worktree.cjs`
-  de: `const ehBash = ferramenta !== "PowerShell";`
-  para: `const ehBash = true;`
-  bateria: `bash hooks/testa-gate-worktree.sh`
-  timeout: `900000`
-  fixture: testa-gate-worktree.sh, secao "(#530) rodada 2: PowerShell nao passa pela leitura do bash; substituicao no cwd do segmento"
+mutacao: n/a
+  motivo: subsumida pela união da tarefa 9 (decisão do usuário em 2026-10-16). Medido no corpus de 4012 execuções: a mutação da tarefa 6 só muda saídas de 0 para 2 (276 casos, todos escrita ou commit real no checkout principal dentro de wrapper PowerShell) e nenhuma de 2 para 0, então a bateria não tem como ficar vermelha sem barrar o que deveria ser barrado. A remoção do código fica na #530
 pronto quando: três consertos.
 
 - **PowerShell fora da leitura do bash.** `normalizarComando`, `corposDeSubstituicao` e a recursão de wrapper do bash só se aplicam com `tool_name` diferente de `PowerShell`, decidido por uma linha `const ehBash = ferramenta !== "PowerShell";` (ou nome equivalente com esse texto exato, alvo da mutação).
@@ -209,13 +204,8 @@ atende: D4, D6, D8
 arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`, `CHANGELOG.md`
 depende de: 6
 prova: `P=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && W=$(git rev-parse --show-toplevel) && node -e 'const B=String.fromCharCode(92);process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:process.argv[1],hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:"powershell -Command \"C:"+B+"Git"+B+"cmd"+B+"git.exe -C "+process.argv[2]+" commit -m x\""}}))' "$W" "$P" | node hooks/gate-worktree.cjs >/dev/null 2>&1; test $? -eq 2`
-mutacao:
-  arquivo: `hooks/gate-worktree.cjs`
-  de: `return ehShellWindows ? "PowerShell" : ferramenta;`
-  para: `return ferramenta;`
-  bateria: `bash hooks/testa-gate-worktree.sh`
-  timeout: `900000`
-  fixture: testa-gate-worktree.sh, secao "(#530) rodada 3: interno de powershell -Command e cmd /c nao passa pela leitura do bash"
+mutacao: n/a
+  motivo: subsumida pela união da tarefa 9 (decisão do usuário em 2026-10-16). Medido no corpus de 4012 execuções: a mutação da tarefa 7 só muda saídas de 0 para 2 (54 casos, todos escrita ou commit real no checkout principal dentro de wrapper PowerShell) e nenhuma de 2 para 0, então a bateria não tem como ficar vermelha sem barrar o que deveria ser barrado. A remoção do código fica na #530
 pronto quando: o texto interno de um wrapper de shell Windows (`pwsh`, `powershell`, `cmd`, com ou sem `.exe`) é analisado com `ferramenta` = `"PowerShell"` (texto cru, sem `normalizarComando`) nos três pontos que recursam sobre `desempacotarWrapperDeString` em `hooks/gate-worktree.cjs` (hoje linhas ~157, ~556 e ~645). A decisão mora numa função pequena, `ferramentaDoInterno(segmento, ferramenta)`, cuja última linha é exatamente `return ehShellWindows ? "PowerShell" : ferramenta;` (alvo da mutação). Nenhum caso de teste lê o texto do fonte.
 - Pelo gate real, tool Bash, cwd W: `powershell -Command "C:\Git\cmd\git.exe -C P commit -m x"` → **2** (era 2 na base 9f6b9ca3 e 0 na rodada 2); `powershell.exe -c "C:\PROGRA~1\Git\cmd\git.exe -C P commit --allow-empty -m x"` → **2**. Casos na bateria, com a contrabarra montada por `String.fromCharCode(92)` ou equivalente que o teste confira (o teste falha se a contrabarra sumir).
 - Vizinhos legítimos continuam: `powershell -Command "git -C W status"` → 0; `bash -c 'echo x > f'` a partir de W → 0; os casos das tarefas 3 e 6 seguem verdes.
