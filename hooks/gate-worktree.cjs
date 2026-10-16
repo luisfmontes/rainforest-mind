@@ -606,20 +606,43 @@ const PARAMETROS_COM_VALOR = [
   "value", "itemtype", "encoding", "inputobject", "width", "filter", "include",
   "exclude", "variable", "stream", "credential", "erroraction", "warningaction",
   "informationaction", "errorvariable", "warningvariable", "informationvariable",
-  "outvariable", "outbuffer", "pipelinevariable",
+  "outvariable", "outbuffer", "pipelinevariable", "progressaction", "fromsession", "tosession",
 ];
 // Parametros sem valor. `-Confirm:$false` e booleano, nao caminho.
 const PARAMETROS_SEM_VALOR = [
   "force", "append", "nonewline", "noclobber", "passthru", "recurse",
-  "verbose", "debug", "whatif", "confirm", "asbytestream",
+  "verbose", "debug", "whatif", "confirm", "asbytestream", "container", "usetransaction",
 ];
 // Prefixo de uma letra tambem vale quando unico (`cp -r a b` e `-Recurse`).
 const ehParametro = (flag, nome) => flag.length >= 1 && nome.startsWith(flag);
 
-/** Nome canonico do parametro (`-Path` -> "path"), ou null se desconhecido ou ambiguo. */
-function nomeDoParametro(flag) {
+// Parametros de cada cmdlet (3a revisao do fluxo): o prefixo e resolvido contra o
+// conjunto do cmdlet, como o PowerShell faz (`cp -v` e `-Verbose`, nao ambiguo com `-Value`).
+const PARAMETROS_COMUNS = [
+  "verbose", "debug", "erroraction", "warningaction", "informationaction", "progressaction",
+  "errorvariable", "warningvariable", "informationvariable", "outvariable", "outbuffer",
+  "pipelinevariable", "whatif", "confirm", "usetransaction",
+];
+const PARAMETROS_DO_CMDLET = new Map(Object.entries({
+  "set-content": ["path", "literalpath", "pspath", "value", "passthru", "filter", "include", "exclude", "force", "credential", "nonewline", "encoding", "stream", "asbytestream"],
+  "out-file": ["filepath", "literalpath", "pspath", "encoding", "append", "force", "noclobber", "width", "nonewline", "inputobject"],
+  "new-item": ["path", "literalpath", "pspath", "name", "itemtype", "value", "force", "credential"],
+  "tee-object": ["filepath", "literalpath", "pspath", "append", "variable", "inputobject", "encoding"],
+  "copy-item": ["path", "literalpath", "pspath", "destination", "container", "force", "filter", "include", "exclude", "recurse", "passthru", "credential", "fromsession", "tosession"],
+  "move-item": ["path", "literalpath", "pspath", "destination", "force", "filter", "include", "exclude", "passthru", "credential"],
+}));
+const CMDLET_CANONICO = new Map(Object.entries({
+  "sc": "set-content", "add-content": "set-content", "ac": "set-content",
+  "ni": "new-item", "tee": "tee-object", "copy": "copy-item", "cpi": "copy-item", "cp": "copy-item",
+  "move": "move-item", "mi": "move-item", "mv": "move-item",
+}));
+
+/** Nome canonico do parametro (`-Path` -> "path"), ou null se desconhecido ou ambiguo no conjunto do cmdlet. */
+function nomeDoParametro(flag, cmdlet) {
   if (ALIASES_DE_PARAMETRO.has(flag)) return ALIASES_DE_PARAMETRO.get(flag);
-  const todos = [...PARAMETROS_DE_CAMINHO, ...PARAMETROS_COM_VALOR, ...PARAMETROS_SEM_VALOR];
+  const doCmdlet = PARAMETROS_DO_CMDLET.get(CMDLET_CANONICO.get(cmdlet) || cmdlet);
+  const todos = doCmdlet ? [...doCmdlet, ...PARAMETROS_COMUNS]
+    : [...PARAMETROS_DE_CAMINHO, ...PARAMETROS_COM_VALOR, ...PARAMETROS_SEM_VALOR];
   if (todos.includes(flag)) return flag;
   const casam = todos.filter((n) => ehParametro(flag, n));
   return casam.length === 1 ? casam[0] : null;
@@ -736,7 +759,7 @@ function alvosDeCmdlet(toks, posCmd, base, empurra) {
       k = arg.k;
       continue;
     }
-    const param = nomeDoParametro(m[1].toLowerCase());
+    const param = nomeDoParametro(m[1].toLowerCase(), nome);
     if (param === null) { desconhecido = true; continue; } // o token seguinte segue posicional
     if (PARAMETROS_SEM_VALOR.includes(param)) continue;
     let valor = null;
@@ -872,7 +895,8 @@ const METODOS_NET_DE_LEITURA = new Set([
 ]);
 // Tipos cujo construtor (`::new`) nao escreve em arquivo: leitores, buffers em memoria e
 // descritores (`[IO.FileInfo]::new(p).Length`).
-const TIPOS_NET_NEW_SEM_ESCRITA = /(^|\.)(streamreader|stringreader|stringwriter|memorystream|binaryreader|fileinfo|directoryinfo)$/i;
+// `FileInfo`/`DirectoryInfo` nao entram: `[IO.FileInfo]::new(p).Create()` escreve (revisao de seguranca).
+const TIPOS_NET_NEW_SEM_ESCRITA = /(^|\.)(streamreader|stringreader|stringwriter|memorystream|binaryreader)$/i;
 // Posicoes de caminho que a escrita toca, por metodo. `Move` e `Replace` apagam a origem;
 // o 3o argumento de `Replace` e o backup (2a revisao do fluxo). Os demais: todo literal.
 const POSICAO_DO_ALVO_NET = new Map([
@@ -941,9 +965,28 @@ function alvosNetDoComando(comando) {
   return saida;
 }
 
+/** `trecho` aparece fora de aspas simples e duplas? Aspa desbalanceada: conta como fora (falha fechada). */
+function temForaDeAspas(texto, trecho) {
+  let aspa = null;
+  for (let i = 0; i < texto.length; i += 1) {
+    const c = texto[i];
+    if (aspa) {
+      if (c === "`" && aspa === '"') i += 1;
+      else if (c === aspa) aspa = null;
+      continue;
+    }
+    if (c === "'" || c === '"') { aspa = c; continue; }
+    if (texto.startsWith(trecho, i)) return true;
+  }
+  return aspa !== null && texto.includes(trecho);
+}
+
 function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
   // `segmentosComAspas` pelo mesmo motivo de `alvosBash`: respeita aspas e
   // reconhece `&` simples como separador (K1, rodada 6, lote 3, 2026-09-03).
+  // PowerShell: crase no fim da linha e continuacao, a linha seguinte e o mesmo
+  // comando; crase solta no fim do comando nao e argumento (3a revisao do fluxo).
+  if (ehPowerShell) comando = comando.replace(/`\r?\n/g, " ").replace(/\s`\s*$/, "");
   const segmentos = segmentosComAspas(comando, ehPowerShell);
   const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [] };
   const alvos = [];
@@ -965,7 +1008,8 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
 
   // Comentario de bloco do PowerShell (`<#...#>`): o tokenizador nao o conhece, e ele
   // pode ocupar a posicao do caminho (`Set-Content <##> <P>/f x`). Incerto (2a revisao).
-  if (ehPowerShell && comando.includes("<#")) alvos.push({ dir: cwdInicial, tipo: "cmdlet", incerto: true });
+  // So fora de aspas: `Select-String '<#' a.txt` e texto (3a revisao do fluxo).
+  if (ehPowerShell && temForaDeAspas(comando, "<#")) alvos.push({ dir: cwdInicial, tipo: "cmdlet", incerto: true });
 
   for (const seg of segmentos) {
     const mov = resolverMovedor(seg, estado, ehPowerShell);

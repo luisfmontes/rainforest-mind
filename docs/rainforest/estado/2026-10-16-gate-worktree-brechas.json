@@ -42,8 +42,8 @@
       }
     ],
     "comando": "bash hooks/testa-gate-worktree.sh",
-    "saida": "== resultado: 365 ok, 0 falha(s) ==",
-    "reaberturas": 2,
+    "saida": "== resultado: 404 ok, 0 falha(s) ==",
+    "reaberturas": 3,
     "reaberto_por": {
       "estagio": "revisar",
       "data": "2026-10-16"
@@ -52,7 +52,7 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "229548b2d9fad6679c7d4644791c0897af1d0084",
+      "head": "08af6033ec8f70ddd2c15949594313f0a8dfa1ce",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-10-16-gate-worktree-brechas.json"
       ]
@@ -60,16 +60,16 @@
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a5d453dd19259d577",
+        "agente_id": "ab81936930778a17c",
         "veredito": "reprovado",
         "em": "2026-10-16",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a5d453dd19259d577.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-ab81936930778a17c.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-16",
-    "achados": 9,
-    "tentativas": 2
+    "achados": 5,
+    "tentativas": 3
   },
   "verificar": {
     "status": "pendente"

@@ -59,10 +59,6 @@ const SET_LOCATION = /^\s*(?:Set-Location|sl|chdir)\s+(?:-(?:Path|LiteralPath)(?
 const PUSH_LOCATION = /^\s*Push-Location\s+(?:-(?:Path|LiteralPath)(?:\s+|:))?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/i;
 const POP_LOCATION = /^\s*Pop-Location\s*$/i;
 
-// Palavras que, antes da chave, NAO fazem dela um argumento: reservadas do
-// bash (a palavra seguinte e comando) e wrappers que executam o que vem depois
-// (`builtin {cd,X}` vira `builtin cd X`). Com elas, a chave segue sendo
-// fronteira, como antes do #514.
 // Expansao de chaves no INICIO do segmento (#530, D1): `{cd,X} && ...` roda
 // `cd X` no bash — a chave expande antes de o comando rodar. So vale sem espaco,
 // aspa, `$`, chave, parentese ou barra invertida dentro, com pelo menos uma
@@ -108,6 +104,10 @@ function expandeChavesDeComandoNoSegmento(seg, ehPowerShell = false) {
   return { texto: pre + elementos.join(" ") + seg.slice(pre.length + m[0].length) };
 }
 
+// Palavras que, antes da chave, NAO fazem dela um argumento: reservadas do
+// bash (a palavra seguinte e comando) e wrappers que executam o que vem depois
+// (`builtin {cd,X}` vira `builtin cd X`). Com elas, a chave segue sendo
+// fronteira, como antes do #514.
 const NAO_E_COMANDO_ANTES_DA_CHAVE = new Set([
   "!", "if", "then", "else", "elif", "do", "while", "until", "time", "{",
   "builtin", "command", "exec", "eval", "env", "sudo", "nohup", "nice", "xargs",

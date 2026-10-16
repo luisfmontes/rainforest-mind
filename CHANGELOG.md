@@ -24,7 +24,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
     `New-Item <P> -Name f` junta caminho e nome. Na cópia sem destino, o alvo é o cwd. No `Move-Item`, a origem
     também é alvo, porque sai do lugar.
   - Incerto, e por isso barrado dentro de repositório, mesmo no worktree: alvo com variável, crase ou aspa
-    tipográfica, splat (`@a`), parâmetro desconhecido e comentário de bloco (`<#...#>`).
+    tipográfica, splat (`@a`), parâmetro desconhecido e comentário de bloco (`<#...#>`) fora de aspas.
   - `iex`/`Invoke-Expression` com texto literal: o texto é analisado como comando. Com `$`, crase, outro parâmetro
     além de `-Command`, ou sem argumento (texto pelo pipeline), é incerto.
   - Chamada .NET sob `IO` (`[IO.File]::WriteAllText(...)`, `[IO.Directory]::CreateDirectory(...)`,

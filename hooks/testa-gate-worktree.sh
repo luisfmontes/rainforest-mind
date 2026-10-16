@@ -986,7 +986,7 @@ echo "== #530: chaves em posicao de comando =="
 # virava fronteira de segmento e o `cd` nunca era reconhecido.
 gate "#530: {cd,<principal>} && echo x > f, do worktree, BARRA" 2 "$(b "{cd,$R} && echo x > f" "$WT")"
 gate "#530: {pushd,<principal>} && echo x > f, do worktree, BARRA" 2 "$(b "{pushd,$R} && echo x > f" "$WT")"
-gate "#530: {cd,<principal>}; git commit -m x, do worktree, BARRA" 2 "$(b "{cd,$R}; git commit -m x" "$WT")"
+gate "#530: {cd,<principal>}; git commit -m x, do worktree, BARRA (regressao: a fronteira antiga de chave ja barrava)" 2 "$(b "{cd,$R}; git commit -m x" "$WT")"
 gate "#530: {cd,<worktree>} && echo x > f, do worktree, PASSA" 0 "$(b "{cd,$WT} && echo x > f" "$WT")"
 gate "#530: {cd,<worktree>} && git commit -m x, do principal, PASSA" 0 "$(b "{cd,$WT} && git commit -m x" "$R")"
 gate "#530: ls {a,b} do worktree, PASSA" 0 "$(b "ls {a,b}" "$WT")"
@@ -1029,7 +1029,7 @@ gate "#533 (e): Set-Content -PSPath <principal>/f x, do worktree, BARRA (alias P
 gate "#533 (e): Set-Content -LP <principal>/f x, do worktree, BARRA (alias LP)" 2 "$(bp "Set-Content -LP $R/f x" "$WT")"
 gate "#533 (e): Set-Content \$p x, do worktree, BARRA (alvo com variavel)" 2 "$(bp 'Set-Content $p x' "$WT")"
 gate "#533 (e): Set-Content -Desconhecido y <worktree>/f, do worktree, BARRA (parametro desconhecido)" 2 "$(bp "Set-Content -Desconhecido y $WT/f" "$WT")"
-gate "#533 (e): Set-Content -Fi x <worktree>/f, do worktree, BARRA (prefixo ambiguo, incerto)" 2 "$(bp "Set-Content -Fi x $WT/f" "$WT")"
+gate "#533 (e): Set-Content -P x <worktree>/f, do worktree, BARRA (prefixo ambiguo, incerto)" 2 "$(bp "Set-Content -P x $WT/f" "$WT")"
 gate "#533 (e): [IO.File]::Replace('a','<principal>/f',\$null), do worktree, BARRA (2o argumento)" 2 "$(bp "[IO.File]::Replace('a','$R/f',\$null)" "$WT")"
 gate "#533 (e): [IO.Directory]::CreateDirectory('<principal>/d'), do worktree, BARRA (metodo de escrita nao listado)" 2 "$(bp "[IO.Directory]::CreateDirectory('$R/d')" "$WT")"
 gate "#533 (e): [IO.File]::ReadAllText('<principal>/f') do worktree, PASSA (leitura)" 0 "$(bp "[IO.File]::ReadAllText('$R/f')" "$WT")"
@@ -1166,7 +1166,7 @@ gate "D5 (4): Invoke-Expression \"Set-Content <P>/f x\", do worktree, BARRA" 2 "
 Invoke-Expression "Set-Content __R__/f x"
 EOC
 )" "$WT")"
-gate "D5 (4): iex \$x (argumento nao literal), do worktree, BARRA (incerto)" 2 "$(bp 'iex $x' "$WT")"
+gate "D5 (4): iex \$x (argumento nao literal), do worktree, BARRA (regressao: ja barrava pelo ramo de comando dinamico)" 2 "$(bp 'iex $x' "$WT")"
 gate "D5 (4) vizinho: iex 'Write-Output hola', do worktree, PASSA (texto sem escrita)" 0 "$(bp "iex 'Write-Output hola'" "$WT")"
 
 echo "-- item 6: mascara de aspas que nao acompanha crase, comentario e here-string --"
@@ -1234,7 +1234,7 @@ gate "D5 (s5): \$h.x = Set-Content <P>/f x, do worktree, BARRA" 2 "$(bp "$(cmdps
 $h.x = Set-Content __R__/f x
 EOC
 )" "$WT")"
-gate "D5 (s6): iex 'a'\"\$(...)\" (aspas mistas), do worktree, BARRA (incerto)" 2 "$(bp "$(cmdps <<'EOC'
+gate "D5 (s6): iex 'a'\"\$(...)\" (aspas mistas), do worktree, BARRA (regressao: ja barrava pelo ramo de comando dinamico)" 2 "$(bp "$(cmdps <<'EOC'
 iex 'Write-Output '"$(Set-Content __R__/f x)"
 EOC
 )" "$WT")"
@@ -1294,6 +1294,17 @@ mkdir -p "$R/sub dir" "$WT/sub dir"
 gate "2a rev: {cd,\"<P>/sub dir\"} && echo x > f (espaco citado), do worktree, BARRA" 2 "$(b "{cd,\"$R/sub dir\"} && echo x > f" "$WT")"
 gate "2a rev: {cd,'<P>/sub dir'} && echo x > f, do worktree, BARRA" 2 "$(b "{cd,'$R/sub dir'} && echo x > f" "$WT")"
 gate "2a rev vizinho: {cd,\"<WT>/sub dir\"} && echo x > f, do worktree, PASSA" 0 "$(b "{cd,\"$WT/sub dir\"} && echo x > f" "$WT")"
+
+echo "-- 3a revisao do fluxo: continuacao de linha por crase, <# entre aspas, prefixo por cmdlet, FileInfo --"
+for c in $'Copy-Item -Path src\* `\n  -Destination dst `\n  -Recurse' $'Copy-Item a.txt b.txt `\n  -Force' $'Move-Item -Path a.txt `\r\n  -Destination b.txt' $'New-Item -ItemType Directory `\n  -Path sub9' 'Copy-Item "src" "dst" -Recurse -Force `' \
+  "Select-String '<#' a.txt" 'Write-Output "x <# y"' "Set-Content -Path a.ps1 -Value '<# .SYNOPSIS x #>'" \
+  'cp -v a.txt b.txt' 'mv -v a.txt c.txt' 'cp -r -v src dst' '"x" | tee -a out.txt' 'Set-Content -Path a.txt -Va x' 'Copy-Item -Container a b'; do
+  gate "3a rev vizinho: ${c//$'\n'/⏎}, do worktree, PASSA" 0 "$(bp "$c" "$WT")"
+done
+for c in $'Copy-Item a.txt `\n  __R__/f' $'Move-Item __R__/a.txt `\n  b.txt' "[IO.FileInfo]::new('__R__/f').Create()" "[IO.DirectoryInfo]::new('__R__/d').Create()"; do
+  cc=${c//__R__/$R}
+  gate "3a rev: ${c//$'\n'/⏎}, do worktree, BARRA" 2 "$(bp "$cc" "$WT")"
+done
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
