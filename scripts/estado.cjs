@@ -462,20 +462,33 @@ function comTravaDoFluxo(slug, fn) {
   const trava = new Trava(path.join(DIR_ESTADO, '.' + slug + '.lock'));
   trava.entrar();
   travasDoFluxo.add(slug);
+  // `process.exit` dentro de `fn` (ex.: a recusa do destinar) não desfaz o finally:
+  // a trava sai do disco pelo evento `exit`, para não deixar `.<slug>.lock` vivo que a
+  // chamada seguinte teria de quebrar com aviso de trava órfã (#545, D2 emendado).
+  const soltar = () => {
+    if (!travasDoFluxo.has(slug)) return;
+    travasDoFluxo.delete(slug);
+    trava.sair();
+  };
+  process.on('exit', soltar);
   try {
     return fn();
   } finally {
-    travasDoFluxo.delete(slug);
-    trava.sair();
+    process.removeListener('exit', soltar);
+    soltar();
   }
 }
 
-// Costura de teste (#545, D3): com RFM_ESTADO_PAUSA_GRAVAR_MS inteiro positivo, a
-// gravação espera esse tempo ANTES de entrar na trava, para a bateria provar a
-// mescla com outro processo gravando durante a pausa. Sem a variável, não espera.
-function pausaDeTeste() {
+// Costura de teste (#545, D3): com RFM_ESTADO_PAUSA_GRAVAR_MS inteiro positivo, o comando
+// dorme logo depois de ler o estado, antes de gravar. Nos comandos que travam o comando
+// inteiro (TRAVA_NO_COMANDO) a pausa cai DENTRO da trava; nos outros, fora dela. Escreve
+// `pausa-gravar: <slug>` em stderr antes de dormir, para a bateria saber que a leitura
+// já aconteceu e só então disparar os concorrentes. Sem a variável, não faz nada.
+function pausaDeTeste(slug) {
   const v = process.env.RFM_ESTADO_PAUSA_GRAVAR_MS;
-  if (/^[1-9][0-9]*$/.test(v || '')) sleepSync(Number(v));
+  if (!/^[1-9][0-9]*$/.test(v || '')) return;
+  process.stderr.write(`pausa-gravar: ${slug}\n`);
+  sleepSync(Number(v));
 }
 
 // Mescla em três vias por campo (#545, D2). Pura. Chave de topo que `meu` não mudou
@@ -511,7 +524,6 @@ function mesclarEstado(base, meu, vivo) {
 // processo já segura). Dentro dela, relê o arquivo vivo e mescla com a base.
 function gravar(slug, estado) {
   if (travasDoFluxo.has(slug)) return gravarDentro(slug, estado);
-  pausaDeTeste();
   comTravaDoFluxo(slug, () => gravarDentro(slug, estado));
 }
 
@@ -2504,6 +2516,7 @@ function main() {
     const saida = comTravaDoFluxo(slug, () => {
       const vivo = ler(slug);
       if (!vivo) return { sumiu: true };
+      pausaDeTeste(slug);
       const bloco = vivo.executar || {};
       const volta = bloco.reaberturas || 0;
       const flakes = Array.isArray(bloco.flakes) ? bloco.flakes.map((f) => ({ ...f, voltas: [...f.voltas] })) : [];
@@ -2531,11 +2544,17 @@ function main() {
     return;
   }
 
+  // Comandos que acrescentam a uma lista (#545, D2 emendado): leitura, validação e gravação
+  // INTEIRAS sob a trava do fluxo, relendo o estado dentro dela, como o `decidir`. Os
+  // outros (marcar, exigir) leem fora da trava e a gravação mescla por campo.
+  const TRAVA_NO_COMANDO = ['pendencia', 'destinar', 'liberar', 'liberar-teto', 'decidir'];
+  const rodarComando = () => {
   const estado = ler(slug);
   if (!estado) {
     console.error(`erro: ${slug} nao existe — rode 'iniciar' primeiro`);
     process.exit(1);
   }
+  pausaDeTeste(slug);
 
   if (cmd === 'ler') {
     avisarCarimbosDivergentes(estado);
@@ -3248,6 +3267,8 @@ function main() {
 
   console.error('uso: iniciar | ler | deixado | destinar | pendencia | marcar | proximo | exigir | liberar | listar | concluido | veredito | registrar-flake | liberar-teto | decidir | decididos');
   process.exit(1);
+  };
+  return TRAVA_NO_COMANDO.includes(cmd) ? comTravaDoFluxo(slug, rodarComando) : rodarComando();
 }
 
 if (require.main === module) main();
