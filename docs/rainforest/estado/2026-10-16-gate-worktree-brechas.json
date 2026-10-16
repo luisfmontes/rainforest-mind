@@ -27,12 +27,15 @@
     "em_voo": [
       {
         "agente": "executor",
-        "tarefa": "T1 chaves e cmdlets",
-        "desde": "2026-10-16T03:10:00-03:00",
+        "tarefa": "T1 rodada 2 falha fechada",
+        "desde": "2026-10-16T04:10:00-03:00",
         "sessao": "bfd7468b-e589-43c6-9e09-04528a1dc829"
       }
     ],
-    "em": "2026-10-16"
+    "em": "2026-10-16",
+    "integradas": [
+      1
+    ]
   },
   "revisar": {
     "status": "pendente"
@@ -57,6 +60,13 @@
       "porque": "Luis autorizou as recomendadas; sem literal nao ha como saber o destino, e o ramo de CLI ja barra o incerto",
       "estagio": "design",
       "em": "2026-10-16T04:10:45.413Z"
+    },
+    {
+      "pergunta": "Achados de seguranca e regressao da rodada 1 do gate (chaves no PowerShell, cmdlet sem falha fechada, .NET por lista de escrita, Select-String barrado, verbo git com escrita)",
+      "escolha": "emendas D1-D3 com falha fechada e D4 novo neste PR",
+      "porque": "Luis autorizou as recomendadas; deixar a falha aberta reabriria a brecha que o fluxo fecha, e o D4 e a mesma classe no mesmo trecho",
+      "estagio": "executar",
+      "em": "2026-10-16T04:43:01.391Z"
     }
   ]
 }
