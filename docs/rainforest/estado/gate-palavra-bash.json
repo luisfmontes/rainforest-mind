@@ -164,8 +164,13 @@
       {
         "texto": "usuario: recomendado = (a) uniao em subcomandoGit, git conta se aparece no texto cru ou no normalizado; aceite = zero 2->0 contra a base no corpus do revisor",
         "em": "2026-10-15"
+      },
+      {
+        "texto": "usuario: recomendado = rodada extra 2, recursao uma vez por interno distinto, teto de profundidade que barra, caso de 22 niveis em menos de 2 s, CHANGELOG escrita vs verbo de git",
+        "em": "2026-10-16"
       }
-    ]
+    ],
+    "liberado_em": "2026-10-16"
   },
   "verificar": {
     "status": "pendente"
@@ -194,6 +199,13 @@
       "porque": "as tres voltas reabriram o mesmo 2->0 porque a leitura nova substituia a crua; uniao fecha a familia por construcao",
       "estagio": "executar",
       "em": "2026-10-15T23:49:09.268Z"
+    },
+    {
+      "pergunta": "rodada extra 1 reprovou por recursao 2^n: como seguir?",
+      "escolha": "rodada extra 2: recursao por interno distinto e teto que barra",
+      "porque": "defeito mecanico de custo, a uniao em si passou no diferencial e no fuzz",
+      "estagio": "executar",
+      "em": "2026-10-16T09:58:06.210Z"
     }
   ]
 }

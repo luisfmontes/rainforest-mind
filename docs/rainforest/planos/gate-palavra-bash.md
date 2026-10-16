@@ -267,3 +267,27 @@ pronto quando: a leitura do bash só acrescenta bloqueio, nunca tira. Uma funç�
 - CHANGELOG 1.67.6: uma linha dizendo que o reconhecimento do git é a união da leitura crua com a do bash, e que por isso `C:\Git\cmd\git.exe -C P …` sem aspas no Bash continua barrado, como na base (conservador).
 
 Provado por `bash hooks/testa-gate-worktree.sh` com 0 falhas e pelo diferencial com zero `2->nao2`.
+
+### 10. Recursão do `subcomandoGit` uma vez por interno distinto, com teto (rodada extra 2) [tipo: implementar]
+atende: D4, D5
+arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`, `CHANGELOG.md`
+depende de: 9
+prova: `P=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && W=$(git rev-parse --show-toplevel) && node -e 'const c="'"'"'eval'"'"' ".repeat(22)+"\"git -C "+process.argv[2]+" commit --allow-empty -m x\"";process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:process.argv[1],hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:c}}))' "$W" "$P" | timeout 5 node hooks/gate-worktree.cjs >/dev/null 2>&1; test $? -eq 2`
+mutacao:
+  arquivo: `hooks/gate-worktree.cjs`
+  de: `if (internosVistos.has(chave)) return;`
+  para: `if (false) return;`
+  bateria: `bash hooks/testa-gate-worktree.sh`
+  timeout: `900000`
+  fixture: testa-gate-worktree.sh, secao "(#530) rodada extra 2: wrapper aninhado fundo nao explode nem passa"
+pronto quando: `subcomandoGit` coleta os internos das duas leituras e recursa uma vez só por par distinto (texto interno, ferramenta do interno). A chave do par fica num `Set` chamado `internosVistos`, e a linha que pula o repetido é exatamente `if (internosVistos.has(chave)) return;`, alvo da mutação. Recebe também `profundidade` e não recursa além de 4 níveis. Daí em diante quem decide é o barramento por profundidade que já existe em `alvosBashEscrita` ("wrapper aninhado demais para conferir (mais de 4 niveis)"). Nenhum caso de teste lê o texto do fonte.
+- Pelo gate real, tool Bash, cwd W, saem **2**, e cada um em menos de 2 s (o teste mede o tempo e falha acima disso, ou usa `timeout 5` e falha se estourar):
+  - `'eval' ` × 22 seguido de `"git -C P commit --allow-empty -m x"`;
+  - `\eval ` × 22 com a mesma cauda;
+  - `'bash' -c '…'` aninhado 6 níveis com `git -C P commit` no fundo;
+  - `eval ` × 3000 com a cauda citada. Na base sai 2; na rodada extra 1 saía 1 por `RangeError`.
+- Vizinhos legítimos continuam **0**: `eval "git status"` e `bash -c 'git -C W log'` a partir de W. Os casos das tarefas 3, 6, 7, 8 e 9 seguem verdes.
+- Diferencial do corpus do revisor (`r9diff.cjs`) contra a base 9f6b9ca3 continua com **zero** linhas `2->nao2`. A integração roda e cola o resultado.
+- CHANGELOG 1.67.6: os itens de escrita dentro de `bash -c`/`eval` e de substituição dizem que valem para **escrita** (redirecionamento, `tee`, `cp`). Verbo de git com `cd` dentro do wrapper, como `bash -c 'cd P && git commit'`, fica no "Limite conhecido", remetido ao item 4 da #530.
+
+Provado por `bash hooks/testa-gate-worktree.sh` com 0 falhas e pelo diferencial com zero `2->nao2`.
