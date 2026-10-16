@@ -20,7 +20,19 @@
     "em": "2026-10-16"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-16",
+    "tarefas_ok": 0,
+    "tarefas": 2,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "T1 chaves e cmdlets",
+        "desde": "2026-10-16T03:10:00-03:00",
+        "sessao": "bfd7468b-e589-43c6-9e09-04528a1dc829"
+      }
+    ],
+    "em": "2026-10-16"
   },
   "revisar": {
     "status": "pendente"
