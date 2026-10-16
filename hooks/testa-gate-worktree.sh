@@ -1823,6 +1823,10 @@ s552seg2 "\$p='__R__'; 'x' > \$p/f" 2 bp
 s552seg2 "\$env:X='__R__'; Remove-Item \$env:X/a.txt" 2 bp
 s552seg2 "\$p=\"__R__\" ; Remove-Item (Join-Path \$p a.txt)" 2 bp
 s552seg2 "'__R__/a.txt'" 0 bp
+s552seg2 "[string]\$p='__R__'; Remove-Item \$p/f" 2 bp
+s552seg2 "\$p,\$q='__R__','x'; Remove-Item \$p/f" 2 bp
+s552seg2 "\$p??='__R__'; Remove-Item \$p/f" 2 bp
+s552seg2 "\${a-b}='__R__'; Remove-Item \${a-b}/f" 2 bp
 case "${R,,}" in "${CASA,,}"/*) RT='$USERPROFILE'"${R:${#CASA}}"; gate "#552 seg3: rm \$USERPROFILE/.../principal/f, do worktree, BARRA" 2 "$(b "rm $RT/f" "$WT")";; esac
 
 echo "== #552 D6: pai inexistente =="

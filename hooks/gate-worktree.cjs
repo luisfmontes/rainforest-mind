@@ -1534,11 +1534,11 @@ function segmentoDeLeitura(toks, seg, ehPowerShell, configGitNaLinha) {
   // So atribuicao (`P=<P>`): o caminho vai para uma variavel que o resto da linha usa
   // (`echo x > $P/f`). Nao e leitura: o caminho citado conta.
   if (pos === null || pos === undefined) return false;
-  // PowerShell: atribuicao colada (`$p='<P>'`, `$env:X="<P>"`) vira um token citado so; como no
-  // Bash, o caminho vai para a variavel que o resto da linha usa, e conta.
-  if (ehPowerShell && /^\$[\w:{}]+\s*[-+*/%?]?=/.test(toks[pos].v)) return false;
   // PowerShell: string citada na posicao de comando e expressao, nao roda nada (rodar pede `&`).
-  if (ehPowerShell && toks[pos].q) return true;
+  // So vale quando o segmento ABRE com a aspa: atribuicao colada (`$p='<P>'`, `[string]$p='<P>'`,
+  // `$p,$q='<P>'`) tambem vira um token citado, e ali o caminho vai para a variavel que o
+  // resto da linha usa, e conta.
+  if (ehPowerShell && toks[pos].q) return pos === 0 && /^\s*['"]/.test(seg);
   const nome = toks[pos].v.replace(/`/g, "").split(/[\\/]/).pop().toLowerCase().replace(/\.exe$/, "");
   if (COPIA_DA_REDE.has(nome) && (ehPowerShell || nome === "cp")) {
     // `cp -t <P> a` poe o destino numa opcao: a lista nao o ve, entao nao e leitura.
