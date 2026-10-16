@@ -15,3 +15,9 @@ O gate reconhece a escrita por uma lista de formas conhecidas, e cada revisão c
 
 ## Decisão pedida
 Liberar uma 4ª rodada de revisão, só do delta `08af6033..af646e9e` mais a regressão, com o mesmo critério da 3ª.
+
+## 4ª rodada (liberada por Luís em 2026-10-16)
+- Reprovou com 1 achado (d): a continuação de linha juntava a linha seguinte quando o `#` vinha depois de aspa fechada, de membro ou de índice (`'x'#c`, `$a.b#c`, `$a[0]#c`), e o `Set-Content` da linha seguinte escapava. Saía 2 em `08af6033` e passou a sair 0.
+- Os outros três pontos do delta (`<#`, prefixo por cmdlet, `FileInfo`/`DirectoryInfo` em `::new`) passaram, sem creep e sem afirmação do CHANGELOG contradita.
+- Conserto `8ed64b58`: continuação de linha com qualquer `#` fora de aspas vira alvo incerto (falha fechada). A bateria tem 436 ok e nenhuma falha; os 6 casos novos ficam vermelhos sem o conserto.
+- Decisão pedida: uma 5ª rodada, só do delta `45be540f..8ed64b58`.
