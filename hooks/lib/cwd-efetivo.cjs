@@ -68,9 +68,10 @@ const POP_LOCATION = /^\s*Pop-Location\s*$/i;
 // aspa, `$`, chave, parentese ou barra invertida dentro, com pelo menos uma
 // virgula, e com `}` seguido de espaco, separador ou fim. Grupo de verdade
 // (`{ cmd; }`) tem espaco logo depois da chave e nao casa.
-// Elemento da expansao: sem espaco nem metacaractere, ou um trecho citado sem `$`,
-// crase nem espaco (`"<P>"`, `'<P>'`). Virgula nunca entra, nem dentro de aspas.
-const ELEMENTO_DE_CHAVES = `(?:[^\\s'"$\`{}()\\\\;&|<>,]|"[^"\\s$\`,]*"|'[^'\\s$\`,]*')*`;
+// Elemento da expansao: sem espaco nem metacaractere, ou um trecho citado sem `$`
+// nem crase (`"<P>"`, `'<P>'`). Dentro de aspas o espaco entra: o bash expande
+// `{cd,"a b"}` para `cd "a b"` (2a revisao do fluxo). Virgula nunca entra.
+const ELEMENTO_DE_CHAVES = `(?:[^\\s'"$\`{}()\\\\;&|<>,]|"[^"$\`,]*"|'[^'$\`,]*')*`;
 // `{a,b,...}` com pelo menos uma virgula, sem espaco por dentro, e fechada antes de
 // separador ou fim. Grupo de verdade (`{ cmd; }`) tem espaco logo depois da chave.
 const EXPANSAO_DE_CHAVES_DE_COMANDO = new RegExp(`^\\{(${ELEMENTO_DE_CHAVES}(?:,${ELEMENTO_DE_CHAVES})+)\\}(?=[\\s;&|]|$)`);
@@ -102,7 +103,8 @@ function expandeChavesDeComandoNoSegmento(seg, ehPowerShell = false) {
   const pre = PREFIXO_DE_POSICAO_DE_COMANDO.exec(seg)[0];
   const m = EXPANSAO_DE_CHAVES_DE_COMANDO.exec(seg.slice(pre.length));
   if (!m) return null;
-  const elementos = m[1].split(",").map((e) => e.replace(/["']/g, "")).filter((e) => e !== "");
+  // As aspas ficam: `cd "a b"` e uma palavra so, e os regex de movedor leem a forma citada.
+  const elementos = m[1].split(",").filter((e) => e !== "" && e !== '""' && e !== "''");
   return { texto: pre + elementos.join(" ") + seg.slice(pre.length + m[0].length) };
 }
 

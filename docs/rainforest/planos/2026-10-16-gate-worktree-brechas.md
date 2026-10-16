@@ -24,6 +24,8 @@ pronto quando: com o payload real de PreToolUse (`agent_type` de subagente, `too
 
 *Emenda 2026-10-16 (rodada 3):* o (514c) fica como está, porque não travava o comportamento antigo; só o (514d) é reescrito. Os casos da revisão de segurança da rodada 3 entram na seção "#533" como `D5 (s1)` a `D5 (s5)`: `Move-Item <P>/a.txt .`, `New-Item <P> -Name f`, `Set-Content –Path <P>/f`, `iex -Command '...'`, `$a += Set-Content <P>/f x` e `$h.x = Set-Content <P>/f x`, a partir do worktree, saem 2; `Copy-Item <P>/a.txt .` e `New-Item sub -Name f` saem 0.
 
+*Emenda 2026-10-16 (2ª revisão do fluxo):* a seção "2a revisao do fluxo" da bateria leva as grafias da emenda correspondente do design. Cada uma, a partir do worktree com alvo no principal, sai 2. Os vizinhos legítimos (`New-Item -Type Directory sub`, `Set-Content -AsByteStream`, `[IO.Directory]::GetCurrentDirectory()`, `[IO.StreamReader]::new('a.txt')`, `cp -r src dst`, `Set-Content a.txt, b.txt x`) saem 0.
+
 Forma do código: em `hooks/lib/cwd-efetivo.cjs`, uma função pura que, só no começo do segmento (depois de espaço), troca uma expansão `{a,b,...}` sem espaço, aspas, `$` nem chave interna pelas palavras separadas por espaço; `resolverMovedor` a aplica antes dos regex de movedor. Em `hooks/gate-worktree.cjs`, `alvosBashEscrita` ganha, dentro do laço de segmentos, a linha exata `if (ehPowerShell) alvosDeCmdlet(toks, posCmd, base, empurra);`, e uma função `alvosDeCmdlet` cobre D2 e D3 (incerto do D3 sai como alvo com `incerto: true`, e o mapeamento em `main` passa a respeitar o `incerto` dos alvos de escrita).
 
 ### 2. CHANGELOG e versão [tipo: docs]

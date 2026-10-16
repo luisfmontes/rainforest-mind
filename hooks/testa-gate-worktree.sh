@@ -1276,6 +1276,25 @@ New-Item -Path sub,__R__ -Name f -ItemType File
 EOC
 )" "$WT")"
 
+echo "-- 2a revisao do fluxo: atribuicao colada, lista com espaco, aliases cp/mv/tee, crase no nome, comentario de bloco, .NET com varias posicoes, chaves com espaco citado --"
+for c in '$a=Set-Content __R__/f x' '$a+=Set-Content __R__/f x' '$a[0]=Set-Content __R__/f x' '[string]$a = Set-Content __R__/f x' '$a, $b = Set-Content __R__/f x' '($a) = Set-Content __R__/f x' '${a} = Set-Content __R__/f x' '$env:X=Set-Content __R__/f x' \
+  'Set-Content a.txt, __R__/f x' 'Set-Content a.txt ,__R__/f x' 'Set-Content -Path a.txt, __R__/f -Value x' '"x" | Out-File -FilePath a.txt, __R__/f' 'New-Item a, __R__/f' \
+  'cp -Destination __R__/f a.txt' 'mv -Destination __R__/f a.txt' '"x" | tee -FilePath:__R__/f' \
+  '`Set-Content __R__/f x' 'Set-`Content __R__/f x' 'Cop`y-Item a __R__/f' '<#c#>Set-Content __R__/f x' 'Set-Content <##> __R__/f x' \
+  "[IO.File]::Replace('a.txt','b.txt','__R__/bak')" "[IO.File]::Move('__R__/a.txt','b.txt')" "[IO.Directory]::Move('__R__/d','x')"; do
+  cc=${c//__R__/$R}
+  gate "2a rev: $c, do worktree, BARRA" 2 "$(bp "$cc" "$WT")"
+done
+for c in 'New-Item -Type Directory sub' 'ni -Type File x.txt' 'New-Item -ItemType SymbolicLink -Path ln -Target a.txt' 'Set-Content -Path a.bin -Value x -AsByteStream' \
+  "[IO.File]::GetCreationTime('a.txt')" "[IO.Directory]::GetCurrentDirectory()" "[IO.StreamReader]::new('a.txt')" "[IO.File]::Replace('a.txt','b.txt',\$null)" \
+  'cp -r src dst' '$a = Get-Content a.txt' '$n=Set-Content b.txt x' 'Set-Content a.txt, b.txt x'; do
+  gate "2a rev vizinho: $c, do worktree, PASSA" 0 "$(bp "$c" "$WT")"
+done
+mkdir -p "$R/sub dir" "$WT/sub dir"
+gate "2a rev: {cd,\"<P>/sub dir\"} && echo x > f (espaco citado), do worktree, BARRA" 2 "$(b "{cd,\"$R/sub dir\"} && echo x > f" "$WT")"
+gate "2a rev: {cd,'<P>/sub dir'} && echo x > f, do worktree, BARRA" 2 "$(b "{cd,'$R/sub dir'} && echo x > f" "$WT")"
+gate "2a rev vizinho: {cd,\"<WT>/sub dir\"} && echo x > f, do worktree, PASSA" 0 "$(b "{cd,\"$WT/sub dir\"} && echo x > f" "$WT")"
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

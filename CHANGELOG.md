@@ -12,26 +12,37 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 ## 1.67.10 — 2026-10-16
 
-- **Gate de worktree: mais grafias de escrita no checkout principal passam a ser barradas (#530, #533).**
-  - `{cd,X}` e `{pushd,X}` no começo do comando (Bash): o bash expande as chaves e roda `cd X`, e o gate passa a ler
-    assim. No PowerShell, `{...}` segue sendo bloco de script.
+- **Gate de worktree: mais grafias de escrita no checkout principal passam a ser barradas (#530, #533).** O gate
+  reconhece a escrita por uma lista de formas conhecidas; o que ela não cobre segue passando e está na #552.
+  - `{cd,X}` e `{pushd,X}` no começo do comando (Bash), também depois de atribuição, palavra reservada ou `!`, e com
+    elemento citado (`{cd,"a b"}`): o bash expande as chaves e roda `cd X`, e o gate passa a ler assim. No
+    PowerShell, `{...}` segue sendo bloco de script.
   - Cmdlets de escrita do PowerShell: `Set-Content`/`sc`, `Add-Content`/`ac`, `Out-File`, `New-Item`/`ni`,
-    `Tee-Object`, `Copy-Item`/`copy`/`cpi` e `Move-Item`/`move`/`mi`, inclusive com qualificador de módulo, aliases
-    de parâmetro (`-PSPath`, `-LP`) e lista de destinos (`a,b`). Destino com variável, subexpressão ou parâmetro
-    desconhecido é tratado como incerto e barrado dentro de repositório.
+    `Tee-Object`/`tee`, `Copy-Item`/`copy`/`cpi`/`cp` e `Move-Item`/`move`/`mi`/`mv`. Valem com qualificador de
+    módulo, crase no nome, `&`, `.` ou atribuição antes (`$a=`, `$a +=`, `[string]$a =`, `$a, $b =`), parâmetro com
+    `:` ou travessão, aliases de parâmetro (`-PSPath`, `-LP`) e lista de caminhos, com ou sem espaço (`a, <P>/f`).
+    `New-Item <P> -Name f` junta caminho e nome. Na cópia sem destino, o alvo é o cwd. No `Move-Item`, a origem
+    também é alvo, porque sai do lugar.
+  - Incerto, e por isso barrado dentro de repositório, mesmo no worktree: alvo com variável, crase ou aspa
+    tipográfica, splat (`@a`), parâmetro desconhecido e comentário de bloco (`<#...#>`).
+  - `iex`/`Invoke-Expression` com texto literal: o texto é analisado como comando. Com `$`, crase, outro parâmetro
+    além de `-Command`, ou sem argumento (texto pelo pipeline), é incerto.
   - Chamada .NET sob `IO` (`[IO.File]::WriteAllText(...)`, `[IO.Directory]::CreateDirectory(...)`,
-    `[IO.StreamWriter]::new(...)`): só os métodos de leitura conhecidos passam. Chamada dentro de aspas simples, ou de
-    aspas duplas sem `$`, é texto e não conta; com `iex`/`Invoke-Expression`, conta.
+    `[IO.StreamWriter]::new(...)`): só os métodos de leitura conhecidos passam. Em `Move` e `Replace`, origem e
+    backup também são alvo. Chamada dentro de aspas simples, ou de aspas duplas sem `$`, é texto e não conta. A
+    máscara não vale com crase fora de aspas, `#`, here-string, aspa tipográfica ou `iex`.
   - Escrita na mesma linha de um verbo git (`echo x > <principal>/f && git commit`) também é checada.
-  - Grafias que contornavam a primeira versão do conserto: `-Path:'...'`, parâmetro com travessão (`–Path`), cmdlet
-    depois de `&`, `.` ou atribuição (`$null =`, `$a +=`, `$h.x =`), splat (`@a`, incerto), espaço em `[IO.File] ::`,
-    `iex`/`Invoke-Expression` (inclusive `-Command`; com outro parâmetro, `$`, crase ou sem argumento, incerto) com cmdlet de escrita no texto, `New-Item <P> -Name f` e `-Path a,<P>`, splat em qualquer posição, aspa tipográfica no caminho (incerto), cópia sem destino (o cwd é o alvo), e a
-    origem do `Move-Item`, que sai do lugar. `{cd,X}` também conta depois de atribuição, palavra reservada, `!` e com
-    aspas dentro das chaves. A máscara de aspas da chamada .NET só vale sem crase fora de aspas, `#` ou here-string.
-  - Leitura legítima no worktree volta a passar: `Copy-Item <principal>/a.txt .` e `Set-Content a.txt $t` (o `-Value`
-    não é caminho).
-  - Seguem passando, registrados na #552: remoção (`rm`, `Remove-Item`), `New-Object` de tipo de IO e redirecionamento
-    com variável (`echo x > $P/f`).
+  - Uso legítimo no worktree continua passando: `Copy-Item <principal>/a.txt .`, `Set-Content a.txt $t` (o `-Value`
+    não é caminho), `Set-Content a.txt @('x','y')`, `New-Item -Type Directory sub` e `cp -r src dst`.
+  - Seguem passando, fora do escopo deste conserto:
+    - `cd $X` com variável seguido de escrita (alvo no cwd inicial) e PowerShell chamado do Bash (`pwsh -c "..."`).
+    - Registrados na #552: remoção (`rm`, `Remove-Item`, a origem do `mv` do bash), `New-Object` de tipo de IO,
+      redirecionamento com variável (`echo x > $P/f`), alvo entre parênteses (`-Path (Join-Path ...)`,
+      `('a','<P>/f')`), pipeline sem posicional, caminho com provedor (`FileSystem::`) e outros cmdlets de escrita
+      (`Clear-Content`, `Rename-Item`, `Export-Csv`...).
+    - Também na #552: indireção .NET e texto executado fora do `iex` (`[scriptblock]::Create`, `Invoke-Command`), e
+      chaves em outro comando (`{touch,<P>/f}`). E ainda `builtin`/`command`/`time`/`eval` antes das chaves,
+      redirecionamento antes do `cd`, e aspa escapada por crase na segmentação do PowerShell.
 
 ## 1.67.9 — 2026-10-15
 
