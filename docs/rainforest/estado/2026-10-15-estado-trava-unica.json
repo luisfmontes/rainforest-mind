@@ -20,7 +20,28 @@
     "em": "2026-10-15"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-15",
+    "tarefas_ok": 0,
+    "tarefas": 2,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "T1 trava unica e mescla",
+        "desde": "2026-10-15T23:40:00-03:00",
+        "sessao": "bfd7468b-e589-43c6-9e09-04528a1dc829"
+      }
+    ],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "2033630abfc243e796ae47e33d94fb2110498f2e",
+        "iteracao": 1,
+        "sessao": "bfd7468b-e589-43c6-9e09-04528a1dc829",
+        "ts": "2026-10-16T02:20:21.214Z"
+      }
+    ],
+    "em": "2026-10-15"
   },
   "revisar": {
     "status": "pendente"
