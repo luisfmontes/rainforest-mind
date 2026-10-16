@@ -10,7 +10,7 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
-## 1.67.6 — 2026-10-15
+## 1.67.11 — 2026-10-16
 
 - **`gate-worktree` barra mais formas de escrever no checkout principal (#530).** Um subagente num worktree linkado
   conseguia escrever no principal por formas que o gate deixava passar. Agora são barradas:
@@ -38,6 +38,97 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 - **O reconhecimento do git é a união da leitura crua com a do bash (rodada extra, #530):** `C:\Git\cmd\git.exe -C P ...` sem aspas no Bash continua barrado, como na base (conservador).
 - **Crédito:** a montagem da palavra e a expansão de chaves vêm de `hooks/lib/palavra-bash.cjs`, enxertada de
   `plugins/ruflo-mods/hooks/guard/dangerous-command.ts` do ruflo (`ruvnet/ruflo`, licença MIT).
+
+## 1.67.10 — 2026-10-16
+
+- **Gate de worktree: mais grafias de escrita no checkout principal passam a ser barradas (#530, #533).** O gate
+  reconhece a escrita por uma lista de formas conhecidas; o que ela não cobre segue passando e está na #552.
+  - `{cd,X}` e `{pushd,X}` no começo do comando (Bash), também depois de atribuição, palavra reservada ou `!`, e com
+    elemento citado (`{cd,"a b"}`): o bash expande as chaves e roda `cd X`, e o gate passa a ler assim. No
+    PowerShell, `{...}` segue sendo bloco de script.
+  - Cmdlets de escrita do PowerShell: `Set-Content`/`sc`, `Add-Content`/`ac`, `Out-File`, `New-Item`/`ni`,
+    `Tee-Object`/`tee`, `Copy-Item`/`copy`/`cpi`/`cp` e `Move-Item`/`move`/`mi`/`mv`. Valem com qualificador de
+    módulo, crase no nome, `&`, `.` ou atribuição antes (`$a=`, `$a +=`, `[string]$a =`, `$a, $b =`), parâmetro com
+    `:` ou travessão, aliases de parâmetro (`-PSPath`, `-LP`) e lista de caminhos, com ou sem espaço (`a, <P>/f`).
+    `New-Item <P> -Name f` junta caminho e nome. Na cópia sem destino, o alvo é o cwd. No `Move-Item`, a origem
+    também é alvo, porque sai do lugar.
+  - Incerto, e por isso barrado dentro de repositório, mesmo no worktree: alvo com variável, crase ou aspa
+    tipográfica, splat (`@a`), parâmetro desconhecido e comentário de bloco (`<#...#>`) fora de aspas.
+  - `iex`/`Invoke-Expression` com texto literal: o texto é analisado como comando. Com `$`, crase, outro parâmetro
+    além de `-Command`, ou sem argumento (texto pelo pipeline), é incerto.
+  - Chamada .NET sob `IO` (`[IO.File]::WriteAllText(...)`, `[IO.Directory]::CreateDirectory(...)`,
+    `[IO.StreamWriter]::new(...)`): só os métodos de leitura conhecidos passam. Em `Move` e `Replace`, origem e
+    backup também são alvo. Chamada dentro de aspas simples, ou de aspas duplas sem `$`, é texto e não conta. A
+    máscara não vale com crase fora de aspas, `#`, here-string, aspa tipográfica ou `iex`.
+  - Escrita na mesma linha de um verbo git (`echo x > <principal>/f && git commit`) também é checada.
+  - Uso legítimo no worktree continua passando: `Copy-Item <principal>/a.txt .`, `Set-Content a.txt $t` (o `-Value`
+    não é caminho), `Set-Content a.txt @('x','y')`, `New-Item -Type Directory sub` e `cp -r src dst`.
+  - Seguem passando, fora do escopo deste conserto:
+    - `cd $X` com variável seguido de escrita (alvo no cwd inicial) e PowerShell chamado do Bash (`pwsh -c "..."`).
+    - Registrados na #552: remoção (`rm`, `Remove-Item`, a origem do `mv` do bash), `New-Object` de tipo de IO,
+      redirecionamento com variável (`echo x > $P/f`), alvo entre parênteses (`-Path (Join-Path ...)`,
+      `('a','<P>/f')`), pipeline sem posicional, caminho com provedor (`FileSystem::`) e outros cmdlets de escrita
+      (`Clear-Content`, `Rename-Item`, `Export-Csv`...).
+    - Também na #552: indireção .NET e texto executado fora do `iex` (`[scriptblock]::Create`, `Invoke-Command`), e
+      chaves em outro comando (`{touch,<P>/f}`). E ainda `builtin`/`command`/`time`/`eval` antes das chaves,
+      redirecionamento antes do `cd`, e aspa escapada por crase na segmentação do PowerShell.
+
+## 1.67.9 — 2026-10-15
+
+- **Estado do fluxo: um escritor não apaga mais o que o outro gravou (#545).** O `veredito` do revisor, o
+  `registrar-flake` e o `decidir` usavam travas diferentes, e `marcar`, `destinar`, `pendencia`, `exigir` e
+  `liberar` regravavam o arquivo do fluxo sem trava nenhuma. Um veredito que chegava entre a leitura e a escrita de
+  um `marcar` sumia sem aviso.
+  - Toda gravação passa por uma trava só por fluxo (`.<slug>.lock`), que o `.gitignore` ignora.
+  - `veredito`, `registrar-flake`, `decidir`, `pendencia`, `destinar`, `liberar` e `liberar-teto` leem e gravam
+    dentro da trava: duas pendências, dois motivos ou dois vereditos ao mesmo tempo ficam os dois.
+  - `marcar` e `exigir` validam fora da trava (o `marcar` do plano roda a `prova:` por até 120 s) e, na gravação,
+    releem o arquivo e juntam campo a campo. O que o comando não mudou fica com o valor gravado por outro processo; o
+    que ele mudou, ou removeu, fica com o dele. Se o outro processo mudou o mesmo campo nesse meio-tempo (por exemplo, gravou
+    uma pendência enquanto o `marcar` fechava o estágio), o comando recusa com exit 2 sem gravar nada: rodar de novo lê
+    o estado atual, e a pendência nova passa a ser cobrada.
+  - No Windows, a troca do arquivo tenta de novo por até 2 s quando um leitor está com ele aberto.
+
+## 1.67.8 — 2026-10-15
+
+- **Painel de PR: quatro achados menores da revisão do PR #464 (#466).**
+  - Uma consulta que volta depois de você trocar de PR é descartada: não grava mais a URL velha, o resumo nem o erro do PR
+    antigo por cima do novo. A checagem se repete depois do `gh pr view`, ao rebaixar a origem, depois da leitura das
+    threads e ao gravar a URL; sobra só a janela entre a última leitura do store e a escrita seguinte.
+  - Falha do `gh api user` (saber quem é você) não rebaixa mais o PR para `manual` para sempre: naquela consulta o PR não
+    acorda a sessão (a virada entra na conversa como nota informativa, sem dizer que é desta sessão), e a consulta seguinte
+    tenta de novo. O custo: a virada que caiu na consulta adiada não acorda depois, e com o `gh api user` sempre falhando
+    o painel repete essa chamada a cada consulta.
+  - As decisões do despertar no merge, da ordem limpar-antes-de-enviar, da consulta velha e do dono passaram para funções
+    puras em `hooks/pr-puro.mjs`, testadas em `hooks/testa-mod-pr.cjs`, que roda no CI. A fiação no `hooks/pr.tsx`
+    (troca de PR no meio da consulta, `gh api user` falhando e voltando) tem casos em `hooks/mod-pr.test.tsx`, que roda
+    com `claude plugin test .` e fica fora do CI.
+  - A fixture de PR do `testa-mod-pr.cjs` ganhou `isCrossRepository` e `updatedAt`, como a do `mod-pr.test.tsx`.
+- A corrida da trava de 30 min do `plugins-em-dia` (duas janelas abertas no mesmo instante rodam o update juntas) ficou
+  aceita: o update repetido só repete trabalho.
+
+## 1.67.7 — 2026-10-15
+
+- **Item do painel "Deixado para depois" pode virar pendência do fluxo (#470).** Cada item aberto ganha um botão
+  **Vira pendência de <fluxo>**, um por fluxo aberto no repositório (sem fluxo aberto, o botão não aparece). Como o
+  "Faz agora", ele só preenche o prompt: quem envia é você, e o mod continua sem escrever em disco. O prompt leva o
+  comando `node scripts/estado.cjs pendencia --slug <slug> --texto '<item>'`, com o slug e o texto entre aspas simples; o comando leva `RFM_ESTADO_ROOT` apontando para o worktree do fluxo, e por isso acha o estado também quando o fluxo é de outro worktree. Texto que começa com `--` é aceito como texto.
+- **`estado.cjs pendencia --slug <s> --texto <t>`** (novo) acrescenta a pendência ao estágio aberto (o que `proximo`
+  devolve) sem mudar o status. Texto repetido não duplica, texto vazio sai 1, fluxo completo sai 2. A partir daí vale a
+  trava da #449: o estágio só fecha `ok` com destino para a pendência.
+- O ruído do painel não foi medido: os itens vivem só na memória da sessão, sem histórico. Por isso o item nunca trava o
+  fluxo sozinho, e só vira pendência com a sua confirmação.
+
+## 1.67.6 — 2026-10-15
+
+- **O flake da bateria passa a ser gravado sem depender da janela (#498).** A integração de cada tarefa
+  (`integrar-tarefa.cjs`) roda a catraca com `conferir-fluxo.cjs mutacoes --gravar-flake`, que repassa `--slug` e
+  `--tarefa` ao `conferir-mutacao.cjs`, com a raiz do estado do fluxo (`--raiz-estado`, também quando a tarefa declara
+  `raiz:`). Bateria que só passa na nova tentativa agora fica gravada no estado do fluxo, e o status `flaky` pode
+  disparar; o flake terminal aparece na recusa do `marcar --estagio executar --status ok`. Antes a catraca rodava sem os dois, e nenhum flake era gravado. O `verificar` continua
+  sem gravar: o laço do flaky é `executar` e `revisar`.
+- **`scripts/rodar-gate.cjs` saiu**, com a bateria dele. Nada o chamava: a nova tentativa dependia de a janela lembrar
+  de rodá-lo. A seção Flaky do `laco.md` aponta a integração.
 
 ## 1.67.5 — 2026-10-15
 

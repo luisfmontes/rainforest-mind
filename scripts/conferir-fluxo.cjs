@@ -951,10 +951,17 @@ function extrairArquivos(conteudo_plano, numero_tarefa) {
  * Saída: uma linha por tarefa — `tarefa N: vermelho` (exit 0), `tarefa N: mutante sobreviveu`
  * (exit 2), `tarefa N: pulada (<motivo>)` para n/a, exit 3/4/5, etc.
  *
+ * `--gravar-flake` (#498): repassa `--slug` e `--tarefa` ao conferir-mutacao, que grava
+ * no estado do fluxo o flake da catraca (gate `catraca: <bateria>`). Só a integração
+ * (`integrar-tarefa.cjs`) passa a flag; o `verificar` (`estado.cjs`) não passa, e por
+ * isso não grava flake.
+ *
  * Exit: 0 se nenhum mutante sobreviveu (ou tudo foi pulado); ≠ 0 se algum sobreviveu.
  */
 function cmdMutacoes() {
   const slug = arg('slug');
+  // #498: só a integração pede a gravação do flake (ver o cabeçalho de `mutacoes`).
+  const gravaFlake = process.argv.includes('--gravar-flake') && Boolean(slug);
   // #413: árvore do CÓDIGO, quando difere da do estado. Plano e estado seguem em RAIZ.
   const flagRaizCodigo = arg('raiz-codigo', false);
   const raizCodigo = flagRaizCodigo || RAIZ;
@@ -1048,6 +1055,9 @@ function cmdMutacoes() {
       '--raiz', raizTarefa,
     ];
     if (timeout) argumentos.push('--timeout', timeout);
+    if (gravaFlake) argumentos.push('--slug', slug, '--tarefa', String(numero));
+    // #498: o estado fica na RAIZ do fluxo, não na `--raiz` da tarefa (que pode ser `raiz: app`).
+    if (gravaFlake) argumentos.push('--raiz-estado', RAIZ);
     const resultado = spawnSync(process.execPath, argumentos, {
       stdio: 'pipe',
       encoding: 'utf8',
@@ -1211,7 +1221,7 @@ function main() {
     return cmdMutacoes();
   }
 
-  console.error('uso: design | cobertura | camadas | creep | mutacoes');
+  console.error('uso: design | cobertura | camadas | creep | mutacoes [--gravar-flake]');
   process.exit(1);
 }
 

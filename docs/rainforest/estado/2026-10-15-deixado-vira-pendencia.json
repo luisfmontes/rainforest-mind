@@ -1,0 +1,84 @@
+{
+  "slug": "2026-10-15-deixado-vira-pendencia",
+  "titulo": "Painel Deixado oferece virar pendencia do fluxo (#470)",
+  "criado_em": "2026-10-15",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-10-15-deixado-vira-pendencia.md",
+    "decisoes": 4,
+    "em": "2026-10-15"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-15-deixado-vira-pendencia.md",
+    "tarefas": 3,
+    "paralelas": [],
+    "em": "2026-10-15"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-15",
+    "integradas": [
+      1,
+      2
+    ],
+    "em": "2026-10-15",
+    "tarefas_ok": 3,
+    "tarefas": 3,
+    "comando": "bash scripts/testa-estado-pendencia.sh",
+    "saida": "ok: 37   falhou: 0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-estado-pendencia.sh, texto repetido nao duplica"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-mod-deixado.cjs, rascunhoViraPendencia texto com aspas"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "documentacao e versao"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "edff1b2121e76329e445a23c147cb2f761a0014f",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a29e29427346a1169",
+        "veredito": "ok",
+        "em": "2026-10-15",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a29e29427346a1169.jsonl"
+      }
+    ],
+    "achados": 0,
+    "base": "e0359c71a7ae6c70f6abf04cecde13e736ceeac7",
+    "head": "edff1b2121e76329e445a23c147cb2f761a0014f",
+    "em": "2026-10-15"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/testa-estado-pendencia.sh",
+    "saida": "ok: 40   falhou: 0",
+    "sensor_externo": "bash scripts/testa-estado-pendencia.sh",
+    "em": "2026-10-15"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "merge",
+    "pr": 546,
+    "em": "2026-10-15"
+  }
+}

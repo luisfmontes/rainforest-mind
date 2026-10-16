@@ -1,0 +1,121 @@
+{
+  "slug": "2026-10-15-estado-trava-unica",
+  "titulo": "estado.cjs: escritores do fluxo se excluem (#545)",
+  "criado_em": "2026-10-15",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-15-estado-trava-unica.md",
+    "em": "2026-10-15"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-15-estado-trava-unica.md",
+    "tarefas": 2,
+    "paralelas": [
+      1
+    ],
+    "em": "2026-10-15"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-16",
+    "tarefas_ok": 2,
+    "tarefas": 2,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "2033630abfc243e796ae47e33d94fb2110498f2e",
+        "iteracao": 1,
+        "sessao": "bfd7468b-e589-43c6-9e09-04528a1dc829",
+        "ts": "2026-10-16T02:20:21.214Z"
+      }
+    ],
+    "em": "2026-10-16",
+    "integradas": [
+      1
+    ],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-estado-trava.cjs, caso \"marcar pausado nao apaga decidir nem pendencia gravados durante a pausa\""
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "CHANGELOG e numero de versao"
+      }
+    ],
+    "comando": "node scripts/testa-estado-trava.cjs",
+    "saida": "14 ok, 0 falha(s), 0 skipped",
+    "reaberturas": 2,
+    "rodada": 3
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "f750deed2dff9f89d5392174f98f0bdc7c1b3a7c",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a4915ec96bb3b6f9d",
+        "veredito": "ok",
+        "em": "2026-10-16",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a4915ec96bb3b6f9d.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-16",
+    "achados": 1,
+    "base": "403ff68e1e0d7db377dbaa601e83d3ab13c55c82",
+    "head": "f750deed2dff9f89d5392174f98f0bdc7c1b3a7c"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node scripts/testa-estado-trava.cjs",
+    "saida": "14 ok, 0 falha(s), 0 skipped",
+    "sensor_externo": "node scripts/testa-estado-trava.cjs",
+    "em": "2026-10-16"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "merge",
+    "pr": 550,
+    "em": "2026-10-16"
+  },
+  "decididos": [
+    {
+      "pergunta": "Trava durante o comando inteiro ou mescla por campo na gravacao?",
+      "escolha": "mescla por campo (D2)",
+      "porque": "Luis: seguir no automatico com as recomendadas; segurar a trava 120 s faria o hook do veredito desistir em 10 s",
+      "estagio": "design",
+      "em": "2026-10-16T02:19:54.602Z"
+    },
+    {
+      "pergunta": "Achado [design] da 1a revisao: comandos rapidos que acrescentam a lista (pendencia, destinar, liberar, liberar-teto) perdem item no mesmo campo",
+      "escolha": "leem e gravam dentro da trava, como o decidir; mescla so para marcar/exigir",
+      "porque": "Luis autorizou seguir no automatico com as recomendadas; esses comandos validam em milissegundos, entao segurar a trava nao ameaca o hook do veredito",
+      "estagio": "executar",
+      "em": "2026-10-16T02:52:16.630Z"
+    },
+    {
+      "pergunta": "Achado [design] da 2a revisao: marcar/exigir apagam pendencia gravada durante a validacao (o comando ganha no mesmo campo)",
+      "escolha": "conflito no mesmo campo recusa com exit 2 sem gravar; rodar de novo ve o item",
+      "porque": "Luis autorizou seguir com as recomendadas; recusar e o unico caminho que nao perde dado nem esconde a pendencia",
+      "estagio": "executar",
+      "em": "2026-10-16T03:27:03.772Z"
+    },
+    {
+      "pergunta": "Residual: veredito reprovado gravado depois do marcar revisar ok validar fica ao lado do ok",
+      "escolha": "aceitar e registrar no design (Fora de escopo)",
+      "porque": "Luis autorizou as recomendadas; antes o veredito sumia, agora fica visivel; recusar o ok e trava de revisao, nao de concorrencia",
+      "estagio": "revisar",
+      "em": "2026-10-16T03:58:29.743Z"
+    }
+  ]
+}

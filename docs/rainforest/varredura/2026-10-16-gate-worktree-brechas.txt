@@ -1,0 +1,73 @@
+Data: 2026-10-16
+Termos: Set-Content, Out-File, expansao de chaves, alvosBashEscrita
+
+$ gh issue list --state all --search "Set-Content" --limit 200 --json number,title,state
+[{"number":533,"state":"OPEN","title":"gate-worktree não vê escrita por cmdlet do PowerShell (Set-Content, Out-File, [IO.File])"}]
+
+
+$ gh issue list --state all --search "Out-File" --limit 200 --json number,title,state
+[{"number":533,"state":"OPEN","title":"gate-worktree não vê escrita por cmdlet do PowerShell (Set-Content, Out-File, [IO.File])"},{"number":509,"state":"CLOSED","title":"memoria-assunto-prompt.cjs estoura o timeout de 5 s sob carga (UserPromptSubmit)"},{"number":124,"state":"CLOSED","title":"O vigias/ERROS.md e rastreado num repo PUBLICO e recebe caminho de maquina interpolado"},{"number":118,"state":"CLOSED","title":"O backup diario do sentinela nunca fez backup — e empurra sozinho para a main de um repo publico"},{"number":146,"state":"CLOSED","title":"O _comum.md manda o vigia escrever direto no ERROS.md — um chamador vivo por fora da porta unica"},{"number":173,"state":"CLOSED","title":"O gate de publicacao barra merge de conteudo que ja esta na main — e engole o git add da mesma chamada"}]
+
+
+$ gh issue list --state all --search "expansao de chaves" --limit 200 --json number,title,state
+[{"number":530,"state":"OPEN","title":"gate-worktree: três formas de cd para o principal passam a partir do worktree ({cd,X}, A=1 cd X, then cd X)"},{"number":514,"state":"CLOSED","title":"gate-worktree barra comando só de leitura quando a linha junta 2>/dev/null com expansão de chaves {a,b}"}]
+
+
+$ gh issue list --state all --search "alvosBashEscrita" --limit 200 --json number,title,state
+[{"number":533,"state":"OPEN","title":"gate-worktree não vê escrita por cmdlet do PowerShell (Set-Content, Out-File, [IO.File])"},{"number":530,"state":"OPEN","title":"gate-worktree: três formas de cd para o principal passam a partir do worktree ({cd,X}, A=1 cd X, then cd X)"},{"number":514,"state":"CLOSED","title":"gate-worktree barra comando só de leitura quando a linha junta 2>/dev/null com expansão de chaves {a,b}"},{"number":127,"state":"CLOSED","title":"gate-worktree e cego para CLI de agente externa: codex exec --yolo passa, git stash nao"}]
+
+
+$ gh pr list --state all --search "Set-Content" --limit 200 --json number,title,state
+[{"number":535,"state":"MERGED","title":"Versao 1.67.3: gate nao barra leitura com chaves (#514), buscar por bm25"}]
+
+
+$ gh pr list --state all --search "Out-File" --limit 200 --json number,title,state
+[{"number":535,"state":"MERGED","title":"Versao 1.67.3: gate nao barra leitura com chaves (#514), buscar por bm25"},{"number":123,"state":"MERGED","title":"Fecha #112: o vigias/ERROS.md passa a ter UMA raiz, e ela e o plugin"},{"number":156,"state":"MERGED","title":"Pre-publico: JID de grupo, a porta do agente, e fixtures que eram telefone de gente"},{"number":64,"state":"MERGED","title":"Desfaz a corrupcao de encoding do README (entrou na #55)"},{"number":150,"state":"MERGED","title":"Vigias: dois mortos ha 20 dias, um backup que nunca rodou, e seis vazamentos num arquivo publico"}]
+
+
+$ gh pr list --state all --search "expansao de chaves" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "alvosBashEscrita" --limit 200 --json number,title,state
+[{"number":535,"state":"MERGED","title":"Versao 1.67.3: gate nao barra leitura com chaves (#514), buscar por bm25"},{"number":97,"state":"MERGED","title":"Fecha #88: o gate inspeciona Bash para escrita, nao so para verbo git"}]
+
+
+$ git ls-remote --heads origin | grep -F "Set-Content"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "Out-File"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "expansao de chaves"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "alvosBashEscrita"
+(vazio)
+
+$ git log --all --grep="Set-Content" --oneline
+(vazio)
+
+$ git log --all --grep="Out-File" --oneline
+f91de4720 Issue #146: o agente registra erro por comando, e uma trava le a prosa
+fb28aa684 Issue #146: o agente registra erro por comando, e uma trava le a prosa
+b700381ef Vigias T1+T2: a raiz do backup, e uma porta unica de escrita no ERROS.md
+bcc790880 Vigias T1+T2: a raiz do backup, e uma porta unica de escrita no ERROS.md
+0c0e205c2 Desfaz a corrupcao de encoding do README (entrou na #55) (#64)
+07e6b5500 Desfaz a corrupcao de encoding do README (entrou na #55) (#64)
+
+$ git log --all --grep="expansao de chaves" --oneline
+80ec2b0c Design gate-palavra-bash: palavra do bash, chaves, bash -c e crase
+
+$ git log --all --grep="alvosBashEscrita" --oneline
+118777e83 Lote 3 rodada 20: nome de comando citado conta na posicao de comando
+63bc4b8a0 Lote 3 rodada 5: alvosBash e alvosBashEscrita usam o mesmo movedor de diretorio (pushd, popd, env -C)
+43b0c4fdb Lote 3 rodada 4: alvosBash usa o ultimo -C, subshell vira incerto, procuraCLI le $'...' e barra invertida
+9e58a6a54 Livro: a cegueira do gate nao e "duas listas" — sao tres, e a prova agora e execucao
+6d90d4707 Livro: a cegueira do gate nao e "duas listas" — sao tres, e a prova agora e execucao
+f8b05c846 Fecha #88: o gate inspeciona Bash para escrita, nao so para verbo git (#97)
+b78b8205b Fecha #88: o gate inspeciona Bash para escrita, nao so para verbo git (#97)
+
+$ cat <dados>/ideias.jsonl
+(vazio)
+

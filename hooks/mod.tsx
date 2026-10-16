@@ -27,7 +27,7 @@ import { register as conta } from './conta.ts'
 import { register as compactar } from './compactar.ts'
 import { linhaPr } from './pr-puro.mjs'
 import { acharNode } from './conta-puro.mjs'
-import { CHECAR_MIN_FERRAMENTAS, deferimentos, lerResolvidosChecker, lerRespostaChecker, marcadoresEmArquivo, montarPromptChecker, perguntaDecisao, rascunhoFazAgora } from './deixado-puro.mjs'
+import { CHECAR_MIN_FERRAMENTAS, deferimentos, lerResolvidosChecker, lerRespostaChecker, marcadoresEmArquivo, montarPromptChecker, perguntaDecisao, rascunhoFazAgora, rascunhoViraPendencia } from './deixado-puro.mjs'
 import { largura, cortar, semControle } from './faixa-puro.mjs'
 import { ESCRITORAS, escritaDe, mapaVazio, registrar, trocarCaminho } from './mapa-puro.mjs'
 import { cacheDe, compacto, dinheiro, fatias, figurasDaBarra, restante, ritmoPorMinuto, rotuloSubagente } from './painel-puro.mjs'
@@ -1148,9 +1148,10 @@ export const register: Register = (on, options) => {
       // Deixado para depois (D7): o que Claude adiou, escreveu como pendencia ou o segundo modelo
       // achou faltando. "Faz agora" so preenche o prompt; quem envia e a pessoa.
       const abertos = deixado.itens.filter(i => i.estado === 'aberto')
-      const fazAgora = async (id: number, texto: string): Promise<void> => {
+      // "Vira pendencia de <fluxo>" usa o mesmo caminho: so o rascunho muda.
+      const preencher = async (id: number, rascunho: string): Promise<void> => {
         try {
-          const preenchido = await $.prompt.fill({ text: rascunhoFazAgora(texto) as string, mode: 'append' })
+          const preenchido = await $.prompt.fill({ text: rascunho, mode: 'append' })
           // Prompt que recusou o texto deixa o item aberto: nada chegou a pessoa.
           if (!preenchido?.isFilled) return
           await update($, painelDeixado, d => ({ ...deixadoInteiro(d), itens: deixadoInteiro(d).itens.map(i => (i.id === id ? { ...i, estado: 'enviado' as const } : i)) }))
@@ -1176,7 +1177,10 @@ export const register: Register = (on, options) => {
           <Box key={`dx-${item.id}`} flexDirection="column" marginTop={i === 0 ? 0 : 1}>
             <Text color={COR.vermelho} bold>{`D${item.id} · ${item.origem}`}</Text>
             <Text wrap="wrap">{item.texto}</Text>
-            <Button key={`faz-${item.id}`} label="Faz agora (só preenche o prompt)" onPress={() => fazAgora(item.id, item.texto)} />
+            <Button key={`faz-${item.id}`} label="Faz agora (só preenche o prompt)" onPress={() => preencher(item.id, rascunhoFazAgora(item.texto) as string)} />
+            {fluxos.map(f => (
+              <Button key={`viva-${item.id}-${f.slug}`} label={`Vira pendência de ${slugSemData(f.slug)}`} onPress={() => preencher(item.id, rascunhoViraPendencia(f.slug, item.texto, (f as { worktree?: string }).worktree) as string)} />
+            ))}
           </Box>
         )),
         abertos.length > 0 ? <Button key="deixado-limpar" label="Limpar tudo" onPress={limpar} /> : null,

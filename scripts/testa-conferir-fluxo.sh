@@ -1264,6 +1264,124 @@ exige 0 "a?.txt casa ab.txt (? e um caractere)" \
 exige 0 "a?.txt NAO casa a/b.txt (? nao cruza /)" \
   node -e "const g=require(process.argv[1]).globMatches; process.exit(g('a/b.txt','a?.txt')===false?0:1)" "$GM"
 
+echo
+echo "== 17. #498: mutacoes com --gravar-flake grava o flake do baseline =="
+# Caixa com estado REAL (estado.cjs iniciar) e um plano de uma tarefa cuja bateria
+# tem exit VARIAVEL: contador FORA da caixa, senao a catraca (que faz copia da raiz)
+# recomecaria do zero. Sequencia 1 0 1 1: baseline vermelho, nova tentativa verde
+# (flake), pos-mutacao vermelho nas duas (o mutante morre).
+# Caixa criada com mktemp direto, no pai: `$(novo_sandbox)` roda em subshell e o
+# trap de EXIT nao veria o diretorio.
+G="$(mktemp -d)"; SANDBOXES+=("$G"); GW="$(cygpath -m "$G" 2>/dev/null || printf '%s' "$G")"
+GC="$(mktemp -d)"; SANDBOXES+=("$GC"); GCW="$(cygpath -m "$GC" 2>/dev/null || printf '%s' "$GC")"
+mkdir -p "$G/docs/rainforest/planos" "$G/docs/rainforest/design"
+printf 'const alvo = 1;\n' > "$G/fonte.cjs"
+cat > "$G/bat.sh" <<'FIM'
+n=$(cat "$CNT" 2>/dev/null || echo 0); n=$((n+1)); echo "$n" > "$CNT"
+arr=($SEQ); i=$((n-1)); [ "$i" -ge "${#arr[@]}" ] && i=$((${#arr[@]}-1))
+v="${arr[$i]}"
+if [ "$v" = "0" ]; then echo "ok: 5   falhou: 0"; else echo "ok: 4   falhou: 1"; fi
+exit "$v"
+FIM
+cat > "$G/docs/rainforest/planos/g.md" <<'EOF'
+# Plano Gravar Flake
+
+### 1. Tarefa com bateria de exit variavel
+
+atende: D1
+
+mutacao:
+  arquivo: `fonte.cjs`
+  de: `alvo = 1`
+  para: `alvo = 0`
+  bateria: `bash bat.sh`
+EOF
+GE(){ RFM_ESTADO_ROOT="$GW" node "$ESTADO" "$@"; }
+for s in g-com g-sem; do
+  GE iniciar --slug "$s" >/dev/null 2>&1
+  GE marcar --slug "$s" --estagio design --status aprovado >/dev/null 2>&1
+  GE marcar --slug "$s" --estagio plano --status ok >/dev/null 2>&1
+  GE exigir --slug "$s" --estagio executar >/dev/null 2>&1
+done
+
+# (a) com --gravar-flake: sai 0, mostra o vermelho e grava o flake da tarefa 1
+rm -f "$GC/contador"
+SAIDA_A="$(env SEQ="1 0 1 1" CNT="$GCW/contador" RFM_ESTADO_ROOT="$GW" node "$CHECADOR" mutacoes --slug g-com --tarefa 1 --plano "$GW/docs/rainforest/planos/g.md" --gravar-flake 2>"$G/err-a.txt")"
+RC_A=$?
+exige 0 "(a) mutacoes --gravar-flake sai 0" test "$RC_A" -eq 0
+if printf '%s\n' "$SAIDA_A" | grep -q "tarefa 1: vermelho"; then
+  ok=$((ok+1)); echo "  ok    (a) stdout traz 'tarefa 1: vermelho'"
+else
+  falhou=$((falhou+1)); echo "  FALHA (a) stdout sem 'tarefa 1: vermelho': $SAIDA_A"
+fi
+exige 0 "(a) bateria rodou as 4 voltas da sequencia (1 0 1 1)" test "$(cat "$GC/contador" 2>/dev/null)" = 4
+exige 0 "(a) o estado g-com ganha executar.flakes com [{tarefa:1, gate:'catraca: ...'}]" \
+  node -e 'const fs=require("fs");const e=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));const f=(e.executar||{}).flakes||[];process.exit(f.length===1&&f[0].tarefa===1&&String(f[0].gate).startsWith("catraca: ")?0:1)' \
+  "$GW/docs/rainforest/estado/g-com.json"
+
+# (b) SEM --gravar-flake, contador zerado: sai 0 e o estado nao ganha flake
+rm -f "$GC/contador"
+SAIDA_B="$(env SEQ="1 0 1 1" CNT="$GCW/contador" RFM_ESTADO_ROOT="$GW" node "$CHECADOR" mutacoes --slug g-sem --tarefa 1 --plano "$GW/docs/rainforest/planos/g.md" 2>"$G/err-b.txt")"
+RC_B=$?
+exige 0 "(b) mutacoes sem --gravar-flake sai 0" test "$RC_B" -eq 0
+if printf '%s\n' "$SAIDA_B" | grep -q "tarefa 1: vermelho"; then
+  ok=$((ok+1)); echo "  ok    (b) stdout traz 'tarefa 1: vermelho'"
+else
+  falhou=$((falhou+1)); echo "  FALHA (b) stdout sem 'tarefa 1: vermelho': $SAIDA_B"
+fi
+exige 0 "(b) o estado g-sem NAO ganha executar.flakes" \
+  node -e 'const fs=require("fs");const e=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));const f=(e.executar||{}).flakes||[];process.exit(f.length===0?0:1)' \
+  "$GW/docs/rainforest/estado/g-sem.json"
+
+# (c) #498 (revisão 1): tarefa com `raiz: app` numa caixa SEM RFM_ESTADO_ROOT e SEM
+# CLAUDE_PROJECT_DIR. O estado mora no TOPO (cwd da caixa); bateria e arquivo ficam em
+# app/. Antes do --raiz-estado o flake ia para app/docs/... (que não existe) e o topo
+# ficava sem nada. A variável some só no comando, e o cd fica dentro desta subshell.
+HC="$(mktemp -d)"; SANDBOXES+=("$HC"); HW="$(cygpath -m "$HC" 2>/dev/null || printf '%s' "$HC")"
+HCC="$(mktemp -d)"; SANDBOXES+=("$HCC"); HCW="$(cygpath -m "$HCC" 2>/dev/null || printf '%s' "$HCC")"
+mkdir -p "$HC/app" "$HC/docs/rainforest/planos"
+printf 'const alvo = 1;\n' > "$HC/app/fonte.cjs"
+cat > "$HC/app/bat.sh" <<'FIM'
+n=$(cat "$CNT" 2>/dev/null || echo 0); n=$((n+1)); echo "$n" > "$CNT"
+arr=($SEQ); i=$((n-1)); [ "$i" -ge "${#arr[@]}" ] && i=$((${#arr[@]}-1))
+v="${arr[$i]}"
+if [ "$v" = "0" ]; then echo "ok: 5   falhou: 0"; else echo "ok: 4   falhou: 1"; fi
+exit "$v"
+FIM
+cat > "$HC/docs/rainforest/planos/h.md" <<'EOF'
+# Plano Raiz Flake
+
+### 1. Tarefa de app com bateria de exit variavel
+
+atende: D1
+
+mutacao:
+  arquivo: `fonte.cjs`
+  de: `alvo = 1`
+  para: `alvo = 0`
+  bateria: `bash bat.sh`
+  raiz: `app`
+EOF
+HE(){ (cd "$HC" && env -u RFM_ESTADO_ROOT -u CLAUDE_PROJECT_DIR node "$ESTADO" "$@"); }
+HE iniciar --slug h-raiz >/dev/null 2>&1
+HE marcar --slug h-raiz --estagio design --status aprovado >/dev/null 2>&1
+HE marcar --slug h-raiz --estagio plano --status ok >/dev/null 2>&1
+HE exigir --slug h-raiz --estagio executar >/dev/null 2>&1
+
+rm -f "$HCC/contador"
+SAIDA_C="$(cd "$HC" && env -u RFM_ESTADO_ROOT -u CLAUDE_PROJECT_DIR SEQ="1 0 1 1" CNT="$HCW/contador" node "$CHECADOR" mutacoes --slug h-raiz --tarefa 1 --plano "$HW/docs/rainforest/planos/h.md" --raiz-codigo "$HW" --gravar-flake 2>"$HCC/err.txt")"
+RC_C=$?
+exige 0 "(c) mutacoes com raiz: app e --gravar-flake, sem variavel de estado, sai 0" test "$RC_C" -eq 0
+if printf '%s\n' "$SAIDA_C" | grep -q "tarefa 1: vermelho"; then
+  ok=$((ok+1)); echo "  ok    (c) stdout traz 'tarefa 1: vermelho'"
+else
+  falhou=$((falhou+1)); echo "  FALHA (c) stdout sem 'tarefa 1: vermelho': $SAIDA_C"
+fi
+exige 0 "(c) o estado do TOPO ganha executar.flakes com tarefa 1" \
+  node -e 'const fs=require("fs");const e=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));const f=(e.executar||{}).flakes||[];process.exit(f.length===1&&f[0].tarefa===1&&String(f[0].gate).startsWith("catraca: ")?0:1)' \
+  "$HW/docs/rainforest/estado/h-raiz.json"
+exige 0 "(c) app/ nao ganha pasta de estado" test ! -e "$HC/app/docs/rainforest/estado"
+
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]

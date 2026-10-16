@@ -468,6 +468,26 @@ console.log("== #514 (P2): expansao de chaves em argumento nao e fronteira ==");
   const n = (c) => segmentosComAspas(c).length;
   test("(514a) echo a/{b,c}/d -> 1 segmento", () => eq(n("echo a/{b,c}/d"), 1, "argumento com chaves fica inteiro"));
   test("(514b) wc -l s/{a,b}/S.md; echo {1..3} -> 2 segmentos", () => eq(n("wc -l s/{a,b}/S.md; echo {1..3}"), 2, "so o ; separa"));
+  test("(514c) {cd,x} em posicao de comando, no Bash, vira um segmento so (D1, #530)", () => eq(n("{cd,x}"), 1, "a chave expande, nao corta"));
+  test("(514c) {cd,lib} && echo x, no Bash, move o cwd (a chave expandida e cd de verdade)", () => {
+    const hooksDir = path.resolve(path.dirname(process.argv[2]), "..");
+    const r = cwdPorSegmento("{cd,lib} && echo x", hooksDir);
+    eq(path.resolve(r[r.length - 1].cwd), path.resolve(hooksDir, "lib"), "cwd final e hooks/lib");
+  });
+  test("(514c) {cd,x} em PowerShell continua cortando (bloco de script, nao expansao)", () => {
+    eq(segmentosComAspas("{cd,x}", true).length > 1, true, "PowerShell nao expande chaves");
+    const hooksDir = path.resolve(path.dirname(process.argv[2]), "..");
+    const r = cwdPorSegmento("{cd,lib}; echo x", hooksDir, true);
+    eq(path.resolve(r[r.length - 1].cwd), hooksDir, "PowerShell: {cd,lib} nao muda o cwd");
+  });
+  test("(514d) A=1 {cd,x} / then {cd,x} / then A=1 {cd,x} / ! {cd,x} viram um segmento so (D1, rodada 3)", () => {
+    for (const c of ["A=1 {cd,x}", "then {cd,x}", "then A=1 {cd,x}", "! {cd,x}"]) eq(n(c), 1, c);
+  });
+  test("(514d) {cd,\"x\"} e {cd,'x'} com aspas dentro das chaves viram um segmento so (D1, rodada 3)", () => {
+    eq(n('{cd,"x"} && echo y'), 2, 'aspa dupla: so o && separa');
+    eq(n("{cd,'x'} && echo y"), 2, "aspa simples: so o && separa");
+    eq(n('A=1 {cd,"x"}'), 1, "atribuicao antes, aspa dentro");
+  });
   // #530 (D4) mudou esta asserção: `{cd,x}` em posição de comando é expansão
   // de chaves (`cd x`), não fronteira. Antes afirmava `n > 1` (cortava).
   test("(514c) {cd,x} em posicao de comando nao corta (#530, D4): e uma palavra so", () => eq(n("{cd,x}"), 1, "expansao de chaves inteira no segmento"));

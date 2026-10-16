@@ -45,8 +45,9 @@ despachos) avisa por `PushNotification`, e fora delas o fluxo segue até o merge
    original **mais** um bloco `## Achados do último revisor` com a saída do
    passo 2 colada **literal**. Só a última crítica, nunca o histórico das
    voltas anteriores; nenhuma paráfrase sua (D3).
-4. Integre e confira como em qualquer entrega (`conferir-entrega`, critério,
-   catraca de mutação), feche o `executar` e rode o revisor de novo.
+4. Integre pelo `node scripts/integrar-tarefa.cjs`, que roda o
+   `conferir-entrega` e a catraca de mutação (com o flake gravado, seção
+   Flaky), feche o `executar` e rode o revisor de novo.
 
 ## Teto
 
@@ -65,21 +66,24 @@ desse custo, não um juiz do revisor (D4).
 
 Design: `docs/rainforest/design/2026-10-10-flaky-teto.md` (D2 a D17).
 Bateria instável aprova ou reprova entrega por acaso. Por isso, no passo 4
-da volta, a integração **não** roda o critério nem a catraca à mão:
+da volta, você **não** roda a bateria nem a catraca à mão: a integração de
+cada tarefa é `node scripts/integrar-tarefa.cjs`, que roda a catraca pelo
+`conferir-fluxo.cjs mutacoes --gravar-flake`, e esse repassa `--slug` e
+`--tarefa` ao `conferir-mutacao.cjs` (#498). A bateria da tarefa roda ali,
+primeiro no fonte íntegro e depois com a mutação.
 
-- o critério de cada tarefa roda por
-  `node scripts/rodar-gate.cjs --comando '<bateria>' --slug <slug> --tarefa <n>`;
-- a catraca de mutação roda por `node scripts/conferir-mutacao.cjs ...`
-  com `--slug <slug> --tarefa <n>` (os dois ou nenhum).
-
-A nova tentativa mora nesses scripts, nunca na sua prosa (D4): o exit de
-cada um **vale depois dela**. Bateria verde só na nova tentativa sai 0 e
-grava um flake no estado (`node scripts/estado.cjs registrar-flake`);
-vermelha nas duas sai 2. Falha ao gravar o flake é só aviso e não muda o exit.
+A nova tentativa mora nesse script, nunca na sua prosa (D4): o exit **vale
+depois dela**. Bateria verde só na nova tentativa grava um flake no estado
+(`node scripts/estado.cjs registrar-flake`); falha ao gravar o flake é só
+aviso e não muda o exit. O `verificar` roda a mesma catraca sem
+`--gravar-flake`: o laço do flaky é `executar` e `revisar`. Tarefa com
+`mutacao: n/a` não tem bateria declarada, e por isso não tem flake.
 
 O mesmo gate (tarefa mais bateria) que só passa na nova tentativa em duas
-voltas seguidas é terminal. O `registrar-flake` imprime `FLAKY TERMINAL` e o
-comando que fecha o estágio:
+voltas seguidas é terminal. A saída da integração não mostra isso (ela só
+imprime `tarefa N: vermelho`): quem avisa é o `marcar --estagio executar
+--status ok`, que recusa com exit 2 enquanto houver flake terminal, nomeando
+a tarefa e o gate. Feche então com:
 
 ```
 node scripts/estado.cjs marcar --slug <slug> --estagio executar --status flaky

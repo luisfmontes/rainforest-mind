@@ -750,7 +750,7 @@ gate "env -u OneDrive --chdir=principal codex exec --yolo, do worktree BARRA (R1
 # `bp` monta o payload de SUBAGENTE via ferramenta PowerShell (R3) — mesma
 # forma do `b` acima (node -e, escapa aspas), so troca o tool_name.
 bp() { # comando, cwd  -> payload de SUBAGENTE via PowerShell
-  node -e 'const [c,d]=process.argv.slice(1);process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:d,hook_event_name:"PreToolUse",tool_name:"PowerShell",tool_input:{command:c}}))' "$1" "$2"
+  MSYS_NO_PATHCONV=1 node -e 'const [c,d]=process.argv.slice(1);process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:d,hook_event_name:"PreToolUse",tool_name:"PowerShell",tool_input:{command:c}}))' "$1" "$2"
 }
 gate "SUBAGENTE no principal via PowerShell: git commit -m x BARRA (R3)" 2 \
   "$(bp "git commit -m x" "$R")"
@@ -1146,12 +1146,365 @@ IEX5=$(node -e 'const Q=String.fromCharCode(39);process.stdout.write("iex ".repe
 IEX8=$(node -e 'const Q=String.fromCharCode(39);process.stdout.write("iex ".repeat(8)+Q+"git -C "+process.argv[1]+" commit -m x"+Q)' "$R")
 INVX5=$(node -e 'const Q=String.fromCharCode(39);process.stdout.write("Invoke-Expression ".repeat(5)+Q+"git -C "+process.argv[1]+" commit -m x"+Q)' "$R")
 IEXGIT=$(node -e 'const Q=String.fromCharCode(39);process.stdout.write("iex "+Q+"git status"+Q)')
-IEX3LOG=$(node -e 'const Q=String.fromCharCode(39);process.stdout.write("iex ".repeat(3)+Q+"git -C "+process.argv[1]+" log"+Q)' "$WT")
+# Sem `-C`: a regra do iex da #533 junta os argumentos sem as aspas, e um `-C` solto
+# depois do desempacote vira parametro do proprio iex (incerto, falha fechada).
+IEX3LOG=$(node -e 'const Q=String.fromCharCode(39);process.stdout.write("iex ".repeat(3)+Q+"git log"+Q)')
 gate_motivo "(#530) rodada extra 2: iex x5 + 'git -C P commit' (PowerShell) barra" 2 "$(wp "$IEX5")" "$MOTIVO_ANIN"
 gate_motivo "(#530) rodada extra 2: iex x8 + 'git -C P commit' (PowerShell) barra" 2 "$(wp "$IEX8")" "$MOTIVO_ANIN"
 gate_motivo "(#530) rodada extra 2: Invoke-Expression x5 + 'git -C P commit' barra" 2 "$(wp "$INVX5")" "$MOTIVO_ANIN"
 gate_rapido "(#530) rodada extra 2: iex 'git status' (PowerShell) passa" 0 "$(wp "$IEXGIT")"
-gate_rapido "(#530) rodada extra 2: iex x3 + 'git -C W log' (PowerShell) passa" 0 "$(wp "$IEX3LOG")"
+gate_rapido "(#530) rodada extra 2: iex x3 + 'git log' (PowerShell) passa" 0 "$(wp "$IEX3LOG")"
 
+echo "== #530: chaves em posicao de comando =="
+# D1 (docs/rainforest/design/2026-10-16-gate-worktree-brechas.md): `{cd,X}` no
+# comeco do segmento e expansao de chaves: o bash roda `cd X`. Antes a chave
+# virava fronteira de segmento e o `cd` nunca era reconhecido.
+gate "#530: {cd,<principal>} && echo x > f, do worktree, BARRA" 2 "$(b "{cd,$R} && echo x > f" "$WT")"
+gate "#530: {pushd,<principal>} && echo x > f, do worktree, BARRA" 2 "$(b "{pushd,$R} && echo x > f" "$WT")"
+gate "#530: {cd,<principal>}; git commit -m x, do worktree, BARRA (regressao: a fronteira antiga de chave ja barrava)" 2 "$(b "{cd,$R}; git commit -m x" "$WT")"
+gate "#530: {cd,<worktree>} && echo x > f, do worktree, PASSA" 0 "$(b "{cd,$WT} && echo x > f" "$WT")"
+gate "#530: {cd,<worktree>} && git commit -m x, do principal, PASSA" 0 "$(b "{cd,$WT} && git commit -m x" "$R")"
+gate "#530: ls {a,b} do worktree, PASSA" 0 "$(b "ls {a,b}" "$WT")"
+gate "#530: { echo a; echo b; } > f do worktree, PASSA (grupo, nao expansao)" 0 "$(b "{ echo a; echo b; } > f" "$WT")"
+# D1 (emenda da rodada 2): so o Bash expande. No PowerShell `{cd,X}` e bloco de script:
+# nao muda o cwd, entao o Set-Content relativo cai no worktree e PASSA. Se a expansao
+# valesse no PowerShell, `cd <principal>` mudaria o cwd e o caso BARRARIA.
+gate "#530 PowerShell: {cd,<principal>} e bloco de script, nao cd: Set-Content f do worktree PASSA" 0 "$(bp "{cd,$R} ; Set-Content f x" "$WT")"
+
+echo
+echo "== #533: cmdlets de escrita do PowerShell =="
+# D2/D3: a ferramenta PowerShell escreve por cmdlet e por chamada .NET, sem
+# redirecionamento. Do principal cada grafia BARRA; do worktree o mesmo alvo PASSA.
+for c in "Set-Content $R/f x" "Set-Content -Path $R/f -Value x" "sc $R/f x" \
+  "Add-Content $R/f x" "\"x\" | Out-File $R/f" "Out-File -FilePath $R/f" \
+  "New-Item -ItemType File $R/f" "Copy-Item a $R/f" "Move-Item -Destination $R/f a" \
+  "\"x\" | Tee-Object -FilePath $R/f" "Set-Content -Path:$R/f x"; do
+  gate "#533: $c, do principal, BARRA" 2 "$(bp "$c" "$R")"
+done
+gate "#533: Set-Content -Val x <principal>/f, do worktree, BARRA (prefixo de parametro)" 2 "$(bp "Set-Content -Val x $R/f" "$WT")"
+for c in "Set-Content $WT/f x" "Set-Content -Path $WT/f -Value x" "sc $WT/f x" \
+  "Add-Content $WT/f x" "\"x\" | Out-File $WT/f" "Out-File -FilePath $WT/f" \
+  "New-Item -ItemType File $WT/f" "Copy-Item a $WT/f" "Move-Item -Destination $WT/f a" \
+  "\"x\" | Tee-Object -FilePath $WT/f"; do
+  gate "#533 vizinho: $c, do worktree, PASSA" 0 "$(bp "$c" "$WT")"
+done
+gate "#533: [IO.File]::WriteAllText('<principal>/f','x') do principal, BARRA" 2 "$(bp "[IO.File]::WriteAllText('$R/f','x')" "$R")"
+gate "#533: [System.IO.File]::AppendAllText(\"<principal>/f\",\"x\") do worktree, BARRA" 2 "$(bp "[System.IO.File]::AppendAllText(\"$R/f\",\"x\")" "$WT")"
+gate "#533: [IO.File]::Copy('a','<principal>/b') do worktree, BARRA (2o argumento)" 2 "$(bp "[IO.File]::Copy('a','$R/b')" "$WT")"
+gate "#533: [IO.File]::WriteAllText(\$p,'x') do worktree, BARRA (alvo incerto)" 2 "$(bp "[IO.File]::WriteAllText(\$p,'x')" "$WT")"
+gate "#533 vizinho: [IO.File]::WriteAllText('<worktree>/f','x') do worktree, PASSA" 0 "$(bp "[IO.File]::WriteAllText('$WT/f','x')" "$WT")"
+gate "#533 vizinho: [IO.File]::Copy('<worktree>/a','<worktree>/b') do worktree, PASSA" 0 "$(bp "[IO.File]::Copy('$WT/a','$WT/b')" "$WT")"
+gate "#533 vizinho: [IO.File]::ReadAllText('<principal>/f') (leitura) do worktree, PASSA" 0 "$(bp "[IO.File]::ReadAllText('$R/f')" "$WT")"
+gate "#533 (d): ferramenta Bash, Set-Content <principal>/f x, do worktree, PASSA (sem alvo novo)" 0 "$(b "Set-Content $R/f x" "$WT")"
+
+echo
+echo "== #533 (e): emendas da rodada 2 (falha fechada e chamada .NET) =="
+gate "#533 (e): Microsoft.PowerShell.Management\\Set-Content <principal>/f x, do worktree, BARRA (qualificador de modulo)" 2 "$(bp 'Microsoft.PowerShell.Management\Set-Content '"$R"'/f x' "$WT")"
+gate "#533 (e): Set-Content -PSPath <principal>/f x, do worktree, BARRA (alias PSPath)" 2 "$(bp "Set-Content -PSPath $R/f x" "$WT")"
+gate "#533 (e): Set-Content -LP <principal>/f x, do worktree, BARRA (alias LP)" 2 "$(bp "Set-Content -LP $R/f x" "$WT")"
+gate "#533 (e): Set-Content \$p x, do worktree, BARRA (alvo com variavel)" 2 "$(bp 'Set-Content $p x' "$WT")"
+gate "#533 (e): Set-Content -Desconhecido y <worktree>/f, do worktree, BARRA (parametro desconhecido)" 2 "$(bp "Set-Content -Desconhecido y $WT/f" "$WT")"
+gate "#533 (e): Set-Content -P x <worktree>/f, do worktree, BARRA (prefixo ambiguo, incerto)" 2 "$(bp "Set-Content -P x $WT/f" "$WT")"
+gate "#533 (e): [IO.File]::Replace('a','<principal>/f',\$null), do worktree, BARRA (2o argumento)" 2 "$(bp "[IO.File]::Replace('a','$R/f',\$null)" "$WT")"
+gate "#533 (e): [IO.Directory]::CreateDirectory('<principal>/d'), do worktree, BARRA (metodo de escrita nao listado)" 2 "$(bp "[IO.Directory]::CreateDirectory('$R/d')" "$WT")"
+gate "#533 (e): [IO.File]::ReadAllText('<principal>/f') do worktree, PASSA (leitura)" 0 "$(bp "[IO.File]::ReadAllText('$R/f')" "$WT")"
+gate "#533 (e): Select-String \"[IO.File]::WriteAllText(\" arq, do worktree, PASSA (chamada dentro de aspas nao conta)" 0 "$(bp 'Select-String "[IO.File]::WriteAllText(" arq' "$WT")"
+gate "#533 (e): Invoke-Expression \"[IO.File]::WriteAllText('<principal>/f','x')\", do worktree, BARRA (texto executado nao e mascarado)" 2 "$(bp "Invoke-Expression \"[IO.File]::WriteAllText('$R/f','x')\"" "$WT")"
+gate "#533 (e): iex \"[IO.File]::AppendAllText('<principal>/f','x')\", do worktree, BARRA (alias iex)" 2 "$(bp "iex \"[IO.File]::AppendAllText('$R/f','x')\"" "$WT")"
+# Revisao de seguranca da rodada 2: comandos com aspas montados por heredoc literal,
+# com __R__ (principal) e __WT__ (worktree) trocados aqui, para a citacao do bash nao mudar o comando.
+cmdps() { local s; s=$(cat); s=${s//__R__/$R}; s=${s//__WT__/$WT}; printf '%s' "$s"; }
+gate "#533 (e2): subexpressao cifrao-parenteses com [IO.File] dentro de aspas duplas executa, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+"$([IO.File]::WriteAllText('__R__/f','x'))"
+EOC
+)" "$WT")"
+gate "#533 (e2): aspas duplas com crase escapada nao desalinham a mascara, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Write-Host "a`"b"; [IO.File]::WriteAllText('__R__/f','x')
+EOC
+)" "$WT")"
+gate "#533 (e2): aspas simples desbalanceadas nao mascaram, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Write-Host 'x; [IO.File]::WriteAllText("__R__/f","x")
+EOC
+)" "$WT")"
+gate "#533 (e2): Set-Content com lista de alvos worktree e principal, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Set-Content __WT__/a,__R__/b x
+EOC
+)" "$WT")"
+gate "#533 (e2): New-Item -Name com caminho do principal, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+New-Item -Name __R__/f
+EOC
+)" "$WT")"
+gate "#533 (e2): Set-Content -Path: com espaco antes do principal, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Set-Content -Path: __R__/f x
+EOC
+)" "$WT")"
+gate "#533 (e2) vizinho: New-Item -Path worktree -Name f, do worktree, PASSA" 0 "$(bp "$(cmdps <<'EOC'
+New-Item -Path __WT__ -Name f
+EOC
+)" "$WT")"
+gate "#533 (e2) vizinho: chamada .NET em aspas duplas sem cifrao e texto, do worktree, PASSA" 0 "$(bp "$(cmdps <<'EOC'
+Write-Host "texto [IO.File]::WriteAllText("
+EOC
+)" "$WT")"
+gate "#533 (e) vizinho: Set-Content -ea SilentlyContinue <worktree>/f x, do worktree, PASSA (alias de parametro comum)" 0 "$(bp "Set-Content -ea SilentlyContinue $WT/f x" "$WT")"
+gate "#533 (e) vizinho: Set-Content -ea SilentlyContinue <principal>/f x, do worktree, BARRA" 2 "$(bp "Set-Content -ea SilentlyContinue $R/f x" "$WT")"
+gate "#533 (e) vizinho: Set-Content -Confirm:\$false <worktree>/f x, do worktree, PASSA (switch com dois-pontos nao e alvo)" 0 "$(bp 'Set-Content -Confirm:$false '"$WT"'/f x' "$WT")"
+
+echo
+echo "== D4: escrita na mesma linha de verbo git =="
+# D4 (docs/rainforest/design/2026-10-16-gate-worktree-brechas.md): a escrita por
+# redirecionamento ou cmdlet e checada tambem na linha com verbo git.
+gate "D4: echo x > <principal>/f && git commit -m y (Bash), do worktree, BARRA" 2 "$(b "echo x > $R/f && git commit -m y" "$WT")"
+gate "D4: Set-Content <principal>/f x; git commit -m y (PowerShell), do worktree, BARRA" 2 "$(bp "Set-Content $R/f x; git commit -m y" "$WT")"
+gate "D4 vizinho: echo x > f && git commit -m y (Bash), do worktree, PASSA" 0 "$(b "echo x > f && git commit -m y" "$WT")"
+gate "D4 vizinho: Set-Content f x; git commit -m y (PowerShell), do worktree, PASSA" 0 "$(bp "Set-Content f x; git commit -m y" "$WT")"
+
+echo
+echo "== D5: correções da 1ª revisão (rodada 3) =="
+# D5 (docs/rainforest/design/2026-10-16-gate-worktree-brechas.md, rodada 3): cada caso
+# abaixo e um item da critica da revisao. Os de SAIR 0 medem o falso positivo que a
+# rodada 2 criou; os de SAIR 2 medem a falha fechada que a rodada 2 ja tinha e que o
+# D5 nao pode perder. Todo PowerShell com aspas passa por cmdps (heredoc literal).
+echo "-- item 1: candidato a alvo (primeiro posicional, -Path, -Destination ou ultimo posicional) --"
+gate "D5 (1): Copy-Item <P>/a.txt ., do worktree, PASSA (origem nao e alvo)" 0 "$(bp "Copy-Item $R/a.txt ." "$WT")"
+gate "D5 (1): Copy-Item -Path <P>/a.txt -Destination ., do worktree, PASSA" 0 "$(bp "Copy-Item -Path $R/a.txt -Destination ." "$WT")"
+gate "D5 (1): copy <P>/a.txt ., do worktree, PASSA (alias)" 0 "$(bp "copy $R/a.txt ." "$WT")"
+gate "D5 (1): Copy-Item <P>/a.txt . -Force, do worktree, PASSA" 0 "$(bp "Copy-Item $R/a.txt . -Force" "$WT")"
+gate "D5 (1): Set-Content a.txt \$text, do worktree, PASSA (-Value/posicional nao e alvo)" 0 "$(bp 'Set-Content a.txt $text' "$WT")"
+gate "D5 (1): Set-Content -Path a.txt \$text, do worktree, PASSA" 0 "$(bp 'Set-Content -Path a.txt $text' "$WT")"
+gate "D5 (1): Add-Content log.txt \"valor \$x\", do worktree, PASSA" 0 "$(bp 'Add-Content log.txt "valor $x"' "$WT")"
+gate "D5 (1): Add-Content log.txt \"[\$(Get-Date)] msg\", do worktree, PASSA" 0 "$(bp 'Add-Content log.txt "[$(Get-Date)] msg"' "$WT")"
+gate "D5 (1): Set-Content a.txt com crase+n dentro de aspas duplas, do worktree, PASSA" 0 "$(bp 'Set-Content a.txt "linha1`nlinha2"' "$WT")"
+gate "D5 (1): New-Item -Path <worktree> -Name f, do worktree, PASSA (nome juntado ao caminho)" 0 "$(bp "$(cmdps <<'EOC'
+New-Item -Path __WT__ -Name f
+EOC
+)" "$WT")"
+
+echo "-- item 2: expansao de chaves depois de atribuicao, palavra reservada ou !, com aspas --"
+gate "D5 (2): A=1 {cd,<P>} && echo x > f, do worktree, BARRA" 2 "$(b "A=1 {cd,$R} && echo x > f" "$WT")"
+gate "D5 (2): if true; then {cd,<P>}; echo x > f; fi, do worktree, BARRA" 2 "$(b "if true; then {cd,$R}; echo x > f; fi" "$WT")"
+gate "D5 (2): for i in 1; do {cd,<P>}; echo x > f; done, do worktree, BARRA" 2 "$(b "for i in 1; do {cd,$R}; echo x > f; done" "$WT")"
+gate "D5 (2): ! {cd,<P>}; echo x > f, do worktree, BARRA" 2 "$(b "! {cd,$R}; echo x > f" "$WT")"
+gate "D5 (2): {cd,\"<P>\"} && echo x > f, do worktree, BARRA (aspa dupla dentro)" 2 "$(b "{cd,\"$R\"} && echo x > f" "$WT")"
+gate "D5 (2): {cd,'<P>'} && echo x > f, do worktree, BARRA (aspa simples dentro)" 2 "$(b "{cd,'$R'} && echo x > f" "$WT")"
+gate "D5 (2) vizinho: A=1 {cd,<worktree>} && echo x > f, do worktree, PASSA" 0 "$(b "A=1 {cd,$WT} && echo x > f" "$WT")"
+gate "D5 (2) vizinho: {cd,\"<worktree>\"} && echo x > f, do worktree, PASSA" 0 "$(b "{cd,\"$WT\"} && echo x > f" "$WT")"
+
+echo "-- item 3: falha fechada em cmdlet (aspas no parametro, & e atribuicao, splat, espaco em [IO.File]) --"
+gate "D5 (3a): Set-Content -Path:'<P>/f' x, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Set-Content -Path:'__R__/f' x
+EOC
+)" "$WT")"
+gate "D5 (3a): Set-Content -Path:\"<P>/f\" x, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Set-Content -Path:"__R__/f" x
+EOC
+)" "$WT")"
+gate "D5 (3a) vizinho: Set-Content -Path:'<worktree>/f' x, do worktree, PASSA" 0 "$(bp "$(cmdps <<'EOC'
+Set-Content -Path:'__WT__/f' x
+EOC
+)" "$WT")"
+gate "D5 (3b): & Set-Content <P>/f x, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+& Set-Content __R__/f x
+EOC
+)" "$WT")"
+gate "D5 (3b): & 'Set-Content' <P>/f x, do worktree, BARRA (nome citado depois de &)" 2 "$(bp "$(cmdps <<'EOC'
+& 'Set-Content' __R__/f x
+EOC
+)" "$WT")"
+gate "D5 (3b): \$null = Set-Content <P>/f x, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+$null = Set-Content __R__/f x
+EOC
+)" "$WT")"
+gate "D5 (3b): \$a = Set-Content <P>/f x, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+$a = Set-Content __R__/f x
+EOC
+)" "$WT")"
+gate "D5 (3d): splat \$a=@{Path='<P>/f'}; Set-Content @a, do worktree, BARRA (incerto)" 2 "$(bp "$(cmdps <<'EOC'
+$a=@{Path='__R__/f';Value='x'}; Set-Content @a
+EOC
+)" "$WT")"
+gate "D5 (3f): [IO.File]:: WriteAllText('<P>/f','x'), do worktree, BARRA (espaco apos ::)" 2 "$(bp "$(cmdps <<'EOC'
+[IO.File]:: WriteAllText('__R__/f','x')
+EOC
+)" "$WT")"
+gate "D5 (3f): [ IO.File ]::WriteAllText('<P>/f','x'), do worktree, BARRA (espaco nos colchetes)" 2 "$(bp "$(cmdps <<'EOC'
+[ IO.File ]::WriteAllText('__R__/f','x')
+EOC
+)" "$WT")"
+
+echo "-- item 4: iex / Invoke-Expression com texto literal analisado como codigo --"
+gate "D5 (4): iex 'Set-Content <P>/f x', do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+iex 'Set-Content __R__/f x'
+EOC
+)" "$WT")"
+gate "D5 (4): Invoke-Expression \"Set-Content <P>/f x\", do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Invoke-Expression "Set-Content __R__/f x"
+EOC
+)" "$WT")"
+gate "D5 (4): iex \$x (argumento nao literal), do worktree, BARRA (regressao: ja barrava pelo ramo de comando dinamico)" 2 "$(bp 'iex $x' "$WT")"
+gate "D5 (4) vizinho: iex 'Write-Output hola', do worktree, PASSA (texto sem escrita)" 0 "$(bp "iex 'Write-Output hola'" "$WT")"
+
+echo "-- item 6: mascara de aspas que nao acompanha crase, comentario e here-string --"
+gate "D5 (6): crase fora de aspas antes de [IO.File]::WriteAllText, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Write-Host `'; [IO.File]::WriteAllText('__R__/f','x'); Write-Host `'
+EOC
+)" "$WT")"
+# Os dois casos abaixo tem NUMERO PAR de aspas simples: sem a checagem, a mascara
+# pareia as aspas e esconde a chamada de fato (com numero impar o `return texto` antigo
+# para no meio e o caso passaria sem a checagem, por outro caminho).
+gate "D5 (6): comentario com apostrofo escondia a chamada da mascara, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+# it's
+[IO.File]::WriteAllText('__R__/f','x')
+# don't
+EOC
+)" "$WT")"
+gate "D5 (6): here-string com apostrofo escondia a chamada da mascara, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+$t = @'
+it's
+'@
+[IO.File]::WriteAllText('__R__/f','x')
+# don't
+EOC
+)" "$WT")"
+gate "D5 (6) vizinho: Select-String \"[IO.File]::WriteAllText(\" arq, do worktree, PASSA (mascara ativa)" 0 "$(bp 'Select-String "[IO.File]::WriteAllText(" arq' "$WT")"
+
+echo "-- revisao de seguranca da rodada 3: origem do Move-Item, New-Item posicional, travessao, iex por pipeline, atribuicao composta --"
+gate "D5 (s1): Move-Item <P>/a.txt . (origem no principal), do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Move-Item __R__/a.txt .
+EOC
+)" "$WT")"
+gate "D5 (s1) vizinho: Copy-Item <P>/a.txt . (copia nao apaga a origem), do worktree, PASSA" 0 "$(bp "$(cmdps <<'EOC'
+Copy-Item __R__/a.txt .
+EOC
+)" "$WT")"
+gate "D5 (s2): New-Item <P> -Name f (caminho posicional), do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+New-Item __R__ -Name f -ItemType File
+EOC
+)" "$WT")"
+gate "D5 (s2) vizinho: New-Item sub -Name f (no worktree), do worktree, PASSA" 0 "$(bp "$(cmdps <<'EOC'
+New-Item sub -Name f -ItemType File
+EOC
+)" "$WT")"
+gate "D5 (s3): Set-Content –Path <P>/f x (travessao), do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Set-Content –Path __R__/f –Value x
+EOC
+)" "$WT")"
+gate "D5 (s4): 'Set-Content <P>/f x' | iex (texto pelo pipeline), do worktree, BARRA (regressao: ja barrava pelo ramo de comando dinamico)" 2 "$(bp "$(cmdps <<'EOC'
+'Set-Content __R__/f x' | iex
+EOC
+)" "$WT")"
+gate "D5 (s4): iex -Command 'Set-Content <P>/f x', do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+iex -Command 'Set-Content __R__/f x'
+EOC
+)" "$WT")"
+gate "D5 (s5): . Set-Content <P>/f x (dot-source), do worktree, BARRA (regressao: ja barrava pelo ramo de comando dinamico)" 2 "$(bp "$(cmdps <<'EOC'
+. Set-Content __R__/f x
+EOC
+)" "$WT")"
+gate "D5 (s5): \$a += Set-Content <P>/f x, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+$a += Set-Content __R__/f x
+EOC
+)" "$WT")"
+gate "D5 (s5): \$h.x = Set-Content <P>/f x, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+$h.x = Set-Content __R__/f x
+EOC
+)" "$WT")"
+gate "D5 (s6): iex 'a'\"\$(...)\" (aspas mistas), do worktree, BARRA (regressao: ja barrava pelo ramo de comando dinamico)" 2 "$(bp "$(cmdps <<'EOC'
+iex 'Write-Output '"$(Set-Content __R__/f x)"
+EOC
+)" "$WT")"
+gate "D5 (s6): iex -Command:'Set-Content <P>/f x', do worktree, BARRA (incerto)" 2 "$(bp "$(cmdps <<'EOC'
+iex -Command:'Set-Content __R__/f x'
+EOC
+)" "$WT")"
+gate "D5 (s7): cd <P>; Copy-Item <WT>/a.txt (sem destino, cai no cwd), do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Set-Location __R__; Copy-Item __WT__/a.txt
+EOC
+)" "$WT")"
+gate "D5 (s7) vizinho: Copy-Item <P>/a.txt (sem destino), do worktree, PASSA" 0 "$(bp "$(cmdps <<'EOC'
+Copy-Item __R__/a.txt
+EOC
+)" "$WT")"
+gate "D5 (s7): cd <P>; Move-Item <WT>/a.txt (sem destino, cai no cwd), do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Set-Location __R__; Move-Item __WT__/a.txt
+EOC
+)" "$WT")"
+gate "D5 (s6): iex com aspa tipografica no texto, do worktree, BARRA (incerto)" 2 "$(bp "$(cmdps <<'EOC'
+iex 'Set-Content ‘__R__/f’ x'
+EOC
+)" "$WT")"
+gate "D5 (s8): splat no fim, Set-Content a.txt -Value x @a, do worktree, BARRA (incerto)" 2 "$(bp "$(cmdps <<'EOC'
+Set-Content a.txt -Value x @a
+EOC
+)" "$WT")"
+gate "D5 (s8) vizinho: Set-Content a.txt @('x','y'), do worktree, PASSA (array nao e splat)" 0 "$(bp "Set-Content a.txt @('x','y')" "$WT")"
+gate "D5 (s9): Set-Content com aspa tipografica no caminho do principal, do worktree, BARRA (incerto)" 2 "$(bp "$(cmdps <<'EOC'
+Set-Content ‘__R__/f’ x
+EOC
+)" "$WT")"
+gate "D5 (s9): aspa tipografica escondia [IO.File]::WriteAllText da mascara, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Write-Host ‘'; [IO.File]::WriteAllText('__R__/f','x'); Write-Host '’
+EOC
+)" "$WT")"
+gate "D5 (s10): New-Item -Path a,<P> -Name f (lista no caminho), do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+New-Item -Path sub,__R__ -Name f -ItemType File
+EOC
+)" "$WT")"
+
+echo "-- 2a revisao do fluxo: atribuicao colada, lista com espaco, aliases cp/mv/tee, crase no nome, comentario de bloco, .NET com varias posicoes, chaves com espaco citado --"
+for c in '$a=Set-Content __R__/f x' '$a+=Set-Content __R__/f x' '$a[0]=Set-Content __R__/f x' '[string]$a = Set-Content __R__/f x' '$a, $b = Set-Content __R__/f x' '($a) = Set-Content __R__/f x' '${a} = Set-Content __R__/f x' '$env:X=Set-Content __R__/f x' \
+  'Set-Content a.txt, __R__/f x' 'Set-Content a.txt ,__R__/f x' 'Set-Content -Path a.txt, __R__/f -Value x' '"x" | Out-File -FilePath a.txt, __R__/f' 'New-Item a, __R__/f' \
+  'cp -Destination __R__/f a.txt' 'mv -Destination __R__/f a.txt' '"x" | tee -FilePath:__R__/f' \
+  '`Set-Content __R__/f x' 'Set-`Content __R__/f x' 'Cop`y-Item a __R__/f' '<#c#>Set-Content __R__/f x' 'Set-Content <##> __R__/f x' \
+  "[IO.File]::Replace('a.txt','b.txt','__R__/bak')" "[IO.File]::Move('__R__/a.txt','b.txt')" "[IO.Directory]::Move('__R__/d','x')"; do
+  cc=${c//__R__/$R}
+  gate "2a rev: $c, do worktree, BARRA" 2 "$(bp "$cc" "$WT")"
+done
+for c in 'New-Item -Type Directory sub' 'ni -Type File x.txt' 'New-Item -ItemType SymbolicLink -Path ln -Target a.txt' 'Set-Content -Path a.bin -Value x -AsByteStream' \
+  "[IO.File]::GetCreationTime('a.txt')" "[IO.Directory]::GetCurrentDirectory()" "[IO.StreamReader]::new('a.txt')" "[IO.File]::Replace('a.txt','b.txt',\$null)" \
+  'cp -r src dst' '$a = Get-Content a.txt' '$n=Set-Content b.txt x' 'Set-Content a.txt, b.txt x'; do
+  gate "2a rev vizinho: $c, do worktree, PASSA" 0 "$(bp "$c" "$WT")"
+done
+mkdir -p "$R/sub dir" "$WT/sub dir"
+gate "2a rev: {cd,\"<P>/sub dir\"} && echo x > f (espaco citado), do worktree, BARRA" 2 "$(b "{cd,\"$R/sub dir\"} && echo x > f" "$WT")"
+gate "2a rev: {cd,'<P>/sub dir'} && echo x > f, do worktree, BARRA" 2 "$(b "{cd,'$R/sub dir'} && echo x > f" "$WT")"
+gate "2a rev vizinho: {cd,\"<WT>/sub dir\"} && echo x > f, do worktree, PASSA" 0 "$(b "{cd,\"$WT/sub dir\"} && echo x > f" "$WT")"
+
+echo "-- 3a revisao do fluxo: continuacao de linha por crase, <# entre aspas, prefixo por cmdlet, FileInfo --"
+for c in $'Copy-Item -Path src\* `\n  -Destination dst `\n  -Recurse' $'Copy-Item a.txt b.txt `\n  -Force' $'Move-Item -Path a.txt `\r\n  -Destination b.txt' $'New-Item -ItemType Directory `\n  -Path sub9' 'Copy-Item "src" "dst" -Recurse -Force `' \
+  "Select-String '<#' a.txt" 'Write-Output "x <# y"' "Set-Content -Path a.ps1 -Value '<# .SYNOPSIS x #>'" \
+  'cp -v a.txt b.txt' 'mv -v a.txt c.txt' 'cp -r -v src dst' '"x" | tee -a out.txt' 'Set-Content -Path a.txt -Va x' 'Copy-Item -Container a b'; do
+  gate "3a rev vizinho: ${c//$'\n'/⏎}, do worktree, PASSA" 0 "$(bp "$c" "$WT")"
+done
+for c in $'Copy-Item a.txt `\n  __R__/f' $'Move-Item __R__/a.txt `\n  b.txt' "[IO.FileInfo]::new('__R__/f').Create()" "[IO.DirectoryInfo]::new('__R__/d').Create()"; do
+  cc=${c//__R__/$R}
+  gate "3a rev: ${c//$'\n'/⏎}, do worktree, BARRA" 2 "$(bp "$cc" "$WT")"
+done
+
+for c in $'# c `\nSet-Content __R__/f x' $'Write-Host "a" # `\nSet-Content __R__/f x' 'Set-Content -Value `'"'"' <##> __R__/f # '"'"; do
+  cc=${c//__R__/$R}
+  gate "3a rev (seguranca): ${c//$'\n'/⏎}, do worktree, BARRA" 2 "$(bp "$cc" "$WT")"
+done
+
+for c in $'Copy-Item a#b `\n  __R__/f' $'$t = @\'\nx\n\'@\nCopy-Item a.txt `\n  __R__/f' $'Copy-Item ‘a b’ `\n  __R__/f' $'Set-Content a.txt "x`\n" ; Copy-Item a.txt `\n __R__/f'; do
+  cc=${c//__R__/$R}
+  gate "4a rev (seguranca): ${c//$'\n'/⏎}, do worktree, BARRA" 2 "$(bp "$cc" "$WT")"
+done
+gate "4a rev: Copy-Item a#b ⏎ b.txt (# com continuacao e incerto, conservador), do worktree, BARRA" 2 "$(bp $'Copy-Item a#b `\n  b.txt' "$WT")"
+
+for c in $'Write-Output \x27x\x27#c `
+Set-Content __R__/f y' $'Write-Output "x"#c `
+Set-Content __R__/f y' $'Write-Output $a.Length#c `
+Set-Content __R__/f y' $'Write-Output $a[0]#c `
+Set-Content __R__/f y' $'Write-Output $a.b#c `
+Copy-Item a.txt __R__/f'; do
+  cc=${c//__R__/$R}
+  gate "4a rev: ${c//$'
+'/⏎}, do worktree, BARRA" 2 "$(bp "$cc" "$WT")"
+done
+gate "4a rev vizinho: Copy-Item -Path a.txt ⏎ -Destination b.txt (sem #), do worktree, PASSA" 0 "$(bp $'Copy-Item -Path a.txt `
+  -Destination b.txt' "$WT")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

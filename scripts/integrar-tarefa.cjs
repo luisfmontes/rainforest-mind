@@ -241,7 +241,7 @@ function main() {
   // 3. Mutação: a bateria da tarefa tem de ficar vermelha com o trecho invertido.
   const mut = rodar('conferir-fluxo.cjs', [
     'mutacoes', '--slug', slug, '--tarefa', tarefaArg,
-    '--raiz-codigo', topo, '--plano', plano,
+    '--raiz-codigo', topo, '--plano', plano, '--gravar-flake',
   ]);
   if (mut.status !== 0) return recusar('mutacao', mut, trazidos);
 

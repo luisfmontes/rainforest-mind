@@ -512,16 +512,17 @@ function bloqueia(motivo, toplevel, agente, apenasRestauracao = null, ehWorktree
 function alvosBash(comando, cwdInicial, casa = (seg, _cwd, ferr) => {
   return subcomandoGit(seg, ferr).some((s) => s.incerto || VERBOS_QUE_MEXEM.has(s.verbo));
 }, ferramenta) {
+  const ehPowerShell = ferramenta === "PowerShell";
   // `segmentosComAspas`, nao `comando.split(SEPARADORES)` cru: o split cru
   // nao respeita aspas (`git commit -m "a & b"` quebraria dentro da mensagem)
   // e, ate a rodada 6, `SEPARADORES` nem reconhecia `&` simples como
   // separador (K1 do auditor, lote 3, 2026-09-03).
-  const segmentos = segmentosComAspas(comando);
+  const segmentos = segmentosComAspas(comando, ehPowerShell);
   const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [] };
   const alvos = [];
 
   for (const seg of segmentos) {
-    const mov = resolverMovedor(seg, estado);
+    const mov = resolverMovedor(seg, estado, ehPowerShell);
     if (mov.soMovedor) continue; // cd/pushd/popd: o segmento INTEIRO e o movedor
 
     if (!casa(seg, mov.cwd, ferramenta)) continue;
@@ -624,7 +625,7 @@ function achadasEmString(str, clis, ferramenta) {
  * atravessava com exit 0.
  */
 function procuraCLI(comando, clis, ferramenta) {
-  const segmentos = segmentosComAspas(comando);
+  const segmentos = segmentosComAspas(comando, ferramenta === "PowerShell");
   const achadas = [];
   segmentos.forEach((seg, indiceSegmento) => {
     const toks = tokensComAspas(seg);
@@ -678,6 +679,456 @@ function ehDescarteDeSaida(alvo, ehPowerShell) {
   return alvo === "/dev/null" || (ehPowerShell === true && /^\$null$/i.test(alvo));
 }
 
+// Cmdlets de escrita do PowerShell (#533, D2). Nome sem diferenciar caixa e sem
+// qualificador de modulo: `Microsoft.PowerShell.Management\Set-Content` conta como `Set-Content`.
+const CMDLETS_DE_ESCRITA = new Set([
+  "set-content", "sc", "add-content", "ac", "out-file", "new-item", "ni", "tee-object",
+  "copy-item", "copy", "cpi", "move-item", "move", "mi",
+  // Aliases do PowerShell com nome de comando do bash: no PowerShell, `cp`, `mv` e `tee`
+  // sao Copy-Item, Move-Item e Tee-Object e aceitam `-Destination`/`-FilePath` (2a revisao).
+  "cp", "mv", "tee",
+]);
+// Parametros do PowerShell, por classe (rodada 2, #533, falha fechada). Alias, nome
+// exato ou prefixo unico (`-Val`, `-Dest`) conta. Nome que nao casa com nenhuma
+// lista, ou casa com mais de uma sem ser exato, e DESCONHECIDO: vira alvo incerto.
+const ALIASES_DE_PARAMETRO = new Map([
+  ["vb", "verbose"], ["db", "debug"], ["wi", "whatif"], ["cf", "confirm"],
+  ["ea", "erroraction"], ["wa", "warningaction"], ["infa", "informationaction"],
+  ["ev", "errorvariable"], ["wv", "warningvariable"], ["iv", "informationvariable"],
+  ["ov", "outvariable"], ["ob", "outbuffer"], ["pv", "pipelinevariable"], ["lp", "literalpath"],
+  // New-Item: `-Type` e alias de `-ItemType`, `-Target` de `-Value` (2a revisao do fluxo).
+  ["type", "itemtype"], ["target", "value"],
+]);
+// Parametros cujo valor e um caminho: o valor vira alvo.
+// `-Name` do New-Item tambem: `New-Item -Name <P>/f` cria pelo caminho do nome (revisao de seguranca, rodada 2).
+const PARAMETROS_DE_CAMINHO = ["path", "literalpath", "filepath", "pspath", "destination", "name"];
+// Parametros que levam valor: o token seguinte nao e alvo (salvo se for de caminho).
+const PARAMETROS_COM_VALOR = [
+  "value", "itemtype", "encoding", "inputobject", "width", "filter", "include",
+  "exclude", "variable", "stream", "credential", "erroraction", "warningaction",
+  "informationaction", "errorvariable", "warningvariable", "informationvariable",
+  "outvariable", "outbuffer", "pipelinevariable", "progressaction", "fromsession", "tosession",
+];
+// Parametros sem valor. `-Confirm:$false` e booleano, nao caminho.
+const PARAMETROS_SEM_VALOR = [
+  "force", "append", "nonewline", "noclobber", "passthru", "recurse",
+  "verbose", "debug", "whatif", "confirm", "asbytestream", "container", "usetransaction",
+];
+// Prefixo de uma letra tambem vale quando unico (`cp -r a b` e `-Recurse`).
+const ehParametro = (flag, nome) => flag.length >= 1 && nome.startsWith(flag);
+
+// Parametros de cada cmdlet (3a revisao do fluxo): o prefixo e resolvido contra o
+// conjunto do cmdlet, como o PowerShell faz (`cp -v` e `-Verbose`, nao ambiguo com `-Value`).
+const PARAMETROS_COMUNS = [
+  "verbose", "debug", "erroraction", "warningaction", "informationaction", "progressaction",
+  "errorvariable", "warningvariable", "informationvariable", "outvariable", "outbuffer",
+  "pipelinevariable", "whatif", "confirm", "usetransaction",
+];
+const PARAMETROS_DO_CMDLET = new Map(Object.entries({
+  "set-content": ["path", "literalpath", "pspath", "value", "passthru", "filter", "include", "exclude", "force", "credential", "nonewline", "encoding", "stream", "asbytestream"],
+  "out-file": ["filepath", "literalpath", "pspath", "encoding", "append", "force", "noclobber", "width", "nonewline", "inputobject"],
+  "new-item": ["path", "literalpath", "pspath", "name", "itemtype", "value", "force", "credential"],
+  "tee-object": ["filepath", "literalpath", "pspath", "append", "variable", "inputobject", "encoding"],
+  "copy-item": ["path", "literalpath", "pspath", "destination", "container", "force", "filter", "include", "exclude", "recurse", "passthru", "credential", "fromsession", "tosession"],
+  "move-item": ["path", "literalpath", "pspath", "destination", "force", "filter", "include", "exclude", "passthru", "credential"],
+}));
+const CMDLET_CANONICO = new Map(Object.entries({
+  "sc": "set-content", "add-content": "set-content", "ac": "set-content",
+  "ni": "new-item", "tee": "tee-object", "copy": "copy-item", "cpi": "copy-item", "cp": "copy-item",
+  "move": "move-item", "mi": "move-item", "mv": "move-item",
+}));
+
+/** Nome canonico do parametro (`-Path` -> "path"), ou null se desconhecido ou ambiguo no conjunto do cmdlet. */
+function nomeDoParametro(flag, cmdlet) {
+  if (ALIASES_DE_PARAMETRO.has(flag)) return ALIASES_DE_PARAMETRO.get(flag);
+  const doCmdlet = PARAMETROS_DO_CMDLET.get(CMDLET_CANONICO.get(cmdlet) || cmdlet);
+  const todos = doCmdlet ? [...doCmdlet, ...PARAMETROS_COMUNS]
+    : [...PARAMETROS_DE_CAMINHO, ...PARAMETROS_COM_VALOR, ...PARAMETROS_SEM_VALOR];
+  if (todos.includes(flag)) return flag;
+  const casam = todos.filter((n) => ehParametro(flag, n));
+  return casam.length === 1 ? casam[0] : null;
+}
+
+// Cmdlets de escrita com destino de COPIA: o alvo e `-Destination` ou o ultimo
+// posicional, e o primeiro posicional e so origem (D5).
+const CMDLETS_DE_COPIA = new Set(["copy-item", "copy", "cpi", "cp", "move-item", "move", "mi", "mv"]);
+const CMDLETS_DE_MOVER = new Set(["move-item", "move", "mi", "mv"]);
+// Parametros de caminho que o cmdlet le ou escreve (`-Path` e os aliases de caminho).
+const PARAMETROS_DE_CAMINHO_PS = ["path", "literalpath", "filepath", "pspath"];
+
+/**
+ * Indice do nome do cmdlet, a partir de `i` (D5, #533 rodada 3): pula o `&` (call
+ * operator) e a atribuicao (`$null = `, `$a = `, `$a=`) que o PowerShell roda antes
+ * do comando. Null se nao sobra token.
+ */
+// Operador de atribuicao do PowerShell, sozinho (`=`, `+=`, `??=`).
+const OPERADOR_DE_ATRIBUICAO = /^[-+*/%?]{0,2}=$/;
+// Token que comeca o lado esquerdo de uma atribuicao: variavel, cast (`[string]$a`) ou lista (`$a,`).
+const INICIO_DE_LADO_ESQUERDO = /^[$[,]/;
+
+/**
+ * Nome do cmdlet a partir de `i` (D5, #533 rodada 3 e 2a revisao do fluxo): pula o `&`
+ * e o `.` (dot-source) e a atribuicao que o PowerShell roda antes do comando, em
+ * qualquer grafia: `$a = `, `$a=Set-Content`, `$a+=`, `$a[0]=`, `[string]$a = `,
+ * `$a, $b = `, `$env:X=` e o `=` que sobra no inicio do segmento quando a segmentacao
+ * cortou em `(`/`{` (`($a) = `, `${a} = `). Devolve `{k, nome}` (o `nome` vem do resto
+ * do token quando ele cola no `=`), ou null se nao sobra comando.
+ */
+function indiceDoCmdletPS(toks, i) {
+  let k = i;
+  while (k < toks.length) {
+    const t = toks[k];
+    if (t.q) return { k, nome: t.v };
+    if (t.v === "&" || t.v === ".") { k += 1; continue; }
+    if (OPERADOR_DE_ATRIBUICAO.test(t.v)) { k += 1; continue; }
+    if (INICIO_DE_LADO_ESQUERDO.test(t.v)) {
+      // Procura o `=` ate o fim do lado esquerdo (tokens que ainda parecem variavel, cast ou lista).
+      let j = k;
+      let achou = null;
+      while (j < toks.length && !toks[j].q) {
+        const v = toks[j].v;
+        if (OPERADOR_DE_ATRIBUICAO.test(v)) { achou = { prox: j + 1, resto: "" }; break; }
+        // `=` de atribuicao colado (`$a=x`, `$a+=x`): nao `==`, nem o de `!=`, `<=`, `>=`.
+        const idx = v.search(/=(?!=)/);
+        if (idx > 0 && !"!<>=".includes(v[idx - 1])) { achou = { prox: j + 1, resto: v.slice(idx + 1) }; break; }
+        if (j > k && !INICIO_DE_LADO_ESQUERDO.test(v) && !/,$/.test(toks[j - 1].v)) break;
+        j += 1;
+      }
+      if (!achou) return { k, nome: t.v };
+      if (achou.resto) return { k: achou.prox - 1, nome: achou.resto };
+      k = achou.prox;
+      continue;
+    }
+    return { k, nome: t.v };
+  }
+  return null;
+}
+
+/** Nome do cmdlet comparavel: sem qualificador de modulo, sem crase (o PowerShell a ignora em `Set-`Content`), em minusculas. */
+function nomeDeCmdletPS(v) {
+  return v.replace(/`/g, "").split(/[\\/]/).pop().toLowerCase();
+}
+
+/**
+ * Le um argumento a partir de `k`, juntando a lista que o espaco partiu (`a.txt, <P>/f`,
+ * `a.txt ,<P>/f`): enquanto o token termina em `,` ou o seguinte comeca com `,`.
+ * Devolve `{t: {v, q}, k}` com `k` no ultimo token consumido.
+ */
+function lerArgumentoPS(toks, k) {
+  let v = toks[k].v;
+  let q = toks[k].q;
+  let j = k;
+  while (j + 1 < toks.length && (v.endsWith(",") || toks[j + 1].v.startsWith(","))) {
+    j += 1;
+    v += toks[j].v;
+    q = q || toks[j].q;
+  }
+  return { t: { v, q }, k: j };
+}
+
+/**
+ * D2 e D5 de um segmento (#533, rodadas 2 e 3). O candidato a alvo e: o valor de
+ * `-Path`/`-LiteralPath`/`-FilePath`/`-PSPath` se houver, senao o PRIMEIRO posicional
+ * (escritores simples). Em copia/movimento, `-Destination` se houver, senao o ULTIMO
+ * posicional (com `-Path` nomeado, o posicional unico e o destino). `-Value` e os
+ * posicionais que nao sao o candidato nao sao caminho. `New-Item -Name`: alvo = o
+ * caminho (ou o cwd) juntado ao nome. Candidato com `$`, `(`, crase ou `@` inicial
+ * (splat) e alvo incerto, que o gate barra dentro de repositorio. Parametro
+ * desconhecido ou ambiguo tambem.
+ */
+function alvosDeCmdlet(toks, posCmd, base, empurra) {
+  if (posCmd === null || posCmd === undefined) return;
+  const cmd = indiceDoCmdletPS(toks, posCmd);
+  if (cmd === null) return;
+  const iNome = cmd.k;
+  const nome = nomeDeCmdletPS(cmd.nome);
+  if (!CMDLETS_DE_ESCRITA.has(nome)) return;
+  const posicionais = [];
+  const caminhos = [];
+  const destinos = [];
+  const nomes = [];
+  let desconhecido = false;
+  for (let k = iNome + 1; k < toks.length; k += 1) {
+    const t = toks[k];
+    // `-Nome` ou `-Nome:valor`. Token citado so e parametro com `:` (`-Path:'x'`,
+    // que o tokenizador devolve como citado); sem `:` e um argumento citado.
+    // O PowerShell aceita travessao (`–`, `—`, `―`) como prefixo de parametro.
+    const m = /^[-–—―]([A-Za-z]+)(:(.*))?$/.exec(t.v);
+    if (!m || (t.q && m[2] === undefined)) {
+      const arg = lerArgumentoPS(toks, k);
+      posicionais.push(arg.t);
+      k = arg.k;
+      continue;
+    }
+    const param = nomeDoParametro(m[1].toLowerCase(), nome);
+    if (param === null) { desconhecido = true; continue; } // o token seguinte segue posicional
+    if (PARAMETROS_SEM_VALOR.includes(param)) continue;
+    let valor = null;
+    if (m[2] !== undefined && m[3] !== "") valor = { v: m[3], q: t.q }; // -Nome:valor
+    else if (k + 1 < toks.length) { const arg = lerArgumentoPS(toks, k + 1); valor = arg.t; k = arg.k; } // -Nome valor, o valor nao e posicional
+    if (valor !== null && m[2] !== undefined && m[3] !== "" && valor.v.endsWith(",") && k + 1 < toks.length) {
+      // `-Path:a, <P>/f`: a lista continua no token seguinte.
+      const arg = lerArgumentoPS(toks, k + 1);
+      valor = { v: valor.v + arg.t.v, q: valor.q || arg.t.q };
+      k = arg.k;
+    }
+    if (valor === null) continue;
+    if (PARAMETROS_DE_CAMINHO_PS.includes(param)) caminhos.push(valor);
+    else if (param === "destination") destinos.push(valor);
+    else if (param === "name") nomes.push(valor);
+  }
+  if (desconhecido) empurra(base, null, "cmdlet", true);
+  // Splat em qualquer posicao (`Set-Content x -Value y @a`) traz parametros que nao
+  // se veem: incerto (revisao de seguranca).
+  if (toks.slice(iNome + 1).some((t) => !t.q && /^@\w+$/.test(t.v))) empurra(base, null, "cmdlet", true);
+
+  if (nome === "new-item" || nome === "ni") {
+    if (nomes.length) {
+      // `-Name` junta-se ao caminho (ou ao cwd): nome com `..` ou separador tambem conta.
+      for (const n of nomes) {
+        // Sem `-Path` nomeado, o primeiro posicional e o caminho (`New-Item <P> -Name f`).
+        const bases = caminhos.length ? caminhos : posicionais.length ? posicionais.slice(0, 1) : [null];
+        // Lista no caminho (`-Path a,<P>`): cada elemento se junta ao nome.
+        const partes = bases.flatMap((p) => (p === null ? [null] : p.v.split(",").filter((x) => x !== "")));
+        for (const p of partes) {
+          const trechos = [n.v, p].filter((x) => x !== null);
+          if (trechos.some((x) => /[$`()@‘-„]/.test(x))) { empurra(base, null, "cmdlet", true); continue; }
+          empurra(base, path.resolve(base, p === null ? "." : p, n.v), "cmdlet");
+        }
+      }
+      return;
+    }
+  }
+
+  let candidatos;
+  if (CMDLETS_DE_MOVER.has(nome)) {
+    // Mover apaga a origem: origem e destino sao alvos (revisao de seguranca da rodada 3).
+    candidatos = [...destinos, ...caminhos, ...posicionais];
+    // Sem destino, o item cai no cwd, como na copia.
+    if (!destinos.length && posicionais.length < (caminhos.length ? 1 : 2)) candidatos.push({ v: ".", q: false });
+  } else if (CMDLETS_DE_COPIA.has(nome)) {
+    if (destinos.length) candidatos = destinos;
+    else {
+      const minimo = caminhos.length ? 1 : 2;
+      // Sem destino, a copia cai no cwd: ele e o alvo (revisao de seguranca).
+      candidatos = posicionais.length >= minimo ? [posicionais[posicionais.length - 1]] : [{ v: ".", q: false }];
+    }
+  } else {
+    candidatos = caminhos.length ? caminhos : posicionais.slice(0, 1);
+  }
+  // Lista (`a,<P>/b`): cada elemento e um alvo. Variavel, crase, subexpressao ou splat: incerto.
+  for (const c of candidatos) {
+    for (const parte of c.v.split(",")) {
+      if (parte === "") continue;
+      // Aspa tipografica: o tokenizador nao a reconhece, o PowerShell sim. Incerto.
+      if (/[$`()‘-„]|^@/.test(parte)) empurra(base, null, "cmdlet", true);
+      else empurra(base, parte, "cmdlet");
+    }
+  }
+}
+
+/**
+ * Crase fora de aspas, `#` fora de aspas ou here-string (`@'`/`@"`) (D5, rodada 3): a
+ * mascara de aspas nao acompanha a leitura do PowerShell nesses casos (a crase faz o
+ * apostrofo seguinte literal, o comentario `# it's` abre uma aspa falsa, o here-string
+ * tem as suas). Quem tem qualquer um deles nao e mascarado.
+ */
+function desalinhaAMascara(texto) {
+  let aspa = null;
+  for (let i = 0; i < texto.length; i += 1) {
+    const c = texto[i];
+    if (aspa) {
+      if (c === "`" && aspa === '"') i += 1; // crase escapa o proximo dentro de aspas duplas
+      else if (c === aspa) aspa = null;
+      continue;
+    }
+    if (c === "'" || c === '"') { aspa = c; continue; }
+    // Aspas tipograficas (U+2018 a U+201E) tambem sao aspas para o PowerShell (revisao de seguranca).
+    if (c === "`" || c === "#" || (c >= "‘" && c <= "„")) return true;
+    if (c === "@" && (texto[i + 1] === "'" || texto[i + 1] === '"')) return true;
+  }
+  return false;
+}
+
+/** Texto com o conteudo entre aspas trocado por espacos, do mesmo tamanho: chamada dentro de aspas nao conta (D3). */
+function mascaraAspas(texto) {
+  if (desalinhaAMascara(texto)) return texto;
+  // PowerShell (revisao de seguranca da rodada 2): so aspas simples sao inertes. Aspas
+  // duplas expandem `$(...)`, entao so se mascaram sem `$` dentro; crase escapa o
+  // caractere seguinte dentro delas. Estado de aspas desbalanceado: nao mascara nada
+  // (falha fechada, a chamada volta a contar).
+  let saida = "";
+  let i = 0;
+  while (i < texto.length) {
+    const c = texto[i];
+    if (c === "'") {
+      const j = texto.indexOf("'", i + 1);
+      if (j < 0) return texto;
+      saida += "'" + " ".repeat(j - i - 1) + "'";
+      i = j + 1;
+    } else if (c === '"') {
+      let j = i + 1;
+      while (j < texto.length && texto[j] !== '"') j += texto[j] === "`" ? 2 : 1;
+      if (j >= texto.length) return texto;
+      const dentro = texto.slice(i + 1, j);
+      saida += dentro.includes("$") ? texto.slice(i, j + 1) : '"' + " ".repeat(j - i - 1) + '"';
+      i = j + 1;
+    } else {
+      saida += c;
+      i += 1;
+    }
+  }
+  return saida;
+}
+
+// Chamada .NET (#533, D3, emenda da rodada 2): qualquer tipo sob o namespace IO
+// (`[IO.File]`, `[System.IO.Directory]`, `[IO.FileStream]`...), exceto `Path`, que so
+// manipula string. Metodo de leitura conhecido passa; qualquer outro e escrita.
+// Espaco e aceito em volta do nome do tipo, de `::` e antes do `(` (D5, rodada 3).
+const CHAMADA_NET = /\[\s*([\w.]*\bIO\.[\w.]+)\s*\]\s*::\s*(\w+)\s*\(/gi;
+const METODOS_NET_DE_LEITURA = new Set([
+  "readalltext", "readalllines", "readallbytes", "readlines", "exists", "openread", "opentext",
+  "getattributes", "getlastwritetime", "getfiles", "getdirectories", "enumeratefiles", "enumeratedirectories",
+  // 2a revisao do fluxo: leitura comum que a lista nao tinha.
+  "readalltextasync", "readalllinesasync", "readallbytesasync", "getcreationtime", "getlastaccesstime",
+  "getlastwritetimeutc", "getcreationtimeutc", "getlastaccesstimeutc", "getfilesystementries",
+  "enumeratefilesystementries", "getcurrentdirectory", "getparent", "getdirectoryroot", "getlogicaldrives",
+]);
+// Tipos cujo construtor (`::new`) nao escreve em arquivo: leitores, buffers em memoria e
+// descritores (`[IO.FileInfo]::new(p).Length`).
+// `FileInfo`/`DirectoryInfo` nao entram: `[IO.FileInfo]::new(p).Create()` escreve (revisao de seguranca).
+const TIPOS_NET_NEW_SEM_ESCRITA = /(^|\.)(streamreader|stringreader|stringwriter|memorystream|binaryreader)$/i;
+// Posicoes de caminho que a escrita toca, por metodo. `Move` e `Replace` apagam a origem;
+// o 3o argumento de `Replace` e o backup (2a revisao do fluxo). Os demais: todo literal.
+const POSICAO_DO_ALVO_NET = new Map([
+  ["writealltext", [0]], ["appendalltext", [0]], ["writealllines", [0]], ["appendalllines", [0]],
+  ["writeallbytes", [0]], ["copy", [1]], ["move", [0, 1]], ["replace", [0, 1, 2]],
+]);
+
+/** Argumentos de uma chamada, a partir de `inicio` (logo depois do `(`). Virgula so conta fora de aspas e parenteses. */
+function argumentosDaChamada(texto, inicio) {
+  const args = [];
+  let atual = "", aspa = null, prof = 0;
+  for (let i = inicio; i < texto.length; i += 1) {
+    const c = texto[i];
+    if (aspa) { atual += c; if (c === aspa) aspa = null; continue; }
+    if (c === "'" || c === '"') { aspa = c; atual += c; continue; }
+    if (c === "(") prof += 1;
+    else if (c === ")") {
+      if (prof === 0) { args.push(atual.trim()); return { args, fechou: true }; }
+      prof -= 1;
+    } else if (c === "," && prof === 0) { args.push(atual.trim()); atual = ""; continue; }
+    atual += c;
+  }
+  return { args, fechou: false };
+}
+
+/** Texto de um argumento que e string literal: `'...'`, ou `"..."` sem `$` nem crase. Senao null. */
+function literalDoArgumento(arg) {
+  const s = /^'([^']*)'$/.exec(arg) || /^"([^"$`]*)"$/.exec(arg);
+  return s ? s[1] : null;
+}
+
+/**
+ * Uma entrada por chamada de escrita .NET do COMANDO: `{alvo}` (literal, relativo
+ * ao cwd) ou `{incerto: true}`. Le o comando inteiro, nao o segmento: a segmentacao
+ * parte em `(` e `)`. A busca roda sobre o texto com aspas mascaradas (so conta
+ * chamada fora de aspas); os argumentos sao lidos do texto original.
+ */
+function alvosNetDoComando(comando) {
+  const saida = [];
+  // Texto executado como codigo (`iex`, `Invoke-Expression`, `[scriptblock]::Create`): a
+  // chamada dentro de aspas PODE rodar, entao nesta linha a busca nao mascara as aspas.
+  const executa = /(^|[\s;|&(])(iex|invoke-expression|\[scriptblock\]::create)(?=[\s(;|)]|$)/i.test(comando);
+  const mascarado = executa ? comando : mascaraAspas(comando);
+  for (const m of mascarado.matchAll(CHAMADA_NET)) {
+    const tipo = m[1];
+    if (/(^|\.)path$/i.test(tipo)) continue;
+    const metodo = m[2].toLowerCase();
+    if (METODOS_NET_DE_LEITURA.has(metodo)) continue;
+    if (metodo === "new" && TIPOS_NET_NEW_SEM_ESCRITA.test(tipo)) continue;
+    const { args, fechou } = argumentosDaChamada(comando, m.index + m[0].length);
+    if (!fechou) { saida.push({ incerto: true }); continue; }
+    if (POSICAO_DO_ALVO_NET.has(metodo)) {
+      for (const pos of POSICAO_DO_ALVO_NET.get(metodo)) {
+        if (pos > 0 && args.length <= pos) continue; // argumento opcional ausente
+        if (pos > 0 && /^\$null$/i.test(args[pos])) continue; // `Replace(a, b, $null)`: sem backup
+        const lit = args.length > pos ? literalDoArgumento(args[pos]) : null;
+        saida.push(lit === null ? { incerto: true } : { alvo: lit });
+      }
+      continue;
+    }
+    // Metodo de escrita nao conhecido: todo literal e candidato; sem literal, incerto.
+    const literais = args.map(literalDoArgumento).filter((x) => x !== null);
+    if (!literais.length) saida.push({ incerto: true });
+    else for (const alvo of literais) saida.push({ alvo });
+  }
+  return saida;
+}
+
+/**
+ * Junta a continuacao de linha do PowerShell (crase no fim da linha), so quando a
+ * crase esta fora de aspas e de comentario e nao e escapada (revisao de seguranca):
+ * `# c ` + quebra + `Set-Content ...` nao pode virar uma linha so de comentario.
+ * `#` so abre comentario no inicio de token (`a#b` e uma palavra). Crase solta no fim
+ * do comando sai. Devolve `{texto, incerto}`: continuacao que ficou sem juntar (dentro
+ * de comentario ou de aspas), ou continuacao num comando com here-string ou aspa
+ * tipografica, que esta leitura nao acompanha, e incerta (falha fechada).
+ */
+function juntaContinuacoesPS(t) {
+  const texto = juntaContinuacoesPSTexto(t);
+  const temContinuacao = /`\r?\n/.test(t);
+  // `#` fora de aspas junto com continuacao: o PowerShell abre comentario em mais
+  // lugares do que esta leitura acompanha (`'x'#c`, `$a.b#c`, `$a[0]#c`), e a crase
+  // pode estar dentro dele. Incerto, sem tentar decidir (4a revisao do fluxo).
+  const incerto = /`\r?\n/.test(texto) ||
+    (temContinuacao && (/@['"]|[‘-„]/.test(t) || temForaDeAspas(t, "#")));
+  return { texto, incerto };
+}
+
+function juntaContinuacoesPSTexto(t) {
+  let out = "";
+  let aspa = null;
+  let comentario = false;
+  for (let i = 0; i < t.length; i += 1) {
+    const c = t[i];
+    if (comentario) { out += c; if (c === "\n") comentario = false; continue; }
+    if (aspa) {
+      out += c;
+      if (c === "`" && aspa === '"' && i + 1 < t.length) { out += t[i + 1]; i += 1; }
+      else if (c === aspa) aspa = null;
+      continue;
+    }
+    if (c === "'" || c === '"') { aspa = c; out += c; continue; }
+    if (c === "#" && (out === "" || /[\s;|&(){}]$/.test(out))) { comentario = true; out += c; continue; }
+    if (c === "`") {
+      const m = /^\r?\n/.exec(t.slice(i + 1));
+      if (m) { out += " "; i += m[0].length; continue; }
+      out += c;
+      if (i + 1 < t.length) { out += t[i + 1]; i += 1; } // crase escapa o proximo caractere
+      continue;
+    }
+    out += c;
+  }
+  return aspa === null && !comentario ? out.replace(/\s`\s*$/, "") : out;
+}
+
+/** `trecho` aparece fora de aspas simples e duplas? Aspa desbalanceada: conta como fora (falha fechada). */
+function temForaDeAspas(texto, trecho) {
+  let aspa = null;
+  for (let i = 0; i < texto.length; i += 1) {
+    const c = texto[i];
+    if (aspa) {
+      if (c === "`" && aspa === '"') i += 1;
+      else if (c === aspa) aspa = null;
+      continue;
+    }
+    if (c === "'" || c === '"') { aspa = c; continue; }
+    if (texto.startsWith(trecho, i)) return true;
+  }
+  return aspa !== null && texto.includes(trecho);
+}
+
 function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false, profundidade = 0) {
   // #530 (D3): mais de 4 niveis de wrapper/substituicao nao sao conferidos. Barrar,
   // nao liberar sem olhar (D5 do design). O motivo chega ao stderr por `main`.
@@ -687,9 +1138,16 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false, profundidad
   const ferramenta = ehPowerShell ? "PowerShell" : "Bash";
   // `segmentosComAspas` pelo mesmo motivo de `alvosBash`: respeita aspas e
   // reconhece `&` simples como separador (K1, rodada 6, lote 3, 2026-09-03).
-  const segmentos = segmentosComAspas(comando);
+  // PowerShell: crase no fim da linha e continuacao, a linha seguinte e o mesmo
+  // comando; crase solta no fim do comando nao e argumento (3a revisao do fluxo).
+  let continuacaoIncerta = false;
+  if (ehPowerShell) ({ texto: comando, incerto: continuacaoIncerta } = juntaContinuacoesPS(comando));
+  const segmentos = segmentosComAspas(comando, ehPowerShell);
   const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [], estouro: false };
   const alvos = [];
+  // Todo cwd que a linha visita: a chamada .NET (D3) nao sabe em qual segmento
+  // esta, entao um alvo relativo vale para cada um deles (conservador).
+  const visitados = new Set([cwdInicial]);
 
   // #530 (D6, emenda do advisor): crase SEM aspas nao fecha segmento, mas
   // `segmentosComAspas` corta no `;` dentro dela. Por isso o corpo que ATRAVESSA
@@ -707,14 +1165,25 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false, profundidad
   // `env -C`, se houver, senao o `estado.atual` corrente); construcao com
   // $ ou ` fica INCERTA e aponta para o proprio diretorio, que e o lado
   // seguro.
-  const empurra = (base, alvo, tipo) => {
+  // `alvo` null com `incerto` = so incerto, sem caminho (parametro desconhecido do cmdlet).
+  const empurra = (base, alvo, tipo, incerto = false) => {
+    if (alvo === null) { if (incerto) alvos.push({ dir: base, tipo, incerto: true }); return; }
     if (!alvo) return;
     if (/[$`]/.test(alvo)) alvos.push({ dir: base, tipo });
     else alvos.push({ dir: path.resolve(base, alvo), tipo });
   };
 
+  // Comentario de bloco do PowerShell (`<#...#>`): o tokenizador nao o conhece, e ele
+  // pode ocupar a posicao do caminho (`Set-Content <##> <P>/f x`). Incerto (2a revisao).
+  // So fora de aspas: `Select-String '<#' a.txt` e texto (3a revisao do fluxo).
+  // Sem confianca nas aspas (crase, `#` ou here-string fora delas), qualquer `<#` conta.
+  const temBloco = desalinhaAMascara(comando) ? comando.includes("<#") : temForaDeAspas(comando, "<#");
+  if (ehPowerShell && temBloco) alvos.push({ dir: cwdInicial, tipo: "cmdlet", incerto: true });
+  if (continuacaoIncerta) alvos.push({ dir: cwdInicial, tipo: "cmdlet", incerto: true });
+
   for (const seg of segmentos) {
-    const mov = resolverMovedor(seg, estado);
+    const mov = resolverMovedor(seg, estado, ehPowerShell);
+    visitados.add(mov.cwd);
     if (mov.soMovedor) continue; // cd/pushd/popd: o segmento INTEIRO e o movedor
     const base = mov.cwd;
 
@@ -758,6 +1227,27 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false, profundidad
     // Fora dela o token citado segue sendo argumento, nunca comando.
     const posCmd = posicaoDeComando(toks);
     const ehCmd = (i, nome) => ehComando(toks[i], nome, i === posCmd);
+    // D2 (#533): cmdlet de escrita do PowerShell, so na ferramenta PowerShell.
+    if (ehPowerShell) alvosDeCmdlet(toks, posCmd, base, empurra);
+    // D5 (rodada 3): `iex`/`Invoke-Expression` com texto literal roda, de fato, o que
+    // o texto diz — a mesma analise de cmdlet vale para o texto. Argumento nao literal: incerto.
+    if (ehPowerShell && posCmd !== null && posCmd !== undefined) {
+      const cmd = indiceDoCmdletPS(toks, posCmd);
+      if (cmd !== null && /^(iex|invoke-expression)$/.test(nomeDeCmdletPS(cmd.nome))) {
+        // `-Command` (ou prefixo dele) antes do texto e o nome do parametro, nao codigo.
+        let args = toks.slice(cmd.k + 1);
+        if (args.length && !args[0].q && /^[-–—―]c(o(m(m(a(n(d)?)?)?)?)?)?:?$/i.test(args[0].v)) args = args.slice(1);
+        // Qualquer outro parametro no texto (`-Command:'...'`, que o tokenizador devolve
+        // citado): incerto (revisao de seguranca).
+        const comParametro = args.some((t) => /^[-–—―]/.test(t.v));
+        // Literal so sem `$` nem crase em parte nenhuma: o token pode misturar aspas
+        // (`'a'"$(...)"`), e a aspa registrada e so a primeira (revisao de seguranca).
+        const literal = args.every((t) => !/[$`‘-„]/.test(t.v));
+        // Sem argumento, o texto chega pelo pipeline (`$s | iex`): incerto (revisao de seguranca da rodada 3).
+        if (!args.length || !literal || comParametro) empurra(base, null, "iex", true);
+        else alvos.push(...alvosBashEscrita(args.map((t) => t.v).join(" "), base, true, profundidade + 1));
+      }
+    }
 
     for (let i = 0; i < toks.length; i += 1) {
       // `tee arquivo`, `tee -a arquivo`
@@ -789,6 +1279,15 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false, profundidad
   // #530 (D5): expansao de chaves que estourou o teto nao e conferida. Barrar.
   if (estado.estouro) {
     alvos.push({ dir: cwdInicial, tipo: "barrar", motivo: "expansao de chaves grande demais para conferir" });
+  }
+
+  // D3 (#533): chamada .NET de escrita, so na ferramenta PowerShell. Literal
+  // relativo vale para cada cwd visitado; nao literal e incerto no cwd inicial.
+  if (ehPowerShell) {
+    for (const net of alvosNetDoComando(comando)) {
+      if (net.incerto) alvos.push({ dir: cwdInicial, tipo: "net", incerto: true });
+      else for (const base of visitados) alvos.push({ dir: path.resolve(base, net.alvo), tipo: "net" });
+    }
   }
 
   // Conservadorismo: se houver `cd`/`pushd`/`popd` nao-resolvivel, incluir
@@ -959,27 +1458,32 @@ function main() {
     const alvo = entrada.file_path || entrada.notebook_path || null;
     if (alvo) { alvos = [{ dir: alvo, incerto: false }]; motivo = `Escrita (${nome}) em ${alvo}`; }
   } else if ((nome === "Bash" || nome === "PowerShell") && typeof entrada.command === "string") {
+    const ehPS = nome === "PowerShell";
     // #530 (D5): expansao de chaves que estoura o teto nao e conferida em nenhum
     // segmento. Barrar antes de qualquer outra conta, com o motivo no stderr.
-    if (cwdPorSegmento(entrada.command, cwd).some((s) => s.estouro)) {
+    if (cwdPorSegmento(entrada.command, cwd, ehPS).some((s) => s.estouro)) {
       barraSemConferir("expansao de chaves grande demais para conferir");
     }
     const verbo = verboNaLinha(entrada.command, VERBOS_QUE_MEXEM, nome);
     if (verbo === SUB_ANINHADO.verbo) barraSemConferir(MOTIVO_ANINHADO);
+    // Escrita por redirecionamento ou cmdlet (D4, rodada 2): e checada TAMBEM na linha
+    // com verbo git (`echo x > <P>/f && git commit`). Antes so rodava sem verbo, e a
+    // linha com verbo passava batida.
+    const escritaLida = alvosBashEscrita(entrada.command, cwd, ehPS);
+    // #530 (D3/D5): `barrar` nao e destino de escrita, e sim "nao deu para conferir".
+    const barrar = escritaLida.find((a) => a.tipo === "barrar");
+    if (barrar) barraSemConferir(barrar.motivo);
+    const alvosEscrita = escritaLida.filter((a) => a.tipo !== "barrar").map((a) => ({ dir: a.dir, incerto: !!a.incerto }));
     if (verbo) {
       // `incerto` viaja junto (nao so como alvo extra em cwdInicial) — ver o
       // comentario em `alvosBash`.
       alvos = alvosBash(entrada.command, cwd, undefined, nome).map((a) => ({ dir: a.dir, incerto: !!a.incerto }));
+      alvos = alvos.concat(alvosEscrita);
       motivo = `Comando que mexe no estado do repo: git ${verbo}`;
     } else {
       // Inspecionar redirecionamentos e ferramentas de escrita
-      const alvosEscrita = alvosBashEscrita(entrada.command, cwd, nome === "PowerShell");
-      // #530 (D3/D5): `barrar` nao e destino de escrita, e sim "nao deu para conferir".
-      const barrar = alvosEscrita.find((a) => a.tipo === "barrar");
-      if (barrar) barraSemConferir(barrar.motivo);
-      const escritaReal = alvosEscrita.filter((a) => a.tipo !== "barrar");
-      if (escritaReal.length > 0) {
-        alvos = escritaReal.map((a) => ({ dir: a.dir, incerto: false }));
+      if (alvosEscrita.length > 0) {
+        alvos = alvosEscrita;
         motivo = `Escrita via Bash (redirecionamento ou ferramenta)`;
       } else {
         // Procurar por CLI externa que escreve. H1 (rodada 5): cada CLI
@@ -992,7 +1496,7 @@ function main() {
         // PRIMEIRA que estiver fora de worktree (bloqueia() sai o processo).
         const achadas = procuraCLI(entrada.command, CLIS_QUE_ESCREVEM, nome);
         if (achadas.length) {
-          const porSegmento = cwdPorSegmento(entrada.command, cwd);
+          const porSegmento = cwdPorSegmento(entrada.command, cwd, ehPS);
           for (const achado of achadas) {
             const doSegmento = porSegmento[achado.indiceSegmento] || { cwd, incerto: true };
             const incerto = achado.incerto || doSegmento.incerto;

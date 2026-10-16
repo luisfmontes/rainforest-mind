@@ -1,0 +1,66 @@
+Data: 2026-10-15
+Termos: painel de PR, plugins-em-dia, prPendente, gh api user
+
+$ gh issue list --state all --search "painel de PR" --limit 200 --json number,title,state
+[{"number":466,"state":"OPEN","title":"Painel de PR e plugins-em-dia: achados menores da revisao do PR #464"},{"number":470,"state":"OPEN","title":"Painel 'Deixado para depois' do mod e pendentes do fluxo: duas fontes"},{"number":482,"state":"CLOSED","title":"Painel de PR acorda a sessão de novo no mesmo conflito (UNKNOWN entre leituras)"},{"number":449,"state":"CLOSED","title":"Deixado para depois evapora: pendentes somem no ok e o fechar nao confere"}]
+
+
+$ gh issue list --state all --search "plugins-em-dia" --limit 200 --json number,title,state
+[{"number":466,"state":"OPEN","title":"Painel de PR e plugins-em-dia: achados menores da revisao do PR #464"},{"number":457,"state":"CLOSED","title":"mod.tsx chama node pelo nome (busca na pasta atual no Windows)"},{"number":221,"state":"CLOSED","title":"saude.cjs quebra com 'path argument undefined' quando ha duas config dirs e a versao do repo esta a frente da instalada"},{"number":174,"state":"CLOSED","title":"Nada barra \"Fecha #N\" no corpo do PR — a regra está escrita há 10 dias e o erro repetiu"},{"number":258,"state":"CLOSED","title":"gate-staging-total: bloqueia texto que cita comando git, e resolve o repo errado com -C"},{"number":3,"state":"CLOSED","title":"conferir esta vermelho desde 11/08 e nao tem como ficar verde: 35 abertas sem gancho, e o reparar recusa sem texto a mao"}]
+
+
+$ gh issue list --state all --search "prPendente" --limit 200 --json number,title,state
+[{"number":466,"state":"OPEN","title":"Painel de PR e plugins-em-dia: achados menores da revisao do PR #464"}]
+
+
+$ gh issue list --state all --search "gh api user" --limit 200 --json number,title,state
+[{"number":466,"state":"OPEN","title":"Painel de PR e plugins-em-dia: achados menores da revisao do PR #464"}]
+
+
+$ gh pr list --state all --search "painel de PR" --limit 200 --json number,title,state
+[{"number":464,"state":"MERGED","title":"Mods: painel de PR e plugins-em-dia (1.55.0)"},{"number":522,"state":"MERGED","title":"Versao 1.66.1: painel de PR nao manda fazer o que a sessao ja fez"},{"number":487,"state":"MERGED","title":"Versao 1.59.2: aviso de PR sem repeticao e node absoluto na abertura"},{"number":513,"state":"MERGED","title":"Estado do fluxo executar-dag-painel: fechar ok (#512, 1.65.0)"},{"number":481,"state":"MERGED","title":"Versao 1.58.0: compactar a 60%, linha do PR na barra, node absoluto"},{"number":492,"state":"MERGED","title":"Versao 1.60.0: recarga do plugin em todas as janelas"},{"number":469,"state":"MERGED","title":"Pendencia do fluxo so sai com destino (#449), versao 1.56.0"}]
+
+
+$ gh pr list --state all --search "plugins-em-dia" --limit 200 --json number,title,state
+[{"number":464,"state":"MERGED","title":"Mods: painel de PR e plugins-em-dia (1.55.0)"},{"number":492,"state":"MERGED","title":"Versao 1.60.0: recarga do plugin em todas as janelas"},{"number":71,"state":"MERGED","title":"gitCommitSha ausente do registro vira aviso de indeterminacao, nao ok silencioso"},{"number":20,"state":"MERGED","title":"O verde mais saudavel do painel era falso: o /saude passa a medir o que executa"},{"number":217,"state":"MERGED","title":"Contrato de territorio: AdvPL vira o primeiro, e o repo publico perde os identificadores de trabalho"},{"number":8,"state":"MERGED","title":"Regra 17 estava cega por construcao: o pid gravado era uma shell efemera"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"}]
+
+
+$ gh pr list --state all --search "prPendente" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "gh api user" --limit 200 --json number,title,state
+[]
+
+
+$ git ls-remote --heads origin | grep -F "painel de PR"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "plugins-em-dia"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "prPendente"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "gh api user"
+(vazio)
+
+$ git log --all --grep="painel de PR" --oneline
+c1816afe Versao 1.66.1: painel de PR nao manda fazer o que a sessao ja fez (#522)
+e9f8bff6 Versao 1.59.2: aviso de PR sem repeticao e node absoluto na abertura (#487)
+1f5007f0 Mods: painel de PR e plugins-em-dia (1.55.0) (#464)
+
+$ git log --all --grep="plugins-em-dia" --oneline
+54e3c00d Versao 1.60.0: recarga do plugin em todas as janelas (#492)
+1f5007f0 Mods: painel de PR e plugins-em-dia (1.55.0) (#464)
+
+$ git log --all --grep="prPendente" --oneline
+(vazio)
+
+$ git log --all --grep="gh api user" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+{"id":"plugins-em-dia-recarga-multi-janela","titulo":"Recarga de plugin em todas as janelas por marcador"}
+
+

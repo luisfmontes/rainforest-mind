@@ -1,0 +1,89 @@
+{
+  "slug": "2026-10-15-rodar-gate-mecanico",
+  "titulo": "rodar-gate.cjs chamado mecanicamente pelo fluxo (#498)",
+  "criado_em": "2026-10-15",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-10-15-rodar-gate-mecanico.md",
+    "decisoes": 2,
+    "em": "2026-10-15"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-15-rodar-gate-mecanico.md",
+    "tarefas": 2,
+    "paralelas": [],
+    "em": "2026-10-15"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-15",
+    "em_voo": [],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "2f99f857ed698a87182888349516f1b76f66ad0a",
+        "iteracao": 1,
+        "sessao": "bfd7468b-e589-43c6-9e09-04528a1dc829",
+        "ts": "2026-10-15T19:31:27.373Z"
+      }
+    ],
+    "em": "2026-10-15",
+    "integradas": [
+      1
+    ],
+    "tarefas_ok": 2,
+    "tarefas": 2,
+    "comando": "bash scripts/testa-integrar-tarefa.sh",
+    "saida": "ok: 78   falhou: 0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-fluxo.sh secao 17 (a) e 17c; testa-integrar-tarefa.sh caso 18"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "remocao de script sem chamador e documentacao"
+      }
+    ],
+    "reaberturas": 1
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "273bb6919a7a81e6bb2ee04368ba94dac0442c22",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a4566ec1d9df5b777",
+        "veredito": "ok",
+        "em": "2026-10-15",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a4566ec1d9df5b777.jsonl"
+      }
+    ],
+    "achados": 0,
+    "em": "2026-10-15",
+    "base": "6b145a4cae8d4439fe96d3ae18529016bd844365",
+    "head": "273bb6919a7a81e6bb2ee04368ba94dac0442c22"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/testa-integrar-tarefa.sh",
+    "saida": "ok: 78   falhou: 0",
+    "sensor_externo": "bash scripts/testa-integrar-tarefa.sh",
+    "em": "2026-10-15"
+  },
+  "fechar": {
+    "status": "ok",
+    "acao": "merge",
+    "pr": 542,
+    "em": "2026-10-15"
+  }
+}
