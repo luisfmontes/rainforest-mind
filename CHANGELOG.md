@@ -10,6 +10,19 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.67.8 — 2026-10-15
+
+- **Painel de PR: quatro achados menores da revisão do PR #464 (#466).**
+  - Uma consulta que volta depois de você trocar de PR é descartada: não grava mais a URL velha, o resumo nem o erro do PR
+    antigo por cima do novo.
+  - Falha do `gh api user` (saber quem é você) não rebaixa mais o PR para `manual` para sempre: naquela consulta o PR não
+    acorda a sessão (a virada entra na conversa como nota informativa), e a consulta seguinte tenta de novo.
+  - O despertar no merge e a limpeza da pendência antes do envio passaram a ser decididos por funções puras em
+    `hooks/pr-puro.mjs`, testadas em `hooks/testa-mod-pr.cjs`, que roda no CI.
+  - A fixture de PR do `testa-mod-pr.cjs` ganhou `isCrossRepository` e `updatedAt`, como a do `mod-pr.test.tsx`.
+- A corrida da trava de 30 min do `plugins-em-dia` (duas janelas abertas no mesmo instante rodam o update juntas) ficou
+  aceita: o update repetido só repete trabalho.
+
 ## 1.67.7 — 2026-10-15
 
 - **Item do painel "Deixado para depois" pode virar pendência do fluxo (#470).** Cada item aberto ganha um botão
