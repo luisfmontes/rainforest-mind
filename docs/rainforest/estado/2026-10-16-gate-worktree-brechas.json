@@ -46,24 +46,23 @@
     "reaberturas": 4
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "45be540f87d201b01d440ad3b3938e3996c69b50",
+      "head": "48608118aea4862639f071d4f1e9ba731d945fac",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a360caf8c7f28166a",
-        "veredito": "reprovado",
+        "agente_id": "a2ae1567e97a8b546",
+        "veredito": "ok",
         "em": "2026-10-16",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a360caf8c7f28166a.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a2ae1567e97a8b546.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-16",
-    "achados": 1,
-    "tentativas": 4,
+    "achados": 0,
     "rodadas_extra": [
       {
         "texto": "Luis 2026-10-16: liberar 4a rodada (recomendada), revisao do delta 08af6033..HEAD com o criterio da 3a",
@@ -74,10 +73,15 @@
         "em": "2026-10-16"
       }
     ],
-    "liberado_em": "2026-10-16"
+    "base": "45be540f87d201b01d440ad3b3938e3996c69b50",
+    "head": "48608118aea4862639f071d4f1e9ba731d945fac"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash hooks/testa-gate-worktree.sh",
+    "saida": "== resultado: 436 ok, 0 falha(s) ==",
+    "sensor_externo": "bash hooks/testa-gate-worktree.sh",
+    "em": "2026-10-16"
   },
   "fechar": {
     "status": "pendente"
