@@ -1550,6 +1550,67 @@ Copy-Item __R__/a.txt .
 EOC
 )" "$WT")"
 
+echo "-- #552: revisao de seguranca (leitura que escreve por opcao, redirecionamento cru, atalho de home) --"
+gate "#552 seg: git log -1 --output=<P>/f, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
+git log -1 --output=__R__/f
+EOC
+)" "$WT")"
+gate "#552 seg: sort a.txt -o <P>/f, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
+sort a.txt -o __R__/f
+EOC
+)" "$WT")"
+gate "#552 seg: uniq a.txt <P>/f, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
+uniq a.txt __R__/f
+EOC
+)" "$WT")"
+gate "#552 seg: find . -fls <P>/f, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
+find . -fls __R__/f
+EOC
+)" "$WT")"
+gate "#552 seg: rg x --pre <P>/x.sh, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
+rg x --pre __R__/x.sh
+EOC
+)" "$WT")"
+gate "#552 seg: cat a >| <P>/f, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
+cat a >| __R__/f
+EOC
+)" "$WT")"
+gate "#552 seg: cat a 1<> <P>/f, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
+cat a 1<> __R__/f
+EOC
+)" "$WT")"
+gate "#552 seg: cat a > <P>/f, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
+cat a > "__R__/f"
+EOC
+)" "$WT")"
+gate "#552 seg: Get-Content a *> <P>/f, do worktree, BARRA" 2 "$(bp "$(s552 <<'EOC'
+Get-Content a *> __R__/f
+EOC
+)" "$WT")"
+gate "#552 seg: cat <P>/a 2>/dev/null, do worktree, PASSA" 0 "$(b "$(s552 <<'EOC'
+cat __R__/a 2>/dev/null
+EOC
+)" "$WT")"
+gate "#552 seg: cat <P>/a 2>&1 | head -3, do worktree, PASSA" 0 "$(b "$(s552 <<'EOC'
+cat __R__/a 2>&1 | head -3
+EOC
+)" "$WT")"
+gate "#552 seg: grep -o x <P>/a, do worktree, PASSA" 0 "$(b "$(s552 <<'EOC'
+grep -o x __R__/a
+EOC
+)" "$WT")"
+gate "#552 seg: sort <P>/a, do worktree, PASSA" 0 "$(b "$(s552 <<'EOC'
+sort __R__/a
+EOC
+)" "$WT")"
+gate "#552 seg: uniq <P>/a, do worktree, PASSA" 0 "$(b "$(s552 <<'EOC'
+uniq __R__/a
+EOC
+)" "$WT")"
+# Atalho de home: a casa que o gate expande e a do Node (os.homedir), na forma com barras.
+CASA=$(node -e 'process.stdout.write(require("os").homedir().split(String.fromCharCode(92)).join(String.fromCharCode(47)))')
+case "${R,,}" in "${CASA,,}"/*) RT="~${R:${#CASA}}"; gate "#552 seg: rm ~/.../principal/f (atalho de home), do worktree, BARRA" 2 "$(b "rm $RT/f" "$WT")";; *) falhou=$((falhou+1)); echo "  FALHA #552 seg: o principal da caixa de areia nao fica sob a casa ($CASA), o caso de atalho nao mede nada";; esac
+
 echo "== #552 D6: pai inexistente =="
 # Com cwd no proprio principal a rede nao age (D3): so a lista decide, e ela precisa
 # achar o repositorio subindo ate um diretorio que existe.
