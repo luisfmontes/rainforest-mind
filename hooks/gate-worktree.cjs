@@ -685,6 +685,9 @@ function alvosDeCmdlet(toks, posCmd, base, empurra) {
     else if (param === "name") nomes.push(valor);
   }
   if (desconhecido) empurra(base, null, "cmdlet", true);
+  // Splat em qualquer posicao (`Set-Content x -Value y @a`) traz parametros que nao
+  // se veem: incerto (revisao de seguranca).
+  if (toks.slice(iNome + 1).some((t) => !t.q && /^@\w+$/.test(t.v))) empurra(base, null, "cmdlet", true);
 
   if (nome === "new-item" || nome === "ni") {
     if (nomes.length) {
@@ -692,10 +695,12 @@ function alvosDeCmdlet(toks, posCmd, base, empurra) {
       for (const n of nomes) {
         // Sem `-Path` nomeado, o primeiro posicional e o caminho (`New-Item <P> -Name f`).
         const bases = caminhos.length ? caminhos : posicionais.length ? posicionais.slice(0, 1) : [null];
-        for (const p of bases) {
-          const trechos = [n, p].filter((x) => x !== null);
-          if (trechos.some((x) => /[$`()@]/.test(x.v))) { empurra(base, null, "cmdlet", true); continue; }
-          empurra(base, path.resolve(base, p ? p.v : ".", n.v), "cmdlet");
+        // Lista no caminho (`-Path a,<P>`): cada elemento se junta ao nome.
+        const partes = bases.flatMap((p) => (p === null ? [null] : p.v.split(",").filter((x) => x !== "")));
+        for (const p of partes) {
+          const trechos = [n.v, p].filter((x) => x !== null);
+          if (trechos.some((x) => /[$`()@‘-„]/.test(x))) { empurra(base, null, "cmdlet", true); continue; }
+          empurra(base, path.resolve(base, p === null ? "." : p, n.v), "cmdlet");
         }
       }
       return;
@@ -710,7 +715,8 @@ function alvosDeCmdlet(toks, posCmd, base, empurra) {
     if (destinos.length) candidatos = destinos;
     else {
       const minimo = caminhos.length ? 1 : 2;
-      candidatos = posicionais.length >= minimo ? [posicionais[posicionais.length - 1]] : [];
+      // Sem destino, a copia cai no cwd: ele e o alvo (revisao de seguranca).
+      candidatos = posicionais.length >= minimo ? [posicionais[posicionais.length - 1]] : [{ v: ".", q: false }];
     }
   } else {
     candidatos = caminhos.length ? caminhos : posicionais.slice(0, 1);
@@ -719,7 +725,8 @@ function alvosDeCmdlet(toks, posCmd, base, empurra) {
   for (const c of candidatos) {
     for (const parte of c.v.split(",")) {
       if (parte === "") continue;
-      if (/[$`()]|^@/.test(parte)) empurra(base, null, "cmdlet", true);
+      // Aspa tipografica: o tokenizador nao a reconhece, o PowerShell sim. Incerto.
+      if (/[$`()‘-„]|^@/.test(parte)) empurra(base, null, "cmdlet", true);
       else empurra(base, parte, "cmdlet");
     }
   }
@@ -741,7 +748,8 @@ function desalinhaAMascara(texto) {
       continue;
     }
     if (c === "'" || c === '"') { aspa = c; continue; }
-    if (c === "`" || c === "#") return true;
+    // Aspas tipograficas (U+2018 a U+201E) tambem sao aspas para o PowerShell (revisao de seguranca).
+    if (c === "`" || c === "#" || (c >= "‘" && c <= "„")) return true;
     if (c === "@" && (texto[i + 1] === "'" || texto[i + 1] === '"')) return true;
   }
   return false;
@@ -914,9 +922,14 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
         // `-Command` (ou prefixo dele) antes do texto e o nome do parametro, nao codigo.
         let args = toks.slice(iNome + 1);
         if (args.length && !args[0].q && /^[-–—―]c(o(m(m(a(n(d)?)?)?)?)?)?:?$/i.test(args[0].v)) args = args.slice(1);
-        const literal = args.every((t) => t.aspa === "'" || !/[$`]/.test(t.v));
+        // Qualquer outro parametro no texto (`-Command:'...'`, que o tokenizador devolve
+        // citado): incerto (revisao de seguranca).
+        const comParametro = args.some((t) => /^[-–—―]/.test(t.v));
+        // Literal so sem `$` nem crase em parte nenhuma: o token pode misturar aspas
+        // (`'a'"$(...)"`), e a aspa registrada e so a primeira (revisao de seguranca).
+        const literal = args.every((t) => !/[$`]/.test(t.v));
         // Sem argumento, o texto chega pelo pipeline (`$s | iex`): incerto (revisao de seguranca da rodada 3).
-        if (!args.length || !literal) empurra(base, null, "iex", true);
+        if (!args.length || !literal || comParametro) empurra(base, null, "iex", true);
         else alvos.push(...alvosBashEscrita(args.map((t) => t.v).join(" "), base, true));
       }
     }

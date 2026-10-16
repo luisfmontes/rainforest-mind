@@ -1234,6 +1234,39 @@ gate "D5 (s5): \$h.x = Set-Content <P>/f x, do worktree, BARRA" 2 "$(bp "$(cmdps
 $h.x = Set-Content __R__/f x
 EOC
 )" "$WT")"
+gate "D5 (s6): iex 'a'\"\$(...)\" (aspas mistas), do worktree, BARRA (incerto)" 2 "$(bp "$(cmdps <<'EOC'
+iex 'Write-Output '"$(Set-Content __R__/f x)"
+EOC
+)" "$WT")"
+gate "D5 (s6): iex -Command:'Set-Content <P>/f x', do worktree, BARRA (incerto)" 2 "$(bp "$(cmdps <<'EOC'
+iex -Command:'Set-Content __R__/f x'
+EOC
+)" "$WT")"
+gate "D5 (s7): cd <P>; Copy-Item <WT>/a.txt (sem destino, cai no cwd), do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Set-Location __R__; Copy-Item __WT__/a.txt
+EOC
+)" "$WT")"
+gate "D5 (s7) vizinho: Copy-Item <P>/a.txt (sem destino), do worktree, PASSA" 0 "$(bp "$(cmdps <<'EOC'
+Copy-Item __R__/a.txt
+EOC
+)" "$WT")"
+gate "D5 (s8): splat no fim, Set-Content a.txt -Value x @a, do worktree, BARRA (incerto)" 2 "$(bp "$(cmdps <<'EOC'
+Set-Content a.txt -Value x @a
+EOC
+)" "$WT")"
+gate "D5 (s8) vizinho: Set-Content a.txt @('x','y'), do worktree, PASSA (array nao e splat)" 0 "$(bp "Set-Content a.txt @('x','y')" "$WT")"
+gate "D5 (s9): Set-Content com aspa tipografica no caminho do principal, do worktree, BARRA (incerto)" 2 "$(bp "$(cmdps <<'EOC'
+Set-Content ‘__R__/f’ x
+EOC
+)" "$WT")"
+gate "D5 (s9): aspa tipografica escondia [IO.File]::WriteAllText da mascara, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Write-Host ‘'; [IO.File]::WriteAllText('__R__/f','x'); Write-Host '’
+EOC
+)" "$WT")"
+gate "D5 (s10): New-Item -Path a,<P> -Name f (lista no caminho), do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+New-Item -Path sub,__R__ -Name f -ItemType File
+EOC
+)" "$WT")"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
