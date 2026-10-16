@@ -10,6 +10,22 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.67.10 — 2026-10-16
+
+- **Gate de worktree: mais grafias de escrita no checkout principal passam a ser barradas (#530, #533).**
+  - `{cd,X}` e `{pushd,X}` no começo do comando (Bash): o bash expande as chaves e roda `cd X`, e o gate passa a ler
+    assim. No PowerShell, `{...}` segue sendo bloco de script.
+  - Cmdlets de escrita do PowerShell: `Set-Content`/`sc`, `Add-Content`/`ac`, `Out-File`, `New-Item`/`ni`,
+    `Tee-Object`, `Copy-Item`/`copy`/`cpi` e `Move-Item`/`move`/`mi`, inclusive com qualificador de módulo, aliases
+    de parâmetro (`-PSPath`, `-LP`) e lista de destinos (`a,b`). Destino com variável, subexpressão ou parâmetro
+    desconhecido é tratado como incerto e barrado dentro de repositório.
+  - Chamada .NET sob `IO` (`[IO.File]::WriteAllText(...)`, `[IO.Directory]::CreateDirectory(...)`,
+    `[IO.StreamWriter]::new(...)`): só os métodos de leitura conhecidos passam. Chamada dentro de aspas simples, ou de
+    aspas duplas sem `$`, é texto e não conta; com `iex`/`Invoke-Expression`, conta.
+  - Escrita na mesma linha de um verbo git (`echo x > <principal>/f && git commit`) também é checada.
+  - Seguem passando, registrados na #552: remoção (`rm`, `Remove-Item`), `New-Object` de tipo de IO e redirecionamento
+    com variável (`echo x > $P/f`).
+
 ## 1.67.9 — 2026-10-15
 
 - **Estado do fluxo: um escritor não apaga mais o que o outro gravou (#545).** O `veredito` do revisor, o

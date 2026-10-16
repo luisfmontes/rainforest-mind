@@ -17,6 +17,7 @@ Um subagente não escreve no checkout principal por duas grafias que hoje o gate
 - Barrar toda chamada `[IO.File]` (D3): o caminho literal dentro do worktree é o uso comum e legítimo.
 
 ## Fora de escopo
+- Remoção (`rm`, `Remove-Item`), `New-Object` de tipo de IO e redirecionamento com variável (`echo x > $P/f`): medidos passando depois deste conserto, ficam na #552.
 - `cd $X` com variável seguido de escrita: segue como hoje (alvo no cwd inicial).
 - PowerShell chamado de dentro do Bash (`pwsh -c "Set-Content ..."`): é o ramo de comando dinâmico, outra frente.
 
