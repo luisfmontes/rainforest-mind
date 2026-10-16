@@ -19,7 +19,7 @@
     "em": "2026-10-15"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-15",
     "integradas": [
       1
@@ -27,13 +27,13 @@
     "em": "2026-10-15",
     "tarefas_ok": 2,
     "tarefas": 2,
-    "comando": "node hooks/testa-mod-pr.cjs",
-    "saida": "59 ok, 0 falha(s), 0 skipped",
+    "comando": "claude plugin test . && node hooks/testa-mod-pr.cjs",
+    "saida": "132 pass 0 fail; 59 ok, 0 falha(s)",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-mod-pr.cjs, dono: login desconhecido adia, nao rebaixa"
+        "fixture": "testa-mod-pr.cjs, caso \"dono: login desconhecido adia, nao rebaixa\""
       },
       {
         "tarefa": 2,
@@ -41,11 +41,8 @@
         "motivo": "documentacao, emenda e versao"
       }
     ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-15"
-    },
-    "reaberturas": 1
+    "reaberturas": 1,
+    "rodada": 2
   },
   "revisar": {
     "status": "reprovado",
