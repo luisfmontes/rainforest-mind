@@ -128,6 +128,14 @@ function palavras(cmd) {
 }
 
 /**
+ * Sentinela do teto (#530 rodada extra 2, tarefa 11): um wrapper legivel que sobra
+ * depois do quarto nivel nao e desembrulhado. `subcomandoGit` devolve isto no lugar
+ * do nada, e cada chamador o trata como casamento: falha fechado, nunca "nao achei git".
+ */
+const SUB_ANINHADO = { verbo: "?", args: [], incerto: true };
+const MOTIVO_ANINHADO = "wrapper aninhado demais para conferir (mais de 4 niveis)";
+
+/**
  * Acha o subcomando de `git` num segmento, com os argumentos dele.
  *
  * T2 (rodada 11, lote 3, 2026-09-04): nenhuma palavra bate com `git` — o
@@ -165,6 +173,7 @@ function subcomandoGit(cmd, ferramenta, profundidade = 0) {
     if (internosVistos.has(chave)) return;
     internosVistos.add(chave);
     if (profundidade < 4) achados.push(...subcomandoGit(interno, ferr, profundidade + 1));
+    if (profundidade >= 4) achados.push(SUB_ANINHADO);
   });
   const vistos = new Set();
   return achados.filter((s) => {
@@ -231,8 +240,8 @@ function ferramentaDoInterno(segmento, ferramenta) {
 function verboNaLinha(comando, conjunto, ferramenta) {
   for (const seg of comando.split(SEPARADORES)) {
     // #530 rodada extra: qualquer leitura do git que der verbo no conjunto barra.
-    const s = subcomandoGit(seg, ferramenta).find((x) => conjunto.has(x.verbo));
-    if (s) return s.verbo;
+    const s = subcomandoGit(seg, ferramenta).find((x) => x.incerto || conjunto.has(x.verbo));
+    if (s) return s.incerto ? SUB_ANINHADO.verbo : s.verbo;
   }
   return null;
 }
@@ -314,7 +323,7 @@ function linhaDeRestauroDe(s, toplevel) {
  */
 function moveOHead(cmd, cwd, ferramenta, existe = fs.existsSync) {
   // #530 rodada extra: qualquer leitura que mova o HEAD barra.
-  return subcomandoGit(cmd, ferramenta).some((s) => moveOHeadDe(s, cwd, existe));
+  return subcomandoGit(cmd, ferramenta).some((s) => s.incerto || moveOHeadDe(s, cwd, existe));
 }
 
 /** Movimento de HEAD de um subcomando ja achado por `subcomandoGit`. */
@@ -501,7 +510,7 @@ function bloqueia(motivo, toplevel, agente, apenasRestauracao = null, ehWorktree
  * (`mov.cwd`) no lugar do `atual` de antes.
  */
 function alvosBash(comando, cwdInicial, casa = (seg, _cwd, ferr) => {
-  return subcomandoGit(seg, ferr).some((s) => VERBOS_QUE_MEXEM.has(s.verbo));
+  return subcomandoGit(seg, ferr).some((s) => s.incerto || VERBOS_QUE_MEXEM.has(s.verbo));
 }, ferramenta) {
   // `segmentosComAspas`, nao `comando.split(SEPARADORES)` cru: o split cru
   // nao respeita aspas (`git commit -m "a & b"` quebraria dentro da mensagem)
@@ -519,6 +528,7 @@ function alvosBash(comando, cwdInicial, casa = (seg, _cwd, ferr) => {
     // #530 rodada extra: o verbo da mensagem e o primeiro achado que move o estado
     // (ou que move o HEAD); so sai "?" quando nenhuma leitura achou git.
     const subs = subcomandoGit(seg, ferramenta);
+    const aninhado = subs.some((x) => x.incerto === true);
     const s = subs.find((x) => VERBOS_QUE_MEXEM.has(x.verbo) || VERBOS_QUE_MOVEM.has(x.verbo)) || subs[0];
     const verbo = s ? s.verbo : "?";
 
@@ -533,7 +543,7 @@ function alvosBash(comando, cwdInicial, casa = (seg, _cwd, ferr) => {
     if (p) {
       // `-C` com variavel: nao da para resolver — cai no conservador.
       if (/[$`]/.test(p)) { alvos.push({ dir: cwdInicial, verbo, incerto: true }); continue; }
-      alvos.push({ dir: path.resolve(mov.cwd, p), verbo, incerto: mov.incerto });
+      alvos.push({ dir: path.resolve(mov.cwd, p), verbo, incerto: mov.incerto || aninhado });
       continue;
     }
     // `incerto` vai junto do alvo (nao so como alvo extra em `cwdInicial`):
@@ -544,7 +554,7 @@ function alvosBash(comando, cwdInicial, casa = (seg, _cwd, ferr) => {
     // (so `cwdInicial` como alvo extra) nao pegava nada. Quem consome (main)
     // trata `incerto: true` bloqueando direto, sem confiar na classificacao
     // de worktree — mesmo espirito do ramo de CLI (H2, rodada 5).
-    alvos.push({ dir: mov.cwd, verbo, incerto: mov.incerto });
+    alvos.push({ dir: mov.cwd, verbo, incerto: mov.incerto || aninhado });
     if (mov.incerto) alvos.push({ dir: cwdInicial, verbo, incerto: true });
   }
   return alvos;
@@ -672,7 +682,7 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false, profundidad
   // #530 (D3): mais de 4 niveis de wrapper/substituicao nao sao conferidos. Barrar,
   // nao liberar sem olhar (D5 do design). O motivo chega ao stderr por `main`.
   if (profundidade > 4) {
-    return [{ dir: cwdInicial, tipo: "barrar", motivo: "wrapper aninhado demais para conferir (mais de 4 niveis)" }];
+    return [{ dir: cwdInicial, tipo: "barrar", motivo: MOTIVO_ANINHADO }];
   }
   const ferramenta = ehPowerShell ? "PowerShell" : "Bash";
   // `segmentosComAspas` pelo mesmo motivo de `alvosBash`: respeita aspas e
@@ -807,8 +817,11 @@ function bloqueiaColocada(verbo, toplevel, outras, agora, incerto) {
     })
     .join("\n");
 
+  const quem = verbo === SUB_ANINHADO.verbo
+    ? `${MOTIVO_ANINHADO} — nao da para ver se move o HEAD`
+    : `git ${verbo} — move o HEAD deste checkout.`;
   let msg = `BLOQUEADO pelo gate de sessao co-locada do rainforest-mind.\n\n` +
-    `Comando: git ${verbo} — move o HEAD deste checkout.\n` +
+    `Comando: ${quem}\n` +
     `Repo: ${toplevel}\n`;
 
   if (incerto) {
@@ -952,6 +965,7 @@ function main() {
       barraSemConferir("expansao de chaves grande demais para conferir");
     }
     const verbo = verboNaLinha(entrada.command, VERBOS_QUE_MEXEM, nome);
+    if (verbo === SUB_ANINHADO.verbo) barraSemConferir(MOTIVO_ANINHADO);
     if (verbo) {
       // `incerto` viaja junto (nao so como alvo extra em cwdInicial) — ver o
       // comentario em `alvosBash`.

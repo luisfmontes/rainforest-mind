@@ -1127,5 +1127,31 @@ gate_rapido "(#530) rodada extra 2: eval  x3000 + git -C P commit barra" 2 "$(wt
 gate_rapido "(#530) rodada extra 2: eval \"git status\" a partir de W passa" 0 "$(wt 'eval "git status"')"
 gate_rapido "(#530) rodada extra 2: bash -c 'git -C W log' a partir de W passa" 0 "$(wt "bash -c 'git -C $WT log'")"
 
+echo "== (#530) rodada extra 2: teto do subcomandoGit falha fechado =="
+# Wrapper legivel alem do nivel 4 nao e desembrulhado: subcomandoGit devolve a sentinela
+# SUB_ANINHADO e o gate barra (exit 2) com o motivo "wrapper aninhado demais". Os
+# comandos saem de node, com as aspas simples por String.fromCharCode. O motivo tem de
+# aparecer no stderr: barrar sem dizer por que e o mesmo defeito de trava muda.
+MOTIVO_ANIN="wrapper aninhado demais para conferir (mais de 4 niveis)"
+wp() { pj agent_id ag-530 agent_type executor cwd "$WT" hook_event_name PreToolUse tool_name PowerShell tool_input.command "$1"; }
+gate_motivo() { # nome, exit esperado, json, motivo que tem de sair no stderr
+  local nome="$1" esp="$2" json="$3" motivo="$4"
+  if [ -z "$json" ]; then falhou=$((falhou+1)); echo "  FALHA $nome: payload vazio"; return; fi
+  local saida got
+  saida=$(printf '%s' "$json" | timeout 5 node "$GATE" 2>&1); got=$?
+  if [ "$got" = "$esp" ] && printf '%s' "$saida" | grep -qF "$motivo"; then ok=$((ok+1)); echo "  ok   $nome (exit $got, motivo no stderr)"
+  else falhou=$((falhou+1)); echo "  FALHA $nome: esperava exit $esp com o motivo no stderr, veio exit $got"; echo "$saida" | sed 's/^/         /' | head -6; fi
+}
+IEX5=$(node -e 'const Q=String.fromCharCode(39);process.stdout.write("iex ".repeat(5)+Q+"git -C "+process.argv[1]+" commit -m x"+Q)' "$R")
+IEX8=$(node -e 'const Q=String.fromCharCode(39);process.stdout.write("iex ".repeat(8)+Q+"git -C "+process.argv[1]+" commit -m x"+Q)' "$R")
+INVX5=$(node -e 'const Q=String.fromCharCode(39);process.stdout.write("Invoke-Expression ".repeat(5)+Q+"git -C "+process.argv[1]+" commit -m x"+Q)' "$R")
+IEXGIT=$(node -e 'const Q=String.fromCharCode(39);process.stdout.write("iex "+Q+"git status"+Q)')
+IEX3LOG=$(node -e 'const Q=String.fromCharCode(39);process.stdout.write("iex ".repeat(3)+Q+"git -C "+process.argv[1]+" log"+Q)' "$WT")
+gate_motivo "(#530) rodada extra 2: iex x5 + 'git -C P commit' (PowerShell) barra" 2 "$(wp "$IEX5")" "$MOTIVO_ANIN"
+gate_motivo "(#530) rodada extra 2: iex x8 + 'git -C P commit' (PowerShell) barra" 2 "$(wp "$IEX8")" "$MOTIVO_ANIN"
+gate_motivo "(#530) rodada extra 2: Invoke-Expression x5 + 'git -C P commit' barra" 2 "$(wp "$INVX5")" "$MOTIVO_ANIN"
+gate_rapido "(#530) rodada extra 2: iex 'git status' (PowerShell) passa" 0 "$(wp "$IEXGIT")"
+gate_rapido "(#530) rodada extra 2: iex x3 + 'git -C W log' (PowerShell) passa" 0 "$(wp "$IEX3LOG")"
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
