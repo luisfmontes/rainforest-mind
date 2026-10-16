@@ -470,6 +470,68 @@ async function casoK() {
   }
 }
 
+async function casoL() {
+  const nome = "(l) marcar que fecha o estagio recusa (exit 2) se outro processo gravou pendencia durante a validacao, e nada some";
+  const raiz = caixa();
+  try {
+    const desc = (p) => JSON.stringify({ destinos: [{ pendente: p, destino: "descartada", motivo: "teste" }] });
+    const pre1 = rodar(raiz, ["pendencia", "--slug", SLUG, "--texto", "A"]);
+    const pre2 = rodar(raiz, ["destinar", "--slug", SLUG, "--estagio", "design", "--json", desc("A")]);
+    if (pre1.status !== 0 || pre2.status !== 0) {
+      caso(nome, false, `pre-condicao: pendencia=${pre1.status} destinar=${pre2.status} ${pre1.stderr}${pre2.stderr}`);
+      return;
+    }
+    const marcar = rodarPausado(
+      raiz,
+      ["marcar", "--slug", SLUG, "--estagio", "design", "--status", "aprovado"],
+      { RFM_ESTADO_PAUSA_GRAVAR_MS: PAUSA_MS }
+    );
+    if (!(await marcar.marcou)) {
+      caso(nome, false, "o marcar nao pausou");
+      await marcar.fim;
+      return;
+    }
+    const b = await rodarAsync(raiz, ["pendencia", "--slug", SLUG, "--texto", "B"]);
+    const m = await marcar.fim;
+    const bloco = lerFluxo(raiz).design || {};
+    caso(
+      nome,
+      b.status === 0 && m.status === 2 && /RECUSADO: outro processo gravou/.test(m.stderr) &&
+        bloco.status !== "aprovado" && JSON.stringify(bloco.pendentes) === JSON.stringify(["B"]),
+      `marcar=${m.status} pendencia=${b.status} design=${JSON.stringify(bloco)} ${m.stderr}`
+    );
+  } finally {
+    apagar(raiz);
+  }
+}
+
+async function casoM() {
+  const nome = "(m) dois destinar concorrentes (o primeiro pausado) deixam os dois destinos";
+  const raiz = caixa();
+  try {
+    const desc = (p) => JSON.stringify({ destinos: [{ pendente: p, destino: "descartada", motivo: "teste" }] });
+    for (const p of ["P1", "P2"]) rodar(raiz, ["pendencia", "--slug", SLUG, "--texto", p]);
+    const a = rodarPausado(raiz, ["destinar", "--slug", SLUG, "--estagio", "design", "--json", desc("P1")], { RFM_ESTADO_PAUSA_GRAVAR_MS: PAUSA_MS });
+    if (!(await a.marcou)) {
+      caso(nome, false, "o primeiro destinar nao pausou");
+      await a.fim;
+      return;
+    }
+    const b = rodarAsync(raiz, ["destinar", "--slug", SLUG, "--estagio", "design", "--json", desc("P2")]);
+    const [ra, rb] = [await a.fim, await b];
+    const bloco = lerFluxo(raiz).design || {};
+    const destinados = (bloco.destinos || []).map((d) => d.pendente).sort();
+    caso(
+      nome,
+      ra.status === 0 && rb.status === 0 && JSON.stringify(destinados) === JSON.stringify(["P1", "P2"]) &&
+        (bloco.pendentes || []).length === 0,
+      `exit A=${ra.status} B=${rb.status} design=${JSON.stringify(bloco)} ${ra.stderr}${rb.stderr}`
+    );
+  } finally {
+    apagar(raiz);
+  }
+}
+
 (async () => {
   await casoA();
   await casoB();
@@ -483,6 +545,8 @@ async function casoK() {
   await casoI();
   casoJ();
   await casoK();
+  await casoL();
+  await casoM();
   console.log(`${ok} ok, ${falha} falha(s), ${skipped} skipped`);
   process.exit(falha ? 1 : 0);
 })();

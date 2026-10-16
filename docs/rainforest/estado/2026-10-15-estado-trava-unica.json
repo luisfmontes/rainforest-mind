@@ -20,8 +20,8 @@
     "em": "2026-10-15"
   },
   "executar": {
-    "status": "ok",
-    "catraca_mutacao": "2026-10-15",
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-16",
     "tarefas_ok": 2,
     "tarefas": 2,
     "carimbos": [
@@ -51,29 +51,33 @@
     ],
     "comando": "node scripts/testa-estado-trava.cjs",
     "saida": "12 ok, 0 falha(s), 0 skipped",
-    "reaberturas": 1,
+    "reaberturas": 2,
     "em_voo": [],
-    "rodada": 2
+    "rodada": 2,
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-16"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "eb091f28efee2886a831003c4f2c6156fa510213",
+      "head": "405946e7f93d06190777ec7fb4c62c726ed92ae9",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a6b2e0c74315f0141",
+        "agente_id": "aa42cb1d04bb2b114",
         "veredito": "reprovado",
-        "em": "2026-10-15",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a6b2e0c74315f0141.jsonl"
+        "em": "2026-10-16",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-aa42cb1d04bb2b114.jsonl"
       }
     ],
     "em_voo": [],
-    "em": "2026-10-15",
-    "achados": 6,
-    "tentativas": 1
+    "em": "2026-10-16",
+    "achados": 3,
+    "tentativas": 2
   },
   "verificar": {
     "status": "pendente"
@@ -95,6 +99,13 @@
       "porque": "Luis autorizou seguir no automatico com as recomendadas; esses comandos validam em milissegundos, entao segurar a trava nao ameaca o hook do veredito",
       "estagio": "executar",
       "em": "2026-10-16T02:52:16.630Z"
+    },
+    {
+      "pergunta": "Achado [design] da 2a revisao: marcar/exigir apagam pendencia gravada durante a validacao (o comando ganha no mesmo campo)",
+      "escolha": "conflito no mesmo campo recusa com exit 2 sem gravar; rodar de novo ve o item",
+      "porque": "Luis autorizou seguir com as recomendadas; recusar e o unico caminho que nao perde dado nem esconde a pendencia",
+      "estagio": "executar",
+      "em": "2026-10-16T03:27:03.772Z"
     }
   ]
 }

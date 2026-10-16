@@ -495,6 +495,31 @@ function pausaDeTeste(slug) {
 // (igual à base) fica com `vivo`; a que mudou, inclusive removida, fica com `meu`.
 // Quando base, meu e vivo são objetos, desce um nível: é o caso de dois processos
 // mexendo em campos diferentes do mesmo estágio (`revisar.vereditos` e `revisar.status`).
+// Conflito (#545, emenda D2 da 2ª revisão): campo que este processo mudou e que outro
+// processo também mudou, para outro valor, desde a leitura. Pura. Devolve os caminhos
+// ('chave' ou 'estagio.campo'). Com conflito, a mescla não escolhe vencedor: o comando
+// recusa sem gravar, e rodar de novo lê o que o outro gravou (uma pendência nova passa
+// a ser cobrada pelo fechamento, em vez de sumir).
+function conflitosDaMescla(base, meu, vivo) {
+  const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const ehObjeto = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
+  const achados = [];
+  for (const k of new Set([...Object.keys(base), ...Object.keys(meu), ...Object.keys(vivo)])) {
+    const b = base[k];
+    const m = meu[k];
+    const v = vivo[k];
+    if (igual(m, b) || igual(v, b) || igual(m, v)) continue;
+    if (ehObjeto(b) && ehObjeto(m) && ehObjeto(v)) {
+      for (const c of new Set([...Object.keys(b), ...Object.keys(m), ...Object.keys(v)])) {
+        if (!igual(m[c], b[c]) && !igual(v[c], b[c]) && !igual(m[c], v[c])) achados.push(`${k}.${c}`);
+      }
+    } else {
+      achados.push(k);
+    }
+  }
+  return achados;
+}
+
 function mesclarEstado(base, meu, vivo) {
   const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const ehObjeto = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
@@ -531,6 +556,14 @@ function gravarDentro(slug, estado) {
   const p = caminho(slug);
   const vivo = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : null;
   const base = basesDoFluxo.has(slug) ? basesDoFluxo.get(slug) : vivo;
+  const conflitos = vivo === null ? [] : conflitosDaMescla(base, estado, vivo);
+  if (conflitos.length > 0) {
+    console.error(
+      `RECUSADO: outro processo gravou ${conflitos.join(', ')} no fluxo ${slug} enquanto este comando validava. ` +
+        'Nada foi gravado: rode o comando de novo, que ele le o estado atual.'
+    );
+    process.exit(2);
+  }
   const final = vivo === null ? estado : mesclarEstado(base, estado, vivo);
   const texto = `${JSON.stringify(final, null, 2)}\n`;
   fs.mkdirSync(DIR_ESTADO, { recursive: true });

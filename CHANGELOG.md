@@ -21,8 +21,9 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
     dentro da trava: duas pendências, dois motivos ou dois vereditos ao mesmo tempo ficam os dois.
   - `marcar` e `exigir` validam fora da trava (o `marcar` do plano roda a `prova:` por até 120 s) e, na gravação,
     releem o arquivo e juntam campo a campo. O que o comando não mudou fica com o valor gravado por outro processo; o
-    que ele mudou, ou removeu, fica com o dele. Se o outro processo mexeu no mesmo campo nesse meio-tempo, o `marcar`
-    ou o `exigir` ganha, como antes.
+    que ele mudou, ou removeu, fica com o dele. Se o outro processo mudou o mesmo campo nesse meio-tempo (por exemplo, gravou
+    uma pendência enquanto o `marcar` fechava o estágio), o comando recusa com exit 2 sem gravar nada: rodar de novo lê
+    o estado atual, e a pendência nova passa a ser cobrada.
   - No Windows, a troca do arquivo tenta de novo por até 2 s quando um leitor está com ele aberto.
 
 ## 1.67.8 — 2026-10-15
