@@ -15,7 +15,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 - **Item do painel "Deixado para depois" pode virar pendência do fluxo (#470).** Cada item aberto ganha um botão
   **Vira pendência de <fluxo>**, um por fluxo aberto no repositório (sem fluxo aberto, o botão não aparece). Como o
   "Faz agora", ele só preenche o prompt: quem envia é você, e o mod continua sem escrever em disco. O prompt leva o
-  comando `node scripts/estado.cjs pendencia --slug <slug> --texto '<item>'`, com o slug e o texto entre aspas simples; para um fluxo de outro worktree, o comando leva `RFM_ESTADO_ROOT` apontando para ele. Texto que começa com `--` é aceito como texto.
+  comando `node scripts/estado.cjs pendencia --slug <slug> --texto '<item>'`, com o slug e o texto entre aspas simples; o comando leva `RFM_ESTADO_ROOT` apontando para o worktree do fluxo, e por isso acha o estado também quando o fluxo é de outro worktree. Texto que começa com `--` é aceito como texto.
 - **`estado.cjs pendencia --slug <s> --texto <t>`** (novo) acrescenta a pendência ao estágio aberto (o que `proximo`
   devolve) sem mudar o status. Texto repetido não duplica, texto vazio sai 1, fluxo completo sai 2. A partir daí vale a
   trava da #449: o estágio só fecha `ok` com destino para a pendência.

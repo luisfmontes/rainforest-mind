@@ -49,23 +49,31 @@
     ]
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "676644236eb6b7cfdf47ca0e13032a25706ea80e",
+      "head": "edff1b2121e76329e445a23c147cb2f761a0014f",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a520582d623a193f7",
+        "agente_id": "a29e29427346a1169",
         "veredito": "ok",
         "em": "2026-10-15",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a520582d623a193f7.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a29e29427346a1169.jsonl"
       }
-    ]
+    ],
+    "achados": 0,
+    "base": "e0359c71a7ae6c70f6abf04cecde13e736ceeac7",
+    "head": "edff1b2121e76329e445a23c147cb2f761a0014f",
+    "em": "2026-10-15"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-estado-pendencia.sh",
+    "saida": "ok: 40   falhou: 0",
+    "sensor_externo": "bash scripts/testa-estado-pendencia.sh",
+    "em": "2026-10-15"
   },
   "fechar": {
     "status": "pendente"
