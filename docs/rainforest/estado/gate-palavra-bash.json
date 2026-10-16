@@ -83,7 +83,7 @@
       8
     ],
     "tarefas_ok": 8,
-    "tarefas": 8,
+    "tarefas": 9,
     "comando": "node scripts/integrar-tarefa.cjs --slug gate-palavra-bash --tarefa 7|8 (mutacoes re-rodadas pela integracao)",
     "saida": "T7 aceito commit 3acf91bd; T8 aceito commit 082f22b4; mutacao das duas vermelha na integracao.",
     "mutacao": [
@@ -132,7 +132,15 @@
     "reaberto_por": {
       "estagio": "revisar",
       "data": "2026-10-15"
-    }
+    },
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "tarefa 9 rodada extra",
+        "desde": "2026-10-15T00:00:00Z",
+        "sessao": "d39ef955-529f-4604-9440-a7d2fbc14edb"
+      }
+    ]
   },
   "revisar": {
     "status": "reprovado",
@@ -181,6 +189,13 @@
       "porque": "Regra de parada do plano: parser de bash nao fecha o conjunto de contornos; o ganho entregue (17 formas, 0 regressao no diferencial) se preserva",
       "estagio": "executar",
       "em": "2026-10-15T21:08:40.028Z"
+    },
+    {
+      "pergunta": "teto de 3 reprovacoes: como seguir?",
+      "escolha": "(a) rodada extra com uniao em subcomandoGit",
+      "porque": "as tres voltas reabriram o mesmo 2->0 porque a leitura nova substituia a crua; uniao fecha a familia por construcao",
+      "estagio": "executar",
+      "em": "2026-10-15T23:49:09.268Z"
     }
   ]
 }
