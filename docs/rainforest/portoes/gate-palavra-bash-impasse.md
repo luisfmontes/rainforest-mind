@@ -20,3 +20,12 @@ Fazer união só onde o git é reconhecido. `subcomandoGit` aceita o git achado 
 - Junto entram os casos de teste com `;`, `&` e `|` dentro da string do wrapper, a nota no CHANGELOG e o critério de aceite no diferencial: **zero 2→0 contra a base** no corpus do revisor.
 
 Fora desta rodada: a união no resto do gate (escrita, `cd`) segue na #530 e no fluxo próprio do caminho do principal.
+
+## Rodada extra 1 (volta 4): reprovada
+A união fechou o 2→0 do reconhecimento do git. O diferencial de 3.980 execuções contra a base deu zero 2→0, e o fuzz do revisor (14.800 execuções) também. O que entrou junto foi um custo exponencial: `subcomandoGit` recursa nas duas leituras. Quando o primeiro token do wrapper difere entre elas (`'eval'`, `\eval`, `'bash' -c`), as duas chamadas recebem o mesmo interno e o custo dobra a cada nível. Medido: com 18 níveis o hook leva 14,7 s, e com 22 passa de 60 s. A base é linear, e o comando executa de verdade. É fail-open por travamento ou timeout.
+
+### Proposta (rodada extra 2)
+- **Recursão uma vez por interno distinto.** Junte os internos das duas leituras num `Set` (texto e ferramenta) antes de recursar. Assim o custo volta a ser linear.
+- **Teto de profundidade que barra.** Mais de 4 níveis sai com o motivo que o `alvosBashEscrita` já usa, "wrapper aninhado demais para conferir (mais de 4 niveis)".
+- **Caso na bateria.** `'eval' ` × 22 seguido de `"git -C P commit …"` → 2 em menos de 2 s.
+- **CHANGELOG.** Os itens de `bash -c`/`eval` e de substituição passam a dizer que valem para escrita, não para verbo de git (item 4 da #530).
