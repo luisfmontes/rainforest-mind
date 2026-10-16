@@ -594,10 +594,11 @@ const ALIASES_DE_PARAMETRO = new Map([
   ["ov", "outvariable"], ["ob", "outbuffer"], ["pv", "pipelinevariable"], ["lp", "literalpath"],
 ]);
 // Parametros cujo valor e um caminho: o valor vira alvo.
-const PARAMETROS_DE_CAMINHO = ["path", "literalpath", "filepath", "pspath", "destination"];
+// `-Name` do New-Item tambem: `New-Item -Name <P>/f` cria pelo caminho do nome (revisao de seguranca, rodada 2).
+const PARAMETROS_DE_CAMINHO = ["path", "literalpath", "filepath", "pspath", "destination", "name"];
 // Parametros que levam valor: o token seguinte nao e alvo (salvo se for de caminho).
 const PARAMETROS_COM_VALOR = [
-  "value", "itemtype", "encoding", "name", "inputobject", "width", "filter", "include",
+  "value", "itemtype", "encoding", "inputobject", "width", "filter", "include",
   "exclude", "variable", "stream", "credential", "erroraction", "warningaction",
   "informationaction", "errorvariable", "warningvariable", "informationvariable",
   "outvariable", "outbuffer", "pipelinevariable",
@@ -637,14 +638,17 @@ function alvosDeCmdlet(toks, posCmd, base, empurra) {
     const param = nomeDoParametro(m[1].toLowerCase());
     if (param === null) { desconhecido = true; continue; } // o token seguinte segue posicional
     if (PARAMETROS_SEM_VALOR.includes(param)) continue;
-    if (m[2] !== undefined) { candidatos.push(m[3]); continue; } // -Nome:valor
+    if (m[2] !== undefined && m[3] !== "") { if (PARAMETROS_DE_CAMINHO.includes(param)) candidatos.push(m[3]); continue; } // -Nome:valor
+    // `-Nome: valor` (dois-pontos e o valor no token seguinte) cai no ramo de baixo.
     if (k + 1 < toks.length) {
       if (PARAMETROS_DE_CAMINHO.includes(param)) candidatos.push(toks[k + 1].v);
       k += 1; // o valor nao e posicional
     }
   }
-  for (const c of candidatos) {
-    if (/[$`]/.test(c)) empurra(base, null, "cmdlet", true); // variavel: nao aponta um caminho
+  // Lista (`a,<P>/b`): cada elemento e um alvo. Variavel, crase ou subexpressao: incerto.
+  for (const c of candidatos.flatMap((x) => String(x).split(","))) {
+    if (c === "") continue;
+    if (/[$`()]/.test(c)) empurra(base, null, "cmdlet", true);
     else empurra(base, c, "cmdlet");
   }
   if (desconhecido) empurra(base, null, "cmdlet", true);
@@ -652,13 +656,30 @@ function alvosDeCmdlet(toks, posCmd, base, empurra) {
 
 /** Texto com o conteudo entre aspas trocado por espacos, do mesmo tamanho: chamada dentro de aspas nao conta (D3). */
 function mascaraAspas(texto) {
-  let saida = "", aspa = null;
-  for (let i = 0; i < texto.length; i += 1) {
+  // PowerShell (revisao de seguranca da rodada 2): so aspas simples sao inertes. Aspas
+  // duplas expandem `$(...)`, entao so se mascaram sem `$` dentro; crase escapa o
+  // caractere seguinte dentro delas. Estado de aspas desbalanceado: nao mascara nada
+  // (falha fechada, a chamada volta a contar).
+  let saida = "";
+  let i = 0;
+  while (i < texto.length) {
     const c = texto[i];
-    if (aspa) {
-      if (c === aspa) { aspa = null; saida += c; } else saida += " ";
-    } else if (c === "'" || c === '"') { aspa = c; saida += c; }
-    else saida += c;
+    if (c === "'") {
+      const j = texto.indexOf("'", i + 1);
+      if (j < 0) return texto;
+      saida += "'" + " ".repeat(j - i - 1) + "'";
+      i = j + 1;
+    } else if (c === '"') {
+      let j = i + 1;
+      while (j < texto.length && texto[j] !== '"') j += texto[j] === "`" ? 2 : 1;
+      if (j >= texto.length) return texto;
+      const dentro = texto.slice(i + 1, j);
+      saida += dentro.includes("$") ? texto.slice(i, j + 1) : '"' + " ".repeat(j - i - 1) + '"';
+      i = j + 1;
+    } else {
+      saida += c;
+      i += 1;
+    }
   }
   return saida;
 }

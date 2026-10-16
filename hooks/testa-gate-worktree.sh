@@ -1036,6 +1036,41 @@ gate "#533 (e): [IO.File]::ReadAllText('<principal>/f') do worktree, PASSA (leit
 gate "#533 (e): Select-String \"[IO.File]::WriteAllText(\" arq, do worktree, PASSA (chamada dentro de aspas nao conta)" 0 "$(bp 'Select-String "[IO.File]::WriteAllText(" arq' "$WT")"
 gate "#533 (e): Invoke-Expression \"[IO.File]::WriteAllText('<principal>/f','x')\", do worktree, BARRA (texto executado nao e mascarado)" 2 "$(bp "Invoke-Expression \"[IO.File]::WriteAllText('$R/f','x')\"" "$WT")"
 gate "#533 (e): iex \"[IO.File]::AppendAllText('<principal>/f','x')\", do worktree, BARRA (alias iex)" 2 "$(bp "iex \"[IO.File]::AppendAllText('$R/f','x')\"" "$WT")"
+# Revisao de seguranca da rodada 2: comandos com aspas montados por heredoc literal,
+# com __R__ (principal) e __WT__ (worktree) trocados aqui, para a citacao do bash nao mudar o comando.
+cmdps() { local s; s=$(cat); s=${s//__R__/$R}; s=${s//__WT__/$WT}; printf '%s' "$s"; }
+gate "#533 (e2): subexpressao cifrao-parenteses com [IO.File] dentro de aspas duplas executa, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+"$([IO.File]::WriteAllText('__R__/f','x'))"
+EOC
+)" "$WT")"
+gate "#533 (e2): aspas duplas com crase escapada nao desalinham a mascara, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Write-Host "a`"b"; [IO.File]::WriteAllText('__R__/f','x')
+EOC
+)" "$WT")"
+gate "#533 (e2): aspas simples desbalanceadas nao mascaram, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Write-Host 'x; [IO.File]::WriteAllText("__R__/f","x")
+EOC
+)" "$WT")"
+gate "#533 (e2): Set-Content com lista de alvos worktree e principal, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Set-Content __WT__/a,__R__/b x
+EOC
+)" "$WT")"
+gate "#533 (e2): New-Item -Name com caminho do principal, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+New-Item -Name __R__/f
+EOC
+)" "$WT")"
+gate "#533 (e2): Set-Content -Path: com espaco antes do principal, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Set-Content -Path: __R__/f x
+EOC
+)" "$WT")"
+gate "#533 (e2) vizinho: New-Item -Path worktree -Name f, do worktree, PASSA" 0 "$(bp "$(cmdps <<'EOC'
+New-Item -Path __WT__ -Name f
+EOC
+)" "$WT")"
+gate "#533 (e2) vizinho: chamada .NET em aspas duplas sem cifrao e texto, do worktree, PASSA" 0 "$(bp "$(cmdps <<'EOC'
+Write-Host "texto [IO.File]::WriteAllText("
+EOC
+)" "$WT")"
 gate "#533 (e) vizinho: Set-Content -ea SilentlyContinue <worktree>/f x, do worktree, PASSA (alias de parametro comum)" 0 "$(bp "Set-Content -ea SilentlyContinue $WT/f x" "$WT")"
 gate "#533 (e) vizinho: Set-Content -ea SilentlyContinue <principal>/f x, do worktree, BARRA" 2 "$(bp "Set-Content -ea SilentlyContinue $R/f x" "$WT")"
 gate "#533 (e) vizinho: Set-Content -Confirm:\$false <worktree>/f x, do worktree, PASSA (switch com dois-pontos nao e alvo)" 0 "$(bp 'Set-Content -Confirm:$false '"$WT"'/f x' "$WT")"
