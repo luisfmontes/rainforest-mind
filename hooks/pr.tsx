@@ -15,7 +15,7 @@ import type {
   RainforestMindPrPendente,
   RainforestMindPrResumo,
 } from '../types'
-import { AMBIENTE_GIT_SEGURO, POLL_MS, bloco, tomDoIcone, QUIETO_MS, deveAcordar, donoConfere, ehDaSessao, escolherExecutavel, eventos, herdarMotivo, localizadores, mergeDoAlvo, nota, resumir, virada } from './pr-puro.mjs'
+import { AMBIENTE_GIT_SEGURO, POLL_MS, bloco, tomDoIcone, QUIETO_MS, consultaVelha, decidirDono, ehDaSessao, escolherExecutavel, eventos, herdarMotivo, localizadores, mergeDoAlvo, pendenteDaVirada, planoDoDespertar, resumir, virada } from './pr-puro.mjs'
 
 type Bloco = {
   label: string
@@ -79,17 +79,12 @@ async function acordarSePreciso($: EngineInterface): Promise<void> {
     const ac = await read($, prAcompanhado)
     if (pendente === null || ac === null) return
     const agoraMs = await $.clock.now()
-    const pr = {
-      deveAcordar: deveAcordar({
-        origem: ac.origem,
-        branch: ac.branch,
-        virada: pendente.virada,
-        ultimaMudancaMs: pendente.ultimaMudancaMs,
-        agoraMs,
-      }),
+    const plano = planoDoDespertar({ pendente, acompanhado: ac, agoraMs }) as { limpar: boolean; enviar: string | null }
+    // Limpa ANTES de enviar: a mesma virada nunca acorda duas vezes (despertar duplicado).
+    if (plano.limpar) {
+      await update($, prPendente, () => null)
+      await $.prompt.submit({ text: plano.enviar as string })
     }
-    if (pr.deveAcordar) await update($, prPendente, () => null)
-    if (pr.deveAcordar) await $.prompt.submit({ text: pendente.nota })
   } catch {
     // acordar e conveniencia: a nota ja esta na conversa
   } finally {
@@ -182,6 +177,7 @@ async function consultar($: EngineInterface): Promise<void> {
   try {
     const ac = await read($, prAcompanhado)
     if (ac === null) return
+    const alvoConsultado = ac.alvo
     let pr: Record<string, unknown>
     try {
       const r = await gh($, ['pr', 'view', ...(ac.alvo ? [ac.alvo] : []), '--json', CAMPOS])
@@ -197,17 +193,21 @@ async function consultar($: EngineInterface): Promise<void> {
       await update($, prErro, () => `gh nao rodou: ${String(err).slice(0, 120)}`)
       return
     }
+    // Resposta de um alvo que ja nao e o acompanhado: sai sem gravar nada.
+    if (consultaVelha(alvoConsultado, await read($, prAcompanhado))) return
     await update($, prErro, () => '')
 
     // So acorda a sessao o PR que e dela de fato: autor = quem esta logado no gh e nao de fork.
     // A origem vem de uma URL achada no comando/saida ou de uma branch fluxo/*, e nenhuma das
     // duas prova autoria; sem a prova (ou sem saber quem sou), o pane segue, mas nunca acorda.
+    // 'adiar' (sem saber quem sou) nao rebaixa e nao acorda nesta consulta; a proxima tenta de novo.
+    let adiado = false
     if (ac.origem !== 'manual') {
       const eu = await quemSouEu($)
       const autor = (pr.author as { login?: string } | undefined)?.login
-      if (!donoConfere({ autor, eu, cruzado: pr.isCrossRepository })) {
-        await update($, prAcompanhado, a => (a === null ? a : { ...a, origem: 'manual' }))
-      }
+      const dono = decidirDono({ autor, eu, cruzado: pr.isCrossRepository }) as string
+      if (dono === 'adiar') adiado = true
+      if (dono === 'rebaixar') await update($, prAcompanhado, a => (a === null ? a : { ...a, origem: 'manual' }))
     }
 
     const agora = await $.clock.now()
@@ -229,27 +229,31 @@ async function consultar($: EngineInterface): Promise<void> {
     const v = virada(velho, novo) as string | null
     // Merge que a propria sessao pediu: so o pane registra; nota e despertar seriam ordem de
     // limpar chegando depois de a sessao ja ter limpado.
-    const pedido = v === 'merged' && (await read($, prAcompanhado))?.mergePedido === true
-    if (v !== null && !pedido) {
-      const atual = await read($, prAcompanhado)
-      const daSessao = atual !== null && (ehDaSessao({ origem: atual.origem, branch: atual.branch }) as boolean)
-      const texto = nota(v, novo, daSessao) as string
-      await update($, prPendente, () => ({ virada: v, nota: texto, ultimaMudancaMs: agora }))
+    const mergePedido = (await read($, prAcompanhado))?.mergePedido === true
+    const atual = await read($, prAcompanhado)
+    const daSessao = atual !== null && (ehDaSessao({ origem: atual.origem, branch: atual.branch }) as boolean)
+    const pendencia = pendenteDaVirada({ virada: v, mergePedido, daSessao, resumo: novo, agoraMs: agora }) as
+      | { virada: string; nota: string; ultimaMudancaMs: number }
+      | null
+    // Adiada (sem saber quem sou): a virada nao vira pendencia nem entra na conversa nesta consulta;
+    // o pane segue com o resumo e os eventos.
+    if (pendencia !== null && !adiado) {
+      await update($, prPendente, () => pendencia)
       try {
-        await $.session.append({ message: { type: 'user', content: [{ type: 'text', text: texto }] } })
+        await $.session.append({ message: { type: 'user', content: [{ type: 'text', text: pendencia.nota }] } })
       } catch {
         // sem a nota na conversa o pane e o aviso seguem
       }
-      void Promise.resolve($.ui.notify(`#${novo.numero}: ${v}`, { title: 'PR' })).catch(() => {})
       // A checagem de quietude: o poll tambem olha, mas o PR pode ter parado de mudar.
       void $.clock.after(QUIETO_MS, () => void acordarSePreciso($))
     }
+    if (pendencia !== null) void Promise.resolve($.ui.notify(`#${novo.numero}: ${v}`, { title: 'PR' })).catch(() => {})
 
     if (novo.estado === 'MERGED' || novo.estado === 'CLOSED') {
       parar()
       return
     }
-    await acordarSePreciso($)
+    if (!adiado) await acordarSePreciso($)
   } finally {
     consultando = false
   }
