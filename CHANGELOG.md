@@ -24,15 +24,18 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
     `git log`/`show`/`diff`/`status`/`blame`/`grep` (também com `-C <principal>`) e chamada .NET de leitura
     (`[IO.File]::ReadAllText`). Na cópia (`cp`/`Copy-Item`), a origem no principal é leitura e o destino segue com a
     lista.
-  - **Leitura que escreve deixa de ser leitura:** opção que grava (`git log --output`, `sort -o`, `rg --pre`,
-    `uniq a b`, `find -fls`/`-fprint`) e redirecionamento (`>`, `>>`, `>|`, `<>`, `*>`, `&>`, inclusive destino entre
-    aspas). Num pipeline com algum comando que escreve (`Get-Content <P>/a | Out-File <P>/b`), os caminhos dos
+  - **Leitura que escreve deixa de ser leitura:** opção que grava ou roda comando (`git log --output`/`-O`, também
+    abreviada ou colada; `sort -o`, também em grupo como `-ro`, e `--compress-program`; `rg --pre`, `uniq a b`,
+    `find -delete`/`-exec`/`-fls`/`-fprint`), mesmo escrita entre aspas; `git` com `-c`, `--config-env`,
+    `--ext-diff`, `--textconv` ou `--exec-path`; atribuição antes do comando (`GIT_EXTERNAL_DIFF=x git diff`); e
+    redirecionamento (`>`, `>>`, `>|`, `<>`, `*>`, `&>`), com o destino lido como o shell lê (aspas, escape e partes
+    coladas, como `>"<P>"/f`; aspa sem fechar barra). Num pipeline com algum comando que escreve (`Get-Content <P>/a | Out-File <P>/b`), os caminhos dos
     segmentos de leitura também contam.
   - **Linha que o gate não sabe cortar com confiança** (here-string, `$(` dentro de aspas) vira um segmento só, e o
     caminho do principal citado nela barra.
   - **Grafias reconhecidas:** barra `/` ou `\`, forma MSYS (`/c/...`, no Bash), qualquer caixa, `..` resolvido contra o
     cwd (`rm ../../../f` a partir do worktree) e atalho de home (`~`, `$HOME`, `${HOME}`, `$env:USERPROFILE`,
-    `%USERPROFILE%`).
+    `${env:USERPROFILE}`, `$env:HOMEDRIVE$env:HOMEPATH`, `%USERPROFILE%`, `%HOMEDRIVE%%HOMEPATH%`).
   - **Não barra:** o próprio worktree e os outros worktrees do repositório (o principal e os worktrees saem de
     `git worktree list --porcelain`), o scratchpad da sessão e o texto de mensagem de `git`/`gh` (`-m`, `--message`,
     `--body`, `--title`, `-t`): `git commit -m "corrigido em <P>/a"` passa.
