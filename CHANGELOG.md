@@ -10,6 +10,42 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.68.0 — 2026-10-16
+
+- **Gate de worktree: rede de caminho do checkout principal (#552).** Até aqui o gate só barrava a escrita que
+  reconhecia numa lista de formas conhecidas (`Set-Content`, `>`, `cp`...), e o que ficava fora dela passava. Agora,
+  em Bash e PowerShell de subagente que roda num worktree linkado, há uma segunda camada por cima da lista: **todo
+  comando que cita um caminho do checkout principal do mesmo repositório é barrado, salvo se for de leitura.**
+  Passam a ser barrados, por exemplo, `rm`/`Remove-Item`, `Clear-Content`, `Rename-Item`, `New-Object
+  IO.StreamWriter(...)`, `Expand-Archive -DestinationPath`, `robocopy`, `curl -o`, `tar -C` e
+  `Invoke-Command -ScriptBlock (...)` quando apontam para o principal.
+  - **Leitura que segue passando:** `cat`, `head`, `ls`, `grep`/`rg`, `find`, `diff`, `Get-Content`, `Get-ChildItem`,
+    `Test-Path`, `Select-String`, filtros de pipeline (`Select-Object`, `Sort-Object`, `jq`...), `cd`/`Set-Location`,
+    `git log`/`show`/`diff`/`status`/`blame`/`grep` (também com `-C <principal>`) e chamada .NET de leitura
+    (`[IO.File]::ReadAllText`). Na cópia (`cp`/`Copy-Item`), a origem no principal é leitura e o destino segue com a
+    lista.
+  - **Leitura que escreve deixa de ser leitura:** opção que grava (`git log --output`, `sort -o`, `rg --pre`,
+    `uniq a b`, `find -fls`/`-fprint`) e redirecionamento (`>`, `>>`, `>|`, `<>`, `*>`, `&>`, inclusive destino entre
+    aspas). Num pipeline com algum comando que escreve (`Get-Content <P>/a | Out-File <P>/b`), os caminhos dos
+    segmentos de leitura também contam.
+  - **Linha que o gate não sabe cortar com confiança** (here-string, `$(` dentro de aspas) vira um segmento só, e o
+    caminho do principal citado nela barra.
+  - **Grafias reconhecidas:** barra `/` ou `\`, forma MSYS (`/c/...`, no Bash), qualquer caixa, `..` resolvido contra o
+    cwd (`rm ../../../f` a partir do worktree) e atalho de home (`~`, `$HOME`, `${HOME}`, `$env:USERPROFILE`,
+    `%USERPROFILE%`).
+  - **Não barra:** o próprio worktree e os outros worktrees do repositório (o principal e os worktrees saem de
+    `git worktree list --porcelain`), o scratchpad da sessão e o texto de mensagem de `git`/`gh` (`-m`, `--message`,
+    `--body`, `--title`, `-t`): `git commit -m "corrigido em <P>/a"` passa.
+  - **Mudança de comportamento:** `git -C <principal> -C <worktree> commit` e `Set-Content <principal>/...` digitado
+    na ferramenta Bash passam a ser barrados.
+- **Gate de worktree: alvo com pai inexistente (#552, D6).** `New-Item -Path n1/n2/f -Force`,
+  `[IO.Directory]::CreateDirectory('n1/n2/d')` e `echo x > n1/n2/f`, com `n1` ainda inexistente, passavam: o gate
+  procurava o repositório a partir do pai imediato, que não existe. Agora ele sobe até o primeiro diretório que
+  existe, e a escrita no principal é barrada.
+- **Segue de fora (#552):** caminho montado por pedaços (`$a + "/f"`, `"$P"` sem o literal do principal na linha),
+  variável cujo valor não aparece no comando, nome curto 8.3 e caminho UNC, a janela principal (a rede só age em
+  subagente) e os outros gates.
+
 ## 1.67.10 — 2026-10-16
 
 - **Gate de worktree: mais grafias de escrita no checkout principal passam a ser barradas (#530, #533).** O gate
