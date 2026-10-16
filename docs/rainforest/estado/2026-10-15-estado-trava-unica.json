@@ -20,7 +20,7 @@
     "em": "2026-10-15"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-16",
     "tarefas_ok": 2,
     "tarefas": 2,
@@ -50,14 +50,9 @@
       }
     ],
     "comando": "node scripts/testa-estado-trava.cjs",
-    "saida": "12 ok, 0 falha(s), 0 skipped",
+    "saida": "14 ok, 0 falha(s), 0 skipped",
     "reaberturas": 2,
-    "em_voo": [],
-    "rodada": 2,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-16"
-    }
+    "rodada": 3
   },
   "revisar": {
     "status": "reprovado",
