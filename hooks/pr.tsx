@@ -185,12 +185,12 @@ async function consultar($: EngineInterface): Promise<void> {
         const motivo = String(r.stderr).includes('no pull requests found')
           ? 'Nenhum PR para a branch atual.'
           : `gh saiu ${r.exitCode}: ${String(r.stderr).trim().split('\n')[0]}`
-        await update($, prErro, () => motivo)
+        if (!consultaVelha(alvoConsultado, await read($, prAcompanhado))) await update($, prErro, () => motivo)
         return
       }
       pr = JSON.parse(r.stdout)
     } catch (err) {
-      await update($, prErro, () => `gh nao rodou: ${String(err).slice(0, 120)}`)
+      if (!consultaVelha(alvoConsultado, await read($, prAcompanhado))) await update($, prErro, () => `gh nao rodou: ${String(err).slice(0, 120)}`)
       return
     }
     // Resposta de um alvo que ja nao e o acompanhado: sai sem gravar nada.
@@ -231,21 +231,22 @@ async function consultar($: EngineInterface): Promise<void> {
     // limpar chegando depois de a sessao ja ter limpado.
     const mergePedido = (await read($, prAcompanhado))?.mergePedido === true
     const atual = await read($, prAcompanhado)
-    const daSessao = atual !== null && (ehDaSessao({ origem: atual.origem, branch: atual.branch }) as boolean)
+    // Adiada (sem saber quem sou): a nota entra como a de um PR que nao e da sessao, sem ordem de agir.
+    const daSessao = !adiado && atual !== null && (ehDaSessao({ origem: atual.origem, branch: atual.branch }) as boolean)
     const pendencia = pendenteDaVirada({ virada: v, mergePedido, daSessao, resumo: novo, agoraMs: agora }) as
       | { virada: string; nota: string; ultimaMudancaMs: number }
       | null
-    // Adiada (sem saber quem sou): a virada nao vira pendencia nem entra na conversa nesta consulta;
-    // o pane segue com o resumo e os eventos.
-    if (pendencia !== null && !adiado) {
-      await update($, prPendente, () => pendencia)
+    // Adiada (sem saber quem sou): a nota entra na conversa, mas nao vira pendencia nem agenda o
+    // despertar nesta consulta.
+    if (pendencia !== null) {
+      if (!adiado) await update($, prPendente, () => pendencia)
       try {
         await $.session.append({ message: { type: 'user', content: [{ type: 'text', text: pendencia.nota }] } })
       } catch {
         // sem a nota na conversa o pane e o aviso seguem
       }
       // A checagem de quietude: o poll tambem olha, mas o PR pode ter parado de mudar.
-      void $.clock.after(QUIETO_MS, () => void acordarSePreciso($))
+      if (!adiado) void $.clock.after(QUIETO_MS, () => void acordarSePreciso($))
     }
     if (pendencia !== null) void Promise.resolve($.ui.notify(`#${novo.numero}: ${v}`, { title: 'PR' })).catch(() => {})
 
