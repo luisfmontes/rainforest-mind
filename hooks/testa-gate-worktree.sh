@@ -980,5 +980,44 @@ gate "(#530) for d in; do cd <wt>; done; echo x > f barra"                2 "$(e
 gate "(#530) A=1 cd <wt>; echo x > f no principal passa (cd roda)"        0 "$(ex "A=1 cd '$WT'; echo x > f")"
 
 echo
+echo "== #530: chaves em posicao de comando =="
+# D1 (docs/rainforest/design/2026-10-16-gate-worktree-brechas.md): `{cd,X}` no
+# comeco do segmento e expansao de chaves: o bash roda `cd X`. Antes a chave
+# virava fronteira de segmento e o `cd` nunca era reconhecido.
+gate "#530: {cd,<principal>} && echo x > f, do worktree, BARRA" 2 "$(b "{cd,$R} && echo x > f" "$WT")"
+gate "#530: {pushd,<principal>} && echo x > f, do worktree, BARRA" 2 "$(b "{pushd,$R} && echo x > f" "$WT")"
+gate "#530: {cd,<principal>}; git commit -m x, do worktree, BARRA" 2 "$(b "{cd,$R}; git commit -m x" "$WT")"
+gate "#530: {cd,<worktree>} && echo x > f, do worktree, PASSA" 0 "$(b "{cd,$WT} && echo x > f" "$WT")"
+gate "#530: {cd,<worktree>} && git commit -m x, do principal, PASSA" 0 "$(b "{cd,$WT} && git commit -m x" "$R")"
+gate "#530: ls {a,b} do worktree, PASSA" 0 "$(b "ls {a,b}" "$WT")"
+gate "#530: { echo a; echo b; } > f do worktree, PASSA (grupo, nao expansao)" 0 "$(b "{ echo a; echo b; } > f" "$WT")"
+
+echo
+echo "== #533: cmdlets de escrita do PowerShell =="
+# D2/D3: a ferramenta PowerShell escreve por cmdlet e por chamada .NET, sem
+# redirecionamento. Do principal cada grafia BARRA; do worktree o mesmo alvo PASSA.
+for c in "Set-Content $R/f x" "Set-Content -Path $R/f -Value x" "sc $R/f x" \
+  "Add-Content $R/f x" "\"x\" | Out-File $R/f" "Out-File -FilePath $R/f" \
+  "New-Item -ItemType File $R/f" "Copy-Item a $R/f" "Move-Item -Destination $R/f a" \
+  "\"x\" | Tee-Object -FilePath $R/f" "Set-Content -Path:$R/f x"; do
+  gate "#533: $c, do principal, BARRA" 2 "$(bp "$c" "$R")"
+done
+gate "#533: Set-Content -Val x <principal>/f, do worktree, BARRA (prefixo de parametro)" 2 "$(bp "Set-Content -Val x $R/f" "$WT")"
+for c in "Set-Content $WT/f x" "Set-Content -Path $WT/f -Value x" "sc $WT/f x" \
+  "Add-Content $WT/f x" "\"x\" | Out-File $WT/f" "Out-File -FilePath $WT/f" \
+  "New-Item -ItemType File $WT/f" "Copy-Item a $WT/f" "Move-Item -Destination $WT/f a" \
+  "\"x\" | Tee-Object -FilePath $WT/f"; do
+  gate "#533 vizinho: $c, do worktree, PASSA" 0 "$(bp "$c" "$WT")"
+done
+gate "#533: [IO.File]::WriteAllText('<principal>/f','x') do principal, BARRA" 2 "$(bp "[IO.File]::WriteAllText('$R/f','x')" "$R")"
+gate "#533: [System.IO.File]::AppendAllText(\"<principal>/f\",\"x\") do worktree, BARRA" 2 "$(bp "[System.IO.File]::AppendAllText(\"$R/f\",\"x\")" "$WT")"
+gate "#533: [IO.File]::Copy('a','<principal>/b') do worktree, BARRA (2o argumento)" 2 "$(bp "[IO.File]::Copy('a','$R/b')" "$WT")"
+gate "#533: [IO.File]::WriteAllText(\$p,'x') do worktree, BARRA (alvo incerto)" 2 "$(bp "[IO.File]::WriteAllText(\$p,'x')" "$WT")"
+gate "#533 vizinho: [IO.File]::WriteAllText('<worktree>/f','x') do worktree, PASSA" 0 "$(bp "[IO.File]::WriteAllText('$WT/f','x')" "$WT")"
+gate "#533 vizinho: [IO.File]::Copy('<worktree>/a','<worktree>/b') do worktree, PASSA" 0 "$(bp "[IO.File]::Copy('$WT/a','$WT/b')" "$WT")"
+gate "#533 vizinho: [IO.File]::ReadAllText('<principal>/f') (leitura) do worktree, PASSA" 0 "$(bp "[IO.File]::ReadAllText('$R/f')" "$WT")"
+gate "#533 (d): ferramenta Bash, Set-Content <principal>/f x, do worktree, PASSA (sem alvo novo)" 0 "$(b "Set-Content $R/f x" "$WT")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

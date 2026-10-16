@@ -578,12 +578,113 @@ function ehDescarteDeSaida(alvo, ehPowerShell) {
   return alvo === "/dev/null" || (ehPowerShell === true && /^\$null$/i.test(alvo));
 }
 
+// Cmdlets de escrita do PowerShell (#533, D2) e o que cada um escreve: "caminho"
+// (`-Path`/`-LiteralPath`/`-FilePath`, senao o primeiro posicional) ou "copia"
+// (`-Destination`, senao o ultimo posicional). Nome sem diferenciar caixa.
+const CMDLETS_DE_ESCRITA = new Map([
+  ["set-content", "caminho"], ["sc", "caminho"], ["add-content", "caminho"], ["ac", "caminho"],
+  ["out-file", "caminho"], ["new-item", "caminho"], ["ni", "caminho"], ["tee-object", "caminho"],
+  ["copy-item", "copia"], ["copy", "copia"], ["cpi", "copia"],
+  ["move-item", "copia"], ["move", "copia"], ["mi", "copia"],
+]);
+// Parametros que levam valor no token seguinte (`-Value x`, `-ItemType File`).
+// Chave sem valor (`-Force`, `-Append`, `-NoNewline`, `-NoClobber`) fica de fora.
+const PARAMETROS_COM_VALOR = [
+  "value", "itemtype", "encoding", "name", "inputobject", "width",
+  "filter", "include", "exclude", "path", "literalpath",
+];
+// PowerShell aceita prefixo de parametro (`-Val x`, `-Dest y`). Dois caracteres
+// e o minimo: um so (`-v`) e ambiguo com parametro comum e fica como chave.
+const ehParametro = (flag, nome) => flag.length >= 2 && nome.startsWith(flag);
+
+/**
+ * Alvo do cmdlet de escrita que esta em posicao de comando, ou null (#533, D2).
+ * Devolve o TEXTO do alvo, que quem chama resolve contra o cwd do segmento.
+ */
+function alvoDeCmdlet(toks, posCmd) {
+  if (posCmd === null || posCmd === undefined) return null;
+  const tipo = CMDLETS_DE_ESCRITA.get(toks[posCmd].v.toLowerCase());
+  if (!tipo) return null;
+  const nomeados = tipo === "copia" ? ["destination"] : ["path", "literalpath", "filepath"];
+  const posicionais = [];
+  for (let k = posCmd + 1; k < toks.length; k += 1) {
+    const t = toks[k];
+    const m = t.q ? null : /^-([A-Za-z]+)(:(.*))?$/.exec(t.v);
+    if (!m) { posicionais.push(t.v); continue; }
+    const flag = m[1].toLowerCase();
+    if (nomeados.some((n) => ehParametro(flag, n))) {
+      if (m[2] !== undefined) return m[3]; // `-Path:valor`
+      return toks[k + 1] ? toks[k + 1].v : null;
+    }
+    if (m[2] === undefined && PARAMETROS_COM_VALOR.some((n) => ehParametro(flag, n))) k += 1;
+  }
+  if (tipo === "copia") return posicionais.length >= 2 ? posicionais[posicionais.length - 1] : null;
+  return posicionais.length ? posicionais[0] : null;
+}
+
+/** D2 de um segmento: o cmdlet de escrita de posicao de comando escreve em `alvo` resolvido contra `base`. */
+function alvosDeCmdlet(toks, posCmd, base, empurra) {
+  const alvo = alvoDeCmdlet(toks, posCmd);
+  if (alvo) empurra(base, alvo, "cmdlet");
+}
+
+// Chamada .NET de escrita (#533, D3). O alvo e o 1o argumento, e o 2o para Copy/Move.
+const CHAMADA_NET_DE_ESCRITA = /\[(?:System\.)?IO\.File\]::(\w+)\s*\(/gi;
+const POSICAO_DO_ALVO_NET = new Map([
+  ["writealltext", 0], ["appendalltext", 0], ["writealllines", 0],
+  ["appendalllines", 0], ["writeallbytes", 0], ["copy", 1], ["move", 1],
+]);
+
+/** Argumentos de uma chamada, a partir de `inicio` (logo depois do `(`). Virgula so conta fora de aspas e parenteses. */
+function argumentosDaChamada(texto, inicio) {
+  const args = [];
+  let atual = "", aspa = null, prof = 0;
+  for (let i = inicio; i < texto.length; i += 1) {
+    const c = texto[i];
+    if (aspa) { atual += c; if (c === aspa) aspa = null; continue; }
+    if (c === "'" || c === '"') { aspa = c; atual += c; continue; }
+    if (c === "(") prof += 1;
+    else if (c === ")") {
+      if (prof === 0) { args.push(atual.trim()); return { args, fechou: true }; }
+      prof -= 1;
+    } else if (c === "," && prof === 0) { args.push(atual.trim()); atual = ""; continue; }
+    atual += c;
+  }
+  return { args, fechou: false };
+}
+
+/** Texto de um argumento que e string literal: `'...'`, ou `"..."` sem `$` nem crase. Senao null. */
+function literalDoArgumento(arg) {
+  const s = /^'([^']*)'$/.exec(arg) || /^"([^"$`]*)"$/.exec(arg);
+  return s ? s[1] : null;
+}
+
+/**
+ * Uma entrada por chamada de escrita .NET do COMANDO: `{alvo}` (literal, relativo
+ * ao cwd) ou `{incerto: true}`. Le o comando inteiro, nao o segmento: a segmentacao
+ * parte em `(` e `)`, e a chamada `[IO.File]::X(...)` nao sobreviveria inteira.
+ */
+function alvosNetDoComando(comando) {
+  const saida = [];
+  for (const m of comando.matchAll(CHAMADA_NET_DE_ESCRITA)) {
+    const pos = POSICAO_DO_ALVO_NET.get(m[1].toLowerCase());
+    if (pos === undefined) continue;
+    const { args, fechou } = argumentosDaChamada(comando, m.index + m[0].length);
+    const lit = fechou && args.length > pos ? literalDoArgumento(args[pos]) : null;
+    saida.push(lit === null ? { incerto: true } : { alvo: lit });
+  }
+  return saida;
+}
+
 function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
   // `segmentosComAspas` pelo mesmo motivo de `alvosBash`: respeita aspas e
   // reconhece `&` simples como separador (K1, rodada 6, lote 3, 2026-09-03).
   const segmentos = segmentosComAspas(comando);
   const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [] };
   const alvos = [];
+  // Todo cwd que a linha visita: a chamada .NET (D3) nao sabe em qual segmento
+  // esta, entao um alvo relativo vale para cada um deles (conservador).
+  const visitados = new Set([cwdInicial]);
 
   // Resolve o alvo contra o cwd EFETIVO deste segmento (`base` — o de
   // `env -C`, se houver, senao o `estado.atual` corrente); construcao com
@@ -597,6 +698,7 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
 
   for (const seg of segmentos) {
     const mov = resolverMovedor(seg, estado);
+    visitados.add(mov.cwd);
     if (mov.soMovedor) continue; // cd/pushd/popd: o segmento INTEIRO e o movedor
     const base = mov.cwd;
 
@@ -626,6 +728,8 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
     // Fora dela o token citado segue sendo argumento, nunca comando.
     const posCmd = posicaoDeComando(toks);
     const ehCmd = (i, nome) => ehComando(toks[i], nome, i === posCmd);
+    // D2 (#533): cmdlet de escrita do PowerShell, so na ferramenta PowerShell.
+    if (ehPowerShell) alvosDeCmdlet(toks, posCmd, base, empurra);
 
     for (let i = 0; i < toks.length; i += 1) {
       // `tee arquivo`, `tee -a arquivo`
@@ -651,6 +755,15 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
         if (pos.length >= 2) empurra(base, pos[pos.length - 1].v, tipo);
         break;
       }
+    }
+  }
+
+  // D3 (#533): chamada .NET de escrita, so na ferramenta PowerShell. Literal
+  // relativo vale para cada cwd visitado; nao literal e incerto no cwd inicial.
+  if (ehPowerShell) {
+    for (const net of alvosNetDoComando(comando)) {
+      if (net.incerto) alvos.push({ dir: cwdInicial, tipo: "net", incerto: true });
+      else for (const base of visitados) alvos.push({ dir: path.resolve(base, net.alvo), tipo: "net" });
     }
   }
 
@@ -821,7 +934,7 @@ function main() {
       // Inspecionar redirecionamentos e ferramentas de escrita
       const alvosEscrita = alvosBashEscrita(entrada.command, cwd, nome === "PowerShell");
       if (alvosEscrita.length > 0) {
-        alvos = alvosEscrita.map((a) => ({ dir: a.dir, incerto: false }));
+        alvos = alvosEscrita.map((a) => ({ dir: a.dir, incerto: !!a.incerto }));
         motivo = `Escrita via Bash (redirecionamento ou ferramenta)`;
       } else {
         // Procurar por CLI externa que escreve. H1 (rodada 5): cada CLI

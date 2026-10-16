@@ -63,6 +63,12 @@ const POP_LOCATION = /^\s*Pop-Location\s*$/i;
 // bash (a palavra seguinte e comando) e wrappers que executam o que vem depois
 // (`builtin {cd,X}` vira `builtin cd X`). Com elas, a chave segue sendo
 // fronteira, como antes do #514.
+// Expansao de chaves no INICIO do segmento (#530, D1): `{cd,X} && ...` roda
+// `cd X` no bash — a chave expande antes de o comando rodar. So vale sem espaco,
+// aspa, `$`, chave, parentese ou barra invertida dentro, com pelo menos uma
+// virgula, e com `}` seguido de espaco, separador ou fim. Grupo de verdade
+// (`{ cmd; }`) tem espaco logo depois da chave e nao casa.
+const EXPANSAO_DE_CHAVES_DE_COMANDO = /^(\s*)\{([^\s'"$`{}()\\;&|<>]*,[^\s'"$`{}()\\;&|<>]*)\}(?=[\s;&|]|$)/;
 const NAO_E_COMANDO_ANTES_DA_CHAVE = new Set([
   "!", "if", "then", "else", "elif", "do", "while", "until", "time", "{",
   "builtin", "command", "exec", "eval", "env", "sudo", "nohup", "nice", "xargs",
@@ -78,8 +84,8 @@ const NAO_E_COMANDO_ANTES_DA_CHAVE = new Set([
  * o segmento ja tem palavra de comando antes — pulando atribuicao (`A=1`),
  * redirecionamento e as palavras de `NAO_E_COMANDO_ANTES_DA_CHAVE`; se a
  * primeira palavra que sobra e uma delas, ou nao sobra nenhuma, e -1. Em
- * posicao de comando `{cd,X}` expande para `cd X`, e la a chave tem de
- * continuar marcando a travessia incerta.
+ * posicao de comando `{cd,X}` nao cai aqui (devolve -1): `segmentosComAspas`
+ * trata a expansao antes, em EXPANSAO_DE_CHAVES_DE_COMANDO (#530).
  */
 function fimDaExpansaoDeChaves(cmd, i, atual) {
   let fim = -1;
@@ -195,6 +201,14 @@ function segmentosComAspas(cmd) {
         segmentos.push(atual);
       }
       atual = "";
+    } else if (c === "{" && !atual.trim() && EXPANSAO_DE_CHAVES_DE_COMANDO.test(cmd.slice(i))) {
+      // #530 (D1): `{cd,X}` no comeco do segmento e expansao (o bash roda
+      // `cd X`), nao grupo. A palavra inteira fica no segmento, para
+      // `resolverMovedor` expandir; antes a chave virava fronteira e o `cd`
+      // saia partido em `cd,X`, sem reconhecimento.
+      const m = EXPANSAO_DE_CHAVES_DE_COMANDO.exec(cmd.slice(i));
+      atual += m[0];
+      i += m[0].length - 1;
     } else if (c === "{" && fimDaExpansaoDeChaves(cmd, i, atual) !== -1) {
       // #514 (P2): `a/{b,c}/d` em posicao de argumento e expansao de chaves,
       // nao grupo — a palavra inteira fica no segmento, sem virar fronteira.
@@ -393,7 +407,11 @@ function normalizarMsys(caminho, plataforma = process.platform) {
  * @param {{atual: string, incerto: boolean, pilhaPushd: string[]}} estado
  * @returns {{cwd: string, incerto: boolean, soMovedor: boolean}}
  */
-function resolverMovedor(seg, estado) {
+function resolverMovedor(segCru, estado) {
+  // D1 (#530): `{cd,X}` no inicio vira `cd X` antes de qualquer teste abaixo.
+  // Os regex de movedor e `contemSubshellOuGrupo` veem o comando que o bash roda.
+  const m = EXPANSAO_DE_CHAVES_DE_COMANDO.exec(segCru);
+  const seg = m ? m[1] + m[2].split(",").filter((p) => p !== "").join(" ") + segCru.slice(m[0].length) : segCru;
   // Subshell/grupo: o `cd` de dentro dele nao persiste pra fora, mas vale
   // para os comandos dentro — a unica leitura segura e marcar INCERTO,
   // sem tentar decidir o resto deste segmento por ele.
