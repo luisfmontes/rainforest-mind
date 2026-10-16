@@ -1,0 +1,50 @@
+{
+  "slug": "2026-10-16-gate-worktree-brechas",
+  "titulo": "gate-worktree: {cd,X} e cmdlets de escrita do PowerShell (#530, #533)",
+  "criado_em": "2026-10-16",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-16-gate-worktree-brechas.md",
+    "em": "2026-10-16"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-16-gate-worktree-brechas.md",
+    "tarefas": 2,
+    "paralelas": [
+      1
+    ],
+    "em": "2026-10-16"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  },
+  "decididos": [
+    {
+      "pergunta": "P2 da #530 (toda escrita depois de cd nao resolvido vira incerta)?",
+      "escolha": "nao; so a expansao de chaves em posicao de comando (D1)",
+      "porque": "Luis autorizou as recomendadas; P2 barraria cd $X e { ...; } > f dentro do proprio worktree, e as grafias medidas fecham pelo D1",
+      "estagio": "design",
+      "em": "2026-10-16T04:10:45.268Z"
+    },
+    {
+      "pergunta": "[IO.File] com caminho nao literal?",
+      "escolha": "incerto: barra dentro de repo (D3)",
+      "porque": "Luis autorizou as recomendadas; sem literal nao ha como saber o destino, e o ramo de CLI ja barra o incerto",
+      "estagio": "design",
+      "em": "2026-10-16T04:10:45.413Z"
+    }
+  ]
+}
