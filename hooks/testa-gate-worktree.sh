@@ -1817,6 +1817,12 @@ s552seg2 'git diff --ext __R__/a' 2 b
 s552seg2 'git diff --textc __R__/a' 2 b
 s552seg2 "cat __R__/a \$'x' > __R__/b" 2 b
 s552seg2 'git diff --exit-code --text __R__/a' 0 b
+# Revisao (rodada 1): atribuicao colada no PowerShell vira um token citado so, e nao e expressao.
+s552seg2 "\$p='__R__'; Remove-Item \$p/a.txt" 2 bp
+s552seg2 "\$p='__R__'; 'x' > \$p/f" 2 bp
+s552seg2 "\$env:X='__R__'; Remove-Item \$env:X/a.txt" 2 bp
+s552seg2 "\$p=\"__R__\" ; Remove-Item (Join-Path \$p a.txt)" 2 bp
+s552seg2 "'__R__/a.txt'" 0 bp
 case "${R,,}" in "${CASA,,}"/*) RT='$USERPROFILE'"${R:${#CASA}}"; gate "#552 seg3: rm \$USERPROFILE/.../principal/f, do worktree, BARRA" 2 "$(b "rm $RT/f" "$WT")";; esac
 
 echo "== #552 D6: pai inexistente =="

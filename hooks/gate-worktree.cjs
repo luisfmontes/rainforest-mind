@@ -1534,6 +1534,9 @@ function segmentoDeLeitura(toks, seg, ehPowerShell, configGitNaLinha) {
   // So atribuicao (`P=<P>`): o caminho vai para uma variavel que o resto da linha usa
   // (`echo x > $P/f`). Nao e leitura: o caminho citado conta.
   if (pos === null || pos === undefined) return false;
+  // PowerShell: atribuicao colada (`$p='<P>'`, `$env:X="<P>"`) vira um token citado so; como no
+  // Bash, o caminho vai para a variavel que o resto da linha usa, e conta.
+  if (ehPowerShell && /^\$[\w:{}]+\s*[-+*/%?]?=/.test(toks[pos].v)) return false;
   // PowerShell: string citada na posicao de comando e expressao, nao roda nada (rodar pede `&`).
   if (ehPowerShell && toks[pos].q) return true;
   const nome = toks[pos].v.replace(/`/g, "").split(/[\\/]/).pop().toLowerCase().replace(/\.exe$/, "");
