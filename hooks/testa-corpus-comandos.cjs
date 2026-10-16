@@ -165,7 +165,9 @@ function rodarPayload(gatePath, payload, config_obj) {
 // Função para rodar gate (wrapper que prepara payload padrão)
 function rodarGate(gatePath, comando, contexto, config_obj) {
   const payload = JSON.parse(JSON.stringify(PAYLOAD_BASE));
-  payload.tool_input.command = comando;
+  // `__PRINCIPAL__` no corpus vira o caminho do checkout principal da sandbox (#552):
+  // leitura do principal a partir do worktree e uso legitimo que a rede nao barra.
+  payload.tool_input.command = comando.split("__PRINCIPAL__").join(sandbox.replace(/\\/g, "/"));
   const cwd_efetivo = contexto === "subagente" ? wt : sandbox;
   payload.cwd = cwd_efetivo;
   if (contexto === "principal") {

@@ -12,7 +12,7 @@ Design: docs/rainforest/design/2026-10-16-gate-worktree-552.md
 
 ### 1. Rede de caminho do principal [tipo: implementar]
 atende: D1, D2, D3, D4, D5
-arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`, `hooks/fixtures/corpus-comandos/legitimos.jsonl`
+arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`, `hooks/fixtures/corpus-comandos/legitimos.jsonl`, `hooks/testa-corpus-comandos.cjs`
 depende de: nenhuma
 prova-na-base: verde — a seção "#552: rede de caminho do principal" da bateria só nasce nesta tarefa
 mutacao:

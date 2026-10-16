@@ -615,7 +615,7 @@ echo "== A1: alvosBash usa o ULTIMO -C, nao o primeiro (rodada 4, lote 3) =="
 # principal.
 gate "git -C worktree -C principal commit: ULTIMO manda, BARRA" 2 \
   "$(b "git -C $WT -C $R commit -m x" "$WT")"
-gate "git -C principal -C worktree commit: ULTIMO manda, PASSA" 0 \
+gate "git -C principal -C worktree commit: cita o principal fora de leitura, BARRA (rede #552, conservador)" 2 \
   "$(b "git -C $R -C $WT commit -m x" "$WT")"
 
 echo
@@ -1020,7 +1020,7 @@ gate "#533: [IO.File]::WriteAllText(\$p,'x') do worktree, BARRA (alvo incerto)" 
 gate "#533 vizinho: [IO.File]::WriteAllText('<worktree>/f','x') do worktree, PASSA" 0 "$(bp "[IO.File]::WriteAllText('$WT/f','x')" "$WT")"
 gate "#533 vizinho: [IO.File]::Copy('<worktree>/a','<worktree>/b') do worktree, PASSA" 0 "$(bp "[IO.File]::Copy('$WT/a','$WT/b')" "$WT")"
 gate "#533 vizinho: [IO.File]::ReadAllText('<principal>/f') (leitura) do worktree, PASSA" 0 "$(bp "[IO.File]::ReadAllText('$R/f')" "$WT")"
-gate "#533 (d): ferramenta Bash, Set-Content <principal>/f x, do worktree, PASSA (sem alvo novo)" 0 "$(b "Set-Content $R/f x" "$WT")"
+gate "#533 (d): ferramenta Bash, Set-Content <principal>/f x, do worktree, BARRA (rede #552: cita o principal fora de leitura)" 2 "$(b "Set-Content $R/f x" "$WT")"
 
 echo
 echo "== #533 (e): emendas da rodada 2 (falha fechada e chamada .NET) =="
@@ -1329,6 +1329,226 @@ Copy-Item a.txt __R__/f'; do
 done
 gate "4a rev vizinho: Copy-Item -Path a.txt ⏎ -Destination b.txt (sem #), do worktree, PASSA" 0 "$(bp $'Copy-Item -Path a.txt `
   -Destination b.txt' "$WT")"
+
+
+echo "== #552: rede de caminho do principal =="
+# A rede (#552) barra, a partir de um worktree linkado, todo comando que cite caminho do
+# principal fora da lista de leitura. Placeholders: __R__ principal, __WT__ worktree,
+# __RB__ principal com contrabarra, __RM__ forma MSYS, __RL__ minusculo, __WN__ worktree
+# DENTRO do principal (para o caso com ..).
+WN="$R/.claude/worktrees/x"; mkdir -p "$R/.claude/worktrees"; git -C "$R" worktree add -q -b wn "$WN" >/dev/null 2>&1
+RB="${R//\//\\}"; RL="${R,,}"; RM="/${R:0:1}"; RM="${RM,,}${R:2}"
+s552() { local s; s=$(cat); s=${s//__RB__/$RB}; s=${s//__RM__/$RM}; s=${s//__RL__/$RL}; s=${s//__WN__/$WN}; s=${s//__R__/$R}; s=${s//__WT__/$WT}; printf "%s" "$s"; }
+gate "#552: Remove-Item <P>/f, do worktree, BARRA" 2 "$(bp "$(s552 <<'EOC'
+Remove-Item __R__/f
+EOC
+)" "$WT")"
+gate "#552: New-Object IO.StreamWriter('<P>/f'), do worktree, BARRA" 2 "$(bp "$(s552 <<'EOC'
+New-Object IO.StreamWriter('__R__/f')
+EOC
+)" "$WT")"
+gate "#552: Set-Content -Path (Join-Path '<P>' f) x, do worktree, BARRA" 2 "$(bp "$(s552 <<'EOC'
+Set-Content -Path (Join-Path '__R__' f) x
+EOC
+)" "$WT")"
+gate "#552: Get-Item <P>/a.txt | Set-Content -Value x, do worktree, BARRA" 2 "$(bp "$(s552 <<'EOC'
+Get-Item __R__/a.txt | Set-Content -Value x
+EOC
+)" "$WT")"
+gate "#552: Set-Content FileSystem::<P>/f x, do worktree, BARRA" 2 "$(bp "$(s552 <<'EOC'
+Set-Content FileSystem::__R__/f x
+EOC
+)" "$WT")"
+gate "#552: Clear-Content <P>/f, do worktree, BARRA" 2 "$(bp "$(s552 <<'EOC'
+Clear-Content __R__/f
+EOC
+)" "$WT")"
+gate "#552: Rename-Item <P>/a b, do worktree, BARRA" 2 "$(bp "$(s552 <<'EOC'
+Rename-Item __R__/a b
+EOC
+)" "$WT")"
+gate "#552: Expand-Archive a.zip -DestinationPath <P>/o, do worktree, BARRA" 2 "$(bp "$(s552 <<'EOC'
+Expand-Archive a.zip -DestinationPath __R__/o
+EOC
+)" "$WT")"
+gate "#552: Invoke-Command -ScriptBlock ([scriptblock]::Create('Set-Content <P>/f x')), do worktree, BARRA" 2 "$(bp "$(s552 <<'EOC'
+Invoke-Command -ScriptBlock ([scriptblock]::Create('Set-Content __R__/f x'))
+EOC
+)" "$WT")"
+gate "#552: rm <P>/f, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
+rm __R__/f
+EOC
+)" "$WT")"
+gate "#552: P=<P>; echo x > P/f, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
+P=__R__; echo x > $P/f
+EOC
+)" "$WT")"
+gate "#552: {touch,<P>/f}, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
+{touch,__R__/f}
+EOC
+)" "$WT")"
+gate "#552: robocopy src <P>/dst, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
+robocopy src __R__/dst
+EOC
+)" "$WT")"
+gate "#552: curl -o <P>/f http://x, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
+curl -o __R__/f http://x
+EOC
+)" "$WT")"
+gate "#552: tar -xf a.tar -C <P>, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
+tar -xf a.tar -C __R__
+EOC
+)" "$WT")"
+gate "#552: rm ../../../f, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
+rm ../../../f
+EOC
+)" "$WN")"
+gate "#552: Remove-Item <PB><BS>f, do worktree, BARRA" 2 "$(bp "$(s552 <<'EOC'
+Remove-Item __RB__\f
+EOC
+)" "$WT")"
+gate "#552: Remove-Item '<PB><BS>f', do worktree, BARRA" 2 "$(bp "$(s552 <<'EOC'
+Remove-Item '__RB__\f'
+EOC
+)" "$WT")"
+gate "#552: rm <PM>/f, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
+rm __RM__/f
+EOC
+)" "$WT")"
+gate "#552: rm <PL>/f, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
+rm __RL__/f
+EOC
+)" "$WT")"
+gate "#552: cat <P>/a.txt, do worktree, PASSA" 0 "$(b "$(s552 <<'EOC'
+cat __R__/a.txt
+EOC
+)" "$WT")"
+gate "#552: Get-Content <P>/a.txt, do worktree, PASSA" 0 "$(bp "$(s552 <<'EOC'
+Get-Content __R__/a.txt
+EOC
+)" "$WT")"
+gate "#552: Select-String x <P>/a.txt, do worktree, PASSA" 0 "$(bp "$(s552 <<'EOC'
+Select-String x __R__/a.txt
+EOC
+)" "$WT")"
+gate "#552: git -C <P> log -1, do worktree, PASSA" 0 "$(b "$(s552 <<'EOC'
+git -C __R__ log -1
+EOC
+)" "$WT")"
+gate "#552: ls <P>, do worktree, PASSA" 0 "$(b "$(s552 <<'EOC'
+ls __R__
+EOC
+)" "$WT")"
+gate "#552: Test-Path <P>/a, do worktree, PASSA" 0 "$(bp "$(s552 <<'EOC'
+Test-Path __R__/a
+EOC
+)" "$WT")"
+gate "#552: rm <W>/f, do worktree, PASSA" 0 "$(b "$(s552 <<'EOC'
+rm __WT__/f
+EOC
+)" "$WT")"
+gate "#552: Set-Content <W>/f y, do worktree, PASSA" 0 "$(bp "$(s552 <<'EOC'
+Set-Content __WT__/f y
+EOC
+)" "$WT")"
+gate "#552: git commit -m corrigido em <P>/a, do worktree, PASSA" 0 "$(b "$(s552 <<'EOC'
+git commit -m "corrigido em __R__/a"
+EOC
+)" "$WT")"
+gate "#552: gh issue comment 1 --body ver <P>/a, do worktree, PASSA" 0 "$(b "$(s552 <<'EOC'
+gh issue comment 1 --body "ver __R__/a"
+EOC
+)" "$WT")"
+gate "#552: cat <P>/a > <P>/b, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
+cat __R__/a > __R__/b
+EOC
+)" "$WT")"
+gate "#552: Get-Content <P>/a | Out-File <P>/b, do worktree, BARRA" 2 "$(bp "$(s552 <<'EOC'
+Get-Content __R__/a | Out-File __R__/b
+EOC
+)" "$WT")"
+gate "#552: t = @'⏎x⏎'@; Get-Content <P>/a, do worktree, BARRA" 2 "$(bp "$(s552 <<'EOC'
+$t = @'
+x
+'@; Get-Content __R__/a
+EOC
+)" "$WT")"
+gate "#552: Write-Output (1); Get-Content <P>/a, do worktree, BARRA" 2 "$(bp "$(s552 <<'EOC'
+Write-Output "$(1)"; Get-Content __R__/a
+EOC
+)" "$WT")"
+gate "#552: cat <P>/a | grep x, do worktree, PASSA" 0 "$(b "$(s552 <<'EOC'
+cat __R__/a | grep x
+EOC
+)" "$WT")"
+gate "#552: git -C <P> log --oneline | head -3, do worktree, PASSA" 0 "$(b "$(s552 <<'EOC'
+git -C __R__ log --oneline | head -3
+EOC
+)" "$WT")"
+gate "#552: Get-ChildItem <P> | Select-Object Name, do worktree, PASSA" 0 "$(bp "$(s552 <<'EOC'
+Get-ChildItem __R__ | Select-Object Name
+EOC
+)" "$WT")"
+gate "#552: echo hi, do worktree, PASSA" 0 "$(b "$(s552 <<'EOC'
+echo hi
+EOC
+)" "$WT")"
+gate "#552: cat a.txt > b.txt, do worktree, PASSA" 0 "$(b "$(s552 <<'EOC'
+cat a.txt > b.txt
+EOC
+)" "$WT")"
+gate "#552: Set-Content a.txt x, do worktree, PASSA" 0 "$(bp "$(s552 <<'EOC'
+Set-Content a.txt x
+EOC
+)" "$WT")"
+gate "#552: cd <P> && make, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
+cd __R__ && make
+EOC
+)" "$WT")"
+gate "#552: cd <P>, do worktree, PASSA" 0 "$(b "$(s552 <<'EOC'
+cd __R__
+EOC
+)" "$WT")"
+gate "#552: [IO.File]::ReadAllText('<P>/f'), do worktree, PASSA" 0 "$(bp "$(s552 <<'EOC'
+[IO.File]::ReadAllText('__R__/f')
+EOC
+)" "$WT")"
+gate "#552: Copy-Item <P>/a.txt ., do worktree, PASSA" 0 "$(bp "$(s552 <<'EOC'
+Copy-Item __R__/a.txt .
+EOC
+)" "$WT")"
+gate "#552: cp <P>/a.txt ., do worktree, PASSA" 0 "$(b "$(s552 <<'EOC'
+cp __R__/a.txt .
+EOC
+)" "$WT")"
+gate "#552: cp -t <P> a.txt, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
+cp -t __R__ a.txt
+EOC
+)" "$WT")"
+gate "#552: Get-Content (Remove-Item <P>/f), do worktree, BARRA" 2 "$(bp "$(s552 <<'EOC'
+Get-Content (Remove-Item __R__/f)
+EOC
+)" "$WT")"
+gate "#552: Set-Content -Path ('<P>'+'/f') x, do worktree, BARRA" 2 "$(bp "$(s552 <<'EOC'
+Set-Content -Path ('__R__'+'/f') x
+EOC
+)" "$WT")"
+gate "#552: Get-ChildItem <P> | Where-Object { _.Length -gt 0 }, do worktree, PASSA" 0 "$(bp "$(s552 <<'EOC'
+Get-ChildItem __R__ | Where-Object { $_.Length -gt 0 }
+EOC
+)" "$WT")"
+gate "#552: Get-ChildItem | Where-Object { Remove-Item <P>/f }, do worktree, BARRA" 2 "$(bp "$(s552 <<'EOC'
+Get-ChildItem | Where-Object { Remove-Item __R__/f }
+EOC
+)" "$WT")"
+gate "#552: cat <P>/a 2>&1 | head, do worktree, PASSA" 0 "$(b "$(s552 <<'EOC'
+cat __R__/a 2>&1 | head
+EOC
+)" "$WT")"
+gate "#552: Copy-Item <P>/a.txt ., do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
+Copy-Item __R__/a.txt .
+EOC
+)" "$WT")"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

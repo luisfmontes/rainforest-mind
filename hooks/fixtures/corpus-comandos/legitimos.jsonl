@@ -48,3 +48,8 @@
 {"id":"c048","comando":"python3 -c \"print(len('feat(exemplo): mensagem de commit curta (T1)'))\""}
 {"id":"c049","comando":"node -e \"console.log(process.version)\""}
 {"id":"c050","comando":"node -e \"const os=require('os'); console.log(os.tmpdir());\""}
+{"id":"c-rede-cat","comando":"cat __PRINCIPAL__/file.txt"}
+{"id":"c-rede-git-log","comando":"git -C __PRINCIPAL__ log --oneline -3"}
+{"id":"c-rede-ls","comando":"ls __PRINCIPAL__"}
+{"id":"c-rede-grep","comando":"grep -n init __PRINCIPAL__/file.txt | head -5"}
+{"id":"c-rede-cp","comando":"cp __PRINCIPAL__/file.txt copia.txt"}

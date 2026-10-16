@@ -1268,6 +1268,215 @@ function gateDeSessaoColocada(ev, cwd) {
   }
 }
 
+// ------------------------------------------------------------------------------
+// Rede de caminho do principal (#552). Segunda camada, por cima da lista de formas
+// de escrita: a partir de um worktree linkado, todo comando que cite um caminho do
+// checkout principal (fora dos worktrees e do scratchpad) e barrado, salvo o
+// segmento de leitura conhecida (D2). A lista nao converge: cada revisao do
+// #530/#533 achou grafias novas; a rede so precisa ver o caminho.
+
+// Comandos de leitura (D2). Movedor (`cd`, `Set-Location`) tambem: ele nao escreve,
+// e o segmento seguinte, ja com cwd no principal, cai na rede pelo cwd.
+const LEITURA_DA_REDE = new Set([
+  "cat", "head", "tail", "less", "more", "ls", "dir", "stat", "file", "wc", "grep", "egrep", "fgrep",
+  "rg", "find", "diff", "realpath", "readlink", "basename", "dirname", "test", "[", "echo", "printf",
+  // `Join-Path`/`Split-Path`/`Resolve-Path` nao: montam o caminho que outro comando usa
+  // (`Set-Content -Path (Join-Path <P> f)`).
+  "get-content", "gc", "type", "get-childitem", "gci", "get-item", "gi", "test-path",
+  "select-string", "sls", "get-filehash", "measure-object", "measure", "write-output", "write-host",
+  // Filtros de pipeline que nao escrevem (`ForEach-Object`, `awk`, `sed`, `xargs` ficam de fora: podem).
+  "select-object", "select", "where-object", "where", "?", "sort-object", "group-object",
+  "format-table", "ft", "format-list", "fl", "out-string", "out-host", "convertto-json", "convertfrom-json",
+  "sort", "uniq", "cut", "tr", "jq", "column", "nl", "tac", "rev",
+  "cd", "pushd", "popd", "chdir", "set-location", "sl", "push-location", "pop-location",
+]);
+const GIT_DE_LEITURA = new Set(["log", "show", "diff", "status", "rev-parse", "ls-files", "blame", "grep", "cat-file"]);
+// Opcoes cujo valor e texto de mensagem em `git`/`gh` (D4).
+const OPCOES_DE_TEXTO = new Set(["-m", "--message", "--body", "--title", "-t"]);
+// Caminho absoluto no texto: `C:\...`, `C:/...`, e no Bash a forma MSYS `/c/...`.
+const CAMINHO_WINDOWS = /[A-Za-z]:[\\/][^\s'"`;|&<>(),]*/g;
+const CAMINHO_MSYS = /(?:^|(?<=[\s'"=:(,]))\/[A-Za-z]\/[^\s'"`;|&<>(),]*/g;
+// Componente `..` (D5): o token inteiro que o contem.
+const CAMINHO_RELATIVO_ACIMA = /(?:^|(?<=[\s'"=:(,]))(?:[^\s'"`;|&<>(),]*[\\/])?\.\.(?:[\\/][^\s'"`;|&<>(),]*)?(?=$|[\s'"`;|&<>(),])/g;
+
+/** Caminho comparavel: barras normais, MSYS `/c/` vira `c:/`, sem barra final, minusculo no Windows. */
+function normalizaCaminho(p, base) {
+  let s = p.replace(/\\/g, "/");
+  const msys = /^\/([A-Za-z])(\/.*|$)/.exec(s);
+  if (msys) s = `${msys[1]}:${msys[2] || "/"}`;
+  s = path.resolve(base, s).replace(/\\/g, "/").replace(/\/+$/, "");
+  return process.platform === "win32" ? s.toLowerCase() : s;
+}
+const dentroDe = (a, b) => a === b || a.startsWith(b + "/");
+
+/** `{principal, worktrees}` normalizados quando o cwd esta num worktree linkado; senao null. */
+function principalDoWorktree(cwd) {
+  const saida = git(cwd, ["worktree", "list", "--porcelain"]);
+  if (!saida) return null;
+  const caminhos = saida.split(/\r?\n/).filter((l) => l.startsWith("worktree ")).map((l) => normalizaCaminho(l.slice(9), cwd));
+  if (caminhos.length < 2) return null;
+  const [principal, ...worktrees] = caminhos;
+  const aqui = normalizaCaminho(cwd, cwd);
+  if (!worktrees.some((w) => dentroDe(aqui, w))) return null;
+  return { principal, worktrees };
+}
+
+/**
+ * Segmentos da rede: corta so em `;`, `|`, `&` e quebra de linha fora de aspas. Ao
+ * contrario de `segmentosComAspas`, parenteses e chaves ficam no segmento: o que esta
+ * entre eles alimenta o comando de fora (`Set-Content -Path (Join-Path <P> f)`).
+ */
+function segmentosDaRede(texto, ehPowerShell) {
+  const segs = [];
+  let atual = "";
+  let aspa = null;
+  for (let i = 0; i < texto.length; i += 1) {
+    const c = texto[i];
+    if (aspa) {
+      atual += c;
+      if (c === "`" && ehPowerShell && aspa === '"' && i + 1 < texto.length) { atual += texto[i + 1]; i += 1; }
+      else if (c === "\\" && !ehPowerShell && aspa === '"' && i + 1 < texto.length) { atual += texto[i + 1]; i += 1; }
+      else if (c === aspa) aspa = null;
+      continue;
+    }
+    if (c === "'" || c === '"') { aspa = c; atual += c; continue; }
+    if (c === ";" || c === "|" || c === "&" || c === "\n" || c === "\r") {
+      // `2>&1`, `>&2`, `&>`: e redirecionamento, nao separador.
+      if (c === "&" && (/[<>]$/.test(atual) || texto[i + 1] === ">")) { atual += c; continue; }
+      if (atual.trim()) segs.push(atual);
+      atual = "";
+      continue;
+    }
+    atual += c;
+  }
+  if (atual.trim()) segs.push(atual);
+  return segs;
+}
+
+/** O texto entre parenteses e chaves fora de aspas, concatenado. */
+function trechosAninhados(seg) {
+  let saida = "";
+  let prof = 0;
+  let aspa = null;
+  for (const c of seg) {
+    if (aspa) { if (prof > 0) saida += c; if (c === aspa) aspa = null; continue; }
+    if (c === "'" || c === '"') { aspa = c; if (prof > 0) saida += c; continue; }
+    if (c === "(" || c === "{") { prof += 1; saida += " "; continue; }
+    if ((c === ")" || c === "}") && prof > 0) { prof -= 1; saida += " "; continue; }
+    if (prof > 0) saida += c;
+  }
+  return saida;
+}
+
+// Copia: a origem e leitura, o destino fica com a lista (`Copy-Item <P>/a .` e legitimo).
+const COPIA_DA_REDE = new Set(["copy-item", "copy", "cpi", "cp"]);
+// Chamada .NET de leitura, inteira no segmento: `[IO.File]::ReadAllText('<P>/f')`.
+const CHAMADA_NET_NO_INICIO = /^\s*\[\s*[\w.]*\bIO\.[\w.]+\s*\]\s*::\s*(\w+)\s*\(/i;
+
+/** O segmento roda um comando de leitura conhecida (D2)? */
+function segmentoDeLeitura(toks, seg, ehPowerShell) {
+  if (ehPowerShell) {
+    const net = CHAMADA_NET_NO_INICIO.exec(seg);
+    if (net) {
+      if (!METODOS_NET_DE_LEITURA.has(net[1].toLowerCase())) return false;
+      const { args, fechou } = argumentosDaChamada(seg, net[0].length);
+      return fechou && args.every((a) => literalDoArgumento(a) !== null) ? "net" : false;
+    }
+  }
+  const pos = posicaoDeComando(toks);
+  // So atribuicao (`P=<P>`): o caminho vai para uma variavel que o resto da linha usa
+  // (`echo x > $P/f`). Nao e leitura: o caminho citado conta.
+  if (pos === null || pos === undefined) return false;
+  // PowerShell: string citada na posicao de comando e expressao, nao roda nada (rodar pede `&`).
+  if (ehPowerShell && toks[pos].q) return true;
+  const nome = toks[pos].v.replace(/`/g, "").split(/[\\/]/).pop().toLowerCase().replace(/\.exe$/, "");
+  if (COPIA_DA_REDE.has(nome) && (ehPowerShell || nome === "cp")) {
+    // `cp -t <P> a` poe o destino numa opcao: a lista nao o ve, entao nao e leitura.
+    return !toks.some((t) => /^(-t|--target-directory)(=|$)/.test(t.v));
+  }
+  if (nome === "git") {
+    const s = subcomandoGit(seg, ehPowerShell ? "PowerShell" : "Bash");
+    return !!s && GIT_DE_LEITURA.has(s.verbo);
+  }
+  if (nome === "find") return !toks.some((t) => /^-(delete|exec|execdir|ok|fprint)/.test(t.v));
+  return LEITURA_DA_REDE.has(nome);
+}
+
+/** Tokens do segmento sem o valor das opcoes de mensagem de `git`/`gh` (D4). */
+function semTextoDeMensagem(toks) {
+  const pos = posicaoDeComando(toks);
+  const nome = pos === null || pos === undefined ? "" : toks[pos].v.split(/[\\/]/).pop().toLowerCase().replace(/\.exe$/, "");
+  if (nome !== "git" && nome !== "gh") return toks;
+  const saida = [];
+  for (let i = 0; i < toks.length; i += 1) {
+    const t = toks[i];
+    if (!t.q && OPCOES_DE_TEXTO.has(t.v)) { i += 1; continue; }
+    if (!t.q && /^--(message|body|title)=/.test(t.v)) continue;
+    saida.push(t);
+  }
+  return saida;
+}
+
+/** Caminhos citados num texto: absolutos, MSYS (so Bash) e com `..`. */
+function caminhosCitados(texto, ehPowerShell) {
+  const achados = [...(texto.match(CAMINHO_WINDOWS) || []), ...(texto.match(CAMINHO_RELATIVO_ACIMA) || [])];
+  if (!ehPowerShell) achados.push(...(texto.match(CAMINHO_MSYS) || []));
+  return achados.map((c) => c.replace(/^FileSystem::/i, ""));
+}
+
+/**
+ * Alvos da rede (D1-D5): um `{dir: <principal>, incerto: true}` por segmento que cita
+ * caminho do principal fora de leitura, ou que roda com cwd no principal. Vazio
+ * quando o cwd nao e um worktree linkado.
+ */
+function alvosDaRede(comando, cwd, ehPowerShell) {
+  const repo = principalDoWorktree(cwd);
+  if (!repo) return [];
+  const protegido = (c, base) => {
+    const n = normalizaCaminho(c, base);
+    return dentroDe(n, repo.principal) && !repo.worktrees.some((w) => dentroDe(n, w)) && !ehScratchpad(n);
+  };
+  const alvo = [{ dir: repo.principal, incerto: true }];
+  // Segmentacao nao confiavel (D2): a linha inteira e um segmento so, e nada e leitura.
+  const naoConfiavel = /\$\(|`/.test(comando) && !ehPowerShell
+    || ehPowerShell && (desalinhaAMascara(comando) || /[\u2018-\u201e]/.test(comando) || /"[^"]*\$\(/.test(comando) || /@['"]/.test(comando));
+  if (naoConfiavel) return caminhosCitados(comando, ehPowerShell).some((c) => protegido(c, cwd)) ? alvo : [];
+
+  const segmentos = segmentosDaRede(comando, ehPowerShell);
+  const leitura = segmentos.map((seg) => segmentoDeLeitura(tokensComAspas(seg), seg, ehPowerShell));
+  // Pipeline com escritor (`Get-Item <P>/a | Set-Content -Value x`): o segmento de
+  // leitura alimenta quem escreve, entao os caminhos dele tambem contam.
+  const pipelineComEscritor = temForaDeAspas(comando, "|") && leitura.some((l) => !l);
+  const estado = { atual: cwd, incerto: false, pilhaPushd: [] };
+  for (let i = 0; i < segmentos.length; i += 1) {
+    const seg = segmentos[i];
+    const mov = resolverMovedor(seg, estado, ehPowerShell);
+    const base = mov.cwd;
+    const toks = tokensComAspas(seg);
+    if (leitura[i] && !pipelineComEscritor) {
+      // Leitura: conta o destino de redirecionamento e o que esta entre parenteses ou
+      // chaves (`Get-Content (Remove-Item <P>/f)` roda o de dentro).
+      for (let k = 0; k < toks.length; k += 1) {
+        if (toks[k].q) continue;
+        const m = toks[k].v.match(OPERADOR_REDIRECT);
+        if (!m || (m[2] && m[2].startsWith("&"))) continue;
+        const destino = m[2] || (toks[k + 1] ? toks[k + 1].v : "");
+        if (destino && !ehDescarteDeSaida(destino, ehPowerShell) && protegido(destino.replace(/^FileSystem::/i, ""), base)) return alvo;
+      }
+      // Na chamada .NET de leitura, o argumento entre parenteses e o proprio alvo da leitura.
+      if (leitura[i] !== "net" && caminhosCitados(trechosAninhados(seg), ehPowerShell).some((c) => protegido(c, base))) return alvo;
+      continue;
+    }
+    // Fora de leitura: rodar com cwd no principal, ou citar caminho dele.
+    if (!mov.incerto && protegido(base, base)) return alvo;
+    // Texto cru (as aspas delimitam o caminho: `('<P>'+'/f')`); em `git`/`gh`, os tokens sem a mensagem (D4).
+    const semMensagem = semTextoDeMensagem(toks);
+    const texto = semMensagem === toks ? seg : semMensagem.map((t) => t.v).join(" ");
+    if (caminhosCitados(texto, ehPowerShell).some((c) => protegido(c, base))) return alvo;
+  }
+  return [];
+}
+
 function main() {
   let ev;
   try {
@@ -1310,6 +1519,8 @@ function main() {
     if (alvo) { alvos = [{ dir: alvo, incerto: false }]; motivo = `Escrita (${nome}) em ${alvo}`; }
   } else if ((nome === "Bash" || nome === "PowerShell") && typeof entrada.command === "string") {
     const ehPS = nome === "PowerShell";
+    // Rede de caminho do principal (#552): somada aos alvos da lista, no fim do ramo.
+    const rede = alvosDaRede(entrada.command, cwd, ehPS);
     const verbo = verboNaLinha(entrada.command, VERBOS_QUE_MEXEM, nome);
     // Escrita por redirecionamento ou cmdlet (D4, rodada 2): e checada TAMBEM na linha
     // com verbo git (`echo x > <P>/f && git commit`). Antes so rodava sem verbo, e a
@@ -1373,6 +1584,10 @@ function main() {
           }
         }
       }
+    }
+    if (rede.length) {
+      if (!alvos.length) motivo = "Comando que cita caminho do checkout principal (fora de leitura)";
+      alvos = alvos.concat(rede);
     }
   }
 
