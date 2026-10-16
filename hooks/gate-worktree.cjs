@@ -968,11 +968,20 @@ function alvosNetDoComando(comando) {
 /**
  * Junta a continuacao de linha do PowerShell (crase no fim da linha), so quando a
  * crase esta fora de aspas e de comentario e nao e escapada (revisao de seguranca):
- * `# c ` + quebra + `Set-Content ...` nao pode virar uma linha so de comentario. Com
- * here-string o texto fica como esta. Crase solta no fim do comando sai.
+ * `# c ` + quebra + `Set-Content ...` nao pode virar uma linha so de comentario.
+ * `#` so abre comentario no inicio de token (`a#b` e uma palavra). Crase solta no fim
+ * do comando sai. Devolve `{texto, incerto}`: continuacao que ficou sem juntar (dentro
+ * de comentario ou de aspas), ou continuacao num comando com here-string ou aspa
+ * tipografica, que esta leitura nao acompanha, e incerta (falha fechada).
  */
 function juntaContinuacoesPS(t) {
-  if (/@['"]/.test(t)) return t;
+  const texto = juntaContinuacoesPSTexto(t);
+  const temContinuacao = /`\r?\n/.test(t);
+  const incerto = /`\r?\n/.test(texto) || (temContinuacao && /@['"]|[‘-„]/.test(t));
+  return { texto, incerto };
+}
+
+function juntaContinuacoesPSTexto(t) {
   let out = "";
   let aspa = null;
   let comentario = false;
@@ -986,7 +995,7 @@ function juntaContinuacoesPS(t) {
       continue;
     }
     if (c === "'" || c === '"') { aspa = c; out += c; continue; }
-    if (c === "#") { comentario = true; out += c; continue; }
+    if (c === "#" && (out === "" || /[\s;|&(){}]$/.test(out))) { comentario = true; out += c; continue; }
     if (c === "`") {
       const m = /^\r?\n/.exec(t.slice(i + 1));
       if (m) { out += " "; i += m[0].length; continue; }
@@ -1020,7 +1029,8 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
   // reconhece `&` simples como separador (K1, rodada 6, lote 3, 2026-09-03).
   // PowerShell: crase no fim da linha e continuacao, a linha seguinte e o mesmo
   // comando; crase solta no fim do comando nao e argumento (3a revisao do fluxo).
-  if (ehPowerShell) comando = juntaContinuacoesPS(comando);
+  let continuacaoIncerta = false;
+  if (ehPowerShell) ({ texto: comando, incerto: continuacaoIncerta } = juntaContinuacoesPS(comando));
   const segmentos = segmentosComAspas(comando, ehPowerShell);
   const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [] };
   const alvos = [];
@@ -1046,6 +1056,7 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
   // Sem confianca nas aspas (crase, `#` ou here-string fora delas), qualquer `<#` conta.
   const temBloco = desalinhaAMascara(comando) ? comando.includes("<#") : temForaDeAspas(comando, "<#");
   if (ehPowerShell && temBloco) alvos.push({ dir: cwdInicial, tipo: "cmdlet", incerto: true });
+  if (continuacaoIncerta) alvos.push({ dir: cwdInicial, tipo: "cmdlet", incerto: true });
 
   for (const seg of segmentos) {
     const mov = resolverMovedor(seg, estado, ehPowerShell);

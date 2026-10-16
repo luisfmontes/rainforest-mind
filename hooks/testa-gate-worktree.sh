@@ -1311,6 +1311,12 @@ for c in $'# c `\nSet-Content __R__/f x' $'Write-Host "a" # `\nSet-Content __R__
   gate "3a rev (seguranca): ${c//$'\n'/⏎}, do worktree, BARRA" 2 "$(bp "$cc" "$WT")"
 done
 
+for c in $'Copy-Item a#b `\n  __R__/f' $'$t = @\'\nx\n\'@\nCopy-Item a.txt `\n  __R__/f' $'Copy-Item ‘a b’ `\n  __R__/f' $'Set-Content a.txt "x`\n" ; Copy-Item a.txt `\n __R__/f'; do
+  cc=${c//__R__/$R}
+  gate "4a rev (seguranca): ${c//$'\n'/⏎}, do worktree, BARRA" 2 "$(bp "$cc" "$WT")"
+done
+gate "4a rev vizinho: Copy-Item a#b ⏎ b.txt (# no meio do token), do worktree, PASSA" 0 "$(bp $'Copy-Item a#b `\n  b.txt' "$WT")"
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
