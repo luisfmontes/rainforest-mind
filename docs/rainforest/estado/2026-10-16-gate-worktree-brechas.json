@@ -20,11 +20,18 @@
     "em": "2026-10-16"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-16",
-    "tarefas_ok": 2,
+    "tarefas_ok": 1,
     "tarefas": 2,
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "T1 rodada 3 D5",
+        "desde": "2026-10-16T07:00:00-03:00",
+        "sessao": "bfd7468b-e589-43c6-9e09-04528a1dc829"
+      }
+    ],
     "em": "2026-10-16",
     "integradas": [
       1
@@ -43,10 +50,32 @@
       }
     ],
     "comando": "bash hooks/testa-gate-worktree.sh",
-    "saida": "308 ok, 0 falha(s)"
+    "saida": "308 ok, 0 falha(s)",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-16"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "097bec5c09bcfccefd6b9697fdecf69e9fb56d80",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "acd7978a419912233",
+        "veredito": "reprovado",
+        "em": "2026-10-16",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-acd7978a419912233.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-16",
+    "achados": 6,
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
@@ -75,6 +104,13 @@
       "porque": "Luis autorizou as recomendadas; deixar a falha aberta reabriria a brecha que o fluxo fecha, e o D4 e a mesma classe no mesmo trecho",
       "estagio": "executar",
       "em": "2026-10-16T04:43:01.391Z"
+    },
+    {
+      "pergunta": "[design] 1a revisao do gate: alvo incerto (variavel) barra tambem dentro do worktree, e todo posicional virou candidato (falso positivo em Copy-Item P/a . e Set-Content a $t)",
+      "escolha": "candidato volta a ser o que o D2 diz (1o posicional; Copy/Move: -Destination ou ultimo); incerto segue barrando; brechas baratas (aspas no -Path:, & e $null =, splat, espaco no ::, iex com cmdlet, chaves apos A=1/then/!/aspas, mascara so sem crase/#/here-string) neste PR; cauda longa (parenteses, pipeline, provedor, outros cmdlets) para a #552",
+      "porque": "Luis autorizou as recomendadas; o falso positivo trava agente, o incerto e a protecao que o gate existe para dar, e a cauda longa da lista de negacao do PowerShell nao fecha neste PR",
+      "estagio": "executar",
+      "em": "2026-10-16T06:26:15.615Z"
     }
   ]
 }
