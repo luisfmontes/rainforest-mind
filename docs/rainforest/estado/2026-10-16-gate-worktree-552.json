@@ -12,7 +12,11 @@
     "em": "2026-10-16"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-16-gate-worktree-552.md",
+    "tarefas": 3,
+    "paralelas": [],
+    "em": "2026-10-16"
   },
   "executar": {
     "status": "pendente"
