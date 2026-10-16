@@ -275,12 +275,12 @@ depende de: 9
 prova: `P=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && W=$(git rev-parse --show-toplevel) && node -e 'const c="'"'"'eval'"'"' ".repeat(22)+"\"git -C "+process.argv[2]+" commit --allow-empty -m x\"";process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:process.argv[1],hook_event_name:"PreToolUse",tool_name:"Bash",tool_input:{command:c}}))' "$W" "$P" | timeout 5 node hooks/gate-worktree.cjs >/dev/null 2>&1; test $? -eq 2`
 mutacao:
   arquivo: `hooks/gate-worktree.cjs`
-  de: `if (internosVistos.has(chave)) return;`
-  para: `if (false) return;`
+  de: `if (profundidade < 4) achados.push(...subcomandoGit(interno, ferr, profundidade + 1));`
+  para: `achados.push(...subcomandoGit(interno, ferr, profundidade + 1));`
   bateria: `bash hooks/testa-gate-worktree.sh`
   timeout: `900000`
   fixture: testa-gate-worktree.sh, secao "(#530) rodada extra 2: wrapper aninhado fundo nao explode nem passa"
-pronto quando: `subcomandoGit` coleta os internos das duas leituras e recursa uma vez só por par distinto (texto interno, ferramenta do interno). A chave do par fica num `Set` chamado `internosVistos`, e a linha que pula o repetido é exatamente `if (internosVistos.has(chave)) return;`, alvo da mutação. Recebe também `profundidade` e não recursa além de 4 níveis. Daí em diante quem decide é o barramento por profundidade que já existe em `alvosBashEscrita` ("wrapper aninhado demais para conferir (mais de 4 niveis)"). Nenhum caso de teste lê o texto do fonte.
+pronto quando: `subcomandoGit` coleta os internos das duas leituras e recursa uma vez só por par distinto (texto interno, ferramenta do interno). A chave do par fica num `Set` chamado `internosVistos`. Recebe também `profundidade` e não recursa além de 4 níveis; a linha do teto é o alvo da mutação. (Emenda de 2026-10-16: o alvo era a linha do `Set`, mas com o teto o `Set` fica redundante — 2^4 chamadas — e a mutação dele saiu verde; medido: tirar o teto deixa `eval ` × 3000 em exit 1 por `RangeError`.) Daí em diante quem decide é o barramento por profundidade que já existe em `alvosBashEscrita` ("wrapper aninhado demais para conferir (mais de 4 niveis)"). Nenhum caso de teste lê o texto do fonte.
 - Pelo gate real, tool Bash, cwd W, saem **2**, e cada um em menos de 2 s (o teste mede o tempo e falha acima disso, ou usa `timeout 5` e falha se estourar):
   - `'eval' ` × 22 seguido de `"git -C P commit --allow-empty -m x"`;
   - `\eval ` × 22 com a mesma cauda;
