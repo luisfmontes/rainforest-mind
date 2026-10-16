@@ -1076,5 +1076,29 @@ echo "-- (#530) rodada 3: vizinhos legitimos do interno continuam a 0 --"
 gate "(#530) rodada 3: powershell -Command git -C W status passa" 0 "$(wt 'powershell -Command "git -C '"$WT"' status"')"
 gate "(#530) rodada 3: bash -c 'echo x > f' a partir de W passa" 0 "$(wt "bash -c 'echo x > f'")"
 
+echo "== (#530) rodada extra: git reconhecido no texto cru ou no normalizado =="
+# A contrabarra vem de printf, nao de literal no fonte: o caso que barra precisa
+# chegar ao gate com a barra de `C:\Git\cmd\git.exe`. Imprime-se o comando montado
+# e conta-se a barra uma vez; se ela sumir, o caso mediria outro comando e passaria
+# verde, entao falha aqui.
+BS=$(printf '\\')
+EX1="powershell -c \"echo a; C:${BS}PROGRA~1${BS}Git${BS}cmd${BS}git.exe -C $R commit --allow-empty -m x\""
+EX2="powershell -c \"& C:${BS}PROGRA~1${BS}Git${BS}cmd${BS}git.exe -C $R commit --allow-empty -m x\""
+EX3="pwsh -c \"echo a; C:${BS}Git${BS}cmd${BS}git.exe -C $R commit -m x\""
+EX4="cmd /c \"echo a & C:${BS}Git${BS}cmd${BS}git.exe -C $R commit -m x\""
+EX5="x=\$(powershell -c \"cd $R; C:${BS}Git${BS}cmd${BS}git.exe commit -m x\")"
+n_barras=$(printf '%s' "$EX1" | tr -cd '\134' | wc -c | tr -d ' ')
+echo "  comando montado (caso 1): $EX1"
+echo "  contrabarras no comando montado (caso 1): $n_barras"
+if [ "$n_barras" -lt 1 ]; then falhou=$((falhou+1)); echo "  FALHA: contrabarra sumiu do comando montado"; fi
+gate "(#530) rodada extra: powershell echo; C:\\PROGRA~1 git -C P commit barra" 2 "$(wt "$EX1")"
+gate "(#530) rodada extra: powershell & C:\\PROGRA~1 git -C P commit barra" 2 "$(wt "$EX2")"
+gate "(#530) rodada extra: pwsh echo; C:\\Git git -C P commit barra" 2 "$(wt "$EX3")"
+gate "(#530) rodada extra: cmd /c echo & C:\\Git git -C P commit barra" 2 "$(wt "$EX4")"
+gate "(#530) rodada extra: \$(powershell cd P; C:\\Git git commit) barra" 2 "$(wt "$EX5")"
+gate "(#530) rodada extra: git status a partir de W passa" 0 "$(wt 'git status')"
+gate "(#530) rodada extra: git -C W log a partir de W passa" 0 "$(wt "git -C $WT log")"
+gate "(#530) rodada extra: powershell -Command git -C W status passa" 0 "$(wt "powershell -Command \"git -C $WT status\"")"
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

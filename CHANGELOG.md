@@ -31,6 +31,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 - **Falsos positivos residuais, remetidos à #530:** `cd hooks; x=$(echo a; echo b > ../c)` barra por engano, porque o
   corpo de `$(` sem aspas cruza `;` e é resolvido a partir do cwd inicial. E `bash -c '...'` dentro da ferramenta
   PowerShell passa sem ser lido, pelo mesmo gap.
+- **O reconhecimento do git é a união da leitura crua com a do bash (rodada extra, #530):** `C:\Git\cmd\git.exe -C P ...` sem aspas no Bash continua barrado, como na base (conservador).
 - **Crédito:** a montagem da palavra e a expansão de chaves vêm de `hooks/lib/palavra-bash.cjs`, enxertada de
   `plugins/ruflo-mods/hooks/guard/dangerous-command.ts` do ruflo (`ruvnet/ruflo`, licença MIT).
 

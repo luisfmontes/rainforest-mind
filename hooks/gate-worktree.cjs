@@ -139,12 +139,46 @@ function palavras(cmd) {
  * `null` de "nao achei git aqui", sem falso positivo (o chamador que decide
  * incerteza de `cd`/CLI ja cobre esse conservadorismo pelo lado do cwd).
  *
- * @returns {{verbo: string, args: string[]}|null}
+ * #530 rodada extra (2026-10-15): devolve LISTA, um subcomando por leitura que
+ * achou git (cru e normalizada, ver `leiturasDoComando`), sem duplicar. Os
+ * chamadores barram se QUALQUER item der verbo no conjunto: a leitura do bash
+ * so acrescenta bloqueio, nunca tira.
+ *
+ * @returns {Array<{verbo: string, args: string[]}>}
  */
 function subcomandoGit(cmd, ferramenta) {
-  // #530 (D4): `{git,-C,X,commit}` e `'git' commit` sao git para o bash; le-se a
-  // palavra normalizada, nao o texto cru. O `verboNaLinha` e o `alvosBash` passam por aqui.
-  const w = palavras(textoLido(cmd, ferramenta).seg);
+  const textos = [String(cmd), textoLido(cmd, ferramenta).seg];
+  const achados = [];
+  leiturasDoComando(cmd, ferramenta).forEach((w, k) => {
+    if (k === 1 && textos[1] === textos[0]) return;
+    const r = subcomandoNasPalavras(w);
+    if (r.achou) { if (r.sub) achados.push(r.sub); return; }
+    const { interno, ilegivel } = desempacotarWrapperDeString(textos[k], { ferramenta });
+    if (interno !== null && !ilegivel) achados.push(...subcomandoGit(interno, ferramentaDoInterno(textos[k], ferramenta)));
+  });
+  const vistos = new Set();
+  return achados.filter((s) => {
+    const chave = JSON.stringify([s.verbo, s.args]);
+    if (vistos.has(chave)) return false;
+    vistos.add(chave);
+    return true;
+  });
+}
+
+/**
+ * As duas leituras do comando, como listas de palavras: a do texto cru, exatamente
+ * como a base 9f6b9ca3 lia, e a da palavra normalizada do bash. Com a ferramenta
+ * PowerShell as duas coincidem.
+ */
+function leiturasDoComando(texto, ferramenta) {
+  return [palavras(String(texto)), palavras(textoLido(texto, ferramenta).seg)];
+}
+
+/**
+ * Procura o git numa lista de palavras. `achou` diz se a palavra `git` apareceu
+ * (mesmo sem verbo depois dela); `sub` e o subcomando, ou null.
+ */
+function subcomandoNasPalavras(w) {
   for (let i = 0; i < w.length; i += 1) {
     if (w[i] !== "git" && !/[\\/]git(\.exe)?$/.test(w[i])) continue;
     let j = i + 1;
@@ -152,11 +186,9 @@ function subcomandoGit(cmd, ferramenta) {
       if (GLOBAIS_COM_VALOR.has(w[j])) j += 2;
       else j += 1;
     }
-    return j < w.length ? { verbo: w[j], args: w.slice(j + 1) } : null;
+    return { achou: true, sub: j < w.length ? { verbo: w[j], args: w.slice(j + 1) } : null };
   }
-  const { interno, ilegivel } = desempacotarWrapperDeString(cmd, { ferramenta });
-  if (interno !== null && !ilegivel) return subcomandoGit(interno, ferramentaDoInterno(cmd, ferramenta));
-  return null;
+  return { achou: false, sub: null };
 }
 
 /**
@@ -188,8 +220,9 @@ function ferramentaDoInterno(segmento, ferramenta) {
 /** Primeiro verbo de git da linha inteira que caia no conjunto dado, ou null. */
 function verboNaLinha(comando, conjunto, ferramenta) {
   for (const seg of comando.split(SEPARADORES)) {
-    const s = subcomandoGit(seg, ferramenta);
-    if (s && conjunto.has(s.verbo)) return s.verbo;
+    // #530 rodada extra: qualquer leitura do git que der verbo no conjunto barra.
+    const s = subcomandoGit(seg, ferramenta).find((x) => conjunto.has(x.verbo));
+    if (s) return s.verbo;
   }
   return null;
 }
@@ -220,9 +253,16 @@ const FLAGS_QUE_MOVEM = new Set(["-b", "-B", "-c", "-C", "--orphan", "--detach",
  * suja. Restora nao muda (exit 2 mantido), so a mensagem que ganha contexto.
  */
 function linhaDeRestauro(cmd, toplevel, ferramenta) {
-  const s = subcomandoGit(cmd, ferramenta);
-  if (!s) return '';
+  // #530 rodada extra: a primeira leitura que der restauro vira a mensagem.
+  for (const s of subcomandoGit(cmd, ferramenta)) {
+    const linha = linhaDeRestauroDe(s, toplevel);
+    if (linha) return linha;
+  }
+  return '';
+}
 
+/** Restauro de um subcomando ja achado por `subcomandoGit`. */
+function linhaDeRestauroDe(s, toplevel) {
   // `git restore` e restauro puro — nao tem variante que move HEAD
   if (s.verbo === 'restore') {
     const args = s.args;
@@ -263,8 +303,13 @@ function linhaDeRestauro(cmd, toplevel, ferramenta) {
  * outra sessao andando debaixo dela.
  */
 function moveOHead(cmd, cwd, ferramenta, existe = fs.existsSync) {
-  const s = subcomandoGit(cmd, ferramenta);
-  if (!s || !VERBOS_QUE_MOVEM.has(s.verbo)) return false;
+  // #530 rodada extra: qualquer leitura que mova o HEAD barra.
+  return subcomandoGit(cmd, ferramenta).some((s) => moveOHeadDe(s, cwd, existe));
+}
+
+/** Movimento de HEAD de um subcomando ja achado por `subcomandoGit`. */
+function moveOHeadDe(s, cwd, existe) {
+  if (!VERBOS_QUE_MOVEM.has(s.verbo)) return false;
   const args = s.args;
 
   // `--` em qualquer posicao: o que vem depois e caminho, e a forma
@@ -446,8 +491,7 @@ function bloqueia(motivo, toplevel, agente, apenasRestauracao = null, ehWorktree
  * (`mov.cwd`) no lugar do `atual` de antes.
  */
 function alvosBash(comando, cwdInicial, casa = (seg, _cwd, ferr) => {
-  const s = subcomandoGit(seg, ferr);
-  return !!s && VERBOS_QUE_MEXEM.has(s.verbo);
+  return subcomandoGit(seg, ferr).some((s) => VERBOS_QUE_MEXEM.has(s.verbo));
 }, ferramenta) {
   // `segmentosComAspas`, nao `comando.split(SEPARADORES)` cru: o split cru
   // nao respeita aspas (`git commit -m "a & b"` quebraria dentro da mensagem)
@@ -462,7 +506,10 @@ function alvosBash(comando, cwdInicial, casa = (seg, _cwd, ferr) => {
     if (mov.soMovedor) continue; // cd/pushd/popd: o segmento INTEIRO e o movedor
 
     if (!casa(seg, mov.cwd, ferramenta)) continue;
-    const s = subcomandoGit(seg, ferramenta);
+    // #530 rodada extra: o verbo da mensagem e o primeiro achado que move o estado
+    // (ou que move o HEAD); so sai "?" quando nenhuma leitura achou git.
+    const subs = subcomandoGit(seg, ferramenta);
+    const s = subs.find((x) => VERBOS_QUE_MEXEM.has(x.verbo) || VERBOS_QUE_MOVEM.has(x.verbo)) || subs[0];
     const verbo = s ? s.verbo : "?";
 
     // O ÚLTIMO `-C`/`--work-tree` do segmento vence — o git usa o ultimo
