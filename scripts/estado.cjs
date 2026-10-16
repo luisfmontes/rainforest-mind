@@ -66,7 +66,7 @@ const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib',
 // scripts/ideias.cjs e scripts/divergencias.cjs — o `veredito` reusa em vez
 // de inventar uma terceira copia.
 const { caminhoDoc } = require(path.join(__dirname, '..', 'hooks', 'lib', 'pastas-docs.cjs'));
-const { comTrava } = require(path.join(__dirname, '..', 'hooks', 'lib', 'trava-jsonl.cjs'));
+const { Trava, sleepSync } = require(path.join(__dirname, '..', 'hooks', 'lib', 'trava-jsonl.cjs'));
 // D12 — Tarefa 16: leitura do transcrito real do revisor (slug do primeiro
 // prompt, ultima mensagem de texto do assistente). Require DURO, nao
 // defensivo: sem estes dois modulos o subcomando `veredito` gravaria vereditos
@@ -438,17 +438,149 @@ function caminho(slug) {
 }
 
 
+// Base da mescla (#545): o que ESTE processo leu do arquivo do fluxo, por slug. A
+// primeira leitura vale; as seguintes no mesmo processo não trocam a base. Cópia
+// própria (parse separado), para o comando mutar o objeto lido sem mexer na base.
+const basesDoFluxo = new Map();
+
 function ler(slug) {
   const p = caminho(slug);
   if (!fs.existsSync(p)) return null;
-  return JSON.parse(fs.readFileSync(p, 'utf8'));
+  const bruto = fs.readFileSync(p, 'utf8');
+  if (!basesDoFluxo.has(slug)) basesDoFluxo.set(slug, JSON.parse(bruto));
+  return JSON.parse(bruto);
 }
 
-function gravar(slug, estado) {
+// Trava única por fluxo (#545, D1): `.<slug>.lock`, a mesma para veredito,
+// registrar-flake, decidir e toda gravação. Slugs com a trava segurada por este
+// processo: entrar de novo só roda a função (a trava é de quem abriu).
+const travasDoFluxo = new Set();
+
+function comTravaDoFluxo(slug, fn) {
+  if (travasDoFluxo.has(slug)) return fn();
   fs.mkdirSync(DIR_ESTADO, { recursive: true });
-  const tmp = `${caminho(slug)}.tmp`;
-  fs.writeFileSync(tmp, `${JSON.stringify(estado, null, 2)}\n`, 'utf8');
-  fs.renameSync(tmp, caminho(slug)); // atômico: estado truncado é pior que ausente
+  const trava = new Trava(path.join(DIR_ESTADO, '.' + slug + '.lock'));
+  trava.entrar();
+  travasDoFluxo.add(slug);
+  // `process.exit` dentro de `fn` (ex.: a recusa do destinar) não desfaz o finally:
+  // a trava sai do disco pelo evento `exit`, para não deixar `.<slug>.lock` vivo que a
+  // chamada seguinte teria de quebrar com aviso de trava órfã (#545, D2 emendado).
+  const soltar = () => {
+    if (!travasDoFluxo.has(slug)) return;
+    travasDoFluxo.delete(slug);
+    trava.sair();
+  };
+  process.on('exit', soltar);
+  try {
+    return fn();
+  } finally {
+    process.removeListener('exit', soltar);
+    soltar();
+  }
+}
+
+// Costura de teste (#545, D3): com RFM_ESTADO_PAUSA_GRAVAR_MS inteiro positivo, o comando
+// dorme logo depois de ler o estado, antes de gravar. Nos comandos que travam o comando
+// inteiro (TRAVA_NO_COMANDO) a pausa cai DENTRO da trava; nos outros, fora dela. Escreve
+// `pausa-gravar: <slug>` em stderr antes de dormir, para a bateria saber que a leitura
+// já aconteceu e só então disparar os concorrentes. Sem a variável, não faz nada.
+function pausaDeTeste(slug) {
+  const v = process.env.RFM_ESTADO_PAUSA_GRAVAR_MS;
+  if (!/^[1-9][0-9]*$/.test(v || '')) return;
+  process.stderr.write(`pausa-gravar: ${slug}\n`);
+  sleepSync(Number(v));
+}
+
+// Mescla em três vias por campo (#545, D2). Pura. Chave de topo que `meu` não mudou
+// (igual à base) fica com `vivo`; a que mudou, inclusive removida, fica com `meu`.
+// Quando base, meu e vivo são objetos, desce um nível: é o caso de dois processos
+// mexendo em campos diferentes do mesmo estágio (`revisar.vereditos` e `revisar.status`).
+// Conflito (#545, emenda D2 da 2ª revisão): campo que este processo mudou e que outro
+// processo também mudou, para outro valor, desde a leitura. Pura. Devolve os caminhos
+// ('chave' ou 'estagio.campo'). Com conflito, a mescla não escolhe vencedor: o comando
+// recusa sem gravar, e rodar de novo lê o que o outro gravou (uma pendência nova passa
+// a ser cobrada pelo fechamento, em vez de sumir).
+function conflitosDaMescla(base, meu, vivo) {
+  const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const ehObjeto = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
+  const achados = [];
+  for (const k of new Set([...Object.keys(base), ...Object.keys(meu), ...Object.keys(vivo)])) {
+    const b = base[k];
+    const m = meu[k];
+    const v = vivo[k];
+    if (igual(m, b) || igual(v, b) || igual(m, v)) continue;
+    if (ehObjeto(b) && ehObjeto(m) && ehObjeto(v)) {
+      for (const c of new Set([...Object.keys(b), ...Object.keys(m), ...Object.keys(v)])) {
+        if (!igual(m[c], b[c]) && !igual(v[c], b[c]) && !igual(m[c], v[c])) achados.push(`${k}.${c}`);
+      }
+    } else {
+      achados.push(k);
+    }
+  }
+  return achados;
+}
+
+function mesclarEstado(base, meu, vivo) {
+  const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const ehObjeto = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
+  const mesclarCampos = (b, m, v) => {
+    const saida = {};
+    for (const f of new Set([...Object.keys(b), ...Object.keys(m), ...Object.keys(v)])) {
+      const r = igual(m[f], b[f]) ? v[f] : m[f];
+      if (r !== undefined) saida[f] = r;
+    }
+    return saida;
+  };
+  const saida = {};
+  for (const k of new Set([...Object.keys(base), ...Object.keys(meu), ...Object.keys(vivo)])) {
+    const b = base[k];
+    const m = meu[k];
+    const v = vivo[k];
+    let r;
+    if (igual(m, b)) r = v;
+    else if (ehObjeto(b) && ehObjeto(m) && ehObjeto(v)) r = mesclarCampos(b, m, v);
+    else r = m;
+    if (r !== undefined) saida[k] = r;
+  }
+  return saida;
+}
+
+// Grava `estado` no arquivo do fluxo. Sempre sob a trava única (ou a que este
+// processo já segura). Dentro dela, relê o arquivo vivo e mescla com a base.
+function gravar(slug, estado) {
+  if (travasDoFluxo.has(slug)) return gravarDentro(slug, estado);
+  comTravaDoFluxo(slug, () => gravarDentro(slug, estado));
+}
+
+function gravarDentro(slug, estado) {
+  const p = caminho(slug);
+  const vivo = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : null;
+  const base = basesDoFluxo.has(slug) ? basesDoFluxo.get(slug) : vivo;
+  const conflitos = vivo === null ? [] : conflitosDaMescla(base, estado, vivo);
+  if (conflitos.length > 0) {
+    console.error(
+      `RECUSADO: outro processo gravou ${conflitos.join(', ')} no fluxo ${slug} enquanto este comando validava. ` +
+        'Nada foi gravado: rode o comando de novo, que ele le o estado atual.'
+    );
+    process.exit(2);
+  }
+  const final = vivo === null ? estado : mesclarEstado(base, estado, vivo);
+  const texto = `${JSON.stringify(final, null, 2)}\n`;
+  fs.mkdirSync(DIR_ESTADO, { recursive: true });
+  const tmp = `${p}.tmp`;
+  fs.writeFileSync(tmp, texto, 'utf8');
+  // atômico: estado truncado é pior que ausente. No Windows o rename recusa (EPERM/EACCES/EBUSY)
+  // enquanto um leitor, que lê sem a trava, está com o arquivo aberto: tenta de novo por até ~2 s.
+  for (let tentativa = 0; ; tentativa++) {
+    try {
+      fs.renameSync(tmp, p);
+      break;
+    } catch (e) {
+      if (!['EPERM', 'EACCES', 'EBUSY'].includes(e.code) || tentativa >= 40) throw e;
+      sleepSync(50);
+    }
+  }
+  basesDoFluxo.set(slug, JSON.parse(texto));
 }
 
 function novo(slug, titulo) {
@@ -640,8 +772,12 @@ function verificarMutacao(slug, snapshot_anterior) {
     const propria = caminhosDaPropriaTrava(slug);
     const sujos_antes = new Set(snapshot_anterior.caminhos_sujos || []);
 
+    // A trava do estado e o .tmp da gravação (#545) existem por milissegundos enquanto outro
+    // escritor grava; em repositório sem o .gitignore deste, o git status pode pegá-los.
+    const pastaEstado = path.relative(RAIZ, DIR_ESTADO).replace(/\\/g, '/');
+    const transitorio = (c) => c.startsWith(`${pastaEstado}/`) && /\.(lock|tmp)$/.test(c);
     const novos_sujos = caminhosSujos()
-      .filter((c) => !sujos_antes.has(c) && !propria.has(c));
+      .filter((c) => !sujos_antes.has(c) && !propria.has(c) && !transitorio(c));
     if (novos_sujos.length > 0) {
       return `RECUSADO: novos arquivos sujaram durante a revisao: ${novos_sujos.join(', ')}.\n`
         + `O repositorio foi mutado enquanto voce revisava. O revisor nao edita em lugar nenhum\n`
@@ -2364,8 +2500,7 @@ function main() {
       console.error(`aviso: ${slug} nao existe — veredito nao gravado`);
       return;
     }
-    const lockPath = path.join(DIR_ESTADO, '.' + slug + '.veredito.lock');
-    comTrava(lockPath, () => {
+    comTravaDoFluxo(slug, () => {
       // Releitura DENTRO da trava: nunca reaproveitar o `estado` que `main()`
       // teria carregado antes do lock — outra chamada concorrente pode ter
       // gravado entre a leitura de fora e a entrada na trava.
@@ -2415,10 +2550,10 @@ function main() {
       console.error(`erro: ${slug} nao existe — rode 'iniciar' primeiro`);
       process.exit(1);
     }
-    const lockPath = path.join(DIR_ESTADO, '.' + slug + '.flake.lock');
-    const saida = comTrava(lockPath, () => {
+    const saida = comTravaDoFluxo(slug, () => {
       const vivo = ler(slug);
       if (!vivo) return { sumiu: true };
+      pausaDeTeste(slug);
       const bloco = vivo.executar || {};
       const volta = bloco.reaberturas || 0;
       const flakes = Array.isArray(bloco.flakes) ? bloco.flakes.map((f) => ({ ...f, voltas: [...f.voltas] })) : [];
@@ -2446,11 +2581,17 @@ function main() {
     return;
   }
 
+  // Comandos que acrescentam a uma lista (#545, D2 emendado): leitura, validação e gravação
+  // INTEIRAS sob a trava do fluxo, relendo o estado dentro dela, como o `decidir`. Os
+  // outros (marcar, exigir) leem fora da trava e a gravação mescla por campo.
+  const TRAVA_NO_COMANDO = ['pendencia', 'destinar', 'liberar', 'liberar-teto', 'decidir'];
+  const rodarComando = () => {
   const estado = ler(slug);
   if (!estado) {
     console.error(`erro: ${slug} nao existe — rode 'iniciar' primeiro`);
     process.exit(1);
   }
+  pausaDeTeste(slug);
 
   if (cmd === 'ler') {
     avisarCarimbosDivergentes(estado);
@@ -3124,8 +3265,7 @@ function main() {
       console.error(`erro: ${err.message}`);
       process.exit(1);
     }
-    const lockPath = path.join(DIR_ESTADO, '.' + slug + '.decidir.lock');
-    const saida = comTrava(lockPath, () => {
+    const saida = comTravaDoFluxo(slug, () => {
       const vivo = ler(slug);
       if (!vivo) return { sumiu: true };
       const lista = Array.isArray(vivo.decididos) ? vivo.decididos : [];
@@ -3164,6 +3304,8 @@ function main() {
 
   console.error('uso: iniciar | ler | deixado | destinar | pendencia | marcar | proximo | exigir | liberar | listar | concluido | veredito | registrar-flake | liberar-teto | decidir | decididos');
   process.exit(1);
+  };
+  return TRAVA_NO_COMANDO.includes(cmd) ? comTravaDoFluxo(slug, rodarComando) : rodarComando();
 }
 
 if (require.main === module) main();

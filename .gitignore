@@ -107,3 +107,9 @@ evals/results/
 # Gerado por `claude --plugin-dir` / `claude plugin validate` (estende
 # .claude-plugin/types/, que se ignora sozinho). Medido no fluxo 2026-10-03-mod-faixa-foco.
 /tsconfig.json
+
+# Trava única do fluxo (`.<slug>.lock`, #545 D6) e o temporário da escrita atômica do
+# estado (`<slug>.json.tmp`). Ficam na pasta versionada do estado; sem isto, o
+# `git status` acusa arquivo novo no instante em que o `marcar revisar ok` compara.
+docs/rainforest/estado/.*.lock
+docs/rainforest/estado/*.tmp
