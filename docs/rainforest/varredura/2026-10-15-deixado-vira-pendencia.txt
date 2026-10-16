@@ -1,0 +1,156 @@
+Data: 2026-10-15
+Termos: Deixado para depois, painelDeixado, pendencia, vira pendencia
+
+$ gh issue list --state all --search "Deixado para depois" --limit 200 --json number,title,state
+[{"number":470,"state":"OPEN","title":"Painel 'Deixado para depois' do mod e pendentes do fluxo: duas fontes"},{"number":449,"state":"CLOSED","title":"Deixado para depois evapora: pendentes somem no ok e o fechar nao confere"},{"number":424,"state":"CLOSED","title":"Painel: 'Deixado para depois' nunca fecha item resolvido e conta Q de decisão como pendência"},{"number":110,"state":"CLOSED","title":"O batedor nunca ve as ideias: ideias.jsonl mora em ~/.rainforest e o ROOT cai no repo"},{"number":1,"state":"CLOSED","title":"Briefing nao diz o ato de entregar: subagente nomeado termina o trabalho e nao devolve (3 de 3)"}]
+
+
+$ gh issue list --state all --search "painelDeixado" --limit 200 --json number,title,state
+[{"number":470,"state":"OPEN","title":"Painel 'Deixado para depois' do mod e pendentes do fluxo: duas fontes"},{"number":449,"state":"CLOSED","title":"Deixado para depois evapora: pendentes somem no ok e o fechar nao confere"}]
+
+
+$ gh issue list --state all --search "pendencia" --limit 200 --json number,title,state
+[{"number":470,"state":"OPEN","title":"Painel 'Deixado para depois' do mod e pendentes do fluxo: duas fontes"},{"number":449,"state":"CLOSED","title":"Deixado para depois evapora: pendentes somem no ok e o fechar nao confere"},{"number":424,"state":"CLOSED","title":"Painel: 'Deixado para depois' nunca fecha item resolvido e conta Q de decisão como pendência"},{"number":282,"state":"CLOSED","title":"Captura parada desde 03/09: spawn do claude.cmd dá EINVAL e a fila trava calada"},{"number":421,"state":"CLOSED","title":"Painel do mod: bordas do desvio (fila cheia, cache de veredito provisorio, chave do mapa) e texto do corte"},{"number":86,"state":"CLOSED","title":"observar.cjs sem argumento processa TODAS as marcas pendentes, mas o cabeçalho diz que processa só a mais recente"},{"number":221,"state":"CLOSED","title":"saude.cjs quebra com 'path argument undefined' quando ha duas config dirs e a versao do repo esta a frente da instalada"},{"number":74,"state":"CLOSED","title":"O FOCO.md monolitico nao cabe na injecao: a abertura desta sessao veio com secoes omitidas por espaco"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"},{"number":3,"state":"CLOSED","title":"conferir esta vermelho desde 11/08 e nao tem como ficar verde: 35 abertas sem gancho, e o reparar recusa sem texto a mao"},{"number":14,"state":"CLOSED","title":"limpar-branches.cjs da branch de PR mergeado por squash: classificada 'viva', nunca limpa"},{"number":21,"state":"CLOSED","title":"Criterio 'a bateria sai 0' e satisfazivel por fora, e tres instrumentos de conferencia falharam junto"}]
+
+
+$ gh issue list --state all --search "vira pendencia" --limit 200 --json number,title,state
+[{"number":221,"state":"CLOSED","title":"saude.cjs quebra com 'path argument undefined' quando ha duas config dirs e a versao do repo esta a frente da instalada"},{"number":3,"state":"CLOSED","title":"conferir esta vermelho desde 11/08 e nao tem como ficar verde: 35 abertas sem gancho, e o reparar recusa sem texto a mao"}]
+
+
+$ gh pr list --state all --search "Deixado para depois" --limit 200 --json number,title,state
+[{"number":469,"state":"MERGED","title":"Pendencia do fluxo so sai com destino (#449), versao 1.56.0"},{"number":425,"state":"MERGED","title":"Versao 1.46.1: deixado para depois fecha item resolvido e ignora Q de decisao"},{"number":536,"state":"MERGED","title":"Estado do fluxo revisita-context-mode: fechar ok (#535, 1.67.3)"},{"number":508,"state":"MERGED","title":"Estado do fluxo fechar-push-merge: fechar ok (#506, 1.64.0)"},{"number":513,"state":"MERGED","title":"Estado do fluxo executar-dag-painel: fechar ok (#512, 1.65.0)"},{"number":505,"state":"MERGED","title":"Estado do fluxo pasta-unica: fechar ok (#504, 1.63.0)"},{"number":538,"state":"MERGED","title":"conta unificar: 5 achados baixos da pasta-unica (#503, 1.67.4)"},{"number":537,"state":"MERGED","title":"Livro: revisita do ruflo com o ruflo-mods lido no codigo"},{"number":542,"state":"MERGED","title":"Flake gravado pela integracao; rodar-gate.cjs sai (#498, 1.67.6)"},{"number":422,"state":"MERGED","title":"Versao 1.45.0: barra de sessao e painel /painel no mod (enxerto do terminal-desk)"},{"number":510,"state":"MERGED","title":"Memoria por assunto dentro do timeout no 1o pedido (#509, #507), versao 1.64.1"},{"number":539,"state":"MERGED","title":"Versao 1.67.5: esperar-ci nao da verde com check cancelado; baterias SQLite em transacao"},{"number":515,"state":"MERGED","title":"Versao 1.65.1: jornada so conta prompt digitado (#485)"},{"number":535,"state":"MERGED","title":"Versao 1.67.3: gate nao barra leitura com chaves (#514), buscar por bm25"},{"number":504,"state":"MERGED","title":"Versao 1.63.0: uma pasta so de config e conta.cjs unificar"},{"number":506,"state":"MERGED","title":"Versao 1.64.0: fechar com push conferido e merge confirmado pelo state"},{"number":526,"state":"MERGED","title":"conferir-entrega: --escopo pela regra de glob do creep (#518, 1.67.1)"},{"number":524,"state":"MERGED","title":"Gate: barrar matar processo por nome (#517, 1.67.0)"},{"number":451,"state":"MERGED","title":"Glossario de dominio por repositorio (GLOSSARIO.md), versao 1.52.0"},{"number":532,"state":"MERGED","title":"conferir-publicacao: Authorization com variavel em JS nao e credencial (#494, 1.67.2)"},{"number":501,"state":"MERGED","title":"Troca automatica de conta Claude pelo uso e /conta (1.62.0)"},{"number":520,"state":"MERGED","title":"Modo autonomo: do plano aprovado ao PR mergeado (1.66.0)"},{"number":512,"state":"MERGED","title":"Versao 1.65.0: executar com camadas, retomada por trailer e painel do fluxo"}]
+
+
+$ gh pr list --state all --search "painelDeixado" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "pendencia" --limit 200 --json number,title,state
+[{"number":469,"state":"MERGED","title":"Pendencia do fluxo so sai com destino (#449), versao 1.56.0"},{"number":425,"state":"MERGED","title":"Versao 1.46.1: deixado para depois fecha item resolvido e ignora Q de decisao"},{"number":418,"state":"MERGED","title":"Abertura inteira na conta de trabalho via session.append"},{"number":483,"state":"MERGED","title":"Achado que cabe no PR aberto entra nele, sem virar Issue"},{"number":325,"state":"MERGED","title":"memoria: aviso de captura parada ignora marca de transcrito apagado"},{"number":133,"state":"MERGED","title":"Fluxo 2 — memoria com indice vivo, leitura por relevancia e ciclo de vida"},{"number":295,"state":"MERGED","title":"zerar-issues-5: conserta 20 Issues abertas em menos de 24h"},{"number":191,"state":"MERGED","title":"Plano da camada Obsidian: a skill montar-corpus, com dois cortes de escopo"},{"number":62,"state":"MERGED","title":"As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada"}]
+
+
+$ gh pr list --state all --search "vira pendencia" --limit 200 --json number,title,state
+[{"number":133,"state":"MERGED","title":"Fluxo 2 — memoria com indice vivo, leitura por relevancia e ciclo de vida"}]
+
+
+$ git ls-remote --heads origin | grep -F "Deixado para depois"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "painelDeixado"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "pendencia"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "vira pendencia"
+(vazio)
+
+$ git log --all --grep="Deixado para depois" --oneline
+885bed92 estado: tarefa 9 integrada, 10 em voo
+
+$ git log --all --grep="painelDeixado" --oneline
+(vazio)
+
+$ git log --all --grep="pendencia" --oneline
+eb36be92 Versao 1.65.0: executar com camadas, retomada por trailer e painel do fluxo (#512)
+74c0b126 Gate flaky com nova tentativa e teto de despachos por fluxo (1.61.0) (#499)
+7e8b3fd2 Achado que cabe no PR aberto entra nele, sem virar Issue (#483)
+2ee28b93 Pendencia do fluxo so sai com destino (#449), versao 1.56.0 (#469)
+397aa5a9 Glossario de dominio por repositorio (GLOSSARIO.md), versao 1.52.0 (#451)
+12d00890 Painel: deixado fecha item resolvido e nao conta Q de decisao (#424)
+0656db33 Abertura inteira na conta de trabalho via session.append (#418)
+99c5e5b7 Zerar as 12 Issues da revisao bimestral (1.43.0) (#416)
+95ef0d5d beads: nao acopla — 1 bloqueio em 336 ideias abertas
+ae51fac8 pesquisa: dependencias propostas entre ideias abertas (tarefa 6)
+2622f1bd plano: dependencia entre ideias em 8 tarefas
+4fe9dd10 design: dependencia entre ideias, por cima do ideias.jsonl
+2ac92476 depurar: teste de regressao para o falso aviso de captura parada
+968b794a T2 e T3: dez invariantes nas seis skills de acao, e a emenda do criterio da T3
+5cafc040 Regra 6 sem custo de bytes; 22.1 e 22.3 independem do nucleo
+b422703c fluxo zerar-issues-6, tarefa 9: SOBRA_22_* medem a saida real de montarContexto
+8b48c302 saude: pendencia de marca d'agua mais antiga por ordem explicita
+b9c47178 Issue #250: teto proprio para cabecalho+rodape da injecao (Tarefa 17)
+7670d9a1 Plano zerar-issues-5: 18 tarefas, 13 paralelas
+5a43d1fc plano e design emendados apos o revisar reprovar, e a peca nova marcada
+13b552c6 Titulo da sessao marca se o fluxo fechou ou onde parou (#274)
+0ef8cc97 extrai cortarBytes para hooks/lib/bytes.cjs, corrige comentario mentiroso
+38f4d267 Handover: o que a CI e o laco completo pegaram na rodada 2
+d0a3af00 Verificar: testa-config conta oito gates sem matcher, com o gate novo
+3ae555cb Verificar: caso 20 da catraca resolve o Python em $PY, como a guarda exige
+72fe131e Ajustar duas baterias que a rodada completa do T15 deixou vermelhas
+e095d5a6 Separar bloqueio de ambiente (69) de reprovacao nos conferir-*
+0e967e03 Tarefa 20 (D15): a caixa de areia das baterias copia scripts/lib/
+b6881413 Tarefa 5: validacao ponta a ponta e registro das decisoes que nao viram codigo
+6dd373fa Corrige a tarefa 4 do plano: dependencia declarada nao batia com o criterio
+381c95ea Fluxo 8: plano do handover.cjs, com o regente.cjs cortado e o corte justificado
+2184eed9 Fluxo 10 (critico) arquivado como superado, com a substituicao provada item a item
+3ac0ceff Plano da camada Obsidian: a skill montar-corpus, com dois cortes de escopo
+30706677 Lote 3 T13: Melhorias na bateria e ajustes finais
+a8958203 Merge pull request #171 from luisfmontes/fix/suite-verde
+35223d4b Issues #148 #144 #153 #157-#163: a suite media a maquina do dono
+efb93aef Handover da branch reescrito para o estado final
+a4631349 Handover da branch reescrito para o estado final
+3b689d37 Vigias: a porta unica quebrou duas baterias vizinhas, e as duas tinham razao
+4f7c825c Vigias: a porta unica quebrou duas baterias vizinhas, e as duas tinham razao
+f283fc79 T8 integrada: bateria 59 casos, desempate real e lint de dependencia (8/9)
+f4103efb T8 integrada: bateria 59 casos, desempate real e lint de dependencia (8/9)
+121622b2 Observar: janela vazia e processada — a marca avanca no prompt vazio
+11b622fc Observar: janela vazia e processada — a marca avanca no prompt vazio
+bb82feb9 Observar: evento unico acima do teto trunca a passada em vez de travar a fila
+c8754add Observar: evento unico acima do teto trunca a passada em vez de travar a fila
+b3caf463 Tarefa 5 da memoria: saude ganha a secao do banco — schema, indice vivo e pipeline
+6c4fcf11 Tarefa 5 da memoria: saude ganha a secao do banco — schema, indice vivo e pipeline
+b2582e39 Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos (#119)
+ea9d0286 Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos (#119)
+c66ef229 Fecha #110: o batedor volta a enxergar as 202 ideias e observacoes abertas (#111)
+97a22e26 Fecha #110: o batedor volta a enxergar as 202 ideias e observacoes abertas (#111)
+4fd6d9e0 design: a camada de conhecimento sai do Obsidian e vira rota, nao migracao (#78)
+29b44c0a design: a camada de conhecimento sai do Obsidian e vira rota, nao migracao (#78)
+1c68627a O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas (#59)
+b4704ff8 O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas (#59)
+bec11b87 Conserta o merge do marcar para nao deixar pendentes sobreviver a um fechamento ok (#54)
+8e284dca Conserta o merge do marcar para nao deixar pendentes sobreviver a um fechamento ok (#54)
+40e3f3bd Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+2cc8788c Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+da72ec7f Conferencia de entrega e teste de saude sobrevivem a despacho paralelo (#13)
+05541310 Conferencia de entrega e teste de saude sobrevivem a despacho paralelo (#13)
+96491e70 Bateria tambem e Node: os 24 usos de Python nos testes viraram node -e
+c86cd287 Bateria tambem e Node: os 24 usos de Python nos testes viraram node -e
+1b9bf045 Issue #3: o gate podia ficar verde, e o reparar estava morto desde 11/08
+d4546e8f Issue #3: o gate podia ficar verde, e o reparar estava morto desde 11/08
+fe9d84bc Caminho de projeto entra no setup, e os vigias ganham interruptor
+c30165a2 Caminho de projeto entra no setup, e os vigias ganham interruptor
+54d5e5b2 Os dois consertos que o dev de fora sente no dia um
+c2f583e5 Os dois consertos que o dev de fora sente no dia um
+88fe4f57 O /saude volta a mostrar a contagem de ideias, e nao o caminho
+5e710f79 O /saude volta a mostrar a contagem de ideias, e nao o caminho
+e81703b2 README acompanha o dia, e a varredura que dizia "limpo" era cega
+1e1f876b README acompanha o dia, e a varredura que dizia "limpo" era cega
+baf3fe48 A jornada passa a medir em Node: nenhuma regra depende mais de Python
+9492c707 A jornada passa a medir em Node: nenhuma regra depende mais de Python
+f01960e9 O /ideia passa a chamar Node: uma dependencia no caminho de execucao, nao duas
+90cc9cab O /ideia passa a chamar Node: uma dependencia no caminho de execucao, nao duas
+434fb3a5 ideias.py ganha gemeo em Node, e o bloco de mutacao para de sabotar o arquivo errado
+605dfa7d ideias.py ganha gemeo em Node, e o bloco de mutacao para de sabotar o arquivo errado
+b76f04f7 v0.48.0: a regra passa a chegar — JSON no emissor e orcamento de 8 KB
+67364007 v0.48.0: a regra passa a chegar — JSON no emissor e orcamento de 8 KB
+2fe99a04 README reescrito: o produto e a sessao legivel, nao o parqueamento de ideia
+53133dcd README reescrito: o produto e a sessao legivel, nao o parqueamento de ideia
+8e0973bd Parametrizar caminhos e porta no codigo; corrige hook lendo settings.json da pasta antiga
+30729e4e Parametrizar caminhos e porta no codigo; corrige hook lendo settings.json da pasta antiga
+01761a6d Hook de sessao checa dependencias de ambiente e declara o que nao ve; v0.22.0
+55364133 Hook de sessao checa dependencias de ambiente e declara o que nao ve; v0.22.0
+
+$ git log --all --grep="vira pendencia" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+{"id":"replicador-dependencias-cascata","titulo":"Replicador do Configurador de Tributos: dependencias entre filiais E replicar alteracao, decididos juntos"}
+{"id":"vigias-dependem-do-bridge-whatsapp","titulo":"Dependencia nao declarada: as rondas dos vigias quebram junto com o bridge do WhatsApp"}
+{"id":"2026-09-05-pendencia-sem-recomendada","titulo":"Pendencia subiu sem recomendada, e ele teve que responder 'recomendado'"}
+
+

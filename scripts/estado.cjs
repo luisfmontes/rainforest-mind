@@ -29,6 +29,7 @@
  *   node scripts/estado.cjs ler      --slug <slug>
  *   node scripts/estado.cjs deixado  --slug <slug>
  *   node scripts/estado.cjs destinar --slug <slug> --estagio <e> --json '{"destinos":[...]}'
+ *   node scripts/estado.cjs pendencia --slug <slug> --texto "<texto>"
  *   node scripts/estado.cjs marcar   --slug <slug> --estagio <e> --status <s> [--json '{...}']
  *   node scripts/estado.cjs proximo  --slug <slug>
  *   node scripts/estado.cjs exigir   --slug <slug> --estagio <e>
@@ -1982,6 +1983,7 @@ const FLAGS_POR_SUBCOMANDO = {
   ler: ['slug'],
   deixado: ['slug'],
   destinar: ['slug', 'estagio', 'json'],
+  pendencia: ['slug', 'texto'],
   marcar: ['slug', 'estagio', 'status', 'json', 'raiz'],
   proximo: ['slug'],
   exigir: ['slug', 'estagio'],
@@ -2020,6 +2022,13 @@ function validarFlagsDesconhecidas(cmd) {
   const todasAsFlags = new Set();
   for (let i = 2; i < process.argv.length; i++) {
     const arg_str = process.argv[i];
+    // #470: o valor de --texto e texto livre do painel (ex.: "-- TODO" de um SQL) e nunca
+    // e lido como flag.
+    if (arg_str === '--texto') {
+      todasAsFlags.add('texto');
+      i++;
+      continue;
+    }
     if (arg_str.startsWith('--')) {
       const nomeDaFlag = arg_str.substring(2);
       // As flags sao nome/valor em pares: --flag valor, ou --flag valor --proxima valor
@@ -2479,6 +2488,29 @@ function main() {
     estado[estagio] = novo;
     gravar(slug, estado);
     console.log(`${estagio}: ${extra.destinos.length} destino(s) gravado(s); status ${bloco.status} intacto`);
+    return;
+  }
+
+  // #470: pendencia aceita pelo painel "Deixado para depois" entra nas `pendentes` do
+  // estagio aberto (o que `proximo` devolve). So mexe em `pendentes` desse bloco: status
+  // e os demais campos ficam como estao. Bloco ausente nasce so com `pendentes`.
+  if (cmd === 'pendencia') {
+    const texto = arg('texto').trim();
+    if (!texto) {
+      console.error('erro: --texto vazio');
+      process.exit(1);
+    }
+    const estagio = proximo(estado);
+    if (!estagio) {
+      console.error(`RECUSADO: ${slug} nao tem estagio aberto (fluxo completo) — nada a pendurar.`);
+      process.exit(2);
+    }
+    const bloco = ehObjetoSimples(estado[estagio]) ? estado[estagio] : {};
+    const lista = Array.isArray(bloco.pendentes) ? bloco.pendentes : [];
+    if (!lista.includes(texto)) lista.push(texto);
+    estado[estagio] = { ...bloco, pendentes: lista };
+    gravar(slug, estado);
+    console.log(`${estagio}: pendencia gravada (${lista.length} na lista)`);
     return;
   }
 
@@ -3130,7 +3162,7 @@ function main() {
     return;
   }
 
-  console.error('uso: iniciar | ler | deixado | destinar | marcar | proximo | exigir | liberar | listar | concluido | veredito | registrar-flake | liberar-teto | decidir | decididos');
+  console.error('uso: iniciar | ler | deixado | destinar | pendencia | marcar | proximo | exigir | liberar | listar | concluido | veredito | registrar-flake | liberar-teto | decidir | decididos');
   process.exit(1);
 }
 
