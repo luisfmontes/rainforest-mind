@@ -1,0 +1,78 @@
+{
+  "slug": "2026-10-15-pr-achados-menores",
+  "titulo": "Painel de PR e plugins-em-dia: achados menores (#466)",
+  "criado_em": "2026-10-15",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-10-15-pr-achados-menores.md",
+    "decisoes": 6,
+    "em": "2026-10-15"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-15-pr-achados-menores.md",
+    "tarefas": 2,
+    "paralelas": [],
+    "em": "2026-10-15"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-15",
+    "integradas": [
+      1
+    ],
+    "em": "2026-10-15",
+    "tarefas_ok": 2,
+    "tarefas": 2,
+    "comando": "claude plugin test . && node hooks/testa-mod-pr.cjs",
+    "saida": "132 pass 0 fail; 59 ok, 0 falha(s)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-mod-pr.cjs, caso \"dono: login desconhecido adia, nao rebaixa\""
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "documentacao, emenda e versao"
+      }
+    ],
+    "reaberturas": 1,
+    "rodada": 2
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "d1b55d49cc3dacc28f93ddbe661bbccfe0d7c37c",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a376a954bdc10f873",
+        "veredito": "ok",
+        "em": "2026-10-15",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a376a954bdc10f873.jsonl"
+      }
+    ],
+    "achados": 3,
+    "em": "2026-10-15",
+    "em_voo": [],
+    "base": "2ba55b1214e79ae07044b52d8abffbc7643b3e1c",
+    "head": "d1b55d49cc3dacc28f93ddbe661bbccfe0d7c37c"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node hooks/testa-mod-pr.cjs",
+    "saida": "59 ok, 0 falha(s), 0 skipped",
+    "sensor_externo": "node hooks/testa-mod-pr.cjs",
+    "em": "2026-10-15"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

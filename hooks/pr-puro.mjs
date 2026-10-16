@@ -290,6 +290,40 @@ export function donoConfere({ autor, eu, cruzado }) {
   return Boolean(eu) && autor === eu && cruzado === false;
 }
 
+// Sem saber quem e o usuario (eu vazio) a consulta adia: nao rebaixa o PR para manual e nao
+// acorda; a proxima consulta tenta de novo. So rebaixa com login conhecido e dono que nao confere.
+export function decidirDono({ autor, eu, cruzado }) {
+  if (eu === '') return 'adiar';
+  return donoConfere({ autor, eu, cruzado }) ? 'manter' : 'rebaixar';
+}
+
+// A virada que vira pendencia de despertar. Merge que a propria sessao pediu nao gera nota nem
+// pendencia (a sessao ja sabe). `agoraMs` marca o inicio da quietude.
+export function pendenteDaVirada({ virada, mergePedido, daSessao, resumo, agoraMs }) {
+  if (virada === null || (virada === 'merged' && mergePedido)) return null;
+  return { virada, nota: nota(virada, resumo, daSessao), ultimaMudancaMs: agoraMs };
+}
+
+// Acorda so quando a pendencia e de PR da sessao e ja esta quieta. `limpar` diz para tirar a
+// pendencia do estado antes de enviar `enviar`; sem pendencia ou sem acompanhado, nao acorda.
+export function planoDoDespertar({ pendente, acompanhado, agoraMs }) {
+  if (!pendente || !acompanhado) return { limpar: false, enviar: null };
+  const acorda = deveAcordar({
+    origem: acompanhado.origem,
+    branch: acompanhado.branch,
+    virada: pendente.virada,
+    ultimaMudancaMs: pendente.ultimaMudancaMs,
+    agoraMs,
+  });
+  return acorda ? { limpar: true, enviar: pendente.nota } : { limpar: false, enviar: null };
+}
+
+// Resposta do gh de um alvo que deixou de ser o acompanhado (troca de PR com a consulta em voo):
+// vale so se o acompanhado relido ainda tem o mesmo alvo.
+export function consultaVelha(alvoConsultado, acompanhadoAgora) {
+  return !acompanhadoAgora || acompanhadoAgora.alvo !== alvoConsultado;
+}
+
 // Linha do PR na barra acima do prompt: o numero e os dois primeiros chips (checks e merge).
 // Nunca titulo, branch, base ou autor: sao texto de quem abre o PR (mesma regra de nota()).
 // PR mergeado ou fechado some da barra (null).

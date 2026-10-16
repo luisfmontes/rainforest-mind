@@ -7,8 +7,9 @@
 // Fixtures: a saida real de `gh pr view 455 --json ...` e de `gh api graphql` (reviewThreads)
 // sobre o PR 455 do repo luisfmontes/rainforest-mind, colada como constante. As variantes
 // saem dessa saida mudando SO o campo citado. Campos que o gh devolve e que o painel nao
-// usa (author.id, author.name, updatedAt, detailsUrl) foram retirados: nome pessoal e IDs
-// de run nao se versionam.
+// usa (author.id, author.name, detailsUrl) foram retirados: nome pessoal e IDs de run nao se
+// versionam. updatedAt e isCrossRepository entram: o primeiro e um instante do PR (nao e dado
+// pessoal) e os dois estao na fixture do mod-pr.test.tsx (D5).
 //
 // Derivacoes locais (marcadas no codigo): BLOQUEADO, RASCUNHO e THREADS_ABERTAS nao vem de
 // nenhuma consulta; sao a saida real com um campo trocado para cobrir o caso.
@@ -43,7 +44,9 @@ const REAL_PR = {
   headRefOid: "a954e193059d3f392aab8afc1d9de4748b5a2c41",
   headRefName: "fluxo/gate-call-operator-variavel",
   baseRefName: "main",
+  isCrossRepository: false,
   author: { login: "luisfmontes" },
+  updatedAt: "2026-10-09T17:11:48Z",
   mergeable: "UNKNOWN",
   mergeStateStatus: "UNKNOWN",
   reviewDecision: "",
@@ -461,6 +464,59 @@ caso("mergeDoAlvo: so gh pr merge deste PR (sem alvo = PR da branch)", () => {
   igual(m.mergeDoAlvo("gh pr merge https://github.com/o/r/pull/45 --squash", 455), false, "outra URL (prefixo do numero)");
   igual(m.mergeDoAlvo("gh pr view 455", 455), false, "nao e merge");
   igual(m.mergeDoAlvo("echo gh pr mergeado 455", 455), false, "palavra parecida");
+});
+
+// ------------------------------------------------------------------ fixture (D5)
+caso("REAL_PR tem isCrossRepository e updatedAt, como a fixture do mod-pr.test.tsx", () => {
+  afirma("isCrossRepository" in REAL_PR, "falta isCrossRepository");
+  afirma("updatedAt" in REAL_PR, "falta updatedAt");
+  const campos = "number,title,url,state,isDraft,isCrossRepository,headRefOid,headRefName,baseRefName,author,updatedAt,mergeable,mergeStateStatus,reviewDecision,latestReviews,statusCheckRollup,comments".split(",");
+  const faltam = campos.filter((c) => !(c in REAL_PR));
+  igual(faltam, [], "campos pedidos ao gh que faltam na fixture");
+});
+
+// ------------------------------------------------------------------ D3: consulta velha
+caso("consulta velha: alvo trocado ou acompanhado sumido nao e a consulta atual", () => {
+  igual(m.consultaVelha("", null), true, "sem acompanhado");
+  igual(m.consultaVelha("https://github.com/o/r/pull/1", { alvo: "https://github.com/o/r/pull/2" }), true, "outro alvo");
+  igual(m.consultaVelha("https://github.com/o/r/pull/1", { alvo: "https://github.com/o/r/pull/1" }), false, "mesmo alvo");
+  igual(m.consultaVelha("", { alvo: "" }), false, "branch atual sem alvo");
+});
+
+// ------------------------------------------------------------------ D1: virada e despertar
+caso("pendenteDaVirada: merge da sessao gera nota e pendencia; merge pedido pela sessao nao gera nada", () => {
+  const r = m.resumir(REAL_PR, REAL_THREADS);
+  igual(
+    m.pendenteDaVirada({ virada: "merged", mergePedido: false, daSessao: true, resumo: r, agoraMs: AGORA }),
+    { virada: "merged", nota: m.nota("merged", r, true), ultimaMudancaMs: AGORA },
+    "merge da sessao",
+  );
+  afirma(m.nota("merged", r, true).includes("limpar o worktree"), "a nota de merge da sessao perdeu a acao");
+  igual(m.pendenteDaVirada({ virada: "merged", mergePedido: true, daSessao: true, resumo: r, agoraMs: AGORA }), null, "merge pedido");
+  igual(m.pendenteDaVirada({ virada: null, mergePedido: false, daSessao: true, resumo: r, agoraMs: AGORA }), null, "sem virada");
+  const alheio = m.pendenteDaVirada({ virada: "merged", mergePedido: false, daSessao: false, resumo: r, agoraMs: AGORA });
+  afirma(alheio.nota.includes("não é desta sessão") && !alheio.nota.includes("limpar"), "PR alheio nao pode mandar limpar: " + alheio.nota);
+});
+
+caso("planoDoDespertar: acorda so PR da sessao quieto, e limpa antes de enviar", () => {
+  const pendente = { virada: "checks-ok", nota: "NOTA", ultimaMudancaMs: 0 };
+  const sessao = { origem: "sessao", branch: "fluxo/x" };
+  igual(m.planoDoDespertar({ pendente, acompanhado: sessao, agoraMs: 180000 }), { limpar: true, enviar: "NOTA" }, "quieto da sessao");
+  igual(m.planoDoDespertar({ pendente, acompanhado: sessao, agoraMs: 179999 }), { limpar: false, enviar: null }, "nao quieto");
+  igual(m.planoDoDespertar({ pendente: null, acompanhado: sessao, agoraMs: 180000 }), { limpar: false, enviar: null }, "sem pendencia");
+  igual(m.planoDoDespertar({ pendente, acompanhado: null, agoraMs: 180000 }), { limpar: false, enviar: null }, "sem acompanhado");
+  igual(m.planoDoDespertar({ pendente, acompanhado: { origem: "manual", branch: "feature/x" }, agoraMs: 180000 }), { limpar: false, enviar: null }, "PR alheio");
+});
+
+// ------------------------------------------------------------------ D4: dono
+caso("dono: login desconhecido adia, nao rebaixa", () => {
+  igual(m.decidirDono({ autor: "luisfmontes", eu: "", cruzado: false }), "adiar", "eu vazio");
+});
+
+caso("dono: login conhecido confere mantem; nao confere ou fork rebaixa", () => {
+  igual(m.decidirDono({ autor: "luisfmontes", eu: "luisfmontes", cruzado: false }), "manter", "confere");
+  igual(m.decidirDono({ autor: "alheio", eu: "luisfmontes", cruzado: false }), "rebaixar", "autor diferente");
+  igual(m.decidirDono({ autor: "luisfmontes", eu: "luisfmontes", cruzado: true }), "rebaixar", "fork");
 });
 
 // ------------------------------------------------------------------ execucao
