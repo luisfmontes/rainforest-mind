@@ -69,6 +69,16 @@ const POP_LOCATION = /^\s*Pop-Location\s*$/i;
 // virgula, e com `}` seguido de espaco, separador ou fim. Grupo de verdade
 // (`{ cmd; }`) tem espaco logo depois da chave e nao casa.
 const EXPANSAO_DE_CHAVES_DE_COMANDO = /^(\s*)\{([^\s'"$`{}()\\;&|<>]*,[^\s'"$`{}()\\;&|<>]*)\}(?=[\s;&|]|$)/;
+/**
+ * Expansao de chaves em posicao de comando (#530, D1) — ponto unico da decisao.
+ * So o Bash expande `{a,b}`: no PowerShell `{...}` e bloco de script, nao cria
+ * palavras, entao a chave nao vira expansao la. Devolve o match ou null.
+ */
+function expansaoDeChavesDeComando(texto, ehPowerShell = false) {
+  if (ehPowerShell) return null;
+  return EXPANSAO_DE_CHAVES_DE_COMANDO.exec(texto);
+}
+
 const NAO_E_COMANDO_ANTES_DA_CHAVE = new Set([
   "!", "if", "then", "else", "elif", "do", "while", "until", "time", "{",
   "builtin", "command", "exec", "eval", "env", "sudo", "nohup", "nice", "xargs",
@@ -128,7 +138,7 @@ function fimDaExpansaoDeChaves(cmd, i, atual) {
  * (`;`, `&&`, `||`, `|`) em vez de espaçamento de tokens.
  * Aspas simples e duplas protegem separadores do inside.
  */
-function segmentosComAspas(cmd) {
+function segmentosComAspas(cmd, ehPowerShell = false) {
   // Tarefa 13 (#309, revisao 2): mesmo colapso de continuacao de linha que
   // `segmentosParaGate` (gate-fechar-issue.cjs) aplica — as duas funcoes
   // dividem `\n` cru da MESMA forma (fronteira incondicional), entao as
@@ -201,12 +211,12 @@ function segmentosComAspas(cmd) {
         segmentos.push(atual);
       }
       atual = "";
-    } else if (c === "{" && !atual.trim() && EXPANSAO_DE_CHAVES_DE_COMANDO.test(cmd.slice(i))) {
+    } else if (c === "{" && !atual.trim() && expansaoDeChavesDeComando(cmd.slice(i), ehPowerShell)) {
       // #530 (D1): `{cd,X}` no comeco do segmento e expansao (o bash roda
       // `cd X`), nao grupo. A palavra inteira fica no segmento, para
       // `resolverMovedor` expandir; antes a chave virava fronteira e o `cd`
       // saia partido em `cd,X`, sem reconhecimento.
-      const m = EXPANSAO_DE_CHAVES_DE_COMANDO.exec(cmd.slice(i));
+      const m = expansaoDeChavesDeComando(cmd.slice(i), ehPowerShell);
       atual += m[0];
       i += m[0].length - 1;
     } else if (c === "{" && fimDaExpansaoDeChaves(cmd, i, atual) !== -1) {
@@ -407,10 +417,10 @@ function normalizarMsys(caminho, plataforma = process.platform) {
  * @param {{atual: string, incerto: boolean, pilhaPushd: string[]}} estado
  * @returns {{cwd: string, incerto: boolean, soMovedor: boolean}}
  */
-function resolverMovedor(segCru, estado) {
+function resolverMovedor(segCru, estado, ehPowerShell = false) {
   // D1 (#530): `{cd,X}` no inicio vira `cd X` antes de qualquer teste abaixo.
   // Os regex de movedor e `contemSubshellOuGrupo` veem o comando que o bash roda.
-  const m = EXPANSAO_DE_CHAVES_DE_COMANDO.exec(segCru);
+  const m = expansaoDeChavesDeComando(segCru, ehPowerShell);
   const seg = m ? m[1] + m[2].split(",").filter((p) => p !== "").join(" ") + segCru.slice(m[0].length) : segCru;
   // Subshell/grupo: o `cd` de dentro dele nao persiste pra fora, mas vale
   // para os comandos dentro — a unica leitura segura e marcar INCERTO,
@@ -560,13 +570,13 @@ function resolverMovedor(segCru, estado) {
  * @returns {Array<{seg: string, cwd: string, incerto: boolean}>} Um item por
  *   segmento, na ordem em que aparecem no comando.
  */
-function cwdPorSegmento(comando, cwdInicial) {
-  const segmentos = segmentosComAspas(comando);
+function cwdPorSegmento(comando, cwdInicial, ehPowerShell = false) {
+  const segmentos = segmentosComAspas(comando, ehPowerShell);
   const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [] };
   const resultado = [];
 
   for (const seg of segmentos) {
-    const mov = resolverMovedor(seg, estado);
+    const mov = resolverMovedor(seg, estado, ehPowerShell);
     if (mov.soMovedor) {
       resultado.push({ seg, cwd: mov.cwd, incerto: mov.incerto });
       continue;

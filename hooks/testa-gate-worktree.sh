@@ -750,7 +750,7 @@ gate "env -u OneDrive --chdir=principal codex exec --yolo, do worktree BARRA (R1
 # `bp` monta o payload de SUBAGENTE via ferramenta PowerShell (R3) — mesma
 # forma do `b` acima (node -e, escapa aspas), so troca o tool_name.
 bp() { # comando, cwd  -> payload de SUBAGENTE via PowerShell
-  node -e 'const [c,d]=process.argv.slice(1);process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:d,hook_event_name:"PreToolUse",tool_name:"PowerShell",tool_input:{command:c}}))' "$1" "$2"
+  MSYS_NO_PATHCONV=1 node -e 'const [c,d]=process.argv.slice(1);process.stdout.write(JSON.stringify({agent_id:"ag-1",agent_type:"executor",cwd:d,hook_event_name:"PreToolUse",tool_name:"PowerShell",tool_input:{command:c}}))' "$1" "$2"
 }
 gate "SUBAGENTE no principal via PowerShell: git commit -m x BARRA (R3)" 2 \
   "$(bp "git commit -m x" "$R")"
@@ -991,6 +991,10 @@ gate "#530: {cd,<worktree>} && echo x > f, do worktree, PASSA" 0 "$(b "{cd,$WT} 
 gate "#530: {cd,<worktree>} && git commit -m x, do principal, PASSA" 0 "$(b "{cd,$WT} && git commit -m x" "$R")"
 gate "#530: ls {a,b} do worktree, PASSA" 0 "$(b "ls {a,b}" "$WT")"
 gate "#530: { echo a; echo b; } > f do worktree, PASSA (grupo, nao expansao)" 0 "$(b "{ echo a; echo b; } > f" "$WT")"
+# D1 (emenda da rodada 2): so o Bash expande. No PowerShell `{cd,X}` e bloco de script:
+# nao muda o cwd, entao o Set-Content relativo cai no worktree e PASSA. Se a expansao
+# valesse no PowerShell, `cd <principal>` mudaria o cwd e o caso BARRARIA.
+gate "#530 PowerShell: {cd,<principal>} e bloco de script, nao cd: Set-Content f do worktree PASSA" 0 "$(bp "{cd,$R} ; Set-Content f x" "$WT")"
 
 echo
 echo "== #533: cmdlets de escrita do PowerShell =="
@@ -1017,6 +1021,33 @@ gate "#533 vizinho: [IO.File]::WriteAllText('<worktree>/f','x') do worktree, PAS
 gate "#533 vizinho: [IO.File]::Copy('<worktree>/a','<worktree>/b') do worktree, PASSA" 0 "$(bp "[IO.File]::Copy('$WT/a','$WT/b')" "$WT")"
 gate "#533 vizinho: [IO.File]::ReadAllText('<principal>/f') (leitura) do worktree, PASSA" 0 "$(bp "[IO.File]::ReadAllText('$R/f')" "$WT")"
 gate "#533 (d): ferramenta Bash, Set-Content <principal>/f x, do worktree, PASSA (sem alvo novo)" 0 "$(b "Set-Content $R/f x" "$WT")"
+
+echo
+echo "== #533 (e): emendas da rodada 2 (falha fechada e chamada .NET) =="
+gate "#533 (e): Microsoft.PowerShell.Management\\Set-Content <principal>/f x, do worktree, BARRA (qualificador de modulo)" 2 "$(bp 'Microsoft.PowerShell.Management\Set-Content '"$R"'/f x' "$WT")"
+gate "#533 (e): Set-Content -PSPath <principal>/f x, do worktree, BARRA (alias PSPath)" 2 "$(bp "Set-Content -PSPath $R/f x" "$WT")"
+gate "#533 (e): Set-Content -LP <principal>/f x, do worktree, BARRA (alias LP)" 2 "$(bp "Set-Content -LP $R/f x" "$WT")"
+gate "#533 (e): Set-Content \$p x, do worktree, BARRA (alvo com variavel)" 2 "$(bp 'Set-Content $p x' "$WT")"
+gate "#533 (e): Set-Content -Desconhecido y <worktree>/f, do worktree, BARRA (parametro desconhecido)" 2 "$(bp "Set-Content -Desconhecido y $WT/f" "$WT")"
+gate "#533 (e): Set-Content -Fi x <worktree>/f, do worktree, BARRA (prefixo ambiguo, incerto)" 2 "$(bp "Set-Content -Fi x $WT/f" "$WT")"
+gate "#533 (e): [IO.File]::Replace('a','<principal>/f',\$null), do worktree, BARRA (2o argumento)" 2 "$(bp "[IO.File]::Replace('a','$R/f',\$null)" "$WT")"
+gate "#533 (e): [IO.Directory]::CreateDirectory('<principal>/d'), do worktree, BARRA (metodo de escrita nao listado)" 2 "$(bp "[IO.Directory]::CreateDirectory('$R/d')" "$WT")"
+gate "#533 (e): [IO.File]::ReadAllText('<principal>/f') do worktree, PASSA (leitura)" 0 "$(bp "[IO.File]::ReadAllText('$R/f')" "$WT")"
+gate "#533 (e): Select-String \"[IO.File]::WriteAllText(\" arq, do worktree, PASSA (chamada dentro de aspas nao conta)" 0 "$(bp 'Select-String "[IO.File]::WriteAllText(" arq' "$WT")"
+gate "#533 (e): Invoke-Expression \"[IO.File]::WriteAllText('<principal>/f','x')\", do worktree, BARRA (texto executado nao e mascarado)" 2 "$(bp "Invoke-Expression \"[IO.File]::WriteAllText('$R/f','x')\"" "$WT")"
+gate "#533 (e): iex \"[IO.File]::AppendAllText('<principal>/f','x')\", do worktree, BARRA (alias iex)" 2 "$(bp "iex \"[IO.File]::AppendAllText('$R/f','x')\"" "$WT")"
+gate "#533 (e) vizinho: Set-Content -ea SilentlyContinue <worktree>/f x, do worktree, PASSA (alias de parametro comum)" 0 "$(bp "Set-Content -ea SilentlyContinue $WT/f x" "$WT")"
+gate "#533 (e) vizinho: Set-Content -ea SilentlyContinue <principal>/f x, do worktree, BARRA" 2 "$(bp "Set-Content -ea SilentlyContinue $R/f x" "$WT")"
+gate "#533 (e) vizinho: Set-Content -Confirm:\$false <worktree>/f x, do worktree, PASSA (switch com dois-pontos nao e alvo)" 0 "$(bp 'Set-Content -Confirm:$false '"$WT"'/f x' "$WT")"
+
+echo
+echo "== D4: escrita na mesma linha de verbo git =="
+# D4 (docs/rainforest/design/2026-10-16-gate-worktree-brechas.md): a escrita por
+# redirecionamento ou cmdlet e checada tambem na linha com verbo git.
+gate "D4: echo x > <principal>/f && git commit -m y (Bash), do worktree, BARRA" 2 "$(b "echo x > $R/f && git commit -m y" "$WT")"
+gate "D4: Set-Content <principal>/f x; git commit -m y (PowerShell), do worktree, BARRA" 2 "$(bp "Set-Content $R/f x; git commit -m y" "$WT")"
+gate "D4 vizinho: echo x > f && git commit -m y (Bash), do worktree, PASSA" 0 "$(b "echo x > f && git commit -m y" "$WT")"
+gate "D4 vizinho: Set-Content f x; git commit -m y (PowerShell), do worktree, PASSA" 0 "$(bp "Set-Content f x; git commit -m y" "$WT")"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

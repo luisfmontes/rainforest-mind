@@ -468,7 +468,18 @@ console.log("== #514 (P2): expansao de chaves em argumento nao e fronteira ==");
   const n = (c) => segmentosComAspas(c).length;
   test("(514a) echo a/{b,c}/d -> 1 segmento", () => eq(n("echo a/{b,c}/d"), 1, "argumento com chaves fica inteiro"));
   test("(514b) wc -l s/{a,b}/S.md; echo {1..3} -> 2 segmentos", () => eq(n("wc -l s/{a,b}/S.md; echo {1..3}"), 2, "so o ; separa"));
-  test("(514c) {cd,x} em posicao de comando continua cortando", () => eq(n("{cd,x}") > 1, true, "chave em posicao de comando e fronteira"));
+  test("(514c) {cd,x} em posicao de comando, no Bash, vira um segmento so (D1, #530)", () => eq(n("{cd,x}"), 1, "a chave expande, nao corta"));
+  test("(514c) {cd,lib} && echo x, no Bash, move o cwd (a chave expandida e cd de verdade)", () => {
+    const hooksDir = path.resolve(path.dirname(process.argv[2]), "..");
+    const r = cwdPorSegmento("{cd,lib} && echo x", hooksDir);
+    eq(path.resolve(r[r.length - 1].cwd), path.resolve(hooksDir, "lib"), "cwd final e hooks/lib");
+  });
+  test("(514c) {cd,x} em PowerShell continua cortando (bloco de script, nao expansao)", () => {
+    eq(segmentosComAspas("{cd,x}", true).length > 1, true, "PowerShell nao expande chaves");
+    const hooksDir = path.resolve(path.dirname(process.argv[2]), "..");
+    const r = cwdPorSegmento("{cd,lib}; echo x", hooksDir, true);
+    eq(path.resolve(r[r.length - 1].cwd), hooksDir, "PowerShell: {cd,lib} nao muda o cwd");
+  });
   test("(514d) A=1 {cd,x} / then {cd,x} / builtin {cd,x} continuam cortando", () => {
     for (const c of ["A=1 {cd,x}", "then {cd,x}", "then A=1 {cd,x}", "builtin {cd,x}", "env -i {cd,x}"]) eq(n(c) > 1, true, c);
   });
