@@ -146,15 +146,25 @@ function palavras(cmd) {
  *
  * @returns {Array<{verbo: string, args: string[]}>}
  */
-function subcomandoGit(cmd, ferramenta) {
+function subcomandoGit(cmd, ferramenta, profundidade = 0) {
   const textos = [String(cmd), textoLido(cmd, ferramenta).seg];
   const achados = [];
+  // #530 rodada extra 2: uma recursao por interno distinto (texto + ferramenta). Duas
+  // leituras com o mesmo interno (`'eval' ` e `\eval `) dobravam o custo a cada nivel:
+  // 22 niveis passavam de 60 s. Mais de 4 niveis nao recursa; quem barra e
+  // alvosBashEscrita, com o motivo de sempre.
+  const internosVistos = new Set();
   leiturasDoComando(cmd, ferramenta).forEach((w, k) => {
     if (k === 1 && textos[1] === textos[0]) return;
     const r = subcomandoNasPalavras(w);
     if (r.achou) { if (r.sub) achados.push(r.sub); return; }
     const { interno, ilegivel } = desempacotarWrapperDeString(textos[k], { ferramenta });
-    if (interno !== null && !ilegivel) achados.push(...subcomandoGit(interno, ferramentaDoInterno(textos[k], ferramenta)));
+    if (interno === null || ilegivel) return;
+    const ferr = ferramentaDoInterno(textos[k], ferramenta);
+    const chave = interno + "\0" + ferr;
+    if (internosVistos.has(chave)) return;
+    internosVistos.add(chave);
+    if (profundidade < 4) achados.push(...subcomandoGit(interno, ferr, profundidade + 1));
   });
   const vistos = new Set();
   return achados.filter((s) => {

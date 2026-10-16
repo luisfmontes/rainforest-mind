@@ -1100,5 +1100,32 @@ gate "(#530) rodada extra: git status a partir de W passa" 0 "$(wt 'git status')
 gate "(#530) rodada extra: git -C W log a partir de W passa" 0 "$(wt "git -C $WT log")"
 gate "(#530) rodada extra: powershell -Command git -C W status passa" 0 "$(wt "powershell -Command \"git -C $WT status\"")"
 
+echo "== (#530) rodada extra 2: wrapper aninhado fundo nao explode nem passa =="
+# Tempo: o gate tem que sair em menos de 2 s. `timeout 5` mata o caso que trava de vez;
+# a medida pega o que termina mas passa de 2 s (a base linear sai em milissegundos).
+# Os comandos saem de node, com a contrabarra e as aspas por String.fromCharCode: nada
+# digitado a mao dentro de aspas, que e onde o escape se perde.
+gate_rapido() { # nome, exit esperado, json
+  local nome="$1" esp="$2" json="$3"
+  if [ -z "$json" ]; then falhou=$((falhou+1)); echo "  FALHA $nome: payload vazio"; return; fi
+  local ini fim saida got ms
+  ini=$(date +%s%N)
+  saida=$(printf '%s' "$json" | timeout 5 node "$GATE" 2>&1); got=$?
+  fim=$(date +%s%N)
+  ms=$(( (fim - ini) / 1000000 ))
+  if [ "$got" = "$esp" ] && [ "$ms" -lt 2000 ]; then ok=$((ok+1)); echo "  ok   $nome (exit $got, ${ms} ms)"
+  else falhou=$((falhou+1)); echo "  FALHA $nome: esperava exit $esp em menos de 2000 ms, veio exit $got em ${ms} ms"; echo "$saida" | sed 's/^/         /' | head -6; fi
+}
+EVAL22=$(node -e 'const Q=String.fromCharCode(39),D=String.fromCharCode(34);process.stdout.write((Q+"eval"+Q+" ").repeat(22)+D+"git -C "+process.argv[1]+" commit --allow-empty -m x"+D)' "$R")
+BSEVAL22=$(node -e 'const B=String.fromCharCode(92),D=String.fromCharCode(34);process.stdout.write((B+"eval ").repeat(22)+D+"git -C "+process.argv[1]+" commit --allow-empty -m x"+D)' "$R")
+EVAL3000=$(node -e 'const D=String.fromCharCode(34);process.stdout.write("eval ".repeat(3000)+D+"git -C "+process.argv[1]+" commit --allow-empty -m x"+D)' "$R")
+NB6=$(node -e 'const Q=String.fromCharCode(39),B=String.fromCharCode(92),D=String.fromCharCode(34);let s="git -C "+process.argv[1]+" commit --allow-empty -m x";for(let i=0;i<6;i++)s=Q+"bash"+Q+" -c "+D+s.split(B).join(B+B).split(D).join(B+D)+D;process.stdout.write(s)' "$R")
+gate_rapido "(#530) rodada extra 2: 'eval ' x22 + git -C P commit barra" 2 "$(wt "$EVAL22")"
+gate_rapido "(#530) rodada extra 2: \\eval  x22 + git -C P commit barra" 2 "$(wt "$BSEVAL22")"
+gate_rapido "(#530) rodada extra 2: 'bash' -c aninhado 6 niveis + git -C P commit barra" 2 "$(wt "$NB6")"
+gate_rapido "(#530) rodada extra 2: eval  x3000 + git -C P commit barra" 2 "$(wt "$EVAL3000")"
+gate_rapido "(#530) rodada extra 2: eval \"git status\" a partir de W passa" 0 "$(wt 'eval "git status"')"
+gate_rapido "(#530) rodada extra 2: bash -c 'git -C W log' a partir de W passa" 0 "$(wt "bash -c 'git -C $WT log'")"
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

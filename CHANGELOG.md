@@ -16,18 +16,22 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   conseguia escrever no principal por formas que o gate deixava passar. Agora são barradas:
   - nome do comando com aspas, escape ou `$'...'`: `'cd' P`, `c\d P`, `$'\x63d' P`;
   - expansão de chaves em posição de comando: `{cd,P}`, `{"cd",P}`, `{git,-C,P,...}`, `{env,-C,P,...}`;
-  - escrita e `cd` dentro de `bash -c` ou `eval`, como `bash -c 'echo x > P/f'`;
-  - substituição de comando com crase, e dentro de aspas duplas: `` echo `cd P; ...` `` e `echo "$(cd P; ...)"`;
+  - escrita (redirecionamento, `tee`, `cp`) dentro de `bash -c` ou `eval`, como `bash -c 'echo x > P/f'`;
+  - escrita dentro de substituição de comando com crase, e dentro de aspas duplas: `` echo `echo x > P/f` `` e `echo "$(echo x > P/f)"`;
   - `cd` com redirecionamento antes ou depois (`cd P > /dev/null`), e atribuição com escape (`A=a\ b cd P`).
 - **Dois motivos novos de barrar, com a mensagem no stderr:** `wrapper aninhado demais para conferir (mais de 4
   niveis)` e `expansao de chaves grande demais para conferir`.
+- **Wrapper aninhado fundo não trava mais (rodada extra 2, #530):** o reconhecimento do git não recursa além de 4
+  níveis. Com `'eval' ` repetido 22 vezes antes do `git -C P commit`, o hook levava mais de 60 s; agora sai com o
+  motivo acima em menos de 0,5 s.
 - **Continua de fora (D1, #530 e #533):** `GIT_DIR` e `--git-dir`, `cd` por função, alias ou script, `cd $VAR`,
   cmdlet de escrita do PowerShell e `cd` em ramo condicional. Esses casos seguem nas issues #530 e #533.
 - **Comandos legítimos seguem passando:** `echo a{b,c}` com chave em argumento, `bash -c 'echo x > f'` e
   `cd hooks > /dev/null` dentro do worktree.
 - **Limite conhecido:** a leitura do bash é parcial. Ainda passam, por exemplo: `bash -c '...' _`, `env bash -c ...`,
-  `t\ee P/f`, `{cp,a,P/f}` e `tee {P/f,}`. A família inteira está na #530, e a abordagem por caminho do principal fica
-  para um fluxo próprio.
+  `t\ee P/f`, `{cp,a,P/f}` e `tee {P/f,}`. Verbo de git com `cd` dentro do wrapper, como `bash -c 'cd P && git commit'`,
+  também passa e fica remetido ao item 4 da #530. A família inteira está na #530, e a abordagem por caminho do principal
+  fica para um fluxo próprio.
 - **Falsos positivos residuais, remetidos à #530:** `cd hooks; x=$(echo a; echo b > ../c)` barra por engano, porque o
   corpo de `$(` sem aspas cruza `;` e é resolvido a partir do cwd inicial. E `bash -c '...'` dentro da ferramenta
   PowerShell passa sem ser lido, pelo mesmo gap.
