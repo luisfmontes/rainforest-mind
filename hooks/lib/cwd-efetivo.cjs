@@ -14,6 +14,7 @@ const {
   tokensComAspas, ehComando, posicaoDeComando, OPERADORES_DE_DOIS,
   colapsaContinuacaoDeLinhaNoTopo,
 } = require("./tokens-comando.cjs");
+const { normalizarComando } = require("./palavra-bash.cjs");
 
 // `cd X` isolado num segmento do encadeamento.
 const CD = /^\s*cd\s+(?:--\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/;
@@ -27,7 +28,11 @@ const CD = /^\s*cd\s+(?:--\s+)?(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*$/;
 // `! cd X`, `time cd X`) tambem: o `cd` roda no MESMO shell. Sem isto os dois
 // passavam como "nao e movedor" (#530); antes do #514 a chave inocente de
 // `echo {a,b}; A=1 cd X; ...` marcava a linha incerta e barrava por acaso.
-const PREFIXO_SINTATICO_DE_BUILTIN = /^\s*(?:command\s+|builtin\s+|[A-Za-z_][A-Za-z0-9_]*=(?:"[^"]*"|'[^']*'|[^\s"';&|]*)\s+|(?:then|do|else|elif|if|while|until|time|!)\s+)/;
+// #530 (D4): `eval` executa o texto de novo no shell atual, entao `eval cd X`
+// muda o cwd como `builtin cd X`. Redirecionamento antes do comando
+// (`> "a b" cmd`, `<<<"a b" cmd`) e atribuicao com escape (`A=a\ b cmd`)
+// tambem saem da frente: o bash os le como parte da linha, nao como comando.
+const PREFIXO_SINTATICO_DE_BUILTIN = /^\s*(?:command\s+|builtin\s+|eval\s+|[A-Za-z_][A-Za-z0-9_]*=(?:"[^"]*"|'[^']*'|(?:\\.|[^\s"';&|\\])*)\s+|(?:then|do|else|elif|if|while|until|time|!)\s+|\d*(?:<<<|>>|<<|>|<|&>)\s*(?:"[^"]*"|'[^']*'|(?:\\.|[^\s"';&|<>\\])+)\s+)/;
 const BARRA_NO_NOME_DO_MOVEDOR = /^(\s*)\\(cd|pushd|popd)\b/;
 // Diretorio que o proprio git recebe, e que vence o cwd do shell.
 const GIT_DIR_EXPLICITO = /\bgit\b[^\n;&|]*?(?:-C|--work-tree(?:=|\s+))\s*(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))/;
@@ -104,60 +109,48 @@ function expandeChavesDeComandoNoSegmento(seg, ehPowerShell = false) {
   return { texto: pre + elementos.join(" ") + seg.slice(pre.length + m[0].length) };
 }
 
-// Palavras que, antes da chave, NAO fazem dela um argumento: reservadas do
-// bash (a palavra seguinte e comando) e wrappers que executam o que vem depois
-// (`builtin {cd,X}` vira `builtin cd X`). Com elas, a chave segue sendo
-// fronteira, como antes do #514.
-const NAO_E_COMANDO_ANTES_DA_CHAVE = new Set([
-  "!", "if", "then", "else", "elif", "do", "while", "until", "time", "{",
-  "builtin", "command", "exec", "eval", "env", "sudo", "nohup", "nice", "xargs",
-  "timeout", "bash", "sh", "zsh", "pwsh", "powershell", "&", ".",
-]);
-
 /**
- * `cmd[i]` abre uma expansao de chaves em posicao de ARGUMENTO? Devolve o
- * indice do `}` que a fecha, ou -1 (#514, P2).
+ * `cmd[i]` abre uma expansao de chaves? Devolve o indice do `}` que a fecha, ou -1.
  *
- * Expansao: fecha na mesma palavra, sem espaco, aspa, `$`, crase, parentese,
- * operador ou outra chave dentro, e tem `,` ou e sequencia `x..y`. Argumento:
- * o segmento ja tem palavra de comando antes — pulando atribuicao (`A=1`),
- * redirecionamento e as palavras de `NAO_E_COMANDO_ANTES_DA_CHAVE`; se a
- * primeira palavra que sobra e uma delas, ou nao sobra nenhuma, e -1. Em
- * posicao de comando `{cd,X}` nao cai aqui (devolve -1): `segmentosComAspas`
- * trata a expansao antes, em EXPANSAO_DE_CHAVES_DE_COMANDO (#530).
+ * #514 (P2) fez a chave em ARGUMENTO deixar de ser fronteira. #530 (D4) faz o
+ * mesmo em POSICAO DE COMANDO: `{cd,X}` expande para `cd X` e nao pode ser
+ * cortado em `{`, `cd,X`, `}` — o `cd` que o bash roda ficaria invisivel. Por
+ * isso a regra nao olha a posicao: a palavra inteira `{...}` sem espaco, `$`,
+ * crase, parentese, operador ou barra invertida, com `,` no nivel dela (ou
+ * sequencia `x..y`), e expansao em qualquer lugar. Aspa so entra BALANCEADA, com
+ * miolo sem espaco, `$`, crase, parentese ou barra invertida (ver o trecho de
+ * aspas no corpo da funcao). Qualquer outra coisa continua fronteira, e portanto
+ * incerta.
+ *
+ * Chaves aninhadas contam pelo nivel: em `{{cd,X},}` a `}` que fecha a palavra
+ * e a de fora, e a virgula que conta e a do nivel de fora.
  */
-function fimDaExpansaoDeChaves(cmd, i, atual) {
-  let fim = -1;
+function fimDaExpansaoDeChaves(cmd, i) {
+  let prof = 0;
+  let virgula = false;
   for (let j = i + 1; j < cmd.length; j += 1) {
     const c = cmd[j];
-    if (c === "}") { fim = j; break; }
+    // #530 (emenda): aspas BALANCEADAS dentro da palavra de chaves (`{"cd",X}`)
+    // expandem como o bash: o miolo entra literal, e a virgula dentro delas nao
+    // conta. Miolo com espaco, `$`, crase, parentese ou contrabarra continua
+    // recusado (fronteira, portanto incerto), como antes.
+    if (c === '"' || c === "'") {
+      const k = cmd.indexOf(c, j + 1);
+      if (k < 0 || /[\s$`()\\]/.test(cmd.slice(j + 1, k))) return -1;
+      j = k;
+      continue;
+    }
+    if (c === "{") { prof += 1; continue; }
+    if (c === "}") {
+      if (prof > 0) { prof -= 1; continue; }
+      const dentro = cmd.slice(i + 1, j);
+      if (virgula || /^[A-Za-z0-9]+\.\.[A-Za-z0-9]+(\.\.-?\d+)?$/.test(dentro)) return j;
+      return -1;
+    }
+    if (c === "," && prof === 0) { virgula = true; continue; }
     if (/[\s'"$`(){};|&<>\\]/.test(c)) return -1;
   }
-  if (fim === -1) return -1;
-  const dentro = cmd.slice(i + 1, fim);
-  if (!dentro.includes(",") && !/^[A-Za-z0-9]+\.\.[A-Za-z0-9]+(\.\.-?\d+)?$/.test(dentro)) return -1;
-
-  // Palavras completas antes da palavra corrente (a que contem a chave).
-  // O split por espaco so e fiel sem aspas, `\`, `$`, crase ou redirecionamento:
-  // `A="a b" {cd,X}` partia em `A="a` + `b"` e `b"` virava "comando";
-  // `\builtin {cd,X}` escapava da lista. Prefixo fora do conjunto simples:
-  // a chave segue fronteira (revisor da revisita-context-mode).
-  const prefixo = atual.replace(/\S*$/, "");
-  if (/[^\w\s.\/:=+,@%-]/.test(prefixo)) return -1;
-  const palavras = prefixo.trim().split(/\s+/).filter(Boolean);
-  const RESERVADAS = ["!", "if", "then", "else", "elif", "do", "while", "until", "{"];
-  let k = 0;
-  while (k < palavras.length) {
-    const p = palavras[k];
-    if (RESERVADAS.includes(p)) { k += 1; continue; }
-    if (/^[A-Za-z_][A-Za-z0-9_]*\+?=/.test(p)) { k += 1; continue; }
-    if (/^\d*(>>?|<|&>)$/.test(p)) { k += 2; continue; }
-    if (/^\d*(>>?|<|&>)/.test(p)) { k += 1; continue; }
-    break;
-  }
-  if (k >= palavras.length) return -1;
-  if (NAO_E_COMANDO_ANTES_DA_CHAVE.has(palavras[k].toLowerCase())) return -1;
-  return fim;
+  return -1;
 }
 
 /**
@@ -249,10 +242,11 @@ function segmentosComAspas(cmd, ehPowerShell = false) {
       const m = expansaoDeChavesDeComando(cmd.slice(i), ehPowerShell);
       atual += m[0];
       i += m[0].length - 1;
-    } else if (c === "{" && fimDaExpansaoDeChaves(cmd, i, atual) !== -1) {
-      // #514 (P2): `a/{b,c}/d` em posicao de argumento e expansao de chaves,
-      // nao grupo — a palavra inteira fica no segmento, sem virar fronteira.
-      const fim = fimDaExpansaoDeChaves(cmd, i, atual);
+    } else if (c === "{" && !ehPowerShell && fimDaExpansaoDeChaves(cmd, i) !== -1) {
+      // #514 (P2) e #530 (D4): `a/{b,c}/d` e `{cd,X}` sao expansao de chaves,
+      // em argumento ou em posicao de comando — a palavra inteira fica no
+      // segmento, sem virar fronteira.
+      const fim = fimDaExpansaoDeChaves(cmd, i);
       atual += cmd.slice(i, fim + 1);
       i = fim;
     } else if (c === "(" || c === ")" || c === "{" || c === "}") {
@@ -309,7 +303,11 @@ function segmentosComAspas(cmd, ehPowerShell = false) {
  *     de substituicao de comando (essa ja cai no `/[$\`]/` de cima).
  */
 function contemSubshellOuGrupo(seg) {
-  if (/^\s*[({]/.test(seg)) return true;
+  // #530 (D4): `{cd,X}` no comeco e expansao de chaves (`cd X`), nao grupo —
+  // so `(`, ou `{` que nao fecha uma expansao, marcam o segmento.
+  const primeiro = seg.search(/\S/);
+  if (primeiro >= 0 && seg[primeiro] === "(") return true;
+  if (primeiro >= 0 && seg[primeiro] === "{" && fimDaExpansaoDeChaves(seg, primeiro) === -1) return true;
   let aspa = null;
   for (let i = 0; i < seg.length; i += 1) {
     const c = seg[i];
@@ -366,6 +364,49 @@ function comandoEhGit(seg) {
 }
 
 /**
+ * Tira os redirecionamentos FORA de aspas do segmento, para o movedor casar o
+ * `cd`/`pushd`/`popd` que vem com eles: `cd X > /dev/null`, `cd X 2>/dev/null`,
+ * `>/dev/null cd X`, `2>&1 cd X` (#530, emenda). Redirecionamento nao muda o
+ * cwd; o destino dele continua sendo lido por `alvosBashEscrita` no segmento
+ * cru. Numero colado a palavra (`dir2>x`) nao e descritor: fica como texto.
+ */
+function semRedirecionamentos(seg) {
+  let saida = "";
+  let aspa = null;
+  for (let i = 0; i < seg.length; i += 1) {
+    const c = seg[i];
+    if (aspa) {
+      if (c === aspa) aspa = null;
+      saida += c;
+      continue;
+    }
+    if (c === "\\") { saida += seg.slice(i, i + 2); i += 1; continue; }
+    if (c === '"' || c === "'") { aspa = c; saida += c; continue; }
+    const m = /^(?:\d+|&)?(?:>>?|<<?<?)(?:&(?:\d+|-))?/.exec(seg.slice(i));
+    const ehDescritor = /^\d/.test(m ? m[0] : "");
+    if (!m || (ehDescritor && i > 0 && !/[\s;&|()]/.test(seg[i - 1]))) {
+      saida += c;
+      continue;
+    }
+    i += m[0].length - 1;
+    // `>&1` / `2>&-` nao tem destino: o `&N` ja e o fim do operador.
+    if (!/&(?:\d+|-)$/.test(m[0])) {
+      let k = i + 1;
+      while (k < seg.length && /\s/.test(seg[k])) k += 1;
+      if (seg[k] === '"' || seg[k] === "'") {
+        const fecha = seg.indexOf(seg[k], k + 1);
+        k = fecha < 0 ? seg.length : fecha + 1;
+      } else {
+        while (k < seg.length && !/[\s;&|()<>]/.test(seg[k])) k += 1;
+      }
+      i = k - 1;
+    }
+    saida += " ";
+  }
+  return saida;
+}
+
+/**
  * Remove, do INÍCIO do segmento, prefixos que só mudam COMO o comando
  * seguinte é resolvido sem criar processo novo (`command`/`builtin`,
  * repetidos ou combinados) e uma barra invertida colada no NOME do comando
@@ -383,10 +424,19 @@ function comandoEhGit(seg) {
  */
 function semPrefixoSintaticoDeBuiltin(seg) {
   let s = seg;
-  for (;;) {
+  // #530 (D4): tira os prefixos sintaticos sem normalizar o comando. Palavra
+  // de prefixo com aspa ou escape (`"builtin" X`, `\builtin X`) sai tambem:
+  // so ela e lida como o bash, para ver se e command/builtin/eval. Atribuicao
+  // e palavra reservada com aspa NAO saem (`'then' X` e `'A=1' X` sao
+  // comandos). A palavra de comando seguinte fica crua: quem a normaliza e o
+  // `normalizarComando` de quem chama, que tambem avisa o estouro de chaves.
+  for (let n = 0; n < 64; n += 1) {
     const m = PREFIXO_SINTATICO_DE_BUILTIN.exec(s);
-    if (!m) break;
-    s = s.slice(m[0].length);
+    if (m) { s = s.slice(m[0].length); continue; }
+    const p = /^(\s*)(\S+)/.exec(s);
+    if (!p) break;
+    if (!/^(?:command|builtin|eval)$/.test(normalizarComando(p[2]).seg)) break;
+    s = s.slice(p[0].length);
   }
   return s.replace(BARRA_NO_NOME_DO_MOVEDOR, "$1$2");
 }
@@ -444,7 +494,7 @@ function normalizarMsys(caminho, plataforma = process.platform) {
  * para os segmentos seguintes.
  *
  * @param {string} seg
- * @param {{atual: string, incerto: boolean, pilhaPushd: string[]}} estado
+ * @param {{atual: string, incerto: boolean, pilhaPushd: string[], estouro: boolean}} estado
  * @returns {{cwd: string, incerto: boolean, soMovedor: boolean}}
  */
 function resolverMovedor(segCru, estado, ehPowerShell = false) {
@@ -461,7 +511,13 @@ function resolverMovedor(segCru, estado, ehPowerShell = false) {
   // MUDA o cwd do shell continua sendo `cd`/`pushd`/`popd` — so casa contra
   // o segmento NORMALIZADO (prefixo sintatico removido, barra do nome
   // tirada). `sudo cd X` fica de fora (a normalizacao nao mexe nele).
-  const segMovedor = semPrefixoSintaticoDeBuiltin(seg);
+  // #530 (D4): a primeira palavra e lida como o bash (aspa, escape, ANSI-C e
+  // expansao de chaves). Estouro do teto barra por quem chama (`estouro`).
+  // #530 (emenda): o redirecionamento sai antes (`>/dev/null cd X`, `2>&1 cd X`)
+  // e depois (`cd X 2>/dev/null`), porque o bash o le fora do comando.
+  const normalizado = normalizarComando(semPrefixoSintaticoDeBuiltin(semRedirecionamentos(seg)));
+  if (normalizado.estouro) estado.estouro = true;
+  const segMovedor = normalizado.seg;
   // `then cd X`, `else cd X`, `do cd X`: o `cd` esta num ramo/corpo que pode nao
   // rodar (`if false; then cd <wt>; fi; echo x > f` no principal escreve no
   // principal). Movedor sim, mas INCERTO — nunca certeza (security review do #530).
@@ -550,7 +606,8 @@ function resolverMovedor(segCru, estado, ehPowerShell = false) {
   // `--chdir=dir`, `--chdir dir` para achar a posicao de comando de
   // `procuraCLI` — em vez de reimplementar, so pede pra ela CAPTURAR o
   // valor de `-C`/`--chdir` que encontrar no caminho.
-  const toksEnv = tokensComAspas(seg);
+  // #530 (D4): sobre a palavra normalizada, para `{env,-C,X,git}` achar o -C.
+  const toksEnv = tokensComAspas(segMovedor);
   if (toksEnv.length && !toksEnv[0].q && toksEnv[0].v === "env") {
     const captura = {};
     posicaoDeComando(toksEnv, captura);
@@ -597,18 +654,21 @@ function resolverMovedor(segCru, estado, ehPowerShell = false) {
  *
  * @param {string} comando - Linha de comando shell, potencialmente com `;`, `&&`, etc.
  * @param {string} cwdInicial - Diretório inicial (antes do comando rodar).
- * @returns {Array<{seg: string, cwd: string, incerto: boolean}>} Um item por
+ * @returns {Array<{seg: string, cwd: string, incerto: boolean, estouro: boolean}>} Um item por
  *   segmento, na ordem em que aparecem no comando.
  */
 function cwdPorSegmento(comando, cwdInicial, ehPowerShell = false) {
   const segmentos = segmentosComAspas(comando, ehPowerShell);
-  const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [] };
+  // `estouro` (#530, D5): a linha inteira estourou o teto de expansao de chaves
+  // em alguma palavra de comando. Fica verdadeiro a partir do segmento que
+  // estourou, e quem chama barra.
+  const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [], estouro: false };
   const resultado = [];
 
   for (const seg of segmentos) {
     const mov = resolverMovedor(seg, estado, ehPowerShell);
     if (mov.soMovedor) {
-      resultado.push({ seg, cwd: mov.cwd, incerto: mov.incerto });
+      resultado.push({ seg, cwd: mov.cwd, incerto: mov.incerto, estouro: estado.estouro });
       continue;
     }
 
@@ -616,26 +676,31 @@ function cwdPorSegmento(comando, cwdInicial, ehPowerShell = false) {
     // incluso, se houver: `mov.cwd` já é o alvo do `env -C` deste segmento).
     // Usa o ÚLTIMO se houver múltiplos. `comandoEhGit` (K2): só lê o `-C`
     // quando o COMANDO do segmento é `git` de verdade, nunca por substring.
-    if (comandoEhGit(seg)) {
-      const p = extrairUltimoDirGit(seg);
+    // #530 (D4): `{git,-C,X,commit}` expande para `git -C X commit`; o git e o
+    // -C saem da palavra normalizada. Um git de caminho Windows sem aspas
+    // (`C:\Git\cmd\git.exe -C X status`) e lido cru: a normalizacao apaga as barras,
+    // o git deixa de ser reconhecido e o `-C` se perde (rodada 3, achado 3).
+    const segGit = comandoEhGit(seg) ? seg : normalizarComando(seg).seg;
+    if (comandoEhGit(segGit)) {
+      const p = extrairUltimoDirGit(segGit);
       if (p) {
         // `-C` com variável: não dá para resolver — fica INCERTO.
         if (/[$`]/.test(p)) {
           estado.incerto = true;
-          resultado.push({ seg, cwd: estado.atual, incerto: estado.incerto });
+          resultado.push({ seg, cwd: estado.atual, incerto: estado.incerto, estouro: estado.estouro });
         } else {
           // O caminho de `-C` é o cwd efetivo DESTE segmento — NÃO persiste
           // em `estado.atual` para os segmentos seguintes (K2, item b):
           // `git -C X status && codex exec` roda o `codex` no cwd do shell,
           // nunca em X.
           const cwdSegmento = path.resolve(mov.cwd, p);
-          resultado.push({ seg, cwd: cwdSegmento, incerto: estado.incerto });
+          resultado.push({ seg, cwd: cwdSegmento, incerto: estado.incerto, estouro: estado.estouro });
         }
         continue;
       }
     }
 
-    resultado.push({ seg, cwd: mov.cwd, incerto: mov.incerto });
+    resultado.push({ seg, cwd: mov.cwd, incerto: mov.incerto, estouro: estado.estouro });
   }
 
   return resultado;

@@ -178,7 +178,7 @@ GATE_MUTADO="$RAIZ/gate-sem-escrita.cjs"
 node -e '
 const fs = require("fs");
 let t = fs.readFileSync(process.argv[1], "utf8");
-const achar = "function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {";
+const achar = "function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false, profundidade = 0) {";
 if (!t.includes(achar)) { console.error("ANCORA NAO BATE"); process.exit(1); }
 t = t.replace(achar, achar + "\n  return [];");
 fs.writeFileSync(process.argv[2], t);
@@ -980,6 +980,183 @@ gate "(#530) for d in; do cd <wt>; done; echo x > f barra"                2 "$(e
 gate "(#530) A=1 cd <wt>; echo x > f no principal passa (cd roda)"        0 "$(ex "A=1 cd '$WT'; echo x > f")"
 
 echo
+echo
+echo "== (#530) escrita dentro de bash -c, eval e substituicao de comando =="
+# Sondagem de 2026-10-15 (base 9f6b9ca3): as nove formas que o gate deixava passar,
+# as oito da emenda, e o que tem que continuar passando ou barrando como antes.
+# `aninhado` monta a profundidade por codigo, com aspas DUPLAS e escape por nivel:
+# reduzEscapeAspasDuplas desfaz `\\` e `\"`. O `'\''` de aspas simples nao e
+# desfeito pelo desempacotador, e o teste mediria outra coisa.
+aninhado() { # n, centro -> `bash -c` aninhado n vezes
+  node -e 'let s=process.argv[2];for(let i=0;i<+process.argv[1];i++)s="bash -c \""+s.replace(/\\/g,"\\\\").replace(/"/g,"\\\"")+"\"";process.stdout.write(s)' "$1" "$2"
+}
+# Barrado com um trecho do motivo no stderr: a pessoa le o porque, nao so o exit.
+gate_motivo() { # nome, trecho do motivo, json
+  local nome="$1" trecho="$2" json="$3"
+  if [ -z "$json" ]; then falhou=$((falhou+1)); echo "  FALHA $nome: payload vazio"; return; fi
+  local saida; saida=$(printf '%s' "$json" | node "$GATE" 2>&1); local got=$?
+  if [ "$got" = 2 ] && printf '%s' "$saida" | grep -q "$trecho"; then
+    ok=$((ok+1)); echo "  ok   $nome (exit 2, motivo: $trecho)"
+  else falhou=$((falhou+1)); echo "  FALHA $nome: esperava exit 2 com '$trecho', veio $got"; echo "$saida" | sed 's/^/         /' | head -6; fi
+}
+# `hooks/` existe no worktree: sem ele `'cd' hooks` vira incerto e o caso nao mede nada.
+mkdir -p "$WT/hooks"
+G13=$(node -e 'process.stdout.write("{a,b}".repeat(13))')
+
+echo "-- as nove formas (item 1): 2 --"
+gate "(#530) {cd,P} && echo x > f"                       2 "$(wt "{cd,$R} && echo x > f")"
+gate "(#530) 'cd' P; echo x > f"                         2 "$(wt "'cd' $R; echo x > f")"
+gate "(#530) c\\d P; echo x > f"                         2 "$(wt "c\\d $R; echo x > f")"
+gate "(#530) \$'\\x63d' P; echo x > f"                   2 "$(wt "\$'\\x63d' $R; echo x > f")"
+gate "(#530) bash -c 'cd P; echo x > f'"                 2 "$(wt "bash -c 'cd $R; echo x > f'")"
+gate "(#530) bash -c 'echo x > P/f'"                     2 "$(wt "bash -c 'echo x > $R/f'")"
+gate "(#530) crase com cd P; echo x > f"                 2 "$(wt "echo \`cd $R; echo x > f\`")"
+gate "(#530) echo \"\$(cd P; echo x > f)\""              2 "$(wt "echo \"\$(cd $R; echo x > f)\"")"
+gate "(#530) echo \"crase com cd P; echo x > f\""        2 "$(wt "echo \"\`cd $R; echo x > f\`\"")"
+
+echo "-- as oito da emenda (item 2): 2 --"
+gate "(#530) cd P > /dev/null; echo x > f"               2 "$(wt "cd $R > /dev/null; echo x > f")"
+gate "(#530) cd P 2>/dev/null && echo x > f"             2 "$(wt "cd $R 2>/dev/null && echo x > f")"
+gate "(#530) >/dev/null cd P; echo x > f"                2 "$(wt ">/dev/null cd $R; echo x > f")"
+gate "(#530) 2>&1 cd P; echo x > f"                      2 "$(wt "2>&1 cd $R; echo x > f")"
+gate "(#530) A=a\\ b cd P; echo x > f"                   2 "$(wt "A=a\\ b cd $R; echo x > f")"
+gate "(#530) {\"cd\",P}; echo x > f"                     2 "$(wt "{\"cd\",$R}; echo x > f")"
+gate "(#530) {git,-C,P,commit,-m,x}"                     2 "$(wt "{git,-C,$R,commit,-m,x}")"
+gate "(#530) {env,-C,P,git,commit}"                      2 "$(wt "{env,-C,$R,git,commit}")"
+
+echo "-- barrados por motivo (item 3) --"
+N5=$(aninhado 5 "echo x > f"); N4=$(aninhado 4 "echo x > f"); N2P=$(aninhado 2 "echo x > $R/f")
+gate_motivo "(#530) bash -c aninhado em 5 niveis"        "mais de 4 niveis"   "$(wt "$N5")"
+gate        "(#530) bash -c aninhado em 4 niveis passa"  0                     "$(wt "$N4")"
+gate        "(#530) bash -c aninhado em 2 niveis, escreve em P" 2             "$(wt "$N2P")"
+gate_motivo "(#530) 13 grupos {a,b} em posicao de comando" "grande demais"    "$(wt "$G13 echo x > f")"
+
+echo "-- vizinhos legitimos (item 4): 0 --"
+gate "(#530) bash -c 'echo x > f'"                       0 "$(wt "bash -c 'echo x > f'")"
+gate "(#530) eval 'echo x > f'"                          0 "$(wt "eval 'echo x > f'")"
+gate "(#530) echo \"\$(git rev-parse HEAD)\" > f"        0 "$(wt "echo \"\$(git rev-parse HEAD)\" > f")"
+gate "(#530) echo 'a\`b\`' > f"                          0 "$(wt "echo 'a\`b\`' > f")"
+gate "(#530) echo '{cd,x}' > f"                          0 "$(wt "echo '{cd,x}' > f")"
+gate "(#530) echo a{b,c} > f"                            0 "$(wt "echo a{b,c} > f")"
+# #552 (D2): o segmento {c,}d P cita o principal fora de leitura, e a rede barra; que o cwd nao
+# muda segue provado em testa-cwd-efetivo.sh.
+gate "(#530) {c,}d P; echo x > f (bash nao muda o cwd; a rede #552 barra)"  2 "$(wt "{c,}d $R; echo x > f")"
+gate "(#530) 'cd' hooks && echo x > f (no worktree)"     0 "$(wt "'cd' hooks && echo x > f")"
+gate "(#530) cd hooks > /dev/null; echo x > f"           0 "$(wt "cd hooks > /dev/null; echo x > f")"
+
+echo "-- continuam barrados como antes (item 5): 2 --"
+gate "(#530) cd P && echo x > f"                         2 "$(wt "cd $R && echo x > f")"
+gate "(#530) echo \$(cd P; echo x > f)"                  2 "$(wt "echo \$(cd $R; echo x > f)")"
+gate "(#530) (cd P; echo x > f)"                         2 "$(wt "(cd $R; echo x > f)")"
+gate "(#530) bash -c 'cd \$X; echo x > f'"               2 "$(wt "bash -c 'cd \$X; echo x > f'")"
+gate "(#530) bash -c 'echo \$HOME > f'"                  2 "$(wt "bash -c 'echo \$HOME > f'")"
+gate "(#530) eval \"\$(ssh-agent -s)\""                  2 "$(wt "eval \"\$(ssh-agent -s)\"")"
+
+echo "-- (#530) rodada 2: PowerShell nao passa pela leitura do bash; substituicao no cwd do segmento --"
+# PowerShell le o texto cru, como na base: a contrabarra de `C:\Git\cmd\git.exe` e
+# argumento, nao escape. Valores em aspa simples, para o bash nao tocar na barra.
+gate "(#530) rodada 2: PowerShell C:\\PROGRA~1\\Git\\cmd\\git.exe -C P commit barra" 2 \
+  "$(pj agent_id ag-530 agent_type executor cwd "$WT" hook_event_name PreToolUse tool_name PowerShell tool_input.command 'C:\PROGRA~1\Git\cmd\git.exe -C '"$R"' commit --allow-empty -m x')"
+gate "(#530) rodada 2: PowerShell \\Git\\cmd\\git.exe -C P commit barra" 2 \
+  "$(pj agent_id ag-530 agent_type executor cwd "$WT" hook_event_name PreToolUse tool_name PowerShell tool_input.command '\Git\cmd\git.exe -C '"$R"' commit --allow-empty -m x')"
+gate "(#530) rodada 2: PowerShell cd P; C:\\Git\\cmd\\git.exe commit barra" 2 \
+  "$(pj agent_id ag-530 agent_type executor cwd "$WT" hook_event_name PreToolUse tool_name PowerShell tool_input.command 'cd '"$R"'; C:\Git\cmd\git.exe commit --allow-empty -m x')"
+gate "(#530) rodada 2: cd hooks; echo \"\$(echo x > ../f)\" passa (cwd do segmento)" 0 "$(wt 'cd hooks; echo "$(echo x > ../f)"')"
+gate "(#530) rodada 2: cd P; echo \"\$(echo x > f)\" barra (cwd do segmento)" 2 "$(wt "cd $R; echo \"\$(echo x > f)\"")"
+
+echo "-- (#530) rodada 3: interno de powershell -Command e cmd /c nao passa pela leitura do bash --"
+# O texto dentro de `powershell -Command "..."` e PowerShell: a contrabarra de
+# `C:\Git\cmd\git.exe` e caractere, nao escape. Sem ela o interno vira `C:Gitcmdgit.exe`,
+# o git nao casa e o gate acusa 0 onde a base barra. Valores em aspa simples, para o bash
+# nao tocar na barra; o caso falha se ela sumir.
+gate "(#530) rodada 3: powershell -Command C:\\Git\\cmd\\git.exe -C P commit barra" 2 "$(wt 'powershell -Command "C:\Git\cmd\git.exe -C '"$R"' commit -m x"')"
+gate "(#530) rodada 3: powershell.exe -c C:\\PROGRA~1\\Git\\cmd\\git.exe -C P commit barra" 2 "$(wt 'powershell.exe -c "C:\PROGRA~1\Git\cmd\git.exe -C '"$R"' commit --allow-empty -m x"')"
+gate "(#530) rodada 3: pwsh -Command C:\\Git\\cmd\\git.exe -C P commit barra" 2 "$(wt 'pwsh -Command "C:\Git\cmd\git.exe -C '"$R"' commit -m x"')"
+gate "(#530) rodada 3: cmd /c C:\\Git\\cmd\\git.exe -C P commit barra" 2 "$(wt 'cmd /c "C:\Git\cmd\git.exe -C '"$R"' commit -m x"')"
+gate "(#530) rodada 3: cmd.exe /c C:\\Git\\cmd\\git.exe -C P commit barra" 2 "$(wt 'cmd.exe /c "C:\Git\cmd\git.exe -C '"$R"' commit -m x"')"
+echo "-- (#530) rodada 3: vizinhos legitimos do interno continuam a 0 --"
+gate "(#530) rodada 3: powershell -Command git -C W status passa" 0 "$(wt 'powershell -Command "git -C '"$WT"' status"')"
+gate "(#530) rodada 3: bash -c 'echo x > f' a partir de W passa" 0 "$(wt "bash -c 'echo x > f'")"
+
+echo "== (#530) rodada extra: git reconhecido no texto cru ou no normalizado =="
+# A contrabarra vem de printf, nao de literal no fonte: o caso que barra precisa
+# chegar ao gate com a barra de `C:\Git\cmd\git.exe`. Imprime-se o comando montado
+# e conta-se a barra uma vez; se ela sumir, o caso mediria outro comando e passaria
+# verde, entao falha aqui.
+BS=$(printf '\\')
+EX1="powershell -c \"echo a; C:${BS}PROGRA~1${BS}Git${BS}cmd${BS}git.exe -C $R commit --allow-empty -m x\""
+EX2="powershell -c \"& C:${BS}PROGRA~1${BS}Git${BS}cmd${BS}git.exe -C $R commit --allow-empty -m x\""
+EX3="pwsh -c \"echo a; C:${BS}Git${BS}cmd${BS}git.exe -C $R commit -m x\""
+EX4="cmd /c \"echo a & C:${BS}Git${BS}cmd${BS}git.exe -C $R commit -m x\""
+EX5="x=\$(powershell -c \"cd $R; C:${BS}Git${BS}cmd${BS}git.exe commit -m x\")"
+n_barras=$(printf '%s' "$EX1" | tr -cd '\134' | wc -c | tr -d ' ')
+echo "  comando montado (caso 1): $EX1"
+echo "  contrabarras no comando montado (caso 1): $n_barras"
+if [ "$n_barras" -lt 1 ]; then falhou=$((falhou+1)); echo "  FALHA: contrabarra sumiu do comando montado"; fi
+gate "(#530) rodada extra: powershell echo; C:\\PROGRA~1 git -C P commit barra" 2 "$(wt "$EX1")"
+gate "(#530) rodada extra: powershell & C:\\PROGRA~1 git -C P commit barra" 2 "$(wt "$EX2")"
+gate "(#530) rodada extra: pwsh echo; C:\\Git git -C P commit barra" 2 "$(wt "$EX3")"
+gate "(#530) rodada extra: cmd /c echo & C:\\Git git -C P commit barra" 2 "$(wt "$EX4")"
+gate "(#530) rodada extra: \$(powershell cd P; C:\\Git git commit) barra" 2 "$(wt "$EX5")"
+gate "(#530) rodada extra: git status a partir de W passa" 0 "$(wt 'git status')"
+gate "(#530) rodada extra: git -C W log a partir de W passa" 0 "$(wt "git -C $WT log")"
+gate "(#530) rodada extra: powershell -Command git -C W status passa" 0 "$(wt "powershell -Command \"git -C $WT status\"")"
+
+echo "== (#530) rodada extra 2: wrapper aninhado fundo nao explode nem passa =="
+# Tempo: o gate tem que sair em menos de 2 s. `timeout 5` mata o caso que trava de vez;
+# a medida pega o que termina mas passa de 2 s (a base linear sai em milissegundos).
+# Os comandos saem de node, com a contrabarra e as aspas por String.fromCharCode: nada
+# digitado a mao dentro de aspas, que e onde o escape se perde.
+gate_rapido() { # nome, exit esperado, json
+  local nome="$1" esp="$2" json="$3"
+  if [ -z "$json" ]; then falhou=$((falhou+1)); echo "  FALHA $nome: payload vazio"; return; fi
+  local ini fim saida got ms
+  ini=$(date +%s%N)
+  saida=$(printf '%s' "$json" | timeout 5 node "$GATE" 2>&1); got=$?
+  fim=$(date +%s%N)
+  ms=$(( (fim - ini) / 1000000 ))
+  if [ "$got" = "$esp" ] && [ "$ms" -lt 2000 ]; then ok=$((ok+1)); echo "  ok   $nome (exit $got, ${ms} ms)"
+  else falhou=$((falhou+1)); echo "  FALHA $nome: esperava exit $esp em menos de 2000 ms, veio exit $got em ${ms} ms"; echo "$saida" | sed 's/^/         /' | head -6; fi
+}
+EVAL22=$(node -e 'const Q=String.fromCharCode(39),D=String.fromCharCode(34);process.stdout.write((Q+"eval"+Q+" ").repeat(22)+D+"git -C "+process.argv[1]+" commit --allow-empty -m x"+D)' "$R")
+BSEVAL22=$(node -e 'const B=String.fromCharCode(92),D=String.fromCharCode(34);process.stdout.write((B+"eval ").repeat(22)+D+"git -C "+process.argv[1]+" commit --allow-empty -m x"+D)' "$R")
+EVAL3000=$(node -e 'const D=String.fromCharCode(34);process.stdout.write("eval ".repeat(3000)+D+"git -C "+process.argv[1]+" commit --allow-empty -m x"+D)' "$R")
+NB6=$(node -e 'const Q=String.fromCharCode(39),B=String.fromCharCode(92),D=String.fromCharCode(34);let s="git -C "+process.argv[1]+" commit --allow-empty -m x";for(let i=0;i<6;i++)s=Q+"bash"+Q+" -c "+D+s.split(B).join(B+B).split(D).join(B+D)+D;process.stdout.write(s)' "$R")
+gate_rapido "(#530) rodada extra 2: 'eval ' x22 + git -C P commit barra" 2 "$(wt "$EVAL22")"
+gate_rapido "(#530) rodada extra 2: \\eval  x22 + git -C P commit barra" 2 "$(wt "$BSEVAL22")"
+gate_rapido "(#530) rodada extra 2: 'bash' -c aninhado 6 niveis + git -C P commit barra" 2 "$(wt "$NB6")"
+gate_rapido "(#530) rodada extra 2: eval  x3000 + git -C P commit barra" 2 "$(wt "$EVAL3000")"
+gate_rapido "(#530) rodada extra 2: eval \"git status\" a partir de W passa" 0 "$(wt 'eval "git status"')"
+gate_rapido "(#530) rodada extra 2: bash -c 'git -C W log' a partir de W passa" 0 "$(wt "bash -c 'git -C $WT log'")"
+
+echo "== (#530) rodada extra 2: teto do subcomandoGit falha fechado =="
+# Wrapper legivel alem do nivel 4 nao e desembrulhado: subcomandoGit devolve a sentinela
+# SUB_ANINHADO e o gate barra (exit 2) com o motivo "wrapper aninhado demais". Os
+# comandos saem de node, com as aspas simples por String.fromCharCode. O motivo tem de
+# aparecer no stderr: barrar sem dizer por que e o mesmo defeito de trava muda.
+MOTIVO_ANIN="wrapper aninhado demais para conferir (mais de 4 niveis)"
+wp() { pj agent_id ag-530 agent_type executor cwd "$WT" hook_event_name PreToolUse tool_name PowerShell tool_input.command "$1"; }
+gate_motivo() { # nome, exit esperado, json, motivo que tem de sair no stderr
+  local nome="$1" esp="$2" json="$3" motivo="$4"
+  if [ -z "$json" ]; then falhou=$((falhou+1)); echo "  FALHA $nome: payload vazio"; return; fi
+  local saida got
+  saida=$(printf '%s' "$json" | timeout 5 node "$GATE" 2>&1); got=$?
+  if [ "$got" = "$esp" ] && printf '%s' "$saida" | grep -qF "$motivo"; then ok=$((ok+1)); echo "  ok   $nome (exit $got, motivo no stderr)"
+  else falhou=$((falhou+1)); echo "  FALHA $nome: esperava exit $esp com o motivo no stderr, veio exit $got"; echo "$saida" | sed 's/^/         /' | head -6; fi
+}
+IEX5=$(node -e 'const Q=String.fromCharCode(39);process.stdout.write("iex ".repeat(5)+Q+"git -C "+process.argv[1]+" commit -m x"+Q)' "$R")
+IEX8=$(node -e 'const Q=String.fromCharCode(39);process.stdout.write("iex ".repeat(8)+Q+"git -C "+process.argv[1]+" commit -m x"+Q)' "$R")
+INVX5=$(node -e 'const Q=String.fromCharCode(39);process.stdout.write("Invoke-Expression ".repeat(5)+Q+"git -C "+process.argv[1]+" commit -m x"+Q)' "$R")
+IEXGIT=$(node -e 'const Q=String.fromCharCode(39);process.stdout.write("iex "+Q+"git status"+Q)')
+# Sem `-C`: a regra do iex da #533 junta os argumentos sem as aspas, e um `-C` solto
+# depois do desempacote vira parametro do proprio iex (incerto, falha fechada).
+IEX3LOG=$(node -e 'const Q=String.fromCharCode(39);process.stdout.write("iex ".repeat(3)+Q+"git log"+Q)')
+gate_motivo "(#530) rodada extra 2: iex x5 + 'git -C P commit' (PowerShell) barra" 2 "$(wp "$IEX5")" "$MOTIVO_ANIN"
+gate_motivo "(#530) rodada extra 2: iex x8 + 'git -C P commit' (PowerShell) barra" 2 "$(wp "$IEX8")" "$MOTIVO_ANIN"
+gate_motivo "(#530) rodada extra 2: Invoke-Expression x5 + 'git -C P commit' barra" 2 "$(wp "$INVX5")" "$MOTIVO_ANIN"
+gate_rapido "(#530) rodada extra 2: iex 'git status' (PowerShell) passa" 0 "$(wp "$IEXGIT")"
+gate_rapido "(#530) rodada extra 2: iex x3 + 'git log' (PowerShell) passa" 0 "$(wp "$IEX3LOG")"
+
 echo "== #530: chaves em posicao de comando =="
 # D1 (docs/rainforest/design/2026-10-16-gate-worktree-brechas.md): `{cd,X}` no
 # comeco do segmento e expansao de chaves: o bash roda `cd X`. Antes a chave
@@ -994,7 +1171,8 @@ gate "#530: { echo a; echo b; } > f do worktree, PASSA (grupo, nao expansao)" 0 
 # D1 (emenda da rodada 2): so o Bash expande. No PowerShell `{cd,X}` e bloco de script:
 # nao muda o cwd, entao o Set-Content relativo cai no worktree e PASSA. Se a expansao
 # valesse no PowerShell, `cd <principal>` mudaria o cwd e o caso BARRARIA.
-gate "#530 PowerShell: {cd,<principal>} e bloco de script, nao cd: Set-Content f do worktree PASSA" 0 "$(bp "{cd,$R} ; Set-Content f x" "$WT")"
+# #552 (D2): o bloco cita o principal fora de leitura, e a rede barra.
+gate "#530 PowerShell: {cd,<principal>} e bloco de script, nao cd: Set-Content f do worktree (a rede #552 barra)" 2 "$(bp "{cd,$R} ; Set-Content f x" "$WT")"
 
 echo
 echo "== #533: cmdlets de escrita do PowerShell =="
@@ -1631,6 +1809,15 @@ s552seg2 'git -C __R__ show HEAD:a.txt' 0 b
 s552seg2 'sort -r __R__/a' 0 b
 s552seg2 'grep -r x __R__ > /dev/null' 0 b
 s552seg2 "find __R__ -name '*.md'" 0 b
+# Terceira revisao: config do git em outro segmento, abreviacoes, $'...' no Bash.
+s552seg2 'export GIT_EXTERNAL_DIFF=x; git diff __R__/a' 2 b
+s552seg2 'git config diff.external x && git diff __R__/a' 2 b
+s552seg2 'sort --comp=x __R__/a' 2 b
+s552seg2 'git diff --ext __R__/a' 2 b
+s552seg2 'git diff --textc __R__/a' 2 b
+s552seg2 "cat __R__/a \$'x' > __R__/b" 2 b
+s552seg2 'git diff --exit-code --text __R__/a' 0 b
+case "${R,,}" in "${CASA,,}"/*) RT='$USERPROFILE'"${R:${#CASA}}"; gate "#552 seg3: rm \$USERPROFILE/.../principal/f, do worktree, BARRA" 2 "$(b "rm $RT/f" "$WT")";; esac
 
 echo "== #552 D6: pai inexistente =="
 # Com cwd no proprio principal a rede nao age (D3): so a lista decide, e ela precisa

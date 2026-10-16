@@ -488,8 +488,13 @@ console.log("== #514 (P2): expansao de chaves em argumento nao e fronteira ==");
     eq(n("{cd,'x'} && echo y"), 2, "aspa simples: so o && separa");
     eq(n('A=1 {cd,"x"}'), 1, "atribuicao antes, aspa dentro");
   });
-  test("(514d) builtin {cd,x} e env -i {cd,x} continuam cortando (fora do D1, vai para a #552)", () => {
-    for (const c of ["builtin {cd,x}", "env -i {cd,x}"]) eq(n(c) > 1, true, c);
+  // #530 (D4) mudou esta asserção: `{cd,x}` em posição de comando é expansão
+  // de chaves (`cd x`), não fronteira. Antes afirmava `n > 1` (cortava).
+  test("(514c) {cd,x} em posicao de comando nao corta (#530, D4): e uma palavra so", () => eq(n("{cd,x}"), 1, "expansao de chaves inteira no segmento"));
+  // #530 (D4) mudou esta asserção: as cinco formas viraram um segmento só. Antes
+  // afirmavam `n > 1` (cortavam). O cwd delas fica na seção (#530) abaixo.
+  test("(514d) A=1 {cd,x} / then {cd,x} / builtin {cd,x} nao cortam (#530, D4)", () => {
+    for (const c of ["A=1 {cd,x}", "then {cd,x}", "then A=1 {cd,x}", "builtin {cd,x}", "env -i {cd,x}"]) eq(n(c), 1, c);
   });
   test("(514e) { cd x; } e &{git checkout main} continuam cortando", () => {
     eq(n("{ cd x; }") > 1, true, "grupo com espaco");
@@ -498,6 +503,100 @@ console.log("== #514 (P2): expansao de chaves em argumento nao e fronteira ==");
   test("(514f) chave sem , nem x..y, ou com $ dentro, continua cortando", () => {
     eq(n("echo {abc}") > 1, true, "sem virgula");
     eq(n("echo {a,$x}") > 1, true, "com $");
+  });
+}
+
+console.log();
+console.log("== (#530) rodada 3: git de caminho Windows sem aspas mantem o -C ==");
+{
+  // Achado 3 da revisao 2: `C:\Git\cmd\git.exe -C P status`, sem aspas. A normalizacao
+  // apagava as barras, o git deixava de ser reconhecido e o `-C` se perdia (cwd = W).
+  // A contrabarra vem de String.fromCharCode(92): sem ela o caso falha, e e isso que prova.
+  const B = String.fromCharCode(92);
+  const W = path.join(testDir, "wt-r3");
+  const P = path.join(testDir, "p-r3");
+  fs.mkdirSync(W, { recursive: true });
+  fs.mkdirSync(P, { recursive: true });
+  const Pf = P.split(B).join("/");
+  const GIT_WIN = "C:" + B + "Git" + B + "cmd" + B + "git.exe";
+  const primeiroCwd = (cmd) => cwdPorSegmento(cmd, W)[0].cwd;
+  test("(r3a) caminho Windows sem aspas: git.exe -C P status -> cwd = P", () => {
+    eq(primeiroCwd(GIT_WIN + " -C " + Pf + " status"), path.resolve(P), "cwd do segmento");
+  });
+  test("(r3b) caminho Windows sem aspas antes de '; codex exec x' -> cwd = P", () => {
+    eq(primeiroCwd(GIT_WIN + " -C " + Pf + " status; codex exec x"), path.resolve(P), "cwd do primeiro segmento");
+  });
+  test("(r3c) contraprova: {git,-C,P,status} continua -> cwd = P", () => {
+    eq(primeiroCwd("{git,-C," + Pf + ",status}"), path.resolve(P), "cwd do segmento");
+  });
+  test("(r3d) contraprova: 'git' -C P status continua -> cwd = P", () => {
+    eq(primeiroCwd("'git' -C " + Pf + " status"), path.resolve(P), "cwd do segmento");
+  });
+}
+
+console.log("== (#530) palavra de comando reconstruida: aspas, escape, ANSI-C e chaves ==");
+{
+  // W: worktree temporario (cwd inicial). P: outro diretorio existente.
+  // P vai com barra normal: `{...}` nao aceita barra invertida dentro.
+  const B = String.fromCharCode(92);
+  const W = path.join(testDir, "wt-530");
+  const P = path.join(testDir, "p-530");
+  fs.mkdirSync(W, { recursive: true });
+  fs.mkdirSync(P, { recursive: true });
+  const Pf = P.split(B).join("/");
+  // Segmento seguinte: o `echo x > f` que o gate pergunta. O cwd dele vem do
+  // movedor que rodou antes na mesma linha.
+  const seguinte = (cmd) => { const r = cwdPorSegmento(cmd + "; echo x > f", W); return r[r.length - 1]; };
+  const cwdEhP = (cmd) => eq(seguinte(cmd).cwd, path.resolve(P), cmd + ": cwd do segmento seguinte");
+  const cwdEhW = (cmd) => eq(seguinte(cmd).cwd, path.resolve(W), cmd + ": cwd do segmento seguinte");
+  test("(530a) 'cd' P -> cwd do segmento seguinte = P", () => cwdEhP(`'cd' ${Pf}`));
+  test("(530b) c\\d P -> cwd = P", () => cwdEhP(`c${B}d ${Pf}`));
+  test("(530c) $'\\x63d' P -> cwd = P", () => cwdEhP(`$'${B}x63d' ${Pf}`));
+  test("(530d) {cd,P} -> cwd = P", () => cwdEhP(`{cd,${Pf}}`));
+  test("(530e) A=1 {cd,P} -> cwd = P", () => cwdEhP(`A=1 {cd,${Pf}}`));
+  test('(530f) A="a b" {cd,P} -> cwd = P', () => cwdEhP(`A="a b" {cd,${Pf}}`));
+  test("(530g) builtin {cd,P} -> cwd = P", () => cwdEhP(`builtin {cd,${Pf}}`));
+  test("(530h) then {cd,P} -> incerto (then ja faz incerto na base)", () => {
+    eq(seguinte(`then {cd,${Pf}}`).incerto, true, "then {cd,P} incerto");
+  });
+  test("(530i) {c,}d P -> continua W (o bash roda 'cd d P', que falha)", () => cwdEhW(`{c,}d ${Pf}`));
+  // #530 (emenda, 2026-10-15): aspa BALANCEADA dentro da chave nao e mais fronteira.
+  // O bash expande `{cd,"P"}` para `cd P`, entao o movedor e exato, nao incerto.
+  // (Antes era incerto; a expectativa mudou junto com a regra, de proposito.)
+  test('(530j) {cd,"P"} -> cwd = P, exato (aspa balanceada na chave nao e fronteira)', () => {
+    cwdEhP(`{cd,"${Pf}"}`);
+    eq(seguinte(`{cd,"${Pf}"}`).incerto, false, '{cd,"P"} exato');
+  });
+  test('(530j2) {"cd",P} -> cwd = P, exato (aspa na palavra de comando)', () => {
+    cwdEhP(`{"cd",${Pf}}`);
+    eq(seguinte(`{"cd",${Pf}}`).incerto, false, '{"cd",P} exato');
+  });
+  test('(530j3) {cd,"P x"} com espaco dentro da aspa continua fronteira (incerto)', () => {
+    eq(seguinte(`{cd,"${Pf} x"}`).incerto, true, '{cd,"P x"} incerto');
+  });
+  test("(530k) 13 grupos {a,b} em posicao de comando -> estouro: true", () => {
+    const r = cwdPorSegmento("{a,b}".repeat(13) + " /x", W);
+    eq(r[0].estouro, true, "estouro do teto de 4096 palavras");
+  });
+  test("(530l) echo {a,b} (argumento, 2 palavras) nao estoura", () => {
+    const r = cwdPorSegmento("echo {a,b}", W);
+    eq(r[0].estouro, false, "estouro em argumento pequeno");
+  });
+  // #530 (emenda, 2026-10-15): redirecionamento antes ou depois do destino nao
+  // muda o movedor. O cd roda no MESMO shell; so o destino do redirecionamento e
+  // outro assunto (quem le e alvosBashEscrita, no segmento cru).
+  test("(530m) cd P > /dev/null -> cwd = P", () => cwdEhP(`cd ${Pf} > /dev/null`));
+  test("(530n) cd P 2>/dev/null -> cwd = P", () => cwdEhP(`cd ${Pf} 2>/dev/null`));
+  test("(530o) >/dev/null cd P -> cwd = P", () => cwdEhP(`>/dev/null cd ${Pf}`));
+  test("(530p) 2>&1 cd P -> cwd = P", () => cwdEhP(`2>&1 cd ${Pf}`));
+  test("(530q) A=a\\ b cd P -> cwd = P", () => cwdEhP(`A=a${B} b cd ${Pf}`));
+  // `cd hooks` muda para W/hooks (o cd roda, mesmo com o redirecionamento). Nao e W.
+  test("(530r) cd hooks > /dev/null -> cwd = W/hooks", () => {
+    eq(seguinte(`cd hooks > /dev/null`).cwd, path.resolve(W, "hooks"), "cd hooks > /dev/null -> W/hooks");
+  });
+  test("(530s) dir2>x nao e descritor: cd dir2>x muda para dir2", () => {
+    const r = seguinte(`cd dir2>x`);
+    eq(r.cwd, path.resolve(W, "dir2"), "cd dir2>x -> dir2");
   });
 }
 

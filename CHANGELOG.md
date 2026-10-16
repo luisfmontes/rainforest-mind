@@ -27,7 +27,8 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   - **Leitura que escreve deixa de ser leitura:** opção que grava ou roda comando (`git log --output`/`-O`, também
     abreviada ou colada; `sort -o`, também em grupo como `-ro`, e `--compress-program`; `rg --pre`, `uniq a b`,
     `find -delete`/`-exec`/`-fls`/`-fprint`), mesmo escrita entre aspas; `git` com `-c`, `--config-env`,
-    `--ext-diff`, `--textconv` ou `--exec-path`; atribuição antes do comando (`GIT_EXTERNAL_DIFF=x git diff`); e
+    `--ext-diff`, `--textconv` ou `--exec-path` (também abreviadas), ou na mesma linha de um `export GIT_*=`,
+    `*PAGER=` ou `git config`; atribuição antes do comando (`GIT_EXTERNAL_DIFF=x git diff`); e
     redirecionamento (`>`, `>>`, `>|`, `<>`, `*>`, `&>`), com o destino lido como o shell lê (aspas, escape e partes
     coladas, como `>"<P>"/f`; aspa sem fechar barra). Num pipeline com algum comando que escreve (`Get-Content <P>/a | Out-File <P>/b`), os caminhos dos
     segmentos de leitura também contam.
@@ -35,19 +36,50 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
     caminho do principal citado nela barra.
   - **Grafias reconhecidas:** barra `/` ou `\`, forma MSYS (`/c/...`, no Bash), qualquer caixa, `..` resolvido contra o
     cwd (`rm ../../../f` a partir do worktree) e atalho de home (`~`, `$HOME`, `${HOME}`, `$env:USERPROFILE`,
-    `${env:USERPROFILE}`, `$env:HOMEDRIVE$env:HOMEPATH`, `%USERPROFILE%`, `%HOMEDRIVE%%HOMEPATH%`).
+    `${env:USERPROFILE}`, `$env:HOMEDRIVE$env:HOMEPATH`, `$USERPROFILE`, `${USERPROFILE}`, `$HOMEDRIVE$HOMEPATH`,
+    `%USERPROFILE%`, `%HOMEDRIVE%%HOMEPATH%`). No Bash, linha com `$'...'` vira um segmento só, como a here-string.
   - **Não barra:** o próprio worktree e os outros worktrees do repositório (o principal e os worktrees saem de
     `git worktree list --porcelain`), o scratchpad da sessão e o texto de mensagem de `git`/`gh` (`-m`, `--message`,
     `--body`, `--title`, `-t`): `git commit -m "corrigido em <P>/a"` passa.
   - **Mudança de comportamento:** `git -C <principal> -C <worktree> commit` e `Set-Content <principal>/...` digitado
-    na ferramenta Bash passam a ser barrados.
+    na ferramenta Bash passam a ser barrados, assim como `{c,}d <principal>; ...` (Bash) e o bloco `{cd,<principal>}`
+    (PowerShell), que citam o principal fora de leitura.
 - **Gate de worktree: alvo com pai inexistente (#552, D6).** `New-Item -Path n1/n2/f -Force`,
   `[IO.Directory]::CreateDirectory('n1/n2/d')` e `echo x > n1/n2/f`, com `n1` ainda inexistente, passavam: o gate
   procurava o repositório a partir do pai imediato, que não existe. Agora ele sobe até o primeiro diretório que
   existe, e a escrita no principal é barrada.
 - **Segue de fora (#552):** caminho montado por pedaços (`$a + "/f"`, `"$P"` sem o literal do principal na linha),
-  variável cujo valor não aparece no comando, nome curto 8.3 e caminho UNC, a janela principal (a rede só age em
+  variável cujo valor não aparece no comando, `~usuario/`, config que o repositório já tem (`core.pager`, `diff.external`,
+  `.gitattributes` gravados antes: o `git` de leitura confia nela), nome curto 8.3 e caminho UNC, a janela principal (a rede só age em
   subagente) e os outros gates.
+## 1.67.11 — 2026-10-16
+
+- **`gate-worktree` barra mais formas de escrever no checkout principal (#530).** Um subagente num worktree linkado
+  conseguia escrever no principal por formas que o gate deixava passar. Agora são barradas:
+  - nome do comando com aspas, escape ou `$'...'`: `'cd' P`, `c\d P`, `$'\x63d' P`;
+  - expansão de chaves em posição de comando: `{cd,P}`, `{"cd",P}`, `{git,-C,P,...}`, `{env,-C,P,...}`;
+  - escrita (redirecionamento, `tee`, `cp`) dentro de `bash -c` ou `eval`, como `bash -c 'echo x > P/f'`;
+  - escrita dentro de substituição de comando com crase, e dentro de aspas duplas: `` echo `echo x > P/f` `` e `echo "$(echo x > P/f)"`;
+  - `cd` com redirecionamento antes ou depois (`cd P > /dev/null`), e atribuição com escape (`A=a\ b cd P`).
+- **Dois motivos novos de barrar, com a mensagem no stderr:** `wrapper aninhado demais para conferir (mais de 4
+  niveis)` e `expansao de chaves grande demais para conferir`.
+- **Wrapper aninhado fundo não trava mais (rodada extra 2, #530):** o reconhecimento do git não recursa além de 4
+  níveis. Com `'eval' ` repetido 22 vezes antes do `git -C P commit`, o hook levava mais de 60 s; agora sai com o
+  motivo acima em menos de 0,5 s.
+- **Continua de fora (D1, #530 e #533):** `GIT_DIR` e `--git-dir`, `cd` por função, alias ou script, `cd $VAR`,
+  cmdlet de escrita do PowerShell e `cd` em ramo condicional. Esses casos seguem nas issues #530 e #533.
+- **Comandos legítimos seguem passando:** `echo a{b,c}` com chave em argumento, `bash -c 'echo x > f'` e
+  `cd hooks > /dev/null` dentro do worktree.
+- **Limite conhecido:** a leitura do bash é parcial. Ainda passam, por exemplo: `bash -c '...' _`, `env bash -c ...`,
+  `t\ee P/f`, `{cp,a,P/f}` e `tee {P/f,}`. Verbo de git com `cd` dentro do wrapper, como `bash -c 'cd P && git commit'`,
+  também passa e fica remetido ao item 4 da #530. A família inteira está na #530, e a abordagem por caminho do principal
+  fica para um fluxo próprio.
+- **Falsos positivos residuais, remetidos à #530:** `cd hooks; x=$(echo a; echo b > ../c)` barra por engano, porque o
+  corpo de `$(` sem aspas cruza `;` e é resolvido a partir do cwd inicial. E `bash -c '...'` dentro da ferramenta
+  PowerShell passa sem ser lido, pelo mesmo gap.
+- **O reconhecimento do git é a união da leitura crua com a do bash (rodada extra, #530):** `C:\Git\cmd\git.exe -C P ...` sem aspas no Bash continua barrado, como na base (conservador).
+- **Crédito:** a montagem da palavra e a expansão de chaves vêm de `hooks/lib/palavra-bash.cjs`, enxertada de
+  `plugins/ruflo-mods/hooks/guard/dangerous-command.ts` do ruflo (`ruvnet/ruflo`, licença MIT).
 
 ## 1.67.10 — 2026-10-16
 

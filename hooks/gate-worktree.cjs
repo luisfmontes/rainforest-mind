@@ -66,6 +66,9 @@ const path = require("node:path");
 const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
 const { cwdPorSegmento, resolverMovedor, toplevelConfinado, extrairUltimoDirGit, segmentosComAspas, SEPARADORES } = require(path.join(__dirname, "lib", "cwd-efetivo.cjs"));
 const CLIS_QUE_ESCREVEM = require(path.join(__dirname, "lib", "clis-que-escrevem.cjs"));
+// #530 (D4, D6): a palavra de comando como o bash a le, e o corpo de cada
+// substituicao de comando (crase e `$(...)`), para o gate conferir o que roda la dentro.
+const { normalizarComando, corposDeSubstituicao } = require(path.join(__dirname, "lib", "palavra-bash.cjs"));
 const {
   tokensComAspas, ehComando, WRAPPERS_QUE_REPASSAM, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
 } = require(path.join(__dirname, "lib", "tokens-comando.cjs"));
@@ -125,6 +128,14 @@ function palavras(cmd) {
 }
 
 /**
+ * Sentinela do teto (#530 rodada extra 2, tarefa 11): um wrapper legivel que sobra
+ * depois do quarto nivel nao e desembrulhado. `subcomandoGit` devolve isto no lugar
+ * do nada, e cada chamador o trata como casamento: falha fechado, nunca "nao achei git".
+ */
+const SUB_ANINHADO = { verbo: "?", args: [], incerto: true };
+const MOTIVO_ANINHADO = "wrapper aninhado demais para conferir (mais de 4 niveis)";
+
+/**
  * Acha o subcomando de `git` num segmento, com os argumentos dele.
  *
  * T2 (rodada 11, lote 3, 2026-09-04): nenhuma palavra bate com `git` — o
@@ -136,10 +147,57 @@ function palavras(cmd) {
  * `null` de "nao achei git aqui", sem falso positivo (o chamador que decide
  * incerteza de `cd`/CLI ja cobre esse conservadorismo pelo lado do cwd).
  *
- * @returns {{verbo: string, args: string[]}|null}
+ * #530 rodada extra (2026-10-15): devolve LISTA, um subcomando por leitura que
+ * achou git (cru e normalizada, ver `leiturasDoComando`), sem duplicar. Os
+ * chamadores barram se QUALQUER item der verbo no conjunto: a leitura do bash
+ * so acrescenta bloqueio, nunca tira.
+ *
+ * @returns {Array<{verbo: string, args: string[]}>}
  */
-function subcomandoGit(cmd, ferramenta) {
-  const w = palavras(cmd);
+function subcomandoGit(cmd, ferramenta, profundidade = 0) {
+  const textos = [String(cmd), textoLido(cmd, ferramenta).seg];
+  const achados = [];
+  // #530 rodada extra 2: uma recursao por interno distinto (texto + ferramenta). Duas
+  // leituras com o mesmo interno (`'eval' ` e `\eval `) dobravam o custo a cada nivel:
+  // 22 niveis passavam de 60 s. Mais de 4 niveis nao recursa; quem barra e
+  // alvosBashEscrita, com o motivo de sempre.
+  const internosVistos = new Set();
+  leiturasDoComando(cmd, ferramenta).forEach((w, k) => {
+    if (k === 1 && textos[1] === textos[0]) return;
+    const r = subcomandoNasPalavras(w);
+    if (r.achou) { if (r.sub) achados.push(r.sub); return; }
+    const { interno, ilegivel } = desempacotarWrapperDeString(textos[k], { ferramenta });
+    if (interno === null || ilegivel) return;
+    const ferr = ferramentaDoInterno(textos[k], ferramenta);
+    const chave = interno + "\0" + ferr;
+    if (internosVistos.has(chave)) return;
+    internosVistos.add(chave);
+    if (profundidade < 4) achados.push(...subcomandoGit(interno, ferr, profundidade + 1));
+    if (profundidade >= 4) achados.push(SUB_ANINHADO);
+  });
+  const vistos = new Set();
+  return achados.filter((s) => {
+    const chave = JSON.stringify([s.verbo, s.args]);
+    if (vistos.has(chave)) return false;
+    vistos.add(chave);
+    return true;
+  });
+}
+
+/**
+ * As duas leituras do comando, como listas de palavras: a do texto cru, exatamente
+ * como a base 9f6b9ca3 lia, e a da palavra normalizada do bash. Com a ferramenta
+ * PowerShell as duas coincidem.
+ */
+function leiturasDoComando(texto, ferramenta) {
+  return [palavras(String(texto)), palavras(textoLido(texto, ferramenta).seg)];
+}
+
+/**
+ * Procura o git numa lista de palavras. `achou` diz se a palavra `git` apareceu
+ * (mesmo sem verbo depois dela); `sub` e o subcomando, ou null.
+ */
+function subcomandoNasPalavras(w) {
   for (let i = 0; i < w.length; i += 1) {
     if (w[i] !== "git" && !/[\\/]git(\.exe)?$/.test(w[i])) continue;
     let j = i + 1;
@@ -147,18 +205,43 @@ function subcomandoGit(cmd, ferramenta) {
       if (GLOBAIS_COM_VALOR.has(w[j])) j += 2;
       else j += 1;
     }
-    return j < w.length ? { verbo: w[j], args: w.slice(j + 1) } : null;
+    return { achou: true, sub: j < w.length ? { verbo: w[j], args: w.slice(j + 1) } : null };
   }
-  const { interno, ilegivel } = desempacotarWrapperDeString(cmd, { ferramenta });
-  if (interno !== null && !ilegivel) return subcomandoGit(interno, ferramenta);
-  return null;
+  return { achou: false, sub: null };
+}
+
+/**
+ * Texto que o gate le como comando. #530 rodada 2: so o Bash passa pela normalizacao
+ * de `palavra-bash`. O PowerShell le o texto cru, como na base: normalizar
+ * `C:\Git\cmd\git.exe` apagava as barras, o git deixava de ser reconhecido e o
+ * commit no principal passava.
+ */
+function textoLido(texto, ferramenta) {
+  const ehBash = ferramenta !== "PowerShell";
+  return { ehBash, seg: ehBash ? normalizarComando(texto).seg : String(texto) };
+}
+
+/**
+ * #530 rodada 3: o texto dentro de `powershell -Command "..."`, `pwsh -c` ou `cmd /c`
+ * e sintaxe do PowerShell, mesmo quando o wrapper veio de uma chamada Bash. Le-se
+ * cru, como o PowerShell le: a palavra do bash apagava as barras de
+ * `C:\Git\cmd\git.exe` e o git deixava de ser reconhecido. O primeiro token sai por
+ * regex, porque `normalizarNomeExecutavel` nao e exportado por `tokens-comando.cjs`.
+ */
+function ferramentaDoInterno(segmento, ferramenta) {
+  const m = /^\s*(?:"([^"]*)"|'([^']*)'|(\S+))/.exec(String(segmento));
+  const tok = m ? (m[1] !== undefined ? m[1] : m[2] !== undefined ? m[2] : m[3]) : "";
+  const exe = tok.split(/[\\/]/).pop().replace(/\.exe$/i, "").toLowerCase();
+  const ehShellWindows = exe === "pwsh" || exe === "powershell" || exe === "cmd";
+  return ehShellWindows ? "PowerShell" : ferramenta;
 }
 
 /** Primeiro verbo de git da linha inteira que caia no conjunto dado, ou null. */
 function verboNaLinha(comando, conjunto, ferramenta) {
   for (const seg of comando.split(SEPARADORES)) {
-    const s = subcomandoGit(seg, ferramenta);
-    if (s && conjunto.has(s.verbo)) return s.verbo;
+    // #530 rodada extra: qualquer leitura do git que der verbo no conjunto barra.
+    const s = subcomandoGit(seg, ferramenta).find((x) => x.incerto || conjunto.has(x.verbo));
+    if (s) return s.incerto ? SUB_ANINHADO.verbo : s.verbo;
   }
   return null;
 }
@@ -188,10 +271,17 @@ const FLAGS_QUE_MOVEM = new Set(["-b", "-B", "-c", "-C", "--orphan", "--detach",
  * o ato de restauro merecia comunicacao, porque a arvore pode ter ficado
  * suja. Restora nao muda (exit 2 mantido), so a mensagem que ganha contexto.
  */
-function linhaDeRestauro(cmd, toplevel) {
-  const s = subcomandoGit(cmd);
-  if (!s) return '';
+function linhaDeRestauro(cmd, toplevel, ferramenta) {
+  // #530 rodada extra: a primeira leitura que der restauro vira a mensagem.
+  for (const s of subcomandoGit(cmd, ferramenta)) {
+    const linha = linhaDeRestauroDe(s, toplevel);
+    if (linha) return linha;
+  }
+  return '';
+}
 
+/** Restauro de um subcomando ja achado por `subcomandoGit`. */
+function linhaDeRestauroDe(s, toplevel) {
   // `git restore` e restauro puro — nao tem variante que move HEAD
   if (s.verbo === 'restore') {
     const args = s.args;
@@ -231,9 +321,14 @@ function linhaDeRestauro(cmd, toplevel) {
  * custa uma mensagem explicando o worktree e deixar passar errado custa o HEAD da
  * outra sessao andando debaixo dela.
  */
-function moveOHead(cmd, cwd, existe = fs.existsSync) {
-  const s = subcomandoGit(cmd);
-  if (!s || !VERBOS_QUE_MOVEM.has(s.verbo)) return false;
+function moveOHead(cmd, cwd, ferramenta, existe = fs.existsSync) {
+  // #530 rodada extra: qualquer leitura que mova o HEAD barra.
+  return subcomandoGit(cmd, ferramenta).some((s) => s.incerto || moveOHeadDe(s, cwd, existe));
+}
+
+/** Movimento de HEAD de um subcomando ja achado por `subcomandoGit`. */
+function moveOHeadDe(s, cwd, existe) {
+  if (!VERBOS_QUE_MOVEM.has(s.verbo)) return false;
   const args = s.args;
 
   // `--` em qualquer posicao: o que vem depois e caminho, e a forma
@@ -420,10 +515,10 @@ function bloqueia(motivo, toplevel, agente, apenasRestauracao = null, ehWorktree
  * `casa()` ainda avalia o RESTO do segmento, so que com o cwd do `-C`
  * (`mov.cwd`) no lugar do `atual` de antes.
  */
-function alvosBash(comando, cwdInicial, casa = (seg) => {
-  const s = subcomandoGit(seg);
-  return !!s && VERBOS_QUE_MEXEM.has(s.verbo);
-}, ehPowerShell = false) {
+function alvosBash(comando, cwdInicial, casa = (seg, _cwd, ferr) => {
+  return subcomandoGit(seg, ferr).some((s) => s.incerto || VERBOS_QUE_MEXEM.has(s.verbo));
+}, ferramenta) {
+  const ehPowerShell = ferramenta === "PowerShell";
   // `segmentosComAspas`, nao `comando.split(SEPARADORES)` cru: o split cru
   // nao respeita aspas (`git commit -m "a & b"` quebraria dentro da mensagem)
   // e, ate a rodada 6, `SEPARADORES` nem reconhecia `&` simples como
@@ -436,8 +531,12 @@ function alvosBash(comando, cwdInicial, casa = (seg) => {
     const mov = resolverMovedor(seg, estado, ehPowerShell);
     if (mov.soMovedor) continue; // cd/pushd/popd: o segmento INTEIRO e o movedor
 
-    if (!casa(seg, mov.cwd)) continue;
-    const s = subcomandoGit(seg);
+    if (!casa(seg, mov.cwd, ferramenta)) continue;
+    // #530 rodada extra: o verbo da mensagem e o primeiro achado que move o estado
+    // (ou que move o HEAD); so sai "?" quando nenhuma leitura achou git.
+    const subs = subcomandoGit(seg, ferramenta);
+    const aninhado = subs.some((x) => x.incerto === true);
+    const s = subs.find((x) => VERBOS_QUE_MEXEM.has(x.verbo) || VERBOS_QUE_MOVEM.has(x.verbo)) || subs[0];
     const verbo = s ? s.verbo : "?";
 
     // O ÚLTIMO `-C`/`--work-tree` do segmento vence — o git usa o ultimo
@@ -445,11 +544,13 @@ function alvosBash(comando, cwdInicial, casa = (seg) => {
     // antigo so achava a PRIMEIRA ocorrencia (`.match` unico e lazy), entao
     // `git -C <worktree> -C <principal> commit` classificava o alvo como
     // worktree e liberava, com o commit caindo no principal de verdade.
-    const p = extrairUltimoDirGit(seg);
+    // #530 (D4): sobre a palavra normalizada. No cru, `{git,-C,X,commit}` casaria
+    // o `-C` e capturaria `X,commit,-m,x}` como diretorio.
+    const p = extrairUltimoDirGit(textoLido(seg, ferramenta).seg);
     if (p) {
       // `-C` com variavel: nao da para resolver — cai no conservador.
       if (/[$`]/.test(p)) { alvos.push({ dir: cwdInicial, verbo, incerto: true }); continue; }
-      alvos.push({ dir: path.resolve(mov.cwd, p), verbo, incerto: mov.incerto });
+      alvos.push({ dir: path.resolve(mov.cwd, p), verbo, incerto: mov.incerto || aninhado });
       continue;
     }
     // `incerto` vai junto do alvo (nao so como alvo extra em `cwdInicial`):
@@ -460,7 +561,7 @@ function alvosBash(comando, cwdInicial, casa = (seg) => {
     // (so `cwdInicial` como alvo extra) nao pegava nada. Quem consome (main)
     // trata `incerto: true` bloqueando direto, sem confiar na classificacao
     // de worktree — mesmo espirito do ramo de CLI (H2, rodada 5).
-    alvos.push({ dir: mov.cwd, verbo, incerto: mov.incerto });
+    alvos.push({ dir: mov.cwd, verbo, incerto: mov.incerto || aninhado });
     if (mov.incerto) alvos.push({ dir: cwdInicial, verbo, incerto: true });
   }
   return alvos;
@@ -547,7 +648,7 @@ function procuraCLI(comando, clis, ferramenta) {
       return;
     }
     if (interno !== null) {
-      for (const a of achadasEmString(interno, clis, ferramenta)) achadas.push({ ...a, indiceSegmento });
+      for (const a of achadasEmString(interno, clis, ferramentaDoInterno(textoAPartir(toks, i), ferramenta))) achadas.push({ ...a, indiceSegmento });
       return;
     }
 
@@ -1034,7 +1135,13 @@ function temForaDeAspas(texto, trecho) {
   return aspa !== null && texto.includes(trecho);
 }
 
-function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
+function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false, profundidade = 0) {
+  // #530 (D3): mais de 4 niveis de wrapper/substituicao nao sao conferidos. Barrar,
+  // nao liberar sem olhar (D5 do design). O motivo chega ao stderr por `main`.
+  if (profundidade > 4) {
+    return [{ dir: cwdInicial, tipo: "barrar", motivo: MOTIVO_ANINHADO }];
+  }
+  const ferramenta = ehPowerShell ? "PowerShell" : "Bash";
   // `segmentosComAspas` pelo mesmo motivo de `alvosBash`: respeita aspas e
   // reconhece `&` simples como separador (K1, rodada 6, lote 3, 2026-09-03).
   // PowerShell: crase no fim da linha e continuacao, a linha seguinte e o mesmo
@@ -1042,11 +1149,23 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
   let continuacaoIncerta = false;
   if (ehPowerShell) ({ texto: comando, incerto: continuacaoIncerta } = juntaContinuacoesPS(comando));
   const segmentos = segmentosComAspas(comando, ehPowerShell);
-  const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [] };
+  const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [], estouro: false };
   const alvos = [];
   // Todo cwd que a linha visita: a chamada .NET (D3) nao sabe em qual segmento
   // esta, entao um alvo relativo vale para cada um deles (conservador).
   const visitados = new Set([cwdInicial]);
+
+  // #530 (D6, emenda do advisor): crase SEM aspas nao fecha segmento, mas
+  // `segmentosComAspas` corta no `;` dentro dela. Por isso o corpo que ATRAVESSA
+  // segmento e lido sobre o comando INTEIRO, a partir do cwd inicial. Corpo que cabe
+  // inteiro num segmento fica de fora: o passo do segmento o resolve a partir do cwd
+  // DELE (rodada 2 — `cd hooks; echo "$(echo x > ../f)"` nao e escrita fora do worktree).
+  if (textoLido(comando, ferramenta).ehBash) {
+    for (const corpo of corposDeSubstituicao(comando)) {
+      if (segmentos.some((seg) => seg.includes(corpo))) continue;
+      alvos.push(...alvosBashEscrita(corpo, cwdInicial, ehPowerShell, profundidade + 1));
+    }
+  }
 
   // Resolve o alvo contra o cwd EFETIVO deste segmento (`base` — o de
   // `env -C`, se houver, senao o `estado.atual` corrente); construcao com
@@ -1073,6 +1192,20 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
     visitados.add(mov.cwd);
     if (mov.soMovedor) continue; // cd/pushd/popd: o segmento INTEIRO e o movedor
     const base = mov.cwd;
+
+    // #530 (D3): `bash -c`, `sh -c`, `eval` etc. com a escrita DENTRO da string. A
+    // palavra e lida normalizada (`'bash' -c` conta). Conteudo ilegivel nao
+    // recursa: quem barra e `procuraCLI`, como antes.
+    // Recursao de wrapper e de substituicao so no Bash (rodada 2): no PowerShell, a base.
+    const lido = textoLido(seg, ferramenta);
+    if (lido.ehBash) {
+      const { interno, ilegivel } = desempacotarWrapperDeString(lido.seg, { ferramenta });
+      if (interno !== null && !ilegivel) alvos.push(...alvosBashEscrita(interno, base, ferramentaDoInterno(lido.seg, ferramenta) === "PowerShell", profundidade + 1));
+      // #530 (D6): cada corpo de crase ou `$(...)` roda como comando, a partir do cwd deste segmento.
+      for (const corpo of corposDeSubstituicao(seg)) {
+        alvos.push(...alvosBashEscrita(corpo, base, ehPowerShell, profundidade + 1));
+      }
+    }
 
     const toks = tokensComAspas(seg);
 
@@ -1118,7 +1251,7 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
         const literal = args.every((t) => !/[$`‘-„]/.test(t.v));
         // Sem argumento, o texto chega pelo pipeline (`$s | iex`): incerto (revisao de seguranca da rodada 3).
         if (!args.length || !literal || comParametro) empurra(base, null, "iex", true);
-        else alvos.push(...alvosBashEscrita(args.map((t) => t.v).join(" "), base, true));
+        else alvos.push(...alvosBashEscrita(args.map((t) => t.v).join(" "), base, true, profundidade + 1));
       }
     }
 
@@ -1147,6 +1280,11 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
         break;
       }
     }
+  }
+
+  // #530 (D5): expansao de chaves que estourou o teto nao e conferida. Barrar.
+  if (estado.estouro) {
+    alvos.push({ dir: cwdInicial, tipo: "barrar", motivo: "expansao de chaves grande demais para conferir" });
   }
 
   // D3 (#533): chamada .NET de escrita, so na ferramenta PowerShell. Literal
@@ -1184,8 +1322,11 @@ function bloqueiaColocada(verbo, toplevel, outras, agora, incerto) {
     })
     .join("\n");
 
+  const quem = verbo === SUB_ANINHADO.verbo
+    ? `${MOTIVO_ANINHADO} — nao da para ver se move o HEAD`
+    : `git ${verbo} — move o HEAD deste checkout.`;
   let msg = `BLOQUEADO pelo gate de sessao co-locada do rainforest-mind.\n\n` +
-    `Comando: git ${verbo} — move o HEAD deste checkout.\n` +
+    `Comando: ${quem}\n` +
     `Repo: ${toplevel}\n`;
 
   if (incerto) {
@@ -1266,7 +1407,7 @@ function gateDeSessaoColocada(ev, cwd) {
   const daqui = estadoDoRepo(cwd);
   if (!daqui) return; // fora de repo git: nao ha HEAD para mover
 
-  for (const alvo of alvosBash(comando, cwd, moveOHead, ev.tool_name === "PowerShell")) {
+  for (const alvo of alvosBash(comando, cwd, moveOHead, ev.tool_name)) {
     const estado = estadoDoRepo(dirDe(alvo.dir));
     if (!estado) continue;
     if (estado.toplevel !== daqui.toplevel) continue;
@@ -1380,7 +1521,7 @@ const COPIA_DA_REDE = new Set(["copy-item", "copy", "cpi", "cp"]);
 const CHAMADA_NET_NO_INICIO = /^\s*\[\s*[\w.]*\bIO\.[\w.]+\s*\]\s*::\s*(\w+)\s*\(/i;
 
 /** O segmento roda um comando de leitura conhecida (D2)? */
-function segmentoDeLeitura(toks, seg, ehPowerShell) {
+function segmentoDeLeitura(toks, seg, ehPowerShell, configGitNaLinha) {
   if (ehPowerShell) {
     const net = CHAMADA_NET_NO_INICIO.exec(seg);
     if (net) {
@@ -1409,16 +1550,20 @@ function segmentoDeLeitura(toks, seg, ehPowerShell) {
   // ele roda: nao e leitura.
   if (toks.slice(0, pos).some((t) => /^[A-Za-z_][A-Za-z0-9_]*=/.test(t.v))) return false;
   if (nome === "git") {
-    const s = subcomandoGit(seg, ehPowerShell ? "PowerShell" : "Bash");
-    // `-O` com valor colado, abreviacao de opcao longa (`--outp=f`), e o que faz o git rodar
-    // comando da config (`-c diff.external=...`, `--ext-diff`, `--textconv`, `--exec-path`).
-    return !!s && GIT_DE_LEITURA.has(s.verbo)
+    // Config do git mexida na mesma linha (`export GIT_EXTERNAL_DIFF=...; git diff`,
+    // `git config diff.external ...`): o git "de leitura" pode rodar comando.
+    if (configGitNaLinha) return false;
+    const subs = subcomandoGit(seg, ehPowerShell ? "PowerShell" : "Bash");
+    // `-O` com valor colado, abreviacao de opcao longa (`--outp=f`, `--ext`, `--textc`), e o que
+    // faz o git rodar comando da config (`-c diff.external=...`, `--ext-diff`, `--textconv`, `--exec-path`).
+    return subs.length > 0 && subs.every((s) => !s.incerto && GIT_DE_LEITURA.has(s.verbo))
       && !tem(/^-O|^--ou(t(p(u(t)?)?)?)?(=|$)|^--op(e(n[-a-z]*)?)?(=|$)/)
-      && !tem(/^-c|^--config-env|^--ext-diff$|^--textconv$|^--exec-path/);
+      && !tem(/^-c|^--config-env|^--ext|^--textc|^--exec-path/);
   }
   if (nome === "find") return !tem(/^-(delete|exec|execdir|ok|okdir|fprint|fprint0|fprintf|fls)$/);
-  // `-o` em grupo de opcoes curtas (`-ro f`), abreviacao de `--output` e o compressor, que e comando.
-  if (nome === "sort") return !tem(/^-[^-]*o|^--o(u(t(p(u(t)?)?)?)?)?(=|$)|^--comp/);
+  // `-o` em grupo de opcoes curtas (`-ro f`), abreviacao de `--output` e o compressor
+  // (`--co...`, abreviacao de `--compress-program`), que e comando.
+  if (nome === "sort") return !tem(/^-[^-]*o|^--o(u(t(p(u(t)?)?)?)?)?(=|$)|^--co/);
   if (nome === "rg") return !tem(/^--pre(-glob)?(=|$)/);
   if (nome === "uniq") return toks.slice(pos + 1).filter((t) => !/^-/.test(t.v)).length <= 1;
   return LEITURA_DA_REDE.has(nome);
@@ -1486,7 +1631,7 @@ function semTextoDeMensagem(toks) {
 const CAMINHO_POSIX = /(?:^|(?<=[\s'"=:(,]))\/[^\s'"`;|&<>(),]*/g;
 // Pasta do usuario por atalho (revisao de seguranca): til, a variavel HOME e as de
 // perfil do PowerShell e do cmd.
-const ATALHO_DE_HOME = /(^|[\s'"=:(,])~(?=[\\/]|$|[\s'"])|\$\{HOME\}|\$HOME\b|\$\{?env:HOMEDRIVE\}?\$\{?env:HOMEPATH\}?|%HOMEDRIVE%%HOMEPATH%|\$\{env:(?:USERPROFILE|HOME)\}|\$env:(?:USERPROFILE|HOME)\b|%USERPROFILE%/gi;
+const ATALHO_DE_HOME = /(^|[\s'"=:(,])~(?=[\\/]|$|[\s'"])|\$\{HOME\}|\$HOME\b|\$\{?HOMEDRIVE\}?\$\{?HOMEPATH\}?|\$\{USERPROFILE\}|\$USERPROFILE\b|\$\{?env:HOMEDRIVE\}?\$\{?env:HOMEPATH\}?|%HOMEDRIVE%%HOMEPATH%|\$\{env:(?:USERPROFILE|HOME)\}|\$env:(?:USERPROFILE|HOME)\b|%USERPROFILE%/gi;
 
 /** Caminhos citados num texto: absolutos (Windows, MSYS no Bash, POSIX fora do Windows), com `..` e por atalho de home. */
 function caminhosCitados(texto, ehPowerShell) {
@@ -1513,12 +1658,14 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
   };
   const alvo = [{ dir: repo.principal, incerto: true }];
   // Segmentacao nao confiavel (D2): a linha inteira e um segmento so, e nada e leitura.
-  const naoConfiavel = /\$\(|`/.test(comando) && !ehPowerShell
+  const naoConfiavel = /\$\(|`|\$'/.test(comando) && !ehPowerShell
     || ehPowerShell && (desalinhaAMascara(comando) || /[\u2018-\u201e]/.test(comando) || /"[^"]*\$\(/.test(comando) || /@['"]/.test(comando));
   if (naoConfiavel) return caminhosCitados(comando, ehPowerShell).some((c) => protegido(c, cwd)) ? alvo : [];
 
   const segmentos = segmentosDaRede(comando, ehPowerShell);
-  const leitura = segmentos.map((seg) => segmentoDeLeitura(tokensComAspas(seg), seg, ehPowerShell));
+  // Config do git ou do pager mexida em qualquer segmento da linha (revisao de seguranca).
+  const configGitNaLinha = /(^|[\s;&|(])(export\s+)?(GIT_\w*|\w*PAGER)=|\$env:(GIT_|\w*PAGER)|\bgit\b[^;&|]*\sconfig\b/i.test(comando);
+  const leitura = segmentos.map((seg) => segmentoDeLeitura(tokensComAspas(seg), seg, ehPowerShell, configGitNaLinha));
   // Pipeline com escritor (`Get-Item <P>/a | Set-Content -Value x`): o segmento de
   // leitura alimenta quem escreve, entao os caminhos dele tambem contam.
   const pipelineComEscritor = temForaDeAspas(comando, "|") && leitura.some((l) => !l);
@@ -1584,6 +1731,14 @@ function main() {
   const nome = ev.tool_name;
   const cwd = cwdDoEvento;
   let alvos = [];
+  // #530 (D3/D5): comando que nao se consegue conferir (estouro de chaves, wrapper
+  // fundo demais) barra como o ramo incerto de `procuraCLI`: so dentro de repo,
+  // e o motivo vai ao stderr pela `bloqueia`.
+  const barraSemConferir = (motivo) => {
+    if (ehScratchpad(cwd)) return;
+    const estadoAqui = estadoDoRepo(cwd);
+    if (estadoAqui) bloqueia(motivo, estadoAqui.toplevel, `${ev.agent_type || "?"} (${ev.agent_id})`);
+  };
   let motivo = null;
 
   if (FERRAMENTAS_DE_ESCRITA.has(nome)) {
@@ -1591,17 +1746,27 @@ function main() {
     if (alvo) { alvos = [{ dir: alvo, incerto: false }]; motivo = `Escrita (${nome}) em ${alvo}`; }
   } else if ((nome === "Bash" || nome === "PowerShell") && typeof entrada.command === "string") {
     const ehPS = nome === "PowerShell";
+    // #530 (D5): expansao de chaves que estoura o teto nao e conferida em nenhum
+    // segmento. Barrar antes de qualquer outra conta, com o motivo no stderr.
+    if (cwdPorSegmento(entrada.command, cwd, ehPS).some((s) => s.estouro)) {
+      barraSemConferir("expansao de chaves grande demais para conferir");
+    }
     // Rede de caminho do principal (#552): somada aos alvos da lista, no fim do ramo.
     const rede = alvosDaRede(entrada.command, cwd, ehPS);
     const verbo = verboNaLinha(entrada.command, VERBOS_QUE_MEXEM, nome);
+    if (verbo === SUB_ANINHADO.verbo) barraSemConferir(MOTIVO_ANINHADO);
     // Escrita por redirecionamento ou cmdlet (D4, rodada 2): e checada TAMBEM na linha
     // com verbo git (`echo x > <P>/f && git commit`). Antes so rodava sem verbo, e a
     // linha com verbo passava batida.
-    const alvosEscrita = alvosBashEscrita(entrada.command, cwd, ehPS).map((a) => ({ dir: a.dir, incerto: !!a.incerto }));
+    const escritaLida = alvosBashEscrita(entrada.command, cwd, ehPS);
+    // #530 (D3/D5): `barrar` nao e destino de escrita, e sim "nao deu para conferir".
+    const barrar = escritaLida.find((a) => a.tipo === "barrar");
+    if (barrar) barraSemConferir(barrar.motivo);
+    const alvosEscrita = escritaLida.filter((a) => a.tipo !== "barrar").map((a) => ({ dir: a.dir, incerto: !!a.incerto }));
     if (verbo) {
       // `incerto` viaja junto (nao so como alvo extra em cwdInicial) — ver o
       // comentario em `alvosBash`.
-      alvos = alvosBash(entrada.command, cwd, undefined, ehPS).map((a) => ({ dir: a.dir, incerto: !!a.incerto }));
+      alvos = alvosBash(entrada.command, cwd, undefined, nome).map((a) => ({ dir: a.dir, incerto: !!a.incerto }));
       alvos = alvos.concat(alvosEscrita);
       motivo = `Comando que mexe no estado do repo: git ${verbo}`;
     } else {
@@ -1676,7 +1841,7 @@ function main() {
     // sem confiar na classificacao de worktree — mesmo espirito do ramo de
     // CLI que ja faz isso para `cd`/subshell nao resolvidos.
     if (!incerto && estado.ehWorktree) continue; // worktree linkado: era pra ser isso mesmo
-    const restauro = linhaDeRestauro(entrada.command || '', estado.toplevel);
+    const restauro = linhaDeRestauro(entrada.command || '', estado.toplevel, nome);
     bloqueia(motivo, estado.toplevel, `${ev.agent_type || "?"} (${ev.agent_id})`, restauro, estado.ehWorktree);
   }
   process.exit(0);
