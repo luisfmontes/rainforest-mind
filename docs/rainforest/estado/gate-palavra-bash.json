@@ -150,22 +150,29 @@
     "em_voo": []
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "parcial",
     "snapshot": {
-      "head": "cd4db83bc6788792d680e58941509ad2d6c3730f",
+      "head": "54c6df082c48ad0161acaf76161cdccd15d4ddbd",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a178cd45cb35b7a41",
-        "veredito": "reprovado",
-        "em": "2026-10-15",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/d39ef955-529f-4604-9440-a7d2fbc14edb/subagents/agent-a178cd45cb35b7a41.jsonl"
+        "agente_id": "a78e376592b3fe430",
+        "veredito": "ok",
+        "em": "2026-10-16",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/d39ef955-529f-4604-9440-a7d2fbc14edb/subagents/agent-a78e376592b3fe430.jsonl"
       }
     ],
-    "em_voo": [],
-    "em": "2026-10-15",
+    "em_voo": [
+      {
+        "agente": "revisor",
+        "tarefa": "revisao rodada extra 2 (redespacho; o primeiro travou por watchdog de 600 s)",
+        "desde": "2026-10-16T00:00:00Z",
+        "sessao": "d39ef955-529f-4604-9440-a7d2fbc14edb"
+      }
+    ],
+    "em": "2026-10-16",
     "achados": 9,
     "tentativas": 4,
     "rodadas_extra": [
