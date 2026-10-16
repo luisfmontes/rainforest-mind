@@ -1610,6 +1610,27 @@ EOC
 # Atalho de home: a casa que o gate expande e a do Node (os.homedir), na forma com barras.
 CASA=$(node -e 'process.stdout.write(require("os").homedir().split(String.fromCharCode(92)).join(String.fromCharCode(47)))')
 case "${R,,}" in "${CASA,,}"/*) RT="~${R:${#CASA}}"; gate "#552 seg: rm ~/.../principal/f (atalho de home), do worktree, BARRA" 2 "$(b "rm $RT/f" "$WT")";; *) falhou=$((falhou+1)); echo "  FALHA #552 seg: o principal da caixa de areia nao fica sob a casa ($CASA), o caso de atalho nao mede nada";; esac
+case "${R,,}" in "${CASA,,}"/*) RT='${env:USERPROFILE}'"${R:${#CASA}}"; gate "#552 seg2: Get-Content a > \${env:USERPROFILE}/.../principal/f, do worktree, BARRA" 2 "$(bp "Get-Content a > $RT/f" "$WT")";; esac
+# Segunda revisao de seguranca: opcao citada, opcao abreviada ou colada, git que roda
+# comando da config, atribuicao antes do comando, destino de redirecionamento por partes.
+s552seg2() { gate "#552 seg2: $1, do worktree, $( [ "$2" = 2 ] && echo BARRA || echo PASSA)" "$2" "$($3 "$(printf '%s' "$1" | s552)" "$WT")"; }
+s552seg2 'find __R__ "-delete"' 2 b
+s552seg2 'git log -O__R__/f' 2 b
+s552seg2 'git log --outp=__R__/f' 2 b
+s552seg2 'git -c diff.external=x diff __R__/a' 2 b
+s552seg2 'git diff --ext-diff __R__/a' 2 b
+s552seg2 'GIT_EXTERNAL_DIFF=x git diff __R__/a' 2 b
+s552seg2 'sort -ro __R__/f a.txt' 2 b
+s552seg2 'sort --out=__R__/f a.txt' 2 b
+s552seg2 'sort --compress-program=x __R__/a' 2 b
+s552seg2 'cat a >"__R__"/f' 2 b
+s552seg2 "cat a > '__R__'/f" 2 b
+s552seg2 'Get-Content a *> "__R__"/f' 2 bp
+s552seg2 'git log --oneline -5 __R__' 0 b
+s552seg2 'git -C __R__ show HEAD:a.txt' 0 b
+s552seg2 'sort -r __R__/a' 0 b
+s552seg2 'grep -r x __R__ > /dev/null' 0 b
+s552seg2 "find __R__ -name '*.md'" 0 b
 
 echo "== #552 D6: pai inexistente =="
 # Com cwd no proprio principal a rede nao age (D3): so a lista decide, e ela precisa

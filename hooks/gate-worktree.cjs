@@ -1402,13 +1402,23 @@ function segmentoDeLeitura(toks, seg, ehPowerShell) {
   }
   // Leitura que escreve por opcao (revisao de seguranca): `git log --output=f`,
   // `sort -o f`, `uniq a f`, `rg --pre cmd`, `find -fls f`.
-  const tem = (re) => toks.some((t) => !t.q && re.test(t.v));
+  // Token citado tambem conta: o shell tira as aspas antes de o programa ler a opcao
+  // (`find <P> "-delete"`).
+  const tem = (re) => toks.some((t) => re.test(t.v));
+  // Atribuicao antes do comando (`GIT_EXTERNAL_DIFF='rm <P>/f' git diff`) pode mudar o que
+  // ele roda: nao e leitura.
+  if (toks.slice(0, pos).some((t) => /^[A-Za-z_][A-Za-z0-9_]*=/.test(t.v))) return false;
   if (nome === "git") {
     const s = subcomandoGit(seg, ehPowerShell ? "PowerShell" : "Bash");
-    return !!s && GIT_DE_LEITURA.has(s.verbo) && !tem(/^(--output|-O|--open-files-in-pager)(=|$)/);
+    // `-O` com valor colado, abreviacao de opcao longa (`--outp=f`), e o que faz o git rodar
+    // comando da config (`-c diff.external=...`, `--ext-diff`, `--textconv`, `--exec-path`).
+    return !!s && GIT_DE_LEITURA.has(s.verbo)
+      && !tem(/^-O|^--ou(t(p(u(t)?)?)?)?(=|$)|^--op(e(n[-a-z]*)?)?(=|$)/)
+      && !tem(/^-c|^--config-env|^--ext-diff$|^--textconv$|^--exec-path/);
   }
   if (nome === "find") return !tem(/^-(delete|exec|execdir|ok|okdir|fprint|fprint0|fprintf|fls)$/);
-  if (nome === "sort") return !tem(/^(-o|--output)(=|$)|^-o./);
+  // `-o` em grupo de opcoes curtas (`-ro f`), abreviacao de `--output` e o compressor, que e comando.
+  if (nome === "sort") return !tem(/^-[^-]*o|^--o(u(t(p(u(t)?)?)?)?)?(=|$)|^--comp/);
   if (nome === "rg") return !tem(/^--pre(-glob)?(=|$)/);
   if (nome === "uniq") return toks.slice(pos + 1).filter((t) => !/^-/.test(t.v)).length <= 1;
   return LEITURA_DA_REDE.has(nome);
@@ -1419,11 +1429,14 @@ function segmentoDeLeitura(toks, seg, ehPowerShell) {
  * `>`, `>>`, `>|`, `<>`, `&>`, `n>`, `*>` e destino entre aspas. Duplicacao de
  * descritor (`2>&1`, `>&-`) nao e destino.
  */
-function destinosDeRedirecionamento(seg) {
+function destinosDeRedirecionamento(seg, ehPowerShell) {
+  // Escape: contrabarra no Bash, crase no PowerShell (os dois valem fora de aspa simples).
+  const esc = ehPowerShell ? "`" : "\\";
   const destinos = [];
   let aspa = null;
   for (let i = 0; i < seg.length; i += 1) {
     const c = seg[i];
+    if (c === esc && aspa !== "'") { i += 1; continue; }
     if (aspa) { if (c === aspa) aspa = null; continue; }
     if (c === "'" || c === '"') { aspa = c; continue; }
     if (c !== ">") continue;
@@ -1432,17 +1445,25 @@ function destinosDeRedirecionamento(seg) {
     if (seg[j] === "&" && /[0-9-]/.test(seg[j + 1] || "")) { i = j; continue; }
     if (seg[j] === "&") j += 1;
     while (j < seg.length && /\s/.test(seg[j])) j += 1;
-    let alvo = "";
-    if (seg[j] === "'" || seg[j] === '"') {
-      const fim = seg.indexOf(seg[j], j + 1);
-      alvo = seg.slice(j + 1, fim < 0 ? seg.length : fim);
-      j = fim < 0 ? seg.length : fim;
-    } else {
-      while (j < seg.length && !/[\s;|&<>]/.test(seg[j])) { alvo += seg[j]; j += 1; }
+    // A palavra inteira: trechos citados e nao citados colados ("<P>"/f) viram um so.
+    let alvo = "", cru = "", q = null;
+    for (; j < seg.length; j += 1) {
+      const d = seg[j];
+      if (!q && /[\s;|&<>]/.test(d)) break;
+      cru += d;
+      if (d === esc && q !== "'") { j += 1; if (j < seg.length) { alvo += seg[j]; cru += seg[j]; } continue; }
+      if (q) { if (d === q) q = null; else alvo += d; continue; }
+      if (d === "'" || d === '"') { q = d; continue; }
+      alvo += d;
     }
+    // Aspa sem fechar: o resto do segmento e o destino (falha fechado).
+    if (q) alvo = cru = seg.slice(i + 1);
     if (alvo) destinos.push(alvo);
+    if (cru && cru !== alvo) destinos.push(cru);
     i = j;
   }
+  // Aspa sem fechar: o texto citado pode esconder um redirecionamento (falha fechado).
+  if (aspa && seg.includes(">")) destinos.push(seg.slice(seg.indexOf(">") + 1));
   return destinos;
 }
 
@@ -1465,7 +1486,7 @@ function semTextoDeMensagem(toks) {
 const CAMINHO_POSIX = /(?:^|(?<=[\s'"=:(,]))\/[^\s'"`;|&<>(),]*/g;
 // Pasta do usuario por atalho (revisao de seguranca): til, a variavel HOME e as de
 // perfil do PowerShell e do cmd.
-const ATALHO_DE_HOME = /(^|[\s'"=:(,])~(?=[\\/]|$|[\s'"])|\$\{HOME\}|\$HOME\b|\$env:(?:USERPROFILE|HOME)\b|%USERPROFILE%/gi;
+const ATALHO_DE_HOME = /(^|[\s'"=:(,])~(?=[\\/]|$|[\s'"])|\$\{HOME\}|\$HOME\b|\$\{?env:HOMEDRIVE\}?\$\{?env:HOMEPATH\}?|%HOMEDRIVE%%HOMEPATH%|\$\{env:(?:USERPROFILE|HOME)\}|\$env:(?:USERPROFILE|HOME)\b|%USERPROFILE%/gi;
 
 /** Caminhos citados num texto: absolutos (Windows, MSYS no Bash, POSIX fora do Windows), com `..` e por atalho de home. */
 function caminhosCitados(texto, ehPowerShell) {
@@ -1510,7 +1531,7 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
     if (leitura[i] && !pipelineComEscritor) {
       // Leitura: conta o destino de redirecionamento e o que esta entre parenteses ou
       // chaves (`Get-Content (Remove-Item <P>/f)` roda o de dentro).
-      for (const destino of destinosDeRedirecionamento(seg)) {
+      for (const destino of destinosDeRedirecionamento(seg, ehPowerShell)) {
         if (ehDescarteDeSaida(destino, ehPowerShell)) continue;
         if (caminhosCitados(destino, ehPowerShell).concat([destino.replace(/^FileSystem::/i, "")]).some((c) => protegido(c, base))) return alvo;
       }
