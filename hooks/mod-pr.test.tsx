@@ -87,6 +87,10 @@ async function montar($: any, on: any, surface: Surface, inicial: Record<string,
     rodou: [] as string[],
     ghEnv: [] as any[],
     toolFalha: false,
+    // gh api user sai 1 (quem sou eu desconhecido) enquanto true.
+    euFalha: false,
+    // Roda uma vez durante a leitura das threads: e onde a troca de PR cai no meio da consulta.
+    duranteThreads: null as null | (() => Promise<void>),
   }
   on('process.run', async (_$: any, e: any) => {
     s.rodou.push(String(e.argv[0]))
@@ -97,8 +101,13 @@ async function montar($: any, on: any, surface: Surface, inicial: Record<string,
     if (e.argv[0] === GH_EXE) {
       s.gh.push([...e.argv])
       s.ghEnv.push(e.init?.env ?? null)
-      if (e.argv[1] === 'api' && e.argv[2] === 'user') return saida(`${s.eu}\n`)
-      if (e.argv[1] === 'api') return saida(THREADS_455)
+      if (e.argv[1] === 'api' && e.argv[2] === 'user') return s.euFalha ? saida('', 1) : saida(`${s.eu}\n`)
+      if (e.argv[1] === 'api') {
+        const f = s.duranteThreads
+        s.duranteThreads = null
+        if (f !== null) await f()
+        return saida(THREADS_455)
+      }
       if (e.argv.includes('state,url,headRefName')) return s.retomada === null ? saida('', 1) : saida(JSON.stringify(s.retomada))
       return s.ghSai1 ? saida('', 1) : saida(JSON.stringify(s.pr))
     }
@@ -423,6 +432,56 @@ for (const surface of ['terminal', 'desktop'] as const) {
       await relogio.advance(MIN)
       const linhas = sessao.appended().map(r => JSON.stringify(r.message))
       expect(linhas.filter(l => l.includes(NOTA_ALHEIA)).length).toBe(1)
+      await relogio.advance(10 * MIN)
+      expect(s.submits).toEqual([])
+    })
+  })
+
+  test(`#466: gh api user falhando nao rebaixa; quando volta, o PR da sessao acorda (${surface})`, async ($, on) => {
+    const m = await montar($, on, surface, EM_CURSO)
+    const { s, relogio, sessao, bash, caso } = m
+    await caso('sem saber quem sou, a virada entra como nota informativa e nada acorda', async () => {
+      s.euFalha = true
+      s.cmdTool = `${URL_PR}\n`
+      await bash('gh pr create --fill')
+      await relogio.settle()
+      s.pr = VERDE
+      await relogio.advance(MIN)
+      const linhas = sessao.appended().map(r => JSON.stringify(r.message))
+      expect(linhas.filter(l => l.includes(NOTA_ALHEIA)).length).toBe(1)
+      await relogio.advance(10 * MIN)
+      expect(s.submits).toEqual([])
+    })
+    await caso('o gh api user volta: o PR seguiu da sessao e a proxima virada acorda', async () => {
+      s.euFalha = false
+      s.pr = CONFLITO
+      await relogio.advance(MIN)
+      await relogio.advance(10 * MIN)
+      expect(s.submits).toEqual(['PR #455: conflito com a base. Resuma e traga ao usuário, sem alterar nada.'])
+    })
+  })
+
+  test(`#466: troca de PR durante a leitura das threads descarta a consulta velha (${surface})`, async ($, on) => {
+    const m = await montar($, on, surface, EM_CURSO)
+    const { s, relogio, sessao, bash, abrirPane, textos, caso } = m
+    await caso('o PR da sessao abre o pane', async () => {
+      s.cmdTool = `${URL_PR}\n`
+      await bash('gh pr create --fill')
+      await relogio.settle()
+    })
+    await caso('/pr 999 no meio da consulta: a resposta do 455 nao grava resumo, alvo, nota nem pendencia', async () => {
+      s.pr = VERDE
+      s.duranteThreads = async () => {
+        await $.command.run({ command: 'pr', args: '999' } as never)
+      }
+      await relogio.advance(MIN)
+      expect((await textos(await abrirPane())).join('\n')).not.toContain('#455')
+      expect(sessao.appended().map(r => JSON.stringify(r.message)).filter(l => l.includes('#455'))).toEqual([])
+      const antes = s.gh.length
+      await relogio.advance(MIN)
+      const views = s.gh.slice(antes).filter(a => a[1] === 'pr' && a[2] === 'view')
+      expect(views.length).toBeGreaterThan(0)
+      expect(views.every(a => a[3] === '999')).toBe(true)
       await relogio.advance(10 * MIN)
       expect(s.submits).toEqual([])
     })

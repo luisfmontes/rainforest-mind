@@ -207,11 +207,14 @@ async function consultar($: EngineInterface): Promise<void> {
       const autor = (pr.author as { login?: string } | undefined)?.login
       const dono = decidirDono({ autor, eu, cruzado: pr.isCrossRepository }) as string
       if (dono === 'adiar') adiado = true
-      if (dono === 'rebaixar') await update($, prAcompanhado, a => (a === null ? a : { ...a, origem: 'manual' }))
+      // O quemSouEu leva tempo: rebaixa so se o acompanhado ainda e o PR consultado.
+      if (dono === 'rebaixar') await update($, prAcompanhado, a => (a === null || consultaVelha(alvoConsultado, a) ? a : { ...a, origem: 'manual' }))
     }
 
     const agora = await $.clock.now()
     const threads = await lerThreads($, String(pr.url ?? ''))
+    // lerThreads pode levar ate 30 s: a troca de PR no meio descarta a consulta de novo.
+    if (consultaVelha(alvoConsultado, await read($, prAcompanhado))) return
     const velho = await read($, prResumo)
     const lido: RainforestMindPrResumo = { ...resumir(pr, threads), atualizadoEm: hhmm(Date.parse(String(pr.updatedAt ?? ''))) }
     const novo = herdarMotivo(velho, lido) as RainforestMindPrResumo
@@ -219,7 +222,7 @@ async function consultar($: EngineInterface): Promise<void> {
     const hora = hhmm(agora)
     await update($, prResumo, () => novo)
     // O alvo vira a URL: dali em diante a consulta nao depende da branch nem do cwd.
-    if (ac.alvo !== novo.url) await update($, prAcompanhado, a => (a === null ? a : { ...a, alvo: novo.url }))
+    if (ac.alvo !== novo.url) await update($, prAcompanhado, a => (a === null || consultaVelha(alvoConsultado, a) ? a : { ...a, alvo: novo.url }))
     if (evs.length > 0) {
       await update($, prEventos, l => [...l, ...evs.map(ev => ({ hora, icone: ev.icone, texto: ev.texto }))].slice(-MAX_EVENTOS))
       // Qualquer mudanca recomeca a contagem de quietude de uma virada que ainda espera.
