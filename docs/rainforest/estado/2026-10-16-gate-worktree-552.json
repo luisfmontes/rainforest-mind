@@ -19,7 +19,7 @@
     "em": "2026-10-16"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-16",
     "tarefas_ok": 3,
     "tarefas": 3,
@@ -40,13 +40,9 @@
         "motivo": "entrada de CHANGELOG e numero de versao"
       }
     ],
-    "comando": "node scripts/conferir-mutacao.cjs (T1 e T2, bateria bash hooks/testa-gate-worktree.sh) no merge 31513f9b",
-    "saida": "T1: bateria VERMELHA (exit 1), baseline 429350 ms exit 0; T2: bateria VERMELHA (exit 1), baseline 255017 ms exit 0; testa-cwd-efetivo 85 ok, testa-palavra-bash 30 ok, corpus 24 ok; conferir-versao ok 1.68.0",
+    "comando": "node scripts/conferir-mutacao.cjs T1 (bateria bash hooks/testa-gate-worktree.sh) apos o achado 1 da revisao",
+    "saida": "T1: bateria VERMELHA (exit 1), baseline 368320 ms exit 0; bateria 611 ok 0 falha; corpus 24 ok 0 falhou; T2 vermelho no merge 31513f9b, dirDe e secao D6 sem mudanca desde entao",
     "em": "2026-10-16",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-16"
-    },
     "reaberturas": 1
   },
   "revisar": {
