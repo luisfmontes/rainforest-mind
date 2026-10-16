@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.67.6-1e5c3f?style=flat-square" alt="versão 1.67.6">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.67.7-1e5c3f?style=flat-square" alt="versão 1.67.7">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -39,7 +39,7 @@ as regras e as elaborações como seção do system prompt (`hooks/register.ts`)
 ela, ou no Codex, a abertura vem pelo hook com o núcleo, como antes. A mesma versão desenha
 a barra de sessão acima do prompt (`hooks/mod.tsx`): estado, tokens, custo, contexto, cache,
 subagentes, erros e o relógio ⏰ dos avisos de jornada (regra 8) e de janela parada (regra 17), mais o
-comando `/painel`, o painel de PR (`/pr`), que abre sozinho a cada `gh pr` e acorda o Claude
+comando `/painel` (no quadro "Deixado para depois", cada item tem "Faz agora" e "Vira pendência de <fluxo>", que só preenchem o prompt: quem envia é você), o painel de PR (`/pr`), que abre sozinho a cada `gh pr` e acorda o Claude
 quando o PR da sessão fica verde, vermelho, em conflito ou mergeado, e o `/plugins-em-dia`, que
 mantém os plugins atualizados sem sair da sessão e avisa (ou recarrega) as outras janelas abertas. **O painel pede o Claude Code 2.1, patch 292 em diante**, a versão em que foi medido,
 no terminal, nas duas contas; no desktop o desenho não foi medido. Sem o mod, não há barra, painel
@@ -238,6 +238,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `scripts/painel-fluxo.cjs gerar --slug <slug>` | Painel HTML local do fluxo em `<dados>/fluxos/<slug>/painel.html`: um cartão por tarefa (estado, camada, iteração do laço) e um resumo (em voo, falta, estágio, veredito, parado). O `marcar` de executar, revisar e verificar o regenera; falha vira aviso e não muda o exit |
 | `scripts/integrar-tarefa.cjs --slug <s> --tarefa <n> --worktree <w> --base <h> --head-antes <h0> --sujo-antes <f> --titulo <t> [--repo-principal <dir>]` | Integra uma tarefa do `executar` num comando só, nesta ordem: `conferir-entrega` com o `arquivos:` da tarefa, `git apply --index` do diff `base..HEAD` do agente (todos os commits, atômico; índice com stage prévio é recusado), mutação da tarefa (`conferir-fluxo.cjs mutacoes --tarefa <n>`), commit com o trailer `Rainforest-Tarefa`, `marcar` com `integradas` e remoção do worktree do agente. **Exit 0** aceito; **exit 2** recusado, com o passo no JSON e a branch como estava; **exit 69** ambiente. Rodar de novo depois de um 69 no `marcar` retoma sem commit novo |
 | `scripts/rodar-longo.cjs iniciar --saida <arq> -- <cmd>` / `estado --saida <arq>` | Roda bateria ou mutação fora do teto de 10 min do Bash. O `iniciar` sobe um vigia destacado e volta na hora. O `estado` imprime `rodando` (**exit 3**), `exit <N>` (**exit 0**, lido de `<arq>.exit`) ou `morto` (**exit 4**, vigia sumiu sem registrar) |
+| `scripts/estado.cjs pendencia --slug <s> --texto <t>` | Acrescenta `<t>` às `pendentes` do estágio aberto (o que `proximo` devolve) sem mudar o status; texto repetido não duplica, texto vazio sai 1, fluxo completo sai 2. Daí em diante vale a trava da #449: o estágio só fecha `ok` com destino para ela. É o comando que o botão **Vira pendência de <fluxo>** do painel "Deixado para depois" põe no prompt (#470) |
 | `scripts/estado.cjs decidir --slug <s> --pergunta <p> --escolha <e> --porque <m>` / `decididos --slug <s>` | Modo autônomo (chave `executar-autonomo`, padrão desligado): a decisão que surge entre `plano ok` e o merge vai para `decididos` em vez de virar pergunta. O `decididos` imprime a seção `## Decidido sem você` do corpo do PR. Sem `--porque`, **exit 2** |
 | `scripts/estado.cjs marcar --json {"carimbos":…}` | Grava por tarefa o hash de base em que ela foi aceita (`iteracao` cresce, nada se apaga); `proximo` e `ler` avisam quando esse hash não é ancestral do HEAD |
 | `scripts/testa-teto-skills.sh` | Nenhum `SKILL.md` acima de 500 linhas ou 16.384 B — a falha diz o que mover para `references/` |
