@@ -622,6 +622,7 @@ function nomeDoParametro(flag) {
 // Cmdlets de escrita com destino de COPIA: o alvo e `-Destination` ou o ultimo
 // posicional, e o primeiro posicional e so origem (D5).
 const CMDLETS_DE_COPIA = new Set(["copy-item", "copy", "cpi", "move-item", "move", "mi"]);
+const CMDLETS_DE_MOVER = new Set(["move-item", "move", "mi"]);
 // Parametros de caminho que o cmdlet le ou escreve (`-Path` e os aliases de caminho).
 const PARAMETROS_DE_CAMINHO_PS = ["path", "literalpath", "filepath", "pspath"];
 
@@ -634,9 +635,11 @@ function indiceDoCmdletPS(toks, i) {
   let k = i;
   while (k < toks.length) {
     const t = toks[k];
-    if (!t.q && t.v === "&") { k += 1; continue; }
-    if (!t.q && /^\$[\w:]+$/.test(t.v) && k + 1 < toks.length && !toks[k + 1].q && toks[k + 1].v === "=") { k += 2; continue; }
-    if (!t.q && /^\$[\w:]+=$/.test(t.v)) { k += 1; continue; }
+    if (!t.q && (t.v === "&" || t.v === ".")) { k += 1; continue; }
+    // Atribuicao simples ou composta (`+=`, `??=`), com indice ou propriedade
+    // (`$a[0] =`, `$a.b =`): revisao de seguranca da rodada 3.
+    if (!t.q && /^\$\S*$/.test(t.v) && k + 1 < toks.length && !toks[k + 1].q && /^[-+*/%?]{0,2}=$/.test(toks[k + 1].v)) { k += 2; continue; }
+    if (!t.q && /^\$\S*?[-+*/%?]{0,2}=$/.test(t.v)) { k += 1; continue; }
     return k;
   }
   return null;
@@ -667,7 +670,8 @@ function alvosDeCmdlet(toks, posCmd, base, empurra) {
     const t = toks[k];
     // `-Nome` ou `-Nome:valor`. Token citado so e parametro com `:` (`-Path:'x'`,
     // que o tokenizador devolve como citado); sem `:` e um argumento citado.
-    const m = /^-([A-Za-z]+)(:(.*))?$/.exec(t.v);
+    // O PowerShell aceita travessao (`–`, `—`, `―`) como prefixo de parametro.
+    const m = /^[-–—―]([A-Za-z]+)(:(.*))?$/.exec(t.v);
     if (!m || (t.q && m[2] === undefined)) { posicionais.push(t); continue; }
     const param = nomeDoParametro(m[1].toLowerCase());
     if (param === null) { desconhecido = true; continue; } // o token seguinte segue posicional
@@ -686,7 +690,9 @@ function alvosDeCmdlet(toks, posCmd, base, empurra) {
     if (nomes.length) {
       // `-Name` junta-se ao caminho (ou ao cwd): nome com `..` ou separador tambem conta.
       for (const n of nomes) {
-        for (const p of caminhos.length ? caminhos : [null]) {
+        // Sem `-Path` nomeado, o primeiro posicional e o caminho (`New-Item <P> -Name f`).
+        const bases = caminhos.length ? caminhos : posicionais.length ? posicionais.slice(0, 1) : [null];
+        for (const p of bases) {
           const trechos = [n, p].filter((x) => x !== null);
           if (trechos.some((x) => /[$`()@]/.test(x.v))) { empurra(base, null, "cmdlet", true); continue; }
           empurra(base, path.resolve(base, p ? p.v : ".", n.v), "cmdlet");
@@ -697,7 +703,10 @@ function alvosDeCmdlet(toks, posCmd, base, empurra) {
   }
 
   let candidatos;
-  if (CMDLETS_DE_COPIA.has(nome)) {
+  if (CMDLETS_DE_MOVER.has(nome)) {
+    // Mover apaga a origem: origem e destino sao alvos (revisao de seguranca da rodada 3).
+    candidatos = [...destinos, ...caminhos, ...posicionais];
+  } else if (CMDLETS_DE_COPIA.has(nome)) {
     if (destinos.length) candidatos = destinos;
     else {
       const minimo = caminhos.length ? 1 : 2;
@@ -902,10 +911,13 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
     if (ehPowerShell && posCmd !== null && posCmd !== undefined) {
       const iNome = indiceDoCmdletPS(toks, posCmd);
       if (iNome !== null && /^(iex|invoke-expression)$/i.test(toks[iNome].v.split(/[\\/]/).pop())) {
-        const args = toks.slice(iNome + 1);
+        // `-Command` (ou prefixo dele) antes do texto e o nome do parametro, nao codigo.
+        let args = toks.slice(iNome + 1);
+        if (args.length && !args[0].q && /^[-–—―]c(o(m(m(a(n(d)?)?)?)?)?)?:?$/i.test(args[0].v)) args = args.slice(1);
         const literal = args.every((t) => t.aspa === "'" || !/[$`]/.test(t.v));
-        if (args.length && !literal) empurra(base, null, "iex", true);
-        else if (args.length) alvos.push(...alvosBashEscrita(args.map((t) => t.v).join(" "), base, true));
+        // Sem argumento, o texto chega pelo pipeline (`$s | iex`): incerto (revisao de seguranca da rodada 3).
+        if (!args.length || !literal) empurra(base, null, "iex", true);
+        else alvos.push(...alvosBashEscrita(args.map((t) => t.v).join(" "), base, true));
       }
     }
 

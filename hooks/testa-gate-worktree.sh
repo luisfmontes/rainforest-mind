@@ -1193,6 +1193,48 @@ EOC
 )" "$WT")"
 gate "D5 (6) vizinho: Select-String \"[IO.File]::WriteAllText(\" arq, do worktree, PASSA (mascara ativa)" 0 "$(bp 'Select-String "[IO.File]::WriteAllText(" arq' "$WT")"
 
+echo "-- revisao de seguranca da rodada 3: origem do Move-Item, New-Item posicional, travessao, iex por pipeline, atribuicao composta --"
+gate "D5 (s1): Move-Item <P>/a.txt . (origem no principal), do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Move-Item __R__/a.txt .
+EOC
+)" "$WT")"
+gate "D5 (s1) vizinho: Copy-Item <P>/a.txt . (copia nao apaga a origem), do worktree, PASSA" 0 "$(bp "$(cmdps <<'EOC'
+Copy-Item __R__/a.txt .
+EOC
+)" "$WT")"
+gate "D5 (s2): New-Item <P> -Name f (caminho posicional), do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+New-Item __R__ -Name f -ItemType File
+EOC
+)" "$WT")"
+gate "D5 (s2) vizinho: New-Item sub -Name f (no worktree), do worktree, PASSA" 0 "$(bp "$(cmdps <<'EOC'
+New-Item sub -Name f -ItemType File
+EOC
+)" "$WT")"
+gate "D5 (s3): Set-Content –Path <P>/f x (travessao), do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Set-Content –Path __R__/f –Value x
+EOC
+)" "$WT")"
+gate "D5 (s4): 'Set-Content <P>/f x' | iex (texto pelo pipeline), do worktree, BARRA (regressao: ja barrava pelo ramo de comando dinamico)" 2 "$(bp "$(cmdps <<'EOC'
+'Set-Content __R__/f x' | iex
+EOC
+)" "$WT")"
+gate "D5 (s4): iex -Command 'Set-Content <P>/f x', do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+iex -Command 'Set-Content __R__/f x'
+EOC
+)" "$WT")"
+gate "D5 (s5): . Set-Content <P>/f x (dot-source), do worktree, BARRA (regressao: ja barrava pelo ramo de comando dinamico)" 2 "$(bp "$(cmdps <<'EOC'
+. Set-Content __R__/f x
+EOC
+)" "$WT")"
+gate "D5 (s5): \$a += Set-Content <P>/f x, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+$a += Set-Content __R__/f x
+EOC
+)" "$WT")"
+gate "D5 (s5): \$h.x = Set-Content <P>/f x, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+$h.x = Set-Content __R__/f x
+EOC
+)" "$WT")"
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

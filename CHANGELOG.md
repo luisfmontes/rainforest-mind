@@ -23,6 +23,13 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
     `[IO.StreamWriter]::new(...)`): só os métodos de leitura conhecidos passam. Chamada dentro de aspas simples, ou de
     aspas duplas sem `$`, é texto e não conta; com `iex`/`Invoke-Expression`, conta.
   - Escrita na mesma linha de um verbo git (`echo x > <principal>/f && git commit`) também é checada.
+  - Grafias que contornavam a primeira versão do conserto: `-Path:'...'`, parâmetro com travessão (`–Path`), cmdlet
+    depois de `&`, `.` ou atribuição (`$null =`, `$a +=`, `$h.x =`), splat (`@a`, incerto), espaço em `[IO.File] ::`,
+    `iex`/`Invoke-Expression` (inclusive `-Command`) com cmdlet de escrita no texto, `New-Item <P> -Name f`, e a
+    origem do `Move-Item`, que sai do lugar. `{cd,X}` também conta depois de atribuição, palavra reservada, `!` e com
+    aspas dentro das chaves. A máscara de aspas da chamada .NET só vale sem crase fora de aspas, `#` ou here-string.
+  - Leitura legítima no worktree volta a passar: `Copy-Item <principal>/a.txt .` e `Set-Content a.txt $t` (o `-Value`
+    não é caminho).
   - Seguem passando, registrados na #552: remoção (`rm`, `Remove-Item`), `New-Object` de tipo de IO e redirecionamento
     com variável (`echo x > $P/f`).
 
