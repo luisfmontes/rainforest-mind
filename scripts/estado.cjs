@@ -524,7 +524,17 @@ function gravarDentro(slug, estado) {
   fs.mkdirSync(DIR_ESTADO, { recursive: true });
   const tmp = `${p}.tmp`;
   fs.writeFileSync(tmp, texto, 'utf8');
-  fs.renameSync(tmp, p); // atômico: estado truncado é pior que ausente
+  // atômico: estado truncado é pior que ausente. No Windows o rename recusa (EPERM/EACCES/EBUSY)
+  // enquanto um leitor, que lê sem a trava, está com o arquivo aberto: tenta de novo por até ~2 s.
+  for (let tentativa = 0; ; tentativa++) {
+    try {
+      fs.renameSync(tmp, p);
+      break;
+    } catch (e) {
+      if (!['EPERM', 'EACCES', 'EBUSY'].includes(e.code) || tentativa >= 40) throw e;
+      sleepSync(50);
+    }
+  }
   basesDoFluxo.set(slug, JSON.parse(texto));
 }
 
