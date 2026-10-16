@@ -55,3 +55,6 @@ scripts/testa-painel-fluxo.sh
 scripts/testa-integrar-tarefa.sh
 scripts/testa-rodar-longo.sh
 scripts/testa-estado-decididos.sh
+
+# Pendencia do painel Deixado (fluxo 2026-10-15-deixado-vira-pendencia)
+scripts/testa-estado-pendencia.sh
