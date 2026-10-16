@@ -22,7 +22,7 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-15",
-    "tarefas_ok": 2,
+    "tarefas_ok": 1,
     "tarefas": 2,
     "carimbos": [
       {
@@ -55,7 +55,15 @@
       "estagio": "revisar",
       "data": "2026-10-15"
     },
-    "reaberturas": 1
+    "reaberturas": 1,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "T1 rodada 2",
+        "desde": "2026-10-16T00:30:00-03:00",
+        "sessao": "bfd7468b-e589-43c6-9e09-04528a1dc829"
+      }
+    ]
   },
   "revisar": {
     "status": "reprovado",
