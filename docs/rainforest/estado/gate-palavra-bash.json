@@ -18,7 +18,7 @@
     "em": "2026-10-15"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-15",
     "carimbos": [
       {
@@ -80,12 +80,13 @@
       5,
       6,
       7,
-      8
+      8,
+      9
     ],
-    "tarefas_ok": 8,
+    "tarefas_ok": 9,
     "tarefas": 9,
-    "comando": "node scripts/integrar-tarefa.cjs --slug gate-palavra-bash --tarefa 7|8 (mutacoes re-rodadas pela integracao)",
-    "saida": "T7 aceito commit 3acf91bd; T8 aceito commit 082f22b4; mutacao das duas vermelha na integracao.",
+    "comando": "node r9diff.cjs (corpus do revisor, base 9f6b9ca3 x HEAD 90da5b77) + integrar-tarefa --tarefa 9",
+    "saida": "total 3980 {2>2:1394,0>0:2418,0>2:168}; 2->nao2: nenhuma linha. T9 aceito commit 90da5b77, mutacao vermelha na integracao.",
     "mutacao": [
       {
         "tarefa": 1,
@@ -126,21 +127,15 @@
         "tarefa": 8,
         "resultado": "vermelho",
         "fixture": "testa-cwd-efetivo.sh, secao \"(#530) rodada 3: git de caminho Windows sem aspas mantem o -C\""
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-worktree.sh, secao \"(#530) rodada extra: git reconhecido no texto cru ou no normalizado\""
       }
     ],
     "reaberturas": 3,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-15"
-    },
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "tarefa 9 rodada extra",
-        "desde": "2026-10-15T00:00:00Z",
-        "sessao": "d39ef955-529f-4604-9440-a7d2fbc14edb"
-      }
-    ]
+    "em_voo": []
   },
   "revisar": {
     "status": "reprovado",
