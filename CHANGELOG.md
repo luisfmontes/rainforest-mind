@@ -16,10 +16,13 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   `registrar-flake` e o `decidir` usavam travas diferentes, e `marcar`, `destinar`, `pendencia`, `exigir` e
   `liberar` regravavam o arquivo do fluxo sem trava nenhuma. Um veredito que chegava entre a leitura e a escrita de
   um `marcar` sumia sem aviso.
-  - Toda gravação passa por uma trava só por fluxo (`.<slug>.lock`).
-  - Quem valida antes de gravar (o `marcar` do plano roda a `prova:` por até 120 s) não segura a trava nesse tempo:
-    na gravação, relê o arquivo e junta campo a campo. O que o comando não mudou fica com o valor gravado por outro
-    processo; o que ele mudou, ou removeu, fica com o dele. Os dois mudando o mesmo campo: o comando ganha, como antes.
+  - Toda gravação passa por uma trava só por fluxo (`.<slug>.lock`), que o `.gitignore` ignora.
+  - `veredito`, `registrar-flake`, `decidir`, `pendencia`, `destinar`, `liberar` e `liberar-teto` leem e gravam
+    dentro da trava: duas pendências, dois motivos ou dois vereditos ao mesmo tempo ficam os dois.
+  - `marcar` e `exigir` validam fora da trava (o `marcar` do plano roda a `prova:` por até 120 s) e, na gravação,
+    releem o arquivo e juntam campo a campo. O que o comando não mudou fica com o valor gravado por outro processo; o
+    que ele mudou, ou removeu, fica com o dele. Se o outro processo mexeu no mesmo campo nesse meio-tempo, o `marcar`
+    ou o `exigir` ganha, como antes.
   - No Windows, a troca do arquivo tenta de novo por até 2 s quando um leitor está com ele aberto.
 
 ## 1.67.8 — 2026-10-15
