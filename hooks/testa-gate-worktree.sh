@@ -1315,7 +1315,20 @@ for c in $'Copy-Item a#b `\n  __R__/f' $'$t = @\'\nx\n\'@\nCopy-Item a.txt `\n  
   cc=${c//__R__/$R}
   gate "4a rev (seguranca): ${c//$'\n'/⏎}, do worktree, BARRA" 2 "$(bp "$cc" "$WT")"
 done
-gate "4a rev vizinho: Copy-Item a#b ⏎ b.txt (# no meio do token), do worktree, PASSA" 0 "$(bp $'Copy-Item a#b `\n  b.txt' "$WT")"
+gate "4a rev: Copy-Item a#b ⏎ b.txt (# com continuacao e incerto, conservador), do worktree, BARRA" 2 "$(bp $'Copy-Item a#b `\n  b.txt' "$WT")"
+
+for c in $'Write-Output \x27x\x27#c `
+Set-Content __R__/f y' $'Write-Output "x"#c `
+Set-Content __R__/f y' $'Write-Output $a.Length#c `
+Set-Content __R__/f y' $'Write-Output $a[0]#c `
+Set-Content __R__/f y' $'Write-Output $a.b#c `
+Copy-Item a.txt __R__/f'; do
+  cc=${c//__R__/$R}
+  gate "4a rev: ${c//$'
+'/⏎}, do worktree, BARRA" 2 "$(bp "$cc" "$WT")"
+done
+gate "4a rev vizinho: Copy-Item -Path a.txt ⏎ -Destination b.txt (sem #), do worktree, PASSA" 0 "$(bp $'Copy-Item -Path a.txt `
+  -Destination b.txt' "$WT")"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

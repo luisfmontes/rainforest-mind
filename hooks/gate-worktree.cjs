@@ -977,7 +977,11 @@ function alvosNetDoComando(comando) {
 function juntaContinuacoesPS(t) {
   const texto = juntaContinuacoesPSTexto(t);
   const temContinuacao = /`\r?\n/.test(t);
-  const incerto = /`\r?\n/.test(texto) || (temContinuacao && /@['"]|[‘-„]/.test(t));
+  // `#` fora de aspas junto com continuacao: o PowerShell abre comentario em mais
+  // lugares do que esta leitura acompanha (`'x'#c`, `$a.b#c`, `$a[0]#c`), e a crase
+  // pode estar dentro dele. Incerto, sem tentar decidir (4a revisao do fluxo).
+  const incerto = /`\r?\n/.test(texto) ||
+    (temContinuacao && (/@['"]|[‘-„]/.test(t) || temForaDeAspas(t, "#")));
   return { texto, incerto };
 }
 
