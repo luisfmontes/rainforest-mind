@@ -143,7 +143,11 @@ export const rascunhoFazAgora = (frase) =>
 export const aspas = (texto) => "'" + String(texto).replace(/'/g, "'\\''") + "'";
 
 // Rascunho do botao "Vira pendencia de <fluxo>". Tambem so preenche: quem envia e a pessoa.
-export const rascunhoViraPendencia = (slug, texto) => {
+// O slug tambem vai entre aspas: vem do nome de um arquivo do repositorio, e nome de arquivo
+// nao e confiavel. Com `worktree` (fluxo de outro worktree, como o painel lista), o estado e
+// lido de la por RFM_ESTADO_ROOT.
+export const rascunhoViraPendencia = (slug, texto, worktree) => {
   texto = String(texto ?? '').slice(0, 500);
-  return `Registre este item como pendência do fluxo, rodando o comando: node scripts/estado.cjs pendencia --slug ${slug} --texto ${aspas(texto)}`;
+  const raiz = worktree ? `RFM_ESTADO_ROOT=${aspas(worktree)} ` : '';
+  return `Registre este item como pendência do fluxo, rodando o comando: ${raiz}node scripts/estado.cjs pendencia --slug ${aspas(slug)} --texto ${aspas(texto)}`;
 };

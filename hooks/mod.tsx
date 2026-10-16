@@ -1179,7 +1179,7 @@ export const register: Register = (on, options) => {
             <Text wrap="wrap">{item.texto}</Text>
             <Button key={`faz-${item.id}`} label="Faz agora (só preenche o prompt)" onPress={() => preencher(item.id, rascunhoFazAgora(item.texto) as string)} />
             {fluxos.map(f => (
-              <Button key={`viva-${item.id}-${f.slug}`} label={`Vira pendência de ${slugSemData(f.slug)}`} onPress={() => preencher(item.id, rascunhoViraPendencia(f.slug, item.texto) as string)} />
+              <Button key={`viva-${item.id}-${f.slug}`} label={`Vira pendência de ${slugSemData(f.slug)}`} onPress={() => preencher(item.id, rascunhoViraPendencia(f.slug, item.texto, (f as { worktree?: string }).worktree) as string)} />
             ))}
           </Box>
         )),

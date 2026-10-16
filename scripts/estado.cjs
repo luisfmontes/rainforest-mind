@@ -2022,6 +2022,13 @@ function validarFlagsDesconhecidas(cmd) {
   const todasAsFlags = new Set();
   for (let i = 2; i < process.argv.length; i++) {
     const arg_str = process.argv[i];
+    // #470: o valor de --texto e texto livre do painel (ex.: "-- TODO" de um SQL) e nunca
+    // e lido como flag.
+    if (arg_str === '--texto') {
+      todasAsFlags.add('texto');
+      i++;
+      continue;
+    }
     if (arg_str.startsWith('--')) {
       const nomeDaFlag = arg_str.substring(2);
       // As flags sao nome/valor em pares: --flag valor, ou --flag valor --proxima valor

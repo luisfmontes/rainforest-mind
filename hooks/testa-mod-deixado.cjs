@@ -230,7 +230,18 @@ const caso = (nome, fn) => casos.push([nome, fn]);
   });
   caso("rascunhoViraPendencia: leva o comando pendencia com o slug", () => {
     const r = m.rascunhoViraPendencia("2026-10-15-x", "rodar a bateria");
-    afirma(r.includes("node scripts/estado.cjs pendencia --slug 2026-10-15-x --texto "), "o comando some: " + r);
+    afirma(r.includes("node scripts/estado.cjs pendencia --slug '2026-10-15-x' --texto "), "o comando some: " + r);
+  });
+  caso("rascunhoViraPendencia: slug com $(...) chega literal ao bash, sem executar", () => {
+    const r = m.rascunhoViraPendencia("x$(echo INJETADO)", "t");
+    const arg = r.slice(r.indexOf("--slug ") + "--slug ".length, r.indexOf(" --texto "));
+    const s = spawnSync("bash", ["-c", "printf %s " + arg], { encoding: "utf8" });
+    igual(s.stdout, "x$(echo INJETADO)", "slug que o bash recebeu");
+  });
+  caso("rascunhoViraPendencia: com worktree, o comando le o estado de la", () => {
+    const r = m.rascunhoViraPendencia("2026-10-15-x", "t", "C:/Projetos/repo/.claude/worktrees/outro");
+    afirma(r.includes("RFM_ESTADO_ROOT='C:/Projetos/repo/.claude/worktrees/outro' node scripts/estado.cjs pendencia"), "sem a raiz do worktree: " + r);
+    afirma(!m.rascunhoViraPendencia("2026-10-15-x", "t").includes("RFM_ESTADO_ROOT"), "sem worktree nao poe a variavel");
   });
   caso("rascunhoViraPendencia: texto de 600 caracteres sai cortado em 500", () => {
     const r = m.rascunhoViraPendencia("2026-10-15-x", "a".repeat(600));

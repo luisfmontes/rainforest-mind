@@ -160,6 +160,7 @@ igual "(a) demais campos do executar iguais" "$RESTO_ANTES" "$(LER "$RESTO_EXECU
 esperado "texto repetido nao duplica: sai 0" 0 $E pendencia --slug "$SLUG" --texto "rodar a bateria X"
 igual "texto repetido nao duplica: lista continua com um item" "1" "$(LER 'j.executar.pendentes.length')"
 
+
 # (c) texto vazio ou ausente sai 1 e nao grava nada
 antes_cksum="$(cksum < "$ARQ")"
 esperado "(c) texto vazio sai 1" 1 $E pendencia --slug "$SLUG" --texto ""
@@ -231,6 +232,13 @@ esperado "(g) pendencia com bloco ausente sai 0" 0 $E pendencia --slug "$SLUG" -
 igual "(g) bloco nasce so com pendentes" '["pendentes"]' "$(LER 'JSON.stringify(Object.keys(j.design))')"
 igual "(g) proximo segue design (sem status fechado)" "design" "$($E proximo --slug "$SLUG")"
 esperado "(g) exigir plano segue recusando" 2 $E exigir --slug "$SLUG" --estagio plano
+
+# ---------------------------------------------------------------- grupo H: texto que comeca com --
+caixa_nova
+fluxo_ate_executar_parcial
+esperado "(h) texto que comeca com -- sai 0" 0 $E pendencia --slug "$SLUG" --texto "-- TODO: indexar"
+igual "(h) o texto com -- entra como esta" '["-- TODO: indexar"]' "$(LER 'JSON.stringify(j.executar.pendentes)')"
+esperado "(h) flag desconhecida de verdade segue recusada" 1 $E pendencia --slug "$SLUG" --texto "x" --inventada "y"
 
 echo
 echo "ok: $ok   falhou: $falhou"
