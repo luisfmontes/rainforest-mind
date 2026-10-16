@@ -1550,6 +1550,17 @@ Copy-Item __R__/a.txt .
 EOC
 )" "$WT")"
 
+echo "== #552 D6: pai inexistente =="
+# Com cwd no proprio principal a rede nao age (D3): so a lista decide, e ela precisa
+# achar o repositorio subindo ate um diretorio que existe.
+rm -rf "$R/n1" "$WT/n1"
+gate "#552 D6: New-Item -ItemType File -Path n1/n2/f -Force, cwd no principal, BARRA" 2 "$(bp 'New-Item -ItemType File -Path n1/n2/f -Force' "$R")"
+gate "#552 D6: [IO.Directory]::CreateDirectory('n1/n2/d'), cwd no principal, BARRA" 2 "$(bp "[IO.Directory]::CreateDirectory('n1/n2/d')" "$R")"
+gate "#552 D6: echo x > n1/n2/f (Bash), cwd no principal, BARRA" 2 "$(b 'echo x > n1/n2/f' "$R")"
+gate "#552 D6 vizinho: New-Item -ItemType File -Path n1/n2/f -Force, cwd no worktree, PASSA" 0 "$(bp 'New-Item -ItemType File -Path n1/n2/f -Force' "$WT")"
+gate "#552 D6 vizinho: [IO.Directory]::CreateDirectory('n1/n2/d'), cwd no worktree, PASSA" 0 "$(bp "[IO.Directory]::CreateDirectory('n1/n2/d')" "$WT")"
+gate "#552 D6 vizinho: echo x > n1/n2/f (Bash), cwd no worktree, PASSA" 0 "$(b 'echo x > n1/n2/f' "$WT")"
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

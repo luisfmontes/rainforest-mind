@@ -303,12 +303,18 @@ function ehScratchpad(alvo) {
   return n.split("/").includes("scratchpad");
 }
 
+/**
+ * Diretorio de onde o repositorio do alvo e lido: o proprio alvo se for diretorio,
+ * senao o primeiro ancestral que existe (#552, D6). Subir um nivel so deixava passar
+ * `New-Item <P>/n1/n2/f -Force`: `<P>/n1/n2` nao existe, o git nao achava repositorio.
+ */
 function dirDe(alvo) {
   try {
-    return fs.existsSync(alvo) && fs.statSync(alvo).isDirectory() ? alvo : path.dirname(alvo);
-  } catch {
-    return path.dirname(alvo);
-  }
+    if (fs.existsSync(alvo) && fs.statSync(alvo).isDirectory()) return alvo;
+  } catch {}
+  let atual = path.dirname(alvo);
+  while (!fs.existsSync(atual) && path.dirname(atual) !== atual) atual = path.dirname(atual);
+  return atual;
 }
 
 function bloqueia(motivo, toplevel, agente, apenasRestauracao = null, ehWorktreeAlvo = false) {
