@@ -619,43 +619,128 @@ function nomeDoParametro(flag) {
   return casam.length === 1 ? casam[0] : null;
 }
 
+// Cmdlets de escrita com destino de COPIA: o alvo e `-Destination` ou o ultimo
+// posicional, e o primeiro posicional e so origem (D5).
+const CMDLETS_DE_COPIA = new Set(["copy-item", "copy", "cpi", "move-item", "move", "mi"]);
+// Parametros de caminho que o cmdlet le ou escreve (`-Path` e os aliases de caminho).
+const PARAMETROS_DE_CAMINHO_PS = ["path", "literalpath", "filepath", "pspath"];
+
 /**
- * D2 de um segmento (#533, emendas da rodada 2): falha fechada. Todo posicional e
- * todo valor de parametro de caminho (ou de `-Nome:valor`) vira candidato, resolvido
- * contra `base`. Candidato com `$` ou crase, parametro desconhecido ou ambiguo viram
- * alvo incerto, que o gate barra dentro de repositorio.
+ * Indice do nome do cmdlet, a partir de `i` (D5, #533 rodada 3): pula o `&` (call
+ * operator) e a atribuicao (`$null = `, `$a = `, `$a=`) que o PowerShell roda antes
+ * do comando. Null se nao sobra token.
+ */
+function indiceDoCmdletPS(toks, i) {
+  let k = i;
+  while (k < toks.length) {
+    const t = toks[k];
+    if (!t.q && t.v === "&") { k += 1; continue; }
+    if (!t.q && /^\$[\w:]+$/.test(t.v) && k + 1 < toks.length && !toks[k + 1].q && toks[k + 1].v === "=") { k += 2; continue; }
+    if (!t.q && /^\$[\w:]+=$/.test(t.v)) { k += 1; continue; }
+    return k;
+  }
+  return null;
+}
+
+/**
+ * D2 e D5 de um segmento (#533, rodadas 2 e 3). O candidato a alvo e: o valor de
+ * `-Path`/`-LiteralPath`/`-FilePath`/`-PSPath` se houver, senao o PRIMEIRO posicional
+ * (escritores simples). Em copia/movimento, `-Destination` se houver, senao o ULTIMO
+ * posicional (com `-Path` nomeado, o posicional unico e o destino). `-Value` e os
+ * posicionais que nao sao o candidato nao sao caminho. `New-Item -Name`: alvo = o
+ * caminho (ou o cwd) juntado ao nome. Candidato com `$`, `(`, crase ou `@` inicial
+ * (splat) e alvo incerto, que o gate barra dentro de repositorio. Parametro
+ * desconhecido ou ambiguo tambem.
  */
 function alvosDeCmdlet(toks, posCmd, base, empurra) {
   if (posCmd === null || posCmd === undefined) return;
-  const nome = toks[posCmd].v.split(/[\\/]/).pop().toLowerCase();
+  const iNome = indiceDoCmdletPS(toks, posCmd);
+  if (iNome === null) return;
+  const nome = toks[iNome].v.split(/[\\/]/).pop().toLowerCase();
   if (!CMDLETS_DE_ESCRITA.has(nome)) return;
-  const candidatos = [];
+  const posicionais = [];
+  const caminhos = [];
+  const destinos = [];
+  const nomes = [];
   let desconhecido = false;
-  for (let k = posCmd + 1; k < toks.length; k += 1) {
+  for (let k = iNome + 1; k < toks.length; k += 1) {
     const t = toks[k];
-    const m = t.q ? null : /^-([A-Za-z]+)(:(.*))?$/.exec(t.v);
-    if (!m) { candidatos.push(t.v); continue; } // posicional
+    // `-Nome` ou `-Nome:valor`. Token citado so e parametro com `:` (`-Path:'x'`,
+    // que o tokenizador devolve como citado); sem `:` e um argumento citado.
+    const m = /^-([A-Za-z]+)(:(.*))?$/.exec(t.v);
+    if (!m || (t.q && m[2] === undefined)) { posicionais.push(t); continue; }
     const param = nomeDoParametro(m[1].toLowerCase());
     if (param === null) { desconhecido = true; continue; } // o token seguinte segue posicional
     if (PARAMETROS_SEM_VALOR.includes(param)) continue;
-    if (m[2] !== undefined && m[3] !== "") { if (PARAMETROS_DE_CAMINHO.includes(param)) candidatos.push(m[3]); continue; } // -Nome:valor
-    // `-Nome: valor` (dois-pontos e o valor no token seguinte) cai no ramo de baixo.
-    if (k + 1 < toks.length) {
-      if (PARAMETROS_DE_CAMINHO.includes(param)) candidatos.push(toks[k + 1].v);
-      k += 1; // o valor nao e posicional
-    }
-  }
-  // Lista (`a,<P>/b`): cada elemento e um alvo. Variavel, crase ou subexpressao: incerto.
-  for (const c of candidatos.flatMap((x) => String(x).split(","))) {
-    if (c === "") continue;
-    if (/[$`()]/.test(c)) empurra(base, null, "cmdlet", true);
-    else empurra(base, c, "cmdlet");
+    let valor = null;
+    if (m[2] !== undefined && m[3] !== "") valor = { v: m[3], q: t.q }; // -Nome:valor
+    else if (k + 1 < toks.length) { valor = toks[k + 1]; k += 1; } // -Nome valor, o valor nao e posicional
+    if (valor === null) continue;
+    if (PARAMETROS_DE_CAMINHO_PS.includes(param)) caminhos.push(valor);
+    else if (param === "destination") destinos.push(valor);
+    else if (param === "name") nomes.push(valor);
   }
   if (desconhecido) empurra(base, null, "cmdlet", true);
+
+  if (nome === "new-item" || nome === "ni") {
+    if (nomes.length) {
+      // `-Name` junta-se ao caminho (ou ao cwd): nome com `..` ou separador tambem conta.
+      for (const n of nomes) {
+        for (const p of caminhos.length ? caminhos : [null]) {
+          const trechos = [n, p].filter((x) => x !== null);
+          if (trechos.some((x) => /[$`()@]/.test(x.v))) { empurra(base, null, "cmdlet", true); continue; }
+          empurra(base, path.resolve(base, p ? p.v : ".", n.v), "cmdlet");
+        }
+      }
+      return;
+    }
+  }
+
+  let candidatos;
+  if (CMDLETS_DE_COPIA.has(nome)) {
+    if (destinos.length) candidatos = destinos;
+    else {
+      const minimo = caminhos.length ? 1 : 2;
+      candidatos = posicionais.length >= minimo ? [posicionais[posicionais.length - 1]] : [];
+    }
+  } else {
+    candidatos = caminhos.length ? caminhos : posicionais.slice(0, 1);
+  }
+  // Lista (`a,<P>/b`): cada elemento e um alvo. Variavel, crase, subexpressao ou splat: incerto.
+  for (const c of candidatos) {
+    for (const parte of c.v.split(",")) {
+      if (parte === "") continue;
+      if (/[$`()]|^@/.test(parte)) empurra(base, null, "cmdlet", true);
+      else empurra(base, parte, "cmdlet");
+    }
+  }
+}
+
+/**
+ * Crase fora de aspas, `#` fora de aspas ou here-string (`@'`/`@"`) (D5, rodada 3): a
+ * mascara de aspas nao acompanha a leitura do PowerShell nesses casos (a crase faz o
+ * apostrofo seguinte literal, o comentario `# it's` abre uma aspa falsa, o here-string
+ * tem as suas). Quem tem qualquer um deles nao e mascarado.
+ */
+function desalinhaAMascara(texto) {
+  let aspa = null;
+  for (let i = 0; i < texto.length; i += 1) {
+    const c = texto[i];
+    if (aspa) {
+      if (c === "`" && aspa === '"') i += 1; // crase escapa o proximo dentro de aspas duplas
+      else if (c === aspa) aspa = null;
+      continue;
+    }
+    if (c === "'" || c === '"') { aspa = c; continue; }
+    if (c === "`" || c === "#") return true;
+    if (c === "@" && (texto[i + 1] === "'" || texto[i + 1] === '"')) return true;
+  }
+  return false;
 }
 
 /** Texto com o conteudo entre aspas trocado por espacos, do mesmo tamanho: chamada dentro de aspas nao conta (D3). */
 function mascaraAspas(texto) {
+  if (desalinhaAMascara(texto)) return texto;
   // PowerShell (revisao de seguranca da rodada 2): so aspas simples sao inertes. Aspas
   // duplas expandem `$(...)`, entao so se mascaram sem `$` dentro; crase escapa o
   // caractere seguinte dentro delas. Estado de aspas desbalanceado: nao mascara nada
@@ -687,7 +772,8 @@ function mascaraAspas(texto) {
 // Chamada .NET (#533, D3, emenda da rodada 2): qualquer tipo sob o namespace IO
 // (`[IO.File]`, `[System.IO.Directory]`, `[IO.FileStream]`...), exceto `Path`, que so
 // manipula string. Metodo de leitura conhecido passa; qualquer outro e escrita.
-const CHAMADA_NET = /\[([\w.]*\bIO\.[\w.]+)\]::(\w+)\s*\(/gi;
+// Espaco e aceito em volta do nome do tipo, de `::` e antes do `(` (D5, rodada 3).
+const CHAMADA_NET = /\[\s*([\w.]*\bIO\.[\w.]+)\s*\]\s*::\s*(\w+)\s*\(/gi;
 const METODOS_NET_DE_LEITURA = new Set([
   "readalltext", "readalllines", "readallbytes", "readlines", "exists", "openread", "opentext",
   "getattributes", "getlastwritetime", "getfiles", "getdirectories", "enumeratefiles", "enumeratedirectories",
@@ -811,6 +897,17 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
     const ehCmd = (i, nome) => ehComando(toks[i], nome, i === posCmd);
     // D2 (#533): cmdlet de escrita do PowerShell, so na ferramenta PowerShell.
     if (ehPowerShell) alvosDeCmdlet(toks, posCmd, base, empurra);
+    // D5 (rodada 3): `iex`/`Invoke-Expression` com texto literal roda, de fato, o que
+    // o texto diz — a mesma analise de cmdlet vale para o texto. Argumento nao literal: incerto.
+    if (ehPowerShell && posCmd !== null && posCmd !== undefined) {
+      const iNome = indiceDoCmdletPS(toks, posCmd);
+      if (iNome !== null && /^(iex|invoke-expression)$/i.test(toks[iNome].v.split(/[\\/]/).pop())) {
+        const args = toks.slice(iNome + 1);
+        const literal = args.every((t) => t.aspa === "'" || !/[$`]/.test(t.v));
+        if (args.length && !literal) empurra(base, null, "iex", true);
+        else if (args.length) alvos.push(...alvosBashEscrita(args.map((t) => t.v).join(" "), base, true));
+      }
+    }
 
     for (let i = 0; i < toks.length; i += 1) {
       // `tee arquivo`, `tee -a arquivo`

@@ -68,15 +68,42 @@ const POP_LOCATION = /^\s*Pop-Location\s*$/i;
 // aspa, `$`, chave, parentese ou barra invertida dentro, com pelo menos uma
 // virgula, e com `}` seguido de espaco, separador ou fim. Grupo de verdade
 // (`{ cmd; }`) tem espaco logo depois da chave e nao casa.
-const EXPANSAO_DE_CHAVES_DE_COMANDO = /^(\s*)\{([^\s'"$`{}()\\;&|<>]*,[^\s'"$`{}()\\;&|<>]*)\}(?=[\s;&|]|$)/;
+// Elemento da expansao: sem espaco nem metacaractere, ou um trecho citado sem `$`,
+// crase nem espaco (`"<P>"`, `'<P>'`). Virgula nunca entra, nem dentro de aspas.
+const ELEMENTO_DE_CHAVES = `(?:[^\\s'"$\`{}()\\\\;&|<>,]|"[^"\\s$\`,]*"|'[^'\\s$\`,]*')*`;
+// `{a,b,...}` com pelo menos uma virgula, sem espaco por dentro, e fechada antes de
+// separador ou fim. Grupo de verdade (`{ cmd; }`) tem espaco logo depois da chave.
+const EXPANSAO_DE_CHAVES_DE_COMANDO = new RegExp(`^\\{(${ELEMENTO_DE_CHAVES}(?:,${ELEMENTO_DE_CHAVES})+)\\}(?=[\\s;&|]|$)`);
+// O que pode vir ANTES da expansao sem ser o comando: atribuicao (`A=1`) e as
+// palavras reservadas que o bash pula. Mesmo conjunto que `posicaoDeComando`
+// (`tokens-comando.cjs`) pula, sem `time` (wrapper: fica na #552).
+const PREFIXO_DE_POSICAO_DE_COMANDO = /^\s*(?:(?:[A-Za-z_][A-Za-z0-9_]*=(?:"[^"]*"|'[^']*'|[^\s"';&|]*)|!|then|do|else|elif|if|while|until)\s+)*/;
 /**
  * Expansao de chaves em posicao de comando (#530, D1) — ponto unico da decisao.
  * So o Bash expande `{a,b}`: no PowerShell `{...}` e bloco de script, nao cria
- * palavras, entao a chave nao vira expansao la. Devolve o match ou null.
+ * palavras, entao a chave nao vira expansao la. Devolve o match (com `^` no
+ * inicio de `texto`) ou null.
  */
 function expansaoDeChavesDeComando(texto, ehPowerShell = false) {
   if (ehPowerShell) return null;
   return EXPANSAO_DE_CHAVES_DE_COMANDO.exec(texto);
+}
+/** `{` na posicao atual (`atual` = o que ja entrou no segmento) conta como posicao de comando? */
+function ehPrefixoDePosicaoDeComando(atual) {
+  return PREFIXO_DE_POSICAO_DE_COMANDO.exec(atual)[0] === atual;
+}
+/**
+ * Troca a expansao de chaves que esta em posicao de comando do segmento pelas
+ * palavras que o bash roda (D1, rodada 3): `A=1 {cd,"X"}` vira `A=1 cd X`.
+ * Devolve `{texto}` ou null se nao ha expansao ali.
+ */
+function expandeChavesDeComandoNoSegmento(seg, ehPowerShell = false) {
+  if (ehPowerShell) return null;
+  const pre = PREFIXO_DE_POSICAO_DE_COMANDO.exec(seg)[0];
+  const m = EXPANSAO_DE_CHAVES_DE_COMANDO.exec(seg.slice(pre.length));
+  if (!m) return null;
+  const elementos = m[1].split(",").map((e) => e.replace(/["']/g, "")).filter((e) => e !== "");
+  return { texto: pre + elementos.join(" ") + seg.slice(pre.length + m[0].length) };
 }
 
 const NAO_E_COMANDO_ANTES_DA_CHAVE = new Set([
@@ -211,11 +238,12 @@ function segmentosComAspas(cmd, ehPowerShell = false) {
         segmentos.push(atual);
       }
       atual = "";
-    } else if (c === "{" && !atual.trim() && expansaoDeChavesDeComando(cmd.slice(i), ehPowerShell)) {
-      // #530 (D1): `{cd,X}` no comeco do segmento e expansao (o bash roda
-      // `cd X`), nao grupo. A palavra inteira fica no segmento, para
-      // `resolverMovedor` expandir; antes a chave virava fronteira e o `cd`
-      // saia partido em `cd,X`, sem reconhecimento.
+    } else if (c === "{" && ehPrefixoDePosicaoDeComando(atual) && expansaoDeChavesDeComando(cmd.slice(i), ehPowerShell)) {
+      // #530 (D1): `{cd,X}` em posicao de comando e expansao (o bash roda
+      // `cd X`), nao grupo. Posicao de comando: segmento vazio, ou so atribuicao
+      // e palavra reservada antes (`A=1 {cd,X}`, `then {cd,X}`, `! {cd,X}`). A
+      // palavra inteira fica no segmento, para `resolverMovedor` expandir; antes a
+      // chave virava fronteira e o `cd` saia partido em `cd,X`, sem reconhecimento.
       const m = expansaoDeChavesDeComando(cmd.slice(i), ehPowerShell);
       atual += m[0];
       i += m[0].length - 1;
@@ -420,8 +448,8 @@ function normalizarMsys(caminho, plataforma = process.platform) {
 function resolverMovedor(segCru, estado, ehPowerShell = false) {
   // D1 (#530): `{cd,X}` no inicio vira `cd X` antes de qualquer teste abaixo.
   // Os regex de movedor e `contemSubshellOuGrupo` veem o comando que o bash roda.
-  const m = expansaoDeChavesDeComando(segCru, ehPowerShell);
-  const seg = m ? m[1] + m[2].split(",").filter((p) => p !== "").join(" ") + segCru.slice(m[0].length) : segCru;
+  const exp = expandeChavesDeComandoNoSegmento(segCru, ehPowerShell);
+  const seg = exp ? exp.texto : segCru;
   // Subshell/grupo: o `cd` de dentro dele nao persiste pra fora, mas vale
   // para os comandos dentro — a unica leitura segura e marcar INCERTO,
   // sem tentar decidir o resto deste segmento por ele.

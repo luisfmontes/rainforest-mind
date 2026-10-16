@@ -1085,5 +1085,114 @@ gate "D4 vizinho: echo x > f && git commit -m y (Bash), do worktree, PASSA" 0 "$
 gate "D4 vizinho: Set-Content f x; git commit -m y (PowerShell), do worktree, PASSA" 0 "$(bp "Set-Content f x; git commit -m y" "$WT")"
 
 echo
+echo "== D5: correções da 1ª revisão (rodada 3) =="
+# D5 (docs/rainforest/design/2026-10-16-gate-worktree-brechas.md, rodada 3): cada caso
+# abaixo e um item da critica da revisao. Os de SAIR 0 medem o falso positivo que a
+# rodada 2 criou; os de SAIR 2 medem a falha fechada que a rodada 2 ja tinha e que o
+# D5 nao pode perder. Todo PowerShell com aspas passa por cmdps (heredoc literal).
+echo "-- item 1: candidato a alvo (primeiro posicional, -Path, -Destination ou ultimo posicional) --"
+gate "D5 (1): Copy-Item <P>/a.txt ., do worktree, PASSA (origem nao e alvo)" 0 "$(bp "Copy-Item $R/a.txt ." "$WT")"
+gate "D5 (1): Copy-Item -Path <P>/a.txt -Destination ., do worktree, PASSA" 0 "$(bp "Copy-Item -Path $R/a.txt -Destination ." "$WT")"
+gate "D5 (1): copy <P>/a.txt ., do worktree, PASSA (alias)" 0 "$(bp "copy $R/a.txt ." "$WT")"
+gate "D5 (1): Copy-Item <P>/a.txt . -Force, do worktree, PASSA" 0 "$(bp "Copy-Item $R/a.txt . -Force" "$WT")"
+gate "D5 (1): Set-Content a.txt \$text, do worktree, PASSA (-Value/posicional nao e alvo)" 0 "$(bp 'Set-Content a.txt $text' "$WT")"
+gate "D5 (1): Set-Content -Path a.txt \$text, do worktree, PASSA" 0 "$(bp 'Set-Content -Path a.txt $text' "$WT")"
+gate "D5 (1): Add-Content log.txt \"valor \$x\", do worktree, PASSA" 0 "$(bp 'Add-Content log.txt "valor $x"' "$WT")"
+gate "D5 (1): Add-Content log.txt \"[\$(Get-Date)] msg\", do worktree, PASSA" 0 "$(bp 'Add-Content log.txt "[$(Get-Date)] msg"' "$WT")"
+gate "D5 (1): Set-Content a.txt com crase+n dentro de aspas duplas, do worktree, PASSA" 0 "$(bp 'Set-Content a.txt "linha1`nlinha2"' "$WT")"
+gate "D5 (1): New-Item -Path <worktree> -Name f, do worktree, PASSA (nome juntado ao caminho)" 0 "$(bp "$(cmdps <<'EOC'
+New-Item -Path __WT__ -Name f
+EOC
+)" "$WT")"
+
+echo "-- item 2: expansao de chaves depois de atribuicao, palavra reservada ou !, com aspas --"
+gate "D5 (2): A=1 {cd,<P>} && echo x > f, do worktree, BARRA" 2 "$(b "A=1 {cd,$R} && echo x > f" "$WT")"
+gate "D5 (2): if true; then {cd,<P>}; echo x > f; fi, do worktree, BARRA" 2 "$(b "if true; then {cd,$R}; echo x > f; fi" "$WT")"
+gate "D5 (2): for i in 1; do {cd,<P>}; echo x > f; done, do worktree, BARRA" 2 "$(b "for i in 1; do {cd,$R}; echo x > f; done" "$WT")"
+gate "D5 (2): ! {cd,<P>}; echo x > f, do worktree, BARRA" 2 "$(b "! {cd,$R}; echo x > f" "$WT")"
+gate "D5 (2): {cd,\"<P>\"} && echo x > f, do worktree, BARRA (aspa dupla dentro)" 2 "$(b "{cd,\"$R\"} && echo x > f" "$WT")"
+gate "D5 (2): {cd,'<P>'} && echo x > f, do worktree, BARRA (aspa simples dentro)" 2 "$(b "{cd,'$R'} && echo x > f" "$WT")"
+gate "D5 (2) vizinho: A=1 {cd,<worktree>} && echo x > f, do worktree, PASSA" 0 "$(b "A=1 {cd,$WT} && echo x > f" "$WT")"
+gate "D5 (2) vizinho: {cd,\"<worktree>\"} && echo x > f, do worktree, PASSA" 0 "$(b "{cd,\"$WT\"} && echo x > f" "$WT")"
+
+echo "-- item 3: falha fechada em cmdlet (aspas no parametro, & e atribuicao, splat, espaco em [IO.File]) --"
+gate "D5 (3a): Set-Content -Path:'<P>/f' x, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Set-Content -Path:'__R__/f' x
+EOC
+)" "$WT")"
+gate "D5 (3a): Set-Content -Path:\"<P>/f\" x, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Set-Content -Path:"__R__/f" x
+EOC
+)" "$WT")"
+gate "D5 (3a) vizinho: Set-Content -Path:'<worktree>/f' x, do worktree, PASSA" 0 "$(bp "$(cmdps <<'EOC'
+Set-Content -Path:'__WT__/f' x
+EOC
+)" "$WT")"
+gate "D5 (3b): & Set-Content <P>/f x, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+& Set-Content __R__/f x
+EOC
+)" "$WT")"
+gate "D5 (3b): & 'Set-Content' <P>/f x, do worktree, BARRA (nome citado depois de &)" 2 "$(bp "$(cmdps <<'EOC'
+& 'Set-Content' __R__/f x
+EOC
+)" "$WT")"
+gate "D5 (3b): \$null = Set-Content <P>/f x, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+$null = Set-Content __R__/f x
+EOC
+)" "$WT")"
+gate "D5 (3b): \$a = Set-Content <P>/f x, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+$a = Set-Content __R__/f x
+EOC
+)" "$WT")"
+gate "D5 (3d): splat \$a=@{Path='<P>/f'}; Set-Content @a, do worktree, BARRA (incerto)" 2 "$(bp "$(cmdps <<'EOC'
+$a=@{Path='__R__/f';Value='x'}; Set-Content @a
+EOC
+)" "$WT")"
+gate "D5 (3f): [IO.File]:: WriteAllText('<P>/f','x'), do worktree, BARRA (espaco apos ::)" 2 "$(bp "$(cmdps <<'EOC'
+[IO.File]:: WriteAllText('__R__/f','x')
+EOC
+)" "$WT")"
+gate "D5 (3f): [ IO.File ]::WriteAllText('<P>/f','x'), do worktree, BARRA (espaco nos colchetes)" 2 "$(bp "$(cmdps <<'EOC'
+[ IO.File ]::WriteAllText('__R__/f','x')
+EOC
+)" "$WT")"
+
+echo "-- item 4: iex / Invoke-Expression com texto literal analisado como codigo --"
+gate "D5 (4): iex 'Set-Content <P>/f x', do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+iex 'Set-Content __R__/f x'
+EOC
+)" "$WT")"
+gate "D5 (4): Invoke-Expression \"Set-Content <P>/f x\", do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Invoke-Expression "Set-Content __R__/f x"
+EOC
+)" "$WT")"
+gate "D5 (4): iex \$x (argumento nao literal), do worktree, BARRA (incerto)" 2 "$(bp 'iex $x' "$WT")"
+gate "D5 (4) vizinho: iex 'Write-Output hola', do worktree, PASSA (texto sem escrita)" 0 "$(bp "iex 'Write-Output hola'" "$WT")"
+
+echo "-- item 6: mascara de aspas que nao acompanha crase, comentario e here-string --"
+gate "D5 (6): crase fora de aspas antes de [IO.File]::WriteAllText, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Write-Host `'; [IO.File]::WriteAllText('__R__/f','x'); Write-Host `'
+EOC
+)" "$WT")"
+# Os dois casos abaixo tem NUMERO PAR de aspas simples: sem a checagem, a mascara
+# pareia as aspas e esconde a chamada de fato (com numero impar o `return texto` antigo
+# para no meio e o caso passaria sem a checagem, por outro caminho).
+gate "D5 (6): comentario com apostrofo escondia a chamada da mascara, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+# it's
+[IO.File]::WriteAllText('__R__/f','x')
+# don't
+EOC
+)" "$WT")"
+gate "D5 (6): here-string com apostrofo escondia a chamada da mascara, do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+$t = @'
+it's
+'@
+[IO.File]::WriteAllText('__R__/f','x')
+# don't
+EOC
+)" "$WT")"
+gate "D5 (6) vizinho: Select-String \"[IO.File]::WriteAllText(\" arq, do worktree, PASSA (mascara ativa)" 0 "$(bp 'Select-String "[IO.File]::WriteAllText(" arq' "$WT")"
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

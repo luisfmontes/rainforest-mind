@@ -480,8 +480,16 @@ console.log("== #514 (P2): expansao de chaves em argumento nao e fronteira ==");
     const r = cwdPorSegmento("{cd,lib}; echo x", hooksDir, true);
     eq(path.resolve(r[r.length - 1].cwd), hooksDir, "PowerShell: {cd,lib} nao muda o cwd");
   });
-  test("(514d) A=1 {cd,x} / then {cd,x} / builtin {cd,x} continuam cortando", () => {
-    for (const c of ["A=1 {cd,x}", "then {cd,x}", "then A=1 {cd,x}", "builtin {cd,x}", "env -i {cd,x}"]) eq(n(c) > 1, true, c);
+  test("(514d) A=1 {cd,x} / then {cd,x} / then A=1 {cd,x} / ! {cd,x} viram um segmento so (D1, rodada 3)", () => {
+    for (const c of ["A=1 {cd,x}", "then {cd,x}", "then A=1 {cd,x}", "! {cd,x}"]) eq(n(c), 1, c);
+  });
+  test("(514d) {cd,\"x\"} e {cd,'x'} com aspas dentro das chaves viram um segmento so (D1, rodada 3)", () => {
+    eq(n('{cd,"x"} && echo y'), 2, 'aspa dupla: so o && separa');
+    eq(n("{cd,'x'} && echo y"), 2, "aspa simples: so o && separa");
+    eq(n('A=1 {cd,"x"}'), 1, "atribuicao antes, aspa dentro");
+  });
+  test("(514d) builtin {cd,x} e env -i {cd,x} continuam cortando (fora do D1, vai para a #552)", () => {
+    for (const c of ["builtin {cd,x}", "env -i {cd,x}"]) eq(n(c) > 1, true, c);
   });
   test("(514e) { cd x; } e &{git checkout main} continuam cortando", () => {
     eq(n("{ cd x; }") > 1, true, "grupo com espaco");
