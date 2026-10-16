@@ -711,6 +711,8 @@ function alvosDeCmdlet(toks, posCmd, base, empurra) {
   if (CMDLETS_DE_MOVER.has(nome)) {
     // Mover apaga a origem: origem e destino sao alvos (revisao de seguranca da rodada 3).
     candidatos = [...destinos, ...caminhos, ...posicionais];
+    // Sem destino, o item cai no cwd, como na copia.
+    if (!destinos.length && posicionais.length < (caminhos.length ? 1 : 2)) candidatos.push({ v: ".", q: false });
   } else if (CMDLETS_DE_COPIA.has(nome)) {
     if (destinos.length) candidatos = destinos;
     else {
@@ -927,7 +929,7 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false) {
         const comParametro = args.some((t) => /^[-–—―]/.test(t.v));
         // Literal so sem `$` nem crase em parte nenhuma: o token pode misturar aspas
         // (`'a'"$(...)"`), e a aspa registrada e so a primeira (revisao de seguranca).
-        const literal = args.every((t) => !/[$`]/.test(t.v));
+        const literal = args.every((t) => !/[$`‘-„]/.test(t.v));
         // Sem argumento, o texto chega pelo pipeline (`$s | iex`): incerto (revisao de seguranca da rodada 3).
         if (!args.length || !literal || comParametro) empurra(base, null, "iex", true);
         else alvos.push(...alvosBashEscrita(args.map((t) => t.v).join(" "), base, true));

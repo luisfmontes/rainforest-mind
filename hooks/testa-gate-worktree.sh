@@ -1250,6 +1250,14 @@ gate "D5 (s7) vizinho: Copy-Item <P>/a.txt (sem destino), do worktree, PASSA" 0 
 Copy-Item __R__/a.txt
 EOC
 )" "$WT")"
+gate "D5 (s7): cd <P>; Move-Item <WT>/a.txt (sem destino, cai no cwd), do worktree, BARRA" 2 "$(bp "$(cmdps <<'EOC'
+Set-Location __R__; Move-Item __WT__/a.txt
+EOC
+)" "$WT")"
+gate "D5 (s6): iex com aspa tipografica no texto, do worktree, BARRA (incerto)" 2 "$(bp "$(cmdps <<'EOC'
+iex 'Set-Content ‘__R__/f’ x'
+EOC
+)" "$WT")"
 gate "D5 (s8): splat no fim, Set-Content a.txt -Value x @a, do worktree, BARRA (incerto)" 2 "$(bp "$(cmdps <<'EOC'
 Set-Content a.txt -Value x @a
 EOC
