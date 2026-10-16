@@ -66,7 +66,7 @@ const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib',
 // scripts/ideias.cjs e scripts/divergencias.cjs — o `veredito` reusa em vez
 // de inventar uma terceira copia.
 const { caminhoDoc } = require(path.join(__dirname, '..', 'hooks', 'lib', 'pastas-docs.cjs'));
-const { comTrava } = require(path.join(__dirname, '..', 'hooks', 'lib', 'trava-jsonl.cjs'));
+const { Trava, sleepSync } = require(path.join(__dirname, '..', 'hooks', 'lib', 'trava-jsonl.cjs'));
 // D12 — Tarefa 16: leitura do transcrito real do revisor (slug do primeiro
 // prompt, ultima mensagem de texto do assistente). Require DURO, nao
 // defensivo: sem estes dois modulos o subcomando `veredito` gravaria vereditos
@@ -438,17 +438,94 @@ function caminho(slug) {
 }
 
 
+// Base da mescla (#545): o que ESTE processo leu do arquivo do fluxo, por slug. A
+// primeira leitura vale; as seguintes no mesmo processo não trocam a base. Cópia
+// própria (parse separado), para o comando mutar o objeto lido sem mexer na base.
+const basesDoFluxo = new Map();
+
 function ler(slug) {
   const p = caminho(slug);
   if (!fs.existsSync(p)) return null;
-  return JSON.parse(fs.readFileSync(p, 'utf8'));
+  const bruto = fs.readFileSync(p, 'utf8');
+  if (!basesDoFluxo.has(slug)) basesDoFluxo.set(slug, JSON.parse(bruto));
+  return JSON.parse(bruto);
 }
 
-function gravar(slug, estado) {
+// Trava única por fluxo (#545, D1): `.<slug>.lock`, a mesma para veredito,
+// registrar-flake, decidir e toda gravação. Slugs com a trava segurada por este
+// processo: entrar de novo só roda a função (a trava é de quem abriu).
+const travasDoFluxo = new Set();
+
+function comTravaDoFluxo(slug, fn) {
+  if (travasDoFluxo.has(slug)) return fn();
   fs.mkdirSync(DIR_ESTADO, { recursive: true });
-  const tmp = `${caminho(slug)}.tmp`;
-  fs.writeFileSync(tmp, `${JSON.stringify(estado, null, 2)}\n`, 'utf8');
-  fs.renameSync(tmp, caminho(slug)); // atômico: estado truncado é pior que ausente
+  const trava = new Trava(path.join(DIR_ESTADO, '.' + slug + '.lock'));
+  trava.entrar();
+  travasDoFluxo.add(slug);
+  try {
+    return fn();
+  } finally {
+    travasDoFluxo.delete(slug);
+    trava.sair();
+  }
+}
+
+// Costura de teste (#545, D3): com RFM_ESTADO_PAUSA_GRAVAR_MS inteiro positivo, a
+// gravação espera esse tempo ANTES de entrar na trava, para a bateria provar a
+// mescla com outro processo gravando durante a pausa. Sem a variável, não espera.
+function pausaDeTeste() {
+  const v = process.env.RFM_ESTADO_PAUSA_GRAVAR_MS;
+  if (/^[1-9][0-9]*$/.test(v || '')) sleepSync(Number(v));
+}
+
+// Mescla em três vias por campo (#545, D2). Pura. Chave de topo que `meu` não mudou
+// (igual à base) fica com `vivo`; a que mudou, inclusive removida, fica com `meu`.
+// Quando base, meu e vivo são objetos, desce um nível: é o caso de dois processos
+// mexendo em campos diferentes do mesmo estágio (`revisar.vereditos` e `revisar.status`).
+function mesclarEstado(base, meu, vivo) {
+  const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const ehObjeto = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
+  const mesclarCampos = (b, m, v) => {
+    const saida = {};
+    for (const f of new Set([...Object.keys(b), ...Object.keys(m), ...Object.keys(v)])) {
+      const r = igual(m[f], b[f]) ? v[f] : m[f];
+      if (r !== undefined) saida[f] = r;
+    }
+    return saida;
+  };
+  const saida = {};
+  for (const k of new Set([...Object.keys(base), ...Object.keys(meu), ...Object.keys(vivo)])) {
+    const b = base[k];
+    const m = meu[k];
+    const v = vivo[k];
+    let r;
+    if (igual(m, b)) r = v;
+    else if (ehObjeto(b) && ehObjeto(m) && ehObjeto(v)) r = mesclarCampos(b, m, v);
+    else r = m;
+    if (r !== undefined) saida[k] = r;
+  }
+  return saida;
+}
+
+// Grava `estado` no arquivo do fluxo. Sempre sob a trava única (ou a que este
+// processo já segura). Dentro dela, relê o arquivo vivo e mescla com a base.
+function gravar(slug, estado) {
+  if (travasDoFluxo.has(slug)) return gravarDentro(slug, estado);
+  pausaDeTeste();
+  comTravaDoFluxo(slug, () => gravarDentro(slug, estado));
+}
+
+function gravarDentro(slug, estado) {
+  const p = caminho(slug);
+  const vivo = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : null;
+  const base = basesDoFluxo.has(slug) ? basesDoFluxo.get(slug) : vivo;
+  const final = vivo === null ? estado : mesclarEstado(base, estado, vivo);
+  const texto = `${JSON.stringify(final, null, 2)}\n`;
+  fs.mkdirSync(DIR_ESTADO, { recursive: true });
+  const tmp = `${p}.tmp`;
+  fs.writeFileSync(tmp, texto, 'utf8');
+  fs.renameSync(tmp, p); // atômico: estado truncado é pior que ausente
+  basesDoFluxo.set(slug, JSON.parse(texto));
 }
 
 function novo(slug, titulo) {
@@ -2364,8 +2441,7 @@ function main() {
       console.error(`aviso: ${slug} nao existe — veredito nao gravado`);
       return;
     }
-    const lockPath = path.join(DIR_ESTADO, '.' + slug + '.veredito.lock');
-    comTrava(lockPath, () => {
+    comTravaDoFluxo(slug, () => {
       // Releitura DENTRO da trava: nunca reaproveitar o `estado` que `main()`
       // teria carregado antes do lock — outra chamada concorrente pode ter
       // gravado entre a leitura de fora e a entrada na trava.
@@ -2415,8 +2491,7 @@ function main() {
       console.error(`erro: ${slug} nao existe — rode 'iniciar' primeiro`);
       process.exit(1);
     }
-    const lockPath = path.join(DIR_ESTADO, '.' + slug + '.flake.lock');
-    const saida = comTrava(lockPath, () => {
+    const saida = comTravaDoFluxo(slug, () => {
       const vivo = ler(slug);
       if (!vivo) return { sumiu: true };
       const bloco = vivo.executar || {};
@@ -3124,8 +3199,7 @@ function main() {
       console.error(`erro: ${err.message}`);
       process.exit(1);
     }
-    const lockPath = path.join(DIR_ESTADO, '.' + slug + '.decidir.lock');
-    const saida = comTrava(lockPath, () => {
+    const saida = comTravaDoFluxo(slug, () => {
       const vivo = ler(slug);
       if (!vivo) return { sumiu: true };
       const lista = Array.isArray(vivo.decididos) ? vivo.decididos : [];
