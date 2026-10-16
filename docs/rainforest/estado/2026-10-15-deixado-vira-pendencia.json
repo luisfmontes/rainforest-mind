@@ -49,7 +49,20 @@
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "676644236eb6b7cfdf47ca0e13032a25706ea80e",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a520582d623a193f7",
+        "veredito": "ok",
+        "em": "2026-10-15",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a520582d623a193f7.jsonl"
+      }
+    ]
   },
   "verificar": {
     "status": "pendente"
