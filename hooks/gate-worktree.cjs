@@ -1624,8 +1624,9 @@ function semTextoDeMensagem(toks) {
   for (let i = 0; i < toks.length; i += 1) {
     const t = toks[i];
     if (!t.q && OPCOES_DE_TEXTO.has(t.v)) { i += 1; continue; }
-    // Valor colado: `--message="..."` (o token fica citado) e `-m"..."`/`-t"..."`.
-    if (/^(--(message|body|title)=|-[mt].)/.test(t.v)) continue;
+    // Valor colado so na opcao longa (`--message="..."`, o token fica citado). `-m"..."` colado
+    // nao sai: em grupo de opcoes curtas (`git rebase -mx"rm <P>/f"`) o resto e outra opcao.
+    if (/^--(message|body|title)=/.test(t.v)) continue;
     saida.push(t);
   }
   return saida;
@@ -1656,9 +1657,16 @@ function caminhosCitados(texto, ehPowerShell) {
 function alvosDaRede(comando, cwd, ehPowerShell) {
   const repo = principalDoWorktree(cwd);
   if (!repo) return [];
+  // Bash com chave e `..` na linha (`echo x > {<W>,y}/../../../f`), ou com o que monta `..` sem o
+  // literal: ponto colado por dentro da chave, a virgula, aspa ou contrabarra (`<W>/.{.,}/f`,
+  // `{x,.}.`, `{'.''.',x}`), `$'...'`, `$(` ou crase. A expansao sobe do worktree e a leitura por
+  // token nao ve; a isencao dos worktrees nao vale. Tambem ponto antes de `{` com ponto depois de
+  // `}` (`.{,}.`, `.{x,}.`). `{a,b}.txt` e `f.{js,ts}` seguem isentos.
+  const subidaPorChave = !ehPowerShell && /[{}]/.test(comando)
+    && (/\.\.|[{,'"\\]\.|\.[},'"\\]|\$'|\$\(|`/.test(comando) || /\.\{/.test(comando) && /\}\./.test(comando));
   const protegido = (c, base) => {
     const n = normalizaCaminho(c, base);
-    return dentroDe(n, repo.principal) && !repo.worktrees.some((w) => dentroDe(n, w)) && !ehScratchpad(n);
+    return dentroDe(n, repo.principal) && (subidaPorChave || !repo.worktrees.some((w) => dentroDe(n, w))) && !ehScratchpad(n);
   };
   const alvo = [{ dir: repo.principal, incerto: true }];
   // Segmentacao nao confiavel (D2): a linha inteira e um segmento so, e nada e leitura.

@@ -1837,7 +1837,18 @@ s552rv2 'echo x > {__R__/a,__WN__/b}' 2 b
 s552rv2 'git commit --message="corrigido em __R__/a"' 0 b
 s552rv2 "git commit --message='corrigido em __R__/a'" 0 b
 s552rv2 'gh issue create --title="ver __R__/a" --body="ver __R__/a"' 0 b
-s552rv2 'git commit -m"corrigido em __R__/a"' 0 b
+s552rv2 'git commit -m"corrigido em __R__/a"' 2 b
+# Revisao de seguranca (c1508570): -m colado pode ser grupo de opcoes; chave + .. sobe do worktree.
+s552rv2 'git rebase -mx"rm __R__/f" HEAD' 2 b
+s552rv2 'echo x > {__WN__,y}/../../../f' 2 b
+s552rv2 'echo x > __WN__/.{.,}/.{.,}/.{.,}/f' 2 b
+s552rv2 'touch {__WN__/a,__WN__/b}' 0 b
+s552rv2 "echo x > __WN__/{'.''.',y}/{'.''.',y}/{'.''.',y}/f" 2 b
+s552rv2 'echo x > __WN__/{x,.}./{x,.}./{x,.}./f' 2 b
+s552rv2 'echo x > __WN__/.{,}./.{,}./.{,}./f' 2 b
+s552rv2 'echo x > __WN__/.{x,}./.{x,}./.{x,}./f' 2 b
+s552rv2 'touch __WN__/{a,b}.txt' 0 b
+s552rv2 'touch __WN__/f.{js,ts}' 0 b
 s552rv2 'git commit --message="corrigido em __R__/a"' 0 bp
 s552rv2 'git commit --message=x __R__/a' 2 b
 case "${R,,}" in "${CASA,,}"/*) RT='$USERPROFILE'"${R:${#CASA}}"; gate "#552 seg3: rm \$USERPROFILE/.../principal/f, do worktree, BARRA" 2 "$(b "rm $RT/f" "$WT")";; esac
