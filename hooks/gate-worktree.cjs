@@ -68,7 +68,7 @@ const { cwdPorSegmento, resolverMovedor, toplevelConfinado, extrairUltimoDirGit,
 const CLIS_QUE_ESCREVEM = require(path.join(__dirname, "lib", "clis-que-escrevem.cjs"));
 // #530 (D4, D6): a palavra de comando como o bash a le, e o corpo de cada
 // substituicao de comando (crase e `$(...)`), para o gate conferir o que roda la dentro.
-const { normalizarComando, corposDeSubstituicao } = require(path.join(__dirname, "lib", "palavra-bash.cjs"));
+const { normalizarComando, corposDeSubstituicao, expandirChaves } = require(path.join(__dirname, "lib", "palavra-bash.cjs"));
 const {
   tokensComAspas, ehComando, WRAPPERS_QUE_REPASSAM, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
 } = require(path.join(__dirname, "lib", "tokens-comando.cjs"));
@@ -1657,42 +1657,63 @@ function caminhosCitados(texto, ehPowerShell) {
 function alvosDaRede(comando, cwd, ehPowerShell) {
   const repo = principalDoWorktree(cwd);
   if (!repo) return [];
-  // Isencao dos worktrees por PALAVRA (revisao de seguranca): o caminho do worktree citado numa
-  // palavra com expansao pode subir para o principal sem o literal `..`: variavel ou
-  // substituicao (`<W>/$D/f`, `<W>/$'\x2e\x2e'/f`, crase) e, no Bash, chave que monta `..`
-  // (`{<W>,y}/../../f`, `<W>/.{.,}/f`, `{x,.}.`, `{'.''.',x}`, `.{,}.`). A sequencia `{1..3}` nao conta,
-  // e `{a,b}.txt`, `f.{js,ts}`, `{cd,<W>}` seguem isentos. Expansao em outra palavra nao importa.
-  const palavraQueSobe = (palavra) => {
-    if (/[$`]/.test(palavra)) return true;
-    if (ehPowerShell) return false;
-    const p = palavra.replace(/\{-?\w+\.\.-?\w+(\.\.-?\d+)?\}/g, "{}");
+  // Isencao dos worktrees por PALAVRA de shell (revisao de seguranca): o caminho do worktree
+  // citado numa palavra pode subir para o principal sem o literal `..` que a leitura por token ve.
+  // A palavra respeita aspas e escape (`<W>/'a b'/...` e uma so). Perde a isencao quando tem
+  // variavel, substituicao ou crase (`<W>/$D/f`); quando, sem aspas e escapes, cai no principal
+  // fora dos worktrees (`"<W>"/../../f`, `<W>/.\./f`); ou, no Bash, quando tem chave que monta `..`
+  // (`{<W>,y}/../f`, `<W>/.{.,}/f`, `{x,.}.`, `.{,}.`). `{1..3}`, `{a,b}.txt`, `f.{js,ts}`, `{cd,<W>}` seguem
+  // isentos, e expansao em outra palavra da linha nao importa.
+  const casa = os.homedir().replace(/\\/g, "/");
+  const comCasa = (t) => t.replace(ATALHO_DE_HOME, (m, antes) => (antes !== undefined ? antes + casa : casa));
+  const esc = ehPowerShell ? "`" : "\\";
+  // Palavras do texto, com a fronteira so fora de aspas e de escape; cada uma com o texto cru
+  // e o texto sem aspas nem escapes.
+  const palavrasDe = (texto) => {
+    const saida = [];
+    let cru = "", limpo = "", aspa = null;
+    const fecha = () => { if (cru) saida.push({ cru, limpo }); cru = ""; limpo = ""; };
+    for (let i = 0; i < texto.length; i += 1) {
+      const c = texto[i];
+      if (c === esc && aspa !== "'" && i + 1 < texto.length) { cru += c + texto[i + 1]; limpo += texto[i + 1]; i += 1; continue; }
+      if (aspa) { cru += c; if (c === aspa) aspa = null; else limpo += c; continue; }
+      if (c === "'" || c === '"') { aspa = c; cru += c; continue; }
+      if (/[\s;|&<>()]/.test(c)) { fecha(); continue; }
+      cru += c; limpo += c;
+    }
+    fecha();
+    return saida;
+  };
+  const sobeNaChave = (p0) => {
+    const p = p0.replace(/\{-?\w+\.\.-?\w+(\.\.-?\d+)?\}/g, "{}");
     if (!/[{}]/.test(p)) return false;
-    if (/\.\.|[{,'"]\.|\.[},'"\\]/.test(p)) return true;
+    if (/\.\.|[{,]\.|\.[},]/.test(p)) return true;
     // Ponto antes e depois do MESMO grupo com alternativa vazia (`.{,}.`, `.{x,}.`, `.{{,},}.`).
-    // `{a,b}.{js,ts}` (dois grupos) e `x.{a,b}.min.js` (sem vazia) nao montam `..`.
     for (const m of p.matchAll(/\.\{((?:[^{}]|\{[^{}]*\})*)\}\./g)) if (/^,|,$|,,|\{,|,\}|\{\}/.test(m[1])) return true;
     return false;
   };
-  // Palavras (ate espaco ou operador) do texto que contem o caminho citado.
-  const palavrasCom = (texto, c) => {
-    const saida = [];
-    for (let i = texto.indexOf(c); i >= 0; i = texto.indexOf(c, i + 1)) {
-      let a = i, b = i + c.length;
-      while (a > 0 && !/[\s;|&<>()]/.test(texto[a - 1])) a -= 1;
-      while (b < texto.length && !/[\s;|&<>()]/.test(texto[b])) b += 1;
-      saida.push(texto.slice(a, b));
+  const foraDosWorktrees = (n) => dentroDe(n, repo.principal) && !repo.worktrees.some((w) => dentroDe(n, w)) && !ehScratchpad(n);
+  const palavraQueSobe = (p, base) => {
+    if (/[$`]/.test(p.cru)) return true;
+    // Com chave (Bash), cada alternativa da expansao conta, e mais a checagem da chave; expansao
+    // que estoura falha fechado. Virgula fora de chave (`W,W` de trecho aninhado, lista do
+    // PowerShell) separa caminhos: cada pedaco conta.
+    let alternativas = [p.limpo];
+    if (!ehPowerShell && /[{}]/.test(p.limpo)) {
+      if (sobeNaChave(p.limpo)) return true;
+      alternativas = expandirChaves(p.limpo, "u".repeat(p.limpo.length));
+      if (!alternativas) return true;
     }
-    return saida;
+    return alternativas.some((a) => a.split(",").some((x) => x && foraDosWorktrees(normalizaCaminho(x, base))));
   };
   const protegido = (c, base, texto = "") => {
     const n = normalizaCaminho(c, base);
     if (!dentroDe(n, repo.principal) || ehScratchpad(n)) return false;
     if (!repo.worktrees.some((w) => dentroDe(n, w))) return true;
-    // Palavra nao achada (caminho vindo de atalho de home expandido, `FileSystem::` tirado):
-    // falha fechado, com a linha inteira no lugar da palavra.
-    const palavras = palavrasCom(texto, c);
+    const palavras = palavrasDe(comCasa(texto)).filter((p) => p.cru.includes(c) || p.limpo.includes(c));
+    // Palavra nao achada: falha fechado, com a linha inteira no lugar da palavra.
     if (!palavras.length) return /[{}$`]/.test(texto);
-    return palavras.some(palavraQueSobe);
+    return palavras.some((p) => palavraQueSobe(p, base));
   };
   const citaProtegido = (texto, base) => caminhosCitados(texto, ehPowerShell).some((c) => protegido(c, base, texto));
   const alvo = [{ dir: repo.principal, incerto: true }];
