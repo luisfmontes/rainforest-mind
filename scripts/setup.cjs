@@ -29,11 +29,12 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync, execFileSync } = require('child_process');
-const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
+const readline = require('readline');
+const { caminhoExecutavel, resolverExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 const CODIGO_ROOT = path.resolve(__dirname, '..');
 const { resolverRaiz, ehRaiz } = require('../hooks/lib/raiz.cjs');
-const { CHAVES, resolverConfig, raizDoPrincipal } = require('../hooks/lib/config.cjs');
+const { CHAVES, resolverConfig, raizDoPrincipal, GRUPOS_ENTREVISTA } = require('../hooks/lib/config.cjs');
 const P = require('../hooks/lib/projetos.cjs');
 
 function arg(nome) {
@@ -562,12 +563,195 @@ rainforest.db*
   }
 }
 
+// ---------------------------------------------------------------- plano da entrevista
+
+/**
+ * Detecta se a chave aparece nesta maquina. `detectar: {}` = nada a detectar (null:
+ * a pergunta e de preferencia). Senao TODAS as formas declaradas precisam passar.
+ *
+ * `resolverExecutavel`, e nao `caminhoExecutavel`: este procura so `.com`/`.exe` e,
+ * quando nao acha, devolve um caminho INEXISTENTE (dentro de hooks/lib/ausente-do-PATH).
+ * Nesta maquina o `codex` e `codex.cmd` (npm), entao checar por `caminhoExecutavel`
+ * daria "ausente" sempre. Conferido em 2026-10-17.
+ */
+async function detectarChave(detectar) {
+  if (!detectar || Object.keys(detectar).length === 0) return null;
+  const provas = [];
+  for (const nome of detectar.executaveis || []) provas.push(Boolean(resolverExecutavel(nome)));
+  for (const nome of detectar.env || []) provas.push(Boolean(process.env[nome]));
+  if (detectar.integracao) {
+    // Carregado so aqui: o estado e a mutacao da bateria antiga (testa-setup.sh, bloco 7)
+    // montam uma arvore com poucas libs, e um require de topo quebraria todos eles.
+    const { INTEGRACOES } = require('../hooks/lib/integracoes.cjs');
+    const checador = INTEGRACOES[detectar.integracao];
+    let ok = false;
+    if (checador) {
+      try { ok = (await checador.checar()).ok === true; } catch { ok = false; }
+    }
+    provas.push(ok);
+  }
+  if (provas.length === 0) return null;
+  return provas.every(Boolean);
+}
+
+/** Pasta de configuracao do Claude Code desta conta: CLAUDE_CONFIG_DIR, senao ~/.claude. */
+function pastaDeConfigClaude() {
+  if (process.env.CLAUDE_CONFIG_DIR) return process.env.CLAUDE_CONFIG_DIR;
+  return path.join(process.env.USERPROFILE || process.env.HOME || '', '.claude');
+}
+
+/** `cwd` da PRIMEIRA linha do transcrito que o tem. Para ali: o resto nao e lido. */
+function cwdDoTranscrito(arquivo) {
+  return new Promise((resolve) => {
+    const entrada = fs.createReadStream(arquivo, { encoding: 'utf8' });
+    const rl = readline.createInterface({ input: entrada, crlfDelay: Infinity });
+    let feito = false;
+    const fim = (valor) => {
+      if (feito) return;
+      feito = true;
+      rl.close();
+      entrada.destroy();
+      resolve(valor);
+    };
+    rl.on('line', (linha) => {
+      if (feito) return;
+      let obj;
+      try { obj = JSON.parse(linha); } catch { return; }
+      if (obj && typeof obj.cwd === 'string' && obj.cwd) fim(obj.cwd);
+    });
+    rl.on('close', () => fim(null));
+    entrada.on('error', () => fim(null));
+  });
+}
+
+function ehRepoGit(dir) {
+  try {
+    if (!fs.statSync(dir).isDirectory()) return false;
+    return fs.existsSync(path.join(dir, '.git')); // pasta, ou arquivo (worktree)
+  } catch {
+    return false;
+  }
+}
+
+function chaveDeCaminho(p) {
+  const r = path.resolve(p);
+  return process.platform === 'win32' ? r.toLowerCase() : r;
+}
+
+/**
+ * Sugestoes de projeto: uma por pasta de `<config>/projects/`, a partir do transcrito
+ * MAIS NOVO dela. Vira sugestao so a pasta que existe, e repo git, e que ainda nao
+ * esta em projetos.json (nem pelo slug, nem pelo caminho). Erro de leitura numa pasta
+ * pula essa pasta; nunca derruba o modo.
+ */
+async function sugestoesDeProjeto(raiz) {
+  let registrados = {};
+  if (raiz) {
+    try { registrados = P.ler(raiz) || {}; } catch { registrados = {}; }
+  }
+  const slugsUsados = new Set(Object.keys(registrados));
+  const caminhosUsados = new Set(
+    Object.values(registrados).map((v) => v && v.caminho).filter(Boolean).map(chaveDeCaminho)
+  );
+
+  const raizProjetos = path.join(pastaDeConfigClaude(), 'projects');
+  let pastas = [];
+  try {
+    pastas = fs.readdirSync(raizProjetos, { withFileTypes: true }).filter((d) => d.isDirectory());
+  } catch {
+    return [];
+  }
+
+  const achados = [];
+  for (const d of pastas) {
+    try {
+      const dir = path.join(raizProjetos, d.name);
+      const jsonls = fs.readdirSync(dir)
+        .filter((n) => n.endsWith('.jsonl'))
+        .map((n) => ({ arquivo: path.join(dir, n), mtime: fs.statSync(path.join(dir, n)).mtimeMs }))
+        .sort((a, b) => b.mtime - a.mtime);
+      if (!jsonls.length) continue;
+      const cwd = await cwdDoTranscrito(jsonls[0].arquivo);
+      if (!cwd || !ehRepoGit(cwd)) continue;
+      const slug = slugificar(path.basename(cwd));
+      if (!slug) continue;
+      achados.push({ slug, caminho: cwd, mtime: jsonls[0].mtime });
+    } catch {
+      continue;
+    }
+  }
+
+  achados.sort((a, b) => b.mtime - a.mtime);
+  const slugsVistos = new Set();
+  const caminhosVistos = new Set();
+  const saida = [];
+  for (const a of achados) {
+    const cam = chaveDeCaminho(a.caminho);
+    if (slugsUsados.has(a.slug) || caminhosUsados.has(cam)) continue;
+    if (slugsVistos.has(a.slug) || caminhosVistos.has(cam)) continue;
+    slugsVistos.add(a.slug);
+    caminhosVistos.add(cam);
+    saida.push({ slug: a.slug, caminho: a.caminho });
+  }
+  return saida;
+}
+
+/**
+ * `--plano-entrevista`: o que a skill /setup precisa para entrevistar, em UM JSON no
+ * stdout. Nao grava nada: nem config, nem projetos, nem FOCO.md (D11).
+ */
+async function planoEntrevista() {
+  const { raiz, nivel } = resolverRaiz({ plugin: CODIGO_ROOT });
+
+  // Se a leitura da configuracao falhar, cada chave cai no padrao do codigo.
+  let cfg = null;
+  try { cfg = resolverConfig({ projeto: PROJETO }); } catch { cfg = null; }
+
+  const porGrupo = {};
+  for (const g of GRUPOS_ENTREVISTA) porGrupo[g] = [];
+  const fixas = [];
+
+  for (const [chave, meta] of Object.entries(CHAVES)) {
+    const temValor = cfg !== null && Object.prototype.hasOwnProperty.call(cfg.valores, chave);
+    const valor = temValor ? cfg.valores[chave] : meta.padrao;
+    const origem = temValor && cfg.origem[chave] !== undefined ? cfg.origem[chave] : 'padrao';
+
+    if (meta.entrevista === null) {
+      fixas.push({ chave, valor });
+      continue;
+    }
+    if (!Object.prototype.hasOwnProperty.call(porGrupo, meta.entrevista.grupo)) {
+      throw new Error(`chave '${chave}' declara grupo '${meta.entrevista.grupo}' fora de GRUPOS_ENTREVISTA`);
+    }
+    const detectado = await detectarChave(meta.entrevista.detectar);
+    const perguntar = meta.entrevista !== null && detectado !== false;
+    porGrupo[meta.entrevista.grupo].push({ chave, valor, origem, detectado, perguntar });
+  }
+
+  return {
+    primeira_vez: !raiz || nivel === 'plugin',
+    nivel: raiz ? nivel : null,
+    passos: GRUPOS_ENTREVISTA.map((grupo) => ({ grupo, chaves: porGrupo[grupo] })),
+    fixas,
+    sugestoes: { projetos: await sugestoesDeProjeto(raiz) },
+  };
+}
+
 // ---------------------------------------------------------------- CLI
 
 function main() {
   // `versionar` como subcomando posicional (argv[2])
   if (process.argv[2] === 'versionar') {
     versionar();
+    return;
+  }
+
+  // `--plano-entrevista`: JSON da entrevista do /setup. So le. Vem antes de --criar
+  // para que a saida seja UM JSON, sem texto de outro modo misturado.
+  if (tem('plano-entrevista')) {
+    planoEntrevista().then((plano) => {
+      console.log(JSON.stringify(plano, null, 2));
+    });
     return;
   }
 
