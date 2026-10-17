@@ -18,8 +18,28 @@
     "em": "2026-10-17"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-10-17"
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-17",
+    "tarefas_ok": 0,
+    "tarefas": 6,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "28a47efa467d9328fe74d89af49185ccb394269a",
+        "iteracao": 1,
+        "sessao": "2d517692-1cc6-4088-9761-81e72cf12928",
+        "ts": "2026-10-17T16:10:07.972Z"
+      }
+    ],
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "1. campo entrevista e conferir-setup",
+        "desde": "2026-10-17T16:10:07Z",
+        "sessao": "2d517692-1cc6-4088-9761-81e72cf12928"
+      }
+    ],
+    "em": "2026-10-17"
   },
   "revisar": {
     "status": "pendente"
