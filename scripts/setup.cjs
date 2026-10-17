@@ -78,6 +78,14 @@ que o desvio é medido.
 - (nenhum)
 `;
 
+/** ESTRATEGIA.md (D13): contexto estável, lido na abertura; o tático é do /foco. */
+const ESTRATEGIA_MODELO = (texto) => `# Estratégia
+
+Contexto estável, lido na abertura de cada sessão. O tático (o que é agora) é do \`/foco\`.
+
+${texto.trim()}
+`;
+
 /** `Meu Repo` → `meu-repo`. O slug é fechado justamente para não caber barra. */
 function slugificar(nome) {
   return String(nome || '')
@@ -208,7 +216,9 @@ function trocar(chave, valor, escopo) {
   fs.writeFileSync(tmp, `${JSON.stringify(cfg, null, 2)}\n`, 'utf8');
   fs.renameSync(tmp, arquivo); // atomico: config truncada e pior que ausente
 
-  console.log(`${chave}: ${valor ? 'ligado' : 'desligado'} no escopo ${escopo}`);
+  // Booleano segue dizendo ligado/desligado; texto, lista e modelo mostram o valor (o --aplicar grava esses).
+  const dito = typeof valor === 'boolean' ? (valor ? 'ligado' : 'desligado') : JSON.stringify(valor);
+  console.log(`${chave}: ${dito} no escopo ${escopo}`);
   console.log(`  ${arquivo}`);
   if (escopo === 'projeto') {
     console.log('  vale so neste repositorio, e vence o seu padrao de usuario');
@@ -673,6 +683,8 @@ async function sugestoesDeProjeto(raiz) {
       if (!jsonls.length) continue;
       const cwd = await cwdDoTranscrito(jsonls[0].arquivo);
       if (!cwd || !ehRepoGit(cwd)) continue;
+      // Worktree de agente (.claude/worktrees/) e repo git, mas não é projeto do usuário (B do plano).
+      if (cwd.replace(/\\/g, '/').toLowerCase().includes('/.claude/worktrees/')) continue;
       const slug = slugificar(path.basename(cwd));
       if (!slug) continue;
       achados.push({ slug, caminho: cwd, mtime: jsonls[0].mtime });
@@ -729,12 +741,228 @@ async function planoEntrevista() {
   }
 
   return {
-    primeira_vez: !raiz || nivel === 'plugin',
+    primeira_vez: primeiraVez(raiz, nivel),
     nivel: raiz ? nivel : null,
     passos: GRUPOS_ENTREVISTA.map((grupo) => ({ grupo, chaves: porGrupo[grupo] })),
     fixas,
     sugestoes: { projetos: await sugestoesDeProjeto(raiz) },
   };
+}
+
+// ---------------------------------------------------------------- aplicar (D5, D9, D11, D13)
+
+/** Primeira vez (D1): sem pasta de dados, ou a do plugin, ou pasta sem FOCO.md (pasta vazia = setup nunca rodou nela). */
+function primeiraVez(raiz, nivel) {
+  return !raiz || nivel === 'plugin' || !fs.existsSync(path.join(raiz, 'FOCO.md'));
+}
+
+/**
+ * Mesma regra de `validarTipo` em hooks/lib/config.cjs (resolverConfig). Copiada porque
+ * a closure de lá não é exportada e esta tarefa não pode tocar config.cjs. A bateria
+ * testa-setup-entrevista.sh confere o que aceita contra o que o resolverConfig lê de volta.
+ */
+function valorCabeNoTipo(valor, tipo) {
+  if (tipo === 'boolean') return typeof valor === 'boolean';
+  if (tipo === 'modelo') {
+    if (valor === null) return true;
+    return typeof valor === 'object' && typeof valor.modelo === 'string' &&
+      (valor.esforco === undefined || typeof valor.esforco === 'string');
+  }
+  if (tipo === 'texto') {
+    return valor === null || (typeof valor === 'string' && valor.length > 0 && valor.length <= 60);
+  }
+  if (tipo === 'privada') return valor === null || valor === 'privada';
+  if (tipo === 'pastas') {
+    if (valor === null) return true;
+    if (typeof valor !== 'object' || Array.isArray(valor)) return false;
+    return Object.entries(valor).every(([k, v]) => ['mapas', 'design', 'planos'].includes(k) &&
+      typeof v === 'string' && v.trim().length > 0 &&
+      !/^([a-zA-Z]:|[\\/])/.test(v) && !v.split(/[\\/]/).includes('..'));
+  }
+  return false;
+}
+
+const CAMPOS_PAYLOAD = ['chaves', 'projetos', 'estrategia'];
+const CAMPOS_PROJETO = ['slug', 'caminho', 'apelido'];
+
+function ehDiretorio(p) {
+  try {
+    return fs.statSync(p).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/** Acumula em `erros` tudo o que impede gravar. Esta função não escreve nada. */
+function validarPayload(p, erros) {
+  if (typeof p !== 'object' || p === null || Array.isArray(p)) {
+    erros.push('o payload precisa ser um objeto JSON');
+    return;
+  }
+  for (const k of Object.keys(p)) {
+    if (!CAMPOS_PAYLOAD.includes(k)) erros.push(`campo desconhecido no payload: '${k}'`);
+  }
+  if (p.chaves !== undefined) {
+    if (typeof p.chaves !== 'object' || p.chaves === null || Array.isArray(p.chaves)) {
+      erros.push('"chaves" precisa ser um objeto {"<chave>": <valor>}');
+    } else {
+      for (const [chave, valor] of Object.entries(p.chaves)) {
+        if (!Object.prototype.hasOwnProperty.call(CHAVES, chave)) {
+          erros.push(`chave '${chave}' nao e conhecida`);
+          continue;
+        }
+        const tipo = CHAVES[chave].tipo || 'boolean';
+        if (!valorCabeNoTipo(valor, tipo)) {
+          erros.push(`'${chave}' espera um valor do tipo ${tipo}, veio ${JSON.stringify(valor)}`);
+        }
+      }
+    }
+  }
+  if (p.projetos !== undefined) {
+    if (!Array.isArray(p.projetos)) {
+      erros.push('"projetos" precisa ser uma lista');
+    } else {
+      p.projetos.forEach((pr, i) => {
+        const rot = `projetos[${i}]`;
+        if (typeof pr !== 'object' || pr === null || Array.isArray(pr)) {
+          erros.push(`${rot} precisa ser um objeto`);
+          return;
+        }
+        for (const k of Object.keys(pr)) {
+          if (!CAMPOS_PROJETO.includes(k)) erros.push(`${rot}: campo desconhecido '${k}'`);
+        }
+        if (typeof pr.slug !== 'string' || !P.RE_SLUG.test(pr.slug)) {
+          erros.push(`${rot}: slug '${pr.slug}' nao e kebab-case`);
+        }
+        if (typeof pr.caminho !== 'string' || !path.isAbsolute(pr.caminho)) {
+          erros.push(`${rot}: caminho precisa ser absoluto`);
+        } else if (!ehDiretorio(pr.caminho)) {
+          erros.push(`${rot}: caminho '${pr.caminho}' nao existe ou nao e pasta`);
+        }
+        const apelidos = pr.apelido === undefined ? [] : [].concat(pr.apelido);
+        if (!apelidos.every((a) => typeof a === 'string' && a.trim() && !a.includes(','))) {
+          erros.push(`${rot}: apelido precisa ser texto (ou lista de textos) sem virgula`);
+        }
+      });
+    }
+  }
+  if (p.estrategia !== undefined && (typeof p.estrategia !== 'string' || !p.estrategia.trim())) {
+    erros.push('"estrategia" precisa ser um texto nao vazio');
+  }
+}
+
+const apelidoDe = (pr) => (pr.apelido === undefined ? undefined : [].concat(pr.apelido).join(','));
+
+function valoresAtuais() {
+  try {
+    return resolverConfig({ projeto: PROJETO }).valores;
+  } catch {
+    return null;
+  }
+}
+
+/** O que o --aplicar faria, linha a linha. Só lê. */
+function linhasEnsaio({ chaves, projetos, estrategia, raiz, escopo }) {
+  const linhas = [];
+  const valores = valoresAtuais();
+  for (const [chave, depois] of Object.entries(chaves)) {
+    const antes = valores ? valores[chave] : CHAVES[chave].padrao;
+    const jDepois = JSON.stringify(depois);
+    if (JSON.stringify(antes) === jDepois) linhas.push(`${chave}: ${jDepois} (sem mudanca)`);
+    else linhas.push(`${chave}: ${JSON.stringify(antes)} -> ${jDepois}`);
+  }
+  const mapa = raiz ? P.ler(raiz) || {} : {};
+  for (const pr of projetos) {
+    const ja = Object.prototype.hasOwnProperty.call(mapa, pr.slug);
+    linhas.push(`projeto ${pr.slug}: ${pr.caminho} (${ja ? 'ja registrado' : 'novo'})`);
+  }
+  if (estrategia !== undefined) {
+    const ja = raiz && fs.existsSync(path.join(raiz, 'ESTRATEGIA.md'));
+    linhas.push(`ESTRATEGIA.md: ${ja ? 'ja existe, nao toca' : 'cria'}`);
+  }
+  const destino = escopo === 'projeto' ? path.join(PROJETO, '.rainforest') : (raiz || destinoPadrao());
+  linhas.push(`escopo: ${escopo} (${destino})`);
+  return linhas;
+}
+
+/**
+ * `--aplicar <arquivo.json> [--ensaio] [--escopo projeto]`: grava o que a entrevista
+ * decidiu. Valida TUDO antes da primeira escrita (um erro = nada gravado, exit 2).
+ */
+function aplicar() {
+  const errosAplicar = [];
+  const ensaio = tem('ensaio');
+  const escopoArg = arg('escopo');
+  const escopo = escopoArg === null ? 'usuario' : String(escopoArg);
+  if (escopo !== 'usuario' && escopo !== 'projeto') {
+    errosAplicar.push(`--escopo tem que ser 'projeto' ou 'usuario' (veio '${escopo}')`);
+  }
+
+  const arquivo = arg('aplicar');
+  let payload = null;
+  let lido = false;
+  if (typeof arquivo !== 'string') {
+    errosAplicar.push('--aplicar precisa do caminho de um arquivo .json');
+  } else {
+    try {
+      payload = JSON.parse(fs.readFileSync(arquivo, 'utf8').replace(/^﻿/, ''));
+      lido = true;
+    } catch (e) {
+      errosAplicar.push(`'${arquivo}' nao e legivel ou nao e JSON valido: ${e.message}`);
+    }
+  }
+  if (lido) validarPayload(payload, errosAplicar);
+
+  const { raiz: raizAntes, nivel: nivelAntes } = resolverRaiz({ plugin: CODIGO_ROOT });
+  // trocar() com escopo usuario grava na raiz que o resolverRaiz acha, e uma .rainforest
+  // do projeto vence a global. Sem esta trava, config de usuario iria para o repositorio.
+  if (escopo === 'usuario' && nivelAntes === 'projeto') {
+    errosAplicar.push(`a pasta de dados desta sessao e a do projeto (${raizAntes}); 'usuario' gravaria la. Use --escopo projeto, ou aponte RFM_ROOT para a pasta de dados do usuario`);
+  }
+  if (lido && payload && payload.projetos !== undefined && raizAntes) {
+    try {
+      P.ler(raizAntes);
+    } catch (e) {
+      errosAplicar.push(`vocabulario de projetos ilegivel: ${e.message}`);
+    }
+  }
+
+  for (const e of errosAplicar) console.error(`erro: ${e}`);
+  if (errosAplicar.length > 0) process.exit(2);
+
+  const chaves = payload.chaves || {};
+  const projetos = payload.projetos || [];
+  const { estrategia } = payload;
+
+  if (ensaio) {
+    for (const linha of linhasEnsaio({ chaves, projetos, estrategia, raiz: raizAntes, escopo })) console.log(linha);
+    return;
+  }
+
+  if (primeiraVez(raizAntes, nivelAntes)) criar();
+  const raiz = resolverRaiz({ plugin: CODIGO_ROOT }).raiz;
+  if (!raiz) {
+    console.error('erro: nao ha pasta de dados montada, mesmo depois de --criar');
+    process.exit(1);
+  }
+
+  if (escopo === 'projeto' && Object.keys(chaves).length > 0) {
+    console.log(`aviso: o .rainforest/config.json do repositorio (${path.join(PROJETO, '.rainforest')}) pode ir para o commit; decida no .gitignore antes de commitar`);
+  }
+  for (const [chave, valor] of Object.entries(chaves)) trocar(chave, valor, escopo);
+  for (const pr of projetos) registrarProjeto(pr.slug, pr.caminho, apelidoDe(pr));
+
+  if (estrategia !== undefined) {
+    const alvo = path.join(raiz, 'ESTRATEGIA.md');
+    if (fs.existsSync(alvo)) {
+      console.log('ESTRATEGIA.md: ja existe, nao foi tocado');
+    } else {
+      // 'wx': nunca sobrescreve, mesmo se algo criar o arquivo no meio do caminho.
+      fs.writeFileSync(alvo, ESTRATEGIA_MODELO(estrategia), { encoding: 'utf8', flag: 'wx' });
+      console.log(`ESTRATEGIA.md: criado em ${alvo}`);
+    }
+  }
+  console.log(`gravado: ${Object.keys(chaves).length} chave(s), ${projetos.length} projeto(s), escopo ${escopo}`);
 }
 
 // ---------------------------------------------------------------- CLI
@@ -752,6 +980,12 @@ function main() {
     planoEntrevista().then((plano) => {
       console.log(JSON.stringify(plano, null, 2));
     });
+    return;
+  }
+
+  // `--aplicar`: grava a decisão da entrevista (ou só mostra, com --ensaio). Não sai do fluxo.
+  if (tem('aplicar')) {
+    aplicar();
     return;
   }
 

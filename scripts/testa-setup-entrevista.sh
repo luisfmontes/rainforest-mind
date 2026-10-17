@@ -31,6 +31,9 @@ mkdir -p "$DADOS" "$HOME_CX" "$CFG/projects" "$PROJ"
 # ehRepoGit so olha a EXISTENCIA de .git (pasta ou arquivo): basta a pasta.
 mkdir -p "$REPO/.git" "$REPO_B/.git" "$SEM_GIT"
 REPO_WIN="$(w "$REPO")"
+# Setup feito: a pasta tem FOCO.md. Sem ele a pasta conta como primeira vez (D1), e a
+# secao 9 espera primeira_vez false.
+printf '# Foco\n' > "$DADOS/FOCO.md"
 
 # Transcrito no formato real do Claude Code: as tres primeiras linhas nao tem `cwd`;
 # a primeira que tem e a `attachment`.
@@ -60,6 +63,20 @@ if command -v codex >/dev/null 2>&1; then ESP_CODEX=true; else ESP_CODEX=false; 
 plano() { # <saida> <args do env...>: roda o modo com o ambiente dado
   local saida="$1"; shift
   env "$@" "$NODE_BIN" "$SETUP_JS" --plano-entrevista > "$saida" 2> "$saida.err"
+}
+
+# Tarefa 4 (--aplicar): o ambiente da caixa com RFM_ROOT numa pasta dada, e payloads em arquivo.
+ap() { # <pasta de dados> <comando...>
+  local dados="$1"; shift
+  env RFM_ROOT="$(w "$dados")" USERPROFILE="$(w "$HOME_CX")" CLAUDE_CONFIG_DIR="$(w "$CFG")" CLAUDE_PROJECT_DIR="$(w "$PROJ")" "$@"
+}
+arq() { # <nome> <texto>: grava o payload na caixa e devolve o caminho
+  local f="$CAIXA/$1"; printf '%s' "$2" > "$f"; printf '%s' "$f"
+}
+hash_de() { find "$1" -type f -exec sha1sum {} + | sort; }
+resultado() { # nome, status (0 = passou)
+  if [ "$2" = 0 ]; then ok=$((ok+1)); echo "  ok   $1"
+  else falhou=$((falhou+1)); echo "  FALHA $1"; fi
 }
 
 ok=0; falhou=0
@@ -173,6 +190,112 @@ else falhou=$((falhou+1)); echo "  FALHA hash do config.json mudou"; fi
 if [ "$arvore_antes" = "$arvore_depois" ]; then ok=$((ok+1)); echo "  ok   nenhum arquivo da pasta de dados mudou"
 else falhou=$((falhou+1)); echo "  FALHA a pasta de dados mudou"; fi
 verifica "e a saida continua sendo o JSON da entrevista" "$J" "j.primeira_vez === false && Array.isArray(j.passos)"
+
+echo
+echo "== 10. worktree de agente nao e sugerido como projeto =="
+mkdir -p "$REPO/.claude/worktrees/agent-x/.git" "$CAIXA/repo-c/.git"
+transcrito v "$(w "$REPO/.claude/worktrees/agent-x")"
+transcrito u "$(w "$CAIXA/repo-c")"
+K="$CAIXA/saida-10.json"
+plano "$K" "${BASE[@]}"
+verifica "worktree de agente fica de fora; repo-c (controle) entra" "$K" \
+  "!j.sugestoes.projetos.some(p => /worktrees/.test(p.caminho) || p.slug === 'agent-x') && j.sugestoes.projetos.some(p => p.slug === 'repo-c')"
+
+echo
+echo "== 11. --aplicar: payload invalido nao grava nada =="
+AP1="$CAIXA/ap1"
+ap "$AP1" "$NODE_BIN" "$SETUP_JS" --ligar ponte-gemini > /dev/null
+AP1_ANTES="$(sha1sum < "$AP1/config.json")"
+ap "$AP1" "$NODE_BIN" "$SETUP_JS" --aplicar "$(arq inv.json '{"chaves":{"ponte-codex":true,"chave-inexistente":true}}')" > "$CAIXA/inv.out" 2> "$CAIXA/inv.err"; got=$?
+[ "$got" = 2 ]; resultado "payload com uma chave invalida: exit 2" $?
+grep -q "chave-inexistente" "$CAIXA/inv.err"; resultado "payload com uma chave invalida: stderr nomeia chave-inexistente" $?
+grep -q "^erro: " "$CAIXA/inv.err"; resultado "payload com uma chave invalida: erro sai com o prefixo 'erro: '" $?
+[ "$(sha1sum < "$AP1/config.json")" = "$AP1_ANTES" ]; resultado "payload com uma chave invalida: config.json de usuario com o mesmo hash" $?
+ap "$AP1" "$NODE_BIN" "$SETUP_JS" --ligado ponte-codex > /dev/null; got=$?
+[ "$got" = 1 ]; resultado "payload com uma chave invalida: --ligado ponte-codex continua 1" $?
+
+ap "$AP1" "$NODE_BIN" "$SETUP_JS" --aplicar "$(arq tipo.json '{"chaves":{"ponte-codex":"sim"}}')" > "$CAIXA/tipo.out" 2> "$CAIXA/tipo.err"; got=$?
+[ "$got" = 2 ]; resultado "valor de tipo errado (\"sim\" em ponte-codex): exit 2" $?
+grep -q "ponte-codex" "$CAIXA/tipo.err"; resultado "valor de tipo errado: stderr nomeia ponte-codex" $?
+[ "$(sha1sum < "$AP1/config.json")" = "$AP1_ANTES" ]; resultado "valor de tipo errado: config.json com o mesmo hash" $?
+
+LONGO="$(printf '%061d' 0)"
+ap "$AP1" "$NODE_BIN" "$SETUP_JS" --aplicar "$(arq longo.json "{\"chaves\":{\"idioma\":\"$LONGO\"}}")" > "$CAIXA/longo.out" 2> "$CAIXA/longo.err"; got=$?
+[ "$got" = 2 ]; resultado "texto com 61 caracteres (limite e 60): exit 2" $?
+[ "$(sha1sum < "$AP1/config.json")" = "$AP1_ANTES" ]; resultado "texto com 61 caracteres: config.json com o mesmo hash" $?
+
+ap "$AP1" "$NODE_BIN" "$SETUP_JS" --aplicar "$(arq pastas.json '{"chaves":{"pastas":{"design":"docs/plans"}}}')" > /dev/null 2>&1; got=$?
+[ "$got" = 0 ]; resultado "pastas valido: exit 0" $?
+LIDO="$(node -e "process.stdout.write(JSON.stringify(require(process.argv[1]).resolverConfig({ dados: process.argv[2], projeto: process.argv[3] }).valores.pastas))" "$CONFIG_JS" "$(w "$AP1")" "$(w "$PROJ")")"
+[ "$LIDO" = '{"design":"docs/plans"}' ]; resultado "pastas gravado pelo --aplicar volta igual pelo resolverConfig" $?
+
+echo
+echo "== 12. --ensaio mostra antes e depois e nao grava =="
+AP3="$CAIXA/ap3"
+ap "$AP3" "$NODE_BIN" "$SETUP_JS" --criar > /dev/null
+ENS="$(arq ensaio.json "{\"chaves\":{\"ponte-codex\":true,\"idioma\":\"portugues do Brasil\"},\"projetos\":[{\"slug\":\"meu-repo\",\"caminho\":\"$REPO_WIN\"}],\"estrategia\":\"Frente unica\"}")"
+ARV_ANTES="$(hash_de "$AP3")"
+ap "$AP3" "$NODE_BIN" "$SETUP_JS" --aplicar "$ENS" --ensaio > "$CAIXA/ens.out" 2> "$CAIXA/ens.err"; got=$?
+[ "$got" = 0 ]; resultado "--aplicar --ensaio sai 0" $?
+grep -q "^ponte-codex: false -> true$" "$CAIXA/ens.out"; resultado "ensaio mostra 'ponte-codex: false -> true'" $?
+grep -q "^idioma: null -> " "$CAIXA/ens.out"; resultado "ensaio mostra antes e depois de idioma" $?
+grep -q "^projeto meu-repo: .* (novo)$" "$CAIXA/ens.out"; resultado "ensaio diz que o projeto e novo" $?
+grep -q "^ESTRATEGIA.md: cria$" "$CAIXA/ens.out"; resultado "ensaio diz que ESTRATEGIA.md seria criada" $?
+grep -q "^escopo: usuario " "$CAIXA/ens.out"; resultado "ensaio traz o escopo em que gravaria" $?
+[ "$(hash_de "$AP3")" = "$ARV_ANTES" ]; resultado "ensaio nao muda nenhum arquivo da pasta de dados" $?
+
+echo
+echo "== 13. --aplicar grava no escopo usuario; FOCO.md nao e tocado; ESTRATEGIA.md nasce =="
+FOCO_ANTES="$(sha1sum < "$AP3/FOCO.md")"
+ap "$AP3" "$NODE_BIN" "$SETUP_JS" --aplicar "$ENS" > "$CAIXA/apl.out" 2> "$CAIXA/apl.err"; got=$?
+[ "$got" = 0 ]; resultado "--aplicar grava e sai 0" $?
+ap "$AP3" "$NODE_BIN" "$SETUP_JS" --ligado ponte-codex > /dev/null; got=$?
+[ "$got" = 0 ]; resultado "aplicar grava no escopo usuario: --ligado ponte-codex sai 0" $?
+[ ! -e "$PROJ/.rainforest/config.json" ]; resultado "aplicar grava no escopo usuario: .rainforest/config.json do projeto continua inexistente" $?
+[ "$(sha1sum < "$AP3/FOCO.md")" = "$FOCO_ANTES" ]; resultado "FOCO.md com o mesmo hash depois do --aplicar" $?
+grep -q "^Frente unica$" "$AP3/ESTRATEGIA.md"; resultado "estrategia nasce se ausente, com o texto do payload" $?
+H_EST="$(sha1sum < "$AP3/ESTRATEGIA.md")"
+ap "$AP3" "$NODE_BIN" "$SETUP_JS" --aplicar "$(arq est2.json '{"estrategia":"outro texto"}')" > /dev/null 2>&1; got=$?
+[ "$got" = 0 ]; resultado "estrategia com ESTRATEGIA.md existente: exit 0" $?
+[ "$(sha1sum < "$AP3/ESTRATEGIA.md")" = "$H_EST" ]; resultado "estrategia existente mantem o hash" $?
+
+echo
+echo "== 14. primeira vez: aplicar cria a pasta antes de gravar; FOCO.md so vem do criar =="
+REF="$CAIXA/ref"
+ap "$REF" "$NODE_BIN" "$SETUP_JS" --criar > /dev/null
+NOVA="$CAIXA/dados-novos"
+ap "$NOVA" "$NODE_BIN" "$SETUP_JS" --aplicar "$(arq novo.json '{"chaves":{"ponte-codex":true},"estrategia":"TEXTO-DO-PAYLOAD"}')" > "$CAIXA/nova.out" 2> "$CAIXA/nova.err"; got=$?
+[ "$got" = 0 ]; resultado "primeira vez: --aplicar sai 0" $?
+[ -f "$NOVA/config.json" ] && [ -f "$NOVA/FOCO.md" ]; resultado "primeira vez: a pasta de dados e criada e recebe config.json" $?
+[ "$(sha1sum < "$NOVA/FOCO.md")" = "$(sha1sum < "$REF/FOCO.md")" ]; resultado "primeira vez: FOCO.md tem o conteudo que o --criar semeia" $?
+! grep -q "TEXTO-DO-PAYLOAD" "$NOVA/FOCO.md"; resultado "primeira vez: FOCO.md nao recebe texto do payload" $?
+grep -q "TEXTO-DO-PAYLOAD" "$NOVA/ESTRATEGIA.md"; resultado "primeira vez: ESTRATEGIA.md nasce com o texto do payload" $?
+
+echo
+echo "== 15. pasta vazia conta como primeira vez; pasta do projeto nao recebe config de usuario =="
+VAZIA="$CAIXA/dados-vazios"; mkdir -p "$VAZIA"
+ap "$VAZIA" "$NODE_BIN" "$SETUP_JS" --plano-entrevista > "$CAIXA/vazia.json" 2> "$CAIXA/vazia.err"
+verifica "pasta de dados vazia conta como primeira vez" "$CAIXA/vazia.json" "j.primeira_vez === true"
+PROJ2="$CAIXA/proj2"; mkdir -p "$PROJ2/.rainforest"; printf '# Foco\n' > "$PROJ2/.rainforest/FOCO.md"
+env -u RFM_ROOT USERPROFILE="$(w "$HOME_CX")" CLAUDE_CONFIG_DIR="$(w "$CFG")" CLAUDE_PROJECT_DIR="$(w "$PROJ2")" "$NODE_BIN" "$SETUP_JS" --aplicar "$(arq p2.json '{"chaves":{"ponte-codex":true}}')" > "$CAIXA/p2.out" 2> "$CAIXA/p2.err"; got=$?
+[ "$got" = 2 ]; resultado "pasta do projeto e a sessao: 'usuario' recusado, exit 2" $?
+[ ! -e "$PROJ2/.rainforest/config.json" ]; resultado "pasta do projeto segue sem config.json" $?
+
+echo
+echo "== 16. --aplicar: caminho inexistente e escopo invalido recusados sem gravar =="
+REJ="$(arq rej.json "{\"projetos\":[{\"slug\":\"ok-slug\",\"caminho\":\"$(w "$CAIXA/nao-existe")\"}]}")"
+ap "$AP3" "$NODE_BIN" "$SETUP_JS" --aplicar "$REJ" > "$CAIXA/rej.out" 2> "$CAIXA/rej.err"; got=$?
+[ "$got" = 2 ]; resultado "caminho de projeto inexistente: exit 2" $?
+grep -q "nao existe" "$CAIXA/rej.err"; resultado "caminho de projeto inexistente: stderr diz que nao existe" $?
+ap "$AP3" "$NODE_BIN" "$SETUP_JS" --aplicar "$ENS" --escopo outro > /dev/null 2> "$CAIXA/esc.err"; got=$?
+[ "$got" = 2 ]; resultado "escopo invalido: exit 2" $?
+
+echo
+echo "== 17. --escopo projeto grava no projeto e avisa do commit =="
+ap "$AP3" "$NODE_BIN" "$SETUP_JS" --aplicar "$(arq proj.json '{"chaves":{"ponte-codex":true}}')" --escopo projeto > "$CAIXA/pj.out" 2> "$CAIXA/pj.err"; got=$?
+[ "$got" = 0 ]; resultado "--escopo projeto sai 0" $?
+[ -f "$PROJ/.rainforest/config.json" ]; resultado "--escopo projeto grava em <projeto>/.rainforest/config.json" $?
+grep -q "pode ir para o commit" "$CAIXA/pj.out"; resultado "--escopo projeto avisa que o config pode ir para o commit" $?
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
