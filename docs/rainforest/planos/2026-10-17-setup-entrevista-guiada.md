@@ -102,7 +102,9 @@ pronto quando: com o `skills/setup/SKILL.md` e o `CHAVES` reais, `node scripts/c
 
 ### 6. README, CHANGELOG e versão [tipo: docs]
 atende: D6, D11
-arquivos: `README.md`, `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`
+arquivos: `README.md`, `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`
+
+Emenda de 2026-10-17, na abertura do `revisar`: o plano citava `.claude-plugin/marketplace.json`, mas a versão mora nos dois `plugin.json` (Claude e Codex) e no selo do README — medido com `grep -rn 1.67.11` ao executar a tarefa. O `marketplace.json` não foi tocado.
 depende de: 5
 mutacao: n/a
   motivo: documentação e número de versão; a subida de versão é conferida pelo `conferir-versao.cjs` do CI.
