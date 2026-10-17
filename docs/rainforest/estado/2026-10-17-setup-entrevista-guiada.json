@@ -18,9 +18,9 @@
     "em": "2026-10-17"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-17",
-    "tarefas_ok": 3,
+    "tarefas_ok": 6,
     "tarefas": 6,
     "carimbos": [
       {
@@ -59,6 +59,40 @@
       2,
       3,
       4
+    ],
+    "comando": "bash hooks/testa-config.sh; bash scripts/testa-conferir-setup.sh; bash scripts/testa-setup.sh; bash scripts/testa-setup-entrevista.sh",
+    "saida": "63 ok 0 falha; 10 ok 0 falha; 70 ok 0 falha; 60 ok 0 falha",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-setup.sh, caso catalogo com ponte-codex sem campo entrevista e recusado"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-setup.sh, caso ronda desligada com vigias ligado para limpo"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-setup-entrevista.sh, caso ferramenta ausente no PATH nao vira pergunta"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-setup-entrevista.sh, caso payload com uma chave invalida nao grava nenhuma"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "texto de skill; a coerencia e conferida pelo caso SKILL.md real coerente com o catalogo real, que fica vermelho quando uma linha da tabela some"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "documentacao e numero de versao, conferidos pelo conferir-versao.cjs"
+      }
     ]
   },
   "revisar": {
