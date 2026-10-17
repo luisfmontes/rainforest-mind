@@ -20,7 +20,7 @@
   },
   "executar": {
     "status": "ok",
-    "catraca_mutacao": "2026-10-16",
+    "catraca_mutacao": "2026-10-17",
     "tarefas_ok": 3,
     "tarefas": 3,
     "mutacao": [
@@ -40,31 +40,32 @@
         "motivo": "entrada de CHANGELOG e numero de versao"
       }
     ],
-    "comando": "node scripts/conferir-mutacao.cjs T1 (bateria bash hooks/testa-gate-worktree.sh) apos isencao por palavra",
-    "saida": "T1 VERMELHA (exit 1), baseline 235524 ms exit 0; gate 641 ok, cwd-efetivo 85 ok, corpus 24 ok; T2 vermelho em c1508570, dirDe sem mudanca",
+    "comando": "node scripts/conferir-mutacao.cjs T1 e T2 (bateria bash hooks/testa-gate-worktree.sh, --timeout 1200000) apos palavra com aspas",
+    "saida": "T1 VERMELHA (exit 1), baseline 416780 ms exit 0; T2 VERMELHA (exit 1), baseline 334605 ms exit 0; corpus 24 ok; cwd-efetivo 85 ok; palavra-bash 30 ok; 1a rodada isolada do gate 649 ok e 1 falha de tempo (eval x22 2208 ms sob carga; 245-396 ms isolado, igual a main)",
     "em": "2026-10-17",
-    "reaberturas": 2
+    "reaberturas": 3
   },
   "revisar": {
-    "status": "ok",
+    "status": "reprovado",
     "snapshot": {
-      "head": "84d055a20a798de5404f543969483f2f54d5b6b8",
+      "head": "0e111e0a637b973c332863c4e8149d16b0e1b517",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a396620274436941d",
-        "veredito": "ok",
+        "agente_id": "a0443daa09c682cad",
+        "veredito": "reprovado",
         "em": "2026-10-17",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a396620274436941d.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a0443daa09c682cad.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-17",
-    "achados": 0,
+    "achados": 2,
     "base": "038de7d83260131065afb495845dc1e33b497496",
-    "head": "84d055a20a798de5404f543969483f2f54d5b6b8"
+    "head": "84d055a20a798de5404f543969483f2f54d5b6b8",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
