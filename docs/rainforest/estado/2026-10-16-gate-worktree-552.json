@@ -40,30 +40,31 @@
         "motivo": "entrada de CHANGELOG e numero de versao"
       }
     ],
-    "comando": "node scripts/conferir-mutacao.cjs T1 e T2 (bateria bash hooks/testa-gate-worktree.sh) apos os achados da rodada 2",
-    "saida": "T1 VERMELHA (exit 1), baseline 330277 ms exit 0; T2 VERMELHA (exit 1), baseline 284875 ms exit 0; gate 621 ok, cwd-efetivo 85 ok, palavra-bash 30 ok, corpus 24 ok",
-    "em": "2026-10-16",
+    "comando": "node scripts/conferir-mutacao.cjs T1 (bateria bash hooks/testa-gate-worktree.sh) apos a revisao de seguranca de c1508570",
+    "saida": "T1 VERMELHA (exit 1), baseline 468468 ms exit 0; gate 631 ok, cwd-efetivo 85 ok, corpus 24 ok; T2 vermelho em c1508570, dirDe sem mudanca",
+    "em": "2026-10-17",
     "reaberturas": 2
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "370f151bb25cad2ba52087c0fee049271233ab0c",
+      "head": "130491d1fc3ee8827849e748502d2d11fd32d856",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a18e39a6041ecc777",
-        "veredito": "reprovado",
+        "agente_id": "af5583896294e264b",
+        "veredito": "ok",
         "em": "2026-10-16",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a18e39a6041ecc777.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-af5583896294e264b.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-16",
-    "achados": 2,
-    "tentativas": 2
+    "achados": 0,
+    "base": "038de7d83260131065afb495845dc1e33b497496",
+    "head": "130491d1fc3ee8827849e748502d2d11fd32d856"
   },
   "verificar": {
     "status": "pendente"
