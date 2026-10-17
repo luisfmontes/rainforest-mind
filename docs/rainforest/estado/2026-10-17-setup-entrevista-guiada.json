@@ -52,19 +52,13 @@
         "ts": "2026-10-17T16:44:23.681Z"
       }
     ],
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "4. aplicar",
-        "desde": "2026-10-17T16:44:23Z",
-        "sessao": "2d517692-1cc6-4088-9761-81e72cf12928"
-      }
-    ],
+    "em_voo": [],
     "em": "2026-10-17",
     "integradas": [
       1,
       2,
-      3
+      3,
+      4
     ]
   },
   "revisar": {
@@ -97,6 +91,20 @@
       "porque": "medido: caminhoExecutavel nao acha codex.cmd e a ponte-codex nunca seria detectada nesta maquina",
       "estagio": "executar",
       "em": "2026-10-17T16:44:22.569Z"
+    },
+    {
+      "pergunta": "o conferir-setup nao roda contra o SKILL.md real em lugar nenhum; ligar onde?",
+      "escolha": "caso novo na bateria testa-conferir-setup.sh rodando o conferidor sem caixa; entra na tarefa 5",
+      "porque": "o CI roda as baterias testa-*.sh, entao o caso e o que faz a divergencia entre catalogo e tabela reprovar o PR; sem ele o D7 era trava que ninguem aciona",
+      "estagio": "executar",
+      "em": "2026-10-17T17:05:56.139Z"
+    },
+    {
+      "pergunta": "a tarefa 5 e texto de skill: despachar para o executor?",
+      "escolha": "escrita na janela principal, com a mesma conferencia mecanica",
+      "porque": "autoria nuancada de skill fica na janela principal; o executor e haiku",
+      "estagio": "executar",
+      "em": "2026-10-17T17:05:56.310Z"
     }
   ]
 }

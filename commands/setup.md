@@ -1,13 +1,16 @@
 ---
-description: Monta a pasta de dados do rainforest e liga/desliga o que é opcional — por projeto ou para tudo
-argument-hint: [vazio mostra o estado; ou "desliga o gate de staging aqui"]
+description: Entrevista guiada na primeira vez; depois, mostra o estado e muda uma parte — por projeto ou para tudo
+argument-hint: [vazio conduz a entrevista ou mostra o estado; ou "desliga o gate de staging aqui"]
 ---
 
-Carregue `Skill(setup)` e conduza `$ARGUMENTS` — ou, se vazio, mostre o estado.
+Carregue `Skill(setup)` e conduza `$ARGUMENTS` — ou, se vazio, comece pela pergunta
+"primeira vez ou de novo?" da skill.
 
-Comece **sempre** por `node scripts/setup.cjs`, que não escreve nada: ele diz
-onde está a pasta de dados, o que está ligado e **de onde veio cada valor**. Leia
-isso ao usuário antes de propor mudança.
+Comece **sempre** por `node scripts/setup.cjs --plano-entrevista`, que não escreve
+nada. Com `primeira_vez: true`, a skill conduz a entrevista: uma pergunta por vez, e
+tudo gravado de uma vez no fim, por `--aplicar`, depois de ele ver o `--ensaio`. Com
+`primeira_vez: false`, mostre o estado (`node scripts/setup.cjs`, que diz o que está
+ligado e **de onde veio cada valor**) e mude só a parte que ele pedir.
 
 Dois pontos param e esperam a palavra dele, e não são formalidade:
 
@@ -42,7 +45,10 @@ no repo (com o marcador `rainforest-mind:inicio`) é a fonte da verdade.
 `claude.exe` no caminho e um destino de envio configurado; quem não tem isso não
 deve descobrir por erro em tarefa agendada. Ligar é escolha dele:
 `--ligar vigias`. Com a chave desligada o `run-vigia.ps1` sai limpo (exit 0) e
-**não** escreve em `vigias/ERROS.md`.
+**não** escreve em `vigias/ERROS.md`. Cada ronda tem também a chave dela
+(`vigia-batedor-repos`, `vigia-jardineiro-ideias`, `vigia-revisao-bimestral`,
+`vigia-sentinela-foco`, `vigia-tickets`), ligada por padrão: desligar uma cala só
+aquela ronda, com a mesma saída limpa.
 
 O que criar de automação neste projeto é outra pergunta e tem dono oficial: a
 skill `claude-automation-recommender`, do plugin `claude-code-setup`. Aponte

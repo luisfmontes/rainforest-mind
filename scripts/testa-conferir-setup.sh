@@ -84,6 +84,9 @@ gerar skill ordem-trocada "ordem-trocada.md"
 caso "ordem da entrevista trocada e recusada" 1 "difere" --skill "$CAIXA_WIN/ordem-trocada.md"
 gerar skill coerente "coerente.md"
 caso "skill coerente com o catalogo passa" 0 "ok:" --skill "$CAIXA_WIN/coerente.md"
+# O SKILL.md e o catalogo REAIS, sem caixa: e este caso que faz o CI reprovar quando
+# alguem acrescenta chave em hooks/lib/config.cjs e esquece a linha da tabela da skill.
+caso "SKILL.md real coerente com o catalogo real" 0 "ok:"
 
 echo "== 3. uso =="
 caso "arquivo de --config inexistente sai 2" 2 "" --so-catalogo --config "$CAIXA_WIN/nao-existe.json"
