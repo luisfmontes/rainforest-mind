@@ -36,8 +36,10 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
     caminho do principal citado nela barra.
   - **Grafias reconhecidas:** barra `/` ou `\`, forma MSYS (`/c/...`, no Bash), qualquer caixa, `..` resolvido contra o
     cwd (`rm ../../../f` a partir do worktree; um caminho de worktree perde a isenção quando a PALAVRA de shell
-    que o cita (aspas e escapes contam como parte dela) tem variável, substituição ou crase (`<W>/$D/f`), quando ela,
-    sem aspas, cai no principal (`"<W>"/../../f`), ou, no Bash, quando tem chave que monta `..` sem o literal, como
+    que o cita (aspas e escapes contam como parte dela) tem variável, substituição ou crase no meio (`<W>/$D/f`, `<W>/$HOME/f`; o atalho de home no início da palavra não
+    conta), quando ela, sem aspas, cai no principal (`"<W>"/../../f`, também depois de prefixo de opção, como
+    `of="<W>"/../../f`), quando a linha cita `HOME`/`USERPROFILE`/`HOMEDRIVE`/`HOMEPATH` fora de atalho no início de caminho (redefinição por
+    qualquer sintaxe), ou, no Bash, quando tem chave que monta `..` sem o literal, como
     `{<W>,y}/../f`, `<W>/.{.,}/f` e `.{x,}.`; se a palavra não é achada, basta `{`, `}`, `$` ou crase na linha; `{a,b}.txt`, `f{1..3}.txt` e expansão em outra palavra da linha seguem
     isentos) e atalho de home (`~`, `$HOME`, `${HOME}`, `$env:USERPROFILE`,
     `${env:USERPROFILE}`, `$env:HOMEDRIVE$env:HOMEPATH`, `$USERPROFILE`, `${USERPROFILE}`, `$HOMEDRIVE$HOMEPATH`,

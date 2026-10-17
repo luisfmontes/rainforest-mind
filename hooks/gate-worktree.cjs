@@ -1657,6 +1657,8 @@ function caminhosCitados(texto, ehPowerShell) {
 function alvosDaRede(comando, cwd, ehPowerShell) {
   const repo = principalDoWorktree(cwd);
   if (!repo) return [];
+  // Continuacao de linha no Bash (`\` + quebra) some antes de o shell ler a palavra.
+  if (!ehPowerShell) comando = comando.replace(/\\\r?\n/g, "");
   // Isencao dos worktrees por PALAVRA de shell (revisao de seguranca): o caminho do worktree
   // citado numa palavra pode subir para o principal sem o literal `..` que a leitura por token ve.
   // A palavra respeita aspas e escape (`<W>/'a b'/...` e uma so). Perde a isencao quando tem
@@ -1675,7 +1677,7 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
     const fecha = () => { if (cru) saida.push({ cru, limpo }); cru = ""; limpo = ""; };
     for (let i = 0; i < texto.length; i += 1) {
       const c = texto[i];
-      if (c === esc && aspa !== "'" && i + 1 < texto.length) { cru += c + texto[i + 1]; limpo += texto[i + 1]; i += 1; continue; }
+      if (c === esc && aspa !== "'" && i + 1 < texto.length) { cru += c + texto[i + 1]; if (texto[i + 1] !== "\n") limpo += texto[i + 1]; i += 1; continue; }
       if (aspa) { cru += c; if (c === aspa) aspa = null; else limpo += c; continue; }
       if (c === "'" || c === '"') { aspa = c; cru += c; continue; }
       if (/[\s;|&<>()]/.test(c)) { fecha(); continue; }
@@ -1692,17 +1694,35 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
     for (const m of p.matchAll(/\.\{((?:[^{}]|\{[^{}]*\})*)\}\./g)) if (/^,|,$|,,|\{,|,\}|\{\}/.test(m[1])) return true;
     return false;
   };
+  // HOME redefinido na linha, por qualquer sintaxe (`HOME=`, `read HOME`, `printf -v HOME`, `$env:USERPROFILE=`):
+  // falha fechado, o nome da variavel na linha fora de atalho no inicio de caminho ja basta. O nome
+  // conta em maiusculas e fora de caminho (pasta "home" de sistema Unix e a palavra em mensagem nao
+  // contam); a forma `$env:` vale em qualquer caixa.
+  const semAtalho = comando.replace(/(^|[\s'"=:(,])(\$\{?HOME\}?|\$\{?USERPROFILE\}?|\$\{?env:(?:USERPROFILE|HOME)\}?|%USERPROFILE%)(?=[\\/]|$)/gi, "$1");
+  const homeRedefinido = /(?<![\\/\w.-])(HOME|USERPROFILE|HOMEDRIVE|HOMEPATH)(?![\\/\w])/.test(semAtalho)
+    || /\$\{?env:(HOME|USERPROFILE|HOMEDRIVE|HOMEPATH)\b/i.test(semAtalho);
   const foraDosWorktrees = (n) => dentroDe(n, repo.principal) && !repo.worktrees.some((w) => dentroDe(n, w)) && !ehScratchpad(n);
-  const palavraQueSobe = (p, base) => {
-    if (/[$`]/.test(p.cru)) return true;
+  // `p.cru` e o texto ORIGINAL da palavra (o `$` de `$HOME` conta); `p.limpo` vem do texto com o
+  // atalho de home expandido, so para achar e resolver o caminho `c`.
+  // O atalho de home no INICIO da palavra (`$HOME/...`, `${env:USERPROFILE}\...`) nao conta como
+  // expansao: o valor e o da casa (HOME redefinido na linha ja tira a isencao). No meio
+  // (`<W>/$HOME/f`) conta.
+  const CASA_NO_INICIO = /^(['"]?)(\$\{?HOME\}?|\$\{?USERPROFILE\}?|\$\{?env:(?:USERPROFILE|HOME)\}?|%USERPROFILE%)(?=[\\/])/i;
+  const palavraQueSobe = (p, base, c) => {
+    if (/[$`]/.test(p.cru.replace(CASA_NO_INICIO, (m, aspa) => aspa))) return true;
     // Com chave (Bash), cada alternativa da expansao conta, e mais a checagem da chave; expansao
     // que estoura falha fechado. Virgula fora de chave (`W,W` de trecho aninhado, lista do
     // PowerShell) separa caminhos: cada pedaco conta.
-    let alternativas = [p.limpo];
+    // A palavra inteira e o trecho que comeca no caminho citado (`of="<W>"/../../f`: o prefixo
+    // `of=` faria a palavra inteira virar caminho relativo).
+    const i0 = p.limpo.indexOf(c);
+    const i = i0 > 0 && !/[{},]/.test(p.limpo.slice(0, i0)) ? i0 : -1;
+    let alternativas = i > 0 ? [p.limpo, p.limpo.slice(i)] : [p.limpo];
     if (!ehPowerShell && /[{}]/.test(p.limpo)) {
       if (sobeNaChave(p.limpo)) return true;
       alternativas = expandirChaves(p.limpo, "u".repeat(p.limpo.length));
       if (!alternativas) return true;
+      if (i > 0) alternativas = alternativas.concat(expandirChaves(p.limpo.slice(i), "u".repeat(p.limpo.length - i)) || ["\0"]);
     }
     return alternativas.some((a) => a.split(",").some((x) => x && foraDosWorktrees(normalizaCaminho(x, base))));
   };
@@ -1710,10 +1730,15 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
     const n = normalizaCaminho(c, base);
     if (!dentroDe(n, repo.principal) || ehScratchpad(n)) return false;
     if (!repo.worktrees.some((w) => dentroDe(n, w))) return true;
-    const palavras = palavrasDe(comCasa(texto)).filter((p) => p.cru.includes(c) || p.limpo.includes(c));
+    // HOME redefinido na linha (`HOME=<W>; touch ~/../../f`): o atalho expandido aqui nao e o do
+    // shell; a isencao cai.
+    if (homeRedefinido) return true;
+    // Palavras do texto original; cada uma com o `limpo` do texto com atalho de home expandido.
+    const palavras = palavrasDe(texto).map((p) => ({ cru: p.cru, limpo: palavrasDe(comCasa(p.cru))[0]?.limpo ?? p.limpo }))
+      .filter((p) => p.cru.includes(c) || p.limpo.includes(c));
     // Palavra nao achada: falha fechado, com a linha inteira no lugar da palavra.
     if (!palavras.length) return /[{}$`]/.test(texto);
-    return palavras.some((p) => palavraQueSobe(p, base));
+    return palavras.some((p) => palavraQueSobe(p, base, c));
   };
   const citaProtegido = (texto, base) => caminhosCitados(texto, ehPowerShell).some((c) => protegido(c, base, texto));
   const alvo = [{ dir: repo.principal, incerto: true }];

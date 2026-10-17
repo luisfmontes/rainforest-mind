@@ -1873,6 +1873,17 @@ s552rv2 'touch __WN__/.""./.""./.""./f' 2 b
 s552rv2 'Remove-Item "__WN__"/../../../f' 2 bp
 s552rv2 'touch "__WN__/a b.txt"' 0 b
 s552rv2 'Set-Content "__WN__/a b.txt" x' 0 bp
+# Revisao do delta 6ed2beb6: $HOME no meio da palavra conta; HOME redefinido tira a isencao;
+# prefixo de opcao antes do caminho; continuacao de linha.
+s552rv2 'touch __WN__/$HOME/f' 2 b
+s552rv2 'Remove-Item __WN__/$env:USERPROFILE/f' 2 bp
+s552rv2 'HOME=__WN__; touch ~/../../../f' 2 b
+s552rv2 'read HOME <<< __WN__; touch ~/../../../f' 2 b
+s552rv2 'printf -v HOME %s __WN__; touch ~/../../../f' 2 b
+s552rv2 'git -C __WN__ commit -m "fix home page"' 0 b
+s552rv2 'dd if=a of="__WN__"/../../../f' 2 b
+s552rv2 'dd if=a of="__WN__"/f' 0 b
+s552rv2 "$(printf 'touch __WN__/.\\\n./.\\\n./.\\\n./f')" 2 b
 s552rv2 'touch __WN__/f.{js,ts}' 0 b
 s552rv2 'git commit --message="corrigido em __R__/a"' 0 bp
 s552rv2 'git commit --message=x __R__/a' 2 b
