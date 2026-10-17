@@ -35,8 +35,10 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   - **Linha que o gate não sabe cortar com confiança** (here-string, `$(` dentro de aspas) vira um segmento só, e o
     caminho do principal citado nela barra.
   - **Grafias reconhecidas:** barra `/` ou `\`, forma MSYS (`/c/...`, no Bash), qualquer caixa, `..` resolvido contra o
-    cwd (`rm ../../../f` a partir do worktree; no Bash, com chave e `..` na mesma linha, ou com o que monta `..` sem o literal (ponto colado por dentro da chave, a
-    vírgula, aspa ou contrabarra; `$'...'`, `$(`, crase, ou ponto antes de `{` com ponto depois de `}`), a isenção dos worktrees não vale) e atalho de home (`~`, `$HOME`, `${HOME}`, `$env:USERPROFILE`,
+    cwd (`rm ../../../f` a partir do worktree; um caminho de worktree perde a isenção quando a PALAVRA que o
+    cita tem variável, substituição ou crase (`<W>/$D/f`), ou, no Bash, chave que monta `..` sem o literal, como
+    `{<W>,y}/../f`, `<W>/.{.,}/f` e `.{x,}.`; `{a,b}.txt`, `f{1..3}.txt` e expansão em outra palavra da linha seguem
+    isentos) e atalho de home (`~`, `$HOME`, `${HOME}`, `$env:USERPROFILE`,
     `${env:USERPROFILE}`, `$env:HOMEDRIVE$env:HOMEPATH`, `$USERPROFILE`, `${USERPROFILE}`, `$HOMEDRIVE$HOMEPATH`,
     `%USERPROFILE%`, `%HOMEDRIVE%%HOMEPATH%`). No Bash, linha com `$'...'` vira um segmento só, como a here-string.
   - **Não barra:** o próprio worktree e os outros worktrees do repositório (o principal e os worktrees saem de

@@ -1848,6 +1848,19 @@ s552rv2 'echo x > __WN__/{x,.}./{x,.}./{x,.}./f' 2 b
 s552rv2 'echo x > __WN__/.{,}./.{,}./.{,}./f' 2 b
 s552rv2 'echo x > __WN__/.{x,}./.{x,}./.{x,}./f' 2 b
 s552rv2 'touch __WN__/{a,b}.txt' 0 b
+# Isencao por palavra (revisao do delta): expansao na palavra do caminho tira a isencao; em
+# outra palavra da linha, nao.
+s552rv2 'D=../../..; touch __WN__/$D/f' 2 b
+s552rv2 'touch __WN__/$(printf x)/../../../f' 2 b
+s552rv2 'Remove-Item __WN__/$d/f' 2 bp
+s552rv2 'touch __WN__/.{x,}./.{x,}./.{x,}./f' 2 b
+s552rv2 'cd __WN__ && echo $(date) ${X}' 0 b
+s552rv2 'git -C __WN__ commit -m "fix: usa ${X} em $(date)"' 0 b
+s552rv2 'touch __WN__/{a,b}.{js,ts}' 0 b
+s552rv2 'touch __WN__/x.{a,b}.min.js' 0 b
+s552rv2 'touch __WN__/f{1..3}.txt' 0 b
+# Atalho de home expandido: a palavra nao e achada no texto, e a isencao falha fechado.
+case "${WN,,}" in "${CASA,,}"/*) WT_HOME="~${WN:${#CASA}}"; gate "#552 rv2: touch ~/.../worktree/\$D/f (atalho de home + variavel), BARRA" 2 "$(b "D=../../..; touch $WT_HOME/\$D/f" "$WN")";; esac
 s552rv2 'touch __WN__/f.{js,ts}' 0 b
 s552rv2 'git commit --message="corrigido em __R__/a"' 0 bp
 s552rv2 'git commit --message=x __R__/a' 2 b

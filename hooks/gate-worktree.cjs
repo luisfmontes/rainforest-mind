@@ -1657,22 +1657,49 @@ function caminhosCitados(texto, ehPowerShell) {
 function alvosDaRede(comando, cwd, ehPowerShell) {
   const repo = principalDoWorktree(cwd);
   if (!repo) return [];
-  // Bash com chave e `..` na linha (`echo x > {<W>,y}/../../../f`), ou com o que monta `..` sem o
-  // literal: ponto colado por dentro da chave, a virgula, aspa ou contrabarra (`<W>/.{.,}/f`,
-  // `{x,.}.`, `{'.''.',x}`), `$'...'`, `$(` ou crase. A expansao sobe do worktree e a leitura por
-  // token nao ve; a isencao dos worktrees nao vale. Tambem ponto antes de `{` com ponto depois de
-  // `}` (`.{,}.`, `.{x,}.`). `{a,b}.txt` e `f.{js,ts}` seguem isentos.
-  const subidaPorChave = !ehPowerShell && /[{}]/.test(comando)
-    && (/\.\.|[{,'"\\]\.|\.[},'"\\]|\$'|\$\(|`/.test(comando) || /\.\{/.test(comando) && /\}\./.test(comando));
-  const protegido = (c, base) => {
-    const n = normalizaCaminho(c, base);
-    return dentroDe(n, repo.principal) && (subidaPorChave || !repo.worktrees.some((w) => dentroDe(n, w))) && !ehScratchpad(n);
+  // Isencao dos worktrees por PALAVRA (revisao de seguranca): o caminho do worktree citado numa
+  // palavra com expansao pode subir para o principal sem o literal `..`: variavel ou
+  // substituicao (`<W>/$D/f`, `<W>/$'\x2e\x2e'/f`, crase) e, no Bash, chave que monta `..`
+  // (`{<W>,y}/../../f`, `<W>/.{.,}/f`, `{x,.}.`, `{'.''.',x}`, `.{,}.`). A sequencia `{1..3}` nao conta,
+  // e `{a,b}.txt`, `f.{js,ts}`, `{cd,<W>}` seguem isentos. Expansao em outra palavra nao importa.
+  const palavraQueSobe = (palavra) => {
+    if (/[$`]/.test(palavra)) return true;
+    if (ehPowerShell) return false;
+    const p = palavra.replace(/\{-?\w+\.\.-?\w+(\.\.-?\d+)?\}/g, "{}");
+    if (!/[{}]/.test(p)) return false;
+    if (/\.\.|[{,'"]\.|\.[},'"\\]/.test(p)) return true;
+    // Ponto antes e depois do MESMO grupo com alternativa vazia (`.{,}.`, `.{x,}.`, `.{{,},}.`).
+    // `{a,b}.{js,ts}` (dois grupos) e `x.{a,b}.min.js` (sem vazia) nao montam `..`.
+    for (const m of p.matchAll(/\.\{((?:[^{}]|\{[^{}]*\})*)\}\./g)) if (/^,|,$|,,|\{,|,\}|\{\}/.test(m[1])) return true;
+    return false;
   };
+  // Palavras (ate espaco ou operador) do texto que contem o caminho citado.
+  const palavrasCom = (texto, c) => {
+    const saida = [];
+    for (let i = texto.indexOf(c); i >= 0; i = texto.indexOf(c, i + 1)) {
+      let a = i, b = i + c.length;
+      while (a > 0 && !/[\s;|&<>()]/.test(texto[a - 1])) a -= 1;
+      while (b < texto.length && !/[\s;|&<>()]/.test(texto[b])) b += 1;
+      saida.push(texto.slice(a, b));
+    }
+    return saida;
+  };
+  const protegido = (c, base, texto = "") => {
+    const n = normalizaCaminho(c, base);
+    if (!dentroDe(n, repo.principal) || ehScratchpad(n)) return false;
+    if (!repo.worktrees.some((w) => dentroDe(n, w))) return true;
+    // Palavra nao achada (caminho vindo de atalho de home expandido, `FileSystem::` tirado):
+    // falha fechado, com a linha inteira no lugar da palavra.
+    const palavras = palavrasCom(texto, c);
+    if (!palavras.length) return /[{}$`]/.test(texto);
+    return palavras.some(palavraQueSobe);
+  };
+  const citaProtegido = (texto, base) => caminhosCitados(texto, ehPowerShell).some((c) => protegido(c, base, texto));
   const alvo = [{ dir: repo.principal, incerto: true }];
   // Segmentacao nao confiavel (D2): a linha inteira e um segmento so, e nada e leitura.
   const naoConfiavel = /\$\(|`|\$'/.test(comando) && !ehPowerShell
     || ehPowerShell && (desalinhaAMascara(comando) || /[\u2018-\u201e]/.test(comando) || /"[^"]*\$\(/.test(comando) || /@['"]/.test(comando));
-  if (naoConfiavel) return caminhosCitados(comando, ehPowerShell).some((c) => protegido(c, cwd)) ? alvo : [];
+  if (naoConfiavel) return citaProtegido(comando, cwd) ? alvo : [];
 
   const segmentos = segmentosDaRede(comando, ehPowerShell);
   // Config do git ou do pager mexida em qualquer segmento da linha (revisao de seguranca).
@@ -1692,10 +1719,10 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
       // chaves (`Get-Content (Remove-Item <P>/f)` roda o de dentro).
       for (const destino of destinosDeRedirecionamento(seg, ehPowerShell)) {
         if (ehDescarteDeSaida(destino, ehPowerShell)) continue;
-        if (caminhosCitados(destino, ehPowerShell).concat([destino.replace(/^FileSystem::/i, "")]).some((c) => protegido(c, base))) return alvo;
+        if (caminhosCitados(destino, ehPowerShell).concat([destino.replace(/^FileSystem::/i, "")]).some((c) => protegido(c, base, destino))) return alvo;
       }
       // Na chamada .NET de leitura, o argumento entre parenteses e o proprio alvo da leitura.
-      if (leitura[i] !== "net" && caminhosCitados(trechosAninhados(seg), ehPowerShell).some((c) => protegido(c, base))) return alvo;
+      if (leitura[i] !== "net" && citaProtegido(trechosAninhados(seg), base)) return alvo;
       continue;
     }
     // Fora de leitura: rodar com cwd no principal, ou citar caminho dele.
@@ -1703,7 +1730,7 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
     // Texto cru (as aspas delimitam o caminho: `('<P>'+'/f')`); em `git`/`gh`, os tokens sem a mensagem (D4).
     const semMensagem = semTextoDeMensagem(toks);
     const texto = semMensagem === toks ? seg : semMensagem.map((t) => t.v).join(" ");
-    if (caminhosCitados(texto, ehPowerShell).some((c) => protegido(c, base))) return alvo;
+    if (citaProtegido(texto, base)) return alvo;
   }
   return [];
 }
