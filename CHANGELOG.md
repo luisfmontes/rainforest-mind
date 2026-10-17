@@ -40,7 +40,8 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
     `%USERPROFILE%`, `%HOMEDRIVE%%HOMEPATH%`). No Bash, linha com `$'...'` vira um segmento só, como a here-string.
   - **Não barra:** o próprio worktree e os outros worktrees do repositório (o principal e os worktrees saem de
     `git worktree list --porcelain`), o scratchpad da sessão e o texto de mensagem de `git`/`gh` (`-m`, `--message`,
-    `--body`, `--title`, `-t`): `git commit -m "corrigido em <P>/a"` passa.
+    `--body`, `--title`, `-t`, também com o valor colado, como `--message="..."` e `-m"..."`): `git commit -m "corrigido em
+    <P>/a"` passa.
   - **Mudança de comportamento:** `git -C <principal> -C <worktree> commit` e `Set-Content <principal>/...` digitado
     na ferramenta Bash passam a ser barrados, assim como `{c,}d <principal>; ...` (Bash) e o bloco `{cd,<principal>}`
     (PowerShell), que citam o principal fora de leitura.
@@ -52,6 +53,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   variável cujo valor não aparece no comando, `~usuario/`, config que o repositório já tem (`core.pager`, `diff.external`,
   `.gitattributes` gravados antes: o `git` de leitura confia nela), nome curto 8.3 e caminho UNC, a janela principal (a rede só age em
   subagente) e os outros gates.
+
 ## 1.67.11 — 2026-10-16
 
 - **`gate-worktree` barra mais formas de escrever no checkout principal (#530).** Um subagente num worktree linkado

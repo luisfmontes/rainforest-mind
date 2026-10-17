@@ -1827,6 +1827,19 @@ s552seg2 "[string]\$p='__R__'; Remove-Item \$p/f" 2 bp
 s552seg2 "\$p,\$q='__R__','x'; Remove-Item \$p/f" 2 bp
 s552seg2 "\$p??='__R__'; Remove-Item \$p/f" 2 bp
 s552seg2 "\${a-b}='__R__'; Remove-Item \${a-b}/f" 2 bp
+# Revisao (rodada 2): chave termina o caminho, e valor colado de mensagem (D4). Do worktree
+# DENTRO do principal (__WN__), o layout real.
+s552rv2() { gate "#552 rv2: $1, cwd no worktree dentro do principal, $( [ "$2" = 2 ] && echo BARRA || echo PASSA)" "$2" "$($3 "$(printf '%s' "$1" | s552)" "$WN")"; }
+s552rv2 '{cd,__WN__} && git commit -m x' 0 b
+s552rv2 '{cd,__WN__} && echo x > f' 0 b
+s552rv2 'echo x > {__WN__,__WN__}/f' 0 b
+s552rv2 'echo x > {__R__/a,__WN__/b}' 2 b
+s552rv2 'git commit --message="corrigido em __R__/a"' 0 b
+s552rv2 "git commit --message='corrigido em __R__/a'" 0 b
+s552rv2 'gh issue create --title="ver __R__/a" --body="ver __R__/a"' 0 b
+s552rv2 'git commit -m"corrigido em __R__/a"' 0 b
+s552rv2 'git commit --message="corrigido em __R__/a"' 0 bp
+s552rv2 'git commit --message=x __R__/a' 2 b
 case "${R,,}" in "${CASA,,}"/*) RT='$USERPROFILE'"${R:${#CASA}}"; gate "#552 seg3: rm \$USERPROFILE/.../principal/f, do worktree, BARRA" 2 "$(b "rm $RT/f" "$WT")";; esac
 
 echo "== #552 D6: pai inexistente =="

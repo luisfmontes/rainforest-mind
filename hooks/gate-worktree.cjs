@@ -1441,10 +1441,10 @@ const GIT_DE_LEITURA = new Set(["log", "show", "diff", "status", "rev-parse", "l
 // Opcoes cujo valor e texto de mensagem em `git`/`gh` (D4).
 const OPCOES_DE_TEXTO = new Set(["-m", "--message", "--body", "--title", "-t"]);
 // Caminho absoluto no texto: `C:\...`, `C:/...`, e no Bash a forma MSYS `/c/...`.
-const CAMINHO_WINDOWS = /[A-Za-z]:[\\/][^\s'"`;|&<>(),]*/g;
-const CAMINHO_MSYS = /(?:^|(?<=[\s'"=:(,]))\/[A-Za-z]\/[^\s'"`;|&<>(),]*/g;
+const CAMINHO_WINDOWS = /[A-Za-z]:[\\/][^\s'"`;|&<>(){},]*/g;
+const CAMINHO_MSYS = /(?:^|(?<=[\s'"=:({,]))\/[A-Za-z]\/[^\s'"`;|&<>(){},]*/g;
 // Componente `..` (D5): o token inteiro que o contem.
-const CAMINHO_RELATIVO_ACIMA = /(?:^|(?<=[\s'"=:(,]))(?:[^\s'"`;|&<>(),]*[\\/])?\.\.(?:[\\/][^\s'"`;|&<>(),]*)?(?=$|[\s'"`;|&<>(),])/g;
+const CAMINHO_RELATIVO_ACIMA = /(?:^|(?<=[\s'"=:({,]))(?:[^\s'"`;|&<>(){},]*[\\/])?\.\.(?:[\\/][^\s'"`;|&<>(){},]*)?(?=$|[\s'"`;|&<>(){},])/g;
 
 /** Caminho comparavel: barras normais, MSYS `/c/` vira `c:/`, sem barra final, minusculo no Windows. */
 function normalizaCaminho(p, base) {
@@ -1624,14 +1624,15 @@ function semTextoDeMensagem(toks) {
   for (let i = 0; i < toks.length; i += 1) {
     const t = toks[i];
     if (!t.q && OPCOES_DE_TEXTO.has(t.v)) { i += 1; continue; }
-    if (!t.q && /^--(message|body|title)=/.test(t.v)) continue;
+    // Valor colado: `--message="..."` (o token fica citado) e `-m"..."`/`-t"..."`.
+    if (/^(--(message|body|title)=|-[mt].)/.test(t.v)) continue;
     saida.push(t);
   }
   return saida;
 }
 
 // Caminho absoluto POSIX (`/srv/repo/...`), fora do Windows.
-const CAMINHO_POSIX = /(?:^|(?<=[\s'"=:(,]))\/[^\s'"`;|&<>(),]*/g;
+const CAMINHO_POSIX = /(?:^|(?<=[\s'"=:({,]))\/[^\s'"`;|&<>(){},]*/g;
 // Pasta do usuario por atalho (revisao de seguranca): til, a variavel HOME e as de
 // perfil do PowerShell e do cmd.
 const ATALHO_DE_HOME = /(^|[\s'"=:(,])~(?=[\\/]|$|[\s'"])|\$\{HOME\}|\$HOME\b|\$\{?HOMEDRIVE\}?\$\{?HOMEPATH\}?|\$\{USERPROFILE\}|\$USERPROFILE\b|\$\{?env:HOMEDRIVE\}?\$\{?env:HOMEPATH\}?|%HOMEDRIVE%%HOMEPATH%|\$\{env:(?:USERPROFILE|HOME)\}|\$env:(?:USERPROFILE|HOME)\b|%USERPROFILE%/gi;
