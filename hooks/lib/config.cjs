@@ -166,6 +166,39 @@ const CHAVES = {
     descricao: 'as rondas headless agendadas (exigem PowerShell, claude.exe e destino de envio)',
     entrevista: { grupo: 'ferramentas', detectar: { executaveis: ['powershell', 'claude'] } },
   },
+  // RONDAS — um toggle por ronda, ligado por padrao de proposito: quem ja tem
+  // `vigias: true` gravado continua com as cinco rodando. So vale com `vigias`
+  // tambem ligado (o run-vigia.ps1 olha as duas chaves, nesta ordem).
+  'vigia-batedor-repos': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'ronda batedor-repos dos vigias; so roda com `vigias` tambem ligado',
+    entrevista: { grupo: 'ferramentas', detectar: { executaveis: ['powershell', 'claude'] } },
+  },
+  'vigia-jardineiro-ideias': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'ronda jardineiro-ideias dos vigias; so roda com `vigias` tambem ligado',
+    entrevista: { grupo: 'ferramentas', detectar: { executaveis: ['powershell', 'claude'] } },
+  },
+  'vigia-revisao-bimestral': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'ronda revisao-bimestral dos vigias; so roda com `vigias` tambem ligado',
+    entrevista: { grupo: 'ferramentas', detectar: { executaveis: ['powershell', 'claude'] } },
+  },
+  'vigia-sentinela-foco': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'ronda sentinela-foco dos vigias; so roda com `vigias` tambem ligado',
+    entrevista: { grupo: 'ferramentas', detectar: { executaveis: ['powershell', 'claude'] } },
+  },
+  'vigia-tickets': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'ronda tickets dos vigias; so roda com `vigias` tambem ligado',
+    entrevista: { grupo: 'ferramentas', detectar: { executaveis: ['powershell', 'claude'] } },
+  },
   // PONTES — quais hosts de agente recebem as regras deste plugin, geradas do mesmo
   // SKILL.md (`scripts/ponte.cjs`). Entram aqui porque "quais agentes eu uso nesta
   // máquina" é configuração do usuário, e configuração mora no `/setup`; o que NÃO
