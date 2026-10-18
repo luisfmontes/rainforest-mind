@@ -132,7 +132,11 @@
     "head": "643f177d8b1d17e7c8751d64a81e956c16d9ea7a"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-setup-entrevista.sh; bash scripts/testa-setup.sh; bash scripts/testa-conferir-setup.sh; node scripts/conferir-setup.cjs --so-catalogo; node scripts/conferir-setup.cjs; node scripts/conferir-versao.cjs",
+    "saida": "testa-setup-entrevista: 77 ok, 0 falha(s), exit 0 | testa-setup: 75 ok, 0 falha(s), exit 0 | testa-conferir-setup: 10 ok, 0 falha(s), exit 0 | conferir-setup --so-catalogo: ok 45 chaves, exit 0 | conferir-setup: ok 45 chaves (catalogo e SKILL.md), exit 0 | conferir-versao: ok versao 1.68.0, exit 0 | territorio: sem territorio nos 7 fontes",
+    "sensor_externo": "bash scripts/testa-setup-entrevista.sh",
+    "em": "2026-10-18"
   },
   "fechar": {
     "status": "pendente"
