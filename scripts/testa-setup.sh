@@ -206,6 +206,43 @@ $s"
   else
     falhou=$((falhou+1)); echo "  FALHA ERROS.md nao ficou byte-identico ao de antes (rondas)"
   fi
+
+  # 4) ronda sem chave propria segue so com vigias: --ligado devolve 2 para a chave
+  # que nao esta no catalogo, e o runner NAO trata isso como desligada nem como erro
+  # de leitura. Passa do toggle e chega ao "sem destino de envio" (1 linha nova no
+  # ERROS.md, nenhuma "nao consegui ler o toggle"). O prompt do vigia novo mora na
+  # caixa (RFM_ROOT), nao no repositorio.
+  esperado "ronda sem chave propria segue so com vigias: --ligado de chave sem toggle devolve 2" 2 $SETUP --ligado vigia-meu-vigia
+  mkdir -p "$DADOS/vigias"
+  printf 'vigia de teste\n' > "$DADOS/vigias/meu-vigia.md"
+  $SETUP --ligar vigias --escopo usuario >/dev/null 2>&1
+  cp "$ERROS" "$CAIXA/erros-antes-sem-chave.md"
+  sd_antes=$(grep -c "sem destino de envio" "$ERROS")
+  nc_antes=$(grep -c "nao consegui ler o toggle" "$ERROS")
+  saida_sem_chave=$($RONDA_ENV powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$SRC/vigias/run-vigia.ps1" -Vigia meu-vigia 2>&1)
+  if echo "$saida_sem_chave" | grep -q "desligad"; then
+    falhou=$((falhou+1)); echo "  FALHA ronda sem chave propria foi tratada como desligada"; echo "$saida_sem_chave" | sed 's/^/         /' | tail -5
+  else
+    ok=$((ok+1)); echo "  ok   ronda sem chave propria segue so com vigias: a saida nao diz 'desligad'"
+  fi
+  if echo "$saida_sem_chave" | grep -q "nao consegui ler o toggle"; then
+    falhou=$((falhou+1)); echo "  FALHA ronda sem chave propria saiu como erro de leitura do toggle"; echo "$saida_sem_chave" | sed 's/^/         /' | tail -5
+  else
+    ok=$((ok+1)); echo "  ok   ronda sem chave propria segue so com vigias: a saida nao diz 'nao consegui ler o toggle'"
+  fi
+  sd_depois=$(grep -c "sem destino de envio" "$ERROS")
+  nc_depois=$(grep -c "nao consegui ler o toggle" "$ERROS")
+  if [ "$((sd_depois - sd_antes))" = 1 ] && [ "$nc_depois" = "$nc_antes" ]; then
+    ok=$((ok+1)); echo "  ok   ronda sem chave propria segue so com vigias: passou do toggle (ERROS.md ganhou 1 'sem destino de envio', nenhum 'nao consegui ler')"
+  else
+    falhou=$((falhou+1)); echo "  FALHA ronda sem chave propria: ERROS.md ganhou $((sd_depois - sd_antes)) 'sem destino de envio' e $((nc_depois - nc_antes)) 'nao consegui ler', esperava 1 e 0"; echo "$saida_sem_chave" | sed 's/^/         /' | tail -5
+  fi
+  cp "$CAIXA/erros-antes-sem-chave.md" "$ERROS"
+  if cmp -s "$ERROS" "$CAIXA/erros-antes-sem-chave.md"; then
+    ok=$((ok+1)); echo "  ok   ronda sem chave propria segue so com vigias: ERROS.md restaurado, byte-identico ao de antes"
+  else
+    falhou=$((falhou+1)); echo "  FALHA ronda sem chave propria: ERROS.md nao ficou byte-identico ao de antes"
+  fi
 else
   echo "  (pulado: powershell.exe nao esta no PATH — as rondas nao podem ser exercitadas aqui)"
 fi

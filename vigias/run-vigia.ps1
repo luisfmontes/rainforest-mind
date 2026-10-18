@@ -62,9 +62,12 @@ if ($LASTEXITCODE -ne 0) {
 # Sem esta checagem uma ronda desligada seguia ate o destino de envio e falhava
 # por falta de config, em vez de sair limpa. Mesma regra do bloco geral: desligado
 # nao e erro, e a leitura que falha e erro.
+# Exit 2 do --ligado quer dizer que a chave NAO existe no catalogo: vigia novo sem
+# toggle proprio. Esse caso SEGUE, governado so pela chave geral `vigias` (que ja
+# passou acima), e nao escreve em ERROS.md: nao ter chave propria nao e falha.
 $chaveRonda = if ($Vigia -like 'vigia-*') { $Vigia } else { "vigia-$Vigia" }
 $estadoRonda = & node (Join-Path $plugin "scripts\setup.cjs") --ligado $chaveRonda 2>$null
-if ($LASTEXITCODE -ne 0) {
+if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 2) {
     if ($estadoRonda -eq 'desligado') {
         Write-Output "ronda $chaveRonda desligada nesta configuracao - nada a fazer. Ligue com: node scripts/setup.cjs --ligar $chaveRonda"
         exit 0
