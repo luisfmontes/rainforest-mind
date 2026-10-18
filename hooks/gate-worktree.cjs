@@ -1657,8 +1657,6 @@ function caminhosCitados(texto, ehPowerShell) {
 function alvosDaRede(comando, cwd, ehPowerShell) {
   const repo = principalDoWorktree(cwd);
   if (!repo) return [];
-  // Continuacao de linha no Bash (`\` + quebra) some antes de o shell ler a palavra.
-  if (!ehPowerShell) comando = comando.replace(/\\\r?\n/g, "");
   // Isencao dos worktrees por PALAVRA de shell (revisao de seguranca): o caminho do worktree
   // citado numa palavra pode subir para o principal sem o literal `..` que a leitura por token ve.
   // A palavra respeita aspas e escape (`<W>/'a b'/...` e uma so). Perde a isencao quando tem
@@ -1694,21 +1692,33 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
     for (const m of p.matchAll(/\.\{((?:[^{}]|\{[^{}]*\})*)\}\./g)) if (/^,|,$|,,|\{,|,\}|\{\}/.test(m[1])) return true;
     return false;
   };
+  // Atalho de home por shell. Bash: so `$HOME`, `${HOME}`, `$USERPROFILE`, `${USERPROFILE}`, com caixa exata e
+  // chave fechada (`${HOME/x/y}` e substituicao, `$home` e outra variavel). PowerShell: `$env:`,
+  // `${env:}`, `%USERPROFILE%` e `$HOME` em qualquer caixa.
+  const CASA = ehPowerShell
+    ? /(\$\{env:(?:USERPROFILE|HOME)\}|\$env:(?:USERPROFILE|HOME)\b|\$HOME\b|%USERPROFILE%)/i
+    : /(\$\{HOME\}|\$HOME\b|\$\{USERPROFILE\}|\$USERPROFILE\b)/;
+  const CASA_NO_INICIO = new RegExp("^(['\"]?)" + CASA.source + "(?=[\\\\/])", CASA.flags);
   // HOME redefinido na linha, por qualquer sintaxe (`HOME=`, `read HOME`, `printf -v HOME`, `$env:USERPROFILE=`):
-  // falha fechado, o nome da variavel na linha fora de atalho no inicio de caminho ja basta. O nome
-  // conta em maiusculas e fora de caminho (pasta "home" de sistema Unix e a palavra em mensagem nao
-  // contam); a forma `$env:` vale em qualquer caixa.
-  const semAtalho = comando.replace(/(^|[\s'"=:(,])(\$\{?HOME\}?|\$\{?USERPROFILE\}?|\$\{?env:(?:USERPROFILE|HOME)\}?|%USERPROFILE%)(?=[\\/]|$)/gi, "$1");
-  const homeRedefinido = /(?<![\\/\w.-])(HOME|USERPROFILE|HOMEDRIVE|HOMEPATH)(?![\\/\w])/.test(semAtalho)
-    || /\$\{?env:(HOME|USERPROFILE|HOMEDRIVE|HOMEPATH)\b/i.test(semAtalho);
+  // o nome da variavel fora de atalho de home. Conta em maiusculas e fora de caminho; `$env:` e
+  // `Set-Item env:` em qualquer caixa; tambem com aspas e escapes tirados (`read HO\ME`).
+  const semCasa = (t) => t.replace(new RegExp("(^|[\\s'\"=:(,])" + CASA.source + "(?=[\\\\/]|$)", CASA.flags.includes("i") ? "gi" : "g"), "$1");
+  // `$HOME`/`${HOME}` lidos nao redefinem: o nome conta sem `$` ou `{` antes.
+  const NOME_DE_CASA = /(?<![\\/\w.${-])(HOME|USERPROFILE|HOMEDRIVE|HOMEPATH)(?![\\/\w])/;
+  const NOME_DE_CASA_PS = /\benv:(HOME|USERPROFILE|HOMEDRIVE|HOMEPATH)\b/i;
+  const linhaSemCasa = semCasa(comando);
+  const homeRedefinido = NOME_DE_CASA.test(linhaSemCasa) || NOME_DE_CASA_PS.test(linhaSemCasa)
+    || NOME_DE_CASA.test(palavrasDe(linhaSemCasa).map((p) => p.limpo).join(" "));
   const foraDosWorktrees = (n) => dentroDe(n, repo.principal) && !repo.worktrees.some((w) => dentroDe(n, w)) && !ehScratchpad(n);
   // `p.cru` e o texto ORIGINAL da palavra (o `$` de `$HOME` conta); `p.limpo` vem do texto com o
   // atalho de home expandido, so para achar e resolver o caminho `c`.
   // O atalho de home no INICIO da palavra (`$HOME/...`, `${env:USERPROFILE}\...`) nao conta como
-  // expansao: o valor e o da casa (HOME redefinido na linha ja tira a isencao). No meio
+  // expansao: o valor e o da casa (HOME redefinido na linha tira a isencao abaixo). No meio
   // (`<W>/$HOME/f`) conta.
-  const CASA_NO_INICIO = /^(['"]?)(\$\{?HOME\}?|\$\{?USERPROFILE\}?|\$\{?env:(?:USERPROFILE|HOME)\}?|%USERPROFILE%)(?=[\\/])/i;
   const palavraQueSobe = (p, base, c) => {
+    // Chega ao worktree pelo atalho de home e a linha redefine HOME: o atalho expandido aqui nao e o
+    // do shell (`HOME=<W>; touch ~/../../f`).
+    if (homeRedefinido && (CASA_NO_INICIO.test(p.cru) || /^['"]?~(?=[\\/]|$)/.test(p.cru))) return true;
     if (/[$`]/.test(p.cru.replace(CASA_NO_INICIO, (m, aspa) => aspa))) return true;
     // Com chave (Bash), cada alternativa da expansao conta, e mais a checagem da chave; expansao
     // que estoura falha fechado. Virgula fora de chave (`W,W` de trecho aninhado, lista do
@@ -1730,11 +1740,8 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
     const n = normalizaCaminho(c, base);
     if (!dentroDe(n, repo.principal) || ehScratchpad(n)) return false;
     if (!repo.worktrees.some((w) => dentroDe(n, w))) return true;
-    // HOME redefinido na linha (`HOME=<W>; touch ~/../../f`): o atalho expandido aqui nao e o do
-    // shell; a isencao cai.
-    if (homeRedefinido) return true;
     // Palavras do texto original; cada uma com o `limpo` do texto com atalho de home expandido.
-    const palavras = palavrasDe(texto).map((p) => ({ cru: p.cru, limpo: palavrasDe(comCasa(p.cru))[0]?.limpo ?? p.limpo }))
+    const palavras = palavrasDe(texto).map((p) => ({ cru: p.cru, limpo: palavrasDe(comCasa(p.cru)).map((x) => x.limpo).join(" ") || p.limpo }))
       .filter((p) => p.cru.includes(c) || p.limpo.includes(c));
     // Palavra nao achada: falha fechado, com a linha inteira no lugar da palavra.
     if (!palavras.length) return /[{}$`]/.test(texto);
@@ -1742,8 +1749,14 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
   };
   const citaProtegido = (texto, base) => caminhosCitados(texto, ehPowerShell).some((c) => protegido(c, base, texto));
   const alvo = [{ dir: repo.principal, incerto: true }];
+  // HOME redefinido e atalho de home na mesma linha (`HOME=<W>; touch ~/../../f`): o destino do atalho
+  // nao e o que o gate expande. Com caminho do principal (worktree incluso) citado, barra.
+  if (homeRedefinido && (/(^|[\s'"=:(,])~(?=[\\/]|$|\s)/.test(comando) || CASA.test(comando))
+    && caminhosCitados(comando, ehPowerShell).some((c) => dentroDe(normalizaCaminho(c, cwd), repo.principal))) return alvo;
   // Segmentacao nao confiavel (D2): a linha inteira e um segmento so, e nada e leitura.
-  const naoConfiavel = /\$\(|`|\$'/.test(comando) && !ehPowerShell
+  // Bash com `\` + quebra: colar as linhas erra quando as contrabarras sao pares (`ls \\` + quebra +
+  // `rm <P>/f`), e nao colar erra a continuacao; a linha toda vira um segmento so.
+  const naoConfiavel = /\$\(|`|\$'|\\\r?\n/.test(comando) && !ehPowerShell
     || ehPowerShell && (desalinhaAMascara(comando) || /[\u2018-\u201e]/.test(comando) || /"[^"]*\$\(/.test(comando) || /@['"]/.test(comando));
   if (naoConfiavel) return citaProtegido(comando, cwd) ? alvo : [];
 

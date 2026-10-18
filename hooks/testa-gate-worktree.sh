@@ -1881,6 +1881,13 @@ s552rv2 'HOME=__WN__; touch ~/../../../f' 2 b
 s552rv2 'read HOME <<< __WN__; touch ~/../../../f' 2 b
 s552rv2 'printf -v HOME %s __WN__; touch ~/../../../f' 2 b
 s552rv2 'git -C __WN__ commit -m "fix home page"' 0 b
+# Rodada extra (impasse): `\\` + quebra separa comandos; HOME so derruba a palavra que vem por atalho.
+s552rv2 "$(printf 'ls \\\\\\\\\nrm __R__/f')" 2 b
+s552rv2 "$(printf 'npm test \\\\\n  --silent')" 0 b
+s552rv2 'git commit -m "ajusta HOME"' 0 b
+s552rv2 'HOME=/tmp/h npm test' 0 b
+s552rv2 'echo "$HOME" > __WN__/out.txt' 0 b
+s552rv2 'touch __WN__/${HOME/x/y}/f' 2 b
 s552rv2 'dd if=a of="__WN__"/../../../f' 2 b
 s552rv2 'dd if=a of="__WN__"/f' 0 b
 s552rv2 "$(printf 'touch __WN__/.\\\n./.\\\n./.\\\n./f')" 2 b

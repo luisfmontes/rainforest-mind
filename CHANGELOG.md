@@ -32,14 +32,15 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
     redirecionamento (`>`, `>>`, `>|`, `<>`, `*>`, `&>`), com o destino lido como o shell lê (aspas, escape e partes
     coladas, como `>"<P>"/f`; aspa sem fechar barra). Num pipeline com algum comando que escreve (`Get-Content <P>/a | Out-File <P>/b`), os caminhos dos
     segmentos de leitura também contam.
-  - **Linha que o gate não sabe cortar com confiança** (here-string, `$(` dentro de aspas) vira um segmento só, e o
+  - **Linha que o gate não sabe cortar com confiança** (here-string, `$(` dentro de aspas, e no Bash `\` + quebra de linha) vira um segmento só, e o
     caminho do principal citado nela barra.
   - **Grafias reconhecidas:** barra `/` ou `\`, forma MSYS (`/c/...`, no Bash), qualquer caixa, `..` resolvido contra o
     cwd (`rm ../../../f` a partir do worktree; um caminho de worktree perde a isenção quando a PALAVRA de shell
     que o cita (aspas e escapes contam como parte dela) tem variável, substituição ou crase no meio (`<W>/$D/f`, `<W>/$HOME/f`; o atalho de home no início da palavra não
     conta), quando ela, sem aspas, cai no principal (`"<W>"/../../f`, também depois de prefixo de opção, como
-    `of="<W>"/../../f`), quando a linha cita `HOME`/`USERPROFILE`/`HOMEDRIVE`/`HOMEPATH` fora de atalho no início de caminho (redefinição por
-    qualquer sintaxe), ou, no Bash, quando tem chave que monta `..` sem o literal, como
+    `of="<W>"/../../f`), quando a palavra chega ao worktree por atalho de home e a linha redefine
+    `HOME`/`USERPROFILE`/`HOMEDRIVE`/`HOMEPATH` (`HOME=`, `read HOME`, `$env:USERPROFILE=`; com atalho de home e caminho do
+    principal na mesma linha, barra), ou, no Bash, quando tem chave que monta `..` sem o literal, como
     `{<W>,y}/../f`, `<W>/.{.,}/f` e `.{x,}.`; se a palavra não é achada, basta `{`, `}`, `$` ou crase na linha; `{a,b}.txt`, `f{1..3}.txt` e expansão em outra palavra da linha seguem
     isentos) e atalho de home (`~`, `$HOME`, `${HOME}`, `$env:USERPROFILE`,
     `${env:USERPROFILE}`, `$env:HOMEDRIVE$env:HOMEPATH`, `$USERPROFILE`, `${USERPROFILE}`, `$HOMEDRIVE$HOMEPATH`,
