@@ -79,7 +79,9 @@ Forma: sai um JSON só no stdout, exit 0, nada gravado. `passos` traz **todos** 
 
 ### 4. `setup.cjs --aplicar <arquivo.json> [--ensaio]` [tipo: implementar]
 atende: D5, D9, D11, D13
-arquivos: `scripts/setup.cjs`, `scripts/testa-setup-entrevista.sh`
+arquivos: `scripts/setup.cjs`, `scripts/testa-setup-entrevista.sh`, `hooks/lib/config.cjs`
+
+Emenda de 2026-10-17, rodada 2 do `revisar` (achado 6): `hooks/lib/config.cjs` entra para exportar o `validarTipo`, que o `--aplicar` passa a usar em vez de manter uma cópia.
 depende de: 3
 prova: `bash scripts/testa-setup-entrevista.sh`
 mutacao:
