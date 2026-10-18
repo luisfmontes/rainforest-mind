@@ -18,9 +18,9 @@
     "em": "2026-10-17"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-17",
-    "tarefas_ok": 4,
+    "tarefas_ok": 6,
     "tarefas": 6,
     "carimbos": [
       {
@@ -66,20 +66,7 @@
         "ts": "2026-10-18T01:05:51.563Z"
       }
     ],
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "4. achados 1,2,6,7 da revisao",
-        "desde": "2026-10-18T01:05:51Z",
-        "sessao": "2d517692-1cc6-4088-9761-81e72cf12928"
-      },
-      {
-        "agente": "executor",
-        "tarefa": "2. achado 4 da revisao",
-        "desde": "2026-10-18T01:05:51Z",
-        "sessao": "2d517692-1cc6-4088-9761-81e72cf12928"
-      }
-    ],
+    "em_voo": [],
     "em": "2026-10-17",
     "integradas": [
       1,
@@ -88,7 +75,7 @@
       4
     ],
     "comando": "bash hooks/testa-config.sh; bash scripts/testa-conferir-setup.sh; bash scripts/testa-setup.sh; bash scripts/testa-setup-entrevista.sh",
-    "saida": "63 ok 0 falha; 10 ok 0 falha; 70 ok 0 falha; 60 ok 0 falha",
+    "saida": "63 ok 0 falha; 10 ok 0 falha; 75 ok 0 falha; 77 ok 0 falha",
     "mutacao": [
       {
         "tarefa": 1,
@@ -121,10 +108,6 @@
         "motivo": "documentacao e numero de versao, conferidos pelo conferir-versao.cjs"
       }
     ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-17"
-    },
     "reaberturas": 1
   },
   "revisar": {
