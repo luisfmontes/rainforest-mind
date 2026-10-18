@@ -1,0 +1,9 @@
+{
+  "slug": "2026-10-18-statusline-conta-real",
+  "titulo": "statusline-conta-real",
+  "criado_em": "2026-10-18",
+  "leve": {
+    "motivo": "statusline: perfil le a conta logada, nao o nome da pasta; hotfix de um segmento",
+    "data": "2026-10-18"
+  }
+}

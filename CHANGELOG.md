@@ -10,6 +10,13 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.67.12 — 2026-10-18
+
+- **A statusline mostra a conta logada, não a que o nome da pasta sugere.** Depois de `/conta pessoal`, a pasta
+  `~/.claude` passava a usar a conta pessoal, mas a barra continuava mostrando `trabalho`. Agora o segmento lê o
+  `oauthAccount` do `.claude.json` e o compara com as contas registradas pela troca de conta. Sem esse registro, a barra
+  volta ao palpite pelo nome da pasta.
+
 ## 1.67.11 — 2026-10-16
 
 - **`gate-worktree` barra mais formas de escrever no checkout principal (#530).** Um subagente num worktree linkado
