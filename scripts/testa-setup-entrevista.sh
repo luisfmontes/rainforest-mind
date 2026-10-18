@@ -298,5 +298,56 @@ ap "$AP3" "$NODE_BIN" "$SETUP_JS" --aplicar "$(arq proj.json '{"chaves":{"ponte-
 grep -q "pode ir para o commit" "$CAIXA/pj.out"; resultado "--escopo projeto avisa que o config pode ir para o commit" $?
 
 echo
+echo "== 18. ensaio com raiz do plugin mostra o destino real =="
+# Raiz do plugin = uma copia do setup e do hooks/lib com FOCO.md e ESTRATEGIA.md. Sem RFM_ROOT
+# e com o home vazio, o resolverRaiz cai no nivel plugin. O ensaio tem de mostrar onde o
+# --aplicar VAI gravar (o home), nao a pasta do plugin.
+PLG="$CAIXA/plugin-cx"; mkdir -p "$PLG/scripts" "$PLG/hooks"
+cp "$SETUP_JS" "$PLG/scripts/setup.cjs"; cp -r "$SRC/hooks/lib" "$PLG/hooks/lib"
+printf '# Foco\n' > "$PLG/FOCO.md"; printf '# Estrategia do plugin\n' > "$PLG/ESTRATEGIA.md"
+# O plugin ja tem o slug que o payload registra: se o ensaio lesse o vocabulario do plugin, diria "ja registrado".
+printf '%s\n' '{"repo-pl":{"caminho":"/caminho/de/outro","apelidos":[]}}' > "$PLG/projetos.json"
+HOME_PL="$CAIXA/home-plugin"; PROJ5="$CAIXA/proj5"; mkdir -p "$HOME_PL" "$PROJ5"
+PLG_SETUP="$PLG/scripts/setup.cjs"
+pl() { env -u RFM_ROOT USERPROFILE="$(w "$HOME_PL")" CLAUDE_CONFIG_DIR="$(w "$CFG")" CLAUDE_PROJECT_DIR="$(w "$PROJ5")" "$@"; }
+pl "$NODE_BIN" "$PLG_SETUP" --plano-entrevista > "$CAIXA/pl-plano.json" 2> "$CAIXA/pl-plano.err"
+verifica "pre-condicao: a raiz do plugin resolve como nivel plugin" "$CAIXA/pl-plano.json" "j.primeira_vez === true && j.nivel === 'plugin'"
+PAY_PL="$(arq pl.json "{\"chaves\":{\"ponte-codex\":true},\"estrategia\":\"TEXTO-PLUGIN\",\"projetos\":[{\"slug\":\"repo-pl\",\"caminho\":\"$REPO_WIN\"}]}")"
+PL_HASH="$(hash_de "$PLG")"
+DEST_PL="$(node -e 'process.stdout.write(require("path").join(process.argv[1], ".rainforest"))' "$(w "$HOME_PL")")"
+pl "$NODE_BIN" "$PLG_SETUP" --aplicar "$PAY_PL" --ensaio > "$CAIXA/pl-ens.out" 2> "$CAIXA/pl-ens.err"; got=$?
+[ "$got" = 0 ]; resultado "ensaio com raiz do plugin sai 0" $?
+grep -qxF "ESTRATEGIA.md: cria" "$CAIXA/pl-ens.out"; resultado "ensaio com raiz do plugin mostra o destino real: ESTRATEGIA.md cria" $?
+grep -qxF "escopo: usuario ($DEST_PL)" "$CAIXA/pl-ens.out"; resultado "ensaio com raiz do plugin mostra o destino real: escopo no home de caixa" $?
+grep -qxF "projeto repo-pl: $REPO_WIN (novo)" "$CAIXA/pl-ens.out"; resultado "ensaio com raiz do plugin mostra o destino real: projeto novo no home de caixa" $?
+[ ! -e "$HOME_PL/.rainforest" ] && [ "$(hash_de "$PLG")" = "$PL_HASH" ]; resultado "ensaio com raiz do plugin nao grava nada" $?
+pl "$NODE_BIN" "$PLG_SETUP" --aplicar "$PAY_PL" > "$CAIXA/pl-apl.out" 2> "$CAIXA/pl-apl.err"; got=$?
+[ "$got" = 0 ]; resultado "ensaio com raiz do plugin: --aplicar sai 0" $?
+grep -q "TEXTO-PLUGIN" "$HOME_PL/.rainforest/ESTRATEGIA.md" 2>/dev/null; resultado "ensaio com raiz do plugin: o --aplicar grava o ESTRATEGIA.md onde o ensaio disse" $?
+[ -f "$HOME_PL/.rainforest/config.json" ] && [ -f "$HOME_PL/.rainforest/FOCO.md" ]; resultado "ensaio com raiz do plugin: o --aplicar grava config.json e FOCO.md no mesmo destino" $?
+[ "$(hash_de "$PLG")" = "$PL_HASH" ]; resultado "ensaio com raiz do plugin: a pasta do plugin fica intacta depois do --aplicar" $?
+
+echo
+echo "== 19. ensaio avisa quando o projeto vence o escopo usuario =="
+PROJ6="$CAIXA/proj6"; mkdir -p "$PROJ6/.rainforest"; printf '%s' '{"ponte-codex": false}' > "$PROJ6/.rainforest/config.json"
+ENS6="$(arq ens6.json '{"chaves":{"ponte-codex":true,"idioma":"portugues do Brasil"}}')"
+env RFM_ROOT="$(w "$DADOS")" USERPROFILE="$(w "$HOME_CX")" CLAUDE_CONFIG_DIR="$(w "$CFG")" CLAUDE_PROJECT_DIR="$(w "$PROJ6")" "$NODE_BIN" "$SETUP_JS" --aplicar "$ENS6" --ensaio > "$CAIXA/ens6.out" 2> "$CAIXA/ens6.err"; got=$?
+[ "$got" = 0 ]; resultado "ensaio com projeto vencendo sai 0" $?
+grep -q "^ponte-codex: false -> true (AVISO: .*vence o escopo usuario" "$CAIXA/ens6.out"; resultado "ensaio avisa quando o projeto vence o escopo usuario" $?
+! grep -q "^idioma: .*AVISO" "$CAIXA/ens6.out"; resultado "ensaio avisa quando o projeto vence o escopo usuario: sem aviso onde o valor nao vem do projeto" $?
+env RFM_ROOT="$(w "$DADOS")" USERPROFILE="$(w "$HOME_CX")" CLAUDE_CONFIG_DIR="$(w "$CFG")" CLAUDE_PROJECT_DIR="$(w "$PROJ6")" "$NODE_BIN" "$SETUP_JS" --aplicar "$ENS6" --ensaio --escopo projeto > "$CAIXA/ens7.out" 2>&1
+! grep -q "AVISO" "$CAIXA/ens7.out"; resultado "ensaio avisa quando o projeto vence o escopo usuario: com --escopo projeto nao ha aviso" $?
+
+echo
+echo "== 20. config.json ilegivel recusa sem sobrescrever =="
+ILEG="$CAIXA/dados-ileg"; mkdir -p "$ILEG"; printf '# Foco\n' > "$ILEG/FOCO.md"
+printf '%s' '{"gate-staging": false, "fluxo": false,}' > "$ILEG/config.json"
+ILEG_HASH="$(sha1sum < "$ILEG/config.json")"
+ap "$ILEG" "$NODE_BIN" "$SETUP_JS" --aplicar "$(arq ileg.json '{"chaves":{"ponte-codex":true}}')" > "$CAIXA/ileg.out" 2> "$CAIXA/ileg.err"; got=$?
+[ "$got" = 2 ]; resultado "config.json ilegivel recusa sem sobrescrever: exit 2" $?
+[ "$(sha1sum < "$ILEG/config.json")" = "$ILEG_HASH" ]; resultado "config.json ilegivel recusa sem sobrescrever: hash igual antes e depois" $?
+grep -q "nao e JSON valido; corrija ou apague antes de aplicar" "$CAIXA/ileg.err"; resultado "config.json ilegivel recusa sem sobrescrever: stderr aponta a recusa" $?
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]

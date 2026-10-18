@@ -405,6 +405,38 @@ function raizDoPrincipal(dir) {
 }
 
 /**
+ * Valida se um valor combina com o tipo esperado. Usada por resolverConfig e pelo
+ * --aplicar do setup: UMA regra, para o que se grava ser o que se le de volta.
+ */
+function validarTipo(valor, tipo) {
+  if (tipo === 'boolean') {
+    return typeof valor === 'boolean';
+  } else if (tipo === 'modelo') {
+    // Tipo 'modelo': aceita objeto {modelo: string, esforco?: string} ou null
+    if (valor === null) return true;
+    return typeof valor === 'object' && valor !== null &&
+           typeof valor.modelo === 'string' &&
+           (valor.esforco === undefined || typeof valor.esforco === 'string');
+  } else if (tipo === 'texto') {
+    // Tipo 'texto': string não vazia até 60 caracteres, ou null
+    if (valor === null) return true;
+    return typeof valor === 'string' && valor.length > 0 && valor.length <= 60;
+  } else if (tipo === 'privada') {
+    // Tipo 'privada': só o literal "privada", ou null. Qualquer outro valor é inválido.
+    return valor === null || valor === 'privada';
+  } else if (tipo === 'pastas') {
+    // Tipo 'pastas': null ou objeto só com mapas/design/planos; cada valor é
+    // caminho relativo ao repo, sem drive, sem raiz absoluta, sem segmento '..'.
+    if (valor === null) return true;
+    if (typeof valor !== 'object' || Array.isArray(valor)) return false;
+    return Object.entries(valor).every(([k, v]) => ['mapas', 'design', 'planos'].includes(k) &&
+      typeof v === 'string' && v.trim().length > 0 &&
+      !/^([a-zA-Z]:|[\\/])/.test(v) && !v.split(/[\\/]/).includes('..'));
+  }
+  return false;
+}
+
+/**
  * Resolve a configuração efetiva, e diz de ONDE veio cada chave.
  *
  * A procedência importa tanto quanto o valor: "o gate está desligado" sem dizer
@@ -435,35 +467,6 @@ function resolverConfig(o = {}) {
 
   const cfgProjeto = lerJson(doProjeto);
   const cfgUsuario = doUsuario ? lerJson(doUsuario) : null;
-
-  // Valida se um valor combina com o tipo esperado.
-  const validarTipo = (valor, tipo) => {
-    if (tipo === 'boolean') {
-      return typeof valor === 'boolean';
-    } else if (tipo === 'modelo') {
-      // Tipo 'modelo': aceita objeto {modelo: string, esforco?: string} ou null
-      if (valor === null) return true;
-      return typeof valor === 'object' && valor !== null &&
-             typeof valor.modelo === 'string' &&
-             (valor.esforco === undefined || typeof valor.esforco === 'string');
-    } else if (tipo === 'texto') {
-      // Tipo 'texto': string não vazia até 60 caracteres, ou null
-      if (valor === null) return true;
-      return typeof valor === 'string' && valor.length > 0 && valor.length <= 60;
-    } else if (tipo === 'privada') {
-      // Tipo 'privada': só o literal "privada", ou null. Qualquer outro valor é inválido.
-      return valor === null || valor === 'privada';
-    } else if (tipo === 'pastas') {
-      // Tipo 'pastas': null ou objeto só com mapas/design/planos; cada valor é
-      // caminho relativo ao repo, sem drive, sem raiz absoluta, sem segmento '..'.
-      if (valor === null) return true;
-      if (typeof valor !== 'object' || Array.isArray(valor)) return false;
-      return Object.entries(valor).every(([k, v]) => ['mapas', 'design', 'planos'].includes(k) &&
-        typeof v === 'string' && v.trim().length > 0 &&
-        !/^([a-zA-Z]:|[\\/])/.test(v) && !v.split(/[\\/]/).includes('..'));
-    }
-    return false;
-  };
 
   // Nome novo primeiro, aliases depois: dentro do MESMO arquivo, quem já migrou
   // manda. Devolve `undefined` quando nenhum dos nomes traz valor válido, para o
@@ -530,4 +533,4 @@ function ligado(chave, o = {}) {
 // com esta lista, então a ordem aqui é a que vale.
 const GRUPOS_ENTREVISTA = ['dados', 'idioma', 'projetos', 'ferramentas', 'fechar', 'estrategia', 'foco'];
 
-module.exports = { CHAVES, resolverConfig, ligado, raizDoPrincipal, GRUPOS_ENTREVISTA };
+module.exports = { CHAVES, resolverConfig, ligado, raizDoPrincipal, validarTipo, GRUPOS_ENTREVISTA };

@@ -34,7 +34,7 @@ const { caminhoExecutavel, resolverExecutavel } = require(path.join(__dirname, '
 
 const CODIGO_ROOT = path.resolve(__dirname, '..');
 const { resolverRaiz, ehRaiz } = require('../hooks/lib/raiz.cjs');
-const { CHAVES, resolverConfig, raizDoPrincipal, GRUPOS_ENTREVISTA } = require('../hooks/lib/config.cjs');
+const { CHAVES, resolverConfig, raizDoPrincipal, validarTipo, GRUPOS_ENTREVISTA } = require('../hooks/lib/config.cjs');
 const P = require('../hooks/lib/projetos.cjs');
 
 function arg(nome) {
@@ -757,29 +757,18 @@ function primeiraVez(raiz, nivel) {
 }
 
 /**
- * Mesma regra de `validarTipo` em hooks/lib/config.cjs (resolverConfig). Copiada porque
- * a closure de lá não é exportada e esta tarefa não pode tocar config.cjs. A bateria
- * testa-setup-entrevista.sh confere o que aceita contra o que o resolverConfig lê de volta.
+ * Onde o `--aplicar` GRAVA o escopo usuario, e de onde o `--ensaio` lê o estado. Uma fonte
+ * só para as duas portas: um ensaio que lê outra raiz mostra um diff que não é o que se
+ * grava (revisor de 2026-10-17: com `nivel: plugin` o ensaio dizia `ja existe`).
+ *
+ * Primeira vez, o `criar()` semeia em `RFM_ROOT || destinoPadrao()`, e é ali que o aplicar
+ * cai. Exceção: raiz de projeto sem FOCO.md (só ideias.jsonl) continua vencendo depois do
+ * `criar()`, porque o resolverRaiz põe o projeto antes do home.
  */
-function valorCabeNoTipo(valor, tipo) {
-  if (tipo === 'boolean') return typeof valor === 'boolean';
-  if (tipo === 'modelo') {
-    if (valor === null) return true;
-    return typeof valor === 'object' && typeof valor.modelo === 'string' &&
-      (valor.esforco === undefined || typeof valor.esforco === 'string');
-  }
-  if (tipo === 'texto') {
-    return valor === null || (typeof valor === 'string' && valor.length > 0 && valor.length <= 60);
-  }
-  if (tipo === 'privada') return valor === null || valor === 'privada';
-  if (tipo === 'pastas') {
-    if (valor === null) return true;
-    if (typeof valor !== 'object' || Array.isArray(valor)) return false;
-    return Object.entries(valor).every(([k, v]) => ['mapas', 'design', 'planos'].includes(k) &&
-      typeof v === 'string' && v.trim().length > 0 &&
-      !/^([a-zA-Z]:|[\\/])/.test(v) && !v.split(/[\\/]/).includes('..'));
-  }
-  return false;
+function raizDeGravacao(raizAntes, nivelAntes) {
+  if (!primeiraVez(raizAntes, nivelAntes)) return raizAntes;
+  if (nivelAntes === 'projeto') return raizAntes;
+  return process.env.RFM_ROOT || destinoPadrao();
 }
 
 const CAMPOS_PAYLOAD = ['chaves', 'projetos', 'estrategia'];
@@ -812,7 +801,7 @@ function validarPayload(p, erros) {
           continue;
         }
         const tipo = CHAVES[chave].tipo || 'boolean';
-        if (!valorCabeNoTipo(valor, tipo)) {
+        if (!validarTipo(valor, tipo)) {
           erros.push(`'${chave}' espera um valor do tipo ${tipo}, veio ${JSON.stringify(valor)}`);
         }
       }
@@ -855,7 +844,7 @@ const apelidoDe = (pr) => (pr.apelido === undefined ? undefined : [].concat(pr.a
 
 function valoresAtuais() {
   try {
-    return resolverConfig({ projeto: PROJETO }).valores;
+    return resolverConfig({ projeto: PROJETO });
   } catch {
     return null;
   }
@@ -864,12 +853,19 @@ function valoresAtuais() {
 /** O que o --aplicar faria, linha a linha. Só lê. */
 function linhasEnsaio({ chaves, projetos, estrategia, raiz, escopo }) {
   const linhas = [];
-  const valores = valoresAtuais();
+  const atual = valoresAtuais();
+  const valores = atual ? atual.valores : null;
   for (const [chave, depois] of Object.entries(chaves)) {
     const antes = valores ? valores[chave] : CHAVES[chave].padrao;
     const jDepois = JSON.stringify(depois);
-    if (JSON.stringify(antes) === jDepois) linhas.push(`${chave}: ${jDepois} (sem mudanca)`);
-    else linhas.push(`${chave}: ${JSON.stringify(antes)} -> ${jDepois}`);
+    // O .rainforest do projeto vence o escopo usuario: gravar la e nao mudar nada. O aviso
+    // sai na linha, antes da confirmacao, e so quando o valor atual vem do projeto.
+    const origem = atual ? atual.origem[chave] : 'padrao';
+    const aviso = escopo === 'usuario' && origem.startsWith('projeto')
+      ? ` (AVISO: o .rainforest/config.json do projeto fixa ${JSON.stringify(antes)} e vence o escopo usuario; grave com --escopo projeto para mudar aqui)`
+      : '';
+    if (JSON.stringify(antes) === jDepois) linhas.push(`${chave}: ${jDepois} (sem mudanca)${aviso}`);
+    else linhas.push(`${chave}: ${JSON.stringify(antes)} -> ${jDepois}${aviso}`);
   }
   const mapa = raiz ? P.ler(raiz) || {} : {};
   for (const pr of projetos) {
@@ -914,16 +910,35 @@ function aplicar() {
   if (lido) validarPayload(payload, errosAplicar);
 
   const { raiz: raizAntes, nivel: nivelAntes } = resolverRaiz({ plugin: CODIGO_ROOT });
+  const destinoUsuario = raizDeGravacao(raizAntes, nivelAntes);
   // trocar() com escopo usuario grava na raiz que o resolverRaiz acha, e uma .rainforest
   // do projeto vence a global. Sem esta trava, config de usuario iria para o repositorio.
   if (escopo === 'usuario' && nivelAntes === 'projeto') {
     errosAplicar.push(`a pasta de dados desta sessao e a do projeto (${raizAntes}); 'usuario' gravaria la. Use --escopo projeto, ou aponte RFM_ROOT para a pasta de dados do usuario`);
   }
-  if (lido && payload && payload.projetos !== undefined && raizAntes) {
+  if (lido && payload && payload.projetos !== undefined) {
     try {
-      P.ler(raizAntes);
+      P.ler(destinoUsuario);
     } catch (e) {
       errosAplicar.push(`vocabulario de projetos ilegivel: ${e.message}`);
+    }
+  }
+  // Um config.json que existe e nao le como JSON seria regravado do zero por trocar() (perda
+  // de dados). Recusa aqui, antes da primeira escrita.
+  const arquivoConfig = path.join(escopo === 'projeto' ? path.join(PROJETO, '.rainforest') : destinoUsuario, 'config.json');
+  if (fs.existsSync(arquivoConfig)) {
+    let bruto = null;
+    try {
+      bruto = fs.readFileSync(arquivoConfig, 'utf8');
+    } catch (e) {
+      errosAplicar.push(`${arquivoConfig} nao e legivel: ${e.message}`);
+    }
+    if (bruto !== null) {
+      try {
+        JSON.parse(bruto);
+      } catch {
+        errosAplicar.push(`${arquivoConfig} nao e JSON valido; corrija ou apague antes de aplicar`);
+      }
     }
   }
 
@@ -935,7 +950,7 @@ function aplicar() {
   const { estrategia } = payload;
 
   if (ensaio) {
-    for (const linha of linhasEnsaio({ chaves, projetos, estrategia, raiz: raizAntes, escopo })) console.log(linha);
+    for (const linha of linhasEnsaio({ chaves, projetos, estrategia, raiz: destinoUsuario, escopo })) console.log(linha);
     return;
   }
 
