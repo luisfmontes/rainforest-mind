@@ -40,24 +40,24 @@
         "motivo": "entrada de CHANGELOG e numero de versao"
       }
     ],
-    "comando": "node scripts/conferir-mutacao.cjs T1 e T2 (bateria bash hooks/testa-gate-worktree.sh, --timeout 1200000)",
-    "saida": "T1 VERMELHA (exit 1), baseline 308152 ms exit 0; T2 VERMELHA (exit 1), baseline 306576 ms exit 0; gate 659 ok 0 falha; cwd-efetivo 85 ok; palavra-bash 30 ok; corpus 24 ok",
+    "comando": "node scripts/conferir-mutacao.cjs T1 e T2 (bateria bash hooks/testa-gate-worktree.sh, --timeout 1200000), rodada extra",
+    "saida": "T1 VERMELHA (exit 1), baseline 595823 ms exit 0; T2 VERMELHA (exit 1), baseline 662855 ms exit 0; gate 665 ok 0 falha; cwd-efetivo 85 ok; palavra-bash 30 ok; corpus 24 ok",
     "em": "2026-10-17",
-    "reaberturas": 4
+    "reaberturas": 5
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "6ed2beb68fbdac7b95eb5683ea288470696c32a5",
+      "head": "5c66e7d3717855cbdbb5361d6e208cb9844eee38",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a34ec5ce77e77447b",
+        "agente_id": "aa080b88dbe6fba91",
         "veredito": "reprovado",
         "em": "2026-10-17",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-a34ec5ce77e77447b.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bfd7468b-e589-43c6-9e09-04528a1dc829/subagents/agent-aa080b88dbe6fba91.jsonl"
       }
     ],
     "em_voo": [],
@@ -65,7 +65,14 @@
     "achados": 2,
     "base": "038de7d83260131065afb495845dc1e33b497496",
     "head": "84d055a20a798de5404f543969483f2f54d5b6b8",
-    "tentativas": 2
+    "tentativas": 3,
+    "liberado_em": "2026-10-17",
+    "rodadas_extra": [
+      {
+        "texto": "Luis liberou a 4a rodada com corte (2026-10-17): so o conserto de continuacao de linha (\\+quebra), homeRedefinido por palavra e atalho de home exato no Bash; variante nova da revisao automatica vira Issue de continuacao, salvo regressao",
+        "em": "2026-10-17"
+      }
+    ]
   },
   "verificar": {
     "status": "pendente"
