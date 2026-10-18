@@ -1904,6 +1904,21 @@ gate "#552 D6 vizinho: New-Item -ItemType File -Path n1/n2/f -Force, cwd no work
 gate "#552 D6 vizinho: [IO.Directory]::CreateDirectory('n1/n2/d'), cwd no worktree, PASSA" 0 "$(bp "[IO.Directory]::CreateDirectory('n1/n2/d')" "$WT")"
 gate "#552 D6 vizinho: echo x > n1/n2/f (Bash), cwd no worktree, PASSA" 0 "$(b 'echo x > n1/n2/f' "$WT")"
 
+echo "== #552: nome curto 8.3 do Windows =="
+# No runner do CI o temp vem com o usuario em nome curto 8.3 (`RUNNER~1`) e o git devolve o
+# nome longo: comparado por texto, o cwd nao caia em worktree nenhum e a rede nao agia.
+# Citar o principal pelo nome curto e o mesmo buraco pelo outro lado.
+curto() { powershell -NoProfile -Command "(New-Object -ComObject Scripting.FileSystemObject).GetFolder('$(cygpath -w "$1")').ShortPath" 2>/dev/null | tr -d '\r' | sed 's#\\#/#g'; }
+RC="$(curto "$R")"; WC="$(curto "$WT")"
+if [ -n "$RC" ] && [ "$RC" != "$(cygpath -m "$R")" ] && [ -n "$WC" ]; then
+  gate "#552 8.3: rm <P>/f com cwd no worktree pelo nome curto, BARRA" 2 "$(b "rm $R/f" "$WC")"
+  gate "#552 8.3: rm <P curto>/f, cwd no worktree, BARRA" 2 "$(b "rm $RC/f" "$WT")"
+  gate "#552 8.3: Remove-Item <P curto>/f, cwd no worktree, BARRA" 2 "$(bp "Remove-Item $RC/f" "$WT")"
+  gate "#552 8.3 vizinho: touch <W curto>/f, cwd no worktree pelo nome curto, PASSA" 0 "$(b "touch $WC/f" "$WC")"
+else
+  echo "  pulado: sem nome curto 8.3 neste volume (powershell ausente ou 8dot3name desligado)"
+fi
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

@@ -381,9 +381,27 @@ function estadoDoRepo(dir) {
   };
 }
 
+// Windows: nome curto 8.3 (`RUNNER~1`) vira o longo, pelo ancestral mais fundo que existe.
+// O git devolve o nome longo; comparar por texto com o curto tirava o cwd do worktree e
+// deixava citar o principal pelo nome curto (#552). So caminho com `~` paga o realpath.
+const LONGO = new Map();
+function semNomeCurto(s) {
+  if (process.platform !== "win32" || !s.includes("~")) return s;
+  if (LONGO.has(s)) return LONGO.get(s);
+  let base = s, resto = "";
+  while (!fs.existsSync(base) && path.dirname(base) !== base) {
+    resto = "/" + path.basename(base) + resto;
+    base = path.dirname(base);
+  }
+  let longo = s;
+  try { longo = fs.realpathSync.native(base).replace(/\\/g, "/").replace(/\/+$/, "") + resto; } catch {}
+  LONGO.set(s, longo);
+  return longo;
+}
+
 // Raiz temporaria do sistema, normalizada uma vez. O scratchpad da sessao mora
 // abaixo dela, em `<temp>/claude/<projeto>/<sessao>/scratchpad`.
-const TEMP_DO_SISTEMA = path.resolve(os.tmpdir()).replace(/\\/g, "/").toLowerCase();
+const TEMP_DO_SISTEMA = semNomeCurto(path.resolve(os.tmpdir()).replace(/\\/g, "/")).toLowerCase();
 
 /**
  * O alvo esta dentro do scratchpad da sessao?
@@ -393,7 +411,7 @@ const TEMP_DO_SISTEMA = path.resolve(os.tmpdir()).replace(/\\/g, "/").toLowerCas
  * em temp — inclusive a caixa de areia desta bateria.
  */
 function ehScratchpad(alvo) {
-  const n = path.resolve(alvo).replace(/\\/g, "/").toLowerCase();
+  const n = semNomeCurto(path.resolve(alvo).replace(/\\/g, "/")).toLowerCase();
   if (n !== TEMP_DO_SISTEMA && !n.startsWith(TEMP_DO_SISTEMA + "/")) return false;
   return n.split("/").includes("scratchpad");
 }
@@ -1451,7 +1469,7 @@ function normalizaCaminho(p, base) {
   let s = p.replace(/\\/g, "/");
   const msys = /^\/([A-Za-z])(\/.*|$)/.exec(s);
   if (msys) s = `${msys[1]}:${msys[2] || "/"}`;
-  s = path.resolve(base, s).replace(/\\/g, "/").replace(/\/+$/, "");
+  s = semNomeCurto(path.resolve(base, s).replace(/\\/g, "/").replace(/\/+$/, ""));
   return process.platform === "win32" ? s.toLowerCase() : s;
 }
 const dentroDe = (a, b) => a === b || a.startsWith(b + "/");
