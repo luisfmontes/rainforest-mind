@@ -10,7 +10,7 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
-## 1.68.0 — 2026-10-17
+## 1.68.0 — 2026-10-18
 
 - **`/setup` vira entrevista guiada na primeira vez.** Em vez de despejar todas as chaves e esperar `--ligar`, ele
   pergunta uma coisa por vez, na ordem pasta de dados → idioma → projetos → ferramentas → jeito de fechar → estratégia
@@ -29,6 +29,13 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 - **A tabela de chaves da skill do `/setup` é conferida contra o catálogo.** `scripts/conferir-setup.cjs` reprova chave
   sem o campo `entrevista` e tabela que diverge do `hooks/lib/config.cjs`; a bateria roda contra a skill real, então
   chave nova esquecida na doc reprova no CI. A tabela passou de 5 para as 45 chaves.
+
+## 1.67.12 — 2026-10-18
+
+- **A statusline mostra a conta logada, não a que o nome da pasta sugere.** Depois de `/conta pessoal`, a pasta
+  `~/.claude` passava a usar a conta pessoal, mas a barra continuava mostrando `trabalho`. Agora o segmento lê o
+  `oauthAccount` do `.claude.json` e o compara com as contas registradas pela troca de conta. Sem esse registro, a barra
+  volta ao palpite pelo nome da pasta.
 
 ## 1.67.11 — 2026-10-16
 
