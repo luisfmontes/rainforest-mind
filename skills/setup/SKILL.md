@@ -68,8 +68,11 @@ marca os que quer registrar e pode corrigir o slug. O slug é o vocabulário do 
 
 As chaves do grupo `ferramentas` com `perguntar: true`: pontes (Codex, Gemini, Claude sem
 o plugin), conselho com Codex ou Gemini, transferência e revisão pelo Codex, integrações
-(WhatsApp, Sabiá) e vigias. Agrupe por ferramenta — "você usa o Codex aqui?" cobre as
-quatro chaves dele — e diga em uma linha o que cada uma faz ligada. Vigias: a geral liga
+(WhatsApp, Sabiá) e vigias. Agrupe por ferramenta — "você usa o Codex aqui?" cobre
+`ponte-codex`, `conselho-codex` e `transfer-codex` — e diga em uma linha o que cada uma
+faz ligada. **`gate-review-codex` é pergunta própria**, nunca carona no "uso o Codex":
+ligada, ela barra o fim do turno quando o Codex falha (falha fechada), e gate que bloqueia
+se liga com a palavra dele sobre o bloqueio, não sobre a ferramenta. Vigias: a geral liga
 as rondas; as cinco `vigia-*` vêm ligadas e servem para calar uma ronda só.
 
 ### fechar — como o fluxo termina
@@ -101,11 +104,18 @@ declarado o radar de escopo não tem contra o que medir.
    ele precisa saber que existem.
 3. Confirme com `AskUserQuestion`: **"Gravar"** (recomendada) ou **"Ajustar"** (volta à
    pergunta que ele apontar). Sem a palavra dele, nada é gravado.
-4. `node scripts/setup.cjs --aplicar <arquivo>`. Exit 2 é payload recusado e **nada foi
-   gravado**: leia o stderr, corrija e volte ao passo 2.
-5. **Confira pela saída real**: rode `node scripts/setup.cjs` e confira, linha a linha,
-   que cada chave do payload aparece com o valor decidido. Divergência é defeito a
-   reportar, não detalhe.
+4. `node scripts/setup.cjs --aplicar <arquivo>`. Exit 2 é recusa e **nada foi
+   gravado**: leia o stderr. Erro de chave, valor ou caminho se corrige no payload — volte
+   ao passo 2. Recusa de escopo `usuario` porque a pasta de dados resolvida é a
+   `.rainforest/` do **projeto** não se corrige no payload: diga a ele que a configuração
+   de usuário iria parar no repositório, e ofereça as duas saídas — gravar no projeto
+   (`--escopo projeto`, sabendo que pode ir para o commit) ou apontar `RFM_ROOT` para uma
+   pasta de dados própria e refazer o `--ensaio`.
+5. **Confira pela saída real**: rode `node scripts/setup.cjs --plano-entrevista` e
+   confira, chave a chave, que o `valor` de cada chave do payload é o decidido — é ele que
+   traz o valor de chave de texto (`idioma`), que o estado sem argumento não mostra. Linha
+   do `--ensaio` com aviso de que o projeto vence o escopo usuário termina com o valor do
+   projeto, e isso é o esperado; fora disso, divergência é defeito a reportar, não detalhe.
 6. Entregue o foco ao `/foco` e apague o arquivo temporário.
 
 ## Mudar uma parte
@@ -130,9 +140,11 @@ escopo é sempre `usuario`.
 ## Chaves
 
 A coluna **Grupo** diz em que passo da entrevista a chave vira pergunta; `—` é chave fixa
-(fica no padrão, aparece no resumo e muda só por "mudar uma parte"). Esta tabela é
-conferida contra o catálogo de `hooks/lib/config.cjs` por `node scripts/conferir-setup.cjs`:
-chave nova sem linha aqui reprova.
+(fica no padrão, aparece no resumo e muda só por "mudar uma parte"). O
+`node scripts/conferir-setup.cjs` confere que o conjunto de chaves desta tabela é o do
+catálogo de `hooks/lib/config.cjs` — chave nova sem linha aqui reprova — e que a ordem
+dos passos acima é a do catálogo. A coluna **Grupo** e a descrição são escritas à mão:
+o grupo que vale é o do campo `entrevista` no catálogo.
 
 | Chave | Grupo | O que ela faz |
 |---|---|---|
