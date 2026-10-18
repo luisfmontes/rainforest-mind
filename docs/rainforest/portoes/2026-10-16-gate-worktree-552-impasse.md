@@ -24,3 +24,9 @@ Cada revisão de segurança automática acha uma grafia nova de contorno da isen
 ## Decisão pedida
 
 Liberar uma 4ª rodada para o conserto acima, com corte de escopo: variante nova vinda da revisão automática vira Issue de continuação e não reabre este PR, salvo se for regressão (algo que o head anterior barrava).
+
+## Rodada extra 2 (2026-10-18)
+
+A rodada extra fechou o caso `\`+quebra, mas reprovou na redefinição de HOME. Os contornos foram `${HOME:-x}`, `export {HOME,X}=` e `$HOMEDRIVE$HOMEPATH`, que o head anterior barrava. Todos são variável sem o literal do caminho, que o design deixou fora de escopo.
+
+Decisão do Luís: tirar do PR a detecção de HOME redefinido, declará-la fora de escopo no CHANGELOG e abrir Issue de continuação. Uma rodada curta confere essa remoção e o caso `\`+quebra.

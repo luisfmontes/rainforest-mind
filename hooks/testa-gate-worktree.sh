@@ -1873,15 +1873,12 @@ s552rv2 'touch __WN__/.""./.""./.""./f' 2 b
 s552rv2 'Remove-Item "__WN__"/../../../f' 2 bp
 s552rv2 'touch "__WN__/a b.txt"' 0 b
 s552rv2 'Set-Content "__WN__/a b.txt" x' 0 bp
-# Revisao do delta 6ed2beb6: $HOME no meio da palavra conta; HOME redefinido tira a isencao;
+# Revisao do delta 6ed2beb6: $HOME no meio da palavra conta; HOME redefinido na linha fica de fora;
 # prefixo de opcao antes do caminho; continuacao de linha.
 s552rv2 'touch __WN__/$HOME/f' 2 b
 s552rv2 'Remove-Item __WN__/$env:USERPROFILE/f' 2 bp
-s552rv2 'HOME=__WN__; touch ~/../../../f' 2 b
-s552rv2 'read HOME <<< __WN__; touch ~/../../../f' 2 b
-s552rv2 'printf -v HOME %s __WN__; touch ~/../../../f' 2 b
 s552rv2 'git -C __WN__ commit -m "fix home page"' 0 b
-# Rodada extra (impasse): `\\` + quebra separa comandos; HOME so derruba a palavra que vem por atalho.
+# Rodada extra (impasse): `\\` + quebra separa comandos; HOME no texto nao muda a isencao.
 s552rv2 "$(printf 'ls \\\\\\\\\nrm __R__/f')" 2 b
 s552rv2 "$(printf 'npm test \\\\\n  --silent')" 0 b
 s552rv2 'git commit -m "ajusta HOME"' 0 b

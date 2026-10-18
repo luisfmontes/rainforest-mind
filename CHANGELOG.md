@@ -38,9 +38,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
     cwd (`rm ../../../f` a partir do worktree; um caminho de worktree perde a isenção quando a PALAVRA de shell
     que o cita (aspas e escapes contam como parte dela) tem variável, substituição ou crase no meio (`<W>/$D/f`, `<W>/$HOME/f`; o atalho de home no início da palavra não
     conta), quando ela, sem aspas, cai no principal (`"<W>"/../../f`, também depois de prefixo de opção, como
-    `of="<W>"/../../f`), quando a palavra chega ao worktree por atalho de home e a linha redefine
-    `HOME`/`USERPROFILE`/`HOMEDRIVE`/`HOMEPATH` (`HOME=`, `read HOME`, `$env:USERPROFILE=`; com atalho de home e caminho do
-    principal na mesma linha, barra), ou, no Bash, quando tem chave que monta `..` sem o literal, como
+    `of="<W>"/../../f`), ou, no Bash, quando tem chave que monta `..` sem o literal, como
     `{<W>,y}/../f`, `<W>/.{.,}/f` e `.{x,}.`; se a palavra não é achada, basta `{`, `}`, `$` ou crase na linha; `{a,b}.txt`, `f{1..3}.txt` e expansão em outra palavra da linha seguem
     isentos) e atalho de home (`~`, `$HOME`, `${HOME}`, `$env:USERPROFILE`,
     `${env:USERPROFILE}`, `$env:HOMEDRIVE$env:HOMEPATH`, `$USERPROFILE`, `${USERPROFILE}`, `$HOMEDRIVE$HOMEPATH`,
@@ -57,7 +55,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   procurava o repositório a partir do pai imediato, que não existe. Agora ele sobe até o primeiro diretório que
   existe, e a escrita no principal é barrada.
 - **Segue de fora (#552):** caminho montado por pedaços (`$a + "/f"`, `"$P"` sem o literal do principal na linha),
-  variável cujo valor não aparece no comando, `~usuario/`, config que o repositório já tem (`core.pager`, `diff.external`,
+  variável cujo valor não aparece no comando, `HOME`/`USERPROFILE` redefinidos na própria linha (`HOME=<W>; touch ~/../f`), `~usuario/`, config que o repositório já tem (`core.pager`, `diff.external`,
   `.gitattributes` gravados antes: o `git` de leitura confia nela), nome curto 8.3 e caminho UNC, a janela principal (a rede só age em
   subagente) e os outros gates.
 

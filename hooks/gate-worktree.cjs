@@ -1699,26 +1699,13 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
     ? /(\$\{env:(?:USERPROFILE|HOME)\}|\$env:(?:USERPROFILE|HOME)\b|\$HOME\b|%USERPROFILE%)/i
     : /(\$\{HOME\}|\$HOME\b|\$\{USERPROFILE\}|\$USERPROFILE\b)/;
   const CASA_NO_INICIO = new RegExp("^(['\"]?)" + CASA.source + "(?=[\\\\/])", CASA.flags);
-  // HOME redefinido na linha, por qualquer sintaxe (`HOME=`, `read HOME`, `printf -v HOME`, `$env:USERPROFILE=`):
-  // o nome da variavel fora de atalho de home. Conta em maiusculas e fora de caminho; `$env:` e
-  // `Set-Item env:` em qualquer caixa; tambem com aspas e escapes tirados (`read HO\ME`).
-  const semCasa = (t) => t.replace(new RegExp("(^|[\\s'\"=:(,])" + CASA.source + "(?=[\\\\/]|$)", CASA.flags.includes("i") ? "gi" : "g"), "$1");
-  // `$HOME`/`${HOME}` lidos nao redefinem: o nome conta sem `$` ou `{` antes.
-  const NOME_DE_CASA = /(?<![\\/\w.${-])(HOME|USERPROFILE|HOMEDRIVE|HOMEPATH)(?![\\/\w])/;
-  const NOME_DE_CASA_PS = /\benv:(HOME|USERPROFILE|HOMEDRIVE|HOMEPATH)\b/i;
-  const linhaSemCasa = semCasa(comando);
-  const homeRedefinido = NOME_DE_CASA.test(linhaSemCasa) || NOME_DE_CASA_PS.test(linhaSemCasa)
-    || NOME_DE_CASA.test(palavrasDe(linhaSemCasa).map((p) => p.limpo).join(" "));
   const foraDosWorktrees = (n) => dentroDe(n, repo.principal) && !repo.worktrees.some((w) => dentroDe(n, w)) && !ehScratchpad(n);
   // `p.cru` e o texto ORIGINAL da palavra (o `$` de `$HOME` conta); `p.limpo` vem do texto com o
   // atalho de home expandido, so para achar e resolver o caminho `c`.
   // O atalho de home no INICIO da palavra (`$HOME/...`, `${env:USERPROFILE}\...`) nao conta como
-  // expansao: o valor e o da casa (HOME redefinido na linha tira a isencao abaixo). No meio
-  // (`<W>/$HOME/f`) conta.
+  // expansao: o valor e o da casa. HOME redefinido na propria linha fica fora de escopo (variavel
+  // sem o literal do caminho, D3). No meio (`<W>/$HOME/f`) conta.
   const palavraQueSobe = (p, base, c) => {
-    // Chega ao worktree pelo atalho de home e a linha redefine HOME: o atalho expandido aqui nao e o
-    // do shell (`HOME=<W>; touch ~/../../f`).
-    if (homeRedefinido && (CASA_NO_INICIO.test(p.cru) || /^['"]?~(?=[\\/]|$)/.test(p.cru))) return true;
     if (/[$`]/.test(p.cru.replace(CASA_NO_INICIO, (m, aspa) => aspa))) return true;
     // Com chave (Bash), cada alternativa da expansao conta, e mais a checagem da chave; expansao
     // que estoura falha fechado. Virgula fora de chave (`W,W` de trecho aninhado, lista do
@@ -1749,10 +1736,6 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
   };
   const citaProtegido = (texto, base) => caminhosCitados(texto, ehPowerShell).some((c) => protegido(c, base, texto));
   const alvo = [{ dir: repo.principal, incerto: true }];
-  // HOME redefinido e atalho de home na mesma linha (`HOME=<W>; touch ~/../../f`): o destino do atalho
-  // nao e o que o gate expande. Com caminho do principal (worktree incluso) citado, barra.
-  if (homeRedefinido && (/(^|[\s'"=:(,])~(?=[\\/]|$|\s)/.test(comando) || CASA.test(comando))
-    && caminhosCitados(comando, ehPowerShell).some((c) => dentroDe(normalizaCaminho(c, cwd), repo.principal))) return alvo;
   // Segmentacao nao confiavel (D2): a linha inteira e um segmento so, e nada e leitura.
   // Bash com `\` + quebra: colar as linhas erra quando as contrabarras sao pares (`ls \\` + quebra +
   // `rm <P>/f`), e nao colar erra a continuacao; a linha toda vira um segmento so.
