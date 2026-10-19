@@ -18,7 +18,7 @@
     "em": "2026-10-19"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-19",
     "tarefas_ok": 4,
     "tarefas": 4,
@@ -76,16 +76,12 @@
     "comando": "bash scripts/testa-estado-reabrir.sh",
     "saida": "ok: 92   falhou: 0",
     "reaberturas": 4,
-    "rodada": 5,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-19"
-    }
+    "rodada": 6
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "69a4119f2a312e8b82038041312e2d8d65250f3a",
+      "head": "2e2de1d0e2e465a2e84b38e54663e383458e09fb",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-10-19-estado-reabrir.json"
       ]
@@ -93,13 +89,13 @@
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a59d6b951b8d83315",
-        "veredito": "reprovado",
+        "agente_id": "abe59ec5cde6e03ba",
+        "veredito": "ok",
         "em": "2026-10-19",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-a59d6b951b8d83315.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-abe59ec5cde6e03ba.jsonl"
       }
     ],
-    "achados": 5,
+    "achados": 0,
     "design": [
       1,
       2,
@@ -107,7 +103,7 @@
     ],
     "em": "2026-10-19",
     "em_voo": [],
-    "rodada": 5,
+    "rodada": 6,
     "bloqueantes": [
       1
     ],
@@ -118,12 +114,15 @@
       }
     ],
     "base": "a5e2292f724e949a5619f6ec5b71738b7dd6eead",
-    "head": "9455f657c797418401f7d967eac19abd1065cd69",
-    "tentativas": 1
+    "head": "2e2de1d0e2e465a2e84b38e54663e383458e09fb"
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-10-19"
+    "status": "ok",
+    "em": "2026-10-19",
+    "comando": "bash scripts/testa-estado-reabrir.sh",
+    "saida": "ok: 92   falhou: 0 (exit 0); testa-estado.sh 324 ok 0 falhas",
+    "sensor_externo": "bash scripts/testa-estado-reabrir.sh",
+    "head": "2e2de1d0e2e465a2e84b38e54663e383458e09fb"
   },
   "fechar": {
     "status": "pendente",
