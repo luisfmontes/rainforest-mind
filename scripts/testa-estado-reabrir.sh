@@ -92,6 +92,14 @@ fechar_ate_verificar() {
   $E marcar --slug "$SLUG" --estagio verificar --status ok --json '{"comando":"bash scripts/testa-estado-reabrir.sh","saida":"ok: 1   falhou: 0"}' >/dev/null 2>"$CX/err.txt" || { echo "FALHA preparo: marcar verificar ok"; cat "$CX/err.txt"; exit 1; }
 }
 
+# Chega ao 'revisar' ok gravando os blocos anteriores no JSON (sem o 'verificar').
+ate_revisar() {
+  node -e 'const fs=require("fs");const f=process.argv[1];const j=JSON.parse(fs.readFileSync(f,"utf8"));j.design={...j.design,status:"aprovado"};j.plano={...j.plano,status:"ok"};j.executar={...j.executar,status:"ok"};j.revisar={...j.revisar,status:"ok"};fs.writeFileSync(f,JSON.stringify(j,null,2));' "$ARQ"
+}
+
+# Soma de verificacao do JSON em disco: as recusas do D3 nao podem tocar nele.
+soma() { cksum < "$ARQ" | cut -d' ' -f1; }
+
 echo "== D1: commit de codigo depois do verificar ok =="
 
 echo "-- (a) marcar verificar ok grava o HEAD --"
@@ -129,6 +137,60 @@ git -C "$CX" commit -q -m "codigo sem head gravado"
 saida=$($E exigir --slug "$SLUG" --estagio fechar 2>&1); rc=$?
 igual "exigir fechar sem verificar.head sai 0" "0" "$rc"
 igual "aviso em stderr sobre verificar sem HEAD" "1" "$(echo "$saida" | grep -c "verificar' sem HEAD gravado")"
+
+echo "== D3: reabrir =="
+
+echo "-- (a) com revisar ok, reabrir volta executar e revisar --"
+caixa_nova
+ate_revisar
+esperado "reabrir com revisar ok sai 0" 0 $E reabrir --slug "$SLUG" --estagio executar --motivo "achado A"
+igual "executar.status = parcial" "parcial" "$(J 'j.executar.status' < "$ARQ")"
+igual "revisar.status = pendente" "pendente" "$(J 'j.revisar.status' < "$ARQ")"
+igual "reaberturas[0].motivo = achado A" "achado A" "$(J 'j.reaberturas[0].motivo' < "$ARQ")"
+igual "reaberturas[0].de = revisar" "revisar" "$(J 'j.reaberturas[0].de' < "$ARQ")"
+igual "reaberturas[0] com data" "1" "$(J 'j.reaberturas[0].em.length>0?1:0' < "$ARQ")"
+
+echo "-- (b) com verificar e fechar ok, reabrir deixa os tres pendentes --"
+caixa_nova
+fechar_ate_verificar
+node -e 'const fs=require("fs");const f=process.argv[1];const j=JSON.parse(fs.readFileSync(f,"utf8"));j.fechar={...j.fechar,status:"ok"};fs.writeFileSync(f,JSON.stringify(j,null,2));' "$ARQ"
+esperado "reabrir com fechar ok sai 0" 0 $E reabrir --slug "$SLUG" --estagio executar --motivo "CI vermelho"
+igual "revisar|verificar|fechar pendentes" "pendente|pendente|pendente" "$(J '[j.revisar.status,j.verificar.status,j.fechar.status].join("|")' < "$ARQ")"
+igual "reaberturas[0].de = fechar" "fechar" "$(J 'j.reaberturas[0].de' < "$ARQ")"
+saida=$($E exigir --slug "$SLUG" --estagio fechar 2>&1); rc=$?
+igual "exigir fechar logo depois do reabrir sai 2" "2" "$rc"
+
+echo "-- (c) depois do reabrir, executar volta a valer --"
+caixa_nova
+ate_revisar
+$E reabrir --slug "$SLUG" --estagio executar --motivo "achado A" >/dev/null 2>&1
+esperado "exigir executar depois do reabrir sai 0" 0 $E exigir --slug "$SLUG" --estagio executar
+esperado "marcar executar ok depois do reabrir sai 0" 0 $E marcar --slug "$SLUG" --estagio executar --status ok --json '{"comando":"bash scripts/testa-estado-reabrir.sh","saida":"ok: 1   falhou: 0","tarefas_ok":1,"tarefas":1,"mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"caixa de teste"}]}'
+igual "executar.status = ok de novo" "ok" "$(J 'j.executar.status' < "$ARQ")"
+
+echo "-- (d) recusas saem 2 e o JSON fica igual --"
+caixa_nova
+ate_revisar
+antes="$(soma)"
+$E reabrir --slug "$SLUG" --estagio executar --motivo "" >/dev/null 2>&1; rc=$?
+igual "motivo vazio sai 2" "2" "$rc"
+igual "motivo vazio: JSON intacto" "$antes" "$(soma)"
+$E reabrir --slug "$SLUG" --estagio revisar --motivo "x" >/dev/null 2>&1; rc=$?
+igual "estagio revisar sai 2" "2" "$rc"
+igual "estagio revisar: JSON intacto" "$antes" "$(soma)"
+caixa_nova
+node -e 'const fs=require("fs");const f=process.argv[1];const j=JSON.parse(fs.readFileSync(f,"utf8"));j.design={...j.design,status:"aprovado"};j.plano={...j.plano,status:"ok"};j.executar={...j.executar,status:"parcial"};fs.writeFileSync(f,JSON.stringify(j,null,2));' "$ARQ"
+antes="$(soma)"
+$E reabrir --slug "$SLUG" --estagio executar --motivo "x" >/dev/null 2>&1; rc=$?
+igual "executar em parcial (nada a reabrir) sai 2" "2" "$rc"
+igual "nada a reabrir: JSON intacto" "$antes" "$(soma)"
+$E reabrir --slug 2026-10-19-nao-existe --estagio executar --motivo "x" >/dev/null 2>&1; rc=$?
+igual "slug inexistente sai 1 (convencao do estado.cjs para slug sem estado)" "1" "$rc"
+
+echo "-- (e) marcar executar parcial com revisar ok segue recusado (#238) --"
+caixa_nova
+ate_revisar
+esperado "marcar executar parcial com revisar ok sai 2" 2 $E marcar --slug "$SLUG" --estagio executar --status parcial
 
 echo
 echo "ok: $ok   falhou: $falhou"

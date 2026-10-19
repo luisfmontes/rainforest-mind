@@ -2160,6 +2160,7 @@ const FLAGS_POR_SUBCOMANDO = {
   leve: ['motivo', 'repo'],
   decidir: ['slug', 'pergunta', 'escolha', 'porque'],
   decididos: ['slug'],
+  reabrir: ['slug', 'estagio', 'motivo'],
 };
 
 function arg(nome, obrigatorio = true) {
@@ -2611,7 +2612,7 @@ function main() {
   // Comandos que acrescentam a uma lista (#545, D2 emendado): leitura, validação e gravação
   // INTEIRAS sob a trava do fluxo, relendo o estado dentro dela, como o `decidir`. Os
   // outros (marcar, exigir) leem fora da trava e a gravação mescla por campo.
-  const TRAVA_NO_COMANDO = ['pendencia', 'destinar', 'liberar', 'liberar-teto', 'decidir'];
+  const TRAVA_NO_COMANDO = ['pendencia', 'destinar', 'liberar', 'liberar-teto', 'decidir', 'reabrir'];
   const rodarComando = () => {
   const estado = ler(slug);
   if (!estado) {
@@ -3351,7 +3352,37 @@ function main() {
     return;
   }
 
-  console.error('uso: iniciar | ler | deixado | destinar | pendencia | marcar | proximo | exigir | liberar | listar | concluido | veredito | registrar-flake | liberar-teto | decidir | decididos');
+  if (cmd === 'reabrir') {
+    // D3 (#567, #529): volta o 'executar' quando o código muda depois do 'ok' de um estágio
+    // posterior. Toda recusa sai 2 ANTES de gravar: o JSON fica como estava.
+    const estagio = arg('estagio');
+    const motivo = arg('motivo');
+    if (estagio !== 'executar') {
+      console.error(`RECUSADO: reabrir só aceita --estagio executar nesta versão (veio '${estagio}').`);
+      process.exit(2);
+    }
+    if (!motivo.trim()) {
+      console.error('RECUSADO: falta --motivo "<o que mudou>" (texto não vazio). Sem o motivo, a reabertura não é registrada.');
+      process.exit(2);
+    }
+    const aprovado = (e) => Boolean(estado[e] && (estado[e].status === 'ok' || estado[e].status === 'aprovado'));
+    const de = ['fechar', 'verificar', 'revisar'].find(aprovado);
+    if (!de) {
+      console.error('RECUSADO: nada a reabrir — nenhum de revisar, verificar ou fechar está em ok/aprovado.');
+      process.exit(2);
+    }
+    estado.executar = { ...estado.executar, status: 'parcial', em: hoje() };
+    for (const e of ['revisar', 'verificar', 'fechar']) if (estado[e]) estado[e] = { ...estado[e], status: 'pendente', em: hoje() };
+    const reaberturas = Array.isArray(estado.reaberturas) ? estado.reaberturas : [];
+    estado.reaberturas = [...reaberturas, { em: hoje(), de, motivo: motivo.trim() }];
+    gravar(slug, estado);
+    console.log(`reaberto: executar (de ${de})`);
+    const p = proximo(estado);
+    console.log(p ? `proximo: ${p}` : 'completo');
+    return;
+  }
+
+  console.error('uso: iniciar | ler | deixado | destinar | pendencia | marcar | proximo | exigir | liberar | listar | concluido | veredito | registrar-flake | liberar-teto | decidir | decididos | reabrir');
   process.exit(1);
   };
   return TRAVA_NO_COMANDO.includes(cmd) ? comTravaDoFluxo(slug, rodarComando) : rodarComando();
