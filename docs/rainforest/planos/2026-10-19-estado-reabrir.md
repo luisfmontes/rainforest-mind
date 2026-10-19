@@ -95,7 +95,8 @@ Forma do código: função `desQueNaoCasam(slug, estado)` em `scripts/estado.cjs
 
 ### 4. Skills, README, CHANGELOG e versão [tipo: docs]
 atende: D3, D7
-arquivos: `skills/revisar/SKILL.md`, `skills/fechar/SKILL.md`, `README.md`, `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `docs/travas-mecanicas.md`, `docs/rainforest/estado/2026-10-19-lote-issues-1019.json`
+arquivos: `skills/revisar/SKILL.md`, `skills/fechar/SKILL.md`, `README.md`, `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `docs/travas-mecanicas.md`, `docs/rainforest/estado/2026-10-19-lote-issues-1019.json`, `scripts/contrato-plugin-codex.cjs`
+*emenda do CI do PR #570:* a âncora binária do corpo de `skills/fechar/SKILL.md` em `scripts/contrato-plugin-codex.cjs` se re-mede quando a skill muda de propósito, e `scripts/testa-plugin-codex.sh` a confere.
 *emenda da revisão 2:* `docs/travas-mecanicas.md` ganha a linha da trava nova (a tabela de travas acompanha a trava), e o estado do lote anterior chega pelo cherry-pick do `fechar ok` dele, rastro de fluxo que a D2 emendada isenta na trava, mas o `creep` não.
 depende de: 3
 mutacao: n/a

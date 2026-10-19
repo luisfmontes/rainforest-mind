@@ -18,7 +18,7 @@
     "em": "2026-10-19"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-19",
     "tarefas_ok": 4,
     "tarefas": 4,
@@ -79,7 +79,7 @@
     "rodada": 6
   },
   "revisar": {
-    "status": "ok",
+    "status": "pendente",
     "snapshot": {
       "head": "2e2de1d0e2e465a2e84b38e54663e383458e09fb",
       "caminhos_sujos": [
@@ -117,7 +117,7 @@
     "head": "2e2de1d0e2e465a2e84b38e54663e383458e09fb"
   },
   "verificar": {
-    "status": "ok",
+    "status": "pendente",
     "em": "2026-10-19",
     "comando": "bash scripts/testa-estado-reabrir.sh",
     "saida": "ok: 92   falhou: 0 (exit 0); testa-estado.sh 324 ok 0 falhas",
@@ -184,6 +184,11 @@
       "em": "2026-10-19",
       "de": "revisar",
       "motivo": "revisao 4 ok com 5 nao bloqueantes que cabem no PR: -U0 deixa passar troca de lugar com merge-base igual; git mv commitado sem caso; maxBuffer e erro-como-mudanca sem caso isolado; RAIZ em subpasta; candidatos engolem erro do git"
+    },
+    {
+      "em": "2026-10-19",
+      "de": "verificar",
+      "motivo": "CI vermelho no PR #570: testa-estado-pendencia (require sem guarda de conferir-fluxo.cjs em desQueNaoCasam) e testa-plugin-codex (ancora do corpo de fechar)"
     }
   ]
 }

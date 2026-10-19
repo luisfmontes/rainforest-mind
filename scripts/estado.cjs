@@ -748,7 +748,13 @@ function caminhosSujos() {
  * mais) devolve lista vazia com aviso — a trava não tranca por falta de dado (D5).
  */
 function arquivosDeCodigoDesde(head, slug, estado) {
-  const { globsIsentos, globMatches } = require('./conferir-fluxo.cjs');
+  let globsIsentos, globMatches;
+  try {
+    ({ globsIsentos, globMatches } = require('./conferir-fluxo.cjs'));
+  } catch (e) {
+    console.error(`aviso: não consegui carregar as isenções do creep (${e.message}); a trava de código não rodou.`);
+    return [];
+  }
   // `maxBuffer` largo: com o 1 MiB padrão, o diff de arquivo grande estourava e o
   // arquivo passava como "não mudou" (revisão 3, achado 1).
   // O git roda da raiz do repositório: com `RAIZ` numa subpasta, `ls-tree` e o pathspec
@@ -1214,8 +1220,15 @@ function extrairNumerosTarefa(slug, estado) {
 function desQueNaoCasam(slug, estado) {
   const arquivo_plano = docDoEstagio('planos', slug, estado);
   if (!fs.existsSync(arquivo_plano)) return [];
-  const { extrairTarefas, lerMarkdown } = require('./conferir-fluxo.cjs');
-  const { contarOcorrencias } = require(path.join(__dirname, '..', 'hooks', 'lib', 'contar-ocorrencias.cjs'));
+  // Sem o leitor de plano (instalação parcial, caixa de teste) a checagem não roda: a
+  // catraca de cobertura logo acima já avisou do mesmo motivo.
+  let extrairTarefas, lerMarkdown, contarOcorrencias;
+  try {
+    ({ extrairTarefas, lerMarkdown } = require('./conferir-fluxo.cjs'));
+    ({ contarOcorrencias } = require(path.join(__dirname, '..', 'hooks', 'lib', 'contar-ocorrencias.cjs')));
+  } catch (_) {
+    return [];
+  }
   const conteudo = lerMarkdown(arquivo_plano);
   if (conteudo === null) return [];
 
