@@ -1,0 +1,169 @@
+{
+  "slug": "2026-10-19-lote-issues-1019",
+  "titulo": "Lote: #523 #531 #553 #559 #543 (passo 1)",
+  "criado_em": "2026-10-19",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-19-lote-issues-1019.md",
+    "em": "2026-10-19"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-19-lote-issues-1019.md",
+    "tarefas": 6,
+    "paralelas": [
+      1,
+      3,
+      4,
+      5
+    ],
+    "em": "2026-10-19"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-19",
+    "tarefas_ok": 6,
+    "tarefas": 6,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "1158aeda",
+        "iteracao": 1,
+        "sessao": "2000cb9c-f260-4626-b420-5d6adac18fc8",
+        "ts": "2026-10-19T13:09:36.858Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "1158aeda",
+        "iteracao": 1,
+        "sessao": "2000cb9c-f260-4626-b420-5d6adac18fc8",
+        "ts": "2026-10-19T13:09:36.858Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "1158aeda",
+        "iteracao": 1,
+        "sessao": "2000cb9c-f260-4626-b420-5d6adac18fc8",
+        "ts": "2026-10-19T13:09:36.858Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "1158aeda",
+        "iteracao": 1,
+        "sessao": "2000cb9c-f260-4626-b420-5d6adac18fc8",
+        "ts": "2026-10-19T13:09:36.858Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "9fa0ce61",
+        "iteracao": 1,
+        "sessao": "2000cb9c-f260-4626-b420-5d6adac18fc8",
+        "ts": "2026-10-19T13:25:55.055Z"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-19",
+    "integradas": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-publicacao.sh, secao #523: placeholder inteiro na credencial"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-publicacao.sh, secao #531: linha com 100 mil a. em menos de 2 s"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-contexto-sessao.sh, bloco 16, localhost contra listener so em 127.0.0.1 diz ok"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-setup.sh, secao #559: config.json que nao e objeto"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "muda so a mensagem de diagnostico da propria bateria"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "CHANGELOG e versao"
+      }
+    ],
+    "comando": "bash scripts/testa-conferir-publicacao.sh",
+    "saida": "== resultado: 310 ok, 0 falha(s) ==",
+    "reaberturas": 2
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "92ea476e12cfc242557bc14b57ed9c73c5881068",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a14ec27c19fbebc01",
+        "veredito": "ok",
+        "em": "2026-10-19",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-a14ec27c19fbebc01.jsonl"
+      }
+    ],
+    "achados": 0,
+    "lista": [
+      "1: aparo [...]+$ quadratico em corrida de fechos (conferir-publicacao.cjs:180)",
+      "2: CHANGELOG #531 omite variantes de noreply"
+    ],
+    "em": "2026-10-19",
+    "base": "01e5c2948d77ef011a90135e5d570aae69f15e34",
+    "head": "92ea476e12cfc242557bc14b57ed9c73c5881068"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/testa-conferir-publicacao.sh; bash hooks/testa-contexto-sessao.sh; bash scripts/testa-setup.sh; bash scripts/testa-setup-entrevista.sh; node hooks/testa-gate-teto-despachos.cjs; node scripts/conferir-versao.cjs; node scripts/conferir-fluxo.cjs mutacoes",
+    "saida": "310 ok 0 falha; ok 301 falhou 0; 84 ok 0 falha; 77 ok 0 falha; ok 78 falhou 0; versao 1.69.1 ok exit 0; tarefas 1-4 vermelho, 5-6 n/a, exit 0; timeout 2 com 100 mil a. exit 0",
+    "sensor_externo": "bash scripts/testa-conferir-publicacao.sh",
+    "em": "2026-10-19"
+  },
+  "fechar": {
+    "status": "pendente"
+  },
+  "decididos": [
+    {
+      "pergunta": "A isencao de placeholder da #523 aceita qualquer <...>?",
+      "escolha": "So placeholder com cara de palavra (ehPlaceholderInteiro); plano emendado no de: da tarefa 1",
+      "porque": "A revisao de seguranca de 9b7a057d mostrou segredo real embrulhado em <> passando; D2 ja dizia que a trava protege contra segredo colado",
+      "estagio": "executar",
+      "em": "2026-10-19T13:36:06.795Z"
+    },
+    {
+      "pergunta": "Como medir segredo dentro do placeholder?",
+      "escolha": "No maximo 4 digitos no total e nenhum pedaco entre -/_ com mais de 16 caracteres",
+      "porque": "Corrida continua deixava passar segredo picado por hifen (revisao de seguranca de 75d6520a)",
+      "estagio": "revisar",
+      "em": "2026-10-19T13:40:53.433Z"
+    },
+    {
+      "pergunta": "Ate onde apertar a isencao de placeholder?",
+      "escolha": "Cada pedaco com uma caixa so; o residuo (uma caixa, ate 16, ate 4 digitos) fica fora do modelo de ameaca",
+      "porque": "Tres voltas da revisao de seguranca acharam um contorno novo cada; sem parada declarada a auditoria nao converge (regra do brainstorm: modelo de ameaca e criterio de parada)",
+      "estagio": "revisar",
+      "em": "2026-10-19T13:45:18.002Z"
+    }
+  ]
+}

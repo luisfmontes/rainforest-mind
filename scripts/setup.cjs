@@ -53,6 +53,11 @@ function destinoPadrao() {
   return path.join(process.env.USERPROFILE || process.env.HOME || '', '.rainforest');
 }
 
+/** Onde o `criar()` SEMEIA. Uma fonte só: o ensaio do `--aplicar` mostra este mesmo caminho. */
+function destinoDoCriar() {
+  return process.env.RFM_ROOT || destinoPadrao();
+}
+
 const FOCO_MODELO = `# Foco
 
 Pastas:
@@ -155,7 +160,7 @@ function tamanhoDe(p) {
 }
 
 function criar() {
-  const destino = process.env.RFM_ROOT || destinoPadrao();
+  const destino = destinoDoCriar();
 
   fs.mkdirSync(destino, { recursive: true });
   const feito = [];
@@ -184,6 +189,11 @@ function criar() {
 
 // ---------------------------------------------------------------- toggles
 
+/** Um config.json só pode ser objeto: array ou escalar não recebe chave (#559). */
+function ehObjetoSimples(v) {
+  return v !== null && typeof v === 'object' && !Array.isArray(v);
+}
+
 function trocar(chave, valor, escopo) {
   if (!(chave in CHAVES)) {
     console.error(`erro: '${chave}' nao e uma chave conhecida. Sao: ${Object.keys(CHAVES).join(', ')}`);
@@ -208,7 +218,14 @@ function trocar(chave, valor, escopo) {
 
   const arquivo = path.join(base, 'config.json');
   let cfg = {};
-  try { cfg = JSON.parse(fs.readFileSync(arquivo, 'utf8')); } catch { /* arquivo novo */ }
+  try {
+    const lido = JSON.parse(fs.readFileSync(arquivo, 'utf8'));
+    if (!ehObjetoSimples(lido)) {
+      console.error(`erro: ${arquivo} nao e um objeto JSON; corrija ou apague o arquivo antes de gravar`);
+      process.exit(2); // sem gravar: sobrescrever aqui seria perder o conteudo
+    }
+    cfg = lido;
+  } catch { /* arquivo novo, ou JSON invalido: como hoje, recomeca de {} */ }
   cfg[chave] = valor;
 
   fs.mkdirSync(base, { recursive: true });
@@ -935,7 +952,8 @@ function aplicar() {
     }
     if (bruto !== null) {
       try {
-        JSON.parse(bruto);
+        const lido = JSON.parse(bruto);
+        if (!ehObjetoSimples(lido)) errosAplicar.push(`${arquivoConfig} nao e um objeto JSON; corrija ou apague antes de aplicar`);
       } catch {
         errosAplicar.push(`${arquivoConfig} nao e JSON valido; corrija ou apague antes de aplicar`);
       }
@@ -951,6 +969,13 @@ function aplicar() {
 
   if (ensaio) {
     for (const linha of linhasEnsaio({ chaves, projetos, estrategia, raiz: destinoUsuario, escopo })) console.log(linha);
+    // O --aplicar real chama criar() quando for primeira vez: o ensaio diz onde e o que semeia (#559).
+    // Só os que faltam: o criar() nunca sobrescreve, e listar um que já existe é prometer o que ele pula.
+    if (primeiraVez(raizAntes, nivelAntes)) {
+      const destino = destinoDoCriar();
+      const nomes = ARQUIVOS.filter((a) => a.semear && !fs.existsSync(path.join(destino, a.nome))).map((a) => a.nome);
+      if (nomes.length) console.log(`criar: semearia em ${destino} (${nomes.join(', ')})`);
+    }
     return;
   }
 

@@ -158,6 +158,39 @@ function referenciaRegua410(cauda, aspa, fstring) {
   return !/^\s*\+\s*["'`]/.test(t.slice(fecho + 1));
 }
 
+// Issue #523: placeholder INTEIRO entre `<>` com cara de PALAVRA (`<redigido>`,
+// `<sua-senha>`, `<API_KEY>`): começa por letra, até 40 caracteres de palavra ou
+// hífen, no máximo 4 dígitos no total, e cada pedaço (entre `-`/`_`) com até 16
+// caracteres e uma caixa só. A forma solta `<[^<>]+>` isentava segredo real só por
+// embrulhá-lo em `<>` (revisão de segurança de 9b7a057d); medir só corrida contínua
+// deixava passar o segredo picado por separador (75d6520a); e pedaço de caixa mista
+// é a cara do segredo aleatório (5721a354). Fica fora, de propósito: pedaço de uma
+// caixa só, curto e com poucos dígitos, que é a cara do nome de placeholder. O
+// prefixo conhecido (`sk-`, `ghp_`) segue pego pela `chave-conhecida`, à parte daqui.
+function ehPlaceholderInteiro(valor) {
+  const m = /^<([A-Za-zÀ-ÿ][\wÀ-ÿ-]{0,39})>$/.exec(valor);
+  if (!m) return false;
+  const digitos = (m[1].match(/\d/g) || []).length;
+  return digitos <= 4 && m[1].split(/[-_]/).every((s) => s.length <= 16 && (s === s.toLowerCase() || s === s.toUpperCase()));
+}
+
+// Tira do fim de `s` os caracteres de `conjunto`, num laço. A regex `[...]+$` faz o
+// mesmo em O(n²): sem âncora de início, cada posição da corrida tenta casar até o
+// fim e falha no último caractere (revisão da rodada 2: 100 mil `)` levavam 6 s).
+function aparaFim(s, conjunto) {
+  let fim = s.length;
+  while (fim > 0 && conjunto.includes(s[fim - 1])) fim--;
+  return s.slice(0, fim);
+}
+
+// O valor capturado pela regra `credencial` (`m[1]`, até o espaço) é um placeholder
+// inteiro E o resto da linha é só fechamento de aspa, lista ou objeto.
+function placeholderSozinho(m, linha) {
+  const valor = aparaFim(m[1].replace(/^["']+/, ''), `"',;)}]`);
+  const cauda = linha.slice(m.index + m[0].length);
+  return ehPlaceholderInteiro(valor) && /^[\s"',;)}\]]*$/.test(cauda);
+}
+
 // Esquema do valor capturado: { aspa, fstring } ou null se nao for Bearer, Basic
 // ou Token. `aspaPre` e a aspa que a regex de credencial consumiu antes do valor.
 // f-string so vale com f/rf/fr (qualquer caixa) logo antes de aspa simples ou
@@ -291,7 +324,11 @@ const PADROES = [
     id: 'email',
     // `noreply@` nao e endereco de ninguem: e o trailer Co-Authored-By que o
     // metodo manda todo agente usar; recusado, travava commit de agents/*.md (2026-09-24).
-    re: /\b(?!noreply@)[\w.+-]+@(?!s\.whatsapp\.net|g\.us)(?![\w.-]+\.(?:invalid|example|test|localhost)(?![-\w]|\.\w))[\w-]+\.[\w.]{2,}\b/g,
+    // Lookbehind no lugar de \b: sem ele cada posicao dentro de uma corrida de
+    // [\w.+-] reescaneava a corrida inteira atras do arroba (O(n²)). Causa da
+    // #531: 100 mil `a.` passavam de 60 s; com a lookbehind, so comeca no inicio
+    // da corrida, e a linha inteira leva ~2 ms.
+    re: /(?<![\w.+-])(?!noreply@)[\w.+-]+@(?!s\.whatsapp\.net|g\.us)(?![\w.-]+\.(?:invalid|example|test|localhost)(?![-\w]|\.\w))[\w-]+\.[\w.]{2,}\b/g,
     o_que: 'endereço de e-mail',
     faca: 'troque por `<email>` — endereço de terceiro em Issue público vira alvo de spam',
   },
@@ -360,7 +397,15 @@ const PADROES = [
       // Virgula e ponto-e-virgula entram pelo mesmo motivo (`"token": "...",` de
       // JSON). Fecha-chaves NAO entra: apara-lo quebraria `${VAR}` e a isencao de
       // referencia de variavel logo abaixo passaria a acusar.
-      const valor = m[1].replace(/^["']+/, '').replace(/["',;]+$/, '');
+      const valor = aparaFim(m[1].replace(/^["']+/, ''), `"',;`);
+      // Issue #523: placeholder INTEIRO entre `<>` não é segredo — isenção por forma
+      // irmã da `caminho-de-home` (#149). Só o valor inteiro, e só com cara de palavra
+      // (`ehPlaceholderInteiro`): `<a>segredo`, `segredo<x>` e `<hex longo>` seguem acusados.
+      // E o placeholder tem de ser o valor da LINHA, não só o primeiro token: a captura
+      // para no espaço, e `<redigido> segredo` escondia o literal da cauda (revisão
+      // da rodada 1). Depois dele só cabe fechamento (`"`, `'`, `,`, `;`, `)`, `}`, `]`)
+      // e espaço; o fecha-chaves sai do valor só aqui, para o JSON compacto passar.
+      if (placeholderSozinho(m, linha)) return false;
       const chaveComOp = m[0];
       const chave = chaveComOp.match(/^(.*?)\s*[:=]/i)[1].replace(/^["']+|["']+$/g, '').toLowerCase();
       const ehTokenNu = chave === 'token';

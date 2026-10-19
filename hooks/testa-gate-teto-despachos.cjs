@@ -139,6 +139,17 @@ function rodarAssincrono(repo, p) {
   });
 }
 
+/* Detalhe de um lote de processos: os que sairam != 0 com indice, exit e stderr
+ * aparado; depois a lista de exits. Sem falha, devolve so a lista de exits (o de hoje). */
+function detalheDosProcessos(rs) {
+  const sts = rs.map((r) => r.status).join(",");
+  const falhas = rs
+    .map((r, i) => ({ r, i }))
+    .filter(({ r }) => r.status !== 0)
+    .map(({ r, i }) => `[processo ${i}] exit=${r.status} stderr=${String(r.stderr).trim().slice(0, 200)}`);
+  return falhas.length ? `${falhas.join(" | ")} | exits=${sts}` : sts;
+}
+
 async function main() {
   // == 1. 40 admitidos, o 41o nega ==
   console.log("== 1. ate a 40a sai 0 e conta; a 41a sai 2 citando slug, teto e contador ==");
@@ -285,7 +296,7 @@ async function main() {
   {
     const repo = caixa();
     const rs = await Promise.all(Array.from({ length: 12 }, () => rodarAssincrono(repo, janela(repo))));
-    caso("12 processos lancados juntos saem todos 0", rs.every((r) => r.status === 0), rs.map((r) => r.status).join(","));
+    caso("12 processos lancados juntos saem todos 0", rs.every((r) => r.status === 0), detalheDosProcessos(rs));
     caso("12 processos lancados juntos terminam com total 12", contador(repo) === 12, `total=${contador(repo)}`);
   }
   {
@@ -294,8 +305,8 @@ async function main() {
     const rs = await Promise.all(Array.from({ length: 12 }, () => rodarAssincrono(repo, janela(repo))));
     const zero = rs.filter((r) => r.status === 0).length;
     const dois = rs.filter((r) => r.status === 2).length;
-    caso("com o contador em 36, exatamente 4 dos 12 saem 0", zero === 4, rs.map((r) => r.status).join(","));
-    caso("com o contador em 36, exatamente 8 dos 12 saem 2", dois === 8, rs.map((r) => r.status).join(","));
+    caso("com o contador em 36, exatamente 4 dos 12 saem 0", zero === 4, detalheDosProcessos(rs));
+    caso("com o contador em 36, exatamente 8 dos 12 saem 2", dois === 8, detalheDosProcessos(rs));
     caso("com o contador em 36, o total termina em 40", contador(repo) === 40, `total=${contador(repo)}`);
   }
 

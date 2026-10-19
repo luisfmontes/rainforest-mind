@@ -471,5 +471,86 @@ else
   falhou=$((falhou+1)); echo "  FALHA 411 setup em worktree (exit $got411)"; echo "$saida411" | sed 's/^/         /'
 fi
 echo
+echo "== #559: config.json que nao e objeto, e o ensaio diz onde o criar semeia =="
+# (a) e (b): RFM_ROOT proprio e projeto sem .rainforest. Nada aqui toca ~/.rainforest.
+C559="$CAIXA/t559"; mkdir -p "$C559"
+D559="$C559/dados"; mkdir -p "$D559"
+D559_WIN="$(cygpath -m "$D559" 2>/dev/null || printf '%s' "$D559")"
+P559="$C559/projeto"; mkdir -p "$P559"
+P559_WIN="$(cygpath -m "$P559" 2>/dev/null || printf '%s' "$P559")"
+printf '%s\n' '{"chaves": {"ponte-codex": true}}' > "$C559/payload.json"
+PAY559_WIN="$(cygpath -m "$C559/payload.json" 2>/dev/null || printf '%s' "$C559/payload.json")"
+rodar559() { env RFM_ROOT="$D559_WIN" CLAUDE_PROJECT_DIR="$P559_WIN" node "$SRC/scripts/setup.cjs" "$@"; }
+
+# (a) config.json que e JSON valido mas nao e objeto: recusa nos dois comandos, sem gravar.
+for v in '[]' 'null' '42' '"x"'; do
+  printf '%s' "$v" > "$D559/config.json"
+  cp "$D559/config.json" "$C559/antes.json"
+  saida_l=$(rodar559 --ligar ponte-codex --escopo usuario 2>&1); got_l=$?
+  saida_a=$(rodar559 --aplicar "$PAY559_WIN" --escopo usuario 2>&1); got_a=$?
+  if [ "$got_l" = 2 ] && [ "$got_a" = 2 ] && cmp -s "$D559/config.json" "$C559/antes.json" \
+     && echo "$saida_l" | grep -q "config.json nao e um objeto JSON" \
+     && echo "$saida_a" | grep -q "config.json nao e um objeto JSON"; then
+    ok=$((ok+1)); echo "  ok   #559 (a) config.json = $v: --ligar e --aplicar saem 2, nomeiam o arquivo, nao gravam (cmp)"
+  else
+    falhou=$((falhou+1)); echo "  FALHA #559 (a) config.json = $v: ligar exit $got_l, aplicar exit $got_a, ou o arquivo mudou"
+    echo "$saida_l" | sed 's/^/         /' | tail -4; echo "$saida_a" | sed 's/^/         /' | tail -4
+  fi
+done
+
+# (b) objeto (vazio ou com chaves): os dois comandos gravam como hoje.
+printf '%s' '{}' > "$D559/config.json"
+saida_b1=$(rodar559 --ligar ponte-codex --escopo usuario 2>&1); got_b1=$?
+if [ "$got_b1" = 0 ] && grep -q '"ponte-codex": true' "$D559/config.json"; then
+  ok=$((ok+1)); echo "  ok   #559 (b) config.json = {}: --ligar grava (exit $got_b1)"
+else
+  falhou=$((falhou+1)); echo "  FALHA #559 (b) --ligar em {}: exit $got_b1"; echo "$saida_b1" | sed 's/^/         /' | tail -4
+fi
+printf '%s' '{"gate-publicacao": false}' > "$D559/config.json"
+saida_b2=$(rodar559 --aplicar "$PAY559_WIN" --escopo usuario 2>&1); got_b2=$?
+if [ "$got_b2" = 0 ] && grep -q '"ponte-codex": true' "$D559/config.json" && grep -q '"gate-publicacao": false' "$D559/config.json"; then
+  ok=$((ok+1)); echo "  ok   #559 (b) config.json com chave: --aplicar grava e preserva a chave antiga (exit $got_b2)"
+else
+  falhou=$((falhou+1)); echo "  FALHA #559 (b) --aplicar em objeto com chave: exit $got_b2"; echo "$saida_b2" | sed 's/^/         /' | tail -4
+fi
+
+# (c) projeto com .rainforest so de ideias.jsonl e pasta de dados ainda nao montada.
+# Sem RFM_ROOT, a pasta de dados e ~/.rainforest: aponto HOME para caixa temporaria.
+H559="$C559/home"; mkdir -p "$H559"
+H559_WIN="$(cygpath -m "$H559" 2>/dev/null || printf '%s' "$H559")"
+PC559="$C559/projeto-c"; mkdir -p "$PC559/.rainforest"; : > "$PC559/.rainforest/ideias.jsonl"
+PC559_WIN="$(cygpath -m "$PC559" 2>/dev/null || printf '%s' "$PC559")"
+rodar_c() { env -u RFM_ROOT USERPROFILE="$H559_WIN" HOME="$H559_WIN" CLAUDE_PROJECT_DIR="$PC559_WIN" node "$SRC/scripts/setup.cjs" "$@"; }
+saida_c=$(rodar_c --aplicar "$PAY559_WIN" --escopo projeto --ensaio 2>&1); got_c=$?
+dest_c=$(echo "$saida_c" | sed -n 's/^criar: semearia em \(.*\) (.*)$/\1/p')
+if [ "$got_c" = 0 ] && [ -n "$dest_c" ] && echo "$saida_c" | grep -q "FOCO.md, ideias.jsonl, projetos.json" && [ ! -e "$H559/.rainforest" ]; then
+  ok=$((ok+1)); echo "  ok   #559 (c) ensaio nomeia a pasta de semeadura e os arquivos, e nao cria nada (exit $got_c)"
+else
+  falhou=$((falhou+1)); echo "  FALHA #559 (c) ensaio (exit $got_c) nao nomeou a pasta/arquivos, ou criou algo"; echo "$saida_c" | sed 's/^/         /' | tail -6
+fi
+saida_ap=$(rodar_c --aplicar "$PAY559_WIN" --escopo projeto 2>&1); got_ap=$?
+if [ "$got_ap" = 0 ] && [ -f "$H559/.rainforest/FOCO.md" ] && [ -f "$H559/.rainforest/ideias.jsonl" ] && [ -f "$H559/.rainforest/projetos.json" ] \
+   && echo "$saida_ap" | grep -qF "pasta de dados: $dest_c"; then
+  ok=$((ok+1)); echo "  ok   #559 (c) --aplicar sem ensaio semeia exatamente na pasta que o ensaio nomeou (exit $got_ap)"
+else
+  falhou=$((falhou+1)); echo "  FALHA #559 (c) --aplicar nao semeou na pasta nomeada (exit $got_ap, destino '$dest_c')"; echo "$saida_ap" | sed 's/^/         /' | tail -6
+fi
+
+# (d) revisao da rodada 1: o ensaio lista so o que o criar() vai criar. Com
+# projetos.json ja na pasta de dados, ele nao entra na lista (o criar() o pula).
+H559d="$C559/home-d"; mkdir -p "$H559d"
+H559d_WIN="$(cygpath -m "$H559d" 2>/dev/null || printf '%s' "$H559d")"
+mkdir -p "$H559d/.rainforest"; printf '%s' '{}' > "$H559d/.rainforest/projetos.json"
+PD559="$C559/projeto-d"; mkdir -p "$PD559/.rainforest"; : > "$PD559/.rainforest/ideias.jsonl"
+PD559_WIN="$(cygpath -m "$PD559" 2>/dev/null || printf '%s' "$PD559")"
+saida_d=$(env -u RFM_ROOT USERPROFILE="$H559d_WIN" HOME="$H559d_WIN" CLAUDE_PROJECT_DIR="$PD559_WIN" node "$SRC/scripts/setup.cjs" --aplicar "$PAY559_WIN" --escopo projeto --ensaio 2>&1); got_d=$?
+linha_d=$(echo "$saida_d" | grep '^criar: semearia em ')
+if [ "$got_d" = 0 ] && [ -n "$linha_d" ] && echo "$linha_d" | grep -q "FOCO.md" && ! echo "$linha_d" | grep -q "projetos.json"; then
+  ok=$((ok+1)); echo "  ok   #559 (d) com projetos.json ja na pasta, o ensaio lista so o que falta"
+else
+  falhou=$((falhou+1)); echo "  FALHA #559 (d) ensaio (exit $got_d) listou arquivo que ja existe, ou nao armou a linha"; echo "$saida_d" | sed 's/^/         /' | tail -6
+fi
+
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

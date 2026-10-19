@@ -1473,6 +1473,21 @@ ALHEIO="$(ctx_hook "WHATSAPP_API_BASE_URL=http://127.0.0.1:59421" "WHATSAPP_MCP_
 checa "contas de outra porta, checagem unica"        tem     "bridge WhatsApp FORA (http://127.0.0.1:59421)" "$ALHEIO"
 checa "contas de outra porta, nao nomeia conta"      nao_tem "pessoal FORA"             "$ALHEIO"
 
+# #553: `localhost` resolve por DNS e o hook sondava um endereco so. Listener
+# TCP temporario SO em 127.0.0.1 (porta livre, escolhida pelo kernel) tem que
+# dar ok com `localhost`; a porta morta tem que dar FORA. O listener e encerrado
+# pelo PID que esta linha criou — nunca por nome ou porta.
+LOOP_PORTA_ARQ="$RAIZ_POSIX/porta-loopback"
+node -e "const s=require('net').createServer((c)=>c.destroy()).listen(0,'127.0.0.1',()=>require('fs').writeFileSync(process.argv[1],String(s.address().port)))" "$LOOP_PORTA_ARQ" &
+LOOP_PID=$!
+for _ in $(seq 100); do [ -s "$LOOP_PORTA_ARQ" ] && break; sleep 0.05; done
+PORTA_LOOP="$(cat "$LOOP_PORTA_ARQ" 2>/dev/null)"
+LOCAL_OK="$(ctx_hook "WHATSAPP_API_BASE_URL=http://localhost:$PORTA_LOOP" "WHATSAPP_MCP_ACCOUNTS=$CAIXA_DEP/sem-contas.json" "RFM_ROOT=$RAIZ_NEUTRA" "CLAUDE_CONFIG_DIR=$CAIXA_DEP" "RFM_SETTINGS_PATH=$CAIXA_DEP/settings.json")"
+kill "$LOOP_PID" 2>/dev/null; wait "$LOOP_PID" 2>/dev/null
+checa "localhost contra listener so em 127.0.0.1 diz ok" tem "bridge WhatsApp ok" "$LOCAL_OK"
+LOCAL_MORTA="$(ctx_hook "WHATSAPP_API_BASE_URL=http://localhost:59421" "WHATSAPP_MCP_ACCOUNTS=$CAIXA_DEP/sem-contas.json" "RFM_ROOT=$RAIZ_NEUTRA" "CLAUDE_CONFIG_DIR=$CAIXA_DEP" "RFM_SETTINGS_PATH=$CAIXA_DEP/settings.json")"
+checa "localhost com porta morta diz FORA"           tem "bridge WhatsApp FORA"   "$LOCAL_MORTA"
+
 echo
 echo "17. ISENCOES MECANIZADAS — pastasDoFoco, dentroDoExpediente, focoAtivoEmOutraJanela, computarVeredito"
 # D6: "sem dado, cobra — e a ausencia se anuncia". As quatro funcoes deste bloco
