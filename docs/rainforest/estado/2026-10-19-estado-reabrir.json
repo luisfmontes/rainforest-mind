@@ -78,7 +78,12 @@
     "saida": "== resultado: 324 ok, 0 falhas =="
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "c90cad16b51fd249e5f51a5796867f27c2569180",
+      "caminhos_sujos": []
+    },
+    "vereditos": []
   },
   "verificar": {
     "status": "pendente"
