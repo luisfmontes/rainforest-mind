@@ -161,6 +161,14 @@ function testTcpConnection(host, port, timeout = 400) {
   });
 }
 
+// `localhost` passa pelo DNS, e o timeout de 400 ms conta desde a criação do socket;
+// sondando os dois loopbacks direto, nada de resolução (#553).
+async function sondar(host, port) {
+  if (host !== 'localhost') return testTcpConnection(host, port);
+  const r = await Promise.all(['127.0.0.1', '::1'].map((h) => testTcpConnection(h, port)));
+  return r.some(Boolean);
+}
+
 function urlDeclarada() {
   // Só chamada quando `bridgeDeclarada()` — a variável existe, e o default antigo
   // (`localhost:3005`) era justamente o que fazia toda máquina sondar sem pedir.
@@ -210,12 +218,12 @@ async function checkWhatsAppBridge() {
   const declarada = urlDeclarada();
   const contas = contasDaBridge(declarada);
   if (!contas) {
-    const isConnected = await testTcpConnection(declarada.host, declarada.port);
+    const isConnected = await sondar(declarada.host, declarada.port);
     return [{ status: isConnected ? 'ok' : 'FORA', url: declarada.url }];
   }
   return Promise.all(contas.map(async (c) => ({
     conta: c.conta,
-    status: (await testTcpConnection(declarada.host, c.port)) ? 'ok' : 'FORA',
+    status: (await sondar(declarada.host, c.port)) ? 'ok' : 'FORA',
     url: `:${c.port}`,
   })));
 }
