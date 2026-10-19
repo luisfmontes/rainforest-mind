@@ -749,9 +749,13 @@ function caminhosSujos() {
  */
 function arquivosDeCodigoDesde(head, slug, estado) {
   const { globsIsentos, globMatches } = require('./conferir-fluxo.cjs');
-  const git = (args, input) => spawnSync(caminhoExecutavel('git'), ['-c', 'core.quotepath=false', ...args], { cwd: RAIZ, encoding: 'utf8', input });
+  // `maxBuffer` largo: com o 1 MiB padrão, o diff de arquivo grande estourava e o
+  // arquivo passava como "não mudou" (revisão 3, achado 1).
+  const git = (args, input) => spawnSync(caminhoExecutavel('git'), ['-c', 'core.quotepath=false', ...args], { cwd: RAIZ, encoding: 'utf8', input, maxBuffer: 1024 * 1024 * 1024 });
   const nomes = (txt) => txt.split('\0').map((f) => f.replace(/\\/g, '/')).filter((f) => f.length > 0);
-  const r = git(['diff', '--name-only', '-z', head, 'HEAD']);
+  // `--no-renames`: renomeação vira apagado + criado, e o nome antigo (que pode não ser
+  // isento) não some atrás do novo.
+  const r = git(['diff', '--no-renames', '--name-only', '-z', head, 'HEAD']);
   if (r.status !== 0) {
     console.error(`aviso: não consegui ler o diff desde o verificar (${head}); a trava de código não rodou.`);
     return [];
@@ -763,21 +767,35 @@ function arquivosDeCodigoDesde(head, slug, estado) {
   if (mbAntes.status === 0 && mbAgora.status === 0) {
     const antes = [mbAntes.stdout.trim(), head];
     const agora = [mbAgora.stdout.trim(), 'HEAD'];
-    // Impressão da mudança da branch num arquivo; '' quando a branch não o muda.
+    // Impressão da mudança da branch num arquivo; '' quando a branch não o muda. `-U0`:
+    // sem contexto, a linha da padrão vizinha à da branch não entra no hash. `--verbatim`:
+    // indentação conta (o `--stable` a descartava). Erro do git vale como mudança: um
+    // arquivo sem impressão não pode passar por igual.
     const impressao = ([a, b], f) => {
-      const d = git(['diff', '--binary', a, b, '--', f]);
-      if (d.status !== 0 || !d.stdout) return '';
-      return (git(['patch-id', '--stable'], d.stdout).stdout || '').split(' ')[0];
+      const d = git(['diff', '--no-renames', '-U0', '--binary', a, b, '--', f]);
+      if (d.status !== 0 || d.error) return `erro ${Math.random()}`;
+      if (!d.stdout) return '';
+      const p = git(['patch-id', '--verbatim'], d.stdout);
+      if (p.status !== 0 || p.error) return `erro ${Math.random()}`;
+      return (p.stdout || '').split(' ')[0];
+    };
+    // Modo e blob do arquivo numa árvore; '' quando ele não existe nela.
+    const entrada = (arvore, f) => {
+      const t = git(['ls-tree', '-z', arvore, '--', f]);
+      return t.status === 0 ? t.stdout.split('\t')[0] : `erro ${Math.random()}`;
     };
     const candidatos = new Set([
-      ...nomes(git(['diff', '--name-only', '-z', ...antes]).stdout || ''),
-      ...nomes(git(['diff', '--name-only', '-z', ...agora]).stdout || ''),
+      ...nomes(git(['diff', '--no-renames', '--name-only', '-z', ...antes]).stdout || ''),
+      ...nomes(git(['diff', '--no-renames', '--name-only', '-z', ...agora]).stdout || ''),
     ]);
-    mudados = [...candidatos].filter((f) => impressao(antes, f) !== impressao(agora, f));
+    // Conteúdo igual ao verificado não mudou, qualquer que seja o caminho até ele (squash
+    // na padrão, conflito de versão resolvido para o valor da branch).
+    mudados = [...candidatos].filter((f) => entrada(head, f) !== entrada('HEAD', f)
+      && impressao(antes, f) !== impressao(agora, f));
   }
   // `-z`: nome com espaço sai cru, sem as aspas do porcelain v1 que furavam o glob de
   // isenção; na renomeação o nome novo vem primeiro e o antigo no campo seguinte.
-  const st = git(['status', '--porcelain', '-z']);
+  const st = git(['status', '--porcelain', '-z', '--no-renames']);
   const sujos = [];
   if (st.status === 0) {
     const campos = st.stdout.split('\0');
@@ -3202,6 +3220,9 @@ function main() {
         : estagio === 'verificar' && !raizCodigo
           ? { head: estado.revisar && estado.revisar.snapshot && estado.revisar.snapshot.head, quem: 'revisar' }
           : null;
+      if (refCodigo && !refCodigo.head && estagio === 'fechar') {
+        console.error("aviso: 'verificar' sem HEAD gravado (estado antigo, ou verificar com --raiz): não dá para conferir se o código mudou depois dele.");
+      }
       if (refCodigo && refCodigo.head) {
         const recusa = recusaCodigoDepois(slug, estado, refCodigo.head, refCodigo.quem, estagio);
         if (recusa) {

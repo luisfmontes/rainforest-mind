@@ -55,7 +55,7 @@
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-estado-reabrir.sh, secao D1 (b), (e)-(h)"
+        "fixture": "testa-estado-reabrir.sh, secao D1 (b), (e)-(l)"
       },
       {
         "tarefa": 2,
@@ -74,9 +74,9 @@
       }
     ],
     "comando": "bash scripts/testa-estado-reabrir.sh",
-    "saida": "ok: 54   falhou: 0",
-    "reaberturas": 2,
-    "rodada": 2,
+    "saida": "ok: 69   falhou: 0",
+    "reaberturas": 3,
+    "rodada": 3,
     "reaberto_por": {
       "estagio": "revisar",
       "data": "2026-10-19"
@@ -85,7 +85,7 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "3cda9dccca007c608a0bc9e10a81b795aa3db901",
+      "head": "e74a703dc156a89d6b4c0428c5d4eef1466c04ad",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-10-19-estado-reabrir.json"
       ]
@@ -93,22 +93,33 @@
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "adbd20217438a2a45",
+        "agente_id": "a9e469e387447d572",
         "veredito": "reprovado",
         "em": "2026-10-19",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-adbd20217438a2a45.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-a9e469e387447d572.jsonl"
       }
     ],
-    "achados": 5,
+    "achados": 7,
     "design": [
       1,
       2,
       3
     ],
     "em": "2026-10-19",
-    "tentativas": 2,
+    "tentativas": 3,
     "em_voo": [],
-    "rodada": 2
+    "rodada": 3,
+    "bloqueantes": [
+      1,
+      2
+    ],
+    "liberado_em": "2026-10-19",
+    "rodadas_extra": [
+      {
+        "texto": "usuario liberou 4a rodada para consertar achados 1-7 da revisao 3 (recomendado)",
+        "em": "2026-10-19"
+      }
+    ]
   },
   "verificar": {
     "status": "pendente"

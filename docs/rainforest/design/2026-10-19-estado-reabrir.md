@@ -26,6 +26,13 @@ bloqueante de uma revisão aprovada ganha caminho formal de volta ao `executar`.
   `merge-base(HEAD)..HEAD`, por `git patch-id --stable` (ignora deslocamento de linha):
   a padrão mexendo no mesmo arquivo não acusa, e apagar ou reverter o que a branch tinha
   acusa. Sem `origin/<padrão>`, vale `head..HEAD`.
+  *Emenda da revisão 3 (4ª rodada liberada pelo usuário; impasse em
+  `docs/rainforest/portoes/2026-10-19-estado-reabrir-impasse.md`):* o arquivo só conta
+  quando o modo ou o blob em HEAD difere do verificado **e** a impressão difere; a
+  impressão é `git diff --no-renames -U0 --binary` com `git patch-id --verbatim` (sem
+  contexto, com indentação), e erro do git vale como mudança; renomeação conta pelos
+  dois nomes. Conteúdo igual ao verificado não acusa (squash na padrão, conflito de
+  versão resolvido para o valor da branch); conflito resolvido para outro conteúdo acusa.
 - **D2 — "Código" é todo arquivo fora das isenções que o `creep` já usa** — porquê: a lista
   (`globsIsentos` em `scripts/conferir-fluxo.cjs`: estado, design, plano, portões, varredura
   do slug, `relatorios/`, réguas) já define o rastro do fluxo que não é entrega. Reaproveitar

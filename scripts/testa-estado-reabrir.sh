@@ -276,6 +276,120 @@ saida=$($E exigir --slug "$SLUG" --estagio fechar 2>&1); rc=$?
 igual "src/n.js apagado depois do verificar sai 2" "2" "$rc"
 igual "saida nomeia src/n.js" "1" "$(echo "$saida" | grep -c '^  src/n.js$')"
 
+# Prepara a main com `$2` (conteudo) em `$1` e traz para fluxo/x antes de tudo.
+na_main_e_traz() {
+  git -C "$CX" checkout -q main
+  printf '%s' "$2" > "$CX/$1"
+  git -C "$CX" add -- "$1"
+  git -C "$CX" commit -q -m "base de $1 na main"
+  git -C "$CX" push -q origin main
+  git -C "$CX" checkout -q fluxo/x
+  git -C "$CX" merge -q --no-edit main
+}
+# Commit na main de `sed $2` sobre `$1`, push e merge em fluxo/x (sem conflito).
+main_muda_e_traz() {
+  git -C "$CX" checkout -q main
+  sed -i "$2" "$CX/$1"
+  git -C "$CX" add -- "$1"
+  git -C "$CX" commit -q -m "outro PR muda $1"
+  git -C "$CX" push -q origin main
+  git -C "$CX" checkout -q fluxo/x
+  git -C "$CX" merge -q --no-edit main
+}
+
+echo "-- (m) emenda 3: arquivo com diff acima de 1 MiB depois do verificar sai 2 --"
+caixa_nova
+fechar_ate_verificar
+mkdir -p "$CX/src" && node -e 'process.stdout.write("linha de teste grande\n".repeat(80000))' > "$CX/src/grande.js"
+git -C "$CX" add -- src/grande.js
+git -C "$CX" commit -q -m "arquivo grande depois do verificar"
+saida=$($E exigir --slug "$SLUG" --estagio fechar 2>&1); rc=$?
+igual "src/grande.js de 1,7 MB sai 2" "2" "$rc"
+igual "saida nomeia src/grande.js" "1" "$(echo "$saida" | grep -c '^  src/grande.js$')"
+
+echo "-- (n) emenda 3: main muda linha vizinha (2 linhas) da mudanca da branch --"
+caixa_nova
+na_main_e_traz f.txt "$(seq 1 30)
+"
+sed -i '5s/.*/5 da branch/' "$CX/f.txt"
+git -C "$CX" add -- f.txt
+git -C "$CX" commit -q -m "branch muda a linha 5"
+fechar_ate_verificar
+main_muda_e_traz f.txt '7s/.*/7 da main/'
+igual "merge trouxe a linha 7 da main" "1" "$(grep -c '7 da main' "$CX/f.txt")"
+esperado "exigir fechar com a main na linha vizinha sai 0" 0 $E exigir --slug "$SLUG" --estagio fechar
+
+echo "-- (o) emenda 3: so a indentacao da linha da branch muda depois do verificar --"
+caixa_nova
+na_main_e_traz s.py "for i in r:
+    h(i)
+"
+sed -i 's/    h(i)/    h2(i)/' "$CX/s.py"
+git -C "$CX" add -- s.py
+git -C "$CX" commit -q -m "branch troca h por h2"
+fechar_ate_verificar
+sed -i 's/    h2(i)/h2(i)/' "$CX/s.py"
+git -C "$CX" add -- s.py
+git -C "$CX" commit -q -m "tira a indentacao"
+saida=$($E exigir --slug "$SLUG" --estagio fechar 2>&1); rc=$?
+igual "indentacao mudada sai 2" "2" "$rc"
+igual "saida nomeia s.py" "1" "$(echo "$saida" | grep -c '^  s.py$')"
+
+echo "-- (p) emenda 3: conflito de versao resolvido para o valor da branch --"
+caixa_nova
+na_main_e_traz p.json '{
+  "nome": "x",
+  "version": "1.69.1"
+}
+'
+sed -i 's/1.69.1/1.70.0/' "$CX/p.json"
+git -C "$CX" add -- p.json
+git -C "$CX" commit -q -m "branch sobe para 1.70.0"
+fechar_ate_verificar
+git -C "$CX" checkout -q main
+sed -i 's/1.69.1/1.69.2/' "$CX/p.json"
+git -C "$CX" add -- p.json
+git -C "$CX" commit -q -m "main publica 1.69.2"
+git -C "$CX" push -q origin main
+git -C "$CX" checkout -q fluxo/x
+git -C "$CX" merge -q --no-edit main >/dev/null 2>&1
+git -C "$CX" checkout -q --ours -- p.json
+git -C "$CX" add -- p.json
+git -C "$CX" commit -q --no-edit
+igual "merge resolvido com 1.70.0" "1" "$(grep -c '1.70.0' "$CX/p.json")"
+esperado "exigir fechar com conflito resolvido para a branch sai 0" 0 $E exigir --slug "$SLUG" --estagio fechar
+
+echo "-- (q) emenda 3: exigir fechar numa arvore com o squash da branch na main --"
+caixa_nova
+mkdir -p "$CX/src" && printf 'x\n' > "$CX/src/a.js"
+git -C "$CX" add -- src/a.js
+git -C "$CX" commit -q -m "codigo da branch"
+fechar_ate_verificar
+git -C "$CX" checkout -q main
+git -C "$CX" merge -q --squash fluxo/x
+git -C "$CX" commit -q -m "squash do PR"
+git -C "$CX" push -q origin main
+esperado "exigir fechar com o squash na main sai 0" 0 $E exigir --slug "$SLUG" --estagio fechar
+
+echo "-- (r) emenda 3: git mv de codigo para pasta isenta, sem commit, sai 2 --"
+caixa_nova
+mkdir -p "$CX/src" "$CX/relatorios" && printf 'x\n' > "$CX/src/a.js"
+git -C "$CX" add -- src/a.js
+git -C "$CX" commit -q -m "codigo antes do verificar"
+fechar_ate_verificar
+git -C "$CX" mv src/a.js relatorios/a.js
+saida=$($E exigir --slug "$SLUG" --estagio fechar 2>&1); rc=$?
+igual "git mv para relatorios/ sai 2" "2" "$rc"
+igual "saida nomeia o nome antigo src/a.js" "1" "$(echo "$saida" | grep -c '^  src/a.js$')"
+
+echo "-- (s) emenda 3: marcar fechar ok sem verificar.head avisa --"
+caixa_nova
+fechar_ate_verificar
+node -e 'const fs=require("fs");const f=process.argv[1];const j=JSON.parse(fs.readFileSync(f,"utf8"));delete j.verificar.head;fs.writeFileSync(f,JSON.stringify(j,null,2));' "$ARQ"
+saida=$($E marcar --slug "$SLUG" --estagio fechar --status ok --json '{"acao":"merge"}' 2>&1); rc=$?
+igual "marcar fechar ok sem head sai 0" "0" "$rc"
+igual "marcar fechar ok sem head avisa" "1" "$(echo "$saida" | grep -c "verificar' sem HEAD gravado")"
+
 echo "== D3: reabrir =="
 
 echo "-- (a) com revisar ok, reabrir volta executar e revisar --"

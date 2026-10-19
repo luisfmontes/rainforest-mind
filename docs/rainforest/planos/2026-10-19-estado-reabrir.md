@@ -35,6 +35,13 @@ pronto quando: numa caixa `mktemp -d` com repo git, fluxo aberto e `estado.cjs` 
 (j) *emenda 2:* `exigir revisar` tira o instantâneo, `revisar` ok, commit de `src/a.js`: `marcar verificar ok` sai 2 citando o `revisar` e o arquivo; `reabrir` sai 0;
 (k) *emenda 2:* a branch muda a linha 1 do `CHANGELOG.md` antes do `verificar`, a `main` muda a linha 30 depois e entra por merge: `exigir fechar` sai 0;
 (l) *emenda 2:* arquivo criado pela branch antes do `verificar` e apagado depois: `exigir fechar` sai 2 nomeando o arquivo;
+(m) *emenda 3:* commit de arquivo de 1,7 MB depois do `verificar`: sai 2 nomeando o arquivo;
+(n) *emenda 3:* a branch muda a linha 5, a `main` muda a linha 7 e entra por merge limpo: sai 0;
+(o) *emenda 3:* depois do `verificar`, só a indentação da linha que a branch mudou: sai 2;
+(p) *emenda 3:* conflito de versão (branch 1.70.0, `main` 1.69.2) resolvido para o valor da branch: sai 0;
+(q) *emenda 3:* `exigir fechar` na `main` com o squash da branch: sai 0;
+(r) *emenda 3:* `git mv` de `src/a.js` para `relatorios/` sem commit: sai 2 nomeando `src/a.js`;
+(s) *emenda 3:* `marcar fechar ok` sem `verificar.head`: sai 0 com aviso;
 provado por `bash scripts/testa-estado-reabrir.sh` com zero falha, placar `ok: N   falhou: 0`, nenhum caso lendo o texto do fonte.
 
 Forma do código: em `scripts/estado.cjs`, função `arquivosDeCodigoDesde(head, slug, estado)` que roda `git diff --name-only <head> HEAD` e filtra com `globsIsentos`/`globMatches` de `scripts/conferir-fluxo.cjs` (os mesmos argumentos que o `creep` usa). No `marcar verificar ok`, grava `head` no bloco. No `exigir` do `fechar`, depois da checagem de pendências órfãs, a linha `const codigoDepois = arquivosDeCodigoDesde(estado.verificar.head, slug, estado);` e logo abaixo a linha exata `if (codigoDepois.length) {`, que imprime a recusa e sai 2.
