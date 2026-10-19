@@ -158,6 +158,16 @@ function referenciaRegua410(cauda, aspa, fstring) {
   return !/^\s*\+\s*["'`]/.test(t.slice(fecho + 1));
 }
 
+// Issue #523: placeholder INTEIRO entre `<>` com cara de PALAVRA (`<redigido>`,
+// `<sua-senha>`, `<API_KEY>`): começa por letra, até 40 caracteres de palavra ou
+// hífen, e sem corrida de 16+ alfanuméricos com dígito. A forma solta `<[^<>]+>`
+// isentava segredo real só por embrulhá-lo em `<>` (revisão de segurança do
+// commit 9b7a057d); o prefixo conhecido (`sk-`, `ghp_`) continua pego também pela
+// regra `chave-conhecida`, que não depende desta isenção.
+function ehPlaceholderInteiro(valor) {
+  return /^<[A-Za-zÀ-ÿ][\wÀ-ÿ-]{0,39}>$/.test(valor) && !/(?=[A-Za-z0-9]*\d)[A-Za-z0-9]{16,}/.test(valor);
+}
+
 // Esquema do valor capturado: { aspa, fstring } ou null se nao for Bearer, Basic
 // ou Token. `aspaPre` e a aspa que a regex de credencial consumiu antes do valor.
 // f-string so vale com f/rf/fr (qualquer caixa) logo antes de aspa simples ou
@@ -365,10 +375,10 @@ const PADROES = [
       // JSON). Fecha-chaves NAO entra: apara-lo quebraria `${VAR}` e a isencao de
       // referencia de variavel logo abaixo passaria a acusar.
       const valor = m[1].replace(/^["']+/, '').replace(/["',;]+$/, '');
-      // Issue #523: placeholder INTEIRO entre `<>` (`<redigido>`, `<sua-senha>`) não é
-      // segredo — isenção por forma irmã da `caminho-de-home` (#149). Só o valor inteiro:
-      // `<a>segredo` e `segredo<x>` continuam acusados.
-      if (/^<[^<>]+>$/.test(valor)) return false;
+      // Issue #523: placeholder INTEIRO entre `<>` não é segredo — isenção por forma
+      // irmã da `caminho-de-home` (#149). Só o valor inteiro, e só com cara de palavra
+      // (`ehPlaceholderInteiro`): `<a>segredo`, `segredo<x>` e `<hex longo>` seguem acusados.
+      if (ehPlaceholderInteiro(valor)) return false;
       const chaveComOp = m[0];
       const chave = chaveComOp.match(/^(.*?)\s*[:=]/i)[1].replace(/^["']+|["']+$/g, '').toLowerCase();
       const ehTokenNu = chave === 'token';

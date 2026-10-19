@@ -1077,6 +1077,23 @@ printf 'api_key: sk-%s\n' "$HEX32" > "$SBP/523-c-sk.md"
 tem     "api_key com prefixo sk- e 32 hex continua credencial" "$(roda "$SBP/523-c-sk.md")" "credencial"
 saiu    "e RECUSA (exit 2)"                                   "$(codigo "$SBP/523-c-sk.md")" "2"
 
+# (d) revisao de seguranca: segredo EMBRULHADO em <> nao vira placeholder.
+printf 'senha: <%s>\n' "$ALNUM18" > "$SBP/523-d-alnum.md"
+tem     "<18 alfanumericos com digito> continua credencial" "$(roda "$SBP/523-d-alnum.md")" "credencial"
+saiu    "e RECUSA (exit 2)"                                 "$(codigo "$SBP/523-d-alnum.md")" "2"
+
+printf 'senha: <%s>\n' "$HEX20" > "$SBP/523-d-hex.md"
+tem     "<20 hex comecando por digito> continua credencial" "$(roda "$SBP/523-d-hex.md")" "credencial"
+saiu    "e RECUSA (exit 2)"                                 "$(codigo "$SBP/523-d-hex.md")" "2"
+
+printf 'senha: <sk-%s>\n' "$HEX32" > "$SBP/523-d-sk.md"
+tem     "<sk- e 32 hex> continua credencial" "$(roda "$SBP/523-d-sk.md")" "credencial"
+saiu    "e RECUSA (exit 2)"                  "$(codigo "$SBP/523-d-sk.md")" "2"
+
+printf 'senha: <API_KEY>\n' > "$SBP/523-d-nome.md"
+nao_tem "<API_KEY> (nome de placeholder) segue isento" "$(roda "$SBP/523-d-nome.md")" "credencial"
+saiu    "e passa limpo (exit 0)"                       "$(codigo "$SBP/523-d-nome.md")" "0"
+
 # #531: a regra de e-mail era O(n²) numa linha de corrida de [\w.+-]. Cada
 # posicao reescaneava a corrida inteira atras do arroba; com a lookbehind so o
 # inicio da corrida conta, e a linha de 100 mil `a.` termina em milissegundos.
