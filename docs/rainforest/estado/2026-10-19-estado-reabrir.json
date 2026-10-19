@@ -11,10 +11,15 @@
     "em": "2026-10-19"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-19-estado-reabrir.md",
+    "tarefas": 4,
+    "paralelas": [],
+    "em": "2026-10-19"
   },
   "executar": {
-    "status": "pendente"
+    "status": "pendente",
+    "catraca_mutacao": "2026-10-19"
   },
   "revisar": {
     "status": "pendente"
