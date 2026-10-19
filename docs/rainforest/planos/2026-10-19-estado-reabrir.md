@@ -27,6 +27,10 @@ pronto quando: numa caixa `mktemp -d` com repo git, fluxo aberto e `estado.cjs` 
 (b) commit que toca `src/a.js` depois disso: `exigir --estagio fechar` sai 2, a saída nomeia `src/a.js` e cita `reabrir`;
 (c) commit que toca só `docs/rainforest/estado/<slug>.json` (ou o design/plano do slug): `exigir --estagio fechar` sai 0;
 (d) estado sem `verificar.head` (bloco `verificar` gravado à mão no formato antigo) e commit de código: `exigir --estagio fechar` sai 0 com aviso em stderr;
+(e) *emenda da revisão 1:* `marcar verificar ok --raiz <worktree do mesmo repo>` não grava `verificar.head`, e o `exigir --estagio fechar` seguinte sai 0 mesmo com código da branch do estado que a outra árvore não tem;
+(f) *emenda:* merge de commit da `main` (já empurrado para `origin/main`) depois do `verificar ok`: `exigir --estagio fechar` sai 0; commit de `src/a.js` na branch depois disso sai 2 e a saída não nomeia o arquivo que veio da `main`;
+(g) *emenda:* `src/a.js` rastreado e modificado sem commit depois do `verificar ok`: sai 2 nomeando o arquivo; arquivo não rastreado não conta;
+(h) *emenda:* commit só do `docs/rainforest/estado/<outro slug>.json` depois do `verificar ok`: sai 0;
 provado por `bash scripts/testa-estado-reabrir.sh` com zero falha, placar `ok: N   falhou: 0`, nenhum caso lendo o texto do fonte.
 
 Forma do código: em `scripts/estado.cjs`, função `arquivosDeCodigoDesde(head, slug, estado)` que roda `git diff --name-only <head> HEAD` e filtra com `globsIsentos`/`globMatches` de `scripts/conferir-fluxo.cjs` (os mesmos argumentos que o `creep` usa). No `marcar verificar ok`, grava `head` no bloco. No `exigir` do `fechar`, depois da checagem de pendências órfãs, a linha `const codigoDepois = arquivosDeCodigoDesde(estado.verificar.head, slug, estado);` e logo abaixo a linha exata `if (codigoDepois.length) {`, que imprime a recusa e sai 2.
@@ -47,7 +51,7 @@ pronto quando: na mesma caixa:
 (a) com `revisar` em `ok`: `estado.cjs reabrir --slug <s> --estagio executar --motivo "achado A"` sai 0; no JSON, `executar.status` = `parcial`, `revisar`/`verificar`/`fechar` = `pendente`, e `reaberturas` tem um item com `motivo` "achado A", `de` "revisar" e data;
 (b) com `verificar` em `ok` e `fechar` em `ok`: `reabrir` sai 0 e deixa os três em `pendente`; o `exigir --estagio fechar` seguinte sai 2 (verificar pendente);
 (c) depois de `reabrir`, `exigir --estagio executar` sai 0 e `marcar executar ok` volta a valer;
-(d) recusas com exit 2 e JSON intacto (`cksum` igual): `--motivo ""`, `--estagio revisar`, slug inexistente, e `executar` ainda em `parcial` (nada a reabrir);
+(d) recusas com exit 2 e JSON intacto (`cksum` igual): `--motivo ""`, `--estagio revisar`, e `executar` ainda em `parcial` (nada a reabrir); slug inexistente sai 1, a convenção do `estado.cjs` para slug sem estado (*emenda da revisão 1*);
 (e) `marcar executar parcial` com `revisar` em `ok` continua recusado (#238);
 provado por `bash scripts/testa-estado-reabrir.sh` com zero falha.
 

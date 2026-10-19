@@ -13,9 +13,11 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 ## 1.70.0 — 2026-10-19
 
 - **Código que muda depois do `verificar` passa de novo por revisão e verificar (#567).** O `verificar ok` grava
-  o HEAD em que rodou, e o `exigir --estagio fechar` recusa com exit 2 quando há commit de código depois dele,
-  nomeando os arquivos. O rastro do fluxo (estado, design, plano, portões e varredura do slug) não conta. Estado
-  gravado antes desta versão, sem esse HEAD, só avisa.
+  o HEAD em que rodou, e o `exigir --estagio fechar` recusa com exit 2 quando há código mudado depois dele,
+  nomeando os arquivos: commit que a branch muda contra `origin/<padrão>` (trazer a `main` não acusa o que veio
+  dela) ou edição rastreada ainda não commitada. O rastro do fluxo (design, plano, portões e varredura do slug,
+  e o estado de qualquer slug) não conta. Estado gravado antes desta versão, ou `verificar` fechado com
+  `--raiz` (o código noutra árvore), não grava esse HEAD e só avisa.
 - **Verbo novo `estado.cjs reabrir` (#529, #567).** `reabrir --slug <s> --estagio executar --motivo "<texto>"`
   volta o `executar` a `parcial` e põe `revisar`, `verificar` e `fechar` em `pendente` quando um deles já estava
   `ok`, guardando o motivo em `reaberturas`. É o caminho para achado não bloqueante de revisão aprovada que

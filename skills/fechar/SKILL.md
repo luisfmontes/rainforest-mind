@@ -124,13 +124,11 @@ para o `gate-fechar-issue` conferir a evidência das Issues que o PR fecha.
    `node scripts/publicar-branch.cjs confirmar-merge --pr <n>`. Só o exit 0 dele
    (state `MERGED`) prova o merge. A linha de sucesso do `gh` não prova.
 
-**Código mudou depois do `verificar ok`** (CI vermelho, conserto pequeno): o
-`verificar ok` grava o HEAD em que rodou, e o `exigir --estagio fechar` recusa com
-exit 2 quando há commit de código depois dele. Fica fora o rastro do fluxo: estado,
-design, plano, portões e varredura do slug. A volta é
-`node scripts/estado.cjs reabrir --slug <slug> --estagio executar --motivo "<o que mudou>"`,
-que reabre `executar` e põe `revisar`, `verificar` e `fechar` em `pendente`. O conserto
-passa de novo por revisão e verificar (#567).
+**Código mudou depois do `verificar ok`** (CI vermelho): o `exigir --estagio fechar`
+recusa (exit 2) commit da branch depois do HEAD gravado (o que veio da `main` não
+conta) e edição rastreada não commitada, fora o rastro do fluxo. Com `--raiz`, só
+avisa. A volta é `node scripts/estado.cjs reabrir --slug <slug> --estagio executar
+--motivo "<o que mudou>"`: revisar e verificar de novo (#567).
 
 Com a chave `executar-autonomo` ligada, há três diferenças: o conflito que fica só em versão ou CHANGELOG
 se resolve sem parar, a saída de `estado.cjs decididos` entra no corpo do PR, e o fim avisa por
@@ -142,7 +140,7 @@ push. Ver `skills/executar/references/modo-autonomo.md`.
 | `1` | qualquer um | uso errado; corrija o comando |
 | `3` | `publicar` | conflito com a base, nada foi empurrado: traga a base (merge ou rebase, ato seu) e rode de novo |
 | `4` | `publicar` | push recusado ou `HEAD != @{u}`: não abra PR; leia o stderr |
-| `5` | `esperar-ci` | CI vermelho ou sem check: `reabrir` (abaixo), conserte na branch, não mergeie |
+| `5` | `esperar-ci` | CI vermelho ou sem check: `reabrir` (acima), conserte na branch, não mergeie |
 | `6` | `confirmar-merge` | o state não virou `MERGED` (ou o PR fechou): não declare merge; mostre o `gh pr view` |
 | `7` | `esperar-ci` | CI verde, mas a chave `fechar-mergear` está desligada: pare no PR aberto e informe o número |
 | `69` | qualquer um | ambiente (rede, `gh` ausente ou sem auth, remoto não GitHub): anuncie em uma linha (regra 14) |

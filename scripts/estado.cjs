@@ -737,19 +737,36 @@ function caminhosSujos() {
 }
 
 /**
- * D1/D2 (#567): arquivos de CÓDIGO que mudaram entre `head` (o HEAD gravado no
- * `verificar ok`) e o HEAD atual. "Código" é o que o `creep` não isenta: a mesma
- * lista (`globsIsentos`), para não existir uma segunda. Erro do git (o `head` não
- * existe mais, p.ex. depois de rebase) devolve lista vazia com aviso — a trava não
- * tranca por falta de dado (D5).
+ * D1/D2 (#567): arquivos de CÓDIGO que mudaram depois do `verificar ok`: os de
+ * `head..HEAD` que a branch também muda contra `merge-base(origin/<padrão>)` (trazer
+ * a padrão depois do verificar não acusa o que veio dela), mais os rastreados sujos.
+ * "Código" é o que o `creep` não isenta (`globsIsentos`), e o estado de qualquer
+ * slug também fica fora: é rastro de fluxo, nunca entrega. Erro do git (o `head` não
+ * existe mais) devolve lista vazia com aviso — a trava não tranca por falta de dado (D5).
  */
 function arquivosDeCodigoDesde(head, slug, estado) {
   const { globsIsentos, globMatches } = require('./conferir-fluxo.cjs');
-  const r = spawnSync(caminhoExecutavel('git'), ['-c', 'core.quotepath=false', 'diff', '--name-only', head, 'HEAD'], { cwd: RAIZ, encoding: 'utf8' });
+  const git = (args) => spawnSync(caminhoExecutavel('git'), ['-c', 'core.quotepath=false', ...args], { cwd: RAIZ, encoding: 'utf8' });
+  const linhas = (txt) => txt.split(/\r?\n/).map((f) => f.replace(/\\/g, '/')).filter((f) => f.length > 0);
+  const r = git(['diff', '--name-only', head, 'HEAD']);
   if (r.status !== 0) {
     console.error(`aviso: não consegui ler o diff desde o verificar (${head}); a trava de código não rodou.`);
     return [];
   }
+  let mudados = linhas(r.stdout);
+  // Sem `origin/<padrão>` (repo só local), fica só o `head..HEAD`.
+  const mb = git(['merge-base', 'HEAD', `origin/${branchPadrao(RAIZ)}`]);
+  if (mb.status === 0) {
+    const daBranch = git(['diff', '--name-only', mb.stdout.trim(), 'HEAD']);
+    if (daBranch.status === 0) {
+      const conjunto = new Set(linhas(daBranch.stdout));
+      mudados = mudados.filter((f) => conjunto.has(f));
+    }
+  }
+  const st = git(['status', '--porcelain']);
+  const sujos = st.status !== 0 ? [] : st.stdout.split(/\r?\n/)
+    .filter((l) => l.length > 3 && !l.startsWith('??'))
+    .map((l) => { const p = l.substring(3).split(' -> '); return (p[1] || p[0]).replace(/\\/g, '/'); });
   const relativo = (abs) => path.relative(RAIZ, path.resolve(RAIZ, abs)).split(path.sep).join('/');
   const isentos = globsIsentos({
     slug,
@@ -757,10 +774,9 @@ function arquivosDeCodigoDesde(head, slug, estado) {
     plano: relativo(docDoEstagio('planos', slug, estado)),
     globsDoPlano: [],
   });
-  return r.stdout
-    .split('\n')
-    .map((f) => f.replace(/\\/g, '/'))
-    .filter((f) => f.length > 0 && !isentos.some((g) => globMatches(f, g)));
+  return [...new Set([...mudados, ...sujos])]
+    .sort()
+    .filter((f) => !globMatches(f, 'docs/rainforest/estado/*.json') && !isentos.some((g) => globMatches(f, g)));
 }
 
 function capturarSnapshot() {
@@ -3282,12 +3298,17 @@ function main() {
     // `tentativas` e `liberado_em` também somem no `ok`, mas a lógica é manual aqui.
     const baseAnterior = baseParaFundir(estagio, estado[estagio], status, extra);
     const blocoNovo = { ...baseAnterior, ...extra, status, em: hoje() };
-    // D1 (#567): `verificar ok` grava o HEAD em que rodou — o da árvore do `--raiz` quando
-    // veio. Sai do `--json` de propósito: quem grava o `head` é a catraca, não a mão.
+    // D1 (#567): `verificar ok` grava o HEAD em que rodou. Sai do `--json` de propósito:
+    // quem grava o `head` é a catraca, não a mão. Com `--raiz` não grava: o código mora
+    // noutra árvore, o `exigir fechar` compararia HEADs de repositórios diferentes e
+    // recusaria para sempre; sem `head`, ele só avisa.
     if (estagio === 'verificar' && status === 'ok') {
       delete blocoNovo.head;
-      const h = spawnSync(caminhoExecutavel('git'), ['rev-parse', 'HEAD'], { cwd: raizCodigo || RAIZ, encoding: 'utf8' });
-      if (h.status === 0) blocoNovo.head = h.stdout.trim();
+      const arvoreDoHead = raizCodigo ? null : RAIZ;
+      if (arvoreDoHead) {
+        const h = spawnSync(caminhoExecutavel('git'), ['rev-parse', 'HEAD'], { cwd: arvoreDoHead, encoding: 'utf8' });
+        if (h.status === 0) blocoNovo.head = h.stdout.trim();
+      }
     }
 
     // Quando um estágio é reprovado, incrementa o contador (DEPOIS de fundir com base)

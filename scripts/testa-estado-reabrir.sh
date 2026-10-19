@@ -143,6 +143,66 @@ saida=$($E exigir --slug "$SLUG" --estagio fechar 2>&1); rc=$?
 igual "exigir fechar sem verificar.head sai 0" "0" "$rc"
 igual "aviso em stderr sobre verificar sem HEAD" "1" "$(echo "$saida" | grep -c "verificar' sem HEAD gravado")"
 
+echo "-- (e) verificar ok com --raiz noutra arvore nao grava head e o fechar nao tranca --"
+# A outra arvore e worktree do MESMO repo (objetos compartilhados), como o PR para
+# upstream do --raiz: o HEAD dela existe aqui, e o diff contra ele acusaria o codigo
+# da branch do estado para sempre.
+caixa_nova
+mkdir -p "$CX/src" && printf 'x\n' > "$CX/src/a.js"
+git -C "$CX" add -- src/a.js
+git -C "$CX" commit -q -m "codigo da branch do estado"
+OUTRA="$(mktemp -d)/wt"; SANDBOXES+=("$(dirname "$OUTRA")")
+git -C "$CX" worktree add -q -b outra "$OUTRA" main
+printf 'y\n' > "$OUTRA/b.js"
+git -C "$OUTRA" add -- b.js
+git -C "$OUTRA" commit -q -m "codigo na outra arvore"
+node -e 'const fs=require("fs");const f=process.argv[1];const j=JSON.parse(fs.readFileSync(f,"utf8"));j.design={...j.design,status:"aprovado"};j.plano={...j.plano,status:"ok"};j.executar={...j.executar,status:"ok"};j.revisar={...j.revisar,status:"ok"};fs.writeFileSync(f,JSON.stringify(j,null,2));' "$ARQ"
+esperado "marcar verificar ok com --raiz sai 0" 0 $E marcar --slug "$SLUG" --estagio verificar --status ok --raiz "$OUTRA" --json '{"comando":"bash scripts/testa-estado-reabrir.sh","saida":"ok: 1   falhou: 0"}'
+igual "verificar.head ausente com --raiz" "null" "$(J 'j.verificar.head' < "$ARQ")"
+esperado "exigir fechar depois de verificar com --raiz sai 0" 0 $E exigir --slug "$SLUG" --estagio fechar
+
+echo "-- (f) trazer a main depois do verificar nao acusa o que veio dela --"
+caixa_nova
+fechar_ate_verificar
+git -C "$CX" checkout -q main
+mkdir -p "$CX/lib" && printf 'da main\n' > "$CX/lib/m.js"
+git -C "$CX" add -- lib/m.js
+git -C "$CX" commit -q -m "outro PR na main"
+git -C "$CX" push -q origin main
+git -C "$CX" checkout -q fluxo/x
+git -C "$CX" merge -q --no-edit main
+igual "lib/m.js chegou pela main" "1" "$(git -C "$CX" ls-files lib/m.js | grep -c 'lib/m.js')"
+esperado "exigir fechar depois de trazer a main sai 0" 0 $E exigir --slug "$SLUG" --estagio fechar
+mkdir -p "$CX/src" && printf 'x\n' > "$CX/src/a.js"
+git -C "$CX" add -- src/a.js
+git -C "$CX" commit -q -m "codigo da branch depois do merge"
+saida=$($E exigir --slug "$SLUG" --estagio fechar 2>&1); rc=$?
+igual "codigo da branch depois do merge sai 2" "2" "$rc"
+igual "saida nomeia src/a.js" "1" "$(echo "$saida" | grep -c 'src/a.js')"
+igual "saida nao nomeia lib/m.js" "0" "$(echo "$saida" | grep -c 'lib/m.js')"
+
+echo "-- (g) edicao de codigo nao commitada depois do verificar sai 2 --"
+caixa_nova
+mkdir -p "$CX/src" && printf 'x\n' > "$CX/src/a.js"
+git -C "$CX" add -- src/a.js
+git -C "$CX" commit -q -m "codigo antes do verificar"
+fechar_ate_verificar
+printf 'y\n' >> "$CX/src/a.js"
+saida=$($E exigir --slug "$SLUG" --estagio fechar 2>&1); rc=$?
+igual "src/a.js sujo depois do verificar sai 2" "2" "$rc"
+igual "saida nomeia src/a.js sujo" "1" "$(echo "$saida" | grep -c 'src/a.js')"
+printf 'z\n' > "$CX/solto.txt"
+git -C "$CX" checkout -q -- src/a.js
+esperado "arquivo nao rastreado nao conta" 0 $E exigir --slug "$SLUG" --estagio fechar
+
+echo "-- (h) estado de outro slug commitado depois do verificar nao reabre --"
+caixa_nova
+fechar_ate_verificar
+printf '{"slug":"2026-10-18-outro"}\n' > "$CX/docs/rainforest/estado/2026-10-18-outro.json"
+git -C "$CX" add -- docs/rainforest/estado/2026-10-18-outro.json
+git -C "$CX" commit -q -m "fechar ok do fluxo anterior"
+esperado "exigir fechar com estado de outro slug sai 0" 0 $E exigir --slug "$SLUG" --estagio fechar
+
 echo "== D3: reabrir =="
 
 echo "-- (a) com revisar ok, reabrir volta executar e revisar --"

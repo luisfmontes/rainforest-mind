@@ -8,15 +8,23 @@ bloqueante de uma revisão aprovada ganha caminho formal de volta ao `executar`.
 ## Decisões fechadas
 - **D1 — `verificar ok` grava o HEAD em que rodou, e `exigir --estagio fechar` recusa com
   commit de código depois dele** — porquê: mede o fato em vez de confiar em a sessão lembrar.
-  O `marcar verificar ok` grava `verificar.head` (`git rev-parse HEAD` da árvore em que a
-  catraca roda, a mesma do `--raiz` quando vier). O `exigir fechar` lista os arquivos de
-  `git diff --name-only <verificar.head> HEAD` e tira os isentos (D2); sobrando algum,
+  O `marcar verificar ok` grava `verificar.head` (`git rev-parse HEAD` da árvore do estado).
+  O `exigir fechar` junta duas listas e tira os isentos (D2): os arquivos de
+  `git diff --name-only <verificar.head> HEAD` que a branch também muda contra
+  `merge-base(HEAD, origin/<padrão>)`, e os rastreados sujos do `git status`. Sobrando algum,
   recusa com exit 2, nomeia os arquivos e manda `reabrir` (D3). Sem `verificar.head`
-  (estado anterior a este fluxo), avisa e não trava.
+  (estado anterior a este fluxo, ou `verificar` fechado com `--raiz`), avisa e não trava.
+  *Emenda da revisão 1 (decidida pelo usuário, Q1–Q3):* com `--raiz` o HEAD não se grava,
+  porque o da outra árvore comparado na árvore do estado recusava para sempre; trazer a
+  padrão depois do `verificar` não acusa o que veio dela; edição de código não commitada
+  conta, porque entraria no commit do passo 1 do `fechar` sem revisão.
 - **D2 — "Código" é todo arquivo fora das isenções que o `creep` já usa** — porquê: a lista
   (`globsIsentos` em `scripts/conferir-fluxo.cjs`: estado, design, plano, portões, varredura
   do slug, `relatorios/`, réguas) já define o rastro do fluxo que não é entrega. Reaproveitar
   evita uma segunda lista que diverge. Commit só de estado (o próprio `marcar`) não reabre nada.
+  *Emenda da revisão 1 (Q4):* nesta trava o estado de **qualquer** slug
+  (`docs/rainforest/estado/*.json`) também é isento: o lote leva o `fechar ok` do fluxo
+  anterior para a branch seguinte, e isso é rastro, nunca entrega.
 - **D3 — Verbo novo `estado.cjs reabrir --slug <s> --estagio executar --motivo "<texto>"`** —
   porquê: hoje a saída é o `leve`, que pula a revisão nova (#529), ou `marcar verificar
   reprovado`, que diz que o verificar reprovou quando quem reabriu foi a sessão (#567). Aceito
