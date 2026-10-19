@@ -110,19 +110,28 @@
     "reaberturas": 2
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "a774529d670e15688929b06596f8680db5c82c05",
+      "head": "92ea476e12cfc242557bc14b57ed9c73c5881068",
       "caminhos_sujos": []
     },
-    "vereditos": [],
-    "achados": 2,
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a14ec27c19fbebc01",
+        "veredito": "ok",
+        "em": "2026-10-19",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-a14ec27c19fbebc01.jsonl"
+      }
+    ],
+    "achados": 0,
     "lista": [
       "1: aparo [...]+$ quadratico em corrida de fechos (conferir-publicacao.cjs:180)",
       "2: CHANGELOG #531 omite variantes de noreply"
     ],
     "em": "2026-10-19",
-    "tentativas": 2
+    "base": "01e5c2948d77ef011a90135e5d570aae69f15e34",
+    "head": "92ea476e12cfc242557bc14b57ed9c73c5881068"
   },
   "verificar": {
     "status": "pendente"
