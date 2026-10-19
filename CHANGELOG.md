@@ -10,6 +10,28 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.69.1 — 2026-10-19
+
+- **Gate de publicação aceita o `<redigido>` que ele mesmo manda usar (#523).** A regra `credencial` dizia "troque
+  por `<redigido>`" e recusava a linha corrigida. Agora um valor que é **inteiro** um placeholder entre `<>` com cara
+  de palavra passa: começa por letra, tem até 40 caracteres de palavra ou hífen e não tem corrida de 16 ou mais
+  alfanuméricos com dígito (`<redigido>`, `<sua-senha>`, `<API_KEY>`). Segredo embrulhado em `<>`, valor que só começa
+  ou só termina com placeholder e `<>` vazio continuam barrados.
+- **Gate de publicação não trava mais em linha longa sem arroba (#531).** A regra `email` reescaneava cada corrida
+  de letras e pontos a partir de cada posição (O(n²)): 100 mil `a.` numa linha passavam de 60 s. A regex agora só
+  começa no início da corrida, e o mesmo caso sai em milissegundos, sem mudar o que ela pega.
+- **Abertura não acusa mais bridge WhatsApp FORA com ela de pé (#553).** Com `WHATSAPP_API_BASE_URL` em `localhost`,
+  a sonda passava pelo DNS dentro do timeout de 400 ms. Ela testa `127.0.0.1` e `::1` direto, em paralelo, e vale o
+  que conectar. A Issue segue aberta até a contagem de `FORA` nas aberturas dos 3 dias seguintes ao release cair a
+  zero.
+- **`setup` recusa `config.json` que não é objeto (#559).** Com `[]`, `null`, número ou string no arquivo, o
+  `--ligar`/`--desligar` e o `--aplicar` saem 2 nomeando o arquivo, sem gravar. Antes, `[]` dizia `gravado` e não
+  gravava nada, e `null` quebrava com `TypeError`. O `--aplicar --ensaio` também passa a dizer em que pasta o setup
+  vai criar `FOCO.md`, `ideias.jsonl` e `projetos.json` quando for a primeira vez.
+- **Bateria do teto de despachos mostra quem falhou (#543, passo 1).** No caso de 12 processos simultâneos, a
+  falha passa a trazer índice, exit e stderr de cada processo que saiu diferente de 0, para a próxima ocorrência na
+  CI mostrar a causa. O passo 2 (o conserto) espera essa ocorrência, e a Issue segue aberta.
+
 ## 1.69.0 — 2026-10-18
 
 - **Gate de worktree: rede de caminho do checkout principal (#552).** Até aqui o gate só barrava a escrita que
