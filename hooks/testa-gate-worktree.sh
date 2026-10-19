@@ -1918,6 +1918,14 @@ if [ -n "$RC" ] && [ "$RC" != "$(cygpath -m "$R")" ] && [ -n "$WC" ]; then
   gate "#552 8.3: rm <P curto>/f, cwd no worktree, BARRA" 2 "$(b "rm $RC/f" "$WT")"
   gate "#552 8.3: Remove-Item <P curto>/f, cwd no worktree, BARRA" 2 "$(bp "Remove-Item $RC/f" "$WT")"
   gate "#552 8.3 vizinho: touch <W curto>/f, cwd no worktree pelo nome curto, PASSA" 0 "$(b "touch $WC/f" "$WC")"
+  # Juncao no principal apontando para fora: apagar a ENTRADA mexe no principal; o nome curto
+  # nao pode trocar a entrada pelo alvo.
+  if node -e 'require("fs").symlinkSync(process.argv[1], process.argv[2], "junction")' "$FORA" "$R/lnk" 2>/dev/null; then
+    gate "#552 8.3: rm -r <P curto>/lnk (juncao para fora), cwd no worktree, BARRA" 2 "$(b "rm -r $RC/lnk" "$WT")"
+    node -e 'require("fs").unlinkSync(process.argv[1])' "$R/lnk" 2>/dev/null
+  else
+    echo "  pulado: juncao nao criavel"
+  fi
 else
   echo "  pulado: sem nome curto 8.3 neste volume (powershell ausente ou 8dot3name desligado)"
 fi
