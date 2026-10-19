@@ -1077,5 +1077,19 @@ printf 'api_key: sk-%s\n' "$HEX32" > "$SBP/523-c-sk.md"
 tem     "api_key com prefixo sk- e 32 hex continua credencial" "$(roda "$SBP/523-c-sk.md")" "credencial"
 saiu    "e RECUSA (exit 2)"                                   "$(codigo "$SBP/523-c-sk.md")" "2"
 
+# #531: a regra de e-mail era O(n²) numa linha de corrida de [\w.+-]. Cada
+# posicao reescaneava a corrida inteira atras do arroba; com a lookbehind so o
+# inicio da corrida conta, e a linha de 100 mil `a.` termina em milissegundos.
+echo "== #531: linha com 100 mil a. em menos de 2 s =="
+AT="$(printf '\100')"
+DOM="empresa.com"
+node -e "require('fs').writeFileSync(process.argv[1], 'x ' + 'a.'.repeat(100000) + '\n')" "$SBP/531-corrida.txt"
+saiu_0_ou_2 "531: 100 mil a. sem arroba termina em menos de 2 s" "$SBP/531-corrida.txt"
+node -e "const [f, at, dom] = process.argv.slice(1); require('fs').writeFileSync(f, 'x ' + 'a.'.repeat(100000) + at + dom + '\n')" "$SBP/531-corrida-arroba.txt" "$AT" "$DOM"
+saiu_0_ou_2 "531: 100 mil a. seguido de arroba e dominio termina em menos de 2 s" "$SBP/531-corrida-arroba.txt"
+tem "531: a corrida seguida de arroba e dominio acusa email" "$(roda "$SBP/531-corrida-arroba.txt")" "email"
+printf 'ver .fulano%sempresa.com\n' "$AT" > "$SBP/531-ponto.txt"
+tem "531: endereco precedido de espaco e ponto continua pego" "$(roda "$SBP/531-ponto.txt")" "email"
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]

@@ -291,7 +291,11 @@ const PADROES = [
     id: 'email',
     // `noreply@` nao e endereco de ninguem: e o trailer Co-Authored-By que o
     // metodo manda todo agente usar; recusado, travava commit de agents/*.md (2026-09-24).
-    re: /\b(?!noreply@)[\w.+-]+@(?!s\.whatsapp\.net|g\.us)(?![\w.-]+\.(?:invalid|example|test|localhost)(?![-\w]|\.\w))[\w-]+\.[\w.]{2,}\b/g,
+    // Lookbehind no lugar de \b: sem ele cada posicao dentro de uma corrida de
+    // [\w.+-] reescaneava a corrida inteira atras do arroba (O(n²)). Causa da
+    // #531: 100 mil `a.` passavam de 60 s; com a lookbehind, so comeca no inicio
+    // da corrida, e a linha inteira leva ~2 ms.
+    re: /(?<![\w.+-])(?!noreply@)[\w.+-]+@(?!s\.whatsapp\.net|g\.us)(?![\w.-]+\.(?:invalid|example|test|localhost)(?![-\w]|\.\w))[\w-]+\.[\w.]{2,}\b/g,
     o_que: 'endereço de e-mail',
     faca: 'troque por `<email>` — endereço de terceiro em Issue público vira alvo de spam',
   },
