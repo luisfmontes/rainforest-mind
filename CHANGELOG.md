@@ -14,8 +14,8 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 - **Gate de publicação aceita o `<redigido>` que ele mesmo manda usar (#523).** A regra `credencial` dizia "troque
   por `<redigido>`" e recusava a linha corrigida. Agora um valor que é **inteiro** um placeholder entre `<>` com cara
-  de palavra passa: começa por letra, tem até 40 caracteres de palavra ou hífen, no máximo 4 dígitos e nenhum pedaço
-  entre `-`/`_` com mais de 16 caracteres (`<redigido>`, `<sua-senha>`, `<API_KEY>`). Segredo embrulhado em `<>`
+  de palavra passa: começa por letra, tem até 40 caracteres de palavra ou hífen, no máximo 4 dígitos, e cada pedaço
+  entre `-`/`_` tem até 16 caracteres e uma caixa só (`<redigido>`, `<sua-senha>`, `<API_KEY>`). Segredo embrulhado em `<>`
   (também picado por hífen), valor que só começa ou só termina com placeholder e `<>` vazio continuam barrados.
 - **Gate de publicação não trava mais em linha longa sem arroba (#531).** A regra `email` reescaneava cada corrida
   de letras e pontos a partir de cada posição (O(n²)): 100 mil `a.` numa linha passavam de 60 s. A regex agora só

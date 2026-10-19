@@ -160,16 +160,18 @@ function referenciaRegua410(cauda, aspa, fstring) {
 
 // Issue #523: placeholder INTEIRO entre `<>` com cara de PALAVRA (`<redigido>`,
 // `<sua-senha>`, `<API_KEY>`): começa por letra, até 40 caracteres de palavra ou
-// hífen, no máximo 4 dígitos no total e nenhum pedaço (entre `-`/`_`) com mais de
-// 16 caracteres. A forma solta `<[^<>]+>` isentava segredo real só por embrulhá-lo
-// em `<>` (revisão de segurança de 9b7a057d), e medir só corrida contínua deixava
-// passar o segredo picado por separador (revisão de 75d6520a). O prefixo conhecido
-// (`sk-`, `ghp_`) continua pego também pela `chave-conhecida`, que não depende daqui.
+// hífen, no máximo 4 dígitos no total, e cada pedaço (entre `-`/`_`) com até 16
+// caracteres e uma caixa só. A forma solta `<[^<>]+>` isentava segredo real só por
+// embrulhá-lo em `<>` (revisão de segurança de 9b7a057d); medir só corrida contínua
+// deixava passar o segredo picado por separador (75d6520a); e pedaço de caixa mista
+// é a cara do segredo aleatório (5721a354). Fica fora, de propósito: pedaço de uma
+// caixa só, curto e com poucos dígitos, que é a cara do nome de placeholder. O
+// prefixo conhecido (`sk-`, `ghp_`) segue pego pela `chave-conhecida`, à parte daqui.
 function ehPlaceholderInteiro(valor) {
   const m = /^<([A-Za-zÀ-ÿ][\wÀ-ÿ-]{0,39})>$/.exec(valor);
   if (!m) return false;
   const digitos = (m[1].match(/\d/g) || []).length;
-  return digitos <= 4 && m[1].split(/[-_]/).every((s) => s.length <= 16);
+  return digitos <= 4 && m[1].split(/[-_]/).every((s) => s.length <= 16 && (s === s.toLowerCase() || s === s.toUpperCase()));
 }
 
 // Esquema do valor capturado: { aspa, fstring } ou null se nao for Bearer, Basic

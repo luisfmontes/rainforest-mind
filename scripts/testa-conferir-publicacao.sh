@@ -1098,6 +1098,10 @@ printf 'senha: <%s%s>\n' ABCDEFGHIJKL MNOPQRSTUV > "$SBP/523-d-letras.md"
 tem     "<22 letras sem separador> continua credencial" "$(roda "$SBP/523-d-letras.md")" "credencial"
 saiu    "e RECUSA (exit 2)"                             "$(codigo "$SBP/523-d-letras.md")" "2"
 
+printf 'senha: <%s%s>\n' AbCdEfGh IjKlMnOp > "$SBP/523-d-caixa.md"
+tem     "<16 letras de caixa mista> continua credencial" "$(roda "$SBP/523-d-caixa.md")" "credencial"
+saiu    "e RECUSA (exit 2)"                              "$(codigo "$SBP/523-d-caixa.md")" "2"
+
 printf 'senha: <API_KEY>\n' > "$SBP/523-d-nome.md"
 nao_tem "<API_KEY> (nome de placeholder) segue isento" "$(roda "$SBP/523-d-nome.md")" "credencial"
 saiu    "e passa limpo (exit 0)"                       "$(codigo "$SBP/523-d-nome.md")" "0"
