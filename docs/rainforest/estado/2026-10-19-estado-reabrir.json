@@ -125,8 +125,10 @@
     "head": "97a9c7d49b0f8c6a23b68da0db8dedb2c2262030"
   },
   "fechar": {
-    "status": "pendente",
-    "em": "2026-10-19"
+    "status": "ok",
+    "em": "2026-10-19",
+    "acao": "merge",
+    "pr": 570
   },
   "decididos": [
     {
