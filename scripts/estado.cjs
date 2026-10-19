@@ -736,6 +736,33 @@ function caminhosSujos() {
     .sort();
 }
 
+/**
+ * D1/D2 (#567): arquivos de CÓDIGO que mudaram entre `head` (o HEAD gravado no
+ * `verificar ok`) e o HEAD atual. "Código" é o que o `creep` não isenta: a mesma
+ * lista (`globsIsentos`), para não existir uma segunda. Erro do git (o `head` não
+ * existe mais, p.ex. depois de rebase) devolve lista vazia com aviso — a trava não
+ * tranca por falta de dado (D5).
+ */
+function arquivosDeCodigoDesde(head, slug, estado) {
+  const { globsIsentos, globMatches } = require('./conferir-fluxo.cjs');
+  const r = spawnSync(caminhoExecutavel('git'), ['-c', 'core.quotepath=false', 'diff', '--name-only', head, 'HEAD'], { cwd: RAIZ, encoding: 'utf8' });
+  if (r.status !== 0) {
+    console.error(`aviso: não consegui ler o diff desde o verificar (${head}); a trava de código não rodou.`);
+    return [];
+  }
+  const relativo = (abs) => path.relative(RAIZ, path.resolve(RAIZ, abs)).split(path.sep).join('/');
+  const isentos = globsIsentos({
+    slug,
+    design: relativo(docDoEstagio('design', slug, estado)),
+    plano: relativo(docDoEstagio('planos', slug, estado)),
+    globsDoPlano: [],
+  });
+  return r.stdout
+    .split('\n')
+    .map((f) => f.replace(/\\/g, '/'))
+    .filter((f) => f.length > 0 && !isentos.some((g) => globMatches(f, g)));
+}
+
 function capturarSnapshot() {
   try {
     return {
@@ -2753,6 +2780,21 @@ function main() {
           ].join('\n'));
           process.exit(2);
         }
+        // D1 (#567): commit de código depois do `verificar ok` reabre por mecanismo, não por memória.
+        if (!estado.verificar || !estado.verificar.head) {
+          console.error("aviso: 'verificar' sem HEAD gravado (estado de antes deste fluxo): não dá para conferir se o código mudou depois dele.");
+        } else {
+          const codigoDepois = arquivosDeCodigoDesde(estado.verificar.head, slug, estado);
+          if (codigoDepois.length) {
+            console.error([
+              "RECUSADO: 'fechar' com código alterado depois do 'verificar ok'. O verificar foi feito sobre um código anterior:",
+              ...codigoDepois.map((a) => `  ${a}`),
+              'Reabra o executar, refaça revisar e verificar e só depois feche:',
+              `  node scripts/estado.cjs reabrir --slug ${slug} --estagio executar --motivo "<o que mudou>"`,
+            ].join('\n'));
+            process.exit(2);
+          }
+        }
       }
       console.log(`ok: pre-requisitos de '${estagio}' fechados`);
       // Capturar snapshot ao exigir revisar, para detectar mutacao depois.
@@ -3196,6 +3238,13 @@ function main() {
     // `tentativas` e `liberado_em` também somem no `ok`, mas a lógica é manual aqui.
     const baseAnterior = baseParaFundir(estagio, estado[estagio], status, extra);
     const blocoNovo = { ...baseAnterior, ...extra, status, em: hoje() };
+    // D1 (#567): `verificar ok` grava o HEAD em que rodou — o da árvore do `--raiz` quando
+    // veio. Sai do `--json` de propósito: quem grava o `head` é a catraca, não a mão.
+    if (estagio === 'verificar' && status === 'ok') {
+      delete blocoNovo.head;
+      const h = spawnSync(caminhoExecutavel('git'), ['rev-parse', 'HEAD'], { cwd: raizCodigo || RAIZ, encoding: 'utf8' });
+      if (h.status === 0) blocoNovo.head = h.stdout.trim();
+    }
 
     // Quando um estágio é reprovado, incrementa o contador (DEPOIS de fundir com base)
     if (status === 'reprovado') {
