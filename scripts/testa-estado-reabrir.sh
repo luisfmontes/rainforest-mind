@@ -195,6 +195,19 @@ printf 'z\n' > "$CX/solto.txt"
 git -C "$CX" checkout -q -- src/a.js
 esperado "arquivo nao rastreado nao conta" 0 $E exigir --slug "$SLUG" --estagio fechar
 
+echo "-- (g2) nome com espaco sujo numa pasta isenta nao conta; fora dela sai sem aspas --"
+caixa_nova
+mkdir -p "$CX/relatorios" "$CX/src" && printf 'r\n' > "$CX/relatorios/meu rel.md" && printf 'x\n' > "$CX/src/a b.js"
+git -C "$CX" add -- "relatorios/meu rel.md" "src/a b.js"
+git -C "$CX" commit -q -m "arquivos com espaco antes do verificar"
+fechar_ate_verificar
+printf 's\n' >> "$CX/relatorios/meu rel.md"
+esperado "relatorios/meu rel.md sujo (isento) sai 0" 0 $E exigir --slug "$SLUG" --estagio fechar
+printf 'y\n' >> "$CX/src/a b.js"
+saida=$($E exigir --slug "$SLUG" --estagio fechar 2>&1); rc=$?
+igual "src/a b.js sujo sai 2" "2" "$rc"
+igual "saida nomeia src/a b.js sem aspas" "1" "$(echo "$saida" | grep -c '^  src/a b.js$')"
+
 echo "-- (h) estado de outro slug commitado depois do verificar nao reabre --"
 caixa_nova
 fechar_ate_verificar

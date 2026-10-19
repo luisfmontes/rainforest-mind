@@ -763,10 +763,19 @@ function arquivosDeCodigoDesde(head, slug, estado) {
       mudados = mudados.filter((f) => conjunto.has(f));
     }
   }
-  const st = git(['status', '--porcelain']);
-  const sujos = st.status !== 0 ? [] : st.stdout.split(/\r?\n/)
-    .filter((l) => l.length > 3 && !l.startsWith('??'))
-    .map((l) => { const p = l.substring(3).split(' -> '); return (p[1] || p[0]).replace(/\\/g, '/'); });
+  // `-z`: nome com espaço sai cru, sem as aspas do porcelain v1 que furavam o glob de
+  // isenção; na renomeação o nome novo vem primeiro e o antigo no campo seguinte.
+  const st = git(['status', '--porcelain', '-z']);
+  const sujos = [];
+  if (st.status === 0) {
+    const campos = st.stdout.split('\0');
+    for (let i = 0; i < campos.length; i++) {
+      const c = campos[i];
+      if (c.length < 4) continue;
+      if (/[RC]/.test(c.slice(0, 2))) i++;
+      if (!c.startsWith('??')) sujos.push(c.slice(3).replace(/\\/g, '/'));
+    }
+  }
   const relativo = (abs) => path.relative(RAIZ, path.resolve(RAIZ, abs)).split(path.sep).join('/');
   const isentos = globsIsentos({
     slug,
