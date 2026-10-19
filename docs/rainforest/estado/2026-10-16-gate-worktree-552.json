@@ -48,23 +48,24 @@
   "revisar": {
     "status": "ok",
     "snapshot": {
-      "head": "80c184fe26421bbf977fe48bd4ecd5075b67eb2a",
-      "caminhos_sujos": []
+      "head": "f55a1b7a9c10b3f22f4b8ad3c8ad1117e220fedc",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-10-16-gate-worktree-552.json"
+      ]
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a4306e150f56dc82e",
+        "agente_id": "abf1ac3442637dc3c",
         "veredito": "ok",
-        "em": "2026-10-18",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/c1cf913e-a9cf-4c02-a197-b8a3240564d0/subagents/agent-a4306e150f56dc82e.jsonl"
+        "em": "2026-10-19",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/c1cf913e-a9cf-4c02-a197-b8a3240564d0/subagents/agent-abf1ac3442637dc3c.jsonl"
       }
     ],
-    "em_voo": [],
-    "em": "2026-10-18",
+    "em": "2026-10-19",
     "achados": 0,
-    "base": "038de7d83260131065afb495845dc1e33b497496",
-    "head": "80c184fe26421bbf977fe48bd4ecd5075b67eb2a",
+    "base": "8840ba4bbc46bccbac4a3735295fe5696350dc18",
+    "head": "f55a1b7a9c10b3f22f4b8ad3c8ad1117e220fedc",
     "rodadas_extra": [
       {
         "texto": "Luis liberou a 4a rodada com corte (2026-10-17): so o conserto de continuacao de linha (\\+quebra), homeRedefinido por palavra e atalho de home exato no Bash; variante nova da revisao automatica vira Issue de continuacao, salvo regressao",
@@ -79,12 +80,14 @@
   "verificar": {
     "status": "ok",
     "comando": "bash hooks/testa-gate-worktree.sh; node scripts/conferir-versao.cjs",
-    "saida": "testa-gate-worktree: == resultado: 662 ok, 0 falha(s) ==, exit 0, secoes #552: rede e #552 D6: pai inexistente presentes | conferir-versao: ok versao 1.68.0, exit 0 | texto do CHANGELOG contra D1-D6 conferido pelo revisor (VEREDITO: ok)",
+    "saida": "head f55a1b7a: testa-gate-worktree == resultado: 668 ok, 0 falha(s) ==, exit 0, secoes #552: rede, #552 D6 e #552 nome curto 8.3 (com as duas juncoes) | conferir-versao: ok versao 1.69.0, exit 0 | revisor do delta f55a1b7a: VEREDITO ok",
     "sensor_externo": "bash hooks/testa-gate-worktree.sh",
-    "em": "2026-10-18"
+    "em": "2026-10-19"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "acao": "merge",
+    "em": "2026-10-19"
   },
   "decididos": [
     {
