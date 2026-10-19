@@ -390,6 +390,72 @@ saida=$($E marcar --slug "$SLUG" --estagio fechar --status ok --json '{"acao":"m
 igual "marcar fechar ok sem head sai 0" "0" "$rc"
 igual "marcar fechar ok sem head avisa" "1" "$(echo "$saida" | grep -c "verificar' sem HEAD gravado")"
 
+echo "-- (t) emenda 4: com a main parada, a mesma linha mudada de lugar sai 2 --"
+caixa_nova
+mkdir -p "$CX/src" && printf '[a]\nretries = 3\n[b]\nretries = 3\n' > "$CX/src/cfg.txt"
+git -C "$CX" add -- src/cfg.txt
+git -C "$CX" commit -q -m "cfg com dois blocos"
+git -C "$CX" push -q origin fluxo/x:main
+git -C "$CX" fetch -q origin
+sed -i '2s/3/5/' "$CX/src/cfg.txt"
+git -C "$CX" add -- src/cfg.txt
+git -C "$CX" commit -q -m "branch muda o bloco a"
+fechar_ate_verificar
+printf '[a]\nretries = 3\n[b]\nretries = 5\n' > "$CX/src/cfg.txt"
+git -C "$CX" add -- src/cfg.txt
+git -C "$CX" commit -q -m "conserto troca o bloco"
+saida=$($E exigir --slug "$SLUG" --estagio fechar 2>&1); rc=$?
+igual "mudanca de bloco com a main parada sai 2" "2" "$rc"
+igual "saida nomeia src/cfg.txt" "1" "$(echo "$saida" | grep -c '^  src/cfg.txt$')"
+
+echo "-- (u) emenda 4: git mv commitado de codigo da main para pasta isenta sai 2 --"
+caixa_nova
+na_main_e_traz a.js 'x
+'
+fechar_ate_verificar
+mkdir -p "$CX/relatorios"
+git -C "$CX" mv a.js relatorios/a.js
+git -C "$CX" commit -q -m "move para relatorios"
+saida=$($E exigir --slug "$SLUG" --estagio fechar 2>&1); rc=$?
+igual "git mv commitado para relatorios/ sai 2" "2" "$rc"
+igual "saida nomeia o nome antigo a.js" "1" "$(echo "$saida" | grep -c '^  a.js$')"
+
+echo "-- (v) emenda 4: patch da branch acima de 1 MiB com a main mexendo longe no arquivo sai 0 --"
+caixa_nova
+na_main_e_traz g.txt "$(seq 1 10)
+"
+node -e 'process.stdout.write("linha de teste grande\n".repeat(80000))' >> "$CX/g.txt"
+git -C "$CX" add -- g.txt
+git -C "$CX" commit -q -m "branch acrescenta 1,7 MB ao fim"
+igual "g.txt passou de 1 MiB" "1" "$([ "$(wc -c < "$CX/g.txt")" -gt 1048576 ] && echo 1 || echo 0)"
+fechar_ate_verificar
+main_muda_e_traz g.txt '1s/.*/primeira da main/'
+igual "merge trouxe a primeira linha da main" "1" "$(head -1 "$CX/g.txt" | grep -c 'primeira da main')"
+esperado "exigir fechar com a main no arquivo grande sai 0" 0 $E exigir --slug "$SLUG" --estagio fechar
+
+echo "-- (w) emenda 4: estado do fluxo numa subpasta do repositorio --"
+caixa_nova
+SUP="$(mktemp -d)"; SANDBOXES+=("$SUP")
+mkdir -p "$SUP/proj" && cp -r "$CX/." "$SUP/proj/" && rm -rf "$SUP/proj/.git"
+git -C "$SUP" init -q -b main
+git -C "$SUP" config user.email "teste@exemplo.invalid"
+git -C "$SUP" config user.name "teste"
+git -C "$SUP" add -- proj
+git -C "$SUP" commit -q -m "projeto na subpasta"
+git -C "$SUP" remote add origin "$ORIG/origin.git"
+git -C "$SUP" push -q -f origin main
+git -C "$SUP" checkout -q -b fluxo/x
+export RFM_ESTADO_ROOT="$(cygpath -m "$SUP/proj" 2>/dev/null || printf '%s' "$SUP/proj")"
+cd "$SUP/proj" || exit 1
+fechar_ate_verificar
+esperado "subpasta: estado rastreado e sujo nao conta" 0 $E exigir --slug "$SLUG" --estagio fechar
+mkdir -p "$SUP/proj/src" && printf 'x\n' > "$SUP/proj/src/a.js"
+git -C "$SUP" add -- proj/src/a.js
+git -C "$SUP" commit -q -m "codigo depois do verificar"
+saida=$($E exigir --slug "$SLUG" --estagio fechar 2>&1); rc=$?
+igual "subpasta: codigo depois do verificar sai 2" "2" "$rc"
+igual "subpasta: saida nomeia src/a.js" "1" "$(echo "$saida" | grep -c '^  src/a.js$')"
+
 echo "== D3: reabrir =="
 
 echo "-- (a) com revisar ok, reabrir volta executar e revisar --"

@@ -55,7 +55,7 @@
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-estado-reabrir.sh, secao D1 (b), (e)-(l)"
+        "fixture": "testa-estado-reabrir.sh, secao D1 (b), (e)-(s)"
       },
       {
         "tarefa": 2,
@@ -74,18 +74,14 @@
       }
     ],
     "comando": "bash scripts/testa-estado-reabrir.sh",
-    "saida": "ok: 69   falhou: 0",
+    "saida": "ok: 82   falhou: 0",
     "reaberturas": 3,
-    "rodada": 3,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-19"
-    }
+    "rodada": 4
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "pendente",
     "snapshot": {
-      "head": "e74a703dc156a89d6b4c0428c5d4eef1466c04ad",
+      "head": "9455f657c797418401f7d967eac19abd1065cd69",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-10-19-estado-reabrir.json"
       ]
@@ -93,39 +89,38 @@
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a9e469e387447d572",
-        "veredito": "reprovado",
+        "agente_id": "a7997c824ebdd847f",
+        "veredito": "ok",
         "em": "2026-10-19",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-a9e469e387447d572.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-a7997c824ebdd847f.jsonl"
       }
     ],
-    "achados": 7,
+    "achados": 5,
     "design": [
       1,
       2,
       3
     ],
     "em": "2026-10-19",
-    "tentativas": 3,
     "em_voo": [],
-    "rodada": 3,
-    "bloqueantes": [
-      1,
-      2
-    ],
-    "liberado_em": "2026-10-19",
+    "rodada": 4,
+    "bloqueantes": 0,
     "rodadas_extra": [
       {
         "texto": "usuario liberou 4a rodada para consertar achados 1-7 da revisao 3 (recomendado)",
         "em": "2026-10-19"
       }
-    ]
+    ],
+    "base": "a5e2292f724e949a5619f6ec5b71738b7dd6eead",
+    "head": "9455f657c797418401f7d967eac19abd1065cd69"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-10-19"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-10-19"
   },
   "decididos": [
     {
@@ -176,6 +171,13 @@
       "porque": "todo PR de release mexe no CHANGELOG junto com a main (usuario: recomendado)",
       "estagio": "executar",
       "em": "2026-10-19T17:42:27.243Z"
+    }
+  ],
+  "reaberturas": [
+    {
+      "em": "2026-10-19",
+      "de": "revisar",
+      "motivo": "revisao 4 ok com 5 nao bloqueantes que cabem no PR: -U0 deixa passar troca de lugar com merge-base igual; git mv commitado sem caso; maxBuffer e erro-como-mudanca sem caso isolado; RAIZ em subpasta; candidatos engolem erro do git"
     }
   ]
 }

@@ -751,8 +751,14 @@ function arquivosDeCodigoDesde(head, slug, estado) {
   const { globsIsentos, globMatches } = require('./conferir-fluxo.cjs');
   // `maxBuffer` largo: com o 1 MiB padrão, o diff de arquivo grande estourava e o
   // arquivo passava como "não mudou" (revisão 3, achado 1).
-  const git = (args, input) => spawnSync(caminhoExecutavel('git'), ['-c', 'core.quotepath=false', ...args], { cwd: RAIZ, encoding: 'utf8', input, maxBuffer: 1024 * 1024 * 1024 });
+  // O git roda da raiz do repositório: com `RAIZ` numa subpasta, `ls-tree` e o pathspec
+  // liam os nomes relativos ao cwd e o `--name-only` os devolvia relativos à raiz. O
+  // prefixo da subpasta sai no fim, para casar com as isenções (relativas a `RAIZ`).
+  const topo = spawnSync(caminhoExecutavel('git'), ['rev-parse', '--show-toplevel', '--show-prefix'], { cwd: RAIZ, encoding: 'utf8' });
+  const [raizRepo, prefixo] = topo.status === 0 ? topo.stdout.split(/\r?\n/) : [RAIZ, ''];
+  const git = (args, input) => spawnSync(caminhoExecutavel('git'), ['-c', 'core.quotepath=false', ...args], { cwd: raizRepo, encoding: 'utf8', input, maxBuffer: 1024 * 1024 * 1024 });
   const nomes = (txt) => txt.split('\0').map((f) => f.replace(/\\/g, '/')).filter((f) => f.length > 0);
+  const literal = (f) => `:(top,literal)${f}`;
   // `--no-renames`: renomeação vira apagado + criado, e o nome antigo (que pode não ser
   // isento) não some atrás do novo.
   const r = git(['diff', '--no-renames', '--name-only', '-z', head, 'HEAD']);
@@ -772,7 +778,7 @@ function arquivosDeCodigoDesde(head, slug, estado) {
     // indentação conta (o `--stable` a descartava). Erro do git vale como mudança: um
     // arquivo sem impressão não pode passar por igual.
     const impressao = ([a, b], f) => {
-      const d = git(['diff', '--no-renames', '-U0', '--binary', a, b, '--', f]);
+      const d = git(['diff', '--no-renames', '-U0', '--binary', a, b, '--', literal(f)]);
       if (d.status !== 0 || d.error) return `erro ${Math.random()}`;
       if (!d.stdout) return '';
       const p = git(['patch-id', '--verbatim'], d.stdout);
@@ -781,17 +787,22 @@ function arquivosDeCodigoDesde(head, slug, estado) {
     };
     // Modo e blob do arquivo numa árvore; '' quando ele não existe nela.
     const entrada = (arvore, f) => {
-      const t = git(['ls-tree', '-z', arvore, '--', f]);
+      const t = git(['ls-tree', '-z', '--full-tree', arvore, '--', literal(f)]);
       return t.status === 0 ? t.stdout.split('\t')[0] : `erro ${Math.random()}`;
     };
-    const candidatos = new Set([
-      ...nomes(git(['diff', '--no-renames', '--name-only', '-z', ...antes]).stdout || ''),
-      ...nomes(git(['diff', '--no-renames', '--name-only', '-z', ...agora]).stdout || ''),
-    ]);
-    // Conteúdo igual ao verificado não mudou, qualquer que seja o caminho até ele (squash
-    // na padrão, conflito de versão resolvido para o valor da branch).
-    mudados = [...candidatos].filter((f) => entrada(head, f) !== entrada('HEAD', f)
-      && impressao(antes, f) !== impressao(agora, f));
+    const dAntes = git(['diff', '--no-renames', '--name-only', '-z', ...antes]);
+    const dAgora = git(['diff', '--no-renames', '--name-only', '-z', ...agora]);
+    // Sem as listas de candidatos, fica a lista de `head..HEAD` inteira: erro não esvazia.
+    if (dAntes.status === 0 && dAgora.status === 0) {
+      const candidatos = new Set([...nomes(dAntes.stdout), ...nomes(dAgora.stdout)]);
+      // Conteúdo igual ao verificado não mudou, qualquer que seja o caminho até ele (squash
+      // na padrão, conflito de versão resolvido para o valor da branch). Com a padrão
+      // parada, não há ruído dela a filtrar e o conteúdo diferente basta: a impressão sem
+      // contexto não vê a mesma linha mudada de lugar.
+      const padraoParada = antes[0] === agora[0];
+      mudados = [...candidatos].filter((f) => entrada(head, f) !== entrada('HEAD', f)
+        && (padraoParada || impressao(antes, f) !== impressao(agora, f)));
+    }
   }
   // `-z`: nome com espaço sai cru, sem as aspas do porcelain v1 que furavam o glob de
   // isenção; na renomeação o nome novo vem primeiro e o antigo no campo seguinte.
@@ -813,7 +824,8 @@ function arquivosDeCodigoDesde(head, slug, estado) {
     plano: relativo(docDoEstagio('planos', slug, estado)),
     globsDoPlano: [],
   });
-  return [...new Set([...mudados, ...sujos])]
+  const relativoARaiz = (f) => (prefixo && f.startsWith(prefixo) ? f.slice(prefixo.length) : f);
+  return [...new Set([...mudados, ...sujos].map(relativoARaiz))]
     .sort()
     .filter((f) => !globMatches(f, 'docs/rainforest/estado/*.json') && !isentos.some((g) => globMatches(f, g)));
 }

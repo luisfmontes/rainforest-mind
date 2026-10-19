@@ -42,6 +42,10 @@ pronto quando: numa caixa `mktemp -d` com repo git, fluxo aberto e `estado.cjs` 
 (q) *emenda 3:* `exigir fechar` na `main` com o squash da branch: sai 0;
 (r) *emenda 3:* `git mv` de `src/a.js` para `relatorios/` sem commit: sai 2 nomeando `src/a.js`;
 (s) *emenda 3:* `marcar fechar ok` sem `verificar.head`: sai 0 com aviso;
+(t) *emenda 4:* com a `main` parada, o conserto desfaz a mudança do bloco A e faz a mesma no bloco B: sai 2;
+(u) *emenda 4:* `git mv` commitado de arquivo da `main` para `relatorios/`: sai 2 nomeando o nome antigo;
+(v) *emenda 4:* arquivo de 1,7 MB mudado pela branch, `main` muda a última linha dele e entra por merge: sai 0;
+(w) *emenda 4:* estado do fluxo em `proj/` de um repositório maior: o estado rastreado e sujo não conta, e `proj/src/a.js` commitado depois do `verificar` sai 2 nomeando `src/a.js`;
 provado por `bash scripts/testa-estado-reabrir.sh` com zero falha, placar `ok: N   falhou: 0`, nenhum caso lendo o texto do fonte.
 
 Forma do código: em `scripts/estado.cjs`, função `arquivosDeCodigoDesde(head, slug, estado)` que roda `git diff --name-only <head> HEAD` e filtra com `globsIsentos`/`globMatches` de `scripts/conferir-fluxo.cjs` (os mesmos argumentos que o `creep` usa). No `marcar verificar ok`, grava `head` no bloco. No `exigir` do `fechar`, depois da checagem de pendências órfãs, a linha `const codigoDepois = arquivosDeCodigoDesde(estado.verificar.head, slug, estado);` e logo abaixo a linha exata `if (codigoDepois.length) {`, que imprime a recusa e sai 2.

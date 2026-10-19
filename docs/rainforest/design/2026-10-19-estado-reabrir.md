@@ -33,6 +33,11 @@ bloqueante de uma revisão aprovada ganha caminho formal de volta ao `executar`.
   contexto, com indentação), e erro do git vale como mudança; renomeação conta pelos
   dois nomes. Conteúdo igual ao verificado não acusa (squash na padrão, conflito de
   versão resolvido para o valor da branch); conflito resolvido para outro conteúdo acusa.
+  *Emenda da revisão 4 (aprovada, não bloqueantes reabertos pelo `reabrir`):* com o
+  merge-base igual antes e depois, o conteúdo diferente basta (a impressão sem contexto
+  não vê a mesma linha mudada de lugar); o git roda da raiz do repositório, com pathspec
+  `:(top,literal)`, e o prefixo da subpasta sai dos nomes; erro nas listas de candidatos
+  mantém a lista de `head..HEAD` inteira.
 - **D2 — "Código" é todo arquivo fora das isenções que o `creep` já usa** — porquê: a lista
   (`globsIsentos` em `scripts/conferir-fluxo.cjs`: estado, design, plano, portões, varredura
   do slug, `relatorios/`, réguas) já define o rastro do fluxo que não é entrega. Reaproveitar

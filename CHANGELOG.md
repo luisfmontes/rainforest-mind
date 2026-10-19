@@ -17,7 +17,8 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   nomeando os arquivos: arquivo cujo conteúdo difere do verificado e cuja mudança da branch não é mais a mesma
   (`git patch-id --verbatim` sobre diff sem contexto), ou edição rastreada ainda não commitada. Merge limpo da
   `main`, squash e conflito resolvido para o valor da branch não acusam; conflito resolvido para outro conteúdo,
-  arquivo apagado, revertido ou só reindentado acusam. A mesma recusa vale no `marcar fechar ok`, depois do conserto de CI, e no
+  arquivo apagado, revertido, só reindentado ou com a mesma linha mudada de lugar (com a `main` parada) acusam.
+  Funciona também com o projeto numa subpasta do repositório. A mesma recusa vale no `marcar fechar ok`, depois do conserto de CI, e no
   `marcar verificar ok` refeito sobre código que o `revisar` não viu. O rastro do fluxo (design, plano, portões e varredura do slug,
   e o estado de qualquer slug) não conta. Estado gravado antes desta versão, ou `verificar` fechado com
   `--raiz` (o código noutra árvore), não grava esse HEAD e só avisa.
