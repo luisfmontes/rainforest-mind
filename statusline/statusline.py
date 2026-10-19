@@ -130,7 +130,44 @@ def segmento_local(cwd):
 
 
 # ----------------------------------------------------------------- perfil --
+# Nome que o Luis usa para cada conta interna do scripts/conta.cjs.
+NOME_CONTA = {"team": "trabalho", "pessoal": "pessoal"}
+
+
+def conta_em_uso(config_dir=None, estado=None):
+    """Conta logada na pasta, pelo oauthAccount do .claude.json mapeado no
+    estado.json da troca de conta. A pasta nao diz a conta: /conta troca a
+    credencial e deixa a pasta onde esta. None quando nao da para saber."""
+    config_dir = config_dir or os.environ.get("CLAUDE_CONFIG_DIR", "")
+    if config_dir:
+        claude_json = os.path.join(config_dir, ".claude.json")
+    else:
+        claude_json = os.path.join(HOME, ".claude.json")
+    if estado is None:
+        dados = os.environ.get("RFM_CONTA_DADOS") or os.path.join(HOME, ".rainforest")
+        estado = os.path.join(dados, "contas", "estado.json")
+    try:
+        with open(claude_json, encoding="utf-8") as f:
+            email = (json.load(f).get("oauthAccount") or {}).get("emailAddress")
+        with open(estado, encoding="utf-8") as f:
+            contas = json.load(f).get("contas") or {}
+    except Exception:
+        return None
+    if not email:
+        return None
+    for interna, info in contas.items():
+        if isinstance(info, dict) and info.get("email") == email:
+            return NOME_CONTA.get(interna, interna)
+    return None
+
+
 def segmento_perfil(dados):
+    conta = conta_em_uso()
+    if conta == "pessoal":
+        return c("pessoal", MAGENTA)
+    if conta == "trabalho":
+        return c("trabalho", AZUL)
+    # Sem registro da troca de conta: a pasta ainda e o melhor palpite.
     origem = dados.get("transcript_path") or os.environ.get("CLAUDE_CONFIG_DIR", "")
     origem = origem.replace("\\", "/")
     if ".claude-personal" in origem:

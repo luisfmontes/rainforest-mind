@@ -239,6 +239,7 @@ aplicá-la a quem não ia instalar.
 | `upstash/context7` | 2026-10-16 | fora da ancora | **1** (revisita: segue sem doc de linguagem de ERP legado; busca de `advpl` no repo sem resultado) | 2026-10-16 |
 | `bmad-code-org/BMAD-METHOD` | 2026-10-16 | Instalar: nao instala | **2** de Instalar (revisita: segue como framework de método concorrendo com o SKILL.md; commits de 10-12 e 10-13 são de review e toolsmith, não mudam a colisão) | 2026-10-16 |
 | `Mansuro/claude-projects` | 2026-10-16 | fora da ancora | **1** (revisita: job-runner segue; último commit 2026-01-10, o `pushed_at` de 09-25 não trouxe conteúdo) | 2026-09-25 |
+| `austinmarchese/buildpartner-plugin` | 2026-10-17 | Instalar -> Enxertar: enxerta | **2, 3, 4, 5** de Instalar: casca de SaaS (conteudo no servidor, atras de conta e Stripe); `gate.mjs:422-450` reescreve `~/.claude/CLAUDE.md` todo SessionStart com bloco que roteia pergunta nao-codigo para a skill paga; `plugin.json:205-215` da `allow` a MCP de qualquer plugin com servidor `tools`; auto-update destacado sem checar conta; Windows quebra no `URL.pathname` (`gate.mjs:417`). Enxertar: o contrato de passo da skill `build` (um passo por turno, precheck do que ja existe com usar/melhorar/do zero, opcoes do repo real, traducao para a plataforma, sempre oferecer o proximo) para a ideia `setup-vira-entrevista-guiada-como-a-do-ratosos`. Relatorio: `relatorios/2026-10-17-buildpartner-plugin.md` | 2026-10-07 |
 
 ## Por que a pergunta 4 aceita código, e não só issue (2026-08-12)
 

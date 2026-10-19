@@ -122,6 +122,131 @@ else
   echo "  (pulado: powershell.exe nao esta no PATH — o gate do runner nao pode ser exercitado aqui)"
 fi
 
+# Rondas: cada vigia tem o seu toggle `vigia-<nome>`, ligado por padrao, e so vale
+# com `vigias` ligado. Os casos abaixo passam pelo runner real. O caso que passa do
+# toggle chega ate "sem destino de envio" e por isso ESCREVE em vigias/ERROS.md:
+# ele e copiado antes e restaurado depois, e a comparacao final prova byte a byte.
+esperado "--ligado vigia-tickets devolve 0 por padrao" 0 $SETUP --ligado vigia-tickets
+
+if command -v powershell.exe >/dev/null 2>&1; then
+  ERROS="$SRC/vigias/ERROS.md"
+  cp "$ERROS" "$CAIXA/erros-antes.md"
+  # Sem destino de envio e sem arquivo de config: nenhuma variavel do ambiente
+  # real pode vazar para a ronda que deve chegar ate o erro de destino.
+  RONDA_ENV="env -u RFM_WHATSAPP_DESTINO RFM_VIGIA_CONFIG=$CAIXA/nao-existe.json"
+
+  # 1) ronda desligada com vigias ligado: sai limpo e nao escreve em ERROS.md
+  $SETUP --ligar vigias --escopo usuario >/dev/null 2>&1
+  $SETUP --desligar vigia-tickets --escopo usuario >/dev/null 2>&1
+  antes_erros=$(wc -c < "$ERROS" 2>/dev/null || echo 0)
+  saida_ronda=$($RONDA_ENV powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$SRC/vigias/run-vigia.ps1" -Vigia vigia-tickets 2>&1)
+  got=$?
+  esperado "ronda desligada com vigias ligado para limpo (exit 0)" 0 bash -c "exit $got"
+  if echo "$saida_ronda" | grep -q "ronda vigia-tickets desligada"; then
+    ok=$((ok+1)); echo "  ok   ... e diz que a ronda vigia-tickets esta desligada"
+  else
+    falhou=$((falhou+1)); echo "  FALHA a ronda nao anunciou vigia-tickets desligada"; echo "$saida_ronda" | sed 's/^/         /' | tail -5
+  fi
+  depois_erros=$(wc -c < "$ERROS" 2>/dev/null || echo 0)
+  if [ "$antes_erros" = "$depois_erros" ]; then
+    ok=$((ok+1)); echo "  ok   ... e NAO escreveu em ERROS.md"
+  else
+    falhou=$((falhou+1)); echo "  FALHA ronda desligada virou linha em ERROS.md"
+  fi
+
+  # 2) ronda ligada (batedor-repos, default ligado) passa do toggle e chega ao erro de destino
+  saida_ligada=$($RONDA_ENV powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$SRC/vigias/run-vigia.ps1" -Vigia batedor-repos 2>&1)
+  if echo "$saida_ligada" | grep -q "desligad"; then
+    falhou=$((falhou+1)); echo "  FALHA ronda ligada foi tratada como desligada"; echo "$saida_ligada" | sed 's/^/         /' | tail -5
+  else
+    ok=$((ok+1)); echo "  ok   ronda ligada nao imprime 'desligad'"
+  fi
+  # A mensagem de destino vai para o ERROS.md (Stop-ComErro), nao para a saida:
+  # a prova de que a ronda passou do toggle e o ERROS.md ter ganhado essa linha.
+  sd_antes=$(grep -c "sem destino de envio" "$CAIXA/erros-antes.md")
+  sd_depois=$(grep -c "sem destino de envio" "$ERROS")
+  if [ "$((sd_depois - sd_antes))" = 1 ]; then
+    ok=$((ok+1)); echo "  ok   ronda ligada passa do toggle: ERROS.md ganhou 1 linha 'sem destino de envio'"
+  else
+    falhou=$((falhou+1)); echo "  FALHA ronda ligada nao gravou 'sem destino de envio' no ERROS.md (ganhou $((sd_depois - sd_antes)))"; echo "$saida_ligada" | sed 's/^/         /' | tail -5
+  fi
+  cp "$CAIXA/erros-antes.md" "$ERROS"
+  if cmp -s "$ERROS" "$CAIXA/erros-antes.md"; then
+    ok=$((ok+1)); echo "  ok   ... ERROS.md restaurado, byte-identico ao de antes"
+  else
+    falhou=$((falhou+1)); echo "  FALHA ERROS.md nao ficou byte-identico ao de antes"
+  fi
+
+  # 3) sem nenhuma chave de ronda gravada: as cinco rondas passam do toggle
+  rm -f "$DADOS/config.json"
+  $SETUP --ligar vigias --escopo usuario >/dev/null 2>&1
+  saida_cinco=""
+  for r in batedor-repos jardineiro-ideias revisao-bimestral sentinela-foco vigia-tickets; do
+    s=$($RONDA_ENV powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$SRC/vigias/run-vigia.ps1" -Vigia "$r" 2>&1)
+    saida_cinco="$saida_cinco
+--- $r
+$s"
+  done
+  if echo "$saida_cinco" | grep -q "desligad"; then
+    falhou=$((falhou+1)); echo "  FALHA alguma das cinco rondas foi tratada como desligada"; echo "$saida_cinco" | sed 's/^/         /' | tail -8
+  else
+    ok=$((ok+1)); echo "  ok   so vigias ligado: nenhuma das cinco rondas imprime 'desligad'"
+  fi
+  # Passagem pelo toggle se prova no ERROS.md: uma linha 'sem destino de envio' por ronda.
+  sd_antes=$(grep -c "sem destino de envio" "$CAIXA/erros-antes.md")
+  sd_depois=$(grep -c "sem destino de envio" "$ERROS")
+  if [ "$((sd_depois - sd_antes))" = 5 ]; then
+    ok=$((ok+1)); echo "  ok   so vigias ligado: as cinco rondas passam do toggle (ERROS.md ganhou 5 linhas 'sem destino de envio')"
+  else
+    falhou=$((falhou+1)); echo "  FALHA so vigias ligado: ERROS.md ganhou $((sd_depois - sd_antes)) linha(s) 'sem destino de envio', esperava 5"
+  fi
+  cp "$CAIXA/erros-antes.md" "$ERROS"
+  if cmp -s "$ERROS" "$CAIXA/erros-antes.md"; then
+    ok=$((ok+1)); echo "  ok   ... ERROS.md restaurado, byte-identico ao de antes"
+  else
+    falhou=$((falhou+1)); echo "  FALHA ERROS.md nao ficou byte-identico ao de antes (rondas)"
+  fi
+
+  # 4) ronda sem chave propria segue so com vigias: --ligado devolve 2 para a chave
+  # que nao esta no catalogo, e o runner NAO trata isso como desligada nem como erro
+  # de leitura. Passa do toggle e chega ao "sem destino de envio" (1 linha nova no
+  # ERROS.md, nenhuma "nao consegui ler o toggle"). O prompt do vigia novo mora na
+  # caixa (RFM_ROOT), nao no repositorio.
+  esperado "ronda sem chave propria segue so com vigias: --ligado de chave sem toggle devolve 2" 2 $SETUP --ligado vigia-meu-vigia
+  mkdir -p "$DADOS/vigias"
+  printf 'vigia de teste\n' > "$DADOS/vigias/meu-vigia.md"
+  $SETUP --ligar vigias --escopo usuario >/dev/null 2>&1
+  cp "$ERROS" "$CAIXA/erros-antes-sem-chave.md"
+  sd_antes=$(grep -c "sem destino de envio" "$ERROS")
+  nc_antes=$(grep -c "nao consegui ler o toggle" "$ERROS")
+  saida_sem_chave=$($RONDA_ENV powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$SRC/vigias/run-vigia.ps1" -Vigia meu-vigia 2>&1)
+  if echo "$saida_sem_chave" | grep -q "desligad"; then
+    falhou=$((falhou+1)); echo "  FALHA ronda sem chave propria foi tratada como desligada"; echo "$saida_sem_chave" | sed 's/^/         /' | tail -5
+  else
+    ok=$((ok+1)); echo "  ok   ronda sem chave propria segue so com vigias: a saida nao diz 'desligad'"
+  fi
+  if echo "$saida_sem_chave" | grep -q "nao consegui ler o toggle"; then
+    falhou=$((falhou+1)); echo "  FALHA ronda sem chave propria saiu como erro de leitura do toggle"; echo "$saida_sem_chave" | sed 's/^/         /' | tail -5
+  else
+    ok=$((ok+1)); echo "  ok   ronda sem chave propria segue so com vigias: a saida nao diz 'nao consegui ler o toggle'"
+  fi
+  sd_depois=$(grep -c "sem destino de envio" "$ERROS")
+  nc_depois=$(grep -c "nao consegui ler o toggle" "$ERROS")
+  if [ "$((sd_depois - sd_antes))" = 1 ] && [ "$nc_depois" = "$nc_antes" ]; then
+    ok=$((ok+1)); echo "  ok   ronda sem chave propria segue so com vigias: passou do toggle (ERROS.md ganhou 1 'sem destino de envio', nenhum 'nao consegui ler')"
+  else
+    falhou=$((falhou+1)); echo "  FALHA ronda sem chave propria: ERROS.md ganhou $((sd_depois - sd_antes)) 'sem destino de envio' e $((nc_depois - nc_antes)) 'nao consegui ler', esperava 1 e 0"; echo "$saida_sem_chave" | sed 's/^/         /' | tail -5
+  fi
+  cp "$CAIXA/erros-antes-sem-chave.md" "$ERROS"
+  if cmp -s "$ERROS" "$CAIXA/erros-antes-sem-chave.md"; then
+    ok=$((ok+1)); echo "  ok   ronda sem chave propria segue so com vigias: ERROS.md restaurado, byte-identico ao de antes"
+  else
+    falhou=$((falhou+1)); echo "  FALHA ronda sem chave propria: ERROS.md nao ficou byte-identico ao de antes"
+  fi
+else
+  echo "  (pulado: powershell.exe nao esta no PATH — as rondas nao podem ser exercitadas aqui)"
+fi
+
 echo
 echo "== 5. PONTES: quais agentes recebem as regras (config, nao repo) =="
 # "Quais agentes eu uso nesta maquina" e configuracao — e configuracao mora aqui.

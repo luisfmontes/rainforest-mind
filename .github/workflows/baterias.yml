@@ -29,6 +29,9 @@
 #   Bateria nova sem peso entra com a mediana; refaca o JSON de tempos em
 #   tempos, a reparticao so perde equilibrio, nunca cobertura (a bateria
 #   `testa-varrer-baterias.sh` confere uniao == lista inteira, sem repeticao).
+#   Remedido em 2026-10-18 (PR #560): 255 baterias, 2772 s em serie; 85 estavam
+#   sem peso, o shard 1 levava ~1700 s de bateria contra ~1070 do 2 e estourou
+#   os 35 min. Pesos tirados do log do run 39041588168 ("-----" ate ">>").
 #
 # - Nao para na primeira falha. Roda o shard inteiro, imprime o placar, e ai
 #   decide o exit. Saber que 3 baterias quebraram junto vale mais que saber qual

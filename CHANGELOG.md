@@ -10,7 +10,7 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
-## 1.68.0 — 2026-10-16
+## 1.69.0 — 2026-10-18
 
 - **Gate de worktree: rede de caminho do checkout principal (#552).** Até aqui o gate só barrava a escrita que
   reconhecia numa lista de formas conhecidas (`Set-Content`, `>`, `cp`...), e o que ficava fora dela passava. Agora,
@@ -54,10 +54,41 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   `[IO.Directory]::CreateDirectory('n1/n2/d')` e `echo x > n1/n2/f`, com `n1` ainda inexistente, passavam: o gate
   procurava o repositório a partir do pai imediato, que não existe. Agora ele sobe até o primeiro diretório que
   existe, e a escrita no principal é barrada.
+- **Gate de worktree: nome curto 8.3 do Windows (#552).** O git devolve o caminho com o nome longo e o
+  temp do runner do CI vem com o usuário em nome curto (`RUNNER~1`); comparado por texto, o cwd não caía em worktree
+  nenhum e a rede não agia, e citar o principal pelo nome curto escapava. Agora o caminho com `~` vira o longo antes
+  da comparação.
 - **Segue de fora (#552):** caminho montado por pedaços (`$a + "/f"`, `"$P"` sem o literal do principal na linha),
   variável cujo valor não aparece no comando, `HOME`/`USERPROFILE` redefinidos na própria linha (`HOME=<W>; touch ~/../f`), `~usuario/`, config que o repositório já tem (`core.pager`, `diff.external`,
   `.gitattributes` gravados antes: o `git` de leitura confia nela), nome curto 8.3 e caminho UNC, a janela principal (a rede só age em
   subagente) e os outros gates.
+
+## 1.68.0 — 2026-10-18
+
+- **`/setup` vira entrevista guiada na primeira vez.** Em vez de despejar todas as chaves e esperar `--ligar`, ele
+  pergunta uma coisa por vez, na ordem pasta de dados → idioma → projetos → ferramentas → jeito de fechar → estratégia
+  (opcional) → primeiro foco. Só pergunta o que depende de programa instalado ou de preferência sua; o que não está na
+  máquina não vira pergunta, e os gates de segurança ficam ligados e aparecem no resumo. Nada é gravado até você ver o
+  diff e dizer "gravar". Quem já configurou continua no estado com "mudar uma parte".
+- **`setup.cjs` ganha dois modos.** `--plano-entrevista` devolve, em JSON e sem gravar nada, o que perguntar, o que foi
+  detectado e os projetos sugeridos (pastas onde você já usou o Claude Code e que são repositório git).
+  `--aplicar <arquivo.json> [--ensaio]` valida o payload inteiro antes de escrever (um erro e nada é gravado), mostra
+  cada chave com o valor de antes e de depois no `--ensaio`, grava no escopo usuário (projeto só com
+  `--escopo projeto`), cria o `ESTRATEGIA.md` só se ele não existir e nunca escreve o `FOCO.md`.
+- **Cada ronda dos vigias tem chave própria:** `vigia-batedor-repos`, `vigia-jardineiro-ideias`,
+  `vigia-revisao-bimestral`, `vigia-sentinela-foco`, `vigia-tickets`, todas **ligadas por padrão**. A chave `vigias`
+  continua sendo o interruptor geral: a ronda só roda com as duas ligadas, e quem já tinha `vigias` ligado não perde
+  nenhuma. Desligar uma cala só aquela ronda, com saída limpa e sem linha no `vigias/ERROS.md`.
+- **A tabela de chaves da skill do `/setup` é conferida contra o catálogo.** `scripts/conferir-setup.cjs` reprova chave
+  sem o campo `entrevista` e tabela que diverge do `hooks/lib/config.cjs`; a bateria roda contra a skill real, então
+  chave nova esquecida na doc reprova no CI. A tabela passou de 5 para as 45 chaves.
+
+## 1.67.12 — 2026-10-18
+
+- **A statusline mostra a conta logada, não a que o nome da pasta sugere.** Depois de `/conta pessoal`, a pasta
+  `~/.claude` passava a usar a conta pessoal, mas a barra continuava mostrando `trabalho`. Agora o segmento lê o
+  `oauthAccount` do `.claude.json` e o compara com as contas registradas pela troca de conta. Sem esse registro, a barra
+  volta ao palpite pelo nome da pasta.
 
 ## 1.67.11 — 2026-10-16
 

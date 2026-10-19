@@ -29,11 +29,12 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync, execFileSync } = require('child_process');
-const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
+const readline = require('readline');
+const { caminhoExecutavel, resolverExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 const CODIGO_ROOT = path.resolve(__dirname, '..');
 const { resolverRaiz, ehRaiz } = require('../hooks/lib/raiz.cjs');
-const { CHAVES, resolverConfig, raizDoPrincipal } = require('../hooks/lib/config.cjs');
+const { CHAVES, resolverConfig, raizDoPrincipal, validarTipo, GRUPOS_ENTREVISTA } = require('../hooks/lib/config.cjs');
 const P = require('../hooks/lib/projetos.cjs');
 
 function arg(nome) {
@@ -75,6 +76,14 @@ que o desvio é medido.
 ## Concluídos
 
 - (nenhum)
+`;
+
+/** ESTRATEGIA.md (D13): contexto estável, lido na abertura; o tático é do /foco. */
+const ESTRATEGIA_MODELO = (texto) => `# Estratégia
+
+Contexto estável, lido na abertura de cada sessão. O tático (o que é agora) é do \`/foco\`.
+
+${texto.trim()}
 `;
 
 /** `Meu Repo` → `meu-repo`. O slug é fechado justamente para não caber barra. */
@@ -207,7 +216,9 @@ function trocar(chave, valor, escopo) {
   fs.writeFileSync(tmp, `${JSON.stringify(cfg, null, 2)}\n`, 'utf8');
   fs.renameSync(tmp, arquivo); // atomico: config truncada e pior que ausente
 
-  console.log(`${chave}: ${valor ? 'ligado' : 'desligado'} no escopo ${escopo}`);
+  // Booleano segue dizendo ligado/desligado; texto, lista e modelo mostram o valor (o --aplicar grava esses).
+  const dito = typeof valor === 'boolean' ? (valor ? 'ligado' : 'desligado') : JSON.stringify(valor);
+  console.log(`${chave}: ${dito} no escopo ${escopo}`);
   console.log(`  ${arquivo}`);
   if (escopo === 'projeto') {
     console.log('  vale so neste repositorio, e vence o seu padrao de usuario');
@@ -562,12 +573,434 @@ rainforest.db*
   }
 }
 
+// ---------------------------------------------------------------- plano da entrevista
+
+/**
+ * Detecta se a chave aparece nesta maquina. `detectar: {}` = nada a detectar (null:
+ * a pergunta e de preferencia). Senao TODAS as formas declaradas precisam passar.
+ *
+ * `resolverExecutavel`, e nao `caminhoExecutavel`: este procura so `.com`/`.exe` e,
+ * quando nao acha, devolve um caminho INEXISTENTE (dentro de hooks/lib/ausente-do-PATH).
+ * Nesta maquina o `codex` e `codex.cmd` (npm), entao checar por `caminhoExecutavel`
+ * daria "ausente" sempre. Conferido em 2026-10-17.
+ */
+async function detectarChave(detectar) {
+  if (!detectar || Object.keys(detectar).length === 0) return null;
+  const provas = [];
+  for (const nome of detectar.executaveis || []) provas.push(Boolean(resolverExecutavel(nome)));
+  for (const nome of detectar.env || []) provas.push(Boolean(process.env[nome]));
+  if (detectar.integracao) {
+    // Carregado so aqui: o estado e a mutacao da bateria antiga (testa-setup.sh, bloco 7)
+    // montam uma arvore com poucas libs, e um require de topo quebraria todos eles.
+    const { INTEGRACOES } = require('../hooks/lib/integracoes.cjs');
+    const checador = INTEGRACOES[detectar.integracao];
+    let ok = false;
+    if (checador) {
+      try { ok = (await checador.checar()).ok === true; } catch { ok = false; }
+    }
+    provas.push(ok);
+  }
+  if (provas.length === 0) return null;
+  return provas.every(Boolean);
+}
+
+/** Pasta de configuracao do Claude Code desta conta: CLAUDE_CONFIG_DIR, senao ~/.claude. */
+function pastaDeConfigClaude() {
+  if (process.env.CLAUDE_CONFIG_DIR) return process.env.CLAUDE_CONFIG_DIR;
+  return path.join(process.env.USERPROFILE || process.env.HOME || '', '.claude');
+}
+
+/** `cwd` da PRIMEIRA linha do transcrito que o tem. Para ali: o resto nao e lido. */
+function cwdDoTranscrito(arquivo) {
+  return new Promise((resolve) => {
+    const entrada = fs.createReadStream(arquivo, { encoding: 'utf8' });
+    const rl = readline.createInterface({ input: entrada, crlfDelay: Infinity });
+    let feito = false;
+    const fim = (valor) => {
+      if (feito) return;
+      feito = true;
+      rl.close();
+      entrada.destroy();
+      resolve(valor);
+    };
+    rl.on('line', (linha) => {
+      if (feito) return;
+      let obj;
+      try { obj = JSON.parse(linha); } catch { return; }
+      if (obj && typeof obj.cwd === 'string' && obj.cwd) fim(obj.cwd);
+    });
+    rl.on('close', () => fim(null));
+    entrada.on('error', () => fim(null));
+  });
+}
+
+function ehRepoGit(dir) {
+  try {
+    if (!fs.statSync(dir).isDirectory()) return false;
+    return fs.existsSync(path.join(dir, '.git')); // pasta, ou arquivo (worktree)
+  } catch {
+    return false;
+  }
+}
+
+function chaveDeCaminho(p) {
+  const r = path.resolve(p);
+  return process.platform === 'win32' ? r.toLowerCase() : r;
+}
+
+/**
+ * Sugestoes de projeto: uma por pasta de `<config>/projects/`, a partir do transcrito
+ * MAIS NOVO dela. Vira sugestao so a pasta que existe, e repo git, e que ainda nao
+ * esta em projetos.json (nem pelo slug, nem pelo caminho). Erro de leitura numa pasta
+ * pula essa pasta; nunca derruba o modo.
+ */
+async function sugestoesDeProjeto(raiz) {
+  let registrados = {};
+  if (raiz) {
+    try { registrados = P.ler(raiz) || {}; } catch { registrados = {}; }
+  }
+  const slugsUsados = new Set(Object.keys(registrados));
+  const caminhosUsados = new Set(
+    Object.values(registrados).map((v) => v && v.caminho).filter(Boolean).map(chaveDeCaminho)
+  );
+
+  const raizProjetos = path.join(pastaDeConfigClaude(), 'projects');
+  let pastas = [];
+  try {
+    pastas = fs.readdirSync(raizProjetos, { withFileTypes: true }).filter((d) => d.isDirectory());
+  } catch {
+    return [];
+  }
+
+  const achados = [];
+  for (const d of pastas) {
+    try {
+      const dir = path.join(raizProjetos, d.name);
+      const jsonls = fs.readdirSync(dir)
+        .filter((n) => n.endsWith('.jsonl'))
+        .map((n) => ({ arquivo: path.join(dir, n), mtime: fs.statSync(path.join(dir, n)).mtimeMs }))
+        .sort((a, b) => b.mtime - a.mtime);
+      if (!jsonls.length) continue;
+      const cwd = await cwdDoTranscrito(jsonls[0].arquivo);
+      if (!cwd || !ehRepoGit(cwd)) continue;
+      // Worktree de agente (.claude/worktrees/) e repo git, mas não é projeto do usuário (B do plano).
+      if (cwd.replace(/\\/g, '/').toLowerCase().includes('/.claude/worktrees/')) continue;
+      const slug = slugificar(path.basename(cwd));
+      if (!slug) continue;
+      achados.push({ slug, caminho: cwd, mtime: jsonls[0].mtime });
+    } catch {
+      continue;
+    }
+  }
+
+  achados.sort((a, b) => b.mtime - a.mtime);
+  const slugsVistos = new Set();
+  const caminhosVistos = new Set();
+  const saida = [];
+  for (const a of achados) {
+    const cam = chaveDeCaminho(a.caminho);
+    if (slugsUsados.has(a.slug) || caminhosUsados.has(cam)) continue;
+    if (slugsVistos.has(a.slug) || caminhosVistos.has(cam)) continue;
+    slugsVistos.add(a.slug);
+    caminhosVistos.add(cam);
+    saida.push({ slug: a.slug, caminho: a.caminho });
+  }
+  return saida;
+}
+
+/**
+ * `--plano-entrevista`: o que a skill /setup precisa para entrevistar, em UM JSON no
+ * stdout. Nao grava nada: nem config, nem projetos, nem FOCO.md (D11).
+ */
+async function planoEntrevista() {
+  const { raiz, nivel } = resolverRaiz({ plugin: CODIGO_ROOT });
+
+  // Se a leitura da configuracao falhar, cada chave cai no padrao do codigo.
+  let cfg = null;
+  try { cfg = resolverConfig({ projeto: PROJETO }); } catch { cfg = null; }
+
+  const porGrupo = {};
+  for (const g of GRUPOS_ENTREVISTA) porGrupo[g] = [];
+  const fixas = [];
+
+  for (const [chave, meta] of Object.entries(CHAVES)) {
+    const temValor = cfg !== null && Object.prototype.hasOwnProperty.call(cfg.valores, chave);
+    const valor = temValor ? cfg.valores[chave] : meta.padrao;
+    const origem = temValor && cfg.origem[chave] !== undefined ? cfg.origem[chave] : 'padrao';
+
+    if (meta.entrevista === null) {
+      fixas.push({ chave, valor });
+      continue;
+    }
+    if (!Object.prototype.hasOwnProperty.call(porGrupo, meta.entrevista.grupo)) {
+      throw new Error(`chave '${chave}' declara grupo '${meta.entrevista.grupo}' fora de GRUPOS_ENTREVISTA`);
+    }
+    const detectado = await detectarChave(meta.entrevista.detectar);
+    const perguntar = meta.entrevista !== null && detectado !== false;
+    porGrupo[meta.entrevista.grupo].push({ chave, valor, origem, detectado, perguntar });
+  }
+
+  return {
+    primeira_vez: primeiraVez(raiz, nivel),
+    nivel: raiz ? nivel : null,
+    passos: GRUPOS_ENTREVISTA.map((grupo) => ({ grupo, chaves: porGrupo[grupo] })),
+    fixas,
+    sugestoes: { projetos: await sugestoesDeProjeto(raiz) },
+  };
+}
+
+// ---------------------------------------------------------------- aplicar (D5, D9, D11, D13)
+
+/** Primeira vez (D1): sem pasta de dados, ou a do plugin, ou pasta sem FOCO.md (pasta vazia = setup nunca rodou nela). */
+function primeiraVez(raiz, nivel) {
+  return !raiz || nivel === 'plugin' || !fs.existsSync(path.join(raiz, 'FOCO.md'));
+}
+
+/**
+ * Onde o `--aplicar` GRAVA o escopo usuario, e de onde o `--ensaio` lê o estado. Uma fonte
+ * só para as duas portas: um ensaio que lê outra raiz mostra um diff que não é o que se
+ * grava (revisor de 2026-10-17: com `nivel: plugin` o ensaio dizia `ja existe`).
+ *
+ * Primeira vez, o `criar()` semeia em `RFM_ROOT || destinoPadrao()`, e é ali que o aplicar
+ * cai. Exceção: raiz de projeto sem FOCO.md (só ideias.jsonl) continua vencendo depois do
+ * `criar()`, porque o resolverRaiz põe o projeto antes do home.
+ */
+function raizDeGravacao(raizAntes, nivelAntes) {
+  if (!primeiraVez(raizAntes, nivelAntes)) return raizAntes;
+  if (nivelAntes === 'projeto') return raizAntes;
+  return process.env.RFM_ROOT || destinoPadrao();
+}
+
+const CAMPOS_PAYLOAD = ['chaves', 'projetos', 'estrategia'];
+const CAMPOS_PROJETO = ['slug', 'caminho', 'apelido'];
+
+function ehDiretorio(p) {
+  try {
+    return fs.statSync(p).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/** Acumula em `erros` tudo o que impede gravar. Esta função não escreve nada. */
+function validarPayload(p, erros) {
+  if (typeof p !== 'object' || p === null || Array.isArray(p)) {
+    erros.push('o payload precisa ser um objeto JSON');
+    return;
+  }
+  for (const k of Object.keys(p)) {
+    if (!CAMPOS_PAYLOAD.includes(k)) erros.push(`campo desconhecido no payload: '${k}'`);
+  }
+  if (p.chaves !== undefined) {
+    if (typeof p.chaves !== 'object' || p.chaves === null || Array.isArray(p.chaves)) {
+      erros.push('"chaves" precisa ser um objeto {"<chave>": <valor>}');
+    } else {
+      for (const [chave, valor] of Object.entries(p.chaves)) {
+        if (!Object.prototype.hasOwnProperty.call(CHAVES, chave)) {
+          erros.push(`chave '${chave}' nao e conhecida`);
+          continue;
+        }
+        const tipo = CHAVES[chave].tipo || 'boolean';
+        if (!validarTipo(valor, tipo)) {
+          erros.push(`'${chave}' espera um valor do tipo ${tipo}, veio ${JSON.stringify(valor)}`);
+        }
+      }
+    }
+  }
+  if (p.projetos !== undefined) {
+    if (!Array.isArray(p.projetos)) {
+      erros.push('"projetos" precisa ser uma lista');
+    } else {
+      p.projetos.forEach((pr, i) => {
+        const rot = `projetos[${i}]`;
+        if (typeof pr !== 'object' || pr === null || Array.isArray(pr)) {
+          erros.push(`${rot} precisa ser um objeto`);
+          return;
+        }
+        for (const k of Object.keys(pr)) {
+          if (!CAMPOS_PROJETO.includes(k)) erros.push(`${rot}: campo desconhecido '${k}'`);
+        }
+        if (typeof pr.slug !== 'string' || !P.RE_SLUG.test(pr.slug)) {
+          erros.push(`${rot}: slug '${pr.slug}' nao e kebab-case`);
+        }
+        if (typeof pr.caminho !== 'string' || !path.isAbsolute(pr.caminho)) {
+          erros.push(`${rot}: caminho precisa ser absoluto`);
+        } else if (!ehDiretorio(pr.caminho)) {
+          erros.push(`${rot}: caminho '${pr.caminho}' nao existe ou nao e pasta`);
+        }
+        const apelidos = pr.apelido === undefined ? [] : [].concat(pr.apelido);
+        if (!apelidos.every((a) => typeof a === 'string' && a.trim() && !a.includes(','))) {
+          erros.push(`${rot}: apelido precisa ser texto (ou lista de textos) sem virgula`);
+        }
+      });
+    }
+  }
+  if (p.estrategia !== undefined && (typeof p.estrategia !== 'string' || !p.estrategia.trim())) {
+    erros.push('"estrategia" precisa ser um texto nao vazio');
+  }
+}
+
+const apelidoDe = (pr) => (pr.apelido === undefined ? undefined : [].concat(pr.apelido).join(','));
+
+function valoresAtuais() {
+  try {
+    return resolverConfig({ projeto: PROJETO });
+  } catch {
+    return null;
+  }
+}
+
+/** O que o --aplicar faria, linha a linha. Só lê. */
+function linhasEnsaio({ chaves, projetos, estrategia, raiz, escopo }) {
+  const linhas = [];
+  const atual = valoresAtuais();
+  const valores = atual ? atual.valores : null;
+  for (const [chave, depois] of Object.entries(chaves)) {
+    const antes = valores ? valores[chave] : CHAVES[chave].padrao;
+    const jDepois = JSON.stringify(depois);
+    // O .rainforest do projeto vence o escopo usuario: gravar la e nao mudar nada. O aviso
+    // sai na linha, antes da confirmacao, e so quando o valor atual vem do projeto.
+    const origem = atual ? atual.origem[chave] : 'padrao';
+    const aviso = escopo === 'usuario' && origem.startsWith('projeto')
+      ? ` (AVISO: o .rainforest/config.json do projeto fixa ${JSON.stringify(antes)} e vence o escopo usuario; grave com --escopo projeto para mudar aqui)`
+      : '';
+    if (JSON.stringify(antes) === jDepois) linhas.push(`${chave}: ${jDepois} (sem mudanca)${aviso}`);
+    else linhas.push(`${chave}: ${JSON.stringify(antes)} -> ${jDepois}${aviso}`);
+  }
+  const mapa = raiz ? P.ler(raiz) || {} : {};
+  for (const pr of projetos) {
+    const ja = Object.prototype.hasOwnProperty.call(mapa, pr.slug);
+    linhas.push(`projeto ${pr.slug}: ${pr.caminho} (${ja ? 'ja registrado' : 'novo'})`);
+  }
+  if (estrategia !== undefined) {
+    const ja = raiz && fs.existsSync(path.join(raiz, 'ESTRATEGIA.md'));
+    linhas.push(`ESTRATEGIA.md: ${ja ? 'ja existe, nao toca' : 'cria'}`);
+  }
+  const destino = escopo === 'projeto' ? path.join(PROJETO, '.rainforest') : (raiz || destinoPadrao());
+  linhas.push(`escopo: ${escopo} (${destino})`);
+  return linhas;
+}
+
+/**
+ * `--aplicar <arquivo.json> [--ensaio] [--escopo projeto]`: grava o que a entrevista
+ * decidiu. Valida TUDO antes da primeira escrita (um erro = nada gravado, exit 2).
+ */
+function aplicar() {
+  const errosAplicar = [];
+  const ensaio = tem('ensaio');
+  const escopoArg = arg('escopo');
+  const escopo = escopoArg === null ? 'usuario' : String(escopoArg);
+  if (escopo !== 'usuario' && escopo !== 'projeto') {
+    errosAplicar.push(`--escopo tem que ser 'projeto' ou 'usuario' (veio '${escopo}')`);
+  }
+
+  const arquivo = arg('aplicar');
+  let payload = null;
+  let lido = false;
+  if (typeof arquivo !== 'string') {
+    errosAplicar.push('--aplicar precisa do caminho de um arquivo .json');
+  } else {
+    try {
+      payload = JSON.parse(fs.readFileSync(arquivo, 'utf8').replace(/^﻿/, ''));
+      lido = true;
+    } catch (e) {
+      errosAplicar.push(`'${arquivo}' nao e legivel ou nao e JSON valido: ${e.message}`);
+    }
+  }
+  if (lido) validarPayload(payload, errosAplicar);
+
+  const { raiz: raizAntes, nivel: nivelAntes } = resolverRaiz({ plugin: CODIGO_ROOT });
+  const destinoUsuario = raizDeGravacao(raizAntes, nivelAntes);
+  // trocar() com escopo usuario grava na raiz que o resolverRaiz acha, e uma .rainforest
+  // do projeto vence a global. Sem esta trava, config de usuario iria para o repositorio.
+  if (escopo === 'usuario' && nivelAntes === 'projeto') {
+    errosAplicar.push(`a pasta de dados desta sessao e a do projeto (${raizAntes}); 'usuario' gravaria la. Use --escopo projeto, ou aponte RFM_ROOT para a pasta de dados do usuario`);
+  }
+  if (lido && payload && payload.projetos !== undefined) {
+    try {
+      P.ler(destinoUsuario);
+    } catch (e) {
+      errosAplicar.push(`vocabulario de projetos ilegivel: ${e.message}`);
+    }
+  }
+  // Um config.json que existe e nao le como JSON seria regravado do zero por trocar() (perda
+  // de dados). Recusa aqui, antes da primeira escrita.
+  const arquivoConfig = path.join(escopo === 'projeto' ? path.join(PROJETO, '.rainforest') : destinoUsuario, 'config.json');
+  if (fs.existsSync(arquivoConfig)) {
+    let bruto = null;
+    try {
+      bruto = fs.readFileSync(arquivoConfig, 'utf8');
+    } catch (e) {
+      errosAplicar.push(`${arquivoConfig} nao e legivel: ${e.message}`);
+    }
+    if (bruto !== null) {
+      try {
+        JSON.parse(bruto);
+      } catch {
+        errosAplicar.push(`${arquivoConfig} nao e JSON valido; corrija ou apague antes de aplicar`);
+      }
+    }
+  }
+
+  for (const e of errosAplicar) console.error(`erro: ${e}`);
+  if (errosAplicar.length > 0) process.exit(2);
+
+  const chaves = payload.chaves || {};
+  const projetos = payload.projetos || [];
+  const { estrategia } = payload;
+
+  if (ensaio) {
+    for (const linha of linhasEnsaio({ chaves, projetos, estrategia, raiz: destinoUsuario, escopo })) console.log(linha);
+    return;
+  }
+
+  if (primeiraVez(raizAntes, nivelAntes)) criar();
+  const raiz = resolverRaiz({ plugin: CODIGO_ROOT }).raiz;
+  if (!raiz) {
+    console.error('erro: nao ha pasta de dados montada, mesmo depois de --criar');
+    process.exit(1);
+  }
+
+  if (escopo === 'projeto' && Object.keys(chaves).length > 0) {
+    console.log(`aviso: o .rainforest/config.json do repositorio (${path.join(PROJETO, '.rainforest')}) pode ir para o commit; decida no .gitignore antes de commitar`);
+  }
+  for (const [chave, valor] of Object.entries(chaves)) trocar(chave, valor, escopo);
+  for (const pr of projetos) registrarProjeto(pr.slug, pr.caminho, apelidoDe(pr));
+
+  if (estrategia !== undefined) {
+    const alvo = path.join(raiz, 'ESTRATEGIA.md');
+    if (fs.existsSync(alvo)) {
+      console.log('ESTRATEGIA.md: ja existe, nao foi tocado');
+    } else {
+      // 'wx': nunca sobrescreve, mesmo se algo criar o arquivo no meio do caminho.
+      fs.writeFileSync(alvo, ESTRATEGIA_MODELO(estrategia), { encoding: 'utf8', flag: 'wx' });
+      console.log(`ESTRATEGIA.md: criado em ${alvo}`);
+    }
+  }
+  console.log(`gravado: ${Object.keys(chaves).length} chave(s), ${projetos.length} projeto(s), escopo ${escopo}`);
+}
+
 // ---------------------------------------------------------------- CLI
 
 function main() {
   // `versionar` como subcomando posicional (argv[2])
   if (process.argv[2] === 'versionar') {
     versionar();
+    return;
+  }
+
+  // `--plano-entrevista`: JSON da entrevista do /setup. So le. Vem antes de --criar
+  // para que a saida seja UM JSON, sem texto de outro modo misturado.
+  if (tem('plano-entrevista')) {
+    planoEntrevista().then((plano) => {
+      console.log(JSON.stringify(plano, null, 2));
+    });
+    return;
+  }
+
+  // `--aplicar`: grava a decisão da entrevista (ou só mostra, com --ensaio). Não sai do fluxo.
+  if (tem('aplicar')) {
+    aplicar();
     return;
   }
 

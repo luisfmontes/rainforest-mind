@@ -1,0 +1,181 @@
+{
+  "slug": "2026-10-17-setup-entrevista-guiada",
+  "titulo": "C:/Program Files/Git/setup vira entrevista guiada",
+  "criado_em": "2026-10-17",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-17-setup-entrevista-guiada.md",
+    "em": "2026-10-17"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-17-setup-entrevista-guiada.md",
+    "tarefas": 6,
+    "paralelas": [],
+    "em": "2026-10-17"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-17",
+    "tarefas_ok": 6,
+    "tarefas": 6,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "28a47efa467d9328fe74d89af49185ccb394269a",
+        "iteracao": 1,
+        "sessao": "2d517692-1cc6-4088-9761-81e72cf12928",
+        "ts": "2026-10-17T16:10:07.972Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "e4a7608d0ebb524dae881b5c8b804012ba7b0fee",
+        "iteracao": 1,
+        "sessao": "2d517692-1cc6-4088-9761-81e72cf12928",
+        "ts": "2026-10-17T16:18:48.584Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "286444933a2100a6a9dd01e5f46cc5b456dbfce8",
+        "iteracao": 1,
+        "sessao": "2d517692-1cc6-4088-9761-81e72cf12928",
+        "ts": "2026-10-17T16:31:18.142Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "265c750bae3f9bae544a5ff6129d82e6485a141a",
+        "iteracao": 1,
+        "sessao": "2d517692-1cc6-4088-9761-81e72cf12928",
+        "ts": "2026-10-17T16:44:23.681Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "e9253af042e52f26e881fab71b40c685602c8884",
+        "iteracao": 2,
+        "sessao": "2d517692-1cc6-4088-9761-81e72cf12928",
+        "ts": "2026-10-18T01:05:51.563Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "e9253af042e52f26e881fab71b40c685602c8884",
+        "iteracao": 2,
+        "sessao": "2d517692-1cc6-4088-9761-81e72cf12928",
+        "ts": "2026-10-18T01:05:51.563Z"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-17",
+    "integradas": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "comando": "bash hooks/testa-config.sh; bash scripts/testa-conferir-setup.sh; bash scripts/testa-setup.sh; bash scripts/testa-setup-entrevista.sh",
+    "saida": "63 ok 0 falha; 10 ok 0 falha; 75 ok 0 falha; 77 ok 0 falha",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-setup.sh, caso catalogo com ponte-codex sem campo entrevista e recusado"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-setup.sh, caso ronda desligada com vigias ligado para limpo"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-setup-entrevista.sh, caso ferramenta ausente no PATH nao vira pergunta"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-setup-entrevista.sh, caso payload com uma chave invalida nao grava nenhuma"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "texto de skill; a coerencia e conferida pelo caso SKILL.md real coerente com o catalogo real, que fica vermelho quando uma linha da tabela some"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "documentacao e numero de versao, conferidos pelo conferir-versao.cjs"
+      }
+    ],
+    "reaberturas": 1
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "643f177d8b1d17e7c8751d64a81e956c16d9ea7a",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a77694bc6a8bde88d",
+        "veredito": "ok",
+        "em": "2026-10-18",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2d517692-1cc6-4088-9761-81e72cf12928/subagents/agent-a77694bc6a8bde88d.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-18",
+    "achados": 0,
+    "base": "20b7190d90ac129965c3ad9f787bc0a638a6ab0e",
+    "head": "643f177d8b1d17e7c8751d64a81e956c16d9ea7a"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "bash scripts/testa-setup-entrevista.sh; bash scripts/testa-setup.sh; bash scripts/testa-conferir-setup.sh; node scripts/conferir-setup.cjs --so-catalogo; node scripts/conferir-setup.cjs; node scripts/conferir-versao.cjs",
+    "saida": "testa-setup-entrevista: 77 ok, 0 falha(s), exit 0 | testa-setup: 75 ok, 0 falha(s), exit 0 | testa-conferir-setup: 10 ok, 0 falha(s), exit 0 | conferir-setup --so-catalogo: ok 45 chaves, exit 0 | conferir-setup: ok 45 chaves (catalogo e SKILL.md), exit 0 | conferir-versao: ok versao 1.68.0, exit 0 | territorio: sem territorio nos 7 fontes",
+    "sensor_externo": "bash scripts/testa-setup-entrevista.sh",
+    "em": "2026-10-18"
+  },
+  "fechar": {
+    "status": "pendente"
+  },
+  "decididos": [
+    {
+      "pergunta": "primeira_vez com RFM_ROOT apontando para pasta vazia sai false; mudar a formula?",
+      "escolha": "primeira_vez tambem e true quando a raiz existe mas nao tem FOCO.md (setup nunca rodou nela); entra na tarefa 4",
+      "porque": "a pasta de dados existir vazia e o mesmo estado de quem nunca rodou o setup, e o criterio da tarefa 3 no plano ja pedia true nesse caso",
+      "estagio": "executar",
+      "em": "2026-10-17T16:44:07.968Z"
+    },
+    {
+      "pergunta": "sugestoes de projeto trazem worktrees de agente (.claude/worktrees/*); filtrar?",
+      "escolha": "filtrar caminhos que contenham /.claude/worktrees/; entra na tarefa 4",
+      "porque": "worktree de agente e descartavel, sugerir como projeto e ruido: 17 sugestoes reais incluiram pelo menos dois",
+      "estagio": "executar",
+      "em": "2026-10-17T16:44:08.223Z"
+    },
+    {
+      "pergunta": "caminhoExecutavel devolve sentinela ausente-do-PATH para codex .cmd; aceitar resolverExecutavel?",
+      "escolha": "aceita resolverExecutavel, como o agente da tarefa 3 fez",
+      "porque": "medido: caminhoExecutavel nao acha codex.cmd e a ponte-codex nunca seria detectada nesta maquina",
+      "estagio": "executar",
+      "em": "2026-10-17T16:44:22.569Z"
+    },
+    {
+      "pergunta": "o conferir-setup nao roda contra o SKILL.md real em lugar nenhum; ligar onde?",
+      "escolha": "caso novo na bateria testa-conferir-setup.sh rodando o conferidor sem caixa; entra na tarefa 5",
+      "porque": "o CI roda as baterias testa-*.sh, entao o caso e o que faz a divergencia entre catalogo e tabela reprovar o PR; sem ele o D7 era trava que ninguem aciona",
+      "estagio": "executar",
+      "em": "2026-10-17T17:05:56.139Z"
+    },
+    {
+      "pergunta": "a tarefa 5 e texto de skill: despachar para o executor?",
+      "escolha": "escrita na janela principal, com a mesma conferencia mecanica",
+      "porque": "autoria nuancada de skill fica na janela principal; o executor e haiku",
+      "estagio": "executar",
+      "em": "2026-10-17T17:05:56.310Z"
+    }
+  ]
+}

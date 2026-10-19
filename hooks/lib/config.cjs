@@ -36,96 +36,115 @@ const CHAVES = {
     tipo: 'boolean',
     padrao: true,
     descricao: 'barra escrita de subagente fora de worktree isolado',
+    entrevista: null,
   },
   'gate-staging': {
     tipo: 'boolean',
     padrao: true,
     descricao: 'barra `git add -A` e `git commit -a`',
+    entrevista: null,
   },
   'gate-publicacao': {
     tipo: 'boolean',
     padrao: true,
     descricao: 'barra escrita de dados sensíveis em arquivo rastreado',
+    entrevista: null,
   },
   'gate-repo-alheio': {
     tipo: 'boolean',
     padrao: true,
     descricao: 'barra escrita cujo destino está dentro de outro repositório git',
+    entrevista: null,
   },
   'gate-git-verificacao': {
     tipo: 'boolean',
     padrao: true,
     descricao: 'barra pulo de verificação no git (--no-verify, -n em commit, --no-gpg-sign)',
+    entrevista: null,
   },
   'gate-fechar-issue': {
     tipo: 'boolean',
     padrao: true,
     descricao: 'barra `gh issue close` direto, palavras-chave falsas em português, e `gh pr create/edit/merge`, `gh issue create/comment` sem evidência/com falsa chave',
+    entrevista: null,
   },
   'gate-merge-auto': {
     tipo: 'boolean',
     padrao: true,
     descricao: 'barra `gh pr merge --auto`: neste repo sem check obrigatório mergeia na hora, sem esperar o CI',
+    entrevista: null,
   },
   'gate-agente-em-voo': {
     tipo: 'boolean',
     padrao: true,
     descricao: 'barra sessão quando há agente em voo que morreu',
+    entrevista: null,
   },
   'gate-turno-prometido': {
     tipo: 'boolean',
     padrao: true,
     descricao: 'barra turno que promete despacho ou espera de máquina sem concretizar',
+    entrevista: null,
   },
   'gate-verificador-staged': {
     tipo: 'boolean',
     padrao: true,
     descricao: 'barra commit quando o `verificador-staged` do config reprova conteúdo staged',
+    entrevista: null,
   },
   'contrato-veredito': {
     tipo: 'boolean',
     padrao: true,
     descricao: 'grava o veredito de uma linha do revisor em SubagentStop (hooks/veredito-revisor.cjs)',
+    entrevista: null,
   },
   'agente-folha': {
     tipo: 'boolean',
     padrao: true,
     descricao: 'a portaria nega Agent vindo de dentro de subagente (agent_id presente) — regra 10, agente despachado e folha',
+    entrevista: null,
   },
   'busca-na-raiz': {
     tipo: 'boolean',
     padrao: true,
     descricao: 'nega find a partir da raiz do disco dentro de subagente — prende o agente em segundo plano',
+    entrevista: null,
   },
   'bateria-sem-timeout': {
     tipo: 'boolean',
     padrao: true,
     descricao: 'nega bateria sem timeout explícito dentro de subagente — varredura completa só roda na integração',
+    entrevista: null,
   },
   'subagente-sem-gh': {
     tipo: 'boolean',
     padrao: true,
     descricao: 'nega `gh` de escrita (issue/pr/release/repo/label/secret/variable/workflow/run/api) dentro de subagente — direto, em wrapper ou em heredoc',
+    entrevista: null,
   },
   'subagente-sem-instalar': {
     tipo: 'boolean',
     padrao: true,
     descricao: 'nega instalação de pacotes e desligamento de gate dentro de subagente',
+    entrevista: null,
   },
   'matar-por-nome': {
     tipo: 'boolean',
     padrao: true,
     descricao: 'barra matar processo por nome (taskkill /IM, pkill, killall, Stop-Process -Name) na janela e no subagente; mata-se pelo PID',
+    entrevista: null,
   },
   'aviso-fluxo': {
     tipo: 'boolean',
     padrao: true,
     descricao: 'bloqueia edição de código (Edit/Write/MultiEdit) e despacho de agente que escreve, sem fluxo aberto nem `leve` na branch, quando o repositório tem fluxo',
+    entrevista: null,
   },
   fluxo: {
     tipo: 'boolean',
     padrao: true,
     descricao: 'os sete estágios (brainstorm → plano → … → fechar)',
+    entrevista: null,
   },
   // Os VIGIAS entram na lista a pedido do usuario (2026-08-12), e o pedido corrige
   // o critério escrito no comentário acima. A frase "vigia degrada sozinho quando a
@@ -145,6 +164,40 @@ const CHAVES = {
     tipo: 'boolean',
     padrao: false,
     descricao: 'as rondas headless agendadas (exigem PowerShell, claude.exe e destino de envio)',
+    entrevista: { grupo: 'ferramentas', detectar: { executaveis: ['powershell', 'claude'] } },
+  },
+  // RONDAS — um toggle por ronda, ligado por padrao de proposito: quem ja tem
+  // `vigias: true` gravado continua com as cinco rodando. So vale com `vigias`
+  // tambem ligado (o run-vigia.ps1 olha as duas chaves, nesta ordem).
+  'vigia-batedor-repos': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'ronda batedor-repos dos vigias; so roda com `vigias` tambem ligado',
+    entrevista: { grupo: 'ferramentas', detectar: { executaveis: ['powershell', 'claude'] } },
+  },
+  'vigia-jardineiro-ideias': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'ronda jardineiro-ideias dos vigias; so roda com `vigias` tambem ligado',
+    entrevista: { grupo: 'ferramentas', detectar: { executaveis: ['powershell', 'claude'] } },
+  },
+  'vigia-revisao-bimestral': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'ronda revisao-bimestral dos vigias; so roda com `vigias` tambem ligado',
+    entrevista: { grupo: 'ferramentas', detectar: { executaveis: ['powershell', 'claude'] } },
+  },
+  'vigia-sentinela-foco': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'ronda sentinela-foco dos vigias; so roda com `vigias` tambem ligado',
+    entrevista: { grupo: 'ferramentas', detectar: { executaveis: ['powershell', 'claude'] } },
+  },
+  'vigia-tickets': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'ronda tickets dos vigias; so roda com `vigias` tambem ligado',
+    entrevista: { grupo: 'ferramentas', detectar: { executaveis: ['powershell', 'claude'] } },
   },
   // PONTES — quais hosts de agente recebem as regras deste plugin, geradas do mesmo
   // SKILL.md (`scripts/ponte.cjs`). Entram aqui porque "quais agentes eu uso nesta
@@ -160,16 +213,19 @@ const CHAVES = {
     tipo: 'boolean',
     padrao: false,
     descricao: 'gera CLAUDE.md para Claude Code SEM o plugin (regras sem as travas)',
+    entrevista: { grupo: 'ferramentas', detectar: {} },
   },
   'ponte-codex': {
     tipo: 'boolean',
     padrao: false,
     descricao: 'gera AGENTS.md para o Codex',
+    entrevista: { grupo: 'ferramentas', detectar: { executaveis: ['codex'] } },
   },
   'ponte-gemini': {
     tipo: 'boolean',
     padrao: false,
     descricao: 'gera GEMINI.md para o Gemini CLI',
+    entrevista: { grupo: 'ferramentas', detectar: { executaveis: ['gemini'] } },
   },
   // ATENÇÃO: esta chave inverte o sentido das outras (`principal-livre`, abaixo,
   // é a segunda com o mesmo sentido), e por isso inverte também o lado seguro da
@@ -185,16 +241,19 @@ const CHAVES = {
     tipo: 'boolean',
     padrao: false,
     descricao: 'usa `git branch -D` (apaga sem conferir merge) em vez de `-d`',
+    entrevista: null,
   },
   'conselho-codex': {
     tipo: 'boolean',
     padrao: false,
     descricao: 'Codex participa do conselho como membro externo (exige `codex` CLI)',
+    entrevista: { grupo: 'ferramentas', detectar: { executaveis: ['codex'] } },
   },
   'conselho-gemini': {
     tipo: 'boolean',
     padrao: false,
     descricao: 'Gemini participa do conselho como membro externo (exige `GEMINI_API_KEY` no ambiente)',
+    entrevista: { grupo: 'ferramentas', detectar: { env: ['GEMINI_API_KEY'] } },
   },
   // Sentido invertido como `branch-forcar`: ligada, DESLIGA uma trava. Quem lê
   // (`scripts/estado.cjs`) não usa `ligado()` — que devolve `true` em erro e em
@@ -204,11 +263,13 @@ const CHAVES = {
     tipo: 'boolean',
     padrao: false,
     descricao: 'libera estado.cjs iniciar no checkout principal fora da branch padrão (clone dedicado a uma frente)',
+    entrevista: null,
   },
   poda: {
     tipo: 'boolean',
     padrao: true,
     descricao: 'passthrough de proxy medido: escreve metricas.jsonl e contexto.json',
+    entrevista: null,
   },
   // INTEGRACOES — repositórios opcionais do usuário com ciclo de release próprio.
   // Cada uma tem stub `checar()` que devolve status — as checagens reais vêm depois.
@@ -217,52 +278,62 @@ const CHAVES = {
     tipo: 'boolean',
     padrao: false,
     descricao: 'MCP para bridge WhatsApp local (127.0.0.1:3005)',
+    entrevista: { grupo: 'ferramentas', detectar: { integracao: 'whatsapp-mcp' } },
   },
   'integracao-sabia': {
     tipo: 'boolean',
     padrao: false,
     descricao: 'Sabiá: transcrição local de reunião com diarização (quem falou), CLI Python',
+    entrevista: { grupo: 'ferramentas', detectar: { integracao: 'sabia' } },
   },
   'visibilidade-repo': {
     tipo: 'privada',
     padrao: null,
     descricao: 'declara o repositório privado quando o gh não o enxerga (GitLab etc.); só libera termos da lista privada',
+    entrevista: null,
   },
   idioma: {
     tipo: 'texto',
     padrao: null,
     descricao: 'idioma preferido para respostas na compactação (ex.: "português do Brasil")',
+    entrevista: { grupo: 'idioma', detectar: {} },
   },
   pastas: {
     tipo: 'pastas',
     padrao: null,
     descricao: 'pastas de mapas/design/planos quando o repo já usa outra (ex.: {"design": "docs/plans"})',
+    entrevista: null,
   },
   // CODEX COMO RUNTIME — chaves de modelo que mapeiam model: do agente para -m do Codex
   'codex-modelo-haiku': {
     tipo: 'modelo',
     padrao: null,
     descricao: 'mapeia model: haiku do agente para -m e model_reasoning_effort do Codex (null = usar ~/.codex/config.toml)',
+    entrevista: null,
   },
   'codex-modelo-sonnet': {
     tipo: 'modelo',
     padrao: null,
     descricao: 'mapeia model: sonnet do agente para -m e model_reasoning_effort do Codex (null = usar ~/.codex/config.toml)',
+    entrevista: null,
   },
   'codex-modelo-opus': {
     tipo: 'modelo',
     padrao: null,
     descricao: 'mapeia model: opus do agente para -m e model_reasoning_effort do Codex (null = usar ~/.codex/config.toml)',
+    entrevista: null,
   },
   'transfer-codex': {
     tipo: 'boolean',
     padrao: false,
     descricao: 'transfere a sessão Claude Code para uma thread Codex, sob demanda',
+    entrevista: { grupo: 'ferramentas', detectar: { executaveis: ['codex'] } },
   },
   'gate-review-codex': {
     tipo: 'boolean',
     padrao: false,
     descricao: 'o revisor em Codex revisa a última resposta no Stop; falha fechada',
+    entrevista: { grupo: 'ferramentas', detectar: { executaveis: ['codex'] } },
   },
   // Sentido invertido como `branch-forcar`: ligada, AUTORIZA o merge do PR pelo
   // `fechar` depois do CI verde. Quem lê (`scripts/publicar-branch.cjs`) não usa
@@ -272,6 +343,7 @@ const CHAVES = {
     tipo: 'boolean',
     padrao: false,
     descricao: 'o fechar mergeia o PR (squash) depois do CI verde; desligada, para no PR aberto',
+    entrevista: { grupo: 'fechar', detectar: {} },
   },
   // Sentido igual ao de `fechar-mergear`: ligada, a sessão segue entre `plano ok` e o
   // merge sem perguntar, e registra cada decisão com `estado.cjs decidir` (D4 e D5 do
@@ -281,6 +353,7 @@ const CHAVES = {
     tipo: 'boolean',
     padrao: false,
     descricao: 'entre plano ok e o merge, a sessão decide sem perguntar e registra com `estado.cjs decidir`; desligada, pergunta como hoje',
+    entrevista: { grupo: 'fechar', detectar: {} },
   },
 };
 
@@ -332,6 +405,38 @@ function raizDoPrincipal(dir) {
 }
 
 /**
+ * Valida se um valor combina com o tipo esperado. Usada por resolverConfig e pelo
+ * --aplicar do setup: UMA regra, para o que se grava ser o que se le de volta.
+ */
+function validarTipo(valor, tipo) {
+  if (tipo === 'boolean') {
+    return typeof valor === 'boolean';
+  } else if (tipo === 'modelo') {
+    // Tipo 'modelo': aceita objeto {modelo: string, esforco?: string} ou null
+    if (valor === null) return true;
+    return typeof valor === 'object' && valor !== null &&
+           typeof valor.modelo === 'string' &&
+           (valor.esforco === undefined || typeof valor.esforco === 'string');
+  } else if (tipo === 'texto') {
+    // Tipo 'texto': string não vazia até 60 caracteres, ou null
+    if (valor === null) return true;
+    return typeof valor === 'string' && valor.length > 0 && valor.length <= 60;
+  } else if (tipo === 'privada') {
+    // Tipo 'privada': só o literal "privada", ou null. Qualquer outro valor é inválido.
+    return valor === null || valor === 'privada';
+  } else if (tipo === 'pastas') {
+    // Tipo 'pastas': null ou objeto só com mapas/design/planos; cada valor é
+    // caminho relativo ao repo, sem drive, sem raiz absoluta, sem segmento '..'.
+    if (valor === null) return true;
+    if (typeof valor !== 'object' || Array.isArray(valor)) return false;
+    return Object.entries(valor).every(([k, v]) => ['mapas', 'design', 'planos'].includes(k) &&
+      typeof v === 'string' && v.trim().length > 0 &&
+      !/^([a-zA-Z]:|[\\/])/.test(v) && !v.split(/[\\/]/).includes('..'));
+  }
+  return false;
+}
+
+/**
  * Resolve a configuração efetiva, e diz de ONDE veio cada chave.
  *
  * A procedência importa tanto quanto o valor: "o gate está desligado" sem dizer
@@ -362,35 +467,6 @@ function resolverConfig(o = {}) {
 
   const cfgProjeto = lerJson(doProjeto);
   const cfgUsuario = doUsuario ? lerJson(doUsuario) : null;
-
-  // Valida se um valor combina com o tipo esperado.
-  const validarTipo = (valor, tipo) => {
-    if (tipo === 'boolean') {
-      return typeof valor === 'boolean';
-    } else if (tipo === 'modelo') {
-      // Tipo 'modelo': aceita objeto {modelo: string, esforco?: string} ou null
-      if (valor === null) return true;
-      return typeof valor === 'object' && valor !== null &&
-             typeof valor.modelo === 'string' &&
-             (valor.esforco === undefined || typeof valor.esforco === 'string');
-    } else if (tipo === 'texto') {
-      // Tipo 'texto': string não vazia até 60 caracteres, ou null
-      if (valor === null) return true;
-      return typeof valor === 'string' && valor.length > 0 && valor.length <= 60;
-    } else if (tipo === 'privada') {
-      // Tipo 'privada': só o literal "privada", ou null. Qualquer outro valor é inválido.
-      return valor === null || valor === 'privada';
-    } else if (tipo === 'pastas') {
-      // Tipo 'pastas': null ou objeto só com mapas/design/planos; cada valor é
-      // caminho relativo ao repo, sem drive, sem raiz absoluta, sem segmento '..'.
-      if (valor === null) return true;
-      if (typeof valor !== 'object' || Array.isArray(valor)) return false;
-      return Object.entries(valor).every(([k, v]) => ['mapas', 'design', 'planos'].includes(k) &&
-        typeof v === 'string' && v.trim().length > 0 &&
-        !/^([a-zA-Z]:|[\\/])/.test(v) && !v.split(/[\\/]/).includes('..'));
-    }
-    return false;
-  };
 
   // Nome novo primeiro, aliases depois: dentro do MESMO arquivo, quem já migrou
   // manda. Devolve `undefined` quando nenhum dos nomes traz valor válido, para o
@@ -452,4 +528,9 @@ function ligado(chave, o = {}) {
   }
 }
 
-module.exports = { CHAVES, resolverConfig, ligado, raizDoPrincipal };
+// Grupos da entrevista do /setup, na ordem em que ela pergunta (D8 do design
+// 2026-10-17). O conferidor de D7 compara a seção "Ordem da entrevista" do SKILL.md
+// com esta lista, então a ordem aqui é a que vale.
+const GRUPOS_ENTREVISTA = ['dados', 'idioma', 'projetos', 'ferramentas', 'fechar', 'estrategia', 'foco'];
+
+module.exports = { CHAVES, resolverConfig, ligado, raizDoPrincipal, validarTipo, GRUPOS_ENTREVISTA };

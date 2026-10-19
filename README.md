@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.68.0-1e5c3f?style=flat-square" alt="versão 1.68.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.69.0-1e5c3f?style=flat-square" alt="versão 1.69.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -274,7 +274,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `/issue` | Abre Issue no repo em que você está, com o corpo escrito e a evidência colada |
 | `/feedback` | Registra o que a sessão ensinou sobre o método |
 | `/saude` | Só o que os checadores oficiais não sabem |
-| `/setup` | Monta a pasta de dados, liga/desliga gates e fluxo |
+| `/setup` | Na primeira vez, entrevista guiada: uma pergunta por vez, só o que é decisão sua, e grava tudo no fim depois de mostrar o diff. Depois, mostra o estado e muda uma parte |
 | `/semear` | Propõe o que criar **neste** repo a partir do que ele já tropeçou |
 | `glossario` | Propõe, migra ou lista verbetes do `GLOSSARIO.md` do repo; grava só depois de aprovação ([skill](skills/glossario/SKILL.md)) |
 | `/vigiar <contato>` | Acompanha uma conversa de WhatsApp sem gastar token e acorda a sessão quando a pessoa escreve. Exige a integração `integracao-whatsapp-mcp` ligada e a bridge da conta de pé; o fluxo mora no repo [whatsapp-mcp](https://github.com/luisfmontes/whatsapp-mcp) |

@@ -1,0 +1,197 @@
+Data: 2026-10-17
+Termos: setup, entrevista, guiada, ratos, onboarding
+
+$ gh issue list --state all --search "setup" --limit 200 --json number,title,state
+[{"number":411,"state":"CLOSED","title":"setup --desligar gate-publicacao --escopo projeto não vale dentro de worktree do mesmo repo"},{"number":268,"state":"CLOSED","title":"Mensagem do gate de publicacao nao oferece o toggle do setup, so as saidas de emergencia"},{"number":241,"state":"CLOSED","title":"Decisao pendente: a portaria vale so neste repo, mas a regra 10 promete portao em toda sessao"},{"number":100,"state":"CLOSED","title":"execSync com valor interpolado em setup.cjs e slug sem validacao em estado.cjs — vizinhos da #89"},{"number":265,"state":"CLOSED","title":"gate-publicacao: .rainforest-gate-off nao e herdado pelo worktree, e nao esta no .gitignore"},{"number":465,"state":"CLOSED","title":"Veredito do revisor não é gravado quando o subagente termina com SubagentHandback"},{"number":414,"state":"CLOSED","title":"gate-fechar-issue barra comando sem gh que carrega env com set -a e ponto"},{"number":412,"state":"CLOSED","title":"arqueologia: gravar o mapa na pasta de legado que o repo já usa"},{"number":160,"state":"CLOSED","title":"Quatro baterias leem o config.json real de quem as roda, e quem desliga um gate para si ve a suite vermelha sem pista da causa"},{"number":76,"state":"CLOSED","title":"A regra 14 descobre ferramenta ausente tropecando: falta um catalogo do que existe na maquina"},{"number":495,"state":"CLOSED","title":"gate-repo-alheio receita uma saída que ele mesmo barra, e dá à janela principal o texto de subagente"},{"number":89,"state":"CLOSED","title":"conferir-fluxo monta 'git diff' com execSync e nome de branch interpolado: injecao de comando pelo --head do revisar"},{"number":302,"state":"CLOSED","title":"Eval de gatilho: nenhuma bateria prova que uma skill e chamada (nem que precisa existir)"},{"number":264,"state":"CLOSED","title":"Portaria: manifesto de agentes SUBSTITUI em vez de somar, e agente de outro plugin nunca passa"},{"number":163,"state":"CLOSED","title":"REGRESSAO em testa-conferir-fluxo (verde em 0bb922c), mais duas vermelhas: uma bateria que nunca rodou em CI e um bloco sumido"},{"number":63,"state":"CLOSED","title":"O foco não chega na injeção, e a isenção da regra 17 é cega para a segunda pasta — 10ª vez que o radar cobra desvio onde não devia"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":16,"state":"CLOSED","title":"Nenhuma bateria roda sozinha: sem CI, a catraca depende de alguem lembrar (a de nucleos ficou vermelha 3 dias)"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"},{"number":514,"state":"CLOSED","title":"gate-worktree barra comando só de leitura quando a linha junta 2>/dev/null com expansão de chaves {a,b}"}]
+
+
+$ gh issue list --state all --search "entrevista" --limit 200 --json number,title,state
+[{"number":424,"state":"CLOSED","title":"Painel: 'Deixado para depois' nunca fecha item resolvido e conta Q de decisão como pendência"}]
+
+
+$ gh issue list --state all --search "guiada" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "ratos" --limit 200 --json number,title,state
+[{"number":73,"state":"CLOSED","title":"As 16 skills sao arquivo unico e plano: consultar o detalhe de UMA regra custa ~16,8k tokens"}]
+
+
+$ gh issue list --state all --search "onboarding" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "setup" --limit 200 --json number,title,state
+[{"number":558,"state":"OPEN","title":"Livro de repos: buildpartner-plugin"},{"number":415,"state":"MERGED","title":"/transferir claude: a sessão muda de conta com o contexto inteiro (1.42.0)"},{"number":106,"state":"MERGED","title":"Fecha #100: execFileSync em setup.cjs, validarSlug em estado.cjs — e o teste que separa os dois"},{"number":135,"state":"MERGED","title":"Fluxo 3 — ponte: bloco do projeto e integracoes declaraveis"},{"number":324,"state":"MERGED","title":"prompts: tira arqueologia datada e drift da regra 10"},{"number":295,"state":"MERGED","title":"zerar-issues-5: conserta 20 Issues abertas em menos de 24h"},{"number":334,"state":"MERGED","title":"Skill vigiar: acompanhar conversa de WhatsApp sem gastar token"},{"number":137,"state":"MERGED","title":"Fluxo 11 — Conselho: debate estruturado com membros Claude, Codex e Gemini"},{"number":136,"state":"MERGED","title":"Fluxo 5 fase 0 — poda: proxy passthrough + medicao"},{"number":95,"state":"MERGED","title":"Fecha #89: creep monta o git diff sem shell, com execFileSync e lista"},{"number":222,"state":"MERGED","title":"Agentes em Claude ou Codex, por escolha do usuário (1.8.0)"},{"number":116,"state":"MERGED","title":"Fecha #76: a janela sabe que a ferramenta falta antes de tentar"},{"number":107,"state":"MERGED","title":"Fecha #74: a causa raiz era CRLF — o corte por prioridade nunca rodou no FOCO.md"},{"number":15,"state":"MERGED","title":"A limpeza que nao limpava: squash com remoto vivo, --base <ref>, e um nome de branch que virava comando"}]
+
+
+$ gh pr list --state all --search "entrevista" --limit 200 --json number,title,state
+[{"number":558,"state":"OPEN","title":"Livro de repos: buildpartner-plugin"},{"number":135,"state":"MERGED","title":"Fluxo 3 — ponte: bloco do projeto e integracoes declaraveis"}]
+
+
+$ gh pr list --state all --search "guiada" --limit 200 --json number,title,state
+[{"number":558,"state":"OPEN","title":"Livro de repos: buildpartner-plugin"}]
+
+
+$ gh pr list --state all --search "ratos" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "onboarding" --limit 200 --json number,title,state
+[]
+
+
+$ git ls-remote --heads origin | grep -F "setup"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "entrevista"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "guiada"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "ratos"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "onboarding"
+(vazio)
+
+$ git log --all --grep="setup" --oneline
+74b0fea6 Livro de repos: buildpartner-plugin nao instala, enxerta
+dd2aa020 Zerar as Issues #409-#414, #417, #419 (1.46.0) (#426)
+c16baf7f Desvio: plano sem arquivos: devolve sem-arquivos (E)
+f269e734 tarefa 5: git e gh pelo caminho nos 5 scripts
+2f637b44 saude: vigias-recorrentes mostra falha que voltou com a mesma causa
+19f03851 contrato de veredito: registra SubagentStop e toggle contrato-veredito (tarefa 9)
+1e6f9e4d executar rodada 4: fecha ok; os dois bloqueantes da rodada 3 fechados
+3b599f5f invariantes: caixa por bloco, trava de roster, chave desconhecida
+4fbc6e9e revisar rodada 3: reprovado, 2 bloqueantes
+e3471bad conferir-invariantes recusa quem nao mede; bateria ganha linha de base
+af46176f executar: corrige os quatro achados do revisar
+631efe88 memoria: aviso de pipeline entra no orcamento, nunca fica de fora
+05fbc7da gate-publicacao: toggle via checkout principal e setup.cjs na mensagem
+ef77e1e2 A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241) (#255)
+944a8db0 Consertar o criterio da tarefa 9, que apontava para uma frase
+e80d4ffe D6: conserta quatro achados de revisão independente
+27fcb1fa Tarefa 6: Dial de intensidade para a escada YAGNI
+9169838f Tarefa 6: Interruptores conselho-codex e conselho-gemini no /setup
+7082fabb Tarefa 6: Interruptores conselho-codex e conselho-gemini no /setup
+e661b5b1 Emendas revisão 2: T15-T17 (validação tipo, caminho relativo, hash unificado)
+71432185 Emendas revisão 2: T15-T17 (validação tipo, caminho relativo, hash unificado)
+777e70fb E1: frase do setup.cjs incondicional — bloco identico com e sem dados
+60407e9b E1: frase do setup.cjs incondicional — bloco identico com e sem dados
+4dd97310 Revisar da ponte: reprovado, 2 criticos reproduzidos com controle
+44cdbdcd Revisar da ponte: reprovado, 2 criticos reproduzidos com controle
+2fd7a6db Tarefa 10: cria skills/ponte/SKILL.md e liga commands/ponte.md
+d177d538 Tarefa 10: cria skills/ponte/SKILL.md e liga commands/ponte.md
+fb624df5 Fluxo 3 executar 2/10: T2 (varredura pura) e T6 (integracoes no setup) integradas
+eaf62ed8 Fluxo 3 executar 2/10: T2 (varredura pura) e T6 (integracoes no setup) integradas
+3434d746 Corrige a descricao do sabia: transcricao com diarizacao, nao analise de codigo
+c8883729 Corrige a descricao do sabia: transcricao com diarizacao, nao analise de codigo
+92586539 Tarefa 6 da ponte: integracoes declaraveis no setup, desligadas por padrao
+b719341d Tarefa 6 da ponte: integracoes declaraveis no setup, desligadas por padrao
+889ff9c9 Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+56ea03cc Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+b5645f7a Fecha #74: a causa raiz era CRLF — o corte por prioridade nunca rodou no FOCO.md (#107)
+5eccf346 Fecha #74: a causa raiz era CRLF — o corte por prioridade nunca rodou no FOCO.md (#107)
+a3049ec0 Fecha #100: execFileSync em setup.cjs, validarSlug em estado.cjs — e o teste que separa os dois (#106)
+2fed9beb Fecha #100: execFileSync em setup.cjs, validarSlug em estado.cjs — e o teste que separa os dois (#106)
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+96491e70 Bateria tambem e Node: os 24 usos de Python nos testes viraram node -e
+c86cd287 Bateria tambem e Node: os 24 usos de Python nos testes viraram node -e
+c9acd299 A regra das tres portas para de ser lembrete e vira lista unica com mutacao
+22963a8e A regra das tres portas para de ser lembrete e vira lista unica com mutacao
+5e557736 A ponte vira escolha do /setup, e ganha o terceiro alvo: Claude sem o plugin
+b1ee59f5 A ponte vira escolha do /setup, e ganha o terceiro alvo: Claude sem o plugin
+fe9d84bc Caminho de projeto entra no setup, e os vigias ganham interruptor
+c30165a2 Caminho de projeto entra no setup, e os vigias ganham interruptor
+b302fd5b A ponte para Codex e Gemini: GERADA do SKILL.md, e declarando o que nao atravessa
+2ed9cec1 A ponte para Codex e Gemini: GERADA do SKILL.md, e declarando o que nao atravessa
+20108ea5 O campo projeto vira slug de vocabulario fechado, e o caminho sai do dado
+e7d48f43 O campo projeto vira slug de vocabulario fechado, e o caminho sai do dado
+5443bc0e A limpeza enxerga a branch que sobrevive ao worktree, e as config dirs param de divergir em silencio
+acc85203 A limpeza enxerga a branch que sobrevive ao worktree, e as config dirs param de divergir em silencio
+7af49225 /semear: propoe o que criar neste repo a partir do que ele ja tropecou
+3a750bf7 /semear: propoe o que criar neste repo a partir do que ele ja tropecou
+563ccb0d P1: a escotilha do gate para de ser revelada a quem esta sendo bloqueado
+9b493ecf P1: a escotilha do gate para de ser revelada a quem esta sendo bloqueado
+3848ff5d /setup: a pasta de dados nasce, e o que incomoda em repo de terceiro pode ser desligado
+0539c6c8 /setup: a pasta de dados nasce, e o que incomoda em repo de terceiro pode ser desligado
+0e63c5a0 Os dados do Luis saem do repo publicado: o codigo fica, a pasta e de quem instala
+8be6ed74 Os dados do Luis saem do repo publicado: o codigo fica, a pasta e de quem instala
+7945fdd3 /saude: so o que o doctor oficial nao sabe, e ponteiro para ele no resto
+6da760f3 /saude: so o que o doctor oficial nao sabe, e ponteiro para ele no resto
+434fb3a5 ideias.py ganha gemeo em Node, e o bloco de mutacao para de sabotar o arquivo errado
+605dfa7d ideias.py ganha gemeo em Node, e o bloco de mutacao para de sabotar o arquivo errado
+4e055f1c A orquestracao sai da CLAUDE.md duplicada e vira regra do plugin
+12ca0281 A orquestracao sai da CLAUDE.md duplicada e vira regra do plugin
+c0da97ba gstack reprova em 3 das 6, e sobra o /codex
+63d54b4f gstack reprova em 3 das 6, e sobra o /codex
+
+$ git log --all --grep="entrevista" --oneline
+8cb24023 Design do fluxo-pulado-bloqueio (#430): bloqueio com leve declarado
+e2d1a2c1 plano: as sete baterias que as regras novas invalidaram ganham tarefa
+73847e3e as seis baterias restantes: duas causas, nenhuma delas a Tarefa 6
+bfb51d0d 0.79.0 — ponte com bloco de projeto e integracoes, poda fase 0, conselho
+b68aee7c 0.79.0 — ponte com bloco de projeto e integracoes, poda fase 0, conselho
+ba09dc5e Tarefa 25: corte do bloco de projeto adjacente ancora o fim em linha inteira
+7fbcec81 Tarefa 25: corte do bloco de projeto adjacente ancora o fim em linha inteira
+03b23bf5 T19: Remoção posicional do bloco de projeto — startsWith em vez de indexOf
+b81154e1 T19: Remoção posicional do bloco de projeto — startsWith em vez de indexOf
+28af8fc4 Tarefa 18: regeneração só remove bloco de projeto REAL — texto manual que menciona o marcador sobrevive
+e27bf311 Tarefa 18: regeneração só remove bloco de projeto REAL — texto manual que menciona o marcador sobrevive
+e661b5b1 Emendas revisão 2: T15-T17 (validação tipo, caminho relativo, hash unificado)
+71432185 Emendas revisão 2: T15-T17 (validação tipo, caminho relativo, hash unificado)
+fa1b8509 E2: sanitiza marcadores nas respostas — nao trunca bloco com entrada adversarial
+9aa23c91 E2: sanitiza marcadores nas respostas — nao trunca bloco com entrada adversarial
+4dd97310 Revisar da ponte: reprovado, 2 criticos reproduzidos com controle
+44cdbdcd Revisar da ponte: reprovado, 2 criticos reproduzidos com controle
+2fd7a6db Tarefa 10: cria skills/ponte/SKILL.md e liga commands/ponte.md
+d177d538 Tarefa 10: cria skills/ponte/SKILL.md e liga commands/ponte.md
+aafe90e9 Tarefa 5 completa: conferir-ponte.cjs estende catraca para bloco de projeto
+d83f139d Tarefa 5 completa: conferir-ponte.cjs estende catraca para bloco de projeto
+6002f498 Tarefa 5: estender conferir-ponte.cjs para bloco de projeto
+fe79876e Tarefa 5: estender conferir-ponte.cjs para bloco de projeto
+5507dc35 Emenda: T5 da ponte cobre a bateria de entrevista onde a fixture da catraca mora
+af4ab2ee Emenda: T5 da ponte cobre a bateria de entrevista onde a fixture da catraca mora
+efbafb6e Tarefa 4: bloco rainforest-mind:projeto no corpo() compartilhado
+76f5ca84 Tarefa 4: bloco rainforest-mind:projeto no corpo() compartilhado
+7402f631 Emenda: T4 da ponte cobre a bateria de entrevista onde a fixture do bloco de projeto mora
+56780f04 Emenda: T4 da ponte cobre a bateria de entrevista onde a fixture do bloco de projeto mora
+13a2a766 Integra T3 da ponte: entrevista grava projeto.md atomico no alvo
+facef2c7 Integra T3 da ponte: entrevista grava projeto.md atomico no alvo
+6da25870 Integra T1 da ponte: corpo() e raizDeDados() deduplicados em hooks/lib/ponte-corpo.cjs
+a1cbbe3f Integra T1 da ponte: corpo() e raizDeDados() deduplicados em hooks/lib/ponte-corpo.cjs
+108c20f8 Tarefa 3 da ponte: entrevista grava projeto.md atomico no alvo, ensaio sem --aplicar
+5107e7e8 Tarefa 3 da ponte: entrevista grava projeto.md atomico no alvo, ensaio sem --aplicar
+0391bbbf As tres costuras da esteira: decisao, opcao morta e creep deixam de evaporar (#9)
+6dbe53cf As tres costuras da esteira: decisao, opcao morta e creep deixam de evaporar (#9)
+65e63ddb Comando /grill: entrevista de fronteira, opt-in
+56ca998e Comando /grill: entrevista de fronteira, opt-in
+
+$ git log --all --grep="guiada" --oneline
+(vazio)
+
+$ git log --all --grep="ratos" --oneline
+6b276c32 Gates de repo alheio e de PR em outro repo, e livro anti-slop (1.60.2) (#497)
+ad225c36 regua selada: fecha a segunda porta do selo (merge) e ganha o validar
+bbe60df2 Registra a instalação final das correções
+db0e7117 Revisao 4 aprovou; os 3 achados nao-bloqueantes baratos foram fechados
+ad27ab99 Revisao 4 aprovou; os 3 achados nao-bloqueantes baratos foram fechados
+e7e8f250 Fecha a #63: a identidade do foco e cortada por dentro, e pastasDoFoco le a continuacao indentada (#65)
+acfee716 Fecha a #63: a identidade do foco e cortada por dentro, e pastasDoFoco le a continuacao indentada (#65)
+51e65eaf Regra 10: agentes baratos com metodo (fable-method destilado, sempre ativo) + frentes de descanso + v0.10.0
+c056586c Regra 10: agentes baratos com metodo (fable-method destilado, sempre ativo) + frentes de descanso + v0.10.0
+
+$ git log --all --grep="onboarding" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+{"id":"configuracao-nova-nasceu-fora-do-lugar-de-configuracao","titulo":"Criei um arquivo de configuracao novo e o deixei so dentro do /ideia — o Luis teve de pedir que entrasse no /setup"}
+{"id":"repo-de-contexto-para-os-repos-de-trabalho","titulo":"Repo proprio de contexto do trabalho: instalar o RatosOS pelo setup e ligar aos repos AdvPL com mapas"}
+{"id":"setup-vira-entrevista-guiada-como-a-do-ratosos","titulo":"O /setup vira entrevista guiada, no formato do RatosOS, em vez de despejo de estado"}
+
+
