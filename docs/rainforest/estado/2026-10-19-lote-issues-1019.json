@@ -57,33 +57,12 @@
         "ts": "2026-10-19T13:09:36.858Z"
       }
     ],
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "1",
-        "desde": "2026-10-19",
-        "sessao": "2000cb9c-f260-4626-b420-5d6adac18fc8"
-      },
-      {
-        "agente": "executor",
-        "tarefa": "3",
-        "desde": "2026-10-19",
-        "sessao": "2000cb9c-f260-4626-b420-5d6adac18fc8"
-      },
-      {
-        "agente": "executor",
-        "tarefa": "4",
-        "desde": "2026-10-19",
-        "sessao": "2000cb9c-f260-4626-b420-5d6adac18fc8"
-      },
-      {
-        "agente": "executor",
-        "tarefa": "5",
-        "desde": "2026-10-19",
-        "sessao": "2000cb9c-f260-4626-b420-5d6adac18fc8"
-      }
-    ],
-    "em": "2026-10-19"
+    "em_voo": [],
+    "em": "2026-10-19",
+    "integradas": [
+      3,
+      4
+    ]
   },
   "revisar": {
     "status": "pendente"
