@@ -1923,6 +1923,12 @@ if [ -n "$RC" ] && [ "$RC" != "$(cygpath -m "$R")" ] && [ -n "$WC" ]; then
   if node -e 'require("fs").symlinkSync(process.argv[1], process.argv[2], "junction")' "$FORA" "$R/lnk" 2>/dev/null; then
     gate "#552 8.3: rm -r <P curto>/lnk (juncao para fora), cwd no worktree, BARRA" 2 "$(b "rm -r $RC/lnk" "$WT")"
     node -e 'require("fs").unlinkSync(process.argv[1])' "$R/lnk" 2>/dev/null
+  fi
+  # Juncao no worktree apontando para o principal, e caminho NOVO atraves dela: a escrita cai
+  # no principal; manter o link sem resolver deixaria o texto "dentro do worktree".
+  if node -e 'require("fs").symlinkSync(process.argv[1], process.argv[2], "junction")' "$R" "$WT/lnk2" 2>/dev/null; then
+    gate "#552 8.3: touch <W curto>/lnk2/novo/f (juncao para o principal), BARRA" 2 "$(b "touch $WC/lnk2/novo/f" "$WT")"
+    node -e 'require("fs").unlinkSync(process.argv[1])' "$WT/lnk2" 2>/dev/null
   else
     echo "  pulado: juncao nao criavel"
   fi

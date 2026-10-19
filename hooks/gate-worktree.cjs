@@ -396,9 +396,10 @@ function semNomeCurto(s) {
   const real = (p) => fs.realpathSync.native(p).replace(/\\/g, "/").replace(/\/+$/, "");
   let longo = s;
   try {
-    // Link no ultimo componente: so o pai se resolve. Seguir o link trocaria a entrada, que mora
-    // no principal, pelo alvo (`rm <P>/link` deixava de barrar).
-    const ehLink = fs.lstatSync(base).isSymbolicLink();
+    // Link no FIM do caminho: so o pai se resolve. Seguir o link trocaria a entrada, que mora
+    // no principal, pelo alvo (`rm <P>/link` deixava de barrar). Com caminho depois do link
+    // (`<W>/link/novo/f`), a operacao atravessa o link e ele se resolve.
+    const ehLink = resto === "" && fs.lstatSync(base).isSymbolicLink();
     longo = (ehLink ? real(path.dirname(base)) + "/" + path.basename(base) : real(base)) + resto;
   } catch {}
   LONGO.set(s, longo);
