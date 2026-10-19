@@ -55,7 +55,7 @@
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-estado-reabrir.sh, secao D1 (b), (e)-(s)"
+        "fixture": "testa-estado-reabrir.sh, secao D1 (b), (e)-(w)"
       },
       {
         "tarefa": 2,
@@ -74,14 +74,18 @@
       }
     ],
     "comando": "bash scripts/testa-estado-reabrir.sh",
-    "saida": "ok: 82   falhou: 0",
-    "reaberturas": 3,
-    "rodada": 4
+    "saida": "ok: 92   falhou: 0",
+    "reaberturas": 4,
+    "rodada": 5,
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-19"
+    }
   },
   "revisar": {
-    "status": "pendente",
+    "status": "reprovado",
     "snapshot": {
-      "head": "9455f657c797418401f7d967eac19abd1065cd69",
+      "head": "69a4119f2a312e8b82038041312e2d8d65250f3a",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-10-19-estado-reabrir.json"
       ]
@@ -89,10 +93,10 @@
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a7997c824ebdd847f",
-        "veredito": "ok",
+        "agente_id": "a59d6b951b8d83315",
+        "veredito": "reprovado",
         "em": "2026-10-19",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-a7997c824ebdd847f.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-a59d6b951b8d83315.jsonl"
       }
     ],
     "achados": 5,
@@ -103,8 +107,10 @@
     ],
     "em": "2026-10-19",
     "em_voo": [],
-    "rodada": 4,
-    "bloqueantes": 0,
+    "rodada": 5,
+    "bloqueantes": [
+      1
+    ],
     "rodadas_extra": [
       {
         "texto": "usuario liberou 4a rodada para consertar achados 1-7 da revisao 3 (recomendado)",
@@ -112,7 +118,8 @@
       }
     ],
     "base": "a5e2292f724e949a5619f6ec5b71738b7dd6eead",
-    "head": "9455f657c797418401f7d967eac19abd1065cd69"
+    "head": "9455f657c797418401f7d967eac19abd1065cd69",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente",

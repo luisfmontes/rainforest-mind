@@ -80,6 +80,12 @@ bloqueante de uma revisão aprovada ganha caminho formal de volta ao `executar`.
 - Reabrir para estágio diferente de `executar` (`--estagio revisar`): sem caso real ainda.
 - Reconciliar o plano automaticamente quando o `de:` muda: D4 só recusa e nomeia; emendar
   continua sendo ato da sessão.
+- Limites aceitos da trava de código (revisão 5): com a `main` movendo o merge-base, a
+  mesma linha mudada de lugar passa (a impressão sem contexto não vê posição, e com
+  contexto a `main` vizinha acusaria); com o projeto numa subpasta, arquivo fora dela sai
+  com o nome relativo à raiz do repositório e pode casar com uma isenção do projeto. Erro
+  nas listas de candidatos é defesa sem caso na bateria: as mesmas revisões acabaram de
+  responder ao primeiro `diff`.
 
 ## Varredura
 docs/rainforest/varredura/2026-10-19-estado-reabrir.txt — achou a #441 (CI vermelho depois do

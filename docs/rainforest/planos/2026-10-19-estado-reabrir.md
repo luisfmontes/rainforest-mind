@@ -44,7 +44,7 @@ pronto quando: numa caixa `mktemp -d` com repo git, fluxo aberto e `estado.cjs` 
 (s) *emenda 3:* `marcar fechar ok` sem `verificar.head`: sai 0 com aviso;
 (t) *emenda 4:* com a `main` parada, o conserto desfaz a mudança do bloco A e faz a mesma no bloco B: sai 2;
 (u) *emenda 4:* `git mv` commitado de arquivo da `main` para `relatorios/`: sai 2 nomeando o nome antigo;
-(v) *emenda 4:* arquivo de 1,7 MB mudado pela branch, `main` muda a última linha dele e entra por merge: sai 0;
+(v) *emenda 4:* a branch acrescenta 1,7 MB ao fim de um arquivo da `main` (patch acima de 1 MiB), a `main` muda a primeira linha dele e entra por merge: sai 0;
 (w) *emenda 4:* estado do fluxo em `proj/` de um repositório maior: o estado rastreado e sujo não conta, e `proj/src/a.js` commitado depois do `verificar` sai 2 nomeando `src/a.js`;
 provado por `bash scripts/testa-estado-reabrir.sh` com zero falha, placar `ok: N   falhou: 0`, nenhum caso lendo o texto do fonte.
 
