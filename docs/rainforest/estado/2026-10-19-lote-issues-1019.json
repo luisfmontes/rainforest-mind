@@ -109,7 +109,14 @@
     "saida": "== resultado: 296 ok, 0 falha(s) =="
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "60545b2e6e7bbdcf48ab2c06930016e3bf475887",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-10-19-lote-issues-1019.json"
+      ]
+    },
+    "vereditos": []
   },
   "verificar": {
     "status": "pendente"
@@ -124,6 +131,13 @@
       "porque": "A revisao de seguranca de 9b7a057d mostrou segredo real embrulhado em <> passando; D2 ja dizia que a trava protege contra segredo colado",
       "estagio": "executar",
       "em": "2026-10-19T13:36:06.795Z"
+    },
+    {
+      "pergunta": "Como medir segredo dentro do placeholder?",
+      "escolha": "No maximo 4 digitos no total e nenhum pedaco entre -/_ com mais de 16 caracteres",
+      "porque": "Corrida continua deixava passar segredo picado por hifen (revisao de seguranca de 75d6520a)",
+      "estagio": "revisar",
+      "em": "2026-10-19T13:40:53.433Z"
     }
   ]
 }
