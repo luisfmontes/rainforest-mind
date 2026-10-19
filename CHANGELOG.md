@@ -21,7 +21,9 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 - **Gate de publicação não trava mais em linha longa sem arroba (#531).** A regra `email` reescaneava cada corrida
   de letras e pontos a partir de cada posição (O(n²)): 100 mil `a.` numa linha passavam de 60 s. A regex agora só
   começa no início da corrida, e o mesmo caso sai em milissegundos. Não deixou de pegar nenhum e-mail que pegava;
-  passou a acusar também parte local só de pontuação colada ao arroba, o que é mais estrito.
+  passou a acusar também parte local só de pontuação colada ao arroba e as variantes do trailer `noreply` com
+  pontuação à frente, o que é mais estrito. O aparo do fim do valor na regra `credencial` tinha a mesma forma
+  quadrática numa corrida de vírgulas ou fechos e também virou linear.
 - **Sonda da bridge WhatsApp não passa mais pelo DNS (#553).** Com `WHATSAPP_API_BASE_URL` em `localhost`, a sonda
   resolvia o nome dentro do timeout de 400 ms, e a hipótese da Issue é que isso explica o `FORA` com a bridge de pé
   (o estouro não foi reproduzido). Ela testa `127.0.0.1` e `::1` direto, em paralelo, e vale o que conectar. A Issue

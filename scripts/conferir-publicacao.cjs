@@ -174,10 +174,19 @@ function ehPlaceholderInteiro(valor) {
   return digitos <= 4 && m[1].split(/[-_]/).every((s) => s.length <= 16 && (s === s.toLowerCase() || s === s.toUpperCase()));
 }
 
+// Tira do fim de `s` os caracteres de `conjunto`, num laço. A regex `[...]+$` faz o
+// mesmo em O(n²): sem âncora de início, cada posição da corrida tenta casar até o
+// fim e falha no último caractere (revisão da rodada 2: 100 mil `)` levavam 6 s).
+function aparaFim(s, conjunto) {
+  let fim = s.length;
+  while (fim > 0 && conjunto.includes(s[fim - 1])) fim--;
+  return s.slice(0, fim);
+}
+
 // O valor capturado pela regra `credencial` (`m[1]`, até o espaço) é um placeholder
 // inteiro E o resto da linha é só fechamento de aspa, lista ou objeto.
 function placeholderSozinho(m, linha) {
-  const valor = m[1].replace(/^["']+/, '').replace(/["',;)}\]]+$/, '');
+  const valor = aparaFim(m[1].replace(/^["']+/, ''), `"',;)}]`);
   const cauda = linha.slice(m.index + m[0].length);
   return ehPlaceholderInteiro(valor) && /^[\s"',;)}\]]*$/.test(cauda);
 }
@@ -388,7 +397,7 @@ const PADROES = [
       // Virgula e ponto-e-virgula entram pelo mesmo motivo (`"token": "...",` de
       // JSON). Fecha-chaves NAO entra: apara-lo quebraria `${VAR}` e a isencao de
       // referencia de variavel logo abaixo passaria a acusar.
-      const valor = m[1].replace(/^["']+/, '').replace(/["',;]+$/, '');
+      const valor = aparaFim(m[1].replace(/^["']+/, ''), `"',;`);
       // Issue #523: placeholder INTEIRO entre `<>` não é segredo — isenção por forma
       // irmã da `caminho-de-home` (#149). Só o valor inteiro, e só com cara de palavra
       // (`ehPlaceholderInteiro`): `<a>segredo`, `segredo<x>` e `<hex longo>` seguem acusados.

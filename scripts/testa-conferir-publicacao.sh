@@ -1132,6 +1132,12 @@ saiu_0_ou_2 "531: 100 mil a. seguido de arroba e dominio termina em menos de 2 s
 tem "531: a corrida seguida de arroba e dominio acusa email" "$(roda "$SBP/531-corrida-arroba.txt")" "email"
 printf 'ver .fulano%sempresa.com\n' "$AT" > "$SBP/531-ponto.txt"
 tem "531: endereco precedido de espaco e ponto continua pego" "$(roda "$SBP/531-ponto.txt")" "email"
+# Revisao da rodada 2: o aparo do fim do valor da credencial era `[...]+$`, O(n²)
+# numa corrida de fechos que nao termina o valor.
+node -e "require('fs').writeFileSync(process.argv[1], 'senha: ' + ')'.repeat(100000) + 'a\n')" "$SBP/531-fechos.txt"
+saiu_0_ou_2 "531: senha seguida de 100 mil ) e uma letra termina em menos de 2 s" "$SBP/531-fechos.txt"
+node -e "require('fs').writeFileSync(process.argv[1], 'senha: ' + ','.repeat(100000) + 'a\n')" "$SBP/531-virgulas.txt"
+saiu_0_ou_2 "531: senha seguida de 100 mil virgulas e uma letra termina em menos de 2 s" "$SBP/531-virgulas.txt"
 
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]
