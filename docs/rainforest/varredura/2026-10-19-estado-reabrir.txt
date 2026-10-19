@@ -1,0 +1,74 @@
+Data: 2026-10-19
+Termos: reabrir, voltar a parcial, instantaneo
+
+$ gh issue list --state all --search "reabrir" --limit 200 --json number,title,state
+[{"number":567,"state":"OPEN","title":"estado.cjs: commit depois do verificar ok nao reabre revisar nem verificar"},{"number":529,"state":"OPEN","title":"Achado de revisao aprovada que cabe no PR nao tem caminho de volta para executar"},{"number":441,"state":"CLOSED","title":"estado: verificar reprovado depois do fechar ok nao reabre o fechar"},{"number":75,"state":"CLOSED","title":"Nao existe varredura de contexto apodrecido: a regra 5 depende de eu lembrar, e FOCO.md desatualizado e pior que ausente"},{"number":120,"state":"CLOSED","title":"testa-contexto-sessao.sh esta vermelha na main: 5 falhas em dentroDoExpediente, focoAtivoEmOutraJanela e co-locada"},{"number":254,"state":"CLOSED","title":"Catraca de mutacao: 'pulada' fecha o verificar como se fosse medida"},{"number":1,"state":"CLOSED","title":"Briefing nao diz o ato de entregar: subagente nomeado termina o trabalho e nao devolve (3 de 3)"},{"number":2,"state":"CLOSED","title":"Briefing de dispatch nao cobre dado vivo fora do repositorio git"},{"number":238,"state":"CLOSED","title":"estado.cjs marcar reabre executar por baixo do revisar em voo e aceita carimbo de tarefa inexistente"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"}]
+
+
+$ gh issue list --state all --search "voltar a parcial" --limit 200 --json number,title,state
+[{"number":529,"state":"OPEN","title":"Achado de revisao aprovada que cabe no PR nao tem caminho de volta para executar"},{"number":567,"state":"OPEN","title":"estado.cjs: commit depois do verificar ok nao reabre revisar nem verificar"},{"number":441,"state":"CLOSED","title":"estado: verificar reprovado depois do fechar ok nao reabre o fechar"},{"number":238,"state":"CLOSED","title":"estado.cjs marcar reabre executar por baixo do revisar em voo e aceita carimbo de tarefa inexistente"},{"number":180,"state":"CLOSED","title":"Fluxo: o estagio que despacha agente aposta que o turno dura mais que o agente"}]
+
+
+$ gh issue list --state all --search "instantaneo" --limit 200 --json number,title,state
+[{"number":567,"state":"OPEN","title":"estado.cjs: commit depois do verificar ok nao reabre revisar nem verificar"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"},{"number":42,"state":"CLOSED","title":"A checagem 4 do conferir-entrega.cjs compara contra \"limpo\", nao contra um instantaneo — e reprova entrega por sujeira que ja estava la"}]
+
+
+$ gh pr list --state all --search "reabrir" --limit 200 --json number,title,state
+[{"number":201,"state":"MERGED","title":"Fluxo 10 (critico): arquivado como superado, com a substituicao provada item a item"},{"number":78,"state":"MERGED","title":"design: a camada de conhecimento sai do Obsidian e vira rota, nao migracao"},{"number":186,"state":"MERGED","title":"R1 (frente 2) + R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao"}]
+
+
+$ gh pr list --state all --search "voltar a parcial" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "instantaneo" --limit 200 --json number,title,state
+[{"number":57,"state":"MERGED","title":"Fecha a #42: a checagem 4 compara contra um instantaneo, nao contra limpo"},{"number":39,"state":"CLOSED","title":"Skill regua, backstop de mutacao no revisar, e o relatorio da Issue #38"},{"number":58,"state":"MERGED","title":"Fecha a #51: as tres travas de isolamento passam a valer na borda"}]
+
+
+$ git ls-remote --heads origin | grep -F "reabrir"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "voltar a parcial"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "instantaneo"
+(vazio)
+
+$ git log --all --grep="reabrir" --oneline
+038de7d8 gate-worktree: palavra de comando lida como o bash (#530, 1.67.11) (#556)
+b53bc177 E27: fechar troca a base da PR empilhada antes de mergear a de baixo
+014faf21 Arquiva o fluxo 8 (handover e regente)
+13b552c6 Titulo da sessao marca se o fluxo fechou ou onde parou (#274)
+2184eed9 Fluxo 10 (critico) arquivado como superado, com a substituicao provada item a item
+a7ce1619 Lote 3 rodada 3: R3 estagio do outro worktree lido no worktree dele
+714a15c6 Fluxo 9: auditoria externa (codex) fecha dois buracos que a rede sincrona deixava
+0843a7fb Fluxo 9: auditoria externa (codex) fecha dois buracos que a rede sincrona deixava
+0a299efc Fluxo 1 executar 2/4: T2 integrada — reprovado rebaixa upstream com rastro, sem deadlock
+e0c85241 Fluxo 1 executar 2/4: T2 integrada — reprovado rebaixa upstream com rastro, sem deadlock
+40a97cc7 Corrigir deadlock: exigir do próprio estagio reaberto passa, reaberto_por é efêmero
+c8517178 Corrigir deadlock: exigir do próprio estagio reaberto passa, reaberto_por é efêmero
+59847e31 Fecha #101: catraca de comparação — ela RODA os dois lados em vez de ler o relato (#108)
+1f426429 Fecha #101: catraca de comparação — ela RODA os dois lados em vez de ler o relato (#108)
+20c88be7 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+d427f732 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+0c28163d Faxina do PT vs EN: sai o ferramental que a resposta aposentou
+38b9feab Faxina do PT vs EN: sai o ferramental que a resposta aposentou
+ef1667d7 Incidente vira citacao e sai da injecao de toda sessao: v0.36.0
+1260d9f6 Incidente vira citacao e sai da injecao de toda sessao: v0.36.0
+
+$ git log --all --grep="voltar a parcial" --oneline
+35c339de estado: verificar reprovado devolve revisar a pendente (D10, tarefa 14)
+
+$ git log --all --grep="instantaneo" --oneline
+ebe9dbb1d Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler (#109)
+2fd34af9c Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler (#109)
+71f81c4ed Fecha a #42: a checagem 4 compara contra um instantaneo, nao contra limpo (#57)
+f4a9d03ce Fecha a #42: a checagem 4 compara contra um instantaneo, nao contra limpo (#57)
+40e3f3bd7 Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+2cc8788cb Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+4754ddc2e Backstop de mutacao no revisar (#4), skill regua, e o relatorio da branch nova (#43)
+199f85fdc Backstop de mutacao no revisar (#4), skill regua, e o relatorio da branch nova (#43)
+
+$ cat <dados>/ideias.jsonl
+(vazio)
+
