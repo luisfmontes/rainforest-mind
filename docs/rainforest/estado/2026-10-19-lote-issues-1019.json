@@ -111,7 +111,7 @@
   "revisar": {
     "status": "pendente",
     "snapshot": {
-      "head": "60545b2e6e7bbdcf48ab2c06930016e3bf475887",
+      "head": "b04176c18567d399503ea978a51fb6bff58a9461",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-10-19-lote-issues-1019.json"
       ]
@@ -138,6 +138,13 @@
       "porque": "Corrida continua deixava passar segredo picado por hifen (revisao de seguranca de 75d6520a)",
       "estagio": "revisar",
       "em": "2026-10-19T13:40:53.433Z"
+    },
+    {
+      "pergunta": "Ate onde apertar a isencao de placeholder?",
+      "escolha": "Cada pedaco com uma caixa so; o residuo (uma caixa, ate 16, ate 4 digitos) fica fora do modelo de ameaca",
+      "porque": "Tres voltas da revisao de seguranca acharam um contorno novo cada; sem parada declarada a auditoria nao converge (regra do brainstorm: modelo de ameaca e criterio de parada)",
+      "estagio": "revisar",
+      "em": "2026-10-19T13:45:18.002Z"
     }
   ]
 }
