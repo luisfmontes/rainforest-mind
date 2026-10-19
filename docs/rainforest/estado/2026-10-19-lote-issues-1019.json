@@ -23,9 +23,9 @@
     "em": "2026-10-19"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-19",
-    "tarefas_ok": 0,
+    "tarefas_ok": 6,
     "tarefas": 6,
     "carimbos": [
       {
@@ -72,7 +72,41 @@
       3,
       4,
       5
-    ]
+    ],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-publicacao.sh, secao #523: placeholder inteiro na credencial"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-publicacao.sh, secao #531: linha com 100 mil a. em menos de 2 s"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-contexto-sessao.sh, bloco 16, localhost contra listener so em 127.0.0.1 diz ok"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-setup.sh, secao #559: config.json que nao e objeto"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "muda so a mensagem de diagnostico da propria bateria"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "CHANGELOG e versao"
+      }
+    ],
+    "comando": "bash scripts/testa-conferir-publicacao.sh",
+    "saida": "== resultado: 296 ok, 0 falha(s) =="
   },
   "revisar": {
     "status": "pendente"
