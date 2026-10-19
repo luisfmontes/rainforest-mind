@@ -737,31 +737,43 @@ function caminhosSujos() {
 }
 
 /**
- * D1/D2 (#567): arquivos de CÓDIGO que mudaram depois do `verificar ok`: os de
- * `head..HEAD` que a branch também muda contra `merge-base(origin/<padrão>)` (trazer
- * a padrão depois do verificar não acusa o que veio dela), mais os rastreados sujos.
- * "Código" é o que o `creep` não isenta (`globsIsentos`), e o estado de qualquer
- * slug também fica fora: é rastro de fluxo, nunca entrega. Erro do git (o `head` não
- * existe mais) devolve lista vazia com aviso — a trava não tranca por falta de dado (D5).
+ * D1/D2 (#567): arquivos de CÓDIGO que mudaram depois de `head` (o HEAD gravado no
+ * `verificar ok`, ou o do instantâneo do `revisar`). Com `origin/<padrão>`, compara por
+ * arquivo a mudança DA BRANCH antes e depois (`git patch-id`, que ignora deslocamento de
+ * linha): `merge-base(head)..head` contra `merge-base(HEAD)..HEAD`. Trazer a padrão não
+ * acusa nem quando ela mexe no mesmo arquivo; apagar ou reverter o que a branch tinha
+ * acusa. Sem a padrão (repo só local), vale `head..HEAD`. Somam-se os rastreados sujos.
+ * "Código" é o que o `creep` não isenta (`globsIsentos`), e o estado de qualquer slug
+ * também fica fora: é rastro de fluxo, nunca entrega. Erro do git (o `head` não existe
+ * mais) devolve lista vazia com aviso — a trava não tranca por falta de dado (D5).
  */
 function arquivosDeCodigoDesde(head, slug, estado) {
   const { globsIsentos, globMatches } = require('./conferir-fluxo.cjs');
-  const git = (args) => spawnSync(caminhoExecutavel('git'), ['-c', 'core.quotepath=false', ...args], { cwd: RAIZ, encoding: 'utf8' });
-  const linhas = (txt) => txt.split(/\r?\n/).map((f) => f.replace(/\\/g, '/')).filter((f) => f.length > 0);
-  const r = git(['diff', '--name-only', head, 'HEAD']);
+  const git = (args, input) => spawnSync(caminhoExecutavel('git'), ['-c', 'core.quotepath=false', ...args], { cwd: RAIZ, encoding: 'utf8', input });
+  const nomes = (txt) => txt.split('\0').map((f) => f.replace(/\\/g, '/')).filter((f) => f.length > 0);
+  const r = git(['diff', '--name-only', '-z', head, 'HEAD']);
   if (r.status !== 0) {
     console.error(`aviso: não consegui ler o diff desde o verificar (${head}); a trava de código não rodou.`);
     return [];
   }
-  let mudados = linhas(r.stdout);
-  // Sem `origin/<padrão>` (repo só local), fica só o `head..HEAD`.
-  const mb = git(['merge-base', 'HEAD', `origin/${branchPadrao(RAIZ)}`]);
-  if (mb.status === 0) {
-    const daBranch = git(['diff', '--name-only', mb.stdout.trim(), 'HEAD']);
-    if (daBranch.status === 0) {
-      const conjunto = new Set(linhas(daBranch.stdout));
-      mudados = mudados.filter((f) => conjunto.has(f));
-    }
+  let mudados = nomes(r.stdout);
+  const padrao = `origin/${branchPadrao(RAIZ)}`;
+  const mbAntes = git(['merge-base', head, padrao]);
+  const mbAgora = git(['merge-base', 'HEAD', padrao]);
+  if (mbAntes.status === 0 && mbAgora.status === 0) {
+    const antes = [mbAntes.stdout.trim(), head];
+    const agora = [mbAgora.stdout.trim(), 'HEAD'];
+    // Impressão da mudança da branch num arquivo; '' quando a branch não o muda.
+    const impressao = ([a, b], f) => {
+      const d = git(['diff', '--binary', a, b, '--', f]);
+      if (d.status !== 0 || !d.stdout) return '';
+      return (git(['patch-id', '--stable'], d.stdout).stdout || '').split(' ')[0];
+    };
+    const candidatos = new Set([
+      ...nomes(git(['diff', '--name-only', '-z', ...antes]).stdout || ''),
+      ...nomes(git(['diff', '--name-only', '-z', ...agora]).stdout || ''),
+    ]);
+    mudados = [...candidatos].filter((f) => impressao(antes, f) !== impressao(agora, f));
   }
   // `-z`: nome com espaço sai cru, sem as aspas do porcelain v1 que furavam o glob de
   // isenção; na renomeação o nome novo vem primeiro e o antigo no campo seguinte.
@@ -786,6 +798,25 @@ function arquivosDeCodigoDesde(head, slug, estado) {
   return [...new Set([...mudados, ...sujos])]
     .sort()
     .filter((f) => !globMatches(f, 'docs/rainforest/estado/*.json') && !isentos.some((g) => globMatches(f, g)));
+}
+
+/**
+ * A recusa da D1, uma só para os três pontos que a aplicam: `exigir fechar` e
+ * `marcar fechar ok` contra o `verificar.head`, e `marcar verificar ok` contra o HEAD
+ * do instantâneo do `revisar` (refazer só o `verificar` não pula a revisão). Devolve a
+ * mensagem, ou `null` sem código mudado.
+ */
+function recusaCodigoDepois(slug, estado, head, quem, etapa) {
+  const codigoDepois = arquivosDeCodigoDesde(head, slug, estado);
+  if (codigoDepois.length) {
+    return [
+      `RECUSADO: '${etapa}' com código alterado depois do '${quem}'. Ele foi feito sobre um código anterior:`,
+      ...codigoDepois.map((a) => `  ${a}`),
+      'Reabra o executar e refaça revisar e verificar:',
+      `  node scripts/estado.cjs reabrir --slug ${slug} --estagio executar --motivo "<o que mudou>"`,
+    ].join('\n');
+  }
+  return null;
 }
 
 function capturarSnapshot() {
@@ -2843,14 +2874,9 @@ function main() {
         if (!estado.verificar || !estado.verificar.head) {
           console.error("aviso: 'verificar' sem HEAD gravado (estado de antes deste fluxo): não dá para conferir se o código mudou depois dele.");
         } else {
-          const codigoDepois = arquivosDeCodigoDesde(estado.verificar.head, slug, estado);
-          if (codigoDepois.length) {
-            console.error([
-              "RECUSADO: 'fechar' com código alterado depois do 'verificar ok'. O verificar foi feito sobre um código anterior:",
-              ...codigoDepois.map((a) => `  ${a}`),
-              'Reabra o executar, refaça revisar e verificar e só depois feche:',
-              `  node scripts/estado.cjs reabrir --slug ${slug} --estagio executar --motivo "<o que mudou>"`,
-            ].join('\n'));
+          const recusa = recusaCodigoDepois(slug, estado, estado.verificar.head, 'verificar ok', 'fechar');
+          if (recusa) {
+            console.error(recusa);
             process.exit(2);
           }
         }
@@ -3165,6 +3191,21 @@ function main() {
         const recusa_mutacao = verificarMutacao(slug, estado.revisar && estado.revisar.snapshot);
         if (recusa_mutacao) {
           console.error(recusa_mutacao);
+          process.exit(2);
+        }
+      }
+      // D1 (#567), emenda da revisão 2: a trava também vale onde o fluxo de fato passa
+      // depois do conserto de CI (`marcar fechar ok`) e no `verificar ok` refeito sobre
+      // código que o `revisar` não viu.
+      const refCodigo = estagio === 'fechar'
+        ? { head: estado.verificar && estado.verificar.head, quem: 'verificar ok' }
+        : estagio === 'verificar' && !raizCodigo
+          ? { head: estado.revisar && estado.revisar.snapshot && estado.revisar.snapshot.head, quem: 'revisar' }
+          : null;
+      if (refCodigo && refCodigo.head) {
+        const recusa = recusaCodigoDepois(slug, estado, refCodigo.head, refCodigo.quem, estagio);
+        if (recusa) {
+          console.error(recusa);
           process.exit(2);
         }
       }

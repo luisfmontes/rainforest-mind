@@ -216,6 +216,66 @@ git -C "$CX" add -- docs/rainforest/estado/2026-10-18-outro.json
 git -C "$CX" commit -q -m "fechar ok do fluxo anterior"
 esperado "exigir fechar com estado de outro slug sai 0" 0 $E exigir --slug "$SLUG" --estagio fechar
 
+echo "-- (i) emenda 2: marcar fechar ok tambem recusa codigo depois do verificar --"
+caixa_nova
+fechar_ate_verificar
+esperado "exigir fechar antes do conserto sai 0" 0 $E exigir --slug "$SLUG" --estagio fechar
+mkdir -p "$CX/src" && printf 'x\n' > "$CX/src/a.js"
+git -C "$CX" add -- src/a.js
+git -C "$CX" commit -q -m "conserto de CI depois do exigir"
+saida=$($E marcar --slug "$SLUG" --estagio fechar --status ok --json '{"acao":"merge"}' 2>&1); rc=$?
+igual "marcar fechar ok com codigo depois do verificar sai 2" "2" "$rc"
+igual "marcar fechar ok nomeia src/a.js" "1" "$(echo "$saida" | grep -c '^  src/a.js$')"
+igual "fechar segue nao-ok no JSON" "1" "$(J 'j.fechar&&j.fechar.status==="ok"?0:1' < "$ARQ")"
+
+echo "-- (j) emenda 2: verificar ok refeito sobre codigo que o revisar nao viu sai 2 --"
+caixa_nova
+node -e 'const fs=require("fs");const f=process.argv[1];const j=JSON.parse(fs.readFileSync(f,"utf8"));j.design={...j.design,status:"aprovado"};j.plano={...j.plano,status:"ok"};j.executar={...j.executar,status:"ok"};fs.writeFileSync(f,JSON.stringify(j,null,2));' "$ARQ"
+esperado "exigir revisar tira o instantaneo" 0 $E exigir --slug "$SLUG" --estagio revisar
+node -e 'const fs=require("fs");const f=process.argv[1];const j=JSON.parse(fs.readFileSync(f,"utf8"));j.revisar={...j.revisar,status:"ok"};fs.writeFileSync(f,JSON.stringify(j,null,2));' "$ARQ"
+mkdir -p "$CX/src" && printf 'x\n' > "$CX/src/a.js"
+git -C "$CX" add -- src/a.js
+git -C "$CX" commit -q -m "codigo depois da revisao"
+saida=$($E marcar --slug "$SLUG" --estagio verificar --status ok --json '{"comando":"bash scripts/testa-estado-reabrir.sh","saida":"ok: 1   falhou: 0"}' 2>&1); rc=$?
+igual "verificar ok com codigo depois do revisar sai 2" "2" "$rc"
+igual "saida cita o revisar e src/a.js" "2" "$(echo "$saida" | grep -cE "depois do 'revisar'|^  src/a.js$")"
+esperado "reabrir destrava o caminho" 0 $E reabrir --slug "$SLUG" --estagio executar --motivo "codigo depois da revisao"
+
+echo "-- (k) emenda 2: branch e main mexem no mesmo arquivo em linhas distantes --"
+caixa_nova
+git -C "$CX" checkout -q main
+seq 1 30 > "$CX/CHANGELOG.md"
+git -C "$CX" add -- CHANGELOG.md
+git -C "$CX" commit -q -m "changelog na main"
+git -C "$CX" push -q origin main
+git -C "$CX" checkout -q fluxo/x
+git -C "$CX" merge -q --no-edit main
+sed -i '1s/.*/1 da branch/' "$CX/CHANGELOG.md"
+git -C "$CX" add -- CHANGELOG.md
+git -C "$CX" commit -q -m "changelog da branch"
+fechar_ate_verificar
+git -C "$CX" checkout -q main
+sed -i '30s/.*/30 da main/' "$CX/CHANGELOG.md"
+git -C "$CX" add -- CHANGELOG.md
+git -C "$CX" commit -q -m "changelog de outro PR"
+git -C "$CX" push -q origin main
+git -C "$CX" checkout -q fluxo/x
+git -C "$CX" merge -q --no-edit main
+igual "merge trouxe a linha da main" "1" "$(grep -c '30 da main' "$CX/CHANGELOG.md")"
+esperado "exigir fechar com a main no mesmo arquivo sai 0" 0 $E exigir --slug "$SLUG" --estagio fechar
+
+echo "-- (l) emenda 2: arquivo da branch apagado depois do verificar sai 2 --"
+caixa_nova
+mkdir -p "$CX/src" && printf 'n\n' > "$CX/src/n.js"
+git -C "$CX" add -- src/n.js
+git -C "$CX" commit -q -m "arquivo novo antes do verificar"
+fechar_ate_verificar
+git -C "$CX" rm -q -- src/n.js
+git -C "$CX" commit -q -m "apaga depois do verificar"
+saida=$($E exigir --slug "$SLUG" --estagio fechar 2>&1); rc=$?
+igual "src/n.js apagado depois do verificar sai 2" "2" "$rc"
+igual "saida nomeia src/n.js" "1" "$(echo "$saida" | grep -c '^  src/n.js$')"
+
 echo "== D3: reabrir =="
 
 echo "-- (a) com revisar ok, reabrir volta executar e revisar --"

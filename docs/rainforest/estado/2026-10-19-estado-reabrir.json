@@ -45,7 +45,6 @@
         "ts": "2026-10-19T15:16:54.482Z"
       }
     ],
-    "em_voo": [],
     "em": "2026-10-19",
     "integradas": [
       1,
@@ -56,7 +55,7 @@
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-estado-reabrir.sh, secao D1: commit de codigo depois do verificar ok"
+        "fixture": "testa-estado-reabrir.sh, secao D1 (b), (e)-(h)"
       },
       {
         "tarefa": 2,
@@ -74,38 +73,42 @@
         "motivo": "texto de skill, CHANGELOG e versao"
       }
     ],
-    "comando": "bash scripts/testa-estado.sh",
-    "saida": "== resultado: 324 ok, 0 falhas ==",
+    "comando": "bash scripts/testa-estado-reabrir.sh",
+    "saida": "ok: 54   falhou: 0",
+    "reaberturas": 2,
+    "rodada": 2,
     "reaberto_por": {
       "estagio": "revisar",
       "data": "2026-10-19"
-    },
-    "reaberturas": 1
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "11133c69ecb5c21d4e347e7401460404f094cdd3",
-      "caminhos_sujos": []
+      "head": "3cda9dccca007c608a0bc9e10a81b795aa3db901",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-10-19-estado-reabrir.json"
+      ]
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ab018fa89abcc5bc3",
+        "agente_id": "adbd20217438a2a45",
         "veredito": "reprovado",
         "em": "2026-10-19",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-ab018fa89abcc5bc3.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-adbd20217438a2a45.jsonl"
       }
     ],
-    "achados": 6,
+    "achados": 5,
     "design": [
       1,
       2,
-      3,
-      6
+      3
     ],
     "em": "2026-10-19",
-    "tentativas": 1
+    "tentativas": 2,
+    "em_voo": [],
+    "rodada": 2
   },
   "verificar": {
     "status": "pendente"
@@ -141,6 +144,27 @@
       "porque": "o lote carrega o fechar ok do fluxo anterior; e rastro, nunca entrega (usuario: recomendado)",
       "estagio": "executar",
       "em": "2026-10-19T17:12:35.181Z"
+    },
+    {
+      "pergunta": "Q1 revisao 2: trava fora do caminho real do fechar?",
+      "escolha": "mesma recusa no marcar fechar ok; skill manda rodar exigir de novo antes de republicar",
+      "porque": "o conserto de CI vem depois do exigir da abertura (usuario: recomendado)",
+      "estagio": "executar",
+      "em": "2026-10-19T17:42:27.015Z"
+    },
+    {
+      "pergunta": "Q2 revisao 2: re-marcar verificar ok destrava sem revisao?",
+      "escolha": "verificar ok recusa codigo depois do HEAD do instantaneo do revisar",
+      "porque": "o desvio mais curto passava pela trava (usuario: recomendado)",
+      "estagio": "executar",
+      "em": "2026-10-19T17:42:27.132Z"
+    },
+    {
+      "pergunta": "Q3 revisao 2: formula da D1 com falso positivo e negativo",
+      "escolha": "A: patch-id por arquivo da mudanca da branch antes e depois",
+      "porque": "todo PR de release mexe no CHANGELOG junto com a main (usuario: recomendado)",
+      "estagio": "executar",
+      "em": "2026-10-19T17:42:27.243Z"
     }
   ]
 }

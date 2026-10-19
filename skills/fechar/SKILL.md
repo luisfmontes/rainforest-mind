@@ -124,10 +124,10 @@ para o `gate-fechar-issue` conferir a evidência das Issues que o PR fecha.
    `node scripts/publicar-branch.cjs confirmar-merge --pr <n>`. Só o exit 0 dele
    (state `MERGED`) prova o merge. A linha de sucesso do `gh` não prova.
 
-**Código mudou depois do `verificar ok`** (CI vermelho): o `exigir --estagio fechar`
-recusa (exit 2) commit da branch depois do HEAD gravado (o que veio da `main` não
-conta) e edição rastreada não commitada, fora o rastro do fluxo. Com `--raiz`, só
-avisa. A volta é `node scripts/estado.cjs reabrir --slug <slug> --estagio executar
+**Código mudou depois do `verificar ok`** (CI vermelho): `exigir --estagio fechar`
+e `marcar fechar ok` recusam (exit 2) mudança da branch depois do HEAD gravado (a da
+`main` não conta) e edição rastreada não commitada. Rode o `exigir` de novo antes de
+republicar. Com `--raiz`, só avisa. A volta é `node scripts/estado.cjs reabrir --slug <slug> --estagio executar
 --motivo "<o que mudou>"`: revisar e verificar de novo (#567).
 
 Com a chave `executar-autonomo` ligada, há três diferenças: o conflito que fica só em versão ou CHANGELOG

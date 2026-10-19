@@ -18,6 +18,14 @@ bloqueante de uma revisão aprovada ganha caminho formal de volta ao `executar`.
   porque o da outra árvore comparado na árvore do estado recusava para sempre; trazer a
   padrão depois do `verificar` não acusa o que veio dela; edição de código não commitada
   conta, porque entraria no commit do passo 1 do `fechar` sem revisão.
+  *Emenda da revisão 2 (decidida pelo usuário, Q1–Q3):* (a) a mesma recusa roda no
+  `marcar fechar ok`, porque o conserto de CI vem depois do `exigir fechar` da abertura;
+  (b) o `marcar verificar ok` recusa código mudado depois do HEAD do instantâneo do
+  `revisar` — refazer só o `verificar` não pula a revisão; (c) a interseção de nomes
+  dá lugar à comparação por arquivo da mudança da branch, `merge-base(head)..head` contra
+  `merge-base(HEAD)..HEAD`, por `git patch-id --stable` (ignora deslocamento de linha):
+  a padrão mexendo no mesmo arquivo não acusa, e apagar ou reverter o que a branch tinha
+  acusa. Sem `origin/<padrão>`, vale `head..HEAD`.
 - **D2 — "Código" é todo arquivo fora das isenções que o `creep` já usa** — porquê: a lista
   (`globsIsentos` em `scripts/conferir-fluxo.cjs`: estado, design, plano, portões, varredura
   do slug, `relatorios/`, réguas) já define o rastro do fluxo que não é entrega. Reaproveitar

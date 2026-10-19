@@ -31,6 +31,10 @@ pronto quando: numa caixa `mktemp -d` com repo git, fluxo aberto e `estado.cjs` 
 (f) *emenda:* merge de commit da `main` (já empurrado para `origin/main`) depois do `verificar ok`: `exigir --estagio fechar` sai 0; commit de `src/a.js` na branch depois disso sai 2 e a saída não nomeia o arquivo que veio da `main`;
 (g) *emenda:* `src/a.js` rastreado e modificado sem commit depois do `verificar ok`: sai 2 nomeando o arquivo; arquivo não rastreado não conta;
 (h) *emenda:* commit só do `docs/rainforest/estado/<outro slug>.json` depois do `verificar ok`: sai 0;
+(i) *emenda da revisão 2:* `exigir fechar` sai 0, depois commit de `src/a.js`: `marcar fechar ok` sai 2 nomeando o arquivo, e `fechar` não vira `ok` no JSON;
+(j) *emenda 2:* `exigir revisar` tira o instantâneo, `revisar` ok, commit de `src/a.js`: `marcar verificar ok` sai 2 citando o `revisar` e o arquivo; `reabrir` sai 0;
+(k) *emenda 2:* a branch muda a linha 1 do `CHANGELOG.md` antes do `verificar`, a `main` muda a linha 30 depois e entra por merge: `exigir fechar` sai 0;
+(l) *emenda 2:* arquivo criado pela branch antes do `verificar` e apagado depois: `exigir fechar` sai 2 nomeando o arquivo;
 provado por `bash scripts/testa-estado-reabrir.sh` com zero falha, placar `ok: N   falhou: 0`, nenhum caso lendo o texto do fonte.
 
 Forma do código: em `scripts/estado.cjs`, função `arquivosDeCodigoDesde(head, slug, estado)` que roda `git diff --name-only <head> HEAD` e filtra com `globsIsentos`/`globMatches` de `scripts/conferir-fluxo.cjs` (os mesmos argumentos que o `creep` usa). No `marcar verificar ok`, grava `head` no bloco. No `exigir` do `fechar`, depois da checagem de pendências órfãs, a linha `const codigoDepois = arquivosDeCodigoDesde(estado.verificar.head, slug, estado);` e logo abaixo a linha exata `if (codigoDepois.length) {`, que imprime a recusa e sai 2.

@@ -14,8 +14,10 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 - **Código que muda depois do `verificar` passa de novo por revisão e verificar (#567).** O `verificar ok` grava
   o HEAD em que rodou, e o `exigir --estagio fechar` recusa com exit 2 quando há código mudado depois dele,
-  nomeando os arquivos: commit que a branch muda contra `origin/<padrão>` (trazer a `main` não acusa o que veio
-  dela) ou edição rastreada ainda não commitada. O rastro do fluxo (design, plano, portões e varredura do slug,
+  nomeando os arquivos: mudança da branch num arquivo que não é a mesma de antes (comparada por `git patch-id`,
+  então trazer a `main` não acusa nem quando ela mexe no mesmo arquivo, e apagar ou reverter acusa) ou edição
+  rastreada ainda não commitada. A mesma recusa vale no `marcar fechar ok`, depois do conserto de CI, e no
+  `marcar verificar ok` refeito sobre código que o `revisar` não viu. O rastro do fluxo (design, plano, portões e varredura do slug,
   e o estado de qualquer slug) não conta. Estado gravado antes desta versão, ou `verificar` fechado com
   `--raiz` (o código noutra árvore), não grava esse HEAD e só avisa.
 - **Verbo novo `estado.cjs reabrir` (#529, #567).** `reabrir --slug <s> --estagio executar --motivo "<texto>"`
