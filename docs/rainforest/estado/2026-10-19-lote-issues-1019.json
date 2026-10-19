@@ -112,18 +112,10 @@
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "55bb2692d0aaa28e4e3fd77d13a0424bf0d07694",
+      "head": "a774529d670e15688929b06596f8680db5c82c05",
       "caminhos_sujos": []
     },
-    "vereditos": [
-      {
-        "agente": "rainforest-mind:revisor",
-        "agente_id": "a4202ab98a8fbb7bc",
-        "veredito": "reprovado",
-        "em": "2026-10-19",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-a4202ab98a8fbb7bc.jsonl"
-      }
-    ],
+    "vereditos": [],
     "achados": 2,
     "lista": [
       "1: aparo [...]+$ quadratico em corrida de fechos (conferir-publicacao.cjs:180)",
