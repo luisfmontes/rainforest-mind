@@ -536,6 +536,21 @@ else
   falhou=$((falhou+1)); echo "  FALHA #559 (c) --aplicar nao semeou na pasta nomeada (exit $got_ap, destino '$dest_c')"; echo "$saida_ap" | sed 's/^/         /' | tail -6
 fi
 
+# (d) revisao da rodada 1: o ensaio lista so o que o criar() vai criar. Com
+# projetos.json ja na pasta de dados, ele nao entra na lista (o criar() o pula).
+H559d="$C559/home-d"; mkdir -p "$H559d"
+H559d_WIN="$(cygpath -m "$H559d" 2>/dev/null || printf '%s' "$H559d")"
+mkdir -p "$H559d/.rainforest"; printf '%s' '{}' > "$H559d/.rainforest/projetos.json"
+PD559="$C559/projeto-d"; mkdir -p "$PD559/.rainforest"; : > "$PD559/.rainforest/ideias.jsonl"
+PD559_WIN="$(cygpath -m "$PD559" 2>/dev/null || printf '%s' "$PD559")"
+saida_d=$(env -u RFM_ROOT USERPROFILE="$H559d_WIN" HOME="$H559d_WIN" CLAUDE_PROJECT_DIR="$PD559_WIN" node "$SRC/scripts/setup.cjs" --aplicar "$PAY559_WIN" --escopo projeto --ensaio 2>&1); got_d=$?
+linha_d=$(echo "$saida_d" | grep '^criar: semearia em ')
+if [ "$got_d" = 0 ] && [ -n "$linha_d" ] && echo "$linha_d" | grep -q "FOCO.md" && ! echo "$linha_d" | grep -q "projetos.json"; then
+  ok=$((ok+1)); echo "  ok   #559 (d) com projetos.json ja na pasta, o ensaio lista so o que falta"
+else
+  falhou=$((falhou+1)); echo "  FALHA #559 (d) ensaio (exit $got_d) listou arquivo que ja existe, ou nao armou a linha"; echo "$saida_d" | sed 's/^/         /' | tail -6
+fi
+
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

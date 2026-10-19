@@ -1102,6 +1102,19 @@ printf 'senha: <%s%s>\n' AbCdEfGh IjKlMnOp > "$SBP/523-d-caixa.md"
 tem     "<16 letras de caixa mista> continua credencial" "$(roda "$SBP/523-d-caixa.md")" "credencial"
 saiu    "e RECUSA (exit 2)"                              "$(codigo "$SBP/523-d-caixa.md")" "2"
 
+# (e) revisao da rodada 1: o placeholder tem de ser o valor da LINHA.
+printf 'senha: <redigido> %s\n' "$ALNUM18" > "$SBP/523-e-cauda.md"
+tem     "placeholder seguido de literal na cauda continua credencial" "$(roda "$SBP/523-e-cauda.md")" "credencial"
+saiu    "e RECUSA (exit 2)"                                           "$(codigo "$SBP/523-e-cauda.md")" "2"
+
+printf '"password": "<redigido> %s"\n' "$ALNUM18" > "$SBP/523-e-aspas.md"
+tem     "placeholder e literal dentro das mesmas aspas continua credencial" "$(roda "$SBP/523-e-aspas.md")" "credencial"
+saiu    "e RECUSA (exit 2)"                                                 "$(codigo "$SBP/523-e-aspas.md")" "2"
+
+printf '{"senha":"<redigido>"}\n' > "$SBP/523-e-compacto.json"
+nao_tem "JSON compacto com <redigido> fechado por } nao acende credencial" "$(roda "$SBP/523-e-compacto.json")" "credencial"
+saiu    "e passa limpo (exit 0)"                                          "$(codigo "$SBP/523-e-compacto.json")" "0"
+
 printf 'senha: <API_KEY>\n' > "$SBP/523-d-nome.md"
 nao_tem "<API_KEY> (nome de placeholder) segue isento" "$(roda "$SBP/523-d-nome.md")" "credencial"
 saiu    "e passa limpo (exit 0)"                       "$(codigo "$SBP/523-d-nome.md")" "0"

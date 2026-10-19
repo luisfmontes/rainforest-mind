@@ -16,18 +16,20 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   por `<redigido>`" e recusava a linha corrigida. Agora um valor que é **inteiro** um placeholder entre `<>` com cara
   de palavra passa: começa por letra, tem até 40 caracteres de palavra ou hífen, no máximo 4 dígitos, e cada pedaço
   entre `-`/`_` tem até 16 caracteres e uma caixa só (`<redigido>`, `<sua-senha>`, `<API_KEY>`). Segredo embrulhado em `<>`
-  (também picado por hífen), valor que só começa ou só termina com placeholder e `<>` vazio continuam barrados.
+  (também picado por hífen), valor que só começa ou só termina com placeholder, placeholder seguido de outro texto na
+  linha e `<>` vazio continuam barrados. Vale também em JSON compacto, com o fecha-chaves colado ao valor.
 - **Gate de publicação não trava mais em linha longa sem arroba (#531).** A regra `email` reescaneava cada corrida
   de letras e pontos a partir de cada posição (O(n²)): 100 mil `a.` numa linha passavam de 60 s. A regex agora só
-  começa no início da corrida, e o mesmo caso sai em milissegundos, sem mudar o que ela pega.
-- **Abertura não acusa mais bridge WhatsApp FORA com ela de pé (#553).** Com `WHATSAPP_API_BASE_URL` em `localhost`,
-  a sonda passava pelo DNS dentro do timeout de 400 ms. Ela testa `127.0.0.1` e `::1` direto, em paralelo, e vale o
-  que conectar. A Issue segue aberta até a contagem de `FORA` nas aberturas dos 3 dias seguintes ao release cair a
-  zero.
+  começa no início da corrida, e o mesmo caso sai em milissegundos. Não deixou de pegar nenhum e-mail que pegava;
+  passou a acusar também parte local só de pontuação colada ao arroba, o que é mais estrito.
+- **Sonda da bridge WhatsApp não passa mais pelo DNS (#553).** Com `WHATSAPP_API_BASE_URL` em `localhost`, a sonda
+  resolvia o nome dentro do timeout de 400 ms, e a hipótese da Issue é que isso explica o `FORA` com a bridge de pé
+  (o estouro não foi reproduzido). Ela testa `127.0.0.1` e `::1` direto, em paralelo, e vale o que conectar. A Issue
+  segue aberta até a contagem de `FORA` nas aberturas dos 3 dias seguintes ao release cair a zero.
 - **`setup` recusa `config.json` que não é objeto (#559).** Com `[]`, `null`, número ou string no arquivo, o
   `--ligar`/`--desligar` e o `--aplicar` saem 2 nomeando o arquivo, sem gravar. Antes, `[]` dizia `gravado` e não
   gravava nada, e `null` quebrava com `TypeError`. O `--aplicar --ensaio` também passa a dizer em que pasta o setup
-  vai criar `FOCO.md`, `ideias.jsonl` e `projetos.json` quando for a primeira vez.
+  vai criar, quando for a primeira vez, os arquivos que ainda faltam entre `FOCO.md`, `ideias.jsonl` e `projetos.json`.
 - **Bateria do teto de despachos mostra quem falhou (#543, passo 1).** No caso de 12 processos simultâneos, a
   falha passa a trazer índice, exit e stderr de cada processo que saiu diferente de 0, para a próxima ocorrência na
   CI mostrar a causa. O passo 2 (o conserto) espera essa ocorrência, e a Issue segue aberta.

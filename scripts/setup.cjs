@@ -970,9 +970,11 @@ function aplicar() {
   if (ensaio) {
     for (const linha of linhasEnsaio({ chaves, projetos, estrategia, raiz: destinoUsuario, escopo })) console.log(linha);
     // O --aplicar real chama criar() quando for primeira vez: o ensaio diz onde e o que semeia (#559).
+    // Só os que faltam: o criar() nunca sobrescreve, e listar um que já existe é prometer o que ele pula.
     if (primeiraVez(raizAntes, nivelAntes)) {
-      const nomes = ARQUIVOS.filter((a) => a.semear).map((a) => a.nome).join(', ');
-      console.log(`criar: semearia em ${destinoDoCriar()} (${nomes})`);
+      const destino = destinoDoCriar();
+      const nomes = ARQUIVOS.filter((a) => a.semear && !fs.existsSync(path.join(destino, a.nome))).map((a) => a.nome);
+      if (nomes.length) console.log(`criar: semearia em ${destino} (${nomes.join(', ')})`);
     }
     return;
   }

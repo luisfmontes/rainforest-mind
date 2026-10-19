@@ -174,6 +174,14 @@ function ehPlaceholderInteiro(valor) {
   return digitos <= 4 && m[1].split(/[-_]/).every((s) => s.length <= 16 && (s === s.toLowerCase() || s === s.toUpperCase()));
 }
 
+// O valor capturado pela regra `credencial` (`m[1]`, até o espaço) é um placeholder
+// inteiro E o resto da linha é só fechamento de aspa, lista ou objeto.
+function placeholderSozinho(m, linha) {
+  const valor = m[1].replace(/^["']+/, '').replace(/["',;)}\]]+$/, '');
+  const cauda = linha.slice(m.index + m[0].length);
+  return ehPlaceholderInteiro(valor) && /^[\s"',;)}\]]*$/.test(cauda);
+}
+
 // Esquema do valor capturado: { aspa, fstring } ou null se nao for Bearer, Basic
 // ou Token. `aspaPre` e a aspa que a regex de credencial consumiu antes do valor.
 // f-string so vale com f/rf/fr (qualquer caixa) logo antes de aspa simples ou
@@ -384,7 +392,11 @@ const PADROES = [
       // Issue #523: placeholder INTEIRO entre `<>` não é segredo — isenção por forma
       // irmã da `caminho-de-home` (#149). Só o valor inteiro, e só com cara de palavra
       // (`ehPlaceholderInteiro`): `<a>segredo`, `segredo<x>` e `<hex longo>` seguem acusados.
-      if (ehPlaceholderInteiro(valor)) return false;
+      // E o placeholder tem de ser o valor da LINHA, não só o primeiro token: a captura
+      // para no espaço, e `<redigido> segredo` escondia o literal da cauda (revisão
+      // da rodada 1). Depois dele só cabe fechamento (`"`, `'`, `,`, `;`, `)`, `}`, `]`)
+      // e espaço; o fecha-chaves sai do valor só aqui, para o JSON compacto passar.
+      if (placeholderSozinho(m, linha)) return false;
       const chaveComOp = m[0];
       const chave = chaveComOp.match(/^(.*?)\s*[:=]/i)[1].replace(/^["']+|["']+$/g, '').toLowerCase();
       const ehTokenNu = chave === 'token';
