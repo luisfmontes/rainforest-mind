@@ -1031,5 +1031,51 @@ tem  "reservado colado em hifen (a.test-b.com) continua pego" "$(roda "$SBP/tld-
 printf '# achado\n\nescreva para ci@rainforest.invalid.\n' > "$SBP/tld-ponto-final.md"
 nao_tem "reservado seguido de ponto final de frase NAO acende" "$(roda "$SBP/tld-ponto-final.md")" "email"
 
+# Issue #523: placeholder INTEIRO entre <> na credencial e isento (irma da
+# caminho-de-home, #149). Os valores saem por pedacos, como as secoes #410/#494:
+# o literal de credencial nunca aparece inteiro neste fonte.
+echo "== #523: placeholder inteiro na credencial =="
+ALNUM18=$(printf '%s%s%s' ab12cd34 ef56gh78 ij)
+HEX20=$(printf '%s%s' 0123456789abcdef 0123)
+
+# (a) placeholder inteiro isenta: chave JSON com <redigido> sozinho, dois-pontos, igual.
+printf '{\n  "token": "<redigido>",\n}\n' > "$SBP/523-a-token.json"
+nao_tem "token entre aspas com <redigido> sozinho na linha nao acende credencial" "$(roda "$SBP/523-a-token.json")" "credencial"
+saiu    "e passa limpo (exit 0)"                                               "$(codigo "$SBP/523-a-token.json")" "0"
+
+printf 'senha: <redigido>\n' > "$SBP/523-a-senha.md"
+nao_tem "senha com dois-pontos e <redigido> nao acende credencial" "$(roda "$SBP/523-a-senha.md")" "credencial"
+saiu    "e passa limpo (exit 0)"                                  "$(codigo "$SBP/523-a-senha.md")" "0"
+
+printf 'password = <sua-senha>\n' > "$SBP/523-a-password.md"
+nao_tem "password com = e <sua-senha> nao acende credencial" "$(roda "$SBP/523-a-password.md")" "credencial"
+saiu    "e passa limpo (exit 0)"                             "$(codigo "$SBP/523-a-password.md")" "0"
+
+# (b) o que NAO e placeholder inteiro continua acusado.
+printf 'senha: <redigido>%s\n' "$ALNUM18" > "$SBP/523-b-colado.md"
+tem     "<redigido> com 18 alfanumericos colados continua credencial" "$(roda "$SBP/523-b-colado.md")" "credencial"
+saiu    "e RECUSA (exit 2)"                                          "$(codigo "$SBP/523-b-colado.md")" "2"
+
+printf 'senha: <a>%s\n' "$HEX20" > "$SBP/523-b-hex.md"
+tem     "<a> seguido de 20 hex continua credencial" "$(roda "$SBP/523-b-hex.md")" "credencial"
+saiu    "e RECUSA (exit 2)"                         "$(codigo "$SBP/523-b-hex.md")" "2"
+
+printf 'senha: minhasenha<x>\n' > "$SBP/523-b-fim.md"
+tem     "valor que termina em <x> depois de palavra continua credencial" "$(roda "$SBP/523-b-fim.md")" "credencial"
+saiu    "e RECUSA (exit 2)"                                              "$(codigo "$SBP/523-b-fim.md")" "2"
+
+printf 'senha: <>\n' > "$SBP/523-b-vazio.md"
+tem     "<> vazio continua credencial" "$(roda "$SBP/523-b-vazio.md")" "credencial"
+saiu    "e RECUSA (exit 2)"            "$(codigo "$SBP/523-b-vazio.md")" "2"
+
+# (c) vizinhos de hoje intactos: referencia ${VAR} segue isenta; prefixo sk- com 32 hex segue pego.
+printf 'api_key: %s{API_KEY}\n' "$D" > "$SBP/523-c-ref.md"
+nao_tem "referencia \${API_KEY} continua isenta" "$(roda "$SBP/523-c-ref.md")" "credencial"
+saiu    "e passa limpo (exit 0)"                 "$(codigo "$SBP/523-c-ref.md")" "0"
+
+printf 'api_key: sk-%s\n' "$HEX32" > "$SBP/523-c-sk.md"
+tem     "api_key com prefixo sk- e 32 hex continua credencial" "$(roda "$SBP/523-c-sk.md")" "credencial"
+saiu    "e RECUSA (exit 2)"                                   "$(codigo "$SBP/523-c-sk.md")" "2"
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" -eq 0 ]

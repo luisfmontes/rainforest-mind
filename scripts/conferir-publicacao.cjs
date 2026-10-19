@@ -361,6 +361,10 @@ const PADROES = [
       // JSON). Fecha-chaves NAO entra: apara-lo quebraria `${VAR}` e a isencao de
       // referencia de variavel logo abaixo passaria a acusar.
       const valor = m[1].replace(/^["']+/, '').replace(/["',;]+$/, '');
+      // Issue #523: placeholder INTEIRO entre `<>` (`<redigido>`, `<sua-senha>`) não é
+      // segredo — isenção por forma irmã da `caminho-de-home` (#149). Só o valor inteiro:
+      // `<a>segredo` e `segredo<x>` continuam acusados.
+      if (/^<[^<>]+>$/.test(valor)) return false;
       const chaveComOp = m[0];
       const chave = chaveComOp.match(/^(.*?)\s*[:=]/i)[1].replace(/^["']+|["']+$/g, '').toLowerCase();
       const ehTokenNu = chave === 'token';
