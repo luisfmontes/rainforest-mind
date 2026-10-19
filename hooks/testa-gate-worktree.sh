@@ -18,6 +18,9 @@ GATE="$SRC/hooks/gate-worktree.cjs"
 # testando nada. Custou uma rodada inteira em 2026-08-09.
 RAIZ_POSIX="$(mktemp -d)"
 RAIZ="$(cygpath -m "$RAIZ_POSIX" 2>/dev/null || printf '%s' "$RAIZ_POSIX")"
+# Nome longo: no runner do CI o temp vem com o usuario em nome curto 8.3 e a casa em nome
+# longo, e as guardas "sob a casa" comparam texto. O nome curto tem secao propria (#552 8.3).
+RAIZ="$(node -e 'const fs=require("fs");try{process.stdout.write(fs.realpathSync.native(process.argv[1]).split(String.fromCharCode(92)).join("/"))}catch{process.stdout.write(process.argv[1])}' "$RAIZ")"
 trap 'rm -rf "$RAIZ_POSIX"' EXIT
 echo "(caixa de areia: $RAIZ)"
 
@@ -1746,7 +1749,7 @@ find . -fls __R__/f
 EOC
 )" "$WT")"
 gate "#552 seg: rg x --pre <P>/x.sh, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
-rg x --pre __R__/x.sh
+"rg" x --pre __R__/x.sh
 EOC
 )" "$WT")"
 gate "#552 seg: cat a >| <P>/f, do worktree, BARRA" 2 "$(b "$(s552 <<'EOC'
