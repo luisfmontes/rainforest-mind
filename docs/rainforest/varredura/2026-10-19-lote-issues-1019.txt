@@ -1,0 +1,195 @@
+Data: 2026-10-19
+Termos: conferir-publicacao, credencial, redigido, sondar, localhost, trocar(, teto-despachos
+
+$ gh issue list --state all --search "conferir-publicacao" --limit 200 --json number,title,state
+[{"number":523,"state":"OPEN","title":"conferir-publicacao: regra credencial recusa o proprio <redigido> que ela manda usar"},{"number":531,"state":"OPEN","title":"conferir-publicacao lento com muitos trechos a. seguidos (60 s em 100 mil)"},{"number":494,"state":"CLOSED","title":"gate-publicacao barra header Authorization com variavel (Bearer ${token}) como credencial"},{"number":322,"state":"CLOSED","title":"gate-publicacao-destino recusa o trailer Co-Authored-By e barra Edit de linha que já contém o e-mail"},{"number":262,"state":"CLOSED","title":"conferir-publicacao: credencial em JSON com a chave entre aspas nao e vista, e a trava responde verde"},{"number":341,"state":"CLOSED","title":"varrer-baterias: testa-gate-publicacao-destino.sh roda outras duas baterias .sh em dobro"},{"number":423,"state":"CLOSED","title":"estado.cjs marcar revisar: caminho com acento sai octal-escapado do git e acusa creep falso"},{"number":260,"state":"CLOSED","title":"conferir-publicacao: 'token' sozinho vira credencial, e a mensagem nao mostra o trecho casado"},{"number":403,"state":"CLOSED","title":"Baterias de hook montam payload JSON com printf e ficam verdes sem o gate olhar"},{"number":410,"state":"CLOSED","title":"gate de publicação: f-string Python com variável (Bearer {API_KEY}) é lida como credencial"},{"number":293,"state":"CLOSED","title":"gate-verificador-staged ignora o marcador dados-de-exemplo e o toggle anunciado no cabecalho nao existe"},{"number":323,"state":"CLOSED","title":"conferir-duplicacao conta arquivo gitignorado (.claude/marketplaces) e deixa testa-saude vermelho em main limpa"},{"number":409,"state":"CLOSED","title":"gate de publicação: pseudo-versão Go em go.mod/go.sum é lida como telefone"},{"number":278,"state":"CLOSED","title":"gate-verificador-staged barra merge por arquivo que ja passou na main"},{"number":385,"state":"CLOSED","title":"marcar plano ok passa com o arquivo declarado ausente do disco"},{"number":268,"state":"CLOSED","title":"Mensagem do gate de publicacao nao oferece o toggle do setup, so as saidas de emergencia"},{"number":275,"state":"CLOSED","title":"gate-verificador-staged barra merge por conteudo que ja esta na main"},{"number":265,"state":"CLOSED","title":"gate-publicacao: .rainforest-gate-off nao e herdado pelo worktree, e nao esta no .gitignore"},{"number":266,"state":"CLOSED","title":"conferir-mutacao muta a arvore compartilhada: quem ler naquela janela mede o mutante"},{"number":237,"state":"CLOSED","title":"gate-publicacao-destino le id publico do GitHub como telefone, e a mensagem manda confirmar sem haver como"},{"number":235,"state":"CLOSED","title":"gate-publicacao-destino so ve Write/Edit: valor escrito por script chega ao commit, e so a CI pega — do lado irreversivel"},{"number":165,"state":"CLOSED","title":"O gate de publicacao e cego para escrita mediada por Bash — node, sed e heredoc passam"},{"number":144,"state":"CLOSED","title":"O gate de publicacao le dump hexadecimal como telefone — e provar defeito de encoding exige colar bytes"},{"number":253,"state":"CLOSED","title":"Gate de publicacao bloqueia repo PRIVADO citando \"repo publico\" — nao checa visibilidade"},{"number":83,"state":"CLOSED","title":"Critério de plano só mede o que a máquina lê — passou verde com feature inutilizável e com dado pessoal em repo público"},{"number":220,"state":"CLOSED","title":"Tres dos quatro gates ainda nomeiam .rainforest-gate-off pro subagente que bloqueiam"},{"number":185,"state":"CLOSED","title":"gate-publicacao: hash de commit vira 'telefone', e a saída de emergência não vale no mesmo comando"},{"number":173,"state":"CLOSED","title":"O gate de publicacao barra merge de conteudo que ja esta na main — e engole o git add da mesma chamada"},{"number":149,"state":"CLOSED","title":"A regra jid-whatsapp para em 15 digitos, e JID de GRUPO tem 18 — passou por baixo e o dado ficou no repo publico"},{"number":269,"state":"CLOSED","title":"gate-fechar-issue dita '--saida <saida-ou-arquivo>', e --saida cola o caminho como se fosse a saida"},{"number":264,"state":"CLOSED","title":"Portaria: manifesto de agentes SUBSTITUI em vez de somar, e agente de outro plugin nunca passa"},{"number":159,"state":"CLOSED","title":"testa-medir-injecao quebra em 'python3: command not found' numa maquina com Python instalado — o Windows so cria python"},{"number":143,"state":"CLOSED","title":"Os guardas medem o repositorio do cwd da sessao, nao o worktree onde a operacao roda — tres ocorrencias no mesmo dia"},{"number":124,"state":"CLOSED","title":"O vigias/ERROS.md e rastreado num repo PUBLICO e recebe caminho de maquina interpolado"},{"number":157,"state":"CLOSED","title":"REINCIDE #16: o workflow esta disabled_manually ha 232 commits, e a maquina do Actions e mais rica que a de quem instala"}]
+
+
+$ gh issue list --state all --search "credencial" --limit 200 --json number,title,state
+[{"number":523,"state":"OPEN","title":"conferir-publicacao: regra credencial recusa o proprio <redigido> que ela manda usar"},{"number":494,"state":"CLOSED","title":"gate-publicacao barra header Authorization com variavel (Bearer ${token}) como credencial"},{"number":410,"state":"CLOSED","title":"gate de publicação: f-string Python com variável (Bearer {API_KEY}) é lida como credencial"},{"number":260,"state":"CLOSED","title":"conferir-publicacao: 'token' sozinho vira credencial, e a mensagem nao mostra o trecho casado"},{"number":262,"state":"CLOSED","title":"conferir-publicacao: credencial em JSON com a chave entre aspas nao e vista, e a trava responde verde"},{"number":125,"state":"CLOSED","title":"Nenhum dado do rainforest tem copia fora da maquina — e a primeira pergunta e para onde"},{"number":14,"state":"CLOSED","title":"limpar-branches.cjs da branch de PR mergeado por squash: classificada 'viva', nunca limpa"},{"number":173,"state":"CLOSED","title":"O gate de publicacao barra merge de conteudo que ja esta na main — e engole o git add da mesma chamada"},{"number":185,"state":"CLOSED","title":"gate-publicacao: hash de commit vira 'telefone', e a saída de emergência não vale no mesmo comando"}]
+
+
+$ gh issue list --state all --search "redigido" --limit 200 --json number,title,state
+[{"number":523,"state":"OPEN","title":"conferir-publicacao: regra credencial recusa o proprio <redigido> que ela manda usar"},{"number":260,"state":"CLOSED","title":"conferir-publicacao: 'token' sozinho vira credencial, e a mensagem nao mostra o trecho casado"},{"number":266,"state":"CLOSED","title":"conferir-mutacao muta a arvore compartilhada: quem ler naquela janela mede o mutante"},{"number":322,"state":"CLOSED","title":"gate-publicacao-destino recusa o trailer Co-Authored-By e barra Edit de linha que já contém o e-mail"},{"number":101,"state":"CLOSED","title":"P6 da #61: verificacao comparativa tem de declarar ONDE rodou — o cwd do shell persiste entre chamadas"},{"number":42,"state":"CLOSED","title":"A checagem 4 do conferir-entrega.cjs compara contra \"limpo\", nao contra um instantaneo — e reprova entrega por sujeira que ja estava la"},{"number":3,"state":"CLOSED","title":"conferir esta vermelho desde 11/08 e nao tem como ficar verde: 35 abertas sem gancho, e o reparar recusa sem texto a mao"}]
+
+
+$ gh issue list --state all --search "sondar" --limit 200 --json number,title,state
+[{"number":553,"state":"OPEN","title":"Abertura acusa bridge WhatsApp FORA com a bridge de pé (sonda resolve localhost por DNS)"}]
+
+
+$ gh issue list --state all --search "localhost" --limit 200 --json number,title,state
+[{"number":553,"state":"OPEN","title":"Abertura acusa bridge WhatsApp FORA com a bridge de pé (sonda resolve localhost por DNS)"},{"number":243,"state":"CLOSED","title":"foco-session-start.cjs leva 6-8 s nesta maquina e estoura o timeout 5 do hooks.json: testa-memoria-somente-leitura fica vermelha e nada diz que foi timeout"},{"number":83,"state":"CLOSED","title":"Critério de plano só mede o que a máquina lê — passou verde com feature inutilizável e com dado pessoal em repo público"},{"number":153,"state":"CLOSED","title":"A main esta vermelha no CI: 4 baterias que so falham no runner"}]
+
+
+$ gh issue list --state all --search "trocar(" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "teto-despachos" --limit 200 --json number,title,state
+[{"number":543,"state":"OPEN","title":"testa-gate-teto-despachos: 12 processos juntos, um nega (exit 2) e o contador fecha em 11 na CI"},{"number":276,"state":"CLOSED","title":"despachos.jsonl nao tem leitor: fora_de_fluxo e escreve_conferido nascem divida"},{"number":101,"state":"CLOSED","title":"P6 da #61: verificacao comparativa tem de declarar ONDE rodou — o cwd do shell persiste entre chamadas"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"}]
+
+
+$ gh pr list --state all --search "conferir-publicacao" --limit 200 --json number,title,state
+[{"number":532,"state":"MERGED","title":"conferir-publicacao: Authorization com variavel em JS nao e credencial (#494, 1.67.2)"},{"number":431,"state":"MERGED","title":"Versao 1.47.1: caminho acentuado nao acusa creep falso"},{"number":365,"state":"MERGED","title":"Seis travas semeadas do historico (1.32.0)"},{"number":328,"state":"MERGED","title":"Agente despachado é folha: não despacha agente (1.23.10)"},{"number":295,"state":"MERGED","title":"zerar-issues-5: conserta 20 Issues abertas em menos de 24h"},{"number":271,"state":"MERGED","title":"Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador"},{"number":426,"state":"MERGED","title":"Zerar as Issues #409-#414, #417, #419 (1.46.0)"},{"number":343,"state":"MERGED","title":"zerar-issues-9: #313 #322 #329 #312 #335 #323 (1.24.0)"},{"number":234,"state":"MERGED","title":"Absorver de um plugin de terceiro o que vira trava: mensagem de commit, --confirmo, exit 69, duplicação, carimbos"},{"number":310,"state":"MERGED","title":"zerar-issues-8: palavra reservada e bash \"$t\" (#309), gemeo Python (#303), eval (#302)"},{"number":348,"state":"MERGED","title":"zerar-issues-10: #346 #344 #342 #341 #340 #339 (1.27.0)"},{"number":156,"state":"MERGED","title":"Pre-publico: JID de grupo, a porta do agente, e fixtures que eram telefone de gente"},{"number":55,"state":"MERGED","title":"O /relatorio vira /feedback, e nasce o /issue para o erro do repo em que voce esta"},{"number":330,"state":"MERGED","title":"Beads: não acopla — 1 bloqueio em 336 ideias abertas"},{"number":297,"state":"MERGED","title":"zerar-issues-6: fronteira de repo na regra 6 e os restos da rodada 5"},{"number":236,"state":"MERGED","title":"Zerar Issues: a fatia revisada e limpa (12 de 18 Issues)"},{"number":114,"state":"MERGED","title":"Fecha #83 (P2): gate de destino — pergunta para onde o arquivo vai antes de deixar escrever"},{"number":113,"state":"MERGED","title":"Fecha #83 (P1 e P3): criterio de superficie humana no plano, e rede de fork na regra 15"},{"number":64,"state":"MERGED","title":"Desfaz a corrupcao de encoding do README (entrou na #55)"},{"number":224,"state":"MERGED","title":"Enxerta os sete mecanismos do ponytail, e fecha a fronteira que o gate de código de modelo não tinha"},{"number":217,"state":"MERGED","title":"Contrato de territorio: AdvPL vira o primeiro, e o repo publico perde os identificadores de trabalho"},{"number":267,"state":"MERGED","title":"portaria: deixa de admitir agente e passa a registrar (ver #264)"},{"number":151,"state":"MERGED","title":"O retorno do Write-LinhaEmLf vazava um True por linha no stdout"},{"number":150,"state":"MERGED","title":"Vigias: dois mortos ha 20 dias, um backup que nunca rodou, e seis vazamentos num arquivo publico"},{"number":166,"state":"MERGED","title":"Gate: placeholder de usuario nao e nome de ninguem"},{"number":167,"state":"MERGED","title":"Issue #165: o gate confere o COMMIT, nao so a ferramenta de escrita"},{"number":164,"state":"MERGED","title":"Scripts entregues derivam o home de quem roda, com trava"},{"number":183,"state":"MERGED","title":"Lote 3 — guardas medem o repositorio da operacao; backup fora da maquina; fechar Issue exige criterio rodado"},{"number":191,"state":"MERGED","title":"Plano da camada Obsidian: a skill montar-corpus, com dois cortes de escopo"},{"number":188,"state":"MERGED","title":"Lote 4: instrumento que mede o codigo, e nao a maquina de quem roda"},{"number":128,"state":"MERGED","title":"A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo"},{"number":186,"state":"MERGED","title":"R1 (frente 2) + R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao"}]
+
+
+$ gh pr list --state all --search "credencial" --limit 200 --json number,title,state
+[{"number":532,"state":"MERGED","title":"conferir-publicacao: Authorization com variavel em JS nao e credencial (#494, 1.67.2)"},{"number":504,"state":"MERGED","title":"Versao 1.63.0: uma pasta so de config e conta.cjs unificar"},{"number":426,"state":"MERGED","title":"Zerar as Issues #409-#414, #417, #419 (1.46.0)"},{"number":271,"state":"MERGED","title":"Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador"},{"number":297,"state":"MERGED","title":"zerar-issues-6: fronteira de repo na regra 6 e os restos da rodada 5"},{"number":15,"state":"MERGED","title":"A limpeza que nao limpava: squash com remoto vivo, --base <ref>, e um nome de branch que virava comando"},{"number":114,"state":"MERGED","title":"Fecha #83 (P2): gate de destino — pergunta para onde o arquivo vai antes de deixar escrever"},{"number":217,"state":"MERGED","title":"Contrato de territorio: AdvPL vira o primeiro, e o repo publico perde os identificadores de trabalho"},{"number":188,"state":"MERGED","title":"Lote 4: instrumento que mede o codigo, e nao a maquina de quem roda"},{"number":183,"state":"MERGED","title":"Lote 3 — guardas medem o repositorio da operacao; backup fora da maquina; fechar Issue exige criterio rodado"}]
+
+
+$ gh pr list --state all --search "redigido" --limit 200 --json number,title,state
+[{"number":330,"state":"MERGED","title":"Beads: não acopla — 1 bloqueio em 336 ideias abertas"},{"number":108,"state":"MERGED","title":"Fecha #101: catraca de comparação — ela RODA os dois lados em vez de ler o relato"},{"number":271,"state":"MERGED","title":"Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador"},{"number":9,"state":"MERGED","title":"As tres costuras da esteira: decisao, opcao morta e creep deixam de evaporar"}]
+
+
+$ gh pr list --state all --search "sondar" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "localhost" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "trocar(" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "teto-despachos" --limit 200 --json number,title,state
+[{"number":499,"state":"MERGED","title":"Gate flaky com nova tentativa e teto de despachos por fluxo (1.61.0)"},{"number":520,"state":"MERGED","title":"Modo autonomo: do plano aprovado ao PR mergeado (1.66.0)"},{"number":295,"state":"MERGED","title":"zerar-issues-5: conserta 20 Issues abertas em menos de 24h"},{"number":222,"state":"MERGED","title":"Agentes em Claude ou Codex, por escolha do usuário (1.8.0)"},{"number":255,"state":"MERGED","title":"A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241)"},{"number":267,"state":"MERGED","title":"portaria: deixa de admitir agente e passa a registrar (ver #264)"},{"number":141,"state":"MERGED","title":"Fluxo 9 — Portaria: admissao de subagente por manifesto"}]
+
+
+$ git ls-remote --heads origin | grep -F "conferir-publicacao"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "credencial"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "redigido"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "sondar"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "localhost"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "trocar("
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "teto-despachos"
+(vazio)
+
+$ git log --all --grep="conferir-publicacao" --oneline
+198330d6 conferir-publicacao: Authorization com variavel em JS nao e credencial (#494, 1.67.2) (#532)
+f5bebe8c Tarefa 12: fixture curada de 50 comandos legitimos
+62b6c518 zerar-issues-10: tarefa 4 — remove blocos de verificação em dobro e adiciona detecção de execução
+83358cec estado: beads revisado e verificado, fechar armado
+9299daa6 pesquisa: redige nome do usuario, empresa e turma nos ids citados
+245d3d49 conferir-publicacao: marcador isenta o arquivo inteiro, e isso fica dito
+8deefa9e testa-gate-publicacao-destino: vizinho sem marcador passa a ser outro
+2dc61384 conferir-publicacao: credencial com chave JSON entre aspas
+f01e01b3 merge: traz origin/main (#271, #267, #274) antes do revisar
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+e1b87680 integra tarefa 3: o bloco de memoria corta por observacao e avisa no topo
+f873a8df testa-memoria-session-start: fixture do teste 11.c usa placeholder $USUARIO
+67462599 Handover: id do run da CI com o prefixo actions/runs, como a D27 pede
+1e834f81 Tarefa 29 (D26): gate-verificador-staged barra o commit pelo blob staged
+8737a9ff Tarefa 26 (D22): converter as duas baterias que a guarda reprovou
+de2bec4d Versao 1.9.0 (MINOR): gate de mensagem de commit, --confirmo, exit 69, duplicacao e carimbos
+a53c5cd3 Pôr no README e no travas-mecanicas o que o lote absorver-plugin-terceiro trouxe
+48c2c805 Corrigir os tres avisos da revisao do lote absorver-plugin-terceiro
+aefbd541 Quebrar fixtures de dado sensivel na bateria de publicacao
+1199d207 Adicionar modo --commit ao conferir-publicacao (D10)
+454bce8f Trava contra termo que nao tem forma: lista privada fora da arvore
+6a303404 Segunda rodada de revisao: dois consertos tinham efeito colateral que o texto nao dizia
+c4515c38 Revisao do lote 4: sete afrouxamentos que o proprio lote introduziu
+2448df0d Tarefa 1, rodada 3: o caso media o instrumento errado, e a isencao media o valor inteiro
+5c6f9c15 Issue #165: o gate confere o COMMIT, nao so a ferramenta de escrita
+4a82027e Issue #165: o gate confere o COMMIT, nao so a ferramenta de escrita
+fa68491c Gate: placeholder de usuario nao e nome de ninguem
+5a282ae2 Gate: placeholder de usuario nao e nome de ninguem
+063bef0f Issue #149: a regra de JID alcanca grupo, e os fixtures deixam de ser telefone de gente
+aa138c70 Issue #149: a regra de JID alcanca grupo, e os fixtures deixam de ser telefone de gente
+1c30f072 Vigias: a porta que registra falha nao podia falhar em silencio
+a9e230eb Vigias: a porta que registra falha nao podia falhar em silencio
+8c10b296 Vigias: o ERROS.md commitado carregava um JID de WhatsApp, num repo publico
+8d0d4909 Vigias: o ERROS.md commitado carregava um JID de WhatsApp, num repo publico
+889ff9c9 Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+56ea03cc Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+c1973a6e Fecha #83 (P2): gate de destino — pergunta para onde o arquivo vai antes de deixar escrever (#114)
+3eae11c6 Fecha #83 (P2): gate de destino — pergunta para onde o arquivo vai antes de deixar escrever (#114)
+4fe6ab1d Fecha #83 (P1 e P3): criterio de superficie humana no plano, e rede de fork na regra 15 (#113)
+7afaf925 Fecha #83 (P1 e P3): criterio de superficie humana no plano, e rede de fork na regra 15 (#113)
+0c0e205c Desfaz a corrupcao de encoding do README (entrou na #55) (#64)
+07e6b550 Desfaz a corrupcao de encoding do README (entrou na #55) (#64)
+7b5e93a5 O /relatorio vira /feedback, e nasce o /issue para o erro do repo em que voce esta (#55)
+fe9e5591 O /relatorio vira /feedback, e nasce o /issue para o erro do repo em que voce esta (#55)
+
+$ git log --all --grep="credencial" --oneline
+198330d6 conferir-publicacao: Authorization com variavel em JS nao e credencial (#494, 1.67.2) (#532)
+de4220d4 Troca automatica de conta Claude pelo uso e /conta (1.62.0) (#501)
+dd2aa020 Zerar as Issues #409-#414, #417, #419 (1.46.0) (#426)
+0ee6aaae Marcador dados-de-exemplo em hooks/lib, so nas 5 primeiras linhas
+891db543 Plano zerar-issues-5: tarefa 22 e de/para literal da tarefa 8
+2dc61384 conferir-publicacao: credencial com chave JSON entre aspas
+0949c2ec gate-verificador-staged ignora em merge conteudo ja publicado
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+aefbd541 Quebrar fixtures de dado sensivel na bateria de publicacao
+454bce8f Trava contra termo que nao tem forma: lista privada fora da arvore
+c4515c38 Revisao do lote 4: sete afrouxamentos que o proprio lote introduziu
+3ef40aec Corrigir três defects do gate de publicação e melhorar mensagem de bloqueio
+726f4b3a Lote 3: variavel sem forma de credencial e e-mail de fixture curto (gate de publicacao)
+f073833d Verificar fechado: 5/5 mutacoes vermelhas contra o artefato final
+cdcbf5c5 Verificar fechado: 5/5 mutacoes vermelhas contra o artefato final
+8f576471 Verificar pegou o que 4 revisoes nao pegaram: CASO 21 sem RFM_TEST
+e753d4f9 Verificar pegou o que 4 revisoes nao pegaram: CASO 21 sem RFM_TEST
+474de7c7 Tarefa 2: corrigir teste tautológico de Gemini com injeção de fixture
+a8ceddd7 Tarefa 2: corrigir teste tautológico de Gemini com injeção de fixture
+53d9e9f4 Tarefa 2: Refatorar adaptadores para consumir lib cli-externo
+16b2c69d Tarefa 2: Refatorar adaptadores para consumir lib cli-externo
+b89656b2 T9: relatorio da validacao externa com rodada real de 5 membros
+a5523b2e T9: relatorio da validacao externa com rodada real de 5 membros
+6a9811d4 Tres defeitos achados apurando as observacoes abertas da regra 13 (#117)
+ba19dbed Tres defeitos achados apurando as observacoes abertas da regra 13 (#117)
+c1973a6e Fecha #83 (P2): gate de destino — pergunta para onde o arquivo vai antes de deixar escrever (#114)
+3eae11c6 Fecha #83 (P2): gate de destino — pergunta para onde o arquivo vai antes de deixar escrever (#114)
+4fe42088 A limpeza que nao limpava: squash com remoto vivo, --base <ref>, e um nome de branch que virava comando (#15)
+441b2a5a A limpeza que nao limpava: squash com remoto vivo, --base <ref>, e um nome de branch que virava comando (#15)
+1427619b O /relatorio vira gerador de Issue, e a anonimizacao vira exit code
+54d9fed9 O /relatorio vira gerador de Issue, e a anonimizacao vira exit code
+5e3d0685 medir-tokens le a chave do arquivo de credenciais fora dos repos
+8f3737ed medir-tokens le a chave do arquivo de credenciais fora dos repos
+090aa431 Medidor de token e a regra 11 nas duas linguas, pronta pra decisao PT vs EN
+2eb2015c Medidor de token e a regra 11 nas duas linguas, pronta pra decisao PT vs EN
+
+$ git log --all --grep="redigido" --oneline
+e5845f31 integra tarefa 3 (#322)
+cebefa2c gate-publicacao-destino: Edit só barra achados introduzidos por valor cru, não por trecho redigido (#322)
+7e8a60f2 plano: emenda tarefa 3 — comparar valor cru, nao trecho redigido
+37610200 Plano: emenda o escopo dos tres arquivos que o creep pegou
+fdbfa282 Plano: cinco tarefas para a regua selada, com o criterio escrito aqui
+891db543 Plano zerar-issues-5: tarefa 22 e de/para literal da tarefa 8
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+d485d55c Revalidacao contra os originais rebaixados: fluxo 1 restaurado, fluxos 2-8 instalados, plano do fluxo 9
+3727df50 Revalidacao contra os originais rebaixados: fluxo 1 restaurado, fluxos 2-8 instalados, plano do fluxo 9
+40e3f3bd Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+2cc8788c Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+0391bbbf As tres costuras da esteira: decisao, opcao morta e creep deixam de evaporar (#9)
+6dbe53cf As tres costuras da esteira: decisao, opcao morta e creep deixam de evaporar (#9)
+
+$ git log --all --grep="sondar" --oneline
+0ed69b90 memoria: reconciliar relê o estado antes de sondar cada observacao
+
+$ git log --all --grep="localhost" --oneline
+54d5e5b29 Os dois consertos que o dev de fora sente no dia um
+c2f583e5f Os dois consertos que o dev de fora sente no dia um
+
+$ git log --all --grep="trocar(" --oneline
+(vazio)
+
+$ git log --all --grep="teto-despachos" --oneline
+74c0b126 Gate flaky com nova tentativa e teto de despachos por fluxo (1.61.0) (#499)
+
+$ cat <dados>/ideias.jsonl
+{"id":"gate-auth-aspa-comum-literal-depois","titulo":"conferir-publicacao: literal depois da referencia em aspa comum passa"}
+
+
