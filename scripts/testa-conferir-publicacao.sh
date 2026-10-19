@@ -1090,6 +1090,14 @@ printf 'senha: <sk-%s>\n' "$HEX32" > "$SBP/523-d-sk.md"
 tem     "<sk- e 32 hex> continua credencial" "$(roda "$SBP/523-d-sk.md")" "credencial"
 saiu    "e RECUSA (exit 2)"                  "$(codigo "$SBP/523-d-sk.md")" "2"
 
+printf 'senha: <%s-%s-%s>\n' ab12cd34 ef56gh78 ij90 > "$SBP/523-d-picado.md"
+tem     "<segredo picado por hifen> continua credencial" "$(roda "$SBP/523-d-picado.md")" "credencial"
+saiu    "e RECUSA (exit 2)"                              "$(codigo "$SBP/523-d-picado.md")" "2"
+
+printf 'senha: <%s%s>\n' ABCDEFGHIJKL MNOPQRSTUV > "$SBP/523-d-letras.md"
+tem     "<22 letras sem separador> continua credencial" "$(roda "$SBP/523-d-letras.md")" "credencial"
+saiu    "e RECUSA (exit 2)"                             "$(codigo "$SBP/523-d-letras.md")" "2"
+
 printf 'senha: <API_KEY>\n' > "$SBP/523-d-nome.md"
 nao_tem "<API_KEY> (nome de placeholder) segue isento" "$(roda "$SBP/523-d-nome.md")" "credencial"
 saiu    "e passa limpo (exit 0)"                       "$(codigo "$SBP/523-d-nome.md")" "0"

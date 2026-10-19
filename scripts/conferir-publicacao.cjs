@@ -160,12 +160,16 @@ function referenciaRegua410(cauda, aspa, fstring) {
 
 // Issue #523: placeholder INTEIRO entre `<>` com cara de PALAVRA (`<redigido>`,
 // `<sua-senha>`, `<API_KEY>`): começa por letra, até 40 caracteres de palavra ou
-// hífen, e sem corrida de 16+ alfanuméricos com dígito. A forma solta `<[^<>]+>`
-// isentava segredo real só por embrulhá-lo em `<>` (revisão de segurança do
-// commit 9b7a057d); o prefixo conhecido (`sk-`, `ghp_`) continua pego também pela
-// regra `chave-conhecida`, que não depende desta isenção.
+// hífen, no máximo 4 dígitos no total e nenhum pedaço (entre `-`/`_`) com mais de
+// 16 caracteres. A forma solta `<[^<>]+>` isentava segredo real só por embrulhá-lo
+// em `<>` (revisão de segurança de 9b7a057d), e medir só corrida contínua deixava
+// passar o segredo picado por separador (revisão de 75d6520a). O prefixo conhecido
+// (`sk-`, `ghp_`) continua pego também pela `chave-conhecida`, que não depende daqui.
 function ehPlaceholderInteiro(valor) {
-  return /^<[A-Za-zÀ-ÿ][\wÀ-ÿ-]{0,39}>$/.test(valor) && !/(?=[A-Za-z0-9]*\d)[A-Za-z0-9]{16,}/.test(valor);
+  const m = /^<([A-Za-zÀ-ÿ][\wÀ-ÿ-]{0,39})>$/.exec(valor);
+  if (!m) return false;
+  const digitos = (m[1].match(/\d/g) || []).length;
+  return digitos <= 4 && m[1].split(/[-_]/).every((s) => s.length <= 16);
 }
 
 // Esquema do valor capturado: { aspa, fstring } ou null se nao for Bearer, Basic
