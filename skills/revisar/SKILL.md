@@ -217,6 +217,19 @@ trabalho para `executar`, com os achados numerados como a lista de
 pendências da próxima rodada. O redespacho é o laço de `references/laco.md`:
 crítica literal, teto de 3, parada em achado `[design]`.
 
+**Revisão aprovada com achado não bloqueante que cabe no PR** (o destino padrão da
+regra 6) volta ao `executar` por um verbo próprio, não pelo `leve` (#529):
+
+```
+node scripts/estado.cjs reabrir --slug <slug> --estagio executar --motivo "<os achados>"
+```
+
+Ele aceita `revisar`, `verificar` ou `fechar` em `ok`. Volta o `executar` a `parcial`,
+põe os três em `pendente` e grava o motivo em `reaberturas`. O conserto passa por uma
+janela nova de `revisar` (`exigir` de novo) antes do `verificar`. O `marcar executar ok`
+recusa quando o `de:` de alguma `mutacao:` do plano não casa mais no fonte. Se o conserto
+moveu o trecho, emende o plano antes de fechar o `executar`.
+
 **Condição de parada**: sem diff, não há review. Reportar isso — branch
 sem commit novo, `head` que não existe, worktree que não foi integrado —
 vale mais que produzir um veredito sobre o que a memória da conversa

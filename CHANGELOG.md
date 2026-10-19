@@ -10,6 +10,23 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.70.0 — 2026-10-19
+
+- **Código que muda depois do `verificar` passa de novo por revisão e verificar (#567).** O `verificar ok` grava
+  o HEAD em que rodou, e o `exigir --estagio fechar` recusa com exit 2 quando há commit de código depois dele,
+  nomeando os arquivos. O rastro do fluxo (estado, design, plano, portões e varredura do slug) não conta. Estado
+  gravado antes desta versão, sem esse HEAD, só avisa.
+- **Verbo novo `estado.cjs reabrir` (#529, #567).** `reabrir --slug <s> --estagio executar --motivo "<texto>"`
+  volta o `executar` a `parcial` e põe `revisar`, `verificar` e `fechar` em `pendente` quando um deles já estava
+  `ok`, guardando o motivo em `reaberturas`. É o caminho para achado não bloqueante de revisão aprovada que
+  cabe no PR e para CI vermelho depois do `verificar`. Antes, a saída era o `leve`, que pulava a revisão nova.
+  `marcar executar parcial` com estágio posterior aberto continua recusado (#238).
+- **`marcar executar ok` recusa `de:` que não casa no fonte (#529).** Quando o conserto move o trecho que uma
+  `mutacao:` do plano declara, a recusa sai no `executar`, nomeando tarefa e arquivo, e não mais só no
+  `verificar`, depois da revisão. `mutacao: n/a` e arquivo ausente seguem sem recusa.
+- A trava protege contra a sessão que esquece de refazer revisão e verificar. Editar o JSON de estado à mão fica
+  fora dela.
+
 ## 1.69.1 — 2026-10-19
 
 - **Gate de publicação aceita o `<redigido>` que ele mesmo manda usar (#523).** A regra `credencial` dizia "troque
