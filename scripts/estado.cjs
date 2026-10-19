@@ -1117,6 +1117,39 @@ function extrairNumerosTarefa(slug, estado) {
   return new Set(extrairTarefas(conteudo).map((t) => t.numero));
 }
 
+/**
+ * D4 (#529): tarefa cujo `de:` da `mutacao:` nao aparece no fonte que ela cita.
+ * A contagem e a mesma do `cobertura` do conferir-fluxo.cjs (mesmas limpezas de
+ * crase, mesmo resolvedor, mesmo contarOcorrencias), para os dois concordarem.
+ * Arquivo ausente nao entra: segue sem recusa, como hoje.
+ *
+ * @returns {Array<{tarefa: number, arquivo: string}>}
+ */
+function desQueNaoCasam(slug, estado) {
+  const arquivo_plano = docDoEstagio('planos', slug, estado);
+  if (!fs.existsSync(arquivo_plano)) return [];
+  const { extrairTarefas, lerMarkdown } = require('./conferir-fluxo.cjs');
+  const { contarOcorrencias } = require(path.join(__dirname, '..', 'hooks', 'lib', 'contar-ocorrencias.cjs'));
+  const conteudo = lerMarkdown(arquivo_plano);
+  if (conteudo === null) return [];
+
+  const naoCasam = [];
+  for (const tarefa of extrairTarefas(conteudo)) {
+    const mutacao = tarefa.mutacao;
+    if (!mutacao || !mutacao.campos.de || mutacao.campos.de.toLowerCase().includes('n/a')) continue;
+    const arquivo = mutacao.campos.arquivo ? mutacao.campos.arquivo.replace(/^`|`$/g, '') : null;
+    if (!arquivo) continue;
+    const de = mutacao.campos.de.replace(/^`|`$/g, '');
+    const raiz = mutacao.campos.raiz ? mutacao.campos.raiz.replace(/^`|`$/g, '') : '';
+    const caminho = path.resolve(RAIZ, raiz, arquivo);
+    if (!fs.existsSync(caminho) || !fs.statSync(caminho).isFile()) continue;
+    if (contarOcorrencias(fs.readFileSync(caminho, 'utf-8'), de) === 0) {
+      naoCasam.push({ tarefa: tarefa.numero, arquivo });
+    }
+  }
+  return naoCasam;
+}
+
 /** @returns {string|null} mensagem de recusa, ou null se passou/nao se aplica */
 function verificarCatracaMutacao(slug, bloco, estado, extra) {
   // Recusar para slug novo se a catraca nao foi armada
@@ -3129,6 +3162,16 @@ function main() {
         const recusa_catraca = verificarCatracaMutacao(slug, estado.executar, estado, extra);
         if (recusa_catraca) {
           console.error(recusa_catraca);
+          process.exit(2);
+        }
+        // D4 (#529): o codigo ja nasceu neste `executar ok`, entao `de:` que nao
+        // casa no fonte e divergencia do plano: recusa e nomeia, antes de gravar.
+        const naoCasam = desQueNaoCasam(slug, estado);
+        if (naoCasam.length) {
+          console.error('RECUSADO: o `de:` da mutacao nao casa no fonte (o fonte mudou desde o plano; emende o plano):');
+          for (const n of naoCasam) {
+            console.error(`tarefa ${n.tarefa}: de: nao casa em ${n.arquivo} — o fonte mudou desde o plano; emende o plano`);
+          }
           process.exit(2);
         }
       }

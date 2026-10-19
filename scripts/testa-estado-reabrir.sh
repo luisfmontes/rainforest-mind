@@ -97,6 +97,11 @@ ate_revisar() {
   node -e 'const fs=require("fs");const f=process.argv[1];const j=JSON.parse(fs.readFileSync(f,"utf8"));j.design={...j.design,status:"aprovado"};j.plano={...j.plano,status:"ok"};j.executar={...j.executar,status:"ok"};j.revisar={...j.revisar,status:"ok"};fs.writeFileSync(f,JSON.stringify(j,null,2));' "$ARQ"
 }
 
+# Chega ao 'plano' ok e 'design' aprovado (sem 'executar'), para o 'executar ok' do D4.
+ate_plano() {
+  node -e 'const fs=require("fs");const f=process.argv[1];const j=JSON.parse(fs.readFileSync(f,"utf8"));j.design={...j.design,status:"aprovado"};j.plano={...j.plano,status:"ok"};fs.writeFileSync(f,JSON.stringify(j,null,2));' "$ARQ"
+}
+
 # Soma de verificacao do JSON em disco: as recusas do D3 nao podem tocar nele.
 soma() { cksum < "$ARQ" | cut -d' ' -f1; }
 
@@ -191,6 +196,74 @@ echo "-- (e) marcar executar parcial com revisar ok segue recusado (#238) --"
 caixa_nova
 ate_revisar
 esperado "marcar executar parcial com revisar ok sai 2" 2 $E marcar --slug "$SLUG" --estagio executar --status parcial
+
+echo "== D4: de que nao casa =="
+
+# Plano com uma tarefa cujo bloco `mutacao:` e o argumento (linhas cruas, aspas simples).
+plano_com() {
+  {
+    printf '# Plano: teste de D4\n\n## Tarefas\n\n### 1. Primeira [tipo: implementar]\n'
+    printf 'arquivos: `src/a.js`\ndepende de: nenhuma\nprova: `true`\n'
+    printf '%s\n' "$1"
+  } > "$CX/docs/rainforest/planos/$SLUG.md"
+}
+JSON_OK='{"comando":"bash scripts/testa-estado-reabrir.sh","saida":"ok: 1   falhou: 0","tarefas_ok":1,"tarefas":1,"mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"caixa de teste"}]}'
+
+echo "-- (a) de: que nao casa no fonte: marcar executar ok sai 2, nomeia tarefa e arquivo --"
+caixa_nova
+mkdir -p "$CX/src" && printf 'const x = 1;\n' > "$CX/src/a.js"
+plano_com 'mutacao:
+  arquivo: `src/a.js`
+  de: trecho que nao existe
+  para: x
+  bateria: `bash scripts/testa-estado-reabrir.sh`'
+ate_plano
+esperado "exigir executar arma a catraca sai 0" 0 $E exigir --slug "$SLUG" --estagio executar
+antes="$(soma)"
+saida=$($E marcar --slug "$SLUG" --estagio executar --status ok --json "$JSON_OK" 2>&1); rc=$?
+igual "marcar executar ok com de: que nao casa sai 2" "2" "$rc"
+igual "saida nomeia tarefa 1 e src/a.js" "1" "$(echo "$saida" | grep -c 'tarefa 1: de: nao casa em src/a.js')"
+igual "de: que nao casa: JSON intacto" "$antes" "$(soma)"
+
+echo "-- (b) de: que aparece no fonte: marcar executar ok sai 0 --"
+caixa_nova
+mkdir -p "$CX/src" && printf 'const x = 1;\n' > "$CX/src/a.js"
+plano_com 'mutacao:
+  arquivo: `src/a.js`
+  de: const x = 1;
+  para: const x = 2;
+  bateria: `bash scripts/testa-estado-reabrir.sh`'
+ate_plano
+esperado "exigir executar arma a catraca sai 0" 0 $E exigir --slug "$SLUG" --estagio executar
+esperado "marcar executar ok com de: que casa sai 0" 0 $E marcar --slug "$SLUG" --estagio executar --status ok --json "$JSON_OK"
+igual "executar.status = ok" "ok" "$(J 'j.executar.status' < "$ARQ")"
+
+echo "-- (c) mutacao: n/a e arquivo: inexistente nao recusam --"
+caixa_nova
+plano_com 'mutacao: n/a
+motivo: tarefa so de docs'
+ate_plano
+esperado "exigir executar arma a catraca (n/a) sai 0" 0 $E exigir --slug "$SLUG" --estagio executar
+esperado "marcar executar ok com mutacao n/a sai 0" 0 $E marcar --slug "$SLUG" --estagio executar --status ok --json "$JSON_OK"
+caixa_nova
+plano_com 'mutacao:
+  arquivo: `src/nao-existe.js`
+  de: x
+  para: y
+  bateria: `bash scripts/testa-estado-reabrir.sh`'
+ate_plano
+esperado "exigir executar arma a catraca (inexistente) sai 0" 0 $E exigir --slug "$SLUG" --estagio executar
+esperado "marcar executar ok com arquivo inexistente sai 0" 0 $E marcar --slug "$SLUG" --estagio executar --status ok --json "$JSON_OK"
+caixa_nova
+mkdir -p "$CX/src/pasta" && printf 'x\n' > "$CX/src/pasta/f.js"
+plano_com 'mutacao:
+  arquivo: `src/pasta`
+  de: x
+  para: y
+  bateria: `bash scripts/testa-estado-reabrir.sh`'
+ate_plano
+esperado "exigir executar arma a catraca (diretorio) sai 0" 0 $E exigir --slug "$SLUG" --estagio executar
+esperado "marcar executar ok com arquivo: sendo diretorio sai 0" 0 $E marcar --slug "$SLUG" --estagio executar --status ok --json "$JSON_OK"
 
 echo
 echo "ok: $ok   falhou: $falhou"
