@@ -36,19 +36,27 @@
         "iteracao": 1,
         "sessao": "2000cb9c-f260-4626-b420-5d6adac18fc8",
         "ts": "2026-10-19T15:08:51.458Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "f35779a8",
+        "iteracao": 1,
+        "sessao": "2000cb9c-f260-4626-b420-5d6adac18fc8",
+        "ts": "2026-10-19T15:16:54.482Z"
       }
     ],
     "em_voo": [
       {
         "agente": "executor",
-        "tarefa": "2",
+        "tarefa": "3",
         "desde": "2026-10-19",
         "sessao": "2000cb9c-f260-4626-b420-5d6adac18fc8"
       }
     ],
     "em": "2026-10-19",
     "integradas": [
-      1
+      1,
+      2
     ]
   },
   "revisar": {
