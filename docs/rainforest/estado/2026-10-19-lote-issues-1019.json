@@ -106,17 +106,33 @@
       }
     ],
     "comando": "bash scripts/testa-conferir-publicacao.sh",
-    "saida": "== resultado: 296 ok, 0 falha(s) =="
+    "saida": "== resultado: 308 ok, 0 falha(s) ==",
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente",
+    "status": "reprovado",
     "snapshot": {
-      "head": "b04176c18567d399503ea978a51fb6bff58a9461",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/2026-10-19-lote-issues-1019.json"
-      ]
+      "head": "64308936ab5f059e464190903140ac116c9d76b6",
+      "caminhos_sujos": []
     },
-    "vereditos": []
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "aca61e6cc09d7f331",
+        "veredito": "reprovado",
+        "em": "2026-10-19",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-aca61e6cc09d7f331.jsonl"
+      }
+    ],
+    "achados": 4,
+    "lista": [
+      "1: cauda literal depois do placeholder passa (conferir-publicacao.cjs:385)",
+      "2: JSON compacto com } fechando segue recusado",
+      "3: CHANGELOG #553 e #531 afirmam mais do que provado",
+      "4: ensaio do setup lista arquivo que criar() pula (setup.cjs:974)"
+    ],
+    "em": "2026-10-19",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
