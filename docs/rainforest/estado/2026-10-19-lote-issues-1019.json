@@ -134,7 +134,11 @@
     "head": "92ea476e12cfc242557bc14b57ed9c73c5881068"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-conferir-publicacao.sh; bash hooks/testa-contexto-sessao.sh; bash scripts/testa-setup.sh; bash scripts/testa-setup-entrevista.sh; node hooks/testa-gate-teto-despachos.cjs; node scripts/conferir-versao.cjs; node scripts/conferir-fluxo.cjs mutacoes",
+    "saida": "310 ok 0 falha; ok 301 falhou 0; 84 ok 0 falha; 77 ok 0 falha; ok 78 falhou 0; versao 1.69.1 ok exit 0; tarefas 1-4 vermelho, 5-6 n/a, exit 0; timeout 2 com 100 mil a. exit 0",
+    "sensor_externo": "bash scripts/testa-conferir-publicacao.sh",
+    "em": "2026-10-19"
   },
   "fechar": {
     "status": "pendente"
