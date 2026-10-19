@@ -106,25 +106,31 @@
       }
     ],
     "comando": "bash scripts/testa-conferir-publicacao.sh",
-    "saida": "== resultado: 308 ok, 0 falha(s) ==",
-    "reaberturas": 1
+    "saida": "== resultado: 310 ok, 0 falha(s) ==",
+    "reaberturas": 2
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "915c55579f7c78a77a1e9216de921986cf3b9a81",
+      "head": "55bb2692d0aaa28e4e3fd77d13a0424bf0d07694",
       "caminhos_sujos": []
     },
-    "vereditos": [],
-    "achados": 4,
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a4202ab98a8fbb7bc",
+        "veredito": "reprovado",
+        "em": "2026-10-19",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-a4202ab98a8fbb7bc.jsonl"
+      }
+    ],
+    "achados": 2,
     "lista": [
-      "1: cauda literal depois do placeholder passa (conferir-publicacao.cjs:385)",
-      "2: JSON compacto com } fechando segue recusado",
-      "3: CHANGELOG #553 e #531 afirmam mais do que provado",
-      "4: ensaio do setup lista arquivo que criar() pula (setup.cjs:974)"
+      "1: aparo [...]+$ quadratico em corrida de fechos (conferir-publicacao.cjs:180)",
+      "2: CHANGELOG #531 omite variantes de noreply"
     ],
     "em": "2026-10-19",
-    "tentativas": 1
+    "tentativas": 2
   },
   "verificar": {
     "status": "pendente"
