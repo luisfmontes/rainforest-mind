@@ -1930,14 +1930,17 @@ s552rv2 'Set-Item -Path ("en"+"v:US"+"ERPROFILE") __WN__; Remove-Item ~/../../..
 s552rv2 'Get-Content $env:PATH; Set-Content ~/x.txt y' 0 bp
 s552rv2 'git add . && cat ~/x.txt' 0 b
 # Revisao do fluxo (rodada 1): cada braco com caso que so ele barra (a rede antiga deixa passar).
-s552rv2 'HOME=__WN__/..; cd -P; touch f' 2 b
-s552rv2 'HOME=__WN__/..; cd >/dev/null; touch f' 2 b
-s552rv2 "$(printf 'HOME=__WN__/..\ncd\ntouch f')" 2 b
-s552rv2 'n=HO; n+=ME; printf -v"$n" %s __WN__; touch ~/../../../f' 2 b
-s552rv2 'n=HO; n+=ME; mapfile -t $n <<< __WN__; touch ~/../../../f' 2 b
-s552rv2 "python3 -c \"import os; os.environ['HO'+'ME']='__WN__'; os.system('touch ~/../../../f')\"" 2 b
-s552rv2 'V=`printf HO%sE M`; touch ~/../../../f' 2 b
-s552rv2 'Get-ChildItem env:; Remove-Item ~/../../../f' 2 bp
+# Sem o caminho literal do worktree na linha: com ele, a rede antiga ja barra e o braco nao e medido.
+s552rv2 'HOME=$(dirname $PWD); cd -P; touch f' 2 b
+s552rv2 'HOME=$(dirname $PWD); cd >/dev/null; touch f' 2 b
+s552rv2 "python3 -c \"import os; os.environ['HO'+'ME']=os.path.dirname(os.getcwd()); os.system('touch ~/f')\"" 2 b
+s552rv2 'n=HO; n+=ME; printf -v"$n" %s ..; touch ~/f' 2 b
+s552rv2 'n=HO; n+=ME; mapfile -t $n <<< ..; touch ~/f' 2 b
+s552rv2 'V=`printf HO%sE M`; touch ~/f' 2 b
+s552rv2 'Get-ChildItem env:; Remove-Item ~/f' 2 bp
+# Revisao de seguranca de 236c810c: til colado a operador de controle ou redirecionamento.
+s552rv2 'HOME=$(dirname $PWD);echo x>~/f' 2 b
+s552rv2 'HOME=$(dirname $PWD);true&&~/x' 2 b
 # Til fora de posicao de expansao nao e a casa.
 s552rv2 'git diff HEAD~1 | grep -n "export"' 0 b
 s552rv2 'echo "$(git rev-parse HEAD~1)"' 0 b

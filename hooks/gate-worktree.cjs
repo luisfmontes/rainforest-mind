@@ -1693,7 +1693,7 @@ function casaRedefinida(comando, ehPowerShell) {
   // `cd` sem destino: so opcoes (`-P`, `--`), e depois fim, separador, redirecionamento,
   // comentario ou quebra de linha.
   const cdSemArgumento = /(^|[\s;&|(`{])(cd|chdir|pushd)([ \t]+-[-\w@]*)*[ \t]*($|[;&|)}#<>\r\n]|\d>)/;
-  const tilDeCasa = /(^|[\s'"=:,({])~/;
+  const tilDeCasa = /(^|[\s'"=:,({;&|<>])~/;
   if (!tilDeCasa.test(comando) && !usaCasa.test(comando) && !cdSemArgumento.test(comando)) return false;
   const semAspas = comando.replace(ehPowerShell ? /["'`]/g : /["'\\]/g, "");
   if (DEFINE_VARIAVEL.test(semAspas)) return true;

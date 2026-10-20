@@ -40,8 +40,8 @@ mutacao:
   de: `!cdSemArgumento.test(comando)) return false;`
   para: `true) return false;`
   bateria: `bash hooks/testa-gate-worktree.sh`
-  fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", casos "HOME=<W>/..; cd -P; touch f" e "cd >/dev/null"`
-pronto quando: com o cwd num worktree linkado, `HOME=<W>/..; cd -P; touch f`, `HOME=<W>/..; cd >/dev/null; touch f` e a mesma linha com `cd` sozinho entre quebras de linha saem 2 (a rede antiga deixava passar), e `git diff HEAD~1 | grep -n "export"` sai 0 — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
+  fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", casos "HOME=$(dirname $PWD); cd -P; touch f" e "cd >/dev/null"`
+pronto quando: com o cwd num worktree linkado, `HOME=$(dirname $PWD); cd -P; touch f` e `HOME=$(dirname $PWD); cd >/dev/null; touch f` saem 2 (a rede antiga deixava passar: sem caminho literal na linha), e `git diff HEAD~1 | grep -n "export"` sai 0 — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
 
 ### 4. Braço da execução indireta [tipo: implementar]
 atende: D1
@@ -53,5 +53,5 @@ mutacao:
   de: `if (EXECUCAO_INDIRETA.test(comando)) return true;`
   para: `if (false) return true;`
   bateria: `bash hooks/testa-gate-worktree.sh`
-  fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", caso python3 -c com os.environ['HO'+'ME']`
-pronto quando: com o cwd num worktree linkado, `python3 -c "import os; os.environ['HO'+'ME']='<W>'; os.system('touch ~/../../../f')"` sai 2 (sem menção nem definidor: só a execução indireta barra), e `echo "$(git rev-parse HEAD~1)"` sai 0 — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
+  fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", caso python3 -c com os.environ['HO'+'ME']=os.path.dirname(os.getcwd())`
+pronto quando: com o cwd num worktree linkado, `python3 -c "import os; os.environ['HO'+'ME']=os.path.dirname(os.getcwd()); os.system('touch ~/f')"` sai 2 (sem menção nem definidor: só a execução indireta barra), e `echo "$(git rev-parse HEAD~1)"` sai 0 — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
