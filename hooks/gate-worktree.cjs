@@ -1688,7 +1688,10 @@ function caminhosCitados(texto, ehPowerShell) {
 // contra o engano da sessao.
 const NOMES_DA_CASA = "HOME|USERPROFILE|HOMEDRIVE|HOMEPATH";
 const DEFINE_VARIAVEL = /(^|[\s;&|(`{])(export|declare|typeset|local|readonly|read|mapfile|readarray|unset|eval|env|Set-Variable|New-Variable|sv|nv|Set-Item|si|Invoke-Expression|iex)(?=$|[\s;&|)}])|(^|[\s;&|(`{])printf\s+-v|(^|[\s;&|(`{])(Set-Item|New-Item|Set-Content|Remove-Item|Clear-Item|Rename-Item|Copy-Item|si|ni|sc|ri)\s+(-Path\s+|-LiteralPath\s+)?['"]?env:|\[(System\.)?Environment\]::SetEnvironmentVariable/i;
-const EXECUCAO_INDIRETA = /\$\(|<\(|>\(|(^|[;&|(`{]\s*)((?:builtin|command)\s+)*(source|\.)(?=\s)|(^|[\s;&|(`{])(bash|sh|zsh|dash|ksh|pwsh|powershell|cmd|node|python3?|perl|ruby)(\.exe)?(\s+[^\s;&|]+)*?\s+(-\w*c|-e|--eval|-Command|-EncodedCommand|-enc|\/c)(?=$|\s)|\[scriptblock\]|\$ExecutionContext|(^|[\s;|(])&\s*[{($'"]/i;
+// `source`/`.` como palavra em qualquer posicao (depois de `if`, `time`, `>/dev/null`, `builtin`,
+// quebra de linha), procurado no texto sem aspas nem escapes (`\source`).
+const FONTE_DE_SCRIPT = /(^|[^\w.\/$-])(source|\.)(?=\s)/;
+const EXECUCAO_INDIRETA = /\$\(|<\(|>\(|(^|[;&|(`{]\s*)(source|\.)(?=\s)|(^|[\s;&|(`{])(bash|sh|zsh|dash|ksh|pwsh|powershell|cmd|node|python3?|perl|ruby)(\.exe)?(\s+[^\s;&|]+)*?\s+(-\w*c|-e|--eval|-Command|-EncodedCommand|-enc|\/c)(?=$|\s)|\[scriptblock\]|\$ExecutionContext|(^|[\s;|(])&\s*[{($'"]/i;
 // Bash: aspas simples, e duplas sem `$` nem crase, nao expandem o til nem rodam `cd`; o corpo de
 // heredoc com delimitador entre aspas e dado. Desbalanceado: nao mascara (falha fechado).
 function mascaraAspasBash(texto) {
@@ -1739,7 +1742,7 @@ function casaRedefinida(comando, ehPowerShell) {
   // Til fora de palavra: depois de letra, numero, `_` ou contrabarra ele nao expande (`HEAD~1`);
   // qualquer outro vizinho (`${X/y/~}`, `${U:-~}`) e posicao de expansao, sem lista de grafias.
   const tilDeCasa = /(^|[^\w\\])~/;
-  // Continuacao de linha some antes de ler o nome (`HO\<LF>ME=`).
+  // Continuacao de linha some antes de qualquer checagem (`HO\<LF>ME=`, `${HO\<LF>ME}`, `c\<LF>d`).
   const junto = comando.replace(ehPowerShell ? /`\r?\n/g : /\\\r?\n/g, "");
   const semAspas = junto.replace(ehPowerShell ? /["'`]/g : /["'\\]/g, "");
   const leitura = new RegExp(`(?:\\$\\{(?:env:)?(?:${NOMES_DA_CASA})\\}|\\$(?:env:)?(?:${NOMES_DA_CASA})\\b|%(?:${NOMES_DA_CASA})%)${ESCRITA_DEPOIS}`, ehPowerShell ? "gi" : "g");
@@ -1748,11 +1751,12 @@ function casaRedefinida(comando, ehPowerShell) {
   // Linha que mexe na casa nunca e inerte: a lista de comandos inertes vira lista de grafias
   // (`printf -vHOME`, `>/dev/null HOME=x git push`), o defeito que derrubou a #552.
   const mexeNaCasa = DEFINE_VARIAVEL.test(semAspas) || mencao.test(resto);
-  const mascarado = ehPowerShell ? comando : mascaraAspasBash(mascaraHeredocsBash(comando));
-  const vivo = ehPowerShell || mexeNaCasa || !soComandosInertes(mascarado) ? comando : mascarado;
+  const mascarado = ehPowerShell ? comando : mascaraAspasBash(mascaraHeredocsBash(junto));
+  const vivo = ehPowerShell || mexeNaCasa || !soComandosInertes(mascarado) ? junto : mascarado;
   if (!tilDeCasa.test(vivo) && !usaCasa.test(vivo) && !cdSemArgumento.test(vivo.replace(/["'\\]/g, ""))) return false;
   if (mexeNaCasa) return true;
-  if (EXECUCAO_INDIRETA.test(comando)) return true;
+  if (EXECUCAO_INDIRETA.test(junto)) return true;
+  if (FONTE_DE_SCRIPT.test(semAspas)) return true;
   if (!ehPowerShell && comando.includes("`")) return true;
   if (ehPowerShell && /env:/i.test(resto.replace(new RegExp(String.raw`\$\{?env:\w+\}?` + ESCRITA_DEPOIS, "gi"), " "))) return true;
   return false;

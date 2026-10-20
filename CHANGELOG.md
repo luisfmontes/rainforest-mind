@@ -32,8 +32,10 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   e contam. Linha que mexe na casa nunca tem as aspas mascaradas (`printf -vHOME`, `>/dev/null HOME=x git push`).
   `"cd"` entre aspas em posição de comando conta como `cd` sem destino, e o til fora de palavra (sem letra,
   número, `_` ou contrabarra antes: `${U:-~}`, `${X/y/~}`) conta como uso da casa. A continuação de linha se
-  desfaz antes de procurar o nome (`HO\<quebra>ME=`), e `builtin source`/`builtin .` contam como execução
-  indireta. `HOME=/tmp/h npm test` e `git diff HEAD~1 | grep export` passam.
+  desfaz antes de todas as checagens (`HO\<quebra>ME=`, `c\<quebra>d`), e `source`/`.` como palavra em
+  qualquer posição (`>/dev/null source`, `if source`, `builtin .`) conta como execução indireta; custo aceito:
+  `git add . && cat ~/x.txt` dentro de worktree cai. `HOME=/tmp/h npm test` e `git diff HEAD~1 | grep export`
+  passam.
 
 ## 1.70.0 — 2026-10-19
 

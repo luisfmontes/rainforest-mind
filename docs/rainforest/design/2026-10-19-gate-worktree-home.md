@@ -58,6 +58,12 @@ para onde o atalho aponta. Hoje `HOME=<W>; touch ~/../../../f` passa, porque o g
   desfaz antes de procurar o nome, e `builtin`/`command` antes de `source`/`.` conta como execução
   indireta. Custo aceito: linha que mexe na casa ou chama interpretador e tem til fora de palavra
   (`@~1`) cai.
+  *Emenda da rodada 5 do fluxo (teto liberado pela terceira vez, mesmo arquivo de impasse):* todas
+  as checagens rodam sobre o texto com a continuação de linha desfeita, não só a busca do nome; e,
+  com a casa em uso, `source`/`.` como palavra em qualquer posição (depois de `if`, `time`,
+  redirecionamento, `builtin`, quebra de linha; procurado sem aspas nem escapes) é execução
+  indireta. Custo aceito: linha que usa a casa e tem ` . ` solto (`git add . && cat ~/x.txt`) cai.
+  O critério de contorno se fecha: conta a forma que a sessão escreveria sem intenção de escapar.
 - **D2 — Caixa: exata no Bash, indiferente no PowerShell e no cmd** — porquê (Q1 do usuário):
   no Bash `home` minúsculo é outra variável e nome comum de pasta; no PowerShell `$env:home=`
   redefine `HOME`.
@@ -87,6 +93,9 @@ para onde o atalho aponta. Hoje `HOME=<W>; touch ~/../../../f` passa, porque o g
   tenta escapar dela, o mesmo modelo de ameaça das outras travas.
 - Referência indireta (`n=HOME; touch ${!n}/..`), lacuna que a rede já tinha para caminho por
   variável com chave, e `cd $VAZIA` (cd com variável vazia).
+- Construção feita para escapar (decisão do usuário no teto da rodada 5): nome partido por
+  continuação de linha dentro de `${...}`/`$NOME` além do que a junção da linha já cobre, nome
+  montado por concatenação e interpretador chamado por caminho completo (`/usr/bin/perl -e`).
 
 ## Varredura
 docs/rainforest/varredura/2026-10-19-gate-worktree-home.txt — só a #561 e a #552 (que a

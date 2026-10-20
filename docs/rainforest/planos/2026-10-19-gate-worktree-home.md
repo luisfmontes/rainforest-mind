@@ -50,7 +50,7 @@ depende de: 3
 prova-na-base: verde — emenda da revisão (rodada 1); os casos nascem na bateria nesta tarefa
 mutacao:
   arquivo: `hooks/gate-worktree.cjs`
-  de: `if (EXECUCAO_INDIRETA.test(comando)) return true;`
+  de: `if (EXECUCAO_INDIRETA.test(junto)) return true;`
   para: `if (false) return true;`
   bateria: `bash hooks/testa-gate-worktree.sh`
   fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", caso python3 -c com os.environ['HO'+'ME']=os.path.dirname(os.getcwd())`
@@ -63,8 +63,8 @@ depende de: 4
 prova-na-base: verde — emenda da revisão (rodada 2); os casos nascem na bateria nesta tarefa
 mutacao:
   arquivo: `hooks/gate-worktree.cjs`
-  de: `: mascaraAspasBash(mascaraHeredocsBash(comando));`
-  para: `: comando;`
+  de: `: mascaraAspasBash(mascaraHeredocsBash(junto));`
+  para: `: junto;`
   bateria: `bash hooks/testa-gate-worktree.sh`
   fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", casos "git commit -m \"reduz ~30 tokens\" && echo $(date)" e o commit por heredoc`
 pronto quando: com o cwd num worktree linkado, `git commit -m "reduz ~30 tokens" && echo $(date)`, `echo "~" ; echo $(date)` e `git commit -m "$(cat <<'EOF'` + linha `fix: reduz ~30 tokens e o agente faz cd` + `EOF` + `)"` saem 0 (a rodada 2 media 2), enquanto `HOME=$(dirname $PWD); bash -c 'touch ~/f'` (interpretador na linha: as aspas contam) e `$env:USERPROFILE += "\..\.."; Remove-Item $env:USERPROFILE\f` saem 2 — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
@@ -76,8 +76,8 @@ depende de: 5
 prova-na-base: verde — emenda da revisão de segurança de `371a6b6b`; os casos nascem na bateria nesta tarefa
 mutacao:
   arquivo: `hooks/gate-worktree.cjs`
-  de: `const vivo = ehPowerShell || mexeNaCasa || !soComandosInertes(mascarado) ? comando : mascarado;`
-  para: `const vivo = ehPowerShell || mexeNaCasa ? comando : mascarado;`
+  de: `const vivo = ehPowerShell || mexeNaCasa || !soComandosInertes(mascarado) ? junto : mascarado;`
+  para: `const vivo = ehPowerShell || mexeNaCasa ? junto : mascarado;`
   bateria: `bash hooks/testa-gate-worktree.sh`
   fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", caso python3 -c com os.environ['HO'+'ME'] e til entre aspas`
 pronto quando: com o cwd num worktree linkado, `HOME=$(dirname $PWD); awk 'BEGIN{system("touch ~/f")}'`, `HOME=$(dirname $PWD); find . -name x -exec sh -c 'touch ~/f' \;` e `HOME=$(dirname $PWD); git -c alias.x='!touch ~/f' x` saem 2 (a base deixava passar), e `gh issue create --title x --body "ver ~/x" && echo $(date)` sai 0 — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
@@ -108,7 +108,7 @@ mutacao:
   fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", casos ${X/y/~}, ${X//y/~}, ${Y#~} e ${Y%~}`
 pronto quando: com o cwd num worktree linkado, `HOME=$OLDPWD; X=y; touch ${X/y/~}/f`, `${X//y/~}`, `${Y#~}` e `${Y%~}` saem 2 (o código de `a59bfe17` deixava passar), e `git diff @~1 --stat` e `git log --oneline HEAD~3..HEAD` seguem 0 — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
 
-### 9. Continuação de linha se desfaz antes de procurar o nome [tipo: implementar]
+### 9. Continuação de linha se desfaz antes de qualquer checagem [tipo: implementar]
 atende: D1
 arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`
 depende de: 8
@@ -119,17 +119,17 @@ mutacao:
   para: `: /$^/g, "");`
   bateria: `bash hooks/testa-gate-worktree.sh`
   fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", caso printf HO contrabarra quebra ME=$OLDPWD`
-pronto quando: com o cwd num worktree linkado, `HO\<quebra de linha>ME=$OLDPWD; touch ~/f` sai 2 (o código de `a59bfe17` deixava passar) — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
+pronto quando: com o cwd num worktree linkado, `HO\<quebra de linha>ME=$OLDPWD; touch ~/f` sai 2 (o código de `a59bfe17` deixava passar), e `HOME=$OLDPWD; touch ${HO\<quebra>ME}/f`, `$HO\<quebra>ME/f` e `c\<quebra>d; touch f` saem 2 (o código de `65ebc32d` deixava passar) — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
 
-### 10. `builtin source` conta como execução indireta [tipo: implementar]
+### 10. `source`/`.` em qualquer palavra conta como execução indireta [tipo: implementar]
 atende: D1
 arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`
 depende de: 9
 prova-na-base: verde — emenda da rodada 4 do fluxo; os casos nascem na bateria nesta tarefa
 mutacao:
   arquivo: `hooks/gate-worktree.cjs`
-  de: `((?:builtin|command)\s+)*(source`
-  para: `(source`
+  de: `if (FONTE_DE_SCRIPT.test(semAspas)) return true;`
+  para: `if (false) return true;`
   bateria: `bash hooks/testa-gate-worktree.sh`
-  fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", casos builtin source e builtin .`
-pronto quando: com o cwd num worktree linkado, `builtin source ./define-casa.sh; touch ~/f` e `builtin . ./define-casa.sh; touch ~/f` saem 2 (o código de `a59bfe17` deixava passar) — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
+  fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", casos builtin source, >/dev/null source, if source e source em linha propria`
+pronto quando: com o cwd num worktree linkado, `builtin source ./define-casa.sh; touch ~/f`, `builtin . ./define-casa.sh; touch ~/f`, `>/dev/null source ./x.sh; touch ~/f`, `2>/dev/null . ./x.sh; touch ~/f`, `if source ./x.sh; then touch ~/f; fi`, `time source ./x.sh; touch ~/f` e `source` em linha própria antes de `touch ~/f` saem 2, `git add . && git status` e `ls ~/.config` seguem 0 (custo aceito: `git add . && cat ~/x.txt` cai) (o código de `a59bfe17` deixava passar) — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.

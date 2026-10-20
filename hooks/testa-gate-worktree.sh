@@ -1928,7 +1928,8 @@ s552rv2 'source ./define-casa.sh; touch ~/../../../f' 2 b
 s552rv2 '& { Remove-Item ~/../../../f }' 2 bp
 s552rv2 'Set-Item -Path ("en"+"v:US"+"ERPROFILE") __WN__; Remove-Item ~/../../../f' 2 bp
 s552rv2 'Get-Content $env:PATH; Set-Content ~/x.txt y' 0 bp
-s552rv2 'git add . && cat ~/x.txt' 0 b
+# Custo aceito na rodada 6: ' . ' solto com a casa em uso conta como source.
+s552rv2 'git add . && cat ~/x.txt' 2 b
 # Revisao do fluxo (rodada 1): cada braco com caso que so ele barra (a rede antiga deixa passar).
 # Sem o caminho literal do worktree na linha: com ele, a rede antiga ja barra e o braco nao e medido.
 s552rv2 'HOME=$(dirname $PWD); cd -P; touch f' 2 b
@@ -1978,6 +1979,17 @@ s552rv2 'builtin source ./define-casa.sh; touch ~/f' 2 b
 s552rv2 'builtin . ./define-casa.sh; touch ~/f' 2 b
 s552rv2 'git diff @~1 --stat' 0 b
 s552rv2 'git log --oneline HEAD~3..HEAD' 0 b
+# Rodada 6: checagens sobre o texto sem continuacao de linha; source/. em qualquer palavra.
+s552rv2 "$(printf 'HOME=$OLDPWD; touch ${HO\\\nME}/f')" 2 b
+s552rv2 "$(printf 'HOME=$OLDPWD; touch $HO\\\nME/f')" 2 b
+s552rv2 "$(printf 'HOME=$OLDPWD; c\\\nd; touch f')" 2 b
+s552rv2 '>/dev/null source ./x.sh; touch ~/f' 2 b
+s552rv2 '2>/dev/null . ./x.sh; touch ~/f' 2 b
+s552rv2 'if source ./x.sh; then touch ~/f; fi' 2 b
+s552rv2 'time source ./x.sh; touch ~/f' 2 b
+s552rv2 "$(printf 'echo a\nsource ./x.sh\ntouch ~/f')" 2 b
+s552rv2 'git add . && git status' 0 b
+s552rv2 'ls ~/.config' 0 b
 s552rv2 'echo "~" ; echo $(date)' 0 b
 s552rv2 "$(printf 'git commit -m "$(cat <<%sEOF%s\nfix: reduz ~30 tokens e o agente faz cd\nEOF\n)"' "'" "'")" 0 b
 s552rv2 'gh issue create --title x --body "ver ~/x" && echo $(date)' 0 b

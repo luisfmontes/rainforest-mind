@@ -19,7 +19,7 @@
     "em": "2026-10-19"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-20",
     "tarefas_ok": 10,
     "tarefas": 10,
@@ -78,26 +78,30 @@
       }
     ],
     "em": "2026-10-20",
-    "reaberturas": 4
+    "reaberturas": 5,
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-20"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "5c3d6b380b90f965b248ddaef3d905a029738558",
+      "head": "65ebc32d116266886b6ddf719bedd3ab806ea6d1",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ad0f56c1d347740eb",
+        "agente_id": "a29aaffe309f4a249",
         "veredito": "reprovado",
         "em": "2026-10-20",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-ad0f56c1d347740eb.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-a29aaffe309f4a249.jsonl"
       }
     ],
-    "achados": 3,
+    "achados": 4,
     "em": "2026-10-20",
-    "tentativas": 4,
+    "tentativas": 5,
     "em_voo": [],
     "rodadas_extra": [
       {
@@ -106,6 +110,10 @@
       },
       {
         "texto": "5a rodada: til por classe (nao depois de \\w nem \\), continuacao de linha desfeita, builtin source; usuario 2026-10-20 recomendado",
+        "em": "2026-10-20"
+      },
+      {
+        "texto": "6a rodada: checagens sobre texto sem continuacao, source/. em qualquer palavra, criterio do revisor fechado em forma nao intencional; usuario 2026-10-20 recomendado",
         "em": "2026-10-20"
       }
     ],
