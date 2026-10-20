@@ -1968,6 +1968,16 @@ s552rv2 'HOME=$OLDPWD; touch ${U-~}/f' 2 b
 s552rv2 'HOME=$OLDPWD; touch ${U:?~}/f' 2 b
 s552rv2 'HOME=$OLDPWD; `~/x.sh`' 2 b
 s552rv2 'git commit -m "ajusta HOME ~30"' 2 b
+# Rodada 5: til por classe (fora de palavra), continuacao de linha e builtin source.
+s552rv2 'HOME=$OLDPWD; X=y; touch ${X/y/~}/f' 2 b
+s552rv2 'HOME=$OLDPWD; X=y; touch ${X//y/~}/f' 2 b
+s552rv2 'HOME=$OLDPWD; Y=a; touch ${Y#~}/f' 2 b
+s552rv2 'HOME=$OLDPWD; Y=a; touch ${Y%~}/f' 2 b
+s552rv2 "$(printf 'HO\\\nME=$OLDPWD; touch ~/f')" 2 b
+s552rv2 'builtin source ./define-casa.sh; touch ~/f' 2 b
+s552rv2 'builtin . ./define-casa.sh; touch ~/f' 2 b
+s552rv2 'git diff @~1 --stat' 0 b
+s552rv2 'git log --oneline HEAD~3..HEAD' 0 b
 s552rv2 'echo "~" ; echo $(date)' 0 b
 s552rv2 "$(printf 'git commit -m "$(cat <<%sEOF%s\nfix: reduz ~30 tokens e o agente faz cd\nEOF\n)"' "'" "'")" 0 b
 s552rv2 'gh issue create --title x --body "ver ~/x" && echo $(date)' 0 b

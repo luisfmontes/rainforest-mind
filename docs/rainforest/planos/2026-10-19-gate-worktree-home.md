@@ -25,7 +25,7 @@ pronto quando: com o cwd num worktree linkado da caixa de areia, as linhas `HOME
 ### 2. CHANGELOG, versão e comentário [tipo: docs]
 atende: D5
 arquivos: `CHANGELOG.md`, `README.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `hooks/gate-worktree.cjs`, `docs/rainforest/estado/2026-10-19-estado-reabrir.json`
-depende de: 7
+depende de: 10
 mutacao: n/a
   motivo: texto e número de versão, sem comportamento a inverter
 pronto quando: com o repositório da branch, `node scripts/conferir-versao.cjs` sai 0 com 1.70.1 maior que a da `origin/main`, o CHANGELOG abre com 1.70.1 citando #561 e a regra ampla de D1 (menção fora de leitura + uso da casa), `grep -n "fora de escopo (variavel" hooks/gate-worktree.cjs` não acha mais o comentário antigo, e `bash scripts/testa-versao.sh` sai `falhou: 0` com o badge do README em 1.70.1 — provado pelos quatro comandos. (O estado do fluxo estado-reabrir entra aqui por carona: é o `fechar ok` do #570, levado à `main` por esta branch.)
@@ -94,3 +94,42 @@ mutacao:
   bateria: `bash hooks/testa-gate-worktree.sh`
   fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", casos printf -vHOME e >/dev/null HOME=... git push --receive-pack`
 pronto quando: com o cwd num worktree linkado, `printf -vHOME %s $OLDPWD; git push --receive-pack='touch ~/f' origin`, `>/dev/null HOME=$OLDPWD git push --receive-pack='touch ~/f' origin`, `HOME=$OLDPWD; touch ${U:-~}/f` e ``HOME=$OLDPWD; `~/x.sh` `` saem 2 (o código de `90b97918` deixava passar), e o commit por heredoc com `~30 tokens` segue 0 — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
+
+### 8. Til por classe: fora de palavra é uso da casa [tipo: implementar]
+atende: D1
+arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`
+depende de: 7
+prova-na-base: verde — emenda da rodada 4 do fluxo (impasse liberado); os casos nascem na bateria nesta tarefa
+mutacao:
+  arquivo: `hooks/gate-worktree.cjs`
+  de: `const tilDeCasa = /(^|[^\w\\])~/;`
+  para: `const tilDeCasa = /(^|[\s'"=:,({;&|<>)\-+?])~/;`
+  bateria: `bash hooks/testa-gate-worktree.sh`
+  fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", casos ${X/y/~}, ${X//y/~}, ${Y#~} e ${Y%~}`
+pronto quando: com o cwd num worktree linkado, `HOME=$OLDPWD; X=y; touch ${X/y/~}/f`, `${X//y/~}`, `${Y#~}` e `${Y%~}` saem 2 (o código de `a59bfe17` deixava passar), e `git diff @~1 --stat` e `git log --oneline HEAD~3..HEAD` seguem 0 — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
+
+### 9. Continuação de linha se desfaz antes de procurar o nome [tipo: implementar]
+atende: D1
+arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`
+depende de: 8
+prova-na-base: verde — emenda da rodada 4 do fluxo; o caso nasce na bateria nesta tarefa
+mutacao:
+  arquivo: `hooks/gate-worktree.cjs`
+  de: `: /\\\r?\n/g, "");`
+  para: `: /$^/g, "");`
+  bateria: `bash hooks/testa-gate-worktree.sh`
+  fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", caso printf HO contrabarra quebra ME=$OLDPWD`
+pronto quando: com o cwd num worktree linkado, `HO\<quebra de linha>ME=$OLDPWD; touch ~/f` sai 2 (o código de `a59bfe17` deixava passar) — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
+
+### 10. `builtin source` conta como execução indireta [tipo: implementar]
+atende: D1
+arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`
+depende de: 9
+prova-na-base: verde — emenda da rodada 4 do fluxo; os casos nascem na bateria nesta tarefa
+mutacao:
+  arquivo: `hooks/gate-worktree.cjs`
+  de: `((?:builtin|command)\s+)*(source`
+  para: `(source`
+  bateria: `bash hooks/testa-gate-worktree.sh`
+  fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", casos builtin source e builtin .`
+pronto quando: com o cwd num worktree linkado, `builtin source ./define-casa.sh; touch ~/f` e `builtin . ./define-casa.sh; touch ~/f` saem 2 (o código de `a59bfe17` deixava passar) — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.

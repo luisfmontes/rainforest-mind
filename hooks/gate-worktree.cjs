@@ -1688,7 +1688,7 @@ function caminhosCitados(texto, ehPowerShell) {
 // contra o engano da sessao.
 const NOMES_DA_CASA = "HOME|USERPROFILE|HOMEDRIVE|HOMEPATH";
 const DEFINE_VARIAVEL = /(^|[\s;&|(`{])(export|declare|typeset|local|readonly|read|mapfile|readarray|unset|eval|env|Set-Variable|New-Variable|sv|nv|Set-Item|si|Invoke-Expression|iex)(?=$|[\s;&|)}])|(^|[\s;&|(`{])printf\s+-v|(^|[\s;&|(`{])(Set-Item|New-Item|Set-Content|Remove-Item|Clear-Item|Rename-Item|Copy-Item|si|ni|sc|ri)\s+(-Path\s+|-LiteralPath\s+)?['"]?env:|\[(System\.)?Environment\]::SetEnvironmentVariable/i;
-const EXECUCAO_INDIRETA = /\$\(|<\(|>\(|(^|[;&|(`{]\s*)(source|\.)(?=\s)|(^|[\s;&|(`{])(bash|sh|zsh|dash|ksh|pwsh|powershell|cmd|node|python3?|perl|ruby)(\.exe)?(\s+[^\s;&|]+)*?\s+(-\w*c|-e|--eval|-Command|-EncodedCommand|-enc|\/c)(?=$|\s)|\[scriptblock\]|\$ExecutionContext|(^|[\s;|(])&\s*[{($'"]/i;
+const EXECUCAO_INDIRETA = /\$\(|<\(|>\(|(^|[;&|(`{]\s*)((?:builtin|command)\s+)*(source|\.)(?=\s)|(^|[\s;&|(`{])(bash|sh|zsh|dash|ksh|pwsh|powershell|cmd|node|python3?|perl|ruby)(\.exe)?(\s+[^\s;&|]+)*?\s+(-\w*c|-e|--eval|-Command|-EncodedCommand|-enc|\/c)(?=$|\s)|\[scriptblock\]|\$ExecutionContext|(^|[\s;|(])&\s*[{($'"]/i;
 // Bash: aspas simples, e duplas sem `$` nem crase, nao expandem o til nem rodam `cd`; o corpo de
 // heredoc com delimitador entre aspas e dado. Desbalanceado: nao mascara (falha fechado).
 function mascaraAspasBash(texto) {
@@ -1736,8 +1736,12 @@ function casaRedefinida(comando, ehPowerShell) {
   // `cd` sem destino: so opcoes (`-P`, `--`), e depois fim, separador, redirecionamento,
   // comentario ou quebra de linha.
   const cdSemArgumento = /(^|[\s;&|(`{])(cd|chdir|pushd)([ \t]+-[-\w@]*)*[ \t]*($|[;&|)}#<>\r\n]|\d>)/;
-  const tilDeCasa = /(^|[\s'"=:,({;&|<>)\-+?`])~/;
-  const semAspas = comando.replace(ehPowerShell ? /["'`]/g : /["'\\]/g, "");
+  // Til fora de palavra: depois de letra, numero, `_` ou contrabarra ele nao expande (`HEAD~1`);
+  // qualquer outro vizinho (`${X/y/~}`, `${U:-~}`) e posicao de expansao, sem lista de grafias.
+  const tilDeCasa = /(^|[^\w\\])~/;
+  // Continuacao de linha some antes de ler o nome (`HO\<LF>ME=`).
+  const junto = comando.replace(ehPowerShell ? /`\r?\n/g : /\\\r?\n/g, "");
+  const semAspas = junto.replace(ehPowerShell ? /["'`]/g : /["'\\]/g, "");
   const leitura = new RegExp(`(?:\\$\\{(?:env:)?(?:${NOMES_DA_CASA})\\}|\\$(?:env:)?(?:${NOMES_DA_CASA})\\b|%(?:${NOMES_DA_CASA})%)${ESCRITA_DEPOIS}`, ehPowerShell ? "gi" : "g");
   const resto = semAspas.replace(leitura, " ");
   const mencao = new RegExp(`\\b(?:${NOMES_DA_CASA})\\b`, ehPowerShell ? "i" : "");

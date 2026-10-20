@@ -30,8 +30,10 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   passa), desde que a linha não mexa na casa e todo comando dela não avalie argumento (`echo`, `cat`, `grep`,
   `git commit`, `gh issue`...); com qualquer outro (`awk`, `find -exec`, `bash -c`), as aspas podem virar comando
   e contam. Linha que mexe na casa nunca tem as aspas mascaradas (`printf -vHOME`, `>/dev/null HOME=x git push`).
-  `"cd"` entre aspas em posição de comando conta como `cd` sem destino, e o til depois de `-`, `+`, `?`
-  (`${U:-~}`) e de crase conta como uso da casa. `HOME=/tmp/h npm test` e `git diff HEAD~1 | grep export` passam.
+  `"cd"` entre aspas em posição de comando conta como `cd` sem destino, e o til fora de palavra (sem letra,
+  número, `_` ou contrabarra antes: `${U:-~}`, `${X/y/~}`) conta como uso da casa. A continuação de linha se
+  desfaz antes de procurar o nome (`HO\<quebra>ME=`), e `builtin source`/`builtin .` contam como execução
+  indireta. `HOME=/tmp/h npm test` e `git diff HEAD~1 | grep export` passam.
 
 ## 1.70.0 — 2026-10-19
 

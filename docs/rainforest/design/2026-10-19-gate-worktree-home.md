@@ -51,6 +51,13 @@ para onde o atalho aponta. Hoje `HOME=<W>; touch ~/../../../f` passa, porque o g
   vale para linha que não mexe na casa, onde serve para não barrar o commit por heredoc. O til
   depois de `-`, `+`, `?` (`${U:-~}`) e de crase também está em posição de expansão. Custo
   aceito: `git commit -m "ajusta HOME ~30"` dentro de worktree cai.
+  *Emenda da rodada 4 do fluxo (teto liberado de novo pelo usuário, mesmo arquivo de impasse):* a
+  lista de caracteres antes do til ainda era lista de grafias (`${X/y/~}`, `${Y#~}` passavam). Regra
+  de classe: o til conta como uso da casa sempre que não vier depois de caractere de palavra (`\w`)
+  nem de contrabarra. A continuação de linha (`\` + quebra no Bash, crase + quebra no PowerShell) se
+  desfaz antes de procurar o nome, e `builtin`/`command` antes de `source`/`.` conta como execução
+  indireta. Custo aceito: linha que mexe na casa ou chama interpretador e tem til fora de palavra
+  (`@~1`) cai.
 - **D2 — Caixa: exata no Bash, indiferente no PowerShell e no cmd** — porquê (Q1 do usuário):
   no Bash `home` minúsculo é outra variável e nome comum de pasta; no PowerShell `$env:home=`
   redefine `HOME`.
