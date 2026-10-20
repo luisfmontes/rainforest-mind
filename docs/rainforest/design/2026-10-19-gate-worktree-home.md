@@ -36,6 +36,11 @@ para onde o atalho aponta. Hoje `HOME=<W>; touch ~/../../../f` passa, porque o g
   `source`...), as aspas podem virar comando e nada se mascara: `grep "~" .; node -e "1"` cai
   (aceito). No PowerShell, atribuição composta (`+=`, `??=`), em lista (`$env:X, $y =`) e por
   `foreach ($env:X in ...)` contam como escrita, e `)` entra antes do til (`case`).
+  *Emenda da revisão de segurança de `371a6b6b`:* a lista de interpretadores vira lista de
+  comandos inertes: só se mascaram as aspas quando todo comando da linha não avalia argumento
+  (`echo`, `printf` sem `-v`, `cat`, `grep`, `ls`, `touch`, `git` com subcomando de leitura ou
+  commit, `gh pr`/`gh issue`...). `awk`, `find -exec`, `git -c alias` e qualquer outro deixam o
+  texto cru, e a regra falha fechado.
 - **D2 — Caixa: exata no Bash, indiferente no PowerShell e no cmd** — porquê (Q1 do usuário):
   no Bash `home` minúsculo é outra variável e nome comum de pasta; no PowerShell `$env:home=`
   redefine `HOME`.

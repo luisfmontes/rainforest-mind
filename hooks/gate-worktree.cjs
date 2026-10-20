@@ -1717,8 +1717,18 @@ function mascaraHeredocsBash(texto) {
   }
   return saida;
 }
-// Interpretador na linha: o texto entre aspas pode virar comando, e nada se mascara.
-const INTERPRETA = /(^|[\s;&|(`{])(bash|sh|zsh|dash|ksh|pwsh|powershell|cmd|node|python3?|perl|ruby|eval|source|xargs|sudo)(\.exe)?(?=$|[\s;&|)}<])|(^|[;&|(`{]\s*)\.(?=\s)/i;
+// So comandos que nao avaliam os argumentos deixam mascarar as aspas: qualquer outro (`awk`,
+// `find -exec`, `bash -c`, alias de git com `!`) pode transformar o texto entre aspas em comando.
+const COMANDOS_INERTES = new Set(["echo", "printf", "cat", "grep", "rg", "ls", "head", "tail", "wc", "sort", "uniq", "true", "false", "date", "pwd", "touch", "mkdir", "cp", "mv", "rm"]);
+const SUBCOMANDOS_INERTES = { git: /^(commit|log|diff|show|status|add|push|fetch|branch|rev-parse|merge-base|tag)$/, gh: /^(pr|issue)$/ };
+function soComandosInertes(texto) {
+  const palavras = [...texto.matchAll(/(?:^|[;&|(\n]|\$\()\s*((?:[A-Za-z_]\w*=\S*\s+)*)([^\s;&|()<>]+)(?:\s+([^\s;&|()<>]+))?/g)];
+  return palavras.every((m) => {
+    const cmd = m[2], sub = m[3] || "";
+    if (SUBCOMANDOS_INERTES[cmd]) return SUBCOMANDOS_INERTES[cmd].test(sub);
+    return COMANDOS_INERTES.has(cmd) && !(cmd === "printf" && sub === "-v");
+  });
+}
 // Escrita na variavel: `=`, atribuicao composta (`+=`, `??=`), lista (`$env:X, $y =`) e `foreach ($env:X in`.
 const ESCRITA_DEPOIS = String.raw`(?!\s*(?:[-+*/%]|\?\?)?=(?!=)|\s*,|\s+in\b)`;
 function casaRedefinida(comando, ehPowerShell) {
@@ -1727,7 +1737,8 @@ function casaRedefinida(comando, ehPowerShell) {
   // comentario ou quebra de linha.
   const cdSemArgumento = /(^|[\s;&|(`{])(cd|chdir|pushd)([ \t]+-[-\w@]*)*[ \t]*($|[;&|)}#<>\r\n]|\d>)/;
   const tilDeCasa = /(^|[\s'"=:,({;&|<>)])~/;
-  const vivo = ehPowerShell || INTERPRETA.test(comando) ? comando : mascaraAspasBash(mascaraHeredocsBash(comando));
+  const mascarado = ehPowerShell ? comando : mascaraAspasBash(mascaraHeredocsBash(comando));
+  const vivo = ehPowerShell || !soComandosInertes(mascarado) ? comando : mascarado;
   if (!tilDeCasa.test(vivo) && !usaCasa.test(vivo) && !cdSemArgumento.test(vivo)) return false;
   const semAspas = comando.replace(ehPowerShell ? /["'`]/g : /["'\\]/g, "");
   if (DEFINE_VARIAVEL.test(semAspas)) return true;

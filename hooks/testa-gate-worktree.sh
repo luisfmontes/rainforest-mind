@@ -1955,6 +1955,11 @@ s552rv2 "HOME=\$(dirname \$PWD); bash -c 'touch ~/f'" 2 b
 s552rv2 'git commit -m "reduz ~30 tokens" && echo $(date)' 0 b
 s552rv2 'echo "~" ; echo $(date)' 0 b
 s552rv2 "$(printf 'git commit -m "$(cat <<%sEOF%s\nfix: reduz ~30 tokens e o agente faz cd\nEOF\n)"' "'" "'")" 0 b
+s552rv2 'gh issue create --title x --body "ver ~/x" && echo $(date)' 0 b
+# Revisao de seguranca de 371a6b6b: so comando que nao avalia argumento deixa mascarar as aspas.
+s552rv2 "HOME=\$(dirname \$PWD); awk 'BEGIN{system(\"touch ~/f\")}'" 2 b
+s552rv2 "HOME=\$(dirname \$PWD); find . -name x -exec sh -c 'touch ~/f' \\;" 2 b
+s552rv2 "HOME=\$(dirname \$PWD); git -c alias.x='!touch ~/f' x" 2 b
 # Til fora de posicao de expansao nao e a casa.
 s552rv2 'git diff HEAD~1 | grep -n "export"' 0 b
 s552rv2 'echo "$(git rev-parse HEAD~1)"' 0 b

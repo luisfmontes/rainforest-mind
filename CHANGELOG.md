@@ -27,7 +27,8 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   `export FOO=1; touch ~/x` dentro de um worktree também cai. No PowerShell, `+=`, atribuição em lista e
   `foreach ($env:X in ...)` contam como escrita. Sem uso da casa na linha, nada muda: no Bash, til e `cd` entre
   aspas ou em corpo de heredoc com delimitador entre aspas não contam (o commit por heredoc com `~30 tokens`
-  passa), salvo com interpretador na linha (`bash`, `node`, `eval`), em que as aspas podem virar comando.
+  passa), desde que todo comando da linha não avalie argumento (`echo`, `cat`, `grep`, `git commit`, `gh issue`...);
+  com qualquer outro (`awk`, `find -exec`, `bash -c`), as aspas podem virar comando e contam.
   `HOME=/tmp/h npm test` e `git diff HEAD~1 | grep export` passam.
 
 ## 1.70.0 — 2026-10-19
