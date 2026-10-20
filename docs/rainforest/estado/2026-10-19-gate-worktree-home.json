@@ -19,12 +19,12 @@
     "em": "2026-10-19"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-20",
     "tarefas_ok": 10,
     "tarefas": 10,
     "comando": "bash hooks/testa-gate-worktree.sh; conferir-mutacao tarefas 1, 3-10",
-    "saida": "748 ok, 0 falha(s); T1 T3 T4 T5 T6 T7 T8 T9 T10 exit 0 (bateria vermelha com o mutante)",
+    "saida": "758 ok, 0 falha(s); T1 T3 T4 T5 T6 T7 T8 T9 T10 exit 0 (bateria vermelha com o mutante)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -69,20 +69,16 @@
       {
         "tarefa": 9,
         "resultado": "vermelho",
-        "fixture": "testa-gate-worktree.sh, secao \"== #561: casa redefinida na linha ==\", caso printf HO contrabarra quebra ME=$OLDPWD"
+        "fixture": "testa-gate-worktree.sh, secao \"== #561: casa redefinida na linha ==\", casos HO contrabarra quebra ME=$OLDPWD, ${HO contrabarra quebra ME}, $HO contrabarra quebra ME e c contrabarra quebra d"
       },
       {
         "tarefa": 10,
         "resultado": "vermelho",
-        "fixture": "testa-gate-worktree.sh, secao \"== #561: casa redefinida na linha ==\", casos builtin source e builtin ."
+        "fixture": "testa-gate-worktree.sh, secao \"== #561: casa redefinida na linha ==\", casos builtin source, >/dev/null source, if source e source em linha propria"
       }
     ],
     "em": "2026-10-20",
-    "reaberturas": 5,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-20"
-    }
+    "reaberturas": 5
   },
   "revisar": {
     "status": "reprovado",
