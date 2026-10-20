@@ -1,0 +1,15 @@
+Data: 2026-10-19
+Termos: HOME redefinido, atalho de home, USERPROFILE
+
+$ gh issue list --state all --search "HOME redefinido" --limit 200 --json number,title,state
+[{"number":561,"state":"OPEN","title":"gate-worktree: HOME redefinido na linha engana a expansão de ~ (continuação da #552)"},{"number":552,"state":"CLOSED","title":"gate-worktree: remoção (rm/Remove-Item), New-Object de IO e redirecionamento com variável passam"}]
+
+
+$ gh issue list --state all --search "atalho de home" --limit 200 --json number,title,state
+[{"number":561,"state":"OPEN","title":"gate-worktree: HOME redefinido na linha engana a expansão de ~ (continuação da #552)"}]
+
+
+$ gh issue list --state all --search "USERPROFILE" --limit 200 --json number,title,state
+[{"number":561,"state":"OPEN","title":"gate-worktree: HOME redefinido na linha engana a expansão de ~ (continuação da #552)"},{"number":452,"state":"CLOSED","title":"Projeto canonico: residuos aceitos na revisao do #435"},{"number":160,"state":"CLOSED","title":"Quatro baterias leem o config.json real de quem as roda, e quem desliga um gate para si ve a suite vermelha sem pista da causa"},{"number":552,"state":"CLOSED","title":"gate-worktree: remoção (rm/Remove-Item), New-Object de IO e redirecionamento com variável passam"},{"number":118,"state":"CLOSED","title":"O backup diario do sentinela nunca fez backup — e empurra sozinho para a main de um repo publico"},{"number":16,"state":"CLOSED","title":"Nenhuma bateria roda sozinha: sem CI, a catraca depende de alguem lembrar (a de nucleos ficou vermelha 3 dias)"},{"number":3,"state":"CLOSED","title":"conferir esta vermelho desde 11/08 e nao tem como ficar verde: 35 abertas sem gancho, e o reparar recusa sem texto a mao"},{"number":21,"state":"CLOSED","title":"Criterio 'a bateria sai 0' e satisfazivel por fora, e tres instrumentos de conferencia falharam junto"}]
+
+
