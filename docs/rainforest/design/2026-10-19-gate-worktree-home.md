@@ -25,6 +25,11 @@ para onde o atalho aponta. Hoje `HOME=<W>; touch ~/../../../f` passa, porque o g
   crase no Bash), interpretador com `-c`/`-e`/`-Command`/`/c`, `source`/`.` em posição de
   comando, `[scriptblock]`, `$ExecutionContext`, `& {`, `Set-Item` e, no PowerShell, `env:` fora
   de leitura.
+  *Emenda da revisão do fluxo (rodada 1):* "qualquer `~`" vira til em posição de expansão
+  (início de palavra, depois de `=`, `:`, `,`, `(` ou `{`), porque `HEAD~1` não é a casa e
+  barrava `git diff HEAD~1 | grep export`; `cd` sem destino aceita opções, redirecionamento,
+  comentário e quebra de linha depois; `printf -v` colado ao nome, `mapfile` e `readarray`
+  entram nos definidores; o interpretador com `-c` casa sem token no meio (`bash -c`, `-lc`).
 - **D2 — Caixa: exata no Bash, indiferente no PowerShell e no cmd** — porquê (Q1 do usuário):
   no Bash `home` minúsculo é outra variável e nome comum de pasta; no PowerShell `$env:home=`
   redefine `HOME`.

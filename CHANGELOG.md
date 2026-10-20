@@ -14,12 +14,18 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 - **`gate-worktree` não lê mais a casa real quando a própria linha redefine a casa (#561).** Com o cwd num
   worktree linkado, `HOME=<W>; touch ~/../../../f` passava: o gate expandia `~` para a casa real, e o shell, para
-  o worktree, de onde `../../..` sobe para o checkout principal. A regra é ampla, não lista de grafias: tiradas as
-  formas de leitura (`$HOME`, `${HOME}`, `$env:HOME`, `${env:HOME}`, `%HOME%`, sem `=` depois), qualquer menção a
-  `HOME`, `USERPROFILE`, `HOMEDRIVE` ou `HOMEPATH` (`HOME=`, `read HOME`, `printf -v HOME`, `${HOME:-x}`,
-  `export {HOME,X}=`, `$env:USERPROFILE=`), com atalho de home ou referência à casa na mesma linha, barra a linha
-  inteira, mesmo só lendo. Caixa exata no Bash, indiferente no PowerShell e no cmd. Sem atalho de home na linha,
-  nada muda (`HOME=/tmp/h npm test` passa).
+  o worktree, de onde `../../..` sobe para o checkout principal. A regra é ampla, não lista de grafias, e só age
+  quando a linha **usa a casa**: til em posição de expansão (`~/x`, `{~,x}`; `HEAD~1` não conta), referência a
+  `$HOME`/`$USERPROFILE`/`%USERPROFILE%`, ou `cd` sem destino (`cd`, `cd -P`, `cd >/dev/null`). Usando a casa, a
+  linha inteira cai, mesmo só lendo, quando: (a) tiradas aspas, escapes e as formas de leitura (`$HOME`,
+  `${HOME}`, `$env:HOME`, `%HOME%`, sem `=` depois), sobra menção a `HOME`, `USERPROFILE`, `HOMEDRIVE` ou
+  `HOMEPATH` (`HOME=`, `H""OME=`, `${HOME:-x}`, `export {HOME,X}=`, `$env:USERPROFILE=`); (b) há comando que
+  define variável pelo nome, que pode vir montado (`export`, `declare`, `read`, `mapfile`, `unset`, `eval`, `env`,
+  `printf -v`, `Set-Variable`, `Set-Item`, `iex`, `[Environment]::SetEnvironmentVariable`); ou (c) há execução
+  indireta (`$(`, crase, `<(`, interpretador com `-c`/`-e`/`-Command`, `source`/`.`, `[scriptblock]`, `& {`, `env:`
+  fora de leitura no PowerShell). Caixa exata no Bash, indiferente no PowerShell e no cmd. Efeito colateral aceito:
+  `export FOO=1; touch ~/x` dentro de um worktree também cai. Sem uso da casa na linha, nada muda
+  (`HOME=/tmp/h npm test`, `git diff HEAD~1 | grep export` passam).
 
 ## 1.70.0 — 2026-10-19
 

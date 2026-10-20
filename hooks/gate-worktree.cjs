@@ -1682,17 +1682,23 @@ function caminhosCitados(texto, ehPowerShell) {
 // com a casa em uso, comando que define variavel pelo nome (o nome pode vir montado:
 // `export $(echo HOME)=`, `eval`) tambem falha fechado, assim como execucao indireta
 // (substituicao, interpretador com `-c`, `source`, `env:` fora de leitura no PowerShell).
-// Qualquer `~` e `cd` sem argumento usam a casa. Ofuscacao deliberada fora dessas classes fica
-// fora do modelo de ameaca: a trava protege contra o engano da sessao.
+// O til em posicao de expansao (`~/x`, `{~,x}`, `=~`; `HEAD~1` nao) e `cd` sem destino usam a
+// casa. Ofuscacao deliberada fora dessas classes fica fora do modelo de ameaca: a trava protege
+// contra o engano da sessao.
 const NOMES_DA_CASA = "HOME|USERPROFILE|HOMEDRIVE|HOMEPATH";
-const DEFINE_VARIAVEL = /(^|[\s;&|(`{])(export|declare|typeset|local|readonly|read|unset|eval|env|printf\s+-v|Set-Variable|New-Variable|sv|nv|Set-Item|si|Invoke-Expression|iex)(?=$|[\s;&|)}])|(^|[\s;&|(`{])(Set-Item|New-Item|Set-Content|Remove-Item|Clear-Item|Rename-Item|Copy-Item|si|ni|sc|ri)\s+(-Path\s+|-LiteralPath\s+)?['"]?env:|\[(System\.)?Environment\]::SetEnvironmentVariable/i;
-const EXECUCAO_INDIRETA = /\$\(|<\(|>\(|(^|[;&|(`{]\s*)(source|\.)(?=\s)|(^|[\s;&|(`{])(bash|sh|zsh|dash|ksh|pwsh|powershell|cmd|node|python3?|perl|ruby)(\.exe)?\s[^;&|]*?(^|\s)(-c|-e|--eval|-Command|-EncodedCommand|-enc|\/c)(?=$|\s)|\[scriptblock\]|\$ExecutionContext|(^|[\s;|(])&\s*[{($'"]/i;
+const DEFINE_VARIAVEL = /(^|[\s;&|(`{])(export|declare|typeset|local|readonly|read|mapfile|readarray|unset|eval|env|Set-Variable|New-Variable|sv|nv|Set-Item|si|Invoke-Expression|iex)(?=$|[\s;&|)}])|(^|[\s;&|(`{])printf\s+-v|(^|[\s;&|(`{])(Set-Item|New-Item|Set-Content|Remove-Item|Clear-Item|Rename-Item|Copy-Item|si|ni|sc|ri)\s+(-Path\s+|-LiteralPath\s+)?['"]?env:|\[(System\.)?Environment\]::SetEnvironmentVariable/i;
+const EXECUCAO_INDIRETA = /\$\(|<\(|>\(|(^|[;&|(`{]\s*)(source|\.)(?=\s)|(^|[\s;&|(`{])(bash|sh|zsh|dash|ksh|pwsh|powershell|cmd|node|python3?|perl|ruby)(\.exe)?(\s+[^\s;&|]+)*?\s+(-\w*c|-e|--eval|-Command|-EncodedCommand|-enc|\/c)(?=$|\s)|\[scriptblock\]|\$ExecutionContext|(^|[\s;|(])&\s*[{($'"]/i;
 function casaRedefinida(comando, ehPowerShell) {
   const usaCasa = new RegExp(`[$%]\\{?(?:env:)?(?:${NOMES_DA_CASA})`, "i");
-  const cdSemArgumento = /(^|[\s;&|(`{])(cd|chdir|pushd)(\s+--)?\s*($|[;&|)}])/;
-  if (!comando.includes("~") && !usaCasa.test(comando) && !cdSemArgumento.test(comando)) return false;
+  // `cd` sem destino: so opcoes (`-P`, `--`), e depois fim, separador, redirecionamento,
+  // comentario ou quebra de linha.
+  const cdSemArgumento = /(^|[\s;&|(`{])(cd|chdir|pushd)([ \t]+-[-\w@]*)*[ \t]*($|[;&|)}#<>\r\n]|\d>)/;
+  const tilDeCasa = /(^|[\s'"=:,({])~/;
+  if (!tilDeCasa.test(comando) && !usaCasa.test(comando) && !cdSemArgumento.test(comando)) return false;
   const semAspas = comando.replace(ehPowerShell ? /["'`]/g : /["'\\]/g, "");
-  if (DEFINE_VARIAVEL.test(semAspas) || EXECUCAO_INDIRETA.test(comando) || !ehPowerShell && comando.includes("`")) return true;
+  if (DEFINE_VARIAVEL.test(semAspas)) return true;
+  if (EXECUCAO_INDIRETA.test(comando)) return true;
+  if (!ehPowerShell && comando.includes("`")) return true;
   const leitura = new RegExp(`(?:\\$\\{(?:env:)?(?:${NOMES_DA_CASA})\\}|\\$(?:env:)?(?:${NOMES_DA_CASA})\\b|%(?:${NOMES_DA_CASA})%)(?!\\s*=(?!=))`, ehPowerShell ? "gi" : "g");
   const resto = semAspas.replace(leitura, " ");
   if (ehPowerShell && /env:/i.test(resto.replace(/\$\{?env:\w+\}?(?!\s*=(?!=))/gi, " "))) return true;

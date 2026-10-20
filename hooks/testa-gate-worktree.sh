@@ -1929,6 +1929,20 @@ s552rv2 '& { Remove-Item ~/../../../f }' 2 bp
 s552rv2 'Set-Item -Path ("en"+"v:US"+"ERPROFILE") __WN__; Remove-Item ~/../../../f' 2 bp
 s552rv2 'Get-Content $env:PATH; Set-Content ~/x.txt y' 0 bp
 s552rv2 'git add . && cat ~/x.txt' 0 b
+# Revisao do fluxo (rodada 1): cada braco com caso que so ele barra (a rede antiga deixa passar).
+s552rv2 'HOME=__WN__/..; cd -P; touch f' 2 b
+s552rv2 'HOME=__WN__/..; cd >/dev/null; touch f' 2 b
+s552rv2 "$(printf 'HOME=__WN__/..\ncd\ntouch f')" 2 b
+s552rv2 'n=HO; n+=ME; printf -v"$n" %s __WN__; touch ~/../../../f' 2 b
+s552rv2 'n=HO; n+=ME; mapfile -t $n <<< __WN__; touch ~/../../../f' 2 b
+s552rv2 "python3 -c \"import os; os.environ['HO'+'ME']='__WN__'; os.system('touch ~/../../../f')\"" 2 b
+s552rv2 'V=`printf HO%sE M`; touch ~/../../../f' 2 b
+s552rv2 'Get-ChildItem env:; Remove-Item ~/../../../f' 2 bp
+# Til fora de posicao de expansao nao e a casa.
+s552rv2 'git diff HEAD~1 | grep -n "export"' 0 b
+s552rv2 'echo "$(git rev-parse HEAD~1)"' 0 b
+s552rv2 'git diff HEAD~1 | while read l; do echo $l; done' 0 b
+s552rv2 'git diff HEAD~1 | Select-String env' 0 bp
 
 echo "== #552 D6: pai inexistente =="
 # Com cwd no proprio principal a rede nao age (D3): so a lista decide, e ela precisa
