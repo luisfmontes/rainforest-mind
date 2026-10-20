@@ -20,6 +20,11 @@ para onde o atalho aponta. Hoje `HOME=<W>; touch ~/../../../f` passa, porque o g
   `Set-Variable`, `Set-Item env:`, `iex`, `[Environment]::SetEnvironmentVariable`) também falha
   fechado, porque o nome pode vir montado (`export $(echo HOME)=`); e `cd`/`pushd` sem argumento
   conta como uso da casa. `export FOO=1; touch ~/x` dentro do worktree passa a cair.
+  *Emenda da revisão de segurança de `a36ec012`:* qualquer `~` na linha conta como uso da casa
+  (`{~,x}/..`), e, com a casa em uso, execução indireta falha fechado: substituição (`$(`, `<(`,
+  crase no Bash), interpretador com `-c`/`-e`/`-Command`/`/c`, `source`/`.` em posição de
+  comando, `[scriptblock]`, `$ExecutionContext`, `& {`, `Set-Item` e, no PowerShell, `env:` fora
+  de leitura.
 - **D2 — Caixa: exata no Bash, indiferente no PowerShell e no cmd** — porquê (Q1 do usuário):
   no Bash `home` minúsculo é outra variável e nome comum de pasta; no PowerShell `$env:home=`
   redefine `HOME`.
@@ -44,6 +49,9 @@ para onde o atalho aponta. Hoje `HOME=<W>; touch ~/../../../f` passa, porque o g
 ## Fora de escopo
 - Til com nome de outro usuário e casa mudada por arquivo de perfil do shell: o gate só vê a
   linha.
+- Ofuscação deliberada fora das classes de D1 (nome montado por concatenação numa expressão sem
+  cmdlet de variável, por exemplo): a trava protege contra o engano da sessão, não contra quem
+  tenta escapar dela, o mesmo modelo de ameaça das outras travas.
 
 ## Varredura
 docs/rainforest/varredura/2026-10-19-gate-worktree-home.txt — só a #561 e a #552 (que a

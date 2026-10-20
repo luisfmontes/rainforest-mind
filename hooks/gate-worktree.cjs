@@ -1680,18 +1680,24 @@ function caminhosCitados(texto, ehPowerShell) {
 // casa em uso na linha falha fechado. Regra ampla, nao lista de grafias. Caixa exata no Bash,
 // indiferente no PowerShell e no cmd. A mencao se procura sem aspas nem escapes (`H""OME=`), e,
 // com a casa em uso, comando que define variavel pelo nome (o nome pode vir montado:
-// `export $(echo HOME)=`, `eval`) tambem falha fechado. `cd` sem argumento usa a casa.
+// `export $(echo HOME)=`, `eval`) tambem falha fechado, assim como execucao indireta
+// (substituicao, interpretador com `-c`, `source`, `env:` fora de leitura no PowerShell).
+// Qualquer `~` e `cd` sem argumento usam a casa. Ofuscacao deliberada fora dessas classes fica
+// fora do modelo de ameaca: a trava protege contra o engano da sessao.
 const NOMES_DA_CASA = "HOME|USERPROFILE|HOMEDRIVE|HOMEPATH";
-const DEFINE_VARIAVEL = /(^|[\s;&|(`{])(export|declare|typeset|local|readonly|read|unset|eval|env|printf\s+-v|Set-Variable|New-Variable|sv|nv|Invoke-Expression|iex)(?=$|[\s;&|)}])|(^|[\s;&|(`{])(Set-Item|New-Item|Set-Content|Remove-Item|Clear-Item|Rename-Item|Copy-Item|si|ni|sc|ri)\s+(-Path\s+|-LiteralPath\s+)?['"]?env:|\[(System\.)?Environment\]::SetEnvironmentVariable/i;
+const DEFINE_VARIAVEL = /(^|[\s;&|(`{])(export|declare|typeset|local|readonly|read|unset|eval|env|printf\s+-v|Set-Variable|New-Variable|sv|nv|Set-Item|si|Invoke-Expression|iex)(?=$|[\s;&|)}])|(^|[\s;&|(`{])(Set-Item|New-Item|Set-Content|Remove-Item|Clear-Item|Rename-Item|Copy-Item|si|ni|sc|ri)\s+(-Path\s+|-LiteralPath\s+)?['"]?env:|\[(System\.)?Environment\]::SetEnvironmentVariable/i;
+const EXECUCAO_INDIRETA = /\$\(|<\(|>\(|(^|[;&|(`{]\s*)(source|\.)(?=\s)|(^|[\s;&|(`{])(bash|sh|zsh|dash|ksh|pwsh|powershell|cmd|node|python3?|perl|ruby)(\.exe)?\s[^;&|]*?(^|\s)(-c|-e|--eval|-Command|-EncodedCommand|-enc|\/c)(?=$|\s)|\[scriptblock\]|\$ExecutionContext|(^|[\s;|(])&\s*[{($'"]/i;
 function casaRedefinida(comando, ehPowerShell) {
   const usaCasa = new RegExp(`[$%]\\{?(?:env:)?(?:${NOMES_DA_CASA})`, "i");
   const cdSemArgumento = /(^|[\s;&|(`{])(cd|chdir|pushd)(\s+--)?\s*($|[;&|)}])/;
-  if (comando.search(ATALHO_DE_HOME) < 0 && !usaCasa.test(comando) && !cdSemArgumento.test(comando)) return false;
+  if (!comando.includes("~") && !usaCasa.test(comando) && !cdSemArgumento.test(comando)) return false;
   const semAspas = comando.replace(ehPowerShell ? /["'`]/g : /["'\\]/g, "");
-  if (DEFINE_VARIAVEL.test(semAspas)) return true;
+  if (DEFINE_VARIAVEL.test(semAspas) || EXECUCAO_INDIRETA.test(comando) || !ehPowerShell && comando.includes("`")) return true;
   const leitura = new RegExp(`(?:\\$\\{(?:env:)?(?:${NOMES_DA_CASA})\\}|\\$(?:env:)?(?:${NOMES_DA_CASA})\\b|%(?:${NOMES_DA_CASA})%)(?!\\s*=(?!=))`, ehPowerShell ? "gi" : "g");
+  const resto = semAspas.replace(leitura, " ");
+  if (ehPowerShell && /env:/i.test(resto.replace(/\$\{?env:\w+\}?(?!\s*=(?!=))/gi, " "))) return true;
   const mencao = new RegExp(`\\b(?:${NOMES_DA_CASA})\\b`, ehPowerShell ? "i" : "");
-  return mencao.test(semAspas.replace(leitura, " "));
+  return mencao.test(resto);
 }
 
 /**

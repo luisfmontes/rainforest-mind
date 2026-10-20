@@ -1921,6 +1921,14 @@ s552rv2 '$env:USERPROFILE="__WN__"; cd ~; Remove-Item ../../../f' 2 bp
 s552rv2 'Set-Item "env:HO`ME" __WN__; Remove-Item ~/../../../f' 2 bp
 s552rv2 'export FOO=1; touch __WN__/f' 0 b
 s552rv2 'cd __WN__ && touch f' 0 b
+# Revisao de seguranca de a36ec012: `~` dentro de chave e execucao indireta com a casa em uso.
+s552rv2 'HOME=__WN__; touch {~,x}/../../../f' 2 b
+s552rv2 'X=HO; bash -c "${X}ME=__WN__ touch ~/../../../f"' 2 b
+s552rv2 'source ./define-casa.sh; touch ~/../../../f' 2 b
+s552rv2 '& { Remove-Item ~/../../../f }' 2 bp
+s552rv2 'Set-Item -Path ("en"+"v:US"+"ERPROFILE") __WN__; Remove-Item ~/../../../f' 2 bp
+s552rv2 'Get-Content $env:PATH; Set-Content ~/x.txt y' 0 bp
+s552rv2 'git add . && cat ~/x.txt' 0 b
 
 echo "== #552 D6: pai inexistente =="
 # Com cwd no proprio principal a rede nao age (D3): so a lista decide, e ela precisa
