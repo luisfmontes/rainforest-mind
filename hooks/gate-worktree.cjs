@@ -1725,6 +1725,8 @@ function soComandosInertes(texto) {
   const palavras = [...texto.matchAll(/(?:^|[;&|(\n]|\$\()\s*((?:[A-Za-z_]\w*=\S*\s+)*)([^\s;&|()<>]+)(?:\s+([^\s;&|()<>]+))?/g)];
   return palavras.every((m) => {
     const cmd = m[2], sub = m[3] || "";
+    // `GIT_PAGER=... git log`: o prefixo pode fazer o comando rodar texto.
+    if (m[1]) return false;
     if (SUBCOMANDOS_INERTES[cmd]) return SUBCOMANDOS_INERTES[cmd].test(sub);
     return COMANDOS_INERTES.has(cmd) && !(cmd === "printf" && sub === "-v");
   });
@@ -1739,7 +1741,7 @@ function casaRedefinida(comando, ehPowerShell) {
   const tilDeCasa = /(^|[\s'"=:,({;&|<>)])~/;
   const mascarado = ehPowerShell ? comando : mascaraAspasBash(mascaraHeredocsBash(comando));
   const vivo = ehPowerShell || !soComandosInertes(mascarado) ? comando : mascarado;
-  if (!tilDeCasa.test(vivo) && !usaCasa.test(vivo) && !cdSemArgumento.test(vivo)) return false;
+  if (!tilDeCasa.test(vivo) && !usaCasa.test(vivo) && !cdSemArgumento.test(vivo.replace(/["'\\]/g, ""))) return false;
   const semAspas = comando.replace(ehPowerShell ? /["'`]/g : /["'\\]/g, "");
   if (DEFINE_VARIAVEL.test(semAspas)) return true;
   if (EXECUCAO_INDIRETA.test(comando)) return true;

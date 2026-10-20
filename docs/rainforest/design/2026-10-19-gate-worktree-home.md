@@ -40,7 +40,13 @@ para onde o atalho aponta. Hoje `HOME=<W>; touch ~/../../../f` passa, porque o g
   comandos inertes: só se mascaram as aspas quando todo comando da linha não avalia argumento
   (`echo`, `printf` sem `-v`, `cat`, `grep`, `ls`, `touch`, `git` com subcomando de leitura ou
   commit, `gh pr`/`gh issue`...). `awk`, `find -exec`, `git -c alias` e qualquer outro deixam o
-  texto cru, e a regra falha fechado.
+  texto cru, e a regra falha fechado. O `cd` sem destino se procura sem aspas (`"cd"` em
+  posição de comando roda o `cd`).
+  *Emenda da revisão de segurança de `e12adb1c`:* comando com prefixo de atribuição
+  (`HOME=x git log`, `GIT_PAGER=...`) não é inerte. Antes, `HOME=$OLDPWD; echo` lia o `;` como
+  parte do valor de um prefixo do `echo` e a linha passava por inerte. Com isso, linha que
+  redefine a casa nunca é inerte, e crase ou opção do git que executa (`--receive-pack`) já
+  caem pela regra geral.
 - **D2 — Caixa: exata no Bash, indiferente no PowerShell e no cmd** — porquê (Q1 do usuário):
   no Bash `home` minúsculo é outra variável e nome comum de pasta; no PowerShell `$env:home=`
   redefine `HOME`.
