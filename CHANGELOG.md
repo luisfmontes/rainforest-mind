@@ -27,10 +27,11 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   `export FOO=1; touch ~/x` dentro de um worktree também cai. No PowerShell, `+=`, atribuição em lista e
   `foreach ($env:X in ...)` contam como escrita. Sem uso da casa na linha, nada muda: no Bash, til e `cd` entre
   aspas ou em corpo de heredoc com delimitador entre aspas não contam (o commit por heredoc com `~30 tokens`
-  passa), desde que todo comando da linha não avalie argumento (`echo`, `cat`, `grep`, `git commit`, `gh issue`...);
-  com qualquer outro (`awk`, `find -exec`, `bash -c`), as aspas podem virar comando e contam. `"cd"` entre aspas
-  em posição de comando conta como `cd` sem destino, e comando com prefixo de atribuição (`HOME=x git log`) não é
-  inerte. `HOME=/tmp/h npm test` e `git diff HEAD~1 | grep export` passam.
+  passa), desde que a linha não mexa na casa e todo comando dela não avalie argumento (`echo`, `cat`, `grep`,
+  `git commit`, `gh issue`...); com qualquer outro (`awk`, `find -exec`, `bash -c`), as aspas podem virar comando
+  e contam. Linha que mexe na casa nunca tem as aspas mascaradas (`printf -vHOME`, `>/dev/null HOME=x git push`).
+  `"cd"` entre aspas em posição de comando conta como `cd` sem destino, e o til depois de `-`, `+`, `?`
+  (`${U:-~}`) e de crase conta como uso da casa. `HOME=/tmp/h npm test` e `git diff HEAD~1 | grep export` passam.
 
 ## 1.70.0 — 2026-10-19
 

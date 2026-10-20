@@ -19,7 +19,7 @@
     "em": "2026-10-19"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-20",
     "tarefas_ok": 7,
     "tarefas": 7,
@@ -63,18 +63,45 @@
       }
     ],
     "em": "2026-10-20",
-    "reaberturas": 2
+    "reaberturas": 3,
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-20"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "2dc1dc85d4c8978779159defc80f8e54f1d908a1",
+      "head": "90b97918950862d0cce2b910b7dc51134410a1ad",
       "caminhos_sujos": []
     },
-    "vereditos": [],
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a3039fe146a928079",
+        "veredito": "reprovado",
+        "em": "2026-10-20",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-a3039fe146a928079.jsonl"
+      }
+    ],
     "achados": 3,
     "em": "2026-10-20",
-    "tentativas": 2
+    "tentativas": 3,
+    "em_voo": [
+      {
+        "agente": "revisor",
+        "tarefa": "revisao rodada 3",
+        "desde": "2026-10-20",
+        "sessao": "2000cb9c-f260-4626-b420-5d6adac18fc8"
+      }
+    ],
+    "liberado_em": "2026-10-20",
+    "rodadas_extra": [
+      {
+        "texto": "usuario: recomendado (4a rodada; linha que mexe na casa nao mascara aspas; til apos - + ? e crase)",
+        "em": "2026-10-20"
+      }
+    ]
   },
   "verificar": {
     "status": "pendente"

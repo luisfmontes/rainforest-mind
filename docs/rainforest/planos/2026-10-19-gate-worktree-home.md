@@ -76,21 +76,21 @@ depende de: 5
 prova-na-base: verde — emenda da revisão de segurança de `371a6b6b`; os casos nascem na bateria nesta tarefa
 mutacao:
   arquivo: `hooks/gate-worktree.cjs`
-  de: `const vivo = ehPowerShell || !soComandosInertes(mascarado) ? comando : mascarado;`
-  para: `const vivo = ehPowerShell ? comando : mascarado;`
+  de: `const vivo = ehPowerShell || mexeNaCasa || !soComandosInertes(mascarado) ? comando : mascarado;`
+  para: `const vivo = ehPowerShell || mexeNaCasa ? comando : mascarado;`
   bateria: `bash hooks/testa-gate-worktree.sh`
-  fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", casos awk BEGIN{system}, find -exec sh -c e git -c alias com !`
+  fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", caso python3 -c com os.environ['HO'+'ME'] e til entre aspas`
 pronto quando: com o cwd num worktree linkado, `HOME=$(dirname $PWD); awk 'BEGIN{system("touch ~/f")}'`, `HOME=$(dirname $PWD); find . -name x -exec sh -c 'touch ~/f' \;` e `HOME=$(dirname $PWD); git -c alias.x='!touch ~/f' x` saem 2 (a base deixava passar), e `gh issue create --title x --body "ver ~/x" && echo $(date)` sai 0 — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
 
-### 7. Prefixo de atribuição tira a inércia [tipo: implementar]
+### 7. Linha que mexe na casa nunca mascara as aspas [tipo: implementar]
 atende: D1, D3
 arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`
 depende de: 6
-prova-na-base: verde — emenda da revisão de segurança de `e12adb1c`; os casos nascem na bateria nesta tarefa
+prova-na-base: verde — emenda da revisão de segurança de `e12adb1c` e da rodada 3 do fluxo (impasse liberado); os casos nascem na bateria nesta tarefa
 mutacao:
   arquivo: `hooks/gate-worktree.cjs`
-  de: `if (m[1]) return false;`
-  para: `if (false) return false;`
+  de: `ehPowerShell || mexeNaCasa || !soComandosInertes`
+  para: `ehPowerShell || !soComandosInertes`
   bateria: `bash hooks/testa-gate-worktree.sh`
-  fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", caso HOME=$OLDPWD git log --grep com til entre aspas`
-pronto quando: com o cwd num worktree linkado, `HOME=$OLDPWD; echo` seguido de crase com `sh -c 'touch ~/f'`, `HOME=$OLDPWD; git push --receive-pack='touch ~/f' origin` e `HOME=$OLDPWD git log --grep '~x'` saem 2 (o código de `e12adb1c` deixava passar), e o commit por heredoc com `~30 tokens` segue 0 — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
+  fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", casos printf -vHOME e >/dev/null HOME=... git push --receive-pack`
+pronto quando: com o cwd num worktree linkado, `printf -vHOME %s $OLDPWD; git push --receive-pack='touch ~/f' origin`, `>/dev/null HOME=$OLDPWD git push --receive-pack='touch ~/f' origin`, `HOME=$OLDPWD; touch ${U:-~}/f` e ``HOME=$OLDPWD; `~/x.sh` `` saem 2 (o código de `90b97918` deixava passar), e o commit por heredoc com `~30 tokens` segue 0 — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.

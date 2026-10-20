@@ -42,11 +42,15 @@ para onde o atalho aponta. Hoje `HOME=<W>; touch ~/../../../f` passa, porque o g
   commit, `gh pr`/`gh issue`...). `awk`, `find -exec`, `git -c alias` e qualquer outro deixam o
   texto cru, e a regra falha fechado. O `cd` sem destino se procura sem aspas (`"cd"` em
   posição de comando roda o `cd`).
-  *Emenda da revisão de segurança de `e12adb1c`:* comando com prefixo de atribuição
-  (`HOME=x git log`, `GIT_PAGER=...`) não é inerte. Antes, `HOME=$OLDPWD; echo` lia o `;` como
-  parte do valor de um prefixo do `echo` e a linha passava por inerte. Com isso, linha que
-  redefine a casa nunca é inerte, e crase ou opção do git que executa (`--receive-pack`) já
-  caem pela regra geral.
+  *Emenda da revisão de segurança de `e12adb1c` e da rodada 3 do fluxo (teto liberado pelo
+  usuário, impasse em `docs/rainforest/portoes/2026-10-19-gate-worktree-home-impasse.md`):* a
+  lista de inertes virou lista de grafias (`HOME=$OLDPWD; echo`, `printf -vHOME`,
+  `>/dev/null HOME=x git push --receive-pack=...` passavam por inertes). Troca de princípio:
+  linha que **mexe na casa** (menção a um dos quatro nomes fora de leitura, ou comando
+  definidor) nunca tem as aspas mascaradas e cai sempre que usa a casa. A lista de inertes só
+  vale para linha que não mexe na casa, onde serve para não barrar o commit por heredoc. O til
+  depois de `-`, `+`, `?` (`${U:-~}`) e de crase também está em posição de expansão. Custo
+  aceito: `git commit -m "ajusta HOME ~30"` dentro de worktree cai.
 - **D2 — Caixa: exata no Bash, indiferente no PowerShell e no cmd** — porquê (Q1 do usuário):
   no Bash `home` minúsculo é outra variável e nome comum de pasta; no PowerShell `$env:home=`
   redefine `HOME`.
@@ -74,6 +78,8 @@ para onde o atalho aponta. Hoje `HOME=<W>; touch ~/../../../f` passa, porque o g
 - Ofuscação deliberada fora das classes de D1 (nome montado por concatenação numa expressão sem
   cmdlet de variável, por exemplo): a trava protege contra o engano da sessão, não contra quem
   tenta escapar dela, o mesmo modelo de ameaça das outras travas.
+- Referência indireta (`n=HOME; touch ${!n}/..`), lacuna que a rede já tinha para caminho por
+  variável com chave, e `cd $VAZIA` (cd com variável vazia).
 
 ## Varredura
 docs/rainforest/varredura/2026-10-19-gate-worktree-home.txt — só a #561 e a #552 (que a

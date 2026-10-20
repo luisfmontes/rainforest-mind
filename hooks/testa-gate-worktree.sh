@@ -1960,6 +1960,14 @@ s552rv2 "HOME=\$OLDPWD; echo ok; git fetch --upload-pack='touch ~/f'" 2 b
 s552rv2 "HOME=\$OLDPWD; git -c core.pager='touch ~/f' log" 2 b
 s552rv2 "HOME=\$OLDPWD GIT_PAGER='touch ~/f' git log" 2 b
 s552rv2 "HOME=\$OLDPWD git log --grep '~x'" 2 b
+s552rv2 "printf -vHOME %s \$OLDPWD; git push --receive-pack='touch ~/f' origin" 2 b
+s552rv2 ">/dev/null HOME=\$OLDPWD git push --receive-pack='touch ~/f' origin" 2 b
+s552rv2 'HOME=$OLDPWD; touch ${U:-~}/f' 2 b
+s552rv2 'HOME=$OLDPWD; touch ${U:+~}/f' 2 b
+s552rv2 'HOME=$OLDPWD; touch ${U-~}/f' 2 b
+s552rv2 'HOME=$OLDPWD; touch ${U:?~}/f' 2 b
+s552rv2 'HOME=$OLDPWD; `~/x.sh`' 2 b
+s552rv2 'git commit -m "ajusta HOME ~30"' 2 b
 s552rv2 'echo "~" ; echo $(date)' 0 b
 s552rv2 "$(printf 'git commit -m "$(cat <<%sEOF%s\nfix: reduz ~30 tokens e o agente faz cd\nEOF\n)"' "'" "'")" 0 b
 s552rv2 'gh issue create --title x --body "ver ~/x" && echo $(date)' 0 b

@@ -1725,8 +1725,6 @@ function soComandosInertes(texto) {
   const palavras = [...texto.matchAll(/(?:^|[;&|(\n]|\$\()\s*((?:[A-Za-z_]\w*=\S*\s+)*)([^\s;&|()<>]+)(?:\s+([^\s;&|()<>]+))?/g)];
   return palavras.every((m) => {
     const cmd = m[2], sub = m[3] || "";
-    // `GIT_PAGER=... git log`: o prefixo pode fazer o comando rodar texto.
-    if (m[1]) return false;
     if (SUBCOMANDOS_INERTES[cmd]) return SUBCOMANDOS_INERTES[cmd].test(sub);
     return COMANDOS_INERTES.has(cmd) && !(cmd === "printf" && sub === "-v");
   });
@@ -1738,19 +1736,22 @@ function casaRedefinida(comando, ehPowerShell) {
   // `cd` sem destino: so opcoes (`-P`, `--`), e depois fim, separador, redirecionamento,
   // comentario ou quebra de linha.
   const cdSemArgumento = /(^|[\s;&|(`{])(cd|chdir|pushd)([ \t]+-[-\w@]*)*[ \t]*($|[;&|)}#<>\r\n]|\d>)/;
-  const tilDeCasa = /(^|[\s'"=:,({;&|<>)])~/;
-  const mascarado = ehPowerShell ? comando : mascaraAspasBash(mascaraHeredocsBash(comando));
-  const vivo = ehPowerShell || !soComandosInertes(mascarado) ? comando : mascarado;
-  if (!tilDeCasa.test(vivo) && !usaCasa.test(vivo) && !cdSemArgumento.test(vivo.replace(/["'\\]/g, ""))) return false;
+  const tilDeCasa = /(^|[\s'"=:,({;&|<>)\-+?`])~/;
   const semAspas = comando.replace(ehPowerShell ? /["'`]/g : /["'\\]/g, "");
-  if (DEFINE_VARIAVEL.test(semAspas)) return true;
-  if (EXECUCAO_INDIRETA.test(comando)) return true;
-  if (!ehPowerShell && comando.includes("`")) return true;
   const leitura = new RegExp(`(?:\\$\\{(?:env:)?(?:${NOMES_DA_CASA})\\}|\\$(?:env:)?(?:${NOMES_DA_CASA})\\b|%(?:${NOMES_DA_CASA})%)${ESCRITA_DEPOIS}`, ehPowerShell ? "gi" : "g");
   const resto = semAspas.replace(leitura, " ");
-  if (ehPowerShell && /env:/i.test(resto.replace(new RegExp(String.raw`\$\{?env:\w+\}?` + ESCRITA_DEPOIS, "gi"), " "))) return true;
   const mencao = new RegExp(`\\b(?:${NOMES_DA_CASA})\\b`, ehPowerShell ? "i" : "");
-  return mencao.test(resto);
+  // Linha que mexe na casa nunca e inerte: a lista de comandos inertes vira lista de grafias
+  // (`printf -vHOME`, `>/dev/null HOME=x git push`), o defeito que derrubou a #552.
+  const mexeNaCasa = DEFINE_VARIAVEL.test(semAspas) || mencao.test(resto);
+  const mascarado = ehPowerShell ? comando : mascaraAspasBash(mascaraHeredocsBash(comando));
+  const vivo = ehPowerShell || mexeNaCasa || !soComandosInertes(mascarado) ? comando : mascarado;
+  if (!tilDeCasa.test(vivo) && !usaCasa.test(vivo) && !cdSemArgumento.test(vivo.replace(/["'\\]/g, ""))) return false;
+  if (mexeNaCasa) return true;
+  if (EXECUCAO_INDIRETA.test(comando)) return true;
+  if (!ehPowerShell && comando.includes("`")) return true;
+  if (ehPowerShell && /env:/i.test(resto.replace(new RegExp(String.raw`\$\{?env:\w+\}?` + ESCRITA_DEPOIS, "gi"), " "))) return true;
+  return false;
 }
 
 /**
