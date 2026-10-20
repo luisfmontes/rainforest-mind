@@ -14,6 +14,12 @@ para onde o atalho aponta. Hoje `HOME=<W>; touch ~/../../../f` passa, porque o g
   qualquer menção a um dos quatro nomes, a linha "mexe na casa". Mexendo na casa **e** usando a
   casa (o `ATALHO_DE_HOME` casa, ou há referência `$`/`${`/`%` a um dos quatro nomes), a rede
   devolve o alvo incerto: falha fechado. Só vale com cwd em worktree linkado, como toda a rede.
+  *Emenda da revisão de segurança de `0c8b0991` (aplicada como recomendada, no espírito da Q2):*
+  a menção se procura sem aspas nem escapes (`H""OME=`); com a casa em uso, comando que define
+  variável pelo nome (`export`, `declare`, `read`, `unset`, `eval`, `env`, `printf -v`,
+  `Set-Variable`, `Set-Item env:`, `iex`, `[Environment]::SetEnvironmentVariable`) também falha
+  fechado, porque o nome pode vir montado (`export $(echo HOME)=`); e `cd`/`pushd` sem argumento
+  conta como uso da casa. `export FOO=1; touch ~/x` dentro do worktree passa a cair.
 - **D2 — Caixa: exata no Bash, indiferente no PowerShell e no cmd** — porquê (Q1 do usuário):
   no Bash `home` minúsculo é outra variável e nome comum de pasta; no PowerShell `$env:home=`
   redefine `HOME`.

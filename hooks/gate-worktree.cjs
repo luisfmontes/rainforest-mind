@@ -1678,14 +1678,20 @@ function caminhosCitados(texto, ehPowerShell) {
 // para outro lugar, e a rede leria a casa real. Tiradas as formas de leitura (`$NOME`, `${NOME}`,
 // `$env:NOME`, `${env:NOME}`, `%NOME%`, sem `=` depois), qualquer mencao aos quatro nomes com a
 // casa em uso na linha falha fechado. Regra ampla, nao lista de grafias. Caixa exata no Bash,
-// indiferente no PowerShell e no cmd.
+// indiferente no PowerShell e no cmd. A mencao se procura sem aspas nem escapes (`H""OME=`), e,
+// com a casa em uso, comando que define variavel pelo nome (o nome pode vir montado:
+// `export $(echo HOME)=`, `eval`) tambem falha fechado. `cd` sem argumento usa a casa.
 const NOMES_DA_CASA = "HOME|USERPROFILE|HOMEDRIVE|HOMEPATH";
+const DEFINE_VARIAVEL = /(^|[\s;&|(`{])(export|declare|typeset|local|readonly|read|unset|eval|env|printf\s+-v|Set-Variable|New-Variable|sv|nv|Invoke-Expression|iex)(?=$|[\s;&|)}])|(^|[\s;&|(`{])(Set-Item|New-Item|Set-Content|Remove-Item|Clear-Item|Rename-Item|Copy-Item|si|ni|sc|ri)\s+(-Path\s+|-LiteralPath\s+)?['"]?env:|\[(System\.)?Environment\]::SetEnvironmentVariable/i;
 function casaRedefinida(comando, ehPowerShell) {
+  const usaCasa = new RegExp(`[$%]\\{?(?:env:)?(?:${NOMES_DA_CASA})`, "i");
+  const cdSemArgumento = /(^|[\s;&|(`{])(cd|chdir|pushd)(\s+--)?\s*($|[;&|)}])/;
+  if (comando.search(ATALHO_DE_HOME) < 0 && !usaCasa.test(comando) && !cdSemArgumento.test(comando)) return false;
+  const semAspas = comando.replace(ehPowerShell ? /["'`]/g : /["'\\]/g, "");
+  if (DEFINE_VARIAVEL.test(semAspas)) return true;
   const leitura = new RegExp(`(?:\\$\\{(?:env:)?(?:${NOMES_DA_CASA})\\}|\\$(?:env:)?(?:${NOMES_DA_CASA})\\b|%(?:${NOMES_DA_CASA})%)(?!\\s*=(?!=))`, ehPowerShell ? "gi" : "g");
   const mencao = new RegExp(`\\b(?:${NOMES_DA_CASA})\\b`, ehPowerShell ? "i" : "");
-  if (!mencao.test(comando.replace(leitura, " "))) return false;
-  const usaCasa = new RegExp(`[$%]\\{?(?:env:)?(?:${NOMES_DA_CASA})`, "i");
-  return comando.search(ATALHO_DE_HOME) >= 0 || usaCasa.test(comando);
+  return mencao.test(semAspas.replace(leitura, " "));
 }
 
 /**
@@ -1742,8 +1748,8 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
   // `p.cru` e o texto ORIGINAL da palavra (o `$` de `$HOME` conta); `p.limpo` vem do texto com o
   // atalho de home expandido, so para achar e resolver o caminho `c`.
   // O atalho de home no INICIO da palavra (`$HOME/...`, `${env:USERPROFILE}\...`) nao conta como
-  // expansao: o valor e o da casa. HOME redefinido na propria linha fica fora de escopo (variavel
-  // sem o literal do caminho, D3). No meio (`<W>/$HOME/f`) conta.
+  // expansao: o valor e o da casa. HOME redefinido na propria linha ja caiu antes, em
+  // `casaRedefinida` (#561). No meio (`<W>/$HOME/f`) conta.
   const palavraQueSobe = (p, base, c) => {
     if (/[$`]/.test(p.cru.replace(CASA_NO_INICIO, (m, aspa) => aspa))) return true;
     // Com chave (Bash), cada alternativa da expansao conta, e mais a checagem da chave; expansao

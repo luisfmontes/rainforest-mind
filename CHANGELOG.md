@@ -10,6 +10,17 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.70.1 — 2026-10-19
+
+- **`gate-worktree` não lê mais a casa real quando a própria linha redefine a casa (#561).** Com o cwd num
+  worktree linkado, `HOME=<W>; touch ~/../../../f` passava: o gate expandia `~` para a casa real, e o shell, para
+  o worktree, de onde `../../..` sobe para o checkout principal. A regra é ampla, não lista de grafias: tiradas as
+  formas de leitura (`$HOME`, `${HOME}`, `$env:HOME`, `${env:HOME}`, `%HOME%`, sem `=` depois), qualquer menção a
+  `HOME`, `USERPROFILE`, `HOMEDRIVE` ou `HOMEPATH` (`HOME=`, `read HOME`, `printf -v HOME`, `${HOME:-x}`,
+  `export {HOME,X}=`, `$env:USERPROFILE=`), com atalho de home ou referência à casa na mesma linha, barra a linha
+  inteira, mesmo só lendo. Caixa exata no Bash, indiferente no PowerShell e no cmd. Sem atalho de home na linha,
+  nada muda (`HOME=/tmp/h npm test` passa).
+
 ## 1.70.0 — 2026-10-19
 
 - **Código que muda depois do `verificar` passa de novo por revisão e verificar (#567).** O `verificar ok` grava

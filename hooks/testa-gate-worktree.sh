@@ -1911,6 +1911,16 @@ s552rv2 'home=/tmp/h; touch __WN__/f' 0 b
 s552rv2 'echo $HOME; touch __WN__/f' 0 b
 s552rv2 'touch __WN__/HOME.md' 0 b
 s552rv2 'Set-Content __WN__/f $env:USERPROFILE' 0 bp
+# Revisao de seguranca de 0c8b0991: nome com aspas ou montado, e `cd` sem argumento.
+s552rv2 'export H""OME=__WN__; touch ~/../../../f' 2 b
+s552rv2 'export $(echo HOME)=__WN__; touch ~/../../../f' 2 b
+s552rv2 'eval "HO""ME=__WN__"; touch ~/../../../f' 2 b
+s552rv2 'HOME=__WN__; cd; touch ../../../f' 2 b
+s552rv2 'HOME=__WN__; cd -- && touch ../../../f' 2 b
+s552rv2 '$env:USERPROFILE="__WN__"; cd ~; Remove-Item ../../../f' 2 bp
+s552rv2 'Set-Item "env:HO`ME" __WN__; Remove-Item ~/../../../f' 2 bp
+s552rv2 'export FOO=1; touch __WN__/f' 0 b
+s552rv2 'cd __WN__ && touch f' 0 b
 
 echo "== #552 D6: pai inexistente =="
 # Com cwd no proprio principal a rede nao age (D3): so a lista decide, e ela precisa

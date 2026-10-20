@@ -30,5 +30,14 @@
   },
   "fechar": {
     "status": "pendente"
-  }
+  },
+  "decididos": [
+    {
+      "pergunta": "Achados da revisao de seguranca de 0c8b0991 (nome com aspas/montado, cd sem argumento)",
+      "escolha": "Menção sem aspas; com a casa em uso, comando que define variavel pelo nome falha fechado; cd/pushd sem argumento conta como uso",
+      "porque": "Mesma classe da #552: lista de grafias nao fecha; o usuario escolheu falha fechada ampla na Q2",
+      "estagio": "executar",
+      "em": "2026-10-20T00:49:16.621Z"
+    }
+  ]
 }

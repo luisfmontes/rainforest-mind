@@ -24,7 +24,7 @@ pronto quando: com o cwd num worktree linkado da caixa de areia, as linhas `HOME
 
 ### 2. CHANGELOG, versão e comentário [tipo: docs]
 atende: D5
-arquivos: `CHANGELOG.md`, `.claude-plugin/plugin.json`, `hooks/gate-worktree.cjs`
+arquivos: `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `hooks/gate-worktree.cjs`
 depende de: 1
 mutacao: n/a
   motivo: texto e número de versão, sem comportamento a inverter
