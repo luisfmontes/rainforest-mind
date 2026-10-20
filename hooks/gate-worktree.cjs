@@ -69,6 +69,7 @@ const CLIS_QUE_ESCREVEM = require(path.join(__dirname, "lib", "clis-que-escrevem
 // #530 (D4, D6): a palavra de comando como o bash a le, e o corpo de cada
 // substituicao de comando (crase e `$(...)`), para o gate conferir o que roda la dentro.
 const { normalizarComando, corposDeSubstituicao, expandirChaves } = require(path.join(__dirname, "lib", "palavra-bash.cjs"));
+const { mascararCorposDeHeredoc } = require(path.join(__dirname, "lib", "heredoc.cjs"));
 const {
   tokensComAspas, ehComando, WRAPPERS_QUE_REPASSAM, posicaoDeComando, textoAPartir, desempacotarWrapperDeString,
 } = require(path.join(__dirname, "lib", "tokens-comando.cjs"));
@@ -1688,20 +1689,53 @@ function caminhosCitados(texto, ehPowerShell) {
 const NOMES_DA_CASA = "HOME|USERPROFILE|HOMEDRIVE|HOMEPATH";
 const DEFINE_VARIAVEL = /(^|[\s;&|(`{])(export|declare|typeset|local|readonly|read|mapfile|readarray|unset|eval|env|Set-Variable|New-Variable|sv|nv|Set-Item|si|Invoke-Expression|iex)(?=$|[\s;&|)}])|(^|[\s;&|(`{])printf\s+-v|(^|[\s;&|(`{])(Set-Item|New-Item|Set-Content|Remove-Item|Clear-Item|Rename-Item|Copy-Item|si|ni|sc|ri)\s+(-Path\s+|-LiteralPath\s+)?['"]?env:|\[(System\.)?Environment\]::SetEnvironmentVariable/i;
 const EXECUCAO_INDIRETA = /\$\(|<\(|>\(|(^|[;&|(`{]\s*)(source|\.)(?=\s)|(^|[\s;&|(`{])(bash|sh|zsh|dash|ksh|pwsh|powershell|cmd|node|python3?|perl|ruby)(\.exe)?(\s+[^\s;&|]+)*?\s+(-\w*c|-e|--eval|-Command|-EncodedCommand|-enc|\/c)(?=$|\s)|\[scriptblock\]|\$ExecutionContext|(^|[\s;|(])&\s*[{($'"]/i;
+// Bash: aspas simples, e duplas sem `$` nem crase, nao expandem o til nem rodam `cd`; o corpo de
+// heredoc com delimitador entre aspas e dado. Desbalanceado: nao mascara (falha fechado).
+function mascaraAspasBash(texto) {
+  let saida = "";
+  for (let i = 0; i < texto.length; i += 1) {
+    const c = texto[i];
+    if (c === "\\") { saida += texto.slice(i, i + 2); i += 1; continue; }
+    if (c !== "'" && c !== '"') { saida += c; continue; }
+    let j = i + 1;
+    while (j < texto.length && texto[j] !== c) j += c === '"' && texto[j] === "\\" ? 2 : 1;
+    if (j >= texto.length) return texto;
+    const dentro = texto.slice(i + 1, j);
+    saida += c === '"' && /[$`]/.test(dentro) ? texto.slice(i, j + 1) : c + " ".repeat(j - i - 1) + c;
+    i = j;
+  }
+  return saida;
+}
+// Corpo de heredoc que e dado, inclusive dentro de `"$(cat <<'EOF' ...)"` (a busca do operador
+// nao entra em aspas duplas: a aspa que abre a substituicao sai so na copia da busca).
+function mascaraHeredocsBash(texto) {
+  const busca = mascararCorposDeHeredoc(texto.replace(/"\$\(/g, " $("));
+  let saida = "";
+  for (let i = 0; i < texto.length; i += 1) {
+    const aspaDaSubstituicao = texto[i] === '"' && texto.startsWith("$(", i + 1);
+    saida += busca[i] === " " && texto[i] !== "\n" && !aspaDaSubstituicao ? " " : texto[i];
+  }
+  return saida;
+}
+// Interpretador na linha: o texto entre aspas pode virar comando, e nada se mascara.
+const INTERPRETA = /(^|[\s;&|(`{])(bash|sh|zsh|dash|ksh|pwsh|powershell|cmd|node|python3?|perl|ruby|eval|source|xargs|sudo)(\.exe)?(?=$|[\s;&|)}<])|(^|[;&|(`{]\s*)\.(?=\s)/i;
+// Escrita na variavel: `=`, atribuicao composta (`+=`, `??=`), lista (`$env:X, $y =`) e `foreach ($env:X in`.
+const ESCRITA_DEPOIS = String.raw`(?!\s*(?:[-+*/%]|\?\?)?=(?!=)|\s*,|\s+in\b)`;
 function casaRedefinida(comando, ehPowerShell) {
   const usaCasa = new RegExp(`[$%]\\{?(?:env:)?(?:${NOMES_DA_CASA})`, "i");
   // `cd` sem destino: so opcoes (`-P`, `--`), e depois fim, separador, redirecionamento,
   // comentario ou quebra de linha.
   const cdSemArgumento = /(^|[\s;&|(`{])(cd|chdir|pushd)([ \t]+-[-\w@]*)*[ \t]*($|[;&|)}#<>\r\n]|\d>)/;
-  const tilDeCasa = /(^|[\s'"=:,({;&|<>])~/;
-  if (!tilDeCasa.test(comando) && !usaCasa.test(comando) && !cdSemArgumento.test(comando)) return false;
+  const tilDeCasa = /(^|[\s'"=:,({;&|<>)])~/;
+  const vivo = ehPowerShell || INTERPRETA.test(comando) ? comando : mascaraAspasBash(mascaraHeredocsBash(comando));
+  if (!tilDeCasa.test(vivo) && !usaCasa.test(vivo) && !cdSemArgumento.test(vivo)) return false;
   const semAspas = comando.replace(ehPowerShell ? /["'`]/g : /["'\\]/g, "");
   if (DEFINE_VARIAVEL.test(semAspas)) return true;
   if (EXECUCAO_INDIRETA.test(comando)) return true;
   if (!ehPowerShell && comando.includes("`")) return true;
-  const leitura = new RegExp(`(?:\\$\\{(?:env:)?(?:${NOMES_DA_CASA})\\}|\\$(?:env:)?(?:${NOMES_DA_CASA})\\b|%(?:${NOMES_DA_CASA})%)(?!\\s*=(?!=))`, ehPowerShell ? "gi" : "g");
+  const leitura = new RegExp(`(?:\\$\\{(?:env:)?(?:${NOMES_DA_CASA})\\}|\\$(?:env:)?(?:${NOMES_DA_CASA})\\b|%(?:${NOMES_DA_CASA})%)${ESCRITA_DEPOIS}`, ehPowerShell ? "gi" : "g");
   const resto = semAspas.replace(leitura, " ");
-  if (ehPowerShell && /env:/i.test(resto.replace(/\$\{?env:\w+\}?(?!\s*=(?!=))/gi, " "))) return true;
+  if (ehPowerShell && /env:/i.test(resto.replace(new RegExp(String.raw`\$\{?env:\w+\}?` + ESCRITA_DEPOIS, "gi"), " "))) return true;
   const mencao = new RegExp(`\\b(?:${NOMES_DA_CASA})\\b`, ehPowerShell ? "i" : "");
   return mencao.test(resto);
 }

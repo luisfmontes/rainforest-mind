@@ -19,8 +19,8 @@
     "em": "2026-10-19"
   },
   "executar": {
-    "status": "ok",
-    "catraca_mutacao": "2026-10-19",
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-20",
     "tarefas_ok": 4,
     "tarefas": 4,
     "comando": "bash hooks/testa-gate-worktree.sh; conferir-mutacao tarefas 1, 3, 4",
@@ -47,27 +47,31 @@
         "fixture": "python3 -c com os.environ HO+ME"
       }
     ],
-    "em": "2026-10-19",
-    "reaberturas": 1
+    "em": "2026-10-20",
+    "reaberturas": 2,
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-20"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "9b11c4bd56d69a487d48a4bfcb458f4b98bd5660",
+      "head": "c12639a4518f086ce20d01f0b347e5b79d1c8e73",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ad26617029d0be796",
+        "agente_id": "ab88059a0e118d51d",
         "veredito": "reprovado",
-        "em": "2026-10-19",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-ad26617029d0be796.jsonl"
+        "em": "2026-10-20",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-ab88059a0e118d51d.jsonl"
       }
     ],
-    "achados": 8,
-    "em": "2026-10-19",
-    "tentativas": 1
+    "achados": 3,
+    "em": "2026-10-20",
+    "tentativas": 2
   },
   "verificar": {
     "status": "pendente"

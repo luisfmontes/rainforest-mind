@@ -25,7 +25,7 @@ pronto quando: com o cwd num worktree linkado da caixa de areia, as linhas `HOME
 ### 2. CHANGELOG, versão e comentário [tipo: docs]
 atende: D5
 arquivos: `CHANGELOG.md`, `README.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `hooks/gate-worktree.cjs`, `docs/rainforest/estado/2026-10-19-estado-reabrir.json`
-depende de: 4
+depende de: 5
 mutacao: n/a
   motivo: texto e número de versão, sem comportamento a inverter
 pronto quando: com o repositório da branch, `node scripts/conferir-versao.cjs` sai 0 com 1.70.1 maior que a da `origin/main`, o CHANGELOG abre com 1.70.1 citando #561 e a regra ampla de D1 (menção fora de leitura + uso da casa), `grep -n "fora de escopo (variavel" hooks/gate-worktree.cjs` não acha mais o comentário antigo, e `bash scripts/testa-versao.sh` sai `falhou: 0` com o badge do README em 1.70.1 — provado pelos quatro comandos. (O estado do fluxo estado-reabrir entra aqui por carona: é o `fechar ok` do #570, levado à `main` por esta branch.)
@@ -37,7 +37,7 @@ depende de: 1
 prova-na-base: verde — emenda da revisão (rodada 1); os casos nascem na bateria nesta tarefa
 mutacao:
   arquivo: `hooks/gate-worktree.cjs`
-  de: `!cdSemArgumento.test(comando)) return false;`
+  de: `!cdSemArgumento.test(vivo)) return false;`
   para: `true) return false;`
   bateria: `bash hooks/testa-gate-worktree.sh`
   fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", casos "HOME=$(dirname $PWD); cd -P; touch f" e "cd >/dev/null"`
@@ -55,3 +55,16 @@ mutacao:
   bateria: `bash hooks/testa-gate-worktree.sh`
   fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", caso python3 -c com os.environ['HO'+'ME']=os.path.dirname(os.getcwd())`
 pronto quando: com o cwd num worktree linkado, `python3 -c "import os; os.environ['HO'+'ME']=os.path.dirname(os.getcwd()); os.system('touch ~/f')"` sai 2 (sem menção nem definidor: só a execução indireta barra), e `echo "$(git rev-parse HEAD~1)"` sai 0 — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
+
+### 5. Til e `cd` entre aspas ou em heredoc de dado não usam a casa [tipo: implementar]
+atende: D1, D3
+arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`
+depende de: 4
+prova-na-base: verde — emenda da revisão (rodada 2); os casos nascem na bateria nesta tarefa
+mutacao:
+  arquivo: `hooks/gate-worktree.cjs`
+  de: `: mascaraAspasBash(mascaraHeredocsBash(comando));`
+  para: `: comando;`
+  bateria: `bash hooks/testa-gate-worktree.sh`
+  fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", casos "git commit -m \"reduz ~30 tokens\" && echo $(date)" e o commit por heredoc`
+pronto quando: com o cwd num worktree linkado, `git commit -m "reduz ~30 tokens" && echo $(date)`, `echo "~" ; echo $(date)` e `git commit -m "$(cat <<'EOF'` + linha `fix: reduz ~30 tokens e o agente faz cd` + `EOF` + `)"` saem 0 (a rodada 2 media 2), enquanto `HOME=$(dirname $PWD); bash -c 'touch ~/f'` (interpretador na linha: as aspas contam) e `$env:USERPROFILE += "\..\.."; Remove-Item $env:USERPROFILE\f` saem 2 — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.

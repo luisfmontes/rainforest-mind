@@ -24,8 +24,11 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   `printf -v`, `Set-Variable`, `Set-Item`, `iex`, `[Environment]::SetEnvironmentVariable`); ou (c) há execução
   indireta (`$(`, crase, `<(`, interpretador com `-c`/`-e`/`-Command`, `source`/`.`, `[scriptblock]`, `& {`, `env:`
   fora de leitura no PowerShell). Caixa exata no Bash, indiferente no PowerShell e no cmd. Efeito colateral aceito:
-  `export FOO=1; touch ~/x` dentro de um worktree também cai. Sem uso da casa na linha, nada muda
-  (`HOME=/tmp/h npm test`, `git diff HEAD~1 | grep export` passam).
+  `export FOO=1; touch ~/x` dentro de um worktree também cai. No PowerShell, `+=`, atribuição em lista e
+  `foreach ($env:X in ...)` contam como escrita. Sem uso da casa na linha, nada muda: no Bash, til e `cd` entre
+  aspas ou em corpo de heredoc com delimitador entre aspas não contam (o commit por heredoc com `~30 tokens`
+  passa), salvo com interpretador na linha (`bash`, `node`, `eval`), em que as aspas podem virar comando.
+  `HOME=/tmp/h npm test` e `git diff HEAD~1 | grep export` passam.
 
 ## 1.70.0 — 2026-10-19
 

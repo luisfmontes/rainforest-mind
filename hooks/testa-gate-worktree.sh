@@ -1941,6 +1941,20 @@ s552rv2 'Get-ChildItem env:; Remove-Item ~/f' 2 bp
 # Revisao de seguranca de 236c810c: til colado a operador de controle ou redirecionamento.
 s552rv2 'HOME=$(dirname $PWD);echo x>~/f' 2 b
 s552rv2 'HOME=$(dirname $PWD);true&&~/x' 2 b
+# Revisao do fluxo (rodada 2): atribuicao composta, em lista e por foreach no PowerShell; bracos
+# de mapfile, substituicao e scriptblock medidos; til depois de `)`.
+s552rv2 '$env:USERPROFILE += "\..\.."; Remove-Item $env:USERPROFILE\f' 2 bp
+s552rv2 '$env:USERPROFILE, $x = "..",1; Remove-Item $env:USERPROFILE\f' 2 bp
+s552rv2 'foreach ($env:USERPROFILE in @("..")) { Remove-Item $env:USERPROFILE\f }' 2 bp
+s552rv2 "printf '%s\n' .. > m; n=HO; n+=ME; mapfile -t \$n < m; touch ~/f" 2 b
+s552rv2 'n=HO; n+=ME; echo $(date) > ~/f' 2 b
+s552rv2 "\$n='HO'+'ME'; [scriptblock]::Create('1').Invoke(); Remove-Item ~/f" 2 bp
+s552rv2 'HOME=$(dirname $PWD); case x in x)~/x;; esac' 2 b
+s552rv2 "HOME=\$(dirname \$PWD); bash -c 'touch ~/f'" 2 b
+# Til e `cd` entre aspas ou em corpo de heredoc com delimitador entre aspas nao usam a casa.
+s552rv2 'git commit -m "reduz ~30 tokens" && echo $(date)' 0 b
+s552rv2 'echo "~" ; echo $(date)' 0 b
+s552rv2 "$(printf 'git commit -m "$(cat <<%sEOF%s\nfix: reduz ~30 tokens e o agente faz cd\nEOF\n)"' "'" "'")" 0 b
 # Til fora de posicao de expansao nao e a casa.
 s552rv2 'git diff HEAD~1 | grep -n "export"' 0 b
 s552rv2 'echo "$(git rev-parse HEAD~1)"' 0 b
