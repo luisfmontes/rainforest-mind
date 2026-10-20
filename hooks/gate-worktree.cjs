@@ -1674,6 +1674,20 @@ function caminhosCitados(texto, ehPowerShell) {
   return achados.map((c) => c.replace(/^FileSystem::/i, ""));
 }
 
+// Casa redefinida na propria linha (#561): com `HOME=<W>; touch ~/../f` o shell expande o atalho
+// para outro lugar, e a rede leria a casa real. Tiradas as formas de leitura (`$NOME`, `${NOME}`,
+// `$env:NOME`, `${env:NOME}`, `%NOME%`, sem `=` depois), qualquer mencao aos quatro nomes com a
+// casa em uso na linha falha fechado. Regra ampla, nao lista de grafias. Caixa exata no Bash,
+// indiferente no PowerShell e no cmd.
+const NOMES_DA_CASA = "HOME|USERPROFILE|HOMEDRIVE|HOMEPATH";
+function casaRedefinida(comando, ehPowerShell) {
+  const leitura = new RegExp(`(?:\\$\\{(?:env:)?(?:${NOMES_DA_CASA})\\}|\\$(?:env:)?(?:${NOMES_DA_CASA})\\b|%(?:${NOMES_DA_CASA})%)(?!\\s*=(?!=))`, ehPowerShell ? "gi" : "g");
+  const mencao = new RegExp(`\\b(?:${NOMES_DA_CASA})\\b`, ehPowerShell ? "i" : "");
+  if (!mencao.test(comando.replace(leitura, " "))) return false;
+  const usaCasa = new RegExp(`[$%]\\{?(?:env:)?(?:${NOMES_DA_CASA})`, "i");
+  return comando.search(ATALHO_DE_HOME) >= 0 || usaCasa.test(comando);
+}
+
 /**
  * Alvos da rede (D1-D5): um `{dir: <principal>, incerto: true}` por segmento que cita
  * caminho do principal fora de leitura, ou que roda com cwd no principal. Vazio
@@ -1761,6 +1775,7 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
   };
   const citaProtegido = (texto, base) => caminhosCitados(texto, ehPowerShell).some((c) => protegido(c, base, texto));
   const alvo = [{ dir: repo.principal, incerto: true }];
+  if (casaRedefinida(comando, ehPowerShell)) return alvo;
   // Segmentacao nao confiavel (D2): a linha inteira e um segmento so, e nada e leitura.
   // Bash com `\` + quebra: colar as linhas erra quando as contrabarras sao pares (`ls \\` + quebra +
   // `rm <P>/f`), e nao colar erra a continuacao; a linha toda vira um segmento so.

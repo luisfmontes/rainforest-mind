@@ -1896,6 +1896,22 @@ s552rv2 'git commit --message="corrigido em __R__/a"' 0 bp
 s552rv2 'git commit --message=x __R__/a' 2 b
 case "${R,,}" in "${CASA,,}"/*) RT='$USERPROFILE'"${R:${#CASA}}"; gate "#552 seg3: rm \$USERPROFILE/.../principal/f, do worktree, BARRA" 2 "$(b "rm $RT/f" "$WT")";; esac
 
+echo "== #561: casa redefinida na linha =="
+# Mencao a HOME/USERPROFILE/HOMEDRIVE/HOMEPATH fora de leitura, com a casa em uso na linha:
+# falha fechado, por qualquer grafia. Sem atalho de home na linha, nada muda.
+s552rv2 'HOME=__WN__; touch ~/../../../f' 2 b
+s552rv2 'read HOME <<< __WN__; touch ~/../../../f' 2 b
+s552rv2 'printf -v HOME %s __WN__; touch ~/../../../f' 2 b
+s552rv2 'export {HOME,X}=__WN__; touch ~/../../../f' 2 b
+s552rv2 'unset HOME; touch ${HOME:-__WN__}/../../../f' 2 b
+s552rv2 'HOMEPATH=__WN__; touch $HOMEDRIVE$HOMEPATH/../../../f' 2 b
+s552rv2 '$env:USERPROFILE="__WN__"; Remove-Item ~/../../../f' 2 bp
+s552rv2 '$env:home="__WN__"; Remove-Item ~/../../../f' 2 bp
+s552rv2 'home=/tmp/h; touch __WN__/f' 0 b
+s552rv2 'echo $HOME; touch __WN__/f' 0 b
+s552rv2 'touch __WN__/HOME.md' 0 b
+s552rv2 'Set-Content __WN__/f $env:USERPROFILE' 0 bp
+
 echo "== #552 D6: pai inexistente =="
 # Com cwd no proprio principal a rede nao age (D3): so a lista decide, e ela precisa
 # achar o repositorio subindo ate um diretorio que existe.
