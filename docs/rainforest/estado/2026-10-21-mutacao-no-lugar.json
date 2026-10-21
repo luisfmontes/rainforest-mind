@@ -12,7 +12,11 @@
     "em": "2026-10-21"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-21-mutacao-no-lugar.md",
+    "tarefas": 7,
+    "paralelas": [],
+    "em": "2026-10-21"
   },
   "executar": {
     "status": "pendente"
