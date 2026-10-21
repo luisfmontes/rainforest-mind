@@ -641,6 +641,13 @@ function conferirBlocoMutacao(bloco) {
     }
   }
 
+  // `no-lugar:` opcional (#527, #569): o único valor é `sim`, que manda a catraca
+  // medir na árvore real, sem cópia. Outro valor seria ignorado em silêncio.
+  const noLugarInvalido = !vazio(campos['no-lugar']) && campos['no-lugar'].replace(/^`|`$/g, '').trim() !== 'sim';
+  if (noLugarInvalido) {
+    return `declara \`mutacao:\` com \`no-lugar:\` que não é \`sim\`: ${campos['no-lugar']}`;
+  }
+
   return null;
 }
 
@@ -678,7 +685,7 @@ function extrairCamposDesconhecidos(corpo, cerca) {
     'prova-na-base', 'mutacao', 'motivo', 'pronto quando'
   ]);
   const conhecidos_subcampos = new Set([
-    'arquivo', 'de', 'para', 'bateria', 'fixture', 'raiz', 'timeout', 'motivo'
+    'arquivo', 'de', 'para', 'bateria', 'fixture', 'raiz', 'timeout', 'motivo', 'no-lugar'
   ]);
 
   const desconhecidos = [];
@@ -1055,6 +1062,9 @@ function cmdMutacoes() {
       '--raiz', raizTarefa,
     ];
     if (timeout) argumentos.push('--timeout', timeout);
+    // `no-lugar: sim` (#527, #569): runtime vivo sobre a árvore real (editor Unity aberto).
+    const noLugar = Boolean(campos['no-lugar']) && campos['no-lugar'].replace(/^`|`$/g, '').trim() === 'sim';
+    if (noLugar) argumentos.push('--no-lugar');
     if (gravaFlake) argumentos.push('--slug', slug, '--tarefa', String(numero));
     // #498: o estado fica na RAIZ do fluxo, não na `--raiz` da tarefa (que pode ser `raiz: app`).
     if (gravaFlake) argumentos.push('--raiz-estado', RAIZ);
