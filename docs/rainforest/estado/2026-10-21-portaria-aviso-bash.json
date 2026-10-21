@@ -23,12 +23,12 @@
     "em": "2026-10-21"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-21",
-    "tarefas_ok": 7,
-    "tarefas": 7,
-    "comando": "node hooks/testa-portaria-fora-de-repo.cjs; bash hooks/testa-contexto-sessao.sh; node hooks/testa-aviso-fluxo.cjs; node hooks/testa-aviso-fluxo-shell.cjs; conferir-mutacao tarefas 1-6",
-    "saida": "18 ok 0 falha; ok 305 falhou 0; 10 ok 0 falha; 23 ok 0 falha; T1-T6 exit 0 (bateria vermelha com o mutante)",
+    "tarefas_ok": 8,
+    "tarefas": 8,
+    "comando": "node hooks/testa-portaria-fora-de-repo.cjs; bash hooks/testa-contexto-sessao.sh; node hooks/testa-aviso-fluxo.cjs; node hooks/testa-aviso-fluxo-shell.cjs; bash hooks/testa-config.sh; bash hooks/testa-memoria-marca.sh; bash scripts/testa-conferir-categoria.sh; conferir-mutacao tarefas 1-6 e 8",
+    "saida": "18 ok; 305 ok; 10 ok; 28 ok; 63 ok; 12 ok; 14 ok, todas 0 falha; T1-T6 e T8 exit 0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -64,13 +64,14 @@
         "tarefa": 7,
         "resultado": "n/a",
         "motivo": "texto e numero de versao, sem comportamento a inverter"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-aviso-fluxo-shell.cjs, caso D1"
       }
     ],
     "em": "2026-10-21",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-21"
-    },
     "reaberturas": 1
   },
   "revisar": {
