@@ -60,27 +60,41 @@ function codigoComitadoDesde(gitTop, guardado, headAtual) {
   const reflog = git(gitTop, ['log', '-g', '--date=unix', '--format=%gd%x09%H%x09%gs', `-n${MAX_REFLOG}`, 'HEAD']);
   if (!reflog) return [];
   const caminhos = [];
-  const entradas = reflog.split(/\r?\n/).map((linha) => linha.split('\t'));
-  for (let i = 0; i < entradas.length; i++) {
-    const [seletor, hash, assunto = ''] = entradas[i];
+  for (const linha of reflog.split(/\r?\n/)) {
+    const [seletor, hash, assunto = ''] = linha.split('\t');
     const quando = Number((/\{(\d+)\}/.exec(seletor || '') || [])[1]);
     // Para no HEAD da foto (o que veio antes dela já estava lá) ou, sem ele no reflog, pela hora.
     if (!hash || hash === guardado.head || !Number.isFinite(quando) || quando < guardado.ts - 1) break;
     if (!/^commit( \((amend|initial)\))?:/.test(assunto)) continue;
-    // O amend se compara com a versão que ele substituiu (a entrada anterior do reflog), não
-    // com o pai: senão o código do commit emendado, de antes da sessão, avisa como novo.
-    const substituido = /^commit \(amend\):/.test(assunto) && entradas[i + 1] ? entradas[i + 1][1] : null;
+    // O código antigo que um amend carrega sai depois, no filtro contra o HEAD da foto.
     const arquivos = git(gitTop, ['-c', 'core.quotepath=false', 'diff-tree', '--no-commit-id', '-r', '-z',
-      '--name-only', '--diff-filter=ACMR', ...(substituido ? [substituido, hash] : ['--root', hash])]);
+      '--name-only', '--diff-filter=ACMR', '--root', hash]);
     for (const c of (arquivos || '').split('\0')) if (c && ehCodigo(c)) caminhos.push(c);
   }
   return caminhos;
 }
 
-// Merge, cherry-pick ou revert em andamento (conflito) deixam o trabalho alheio staged: ele
-// entra na foto como visto, mas não avisa (emenda da rodada 3 da revisão).
+// Merge, cherry-pick, revert ou rebase em andamento (conflito) e `merge --squash` deixam
+// trabalho alheio, ou de antes da sessão, staged: ele entra na foto como visto, mas não avisa
+// (emendas das rodadas 3 e 4 da revisão).
+const OPERACOES_EM_PASTA = ['rebase-merge', 'rebase-apply', 'SQUASH_MSG'];
 function emOperacaoAlheia(gitTop) {
-  return ['MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD'].some((ref) => git(gitTop, ['rev-parse', '-q', '--verify', ref]) !== null);
+  if (['MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD'].some((ref) => git(gitTop, ['rev-parse', '-q', '--verify', ref]) !== null)) return true;
+  return OPERACOES_EM_PASTA.some((nome) => {
+    const rel = (git(gitTop, ['rev-parse', '--git-path', nome]) || '').trim();
+    return rel !== '' && fs.existsSync(path.resolve(gitTop, rel));
+  });
+}
+
+// Caminhos que diferem do HEAD da foto (rastreados, staged ou não) mais os não rastreados. O que
+// voltou ao estado da foto por `reset --soft`, squash ou amend não é código novo da sessão
+// (emenda da rodada 4). Sem HEAD na foto, não há contra o que comparar: devolve null.
+function caminhosLiquidos(gitTop, headFoto) {
+  if (!headFoto) return null;
+  const diff = git(gitTop, ['-c', 'core.quotepath=false', 'diff', '--name-only', '-z', headFoto]);
+  const soltos = git(gitTop, ['ls-files', '--others', '--exclude-standard', '-z']);
+  if (diff === null || soltos === null) return null;
+  return new Set([...diff.split('\0'), ...soltos.split('\0')].filter(Boolean));
 }
 
 // Caminhos de código sujos (modificados, novos ou não rastreados) fora de docs/.
@@ -164,7 +178,9 @@ function main() {
   gravarConjunto(arquivo, vistos, headAtual);
   if (emOperacaoAlheia(gitTop)) process.exit(0);
   const sujosNovos = [...atual].filter((c) => !guardado.caminhos.has(c));
-  const novos = [...new Set([...sujosNovos, ...comitados.filter((c) => !guardado.caminhos.has(c))])].sort();
+  const candidatos = [...new Set([...sujosNovos, ...comitados.filter((c) => !guardado.caminhos.has(c))])];
+  const liquido = candidatos.length ? caminhosLiquidos(gitTop, guardado.head) : null;
+  const novos = candidatos.filter((c) => !liquido || liquido.has(c)).sort();
   if (novos.length === 0) process.exit(0);
 
   if (fluXoAberto(gitTop, trilho)) process.exit(0);

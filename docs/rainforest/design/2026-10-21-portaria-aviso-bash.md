@@ -71,6 +71,12 @@ Dois buracos de trava que deixam a regra sem saída ou sem sinal:
     entrada anterior do reflog (a versão substituída), não com o pai. O aviso diz "código novo ou
     mexido", porque a remoção de arquivo rastreado também avisa. Limite aceito: código criado e
     commitado na primeira chamada de shell da sessão não avisa, porque ainda não há foto do `HEAD`.
+  - *Emenda da rodada 4 da revisão (teto liberado de novo, mesmo impasse):* só avisa caminho que
+    difere do `HEAD` da foto (`git diff --name-only <HEAD da foto>`), mais os não rastreados. O que
+    volta ao estado da foto por `reset --soft`, squash ou amend não é código novo. `rebase-merge`,
+    `rebase-apply` e `SQUASH_MSG` entram nas operações em andamento que não avisam.
+    A comparação do `--amend` com a entrada anterior do reflog, da emenda da rodada 3, saiu: o
+    filtro contra o `HEAD` da foto já cobre o amend.
 - **D4 — Baterias com contornos e vizinhos**:
   - portaria: casos novos em `hooks/testa-portaria-fluxo-pulado.cjs` (ou bateria própria). Passa:
     cwd fora de repo, `Worktree:` de worktree linkado, fluxo aberto lá. Barram: cwd fora de repo

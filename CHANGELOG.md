@@ -25,7 +25,9 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   os arquivos e as mesmas saídas do `aviso-fluxo.cjs`. Não desfaz nada, porque o comando já rodou. Decide pelo
   `git status` e pelos commits que a própria sessão fez, lidos no reflog do `HEAD` (código criado e commitado na
   mesma chamada também avisa; o que chega por `pull`, `merge` ou `rebase` não), e não pela grafia do comando. Cada
-  caminho avisa uma vez por sessão, e merge ou cherry-pick em conflito não avisa o trabalho alheio. Limite: código
+  caminho avisa uma vez por sessão, e só avisa o que difere do `HEAD` da última foto: merge, rebase ou
+  cherry-pick em conflito, `merge --squash` e o rearranjo de commits antigos (`reset --soft`, squash, amend) não
+  avisam. Limite: código
   criado e commitado já na primeira chamada de shell da sessão não avisa. Custo: um processo e um `git status` por chamada de shell. A chave
   `aviso-fluxo` desliga os dois.
 

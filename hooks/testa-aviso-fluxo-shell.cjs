@@ -271,6 +271,69 @@ console.log('== E. trabalho alheio e commit de antes da sessao ==');
     `exit=${comCodigo.status} stderr=${comCodigo.stderr}`);
 }
 
+console.log('== F. rearranjo de commits de antes da sessao e rebase ==');
+{
+  // Squash por reset --soft: o codigo ja existia na foto, nada novo.
+  const r = novoRepo();
+  for (const n of ['p1', 'p2']) {
+    fs.writeFileSync(path.join(r.repo, `${n}.py`), `print("${n}")\n`);
+    git(r.repo, ['add', '.']);
+    git(r.repo, ['commit', '-q', '-m', n]);
+  }
+  rodar(r);
+  git(r.repo, ['reset', '-q', '--soft', 'HEAD~2']);
+  git(r.repo, ['commit', '-q', '-m', 'squash']);
+  const squash = rodar(r);
+  caso('F1 reset --soft HEAD~2 e commit de codigo de antes da sessao: exit 0',
+    squash.status === 0, `exit=${squash.status} stderr=${squash.stderr}`);
+}
+{
+  // Rebase em conflito: os commits reaplicados ficam staged com o HEAD destacado.
+  const r = novoRepo();
+  fs.writeFileSync(path.join(r.repo, 'conf.py'), 'a = 0\n');
+  git(r.repo, ['add', '.']);
+  git(r.repo, ['commit', '-q', '-m', 'base']);
+  git(r.repo, ['branch', 'outra']);
+  fs.writeFileSync(path.join(r.repo, 'conf.py'), 'a = 1\n');
+  fs.writeFileSync(path.join(r.repo, 'pre.py'), 'print(1)\n');
+  git(r.repo, ['add', '.']);
+  git(r.repo, ['commit', '-q', '-m', 'meu']);
+  git(r.repo, ['checkout', '-q', 'outra']);
+  fs.writeFileSync(path.join(r.repo, 'conf.py'), 'a = 2\n');
+  git(r.repo, ['commit', '-q', '-am', 'deles']);
+  git(r.repo, ['checkout', '-q', 'fluxo/teste']);
+  rodar(r);
+  const reb = spawnSync('git', ['rebase', 'outra'], { cwd: r.repo, encoding: 'utf8' });
+  caso('F2 preparo: o rebase parou em conflito', reb.status !== 0, `exit=${reb.status} ${reb.stdout} ${reb.stderr}`);
+  const conflito = rodar(r);
+  caso('F2 rebase em conflito: o codigo de antes da sessao staged nao avisa (exit 0)',
+    conflito.status === 0, `exit=${conflito.status} stderr=${conflito.stderr}`);
+  spawnSync('git', ['rebase', '--abort'], { cwd: r.repo, encoding: 'utf8' });
+}
+{
+  // merge --squash de branch alheia deixa o codigo dela staged, sem MERGE_HEAD.
+  const r = novoRepo();
+  git(r.repo, ['checkout', '-q', '-b', 'al']);
+  fs.writeFileSync(path.join(r.repo, 'colega.py'), 'print(5)\n');
+  git(r.repo, ['add', '.']);
+  git(r.repo, ['commit', '-q', '-m', 'colega']);
+  git(r.repo, ['checkout', '-q', 'fluxo/teste']);
+  rodar(r);
+  git(r.repo, ['merge', '-q', '--squash', 'al']);
+  const squashMerge = rodar(r);
+  caso('F3 merge --squash de branch alheia: exit 0', squashMerge.status === 0, `exit=${squashMerge.status} stderr=${squashMerge.stderr}`);
+}
+{
+  // Remocao de arquivo rastreado avisa como codigo mexido.
+  const r = novoRepo();
+  rodar(r);
+  fs.rmSync(path.join(r.repo, 'a.sh'));
+  const rm = rodar(r);
+  caso('F4 rm de arquivo de codigo rastreado avisa: exit 2 nomeando a.sh',
+    rm.status === 2 && /a\.sh/.test(rm.stderr || ''), `exit=${rm.status} stderr=${rm.stderr}`);
+  caso('F4 o aviso diz "código novo ou mexido"', /há código novo ou mexido/.test(rm.stderr || ''), rm.stderr);
+}
+
 console.log('== C. branch padrao ==');
 {
   const r = novoRepo({ branch: 'main' });

@@ -23,3 +23,22 @@ regressão. As três reprovações foram do aviso de escrita pelo shell (D3, #56
 - O texto passa a dizer "código novo ou mexido".
 - O achado 3 vira limite aceito: fechar exige foto na abertura da sessão, outro hook.
 - O revisor só aponta forma de uso real que esteja fora da lista de limites aceitos.
+
+## Teto da 4ª reprovação (2026-10-21)
+
+A rodada 4 fechou o conflito de merge, pull e cherry-pick e o amend de commit antigo. Ficaram três
+achados, todos do aviso pelo shell:
+
+1. `rebase` ou `pull --rebase` com conflito, e `merge --squash` de branch alheia, avisam código
+   que não é da sessão.
+2. `git reset --soft HEAD~N` seguido de `git commit` avisa o código de antes da sessão.
+3. O texto "código novo ou mexido" não tinha teste.
+
+## Decisão do usuário (rodada 5)
+
+"recomendado" à opção A: uma 5ª rodada com a regra generalizada.
+
+- Só avisa caminho que difere do HEAD da foto (`git diff --name-only <HEAD da foto>`), mais os
+  não rastreados. Isso cobre de uma vez todo rearranjo de commits que já existiam.
+- `rebase-merge`, `rebase-apply` e `SQUASH_MSG` entram nas operações alheias em andamento.
+- O texto do aviso e a remoção de arquivo rastreado ganham caso na bateria.

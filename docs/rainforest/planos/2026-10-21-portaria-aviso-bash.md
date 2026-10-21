@@ -91,7 +91,7 @@ pronto quando: com duas chamadas seguidas do PostToolUse de Bash na mesma sessã
 ### 7. Versão 1.71.0, CHANGELOG e README [tipo: docs]
 atende: D5
 arquivos: `CHANGELOG.md`, `README.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `docs/rainforest/estado/2026-10-19-gate-worktree-home.json`, `hooks/lib/config.cjs`, `skills/setup/SKILL.md`
-depende de: 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13
+depende de: 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16
 mutacao: n/a
   motivo: texto e número de versão, sem comportamento a inverter
 pronto quando: com o `.claude-plugin/plugin.json` e o `.codex-plugin/plugin.json` em `1.71.0`, `node scripts/conferir-versao.cjs` sai 0 com `versao 1.71.0`. O CHANGELOG abre com `## 1.71.0` e descreve o que D1, D2 e D3 decidiram: a linha `Worktree:` conferida como worktree linkado fora de repo, o aviso na abertura e o hook PostToolUse que decide pelo `git status`, com o custo de um processo por chamada de shell. O README traz o badge `1.71.0`, a exceção fora de repo na linha da `portaria.cjs` e o parágrafo do `aviso-fluxo-shell.cjs`. O estado do fluxo `2026-10-19-gate-worktree-home` entra com `fechar ok` e PR 572. A descrição da chave `aviso-fluxo` em `hooks/lib/config.cjs` e em `skills/setup/SKILL.md` diz que ela também desliga o aviso do shell, e `node scripts/conferir-setup.cjs` sai 0.
@@ -161,15 +161,54 @@ mutacao:
   fixture: `testa-aviso-fluxo-shell.cjs, caso E1`
 pronto quando: com o payload PostToolUse de Bash depois de `git merge al` em conflito (o `alheio.py` da outra branch fica staged), o hook sai 0. Depois do `git commit` que resolve o merge, a chamada seguinte também sai 0. Provado por `node hooks/testa-aviso-fluxo-shell.cjs` (casos E1 e E2) com placar `0 falha(s)`.
 
-### 13. O amend se compara com a versão que substituiu [tipo: implementar]
+### 13. O amend não avisa o código de antes da sessão [tipo: implementar]
 atende: D3, D4
 arquivos: `hooks/aviso-fluxo-shell.cjs`, `hooks/testa-aviso-fluxo-shell.cjs`
 depende de: 12
 prova: `node hooks/testa-aviso-fluxo-shell.cjs`
 mutacao:
   arquivo: `hooks/aviso-fluxo-shell.cjs`
-  de: `const substituido = /^commit \(amend\):/.test(assunto) && entradas[i + 1] ? entradas[i + 1][1] : null;`
-  para: `const substituido = null;`
+  de: `const novos = candidatos.filter((c) => !liquido || liquido.has(c)).sort();`
+  para: `const novos = candidatos.sort();`
   bateria: `node hooks/testa-aviso-fluxo-shell.cjs`
   fixture: `testa-aviso-fluxo-shell.cjs, casos E3 e E4`
 pronto quando: com o payload PostToolUse de Bash depois de `git commit --amend -m "mensagem corrigida"` num commit de antes da sessão que tem `anterior.py`, o hook sai 0. Depois de um `--amend --no-edit` que acrescenta `emenda.py`, ele sai 2 nomeando `emenda.py` e não `anterior.py`. Provado por `node hooks/testa-aviso-fluxo-shell.cjs` (casos E3 e E4) com placar `0 falha(s)`.
+
+### 14. Rebase em andamento e merge --squash não avisam [tipo: implementar]
+atende: D3, D4
+arquivos: `hooks/aviso-fluxo-shell.cjs`, `hooks/testa-aviso-fluxo-shell.cjs`
+depende de: 13
+prova: `node hooks/testa-aviso-fluxo-shell.cjs`
+mutacao:
+  arquivo: `hooks/aviso-fluxo-shell.cjs`
+  de: `const OPERACOES_EM_PASTA = ['rebase-merge', 'rebase-apply', 'SQUASH_MSG'];`
+  para: `const OPERACOES_EM_PASTA = [];`
+  bateria: `node hooks/testa-aviso-fluxo-shell.cjs`
+  fixture: `testa-aviso-fluxo-shell.cjs, casos F2 e F3`
+pronto quando: com o payload PostToolUse de Bash depois de `git rebase outra` parado em conflito (os commits de antes da sessão ficam staged com o HEAD destacado), o hook sai 0. Depois de `git merge --squash al` de uma branch alheia, que deixa `colega.py` staged sem `MERGE_HEAD`, ele também sai 0. Provado por `node hooks/testa-aviso-fluxo-shell.cjs` (casos F2 e F3) com placar `0 falha(s)`.
+
+### 15. Só avisa caminho que difere do HEAD da foto [tipo: implementar]
+atende: D3, D4
+arquivos: `hooks/aviso-fluxo-shell.cjs`, `hooks/testa-aviso-fluxo-shell.cjs`
+depende de: 14
+prova: `node hooks/testa-aviso-fluxo-shell.cjs`
+mutacao:
+  arquivo: `hooks/aviso-fluxo-shell.cjs`
+  de: `const novos = candidatos.filter((c) => !liquido || liquido.has(c)).sort();`
+  para: `const novos = candidatos.sort();`
+  bateria: `node hooks/testa-aviso-fluxo-shell.cjs`
+  fixture: `testa-aviso-fluxo-shell.cjs, caso F1`
+pronto quando: com o payload PostToolUse de Bash depois de `git reset --soft HEAD~2 && git commit -m squash` sobre `p1.py` e `p2.py` commitados antes da sessão, o hook sai 0. O código criado e commitado na sessão segue avisando (casos D1 e D5). Provado por `node hooks/testa-aviso-fluxo-shell.cjs` (casos F1, D1 e D5) com placar `0 falha(s)`.
+
+### 16. O aviso diz "código novo ou mexido", e a remoção avisa [tipo: implementar]
+atende: D3, D4
+arquivos: `hooks/aviso-fluxo-shell.cjs`, `hooks/testa-aviso-fluxo-shell.cjs`
+depende de: 15
+prova: `node hooks/testa-aviso-fluxo-shell.cjs`
+mutacao:
+  arquivo: `hooks/aviso-fluxo-shell.cjs`
+  de: `e há código novo ou mexido, sujo ou commitado nesta sessão,`
+  para: `e há código novo, sujo ou commitado nesta sessão,`
+  bateria: `node hooks/testa-aviso-fluxo-shell.cjs`
+  fixture: `testa-aviso-fluxo-shell.cjs, caso F4`
+pronto quando: com o payload PostToolUse de Bash depois de `rm a.sh` (arquivo de código rastreado), o hook sai 2 nomeando `a.sh`, com o texto "há código novo ou mexido". Provado por `node hooks/testa-aviso-fluxo-shell.cjs` (caso F4) com placar `0 falha(s)`.
