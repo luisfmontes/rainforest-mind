@@ -23,12 +23,12 @@
     "em": "2026-10-21"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-21",
-    "tarefas_ok": 18,
-    "tarefas": 18,
-    "comando": "node hooks/testa-aviso-fluxo-shell.cjs",
-    "saida": "== resultado: 48 ok, 0 falha(s) ==",
+    "tarefas_ok": 19,
+    "tarefas": 19,
+    "comando": "bash hooks/testa-abertura-mod-foco.sh",
+    "saida": "ok: 12   falhou: 0   skipped: 0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -119,15 +119,20 @@
         "tarefa": 18,
         "resultado": "n/a",
         "motivo": "defesa dupla. O HEAD é validado como hash hexadecimal e vai ao git depois de `--end-of-options`, então tirar qualquer uma das duas sozinha não muda a saída observável. O caso G1 confere o efeito das duas juntas."
+      },
+      {
+        "tarefa": 19,
+        "resultado": "vermelho",
+        "fixture": "testa-abertura-mod-foco.sh, secao \"2. sem a flag = golden\""
       }
     ],
     "em": "2026-10-21",
     "reaberturas": 5
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "5507189faeb1949bfa6da2ad1c74f7be8aeb52b5",
+      "head": "8b4441cad293b6d347e3569ad09b45603c2ad4e1",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-10-21-portaria-aviso-bash.json"
       ]
@@ -135,10 +140,10 @@
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a9dfa691651436b01",
+        "agente_id": "aea6dd2352c7167cd",
         "veredito": "ok",
         "em": "2026-10-21",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-a9dfa691651436b01.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-aea6dd2352c7167cd.jsonl"
       }
     ],
     "em": "2026-10-21",
@@ -158,15 +163,15 @@
       }
     ],
     "base": "68c1cbadb34660657dfc5e62018e874b3434981c",
-    "head": "5507189faeb1949bfa6da2ad1c74f7be8aeb52b5"
+    "head": "8b4441cad293b6d347e3569ad09b45603c2ad4e1"
   },
   "verificar": {
-    "status": "pendente",
-    "comando": "node hooks/testa-aviso-fluxo-shell.cjs && node hooks/testa-portaria-fora-de-repo.cjs && bash hooks/testa-contexto-sessao.sh && bash hooks/testa-config.sh && bash scripts/testa-conferir-categoria.sh",
-    "saida": "48 ok 0 falha(s); 18 ok 0 falha(s); ok: 305 falhou: 0; 63 ok 0 falha(s); 14 ok 0 falha(s) 0 pulado(s); conferir-versao exit 0 versao 1.71.0; conferir-setup ok 45 chaves",
+    "status": "ok",
+    "comando": "node hooks/testa-aviso-fluxo-shell.cjs && node hooks/testa-portaria-fora-de-repo.cjs && bash hooks/testa-contexto-sessao.sh && bash hooks/testa-config.sh && bash scripts/testa-conferir-categoria.sh && bash hooks/testa-abertura-mod-foco.sh",
+    "saida": "48 ok 0 falha(s); 18 ok 0 falha(s); ok: 305 falhou: 0; 63 ok 0 falha(s); 14 ok 0 falha(s) 0 pulado(s); conferir-versao exit 0 versao 1.71.0; conferir-setup ok 45 chaves; ok: 12 falhou: 0 skipped: 0",
     "sensor_externo": "node hooks/testa-aviso-fluxo-shell.cjs",
     "em": "2026-10-21",
-    "head": "5507189faeb1949bfa6da2ad1c74f7be8aeb52b5"
+    "head": "8b4441cad293b6d347e3569ad09b45603c2ad4e1"
   },
   "fechar": {
     "status": "pendente",
