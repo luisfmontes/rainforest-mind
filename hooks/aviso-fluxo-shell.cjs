@@ -15,8 +15,9 @@
  * trilho, chave `aviso-fluxo` ligada, nenhum fluxo aberto na branch e sem `leve`. Arquivo
  * sob `docs/` e extensão que não é de código ficam de fora. Sem conjunto guardado, a base é
  * vazia: o código já sujo avisa uma vez. Arquivo já sujo que muda de novo não reaparece.
- * A foto guarda também o HEAD: código criado e commitado na mesma chamada conta pelos commits
- * novos desde ela. Código em pasta ignorada pelo git não aparece (o Edit já o barra).
+ * A foto guarda também o HEAD: código criado e commitado na mesma chamada conta pelos commits que
+ * a sessão fez desde ela, lidos no reflog. A foto acumula o que a sessão já viu, então cada caminho
+ * avisa uma vez. Código em pasta ignorada pelo git não aparece (o Edit já o barra).
  */
 
 const fs = require('node:fs');
@@ -48,15 +49,28 @@ function git(gitTop, args) {
   }
 }
 
-// Código criado e commitado na mesma chamada deixa a árvore limpa: contam os commits novos
-// desde a última foto (sem merge, com data de commit depois dela), para não avisar o que
-// chegou por `git pull` ou merge de trabalho alheio (D3, emenda da revisão).
+// Código criado e commitado na mesma chamada deixa a árvore limpa: contam os commits que a
+// própria sessão fez desde a última foto, lidos no reflog do HEAD. Só as entradas `commit` e
+// `commit (amend)`/`(initial)` contam; `pull`, `merge`, `rebase`, `reset`, `checkout`,
+// `cherry-pick` e o `commit (merge)` que fecha um merge trazem trabalho alheio e ficam de
+// fora (D3, emendas das rodadas 1 e 2 da revisão).
+const MAX_REFLOG = 50;
 function codigoComitadoDesde(gitTop, guardado, headAtual) {
   if (!guardado.head || !headAtual || guardado.head === headAtual || !guardado.ts) return [];
-  const saida = git(gitTop, ['log', '--no-merges', '--format=', '--name-only', '--diff-filter=ACMR',
-    `--since=@${guardado.ts - 1}`, `${guardado.head}..${headAtual}`]);
-  if (!saida) return [];
-  return saida.split(/\r?\n/).filter((c) => c && ehCodigo(c));
+  const reflog = git(gitTop, ['log', '-g', '--date=unix', '--format=%gd%x09%H%x09%gs', `-n${MAX_REFLOG}`, 'HEAD']);
+  if (!reflog) return [];
+  const caminhos = [];
+  for (const linha of reflog.split(/\r?\n/)) {
+    const [seletor, hash, assunto = ''] = linha.split('\t');
+    const quando = Number((/\{(\d+)\}/.exec(seletor || '') || [])[1]);
+    // Para no HEAD da foto (o que veio antes dela já estava lá) ou, sem ele no reflog, pela hora.
+    if (!hash || hash === guardado.head || !Number.isFinite(quando) || quando < guardado.ts - 1) break;
+    if (!/^commit( \((amend|initial)\))?:/.test(assunto)) continue;
+    const arquivos = git(gitTop, ['-c', 'core.quotepath=false', 'diff-tree', '--no-commit-id', '-r', '-z',
+      '--name-only', '--diff-filter=ACMR', '--root', hash]);
+    for (const c of (arquivos || '').split('\0')) if (c && ehCodigo(c)) caminhos.push(c);
+  }
+  return caminhos;
 }
 
 // Caminhos de código sujos (modificados, novos ou não rastreados) fora de docs/.
@@ -133,10 +147,13 @@ function main() {
   const arquivo = arquivoDoConjunto(ev.session_id || 'sem-sessao', gitTop);
   const headAtual = (git(gitTop, ['rev-parse', 'HEAD']) || '').trim() || null;
   const guardado = lerConjunto(arquivo);
-  gravarConjunto(arquivo, atual, headAtual);
-  const sujosNovos = [...atual].filter((c) => !guardado.caminhos.has(c));
   const comitados = codigoComitadoDesde(gitTop, guardado, headAtual);
-  const novos = [...new Set([...sujosNovos, ...comitados])].sort();
+  // A foto acumula tudo o que a sessão já viu: caminho avisado (ou visto com fluxo aberto) não
+  // volta a avisar quando é commitado, emendado, rebaseado ou volta de um stash.
+  const vistos = new Set([...guardado.caminhos, ...atual, ...comitados]);
+  gravarConjunto(arquivo, vistos, headAtual);
+  const sujosNovos = [...atual].filter((c) => !guardado.caminhos.has(c));
+  const novos = [...new Set([...sujosNovos, ...comitados.filter((c) => !guardado.caminhos.has(c))])].sort();
   if (novos.length === 0) process.exit(0);
 
   if (fluXoAberto(gitTop, trilho)) process.exit(0);
@@ -152,7 +169,7 @@ function main() {
   const listados = novos.slice(0, MAX_LISTADOS).join(', ') + (novos.length > MAX_LISTADOS ? ` e mais ${novos.length - MAX_LISTADOS}` : '');
   const onde = headDestacado ? 'em HEAD destacado (sem branch)' : `sem fluxo aberto na branch '${branch || 'desconhecida'}'`;
   const texto = [
-    `AVISO: este repositório tem fluxo ${trilho} e há código novo sujo ${onde}: ${listados}. Visto depois deste comando (o comando já rodou e nada foi desfeito); código não deveria nascer fora de um fluxo.`,
+    `AVISO: este repositório tem fluxo ${trilho} e há código novo, sujo ou commitado nesta sessão, ${onde}: ${listados}. Visto depois deste comando (o comando já rodou e nada foi desfeito); código não deveria nascer fora de um fluxo.`,
     ...saidas,
   ].join('\n');
   fs.writeSync(2, texto + '\n');

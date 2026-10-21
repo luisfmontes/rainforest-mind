@@ -173,12 +173,18 @@ console.log('== D. codigo criado e commitado na mesma chamada ==');
   const repetido = rodar(r);
   caso('D2 chamada seguinte sem commit novo: exit 0', repetido.status === 0, `exit=${repetido.status} stderr=${repetido.stderr}`);
 
-  // O que chega por pull vem com data de commit antiga: nao e codigo desta sessao.
-  fs.writeFileSync(path.join(r.repo, 'alheio.py'), 'print(3)\n');
-  git(r.repo, ['add', 'alheio.py']);
-  spawnSync('git', ['commit', '-q', '-m', 'alheio'], { cwd: r.repo, env: { ...process.env, GIT_COMMITTER_DATE: '2020-01-01T00:00:00' }, encoding: 'utf8' });
+  // O que chega por pull e trabalho alheio, mesmo com data de commit recente: o reflog o
+  // registra como `pull`, nao como `commit`.
+  const colega = path.join(r.sbx, 'colega');
+  git(r.sbx, ['clone', '-q', '-b', 'fluxo/teste', r.repo, colega]);
+  git(colega, ['config', 'user.email', 'c@c']);
+  git(colega, ['config', 'user.name', 'Colega']);
+  fs.writeFileSync(path.join(colega, 'colega.py'), 'print(3)\n');
+  git(colega, ['add', 'colega.py']);
+  git(colega, ['commit', '-q', '-m', 'colega']);
+  git(r.repo, ['pull', '-q', '--ff-only', colega, 'fluxo/teste']);
   const puxado = rodar(r);
-  caso('D3 commit com data anterior a foto (como o que chega por pull): exit 0',
+  caso('D3 commit recente de outro clone trazido por git pull: exit 0',
     puxado.status === 0, `exit=${puxado.status} stderr=${puxado.stderr}`);
 
   fs.mkdirSync(path.join(r.repo, 'docs', 'x'), { recursive: true });
@@ -188,6 +194,29 @@ console.log('== D. codigo criado e commitado na mesma chamada ==');
   git(r.repo, ['commit', '-q', '-m', 'doc']);
   const doc = rodar(r);
   caso('D4 commit so com docs/ e texto: exit 0', doc.status === 0, `exit=${doc.status} stderr=${doc.stderr}`);
+
+  // Pasta com acento, como as dos repositorios Protheus: o git cita o nome se nao for lido com -z.
+  fs.mkdirSync(path.join(r.repo, 'Gestão'));
+  fs.writeFileSync(path.join(r.repo, 'Gestão', 'Contrato.prw'), 'User Function X()\nReturn\n');
+  git(r.repo, ['add', '.']);
+  git(r.repo, ['commit', '-q', '-m', 'acento']);
+  const acento = rodar(r);
+  caso('D5 codigo em pasta com acento criado e commitado na mesma chamada: exit 2',
+    acento.status === 2 && /Gestão\/Contrato\.prw/.test(acento.stderr || ''), `exit=${acento.status} stderr=${acento.stderr}`);
+}
+{
+  const r = novoRepo();
+  rodar(r);
+  fs.writeFileSync(path.join(r.repo, 'z.py'), 'print(1)\n');
+  const sujo = rodar(r);
+  caso('D6 z.py novo e sujo avisa: exit 2', sujo.status === 2 && /z\.py/.test(sujo.stderr || ''), `exit=${sujo.status} stderr=${sujo.stderr}`);
+  git(r.repo, ['add', 'z.py']);
+  git(r.repo, ['commit', '-q', '-m', 'z']);
+  const comitado = rodar(r);
+  caso('D6 o mesmo z.py commitado depois nao reavisa: exit 0', comitado.status === 0, `exit=${comitado.status} stderr=${comitado.stderr}`);
+  git(r.repo, ['commit', '-q', '--amend', '-m', 'z2']);
+  const emendado = rodar(r);
+  caso('D6 commit --amend do mesmo z.py nao reavisa: exit 0', emendado.status === 0, `exit=${emendado.status} stderr=${emendado.stderr}`);
 }
 
 console.log('== C. branch padrao ==');

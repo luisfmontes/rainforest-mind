@@ -23,8 +23,9 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   `aviso-fluxo-shell.cjs` roda depois de cada Bash/PowerShell da sessão principal. Se o comando deixou arquivo de
   código novo no `git status` (fora de `docs/`) num repo com fluxo, sem fluxo aberto nem `leve`, ele avisa com
   os arquivos e as mesmas saídas do `aviso-fluxo.cjs`. Não desfaz nada, porque o comando já rodou. Decide pelo
-  `git status` e pelos commits novos da sessão (código criado e commitado na mesma chamada também avisa), não pela
-  grafia do comando. Custo: um processo e um `git status` por chamada de shell. A chave
+  `git status` e pelos commits que a própria sessão fez, lidos no reflog do `HEAD` (código criado e commitado na
+  mesma chamada também avisa; o que chega por `pull`, `merge` ou `rebase` não), e não pela grafia do comando. Cada
+  caminho avisa uma vez por sessão. Custo: um processo e um `git status` por chamada de shell. A chave
   `aviso-fluxo` desliga os dois.
 
 ## 1.70.1 — 2026-10-19

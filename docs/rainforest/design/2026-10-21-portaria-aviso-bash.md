@@ -56,6 +56,14 @@ Dois buracos de trava que deixam a regra sem saída ou sem sinal:
     merge. Código em pasta ignorada pelo git fica como limite aceito: o git não o vê, e o hook de
     Edit já barra esse caminho. O texto do aviso diz "há código novo sujo", não "o comando mudou",
     porque a primeira chamada da sessão também avisa o que já estava sujo.
+  - *Emenda da rodada 2 da revisão (Q1 A do usuário):* o filtro por data deixava avisar o commit
+    alheio recente trazido por `pull` ou fast-forward. Os commits da sessão passam a vir do reflog do
+    `HEAD`: só contam as entradas `commit`, `commit (amend)` e `commit (initial)` desde a foto (a
+    leitura para no `HEAD` guardado). `pull`, `merge`, `rebase`, `reset`, `checkout`, `cherry-pick` e o
+    `commit (merge)` ficam de fora. Os arquivos de cada commit se leem com `-z` e
+    `core.quotepath=false`, por causa das pastas com acento. A foto passa a acumular tudo o que a
+    sessão já viu: caminho avisado não reavisa ao ser commitado, emendado, rebaseado ou tirado do
+    stash.
 - **D4 — Baterias com contornos e vizinhos**:
   - portaria: casos novos em `hooks/testa-portaria-fluxo-pulado.cjs` (ou bateria própria). Passa:
     cwd fora de repo, `Worktree:` de worktree linkado, fluxo aberto lá. Barram: cwd fora de repo
