@@ -26,8 +26,8 @@
     "catraca_mutacao": "2026-10-21",
     "tarefas_ok": 6,
     "tarefas": 6,
-    "comando": "node scripts/conferir-mutacao.cjs --raiz . (mutacoes do plano)",
-    "saida": "tarefas 1-4: exit=0; tarefa 6: exit=0 (bateria VERMELHA confirmada em duas rodadas)",
+    "comando": "bash scripts/testa-plugin-codex.sh",
+    "saida": "ok ancora corpo fechar: 16065 bytes sha256 5f772f36...; rc=0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -52,7 +52,7 @@
       {
         "tarefa": 5,
         "resultado": "n/a",
-        "motivo": "tarefa so reescreve doc e versao"
+        "motivo": "tarefa so reescreve doc e versao e re-mede a ancora do corpo da skill"
       },
       {
         "tarefa": 6,
@@ -64,7 +64,7 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "ok",
+    "status": "pendente",
     "snapshot": {
       "head": "90c8b78fc19c89efae533284be8dd675d44808f8",
       "caminhos_sujos": []
@@ -84,7 +84,7 @@
     "head": "90c8b78fc19c89efae533284be8dd675d44808f8"
   },
   "verificar": {
-    "status": "ok",
+    "status": "pendente",
     "comando": "bash scripts/testa-conferir-fluxo.sh; bash scripts/testa-publicar-branch.sh; bash scripts/testa-ci-shards.sh; bash scripts/testa-varrer-baterias.sh; bash scripts/testa-teto-skills.sh; node scripts/conferir-versao.cjs",
     "saida": "testa-conferir-fluxo ok: 132 falhou: 0; testa-publicar-branch ok: 60 falhou: 0; testa-ci-shards shards=3 carga_max=1181s teto=1410s ok: 5 falhou: 0; testa-varrer-baterias TODOS OS TESTES PASSARAM; testa-teto-skills 21 OK, 0 FALHA; conferir-versao ok versao 1.73.0",
     "sensor_externo": "bash scripts/testa-ci-shards.sh",
@@ -92,6 +92,14 @@
     "head": "90c8b78fc19c89efae533284be8dd675d44808f8"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-10-21"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-10-21",
+      "de": "verificar",
+      "motivo": "CI do PR 579: ancora binaria do corpo da skill fechar em contrato-plugin-codex.cjs nao re-medida apos a linha do exit 8"
+    }
+  ]
 }
