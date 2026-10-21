@@ -37,7 +37,8 @@ bateria (`unity command run_tests`) só fala com o editor da pasta original. Com
   das duas plataformas, e a seção `mutacao:` da skill `plano` com o campo `no-lugar:` e o risco que
   ele traz de volta (outra sessão lê o fonte mutado durante a bateria).
 
-## Fora de escopo
+## Avaliado e descartado
 - Lista de exclusão da cópia (`Library/`, `Temp/`): só serve com o editor fechado e Unity em batch,
-  o caso caro (Q1).
-- Chave de projeto em `.rainforest/config.json` (Q2 B).
+  o caso caro (Q1 B). A bateria barata é a do editor aberto, que a cópia não alcança.
+- Chave de projeto em `.rainforest/config.json` (Q2 B): valeria para toda tarefa, inclusive as que
+  medem bem na cópia, e some da vista de quem revisa o plano.
