@@ -42,6 +42,10 @@ bateria (`unity command run_tests`) só fala com o editor da pasta original. Com
     repository" com um `.git` existente em alguma pasta acima (`.git/HEAD` corrompido), recusa
     (exit 4), como o `git status` que falha. A falha de restauração chega ao `conferir-fluxo
     mutacoes` com o rótulo `FALHA AO RESTAURAR` e o caminho do backup.
+  - *Emenda da rodada 3 da revisão (aprovada, achados que cabem no PR):* o `git status` leva
+    `--untracked-files=normal`, porque repo com `status.showUntrackedFiles=no` escondia o alvo não
+    rastreado. A linha de sucesso deixa de dizer que o fonte foi restaurado: a restauração roda na
+    saída, depois dela, e pode falhar.
   - Limite aceito (Q1 A do usuário, rodada 1): o dono do backup é conferido só pelo PID. PID
     reutilizado depois de reiniciar faz um backup morto parecer vivo, e o arquivo fica mutado
     até alguém apagar o backup à mão (a recusa nomeia o caminho). Não perde dado: o backup

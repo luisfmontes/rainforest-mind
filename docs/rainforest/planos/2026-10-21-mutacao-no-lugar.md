@@ -91,7 +91,7 @@ pronto quando: com o plano declarando `no-lugar: talvez`, `node scripts/conferir
 ### 7. Docs e versão 1.72.0 [tipo: docs]
 atende: D5
 arquivos: `README.md`, `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `skills/plano/SKILL.md`, `skills/plano/references/mutacao-no-lugar.md`, `scripts/conferir-mutacao.cjs`, `docs/rainforest/estado/2026-10-21-portaria-aviso-bash.json`
-depende de: 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16
+depende de: 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18
 mutacao: n/a
   motivo: texto e número de versão, sem comportamento a inverter
 pronto quando: com os dois `plugin.json` em `1.72.0`, `node scripts/conferir-versao.cjs` sai 0 com `versao 1.72.0`. O CHANGELOG abre com `## 1.72.0` e descreve o que D1 a D3 decidiram: o `--no-lugar` sem cópia, a restauração byte a byte em toda saída, a recusa com o alvo sujo ou com backup vivo, a restauração do backup órfão e o campo `no-lugar: sim` do plano. A seção `mutacao:` da skill `plano` aponta `references/mutacao-no-lugar.md`, que documenta o campo, as recusas e o risco que ele traz de volta (outra sessão lê o fonte mutado durante a bateria), e `bash scripts/testa-teto-skills.sh` sai 0. O estado do fluxo `2026-10-21-portaria-aviso-bash` entra com `fechar ok` e PR 574. O uso do `conferir-mutacao.cjs` (`USO`) lista `--no-lugar`. O README traz o badge `1.72.0`.
@@ -168,8 +168,8 @@ depende de: 12
 prova: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
 mutacao:
   arquivo: `scripts/conferir-mutacao.cjs`
-  de: `['status', '--porcelain', '--ignored', '--', alvo]`
-  para: `['status', '--porcelain', '--', alvo]`
+  de: `['status', '--porcelain', '--ignored', '--untracked-files=normal', '--', alvo]`
+  para: `['status', '--porcelain', '--untracked-files=normal', '--', alvo]`
   bateria: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
   fixture: `testa-conferir-mutacao-no-lugar.sh, caso I1`
 pronto quando: com `ign.js` listado no `.gitignore` do repo descartável, `--no-lugar --arquivo ign.js` sai 4 e o stderr diz que o arquivo é ignorado (I1). Provado por `bash scripts/testa-conferir-mutacao-no-lugar.sh` com placar `0 falha(s)`.
@@ -212,3 +212,29 @@ mutacao:
   bateria: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
   fixture: `testa-conferir-mutacao-no-lugar.sh, caso G2`
 pronto quando: com o `src.js` sujo e o `.git/HEAD` do repo descartável corrompido, `--no-lugar` sai 4 com "git rev-parse falhou" e o `src.js` sujo fica intacto (G2). Fora de repo de verdade, sem `.git` acima, segue medindo com aviso (S2). Provado por `bash scripts/testa-conferir-mutacao-no-lugar.sh` com placar `0 falha(s)`.
+
+### 17. Alvo não rastreado recusa com `status.showUntrackedFiles=no` [tipo: implementar]
+atende: D3, D4
+arquivos: `scripts/conferir-mutacao.cjs`, `scripts/testa-conferir-mutacao-no-lugar.sh`
+depende de: 16
+prova: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
+mutacao:
+  arquivo: `scripts/conferir-mutacao.cjs`
+  de: `['status', '--porcelain', '--ignored', '--untracked-files=normal', '--', alvo]`
+  para: `['status', '--porcelain', '--ignored', '--', alvo]`
+  bateria: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
+  fixture: `testa-conferir-mutacao-no-lugar.sh, caso U1`
+pronto quando: com o repo descartável em `status.showUntrackedFiles=no` (a configuração típica de dotfiles na home) e o alvo `novo.js` não rastreado, `--no-lugar` sai 4 e o stderr diz que o arquivo não é rastreado (U1). Provado por `bash scripts/testa-conferir-mutacao-no-lugar.sh` com placar `0 falha(s)`.
+
+### 18. A linha de sucesso não afirma a restauração [tipo: implementar]
+atende: D1, D4
+arquivos: `scripts/conferir-mutacao.cjs`, `scripts/testa-conferir-mutacao-no-lugar.sh`
+depende de: 17
+prova: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
+mutacao:
+  arquivo: `scripts/conferir-mutacao.cjs`
+  de: `console.log('    A bateria sabe falhar.');`
+  para: `console.log('    A bateria sabe falhar, e o fonte foi restaurado.');`
+  bateria: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
+  fixture: `testa-conferir-mutacao-no-lugar.sh, caso R4`
+pronto quando: com uma bateria que edita o fonte mutado e sai vermelha, `--no-lugar` sai 1 com `FALHA AO RESTAURAR` no stderr, e o stdout não diz que o fonte foi restaurado (R4). Provado por `bash scripts/testa-conferir-mutacao-no-lugar.sh` com placar `0 falha(s)`.

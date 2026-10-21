@@ -248,6 +248,16 @@ if grep -q 'EDICAO' "$CASO/repo/src.js"; then passa "R4 a edicao ficou no arquiv
 contem "R4 stderr diz que mudou durante a bateria" "$CASO/r4.err" "mudou durante a bateria"
 confere "R4 backup preservado" "$(backups)" "1"
 
+if grep -q 'fonte foi restaurado' "$CASO/r4.out"; then falha "R4 stdout afirma restauracao que nao houve"; else passa "R4 stdout nao afirma restauracao"; fi
+
+echo "== U1: alvo nao rastreado recusa mesmo com status.showUntrackedFiles=no =="
+novo_caso 1
+git -C "$CASO/repo" config status.showUntrackedFiles no
+printf 'module.exports = (a) => a + 1;\n' > "$CASO/repo/novo.js"
+EX=$(TMPDIR="$TMPC" TEMP="$TMPC" TMP="$TMPC" node "$CM" --raiz "$R" --arquivo novo.js --no-lugar --de 'a + 1' --para 'a + 2' --bateria 'node -e "process.exit(0)"' > "$CASO/u1.out" 2> "$CASO/u1.err" < /dev/null; echo $?)
+confere "U1 exit 4" "$EX" "4"
+contem "U1 stderr diz que nao e rastreado" "$CASO/u1.err" "não é rastreado"
+
 echo "== I1: alvo ignorado pelo git recusa =="
 novo_caso 1
 printf 'module.exports = (a) => a + 1;\n' > "$CASO/repo/ign.js"

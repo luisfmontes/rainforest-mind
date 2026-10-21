@@ -62,7 +62,7 @@
  *                                          `--de` casa mais de uma vez e a inversão
  *                                          fica ambígua; com `--no-lugar`, também o
  *                                          alvo sujo, não rastreado ou ignorado no git,
- *                                          `git status` que falha, arquivo editado
+ *                                          `git` que falha ou não vê um `.git` acima, editado
  *                                          durante o baseline, ou backup de outra
  *                                          execução (viva ou órfã) para o mesmo alvo
  *   5  suspeita de corte de shell         — pós-mutação desproporcionalmente curta
@@ -388,14 +388,17 @@ function conferirNoLugar(raizExecucao, alvo) {
   if (!naoERepo && (dentro.error || dentro.status !== 0)) {
     const porque = dentro.error ? dentro.error.message : (dentro.stderr || '').trim() || `exit ${dentro.status}`;
     console.error(`RECUSADO: git rev-parse falhou — ${porque}.`);
-    console.error('  Sem o git não dá para saber se ele desfaz a mutação. Conserte o repositório e rode de novo.');
+    console.error('  Sem o git não dá para saber se ele desfaz a mutação. Conserte o repositório (há um `.git`');
+    console.error('  numa pasta acima que o git não reconhece, ou GIT_CEILING_DIRECTORIES o esconde) e rode de novo.');
     process.exit(4);
   }
   const foraDeRepo = naoERepo || (dentro.stdout || '').trim() !== 'true';
   let sujoNoGit = false;
   if (!foraDeRepo) {
     // `--ignored`: arquivo ignorado também não se desfaz com `git checkout --`.
-    const st = git(['status', '--porcelain', '--ignored', '--', alvo]);
+    // `--untracked-files=normal`: repo de dotfiles costuma ter `status.showUntrackedFiles=no`,
+    // e o alvo não rastreado sumiria do status.
+    const st = git(['status', '--porcelain', '--ignored', '--untracked-files=normal', '--', alvo]);
     if (st.error || st.status !== 0) {
       const porque = st.error ? st.error.message : (st.stderr || '').trim() || `exit ${st.status}`;
       console.error(`RECUSADO: git status falhou dentro do repositório — ${porque}.`);
@@ -1191,7 +1194,8 @@ function main() {
 
   console.log(`ok: bateria VERMELHA com o comportamento invertido (exit ${posExit}), confirmada em duas rodadas.`);
   console.log(`    Baseline: ${baselineDuracao} ms (exit 0) → Mutação: ${posDuracao} ms (exit ${posExit})`);
-  console.log('    A bateria sabe falhar, e o fonte foi restaurado.');
+  // A restauração do modo no lugar roda na saída, depois desta linha: aqui não se afirma.
+  console.log('    A bateria sabe falhar.');
   process.exit(0);
 }
 

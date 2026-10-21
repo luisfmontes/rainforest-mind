@@ -21,8 +21,8 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-21",
-    "tarefas_ok": 14,
-    "tarefas": 14,
+    "tarefas_ok": 16,
+    "tarefas": 16,
     "mutacao": [
       {
         "tarefa": 1,
@@ -93,21 +93,27 @@
         "tarefa": 14,
         "resultado": "vermelho",
         "fixture": "testa-conferir-mutacao-no-lugar.sh, caso G1"
+      },
+      {
+        "tarefa": 15,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-fluxo-no-lugar.sh, caso F3"
+      },
+      {
+        "tarefa": 16,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao-no-lugar.sh, caso G2"
       }
     ],
     "comando": "bash scripts/testa-conferir-mutacao-no-lugar.sh && bash scripts/testa-conferir-fluxo-no-lugar.sh",
-    "saida": "64 ok, 0 falha(s); 9 ok, 0 falha(s)",
+    "saida": "67 ok, 0 falha(s); 11 ok, 0 falha(s)",
     "em": "2026-10-21",
-    "reaberturas": 2,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-21"
-    }
+    "reaberturas": 2
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "pendente",
     "snapshot": {
-      "head": "446c21352f096a5f41e4439972210935609209f9",
+      "head": "bc2de9506f9e43ce7535e11eff312b7ec6e66875",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-10-21-mutacao-no-lugar.json"
       ]
@@ -115,28 +121,30 @@
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a7233cec33846858e",
-        "veredito": "reprovado",
+        "agente_id": "a025c555c7752600f",
+        "veredito": "ok",
         "em": "2026-10-21",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-a7233cec33846858e.jsonl"
-      }
-    ],
-    "em_voo": [
-      {
-        "agente": "revisor",
-        "tarefa": "revisao rodada 2",
-        "desde": "2026-10-21",
-        "sessao": "2000cb9c-f260-4626-b420-5d6adac18fc8"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-a025c555c7752600f.jsonl"
       }
     ],
     "em": "2026-10-21",
-    "achados": 4,
-    "tentativas": 2
+    "achados": 0,
+    "base": "e83d312291f1372f4a87a883924a434b5c76177d",
+    "head": "bc2de9506f9e43ce7535e11eff312b7ec6e66875"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-10-21"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-10-21"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-10-21",
+      "de": "revisar",
+      "motivo": "achados nao bloqueantes da rodada 3 que cabem no PR: texto de sucesso afirma restauracao antes dela; alvo nao rastreado passa com status.showUntrackedFiles=no; texto do uso sem o rev-parse"
+    }
+  ]
 }
