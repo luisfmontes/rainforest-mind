@@ -1,4 +1,4 @@
-# Mutação no lugar para runtime vivo (#527)
+# Mutação no lugar para runtime vivo (#527, #569)
 
 ## Objetivo
 O `conferir-mutacao.cjs` copia a raiz inteira para o temporário e roda baseline e mutação na cópia
@@ -42,3 +42,17 @@ bateria (`unity command run_tests`) só fala com o editor da pasta original. Com
   o caso caro (Q1 B). A bateria barata é a do editor aberto, que a cópia não alcança.
 - Chave de projeto em `.rainforest/config.json` (Q2 B): valeria para toda tarefa, inclusive as que
   medem bem na cópia, e some da vista de quem revisa o plano.
+
+## Fora de escopo
+- Detectar sozinho que o projeto é Unity, Godot ou Unreal e ligar o modo: o modo traz de volta o
+  risco da #266, então só vale pedido.
+- Isolar quem lê o fonte durante a bateria (outra sessão, outro agente): o aviso no stderr e o
+  campo visível no plano são a defesa.
+
+## Varredura
+docs/rainforest/varredura/2026-10-21-mutacao-no-lugar.txt — a #569 (aberta por quem usa o plugin) é o mesmo
+defeito da #527 e sugere o mesmo `--no-lugar`; as duas fecham juntas. Histórico: #266 (a cópia nasceu ali),
+#378 (junction na cópia), #281 (pulada conta como falha).
+
+## Em aberto
+- (vazio)

@@ -6,7 +6,10 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-21-mutacao-no-lugar.md",
+    "aprovado_por": "usuario: recomendado (Q1-Q3)",
+    "em": "2026-10-21"
   },
   "plano": {
     "status": "pendente"
