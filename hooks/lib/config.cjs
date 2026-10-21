@@ -137,7 +137,7 @@ const CHAVES = {
   'aviso-fluxo': {
     tipo: 'boolean',
     padrao: true,
-    descricao: 'bloqueia edição de código (Edit/Write/MultiEdit) e despacho de agente que escreve, sem fluxo aberto nem `leve` na branch, quando o repositório tem fluxo',
+    descricao: 'bloqueia edição de código (Edit/Write/MultiEdit) e despacho de agente que escreve, e avisa código novo deixado pelo shell (Bash/PowerShell), sem fluxo aberto nem `leve` na branch, quando o repositório tem fluxo',
     entrevista: null,
   },
   fluxo: {

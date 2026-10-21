@@ -49,6 +49,13 @@ Dois buracos de trava que deixam a regra sem saída ou sem sinal:
     carona no `Stop`. Aqui o aviso só serve na hora.
   - Limite aceito: arquivo que já estava sujo e muda de novo não reaparece no aviso. Ele já avisou
     na primeira vez.
+  - *Emenda da revisão do fluxo (rodada 1, Q1 A do usuário):* código criado e commitado na mesma
+    chamada deixava a árvore limpa e passava. A foto guarda também o `HEAD` e a hora. Se o `HEAD`
+    andou, contam como caminho novo os arquivos de código dos commits sem merge com data de commit
+    depois da foto (`git log --no-merges --since`). Isso não avisa o que chega por `git pull` ou
+    merge. Código em pasta ignorada pelo git fica como limite aceito: o git não o vê, e o hook de
+    Edit já barra esse caminho. O texto do aviso diz "há código novo sujo", não "o comando mudou",
+    porque a primeira chamada da sessão também avisa o que já estava sujo.
 - **D4 — Baterias com contornos e vizinhos**:
   - portaria: casos novos em `hooks/testa-portaria-fluxo-pulado.cjs` (ou bateria própria). Passa:
     cwd fora de repo, `Worktree:` de worktree linkado, fluxo aberto lá. Barram: cwd fora de repo

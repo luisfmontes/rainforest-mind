@@ -260,13 +260,15 @@ else
   falhou=$((falhou+1)); echo "  FALHA gates sem matcher: $OUTROS, esperava 8"
 fi
 
-# `PostToolUse` e PROIBIDO neste repo: 15.331 eventos em oito dias, um processo
-# do SO cada (design de 2026-08-17, D12). A #76 quase reintroduziu o evento.
-POST="$(hjson 'process.stdout.write(String("PostToolUse" in require(process.argv[1]).hooks));')"
-if [ "$POST" = "false" ]; then
-  ok=$((ok+1)); echo "  ok   PostToolUse continua fora do hooks.json"
+# `PostToolUse` sobe um processo do SO por evento: 15.331 eventos em oito dias
+# (design de 2026-08-17, D12), e a #76 quase reintroduziu o evento para a memoria.
+# A unica excecao e o aviso de codigo sem fluxo pelo shell (#564, D3 do design
+# 2026-10-21-portaria-aviso-bash), so em Bash|PowerShell e com o arquivo no lugar.
+POST="$(hjson 'const h=require(process.argv[1]).hooks.PostToolUse||[];const fs=require("fs"),p=require("path");const ok=h.length===1&&h[0].matcher==="Bash|PowerShell"&&(h[0].hooks||[]).length===1&&String(h[0].hooks[0].command).includes("hooks/aviso-fluxo-shell.cjs")&&fs.existsSync(p.join(p.dirname(process.argv[1]),"aviso-fluxo-shell.cjs"));process.stdout.write(String(ok));')"
+if [ "$POST" = "true" ]; then
+  ok=$((ok+1)); echo "  ok   PostToolUse so tem o aviso-fluxo-shell.cjs, em Bash|PowerShell"
 else
-  falhou=$((falhou+1)); echo "  FALHA PostToolUse no hooks.json (veio '$POST')"
+  falhou=$((falhou+1)); echo "  FALHA PostToolUse fora do esperado (veio '$POST')"
 fi
 
 echo

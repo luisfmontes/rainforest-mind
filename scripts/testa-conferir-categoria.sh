@@ -36,6 +36,8 @@
 #      de PreToolUse (nega matar processo por nome, antes do ato) — guia.
 #      60 e 32 sensor desde 2026-10-18: entrou scripts/conferir-setup.cjs (CHAVES
 #      contra a tabela do SKILL.md do setup, confere depois do ato) — sensor.
+#      61 e 33 sensor desde 2026-10-21: entrou hooks/aviso-fluxo-shell.cjs, hook
+#      de PostToolUse (avisa codigo sem fluxo depois do comando, #564) — sensor.
 #   2. peca REAL copiada para arvore temporaria, com a linha de marca apagada,
 #      reprova (exit 1) e NOMEIA o caminho na saida;
 #   3. peca REAL copiada com valor de marca fora do vocabulario (nem guia, nem
@@ -77,17 +79,17 @@ montar_copia() {
   cp "$RAIZ"/vigias/*.md "$destino/vigias/" 2>/dev/null
 }
 
-echo "== 1. repositorio real na base — exit 0, 60 pecas, distribuicao 25/32/3 =="
+echo "== 1. repositorio real na base — exit 0, 61 pecas, distribuicao 25/33/3 =="
 S1="$(roda --raiz "$RAIZ")"
 saiu "repositorio real passa (exit 0)" "$(codigo --raiz "$RAIZ")" "0"
-tem  "conta as 60 pecas"               "$S1" "Total de peças varridas: 60"
+tem  "conta as 61 pecas"               "$S1" "Total de peças varridas: 61"
 N_GUIA="$(printf '%s' "$S1" | grep -cF '>  guia')"
 N_SENSOR="$(printf '%s' "$S1" | grep -cF '>  sensor')"
 N_DADO="$(printf '%s' "$S1" | grep -cF '>  dado')"
-if [ "$N_GUIA" = "25" ] && [ "$N_SENSOR" = "32" ] && [ "$N_DADO" = "3" ]; then
-  ok=$((ok+1)); echo "  ok   distribuicao 25 guia / 32 sensor / 3 dado confere"
+if [ "$N_GUIA" = "25" ] && [ "$N_SENSOR" = "33" ] && [ "$N_DADO" = "3" ]; then
+  ok=$((ok+1)); echo "  ok   distribuicao 25 guia / 33 sensor / 3 dado confere"
 else
-  falhou=$((falhou+1)); echo "  FALHA distribuicao: guia=$N_GUIA sensor=$N_SENSOR dado=$N_DADO (esperava 25/32/3)"
+  falhou=$((falhou+1)); echo "  FALHA distribuicao: guia=$N_GUIA sensor=$N_SENSOR dado=$N_DADO (esperava 25/33/3)"
 fi
 
 echo

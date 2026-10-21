@@ -85,7 +85,7 @@ console.log('== A. rainforest sem fluxo aberto, branch de trabalho ==');
   const novo = rodar(r);
   caso('A2 arquivo de codigo novo pelo shell: exit 2', novo.status === 2, `exit=${novo.status} stderr=${novo.stderr}`);
   caso('A2 o aviso nomeia o arquivo', /x\.py/.test(novo.stderr || ''), novo.stderr);
-  caso('A2 o aviso diz que o comando ja rodou', /já rodou e nada foi desfeito/.test(novo.stderr || ''), novo.stderr);
+  caso('A2 o aviso diz que o comando ja rodou', /o comando já rodou e nada foi desfeito/.test(novo.stderr || ''), novo.stderr);
   caso('A2 o aviso traz a saida do leve com comando colavel', /estado\.cjs' leve --motivo/.test(novo.stderr || ''), novo.stderr);
   caso('A2 o aviso traz a saida de abrir o fluxo', /brainstorm/.test(novo.stderr || ''), novo.stderr);
 
@@ -157,6 +157,37 @@ console.log('== B. o que silencia ==');
   const r = novoRepo();
   const fora = rodar(r, { cwd: r.sbx });
   caso('B5 cwd fora de repo git: exit 0', fora.status === 0, `exit=${fora.status} stderr=${fora.stderr}`);
+}
+
+console.log('== D. codigo criado e commitado na mesma chamada ==');
+{
+  const r = novoRepo();
+  const base = rodar(r);
+  caso('D0 foto inicial com a arvore limpa: exit 0', base.status === 0, `exit=${base.status} stderr=${base.stderr}`);
+  fs.writeFileSync(path.join(r.repo, 'novo.py'), 'print(2)\n'); // `echo ... > novo.py && git commit`
+  git(r.repo, ['add', 'novo.py']);
+  git(r.repo, ['commit', '-q', '-m', 'novo']);
+  const comitado = rodar(r);
+  caso('D1 arquivo criado e commitado pelo shell, arvore limpa: exit 2',
+    comitado.status === 2 && /novo\.py/.test(comitado.stderr || ''), `exit=${comitado.status} stderr=${comitado.stderr}`);
+  const repetido = rodar(r);
+  caso('D2 chamada seguinte sem commit novo: exit 0', repetido.status === 0, `exit=${repetido.status} stderr=${repetido.stderr}`);
+
+  // O que chega por pull vem com data de commit antiga: nao e codigo desta sessao.
+  fs.writeFileSync(path.join(r.repo, 'alheio.py'), 'print(3)\n');
+  git(r.repo, ['add', 'alheio.py']);
+  spawnSync('git', ['commit', '-q', '-m', 'alheio'], { cwd: r.repo, env: { ...process.env, GIT_COMMITTER_DATE: '2020-01-01T00:00:00' }, encoding: 'utf8' });
+  const puxado = rodar(r);
+  caso('D3 commit com data anterior a foto (como o que chega por pull): exit 0',
+    puxado.status === 0, `exit=${puxado.status} stderr=${puxado.stderr}`);
+
+  fs.mkdirSync(path.join(r.repo, 'docs', 'x'), { recursive: true });
+  fs.writeFileSync(path.join(r.repo, 'docs', 'x', 'y.js'), '1\n');
+  fs.writeFileSync(path.join(r.repo, 'leia.txt'), '1\n');
+  git(r.repo, ['add', '.']);
+  git(r.repo, ['commit', '-q', '-m', 'doc']);
+  const doc = rodar(r);
+  caso('D4 commit so com docs/ e texto: exit 0', doc.status === 0, `exit=${doc.status} stderr=${doc.stderr}`);
 }
 
 console.log('== C. branch padrao ==');
