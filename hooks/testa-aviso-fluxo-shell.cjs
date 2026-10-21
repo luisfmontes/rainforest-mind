@@ -334,6 +334,40 @@ console.log('== F. rearranjo de commits de antes da sessao e rebase ==');
   caso('F4 o aviso diz "código novo ou mexido"', /há código novo ou mexido/.test(rm.stderr || ''), rm.stderr);
 }
 
+{
+  // `git reset HEAD~1` (mixed) desfaz um commit de antes da sessao: o arquivo volta como nao
+  // rastreado, com o mesmo conteudo que tinha no HEAD da foto.
+  const r = novoRepo();
+  fs.writeFileSync(path.join(r.repo, 'p1.py'), 'print("p1")\n');
+  git(r.repo, ['add', '.']);
+  git(r.repo, ['commit', '-q', '-m', 'p1']);
+  rodar(r);
+  git(r.repo, ['reset', '-q', 'HEAD~1']);
+  const desfeito = rodar(r);
+  caso('F5 git reset HEAD~1 de commit de antes da sessao: exit 0', desfeito.status === 0, `exit=${desfeito.status} stderr=${desfeito.stderr}`);
+  fs.writeFileSync(path.join(r.repo, 'p1.py'), 'print("p1 mexido")\n');
+  const mexido = rodar(r);
+  caso('F5 o mesmo p1.py ja visto e mexido depois nao reavisa (limite aceito): exit 0',
+    mexido.status === 0, `exit=${mexido.status} stderr=${mexido.stderr}`);
+}
+
+console.log('== G. foto adulterada ==');
+{
+  // A foto mora no diretorio temporario: um HEAD que nao e hash nao pode virar opcao do git.
+  const r = novoRepo();
+  rodar(r);
+  const top = path.resolve(git(r.repo, ['rev-parse', '--show-toplevel']).trim());
+  const chave = require('crypto').createHash('sha1').update(`sessao-shell\n${top.toLowerCase()}`).digest('hex').slice(0, 16);
+  const foto = path.join(r.tmp, 'rainforest-aviso-shell', `${chave}.json`);
+  caso('G0 a foto da sessao existe onde o hook a grava', fs.existsSync(foto), foto);
+  const alvo = path.join(r.sbx, 'injetado.txt');
+  fs.writeFileSync(foto, JSON.stringify({ caminhos: [], head: `--output=${alvo}`, ts: Math.floor(Date.now() / 1000) }));
+  fs.writeFileSync(path.join(r.repo, 'g.py'), '1\n');
+  const adulterada = rodar(r);
+  caso('G1 HEAD da foto que nao e hash: a opcao injetada nao age', !fs.existsSync(alvo), `existe=${fs.existsSync(alvo)}`);
+  caso('G1 e o codigo novo segue avisando', adulterada.status === 2 && /g\.py/.test(adulterada.stderr || ''), `exit=${adulterada.status} stderr=${adulterada.stderr}`);
+}
+
 console.log('== C. branch padrao ==');
 {
   const r = novoRepo({ branch: 'main' });

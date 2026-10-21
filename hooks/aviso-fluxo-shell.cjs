@@ -89,12 +89,24 @@ function emOperacaoAlheia(gitTop) {
 // Caminhos que diferem do HEAD da foto (rastreados, staged ou não) mais os não rastreados. O que
 // voltou ao estado da foto por `reset --soft`, squash ou amend não é código novo da sessão
 // (emenda da rodada 4). Sem HEAD na foto, não há contra o que comparar: devolve null.
-function caminhosLiquidos(gitTop, headFoto) {
+// Não rastreado com o mesmo conteúdo que tinha no HEAD da foto (o `git reset HEAD~1` que desfaz
+// um commit antigo) também não é novo (emenda da rodada 5).
+function caminhosLiquidos(gitTop, headFoto, candidatos) {
   if (!headFoto) return null;
-  const diff = git(gitTop, ['-c', 'core.quotepath=false', 'diff', '--name-only', '-z', headFoto]);
+  const diff = git(gitTop, ['-c', 'core.quotepath=false', 'diff', '--name-only', '-z', '--end-of-options', headFoto]);
   const soltos = git(gitTop, ['ls-files', '--others', '--exclude-standard', '-z']);
   if (diff === null || soltos === null) return null;
-  return new Set([...diff.split('\0'), ...soltos.split('\0')].filter(Boolean));
+  const mudados = new Set(diff.split('\0').filter(Boolean));
+  const naoRastreados = new Set(soltos.split('\0').filter(Boolean));
+  // Não rastreado decide pelo conteúdo: fora do índice, o `git diff` o lista como removido.
+  return new Set(candidatos.filter((c) => (naoRastreados.has(c) ? !igualNaFoto(gitTop, headFoto, c) : mudados.has(c))));
+}
+
+function igualNaFoto(gitTop, headFoto, caminho) {
+  const naFoto = (git(gitTop, ['rev-parse', '-q', '--verify', '--end-of-options', `${headFoto}:${caminho}`]) || '').trim();
+  if (!naFoto) return false;
+  const agora = (git(gitTop, ['hash-object', '--', caminho]) || '').trim();
+  return agora !== '' && agora === naFoto;
 }
 
 // Caminhos de código sujos (modificados, novos ou não rastreados) fora de docs/.
@@ -127,10 +139,12 @@ function arquivoDoConjunto(sessao, gitTop) {
   return path.join(os.tmpdir(), 'rainforest-aviso-shell', `${chave}.json`);
 }
 
+// A foto mora no diretório temporário: o HEAD lido dela só vale como hash, nunca como opção do git.
+const HASH_GIT = /^[0-9a-f]{40,64}$/;
 function lerConjunto(arquivo) {
   try {
     const foto = JSON.parse(fs.readFileSync(arquivo, 'utf8'));
-    return { caminhos: new Set(Array.isArray(foto.caminhos) ? foto.caminhos : []), head: foto.head || null, ts: foto.ts || 0 };
+    return { caminhos: new Set(Array.isArray(foto.caminhos) ? foto.caminhos : []), head: HASH_GIT.test(foto.head || '') ? foto.head : null, ts: foto.ts || 0 };
   } catch {
     return { caminhos: new Set(), head: null, ts: 0 };
   }
@@ -179,7 +193,7 @@ function main() {
   if (emOperacaoAlheia(gitTop)) process.exit(0);
   const sujosNovos = [...atual].filter((c) => !guardado.caminhos.has(c));
   const candidatos = [...new Set([...sujosNovos, ...comitados.filter((c) => !guardado.caminhos.has(c))])];
-  const liquido = candidatos.length ? caminhosLiquidos(gitTop, guardado.head) : null;
+  const liquido = candidatos.length ? caminhosLiquidos(gitTop, guardado.head, candidatos) : null;
   const novos = candidatos.filter((c) => !liquido || liquido.has(c)).sort();
   if (novos.length === 0) process.exit(0);
 

@@ -42,3 +42,22 @@ achados, todos do aviso pelo shell:
   não rastreados. Isso cobre de uma vez todo rearranjo de commits que já existiam.
 - `rebase-merge`, `rebase-apply` e `SQUASH_MSG` entram nas operações alheias em andamento.
 - O texto do aviso e a remoção de arquivo rastreado ganham caso na bateria.
+
+## Teto da 5ª reprovação (2026-10-21)
+
+A rodada 5 fechou rebase e squash em conflito, `reset --soft` e o texto. Ficaram quatro achados do
+aviso pelo shell:
+
+1. `git reset HEAD~1` (mixed) devolve código de antes da sessão como não rastreado, e ele avisa.
+2. `merge --squash` e commit na mesma chamada avisam o código da outra branch.
+3. `rebase -i` com squash ou fixup na mesma chamada da edição engole o commit da sessão.
+4. `git rm` e commit na mesma chamada não avisam a remoção.
+
+## Decisão do usuário (rodada 6)
+
+"recomendado" à opção A:
+- Conserta o 1: arquivo não rastreado com conteúdo igual ao do HEAD da foto não avisa.
+- Os achados 2, 3 e 4 viram limites aceitos.
+- Conserto do alerta de segurança: o HEAD da foto só vale se for hash hexadecimal, e vai ao git
+  depois de `--end-of-options`.
+- A 6ª revisão roda só contra a lista de limites aceitos.

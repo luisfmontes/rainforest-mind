@@ -77,6 +77,12 @@ Dois buracos de trava que deixam a regra sem saída ou sem sinal:
     `rebase-apply` e `SQUASH_MSG` entram nas operações em andamento que não avisam.
     A comparação do `--amend` com a entrada anterior do reflog, da emenda da rodada 3, saiu: o
     filtro contra o `HEAD` da foto já cobre o amend.
+  - *Emenda da rodada 5 da revisão (teto liberado de novo, mesmo impasse):* arquivo não rastreado
+    com o mesmo conteúdo do `HEAD` da foto não avisa (`git reset HEAD~1` que desfaz commit antigo).
+    O `HEAD` lido da foto só vale como hash hexadecimal, e vai ao git depois de `--end-of-options`,
+    porque a foto mora no diretório temporário. Limites aceitos: `merge --squash` e commit na mesma
+    chamada avisam o código da outra branch; `rebase -i` com squash ou fixup na mesma chamada da
+    edição não avisa; `git rm` e commit na mesma chamada não avisam a remoção.
 - **D4 — Baterias com contornos e vizinhos**:
   - portaria: casos novos em `hooks/testa-portaria-fluxo-pulado.cjs` (ou bateria própria). Passa:
     cwd fora de repo, `Worktree:` de worktree linkado, fluxo aberto lá. Barram: cwd fora de repo
