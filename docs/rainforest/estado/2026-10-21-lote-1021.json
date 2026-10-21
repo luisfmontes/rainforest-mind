@@ -22,12 +22,12 @@
     "em": "2026-10-21"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-21",
-    "tarefas_ok": 5,
-    "tarefas": 5,
-    "comando": "node scripts/conferir-mutacao.cjs --raiz . (4 mutacoes do plano)",
-    "saida": "tarefa 1: exit=0; tarefa 2: exit=0; tarefa 3: exit=0; tarefa 4: exit=0",
+    "tarefas_ok": 6,
+    "tarefas": 6,
+    "comando": "node scripts/conferir-mutacao.cjs --raiz . (mutacoes do plano)",
+    "saida": "tarefas 1-4: exit=0; tarefa 6: exit=0 (bateria VERMELHA confirmada em duas rodadas)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -53,13 +53,14 @@
         "tarefa": 5,
         "resultado": "n/a",
         "motivo": "tarefa so reescreve doc e versao"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-fluxo.sh secao 18 junction"
       }
     ],
     "em": "2026-10-21",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-21"
-    },
     "reaberturas": 1
   },
   "revisar": {
