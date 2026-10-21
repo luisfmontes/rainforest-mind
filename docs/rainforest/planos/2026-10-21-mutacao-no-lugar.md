@@ -91,7 +91,7 @@ pronto quando: com o plano declarando `no-lugar: talvez`, `node scripts/conferir
 ### 7. Docs e versão 1.72.0 [tipo: docs]
 atende: D5
 arquivos: `README.md`, `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `skills/plano/SKILL.md`, `skills/plano/references/mutacao-no-lugar.md`, `scripts/conferir-mutacao.cjs`, `docs/rainforest/estado/2026-10-21-portaria-aviso-bash.json`
-depende de: 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14
+depende de: 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16
 mutacao: n/a
   motivo: texto e número de versão, sem comportamento a inverter
 pronto quando: com os dois `plugin.json` em `1.72.0`, `node scripts/conferir-versao.cjs` sai 0 com `versao 1.72.0`. O CHANGELOG abre com `## 1.72.0` e descreve o que D1 a D3 decidiram: o `--no-lugar` sem cópia, a restauração byte a byte em toda saída, a recusa com o alvo sujo ou com backup vivo, a restauração do backup órfão e o campo `no-lugar: sim` do plano. A seção `mutacao:` da skill `plano` aponta `references/mutacao-no-lugar.md`, que documenta o campo, as recusas e o risco que ele traz de volta (outra sessão lê o fonte mutado durante a bateria), e `bash scripts/testa-teto-skills.sh` sai 0. O estado do fluxo `2026-10-21-portaria-aviso-bash` entra com `fechar ok` e PR 574. O uso do `conferir-mutacao.cjs` (`USO`) lista `--no-lugar`. O README traz o badge `1.72.0`.
@@ -186,3 +186,29 @@ mutacao:
   bateria: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
   fixture: `testa-conferir-mutacao-no-lugar.sh, caso G1`
 pronto quando: com o `.git/index` do repo descartável corrompido, `--no-lugar` sai 4 com "git status falhou", e o `src.js` fica intocado (G1). Provado por `bash scripts/testa-conferir-mutacao-no-lugar.sh` com placar `0 falha(s)`.
+
+### 15. Falha de restauração chega ao `mutacoes` com o motivo e o backup [tipo: implementar]
+atende: D1, D2, D4
+arquivos: `scripts/conferir-fluxo.cjs`, `scripts/testa-conferir-fluxo-no-lugar.sh`
+depende de: 6, 14
+prova: `bash scripts/testa-conferir-fluxo-no-lugar.sh`
+mutacao:
+  arquivo: `scripts/conferir-fluxo.cjs`
+  de: `|| t.startsWith('FALHA AO RESTAURAR');`
+  para: `|| false;`
+  bateria: `bash scripts/testa-conferir-fluxo-no-lugar.sh`
+  fixture: `testa-conferir-fluxo-no-lugar.sh, caso F3`
+pronto quando: com o plano `no-lugar: sim` e uma bateria que edita o fonte mutado, `node scripts/conferir-fluxo.cjs mutacoes --slug <slug>` sai ≠ 0 e a linha da tarefa traz `FALHA AO RESTAURAR` e o caminho do backup (F3). Provado por `bash scripts/testa-conferir-fluxo-no-lugar.sh` com placar `0 falha(s)`.
+
+### 16. Git que não reconhece um `.git` existente recusa [tipo: implementar]
+atende: D3, D4
+arquivos: `scripts/conferir-mutacao.cjs`, `scripts/testa-conferir-mutacao-no-lugar.sh`
+depende de: 14
+prova: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
+mutacao:
+  arquivo: `scripts/conferir-mutacao.cjs`
+  de: `if (!naoERepo && (dentro.error || dentro.status !== 0)) {`
+  para: `if (false) {`
+  bateria: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
+  fixture: `testa-conferir-mutacao-no-lugar.sh, caso G2`
+pronto quando: com o `src.js` sujo e o `.git/HEAD` do repo descartável corrompido, `--no-lugar` sai 4 com "git rev-parse falhou" e o `src.js` sujo fica intacto (G2). Fora de repo de verdade, sem `.git` acima, segue medindo com aviso (S2). Provado por `bash scripts/testa-conferir-mutacao-no-lugar.sh` com placar `0 falha(s)`.

@@ -98,6 +98,16 @@ EX=$(chk mutacoes)
 if grep -q 'tarefa 1: vermelho' "$S/saida.txt"; then falha "F2 saiu vermelho pela copia"; else passa "F2 nao sai vermelho (exit $EX)"; fi
 [ "$EX" != "0" ] && passa "F2 mutacoes sai != 0" || falha "F2 mutacoes saiu 0"
 
+echo "== F3: falha de restauracao no lugar chega ao mutacoes com o motivo e o backup =="
+novo_repo; plano 'no-lugar: sim'
+cat > "$S/bateria.sh" << 'EOF'
+node -e 'const fs=require("fs");const t=fs.readFileSync("src/x.js","utf8");if(t.includes("a + 2")&&!t.includes("EDICAO"))fs.appendFileSync("src/x.js","// EDICAO\n")'
+node teste.js
+EOF
+EX=$(chk mutacoes)
+[ "$EX" != "0" ] && passa "F3 mutacoes sai != 0 ($EX)" || falha "F3 mutacoes saiu 0"
+if grep -q 'FALHA AO RESTAURAR' "$S/saida.txt" && grep -q 'backup' "$S/saida.txt"; then passa "F3 a linha da tarefa traz FALHA AO RESTAURAR e o backup"; else falha "F3 motivo: $(tr '\n' ' ' < "$S/saida.txt" | head -c 600)"; fi
+
 echo "== C1: no-lugar com valor que nao e sim recusa na cobertura =="
 novo_repo; plano 'no-lugar: talvez'
 EX=$(chk cobertura)

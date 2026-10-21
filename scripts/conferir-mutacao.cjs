@@ -240,7 +240,7 @@ function registrarLimpeza(caminho) {
 
 const PREFIXO_BACKUP = 'conferir-mutacao-nolugar-';
 
-// Descreve a restauração pendente: `{ caminho, original, backup }`.
+// Descreve a restauração pendente: `{ caminho, original, backup, hashMutado }`.
 let restauro = null;
 
 function sha256(buf) {
@@ -295,7 +295,7 @@ function restaurarNoLugar() {
   // Nem o mutante nem o original: alguém editou o arquivo durante a bateria.
   // Escrever o original por cima apagaria essa edição.
   if (atual && sha256(atual) !== restauro.hashMutado) {
-    falhaAoRestaurar('o arquivo mudou durante a bateria (não é o mutante nem o original)',
+    falhaAoRestaurar('o arquivo mudou durante a bateria (não é o mutante nem o original: editado, ou escrita incompleta do mutante)',
       'Não escrevi nada por cima. Confira a edição e restaure o que falta à mão.');
     return;
   }
@@ -370,10 +370,28 @@ function restaurarOrfaos(alvoReal) {
 // Guarda-corpo antes de qualquer bateria no lugar: o alvo precisa estar limpo no
 // git (para `git checkout -- <arquivo>` sempre desfazer), e nenhuma outra execução
 // pode estar com o mesmo arquivo mutado.
+function temGitAcima(dir) {
+  for (let d = path.resolve(dir); ; d = path.dirname(d)) {
+    if (fs.existsSync(path.join(d, '.git'))) return true;
+    if (path.dirname(d) === d) return false;
+  }
+}
+
 function conferirNoLugar(raizExecucao, alvo) {
-  const git = (args) => spawnSync(caminhoExecutavel('git'), args, { cwd: raizExecucao, encoding: 'utf8', stdio: 'pipe' });
+  const git = (args) => spawnSync(caminhoExecutavel('git'), args, { cwd: raizExecucao, encoding: 'utf8', stdio: 'pipe', env: { ...process.env, LC_ALL: 'C', LANGUAGE: 'C' } });
   const dentro = git(['rev-parse', '--is-inside-work-tree']);
-  const foraDeRepo = Boolean(dentro.error) || dentro.status !== 0 || (dentro.stdout || '').trim() !== 'true';
+  // Só é fora de repo o "not a git repository" sem `.git` em pasta nenhuma acima.
+  // Git que falha por outro motivo, ou que não reconhece um `.git` que existe
+  // (`.git/HEAD` corrompido), não sabe dizer se o alvo está limpo.
+  const naoERepo = !dentro.error && dentro.status !== 0
+    && /not a git repository/i.test(dentro.stderr || '') && !temGitAcima(raizExecucao);
+  if (!naoERepo && (dentro.error || dentro.status !== 0)) {
+    const porque = dentro.error ? dentro.error.message : (dentro.stderr || '').trim() || `exit ${dentro.status}`;
+    console.error(`RECUSADO: git rev-parse falhou — ${porque}.`);
+    console.error('  Sem o git não dá para saber se ele desfaz a mutação. Conserte o repositório e rode de novo.');
+    process.exit(4);
+  }
+  const foraDeRepo = naoERepo || (dentro.stdout || '').trim() !== 'true';
   let sujoNoGit = false;
   if (!foraDeRepo) {
     // `--ignored`: arquivo ignorado também não se desfaz com `git checkout --`.
@@ -1086,7 +1104,7 @@ function main() {
   const estourou = posRes.r.error && posRes.r.error.code === 'ETIMEDOUT';
   if (estourou) {
     console.error(`BATERIA SEM VEREDITO: estourou o teto de ${timeout} ms e foi morta.`);
-    console.error('  fonte restaurado. Sem exit code da bateria não há prova nenhuma.');
+    console.error('  Sem exit code da bateria não há prova nenhuma.');
     process.exit(1);
   }
   if (posRes.r.error) {

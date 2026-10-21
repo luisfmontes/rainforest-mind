@@ -12,7 +12,7 @@ o mutante. Por isso o campo é por tarefa e fica à vista de quem revisa o plano
 O que a catraca recusa (exit 4, nada mutado):
 - alvo com mudança não commitada, não rastreado ou ignorado pelo git, porque o git
   precisa poder desfazer;
-- `git status` que falha dentro de um repositório;
+- `git` que falha dentro de um repositório, ou que não reconhece um `.git` existente;
 - arquivo que mudou entre a leitura e a mutação (alguém editou durante o baseline);
 - outra execução viva com o mesmo arquivo mutado.
 

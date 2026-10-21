@@ -21,8 +21,8 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-21",
-    "tarefas_ok": 7,
-    "tarefas": 7,
+    "tarefas_ok": 14,
+    "tarefas": 14,
     "mutacao": [
       {
         "tarefa": 1,
@@ -58,21 +58,56 @@
         "tarefa": 7,
         "resultado": "n/a",
         "motivo": "texto e número de versão, sem comportamento a inverter"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao-no-lugar.sh, caso R3"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao-no-lugar.sh, caso R4"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao-no-lugar.sh, caso R2"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao-no-lugar.sh, caso O4"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao-no-lugar.sh, caso R1"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao-no-lugar.sh, caso I1"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao-no-lugar.sh, caso G1"
       }
     ],
     "comando": "bash scripts/testa-conferir-mutacao-no-lugar.sh && bash scripts/testa-conferir-fluxo-no-lugar.sh",
-    "saida": "38 ok, 0 falha(s); 9 ok, 0 falha(s)",
+    "saida": "64 ok, 0 falha(s); 9 ok, 0 falha(s)",
     "em": "2026-10-21",
+    "reaberturas": 2,
     "reaberto_por": {
       "estagio": "revisar",
       "data": "2026-10-21"
-    },
-    "reaberturas": 1
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "148a7f35f7766301dbfa69fccc7ccb890aa21ede",
+      "head": "446c21352f096a5f41e4439972210935609209f9",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-10-21-mutacao-no-lugar.json"
       ]
@@ -80,23 +115,23 @@
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a3b0459457a5c5830",
+        "agente_id": "a7233cec33846858e",
         "veredito": "reprovado",
         "em": "2026-10-21",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-a3b0459457a5c5830.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-a7233cec33846858e.jsonl"
       }
     ],
     "em_voo": [
       {
         "agente": "revisor",
-        "tarefa": "revisao rodada 1",
+        "tarefa": "revisao rodada 2",
         "desde": "2026-10-21",
         "sessao": "2000cb9c-f260-4626-b420-5d6adac18fc8"
       }
     ],
     "em": "2026-10-21",
-    "achados": 8,
-    "tentativas": 1
+    "achados": 4,
+    "tentativas": 2
   },
   "verificar": {
     "status": "pendente"

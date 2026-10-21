@@ -1,6 +1,6 @@
 #!/bin/bash
 # Bateria do modo no lugar de scripts/conferir-mutacao.cjs (#527, #569; plano
-# 2026-10-21-mutacao-no-lugar, tarefas 1 a 4).
+# 2026-10-21-mutacao-no-lugar, tarefas 1 a 4 e 8 a 14, e 16).
 # Uso: bash scripts/testa-conferir-mutacao-no-lugar.sh
 #
 # Cada caso monta um repo git descartavel com `src.js` commitado e uma bateria
@@ -16,6 +16,11 @@
 #   S1/S2  alvo sujo recusa (4) sem rodar a bateria; fora de repo mede e avisa;
 #   O1/O2  backup orfao de PID morto: restaurado se o arquivo ainda e o mutante,
 #          intocado (e o backup fica) se mudou depois;
+#   O3-O5  backup plantado para outro arquivo nao escreve nele; backup de PID vivo
+#          nao e restaurado; backup orfao de arquivo ja original sai sem aviso;
+#   R1-R4  restauracao que falha sai 1; alvo somente-leitura nao deixa backup;
+#          edicao durante o baseline (4) ou a bateria (1) nao e sobrescrita;
+#   I1/G1/G2  alvo ignorado, git status que falha e .git/HEAD corrompido recusam;
 #   V1/V2  backup de PID vivo recusa (4); a execucao no lugar avisa que o fonte
 #          fica mutado durante a bateria.
 # Nenhum caso afirma sobre o texto do fonte.
@@ -260,6 +265,16 @@ EX=$(roda "$CASO/g1" --no-lugar --de 'a + 1' --para 'a + 2' --bateria 'node test
 confere "G1 exit 4" "$EX" "4"
 contem "G1 stderr diz que o git status falhou" "$CASO/g1.err" "git status falhou"
 confere "G1 src.js intocado" "$(sha "$CASO/repo/src.js")" "$SHA0"
+
+echo "== G2: repo com .git/HEAD corrompido nao vira 'fora de repo' =="
+novo_caso 1
+printf 'module.exports = (a) => a + 1; // sujo\n' > "$CASO/repo/src.js"
+SUJO2=$(sha "$CASO/repo/src.js")
+printf 'lixo\n' > "$CASO/repo/.git/HEAD"
+EX=$(roda "$CASO/g2" --no-lugar --de 'a + 1' --para 'a + 2' --bateria 'node teste.js')
+confere "G2 exit 4" "$EX" "4"
+contem "G2 stderr diz que o git falhou" "$CASO/g2.err" "git rev-parse falhou"
+confere "G2 src.js sujo intacto" "$(sha "$CASO/repo/src.js")" "$SUJO2"
 
 echo "== V1: backup de PID vivo para o mesmo arquivo recusa =="
 novo_caso 1

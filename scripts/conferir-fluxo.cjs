@@ -1086,14 +1086,17 @@ function cmdMutacoes() {
       const ehRotulo = linha => {
         const t = linha.trim();
         return t.startsWith('RECUSADO') || t.startsWith('MUTACAO NAO APLICADA')
-          || t.startsWith('BATERIA SEM VEREDITO');
+          || t.startsWith('BATERIA SEM VEREDITO')
+          // Modo no lugar (#527): o fonte real ficou mutado ou editado, e a linha
+          // seguinte diz onde estão os bytes originais.
+          || t.startsWith('FALHA AO RESTAURAR');
       };
       let i = -1;
       for (let n = 0; n < linhas.length; n++) if (ehRotulo(linhas[n])) i = n;
       if (i < 0) {
         // Sem rótulo conhecido (stack trace, `erro: --arquivo não existe`): a primeira
         // linha que carrega uma marca de erro, para o motivo não sair vazio (#379).
-        const MARCAS_ERRO = ['Error', 'erro', 'EPERM'];
+        const MARCAS_ERRO = ['Error', 'erro', 'EPERM', 'EACCES'];
         const achada = linhas.find(l => MARCAS_ERRO.some(m => l.includes(m)));
         return achada ? ' — ' + achada.trim() : '';
       }

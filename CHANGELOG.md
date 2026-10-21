@@ -19,7 +19,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   própria `--raiz` e restaura os bytes originais em toda saída (veredito, estouro de tempo, sinal), conferindo byte a
   byte. Sem a flag, nada muda.
 - **O modo no lugar tem guarda-corpo.** Recusa (exit 4) o alvo sujo, não rastreado ou ignorado no git (o git precisa
-  poder desfazer), o `git status` que falha dentro do repositório, o arquivo editado durante o baseline, e outra
+  poder desfazer), o `git` que falha dentro do repositório (ou não reconhece um `.git` corrompido), o arquivo editado durante o baseline, e outra
   execução viva com o mesmo arquivo mutado. Antes de mutar, grava os bytes originais num backup no temporário, só do
   usuário corrente: se o processo morrer sem restaurar, a próxima execução **sobre o mesmo arquivo** restaura o que
   ainda está mutado e deixa intocado (com aviso) o que mudou depois. Arquivo editado durante a bateria pós-mutação

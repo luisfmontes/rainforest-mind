@@ -38,6 +38,10 @@ bateria (`unity command run_tests`) só fala com o editor da pasta original. Com
     backup; arquivo que não é o mutante nem o original (editado durante a bateria) não é
     sobrescrito: sai 1 com o backup preservado. O backup órfão de arquivo já original sai sem
     aviso.
+  - *Emenda da rodada 2 da revisão:* `git rev-parse` que falha, ou que diz "not a git
+    repository" com um `.git` existente em alguma pasta acima (`.git/HEAD` corrompido), recusa
+    (exit 4), como o `git status` que falha. A falha de restauração chega ao `conferir-fluxo
+    mutacoes` com o rótulo `FALHA AO RESTAURAR` e o caminho do backup.
   - Limite aceito (Q1 A do usuário, rodada 1): o dono do backup é conferido só pelo PID. PID
     reutilizado depois de reiniciar faz um backup morto parecer vivo, e o arquivo fica mutado
     até alguém apagar o backup à mão (a recusa nomeia o caminho). Não perde dado: o backup
