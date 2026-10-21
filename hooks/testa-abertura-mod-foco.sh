@@ -39,6 +39,8 @@ falha() { falhou=$((falhou+1)); echo "  FALHA $1"; }
 BASE_POSIX="$(novo_sandbox)"
 DADOS="$BASE_POSIX/dados"; PROJ="$BASE_POSIX/proj"; CFG="$BASE_POSIX/cfg"
 mkdir -p "$DADOS" "$PROJ" "$CFG"
+# O projeto real e um repo git; fora de repo a abertura ganha o aviso de #565 e o golden diverge.
+git init -q "$PROJ"
 DADOS_M="$(mixto "$DADOS")"; PROJ_M="$(mixto "$PROJ")"; CFG_M="$(mixto "$CFG")"
 
 # FOCO.md CRLF: ~9 KB, com "Concluidos" (secao nao residente) e 6 avancos longos.

@@ -23,7 +23,7 @@
     "em": "2026-10-21"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-21",
     "tarefas_ok": 18,
     "tarefas": 18,
@@ -125,7 +125,7 @@
     "reaberturas": 5
   },
   "revisar": {
-    "status": "ok",
+    "status": "pendente",
     "snapshot": {
       "head": "5507189faeb1949bfa6da2ad1c74f7be8aeb52b5",
       "caminhos_sujos": [
@@ -161,7 +161,7 @@
     "head": "5507189faeb1949bfa6da2ad1c74f7be8aeb52b5"
   },
   "verificar": {
-    "status": "ok",
+    "status": "pendente",
     "comando": "node hooks/testa-aviso-fluxo-shell.cjs && node hooks/testa-portaria-fora-de-repo.cjs && bash hooks/testa-contexto-sessao.sh && bash hooks/testa-config.sh && bash scripts/testa-conferir-categoria.sh",
     "saida": "48 ok 0 falha(s); 18 ok 0 falha(s); ok: 305 falhou: 0; 63 ok 0 falha(s); 14 ok 0 falha(s) 0 pulado(s); conferir-versao exit 0 versao 1.71.0; conferir-setup ok 45 chaves",
     "sensor_externo": "node hooks/testa-aviso-fluxo-shell.cjs",
@@ -169,6 +169,14 @@
     "head": "5507189faeb1949bfa6da2ad1c74f7be8aeb52b5"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-10-21"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-10-21",
+      "de": "verificar",
+      "motivo": "CI vermelho no PR 574: testa-abertura-mod-foco.sh roda a abertura com projeto que nao e repo git, ganha o aviso de #565 e diverge do golden"
+    }
+  ]
 }

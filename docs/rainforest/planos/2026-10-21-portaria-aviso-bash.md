@@ -91,7 +91,7 @@ pronto quando: com duas chamadas seguidas do PostToolUse de Bash na mesma sessã
 ### 7. Versão 1.71.0, CHANGELOG e README [tipo: docs]
 atende: D5
 arquivos: `CHANGELOG.md`, `README.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `docs/rainforest/estado/2026-10-19-gate-worktree-home.json`, `hooks/lib/config.cjs`, `skills/setup/SKILL.md`
-depende de: 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18
+depende de: 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
 mutacao: n/a
   motivo: texto e número de versão, sem comportamento a inverter
 pronto quando: com o `.claude-plugin/plugin.json` e o `.codex-plugin/plugin.json` em `1.71.0`, `node scripts/conferir-versao.cjs` sai 0 com `versao 1.71.0`. O CHANGELOG abre com `## 1.71.0` e descreve o que D1, D2 e D3 decidiram: a linha `Worktree:` conferida como worktree linkado fora de repo, o aviso na abertura e o hook PostToolUse que decide pelo `git status`, com o custo de um processo por chamada de shell. O README traz o badge `1.71.0`, a exceção fora de repo na linha da `portaria.cjs` e o parágrafo do `aviso-fluxo-shell.cjs`. O estado do fluxo `2026-10-19-gate-worktree-home` entra com `fechar ok` e PR 572. A descrição da chave `aviso-fluxo` em `hooks/lib/config.cjs` e em `skills/setup/SKILL.md` diz que ela também desliga o aviso do shell, e `node scripts/conferir-setup.cjs` sai 0.
@@ -234,3 +234,16 @@ prova: `node hooks/testa-aviso-fluxo-shell.cjs`
 mutacao: n/a
   motivo: defesa dupla. O HEAD é validado como hash hexadecimal e vai ao git depois de `--end-of-options`, então tirar qualquer uma das duas sozinha não muda a saída observável. O caso G1 confere o efeito das duas juntas.
 pronto quando: com a foto da sessão adulterada para `head: "--output=<arquivo>"`, a chamada seguinte do PostToolUse de Bash não cria o `<arquivo>` e segue avisando o código novo `g.py` (exit 2). Provado por `node hooks/testa-aviso-fluxo-shell.cjs` (casos G0 e G1) com placar `0 falha(s)`.
+
+### 19. A bateria da abertura do mod roda em projeto que é repo [tipo: teste]
+atende: D2
+arquivos: `hooks/testa-abertura-mod-foco.sh`
+depende de: 3
+prova-na-base: verde — fixture de bateria; na base o aviso de fora de repo não existe e a bateria já passa
+mutacao:
+  arquivo: `hooks/testa-abertura-mod-foco.sh`
+  de: `git init -q "$PROJ"`
+  para: `true`
+  bateria: `bash hooks/testa-abertura-mod-foco.sh`
+  fixture: `testa-abertura-mod-foco.sh, secao "2. sem a flag = golden"`
+pronto quando: com o `CLAUDE_PROJECT_DIR` do sandbox apontando para um repo git, como num projeto real, a abertura sem `--destino mod` sai igual (cmp) à do commit golden e não traz a linha "cwd fora de repo git". Provado por `bash hooks/testa-abertura-mod-foco.sh` com placar `falhou: 0`.
