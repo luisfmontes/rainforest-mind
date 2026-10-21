@@ -65,6 +65,11 @@ if (args[0] === 'pr' && args[1] === 'checks' && args.includes('--json')) {
   process.exit(0);
 }
 if (args[0] === 'pr' && args[1] === 'checks') process.exit(Number(process.env.STUB_CHECKS_EXIT || 0));
+if (args[0] === 'api' && String(args[1]).includes('actions/workflows')) {
+  if (process.env.STUB_API_FAIL) { process.stderr.write('HTTP 502\n'); process.exit(1); }
+  process.stdout.write((process.env.STUB_WORKFLOWS === undefined ? '1' : process.env.STUB_WORKFLOWS) + '\n');
+  process.exit(0);
+}
 if (args[0] === 'pr' && args[1] === 'view') {
   process.stdout.write(JSON.stringify({ state: process.env.STUB_STATE || 'OPEN' }) + '\n');
   process.exit(0);
@@ -250,6 +255,29 @@ export STUB_CHECKS_JSON='nao e json'
 roda "$CAIXA" esperar-ci --pr 7
 [ "$CODIGO" -eq 5 ]; afirma "(g10) JSON ilegivel: sai 5 (exit=$CODIGO)" $?
 unset STUB_CHECKS_JSON
+
+# #576: repositorio sem workflow nenhum e PR sem check e CI ausente, nao vermelho.
+export STUB_WORKFLOWS=0 STUB_CHECKS_JSON='[]' STUB_CHECKS_EXIT=1
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 8 ]; afirma "(g11) zero workflows e PR sem check: sai 8 (exit=$CODIGO)" $?
+grep -q "repositório sem CI" "$SAIDA"; afirma "(g11) stdout diz repositorio sem CI" $?
+grep -q "merge autorizado" "$SAIDA"; afirma "(g11) com fechar-mergear ligada, diz merge autorizado" $?
+printf '{"fechar-mergear": false}\n' > "$CAIXA/.rainforest/config.json"
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 8 ]; afirma "(g12) sem CI e chave desligada: sai 8 (exit=$CODIGO)" $?
+grep -q "pare no PR aberto" "$SAIDA"; afirma "(g12) diz pare no PR aberto" $?
+printf '{"fechar-mergear": true}\n' > "$CAIXA/.rainforest/config.json"
+export STUB_WORKFLOWS=2
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 5 ]; afirma "(g13) com workflow e PR sem check: segue 5 (exit=$CODIGO)" $?
+export STUB_WORKFLOWS=0 STUB_API_FAIL=1
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 5 ]; afirma "(g14) API que falha nao vira 8: sai 5 (exit=$CODIGO)" $?
+unset STUB_API_FAIL
+export STUB_CHECKS_JSON='[{"name":"externo","bucket":"pass"}]' STUB_CHECKS_EXIT=0
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 0 ]; afirma "(g15) zero workflows mas PR com check verde: segue 0 (exit=$CODIGO)" $?
+unset STUB_WORKFLOWS STUB_CHECKS_JSON STUB_CHECKS_EXIT
 
 roda_sem_gh "$CAIXA" esperar-ci --pr 7
 [ "$CODIGO" -eq 69 ]; afirma "(g6) gh ausente do PATH: sai 69 (exit=$CODIGO)" $?

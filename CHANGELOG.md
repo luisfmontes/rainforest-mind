@@ -10,6 +10,20 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.73.0 — 2026-10-21
+
+- **Repositório sem CI não trava mais o `fechar` (#576).** `publicar-branch.cjs esperar-ci` saía 5 ("CI vermelho")
+  quando o repositório não tem nenhum workflow, e o merge nunca acontecia. Agora, com zero workflows
+  (`gh api .../actions/workflows`) e o PR sem check, sai **8**: a evidência é o `verificar`, e a linha diz se o merge
+  está autorizado (`fechar-mergear`). Repositório com workflow e PR sem check continua 5; API que falha também.
+- **Corpo do PR não reabre o `executar` (#575).** `<plano>.pr.md`, ao lado do plano, é isento de creep e da trava de
+  código depois do `verificar`.
+- **`creep` e `mutacoes` avulsos acham o plano com outro nome (#571).** Sem `--plano`/`--design`, leem `plano.doc` e
+  `design.doc` do estado do slug (confinados à raiz). A recusa "plano não existe" passa a citar `--plano <caminho>`.
+- **CI deste repositório em três shards (#541).** 262 baterias, ~59 min em série; com dois shards cada um ficava a
+  3–7 min do teto de 35. Pesos remedidos, e `scripts/testa-ci-shards.sh` confere matriz, nome, passo e a carga do
+  shard mais pesado contra o teto.
+
 ## 1.72.0 — 2026-10-21
 
 - **Catraca de mutação mede projeto com runtime vivo (#527, #569).** O `conferir-mutacao.cjs` copia a raiz para o

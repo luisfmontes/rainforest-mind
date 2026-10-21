@@ -14,7 +14,7 @@
 #   ele nunca vai rodar. O preco e real: repo PRIVADO, e minuto de Windows conta
 #   2x na cota do Actions.
 #
-# - Dois jobs (shards), cada um serial. Em 2026-08-17 eram 20 baterias, ~3 min, e
+# - Jobs em shards, cada um serial. Em 2026-08-17 eram 20 baterias, ~3 min, e
 #   um job so bastava: uma matriz de 20 jobs cortaria o relogio, mas o Actions
 #   cobra por job com minuto minimo arredondado (20 x 1 min x 2 = 40 min
 #   faturados contra ~8). Hoje sao 168 baterias, ~1858 s (~31 min) em serie num
@@ -31,7 +31,14 @@
 #   `testa-varrer-baterias.sh` confere uniao == lista inteira, sem repeticao).
 #   Remedido em 2026-10-18 (PR #560): 255 baterias, 2772 s em serie; 85 estavam
 #   sem peso, o shard 1 levava ~1700 s de bateria contra ~1070 do 2 e estourou
-#   os 35 min. Pesos tirados do log do run 39041588168 ("-----" ate ">>").
+#   os 35 min. Pesos tirados do log do run verde do PR #560 ("-----" ate ">>").
+#   Em 2026-10-21 (Issue #541) eram 262 baterias, 3530 s em serie (run verde do
+#   PR #577), e com 2 shards equilibrados cada um ficava a 3-7 min do teto: o
+#   shard 2 levou 32m13s. Rebalancear so passava a lentidao de um para o outro,
+#   entao virou TRES shards (~1177 s de bateria cada, ~21 min com o overhead).
+#   O `/3` do nome e do passo tem de casar com a matriz:
+#   `scripts/testa-ci-shards.sh` confere isso e a carga estimada do shard mais
+#   pesado contra o teto.
 #
 # - Nao para na primeira falha. Roda o shard inteiro, imprime o placar, e ai
 #   decide o exit. Saber que 3 baterias quebraram junto vale mais que saber qual
@@ -104,8 +111,8 @@ jobs:
       fail-fast: false
       matrix:
         node: ['24']
-        shard: [1, 2]
-    name: baterias (node ${{ matrix.node }}, shard ${{ matrix.shard }}/2)
+        shard: [1, 2, 3]
+    name: baterias (node ${{ matrix.node }}, shard ${{ matrix.shard }}/3)
 
     defaults:
       run:
@@ -173,9 +180,9 @@ jobs:
           git config --global user.name "CI das baterias"
           git config --global init.defaultBranch master # o mesmo default da maquina do Luis (unset la tambem)
 
-      # Preflight e identidade git rodam nos dois shards: cada job e um runner
+      # Preflight e identidade git rodam em todos os shards: cada job e um runner
       # proprio, e sao o ambiente das baterias. Esta conferencia, ao contrario, e
-      # sobre a ARVORE (nao depende do runner) e daria o mesmo resultado nos dois:
+      # sobre a ARVORE (nao depende do runner) e daria o mesmo resultado em todos:
       # so o shard 1 paga, e nenhuma checagem se perde.
       - name: Versao do manifesto sobe em relacao a origin/main
         if: matrix.shard == 1
@@ -188,8 +195,8 @@ jobs:
         if: matrix.shard == 1
         run: node scripts/conferir-glossario.cjs --exigir --caminhos
 
-      - name: Rodar as baterias (shard ${{ matrix.shard }}/2)
-        run: bash scripts/varrer-baterias.sh --shard ${{ matrix.shard }}/2
+      - name: Rodar as baterias (shard ${{ matrix.shard }}/3)
+        run: bash scripts/varrer-baterias.sh --shard ${{ matrix.shard }}/3
 
       # Passo separado, de proposito (D5): o gemeo em Python de conferir-entrega.cjs
       # so aparece quando alguem digita o CONFERIR override na mao — por isso
@@ -199,7 +206,7 @@ jobs:
       # rodar antes de abrir PR — provar o gemeo aqui e provar o que o contribuidor
       # roda na propria maquina, nao um substituto.
       # So no shard 1: e uma unica bateria sobre o gemeo, o resultado nao depende
-      # de qual shard a roda, e repeti-la no 2 so gastaria minuto de Windows.
+      # de qual shard a roda, e repeti-la nos outros so gastaria minuto de Windows.
       - name: Rodar a bateria do gemeo em Python (conferir-entrega)
         if: matrix.shard == 1
         run: CONFERIR="python scripts/conferir-entrega.py" bash scripts/testa-conferir-entrega.sh

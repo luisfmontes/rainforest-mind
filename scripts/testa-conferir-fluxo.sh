@@ -1382,6 +1382,49 @@ exige 0 "(c) o estado do TOPO ganha executar.flakes com tarefa 1" \
   "$HW/docs/rainforest/estado/h-raiz.json"
 exige 0 "(c) app/ nao ganha pasta de estado" test ! -e "$HC/app/docs/rainforest/estado"
 
+echo
+echo "== 18. corpo do PR isento (#575) e plano lido do estado quando avulso (#571) =="
+# O corpo do PR (`<plano>.pr.md`) e' texto do `fechar`: editado depois do
+# `verificar`, nao pode virar creep. E o plano com sufixo de marco
+# (`<slug>-m1.md`) gravado em `plano.doc` tem de ser achado sem `--plano`.
+P="$(novo_sandbox)"; PW="$(cygpath -m "$P" 2>/dev/null || printf '%s' "$P")"
+mkdir -p "$P/docs/rainforest/design" "$P/docs/rainforest/planos" "$P/docs/rainforest/estado"
+cp "$REAL_D" "$P/docs/rainforest/design/t.md"
+cp "$REAL_P" "$P/docs/rainforest/planos/t.md"
+cp "$REAL_D" "$P/docs/rainforest/design/m.md"
+cp "$REAL_P" "$P/docs/rainforest/planos/m-m1.md"
+printf '{"plano":{"status":"ok","doc":"docs/rainforest/planos/m-m1.md"}}\n' > "$P/docs/rainforest/estado/m.json"
+git -C "$P" init -q . >/dev/null 2>&1
+git -C "$P" config user.email t@t; git -C "$P" config user.name t
+git -C "$P" add docs >/dev/null 2>&1; git -C "$P" commit -qm base >/dev/null 2>&1
+BASE_P="$(git -C "$P" rev-parse HEAD 2>/dev/null)"
+echo "# corpo" > "$P/docs/rainforest/planos/t.pr.md"
+git -C "$P" add docs >/dev/null 2>&1; git -C "$P" commit -qm corpo-t >/dev/null 2>&1
+CORPO_T="$(git -C "$P" rev-parse HEAD 2>/dev/null)"
+echo "# corpo" > "$P/docs/rainforest/planos/m-m1.pr.md"
+git -C "$P" add docs >/dev/null 2>&1; git -C "$P" commit -qm corpo-m >/dev/null 2>&1
+CORPO_M="$(git -C "$P" rev-parse HEAD 2>/dev/null)"
+echo "# corpo de outro" > "$P/docs/rainforest/planos/outro.pr.md"
+git -C "$P" add docs >/dev/null 2>&1; git -C "$P" commit -qm corpo-outro >/dev/null 2>&1
+CORPO_OUTRO="$(git -C "$P" rev-parse HEAD 2>/dev/null)"
+
+if [ -n "$BASE_P" ] && [ -n "$CORPO_OUTRO" ] && [ "$BASE_P" != "$CORPO_OUTRO" ]; then
+  exige 0 "(#575) planos/t.pr.md do proprio slug nao e creep" \
+    env RFM_ESTADO_ROOT="$PW" node "$CHECADOR" creep --slug t --base "$BASE_P" --head "$CORPO_T"
+  exige 2 "(#575) planos/outro.pr.md de outro slug continua creep" \
+    env RFM_ESTADO_ROOT="$PW" node "$CHECADOR" creep --slug t --base "$CORPO_M" --head "$CORPO_OUTRO"
+  exige 0 "(#571) creep sem --plano le planos/m-m1.md do estado e isenta m-m1.pr.md" \
+    env RFM_ESTADO_ROOT="$PW" node "$CHECADOR" creep --slug m --base "$CORPO_T" --head "$CORPO_M"
+  exige_msg "passe --plano <caminho>" "(#571) recusa de plano ausente cita --plano" \
+    env RFM_ESTADO_ROOT="$PW" node "$CHECADOR" creep --slug sem-plano --base "$BASE_P" --head "$CORPO_T"
+  exige_msg "tarefa 1: pulada" "(#571) mutacoes sem --plano acha planos/m-m1.md pelo estado" \
+    env RFM_ESTADO_ROOT="$PW" node "$CHECADOR" mutacoes --slug m
+  exige_msg "plano não existe: .*planos.x[.]md" "(#571) plano.doc fora da raiz nao e seguido (cai no padrao)" \
+    bash -c 'printf "{\"plano\":{\"doc\":\"../fora/m-m1.md\"}}\n" > "$1/docs/rainforest/estado/x.json"; mkdir -p "$1/../fora"; cp "$1/docs/rainforest/planos/m-m1.md" "$1/../fora/m-m1.md"; env RFM_ESTADO_ROOT="$1" node "$2" mutacoes --slug x 2>&1; rm -rf "$1/../fora"' _ "$PW" "$CHECADOR"
+else
+  echo "  FALHA nao consegui montar o repositorio de fixture"; falhou=$((falhou+1))
+fi
+
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]

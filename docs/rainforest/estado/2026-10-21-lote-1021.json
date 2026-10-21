@@ -1,0 +1,37 @@
+{
+  "slug": "2026-10-21-lote-1021",
+  "titulo": "2026-10-21-lote-1021",
+  "criado_em": "2026-10-21",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-21-lote-1021.md",
+    "aprovado_por": "usuario: recomendado (Q1-Q3)",
+    "em": "2026-10-21"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-21-lote-1021.md",
+    "tarefas": 5,
+    "paralelas": [
+      1,
+      4
+    ],
+    "em": "2026-10-21"
+  },
+  "executar": {
+    "status": "pendente",
+    "catraca_mutacao": "2026-10-21"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

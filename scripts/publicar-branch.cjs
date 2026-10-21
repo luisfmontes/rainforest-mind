@@ -24,6 +24,8 @@
  *   5   CI não verde (esperar-ci)
  *   6   merge não confirmado: state fechado sem merge, ou prazo esgotado (confirmar-merge)
  *   7   CI verde mas `fechar-mergear` desligada: merge não autorizado (esperar-ci)
+ *   8   repositório sem CI: zero workflows e o PR sem check; a evidência é o
+ *       `verificar` (esperar-ci, #576). A linha diz se o merge está autorizado
  *   69  ambiente: git/gh ausente ou sem auth, falha de rede, remoto não GitHub onde
  *       o subcomando precisa dele, ou saída inesperada do gh
  *
@@ -193,6 +195,30 @@ function esperarCi(pr) {
   if (auth.status !== 0) {
     erro('gh ausente ou sem auth: não dá para acompanhar o CI', auth.stderr);
     return 69;
+  }
+
+  // Repositório sem workflow nenhum (#576): "no checks reported" ali não é CI
+  // vermelho, é CI ausente, e a evidência é o `verificar`. Só vale com a API
+  // dizendo zero workflows E o PR sem check; leitura que falha segue o caminho
+  // de sempre, onde ausência de check é não verde.
+  const wf = executar('gh', ['api', 'repos/{owner}/{repo}/actions/workflows', '--jq', '.total_count']);
+  const semWorkflows = wf.status === 0 && (wf.stdout || '').trim() === '0';
+  if (semWorkflows) {
+    const lidosSem = executar('gh', ['pr', 'checks', String(pr), '--json', 'name,bucket']);
+    let semChecks = false;
+    try {
+      const lista = JSON.parse(lidosSem.stdout);
+      semChecks = Array.isArray(lista) && lista.length === 0;
+    } catch {
+      semChecks = /no checks reported/i.test(`${lidosSem.stdout || ''}${lidosSem.stderr || ''}`);
+    }
+    if (semWorkflows && semChecks) {
+      const quem = mergeAutorizado()
+        ? `merge autorizado — rode gh pr merge ${pr} --squash`
+        : 'fechar-mergear desligada — pare no PR aberto';
+      process.stdout.write(`repositório sem CI (zero workflows, PR ${pr} sem check): a evidência é o verificar; ${quem}\n`);
+      return 8;
+    }
   }
 
   const checks = executar('gh', ['pr', 'checks', String(pr), '--watch', '--interval', '20'], { stdio: 'inherit' });

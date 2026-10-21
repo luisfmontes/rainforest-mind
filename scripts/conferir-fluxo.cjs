@@ -59,6 +59,42 @@ function arg(nome, obrigatorio = true) {
   return process.argv[i + 1];
 }
 
+/**
+ * Caminho do plano ou do design gravado no estado do slug (#571): `plano.doc`
+ * (ou `plano.arquivo`, o nome antigo), como o `estado.cjs` já resolve no
+ * `marcar`. Sem isso, rodado avulso como as skills mandam, o subcomando caía em
+ * `<slug>.md` e recusava o plano com sufixo de marco (`<slug>-m1.md`). Confinado
+ * à raiz do projeto, por realpath; fora dela, ou sem estado, devolve null e quem
+ * chama cai no caminho padrão.
+ */
+function recusaPlanoAusente(arquivo) {
+  console.error(`RECUSADO: plano não existe: ${arquivo}`);
+  console.error('  Plano com outro nome: passe --plano <caminho> (ou grave plano.doc no estado do slug).');
+}
+
+function docDoEstado(slug, tipo) {
+  if (!slug) return null;
+  let estado;
+  try {
+    estado = JSON.parse(fs.readFileSync(path.join(RAIZ, 'docs', 'rainforest', 'estado', `${slug}.json`), 'utf8'));
+  } catch {
+    return null;
+  }
+  const bloco = estado && estado[tipo];
+  const declarado = bloco && (bloco.doc || bloco.arquivo);
+  if (typeof declarado !== 'string' || !declarado) return null;
+  const abs = path.resolve(path.isAbsolute(declarado) ? declarado : path.join(RAIZ, declarado));
+  try {
+    const real = fs.realpathSync(abs);
+    const raizReal = fs.realpathSync(RAIZ);
+    const dentro = path.relative(raizReal, real);
+    if (!dentro || dentro.startsWith('..') || path.isAbsolute(dentro)) return null;
+    return real;
+  } catch {
+    return null;
+  }
+}
+
 function lerMarkdown(arquivo) {
   if (!fs.existsSync(arquivo)) {
     return null;
@@ -82,7 +118,7 @@ function lerMarkdown(arquivo) {
  */
 function cmdDesign() {
   const slug = arg('slug');
-  const arquivo = arg('design', false) || path.join(RAIZ, caminhoDoc('design', slug, { raiz: RAIZ }));
+  const arquivo = arg('design', false) || docDoEstado(slug, 'design') || path.join(RAIZ, caminhoDoc('design', slug, { raiz: RAIZ }));
 
   const conteudo = lerMarkdown(arquivo);
   if (!conteudo) {
@@ -209,7 +245,7 @@ function cmdCobertura() {
   const slug = arg('slug');
 
   // Lê design
-  const arquivo_design = arg('design', false) || path.join(RAIZ, caminhoDoc('design', slug, { raiz: RAIZ }));
+  const arquivo_design = arg('design', false) || docDoEstado(slug, 'design') || path.join(RAIZ, caminhoDoc('design', slug, { raiz: RAIZ }));
   const conteudo_design = lerMarkdown(arquivo_design);
   if (!conteudo_design) {
     console.error(`RECUSADO: design não existe: ${arquivo_design}`);
@@ -217,10 +253,10 @@ function cmdCobertura() {
   }
 
   // Lê plano
-  const arquivo_plano = arg('plano', false) || path.join(RAIZ, caminhoDoc('planos', slug, { raiz: RAIZ }));
+  const arquivo_plano = arg('plano', false) || docDoEstado(slug, 'plano') || path.join(RAIZ, caminhoDoc('planos', slug, { raiz: RAIZ }));
   const conteudo_plano = lerMarkdown(arquivo_plano);
   if (!conteudo_plano) {
-    console.error(`RECUSADO: plano não existe: ${arquivo_plano}`);
+    recusaPlanoAusente(arquivo_plano);
     process.exit(2);
   }
 
@@ -760,9 +796,13 @@ function globsIsentos({ slug, design, plano, globsDoPlano }) {
   // (`fluxo-9-design-portaria.md`, `fluxo-6-design-portoes.md`), e derivar do slug
   // fazia o design DO PRÓPRIO FLUXO aparecer como creep do fluxo — o arquivo que
   // autoriza o trabalho acusado de estar fora dele.
+  const planoIsento = plano || caminhoDoc('planos', slug, { raiz: RAIZ });
   const globs_isentos = [
     design || caminhoDoc('design', slug, { raiz: RAIZ }),
-    plano || caminhoDoc('planos', slug, { raiz: RAIZ }),
+    planoIsento,
+    // O corpo do PR mora ao lado do plano (`<plano>.pr.md`) e é texto do
+    // `fechar`, não código (#575): editá-lo depois do `verificar` não reabre nada.
+    planoIsento.replace(/\.md$/, '.pr.md'),
     `docs/rainforest/estado/${slug}.json`,
     // Portão é datado no nome (`2026-09-08-aclopar-ponytail.md`) — os dois que
     // existem neste repo são, e o `recibo`/`portoes` cria assim. `${slug}.md`
@@ -811,10 +851,10 @@ function cmdCreep() {
   const head = arg('head');
 
   // Lê plano
-  const arquivo_plano = arg('plano', false) || path.join(RAIZ, caminhoDoc('planos', slug, { raiz: RAIZ }));
+  const arquivo_plano = arg('plano', false) || docDoEstado(slug, 'plano') || path.join(RAIZ, caminhoDoc('planos', slug, { raiz: RAIZ }));
   const conteudo_plano = lerMarkdown(arquivo_plano);
   if (!conteudo_plano) {
-    console.error(`RECUSADO: plano não existe: ${arquivo_plano}`);
+    recusaPlanoAusente(arquivo_plano);
     process.exit(2);
   }
 
@@ -831,8 +871,8 @@ function cmdCreep() {
     : padrao);
   const globs_isentos = globsIsentos({
     slug,
-    design: rel(arg('design', false), null),
-    plano: rel(arg('plano', false), null),
+    design: rel(arg('design', false) || docDoEstado(slug, 'design'), null),
+    plano: rel(arquivo_plano, null),
     globsDoPlano: globs,
   });
 
@@ -974,10 +1014,10 @@ function cmdMutacoes() {
   const raizCodigo = flagRaizCodigo || RAIZ;
 
   // Lê plano
-  const arquivo_plano = arg('plano', false) || path.join(RAIZ, caminhoDoc('planos', slug, { raiz: RAIZ }));
+  const arquivo_plano = arg('plano', false) || docDoEstado(slug, 'plano') || path.join(RAIZ, caminhoDoc('planos', slug, { raiz: RAIZ }));
   const conteudo_plano = lerMarkdown(arquivo_plano);
   if (!conteudo_plano) {
-    console.error(`RECUSADO: plano não existe: ${arquivo_plano}`);
+    recusaPlanoAusente(arquivo_plano);
     process.exit(2);
   }
 
@@ -1177,10 +1217,10 @@ function cmdMutacoes() {
  */
 function cmdCamadas() {
   const slug = arg('slug');
-  const arquivo_plano = arg('plano', false) || path.join(RAIZ, caminhoDoc('planos', slug, { raiz: RAIZ }));
+  const arquivo_plano = arg('plano', false) || docDoEstado(slug, 'plano') || path.join(RAIZ, caminhoDoc('planos', slug, { raiz: RAIZ }));
   const conteudo_plano = lerMarkdown(arquivo_plano);
   if (!conteudo_plano) {
-    console.error(`RECUSADO: plano não existe: ${arquivo_plano}`);
+    recusaPlanoAusente(arquivo_plano);
     process.exit(2);
   }
 

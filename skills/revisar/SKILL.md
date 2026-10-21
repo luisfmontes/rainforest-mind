@@ -163,8 +163,8 @@ Classes que o `conferir-fluxo.cjs creep` reconhece (`globs_isentos`):
 
 - design e plano (caminhos de `node scripts/pastas-docs.cjs caminho --tipo design --slug <slug>` e `--tipo planos`),
   `docs/rainforest/estado/<slug>.json`, `docs/rainforest/portoes/*<slug>.md`,
-  `docs/rainforest/varredura/<slug>.txt` (#368) — o rastro que o fluxo
-  escreve para ESTE trabalho; de outro slug é creep.
+  `varredura/<slug>.txt` (#368), `<plano>.pr.md` (#575) — o rastro deste
+  trabalho; de outro slug é creep. Plano avulso: `plano.doc` ou `--plano` (#571).
 - `relatorios/` — registro escrito depois que o fluxo fechou, sem tarefa possível.
 - `docs/rainforest/reguas/` — a skill `regua` exige commitar a régua antes da
   1ª rodada.

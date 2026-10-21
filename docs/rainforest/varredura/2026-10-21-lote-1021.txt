@@ -1,0 +1,19 @@
+Data: 2026-10-21
+Termos: shard, esperar-ci, pr.md, plano.doc
+
+$ gh issue list --state all --search "shard" --limit 200 --json number,title,state
+[{"number":541,"state":"OPEN","title":"CI: shard 1 das baterias roda a 3-9 min do timeout de 35"},{"number":543,"state":"OPEN","title":"testa-gate-teto-despachos: 12 processos juntos, um nega (exit 2) e o contador fecha em 11 na CI"},{"number":475,"state":"CLOSED","title":"testa-conferir-fluxo 13c intermitente na CI: mutacao vira 'pulada (corte de shell)'"},{"number":507,"state":"CLOSED","title":"testa-memoria-assunto-prompt: teto de 1500 ms na 1a chamada fica vermelho em runner lento"},{"number":496,"state":"CLOSED","title":"gate-fechar-issue descarta o --repo de gh pr merge e lê a descrição do PR no repo da sessão"},{"number":413,"state":"CLOSED","title":"verificar: catraca de mutações não roda quando o código vive em branch de outro repo (upstream) que o estado do fluxo"},{"number":414,"state":"CLOSED","title":"gate-fechar-issue barra comando sem gh que carrega env com set -a e ponto"},{"number":410,"state":"CLOSED","title":"gate de publicação: f-string Python com variável (Bearer {API_KEY}) é lida como credencial"},{"number":409,"state":"CLOSED","title":"gate de publicação: pseudo-versão Go em go.mod/go.sum é lida como telefone"},{"number":411,"state":"CLOSED","title":"setup --desligar gate-publicacao --escopo projeto não vale dentro de worktree do mesmo repo"},{"number":412,"state":"CLOSED","title":"arqueologia: gravar o mapa na pasta de legado que o repo já usa"},{"number":417,"state":"CLOSED","title":"Desligar gate so por variavel de ambiente, sem o arquivo .rainforest-gate-off"},{"number":419,"state":"CLOSED","title":"gate-publicacao-destino: remoto GitLab sempre sai 'desconhecida' e barra repo privado de trabalho"},{"number":385,"state":"CLOSED","title":"marcar plano ok passa com o arquivo declarado ausente do disco"}]
+
+
+$ gh issue list --state all --search "esperar-ci" --limit 200 --json number,title,state
+[{"number":576,"state":"OPEN","title":"esperar-ci: repositório sem CI sai 5 (como CI vermelho) e trava o merge"},{"number":541,"state":"OPEN","title":"CI: shard 1 das baterias roda a 3-9 min do timeout de 35"}]
+
+
+$ gh issue list --state all --search "pr.md" --limit 200 --json number,title,state
+[{"number":575,"state":"OPEN","title":"fechar: <slug>.pr.md editado depois do verificar conta como código e exige reabrir o executar"},{"number":350,"state":"CLOSED","title":"gate-worktree ignora git -C <outro-repo> e barra switch num clone descartavel como se fosse o checkout da sessao"}]
+
+
+$ gh issue list --state all --search "plano.doc" --limit 200 --json number,title,state
+[{"number":571,"state":"OPEN","title":"conferir-fluxo creep recusa plano com sufixo de marco e o revisor mede creep à mão"}]
+
+

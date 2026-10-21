@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.72.0-1e5c3f?style=flat-square" alt="versão 1.72.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.73.0-1e5c3f?style=flat-square" alt="versão 1.73.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -234,7 +234,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | Script | Validação |
 |---|---|
 | `scripts/estado.cjs iniciar` | Recusa (exit 2) abrir fluxo no **checkout principal fora da branch padrão** — a pasta do repositório fica na `main`, trabalho nasce em worktree (regra 11, Issue #195). A mensagem traz a receita (`git worktree add …`, `git checkout main`); `exigir` no mesmo estado só avisa. Clone dedicado a uma frente declara `"principal-livre": true` em `.rainforest/config.json`; em CI (`CI`/`GITHUB_ACTIONS`) não vale |
-| `scripts/publicar-branch.cjs` | Passo 5 do `fechar`. `publicar`: `merge-tree` contra a base antes do push (conflito **exit 3**, sem push; `merge-tree` que falha **exit 69**, nunca lido como limpo), push e `HEAD == @{u}` (**exit 4**), e `PR aberto: <n>` ou `nenhum`, sem criar PR. `esperar-ci --pr <n>`: `gh pr checks --watch`; vermelho **exit 5**, verde com a chave `fechar-mergear` desligada (padrão) **exit 7**. `confirmar-merge --pr <n>`: só o state `MERGED` sai 0, senão **exit 6**. Nunca roda `gh pr create` nem `gh pr merge`: esses passam pelo `gate-fechar-issue` |
+| `scripts/publicar-branch.cjs` | Passo 5 do `fechar`. `publicar`: `merge-tree` contra a base antes do push (conflito **exit 3**, sem push; `merge-tree` que falha **exit 69**, nunca lido como limpo), push e `HEAD == @{u}` (**exit 4**), e `PR aberto: <n>` ou `nenhum`, sem criar PR. `esperar-ci --pr <n>`: `gh pr checks --watch`; vermelho **exit 5**, verde com a chave `fechar-mergear` desligada (padrão) **exit 7**; repositório sem nenhum workflow e PR sem check **exit 8** (a evidência é o `verificar`, e a linha diz se o merge está autorizado). `confirmar-merge --pr <n>`: só o state `MERGED` sai 0, senão **exit 6**. Nunca roda `gh pr create` nem `gh pr merge`: esses passam pelo `gate-fechar-issue` |
 | `scripts/recibo.cjs` | Congela identidade do entregável com sha256 + bytes; chamado pelo `fechar` quando plano declara `entregaveis` (opt-in, sem manifesto sai exit 0). Obriga `nao_provado` listado — recibo que alega provar tudo é suspeito. Re-executa portões com `--reverificar` se `docs/rainforest/portoes/<slug>.md` existe. Grava atomicamente em `.rainforest/colheita/<slug>-recibo.json` (fora do git). `mostrar <slug>` imprime; `conferir <slug>` recalcula hash e compara. |
 | `scripts/conferir-duplicacao.cjs` | Dois arquivos byte a byte iguais fora de `fixtures/`, `node_modules/`, `.git/` e `.claude/worktrees/` → **exit 2** com os dois caminhos na mesma linha; `--funcoes` inventaria nomes repetidos entre `scripts/*.cjs` (exit 0, é inventário). Chamado pelo `conferir-publicacao.cjs --commit` e pelo `/saude` |
 | `scripts/conferir-publicacao.cjs --commit <rev>` ou `a..b` | Varre o conteúdo **commitado**, não o disco: dado sensível que já saiu do arquivo mas ficou no histórico é achado; disco ≠ commit vira `diverge-do-commit`. Exit 2 achado, **69** quando o ambiente impede |
