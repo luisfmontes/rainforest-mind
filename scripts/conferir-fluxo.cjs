@@ -59,6 +59,11 @@ function arg(nome, obrigatorio = true) {
   return process.argv[i + 1];
 }
 
+function recusaPlanoAusente(arquivo) {
+  console.error(`RECUSADO: plano não existe: ${arquivo}`);
+  console.error('  Plano com outro nome: passe --plano <caminho> (ou grave plano.doc no estado do slug).');
+}
+
 /**
  * Caminho do plano ou do design gravado no estado do slug (#571): `plano.doc`
  * (ou `plano.arquivo`, o nome antigo), como o `estado.cjs` já resolve no
@@ -67,11 +72,6 @@ function arg(nome, obrigatorio = true) {
  * à raiz do projeto, por realpath; fora dela, ou sem estado, devolve null e quem
  * chama cai no caminho padrão.
  */
-function recusaPlanoAusente(arquivo) {
-  console.error(`RECUSADO: plano não existe: ${arquivo}`);
-  console.error('  Plano com outro nome: passe --plano <caminho> (ou grave plano.doc no estado do slug).');
-}
-
 function docDoEstado(slug, tipo) {
   if (!slug) return null;
   let estado;
@@ -89,7 +89,10 @@ function docDoEstado(slug, tipo) {
     const raizReal = fs.realpathSync(RAIZ);
     const dentro = path.relative(raizReal, real);
     if (!dentro || dentro.startsWith('..') || path.isAbsolute(dentro)) return null;
-    return real;
+    // A cerca usa o realpath, mas quem chama compara contra a RAIZ lexical
+    // (`rel()` do creep): devolver o realpath com a raiz numa junction faria o
+    // plano e o design do proprio fluxo cairem fora dela, como creep.
+    return abs;
   } catch {
     return null;
   }

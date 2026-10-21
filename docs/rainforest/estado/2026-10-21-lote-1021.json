@@ -22,7 +22,7 @@
     "em": "2026-10-21"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-21",
     "tarefas_ok": 5,
     "tarefas": 5,
@@ -55,10 +55,31 @@
         "motivo": "tarefa so reescreve doc e versao"
       }
     ],
-    "em": "2026-10-21"
+    "em": "2026-10-21",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-21"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "1f79ab06991d48efd8fdcfeb8dd554d458876667",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "afd93b5d5fa055699",
+        "veredito": "reprovado",
+        "em": "2026-10-21",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-afd93b5d5fa055699.jsonl"
+      }
+    ],
+    "achados": 2,
+    "em": "2026-10-21",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

@@ -1419,6 +1419,22 @@ if [ -n "$BASE_P" ] && [ -n "$CORPO_OUTRO" ] && [ "$BASE_P" != "$CORPO_OUTRO" ];
     env RFM_ESTADO_ROOT="$PW" node "$CHECADOR" creep --slug sem-plano --base "$BASE_P" --head "$CORPO_T"
   exige_msg "tarefa 1: pulada" "(#571) mutacoes sem --plano acha planos/m-m1.md pelo estado" \
     env RFM_ESTADO_ROOT="$PW" node "$CHECADOR" mutacoes --slug m
+  # Raiz alcancada por junction (Windows) ou symlink: a cerca do plano.doc usa
+  # realpath, e devolver o realpath fazia o `rel()` contra a RAIZ lexical sair
+  # com `..`, acusando o plano do proprio fluxo como creep (revisao 1 do lote).
+  JP="$(mktemp -u)"; JPW="$(cygpath -m "$JP" 2>/dev/null || printf '%s' "$JP")"
+  if command -v cygpath >/dev/null 2>&1; then
+    MSYS2_ARG_CONV_EXCL="*" cmd /c mklink /J "$(cygpath -w "$JP")" "$(cygpath -w "$P")" >/dev/null 2>&1
+  else
+    ln -s "$P" "$JP"
+  fi
+  if [ -d "$JP/docs" ]; then
+    exige 0 "(#571) com a raiz numa junction, creep sem --plano continua isentando m-m1.pr.md" \
+      env RFM_ESTADO_ROOT="$JPW" node "$CHECADOR" creep --slug m --base "$CORPO_T" --head "$CORPO_M"
+    if command -v cygpath >/dev/null 2>&1; then MSYS2_ARG_CONV_EXCL="*" cmd /c rmdir "$(cygpath -w "$JP")" >/dev/null 2>&1; else rm -f "$JP"; fi
+  else
+    echo "  FALHA nao consegui criar a junction/symlink da raiz"; falhou=$((falhou+1))
+  fi
   exige_msg "plano não existe: .*planos.x[.]md" "(#571) plano.doc fora da raiz nao e seguido (cai no padrao)" \
     bash -c 'printf "{\"plano\":{\"doc\":\"../fora/m-m1.md\"}}\n" > "$1/docs/rainforest/estado/x.json"; mkdir -p "$1/../fora"; cp "$1/docs/rainforest/planos/m-m1.md" "$1/../fora/m-m1.md"; env RFM_ESTADO_ROOT="$1" node "$2" mutacoes --slug x 2>&1; rm -rf "$1/../fora"' _ "$PW" "$CHECADOR"
 else
