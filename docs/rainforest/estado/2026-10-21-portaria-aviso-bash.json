@@ -23,12 +23,12 @@
     "em": "2026-10-21"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-21",
-    "tarefas_ok": 13,
-    "tarefas": 13,
-    "comando": "node hooks/testa-aviso-fluxo-shell.cjs e as baterias do plano; conferir-mutacao tarefas 1-6 e 8-13",
-    "saida": "37 ok 0 falha; T1-T6, T8-T13 exit 0 (T9 refeito com o caso D7)",
+    "tarefas_ok": 16,
+    "tarefas": 16,
+    "comando": "node hooks/testa-aviso-fluxo-shell.cjs e as baterias do plano; conferir-mutacao tarefas 1-6 e 8-16",
+    "saida": "43 ok 0 falha; T1-T6, T8-T16 exit 0 (T13 refeito sobre o filtro liquido: E3 e F1 vermelhos)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -94,14 +94,25 @@
         "tarefa": 13,
         "resultado": "vermelho",
         "fixture": "testa-aviso-fluxo-shell.cjs, casos E3 e E4"
+      },
+      {
+        "tarefa": 14,
+        "resultado": "vermelho",
+        "fixture": "testa-aviso-fluxo-shell.cjs, casos F2 e F3"
+      },
+      {
+        "tarefa": 15,
+        "resultado": "vermelho",
+        "fixture": "testa-aviso-fluxo-shell.cjs, caso F1"
+      },
+      {
+        "tarefa": 16,
+        "resultado": "vermelho",
+        "fixture": "testa-aviso-fluxo-shell.cjs, caso F4"
       }
     ],
     "em": "2026-10-21",
-    "reaberturas": 4,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-21"
-    }
+    "reaberturas": 4
   },
   "revisar": {
     "status": "reprovado",
