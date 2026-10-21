@@ -27,6 +27,21 @@ bateria (`unity command run_tests`) só fala com o editor da pasta original. Com
     ainda tem o hash mutado é restaurado (e avisado no stderr); arquivo que mudou depois fica
     intocado, e o backup permanece com aviso.
   - O stderr avisa, antes da bateria pós-mutação, que o fonte real fica mutado até ela acabar.
+  - *Emenda do alerta de segurança (antes da revisão):* a abertura só restaura o backup do
+    próprio alvo desta execução, cujo `caminho` resolve para ele, e só se o backup for arquivo
+    comum do usuário corrente. O backup é gravado com `wx` e modo 0600. Num temporário
+    compartilhado, varrer qualquer backup seria escrever onde um JSON plantado mandasse.
+  - *Emenda da rodada 1 da revisão:* o alvo ignorado pelo git também recusa (`status
+    --ignored`), e `git status` que falha dentro de repositório recusa (exit 4) em vez de
+    contar como "fora de repo". O arquivo relido antes de mutar precisa ser o original (editado
+    durante o baseline recusa, exit 4). Na restauração, arquivo que já é o original só apaga o
+    backup; arquivo que não é o mutante nem o original (editado durante a bateria) não é
+    sobrescrito: sai 1 com o backup preservado. O backup órfão de arquivo já original sai sem
+    aviso.
+  - Limite aceito (Q1 A do usuário, rodada 1): o dono do backup é conferido só pelo PID. PID
+    reutilizado depois de reiniciar faz um backup morto parecer vivo, e o arquivo fica mutado
+    até alguém apagar o backup à mão (a recusa nomeia o caminho). Não perde dado: o backup
+    guarda os bytes originais e o alvo está sempre commitado.
 - **D4 — Baterias**: casos novos em bateria própria do `conferir-mutacao` no modo no lugar:
   vermelho (exit 0) e verde (exit 2) com o arquivo restaurado byte a byte; recusa com o alvo sujo;
   recusa com backup vivo; restauração de backup órfão na abertura; restauração depois de estouro de

@@ -19,11 +19,84 @@
     "em": "2026-10-21"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-10-21"
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-21",
+    "tarefas_ok": 7,
+    "tarefas": 7,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao-no-lugar.sh, casos N1 e N2"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao-no-lugar.sh, caso S1"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao-no-lugar.sh, caso O1"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao-no-lugar.sh, caso V1"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-fluxo-no-lugar.sh, caso F1"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-fluxo-no-lugar.sh, caso C1"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "texto e número de versão, sem comportamento a inverter"
+      }
+    ],
+    "comando": "bash scripts/testa-conferir-mutacao-no-lugar.sh && bash scripts/testa-conferir-fluxo-no-lugar.sh",
+    "saida": "38 ok, 0 falha(s); 9 ok, 0 falha(s)",
+    "em": "2026-10-21",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-21"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "148a7f35f7766301dbfa69fccc7ccb890aa21ede",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-10-21-mutacao-no-lugar.json"
+      ]
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a3b0459457a5c5830",
+        "veredito": "reprovado",
+        "em": "2026-10-21",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/2000cb9c-f260-4626-b420-5d6adac18fc8/subagents/agent-a3b0459457a5c5830.jsonl"
+      }
+    ],
+    "em_voo": [
+      {
+        "agente": "revisor",
+        "tarefa": "revisao rodada 1",
+        "desde": "2026-10-21",
+        "sessao": "2000cb9c-f260-4626-b420-5d6adac18fc8"
+      }
+    ],
+    "em": "2026-10-21",
+    "achados": 8,
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

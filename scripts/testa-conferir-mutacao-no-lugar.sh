@@ -183,6 +183,84 @@ EX=$(roda "$CASO/o3" --no-lugar --de 'a + 1' --para 'a + 2' --bateria 'node test
 confere "O3 outro.js intocado pelo backup plantado" "$(sha "$CASO/repo/outro.js")" "$OUTRO"
 confere "O3 src.js intocado" "$(sha "$CASO/repo/src.js")" "$SHA0"
 
+echo "== O4: backup de PID vivo com o arquivo mutado nao e restaurado por outra execucao =="
+novo_caso 1
+PIDF4="$(mixto "$CASO")/pid"
+node -e 'require("fs").writeFileSync(process.argv[1], String(process.pid)); setTimeout(() => {}, 60000)' "$PIDF4" &
+LIMPAR_PIDS+=("$!")
+for _ in $(seq 1 50); do [ -s "$CASO/pid" ] && break; sleep 0.1; done
+grava_backup "$(cat "$CASO/pid")" mutado
+MUT=$(sha "$CASO/repo/src.js")
+EX=$(roda "$CASO/o4" --no-lugar --de 'a + 1' --para 'a + 2' --bateria 'node teste.js')
+confere "O4 src.js segue o mutante da execucao viva" "$(sha "$CASO/repo/src.js")" "$MUT"
+confere "O4 backup da execucao viva permanece" "$(backups)" "1"
+confere "O4 nada foi medido (exit 4)" "$EX" "4"
+
+echo "== O5: backup orfao com o arquivo ja original sai sem alarde =="
+novo_caso 1
+grava_backup 999999 'module.exports = (a) => a + 1;
+'
+EX=$(roda "$CASO/o5" --no-lugar --de 'a + 1' --para 'a + 2' --bateria 'node teste.js')
+confere "O5 backup apagado" "$(backups)" "0"
+confere "O5 mede normalmente (exit 0)" "$EX" "0"
+if grep -q 'backup órfão' "$CASO/o5.err"; then falha "O5 avisou backup orfao sem motivo"; else passa "O5 sem aviso de backup orfao"; fi
+
+echo "== R1: restauracao que falha sai 1 e preserva o backup =="
+novo_caso 1
+BAT_TRAVA='node -e "const fs=require(\"fs\");if(fs.readFileSync(\"src.js\",\"utf8\").includes(\"a + 2\"))fs.chmodSync(\"src.js\",0o444)"; node teste.js'
+EX=$(roda "$CASO/r1" --no-lugar --de 'a + 1' --para 'a + 2' --bateria "$BAT_TRAVA")
+confere "R1 exit 1" "$EX" "1"
+contem "R1 stderr diz FALHA AO RESTAURAR" "$CASO/r1.err" "FALHA AO RESTAURAR"
+confere "R1 backup preservado" "$(backups)" "1"
+chmod u+w "$CASO/repo/src.js" 2>/dev/null; node -e 'require("fs").chmodSync(process.argv[1],0o644)' "$R/src.js"
+
+echo "== R2: alvo somente-leitura: nada mutado, backup nao sobra, proxima execucao mede =="
+novo_caso 1
+node -e 'require("fs").chmodSync(process.argv[1],0o444)' "$R/src.js"
+EX=$(roda "$CASO/r2" --no-lugar --de 'a + 1' --para 'a + 2' --bateria 'node teste.js')
+confere "R2 exit 1 (nao deu para mutar)" "$EX" "1"
+confere "R2 src.js intocado" "$(sha "$CASO/repo/src.js")" "$SHA0"
+confere "R2 backup nao sobra" "$(backups)" "0"
+if grep -q 'FALHA AO RESTAURAR' "$CASO/r2.err"; then falha "R2 acusou falha de restauracao falsa"; else passa "R2 sem falha de restauracao falsa"; fi
+node -e 'require("fs").chmodSync(process.argv[1],0o644)' "$R/src.js"
+EX=$(roda "$CASO/r2b" --no-lugar --de 'a + 1' --para 'a + 2' --bateria 'node teste.js')
+confere "R2 com a permissao de volta, mede (exit 0)" "$EX" "0"
+
+echo "== R3: arquivo editado durante o baseline nao e mutado =="
+novo_caso 1
+BAT_EDITA='node -e "const fs=require(\"fs\");const t=fs.readFileSync(\"src.js\",\"utf8\");if(!t.includes(\"EDICAO\"))fs.appendFileSync(\"src.js\",\"// EDICAO\\n\")"; node teste.js'
+EX=$(roda "$CASO/r3" --no-lugar --de 'a + 1' --para 'a + 2' --bateria "$BAT_EDITA")
+confere "R3 exit 4" "$EX" "4"
+if grep -q 'EDICAO' "$CASO/repo/src.js"; then passa "R3 a edicao ficou no arquivo"; else falha "R3 a edicao sumiu"; fi
+contem "R3 stderr diz que mudou durante o baseline" "$CASO/r3.err" "mudou durante o baseline"
+
+echo "== R4: arquivo editado durante a bateria pos-mutacao nao e sobrescrito =="
+novo_caso 1
+BAT_EDITA_POS='node -e "const fs=require(\"fs\");const t=fs.readFileSync(\"src.js\",\"utf8\");if(t.includes(\"a + 2\")&&!t.includes(\"EDICAO\"))fs.appendFileSync(\"src.js\",\"// EDICAO\\n\")"; node teste.js'
+EX=$(roda "$CASO/r4" --no-lugar --de 'a + 1' --para 'a + 2' --bateria "$BAT_EDITA_POS")
+confere "R4 exit 1" "$EX" "1"
+if grep -q 'EDICAO' "$CASO/repo/src.js"; then passa "R4 a edicao ficou no arquivo"; else falha "R4 a edicao foi sobrescrita"; fi
+contem "R4 stderr diz que mudou durante a bateria" "$CASO/r4.err" "mudou durante a bateria"
+confere "R4 backup preservado" "$(backups)" "1"
+
+echo "== I1: alvo ignorado pelo git recusa =="
+novo_caso 1
+printf 'module.exports = (a) => a + 1;\n' > "$CASO/repo/ign.js"
+printf 'ign.js\n' > "$CASO/repo/.gitignore"
+git -C "$CASO/repo" -c user.name=t -c user.email=t@t add .gitignore
+git -C "$CASO/repo" -c user.name=t -c user.email=t@t commit -qm ignora
+EX=$(TMPDIR="$TMPC" TEMP="$TMPC" TMP="$TMPC" node "$CM" --raiz "$R" --arquivo ign.js --no-lugar --de 'a + 1' --para 'a + 2' --bateria 'node -e "process.exit(0)"' > "$CASO/i1.out" 2> "$CASO/i1.err" < /dev/null; echo $?)
+confere "I1 exit 4" "$EX" "4"
+contem "I1 stderr diz que e ignorado" "$CASO/i1.err" "ignorado"
+
+echo "== G1: git status que falha dentro do repo recusa =="
+novo_caso 1
+printf 'lixo' > "$CASO/repo/.git/index"
+EX=$(roda "$CASO/g1" --no-lugar --de 'a + 1' --para 'a + 2' --bateria 'node teste.js')
+confere "G1 exit 4" "$EX" "4"
+contem "G1 stderr diz que o git status falhou" "$CASO/g1.err" "git status falhou"
+confere "G1 src.js intocado" "$(sha "$CASO/repo/src.js")" "$SHA0"
+
 echo "== V1: backup de PID vivo para o mesmo arquivo recusa =="
 novo_caso 1
 PIDF="$(mixto "$CASO")/pid"

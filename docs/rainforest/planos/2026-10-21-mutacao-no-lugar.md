@@ -90,8 +90,99 @@ pronto quando: com o plano declarando `no-lugar: talvez`, `node scripts/conferir
 
 ### 7. Docs e versão 1.72.0 [tipo: docs]
 atende: D5
-arquivos: `README.md`, `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `skills/plano/SKILL.md`, `scripts/conferir-mutacao.cjs`
-depende de: 1, 2, 3, 4, 5, 6
+arquivos: `README.md`, `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `skills/plano/SKILL.md`, `skills/plano/references/mutacao-no-lugar.md`, `scripts/conferir-mutacao.cjs`, `docs/rainforest/estado/2026-10-21-portaria-aviso-bash.json`
+depende de: 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14
 mutacao: n/a
   motivo: texto e número de versão, sem comportamento a inverter
-pronto quando: com os dois `plugin.json` em `1.72.0`, `node scripts/conferir-versao.cjs` sai 0 com `versao 1.72.0`. O CHANGELOG abre com `## 1.72.0` e descreve o que D1 a D3 decidiram: o `--no-lugar` sem cópia, a restauração byte a byte em toda saída, a recusa com o alvo sujo ou com backup vivo, a restauração do backup órfão e o campo `no-lugar: sim` do plano. A seção `mutacao:` da skill `plano` documenta o campo e o risco que ele traz de volta (outra sessão lê o fonte mutado durante a bateria). O uso do `conferir-mutacao.cjs` (`USO`) lista `--no-lugar`. O README traz o badge `1.72.0`.
+pronto quando: com os dois `plugin.json` em `1.72.0`, `node scripts/conferir-versao.cjs` sai 0 com `versao 1.72.0`. O CHANGELOG abre com `## 1.72.0` e descreve o que D1 a D3 decidiram: o `--no-lugar` sem cópia, a restauração byte a byte em toda saída, a recusa com o alvo sujo ou com backup vivo, a restauração do backup órfão e o campo `no-lugar: sim` do plano. A seção `mutacao:` da skill `plano` aponta `references/mutacao-no-lugar.md`, que documenta o campo, as recusas e o risco que ele traz de volta (outra sessão lê o fonte mutado durante a bateria), e `bash scripts/testa-teto-skills.sh` sai 0. O estado do fluxo `2026-10-21-portaria-aviso-bash` entra com `fechar ok` e PR 574. O uso do `conferir-mutacao.cjs` (`USO`) lista `--no-lugar`. O README traz o badge `1.72.0`.
+
+### 8. Arquivo editado durante o baseline não é mutado [tipo: implementar]
+atende: D3, D4
+arquivos: `scripts/conferir-mutacao.cjs`, `scripts/testa-conferir-mutacao-no-lugar.sh`
+depende de: 4
+prova: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
+mutacao:
+  arquivo: `scripts/conferir-mutacao.cjs`
+  de: `if (!relido.equals(original)) {`
+  para: `if (false) {`
+  bateria: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
+  fixture: `testa-conferir-mutacao-no-lugar.sh, caso R3`
+pronto quando: com uma bateria que anexa `// EDICAO` ao `src.js` durante o baseline, `--no-lugar` sai 4 com "mudou durante o baseline", e o `src.js` termina com a edição (R3). Provado por `bash scripts/testa-conferir-mutacao-no-lugar.sh` com placar `0 falha(s)`.
+
+### 9. Arquivo editado durante a bateria pós-mutação não é sobrescrito [tipo: implementar]
+atende: D1, D3, D4
+arquivos: `scripts/conferir-mutacao.cjs`, `scripts/testa-conferir-mutacao-no-lugar.sh`
+depende de: 8
+prova: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
+mutacao:
+  arquivo: `scripts/conferir-mutacao.cjs`
+  de: `if (atual && sha256(atual) !== restauro.hashMutado) {`
+  para: `if (false) {`
+  bateria: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
+  fixture: `testa-conferir-mutacao-no-lugar.sh, caso R4`
+pronto quando: com uma bateria que anexa `// EDICAO` ao `src.js` mutado, `--no-lugar` sai 1 com "mudou durante a bateria", o `src.js` termina com a edição e o backup fica no temporário (R4). Provado por `bash scripts/testa-conferir-mutacao-no-lugar.sh` com placar `0 falha(s)`.
+
+### 10. Alvo que já é o original só apaga o backup [tipo: implementar]
+atende: D1, D3, D4
+arquivos: `scripts/conferir-mutacao.cjs`, `scripts/testa-conferir-mutacao-no-lugar.sh`
+depende de: 9
+prova: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
+mutacao:
+  arquivo: `scripts/conferir-mutacao.cjs`
+  de: `if (atual && atual.equals(restauro.original)) {`
+  para: `if (false) {`
+  bateria: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
+  fixture: `testa-conferir-mutacao-no-lugar.sh, caso R2`
+pronto quando: com o `src.js` somente-leitura, `--no-lugar` sai 1 sem mutar, sem "FALHA AO RESTAURAR" e sem backup no temporário; com a permissão de volta, a execução seguinte sai 0 (R2). Um backup órfão de PID morto com o arquivo já original é apagado sem aviso de backup órfão (O5). Provado por `bash scripts/testa-conferir-mutacao-no-lugar.sh` com placar `0 falha(s)`.
+
+### 11. Backup de PID vivo não é restaurado por outra execução [tipo: implementar]
+atende: D3, D4
+arquivos: `scripts/conferir-mutacao.cjs`, `scripts/testa-conferir-mutacao-no-lugar.sh`
+depende de: 10
+prova: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
+mutacao:
+  arquivo: `scripts/conferir-mutacao.cjs`
+  de: `if (pidVivo(Number(backup.pid))) continue;`
+  para: `void 0;`
+  bateria: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
+  fixture: `testa-conferir-mutacao-no-lugar.sh, caso O4`
+pronto quando: com um backup do `src.js` cujo PID está vivo e o `src.js` com o hash mutado, outra execução não restaura o arquivo, o backup fica e ela sai 4 (O4). Provado por `bash scripts/testa-conferir-mutacao-no-lugar.sh` com placar `0 falha(s)`.
+
+### 12. Restauração que falha sai 1 [tipo: implementar]
+atende: D1, D4
+arquivos: `scripts/conferir-mutacao.cjs`, `scripts/testa-conferir-mutacao-no-lugar.sh`
+depende de: 11
+prova: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
+mutacao:
+  arquivo: `scripts/conferir-mutacao.cjs`
+  de: `process.exitCode = 1;`
+  para: `void 0;`
+  bateria: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
+  fixture: `testa-conferir-mutacao-no-lugar.sh, caso R1`
+pronto quando: com uma bateria que deixa o `src.js` mutado somente-leitura, `--no-lugar` sai 1 com "FALHA AO RESTAURAR", mesmo com a bateria vermelha, e o backup fica no temporário (R1). Provado por `bash scripts/testa-conferir-mutacao-no-lugar.sh` com placar `0 falha(s)`.
+
+### 13. Alvo ignorado pelo git recusa [tipo: implementar]
+atende: D3, D4
+arquivos: `scripts/conferir-mutacao.cjs`, `scripts/testa-conferir-mutacao-no-lugar.sh`
+depende de: 12
+prova: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
+mutacao:
+  arquivo: `scripts/conferir-mutacao.cjs`
+  de: `['status', '--porcelain', '--ignored', '--', alvo]`
+  para: `['status', '--porcelain', '--', alvo]`
+  bateria: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
+  fixture: `testa-conferir-mutacao-no-lugar.sh, caso I1`
+pronto quando: com `ign.js` listado no `.gitignore` do repo descartável, `--no-lugar --arquivo ign.js` sai 4 e o stderr diz que o arquivo é ignorado (I1). Provado por `bash scripts/testa-conferir-mutacao-no-lugar.sh` com placar `0 falha(s)`.
+
+### 14. `git status` que falha dentro do repo recusa [tipo: implementar]
+atende: D3, D4
+arquivos: `scripts/conferir-mutacao.cjs`, `scripts/testa-conferir-mutacao-no-lugar.sh`
+depende de: 13
+prova: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
+mutacao:
+  arquivo: `scripts/conferir-mutacao.cjs`
+  de: `if (st.error || st.status !== 0) {`
+  para: `if (false) {`
+  bateria: `bash scripts/testa-conferir-mutacao-no-lugar.sh`
+  fixture: `testa-conferir-mutacao-no-lugar.sh, caso G1`
+pronto quando: com o `.git/index` do repo descartável corrompido, `--no-lugar` sai 4 com "git status falhou", e o `src.js` fica intocado (G1). Provado por `bash scripts/testa-conferir-mutacao-no-lugar.sh` com placar `0 falha(s)`.

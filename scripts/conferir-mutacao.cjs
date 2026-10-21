@@ -60,7 +60,11 @@
  *                                          no fonte íntegro (baseline não-verde,
  *                                          morta por sinal, ou estourou o teto), ou
  *                                          `--de` casa mais de uma vez e a inversão
- *                                          fica ambígua
+ *                                          fica ambígua; com `--no-lugar`, também o
+ *                                          alvo sujo, não rastreado ou ignorado no git,
+ *                                          `git status` que falha, arquivo editado
+ *                                          durante o baseline, ou backup de outra
+ *                                          execução (viva ou órfã) para o mesmo alvo
  *   5  suspeita de corte de shell         — pós-mutação desproporcionalmente curta
  *                                          (< 10% do baseline ou < 1 s), sugerindo
  *                                          que a bateria morreu antes de medir.
@@ -70,7 +74,9 @@
  *                                          ela parou de imprimir o próprio placar):
  *                                          o mecanismo de teste morreu antes de
  *                                          exercitar qualquer comportamento
- *   1  erro de uso, ou bateria sem veredito (estouro de tempo / sinal) pós-mutação
+ *   1  erro de uso, ou bateria sem veredito (estouro de tempo / sinal) pós-mutação,
+ *      ou (com `--no-lugar`) restauração que não confere, ou arquivo editado durante
+ *      a bateria pós-mutação (não é sobrescrito; os bytes originais ficam no backup)
  *   69 nao-verificavel — AMBIENTE, nao conteudo (D5, 2026-09-12): o comando da
  *                                          bateria nao pode nem SER EXECUTADO no
  *                                          baseline (`spawnSync` devolve `.error`,
@@ -114,10 +120,11 @@ const USO = `uso: node scripts/conferir-mutacao.cjs --arquivo <caminho> --de <tr
 
 exit (2 e 4 só valem depois de uma nova tentativa; 0 exige vermelho em duas rodadas):
      0 mutação casou e bateria VERMELHA | 2 bateria VERDE | 3 MUTACAO NAO APLICADA |
-     4 não dá para medir (baseline não-verde, ou --de ambíguo) | 5 corte de shell
-     (pós-mutação < 10% do baseline ou < 1 s) | 6 bateria colapsou (zero asserção
-     sobreviveu à mutação, ou ela parou de imprimir o próprio placar) | 1 erro de
-     uso | 69 nao-verificavel (o comando da bateria nao executa — ambiente, nao
+     4 não dá para medir (baseline não-verde, ou --de ambíguo; com --no-lugar, alvo
+     fora do estado limpo no git, ou editado no baseline, ou backup de outra execução)
+     | 5 corte de shell (pós-mutação < 10% do baseline ou < 1 s) | 6 bateria colapsou
+     (zero asserção sobreviveu à mutação, ou ela parou de imprimir o próprio placar) |
+     1 erro de uso, ou restauração no lugar que não confere | 69 nao-verificavel (o comando da bateria nao executa — ambiente, nao
      conteudo)
 
 Git Bash (MSYS) come uma barra de argumento que COMEÇA com \`//\`: \`// coment\`
@@ -266,8 +273,32 @@ function lerBackup(caminho) {
   }
 }
 
+function falhaAoRestaurar(motivo, conselho) {
+  console.error(`FALHA AO RESTAURAR ${restauro.caminho}: ${motivo}.`);
+  console.error(`  Os bytes originais estão no backup ${restauro.backup} (campo original, base64).`);
+  console.error(`  ${conselho}`);
+  restauro = null;
+  process.exitCode = 1;
+}
+
 function restaurarNoLugar() {
   if (!restauro) return;
+  let atual = null;
+  try { atual = fs.readFileSync(restauro.caminho); } catch { atual = null; }
+  // Nada a desfazer: a escrita do mutante não chegou a acontecer (alvo somente
+  // leitura, por exemplo). O backup sai sem alarde.
+  if (atual && atual.equals(restauro.original)) {
+    try { fs.rmSync(restauro.backup, { force: true }); } catch { /* backup sobra, a abertura vê */ }
+    restauro = null;
+    return;
+  }
+  // Nem o mutante nem o original: alguém editou o arquivo durante a bateria.
+  // Escrever o original por cima apagaria essa edição.
+  if (atual && sha256(atual) !== restauro.hashMutado) {
+    falhaAoRestaurar('o arquivo mudou durante a bateria (não é o mutante nem o original)',
+      'Não escrevi nada por cima. Confira a edição e restaure o que falta à mão.');
+    return;
+  }
   let confere = false;
   let motivo = 'os bytes não conferem com o original';
   try {
@@ -281,11 +312,7 @@ function restaurarNoLugar() {
     restauro = null;
     return;
   }
-  console.error(`FALHA AO RESTAURAR ${restauro.caminho}: ${motivo}.`);
-  console.error(`  Os bytes originais estão no backup ${restauro.backup} (campo original, base64).`);
-  console.error('  Restaure o arquivo pelo git ou pelo backup antes de rodar de novo.');
-  restauro = null;
-  process.exitCode = 1;
+  falhaAoRestaurar(motivo, 'Restaure o arquivo pelo git ou pelo backup antes de rodar de novo.');
 }
 
 // Abertura: backup de PID morto cujo arquivo ainda tem os bytes mutados volta
@@ -313,10 +340,17 @@ function restaurarOrfaos(alvoReal) {
     const backup = lerBackup(arquivoBackup);
     if (!backup || path.resolve(backup.caminho) !== alvoReal) continue;
     if (pidVivo(Number(backup.pid))) continue;
-    let hashAtual = null;
-    try { hashAtual = sha256(fs.readFileSync(backup.caminho)); } catch { hashAtual = null; }
+    const original = Buffer.from(backup.original, 'base64');
+    let atual = null;
+    try { atual = fs.readFileSync(backup.caminho); } catch { atual = null; }
+    // O arquivo já tem os bytes originais (a mutação nunca chegou a ser escrita):
+    // o backup é resto sem conteúdo a proteger.
+    if (atual && atual.equals(original)) {
+      try { fs.rmSync(arquivoBackup, { force: true }); } catch { /* sobra; o conferirNoLugar avisa */ }
+      continue;
+    }
+    const hashAtual = atual ? sha256(atual) : null;
     if (hashAtual === backup.hashMutado) {
-      const original = Buffer.from(backup.original, 'base64');
       try {
         fs.writeFileSync(backup.caminho, original);
         if (fs.readFileSync(backup.caminho).equals(original)) {
@@ -337,15 +371,25 @@ function restaurarOrfaos(alvoReal) {
 // git (para `git checkout -- <arquivo>` sempre desfazer), e nenhuma outra execução
 // pode estar com o mesmo arquivo mutado.
 function conferirNoLugar(raizExecucao, alvo) {
-  const st = spawnSync(caminhoExecutavel('git'), ['status', '--porcelain', '--', alvo], {
-    cwd: raizExecucao, encoding: 'utf8', stdio: 'pipe',
-  });
-  const foraDeRepo = Boolean(st.error) || st.status !== 0;
-  const sujoNoGit = !foraDeRepo && (st.stdout || '').trim() !== '';
+  const git = (args) => spawnSync(caminhoExecutavel('git'), args, { cwd: raizExecucao, encoding: 'utf8', stdio: 'pipe' });
+  const dentro = git(['rev-parse', '--is-inside-work-tree']);
+  const foraDeRepo = Boolean(dentro.error) || dentro.status !== 0 || (dentro.stdout || '').trim() !== 'true';
+  let sujoNoGit = false;
+  if (!foraDeRepo) {
+    // `--ignored`: arquivo ignorado também não se desfaz com `git checkout --`.
+    const st = git(['status', '--porcelain', '--ignored', '--', alvo]);
+    if (st.error || st.status !== 0) {
+      const porque = st.error ? st.error.message : (st.stderr || '').trim() || `exit ${st.status}`;
+      console.error(`RECUSADO: git status falhou dentro do repositório — ${porque}.`);
+      console.error('  Sem ele não dá para saber se o git desfaz a mutação. Conserte o repositório e rode de novo.');
+      process.exit(4);
+    }
+    sujoNoGit = (st.stdout || '').trim() !== '';
+  }
   if (sujoNoGit) {
-    console.error(`RECUSADO: ${alvo} tem mudança não commitada.`);
-    console.error('  No modo no lugar a mutação entra no arquivo real; sujo, não há como desfazer');
-    console.error('  pelo git se a restauração falhar. Commite (ou descarte) e rode de novo.');
+    console.error(`RECUSADO: ${alvo} tem mudança não commitada (ou não é rastreado, ou é ignorado).`);
+    console.error('  No modo no lugar a mutação entra no arquivo real; sem o arquivo limpo no git, não há');
+    console.error('  como desfazer pelo git se a restauração falhar. Commite (ou descarte) e rode de novo.');
     process.exit(4);
   }
   if (foraDeRepo) {
@@ -376,7 +420,7 @@ function armarRestauro(alvo, original, mutado) {
     pid: process.pid,
   });
   fs.writeFileSync(arquivoBackup, conteudo, { mode: 0o600, flag: 'wx' });
-  restauro = { caminho: alvo, original, backup: arquivoBackup };
+  restauro = { caminho: alvo, original, backup: arquivoBackup, hashMutado: sha256(mutado) };
 }
 
 // ======================================= Repositório git na cópia (tarefa 20)
@@ -987,6 +1031,17 @@ function main() {
   // `raizExecucao` — cobre este caminho de erro sem precisar rearmar.
   let temErroEscrita = false;
   const mutado = Buffer.from(pedacos.join(para), 'utf8');
+  if (noLugar) {
+    // O baseline roda entre a leitura do original e a mutação (no Unity, minutos
+    // de recompilação). Arquivo editado nesse meio não se muta: a restauração
+    // devolveria o original lido antes e apagaria a edição.
+    const relido = fs.readFileSync(alvo);
+    if (!relido.equals(original)) {
+      console.error(`RECUSADO: ${alvo} mudou durante o baseline; nada foi mutado.`);
+      console.error('  Alguém editou o arquivo enquanto a bateria rodava. Rode de novo com ele parado.');
+      process.exit(4);
+    }
+  }
   try {
     if (noLugar) armarRestauro(alvo, original, mutado);
     fs.writeFileSync(alvo, mutado);

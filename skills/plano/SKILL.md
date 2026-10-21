@@ -94,14 +94,7 @@ mutacao:
   existe dentro do app, é ela que evita a tarefa sair `pulada`; com `raiz:`, o
   `arquivo:` passa a ser relativo a essa pasta. Sem o campo, vale a raiz do
   repositório. `cobertura` recusa `raiz:` que não seja pasta existente.
-- **`no-lugar: sim` é opcional** e vale para bateria presa a um processo vivo
-  sobre a árvore real (editor Unity aberto com `unity command run_tests`, Godot,
-  Unreal), que a cópia temporária da catraca não alcança. A catraca então muta o
-  arquivo real, roda a bateria na própria raiz e restaura byte a byte em toda
-  saída. O preço é o risco que a cópia existe para evitar (#266): durante a
-  bateria, quem ler o arquivo (outra sessão, outro agente) lê o mutante. Por isso
-  o campo é por tarefa e fica à vista de quem revisa o plano. O alvo precisa
-  estar commitado, ou a catraca recusa. `cobertura` recusa valor que não seja `sim`.
+- **`no-lugar: sim`**: `references/mutacao-no-lugar.md`.
 - **`fixture:` nomeia qual caso de teste exercita a mutação** — arquivo, função ou
   intervalo de linhas. Não basta a **bateria** ficar vermelha: o ramo mutado tem de
   ser alcançado por um caso específico, senão o vermelho pode vir de outro lugar, e
