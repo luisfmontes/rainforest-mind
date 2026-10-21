@@ -317,6 +317,17 @@ try {
 const agora = Date.now();
 veredito = computarVeredito(foco, sessoesParaVeredito, config, agora);
 
+function dentroDeRepoGit(dir) {
+  try {
+    const { caminhoExecutavel } = require('./lib/resolver-executavel.cjs');
+    require('child_process').execFileSync(caminhoExecutavel('git'), ['-C', dir, 'rev-parse', '--git-dir'], { stdio: 'ignore', timeout: 3000 });
+    return true;
+  } catch (err) {
+    // Sem git (ENOENT) ou estouro de tempo nao se sabe: nao anuncia o que nao mediu.
+    return Boolean(err && (err.code === 'ENOENT' || err.code === 'ETIMEDOUT' || err.signal));
+  }
+}
+
 // Checagem de dependências com timeout garantido
 let impresso = false;
 let guarda = null; // só existe quando há sonda para esperar (bridge declarada)
@@ -338,6 +349,10 @@ function doConsoleLog(pluginsStatus, whatsappStatus) {
   const checados = [];
   if (whatsappStatus) checados.push(textoBridge(whatsappStatus));
   if (pluginsStatus.claudeMem) checados.push(`claude-mem ${pluginsStatus.claudeMem}`);
+  // #565, D2: fora de repo git o harness nao cria worktree de agente, e isso bloqueia a regra 10.
+  if (!dentroDeRepoGit(process.env.CLAUDE_PROJECT_DIR || process.cwd())) {
+    checados.push('cwd fora de repo git: agente com isolation "worktree" não despacha daqui. Abra a sessão na pasta do repo, ou crie o worktree e ponha "Worktree: <caminho absoluto>" no briefing (#565)');
+  }
   const dependencias = checados.length
     ? `## Dependências de ambiente (regra 14)\nChecado pelo hook: ${checados.join('; ')}.`
     : '';

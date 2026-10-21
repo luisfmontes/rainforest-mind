@@ -1,0 +1,174 @@
+#!/usr/bin/env node
+'use strict';
+/* Bateria do aviso de código escrito pelo shell sem fluxo (Issue #564, D3 e D4 do design
+ * docs/rainforest/design/2026-10-21-portaria-aviso-bash.md).
+ *
+ * Cada caso escreve no repositório de verdade (redirecionamento, edição de arquivo
+ * rastreado) e roda o `aviso-fluxo-shell.cjs` como PROCESSO REAL, com o payload que o
+ * harness manda no PostToolUse de Bash. Isolamento (regra 15): repositório git num
+ * mkdtemp, `RFM_ROOT` e o diretório temporário do hook (onde ele guarda o conjunto)
+ * dentro do sandbox, apagados ao fim.
+ *
+ * Exit 0 = tudo passou; exit 1 = alguma falha.
+ */
+
+const { spawnSync } = require('child_process');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+const HOOK = path.join(__dirname, 'aviso-fluxo-shell.cjs');
+const ESTADO = path.join(__dirname, '..', 'scripts', 'estado.cjs');
+const TIMEOUT_MS = 60000;
+
+let ok = 0;
+let falhou = 0;
+function caso(nome, cond, detalhe) {
+  if (cond) { ok++; console.log(`  ok    ${nome}`); } else {
+    falhou++; console.log(`  FALHA ${nome}${detalhe ? ` — ${String(detalhe).slice(0, 600)}` : ''}`);
+  }
+}
+
+function git(cwd, args) {
+  const r = spawnSync('git', args, { cwd, encoding: 'utf8', timeout: TIMEOUT_MS });
+  if (r.status !== 0) throw new Error(`git ${args.join(' ')} falhou: ${r.stderr}`);
+  return r.stdout;
+}
+
+const sandboxes = [];
+// Repositório com `main`, um .sh rastreado e (com trilho) docs/rainforest/estado/.
+function novoRepo({ trilho = true, branch = 'fluxo/teste' } = {}) {
+  const sbx = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'aviso-shell-')));
+  sandboxes.push(sbx);
+  const repo = path.join(sbx, 'repo');
+  const tmp = path.join(sbx, 'tmp');
+  fs.mkdirSync(repo);
+  fs.mkdirSync(tmp);
+  git(repo, ['init', '-q']);
+  git(repo, ['symbolic-ref', 'HEAD', 'refs/heads/main']);
+  git(repo, ['config', 'user.email', 't@t']);
+  git(repo, ['config', 'user.name', 'Test']);
+  fs.writeFileSync(path.join(repo, 'a.sh'), 'echo a\n');
+  git(repo, ['add', '.']);
+  git(repo, ['commit', '-q', '-m', 'init']);
+  if (branch !== 'main') git(repo, ['checkout', '-q', '-b', branch]);
+  if (trilho) fs.mkdirSync(path.join(repo, 'docs', 'rainforest', 'estado'), { recursive: true });
+  return { sbx, repo, tmp, dados: path.join(sbx, 'dados') };
+}
+
+function ambiente(r) {
+  const env = { ...process.env, CLAUDE_PROJECT_DIR: r.repo, RFM_ROOT: r.dados, TMP: r.tmp, TEMP: r.tmp, TMPDIR: r.tmp };
+  delete env.RAINFOREST_GATE_OFF;
+  delete env.RFM_ESTADO_ROOT;
+  return env;
+}
+
+function rodar(r, extra = {}) {
+  const payload = {
+    session_id: 'sessao-shell', cwd: r.repo, hook_event_name: 'PostToolUse', tool_name: 'Bash',
+    tool_input: { command: 'python patch.py' }, tool_response: { stdout: '', stderr: '' }, ...extra,
+  };
+  return spawnSync(process.execPath, [HOOK], { input: JSON.stringify(payload), encoding: 'utf8', env: ambiente(r), timeout: TIMEOUT_MS });
+}
+
+function estado(r, args) {
+  return spawnSync(process.execPath, [ESTADO, ...args], { cwd: r.repo, encoding: 'utf8', env: { ...ambiente(r), RFM_ESTADO_ROOT: r.repo }, timeout: TIMEOUT_MS });
+}
+
+console.log('== A. rainforest sem fluxo aberto, branch de trabalho ==');
+{
+  const r = novoRepo();
+  const limpo = rodar(r);
+  caso('A1 arvore limpa: exit 0', limpo.status === 0, `exit=${limpo.status} stderr=${limpo.stderr}`);
+
+  fs.writeFileSync(path.join(r.repo, 'x.py'), 'print(1)\n'); // o que `echo ... > x.py` deixa
+  const novo = rodar(r);
+  caso('A2 arquivo de codigo novo pelo shell: exit 2', novo.status === 2, `exit=${novo.status} stderr=${novo.stderr}`);
+  caso('A2 o aviso nomeia o arquivo', /x\.py/.test(novo.stderr || ''), novo.stderr);
+  caso('A2 o aviso diz que o comando ja rodou', /já rodou e nada foi desfeito/.test(novo.stderr || ''), novo.stderr);
+  caso('A2 o aviso traz a saida do leve com comando colavel', /estado\.cjs' leve --motivo/.test(novo.stderr || ''), novo.stderr);
+  caso('A2 o aviso traz a saida de abrir o fluxo', /brainstorm/.test(novo.stderr || ''), novo.stderr);
+
+  const repetido = rodar(r);
+  caso('A3 segunda chamada sem mudanca nova: exit 0', repetido.status === 0, `exit=${repetido.status} stderr=${repetido.stderr}`);
+
+  fs.writeFileSync(path.join(r.repo, 'a.sh'), 'echo b\n'); // o que `sed -i` deixa num rastreado
+  const rastreado = rodar(r);
+  caso('A4 arquivo rastreado editado pelo shell: exit 2', rastreado.status === 2, `exit=${rastreado.status} stderr=${rastreado.stderr}`);
+  caso('A4 o aviso nomeia so o caminho novo (a.sh, nao x.py)',
+    /a\.sh/.test(rastreado.stderr || '') && !/x\.py/.test(rastreado.stderr || ''), rastreado.stderr);
+
+  fs.mkdirSync(path.join(r.repo, 'docs', 'ferramenta'), { recursive: true });
+  fs.writeFileSync(path.join(r.repo, 'docs', 'ferramenta', 'z.js'), '1\n');
+  const docs = rodar(r);
+  caso('A5 codigo sob docs/: exit 0', docs.status === 0, `exit=${docs.status} stderr=${docs.stderr}`);
+
+  fs.writeFileSync(path.join(r.repo, 'notas.txt'), 'x\n');
+  const texto = rodar(r);
+  caso('A6 extensao que nao e de codigo: exit 0', texto.status === 0, `exit=${texto.status} stderr=${texto.stderr}`);
+
+  fs.writeFileSync(path.join(r.repo, 'y.ps1'), 'Write-Host 1\n');
+  const sub = rodar(r, { agent_id: 'agente-1', agent_type: 'executor' });
+  caso('A7 subagente: exit 0', sub.status === 0, `exit=${sub.status} stderr=${sub.stderr}`);
+  const ps = rodar(r, { tool_name: 'PowerShell', tool_input: { command: 'Set-Content y.ps1 1' } });
+  caso('A8 o mesmo caminho na sessao principal, pelo PowerShell: exit 2',
+    ps.status === 2 && /y\.ps1/.test(ps.stderr || ''), `exit=${ps.status} stderr=${ps.stderr}`);
+
+  const outra = rodar(r, { session_id: 'outra-sessao' });
+  caso('A9 outra sessao sem conjunto guardado: o codigo ja sujo avisa uma vez',
+    outra.status === 2 && /x\.py/.test(outra.stderr || ''), `exit=${outra.status} stderr=${outra.stderr}`);
+}
+
+console.log('== B. o que silencia ==');
+{
+  const r = novoRepo();
+  fs.mkdirSync(path.join(r.repo, '.rainforest'));
+  fs.writeFileSync(path.join(r.repo, '.rainforest', 'config.json'), JSON.stringify({ 'aviso-fluxo': false }));
+  fs.writeFileSync(path.join(r.repo, 'x.py'), '1\n');
+  const desligado = rodar(r);
+  caso('B1 chave aviso-fluxo desligada: exit 0', desligado.status === 0, `exit=${desligado.status} stderr=${desligado.stderr}`);
+}
+{
+  const r = novoRepo();
+  const leve = estado(r, ['leve', '--motivo', 'hotfix de teste', '--repo', r.repo]);
+  caso('B2 estado.cjs leve grava o caminho leve', leve.status === 0, `exit=${leve.status} ${leve.stdout} ${leve.stderr}`);
+  fs.writeFileSync(path.join(r.repo, 'x.py'), '1\n');
+  const comLeve = rodar(r);
+  caso('B2 branch com leve: exit 0', comLeve.status === 0, `exit=${comLeve.status} stderr=${comLeve.stderr}`);
+}
+{
+  const r = novoRepo();
+  // O sandbox e um checkout principal na branch de trabalho: a chave e o que o `iniciar` aceita ali.
+  fs.mkdirSync(path.join(r.repo, '.rainforest'));
+  fs.writeFileSync(path.join(r.repo, '.rainforest', 'config.json'), JSON.stringify({ 'principal-livre': true }));
+  const ini = estado(r, ['iniciar', '--slug', '2026-10-21-teste', '--titulo', 'teste']);
+  caso('B3 estado.cjs iniciar abre o fluxo da branch', ini.status === 0, `exit=${ini.status} ${ini.stdout} ${ini.stderr}`);
+  fs.writeFileSync(path.join(r.repo, 'x.py'), '1\n');
+  const aberto = rodar(r);
+  caso('B3 fluxo aberto na branch: exit 0', aberto.status === 0, `exit=${aberto.status} stderr=${aberto.stderr}`);
+}
+{
+  const r = novoRepo({ trilho: false });
+  fs.writeFileSync(path.join(r.repo, 'x.py'), '1\n');
+  const semTrilho = rodar(r);
+  caso('B4 repositorio sem trilho de fluxo: exit 0', semTrilho.status === 0, `exit=${semTrilho.status} stderr=${semTrilho.stderr}`);
+}
+{
+  const r = novoRepo();
+  const fora = rodar(r, { cwd: r.sbx });
+  caso('B5 cwd fora de repo git: exit 0', fora.status === 0, `exit=${fora.status} stderr=${fora.stderr}`);
+}
+
+console.log('== C. branch padrao ==');
+{
+  const r = novoRepo({ branch: 'main' });
+  fs.writeFileSync(path.join(r.repo, 'x.py'), '1\n');
+  const padrao = rodar(r);
+  caso('C1 codigo novo na main sem fluxo: exit 2', padrao.status === 2, `exit=${padrao.status} stderr=${padrao.stderr}`);
+  caso('C1 na branch padrao o aviso manda para o worktree, sem oferecer o leve',
+    /git worktree add/.test(padrao.stderr || '') && !/leve --motivo/.test(padrao.stderr || ''), padrao.stderr);
+}
+
+for (const s of sandboxes) fs.rmSync(s, { recursive: true, force: true });
+console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);
+process.exit(falhou === 0 ? 0 : 1);

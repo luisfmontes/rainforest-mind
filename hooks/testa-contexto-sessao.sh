@@ -1460,6 +1460,21 @@ checa "declarada e morta, diz FORA"                  tem     "bridge WhatsApp FO
 checa "declarada, a URL declarada e a que aparece"   tem     "127.0.0.1:59421"          "$COM_DEP"
 checa "claude-mem ausente segue fora do bloco"       nao_tem "claude-mem"               "$COM_DEP"
 
+# #565, D2: com o cwd fora de repo git, a abertura avisa em uma linha que agente com
+# isolation "worktree" nao despacha daqui. Dentro de repo, o aviso nao sai.
+FORA_REPO="$(mktemp -d)"
+if git -C "$FORA_REPO" rev-parse --git-dir >/dev/null 2>&1; then
+  echo "  (pulado: o diretorio temporario esta dentro de um repo git)"
+else
+  FORA_DEP="$(ctx_hook -u WHATSAPP_API_BASE_URL "CLAUDE_PROJECT_DIR=$FORA_REPO" "RFM_ROOT=$RAIZ_NEUTRA" "CLAUDE_CONFIG_DIR=$CAIXA_DEP" "RFM_SETTINGS_PATH=$CAIXA_DEP/settings.json")"
+  checa "#565 cwd fora de repo: o bloco de dependencias existe" tem "Dependências de ambiente" "$FORA_DEP"
+  checa "#565 cwd fora de repo: avisa que isolation worktree nao despacha" tem 'cwd fora de repo git: agente com isolation "worktree"' "$FORA_DEP"
+  checa "#565 cwd fora de repo: aponta a linha Worktree: do briefing" tem 'Worktree: <caminho absoluto>' "$FORA_DEP"
+fi
+rm -rf "$FORA_REPO"
+DENTRO_DEP="$(ctx_hook -u WHATSAPP_API_BASE_URL "CLAUDE_PROJECT_DIR=$SRC" "RFM_ROOT=$RAIZ_NEUTRA" "CLAUDE_CONFIG_DIR=$CAIXA_DEP" "RFM_SETTINGS_PATH=$CAIXA_DEP/settings.json")"
+checa "#565 cwd dentro de repo: nao avisa fora de repo" nao_tem "cwd fora de repo git" "$DENTRO_DEP"
+
 # Multi-conta (2026-09-29): accounts.json com a porta declarada entre as contas faz
 # o hook sondar UMA bridge POR CONTA e nomear cada uma. Antes, só a declarada era
 # sondada e o resultado valia como "o WhatsApp" inteiro.

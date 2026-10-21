@@ -83,6 +83,41 @@ function raizDoProjeto(payload) {
   }
 }
 
+function gitSaida(cwd, args) {
+  try {
+    return execFileSync(caminhoExecutavel("git"), ["-C", cwd, ...args], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return null;
+  }
+}
+
+/* Issue #565, D1 do design 2026-10-21-portaria-aviso-bash: com o cwd da sessao fora de
+ * repo git, o harness recusa `isolation: "worktree"` e a portaria recusava o agente que
+ * escreve sem ele — nenhum caminho sobrava. Aqui a saida: o briefing declara numa linha
+ * isolada `Worktree: <caminho absoluto>`, e a portaria confere que o caminho e um
+ * worktree LINKADO (`--git-common-dir` diferente de `--git-dir`) cujo toplevel e o
+ * proprio caminho. Devolve o toplevel conferido, ou null quando qualquer condicao falha.
+ * O cwd dentro de repo devolve null sempre: ali `isolation` continua obrigatorio. */
+function worktreeForaDeRepo(payload) {
+  const cwd = payload && payload.cwd;
+  if (!cwd || gitSaida(cwd, ["rev-parse", "--git-dir"]) !== null) return null;
+  const prompt = (payload.tool_input && payload.tool_input.prompt) || "";
+  const linha = String(prompt).match(/^Worktree:[ \t]*(\S.*?)[ \t]*\r?$/m);
+  if (!linha || !path.isAbsolute(linha[1])) return null;
+  const declarado = linha[1];
+  const top = gitSaida(declarado, ["rev-parse", "--show-toplevel"]);
+  const gitDir = gitSaida(declarado, ["rev-parse", "--absolute-git-dir"]);
+  const comum = gitSaida(declarado, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
+  if (!top || !gitDir || !comum) return null;
+  const norm = (p) => path.resolve(p).split(path.sep).join("/").toLowerCase();
+  if (norm(top) !== norm(declarado)) return null;
+  if (norm(gitDir) === norm(comum)) return null;
+  return top;
+}
+
 function obterBranch(raiz) {
   try {
     const branch = execFileSync(caminhoExecutavel("git"), ["-C", raiz, "rev-parse", "--abbrev-ref", "HEAD"], {
@@ -655,8 +690,10 @@ function main() {
     process.exit(0);
   }
 
-  // Agora temos payload válido — resolver a raiz DO PROJETO
-  const raiz = raizDoProjeto(payload);
+  // Agora temos payload válido — resolver a raiz DO PROJETO. Fora de repo (#565, D1), a
+  // raiz é o worktree que o briefing declara e a portaria confere.
+  const worktreeDeclarado = worktreeForaDeRepo(payload);
+  const raiz = worktreeDeclarado || raizDoProjeto(payload);
 
   // Extrai nome do agente (com normalização)
   const nomeAgenteBruto = payload.tool_input && payload.tool_input.subagent_type;
@@ -1103,10 +1140,16 @@ function main() {
     const isolamento = payload.tool_input.isolation;
     const nomeDado = payload.tool_input.name;
 
-    if (isolamento !== "worktree") {
+    if (isolamento !== "worktree" && !worktreeDeclarado) {
+      const foraDeRepo = gitSaida(payload.cwd || raiz, ["rev-parse", "--git-dir"]) === null;
       const motivo =
         `agente '${nomeAgente}' declara 'escreve: true' e so roda com isolation: "worktree"` +
-        ` (veio ${JSON.stringify(isolamento)}) — agente que edita nunca roda na arvore do usuario (regra 11)`;
+        ` (veio ${JSON.stringify(isolamento)}) — agente que edita nunca roda na arvore do usuario (regra 11)` +
+        (foraDeRepo
+          ? `. O cwd da sessao nao e repo git, entao o harness nao cria o worktree: crie um worktree linkado` +
+            ` no repo alvo (git worktree add) e ponha no briefing a linha isolada 'Worktree: <caminho absoluto>'` +
+            ` (#565), ou abra a sessao na pasta do repo`
+          : "");
       gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);
       negar(motivo);
     }
