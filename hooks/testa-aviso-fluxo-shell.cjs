@@ -217,6 +217,58 @@ console.log('== D. codigo criado e commitado na mesma chamada ==');
   git(r.repo, ['commit', '-q', '--amend', '-m', 'z2']);
   const emendado = rodar(r);
   caso('D6 commit --amend do mesmo z.py nao reavisa: exit 0', emendado.status === 0, `exit=${emendado.status} stderr=${emendado.stderr}`);
+  fs.writeFileSync(path.join(r.repo, 'z.py'), 'print(2)\n');
+  git(r.repo, ['commit', '-q', '-am', 'z de novo']);
+  const deNovo = rodar(r);
+  caso('D7 z.py ja visto, mexido e commitado na mesma chamada, nao reavisa: exit 0',
+    deNovo.status === 0, `exit=${deNovo.status} stderr=${deNovo.stderr}`);
+}
+
+console.log('== E. trabalho alheio e commit de antes da sessao ==');
+{
+  // Merge com conflito: o arquivo que chega da outra branch fica staged ate o commit.
+  const r = novoRepo();
+  fs.writeFileSync(path.join(r.repo, 'conf.py'), 'a = 0\n');
+  git(r.repo, ['add', '.']);
+  git(r.repo, ['commit', '-q', '-m', 'base']);
+  git(r.repo, ['checkout', '-q', '-b', 'al']);
+  fs.writeFileSync(path.join(r.repo, 'conf.py'), 'a = 2\n');
+  fs.writeFileSync(path.join(r.repo, 'alheio.py'), 'print(9)\n');
+  git(r.repo, ['add', '.']);
+  git(r.repo, ['commit', '-q', '-m', 'al']);
+  git(r.repo, ['checkout', '-q', 'fluxo/teste']);
+  fs.writeFileSync(path.join(r.repo, 'conf.py'), 'a = 1\n');
+  git(r.repo, ['commit', '-q', '-am', 'meu']);
+  rodar(r);
+  spawnSync('git', ['merge', '-q', 'al'], { cwd: r.repo, encoding: 'utf8' }); // conflito em conf.py
+  const conflito = rodar(r);
+  caso('E1 merge em conflito: o arquivo alheio staged nao avisa (exit 0)',
+    conflito.status === 0, `exit=${conflito.status} stderr=${conflito.stderr}`);
+  fs.writeFileSync(path.join(r.repo, 'conf.py'), 'a = 3\n');
+  git(r.repo, ['add', 'conf.py']);
+  git(r.repo, ['commit', '-q', '--no-edit']);
+  const resolvido = rodar(r);
+  caso('E2 commit que resolve o merge nao avisa o alheio depois (exit 0)',
+    resolvido.status === 0, `exit=${resolvido.status} stderr=${resolvido.stderr}`);
+}
+{
+  // Commit de antes da sessao emendado so na mensagem: nenhum codigo novo.
+  const r = novoRepo();
+  fs.writeFileSync(path.join(r.repo, 'anterior.py'), 'print(1)\n');
+  git(r.repo, ['add', '.']);
+  git(r.repo, ['commit', '-q', '-m', 'anterior']);
+  rodar(r);
+  git(r.repo, ['commit', '-q', '--amend', '-m', 'mensagem corrigida']);
+  const soMensagem = rodar(r);
+  caso('E3 --amend so da mensagem de commit anterior a sessao: exit 0',
+    soMensagem.status === 0, `exit=${soMensagem.status} stderr=${soMensagem.stderr}`);
+  fs.writeFileSync(path.join(r.repo, 'emenda.py'), 'print(2)\n');
+  git(r.repo, ['add', 'emenda.py']);
+  git(r.repo, ['commit', '-q', '--amend', '--no-edit']);
+  const comCodigo = rodar(r);
+  caso('E4 --amend que acrescenta codigo avisa so o acrescentado',
+    comCodigo.status === 2 && /emenda\.py/.test(comCodigo.stderr || '') && !/anterior\.py/.test(comCodigo.stderr || ''),
+    `exit=${comCodigo.status} stderr=${comCodigo.stderr}`);
 }
 
 console.log('== C. branch padrao ==');

@@ -197,8 +197,9 @@ As baterias dos gates rodam em Windows + Git Bash (ambiente do CI: `runs-on: win
 
 `aviso-fluxo-shell.cjs` (`PostToolUse` em Bash/PowerShell, #564) avisa sem desfazer: o comando já rodou, e o exit 2
 leva ao modelo o aviso de que ele deixou arquivo de código novo no `git status` (fora de `docs/`) sem fluxo
-aberto nem `leve` na branch, com as mesmas saídas do `aviso-fluxo.cjs`. Ele decide pelo `git status`, não pela
-grafia do comando, e avisa cada caminho uma vez por sessão. A chave `aviso-fluxo` desliga os dois.
+aberto nem `leve` na branch, com as mesmas saídas do `aviso-fluxo.cjs`. Ele decide pelo `git status` e pelos
+commits que a própria sessão fez (as entradas `commit` do reflog), não pela grafia do comando; `pull`, `merge`,
+`rebase` e conflito em andamento não avisam, e cada caminho avisa uma vez por sessão. A chave `aviso-fluxo` desliga os dois.
 
 Um hook avisa sem barrar (exit 0 com `additionalContext`): `idioma-session-start.cjs`
 (`SessionStart` na compactação) reinjeta o idioma da chave `idioma` do config,

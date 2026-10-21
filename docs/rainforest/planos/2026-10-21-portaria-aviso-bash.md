@@ -91,7 +91,7 @@ pronto quando: com duas chamadas seguidas do PostToolUse de Bash na mesma sessã
 ### 7. Versão 1.71.0, CHANGELOG e README [tipo: docs]
 atende: D5
 arquivos: `CHANGELOG.md`, `README.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `docs/rainforest/estado/2026-10-19-gate-worktree-home.json`, `hooks/lib/config.cjs`, `skills/setup/SKILL.md`
-depende de: 1, 2, 3, 4, 5, 6, 8, 9, 10, 11
+depende de: 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13
 mutacao: n/a
   motivo: texto e número de versão, sem comportamento a inverter
 pronto quando: com o `.claude-plugin/plugin.json` e o `.codex-plugin/plugin.json` em `1.71.0`, `node scripts/conferir-versao.cjs` sai 0 com `versao 1.71.0`. O CHANGELOG abre com `## 1.71.0` e descreve o que D1, D2 e D3 decidiram: a linha `Worktree:` conferida como worktree linkado fora de repo, o aviso na abertura e o hook PostToolUse que decide pelo `git status`, com o custo de um processo por chamada de shell. O README traz o badge `1.71.0`, a exceção fora de repo na linha da `portaria.cjs` e o parágrafo do `aviso-fluxo-shell.cjs`. O estado do fluxo `2026-10-19-gate-worktree-home` entra com `fechar ok` e PR 572. A descrição da chave `aviso-fluxo` em `hooks/lib/config.cjs` e em `skills/setup/SKILL.md` diz que ela também desliga o aviso do shell, e `node scripts/conferir-setup.cjs` sai 0.
@@ -119,8 +119,8 @@ mutacao:
   de: `const vistos = new Set([...guardado.caminhos, ...atual, ...comitados]);`
   para: `const vistos = new Set([...atual]);`
   bateria: `node hooks/testa-aviso-fluxo-shell.cjs`
-  fixture: `testa-aviso-fluxo-shell.cjs, casos D6`
-pronto quando: com o payload PostToolUse de Bash, `z.py` novo e sujo avisa (exit 2); depois de `git add` e `git commit` do mesmo `z.py` a chamada sai 0, e depois de `git commit --amend` também sai 0. Provado por `node hooks/testa-aviso-fluxo-shell.cjs` (casos D6) com placar `0 falha(s)`.
+  fixture: `testa-aviso-fluxo-shell.cjs, casos D6 e D7`
+pronto quando: com o payload PostToolUse de Bash, `z.py` novo e sujo avisa (exit 2); depois de `git add` e `git commit` do mesmo `z.py` a chamada sai 0, e depois de `git commit --amend` também sai 0; mexido de novo e commitado na mesma chamada, o mesmo `z.py` também sai 0. Provado por `node hooks/testa-aviso-fluxo-shell.cjs` (casos D6 e D7) com placar `0 falha(s)`.
 
 ### 10. Arquivos do commit lidos sem citação, para pasta com acento [tipo: implementar]
 atende: D3, D4
@@ -147,3 +147,29 @@ mutacao:
   bateria: `node hooks/testa-aviso-fluxo-shell.cjs`
   fixture: `testa-aviso-fluxo-shell.cjs, caso D3`
 pronto quando: com o payload PostToolUse de Bash depois de `git pull --ff-only` de um clone em que outra pessoa commitou `colega.py` agora (data de commit recente), o hook sai 0. O commit feito pela própria sessão segue avisando (caso D1). Provado por `node hooks/testa-aviso-fluxo-shell.cjs` (casos D1 e D3) com placar `0 falha(s)`.
+
+### 12. Merge, cherry-pick ou revert em andamento não avisa [tipo: implementar]
+atende: D3, D4
+arquivos: `hooks/aviso-fluxo-shell.cjs`, `hooks/testa-aviso-fluxo-shell.cjs`
+depende de: 11
+prova: `node hooks/testa-aviso-fluxo-shell.cjs`
+mutacao:
+  arquivo: `hooks/aviso-fluxo-shell.cjs`
+  de: `  if (emOperacaoAlheia(gitTop)) process.exit(0);`
+  para: `  void 0;`
+  bateria: `node hooks/testa-aviso-fluxo-shell.cjs`
+  fixture: `testa-aviso-fluxo-shell.cjs, caso E1`
+pronto quando: com o payload PostToolUse de Bash depois de `git merge al` em conflito (o `alheio.py` da outra branch fica staged), o hook sai 0. Depois do `git commit` que resolve o merge, a chamada seguinte também sai 0. Provado por `node hooks/testa-aviso-fluxo-shell.cjs` (casos E1 e E2) com placar `0 falha(s)`.
+
+### 13. O amend se compara com a versão que substituiu [tipo: implementar]
+atende: D3, D4
+arquivos: `hooks/aviso-fluxo-shell.cjs`, `hooks/testa-aviso-fluxo-shell.cjs`
+depende de: 12
+prova: `node hooks/testa-aviso-fluxo-shell.cjs`
+mutacao:
+  arquivo: `hooks/aviso-fluxo-shell.cjs`
+  de: `const substituido = /^commit \(amend\):/.test(assunto) && entradas[i + 1] ? entradas[i + 1][1] : null;`
+  para: `const substituido = null;`
+  bateria: `node hooks/testa-aviso-fluxo-shell.cjs`
+  fixture: `testa-aviso-fluxo-shell.cjs, casos E3 e E4`
+pronto quando: com o payload PostToolUse de Bash depois de `git commit --amend -m "mensagem corrigida"` num commit de antes da sessão que tem `anterior.py`, o hook sai 0. Depois de um `--amend --no-edit` que acrescenta `emenda.py`, ele sai 2 nomeando `emenda.py` e não `anterior.py`. Provado por `node hooks/testa-aviso-fluxo-shell.cjs` (casos E3 e E4) com placar `0 falha(s)`.

@@ -64,6 +64,13 @@ Dois buracos de trava que deixam a regra sem saída ou sem sinal:
     `core.quotepath=false`, por causa das pastas com acento. A foto passa a acumular tudo o que a
     sessão já viu: caminho avisado não reavisa ao ser commitado, emendado, rebaseado ou tirado do
     stash.
+  - *Emenda da rodada 3 da revisão (teto liberado pelo usuário, impasse em
+    `docs/rainforest/portoes/2026-10-21-portaria-aviso-bash-impasse.md`):* com `MERGE_HEAD`,
+    `CHERRY_PICK_HEAD` ou `REVERT_HEAD` presente o hook não avisa, porque o conflito deixa o
+    trabalho alheio staged, e os caminhos entram na foto como vistos. O `--amend` se compara com a
+    entrada anterior do reflog (a versão substituída), não com o pai. O aviso diz "código novo ou
+    mexido", porque a remoção de arquivo rastreado também avisa. Limite aceito: código criado e
+    commitado na primeira chamada de shell da sessão não avisa, porque ainda não há foto do `HEAD`.
 - **D4 — Baterias com contornos e vizinhos**:
   - portaria: casos novos em `hooks/testa-portaria-fluxo-pulado.cjs` (ou bateria própria). Passa:
     cwd fora de repo, `Worktree:` de worktree linkado, fluxo aberto lá. Barram: cwd fora de repo

@@ -60,17 +60,27 @@ function codigoComitadoDesde(gitTop, guardado, headAtual) {
   const reflog = git(gitTop, ['log', '-g', '--date=unix', '--format=%gd%x09%H%x09%gs', `-n${MAX_REFLOG}`, 'HEAD']);
   if (!reflog) return [];
   const caminhos = [];
-  for (const linha of reflog.split(/\r?\n/)) {
-    const [seletor, hash, assunto = ''] = linha.split('\t');
+  const entradas = reflog.split(/\r?\n/).map((linha) => linha.split('\t'));
+  for (let i = 0; i < entradas.length; i++) {
+    const [seletor, hash, assunto = ''] = entradas[i];
     const quando = Number((/\{(\d+)\}/.exec(seletor || '') || [])[1]);
     // Para no HEAD da foto (o que veio antes dela já estava lá) ou, sem ele no reflog, pela hora.
     if (!hash || hash === guardado.head || !Number.isFinite(quando) || quando < guardado.ts - 1) break;
     if (!/^commit( \((amend|initial)\))?:/.test(assunto)) continue;
+    // O amend se compara com a versão que ele substituiu (a entrada anterior do reflog), não
+    // com o pai: senão o código do commit emendado, de antes da sessão, avisa como novo.
+    const substituido = /^commit \(amend\):/.test(assunto) && entradas[i + 1] ? entradas[i + 1][1] : null;
     const arquivos = git(gitTop, ['-c', 'core.quotepath=false', 'diff-tree', '--no-commit-id', '-r', '-z',
-      '--name-only', '--diff-filter=ACMR', '--root', hash]);
+      '--name-only', '--diff-filter=ACMR', ...(substituido ? [substituido, hash] : ['--root', hash])]);
     for (const c of (arquivos || '').split('\0')) if (c && ehCodigo(c)) caminhos.push(c);
   }
   return caminhos;
+}
+
+// Merge, cherry-pick ou revert em andamento (conflito) deixam o trabalho alheio staged: ele
+// entra na foto como visto, mas não avisa (emenda da rodada 3 da revisão).
+function emOperacaoAlheia(gitTop) {
+  return ['MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD'].some((ref) => git(gitTop, ['rev-parse', '-q', '--verify', ref]) !== null);
 }
 
 // Caminhos de código sujos (modificados, novos ou não rastreados) fora de docs/.
@@ -152,6 +162,7 @@ function main() {
   // volta a avisar quando é commitado, emendado, rebaseado ou volta de um stash.
   const vistos = new Set([...guardado.caminhos, ...atual, ...comitados]);
   gravarConjunto(arquivo, vistos, headAtual);
+  if (emOperacaoAlheia(gitTop)) process.exit(0);
   const sujosNovos = [...atual].filter((c) => !guardado.caminhos.has(c));
   const novos = [...new Set([...sujosNovos, ...comitados.filter((c) => !guardado.caminhos.has(c))])].sort();
   if (novos.length === 0) process.exit(0);
@@ -169,7 +180,7 @@ function main() {
   const listados = novos.slice(0, MAX_LISTADOS).join(', ') + (novos.length > MAX_LISTADOS ? ` e mais ${novos.length - MAX_LISTADOS}` : '');
   const onde = headDestacado ? 'em HEAD destacado (sem branch)' : `sem fluxo aberto na branch '${branch || 'desconhecida'}'`;
   const texto = [
-    `AVISO: este repositório tem fluxo ${trilho} e há código novo, sujo ou commitado nesta sessão, ${onde}: ${listados}. Visto depois deste comando (o comando já rodou e nada foi desfeito); código não deveria nascer fora de um fluxo.`,
+    `AVISO: este repositório tem fluxo ${trilho} e há código novo ou mexido, sujo ou commitado nesta sessão, ${onde}: ${listados}. Visto depois deste comando (o comando já rodou e nada foi desfeito); código não deveria nascer fora de um fluxo.`,
     ...saidas,
   ].join('\n');
   fs.writeSync(2, texto + '\n');
