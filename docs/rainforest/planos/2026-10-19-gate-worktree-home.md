@@ -19,6 +19,7 @@ mutacao:
   de: `if (casaRedefinida(comando, ehPowerShell)) return alvo;`
   para: `if (false) return alvo;`
   bateria: `bash hooks/testa-gate-worktree.sh`
+  timeout: `900000`
   fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha =="`
 pronto quando: com o cwd num worktree linkado da caixa de areia, as linhas `HOME=<W>; touch ~/../../../f`, `read HOME <<< <W>; touch ~/../../../f`, `printf -v HOME %s <W>; touch ~/../../../f`, `export {HOME,X}=<W>; touch ~/../../../f`, `unset HOME; touch ${HOME:-<W>}/../../../f`, `HOMEPATH=<W>; touch $HOMEDRIVE$HOMEPATH/../../../f` (Bash) e `$env:USERPROFILE="<W>"; Remove-Item ~/../../../f`, `$env:home="<W>"; Remove-Item ~/../../../f` (PowerShell) saem 2, e `home=/tmp/h; touch <W>/f`, `echo $HOME; touch <W>/f`, `touch <W>/HOME.md`, `HOME=/tmp/h npm test`, `git commit -m "ajusta HOME"` saem 0 — provado por `bash hooks/testa-gate-worktree.sh` com a seção `== #561: casa redefinida na linha ==` e o placar final sem falha. A regra é uma função `casaRedefinida(comando, ehPowerShell)` chamada uma vez no início da rede (depois de achar o worktree), sem caso de teste lendo o fonte.
 
@@ -40,6 +41,7 @@ mutacao:
   de: `!cdSemArgumento.test(vivo.replace(/["'\\]/g, ""))) return false;`
   para: `true) return false;`
   bateria: `bash hooks/testa-gate-worktree.sh`
+  timeout: `900000`
   fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", casos "HOME=$(dirname $PWD); cd -P; touch f" e "cd >/dev/null"`
 pronto quando: com o cwd num worktree linkado, `HOME=$(dirname $PWD); cd -P; touch f` e `HOME=$(dirname $PWD); cd >/dev/null; touch f` saem 2 (a rede antiga deixava passar: sem caminho literal na linha), e `git diff HEAD~1 | grep -n "export"` sai 0 — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
 
@@ -53,6 +55,7 @@ mutacao:
   de: `if (EXECUCAO_INDIRETA.test(junto)) return true;`
   para: `if (false) return true;`
   bateria: `bash hooks/testa-gate-worktree.sh`
+  timeout: `900000`
   fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", caso python3 -c com os.environ['HO'+'ME']=os.path.dirname(os.getcwd())`
 pronto quando: com o cwd num worktree linkado, `python3 -c "import os; os.environ['HO'+'ME']=os.path.dirname(os.getcwd()); os.system('touch ~/f')"` sai 2 (sem menção nem definidor: só a execução indireta barra), e `echo "$(git rev-parse HEAD~1)"` sai 0 — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
 
@@ -66,6 +69,7 @@ mutacao:
   de: `: mascaraAspasBash(mascaraHeredocsBash(junto));`
   para: `: junto;`
   bateria: `bash hooks/testa-gate-worktree.sh`
+  timeout: `900000`
   fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", casos "git commit -m \"reduz ~30 tokens\" && echo $(date)" e o commit por heredoc`
 pronto quando: com o cwd num worktree linkado, `git commit -m "reduz ~30 tokens" && echo $(date)`, `echo "~" ; echo $(date)` e `git commit -m "$(cat <<'EOF'` + linha `fix: reduz ~30 tokens e o agente faz cd` + `EOF` + `)"` saem 0 (a rodada 2 media 2), enquanto `HOME=$(dirname $PWD); bash -c 'touch ~/f'` (interpretador na linha: as aspas contam) e `$env:USERPROFILE += "\..\.."; Remove-Item $env:USERPROFILE\f` saem 2 — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
 
@@ -79,6 +83,7 @@ mutacao:
   de: `const vivo = ehPowerShell || mexeNaCasa || !soComandosInertes(mascarado) ? junto : mascarado;`
   para: `const vivo = ehPowerShell || mexeNaCasa ? junto : mascarado;`
   bateria: `bash hooks/testa-gate-worktree.sh`
+  timeout: `900000`
   fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", caso python3 -c com os.environ['HO'+'ME'] e til entre aspas`
 pronto quando: com o cwd num worktree linkado, `HOME=$(dirname $PWD); awk 'BEGIN{system("touch ~/f")}'`, `HOME=$(dirname $PWD); find . -name x -exec sh -c 'touch ~/f' \;` e `HOME=$(dirname $PWD); git -c alias.x='!touch ~/f' x` saem 2 (a base deixava passar), e `gh issue create --title x --body "ver ~/x" && echo $(date)` sai 0 — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
 
@@ -92,6 +97,7 @@ mutacao:
   de: `ehPowerShell || mexeNaCasa || !soComandosInertes`
   para: `ehPowerShell || !soComandosInertes`
   bateria: `bash hooks/testa-gate-worktree.sh`
+  timeout: `900000`
   fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", casos printf -vHOME e >/dev/null HOME=... git push --receive-pack`
 pronto quando: com o cwd num worktree linkado, `printf -vHOME %s $OLDPWD; git push --receive-pack='touch ~/f' origin`, `>/dev/null HOME=$OLDPWD git push --receive-pack='touch ~/f' origin`, `HOME=$OLDPWD; touch ${U:-~}/f` e ``HOME=$OLDPWD; `~/x.sh` `` saem 2 (o código de `90b97918` deixava passar), e o commit por heredoc com `~30 tokens` segue 0 — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
 
@@ -105,6 +111,7 @@ mutacao:
   de: `const tilDeCasa = /(^|[^\w\\])~/;`
   para: `const tilDeCasa = /(^|[\s'"=:,({;&|<>)\-+?])~/;`
   bateria: `bash hooks/testa-gate-worktree.sh`
+  timeout: `900000`
   fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", casos ${X/y/~}, ${X//y/~}, ${Y#~} e ${Y%~}`
 pronto quando: com o cwd num worktree linkado, `HOME=$OLDPWD; X=y; touch ${X/y/~}/f`, `${X//y/~}`, `${Y#~}` e `${Y%~}` saem 2 (o código de `a59bfe17` deixava passar), e `git diff @~1 --stat` e `git log --oneline HEAD~3..HEAD` seguem 0 — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
 
@@ -118,6 +125,7 @@ mutacao:
   de: `: /\\\r?\n/g, "");`
   para: `: /$^/g, "");`
   bateria: `bash hooks/testa-gate-worktree.sh`
+  timeout: `900000`
   fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", caso printf HO contrabarra quebra ME=$OLDPWD`
 pronto quando: com o cwd num worktree linkado, `HO\<quebra de linha>ME=$OLDPWD; touch ~/f` sai 2 (o código de `a59bfe17` deixava passar), e `HOME=$OLDPWD; touch ${HO\<quebra>ME}/f`, `$HO\<quebra>ME/f` e `c\<quebra>d; touch f` saem 2 (o código de `65ebc32d` deixava passar) — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
 
@@ -131,5 +139,6 @@ mutacao:
   de: `if (FONTE_DE_SCRIPT.test(semAspas)) return true;`
   para: `if (false) return true;`
   bateria: `bash hooks/testa-gate-worktree.sh`
+  timeout: `900000`
   fixture: `testa-gate-worktree.sh, secao "== #561: casa redefinida na linha ==", casos builtin source, >/dev/null source, if source e source em linha propria`
 pronto quando: com o cwd num worktree linkado, `builtin source ./define-casa.sh; touch ~/f`, `builtin . ./define-casa.sh; touch ~/f`, `>/dev/null source ./x.sh; touch ~/f`, `2>/dev/null . ./x.sh; touch ~/f`, `if source ./x.sh; then touch ~/f; fi`, `time source ./x.sh; touch ~/f` e `source` em linha própria antes de `touch ~/f` saem 2, `git add . && git status` e `ls ~/.config` seguem 0 (custo aceito: `git add . && cat ~/x.txt` cai) (o código de `a59bfe17` deixava passar) — provado por `bash hooks/testa-gate-worktree.sh` com placar sem falha.
