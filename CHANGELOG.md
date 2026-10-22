@@ -15,11 +15,11 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 - **`cd -` com `$(`/`bash -c` segue barrado, mas a mensagem diz a saída (#573).** O gate lê `cd -` (volta ao
   diretório anterior) como `cd` sem destino, e com execução indireta na linha barra o comando inteiro. Resolver o
   `cd -` pelo `cd` anterior da linha foi tentado e recuado: o gate errava o destino quando aquele `cd` não rodava
-  (`false && cd`, `cd arquivo`, `&`, `popd -n`). Agora a mensagem nomeia o `cd -` e manda trocá-lo pelo caminho
-  absoluto do diretório.
-- **O bloqueio da rede diz o que barrou (#573).** A mensagem dizia "Este e o diretorio de trabalho principal" para um
-  agente que estava no próprio worktree, e o agente parava. Agora nomeia a palavra ou o caminho que subiu; destino de
-  `>` que começa com variável (`echo x > "$D/f"`) segue barrado como antes, mas a mensagem diz a saída: o caminho
+  (`false && cd`, `cd arquivo`, `&`, `popd -n`). Agora, quando o `cd -` é a causa, a mensagem o nomeia e manda
+  trocá-lo pelo caminho absoluto do diretório.
+- **O bloqueio da rede diz o que barrou (#573).** A rede de caminho do principal dizia "Este e o diretorio de trabalho
+  principal" para um agente que estava no próprio worktree, e o agente parava. Agora nomeia a palavra ou o caminho
+  que subiu (o ramo de `source`/`eval` ainda tem a mensagem antiga: #583); destino de `>` que começa com variável (`echo x > "$D/f"`) segue barrado como antes, mas a mensagem diz a saída: o caminho
   literal no comando, ou a ferramenta Write. Julgar o valor da variável foi tentado e recuado: cada revisão achava um
   contorno novo (laço, glob, ramo que não roda). Os buracos anteriores de variável fora desse caso estão na #580.
 - **Trava pós-`verificar` com a raiz numa junction (#578).** `docDoEstagio` devolvia o caminho real do plano e do

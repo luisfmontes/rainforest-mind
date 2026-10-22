@@ -1801,7 +1801,7 @@ function variavelNoInicio(destino) {
  * caminho do principal fora de leitura, ou que roda com cwd no principal. Vazio
  * quando o cwd nao e um worktree linkado.
  */
-function alvosDaRede(comando, cwd, ehPowerShell) {
+function alvosDaRede(comando, cwd, ehPowerShell, soVeredito = false) {
   const repo = principalDoWorktree(cwd);
   if (!repo) return [];
   // Isencao dos worktrees por PALAVRA de shell (revisao de seguranca): o caminho do worktree
@@ -1887,7 +1887,13 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
   const alvo = (rede) => [{ dir: repo.principal, incerto: true, rede }];
   if (casaRedefinida(comando, ehPowerShell)) {
     // #573 (recuo da D2): o `cd -` segue barrado como antes, mas o agente le a causa e a saida.
-    if (!ehPowerShell && /(^|[\s;&|(`{])(?:cd|pushd)[ \t]+-(?=$|[\s;&|)}#<>])/.test(comando.replace(/["'\\]/g, ""))) {
+    // So culpa o `cd -` quando ele e a causa: a linha reescrita como a saida manda (cada `cd -`
+    // trocado pelo caminho do worktree) nao e barrada pela rede. `cd; cd -; echo $(date)` barra pelo
+    // `cd` sozinho, e `HOME=<principal>; cd -` pelo caminho citado: a saida seria falsa.
+    // `soVeredito` corta a recursao: a chamada de dentro so mede, nunca escolhe mensagem.
+    const comCaminho = comando.replace(/(^|[\s;&|(`{"'])((?:cd|pushd)[ \t]+)-(?=$|[\s;&|)}#<>"'])/g, (_, a, b) => `${a}${b}${cwd}`);
+    if (!soVeredito && !ehPowerShell && /(^|[\s;&|(`{])(?:cd|pushd)[ \t]+-(?=$|[\s;&|)}#<>])/.test(comando.replace(/["'\\]/g, "")) &&
+        !alvosDaRede(comCaminho, cwd, false, true).length) {
       return alvo("A linha usa `cd -` (volta ao diretorio anterior) junto de execucao indireta (`$(`, `bash -c`,\n`source`): o gate nao sabe para onde o `cd -` leva. Saida: troque o `cd -` pelo caminho\nabsoluto do diretorio (`cd /caminho/do/worktree`).");
     }
     return alvo("A linha redefine a casa (HOME/USERPROFILE), ou usa a casa (`~`, `$HOME`, `cd` sem destino)\njunto de execucao indireta (`$(`, `bash -c`, `source`): o gate nao sabe para onde o shell vai.");

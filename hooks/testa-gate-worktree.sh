@@ -2159,8 +2159,18 @@ gate_stderr '#573 D4: cd -P; echo "$(pwd)" nomeia cd sem destino com execucao in
   "$(b 'cd -P; echo "$(pwd)"' "$WN")" 'execucao indireta' 'diretorio de trabalho principal'
 gate_stderr '#573 D4: P=<principal>; echo x > $P/f nomeia o caminho do principal' \
   "$(b "$(printf '%s' 'P=__R__; echo x > $P/f' | s573)" "$WN")" "cita caminho do checkout principal: $R" 'diretorio de trabalho principal'
-gate_stderr '#573 D4: bloqueio da rede manda o subagente parar e nao nomeia a escotilha'   "$(b 'echo x > "$NAO_DEFINIDA/f"' "$WN")" 'PARE e reporte isto para a janela principal' 'RAINFOREST_GATE_OFF'
-gate_stderr '#573 D4: cd - com execucao indireta manda trocar pelo caminho absoluto'   "$(b 'cd - >/dev/null; echo "$(pwd)"' "$WN")" 'troque o `cd -` pelo caminho' 'diretorio de trabalho principal'
+gate_stderr '#573 D4: bloqueio da rede manda o subagente parar e nao nomeia a escotilha' \
+  "$(b 'echo x > "$NAO_DEFINIDA/f"' "$WN")" 'PARE e reporte isto para a janela principal' 'RAINFOREST_GATE_OFF'
+gate_stderr '#573 D4: cd - com execucao indireta manda trocar pelo caminho absoluto' \
+  "$(b 'cd - >/dev/null; echo "$(pwd)"' "$WN")" 'troque o `cd -` pelo caminho' 'diretorio de trabalho principal'
+# A saida do `cd -` so aparece quando ele e a causa: com outra causa na linha (`cd` sozinho,
+# HOME redefinido, `~`), trocar o `cd -` nao destrava, e a mensagem e a geral (revisao 4, achado 1).
+gate_stderr '#573 D4: cd; cd -; echo $(date) nao culpa o cd -' \
+  "$(b 'cd; cd - >/dev/null; echo $(date)' "$WN")" 'redefine a casa' 'troque o `cd -`'
+gate_stderr '#573 D4: HOME=<principal>; cd -; echo $(date) nao culpa o cd -' \
+  "$(b "$(printf '%s' 'HOME=__R__; cd -; echo $(date)' | s573)" "$WN")" 'redefine a casa' 'troque o `cd -`'
+gate_stderr '#573 D4: cd -; echo ~ $(date) nao culpa o cd -' \
+  "$(b 'cd - ; echo ~ $(date)' "$WN")" 'redefine a casa' 'troque o `cd -`'
 gate_stderr '#573 D4: subagente com cwd no principal continua com a mensagem do principal' \
   "$(b 'echo x > f' "$R")" 'Este e o diretorio de trabalho principal'
 echo "== resultado: $ok ok, $falhou falha(s) =="
