@@ -12,8 +12,13 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 ## 1.73.1 — 2026-10-22
 
-- **`cd -` não barra mais subagente em worktree isolado (#573).** `cd -` (volta ao diretório anterior) era lido como
-  `cd` sem destino (vai para HOME) e, com `$(` na linha, a rede de caminho do principal barrava o comando inteiro.
+- **`cd -` depois de um `cd` na mesma linha não barra mais subagente em worktree isolado (#573).** `cd -` (volta ao
+  diretório anterior) era lido como `cd` sem destino (vai para HOME) e, com `$(` na linha, a rede de caminho do
+  principal barrava o comando inteiro (`cd sub && ...; cd - >/dev/null; cp ...`). Agora o gate resolve o `cd -` para o
+  diretório que o `cd` anterior da linha deixou, e julga o resto da linha a partir dali (`cd ../../.. && cd <wt> &&
+  cd - && bash -c ...` roda no principal e barra). `cd -` sem `cd` antes na linha, ou depois de `cd` que o gate não
+  resolve, segue lido como antes; PowerShell não muda. Os outros gates que leem o cwd por segmento
+  (`gate-fechar-issue`, `gate-staging-total`) passam a resolver o mesmo `cd -`.
 - **O bloqueio da rede diz o que barrou (#573).** A mensagem dizia "Este e o diretorio de trabalho principal" para um
   agente que estava no próprio worktree, e o agente parava. Agora nomeia a palavra ou o caminho que subiu; destino de
   `>` que começa com variável (`echo x > "$D/f"`) segue barrado como antes, mas a mensagem diz a saída: o caminho

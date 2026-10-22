@@ -2052,10 +2052,25 @@ echo "== #573 B: cd - nao e cd sem destino =="
 SCR573="$RAIZ/scratch573"; mkdir -p "$SCR573" "$WN/sub"; echo 'x' > "$WN/sub/_powershell.py"
 s573() { local s; s=$(cat); s=${s//__SCR__/$SCR573}; s=${s//__R__/$R}; s=${s//__WN__/$WN}; s=${s//__FORA__/$FORA}; printf "%s" "$s"; }
 g573() { gate "$1" "$2" "$(b "$3" "$WN")"; }
-# Saem 0: `cd -` com destino OLDPWD nao e cd sem destino.
-g573 '#573 B: cd - >/dev/null; echo "$(pwd)" no worktree passa' 0 'cd - >/dev/null; echo "$(pwd)"'
-g573 '#573 B: cd -; echo "$(pwd)" no worktree passa' 0 'cd -; echo "$(pwd)"'
+# Q1 B do usuario (2026-10-22): `cd -` vai ao OLDPWD que um `cd` anterior DA LINHA fixou; sem esse
+# `cd`, o OLDPWD vem de fora da linha e `cd -` segue lido como `cd` sem destino, como na base.
+# Saem 0: `cd -` resolvido pela propria linha.
+g573 '#573 B: cd sub && echo "$(pwd)" && cd - && echo "$(pwd)" passa' 0 'cd sub && echo "$(pwd)" && cd - && echo "$(pwd)"'
+g573 '#573 B: cd sub && echo "$(date)"; cd - >/dev/null; cp a b passa' 0 'cd sub && echo "$(date)"; cd - >/dev/null; cp a.txt b.txt'
+g573 '#573 B: pushd sub && cd - && echo "$(pwd)" passa' 0 'pushd sub && cd - && echo "$(pwd)"'
 g573 '#573 B: vizinho cd - >/dev/null; echo ok passa' 0 'cd - >/dev/null; echo ok'
+# Seguem 2: `cd -` sem OLDPWD conhecido na linha, com execucao indireta.
+g573 '#573 B: cd - >/dev/null; echo "$(pwd)" sem cd antes segue 2' 2 'cd - >/dev/null; echo "$(pwd)"'
+g573 '#573 B: cd -; echo "$(pwd)" sem cd antes segue 2' 2 'cd -; echo "$(pwd)"'
+g573 '#573 B: cd - && bash -c sem cd antes segue 2' 2 'cd - && bash -c "echo x > f"'
+g573 '#573 B: contorno cd ../../.. && cd <wt> && cd - && bash -c segue 2' 2 'cd ../../.. && cd .claude/worktrees/x && cd - && bash -c "echo x > f"'
+g573 '#573 B: cd "$D" && cd - && bash -c segue 2' 2 'cd "$D" && cd - && bash -c "echo x > f"'
+g573 '#573 B: cd inexistente; cd -; bash -c segue 2' 2 'cd nao-existe; cd -; bash -c "echo x > f"'
+g573 '#573 B: cd em ramo if; cd - && bash -c segue 2' 2 'if false; then cd sub; fi; cd - && bash -c "echo x > f"'
+g573 '#573 B: (cd sub); cd - && bash -c segue 2' 2 '(cd sub); cd - && bash -c "echo x > f"'
+g573 "#573 B: cd sub && bash -c 'cd -; ...' segue 2" 2 "cd sub && bash -c 'cd -; echo x > f'"
+g573 '#573 B: cd sub; cd -P; cd - && bash -c segue 2' 2 'cd sub; cd -P; cd - && bash -c "echo x > f"'
+gate '#573 B: PowerShell cd -; & { Set-Content f x } segue 2' 2 "$(bp 'cd -; & { Set-Content f x }' "$WN")"
 # Comando real do incidente (agent-aaf21d7221e8dde7d.jsonl:173), caminhos trocados pelos do sandbox.
 inc=$(s573 <<'EOC'
 set -u; SCR="__SCR__"; mkdir -p "$SCR"; F="sub/_powershell.py"; cp "$F" "$SCR/_powershell.copia-original.py"; echo "ocorrencias antes: $(grep -c 'x' "$F")"; sed -i 's/a/b/' "$F"; cd sub && python -m pytest -q | tail -n 25; echo "EXIT_MUTADO=${PIPESTATUS[0]}"; cd - >/dev/null; cp "$SCR/_powershell.copia-original.py" "$F"
@@ -2137,7 +2152,8 @@ gate_stderr '#573 D4: echo x > "$NAO_DEFINIDA/f" sugere caminho literal ou a fer
 gate_stderr '#573 D4: cd -P; echo "$(pwd)" nomeia cd sem destino com execucao indireta' \
   "$(b 'cd -P; echo "$(pwd)"' "$WN")" 'execucao indireta' 'diretorio de trabalho principal'
 gate_stderr '#573 D4: P=<principal>; echo x > $P/f nomeia o caminho do principal' \
-  "$(b "$(printf '%s' 'P=__R__; echo x > $P/f' | s573)" "$WN")" "$R" 'diretorio de trabalho principal'
+  "$(b "$(printf '%s' 'P=__R__; echo x > $P/f' | s573)" "$WN")" "cita caminho do checkout principal: $R" 'diretorio de trabalho principal'
+gate_stderr '#573 D4: bloqueio da rede manda o subagente parar e nao nomeia a escotilha'   "$(b 'echo x > "$NAO_DEFINIDA/f"' "$WN")" 'PARE e reporte isto para a janela principal' 'RAINFOREST_GATE_OFF'
 gate_stderr '#573 D4: subagente com cwd no principal continua com a mensagem do principal' \
   "$(b 'echo x > f' "$R")" 'Este e o diretorio de trabalho principal'
 echo "== resultado: $ok ok, $falhou falha(s) =="
