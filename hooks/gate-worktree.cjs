@@ -1736,9 +1736,10 @@ function soComandosInertes(texto) {
 const ESCRITA_DEPOIS = String.raw`(?!\s*(?:[-+*/%]|\?\?)?=(?!=)|\s*,|\s+in\b)`;
 function casaRedefinida(comando, ehPowerShell) {
   const usaCasa = new RegExp(`[$%]\\{?(?:env:)?(?:${NOMES_DA_CASA})`, "i");
-  // `cd` sem destino: so opcoes (`-P`, `--`), e depois fim, separador, redirecionamento,
-  // comentario ou quebra de linha.
-  const cdSemArgumento = /(^|[\s;&|(`{])(cd|chdir|pushd)([ \t]+-[-\w@]*)*[ \t]*($|[;&|)}#<>\r\n]|\d>)/;
+  // `cd` sem destino: so opcoes (`-P`, `-L`, `--`), e depois fim, separador, redirecionamento,
+  // comentario ou quebra de linha. `cd -` NAO e opcao: e OLDPWD (destino, nao vazio), por isso o
+  // hifen sozinho nao entra no grupo (#573 B). Opcao exige ao menos um caractere depois do hifen.
+  const cdSemArgumento = /(^|[\s;&|(`{])(cd|chdir|pushd)([ \t]+-[-\w@]+)*[ \t]*($|[;&|)}#<>\r\n]|\d>)/;
   // Til fora de palavra: depois de letra, numero, `_` ou contrabarra ele nao expande (`HEAD~1`);
   // qualquer outro vizinho (`${X/y/~}`, `${U:-~}`) e posicao de expansao, sem lista de grafias.
   const tilDeCasa = /(^|[^\w\\])~/;
