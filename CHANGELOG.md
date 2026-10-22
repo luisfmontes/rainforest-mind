@@ -19,8 +19,9 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   trocá-lo pelo caminho absoluto do diretório.
 - **O bloqueio da rede diz o que barrou (#573).** A rede de caminho do principal dizia "Este e o diretorio de trabalho
   principal" para um agente que estava no próprio worktree, e o agente parava. Agora nomeia a palavra ou o caminho
-  que subiu (o ramo de `source`/`eval` ainda tem a mensagem antiga: #583); destino de `>` que começa com variável (`echo x > "$D/f"`) segue barrado como antes, mas a mensagem diz a saída: o caminho
-  literal no comando, ou a ferramenta Write. Julgar o valor da variável foi tentado e recuado: cada revisão achava um
+  que subiu (o ramo de `source`/`eval` ainda tem a mensagem antiga: #583). Destino de `>` que começa com variável
+  (`echo x > "$D/f"`) segue barrado como antes, mas a mensagem diz a saída: o caminho literal no comando, ou a
+  ferramenta Write. Julgar o valor da variável foi tentado e recuado: cada revisão achava um
   contorno novo (laço, glob, ramo que não roda). Os buracos anteriores de variável fora desse caso estão na #580.
 - **Trava pós-`verificar` com a raiz numa junction (#578).** `docDoEstagio` devolvia o caminho real do plano e do
   design e passa a devolver o caminho lexical (a cerca continua pelo real). Com a raiz alcançada por junction ou
