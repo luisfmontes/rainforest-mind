@@ -10,6 +10,22 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.73.1 — 2026-10-22
+
+- **Subagente em worktree isolado não é mais barrado por escrita legítima via Bash (#573).** Dois falsos positivos da
+  rede de caminho do principal: `cd -` era lido como `cd` sem destino (vai para HOME) e, com `$(` na linha,
+  barrava; e destino de `>` que começa com variável (`D=<scratchpad>; echo x > "$D/f"`) era tratado como caminho do
+  worktree com expansão e barrado. Agora o gate resolve a variável pelo valor — atribuição literal na mesma linha,
+  desde que o shell a execute sempre e no mesmo shell (nada de `&&`/`||` antes, `|`, `&`, bloco ou subshell), senão
+  `TMP`, `TEMP` ou `TMPDIR` do ambiente — e julga o caminho. `$CLAUDE_PROJECT_DIR`, `$PWD`, nome redefinido por
+  `declare`/`read`/`printf -v`/`${X:=}`, comentário ou heredoc seguem barrados.
+- **O bloqueio da rede diz o que barrou (#573).** A mensagem dizia "Este e o diretorio de trabalho principal" para um
+  agente que estava no próprio worktree; agora nomeia a palavra ou o caminho que subiu e a saída (caminho literal, ou a
+  ferramenta Write). Subagente no checkout principal continua com a mensagem de antes.
+- **Trava pós-`verificar` com a raiz numa junction (#578).** `docDoEstagio` devolvia o caminho real do plano e do
+  design; com a raiz alcançada por junction ou symlink, o plano do próprio fluxo contava como código e o `fechar`
+  mandava reabrir o `executar`.
+
 ## 1.73.0 — 2026-10-21
 
 - **Repositório sem CI não trava mais o `fechar` (#576).** `publicar-branch.cjs esperar-ci` saía 5 ("CI vermelho")
