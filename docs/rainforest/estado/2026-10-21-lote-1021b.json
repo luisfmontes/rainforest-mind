@@ -54,19 +54,33 @@
         "iteracao": 2,
         "sessao": "21bbb906-04da-49d6-81e0-c50cb1c59dfc",
         "ts": "2026-10-22T02:05:05.532Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "fc84b9cf90f83971b8797729254c9c5649842025",
+        "iteracao": 1,
+        "sessao": "21bbb906-04da-49d6-81e0-c50cb1c59dfc",
+        "ts": "2026-10-22T02:36:55.267Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "fc84b9cf90f83971b8797729254c9c5649842025",
+        "iteracao": 1,
+        "sessao": "21bbb906-04da-49d6-81e0-c50cb1c59dfc",
+        "ts": "2026-10-22T02:36:55.267Z"
       }
     ],
     "em_voo": [
       {
         "agente": "executor",
-        "tarefa": "1 docDoEstagio lexical",
+        "tarefa": "1 docDoEstagio lexical (mutacao)",
         "desde": "2026-10-21T23:04:46-03:00",
         "sessao": "21bbb906-04da-49d6-81e0-c50cb1c59dfc"
       },
       {
         "agente": "executor",
-        "tarefa": "2 cd - nao e cd sem destino",
-        "desde": "2026-10-21T23:04:47-03:00",
+        "tarefa": "3+4 variavel no destino e mensagem da rede",
+        "desde": "2026-10-21T23:36:54-03:00",
         "sessao": "21bbb906-04da-49d6-81e0-c50cb1c59dfc"
       }
     ],
