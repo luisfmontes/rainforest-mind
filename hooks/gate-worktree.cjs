@@ -1881,8 +1881,14 @@ function alvosDaRede(comando, cwd, ehPowerShell, soVeredito = false) {
     if (!palavras.length) return /[{}$`]/.test(texto);
     return palavras.some((p) => palavraQueSobe(p, base, c));
   };
-  // O caminho citado que cai no principal (para a mensagem, D4), ou null.
-  const citaProtegido = (texto, base) => caminhosCitados(texto, ehPowerShell).find((c) => protegido(c, base, texto)) || null;
+  // O primeiro caminho que cai no principal (para a mensagem, D4), ou null. Caminho vazio achado
+  // vira um rotulo, nunca "": a string vazia e falsa e a rede deixava de barrar (`echo x <>FileSystem::`,
+  // 5a revisao). O veredito tem que ser o do `.some` da base.
+  const primeiroProtegido = (lista, base, texto) => {
+    const i = lista.findIndex((c) => protegido(c, base, texto));
+    return i < 0 ? null : lista[i] || "(caminho vazio)";
+  };
+  const citaProtegido = (texto, base) => primeiroProtegido(caminhosCitados(texto, ehPowerShell), base, texto);
   // O alvo leva o motivo (#573 D4): `bloqueiaPelaRede` diz o que barrou.
   const alvo = (rede) => [{ dir: repo.principal, incerto: true, rede }];
   if (casaRedefinida(comando, ehPowerShell)) {
@@ -1890,9 +1896,13 @@ function alvosDaRede(comando, cwd, ehPowerShell, soVeredito = false) {
     // So culpa o `cd -` quando ele e a causa: a linha reescrita como a saida manda (cada `cd -`
     // trocado pelo caminho do worktree) nao e barrada pela rede. `cd; cd -; echo $(date)` barra pelo
     // `cd` sozinho, e `HOME=<principal>; cd -` pelo caminho citado: a saida seria falsa.
-    // `soVeredito` corta a recursao: a chamada de dentro so mede, nunca escolhe mensagem.
-    const comCaminho = comando.replace(/(^|[\s;&|(`{"'])((?:cd|pushd)[ \t]+)-(?=$|[\s;&|)}#<>"'])/g, (_, a, b) => `${a}${b}${cwd}`);
-    if (!soVeredito && !ehPowerShell && /(^|[\s;&|(`{])(?:cd|pushd)[ \t]+-(?=$|[\s;&|)}#<>])/.test(comando.replace(/["'\\]/g, "")) &&
+    // `soVeredito` corta a recursao: a chamada de dentro so mede, nunca escolhe mensagem. A medida
+    // so escolhe mensagem (os dois ramos barram), entao linha longa nao a paga: com `$(` o custo da
+    // rede cresce com o quadrado dos caminhos citados, e cada `cd -` vira um (5a revisao).
+    const HIFEN = /(^|[\s;&|(`{"'])((?:cd|pushd)[ \t]+)["']?-["']?(?=$|[\s;&|)}#<>"'])/g;
+    const medivel = comando.length <= 2000 && (comando.match(HIFEN) || []).length <= 8;
+    const comCaminho = medivel ? comando.replace(HIFEN, (_, a, b) => `${a}${b}${cwd}`) : comando;
+    if (!soVeredito && !ehPowerShell && medivel && /(^|[\s;&|(`{])(?:cd|pushd)[ \t]+-(?=$|[\s;&|)}#<>])/.test(comando.replace(/["'\\]/g, "")) &&
         !alvosDaRede(comCaminho, cwd, false, true).length) {
       return alvo("A linha usa `cd -` (volta ao diretorio anterior) junto de execucao indireta (`$(`, `bash -c`,\n`source`): o gate nao sabe para onde o `cd -` leva. Saida: troque o `cd -` pelo caminho\nabsoluto do diretorio (`cd /caminho/do/worktree`).");
     }
@@ -1926,7 +1936,7 @@ function alvosDaRede(comando, cwd, ehPowerShell, soVeredito = false) {
       // chaves (`Get-Content (Remove-Item <P>/f)` roda o de dentro).
       for (const destino of destinosDeRedirecionamento(seg, ehPowerShell)) {
         if (ehDescarteDeSaida(destino, ehPowerShell)) continue;
-        const caido = caminhosCitados(destino, ehPowerShell).concat([destino.replace(/^FileSystem::/i, "")]).find((c) => protegido(c, base, destino));
+        const caido = primeiroProtegido(caminhosCitados(destino, ehPowerShell).concat([destino.replace(/^FileSystem::/i, "")]), base, destino);
         // Mesmo veredito de antes; so a mensagem muda quando a causa e a variavel no inicio (D4).
         if (caido && !ehPowerShell && variavelNoInicio(destino)) {
           return alvo(`Destino de redirecionamento comeca com variavel: ${destino}\n` +

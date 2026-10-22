@@ -2171,6 +2171,16 @@ gate_stderr '#573 D4: HOME=<principal>; cd -; echo $(date) nao culpa o cd -' \
   "$(b "$(printf '%s' 'HOME=__R__; cd -; echo $(date)' | s573)" "$WN")" 'redefine a casa' 'troque o `cd -`'
 gate_stderr '#573 D4: cd -; echo ~ $(date) nao culpa o cd -' \
   "$(b 'cd - ; echo ~ $(date)' "$WN")" 'redefine a casa' 'troque o `cd -`'
+# 5a revisao: `cd "-"` e `cd -` com aspas tambem recebem a saida; a medida da causa nao pode
+# custar o quadrado dos `cd -` (1600 deles com `$(` levavam ~40 s); e o caminho vazio achado no
+# destino (`FileSystem::`) barra como na base.
+gate_stderr '#573 D4: cd "-"; echo $(date) nomeia o cd -' \
+  "$(b 'cd "-"; echo $(date)' "$WN")" 'troque o `cd -` pelo caminho' 'diretorio de trabalho principal'
+CDH1600=$(node -e 'process.stdout.write("cd -; ".repeat(1600) + "echo $(date)")')
+gate_rapido '#573 D4: 1600 cd - com $( barra em menos de 2 s' 2 "$(b "$CDH1600" "$WN")"
+g573 '#573 rev5: cd ../../..; echo x <>FileSystem:: segue 2' 2 'cd ../../..; echo x <>FileSystem::'
+g573 '#573 rev5: cd ../../..; echo x >&FileSystem:: segue 2' 2 'cd ../../..; echo x >&FileSystem::'
+g573 '#573 rev5: cd ../../..; echo x 3>FileSystem:: segue 2' 2 'cd ../../..; echo x 3>FileSystem::'
 gate_stderr '#573 D4: subagente com cwd no principal continua com a mensagem do principal' \
   "$(b 'echo x > f' "$R")" 'Este e o diretorio de trabalho principal'
 echo "== resultado: $ok ok, $falhou falha(s) =="
