@@ -120,7 +120,14 @@
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "fc70b268b2a91209896707e8cd9c92a132769d35",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-10-21-lote-1021b.json"
+      ]
+    },
+    "vereditos": []
   },
   "verificar": {
     "status": "pendente"
