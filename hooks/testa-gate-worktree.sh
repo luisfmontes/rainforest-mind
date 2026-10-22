@@ -2106,5 +2106,31 @@ g573a '#573 A: D=<scratchpad>; echo x > "<W>/$D/f" (variavel no meio) segue 2' 2
 g573a '#573 A: D=<scratchpad>; D=<principal>; echo x > "$D/f" (vale a ultima) segue 2' 2 'D=__SCR__; D=__R__; echo x > "$D/f"'
 # Vizinho legitimo.
 g573a '#573 A: vizinho D=<scratchpad>; touch "$D/f" passa' 0 'D=__SCR__; touch "$D/f"'
+
+echo
+echo "== #573 D4: mensagem da rede =="
+# Bloqueio da rede com o cwd num worktree diz o que barrou, e nao chama o worktree de
+# "diretorio de trabalho principal" (#289). Confere exit 2, um trecho que TEM de sair no stderr
+# e, opcional, um trecho que NAO pode sair.
+gate_stderr() { # nome, json, trecho que tem de sair, [trecho que nao pode sair]
+  local nome="$1" json="$2" tem="$3" naotem="${4-}"
+  if [ -z "$json" ]; then falhou=$((falhou+1)); echo "  FALHA $nome: payload vazio"; return; fi
+  local saida got
+  saida=$(printf '%s' "$json" | node "$GATE" 2>&1); got=$?
+  if [ "$got" = 2 ] && printf '%s' "$saida" | grep -qF -- "$tem" && { [ -z "$naotem" ] || ! printf '%s' "$saida" | grep -qF -- "$naotem"; }; then
+    ok=$((ok+1)); echo "  ok   $nome (exit 2, stderr conferido)"
+  else falhou=$((falhou+1)); echo "  FALHA $nome: esperava exit 2 com '$tem'${naotem:+ e sem '$naotem'}, veio exit $got"; echo "$saida" | sed 's/^/         /' | head -8; fi
+}
+unset NAO_DEFINIDA
+gate_stderr '#573 D4: bloqueio da rede com cwd em worktree nao diz diretorio de trabalho principal' \
+  "$(b 'echo x > "$NAO_DEFINIDA/f"' "$WN")" '$NAO_DEFINIDA/f' 'diretorio de trabalho principal'
+gate_stderr '#573 D4: echo x > "$NAO_DEFINIDA/f" sugere caminho literal ou a ferramenta Write' \
+  "$(b 'echo x > "$NAO_DEFINIDA/f"' "$WN")" 'ferramenta Write' 'diretorio de trabalho principal'
+gate_stderr '#573 D4: cd -P; echo "$(pwd)" nomeia cd sem destino com execucao indireta' \
+  "$(b 'cd -P; echo "$(pwd)"' "$WN")" 'execucao indireta' 'diretorio de trabalho principal'
+gate_stderr '#573 D4: P=<principal>; echo x > $P/f nomeia o caminho do principal' \
+  "$(b "$(printf '%s' 'P=__R__; echo x > $P/f' | s573)" "$WN")" "$R" 'diretorio de trabalho principal'
+gate_stderr '#573 D4: subagente com cwd no principal continua com a mensagem do principal' \
+  "$(b 'echo x > f' "$R")" 'Este e o diretorio de trabalho principal'
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
