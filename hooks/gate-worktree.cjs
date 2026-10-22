@@ -64,7 +64,7 @@ const os = require("node:os");
 const fs = require("node:fs");
 const path = require("node:path");
 const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
-const { cwdPorSegmento, resolverMovedor, toplevelConfinado, extrairUltimoDirGit, segmentosComAspas, SEPARADORES } = require(path.join(__dirname, "lib", "cwd-efetivo.cjs"));
+const { cwdPorSegmento, resolverMovedor, toplevelConfinado, extrairUltimoDirGit, segmentosComAspas, SEPARADORES, normalizarMsys } = require(path.join(__dirname, "lib", "cwd-efetivo.cjs"));
 const CLIS_QUE_ESCREVEM = require(path.join(__dirname, "lib", "clis-que-escrevem.cjs"));
 // #530 (D4, D6): a palavra de comando como o bash a le, e o corpo de cada
 // substituicao de comando (crase e `$(...)`), para o gate conferir o que roda la dentro.
@@ -1763,6 +1763,67 @@ function casaRedefinida(comando, ehPowerShell) {
   return false;
 }
 
+// #573 A (D3): uma ou mais atribuicoes LITERAIS e nada mais no segmento (`D=x`, `D="x"`, `D='x'`,
+// com `export ` opcional). Devolve [[nome, valor]], com valor null quando nao e literal (`$`,
+// crase, til, contrabarra), ou null quando o segmento nao e so atribuicao (`D=x cmd` incluso).
+function atribuicoesDoSegmento(seg) {
+  const texto = seg.trim().replace(/^export\s+/, "");
+  const um = /([A-Za-z_]\w*)=(?:"([^"]*)"|'([^']*)'|([^\s'"\\;&|<>()]*))(?=\s|$)\s*/y;
+  const lidas = [];
+  let pos = 0;
+  while (pos < texto.length) {
+    um.lastIndex = pos;
+    const m = um.exec(texto);
+    if (!m) return null;
+    const [, nome, duplas, simples, nua] = m;
+    let valor = simples !== undefined ? simples : duplas !== undefined ? duplas : nua;
+    if (simples === undefined && /[$`\\]/.test(valor)) valor = null;
+    if (nua !== undefined && valor !== null && /(^|:)~/.test(valor)) valor = null;
+    lidas.push([nome, valor]);
+    pos = um.lastIndex;
+  }
+  return lidas.length ? lidas : null;
+}
+
+/**
+ * #573 A (D3): nome -> valor das atribuicoes literais nos segmentos ANTERIORES a `i` da mesma
+ * linha; vale a ultima. Nome citado sem `$` num segmento que nao e so atribuicao (`for D in`,
+ * `read D`, `declare D=`, `printf -v D`, `unset D`, `D=x cmd`) fica null: nao resolve. `source`/`.`
+ * pode definir qualquer nome: tudo o que veio antes vira null, e a chave `?` marca que nome
+ * ausente do mapa tambem nao resolve pelo ambiente.
+ */
+function atribuicoesAntes(segmentos, i) {
+  const mapa = Object.create(null);
+  for (let j = 0; j < i; j += 1) {
+    const lidas = atribuicoesDoSegmento(segmentos[j]);
+    if (lidas) { for (const [nome, valor] of lidas) mapa[nome] = valor; continue; }
+    if (FONTE_DE_SCRIPT.test(segmentos[j])) { for (const nome of Object.keys(mapa)) mapa[nome] = null; mapa["?"] = null; }
+    for (const m of segmentos[j].matchAll(/(\$\{?)?\b([A-Za-z_]\w*)/g)) if (!m[1]) mapa[m[2]] = null;
+  }
+  return mapa;
+}
+
+/**
+ * #573 A (D3), so Bash: destino de redirecionamento que COMECA com `$NOME` ou `${NOME}` seguido de
+ * `/`, `\` ou fim troca a variavel pelo valor (atribuicao literal anterior na linha, senao o
+ * ambiente do hook), com `/c/...` normalizado. Sem valor: null (o chamador barra). Fora dessa
+ * forma (sem `$`, `$` no meio ou no resto, `${X:-y}`, aspa simples, atalho da casa, que ja tem
+ * caminho proprio em `CASA_NO_INICIO`): o destino volta como veio, e o julgamento de hoje vale.
+ */
+function resolverVariavelBash(destino, atribuicoes, ambiente) {
+  if (!destino.includes("$") || destino.includes("'")) return destino;
+  const m = /^\$(?:([A-Za-z_]\w*)|\{([A-Za-z_]\w*)\})((?:[\\/].*)?)$/s.exec(destino.replace(/"/g, ""));
+  if (!m) return destino;
+  const nome = m[1] || m[2], resto = m[3];
+  if (/[$`]/.test(resto) || new RegExp(`^(?:${NOMES_DA_CASA})$`).test(nome)) return destino;
+  let valor;
+  if (nome in atribuicoes) valor = atribuicoes[nome];
+  else if ("?" in atribuicoes) valor = null;
+  else valor = ambiente[nome];
+  if (valor === null || valor === undefined) return null;
+  return normalizarMsys(valor) + resto;
+}
+
 /**
  * Alvos da rede (D1-D5): um `{dir: <principal>, incerto: true}` por segmento que cita
  * caminho do principal fora de leitura, ou que roda com cwd no principal. Vazio
@@ -1849,6 +1910,9 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
     return palavras.some((p) => palavraQueSobe(p, base, c));
   };
   const citaProtegido = (texto, base) => caminhosCitados(texto, ehPowerShell).some((c) => protegido(c, base, texto));
+  // #573 A (D3) e so Bash: no PowerShell `$X` e variavel do proprio shell, nao a do ambiente do
+  // hook, e `X=v` nao e atribuicao; o destino segue como veio (comportamento de antes).
+  const resolverVariavelNoInicio = ehPowerShell ? (destino) => destino : resolverVariavelBash;
   const alvo = [{ dir: repo.principal, incerto: true }];
   if (casaRedefinida(comando, ehPowerShell)) return alvo;
   // Segmentacao nao confiavel (D2): a linha inteira e um segmento so, e nada e leitura.
@@ -1876,7 +1940,9 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
       // chaves (`Get-Content (Remove-Item <P>/f)` roda o de dentro).
       for (const destino of destinosDeRedirecionamento(seg, ehPowerShell)) {
         if (ehDescarteDeSaida(destino, ehPowerShell)) continue;
-        if (caminhosCitados(destino, ehPowerShell).concat([destino.replace(/^FileSystem::/i, "")]).some((c) => protegido(c, base, destino))) return alvo;
+        const julgado = resolverVariavelNoInicio(destino, atribuicoesAntes(segmentos, i), process.env);
+        if (julgado === null) return alvo; // variavel no inicio sem valor conhecido: falha fechado (#573 A)
+        if (caminhosCitados(julgado, ehPowerShell).concat([julgado.replace(/^FileSystem::/i, "")]).some((c) => protegido(c, base, julgado))) return alvo;
       }
       // Na chamada .NET de leitura, o argumento entre parenteses e o proprio alvo da leitura.
       if (leitura[i] !== "net" && citaProtegido(trechosAninhados(seg), base)) return alvo;

@@ -2068,5 +2068,43 @@ g573 '#573 B: cd --; echo "$(pwd)" segue 2' 2 'cd --; echo "$(pwd)"'
 g573 '#573 B: cd; echo "$(pwd)" segue 2' 2 'cd; echo "$(pwd)"'
 g573 '#573 B: HOME=$(dirname $PWD); cd -P; touch f segue 2' 2 'HOME=$(dirname $PWD); cd -P; touch f'
 g573 '#573 B: HOME=<principal>; cd; touch ../../../f segue 2' 2 'HOME=__R__; cd; touch ../../../f'
+
+echo
+echo "== #573 A: destino com variavel =="
+# Destino de redirecionamento que COMECA com `$NOME`/`${NOME}` troca a variavel pelo valor (ultima
+# atribuicao literal anterior na linha, senao o ambiente do hook) e julga o caminho. Mesmo sandbox
+# da secao B: cwd = worktree linkado ($WN), __SCR__ fora de qualquer repo.
+g573a() { gate "$1" "$2" "$(b "$(printf '%s' "$3" | s573)" "$WN")"; }
+g573a '#573 A: D=<scratchpad>; echo x > "$D/f" passa' 0 'D=__SCR__; echo x > "$D/f"'
+g573a '#573 A: D="<scratchpad>"; echo x > "$D/f" passa' 0 'D="__SCR__"; echo x > "$D/f"'
+g573a '#573 A: D="<W>/sub"; echo x > "$D/f" passa' 0 'D="__WN__/sub"; echo x > "$D/f"'
+if [ "$(node -p process.platform)" = win32 ]; then
+  g573a '#573 A: D=/c/<scratchpad MSYS>; printf x > "$D/f" passa' 0 "D=$(msys "$SCR573"); printf x > \"\$D/f\""
+else
+  echo "  pulado: forma MSYS /c/... so existe no win32"
+fi
+export TMPX="$FORA"
+g573a '#573 A: echo x > "$TMPX/f" com TMPX no ambiente (fora de repo) passa' 0 'echo x > "$TMPX/f"'
+unset TMPX
+# Comando real do incidente (agent-a4131c7ff7f0b1d90.jsonl:74), caminhos trocados pelos do sandbox.
+inc=$(s573 <<'EOC'
+D="__SCR__/stubprova"; mkdir -p "$D/bin" && printf '#!/bin/sh\necho "$@" > "%s/pwsh.args"\n' "$D" > "$D/bin/pwsh" && chmod 755 "$D/bin/pwsh" && cd "$D" && env PATH="$D/bin" /usr/bin/sh -c 'command -v pwsh'; echo "exit=$?"; cat "$D/pwsh.args" 2>&1; echo ---; which sh;
+EOC
+)
+g573a '#573 A: comando real do incidente (agent-a4131c7ff7f0b1d90.jsonl:74) passa' 0 "$inc"
+# Seguem 2.
+g573a '#573 A: P=<principal>; echo x > $P/f segue 2' 2 'P=__R__; echo x > $P/f'
+g573a '#573 A: D=<W>/../../..; echo x > "$D/f" segue 2' 2 'D=__WN__/../../..; echo x > "$D/f"'
+CPD_573="${CLAUDE_PROJECT_DIR-}"; CPD_573_SET="${CLAUDE_PROJECT_DIR+1}"
+export CLAUDE_PROJECT_DIR="$R"
+g573a '#573 A: echo x > "$CLAUDE_PROJECT_DIR/f" com a variavel no principal segue 2' 2 'echo x > "$CLAUDE_PROJECT_DIR/f"'
+if [ -n "$CPD_573_SET" ]; then export CLAUDE_PROJECT_DIR="$CPD_573"; else unset CLAUDE_PROJECT_DIR; fi
+unset NAO_DEFINIDA
+g573a '#573 A: echo x > "$NAO_DEFINIDA/f" segue 2' 2 'echo x > "$NAO_DEFINIDA/f"'
+g573a '#573 A: D=$(mktemp -d); echo x > "$D/f" segue 2' 2 'D=$(mktemp -d); echo x > "$D/f"'
+g573a '#573 A: D=<scratchpad>; echo x > "<W>/$D/f" (variavel no meio) segue 2' 2 'D=__SCR__; echo x > "__WN__/$D/f"'
+g573a '#573 A: D=<scratchpad>; D=<principal>; echo x > "$D/f" (vale a ultima) segue 2' 2 'D=__SCR__; D=__R__; echo x > "$D/f"'
+# Vizinho legitimo.
+g573a '#573 A: vizinho D=<scratchpad>; touch "$D/f" passa' 0 'D=__SCR__; touch "$D/f"'
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
