@@ -570,7 +570,7 @@ function alvosBash(comando, cwdInicial, casa = (seg, _cwd, ferr) => {
   // e, ate a rodada 6, `SEPARADORES` nem reconhecia `&` simples como
   // separador (K1 do auditor, lote 3, 2026-09-03).
   const segmentos = segmentosComAspas(comando, ehPowerShell);
-  const estado = { atual: cwdInicial, anterior: null, incerto: false, pilhaPushd: [] };
+  const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [] };
   const alvos = [];
 
   for (const seg of segmentos) {
@@ -1195,7 +1195,7 @@ function alvosBashEscrita(comando, cwdInicial, ehPowerShell = false, profundidad
   let continuacaoIncerta = false;
   if (ehPowerShell) ({ texto: comando, incerto: continuacaoIncerta } = juntaContinuacoesPS(comando));
   const segmentos = segmentosComAspas(comando, ehPowerShell);
-  const estado = { atual: cwdInicial, anterior: null, incerto: false, pilhaPushd: [], estouro: false };
+  const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [], estouro: false };
   const alvos = [];
   // Todo cwd que a linha visita: a chamada .NET (D3) nao sabe em qual segmento
   // esta, entao um alvo relativo vale para cada um deles (conservador).
@@ -1754,30 +1754,13 @@ function soComandosInertes(texto) {
 }
 // Escrita na variavel: `=`, atribuicao composta (`+=`, `??=`), lista (`$env:X, $y =`) e `foreach ($env:X in`.
 const ESCRITA_DEPOIS = String.raw`(?!\s*(?:[-+*/%]|\?\?)?=(?!=)|\s*,|\s+in\b)`;
-// #573 (Q1 B): algum `cd -` da linha sem OLDPWD conhecido. Quem decide e a traversia do
-// `cwd-efetivo`; `cd -` que o texto mostra e ela nao resolveu (dentro de aspas, de `bash -c`,
-// de subshell) tambem conta, para nao abrir o que a base barrava.
-function cdHifenSemOrigem(junto, vivoSemAspas, cwd) {
-  const hifens = (vivoSemAspas.match(/(?:^|[\s;&|(`{])(?:cd|chdir|pushd)(?:[ \t]+-[-\w@]+)*[ \t]+-(?=$|[\s;&|)}#<>]|\d>)/g) || []).length;
-  if (!hifens) return false;
-  const estado = { atual: cwd || process.cwd(), anterior: null, incerto: false, pilhaPushd: [], estouro: false };
-  let resolvidos = 0;
-  for (const seg of segmentosComAspas(junto, false)) {
-    const mov = resolverMovedor(seg, estado, false);
-    if (mov.oldpwdDesconhecido) return true;
-    if (mov.oldpwdResolvido) resolvidos += 1;
-  }
-  return resolvidos < hifens;
-}
-function casaRedefinida(comando, ehPowerShell, cwd) {
+function casaRedefinida(comando, ehPowerShell) {
   const usaCasa = new RegExp(`[$%]\\{?(?:env:)?(?:${NOMES_DA_CASA})`, "i");
   // `cd` sem destino: so opcoes (`-P`, `-L`, `--`), e depois fim, separador, redirecionamento,
-  // comentario ou quebra de linha. `cd -` NAO e opcao: e OLDPWD, e o `cwd-efetivo` o resolve
-  // quando um `cd` anterior DA LINHA o fixou (#573 B, Q1 B); o que ele nao resolve sai em
-  // `oldpwdDesconhecido` e conta como `cd` sem destino, como antes. PowerShell fica como antes.
-  const cdSemArgumento = ehPowerShell
-    ? /(^|[\s;&|(`{])(cd|chdir|pushd)([ \t]+-[-\w@]*)*[ \t]*($|[;&|)}#<>\r\n]|\d>)/
-    : /(^|[\s;&|(`{])(cd|chdir|pushd)([ \t]+-[-\w@]+)*[ \t]*($|[;&|)}#<>\r\n]|\d>)/;
+  // comentario ou quebra de linha. `cd -` (OLDPWD) tambem entra: resolver o OLDPWD pela propria
+  // linha pedia saber se cada `cd` anterior rodou (`false && cd`, `cd arquivo`, `&`, `popd -n`,
+  // `CDPATH`), e a 3a revisao achou contorno em cada um; o usuario decidiu recuar (#573, 2026-10-22).
+  const cdSemArgumento = /(^|[\s;&|(`{])(cd|chdir|pushd)([ \t]+-[-\w@]*)*[ \t]*($|[;&|)}#<>\r\n]|\d>)/;
   // Til fora de palavra: depois de letra, numero, `_` ou contrabarra ele nao expande (`HEAD~1`);
   // qualquer outro vizinho (`${X/y/~}`, `${U:-~}`) e posicao de expansao, sem lista de grafias.
   const tilDeCasa = /(^|[^\w\\])~/;
@@ -1792,9 +1775,7 @@ function casaRedefinida(comando, ehPowerShell, cwd) {
   const mexeNaCasa = DEFINE_VARIAVEL.test(semAspas) || mencao.test(resto);
   const mascarado = ehPowerShell ? comando : mascaraAspasBash(mascaraHeredocsBash(junto));
   const vivo = ehPowerShell || mexeNaCasa || !soComandosInertes(mascarado) ? junto : mascarado;
-  const vivoSemAspas = vivo.replace(/["'\\]/g, "");
-  if (!tilDeCasa.test(vivo) && !usaCasa.test(vivo) && !cdSemArgumento.test(vivoSemAspas) &&
-      !(!ehPowerShell && cdHifenSemOrigem(junto, vivoSemAspas, cwd))) return false;
+  if (!tilDeCasa.test(vivo) && !usaCasa.test(vivo) && !cdSemArgumento.test(vivo.replace(/["'\\]/g, ""))) return false;
   if (mexeNaCasa) return true;
   if (EXECUCAO_INDIRETA.test(junto)) return true;
   if (FONTE_DE_SCRIPT.test(semAspas)) return true;
@@ -1904,7 +1885,11 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
   const citaProtegido = (texto, base) => caminhosCitados(texto, ehPowerShell).find((c) => protegido(c, base, texto)) || null;
   // O alvo leva o motivo (#573 D4): `bloqueiaPelaRede` diz o que barrou.
   const alvo = (rede) => [{ dir: repo.principal, incerto: true, rede }];
-  if (casaRedefinida(comando, ehPowerShell, cwd)) {
+  if (casaRedefinida(comando, ehPowerShell)) {
+    // #573 (recuo da D2): o `cd -` segue barrado como antes, mas o agente le a causa e a saida.
+    if (!ehPowerShell && /(^|[\s;&|(`{])(?:cd|pushd)[ \t]+-(?=$|[\s;&|)}#<>])/.test(comando.replace(/["'\\]/g, ""))) {
+      return alvo("A linha usa `cd -` (volta ao diretorio anterior) junto de execucao indireta (`$(`, `bash -c`,\n`source`): o gate nao sabe para onde o `cd -` leva. Saida: troque o `cd -` pelo caminho\nabsoluto do diretorio (`cd /caminho/do/worktree`).");
+    }
     return alvo("A linha redefine a casa (HOME/USERPROFILE), ou usa a casa (`~`, `$HOME`, `cd` sem destino)\njunto de execucao indireta (`$(`, `bash -c`, `source`): o gate nao sabe para onde o shell vai.");
   }
   // Segmentacao nao confiavel (D2): a linha inteira e um segmento so, e nada e leitura.
@@ -1924,7 +1909,7 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
   // Pipeline com escritor (`Get-Item <P>/a | Set-Content -Value x`): o segmento de
   // leitura alimenta quem escreve, entao os caminhos dele tambem contam.
   const pipelineComEscritor = temForaDeAspas(comando, "|") && leitura.some((l) => !l);
-  const estado = { atual: cwd, anterior: null, incerto: false, pilhaPushd: [] };
+  const estado = { atual: cwd, incerto: false, pilhaPushd: [] };
   for (let i = 0; i < segmentos.length; i += 1) {
     const seg = segmentos[i];
     const mov = resolverMovedor(seg, estado, ehPowerShell);

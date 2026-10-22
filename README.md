@@ -181,7 +181,7 @@ As baterias dos gates rodam em Windows + Git Bash (ambiente do CI: `runs-on: win
 
 | Hook (`PreToolUse`, exit 2) | Barra |
 |---|---|
-| `gate-worktree.cjs` | escrita de subagente fora de worktree linkado; Bash/PowerShell de subagente em worktree que cita caminho do checkout principal fora de comando de leitura (o bloqueio nomeia o caminho ou a palavra que barrou e, para destino que começa com variável, manda escrever o caminho literal ou usar Write; `cd -` segue o `cd` anterior da própria linha); `git checkout/switch/reset` com outra sessão no mesmo diretório |
+| `gate-worktree.cjs` | escrita de subagente fora de worktree linkado; Bash/PowerShell de subagente em worktree que cita caminho do checkout principal fora de comando de leitura (o bloqueio nomeia o caminho ou a palavra que barrou e, para destino que começa com variável, manda escrever o caminho literal ou usar Write; `cd -` com `$(`/`bash -c` barra e a mensagem manda trocá-lo pelo caminho absoluto); `git checkout/switch/reset` com outra sessão no mesmo diretório |
 | `gate-staging-total.cjs` | `git add` com caminho total (`-A`, `.`, `*`…) e `git commit -a` |
 | `gate-publicacao-destino.cjs` | escrita de dado sensível (JID, telefone, e-mail, credencial) em arquivo rastreado |
 | `gate-repo-alheio.cjs` | escrita cujo destino está dentro de **outro** repositório git |

@@ -494,7 +494,7 @@ function normalizarMsys(caminho, plataforma = process.platform) {
  * para os segmentos seguintes.
  *
  * @param {string} seg
- * @param {{atual: string, anterior: (string|null), incerto: boolean, pilhaPushd: string[], estouro: boolean}} estado
+ * @param {{atual: string, incerto: boolean, pilhaPushd: string[], estouro: boolean}} estado
  * @returns {{cwd: string, incerto: boolean, soMovedor: boolean}}
  */
 function resolverMovedor(segCru, estado, ehPowerShell = false) {
@@ -538,10 +538,8 @@ function resolverMovedor(segCru, estado, ehPowerShell = false) {
     // um destino de verdade. Incerto, nao cwd fabricado.
     if (/[$`]/.test(destino) || /^~/.test(destino) || /^-/.test(destino)) {
       estado.incerto = true;
-      estado.anterior = null;
     } else {
       const alvo = path.resolve(estado.atual, destino);
-      estado.anterior = fs.existsSync(alvo) ? estado.atual : null;
       estado.atual = alvo;
       // S1: destino que nao existe em disco no momento da analise nunca sai
       // como certeza — pode ser criado no mesmo comando (`mkdir x && cd x`)
@@ -557,11 +555,9 @@ function resolverMovedor(segCru, estado, ehPowerShell = false) {
   // este parser nao enxerga — INCERTO, nunca "supõe que nada mudou".
   if (POPD.test(segMovedor) || POP_LOCATION.test(segMovedor)) {
     if (estado.pilhaPushd.length) {
-      estado.anterior = estado.atual;
       estado.atual = estado.pilhaPushd.pop();
     } else {
       estado.incerto = true;
-      estado.anterior = null;
     }
     return { cwd: estado.atual, incerto: estado.incerto, soMovedor: true };
   }
@@ -584,39 +580,16 @@ function resolverMovedor(segCru, estado, ehPowerShell = false) {
     // S1: `destino === "-"` fica coberto por `/^-/` — qualquer coisa que
     // comece com `-` e flag nao reconhecida ou escorregao de parsing, nunca
     // destino de verdade.
-    // #573 (Q1 B): `cd -` volta ao OLDPWD. Quando um `cd` anterior DESTA linha o fixou
-    // com certeza (`estado.anterior`, linha ainda certa), o destino e conhecido: troca os
-    // dois, como o bash. Senao o OLDPWD vem de fora da linha: INCERTO, e `oldpwdDesconhecido`
-    // avisa quem chama (o gate le esse `cd -` como `cd` sem destino, como antes).
-    // So Bash: no PowerShell `cd -` anda no historico de locais, nao no OLDPWD.
-    if (destino === "-" && !ehPowerShell) {
-      if (estado.anterior && !estado.incerto) {
-        const volta = estado.anterior;
-        estado.anterior = estado.atual;
-        estado.atual = volta;
-        return { cwd: estado.atual, incerto: estado.incerto, soMovedor: true, oldpwdResolvido: true };
-      }
-      estado.incerto = true;
-      estado.anterior = null;
-      return { cwd: estado.atual, incerto: true, soMovedor: true, oldpwdDesconhecido: true };
-    }
     if (/[$`]/.test(destino) || /^~/.test(destino) || /^-/.test(destino)) {
       estado.incerto = true;
-      estado.anterior = null;
       return { cwd: estado.atual, incerto: estado.incerto, soMovedor: true };
     }
     const alvo = path.resolve(estado.atual, normalizarMsys(destino));
-    // `cd` que falha (destino inexistente) nao mexe no OLDPWD do bash: o anterior deixa de
-    // ser conhecido em vez de virar o cwd de antes.
-    estado.anterior = fs.existsSync(alvo) ? estado.atual : null;
     estado.atual = alvo;
     // S1: destino resolvido que nao existe em disco nunca sai como certeza.
     if (!fs.existsSync(alvo)) estado.incerto = true;
     return { cwd: estado.atual, incerto: estado.incerto, soMovedor: true };
   }
-  // Movedor que nao casou acima (`cd` sozinho, `cd -P`, `popd +1`) mudou o cwd para um lugar
-  // que esta traversia nao modela: o OLDPWD deixa de ser conhecido (#573, Q1 B).
-  if (/^\s*(?:cd|chdir|pushd|popd)(?=\s|$)/.test(segMovedor)) estado.anterior = null;
 
   // `env -C <dir> <cmd>` / `env --chdir=<dir> <cmd>` (GNU coreutils) — muda
   // o cwd SO deste comando, nunca do shell: nao mexe em `estado.atual`, que
@@ -689,7 +662,7 @@ function cwdPorSegmento(comando, cwdInicial, ehPowerShell = false) {
   // `estouro` (#530, D5): a linha inteira estourou o teto de expansao de chaves
   // em alguma palavra de comando. Fica verdadeiro a partir do segmento que
   // estourou, e quem chama barra.
-  const estado = { atual: cwdInicial, anterior: null, incerto: false, pilhaPushd: [], estouro: false };
+  const estado = { atual: cwdInicial, incerto: false, pilhaPushd: [], estouro: false };
   const resultado = [];
 
   for (const seg of segmentos) {

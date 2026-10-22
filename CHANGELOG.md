@@ -12,21 +12,19 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 ## 1.73.1 — 2026-10-22
 
-- **`cd -` depois de um `cd` na mesma linha não barra mais subagente em worktree isolado (#573).** `cd -` (volta ao
-  diretório anterior) era lido como `cd` sem destino (vai para HOME) e, com `$(` na linha, a rede de caminho do
-  principal barrava o comando inteiro (`cd sub && ...; cd - >/dev/null; cp ...`). Agora o gate resolve o `cd -` para o
-  diretório que o `cd` anterior da linha deixou, e julga o resto da linha a partir dali (`cd ../../.. && cd <wt> &&
-  cd - && bash -c ...` roda no principal e barra). `cd -` sem `cd` antes na linha, ou depois de `cd` que o gate não
-  resolve, segue lido como antes; PowerShell não muda. Os outros gates que leem o cwd por segmento
-  (`gate-fechar-issue`, `gate-staging-total`) passam a resolver o mesmo `cd -`.
+- **`cd -` com `$(`/`bash -c` segue barrado, mas a mensagem diz a saída (#573).** O gate lê `cd -` (volta ao
+  diretório anterior) como `cd` sem destino, e com execução indireta na linha barra o comando inteiro. Resolver o
+  `cd -` pelo `cd` anterior da linha foi tentado e recuado: o gate errava o destino quando aquele `cd` não rodava
+  (`false && cd`, `cd arquivo`, `&`, `popd -n`). Agora a mensagem nomeia o `cd -` e manda trocá-lo pelo caminho
+  absoluto do diretório.
 - **O bloqueio da rede diz o que barrou (#573).** A mensagem dizia "Este e o diretorio de trabalho principal" para um
   agente que estava no próprio worktree, e o agente parava. Agora nomeia a palavra ou o caminho que subiu; destino de
   `>` que começa com variável (`echo x > "$D/f"`) segue barrado como antes, mas a mensagem diz a saída: o caminho
   literal no comando, ou a ferramenta Write. Julgar o valor da variável foi tentado e recuado: cada revisão achava um
   contorno novo (laço, glob, ramo que não roda). Os buracos anteriores de variável fora desse caso estão na #580.
 - **Trava pós-`verificar` com a raiz numa junction (#578).** `docDoEstagio` devolvia o caminho real do plano e do
-  design; com a raiz alcançada por junction ou symlink, o plano do próprio fluxo contava como código e o `fechar`
-  mandava reabrir o `executar`.
+  design e passa a devolver o caminho lexical (a cerca continua pelo real). Com a raiz alcançada por junction ou
+  symlink, o plano do próprio fluxo contava como código e o `fechar` mandava reabrir o `executar`.
 
 ## 1.73.0 — 2026-10-21
 
