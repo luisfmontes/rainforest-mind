@@ -40,6 +40,20 @@
         "iteracao": 1,
         "sessao": "21bbb906-04da-49d6-81e0-c50cb1c59dfc",
         "ts": "2026-10-22T02:04:47.148Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "cfb2419ce0f2e99c4f8ede21b72bcaeac1bbff8b",
+        "iteracao": 2,
+        "sessao": "21bbb906-04da-49d6-81e0-c50cb1c59dfc",
+        "ts": "2026-10-22T02:05:05.532Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "cfb2419ce0f2e99c4f8ede21b72bcaeac1bbff8b",
+        "iteracao": 2,
+        "sessao": "21bbb906-04da-49d6-81e0-c50cb1c59dfc",
+        "ts": "2026-10-22T02:05:05.532Z"
       }
     ],
     "em_voo": [
