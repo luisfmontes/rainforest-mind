@@ -2130,6 +2130,17 @@ g573a '#573 A: D=<fora>; echo x > "$D/f" passa' 0 'D=__FORA__; echo x > "$D/f"'
 g573a '#573 A: D=<fora> && echo x > "$D/f" passa' 0 'D=__FORA__ && echo x > "$D/f"'
 g573a '#573 A: D=<fora> || true; echo x > "$D/f" passa' 0 'D=__FORA__ || true; echo x > "$D/f"'
 g573a '#573 A: D=<fora>; mkdir -p "$D/bin" && printf x > "$D/bin/f" passa' 0 'D=__FORA__; mkdir -p "$D/bin" && printf x > "$D/bin/f"'
+# Revisao de seguranca do commit da tarefa 7: nome que vem de expansao, expansao que atribui no
+# proprio segmento do destino, comentario e heredoc. Nada da linha resolve.
+g573a '#573 A: N=D; D=<fora>; declare "$N=$CLAUDE_PROJECT_DIR"; echo x > "$D/f" segue 2' 2 'N=D; D=__FORA__; declare "$N=$CLAUDE_PROJECT_DIR"; echo x > "$D/f"'
+g573a '#573 A: D=; echo ${D:=$CLAUDE_PROJECT_DIR} > "$D/f" segue 2' 2 'D=; echo ${D:=$CLAUDE_PROJECT_DIR} > "$D/f"'
+g573a '#573 A: D=$CLAUDE_PROJECT_DIR # ; D=<fora> e echo na linha seguinte segue 2' 2 'D=$CLAUDE_PROJECT_DIR # ; D=__FORA__
+echo x > "$D/f"'
+g573a '#573 A: D=$CLAUDE_PROJECT_DIR; heredoc com D=<fora>; echo x > "$D/f" segue 2' 2 'D=$CLAUDE_PROJECT_DIR; cat <<FIM
+D=__FORA__
+FIM
+echo x > "$D/f"'
+g573a '#573 A: vizinho D=<fora>; echo "a #b" > "$D/f" (# entre aspas) passa' 0 'D=__FORA__; echo "a #b" > "$D/f"'
 if [ -n "$CPD_573_SET" ]; then export CLAUDE_PROJECT_DIR="$CPD_573"; else unset CLAUDE_PROJECT_DIR; fi
 if [ -n "$TMP_573_SET" ]; then export TMP="$TMP_573"; else unset TMP; fi
 if [ -n "$OUTRA_573_SET" ]; then export OUTRA="$OUTRA_573"; else unset OUTRA; fi

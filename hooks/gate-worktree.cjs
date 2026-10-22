@@ -1841,9 +1841,34 @@ function abreBloco(seg) {
   }
   return PALAVRA_DE_BLOCO.test(seg.trim().split(/\s+/)[0]);
 }
+// Comentario (`#` que abre palavra, fora de aspas) ou heredoc (`<<`): o texto seguinte nao roda,
+// ou roda como dado, mas a segmentacao o le como comando (`D=<P> # ; D=<fora>`). Revisao de
+// seguranca do commit da tarefa 7.
+function temTextoQueNaoRoda(seg) {
+  let aspa = null;
+  for (let k = 0; k < seg.length; k += 1) {
+    const c = seg[k];
+    if (aspa) { if (c === "\\" && aspa === '"') k += 1; else if (c === aspa) aspa = null; continue; }
+    if (c === "'" || c === '"') { aspa = c; continue; }
+    if (c === "\\") { k += 1; continue; }
+    if (c === "#" && (k === 0 || /\s/.test(seg[k - 1]))) return true;
+    if (c === "<" && seg[k + 1] === "<") return true;
+  }
+  return false;
+}
 function atribuicoesAntes(segmentos, i, seps) {
   const mapa = Object.create(null);
   if (!seps || seps.length !== segmentos.length + 1) { mapa["?"] = null; return mapa; }
+  // Builtin que define variavel com nome que pode vir de expansao (`declare "$N=<P>"`), expansao
+  // que atribui (`${D:=<P>}`, tambem no proprio segmento do destino), comentario ou heredoc em
+  // qualquer segmento ate o do destino: nada da linha resolve (revisao de seguranca, tarefa 7).
+  for (let j = 0; j <= i && j < segmentos.length; j += 1) {
+    const s = segmentos[j];
+    if (temTextoQueNaoRoda(s) || DEFINE_QUALQUER_NOME.test(s) || (j < i && !atribuicoesDoSegmento(s) && DEFINE_VARIAVEL.test(s))) {
+      mapa["?"] = null;
+      return mapa;
+    }
+  }
   const semQuebra = (s) => s.replace(/[\r\n]/g, "");
   let incerta = !["", ";"].includes(semQuebra(seps[0])); // ja houve separador condicional ou de fundo
   let bloco = false; // ja houve `(`, `{` ou palavra-chave de bloco
