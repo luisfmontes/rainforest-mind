@@ -2071,79 +2071,49 @@ g573 '#573 B: HOME=<principal>; cd; touch ../../../f segue 2' 2 'HOME=__R__; cd;
 
 echo
 echo "== #573 A: destino com variavel =="
-# Destino de redirecionamento que COMECA com `$NOME`/`${NOME}` troca a variavel pelo valor (ultima
-# atribuicao literal anterior na linha, senao o ambiente do hook) e julga o caminho. Mesmo sandbox
-# da secao B: cwd = worktree linkado ($WN), __SCR__ fora de qualquer repo.
+# Recuo da D3 (decisao do usuario, 2026-10-22): destino de redirecionamento que COMECA com
+# `$NOME`/`${NOME}` segue barrado como na base — julgar o valor pedia reimplementar a gramatica
+# do shell, e cada revisao achou o proximo contorno (atribuicao em ramo que nao roda, laco, glob,
+# nome indireto, comentario, heredoc). Muda so a mensagem (secao D4). A saida e o caminho literal.
+# Mesmo sandbox da secao B: cwd = worktree linkado ($WN), __SCR__ e __FORA__ fora de qualquer repo.
 g573a() { gate "$1" "$2" "$(b "$(printf '%s' "$3" | s573)" "$WN")"; }
-g573a '#573 A: D=<scratchpad>; echo x > "$D/f" passa' 0 'D=__SCR__; echo x > "$D/f"'
-g573a '#573 A: D="<scratchpad>"; echo x > "$D/f" passa' 0 'D="__SCR__"; echo x > "$D/f"'
-g573a '#573 A: D="<W>/sub"; echo x > "$D/f" passa' 0 'D="__WN__/sub"; echo x > "$D/f"'
-if [ "$(node -p process.platform)" = win32 ]; then
-  g573a '#573 A: D=/c/<scratchpad MSYS>; printf x > "$D/f" passa' 0 "D=$(msys "$SCR573"); printf x > \"\$D/f\""
-else
-  echo "  pulado: forma MSYS /c/... so existe no win32"
-fi
+g573a '#573 A: D=<scratchpad>; echo x > "$D/f" segue 2 (recuo da D3)' 2 'D=__SCR__; echo x > "$D/f"'
+g573a '#573 A: D="<W>/sub"; echo x > "$D/f" segue 2 (recuo da D3)' 2 'D="__WN__/sub"; echo x > "$D/f"'
 TMP_573="${TMP-}"; TMP_573_SET="${TMP+1}"
 export TMP="$FORA"
-g573a '#573 A: echo x > "$TMP/f" com TMP no ambiente (fora de repo) passa' 0 'echo x > "$TMP/f"'
+g573a '#573 A: echo x > "$TMP/f" com TMP fora de repo segue 2 (recuo da D3)' 2 'echo x > "$TMP/f"'
 if [ -n "$TMP_573_SET" ]; then export TMP="$TMP_573"; else unset TMP; fi
-# Comando real do incidente (agent-a4131c7ff7f0b1d90.jsonl:74), caminhos trocados pelos do sandbox.
+# Comando real do incidente (agent-a4131c7ff7f0b1d90.jsonl:74), caminhos trocados pelos do sandbox:
+# continua barrado; a mensagem (secao D4) manda escrever o caminho literal.
 inc=$(s573 <<'EOC'
 D="__SCR__/stubprova"; mkdir -p "$D/bin" && printf '#!/bin/sh\necho "$@" > "%s/pwsh.args"\n' "$D" > "$D/bin/pwsh" && chmod 755 "$D/bin/pwsh" && cd "$D" && env PATH="$D/bin" /usr/bin/sh -c 'command -v pwsh'; echo "exit=$?"; cat "$D/pwsh.args" 2>&1; echo ---; which sh;
 EOC
 )
-g573a '#573 A: comando real do incidente (agent-a4131c7ff7f0b1d90.jsonl:74) passa' 0 "$inc"
-# Seguem 2.
+g573a '#573 A: comando real do incidente (agent-a4131c7ff7f0b1d90.jsonl:74) segue 2 (recuo da D3)' 2 "$inc"
+# A saida que a mensagem sugere: o mesmo comando com o caminho literal passa.
+inc_lit=$(s573 <<'EOC'
+mkdir -p "__SCR__/stubprova/bin" && printf '#!/bin/sh\necho x\n' > "__SCR__/stubprova/bin/pwsh" && chmod 755 "__SCR__/stubprova/bin/pwsh"
+EOC
+)
+g573a '#573 A: o mesmo com caminho literal no destino passa' 0 "$inc_lit"
+# Contornos achados nas revisoes do lote: continuam barrados.
 g573a '#573 A: P=<principal>; echo x > $P/f segue 2' 2 'P=__R__; echo x > $P/f'
 g573a '#573 A: D=<W>/../../..; echo x > "$D/f" segue 2' 2 'D=__WN__/../../..; echo x > "$D/f"'
+g573a '#573 A: laco com reatribuicao depois do destino segue 2' 2 'D=__FORA__; for i in 1 2; do echo x > "$D/a.txt"; D=${PWD%/*/*/*}; done'
+g573a '#573 A: glob no valor da variavel segue 2' 2 'D=__FORA__/../princip*; echo x > $D/a.txt'
+g573a '#573 A: N=D; declare "$N=..."; echo x > "$D/f" segue 2' 2 'N=D; D=__FORA__; declare "$N=__R__"; echo x > "$D/f"'
+g573a '#573 A: comentario antes da reatribuicao segue 2' 2 'D=__R__ # ; D=__FORA__
+echo x > "$D/f"'
 CPD_573="${CLAUDE_PROJECT_DIR-}"; CPD_573_SET="${CLAUDE_PROJECT_DIR+1}"
 export CLAUDE_PROJECT_DIR="$R"
 g573a '#573 A: echo x > "$CLAUDE_PROJECT_DIR/f" com a variavel no principal segue 2' 2 'echo x > "$CLAUDE_PROJECT_DIR/f"'
+g573a '#573 A: false && CLAUDE_PROJECT_DIR=<fora>; echo x > "$CLAUDE_PROJECT_DIR/f" segue 2' 2 'false && CLAUDE_PROJECT_DIR=__FORA__; echo x > "$CLAUDE_PROJECT_DIR/f"'
 if [ -n "$CPD_573_SET" ]; then export CLAUDE_PROJECT_DIR="$CPD_573"; else unset CLAUDE_PROJECT_DIR; fi
 unset NAO_DEFINIDA
 g573a '#573 A: echo x > "$NAO_DEFINIDA/f" segue 2' 2 'echo x > "$NAO_DEFINIDA/f"'
-g573a '#573 A: D=<scratchpad>; echo x > "<W>/$D/f" (variavel no meio) segue 2' 2 'D=__SCR__; echo x > "__WN__/$D/f"'
-g573a '#573 A: D=<scratchpad>; D=<principal>; echo x > "$D/f" (vale a ultima) segue 2' 2 'D=__SCR__; D=__R__; echo x > "$D/f"'
-# Vizinho legitimo.
+# Vizinhos legitimos: variavel como argumento (fora da rede de destino) e caminho literal.
 g573a '#573 A: vizinho D=<scratchpad>; touch "$D/f" passa' 0 'D=__SCR__; touch "$D/f"'
-# Emenda da D3: a atribuicao so conta se o shell a executa sempre e no mesmo shell, e o ambiente
-# do hook so responde por TMP, TEMP e TMPDIR. Ambiente: CLAUDE_PROJECT_DIR=<principal>,
-# TMP e OUTRA = __FORA__ (fora de qualquer repo).
-CPD_573="${CLAUDE_PROJECT_DIR-}"; CPD_573_SET="${CLAUDE_PROJECT_DIR+1}"
-TMP_573="${TMP-}"; TMP_573_SET="${TMP+1}"
-OUTRA_573="${OUTRA-}"; OUTRA_573_SET="${OUTRA+1}"
-export CLAUDE_PROJECT_DIR="$R" TMP="$FORA" OUTRA="$FORA"
-g573a '#573 A: variavel do ambiente fora da lista nao resolve' 2 'echo x > "$OUTRA/f"'
-g573a '#573 A: false && CLAUDE_PROJECT_DIR=<fora>; echo x > "$CLAUDE_PROJECT_DIR/f" segue 2' 2 'false && CLAUDE_PROJECT_DIR=__FORA__; echo x > "$CLAUDE_PROJECT_DIR/f"'
-g573a '#573 A: CLAUDE_PROJECT_DIR=<fora> & echo x > "$CLAUDE_PROJECT_DIR/f" segue 2' 2 'CLAUDE_PROJECT_DIR=__FORA__ & echo x > "$CLAUDE_PROJECT_DIR/f"'
-g573a '#573 A: if true; then D=<fora>; fi; echo x > "$D/f" segue 2' 2 'if true; then D=__FORA__; fi; echo x > "$D/f"'
-g573a '#573 A: { D=<fora>; }; echo x > "$D/f" segue 2' 2 '{ D=__FORA__; }; echo x > "$D/f"'
-g573a '#573 A: D=<fora>; printf -vD %s <principal>; echo x > "$D/f" segue 2' 2 'D=__FORA__; printf -vD %s __R__; echo x > "$D/f"'
-g573a '#573 A: D=<fora>; printf -v D %s <principal>; echo x > "$D/f" segue 2' 2 'D=__FORA__; printf -v D %s __R__; echo x > "$D/f"'
-g573a '#573 A: D=; : ${D:=<principal>}; echo x > "$D/f" segue 2' 2 'D=; : ${D:=__R__}; echo x > "$D/f"'
-g573a '#573 A: D=<fora>; let D=1; echo x > "$D/f" segue 2' 2 'D=__FORA__; let D=1; echo x > "$D/f"'
-g573a '#573 A: D=<fora>; mapfile D < a.txt; echo x > "$D/f" segue 2' 2 'D=__FORA__; mapfile D < a.txt; echo x > "$D/f"'
-g573a '#573 A: echo x > "$PWD/f" segue 2' 2 'echo x > "$PWD/f"'
-g573a '#573 A: echo x > "$OLDPWD/f" segue 2' 2 'echo x > "$OLDPWD/f"'
-g573a '#573 A: echo x > "$TMP/f" com TMP fora de repo passa' 0 'echo x > "$TMP/f"'
-g573a '#573 A: D=<fora>; echo x > "$D/f" passa' 0 'D=__FORA__; echo x > "$D/f"'
-g573a '#573 A: D=<fora> && echo x > "$D/f" passa' 0 'D=__FORA__ && echo x > "$D/f"'
-g573a '#573 A: D=<fora> || true; echo x > "$D/f" passa' 0 'D=__FORA__ || true; echo x > "$D/f"'
-g573a '#573 A: D=<fora>; mkdir -p "$D/bin" && printf x > "$D/bin/f" passa' 0 'D=__FORA__; mkdir -p "$D/bin" && printf x > "$D/bin/f"'
-# Revisao de seguranca do commit da tarefa 7: nome que vem de expansao, expansao que atribui no
-# proprio segmento do destino, comentario e heredoc. Nada da linha resolve.
-g573a '#573 A: N=D; D=<fora>; declare "$N=$CLAUDE_PROJECT_DIR"; echo x > "$D/f" segue 2' 2 'N=D; D=__FORA__; declare "$N=$CLAUDE_PROJECT_DIR"; echo x > "$D/f"'
-g573a '#573 A: D=; echo ${D:=$CLAUDE_PROJECT_DIR} > "$D/f" segue 2' 2 'D=; echo ${D:=$CLAUDE_PROJECT_DIR} > "$D/f"'
-g573a '#573 A: D=$CLAUDE_PROJECT_DIR # ; D=<fora> e echo na linha seguinte segue 2' 2 'D=$CLAUDE_PROJECT_DIR # ; D=__FORA__
-echo x > "$D/f"'
-g573a '#573 A: D=$CLAUDE_PROJECT_DIR; heredoc com D=<fora>; echo x > "$D/f" segue 2' 2 'D=$CLAUDE_PROJECT_DIR; cat <<FIM
-D=__FORA__
-FIM
-echo x > "$D/f"'
-g573a '#573 A: vizinho D=<fora>; echo "a #b" > "$D/f" (# entre aspas) passa' 0 'D=__FORA__; echo "a #b" > "$D/f"'
-if [ -n "$CPD_573_SET" ]; then export CLAUDE_PROJECT_DIR="$CPD_573"; else unset CLAUDE_PROJECT_DIR; fi
-if [ -n "$TMP_573_SET" ]; then export TMP="$TMP_573"; else unset TMP; fi
-if [ -n "$OUTRA_573_SET" ]; then export OUTRA="$OUTRA_573"; else unset OUTRA; fi
+g573a '#573 A: vizinho echo x > "<scratchpad>/f" literal passa' 0 'echo x > "__SCR__/f"'
 
 echo
 echo "== #573 D4: mensagem da rede =="

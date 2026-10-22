@@ -64,7 +64,7 @@ const os = require("node:os");
 const fs = require("node:fs");
 const path = require("node:path");
 const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
-const { cwdPorSegmento, resolverMovedor, toplevelConfinado, extrairUltimoDirGit, segmentosComAspas, SEPARADORES, normalizarMsys } = require(path.join(__dirname, "lib", "cwd-efetivo.cjs"));
+const { cwdPorSegmento, resolverMovedor, toplevelConfinado, extrairUltimoDirGit, segmentosComAspas, SEPARADORES } = require(path.join(__dirname, "lib", "cwd-efetivo.cjs"));
 const CLIS_QUE_ESCREVEM = require(path.join(__dirname, "lib", "clis-que-escrevem.cjs"));
 // #530 (D4, D6): a palavra de comando como o bash a le, e o corpo de cada
 // substituicao de comando (crase e `$(...)`), para o gate conferir o que roda la dentro.
@@ -481,7 +481,7 @@ function bloqueia(motivo, toplevel, agente, apenasRestauracao = null, ehWorktree
   const ehSubagente = !!agente;
   const saidas = ehSubagente
     ? SAIDAS_DE_SUBAGENTE
-    :`Quem decide seguir sem isolamento e voce, e tem duas saidas:\n` +
+    : `Quem decide seguir sem isolamento e voce, e tem duas saidas:\n` +
       `  - node scripts/setup.cjs --desligar gate-worktree --escopo projeto (preferida);\n` +
       `  - RAINFOREST_GATE_OFF=1 no ambiente da sessao (desliga na sessao inteira).\n`;
 
@@ -1520,17 +1520,7 @@ function principalDoWorktree(cwd) {
  * entre eles alimenta o comando de fora (`Set-Content -Path (Join-Path <P> f)`).
  */
 function segmentosDaRede(texto, ehPowerShell) {
-  return cortesDaRede(texto, ehPowerShell).segs;
-}
-
-/**
- * O corte de `segmentosDaRede` com os separadores de topo: `seps[k]` sao os caracteres
- * separadores (`;`, `|`, `&`, quebra) entre o segmento k-1 e o k (`seps[0]` antes do
- * primeiro, `seps[segs.length]` depois do ultimo). Alinhado por construcao (#573 A, D3).
- */
-function cortesDaRede(texto, ehPowerShell) {
   const segs = [];
-  const seps = [""];
   let atual = "";
   let aspa = null;
   for (let i = 0; i < texto.length; i += 1) {
@@ -1546,15 +1536,14 @@ function cortesDaRede(texto, ehPowerShell) {
     if (c === ";" || c === "|" || c === "&" || c === "\n" || c === "\r") {
       // `2>&1`, `>&2`, `&>`: e redirecionamento, nao separador.
       if (c === "&" && (/[<>]$/.test(atual) || texto[i + 1] === ">")) { atual += c; continue; }
-      if (atual.trim()) { segs.push(atual); seps.push(""); }
-      seps[seps.length - 1] += c;
+      if (atual.trim()) segs.push(atual);
       atual = "";
       continue;
     }
     atual += c;
   }
-  if (atual.trim()) { segs.push(atual); seps.push(""); }
-  return { segs, seps };
+  if (atual.trim()) segs.push(atual);
+  return segs;
 }
 
 /** O texto entre parenteses e chaves fora de aspas, concatenado. */
@@ -1794,119 +1783,16 @@ function casaRedefinida(comando, ehPowerShell) {
   return false;
 }
 
-// #573 A (D3): uma ou mais atribuicoes LITERAIS e nada mais no segmento (`D=x`, `D="x"`, `D='x'`,
-// com `export ` opcional). Devolve [[nome, valor]], com valor null quando nao e literal (`$`,
-// crase, til, contrabarra), ou null quando o segmento nao e so atribuicao (`D=x cmd` incluso).
-function atribuicoesDoSegmento(seg) {
-  const texto = seg.trim().replace(/^export\s+/, "");
-  const um = /([A-Za-z_]\w*)=(?:"([^"]*)"|'([^']*)'|([^\s'"\\;&|<>()]*))(?=\s|$)\s*/y;
-  const lidas = [];
-  let pos = 0;
-  while (pos < texto.length) {
-    um.lastIndex = pos;
-    const m = um.exec(texto);
-    if (!m) return null;
-    const [, nome, duplas, simples, nua] = m;
-    let valor = simples !== undefined ? simples : duplas !== undefined ? duplas : nua;
-    if (simples === undefined && /[$`\\]/.test(valor)) valor = null;
-    if (nua !== undefined && valor !== null && /(^|:)~/.test(valor)) valor = null;
-    lidas.push([nome, valor]);
-    pos = um.lastIndex;
-  }
-  return lidas.length ? lidas : null;
-}
-
-/**
- * #573 A (D3): nome -> valor das atribuicoes literais nos segmentos ANTERIORES a `i` da mesma
- * linha; vale a ultima. Nome citado sem `$` num segmento que nao e so atribuicao (`for D in`,
- * `read D`, `declare D=`, `printf -v D`, `unset D`, `D=x cmd`) fica null: nao resolve. `source`/`.`
- * pode definir qualquer nome: tudo o que veio antes vira null, e a chave `?` marca que nome
- * ausente do mapa tambem nao resolve pelo ambiente. `printf -v`, `${X:=`, `${X=`, `mapfile`,
- * `readarray` e `let` fazem o mesmo.
- * A atribuicao so entra com o valor quando o shell a executa sempre e no mesmo shell (emenda da
- * D3): so `;`/quebra antes dela, `;`/quebra/`&&`/`||` logo depois, nenhuma `(`/`{` nem palavra-chave
- * de bloco antes ou nela. Fora disso o nome fica null. `seps` vem de `cortesDaRede`; desalinhado,
- * nada resolve.
- */
-const PALAVRA_DE_BLOCO = /^(if|then|else|elif|for|while|until|do|case)$/;
-const DEFINE_QUALQUER_NOME = /\bprintf\b[^]*\s-\w*v|\$\{[A-Za-z_]\w*(\[[^\]]*\])?:?=|\b(mapfile|readarray|let)\b/;
-function abreBloco(seg) {
-  let aspa = null;
-  for (let k = 0; k < seg.length; k += 1) {
-    const c = seg[k];
-    if (aspa) { if (c === "\\" && aspa === '"') k += 1; else if (c === aspa) aspa = null; continue; }
-    if (c === "'" || c === '"') { aspa = c; continue; }
-    if (c === "\\") { k += 1; continue; }
-    if ((c === "(" || c === "{") && seg[k - 1] !== "$") return true;
-  }
-  return PALAVRA_DE_BLOCO.test(seg.trim().split(/\s+/)[0]);
-}
-// Comentario (`#` que abre palavra, fora de aspas) ou heredoc (`<<`): o texto seguinte nao roda,
-// ou roda como dado, mas a segmentacao o le como comando (`D=<P> # ; D=<fora>`). Revisao de
-// seguranca do commit da tarefa 7.
-function temTextoQueNaoRoda(seg) {
-  let aspa = null;
-  for (let k = 0; k < seg.length; k += 1) {
-    const c = seg[k];
-    if (aspa) { if (c === "\\" && aspa === '"') k += 1; else if (c === aspa) aspa = null; continue; }
-    if (c === "'" || c === '"') { aspa = c; continue; }
-    if (c === "\\") { k += 1; continue; }
-    if (c === "#" && (k === 0 || /\s/.test(seg[k - 1]))) return true;
-    if (c === "<" && seg[k + 1] === "<") return true;
-  }
-  return false;
-}
-function atribuicoesAntes(segmentos, i, seps) {
-  const mapa = Object.create(null);
-  if (!seps || seps.length !== segmentos.length + 1) { mapa["?"] = null; return mapa; }
-  // Builtin que define variavel com nome que pode vir de expansao (`declare "$N=<P>"`), expansao
-  // que atribui (`${D:=<P>}`, tambem no proprio segmento do destino), comentario ou heredoc em
-  // qualquer segmento ate o do destino: nada da linha resolve (revisao de seguranca, tarefa 7).
-  for (let j = 0; j <= i && j < segmentos.length; j += 1) {
-    const s = segmentos[j];
-    if (temTextoQueNaoRoda(s) || DEFINE_QUALQUER_NOME.test(s) || (j < i && !atribuicoesDoSegmento(s) && DEFINE_VARIAVEL.test(s))) {
-      mapa["?"] = null;
-      return mapa;
-    }
-  }
-  const semQuebra = (s) => s.replace(/[\r\n]/g, "");
-  let incerta = !["", ";"].includes(semQuebra(seps[0])); // ja houve separador condicional ou de fundo
-  let bloco = false; // ja houve `(`, `{` ou palavra-chave de bloco
-  for (let j = 0; j < i; j += 1) {
-    bloco = bloco || abreBloco(segmentos[j]);
-    const depois = semQuebra(seps[j + 1]);
-    const vale = !incerta && !bloco && ["", ";", "&&", "||"].includes(depois);
-    incerta = incerta || !["", ";"].includes(depois);
-    const lidas = atribuicoesDoSegmento(segmentos[j]);
-    if (lidas) { for (const [nome, valor] of lidas) mapa[nome] = vale ? valor : null; continue; }
-    if (FONTE_DE_SCRIPT.test(segmentos[j]) || DEFINE_QUALQUER_NOME.test(segmentos[j])) { for (const nome of Object.keys(mapa)) mapa[nome] = null; mapa["?"] = null; }
-    for (const m of segmentos[j].matchAll(/(\$\{?)?\b([A-Za-z_]\w*)/g)) if (!m[1]) mapa[m[2]] = null;
-  }
-  return mapa;
-}
-
-/**
- * #573 A (D3), so Bash: destino de redirecionamento que COMECA com `$NOME` ou `${NOME}` seguido de
- * `/`, `\` ou fim troca a variavel pelo valor (atribuicao literal anterior na linha, senao o
- * ambiente do hook, so para os nomes de `AMBIENTE_LIBERADO`), com `/c/...` normalizado. Sem valor: null (o chamador barra). Fora dessa
- * forma (sem `$`, `$` no meio ou no resto, `${X:-y}`, aspa simples, atalho da casa, que ja tem
- * caminho proprio em `CASA_NO_INICIO`): o destino volta como veio, e o julgamento de hoje vale.
- */
-// Emenda da D3: o ambiente do hook so responde por estes nomes; `CLAUDE_PROJECT_DIR`, `PWD`,
-// `OLDPWD` e qualquer outro sem atribuicao valida na linha nao resolvem.
-const AMBIENTE_LIBERADO = new Set(["TMP", "TEMP", "TMPDIR"]);
-function resolverVariavelBash(destino, atribuicoes, ambiente) {
-  if (!destino.includes("$") || destino.includes("'")) return destino;
-  const m = /^\$(?:([A-Za-z_]\w*)|\{([A-Za-z_]\w*)\})((?:[\\/].*)?)$/s.exec(destino.replace(/"/g, ""));
-  if (!m) return destino;
-  const nome = m[1] || m[2], resto = m[3];
-  if (/[$`]/.test(resto) || new RegExp(`^(?:${NOMES_DA_CASA})$`).test(nome)) return destino;
-  let valor;
-  if (nome in atribuicoes) valor = atribuicoes[nome];
-  else if ("?" in atribuicoes) valor = null;
-  else if (AMBIENTE_LIBERADO.has(nome)) valor = ambiente[nome];
-  if (valor === null || valor === undefined) return null;
-  return normalizarMsys(valor) + resto;
+// #573 (D4, recuo da D3): destino de redirecionamento que COMECA com variavel (`$NOME`, `${NOME}`),
+// quando a rede o barra, recebe mensagem propria. Julgar o valor da variavel pedia reimplementar a gramatica do shell
+// (atribuicao em ramo que nao roda, laco, glob, nome indireto, comentario, heredoc) e cada rodada
+// de revisao achou o proximo contorno; o usuario decidiu recuar (2026-10-22). Os atalhos da casa
+// (`$HOME/...`) seguem o caminho proprio de `CASA_NO_INICIO`.
+function variavelNoInicio(destino) {
+  const m = /^\$(?:([A-Za-z_]\w*)|\{([A-Za-z_]\w*)\})/.exec(destino.replace(/^["']+/, ""));
+  if (!m) return null;
+  const nome = m[1] || m[2];
+  return new RegExp(`^(?:${NOMES_DA_CASA})$`).test(nome) ? null : nome;
 }
 
 /**
@@ -1996,9 +1882,6 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
   };
   // O caminho citado que cai no principal (para a mensagem, D4), ou null.
   const citaProtegido = (texto, base) => caminhosCitados(texto, ehPowerShell).find((c) => protegido(c, base, texto)) || null;
-  // #573 A (D3) e so Bash: no PowerShell `$X` e variavel do proprio shell, nao a do ambiente do
-  // hook, e `X=v` nao e atribuicao; o destino segue como veio (comportamento de antes).
-  const resolverVariavelNoInicio = ehPowerShell ? (destino) => destino : resolverVariavelBash;
   // O alvo leva o motivo (#573 D4): `bloqueiaPelaRede` diz o que barrou.
   const alvo = (rede) => [{ dir: repo.principal, incerto: true, rede }];
   if (casaRedefinida(comando, ehPowerShell)) {
@@ -2032,12 +1915,12 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
       // chaves (`Get-Content (Remove-Item <P>/f)` roda o de dentro).
       for (const destino of destinosDeRedirecionamento(seg, ehPowerShell)) {
         if (ehDescarteDeSaida(destino, ehPowerShell)) continue;
-        const julgado = resolverVariavelNoInicio(destino, atribuicoesAntes(segmentos, i, cortesDaRede(comando, ehPowerShell).seps), process.env);
-        if (julgado === null) { // variavel no inicio sem valor conhecido: falha fechado (#573 A)
-          return alvo(`Destino de redirecionamento nao resolvido: ${destino}\n` +
-            `O gate nao conhece o valor da variavel no inicio do destino. Saida: escreva o caminho\nliteral no comando, ou grave o arquivo com a ferramenta Write.`);
+        const caido = caminhosCitados(destino, ehPowerShell).concat([destino.replace(/^FileSystem::/i, "")]).find((c) => protegido(c, base, destino));
+        // Mesmo veredito de antes; so a mensagem muda quando a causa e a variavel no inicio (D4).
+        if (caido && !ehPowerShell && variavelNoInicio(destino)) {
+          return alvo(`Destino de redirecionamento comeca com variavel: ${destino}\n` +
+            `O gate nao julga o valor de variavel no destino. Saida: escreva o caminho literal\nno comando, ou grave o arquivo com a ferramenta Write.`);
         }
-        const caido = caminhosCitados(julgado, ehPowerShell).concat([julgado.replace(/^FileSystem::/i, "")]).find((c) => protegido(c, base, julgado));
         if (caido) return alvo(`Destino de redirecionamento cai no checkout principal, ou tem expansao que o gate nao resolve: ${caido}`);
       }
       // Na chamada .NET de leitura, o argumento entre parenteses e o proprio alvo da leitura.

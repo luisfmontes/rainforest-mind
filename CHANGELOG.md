@@ -12,16 +12,13 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 ## 1.73.1 — 2026-10-22
 
-- **Subagente em worktree isolado não é mais barrado por escrita legítima via Bash (#573).** Dois falsos positivos da
-  rede de caminho do principal: `cd -` era lido como `cd` sem destino (vai para HOME) e, com `$(` na linha,
-  barrava; e destino de `>` que começa com variável (`D=<scratchpad>; echo x > "$D/f"`) era tratado como caminho do
-  worktree com expansão e barrado. Agora o gate resolve a variável pelo valor — atribuição literal na mesma linha,
-  desde que o shell a execute sempre e no mesmo shell (nada de `&&`/`||` antes, `|`, `&`, bloco ou subshell), senão
-  `TMP`, `TEMP` ou `TMPDIR` do ambiente — e julga o caminho. `$CLAUDE_PROJECT_DIR`, `$PWD`, nome redefinido por
-  `declare`/`read`/`printf -v`/`${X:=}`, comentário ou heredoc seguem barrados.
+- **`cd -` não barra mais subagente em worktree isolado (#573).** `cd -` (volta ao diretório anterior) era lido como
+  `cd` sem destino (vai para HOME) e, com `$(` na linha, a rede de caminho do principal barrava o comando inteiro.
 - **O bloqueio da rede diz o que barrou (#573).** A mensagem dizia "Este e o diretorio de trabalho principal" para um
-  agente que estava no próprio worktree; agora nomeia a palavra ou o caminho que subiu e a saída (caminho literal, ou a
-  ferramenta Write). Subagente no checkout principal continua com a mensagem de antes.
+  agente que estava no próprio worktree, e o agente parava. Agora nomeia a palavra ou o caminho que subiu; destino de
+  `>` que começa com variável (`echo x > "$D/f"`) segue barrado como antes, mas a mensagem diz a saída: o caminho
+  literal no comando, ou a ferramenta Write. Julgar o valor da variável foi tentado e recuado: cada revisão achava um
+  contorno novo (laço, glob, ramo que não roda). Os buracos anteriores de variável fora desse caso estão na #580.
 - **Trava pós-`verificar` com a raiz numa junction (#578).** `docDoEstagio` devolvia o caminho real do plano e do
   design; com a raiz alcançada por junction ou symlink, o plano do próprio fluxo contava como código e o `fechar`
   mandava reabrir o `executar`.
