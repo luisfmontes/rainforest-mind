@@ -22,7 +22,7 @@
     "em": "2026-10-21"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-22",
     "tarefas_ok": 6,
     "tarefas": 6,
@@ -116,29 +116,39 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "pendente",
     "snapshot": {
-      "head": "e098646c2e95752a4f24b5b001fb2ed29cc41c86",
+      "head": "741087088d168e2ed5b49e7649a481006dd75b96",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a7f09de5dcc054cd5",
-        "veredito": "reprovado",
+        "agente_id": "afee78258b8f25aff",
+        "veredito": "ok",
         "em": "2026-10-22",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/21bbb906-04da-49d6-81e0-c50cb1c59dfc/subagents/agent-a7f09de5dcc054cd5.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/21bbb906-04da-49d6-81e0-c50cb1c59dfc/subagents/agent-afee78258b8f25aff.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-22",
-    "achados": 2,
-    "tentativas": 1
+    "achados": 4,
+    "base": "32251117cc6a9b3a54b454d64325140406bd60cb",
+    "head": "741087088d168e2ed5b49e7649a481006dd75b96"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-10-22"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-10-22"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-10-22",
+      "de": "revisar",
+      "motivo": "revisao 2 (ok com achados): D2 estende buraco de cd incerto a linha com bash -c (Q1 B do usuario: cd - resolve contra o cd anterior da linha, sem cd anterior volta a base); PowerShell cd - mudou sem declarar; D4 sem caso que exija SAIDAS_DE_SUBAGENTE; caso 'nomeia o caminho do principal' casa pela linha Repo:"
+    }
+  ]
 }
