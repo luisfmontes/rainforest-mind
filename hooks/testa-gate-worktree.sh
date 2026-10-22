@@ -2050,7 +2050,7 @@ echo "== #573 B: cd - nao e cd sem destino =="
 # a rede #552 age. Placeholders: __SCR__ scratch do sandbox (fora do principal), __R__ principal,
 # __WN__ worktree linkado.
 SCR573="$RAIZ/scratch573"; mkdir -p "$SCR573" "$WN/sub"; echo 'x' > "$WN/sub/_powershell.py"
-s573() { local s; s=$(cat); s=${s//__SCR__/$SCR573}; s=${s//__R__/$R}; s=${s//__WN__/$WN}; printf "%s" "$s"; }
+s573() { local s; s=$(cat); s=${s//__SCR__/$SCR573}; s=${s//__R__/$R}; s=${s//__WN__/$WN}; s=${s//__FORA__/$FORA}; printf "%s" "$s"; }
 g573() { gate "$1" "$2" "$(b "$3" "$WN")"; }
 # Saem 0: `cd -` com destino OLDPWD nao e cd sem destino.
 g573 '#573 B: cd - >/dev/null; echo "$(pwd)" no worktree passa' 0 'cd - >/dev/null; echo "$(pwd)"'
@@ -2083,9 +2083,10 @@ if [ "$(node -p process.platform)" = win32 ]; then
 else
   echo "  pulado: forma MSYS /c/... so existe no win32"
 fi
-export TMPX="$FORA"
-g573a '#573 A: echo x > "$TMPX/f" com TMPX no ambiente (fora de repo) passa' 0 'echo x > "$TMPX/f"'
-unset TMPX
+TMP_573="${TMP-}"; TMP_573_SET="${TMP+1}"
+export TMP="$FORA"
+g573a '#573 A: echo x > "$TMP/f" com TMP no ambiente (fora de repo) passa' 0 'echo x > "$TMP/f"'
+if [ -n "$TMP_573_SET" ]; then export TMP="$TMP_573"; else unset TMP; fi
 # Comando real do incidente (agent-a4131c7ff7f0b1d90.jsonl:74), caminhos trocados pelos do sandbox.
 inc=$(s573 <<'EOC'
 D="__SCR__/stubprova"; mkdir -p "$D/bin" && printf '#!/bin/sh\necho "$@" > "%s/pwsh.args"\n' "$D" > "$D/bin/pwsh" && chmod 755 "$D/bin/pwsh" && cd "$D" && env PATH="$D/bin" /usr/bin/sh -c 'command -v pwsh'; echo "exit=$?"; cat "$D/pwsh.args" 2>&1; echo ---; which sh;
@@ -2101,11 +2102,37 @@ g573a '#573 A: echo x > "$CLAUDE_PROJECT_DIR/f" com a variavel no principal segu
 if [ -n "$CPD_573_SET" ]; then export CLAUDE_PROJECT_DIR="$CPD_573"; else unset CLAUDE_PROJECT_DIR; fi
 unset NAO_DEFINIDA
 g573a '#573 A: echo x > "$NAO_DEFINIDA/f" segue 2' 2 'echo x > "$NAO_DEFINIDA/f"'
-g573a '#573 A: D=$(mktemp -d); echo x > "$D/f" segue 2' 2 'D=$(mktemp -d); echo x > "$D/f"'
 g573a '#573 A: D=<scratchpad>; echo x > "<W>/$D/f" (variavel no meio) segue 2' 2 'D=__SCR__; echo x > "__WN__/$D/f"'
 g573a '#573 A: D=<scratchpad>; D=<principal>; echo x > "$D/f" (vale a ultima) segue 2' 2 'D=__SCR__; D=__R__; echo x > "$D/f"'
 # Vizinho legitimo.
 g573a '#573 A: vizinho D=<scratchpad>; touch "$D/f" passa' 0 'D=__SCR__; touch "$D/f"'
+# Emenda da D3: a atribuicao so conta se o shell a executa sempre e no mesmo shell, e o ambiente
+# do hook so responde por TMP, TEMP e TMPDIR. Ambiente: CLAUDE_PROJECT_DIR=<principal>,
+# TMP e OUTRA = __FORA__ (fora de qualquer repo).
+CPD_573="${CLAUDE_PROJECT_DIR-}"; CPD_573_SET="${CLAUDE_PROJECT_DIR+1}"
+TMP_573="${TMP-}"; TMP_573_SET="${TMP+1}"
+OUTRA_573="${OUTRA-}"; OUTRA_573_SET="${OUTRA+1}"
+export CLAUDE_PROJECT_DIR="$R" TMP="$FORA" OUTRA="$FORA"
+g573a '#573 A: variavel do ambiente fora da lista nao resolve' 2 'echo x > "$OUTRA/f"'
+g573a '#573 A: false && CLAUDE_PROJECT_DIR=<fora>; echo x > "$CLAUDE_PROJECT_DIR/f" segue 2' 2 'false && CLAUDE_PROJECT_DIR=__FORA__; echo x > "$CLAUDE_PROJECT_DIR/f"'
+g573a '#573 A: CLAUDE_PROJECT_DIR=<fora> & echo x > "$CLAUDE_PROJECT_DIR/f" segue 2' 2 'CLAUDE_PROJECT_DIR=__FORA__ & echo x > "$CLAUDE_PROJECT_DIR/f"'
+g573a '#573 A: if true; then D=<fora>; fi; echo x > "$D/f" segue 2' 2 'if true; then D=__FORA__; fi; echo x > "$D/f"'
+g573a '#573 A: { D=<fora>; }; echo x > "$D/f" segue 2' 2 '{ D=__FORA__; }; echo x > "$D/f"'
+g573a '#573 A: D=<fora>; printf -vD %s <principal>; echo x > "$D/f" segue 2' 2 'D=__FORA__; printf -vD %s __R__; echo x > "$D/f"'
+g573a '#573 A: D=<fora>; printf -v D %s <principal>; echo x > "$D/f" segue 2' 2 'D=__FORA__; printf -v D %s __R__; echo x > "$D/f"'
+g573a '#573 A: D=; : ${D:=<principal>}; echo x > "$D/f" segue 2' 2 'D=; : ${D:=__R__}; echo x > "$D/f"'
+g573a '#573 A: D=<fora>; let D=1; echo x > "$D/f" segue 2' 2 'D=__FORA__; let D=1; echo x > "$D/f"'
+g573a '#573 A: D=<fora>; mapfile D < a.txt; echo x > "$D/f" segue 2' 2 'D=__FORA__; mapfile D < a.txt; echo x > "$D/f"'
+g573a '#573 A: echo x > "$PWD/f" segue 2' 2 'echo x > "$PWD/f"'
+g573a '#573 A: echo x > "$OLDPWD/f" segue 2' 2 'echo x > "$OLDPWD/f"'
+g573a '#573 A: echo x > "$TMP/f" com TMP fora de repo passa' 0 'echo x > "$TMP/f"'
+g573a '#573 A: D=<fora>; echo x > "$D/f" passa' 0 'D=__FORA__; echo x > "$D/f"'
+g573a '#573 A: D=<fora> && echo x > "$D/f" passa' 0 'D=__FORA__ && echo x > "$D/f"'
+g573a '#573 A: D=<fora> || true; echo x > "$D/f" passa' 0 'D=__FORA__ || true; echo x > "$D/f"'
+g573a '#573 A: D=<fora>; mkdir -p "$D/bin" && printf x > "$D/bin/f" passa' 0 'D=__FORA__; mkdir -p "$D/bin" && printf x > "$D/bin/f"'
+if [ -n "$CPD_573_SET" ]; then export CLAUDE_PROJECT_DIR="$CPD_573"; else unset CLAUDE_PROJECT_DIR; fi
+if [ -n "$TMP_573_SET" ]; then export TMP="$TMP_573"; else unset TMP; fi
+if [ -n "$OUTRA_573_SET" ]; then export OUTRA="$OUTRA_573"; else unset OUTRA; fi
 
 echo
 echo "== #573 D4: mensagem da rede =="

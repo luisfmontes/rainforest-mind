@@ -1520,7 +1520,17 @@ function principalDoWorktree(cwd) {
  * entre eles alimenta o comando de fora (`Set-Content -Path (Join-Path <P> f)`).
  */
 function segmentosDaRede(texto, ehPowerShell) {
+  return cortesDaRede(texto, ehPowerShell).segs;
+}
+
+/**
+ * O corte de `segmentosDaRede` com os separadores de topo: `seps[k]` sao os caracteres
+ * separadores (`;`, `|`, `&`, quebra) entre o segmento k-1 e o k (`seps[0]` antes do
+ * primeiro, `seps[segs.length]` depois do ultimo). Alinhado por construcao (#573 A, D3).
+ */
+function cortesDaRede(texto, ehPowerShell) {
   const segs = [];
+  const seps = [""];
   let atual = "";
   let aspa = null;
   for (let i = 0; i < texto.length; i += 1) {
@@ -1536,14 +1546,15 @@ function segmentosDaRede(texto, ehPowerShell) {
     if (c === ";" || c === "|" || c === "&" || c === "\n" || c === "\r") {
       // `2>&1`, `>&2`, `&>`: e redirecionamento, nao separador.
       if (c === "&" && (/[<>]$/.test(atual) || texto[i + 1] === ">")) { atual += c; continue; }
-      if (atual.trim()) segs.push(atual);
+      if (atual.trim()) { segs.push(atual); seps.push(""); }
+      seps[seps.length - 1] += c;
       atual = "";
       continue;
     }
     atual += c;
   }
-  if (atual.trim()) segs.push(atual);
-  return segs;
+  if (atual.trim()) { segs.push(atual); seps.push(""); }
+  return { segs, seps };
 }
 
 /** O texto entre parenteses e chaves fora de aspas, concatenado. */
@@ -1810,14 +1821,40 @@ function atribuicoesDoSegmento(seg) {
  * linha; vale a ultima. Nome citado sem `$` num segmento que nao e so atribuicao (`for D in`,
  * `read D`, `declare D=`, `printf -v D`, `unset D`, `D=x cmd`) fica null: nao resolve. `source`/`.`
  * pode definir qualquer nome: tudo o que veio antes vira null, e a chave `?` marca que nome
- * ausente do mapa tambem nao resolve pelo ambiente.
+ * ausente do mapa tambem nao resolve pelo ambiente. `printf -v`, `${X:=`, `${X=`, `mapfile`,
+ * `readarray` e `let` fazem o mesmo.
+ * A atribuicao so entra com o valor quando o shell a executa sempre e no mesmo shell (emenda da
+ * D3): so `;`/quebra antes dela, `;`/quebra/`&&`/`||` logo depois, nenhuma `(`/`{` nem palavra-chave
+ * de bloco antes ou nela. Fora disso o nome fica null. `seps` vem de `cortesDaRede`; desalinhado,
+ * nada resolve.
  */
-function atribuicoesAntes(segmentos, i) {
+const PALAVRA_DE_BLOCO = /^(if|then|else|elif|for|while|until|do|case)$/;
+const DEFINE_QUALQUER_NOME = /\bprintf\b[^]*\s-\w*v|\$\{[A-Za-z_]\w*(\[[^\]]*\])?:?=|\b(mapfile|readarray|let)\b/;
+function abreBloco(seg) {
+  let aspa = null;
+  for (let k = 0; k < seg.length; k += 1) {
+    const c = seg[k];
+    if (aspa) { if (c === "\\" && aspa === '"') k += 1; else if (c === aspa) aspa = null; continue; }
+    if (c === "'" || c === '"') { aspa = c; continue; }
+    if (c === "\\") { k += 1; continue; }
+    if ((c === "(" || c === "{") && seg[k - 1] !== "$") return true;
+  }
+  return PALAVRA_DE_BLOCO.test(seg.trim().split(/\s+/)[0]);
+}
+function atribuicoesAntes(segmentos, i, seps) {
   const mapa = Object.create(null);
+  if (!seps || seps.length !== segmentos.length + 1) { mapa["?"] = null; return mapa; }
+  const semQuebra = (s) => s.replace(/[\r\n]/g, "");
+  let incerta = !["", ";"].includes(semQuebra(seps[0])); // ja houve separador condicional ou de fundo
+  let bloco = false; // ja houve `(`, `{` ou palavra-chave de bloco
   for (let j = 0; j < i; j += 1) {
+    bloco = bloco || abreBloco(segmentos[j]);
+    const depois = semQuebra(seps[j + 1]);
+    const vale = !incerta && !bloco && ["", ";", "&&", "||"].includes(depois);
+    incerta = incerta || !["", ";"].includes(depois);
     const lidas = atribuicoesDoSegmento(segmentos[j]);
-    if (lidas) { for (const [nome, valor] of lidas) mapa[nome] = valor; continue; }
-    if (FONTE_DE_SCRIPT.test(segmentos[j])) { for (const nome of Object.keys(mapa)) mapa[nome] = null; mapa["?"] = null; }
+    if (lidas) { for (const [nome, valor] of lidas) mapa[nome] = vale ? valor : null; continue; }
+    if (FONTE_DE_SCRIPT.test(segmentos[j]) || DEFINE_QUALQUER_NOME.test(segmentos[j])) { for (const nome of Object.keys(mapa)) mapa[nome] = null; mapa["?"] = null; }
     for (const m of segmentos[j].matchAll(/(\$\{?)?\b([A-Za-z_]\w*)/g)) if (!m[1]) mapa[m[2]] = null;
   }
   return mapa;
@@ -1826,10 +1863,13 @@ function atribuicoesAntes(segmentos, i) {
 /**
  * #573 A (D3), so Bash: destino de redirecionamento que COMECA com `$NOME` ou `${NOME}` seguido de
  * `/`, `\` ou fim troca a variavel pelo valor (atribuicao literal anterior na linha, senao o
- * ambiente do hook), com `/c/...` normalizado. Sem valor: null (o chamador barra). Fora dessa
+ * ambiente do hook, so para os nomes de `AMBIENTE_LIBERADO`), com `/c/...` normalizado. Sem valor: null (o chamador barra). Fora dessa
  * forma (sem `$`, `$` no meio ou no resto, `${X:-y}`, aspa simples, atalho da casa, que ja tem
  * caminho proprio em `CASA_NO_INICIO`): o destino volta como veio, e o julgamento de hoje vale.
  */
+// Emenda da D3: o ambiente do hook so responde por estes nomes; `CLAUDE_PROJECT_DIR`, `PWD`,
+// `OLDPWD` e qualquer outro sem atribuicao valida na linha nao resolvem.
+const AMBIENTE_LIBERADO = new Set(["TMP", "TEMP", "TMPDIR"]);
 function resolverVariavelBash(destino, atribuicoes, ambiente) {
   if (!destino.includes("$") || destino.includes("'")) return destino;
   const m = /^\$(?:([A-Za-z_]\w*)|\{([A-Za-z_]\w*)\})((?:[\\/].*)?)$/s.exec(destino.replace(/"/g, ""));
@@ -1839,7 +1879,7 @@ function resolverVariavelBash(destino, atribuicoes, ambiente) {
   let valor;
   if (nome in atribuicoes) valor = atribuicoes[nome];
   else if ("?" in atribuicoes) valor = null;
-  else valor = ambiente[nome];
+  else if (AMBIENTE_LIBERADO.has(nome)) valor = ambiente[nome];
   if (valor === null || valor === undefined) return null;
   return normalizarMsys(valor) + resto;
 }
@@ -1967,7 +2007,7 @@ function alvosDaRede(comando, cwd, ehPowerShell) {
       // chaves (`Get-Content (Remove-Item <P>/f)` roda o de dentro).
       for (const destino of destinosDeRedirecionamento(seg, ehPowerShell)) {
         if (ehDescarteDeSaida(destino, ehPowerShell)) continue;
-        const julgado = resolverVariavelNoInicio(destino, atribuicoesAntes(segmentos, i), process.env);
+        const julgado = resolverVariavelNoInicio(destino, atribuicoesAntes(segmentos, i, cortesDaRede(comando, ehPowerShell).seps), process.env);
         if (julgado === null) { // variavel no inicio sem valor conhecido: falha fechado (#573 A)
           return alvo(`Destino de redirecionamento nao resolvido: ${destino}\n` +
             `O gate nao conhece o valor da variavel no inicio do destino. Saida: escreva o caminho\nliteral no comando, ou grave o arquivo com a ferramenta Write.`);
