@@ -22,10 +22,10 @@
     "em": "2026-10-21"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-22",
-    "tarefas_ok": 6,
-    "tarefas": 6,
+    "tarefas_ok": 8,
+    "tarefas": 8,
     "carimbos": [
       {
         "tarefa": 1,
@@ -77,25 +77,24 @@
         "ts": "2026-10-22T03:07:24.713Z"
       }
     ],
-    "em_voo": [],
     "em": "2026-10-22",
-    "comando": "bash hooks/testa-gate-worktree.sh; bash scripts/testa-estado-reabrir.sh",
-    "saida": "== resultado: 788 ok, 0 falha(s) ==; ok: 97   falhou: 0",
+    "comando": "bash hooks/testa-gate-worktree.sh",
+    "saida": "== resultado: 801 ok, 0 falha(s) ==",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-estado-reabrir.sh D5 (a) junction: exigir fechar com commit so no plano sai 0"
+        "fixture": "testa-estado-reabrir.sh D5: commit so no plano depois do verificar ok com a raiz numa junction"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "testa-gate-worktree.sh #573 B: cd - >/dev/null; echo \"$(pwd)\" no worktree passa"
+        "fixture": "testa-gate-worktree.sh #573 B: cd sub && echo $(pwd) && cd - && echo $(pwd) passa"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "testa-gate-worktree.sh #573 D4: echo x > \"$NAO_DEFINIDA/f\" sugere caminho literal ou a ferramenta Write"
+        "fixture": "testa-gate-worktree.sh #573 D4: echo x > $NAO_DEFINIDA/f sugere caminho literal ou a ferramenta Write"
       },
       {
         "tarefa": 4,
@@ -105,12 +104,22 @@
       {
         "tarefa": 5,
         "resultado": "n/a",
-        "motivo": "pesquisa: assimetria e buracos medidos no 1.73.0 e no lote, Issue #580 aberta"
+        "motivo": "tarefa so mede o comportamento atual e decide se vira Issue (#580)"
       },
       {
         "tarefa": 6,
         "resultado": "n/a",
         "motivo": "tarefa so reescreve doc e versao"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-worktree.sh #573 B: pushd sub && cd - && echo $(pwd) passa"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-worktree.sh #573 B: cd - && bash -c sem cd antes segue 2"
       }
     ],
     "reaberturas": 1
