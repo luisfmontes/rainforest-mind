@@ -22,9 +22,9 @@
     "em": "2026-10-21"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-21",
-    "tarefas_ok": 0,
+    "tarefas_ok": 7,
     "tarefas": 7,
     "carimbos": [
       {
@@ -77,21 +77,47 @@
         "ts": "2026-10-22T03:07:24.713Z"
       }
     ],
-    "em_voo": [
+    "em_voo": [],
+    "em": "2026-10-22",
+    "comando": "bash hooks/testa-gate-worktree.sh; bash scripts/testa-estado-reabrir.sh",
+    "saida": "== resultado: 807 ok, 0 falha(s) ==; ok: 97   falhou: 0",
+    "mutacao": [
       {
-        "agente": "executor",
-        "tarefa": "1 docDoEstagio lexical (mutacao)",
-        "desde": "2026-10-21T23:04:46-03:00",
-        "sessao": "21bbb906-04da-49d6-81e0-c50cb1c59dfc"
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-estado-reabrir.sh D5 (a) junction: exigir fechar com commit so no plano sai 0"
       },
       {
-        "agente": "executor",
-        "tarefa": "7 atribuicao alcancada e ambiente por lista",
-        "desde": "2026-10-22T00:07:24-03:00",
-        "sessao": "21bbb906-04da-49d6-81e0-c50cb1c59dfc"
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-worktree.sh #573 B: cd - >/dev/null; echo \"$(pwd)\" no worktree passa"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-worktree.sh #573 A: D=<scratchpad>; echo x > \"$D/f\" passa"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-worktree.sh #573 D4: bloqueio da rede com cwd em worktree nao diz diretorio de trabalho principal"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "pesquisa: assimetria e buracos medidos no 1.73.0 e no lote, Issue #580 aberta"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "tarefa so reescreve doc e versao"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-worktree.sh #573 A: variavel do ambiente fora da lista nao resolve"
       }
-    ],
-    "em": "2026-10-22"
+    ]
   },
   "revisar": {
     "status": "pendente"
