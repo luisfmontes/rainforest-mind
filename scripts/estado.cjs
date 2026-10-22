@@ -1666,7 +1666,12 @@ function docDoEstagio(tipo, slug, estado) {
       return docDe(tipo, slug);
     }
     const dentro = real === raizReal || real.startsWith(raizReal + path.sep);
-    if (dentro) return real;
+    // A cerca usa o realpath, mas quem chama compara contra a RAIZ lexical (o
+    // `relativo()` de `arquivosDeCodigoDesde`): devolver o realpath com a raiz
+    // numa junction faria o plano e o design do proprio fluxo caírem fora dela,
+    // e o plano contaria como codigo alterado depois do verificar (#578). Mesma
+    // forma do `docDoEstado` do conferir-fluxo.cjs (#571).
+    if (dentro) return declarado;
   }
   return docDe(tipo, slug);
 }

@@ -578,6 +578,84 @@ ate_plano
 esperado "exigir executar arma a catraca (diretorio) sai 0" 0 $E exigir --slug "$SLUG" --estagio executar
 esperado "marcar executar ok com arquivo: sendo diretorio sai 0" 0 $E marcar --slug "$SLUG" --estagio executar --status ok --json "$JSON_OK"
 
+echo "== D5: raiz por junction (#578) =="
+
+# Cria a junction $2 apontando para $1 (mklink /J; ln -s fora do Windows). Falha = FALHA, nunca pula.
+junction_pronta() {
+  if command -v cygpath >/dev/null 2>&1; then
+    MSYS2_ARG_CONV_EXCL="*" cmd /c mklink /J "$(cygpath -w "$2")" "$(cygpath -w "$1")" >/dev/null 2>&1
+  else
+    ln -s "$1" "$2"
+  fi
+  [ -d "$2" ]
+}
+# Remove so o link (rmdir sem /s num junction nao toca o alvo).
+desfaz_junction() {
+  if command -v cygpath >/dev/null 2>&1; then
+    MSYS2_ARG_CONV_EXCL="*" cmd /c rmdir "$(cygpath -w "$1")" >/dev/null 2>&1
+  else
+    rm -f "$1"
+  fi
+}
+# Caixa nova com design e plano commitados, estado declarando plano.doc ($1) e design.doc,
+# raiz por junction e verificar ok. Devolve 1 se a junction nao for criada.
+caixa_d5() {
+  caixa_nova
+  mkdir -p "$CX/docs/rainforest/design" && printf '# Design de teste\n' > "$CX/docs/rainforest/design/$SLUG.md"
+  git -C "$CX" add -- "docs/rainforest/design/$SLUG.md" "docs/rainforest/planos/$SLUG.md"
+  git -C "$CX" commit -q -m "design e plano do slug"
+  node -e 'const fs=require("fs");const [f,p,d]=process.argv.slice(1);const j=JSON.parse(fs.readFileSync(f,"utf8"));j.plano={...j.plano,doc:p};j.design={...j.design,doc:d};fs.writeFileSync(f,JSON.stringify(j,null,2));' "$ARQ" "$1" "docs/rainforest/design/$SLUG.md"
+  JP="$(mktemp -u)"
+  junction_pronta "$CX" "$JP" || return 1
+  export RFM_ESTADO_ROOT="$(cygpath -m "$JP" 2>/dev/null || printf '%s' "$JP")"
+  fechar_ate_verificar
+}
+
+echo "-- (a) commit so no plano depois do verificar ok com a raiz numa junction: exigir fechar sai 0 --"
+if caixa_d5 "docs/rainforest/planos/$SLUG.md"; then
+  printf '\n- nota depois do verificar\n' >> "$CX/docs/rainforest/planos/$SLUG.md"
+  git -C "$CX" add -- "docs/rainforest/planos/$SLUG.md"
+  git -C "$CX" commit -q -m "so plano depois do verificar"
+  esperado "junction: exigir fechar com commit so no plano sai 0" 0 $E exigir --slug "$SLUG" --estagio fechar
+else
+  falhou=$((falhou+1)); echo "  FALHA junction (a): nao consegui criar a junction da raiz"
+fi
+desfaz_junction "$JP"
+
+echo "-- (b) commit de codigo depois do verificar ok com a raiz numa junction: exigir fechar sai diferente de 0 --"
+if caixa_d5 "docs/rainforest/planos/$SLUG.md"; then
+  mkdir -p "$CX/scripts" && printf 'x\n' > "$CX/scripts/x.cjs"
+  git -C "$CX" add -- scripts/x.cjs
+  git -C "$CX" commit -q -m "codigo depois do verificar"
+  saida=$($E exigir --slug "$SLUG" --estagio fechar 2>&1); rc=$?
+  igual "junction: exigir fechar com scripts/x.cjs sai diferente de 0" "1" "$([ "$rc" -ne 0 ] && echo 1 || echo 0)"
+  igual "junction: recusa de codigo depois do verificar ok" "1" "$(echo "$saida" | grep -c "depois do 'verificar ok'")"
+  igual "junction: saida nomeia scripts/x.cjs" "1" "$(echo "$saida" | grep -c 'scripts/x.cjs')"
+else
+  falhou=$((falhou+1)); echo "  FALHA junction (b): nao consegui criar a junction da raiz"
+fi
+desfaz_junction "$JP"
+
+echo "-- (c) plano.doc por link dentro da raiz apontando para fora da raiz: nao e adotado --"
+OUTD="$(mktemp -d)"; SANDBOXES+=("$OUTD")
+printf '# plano externo\n' > "$OUTD/plano.md"
+if caixa_d5 "docs/rainforest/planos/$SLUG.md"; then
+  LINK="$CX/docs/rainforest/externo"
+  if junction_pronta "$OUTD" "$LINK"; then
+    node -e 'const fs=require("fs");const f=process.argv[1];const j=JSON.parse(fs.readFileSync(f,"utf8"));j.plano={...j.plano,doc:"docs/rainforest/externo/plano.md"};fs.writeFileSync(f,JSON.stringify(j,null,2));' "$ARQ"
+    printf '\n- nota depois do verificar\n' >> "$CX/docs/rainforest/planos/$SLUG.md"
+    git -C "$CX" add -- "docs/rainforest/planos/$SLUG.md"
+    git -C "$CX" commit -q -m "so plano padrao depois do verificar"
+    esperado "plano.doc externo por link nao adotado: commit so no plano padrao sai 0" 0 $E exigir --slug "$SLUG" --estagio fechar
+    desfaz_junction "$LINK"
+  else
+    falhou=$((falhou+1)); echo "  FALHA junction (c): nao consegui criar o link para fora da raiz"
+  fi
+else
+  falhou=$((falhou+1)); echo "  FALHA junction (c): nao consegui criar a junction da raiz"
+fi
+desfaz_junction "$JP"
+
 echo
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]
