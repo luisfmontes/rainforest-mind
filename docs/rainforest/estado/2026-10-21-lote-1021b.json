@@ -22,7 +22,7 @@
     "em": "2026-10-21"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-22",
     "tarefas_ok": 6,
     "tarefas": 6,
@@ -77,7 +77,7 @@
         "ts": "2026-10-22T03:07:24.713Z"
       }
     ],
-    "em": "2026-10-22",
+    "em": "2026-10-23",
     "comando": "bash hooks/testa-gate-worktree.sh",
     "saida": "baseline VERDE (exit 0) nas mutacoes das tarefas 2 e 3 em a9aa11bd",
     "mutacao": [
@@ -115,7 +115,7 @@
     "reaberturas": 3
   },
   "revisar": {
-    "status": "ok",
+    "status": "pendente",
     "snapshot": {
       "head": "66dbe4ec1667298ca703c92897770de215e13ea7",
       "caminhos_sujos": []
@@ -130,14 +130,14 @@
       }
     ],
     "em_voo": [],
-    "em": "2026-10-22",
+    "em": "2026-10-23",
     "achados": 2,
     "base": "32251117cc6a9b3a54b454d64325140406bd60cb",
     "head": "66dbe4ec1667298ca703c92897770de215e13ea7"
   },
   "verificar": {
-    "status": "ok",
-    "em": "2026-10-22",
+    "status": "pendente",
+    "em": "2026-10-23",
     "comando": "bash hooks/testa-gate-worktree.sh; bash scripts/testa-estado-reabrir.sh; node scripts/conferir-versao.cjs; bash scripts/testa-plugin-codex.sh",
     "saida": "813 ok, 0 falha(s); ok: 97 falhou: 0 (0 pulados); conferir-versao exit 0 (1.73.1); testa-plugin-codex rc=0; git diff 32251117 -- hooks/lib/cwd-efetivo.cjs vazio; tarefa 5: touch/cp com $CLAUDE_PROJECT_DIR e D=$(dirname $PWD)/../.. exit 0, Issue #580 nas duas buscas",
     "sensor_externo": "bash hooks/testa-gate-worktree.sh",
@@ -145,7 +145,7 @@
   },
   "fechar": {
     "status": "pendente",
-    "em": "2026-10-22"
+    "em": "2026-10-23"
   },
   "reaberturas": [
     {
@@ -157,6 +157,11 @@
       "em": "2026-10-22",
       "de": "revisar",
       "motivo": "revisao 4 ok com achados: (1) mensagem do cd - culpa o cd - quando a causa e outra (cd; cd -; HOME=; ~); (2) CHANGELOG mais largo que a D4 (ramo procuraCLI fora, vai para Issue)"
+    },
+    {
+      "em": "2026-10-23",
+      "de": "verificar",
+      "motivo": "CI do PR #586: testa-dependencias-de-bateria acusa python em posicao de comando no heredoc do incidente aaf21 (testa-gate-worktree.sh:2077)"
     }
   ]
 }

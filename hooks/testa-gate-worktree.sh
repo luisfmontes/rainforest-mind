@@ -2051,7 +2051,7 @@ echo "== #573 B: cd - segue barrado com execucao indireta =="
 # a rede #552 age. Placeholders: __SCR__ scratch do sandbox (fora do principal), __R__ principal,
 # __WN__ worktree linkado.
 SCR573="$RAIZ/scratch573"; mkdir -p "$SCR573" "$WN/sub"; echo 'x' > "$WN/sub/_powershell.py"
-s573() { local s; s=$(cat); s=${s//__SCR__/$SCR573}; s=${s//__R__/$R}; s=${s//__WN__/$WN}; s=${s//__FORA__/$FORA}; printf "%s" "$s"; }
+s573() { local s; s=$(cat); s=${s//__SCR__/$SCR573}; s=${s//__R__/$R}; s=${s//__WN__/$WN}; s=${s//__FORA__/$FORA}; s=${s//__PY__/python}; printf "%s" "$s"; }
 g573() { gate "$1" "$2" "$(b "$3" "$WN")"; }
 # Vizinho que segue 0: `cd -` sem execucao indireta.
 g573 '#573 B: vizinho cd - >/dev/null; echo ok passa' 0 'cd - >/dev/null; echo ok'
@@ -2073,8 +2073,9 @@ g573 "#573 B: cd sub && bash -c 'cd -; ...' segue 2" 2 "cd sub && bash -c 'cd -;
 g573 '#573 B: cd sub; cd -P; cd - && bash -c segue 2' 2 'cd sub; cd -P; cd - && bash -c "echo x > f"'
 gate '#573 B: PowerShell cd -; & { Set-Content f x } segue 2' 2 "$(bp 'cd -; & { Set-Content f x }' "$WN")"
 # Comando real do incidente (agent-aaf21d7221e8dde7d.jsonl:173), caminhos trocados pelos do sandbox.
+# O interprete vai como __PY__ e o s573 o devolve: testa-dependencias-de-bateria le o heredoc como chamada.
 inc=$(s573 <<'EOC'
-set -u; SCR="__SCR__"; mkdir -p "$SCR"; F="sub/_powershell.py"; cp "$F" "$SCR/_powershell.copia-original.py"; echo "ocorrencias antes: $(grep -c 'x' "$F")"; sed -i 's/a/b/' "$F"; cd sub && python -m pytest -q | tail -n 25; echo "EXIT_MUTADO=${PIPESTATUS[0]}"; cd - >/dev/null; cp "$SCR/_powershell.copia-original.py" "$F"
+set -u; SCR="__SCR__"; mkdir -p "$SCR"; F="sub/_powershell.py"; cp "$F" "$SCR/_powershell.copia-original.py"; echo "ocorrencias antes: $(grep -c 'x' "$F")"; sed -i 's/a/b/' "$F"; cd sub && __PY__ -m pytest -q | tail -n 25; echo "EXIT_MUTADO=${PIPESTATUS[0]}"; cd - >/dev/null; cp "$SCR/_powershell.copia-original.py" "$F"
 EOC
 )
 g573 '#573 B: comando real do incidente (agent-aaf21d7221e8dde7d.jsonl:173) segue 2' 2 "$inc"
