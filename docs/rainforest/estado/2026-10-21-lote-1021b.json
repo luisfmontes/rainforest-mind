@@ -22,7 +22,7 @@
     "em": "2026-10-21"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-22",
     "tarefas_ok": 6,
     "tarefas": 6,
@@ -78,38 +78,38 @@
       }
     ],
     "em": "2026-10-23",
-    "comando": "bash hooks/testa-gate-worktree.sh",
-    "saida": "baseline VERDE (exit 0) nas mutacoes das tarefas 2 e 3 em a9aa11bd",
+    "comando": "bash hooks/testa-gate-worktree.sh; bash scripts/testa-dependencias-de-bateria.sh",
+    "saida": "813 ok, 0 falha(s); 6 ok, 0 falha(s)",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-estado-reabrir.sh D5: commit so no plano depois do verificar ok com a raiz numa junction"
+        "fixture": "testa-estado-reabrir.sh, secao \"D5: raiz por junction (#578)\", caso \"commit so no plano depois do verificar ok com a raiz numa junction: exigir fechar sai 0\""
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "testa-gate-worktree.sh #573 D4: cd - com execucao indireta manda trocar pelo caminho absoluto"
+        "fixture": "testa-gate-worktree.sh, secao \"#573 D4: mensagem da rede\", caso \"cd - com execucao indireta manda trocar pelo caminho absoluto\""
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "testa-gate-worktree.sh #573 D4: echo x > $NAO_DEFINIDA/f sugere caminho literal ou a ferramenta Write"
+        "fixture": "testa-gate-worktree.sh, secao \"#573 D4: mensagem da rede\", caso \"echo x > \\\"$NAO_DEFINIDA/f\\\" sugere caminho literal ou a ferramenta Write\""
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "testa-gate-worktree.sh #573 D4: bloqueio da rede com cwd em worktree nao diz diretorio de trabalho principal (rodada em 5e41fd23; linha mutada intocada desde entao)"
+        "fixture": "testa-gate-worktree.sh, secao \"#573 D4: mensagem da rede\", caso \"bloqueio da rede com cwd em worktree nao diz diretorio de trabalho principal\""
       },
       {
         "tarefa": 5,
         "resultado": "n/a",
-        "motivo": "tarefa so mede o comportamento atual e decide se vira Issue (#580)"
+        "motivo": "tarefa so mede o comportamento atual e decide se vira Issue; nao muda codigo"
       },
       {
         "tarefa": 6,
         "resultado": "n/a",
-        "motivo": "tarefa so reescreve doc e versao"
+        "motivo": "tarefa so reescreve doc e versao; nao ha comportamento a inverter"
       }
     ],
     "reaberturas": 3
