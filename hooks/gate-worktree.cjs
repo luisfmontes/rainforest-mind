@@ -1800,6 +1800,59 @@ function expansaoNoInicio(palavra) {
   return nome !== undefined && new RegExp(`^(?:${NOMES_DA_CASA})$`).test(nome) ? null : m[0];
 }
 
+// #580 (D1): escritores de Bash cujo alvo a rede confere pela expansao no inicio. Escritor fora da
+// lista (`python -c`, `node -e`, `npm`) nao e julgado pelo argumento (#582).
+const ESCRITORES_DA_REDE = new Set(["touch", "cp", "mv", "tee", "mkdir", "rm", "ln", "install", "sed", "dd"]);
+// Opcoes curtas com valor separado que nao e alvo (`touch -d "$(date)" f`, `install -m 755 a b`).
+const OPCOES_COM_VALOR_DO_ESCRITOR = {
+  touch: ["-d", "-r", "-t"], mkdir: ["-m"], install: ["-m", "-o", "-g", "-S"],
+  cp: ["-S"], mv: ["-S"], ln: ["-S"], sed: ["-e", "-f", "-l"],
+};
+// Escritores com o destino em `-t`/`--target-directory`.
+const ESCRITORES_COM_DESTINO = new Set(["cp", "mv", "ln", "install"]);
+
+/**
+ * Alvos de escrita de um escritor conhecido (#580, D1), na ordem dos tokens. `cp`, `mv`, `ln` e
+ * `install`: o ultimo posicional e o valor de `-t`/`--target-directory`. `sed`: os arquivos, so
+ * com `-i`. `dd`: o valor de `of=`. Os demais: todos os posicionais. Comando que nao esta na lista
+ * devolve vazio.
+ * @returns {Array<{comando: string, alvo: string}>}
+ */
+function alvosDeEscritor(toks) {
+  const pos = posicaoDeComando(toks);
+  if (pos === null || pos === undefined) return [];
+  const nome = toks[pos].v.split(/[\\/]/).pop().replace(/\.exe$/i, "");
+  if (!ESCRITORES_DA_REDE.has(nome)) return [];
+  const args = toks.slice(pos + 1).map((t) => t.v);
+  const com = (alvo) => ({ comando: nome, alvo });
+  if (nome === "dd") return args.filter((a) => a.startsWith("of=")).map((a) => com(a.slice(3)));
+  if (nome === "sed" && !args.some((a) => /^-[a-zA-Z]*i|^--in-place/.test(a))) return [];
+  const comValor = OPCOES_COM_VALOR_DO_ESCRITOR[nome] || [];
+  const posicionais = [];
+  const destinos = [];
+  let scriptPorOpcao = false;
+  let fimDasOpcoes = false;
+  for (let k = 0; k < args.length; k += 1) {
+    const a = args[k];
+    if (fimDasOpcoes || !a.startsWith("-") || a === "-") { posicionais.push(a); continue; }
+    if (a === "--") { fimDasOpcoes = true; continue; }
+    const colado = /^--target-directory=(.*)$/s.exec(a);
+    if (colado && ESCRITORES_COM_DESTINO.has(nome)) { destinos.push(colado[1]); continue; }
+    if (/^(-t|--target-directory)$/.test(a) && ESCRITORES_COM_DESTINO.has(nome)) {
+      if (k + 1 < args.length) destinos.push(args[k + 1]);
+      k += 1;
+      continue;
+    }
+    if (/^(-e|-f|--expression=|--file=)/.test(a) && nome === "sed") scriptPorOpcao = true;
+    if (comValor.includes(a)) k += 1;
+  }
+  let alvos;
+  if (ESCRITORES_COM_DESTINO.has(nome)) alvos = destinos.concat(posicionais.slice(-1));
+  else if (nome === "sed") alvos = scriptPorOpcao ? posicionais : posicionais.slice(1);
+  else alvos = posicionais;
+  return alvos.map(com);
+}
+
 /**
  * Alvos da rede (D1-D5): um `{dir: <principal>, incerto: true}` por segmento que cita
  * caminho do principal fora de leitura, ou que roda com cwd no principal. Vazio
@@ -1905,11 +1958,36 @@ function alvosDaRede(comando, cwd, ehPowerShell, soVeredito = false) {
     }
     return null;
   };
+  // #580 (D1): alvo de escritor conhecido que comeca com expansao, no segmento, dentro de
+  // substituicao (`$(...)`, crase) e dentro de `bash -c`/`sh -c`.
+  const escritorComExpansao = (texto, profundidade = 0) => {
+    if (ehPowerShell || profundidade > 4) return null;
+    for (const seg of segmentosDaRede(texto, false)) {
+      const toks = tokensComAspas(seg);
+      const achado = alvosDeEscritor(toks).find((a) => expansaoNoInicio(a.alvo));
+      if (achado) return achado;
+      const pos = posicaoDeComando(toks);
+      if (pos === null || pos === undefined) continue;
+      const { interno, ilegivel } = desempacotarWrapperDeString(textoAPartir(toks, pos), { ferramenta: "Bash" });
+      const dentro = interno !== null && !ilegivel ? escritorComExpansao(interno, profundidade + 1) : null;
+      if (dentro) return dentro;
+    }
+    for (const corpo of corposDeSubstituicao(texto)) {
+      const dentro = escritorComExpansao(corpo, profundidade + 1);
+      if (dentro) return dentro;
+    }
+    return null;
+  };
   const comExpansao = (texto) => {
     const destino = destinoComExpansao(texto);
     if (destino) {
       return `Destino de redirecionamento comeca com variavel: ${destino}\n` +
         `O gate nao julga o valor de variavel no destino. Saida: escreva o caminho literal\nno comando, ou grave o arquivo com a ferramenta Write.`;
+    }
+    const escrita = escritorComExpansao(texto);
+    if (escrita) {
+      return `Alvo de ${escrita.comando} comeca com variavel ou substituicao: ${escrita.alvo}\n` +
+        `O gate nao julga o valor de variavel no caminho. Saida: escreva o caminho literal\nno comando, ou grave o arquivo com a ferramenta Write.`;
     }
     return null;
   };

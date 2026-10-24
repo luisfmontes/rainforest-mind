@@ -2081,7 +2081,10 @@ EOC
 g573 '#573 B: comando real do incidente (agent-aaf21d7221e8dde7d.jsonl:173) segue 2' 2 "$inc"
 # O mesmo comando reescrito como a mensagem manda (caminho absoluto no lugar do `cd -`) passa.
 # `cd ..` nao serve: com `$(` na linha o gate le `..` a partir do cwd do agente.
-inc2=$(printf '%s' "$inc" | sed "s#cd - >/dev/null#cd $WN#")
+# #580 (D2): o `cp "$F" "$SCR/x"` do incidente passa a barrar pela D1 (alvo de escritor com
+# expansao no inicio), entao a reescrita troca tambem `"$F"` e `"$SCR` pelos caminhos literais.
+inc2=$(printf '%s' "$inc" | sed -e "s#cd - >/dev/null#cd $WN#" -e 's#"\$F"#"sub/_powershell.py"#g' -e "s#\"\\\$SCR#\"$SCR573#g")
+case "$inc2" in *'"$F"'*|*'"$SCR'*) falhou=$((falhou+1)); echo "  FALHA #573 B: a reescrita do incidente ainda tem \$F ou \$SCR";; esac
 case "$inc2" in *"cd -"*) falhou=$((falhou+1)); echo "  FALHA #573 B: a reescrita do incidente ainda tem cd -";; esac
 g573 '#573 B: incidente reescrito com cd <worktree> passa' 0 "$inc2"
 # Seguem 2: opcoes e cd sem destino de verdade continuam barrando.
@@ -2134,7 +2137,8 @@ if [ -n "$CPD_573_SET" ]; then export CLAUDE_PROJECT_DIR="$CPD_573"; else unset 
 unset NAO_DEFINIDA
 g573a '#573 A: echo x > "$NAO_DEFINIDA/f" segue 2' 2 'echo x > "$NAO_DEFINIDA/f"'
 # Vizinhos legitimos: variavel como argumento (fora da rede de destino) e caminho literal.
-g573a '#573 A: vizinho D=<scratchpad>; touch "$D/f" passa' 0 'D=__SCR__; touch "$D/f"'
+# #580 (D2): o alvo do `touch` comeca com variavel e passa a barrar, como o destino de `>`.
+g573a '#573 A: vizinho D=<scratchpad>; touch "$D/f" barra (#580 D2)' 2 'D=__SCR__; touch "$D/f"'
 g573a '#573 A: vizinho echo x > "<scratchpad>/f" literal passa' 0 'echo x > "__SCR__/f"'
 
 echo
@@ -2220,6 +2224,72 @@ gate_stderr '#580 D1: true || true; echo x > "$CLAUDE_PROJECT_DIR/f" da a saida 
   "$(b 'true || true; echo x > "$CLAUDE_PROJECT_DIR/f"' "$WN")" 'escreva o caminho literal' 'diretorio de trabalho principal'
 gate_stderr '#580 D1: echo "$(date)" > "$CLAUDE_PROJECT_DIR/f" da a saida da ferramenta Write' \
   "$(b 'echo "$(date)" > "$CLAUDE_PROJECT_DIR/f"' "$WN")" 'ferramenta Write' 'diretorio de trabalho principal'
+
+echo
+echo "== #580 D1: alvo de escritor com expansao no inicio =="
+# Alvo de `touch`, `cp`, `mv`, `tee`, `mkdir`, `rm`, `ln`, `install`, `sed -i` e `of=` do `dd` que
+# COMECA com expansao barra, inclusive por wrapper, dentro de substituicao e de `bash -c`. Origem,
+# script do `sed`, comando fora da lista, texto citado e corpo de heredoc nao contam.
+# __FORA__ e __WN__ sao trocados pelo s573.
+g580e() { gate "$1" "$2" "$(b "$(printf '%s' "$3" | s573)" "$WN")"; }
+g580e 'touch "$CLAUDE_PROJECT_DIR/f" barra' 2 'touch "$CLAUDE_PROJECT_DIR/f"'
+g580e 'cp a.txt "$CLAUDE_PROJECT_DIR/f" barra' 2 'cp a.txt "$CLAUDE_PROJECT_DIR/f"'
+g580e 'D=<fora>; touch "$D/f" barra' 2 'D=__FORA__; touch "$D/f"'
+g580e 'D=<fora>; cp a.txt "$D/f" barra' 2 'D=__FORA__; cp a.txt "$D/f"'
+g580e 'mv a.txt "$X/f" barra' 2 'mv a.txt "$X/f"'
+g580e 'echo x | tee -a "$X/f" barra' 2 'echo x | tee -a "$X/f"'
+g580e 'mkdir -p "$X/d" barra' 2 'mkdir -p "$X/d"'
+g580e 'rm -rf "$X/d" barra' 2 'rm -rf "$X/d"'
+g580e 'ln -s a.txt "$X/l" barra' 2 'ln -s a.txt "$X/l"'
+g580e 'install -D a.txt "$X/f" barra' 2 'install -D a.txt "$X/f"'
+g580e "sed -i 's/a/b/' \"\$X/f\" barra" 2 "$(cat <<'EOC'
+sed -i 's/a/b/' "$X/f"
+EOC
+)"
+g580e 'dd if=a.txt of="$X/f" barra' 2 'dd if=a.txt of="$X/f"'
+g580e 'cp -t "$X" a.txt barra' 2 'cp -t "$X" a.txt'
+g580e 'cp --target-directory="$X" a.txt barra' 2 'cp --target-directory="$X" a.txt'
+g580e 'touch -- "$X/f" barra' 2 'touch -- "$X/f"'
+g580e 'env FOO=1 touch "$X/f" barra' 2 'env FOO=1 touch "$X/f"'
+g580e '"touch" "$X/f" barra' 2 '"touch" "$X/f"'
+g580e 'touch "$(git rev-parse --show-toplevel)/../../f" barra' 2 'touch "$(git rev-parse --show-toplevel)/../../f"'
+g580e 'echo "$(touch "$X/f")" barra' 2 'echo "$(touch "$X/f")"'
+g580e "bash -c 'touch \"\$X/f\"' barra" 2 "$(cat <<'EOC'
+bash -c 'touch "$X/f"'
+EOC
+)"
+# Vizinhos que passam.
+g580e 'touch "<W>/f" (literal) passa' 0 'touch "__WN__/f"'
+g580e 'cp a.txt sub/f passa' 0 'cp a.txt sub/f'
+g580e 'touch out-$(date).json passa' 0 'touch out-$(date).json'
+g580e 'touch ./dist/$NOME.js passa' 0 'touch ./dist/$NOME.js'
+g580e 'cp "$SRC/a.txt" b.txt (so a origem e variavel) passa' 0 'cp "$SRC/a.txt" b.txt'
+g580e 'sed -i "s/$X/y/" f.txt (variavel so no script) passa' 0 'sed -i "s/$X/y/" f.txt'
+g580e 'sed "s/a/b/" "$X/f" (sem -i) passa' 0 'sed "s/a/b/" "$X/f"'
+g580e 'node x.cjs "$X/f" passa' 0 'node x.cjs "$X/f"'
+g580e "grep -rn 'touch \"\$X/f\"' docs/ passa" 0 "$(cat <<'EOC'
+grep -rn 'touch "$X/f"' docs/
+EOC
+)"
+g580e "echo 'cp a \"\$X/f\"' passa" 0 "$(cat <<'EOC'
+echo 'cp a "$X/f"'
+EOC
+)"
+g580e "git commit -m \"\$(printf 'touch \"\$X/f\"')\" passa" 0 "$(cat <<'EOC'
+git commit -m "$(printf 'touch "$X/f"')"
+EOC
+)"
+g580e 'git commit -F msg.txt depois de heredoc com rm -rf "$X" no corpo passa' 0 "$(cat <<'EOC'
+cat <<'EOF' > msg.txt
+rm -rf "$X"
+EOF
+git commit -F msg.txt
+EOC
+)"
+gate_stderr '#580 D1: D=<fora>; touch "$D/f" nomeia o comando, o alvo e a saida' \
+  "$(b "$(printf '%s' 'D=__FORA__; touch "$D/f"' | s573)" "$WN")" 'Alvo de touch comeca com variavel ou substituicao: $D/f' 'diretorio de trabalho principal'
+gate_stderr '#580 D1: cp a.txt "$CLAUDE_PROJECT_DIR/f" da a saida da ferramenta Write' \
+  "$(b 'cp a.txt "$CLAUDE_PROJECT_DIR/f"' "$WN")" 'ferramenta Write' 'diretorio de trabalho principal'
 if [ -n "$CPD_580_SET" ]; then export CLAUDE_PROJECT_DIR="$CPD_580"; else unset CLAUDE_PROJECT_DIR; fi
 
 echo "== resultado: $ok ok, $falhou falha(s) =="
