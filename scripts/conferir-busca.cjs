@@ -73,7 +73,25 @@ function ehTeste(caminho) {
     || /_test\./.test(base)
     || /\.spec\./.test(base)
     || /(^|\/)test\//.test(caminho)
-    || /^tests\//.test(caminho);
+    || /(^|\/)tests\//.test(caminho);
+}
+
+/** Caminho com `\` (Windows) vira `/` antes de qualquer checagem. A caixa não muda: o git é sensível. */
+function normalizarCaminho(caminho) {
+  return caminho.replace(/\\/g, '/');
+}
+
+/** Tarefa que o checador cobra: tipo vazio ou `implementar`, fora da lista de tipos isentos. */
+function tarefaCobrada(tarefa) {
+  if (TIPOS_NAO_COBRADOS.includes(tarefa.tipo)) return false;
+  return tarefa.tipo === '' || tarefa.tipo === 'implementar';
+}
+
+/** Caminhos concretos de código da tarefa (sem glob, teste nem `.md`), já normalizados. */
+function candidatosDe(tarefa) {
+  return tarefa.arquivos
+    .map(normalizarCaminho)
+    .filter((c) => !ehGlob(c) && !ehTeste(c) && !c.endsWith('.md'));
 }
 
 function existeNoHead(repo, caminho) {
@@ -92,21 +110,21 @@ function lerLinhaBusca(linha) {
   const partes = linha.split('|').map((p) => p.trim());
   const canal = (partes[0] || '').toLowerCase();
   if (partes.length < 2) {
-    return { canal, problema: `linha sem resultado nem \`pulado:\`: "${linha}"` };
+    return { canal, pulado: false, problema: `linha sem resultado nem \`pulado:\`: "${linha}"` };
   }
   const ultimo = partes[partes.length - 1];
   if (/^pulado:/i.test(ultimo)) {
     const motivo = ultimo.replace(/^pulado:/i, '').trim();
-    if (!motivo) return { canal, problema: `\`pulado:\` sem motivo: "${linha}"` };
-    return { canal, problema: null };
+    if (!motivo) return { canal, pulado: true, problema: `\`pulado:\` sem motivo: "${linha}"` };
+    return { canal, pulado: true, problema: null };
   }
   if (partes.length < 3) {
-    return { canal, problema: `linha sem resultado nem \`pulado:\`: "${linha}"` };
+    return { canal, pulado: false, problema: `linha sem resultado nem \`pulado:\`: "${linha}"` };
   }
   const consulta = partes.slice(1, -1).join(' | ');
-  if (!consulta) return { canal, problema: `linha sem consulta: "${linha}"` };
-  if (!ultimo) return { canal, problema: `linha sem resultado: "${linha}"` };
-  return { canal, problema: null };
+  if (!consulta) return { canal, pulado: false, problema: `linha sem consulta: "${linha}"` };
+  if (!ultimo) return { canal, pulado: false, problema: `linha sem resultado: "${linha}"` };
+  return { canal, pulado: false, problema: null };
 }
 
 // ================================================================ Comando plano
@@ -122,6 +140,13 @@ function cmdPlano() {
     process.exit(2);
   }
 
+  // Git só é exigido quando alguma tarefa cobrada tem candidato a caminho novo.
+  const cobradas = extrairTarefas(conteudo).filter(tarefaCobrada);
+  if (!cobradas.some((t) => candidatosDe(t).length > 0)) {
+    console.log('ok: nenhuma tarefa cria caminho novo de código sem busca:');
+    return;
+  }
+
   const repo = raizDoRepo(path.dirname(path.resolve(arquivo)));
   if (!repo) {
     console.error('nao-verificavel: o plano não está num repositório git');
@@ -131,12 +156,9 @@ function cmdPlano() {
   const recusas = [];
   let exigidas = 0;
 
-  for (const tarefa of extrairTarefas(conteudo)) {
-    const { numero, nome, tipo, arquivos, busca } = tarefa;
-    if (TIPOS_NAO_COBRADOS.includes(tipo)) continue;
-    if (tipo !== '' && tipo !== 'implementar') continue;
-
-    const candidatos = arquivos.filter((c) => !ehGlob(c) && !ehTeste(c) && !c.endsWith('.md'));
+  for (const tarefa of cobradas) {
+    const { numero, nome, busca } = tarefa;
+    const candidatos = candidatosDe(tarefa);
     const caminhosNovos = candidatos.filter((c) => !existeNoHead(repo, c));
 
     // Gatilho D7: caminho novo de código na tarefa. Não basta tocar arquivo existente.
@@ -152,17 +174,22 @@ function cmdPlano() {
       continue;
     }
 
-    const canais = [];
+    let temRepo = false;
+    let repoPulado = false;
     for (const linha of busca.linhas) {
-      const { canal, problema } = lerLinhaBusca(linha);
-      canais.push(canal);
+      const { canal, pulado, problema } = lerLinhaBusca(linha);
       if (problema) {
         recusas.push(`${quem}; bloco \`busca:\` com linha inválida: ${problema}. Formato: ${FORMATO_LINHA}.`);
+      } else if (canal === 'repo' && pulado) {
+        repoPulado = true;
+        recusas.push(`${quem}; o canal \`repo\` não aceita \`pulado:\`. Falta uma linha \`- repo | <consulta> | <resultado>\`, mesmo que o resultado seja "nada encontrado".`);
+      } else if (canal === 'repo') {
+        temRepo = true;
       }
     }
     if (busca.linhas.length === 0) {
       recusas.push(`${quem}; \`busca:\` sem nenhuma linha. Falta: ${FORMATO_LINHA}.`);
-    } else if (!canais.includes('repo')) {
+    } else if (!temRepo && !repoPulado) {
       recusas.push(`${quem}; \`busca:\` sem o canal \`repo\`. Falta uma linha \`- repo | <consulta> | <resultado>\`.`);
     }
 

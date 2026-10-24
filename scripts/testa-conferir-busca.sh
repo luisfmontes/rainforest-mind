@@ -197,6 +197,39 @@ echo "== 5. conferir-fluxo cobertura: aceita busca: e desfecho: como campos de t
 { printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/novo.cjs`' "$BUSCA_OK" "$DESF_OK"; } > "$P"
 caso "cobertura aceita tarefa com busca: e desfecho:" 0 '' env RFM_ESTADO_ROOT="$W" node "$CHECADOR_FLUXO" cobertura --slug t --design "$D" --plano "$P"
 
+echo
+echo "== 6. achados do revisor (rodada 2) =="
+
+# Achado 1: `pulado:` nao vale para o canal repo.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/novo.cjs`' '- repo | pulado: sem tempo' "$DESF_OK"; } > "$P"
+caso "achado 1: repo com pulado: nao conta como canal repo" 2 'o canal `repo` não aceita `pulado:`' CHK plano --slug t --plano "$P"
+
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/novo.cjs`' '- repo | pulado: sem tempo
+- livro | pulado: sem repositório de terceiro' 'desfecho: construir'; } > "$P"
+caso "achado 1: busca so com pulado: (nada encontrado sem canais) e recusada" 2 'o canal `repo` não aceita `pulado:`' CHK plano --slug t --plano "$P"
+
+# Achado 2: git so e' exigido quando ha candidato a caminho novo.
+ND="$(mktemp -d)"; SANDBOXES+=("$ND")
+{ printf '%s' "$PLANO_CAB"; tarefa 1 docs '`docs/x.md`' '' ''; } > "$ND/p.md"
+caso "achado 2: sem git, plano sem candidato a caminho novo sai 0" 0 'ok:' env RFM_ESTADO_ROOT="$ND" node "$CHECADOR" plano --slug t --plano "$ND/p.md"
+
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/novo.cjs`' '' ''; } > "$ND/p.md"
+caso "achado 2: sem git, plano com candidato a caminho novo continua exit 69" 69 'nao-verificavel' env RFM_ESTADO_ROOT="$ND" node "$CHECADOR" plano --slug t --plano "$ND/p.md"
+
+# Achado 7: tests/ em qualquer nivel, barra invertida normalizada.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`pkg/tests/foo.py`' '' ''; } > "$P"
+caso "achado 7: tests/ aninhado nao e' codigo novo" 0 '' CHK plano --slug t --plano "$P"
+
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts\existente.cjs`' '' ''; } > "$P"
+caso "achado 7: barra invertida de arquivo existente passa" 0 '' CHK plano --slug t --plano "$P"
+
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts\novo.cjs`' '' ''; } > "$P"
+caso "achado 7: barra invertida de arquivo novo e' recusada com barra normal" 2 'scripts/novo\.cjs' CHK plano --slug t --plano "$P"
+
+# Caixa diferente: sensivel, como o git. Documentado na skill.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`Scripts/Existente.cjs`' '' ''; } > "$P"
+caso "achado 7: caixa diferente do HEAD conta como caminho novo (sensivel, como o git)" 2 'Scripts/Existente\.cjs' CHK plano --slug t --plano "$P"
+
 echo "-----------------------------------------"
 echo "total=$total vermelhas:[$(IFS=,; echo "${vermelhas[*]}")]"
 [ "${#vermelhas[@]}" -eq 0 ]

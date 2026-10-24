@@ -75,7 +75,7 @@ Cada tarefa leva: **tipo**, `atende:` (lista de `D<n>` do design que esta tarefa
 
 ### Campo `busca:` — procurar antes de construir
 
-Tarefa `implementar` (ou sem tipo) que cria caminho novo de código, um arquivo que não existe no commit base, declara a busca feita antes de escrever. Teste (`testa-*`, `test/`, `tests/`, `*.test.*`, `*_test.*`, `*.spec.*`), `.md` e glob não contam: tarefa que cria a própria bateria não paga o bloco.
+Tarefa `implementar` (ou sem tipo) que cria caminho novo de código, um arquivo que não existe no commit base, declara a busca feita antes de escrever. Teste (`testa-*`, `test/` e `tests/` em qualquer pasta, `*.test.*`, `*_test.*`, `*.spec.*`), `.md` e glob não contam: tarefa que cria a própria bateria não paga o bloco. O caminho é conferido com `/`: `\` vira `/` antes da checagem. A caixa não muda: o git é sensível, então `Scripts/Existente.cjs` conta como caminho novo quando o arquivo está no HEAD como `scripts/existente.cjs`. Escreva o caminho com a caixa que o repo tem.
 
 ```
 busca:
@@ -85,9 +85,9 @@ desfecho: construir
 ```
 
 - **Linha:** `- <canal> | <consulta> | <resultado>`, ou `- <canal> | pulado: <motivo>` quando o canal não se aplica. A consulta pode ter `|` (regex do rg); o resultado é sempre o último campo.
-- **Canal `repo` é obrigatório.** Sugeridos: `repo` (o código do próprio repo), `livro` (`vigias/livro-de-repos.md`), `ideias` (`ideias.jsonl`), `memoria`, `web`.
+- **Canal `repo` é obrigatório.** Sugeridos: `repo` (o código do próprio repo), `livro` (`vigias/livro-de-repos.md`), `ideias` (`ideias.jsonl`), `memoria`, `web`. `pulado:` não vale para o `repo`: `- repo | pulado: <motivo>` é recusa. Quando a busca no repo não acha nada, o resultado diz isso (`- repo | rg "..." scripts | nada reaproveitável`).
 - **`desfecho:`** é uma destas cinco palavras: `adotar` (serve como está), `estender` (acrescenta a algo existente), `compor` (junta peças existentes), `enxertar` (reimplementa o mecanismo de terceiro depois de lido; trilha em `vigias/livro-de-repos.md`), `construir` (nada serve). Outra palavra é recusa.
-- **Quem confere:** `node scripts/conferir-busca.cjs plano --slug <slug>`, que o `estado.cjs marcar --estagio plano` roda junto da cobertura. A recusa diz a tarefa, o caminho novo que a disparou e o que falta.
+- **Quem confere:** `node scripts/conferir-busca.cjs plano --slug <slug>`, que o `estado.cjs marcar --estagio plano` roda junto da cobertura. A recusa diz a tarefa, o caminho novo que a disparou e o que falta. Sem caminho novo de código no plano, o checador sai 0 mesmo fora de repositório git: o git só é exigido quando há candidato.
 - **Origem:** o padrão vem do ECC `skills/search-first`, que é só prosa ("agent guidance, not an executable setup script"). Aqui o "nada encontrado" sem canais é recusa, não atalho.
 
 ### Campo obrigatório: `mutacao:` — o alvo é declarado, nunca inferido
