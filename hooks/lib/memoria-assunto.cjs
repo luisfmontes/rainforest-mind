@@ -6,7 +6,7 @@
  */
 const path = require('path');
 const { filtroVivas } = require(path.join(__dirname, '..', '..', 'scripts', 'memoria.cjs'));
-const { formatarObservacao } = require('./memoria-sessao.cjs');
+const { formatarObservacao, MOLDURA_MEMORIA } = require('./memoria-sessao.cjs');
 
 // bm25 do FTS5 é negativo (mais negativo = mais relevante). Entra a candidata
 // com bm25 <= LIMIAR_BM25. Calibrado em docs/rainforest/referencia/2026-10-08-limiar-memoria-assunto.md.
@@ -74,7 +74,7 @@ function buscarPorAssunto(conexao, texto, { projetoAtual, jaServidos = new Set()
 // primeiro estouro do teto. Quem grava "ja servido" usa `ids`, nao as candidatas (#436, D5).
 function montarBlocoAssuntoComIds(linhas) {
   if (!Array.isArray(linhas) || linhas.length === 0) return { bloco: '', ids: [] };
-  let bloco = CABECALHO;
+  let bloco = CABECALHO + MOLDURA_MEMORIA;
   const ids = [];
   for (const l of linhas) {
     const proxima = bloco + '\n' + formatarObservacao(l, null, 300);

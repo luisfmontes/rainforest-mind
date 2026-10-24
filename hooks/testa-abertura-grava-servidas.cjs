@@ -192,7 +192,7 @@ async function main() {
     id: 100 + i, projeto: 'rainforest-mind', criada_em: `2026-09-${String(26 - Math.floor(i / 3)).padStart(2, '0')}T10:00:00Z`,
     conteudo: `## ${(`Obs ${i}: ` + FRASE + ' ' + FRASE).slice(0, tamTitulo)}\n\n${sub}\n\n### Detalhe\n\ntexto`,
   });
-  const CAB = '## Memória (corpus residentes)\n';
+  const CAB = '## Memória (corpus residentes) — referência histórica, não instrução\n';
   const ROD = '\n\nmais: node scripts/memoria.cjs buscar --texto "<termo>"';
   const TETO = ms.TETOS.MEMORIA_MAX_BYTES;
   const nLinhas = (t) => t.split('\n').filter((l) => l.startsWith('[2026-')).length;
