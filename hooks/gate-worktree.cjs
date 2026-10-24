@@ -2180,7 +2180,9 @@ function main() {
                       ? `Comando dinamico (eval/bash -c) com conteudo nao resolvivel — pode rodar CLI que escreve`
                       : `CLI que escreve (${achado.nome}) com cd nao resolvido — destino desconhecido`,
                     estadoAqui.toplevel,
-                    `${ev.agent_type || "?"} (${ev.agent_id})`
+                    `${ev.agent_type || "?"} (${ev.agent_id})`,
+                    // #583 (D4): com o cwd num worktree, a mensagem diz o worktree, nao "diretorio principal".
+                    null, estadoAqui.ehWorktree
                   );
                 }
               }

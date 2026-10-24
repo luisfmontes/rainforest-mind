@@ -2310,5 +2310,19 @@ g580e 'node x.cjs --raiz "<principal>" barra' 2 'node x.cjs --raiz "__R__"'
 g580e 'node <principal>/scripts/x.cjs barra' 2 'node __R__/scripts/x.cjs'
 if [ -n "$CPD_580_SET" ]; then export CLAUDE_PROJECT_DIR="$CPD_580"; else unset CLAUDE_PROJECT_DIR; fi
 
+echo
+echo "== #583: comando dinamico com cwd no worktree =="
+# `source`, `.` e `eval` seguem barrados (o gate nao le o script), mas com o cwd no worktree a
+# mensagem nomeia o comando dinamico e nao diz "diretorio de trabalho principal". Com o cwd no
+# principal, a mensagem do principal continua.
+g583() { gate_stderr "$1" "$(b "$2" "$WN")" 'Comando dinamico' 'diretorio de trabalho principal'; }
+g583 '. ./x.sh nao diz diretorio principal' '. ./x.sh'
+g583 'source ./x.sh nao diz diretorio principal' 'source ./x.sh'
+g583 'source .venv/bin/activate && python -m pytest -q nao diz diretorio principal' 'source .venv/bin/activate && python -m pytest -q'
+g583 'eval "$(ssh-agent)" nao diz diretorio principal' 'eval "$(ssh-agent)"'
+g583 'cd - && source ./x.sh nao diz diretorio principal' 'cd - && source ./x.sh'
+gate_stderr '#583: source ./x.sh com cwd no principal continua dizendo diretorio principal' \
+  "$(b 'source ./x.sh' "$R")" 'Este e o diretorio de trabalho principal'
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
