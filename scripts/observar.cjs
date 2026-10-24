@@ -179,6 +179,42 @@ function lerTranscritoComOffsets(caminhoTranscrito, offsetInicio) {
   }
 }
 
+// Blocos que o harness injeta no texto de um prompt `type:"user"` (D3). Saem antes da LLM.
+const TAGS_INJETADAS = [
+  'system-reminder', 'command-name', 'command-message', 'command-args',
+  'local-command-stdout', 'local-command-stderr',
+];
+const MARCA_NOTIFICACAO_HARNESS = '[SYSTEM NOTIFICATION - NOT USER INPUT]';
+
+// Bloco fechado, não guloso e sem abertura aninhada: abertura sem fechamento fica intacta.
+function reBloco(tag) {
+  return new RegExp('<' + tag + '>((?:(?!<' + tag + '>)[\\s\\S])*?)</' + tag + '>', 'g');
+}
+
+// Remove blocos injetados do texto do prompt. <task-notification> vira linha `Agente: <summary>`.
+// Prompt que fica vazio volta ''. Função pura: não lê nem grava nada.
+function removerBlocosInjetados(texto) {
+  let t = String(texto);
+  t = t.replace(reBloco('task-notification'), (_, corpo) => {
+    const m = corpo.match(/<summary>([\s\S]*?)<\/summary>/);
+    const resumo = m ? m[1].replace(/\s+/g, ' ').trim() : '';
+    return '\nAgente: ' + (resumo || '(sem resumo)') + '\n';
+  });
+  for (const tag of TAGS_INJETADAS) t = t.replace(reBloco(tag), '');
+  // Linha de notificação do harness e o parágrafo de aviso que vem logo depois (até a primeira linha vazia).
+  const saida = [];
+  let pulando = false;
+  for (const linha of t.split('\n')) {
+    if (linha.includes(MARCA_NOTIFICACAO_HARNESS)) { pulando = true; continue; }
+    if (pulando) {
+      if (linha.trim() === '') { pulando = false; saida.push(linha); }
+      continue;
+    }
+    saida.push(linha);
+  }
+  return saida.join('\n').trim();
+}
+
 // Formata eventos para passar à LLM.
 // Extrai conteúdo relevante de cada evento (prompts, respostas, chamadas de ferramenta).
 // Schema real dos transcritos (Claude Code):
@@ -192,9 +228,13 @@ function formatarParaLLM(eventos) {
     // Apenas "user" e "assistant" carregam conteúdo conversacional
     if (evento.type === 'user' && evento.message && evento.message.content) {
       const conteudo = evento.message.content;
-      const texto = typeof conteudo === 'string' ? conteudo : '';
-      if (texto.trim()) {
-        resumo.push(`Prompt: ${texto}`);
+      const texto = removerBlocosInjetados(typeof conteudo === 'string' ? conteudo : '');
+      if (texto) {
+        const linhas = texto.split('\n');
+        const agentes = linhas.filter((l) => l.startsWith('Agente: '));
+        const fala = linhas.filter((l) => !l.startsWith('Agente: ')).join('\n').trim();
+        for (const a of agentes) resumo.push(a);
+        if (fala) resumo.push(`Prompt: ${fala}`);
       }
     }
 
@@ -726,4 +766,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { processarSessao, chamarLLM };
+module.exports = { processarSessao, chamarLLM, formatarParaLLM, removerBlocosInjetados };
