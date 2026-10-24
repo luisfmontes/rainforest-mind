@@ -53,7 +53,7 @@ pronto quando: num banco temporário (`RFM_ROOT` em `mktemp -d` fora do worktree
 
 ### 4. Busca antes de construir: campo `busca:` e checador [tipo: implementar]
 atende: D7
-arquivos: `scripts/conferir-busca.cjs`, `scripts/conferir-fluxo.cjs`, `scripts/estado.cjs`, `scripts/testa-conferir-busca.sh`, `scripts/testa-conferir-fluxo.sh`, `skills/plano/SKILL.md`, `skills/modo-dev/SKILL.md`
+arquivos: `scripts/conferir-busca.cjs`, `scripts/conferir-fluxo.cjs`, `scripts/estado.cjs`, `scripts/testa-conferir-busca.sh`, `scripts/testa-conferir-fluxo.sh`, `skills/plano/SKILL.md`, `skills/plano/references/campo-busca.md`, `skills/modo-dev/SKILL.md`, `scripts/testa-conferir-categoria.sh`, `scripts/contrato-plugin-codex.cjs`, `docs/travas-mecanicas.md`
 depende de: nenhuma
 prova: `bash scripts/testa-conferir-busca.sh`
 mutacao:

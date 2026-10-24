@@ -44,9 +44,11 @@ const ANCORA_CORPOS_SKILLS = {
   fechar: { bytes: 16065, sha256: '5f772f3678f07d47e970fcb5eac99145c58bb5f7b0f408500e958f5076ce8158' },
   // fechar, modo-dev e regua re-medidos em 2026-10-05: a revisao bimestral
   // acrescentou texto de proposito (E4, E25, E27, E30).
-  // modo-dev re-medido em 2026-09-30: o fluxo semear-travas (tarefa 9) acrescentou
-  // de proposito a linha do substituir.cjs.
-  'modo-dev': { bytes: 14586, sha256: '3db8c57befa113ebdf5a6051901d30c58002702c4bcfe3140542ae9e1a89a5d6' },
+  // modo-dev re-medido em 2026-10-24: o fluxo apoio-ao-dev-lote-1 (tarefa 4, D7)
+  // acrescentou de proposito o degrau 2b, que aponta para o campo `busca:` do plano.
+  // Antes, em 2026-09-30: o fluxo semear-travas (tarefa 9) acrescentou de proposito
+  // a linha do substituir.cjs.
+  'modo-dev': { bytes: 14931, sha256: '2e0379cd5e2571167d745623c136b5bc7878af7d4f3a994d2bb7b80f68d33939' },
   'montar-corpus': { bytes: 2935, sha256: 'f21d9af8be400bd8222f272b98ece70c1d01c92865e41f418340410b69bb11ab' },
   regua: { bytes: 16058, sha256: 'e55525133ad68af2282d07bd6f6cfca3a58d5b69973d034d4f8b6c58c26b7776' },
 };
