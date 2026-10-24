@@ -154,7 +154,7 @@
   "revisar": {
     "status": "ok",
     "snapshot": {
-      "head": "e406651916b3560b18eb6b0ec77d4f74e155b208",
+      "head": "0ee14edb0acbe34a3ced5bbed2b4a6b3ff2ec33c",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-10-24-apoio-ao-dev-lote-1.json"
       ]
@@ -162,29 +162,36 @@
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ad698a67fec4f90d7",
+        "agente_id": "af3305b0cff8131fe",
         "veredito": "ok",
         "em": "2026-10-24",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-ad698a67fec4f90d7.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-af3305b0cff8131fe.jsonl"
       }
     ],
     "em": "2026-10-24",
     "achados": 8,
-    "base": "c2fdd79bc1ea0221daa638f63b87afef7c8bc303",
-    "head": "e406651916b3560b18eb6b0ec77d4f74e155b208",
+    "base": "e406651916b3560b18eb6b0ec77d4f74e155b208",
+    "head": "0ee14ed",
     "veredito": "ok",
-    "rodada": 3,
+    "rodada": "3b",
     "achados_abertos": [
       "conferir-busca: aspas simples nao protegem o pipe (documentado: so duplas)",
       "CHANGELOG 1.75.0 sem o marcador SYSTEM NOTIFICATION e sem .dir/ e ./",
       "modo-dev:166 frase ambigua sobre pulado no repo"
-    ]
+    ],
+    "escopo": "CHANGELOG 1.75.0 (duas frases) e JSON de estado"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "em": "2026-10-24",
+    "comando": "node criterio1.js scripts/observar.cjs <transcrito real da sessao>; bash scripts/testa-memoria-injecao-segura.sh; bash scripts/testa-memoria-janela.sh; bash scripts/testa-conferir-busca.sh; node scripts/conferir-fluxo.cjs cobertura --slug 2026-10-24-apoio-ao-dev-lote-1; bash scripts/testa-conferir-ancoras.sh; grep -c \"^## G\" relatorios/2026-10-24-releitura-do-livro.md; grep -ciE \"montes|@totvs|Users/\" relatorios/2026-10-24-releitura-do-livro.md; node -e versao plugin.json",
+    "saida": "T1: 0 true true (0 tags em Prompt:, ha linha Agente:, fala real presente; 0 ocorrencias em 64608 B); T2: total=8 vermelhas:[]; T3: total=9 vermelhas:[]; T4: total=26 vermelhas:[] e cobertura valida 10 decisoes 7 tarefas; T5: total=38 vermelhas:[]; T6: 10 secoes G, 0 dado pessoal, livro aponta o relatorio (1); T7: 1.75.0 e 1.75.0",
+    "sensor_externo": "node scripts/conferir-fluxo.cjs cobertura",
+    "head": "0ee14edb0acbe34a3ced5bbed2b4a6b3ff2ec33c"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-10-24"
   },
   "decididos": [
     {
@@ -221,6 +228,41 @@
       "porque": "o proprio revisor diz que D4 continua valida; o sufixo ja foi decidido (decididos) e so o texto do design ficou para tras, como D3 foi alinhado; o marcador ja esta na lista de D3, que D4 manda neutralizar. Nenhuma D muda, entao nao e parada do modo autonomo",
       "estagio": "executar",
       "em": "2026-10-24T20:43:19.482Z"
+    },
+    {
+      "pergunta": "Rodada 3: removerBloco cubico, o revisor sugeriu break quando nao ha fechamento",
+      "escolha": "Passada unica com pilha em vez do break",
+      "porque": "o break mudaria a saida do caso aninhado com abertura externa orfa; fuzz de 300 mil entradas contra o codigo antigo deu 0 diferencas e o custo ficou linear",
+      "estagio": "revisar",
+      "em": "2026-10-24T23:07:38.290Z"
+    },
+    {
+      "pergunta": "Rodada 3: SKILL do plano seguia acima do teto (17.130 B) mesmo sem a secao busca",
+      "escolha": "Mover a secao Evidencia do verificar para skills/plano/references/evidencia-do-verificar.md, com paragrafo-ponteiro",
+      "porque": "e a secao que fala do verificar, nao do plano; texto movido sem reescrita (diff identico); SKILL ficou em 15.829 B",
+      "estagio": "revisar",
+      "em": "2026-10-24T23:07:38.389Z"
+    },
+    {
+      "pergunta": "Rodada 3: testa-abertura-mod-memoria compara com golden de d5d2a203, anterior a moldura de D4",
+      "escolha": "A comparacao tira so MOLDURA_MEMORIA dos dois lados; o resto segue byte a byte",
+      "porque": "a moldura e mudanca decidida em D4; o texto literal do cabecalho segue fixado por testa-memoria-session-start, -escada e grava-servidas",
+      "estagio": "revisar",
+      "em": "2026-10-24T23:07:38.499Z"
+    },
+    {
+      "pergunta": "Achados baixos da revisao r3: aspas simples no conferir-busca e frase do modo-dev:166",
+      "escolha": "Ficam para depois; so o CHANGELOG entrou, com executar reaberto e revisao curta",
+      "porque": "aspas simples ja documentadas como nao suportadas; mexer no modo-dev obriga re-medir a ancora Codex; nenhum dos dois muda comportamento entregue",
+      "estagio": "revisar",
+      "em": "2026-10-24T23:07:38.596Z"
+    }
+  ],
+  "reaberturas": [
+    {
+      "em": "2026-10-24",
+      "de": "revisar",
+      "motivo": "CHANGELOG 1.75.0 ganhou duas frases (achado baixo 2 da revisao r3) depois do revisar ok"
     }
   ]
 }
