@@ -16,8 +16,8 @@
     "em": "2026-10-24"
   },
   "executar": {
-    "status": "parcial",
-    "tarefas_ok": 6,
+    "status": "ok",
+    "tarefas_ok": 7,
     "tarefas": 7,
     "carimbos": [
       {
@@ -70,14 +70,7 @@
         "ts": "2026-10-24T19:35:41.869Z"
       }
     ],
-    "em_voo": [
-      {
-        "agente": "documentador",
-        "tarefa": "7 versao changelog readme",
-        "desde": "2026-10-24T21:40:00Z",
-        "sessao": "a8916a80-26c9-4137-b35b-c9bf409af105"
-      }
-    ],
+    "em_voo": [],
     "em": "2026-10-24",
     "integradas": [
       1,
@@ -85,7 +78,48 @@
       3,
       4,
       5,
-      6
+      6,
+      7
+    ],
+    "catraca_mutacao": "2026-10-24",
+    "comando": "node rodar-vizinhas.js <fluxo> scripts/testa-observar-injetado.sh scripts/testa-memoria-injecao-segura.sh scripts/testa-memoria-janela.sh scripts/testa-conferir-busca.sh scripts/testa-conferir-ancoras.sh",
+    "saida": "testa-observar-injetado exit=0 total=6 vermelhas:[]; testa-memoria-injecao-segura exit=0 total=6 vermelhas:[]; testa-memoria-janela exit=0 total=5 vermelhas:[]; testa-conferir-busca exit=0; testa-conferir-ancoras exit=0 total=18 vermelhas:[]",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-observar-injetado.sh, caso task-notification vira linha Agente e system-reminder some"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-injecao-segura.sh, caso observacao com system-reminder de fechamento sai neutralizada nos dois blocos"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-janela.sh, caso --desde exclui a observacao anterior a data"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-busca.sh, caso tarefa que cria scripts/novo.cjs sem busca: e recusada"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-ancoras.sh, caso [1-linha-alem-do-fim] linha alem do fim sai linha-fora"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "documento de registro, sem comportamento a inverter"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "metadado de versao e documentacao"
+      }
     ]
   },
   "revisar": {
