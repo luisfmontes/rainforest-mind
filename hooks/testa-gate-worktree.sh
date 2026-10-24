@@ -2324,5 +2324,14 @@ g583 'cd - && source ./x.sh nao diz diretorio principal' 'cd - && source ./x.sh'
 gate_stderr '#583: source ./x.sh com cwd no principal continua dizendo diretorio principal' \
   "$(b 'source ./x.sh' "$R")" 'Este e o diretorio de trabalho principal'
 
+echo
+echo "== #573 D5: causa do cd - na mensagem =="
+# A mensagem do `cd -` nomeia so o construto que esta na linha; os vereditos nao mudam.
+gate_stderr 'cd -; export FOO=1; ls nomeia export e nao bash -c' "$(b 'cd -; export FOO=1; ls' "$WN")" 'export' 'bash -c'
+gate_stderr 'cd -; export FOO=1; ls nao nomeia $(' "$(b 'cd -; export FOO=1; ls' "$WN")" 'export' '$('
+gate_stderr 'cd -; echo "$(pwd)" nomeia $( e nao export' "$(b 'cd -; echo "$(pwd)"' "$WN")" '$(' 'export'
+gate_stderr 'cd - && bash -c "echo x > f" nomeia bash -c' "$(b 'cd - && bash -c "echo x > f"' "$WN")" 'bash -c' 'diretorio de trabalho principal'
+gate_stderr 'cd -; eval x nomeia eval' "$(b 'cd -; eval x' "$WN")" 'eval' 'diretorio de trabalho principal'
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

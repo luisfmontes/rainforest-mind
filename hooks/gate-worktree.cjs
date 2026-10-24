@@ -1752,6 +1752,34 @@ function soComandosInertes(texto) {
     return COMANDOS_INERTES.has(cmd) && !(cmd === "printf" && sub === "-v");
   });
 }
+/**
+ * #573 (D5): os construtos da linha que impedem medir o `cd -`, na ordem: substituicao (`$(`,
+ * `<(`/`>(`), crase, interpretador com `-c`/`-e`, `source`/`.`, `eval` e definicao de variavel.
+ * Reaproveita `EXECUCAO_INDIRETA`, `FONTE_DE_SCRIPT` e `DEFINE_VARIAVEL`, testadas sobre o mesmo
+ * texto que `casaRedefinida` usa. Nunca devolve lista vazia.
+ */
+function causasDoCdMenos(comando) {
+  const junto = String(comando).replace(/\\\r?\n/g, "");
+  const semAspas = junto.replace(/["'\\]/g, "");
+  const causas = [];
+  const poe = (rotulo) => { if (!causas.includes(rotulo)) causas.push(rotulo); };
+  const indiretas = [...junto.matchAll(new RegExp(EXECUCAO_INDIRETA.source, "gi"))];
+  if (indiretas.some((m) => m[0].startsWith("$("))) poe("`$(`");
+  if (indiretas.some((m) => /^[<>]\(/.test(m[0]))) poe("`<(`/`>(`");
+  if (junto.includes("`")) poe("crase");
+  for (const m of indiretas) if (m[4]) poe(`\`${m[4]} ${m[7]}\``);
+  const fonte = FONTE_DE_SCRIPT.exec(semAspas);
+  if (fonte) poe(`\`${fonte[2]}\``);
+  for (const m of indiretas) if (m[2]) poe(`\`${m[2]}\``);
+  const definicoes = [...semAspas.matchAll(new RegExp(DEFINE_VARIAVEL.source, "gi"))];
+  if (definicoes.some((m) => m[2] && m[2].toLowerCase() === "eval")) poe("`eval`");
+  for (const m of definicoes) {
+    if (m[2] && m[2].toLowerCase() === "eval") continue;
+    poe(m[2] ? `\`${m[2]}\` (define variavel)` : /printf/i.test(m[0]) ? "`printf -v` (define variavel)" : "definicao de variavel");
+  }
+  return causas.length ? causas : ["comando que o gate nao mede"];
+}
+
 // Escrita na variavel: `=`, atribuicao composta (`+=`, `??=`), lista (`$env:X, $y =`) e `foreach ($env:X in`.
 const ESCRITA_DEPOIS = String.raw`(?!\s*(?:[-+*/%]|\?\?)?=(?!=)|\s*,|\s+in\b)`;
 function casaRedefinida(comando, ehPowerShell) {
@@ -2007,7 +2035,9 @@ function alvosDaRede(comando, cwd, ehPowerShell, soVeredito = false) {
     const comCaminho = medivel ? comando.replace(HIFEN, (_, a, b) => `${a}${b}${cwd}`) : comando;
     if (!soVeredito && !ehPowerShell && medivel && /(^|[\s;&|(`{])(?:cd|pushd)[ \t]+-(?=$|[\s;&|)}#<>])/.test(comando.replace(/["'\\]/g, "")) &&
         !alvosDaRede(comCaminho, cwd, false, true).length) {
-      return alvo("A linha usa `cd -` (volta ao diretorio anterior) junto de execucao indireta (`$(`, `bash -c`,\n`source`): o gate nao sabe para onde o `cd -` leva. Saida: troque o `cd -` pelo caminho\nabsoluto do diretorio (`cd /caminho/do/worktree`).");
+      // #573 (D5): a mensagem nomeia so o que esta na linha.
+      return alvo("A linha usa `cd -` (volta ao diretorio anterior) junto de " + causasDoCdMenos(comando).join(", ") +
+        ":\no gate nao sabe para onde o `cd -` leva. Saida: troque o `cd -` pelo caminho\nabsoluto do diretorio (`cd /caminho/do/worktree`).");
     }
     return alvo("A linha redefine a casa (HOME/USERPROFILE), ou usa a casa (`~`, `$HOME`, `cd` sem destino)\njunto de execucao indireta (`$(`, `bash -c`, `source`): o gate nao sabe para onde o shell vai.");
   }
