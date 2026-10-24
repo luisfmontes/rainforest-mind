@@ -75,6 +75,10 @@ O sandbox tinha `git init` do principal, o worktree do agente em `<P>/.claude/wo
 - Comando que roda script do principal por caminho absoluto continua barrado (D3).
 - Construir um parser de shell. A resolução da D1 é a lista fechada acima. Forma nova que não resolve cai na D2 (barra), não em código novo.
 
+## Em aberto
+
+Nada. As quatro decisões de fronteira (Q1–Q4) foram respondidas em 2026-10-24.
+
 ## Regra de parada
 
 Contorno que exija nova forma de expansão (aritmética, `${X:-y}`, `${X/a/b}`, indireção `${!X}`) cai na D2 e barra. Não vira caso novo na D1. Achado dessa classe vai como nota no PR.
