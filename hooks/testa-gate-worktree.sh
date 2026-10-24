@@ -2290,6 +2290,24 @@ gate_stderr '#580 D1: D=<fora>; touch "$D/f" nomeia o comando, o alvo e a saida'
   "$(b "$(printf '%s' 'D=__FORA__; touch "$D/f"' | s573)" "$WN")" 'Alvo de touch comeca com variavel ou substituicao: $D/f' 'diretorio de trabalho principal'
 gate_stderr '#580 D1: cp a.txt "$CLAUDE_PROJECT_DIR/f" da a saida da ferramenta Write' \
   "$(b 'cp a.txt "$CLAUDE_PROJECT_DIR/f"' "$WN")" 'ferramenta Write' 'diretorio de trabalho principal'
+
+echo
+echo "== #582: subagente em worktree linkado =="
+# Argumento de comando que nao esta na lista de escritores da D1 nao e julgado: o `--raiz
+# "$(git rev-parse --show-toplevel)"` e a forma que o briefing do `executar` manda usar. Cwd no
+# worktree linkado ($WN), CLAUDE_PROJECT_DIR no principal. Caminho do principal citado, ou script
+# do principal rodado por caminho absoluto, segue barrado.
+g580e "python3 -c \"open('a/b.py')\" passa" 0 "$(cat <<'EOC'
+python3 -c "open('a/b.py')"
+EOC
+)"
+g580e "python3 -c \"import ast;ast.parse(open('a/b.py', encoding='utf-8').read())\" passa" 0 "$(cat <<'EOC'
+python3 -c "import ast;ast.parse(open('a/b.py', encoding='utf-8').read())"
+EOC
+)"
+g580e 'node x.cjs --raiz "$(git rev-parse --show-toplevel)" passa' 0 'node x.cjs --raiz "$(git rev-parse --show-toplevel)"'
+g580e 'node x.cjs --raiz "<principal>" barra' 2 'node x.cjs --raiz "__R__"'
+g580e 'node <principal>/scripts/x.cjs barra' 2 'node __R__/scripts/x.cjs'
 if [ -n "$CPD_580_SET" ]; then export CLAUDE_PROJECT_DIR="$CPD_580"; else unset CLAUDE_PROJECT_DIR; fi
 
 echo "== resultado: $ok ok, $falhou falha(s) =="
