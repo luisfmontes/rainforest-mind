@@ -10,6 +10,25 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.74.0 — 2026-10-23
+
+- **A ronda de teste dos vigias só libera leitura (#581).** O `run-vigia.ps1 -Teste` negava 8 tools de envio do
+  WhatsApp por lista negra, e toda tool nova do bridge (sair de grupo, arquivar, marcar como lida, parear) entrava
+  liberada. Agora o `-Teste` roda com `--permission-mode dontAsk` e uma lista de permitidas: as nativas que a ronda
+  usa, o `gmail-leitura` e as de leitura do WhatsApp. O resto é negado na chamada. Fica fora da trava o `Bash`
+  falando direto com o bridge HTTP, e a ronda normal, que segue com bypass e a lista negra do gmail.
+- **Pasta em troca manual avisa quando a conta em uso chega ao limite (#584).** A pasta trocada na mão era pulada
+  pelo vigia sem olhar o uso, e ficou 4 dias com a conta pessoal a 100% da semana sem aviso. Ela continua sem
+  nenhuma ação automática, mas quando a conta em uso passa de 97% o vigia registra `manual_no_limite` e o aviso diz
+  a pasta, a conta, o percentual e o `/conta` que a devolve. Sai uma vez por estouro (mesmo limite e mesmo reset),
+  não de hora em hora.
+- **O estado da conta segue o login da pasta (#585).** Um `/login` feito fora do `/conta` deixava o estado
+  dizendo uma conta e o login sendo de outra: o `/conta` mostrava "em casa · troca manual" e o `/conta trabalho`
+  moveria o login novo para a reserva errada. Agora o vigia, o `/conta` e a troca, quando pegam a trava, alinham o
+  estado à conta do login (evento `reconciliado`), nos dois sentidos e sem mover credencial. Login de conta não
+  registrada segue só com o aviso `identidade_divergente`. Quando a pasta volta para casa assim, o login guardado
+  antigo dela é arquivado como `estacionado-<pasta>.orfao-<data>.json`; no lugar, ele travaria a próxima troca.
+
 ## 1.73.1 — 2026-10-22
 
 - **`cd -` com `$(`/`bash -c` segue barrado, mas a mensagem diz a saída (#573).** O gate lê `cd -` (volta ao

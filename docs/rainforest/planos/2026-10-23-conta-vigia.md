@@ -88,11 +88,11 @@ Entrada real, que é o modelo de ameaça D2: com os argumentos que o `run-vigia.
 
 ### 6. Docs e versão 1.74.0 [tipo: docs]
 atende: D6
-arquivos: `CHANGELOG.md`, `README.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`
+arquivos: `CHANGELOG.md`, `README.md`, `docs/vigias.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`
 depende de: 2, 3, 4, 5
 mutacao: n/a
   motivo: tarefa só escreve doc e versão; não há comportamento a inverter
-pronto quando: o CHANGELOG `1.74.0` nomeia a #581 (dontAsk com lista de permitidas no `-Teste`, e o que fica fora: `Bash` e ronda normal), a #584 (`manual_no_limite` uma vez por estouro) e a #585 (`reconciliado` nos dois sentidos e o estacionado órfão arquivado). O README descreve, na seção de troca de conta, que o estado segue o login, e, na seção de vigias, que o `-Teste` só libera leitura. Provado por `node scripts/conferir-versao.cjs` saindo 0 com `1.74.0` nos dois `plugin.json` e por `bash scripts/testa-plugin-codex.sh` com `rc=0`.
+pronto quando: o CHANGELOG `1.74.0` nomeia a #581 (dontAsk com lista de permitidas no `-Teste`, e o que fica fora: `Bash` e ronda normal), a #584 (`manual_no_limite` uma vez por estouro) e a #585 (`reconciliado` nos dois sentidos e o estacionado órfão arquivado). O README descreve, na seção de troca de conta, que o estado segue o login, e o `docs/vigias.md` (os vigias não têm seção no README, só o link para ele) descreve que o `-Teste` só libera leitura. Provado por `node scripts/conferir-versao.cjs` saindo 0 com `1.74.0` nos dois `plugin.json` e por `bash scripts/testa-plugin-codex.sh` com `rc=0`.
 
 ## Regra de parada
 

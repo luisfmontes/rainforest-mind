@@ -11,6 +11,18 @@ de fora, com o veredito acumulado em `vigias/livro-de-repos.md`),
 **vigia-tickets** e **revisao-bimestral**. O guarda-corpo funcionando fora da
 sessão — onde o hiperfoco não deixa abrir uma.
 
+**A ronda de teste não escreve no WhatsApp.** `run-vigia.ps1 -Vigia <nome> -Teste` roda a
+ronda fora do agendamento, e em vez de enviar o modelo escreve a mensagem entre
+`---INICIO---` e `---FIM---`. Desde a 1.74.0 (#581), o `-Teste` usa
+`--permission-mode dontAsk` com uma lista de **permitidas**: as nativas que a ronda usa
+(`Bash`, `Read`, `Write`, `Edit`, `Glob`, `Grep`), o `gmail-leitura` e as tools de
+leitura do WhatsApp (`list_*`, `get_*`, `search_contacts`, `resolve_contact`,
+`check_whatsapp`). Qualquer outra é negada na hora da chamada, inclusive tool nova do
+bridge. A lista negra de antes deixava liberada toda tool que ela não nomeava. Fica
+fora da trava o `Bash` falando direto com o bridge HTTP, porque a ronda de teste roda
+`node` como a real. A ronda agendada continua com `--dangerously-skip-permissions` e
+nega só o servidor `mcp__gmail` inteiro.
+
 **Quando um vigia falha, ele fala — e alguém tem de ouvir.** Todo erro de ronda
 passa por uma porta única, [`vigias/erros.ps1`](../vigias/erros.ps1), que grava em
 `vigias/ERROS.md` sempre em LF, sem BOM, e **troca caminho de máquina por
