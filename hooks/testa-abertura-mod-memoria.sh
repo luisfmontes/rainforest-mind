@@ -75,6 +75,9 @@ campo() { # json, nome
       // Normaliza so a raiz do plugin, se aparecer na saida.
       let t = JSON.stringify(d);
       for (const r of [process.env.SRC, process.env.BASE]) t = t.split(JSON.stringify(r).slice(1, -1)).join('<RAIZ>');
+      // A moldura de D4 (2026-10-24) entrou depois do golden: some da comparacao, o resto segue byte a byte.
+      const { MOLDURA_MEMORIA } = require(process.env.SRC + '/hooks/lib/memoria-sessao.cjs');
+      t = t.split(MOLDURA_MEMORIA).join('');
       process.stdout.write(t);
     }"
 }
