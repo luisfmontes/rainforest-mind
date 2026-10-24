@@ -15,6 +15,13 @@ Design: docs/rainforest/design/2026-10-24-gate-worktree.md
 - Nenhum modelo de briefing do plugin manda o subagente escrever num alvo que começa com `$`. Conferido em 2026-10-24 com Grep em `skills/`, `agents/` e `hooks/**/*.md`, sem ocorrência. A mutação no lugar roda por `conferir-mutacao.cjs`, em Node, fora do gate de Bash.
 - As linhas `de:` das tarefas 1, 2, 4, 5 e 6 são código a nascer. O briefing do `executar` as cita literalmente como requisito, porque a catraca só aplica a mutação se o texto casar byte a byte e uma única vez.
 
+## Base medida (f99164b6, 2026-10-24)
+`bash hooks/testa-gate-worktree.sh` saiu `811 ok, 2 falha(s)`. As duas falhas são de tempo, com o veredito certo:
+- `(#530) rodada extra 2: 'eval ' x22`: exit 2 em 2064 ms;
+- `'bash' -c aninhado 6 niveis`: exit 2 em 2150 ms.
+
+O teto dos dois casos é 2000 ms, e a máquina estava sob carga de outra sessão. Esses dois casos não contam como regressão da entrega. Qualquer outra falha conta.
+
 ## Notas para a revisão
 - O `barraSemConferir` (#530) também chama `bloqueia` sem `ehWorktreeAlvo`. É a mesma classe da #583, mas fica fora da D4, que trata só o ramo `incerto` de `procuraCLI`. Se a revisão apontar, vira nota no PR.
 
