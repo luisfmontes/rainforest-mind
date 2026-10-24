@@ -1,0 +1,311 @@
+Data: 2026-10-24
+Termos: gate-worktree, variavel, cd -, comando dinamico, CLAUDE_PROJECT_DIR
+
+$ gh issue list --state all --search "gate-worktree" --limit 200 --json number,title,state
+[{"number":583,"state":"OPEN","title":"gate-worktree: bloqueio por comando dinamico (source/eval) diz diretorio principal com cwd em worktree"},{"number":582,"state":"OPEN","title":"gate-worktree barra caminho relativo e $(git rev-parse --show-toplevel) em subagente de worktree linkado"},{"number":573,"state":"OPEN","title":"gate-worktree: escrita via Bash de subagente em worktree isolado barrada como \"diretorio de trabalho principal\""},{"number":580,"state":"OPEN","title":"gate-worktree: caminho por variável fora do segmento de leitura simples não é julgado (|, $(, argumento)"},{"number":561,"state":"CLOSED","title":"gate-worktree: HOME redefinido na linha engana a expansão de ~ (continuação da #552)"},{"number":530,"state":"CLOSED","title":"gate-worktree: três formas de cd para o principal passam a partir do worktree ({cd,X}, A=1 cd X, then cd X)"},{"number":552,"state":"CLOSED","title":"gate-worktree: remoção (rm/Remove-Item), New-Object de IO e redirecionamento com variável passam"},{"number":533,"state":"CLOSED","title":"gate-worktree não vê escrita por cmdlet do PowerShell (Set-Content, Out-File, [IO.File])"},{"number":411,"state":"CLOSED","title":"setup --desligar gate-publicacao --escopo projeto não vale dentro de worktree do mesmo repo"},{"number":541,"state":"OPEN","title":"CI: shard 1 das baterias roda a 3-9 min do timeout de 35"},{"number":565,"state":"CLOSED","title":"Sessão fora de repo git: regra 10 sem saída para agente que escreve"},{"number":495,"state":"CLOSED","title":"gate-repo-alheio receita uma saída que ele mesmo barra, e dá à janela principal o texto de subagente"},{"number":514,"state":"CLOSED","title":"gate-worktree barra comando só de leitura quando a linha junta 2>/dev/null com expansão de chaves {a,b}"},{"number":265,"state":"CLOSED","title":"gate-publicacao: .rainforest-gate-off nao e herdado pelo worktree, e nao esta no .gitignore"},{"number":289,"state":"CLOSED","title":"gate-worktree: cd com caminho MSYS (/c/...) vira incerto e barra commit no scratchpad, chamando o worktree de principal"},{"number":567,"state":"CLOSED","title":"estado.cjs: commit depois do verificar ok nao reabre revisar nem verificar"},{"number":350,"state":"CLOSED","title":"gate-worktree ignora git -C <outro-repo> e barra switch num clone descartavel como se fosse o checkout da sessao"},{"number":403,"state":"CLOSED","title":"Baterias de hook montam payload JSON com printf e ficam verdes sem o gate olhar"},{"number":364,"state":"CLOSED","title":"Menores da revisao do semear-travas: aspas na mesma linha, --exige com .., --slug do varrer"},{"number":417,"state":"CLOSED","title":"Desligar gate so por variavel de ambiente, sem o arquivo .rainforest-gate-off"},{"number":369,"state":"CLOSED","title":"Dividas menores da revisao da rodada 13: empate de veredito, --exige extremo, CRLF sem teste"},{"number":231,"state":"CLOSED","title":"Revisor que confere por mutacao edita o worktree principal, e o gate o impede de desfazer"},{"number":564,"state":"CLOSED","title":"aviso-fluxo não vê escrita pelo Bash: código entra sem fluxo aberto"},{"number":88,"state":"CLOSED","title":"gate-worktree so inspeciona Bash com verbo git: 'echo x > arquivo' escreve fora do worktree sem ser examinado"},{"number":419,"state":"CLOSED","title":"gate-publicacao-destino: remoto GitLab sempre sai 'desconhecida' e barra repo privado de trabalho"},{"number":220,"state":"CLOSED","title":"Tres dos quatro gates ainda nomeiam .rainforest-gate-off pro subagente que bloqueiam"},{"number":127,"state":"CLOSED","title":"gate-worktree e cego para CLI de agente externa: codex exec --yolo passa, git stash nao"},{"number":346,"state":"CLOSED","title":"gate-bateria-sem-timeout: stdbuf --output L (opcao longa com espaco) escapa"},{"number":264,"state":"CLOSED","title":"Portaria: manifesto de agentes SUBSTITUI em vez de somar, e agente de outro plugin nunca passa"},{"number":456,"state":"CLOSED","title":"Gate de staging deixa passar git.cmd, GIT.EXE, nome com espaco e | iex"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":392,"state":"CLOSED","title":"git e gh chamados por nome: um git.exe na raiz do repo aberto vence o PATH no Windows"},{"number":293,"state":"CLOSED","title":"gate-verificador-staged ignora o marcador dados-de-exemplo e o toggle anunciado no cabecalho nao existe"},{"number":214,"state":"CLOSED","title":"Sessao isolada em worktree nao consegue atualizar o checkout principal — nem o dono pelo prefixo !"},{"number":160,"state":"CLOSED","title":"Quatro baterias leem o config.json real de quem as roda, e quem desliga um gate para si ve a suite vermelha sem pista da causa"},{"number":153,"state":"CLOSED","title":"A main esta vermelha no CI: 4 baterias que so falham no runner"},{"number":143,"state":"CLOSED","title":"Os guardas medem o repositorio do cwd da sessao, nao o worktree onde a operacao roda — tres ocorrencias no mesmo dia"},{"number":268,"state":"CLOSED","title":"Mensagem do gate de publicacao nao oferece o toggle do setup, so as saidas de emergencia"},{"number":184,"state":"CLOSED","title":"Wrapper citado (\"env\" FOO=1 git add -A) escapa de posicaoDeComando e os tres gates por texto liberam"},{"number":38,"state":"CLOSED","title":"CORRIGE #25: a saida prescrita (branch nova) e o que derruba a outra sessao em diretorio compartilhado"},{"number":165,"state":"CLOSED","title":"O gate de publicacao e cego para escrita mediada por Bash — node, sed e heredoc passam"},{"number":266,"state":"CLOSED","title":"conferir-mutacao muta a arvore compartilhada: quem ler naquela janela mede o mutante"},{"number":275,"state":"CLOSED","title":"gate-verificador-staged barra merge por conteudo que ja esta na main"},{"number":120,"state":"CLOSED","title":"testa-contexto-sessao.sh esta vermelha na main: 5 falhas em dentroDoExpediente, focoAtivoEmOutraJanela e co-locada"},{"number":27,"state":"CLOSED","title":"testa-saude.sh fica vermelha por rodar de worktree, nao por defeito no codigo — e e onde a esteira roda"},{"number":51,"state":"CLOSED","title":"As tres travas de isolamento falharam na borda: retomada de agente, janela principal, e o rastro da propria esteira"},{"number":21,"state":"CLOSED","title":"Criterio 'a bateria sai 0' e satisfazivel por fora, e tres instrumentos de conferencia falharam junto"},{"number":4,"state":"CLOSED","title":"Worktree de agente nasce na base velha em pelo menos 2 de 8 despachos, e conferir-entrega.cjs nao ve arquivo autoexcluido por gitignore"},{"number":210,"state":"CLOSED","title":"Entrega vazia + --paralelo: o conjunto do agente e vazio, entao a checagem 4 nunca reprova"},{"number":42,"state":"CLOSED","title":"A checagem 4 do conferir-entrega.cjs compara contra \"limpo\", nao contra um instantaneo — e reprova entrega por sujeira que ja estava la"},{"number":192,"state":"CLOSED","title":"Proibir background no briefing falhou duas vezes, com a proibicao escrita duas vezes no mesmo texto — falta checar a FORMA do retorno"},{"number":16,"state":"CLOSED","title":"Nenhuma bateria roda sozinha: sem CI, a catraca depende de alguem lembrar (a de nucleos ficou vermelha 3 dias)"},{"number":89,"state":"CLOSED","title":"conferir-fluxo monta 'git diff' com execSync e nome de branch interpolado: injecao de comando pelo --head do revisar"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"}]
+
+
+$ gh issue list --state all --search "variavel" --limit 200 --json number,title,state
+[{"number":580,"state":"OPEN","title":"gate-worktree: caminho por variável fora do segmento de leitura simples não é julgado (|, $(, argumento)"},{"number":573,"state":"OPEN","title":"gate-worktree: escrita via Bash de subagente em worktree isolado barrada como \"diretorio de trabalho principal\""},{"number":494,"state":"CLOSED","title":"gate-publicacao barra header Authorization com variavel (Bearer ${token}) como credencial"},{"number":552,"state":"CLOSED","title":"gate-worktree: remoção (rm/Remove-Item), New-Object de IO e redirecionamento com variável passam"},{"number":417,"state":"CLOSED","title":"Desligar gate so por variavel de ambiente, sem o arquivo .rainforest-gate-off"},{"number":414,"state":"CLOSED","title":"gate-fechar-issue barra comando sem gh que carrega env com set -a e ponto"},{"number":561,"state":"CLOSED","title":"gate-worktree: HOME redefinido na linha engana a expansão de ~ (continuação da #552)"},{"number":410,"state":"CLOSED","title":"gate de publicação: f-string Python com variável (Bearer {API_KEY}) é lida como credencial"},{"number":362,"state":"CLOSED","title":"gate-fechar-issue barra laco sem gh quando a variavel esta sem aspas"},{"number":350,"state":"CLOSED","title":"gate-worktree ignora git -C <outro-repo> e barra switch num clone descartavel como se fosse o checkout da sessao"},{"number":309,"state":"CLOSED","title":"gate de texto barra bash \"$t\" (variavel entre aspas) como comando encapsulado"},{"number":531,"state":"CLOSED","title":"conferir-publicacao lento com muitos trechos a. seguidos (60 s em 100 mil)"},{"number":402,"state":"CLOSED","title":"Gate: subagente não instala pacote nem cria a chave de desligar gate"},{"number":405,"state":"CLOSED","title":"gate-fechar-issue barra laco e bash scripts/$b.sh sem gh"},{"number":523,"state":"CLOSED","title":"conferir-publicacao: regra credencial recusa o proprio <redigido> que ela manda usar"},{"number":337,"state":"CLOSED","title":"gate-fechar-issue barra bash $t sem aspas como comando encapsulado"},{"number":382,"state":"CLOSED","title":"Hooks chamam node sem caminho absoluto: no Windows, node.exe na pasta atual vence o PATH"},{"number":446,"state":"CLOSED","title":"Bateria grava user.email t@t no .git/config do repositorio real"},{"number":514,"state":"CLOSED","title":"gate-worktree barra comando só de leitura quando a linha junta 2>/dev/null com expansão de chaves {a,b}"},{"number":239,"state":"CLOSED","title":"gate-fechar-issue bloqueia heredoc cujo texto fecha frase com parentese: \").\" e lido como subshell + source"},{"number":184,"state":"CLOSED","title":"Wrapper citado (\"env\" FOO=1 git add -A) escapa de posicaoDeComando e os tres gates por texto liberam"},{"number":392,"state":"CLOSED","title":"git e gh chamados por nome: um git.exe na raiz do repo aberto vence o PATH no Windows"},{"number":173,"state":"CLOSED","title":"O gate de publicacao barra merge de conteudo que ja esta na main — e engole o git add da mesma chamada"},{"number":495,"state":"CLOSED","title":"gate-repo-alheio receita uma saída que ele mesmo barra, e dá à janela principal o texto de subagente"},{"number":110,"state":"CLOSED","title":"O batedor nunca ve as ideias: ideias.jsonl mora em ~/.rainforest e o ROOT cai no repo"},{"number":124,"state":"CLOSED","title":"O vigias/ERROS.md e rastreado num repo PUBLICO e recebe caminho de maquina interpolado"},{"number":344,"state":"CLOSED","title":"gate-fechar-issue: --body-file com caminho MSYS (/c/...) vira ilegivel"},{"number":339,"state":"CLOSED","title":"Tres contrabarras dentro das aspas duplas do wrapper ainda escondem o comando (residuo da #313)"},{"number":331,"state":"CLOSED","title":"Skill vigiar: acompanhar conversa de WhatsApp sem gastar token esperando (integração opcional)"},{"number":100,"state":"CLOSED","title":"execSync com valor interpolado em setup.cjs e slug sem validacao em estado.cjs — vizinhos da #89"},{"number":153,"state":"CLOSED","title":"A main esta vermelha no CI: 4 baterias que so falham no runner"},{"number":27,"state":"CLOSED","title":"testa-saude.sh fica vermelha por rodar de worktree, nao por defeito no codigo — e e onde a esteira roda"},{"number":2,"state":"CLOSED","title":"Briefing de dispatch nao cobre dado vivo fora do repositorio git"},{"number":230,"state":"CLOSED","title":"conferir-mutacao.cjs entrega a --bateria ao cmd.exe no Windows: 'rm ...; python ...' apagou o venv e o arquivo de teste, e o baseline saiu VERDE"},{"number":262,"state":"CLOSED","title":"conferir-publicacao: credencial em JSON com a chave entre aspas nao e vista, e a trava responde verde"},{"number":185,"state":"CLOSED","title":"gate-publicacao: hash de commit vira 'telefone', e a saída de emergência não vale no mesmo comando"},{"number":88,"state":"CLOSED","title":"gate-worktree so inspeciona Bash com verbo git: 'echo x > arquivo' escreve fora do worktree sem ser examinado"},{"number":530,"state":"CLOSED","title":"gate-worktree: três formas de cd para o principal passam a partir do worktree ({cd,X}, A=1 cd X, then cd X)"},{"number":221,"state":"CLOSED","title":"saude.cjs quebra com 'path argument undefined' quando ha duas config dirs e a versao do repo esta a frente da instalada"},{"number":260,"state":"CLOSED","title":"conferir-publicacao: 'token' sozinho vira credencial, e a mensagem nao mostra o trecho casado"},{"number":14,"state":"CLOSED","title":"limpar-branches.cjs da branch de PR mergeado por squash: classificada 'viva', nunca limpa"},{"number":220,"state":"CLOSED","title":"Tres dos quatro gates ainda nomeiam .rainforest-gate-off pro subagente que bloqueiam"},{"number":241,"state":"CLOSED","title":"Decisao pendente: a portaria vale so neste repo, mas a regra 10 promete portao em toda sessao"},{"number":21,"state":"CLOSED","title":"Criterio 'a bateria sai 0' e satisfazivel por fora, e tres instrumentos de conferencia falharam junto"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"}]
+
+
+$ gh issue list --state all --search "cd -" --limit 200 --json number,title,state
+[{"number":573,"state":"OPEN","title":"gate-worktree: escrita via Bash de subagente em worktree isolado barrada como \"diretorio de trabalho principal\""},{"number":583,"state":"OPEN","title":"gate-worktree: bloqueio por comando dinamico (source/eval) diz diretorio principal com cwd em worktree"},{"number":530,"state":"CLOSED","title":"gate-worktree: três formas de cd para o principal passam a partir do worktree ({cd,X}, A=1 cd X, then cd X)"},{"number":552,"state":"CLOSED","title":"gate-worktree: remoção (rm/Remove-Item), New-Object de IO e redirecionamento com variável passam"},{"number":514,"state":"CLOSED","title":"gate-worktree barra comando só de leitura quando a linha junta 2>/dev/null com expansão de chaves {a,b}"},{"number":350,"state":"CLOSED","title":"gate-worktree ignora git -C <outro-repo> e barra switch num clone descartavel como se fosse o checkout da sessao"},{"number":289,"state":"CLOSED","title":"gate-worktree: cd com caminho MSYS (/c/...) vira incerto e barra commit no scratchpad, chamando o worktree de principal"},{"number":344,"state":"CLOSED","title":"gate-fechar-issue: --body-file com caminho MSYS (/c/...) vira ilegivel"},{"number":339,"state":"CLOSED","title":"Tres contrabarras dentro das aspas duplas do wrapper ainda escondem o comando (residuo da #313)"},{"number":446,"state":"CLOSED","title":"Bateria grava user.email t@t no .git/config do repositorio real"},{"number":346,"state":"CLOSED","title":"gate-bateria-sem-timeout: stdbuf --output L (opcao longa com espaco) escapa"},{"number":565,"state":"CLOSED","title":"Sessão fora de repo git: regra 10 sem saída para agente que escreve"},{"number":414,"state":"CLOSED","title":"gate-fechar-issue barra comando sem gh que carrega env com set -a e ponto"},{"number":143,"state":"CLOSED","title":"Os guardas medem o repositorio do cwd da sessao, nao o worktree onde a operacao roda — tres ocorrencias no mesmo dia"},{"number":379,"state":"CLOSED","title":"verificar não fecha em monorepo: a catraca roda toda bateria com --raiz na raiz do repo"},{"number":173,"state":"CLOSED","title":"O gate de publicacao barra merge de conteudo que ja esta na main — e engole o git add da mesma chamada"},{"number":120,"state":"CLOSED","title":"testa-contexto-sessao.sh esta vermelha na main: 5 falhas em dentroDoExpediente, focoAtivoEmOutraJanela e co-locada"},{"number":76,"state":"CLOSED","title":"A regra 14 descobre ferramenta ausente tropecando: falta um catalogo do que existe na maquina"},{"number":16,"state":"CLOSED","title":"Nenhuma bateria roda sozinha: sem CI, a catraca depende de alguem lembrar (a de nucleos ficou vermelha 3 dias)"},{"number":261,"state":"CLOSED","title":"gate-staging-total: mensagem citaria o repo errado com -C — nao reproduz, falta a linha exata"},{"number":258,"state":"CLOSED","title":"gate-staging-total: bloqueia texto que cita comando git, e resolve o repo errado com -C"},{"number":27,"state":"CLOSED","title":"testa-saude.sh fica vermelha por rodar de worktree, nao por defeito no codigo — e e onde a esteira roda"},{"number":214,"state":"CLOSED","title":"Sessao isolada em worktree nao consegue atualizar o checkout principal — nem o dono pelo prefixo !"},{"number":176,"state":"CLOSED","title":"O conferir-versao.cjs mede a propria pasta de instalacao, entao no plugin instalado ele nunca roda"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"},{"number":21,"state":"CLOSED","title":"Criterio 'a bateria sai 0' e satisfazivel por fora, e tres instrumentos de conferencia falharam junto"}]
+
+
+$ gh issue list --state all --search "comando dinamico" --limit 200 --json number,title,state
+[{"number":583,"state":"OPEN","title":"gate-worktree: bloqueio por comando dinamico (source/eval) diz diretorio principal com cwd em worktree"},{"number":258,"state":"CLOSED","title":"gate-staging-total: bloqueia texto que cita comando git, e resolve o repo errado com -C"},{"number":266,"state":"CLOSED","title":"conferir-mutacao muta a arvore compartilhada: quem ler naquela janela mede o mutante"},{"number":260,"state":"CLOSED","title":"conferir-publicacao: 'token' sozinho vira credencial, e a mensagem nao mostra o trecho casado"},{"number":235,"state":"CLOSED","title":"gate-publicacao-destino so ve Write/Edit: valor escrito por script chega ao commit, e so a CI pega — do lado irreversivel"},{"number":253,"state":"CLOSED","title":"Gate de publicacao bloqueia repo PRIVADO citando \"repo publico\" — nao checa visibilidade"},{"number":344,"state":"CLOSED","title":"gate-fechar-issue: --body-file com caminho MSYS (/c/...) vira ilegivel"},{"number":339,"state":"CLOSED","title":"Tres contrabarras dentro das aspas duplas do wrapper ainda escondem o comando (residuo da #313)"}]
+
+
+$ gh issue list --state all --search "CLAUDE_PROJECT_DIR" --limit 200 --json number,title,state
+[{"number":580,"state":"OPEN","title":"gate-worktree: caminho por variável fora do segmento de leitura simples não é julgado (|, $(, argumento)"},{"number":346,"state":"CLOSED","title":"gate-bateria-sem-timeout: stdbuf --output L (opcao longa com espaco) escapa"},{"number":195,"state":"CLOSED","title":"Nada exige que o checkout principal fique na main, e os vigias agendados rodam contra ele"},{"number":241,"state":"CLOSED","title":"Decisao pendente: a portaria vale so neste repo, mas a regra 10 promete portao em toda sessao"},{"number":225,"state":"CLOSED","title":"portaria: negação 'sem estágio ativo' lista o mesmo slug uma vez por worktree (~170 linhas repetidas)"},{"number":143,"state":"CLOSED","title":"Os guardas medem o repositorio do cwd da sessao, nao o worktree onde a operacao roda — tres ocorrencias no mesmo dia"},{"number":238,"state":"CLOSED","title":"estado.cjs marcar reabre executar por baixo do revisar em voo e aceita carimbo de tarefa inexistente"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"}]
+
+
+$ gh pr list --state all --search "gate-worktree" --limit 200 --json number,title,state
+[{"number":555,"state":"MERGED","title":"Estado do fluxo gate-worktree-brechas: fechar ok (#554)"},{"number":572,"state":"MERGED","title":"gate-worktree: HOME redefinido na linha falha fechado (#561, 1.70.1)"},{"number":586,"state":"MERGED","title":"gate-worktree: mensagem da rede e docDoEstagio lexical (#573, #578, 1.73.1)"},{"number":566,"state":"MERGED","title":"Estado dos fluxos setup e gate-worktree-552: fechar ok (#562, #563)"},{"number":554,"state":"MERGED","title":"gate-worktree: {cd,X} e cmdlets de escrita do PowerShell (#530, #533)"},{"number":556,"state":"MERGED","title":"gate-worktree: palavra de comando lida como o bash (#530, 1.67.11)"},{"number":563,"state":"MERGED","title":"gate-worktree: rede de caminho do principal e pai inexistente (#552, 1.68.0)"},{"number":535,"state":"MERGED","title":"Versao 1.67.3: gate nao barra leitura com chaves (#514), buscar por bm25"},{"number":370,"state":"MERGED","title":"zerar-issues-13: #362 #363 #364 (1.34.0)"},{"number":420,"state":"MERGED","title":"Gate de agente em voo so barra a sessao que despachou"},{"number":536,"state":"MERGED","title":"Estado do fluxo revisita-context-mode: fechar ok (#535, 1.67.3)"},{"number":491,"state":"MERGED","title":"Gate de staging reconhece git.cmd, GIT.EXE, espaco no fim e iex (#456)"},{"number":416,"state":"MERGED","title":"Zerar as 12 Issues da revisao bimestral (1.42.0)"},{"number":497,"state":"MERGED","title":"Gates de repo alheio e de PR em outro repo, e livro anti-slop (1.60.2)"},{"number":426,"state":"MERGED","title":"Zerar as Issues #409-#414, #417, #419 (1.46.0)"},{"number":139,"state":"MERGED","title":"Gate de worktree: decidir escrita por token, e isentar o scratchpad da sessao"},{"number":365,"state":"MERGED","title":"Seis travas semeadas do historico (1.32.0)"},{"number":295,"state":"MERGED","title":"zerar-issues-5: conserta 20 Issues abertas em menos de 24h"},{"number":357,"state":"MERGED","title":"zerar-issues-12: gates dizem quando a causa é variável (#350), 1.30.0"},{"number":324,"state":"MERGED","title":"prompts: tira arqueologia datada e drift da regra 10"},{"number":167,"state":"MERGED","title":"Issue #165: o gate confere o COMMIT, nao so a ferramenta de escrita"},{"number":297,"state":"MERGED","title":"zerar-issues-6: fronteira de repo na regra 6 e os restos da rodada 5"},{"number":318,"state":"MERGED","title":"gates: & com alvo literal no PowerShell e comando comum, nao ilegivel"},{"number":97,"state":"MERGED","title":"Fecha #88: o gate inspeciona Bash para escrita, nao so para verbo git"},{"number":183,"state":"MERGED","title":"Lote 3 — guardas medem o repositorio da operacao; backup fora da maquina; fechar Issue exige criterio rodado"},{"number":247,"state":"MERGED","title":"zerar-issues rodada 3: heredoc no gate de Issue e radar em 4 chamadas (1.13.2)"},{"number":242,"state":"MERGED","title":"Zerar Issues, rodada 2: as 6 que faltavam e as 6 novas (1.12.0)"},{"number":190,"state":"MERGED","title":"Inventario do acervo parado: tres mapas, e o manifesto que admite os cinco agentes negados"},{"number":343,"state":"MERGED","title":"zerar-issues-9: #313 #322 #329 #312 #335 #323 (1.24.0)"},{"number":128,"state":"MERGED","title":"A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo"},{"number":267,"state":"MERGED","title":"portaria: deixa de admitir agente e passa a registrar (ver #264)"},{"number":18,"state":"MERGED","title":"O til no meio do caminho barrava commit legitimo, e o 8.3 mandava nao integrar (#16)"},{"number":202,"state":"MERGED","title":"Fluxo 8: plano do handover.cjs, com o regente.cjs cortado e o corte justificado"},{"number":222,"state":"MERGED","title":"Agentes em Claude ou Codex, por escolha do usuário (1.8.0)"},{"number":45,"state":"CLOSED","title":"Gate de sessao co-locada e catraca de mutacao: duas familias reincidentes viram exit code"},{"number":104,"state":"MERGED","title":"Versao 0.77.0: o dia das sete issues, e as cinco provas que nao provavam"},{"number":17,"state":"MERGED","title":"Nenhuma bateria roda sozinha: CI que roda as 20 baterias a cada PR (#16)"},{"number":304,"state":"MERGED","title":"Notas de atualizacao (CHANGELOG) e o adendo que mede o D2 do contrato de territorio"},{"number":56,"state":"MERGED","title":"Fecha a #38: a regra 11 prescreve worktree, e o radar marca a janela co-locada"},{"number":58,"state":"MERGED","title":"Fecha a #51: as tres travas de isolamento passam a valer na borda"},{"number":46,"state":"MERGED","title":"Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo'"},{"number":186,"state":"MERGED","title":"R1 (frente 2) + R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao"},{"number":234,"state":"MERGED","title":"Absorver de um plugin de terceiro o que vira trava: mensagem de commit, --confirmo, exit 69, duplicação, carimbos"},{"number":164,"state":"MERGED","title":"Scripts entregues derivam o home de quem roda, com trava"},{"number":117,"state":"MERGED","title":"Tres defeitos achados apurando as observacoes abertas da regra 13"},{"number":48,"state":"MERGED","title":"Versao 0.74.0: solta a skill regua e os outros tres commits represados"},{"number":95,"state":"MERGED","title":"Fecha #89: creep monta o git diff sem shell, com execFileSync e lista"},{"number":236,"state":"MERGED","title":"Zerar Issues: a fatia revisada e limpa (12 de 18 Issues)"},{"number":188,"state":"MERGED","title":"Lote 4: instrumento que mede o codigo, e nao a maquina de quem roda"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"},{"number":71,"state":"MERGED","title":"gitCommitSha ausente do registro vira aviso de indeterminacao, nao ok silencioso"},{"number":98,"state":"MERGED","title":"Fecha a P5 da #61: enlace bidirecional entre as regras 16 e 17"},{"number":91,"state":"MERGED","title":"Livro: ChristopherKahler/base nao acopla — reprova em 2, 3 e 5, com peca forte"},{"number":150,"state":"MERGED","title":"Vigias: dois mortos ha 20 dias, um backup que nunca rodou, e seis vazamentos num arquivo publico"},{"number":60,"state":"MERGED","title":"Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture"},{"number":10,"state":"MERGED","title":"Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa"},{"number":141,"state":"MERGED","title":"Fluxo 9 — Portaria: admissao de subagente por manifesto"}]
+
+
+$ gh pr list --state all --search "variavel" --limit 200 --json number,title,state
+[{"number":534,"state":"MERGED","title":"Estado do fluxo bearer-variavel: fechar ok (#532)"},{"number":532,"state":"MERGED","title":"conferir-publicacao: Authorization com variavel em JS nao e credencial (#494, 1.67.2)"},{"number":455,"state":"MERGED","title":"Gate: & \"$pasta\\script.ps1\" analisado pelo nome literal (1.53.2)"},{"number":357,"state":"MERGED","title":"zerar-issues-12: gates dizem quando a causa é variável (#350), 1.30.0"},{"number":586,"state":"MERGED","title":"gate-worktree: mensagem da rede e docDoEstagio lexical (#573, #578, 1.73.1)"},{"number":391,"state":"MERGED","title":"Mapa de estagios do territorio: contrato v0"},{"number":554,"state":"MERGED","title":"gate-worktree: {cd,X} e cmdlets de escrita do PowerShell (#530, #533)"},{"number":380,"state":"MERGED","title":"Versao 1.36.0: mod canario para provar carregamento pelo marketplace"},{"number":563,"state":"MERGED","title":"gate-worktree: rede de caminho do principal e pai inexistente (#552, 1.68.0)"},{"number":316,"state":"MERGED","title":"gates: bash \"$VAR/caminho\" e caminho de script, nao wrapper ilegivel"},{"number":420,"state":"MERGED","title":"Gate de agente em voo so barra a sessao que despachou"},{"number":370,"state":"MERGED","title":"zerar-issues-13: #362 #363 #364 (1.34.0)"},{"number":524,"state":"MERGED","title":"Gate: barrar matar processo por nome (#517, 1.67.0)"},{"number":415,"state":"MERGED","title":"/transferir claude: a sessão muda de conta com o contexto inteiro (1.42.0)"},{"number":354,"state":"MERGED","title":"zerar-issues-11: mensagem do bash $t e trava de gatilho sob demanda (1.29.0)"},{"number":426,"state":"MERGED","title":"Zerar as Issues #409-#414, #417, #419 (1.46.0)"},{"number":365,"state":"MERGED","title":"Seis travas semeadas do historico (1.32.0)"},{"number":164,"state":"MERGED","title":"Scripts entregues derivam o home de quem roda, com trava"},{"number":166,"state":"MERGED","title":"Gate: placeholder de usuario nao e nome de ninguem"},{"number":188,"state":"MERGED","title":"Lote 4: instrumento que mede o codigo, e nao a maquina de quem roda"},{"number":247,"state":"MERGED","title":"zerar-issues rodada 3: heredoc no gate de Issue e radar em 4 chamadas (1.13.2)"},{"number":205,"state":"MERGED","title":"Issue #189: conferir-versao olha o numero declarado e nao sai 0 sem ter medido"},{"number":171,"state":"MERGED","title":"A suite media a maquina do dono: 11 Issues da familia, catraca de dependencias, CI em Node 22 e 24"},{"number":111,"state":"MERGED","title":"Fecha #110: o batedor volta a enxergar as 202 ideias e observacoes abertas"},{"number":29,"state":"MERGED","title":"A bateria de saude cobrava do produto a regra que ela mesma quebrava (#27)"},{"number":106,"state":"MERGED","title":"Fecha #100: execFileSync em setup.cjs, validarSlug em estado.cjs — e o teste que separa os dois"},{"number":13,"state":"MERGED","title":"Conferencia de entrega e teste de saude sobrevivem a despacho paralelo"},{"number":15,"state":"MERGED","title":"A limpeza que nao limpava: squash com remoto vivo, --base <ref>, e um nome de branch que virava comando"},{"number":119,"state":"MERGED","title":"Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos"},{"number":109,"state":"MERGED","title":"Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler"},{"number":186,"state":"MERGED","title":"R1 (frente 2) + R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao"}]
+
+
+$ gh pr list --state all --search "cd -" --limit 200 --json number,title,state
+[{"number":586,"state":"MERGED","title":"gate-worktree: mensagem da rede e docDoEstagio lexical (#573, #578, 1.73.1)"},{"number":535,"state":"MERGED","title":"Versao 1.67.3: gate nao barra leitura com chaves (#514), buscar por bm25"},{"number":554,"state":"MERGED","title":"gate-worktree: {cd,X} e cmdlets de escrita do PowerShell (#530, #533)"},{"number":556,"state":"MERGED","title":"gate-worktree: palavra de comando lida como o bash (#530, 1.67.11)"},{"number":572,"state":"MERGED","title":"gate-worktree: HOME redefinido na linha falha fechado (#561, 1.70.1)"},{"number":463,"state":"MERGED","title":"Varredura limpa GIT_* e acusa bateria que muda user.* (#446)"},{"number":357,"state":"MERGED","title":"zerar-issues-12: gates dizem quando a causa é variável (#350), 1.30.0"},{"number":415,"state":"MERGED","title":"/transferir claude: a sessão muda de conta com o contexto inteiro (1.42.0)"},{"number":18,"state":"MERGED","title":"O til no meio do caminho barrava commit legitimo, e o 8.3 mandava nao integrar (#16)"},{"number":295,"state":"MERGED","title":"zerar-issues-5: conserta 20 Issues abertas em menos de 24h"},{"number":97,"state":"MERGED","title":"Fecha #88: o gate inspeciona Bash para escrita, nao so para verbo git"},{"number":164,"state":"MERGED","title":"Scripts entregues derivam o home de quem roda, com trava"},{"number":20,"state":"MERGED","title":"O verde mais saudavel do painel era falso: o /saude passa a medir o que executa"},{"number":117,"state":"MERGED","title":"Tres defeitos achados apurando as observacoes abertas da regra 13"},{"number":116,"state":"MERGED","title":"Fecha #76: a janela sabe que a ferramenta falta antes de tentar"},{"number":204,"state":"MERGED","title":"Issue #187: o vazamento e do transporte, nao da bateria — matarDescendencia no rodarCli"},{"number":32,"state":"MERGED","title":"O criterio apontava para o instrumento (#21)"},{"number":108,"state":"MERGED","title":"Fecha #101: catraca de comparação — ela RODA os dois lados em vez de ler o relato"},{"number":17,"state":"MERGED","title":"Nenhuma bateria roda sozinha: CI que roda as 20 baterias a cada PR (#16)"}]
+
+
+$ gh pr list --state all --search "comando dinamico" --limit 200 --json number,title,state
+[{"number":455,"state":"MERGED","title":"Gate: & \"$pasta\\script.ps1\" analisado pelo nome literal (1.53.2)"},{"number":316,"state":"MERGED","title":"gates: bash \"$VAR/caminho\" e caminho de script, nao wrapper ilegivel"}]
+
+
+$ gh pr list --state all --search "CLAUDE_PROJECT_DIR" --limit 200 --json number,title,state
+[{"number":228,"state":"MERGED","title":"Statusline com tempo até o reset; checkout principal fica na main (regra 11, closes #195) — 1.10.0"},{"number":222,"state":"MERGED","title":"Agentes em Claude ou Codex, por escolha do usuário (1.8.0)"},{"number":56,"state":"MERGED","title":"Fecha a #38: a regra 11 prescreve worktree, e o radar marca a janela co-locada"}]
+
+
+$ git ls-remote --heads origin | grep -F "gate-worktree"
+62260388249a2d3b5f43f6bb36b3ada6a5ae0290	refs/heads/fluxo/gate-worktree
+
+$ git ls-remote --heads origin | grep -F "variavel"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "cd -"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "comando dinamico"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "CLAUDE_PROJECT_DIR"
+(vazio)
+
+$ git log --all --grep="gate-worktree" --oneline
+62260388 Design do gate-worktree: secao em aberto
+890e0078 Design do gate-worktree: avaliado e descartado
+6c4f42c2 Design do gate-worktree (#573, #580, #582, #583)
+458a18a1 gate-worktree: mensagem da rede e docDoEstagio lexical (#573, #578, 1.73.1) (#586)
+b7b79c7d testa-gate-worktree: interprete do incidente aaf21 por marcador
+a9aa11bd gate-worktree: caminho vazio barra e teto na medida do cd - (#573)
+a2c9134e gate-worktree: mensagem do cd - so quando ele e a causa (#573)
+5e41fd23 gate-worktree: recua a resolucao do cd -, mensagem da a saida (#573)
+8684667d gate-worktree: cd - segue o cd anterior da linha (#573, Q1 B)
+2604e097 gate-worktree: recua a D3, destino com variavel segue barrado (#573)
+afbaccbd gate-worktree: nome indireto, comentario e heredoc nao resolvem (#573 A)
+73d8568b gate-worktree: atribuicao so conta se o shell a executa (#573 A)
+19a639a1 gate-worktree: bloqueio da rede nomeia o que barrou (#573)
+4ec37fa2 gate-worktree: destino com variavel no inicio resolve o valor (#573 A)
+fc84b9cf gate-worktree: a opcao de cd exige caractere apos o hifen (#573 B)
+68c1cbad gate-worktree: HOME redefinido na linha falha fechado (#561, 1.70.1) (#572)
+01e5c294 Estado dos fluxos setup e gate-worktree-552: fechar ok (#566)
+1ba5156b gate-worktree: rede de caminho do principal e pai inexistente (#552, 1.68.0) (#563)
+038de7d8 gate-worktree: palavra de comando lida como o bash (#530, 1.67.11) (#556)
+399e7097 Estado do fluxo gate-worktree-brechas: fechar ok (#554) (#555)
+b767d7d5 gate-worktree: {cd,X} e cmdlets de escrita do PowerShell (#530, #533) (#554)
+f539ba7b Versao 1.67.3: gate nao barra leitura com chaves (#514), buscar por bm25 (#535)
+74c0b126 Gate flaky com nova tentativa e teto de despachos por fluxo (1.61.0) (#499)
+4b2ce642 tarefa 2: hooks gate-* e portaria pelo caminho
+1509f27b I5 + I6 rodada 2: controle positivo nos 10 gates e caso --max 1
+4d3c9283 Tarefa 13: replay de corpus comandos contra 10 gates
+7394754d gate-worktree: trava co-locada nomeia o alvo nao resolvido (#350)
+99bc95a8 zerar-issues-8: tarefa 14, colapso de continuacao segue o bash de verdade
+82837b95 zerar-issues-8: tarefa 13, continuacao de linha no topo do comando (#309)
+115da24c zerar-issues-8: tarefas 11-12 - |& e continuacao de linha na fronteira de segmento (#309, revisao 2)
+bf1e32b4 gate-worktree: normaliza cd em forma MSYS e corrige mensagem de incerto
+38f4d267 Handover: o que a CI e o laco completo pegaram na rodada 2
+4a590dab CI: a asserção do restauro compara com o toplevel que o gate imprime
+91db7071 Estado: executar fecha com 33 tarefas e a catraca declarada; handover ganha a rodada 2
+622dbb65 Tarefa 32: gate-worktree comunica sobre restauração bloqueada (D29)
+993c7174 Tarefa 27 (D23): a bateria da consulta captura o exit do hook, nao do unset
+b6a58245 Conferencia da integracao: corrige a atribuicao do mecanismo no mapa do git
+6a303404 Segunda rodada de revisao: dois consertos tinham efeito colateral que o texto nao dizia
+4e5de7d8 Tarefa 2, rodada 3: o caso R21 do gate-worktree montava JSON invalido, e media outra coisa
+bda24b06 Lote 4: estado do executar e escopo da tarefa 2
+21097b8f Falso negativo no gate-git-verificacao: aspa escapada depois do NUL
+f6738ed4 Integracao com a main 1.3.0: sexto gate na contagem, e emenda do plano
+b6bce104 Lote 3 rodada 19: injecao no pr merge, chaves como fronteira, apostrofo no conferir
+f2487c81 Fluxo nao-mente: design aprovado (12 decisoes) e plano ok (4 tarefas)
+3b9cbc2d Lote 3 rodada 9: env -C por tokens, iex como wrapper, gate-worktree e staging-total agem tambem na ferramenta PowerShell
+63bc4b8a Lote 3 rodada 5: alvosBash e alvosBashEscrita usam o mesmo movedor de diretorio (pushd, popd, env -C)
+97327d16 Lote 3 rodada 5: cwd por segmento, pushd/env -C, procuraCLI so em posicao de comando
+cedd8d2e Merge lote 3 rodada 4 (gate-worktree/cwd-efetivo: ultimo -C, subshell incerto, $'...') into fluxo/guardas
+43b0c4fd Lote 3 rodada 4: alvosBash usa o ultimo -C, subshell vira incerto, procuraCLI le $'...' e barra invertida
+7e5b1c9f Merge lote 3 rodada 3 (R1/R2/R8 gate-worktree) into fluxo/guardas
+75ac3142 Lote 3 rodada 2: F1 (múltiplos -C) e F2 (aspas em separadores) fechadas
+9ab63417 Lote 3 T7: gate-worktree reconhece CLIs externas que escrevem
+305bf4a2 Lote 3 T1: gate-worktree.cjs importa do lib cwd-efetivo
+5c6f9c15 Issue #165: o gate confere o COMMIT, nao so a ferramenta de escrita
+4a82027e Issue #165: o gate confere o COMMIT, nao so a ferramenta de escrita
+1a6f5cc7 Fluxo 9: conserto dos 2 críticos — portaria.cjs alinhado com os gates irmãos
+b44f129f Fluxo 9: conserto dos 2 críticos — portaria.cjs alinhado com os gates irmãos
+6e07275c Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README (#129)
+be0332c9 Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README (#129)
+63afa051 A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo (#128)
+1b18a725 A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo (#128)
+9e58a6a5 Livro: a cegueira do gate nao e "duas listas" — sao tres, e a prova agora e execucao
+6d90d470 Livro: a cegueira do gate nao e "duas listas" — sao tres, e a prova agora e execucao
+081b6cf1 Batedor: seis repos indicados — e o gate-worktree e cego para CLI de agente externa
+9980cac0 Batedor: seis repos indicados — e o gate-worktree e cego para CLI de agente externa
+1047cb80 Versao 0.77.0: o dia das sete issues, e as cinco provas que nao provavam (#104)
+f45d1971 Versao 0.77.0: o dia das sete issues, e as cinco provas que nao provavam (#104)
+f8b05c84 Fecha #88: o gate inspeciona Bash para escrita, nao so para verbo git (#97)
+b78b8205 Fecha #88: o gate inspeciona Bash para escrita, nao so para verbo git (#97)
+454ed439 Fecha #89: creep monta o git diff sem shell, com execFileSync e lista (#95)
+6da92f4e Fecha #89: creep monta o git diff sem shell, com execFileSync e lista (#95)
+e939525f Livro: ChristopherKahler/base nao acopla — reprova em 2, 3 e 5, com peca forte (#91)
+e4bfe530 Livro: ChristopherKahler/base nao acopla — reprova em 2, 3 e 5, com peca forte (#91)
+40e3f3bd Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+2cc8788c Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+97c3dec5 O til no meio do caminho barrava commit legitimo, e o 8.3 mandava nao integrar (#18)
+d258a189 O til no meio do caminho barrava commit legitimo, e o 8.3 mandava nao integrar (#18)
+76059fde Nenhuma bateria roda sozinha: CI que roda as 20 baterias a cada PR (#17)
+f793d19f Nenhuma bateria roda sozinha: CI que roda as 20 baterias a cada PR (#17)
+8badb9c1 Issue #4: a checagem 6 pergunta ao COMMIT, e as outras duas frentes ganham caminho
+cc8d542d Issue #4: a checagem 6 pergunta ao COMMIT, e as outras duas frentes ganham caminho
+e3ef9fc1 O nivel legado sai da cadeia, e a versao vira 0.50.0
+762da8b5 O nivel legado sai da cadeia, e a versao vira 0.50.0
+ba108d93 Os gates param de falar do dono do repo para quem instalou
+f3f5ab3f Os gates param de falar do dono do repo para quem instalou
+edac8168 Semear consome o mapa, nao dispara a arqueologia — e para de vazar relatorio alheio
+f1b97626 Semear consome o mapa, nao dispara a arqueologia — e para de vazar relatorio alheio
+7118d701 Arqueologia: o estagio ZERO que faltava, e opcional de forma mecanica
+b3d3220f Arqueologia: o estagio ZERO que faltava, e opcional de forma mecanica
+7af49225 /semear: propoe o que criar neste repo a partir do que ele ja tropecou
+3a750bf7 /semear: propoe o que criar neste repo a partir do que ele ja tropecou
+563ccb0d P1: a escotilha do gate para de ser revelada a quem esta sendo bloqueado
+9b493ecf P1: a escotilha do gate para de ser revelada a quem esta sendo bloqueado
+c0da97ba gstack reprova em 3 das 6, e sobra o /codex
+63d54b4f gstack reprova em 3 das 6, e sobra o /codex
+07c789fe Arma o gate de staging total (v0.39.0) e fecha o PT vs EN com token real
+5ad90b23 Arma o gate de staging total (v0.39.0) e fecha o PT vs EN com token real
+4bd13811 Gate de staging total: git add -A vira exit 2 (escrito e testado, NAO armado)
+5d4b4854 Gate de staging total: git add -A vira exit 2 (escrito e testado, NAO armado)
+b4a7bfe6 Arma o gate de worktree: v0.35.0
+7d6e6e70 Arma o gate de worktree: v0.35.0
+520b095a P2 construido e testado, NAO armado: hooks/gate-worktree.cjs
+4d6a1d7d P2 construido e testado, NAO armado: hooks/gate-worktree.cjs
+
+$ git log --all --grep="variavel" --oneline
+458a18a1 gate-worktree: mensagem da rede e docDoEstagio lexical (#573, #578, 1.73.1) (#586)
+2604e097 gate-worktree: recua a D3, destino com variavel segue barrado (#573)
+89be9723 estado: revisar reprovado (laco e glob no destino com variavel)
+4ec37fa2 gate-worktree: destino com variavel no inicio resolve o valor (#573 A)
+68c1cbad gate-worktree: HOME redefinido na linha falha fechado (#561, 1.70.1) (#572)
+1ba5156b gate-worktree: rede de caminho do principal e pai inexistente (#552, 1.68.0) (#563)
+f539ba7b Versao 1.67.3: gate nao barra leitura com chaves (#514), buscar por bm25 (#535)
+32212e5f Estado do fluxo bearer-variavel: fechar ok (#532) (#534)
+198330d6 conferir-publicacao: Authorization com variavel em JS nao e credencial (#494, 1.67.2) (#532)
+0977e400 Gate: barrar matar processo por nome (#517, 1.67.0) (#524)
+6b276c32 Gates de repo alheio e de PR em outro repo, e livro anti-slop (1.60.2) (#497)
+279ec07f Gate: & "$pasta\script.ps1" analisado pelo nome literal (1.53.2) (#455)
+397aa5a9 Glossario de dominio por repositorio (GLOSSARIO.md), versao 1.52.0 (#451)
+dd2aa020 Zerar as Issues #409-#414, #417, #419 (1.46.0) (#426)
+99c5e5b7 Zerar as 12 Issues da revisao bimestral (1.43.0) (#416)
+2c6b173b Achados da revisao: resolverCaminhos e node por nome
+057d9835 territorio: plugin invalido que nao casa nao bloqueia
+50695ca8 Mod canario de teto de prompt, inerte sem RFM_CANARIO_MOD
+38646a42 run-vigia: MCP_TIMEOUT=90000 na ronda (#367)
+9de73bb7 Tarefa 11: literal da mutacao casa com o plano; dedup em temporario
+e0043f71 gate-fechar-issue: exemplo da mensagem de variavel sem linha gh
+7394754d gate-worktree: trava co-locada nomeia o alvo nao resolvido (#350)
+d9f639d8 gate-fechar-issue: --body-file com variavel tem mensagem propria (#350)
+00fb4f9a gate-fechar-issue: wrapper ilegivel orienta bash "$t" (#337)
+f00ce4e2 gate-subagente-sem-gh: stdin, pipe, python3 e variavel no script
+eeaaeab0 gate-busca-raiz: palavra-chave, envoltorio, bash -c e eval antes do find
+68978c3d gates: & com alvo literal no PowerShell e comando comum, nao ilegivel
+33367532 gates: bash "$VAR/caminho" e caminho de script, nao wrapper ilegivel
+b4c9d1e8 gate: variavel citada com aspas duplas, sozinha e por ultimo, e caminho de script (#309)
+406dac66 segunda fonte simetrica: a declaracao fixa as QUINZE invariantes
+210a7233 segunda fonte: typo em frase nao_deve passa a derrubar a bateria
+0ed69b90 memoria: reconciliar relê o estado antes de sondar cada observacao
+aa103b41 testa-foco.sh: itens 9, 13 e 15 param de aceitar MODULE_NOT_FOUND como deteccao
+bf1e32b4 gate-worktree: normaliza cd em forma MSYS e corrige mensagem de incerto
+13b552c6 Titulo da sessao marca se o fluxo fechou ou onde parou (#274)
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+a35a9188 Mover a trava do D6 para os tetos que o 2f385e00 subiu
+82ab605c Espaco a mais e erro de digitacao, nao mudanca de sentido
+19c14ecb Achado da revisao: o MSYS_NO_PATHCONV nao e a trava, a guarda de vazio e
+c4515c38 Revisao do lote 4: sete afrouxamentos que o proprio lote introduziu
+a074e052 R21: Corrigir wrapper citado em posicao de comando e script em wrapper de string
+1f0be93b Duas baterias que mediam a maquina do dono, nao o codigo
+a6422e04 Corrige falso positivo do gate-git-verificacao: corpo de heredoc e dado, nunca comando
+9579c02a Gate git-verificacao: fecha shell com caminho, eval, escape e backslash
+bcbedd46 Conserta o gate git-verificacao: nove contornos que passavam no criterio velho
+db5f8933 Emenda o criterio da tarefa 2: o gate era contornavel por nove formas
+726f4b3a Lote 3: variavel sem forma de credencial e e-mail de fixture curto (gate de publicacao)
+35223d4b Issues #148 #144 #153 #157-#163: a suite media a maquina do dono
+3c8a8542 Scripts entregues derivam o home de quem roda, com trava
+2a5149d8 Scripts entregues derivam o home de quem roda, com trava
+b700381e Vigias T1+T2: a raiz do backup, e uma porta unica de escrita no ERROS.md
+bcc79088 Vigias T1+T2: a raiz do backup, e uma porta unica de escrita no ERROS.md
+4bd05dbb Fluxo 9: falha interna da portaria NEGA — o critico da rodada 6 era meu
+d9aee5e0 Fluxo 9: falha interna da portaria NEGA — o critico da rodada 6 era meu
+54949c6d Fluxo 9: o resolver de estagio ativo passa a USAR o estado.cjs, nao imitar
+5f7a68df Fluxo 9: o resolver de estagio ativo passa a USAR o estado.cjs, nao imitar
+b2582e39 Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos (#119)
+ea9d0286 Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos (#119)
+889ff9c9 Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+56ea03cc Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+c66ef229 Fecha #110: o batedor volta a enxergar as 202 ideias e observacoes abertas (#111)
+97a22e26 Fecha #110: o batedor volta a enxergar as 202 ideias e observacoes abertas (#111)
+ebe9dbb1 Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler (#109)
+2fd34af9 Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler (#109)
+20c88be7 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+d427f732 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+c4918934 A bateria de saude cobrava do produto a regra que ela mesma quebrava (#27) (#29)
+22de9e55 A bateria de saude cobrava do produto a regra que ela mesma quebrava (#27) (#29)
+e1d2592c A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+bfc034d2 A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+c9acd299 A regra das tres portas para de ser lembrete e vira lista unica com mutacao
+22963a8e A regra das tres portas para de ser lembrete e vira lista unica com mutacao
+54d5e5b2 Os dois consertos que o dev de fora sente no dia um
+c2f583e5 Os dois consertos que o dev de fora sente no dia um
+563ccb0d P1: a escotilha do gate para de ser revelada a quem esta sendo bloqueado
+9b493ecf P1: a escotilha do gate para de ser revelada a quem esta sendo bloqueado
+0e63c5a0 Os dados do Luis saem do repo publicado: o codigo fica, a pasta e de quem instala
+8be6ed74 Os dados do Luis saem do repo publicado: o codigo fica, a pasta e de quem instala
+2708b8f2 Os dados saem do repo para ~/.rainforest, e tres defeitos aparecem no caminho
+d7310af3 Os dados saem do repo para ~/.rainforest, e tres defeitos aparecem no caminho
+f01960e9 O /ideia passa a chamar Node: uma dependencia no caminho de execucao, nao duas
+90cc9cab O /ideia passa a chamar Node: uma dependencia no caminho de execucao, nao duas
+7bad9650 Corrige o que o ECC injeta na abertura: nao e o caminho, e nada
+83a1ace7 Corrige o que o ECC injeta na abertura: nao e o caminho, e nada
+3bcaa4e3 Tira da versao os dados desta maquina: destino, caminhos e raiz
+8b58a5fc Tira da versao os dados desta maquina: destino, caminhos e raiz
+9ec0e401 v0.44.0: o gate de worktree parava de barrar quem estava no lugar certo
+0200576c v0.44.0: o gate de worktree parava de barrar quem estava no lugar certo
+8e0973bd Parametrizar caminhos e porta no codigo; corrige hook lendo settings.json da pasta antiga
+30729e4e Parametrizar caminhos e porta no codigo; corrige hook lendo settings.json da pasta antiga
+
+$ git log --all --grep="cd -" --oneline
+6c4f42c2 Design do gate-worktree (#573, #580, #582, #583)
+458a18a1 gate-worktree: mensagem da rede e docDoEstagio lexical (#573, #578, 1.73.1) (#586)
+17465d00 estado: revisar ok na rodada 6 (lote 1021b)
+a9aa11bd gate-worktree: caminho vazio barra e teto na medida do cd - (#573)
+328873cc estado: revisar reprovado (rodada 5, FileSystem:: e custo do cd -)
+a2c9134e gate-worktree: mensagem do cd - so quando ele e a causa (#573)
+988b4726 estado: revisar ok (rodada 4), executar reaberto
+5e41fd23 gate-worktree: recua a resolucao do cd -, mensagem da a saida (#573)
+febee202 estado: revisar reprovado (cd - resolvido no lugar errado)
+84fbdffa estado: executar ok com cd - pela linha (Q1 B)
+8684667d gate-worktree: cd - segue o cd anterior da linha (#573, Q1 B)
+b5bf2567 estado: revisar ok e executar reaberto (cd - pela linha, Q1 B)
+9ec0e401 v0.44.0: o gate de worktree parava de barrar quem estava no lugar certo
+0200576c v0.44.0: o gate de worktree parava de barrar quem estava no lugar certo
+
+$ git log --all --grep="comando dinamico" --oneline
+279ec07f Gate: & "$pasta\script.ps1" analisado pelo nome literal (1.53.2) (#455)
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+
+$ git log --all --grep="CLAUDE_PROJECT_DIR" --oneline
+2c6b173b Achados da revisao: resolverCaminhos e node por nome
+3cc618f3 Abertura roda geradores na raiz do plugin e mantem o projeto
+d9405fa7 mod: process.run do relogio e da faixa roda com cwd na raiz do plugin
+284804c4 B2 + I2 + M2: consertos em conferir-prova.cjs
+14b3e4f5 gate-busca-raiz: projeto pelo cwd do evento, heredoc e separadores
+ef77e1e2 A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241) (#255)
+478341d5 Tarefa 12: bateria honesta de principal-atrasado.cjs (Issue #214)
+84eddec1 Revisão rodada 1: NaN/Infinity não derrubam a barra; trava do iniciar olha o cwd real; núcleo cita a chave
+ec252824 Caso de teste 17: validação do raiz.cjs na resolução de intensidade
+59fb8677 T6: caso 6a deixa de engolir arquivo ausente e usa a config da caixa de areia
+389493fe Tarefa 4: CLI da skill montar-corpus com alvo explícito e conferência de dependência
+29a8e8e7 Fluxo 9: executar refechado ok apos o conserto dos 2 criticos
+99a83dbe Fluxo 9: executar refechado ok apos o conserto dos 2 criticos
+1a6f5cc7 Fluxo 9: conserto dos 2 críticos — portaria.cjs alinhado com os gates irmãos
+b44f129f Fluxo 9: conserto dos 2 críticos — portaria.cjs alinhado com os gates irmãos
+0391bbbf As tres costuras da esteira: decisao, opcao morta e creep deixam de evaporar (#9)
+6dbe53cf As tres costuras da esteira: decisao, opcao morta e creep deixam de evaporar (#9)
+056cc4ba O estado da esteira mora no projeto do trabalho, e o radar para de contar agente
+f8516a0c O estado da esteira mora no projeto do trabalho, e o radar para de contar agente
+ecfc868e Checagem de plugins le o escopo de projeto, nao so o do usuario; v0.22.1
+0a928770 Checagem de plugins le o escopo de projeto, nao so o do usuario; v0.22.1
+
+$ cat <dados>/ideias.jsonl
+{"id":"gate-worktree-barra-quem-esta-no-lugar-certo","titulo":"O gate de worktree barra o subagente que esta no worktree CERTO"}
+{"id":"publicar-o-rainforest-separando-codigo-de-dado","titulo":"Publicar o rainforest: e UM repo de codigo mais uma pasta de dados - a variavel que faz isso ja existe, com o caminho do Luis chumbado como default"}
+{"id":"recomendei-variavel-de-ambiente-sem-ler-o-que-ela-faz","titulo":"Confirmar que o binario conhece o NOME da variavel nao e confirmar o que ela FAZ"}
+{"id":"trava-entrega-os-casos-que-ela-nao-pode-barrar","titulo":"Trava so testada pelo que ela BARRA nao sabe o que ela atrapalha - os 100 casos do gate-worktree eram todos de escrita"}
+{"id":"gate-worktree-registra-comando-barrado","titulo":"gate-worktree grava o comando exato que barrou, para o relato de agente ser reproduzivel"}
+{"id":"obs-2026-10-06-gate-off-so-por-variavel","titulo":"Desenhei bloqueio do .rainforest-gate-off sem saber que ele pediu so variavel de ambiente"}
+
+
