@@ -92,7 +92,7 @@ arquivos: `CHANGELOG.md`, `README.md`, `docs/vigias.md`, `.claude-plugin/plugin.
 depende de: 2, 3, 4, 5
 mutacao: n/a
   motivo: tarefa só escreve doc e versão (e leva o estado de fechar do lote 2026-10-21-lote-1021b, gravado depois do squash do PR #586); não há comportamento a inverter
-pronto quando: o CHANGELOG `1.74.0` nomeia a #581 (dontAsk com lista de permitidas no `-Teste`, e o que fica fora: `Bash` e ronda normal), a #584 (`manual_no_limite` uma vez por estouro) e a #585 (`reconciliado` nos dois sentidos e o estacionado órfão arquivado). O README descreve, na seção de troca de conta, que o estado segue o login, e o `docs/vigias.md` (os vigias não têm seção no README, só o link para ele) descreve que o `-Teste` só libera leitura. Provado por `node scripts/conferir-versao.cjs` saindo 0 com `1.74.0` nos dois `plugin.json` e por `bash scripts/testa-plugin-codex.sh` com `rc=0`.
+pronto quando: o CHANGELOG `1.74.0` nomeia a #581 (dontAsk com lista de permitidas no `-Teste`, e o que fica fora: `Bash` e ronda normal), a #584 (`manual_no_limite` uma vez por estouro) e a #585 (`reconciliado` nos dois sentidos e o estacionado órfão arquivado). O README descreve, na seção de troca de conta, que o estado segue o login, e o `docs/vigias.md` (os vigias não têm seção no README, só o link para ele) descreve que o `-Teste` só libera leitura. Provado por `node scripts/conferir-versao.cjs` saindo 0 com `1.74.0` nos dois `plugin.json` por `bash scripts/testa-plugin-codex.sh` com `rc=0` e por `bash scripts/testa-versao.sh` com 0 falha (o badge do README entra na versão; ficou fora no primeiro CI do PR #588).
 
 ## Regra de parada
 

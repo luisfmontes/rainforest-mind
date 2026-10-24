@@ -21,7 +21,7 @@
     "em": "2026-10-23"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-23",
     "tarefas_ok": 6,
     "tarefas": 6,
@@ -73,7 +73,7 @@
     "mutacao_extra_revisao2": "causa, catch, retenta, resetnull, frase: as 5 vermelhas (testa-conta.sh / testa-mod-conta.cjs)"
   },
   "revisar": {
-    "status": "ok",
+    "status": "pendente",
     "snapshot": {
       "head": "99794fcc2a181487edc91da14c12739a1ab1e557",
       "caminhos_sujos": []
@@ -94,7 +94,7 @@
     "head": "99794fcc2a181487edc91da14c12739a1ab1e557"
   },
   "verificar": {
-    "status": "ok",
+    "status": "pendente",
     "em": "2026-10-24",
     "comando": "node scripts/testa-conta-decidir.cjs; bash scripts/testa-conta.sh; node hooks/testa-mod-conta.cjs; bash scripts/testa-run-vigia-claude.sh; node scripts/conferir-versao.cjs; bash scripts/testa-plugin-codex.sh",
     "saida": "36 ok, 0 falha(s); ok: 66 falhou: 0; 32 ok, 0 falha(s); 28 ok, 0 falha(s); conferir-versao rc=0 (1.74.0); testa-plugin-codex rc=0; tarefa 5 entrada real: claude -p --model haiku com os argumentos do -Teste, mark_chat_as_read -> Permission to use mcp__whatsapp__mark_chat_as_read has been denied because Claude Code is running in dont ask mode; list_chats limite 1 -> devolveu conversa (status@broadcast)",
@@ -115,6 +115,11 @@
       "em": "2026-10-24",
       "de": "revisar",
       "motivo": "README do achado 2 da revisao 3 entrou depois do revisar"
+    },
+    {
+      "em": "2026-10-24",
+      "de": "verificar",
+      "motivo": "CI do PR 588: badge de versao do README ficou em 1.73.1 (testa-versao.sh)"
     }
   ]
 }
