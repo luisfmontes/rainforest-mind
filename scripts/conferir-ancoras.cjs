@@ -20,6 +20,8 @@
  *     parênteses: `` `zfiscal01.prw:120` (`MontaNFe`) `` ou
  *     `` zfiscal01.prw:120 `MontaNFe` ``. O símbolo tem que aparecer entre a
  *     linha N-80 e a N (no intervalo, entre N-80 e M).
+ *   O caminho pode começar com `.` (diretório oculto: `.github/ci.yml`) ou com
+ *     `./` (normalizado para o caminho relativo à raiz, sem o `./` no rótulo).
  *   A extensão é obrigatória (ao menos uma letra depois do ponto), então
  *   horário (`10:30`) e número decimal não viram citação. URLs `http(s)://`
  *   são ignoradas. `host.com:8080` (TLD comum, com porta) também não vira
@@ -99,7 +101,7 @@ if (!fs.existsSync(raiz) || !fs.statSync(raiz).isDirectory()) erroUso(`--repo n�
 const raizAbs = path.resolve(raiz);
 
 // caminho(.ext) seguido de :N, :N-M ou #Simbolo. A extensão exige letra.
-const RE_CIT = /([A-Za-z0-9_][A-Za-z0-9_./\\-]*\.[A-Za-z][A-Za-z0-9]{0,9})(?::(\d+)(?:-(\d+))?(?!\d)|#([A-Za-z_][A-Za-z0-9_]*))/g;
+const RE_CIT = /([A-Za-z0-9_.][A-Za-z0-9_./\\-]*\.[A-Za-z][A-Za-z0-9]{0,9})(?::(\d+)(?:-(\d+))?(?!\d)|#([A-Za-z_][A-Za-z0-9_]*))/g;
 // símbolo entre crases logo após uma citação de linha (com ou sem crase de fechamento e parênteses)
 const RE_SIMBOLO_DEPOIS = /^`?\s*\(?\s*`([A-Za-z_][A-Za-z0-9_]*)`/;
 const RE_URL = /https?:\/\/\S+/g;
@@ -172,13 +174,15 @@ function indexar() {
 // acha o arquivo da citação: caminho direto sob a raiz, senão nome único; não lê o conteúdo
 function localizar(cit) {
   if (cit.parcial) return { status: 'arquivo-ausente' };
-  const rel = cit.arquivo.replace(/\\/g, '/');
+  // `./x` é o mesmo que `x`: o caminho é relativo à raiz, então o prefixo sai do rótulo também
+  const sem = cit.arquivo.replace(/^(?:\.[\\/])+/, '');
+  const rel = sem.replace(/\\/g, '/');
   const abs = path.resolve(raizAbs, rel);
   const dentro = path.relative(raizAbs, abs);
   if (dentro === '' || path.isAbsolute(dentro) || dentro.split(path.sep)[0] === '..') {
     return { status: 'fora-da-raiz' };
   }
-  if (fs.existsSync(abs) && fs.statSync(abs).isFile()) return { abs, exibido: cit.arquivo };
+  if (fs.existsSync(abs) && fs.statSync(abs).isFile()) return { abs, exibido: sem };
   const candidatos = indexar().get(path.posix.basename(rel).toLowerCase()) || [];
   if (candidatos.length === 1) return { abs: path.join(raizAbs, candidatos[0]), exibido: candidatos[0] };
   if (candidatos.length > 1) return { status: 'ambiguo', candidatos };

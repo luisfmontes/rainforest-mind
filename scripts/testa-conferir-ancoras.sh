@@ -37,6 +37,11 @@ printf '// zoculto\n' > "$REPO/.git/zoculto.prw"
 printf 'const a = 1;\nfunction MontaNFe() {}\n' > "$REPO/app.js"
 printf 'linha um\nTOKEN_SECRETO=1\n' > "$SB/segredo.txt"
 
+# fixtures da rodada 3 (achado do revisor): diretório oculto e ./ inicial
+mkdir -p "$REPO/.github/workflows" "$REPO/src"
+printf 'name: ci\non: push\njobs: {}\n' > "$REPO/.github/workflows/ci.yml"
+printf 'const x = 1;\n' > "$REPO/src/x.cjs"
+
 mapa() { # nome, texto -> grava $SB/<nome>.md e devolve o caminho
   printf '%s\n' "$2" > "$SB/$1.md"
   printf '%s' "$SB/$1.md"
@@ -153,6 +158,22 @@ verifica 14-caixa-advpl "símbolo em .prw sem a caixa certa sai ok" 0 "2 âncora
 M15=$(mapa c15-caixa-js 'Ver `app.js#montanfe` e `app.js#MontaNFe`.')
 verifica 15-caixa-js "símbolo em .js é sensível a caixa: minúsculo falha, certo passa" 1 "1 ok, 1 falhas" node "$CONF" "$M15" --repo "$REPO"
 verifica 15-caixa-js "o minúsculo sai simbolo-ausente" 1 "simbolo-ausente app.js#montanfe" node "$CONF" "$M15" --repo "$REPO"
+
+# --- rodada 3 (achado do revisor: caminho que começa com ponto) ---
+
+# diretório oculto: o ponto inicial faz parte do caminho e aparece no rótulo
+M16=$(mapa c16-dir-oculto 'Workflow: `.github/workflows/ci.yml:2`.')
+verifica 16-dir-oculto "diretório oculto (.github) sai ok e o rótulo preserva o ponto" 0 "ok .github/workflows/ci.yml:2" node "$CONF" "$M16" --repo "$REPO"
+M17=$(mapa c17-dir-oculto-ausente 'Ver `.github/inexistente.yml:1`.')
+verifica 17-dir-oculto-ausente "arquivo inexistente em diretório oculto sai arquivo-ausente" 1 "arquivo-ausente .github/inexistente.yml:1" node "$CONF" "$M17" --repo "$REPO"
+
+# ./ inicial: normalizado para o caminho relativo à raiz
+M18=$(mapa c18-dot-slash 'Ver `./src/x.cjs:1`.')
+verifica 18-dot-slash "./ inicial sai ok e o rótulo sai relativo à raiz" 0 "ok src/x.cjs:1" node "$CONF" "$M18" --repo "$REPO"
+
+# controle: ../ que sai da raiz continua fora-da-raiz, mesmo com o ponto inicial aceito
+M19=$(mapa c19-fora-controle 'Ver `../fora.cjs:1`.')
+verifica 19-fora-controle "../ que sai da raiz continua fora-da-raiz" 1 "fora-da-raiz ../fora.cjs:1" node "$CONF" "$M19" --repo "$REPO"
 
 echo "total=$total vermelhas:[$(echo "$vermelhas" | sed 's/^ //; s/ /, /g')]"
 if [ -z "$vermelhas" ]; then exit 0; fi
