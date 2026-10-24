@@ -58,6 +58,10 @@ export function frase(ev) {
   if (e.tipo === 'credencial_duplicada') {
     return 'Conta: o mesmo login está em dois arquivos (' + e.motivo + '); a troca automática não move nem renova nada até você separar.';
   }
+  // #584: a pasta trocada na mão não volta sozinha (D8); o aviso diz onde ela está e como devolver.
+  if (e.tipo === 'manual_no_limite') {
+    return 'Conta: a pasta ' + e.pasta + ' está na conta ' + e.de + ', que chegou ao limite (' + e.motivo + '). A troca foi manual e não volta sozinha: /conta ' + e.para + ' devolve a pasta à conta dela.';
+  }
   if (e.tipo === 'identidade_divergente') {
     return 'Conta: ' + e.motivo + '; nada foi gravado.';
   }

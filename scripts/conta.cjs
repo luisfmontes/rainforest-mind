@@ -337,6 +337,28 @@ function registrarAviso(c, ev) {
   if (!repetido) registrarEvento(c, ev);
 }
 
+// #584: aviso da pasta manual no limite, uma vez por estouro. A chave é pasta, limite (o começo do
+// motivo) e resets_at (o voltaEm do evento): o percentual sobe de 97 a 100 no mesmo estouro sem pedir
+// aviso novo, e a janela de 1 h do registrarAviso repetiria o aviso a cada hora durante dias.
+function avisoJaRegistrado(c, ev) {
+  const limite = (m) => String(m || '').split(' ')[0];
+  return lerEventos(c).some(({ ev: x }) => x.tipo === ev.tipo && x.pasta === ev.pasta
+    && x.voltaEm === ev.voltaEm && limite(x.motivo) === limite(ev.motivo));
+}
+
+function avisarManualNoLimite(c, estado, a) {
+  const ev = {
+    tipo: 'manual_no_limite',
+    pasta: a.pasta,
+    de: a.conta,
+    para: estado.pastas[a.pasta].casa,
+    motivo: a.motivo,
+    manual: true,
+    voltaEm: a.resetsAt,
+  };
+  if (!avisoJaRegistrado(c, ev)) registrarEvento(c, ev);
+}
+
 function credDaPasta(c, P) {
   const cred = lerJson(credArq(c, P), null);
   return cred && cred.claudeAiOauth ? cred : null;
@@ -822,6 +844,11 @@ async function vigiar(c) {
 
     let codigo = 0;
     for (const a of acoes) {
+      if (a.tipo === 'avisar') {
+        avisarManualNoLimite(c, estado, a);
+        console.log(`avisar ${a.pasta}: ${a.motivo}`);
+        continue;
+      }
       if (a.tipo === 'esperar') {
         console.log(`esperar ${a.pasta}: ${a.motivo}`);
         continue;

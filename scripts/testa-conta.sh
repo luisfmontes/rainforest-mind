@@ -1028,5 +1028,41 @@ caso_p2() {
 }
 afirma "(p2) duas pastas: trocar trabalho --pasta pessoal grava o oauthAccount no .claude.json de dentro da pasta pessoal; o de trabalho fica igual" caso_p2
 
+# #584: pasta manual no limite. A pasta trabalho foi trocada na mão para a pessoal (manual, sem
+# travouPor) e a pessoal chegou a 100% da semana. O vigia não move nada (D8), mas registra
+# manual_no_limite uma vez por estouro: a segunda rodada com o mesmo resets_at não registra outro, e
+# um resets_at novo (estouro seguinte) registra.
+echo "== #584: pasta manual no limite =="
+C_ML="$(novo_caso ml sim)"
+node "$RAIZ/ajustar.cjs" trocado "$C_ML"
+node -e "const fs=require('fs');const a=process.argv[1];const e=JSON.parse(fs.readFileSync(a,'utf8'));e.pastas.trabalho.manual=true;e.pastas.trabalho.travouPor=null;fs.writeFileSync(a,JSON.stringify(e))" "$C_ML/dados/contas/estado.json"
+EV_ML="$C_ML/dados/contas/eventos.jsonl"
+HASH_ML="$(sha256sum "$C_ML/trabalho/.claude/.credentials.json" | cut -d' ' -f1)"
+LIMITE_ML='{"tokens":{"falso-pessoal-pasta":{"uso7":100,"reset7":"2026-10-25T11:00:00.000Z"},"falso-pessoal-reserva":{"uso7":100,"reset7":"2026-10-25T11:00:00.000Z"}}}'
+node "$RAIZ/derivar.cjs" "$RAIZ/mapa.json" "$RAIZ/mapa-ml.json" "$LIMITE_ML"
+node "$RAIZ/derivar.cjs" "$RAIZ/mapa.json" "$RAIZ/mapa-ml2.json" "${LIMITE_ML//2026-10-25/2026-11-01}"
+iniciar_servidor "$RAIZ/mapa-ml.json" "$RAIZ/porta-ml.txt"
+API_ML="$API"
+iniciar_servidor "$RAIZ/mapa-ml2.json" "$RAIZ/porta-ml2.txt"
+API_ML2="$API"
+API="$API_ML"
+cli "$C_ML" vigiar > "$RAIZ/ml1.txt" 2>&1 || true
+cli "$C_ML" vigiar > "$RAIZ/ml2.txt" 2>&1 || true
+contar_ml() { grep -c '"tipo":"manual_no_limite"' "$EV_ML" 2>/dev/null || true; }
+N_ML1="$(contar_ml)"
+API="$API_ML2"
+# A leitura de uso fica em cache por minutos: sem apagá-lo, a rodada seguinte relê o estouro velho.
+rm -f "$C_ML/dados/contas/uso-cache.json"
+cli "$C_ML" vigiar > "$RAIZ/ml3.txt" 2>&1 || true
+API="$API_PRINCIPAL"
+N_ML2="$(contar_ml)"
+afirma "#584: a primeira rodada registra manual_no_limite da pasta trabalho" \
+  grep -qF '"tipo":"manual_no_limite","pasta":"trabalho"' "$EV_ML"
+afirma "segunda rodada com o mesmo estouro nao registra outro manual_no_limite" test "$N_ML1" = 1
+afirma "#584: resets_at novo (estouro seguinte) registra outro" test "$N_ML2" = 2
+afirma "#584: o vigia não move credencial nem tira a pasta da conta pessoal" \
+  test "$(sha256sum "$C_ML/trabalho/.claude/.credentials.json" | cut -d' ' -f1)" = "$HASH_ML" -a "$(ler "$C_ML/dados/contas/estado.json" pastas.trabalho.conta)" = pessoal
+afirma "#584: a saída do vigia diz avisar trabalho" contem "$(cat "$RAIZ/ml1.txt")" "avisar trabalho: seven_day de pessoal em 100%"
+
 echo "ok: $OK   falhou: $FALHOU"
 if [ "$FALHOU" -ne 0 ]; then exit 1; fi

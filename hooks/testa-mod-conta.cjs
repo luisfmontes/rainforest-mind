@@ -236,6 +236,10 @@ async function main() {
     const fi = frase({ em: 1, tipo: 'identidade_divergente', pasta: 'trabalho', motivo: 'a pasta trabalho está em casa (conta trabalho) mas o login dela é de outra conta', manual: false });
     afirma('identidade_divergente vira aviso com o motivo',
       /^Conta: a pasta trabalho está em casa/.test(fi), 'frase: ' + fi);
+    // #584: o aviso da pasta manual no limite diz a pasta, a conta em uso, o quanto e como devolver.
+    const fml = frase({ em: 1, tipo: 'manual_no_limite', pasta: 'trabalho', de: 'pessoal', para: 'team', motivo: 'seven_day de pessoal em 100%', manual: true, voltaEm: '2026-10-25T11:00:00Z' });
+    afirma('manual_no_limite diz a pasta, a conta, o percentual e o comando que devolve',
+      fml.includes('pasta trabalho') && fml.includes('conta pessoal') && fml.includes('100%') && fml.includes('/conta trabalho'), 'frase: ' + fml);
     afirma('falhou comum segue dizendo que a troca foi desfeita',
       frase({ em: 1, tipo: 'falhou', pasta: 'trabalho', motivo: 'saida_ocupada' }) === 'Conta: a troca da pasta trabalho foi desfeita (saida_ocupada).');
     const fnd = frase({ em: 1, tipo: 'falhou', pasta: 'trabalho', de: 'team', para: 'pessoal', motivo: 'servidor confirmou a@exemplo.invalid, esperado b@exemplo.invalid; desfeito=false' });
