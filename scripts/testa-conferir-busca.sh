@@ -81,7 +81,7 @@ tarefa() {
   printf 'pronto quando: com entrada X, efeito Y — provado por `bash scripts/testa-conferir-busca.sh`\n\n'
 }
 
-BUSCA_OK='- repo | rg "novo" scripts | nada reaproveitável
+BUSCA_OK='- repo | grep -E "novo" scripts | nada reaproveitável
 - livro | pulado: sem repositório de terceiro para este caso'
 DESF_OK='desfecho: enxertar'
 
@@ -126,7 +126,7 @@ echo "== 2. plano: forma do bloco busca: =="
 { printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/novo.cjs`' '- livro | pulado: sem repositório de terceiro' "$DESF_OK"; } > "$P"
 caso "busca sem canal repo é recusada" 2 'sem o canal `repo`' CHK plano --slug t --plano "$P"
 
-{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/novo.cjs`' '- repo | rg "novo" scripts' "$DESF_OK"; } > "$P"
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/novo.cjs`' '- repo | grep -E "novo" scripts' "$DESF_OK"; } > "$P"
 caso "linha sem resultado nem pulado: é recusada" 2 'linha inválida' CHK plano --slug t --plano "$P"
 
 { printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/novo.cjs`' "$BUSCA_OK" ''; } > "$P"
@@ -238,12 +238,12 @@ echo "== 7. achado 1 (rodada 3): pulado: so no segundo campo; | entre aspas e' c
 caso "repo | pulado: sem rede | offline e' recusado" 2 'leva um campo só' CHK plano --slug t --plano "$P"
 
 # `|` entre aspas e' consulta: sem resultado depois dela, a linha nao vale.
-{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/novo.cjs`' '- repo | rg "a|b"' "$DESF_OK"; } > "$P"
-caso "repo | rg \"a|b\" sem resultado e' recusado" 2 'sem resultado' CHK plano --slug t --plano "$P"
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/novo.cjs`' '- repo | grep -E "a|b"' "$DESF_OK"; } > "$P"
+caso "repo | grep -E \"a|b\" sem resultado e' recusado" 2 'sem resultado' CHK plano --slug t --plano "$P"
 
 # Mesma consulta com resultado depois: passa.
-{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/novo.cjs`' '- repo | rg "a|b" | 2 candidatos: x.cjs' "$DESF_OK"; } > "$P"
-caso "repo | rg \"a|b\" | 2 candidatos: x.cjs passa" 0 'ok:' CHK plano --slug t --plano "$P"
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/novo.cjs`' '- repo | grep -E "a|b" | 2 candidatos: x.cjs' "$DESF_OK"; } > "$P"
+caso "repo | grep -E \"a|b\" | 2 candidatos: x.cjs passa" 0 'ok:' CHK plano --slug t --plano "$P"
 
 echo "-----------------------------------------"
 echo "total=$total vermelhas:[$(IFS=,; echo "${vermelhas[*]}")]"
