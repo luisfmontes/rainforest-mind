@@ -42,8 +42,15 @@ Este é o mecanismo que mais importa, e o único que não existe em nenhum outro
 lugar deste repo.
 
 Antes de acrescentar qualquer coisa, olhe o `COBERTURA.md` da pasta de mapas (`node scripts/pastas-docs.cjs caminho --tipo mapas`).
-Se a fatia já tem linha lá, esta rodada é conferência. Para cada afirmação
-marcada `CONFIRMADO`, volte ao `arquivo:linha` de origem e responda uma de três:
+Se a fatia já tem linha lá, esta rodada é conferência. Antes da releitura, rode
+`node scripts/conferir-ancoras.cjs <mapa> --repo <raiz do código>`: ele confere
+por script cada `arquivo:linha` e `arquivo#Funcao` do mapa (o arquivo existe, a
+linha cabe nele, o símbolo aparece na linha ou nas 80 acima). Âncora que ele
+derrubou não se relê à mão: a afirmação perde o `CONFIRMADO` e volta como
+`LACUNA`, com o status do script ao lado, até alguém achar o trecho de novo. Só
+relê o que o script não derrubou: para cada afirmação `CONFIRMADO` que sobreviveu,
+volte ao `arquivo:linha` e responda uma de três (origem da parte mecânica: BMAD
+`recon_kit.py anchors`):
 
 | No fonte de hoje | O que fazer |
 |---|---|
