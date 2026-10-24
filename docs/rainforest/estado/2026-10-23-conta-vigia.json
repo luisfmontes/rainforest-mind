@@ -34,7 +34,7 @@
         "ts": "2026-10-24T01:24:08.702Z"
       }
     ],
-    "em": "2026-10-23",
+    "em": "2026-10-24",
     "mutacao": [
       {
         "tarefa": 1,
@@ -73,7 +73,7 @@
     "mutacao_extra_revisao2": "causa, catch, retenta, resetnull, frase: as 5 vermelhas (testa-conta.sh / testa-mod-conta.cjs)"
   },
   "revisar": {
-    "status": "ok",
+    "status": "pendente",
     "snapshot": {
       "head": "2fb455482bb51bcae999208a3186ddf0d1278231",
       "caminhos_sujos": [
@@ -97,17 +97,22 @@
   },
   "verificar": {
     "status": "pendente",
-    "em": "2026-10-23"
+    "em": "2026-10-24"
   },
   "fechar": {
     "status": "pendente",
-    "em": "2026-10-23"
+    "em": "2026-10-24"
   },
   "reaberturas": [
     {
       "em": "2026-10-23",
       "de": "revisar",
       "motivo": "revisao 2: orfao que nao arquivou nao e retentado, dedupe com resets_at ausente, comentario de causa, testes do catch e da causa"
+    },
+    {
+      "em": "2026-10-24",
+      "de": "revisar",
+      "motivo": "README do achado 2 da revisao 3 entrou depois do revisar"
     }
   ]
 }
