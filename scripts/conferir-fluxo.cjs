@@ -573,11 +573,35 @@ function extrairTarefas(conteudo) {
         }
       }
 
-      tarefas.push({ numero, nome, atende, tipo, prova, provaMalformada, provaNaBase, arquivos, dependeDe, paralela, paralelaDeclarada, mutacao: extrairMutacao(corpo, corpo_cerca) });
+      tarefas.push({ numero, nome, atende, tipo, prova, provaMalformada, provaNaBase, arquivos, dependeDe, paralela, paralelaDeclarada, mutacao: extrairMutacao(corpo, corpo_cerca), busca: extrairBusca(corpo, corpo_cerca) });
     }
   }
 
   return tarefas;
+}
+
+/**
+ * Lê o campo `busca:` de uma tarefa (D7): o cabeçalho `busca:` e as linhas
+ * `- <canal> | ...` logo abaixo, e o `desfecho:` na coluna 0. Não valida nada
+ * aqui; quem valida é `conferir-busca.cjs`. Devolve `presente: false` quando a
+ * tarefa não declara o cabeçalho.
+ */
+function extrairBusca(corpo, cerca) {
+  let desfecho = null;
+  for (let k = 0; k < corpo.length; k++) {
+    if (!cerca[k] && corpo[k].startsWith('desfecho:')) {
+      desfecho = corpo[k].substring('desfecho:'.length).trim();
+      break;
+    }
+  }
+  const inicio = corpo.findIndex((linha, k) => !cerca[k] && /^busca:/.test(linha));
+  if (inicio === -1) return { presente: false, linhas: [], desfecho };
+  const linhas = [];
+  for (let k = inicio + 1; k < corpo.length; k++) {
+    if (cerca[k] || !/^\s*-\s/.test(corpo[k])) break;
+    linhas.push(corpo[k].replace(/^\s*-\s+/, ''));
+  }
+  return { presente: true, linhas, desfecho };
 }
 
 /**
@@ -721,7 +745,7 @@ function extrairCorpoTarefa(conteudo_plano, numero_tarefa) {
 function extrairCamposDesconhecidos(corpo, cerca) {
   const conhecidos_top = new Set([
     'atende', 'arquivos', 'depende de', 'paralela', 'prova',
-    'prova-na-base', 'mutacao', 'motivo', 'pronto quando'
+    'prova-na-base', 'mutacao', 'motivo', 'pronto quando', 'busca', 'desfecho'
   ]);
   const conhecidos_subcampos = new Set([
     'arquivo', 'de', 'para', 'bateria', 'fixture', 'raiz', 'timeout', 'motivo', 'no-lugar'

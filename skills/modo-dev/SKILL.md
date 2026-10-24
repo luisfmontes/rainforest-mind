@@ -163,6 +163,8 @@ fechamento de rodada; incidente 2026-09-23).
 
 **Degrau 2.** Já existe neste codebase? Reusar helper/padrão existente.
 
+**Degrau 2b.** Procurei fora antes de construir? Quem cria arquivo novo de código no plano declara a busca no campo `busca:` (canal `repo`, resultado ou `pulado:`, e `desfecho:` adotar, estender, compor, enxertar ou construir); sem ele o checador recusa. Fora do plano, a mesma regra: nomear o que se olhou e o que se achou antes de escrever.
+
 **Degrau 3.** Stdlib resolve? Usar. Plataforma nativa resolve? Usar.
 
 **Degrau 4.** Dependência já instalada resolve? Usar. Nunca adicionar nova pro que cabe em poucas linhas.

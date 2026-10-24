@@ -1690,6 +1690,7 @@ function portoesDe(slug) {
 const PORTOES = path.join(__dirname, 'portoes.cjs');
 const RECIBO = path.join(__dirname, 'recibo.cjs');
 const PROVA = path.join(__dirname, 'conferir-prova.cjs');
+const BUSCA = path.join(__dirname, 'conferir-busca.cjs');
 
 /**
  * Roda um dos checadores e devolve a recusa, ou null.
@@ -1758,6 +1759,12 @@ function conferirFechamento(estagio, slug, extra, estado) {
   // A prova das tarefas do plano roda no estágio `plano` junto das outras checagens.
   if (fs.existsSync(PROVA) && estagio === 'plano' && fs.existsSync(docDoEstagio('planos', slug, estado))) {
     const r = rodarChecador(PROVA, ['plano', '--slug', slug, '--plano', docDoEstagio('planos', slug, estado)], estagio);
+    if (r) recusas.push(r);
+  }
+
+  // A busca prévia (D7) roda no mesmo estágio: tarefa que cria código novo sem `busca:` não fecha o plano.
+  if (fs.existsSync(BUSCA) && estagio === 'plano' && fs.existsSync(docDoEstagio('planos', slug, estado))) {
+    const r = rodarChecador(BUSCA, ['plano', '--slug', slug, '--plano', docDoEstagio('planos', slug, estado)], estagio);
     if (r) recusas.push(r);
   }
 

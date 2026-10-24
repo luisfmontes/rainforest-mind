@@ -1,0 +1,204 @@
+#!/usr/bin/env node
+// @categoria: sensor
+/**
+ * conferir-busca — tarefa que cria código novo declara a busca antes de construir (D7)
+ *
+ * Uso:
+ *   node scripts/conferir-busca.cjs plano --slug <s> [--plano <arquivo>]
+ *
+ * Regra: tarefa `implementar` (ou sem tipo) cujo `arquivos:` declara caminho
+ * concreto de código que não existe no commit HEAD precisa do bloco `busca:`
+ * (uma linha por canal, e o canal `repo`) e de `desfecho:`. Teste e `.md` não
+ * contam; glob é ignorado.
+ *
+ * Exit: 0 ok, 2 recusa, 1 erro de uso, 69 nao-verificavel (sem git)
+ */
+
+const fs = require('fs');
+const path = require('path');
+const { spawnSync } = require('child_process');
+const { caminhoDoc } = require(path.join(__dirname, '..', 'hooks', 'lib', 'pastas-docs.cjs'));
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
+
+const RAIZ = process.env.RFM_ESTADO_ROOT
+  || process.env.CLAUDE_PROJECT_DIR
+  || process.cwd();
+
+const SCRIPT_DIR = path.dirname(__filename);
+const { extrairTarefas, lerMarkdown } = require(path.join(SCRIPT_DIR, 'conferir-fluxo.cjs'));
+
+const TIPOS_NAO_COBRADOS = ['docs', 'pesquisar', 'pesquisa', 'configurar', 'teste'];
+const DESFECHOS = ['adotar', 'estender', 'compor', 'enxertar', 'construir'];
+const FORMATO_LINHA = '- <canal> | <consulta> | <resultado>  ou  - <canal> | pulado: <motivo>';
+
+// ================================================================ Utilitários
+
+function arg(nome, obrigatorio = true) {
+  const i = process.argv.indexOf(`--${nome}`);
+  if (i === -1 || i + 1 >= process.argv.length) {
+    if (obrigatorio) {
+      console.error(`erro: falta --${nome}`);
+      process.exit(1);
+    }
+    return null;
+  }
+  return process.argv[i + 1];
+}
+
+function git(cwd, args) {
+  return spawnSync(caminhoExecutavel('git'), args, {
+    cwd,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+}
+
+/** Raiz do repo que contém o plano, ou null. */
+function raizDoRepo(dirPlano) {
+  const r = git(dirPlano, ['rev-parse', '--show-toplevel']);
+  if (r.error || r.status !== 0) return null;
+  return r.stdout.trim();
+}
+
+/** `arquivos:` com glob não entra: não há um caminho concreto para checar. */
+function ehGlob(caminho) {
+  return /[*?[{]/.test(caminho);
+}
+
+/** Teste não exige busca: a bateria que a própria tarefa cria não é código de produto. */
+function ehTeste(caminho) {
+  const base = path.posix.basename(caminho);
+  return /^testa-/.test(base)
+    || /\.test\./.test(base)
+    || /_test\./.test(base)
+    || /\.spec\./.test(base)
+    || /(^|\/)test\//.test(caminho)
+    || /^tests\//.test(caminho);
+}
+
+function existeNoHead(repo, caminho) {
+  const r = git(repo, ['cat-file', '-e', `HEAD:${caminho}`]);
+  return r.status === 0;
+}
+
+// ================================================================ Linhas do bloco
+
+/**
+ * Valida uma linha `- <canal> | ...`. Devolve o canal e o problema, se houver.
+ * Consulta pode conter `|` (regex do rg), então o resultado é o último campo e
+ * a consulta é o meio.
+ */
+function lerLinhaBusca(linha) {
+  const partes = linha.split('|').map((p) => p.trim());
+  const canal = (partes[0] || '').toLowerCase();
+  if (partes.length < 2) {
+    return { canal, problema: `linha sem resultado nem \`pulado:\`: "${linha}"` };
+  }
+  const ultimo = partes[partes.length - 1];
+  if (/^pulado:/i.test(ultimo)) {
+    const motivo = ultimo.replace(/^pulado:/i, '').trim();
+    if (!motivo) return { canal, problema: `\`pulado:\` sem motivo: "${linha}"` };
+    return { canal, problema: null };
+  }
+  if (partes.length < 3) {
+    return { canal, problema: `linha sem resultado nem \`pulado:\`: "${linha}"` };
+  }
+  const consulta = partes.slice(1, -1).join(' | ');
+  if (!consulta) return { canal, problema: `linha sem consulta: "${linha}"` };
+  if (!ultimo) return { canal, problema: `linha sem resultado: "${linha}"` };
+  return { canal, problema: null };
+}
+
+// ================================================================ Comando plano
+
+function cmdPlano() {
+  const slug = arg('slug');
+  const arquivo = arg('plano', false) || path.join(RAIZ, caminhoDoc('planos', slug, { raiz: RAIZ }));
+
+  const conteudo = lerMarkdown(arquivo);
+  if (!conteudo) {
+    console.error(`RECUSADO: plano não existe: ${arquivo}`);
+    console.error('uso: plano --slug <s> [--plano <arquivo>]');
+    process.exit(2);
+  }
+
+  const repo = raizDoRepo(path.dirname(path.resolve(arquivo)));
+  if (!repo) {
+    console.error('nao-verificavel: o plano não está num repositório git');
+    process.exit(69);
+  }
+
+  const recusas = [];
+  let exigidas = 0;
+
+  for (const tarefa of extrairTarefas(conteudo)) {
+    const { numero, nome, tipo, arquivos, busca } = tarefa;
+    if (TIPOS_NAO_COBRADOS.includes(tipo)) continue;
+    if (tipo !== '' && tipo !== 'implementar') continue;
+
+    const candidatos = arquivos.filter((c) => !ehGlob(c) && !ehTeste(c) && !c.endsWith('.md'));
+    const caminhosNovos = candidatos.filter((c) => !existeNoHead(repo, c));
+
+    // Gatilho D7: caminho novo de código na tarefa. Não basta tocar arquivo existente.
+    const exige = caminhosNovos.length > 0;
+    if (!exige) continue;
+    exigidas++;
+
+    const quem = `tarefa ${numero}. ${nome} cria \`${caminhosNovos[0]}\``
+      + (caminhosNovos.length > 1 ? ` (e mais ${caminhosNovos.length - 1})` : '');
+
+    if (!busca.presente) {
+      recusas.push(`${quem} sem bloco \`busca:\`. Falta: \`busca:\` seguido de ${FORMATO_LINHA}, com canal \`repo\`, e \`desfecho: ${DESFECHOS.join('|')}\`.`);
+      continue;
+    }
+
+    const canais = [];
+    for (const linha of busca.linhas) {
+      const { canal, problema } = lerLinhaBusca(linha);
+      canais.push(canal);
+      if (problema) {
+        recusas.push(`${quem}; bloco \`busca:\` com linha inválida: ${problema}. Formato: ${FORMATO_LINHA}.`);
+      }
+    }
+    if (busca.linhas.length === 0) {
+      recusas.push(`${quem}; \`busca:\` sem nenhuma linha. Falta: ${FORMATO_LINHA}.`);
+    } else if (!canais.includes('repo')) {
+      recusas.push(`${quem}; \`busca:\` sem o canal \`repo\`. Falta uma linha \`- repo | <consulta> | <resultado>\`.`);
+    }
+
+    if (busca.desfecho === null || busca.desfecho === '') {
+      recusas.push(`${quem}; falta \`desfecho:\`. Falta uma linha \`desfecho: ${DESFECHOS.join('|')}\`.`);
+    } else if (!DESFECHOS.includes(busca.desfecho)) {
+      recusas.push(`${quem}; \`desfecho: ${busca.desfecho}\` fora de ${DESFECHOS.join('|')}.`);
+    }
+  }
+
+  if (recusas.length > 0) {
+    console.error('RECUSADO:');
+    for (const recusa of recusas) {
+      console.error(`  ${recusa}`);
+    }
+    process.exit(2);
+  }
+
+  if (exigidas > 0) {
+    console.log(`ok: ${exigidas} tarefa(s) com caminho novo de código, todas com busca: e desfecho:`);
+  } else {
+    console.log('ok: nenhuma tarefa cria caminho novo de código sem busca:');
+  }
+}
+
+// ================================================================ Main
+
+function main() {
+  const subcmd = process.argv[2];
+  if (subcmd === 'plano') {
+    cmdPlano();
+  } else {
+    console.error('uso: plano --slug <s> [--plano <arquivo>]');
+    process.exit(1);
+  }
+}
+
+if (require.main === module) main();
+module.exports = { cmdPlano, lerLinhaBusca, ehTeste, ehGlob };

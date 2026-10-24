@@ -38,6 +38,10 @@ cleanup() { for dir in "${SANDBOXES[@]}"; do rm -rf "$dir" 2>/dev/null || true; 
 trap cleanup EXIT
 
 S="$(novo_sandbox)"; W="$(cygpath -m "$S" 2>/dev/null || printf '%s' "$S")"
+# Repo git vazio: a `busca:` (D7) decide o que e' caminho novo pelo HEAD, e fora de
+# git o checador sai 69 e o `marcar --estagio plano` recusa. Sem isto o plano da
+# fixture e' "nao verificavel", nao "sem busca".
+git init -q "$S"
 mkdir -p "$S/docs/rainforest/design" "$S/docs/rainforest/planos" "$S/docs/rainforest/varredura"
 D="$S/docs/rainforest/design/t.md"
 P="$S/docs/rainforest/planos/t.md"
@@ -54,8 +58,16 @@ V="$S/docs/rainforest/varredura/t.txt"
 # Sem isto, toda mutilacao desta secao passaria a recusar tambem por falta de
 # `mutacao:`, e cada caso ficaria verde com o check que ele testa apagado — que
 # e' exatamente o Achado 2 da revisao de 2026-08-13, repetido de outro jeito.
+#
+# Mesma coisa para `busca:` (D7, 2026-10-24): o plano de 2026-08-13 cria
+# scripts/conferir-esteira.cjs sem busca, e o `marcar --estagio plano` agora
+# recusa por isso antes de chegar aos casos desta secao. A copia recebe um bloco
+# `busca:` valido por tarefa; o caso que testa a busca e' testa-conferir-busca.sh.
 plano_no_formato(){
   awk '/^pronto quando:/ {
+         print "busca:";
+         print "- repo | fixture de bateria | busca injetada na copia";
+         print "desfecho: construir";
          print "mutacao:";
          print "  arquivo: `scripts/conferir-fluxo.cjs`";
          print "  de: a checagem que esta tarefa instala";
@@ -288,6 +300,7 @@ rm -rf "$V"
 # guarda: a trava só age quando TUDO que a checagem lê existe, não só o arquivo
 # do estágio que está fechando.
 M="$(novo_sandbox)"; MW="$(cygpath -m "$M" 2>/dev/null || printf '%s' "$M")"
+git init -q "$M"   # mesmo motivo da sandbox S: a busca do plano precisa de git
 mkdir -p "$M/docs/rainforest/planos"; plano_no_formato "$REAL_P" "$M/docs/rainforest/planos/misto.md"
 ME(){ RFM_ESTADO_ROOT="$MW" node "$ESTADO" "$@"; }
 ME iniciar --slug misto >/dev/null 2>&1
@@ -419,6 +432,7 @@ echo
 echo "== 8. normalizacao de CRLF e ignorar cerca de codigo =="
 # Fixture proprio para testar CRLF e cercas
 O="$(novo_sandbox)"; OW="$(cygpath -m "$O" 2>/dev/null || printf '%s' "$O")"
+git init -q "$O"   # mesmo motivo da sandbox S: a busca do plano precisa de git
 mkdir -p "$O/docs/rainforest/design" "$O/docs/rainforest/planos" "$O/docs/rainforest/varredura"
 OD="$O/docs/rainforest/design/t.md"; OP="$O/docs/rainforest/planos/t.md"; OV="$O/docs/rainforest/varredura/t.txt"
 OCHK(){ RFM_ESTADO_ROOT="$OW" node "$CHECADOR" "$@"; }

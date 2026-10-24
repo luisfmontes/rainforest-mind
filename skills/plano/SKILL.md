@@ -38,6 +38,10 @@ Design: <caminho do design>
 atende: D1, D2
 arquivos: `<padrão ou caminho>`
 depende de: nenhuma
+busca:
+- repo | <consulta> | <resultado>
+- livro | pulado: <motivo>
+desfecho: adotar|estender|compor|enxertar|construir
 mutacao:
   arquivo: `<arquivo onde a mutação entra>`
   de: <o padrão exato a inverter>
@@ -68,6 +72,23 @@ Cada tarefa leva: **tipo**, `atende:` (lista de `D<n>` do design que esta tarefa
 
 - **`prova:`** linha inteira com um par de crases: comando `bash -c` que **tem de FALHAR** (exit ≠ 0) quando rodado no commit base do briefing. Exemplos: `prova: \`bash scripts/testa-xyz.sh\``, `prova: \`node conferir-x.cjs\``. Executado num worktree descartável da base com timeout padrão 120 s (sobrescrevível por `RFM_PROVA_TIMEOUT_MS`), sem `RFM_ESTADO_ROOT`, `CLAUDE_PROJECT_DIR` e `RFM_ROOT` no ambiente. Saída 0 é recusa (o critério já passa sem a tarefa). Saída 126/127 é recusa quando o próprio comando não existe; `bash|sh|node|python <arquivo>` com o arquivo ainda ausente na base conta como falha legítima (a tarefa o cria). Tarefa `implementar`, `teste` ou sem tipo precisa de `prova:` **ou** `prova-na-base:`; isentos os tipos `docs`, `pesquisar`/`pesquisa` e `configurar`.
 - **`prova-na-base:`** aceita a tarefa sem executar, só na forma `prova-na-base: verde — <motivo não-vazio>` (o motivo sai no stdout do `marcar`). O motivo explica por que a tarefa não pode ser testada na base (ex.: "fixture de bateria", "depende de ferramenta externa"). Incompatível com `prova:` na mesma tarefa: as duas juntas são recusadas.
+
+### Campo `busca:` — procurar antes de construir
+
+Tarefa `implementar` (ou sem tipo) que cria caminho novo de código, um arquivo que não existe no commit base, declara a busca feita antes de escrever. Teste (`testa-*`, `test/`, `tests/`, `*.test.*`, `*_test.*`, `*.spec.*`), `.md` e glob não contam: tarefa que cria a própria bateria não paga o bloco.
+
+```
+busca:
+- repo | rg "busca:|search-first" scripts skills | só o varrer.cjs, que olha história do repo, não reuso
+- livro | vigias/livro-de-repos.md "search-first" | ECC skills/search-first é prosa sem checador
+desfecho: construir
+```
+
+- **Linha:** `- <canal> | <consulta> | <resultado>`, ou `- <canal> | pulado: <motivo>` quando o canal não se aplica. A consulta pode ter `|` (regex do rg); o resultado é sempre o último campo.
+- **Canal `repo` é obrigatório.** Sugeridos: `repo` (o código do próprio repo), `livro` (`vigias/livro-de-repos.md`), `ideias` (`ideias.jsonl`), `memoria`, `web`.
+- **`desfecho:`** é uma destas cinco palavras: `adotar` (serve como está), `estender` (acrescenta a algo existente), `compor` (junta peças existentes), `enxertar` (reimplementa o mecanismo de terceiro depois de lido; trilha em `vigias/livro-de-repos.md`), `construir` (nada serve). Outra palavra é recusa.
+- **Quem confere:** `node scripts/conferir-busca.cjs plano --slug <slug>`, que o `estado.cjs marcar --estagio plano` roda junto da cobertura. A recusa diz a tarefa, o caminho novo que a disparou e o que falta.
+- **Origem:** o padrão vem do ECC `skills/search-first`, que é só prosa ("agent guidance, not an executable setup script"). Aqui o "nada encontrado" sem canais é recusa, não atalho.
 
 ### Campo obrigatório: `mutacao:` — o alvo é declarado, nunca inferido
 
