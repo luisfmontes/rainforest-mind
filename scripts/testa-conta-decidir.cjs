@@ -194,6 +194,38 @@ caso("pasta manual em casa não troca mesmo com a conta em 97%", () => {
   return r.length === 0;
 });
 
+// (d2) #584: pasta manual fora de casa com a conta em uso no limite recebe 'avisar', e só isso
+const RESET_PESSOAL_7D = "2026-10-17T11:00:00.194407+00:00";
+caso("pasta manual com a conta em uso a 100% na semana devolve avisar", () => {
+  const pastas = trocadaParaPessoal({ manual: true, travouPor: null });
+  const r = rodar(pastas, deriva("pessoal", "seven_day", "utilization", 100));
+  return r.length === 1 && r[0].tipo === "avisar" && r[0].pasta === "trabalho" && r[0].conta === "pessoal"
+    && /seven_day/.test(r[0].motivo) && /100/.test(r[0].motivo)
+    && r[0].limite === "seven_day" && r[0].resetsAt === RESET_PESSOAL_7D;
+});
+
+caso("pasta manual com a conta em uso abaixo do limite não devolve nada", () => {
+  const pastas = trocadaParaPessoal({ manual: true, travouPor: null });
+  const usos = deriva("pessoal", "five_hour", "utilization", 50, deriva("pessoal", "seven_day", "utilization", 50));
+  return rodar(pastas, usos).length === 0;
+});
+
+caso("pasta manual com os dois limites passados avisa o que reseta por último", () => {
+  const pastas = trocadaParaPessoal({ manual: true, travouPor: null });
+  const usos = deriva("pessoal", "five_hour", "utilization", 99, deriva("pessoal", "seven_day", "utilization", 100));
+  const r = rodar(pastas, usos);
+  return r.length === 1 && r[0].tipo === "avisar" && r[0].limite === "seven_day";
+});
+
+caso("pasta manual no limite nunca recebe trocar nem voltar, nem depois do reset", () => {
+  const agora = Date.parse("2026-10-14T00:00:00Z");
+  const pastas = trocadaParaPessoal({ manual: true });
+  const usos = deriva("pessoal", "seven_day", "utilization", 100,
+    deriva("team", "five_hour", "utilization", 10, deriva("team", "seven_day", "utilization", 10)));
+  const r = rodar(pastas, usos, { agora });
+  return r.length === 1 && r[0].tipo === "avisar" && !r.some((a) => a.tipo === "trocar" || a.tipo === "voltar");
+});
+
 // (e) esperar quando a credencial que se moveria tem menos de 30 min de vida
 caso("esperar com expiresAt a 29 min", () => {
   const pastas = pastasEmCasa();

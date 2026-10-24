@@ -25,7 +25,8 @@
 //   agora:    ms ou ISO
 //
 // Regras (D1, D3, D4, D8, D11):
-//   - pasta manual nunca recebe ação automática;
+//   - pasta manual nunca recebe ação automática; fora de casa, com a conta em uso no trocarEm,
+//     recebe 'avisar' (#584), que só vira aviso no vigia e não move nada;
 //   - pasta em casa: troca para a outra conta quando a em uso chega a trocarEm (>=) na
 //     five_hour OU na seven_day, SÓ se a outra está abaixo de destinoMax5h (<) na 5 h E
 //     abaixo de destinoMaxSemana (<) na semana, E tem reserva;
@@ -53,13 +54,38 @@ function decidir({ pastas, usos, reservas, config, agora }) {
   const acoes = [];
   for (const nome of Object.keys(pastas)) {
     const pasta = pastas[nome];
-    if (pasta.manual) continue;
+    if (pasta.manual) {
+      const aviso = avisoManual(nome, pasta, usos, config);
+      if (aviso) acoes.push(aviso);
+      continue;
+    }
     const acao = pasta.conta === pasta.casa
       ? decidirEmCasa(nome, pasta, pastas, usos, reservas, config, agoraMs)
       : decidirVolta(nome, pasta, agoraMs);
     if (acao) acoes.push(acao);
   }
   return acoes;
+}
+
+// Pasta trocada na mão (D8) nunca recebe ação que mova credencial, mas quando a conta em uso dela
+// chega ao trocarEm o usuário precisa saber (#584: 4 dias a 100% da semana sem aviso). Com os dois
+// limites passados, avisa o que reseta por último: é ele que segura a conta. limite e resetsAt
+// formam a chave do "uma vez por estouro" que o vigia confere antes de registrar.
+function avisoManual(nome, pasta, usos, config) {
+  if (pasta.conta === pasta.casa) return null;
+  const uso = usos[pasta.conta];
+  if (!dadosCompletos(uso)) return null;
+  const passaram = LIMITES.filter((l) => uso[l].utilization >= config.trocarEm);
+  if (!passaram.length) return null;
+  const limite = passaram.reduce((a, b) => (ms(uso[b].resets_at) > ms(uso[a].resets_at) ? b : a));
+  return {
+    tipo: 'avisar',
+    pasta: nome,
+    conta: pasta.conta,
+    motivo: `${limite} de ${pasta.conta} em ${uso[limite].utilization}%`,
+    limite,
+    resetsAt: uso[limite].resets_at,
+  };
 }
 
 function decidirVolta(nome, pasta, agoraMs) {
