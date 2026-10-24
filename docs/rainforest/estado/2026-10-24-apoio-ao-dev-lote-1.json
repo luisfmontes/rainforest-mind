@@ -16,7 +16,7 @@
     "em": "2026-10-24"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "tarefas_ok": 7,
     "tarefas": 7,
     "carimbos": [
@@ -120,10 +120,39 @@
         "resultado": "n/a",
         "motivo": "metadado de versao e documentacao"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-24"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "8db9444c669c9f2c34249bd3cb50bcba75524353",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a0850ef5b0ad4b709",
+        "veredito": "ok",
+        "em": "2026-10-24",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-a0850ef5b0ad4b709.jsonl"
+      },
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a8778f3fa603f9220",
+        "veredito": "reprovado",
+        "em": "2026-10-24",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-a8778f3fa603f9220.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-24",
+    "achados": 15,
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
@@ -145,6 +174,13 @@
       "porque": "o marcar plano passou a rodar o checador, como D7 manda; sem git o conferir-prova ja sai 69 do mesmo jeito, entao exigir repo git nao e restricao nova do fluxo",
       "estagio": "executar",
       "em": "2026-10-24T19:51:07.900Z"
+    },
+    {
+      "pergunta": "Rodada 2: os achados [design] baixos do revisor de memoria (lista fechada de tags deixa passar local-command-caveat, cross-session-message, bash-*; resumo de compactacao segue inteiro, 54% dos bytes restantes) entram neste PR?",
+      "escolha": "Nao: ficam plantados para o proximo lote; nesta rodada so os defeitos dentro das decisoes D3/D4/D6/D7/D8",
+      "porque": "ampliar a lista e tratar o resumo de compactacao muda D3/D4, e decisao que muda D<n> e parada do modo autonomo; o PR ja corta 78% do lixo medido",
+      "estagio": "executar",
+      "em": "2026-10-24T20:07:06.841Z"
     }
   ]
 }
