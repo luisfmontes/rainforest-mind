@@ -32,7 +32,7 @@ depende de: nenhuma
 prova: `bash scripts/testa-memoria-injecao-segura.sh`
 mutacao:
   arquivo: `hooks/lib/memoria-sessao.cjs`
-  de: return String(t).replace(RE_MARCADOR_HARNESS, '‹$1');
+  de: return String(t).replace(RE_MARCADOR_HARNESS, '‹$1').replace(RE_MARCADOR_NOTIFICACAO, '‹$1');
   para: return String(t);
   bateria: `bash scripts/testa-memoria-injecao-segura.sh`
   fixture: testa-memoria-injecao-segura.sh, caso "observação com </system-reminder> sai neutralizada nos dois blocos"
