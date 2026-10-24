@@ -68,9 +68,50 @@
         "iteracao": 2,
         "sessao": "a8916a80-26c9-4137-b35b-c9bf409af105",
         "ts": "2026-10-24T19:35:41.869Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "1e0389b1",
+        "iteracao": 2,
+        "sessao": "a8916a80-26c9-4137-b35b-c9bf409af105",
+        "ts": "2026-10-24T20:08:36.609Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "1e0389b1",
+        "iteracao": 2,
+        "sessao": "a8916a80-26c9-4137-b35b-c9bf409af105",
+        "ts": "2026-10-24T20:08:36.609Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "1e0389b1",
+        "iteracao": 2,
+        "sessao": "a8916a80-26c9-4137-b35b-c9bf409af105",
+        "ts": "2026-10-24T20:08:36.609Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "1e0389b1",
+        "iteracao": 2,
+        "sessao": "a8916a80-26c9-4137-b35b-c9bf409af105",
+        "ts": "2026-10-24T20:08:36.609Z"
       }
     ],
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "1 rodada 2",
+        "desde": "2026-10-24T22:30:00Z",
+        "sessao": "a8916a80-26c9-4137-b35b-c9bf409af105"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "4 rodada 2",
+        "desde": "2026-10-24T22:30:00Z",
+        "sessao": "a8916a80-26c9-4137-b35b-c9bf409af105"
+      }
+    ],
     "em": "2026-10-24",
     "integradas": [
       1,
@@ -181,6 +222,13 @@
       "porque": "ampliar a lista e tratar o resumo de compactacao muda D3/D4, e decisao que muda D<n> e parada do modo autonomo; o PR ja corta 78% do lixo medido",
       "estagio": "executar",
       "em": "2026-10-24T20:07:06.841Z"
+    },
+    {
+      "pergunta": "Rodada 2: o achado 1 do revisor (filtro do SYSTEM NOTIFICATION apaga fala real) contradiz o texto de D3, que mandava tirar o paragrafo de aviso",
+      "escolha": "Corrigir o defeito e alinhar o texto de D3 e do plano: so a linha exata do marcador sai",
+      "porque": "o paragrafo era suposicao minha sobre um formato que nao aparece em nenhum prompt de usuario dos transcritos; o objetivo de D3 (tirar bloco injetado sem comer fala real) nao muda",
+      "estagio": "executar",
+      "em": "2026-10-24T20:14:06.463Z"
     }
   ]
 }
