@@ -168,7 +168,13 @@ const DEGRAUS_TEXTO = [200, 160, 120];
  */
 const RE_MARCADOR_HARNESS = /<(\/?\s*(?:system-reminder|task-notification|command-name|command-message|command-args|local-command-stdout|local-command-stderr)\b)/gi;
 
-function neutralizarMarcadores(t) { return String(t).replace(RE_MARCADOR_HARNESS, '‹$1'); }
+// Marcador de notificação do harness que o modelo lê como voz do sistema. Não é tag
+// HTML, então entra aqui à parte: caixa e espaços variam, o `[` de abertura vira `‹`.
+const RE_MARCADOR_NOTIFICACAO = /\[(\s*SYSTEM\s+NOTIFICATION\s*-\s*NOT\s+USER\s+INPUT\s*\])/gi;
+
+function neutralizarMarcadores(t) {
+  return String(t).replace(RE_MARCADOR_HARNESS, '‹$1').replace(RE_MARCADOR_NOTIFICACAO, '‹$1');
+}
 
 /**
  * Moldura do bloco de memória (D4): sufixo na própria linha do cabeçalho, avisando
