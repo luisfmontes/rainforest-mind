@@ -1,0 +1,30 @@
+{
+  "slug": "2026-10-24-apoio-ao-dev-lote-1",
+  "titulo": "Apoio ao dev, lote 1: memoria que nao se recaptura, prova e revisao conferiveis, arqueologia ancorada",
+  "criado_em": "2026-10-24",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-24-apoio-ao-dev-lote-1.md",
+    "em": "2026-10-24"
+  },
+  "plano": {
+    "status": "ok",
+    "doc": "docs/rainforest/planos/2026-10-24-apoio-ao-dev-lote-1.md",
+    "em": "2026-10-24"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
