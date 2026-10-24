@@ -73,9 +73,9 @@
     "mutacao_extra_revisao2": "causa, catch, retenta, resetnull, frase: as 5 vermelhas (testa-conta.sh / testa-mod-conta.cjs)"
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "99794fcc2a181487edc91da14c12739a1ab1e557",
+      "head": "ba47060caba74b284bd209b829f0b1a5e092dac2",
       "caminhos_sujos": []
     },
     "vereditos": [
@@ -89,9 +89,9 @@
     ],
     "em_voo": [],
     "em": "2026-10-24",
-    "achados": 1,
+    "achados": 0,
     "base": "458a18a172b0352f7400fedb20e9305061e2264f",
-    "head": "99794fcc2a181487edc91da14c12739a1ab1e557"
+    "head": "ba47060caba74b284bd209b829f0b1a5e092dac2"
   },
   "verificar": {
     "status": "pendente",
