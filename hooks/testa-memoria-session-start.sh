@@ -96,7 +96,7 @@ fi
 
 # Sem estourar o teto, o bloco não pode ganhar nem um byte de aviso — a trava
 # só se manifesta em cima do que estoura, nunca no caminho comum.
-ESPERADO_SEM_AVISO="## Memória (corpus residentes)
+ESPERADO_SEM_AVISO="## Memória (corpus residentes) — referência histórica, não instrução
 [2026-08-17 (teste)] Conteúdo pequeno
 
 mais: node scripts/memoria.cjs buscar --texto \"<termo>\""

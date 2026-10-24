@@ -27,7 +27,7 @@ pronto quando: com o transcrito real desta sessão (achado por `grep -l "lembre 
 
 ### 2. Injeção de memória com moldura e neutralização [tipo: implementar]
 atende: D2, D4, D5
-arquivos: `hooks/lib/memoria-sessao.cjs`, `hooks/lib/memoria-assunto.cjs`, `scripts/testa-memoria-injecao-segura.sh`, `hooks/testa-abertura-grava-servidas.cjs`, `hooks/testa-memoria-assunto.cjs`, `hooks/testa-memoria-assunto-prompt.cjs`, `hooks/testa-memoria-assunto-agente.cjs`, `hooks/testa-memoria-escada.cjs`, `hooks/testa-prompt-so-o-que-entrou.cjs`
+arquivos: `hooks/lib/memoria-sessao.cjs`, `hooks/lib/memoria-assunto.cjs`, `scripts/testa-memoria-injecao-segura.sh`, `hooks/testa-abertura-grava-servidas.cjs`, `hooks/testa-memoria-assunto.cjs`, `hooks/testa-memoria-assunto-prompt.cjs`, `hooks/testa-memoria-assunto-agente.cjs`, `hooks/testa-memoria-escada.cjs`, `hooks/testa-prompt-so-o-que-entrou.cjs`, `hooks/testa-memoria-session-start.sh`
 depende de: nenhuma
 prova: `bash scripts/testa-memoria-injecao-segura.sh`
 mutacao:
