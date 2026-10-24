@@ -134,27 +134,37 @@ $prompt = Get-Content -Raw -Encoding UTF8 $promptFile
 #
 # O "deterministico" acima era falso ate 2026-09-28: o NAO ENVIE continuava sendo
 # so texto no prompt, e o haiku do jardineiro enviou a ronda de teste para o grupo
-# ("Mensagem enviada ao grupo com sucesso"). Agora o -Teste tambem TIRA as tools de
-# envio da sessao por --disallowedTools; conferido no mesmo dia que, com
-# --dangerously-skip-permissions, a tool negada some da lista em vez de so pedir
-# permissao. O prefixo do prompt fica: e ele que pede a mensagem entre marcadores.
+# ("Mensagem enviada ao grupo com sucesso"). Desde 2026-10-23 (#581) o -Teste nao
+# usa mais lista negra: ela deixava liberada toda tool nova do bridge. Agora usa
+# --permission-mode dontAsk com --allowedTools, e so roda o que esta na lista; o
+# resto e negado na chamada. Medido em 2026-10-23: --allowedTools com
+# --dangerously-skip-permissions nao restringe nada (com bypass toda tool ja esta
+# aprovada), e com dontAsk a tool fora da lista volta negada na chamada. O Bash
+# falando direto com o bridge HTTP fica fora desta trava (D2): a ronda de teste
+# roda node como a real. O prefixo do prompt fica: e ele que pede a mensagem entre marcadores.
 # #367: toda ronda nega o servidor gmail inteiro (escopo completo, envia e apaga).
 # Em 01/10 a triagem leu por ele em vez do gmail-leitura (somente leitura, do
 # .mcp.json do comms-vigia). O vigia le pelo gmail-leitura, entao nada se perde.
 $negadas = @('mcp__gmail')
 if ($Teste) {
-    $negadas += @(
-        'mcp__whatsapp__send_message', 'mcp__whatsapp__send_file',
-        'mcp__whatsapp__send_audio_message', 'mcp__whatsapp__create_poll',
-        'mcp__whatsapp__edit_message', 'mcp__whatsapp__react_to_message',
-        'mcp__whatsapp__delete_message', 'mcp__whatsapp__vote_in_poll'
+    $permitidas = @(
+        'Bash', 'Read', 'Write', 'Edit', 'Glob', 'Grep',
+        'mcp__gmail-leitura',
+        'mcp__whatsapp__list_chats', 'mcp__whatsapp__list_messages',
+        'mcp__whatsapp__get_chat', 'mcp__whatsapp__get_contact_chats',
+        'mcp__whatsapp__get_direct_chat_by_contact', 'mcp__whatsapp__get_group_info',
+        'mcp__whatsapp__get_last_interaction', 'mcp__whatsapp__get_message_context',
+        'mcp__whatsapp__get_user_info', 'mcp__whatsapp__search_contacts',
+        'mcp__whatsapp__resolve_contact', 'mcp__whatsapp__check_whatsapp'
     )
+    $permissao = @('--permission-mode', 'dontAsk', '--allowedTools', ($permitidas -join ','))
     # A segunda frase do prefixo nasceu na primeira ronda com as tools negadas:
     # sem send_message na lista, o haiku concluiu "bridge fora do ar" (a bridge
     # respondia healthy) e encerrou sem montar o relatorio.
     $prompt = "EXECUCAO DE TESTE (manual, fora do agendamento): NAO chame send_message nem qualquer tool de envio. As tools de envio foram REMOVIDAS desta sessao de proposito: a ausencia delas NAO significa bridge fora do ar nem erro, nao registre erro por isso e nao pule nenhum passo. Em vez de enviar, escreva no final da sua resposta a mensagem completa que voce enviaria, entre uma linha ---INICIO--- e uma linha ---FIM---. Todo o resto do trabalho (ler as fontes, apurar, decidir) e identico ao normal.`n`n" + $prompt
+} else {
+    $permissao = @('--dangerously-skip-permissions', '--disallowedTools', ($negadas -join ','))
 }
-$negar = @('--disallowedTools', ($negadas -join ','))
 
 # Dados apurados por script, quando o vigia tiver um. Existe porque instrução
 # não conserta aritmética: o jardineiro deu 12, 10, 9 e 11 para o mesmo
@@ -260,7 +270,7 @@ $exitClaude = $null
 # initialize, acima do teto de 30 s do Claude Code. Vale so para este processo e filhos.
 $env:MCP_TIMEOUT = '90000'
 try {
-    $prompt | & $claude -p --model $modelo --dangerously-skip-permissions @negar 2>&1 |
+    $prompt | & $claude -p --model $modelo @permissao 2>&1 |
       ForEach-Object { $script:linhasDoClaude++; [void](Write-LinhaEmLf -Caminho $log -Linha "$_") }
     $exitClaude = $LASTEXITCODE
 } catch {

@@ -95,9 +95,16 @@ igual "exit da ronda" "$(rodar "$(win "$SB/bom.cmd")")" "0"
 tem    "a resposta chegou ao log" "resposta-boa" "$LOG"
 naotem "ERROS.md sem erro de claude" "claude" "$ERR"
 
-echo "== 5. -Teste tira as tools de envio da sessao (2026-09-28: o haiku enviou a ronda de teste) =="
-tem "o claude recebeu --disallowedTools" "--disallowedTools" "$LOG"
-tem "send_message esta na lista negada" "mcp__whatsapp__send_message" "$LOG"
+echo "== 5. -Teste: dontAsk com lista de permitidas, sem bypass (#581; 2026-09-28: o haiku enviou a ronda de teste) =="
+montar
+igual "exit da ronda no -Teste" "$(rodar "$(win "$SB/bom.cmd")")" "0"
+tem    "o claude recebeu --permission-mode dontAsk e nao recebeu --dangerously-skip-permissions" "--permission-mode dontAsk" "$LOG"
+naotem "o claude recebeu --permission-mode dontAsk e nao recebeu --dangerously-skip-permissions" "--dangerously-skip-permissions" "$LOG"
+tem    "a chamada leva --allowedTools" "--allowedTools" "$LOG"
+tem    "mcp__whatsapp__list_messages esta na lista permitida" "mcp__whatsapp__list_messages" "$LOG"
+tem    "mcp__gmail-leitura esta na lista permitida" "mcp__gmail-leitura" "$LOG"
+naotem "mcp__whatsapp__send_message fica fora da lista" "mcp__whatsapp__send_message" "$LOG"
+naotem "mcp__whatsapp__leave_group fica fora da lista" "mcp__whatsapp__leave_group" "$LOG"
 
 echo "== 6. (#367) o runner da 90 s para o MCP subir =="
 montar
@@ -108,10 +115,12 @@ echo "== 7. (#367) o servidor gmail inteiro fica fora da sessao, com e sem -Test
 montar
 igual "exit da ronda sem -Teste" "$(rodar "$(win "$SB/bom.cmd")" sem-teste)" "0"
 tem   "(#367) mcp__gmail negado tambem fora do -Teste" "--disallowedTools mcp__gmail" "$LOG"
+tem   "fora do -Teste o bypass segue" "--dangerously-skip-permissions" "$LOG"
+naotem "fora do -Teste nao ha --permission-mode" "--permission-mode" "$LOG"
 naotem "fora do -Teste as tools de envio do whatsapp seguem livres" "mcp__whatsapp__send_message" "$LOG"
 montar
 igual "exit da ronda no -Teste" "$(rodar "$(win "$SB/bom.cmd")")" "0"
-tem   "(#367) mcp__gmail negado no -Teste" "--disallowedTools mcp__gmail," "$LOG"
+naotem "no -Teste nao ha lista negra (--disallowedTools)" "--disallowedTools" "$LOG"
 
 echo
 echo "$ok ok, $falhou falha(s)"
