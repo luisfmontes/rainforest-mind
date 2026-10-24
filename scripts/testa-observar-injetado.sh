@@ -7,8 +7,11 @@
 #   2. system-reminder sem fechamento fica intacto e o texto depois dele não some
 #   3. prompt só com bloco injetado não gera linha Prompt:
 #   4. command-name/message/args e local-command-stdout/stderr somem
-#   5. linha [SYSTEM NOTIFICATION - NOT USER INPUT] e parágrafo somem
+#   5. só a linha exata do marcador [SYSTEM NOTIFICATION - NOT USER INPUT] sai; o parágrafo seguinte fica
 #   6. a < b e Map<string> saem iguais
+#   7. achado 1: marcador citado no meio de uma linha não remove nada; fala real logo abaixo fica
+#   8. achado 2: bloco com a mesma tag aninhada sai inteiro e não vaza o resultado
+#   9. achado 4: fala do usuário que começa com "Agente: " sai como Prompt:
 #
 # Sai ≠ 0 se qualquer caso falha. Imprime "total=N vermelhas:[...]" no fim.
 
@@ -109,11 +112,42 @@ caso('command-name/message/args e local-command-stdout/stderr somem', () => {
   return erros.join('; ') || null;
 });
 
-caso('linha [SYSTEM NOTIFICATION - NOT USER INPUT] e paragrafo somem', () => {
+caso('linha [SYSTEM NOTIFICATION - NOT USER INPUT] sai e o paragrafo seguinte fica', () => {
   const out = saida(
     '[SYSTEM NOTIFICATION - NOT USER INPUT]\nEsta mensagem e do harness, o usuario nao escreveu isto.\n\nfala real do usuario'
   );
-  if (out !== 'Prompt: fala real do usuario') return 'saida ' + JSON.stringify(out);
+  const esperado = 'Prompt: Esta mensagem e do harness, o usuario nao escreveu isto.\n\nfala real do usuario';
+  if (out !== esperado) return 'saida ' + JSON.stringify(out);
+  return null;
+});
+
+caso('achado 1: so a linha exata do marcador sai; citacao no meio da linha nao remove nada', () => {
+  const erros = [];
+  const a = saida('[SYSTEM NOTIFICATION - NOT USER INPUT]\naviso\nFALA-REAL-SEM-VAZIA');
+  if (a !== 'Prompt: aviso\nFALA-REAL-SEM-VAZIA') erros.push('sonda 1 saiu ' + JSON.stringify(a));
+  const b = 'o texto "[SYSTEM NOTIFICATION - NOT USER INPUT]" aparece no log\nFALA-REAL-1\nFALA-REAL-2\n\noutro paragrafo';
+  if (saida(b) !== 'Prompt: ' + b) erros.push('sonda 2 saiu ' + JSON.stringify(saida(b)));
+  const c = '  [SYSTEM NOTIFICATION - NOT USER INPUT]  \nFALA-C';
+  if (saida(c) !== 'Prompt: FALA-C') erros.push('linha so com marcador (com espacos) saiu ' + JSON.stringify(saida(c)));
+  return erros.join('; ') || null;
+});
+
+caso('achado 2: bloco com a mesma tag aninhada sai inteiro e nao vaza o resultado', () => {
+  const erros = [];
+  const t1 = '<task-notification>\n<summary>S</summary>\n<result>HEAD abc <task-notification> interno </task-notification> cauda</result>\n</task-notification>\nfala depois';
+  const o1 = saida(t1);
+  if (o1 !== 'Agente: S\nPrompt: fala depois') erros.push('task-notification aninhado saiu ' + JSON.stringify(o1));
+  const t2 = '<system-reminder>A <system-reminder>B</system-reminder> C SEGREDO</system-reminder>';
+  const o2 = saida(t2);
+  if (o2 !== '') erros.push('system-reminder aninhado saiu ' + JSON.stringify(o2));
+  const t3 = '<task-notification>\n<summary>S3</summary>\n<result>sem fechar';
+  if (saida(t3) !== 'Prompt: ' + t3) erros.push('task-notification sem fechamento nao ficou intacto');
+  return erros.join('; ') || null;
+});
+
+caso('achado 4: fala do usuario que comeca com "Agente: " sai como Prompt:', () => {
+  const out = saida('Agente: faça X por favor\nFALA-REAL');
+  if (out !== 'Prompt: Agente: faça X por favor\nFALA-REAL') return 'saida ' + JSON.stringify(out);
   return null;
 });
 

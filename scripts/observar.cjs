@@ -186,32 +186,56 @@ const TAGS_INJETADAS = [
 ];
 const MARCA_NOTIFICACAO_HARNESS = '[SYSTEM NOTIFICATION - NOT USER INPUT]';
 
-// Bloco fechado, não guloso e sem abertura aninhada: abertura sem fechamento fica intacta.
-function reBloco(tag) {
-  return new RegExp('<' + tag + '>((?:(?!<' + tag + '>)[\\s\\S])*?)</' + tag + '>', 'g');
-}
+// Prefixo interno de linha `Agente:` gerada da troca de um <task-notification>. Não é texto de
+// transcrito: removerBlocosInjetados apaga qualquer ocorrência dele vinda da fala antes de trocar.
+const MARCA_LINHA_AGENTE = '\u0001';
 
-// Remove blocos injetados do texto do prompt. <task-notification> vira linha `Agente: <summary>`.
-// Prompt que fica vazio volta ''. Função pura: não lê nem grava nada.
-function removerBlocosInjetados(texto) {
-  let t = String(texto);
-  t = t.replace(reBloco('task-notification'), (_, corpo) => {
-    const m = corpo.match(/<summary>([\s\S]*?)<\/summary>/);
-    const resumo = m ? m[1].replace(/\s+/g, ' ').trim() : '';
-    return '\nAgente: ' + (resumo || '(sem resumo)') + '\n';
-  });
-  for (const tag of TAGS_INJETADAS) t = t.replace(reBloco(tag), '');
-  // Linha de notificação do harness e o parágrafo de aviso que vem logo depois (até a primeira linha vazia).
-  const saida = [];
-  let pulando = false;
-  for (const linha of t.split('\n')) {
-    if (linha.includes(MARCA_NOTIFICACAO_HARNESS)) { pulando = true; continue; }
-    if (pulando) {
-      if (linha.trim() === '') { pulando = false; saida.push(linha); }
+// Varredura por profundidade: o bloco externo inteiro sai, mesmo com a mesma tag aninhada dentro.
+// Abertura sem fechamento fica intacta e a varredura continua na abertura seguinte.
+function removerBloco(texto, tag, substituir) {
+  const aber = '<' + tag + '>';
+  const fech = '</' + tag + '>';
+  let saida = '';
+  let pos = 0;
+  for (;;) {
+    const i = texto.indexOf(aber, pos);
+    if (i < 0) break;
+    let p = i;
+    let profundidade = 0;
+    let fim = -1;
+    for (;;) {
+      const a = texto.indexOf(aber, p);
+      const f = texto.indexOf(fech, p);
+      if (f < 0) break;
+      if (a >= 0 && a < f) { profundidade++; p = a + aber.length; continue; }
+      profundidade--;
+      p = f + fech.length;
+      if (profundidade === 0) { fim = p; break; }
+    }
+    if (fim < 0) {
+      saida += texto.slice(pos, i + aber.length);
+      pos = i + aber.length;
       continue;
     }
-    saida.push(linha);
+    const corpo = texto.slice(i + aber.length, fim - fech.length);
+    saida += texto.slice(pos, i) + substituir(corpo);
+    pos = fim;
   }
+  return saida + texto.slice(pos);
+}
+
+// Remove blocos injetados do texto do prompt. <task-notification> vira linha `Agente: <summary>`
+// (com MARCA_LINHA_AGENTE na frente). Prompt que fica vazio volta ''. Função pura: não lê nem grava nada.
+function removerBlocosInjetados(texto) {
+  let t = String(texto).split(MARCA_LINHA_AGENTE).join('');
+  t = removerBloco(t, 'task-notification', (corpo) => {
+    const m = corpo.match(/<summary>([\s\S]*?)<\/summary>/);
+    const resumo = m ? m[1].replace(/\s+/g, ' ').trim() : '';
+    return '\n' + MARCA_LINHA_AGENTE + 'Agente: ' + (resumo || '(sem resumo)') + '\n';
+  });
+  for (const tag of TAGS_INJETADAS) t = removerBloco(t, tag, () => '');
+  // Só a linha que, aparada, é exatamente o marcador do harness sai. O texto em volta fica.
+  const saida = t.split('\n').filter((linha) => linha.trim() !== MARCA_NOTIFICACAO_HARNESS);
   return saida.join('\n').trim();
 }
 
@@ -231,9 +255,9 @@ function formatarParaLLM(eventos) {
       const texto = removerBlocosInjetados(typeof conteudo === 'string' ? conteudo : '');
       if (texto) {
         const linhas = texto.split('\n');
-        const agentes = linhas.filter((l) => l.startsWith('Agente: '));
-        const fala = linhas.filter((l) => !l.startsWith('Agente: ')).join('\n').trim();
-        for (const a of agentes) resumo.push(a);
+        const agentes = linhas.filter((l) => l.startsWith(MARCA_LINHA_AGENTE));
+        const fala = linhas.filter((l) => !l.startsWith(MARCA_LINHA_AGENTE)).join('\n').trim();
+        for (const a of agentes) resumo.push(a.slice(MARCA_LINHA_AGENTE.length));
         if (fala) resumo.push(`Prompt: ${fala}`);
       }
     }
