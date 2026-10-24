@@ -73,12 +73,10 @@
     "mutacao_extra_revisao2": "causa, catch, retenta, resetnull, frase: as 5 vermelhas (testa-conta.sh / testa-mod-conta.cjs)"
   },
   "revisar": {
-    "status": "pendente",
+    "status": "parcial",
     "snapshot": {
-      "head": "2fb455482bb51bcae999208a3186ddf0d1278231",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/2026-10-23-conta-vigia.json"
-      ]
+      "head": "c3aa1c726686ebece8f88ca7b82068345f05a051",
+      "caminhos_sujos": []
     },
     "vereditos": [
       {
@@ -89,7 +87,13 @@
         "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/21bbb906-04da-49d6-81e0-c50cb1c59dfc/subagents/agent-a839bc82dd7dedf5f.jsonl"
       }
     ],
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "revisor",
+        "tarefa": "revisao 4 do conta-vigia (README)",
+        "sessao": "21bbb906-04da-49d6-81e0-c50cb1c59dfc"
+      }
+    ],
     "em": "2026-10-24",
     "achados": 3,
     "base": "458a18a172b0352f7400fedb20e9305061e2264f",

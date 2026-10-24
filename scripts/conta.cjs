@@ -583,7 +583,7 @@ function orfaoPendente(c, P) {
 function retentarOrfao(c, P, conta) {
   const motivo = arquivarOrfao(c, P);
   const ev = { tipo: 'reconciliado', pasta: P, de: conta, para: conta, motivo, manual: false, voltaEm: null };
-  // Falhou de novo: o mesmo aviso no máximo uma vez por hora (a rodada é de 15 em 15 min).
+  // Falhou de novo: o mesmo aviso no máximo uma vez por hora (o vigia roda a cada minuto).
   if (motivo.startsWith(NAO_ARQUIVEI)) registrarAviso(c, ev);
   else registrarEvento(c, ev);
 }
