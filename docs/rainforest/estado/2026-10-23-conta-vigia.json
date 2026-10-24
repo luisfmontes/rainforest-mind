@@ -94,12 +94,12 @@
     "head": "ba47060caba74b284bd209b829f0b1a5e092dac2"
   },
   "verificar": {
-    "status": "pendente",
+    "status": "ok",
     "em": "2026-10-24",
-    "comando": "node scripts/testa-conta-decidir.cjs; bash scripts/testa-conta.sh; node hooks/testa-mod-conta.cjs; bash scripts/testa-run-vigia-claude.sh; node scripts/conferir-versao.cjs; bash scripts/testa-plugin-codex.sh",
-    "saida": "36 ok, 0 falha(s); ok: 66 falhou: 0; 32 ok, 0 falha(s); 28 ok, 0 falha(s); conferir-versao rc=0 (1.74.0); testa-plugin-codex rc=0; tarefa 5 entrada real: claude -p --model haiku com os argumentos do -Teste, mark_chat_as_read -> Permission to use mcp__whatsapp__mark_chat_as_read has been denied because Claude Code is running in dont ask mode; list_chats limite 1 -> devolveu conversa (status@broadcast)",
+    "comando": "node scripts/testa-conta-decidir.cjs; bash scripts/testa-conta.sh; node hooks/testa-mod-conta.cjs; bash scripts/testa-run-vigia-claude.sh; node scripts/conferir-versao.cjs; bash scripts/testa-plugin-codex.sh; bash scripts/testa-versao.sh",
+    "saida": "36 ok, 0 falha(s); ok: 66 falhou: 0; 32 ok, 0 falha(s); 28 ok, 0 falha(s); conferir-versao rc=0 (1.74.0); testa-plugin-codex rc=0; testa-versao ok: 5 falhou: 0; tarefa 5 entrada real: claude -p --model haiku com os argumentos do -Teste, mark_chat_as_read -> Permission to use mcp__whatsapp__mark_chat_as_read has been denied because Claude Code is running in dont ask mode; list_chats limite 1 -> devolveu conversa (status@broadcast)",
     "sensor_externo": "bash scripts/testa-conta.sh",
-    "head": "ca49ae181d2351cf0d85e9d3df91027cc8ecf886"
+    "head": "e575bfadede1a77bf39cb6a78edcfb84084cb657"
   },
   "fechar": {
     "status": "pendente",
