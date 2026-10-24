@@ -60,6 +60,14 @@ O sandbox tinha `git init` do principal, o worktree do agente em `<P>/.claude/wo
 - **D6 — Entrega**: um PR, versão 1.74.1 (PATCH: conserto, sem contrato novo), com `Closes #573, closes #580, closes #582, closes #583`.
   - porquê: escolha do usuário (Q4).
 
+## Avaliado e descartado
+
+- **Barrar toda variável não resolvida nos ramos novos (Q1, opção B)**: barraria `$(mktemp)` e `$(pwd)`, que o briefing de revisor manda usar.
+- **Só `$CLAUDE_PROJECT_DIR` em todo ramo (Q1, opção C)**: fecharia a #580 pela metade. Os outros 5 casos do critério seguiriam passando.
+- **Liberar script do principal rodado por caminho absoluto (Q2)**: muda veredito e pede um modelo de ameaça próprio, porque o script roda código do checkout principal.
+- **Resolver o destino do `cd -` (Q3)**: refutado na 3ª revisão do lote 2026-10-21b. O gate errava o destino quando o `cd` anterior não rodava.
+- **Dois PRs, um de mensagem e outro de veredito (Q4)**: as quatro Issues mexem na mesma função (`alvosDaRede`) e na mesma bateria.
+
 ## Fora de escopo
 
 - PowerShell: `$env:X` e variável de PowerShell em caminho seguem como hoje.
