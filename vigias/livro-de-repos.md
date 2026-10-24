@@ -284,3 +284,7 @@ veredito antecipado: o veredito adiantado vira a hipótese que a avaliação ten
 Ver a ideia plantada `fila-do-livro-de-repos-e-prosa-que-ninguem-le` — esta seção é prosa
 que o apurador não lê, e a correção proposta (um `vigias/fila-de-repos.jsonl` com **âncora
 declarada** por candidato) continua aberta.
+
+## Rodada apoio-ao-dev, lote 1 (2026-10-24)
+
+Releitura dos repos do livro e dos créditos do README, em 10 grupos: relatorios/2026-10-24-releitura-do-livro.md (entram no lote 1 as peças D3, D4, D6, D7 e D8; o resto é backlog).
