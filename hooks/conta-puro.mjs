@@ -74,6 +74,12 @@ export function frase(ev) {
   if (e.tipo === 'reconciliado') {
     const cru = String(ev.motivo || '');
     const arquivado = /arquivado em (\S+)$/.exec(cru);
+    // Nova tentativa de arquivar o órfão de uma reconciliação anterior: o estado já estava certo.
+    if (e.de === e.para) {
+      return arquivado
+        ? 'Conta: o login guardado antigo da pasta ' + e.pasta + ' foi arquivado em ' + arquivado[1] + '; a troca dela volta a funcionar.'
+        : 'Conta: ainda não consegui arquivar o login guardado antigo da pasta ' + e.pasta + ' (' + cru.replace(/^.*\(|\)$/g, '') + '): até ele sair, a próxima troca dela falha.';
+    }
     let frase = 'Conta: o estado dizia que a pasta ' + e.pasta + ' estava na conta ' + e.de + ', mas o login dela é da conta ' + e.para + '; o estado foi alinhado ao login e nenhum login foi movido.';
     if (arquivado) frase += ' O login guardado antigo da pasta foi arquivado em ' + arquivado[1] + '.';
     if (/não consegui arquivar/.test(cru)) frase += ' Não consegui arquivar o login guardado antigo da pasta (' + cru.replace(/^.*\(|\)$/g, '') + '): até ele sair, a próxima troca dela falha.';

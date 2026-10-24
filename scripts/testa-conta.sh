@@ -1075,6 +1075,31 @@ afirma "#584: o vigia não move credencial nem tira a pasta da conta pessoal" \
   test "$(sha256sum "$C_ML/trabalho/.claude/.credentials.json" | cut -d' ' -f1)" = "$HASH_ML" -a "$(ler "$C_ML/dados/contas/estado.json" pastas.trabalho.conta)" = pessoal
 afirma "#584: a saída do vigia diz avisar trabalho" contem "$(cat "$RAIZ/ml1.txt")" "avisar trabalho: seven_day de pessoal em 100%"
 
+# Sem login guardado da casa (o /login por cima o apagou), o aviso leva causa sem_login_guardado: é
+# ela que faz o mod mandar refazer o /login em vez do /conta.
+C_ML3="$(novo_caso ml3 sim)"
+node "$RAIZ/ajustar.cjs" trocado "$C_ML3"
+node -e "const fs=require('fs');const a=process.argv[1];const e=JSON.parse(fs.readFileSync(a,'utf8'));e.pastas.trabalho.manual=true;e.pastas.trabalho.travouPor=null;fs.writeFileSync(a,JSON.stringify(e))" "$C_ML3/dados/contas/estado.json"
+rm -f "$C_ML3/dados/contas/estacionado-trabalho.json"
+API="$API_ML"
+cli "$C_ML3" vigiar > "$RAIZ/ml3b.txt" 2>&1 || true
+API="$API_PRINCIPAL"
+afirma "#584: sem login guardado da casa, o manual_no_limite leva causa sem_login_guardado" \
+  grep -qE '"tipo":"manual_no_limite","pasta":"trabalho".*"causa":"sem_login_guardado"' "$C_ML3/dados/contas/eventos.jsonl"
+
+# Revisão 2: estouro sem resets_at (null). Duas rodadas seguem sendo o mesmo estouro: um aviso só.
+C_ML4="$(novo_caso ml4 sim)"
+node "$RAIZ/ajustar.cjs" trocado "$C_ML4"
+node -e "const fs=require('fs');const a=process.argv[1];const e=JSON.parse(fs.readFileSync(a,'utf8'));e.pastas.trabalho.manual=true;e.pastas.trabalho.travouPor=null;fs.writeFileSync(a,JSON.stringify(e))" "$C_ML4/dados/contas/estado.json"
+node "$RAIZ/derivar.cjs" "$RAIZ/mapa.json" "$RAIZ/mapa-mlnull.json" '{"tokens":{"falso-pessoal-pasta":{"uso7":100,"reset7":null},"falso-pessoal-reserva":{"uso7":100,"reset7":null}}}'
+iniciar_servidor "$RAIZ/mapa-mlnull.json" "$RAIZ/porta-mlnull.txt"
+cli "$C_ML4" vigiar > "$RAIZ/ml4a.txt" 2>&1 || true
+rm -f "$C_ML4/dados/contas/uso-cache.json"
+cli "$C_ML4" vigiar > "$RAIZ/ml4b.txt" 2>&1 || true
+API="$API_PRINCIPAL"
+afirma "#584: estouro sem resets_at registra um manual_no_limite só, em duas rodadas" \
+  test "$(grep -c '"tipo":"manual_no_limite"' "$C_ML4/dados/contas/eventos.jsonl" 2>/dev/null || true)" = 1
+
 # #585: /login feito fora do conta.cjs. O estado diz trabalho na conta pessoal (troca manual), mas
 # a pasta recebeu um login novo da team (o /login grava .credentials.json e o oauthAccount). O
 # estacionado-trabalho.json ainda guarda o login antigo da team. O estado tem de seguir o login sem
@@ -1151,6 +1176,31 @@ caso_r1b() {
     && ! grep -qF 'saida_ocupada' "$CT_R1/eventos.jsonl"
 }
 afirma "depois de reconciliar para casa a troca automatica seguinte nao falha com saida_ocupada" caso_r1b
+
+# Revisão 2: o arquivamento falha (antivírus segurando o arquivo). O estado segue o login mesmo assim,
+# o evento diz que o órfão ficou, e a rodada seguinte tenta de novo e arquiva.
+C_R6="$(preparar_r r6 nao)"
+CT_R6="$C_R6/dados/contas"
+H_EST_R6="$(hash "$CT_R6/estacionado-trabalho.json")"
+export RFM_CONTA_FALHA=arquivar
+cli "$C_R6" vigiar > "$RAIZ/r6a.txt" 2>&1 || true
+cli "$C_R6" vigiar > "$RAIZ/r6b.txt" 2>&1 || true
+unset RFM_CONTA_FALHA
+caso_r6_falha() {
+  [ "$(ler "$CT_R6/estado.json" pastas.trabalho.conta)" = team ] \
+    && [ "$(hash "$CT_R6/estacionado-trabalho.json")" = "$H_EST_R6" ] \
+    && grep -qF '"tipo":"reconciliado","pasta":"trabalho","de":"pessoal","para":"team","motivo":"não consegui arquivar o login guardado antigo (EBUSY)"' "$CT_R6/eventos.jsonl" \
+    && [ "$(grep -c 'não consegui arquivar' "$CT_R6/eventos.jsonl")" = 1 ]
+}
+afirma "#585: arquivamento que falha deixa o estado alinhado e o órfão no lugar, e a nova tentativa que falha não repete o aviso na mesma hora" caso_r6_falha
+cli "$C_R6" vigiar > "$RAIZ/r6c.txt" 2>&1 || true
+ORFAO_R6="$(ls "$CT_R6" | grep -E '^estacionado-trabalho\.orfao-[0-9]{8}-[0-9]{6}\.json$' || true)"
+caso_r6_retenta() {
+  [ ! -e "$CT_R6/estacionado-trabalho.json" ] && [ -n "$ORFAO_R6" ] \
+    && [ "$(hash "$CT_R6/$ORFAO_R6")" = "$H_EST_R6" ] \
+    && grep -qF "\"tipo\":\"reconciliado\",\"pasta\":\"trabalho\",\"de\":\"team\",\"para\":\"team\",\"motivo\":\"login guardado antigo arquivado em $ORFAO_R6\"" "$CT_R6/eventos.jsonl"
+}
+afirma "#585: a rodada seguinte tenta arquivar o órfão de novo e consegue" caso_r6_retenta
 
 # Com a troca automática desligada: o vigia não troca nada, mas o estado segue o login mesmo assim.
 C_R2="$(preparar_r r2 nao)"

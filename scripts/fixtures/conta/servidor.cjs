@@ -47,7 +47,8 @@ function usoDe(info) {
   const u = JSON.parse(JSON.stringify(usoBase));
   const amanha = new Date(Date.now() + 2 * 24 * 3600 * 1000).toISOString();
   u.five_hour.resets_at = info.reset5 || amanha;
-  u.seven_day.resets_at = info.reset7 || amanha;
+  // reset7: null explícito simula a janela sem resets_at (a API devolve null).
+  u.seven_day.resets_at = info.reset7 === null ? null : info.reset7 || amanha;
   if (info.uso === 'team') u.seven_day.utilization = 97;
   if (typeof info.uso5 === 'number') u.five_hour.utilization = info.uso5;
   if (typeof info.uso7 === 'number') u.seven_day.utilization = info.uso7;

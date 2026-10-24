@@ -27,7 +27,7 @@ pronto quando: com pastas `{ trabalho: { casa: 'team', conta: 'pessoal', manual:
 
 ### 2. O vigia registra `manual_no_limite` uma vez por estouro, e o mod o diz [tipo: implementar]
 atende: D3
-arquivos: `scripts/conta.cjs`, `hooks/conta-puro.mjs`, `scripts/testa-conta.sh`, `hooks/testa-mod-conta.cjs`
+arquivos: `scripts/conta.cjs`, `hooks/conta-puro.mjs`, `scripts/testa-conta.sh`, `hooks/testa-mod-conta.cjs`, `scripts/fixtures/conta/servidor.cjs`
 depende de: 1
 prova-na-base: verde — os casos entram nas baterias existentes; o vermelho desta tarefa é medido pela mutação
 mutacao:
@@ -36,7 +36,7 @@ mutacao:
   para: `registrarEvento(c, ev);`
   bateria: `bash scripts/testa-conta.sh`
   fixture: `testa-conta.sh, secao "#584: pasta manual no limite", caso "segunda rodada com o mesmo estouro nao registra outro manual_no_limite"`
-pronto quando: com o servidor falso de `testa-conta.sh` dando à conta pessoal `seven_day` 100 e a pasta de trabalho no estado `{ casa: team, conta: pessoal, manual: true }`, duas rodadas de `node scripts/conta.cjs vigiar` deixam no `eventos.jsonl` exatamente **uma** linha `"tipo":"manual_no_limite"` com `"pasta":"trabalho"`. Uma terceira rodada com o mesmo estouro relido com o `resets_at` 1 ms adiante continua em **uma** (revisão 1: a leitura vem com microssegundos). Mudar o `resets_at` da semana para outro dia e rodar de novo deixa **duas**. O `.credentials.json` da pasta mantém o hash em todas as rodadas. Superfície humana: a pessoa vê o aviso no mod, em qualquer sessão aberta, e precisa saber qual pasta, qual conta, o quanto e o que fazer. `frase()` desse evento contém `pasta trabalho`, `conta pessoal`, `100%` e `/conta trabalho --pasta trabalho`, porque sem `--pasta` o comando troca a pasta da sessão que o roda. Sem login guardado da casa (`causa: sem_login_guardado`), a frase manda refazer o `/login` em vez do `/conta`. O critério falha se qualquer um desses sumir. Provado por `bash scripts/testa-conta.sh` e `node hooks/testa-mod-conta.cjs` com 0 falha.
+pronto quando: com o servidor falso de `testa-conta.sh` dando à conta pessoal `seven_day` 100 e a pasta de trabalho no estado `{ casa: team, conta: pessoal, manual: true }`, duas rodadas de `node scripts/conta.cjs vigiar` deixam no `eventos.jsonl` exatamente **uma** linha `"tipo":"manual_no_limite"` com `"pasta":"trabalho"`. Uma terceira rodada com o mesmo estouro relido com o `resets_at` 1 ms adiante continua em **uma** (revisão 1: a leitura vem com microssegundos). Mudar o `resets_at` da semana para outro dia e rodar de novo deixa **duas**. O `.credentials.json` da pasta mantém o hash em todas as rodadas. Superfície humana: a pessoa vê o aviso no mod, em qualquer sessão aberta, e precisa saber qual pasta, qual conta, o quanto e o que fazer. `frase()` desse evento contém `pasta trabalho`, `conta pessoal`, `100%` e `/conta trabalho --pasta trabalho`, porque sem `--pasta` o comando troca a pasta da sessão que o roda. Sem login guardado da casa, o evento leva `causa: sem_login_guardado` (caso da bateria, revisão 2) e a frase manda refazer o `/login` em vez do `/conta`. Um estouro com `resets_at` null (o servidor falso aceita `reset7: null`) registra **um** aviso em duas rodadas (revisão 2). O critério falha se qualquer um desses sumir. Provado por `bash scripts/testa-conta.sh` e `node hooks/testa-mod-conta.cjs` com 0 falha.
 
 ### 3. O estado segue o login, nos dois sentidos [tipo: implementar]
 atende: D4
@@ -67,7 +67,7 @@ mutacao:
   para: `void orfao;`
   bateria: `bash scripts/testa-conta.sh`
   fixture: `testa-conta.sh, secao "#585: estado segue o login", caso "depois de reconciliar para casa a troca automatica seguinte nao falha com saida_ocupada"`
-pronto quando: no cenário da tarefa 3, com `estacionado-trabalho.json` contendo credencial, a reconciliação deixa `estacionado-trabalho.json` ausente e um `estacionado-trabalho.orfao-<AAAAMMDD-HHMMSS>.json` com o mesmo hash do antigo. O evento `reconciliado` cita esse nome. Em seguida, com a team a 100% na semana e a pessoal com folga e reserva, uma rodada de `vigiar` faz a troca (`"tipo":"trocar"`) e não registra `falhou` com `saida_ocupada`. Provado por `bash scripts/testa-conta.sh` com 0 falha.
+pronto quando: no cenário da tarefa 3, com `estacionado-trabalho.json` contendo credencial, a reconciliação deixa `estacionado-trabalho.json` ausente e um `estacionado-trabalho.orfao-<AAAAMMDD-HHMMSS>.json` com o mesmo hash do antigo. O evento `reconciliado` cita esse nome. Com o arquivamento falhando (`RFM_CONTA_FALHA=arquivar`, só sob `RFM_TEST=1`), o estado segue o login, o estacionado fica com o mesmo hash e o evento diz `não consegui arquivar ... (EBUSY)`; a rodada seguinte que falha de novo não repete o aviso na mesma hora, e a primeira rodada sem a falha arquiva o órfão e registra `reconciliado` com `de` igual a `para` (revisão 2: sem a nova tentativa, a troca da pasta falharia a cada 15 min). Em seguida, com a team a 100% na semana e a pessoal com folga e reserva, uma rodada de `vigiar` faz a troca (`"tipo":"trocar"`) e não registra `falhou` com `saida_ocupada`. Provado por `bash scripts/testa-conta.sh` com 0 falha.
 
 ### 5. O `-Teste` nega por lista de permitidas, com `dontAsk` [tipo: implementar]
 atende: D1, D2

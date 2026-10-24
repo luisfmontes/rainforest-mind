@@ -21,7 +21,7 @@
     "em": "2026-10-23"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-23",
     "tarefas_ok": 6,
     "tarefas": 6,
@@ -72,29 +72,39 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "pendente",
     "snapshot": {
-      "head": "14c7e637fbe1afe775cf10e955073b1a276669bd",
+      "head": "bdb35048c4c2ab7694967d430e6affed45b1839a",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a2e49a907dc8d2f37",
-        "veredito": "reprovado",
+        "agente_id": "af87ae9f7367a62f7",
+        "veredito": "ok",
         "em": "2026-10-23",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/21bbb906-04da-49d6-81e0-c50cb1c59dfc/subagents/agent-a2e49a907dc8d2f37.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/21bbb906-04da-49d6-81e0-c50cb1c59dfc/subagents/agent-af87ae9f7367a62f7.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-23",
     "achados": 6,
-    "tentativas": 1
+    "base": "458a18a172b0352f7400fedb20e9305061e2264f",
+    "head": "bdb35048c4c2ab7694967d430e6affed45b1839a"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-10-23"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-10-23"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-10-23",
+      "de": "revisar",
+      "motivo": "revisao 2: orfao que nao arquivou nao e retentado, dedupe com resets_at ausente, comentario de causa, testes do catch e da causa"
+    }
+  ]
 }

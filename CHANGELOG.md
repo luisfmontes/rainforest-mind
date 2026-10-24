@@ -27,7 +27,9 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
   moveria o login novo para a reserva errada. Agora o vigia, o `/conta` e a troca, quando pegam a trava, alinham o
   estado à conta do login (evento `reconciliado`), nos dois sentidos e sem mover credencial. Login de conta não
   registrada segue só com o aviso `identidade_divergente`. Quando a pasta volta para casa assim, o login guardado
-  antigo dela é arquivado como `estacionado-<pasta>.orfao-<data>.json`; no lugar, ele travaria a próxima troca.
+  antigo dela é arquivado como `estacionado-<pasta>.orfao-<data>.json`; no lugar, ele travaria a próxima troca. Se o
+  arquivamento falhar (antivírus segurando o arquivo), a rodada seguinte tenta de novo. Para isso o vigia passa a
+  consultar o dono do login de cada pasta em toda rodada, mesmo com a troca automática desligada.
 
 ## 1.73.1 — 2026-10-22
 

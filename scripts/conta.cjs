@@ -299,8 +299,9 @@ function registrarEvento(c, ev) {
     manual: ev.manual,
     voltaEm: ev.voltaEm,
     // Só no falhou de uma troca que ficou pela metade: nomes de arquivo (sem caminho) que o
-    // desfazer não restaurou, e a causa da troca desfeita. Nunca credencial.
+    // desfazer não restaurou. Nunca credencial.
     pendentes: ev.pendentes,
+    // No falhou pela metade, a causa da troca desfeita; no manual_no_limite, sem_login_guardado.
     causa: ev.causa,
   };
   fs.appendFileSync(c.eventos, JSON.stringify(linha) + '\n', 'utf8');
@@ -345,7 +346,8 @@ function registrarAviso(c, ev) {
 const MESMO_RESET_MS = 60 * 1000;
 function avisoJaRegistrado(c, ev) {
   const limite = (m) => String(m || '').split(' ')[0];
-  const mesmoReset = (a, b) => Math.abs(Date.parse(a) - Date.parse(b)) < MESMO_RESET_MS;
+  // resets_at ausente nos dois lados é o mesmo estouro: sem o a === b, NaN < 1 min repetiria o aviso.
+  const mesmoReset = (a, b) => a === b || Math.abs(Date.parse(a) - Date.parse(b)) < MESMO_RESET_MS;
   return lerEventos(c).some(({ ev: x }) => x.tipo === ev.tipo && x.pasta === ev.pasta
     && mesmoReset(x.voltaEm, ev.voltaEm) && limite(x.motivo) === limite(ev.motivo));
 }
@@ -520,7 +522,11 @@ async function reconciliar(c, estado, sobTrava) {
       continue;
     }
     const contaLogin = contaDoEmail(estado, d.email);
-    if (!contaLogin || contaLogin === info.conta) continue;
+    if (!contaLogin) continue;
+    if (contaLogin === info.conta) {
+      if (sobTrava && info.conta === info.casa && orfaoPendente(c, P)) retentarOrfao(c, P, info.conta);
+      continue;
+    }
     if (!sobTrava) {
       divergentes.push({ P, estado: info.conta, login: contaLogin });
       continue;
@@ -530,15 +536,7 @@ async function reconciliar(c, estado, sobTrava) {
     // troca com saida_ocupada enquanto ele estiver lá. Arquivado, não apagado: ainda vale no servidor.
     let motivo = 'estado alinhado ao login da pasta';
     if (contaLogin === info.casa && estacionadoPronto(c, P)) {
-      const orfao = estacionadoArq(c, P).replace(/\.json$/, `.orfao-${carimboLocal()}.json`);
-      try {
-        fs.renameSync(estacionadoArq(c, P), orfao);
-        motivo = `login guardado antigo arquivado em ${path.basename(orfao)}`;
-      } catch (e) {
-        // Antivírus ou indexador segurando o arquivo: o estado segue o login mesmo assim, e o evento diz
-        // que o órfão ficou (a próxima troca da pasta falharia com saida_ocupada até ele sair).
-        motivo = `não consegui arquivar o login guardado antigo (${e.code || msgSegura(e)})`;
-      }
+      motivo = arquivarOrfao(c, P);
     } else if (contaLogin !== info.casa && !estacionadoPronto(c, P)) {
       motivo = `estado alinhado ao login da pasta; ${SEM_LOGIN_GUARDADO}`;
     }
@@ -555,6 +553,39 @@ async function reconciliar(c, estado, sobTrava) {
     });
   }
   return { mudou, divergentes };
+}
+
+const NAO_ARQUIVEI = 'não consegui arquivar o login guardado antigo';
+function arquivarOrfao(c, P) {
+  const orfao = estacionadoArq(c, P).replace(/\.json$/, `.orfao-${carimboLocal()}.json`);
+  try {
+    // Falha simulada só em bateria (RFM_TEST=1): prova o catch e a nova tentativa.
+    if (process.env.RFM_TEST === '1' && process.env.RFM_CONTA_FALHA === 'arquivar') {
+      throw Object.assign(new Error('falha simulada no arquivamento (RFM_CONTA_FALHA)'), { code: 'EBUSY' });
+    }
+    fs.renameSync(estacionadoArq(c, P), orfao);
+    return `login guardado antigo arquivado em ${path.basename(orfao)}`;
+  } catch (e) {
+    // Antivírus ou indexador segurando o arquivo: o estado segue o login mesmo assim, e o evento diz
+    // que o órfão ficou (a próxima troca da pasta falharia com saida_ocupada até ele sair).
+    return `${NAO_ARQUIVEI} (${e.code || msgSegura(e)})`;
+  }
+}
+
+// Órfão que uma reconciliação não conseguiu arquivar: o último reconciliado da pasta diz isso e o
+// estacionado segue lá. Sem nova tentativa, a troca da pasta falharia a cada rodada até alguém mexer.
+function orfaoPendente(c, P) {
+  if (!estacionadoPronto(c, P)) return false;
+  const ult = lerEventos(c).filter(({ ev }) => ev.tipo === 'reconciliado' && ev.pasta === P).pop();
+  return Boolean(ult && String(ult.ev.motivo || '').startsWith(NAO_ARQUIVEI));
+}
+
+function retentarOrfao(c, P, conta) {
+  const motivo = arquivarOrfao(c, P);
+  const ev = { tipo: 'reconciliado', pasta: P, de: conta, para: conta, motivo, manual: false, voltaEm: null };
+  // Falhou de novo: o mesmo aviso no máximo uma vez por hora (a rodada é de 15 em 15 min).
+  if (motivo.startsWith(NAO_ARQUIVEI)) registrarAviso(c, ev);
+  else registrarEvento(c, ev);
 }
 
 // AAAAMMDD-HHMMSS na hora local, para nome de arquivo.

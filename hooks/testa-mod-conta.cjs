@@ -254,6 +254,13 @@ async function main() {
     afirma('reconciliado diz a pasta, as duas contas, que nada foi movido e o arquivo arquivado',
       frc.includes('pasta trabalho') && frc.includes('conta pessoal') && frc.includes('conta trabalho')
         && frc.includes('nenhum login foi movido') && frc.includes('estacionado-trabalho.orfao-20261023-101500.json'), 'frase: ' + frc);
+    // Revisão 2: nova tentativa de arquivar (de === para) não diz que o estado divergia.
+    const frt = frase({ em: 1, tipo: 'reconciliado', pasta: 'trabalho', de: 'team', para: 'team', motivo: 'login guardado antigo arquivado em estacionado-trabalho.orfao-20261023-103000.json', manual: false });
+    afirma('nova tentativa que arquivou o órfão diz o arquivo e que a troca volta a funcionar',
+      frt.includes('estacionado-trabalho.orfao-20261023-103000.json') && frt.includes('volta a funcionar') && !frt.includes('o estado dizia'), 'frase: ' + frt);
+    const frtf = frase({ em: 1, tipo: 'reconciliado', pasta: 'trabalho', de: 'team', para: 'team', motivo: 'não consegui arquivar o login guardado antigo (EBUSY)', manual: false });
+    afirma('nova tentativa que falhou de novo diz o código e que a próxima troca falha',
+      frtf.includes('ainda não consegui arquivar') && frtf.includes('EBUSY') && frtf.includes('próxima troca') && !frtf.includes('o estado dizia'), 'frase: ' + frtf);
     afirma('falhou comum segue dizendo que a troca foi desfeita',
       frase({ em: 1, tipo: 'falhou', pasta: 'trabalho', motivo: 'saida_ocupada' }) === 'Conta: a troca da pasta trabalho foi desfeita (saida_ocupada).');
     const fnd = frase({ em: 1, tipo: 'falhou', pasta: 'trabalho', de: 'team', para: 'pessoal', motivo: 'servidor confirmou a@exemplo.invalid, esperado b@exemplo.invalid; desfeito=false' });
