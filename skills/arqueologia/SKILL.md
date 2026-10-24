@@ -45,7 +45,11 @@ Antes de acrescentar qualquer coisa, olhe o `COBERTURA.md` da pasta de mapas (`n
 Se a fatia já tem linha lá, esta rodada é conferência. Antes da releitura, rode
 `node scripts/conferir-ancoras.cjs <mapa> --repo <raiz do código>`: ele confere
 por script cada `arquivo:linha` e `arquivo#Funcao` do mapa (o arquivo existe, a
-linha cabe nele, o símbolo aparece na linha ou nas 80 acima). Âncora que ele
+linha cabe nele, o símbolo aparece na linha ou nas 80 acima). Citação só pelo
+nome do arquivo (`ZXX01M99.prw#Z99ValidSaldo`) é resolvida por nome único em toda
+a raiz; se o nome aparece em mais de um lugar, o status é `ambiguo` e a âncora
+cai, com os candidatos listados, para o mapa escrever o caminho completo. Caminho
+que sai da raiz sai `fora-da-raiz` e não é lido. Âncora que ele
 derrubou não se relê à mão: a afirmação perde o `CONFIRMADO` e volta como
 `LACUNA`, com o status do script ao lado, até alguém achar o trecho de novo. Só
 relê o que o script não derrubou: para cada afirmação `CONFIRMADO` que sobreviveu,
