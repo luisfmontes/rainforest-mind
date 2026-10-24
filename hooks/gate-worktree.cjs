@@ -1784,16 +1784,20 @@ function casaRedefinida(comando, ehPowerShell) {
   return false;
 }
 
-// #573 (D4, recuo da D3): destino de redirecionamento que COMECA com variavel (`$NOME`, `${NOME}`),
-// quando a rede o barra, recebe mensagem propria. Julgar o valor da variavel pedia reimplementar a gramatica do shell
+// #573 (D4, recuo da D3) e #580 (D1): palavra que COMECA com expansao (`$NOME`, `${...}`, `$(`,
+// crase) barra na rede, sem julgar o valor. Julgar o valor pedia reimplementar a gramatica do shell
 // (atribuicao em ramo que nao roda, laco, glob, nome indireto, comentario, heredoc) e cada rodada
 // de revisao achou o proximo contorno; o usuario decidiu recuar (2026-10-22). Os atalhos da casa
-// (`$HOME/...`) seguem o caminho proprio de `CASA_NO_INICIO`.
-function variavelNoInicio(destino) {
-  const m = /^\$(?:([A-Za-z_]\w*)|\{([A-Za-z_]\w*)\})/.exec(destino.replace(/^["']+/, ""));
+// (`$HOME/...`) seguem o caminho proprio de `CASA_NO_INICIO` e devolvem null aqui. Expansao depois
+// de um prefixo literal (`out-$(date).json`) nao conta. Devolve o texto da expansao, ou null.
+function expansaoNoInicio(palavra) {
+  const p = String(palavra).replace(/^["']+/, "");
+  if (p.startsWith("`")) return "`";
+  if (p.startsWith("$(")) return "$(";
+  const m = /^\$(?:([A-Za-z_]\w*)|\{([^}]*)(?:\}|$)|[0-9@*#?!$])/.exec(p);
   if (!m) return null;
-  const nome = m[1] || m[2];
-  return new RegExp(`^(?:${NOMES_DA_CASA})$`).test(nome) ? null : nome;
+  const nome = m[1] !== undefined ? m[1] : m[2];
+  return nome !== undefined && new RegExp(`^(?:${NOMES_DA_CASA})$`).test(nome) ? null : m[0];
 }
 
 /**
@@ -1891,6 +1895,27 @@ function alvosDaRede(comando, cwd, ehPowerShell, soVeredito = false) {
   const citaProtegido = (texto, base) => primeiroProtegido(caminhosCitados(texto, ehPowerShell), base, texto);
   // O alvo leva o motivo (#573 D4): `bloqueiaPelaRede` diz o que barrou.
   const alvo = (rede) => [{ dir: repo.principal, incerto: true, rede }];
+  // #580 (D1): destino de redirecionamento que comeca com expansao barra em todo ramo da rede,
+  // sem julgar o valor. So o Bash; o texto chega sem corpo de heredoc, que e dado.
+  const destinoComExpansao = (texto) => {
+    if (ehPowerShell) return null;
+    for (const destino of destinosDeRedirecionamento(texto, false)) {
+      if (ehDescarteDeSaida(destino, false)) continue;
+      if (expansaoNoInicio(destino)) return destino;
+    }
+    return null;
+  };
+  const comExpansao = (texto) => {
+    const destino = destinoComExpansao(texto);
+    if (destino) {
+      return `Destino de redirecionamento comeca com variavel: ${destino}\n` +
+        `O gate nao julga o valor de variavel no destino. Saida: escreva o caminho literal\nno comando, ou grave o arquivo com a ferramenta Write.`;
+    }
+    return null;
+  };
+  // Mesmo comprimento do comando: o corpo de heredoc que e dado vira espaco, e o segmento se acha
+  // pela mesma posicao.
+  const semHeredoc = ehPowerShell ? comando : mascaraHeredocsBash(comando);
   if (casaRedefinida(comando, ehPowerShell)) {
     // #573 (recuo da D2): o `cd -` segue barrado como antes, mas o agente le a causa e a saida.
     // So culpa o `cd -` quando ele e a causa: a linha reescrita como a saida manda (cada `cd -`
@@ -1914,6 +1939,8 @@ function alvosDaRede(comando, cwd, ehPowerShell, soVeredito = false) {
   const naoConfiavel = /\$\(|`|\$'|\\\r?\n/.test(comando) && !ehPowerShell
     || ehPowerShell && (desalinhaAMascara(comando) || /[\u2018-\u201e]/.test(comando) || /"[^"]*\$\(/.test(comando) || /@['"]/.test(comando));
   if (naoConfiavel) {
+    const expansao = comExpansao(semHeredoc);
+    if (expansao) return alvo(expansao);
     const citado = citaProtegido(comando, cwd);
     return citado ? alvo(`A linha cita caminho que cai no checkout principal: ${citado}`) : [];
   }
@@ -1926,11 +1953,18 @@ function alvosDaRede(comando, cwd, ehPowerShell, soVeredito = false) {
   // leitura alimenta quem escreve, entao os caminhos dele tambem contam.
   const pipelineComEscritor = temForaDeAspas(comando, "|") && leitura.some((l) => !l);
   const estado = { atual: cwd, incerto: false, pilhaPushd: [] };
+  let fimDoSegmento = 0;
   for (let i = 0; i < segmentos.length; i += 1) {
     const seg = segmentos[i];
     const mov = resolverMovedor(seg, estado, ehPowerShell);
     const base = mov.cwd;
     const toks = tokensComAspas(seg);
+    // O segmento e um trecho contiguo do comando; o mesmo trecho em `semHeredoc` tira o corpo de heredoc.
+    const ini = comando.indexOf(seg, fimDoSegmento);
+    if (ini >= 0) fimDoSegmento = ini + seg.length;
+    // #580 (D1): vale para o segmento de leitura, o de pipeline com escritor e o de fora de leitura.
+    const expansao = comExpansao(ini >= 0 ? semHeredoc.slice(ini, ini + seg.length) : seg);
+    if (expansao) return alvo(expansao);
     if (leitura[i] && !pipelineComEscritor) {
       // Leitura: conta o destino de redirecionamento e o que esta entre parenteses ou
       // chaves (`Get-Content (Remove-Item <P>/f)` roda o de dentro).
@@ -1938,7 +1972,7 @@ function alvosDaRede(comando, cwd, ehPowerShell, soVeredito = false) {
         if (ehDescarteDeSaida(destino, ehPowerShell)) continue;
         const caido = primeiroProtegido(caminhosCitados(destino, ehPowerShell).concat([destino.replace(/^FileSystem::/i, "")]), base, destino);
         // Mesmo veredito de antes; so a mensagem muda quando a causa e a variavel no inicio (D4).
-        if (caido && !ehPowerShell && variavelNoInicio(destino)) {
+        if (caido && !ehPowerShell && expansaoNoInicio(destino)) {
           return alvo(`Destino de redirecionamento comeca com variavel: ${destino}\n` +
             `O gate nao julga o valor de variavel no destino. Saida: escreva o caminho literal\nno comando, ou grave o arquivo com a ferramenta Write.`);
         }

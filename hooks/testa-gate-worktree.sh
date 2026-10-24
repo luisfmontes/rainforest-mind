@@ -2184,5 +2184,43 @@ g573 '#573 rev5: cd ../../..; echo x >&FileSystem:: segue 2' 2 'cd ../../..; ech
 g573 '#573 rev5: cd ../../..; echo x 3>FileSystem:: segue 2' 2 'cd ../../..; echo x 3>FileSystem::'
 gate_stderr '#573 D4: subagente com cwd no principal continua com a mensagem do principal' \
   "$(b 'echo x > f' "$R")" 'Este e o diretorio de trabalho principal'
+
+echo
+echo "== #580 D1: destino de redirecionamento com expansao no inicio =="
+# Destino que COMECA com `$NOME`, `${...}`, `$(` ou crase barra em todo ramo da rede (lista com
+# `||`/`&&`, pipeline com escritor, linha com `$(`), sem julgar o valor. Expansao depois de um
+# prefixo literal nao conta. Cwd = worktree linkado ($WN), payload de subagente, e
+# CLAUDE_PROJECT_DIR no principal, como no incidente.
+CPD_580="${CLAUDE_PROJECT_DIR-}"; CPD_580_SET="${CLAUDE_PROJECT_DIR+1}"
+export CLAUDE_PROJECT_DIR="$R"
+g580() { gate "$1" "$2" "$(b "$3" "$WN")"; }
+g580 'echo x > "$CLAUDE_PROJECT_DIR/f" barra' 2 'echo x > "$CLAUDE_PROJECT_DIR/f"'
+g580 'D=$(dirname "$PWD")/../..; echo x > "$D/f" barra' 2 'D=$(dirname "$PWD")/../..; echo x > "$D/f"'
+g580 'true | true; echo x > "$CLAUDE_PROJECT_DIR/f" barra' 2 'true | true; echo x > "$CLAUDE_PROJECT_DIR/f"'
+g580 'true || true; echo x > "$CLAUDE_PROJECT_DIR/f" barra' 2 'true || true; echo x > "$CLAUDE_PROJECT_DIR/f"'
+g580 'echo "$(date)" > "$CLAUDE_PROJECT_DIR/f" barra' 2 'echo "$(date)" > "$CLAUDE_PROJECT_DIR/f"'
+g580 'echo x > "${CLAUDE_PROJECT_DIR}/f" barra' 2 'echo x > "${CLAUDE_PROJECT_DIR}/f"'
+g580 'echo x >> "$(git rev-parse --show-toplevel)/../../f" barra' 2 'echo x >> "$(git rev-parse --show-toplevel)/../../f"'
+g580 'echo x > `pwd`/f barra' 2 'echo x > `pwd`/f'
+g580 'ls | tee x >/dev/null; echo x 2> "$D/f" barra' 2 'ls | tee x >/dev/null; echo x 2> "$D/f"'
+g580 'cd /tmp; echo x > "$D/f" barra' 2 'cd /tmp; echo x > "$D/f"'
+# Vizinhos: expansao depois de prefixo literal, descarte, duplicacao de descritor e texto citado.
+g580 'echo x > out-$(date).json passa' 0 'echo x > out-$(date).json'
+g580 'echo x > /dev/null passa' 0 'echo x > /dev/null'
+g580 'echo x 2>&1 passa' 0 'echo x 2>&1'
+g580 "git commit -m \"\$(printf 'echo x > \"\$X/f\"')\" passa" 0 "$(cat <<'EOC'
+git commit -m "$(printf 'echo x > "$X/f"')"
+EOC
+)"
+g580 "grep -rn 'echo x > \"\$X\"' docs/ passa" 0 "$(cat <<'EOC'
+grep -rn 'echo x > "$X"' docs/
+EOC
+)"
+gate_stderr '#580 D1: true || true; echo x > "$CLAUDE_PROJECT_DIR/f" da a saida do caminho literal' \
+  "$(b 'true || true; echo x > "$CLAUDE_PROJECT_DIR/f"' "$WN")" 'escreva o caminho literal' 'diretorio de trabalho principal'
+gate_stderr '#580 D1: echo "$(date)" > "$CLAUDE_PROJECT_DIR/f" da a saida da ferramenta Write' \
+  "$(b 'echo "$(date)" > "$CLAUDE_PROJECT_DIR/f"' "$WN")" 'ferramenta Write' 'diretorio de trabalho principal'
+if [ -n "$CPD_580_SET" ]; then export CLAUDE_PROJECT_DIR="$CPD_580"; else unset CLAUDE_PROJECT_DIR; fi
+
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
