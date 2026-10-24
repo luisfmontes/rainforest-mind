@@ -955,7 +955,7 @@ function resolverProjetoDaBusca(conexao, valor) {
 // Comando: buscar [--texto "..."] [--projeto "..."] [--desde AAAA-MM-DD] [--ate AAAA-MM-DD] [--limite N] [--json]
 // Busca observações usando FTS5. Degradação: banco ausente/vazio/corrompido
 // devolve resultado vazio com exit 0, nunca erro.
-// `--desde`/`--ate` (D6): datas inclusivas sobre date(o.criada_em), combináveis com
+// `--desde`/`--ate` (D6): datas inclusivas sobre date(o.criada_em, 'localtime'), combináveis com
 // os demais filtros e com ou sem `--texto`. Data fora de AAAA-MM-DD ou impossível sai exit 2.
 // `buscar --texto`: mais relevante primeiro; empate (mesmo bm25) pelo mais recente.
 const ORDEM_BUSCA_TEXTO = 'ORDER BY bm25(observacoes_fts), o.criada_em DESC';
@@ -1051,8 +1051,8 @@ function cmdBuscar() {
     }
 
     if (projeto) { filtros.push('o.projeto = ?'); params.push(projetoResolvido); }
-    if (desde) { filtros.push('date(o.criada_em) >= ?'); params.push(desde); }
-    if (ate) { filtros.push('date(o.criada_em) <= ?'); params.push(ate); }
+    if (desde) { filtros.push("date(o.criada_em, 'localtime') >= ?"); params.push(desde); }
+    if (ate) { filtros.push("date(o.criada_em, 'localtime') <= ?"); params.push(ate); }
     for (const filtro of filtros) query += ` AND ${filtro}`;
 
     params.push(limite);
