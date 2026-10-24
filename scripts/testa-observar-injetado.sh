@@ -12,6 +12,8 @@
 #   7. achado 1: marcador citado no meio de uma linha não remove nada; fala real logo abaixo fica
 #   8. achado 2: bloco com a mesma tag aninhada sai inteiro e não vaza o resultado
 #   9. achado 4: fala do usuário que começa com "Agente: " sai como Prompt:
+#  10. achado 5: 4000 aberturas sem fechamento e um fechamento no fim terminam em menos de 5 s
+#      (removerBlocosInjetados), e só a última abertura some
 #
 # Sai ≠ 0 se qualquer caso falha. Imprime "total=N vermelhas:[...]" no fim.
 
@@ -41,9 +43,9 @@ function caso(nome, fn) {
   }
 }
 
-let formatarParaLLM;
+let formatarParaLLM, removerBlocosInjetados;
 try {
-  ({ formatarParaLLM } = require(OBSERVAR));
+  ({ formatarParaLLM, removerBlocosInjetados } = require(OBSERVAR));
 } catch (e) {
   console.log('FALHA|carregar observar.cjs|' + e.message);
   process.exit(0);
@@ -142,6 +144,21 @@ caso('achado 2: bloco com a mesma tag aninhada sai inteiro e nao vaza o resultad
   if (o2 !== '') erros.push('system-reminder aninhado saiu ' + JSON.stringify(o2));
   const t3 = '<task-notification>\n<summary>S3</summary>\n<result>sem fechar';
   if (saida(t3) !== 'Prompt: ' + t3) erros.push('task-notification sem fechamento nao ficou intacto');
+  return erros.join('; ') || null;
+});
+
+caso('achado 5: 4000 aberturas sem fechamento e um fechamento no fim terminam em menos de 5 s e so a ultima some', () => {
+  // Varredura antiga refazia a busca do fechamento a cada abertura orfa: cubica, mais de 100 s com N=4000.
+  // O fechamento do fim fecha a ultima abertura (pilha); as N-1 anteriores nao tem fechamento e ficam.
+  const N = 4000;
+  const entrada = '<system-reminder>x '.repeat(N) + '</system-reminder>';
+  const inicio = Date.now();
+  const out = removerBlocosInjetados(entrada);
+  const tempo = Date.now() - inicio;
+  const esperado = '<system-reminder>x '.repeat(N - 1).trim();
+  const erros = [];
+  if (tempo >= 5000) erros.push('demorou ' + tempo + ' ms');
+  if (out !== esperado) erros.push('saida de ' + out.length + ' caracteres difere da esperada de ' + esperado.length);
   return erros.join('; ') || null;
 });
 

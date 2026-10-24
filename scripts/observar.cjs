@@ -190,36 +190,35 @@ const MARCA_NOTIFICACAO_HARNESS = '[SYSTEM NOTIFICATION - NOT USER INPUT]';
 // transcrito: removerBlocosInjetados apaga qualquer ocorrência dele vinda da fala antes de trocar.
 const MARCA_LINHA_AGENTE = '\u0001';
 
-// Varredura por profundidade: o bloco externo inteiro sai, mesmo com a mesma tag aninhada dentro.
-// Abertura sem fechamento fica intacta e a varredura continua na abertura seguinte.
+// Pareamento por pilha, em uma passada só: cada fechamento fecha a abertura mais recente ainda aberta.
+// Isso dá o mesmo resultado de varrer por profundidade a partir de cada abertura, mas em custo linear
+// (varrer de novo a cada abertura órfã ficava cúbico com N aberturas sem fechamento). O bloco externo
+// inteiro sai, mesmo com a mesma tag aninhada dentro. Abertura sem fechamento fica intacta.
 function removerBloco(texto, tag, substituir) {
   const aber = '<' + tag + '>';
   const fech = '</' + tag + '>';
+  const aberturas = [];
+  const pilha = [];
+  const re = new RegExp(aber + '|' + fech, 'g');
+  let m;
+  while ((m = re.exec(texto)) !== null) {
+    if (m[0] === aber) {
+      const ab = { ini: m.index, corpoFim: -1, fimFech: -1 };
+      aberturas.push(ab);
+      pilha.push(ab);
+    } else if (pilha.length > 0) {
+      const ab = pilha.pop();
+      ab.corpoFim = m.index;
+      ab.fimFech = m.index + fech.length;
+    }
+  }
   let saida = '';
   let pos = 0;
-  for (;;) {
-    const i = texto.indexOf(aber, pos);
-    if (i < 0) break;
-    let p = i;
-    let profundidade = 0;
-    let fim = -1;
-    for (;;) {
-      const a = texto.indexOf(aber, p);
-      const f = texto.indexOf(fech, p);
-      if (f < 0) break;
-      if (a >= 0 && a < f) { profundidade++; p = a + aber.length; continue; }
-      profundidade--;
-      p = f + fech.length;
-      if (profundidade === 0) { fim = p; break; }
-    }
-    if (fim < 0) {
-      saida += texto.slice(pos, i + aber.length);
-      pos = i + aber.length;
-      continue;
-    }
-    const corpo = texto.slice(i + aber.length, fim - fech.length);
-    saida += texto.slice(pos, i) + substituir(corpo);
-    pos = fim;
+  for (const ab of aberturas) {
+    if (ab.corpoFim < 0 || ab.ini < pos) continue;
+    const corpo = texto.slice(ab.ini + aber.length, ab.corpoFim);
+    saida += texto.slice(pos, ab.ini) + substituir(corpo);
+    pos = ab.fimFech;
   }
   return saida + texto.slice(pos);
 }
