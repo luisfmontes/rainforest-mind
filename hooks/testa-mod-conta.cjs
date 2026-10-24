@@ -238,8 +238,17 @@ async function main() {
       /^Conta: a pasta trabalho está em casa/.test(fi), 'frase: ' + fi);
     // #584: o aviso da pasta manual no limite diz a pasta, a conta em uso, o quanto e como devolver.
     const fml = frase({ em: 1, tipo: 'manual_no_limite', pasta: 'trabalho', de: 'pessoal', para: 'team', motivo: 'seven_day de pessoal em 100%', manual: true, voltaEm: '2026-10-25T11:00:00Z' });
-    afirma('manual_no_limite diz a pasta, a conta, o percentual e o comando que devolve',
-      fml.includes('pasta trabalho') && fml.includes('conta pessoal') && fml.includes('100%') && fml.includes('/conta trabalho'), 'frase: ' + fml);
+    afirma('manual_no_limite diz a pasta, a conta, o percentual e o comando que devolve, com --pasta',
+      fml.includes('pasta trabalho') && fml.includes('conta pessoal') && fml.includes('100%') && fml.includes('/conta trabalho --pasta trabalho'), 'frase: ' + fml);
+    const fmls = frase({ em: 1, tipo: 'manual_no_limite', pasta: 'trabalho', de: 'pessoal', para: 'team', motivo: 'seven_day de pessoal em 100%', manual: true, voltaEm: '2026-10-25T11:00:00Z', causa: 'sem_login_guardado' });
+    afirma('manual_no_limite sem login guardado manda refazer o /login, não o /conta',
+      fmls.includes('/login da conta trabalho') && !fmls.includes('/conta trabalho --pasta'), 'frase: ' + fmls);
+    const frm = frase({ em: 1, tipo: 'reconciliado', pasta: 'trabalho', de: 'team', para: 'pessoal', motivo: 'estado alinhado ao login da pasta; sem_login_guardado', manual: true });
+    afirma('reconciliado para fora de casa sem login guardado diz para refazer o /login da casa',
+      frm.includes('fora de casa') && frm.includes('/login da conta trabalho') && !frm.includes('sem_login_guardado'), 'frase: ' + frm);
+    const frna = frase({ em: 1, tipo: 'reconciliado', pasta: 'trabalho', de: 'pessoal', para: 'team', motivo: 'não consegui arquivar o login guardado antigo (EPERM)', manual: false });
+    afirma('reconciliado que não arquivou o órfão avisa que a próxima troca falha',
+      frna.includes('Não consegui arquivar') && frna.includes('EPERM') && frna.includes('próxima troca'), 'frase: ' + frna);
     // #585: o reconciliado diz a pasta, a conta de antes e a de agora, e que nenhum login foi movido.
     const frc = frase({ em: 1, tipo: 'reconciliado', pasta: 'trabalho', de: 'pessoal', para: 'team', motivo: 'login guardado antigo arquivado em estacionado-trabalho.orfao-20261023-101500.json', manual: false });
     afirma('reconciliado diz a pasta, as duas contas, que nada foi movido e o arquivo arquivado',

@@ -9,6 +9,8 @@ const NOME = { team: 'trabalho', pessoal: 'pessoal' };
 // Casa fixa de cada pasta, nos nomes internos: trocar uma pasta para a casa dela e uma volta.
 const CASA = { trabalho: 'team', pessoal: 'pessoal' };
 const nomeConta = (c) => NOME[c] ?? c;
+// Mesmo texto que scripts/conta.cjs grava quando a pasta não tem login guardado da casa (#585).
+const SEM_LOGIN_GUARDADO = 'sem_login_guardado';
 
 // HH:MM na hora local. Aceita o ISO do limite (voltaEm vem como texto) ou ms; vazio se nao der.
 const hhmm = (valor) => {
@@ -59,14 +61,29 @@ export function frase(ev) {
     return 'Conta: o mesmo login está em dois arquivos (' + e.motivo + '); a troca automática não move nem renova nada até você separar.';
   }
   // #584: a pasta trocada na mão não volta sozinha (D8); o aviso diz onde ela está e como devolver.
+  // O comando leva --pasta: o aviso aparece em toda sessão aberta, e /conta sem --pasta troca a pasta
+  // da sessão que o roda, não a do aviso.
   if (e.tipo === 'manual_no_limite') {
-    return 'Conta: a pasta ' + e.pasta + ' está na conta ' + e.de + ', que chegou ao limite (' + e.motivo + '). A troca foi manual e não volta sozinha: /conta ' + e.para + ' devolve a pasta à conta dela.';
+    const base = 'Conta: a pasta ' + e.pasta + ' está na conta ' + e.de + ', que chegou ao limite (' + e.motivo + '). A troca foi manual e não volta sozinha: ';
+    if (ev.causa === SEM_LOGIN_GUARDADO) {
+      return base + 'não há login guardado da conta ' + e.para + ' para devolver, então faça /login da conta ' + e.para + ' na pasta ' + e.pasta + '.';
+    }
+    return base + '/conta ' + e.para + ' --pasta ' + e.pasta + ' devolve a pasta à conta dela.';
   }
   // #585: o estado foi alinhado ao login real da pasta (um /login por fora, ou um desfazer que falhou).
   if (e.tipo === 'reconciliado') {
-    const arquivado = /arquivado em (\S+)$/.exec(String(ev.motivo || ''));
-    const base = 'Conta: o estado dizia que a pasta ' + e.pasta + ' estava na conta ' + e.de + ', mas o login dela é da conta ' + e.para + '; o estado foi alinhado ao login e nenhum login foi movido.';
-    return arquivado ? base + ' O login guardado antigo da pasta foi arquivado em ' + arquivado[1] + '.' : base;
+    const cru = String(ev.motivo || '');
+    const arquivado = /arquivado em (\S+)$/.exec(cru);
+    let frase = 'Conta: o estado dizia que a pasta ' + e.pasta + ' estava na conta ' + e.de + ', mas o login dela é da conta ' + e.para + '; o estado foi alinhado ao login e nenhum login foi movido.';
+    if (arquivado) frase += ' O login guardado antigo da pasta foi arquivado em ' + arquivado[1] + '.';
+    if (/não consegui arquivar/.test(cru)) frase += ' Não consegui arquivar o login guardado antigo da pasta (' + cru.replace(/^.*\(|\)$/g, '') + '): até ele sair, a próxima troca dela falha.';
+    if (e.manual) {
+      const casa = nomeConta(CASA[ev.pasta]);
+      frase += cru.includes(SEM_LOGIN_GUARDADO)
+        ? ' A pasta fica fora de casa e não há login guardado da conta ' + casa + ': para voltar, faça /login da conta ' + casa + ' nela.'
+        : ' A pasta fica fora de casa (troca manual): /conta ' + casa + ' --pasta ' + e.pasta + ' a devolve.';
+    }
+    return frase;
   }
   if (e.tipo === 'identidade_divergente') {
     return 'Conta: ' + e.motivo + '; nada foi gravado.';

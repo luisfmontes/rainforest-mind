@@ -36,7 +36,7 @@ mutacao:
   para: `registrarEvento(c, ev);`
   bateria: `bash scripts/testa-conta.sh`
   fixture: `testa-conta.sh, secao "#584: pasta manual no limite", caso "segunda rodada com o mesmo estouro nao registra outro manual_no_limite"`
-pronto quando: com o servidor falso de `testa-conta.sh` dando à conta pessoal `seven_day` 100 e a pasta de trabalho no estado `{ casa: team, conta: pessoal, manual: true }`, duas rodadas de `node scripts/conta.cjs vigiar` deixam no `eventos.jsonl` exatamente **uma** linha `"tipo":"manual_no_limite"` com `"pasta":"trabalho"`. Mudar o `resets_at` da semana no servidor falso e rodar de novo deixa **duas**. O `.credentials.json` da pasta mantém o hash nas três rodadas. Superfície humana: a pessoa vê o aviso no mod e precisa saber qual pasta, qual conta, o quanto e o que fazer. `frase()` desse evento contém `pasta trabalho`, `conta pessoal`, `100%` e `/conta trabalho`, e o critério falha se qualquer um dos quatro sumir. Provado por `bash scripts/testa-conta.sh` e `node hooks/testa-mod-conta.cjs` com 0 falha.
+pronto quando: com o servidor falso de `testa-conta.sh` dando à conta pessoal `seven_day` 100 e a pasta de trabalho no estado `{ casa: team, conta: pessoal, manual: true }`, duas rodadas de `node scripts/conta.cjs vigiar` deixam no `eventos.jsonl` exatamente **uma** linha `"tipo":"manual_no_limite"` com `"pasta":"trabalho"`. Uma terceira rodada com o mesmo estouro relido com o `resets_at` 1 ms adiante continua em **uma** (revisão 1: a leitura vem com microssegundos). Mudar o `resets_at` da semana para outro dia e rodar de novo deixa **duas**. O `.credentials.json` da pasta mantém o hash em todas as rodadas. Superfície humana: a pessoa vê o aviso no mod, em qualquer sessão aberta, e precisa saber qual pasta, qual conta, o quanto e o que fazer. `frase()` desse evento contém `pasta trabalho`, `conta pessoal`, `100%` e `/conta trabalho --pasta trabalho`, porque sem `--pasta` o comando troca a pasta da sessão que o roda. Sem login guardado da casa (`causa: sem_login_guardado`), a frase manda refazer o `/login` em vez do `/conta`. O critério falha se qualquer um desses sumir. Provado por `bash scripts/testa-conta.sh` e `node hooks/testa-mod-conta.cjs` com 0 falha.
 
 ### 3. O estado segue o login, nos dois sentidos [tipo: implementar]
 atende: D4
@@ -51,10 +51,10 @@ mutacao:
   fixture: `testa-conta.sh, secao "#585: estado segue o login", caso "trocar trabalho com o login ja da conta team nao move credencial"`
 pronto quando: caso da Issue. O estado tem `trabalho: { casa: team, conta: pessoal, manual: true }` e a credencial da pasta de trabalho resolve no servidor falso para o e-mail registrado da team. Então:
 - `node scripts/conta.cjs trocar trabalho --pasta trabalho` sai 0 dizendo que a pasta já está na conta. O `.credentials.json` e as duas reservas mantêm o hash. O estado fica `conta: team, manual: false, travouPor: null`. O `eventos.jsonl` ganha uma linha `"tipo":"reconciliado"` com `"pasta":"trabalho"`.
-- O mesmo cenário com `node scripts/conta.cjs vigiar` deixa o mesmo estado.
+- O mesmo cenário com `node scripts/conta.cjs vigiar` deixa o mesmo estado, mesmo com a troca automática desligada (o vigia sai com "troca automática desligada", mas o estado foi alinhado antes).
 - `node scripts/conta.cjs status` com a trava ocupada (`segurar`) não grava nada. Ele imprime na linha da pasta uma divergência que nomeia a conta do estado e a do login, e não imprime mais `em casa · troca manual` na mesma linha.
 
-Sentido inverso: com o estado `trabalho: { casa: team, conta: team }` e o login da pasta resolvendo para o e-mail registrado da pessoal, o `vigiar` deixa `conta: pessoal, manual: true` e registra `reconciliado`. Com o login de um e-mail não registrado, nada muda no estado e o aviso continua `identidade_divergente`. Superfície humana: `frase()` do `reconciliado` diz a pasta, a conta de antes e a de agora, e que nenhum login foi movido. Provado por `bash scripts/testa-conta.sh` e `node hooks/testa-mod-conta.cjs` com 0 falha.
+Sentido inverso: com o estado `trabalho: { casa: team, conta: team }` e o login da pasta resolvendo para o e-mail registrado da pessoal, o `vigiar` deixa `conta: pessoal, manual: true` e registra `reconciliado` com `sem_login_guardado` no motivo, porque não há login guardado da team. Com o login de um e-mail não registrado, nada muda no estado e o aviso continua `identidade_divergente`. Superfície humana: `frase()` do `reconciliado` diz a pasta, a conta de antes e a de agora, e que nenhum login foi movido. Fora de casa sem login guardado, ela manda refazer o `/login` da casa. Quando o arquivamento do órfão falha, ela diz que a próxima troca da pasta falha. Provado por `bash scripts/testa-conta.sh` e `node hooks/testa-mod-conta.cjs` com 0 falha.
 
 ### 4. O login guardado órfão é arquivado na reconciliação [tipo: implementar]
 atende: D5
@@ -88,10 +88,10 @@ Entrada real, que é o modelo de ameaça D2: com os argumentos que o `run-vigia.
 
 ### 6. Docs e versão 1.74.0 [tipo: docs]
 atende: D6
-arquivos: `CHANGELOG.md`, `README.md`, `docs/vigias.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`
+arquivos: `CHANGELOG.md`, `README.md`, `docs/vigias.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `docs/rainforest/estado/2026-10-21-lote-1021b.json`
 depende de: 2, 3, 4, 5
 mutacao: n/a
-  motivo: tarefa só escreve doc e versão; não há comportamento a inverter
+  motivo: tarefa só escreve doc e versão (e leva o estado de fechar do lote 2026-10-21-lote-1021b, gravado depois do squash do PR #586); não há comportamento a inverter
 pronto quando: o CHANGELOG `1.74.0` nomeia a #581 (dontAsk com lista de permitidas no `-Teste`, e o que fica fora: `Bash` e ronda normal), a #584 (`manual_no_limite` uma vez por estouro) e a #585 (`reconciliado` nos dois sentidos e o estacionado órfão arquivado). O README descreve, na seção de troca de conta, que o estado segue o login, e o `docs/vigias.md` (os vigias não têm seção no README, só o link para ele) descreve que o `-Teste` só libera leitura. Provado por `node scripts/conferir-versao.cjs` saindo 0 com `1.74.0` nos dois `plugin.json` e por `bash scripts/testa-plugin-codex.sh` com `rc=0`.
 
 ## Regra de parada

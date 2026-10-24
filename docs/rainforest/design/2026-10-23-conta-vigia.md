@@ -13,7 +13,7 @@ Para quem e quando: o próprio usuário, nas duas pastas de conta da máquina de
 ## Decisões fechadas
 
 - **D1 — O `-Teste` nega por lista de permitidas, com `dontAsk` (#581)**: em `vigias/run-vigia.ps1`, a ronda de teste troca `--dangerously-skip-permissions` mais `--disallowedTools` por `--permission-mode dontAsk --allowedTools <lista>`.
-  - A lista leva as nativas que a ronda usa (`Bash, Read, Write, Edit, Glob, Grep`), o servidor `mcp__gmail-leitura` e as de leitura do WhatsApp: `list_chats`, `list_messages`, as `get_*`, `search_contacts`, `resolve_contact`, `check_whatsapp`.
+  - A lista leva as nativas que a ronda usa (`Bash, Read, Write, Edit, Glob, Grep`), o servidor `mcp__gmail-leitura` e as de leitura do WhatsApp: `list_chats`, `list_messages`, sete `get_*` de conversa e contato (`get_chat`, `get_contact_chats`, `get_direct_chat_by_contact`, `get_group_info`, `get_last_interaction`, `get_message_context`, `get_user_info`), `search_contacts`, `resolve_contact`, `check_whatsapp`.
   - Tool nova do bridge entra negada por padrão.
   - A ronda normal não muda: segue com bypass e com a lista negra do `mcp__gmail`.
   - O prefixo do prompt de teste continua: ele pede a mensagem entre `---INICIO---` e `---FIM---`, e diz que a falta das tools de envio não é bridge fora do ar.

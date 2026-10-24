@@ -1043,13 +1043,20 @@ HASH_ML="$(sha256sum "$C_ML/trabalho/.claude/.credentials.json" | cut -d' ' -f1)
 LIMITE_ML='{"tokens":{"falso-pessoal-pasta":{"uso7":100,"reset7":"2026-10-25T11:00:00.000Z"},"falso-pessoal-reserva":{"uso7":100,"reset7":"2026-10-25T11:00:00.000Z"}}}'
 node "$RAIZ/derivar.cjs" "$RAIZ/mapa.json" "$RAIZ/mapa-ml.json" "$LIMITE_ML"
 node "$RAIZ/derivar.cjs" "$RAIZ/mapa.json" "$RAIZ/mapa-ml2.json" "${LIMITE_ML//2026-10-25/2026-11-01}"
+# O mesmo estouro relido com o resets_at 1 ms adiante (a leitura volta com microssegundos).
+node "$RAIZ/derivar.cjs" "$RAIZ/mapa.json" "$RAIZ/mapa-ml1ms.json" "${LIMITE_ML//11:00:00.000Z/11:00:00.001Z}"
 iniciar_servidor "$RAIZ/mapa-ml.json" "$RAIZ/porta-ml.txt"
 API_ML="$API"
 iniciar_servidor "$RAIZ/mapa-ml2.json" "$RAIZ/porta-ml2.txt"
 API_ML2="$API"
+iniciar_servidor "$RAIZ/mapa-ml1ms.json" "$RAIZ/porta-ml1ms.txt"
+API_ML1MS="$API"
 API="$API_ML"
 cli "$C_ML" vigiar > "$RAIZ/ml1.txt" 2>&1 || true
 cli "$C_ML" vigiar > "$RAIZ/ml2.txt" 2>&1 || true
+API="$API_ML1MS"
+rm -f "$C_ML/dados/contas/uso-cache.json"
+cli "$C_ML" vigiar > "$RAIZ/ml2b.txt" 2>&1 || true
 contar_ml() { grep -c '"tipo":"manual_no_limite"' "$EV_ML" 2>/dev/null || true; }
 N_ML1="$(contar_ml)"
 API="$API_ML2"
@@ -1061,6 +1068,8 @@ N_ML2="$(contar_ml)"
 afirma "#584: a primeira rodada registra manual_no_limite da pasta trabalho" \
   grep -qF '"tipo":"manual_no_limite","pasta":"trabalho"' "$EV_ML"
 afirma "segunda rodada com o mesmo estouro nao registra outro manual_no_limite" test "$N_ML1" = 1
+afirma "#584: com login guardado da casa, o aviso não marca sem_login_guardado" \
+  test "$(grep -c 'sem_login_guardado' "$EV_ML" || true)" = 0
 afirma "#584: resets_at novo (estouro seguinte) registra outro" test "$N_ML2" = 2
 afirma "#584: o vigia não move credencial nem tira a pasta da conta pessoal" \
   test "$(sha256sum "$C_ML/trabalho/.claude/.credentials.json" | cut -d' ' -f1)" = "$HASH_ML" -a "$(ler "$C_ML/dados/contas/estado.json" pastas.trabalho.conta)" = pessoal
@@ -1143,16 +1152,18 @@ caso_r1b() {
 }
 afirma "depois de reconciliar para casa a troca automatica seguinte nao falha com saida_ocupada" caso_r1b
 
-C_R2="$(preparar_r r2 sim)"
+# Com a troca automática desligada: o vigia não troca nada, mas o estado segue o login mesmo assim.
+C_R2="$(preparar_r r2 nao)"
 H_CRED_R2="$(hash "$C_R2/trabalho/.claude/.credentials.json")"
 cli "$C_R2" vigiar > "$RAIZ/r2.txt" 2>&1 || true
 caso_r2() {
-  [ "$(ler "$C_R2/dados/contas/estado.json" pastas.trabalho.conta)" = team ] \
+  contem "$(cat "$RAIZ/r2.txt")" "troca automática desligada" \
+    && [ "$(ler "$C_R2/dados/contas/estado.json" pastas.trabalho.conta)" = team ] \
     && [ "$(ler "$C_R2/dados/contas/estado.json" pastas.trabalho.manual)" = false ] \
     && [ "$(hash "$C_R2/trabalho/.claude/.credentials.json")" = "$H_CRED_R2" ] \
     && grep -qF '"tipo":"reconciliado","pasta":"trabalho"' "$C_R2/dados/contas/eventos.jsonl"
 }
-afirma "#585: o vigia também alinha o estado ao login, sem mover credencial" caso_r2
+afirma "#585: o vigia também alinha o estado ao login, sem mover credencial, mesmo com a troca automática desligada" caso_r2
 
 C_R3="$(preparar_r r3 nao)"
 fresca "$C_R3"
@@ -1176,7 +1187,8 @@ cli "$C_R4" vigiar > "$RAIZ/r4.txt" 2>&1 || true
 caso_r4() {
   [ "$(ler "$C_R4/dados/contas/estado.json" pastas.trabalho.conta)" = pessoal ] \
     && [ "$(ler "$C_R4/dados/contas/estado.json" pastas.trabalho.manual)" = true ] \
-    && grep -qF '"tipo":"reconciliado","pasta":"trabalho","de":"team","para":"pessoal"' "$C_R4/dados/contas/eventos.jsonl"
+    && grep -qF '"tipo":"reconciliado","pasta":"trabalho","de":"team","para":"pessoal"' "$C_R4/dados/contas/eventos.jsonl" \
+    && grep -qF 'sem_login_guardado' "$C_R4/dados/contas/eventos.jsonl"
 }
 afirma "#585: em casa com o login da outra conta registrada, o vigia põe a pasta fora de casa (manual)" caso_r4
 

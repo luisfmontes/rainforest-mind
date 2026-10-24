@@ -21,7 +21,7 @@
     "em": "2026-10-23"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-23",
     "tarefas_ok": 6,
     "tarefas": 6,
@@ -68,10 +68,32 @@
       }
     ],
     "comando": "node scripts/testa-conta-decidir.cjs; bash scripts/testa-conta.sh; node hooks/testa-mod-conta.cjs; bash scripts/testa-run-vigia-claude.sh",
-    "saida": "36 ok; ok: 61 falhou: 0; 27 ok; 28 ok"
+    "saida": "36 ok; ok: 61 falhou: 0; 27 ok; 28 ok",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-23"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "14c7e637fbe1afe775cf10e955073b1a276669bd",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a2e49a907dc8d2f37",
+        "veredito": "reprovado",
+        "em": "2026-10-23",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/21bbb906-04da-49d6-81e0-c50cb1c59dfc/subagents/agent-a2e49a907dc8d2f37.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-23",
+    "achados": 6,
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

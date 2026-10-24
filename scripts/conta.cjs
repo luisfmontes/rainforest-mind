@@ -339,11 +339,15 @@ function registrarAviso(c, ev) {
 
 // #584: aviso da pasta manual no limite, uma vez por estouro. A chave é pasta, limite (o começo do
 // motivo) e resets_at (o voltaEm do evento): o percentual sobe de 97 a 100 no mesmo estouro sem pedir
-// aviso novo, e a janela de 1 h do registrarAviso repetiria o aviso a cada hora durante dias.
+// aviso novo, e a janela de 1 h do registrarAviso repetiria o aviso a cada hora durante dias. O
+// resets_at vem com microssegundos e a mesma janela pode voltar com outro valor de leitura em leitura:
+// a comparação tolera 1 min (o estouro seguinte da mesma janela está horas depois).
+const MESMO_RESET_MS = 60 * 1000;
 function avisoJaRegistrado(c, ev) {
   const limite = (m) => String(m || '').split(' ')[0];
+  const mesmoReset = (a, b) => Math.abs(Date.parse(a) - Date.parse(b)) < MESMO_RESET_MS;
   return lerEventos(c).some(({ ev: x }) => x.tipo === ev.tipo && x.pasta === ev.pasta
-    && x.voltaEm === ev.voltaEm && limite(x.motivo) === limite(ev.motivo));
+    && mesmoReset(x.voltaEm, ev.voltaEm) && limite(x.motivo) === limite(ev.motivo));
 }
 
 function avisarManualNoLimite(c, estado, a) {
@@ -355,9 +359,13 @@ function avisarManualNoLimite(c, estado, a) {
     motivo: a.motivo,
     manual: true,
     voltaEm: a.resetsAt,
+    // Sem login guardado da casa (o /login por cima o apagou) o /conta não devolve a pasta: o aviso
+    // precisa mandar refazer o /login em vez disso.
+    causa: estacionadoPronto(c, a.pasta) ? undefined : SEM_LOGIN_GUARDADO,
   };
   if (!avisoJaRegistrado(c, ev)) registrarEvento(c, ev);
 }
+const SEM_LOGIN_GUARDADO = 'sem_login_guardado';
 
 function credDaPasta(c, P) {
   const cred = lerJson(credArq(c, P), null);
@@ -520,11 +528,19 @@ async function reconciliar(c, estado, sobTrava) {
     estado.pastas[P] = { ...info, conta: contaLogin, manual: contaLogin !== info.casa, travouPor: null };
     // De volta em casa, o login que a pasta tinha estacionado ficou órfão: o mover recusa a próxima
     // troca com saida_ocupada enquanto ele estiver lá. Arquivado, não apagado: ainda vale no servidor.
-    let arquivado = null;
+    let motivo = 'estado alinhado ao login da pasta';
     if (contaLogin === info.casa && estacionadoPronto(c, P)) {
       const orfao = estacionadoArq(c, P).replace(/\.json$/, `.orfao-${carimboLocal()}.json`);
-      fs.renameSync(estacionadoArq(c, P), orfao);
-      arquivado = path.basename(orfao);
+      try {
+        fs.renameSync(estacionadoArq(c, P), orfao);
+        motivo = `login guardado antigo arquivado em ${path.basename(orfao)}`;
+      } catch (e) {
+        // Antivírus ou indexador segurando o arquivo: o estado segue o login mesmo assim, e o evento diz
+        // que o órfão ficou (a próxima troca da pasta falharia com saida_ocupada até ele sair).
+        motivo = `não consegui arquivar o login guardado antigo (${e.code || msgSegura(e)})`;
+      }
+    } else if (contaLogin !== info.casa && !estacionadoPronto(c, P)) {
+      motivo = `estado alinhado ao login da pasta; ${SEM_LOGIN_GUARDADO}`;
     }
     gravarEstado(c, estado);
     mudou = true;
@@ -533,7 +549,7 @@ async function reconciliar(c, estado, sobTrava) {
       pasta: P,
       de: info.conta,
       para: contaLogin,
-      motivo: arquivado ? `login guardado antigo arquivado em ${arquivado}` : 'estado alinhado ao login da pasta',
+      motivo,
       manual: contaLogin !== info.casa,
       voltaEm: null,
     });
@@ -888,8 +904,9 @@ async function vigiar(c) {
   if (!pegarTrava(lock)) return sair(0, 'outra rodada em curso');
   try {
     const estado = lerEstado(c);
-    if (!estado.automatico) return sair(0, 'troca automática desligada: nada a fazer');
+    // Antes da chave: o estado segue o login mesmo com a troca automática desligada (#585).
     await reconciliar(c, estado, true);
+    if (!estado.automatico) return sair(0, 'troca automática desligada: nada a fazer');
     if (await registrarCasas(c, estado, true)) gravarEstado(c, estado);
     // Antes de renovar: renovar um login que está em dois arquivos mata a cópia do outro.
     const duplicadas = credenciaisDuplicadas(c);
