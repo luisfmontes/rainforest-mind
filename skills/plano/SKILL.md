@@ -75,20 +75,7 @@ Cada tarefa leva: **tipo**, `atende:` (lista de `D<n>` do design que esta tarefa
 
 ### Campo `busca:` — procurar antes de construir
 
-Tarefa `implementar` (ou sem tipo) que cria caminho novo de código, um arquivo que não existe no commit base, declara a busca feita antes de escrever. Teste (`testa-*`, `test/` e `tests/` em qualquer pasta, `*.test.*`, `*_test.*`, `*.spec.*`), `.md` e glob não contam: tarefa que cria a própria bateria não paga o bloco. O caminho é conferido com `/`: `\` vira `/` antes da checagem. A caixa não muda: o git é sensível, então `Scripts/Existente.cjs` conta como caminho novo quando o arquivo está no HEAD como `scripts/existente.cjs`. Escreva o caminho com a caixa que o repo tem.
-
-```
-busca:
-- repo | rg "busca:|search-first" scripts skills | só o varrer.cjs, que olha história do repo, não reuso
-- livro | vigias/livro-de-repos.md "search-first" | ECC skills/search-first é prosa sem checador
-desfecho: construir
-```
-
-- **Linha:** `- <canal> | <consulta> | <resultado>`, ou `- <canal> | pulado: <motivo>` quando o canal não se aplica. A consulta pode ter `|` (regex do rg); o resultado é sempre o último campo.
-- **Canal `repo` é obrigatório.** Sugeridos: `repo` (o código do próprio repo), `livro` (`vigias/livro-de-repos.md`), `ideias` (`ideias.jsonl`), `memoria`, `web`. `pulado:` não vale para o `repo`: `- repo | pulado: <motivo>` é recusa. Quando a busca no repo não acha nada, o resultado diz isso (`- repo | rg "..." scripts | nada reaproveitável`).
-- **`desfecho:`** é uma destas cinco palavras: `adotar` (serve como está), `estender` (acrescenta a algo existente), `compor` (junta peças existentes), `enxertar` (reimplementa o mecanismo de terceiro depois de lido; trilha em `vigias/livro-de-repos.md`), `construir` (nada serve). Outra palavra é recusa.
-- **Quem confere:** `node scripts/conferir-busca.cjs plano --slug <slug>`, que o `estado.cjs marcar --estagio plano` roda junto da cobertura. A recusa diz a tarefa, o caminho novo que a disparou e o que falta. Sem caminho novo de código no plano, o checador sai 0 mesmo fora de repositório git: o git só é exigido quando há candidato.
-- **Origem:** o padrão vem do ECC `skills/search-first`, que é só prosa ("agent guidance, not an executable setup script"). Aqui o "nada encontrado" sem canais é recusa, não atalho.
+Tarefa `implementar` (ou sem tipo) que cria caminho novo de código declara a busca antes de escrever: bloco `busca:` com canal `repo` (linha `- repo | <consulta> | <resultado>`; `pulado:` só para outro canal) e `desfecho:` (`adotar`, `estender`, `compor`, `enxertar` ou `construir`). Teste, `.md` e glob não contam. Quem confere é `node scripts/conferir-busca.cjs plano --slug <slug>`, rodado pelo `estado.cjs marcar --estagio plano`. Formato, exemplo e regras (aspas na consulta com `|`, `pulado:` no `repo`, caixa do caminho): `skills/plano/references/campo-busca.md`.
 
 ### Campo obrigatório: `mutacao:` — o alvo é declarado, nunca inferido
 
@@ -214,37 +201,7 @@ executou só falha no último portão:
 
 ### Evidência do `verificar` precisa citar um sensor
 
-Fechar o estágio `verificar` com `ok` exige mais do que `comando`/`saida`
-presentes na evidência (`--json` de `node scripts/estado.cjs marcar`):
-`comando` precisa casar com um **sensor**. Duas formas contam:
-
-- **peça do repo marcada `sensor`** por `node scripts/conferir-categoria.cjs`
-  (ex.: `node scripts/conferir-categoria.cjs` propriamente, ou outro
-  `scripts/conferir-*.cjs`) — `comando` cita o caminho da peça; ou
-- **sensor externo declarado** pelo campo `sensor_externo`, no mesmo
-  `--json` — string não vazia que precisa aparecer DENTRO de `comando`:
-
-  ```
-  --json '{"comando":"bash scripts/testa-estado.sh","saida":"...","sensor_externo":"bash scripts/testa-estado.sh"}'
-  ```
-
-Sem um dos dois, `scripts/estado.cjs` recusa o fechamento com exit 2. Só
-`verificar` barra — `executar` (o outro estágio que exige evidência) apenas
-avisa em stderr e fecha normalmente, porque barrar ali pararia trabalho
-legítimo no meio.
-
-**`scripts/testa-*.sh` NÃO são peças marcadas `sensor`** —
-`conferir-categoria.cjs` os exclui de propósito. Quase todo critério deste
-repo é "provado por `bash scripts/testa-*.sh`", então **critério do
-`verificar` cujo `comando` não seja peça marcada `sensor` precisa declarar
-`sensor_externo`**, mesmo sendo um script do próprio repo — senão o
-fechamento recusa.
-
-Este canal é diferente da linha `Sensor:` do briefing de despacho (ver
-`skills/executar/SKILL.md`) — aquela é lida por `hooks/portaria.cjs` a
-partir do prompt de despacho de agente; este é campo do `--json` de
-fechamento, lido por `scripts/estado.cjs`, que nunca recebe texto de
-briefing.
+Fechar `verificar` com `ok` exige `comando` casando com um sensor: peça marcada `sensor` pelo `conferir-categoria.cjs`, ou `sensor_externo` no `--json` contido em `comando`. `scripts/testa-*.sh` não é sensor, então critério com ele precisa declarar `sensor_externo`. Detalhe em `references/evidencia-do-verificar.md`.
 
 ### Critério de superfície humana
 

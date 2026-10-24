@@ -102,28 +102,58 @@ function existeNoHead(repo, caminho) {
 // ================================================================ Linhas do bloco
 
 /**
- * Valida uma linha `- <canal> | ...`. Devolve o canal e o problema, se houver.
- * Consulta pode conter `|` (regex do rg), então o resultado é o último campo e
- * a consulta é o meio.
+ * Divide a linha em campos pelo `|` que fica fora de aspas duplas. Um `|` entre
+ * aspas é parte da consulta (`rg "a|b"`), não separa campo.
+ */
+function dividirCampos(linha) {
+  const campos = [];
+  let atual = '';
+  let dentro = false;
+  for (const ch of linha) {
+    if (ch === '"') dentro = !dentro;
+    if (ch === '|' && !dentro) {
+      campos.push(atual.trim());
+      atual = '';
+    } else {
+      atual += ch;
+    }
+  }
+  campos.push(atual.trim());
+  return campos;
+}
+
+/**
+ * Valida uma linha `- <canal> | ...` do bloco `busca:`. Devolve o canal, se o
+ * canal é `pulado:` (`pulado`) e o problema, se houver.
+ *
+ * Regra dos campos, separados por `|` fora de aspas duplas:
+ *   - campo 2 `pulado: <motivo>` marca o canal como não aplicável; é o último
+ *     campo da linha e o motivo não pode ser vazio;
+ *   - senão, o último campo é o resultado e os campos do meio são a consulta.
+ *     Só sobrou a consulta (sem resultado) ou não há consulta: é problema.
+ * Consulta com `|` precisa de aspas (`rg "a|b"`); sem aspas, o `|` separa campo.
+ * `pulado:` no canal `repo` não é decidido aqui: quem chama recusa.
  */
 function lerLinhaBusca(linha) {
-  const partes = linha.split('|').map((p) => p.trim());
-  const canal = (partes[0] || '').toLowerCase();
-  if (partes.length < 2) {
+  const campos = dividirCampos(linha);
+  const canal = (campos[0] || '').toLowerCase();
+  if (campos.length < 2) {
     return { canal, pulado: false, problema: `linha sem resultado nem \`pulado:\`: "${linha}"` };
   }
-  const ultimo = partes[partes.length - 1];
-  if (/^pulado:/i.test(ultimo)) {
-    const motivo = ultimo.replace(/^pulado:/i, '').trim();
+  if (/^pulado:/i.test(campos[1])) {
+    if (campos.length > 2) {
+      return { canal, pulado: false, problema: `\`pulado:\` leva um campo só, depois do canal: "${linha}"` };
+    }
+    const motivo = campos[1].replace(/^pulado:/i, '').trim();
     if (!motivo) return { canal, pulado: true, problema: `\`pulado:\` sem motivo: "${linha}"` };
     return { canal, pulado: true, problema: null };
   }
-  if (partes.length < 3) {
+  if (campos.length < 3) {
     return { canal, pulado: false, problema: `linha sem resultado nem \`pulado:\`: "${linha}"` };
   }
-  const consulta = partes.slice(1, -1).join(' | ');
+  const consulta = campos.slice(1, -1).join(' | ');
   if (!consulta) return { canal, pulado: false, problema: `linha sem consulta: "${linha}"` };
-  if (!ultimo) return { canal, pulado: false, problema: `linha sem resultado: "${linha}"` };
+  if (!campos[campos.length - 1]) return { canal, pulado: false, problema: `linha sem resultado: "${linha}"` };
   return { canal, pulado: false, problema: null };
 }
 

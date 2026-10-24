@@ -230,6 +230,21 @@ caso "achado 7: barra invertida de arquivo novo e' recusada com barra normal" 2 
 { printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`Scripts/Existente.cjs`' '' ''; } > "$P"
 caso "achado 7: caixa diferente do HEAD conta como caminho novo (sensivel, como o git)" 2 'Scripts/Existente\.cjs' CHK plano --slug t --plano "$P"
 
+echo
+echo "== 7. achado 1 (rodada 3): pulado: so no segundo campo; | entre aspas e' consulta =="
+
+# `pulado:` com campo de resultado depois nao e' pulado valido: e' linha invalida.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/novo.cjs`' '- repo | pulado: sem rede | offline' "$DESF_OK"; } > "$P"
+caso "repo | pulado: sem rede | offline e' recusado" 2 'leva um campo só' CHK plano --slug t --plano "$P"
+
+# `|` entre aspas e' consulta: sem resultado depois dela, a linha nao vale.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/novo.cjs`' '- repo | rg "a|b"' "$DESF_OK"; } > "$P"
+caso "repo | rg \"a|b\" sem resultado e' recusado" 2 'sem resultado' CHK plano --slug t --plano "$P"
+
+# Mesma consulta com resultado depois: passa.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/novo.cjs`' '- repo | rg "a|b" | 2 candidatos: x.cjs' "$DESF_OK"; } > "$P"
+caso "repo | rg \"a|b\" | 2 candidatos: x.cjs passa" 0 'ok:' CHK plano --slug t --plano "$P"
+
 echo "-----------------------------------------"
 echo "total=$total vermelhas:[$(IFS=,; echo "${vermelhas[*]}")]"
 [ "${#vermelhas[@]}" -eq 0 ]
