@@ -231,4 +231,4 @@ Cinco peças viraram decisões do design docs/rainforest/design/2026-10-24-apoio
 
 ## Backlog
 
-As demais peças, top 5 e abaixo do corte de cada grupo que não entraram no lote 1, ficam registradas neste relatório, por grupo. O plantio no ideias.jsonl, uma ideia por grupo com o marcador rodada apoio-ao-dev, não foi feito por esta tarefa: o plano a deixa para a janela principal. Até lá, o backlog vive só aqui.
+As demais peças, top 5 e abaixo do corte de cada grupo que não entraram no lote 1, ficam registradas neste relatório, por grupo. Elas também foram plantadas no ideias.jsonl, uma ideia por grupo, com o marcador "rodada apoio-ao-dev" no contexto: ids `releitura-livro-g1-memoria-a` a `releitura-livro-g10-ecc-restante`. Duas sobras do lote 1 viraram ideias próprias: `limpar-corpus-de-memoria-com-relato-de-agente` (o corpus já gravado continua com relato de agente) e `captura-de-memoria-no-precompact` (depende de D3).

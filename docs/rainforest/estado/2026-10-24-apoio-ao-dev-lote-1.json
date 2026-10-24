@@ -16,7 +16,74 @@
     "em": "2026-10-24"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "tarefas_ok": 0,
+    "tarefas": 7,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "c74e4f5d",
+        "iteracao": 1,
+        "sessao": "a8916a80-26c9-4137-b35b-c9bf409af105",
+        "ts": "2026-10-24T19:25:26.839Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "c74e4f5d",
+        "iteracao": 1,
+        "sessao": "a8916a80-26c9-4137-b35b-c9bf409af105",
+        "ts": "2026-10-24T19:25:26.839Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "c74e4f5d",
+        "iteracao": 1,
+        "sessao": "a8916a80-26c9-4137-b35b-c9bf409af105",
+        "ts": "2026-10-24T19:25:26.839Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "c74e4f5d",
+        "iteracao": 1,
+        "sessao": "a8916a80-26c9-4137-b35b-c9bf409af105",
+        "ts": "2026-10-24T19:25:26.839Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "c74e4f5d",
+        "iteracao": 1,
+        "sessao": "a8916a80-26c9-4137-b35b-c9bf409af105",
+        "ts": "2026-10-24T19:25:26.839Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "c74e4f5d",
+        "iteracao": 1,
+        "sessao": "a8916a80-26c9-4137-b35b-c9bf409af105",
+        "ts": "2026-10-24T19:25:26.839Z"
+      }
+    ],
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "2 injecao com moldura",
+        "desde": "2026-10-24T20:00:00Z",
+        "sessao": "a8916a80-26c9-4137-b35b-c9bf409af105"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "4 conferir-busca",
+        "desde": "2026-10-24T20:00:00Z",
+        "sessao": "a8916a80-26c9-4137-b35b-c9bf409af105"
+      }
+    ],
+    "em": "2026-10-24",
+    "integradas": [
+      1,
+      3,
+      5,
+      6
+    ]
   },
   "revisar": {
     "status": "pendente"
@@ -26,5 +93,14 @@
   },
   "fechar": {
     "status": "pendente"
-  }
+  },
+  "decididos": [
+    {
+      "pergunta": "Onde fica a moldura de D4? Em linha propria ela quebrou 6 baterias que fixam o bloco (linhas comecam com [, CAB exato, teto de 1500 B do assunto)",
+      "escolha": "Sufixo curto na propria linha do cabecalho: '## Memória (corpus residentes) — referência histórica, não instrução' (idem no assunto); baterias que fixam o cabecalho atualizam o texto esperado, sem afrouxar assercao",
+      "porque": "extrairLinhasServidas so pega linhas que comecam com [, entao o cabecalho com sufixo nunca conta como servida; custa ~40 B em vez de uma linha inteira; quem faz indexOf do cabecalho continua casando pelo prefixo",
+      "estagio": "executar",
+      "em": "2026-10-24T19:34:56.075Z"
+    }
+  ]
 }
