@@ -16,7 +16,7 @@
  * Uso:
  *   node scripts/memoria.cjs iniciar                 criar/abrir o banco
  *   node scripts/memoria.cjs esquema [--json]        listar schema do banco
- *   node scripts/memoria.cjs buscar [opções]         buscar observações
+ *   node scripts/memoria.cjs buscar [opções]         buscar observações (--desde/--ate AAAA-MM-DD, inclusivos, pela data da observação)
  *   node scripts/memoria.cjs backup                  fazer backup do banco
  *   node scripts/memoria.cjs reindexar               reconstruir índices
  *   node scripts/memoria.cjs consolidar              sintetizar observações antigas em resumos
@@ -952,11 +952,21 @@ function resolverProjetoDaBusca(conexao, valor) {
   return { projeto: r.canonico };
 }
 
-// Comando: buscar [--texto "..."] [--projeto "..."] [--limite N] [--json]
+// Comando: buscar [--texto "..."] [--projeto "..."] [--desde AAAA-MM-DD] [--ate AAAA-MM-DD] [--limite N] [--json]
 // Busca observações usando FTS5. Degradação: banco ausente/vazio/corrompido
 // devolve resultado vazio com exit 0, nunca erro.
+// `--desde`/`--ate` (D6): datas inclusivas sobre date(o.criada_em), combináveis com
+// os demais filtros e com ou sem `--texto`. Data fora de AAAA-MM-DD ou impossível sai exit 2.
 // `buscar --texto`: mais relevante primeiro; empate (mesmo bm25) pelo mais recente.
 const ORDEM_BUSCA_TEXTO = 'ORDER BY bm25(observacoes_fts), o.criada_em DESC';
+
+// Data no formato AAAA-MM-DD que existe no calendário (2026-02-30 e 2026-13-01 são recusadas).
+function dataAAAAMMDDValida(valor) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(valor)) return false;
+  const [ano, mes, dia] = valor.split('-').map(Number);
+  const quando = new Date(Date.UTC(ano, mes - 1, dia));
+  return quando.getUTCFullYear() === ano && quando.getUTCMonth() === mes - 1 && quando.getUTCDate() === dia;
+}
 
 function cmdBuscar() {
   const { caminhoDb } = resolverCaminhos();
@@ -968,9 +978,22 @@ function cmdBuscar() {
     return process.argv[i + 1];
   }
 
+  // --desde/--ate: presente e inválido (inclusive sem valor) sai exit 2 ANTES de abrir o banco.
+  function argData(nome) {
+    if (!process.argv.includes(`--${nome}`)) return null;
+    const valor = arg(nome) || '';
+    if (!dataAAAAMMDDValida(valor)) {
+      console.error(`ERRO: --${nome} "${valor}" inválido. Use AAAA-MM-DD (data real, ex.: 2026-10-08).`);
+      process.exit(2);
+    }
+    return valor;
+  }
+
   const texto = arg('texto') || '';
   const projeto = arg('projeto') || null;
   const limite = parseInt(arg('limite') || '10', 10);
+  const desde = argData('desde');
+  const ate = argData('ate');
   const ehJson = process.argv.includes('--json');
 
   // Resultado padrão: array vazio (degradação).
@@ -1001,9 +1024,11 @@ function cmdBuscar() {
       projetoResolvido = res.projeto;
     }
 
-    // Se há texto, usar FTS5; senão, listar recentes.
+    // Se há texto, usar FTS5; senão, listar recentes. Parâmetros posicionais (`?`):
+    // a ordem de `params` segue a de `filtros`, e o LIMIT vai por último.
     let query;
-    const params = { limite };
+    const filtros = [];
+    const params = [];
 
     if (texto) {
       // Busca FTS5: combinar conteúdo com projeto se fornecido.
@@ -1015,31 +1040,27 @@ function cmdBuscar() {
         SELECT o.id, o.projeto, o.conteudo, o.criada_em
         FROM observacoes_fts
         JOIN observacoes o ON o.id = observacoes_fts.rowid
-        WHERE observacoes_fts MATCH :fts_query
+        WHERE observacoes_fts MATCH ?
         ${filtroVivas('o.')}
       `;
-      params.fts_query = texto; // FTS5 syntax: "palavra" ou "palavra1 AND palavra2"
-
-      if (projeto) {
-        query += ' AND o.projeto = :projeto';
-        params.projeto = projetoResolvido;
-      }
+      params.push(texto); // FTS5 syntax: "palavra" ou "palavra1 AND palavra2"
     } else {
-      // Sem texto: listar recentes de um projeto (se fornecido).
+      // Sem texto: listar recentes (de um projeto, se fornecido).
       // Tarefa 3 (D3): WHERE 1=1 ancora o AND de filtroVivas() mesmo sem --projeto.
-      query = `SELECT id, projeto, conteudo, criada_em FROM observacoes WHERE 1=1 ${filtroVivas()}`;
-
-      if (projeto) {
-        query += ' AND projeto = :projeto';
-        params.projeto = projetoResolvido;
-      }
+      query = `SELECT o.id, o.projeto, o.conteudo, o.criada_em FROM observacoes o WHERE 1=1 ${filtroVivas('o.')}`;
     }
 
-    query += (texto ? ` ${ORDEM_BUSCA_TEXTO}` : ' ORDER BY criada_em DESC') + ' LIMIT :limite';
+    if (projeto) { filtros.push('o.projeto = ?'); params.push(projetoResolvido); }
+    if (desde) { filtros.push('date(o.criada_em) >= ?'); params.push(desde); }
+    if (ate) { filtros.push('date(o.criada_em) <= ?'); params.push(ate); }
+    for (const filtro of filtros) query += ` AND ${filtro}`;
+
+    params.push(limite);
+    query += (texto ? ` ${ORDEM_BUSCA_TEXTO}` : ' ORDER BY criada_em DESC') + ' LIMIT ?';
 
     const stmt = conexao.prepare(query);
     try {
-      resultados = stmt.all(params);
+      resultados = stmt.all(...params);
     } catch (e) {
       // Texto livre com pontuação ("claude-mem", "a:b", aspas) é sintaxe
       // inválida de FTS5 e caía no catch de fora como banco com defeito,
@@ -1047,8 +1068,8 @@ function cmdBuscar() {
       // só no erro repete com cada termo citado, unidos por AND implícito.
       const termos = texto && (String(texto).match(/[\p{L}\p{N}]+/gu) || []);
       if (!termos) throw e;
-      params.fts_query = termos.map(t => `"${t}"`).join(' ');
-      resultados = termos.length ? stmt.all(params) : [];
+      params[0] = termos.map(t => `"${t}"`).join(' ');
+      resultados = termos.length ? stmt.all(...params) : [];
     }
     conexao.close();
   } catch (e) {
