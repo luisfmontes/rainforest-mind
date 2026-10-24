@@ -62,6 +62,12 @@ export function frase(ev) {
   if (e.tipo === 'manual_no_limite') {
     return 'Conta: a pasta ' + e.pasta + ' está na conta ' + e.de + ', que chegou ao limite (' + e.motivo + '). A troca foi manual e não volta sozinha: /conta ' + e.para + ' devolve a pasta à conta dela.';
   }
+  // #585: o estado foi alinhado ao login real da pasta (um /login por fora, ou um desfazer que falhou).
+  if (e.tipo === 'reconciliado') {
+    const arquivado = /arquivado em (\S+)$/.exec(String(ev.motivo || ''));
+    const base = 'Conta: o estado dizia que a pasta ' + e.pasta + ' estava na conta ' + e.de + ', mas o login dela é da conta ' + e.para + '; o estado foi alinhado ao login e nenhum login foi movido.';
+    return arquivado ? base + ' O login guardado antigo da pasta foi arquivado em ' + arquivado[1] + '.' : base;
+  }
   if (e.tipo === 'identidade_divergente') {
     return 'Conta: ' + e.motivo + '; nada foi gravado.';
   }

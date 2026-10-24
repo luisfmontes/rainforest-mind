@@ -491,6 +491,63 @@ async function registrarCasas(c, estado, sobTrava) {
   return mudou;
 }
 
+// #585: o estado é cópia, o login é a fonte. Um /login feito fora deste script (ou um desfazer que
+// falhou) deixa estado.pastas[P].conta dizendo uma conta e o login da pasta sendo de outra; o vigia
+// pulava a pasta manual para sempre, e /conta <casa> moveria o login novo para a reserva errada.
+// Quem tem a trava alinha o estado à conta do login (só conta registrada: e-mail desconhecido fica
+// com o identidade_divergente do registrarCasas) e não move credencial nenhuma. Sem a trava, só
+// devolve as divergências, para o status mostrar. Roda antes do registrarCasas, que assim não acusa
+// identidade_divergente de uma pasta que acabou de ser alinhada.
+async function reconciliar(c, estado, sobTrava) {
+  const divergentes = [];
+  let mudou = false;
+  for (const P of pastasAtivas()) {
+    const info = estado.pastas[P];
+    const cred = credDaPasta(c, P);
+    if (!cred) continue;
+    let d;
+    try {
+      d = await API.dono(cred.claudeAiOauth.accessToken);
+    } catch {
+      continue;
+    }
+    const contaLogin = contaDoEmail(estado, d.email);
+    if (!contaLogin || contaLogin === info.conta) continue;
+    if (!sobTrava) {
+      divergentes.push({ P, estado: info.conta, login: contaLogin });
+      continue;
+    }
+    estado.pastas[P] = { ...info, conta: contaLogin, manual: contaLogin !== info.casa, travouPor: null };
+    // De volta em casa, o login que a pasta tinha estacionado ficou órfão: o mover recusa a próxima
+    // troca com saida_ocupada enquanto ele estiver lá. Arquivado, não apagado: ainda vale no servidor.
+    let arquivado = null;
+    if (contaLogin === info.casa && estacionadoPronto(c, P)) {
+      const orfao = estacionadoArq(c, P).replace(/\.json$/, `.orfao-${carimboLocal()}.json`);
+      fs.renameSync(estacionadoArq(c, P), orfao);
+      arquivado = path.basename(orfao);
+    }
+    gravarEstado(c, estado);
+    mudou = true;
+    registrarEvento(c, {
+      tipo: 'reconciliado',
+      pasta: P,
+      de: info.conta,
+      para: contaLogin,
+      motivo: arquivado ? `login guardado antigo arquivado em ${arquivado}` : 'estado alinhado ao login da pasta',
+      manual: contaLogin !== info.casa,
+      voltaEm: null,
+    });
+  }
+  return { mudou, divergentes };
+}
+
+// AAAAMMDD-HHMMSS na hora local, para nome de arquivo.
+function carimboLocal(agora = new Date()) {
+  const dois = (n) => String(n).padStart(2, '0');
+  return `${agora.getFullYear()}${dois(agora.getMonth() + 1)}${dois(agora.getDate())}-`
+    + `${dois(agora.getHours())}${dois(agora.getMinutes())}${dois(agora.getSeconds())}`;
+}
+
 // Última falha de renovação de cada login guardado, enquanto ele ainda precisa renovar (vence em
 // menos de 1 h): login que já foi renovado depois da falha, ou que sumiu, não aparece. Lê só os
 // eventos (que não levam credencial) e o expiresAt do arquivo.
@@ -695,6 +752,7 @@ async function status(c) {
 
 async function statusLido(c, sobTrava) {
   const estado = lerEstado(c);
+  const { divergentes } = await reconciliar(c, estado, sobTrava);
   if (await registrarCasas(c, estado, sobTrava) && sobTrava) gravarEstado(c, estado);
   const duplicadas = credenciaisDuplicadas(c);
   if (sobTrava) avisarDuplicadas(c, duplicadas);
@@ -720,8 +778,14 @@ async function statusLido(c, sobTrava) {
     const info = estado.pastas[P];
     let linha = `pasta ${P}: conta em uso ${conta ? NOME[conta] : 'desconhecida'} (${d.email})`;
     linha += conta === info.casa ? ' · em casa' : ` · fora de casa (casa ${NOME[info.casa]})`;
-    if (info.manual) linha += ' · troca manual (sem volta automática)';
-    if (info.travouPor) linha += ` · volta em ${info.travouPor.resetsAt}`;
+    const div = divergentes.find((x) => x.P === P);
+    if (div) {
+      // Sem a trava não se grava: diz a divergência em vez do "troca manual" do estado velho.
+      linha += ` · estado diverge: diz conta ${NOME[div.estado]}, o login é da conta ${NOME[div.login]} (a próxima rodada com a trava alinha)`;
+    } else {
+      if (info.manual) linha += ' · troca manual (sem volta automática)';
+      if (info.travouPor) linha += ` · volta em ${info.travouPor.resetsAt}`;
+    }
     if (conta && usos[conta]) {
       linha += ` · 5 h ${pct(usos[conta].five_hour)} · semana ${pct(usos[conta].seven_day)}`;
     }
@@ -774,6 +838,9 @@ async function trocar(c, args) {
   if (!pegarTrava(lock)) return sair(1, 'outra rodada em curso: tente de novo em instantes');
   try {
     const estado = lerEstado(c);
+    // Antes do de === para: com o login já na conta pedida, a troca vira "já está na conta" e não
+    // move credencial com o estado velho (#585).
+    await reconciliar(c, estado, true);
     if (await registrarCasas(c, estado, true)) gravarEstado(c, estado);
     const { casa, conta: de } = estado.pastas[P];
 
@@ -822,6 +889,7 @@ async function vigiar(c) {
   try {
     const estado = lerEstado(c);
     if (!estado.automatico) return sair(0, 'troca automática desligada: nada a fazer');
+    await reconciliar(c, estado, true);
     if (await registrarCasas(c, estado, true)) gravarEstado(c, estado);
     // Antes de renovar: renovar um login que está em dois arquivos mata a cópia do outro.
     const duplicadas = credenciaisDuplicadas(c);

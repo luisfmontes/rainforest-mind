@@ -240,6 +240,11 @@ async function main() {
     const fml = frase({ em: 1, tipo: 'manual_no_limite', pasta: 'trabalho', de: 'pessoal', para: 'team', motivo: 'seven_day de pessoal em 100%', manual: true, voltaEm: '2026-10-25T11:00:00Z' });
     afirma('manual_no_limite diz a pasta, a conta, o percentual e o comando que devolve',
       fml.includes('pasta trabalho') && fml.includes('conta pessoal') && fml.includes('100%') && fml.includes('/conta trabalho'), 'frase: ' + fml);
+    // #585: o reconciliado diz a pasta, a conta de antes e a de agora, e que nenhum login foi movido.
+    const frc = frase({ em: 1, tipo: 'reconciliado', pasta: 'trabalho', de: 'pessoal', para: 'team', motivo: 'login guardado antigo arquivado em estacionado-trabalho.orfao-20261023-101500.json', manual: false });
+    afirma('reconciliado diz a pasta, as duas contas, que nada foi movido e o arquivo arquivado',
+      frc.includes('pasta trabalho') && frc.includes('conta pessoal') && frc.includes('conta trabalho')
+        && frc.includes('nenhum login foi movido') && frc.includes('estacionado-trabalho.orfao-20261023-101500.json'), 'frase: ' + frc);
     afirma('falhou comum segue dizendo que a troca foi desfeita',
       frase({ em: 1, tipo: 'falhou', pasta: 'trabalho', motivo: 'saida_ocupada' }) === 'Conta: a troca da pasta trabalho foi desfeita (saida_ocupada).');
     const fnd = frase({ em: 1, tipo: 'falhou', pasta: 'trabalho', de: 'team', para: 'pessoal', motivo: 'servidor confirmou a@exemplo.invalid, esperado b@exemplo.invalid; desfeito=false' });
