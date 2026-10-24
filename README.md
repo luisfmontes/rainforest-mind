@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.74.0-1e5c3f?style=flat-square" alt="versão 1.74.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.75.0-1e5c3f?style=flat-square" alt="versão 1.75.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -239,6 +239,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `scripts/conferir-duplicacao.cjs` | Dois arquivos byte a byte iguais fora de `fixtures/`, `node_modules/`, `.git/` e `.claude/worktrees/` → **exit 2** com os dois caminhos na mesma linha; `--funcoes` inventaria nomes repetidos entre `scripts/*.cjs` (exit 0, é inventário). Chamado pelo `conferir-publicacao.cjs --commit` e pelo `/saude` |
 | `scripts/conferir-publicacao.cjs --commit <rev>` ou `a..b` | Varre o conteúdo **commitado**, não o disco: dado sensível que já saiu do arquivo mas ficou no histórico é achado; disco ≠ commit vira `diverge-do-commit`. Exit 2 achado, **69** quando o ambiente impede |
 | `scripts/conferir-glossario.cjs` | Confere o `GLOSSARIO.md` da raiz do repo e recusa verbete com campo obrigatório faltando (Definição, Onde mora, Cenário), termo duplicado ou linha injetada acima de 900 B: **exit 1**, cada defeito nomeado como `GLOSSARIO.md:<linha>`. `--exigir` torna a ausência do arquivo defeito; `--caminhos` confere caminho em crase. A CI roda com `--exigir --caminhos` (`.github/workflows/baterias.yml`) |
+| `scripts/conferir-ancoras.cjs <mapa.md> [--repo <raiz>]` | Confere as âncoras `arquivo:linha`, `arquivo:N-M` e `arquivo#Simbolo` de um mapa da arqueologia: o arquivo existe, a linha cabe nele e o símbolo aparece onde o mapa diz. Uma linha por âncora (`ok`, `arquivo-ausente`, `linha-fora`, `simbolo-ausente`): **exit 1** com alguma falha, **2** uso. A `arqueologia` roda antes da releitura dos `CONFIRMADO` |
 | `scripts/conferir-fluxo.cjs camadas --slug <slug>` | Camadas do `executar` calculadas do `depende de:` do plano (Kahn), em JSON. **Exit 2** com ciclo, `depende de:` citando tarefa inexistente ou duas tarefas da mesma camada com `arquivos:` em comum; `paralela:` deixou de ser exigido e, em plano antigo, só avisa |
 | `scripts/estado.cjs retomar --slug <slug>` | Estado por tarefa (`integrada`, `em_voo`, `pendente`). Só é `integrada` a tarefa com commit `Rainforest-Tarefa: <slug>#<n>` na branch, nunca pelo JSON. Devolve `re_marcar`, `redespachar`, `contadas_sem_trailer` (contada no JSON sem commit) e `proxima_camada`; o `marcar` de executar aceita `integradas: [n]` |
 | `scripts/painel-fluxo.cjs gerar --slug <slug>` | Painel HTML local do fluxo em `<dados>/fluxos/<slug>/painel.html`: um cartão por tarefa (estado, camada, iteração do laço) e um resumo (em voo, falta, estágio, veredito, parado). O `marcar` de executar, revisar e verificar o regenera; falha vira aviso e não muda o exit |
@@ -266,7 +267,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `divergir` | **Antes** do brainstorm: seis frames isolados em paralelo mais um crítico cego. Devolve material, não decide |
 | `arqueologia` | Estágio 0, opcional: mapeia a fatia de legado que a demanda toca |
 | `/brainstorm` | Estágio 1: entrevista adversarial em árvore de decisão, grava o design |
-| `plano` | Estágio 2: tarefas tipadas, dependência declarada, critério falsificável |
+| `plano` | Estágio 2: tarefas tipadas, dependência declarada, critério falsificável; tarefa que cria código novo declara a busca em `busca:` (`scripts/conferir-busca.cjs`) |
 | `executar` | Estágio 3: despacha agentes, cada um em worktree isolado |
 | `revisar` | Estágio 4: contexto zerado, escopo fixado pelo diff — o relato não é fonte |
 | `verificar` | Estágio 5: roda o artefato real e cola a saída |
@@ -516,7 +517,7 @@ ou o caminho. Nome curto que casa com mais de um projeto, ou com nenhum, sai com
 erro listando os candidatos. O design:
 [`docs/rainforest/design/2026-10-08-projeto-canonico.md`](docs/rainforest/design/2026-10-08-projeto-canonico.md).
 Com `--texto`, o resultado vem pelo mais relevante (bm25 do FTS5), e o empate fica com o mais
-recente; sem `--texto`, a lista é dos mais recentes.
+recente; sem `--texto`, a lista é dos mais recentes. `--desde AAAA-MM-DD` e `--ate AAAA-MM-DD` limitam pela data da observação, com as duas pontas incluídas, e combinam com os outros filtros; data que não existe sai com exit 2.
 
 ## Mais fundo
 
