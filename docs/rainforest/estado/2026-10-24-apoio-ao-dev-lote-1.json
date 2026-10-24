@@ -16,7 +16,7 @@
     "em": "2026-10-24"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "tarefas_ok": 7,
     "tarefas": 7,
     "carimbos": [
@@ -110,18 +110,18 @@
       7
     ],
     "catraca_mutacao": "2026-10-24",
-    "comando": "node rodar-vizinhas.js <fluxo> scripts/testa-observar-injetado.sh scripts/testa-memoria-injecao-segura.sh scripts/testa-memoria-janela.sh scripts/testa-conferir-busca.sh scripts/testa-conferir-ancoras.sh",
-    "saida": "rodada 2: testa-observar-injetado exit=0 total=9 vermelhas:[]; testa-memoria-injecao-segura exit=0 total=6 vermelhas:[]; testa-memoria-janela exit=0 total=9 vermelhas:[]; testa-conferir-busca exit=0; testa-conferir-ancoras exit=0 total=34 vermelhas:[]",
+    "comando": "node rodar-vizinhas.js <fluxo> scripts/testa-observar-injetado.sh scripts/testa-observar.sh scripts/testa-memoria-injecao-segura.sh scripts/testa-memoria-janela.sh scripts/testa-conferir-busca.sh scripts/testa-conferir-ancoras.sh scripts/testa-conferir-categoria.sh scripts/testa-teto-skills.sh scripts/testa-plugin-codex.sh scripts/testa-dependencias-de-bateria.sh hooks/testa-abertura-mod-memoria.sh hooks/testa-memoria-session-start.sh scripts/testa-conferir-fluxo.sh; conferir-fluxo creep",
+    "saida": "rodada 3 (head e4066519): observar-injetado total=10 vermelhas:[]; observar 41 ok 0 falha; memoria-injecao-segura total=8 vermelhas:[]; memoria-janela total=9 vermelhas:[]; conferir-busca total=26 vermelhas:[]; conferir-ancoras total=38 vermelhas:[]; conferir-categoria 14 ok 0 falha; teto-skills 21 OK 0 FALHA; plugin-codex exit 0; dependencias-de-bateria 6 ok 0 falha; abertura-mod-memoria 9 ok 0 falhou; memoria-session-start 85 ok 0 falha; conferir-fluxo exit 0; creep: sem creep, 36 arquivos cobertos. Varredura completa anterior achou 2 vermelhas (dependencias-de-bateria, abertura-mod-memoria), ambas corrigidas e verdes acima.",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-observar-injetado.sh, caso task-notification vira linha Agente e system-reminder some"
+        "fixture": "testa-observar-injetado.sh, caso achado 5: 4000 aberturas sem fechamento terminam em menos de 5 s"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "testa-memoria-injecao-segura.sh, caso observacao com system-reminder de fechamento sai neutralizada nos dois blocos"
+        "fixture": "testa-memoria-injecao-segura.sh, caso marcador [SYSTEM NOTIFICATION - NOT USER INPUT] sai como ‹ nos dois blocos"
       },
       {
         "tarefa": 3,
@@ -131,12 +131,12 @@
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-busca.sh, caso tarefa que cria scripts/novo.cjs sem busca: e recusada"
+        "fixture": "testa-conferir-busca.sh, caso repo | pulado: sem rede | offline e recusado"
       },
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-ancoras.sh, caso [1-linha-alem-do-fim] linha alem do fim sai linha-fora"
+        "fixture": "testa-conferir-ancoras.sh, casos 16-dir-oculto e 18-dot-slash"
       },
       {
         "tarefa": 6,
@@ -149,31 +149,36 @@
         "motivo": "metadado de versao e documentacao"
       }
     ],
-    "reaberturas": 2,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-24"
-    }
+    "reaberturas": 2
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "9a9c9f8d843233af2d733efe1574beebd550dd85",
-      "caminhos_sujos": []
+      "head": "e406651916b3560b18eb6b0ec77d4f74e155b208",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-10-24-apoio-ao-dev-lote-1.json"
+      ]
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a4b805a4913a2686d",
-        "veredito": "reprovado",
+        "agente_id": "ad698a67fec4f90d7",
+        "veredito": "ok",
         "em": "2026-10-24",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-a4b805a4913a2686d.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-ad698a67fec4f90d7.jsonl"
       }
     ],
-    "em_voo": [],
     "em": "2026-10-24",
     "achados": 8,
-    "tentativas": 2
+    "base": "c2fdd79bc1ea0221daa638f63b87afef7c8bc303",
+    "head": "e406651916b3560b18eb6b0ec77d4f74e155b208",
+    "veredito": "ok",
+    "rodada": 3,
+    "achados_abertos": [
+      "conferir-busca: aspas simples nao protegem o pipe (documentado: so duplas)",
+      "CHANGELOG 1.75.0 sem o marcador SYSTEM NOTIFICATION e sem .dir/ e ./",
+      "modo-dev:166 frase ambigua sobre pulado no repo"
+    ]
   },
   "verificar": {
     "status": "pendente"
