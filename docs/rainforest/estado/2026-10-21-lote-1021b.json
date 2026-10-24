@@ -136,12 +136,12 @@
     "head": "1a0d1fc5e489e3383d74eb831d1aacfc68bbcd75"
   },
   "verificar": {
-    "status": "pendente",
+    "status": "ok",
     "em": "2026-10-23",
     "comando": "bash hooks/testa-gate-worktree.sh; bash scripts/testa-estado-reabrir.sh; node scripts/conferir-versao.cjs; bash scripts/testa-plugin-codex.sh",
     "saida": "813 ok, 0 falha(s); ok: 97 falhou: 0 (0 pulados); conferir-versao exit 0 (1.73.1); testa-plugin-codex rc=0; git diff 32251117 -- hooks/lib/cwd-efetivo.cjs vazio; tarefa 5: touch/cp com $CLAUDE_PROJECT_DIR e D=$(dirname $PWD)/../.. exit 0, Issue #580 nas duas buscas",
     "sensor_externo": "bash hooks/testa-gate-worktree.sh",
-    "head": "f0c1429730e19e28efe4ed0d6cddb278034a867f"
+    "head": "0ddc33c5fa06228fd039c9eb04170582ce91d685"
   },
   "fechar": {
     "status": "pendente",
