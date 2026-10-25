@@ -30,6 +30,9 @@ printf 'cita x.cjs\n'         > scripts/testa-d.sh
 printf 'cita c.cjs\n'         > hooks/testa-c.sh
 echo a > scripts/a.cjs; echo x > scripts/x.cjs; echo b > scripts/b.cjs
 echo c > hooks/lib/c.cjs; echo r > README.md
+printf 'cita velha.cjs\n'     > scripts/testa-velha.sh
+printf 'cita Gestão.cjs\n'    > scripts/testa-gestao.sh
+printf 'cita SKILL.md\n'      > scripts/testa-teto.sh
 git add -A && git commit -qm base
 BASE=$(git rev-parse HEAD)
 
@@ -84,8 +87,35 @@ else falha "bateria alterada: exit=$RC saida=[$OUT]"; fi
 novo_caso README.md
 rodar
 if [ "$RC" = 0 ] && [ -z "$OUT" ]; then
-  passou ".md alterado nao gera bateria nem duvida"
-else falha ".md alterado: exit=$RC saida=[$OUT]"; fi
+  passou ".md sem bateria que o cite nao gera bateria nem duvida"
+else falha ".md sem bateria que o cite: exit=$RC saida=[$OUT]"; fi
+
+novo_caso skills/x/SKILL.md
+rodar
+if [ "$RC" = 0 ] && [ "$OUT" = "scripts/testa-teto.sh" ]; then
+  passou ".md citado por bateria lista a bateria, exit 0"
+else falha ".md citado por bateria: exit=$RC saida=[$OUT]"; fi
+
+novo_caso docs/a.json
+rodar
+if [ "$RC" = 0 ] && [ -z "$OUT" ]; then
+  passou "arquivo sob docs/ sem citacao nao gera rodar tudo"
+else falha "arquivo sob docs/ sem citacao: exit=$RC saida=[$OUT]"; fi
+
+# Bateria apagada entre base e head nao entra na lista (o arquivo nao existe mais).
+cd "$R" || exit 1
+git reset -q --hard "$BASE" && git clean -qfd
+git rm -q scripts/testa-velha.sh && git commit -qm caso
+rodar
+if [ "$RC" = 0 ] && [ -z "$OUT" ]; then
+  passou "bateria apagada entre base e head nao e listada"
+else falha "bateria apagada: exit=$RC saida=[$OUT]"; fi
+
+novo_caso "scripts/Gestão.cjs"
+rodar
+if [ "$RC" = 0 ] && [ "$OUT" = "scripts/testa-gestao.sh" ]; then
+  passou "arquivo com acento citado por bateria lista a bateria, sem escape"
+else falha "arquivo com acento citado: exit=$RC saida=[$OUT]"; fi
 
 novo_caso scripts/a.cjs
 echo mudanca >> scripts/b.cjs; git add -A && git commit -qm depois

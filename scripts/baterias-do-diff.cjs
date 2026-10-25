@@ -8,7 +8,8 @@
  *
  * Por arquivo alterado:
  *   - testa-* de scripts/ ou hooks/ entra na lista;
- *   - .md é ignorado;
+ *   - .md e arquivo sob docs/ nunca geram dúvida, mas as baterias que citam o nome-base entram;
+ *   - bateria apagada entre base e head não entra (o diff sai com --name-status);
  *   - arquivo de hooks/lib/ ou scripts/lib/ é dúvida "biblioteca compartilhada"
  *     (quebra quem não cita), e as baterias que o citam continuam na lista;
  *   - os demais entram com as baterias que citam o nome-base; nenhuma citando é dúvida.
@@ -30,6 +31,7 @@ const { caminhoExecutavel } = require(path.join(__dirname, "..", "hooks", "lib",
 
 const BATERIA = /^(scripts|hooks)\/testa-[^/]*\.(sh|cjs)$/;
 const BIBLIOTECA = /^(hooks|scripts)\/lib\//;
+const DOCUMENTO = /^docs\/|\.md$/;
 
 function uso(msg) {
   process.stderr.write(
@@ -53,19 +55,37 @@ function lerArgs(argv) {
   return a;
 }
 
+// -z: caminho sai cru, sem aspas nem \303, e separado por \0. --name-status:
+// caminho apagado vem marcado com D. Renomeação vira apagado no nome antigo e
+// alterado no novo.
 function arquivosAlterados(a) {
+  let saida;
   try {
-    const saida = execFileSync(caminhoExecutavel("git"), ["diff", "--name-only", `${a.base}..${a.head}`, "--"], {
-      cwd: a.raiz,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    return saida.split(/\r?\n/).filter((l) => l.length > 0);
+    saida = execFileSync(
+      caminhoExecutavel("git"),
+      ["-c", "core.quotePath=false", "diff", "--name-status", "-z", `${a.base}..${a.head}`, "--"],
+      { cwd: a.raiz, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
+    );
   } catch (e) {
     process.stderr.write(`nao-verificavel: git diff falhou em ${a.base}..${a.head}\n`);
     if (e.stderr) process.stderr.write(String(e.stderr));
     process.exit(1);
   }
+  const campos = saida.split("\0");
+  const itens = [];
+  for (let i = 0; i < campos.length; i++) {
+    const status = campos[i];
+    if (!status) continue;
+    if (status[0] === "R" || status[0] === "C") {
+      const antigo = campos[++i];
+      const novo = campos[++i];
+      if (status[0] === "R") itens.push({ arquivo: antigo, apagado: true });
+      itens.push({ arquivo: novo, apagado: false });
+    } else {
+      itens.push({ arquivo: campos[++i], apagado: status[0] === "D" });
+    }
+  }
+  return itens;
 }
 
 function principal(argv) {
@@ -73,15 +93,15 @@ function principal(argv) {
   const baterias = new Set();
   const duvidas = [];
 
-  for (const arquivo of arquivosAlterados(a)) {
+  for (const { arquivo, apagado } of arquivosAlterados(a)) {
     if (BATERIA.test(arquivo)) {
-      baterias.add(arquivo);
+      if (!apagado) baterias.add(arquivo);
       continue;
     }
-    if (arquivo.endsWith(".md")) continue;
 
     const citam = bateriasQueCitam(a.raiz, arquivo);
     for (const c of citam) baterias.add(c);
+    if (DOCUMENTO.test(arquivo)) continue;
     if (BIBLIOTECA.test(arquivo)) {
       duvidas.push({ arquivo, motivo: "biblioteca compartilhada" });
       continue;
