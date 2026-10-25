@@ -10,6 +10,17 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.79.0 — 2026-10-25
+
+Quinto lote da rodada apoio ao dev, tema harness. Desenho e decisões D1 a D8 em
+`docs/rainforest/design/2026-10-24-apoio-ao-dev-lote-5.md`.
+
+- **Placar legível na catraca de mutação (D3, fecha #589).** `extrairPlacar` lê `falha(s)`, `falhas` e `falha` em qualquer caixa, com ou sem vírgula, a forma `ok=N falhou=M` e o placar do `cargo test` (`test result: ... N passed; M failed`, somado entre os binários); com mais de um placar, vale o último por posição. Antes, só `ok: N falhou: M` e `N ok, M falhou` eram lidos (`scripts/conferir-mutacao.cjs:753` na 1.78.0): nas 84 baterias que terminam em `falha(s)` a guarda do colapso não valia, e num projeto Rust a mutação legítima saía `pulada (suspeita de corte de shell)` e travava o `verificar`. O `conferir-prova` deixa de ter leitor próprio. Efeito: bateria que imprime placar nessas formas e morre antes dele na pós-mutação passa a sair colapso (exit 6); as mutações dos lotes 2 a 4 seguem vermelhas.
+- **Voltas de revisão guardadas e comparadas (D4).** O `exigir revisar` guarda a janela anterior em `revisar.voltas` antes de zerar, e o `critica-do-revisor` acrescenta à crítica `## Comparação com a volta anterior`, com cada achado marcado `novo`, `persiste (mesmo arquivo)` ou `sumiu — confirmar se foi corrigido`. A chave é o arquivo, sem a linha. Antes, a crítica da volta anterior sumia do estado (`scripts/estado.cjs:2953` na 1.78.0).
+- **Orçamento medido sem o radar da máquina (D5).** O caso 11 de `testa-auditor-de-seguranca` roda o `orcamento.cjs` com `RFM_ROOT` numa caixa vazia. Antes, ele media a abertura real com as sessões abertas e oscilava acima do teto na varredura local (`scripts/testa-auditor-de-seguranca.sh:285` na 1.78.0).
+- **Caminho real único nos hooks de aviso (D6).** `hooks/lib/caminho-real.cjs` substitui as duas cópias (`hooks/aviso-duplicata.cjs:133` e `hooks/aviso-fluxo.cjs:62` na 1.78.0), e o `aviso-duplicata` reconhece o próprio arquivo também pelo caminho sem resolver. A bateria `testa-caminho-real.sh` força o nome curto 8.3 do Windows, que só tinha aparecido no CI.
+- **Travas que faltaram (D7).** Parágrafo em negrito sem id depois de uma regra `R<n>` sai `sem-id` em vez de virar corpo dela (`scripts/conferir-ancoras.cjs:271` na 1.78.0); e ganham caso a renomeação no `baterias-do-diff`, o payload sem definição que não sobe `git` no `aviso-duplicata` e o `--limite -1` com mais de 50 casamentos no `buscar --texto`.
+
 ## 1.78.0 — 2026-10-25
 
 Quarto lote da rodada apoio ao dev, tema memória. Desenho e decisões D1 a D6 em
