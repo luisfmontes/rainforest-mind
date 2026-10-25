@@ -282,10 +282,17 @@ else
   falhou=$((falhou+1)); echo "  FALHA description tem $TAM B — fora do teto de 300 B por agente"
 fi
 
-if node scripts/orcamento.cjs > /dev/null 2>&1; then
-  ok=$((ok+1)); echo "  ok   node scripts/orcamento.cjs sai 0 com o agente instalado"
+# Mede sem o radar da maquina: RFM_ROOT aponta para uma caixa vazia, a mesma
+# receita de testa-orcamento.sh:56. Sem isso o radar das sessoes abertas entra
+# na conta e a medicao oscila com o que esta aberto (D5 do lote 5). O node do
+# Git Bash no Windows nao enxerga caminho /tmp, por isso cygpath -m.
+RAIZ_VAZIA="$(mktemp -d)"
+trap 'rm -rf "$RAIZ_VAZIA"' EXIT
+RAIZ_VAZIA_NODE="$(cygpath -m "$RAIZ_VAZIA" 2>/dev/null || echo "$RAIZ_VAZIA")"
+if RFM_ROOT="$RAIZ_VAZIA_NODE" node scripts/orcamento.cjs > /dev/null 2>&1; then
+  ok=$((ok+1)); echo "  ok   node scripts/orcamento.cjs sai 0 com o agente instalado, sem o radar da maquina (RFM_ROOT em caixa vazia)"
 else
-  falhou=$((falhou+1)); echo "  FALHA node scripts/orcamento.cjs nao sai 0 com o agente instalado"
+  falhou=$((falhou+1)); echo "  FALHA node scripts/orcamento.cjs nao sai 0 com o agente instalado, sem o radar da maquina (RFM_ROOT em caixa vazia)"
 fi
 
 # ------------------------------------------------- 12. Régua 3 — técnicas (claude-red)
