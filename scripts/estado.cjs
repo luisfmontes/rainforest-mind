@@ -1005,7 +1005,15 @@ function transcritoConfirmaVeredito(caminhoTranscrito, slug, veredito) {
     ? (ultimaLinha === 'veredito: ok' ? 'ok' : 'reprovado')
     : 'invalido';
 
-  return vereditoDoTranscrito === veredito;
+  if (vereditoDoTranscrito === veredito) return true;
+  // D3 (lote 2): `invalido` também se confirma quando o relato do transcrito
+  // tem ultima linha no vocabulario mas e incoerente com os achados da mesma
+  // mensagem (mesmas regras do hook: incoerencia em hooks/lib/achados-revisor.cjs).
+  // Sem isso o hook nunca gravaria invalido na segunda parada de uma incoerencia.
+  if (veredito !== 'invalido' || vereditoDoTranscrito === 'invalido') return false;
+  // Require preguicoso: as caixas das baterias copiam uma lista fixa de libs, e so este ramo usa a lib.
+  const { contarAchados, incoerencia } = require(path.join(__dirname, '..', 'hooks', 'lib', 'achados-revisor.cjs'));
+  return incoerencia(vereditoDoTranscrito, contarAchados(mensagem)) !== null;
 }
 
 // -------------------------------------- transcrito na pasta real de sessao (D14)

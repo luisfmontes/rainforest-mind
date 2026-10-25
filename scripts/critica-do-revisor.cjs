@@ -13,7 +13,8 @@
  * Saídas:
  *   0   crítica impressa
  *   3   crítica com achado [design]: o laço para e sobe ao usuário (D5, D7)
- *   4   sem veredito reprovado em `revisar`, estado inexistente, ou crítica vazia
+ *   4   sem veredito reprovado em `revisar`, estado inexistente, ou reprovado sem
+ *       achado marcado ([alta]/[media]/[baixa] no início do item; D3 do lote 2)
  *   69  transcrito ausente ou sem mensagem do assistente (nao-verificavel)
  *   1   erro de uso
  */
@@ -23,6 +24,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { ultimaMensagemAssistente } = require('./lib/primeiro-prompt-jsonl.cjs');
+const { contarAchados } = require(path.join(__dirname, '..', 'hooks', 'lib', 'achados-revisor.cjs'));
 
 // Mesma raiz de scripts/estado.cjs: o estado mora no projeto em que se trabalha.
 const RAIZ = process.env.RFM_ESTADO_ROOT
@@ -91,19 +93,22 @@ function main() {
   // A linha VEREDITO: sai mesmo decorada (**, _, crase), como o hook aceita.
   const linhas = mensagem.split(/\r?\n/).filter((l) => !/^[\s*_`]*VEREDITO:/i.test(l));
   const critica = linhas.join('\n');
-  if (!critica.trim()) {
-    process.stderr.write('reprovado sem achado: a critica so tem a linha VEREDITO:\n');
+  const achados = contarAchados(critica);
+  // [design] na abertura do item (lib achados-revisor.cjs) para o laço, antes
+  // da contagem: achado só de [design] continua parando o laço com exit 3.
+  if (achados.design > 0) {
+    process.stdout.write(`${critica}\n`);
+    process.stderr.write('[design]: achado contesta D<n> do design ou o plano; o laço para e sobe ao usuário (D5)\n');
+    return 3;
+  }
+  // D3 (lote 2): reprovado sem achado marcado ([alta], [media] ou [baixa] no
+  // início do item) não é crítica que o executor consiga atender.
+  if (achados.total === 0) {
+    process.stderr.write('reprovado sem achado marcado: nenhum item abre com [alta], [media], [baixa] ou [design]\n');
     return 4;
   }
 
   process.stdout.write(`${critica}\n`);
-  // [design] só conta abrindo o achado (marcador, citação, título, negrito ou
-  // rótulo "A1." / "Achado 1:" antes); citado no meio da frase, ou entre
-  // crases, não para o laço.
-  if (/^\s*(?:[-*>]\s+|#{1,6}\s+)?(?:\*\*)?(?:(?:[A-Z]|Achado\s+)?\d+[.):]?\s*)?(?:\*\*)?\s*\[design\]/im.test(critica)) {
-    process.stderr.write('[design]: achado contesta D<n> do design ou o plano; o laço para e sobe ao usuário (D5)\n');
-    return 3;
-  }
   return 0;
 }
 

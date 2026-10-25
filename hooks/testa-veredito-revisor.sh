@@ -265,7 +265,7 @@ T6A=$(real_transcrito "$FIX/transcript-slug-string-ok.jsonl" CONC-1)
 T6B=$(real_transcrito "$FIX/transcript-slug-string-reprovado.jsonl" CONC-2)
 P1=$(pay "$R" "rainforest-mind:revisor" "CONC-1" "Parece certo.
 VEREDITO: ok" '{"agent_transcript_path":"'"$T6A"'"}')
-P2=$(pay "$R" "rainforest-mind:revisor" "CONC-2" "Falta ajuste.
+P2=$(pay "$R" "rainforest-mind:revisor" "CONC-2" "[media] Falta ajuste.
 VEREDITO: reprovado" '{"agent_transcript_path":"'"$T6B"'"}')
 ( printf '%s' "$P1" | RFM_ESTADO_ROOT="$R" node "$HOOK" >/dev/null 2>&1 ) &
 PID1=$!
@@ -423,7 +423,7 @@ MD_UNDER_OK='Diff revisado, sem pendencia.
 __VEREDITO: ok__'
 MD_CRASE_OK='Diff revisado, sem pendencia.
 `VEREDITO: ok`'
-MD_BOLD_REPROVADO='Falta ajuste no contrato.
+MD_BOLD_REPROVADO='[media] Falta ajuste no contrato.
 **VEREDITO: reprovado**'
 
 reset_estado
@@ -640,9 +640,9 @@ reset_estado "$WT1_ESTADO"
 reset_estado "$WT2_ESTADO"
 # Estado está em WT1 e WT2, não em $R
 rm -f "$SLUG_JSON"
-T21=$(transcrito_com_texto "Diff nao OK.
+T21=$(transcrito_com_texto "[media] Diff nao OK.
 VEREDITO: reprovado" WT21)
-P=$(pay "$R" "rainforest-mind:revisor" "WT21" "Diff nao OK.
+P=$(pay "$R" "rainforest-mind:revisor" "WT21" "[media] Diff nao OK.
 VEREDITO: reprovado" '{"agent_transcript_path":"'"$T21"'"}')
 SAIDA_ERR=$(printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" 2>&1 >/dev/null); GOT=$?
 V1=$(vereditos "$WT1_ESTADO")
@@ -854,7 +854,7 @@ else
 fi
 
 reset_estado
-TH2=$(transcrito_handback '{"message":"Achado 1 em a.txt:1.\n**VEREDITO: reprovado**"}' H2)
+TH2=$(transcrito_handback '{"message":"[media] Achado 1 em a.txt:1.\n**VEREDITO: reprovado**"}' H2)
 P=$(pay "$R" "rainforest-mind:revisor" "H2" "" '{"agent_transcript_path":"'"$TH2"'","last_assistant_message":null}')
 SAIDA=$(printf '%s' "$P" | RFM_ESTADO_ROOT="$R" node "$HOOK" 2>&1); GOT=$?
 V=$(vereditos)

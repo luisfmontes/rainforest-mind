@@ -52,6 +52,7 @@ const { caminhoExecutavel } = require(path.join(__dirname, 'lib', 'resolver-exec
 const { primeiroPrompt, extrairSlug, ultimaMensagemAssistente } = require(path.join(__dirname, '..', 'scripts', 'lib', 'primeiro-prompt-jsonl.cjs'));
 const { extrairUltimaLinha, validarVocabulario } = require(path.join(__dirname, '..', 'scripts', 'lib', 'extrair-veredito.cjs'));
 const { ehWorktreeDeAgente } = require(path.join(__dirname, 'lib', 'contexto-sessao.cjs'));
+const { contarAchados, incoerencia } = require(path.join(__dirname, 'lib', 'achados-revisor.cjs'));
 
 const VOCAB_ULTIMA_LINHA = ['veredito: ok', 'veredito: reprovado'];
 
@@ -223,13 +224,23 @@ function main() {
   };
   const doPayload = typeof payload.last_assistant_message === 'string' ? payload.last_assistant_message : null;
   let veredito = doPayload === null ? null : vereditoDe(doPayload);
+  let mensagem = doPayload;
   if (veredito === null || veredito === 'invalido') {
     const doTranscrito = ultimaMensagemAssistente(caminhoTranscrito);
     if (typeof doTranscrito === 'string' && vereditoDe(doTranscrito) !== 'invalido') {
       veredito = vereditoDe(doTranscrito);
+      mensagem = doTranscrito;
     }
   }
   if (veredito === null) process.exit(0);
+
+  // D3 (lote 2): o veredito tem de bater com os achados da MESMA mensagem que
+  // o deu. `ok` com [alta] e `reprovado` sem achado marcado viram `invalido`
+  // e seguem o caminho do invalido abaixo (devolvem a vez na primeira parada).
+  const achados = contarAchados(mensagem);
+  const motivoIncoerencia = incoerencia(veredito, achados);
+  if (veredito === 'ok' && achados.alta > 0) veredito = 'invalido';
+  if (veredito === 'reprovado' && achados.total === 0) veredito = 'invalido';
 
   if (typeof payload.cwd !== 'string' || !payload.cwd) process.exit(0);
   const repoRoot = toplevel(payload.cwd);
@@ -246,7 +257,9 @@ function main() {
   // invalido de cara. Na segunda parada (stop_hook_active === true) nao
   // bloqueia de novo — segue para a gravacao abaixo, como antes desta tarefa.
   if (veredito === 'invalido' && payload.stop_hook_active !== true) {
-    const reason = 'Termine a mensagem com uma linha sozinha e exata, sem nada depois dela na mesma linha: VEREDITO: ok ou VEREDITO: reprovado (negrito, sublinhado ou crase em volta da linha e aceito, ex.: **VEREDITO: ok**). Nao repita a analise que voce ja escreveu, so acrescente essa linha final.';
+    const reason = motivoIncoerencia
+      ? `Veredito incoerente com os achados: ${motivoIncoerencia}. Achado [alta] e bloqueante: se ele existe, o veredito e reprovado. Reprovado precisa de pelo menos um achado marcado no inicio do item ([alta], [media], [baixa] ou [design]). Nao repita a analise: corrija so a marcacao e a linha final, sozinha e exata, VEREDITO: ok ou VEREDITO: reprovado.`
+      : 'Termine a mensagem com uma linha sozinha e exata, sem nada depois dela na mesma linha: VEREDITO: ok ou VEREDITO: reprovado (negrito, sublinhado ou crase em volta da linha e aceito, ex.: **VEREDITO: ok**). Nao repita a analise que voce ja escreveu, so acrescente essa linha final.';
     process.stdout.write(JSON.stringify({ decision: 'block', reason }) + '\n');
     process.exit(0);
   }

@@ -77,10 +77,14 @@ de produção falhos e três PRs.
 (f) **Veredito honesto, resultado primeiro**: a primeira frase diz em prosa
 se integra ou não, e por quê — sem a linha `VEREDITO:` (ela só existe no
 fim). Achados numerados, cada um com arquivo:linha e o cenário de falha.
-Achado que contesta uma decisão `D<n>` do design ou o próprio plano — e não
-a implementação deles — começa com `[design]`: o executor não pode mudar
-decisão, então esse achado para o laço de redespacho e sobe ao usuário
-(`scripts/critica-do-revisor.cjs` sai 3). Nada de "parece bom" — se não achou nada, diga o que procurou e não achou.
+Cada achado abre o item com a severidade entre colchetes: `[alta]` (bloqueia),
+`[media]` ou `[baixa]`. Achado que contesta uma decisão `D<n>` do design ou o
+próprio plano — e não a implementação deles — leva também `[design]`, antes ou
+depois da severidade: o executor não pode mudar decisão, então esse achado para
+o laço de redespacho e sobe ao usuário (`scripts/critica-do-revisor.cjs` sai 3).
+Duas regras de coerência, conferidas pelo hook: `VEREDITO: ok` com algum
+`[alta]` é incoerente, e `VEREDITO: reprovado` sem nenhum achado marcado também
+é. Nada de "parece bom" — se não achou nada, diga o que procurou e não achou.
 A ÚLTIMA linha do relato — depois dos achados e das premissas, nunca antes —
 é exatamente `VEREDITO: ok` ou `VEREDITO: reprovado`, sozinha, sem texto
 depois (negrito, sublinhado ou crase em volta são aceitos). Um hook

@@ -228,16 +228,15 @@ lembra ter sido feito.
 
 ### Contrato de uma linha: `VEREDITO: ok` / `VEREDITO: reprovado`
 
-O relato do revisor (`agents/revisor.md`, seção (f)) termina, sempre, com uma
-última linha exata — sozinha, sem texto depois (negrito aceito): `VEREDITO:
-ok` ou `VEREDITO: reprovado`. Um hook `SubagentStop`
-(`hooks/veredito-revisor.cjs`) lê essa linha direto de
-`last_assistant_message` contra vocabulário fechado
-(`hooks/veredito-revisor.cjs:54`) e grava em `revisar.vereditos` via `node
-scripts/estado.cjs veredito` — sem passar pelo relato de quem despachou
-(D1-D3). Fora do vocabulário (prosa, `**APROVADO**` em negrito, sem a linha)
-grava `invalido`: a revisão existe e fica auditável, mas não conta como `ok`
-nem como `reprovado` nos gates abaixo.
+O relato do revisor (`agents/revisor.md`, seção (f)) termina com uma linha
+exata, sozinha (negrito aceito): `VEREDITO: ok` ou `VEREDITO: reprovado`. Um
+hook `SubagentStop` (`hooks/veredito-revisor.cjs`) lê essa linha e grava em
+`revisar.vereditos` via `node scripts/estado.cjs veredito`, sem passar pelo
+relato de quem despachou (D1-D3). Cada achado abre com `[alta]`, `[media]` ou
+`[baixa]`; `ok` com `[alta]` e `reprovado` sem achado marcado são incoerentes
+e viram `invalido` (D3 do lote 2). Fora do vocabulário (prosa, `**APROVADO**`,
+sem a linha) também grava `invalido`: a revisão fica auditável, mas não conta
+como `ok` nem `reprovado` nos gates abaixo.
 
 **Transição**: fluxo cujo `exigir revisar` rodou antes deste contrato existir
 não tem `revisar.vereditos` armado — `marcar` então só **avisa** em stderr e

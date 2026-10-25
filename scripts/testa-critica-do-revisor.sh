@@ -18,6 +18,18 @@ CAIXA_W="$(cd "$CAIXA" && pwd -W 2>/dev/null || pwd)"
 RAIZ_W="$(pwd -W 2>/dev/null || pwd)"
 FX="$RAIZ_W/scripts/fixtures/critica-do-revisor"
 
+# D3 (lote 2): reprovado sem achado marcado sai 4. Os fixtures (a), (f) e (g)
+# foram escritos antes da severidade ser obrigatória; a cópia na caixa leva
+# [media] no início de cada "Achado N:" (o fixture original fica intacto).
+sed 's/Achado \([0-9]\): /Achado \1: [media] /g' "$FX/critica-sem-linha-de-veredito.jsonl" > "$CAIXA/critica-sem-linha-com-media.jsonl"
+sed 's/Achado \([0-9]\): /Achado \1: [media] /g' "$FX/design-citado-e-veredito-decorado.jsonl" > "$CAIXA/design-citado-com-media.jsonl"
+if [ "$(grep -o 'Achado [0-9]: \[media\]' "$CAIXA/critica-sem-linha-com-media.jsonl" | wc -l)" -ne 2 ] \
+  || [ "$(grep -o 'Achado [0-9]: \[media\]' "$CAIXA/design-citado-com-media.jsonl" | wc -l)" -ne 1 ]; then
+  echo "FALHA: a cópia com [media] nao trocou o numero esperado de achados"; exit 1
+fi
+CRIT_MEDIA="$CAIXA_W/critica-sem-linha-com-media.jsonl"
+CRIT_DESIGN_CITADO="$CAIXA_W/design-citado-com-media.jsonl"
+
 # estado <slug> <json do array de vereditos>
 estado() {
   mkdir -p "$CAIXA/docs/rainforest/estado"
@@ -48,7 +60,7 @@ registra() { # $1 = caso, $2 = 0 se passou, 1 se falhou
 echo "== critica-do-revisor: os caminhos que o laço lê =="
 
 echo "-- (a) reprovado com achado comum: exit 0, sem VEREDITO: --"
-estado a "[$(vered reprovado "$FX/critica-sem-linha-de-veredito.jsonl" 1)]"
+estado a "[$(vered reprovado "$CRIT_MEDIA" 1)]"
 roda a
 if [ "$EXIT" -eq 0 ] && printf '%s' "$OUT" | grep -q 'Achado 2' && ! printf '%s' "$OUT" | grep -q 'VEREDITO:'; then r=0; else r=1; fi
 registra "(a) exit 0, stdout com o achado e sem VEREDITO:" $r
@@ -83,13 +95,13 @@ if [ "$EXIT" -eq 1 ] && printf '%s' "$ERR" | grep -q 'uso:'; then r=0; else r=1;
 registra "(e) exit 1 e uso no stderr" $r
 
 echo "-- (f) dois reprovados: vale o ÚLTIMO (comum, exit 0), não o [design] --"
-estado f "[$(vered reprovado "$FX/achado-design.jsonl" 1),$(vered reprovado "$FX/critica-sem-linha-de-veredito.jsonl" 2)]"
+estado f "[$(vered reprovado "$FX/achado-design.jsonl" 1),$(vered reprovado "$CRIT_MEDIA" 2)]"
 roda f
 if [ "$EXIT" -eq 0 ] && printf '%s' "$OUT" | grep -q 'Achado 1' && ! printf '%s' "$OUT" | grep -q '\[design\]'; then r=0; else r=1; fi
 registra "(f) exit 0 com o achado do ultimo reprovado" $r
 
 echo "-- (g) [design] citado no meio e VEREDITO decorado: exit 0, linha decorada some --"
-estado g "[$(vered reprovado "$FX/design-citado-e-veredito-decorado.jsonl" 1)]"
+estado g "[$(vered reprovado "$CRIT_DESIGN_CITADO" 1)]"
 roda g
 if [ "$EXIT" -eq 0 ] && printf '%s' "$OUT" | grep -q 'Achado 1' && ! printf '%s' "$OUT" | grep -q 'VEREDITO:'; then r=0; else r=1; fi
 registra "(g) exit 0, sem a linha **VEREDITO:**" $r
