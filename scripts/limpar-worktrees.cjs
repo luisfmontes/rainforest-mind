@@ -621,6 +621,92 @@ function imprimirTabela(dados) {
   }
 }
 
+// Raiz do repositório desta execução. As sondas de alcance rodam nela, e não no
+// próprio worktree, para continuar funcionando quando o diretório já sumiu
+// (fantasma-travado). Definida em main().
+let raizAtual = null;
+
+/**
+ * Sha do HEAD de um worktree, lido de `git worktree list --porcelain` na raiz.
+ * Devolve null se a sonda falhou ou se o worktree não está registrado.
+ */
+function sondarHead(caminho) {
+  let saida;
+  try {
+    saida = execFileSync(caminhoExecutavel("git"), ["worktree", "list", "--porcelain"], {
+      cwd: raizAtual,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+  } catch {
+    return null;
+  }
+  const alvo = normalizarCaminho(caminho);
+  for (const bloco of saida.split(/\n\n+/)) {
+    const linhas = bloco.split("\n");
+    const wt = linhas.find((l) => l.startsWith("worktree "));
+    const head = linhas.find((l) => l.startsWith("HEAD "));
+    if (wt && head && normalizarCaminho(wt.slice("worktree ".length)) === alvo) {
+      return head.slice("HEAD ".length).trim();
+    }
+  }
+  return null;
+}
+
+/**
+ * true se alguma branch local ou remota alcança o HEAD do worktree; false se
+ * nenhuma alcança (commit só no reflog); null se alguma sonda git falhou.
+ */
+function headAlcancavel(caminho) {
+  const sha = sondarHead(caminho);
+  if (sha === null) return null;
+  try {
+    const saida = execFileSync(
+      caminhoExecutavel("git"),
+      ["for-each-ref", "--contains", sha, "--format=%(refname)", "refs/heads", "refs/remotes"],
+      { cwd: raizAtual, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }
+    );
+    return saida.trim().length > 0;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Grava refs/rainforest/arquivo/<nome-do-dir> apontando para o sha. Não
+ * sobrescreve uma ref que já aponta para outro commit: arquivo anterior com o
+ * mesmo nome de diretório não pode ser perdido em silêncio.
+ */
+function arquivarHead(caminho, sha) {
+  const ref = `refs/rainforest/arquivo/${path.basename(caminho)}`;
+  const git = caminhoExecutavel("git");
+  let atual = null;
+  try {
+    atual = execFileSync(git, ["rev-parse", "--verify", "-q", ref], {
+      cwd: raizAtual,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch (e) {
+    // `rev-parse --verify -q` sai 1 quando a ref não existe; outro código é falha.
+    if (e.status !== 1) return { ok: false, motivo: `não consegui ler ${ref}` };
+  }
+  if (atual === sha) return { ok: true, ref };
+  if (atual) {
+    return { ok: false, motivo: `${ref} já aponta para ${atual.slice(0, 7)}, não sobrescrevo` };
+  }
+  try {
+    execFileSync(git, ["update-ref", ref, sha, "0".repeat(sha.length)], {
+      cwd: raizAtual,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch (e) {
+    return { ok: false, motivo: `git update-ref falhou: ${e.stderr || e.message}` };
+  }
+  return { ok: true, ref };
+}
+
 /**
  * Executa remoção (para "limpo" e "fantasma-travado").
  */
@@ -657,6 +743,30 @@ function executarRemocao(raiz, dadosLimpos) {
     // D20: revalida no instante antes de remover
     if (pularSeMudou(item)) {
       continue;
+    }
+
+    // D5: só sai worktree cujo HEAD é alcançado por branch. HEAD destacado com
+    // commit próprio é arquivado em ref antes de sair; sonda que falha, não sai.
+    const alcancavel = headAlcancavel(item.caminhoOriginal);
+    if (alcancavel === null) {
+      console.error(
+        `erro: ${item.caminho} não removido: sonda git de alcance do HEAD falhou`
+      );
+      continue;
+    }
+    if (alcancavel === false) {
+      const sha = sondarHead(item.caminhoOriginal);
+      const arquivo = sha ? arquivarHead(item.caminhoOriginal, sha) : { ok: false, motivo: "HEAD não lido" };
+      if (!arquivo.ok) {
+        console.error(
+          `erro: ${item.caminho} não removido: ${arquivo.motivo}`
+        );
+        continue;
+      }
+      console.log(
+        `arquivado: ${arquivo.ref} aponta para ${sha.slice(0, 7)} ` +
+          `(HEAD de ${item.caminho} não é alcançado por nenhuma branch)`
+      );
     }
 
     if (classe === "fantasma-travado" && remover) {
@@ -734,6 +844,7 @@ function executarRemocao(raiz, dadosLimpos) {
  */
 function main() {
   const raiz = resolverRaiz();
+  raizAtual = raiz;
 
   // Detecta fantasmas-travados antes de listar tudo
   const fantasmas = detectarFantasmaTravado(raiz);
