@@ -254,7 +254,7 @@ echo "== 10. payload sem definição de topo não sobe git (GIT_TRACE na caixa) 
 # Sem nome de definição de topo, o hook sai antes do rev-parse: nenhum processo git roda,
 # então o arquivo de trace tem de continuar inexistente. O controle (com definição) prova
 # que o GIT_TRACE de fato escreve quando o git roda, senão a ausência não provaria nada.
-CX="$(mktemp -d)"
+CX="$SBP/caixa-trace"; mkdir -p "$CX"
 gerar write "src/semtopo.cjs" "$C1" 'const x = 1;\n' > "$SBP/p10.json"
 GIT_TRACE="$(cygpath -m "$CX")/trace.txt" node "$HOOK" < "$SBP/p10.json" > "$SBP/out10.txt" 2>/dev/null; EXIT=$?
 OUT="$(cat "$SBP/out10.txt")"

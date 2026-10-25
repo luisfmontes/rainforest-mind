@@ -34,10 +34,12 @@ if [ -n "${RFM_ROOT:-}" ] && [ -n "$RAIZ_REAL" ] && mesmo_caminho "$RFM_ROOT" "$
   echo "nao-verificavel: RFM_ROOT aponta para a raiz real de dados ($RAIZ_REAL) — aborta antes de gravar"
   exit 69
 fi
-NOMES_REAIS_ANTES="$(ls -A "$RAIZ_REAL" 2>/dev/null | sort)"
+# -shm, -wal e -journal são do SQLite: somem quando outra sessão fecha o banco real.
+nomes_reais() { ls -A "$RAIZ_REAL" 2>/dev/null | grep -vE -- '-(shm|wal|journal)$' | sort; }
+NOMES_REAIS_ANTES="$(nomes_reais)"
 conferir_raiz_real() {
   local sumiu
-  sumiu="$(comm -23 <(printf '%s\n' "$NOMES_REAIS_ANTES") <(ls -A "$RAIZ_REAL" 2>/dev/null | sort) | grep -v '^$' || true)"
+  sumiu="$(comm -23 <(printf '%s\n' "$NOMES_REAIS_ANTES") <(nomes_reais) | grep -v '^$' || true)"
   if [ -n "$sumiu" ]; then echo "FALHA a bateria apagou da raiz real: $sumiu"; exit 1; fi
 }
 
