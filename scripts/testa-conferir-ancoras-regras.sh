@@ -18,6 +18,9 @@ CONF="$SRC/scripts/conferir-ancoras.cjs"
 REPO="$SB/repo"
 mkdir -p "$REPO"
 printf 'linha 1\nlinha 2\n' > "$REPO/a.cjs"
+# o Teste: dos casos com R1 testada precisa existir e citar R1 (degrau testada, D5 do lote 6)
+mkdir -p "$REPO/scripts"
+printf '# caso R1, período fechado\n' > "$REPO/scripts/testa-x.sh"
 
 ok=0
 falhou=0

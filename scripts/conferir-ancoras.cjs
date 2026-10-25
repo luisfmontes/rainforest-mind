@@ -62,17 +62,25 @@
  * REGRAS IMPLÍCITAS (D5 do lote 3 de apoio-ao-dev). A seção `## Regras implícitas`
  * vai do cabeçalho até o próximo `## `. Regra nova abre com `**R<n> — <título>**`
  * (hífen ou travessão) e traz `Verificada em: <sha>` e `Teste: <bateria ou caso> |
- * nenhum` nas linhas seguintes. Estado por regra: `testada` (os dois campos, teste
- * real), `sem-teste` (`Teste: nenhum`, aviso), `sem-campos` (falta um dos dois campos,
- * falha, exit 1). Parágrafo da seção sem regra aberta que não abre com o marcador é
- * formato antigo: sai `regra sem-id` como aviso, sem mudar o exit. Com regra aberta,
- * parágrafo novo é corpo dela, salvo o que abre com `**` sem casar o marcador: esse
- * sai `regra sem-id` e fecha a regra aberta (D7 do lote 5). Sem a seção, a saída é a de sempre.
+ * nenhum` nas linhas seguintes. Estado por regra: `testada` (o arquivo do `Teste:`
+ * existe sob a raiz do `--repo` e cita `R<n>` como palavra inteira), `teste-sem-id`
+ * (o arquivo existe e não cita o id), `teste-ausente` (o arquivo não existe),
+ * `sem-teste` (`Teste: nenhum`), `sem-campos` (falta um dos dois campos, falha, exit 1).
+ * Os três avisos (`teste-sem-id`, `teste-ausente`, `sem-teste`) não mudam o exit.
+ * `Verificada em:` cujo sha não resolve por `git cat-file -e <sha>^{commit}` na raiz
+ * do `--repo` sai com a linha extra `regra R<n> sha-desconhecido` (aviso, sem mudar o
+ * estado); raiz que não é repo git não confere nem avisa. Parágrafo da seção sem regra
+ * aberta que não abre com o marcador é formato antigo: sai `regra sem-id` como aviso,
+ * sem mudar o exit. Com regra aberta, parágrafo novo é corpo dela, salvo o que abre com
+ * `**` sem casar o marcador depois de a regra já ter um campo: esse sai `regra sem-id` e
+ * fecha a regra aberta (D7 do lote 5; D10b do lote 6). Antes de qualquer campo, negrito
+ * sem id é corpo da regra (`**Atenção:** ...`). Sem a seção, a saída é a de sempre.
  *
  * Uso: node scripts/conferir-ancoras.cjs <mapa.md> [--repo <raiz>]
  */
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const JANELA = 80;
 const EXT_ADVPL = new Set(['.prw', '.prx', '.tlpp', '.ch']);
@@ -252,9 +260,11 @@ function secaoRegras(conteudo) {
 }
 
 // regra: marcador + campos. Com regra aberta, parágrafo novo (mesmo depois de linha em branco)
-// é corpo dela, exceto o que abre com `**` sem casar o marcador: esse sai `sem-id` e fecha a
-// regra aberta, para que as linhas seguintes não virem corpo dela. A regra fecha também no
-// próximo título `#` ou no fim da seção. Campos `Verificada em:`/`Teste:` anexam à regra aberta.
+// é corpo dela, exceto o que abre com `**` sem casar o marcador DEPOIS de a regra já ter um
+// campo: esse sai `sem-id` e fecha a regra aberta, para que as linhas seguintes não virem corpo
+// dela. Antes de qualquer campo, negrito sem id é corpo (D10b do lote 6: `**Atenção:**` antes dos
+// campos). A regra fecha também no próximo título `#` ou no fim da seção. Campos
+// `Verificada em:`/`Teste:` anexam à regra aberta.
 function lerRegras(linhas) {
   const itens = [];
   let atual = null;
@@ -271,7 +281,7 @@ function lerRegras(linhas) {
       atual.verificada = RE_VERIFICADA.exec(l)[1].trim();
     } else if (atual && RE_TESTE.test(l)) {
       atual.teste = RE_TESTE.exec(l)[1].trim();
-    } else if (novoParagrafo && (atual === null || RE_ABRE_NEGRITO.test(l))) {
+    } else if (novoParagrafo && (atual === null || (RE_ABRE_NEGRITO.test(l) && (atual.verificada !== null || atual.teste !== null)))) {
       atual = null;
       itens.push({ tipo: 'sem-id', estado: 'sem-id', texto: l.slice(0, 60) });
     }
@@ -296,20 +306,53 @@ for (const cit of cits) {
 }
 const falhas = contadas - oks;
 
+// o `Teste:` é caminho sob a raiz do --repo; ausente ou pasta não conta como arquivo
+function arquivoExiste(alvo) {
+  return alvo !== null && fs.existsSync(alvo) && fs.statSync(alvo).isFile();
+}
+
+// o arquivo cita o id como palavra inteira: R1 não casa R10 (o dígito seguinte impede)
+function citaRegra(alvo, n) {
+  if (alvo === null) return false;
+  const re = new RegExp(`(?<![A-Za-z0-9_])R${n}(?![A-Za-z0-9_])`);
+  return re.test(fs.readFileSync(alvo, 'utf8'));
+}
+
+// raiz que não é repo git não confere sha: a checagem sai de fora, sem aviso
+let raizGit = null;
+function raizEhRepoGit() {
+  if (raizGit === null) raizGit = spawnSync('git', ['rev-parse', '--git-dir'], { cwd: raizAbs }).status === 0;
+  return raizGit;
+}
+function shaExiste(sha) {
+  return spawnSync('git', ['cat-file', '-e', `${sha}^{commit}`], { cwd: raizAbs }).status === 0;
+}
+
 const regras = lerRegras(secaoRegras(conteudo));
 for (const regra of regras) {
   if (regra.tipo === 'sem-id') {
     console.log(`regra sem-id: ${regra.texto}`);
     continue;
   }
-  regra.estado = 'testada';
-  if (regra.teste !== null && regra.teste.toLowerCase() === 'nenhum') regra.estado = 'sem-teste';
+  const alvo = regra.teste !== null ? path.resolve(raizAbs, regra.teste) : null;
+  if (regra.teste !== null && regra.teste.toLowerCase() === 'nenhum') {
+    regra.estado = 'sem-teste';
+  } else if (regra.teste !== null && !arquivoExiste(alvo)) {
+    regra.estado = 'teste-ausente';
+  } else {
+    regra.estado = citaRegra(alvo, regra.n) ? 'testada' : 'teste-sem-id';
+  }
   if (!regra.verificada || !regra.teste) regra.estado = 'sem-campos';
   console.log(`regra R${regra.n} ${regra.estado}`);
+  const sha = regra.verificada ? regra.verificada.split(/\s+/)[0] : '';
+  if (sha && raizEhRepoGit() && !shaExiste(sha)) {
+    regra.shaDesconhecido = true;
+    console.log(`regra R${regra.n} sha-desconhecido`);
+  }
 }
 const contaEstado = (estado) => regras.filter((r) => r.estado === estado).length;
 const sufixoRegras = regras.length
-  ? ` · regras: ${contaEstado('testada')} testada, ${contaEstado('sem-teste')} sem-teste, ${contaEstado('sem-campos')} sem-campos, ${contaEstado('sem-id')} sem-id`
+  ? ` · regras: ${contaEstado('testada')} testada, ${contaEstado('sem-teste')} sem-teste, ${contaEstado('sem-campos')} sem-campos, ${contaEstado('sem-id')} sem-id, ${contaEstado('teste-ausente')} teste-ausente, ${contaEstado('teste-sem-id')} teste-sem-id, ${regras.filter((r) => r.shaDesconhecido).length} sha-desconhecido`
   : '';
 console.log(`${contadas} âncoras: ${oks} ok, ${falhas} falhas${sufixoRegras}`);
 process.exitCode = falhas > 0 || contaEstado('sem-campos') > 0 ? 1 : 0;

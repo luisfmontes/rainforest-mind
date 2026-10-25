@@ -202,7 +202,8 @@ e fica sujeita a reconferência junto com a afirmação que a originou.
 Cada regra abre com id estável, `**R<n> — <título>**` (hífen também vale), e leva
 duas linhas abaixo: `Verificada em: <sha curto>`, o commit em que a regra foi
 relida no fonte, e `Teste: <bateria ou caso> | nenhum`, a bateria que a protege ou
-`nenhum` quando não há. O id permite citar a regra sem parafrasear. O
+`nenhum` quando não há. O id permite citar a regra sem parafrasear, e o teste citado
+nomeia a regra pelo id (`R<n>`), senão o `conferir-ancoras.cjs` sai `teste-sem-id`. O
 `conferir-ancoras.cjs` lê as duas linhas: regra sem uma delas sai `sem-campos` e
 reprova o mapa; `Teste: nenhum` sai `sem-teste`, só aviso. Parágrafo sem o marcador
 é formato antigo: sai `regra sem-id`, aviso que não reprova — mapa já gravado não
