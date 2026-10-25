@@ -30,7 +30,7 @@ pronto quando: num repo git temporário montado pela bateria, com `scripts/a.cjs
 
 ### 2. Duplicata de definição avisada na edição [tipo: implementar]
 atende: D2, D4, D7
-arquivos: `hooks/aviso-duplicata.cjs`, `hooks/hooks.json`, `hooks/lib/config.cjs`, `skills/setup/SKILL.md`, `scripts/testa-conferir-categoria.sh`, `docs/travas-mecanicas.md`, `hooks/testa-aviso-duplicata.sh`
+arquivos: `hooks/aviso-duplicata.cjs`, `hooks/hooks.json`, `hooks/lib/config.cjs`, `skills/setup/SKILL.md`, `scripts/testa-conferir-categoria.sh`, `docs/travas-mecanicas.md`, `hooks/testa-config.sh`, `hooks/testa-aviso-duplicata.sh`
 depende de: nenhuma
 busca:
 - repo | grep -n "PostToolUse" hooks/hooks.json | só aviso-fluxo-shell.cjs em Bash|PowerShell; nenhum hook olha definição duplicada
