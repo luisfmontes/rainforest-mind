@@ -60,8 +60,8 @@ echo
 echo "2. PostToolUse não existe em hooks.json (proibido)"
 if registrado_em PostToolUse memoria-marca; then
   falhou=$((falhou+1)); echo "  FALHA PostToolUse tem memoria-marca (sobe 15k+ processos)"
-elif node -e 'const h=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).hooks.PostToolUse||[];process.exit(h.some(g=>(g.hooks||[]).some(x=>!String(x.command||"").includes("aviso-fluxo-shell.cjs")))?0:1)' "$HOOKS_JSON"; then
-  # O aviso-fluxo-shell.cjs (#564) e a unica excecao, conferida em testa-config.sh.
+elif node -e 'const h=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).hooks.PostToolUse||[];process.exit(h.some(g=>(g.hooks||[]).some(x=>!/aviso-fluxo-shell\.cjs|aviso-duplicata\.cjs/.test(String(x.command||""))))?0:1)' "$HOOKS_JSON"; then
+  # aviso-fluxo-shell.cjs (#564) e aviso-duplicata.cjs (lote 3) sao as excecoes, conferidas em testa-config.sh.
   falhou=$((falhou+1)); echo "  FALHA PostToolUse existe com outro hook"
 else
   ok=$((ok+1)); echo "  ok    PostToolUse não registrado para rainforest"

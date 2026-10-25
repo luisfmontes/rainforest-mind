@@ -16,6 +16,7 @@
  */
 
 const { execFileSync } = require('child_process');
+const { caminhoExecutavel } = require(require('path').join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 const MAX_ARQUIVOS_COMMIT = 20;
 const SCORE_MINIMO = 0.3;
@@ -50,7 +51,7 @@ function lerCommits(meses) {
   let saida;
   try {
     saida = execFileSync(
-      'git',
+      caminhoExecutavel('git'),
       ['log', `--since=${meses} months ago`, '--name-only', '--format=%x00%H', '--no-merges'],
       { cwd: process.cwd(), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 512 * 1024 * 1024 }
     );

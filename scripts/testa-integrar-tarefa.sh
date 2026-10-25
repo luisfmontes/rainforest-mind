@@ -53,7 +53,7 @@ caixa_nova() {
   for s in integrar-tarefa.cjs conferir-entrega.cjs conferir-mutacao.cjs conferir-fluxo.cjs estado.cjs; do
     cp "$SRC/scripts/$s" "$CX/scripts/"
   done
-  cp "$SRC/scripts/lib/camadas.cjs" "$SRC/scripts/lib/primeiro-prompt-jsonl.cjs" "$SRC/scripts/lib/extrair-veredito.cjs" "$CX/scripts/lib/"
+  cp "$SRC/scripts/lib/camadas.cjs" "$SRC/scripts/lib/primeiro-prompt-jsonl.cjs" "$SRC/scripts/lib/extrair-veredito.cjs" "$SRC/scripts/lib/baterias-vizinhas.cjs" "$CX/scripts/lib/"
   for lib in raiz config trava-jsonl pastas-docs resolver-executavel contar-ocorrencias caminho-leve teto-despachos; do
     cp "$SRC/hooks/lib/$lib.cjs" "$CX/hooks/lib/"
   done

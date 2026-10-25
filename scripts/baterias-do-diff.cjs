@@ -26,6 +26,7 @@
 const path = require("path");
 const { execFileSync } = require("child_process");
 const { bateriasQueCitam } = require(path.join(__dirname, "lib", "baterias-vizinhas.cjs"));
+const { caminhoExecutavel } = require(path.join(__dirname, "..", "hooks", "lib", "resolver-executavel.cjs"));
 
 const BATERIA = /^(scripts|hooks)\/testa-[^/]*\.(sh|cjs)$/;
 const BIBLIOTECA = /^(hooks|scripts)\/lib\//;
@@ -54,7 +55,7 @@ function lerArgs(argv) {
 
 function arquivosAlterados(a) {
   try {
-    const saida = execFileSync("git", ["diff", "--name-only", `${a.base}..${a.head}`, "--"], {
+    const saida = execFileSync(caminhoExecutavel("git"), ["diff", "--name-only", `${a.base}..${a.head}`, "--"], {
       cwd: a.raiz,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],

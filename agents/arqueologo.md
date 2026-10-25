@@ -64,7 +64,7 @@ reprovada antes de sair. Mapa que não cabe numa sessão significa escopo errado
 `**R<n> — <título>**` e traz `Verificada em: <sha curto>` e `Teste: <bateria ou
 caso> | nenhum` nas linhas abaixo. Sem as duas linhas o `conferir-ancoras.cjs` sai
 `sem-campos` e reprova o mapa; `Teste: nenhum` é só aviso. Formato completo na
-skill `arqueologia`, seção `## Regras implícitas`.
+skill `arqueologia`, na seção das regras implícitas.
 
 **Resultado se valida na saída real.** Toda afirmação sai rotulada —
 `CONFIRMADO` (leu no fonte e citou `arquivo:linha`), `INFERIDO` (dedução
