@@ -198,13 +198,17 @@ caso('relatorio ganha a faixa 1-3 / 4-7 / 8+ e mantem as linhas de hoje', () => 
   ins2.run('observacao', 1, 'sr', 1, 0.2, t, 'abertura', 1);
   ins2.run('observacao', 2, 'sr', 1, 0.4, t, 'abertura', 2);
   ins2.run('observacao', 3, 'sr', 1, 0.6, t, 'abertura', 3);
-  ins2.run('observacao', 4, 'sr', 1, 0.9, t, 'abertura', 5);
-  ins2.run('observacao', 5, 'sr', 1, 0.1, t, 'abertura', 9);
+  // bordas das faixas: 4 e 7 caem em 4–7, 8 cai em 8+
+  ins2.run('observacao', 4, 'sr', 1, 0.9, t, 'abertura', 4);
+  ins2.run('observacao', 7, 'sr', 1, 0.5, t, 'abertura', 7);
+  ins2.run('observacao', 5, 'sr', 1, 0.1, t, 'abertura', 8);
   ins2.run('observacao', 6, 'sr', 1, 1.0, t, 'abertura', null);
+  // servida sem nota fica fora da média (SQL_MEDIDA), mesmo com posição
+  ins2.run('observacao', 8, 'sr', 1, null, t, 'abertura', 1);
   const comPosicao = U.gerarRelatorio(rel);
   const faixaComPosicao = comPosicao.split('\n').filter((l) => l.startsWith('nota média por posição servida'));
   console.log('  saida: ' + JSON.stringify(faixaComPosicao));
-  afirma(faixaComPosicao.length === 1 && faixaComPosicao[0] === 'nota média por posição servida: 1–3: 0.40 (n=3) · 4–7: 0.90 (n=1) · 8+: 0.10 (n=1)',
+  afirma(faixaComPosicao.length === 1 && faixaComPosicao[0] === 'nota média por posição servida: 1–3: 0.40 (n=3) · 4–7: 0.70 (n=2) · 8+: 0.10 (n=1)',
     'faixa diferente do esperado: ' + JSON.stringify(faixaComPosicao));
   // as linhas de hoje não mudam: o mesmo banco com a posição apagada dá o mesmo texto, menos a faixa
   rel.exec('UPDATE uso_memoria SET posicao = NULL');

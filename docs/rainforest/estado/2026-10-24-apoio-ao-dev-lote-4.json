@@ -19,13 +19,66 @@
     "status": "parcial",
     "integradas": [
       1,
-      2
+      2,
+      3,
+      4
     ],
     "em_voo": [],
-    "em": "2026-10-25"
+    "em": "2026-10-25",
+    "catraca_mutacao": "2026-10-25",
+    "tarefas_ok": 4,
+    "tarefas": 4,
+    "comando": "node scripts/varrer.cjs (varredura completa de baterias sobre 863f7a41, depois da T4)",
+    "saida": "as 280 baterias passaram, exit 0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-proximidade.sh, caso termos juntos vêm antes de termos espalhados com bm25 parecido"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-cascata.sh, caso resumo de observação superada não entra na abertura"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-utilidade-posicao.sh, caso a terceira linha do bloco grava posicao 3"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "metadado de versão e documentação, sem comportamento a inverter"
+      }
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-25"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "863f7a416fe4a5f0c0df6e947d228040c61c3432",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-10-24-apoio-ao-dev-lote-4.json"
+      ]
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "acdeadb91c85afb94",
+        "veredito": "reprovado",
+        "em": "2026-10-25",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-acdeadb91c85afb94.jsonl"
+      }
+    ],
+    "achados": 3,
+    "motivo": "[media] cascata do merge sem prova; [baixa] bordas da faixa; [baixa] --limite negativo",
+    "em": "2026-10-25",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

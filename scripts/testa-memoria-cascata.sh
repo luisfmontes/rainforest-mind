@@ -11,6 +11,7 @@
 #   3. R2, sem observação superada, nunca é invalidado
 #   4. a abertura NÃO serve R ("resumo de observação superada não entra na abertura")
 #   5. a abertura serve R2 e R3
+#   5b. merge também invalida: o resumo do alvo consolidado e o da sondada consolidada
 #   6. banco antigo (sem invalidado_em): a abertura serve R_LEGADO como hoje, a
 #      reconciliação grava substituida_por sem erro (guarda por PRAGMA), e a
 #      migração de iniciar ganha a coluna e a abertura segue servindo
@@ -90,13 +91,39 @@ console.log('L1=' + L1);
 console.log('LN=' + LN);
 EOF
 
+cat > "$DRV/seed-merge.cjs" <<'EOF'
+// Dois resumos de 4 observações: no merge, D1 entra como alvo e E1 como sondada.
+const fs = require('fs');
+const { DatabaseSync } = require('node:sqlite');
+const [, , raiz, libCanonico] = process.argv;
+const db = new DatabaseSync(raiz + '/rainforest.db');
+const projeto = require(libCanonico).slugDoCaminho(fs.realpathSync.native(raiz));
+const insRes = db.prepare('INSERT INTO resumos (projeto, titulo, conteudo, criada_em) VALUES (?, ?, ?, ?)');
+const insObs = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem, consolidada_em) VALUES (?, ?, ?, ?, ?)');
+const insViva = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
+const saida = {};
+function grupo(prefixo, titulo, instante) {
+  insRes.run(projeto, titulo, 'conteudo de ' + titulo, instante);
+  for (let i = 1; i <= 4; i++) {
+    const r = insObs.run(projeto, 'observacao ' + prefixo + i, '2026-07-' + String(i).padStart(2, '0') + 'T10:00:00.000Z', prefixo + '-' + i, instante);
+    saida[prefixo + i] = Number(r.lastInsertRowid);
+  }
+}
+grupo('D', 'R_ALVO_DO_MERGE', '2026-08-01T00:00:00.000Z');
+grupo('E', 'R_SONDADA_DO_MERGE', '2026-08-02T00:00:00.000Z');
+saida.N3 = Number(insViva.run(projeto, 'observacao nova que funde com D1', '2026-08-05T10:00:00.000Z', 'nova-3').lastInsertRowid);
+saida.N4 = Number(insViva.run(projeto, 'observacao nova que funde com E1', '2026-08-05T11:00:00.000Z', 'nova-4').lastInsertRowid);
+db.close();
+for (const [k, v] of Object.entries(saida)) console.log(k + '=' + v);
+EOF
+
 cat > "$DRV/decide.cjs" <<'EOF'
-// Aplica uma decisão update (sem LLM) com a função real de scripts/memoria.cjs.
-const [, , src, raiz, sondada, alvo] = process.argv;
+// Aplica uma decisão update ou merge (sem LLM) com a função real de scripts/memoria.cjs.
+const [, , src, raiz, sondada, alvo, acao] = process.argv;
 const { abrirBanco, aplicarDecisaoReconciliacao } = require(src + '/scripts/memoria.cjs');
 const conexao = abrirBanco(raiz + '/rainforest.db');
 const obs = conexao.prepare('SELECT id, projeto, conteudo, criada_em FROM observacoes WHERE id = ?').get(Number(sondada));
-const ok = aplicarDecisaoReconciliacao(conexao, obs, { acao: 'update', alvo_id: Number(alvo) }, [{ id: Number(alvo) }]);
+const ok = aplicarDecisaoReconciliacao(conexao, obs, { acao: acao || 'update', alvo_id: Number(alvo) }, [{ id: Number(alvo) }]);
 conexao.close();
 console.log(String(ok));
 EOF
@@ -145,6 +172,19 @@ BLOCO="$(abertura "$CAIXA")"
 checa "resumo de observação superada não entra na abertura" bash -c '! printf "%s" "$1" | grep -q "R_SUPERADO"' _ "$BLOCO"
 checa "abertura serve R2_VIVO (sem observação superada)" bash -c 'printf "%s" "$1" | grep -q "R2_VIVO"' _ "$BLOCO"
 checa "abertura serve R3_VALIDO (1 de 8 não invalida)" bash -c 'printf "%s" "$1" | grep -q "R3_VALIDO"' _ "$BLOCO"
+
+echo
+echo "== 5b. decisões merge invalidam o resumo do alvo e o da sondada =="
+FUSAO="$(novo_sandbox)"
+git init -q "$FUSAO"
+(cd "$FUSAO" && RFM_ROOT="$(caminho_node "$FUSAO")" node "$MEMORIA" iniciar > /dev/null 2>&1)
+eval "$(node "$DRV/seed-merge.cjs" "$(caminho_node "$FUSAO")" "$(caminho_node "$LIB_CANONICO")")"
+got=$(node "$DRV/decide.cjs" "$(caminho_node "$SRC")" "$(caminho_node "$FUSAO")" "$N3" "$D1" merge 2>&1)
+checa "merge de N3 com D1 aplicado (retorna true): $got" [ "$got" = "true" ]
+checa "merge com o alvo D1 consolidado invalida R_ALVO_DO_MERGE (1 de 4)" [ "$(consulta "$FUSAO" "SELECT invalidado_em IS NOT NULL FROM resumos WHERE titulo = 'R_ALVO_DO_MERGE'")" = "1" ]
+got=$(node "$DRV/decide.cjs" "$(caminho_node "$SRC")" "$(caminho_node "$FUSAO")" "$E1" "$N4" merge 2>&1)
+checa "merge de E1 com N4 aplicado (retorna true): $got" [ "$got" = "true" ]
+checa "merge com a sondada E1 consolidada invalida R_SONDADA_DO_MERGE (1 de 4)" [ "$(consulta "$FUSAO" "SELECT invalidado_em IS NOT NULL FROM resumos WHERE titulo = 'R_SONDADA_DO_MERGE'")" = "1" ]
 
 echo
 echo "== 6. banco do esquema antigo (sem invalidado_em) =="

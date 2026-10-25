@@ -12,6 +12,7 @@
 #   5. --limite 1 devolve A: o corte vem depois do rerank
 #   6. --limite 0 sai "(nenhum resultado — --limite 0)" e --json sai []
 #   7. sem --texto a ordem é a de recência e não há campo trecho
+#   8. --limite negativo com --texto devolve todos os casamentos (LIMIT -1 do SQLite)
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -150,6 +151,18 @@ if [ "$recente" = "C|false" ]; then
   ok=$((ok+1)); echo "  ok   sem --texto: mais recente primeiro e sem campo trecho"
 else
   falhou=$((falhou+1)); echo "  FALHA sem --texto mudou: $recente"
+fi
+
+echo
+echo "== 8. --limite negativo com --texto devolve todos, como o LIMIT -1 de antes =="
+conta_js='process.stdout.write(String(JSON.parse(require("fs").readFileSync(0,"utf8")||"[]").length))'
+todos=$(RFM_ROOT="$CAIXA" $MEMORIA buscar --texto "deploy" --limite 100 --json 2>/dev/null | node -e "$conta_js")
+neg=$(RFM_ROOT="$CAIXA" $MEMORIA buscar --texto "deploy" --limite -1 --json 2>/dev/null | node -e "$conta_js")
+echo "  comando: RFM_ROOT=<sandbox> node scripts/memoria.cjs buscar --texto deploy --limite -1 --json -> $neg (com --limite 100: $todos)"
+if [ -n "$todos" ] && [ "$todos" -gt 0 ] && [ "$neg" = "$todos" ]; then
+  ok=$((ok+1)); echo "  ok   --limite -1 devolve os $todos casamentos"
+else
+  falhou=$((falhou+1)); echo "  FALHA --limite -1 devolveu $neg, esperado $todos"
 fi
 
 echo

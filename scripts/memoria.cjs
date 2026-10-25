@@ -1125,7 +1125,9 @@ function cmdBuscar() {
     for (const filtro of filtros) query += ` AND ${filtro}`;
 
     // Com --texto, busca max(limite, 50) candidatos para o rerank; o corte em --limite vem depois.
-    params.push(texto ? Math.max(limite, 50) : limite);
+    // Limite negativo é o LIMIT -1 do SQLite (todos), como antes do rerank.
+    const semTeto = limite < 0;
+    params.push(texto && !semTeto ? Math.max(limite, 50) : limite);
     query += (texto ? ` ${ORDEM_BUSCA_TEXTO}` : ' ORDER BY criada_em DESC') + ' LIMIT ?';
 
     const stmt = conexao.prepare(query);
@@ -1143,7 +1145,7 @@ function cmdBuscar() {
     }
     // D3: reordena por proximidade e só então corta em --limite.
     if (texto) {
-      resultados = reordenarPorProximidade(resultados, termosDaConsulta(texto)).slice(0, limite);
+      resultados = reordenarPorProximidade(resultados, termosDaConsulta(texto)).slice(0, semTeto ? undefined : limite);
     }
     // D7: zero resultados na saída humana conta o escopo com a mesma conexão, sem texto e sem
     // data. Falha aqui cai no catch de erro de banco, igual à busca.
