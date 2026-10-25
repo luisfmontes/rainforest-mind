@@ -81,6 +81,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 const JANELA = 80;
 const EXT_ADVPL = new Set(['.prw', '.prx', '.tlpp', '.ch']);
@@ -321,11 +322,11 @@ function citaRegra(alvo, n) {
 // raiz que não é repo git não confere sha: a checagem sai de fora, sem aviso
 let raizGit = null;
 function raizEhRepoGit() {
-  if (raizGit === null) raizGit = spawnSync('git', ['rev-parse', '--git-dir'], { cwd: raizAbs }).status === 0;
+  if (raizGit === null) raizGit = spawnSync(caminhoExecutavel('git'), ['rev-parse', '--git-dir'], { cwd: raizAbs }).status === 0;
   return raizGit;
 }
 function shaExiste(sha) {
-  return spawnSync('git', ['cat-file', '-e', `${sha}^{commit}`], { cwd: raizAbs }).status === 0;
+  return spawnSync(caminhoExecutavel('git'), ['cat-file', '-e', `${sha}^{commit}`], { cwd: raizAbs }).status === 0;
 }
 
 const regras = lerRegras(secaoRegras(conteudo));
