@@ -1180,8 +1180,16 @@ function checarErros() {
   }
   if (!raizDados) return;
   const { recentes } = require('./erros.cjs');
-  const itens = recentes(path.join(raizDados, 'erros.jsonl'), 24);
-  if (itens.length === 0) return ok('erros de ferramenta', 'nenhum nas ultimas 24 h');
+  const alvo = path.join(raizDados, 'erros.jsonl');
+  const itens = recentes(alvo, 24);
+  // null = o log existe e não abriu: não é "nenhum erro", é "não medido" (D6).
+  if (itens === null) return aviso('erros de ferramenta', `não medido: o log ${alvo} não pôde ser lido`,
+    'confira permissão e conteúdo do arquivo; sem leitura não há contagem');
+  if (itens.length === 0) {
+    // Arquivo ausente = instalação que nunca gravou erro. Arquivo lido sem linha recente = texto de sempre.
+    if (!fs.existsSync(alvo)) return ok('erros de ferramenta', 'nenhum registrado');
+    return ok('erros de ferramenta', 'nenhum nas ultimas 24 h');
+  }
   const erro = itens.filter((o) => o.tipo === 'erro').length;
   aviso('erros de ferramenta', `${itens.length} nas ultimas 24 h (${erro} erro(s), ${itens.length - erro} bloqueio(s))`,
     'ver com /painel erros (ou node scripts/erros.cjs listar) e triar: defeito vira Issue, erro do metodo vira /feedback');
@@ -1779,4 +1787,4 @@ if (require.main === module) main().catch((err) => {
   console.error('Erro fatal:', err.message);
   process.exit(1);
 });
-module.exports = { achados, checarPoda, checarVigias, tarefasDeVigia, errosRecentes };
+module.exports = { achados, checarErros, checarPoda, checarVigias, tarefasDeVigia, errosRecentes };

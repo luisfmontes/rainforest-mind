@@ -90,10 +90,11 @@ function gravar(alvo) {
   return 0;
 }
 
+// null = o log existe e não pôde ser lido; [] = sem log (ENOENT) ou sem linha recente.
 function recentes(alvo, horas) {
   const corte = Date.now() - horas * 3600 * 1000;
   let bruto = '';
-  try { bruto = fs.readFileSync(alvo, 'utf8'); } catch { return []; }
+  try { bruto = fs.readFileSync(alvo, 'utf8'); } catch (e) { return e.code === 'ENOENT' ? [] : null; }
   const saida = [];
   for (const l of bruto.split('\n')) {
     if (!l.trim()) continue;
@@ -115,8 +116,15 @@ function hora(ts) {
   return `${p(d.getDate())}/${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
+// Log que existe e não abre: sai 1 com a causa no stderr, sem stdout (zero aqui seria mentira).
+function ilegivel(alvo) {
+  process.stderr.write(`erros: log ilegível (${alvo})\n`);
+  return 1;
+}
+
 function listar(alvo, horas) {
   const itens = recentes(alvo, horas);
+  if (itens === null) return ilegivel(alvo);
   if (itens.length === 0) {
     process.stdout.write(`Nenhum erro de ferramenta nas últimas ${horas} h.\n`);
     return 0;
@@ -139,6 +147,7 @@ function listar(alvo, horas) {
 
 function contar(alvo, horas) {
   const itens = recentes(alvo, horas);
+  if (itens === null) return ilegivel(alvo);
   const erro = itens.filter((o) => o.tipo === 'erro').length;
   process.stdout.write(JSON.stringify({ total: itens.length, erro, bloqueio: itens.length - erro }) + '\n');
   return 0;
