@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.77.0-1e5c3f?style=flat-square" alt="versão 1.77.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.78.0-1e5c3f?style=flat-square" alt="versão 1.78.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -403,7 +403,9 @@ cima disso sozinhas, sem você chamar nada:
   por `bm25`), até 200 observações reconciliadas por execução.
 - **Consolidação** (`node scripts/memoria.cjs consolidar`) — a partir de 30
   dias, agrupa observações por origem e sintetiza cada grupo num resumo, até
-  30 observações por grupo e 10 grupos por execução.
+  30 observações por grupo e 10 grupos por execução. Quando o `reconciliar`
+  supera 1/4 ou mais das observações de um resumo, o resumo ganha
+  `invalidado_em` e sai da abertura.
 - **Manutenção diária** (`node scripts/memoria.cjs manutencao`) — dispara uma
   vez por dia no `SessionStart`, em processo destacado (nunca dentro do hook
   de captura, que tem orçamento curto): garante o esquema, reconcilia e
@@ -452,7 +454,7 @@ sai. Para ler:
 node scripts/memoria.cjs utilidade --relatorio
 ```
 
-O relatório separa a utilidade por canal, conta as buscas ativas (quando a
+O relatório separa a utilidade por canal e por faixa de posição em que a memória foi servida (1–3, 4–7, 8+), conta as buscas ativas (quando a
 sessão ou o subagente consultou a memória por conta própria) e fecha com a
 linha `régua D7: FICA` ou `SAI`. A janela começa na primeira memória servida
 pelo canal novo; sem canal novo servido, ou com o banco ainda sem a migração,
@@ -527,8 +529,8 @@ padrão.
 ou o caminho. Nome curto que casa com mais de um projeto, ou com nenhum, sai com
 erro listando os candidatos. O design:
 [`docs/rainforest/design/2026-10-08-projeto-canonico.md`](docs/rainforest/design/2026-10-08-projeto-canonico.md).
-Com `--texto`, o resultado vem pelo mais relevante (bm25 do FTS5), e o empate fica com o mais
-recente; sem `--texto`, a lista é dos mais recentes. `--desde AAAA-MM-DD` e `--ate AAAA-MM-DD` limitam pela data da observação, com as duas pontas incluídas, e combinam com os outros filtros; data que não existe sai com exit 2. Busca vazia com filtro diz quantas observações vivas há no escopo sem os filtros (ou que não há nenhuma), para o zero não passar por ausência de fato; com `--json` segue `[]`.
+Com `--texto`, o resultado vem pelo mais relevante (bm25 do FTS5, reordenado pela proximidade dos termos entre os 50 melhores), e o empate fica com o mais
+recente; cada linha mostra o trecho com o termo entre `[` e `]`, e o `--json` traz o campo `trecho`; sem `--texto`, a lista é dos mais recentes. `--desde AAAA-MM-DD` e `--ate AAAA-MM-DD` limitam pela data da observação, com as duas pontas incluídas, e combinam com os outros filtros; data que não existe sai com exit 2. Busca vazia com filtro diz quantas observações vivas há no escopo sem os filtros (ou que não há nenhuma), para o zero não passar por ausência de fato; com `--json` segue `[]`.
 
 ## Mais fundo
 
