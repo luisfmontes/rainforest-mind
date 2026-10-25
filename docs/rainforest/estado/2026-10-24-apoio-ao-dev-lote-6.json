@@ -1,0 +1,30 @@
+{
+  "slug": "2026-10-24-apoio-ao-dev-lote-6",
+  "titulo": "Apoio ao dev, lote 6: ferramentas do fluxo",
+  "criado_em": "2026-10-25",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-10-24-apoio-ao-dev-lote-6.md",
+    "decisoes": 11,
+    "modo": "delegado: brainstorm com a opção recomendada, aberto a veto no PR",
+    "em": "2026-10-25"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
