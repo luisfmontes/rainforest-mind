@@ -1,0 +1,178 @@
+#!/bin/bash
+# Bateria do hooks/aviso-duplicata.cjs (D4 do design 2026-10-24-apoio-ao-dev-lote-3).
+#
+# O QUE PRECISA PROVAR, pelo efeito na saida do hook (nunca pelo texto do fonte):
+#   1. Write com function que ja existe em outro arquivo rastreado avisa caminho:linha;
+#   2. Edit com nome ADVPL em outra caixa acha a definicao (caixa ignorada, .prw);
+#   3. nome que so existe no proprio arquivo editado nao avisa;
+#   4. quatro nomes duplicados avisam so tres;
+#   5. nome que nao e identificador e descartado antes do git (o nome 9lives casaria
+#      com o git, entao o silencio so pode vir da validacao);
+#   6. linha de uso (chamada) nao e definicao e nao avisa;
+#   7. fora de repo git, payload invalido e chave desligada saem 0 sem saida;
+#   8. MultiEdit concatena os new_string; Python tambem e coberto;
+#   9. o hook nunca imprime `decision`.
+#
+# Repos e payloads sao montados aqui dentro: payload com node, nunca com printf.
+# O config real nunca e lido (RFM_ROOT neutro, chave de projeto so no repo de teste).
+#
+# Uso: bash hooks/testa-aviso-duplicata.sh
+
+set -u
+RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+HOOK="$(cygpath -m "$RAIZ" 2>/dev/null || printf '%s' "$RAIZ")/hooks/aviso-duplicata.cjs"
+[ -f "$HOOK" ] || { echo "FALHA: nao achei $HOOK"; exit 1; }
+
+export MSYS_NO_PATHCONV=1
+unset RAINFOREST_GATE_OFF
+SBP="$(mktemp -d)"
+trap 'rm -rf "$SBP"' EXIT
+export RFM_ROOT="$SBP/dados-neutros"; mkdir -p "$RFM_ROOT"
+
+ok=0; falhou=0
+saiu()  { if [ "$2" = "$3" ]; then ok=$((ok+1)); echo "  ok   $1"; else falhou=$((falhou+1)); echo "  FALHA $1 (exit $2, esperava $3)"; fi; }
+tem()   { if grep -qF -- "$3" <<<"$2"; then ok=$((ok+1)); echo "  ok   $1"; else falhou=$((falhou+1)); echo "  FALHA $1 (esperava '$3')"; echo "$2" | sed 's/^/         /'; fi; }
+nao()   { if grep -qF -- "$3" <<<"$2"; then falhou=$((falhou+1)); echo "  FALHA $1 (nao esperava '$3')"; echo "$2" | sed 's/^/         /'; else ok=$((ok+1)); echo "  ok   $1"; fi; }
+vazio() { if [ -z "$2" ]; then ok=$((ok+1)); echo "  ok   $1"; else falhou=$((falhou+1)); echo "  FALHA $1 (esperava saida vazia)"; echo "$2" | sed 's/^/         /'; fi; }
+conta() { local n; n=$(grep -oF -- "$3" <<<"$2" | wc -l | tr -d ' '); if [ "$n" = "$4" ]; then ok=$((ok+1)); echo "  ok   $1 ($n)"; else falhou=$((falhou+1)); echo "  FALHA $1 (esperava $4, veio $n)"; echo "$2" | sed 's/^/         /'; fi; }
+
+# Repo git de teste com os arquivos dados (caminho relativo => conteudo, \n literal vira quebra).
+# Cada arquivo e gravado por node, a partir de um argumento, nao por printf de conteudo.
+montar_repo() {
+  local dir="$1"; shift
+  mkdir -p "$dir"
+  ( cd "$dir" && git init -q && git config user.email t@t && git config user.name Test && git config core.autocrlf false ) || return 1
+  local par caminho conteudo
+  for par in "$@"; do
+    caminho="${par%%=*}"; conteudo="${par#*=}"
+    mkdir -p "$dir/$(dirname "$caminho")"
+    node -e 'require("fs").writeFileSync(process.argv[1], process.argv[2].replace(/\\n/g, "\n"))' "$(cygpath -m "$dir/$caminho")" "$conteudo"
+    ( cd "$dir" && git add -- "$caminho" )
+  done
+  ( cd "$dir" && git commit -q -m base ) || return 1
+}
+
+# Payload de PostToolUse montado com node. Modo: write | edit | multi.
+# Uso: gerar <modo> <arquivo> <cwd> <texto>... (multi aceita varios textos, um por edit)
+gerar() {
+  node -e '
+const [modo, arquivo, cwd, ...textos] = process.argv.slice(1).map((v) => v.replace(/\\n/g, "\n"));
+let ti, tool;
+if (modo === "write") { tool = "Write"; ti = { file_path: arquivo, content: textos[0] }; }
+else if (modo === "edit") { tool = "Edit"; ti = { file_path: arquivo, old_string: "x", new_string: textos[0] }; }
+else { tool = "MultiEdit"; ti = { file_path: arquivo, edits: textos.map((t) => ({ old_string: "x", new_string: t })) }; }
+process.stdout.write(JSON.stringify({ session_id: "s-teste", hook_event_name: "PostToolUse", tool_name: tool, tool_input: ti, cwd }));
+' "$@"
+}
+
+# Roda o hook com o payload do arquivo $1. Preenche OUT (stdout) e EXIT.
+rodar() {
+  OUT="$(node "$HOOK" < "$1" 2>"$SBP/err.txt")"; EXIT=$?
+}
+
+# ---------------------------------------------------------------- repos de teste
+R1="$SBP/r1"
+montar_repo "$R1" \
+  'lib/util.js=// util\n\nfunction somar(a, b) {\n  return a + b;\n}\nconst kid = (a) => a;\n' \
+  'lib/mata100.prw=#include "protheus.ch"\nUser Function mt100ok()\nReturn .T.\n' \
+  'src/so.js=function unico() { return 0; }\n' \
+  'lib/quatro.js=function a1() {}\nfunction a2() {}\nfunction a3() {}\nfunction a4() {}\n' \
+  'lib/digitos.js=function 9lives() {}\n' \
+  'lib/chama.js=const resultado = chamada(1);\n' \
+  'lib/util.py=def calcular(x):\n    return x\n'
+C1="$(cygpath -m "$R1")"
+S1="$C1/src"
+
+echo "== 1. Write com function que ja existe em outro arquivo rastreado =="
+gerar write "src/novo.js" "$C1" 'function somar(x, y) {\n  return x + y;\n}\n' > "$SBP/p1.json"
+rodar "$SBP/p1.json"
+saiu "Write com function que já existe em outro arquivo rastreado avisa caminho:linha (exit 0)" "$EXIT" "0"
+tem  "avisa somar com lib/util.js:3"     "$OUT" '`somar` já está definido em `lib/util.js:3`; reusar antes de duplicar'
+tem  "saida tem hookSpecificOutput PostToolUse" "$OUT" '"hookEventName":"PostToolUse"'
+nao  "nunca imprime decision"            "$OUT" '"decision"'
+
+echo
+echo "== 2. Edit com nome ADVPL em outra caixa =="
+gerar edit "src/outro.prw" "$C1" 'User Function MT100OK()\nReturn .T.\n' > "$SBP/p2.json"
+rodar "$SBP/p2.json"
+saiu "Edit ADVPL MT100OK acha mt100ok em .prw rastreado (exit 0)" "$EXIT" "0"
+tem  "cita MT100OK com lib/mata100.prw:2" "$OUT" '`MT100OK` já está definido em `lib/mata100.prw:2`'
+
+echo
+echo "== 3. nome so no proprio arquivo editado nao avisa =="
+gerar write "src/so.js" "$C1" 'function unico() { return 1; }\n' > "$SBP/p3.json"
+rodar "$SBP/p3.json"
+saiu "nome que só existe no próprio arquivo não avisa (exit 0)" "$EXIT" "0"
+vazio "sem saida para nome só no próprio arquivo" "$OUT"
+
+echo
+echo "== 4. quatro nomes duplicados avisam so tres =="
+gerar write "src/novo4.js" "$C1" 'function a1() {}\nfunction a2() {}\nfunction a3() {}\nfunction a4() {}\n' > "$SBP/p4.json"
+rodar "$SBP/p4.json"
+saiu "quatro duplicados saem 0" "$EXIT" "0"
+conta "exatamente 3 avisos de 'já está definido'" "$OUT" 'já está definido em' "3"
+tem  "cita a1, a2 e a3" "$OUT" '`a1` já está definido em `lib/quatro.js:1`'
+tem  "cita a3" "$OUT" '`a3` já está definido em `lib/quatro.js:3`'
+nao  "nao cita a4 (quarto nome, fora do limite)" "$OUT" '`a4`'
+
+echo
+echo "== 5. nome que nao e identificador e descartado antes do git =="
+gerar write "src/novo9.js" "$C1" 'function 9lives() {}\n' > "$SBP/p5.json"
+rodar "$SBP/p5.json"
+saiu "9lives (nao e identificador) sai 0" "$EXIT" "0"
+vazio "9lives existe em lib/digitos.js mas nao gera aviso" "$OUT"
+
+echo
+echo "== 6. linha de uso (chamada) nao e definicao =="
+gerar write "src/chamada.js" "$C1" 'function chamada(x) { return x; }\n' > "$SBP/p6.json"
+rodar "$SBP/p6.json"
+saiu "chamada() existe so como uso em lib/chama.js (exit 0)" "$EXIT" "0"
+vazio "uso de chamada() nao gera aviso" "$OUT"
+
+echo
+echo "== 7a. fora de repo git sai 0 sem saida =="
+FORA="$SBP/fora"; mkdir -p "$FORA"
+gerar write "$FORA/x.js" "$(cygpath -m "$FORA")" 'function somar(a, b) { return a; }\n' > "$SBP/p7a.json"
+rodar "$SBP/p7a.json"
+saiu "fora de repo sai 0" "$EXIT" "0"
+vazio "fora de repo nao imprime nada" "$OUT"
+
+echo
+echo "== 7b. payload invalido sai 0 sem saida =="
+echo 'isto nao e json' > "$SBP/p7b.json"
+rodar "$SBP/p7b.json"
+saiu "payload invalido sai 0" "$EXIT" "0"
+vazio "payload invalido nao imprime nada" "$OUT"
+
+echo
+echo "== 7c. chave aviso-duplicata desligada sai 0 sem saida =="
+mkdir -p "$R1/.rainforest"
+node -e 'require("fs").writeFileSync(process.argv[1], JSON.stringify({ "aviso-duplicata": false }))' "$(cygpath -m "$R1/.rainforest/config.json")"
+gerar write "src/novo.js" "$C1" 'function somar(x, y) {\n  return x + y;\n}\n' > "$SBP/p7c.json"
+rodar "$SBP/p7c.json"
+saiu "chave desligada sai 0" "$EXIT" "0"
+vazio "chave desligada nao imprime nada" "$OUT"
+rm -f "$R1/.rainforest/config.json"
+echo "  (config de projeto apagado: volta o padrao ligado)"
+rodar "$SBP/p1.json"
+tem  "com a chave de volta (ligada por padrao) o mesmo caso avisa" "$OUT" '`somar` já está definido em `lib/util.js:3`'
+
+echo
+echo "== 8a. MultiEdit concatena os new_string =="
+gerar multi "src/m.js" "$C1" 'const x = 1;' 'const kid = (z) => z;' > "$SBP/p8a.json"
+rodar "$SBP/p8a.json"
+saiu "MultiEdit com duplicata no segundo edit sai 0" "$EXIT" "0"
+tem  "avisa kid com lib/util.js:6" "$OUT" '`kid` já está definido em `lib/util.js:6`'
+
+echo
+echo "== 8b. Python: def de topo duplicada =="
+gerar write "src/n.py" "$C1" 'def calcular(y):\n    return y\n' > "$SBP/p8b.json"
+rodar "$SBP/p8b.json"
+saiu "def duplicada em Python sai 0" "$EXIT" "0"
+tem  "avisa calcular com lib/util.py:1" "$OUT" '`calcular` já está definido em `lib/util.py:1`'
+
+echo
+echo
+echo "ok: $ok   falhou: $falhou"
+[ "$falhou" -eq 0 ] || exit 1
+exit 0

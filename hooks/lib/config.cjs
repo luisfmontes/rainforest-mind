@@ -140,6 +140,12 @@ const CHAVES = {
     descricao: 'bloqueia edição de código (Edit/Write/MultiEdit) e despacho de agente que escreve, e avisa código novo deixado pelo shell (Bash/PowerShell), sem fluxo aberto nem `leve` na branch, quando o repositório tem fluxo',
     entrevista: null,
   },
+  'aviso-duplicata': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'avisa, na edição, função ou classe que já está definida em outro arquivo rastreado (reusar antes de duplicar)',
+    entrevista: null,
+  },
   fluxo: {
     tipo: 'boolean',
     padrao: true,

@@ -262,11 +262,14 @@ fi
 
 # `PostToolUse` sobe um processo do SO por evento: 15.331 eventos em oito dias
 # (design de 2026-08-17, D12), e a #76 quase reintroduziu o evento para a memoria.
-# A unica excecao e o aviso de codigo sem fluxo pelo shell (#564, D3 do design
-# 2026-10-21-portaria-aviso-bash), so em Bash|PowerShell e com o arquivo no lugar.
-POST="$(hjson 'const h=require(process.argv[1]).hooks.PostToolUse||[];const fs=require("fs"),p=require("path");const ok=h.length===1&&h[0].matcher==="Bash|PowerShell"&&(h[0].hooks||[]).length===1&&String(h[0].hooks[0].command).includes("hooks/aviso-fluxo-shell.cjs")&&fs.existsSync(p.join(p.dirname(process.argv[1]),"aviso-fluxo-shell.cjs"));process.stdout.write(String(ok));')"
+# As excecoes sao DUAS, e so duas: (1) o aviso de codigo sem fluxo pelo shell (#564, D3
+# do design 2026-10-21-portaria-aviso-bash), em Bash|PowerShell; (2) o aviso de duplicata
+# de definicao (D4 do design 2026-10-24-apoio-ao-dev-lote-3), so em edicao, em
+# Write|Edit|MultiEdit. Cada uma com um hook unico e o arquivo no lugar. Um terceiro bloco,
+# ou um matcher diferente destes, reprova.
+POST="$(hjson 'const h=require(process.argv[1]).hooks.PostToolUse||[];const fs=require("fs"),p=require("path");const dir=p.dirname(process.argv[1]);const unico=(b,arq)=>!!b&&(b.hooks||[]).length===1&&String(b.hooks[0].command).includes("hooks/"+arq);const blocoShell=h.find((b)=>b.matcher==="Bash|PowerShell");const blocoDup=h.find((b)=>b.matcher==="Write|Edit|MultiEdit");const ok=h.length===2&&unico(blocoShell,"aviso-fluxo-shell.cjs")&&unico(blocoDup,"aviso-duplicata.cjs")&&fs.existsSync(p.join(dir,"aviso-fluxo-shell.cjs"))&&fs.existsSync(p.join(dir,"aviso-duplicata.cjs"));process.stdout.write(String(ok));')"
 if [ "$POST" = "true" ]; then
-  ok=$((ok+1)); echo "  ok   PostToolUse so tem o aviso-fluxo-shell.cjs, em Bash|PowerShell"
+  ok=$((ok+1)); echo "  ok   PostToolUse so tem as duas excecoes: aviso-fluxo-shell (Bash|PowerShell) e aviso-duplicata (Write|Edit|MultiEdit)"
 else
   falhou=$((falhou+1)); echo "  FALHA PostToolUse fora do esperado (veio '$POST')"
 fi

@@ -166,6 +166,7 @@ o grupo que vale é o do campo `entrevista` no catálogo.
 | `subagente-sem-instalar` | — | nega instalação de pacotes e desligamento de gate dentro de subagente |
 | `matar-por-nome` | — | barra matar processo por nome; mata-se pelo PID |
 | `aviso-fluxo` | — | bloqueia edição e despacho que escreve, e avisa código novo deixado pelo shell, sem fluxo aberto nem `leve`, quando o repo tem fluxo |
+| `aviso-duplicata` | — | avisa, na edição, função ou classe que já está definida em outro arquivo rastreado (reusar antes de duplicar) |
 | `fluxo` | — | os sete estágios (brainstorm → plano → … → fechar) |
 | `vigias` | ferramentas | as rondas headless agendadas (exigem PowerShell, `claude.exe` e destino de envio) |
 | `vigia-batedor-repos` | ferramentas | ronda batedor-repos; só roda com `vigias` também ligado |

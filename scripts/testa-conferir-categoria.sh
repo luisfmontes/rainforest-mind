@@ -41,6 +41,9 @@
 #      63 e 35 sensor desde 2026-10-24: entraram scripts/conferir-busca.cjs (bloco
 #      busca: do plano, no marcar plano) e scripts/conferir-ancoras.cjs (ancoras
 #      do mapa da arqueologia), os dois conferem depois do ato — sensor.
+#      64 e 36 sensor desde 2026-10-25: entrou hooks/aviso-duplicata.cjs, hook
+#      de PostToolUse (avisa definicao que ja existe em outro arquivo, depois da
+#      edicao, D4 do lote 3) — sensor.
 #   2. peca REAL copiada para arvore temporaria, com a linha de marca apagada,
 #      reprova (exit 1) e NOMEIA o caminho na saida;
 #   3. peca REAL copiada com valor de marca fora do vocabulario (nem guia, nem
@@ -82,17 +85,17 @@ montar_copia() {
   cp "$RAIZ"/vigias/*.md "$destino/vigias/" 2>/dev/null
 }
 
-echo "== 1. repositorio real na base — exit 0, 63 pecas, distribuicao 25/35/3 =="
+echo "== 1. repositorio real na base — exit 0, 64 pecas, distribuicao 25/36/3 =="
 S1="$(roda --raiz "$RAIZ")"
 saiu "repositorio real passa (exit 0)" "$(codigo --raiz "$RAIZ")" "0"
-tem  "conta as 63 pecas"               "$S1" "Total de peças varridas: 63"
+tem  "conta as 64 pecas"               "$S1" "Total de peças varridas: 64"
 N_GUIA="$(printf '%s' "$S1" | grep -cF '>  guia')"
 N_SENSOR="$(printf '%s' "$S1" | grep -cF '>  sensor')"
 N_DADO="$(printf '%s' "$S1" | grep -cF '>  dado')"
-if [ "$N_GUIA" = "25" ] && [ "$N_SENSOR" = "35" ] && [ "$N_DADO" = "3" ]; then
-  ok=$((ok+1)); echo "  ok   distribuicao 25 guia / 35 sensor / 3 dado confere"
+if [ "$N_GUIA" = "25" ] && [ "$N_SENSOR" = "36" ] && [ "$N_DADO" = "3" ]; then
+  ok=$((ok+1)); echo "  ok   distribuicao 25 guia / 36 sensor / 3 dado confere"
 else
-  falhou=$((falhou+1)); echo "  FALHA distribuicao: guia=$N_GUIA sensor=$N_SENSOR dado=$N_DADO (esperava 25/35/3)"
+  falhou=$((falhou+1)); echo "  FALHA distribuicao: guia=$N_GUIA sensor=$N_SENSOR dado=$N_DADO (esperava 25/36/3)"
 fi
 
 echo
