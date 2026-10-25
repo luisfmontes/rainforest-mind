@@ -100,3 +100,13 @@ depende de: 1, 2, 3, 4, 5
 mutacao: n/a
   motivo: metadado de versão e documentação, sem comportamento a inverter
 pronto quando: com o diff real das tarefas 1 a 5, os dois `plugin.json` dizem `1.79.0`, o badge do README diz 1.79.0, o CHANGELOG tem a entrada `1.79.0 — 2026-10-25` com uma linha por decisão entregue (D3 a D7) citando o `arquivo:linha` do furo e a #589 no D3, e o README documenta os placares lidos pela catraca e a comparação de voltas no `critica-do-revisor` onde documenta os vizinhos — provado por `node -e "for (const f of ['.claude-plugin/plugin.json','.codex-plugin/plugin.json']) console.log(require('./'+f).version)"` devolvendo `1.79.0` duas vezes e pela leitura do revisor casando cada linha do CHANGELOG com o diff.
+
+### 7. Baterias acusadas na varredura do executar [tipo: implementar]
+atende: D7
+arquivos: `hooks/testa-aviso-duplicata.sh`, `scripts/testa-backup-gravar.sh`, `scripts/testa-memoria-degradacao.sh`, `scripts/testa-memoria-migracao-atomica.sh`, `CHANGELOG.md`
+depende de: 5, 6
+desfecho: corrigir
+prova-na-base: verde — a guarda só acusa quando outra sessão fecha o banco real no meio da bateria, e o idioma SANDBOXES só reprova depois da T5
+mutacao: n/a
+  motivo: a falha da guarda depende de outra sessão fechar o banco durante a bateria; o vermelho se prova por controle numa raiz falsa (apagar -shm/-wal não acusa, apagar FOCO.md acusa)
+pronto quando: a varredura do executar acusou `scripts/testa-sandbox-com-trap.sh` (o caso 10 da T5 abriu um segundo `mktemp -d` sem o idioma SANDBOXES) e `scripts/testa-backup-gravar.sh` ("a bateria apagou da raiz real: rainforest.db-shm"); a caixa do caso 10 vira subpasta da `$SBP`, e a guarda da raiz real das três baterias que a têm deixa `-shm`, `-wal` e `-journal` fora da comparação — provado por `bash scripts/testa-sandbox-com-trap.sh`, `bash hooks/testa-aviso-duplicata.sh`, `bash scripts/testa-backup-gravar.sh`, `bash scripts/testa-memoria-degradacao.sh` e `bash scripts/testa-memoria-migracao-atomica.sh` verdes, e pelo controle da guarda numa raiz falsa.

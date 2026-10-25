@@ -17,7 +17,54 @@
     "em": "2026-10-25"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-10-25",
+    "integradas": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "em_voo": [],
+    "em": "2026-10-25",
+    "tarefas_ok": 6,
+    "tarefas": 6,
+    "comando": "integrar-tarefa.cjs nas tarefas 1 a 5 (cada uma rodou a sua prova e a mutação do de: numa cópia); T6 na janela; varredura completa bash scripts/varrer-baterias.sh; depois da varredura, ca2cc697 corrigiu testa-aviso-duplicata (mktemp -d da T5 sem SANDBOXES) e a guarda da raiz real que acusava o -shm do SQLite: bash hooks/testa-aviso-duplicata.sh; bash scripts/testa-sandbox-com-trap.sh; bash scripts/testa-backup-gravar.sh; bash scripts/testa-memoria-degradacao.sh; bash scripts/testa-memoria-migracao-atomica.sh",
+    "saida": "placar 26/0 (casos 7 e 9 saem 5 contra a catraca antiga), critica-voltas 11/0, auditor 107/0 três vezes, caminho-real 9/0 (8.3 rodou, junction pulada: git não segue a junction), regras 13/0, baterias-do-diff 17/0, aviso-duplicata 49/0, proximidade 10/0; sandbox-com-trap 204/0 depois de ca2cc697; backup-gravar, memoria-degradacao e migracao-atomica exit 0; controle da guarda: apagar -shm/-wal não acusa, apagar FOCO.md acusa",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao-placar.sh, caso == resultado: 3 ok, 2 falha(s) == é lido como ok 3 falhou 2"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-critica-voltas.sh, caso achado no mesmo arquivo da volta anterior sai persiste"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "troca a fonte do radar da medida por uma caixa vazia; o caso 11 já existia e segue igual, o vermelho veio da comparação 15665 B com radar contra 14687 B na caixa"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-caminho-real.sh, caso aviso-duplicata com cwd em nome curto 8.3 não acusa o próprio arquivo"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-ancoras-regras.sh, caso parágrafo em negrito sem id depois de regra R1 sai sem-id"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "metadado de versão e documentação, sem comportamento a inverter"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
