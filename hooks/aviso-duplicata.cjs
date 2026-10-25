@@ -127,6 +127,21 @@ function acharDefinicoes(gitTop, nomes, tipo, arquivoEditado, restante) {
   return achados;
 }
 
+// Caminho longo e canônico: o rev-parse devolve o nome longo e o cwd pode vir em nome
+// curto 8.3 (o temp do runner do CI), e aí o path.relative não casa o próprio arquivo.
+// Arquivo que ainda não existe resolve pela pasta.
+function caminhoReal(p) {
+  try {
+    return fs.realpathSync.native(p);
+  } catch {
+    try {
+      return path.join(fs.realpathSync.native(path.dirname(p)), path.basename(p));
+    } catch {
+      return p;
+    }
+  }
+}
+
 // Rev-parse próprio, com timeout e sem fsmonitor: o hook não herda o toplevel de outra biblioteca.
 function topo(cwd, timeout) {
   try {
@@ -170,7 +185,7 @@ function main() {
   const restante = fim - Date.now();
   if (restante <= 0) process.exit(0);
 
-  const arquivoEditado = path.relative(gitTop, path.resolve(ev.cwd, ti.file_path)).split(path.sep).join('/');
+  const arquivoEditado = path.relative(caminhoReal(gitTop), caminhoReal(path.resolve(ev.cwd, ti.file_path))).split(path.sep).join('/');
   const encontrados = acharDefinicoes(gitTop, nomes, tipo, arquivoEditado, restante);
   const achados = [];
   for (const nome of nomes) {
