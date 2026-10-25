@@ -17,7 +17,7 @@
     "em": "2026-10-25"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-25",
     "integradas": [
       1,
@@ -30,8 +30,8 @@
     "em": "2026-10-25",
     "tarefas_ok": 5,
     "tarefas": 5,
-    "comando": "integrar-tarefa 1,3,2,4,5 (conferir-entrega + mutação); correção dos 7 achados do auditor de segurança no aviso-duplicata (093c92be); bash scripts/varrer-baterias.sh; vermelhas reexecutadas isoladas depois da correção 65b02503",
-    "saida": "5 integrações aceitas (582e87c8, 4962126c, c4ebd920, e7d6c357, 31f5ba7d); varredura: 5 vermelhas — 4 reais do lote (git por nome em baterias-do-diff/co-mudanca, lib nova fora da caixa de areia do testa-integrar-tarefa, segunda exceção do PostToolUse no testa-memoria-marca, título da seção duplicado no arqueologo.md), corrigidas em 65b02503 e verdes isoladas (gate-do-agente 12/0, git-por-nome 9/0, integrar-tarefa exit 0, memoria-marca 12/0); testa-auditor-de-seguranca isolada ok: 107 falhou: 0 (caso 11 oscila pelo radar vivo)",
+    "comando": "volta 1 da revisão: integrar-tarefa 4,3,1 (conferir-entrega + mutação) e T2 feita na janela (5bc42654); rodar-vizinhas com baterias-do-diff, conferir-entrega, conferir-ancoras-regras, conferir-ancoras, co-mudanca, aviso-duplicata, teto-skills, git-por-nome, integrar-tarefa, mapa-regras; node scripts/baterias-do-diff.cjs --base cc733290",
+    "saida": "3 integrações aceitas (47e66fa8, 5687efeb, e328c877); as 10 baterias exit 0 (baterias-do-diff 16/0, conferir-ancoras-regras 11/0, co-mudanca 6/0, aviso-duplicata 45/0, teto-skills 21 OK, conferir-ancoras 38 sem vermelhas); baterias-do-diff no diff real lista scripts/testa-teto-skills.sh e sai 3 por hooks/lib/config.cjs e scripts/lib/baterias-vizinhas.cjs (biblioteca compartilhada)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -59,16 +59,12 @@
         "motivo": "metadado de versão e documentação, sem comportamento a inverter"
       }
     ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-25"
-    },
     "reaberturas": 1
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "65b02503f50256acd2b33d7f008308f2b699d554",
+      "head": "e328c877fb8c87b117da854546cb7393a4a576ed",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-10-24-apoio-ao-dev-lote-3.json"
       ]
@@ -76,10 +72,10 @@
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "aa8bde99d7efcec41",
-        "veredito": "reprovado",
+        "agente_id": "a25f78606a8e67027",
+        "veredito": "ok",
         "em": "2026-10-25",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-aa8bde99d7efcec41.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-a25f78606a8e67027.jsonl"
       }
     ],
     "achados": 7,
