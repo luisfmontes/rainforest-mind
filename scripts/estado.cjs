@@ -1012,8 +1012,11 @@ function transcritoConfirmaVeredito(caminhoTranscrito, slug, veredito) {
   // Sem isso o hook nunca gravaria invalido na segunda parada de uma incoerencia.
   if (veredito !== 'invalido' || vereditoDoTranscrito === 'invalido') return false;
   // Require preguicoso: as caixas das baterias copiam uma lista fixa de libs, e so este ramo usa a lib.
-  const { contarAchados, incoerencia } = require(path.join(__dirname, '..', 'hooks', 'lib', 'achados-revisor.cjs'));
-  return incoerencia(vereditoDoTranscrito, contarAchados(mensagem)) !== null;
+  const { contarAchados, incoerencia, preexistentesNoDiff, tirarMarcaPreexistente } = require(path.join(__dirname, '..', 'hooks', 'lib', 'achados-revisor.cjs'));
+  // D3/D9 (lote 6): a mesma recusa da marca [preexistente] que o hook aplicou,
+  // senao o `invalido` da segunda parada nao se confirma e nada e gravado.
+  const recusadas = preexistentesNoDiff(mensagem, RAIZ) || [];
+  return incoerencia(vereditoDoTranscrito, contarAchados(tirarMarcaPreexistente(mensagem, recusadas))) !== null;
 }
 
 // -------------------------------------- transcrito na pasta real de sessao (D14)

@@ -335,7 +335,8 @@ for (const regra of regras) {
     console.log(`regra sem-id: ${regra.texto}`);
     continue;
   }
-  const alvo = regra.teste !== null ? path.resolve(raizAbs, regra.teste) : null;
+  // o campo é `<bateria ou caso>`: o caminho é o primeiro termo, sem crase (`testa-a.sh caso 3`)
+  const alvo = regra.teste !== null ? path.resolve(raizAbs, regra.teste.replace(/`/g, '').trim().split(/\s+/)[0]) : null;
   if (regra.teste !== null && regra.teste.toLowerCase() === 'nenhum') {
     regra.estado = 'sem-teste';
   } else if (regra.teste !== null && !arquivoExiste(alvo)) {

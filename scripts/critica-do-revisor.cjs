@@ -207,7 +207,7 @@ function main() {
   }
   const recusadasIdx = new Set((recusadas || []).map((x) => x.indice));
   for (const r of recusadas || []) {
-    process.stderr.write(`marca [preexistente] recusada: ${r.arquivo}:${r.linha} está no diff\n`);
+    process.stderr.write(`marca [preexistente] recusada: ${r.motivo}\n`);
   }
   const semMarcaRecusada = tirarMarcaPreexistente(critica, recusadas || []);
   const linhas = semMarcaRecusada.split(/\r?\n/);

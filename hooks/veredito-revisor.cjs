@@ -218,7 +218,7 @@ function main() {
   // aqui — volta a contar como bloqueio. Sem base, a marca vale como escrita.
   const recusadas = preexistentesNoDiff(mensagem, payload.cwd);
   if (recusadas === null) process.stderr.write('marca [preexistente] não conferida: sem base\n');
-  for (const r of recusadas || []) process.stderr.write(`marca [preexistente] recusada: ${r.arquivo}:${r.linha} está no diff\n`);
+  for (const r of recusadas || []) process.stderr.write(`marca [preexistente] recusada: ${r.motivo}\n`);
   const achados = contarAchados(tirarMarcaPreexistente(mensagem, recusadas || []));
   const motivoIncoerencia = incoerencia(veredito, achados);
   if (veredito === 'ok' && achados.alta > 0) veredito = 'invalido';

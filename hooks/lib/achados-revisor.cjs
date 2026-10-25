@@ -130,7 +130,7 @@ function linhasAdicionadas(cwd, base) {
   for (const linha of r.stdout.split('\n')) {
     if (linha.startsWith('diff --git ')) { cabecalho = true; arquivo = null; continue; }
     if (cabecalho && linha.startsWith('+++ ')) {
-      arquivo = linha === '+++ /dev/null' ? null : linha.replace(/\r$/, '').replace(/^\+\+\+ b\//, '');
+      arquivo = linha === '+++ /dev/null' ? null : caminhoDoCabecalho(linha);
       if (arquivo && !mapa.has(arquivo)) mapa.set(arquivo, new Set());
       continue;
     }
@@ -143,6 +143,17 @@ function linhasAdicionadas(cwd, base) {
     for (let i = 0; i < n; i += 1) mapa.get(arquivo).add(ini + i);
   }
   return mapa;
+}
+
+/**
+ * Caminho do cabeçalho `+++ b/<caminho>`. Com espaço no nome o git acrescenta
+ * uma tabulação no fim; com aspas ou caractere de controle, cita o caminho entre
+ * aspas com escape em C (acento passa cru pelo `core.quotepath=off`).
+ */
+function caminhoDoCabecalho(linha) {
+  let c = linha.replace(/\r$/, '').slice(4).replace(/\t$/, '');
+  if (c.startsWith('"') && c.endsWith('"')) c = c.slice(1, -1).replace(/\\(["\\])/g, '$1');
+  return c.replace(/^b\//, '');
 }
 
 /** Base da entrega: merge-base(HEAD, origin/<padrão>). null se não resolver. */
@@ -161,9 +172,13 @@ function baseDoDiff(cwd) {
  * adicionada ou alterada por `git diff -U0 <base>..HEAD` — marca recusada.
  * Sem marca no texto, devolve [] sem tocar no git. Com marca e sem base
  * resolvível (sem remoto, erro de git, `cwd` ausente), devolve null: a marca
- * vale como escrita e quem chama avisa "não conferida". Item com marca sem
- * `arquivo:linha` não é conferível por máquina e fica aceito (LACUNA declarada).
- * @returns {Array<{indice:number, sev:string, arquivo:string, linha:number, preexistente:boolean}>|null}
+ * vale como escrita e quem chama avisa "não conferida". A citação se procura
+ * pelos caminhos do próprio diff (`<caminho>:<n>` na linha de abertura, com `\`
+ * ou `/`), o que pega caminho com espaço e acento; sem casar nenhum, vale o
+ * primeiro `caminho:linha` da abertura. Item com marca sem `arquivo:linha` não
+ * se confere por máquina e é recusado (revisão do lote 6). `motivo` é o que
+ * quem chama imprime depois de "marca [preexistente] recusada: ".
+ * @returns {Array<{indice:number, sev:string, arquivo:string|null, linha:number|null, preexistente:boolean, motivo:string}>|null}
  */
 function preexistentesNoDiff(texto, cwd) {
   const marcados = itensAchados(texto).filter((x) => x.preexistente);
@@ -173,11 +188,29 @@ function preexistentesNoDiff(texto, cwd) {
   if (!base) return null;
   const adicionadas = linhasAdicionadas(cwd, base);
   if (!adicionadas) return null;
-  return marcados.filter((x) => {
-    if (!x.arquivo || x.linha === null) return false;
-    const caminho = x.arquivo.replace(/\\/g, '/').replace(/^\.\//, '');
-    return adicionadas.has(caminho) && adicionadas.get(caminho).has(x.linha);
-  });
+  const linhas = texto.split(/\r?\n/);
+  const recusadas = [];
+  for (const x of marcados) {
+    const abertura = linhas[x.indice].replace(/\\/g, '/');
+    let arquivo = null;
+    let linha = null;
+    for (const caminho of adicionadas.keys()) {
+      if (arquivo && caminho.length <= arquivo.length) continue;
+      const i = abertura.indexOf(`${caminho}:`);
+      const n = i < 0 ? null : /^\d+/.exec(abertura.slice(i + caminho.length + 1));
+      if (n) { arquivo = caminho; linha = Number(n[0]); }
+    }
+    if (!arquivo && x.arquivo && x.linha !== null) {
+      arquivo = x.arquivo.replace(/\\/g, '/').replace(/^\.\//, '');
+      linha = x.linha;
+    }
+    if (!arquivo) {
+      recusadas.push({ ...x, motivo: 'sem arquivo:linha para conferir' });
+    } else if (adicionadas.has(arquivo) && adicionadas.get(arquivo).has(linha)) {
+      recusadas.push({ ...x, arquivo, linha, motivo: `${arquivo}:${linha} está no diff` });
+    }
+  }
+  return recusadas;
 }
 
 /** Tira a marca `[preexistente]` das linhas indicadas (itens com `indice`). */

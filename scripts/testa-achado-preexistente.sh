@@ -43,13 +43,19 @@ git init -q --bare "$REMOTO_POSIX"
 git init -q -b main "$R_POSIX"
 git -C "$R_POSIX" config commit.gpgsign false
 printf 'l1\nl2\nl3\nl4\nl5\n' > "$R_POSIX/a.cjs"
-git -C "$R_POSIX" add a.cjs
+# Caminho com espaço e acento, como os dos repositórios Protheus: o git põe
+# tabulação no fim do cabeçalho +++ e o caminho não cabe em [\w./-].
+PE_DIR="Ponto de Entrada/69 - Gestão"
+mkdir -p "$R_POSIX/$PE_DIR"
+printf 'p1\np2\np3\n' > "$R_POSIX/$PE_DIR/x y.prw"
+git -C "$R_POSIX" add -A
 git -C "$R_POSIX" commit -qm base
 git -C "$R_POSIX" remote add origin "$REMOTO"
 git -C "$R_POSIX" push -q origin main
 git -C "$R_POSIX" fetch -q origin
 printf 'l1\nl2\nNOVA\nl4\nl5\n' > "$R_POSIX/a.cjs"
-git -C "$R_POSIX" commit -qam "altera a linha 3"
+printf 'p1\nP2 NOVA\np3\n' > "$R_POSIX/$PE_DIR/x y.prw"
+git -C "$R_POSIX" commit -qam "altera a linha 3 de a.cjs e a 2 do prw"
 
 # Repo sem remoto: não há origin/main, então a marca não é conferível.
 R2_POSIX="$RAIZ_POSIX/sem-remoto"
@@ -222,6 +228,31 @@ disparar "$(pay "$R" "rainforest-mind:revisor" "H4" "$TXT_H4" '{"agent_transcrip
 r=1
 if [ "$GOT" -eq 0 ] && ! printf '%s' "$SAIDA" | grep -qF '"decision":"block"' && [ "$(veredito_de H4)" = "reprovado" ]; then r=0; fi
 registra "(H4) reprovado com [media] normal e um [alta] [preexistente] fora do diff grava reprovado" $r
+
+# Segunda parada do H2: o hook não bloqueia de novo e grava invalido. O estado.cjs
+# confirma o invalido no transcrito, e tem de aplicar a mesma recusa pelo diff.
+reset_estado
+T=$(transcrito_com_texto "$TXT_H2" H5)
+disparar "$(pay "$R" "rainforest-mind:revisor" "H5" "$TXT_H2" '{"agent_transcript_path":"'"$T"'","stop_hook_active":true}')"
+r=1
+if [ "$GOT" -eq 0 ] && ! printf '%s' "$SAIDA" | grep -qF '"decision":"block"' && [ "$(veredito_de H5)" = "invalido" ]; then r=0; fi
+registra "(H5) segunda parada do ok com [alta] [preexistente] a.cjs:3 grava invalido (obtido: $(veredito_de H5))" $r
+
+# ---------------------------------------------------------------- (P) caminho com espaço e acento; sem citação
+echo "-- (P) a citação se acha pelo caminho do diff, com espaço e acento; sem citação, a marca é recusada --"
+RES_P="$(node -e '
+const { preexistentesNoDiff } = require(process.argv[1]);
+const cwd = process.argv[2];
+const m = (t) => (preexistentesNoDiff(t, cwd) || ["sem base"]).map((x) => x.motivo).join("|");
+process.stdout.write(JSON.stringify({
+  P1: m("**[alta]** [preexistente] Ponto de Entrada\\69 - Gestão\\x y.prw:2 — linha que o diff trocou"),
+  P2: m("**[alta]** [preexistente] `Ponto de Entrada/69 - Gestão/x y.prw:3` — linha antiga"),
+  P3: m("**[alta]** [preexistente] a funcao X quebra o contrato"),
+}));
+' "$LIB" "$R" 2>&1)"
+GOT=0; SAIDA=""; ERR_HOOK=""; CRIT_EXIT=""; CRIT_OUT=""; CRIT_ERR=""
+r=1; if [ "$RES_P" = '{"P1":"Ponto de Entrada/69 - Gestão/x y.prw:2 está no diff","P2":"","P3":"sem arquivo:linha para conferir"}' ]; then r=0; fi
+registra "(P1) prw com espaço e acento na linha do diff é recusado; (P2) a linha antiga dele passa; (P3) sem arquivo:linha é recusado (obtido: $RES_P)" $r
 
 # ---------------------------------------------------------------- (C) crítica
 echo "-- (C) critica-do-revisor: a marca aceita sai do redespacho; a recusada fica sem a marca --"

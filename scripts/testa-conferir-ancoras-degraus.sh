@@ -71,6 +71,12 @@ verifica d1 "Teste: que não existe sai teste-ausente, exit 0" 0 "$REPO" "$M1" \
   "!regra R1 testada" \
   "· regras: 0 testada, 0 sem-teste, 0 sem-campos, 0 sem-id, 1 teste-ausente, 0 teste-sem-id, 0 sha-desconhecido"
 
+# --- degrau 1b: o campo é `<bateria ou caso>` — crase e caso depois do caminho não viram teste-ausente ---
+M1B=$(mapa d1b-caso '## Regras implícitas\n\n**R1 — Período fechado barra**\nVerificada em: '"$SHA"'\nTeste: `scripts/testa-cita.sh` caso 3\n')
+verifica d1b "Teste: com crase e caso depois do caminho sai testada" 0 "$REPO" "$M1B" \
+  "=regra R1 testada" \
+  "!regra R1 teste-ausente"
+
 # --- degrau 2: o arquivo existe e não cita o id ---
 M2=$(mapa d2-sem-id '## Regras implícitas\n\n**R1 — Período fechado barra**\nVerificada em: '"$SHA"'\nTeste: scripts/testa-sem-id.sh\n')
 verifica d2 "Teste: que existe e não cita R1 sai teste-sem-id" 0 "$REPO" "$M2" \
