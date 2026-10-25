@@ -156,15 +156,16 @@ function main() {
   const tipo = EXTENSOES[path.extname(ti.file_path).toLowerCase()];
   if (!tipo) process.exit(0);
 
+  // Nomes antes do git: edição sem definição de topo não sobe processo nenhum.
+  const nomes = nomesDoTexto(textoNovo(ti), tipo).slice(0, MAX_NOMES_BUSCA);
+  if (nomes.length === 0) process.exit(0);
+
   const fim = Date.now() + ORCAMENTO_MS;
   const gitTop = topo(ev.cwd, ORCAMENTO_TOPO_MS);
   if (!gitTop) process.exit(0);
   try {
     if (!require(path.join(__dirname, 'lib', 'config.cjs')).ligado('aviso-duplicata', { projeto: gitTop })) process.exit(0);
   } catch {}
-
-  const nomes = nomesDoTexto(textoNovo(ti), tipo).slice(0, MAX_NOMES_BUSCA);
-  if (nomes.length === 0) process.exit(0);
 
   const restante = fim - Date.now();
   if (restante <= 0) process.exit(0);
