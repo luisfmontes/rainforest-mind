@@ -24,6 +24,9 @@ printf '%s\n' 'echo "ok: 0   falhou: 0"' 'exit 1' > "$R/scripts/vermelho-sem-cas
 printf '%s\n' 'echo "ok: 3   falhou: 1"' 'exit 1' > "$R/scripts/vermelho-com-casos.sh"
 printf '%s\n' 'echo "0 ok, 0 falhou"' 'exit 1' > "$R/scripts/vermelho-formato-dois.sh"
 printf '%s\n' 'echo "quebrou antes de qualquer placar"' 'exit 1' > "$R/scripts/vermelho-sem-placar.sh"
+printf '%s\n' 'echo "== resultado: 0 ok, 0 falha(s) =="' 'exit 1' > "$R/scripts/vermelho-resultado-falha-s.sh"
+printf '%s\n' 'echo "ok: 0   falha(s): 0"' 'exit 1' > "$R/scripts/vermelho-ok-falha-s-zero.sh"
+printf '%s\n' 'echo "== resultado: 3 ok, 1 falha(s) =="' 'exit 1' > "$R/scripts/vermelho-resultado-com-casos.sh"
 
 (cd "$R" && git add -A && git commit -qm "baterias de prova")
 
@@ -55,11 +58,19 @@ caso "prova que sai 1 com placar ok: 0 falhou: 0 é recusada" 2 \
 caso "placar em forma '0 ok, 0 falhou' também é recusado" 2 \
   "a prova não executou caso nenhum na base" \
   "bash scripts/vermelho-formato-dois.sh"
+caso "'== resultado: 0 ok, 0 falha(s) ==' com exit 1 é recusada" 2 \
+  "a prova não executou caso nenhum na base" \
+  "bash scripts/vermelho-resultado-falha-s.sh"
+caso "'ok: 0   falha(s): 0' com exit 1 é recusada" 2 \
+  "a prova não executou caso nenhum na base" \
+  "bash scripts/vermelho-ok-falha-s-zero.sh"
 
 echo
 echo "== 2. Placar com casos executados e falha =="
 caso "prova que sai 1 com ok: 3 falhou: 1 é aceita" 0 "-" \
   "bash scripts/vermelho-com-casos.sh"
+caso "'== resultado: 3 ok, 1 falha(s) ==' com exit 1 é aceita" 0 "-" \
+  "bash scripts/vermelho-resultado-com-casos.sh"
 
 echo
 echo "== 3. Saída sem placar reconhecível =="
