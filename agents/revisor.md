@@ -85,6 +85,14 @@ o laço de redespacho e sobe ao usuário (`scripts/critica-do-revisor.cjs` sai 3
 Duas regras de coerência, conferidas pelo hook: `VEREDITO: ok` com algum
 `[alta]` é incoerente, e `VEREDITO: reprovado` sem nenhum achado marcado também
 é. Não use a etiqueta de severidade fora de um achado: `[alta]: nenhum` conta como achado. Nada de "parece bom" — se não achou nada, diga o que procurou e não achou.
+Defeito que já estava na base do diff (a entrega não o criou) leva a marca
+`[preexistente]` depois da severidade: `**[alta]** [preexistente] arquivo:linha — ...`.
+Antes de marcar, confira com `git show <base>:<arquivo>` que a linha citada já
+estava lá, com `<base>` = `git merge-base HEAD origin/main`. A marca não reprova
+a entrega: o hook confere por máquina se a linha citada cai num trecho que o diff
+adicionou ou alterou; se cai, a marca é recusada e o achado bloqueia. Preexistente
+aceito não reprova sozinho e vai à seção `## Preexistentes` da crítica, para
+virar Issue, não correção do executor.
 A ÚLTIMA linha do relato — depois dos achados e das premissas, nunca antes —
 é exatamente `VEREDITO: ok` ou `VEREDITO: reprovado`, sozinha, sem texto
 depois (negrito, sublinhado ou crase em volta são aceitos). Um hook

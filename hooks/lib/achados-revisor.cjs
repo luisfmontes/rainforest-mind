@@ -10,26 +10,39 @@
  * reconhecia o `[design]`: marcador (`-`, `*`, `>`), título (`#`), número ou
  * rótulo (`A1.`, `Achado 1:`), negrito. Citado no meio da frase, não abre.
  *
+ * `[preexistente]` (lote 6, D3) acompanha a severidade na abertura e marca
+ * defeito que já estava na base do diff. Quem tem a marca NÃO bloqueia (não
+ * entra em alta/media/baixa/total), salvo quando `preexistentesNoDiff` acha a
+ * linha citada num trecho adicionado ou alterado pelo diff: aí a marca é
+ * recusada e `tirarMarcaPreexistente` a tira antes de contar.
+ *
  * Usado por `hooks/veredito-revisor.cjs` (coerência veredito x achados) e por
  * `scripts/critica-do-revisor.cjs` (exit 3 e exit 4).
  *
- * Design: docs/rainforest/design/2026-10-24-apoio-ao-dev-lote-2.md, D3 e D8.
- * D8: a régua é o formato, não o juízo — severidade errada dentro do formato
- * não é detectada aqui.
+ * Design: docs/rainforest/design/2026-10-24-apoio-ao-dev-lote-2.md, D3 e D8;
+ * docs/rainforest/design/2026-10-24-apoio-ao-dev-lote-6.md, D3 e D9.
+ * D8 (lote 2): a régua é o formato, não o juízo — severidade errada dentro do
+ * formato não é detectada aqui.
  */
 
-const ABERTURA = /^\s*(?:[-*>]\s+|#{1,6}\s+)?(?:\*\*)?(?:(?:[A-Z]|Achado\s+)?\d+[.):]?\s*)?(?:\*\*)?\s*((?:(?:\*\*)?\[(?:alta|m[eé]dia|media|baixa|design)\](?:\*\*)?\s*)+)/i;
+const path = require('path');
+const { spawnSync } = require('child_process');
+const { caminhoExecutavel } = require(path.join(__dirname, 'resolver-executavel.cjs'));
+
+const ABERTURA = /^\s*(?:[-*>]\s+|#{1,6}\s+)?(?:\*\*)?(?:(?:[A-Z]|Achado\s+)?\d+[.):]?\s*)?(?:\*\*)?\s*((?:(?:\*\*)?\[(?:alta|m[eé]dia|media|baixa|design|preexistente)\](?:\*\*)?\s*)+)/i;
 const SEVERIDADE = /\[(alta|m[eé]dia|media|baixa)\]/i;
 const DESIGN = /\[design\]/i;
+const PREEXISTENTE = /\[preexistente\]/i;
+const CAMINHO_LINHA = /([\w.\/-]+\.\w+):(\d+)/;
 
 /**
  * @param {string} texto relato do revisor, sem a linha VEREDITO: (ou com ela; não importa)
- * @returns {{alta:number, media:number, baixa:number, design:number, total:number}}
- *   total = itens que abrem com severidade OU com [design] (um item só de
- *   [design] conta no total: D3 do lote 2, decisão de 2026-10-24).
+ * @returns {{alta:number, media:number, baixa:number, design:number, total:number, preexistente:number}}
+ *   total = itens que abrem com severidade OU com [design] e NÃO têm a marca
+ *   [preexistente] (D3 do lote 6). preexistente = linhas de abertura com a marca.
  */
 function contarAchados(texto) {
-  const c = { alta: 0, media: 0, baixa: 0, design: 0, total: 0 };
+  const c = { alta: 0, media: 0, baixa: 0, design: 0, total: 0, preexistente: 0 };
   if (typeof texto !== 'string') return c;
   for (const linha of texto.split(/\r?\n/)) {
     const m = ABERTURA.exec(linha);
@@ -37,8 +50,11 @@ function contarAchados(texto) {
     const tags = m[1];
     const design = DESIGN.test(tags);
     const sev = SEVERIDADE.exec(tags);
+    const bloqueia = !PREEXISTENTE.test(tags);
+    if (!bloqueia) c.preexistente += 1;
     if (design) c.design += 1;
     if (!sev && !design) continue;
+    if (!bloqueia) continue;
     if (sev) {
       const chave = /alta/i.test(sev[1]) ? 'alta' : /baixa/i.test(sev[1]) ? 'baixa' : 'media';
       c[chave] += 1;
@@ -62,26 +78,128 @@ function incoerencia(veredito, a) {
 }
 
 /**
- * D4 (lote 5): lista os achados (mesma régua de `contarAchados`) com a
- * severidade e o primeiro `caminho:linha` do item, sem a linha. `sev` é
- * 'design' só quando o item não tem severidade; `arquivo` é null quando o
- * item não cita `caminho:linha` na própria linha de abertura.
- * @returns {Array<{sev:'alta'|'media'|'baixa'|'design', arquivo:string|null}>}
+ * Itens do relato (mesma régua de `contarAchados`), com o índice da linha no
+ * texto. `arquivo`/`linha` vêm do primeiro `caminho:linha` da linha de abertura.
+ * @returns {Array<{indice:number, sev:'alta'|'media'|'baixa'|'design', arquivo:string|null, linha:number|null, preexistente:boolean}>}
  */
-function listarAchados(texto) {
+function itensAchados(texto) {
   const itens = [];
   if (typeof texto !== 'string') return itens;
-  for (const linha of texto.split(/\r?\n/)) {
+  texto.split(/\r?\n/).forEach((linha, indice) => {
     const m = ABERTURA.exec(linha);
-    if (!m) continue;
+    if (!m) return;
     const tags = m[1];
     const sev = SEVERIDADE.exec(tags);
-    if (!sev && !DESIGN.test(tags)) continue;
+    if (!sev && !DESIGN.test(tags)) return;
     const chave = !sev ? 'design' : /alta/i.test(sev[1]) ? 'alta' : /baixa/i.test(sev[1]) ? 'baixa' : 'media';
-    const arq = /([\w.\/-]+\.\w+):\d+/.exec(linha);
-    itens.push({ sev: chave, arquivo: arq ? arq[1] : null });
-  }
+    const cam = CAMINHO_LINHA.exec(linha);
+    itens.push({
+      indice,
+      sev: chave,
+      arquivo: cam ? cam[1] : null,
+      linha: cam ? Number(cam[2]) : null,
+      preexistente: PREEXISTENTE.test(tags),
+    });
+  });
   return itens;
 }
 
-module.exports = { contarAchados, incoerencia, listarAchados };
+/**
+ * D4 (lote 5): lista os achados (mesma régua de `contarAchados`) com a
+ * severidade, o primeiro `caminho:linha` do item e a marca `preexistente`.
+ * `sev` é 'design' só quando o item não tem severidade; `arquivo` é null quando o
+ * item não cita `caminho:linha` na própria linha de abertura.
+ * @returns {Array<{sev:'alta'|'media'|'baixa'|'design', arquivo:string|null, preexistente:boolean}>}
+ */
+function listarAchados(texto) {
+  return itensAchados(texto).map(({ sev, arquivo, preexistente }) => ({ sev, arquivo, preexistente }));
+}
+
+/**
+ * Linhas novas de cada arquivo em `<base>..HEAD` (`git diff -U0`). Mapa
+ * caminho -> Set de números de linha adicionados ou alterados; null se o git falhar.
+ */
+function linhasAdicionadas(cwd, base) {
+  const r = spawnSync(caminhoExecutavel('git'), ['-c', 'core.quotepath=off', 'diff', '-U0', `${base}..HEAD`], {
+    cwd, encoding: 'utf8', stdio: 'pipe', maxBuffer: 64 * 1024 * 1024,
+  });
+  if (r.status !== 0 || typeof r.stdout !== 'string') return null;
+  const mapa = new Map();
+  let arquivo = null;
+  let cabecalho = false;
+  for (const linha of r.stdout.split('\n')) {
+    if (linha.startsWith('diff --git ')) { cabecalho = true; arquivo = null; continue; }
+    if (cabecalho && linha.startsWith('+++ ')) {
+      arquivo = linha === '+++ /dev/null' ? null : linha.replace(/\r$/, '').replace(/^\+\+\+ b\//, '');
+      if (arquivo && !mapa.has(arquivo)) mapa.set(arquivo, new Set());
+      continue;
+    }
+    const h = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.exec(linha);
+    if (!h) continue;
+    cabecalho = false;
+    if (!arquivo) continue;
+    const ini = Number(h[1]);
+    const n = h[2] === undefined ? 1 : Number(h[2]);
+    for (let i = 0; i < n; i += 1) mapa.get(arquivo).add(ini + i);
+  }
+  return mapa;
+}
+
+/** Base da entrega: merge-base(HEAD, origin/<padrão>). null se não resolver. */
+function baseDoDiff(cwd) {
+  const git = caminhoExecutavel('git');
+  const opts = { cwd, encoding: 'utf8', stdio: 'pipe' };
+  const sym = spawnSync(git, ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'], opts);
+  const padrao = sym.status === 0 && sym.stdout.trim() ? sym.stdout.trim().replace(/^origin\//, '') : 'main';
+  const mb = spawnSync(git, ['merge-base', 'HEAD', `origin/${padrao}`], opts);
+  if (mb.status !== 0) return null;
+  return mb.stdout.trim() || null;
+}
+
+/**
+ * D3/D9 (lote 6): os achados `[preexistente]` cujo `arquivo:linha` cai numa linha
+ * adicionada ou alterada por `git diff -U0 <base>..HEAD` — marca recusada.
+ * Sem marca no texto, devolve [] sem tocar no git. Com marca e sem base
+ * resolvível (sem remoto, erro de git, `cwd` ausente), devolve null: a marca
+ * vale como escrita e quem chama avisa "não conferida". Item com marca sem
+ * `arquivo:linha` não é conferível por máquina e fica aceito (LACUNA declarada).
+ * @returns {Array<{indice:number, sev:string, arquivo:string, linha:number, preexistente:boolean}>|null}
+ */
+function preexistentesNoDiff(texto, cwd) {
+  const marcados = itensAchados(texto).filter((x) => x.preexistente);
+  if (marcados.length === 0) return [];
+  if (typeof cwd !== 'string' || !cwd) return null;
+  const base = baseDoDiff(cwd);
+  if (!base) return null;
+  const adicionadas = linhasAdicionadas(cwd, base);
+  if (!adicionadas) return null;
+  return marcados.filter((x) => {
+    if (!x.arquivo || x.linha === null) return false;
+    const caminho = x.arquivo.replace(/\\/g, '/').replace(/^\.\//, '');
+    return adicionadas.has(caminho) && adicionadas.get(caminho).has(x.linha);
+  });
+}
+
+/** Tira a marca `[preexistente]` das linhas indicadas (itens com `indice`). */
+function tirarMarcaPreexistente(texto, itens) {
+  if (typeof texto !== 'string' || !itens || itens.length === 0) return texto;
+  const alvo = new Set(itens.map((x) => x.indice));
+  return texto.split(/\r?\n/).map((l, i) => (alvo.has(i) ? l.replace(PREEXISTENTE, '') : l)).join('\n');
+}
+
+/**
+ * Fim (exclusivo) do item que abre em `linhas[indice]`: a abertura e as linhas
+ * seguintes não vazias, até linha em branco, título (`#`) ou nova abertura.
+ */
+function fimDoItem(linhas, indice) {
+  let fim = indice + 1;
+  while (fim < linhas.length && linhas[fim].trim() !== '' && !/^\s*#{1,6}\s/.test(linhas[fim]) && !ABERTURA.test(linhas[fim])) {
+    fim += 1;
+  }
+  return fim;
+}
+
+module.exports = {
+  contarAchados, incoerencia, listarAchados, itensAchados,
+  preexistentesNoDiff, tirarMarcaPreexistente, fimDoItem,
+};

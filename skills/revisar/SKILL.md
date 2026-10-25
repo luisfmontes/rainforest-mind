@@ -144,6 +144,7 @@ Isto é **distinto** de "eu faria diferente":
 
 - **Estilo** ("não é assim que eu escreveria", "deixaria mais limpo"): só entra se violar padrão documentado do repo. Senão, é gosto, não achado.
 - **Creep** ("esse arquivo não era pra ser tocado", "essa mudança não estava no plano"): arquivo no diff que não casa com nenhum `arquivos:` da tarefa. Sempre reprova.
+- **Preexistente** (defeito que já estava na base do diff; a entrega não o criou): leva a marca `[preexistente]` depois da severidade, como `**[alta]** [preexistente] arquivo:linha — ...`. Antes de marcar, confira com `git show <base>:<arquivo>` que a linha citada já estava lá, com `<base>` = `git merge-base HEAD origin/main`. A marca não reprova a entrega sozinha: o hook e a crítica conferem por máquina se a linha citada cai num trecho que o diff adicionou ou alterou. Se cai, a marca é recusada e o achado bloqueia como qualquer outro. Preexistente aceito vai à seção `## Preexistentes` da crítica, para virar Issue (regra 6), não correção do executor.
 
 ### Saída única: emendar o plano
 

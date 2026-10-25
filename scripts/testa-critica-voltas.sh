@@ -94,6 +94,12 @@ roda() {
   EXIT=$?
 }
 
+# roda_cmp <slug> -> o bloco de comparação sozinho (D10a do lote 6): EXIT e stdout
+roda_cmp() {
+  RFM_ESTADO_ROOT="$REPO_W" node scripts/critica-do-revisor.cjs --slug "$1" --comparacao >"$CAIXA/out" 2>"$CAIXA/err"
+  EXIT=$?
+}
+
 registra() { # $1 = caso, $2 = 0 se passou, 1 se falhou
   if [ "$2" -eq 0 ]; then
     ok=$((ok+1)); echo "  ok   $1"
@@ -136,13 +142,14 @@ registra "(3b) janela vazia sem voltas não cria o campo" $r
 
 echo "-- (4) achado no mesmo arquivo da volta anterior sai persiste --"
 estado c1 "{\"status\":\"reprovado\",\"voltas\":[{\"volta\":1,\"vereditos\":[$(vered reprovado "$CAIXA_W/ant.jsonl" ant-1)]}],\"vereditos\":[$(vered reprovado "$CAIXA_W/atual.jsonl" atual-1)]}"
-roda c1
+roda_cmp c1
 r=1
 if [ "$EXIT" -eq 0 ] && grep -qxF -- '- [media] scripts/a.cjs — persiste (mesmo arquivo)' "$CAIXA/out"; then r=0; fi
 registra "achado no mesmo arquivo da volta anterior sai persiste" $r
 
 echo "-- (5) marcas novo, persiste e sumiu, e a contagem fora da comparação --"
 r=1
+roda_cmp c1
 if [ "$EXIT" -eq 0 ] \
   && grep -qxF -- '## Comparação com a volta anterior' "$CAIXA/out" \
   && grep -qxF -- '- [alta] scripts/c.cjs — novo' "$CAIXA/out" \
@@ -152,20 +159,22 @@ registra "(5) novo, sumiu (só arquivo que sumiu) e contagem fora da comparaçã
 
 echo "-- (6) volta sem reprovado com transcrito é pulada --"
 estado c4 "{\"status\":\"reprovado\",\"voltas\":[{\"volta\":1,\"vereditos\":[$(vered reprovado "$CAIXA_W/ant.jsonl" ant-1)]},{\"volta\":2,\"vereditos\":[{\"agente_id\":\"x\",\"veredito\":\"ok\",\"transcrito\":\"$CAIXA_W/ant.jsonl\"}]}],\"vereditos\":[$(vered reprovado "$CAIXA_W/atual.jsonl" atual-1)]}"
-roda c4
+roda_cmp c4
 r=1
 if [ "$EXIT" -eq 0 ] && grep -qxF -- '- [media] scripts/a.cjs — persiste (mesmo arquivo)' "$CAIXA/out"; then r=0; fi
 registra "(6) a comparação usa a última volta com reprovado e transcrito" $r
 
-echo "-- (7) transcrito anterior ausente: bloco diz isso, crítica atual sai inteira --"
+echo "-- (7) transcrito anterior ausente: sem --comparacao a crítica sai intacta; com ele, o bloco diz isso --"
 estado c2 "{\"status\":\"reprovado\",\"voltas\":[{\"volta\":1,\"vereditos\":[$(vered reprovado "$CAIXA_W/nao-existe.jsonl" ant-1)]}],\"vereditos\":[$(vered reprovado "$CAIXA_W/atual.jsonl" atual-1)]}"
 roda c2
 r=1
-if [ "$EXIT" -eq 0 ] \
-  && head -n 4 "$CAIXA/out" | cmp -s - "$CAIXA/esperado-sem-volta.txt" \
-  && grep -qxF -- 'transcrito da volta anterior ausente' "$CAIXA/out" \
-  && [ "$(wc -l < "$CAIXA/out" | tr -d ' ')" -eq 6 ]; then r=0; fi
-registra "(7) transcrito anterior ausente: so a linha do aviso, crítica intacta" $r
+if [ "$EXIT" -eq 0 ] && cmp -s "$CAIXA/out" "$CAIXA/esperado-sem-volta.txt"; then
+  roda_cmp c2
+  if [ "$EXIT" -eq 0 ] \
+    && grep -qxF -- 'transcrito da volta anterior ausente' "$CAIXA/out" \
+    && [ "$(wc -l < "$CAIXA/out" | tr -d ' ')" -eq 2 ]; then r=0; fi
+fi
+registra "(7) transcrito anterior ausente: crítica intacta, e o bloco só com --comparacao diz o aviso" $r
 
 echo "-- (8) sem volta anterior: saída byte a byte igual à de hoje --"
 estado c3 "{\"status\":\"reprovado\",\"vereditos\":[$(vered reprovado "$CAIXA_W/atual.jsonl" atual-1)]}"
@@ -182,7 +191,7 @@ if [ "$EXIT" -eq 3 ] && ! grep -q 'Comparação com a volta anterior' "$CAIXA/ou
 registra "(9) exit 3 sem o bloco de comparação" $r
 
 echo "-- (10) listarAchados: sev, arquivo e a régua de contarAchados --"
-LA_ESPERADO='[{"sev":"media","arquivo":"scripts/a.cjs"},{"sev":"design","arquivo":null},{"sev":"alta","arquivo":"hooks/x.cjs"},{"sev":"media","arquivo":"scripts/a.cjs"}]'
+LA_ESPERADO='[{"sev":"media","arquivo":"scripts/a.cjs","preexistente":false},{"sev":"design","arquivo":null,"preexistente":false},{"sev":"alta","arquivo":"hooks/x.cjs","preexistente":false},{"sev":"media","arquivo":"scripts/a.cjs","preexistente":false}]'
 LA_OBTIDO="$(node -e '
 const { listarAchados } = require(process.argv[1]);
 const texto = [
@@ -198,6 +207,23 @@ r=1
 if [ "$LA_OBTIDO" = "$LA_ESPERADO" ]; then r=0; fi
 EXIT=0
 registra "(10) listarAchados devolve sev e arquivo (esperado: $LA_ESPERADO; obtido: $LA_OBTIDO)" $r
+
+echo "-- (11) --comparacao com veredito ok na janela: sai 0 e compara com a volta anterior (D10a do lote 6) --"
+estado c6 "{\"status\":\"ok\",\"voltas\":[{\"volta\":1,\"vereditos\":[$(vered reprovado "$CAIXA_W/ant.jsonl" ant-1)]}],\"vereditos\":[$(vered ok "$CAIXA_W/atual.jsonl" ok-1)]}"
+roda_cmp c6
+r=1
+if [ "$EXIT" -eq 0 ] \
+  && grep -qxF -- '## Comparação com a volta anterior' "$CAIXA/out" \
+  && grep -qxF -- '- [media] scripts/b.cjs — sumiu — confirmar se foi corrigido' "$CAIXA/out" \
+  && ! grep -q 'VEREDITO' "$CAIXA/out"; then r=0; fi
+registra "(11) --comparacao com veredito ok: exit 0 e o bloco com o que sumiu" $r
+
+echo "-- (12) --comparacao sem volta anterior: imprime a frase e sai 0 --"
+estado c7 "{\"status\":\"reprovado\",\"vereditos\":[$(vered reprovado "$CAIXA_W/atual.jsonl" atual-1)]}"
+roda_cmp c7
+r=1
+if [ "$EXIT" -eq 0 ] && [ "$(cat "$CAIXA/out")" = "(sem volta anterior)" ]; then r=0; fi
+registra "(12) --comparacao sem volta anterior imprime (sem volta anterior)" $r
 
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]

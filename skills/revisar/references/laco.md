@@ -38,6 +38,14 @@ despachos) avisa por `PushNotification`, e fora delas o fluxo segue até o merge
    | `4` | não há `reprovado` gravado, ou ele veio sem achado: o laço não tem o que ler; o revisor não fechou o contrato de veredito |
    | `69` | transcrito sumiu: bloqueio de ambiente (regra 14), anuncie e pare |
 
+   A saída `0` é o redespacho: só ela vai ao briefing do executor. Achado
+   `[preexistente]` aceito pelo diff sai do redespacho e aparece no stderr sob
+   `## Preexistentes (não são da entrega — Issue, não correção)`: a janela
+   principal abre a Issue, o executor não corrige. A comparação com a volta
+   anterior não sai mais na crítica: `node scripts/critica-do-revisor.cjs --slug <slug> --comparacao`
+   imprime só o bloco `## Comparação com a volta anterior`, e ele vai no briefing
+   do **revisor** da volta seguinte, nunca no do executor (D10a do lote 6).
+
 3. `node scripts/estado.cjs exigir --slug <slug> --estagio executar` — é ele
    que aplica o teto; exit 2 encerra o laço (veja **Teto**). Passando,
    redespache o executor: **despacho novo** (`isolation: "worktree"`, nunca
