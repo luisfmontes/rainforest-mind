@@ -673,27 +673,72 @@ function headAlcancavel(caminho) {
 }
 
 /**
- * Grava refs/rainforest/arquivo/<nome-do-dir> apontando para o sha. Não
- * sobrescreve uma ref que já aponta para outro commit: arquivo anterior com o
- * mesmo nome de diretório não pode ser perdido em silêncio.
+ * Nome de ref a partir do nome da pasta. Caractere que ref git não aceita
+ * (espaço, controle, ~ ^ : ? * [ \), `..`, `@{`, ponto no início, ponto final
+ * e `.lock` final viram `-`. A validação final é `git check-ref-format`.
  */
-function arquivarHead(caminho, sha) {
-  const ref = `refs/rainforest/arquivo/${path.basename(caminho)}`;
-  const git = caminhoExecutavel("git");
-  let atual = null;
+function nomeDeArquivo(caminho) {
+  return path
+    .basename(caminho)
+    .replace(/[\x00-\x20\x7f~^:?*\[\\]/g, "-")
+    .replace(/@\{/g, "-")
+    .replace(/\.\./g, "-")
+    .replace(/^\./, "-")
+    .replace(/\.lock$/, "-")
+    .replace(/\.$/, "-");
+}
+
+/** Sha que a ref aponta; null se a ref não existe; ok:false se a leitura falhou. */
+function lerRef(git, ref) {
   try {
-    atual = execFileSync(git, ["rev-parse", "--verify", "-q", ref], {
+    const sha = execFileSync(git, ["rev-parse", "--verify", "-q", ref], {
       cwd: raizAtual,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
+    return { ok: true, sha };
   } catch (e) {
     // `rev-parse --verify -q` sai 1 quando a ref não existe; outro código é falha.
-    if (e.status !== 1) return { ok: false, motivo: `não consegui ler ${ref}` };
+    return e.status === 1 ? { ok: true, sha: null } : { ok: false, sha: null };
   }
-  if (atual === sha) return { ok: true, ref };
-  if (atual) {
-    return { ok: false, motivo: `${ref} já aponta para ${atual.slice(0, 7)}, não sobrescrevo` };
+}
+
+/**
+ * Grava refs/rainforest/arquivo/<nome-saneado> apontando para o sha. Pasta
+ * recriada ou de mesmo nome com outro commit já arquivado ganha
+ * <nome>-<sha7>. Ref que já aponta para o mesmo commit é reuso, não erro.
+ * Nunca sobrescreve: se nem o nome com sufixo está livre, para com erro e o
+ * comando para liberar.
+ */
+function arquivarHead(caminho, sha) {
+  const git = caminhoExecutavel("git");
+  const nome = nomeDeArquivo(caminho);
+  const base = `refs/rainforest/arquivo/${nome}`;
+  try {
+    execFileSync(git, ["check-ref-format", base], {
+      cwd: raizAtual,
+      stdio: ["ignore", "ignore", "ignore"],
+    });
+  } catch {
+    return { ok: false, motivo: `o nome '${nome}' não vira ref git válida` };
+  }
+  const primeira = lerRef(git, base);
+  if (!primeira.ok) return { ok: false, motivo: `não consegui ler ${base}` };
+  if (primeira.sha === sha) return { ok: true, ref: base };
+  let ref = base;
+  if (primeira.sha !== null) {
+    ref = `${base}-${sha.slice(0, 7)}`;
+    const segunda = lerRef(git, ref);
+    if (!segunda.ok) return { ok: false, motivo: `não consegui ler ${ref}` };
+    if (segunda.sha === sha) return { ok: true, ref };
+    if (segunda.sha !== null) {
+      return {
+        ok: false,
+        motivo:
+          `${base} aponta para ${primeira.sha.slice(0, 7)} e ${ref} para ` +
+          `${segunda.sha.slice(0, 7)}; para liberar: git update-ref -d ${ref}`,
+      };
+    }
   }
   try {
     execFileSync(git, ["update-ref", ref, sha, "0".repeat(sha.length)], {

@@ -5,7 +5,12 @@
 #            refs/rainforest/arquivo/<nome> antes de sair
 #        (2) worktree cujo HEAD é alcançado por branch sai sem criar ref
 #        (3) sonda de alcance que falha deixa o worktree no lugar, como erro
-#        (4) ref de arquivo que já aponta para outro commit não é sobrescrita
+#        (4) ref de arquivo que já aponta para outro commit não é sobrescrita:
+#            arquiva em <nome>-<sha7>
+#        (A) dois destacados de mesmo nome em pastas diferentes: os dois saem
+#        (B) pasta recriada com o mesmo nome e outro commit: ganha o sufixo
+#        (C) pasta com espaço: nome saneado, sai
+#        (D) ref já apontando para o mesmo commit: reuso, sem erro
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -131,7 +136,7 @@ fi
 
 # --- CASO (4): ref de arquivo que já aponta para outro commit não é sobrescrita
 
-teste "4" "ref de arquivo já existente com outro commit: não sobrescreve, não remove"
+teste "4" "ref de arquivo já existente com outro commit: não sobrescreve, arquiva em <nome>-<sha7>"
 
 repo_4="$SB/repo_4"
 work_4="$SB/trabalho_4"
@@ -141,18 +146,133 @@ wt_4="$work_4-worktrees/wt-coli"
 git worktree add -q --detach "$wt_4" HEAD
 (cd "$wt_4" && echo outra > outra.txt && git add outra.txt && git commit -qm "commit do destacado")
 main_4=$(cd "$work_4" && git rev-parse HEAD)
+sha_4=$(cd "$wt_4" && git rev-parse HEAD)
 (cd "$work_4" && git update-ref refs/rainforest/arquivo/wt-coli "$main_4")
 
 saida_4=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_4" --remover 2>&1)
 
 ref_4=$(cd "$work_4" && git rev-parse --verify -q refs/rainforest/arquivo/wt-coli || true)
 igual "4a ref existente não foi sobrescrita" "$ref_4" "$main_4"
-igual "4b worktree continua registrado" "$(worktree_registrado "$work_4" "wt-coli")" "sim"
-if printf '%s' "$saida_4" | grep -qF "não sobrescrevo"; then
-  ok=$((ok+1)); echo "  ok    4c a saída diz que não sobrescreveu"
+ref_4s=$(cd "$work_4" && git rev-parse --verify -q "refs/rainforest/arquivo/wt-coli-${sha_4:0:7}" || true)
+igual "4b ref com sufixo aponta para o HEAD do destacado" "$ref_4s" "$sha_4"
+igual "4c worktree saiu do git worktree list" "$(worktree_registrado "$work_4" "wt-coli")" "nao"
+if printf '%s' "$saida_4" | grep -qF "arquivado: refs/rainforest/arquivo/wt-coli-${sha_4:0:7}"; then
+  ok=$((ok+1)); echo "  ok    4d a saída diz o nome com sufixo"
 else
-  falhou=$((falhou+1)); echo "  FALHA 4c a saída não diz que não sobrescreveu"
+  falhou=$((falhou+1)); echo "  FALHA 4d a saída não diz o nome com sufixo"
   echo "        Saída: $saida_4"
+fi
+
+# --- CASO (A): dois destacados de mesmo nome em pastas diferentes, commits diferentes
+
+teste "A" "dois worktrees 'wt' em pastas diferentes com commits diferentes: os dois saem"
+
+repo_A="$SB/repo_A"
+work_A="$SB/trabalho_A"
+criarRepoComCommit "$repo_A" "$work_A"
+
+wt_Aa="$work_A-worktrees/a/wt"
+wt_Ab="$work_A-worktrees/b/wt"
+git worktree add -q --detach "$wt_Aa" HEAD
+git worktree add -q --detach "$wt_Ab" HEAD
+(cd "$wt_Aa" && echo da-a > da-a.txt && git add da-a.txt && git commit -qm "commit de a/wt")
+(cd "$wt_Ab" && echo da-b > da-b.txt && git add da-b.txt && git commit -qm "commit de b/wt")
+sha_Aa=$(cd "$wt_Aa" && git rev-parse HEAD)
+sha_Ab=$(cd "$wt_Ab" && git rev-parse HEAD)
+
+saida_A=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_A" --remover 2>&1)
+
+igual "Aa a/wt saiu do git worktree list" "$(worktree_registrado "$work_A" "a/wt")" "nao"
+igual "Ab b/wt saiu do git worktree list" "$(worktree_registrado "$work_A" "b/wt")" "nao"
+if printf '%s' "$saida_A" | grep -qF "erro:"; then
+  falhou=$((falhou+1)); echo "  FALHA Ac a saída tem erro"
+  echo "        Saída: $saida_A"
+else
+  ok=$((ok+1)); echo "  ok    Ac nenhum erro na saída"
+fi
+refs_A=$(cd "$work_A" && git for-each-ref --format='%(objectname)' refs/rainforest/arquivo | sort)
+esperado_A=$(printf '%s\n%s\n' "$sha_Aa" "$sha_Ab" | sort)
+igual "Ad as refs de arquivo apontam para os dois commits, cada um com a sua" "$refs_A" "$esperado_A"
+igual "Ae são duas refs, uma por commit" "$(cd "$work_A" && git for-each-ref refs/rainforest/arquivo | wc -l | tr -d ' ')" "2"
+
+# --- CASO (B): pasta recriada com o mesmo nome e outro commit ganha o sufixo
+
+teste "B" "pasta arquivada, recriada com o mesmo nome e outro commit: sai e ganha <nome>-<sha7>"
+
+repo_B="$SB/repo_B"
+work_B="$SB/trabalho_B"
+criarRepoComCommit "$repo_B" "$work_B"
+
+wt_B="$work_B-worktrees/wt-x"
+git worktree add -q --detach "$wt_B" HEAD
+(cd "$wt_B" && echo x1 > x1.txt && git add x1.txt && git commit -qm "commit X")
+sha_Bx=$(cd "$wt_B" && git rev-parse HEAD)
+node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_B" --remover >/dev/null 2>&1
+igual "B1 primeira rodada: wt-x saiu" "$(worktree_registrado "$work_B" "wt-x")" "nao"
+
+git worktree add -q --detach "$wt_B" HEAD
+(cd "$wt_B" && echo y1 > y1.txt && git add y1.txt && git commit -qm "commit Y")
+sha_By=$(cd "$wt_B" && git rev-parse HEAD)
+
+saida_B=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_B" --remover 2>&1)
+
+igual "B2 wt-x recriada saiu do git worktree list" "$(worktree_registrado "$work_B" "wt-x")" "nao"
+igual "B3 ref base continua apontando para X" "$(cd "$work_B" && git rev-parse --verify -q refs/rainforest/arquivo/wt-x || true)" "$sha_Bx"
+igual "B4 ref com sufixo aponta para Y" "$(cd "$work_B" && git rev-parse --verify -q "refs/rainforest/arquivo/wt-x-${sha_By:0:7}" || true)" "$sha_By"
+if printf '%s' "$saida_B" | grep -qF "erro:"; then
+  falhou=$((falhou+1)); echo "  FALHA B5 a saída tem erro"
+  echo "        Saída: $saida_B"
+else
+  ok=$((ok+1)); echo "  ok    B5 nenhum erro na saída"
+fi
+
+# --- CASO (C): pasta com espaço é arquivada com nome saneado e sai
+
+teste "C" "pasta 'wt com espaco' é arquivada com nome saneado e removida"
+
+repo_C="$SB/repo_C"
+work_C="$SB/trabalho_C"
+criarRepoComCommit "$repo_C" "$work_C"
+
+wt_C="$work_C-worktrees/wt com espaco"
+git worktree add -q --detach "$wt_C" HEAD
+(cd "$wt_C" && echo c > c.txt && git add c.txt && git commit -qm "commit de C")
+sha_C=$(cd "$wt_C" && git rev-parse HEAD)
+
+saida_C=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_C" --remover 2>&1)
+
+igual "C1 worktree com espaço saiu do git worktree list" "$(worktree_registrado "$work_C" "wt com espaco")" "nao"
+igual "C2 ref com nome saneado aponta para o commit" "$(cd "$work_C" && git rev-parse --verify -q refs/rainforest/arquivo/wt-com-espaco || true)" "$sha_C"
+if printf '%s' "$saida_C" | grep -qF "arquivado: refs/rainforest/arquivo/wt-com-espaco"; then
+  ok=$((ok+1)); echo "  ok    C3 a saída diz o nome saneado"
+else
+  falhou=$((falhou+1)); echo "  FALHA C3 a saída não diz o nome saneado"
+  echo "        Saída: $saida_C"
+fi
+
+# --- CASO (D): ref já apontando para o mesmo commit é reuso, não erro
+
+teste "D" "ref de arquivo já apontando para o mesmo commit: reuso, sem erro, worktree sai"
+
+repo_D="$SB/repo_D"
+work_D="$SB/trabalho_D"
+criarRepoComCommit "$repo_D" "$work_D"
+
+wt_D="$work_D-worktrees/wt-d"
+git worktree add -q --detach "$wt_D" HEAD
+(cd "$wt_D" && echo d > d.txt && git add d.txt && git commit -qm "commit de D")
+sha_D=$(cd "$wt_D" && git rev-parse HEAD)
+(cd "$work_D" && git update-ref refs/rainforest/arquivo/wt-d "$sha_D")
+
+saida_D=$(node "$SRC/scripts/limpar-worktrees.cjs" --raiz "$work_D" --remover 2>&1)
+
+igual "D1 worktree saiu do git worktree list" "$(worktree_registrado "$work_D" "wt-d")" "nao"
+igual "D2 ref continua apontando para o mesmo commit" "$(cd "$work_D" && git rev-parse --verify -q refs/rainforest/arquivo/wt-d || true)" "$sha_D"
+if printf '%s' "$saida_D" | grep -qF "erro:"; then
+  falhou=$((falhou+1)); echo "  FALHA D3 a saída tem erro"
+  echo "        Saída: $saida_D"
+else
+  ok=$((ok+1)); echo "  ok    D3 nenhum erro na saída"
 fi
 
 echo ""
