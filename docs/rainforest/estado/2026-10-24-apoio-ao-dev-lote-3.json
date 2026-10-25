@@ -11,7 +11,10 @@
     "em": "2026-10-25"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "doc": "docs/rainforest/planos/2026-10-24-apoio-ao-dev-lote-3.md",
+    "tarefas": 5,
+    "em": "2026-10-25"
   },
   "executar": {
     "status": "pendente"
