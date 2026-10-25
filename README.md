@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.76.0-1e5c3f?style=flat-square" alt="versão 1.76.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.77.0-1e5c3f?style=flat-square" alt="versão 1.77.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -201,6 +201,13 @@ aberto nem `leve` na branch, com as mesmas saídas do `aviso-fluxo.cjs`. Ele dec
 commits que a própria sessão fez (as entradas `commit` do reflog), não pela grafia do comando; `pull`, `merge`,
 `rebase` e conflito em andamento não avisam, e cada caminho avisa uma vez por sessão. A chave `aviso-fluxo` desliga os dois.
 
+`aviso-duplicata.cjs` (`PostToolUse` em Write/Edit/MultiEdit) avisa sem barrar (exit 0 com `additionalContext`):
+extrai do texto escrito os nomes de definição de topo (JS/TS, Python e `User Function`/`Static Function`/`Class`
+de ADVPL/TLPP, sem caixa) e, quando o mesmo nome já está definido em outro arquivo rastreado, diz
+"`x` já está definido em `caminho:linha`", no máximo três nomes. O nome só vai ao `git grep` (sem shell, com
+`--`) depois de casar como identificador; orçamento de 3 s e falha aberta. Em Protheus, `User Function`
+repetida colide no RPO. A chave `aviso-duplicata` desliga.
+
 Um hook avisa sem barrar (exit 0 com `additionalContext`): `idioma-session-start.cjs`
 (`SessionStart` na compactação) reinjeta o idioma da chave `idioma` do config,
 que escorregava depois de compactar.
@@ -239,7 +246,9 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `scripts/conferir-duplicacao.cjs` | Dois arquivos byte a byte iguais fora de `fixtures/`, `node_modules/`, `.git/` e `.claude/worktrees/` → **exit 2** com os dois caminhos na mesma linha; `--funcoes` inventaria nomes repetidos entre `scripts/*.cjs` (exit 0, é inventário). Chamado pelo `conferir-publicacao.cjs --commit` e pelo `/saude` |
 | `scripts/conferir-publicacao.cjs --commit <rev>` ou `a..b` | Varre o conteúdo **commitado**, não o disco: dado sensível que já saiu do arquivo mas ficou no histórico é achado; disco ≠ commit vira `diverge-do-commit`. Exit 2 achado, **69** quando o ambiente impede |
 | `scripts/conferir-glossario.cjs` | Confere o `GLOSSARIO.md` da raiz do repo e recusa verbete com campo obrigatório faltando (Definição, Onde mora, Cenário), termo duplicado ou linha injetada acima de 900 B: **exit 1**, cada defeito nomeado como `GLOSSARIO.md:<linha>`. `--exigir` torna a ausência do arquivo defeito; `--caminhos` confere caminho em crase. A CI roda com `--exigir --caminhos` (`.github/workflows/baterias.yml`) |
-| `scripts/conferir-ancoras.cjs <mapa.md> [--repo <raiz>]` | Confere as âncoras `arquivo:linha`, `arquivo:N-M` e `arquivo#Simbolo` de um mapa da arqueologia: o arquivo existe, a linha cabe nele e o símbolo aparece onde o mapa diz. Uma linha por âncora (`ok`, `arquivo-ausente`, `linha-fora`, `simbolo-ausente`, `ambiguo`, `fora-da-raiz`): **exit 1** com alguma falha, **2** uso. A `arqueologia` roda antes da releitura dos `CONFIRMADO` |
+| `scripts/conferir-ancoras.cjs <mapa.md> [--repo <raiz>]` | Confere as âncoras `arquivo:linha`, `arquivo:N-M` e `arquivo#Simbolo` de um mapa da arqueologia: o arquivo existe, a linha cabe nele e o símbolo aparece onde o mapa diz. Uma linha por âncora (`ok`, `arquivo-ausente`, `linha-fora`, `simbolo-ausente`, `ambiguo`, `fora-da-raiz`): **exit 1** com alguma falha, **2** uso. Lê também as `## Regras implícitas`: cada `**R<n> — título**` com `Verificada em:` e `Teste:` sai `testada`, `sem-teste` (aviso, `Teste: nenhum`) ou `sem-campos` (**exit 1**); regra no formato antigo, sem id, sai `sem-id` como aviso. A `arqueologia` roda antes da releitura dos `CONFIRMADO` |
+| `scripts/baterias-do-diff.cjs --base <ref> [--head <ref>] [--raiz <dir>]` | As `testa-*` afetadas pelo diff: a bateria alterada e toda bateria que cita o nome-base de um arquivo alterado (a leitura do D25 do `conferir-entrega`, em `scripts/lib/baterias-vizinhas.cjs`). Uma por linha, **exit 0**. Arquivo que nenhuma bateria cita, ou biblioteca compartilhada (`hooks/lib/`, `scripts/lib/`), termina com `rodar tudo: <arquivo> — <motivo>` e **exit 3**: a dúvida nunca estreita a seleção. O `verificar` e o `executar` o usam para escolher as baterias locais |
+| `scripts/co-mudanca.cjs <arquivo> [--meses 6] [--min 3]` | Arquivos que mudaram junto com o alvo no histórico: pelo menos `--min` commits juntos e score `juntos / mudanças do alvo` ≥ 0,3, do maior para o menor; commit com mais de 20 arquivos não conta. Alvo com pouca mudança diz "histórico insuficiente" (exit 0). A `arqueologia` roda por arquivo da fatia, e o `plano` confere o `arquivos:` contra ele |
 | `scripts/conferir-fluxo.cjs camadas --slug <slug>` | Camadas do `executar` calculadas do `depende de:` do plano (Kahn), em JSON. **Exit 2** com ciclo, `depende de:` citando tarefa inexistente ou duas tarefas da mesma camada com `arquivos:` em comum; `paralela:` deixou de ser exigido e, em plano antigo, só avisa |
 | `scripts/estado.cjs retomar --slug <slug>` | Estado por tarefa (`integrada`, `em_voo`, `pendente`). Só é `integrada` a tarefa com commit `Rainforest-Tarefa: <slug>#<n>` na branch, nunca pelo JSON. Devolve `re_marcar`, `redespachar`, `contadas_sem_trailer` (contada no JSON sem commit) e `proxima_camada`; o `marcar` de executar aceita `integradas: [n]` |
 | `scripts/painel-fluxo.cjs gerar --slug <slug>` | Painel HTML local do fluxo em `<dados>/fluxos/<slug>/painel.html`: um cartão por tarefa (estado, camada, iteração do laço) e um resumo (em voo, falta, estágio, veredito, parado). O `marcar` de executar, revisar e verificar o regenera; falha vira aviso e não muda o exit |
