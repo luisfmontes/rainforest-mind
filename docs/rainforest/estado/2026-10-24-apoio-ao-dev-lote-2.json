@@ -24,7 +24,54 @@
     "em": "2026-10-24"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-10-24",
+    "integradas": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "em_voo": [],
+    "em": "2026-10-24",
+    "tarefas_ok": 6,
+    "tarefas": 6,
+    "comando": "bash scripts/varrer-baterias.sh (273 baterias, via rodar-longo); conferir-fluxo creep --base 5a9342cf --head dbe4db10",
+    "saida": "as 273 baterias passaram / exit 0; ok: sem creep — 23 arquivo(s) coberto(s)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-veredito-coerente.sh, caso VEREDITO: ok com achado [alta] devolve a vez na primeira parada"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-prova-sem-caso.sh, caso prova que sai 1 com placar ok: 0 falhou: 0 é recusada"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-limpar-worktrees-arquivo.sh, caso worktree destacado com commit próprio ganha refs/rainforest/arquivo antes de sair"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-saude-nao-medido.sh, caso log de erros ilegível sai aviso não medido"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-vazio-explicado.sh, caso filtro que exclui tudo diz quantas observações existem no escopo"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "metadado de versão e documentação, sem comportamento a inverter"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
@@ -34,5 +81,21 @@
   },
   "fechar": {
     "status": "pendente"
-  }
+  },
+  "decididos": [
+    {
+      "pergunta": "Tarefa 4: listar e contar do erros.cjs com log ilegivel",
+      "escolha": "Saem 1 com a causa no stderr, sem imprimir zero; checarErros exportado para teste",
+      "porque": "imprimir 0 erros com log ilegivel e o mesmo furo de D6; o unico consumidor (hooks/mod.tsx:543) ja trata exit nao zero como indisponivel",
+      "estagio": "executar",
+      "em": "2026-10-25T00:29:55.705Z"
+    },
+    {
+      "pergunta": "Tarefa 1: segunda parada com veredito incoerente nao grava (estado.cjs veredito confere a ultima linha)",
+      "escolha": "estado.cjs aceita --veredito invalido quando a ultima linha esta no vocabulario mas contarAchados acusa incoerencia; item so com [design] conta como achado",
+      "porque": "sem isso a segunda parada some calada (hook com stdio ignore) e o revisar fecha sem registro; reprovado cujo unico item e [design] e o caso que mais precisa passar",
+      "estagio": "executar",
+      "em": "2026-10-25T00:36:46.986Z"
+    }
+  ]
 }
