@@ -159,6 +159,7 @@ o grupo que vale é o do campo `entrevista` no catálogo.
 | `gate-turno-prometido` | — | barra turno que promete despacho ou espera de máquina sem concretizar |
 | `gate-verificador-staged` | — | barra commit quando o `verificador-staged` do config reprova o staged |
 | `contrato-veredito` | — | grava o veredito de uma linha do revisor em SubagentStop |
+| `contrato-relato-executor` | — | devolve a vez ao executor de fluxo que termina sem a linha `ENTREGA:` em SubagentStop |
 | `agente-folha` | — | a portaria nega Agent vindo de dentro de subagente |
 | `busca-na-raiz` | — | nega `find` a partir da raiz do disco dentro de subagente |
 | `bateria-sem-timeout` | — | nega bateria sem timeout explícito dentro de subagente |

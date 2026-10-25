@@ -116,6 +116,13 @@ A ordem no relatório é fixa: **comando, saída colada, então o veredito**
 — nessa sequência, item por item. Veredito antes da saída não conta como
 verificação, mesmo que a saída venha depois no texto.
 
+**Fim do relato, linha final.** Quando o briefing tem `Slug:` (despacho de
+fluxo), a última linha do relato é sozinha e exata: `ENTREGA: completa` ou
+`ENTREGA: parcial`. É `parcial` quando algum item do briefing ficou NÃO FEITO
+no relatório, e `completa` só quando nenhum ficou. Sem essa linha, o hook
+`relato-executor.cjs` devolve a vez uma vez; ela tem de ser a última da
+mensagem, sem texto depois.
+
 **Critério numerado do briefing é contrato de retorno, não sugestão de
 formato.** O relatório traz **um bloco por número**, com o comando
 **literal do briefing** e a saída colada. Retorno que renumera, funde ou

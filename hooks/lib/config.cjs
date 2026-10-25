@@ -98,6 +98,12 @@ const CHAVES = {
     descricao: 'grava o veredito de uma linha do revisor em SubagentStop (hooks/veredito-revisor.cjs)',
     entrevista: null,
   },
+  'contrato-relato-executor': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'devolve a vez ao executor de fluxo que termina sem a linha `ENTREGA:` em SubagentStop (hooks/relato-executor.cjs)',
+    entrevista: null,
+  },
   'agente-folha': {
     tipo: 'boolean',
     padrao: true,

@@ -53,6 +53,7 @@ const { primeiroPrompt, extrairSlug, ultimaMensagemAssistente } = require(path.j
 const { extrairUltimaLinha, validarVocabulario } = require(path.join(__dirname, '..', 'scripts', 'lib', 'extrair-veredito.cjs'));
 const { ehWorktreeDeAgente } = require(path.join(__dirname, 'lib', 'contexto-sessao.cjs'));
 const { contarAchados, incoerencia, preexistentesNoDiff, tirarMarcaPreexistente } = require(path.join(__dirname, 'lib', 'achados-revisor.cjs'));
+const { caminhoTranscritoSubagente } = require(path.join(__dirname, 'lib', 'transcrito-subagente.cjs'));
 
 const VOCAB_ULTIMA_LINHA = ['veredito: ok', 'veredito: reprovado'];
 
@@ -159,30 +160,6 @@ function raizComEstadoDoSlug(repoRoot, slug) {
     process.stderr.write(`${slug} nao encontrado\n`);
   } else {
     process.stderr.write(`${slug} ambiguo: ${sobra.join(' ')}\n`);
-  }
-  return null;
-}
-
-/**
- * Caminho do transcrito do SUBAGENTE. `agent_transcript_path` quando o
- * payload trouxer; senão o fallback que bateu byte a byte na captura da
- * task 1: `<dirname(transcript_path)>/<session_id>/subagents/agent-<agent_id>.jsonl`.
- */
-function caminhoTranscritoSubagente(payload) {
-  if (typeof payload.agent_transcript_path === 'string' && payload.agent_transcript_path) {
-    return payload.agent_transcript_path;
-  }
-  if (
-    typeof payload.transcript_path === 'string' && payload.transcript_path
-    && typeof payload.session_id === 'string' && payload.session_id
-    && typeof payload.agent_id === 'string' && payload.agent_id
-  ) {
-    return path.join(
-      path.dirname(payload.transcript_path),
-      payload.session_id,
-      'subagents',
-      `agent-${payload.agent_id}.jsonl`,
-    );
   }
   return null;
 }
