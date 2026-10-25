@@ -199,15 +199,26 @@ quase sempre `INFERIDO` porque quem escreveu não deixou o porquê. Arquivo cham
 do que a escala de confiança existe para evitar. Dentro do mapa, herda a escala
 e fica sujeita a reconferência junto com a afirmação que a originou.
 
+Cada regra abre com id estável, `**R<n> — <título>**` (hífen também vale), e leva
+duas linhas abaixo: `Verificada em: <sha curto>`, o commit em que a regra foi
+relida no fonte, e `Teste: <bateria ou caso> | nenhum`, a bateria que a protege ou
+`nenhum` quando não há. O id permite citar a regra sem parafrasear. O
+`conferir-ancoras.cjs` lê as duas linhas: regra sem uma delas sai `sem-campos` e
+reprova o mapa; `Teste: nenhum` sai `sem-teste`, só aviso. Parágrafo sem o marcador
+é formato antigo: sai `regra sem-id`, aviso que não reprova — mapa já gravado não
+passa a falhar.
+
 Exemplo de entrada:
 
 ```
 ## Regras implícitas
 
-**Período fiscal fechado barra operação** — lê `GetSX8Recesso()` no topo, confere
+**R1 — Período fiscal fechado barra operação** — lê `GetSX8Recesso()` no topo, confere
 se a data está na faixa bloqueada. `INFERIDO`, porque a regra vem do padrão de
 entrada da função, não de comentário no código (CONFIRMADO: `zfiscal01.prw#MontaNFe`,
 linhas 156-159).
+Verificada em: 3f9c2a1
+Teste: nenhum
 ```
 
 ## Fechar

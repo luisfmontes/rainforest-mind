@@ -57,7 +57,15 @@
  *
  * SAÍDA. Uma linha por âncora (`<status> <citação>`) e o resumo
  * `N âncoras: X ok, Y falhas`. Mapa sem âncora sai `0 âncoras: 0 ok, 0 falhas`.
- * Exit: 0 tudo ok (ou zero âncoras) · 1 alguma falha · 2 uso ou mapa/raiz inexistente.
+ * Exit: 0 tudo ok (ou zero âncoras) · 1 alguma falha ou regra sem-campos · 2 uso ou mapa/raiz inexistente.
+ *
+ * REGRAS IMPLÍCITAS (D5 do lote 3 de apoio-ao-dev). A seção `## Regras implícitas`
+ * vai do cabeçalho até o próximo `## `. Regra nova abre com `**R<n> — <título>**`
+ * (hífen ou travessão) e traz `Verificada em: <sha>` e `Teste: <bateria ou caso> |
+ * nenhum` nas linhas seguintes. Estado por regra: `testada` (os dois campos, teste
+ * real), `sem-teste` (`Teste: nenhum`, aviso), `sem-campos` (falta um dos dois campos,
+ * falha, exit 1). Parágrafo da seção que não abre com o marcador é formato antigo:
+ * sai `regra sem-id` como aviso, sem mudar o exit. Sem a seção, a saída é a de sempre.
  *
  * Uso: node scripts/conferir-ancoras.cjs <mapa.md> [--repo <raiz>]
  */
@@ -225,7 +233,48 @@ function rotulo(cit, exibido) {
   return `${arq}:${faixa}${cit.simbolo ? ` \`${cit.simbolo}\`` : ''}`;
 }
 
-const cits = extrairCitacoes(fs.readFileSync(mapa, 'utf8'));
+// regra de `## Regras implícitas`: marcador `**R<n> — título**` (hífen ou travessão)
+const RE_REGRA = /^(?:[-*]\s+)?\*\*R(\d+)\s+[-—–]\s+.+?\*\*/;
+const RE_VERIFICADA = /^(?:[-*]\s+)?Verificada em:\s*(.*)$/;
+const RE_TESTE = /^(?:[-*]\s+)?Teste:\s*(.*)$/;
+
+// linhas da seção `## Regras implícitas`, do cabeçalho ao próximo `## `; sem a seção, lista vazia
+function secaoRegras(conteudo) {
+  const linhas = conteudo.split(/\r?\n/);
+  const ini = linhas.findIndex((l) => l.trim() === '## Regras implícitas');
+  if (ini === -1) return [];
+  const fim = linhas.findIndex((l, i) => i > ini && l.startsWith('## '));
+  return linhas.slice(ini + 1, fim === -1 ? undefined : fim);
+}
+
+// regra: marcador + campos; parágrafo que não abre com marcador é `sem-id` (formato antigo).
+// Os campos valem para a regra aberta, mesmo depois de linha em branco, até o próximo marcador.
+function lerRegras(linhas) {
+  const itens = [];
+  let atual = null;
+  let novoParagrafo = true;
+  for (const bruta of linhas) {
+    const l = bruta.trim();
+    if (l === '' || l.startsWith('#')) { novoParagrafo = true; continue; }
+    const marca = RE_REGRA.exec(l);
+    if (marca) {
+      atual = { tipo: 'regra', n: marca[1], verificada: null, teste: null, estado: null };
+      itens.push(atual);
+    } else if (atual && RE_VERIFICADA.test(l)) {
+      atual.verificada = RE_VERIFICADA.exec(l)[1].trim();
+    } else if (atual && RE_TESTE.test(l)) {
+      atual.teste = RE_TESTE.exec(l)[1].trim();
+    } else if (novoParagrafo) {
+      itens.push({ tipo: 'sem-id', estado: 'sem-id', texto: l.slice(0, 60) });
+      atual = null;
+    }
+    novoParagrafo = false;
+  }
+  return itens;
+}
+
+const conteudo = fs.readFileSync(mapa, 'utf8');
+const cits = extrairCitacoes(conteudo);
 let oks = 0;
 let contadas = 0;
 for (const cit of cits) {
@@ -239,5 +288,21 @@ for (const cit of cits) {
   console.log(`${r.status} ${rotulo(cit, loc.exibido)}${r.detalhe ? ` ${r.detalhe}` : ''}`);
 }
 const falhas = contadas - oks;
-console.log(`${contadas} âncoras: ${oks} ok, ${falhas} falhas`);
-process.exitCode = falhas > 0 ? 1 : 0;
+
+const regras = lerRegras(secaoRegras(conteudo));
+for (const regra of regras) {
+  if (regra.tipo === 'sem-id') {
+    console.log(`regra sem-id: ${regra.texto}`);
+    continue;
+  }
+  regra.estado = 'testada';
+  if (regra.teste === 'nenhum') regra.estado = 'sem-teste';
+  if (!regra.verificada || !regra.teste) regra.estado = 'sem-campos';
+  console.log(`regra R${regra.n} ${regra.estado}`);
+}
+const contaEstado = (estado) => regras.filter((r) => r.estado === estado).length;
+const sufixoRegras = regras.length
+  ? ` · regras: ${contaEstado('testada')} testada, ${contaEstado('sem-teste')} sem-teste, ${contaEstado('sem-campos')} sem-campos, ${contaEstado('sem-id')} sem-id`
+  : '';
+console.log(`${contadas} âncoras: ${oks} ok, ${falhas} falhas${sufixoRegras}`);
+process.exitCode = falhas > 0 || contaEstado('sem-campos') > 0 ? 1 : 0;
