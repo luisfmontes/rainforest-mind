@@ -21,6 +21,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { leveDaBranch } = require('./lib/caminho-leve.cjs');
+const { caminhoReal } = require('./lib/caminho-real.cjs');
 
 const {
   EXTENSOES_CODIGO, diretorioExistente, toplevel, branchAtual, ehBranchPadraoDoRepo,
@@ -57,14 +58,10 @@ function main() {
   if (!gitTop) process.exit(0);
 
   // Critério 3: arquivo não sob docs/
-  // Caminho real dos dois lados: no Windows o temp pode vir em nome curto 8.3
+  // Caminho real dos dois lados (lib caminho-real): no Windows o temp pode vir em nome curto 8.3
   // (`RUNNER~1`) e o git devolve o longo, e o `relative` subia com `..`.
-  const real = (p) => {
-    try { return fs.realpathSync.native(p); } catch { /* arquivo novo: sobe ao pai */ }
-    try { return path.join(fs.realpathSync.native(path.dirname(p)), path.basename(p)); } catch { return p; }
-  };
   const normalize = (p) => p.split(/[\\/]/).join('/');
-  const relPath = normalize(path.relative(real(gitTop), real(path.resolve(ev.cwd, filePath))));
+  const relPath = normalize(path.relative(caminhoReal(gitTop), caminhoReal(path.resolve(ev.cwd, filePath))));
   const partes = relPath.split('/');
   if (partes[0] === 'docs') {
     process.exit(0);

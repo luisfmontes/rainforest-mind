@@ -23,6 +23,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { caminhoExecutavel } = require(path.join(__dirname, 'lib', 'resolver-executavel.cjs'));
+const { caminhoReal } = require(path.join(__dirname, 'lib', 'caminho-real.cjs'));
 
 const ORCAMENTO_MS = 3000;
 const ORCAMENTO_TOPO_MS = 1000;
@@ -92,7 +93,7 @@ function mesmoArquivo(a, b) {
 
 // Uma chamada de git grep para todos os nomes. Com -z cada registro vem como caminho\0linha\0conteúdo,
 // sem aspas nem escape. Primeira definição de cada nome em outro arquivo rastreado; linha de uso não conta.
-function acharDefinicoes(gitTop, nomes, tipo, arquivoEditado, restante) {
+function acharDefinicoes(gitTop, nomes, tipo, editados, restante) {
   const args = ['-c', 'core.fsmonitor=false', '-c', 'core.quotePath=false', 'grep', '-z', '-n', '-w', '-F',
     ...(tipo === 'advpl' ? ['-i'] : []), `--max-count=${MAX_POR_ARQUIVO}`];
   for (const nome of nomes) args.push('-e', nome);
@@ -121,25 +122,10 @@ function acharDefinicoes(gitTop, nomes, tipo, arquivoEditado, restante) {
     if (!achado) continue;
     const nome = pedidos.get(chave(achado));
     if (!nome || achados.has(nome)) continue;
-    if (!caminhoSeguro(caminho) || mesmoArquivo(caminho, arquivoEditado)) continue;
+    if (!caminhoSeguro(caminho) || editados.some((e) => mesmoArquivo(caminho, e))) continue;
     achados.set(nome, { caminho, linha: Number(num) });
   }
   return achados;
-}
-
-// Caminho longo e canônico: o rev-parse devolve o nome longo e o cwd pode vir em nome
-// curto 8.3 (o temp do runner do CI), e aí o path.relative não casa o próprio arquivo.
-// Arquivo que ainda não existe resolve pela pasta.
-function caminhoReal(p) {
-  try {
-    return fs.realpathSync.native(p);
-  } catch {
-    try {
-      return path.join(fs.realpathSync.native(path.dirname(p)), path.basename(p));
-    } catch {
-      return p;
-    }
-  }
 }
 
 // Rev-parse próprio, com timeout e sem fsmonitor: o hook não herda o toplevel de outra biblioteca.
@@ -185,8 +171,14 @@ function main() {
   const restante = fim - Date.now();
   if (restante <= 0) process.exit(0);
 
-  const arquivoEditado = path.relative(caminhoReal(gitTop), caminhoReal(path.resolve(ev.cwd, ti.file_path))).split(path.sep).join('/');
-  const encontrados = acharDefinicoes(gitTop, nomes, tipo, arquivoEditado, restante);
+  // O próprio arquivo tem dois nomes: o real (resolve 8.3 do cwd e junction) e o relativo ao
+  // toplevel sem resolver (a junction rastreada no repo aparece assim no git grep). Qualquer um casa.
+  const absoluto = path.resolve(ev.cwd, ti.file_path);
+  const editados = [
+    path.relative(caminhoReal(gitTop), caminhoReal(absoluto)).split(path.sep).join('/'),
+    path.relative(gitTop, absoluto).split(path.sep).join('/'),
+  ];
+  const encontrados = acharDefinicoes(gitTop, nomes, tipo, editados, restante);
   const achados = [];
   for (const nome of nomes) {
     const a = encontrados.get(nome);
