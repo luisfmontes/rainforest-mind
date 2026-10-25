@@ -141,6 +141,16 @@ if [ "$WIN" = 1 ]; then
     OUT="$(node "$HOOK_DUP" < "$SBP/p4.json" 2>/dev/null)"; EXIT=$?
     saiu "editar pelo caminho da junction: exit 0" "$EXIT" "0"
     vazio "editar pelo caminho da junction nao acusa o proprio arquivo (alvo/x.cjs)" "$OUT"
+    # Como no CI (temp em RUNNER~1): cwd em nome curto 8.3, e o git devolve o toplevel longo.
+    CURTO7="$(cygpath -m "$(cygpath -d "$R7")")"
+    if [ "$CURTO7" = "$C7" ]; then
+      pulou "junction com cwd 8.3: volume sem nome 8.3"
+    else
+      gerar Edit "$CURTO7/jn/x.cjs" "$CURTO7" 'function soNaJunction() {}\n' > "$SBP/p4b.json"
+      OUT="$(node "$HOOK_DUP" < "$SBP/p4b.json" 2>/dev/null)"; EXIT=$?
+      saiu "junction com cwd 8.3: exit 0" "$EXIT" "0"
+      vazio "junction com cwd 8.3 nao acusa o proprio arquivo pelo nome jn/x.cjs" "$OUT"
+    fi
   fi
   cmd /c rmdir "$WLINK" </dev/null >/dev/null 2>&1
 else

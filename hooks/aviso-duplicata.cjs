@@ -171,12 +171,14 @@ function main() {
   const restante = fim - Date.now();
   if (restante <= 0) process.exit(0);
 
-  // O próprio arquivo tem dois nomes: o real (resolve 8.3 do cwd e junction) e o relativo ao
-  // toplevel sem resolver (a junction rastreada no repo aparece assim no git grep). Qualquer um casa.
+  // O próprio arquivo tem dois nomes: o real (resolve 8.3 do cwd e junction) e o que o git grep
+  // mostra para a junction rastreada no repo. O segundo resolve só o cwd (8.3 no CI, `RUNNER~1`,
+  // contra o toplevel longo do git) e mantém o resto sem resolver, para não cair dentro da junction.
   const absoluto = path.resolve(ev.cwd, ti.file_path);
+  const semJunction = path.join(caminhoReal(ev.cwd), path.relative(ev.cwd, absoluto));
   const editados = [
     path.relative(caminhoReal(gitTop), caminhoReal(absoluto)).split(path.sep).join('/'),
-    path.relative(gitTop, absoluto).split(path.sep).join('/'),
+    path.relative(caminhoReal(gitTop), semJunction).split(path.sep).join('/'),
   ];
   const encontrados = acharDefinicoes(gitTop, nomes, tipo, editados, restante);
   const achados = [];
