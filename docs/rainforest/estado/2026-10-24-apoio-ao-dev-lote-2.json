@@ -24,7 +24,7 @@
     "em": "2026-10-24"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-24",
     "integradas": [
       1,
@@ -35,11 +35,11 @@
       6
     ],
     "em_voo": [],
-    "em": "2026-10-24",
+    "em": "2026-10-25",
     "tarefas_ok": 6,
     "tarefas": 6,
-    "comando": "bash scripts/varrer-baterias.sh (273 baterias, via rodar-longo); conferir-fluxo creep --base 5a9342cf --head dbe4db10",
-    "saida": "as 273 baterias passaram / exit 0; ok: sem creep — 23 arquivo(s) coberto(s)",
+    "comando": "volta 2: integrar-tarefa 5,2,1,3 (conferir-entrega + mutação); bash scripts/varrer-baterias.sh; bash scripts/testa-auditor-de-seguranca.sh (isolada); conferir-fluxo creep --base 5a9342cf",
+    "saida": "4 integrações aceitas (1b8eecb2, 38814786, 4d8b5dc0, e40a342e); varredura: 1 vermelha, scripts/testa-auditor-de-seguranca.sh caso 11 (orcamento.cjs mede o additionalContext vivo da abertura); isolada: ok: 107 falhou: 0 — oscilação de ambiente, fora do diff",
     "mutacao": [
       {
         "tarefa": 1,
@@ -72,10 +72,6 @@
         "motivo": "metadado de versão e documentação, sem comportamento a inverter"
       }
     ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-24"
-    },
     "reaberturas": 1
   },
   "revisar": {
