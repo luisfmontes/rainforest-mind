@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.75.0-1e5c3f?style=flat-square" alt="versão 1.75.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-1.76.0-1e5c3f?style=flat-square" alt="versão 1.76.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -303,6 +303,8 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `planejador` · `revisor` · `tester` · `depurador` | sonnet, tarefa que exige julgamento |
 | `arqueologo` · `auditor-de-seguranca` | sonnet, executam skill própria |
 
+O `revisor` abre cada achado com a severidade, `[alta]`, `[media]` ou `[baixa]` (e `[design]` quando contesta uma decisão), e termina com `VEREDITO: ok` ou `VEREDITO: reprovado`. O hook do veredito devolve a vez quando os dois não casam: `ok` com `[alta]`, ou `reprovado` sem achado marcado.
+
 O `auditor-de-seguranca` roda duas réguas OWASP (Top 10 2025 + API Security 2023) e uma **Régua 3 de técnicas** — [`referencias/reguas-tecnicas-ofensivas.md`](referencias/reguas-tecnicas-ofensivas.md), 30 lentes de detecção defensiva derivadas do repositório `SnailSploit/claude-red` (MIT) e reescritas report-only — que afia as duas no nível de técnica de ataque.
 
 **Agentes em Claude ou Codex** — cada agente tem um `runtime:` no manifesto (ausente = `claude`); a primeira linha do briefing pode ser `Runtime: codex` ou `Runtime: claude` para override (case-insensitive). Quando o usuário diz "faz no codex", "roda no codex" ou equivalente, o despacho põe `Runtime: codex` na primeira linha. Transporte via `codex exec` usa sandbox `read-only` ou `workspace-write` conforme `escreve`, modelo por `codex-modelo-<haiku|sonnet|opus>` no `/setup` (padrão do `~/.codex/config.toml`). As skills `review`, `adversarial-review` e `rescue` do `openai/codex-plugin-cc` não ganharam comando aqui porque já existem como função neste plugin: `revisor`, segunda opinião cross-model, `depurador`.
@@ -517,7 +519,7 @@ ou o caminho. Nome curto que casa com mais de um projeto, ou com nenhum, sai com
 erro listando os candidatos. O design:
 [`docs/rainforest/design/2026-10-08-projeto-canonico.md`](docs/rainforest/design/2026-10-08-projeto-canonico.md).
 Com `--texto`, o resultado vem pelo mais relevante (bm25 do FTS5), e o empate fica com o mais
-recente; sem `--texto`, a lista é dos mais recentes. `--desde AAAA-MM-DD` e `--ate AAAA-MM-DD` limitam pela data da observação, com as duas pontas incluídas, e combinam com os outros filtros; data que não existe sai com exit 2.
+recente; sem `--texto`, a lista é dos mais recentes. `--desde AAAA-MM-DD` e `--ate AAAA-MM-DD` limitam pela data da observação, com as duas pontas incluídas, e combinam com os outros filtros; data que não existe sai com exit 2. Busca vazia com filtro diz quantas observações vivas há no escopo sem os filtros (ou que não há nenhuma), para o zero não passar por ausência de fato; com `--json` segue `[]`.
 
 ## Mais fundo
 

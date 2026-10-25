@@ -10,6 +10,17 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.76.0 — 2026-10-24
+
+Segundo lote da rodada apoio ao dev, tema verificação e evidência. Desenho e decisões D1 a D9 em
+`docs/rainforest/design/2026-10-24-apoio-ao-dev-lote-2.md`.
+
+- **O veredito do revisor tem de casar com os achados (D3).** Cada achado abre com a severidade, `[alta]`, `[media]` ou `[baixa]`, no início do item; `[design]` pode vir junto e, sozinho, também conta como achado. `VEREDITO: ok` com algum `[alta]` ou `VEREDITO: reprovado` sem achado marcado devolve a vez ao revisor na primeira parada, dizendo a regra e a contagem; na segunda, grava `invalido`. O `critica-do-revisor.cjs` usa a mesma contagem para o "reprovado sem achado" (exit 4). Antes, só a última linha era validada (`hooks/veredito-revisor.cjs:56`), e qualquer texto valia como achado (`scripts/critica-do-revisor.cjs:94`). Em `hooks/lib/achados-revisor.cjs`, `hooks/veredito-revisor.cjs`, `scripts/critica-do-revisor.cjs`, `scripts/estado.cjs`, `agents/revisor.md` e `skills/revisar/SKILL.md`.
+- **Prova que não rodou caso nenhum é recusada (D4).** No `marcar --estagio plano`, a prova que sai ≠ 0 na base com placar zerado (`ok: 0 falhou: 0`) é recusada: o vermelho veio da infraestrutura, não do comportamento ausente. Saída sem placar segue aceita. Antes, todo exit ≠ 0 valia e o stdout nunca era lido (`scripts/conferir-prova.cjs:221`). Em `scripts/conferir-prova.cjs`.
+- **`limpar-worktrees` só remove com prova afirmativa (D5).** Antes de remover worktree `limpo` ou `fantasma-travado`, confere se alguma branch alcança o HEAD. Não alcança (HEAD destacado com commit próprio): grava `refs/rainforest/arquivo/<pasta>` e diz isso na saída. A sonda que falha deixa o worktree como `erro`, sem remover, e a ref de arquivo existente com outro commit não é sobrescrita. Antes, o script nunca olhava commit (`scripts/limpar-worktrees.cjs:718`). Em `scripts/limpar-worktrees.cjs`.
+- **Saúde: log de erros ilegível sai "não medido", não ok (D6).** `/saude` mostra aviso quando o log de erros de ferramenta não pode ser lido, e `erros.cjs listar`/`contar` saem 1 com a causa em vez de imprimir zero. Log ausente segue ok, "nenhum registrado". Antes, arquivo ilegível virava "nenhum nas últimas 24 h" (`scripts/erros.cjs:96`). Em `scripts/erros.cjs` e `scripts/saude.cjs`.
+- **`memoria.cjs buscar` explica o vazio (D7).** Com zero resultados e filtro, a saída diz quantas observações vivas existem no escopo; sem nenhuma, diz se o banco está sem observações ou só o escopo. `--json` segue `[]`. Antes, filtro errado e banco vazio saíam iguais (`scripts/memoria.cjs:1089`). Em `scripts/memoria.cjs`.
+
 ## 1.75.0 — 2026-10-24
 
 Primeiro lote da rodada apoio ao dev. Desenho e decisões D1 a D10 em
