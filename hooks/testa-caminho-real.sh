@@ -9,7 +9,7 @@
 #      cwd com arquivo fora de docs/ ainda bloqueia (controle: o trilho esta de fato ligado);
 #   4. junction rastreada no repo: editar pelo caminho da junction nao acusa o proprio arquivo
 #      (so win32; pulado se o git nao lista o arquivo pelo caminho da junction).
-# Nome curto 8.3 sai de cygpath -d; se o volume nao gera 8.3, o caso e pulado e conta como ok.
+# Nome curto 8.3 sai de cygpath -d; se o volume nao gera 8.3, o caso e pulado e entra na contagem de pulados do resumo.
 #
 # Repos e payloads sao montados aqui dentro: payload com node, nunca com printf.
 # O config real nunca e lido (RFM_ROOT neutro).
@@ -32,11 +32,11 @@ SBP="$(mktemp -d)"
 trap 'rm -rf "$SBP"' EXIT
 export RFM_ROOT="$SBP/dados-neutros"; mkdir -p "$RFM_ROOT"
 
-ok=0; falhou=0
+ok=0; falhou=0; pulados=0
 saiu()  { if [ "$2" = "$3" ]; then ok=$((ok+1)); echo "  ok   $1"; else falhou=$((falhou+1)); echo "  FALHA $1 (exit $2, esperava $3)"; fi; }
 tem()   { if grep -qF -- "$3" <<<"$2"; then ok=$((ok+1)); echo "  ok   $1"; else falhou=$((falhou+1)); echo "  FALHA $1 (esperava '$3')"; echo "$2" | sed 's/^/         /'; fi; }
 vazio() { if [ -z "$2" ]; then ok=$((ok+1)); echo "  ok   $1"; else falhou=$((falhou+1)); echo "  FALHA $1 (esperava saida vazia)"; echo "$2" | sed 's/^/         /'; fi; }
-pulou() { ok=$((ok+1)); echo "  pulado: $1"; }
+pulou() { pulados=$((pulados+1)); echo "  pulado: $1"; }
 
 # Repo git de teste com os arquivos dados (caminho relativo => conteudo, \n literal vira quebra).
 montar_repo() {
@@ -130,7 +130,8 @@ if [ "$WIN" = 1 ]; then
   R7="$SBP/junc"
   montar_repo "$R7" 'alvo/x.cjs=function soNaJunction() {}\n'
   WALVO="$(cygpath -w "$R7/alvo")"; WLINK="$(cygpath -w "$R7/jn")"
-  cmd //c mklink /J "$WLINK" "$WALVO" >/dev/null 2>&1
+  # MSYS_NO_PATHCONV=1 (acima) passa //c literal ao cmd, que abre interativo e espera a entrada.
+  cmd /c mklink /J "$WLINK" "$WALVO" </dev/null >/dev/null 2>&1
   ( cd "$R7" && git add -A && git commit -q -m junction ) 2>/dev/null
   C7="$(cygpath -m "$R7")"
   if ! ( cd "$R7" && git ls-files ) | grep -qxF 'jn/x.cjs'; then
@@ -141,13 +142,13 @@ if [ "$WIN" = 1 ]; then
     saiu "editar pelo caminho da junction: exit 0" "$EXIT" "0"
     vazio "editar pelo caminho da junction nao acusa o proprio arquivo (alvo/x.cjs)" "$OUT"
   fi
-  cmd //c rmdir "$WLINK" >/dev/null 2>&1
+  cmd /c rmdir "$WLINK" </dev/null >/dev/null 2>&1
 else
   pulou "só win32"
 fi
 
 echo
 echo
-echo "== resultado: $ok ok, $falhou falha(s) =="
+echo "== resultado: $ok ok, $falhou falha(s), $pulados pulado(s) =="
 [ "$falhou" -eq 0 ] || exit 1
 exit 0
