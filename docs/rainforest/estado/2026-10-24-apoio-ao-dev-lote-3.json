@@ -62,28 +62,32 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "e328c877fb8c87b117da854546cb7393a4a576ed",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/2026-10-24-apoio-ao-dev-lote-3.json"
-      ]
+      "head": "ff82f9163453e9b97e0b591f279d4599ac70d1c4",
+      "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a25f78606a8e67027",
+        "agente_id": "aefd7a4a3f1a59307",
         "veredito": "ok",
         "em": "2026-10-25",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-a25f78606a8e67027.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-aefd7a4a3f1a59307.jsonl"
       }
     ],
-    "achados": 7,
+    "achados": 1,
     "em": "2026-10-25",
-    "tentativas": 1
+    "base": "cc733290",
+    "head": "HEAD"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-baterias-do-diff.sh; bash hooks/testa-aviso-duplicata.sh; bash scripts/testa-conferir-ancoras-regras.sh; bash scripts/testa-co-mudanca.sh; node -e (versão dos dois plugin.json); node scripts/conferir-fluxo.cjs cobertura --slug 2026-10-24-apoio-ao-dev-lote-3",
+    "saida": "tarefas 1-4: as quatro provas exit=0 (baterias-do-diff 16/0, aviso-duplicata 45/0, conferir-ancoras-regras 11/0, co-mudanca 6/0); tarefa 5: 1.77.0 / 1.77.0 e CHANGELOG casado com o diff pelo revisor da volta 1 (e a exceção de .md/docs/ conferida na volta 2b); cobertura válida — 8 decisão(ões), 5 tarefa(s)",
+    "sensor_externo": "node scripts/conferir-fluxo.cjs cobertura",
+    "em": "2026-10-25",
+    "head": "ff82f9163453e9b97e0b591f279d4599ac70d1c4"
   },
   "fechar": {
     "status": "pendente"
