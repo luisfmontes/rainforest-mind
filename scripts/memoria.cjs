@@ -511,6 +511,9 @@ function criarSchema(conexao, opcoes = {}) {
   // superadas chegou a LIMIAR_INVALIDA_RESUMO sai da abertura; banco antigo ganha a coluna aqui.
   adicionarColunaSeFaltar(conexao, 'resumos', 'invalidado_em', 'TEXT');
 
+  // Migração 4c: posição servida em uso_memoria (D5). Linha antiga fica nula.
+  adicionarColunaSeFaltar(conexao, 'uso_memoria', 'posicao', 'INTEGER');
+
   // Migração 5: migração do FTS legado (C1).
   // Achado: CREATE VIRTUAL TABLE IF NOT EXISTS observacoes_fts é no-op quando
   // a tabela ANTIGA (`fts5(conteudo)` sem content=) existe — banco nunca migra
