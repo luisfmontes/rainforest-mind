@@ -998,6 +998,11 @@ function cmdBuscar() {
 
   // Resultado padrão: array vazio (degradação).
   let resultados = [];
+  // D7: total do escopo, contado só quando o resultado sai vazio na saída humana.
+  let totalNoEscopo = null;
+  // D7: observações vivas do banco inteiro, para a frase do zero (ver vazioExplicado).
+  let totalBanco = null;
+  const temFiltro = Boolean(texto || projeto || desde || ate);
 
   try {
     // Degradação: banco não existe — devolver array vazio, exit 0.
@@ -1071,6 +1076,18 @@ function cmdBuscar() {
       params[0] = termos.map(t => `"${t}"`).join(' ');
       resultados = termos.length ? stmt.all(...params) : [];
     }
+    // D7: zero resultados na saída humana conta o escopo com a mesma conexão, sem texto e sem
+    // data. Falha aqui cai no catch de erro de banco, igual à busca.
+    if (!ehJson && !resultados.length) {
+      const escopo = projeto ? 'AND o.projeto = ?' : '';
+      const linha = conexao.prepare(`SELECT COUNT(*) AS n FROM observacoes o WHERE 1=1 ${filtroVivas('o.')} ${escopo}`)
+        .get(...(projeto ? [projetoResolvido] : []));
+      totalNoEscopo = linha.n;
+      // Sem --projeto, o escopo já é o banco inteiro.
+      totalBanco = projeto
+        ? conexao.prepare(`SELECT COUNT(*) AS n FROM observacoes o WHERE 1=1 ${filtroVivas('o.')}`).get().n
+        : totalNoEscopo;
+    }
     conexao.close();
   } catch (e) {
     // Degradação: banco corrompido ou outro erro — resultado vazio, exit 0.
@@ -1081,12 +1098,26 @@ function cmdBuscar() {
     resultados = [];
   }
 
+  // D7: o vazio diz o que o zero vale. Com N = 0, "banco sem observações" só quando o banco
+  // não tem observação viva nenhuma (contagem global); escopo de --projeto sem viva com vivas
+  // em outro projeto diz "nenhuma observação viva no escopo". null = não contado (erro de banco).
+  function vazioExplicado(total, filtro) {
+    if (total === null) return '(nenhum resultado)';
+    if (total === 0) {
+      return totalBanco === 0
+        ? '(nenhum resultado — banco sem observações)'
+        : '(nenhum resultado — nenhuma observação viva no escopo)';
+    }
+    if (filtro) return `(nenhum resultado — ${total} observação(ões) no escopo; os filtros excluíram todas)`;
+    return '(nenhum resultado)';
+  }
+
   // Saída.
   if (ehJson) {
     console.log(JSON.stringify(resultados, null, 2));
   } else {
     if (!resultados.length) {
-      console.log('(nenhum resultado)');
+      console.log(vazioExplicado(totalNoEscopo, temFiltro));
       return;
     }
     for (const obs of resultados) {
