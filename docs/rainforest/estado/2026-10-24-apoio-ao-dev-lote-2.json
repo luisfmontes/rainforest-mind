@@ -24,7 +24,7 @@
     "em": "2026-10-24"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-24",
     "integradas": [
       1,
@@ -71,10 +71,31 @@
         "resultado": "n/a",
         "motivo": "metadado de versão e documentação, sem comportamento a inverter"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-24"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "5b6fe63db12472b5fd6690badd1ec69caa842d62",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a834b6368578aabcc",
+        "veredito": "reprovado",
+        "em": "2026-10-24",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-a834b6368578aabcc.jsonl"
+      }
+    ],
+    "achados": 6,
+    "em": "2026-10-24",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
@@ -96,6 +117,27 @@
       "porque": "sem isso a segunda parada some calada (hook com stdio ignore) e o revisar fecha sem registro; reprovado cujo unico item e [design] e o caso que mais precisa passar",
       "estagio": "executar",
       "em": "2026-10-25T00:36:46.986Z"
+    },
+    {
+      "pergunta": "achado 3: placar 'N ok, M falha(s)' fica cego no conferir-prova",
+      "escolha": "conferir-prova reconhece também falha(s)/falhas além do extrairPlacar; conferir-mutacao não muda",
+      "porque": "113 baterias usam falha(s); mexer no extrairPlacar mudaria a detecção de colapso da mutação, fora do D4",
+      "estagio": "executar",
+      "em": "2026-10-25T02:17:42.338Z"
+    },
+    {
+      "pergunta": "achado 4: ref de arquivo colide por basename e quebra com espaço",
+      "escolha": "nome saneado (caracteres inválidos viram -); se a ref já aponta para outro commit, usa sufixo -<sha7>; mesma ref no mesmo commit é reuso",
+      "porque": "mantém refs/rainforest/arquivo/<pasta> do D5 no caso comum e nunca deixa worktree irremovível",
+      "estagio": "executar",
+      "em": "2026-10-25T02:17:42.435Z"
+    },
+    {
+      "pergunta": "achado 6: etiqueta conta como achado sem olhar o conteúdo",
+      "escolha": "não muda o código; revisor.md avisa para não usar a etiqueta fora de achado",
+      "porque": "D8: a régua é o formato, não o juízo",
+      "estagio": "executar",
+      "em": "2026-10-25T02:17:42.533Z"
     }
   ]
 }
