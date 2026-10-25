@@ -118,8 +118,8 @@ if grep -q 'MUTADA-589' fonte-589.cjs; then
   echo "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s"
   exit 101
 fi
-sleep 2
-echo "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.00s"
+sleep 8
+echo "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.00s"
 exit 0
 BAT
 exige 0 "libtest vermelho legítimo com baseline lento sai vermelho, não corte" \
@@ -153,7 +153,7 @@ if grep -q 'MUTADA-FALHA' fonte-falha.cjs; then
   echo "== resultado: 0 ok, 1 falha(s) =="
   exit 1
 fi
-sleep 2
+sleep 8
 echo "== resultado: 1 ok, 0 falha(s) =="
 exit 0
 BAT
