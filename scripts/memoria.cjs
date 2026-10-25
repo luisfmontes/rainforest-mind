@@ -1102,6 +1102,8 @@ function cmdBuscar() {
   // não tem observação viva nenhuma (contagem global); escopo de --projeto sem viva com vivas
   // em outro projeto diz "nenhuma observação viva no escopo". null = não contado (erro de banco).
   function vazioExplicado(total, filtro) {
+    // LIMIT 0 zera a saída sozinho: o zero vem do limite, não dos filtros.
+    if (limite === 0) return '(nenhum resultado — --limite 0)';
     if (total === null) return '(nenhum resultado)';
     if (total === 0) {
       return totalBanco === 0

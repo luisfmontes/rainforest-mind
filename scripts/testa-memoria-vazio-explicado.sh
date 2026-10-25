@@ -10,6 +10,7 @@
 #   5. busca com resultado sai como antes: linha "[id] projeto - data", sem texto de vazio
 #   6. --projeto conta só o projeto: proj-a (2 obs) com --texto que não casa diz 2, não 5
 #   7. --projeto sem observação viva, com vivas em outro projeto, não diz "banco sem observações"
+#   8. --limite 0 com duas observações que casam diz o limite, não os filtros; --json segue []
 
 set -u
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -112,6 +113,17 @@ out=$(RFM_ROOT="$CAIXA3" $MEMORIA buscar --projeto proj-q --texto termoinexisten
 if [ "$c" = "0" ] && [ "$out" = "(nenhum resultado — nenhuma observação viva no escopo)" ]; then
   verde "--projeto proj-q (só substituída, proj-r tem viva): frase nova, não 'banco sem observações'"
 else vermelha "--projeto sem viva com vivas em outro projeto diz nenhuma observação viva no escopo" "esperava exit 0 e a frase nova, veio exit $c [$out]"; fi
+
+echo "== caixa 4: duas observacoes casam com alfa; --limite 0 diz o limite, não os filtros =="
+CAIXA4="$(novo_sandbox)"
+RFM_ROOT="$CAIXA4" $MEMORIA iniciar >/dev/null 2>&1
+semear "$CAIXA4" proj-lim "alfa um observacao" "2026-10-01T12:00:00.000Z" "alfa dois observacao" "2026-10-02T12:00:00.000Z"
+
+out=$(RFM_ROOT="$CAIXA4" $MEMORIA buscar --texto alfa --limite 0 2>/dev/null); c=$?
+out2=$(RFM_ROOT="$CAIXA4" $MEMORIA buscar --texto alfa --limite 0 --json 2>/dev/null); c2=$?
+if [ "$c" = "0" ] && [ "$out" = "(nenhum resultado — --limite 0)" ] && [ "$c2" = "0" ] && [ "$out2" = "[]" ]; then
+  verde "--texto alfa --limite 0 (2 casam): frase do limite, e --json segue []"
+else vermelha "--limite 0 diz o limite, não os filtros" "esperava exit 0 e [(nenhum resultado — --limite 0)] com --json [], veio exit $c [$out], json exit $c2 [$out2]"; fi
 
 echo
 echo "total=$total vermelhas:[$(IFS=,; echo "${vermelhas[*]:-}")]"
