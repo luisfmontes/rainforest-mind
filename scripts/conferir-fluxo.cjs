@@ -38,7 +38,7 @@ const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib',
 const { contarOcorrencias } = require(path.join(__dirname, '..', 'hooks', 'lib', 'contar-ocorrencias.cjs'));
 const { caminhoDoc } = require(path.join(__dirname, '..', 'hooks', 'lib', 'pastas-docs.cjs'));
 const { lerTetoDeclarado } = require(path.join(__dirname, '..', 'hooks', 'lib', 'teto-despachos.cjs'));
-const { calcularCamadas, ErroCamadas, parseDependencias, globMatches } = require(path.join(__dirname, 'lib', 'camadas.cjs'));
+const { calcularCamadas, ErroCamadas, parseDependencias, globMatches, acoplamentos } = require(path.join(__dirname, 'lib', 'camadas.cjs'));
 
 // A raiz é a do PROJETO em que se trabalha, mesma cadeia do estado.cjs
 const RAIZ = process.env.RFM_ESTADO_ROOT
@@ -381,12 +381,17 @@ function cmdCobertura() {
   // D2/D3 (2026-10-13): a recusa é por camada. Ciclo, dependência inexistente e
   // arquivo em comum entre tarefas da mesma camada saem do calcularCamadas.
   try {
-    const { recusas, avisos } = calcularCamadas(tarefasDag);
+    const { camadas, recusas, avisos } = calcularCamadas(tarefasDag);
     for (const c of recusas) {
       erros.push(`tarefa ${c.a} e tarefa ${c.b} estão na mesma camada ${c.camada} e compartilham arquivos: ${c.arquivo}`);
     }
     for (const c of avisos) {
       console.error(`aviso: tarefa ${c.a} e tarefa ${c.b} estão na mesma camada ${c.camada} e compartilham arquivos: ${c.arquivo} (alguma declara paralela:, não recusa)`);
+    }
+    // D6 (2026-10-24): require entre tarefas da mesma camada avisa; nunca recusa nem muda o exit.
+    const arquivosDeTarefas = new Map(tarefasDag.map((t) => [t.numero, t.arquivos]));
+    for (const a of acoplamentos(camadas, arquivosDeTarefas, RAIZ)) {
+      console.error(`aviso: tarefa ${a.b} (${a.arquivo}) faz require de ${a.alvo}, da tarefa ${a.a}, na mesma camada ${a.camada} — declare depende de: ${a.a} se a tarefa ${a.a} muda o que ${a.alvo} exporta`);
     }
   } catch (e) {
     if (!(e instanceof ErroCamadas)) throw e;
@@ -1238,7 +1243,7 @@ function cmdMutacoes() {
 
 /**
  * Mostra as camadas do plano (as tarefas que o `executar` despacha juntas) e
- * recusa o que o calcularCamadas recusa. Stdout: JSON {camadas, conflitos, recusas, avisos}.
+ * recusa o que o calcularCamadas recusa. Stdout: JSON {camadas, conflitos, recusas, avisos, acoplamentos}.
  * Exit 0 sem recusa (aviso de conflito com paralela: declarada não muda o exit); 2 com
  * recusa, ciclo ou dependência inexistente.
  */
@@ -1260,6 +1265,7 @@ function cmdCamadas() {
       paralelaDeclarada: t.paralelaDeclarada === true,
     }));
     resultado = calcularCamadas(tarefas);
+    resultado.acoplamentos = acoplamentos(resultado.camadas, new Map(tarefas.map((t) => [t.numero, t.arquivos])), RAIZ);
   } catch (e) {
     if (!(e instanceof ErroCamadas)) throw e;
     console.error(`RECUSADO: ${e.message}`);

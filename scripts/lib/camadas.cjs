@@ -17,6 +17,9 @@
  * Ciclo e dependência inexistente lançam ErroCamadas, nomeando as tarefas.
  */
 
+const fs = require('fs');
+const path = require('path');
+
 class ErroCamadas extends Error {
   constructor(mensagem, detalhe = {}) {
     super(mensagem);
@@ -168,4 +171,92 @@ function globMatches(arquivo, glob) {
   return regex.test(arquivo);
 }
 
-module.exports = { calcularCamadas, ErroCamadas, parseDependencias, globMatches };
+const EXTENSOES_JS = ['.cjs', '.js', '.mjs', '.ts'];
+
+/**
+ * Caminhos absolutos normalizados que um texto de JS importa por caminho relativo,
+ * resolvidos contra `dir` (a pasta do arquivo que contém o texto). Reconhece cinco
+ * formas: `require('./x')`, `require('../x.cjs')`, `import y from './x'`, `import('./x')`
+ * e `require(path.join(__dirname, '<lit>', ..., '<lit>'))` com todos os argumentos
+ * literais. `require` com variável e módulo de pacote ficam fora.
+ */
+function alvosDeRequire(texto, dir) {
+  const alvos = new Set();
+  const relativos = [
+    /\brequire\(\s*(['"])(\.{1,2}\/[^'"]+)\1\s*\)/g,
+    /\bimport\(\s*(['"])(\.{1,2}\/[^'"]+)\1\s*\)/g,
+    /\bfrom\s+(['"])(\.{1,2}\/[^'"]+)\1/g,
+  ];
+  for (const re of relativos) {
+    for (const m of texto.matchAll(re)) {
+      alvos.add(path.resolve(dir, m[2]));
+    }
+  }
+  const juntado = /\brequire\(\s*path\.join\(\s*__dirname((?:\s*,\s*(['"])[^'"]*\2)+)\s*\)\s*\)/g;
+  for (const m of texto.matchAll(juntado)) {
+    const partes = [...m[1].matchAll(/(['"])([^'"]*)\1/g)].map((p) => p[2]);
+    alvos.add(path.resolve(path.join(dir, ...partes)));
+  }
+  return [...alvos];
+}
+
+function ehArquivo(caminho) {
+  try {
+    return fs.statSync(caminho).isFile();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Acoplamento por require entre tarefas da mesma camada (D6, 2026-10-24). Para cada
+ * par de tarefas da mesma camada, lê os arquivos declarados de uma (os que existem na
+ * árvore em `raiz`; glob e pasta ficam fora) e devolve `{camada, a, b, arquivo, alvo}`
+ * quando um deles importa um arquivo declarado pela outra. `a` é a tarefa dona do
+ * alvo, `b` a que faz o require; `arquivo` é o da `b`, `alvo` o da `a` como está no
+ * plano. Os dois sentidos do par são lidos. Só informa: não mexe em recusa nem em exit.
+ */
+function acoplamentos(camadas, arquivosDe, raiz) {
+  const declarados = new Map();
+  for (const [numero, arquivos] of arquivosDe) {
+    const lista = [];
+    for (const rel of arquivos) {
+      if (rel.includes('*') || rel.includes('?') || rel.endsWith('/')) continue;
+      const abs = path.resolve(raiz, rel);
+      if (!ehArquivo(abs)) continue;
+      lista.push({ rel, abs });
+    }
+    declarados.set(numero, lista);
+  }
+
+  const achados = [];
+  const vistos = new Set();
+  camadas.forEach((camada, indice) => {
+    for (const b of camada) {
+      for (const { rel: arquivo_rel, abs: arquivo } of declarados.get(b) || []) {
+        let texto;
+        try {
+          texto = fs.readFileSync(arquivo, 'utf8');
+        } catch {
+          continue;
+        }
+        const alvos = alvosDeRequire(texto, path.dirname(arquivo));
+        for (const a of camada) {
+          if (a === b) continue;
+          for (const alvo of alvos) {
+            const candidatos = new Set([alvo, ...EXTENSOES_JS.map((e) => alvo + e)]);
+            const dono = (declarados.get(a) || []).find((d) => candidatos.has(d.abs));
+            if (!dono) continue;
+            const chave = `${indice}|${a}|${b}|${arquivo_rel}|${dono.rel}`;
+            if (vistos.has(chave)) continue;
+            vistos.add(chave);
+            achados.push({ camada: indice + 1, a, b, arquivo: arquivo_rel, alvo: dono.rel });
+          }
+        }
+      }
+    }
+  });
+  return achados;
+}
+
+module.exports = { calcularCamadas, ErroCamadas, parseDependencias, globMatches, acoplamentos, alvosDeRequire };
