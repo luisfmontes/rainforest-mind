@@ -2950,7 +2950,15 @@ function main() {
       // rodada nova; vereditos de uma rodada anterior nao contam para esta.
       if (estagio === 'revisar') {
         const snapshot = capturarSnapshot();
-        estado.revisar = { ...estado.revisar, snapshot, vereditos: [] };
+        // D4 (lote 5): a janela que se fecha vira uma volta guardada, com os
+        // mesmos vereditos (sem texto de crítica). Janela vazia não é volta.
+        const janela = Array.isArray(estado.revisar && estado.revisar.vereditos) ? estado.revisar.vereditos : [];
+        const bloco = { ...estado.revisar };
+        if (janela.length > 0) {
+          const anteriores = Array.isArray(bloco.voltas) ? bloco.voltas : [];
+          bloco.voltas = [...anteriores, { volta: anteriores.length + 1, vereditos: janela }];
+        }
+        estado.revisar = { ...bloco, snapshot, vereditos: [] };
         gravar(slug, estado);
         console.log(`snapshot capturado: HEAD=${snapshot.head.substring(0, 7)}, ${snapshot.caminhos_sujos.length} arquivo(s) sujo(s)`);
       }

@@ -61,4 +61,27 @@ function incoerencia(veredito, a) {
   return null;
 }
 
-module.exports = { contarAchados, incoerencia };
+/**
+ * D4 (lote 5): lista os achados (mesma régua de `contarAchados`) com a
+ * severidade e o primeiro `caminho:linha` do item, sem a linha. `sev` é
+ * 'design' só quando o item não tem severidade; `arquivo` é null quando o
+ * item não cita `caminho:linha` na própria linha de abertura.
+ * @returns {Array<{sev:'alta'|'media'|'baixa'|'design', arquivo:string|null}>}
+ */
+function listarAchados(texto) {
+  const itens = [];
+  if (typeof texto !== 'string') return itens;
+  for (const linha of texto.split(/\r?\n/)) {
+    const m = ABERTURA.exec(linha);
+    if (!m) continue;
+    const tags = m[1];
+    const sev = SEVERIDADE.exec(tags);
+    if (!sev && !DESIGN.test(tags)) continue;
+    const chave = !sev ? 'design' : /alta/i.test(sev[1]) ? 'alta' : /baixa/i.test(sev[1]) ? 'baixa' : 'media';
+    const arq = /([\w.\/-]+\.\w+):\d+/.exec(linha);
+    itens.push({ sev: chave, arquivo: arq ? arq[1] : null });
+  }
+  return itens;
+}
+
+module.exports = { contarAchados, incoerencia, listarAchados };
