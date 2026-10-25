@@ -1,0 +1,286 @@
+Data: 2026-10-25
+Termos: buscar, bm25, snippet, resumos, consolidada_em, uso_memoria, posicao, reconciliar
+
+$ gh issue list --state all --search "buscar" --limit 200 --json number,title,state
+[{"number":435,"state":"CLOSED","title":"memória: nome duplicado de projeto no banco (nome curto e slug de caminho)"},{"number":382,"state":"CLOSED","title":"Hooks chamam node sem caminho absoluto: no Windows, node.exe na pasta atual vence o PATH"},{"number":436,"state":"CLOSED","title":"memoria-assunto: medicao da regua D7 com 3 distorcoes antes da colheita"},{"number":452,"state":"CLOSED","title":"Projeto canonico: residuos aceitos na revisao do #435"},{"number":189,"state":"CLOSED","title":"conferir-versao.cjs nao olha o numero: versao que anda para tras passa verde, e plugin.json ilegivel sai 0"},{"number":244,"state":"CLOSED","title":"Bump de versao e feito a mao no fechar, e o esquecimento e silencioso"}]
+
+
+$ gh issue list --state all --search "bm25" --limit 200 --json number,title,state
+[{"number":436,"state":"CLOSED","title":"memoria-assunto: medicao da regua D7 com 3 distorcoes antes da colheita"}]
+
+
+$ gh issue list --state all --search "snippet" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "resumos" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "consolidada_em" --limit 200 --json number,title,state
+[{"number":460,"state":"CLOSED","title":"criarSchema: migracoes 1 e 4 ainda engolem SQLITE_BUSY no ALTER"}]
+
+
+$ gh issue list --state all --search "uso_memoria" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "posicao" --limit 200 --json number,title,state
+[{"number":530,"state":"CLOSED","title":"gate-worktree: três formas de cd para o principal passam a partir do worktree ({cd,X}, A=1 cd X, then cd X)"},{"number":514,"state":"CLOSED","title":"gate-worktree barra comando só de leitura quando a linha junta 2>/dev/null com expansão de chaves {a,b}"},{"number":290,"state":"CLOSED","title":"foco.cjs rotacionar descarta pela posicao, nao pela data: com avanco novo no topo, some o mais recente"},{"number":184,"state":"CLOSED","title":"Wrapper citado (\"env\" FOO=1 git add -A) escapa de posicaoDeComando e os tres gates por texto liberam"},{"number":161,"state":"CLOSED","title":"testa-limpar-branches captura 2>&1 antes de JSON.parse: em Node 24 o DEP0190 contamina o payload (o CI pina o 22)"},{"number":157,"state":"CLOSED","title":"REINCIDE #16: o workflow esta disabled_manually ha 232 commits, e a maquina do Actions e mais rica que a de quem instala"},{"number":309,"state":"CLOSED","title":"gate de texto barra bash \"$t\" (variavel entre aspas) como comando encapsulado"},{"number":277,"state":"CLOSED","title":"foco.cjs nao tem comando para registrar avanco: a regra 5 obriga o que a 17 proibe"},{"number":173,"state":"CLOSED","title":"O gate de publicacao barra merge de conteudo que ja esta na main — e engole o git add da mesma chamada"},{"number":16,"state":"CLOSED","title":"Nenhuma bateria roda sozinha: sem CI, a catraca depende de alguem lembrar (a de nucleos ficou vermelha 3 dias)"},{"number":25,"state":"CLOSED","title":"A regra de branch so conhece `main`, e nao tem nocao de dono — commitei em cima de outra sessao"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"}]
+
+
+$ gh issue list --state all --search "reconciliar" --limit 200 --json number,title,state
+[{"number":585,"state":"CLOSED","title":"/login fora do conta.cjs deixa estado.json divergente, /conta mostra 'em casa · troca manual' sem acusar, e /conta trabalho moveria o login novo para a reserva errada"}]
+
+
+$ gh pr list --state all --search "buscar" --limit 200 --json number,title,state
+[{"number":454,"state":"MERGED","title":"buscar --projeto aceita caminho de worktree e barra final (1.53.1)"},{"number":535,"state":"MERGED","title":"Versao 1.67.3: gate nao barra leitura com chaves (#514), buscar por bm25"},{"number":320,"state":"MERGED","title":"memoria: buscar com pontuacao no texto nao devolve mais vazio"},{"number":593,"state":"MERGED","title":"Apoio ao dev, lote 2: veredito coerente, prova que roda, limpeza com prova (1.76.0)"},{"number":453,"state":"MERGED","title":"Um nome por projeto no banco de memoria (#435), versao 1.53.0"},{"number":459,"state":"MERGED","title":"Regua D7 da memoria por assunto sem as distorcoes (#436), versao 1.54.0"},{"number":305,"state":"MERGED","title":"Memória: reconciliação na escrita e consolidação automática"},{"number":209,"state":"MERGED","title":"Versao 1.6.0 (MINOR): o lote das Issues #187 e #189 muda contrato"},{"number":590,"state":"MERGED","title":"Apoio ao dev, lote 1: captura limpa, memória moldurada, busca antes de construir (1.75.0)"},{"number":133,"state":"MERGED","title":"Fluxo 2 — memoria com indice vivo, leitura por relevancia e ciclo de vida"},{"number":211,"state":"MERGED","title":"conferir-versao: falso positivo na main em sincronia (regressao da #189)"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"},{"number":119,"state":"MERGED","title":"Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos"}]
+
+
+$ gh pr list --state all --search "bm25" --limit 200 --json number,title,state
+[{"number":535,"state":"MERGED","title":"Versao 1.67.3: gate nao barra leitura com chaves (#514), buscar por bm25"},{"number":537,"state":"MERGED","title":"Livro: revisita do ruflo com o ruflo-mods lido no codigo"},{"number":437,"state":"MERGED","title":"memoria: injecao pelo assunto no pedido e no subagente (1.49.0)"},{"number":305,"state":"MERGED","title":"Memória: reconciliação na escrita e consolidação automática"}]
+
+
+$ gh pr list --state all --search "snippet" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "resumos" --limit 200 --json number,title,state
+[{"number":453,"state":"MERGED","title":"Um nome por projeto no banco de memoria (#435), versao 1.53.0"},{"number":305,"state":"MERGED","title":"Memória: reconciliação na escrita e consolidação automática"},{"number":133,"state":"MERGED","title":"Fluxo 2 — memoria com indice vivo, leitura por relevancia e ciclo de vida"}]
+
+
+$ gh pr list --state all --search "consolidada_em" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "uso_memoria" --limit 200 --json number,title,state
+[{"number":459,"state":"MERGED","title":"Regua D7 da memoria por assunto sem as distorcoes (#436), versao 1.54.0"},{"number":326,"state":"MERGED","title":"memoria: sinal de utilidade da injecao, medicao de duas semanas"}]
+
+
+$ gh pr list --state all --search "posicao" --limit 200 --json number,title,state
+[{"number":535,"state":"MERGED","title":"Versao 1.67.3: gate nao barra leitura com chaves (#514), buscar por bm25"},{"number":556,"state":"MERGED","title":"gate-worktree: palavra de comando lida como o bash (#530, 1.67.11)"},{"number":554,"state":"MERGED","title":"gate-worktree: {cd,X} e cmdlets de escrita do PowerShell (#530, #533)"},{"number":90,"state":"MERGED","title":"Abertura: os hooks passam a pintar na tela, nao so no contexto do modelo"},{"number":137,"state":"MERGED","title":"Fluxo 11 — Conselho: debate estruturado com membros Claude, Codex e Gemini"},{"number":18,"state":"MERGED","title":"O til no meio do caminho barrava commit legitimo, e o 8.3 mandava nao integrar (#16)"},{"number":40,"state":"MERGED","title":"A statusline sai de ~/.claude e entra no plugin, e a bateria de saude para de vazar temporario"}]
+
+
+$ gh pr list --state all --search "reconciliar" --limit 200 --json number,title,state
+[{"number":519,"state":"MERGED","title":"Versao 1.65.2: manutencao da memoria nao prende a pasta do projeto"},{"number":588,"state":"MERGED","title":"Conta e vigia: -Teste só leitura, aviso da pasta manual, estado segue o login (1.74.0)"},{"number":305,"state":"MERGED","title":"Memória: reconciliação na escrita e consolidação automática"}]
+
+
+$ git ls-remote --heads origin | grep -F "buscar"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "bm25"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "snippet"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "resumos"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "consolidada_em"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "uso_memoria"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "posicao"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "reconciliar"
+(vazio)
+
+$ git log --all --grep="buscar" --oneline
+bf42234b Apoio ao dev, lote 2: veredito coerente, prova que roda, limpeza com prova (1.76.0) (#593)
+148c4ba0 Apoio ao dev, lote 1: captura limpa, memória moldurada, busca antes de construir (1.75.0) (#590)
+9a9c9f8d CHANGELOG 1.75.0: data local no buscar e ancoras por nome unico
+3c58fb90 memoria buscar: --desde/--ate pela data local, com casos de fronteira
+ef1bebd0 memoria buscar: --desde e --ate por janela de datas
+f539ba7b Versao 1.67.3: gate nao barra leitura com chaves (#514), buscar por bm25 (#535)
+f11f8100 Regua D7 da memoria por assunto sem as distorcoes (#436), versao 1.54.0 (#459)
+3aa88c46 buscar --projeto aceita caminho de worktree e barra final; versao 1.53.1 (#454)
+658b2c8a Um nome por projeto no banco de memoria (#435), versao 1.53.0 (#453)
+397aa5a9 Glossario de dominio por repositorio (GLOSSARIO.md), versao 1.52.0 (#451)
+a2da24d8 Mod: desvio em fila sem repeticao e turno sem esperar a medida (A,C,D,F)
+d9405fa7 mod: process.run do relogio e da faixa roda com cwd na raiz do plugin
+603a559a faixa: limpa controle ESC, C1 e bidi antes de desenhar a linha
+2bff3d9e utilidade: servida sem id nunca vira nao-servida no contrafactual (Tarefa 9)
+142c7148 versao 1.23.5: livro com os doze repos indicados
+77479b8d Merge pull request #320 from luisfmontes/fix/memoria-buscar-texto-cru
+418f1846 versao 1.23.4: buscar da memoria aceita texto com pontuacao
+c7973560 memoria: buscar com pontuacao no texto nao devolve mais vazio
+9da26213 Versao 1.22.0: regua selada pelo commit e keep/discard automatico
+4813243a Versao 1.21.0: instrucao de comportamento das skills ganha trava
+039e1d04 fluxo memoria-reconciliacao: verificar fecha ok, 9 de 9 criterios
+3cecf174 fluxo memoria-reconciliacao: guarda de candidata oferecida e de direcao temporal
+6ae87b55 Versao 1.19.2: as notas de atualizacao entram publicadas
+1060ed9c memoria: substituida_por IS NULL em todo caminho de leitura
+4b3e643b Versao 1.16.1: captura de memoria volta a rodar
+a14ddb78 Subir para 1.13.0: MINOR, porque entrou capacidade nova
+6cc95825 Tarefa 18: conferir-versao busca origin/main antes de comparar (Issue #193)
+1ad0ed2d Testes do conserto da revisao: teste 11 real, Q6 do saude, secao 18 do resumo, 17.c des-decorado
+23aff22a Testes do conserto da revisao: teste 11 real, Q6 do saude, secao 18 do resumo, 17.c des-decorado
+cc80005f Fluxo 2 executar 2/5: T2 integrada — rodape do bloco ensina buscar --texto
+cadfbd0c Fluxo 2 executar 2/5: T2 integrada — rodape do bloco ensina buscar --texto
+0945d68c Corrige interface do rodapé: buscar --texto em vez de argumento posicional
+14f544e0 Corrige interface do rodapé: buscar --texto em vez de argumento posicional
+75c739cc Fluxo 2 executar 1/5: T1 integrada — FTS de conteudo externo com triggers
+2618224a Fluxo 2 executar 1/5: T1 integrada — FTS de conteudo externo com triggers
+42c76adf Tarefa 2 da memoria: rodape do bloco injetado ensina o buscar, dentro do teto
+e8b359c5 Tarefa 2 da memoria: rodape do bloco injetado ensina o buscar, dentro do teto
+71545a04 Fluxo 2 (memoria) aberto: design aprovado na estrutura canonica, plano ok
+adddd596 Fluxo 2 (memoria) aberto: design aprovado na estrutura canonica, plano ok
+b2582e39 Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos (#119)
+ea9d0286 Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos (#119)
+e1d2592c A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+bfc034d2 A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+
+$ git log --all --grep="bm25" --oneline
+f539ba7b Versao 1.67.3: gate nao barra leitura com chaves (#514), buscar por bm25 (#535)
+64d5e301 memoria: injecao pelo assunto no pedido e no subagente (1.49.0) (#437)
+e2343a10 tarefa 2: pontuação — nota crua das servidas e do contrafactual
+413525e1 memoria: reconciliar store/update/merge/skip do acervo pendente
+
+$ git log --all --grep="snippet" --oneline
+96491e70a Bateria tambem e Node: os 24 usos de Python nos testes viraram node -e
+c86cd287c Bateria tambem e Node: os 24 usos de Python nos testes viraram node -e
+
+$ git log --all --grep="resumos" --oneline
+658b2c8a Um nome por projeto no banco de memoria (#435), versao 1.53.0 (#453)
+1b6156d4 tarefa 4: relatório com a régua D9
+1a93708e bump 1.19.1 -> 1.20.0
+039e1d04 fluxo memoria-reconciliacao: verificar fecha ok, 9 de 9 criterios
+ba2a5b84 Plano: RFM_ROOT sai de antes do cano nos criterios das tarefas 3, 5 e 6
+14bc3f5e consolidar por grupo de origem a partir de 30 dias (D7, tarefa 4)
+4128e622 Plano: a leitura de resumos sai do escopo do filtro da tarefa 3
+1060ed9c memoria: substituida_por IS NULL em todo caminho de leitura
+36e24861 memoria-sessao: trava o orcamento do bloco de memoria com aviso no topo
+a24437a7 Fluxo 2 executar 3/5: T4 integrada — consolidar produz resumos, marca e nunca apaga
+4f9579b7 Fluxo 2 executar 3/5: T4 integrada — consolidar produz resumos, marca e nunca apaga
+3c7844bc Tarefa 4: adiciona caso (d) à bateria — falha de LLM deixa lote intacto
+0aab508d Tarefa 4: adiciona caso (d) à bateria — falha de LLM deixa lote intacto
+0064a1a6 Tarefa 4 da memoria: consolidar produz resumos em lote e marca, nunca apaga
+dc2612a2 Tarefa 4 da memoria: consolidar produz resumos em lote e marca, nunca apaga
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+
+$ git log --all --grep="consolidada_em" --oneline
+6b67b096 Migracoes 1 e 4 do criarSchema so engolem coluna duplicada (#460) (#462)
+14bc3f5e consolidar por grupo de origem a partir de 30 dias (D7, tarefa 4)
+0064a1a6 Tarefa 4 da memoria: consolidar produz resumos em lote e marca, nunca apaga
+dc2612a2 Tarefa 4 da memoria: consolidar produz resumos em lote e marca, nunca apaga
+
+$ git log --all --grep="uso_memoria" --oneline
+f11f8100 Regua D7 da memoria por assunto sem as distorcoes (#436), versao 1.54.0 (#459)
+64d5e301 memoria: injecao pelo assunto no pedido e no subagente (1.49.0) (#437)
+02d42ce4 plano: tarefa 11 — banco ocupado adia sessao, escrita de sessao atomica
+e6d24f4b utilidade: sessao que falha e marcada e a fila anda (Tarefa 10)
+200f4732 utilidade: denominador da regua so conta sessao com servida (tarefa 8)
+1b6156d4 tarefa 4: relatório com a régua D9
+ed03c4a2 tarefa 3: pontuação dentro da manutenção, sessões pendentes
+e2343a10 tarefa 2: pontuação — nota crua das servidas e do contrafactual
+
+$ git log --all --grep="posicao" --oneline
+68c1cbad gate-worktree: HOME redefinido na linha falha fechado (#561, 1.70.1) (#572)
+b767d7d5 gate-worktree: {cd,X} e cmdlets de escrita do PowerShell (#530, #533) (#554)
+f539ba7b Versao 1.67.3: gate nao barra leitura com chaves (#514), buscar por bm25 (#535)
+99c5e5b7 Zerar as 12 Issues da revisao bimestral (1.43.0) (#416)
+36c205bd gate-subagente-sem-gh: alias, codigo inline e PowerShell (revisao 1)
+cb0fb31b agente-sem-background: conserta achados da revisão 2
+08755c07 revisao 1: casca dupla, aspa simples, indexOf e design
+33c3d190 gate-busca-raiz: todo parentese sem barra abre segmento
+06c8d7c0 versao 1.23.11 (tarefa 3)
+115da24c zerar-issues-8: tarefas 11-12 - |& e continuacao de linha na fronteira de segmento (#309, revisao 2)
+7054f133 zerar-issues-8: tarefas 8-9, coproc e parametro especial (achados 1-2 da revisao)
+074053d3 gate: pular palavra reservada do shell na posicao de comando (#309)
+9dc9c00b Registra a reancoragem e refaz a evidencia de instalacao
+1cd74a2e Reancora a entrega multihost na origin/main 1.19.1
+ea47cb92 plano: as mutacoes viram literais que a catraca aplica, e o canonico absorve as emendas
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+7c362207 regua: rodada 1 — haiku e sonnet no builder, os dois perdem para a regua
+cc1e10ce Gate de Issue: interpretador atras de wrapper e escapes no here-string nu
+82ab605c Espaco a mais e erro de digitacao, nao mudanca de sentido
+e8570bec Atalho que decide e atalho errado
+062f9ba3 Listar o que qualifica o 'sub', nao o que desqualifica
+f4ae8906 Fechar os achados da quarta rodada, e apagar um ramo sem efeito
+fa3aa1c8 Apontar os carimbos do estado para os commits reescritos
+2184eed9 Fluxo 10 (critico) arquivado como superado, com a substituicao provada item a item
+c4515c38 Revisao do lote 4: sete afrouxamentos que o proprio lote introduziu
+4e5de7d8 Tarefa 2, rodada 3: o caso R21 do gate-worktree montava JSON invalido, e media outra coisa
+a074e052 R21: Corrigir wrapper citado em posicao de comando e script em wrapper de string
+118777e8 Lote 3 rodada 20: nome de comando citado conta na posicao de comando
+b6931e49 Lote 3: 18a revisao (revisor ok; auditor achou comando citado em posicao de comando)
+bcbedd46 Conserta o gate git-verificacao: nove contornos que passavam no criterio velho
+91cb2069 Merge lote 3 rodada 7 (staging-total por posicao de comando; closes por URL) into fluxo/guardas
+fbc1ece3 Lote 3 rodada 7: staging-total acha o git por posicao de comando; closes por URL de Issue
+a787bfbd Merge lote 3 rodada 6 (& simples nos tres gates; git -C por posicao de comando) into fluxo/guardas
+68b20646 Merge lote 3 rodada 5 (cwd por segmento, pushd/env -C, procuraCLI em posicao de comando) into fluxo/guardas
+97327d16 Lote 3 rodada 5: cwd por segmento, pushd/env -C, procuraCLI so em posicao de comando
+43b0c4fd Lote 3 rodada 4: alvosBash usa o ultimo -C, subshell vira incerto, procuraCLI le $'...' e barra invertida
+c48adf69 Lote 3 rodada 3: R1 incerto bloqueia CLI, R2 CLI entre aspas em posicao de comando, R8 texto do limpar
+aaecae53 Vigias: desfaz o desempate de posicao no gate OEM — era a troca errada
+31c8fd08 Vigias: desfaz o desempate de posicao no gate OEM — era a troca errada
+b71ecea1 T2: Implementar Fase 1 — pareceres e falha fechada
+0b91bf65 T2: Implementar Fase 1 — pareceres e falha fechada
+b2582e39 Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos (#119)
+ea9d0286 Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos (#119)
+889ff9c9 Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+56ea03cc Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+f6d4552c Abertura: os hooks passam a pintar na tela, nao so no contexto do modelo (#90)
+3ee8b32f Abertura: os hooks passam a pintar na tela, nao so no contexto do modelo (#90)
+d9cb884f Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79) (#85)
+9b7ee00d Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79) (#85)
+c3ab6cf1 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+62ca78d5 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+4fd6d9e0 design: a camada de conhecimento sai do Obsidian e vira rota, nao migracao (#78)
+29b44c0a design: a camada de conhecimento sai do Obsidian e vira rota, nao migracao (#78)
+e7e8f250 Fecha a #63: a identidade do foco e cortada por dentro, e pastasDoFoco le a continuacao indentada (#65)
+acfee716 Fecha a #63: a identidade do foco e cortada por dentro, e pastasDoFoco le a continuacao indentada (#65)
+40e3f3bd Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+2cc8788c Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+4754ddc2 Backstop de mutacao no revisar (#4), skill regua, e o relatorio da branch nova (#43)
+199f85fd Backstop de mutacao no revisar (#4), skill regua, e o relatorio da branch nova (#43)
+7dc1a9bf A statusline sai de ~/.claude e entra no plugin, e a bateria de saude para de vazar temporario (#40)
+e265afc5 A statusline sai de ~/.claude e entra no plugin, e a bateria de saude para de vazar temporario (#40)
+e1d2592c A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+bfc034d2 A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+97c3dec5 O til no meio do caminho barrava commit legitimo, e o 8.3 mandava nao integrar (#18)
+d258a189 O til no meio do caminho barrava commit legitimo, e o 8.3 mandava nao integrar (#18)
+ba108d93 Os gates param de falar do dono do repo para quem instalou
+f3f5ab3f Os gates param de falar do dono do repo para quem instalou
+870d4e0a O plugin para de falar com uma pessoa so, e o nome do cliente sai do repo
+21e23315 O plugin para de falar com uma pessoa so, e o nome do cliente sai do repo
+7118d701 Arqueologia: o estagio ZERO que faltava, e opcional de forma mecanica
+b3d3220f Arqueologia: o estagio ZERO que faltava, e opcional de forma mecanica
+ab867e8e Sessao encerrada some do radar, e o foco passa a cortar por prioridade
+04128a34 Sessao encerrada some do radar, e o foco passa a cortar por prioridade
+b76f04f7 v0.48.0: a regra passa a chegar — JSON no emissor e orcamento de 8 KB
+67364007 v0.48.0: a regra passa a chegar — JSON no emissor e orcamento de 8 KB
+
+$ git log --all --grep="reconciliar" --oneline
+ed03c4a2 tarefa 3: pontuação dentro da manutenção, sessões pendentes
+039e1d04 fluxo memoria-reconciliacao: verificar fecha ok, 9 de 9 criterios
+552b2d01 fluxo memoria-reconciliacao: integra conserto dos 2 achados e reabre executar ok
+3cecf174 fluxo memoria-reconciliacao: guarda de candidata oferecida e de direcao temporal
+71d574c0 conserta 5 regressoes da entrega memoria-reconciliacao-e-consolidacao
+4cd8b0cd docs: memória, reconciliação e consolidação automáticas
+9655fd46 Mede o recall do FTS5 como buscador de candidatas: 82% global (D4)
+655ea6cd manutencao: garante esquema antes de rodar e nao morre no meio
+20ec41e4 Plano: a manutencao precisa migrar o esquema e registrar falha no log
+ba2a5b84 Plano: RFM_ROOT sai de antes do cano nos criterios das tarefas 3, 5 e 6
+eb6251b7 agenda a manutencao diaria (reconciliar+consolidar) no SessionStart
+0ed69b90 memoria: reconciliar relê o estado antes de sondar cada observacao
+413525e1 memoria: reconciliar store/update/merge/skip do acervo pendente
+
+$ cat <dados>/ideias.jsonl
+{"id":"mods-ferramenta-buscar-memoria","titulo":"Ferramenta buscar_memoria do mod (via $.tool.register) no lugar de 'node scripts/memoria.cjs buscar' pelo Bash"}
+{"id":"obs-vigia-buscar-historico-antes-de-interpretar","titulo":"Vigia: contato retomando assunto antigo exige busca no historico antes de interpretar"}
+{"id":"issue-a-partir-de-observacao-sem-buscar-fechadas","titulo":"Rascunho de Issue saido de observacao antiga quase duplicou Issue ja resolvida"}
+{"id":"rf-memoria-filtro-de-lixo","titulo":"Filtrar resumos-lixo na captura da memoria"}
+{"id":"memoria-snippet-por-highlight","titulo":"Memória: snippet do buscar pela posição do termo (highlight() do FTS5), não pelos 100 primeiros caracteres"}
+{"id":"memoria-utilidade-dentro-do-bm25","titulo":"Memória: utilidade como prior só dentro do conjunto que o bm25 já aprovou"}
+{"id":"memoria-busca-por-sentido-embeddings","titulo":"Busca por sentido (embeddings) no memoria.cjs, hibrida com o bm25"}
+{"id":"afirmei-senha-nunca-vazou-sem-buscar-memoria","titulo":"Afirmei 'nunca vazou nada' sobre senha do Protheus sem buscar na memoria"}
+
+

@@ -30,8 +30,8 @@
     "em": "2026-10-25",
     "tarefas_ok": 5,
     "tarefas": 5,
-    "comando": "volta 1 da revisão: integrar-tarefa 4,3,1 (conferir-entrega + mutação) e T2 feita na janela (5bc42654); rodar-vizinhas com baterias-do-diff, conferir-entrega, conferir-ancoras-regras, conferir-ancoras, co-mudanca, aviso-duplicata, teto-skills, git-por-nome, integrar-tarefa, mapa-regras; node scripts/baterias-do-diff.cjs --base cc733290",
-    "saida": "3 integrações aceitas (47e66fa8, 5687efeb, e328c877); as 10 baterias exit 0 (baterias-do-diff 16/0, conferir-ancoras-regras 11/0, co-mudanca 6/0, aviso-duplicata 45/0, teto-skills 21 OK, conferir-ancoras 38 sem vermelhas); baterias-do-diff no diff real lista scripts/testa-teto-skills.sh e sai 3 por hooks/lib/config.cjs e scripts/lib/baterias-vizinhas.cjs (biblioteca compartilhada)",
+    "comando": "correção do CI do PR 595 na T2 (57adbdf9, feita na janela): node scratchpad/curto.js (bateria com TMPDIR em nome 8.3) e bash hooks/testa-aviso-duplicata.sh; CI do PR 595 (segundo run, sobre 57adbdf9)",
+    "saida": "com TMPDIR 8.3: antes 42/3 (os mesmos 3 casos do CI), depois ok: 45 falhou: 0; temp normal ok: 45 falhou: 0; CI: shards 1/3, 2/3 e 3/3 pass",
     "mutacao": [
       {
         "tarefa": 1,
@@ -64,19 +64,21 @@
   "revisar": {
     "status": "ok",
     "snapshot": {
-      "head": "ff82f9163453e9b97e0b591f279d4599ac70d1c4",
-      "caminhos_sujos": []
+      "head": "57adbdf901a18dc14512deb3a93e0487b319e06b",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-10-24-apoio-ao-dev-lote-3.json"
+      ]
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "aefd7a4a3f1a59307",
+        "agente_id": "a236b84a5fa8db252",
         "veredito": "ok",
         "em": "2026-10-25",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-aefd7a4a3f1a59307.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-a236b84a5fa8db252.jsonl"
       }
     ],
-    "achados": 1,
+    "achados": 3,
     "em": "2026-10-25",
     "base": "cc733290",
     "head": "HEAD"
@@ -87,10 +89,13 @@
     "saida": "tarefas 1-4: as quatro provas exit=0 (baterias-do-diff 16/0, aviso-duplicata 45/0, conferir-ancoras-regras 11/0, co-mudanca 6/0); tarefa 5: 1.77.0 / 1.77.0 e CHANGELOG casado com o diff pelo revisor da volta 1 (e a exceção de .md/docs/ conferida na volta 2b); cobertura válida — 8 decisão(ões), 5 tarefa(s)",
     "sensor_externo": "node scripts/conferir-fluxo.cjs cobertura",
     "em": "2026-10-25",
-    "head": "ff82f9163453e9b97e0b591f279d4599ac70d1c4"
+    "head": "57adbdf901a18dc14512deb3a93e0487b319e06b"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "em": "2026-10-25",
+    "acao": "merge",
+    "pr": 595
   },
   "decididos": [
     {
@@ -106,6 +111,13 @@
       "porque": "D3 diz que a duvida nunca estreita; 25 baterias leem SKILL.md e o teto de 16384 B so e pego por elas (revisao volta 1)",
       "estagio": "executar",
       "em": "2026-10-25T05:50:47.744Z"
+    }
+  ],
+  "reaberturas": [
+    {
+      "em": "2026-10-25",
+      "de": "verificar",
+      "motivo": "CI do PR 595: temp 8.3 do runner quebrava a exclusao do proprio arquivo no aviso-duplicata (57adbdf9)"
     }
   ]
 }
