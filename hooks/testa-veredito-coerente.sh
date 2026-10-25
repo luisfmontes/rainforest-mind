@@ -265,5 +265,46 @@ critica_com "$TXT_SO_DESIGN" CR3
 if [ "$CRIT_EXIT" -eq 3 ] && printf '%s' "$CRIT_OUT" | grep -qF '[design] O plano'; then r=0; else r=1; fi
 registra "critica-do-revisor sai 3 para reprovado cujo unico item e [design] (exit=$CRIT_EXIT)" $r
 
+echo "-- etiquetas em negrito separado (achado do revisor, lote 2 volta 2) --"
+TXT_NEG_SEP='Achados:
+1. **[design]** **[alta]** O plano contesta a D3, e o revisor nao aceita o formato.
+VEREDITO: ok'
+reset_estado
+T=$(transcrito_com_texto "$TXT_NEG_SEP" NS1)
+disparar "$(pay "$R" "rainforest-mind:revisor" "NS1" "$TXT_NEG_SEP" '{"agent_transcript_path":"'"$T"'"}')"
+if [ "$GOT" = 0 ] && printf '%s' "$SAIDA" | grep -qF '"decision":"block"' \
+  && printf '%s' "$SAIDA" | grep -qF 'alta 1' && printf '%s' "$SAIDA" | grep -qF 'design 1'; then r=0; else r=1; fi
+registra "**[design]** **[alta]** em negrito separado conta alta 1 e design 1: ok devolve a vez na primeira parada" $r
+
+CONT="$(node -e '
+const { contarAchados } = require(process.argv[1]);
+const casos = ["1. **[design]** **[alta]** t", "1. **[alta]** **[design]** t", "**[alta] [design]** t", "[alta] **[design]** t"];
+const ok = casos.every((c) => { const a = contarAchados(c); return a.alta === 1 && a.design === 1 && a.total === 1; });
+process.stdout.write(ok ? "ok" : JSON.stringify(casos.map((c) => contarAchados(c))));
+' "$SRC/hooks/lib/achados-revisor.cjs" 2>&1)"
+SAIDA="$CONT"; GOT=0
+if [ "$CONT" = "ok" ]; then r=0; else r=1; fi
+registra "contarAchados: [alta] e [design] em qualquer ordem e com negrito separado contam alta 1, design 1, total 1" $r
+
+TXT_ALTA_DESIGN_NEG='Achados:
+1. **[alta]** **[design]** O plano contesta a D3, e o formato nao cabe no caso.
+VEREDITO: reprovado'
+critica_com "$TXT_ALTA_DESIGN_NEG" CR4
+if [ "$CRIT_EXIT" -eq 3 ] && printf '%s' "$CRIT_OUT" | grep -qF 'O plano contesta a D3'; then r=0; else r=1; fi
+registra "critica-do-revisor sai 3 para reprovado com 1. **[alta]** **[design]** (exit=$CRIT_EXIT)" $r
+
+echo "-- segunda parada com resposta curta (achado 1, lote 2 volta 2) --"
+TXT_CURTO='Corrigido, o veredito e reprovado.
+VEREDITO: reprovado'
+reset_estado
+T=$(transcrito_com_texto "$TXT_ALTA" CUR1)
+disparar "$(pay "$R" "rainforest-mind:revisor" "CUR1" "$TXT_ALTA" '{"agent_transcript_path":"'"$T"'"}')"
+PRIMEIRA_SAIDA="$SAIDA"; PRIMEIRA_GOT=$GOT
+T=$(transcrito_com_texto "$TXT_CURTO" CUR1)
+disparar "$(pay "$R" "rainforest-mind:revisor" "CUR1" "$TXT_CURTO" '{"agent_transcript_path":"'"$T"'","stop_hook_active":true}')"
+if [ "$PRIMEIRA_GOT" = 0 ] && printf '%s' "$PRIMEIRA_SAIDA" | grep -qF 'RELATO COMPLETO' \
+  && [ "$GOT" = 0 ] && ! printf '%s' "$SAIDA" | grep -qF '"decision":"block"' && [ "$(veredito_de CUR1)" = "invalido" ]; then r=0; else r=1; fi
+registra "resposta curta sem achado na segunda parada grava invalido; o motivo da primeira parada pede o RELATO COMPLETO" $r
+
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]

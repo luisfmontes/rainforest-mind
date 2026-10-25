@@ -18,7 +18,7 @@
  * não é detectada aqui.
  */
 
-const ABERTURA = /^\s*(?:[-*>]\s+|#{1,6}\s+)?(?:\*\*)?(?:(?:[A-Z]|Achado\s+)?\d+[.):]?\s*)?(?:\*\*)?\s*((?:\[(?:alta|m[eé]dia|media|baixa|design)\](?:\*\*)?\s*)+)/i;
+const ABERTURA = /^\s*(?:[-*>]\s+|#{1,6}\s+)?(?:\*\*)?(?:(?:[A-Z]|Achado\s+)?\d+[.):]?\s*)?(?:\*\*)?\s*((?:(?:\*\*)?\[(?:alta|m[eé]dia|media|baixa|design)\](?:\*\*)?\s*)+)/i;
 const SEVERIDADE = /\[(alta|m[eé]dia|media|baixa)\]/i;
 const DESIGN = /\[design\]/i;
 

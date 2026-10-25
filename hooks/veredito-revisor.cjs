@@ -258,7 +258,7 @@ function main() {
   // bloqueia de novo — segue para a gravacao abaixo, como antes desta tarefa.
   if (veredito === 'invalido' && payload.stop_hook_active !== true) {
     const reason = motivoIncoerencia
-      ? `Veredito incoerente com os achados: ${motivoIncoerencia}. Achado [alta] e bloqueante: se ele existe, o veredito e reprovado. Reprovado precisa de pelo menos um achado marcado no inicio do item ([alta], [media], [baixa] ou [design]). Nao repita a analise: corrija so a marcacao e a linha final, sozinha e exata, VEREDITO: ok ou VEREDITO: reprovado.`
+      ? `Veredito incoerente com os achados: ${motivoIncoerencia}. Achado [alta] e bloqueante: se ele existe, o veredito e reprovado. Reprovado precisa de pelo menos um achado marcado no inicio do item ([alta], [media], [baixa] ou [design]). Reemita o RELATO COMPLETO, com os achados marcados e a linha final coerente, sozinha e exata: VEREDITO: ok ou VEREDITO: reprovado. Uma resposta curta so com a linha final nao basta, porque so a ultima mensagem e avaliada.`
       : 'Termine a mensagem com uma linha sozinha e exata, sem nada depois dela na mesma linha: VEREDITO: ok ou VEREDITO: reprovado (negrito, sublinhado ou crase em volta da linha e aceito, ex.: **VEREDITO: ok**). Nao repita a analise que voce ja escreveu, so acrescente essa linha final.';
     process.stdout.write(JSON.stringify({ decision: 'block', reason }) + '\n');
     process.exit(0);

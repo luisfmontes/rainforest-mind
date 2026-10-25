@@ -84,7 +84,7 @@ depois da severidade: o executor não pode mudar decisão, então esse achado pa
 o laço de redespacho e sobe ao usuário (`scripts/critica-do-revisor.cjs` sai 3).
 Duas regras de coerência, conferidas pelo hook: `VEREDITO: ok` com algum
 `[alta]` é incoerente, e `VEREDITO: reprovado` sem nenhum achado marcado também
-é. Nada de "parece bom" — se não achou nada, diga o que procurou e não achou.
+é. Não use a etiqueta de severidade fora de um achado: `[alta]: nenhum` conta como achado. Nada de "parece bom" — se não achou nada, diga o que procurou e não achou.
 A ÚLTIMA linha do relato — depois dos achados e das premissas, nunca antes —
 é exatamente `VEREDITO: ok` ou `VEREDITO: reprovado`, sozinha, sem texto
 depois (negrito, sublinhado ou crase em volta são aceitos). Um hook
