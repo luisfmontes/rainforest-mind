@@ -13,7 +13,7 @@ Design: docs/rainforest/design/2026-10-24-apoio-ao-dev-lote-3.md
 
 ### 1. Baterias pelo diff [tipo: implementar]
 atende: D1, D2, D3
-arquivos: `scripts/lib/baterias-vizinhas.cjs`, `scripts/baterias-do-diff.cjs`, `scripts/conferir-entrega.cjs`, `skills/executar/SKILL.md`, `skills/verificar/SKILL.md`, `scripts/testa-baterias-do-diff.sh`
+arquivos: `scripts/lib/baterias-vizinhas.cjs`, `scripts/baterias-do-diff.cjs`, `scripts/conferir-entrega.cjs`, `skills/executar/SKILL.md`, `skills/verificar/SKILL.md`, `scripts/testa-baterias-do-diff.sh`, `scripts/testa-integrar-tarefa.sh`
 depende de: nenhuma
 busca:
 - repo | grep -n "testa-" scripts/conferir-entrega.cjs | D25 em conferir-entrega.cjs:576-596 já acha bateria que cita o nome-base, só como aviso e só para arquivo fora do escopo
@@ -30,7 +30,7 @@ pronto quando: num repo git temporário montado pela bateria, com `scripts/a.cjs
 
 ### 2. Duplicata de definição avisada na edição [tipo: implementar]
 atende: D2, D4, D7
-arquivos: `hooks/aviso-duplicata.cjs`, `hooks/hooks.json`, `hooks/lib/config.cjs`, `skills/setup/SKILL.md`, `scripts/testa-conferir-categoria.sh`, `docs/travas-mecanicas.md`, `hooks/testa-config.sh`, `hooks/testa-aviso-duplicata.sh`
+arquivos: `hooks/aviso-duplicata.cjs`, `hooks/hooks.json`, `hooks/lib/config.cjs`, `skills/setup/SKILL.md`, `scripts/testa-conferir-categoria.sh`, `docs/travas-mecanicas.md`, `hooks/testa-config.sh`, `hooks/testa-memoria-marca.sh`, `hooks/testa-aviso-duplicata.sh`
 depende de: nenhuma
 busca:
 - repo | grep -n "PostToolUse" hooks/hooks.json | só aviso-fluxo-shell.cjs em Bash|PowerShell; nenhum hook olha definição duplicada

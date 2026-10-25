@@ -17,17 +17,58 @@
     "em": "2026-10-25"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-25",
     "integradas": [
       1,
-      3
+      2,
+      3,
+      4,
+      5
     ],
     "em_voo": [],
-    "em": "2026-10-25"
+    "em": "2026-10-25",
+    "tarefas_ok": 5,
+    "tarefas": 5,
+    "comando": "integrar-tarefa 1,3,2,4,5 (conferir-entrega + mutação); correção dos 7 achados do auditor de segurança no aviso-duplicata (093c92be); bash scripts/varrer-baterias.sh; vermelhas reexecutadas isoladas depois da correção 65b02503",
+    "saida": "5 integrações aceitas (582e87c8, 4962126c, c4ebd920, e7d6c357, 31f5ba7d); varredura: 5 vermelhas — 4 reais do lote (git por nome em baterias-do-diff/co-mudanca, lib nova fora da caixa de areia do testa-integrar-tarefa, segunda exceção do PostToolUse no testa-memoria-marca, título da seção duplicado no arqueologo.md), corrigidas em 65b02503 e verdes isoladas (gate-do-agente 12/0, git-por-nome 9/0, integrar-tarefa exit 0, memoria-marca 12/0); testa-auditor-de-seguranca isolada ok: 107 falhou: 0 (caso 11 oscila pelo radar vivo)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-baterias-do-diff.sh, caso arquivo que nenhuma bateria cita sai rodar tudo com exit 3"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-aviso-duplicata.sh, caso Write com function que já existe em outro arquivo rastreado avisa caminho:linha"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-ancoras-regras.sh, caso regra R3 sem Verificada em sai sem-campos e exit 1"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-co-mudanca.sh, caso commit com mais de 20 arquivos não conta par"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "metadado de versão e documentação, sem comportamento a inverter"
+      }
+    ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "65b02503f50256acd2b33d7f008308f2b699d554",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-10-24-apoio-ao-dev-lote-3.json"
+      ]
+    },
+    "vereditos": []
   },
   "verificar": {
     "status": "pendente"
