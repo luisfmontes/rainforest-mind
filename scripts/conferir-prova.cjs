@@ -22,6 +22,7 @@ const RAIZ = process.env.RFM_ESTADO_ROOT
 
 const SCRIPT_DIR = path.dirname(__filename);
 const { extrairTarefas, lerMarkdown } = require(path.join(SCRIPT_DIR, 'conferir-fluxo.cjs'));
+const { extrairPlacar } = require(path.join(SCRIPT_DIR, 'conferir-mutacao.cjs'));
 
 // ================================================================ Utilitários
 
@@ -218,7 +219,16 @@ function cmdPlano() {
       continue;
     }
 
-    // Qualquer outro exit ≠ 0: aceita
+    // Qualquer outro exit ≠ 0: aceita, salvo placar com zero casos executados
+    // (ok e falhou iguais a zero): a bateria quebrou no setup antes do primeiro
+    // caso, e o vermelho não diz nada sobre o comportamento.
+    const placar = extrairPlacar(`${resultado.stdout || ''}${resultado.stderr || ''}`);
+    const semCaso = placar !== null && placar.ok === 0 && placar.falhou === 0;
+    if (semCaso) {
+      recusas.push(`tarefa ${numero}. ${nome} a prova não executou caso nenhum na base — o vermelho vem da infraestrutura, não do comportamento ausente`);
+      continue;
+    }
+
     provasExecutadas++;
   }
 
