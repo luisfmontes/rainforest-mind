@@ -290,6 +290,20 @@ function temMarcadorDados(caminhoDoArquivo) {
 }
 
 /**
+ * Conteúdo atual do arquivo que um Write vai substituir, ou null quando ele não
+ * existe ou não é legível. Caminho relativo resolve contra o cwd do evento.
+ * O Write usa isso como `antigo`: a linha que já estava no disco não é novidade
+ * da escrita, e soIntroduzidos a filtra como no Edit.
+ */
+function lerSeExiste(arquivo, cwd) {
+  try {
+    return fs.readFileSync(path.resolve(cwd, arquivo), "utf8");
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Roda conferir-publicacao.cjs em modo JSON e retorna o resultado parseado.
  * Retorna { achados: [...], cego: [...] } ou null se não conseguir rodar.
  *
@@ -749,6 +763,7 @@ function main() {
   if (nome === "Write" && typeof entrada.file_path === "string" && typeof entrada.content === "string") {
     arquivo = entrada.file_path;
     conteudo = entrada.content;
+    antigo = lerSeExiste(arquivo, cwdDoEvento);
   } else if (nome === "Edit" && typeof entrada.file_path === "string" && typeof entrada.new_string === "string") {
     arquivo = entrada.file_path;
     conteudo = entrada.new_string;
