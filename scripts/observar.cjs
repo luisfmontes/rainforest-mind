@@ -558,10 +558,14 @@ async function processarMarca(conexao, marca) {
   const ORCAMENTO_MS = Number(process.env.TESTADOR_ORCAMENTO_MS) || 25000;
   const inicioDaPassada = Date.now();
   let ultimoOffsetProcessado = marca.offset_processado;
+  // Fatias que a passada de fato tratou: menos que fatias.length quando o
+  // orçamento corta o resto (a linha final de contagem diz só essas).
+  let fatiasProcessadas = fatias.length;
 
   for (let i = 0; i < fatias.length; i++) {
     const decorrido = Date.now() - inicioDaPassada;
     if (i > 0 && decorrido > ORCAMENTO_MS) {
+      fatiasProcessadas = i;
       console.log(
         `orcamento de ${ORCAMENTO_MS}ms atingido apos ${i} fatia(s) de ${fatias.length}; ` +
         `o resto fica para a proxima sessao (marca em ${ultimoOffsetProcessado})`
@@ -647,8 +651,8 @@ async function processarMarca(conexao, marca) {
     }
   }
 
-  const pluralFatias = fatias.length > 1 ? 'fatias' : 'fatia';
-  console.log(`ok: observacao gravada em ${fatias.length} ${pluralFatias} para sessao ${marca.sessao}`);
+  const pluralFatias = fatiasProcessadas > 1 ? 'fatias' : 'fatia';
+  console.log(`ok: observacao gravada em ${fatiasProcessadas} ${pluralFatias} para sessao ${marca.sessao}`);
   return true;
 }
 

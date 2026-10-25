@@ -1749,12 +1749,15 @@ async function cmdConsolidar() {
     if (grupos.length === 0) {
       console.log(`nenhum grupo com 2+ observações de ${DIAS_CONSOLIDACAO}+ dias, nada a fazer`);
       conexao.close();
-      return;
+      return { gravados: 0, pulados: 0 };
     }
 
     console.log(`${grupos.length} grupo(s) com 2+ observações de ${DIAS_CONSOLIDACAO}+ dias`);
 
     let totalResumosGravados = 0;
+    // Pedaços em que o LLM devolveu null (D7): contados, não calados. Quem
+    // chama (cmdManutencao) grava o total no log e marca a passada com falha.
+    let pulados = 0;
     // Relógio monotônico: cada pedaço grava consolidada_em em baseMs +
     // (índice do pedaço já gravado), garantindo timestamps distintos entre
     // pedaços mesmo que o mock de LLM responda no mesmo milissegundo.
@@ -1790,9 +1793,22 @@ async function cmdConsolidar() {
         const projetoPedaco = pedaco[0].projeto;
 
         // Formatar para LLM: concatenar conteúdos.
-        const textoDasObservacoes = pedaco
-          .map((obs, idx) => `${idx + 1}. ${obs.conteudo}`)
+        // D7: o texto que vai ao LLM não passa de TETO_TEXTO_CONSOLIDAR. Se o
+        // pedaço passaria, cada observação é cortada (com `[…]`) antes da
+        // chamada; o banco não muda, só o texto enviado.
+        const TETO_TEXTO_CONSOLIDAR = 16000;
+        const montarTexto = (limite) => pedaco
+          .map((obs, idx) => {
+            const conteudo = limite !== null && obs.conteudo.length > limite
+              ? obs.conteudo.slice(0, limite) + '[…]'
+              : obs.conteudo;
+            return `${idx + 1}. ${conteudo}`;
+          })
           .join('\n');
+        let textoDasObservacoes = montarTexto(null);
+        if (textoDasObservacoes.length > TETO_TEXTO_CONSOLIDAR) {
+          textoDasObservacoes = montarTexto(Math.floor(TETO_TEXTO_CONSOLIDAR / pedaco.length) - 40);
+        }
 
         console.log(`  grupo "${grupo}": chamando LLM para ${pedaco.length} observações`);
 
@@ -1801,6 +1817,7 @@ async function cmdConsolidar() {
 
         if (!resumo) {
           console.log(`  grupo "${grupo}": LLM falhou, pedaço intacto para próxima rodada`);
+          pulados++;
           continue;
         }
 
@@ -1829,8 +1846,10 @@ async function cmdConsolidar() {
 
     // 8. Relatório final.
     console.log(`consolidacao completa: ${totalResumosGravados} resumo(s) total gravado(s)`);
+    console.log(`pedaço(s) pulado(s) (LLM falhou): ${pulados}`);
 
     conexao.close();
+    return { gravados: totalResumosGravados, pulados };
   } catch (e) {
     // Lança em vez de `process.exit(1)` (Tarefa 5, emenda 2026-09-18) — mesmo
     // motivo do `throw` acima: `main()` (CLI direta) captura isto e imprime
@@ -2471,8 +2490,9 @@ async function cmdManutencao() {
 
   registrar('consolidar: inicio');
   try {
-    await cmdConsolidar();
-    registrar('consolidar: fim');
+    const { pulados } = await cmdConsolidar();
+    registrar(pulados > 0 ? `consolidar: fim (${pulados} pedaço(s) pulado(s))` : 'consolidar: fim');
+    if (pulados > 0) houveFalha = true;
   } catch (e) {
     houveFalha = true;
     registrar(`consolidar: falhou: ${e.message}`);
