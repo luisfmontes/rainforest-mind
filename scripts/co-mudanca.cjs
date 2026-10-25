@@ -52,7 +52,7 @@ function lerCommits(meses) {
   try {
     saida = execFileSync(
       caminhoExecutavel('git'),
-      ['log', `--since=${meses} months ago`, '--name-only', '--format=%x00%H', '--no-merges'],
+      ['-c', 'core.quotePath=false', 'log', `--since=${meses} months ago`, '--name-only', '--format=%x00%H', '--no-merges'],
       { cwd: process.cwd(), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 512 * 1024 * 1024 }
     );
   } catch (e) {

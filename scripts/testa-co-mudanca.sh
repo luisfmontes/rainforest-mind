@@ -95,6 +95,28 @@ else
   falha "uso errado sai 2: sem-arg=$RC_SEM opcao-desconhecida=$RC_OPC"
 fi
 
+# ------------------------------------------- caminho com acento (quotePath)
+# Sem core.quotePath=false o git devolve "Gest\303\243o de Contratos/..." entre
+# aspas: o alvo nao casa e o script diz "historico insuficiente" com 4 mudancas.
+R2="$RAIZ/repo-acento"
+mkdir -p "$R2/Gestão de Contratos"
+cd "$R2" || exit 1
+git init -q
+for i in 1 2 3 4; do
+  echo "$i" >> "Gestão de Contratos/MT100.prw"
+  echo "$i" >> "Gestão de Contratos/MT100b.prw"
+  commit "mt100 $i"
+done
+
+run "$R2" "Gestão de Contratos/MT100.prw" --min 3
+if [ "$RC" -eq 0 ] && echo "$OUT" | grep -qxF "Gestão de Contratos/MT100b.prw  4/4  1.00" \
+   && ! echo "$OUT" | grep -qF '\303' \
+   && ! echo "$OUT" | grep -q 'histórico insuficiente'; then
+  passou "caminho com acento: MT100b.prw listado legível, sem \\303 nem histórico insuficiente"
+else
+  falha "caminho com acento: rc=$RC saida=[$OUT]"
+fi
+
 echo
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]
