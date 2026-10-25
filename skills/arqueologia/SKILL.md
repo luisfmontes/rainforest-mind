@@ -21,7 +21,7 @@ vêm de lá.
 
 **Mapeie a fatia que a demanda toca, nunca a base inteira.** Se o mapa que você
 está prestes a escrever não cabe numa sessão, o escopo está errado — volte e
-reduza antes de ler mais um arquivo.
+reduza antes de ler mais um arquivo. Para cada arquivo da fatia, rode `node scripts/co-mudanca.cjs <arquivo>` e veja o vizinho que o histórico diz que muda junto.
 
 E esta skill **não gera código e não modifica fonte nenhum**. Ela escreve só na
 pasta de mapas (`node scripts/pastas-docs.cjs caminho --tipo mapas`) e mais nada.
