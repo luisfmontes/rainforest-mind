@@ -47,7 +47,7 @@ pronto quando: num banco temporário (isolado como `scripts/testa-memoria.sh` fa
 
 ### 3. Posição servida no uso [tipo: implementar]
 atende: D2, D5
-arquivos: `scripts/esquema-memoria.sql`, `scripts/memoria.cjs`, `scripts/lib/utilidade.cjs`, `scripts/testa-utilidade-posicao.sh`
+arquivos: `scripts/esquema-memoria.sql`, `scripts/memoria.cjs`, `scripts/lib/utilidade.cjs`, `scripts/testa-utilidade-posicao.sh`, `scripts/testa-utilidade.sh`
 depende de: 2
 busca:
 - repo | grep -n "function gravarUso\|function pontuarSessao" scripts/lib/utilidade.cjs | uso_memoria não tem posição (esquema-memoria.sql:101-110); pontuarSessao reordena por canal (utilidade.cjs:643) e perde a ordem do bloco
@@ -60,7 +60,7 @@ mutacao:
   para: posicao: null,
   bateria: `bash scripts/testa-utilidade-posicao.sh`
   fixture: testa-utilidade-posicao.sh, caso "a terceira linha do bloco grava posicao 3"
-pronto quando: com um transcrito temporário cuja abertura serviu três memórias (ids X, Y, Z, nessa ordem no bloco), pontuar a sessão grava `uso_memoria.posicao` 1, 2 e 3 para X, Y e Z; memória do canal assunto ganha a posição dentro do bloco dela; linha antiga (gravada antes da migração) fica com `posicao` nula e o relatório não quebra; `node scripts/memoria.cjs utilidade --relatorio` ganha a nota média por faixa (1–3, 4–7, 8+) e mantém as linhas de hoje — provado por `bash scripts/testa-utilidade-posicao.sh`, e `bash scripts/testa-utilidade.sh` e `bash scripts/testa-utilidade-canais.sh` seguem verdes. A forma é a linha do `de:` (o índice é a ordem em que `extrairLinhasServidas` leu o bloco).
+pronto quando: com um transcrito temporário cuja abertura serviu três memórias (ids X, Y, Z, nessa ordem no bloco), pontuar a sessão grava `uso_memoria.posicao` 1, 2 e 3 para X, Y e Z; memória do canal assunto ganha a posição dentro do bloco dela; linha antiga (gravada antes da migração) fica com `posicao` nula e o relatório não quebra; `node scripts/memoria.cjs utilidade --relatorio` ganha a nota média por faixa (1–3, 4–7, 8+) e mantém as linhas de hoje — provado por `bash scripts/testa-utilidade-posicao.sh`, e `bash scripts/testa-utilidade.sh` e `bash scripts/testa-utilidade-canais.sh` seguem verdes (a asserção D10 de `testa-utilidade.sh`, lista exata de colunas sem texto livre, passa a incluir `posicao`, que é INTEGER). A forma é a linha do `de:` (o índice é a ordem em que `extrairLinhasServidas` leu o bloco).
 
 ### 4. Versão 1.78.0, CHANGELOG e README [tipo: docs]
 atende: D1, D6

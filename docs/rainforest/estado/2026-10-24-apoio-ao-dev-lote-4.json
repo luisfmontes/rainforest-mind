@@ -16,7 +16,13 @@
     "em": "2026-10-25"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "integradas": [
+      1,
+      2
+    ],
+    "em_voo": [],
+    "em": "2026-10-25"
   },
   "revisar": {
     "status": "pendente"
@@ -26,5 +32,14 @@
   },
   "fechar": {
     "status": "pendente"
-  }
+  },
+  "decididos": [
+    {
+      "pergunta": "D10 de testa-utilidade.sh lista as colunas de uso_memoria exatas; posicao entra?",
+      "escolha": "sim: a lista passa a incluir posicao",
+      "porque": "D10 proibe texto livre em uso_memoria; posicao e INTEGER e e o que o D5 pede",
+      "estagio": "executar",
+      "em": "2026-10-25T07:23:54.835Z"
+    }
+  ]
 }
