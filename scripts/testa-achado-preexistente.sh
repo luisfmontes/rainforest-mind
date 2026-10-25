@@ -238,6 +238,20 @@ r=1
 if [ "$GOT" -eq 0 ] && ! printf '%s' "$SAIDA" | grep -qF '"decision":"block"' && [ "$(veredito_de H5)" = "invalido" ]; then r=0; fi
 registra "(H5) segunda parada do ok com [alta] [preexistente] a.cjs:3 grava invalido (obtido: $(veredito_de H5))" $r
 
+# Revisor com cwd fora do repo do estado (worktree de agente): o hook confere no
+# cwd dele (aqui, sem base: a marca vale e reprovado fica sem achado -> invalido),
+# e o estado.cjs tem de conferir no MESMO cwd, não na raiz do estado (onde a.cjs:3
+# está no diff e a recusa tornaria o relato coerente, sem gravar nada).
+TXT_H6='**[media]** [preexistente] a.cjs:3 — defeito antigo
+VEREDITO: reprovado'
+reset_estado
+cp "$R_POSIX/docs/rainforest/estado/$SLUG.json" "$R2_POSIX/docs/rainforest/estado/$SLUG.json"
+T=$(transcrito_com_texto "$TXT_H6" H6)
+disparar "$(pay "$R2" "rainforest-mind:revisor" "H6" "$TXT_H6" '{"agent_transcript_path":"'"$T"'","stop_hook_active":true}')"
+r=1
+if [ "$GOT" -eq 0 ] && [ "$(veredito_de H6)" = "invalido" ]; then r=0; fi
+registra "(H6) cwd do revisor sem base e estado em repo com diff: a segunda parada grava invalido (obtido: $(veredito_de H6))" $r
+
 # ---------------------------------------------------------------- (P) caminho com espaço e acento; sem citação
 echo "-- (P) a citação se acha pelo caminho do diff, com espaço e acento; sem citação, a marca é recusada --"
 RES_P="$(node -e '
@@ -248,11 +262,12 @@ process.stdout.write(JSON.stringify({
   P1: m("**[alta]** [preexistente] Ponto de Entrada\\69 - Gestão\\x y.prw:2 — linha que o diff trocou"),
   P2: m("**[alta]** [preexistente] `Ponto de Entrada/69 - Gestão/x y.prw:3` — linha antiga"),
   P3: m("**[alta]** [preexistente] a funcao X quebra o contrato"),
+  P4: m("**[alta]** [preexistente] xa.cjs:3 — outro arquivo, que só termina em a.cjs"),
 }));
 ' "$LIB" "$R" 2>&1)"
 GOT=0; SAIDA=""; ERR_HOOK=""; CRIT_EXIT=""; CRIT_OUT=""; CRIT_ERR=""
-r=1; if [ "$RES_P" = '{"P1":"Ponto de Entrada/69 - Gestão/x y.prw:2 está no diff","P2":"","P3":"sem arquivo:linha para conferir"}' ]; then r=0; fi
-registra "(P1) prw com espaço e acento na linha do diff é recusado; (P2) a linha antiga dele passa; (P3) sem arquivo:linha é recusado (obtido: $RES_P)" $r
+r=1; if [ "$RES_P" = '{"P1":"Ponto de Entrada/69 - Gestão/x y.prw:2 está no diff","P2":"","P3":"sem arquivo:linha para conferir","P4":""}' ]; then r=0; fi
+registra "(P1) prw com espaço e acento na linha do diff é recusado; (P2) a linha antiga dele passa; (P3) sem arquivo:linha é recusado; (P4) xa.cjs:3 não é a.cjs:3 (obtido: $RES_P)" $r
 
 # ---------------------------------------------------------------- (C) crítica
 echo "-- (C) critica-do-revisor: a marca aceita sai do redespacho; a recusada fica sem a marca --"

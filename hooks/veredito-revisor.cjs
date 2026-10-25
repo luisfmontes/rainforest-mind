@@ -277,7 +277,9 @@ function main() {
     // quando setado (sandbox de teste), não é tocado e continua vencendo tudo.
     spawnSync(process.execPath, args, {
       cwd: raizEstado,
-      env: { ...process.env, CLAUDE_PROJECT_DIR: raizEstado },
+      // RFM_DIFF_CWD: o estado.cjs recusa a marca [preexistente] pelo mesmo diff
+      // que este hook usou (payload.cwd), não pelo da raiz do estado.
+      env: { ...process.env, CLAUDE_PROJECT_DIR: raizEstado, RFM_DIFF_CWD: payload.cwd },
       stdio: 'ignore',
     });
   } catch {

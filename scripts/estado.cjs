@@ -1015,7 +1015,8 @@ function transcritoConfirmaVeredito(caminhoTranscrito, slug, veredito) {
   const { contarAchados, incoerencia, preexistentesNoDiff, tirarMarcaPreexistente } = require(path.join(__dirname, '..', 'hooks', 'lib', 'achados-revisor.cjs'));
   // D3/D9 (lote 6): a mesma recusa da marca [preexistente] que o hook aplicou,
   // senao o `invalido` da segunda parada nao se confirma e nada e gravado.
-  const recusadas = preexistentesNoDiff(mensagem, RAIZ) || [];
+  // O diff e o do cwd do hook (RFM_DIFF_CWD), que pode ser outro worktree.
+  const recusadas = preexistentesNoDiff(mensagem, process.env.RFM_DIFF_CWD || RAIZ) || [];
   return incoerencia(vereditoDoTranscrito, contarAchados(tirarMarcaPreexistente(mensagem, recusadas))) !== null;
 }
 

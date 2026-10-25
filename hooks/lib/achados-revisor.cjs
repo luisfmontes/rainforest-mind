@@ -196,9 +196,11 @@ function preexistentesNoDiff(texto, cwd) {
     let linha = null;
     for (const caminho of adicionadas.keys()) {
       if (arquivo && caminho.length <= arquivo.length) continue;
-      const i = abertura.indexOf(`${caminho}:`);
-      const n = i < 0 ? null : /^\d+/.exec(abertura.slice(i + caminho.length + 1));
-      if (n) { arquivo = caminho; linha = Number(n[0]); }
+      // o caminho começa num limite: `xa.cjs:3` não é citação de `a.cjs`
+      for (let i = abertura.indexOf(`${caminho}:`); i >= 0; i = abertura.indexOf(`${caminho}:`, i + 1)) {
+        const n = /^\d+/.exec(abertura.slice(i + caminho.length + 1));
+        if (n && (i === 0 || !/[\w.-]/.test(abertura[i - 1]))) { arquivo = caminho; linha = Number(n[0]); break; }
+      }
     }
     if (!arquivo && x.arquivo && x.linha !== null) {
       arquivo = x.arquivo.replace(/\\/g, '/').replace(/^\.\//, '');
