@@ -67,10 +67,33 @@
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "d5c3efc9d7b2a7e5e0e67ac31dcaa938fbee2678",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a83d44dc125d522f9",
+        "veredito": "ok",
+        "em": "2026-10-25",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-a83d44dc125d522f9.jsonl"
+      }
+    ],
+    "achados": 4,
+    "motivo": "[design][baixa] comparacao de voltas vai para o executor contra laco.md; [baixa] conferir-ancoras muda exit com paragrafo em negrito antes dos campos; [baixa] segundo nome do aviso-duplicata (junction) sem teste que discrimine; [baixa] CHANGELOG cita :271 (e :270) e 84 baterias (sao 88). Todos vao para o lote 6.",
+    "base": "866dab73",
+    "head": "HEAD",
+    "em": "2026-10-25"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scratchpad/verif-l5.sh: bash scripts/testa-conferir-mutacao-placar.sh; bash scripts/testa-critica-voltas.sh; bash scripts/testa-auditor-de-seguranca.sh; bash hooks/testa-caminho-real.sh; bash scripts/testa-conferir-ancoras-regras.sh; bash scripts/testa-baterias-do-diff.sh; bash hooks/testa-aviso-duplicata.sh; bash scripts/testa-memoria-proximidade.sh; bash scripts/testa-sandbox-com-trap.sh; bash scripts/testa-backup-gravar.sh; bash scripts/testa-memoria-degradacao.sh; bash scripts/testa-memoria-migracao-atomica.sh; node -e (versão dos dois plugin.json); node scripts/conferir-fluxo.cjs cobertura --slug 2026-10-24-apoio-ao-dev-lote-5",
+    "saida": "tarefa 1: placar 26/0; tarefa 2: critica-voltas 11/0; tarefa 3: auditor 107/0; tarefa 4: caminho-real 9/0; tarefa 5: ancoras-regras 13/0, baterias-do-diff 17/0, aviso-duplicata 49/0, memoria-proximidade 10/0; tarefa 6: 1.79.0 / 1.79.0 e CHANGELOG casado com o diff pelo revisor (com 2 citações a corrigir no lote 6); tarefa 7: sandbox-com-trap 204/0, backup-gravar 34/0, memoria-degradacao e migracao-atomica exit 0, controle da guarda numa raiz falsa; todas exit=0; cobertura válida — 8 decisão(ões), 7 tarefa(s)",
+    "sensor_externo": "node scripts/conferir-fluxo.cjs cobertura",
+    "em": "2026-10-25",
+    "head": "d5c3efc9d7b2a7e5e0e67ac31dcaa938fbee2678"
   },
   "fechar": {
     "status": "pendente"
