@@ -124,6 +124,21 @@ verifica c11 "Teste: Nenhum e NENHUM são sem-teste, exit 0" 0 "$M11" \
   "!regra R1 testada" \
   "· regras: 0 testada, 2 sem-teste, 0 sem-campos, 0 sem-id"
 
+# --- parágrafo em negrito sem id depois de regra R1 fecha a R1 e sai sem-id (D7 do lote 5) ---
+M12=$(mapa c12-negrito-depois-de-r1 '## Regras implícitas\n\n**R1 — Período fechado barra**\nVerificada em: abc1234\nTeste: scripts/testa-x.sh\n\n**Regra antiga sem id**\nTexto que não é corpo da R1.\n')
+verifica c12 "parágrafo em negrito sem id depois de regra R1 sai sem-id" 0 "$M12" \
+  "regra R1 testada" \
+  "regra sem-id: **Regra antiga sem id**" \
+  "!Texto que não é corpo" \
+  "· regras: 1 testada, 0 sem-teste, 0 sem-campos, 1 sem-id"
+
+# --- parágrafo comum depois da R1 (sem ** na abertura) segue corpo dela, sem sem-id ---
+M13=$(mapa c13-comum-depois-de-r1 '## Regras implícitas\n\n**R1 — Período fechado barra**\nVerificada em: abc1234\nTeste: scripts/testa-x.sh\n\nParágrafo comum, sem negrito na abertura.\n')
+verifica c13 "parágrafo comum depois da R1 segue corpo dela: R1 testada, sem sem-id, exit 0" 0 "$M13" \
+  "regra R1 testada" \
+  "!regra sem-id" \
+  "· regras: 1 testada, 0 sem-teste, 0 sem-campos, 0 sem-id"
+
 echo "ok: $ok   falhou: $falhou"
 if [ "$falhou" -gt 0 ]; then exit 1; fi
 exit 0

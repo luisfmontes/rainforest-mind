@@ -250,6 +250,23 @@ saiu "nome usado em 60 mil linhas: exit 0" "$EXIT" "0"
 tem  "avisa gigante com def.js:1 apesar do volume de usos" "$OUT" '`gigante` já está definido em `def.js:1`'
 
 echo
+echo "== 10. payload sem definição de topo não sobe git (GIT_TRACE na caixa) =="
+# Sem nome de definição de topo, o hook sai antes do rev-parse: nenhum processo git roda,
+# então o arquivo de trace tem de continuar inexistente. O controle (com definição) prova
+# que o GIT_TRACE de fato escreve quando o git roda, senão a ausência não provaria nada.
+CX="$(mktemp -d)"
+gerar write "src/semtopo.cjs" "$C1" 'const x = 1;\n' > "$SBP/p10.json"
+GIT_TRACE="$(cygpath -m "$CX")/trace.txt" node "$HOOK" < "$SBP/p10.json" > "$SBP/out10.txt" 2>/dev/null; EXIT=$?
+OUT="$(cat "$SBP/out10.txt")"
+saiu "payload sem definição de topo sai 0" "$EXIT" "0"
+vazio "payload sem definição de topo não imprime nada" "$OUT"
+if [ -e "$CX/trace.txt" ]; then falhou=$((falhou+1)); echo "  FALHA payload sem definição de topo não sobe git (o trace apareceu)"; else ok=$((ok+1)); echo "  ok   payload sem definição de topo não sobe git (trace continua inexistente)"; fi
+gerar write "src/comtopo.cjs" "$C1" 'function somar(x, y) {\n  return x + y;\n}\n' > "$SBP/p10c.json"
+GIT_TRACE="$(cygpath -m "$CX")/controle.txt" node "$HOOK" < "$SBP/p10c.json" > /dev/null 2>&1
+if [ -e "$CX/controle.txt" ]; then ok=$((ok+1)); echo "  ok   controle: com definição o git roda e o trace aparece"; else falhou=$((falhou+1)); echo "  FALHA controle: com definição o trace não apareceu, a ausência acima não prova nada"; fi
+rm -rf "$CX"
+
+echo
 echo
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ] || exit 1

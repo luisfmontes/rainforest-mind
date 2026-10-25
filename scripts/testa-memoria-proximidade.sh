@@ -155,14 +155,27 @@ fi
 
 echo
 echo "== 8. --limite negativo com --texto devolve todos, como o LIMIT -1 de antes =="
+# Caixa PRÓPRIA do caso 8 (os casos 1 a 7 usam a caixa de A, B e C). Aqui 60 observações
+# casam com o termo, mais que o teto de 50 que o limite positivo impõe: se o limite negativo
+# cair no teto, a contagem sai 50 e o caso fica vermelho.
+CAIXA8="$(novo_sandbox)"
+RFM_ROOT="$CAIXA8" $MEMORIA iniciar >/dev/null 2>&1
+RFM_ROOT="$CAIXA8" node -e "
+  const { abrirBanco } = require('./scripts/memoria.cjs');
+  const path = require('path');
+  const db = abrirBanco(path.join(process.env.RFM_ROOT, 'rainforest.db'));
+  const ins = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
+  for (let i = 0; i < 60; i++) ins.run('p-lim', 'deploy numero ' + i + ' do servico de catalogo com registro proprio', '2026-08-' + String(1 + (i % 28)).padStart(2, '0') + 'T10:00:00Z', 'lim-' + i);
+  db.close();
+" 2>/dev/null
 conta_js='process.stdout.write(String(JSON.parse(require("fs").readFileSync(0,"utf8")||"[]").length))'
-todos=$(RFM_ROOT="$CAIXA" $MEMORIA buscar --texto "deploy" --limite 100 --json 2>/dev/null | node -e "$conta_js")
-neg=$(RFM_ROOT="$CAIXA" $MEMORIA buscar --texto "deploy" --limite -1 --json 2>/dev/null | node -e "$conta_js")
+todos=$(RFM_ROOT="$CAIXA8" $MEMORIA buscar --texto "deploy" --limite 100 --json 2>/dev/null | node -e "$conta_js")
+neg=$(RFM_ROOT="$CAIXA8" $MEMORIA buscar --texto "deploy" --limite -1 --json 2>/dev/null | node -e "$conta_js")
 echo "  comando: RFM_ROOT=<sandbox> node scripts/memoria.cjs buscar --texto deploy --limite -1 --json -> $neg (com --limite 100: $todos)"
-if [ -n "$todos" ] && [ "$todos" -gt 0 ] && [ "$neg" = "$todos" ]; then
-  ok=$((ok+1)); echo "  ok   --limite -1 devolve os $todos casamentos"
+if [ "$neg" = 60 ] && [ "$todos" = 60 ]; then
+  ok=$((ok+1)); echo "  ok   --limite -1 devolve os 60 casamentos"
 else
-  falhou=$((falhou+1)); echo "  FALHA --limite -1 devolveu $neg, esperado $todos"
+  falhou=$((falhou+1)); echo "  FALHA --limite -1 devolveu $neg (com --limite 100: $todos), esperado 60"
 fi
 
 echo

@@ -111,6 +111,17 @@ if [ "$RC" = 0 ] && [ -z "$OUT" ]; then
   passou "bateria apagada entre base e head nao e listada"
 else falha "bateria apagada: exit=$RC saida=[$OUT]"; fi
 
+# Renomeação (git mv a.cjs a2.cjs, status R no -z): o nome antigo sai apagado e o novo
+# alterado. A bateria que cita a2.cjs entra; a que cita a.cjs também entra, porque o nome
+# antigo continua citado e a remoção dele a afeta (testa-a.sh cita a.cjs).
+cd "$R" || exit 1
+git reset -q --hard "$BASE" && git clean -qfd
+git mv scripts/a.cjs scripts/a2.cjs && printf 'cita a2.cjs\n' > scripts/testa-renomeado.sh && git add -A && git commit -qm caso
+rodar
+if [ "$RC" = 0 ] && [ "$OUT" = "$(printf 'scripts/testa-a.sh\nscripts/testa-renomeado.sh')" ]; then
+  passou "renomear a.cjs para a2.cjs lista a bateria que cita a2.cjs e a que cita a.cjs, exit 0"
+else falha "renomear a.cjs para a2.cjs: exit=$RC saida=[$OUT]"; fi
+
 novo_caso "scripts/Gestão.cjs"
 rodar
 if [ "$RC" = 0 ] && [ "$OUT" = "scripts/testa-gestao.sh" ]; then

@@ -66,7 +66,8 @@
  * real), `sem-teste` (`Teste: nenhum`, aviso), `sem-campos` (falta um dos dois campos,
  * falha, exit 1). Parágrafo da seção sem regra aberta que não abre com o marcador é
  * formato antigo: sai `regra sem-id` como aviso, sem mudar o exit. Com regra aberta,
- * parágrafo novo é corpo dela. Sem a seção, a saída é a de sempre.
+ * parágrafo novo é corpo dela, salvo o que abre com `**` sem casar o marcador: esse
+ * sai `regra sem-id` e fecha a regra aberta (D7 do lote 5). Sem a seção, a saída é a de sempre.
  *
  * Uso: node scripts/conferir-ancoras.cjs <mapa.md> [--repo <raiz>]
  */
@@ -238,6 +239,8 @@ function rotulo(cit, exibido) {
 const RE_REGRA = /^(?:[-*]\s+)?\*\*R(\d+)\s+[-—–]\s+.+?\*\*/;
 const RE_VERIFICADA = /^(?:[-*]\s+)?Verificada em:\s*(.*)$/;
 const RE_TESTE = /^(?:[-*]\s+)?Teste:\s*(.*)$/;
+// parágrafo que abre com `**` (negrito): se não casa RE_REGRA, é formato antigo e fecha a regra aberta
+const RE_ABRE_NEGRITO = /^(?:[-*]\s+)?\*\*/;
 
 // linhas da seção `## Regras implícitas`, do cabeçalho ao próximo `## `; sem a seção, lista vazia
 function secaoRegras(conteudo) {
@@ -249,7 +252,8 @@ function secaoRegras(conteudo) {
 }
 
 // regra: marcador + campos. Com regra aberta, parágrafo novo (mesmo depois de linha em branco)
-// é corpo dela; `sem-id` só sai sem regra aberta. A regra fecha no próximo marcador, no
+// é corpo dela, exceto o que abre com `**` sem casar o marcador: esse sai `sem-id` e fecha a
+// regra aberta, para que as linhas seguintes não virem corpo dela. A regra fecha também no
 // próximo título `#` ou no fim da seção. Campos `Verificada em:`/`Teste:` anexam à regra aberta.
 function lerRegras(linhas) {
   const itens = [];
@@ -267,7 +271,8 @@ function lerRegras(linhas) {
       atual.verificada = RE_VERIFICADA.exec(l)[1].trim();
     } else if (atual && RE_TESTE.test(l)) {
       atual.teste = RE_TESTE.exec(l)[1].trim();
-    } else if (novoParagrafo && atual === null) {
+    } else if (novoParagrafo && (atual === null || RE_ABRE_NEGRITO.test(l))) {
+      atual = null;
       itens.push({ tipo: 'sem-id', estado: 'sem-id', texto: l.slice(0, 60) });
     }
     novoParagrafo = false;
