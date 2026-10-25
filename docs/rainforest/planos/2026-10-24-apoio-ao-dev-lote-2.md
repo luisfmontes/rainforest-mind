@@ -14,7 +14,7 @@ Design: docs/rainforest/design/2026-10-24-apoio-ao-dev-lote-2.md
 
 ### 1. Veredito coerente com os achados [tipo: implementar]
 atende: D2, D3, D8
-arquivos: `hooks/lib/achados-revisor.cjs`, `hooks/veredito-revisor.cjs`, `scripts/critica-do-revisor.cjs`, `agents/revisor.md`, `skills/revisar/SKILL.md`, `hooks/testa-veredito-coerente.sh`, `hooks/testa-veredito-revisor.sh`, `scripts/testa-critica-do-revisor.sh`
+arquivos: `hooks/lib/achados-revisor.cjs`, `hooks/veredito-revisor.cjs`, `scripts/estado.cjs`, `scripts/critica-do-revisor.cjs`, `agents/revisor.md`, `skills/revisar/SKILL.md`, `hooks/testa-veredito-coerente.sh`, `hooks/testa-veredito-revisor.sh`, `scripts/testa-critica-do-revisor.sh`
 depende de: nenhuma
 busca:
 - repo | grep -rn "\[design\]" scripts hooks | critica-do-revisor.cjs:103 reconhece [design] pela posição no início do achado; nenhuma contagem de severidade em lugar nenhum
