@@ -84,7 +84,7 @@ verifica c5 "formato antigo sai regra sem-id como aviso e exit 0" 0 "$M5" \
   "0 âncoras: 0 ok, 0 falhas · regras: 0 testada, 0 sem-teste, 0 sem-campos, 1 sem-id"
 
 # --- formato antigo misturado com regra nova: o sem-id não muda o exit ---
-M6=$(mapa c6-misto '## Regras implícitas\n\n**R1 — Nova**\nVerificada em: abc1234\nTeste: scripts/testa-x.sh\n\n**Regra antiga** — texto sem marcador\n')
+M6=$(mapa c6-misto '## Regras implícitas\n\n**Regra antiga** — texto sem marcador\n\n**R1 — Nova**\nVerificada em: abc1234\nTeste: scripts/testa-x.sh\n')
 verifica c6 "formato antigo misturado com regra nova sai 0 com sem-id e R1 testada" 0 "$M6" \
   "regra R1 testada" "regra sem-id: **Regra antiga** — texto sem marcador" \
   "· regras: 1 testada, 0 sem-teste, 0 sem-campos, 1 sem-id"
@@ -108,6 +108,21 @@ M9=$(mapa c9-vazio '# Mapa\n\nSem citação nenhuma.\n')
 verifica c9 "mapa sem seção e sem âncora sai 0 com o resumo de sempre" 0 "$M9" \
   "=0 âncoras: 0 ok, 0 falhas" \
   "!regra"
+
+# --- parágrafo de descrição depois de linha em branco é corpo da regra aberta, não sem-id ---
+M10=$(mapa c10-corpo-depois-de-linha-em-branco '## Regras implícitas\n\n**R1 — Título**\n\nDescrição da regra, sem citação.\nVerificada em: abc1234\nTeste: scripts/testa-x.sh\n')
+verifica c10 "parágrafo depois de linha em branco é corpo da regra aberta: R1 testada, sem sem-id, exit 0" 0 "$M10" \
+  "regra R1 testada" \
+  "!regra sem-id" \
+  "· regras: 1 testada, 0 sem-teste, 0 sem-campos, 0 sem-id"
+
+# --- Teste: Nenhum em qualquer caixa é sem-teste ---
+M11=$(mapa c11-nenhum-caixa '## Regras implícitas\n\n**R1 — Maiúscula**\nVerificada em: abc1234\nTeste: Nenhum\n\n**R2 — Caixa alta**\nVerificada em: abc1234\nTeste: NENHUM\n')
+verifica c11 "Teste: Nenhum e NENHUM são sem-teste, exit 0" 0 "$M11" \
+  "regra R1 sem-teste" \
+  "regra R2 sem-teste" \
+  "!regra R1 testada" \
+  "· regras: 0 testada, 2 sem-teste, 0 sem-campos, 0 sem-id"
 
 echo "ok: $ok   falhou: $falhou"
 if [ "$falhou" -gt 0 ]; then exit 1; fi

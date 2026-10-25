@@ -64,8 +64,9 @@
  * (hífen ou travessão) e traz `Verificada em: <sha>` e `Teste: <bateria ou caso> |
  * nenhum` nas linhas seguintes. Estado por regra: `testada` (os dois campos, teste
  * real), `sem-teste` (`Teste: nenhum`, aviso), `sem-campos` (falta um dos dois campos,
- * falha, exit 1). Parágrafo da seção que não abre com o marcador é formato antigo:
- * sai `regra sem-id` como aviso, sem mudar o exit. Sem a seção, a saída é a de sempre.
+ * falha, exit 1). Parágrafo da seção sem regra aberta que não abre com o marcador é
+ * formato antigo: sai `regra sem-id` como aviso, sem mudar o exit. Com regra aberta,
+ * parágrafo novo é corpo dela. Sem a seção, a saída é a de sempre.
  *
  * Uso: node scripts/conferir-ancoras.cjs <mapa.md> [--repo <raiz>]
  */
@@ -247,15 +248,17 @@ function secaoRegras(conteudo) {
   return linhas.slice(ini + 1, fim === -1 ? undefined : fim);
 }
 
-// regra: marcador + campos; parágrafo que não abre com marcador é `sem-id` (formato antigo).
-// Os campos valem para a regra aberta, mesmo depois de linha em branco, até o próximo marcador.
+// regra: marcador + campos. Com regra aberta, parágrafo novo (mesmo depois de linha em branco)
+// é corpo dela; `sem-id` só sai sem regra aberta. A regra fecha no próximo marcador, no
+// próximo título `#` ou no fim da seção. Campos `Verificada em:`/`Teste:` anexam à regra aberta.
 function lerRegras(linhas) {
   const itens = [];
   let atual = null;
   let novoParagrafo = true;
   for (const bruta of linhas) {
     const l = bruta.trim();
-    if (l === '' || l.startsWith('#')) { novoParagrafo = true; continue; }
+    if (l.startsWith('#')) { atual = null; novoParagrafo = true; continue; }
+    if (l === '') { novoParagrafo = true; continue; }
     const marca = RE_REGRA.exec(l);
     if (marca) {
       atual = { tipo: 'regra', n: marca[1], verificada: null, teste: null, estado: null };
@@ -264,9 +267,8 @@ function lerRegras(linhas) {
       atual.verificada = RE_VERIFICADA.exec(l)[1].trim();
     } else if (atual && RE_TESTE.test(l)) {
       atual.teste = RE_TESTE.exec(l)[1].trim();
-    } else if (novoParagrafo) {
+    } else if (novoParagrafo && atual === null) {
       itens.push({ tipo: 'sem-id', estado: 'sem-id', texto: l.slice(0, 60) });
-      atual = null;
     }
     novoParagrafo = false;
   }
@@ -296,7 +298,7 @@ for (const regra of regras) {
     continue;
   }
   regra.estado = 'testada';
-  if (regra.teste === 'nenhum') regra.estado = 'sem-teste';
+  if (regra.teste !== null && regra.teste.toLowerCase() === 'nenhum') regra.estado = 'sem-teste';
   if (!regra.verificada || !regra.teste) regra.estado = 'sem-campos';
   console.log(`regra R${regra.n} ${regra.estado}`);
 }
