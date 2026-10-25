@@ -17,7 +17,7 @@
     "em": "2026-10-25"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-25",
     "integradas": [
       1,
@@ -58,17 +58,33 @@
         "resultado": "n/a",
         "motivo": "metadado de versão e documentação, sem comportamento a inverter"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-25"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente",
+    "status": "reprovado",
     "snapshot": {
       "head": "65b02503f50256acd2b33d7f008308f2b699d554",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-10-24-apoio-ao-dev-lote-3.json"
       ]
     },
-    "vereditos": []
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "aa8bde99d7efcec41",
+        "veredito": "reprovado",
+        "em": "2026-10-25",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-aa8bde99d7efcec41.jsonl"
+      }
+    ],
+    "achados": 7,
+    "em": "2026-10-25",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
@@ -83,6 +99,13 @@
       "porque": "edição é uma fração dos eventos de ferramenta e o hook sai cedo sem nome de definição; a trava segue barrando qualquer terceiro bloco",
       "estagio": "executar",
       "em": "2026-10-25T04:14:27.328Z"
+    },
+    {
+      "pergunta": "baterias-do-diff: .md alterado fica fora da selecao?",
+      "escolha": "nao: .md e docs/ nao geram duvida, mas listam a bateria que os cita",
+      "porque": "D3 diz que a duvida nunca estreita; 25 baterias leem SKILL.md e o teto de 16384 B so e pego por elas (revisao volta 1)",
+      "estagio": "executar",
+      "em": "2026-10-25T05:50:47.744Z"
     }
   ]
 }
