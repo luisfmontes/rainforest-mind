@@ -957,7 +957,8 @@ function resolverProjetoDaBusca(conexao, valor) {
 // devolve resultado vazio com exit 0, nunca erro.
 // `--desde`/`--ate` (D6): datas inclusivas sobre date(o.criada_em, 'localtime'), combináveis com
 // os demais filtros e com ou sem `--texto`. Data fora de AAAA-MM-DD ou impossível sai exit 2.
-// `buscar --texto`: mais relevante primeiro; empate (mesmo bm25) pelo mais recente.
+// `buscar --texto`: busca os candidatos por bm25 (esta ordem) e, em JS, reordena por proximidade
+// (reordenarPorProximidade). Empate pelo mais recente.
 const ORDEM_BUSCA_TEXTO = 'ORDER BY bm25(observacoes_fts), o.criada_em DESC';
 
 // Data no formato AAAA-MM-DD que existe no calendário (2026-02-30 e 2026-13-01 são recusadas).
@@ -966,6 +967,60 @@ function dataAAAAMMDDValida(valor) {
   const [ano, mes, dia] = valor.split('-').map(Number);
   const quando = new Date(Date.UTC(ano, mes - 1, dia));
   return quando.getUTCFullYear() === ano && quando.getUTCMonth() === mes - 1 && quando.getUTCDate() === dia;
+}
+
+// Tokens no critério do unicode61 do FTS5: minúsculo, sem acento, sequências de letras e números.
+function tokensBusca(texto) {
+  const sem = String(texto).normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+  return sem.match(/[\p{L}\p{N}]+/gu) || [];
+}
+
+// Termos distintos da consulta. AND/OR/NOT em maiúsculas são operadores do FTS5, não termos.
+function termosDaConsulta(texto) {
+  const palavras = (String(texto).match(/[\p{L}\p{N}]+/gu) || []).filter(p => !['AND', 'OR', 'NOT'].includes(p));
+  return [...new Set(tokensBusca(palavras.join(' ')))];
+}
+
+// Menor intervalo (em tokens, extremos incluídos) do conteúdo que contém todos os termos.
+// null quando falta algum termo ou a consulta tem um termo só: sem par, não há proximidade.
+function menorJanela(tokens, termos) {
+  if (termos.length < 2) return null;
+  const precisa = new Set(termos);
+  const ocorrencias = [];
+  tokens.forEach((t, i) => { if (precisa.has(t)) ocorrencias.push([i, t]); });
+  const contagem = new Map();
+  let presentes = 0;
+  let melhor = Infinity;
+  let esq = 0;
+  for (let dir = 0; dir < ocorrencias.length; dir++) {
+    const t = ocorrencias[dir][1];
+    contagem.set(t, (contagem.get(t) || 0) + 1);
+    if (contagem.get(t) === 1) presentes++;
+    while (presentes === precisa.size) {
+      melhor = Math.min(melhor, ocorrencias[dir][0] - ocorrencias[esq][0] + 1);
+      const u = ocorrencias[esq][1];
+      contagem.set(u, contagem.get(u) - 1);
+      if (contagem.get(u) === 0) presentes--;
+      esq++;
+    }
+  }
+  return melhor === Infinity ? null : melhor;
+}
+
+// Reordena os candidatos do bm25: final = s * (1 + prox), com s = -bm25 (maior = mais relevante).
+// Empate em final cai no mais recente. Devolve só os campos de saída (o score não sai).
+function reordenarPorProximidade(linhas, termos) {
+  const comNota = linhas.map(l => {
+    const janela = menorJanela(tokensBusca(l.conteudo), termos);
+    const s = -l.score;
+    const prox = janela === null ? 0 : 1 / (1 + janela / termos.length);
+    return { l, final: s * (1 + prox) };
+  });
+  comNota.sort((a, b) => (b.final - a.final)
+    || (a.l.criada_em < b.l.criada_em ? 1 : a.l.criada_em > b.l.criada_em ? -1 : 0));
+  return comNota.map(({ l }) => ({
+    id: l.id, projeto: l.projeto, conteudo: l.conteudo, criada_em: l.criada_em, trecho: l.trecho,
+  }));
 }
 
 function cmdBuscar() {
@@ -1042,7 +1097,9 @@ function cmdBuscar() {
       // o FTS só filtrava, e o primeiro resultado era o mais recente que casava
       // (revisita do context-mode, 2026-10-15). Mesma forma de `buscarCandidatas`.
       query = `
-        SELECT o.id, o.projeto, o.conteudo, o.criada_em
+        SELECT o.id, o.projeto, o.conteudo, o.criada_em,
+          snippet(observacoes_fts, 0, '[', ']', '…', 12) AS trecho,
+          bm25(observacoes_fts) AS score
         FROM observacoes_fts
         JOIN observacoes o ON o.id = observacoes_fts.rowid
         WHERE observacoes_fts MATCH ?
@@ -1060,7 +1117,8 @@ function cmdBuscar() {
     if (ate) { filtros.push("date(o.criada_em, 'localtime') <= ?"); params.push(ate); }
     for (const filtro of filtros) query += ` AND ${filtro}`;
 
-    params.push(limite);
+    // Com --texto, busca max(limite, 50) candidatos para o rerank; o corte em --limite vem depois.
+    params.push(texto ? Math.max(limite, 50) : limite);
     query += (texto ? ` ${ORDEM_BUSCA_TEXTO}` : ' ORDER BY criada_em DESC') + ' LIMIT ?';
 
     const stmt = conexao.prepare(query);
@@ -1075,6 +1133,10 @@ function cmdBuscar() {
       if (!termos) throw e;
       params[0] = termos.map(t => `"${t}"`).join(' ');
       resultados = termos.length ? stmt.all(...params) : [];
+    }
+    // D3: reordena por proximidade e só então corta em --limite.
+    if (texto) {
+      resultados = reordenarPorProximidade(resultados, termosDaConsulta(texto)).slice(0, limite);
     }
     // D7: zero resultados na saída humana conta o escopo com a mesma conexão, sem texto e sem
     // data. Falha aqui cai no catch de erro de banco, igual à busca.
@@ -1124,7 +1186,7 @@ function cmdBuscar() {
     }
     for (const obs of resultados) {
       console.log(`[${obs.id}] ${obs.projeto} - ${obs.criada_em}`);
-      console.log(`  ${obs.conteudo.substring(0, 100)}`);
+      console.log(`  ${obs.trecho || obs.conteudo.substring(0, 100)}`);
     }
   }
 }
