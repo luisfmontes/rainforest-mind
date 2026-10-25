@@ -38,29 +38,6 @@ function arg(nome, obrigatorio = true) {
   return process.argv[i + 1];
 }
 
-// ================================================================ Placar
-
-// extrairPlacar (conferir-mutacao.cjs) lê só `ok: N falhou: M` e `N ok, M falhou`.
-// Baterias do repo também imprimem `falha(s)`, `falhas` e `falha`, nas duas
-// formas. Sem este fallback, `== resultado: 0 ok, 0 falha(s) ==` vira "sem
-// placar" e a prova que não executou caso nenhum é aceita.
-function extrairPlacarRecon(saida) {
-  const ultimo = (re) => {
-    let m = null;
-    for (const cand of saida.matchAll(re)) m = cand;
-    return m;
-  };
-  const falha = 'falhou|falhas?|falha\\(s\\)';
-
-  const m1 = ultimo(new RegExp(`ok:\\s*(\\d+)\\s+(?:${falha}):\\s*(\\d+)`, 'g'));
-  if (m1) return { ok: parseInt(m1[1], 10), falhou: parseInt(m1[2], 10) };
-
-  const m2 = ultimo(new RegExp(`(\\d+)\\s+ok,\\s*(\\d+)\\s+(?:${falha})`, 'g'));
-  if (m2) return { ok: parseInt(m2[1], 10), falhou: parseInt(m2[2], 10) };
-
-  return null;
-}
-
 // ================================================================ Limpeza de worktree
 
 let worktreeAtual = null;
@@ -246,7 +223,7 @@ function cmdPlano() {
     // (ok e falhou iguais a zero): a bateria quebrou no setup antes do primeiro
     // caso, e o vermelho não diz nada sobre o comportamento.
     const saidaProva = `${resultado.stdout || ''}${resultado.stderr || ''}`;
-    const placar = extrairPlacar(saidaProva) || extrairPlacarRecon(saidaProva);
+    const placar = extrairPlacar(saidaProva);
     const semCaso = placar !== null && placar.ok === 0 && placar.falhou === 0;
     if (semCaso) {
       recusas.push(`tarefa ${numero}. ${nome} a prova não executou caso nenhum na base — o vermelho vem da infraestrutura, não do comportamento ausente`);

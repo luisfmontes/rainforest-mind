@@ -731,9 +731,10 @@ function suspeitaDeCorte(baselineDuracao, posDuracao) {
  * A saida pos-mutacao prova que a bateria MEDIU e encontrou falha? Issue #475: o corte de
  * shell e suspeita por tempo, e tempo sob carga mente — a bateria de `node --test` da secao
  * 13c de testa-conferir-fluxo.sh teve baseline frio acima de 1 s e pos-mutacao rapida, e a
- * mutacao legitima saiu `pulada (suspeita de corte de shell)` na CI. Placar com falha (os
- * dois formatos de `extrairPlacar`) ou o resumo do `node --test` (`# fail N` / `ℹ fail N`,
- * N > 0) e prova de que a bateria chegou a medir: nao e corte.
+ * mutacao legitima saiu `pulada (suspeita de corte de shell)` na CI. Placar com falha (qualquer
+ * forma de `extrairPlacar`, libtest do Rust incluido: `test result: FAILED. 0 passed; 1 failed`,
+ * Issue #589) ou o resumo do `node --test` (`# fail N` / `ℹ fail N`, N > 0) e prova de que a
+ * bateria chegou a medir: nao e corte.
  */
 function mediuEFalhou(saida) {
   if (!saida) return false;
@@ -742,13 +743,22 @@ function mediuEFalhou(saida) {
   return /^\s*(?:#|ℹ)\s*fail\s+[1-9]\d*\s*$/m.test(saida);
 }
 
+// A palavra da falha nas formas do repo: `falhou`, `falha`, `falhas`, `falha(s)`.
+const FALHA = 'falhou|falhas?|falha\\(s\\)';
+
 /**
- * Extrai o placar (ok e falhou) da saída da bateria.
- * Aceita dois formatos:
- *   - "ok: 34   falhou: 0" (espaços variáveis)
- *   - "34 ok, 0 falhou"
+ * Extrai o placar (ok e falhou) da saída da bateria. Formas reconhecidas, todas
+ * sem distinguir caixa (`gi`), com a palavra da falha em FALHA:
+ *   - "ok: 34   falhou: 0" (espaços variáveis; também "ok: N FALHA: M")
+ *   - "34 ok, 0 falhou"    (vírgula opcional: "34 ok   0 falha(s)")
+ *   - "ok=34 falhou=0"
+ *   - libtest do Rust: "test result: FAILED. 0 passed; 1 failed" — uma linha por
+ *     binário de teste; ok = soma dos passed, falhou = soma dos failed. Só entra
+ *     quando nenhuma forma do repo casa.
  *
- * Retorna { ok: número, falhou: número } ou null se não encontrar placar reconhecível.
+ * Entre as formas do repo vale a ULTIMA ocorrencia por posicao, qualquer que
+ * seja a forma. Retorna { ok: número, falhou: número } ou null se não encontrar
+ * placar reconhecível.
  */
 function extrairPlacar(saida) {
   if (!saida) return null;
@@ -758,25 +768,32 @@ function extrairPlacar(saida) {
   // aninhados no meio do stdout, e o primeiro deles e o da fixture. Medido em
   // 2026-09-09 na propria testa-conferir-mutacao.sh: primeira ocorrencia deu
   // ok=100 no baseline e ok=0 na mutacao, com a linha final dizendo 96/4.
-  const ultimo = (re) => {
-    let m = null;
-    for (const cand of saida.matchAll(re)) m = cand;
-    return m;
-  };
-
-  // Tenta o formato "ok: N   falhou: M"
-  const match1 = ultimo(/ok:\s*(\d+)\s+falhou:\s*(\d+)/g);
-  if (match1) {
-    return { ok: parseInt(match1[1], 10), falhou: parseInt(match1[2], 10) };
+  // A posicao vale entre as formas: a ultima linha do stdout e a que conta.
+  const formas = [
+    new RegExp(`ok:\\s*(\\d+)\\s+(?:${FALHA}):\\s*(\\d+)`, 'gi'),
+    new RegExp(`(\\d+)\\s+ok,?\\s*(\\d+)\\s+(?:${FALHA})`, 'gi'),
+    new RegExp(`ok=(\\d+)\\s+(?:${FALHA})=(\\d+)`, 'gi'),
+  ];
+  let melhor = null;
+  for (const re of formas) {
+    for (const m of saida.matchAll(re)) {
+      if (melhor === null || m.index > melhor.index) {
+        melhor = { index: m.index, ok: parseInt(m[1], 10), falhou: parseInt(m[2], 10) };
+      }
+    }
   }
+  if (melhor !== null) return { ok: melhor.ok, falhou: melhor.falhou };
 
-  // Tenta o formato "N ok, M falhou"
-  const match2 = ultimo(/(\d+)\s+ok,\s*(\d+)\s+falhou/g);
-  if (match2) {
-    return { ok: parseInt(match2[1], 10), falhou: parseInt(match2[2], 10) };
+  // Placar do libtest: um "test result:" por binário de teste, somados.
+  let achou = false;
+  let ok = 0;
+  let falhou = 0;
+  for (const m of saida.matchAll(/test result: \w+\. (\d+) passed; (\d+) failed/g)) {
+    achou = true;
+    ok += parseInt(m[1], 10);
+    falhou += parseInt(m[2], 10);
   }
-
-  return null;
+  return achou ? { ok, falhou } : null;
 }
 
 // A GUARDA DO COLAPSO mede algo diferente de "a bateria caiu X%": ela mede se a
