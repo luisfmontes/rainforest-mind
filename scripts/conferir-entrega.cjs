@@ -79,6 +79,7 @@ const path = require("path");
 const { spawnSync } = require("child_process");
 const { caminhoExecutavel } = require(path.join(__dirname, "..", "hooks", "lib", "resolver-executavel.cjs"));
 const { globMatches } = require(path.join(__dirname, "lib", "camadas.cjs"));
+const { bateriasQueCitam } = require(path.join(__dirname, "lib", "baterias-vizinhas.cjs"));
 
 class Conferencia {
   constructor() {
@@ -577,22 +578,7 @@ function main() {
       // no diff — as vizinhas que a entrega pode ter quebrado. Aviso, nao
       // reprova: citacao textual de nome nao prova dependencia.
       for (const item of fora) {
-        const nome = path.basename(item.caminho);
-        const escapado = nome.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const reNome = new RegExp(`(^|[^A-Za-z0-9_.-])${escapado}($|[^A-Za-z0-9_-])`);
-        const vizinhas = [];
-        for (const pasta of ["scripts", "hooks"]) {
-          const dir = path.join(wt, pasta);
-          if (!ehDir(dir)) continue;
-          for (const f of fs.readdirSync(dir).sort()) {
-            if (!/^testa-.*\.(sh|cjs)$/.test(f)) continue;
-            const rel = `${pasta}/${f}`;
-            if (arquivos.has(rel)) continue;
-            try {
-              if (reNome.test(fs.readFileSync(path.join(dir, f), "utf8"))) vizinhas.push(rel);
-            } catch { /* bateria ilegivel: nao e vizinha conhecida */ }
-          }
-        }
+        const vizinhas = bateriasQueCitam(wt, item.caminho).filter((rel) => !arquivos.has(rel));
         if (vizinhas.length) c.aviso(`vizinhas de ${item.caminho}: ${vizinhas.join(", ")}`);
       }
     } else {

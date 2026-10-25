@@ -42,6 +42,10 @@ Quem verifica não afrouxa a régua. Critério que não passou é **reprovado**,
 nunca "passou com ressalva", "não afeta o essencial" ou renomeado para
 observação. A régua é do plano; quem verifica só lê o resultado dela.
 
+## Baterias locais pelo diff
+
+Para escolher quais baterias rodar localmente, use `node scripts/baterias-do-diff.cjs --base <base do fluxo>`: ele lista as `testa-*` que o diff toca. Exit 3 significa dúvida (arquivo que nenhuma bateria cita, ou biblioteca compartilhada) e manda rodar a varredura completa, `bash scripts/varrer-baterias.sh`.
+
 ## Quando a mutação fica verde: prove que mutação mudou comportamento
 
 A bateria pode ficar verde por dois motivos: a mutação não mudou nada no comportamento, ou o teste não alcança o ramo mutado. **Antes de "verde" virar achado**, confira que a mutação realmente mudou comportamento — não a bateria, o artefato. Rodar o artefato mutado à mão e ver a saída diferente é o teste barato. Se rodar idêntico, a mutação é neutra e "verde" significa "o código vivo não é testado" — um achado legítimo, mas diferente de "o teste não morde". Só depois que **a mutação de fato mudou o comportamento** é que "bateria verde" significa "o teste falhou em cobrir essa mudança".

@@ -182,8 +182,8 @@ ausente) — stderr abre com `nao-verificavel: <motivo>`. Anuncie em uma linha
 e não redespache à toa; não é reprovação, nem aprovação, nem `flaky`.
 
 **Critério que roda bateria carrega o placar.** O laço inteiro é rodado
-pela integração (`bash scripts/varrer-baterias.sh`). Você roda cada bateria
-que a tarefa toca e cola seu placar (`total=N vermelhas:[...]`) — sem ela a
+pela integração (`bash scripts/varrer-baterias.sh`). Você roda o que `baterias-do-diff` lista
+e cola seu placar (`total=N vermelhas:[...]`) — sem ela a
 entrega não é conferível e **não se integra**. Número somado de casos de
 teste, nome de checagem avulsa apresentado como se fosse o laço inteiro, ou
 bateria vermelha reclassificada como "pré-existente" sem essa linha são
