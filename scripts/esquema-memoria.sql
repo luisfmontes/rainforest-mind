@@ -48,7 +48,8 @@ CREATE TABLE IF NOT EXISTS resumos (
   projeto TEXT NOT NULL,
   titulo TEXT NOT NULL,
   conteudo TEXT NOT NULL,
-  criada_em TEXT NOT NULL
+  criada_em TEXT NOT NULL,
+  invalidado_em TEXT
 );
 
 CREATE TABLE IF NOT EXISTS prompts (

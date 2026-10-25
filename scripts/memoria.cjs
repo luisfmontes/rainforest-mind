@@ -507,6 +507,10 @@ function criarSchema(conexao, opcoes = {}) {
   // novos bancos (schema acima), e é adicionada em legados (sem erro se já existe).
   adicionarColunaSeFaltar(conexao, 'observacoes', 'consolidada_em', 'TEXT');
 
+  // Migração 4b: invalidado_em em resumos (D4). Resumo cuja fração de observações
+  // superadas chegou a LIMIAR_INVALIDA_RESUMO sai da abertura; banco antigo ganha a coluna aqui.
+  adicionarColunaSeFaltar(conexao, 'resumos', 'invalidado_em', 'TEXT');
+
   // Migração 5: migração do FTS legado (C1).
   // Achado: CREATE VIRTUAL TABLE IF NOT EXISTS observacoes_fts é no-op quando
   // a tabela ANTIGA (`fts5(conteudo)` sem content=) existe — banco nunca migra
@@ -1848,6 +1852,38 @@ const TETO_RECONCILIAR = 200;
 // entendemos).
 const ACOES_RECONCILIACAO_VALIDAS = new Set(['store', 'update', 'merge', 'skip']);
 
+// D4: resumo sai da abertura quando a fração de observações dele já superadas chega
+// a este limiar (medido em 2026-10-25: 1 de 30 é ruído; 1 de 4 é o resumo derivado
+// de conteúdo que já não vale).
+const LIMIAR_INVALIDA_RESUMO = 0.25;
+
+// D4: observação superada que tem consolidada_em derruba o resumo do mesmo
+// projeto e mesmo instante (criada_em = consolidada_em), se a fração superada
+// chegou ao limiar. Chamada dentro da transação de aplicarDecisaoReconciliacao.
+// Sem a coluna (banco antigo que a migração ainda não tocou) não faz nada.
+function invalidarResumoDaSuperada(conexao, idSuperada, agora) {
+  const temInvalidado = conexao.prepare('PRAGMA table_info(resumos)').all().some((c) => c.name === 'invalidado_em');
+  if (!temInvalidado) return;
+
+  const sup = conexao.prepare('SELECT projeto, consolidada_em FROM observacoes WHERE id = ?').get(idSuperada);
+  if (!sup || !sup.consolidada_em) return;
+
+  const resumo = conexao.prepare('SELECT id, invalidado_em FROM resumos WHERE projeto = ? AND criada_em = ?')
+    .get(sup.projeto, sup.consolidada_em);
+  if (!resumo || resumo.invalidado_em) return;
+
+  const contagem = conexao.prepare(`
+    SELECT COUNT(*) AS total,
+           SUM(CASE WHEN substituida_por IS NOT NULL THEN 1 ELSE 0 END) AS superadas
+    FROM observacoes
+    WHERE projeto = ? AND consolidada_em = ?
+  `).get(sup.projeto, sup.consolidada_em);
+
+  if (contagem.total > 0 && contagem.superadas / contagem.total >= LIMIAR_INVALIDA_RESUMO) {
+    conexao.prepare('UPDATE resumos SET invalidado_em = ? WHERE id = ?').run(agora, resumo.id);
+  }
+}
+
 // Constrói uma query MATCH segura para o FTS5 a partir de texto livre.
 // Passar o conteúdo cru (com pontuação, aspas, dois-pontos) direto como MATCH
 // quebra a sintaxe do FTS5 (reservada para AND/OR/NOT/coluna:termo/etc). Aqui
@@ -2126,6 +2162,7 @@ function aplicarDecisaoReconciliacao(conexao, obs, decisao, candidatas = []) {
       if (decisao.acao === 'update') {
         conexao.prepare('UPDATE observacoes SET substituida_por = ?, reconciliada_em = ? WHERE id = ?')
           .run(obs.id, agora, alvo.id);
+        invalidarResumoDaSuperada(conexao, alvo.id, agora);
         conexao.prepare('UPDATE observacoes SET reconciliada_em = ? WHERE id = ?')
           .run(agora, obs.id);
       } else {
@@ -2152,8 +2189,10 @@ function aplicarDecisaoReconciliacao(conexao, obs, decisao, candidatas = []) {
 
         conexao.prepare('UPDATE observacoes SET substituida_por = ?, reconciliada_em = ? WHERE id = ?')
           .run(novoId, agora, obs.id);
+        invalidarResumoDaSuperada(conexao, obs.id, agora);
         conexao.prepare('UPDATE observacoes SET substituida_por = ?, reconciliada_em = ? WHERE id = ?')
           .run(novoId, agora, alvo.id);
+        invalidarResumoDaSuperada(conexao, alvo.id, agora);
         // A própria síntese nasce reconciliada: ela é o RESULTADO da
         // reconciliação da sondada com o alvo, não mais uma pendência. Sem
         // isto, ela reentraria em `pendentes` na próxima execução e seria
@@ -2516,7 +2555,7 @@ if (require.main === module) {
 module.exports = {
   abrirBanco, abrirBancoSomenteLeitura, criarSchema, extrairSchema, popularFts5,
   resolverCaminhos, verificarConstraintUniqueProjetoOrigem, encontrarGit, fazerBackupDoBanco,
-  K_CANDIDATAS, TETO_RECONCILIAR, construirQueryFts5, buscarCandidatas,
+  K_CANDIDATAS, TETO_RECONCILIAR, LIMIAR_INVALIDA_RESUMO, construirQueryFts5, buscarCandidatas,
   interpretarDecisaoReconciliacao, aplicarDecisaoReconciliacao,
   formatarPromptReconciliacao,
   filtroVivas, DIAS_CONSOLIDACAO, TETO_GRUPOS,

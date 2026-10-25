@@ -377,13 +377,18 @@ function buscarResumosRecentes(caminhoDb, projetosList, limite = 5) {
 
     try {
       const placeholders = projetosList && projetosList.length > 0
-        ? `WHERE ${PROJETO_NOCASE} IN (${projetosList.map(() => '?').join(', ')})`
+        ? `AND ${PROJETO_NOCASE} IN (${projetosList.map(() => '?').join(', ')})`
         : '';
+
+      // D4: resumo com invalidado_em sai da abertura. Banco antigo sem a coluna (aberto em
+      // somente leitura, antes de qualquer migração) serve como antes: sem o filtro.
+      const temInvalidado = conexao.prepare('PRAGMA table_info(resumos)').all().some((c) => c.name === 'invalidado_em');
+      const filtroInvalidado = temInvalidado ? 'AND invalidado_em IS NULL' : '';
 
       const query = `
         SELECT id, projeto, titulo, conteudo, criada_em
         FROM resumos
-        ${placeholders}
+        WHERE 1=1 ${placeholders} ${filtroInvalidado}
         ORDER BY criada_em DESC
         LIMIT ?
       `;
