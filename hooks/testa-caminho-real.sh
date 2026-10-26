@@ -151,6 +151,11 @@ if [ "$WIN" = 1 ]; then
       saiu "junction com cwd 8.3: exit 0" "$EXIT" "0"
       vazio "junction com cwd 8.3 nao acusa o proprio arquivo pelo nome jn/x.cjs" "$OUT"
     fi
+    # cwd DENTRO da junction: resolver o cwd cai no alvo, e o nome jn/x.cjs do git grep some.
+    gerar Edit "x.cjs" "$C7/jn" 'function soNaJunction() {}\n' > "$SBP/p4c.json"
+    OUT="$(node "$HOOK_DUP" < "$SBP/p4c.json" 2>/dev/null)"; EXIT=$?
+    saiu "cwd dentro da junction: exit 0" "$EXIT" "0"
+    vazio "cwd dentro da junction nao acusa o proprio arquivo pelo nome jn/x.cjs" "$OUT"
   fi
   cmd /c rmdir "$WLINK" </dev/null >/dev/null 2>&1
 else
