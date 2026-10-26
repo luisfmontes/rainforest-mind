@@ -11,6 +11,10 @@ de fora, com o veredito acumulado em `vigias/livro-de-repos.md`),
 **vigia-tickets** e **revisao-bimestral**. O guarda-corpo funcionando fora da
 sessão — onde o hiperfoco não deixa abrir uma.
 
+**Os vigias nascem desligados** (chave `vigias`), e o **sentinela-foco** pede também
+o foco, que é opcional desde a 2.0.0: a ronda só roda com `vigias` e `foco` ligados
+(`node scripts/setup.cjs --ligar foco`, ou o grupo "foco" do `/setup`).
+
 **A ronda de teste não escreve no WhatsApp.** `run-vigia.ps1 -Vigia <nome> -Teste` roda a
 ronda fora do agendamento, e em vez de enviar o modelo escreve a mensagem entre
 `---INICIO---` e `---FIM---`. Desde a 1.74.0 (#581), o `-Teste` usa

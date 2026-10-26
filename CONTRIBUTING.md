@@ -118,6 +118,13 @@ marca `<!-- detalhe -->` é injetado em toda sessão e paga token; o resto carre
 sob demanda. Incidente datado vai em **blockquote** — o hook o remove da injeção,
 e ele continua no arquivo ao lado da regra que fundamenta.
 
+As regras 3, 8 e 17 são as do foco, que é opcional desde a 2.0.0 (chave `foco`,
+padrão `false`; liga com `node scripts/setup.cjs --ligar foco`): com a chave
+desligada, `semRegrasDeFoco` (`hooks/lib/contexto-sessao.cjs`) as tira da abertura
+sem renumerar as outras, e a ponte sai sempre sem elas. Bateria que mede o foco
+liga a chave na própria caixa de areia (`{"foco": true}` no `config.json` do
+`RFM_ROOT`), nunca no config real.
+
 O bloco de núcleos tem teto em bytes (`NUCLEOS_MAX_BYTES`), e é catraca: crescer
 regra dói na hora de escrever, não na hora de ler. Se o seu texto não couber,
 a saída é **subtrair**, não aumentar o teto.

@@ -1,26 +1,31 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="rainforest-mind — memória de trabalho externa e radar de escopo" width="100%">
+  <img src="assets/banner.svg" alt="rainforest-mind — apoio ao desenvolvimento" width="100%">
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-1.80.1-1e5c3f?style=flat-square" alt="versão 1.80.1">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-2.0.0-1e5c3f?style=flat-square" alt="versão 2.0.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
 
 > ### O problema não é falta de ideia. É o que recebe luz agora.
 
-Plugin de Claude Code que faz a sessão virar algo que dá pra **ler e decidir**.
+Plugin de Claude Code de **apoio ao desenvolvimento**: a feature sai de uma
+conversa e chega num PR mergeado por um caminho que dá pra **ler e decidir**.
 Quatro coisas, e nenhuma depende de você lembrar de ativar:
 
-- **planeja antes de implementar** — rodada de perguntas numeradas, cada uma já com a resposta recomendada, e então para e espera;
-- **responde em número**, não em parede de texto;
-- **avisa** quando a conversa sai do combinado — uma frase, com escolha;
-- **não chama nada de pronto** sem colar a saída que prova.
+- **um fluxo de sete estágios** — brainstorm → plano → executar → revisar → verificar → fechar — em que o estágio seguinte não abre sem o anterior fechado;
+- **revisão independente com veredito** — um revisor de contexto zerado lê o diff real, não o relato de quem implementou, e termina em `VEREDITO: ok` ou `reprovado`;
+- **não chama nada de pronto** sem colar a saída que prova;
+- **memória de código** — o que as sessões anteriores aprenderam no repositório volta pelo assunto do pedido, na sessão e no briefing do subagente.
 
-Duas dessas quatro têm trava que roda **fora do modelo** — comando com exit
+As três primeiras têm trava que roda **fora do modelo** — comando com exit
 code, não instrução. Não dá pra argumentar com elas.
+
+O foco declarado, o radar de escopo, o guarda-corpo de jornada e o radar
+multi-janela continuam aqui, desligados por padrão desde a 2.0.0:
+[Foco e memória de trabalho (opcional)](#foco-e-memória-de-trabalho-opcional).
 
 ## Instalação
 
@@ -38,7 +43,7 @@ Python e do orçamento de contexto em [`docs/runtime-e-orcamento.md`](docs/runti
 as regras e as elaborações como seção do system prompt (`hooks/register.ts`). Sem
 ela, ou no Codex, a abertura vem pelo hook com o núcleo, como antes. A mesma versão desenha
 a barra de sessão acima do prompt (`hooks/mod.tsx`): estado, tokens, custo, contexto, cache,
-subagentes, erros e o relógio ⏰ dos avisos de jornada (regra 8) e de janela parada (regra 17), mais o
+subagentes, erros e, com o foco ligado, o relógio ⏰ dos avisos de jornada (regra 8) e de janela parada (regra 17), mais o
 comando `/painel` (no quadro "Deixado para depois", cada item tem "Faz agora" e "Vira pendência de <fluxo>", que só preenchem o prompt: quem envia é você), o painel de PR (`/pr`), que abre sozinho a cada `gh pr` e acorda o Claude
 quando o PR da sessão fica verde, vermelho, em conflito ou mergeado, e o `/plugins-em-dia`, que
 mantém os plugins atualizados sem sair da sessão e avisa (ou recarrega) as outras janelas abertas. **O painel pede o Claude Code 2.1, patch 292 em diante**, a versão em que foi medido,
@@ -46,8 +51,8 @@ no terminal, nas duas contas; no desktop o desenho não foi medido. Sem o mod, n
 nem aviso por relógio, e nada mais muda. Parte do painel é adaptada do terminal-desk (MIT);
 crédito em [`NOTICE`](NOTICE).
 
-Não precisa configurar nada para começar. Quando quiser foco próprio num
-repositório, crie `.rainforest/FOCO.md` nele — é só isso.
+Não precisa configurar nada para começar: o fluxo, as travas e a memória vêm
+ligados. O foco é opcional — [como ligar](#foco-e-memória-de-trabalho-opcional).
 
 ## Como é na prática
 
@@ -75,26 +80,20 @@ E a emenda no fim do pedido não vira escopo em silêncio:
 >
 > **Com o plugin:** *"Fechado: opção 2. Você adicionou o cache — entra no escopo agora ou planto?"*
 
-## Por que floresta
+Com o design aprovado, o plano vira tarefas com critério falsificável, e cada
+tarefa vai para um agente num worktree isolado. Quem aprova a entrega não é
+quem a escreveu: o revisor recebe o diff, abre cada achado com a severidade e
+fecha com o veredito, e o hook devolve a vez quando os dois não casam:
 
-Uma **mente-floresta** — o termo é de Paula Prober, em *Your Rainforest Mind* —
-não sofre de falta de ideia. Sofre do contrário: tudo cresce ao mesmo tempo, em
-direções diferentes, e o que cresce junto disputa a mesma luz.
+> **[media]** `hooks/x.cjs:42` — config ilegível derruba a abertura em vez de cair no padrão.
+>
+> VEREDITO: reprovado
 
-Por isso lista de tarefas não resolve: lista pressupõe **escassez** de tarefa, e
-aqui a tarefa sobra. O problema não é lembrar do que fazer — é decidir **o que
-recebe luz agora**, e proteger essa decisão do resto.
-
-| Palavra | O que é |
-|---|---|
-| **foco** | a clareira onde você trabalha hoje — é contra ele, e só contra ele, que o desvio é medido |
-| **plantar** | o que não pode crescer agora vai pro chão **com contexto**, vivo, em vez de morrer num "algum dia" |
-| **colher** | volta quando chega a hora, e vira trabalho de verdade |
-| **descartar** | sai da lista **com motivo** — a linha fica, porque ideia que sai sem rastro volta idêntica em três semanas |
-| **estação** | tempo certo é restrição real, não desculpa de quem procrastina |
-
-O resto do plugin não é botânico e não tenta ser: `/foco`, `depurar` e as travas
-se chamam pelo que fazem.
+A crítica volta ao executor, a volta seguinte compara os achados com os da
+anterior, e só `revisar ok` abre o `verificar`, que roda o critério de cada
+tarefa contra o artefato real. No pedido seguinte sobre o mesmo assunto, até
+três memórias das sessões que já mexeram ali entram sozinhas no contexto
+([Memória pelo assunto](#memória-pelo-assunto-três-canais)).
 
 ## O fluxo: sete estágios que não dá para pular
 
@@ -287,8 +286,8 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 
 | | |
 |---|---|
-| `/foco` | Estado da conversa; `/foco <texto>` declara novo foco |
-| `/ideia <texto>` | Avalia contra o foco: dentro → entra; fora → planta com contexto |
+| `/foco` | Estado da conversa; `/foco <texto>` declara novo foco, que só entra na abertura com o [foco ligado](#foco-e-memória-de-trabalho-opcional) (desligado, a declaração avisa como ligar) |
+| `/ideia <texto>` | Avalia contra o foco declarado, com o foco ligado, ou contra o repositório e o fluxo aberto, com ele desligado: dentro → entra; fora → planta com contexto |
 | `/issue` | Abre Issue no repo em que você está, com o corpo escrito e a evidência colada |
 | `/feedback` | Registra o que a sessão ensinou sobre o método |
 | `/saude` | Só o que os checadores oficiais não sabem |
@@ -358,17 +357,18 @@ Para voltar atrás depois de aplicar, renomeie `~/.claude-personal.aposentada` d
 O **núcleo** vive em [`skills/rainforest-mind/SKILL.md`](skills/rainforest-mind/SKILL.md)
 e é injetado em toda sessão; a **elaboração** de cada regra, com critério fino e
 incidente datado, em [`references/regra-<n>.md`](skills/rainforest-mind/references).
+As regras 3, 8 e 17 só entram com o foco ligado; as outras mantêm o número.
 
 | # | Regra | Em uma frase |
 |---|---|---|
 | 1 | Responder tudo, na ordem | N perguntas → N respostas numeradas, no fim do turno; resolvido sai e a lista renumera do 1 |
 | 2 | Escolha + adição | A emenda nunca vira escopo em silêncio: confirma ou planta |
-| 3 | Radar de escopo | Saiu do foco → uma frase, sem julgamento, com escolha |
+| 3 | Radar de escopo (com o foco ligado) | Saiu do foco → uma frase, sem julgamento, com escolha |
 | 4 | Checkpoint no meio | Tarefa 3+ etapas: "fechamos n/total" a cada etapa |
 | 5 | Decisão com o porquê | "Decidido: X, porque Y. Próximo passo: Z." |
 | 6 | Plantio de ideias | Ideia solta → "planto essa pra depois?" — plantada ≠ descartada |
 | 7 | Tom sênior | Policia ponta solta e escopo, nunca o mérito |
-| 8 | Guarda-corpo de jornada | Jornada **medida**, não estimada; um aviso, uma vez |
+| 8 | Guarda-corpo de jornada (com o foco ligado) | Jornada **medida**, não estimada; um aviso, uma vez |
 | 9 | Freio de Pareto | Polimento do que já está pronto → "alguém que recebe fica prejudicado?" |
 | 10 | Agentes baratos, e a portaria registra | Só a regra 11 barra, e o agente que escreve fora do estágio dele sem `leve` (#430); manifesto e estágio, nos demais casos, viram linha de log, não portão |
 | 11 | Worktree: principal na `main` | Checkout principal fica na branch padrão, todo trabalho nasce em worktree; hash de base conferido na fonte |
@@ -377,7 +377,50 @@ incidente datado, em [`references/regra-<n>.md`](skills/rainforest-mind/referenc
 | 14 | Regra bloqueada se anuncia | Ambiente impediu → uma linha, nunca silêncio |
 | 15 | Agente não altera o ambiente | Não instala, não mexe em PATH nem config: para e reporta |
 | 16 | Fato é meu, decisão é sua | Fato se resolve olhando; decisão sobe marcada `Q1` `Q2`, com a recomendada |
-| 17 | Multi-janela | Paralelo é escolha; o alerta é a janela parada esperando você |
+| 17 | Multi-janela (com o foco ligado) | Paralelo é escolha; o alerta é a janela parada esperando você |
+
+## Foco e memória de trabalho (opcional)
+
+Desde a 2.0.0 o foco nasce **desligado**. Ligado, ele traz:
+
+- o **foco declarado** do `FOCO.md` na abertura de cada sessão, com prazos e avanços;
+- o **radar de escopo** (regra 3): a conversa sai do foco → uma frase, com escolha;
+- o **guarda-corpo de jornada** (regra 8): jornada medida por `scripts/jornada`, um aviso, uma vez;
+- o **radar multi-janela** (regra 17): o alerta é a janela do foco parada esperando você;
+- o relógio ⏰ desses avisos na barra do mod e os segmentos de jornada e prazo da statusline;
+- a ronda `sentinela-foco` dos [vigias](docs/vigias.md), que também precisa da chave `vigias`.
+
+Para ligar, escolha um:
+
+```
+/setup                                   # o grupo "foco" pergunta primeiro se liga
+node scripts/setup.cjs --ligar foco      # por usuário; --escopo projeto liga só no repo
+```
+
+ou `"foco": true` no `config.json` da pasta de dados (ou em `.rainforest/config.json`
+do repositório). Config ilegível conta como desligado. `/foco <texto>` declara o
+foco nos dois modos; desligado, a declaração avisa que ele só entra na abertura
+com a chave ligada. O `FOCO.md` continua sendo semeado, porque marca a pasta de
+dados, e o heartbeat das sessões continua rodando, porque a trava de checkout
+co-locado depende dele.
+
+**Por que floresta.** Uma **mente-floresta** — o termo é de Paula Prober, em
+*Your Rainforest Mind* — não sofre de falta de ideia. Sofre do contrário: tudo
+cresce ao mesmo tempo, em direções diferentes, e o que cresce junto disputa a
+mesma luz. Por isso lista de tarefas não resolve: lista pressupõe **escassez**
+de tarefa, e aqui a tarefa sobra. O problema não é lembrar do que fazer — é
+decidir **o que recebe luz agora**, e proteger essa decisão do resto.
+
+| Palavra | O que é |
+|---|---|
+| **foco** | a clareira onde você trabalha hoje — é contra ele, e só contra ele, que o desvio é medido |
+| **plantar** | o que não pode crescer agora vai pro chão **com contexto**, vivo, em vez de morrer num "algum dia" |
+| **colher** | volta quando chega a hora, e vira trabalho de verdade |
+| **descartar** | sai da lista **com motivo** — a linha fica, porque ideia que sai sem rastro volta idêntica em três semanas |
+| **estação** | tempo certo é restrição real, não desculpa de quem procrastina |
+
+O resto do plugin não é botânico e não tenta ser: `/foco`, `depurar` e as travas
+se chamam pelo que fazem.
 
 ## Seus dados não moram aqui
 

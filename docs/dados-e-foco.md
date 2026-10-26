@@ -1,5 +1,10 @@
 # Onde moram os seus dados
 
+**O foco é opcional desde a 2.0.0.** A chave `foco` nasce `false`: o `FOCO.md`
+continua sendo semeado e lido como marcador da pasta de dados, mas só entra na
+abertura (com as regras 3, 8 e 17) quando a chave está ligada —
+`node scripts/setup.cjs --ligar foco`, o grupo "foco" do `/setup`, ou
+`"foco": true` no `config.json` desta pasta.
 
 Onde moram `FOCO.md` e `ideias.jsonl` sai de uma **cadeia de quatro níveis**, do
 mais específico para o mais genérico — o projeto sobrescreve o global, e a
