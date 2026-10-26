@@ -13,7 +13,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 ## 2.0.1 — 2026-10-26
 
 - **A skill `rainforest-mind` diz o papel novo.** O parágrafo de abertura do `SKILL.md` dizia que o papel do assistente é ser memória de trabalho externa e radar de escopo; agora diz apoio ao desenvolvimento e, com `foco: true`, também memória de trabalho externa e radar de escopo (`skills/rainforest-mind/SKILL.md:11` na 2.0.0). A abertura da sessão e o núcleo das regras não mudam.
-- **Ponte gerada com a 2.0.0 sai desatualizada.** O hash da ponte é do `SKILL.md` inteiro, então o `conferir-ponte` acusa o CLAUDE.md, o AGENTS.md e o GEMINI.md gerados antes desta versão; é esperado, e `/ponte` regenera. Desenho em `docs/rainforest/design/2026-10-26-papel-da-skill.md`.
+- **Ponte gerada com a 2.0.0 continua valendo.** O hash no marcador muda, porque é do `SKILL.md` inteiro, mas o `conferir-ponte` compara o conteúdo antes do hash e a ponte não carrega o parágrafo que mudou: o CLAUDE.md, o AGENTS.md e o GEMINI.md gerados com a 2.0.0 seguem `CONFERIDO`, sem regenerar. Desenho em `docs/rainforest/design/2026-10-26-papel-da-skill.md`.
 
 ## 2.0.0 — 2026-10-25
 

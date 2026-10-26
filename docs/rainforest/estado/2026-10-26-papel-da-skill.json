@@ -14,7 +14,7 @@
     "em": "2026-10-26"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-26",
     "tarefas_ok": 1,
     "tarefas": 1,
@@ -31,10 +31,32 @@
         "motivo": "texto de apresentacao da skill e metadado de versao"
       }
     ],
-    "em": "2026-10-26"
+    "em": "2026-10-26",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-26"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "5037a2c8547076f9077774296626268376a455f3",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ab4b452174ab088c3",
+        "veredito": "reprovado",
+        "em": "2026-10-26",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-ab4b452174ab088c3.jsonl"
+      }
+    ],
+    "achados": 1,
+    "motivo": "volta 1: CHANGELOG e D5 afirmam que a ponte da 2.0.0 sai desatualizada; conferir-ponte compara conteudo antes do hash e da CONFERIDO",
+    "em": "2026-10-26",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
