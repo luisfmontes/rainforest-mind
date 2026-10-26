@@ -76,29 +76,46 @@
     ]
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "6284a0fba52ce523966b37bff4dce45ec5c05ebb",
+      "head": "8dfa17856765c938f23112a0f398116ba3a333c1",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "acd6caa1c13fc6433",
+        "agente_id": "a0a7ec1a29c44d21c",
         "veredito": "ok",
         "em": "2026-10-26",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-fix-602-placar-vitest/47f1e8a1-da6a-46a0-8967-c46fb8e96d1d/subagents/agent-acd6caa1c13fc6433.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-fix-602-placar-vitest/47f1e8a1-da6a-46a0-8967-c46fb8e96d1d/subagents/agent-a0a7ec1a29c44d21c.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-26",
-    "achados": 2,
+    "achados": 0,
     "base": "e455fb406f64bf6d9791325a969c6ec2afd49634",
-    "head": "6284a0fba52ce523966b37bff4dce45ec5c05ebb"
+    "head": "8dfa17856765c938f23112a0f398116ba3a333c1",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "acd6caa1c13fc6433",
+            "veredito": "ok",
+            "em": "2026-10-26",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-fix-602-placar-vitest/47f1e8a1-da6a-46a0-8967-c46fb8e96d1d/subagents/agent-acd6caa1c13fc6433.jsonl"
+          }
+        ]
+      }
+    ]
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-10-26"
+    "status": "ok",
+    "em": "2026-10-26",
+    "comando": "node scripts/conferir-mutacao.cjs --raiz <scratch>/vt2 --arquivo fonte.cjs --de \"canManage === true\" --para true --bateria \"node <tbc>/node_modules/vitest/vitest.mjs run --globals --root .\"; extrairPlacar sobre 4 saidas reais do vitest 4.1.11; criterios T1 (prova node -e exit 0; testa-conferir-mutacao-placar.sh 41 ok 0 falha(s), secoes 10/11/11b ok) e T2 (conferir-versao.cjs: ok versao 2.0.3)",
+    "saida": "catraca vs vitest real: exit 0, VERMELHA; verde {ok:2,falhou:0}, vermelho {ok:1,falhou:1} mediu=true, todos {ok:0,falhou:1} mediu=true, crash null colapso=true; baterias locais placar/flaky/no-lugar/versao/conferir-versao/mutacao-mediu exit 0, testa-conferir-mutacao.sh ok: 171 falhou: 0",
+    "head": "8dfa17856765c938f23112a0f398116ba3a333c1"
   },
   "fechar": {
     "status": "pendente",
