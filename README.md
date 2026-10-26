@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-2.0.1-1e5c3f?style=flat-square" alt="versão 2.0.1">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-2.0.2-1e5c3f?style=flat-square" alt="versão 2.0.2">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -180,7 +180,7 @@ As baterias dos gates rodam em Windows + Git Bash (ambiente do CI: `runs-on: win
 
 | Hook (`PreToolUse`, exit 2) | Barra |
 |---|---|
-| `gate-worktree.cjs` | escrita de subagente fora de worktree linkado; Bash/PowerShell de subagente em worktree que cita caminho do checkout principal fora de comando de leitura (o bloqueio nomeia o caminho ou a palavra que barrou e, para destino que começa com variável, manda escrever o caminho literal ou usar Write; `cd -` com `$(`/`bash -c` barra e a mensagem manda trocá-lo pelo caminho absoluto); `git checkout/switch/reset` com outra sessão no mesmo diretório |
+| `gate-worktree.cjs` | escrita de subagente fora de worktree linkado; Bash/PowerShell de subagente em worktree que cita caminho do checkout principal fora de comando de leitura (o bloqueio nomeia o caminho ou a palavra que barrou; destino de redirecionamento ou alvo de `touch`/`cp`/`mv`/`tee`/`mkdir`/`rm`/`ln`/`install`/`sed -i`/`dd of=` que **começa** com variável ou substituição barra sem o gate julgar o valor, e a mensagem manda escrever o caminho literal ou usar Write; `cd -` com execução indireta barra e a mensagem nomeia a causa que está na linha e manda trocá-lo pelo caminho absoluto, também quando quem barra é a camada de git); `git checkout/switch/reset` com outra sessão no mesmo diretório |
 | `gate-staging-total.cjs` | `git add` com caminho total (`-A`, `.`, `*`…) e `git commit -a` |
 | `gate-publicacao-destino.cjs` | escrita de dado sensível (JID, telefone, e-mail, credencial) em arquivo rastreado |
 | `gate-repo-alheio.cjs` | escrita cujo destino está dentro de **outro** repositório git |

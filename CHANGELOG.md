@@ -10,6 +10,16 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.0.2 — 2026-10-26
+
+Conserto do `hooks/gate-worktree.cjs` para subagente despachado em worktree (#573, #580, #582, #583). A janela principal e o PowerShell não mudam. Desenho em `docs/rainforest/design/2026-10-24-gate-worktree.md`.
+
+- **Caminho que começa com expansão barra em todo ramo da rede (#580, D1).** Antes, só o destino de redirecionamento de um comando de leitura barrava por começar com variável; `touch "$CLAUDE_PROJECT_DIR/f"`, `true | true; echo x > "$X/f"` e `echo "$(date)" > "$X/f"` passavam. Agora barram, em qualquer ramo: o destino de redirecionamento e o alvo dos escritores `touch`, `cp`, `mv`, `tee`, `mkdir`, `rm`, `ln`, `install`, `sed -i` e o `of=` do `dd`, inclusive dentro de `$(...)`, crase e `bash -c`. Conta a palavra que **começa** com `$NOME`, `${...}`, `$(...)` ou crase; expansão depois de prefixo literal (`out-$(date).json`, `./dist/$NOME.js`) não conta, e `$HOME/...` segue como a casa. O gate não resolve o valor de nenhuma variável: a saída é escrever o caminho literal ou gravar com a ferramenta Write.
+- **Vizinhos que mudam de veredito (D2).** `D=<fora>; touch "$D/f"` e `D=<fora>; cp a.txt "$D/f"` passam a barrar, como já barrava `echo x > "$D/f"`. Argumento de comando fora da lista de escritores (`node x.cjs --raiz "$(git rev-parse --show-toplevel)"`) segue sem julgamento.
+- **#582 fechada por regressão, sem mudar veredito (D3).** Os três comandos da Issue entram na bateria; `node <principal>/scripts/x.cjs` continua barrado, porque roda código do checkout principal.
+- **Comando dinâmico com o cwd no worktree diz o worktree (#583, D4).** `source`, `.` e `eval` seguem barrando, mas a mensagem nomeia o comando dinâmico e não diz mais "diretorio de trabalho principal" quando o agente está no worktree.
+- **A mensagem do `cd -` nomeia a causa que está na linha (#573, D5).** No lugar da lista fixa (`$(`, `bash -c`, `source`), ela lista só o que a linha tem; e o bloqueio da camada de git numa linha com `cd -` (`cd - && git commit -m "$(date)"`) acrescenta a mesma saída: trocar o `cd -` pelo caminho absoluto.
+
 ## 2.0.1 — 2026-10-26
 
 - **A skill `rainforest-mind` diz o papel novo.** O parágrafo de abertura do `SKILL.md` dizia que o papel do assistente é ser memória de trabalho externa e radar de escopo; agora diz apoio ao desenvolvimento e, com `foco: true`, também memória de trabalho externa e radar de escopo (`skills/rainforest-mind/SKILL.md:11` na 2.0.0). A abertura da sessão e o núcleo das regras não mudam.
