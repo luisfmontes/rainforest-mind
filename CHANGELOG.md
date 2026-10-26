@@ -10,6 +10,12 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.0.3 — 2026-10-26
+
+- **A catraca de mutação lê o placar do vitest** (#602). Bateria vitest com baseline frio (~40 s de transform e jsdom) e pós-mutação com cache quente (~3 s) caía na razão de tempo do corte de shell e saía `pulada (suspeita de corte de shell)`, travando o `marcar verificar ok`, mesmo com o vermelho legítimo impresso. Agora `Tests  1 failed | 14 passed (15)` é placar: o vermelho do vitest prova que a bateria mediu e sai `vermelho`.
+- **A linha `Tests` é lida por segmento.** `Tests  1 failed (1)`, impresso quando a mutação derruba todos os testes, conta como placar; com uma regex que exigisse `passed`, ele viraria colapso (exit 6). Várias linhas `Tests` (mais de um comando vitest na bateria) se somam; `Test Files` conta arquivos e fica de fora; `Tests  no tests` (import quebrado) continua sendo colapso. Só o vitest entrou: Jest e pytest ficam para quando aparecer um caso medido.
+- **Aquecimento antes do baseline ficou de fora.** Uma rodada descartada antes do baseline cronometrado custaria uma bateria a mais em toda mutação; ficou plantada como ideia, para a próxima bateria sem placar reconhecido que caia em corte de shell por cache frio. Desenho em `docs/rainforest/design/2026-10-26-placar-vitest.md`.
+
 ## 2.0.1 — 2026-10-26
 
 - **A skill `rainforest-mind` diz o papel novo.** O parágrafo de abertura do `SKILL.md` dizia que o papel do assistente é ser memória de trabalho externa e radar de escopo; agora diz apoio ao desenvolvimento e, com `foco: true`, também memória de trabalho externa e radar de escopo (`skills/rainforest-mind/SKILL.md:11` na 2.0.0). A abertura da sessão e o núcleo das regras não mudam.
