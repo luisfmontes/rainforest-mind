@@ -43,12 +43,25 @@
         "iteracao": 1,
         "sessao": "47f1e8a1-da6a-46a0-8967-c46fb8e96d1d",
         "ts": "2026-10-26T18:03:06.698Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "6d1dbdd",
+        "iteracao": 3,
+        "sessao": "47f1e8a1-da6a-46a0-8967-c46fb8e96d1d",
+        "ts": "2026-10-26T18:13:03.493Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "6d1dbdd",
+        "iteracao": 2,
+        "sessao": "47f1e8a1-da6a-46a0-8967-c46fb8e96d1d",
+        "ts": "2026-10-26T18:13:03.493Z"
       }
     ],
-    "em_voo": [],
     "em": "2026-10-26",
     "comando": "node scripts/conferir-mutacao.cjs --arquivo scripts/conferir-mutacao.cjs --de \"if (s[2] === 'failed') falhou += parseInt(s[1], 10);\" --para \"if (s[2] === 'failed') falhou += 0;\" --bateria \"bash scripts/testa-conferir-mutacao-placar.sh\"",
-    "saida": "exit 0; baseline 40 ok, 0 falha(s); pos-mutacao 34 ok, 6 falha(s); ok: bateria VERMELHA com o comportamento invertido (exit 1), confirmada em duas rodadas.",
+    "saida": "rodada 2: bateria 41 ok, 0 falha(s); caso novo (libtest vence Tests) derrubado pela mutacao do retorno antecipado: exit 0, 40 ok, 1 falha(s), VERMELHA",
     "mutacao": [
       {
         "tarefa": 1,
@@ -63,12 +76,39 @@
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "6284a0fba52ce523966b37bff4dce45ec5c05ebb",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "acd6caa1c13fc6433",
+        "veredito": "ok",
+        "em": "2026-10-26",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-fix-602-placar-vitest/47f1e8a1-da6a-46a0-8967-c46fb8e96d1d/subagents/agent-acd6caa1c13fc6433.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-10-26",
+    "achados": 2,
+    "base": "e455fb406f64bf6d9791325a969c6ec2afd49634",
+    "head": "6284a0fba52ce523966b37bff4dce45ec5c05ebb"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-10-26"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-10-26"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-10-26",
+      "de": "revisar",
+      "motivo": "revisao 1 ok com 2 achados [baixa]: (1) falta caso provando que libtest vence a linha Tests do vitest (conferir-mutacao.cjs:799); (2) ANSI na linha Tests - refutado por medicao (CI=true, FORCE_COLOR, --color sem ESC), registrado no design"
+    }
+  ]
 }
