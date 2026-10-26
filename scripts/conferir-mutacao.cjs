@@ -755,6 +755,9 @@ const FALHA = 'falhou|falhas?|falha\\(s\\)';
  *   - libtest do Rust: "test result: FAILED. 0 passed; 1 failed" — uma linha por
  *     binário de teste; ok = soma dos passed, falhou = soma dos failed. Só entra
  *     quando nenhuma forma do repo casa.
+ *   - vitest: "Tests  1 failed | 14 passed (15)" — uma linha `Tests` por comando,
+ *     somada; ok = passed, falhou = failed (#602). Só entra quando nem o repo nem
+ *     o libtest casam.
  *
  * Entre as formas do repo vale a ULTIMA ocorrencia por posicao, qualquer que
  * seja a forma. Retorna { ok: número, falhou: número } ou null se não encontrar
@@ -792,6 +795,22 @@ function extrairPlacar(saida) {
     achou = true;
     ok += parseInt(m[1], 10);
     falhou += parseInt(m[2], 10);
+  }
+  if (achou) return { ok, falhou };
+
+  // Placar do vitest (#602): `Tests  1 failed | 14 passed (15)`, um por comando, somados.
+  // Lido por segmento, nao por regex com `passed` obrigatorio: mutacao que derruba todos
+  // os testes imprime `Tests  1 failed (1)`, e sem placar a pos-mutacao viraria colapso.
+  // `Test Files` conta arquivos, nao testes, e fica de fora; `Tests  no tests` (import
+  // quebrado) nao tem placar, e e colapso como deve.
+  for (const m of saida.matchAll(/^[ \t]*Tests[ \t]+(.+?)[ \t]*\(\d+\)[ \t]*\r?$/gm)) {
+    for (const seg of m[1].split('|')) {
+      const s = /^\s*(\d+)\s+(failed|passed|skipped|todo)\s*$/.exec(seg);
+      if (!s) continue;
+      achou = true;
+      if (s[2] === 'passed') ok += parseInt(s[1], 10);
+      if (s[2] === 'failed') falhou += parseInt(s[1], 10);
+    }
   }
   return achou ? { ok, falhou } : null;
 }
