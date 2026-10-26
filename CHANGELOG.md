@@ -10,6 +10,10 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 1.80.1 — 2026-10-26
+
+- **Editar pela junction com o cwd dentro dela não se acusa mais.** O conserto do 8.3 na 1.80.0 resolvia o cwd para achar o nome da junction rastreada. Com o cwd dentro da própria junction (`<repo>/jn`), resolver o cwd caía no alvo, e o `aviso-duplicata` acusava o arquivo editado como duplicata de `jn/x.cjs`. O nome sem resolver, que a 1.79.0 usava, volta como terceiro nome (`hooks/aviso-duplicata.cjs:179-183`). `testa-caminho-real.sh` ganha o caso.
+
 ## 1.80.0 — 2026-10-25
 
 Sexto e último lote da rodada apoio ao dev, tema ferramentas do fluxo. Desenho e decisões D1 a D11 em
@@ -22,7 +26,7 @@ Sexto e último lote da rodada apoio ao dev, tema ferramentas do fluxo. Desenho 
 - **A cobertura avisa acoplamento por `require` (D6).** Quando, na mesma camada, um arquivo de uma tarefa faz `require` ou `import` de um arquivo de outra, a cobertura avisa e manda declarar `depende de:` se o export muda. Contam as formas relativas e `require(path.join(__dirname, ...))` com todos os argumentos literais. O comando `camadas` devolve o par em `acoplamentos`. Antes, só arquivos em comum eram vistos (`scripts/lib/camadas.cjs:100-116` na 1.79.0).
 - **A consolidação não pula calada (D7).** O pedaço em que o LLM falha é contado: a manutenção grava `consolidar: fim (N pedaço(s) pulado(s))` e termina em `completa com falhas`, que a abertura já mostra. O pedaço de observações longas é cortado por observação antes do LLM, em vez de falhar toda rodada. Antes, o pulo era só um `console.log` de um processo com saída descartada (`scripts/memoria.cjs:1802-1805` e `:2472-2479` na 1.79.0). O `observar` passa a contar só as fatias processadas quando o orçamento corta (`scripts/observar.cjs:650-652` na 1.79.0).
 - **O Write tem linha de base no gate de publicação (D8).** Ao reescrever um arquivo que já existe, o gate compara com o conteúdo atual do disco e só barra a linha sensível nova, como o Edit já fazia. Antes, reescrever por Write um arquivo que já tinha a linha na main barrava (`hooks/gate-publicacao-destino.cjs:749-751` na 1.79.0).
-- **O caso da junction roda de verdade (D10).** O caso da junction de `testa-caminho-real.sh` nunca tinha rodado. A bateria exporta `MSYS_NO_PATHCONV=1`, e o `cmd //c mklink` recebia `//c` literal e abria o cmd interativo, que saía sem criar a junction ou travava esperando a entrada. Com `cmd /c ... </dev/null`, a junction é criada e o caso passa a provar o segundo nome do `aviso-duplicata`. Rodando, ele achou um defeito no CI: com o cwd em nome curto 8.3 (`RUNNER~1`) e o toplevel longo do git, o segundo nome saía errado e o arquivo editado pela junction se acusava como duplicata. O nome da junction agora sai de dois jeitos (`hooks/aviso-duplicata.cjs`): resolvendo só o cwd, para o 8.3, e sem resolver nada, para o cwd dentro da junction. A bateria ganha os dois casos. O resumo da bateria também conta os pulados.
+- **O caso da junction roda de verdade (D10).** O caso da junction de `testa-caminho-real.sh` nunca tinha rodado. A bateria exporta `MSYS_NO_PATHCONV=1`, e o `cmd //c mklink` recebia `//c` literal e abria o cmd interativo, que saía sem criar a junction ou travava esperando a entrada. Com `cmd /c ... </dev/null`, a junction é criada e o caso passa a provar o segundo nome do `aviso-duplicata`. Rodando, ele achou um defeito no CI: com o cwd em nome curto 8.3 (`RUNNER~1`) e o toplevel longo do git, o segundo nome saía errado e o arquivo editado pela junction se acusava como duplicata. O segundo nome agora resolve só o cwd (`hooks/aviso-duplicata.cjs`), e a bateria ganha o caso da junction com cwd 8.3. O resumo da bateria também conta os pulados.
 
 ## 1.79.0 — 2026-10-25
 
