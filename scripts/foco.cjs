@@ -862,7 +862,8 @@ function separar() {
 // O require fica aqui dentro: o backup e a rotacao nao dependem da config.
 function aviso() {
   const { focoLigado } = require('../hooks/lib/config.cjs');
-  if (!focoLigado({ projeto: process.cwd() })) console.log(AVISO_FOCO_DESLIGADO);
+  // Sem `projeto`: o default (CLAUDE_PROJECT_DIR, depois cwd) e o mesmo do setup e da abertura.
+  if (!focoLigado()) console.log(AVISO_FOCO_DESLIGADO);
 }
 
 function main() {

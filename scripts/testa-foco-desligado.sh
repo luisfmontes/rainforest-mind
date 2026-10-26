@@ -25,7 +25,7 @@ mkdir -p "$SBP/dados" "$SBP/proj"
 printf '# Foco\n\n## Ativo\n\n**Foco de caixa** — declarado 2026-10-25.\n' > "$SBP/dados/FOCO.md"
 
 # Devolve a saida do verbo e, na ultima linha, o exit.
-aviso() { (cd "$SBP/proj" && RFM_ROOT="$SBP/dados" node "$SRC/scripts/foco.cjs" aviso 2>&1; echo "exit=$?"); }
+aviso() { (cd "$SBP/proj" && env -u CLAUDE_PROJECT_DIR RFM_ROOT="$SBP/dados" node "$SRC/scripts/foco.cjs" aviso 2>&1; echo "exit=$?"); }
 
 echo "== 1. declarar com a chave desligada avisa que o foco só entra na abertura com foco: true =="
 rm -f "$SBP/dados/config.json"
@@ -49,6 +49,15 @@ printf '{"foco": true}' > "$SBP/dados/config.json"
 S="$(aviso)"
 nao_tem "foco: true: sem aviso" "$S" "só entra na abertura"
 igual   "a unica linha e o exit" "$S" "exit=0"
+
+# O projeto vem do CLAUDE_PROJECT_DIR antes do cwd, como no setup e na abertura
+# (achado 5 da revisao): shell em outra pasta, projeto com foco ligado, sem aviso.
+rm -f "$SBP/dados/config.json"
+mkdir -p "$SBP/proj/.rainforest" "$SBP/outra"
+printf '{"foco": true}' > "$SBP/proj/.rainforest/config.json"
+S="$( (cd "$SBP/outra" && CLAUDE_PROJECT_DIR="$SBP/proj" RFM_ROOT="$SBP/dados" node "$SRC/scripts/foco.cjs" aviso 2>&1; echo "exit=$?") )"
+nao_tem "foco ligado no CLAUDE_PROJECT_DIR, cwd em outra pasta: sem aviso" "$S" "só entra na abertura"
+rm -f "$SBP/proj/.rainforest/config.json"
 
 echo
 echo "== 3. o /foco chama o verbo depois de gravar =="
