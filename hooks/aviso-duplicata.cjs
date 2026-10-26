@@ -93,6 +93,16 @@ function mesmoArquivo(a, b) {
 
 // Uma chamada de git grep para todos os nomes. Com -z cada registro vem como caminho\0linha\0conteúdo,
 // sem aspas nem escape. Primeira definição de cada nome em outro arquivo rastreado; linha de uso não conta.
+/** Caminho de `absoluto` abaixo do toplevel, sem resolver junction; null se nenhum ancestral é o toplevel. */
+function relativoAoTopo(gitTop, absoluto) {
+  const mesmo = (a, b) => (process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b);
+  const topoReal = caminhoReal(gitTop);
+  for (let d = absoluto; ; d = path.dirname(d)) {
+    if (mesmo(caminhoReal(d), topoReal)) return path.relative(d, absoluto).split(path.sep).join('/');
+    if (path.dirname(d) === d) return null;
+  }
+}
+
 function acharDefinicoes(gitTop, nomes, tipo, editados, restante) {
   const args = ['-c', 'core.fsmonitor=false', '-c', 'core.quotePath=false', 'grep', '-z', '-n', '-w', '-F',
     ...(tipo === 'advpl' ? ['-i'] : []), `--max-count=${MAX_POR_ARQUIVO}`];
@@ -171,17 +181,15 @@ function main() {
   const restante = fim - Date.now();
   if (restante <= 0) process.exit(0);
 
-  // O próprio arquivo tem um nome real (resolve 8.3 do cwd e junction) e o que o git grep mostra
-  // para a junction rastreada no repo. Este sai de dois jeitos, e qualquer um casa: resolvendo só o
-  // cwd (8.3 no CI, `RUNNER~1`, contra o toplevel longo do git) e sem resolver nada (cwd dentro da
-  // junction, onde resolver o cwd cairia no alvo).
+  // O próprio arquivo tem um nome real (resolve 8.3 e junction) e o que o git grep mostra para a
+  // junction rastreada no repo: o caminho abaixo do toplevel sem resolver. Para achar o segundo, sobe
+  // do arquivo até o ancestral cujo caminho real é o do toplevel; isso vale com o cwd em 8.3 (no CI,
+  // `RUNNER~1`, contra o toplevel longo do git), dentro da junction, e com as duas coisas juntas.
   const absoluto = path.resolve(ev.cwd, ti.file_path);
-  const semJunction = path.join(caminhoReal(ev.cwd), path.relative(ev.cwd, absoluto));
   const editados = [
     path.relative(caminhoReal(gitTop), caminhoReal(absoluto)).split(path.sep).join('/'),
-    path.relative(caminhoReal(gitTop), semJunction).split(path.sep).join('/'),
-    path.relative(gitTop, absoluto).split(path.sep).join('/'),
-  ];
+    relativoAoTopo(gitTop, absoluto),
+  ].filter(Boolean);
   const encontrados = acharDefinicoes(gitTop, nomes, tipo, editados, restante);
   const achados = [];
   for (const nome of nomes) {

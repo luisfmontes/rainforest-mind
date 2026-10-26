@@ -156,6 +156,15 @@ if [ "$WIN" = 1 ]; then
     OUT="$(node "$HOOK_DUP" < "$SBP/p4c.json" 2>/dev/null)"; EXIT=$?
     saiu "cwd dentro da junction: exit 0" "$EXIT" "0"
     vazio "cwd dentro da junction nao acusa o proprio arquivo pelo nome jn/x.cjs" "$OUT"
+    # As duas coisas juntas, como no CI (o temp do runner já é RUNNER~1): cwd 8.3 dentro da junction.
+    if [ "$CURTO7" = "$C7" ]; then
+      pulou "cwd 8.3 dentro da junction: volume sem nome 8.3"
+    else
+      gerar Edit "x.cjs" "$CURTO7/jn" 'function soNaJunction() {}\n' > "$SBP/p4d.json"
+      OUT="$(node "$HOOK_DUP" < "$SBP/p4d.json" 2>/dev/null)"; EXIT=$?
+      saiu "cwd 8.3 dentro da junction: exit 0" "$EXIT" "0"
+      vazio "cwd 8.3 dentro da junction nao acusa o proprio arquivo pelo nome jn/x.cjs" "$OUT"
+    fi
   fi
   cmd /c rmdir "$WLINK" </dev/null >/dev/null 2>&1
 else
