@@ -10,7 +10,7 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
-## 2.0.2 — 2026-10-26
+## 2.0.4 — 2026-10-26
 
 Conserto do `hooks/gate-worktree.cjs` para subagente despachado em worktree (#573, #580, #582, #583). A janela principal e o PowerShell não mudam. Desenho em `docs/rainforest/design/2026-10-24-gate-worktree.md`.
 
@@ -19,6 +19,12 @@ Conserto do `hooks/gate-worktree.cjs` para subagente despachado em worktree (#57
 - **#582 fechada por regressão, sem mudar veredito (D3).** Os três comandos da Issue entram na bateria; `node <principal>/scripts/x.cjs` continua barrado, porque roda código do checkout principal.
 - **Comando dinâmico com o cwd no worktree diz o worktree (#583, D4).** `source`, `.` e `eval` seguem barrando, mas a mensagem nomeia o comando dinâmico e não diz mais "diretorio de trabalho principal" quando o agente está no worktree.
 - **A mensagem do `cd -` nomeia a causa que está na linha (#573, D5).** No lugar da lista fixa (`$(`, `bash -c`, `source`), ela lista só o que a linha tem; e o bloqueio da camada de git numa linha com `cd -` (`cd - && git commit -m "$(date)"`) acrescenta a mesma saída: trocar o `cd -` pelo caminho absoluto. `cd -` citado na mensagem do commit, entre aspas ou num heredoc de delimitador entre aspas (`<<'EOF'`), não conta; no heredoc sem aspas (`<<EOF`) o corpo pode expandir, e a dica segue aparecendo.
+
+## 2.0.3 — 2026-10-26
+
+- **A catraca de mutação lê o placar do vitest** (#602). Bateria vitest com baseline frio (~40 s de transform e jsdom) e pós-mutação com cache quente (~3 s) caía na razão de tempo do corte de shell e saía `pulada (suspeita de corte de shell)`, travando o `marcar verificar ok`, mesmo com o vermelho legítimo impresso. Agora `Tests  1 failed | 14 passed (15)` é placar: o vermelho do vitest prova que a bateria mediu e sai `vermelho`.
+- **A linha `Tests` é lida por segmento.** `Tests  1 failed (1)`, impresso quando a mutação derruba todos os testes, conta como placar; com uma regex que exigisse `passed`, ele viraria colapso (exit 6). Várias linhas `Tests` (mais de um comando vitest na bateria) se somam; `Test Files` conta arquivos e fica de fora; `Tests  no tests` (import quebrado) continua sendo colapso. Só o vitest entrou: Jest e pytest ficam para quando aparecer um caso medido.
+- **Aquecimento antes do baseline ficou de fora.** Uma rodada descartada antes do baseline cronometrado custaria uma bateria a mais em toda mutação; ficou plantada como ideia, para a próxima bateria sem placar reconhecido que caia em corte de shell por cache frio. Desenho em `docs/rainforest/design/2026-10-26-placar-vitest.md`.
 
 ## 2.0.1 — 2026-10-26
 

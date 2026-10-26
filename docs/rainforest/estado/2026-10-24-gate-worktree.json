@@ -18,7 +18,7 @@
     "em": "2026-10-24"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-26",
     "tarefas_ok": 7,
     "tarefas": 7,
@@ -75,7 +75,7 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "ok",
+    "status": "pendente",
     "snapshot": {
       "head": "96cd278b4bb25b9e508f5c9a16e8d0f5e3179efb",
       "caminhos_sujos": []
@@ -156,7 +156,7 @@
     "rodadas": 2
   },
   "verificar": {
-    "status": "ok",
+    "status": "pendente",
     "comando": "node scripts/rodar-longo.cjs iniciar --saida gw-verif.txt -- bash hooks/testa-gate-worktree.sh; node hooks/testa-corpus-comandos.cjs; bash scripts/testa-versao.sh; node scripts/conferir-versao.cjs; node scripts/conferir-fluxo.cjs cobertura --slug 2026-10-24-gate-worktree",
     "saida": "codigo de HEAD 96cd278 (igual a 68113261 em hooks/): testa-gate-worktree 905 ok 0 falha(s) exit 0 (tarefas 1-6, criterio 0 falha); testa-corpus-comandos ok 24 falhou 0 (tarefa 2, sem bloqueio novo); testa-versao ok 5 falhou 0 e conferir-versao exit 0 com 2.0.2 (tarefa 7); CHANGELOG 2.0.2 cita #573 #580 #582 #583 com D1, D2, D3, D4 e D5; README linha do gate-worktree descreve alvo de escritor com expansao no inicio; cobertura valida 6 decisoes, 7 tarefas",
     "sensor_externo": "node scripts/conferir-fluxo.cjs cobertura",
@@ -164,6 +164,14 @@
     "head": "96cd278b4bb25b9e508f5c9a16e8d0f5e3179efb"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-10-26"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-10-26",
+      "de": "verificar",
+      "motivo": "PR #603 mergeou 2.0.3 na main antes; trazer a main e subir a versao para 2.0.4"
+    }
+  ]
 }

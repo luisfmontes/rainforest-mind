@@ -1,6 +1,7 @@
 #!/bin/bash
 # Bateria da leitura do placar pela catraca de mutacao (conferir-mutacao.cjs:
-# extrairPlacar e mediuEFalhou) — Issue #589 e a forma `falha(s)` das baterias do repo.
+# extrairPlacar e mediuEFalhou) — Issue #589 e a forma `falha(s)` das baterias do repo;
+# Issue #602 e a linha `Tests` do vitest, lida por segmento.
 # Uso: bash scripts/testa-conferir-mutacao-placar.sh
 #
 # O QUE ESTA BATERIA EXISTE PARA IMPEDIR. A catraca le o placar que a bateria imprime.
@@ -11,8 +12,9 @@
 #   2. colapso lido como vermelho (bateria que morre sem placar, na forma `falha(s)`,
 #      aprovada como mutacao pega).
 #
-# Os casos 1 a 6 chamam extrairPlacar e mediuEFalhou direto (o modulo exporta os dois).
-# Os casos 7 a 9 rodam o conferir-mutacao.cjs de verdade, numa caixa de areia.
+# Casos unitarios: 1 a 6 e 10 chamam extrairPlacar e mediuEFalhou direto (o modulo
+# exporta os dois). Casos de ponta a ponta: 7 a 9 e 11 rodam o conferir-mutacao.cjs de
+# verdade, numa caixa de areia.
 
 set -u
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -161,6 +163,59 @@ exige 0 "vermelho com placar em falha(s) e baseline lento sai vermelho, não cor
   fonte-falha.cjs fonte-falha.pristino \
   CHK --arquivo fonte-falha.cjs --de 'const w = 4;' --para 'const w = 4; // MUTADA-FALHA' --bateria 'bash bateria-falha.sh'
 tem "diz VERMELHA" "VERMELHA"
+
+echo
+echo "== 10. vitest: linha Tests lida por segmento (#602) =="
+conf "Tests 1 failed (1), sem passed: todos falham" "0 1" "$(PLACAR '      Tests  1 failed (1)')"
+conf "Tests 1 failed | 1 passed | 1 skipped (3)" "1 1" "$(PLACAR '      Tests  1 failed | 1 passed | 1 skipped (3)')"
+conf "Tests 2 passed | 1 skipped (3): skipped não conta" "2 0" "$(PLACAR '      Tests  2 passed | 1 skipped (3)')"
+conf "duas linhas Tests somam; Test Files fica de fora" "5 1" "$(PLACAR $' Test Files  1 passed (1)\n      Tests  2 passed (2)\n Test Files  1 failed (1)\n      Tests  1 failed | 3 passed (4)')"
+conf "Tests no tests (import quebrado) não tem placar" "null" "$(PLACAR $' Test Files  1 failed (1)\n      Tests  no tests')"
+conf "Test Files sozinho não é placar" "null" "$(PLACAR ' Test Files  1 failed (1)')"
+conf "placar do repo vence a linha Tests quando os dois aparecem" "2 0" "$(PLACAR $'      Tests  1 failed (1)\n== resultado: 2 ok, 0 falha(s) ==')"
+conf "libtest vence a linha Tests quando os dois aparecem" "7 0" "$(PLACAR $'test result: ok. 7 passed; 0 failed\n      Tests  1 failed (1)')"
+conf "mediuEFalhou: vermelho do vitest mede" "true" "$(MEDIU '      Tests  1 failed | 14 passed (15)')"
+conf "mediuEFalhou: verde do vitest não mede" "false" "$(MEDIU '      Tests  15 passed (15)')"
+
+echo
+echo "== 11. #602: baseline lento em vitest, pós-mutação rápida com Tests 1 failed =="
+# Espelha o vitest do front: o baseline demora (>= 1 s) e imprime o placar `Tests` com
+# skipped; a pos-mutacao e' rapida e imprime `Tests  1 failed (1)`, todos os testes caindo.
+# Antes da leitura por segmento o placar nao existia, e a suspeita de corte pegava a
+# mutacao legitima (exit 5). Com o placar lido, sai vermelha (exit 0).
+cat > "$CAIXA/fonte-602.cjs" <<'FONTE'
+const w = 4;
+FONTE
+cp "$CAIXA/fonte-602.cjs" "$S/fonte-602.pristino"
+cat > "$CAIXA/bateria-602.sh" <<'BAT'
+#!/bin/bash
+if grep -q 'MUTADA-602' fonte-602.cjs; then
+  echo " Test Files  1 failed (1)"
+  echo "      Tests  1 failed (1)"
+  exit 1
+fi
+if grep -q 'CRASH-602' fonte-602.cjs; then
+  echo " Test Files  1 failed (1)"
+  echo "      Tests  no tests"
+  exit 1
+fi
+sleep 8
+echo " Test Files  1 passed (1)"
+echo "      Tests  2 passed | 1 skipped (3)"
+exit 0
+BAT
+exige 0 "vitest vermelho legítimo com baseline lento sai vermelho, não corte" \
+  fonte-602.cjs fonte-602.pristino \
+  CHK --arquivo fonte-602.cjs --de 'const w = 4;' --para 'const w = 4; // MUTADA-602' --bateria 'bash bateria-602.sh'
+tem "diz VERMELHA" "VERMELHA"
+nao_tem "não chama de corte de shell" "suspeita de corte"
+
+echo
+echo "== 11b. #602: vitest com Tests no tests na pós-mutação é colapso =="
+exige 6 "vitest com Tests no tests depois de baseline com placar é colapso" \
+  fonte-602.cjs fonte-602.pristino \
+  CHK --arquivo fonte-602.cjs --de 'const w = 4;' --para 'const w = 4; // CRASH-602' --bateria 'bash bateria-602.sh'
+tem "informa o colapso" "a bateria colapsou"
 
 echo "-----------------------------------------"
 echo "== resultado: $ok ok, $falhou falha(s) =="
