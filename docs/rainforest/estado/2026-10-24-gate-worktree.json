@@ -18,8 +18,60 @@
     "em": "2026-10-24"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-10-26"
+    "status": "ok",
+    "catraca_mutacao": "2026-10-26",
+    "tarefas_ok": 7,
+    "tarefas": 7,
+    "integradas": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "em_voo": [],
+    "comando": "node scripts/rodar-longo.cjs iniciar --saida gw-t16.txt -- bash hooks/testa-gate-worktree.sh; bash scripts/testa-versao.sh; node scripts/conferir-versao.cjs; corpus do gate; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-24-gate-worktree",
+    "saida": "baseline e455fb40: testa-gate-worktree 813 ok 0 falha; HEAD b1322560: 886 ok 0 falha; corpus 24/0; testa-versao 5/0; conferir-versao exit 0. Catraca: tarefas 1-6 vermelho, 7 pulada (n/a), exit 0, arvore limpa depois.",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "hooks/testa-gate-worktree.sh: destino com expansao no inicio (#580)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "hooks/testa-gate-worktree.sh: escritores da rede com alvo expandido (D2)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "hooks/testa-gate-worktree.sh: regressao do argumento de comando desconhecido (#582)"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "hooks/testa-gate-worktree.sh: comando dinamico com cwd no worktree (#583)"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "hooks/testa-gate-worktree.sh: mensagem do cd - so com a causa da linha (#573)"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "hooks/testa-gate-worktree.sh: bloqueio da camada git com cd - cita o cd - (#573)"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "documentacao e numero de versao"
+      }
+    ],
+    "em": "2026-10-26"
   },
   "revisar": {
     "status": "pendente"
