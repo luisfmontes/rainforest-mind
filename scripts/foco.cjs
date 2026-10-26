@@ -89,7 +89,6 @@ const RAIZ_PADRAO = (() => {
 // array evita a mesma divergência silenciosa que `hooks/heartbeat.cjs:12-20`
 // já pagou uma vez com duas cópias da raiz.
 const { SECOES_RESIDENTES } = require('../hooks/lib/contexto-sessao.cjs');
-const { focoLigado } = require('../hooks/lib/config.cjs');
 
 // 2.0.0: o foco é gravado no FOCO.md, mas só entra na abertura com a chave `foco` ligada.
 const AVISO_FOCO_DESLIGADO = 'Foco gravado, mas só entra na abertura com foco: true. Ligue com `node scripts/setup.cjs --ligar foco` ou pelo grupo "foco" do /setup.';
@@ -860,7 +859,9 @@ function separar() {
 
 // Chamado pelo /foco logo depois de gravar o foco: com a chave desligada, avisa que
 // o foco não entra na abertura. Sai 0 nos dois casos; o aviso é a única saída.
+// O require fica aqui dentro: o backup e a rotacao nao dependem da config.
 function aviso() {
+  const { focoLigado } = require('../hooks/lib/config.cjs');
   if (!focoLigado({ projeto: process.cwd() })) console.log(AVISO_FOCO_DESLIGADO);
 }
 
