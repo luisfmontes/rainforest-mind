@@ -53,7 +53,7 @@ Sandbox: `git init` do principal, o worktree do agente em `<P>/.claude/worktrees
   - A #573 fecha. O destino do `cd -` não é resolvido: isso foi refutado na 3ª revisão do lote 2026-10-21b.
   - porquê: escolha do usuário (Q3).
 
-- **D6 — Entrega**: um PR, versão 1.74.1 (PATCH: conserto sem contrato novo), com `Closes #573, closes #580, closes #582, closes #583`.
+- **D6 — Entrega**: um PR, versão 2.0.2 (PATCH: conserto sem contrato novo), com `Closes #573, closes #580, closes #582, closes #583`.
   - porquê: escolha do usuário (Q4).
 
 ## Avaliado e descartado

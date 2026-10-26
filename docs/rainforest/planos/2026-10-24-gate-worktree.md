@@ -269,18 +269,21 @@ Superfície humana: o agente barrado na camada de git recebe a saída do `cd -`.
 
 Provado por `bash hooks/testa-gate-worktree.sh` com o placar `0 falha(s)`.
 
-### 7. Versão 1.74.1, CHANGELOG e README [tipo: docs]
+### 7. Versão 2.0.2, CHANGELOG e README [tipo: docs]
 atende: D6, D2
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`
 depende de: 6
 mutacao: n/a
   motivo: documentação e número de versão, sem comportamento a inverter. A coerência com a interface é conferida por `testa-versao.sh` e pela leitura do texto contra as decisões
 pronto quando:
-- A versão é `1.74.1` nos dois manifestos e no selo do README, provado por `bash scripts/testa-versao.sh` sem falha.
-- A seção `1.74.1` do `CHANGELOG.md` cita #573, #580, #582 e #583 e descreve:
+- A versão é `2.0.2` nos dois manifestos e no selo do README, provado por `bash scripts/testa-versao.sh` sem falha.
+- A seção `2.0.2` do `CHANGELOG.md` cita #573, #580, #582 e #583 e descreve:
   - a regra da D1, com os três lugares (destino de redirecionamento em todo ramo, alvo dos dez escritores, expansão só no início);
   - o efeito da D2, em que `D=<fora>; touch "$D/f"` e `cp a.txt "$D/f"` passam a barrar, com a saída do caminho literal ou da ferramenta Write;
   - a #582 fechada por regressão, sem mudança de veredito;
   - as duas mensagens da D4 e da D5.
 - O texto não diz que o gate resolve valor de variável. A leitura confere cada item contra D1 a D6 do design.
 - Se o README descreve o que a rede do gate julga, a descrição passa a incluir o alvo de escritor com expansão no início.
+
+## Retomada (2026-10-26)
+Retomado na branch `fluxo/gate-worktree-retomada`, rebaseada sobre `e455fb40` (2.0.1). `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh` e `hooks/testa-corpus-comandos.cjs` não mudaram desde `f99164b6` (`git diff --stat` vazio), então as tarefas 1 a 6 valem como escritas; a versão da tarefa 7 passa de 1.74.1 a 2.0.2.
