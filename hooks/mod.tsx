@@ -431,6 +431,8 @@ export const register: Register = (on, options) => {
       let jornadaEmCurso = false
       // 2.0.0 (D6): sem o foco ligado, o relogio nao arma: os timers abaixo ficam de fora.
       relogioComFoco = await focoLigadoNoMod(io, cwd)
+      // session.end desta sessao durante a pergunta acima ja cancelou: nada de timer orfao.
+      if (armadoPor !== id) relogioComFoco = false
 
       // Arma a nota do dia quando a jornada acende e o dia ainda nao foi entregue.
       const reavaliar = async () => {

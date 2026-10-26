@@ -194,19 +194,48 @@ def dispara_refresh():
         pass
 
 
-def foco_ligado(cwd):
-    """Chave `foco` (2.0.0, D6): so `true` gravado liga. Le o config.json da pasta
-    de dados pelo mesmo `resolver_raiz_dados` da escada; qualquer erro conta como
-    desligado, e o inverso do `ligado()` do hooks/lib/config.cjs."""
+def raiz_do_principal(cwd):
+    """Espelho do `raizDoPrincipal` do hooks/lib/config.cjs: dentro de worktree ou
+    subdiretorio, o `.rainforest/config.json` do projeto mora no checkout principal."""
+    comum = git(cwd, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    comum = comum.rstrip("/\\")
+    if comum and os.path.basename(comum) == ".git":
+        return os.path.dirname(comum)
+    return cwd
+
+
+def valor_foco(caminho):
+    """`True`/`False` gravado no config.json, ou `None` (sem arquivo, sem chave,
+    ilegivel, tipo errado): `None` deixa o arquivo seguinte da cadeia decidir."""
     try:
-        raiz_dados = resolver_raiz_dados(cwd)
-        if not raiz_dados:
-            return False
-        with open(os.path.join(raiz_dados, "config.json"), "r", encoding="utf-8") as f:
-            config = json.load(f)
-        return config.get("foco") is True
+        with open(caminho, "r", encoding="utf-8") as f:
+            valor = json.load(f).get("foco")
     except Exception:
-        return False
+        return None
+    return valor if isinstance(valor, bool) else None
+
+
+_FOCO_LIGADO = {}
+
+
+def foco_ligado(cwd):
+    """Chave `foco` (2.0.0, D6): so `true` gravado liga. A mesma cadeia do
+    `resolverConfig` do hooks/lib/config.cjs: o config do projeto (no checkout
+    principal) vence o da pasta de dados; qualquer erro conta como desligado."""
+    if cwd in _FOCO_LIGADO:
+        return _FOCO_LIGADO[cwd]
+    ligado = False
+    try:
+        no_projeto = valor_foco(os.path.join(raiz_do_principal(cwd), ".rainforest", "config.json")) if cwd else None
+        if no_projeto is not None:
+            ligado = no_projeto
+        else:
+            raiz_dados = resolver_raiz_dados(cwd)
+            ligado = bool(raiz_dados) and valor_foco(os.path.join(raiz_dados, "config.json")) is True
+    except Exception:
+        ligado = False
+    _FOCO_LIGADO[cwd] = ligado
+    return ligado
 
 
 def segmento_tempo(cwd=None):

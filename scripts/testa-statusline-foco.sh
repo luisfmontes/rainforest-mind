@@ -96,6 +96,35 @@ echo "       saida: $S"
 afirma "com foco true, a linha tem o prazo de hoje" tem_texto "$S" "prazo hoje"
 afirma "com foco true, a linha tem a jornada" tem_texto "$S" "8h9"
 
+# Casos 6 a 8: a config do PROJETO, como no config.cjs (achado 1 da revisao). O projeto
+# e um repo git na caixa; a janela roda de um subdiretorio dele, e o config.json do
+# projeto mora na raiz (o checkout principal), nao no cwd.
+PROJ="$CAIXA/proj"
+mkdir -p "$PROJ/sub/fundo" "$PROJ/.rainforest"
+git -C "$PROJ" init -q 2>/dev/null
+SUB_W="$(winpath "$PROJ/sub/fundo")"
+linha_proj() {
+  rm -f "$RAIZ/config.json" "$PROJ/.rainforest/config.json"
+  if [ -n "$1" ]; then printf '%s' "$1" > "$PROJ/.rainforest/config.json"; fi
+  if [ -n "$2" ]; then printf '%s' "$2" > "$RAIZ/config.json"; fi
+  printf '{"cwd": "%s"}' "$SUB_W" | \
+    HOME="$CASA_W" USERPROFILE="$CASA_W" TEMP="$TMP_W" RFM_ROOT="$RAIZ_W" \
+    RAINFOREST_VERSAO_URL="http://127.0.0.1:1/x" \
+    "$PY" "$SRC/statusline/statusline.py" | sed 's/\x1b\[[0-9;]*m//g'
+}
+
+S=$(linha_proj '{"foco": true}' "")
+echo "       saida: $S"
+afirma "foco true so no projeto, a linha tem o prazo (subdiretorio le a raiz do repo)" tem_texto "$S" "prazo hoje"
+
+S=$(linha_proj '{"foco": false}' '{"foco": true}')
+echo "       saida: $S"
+afirma "projeto false vence usuario true: a linha não tem prazo" sem_texto "$S" "prazo"
+
+S=$(linha_proj '{"escada-intensidade": "enxuto"}' '{"foco": true}')
+echo "       saida: $S"
+afirma "projeto sem a chave cai no usuario true: a linha tem o prazo" tem_texto "$S" "prazo hoje"
+
 echo
 TOTAL=$((ok + falhou))
 if [ "$falhou" -ne 0 ]; then

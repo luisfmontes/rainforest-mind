@@ -79,6 +79,9 @@ async function montar($: any, on: any, surface: Surface, inicio: number, dadosFa
     // #480: localizadores do node rodados, e o modo em que nenhum acha.
     loc: 0,
     semNode: false,
+    // 2.0.0 (D6): resposta do `setup.cjs --ligado foco` (exit 0 ligado, 1 desligado).
+    foco: true,
+    runsFoco: 0,
   }
   const resposta = (modo: Modo, corpo: unknown) => {
     if (modo === 'exit1') return saida('', 1)
@@ -94,6 +97,10 @@ async function montar($: any, on: any, surface: Surface, inicio: number, dadosFa
       return s.semNode ? saida('', 1) : saida('C:\\Program Files\\nodejs\\node.exe\r\n')
     }
     const alvo = String(e.argv[1] ?? '')
+    if (alvo.endsWith('setup.cjs') && e.argv.includes('--ligado') && e.argv.includes('foco')) {
+      s.runsFoco += 1
+      return saida('', s.foco ? 0 : 1)
+    }
     if (alvo.endsWith('relogio-sessoes.cjs')) {
       s.runsS += 1
       s.argvS.push([...e.argv])
@@ -435,6 +442,32 @@ for (const surface of ['terminal', 'desktop'] as const) {
       const antes = s.runsS
       await relogio.advance(60000)
       expect(s.runsS).toBeGreaterThan(antes)
+    })
+
+    await ui.unmount()
+  })
+
+  test(`relogio (${surface}): com o foco desligado o relogio nao arma`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40))
+    const { relogio, s, ui, quieta, comecar, caso } = m
+
+    await caso('2.0.0 setup --ligado foco exit 1: nenhum process.run de jornada nem de sessoes', async () => {
+      s.foco = false
+      s.jornada = jornadaJson(552, em(20, 30))
+      await comecar()
+      await relogio.advance(600000)
+      expect(s.runsFoco).toBe(1)
+      expect(s.runsS).toBe(0)
+      expect(s.runsJ).toBe(0)
+      await quieta()
+    })
+
+    await caso('2.0.0 foco ligado no session.start seguinte: o relogio arma', async () => {
+      s.foco = true
+      await comecar()
+      await relogio.advance(2000)
+      expect(s.runsS).toBeGreaterThan(0)
+      expect(s.runsJ).toBeGreaterThan(0)
     })
 
     await ui.unmount()
