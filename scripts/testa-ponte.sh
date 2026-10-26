@@ -76,7 +76,7 @@ esperado "aplicar" 0 $PONTE --alvo "$ALVO_WIN" --aplicar
 prova "AGENTS.md existe"  "[ -s '$ALVO/AGENTS.md' ]"
 prova "GEMINI.md existe"  "[ -s '$ALVO/GEMINI.md' ]"
 prova "marcador de inicio e fim presentes" "grep -q 'rainforest-mind:inicio' '$ALVO/AGENTS.md' && grep -q 'rainforest-mind:fim' '$ALVO/AGENTS.md'"
-prova "as 17 regras chegam"                "grep -q '\*\*17\.' '$ALVO/AGENTS.md'"
+prova "a regra 16 chega (as de foco saem: testa-ponte-sem-foco.sh)" "grep -q '\*\*16\.' '$ALVO/AGENTS.md'"
 prova "o nucleo vem marcado com a seta"    "grep -q '↳' '$ALVO/AGENTS.md'"
 prova "diz o que NAO atravessa (PreToolUse)" "grep -q 'PreToolUse' '$ALVO/AGENTS.md'"
 prova "aponta o gate que ATRAVESSA (exit 2)" "grep -q 'estado.cjs exigir' '$ALVO/AGENTS.md'"

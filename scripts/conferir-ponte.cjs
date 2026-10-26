@@ -186,7 +186,7 @@ function nucleoDasRegras(caminhoSkill) {
   } catch (e) {
     throw new Error(`não consegui ler ${caminhoSkill}: ${e.message}`);
   }
-  const nucleo = lib.extrairNucleo(lib.filtrarRegras(skill)).trim();
+  const nucleo = lib.extrairNucleo(lib.semRegrasDeFoco(lib.filtrarRegras(skill))).trim();
   return nucleo;
 }
 
@@ -536,6 +536,21 @@ function main() {
           }, null, 2));
         } else {
           console.log(msg);
+        }
+        process.exit(2);
+      }
+      // Ponte gerada antes da 2.0.0: o SKILL.md não mudou (o hash bate), mas o arquivo
+      // ainda traz as regras de foco (3, 8, 17) que a geração atual deixou de levar.
+      // Sem este ramo sairia como "editado à mão", que é falso.
+      const regraDeFoco = /^\*\*(3|8|17)\./m;
+      if (regraDeFoco.test(conteudoAtual) && !regraDeFoco.test(conteudoEsperado)) {
+        const msg = 'Ponte gerada antes da 2.0.0: traz as regras de foco (3, 8 e 17) que a ponte deixou de levar. O SKILL.md não mudou; regere o arquivo.';
+        if (json) {
+          console.log(JSON.stringify({ arquivo: alvo, situacao: 'ficou-para-tras', hashNoMarcador, hashAtual, msg }, null, 2));
+        } else {
+          console.log(`RECUSADO — ${msg}\n`);
+          console.log('Regere o arquivo com:\n');
+          console.log(`  ${comandoRegerar(agenteDoAlvo, dirDoAlvo)}`);
         }
         process.exit(2);
       }

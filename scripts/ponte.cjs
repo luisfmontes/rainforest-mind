@@ -107,7 +107,7 @@ function nucleoDasRegras() {
   } catch {
     erro(`nao consegui ler ${CAMINHO_SKILL} — a ponte nao inventa regra`);
   }
-  const nucleo = lib.extrairNucleo(lib.filtrarRegras(skill)).trim();
+  const nucleo = lib.extrairNucleo(lib.semRegrasDeFoco(lib.filtrarRegras(skill))).trim();
   // Degradacao BARULHENTA, igual a do hook: ponte com meia regra parece completa,
   // e o dev do outro lado nao tem como saber que faltou.
   if (nucleo.length < lib.TETOS.REGRAS_MIN_CHARS) {

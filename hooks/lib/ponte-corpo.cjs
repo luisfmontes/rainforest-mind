@@ -77,30 +77,6 @@ function lerProjetoMd(alvo, incluirHash = false) {
 }
 
 /**
- * O núcleo das regras, da mesma fonte e pelo mesmo caminho do hook de abertura.
- */
-function nucleoDasRegras(caminhoSkill) {
-  const fs = require("fs");
-  let lib;
-  try {
-    const pluginRoot = path.resolve(__dirname, "..", "..");
-    lib = require(path.join(pluginRoot, "hooks", "lib", "contexto-sessao.cjs"));
-  } catch (e) {
-    throw new Error(
-      `não consegui carregar hooks/lib/contexto-sessao.cjs: ${e.message}`
-    );
-  }
-  let skill;
-  try {
-    skill = fs.readFileSync(caminhoSkill, "utf8");
-  } catch (e) {
-    throw new Error(`não consegui ler ${caminhoSkill}: ${e.message}`);
-  }
-  const nucleo = lib.extrairNucleo(lib.filtrarRegras(skill)).trim();
-  return nucleo;
-}
-
-/**
  * Resolve a raiz de dados (FOCO.md, ideias.jsonl) usando a cadeia de resolução.
  *
  * @param {string} pluginRoot - raiz do plugin (passada explicitamente)
@@ -188,10 +164,6 @@ function corpo(agente, nucleo, dados, alvo = null) {
       "`node <plugin>/scripts/ideias.cjs plantar, colher, listar, conferir`",
       "porta unica de escrita do `ideias.jsonl` (trava, backup, atomico, conferido)",
     ],
-    [
-      "`node <plugin>/scripts/foco.cjs caminho, rotacionar`",
-      "onde mora o foco, e o teto do bloco de avancos",
-    ],
     ["`node <plugin>/scripts/saude.cjs`", "o que os checadores oficiais nao sabem"],
     [
       "`node <plugin>/scripts/semear.cjs --projeto <slug>`",
@@ -243,4 +215,4 @@ em \`skills/rainforest-mind/references/regra-<n>.md\` (onde \`<n>\` e o numero d
 ${nucleo}`;
 }
 
-module.exports = { corpo, raizDeDados, AGENTES, nucleoDasRegras, lerProjetoMd, hashDoArquivo, LINHA_GLOSSARIO };
+module.exports = { corpo, raizDeDados, AGENTES, lerProjetoMd, hashDoArquivo, LINHA_GLOSSARIO };
