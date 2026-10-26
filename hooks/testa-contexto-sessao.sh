@@ -41,6 +41,10 @@ RAIZ_GORDA="$(cygpath -m "$RAIZ_GORDA_POSIX" 2>/dev/null || printf '%s' "$RAIZ_G
 
 # Raiz neutra: sandbox vazia para testes que nao devem variar entre maquinas.
 RAIZ_NEUTRA="$(novo_sandbox)"
+# 2.0.0: o foco so entra na abertura com a chave ligada. Esta bateria mede a abertura COM
+# foco (o lado desligado e de hooks/testa-foco-opcional.sh), entao as raizes de dados dela
+# ganham `{"foco": true}` — so o config.json da caixa, nunca o real.
+printf '{"foco": true}' > "$RAIZ_NEUTRA/config.json"
 
 # O IRMAO VAI JUNTO. Toda sabotagem deste arquivo faz `cp "$LIB" "$RAIZ_POSIX/..."`
 # e roda a COPIA — e desde 2026-08-21 a lib faz `require('./raiz.cjs')`, que resolve
@@ -1385,6 +1389,7 @@ printf '# Foco
 
 **Foco de teste** `[trabalho]` — prazo final 2026-12-31.
 ' > "$DADOS/FOCO.md"
+printf '{"foco": true}' > "$DADOS/config.json"
 H="$(RFM_ROOT="$(cygpath -m "$DADOS" 2>/dev/null || printf '%s' "$DADOS")" node "$SRC/hooks/foco-session-start.cjs" 2>&1)"
 checa "as regras carregam mesmo assim"     tem     "Responder tudo"              "$H"
 checa "o fallback NAO dispara"             nao_tem "FALHA AO CARREGAR AS REGRAS" "$H"
@@ -1806,6 +1811,14 @@ printf '%s\n' \
   > "$CAIXA_A6/FOCO.md"
 cp "$CAIXA_A6/FOCO.md" "$CAIXA_A6_INVALIDO/FOCO.md"
 printf 'isto nao e JSON valido {' > "$CAIXA_A6_INVALIDO/config.json"
+# 2.0.0: o anuncio de expediente e do foco, que so entra com a chave. "Ausente" passa a
+# ser um config.json so com `foco: true` (sem `expediente`); no corrompido, a chave vem
+# do config do PROJETO, que o resolverConfig le antes do da pasta de dados.
+printf '{"foco": true}' > "$CAIXA_A6/config.json"
+PROJ_A6_POSIX="$(novo_sandbox)"
+mkdir -p "$PROJ_A6_POSIX/.rainforest"
+printf '{"foco": true}' > "$PROJ_A6_POSIX/.rainforest/config.json"
+PROJ_A6="$(cygpath -m "$PROJ_A6_POSIX" 2>/dev/null || printf '%s' "$PROJ_A6_POSIX")"
 
 A6_ROOT="$(cygpath -m "$CAIXA_A6" 2>/dev/null || printf '%s' "$CAIXA_A6")"
 A6_ROOT_INVALIDO="$(cygpath -m "$CAIXA_A6_INVALIDO" 2>/dev/null || printf '%s' "$CAIXA_A6_INVALIDO")"
@@ -1822,7 +1835,7 @@ checa "ACHADO 6: config.json ausente, isencao 1 fica quieta"      nao_tem "Pasta
 
 # config.json PRESENTE MAS CORROMPIDO (JSON inválido): mesmo anúncio, e o hook
 # não pode quebrar — é o defeito de origem (um try único que engolia os dois).
-SAIDA_A6B="$(RFM_ROOT="$A6_ROOT_INVALIDO" CLAUDE_CONFIG_DIR="$CAIXA_DEP" RFM_SETTINGS_PATH="$CAIXA_DEP/settings.json" node "$SRC/hooks/foco-session-start.cjs" > "$RAIZ_POSIX/a6b-saida.json" 2>"$RAIZ_POSIX/a6b-stderr.log"; echo "EXIT=$?")"
+SAIDA_A6B="$(RFM_ROOT="$A6_ROOT_INVALIDO" CLAUDE_PROJECT_DIR="$PROJ_A6" CLAUDE_CONFIG_DIR="$CAIXA_DEP" RFM_SETTINGS_PATH="$CAIXA_DEP/settings.json" node "$SRC/hooks/foco-session-start.cjs" > "$RAIZ_POSIX/a6b-saida.json" 2>"$RAIZ_POSIX/a6b-stderr.log"; echo "EXIT=$?")"
 EXIT_A6B="${SAIDA_A6B#EXIT=}"
 CTX_A6B="$(node -e "try{process.stdout.write(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).hookSpecificOutput.additionalContext)}catch{process.stdout.write('SEM_CONTEXTO')}" "$RAIZ_POSIX/a6b-saida.json")"
 if [ "$EXIT_A6B" = "0" ]; then ok=$((ok+1)); echo "  ok    ACHADO 6: hook real com config.json corrompido sai com exit 0 (nao quebra)"
@@ -2918,7 +2931,7 @@ rm -f "$RAIZ_POSIX/lib-mut-so-corta-se-resolve.cjs"
 echo
 echo "22.4 MUTAÇÃO — desligar o corte tem que derrubar o item 22.2"
 cp "$LIB" "$RAIZ_POSIX/lib-mut-rodape.cjs"
-sed -i "s/if (fixo > tetos.ORCAMENTO_BYTES - tetos.FOCO_MIN_BYTES) {/if (false) {/" "$RAIZ_POSIX/lib-mut-rodape.cjs"
+sed -i "s/if (!semFoco \&\& fixo > tetos.ORCAMENTO_BYTES - tetos.FOCO_MIN_BYTES) {/if (false) {/" "$RAIZ_POSIX/lib-mut-rodape.cjs"
 if diff "$LIB" "$RAIZ_POSIX/lib-mut-rodape.cjs" > /dev/null; then
   falhou=$((falhou+1)); echo "  FALHA o sed não encontrou a linha a mutar — mutação não aplicou nada, teste inválido"
 else

@@ -44,6 +44,9 @@ SBP2="$(novo_sandbox)"
 RAIZ_GORDA="$(novo_sandbox)"
 node -e "require('fs').writeFileSync(process.argv[1]+'/FOCO.md','# Foco\n\n'+'x'.repeat(2500))" "$RAIZ_GORDA"
 RAIZ_VAZIA="$(novo_sandbox)"
+# 2.0.0: o foco nasce desligado; as duas raizes ligam para a medicao reagir ao FOCO.md.
+printf '{"foco": true}' > "$RAIZ_GORDA/config.json"
+printf '{"foco": true}' > "$RAIZ_VAZIA/config.json"
 echo "(caixa de areia: $SBP)"
 
 ok=0; falhou=0

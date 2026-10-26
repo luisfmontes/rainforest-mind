@@ -71,6 +71,7 @@ require("node:child_process").execFileSync("git", ["init", "-q", PROJ]);
   for (let i = 1; i <= 3; i++) L.push(`- 2026-09-0${i} (fixture): **avanco ${i}.**`);
   L.push("", "## Compromissos com prazo", "", "- **Entrega de fixture ate 2026-12-31** — compromisso residente.", "");
   fs.writeFileSync(path.join(DADOS, "FOCO.md"), L.join("\r\n") + "\r\n");
+  fs.writeFileSync(path.join(DADOS, "config.json"), JSON.stringify({ foco: true })); // 2.0.0: o foco nasce desligado
 }
 
 function envBase(raiz) {

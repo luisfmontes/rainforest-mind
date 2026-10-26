@@ -31,6 +31,14 @@ const CODIGO_ROOT = path.resolve(__dirname, '..');
 const { raiz: RAIZ_RESOLVIDA, nivel: NIVEL_RAIZ } = resolverRaiz({ plugin: CODIGO_ROOT });
 const ROOT = RAIZ_RESOLVIDA || CODIGO_ROOT;
 
+// 2.0.0 (D3 do design 2026-10-25-versao-2-0-0): o foco só entra na abertura com a chave
+// `foco: true`. Desligado, nada do FOCO.md nem do sessoes.json chega à lib, e as regras
+// 3, 8 e 17 saem do núcleo. `focoLigado` trata config ilegível como desligado.
+const FOCO_LIGADO = require('./lib/config.cjs').focoLigado({
+  projeto: process.env.CLAUDE_PROJECT_DIR || process.cwd(),
+  ...(RAIZ_RESOLVIDA ? { dados: RAIZ_RESOLVIDA } : {}),
+});
+
 // `--destino mod`: a abertura vai como secao do system prompt (mod), sem o teto de
 // entrega do hook. Os tetos e as regras que vem inteiras estao em
 // hooks/abertura-mod.json, validado por lib/abertura-mod.cjs. Config recusada ou
@@ -46,7 +54,9 @@ if (iDestino !== -1) {
     if (destino !== 'mod') throw new Error(`--destino ${JSON.stringify(destino)} desconhecido (so existe "mod")`);
     const cfg = require('./lib/abertura-mod.cjs').carregar();
     tetosMod = { ORCAMENTO_BYTES: cfg.regras + cfg.foco, FOCO_MAX_BYTES: cfg.foco };
-    elaboracoes = cfg.elaboracoes.map((n) => ({ n, texto: fs.readFileSync(cfg.arquivos[n], 'utf8') }));
+    elaboracoes = cfg.elaboracoes
+      .filter((n) => FOCO_LIGADO || n !== 17)
+      .map((n) => ({ n, texto: fs.readFileSync(cfg.arquivos[n], 'utf8') }));
   } catch (e) {
     process.stderr.write(`foco-session-start: ${e.message}\n`);
     process.exit(1);
@@ -367,16 +377,17 @@ function doConsoleLog(pluginsStatus, whatsappStatus) {
 
   const contexto = montarContexto({
     skillText: skill,
-    focoText: foco,
+    focoText: FOCO_LIGADO ? foco : '',
     caminhoSkill: CAMINHO_SKILL,
     root: ROOT,
-    veredito,
-    sessoes,
+    veredito: FOCO_LIGADO ? veredito : '',
+    sessoes: FOCO_LIGADO ? sessoes : '',
     revisao,
     dependencias,
     principalAtrasado,
-    temEstrategia,
-    estrategiaPath: temEstrategia ? CAMINHO_ESTRATEGIA : null,
+    temEstrategia: FOCO_LIGADO && temEstrategia,
+    estrategiaPath: FOCO_LIGADO && temEstrategia ? CAMINHO_ESTRATEGIA : null,
+    ...(FOCO_LIGADO ? {} : { foco: false }),
     ...(destino === 'mod' ? { destino, tetosMod, elaboracoes } : {}),
   });
 
@@ -410,6 +421,7 @@ function doConsoleLog(pluginsStatus, whatsappStatus) {
     entradas: entradasVivas,
     cwdAtual: process.env.CLAUDE_PROJECT_DIR || process.cwd(),
     bloqueios,
+    ...(FOCO_LIGADO ? {} : { foco: false }),
   });
 
   const saida = {

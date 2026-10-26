@@ -178,6 +178,16 @@ const CHAVES = {
     descricao: 'as rondas headless agendadas (exigem PowerShell, claude.exe e destino de envio)',
     entrevista: { grupo: 'ferramentas', detectar: { executaveis: ['powershell', 'claude'] } },
   },
+  // FOCO (2.0.0, D2 do design 2026-10-25-versao-2-0-0): o radar de escopo, o guarda-corpo
+  // de jornada e o radar multi-janela saem da abertura por padrão, e esta chave os traz de
+  // volta. Nasce DESLIGADA como `vigias`, e quem a lê também **não usa `ligado()`**: usa
+  // `focoLigado()`, logo abaixo, que trata falha como desligado.
+  foco: {
+    tipo: 'boolean',
+    padrao: false,
+    descricao: 'o foco na abertura: radar de escopo, jornada e janelas paralelas (regras 3, 8 e 17)',
+    entrevista: { grupo: 'foco', detectar: {} },
+  },
   // RONDAS — um toggle por ronda, ligado por padrao de proposito: quem ja tem
   // `vigias: true` gravado continua com as cinco rodando. So vale com `vigias`
   // tambem ligado (o run-vigia.ps1 olha as duas chaves, nesta ordem).
@@ -540,9 +550,18 @@ function ligado(chave, o = {}) {
   }
 }
 
+/** A chave `foco` (2.0.0): só `true` gravado liga; erro de leitura = DESLIGADO, o inverso de `ligado()`. */
+function focoLigado(o = {}) {
+  try {
+    return resolverConfig(o).valores.foco === true;
+  } catch {
+    return false;
+  }
+}
+
 // Grupos da entrevista do /setup, na ordem em que ela pergunta (D8 do design
 // 2026-10-17). O conferidor de D7 compara a seção "Ordem da entrevista" do SKILL.md
 // com esta lista, então a ordem aqui é a que vale.
 const GRUPOS_ENTREVISTA = ['dados', 'idioma', 'projetos', 'ferramentas', 'fechar', 'estrategia', 'foco'];
 
-module.exports = { CHAVES, resolverConfig, ligado, raizDoPrincipal, validarTipo, GRUPOS_ENTREVISTA };
+module.exports = { CHAVES, resolverConfig, ligado, focoLigado, raizDoPrincipal, validarTipo, GRUPOS_ENTREVISTA };

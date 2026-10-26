@@ -60,6 +60,10 @@ L.push('- ULTIMA-LINHA-DO-FOCO-FIXTURE');
 fs.writeFileSync(process.argv[1], L.join('\r\n') + '\r\n');
 " "$DADOS_M/FOCO.md"
 ULTIMA_FOCO="ULTIMA-LINHA-DO-FOCO-FIXTURE"
+# 2.0.0: o foco so entra na abertura com a chave; esta bateria mede a abertura com foco, e o
+# golden (que nao conhece a chave) tem de sair igual a ela. O lado desligado e de
+# hooks/testa-foco-opcional.sh.
+printf '{"foco": true}' > "$DADOS/config.json"
 
 # Roda um hook com o ambiente fixo; $1 = raiz do plugin (posix), demais = argumentos.
 # Bridge vazia = nao declarada (sem sonda de rede); config dir isolado (sem plugins lidos).
@@ -216,6 +220,7 @@ for (let i = 0; i < 400; i++) L.push('- linha ' + i + ' ' + 'z'.repeat(60));
 L.push('', '## Concluídos', '', '- FIM-DO-FOCO-GIGANTE');
 fs.writeFileSync(process.argv[1], L.join('\n') + '\n');
 " "$(mixto "$GRANDE_POSIX")/FOCO.md"
+printf '{"foco": true}' > "$GRANDE_POSIX/config.json"
 WHATSAPP_API_BASE_URL= RFM_ROOT="$(mixto "$GRANDE_POSIX")" CLAUDE_PROJECT_DIR="$PROJ_M" \
   CLAUDE_CONFIG_DIR="$CFG_M" RFM_SETTINGS_PATH="$CFG_M/settings.json" \
   node "$(mixto "$SRC")/hooks/foco-session-start.cjs" --destino mod > "$BASE_POSIX/grande.json" 2>/dev/null; COD=$?

@@ -170,6 +170,7 @@ o grupo que vale é o do campo `entrevista` no catálogo.
 | `aviso-duplicata` | — | avisa, na edição, função ou classe que já está definida em outro arquivo rastreado (reusar antes de duplicar) |
 | `fluxo` | — | os sete estágios (brainstorm → plano → … → fechar) |
 | `vigias` | ferramentas | as rondas headless agendadas (exigem PowerShell, `claude.exe` e destino de envio) |
+| `foco` | foco | o foco na abertura: radar de escopo, jornada e janelas paralelas (regras 3, 8 e 17); nasce desligado |
 | `vigia-batedor-repos` | ferramentas | ronda batedor-repos; só roda com `vigias` também ligado |
 | `vigia-jardineiro-ideias` | ferramentas | ronda jardineiro-ideias; só roda com `vigias` também ligado |
 | `vigia-revisao-bimestral` | ferramentas | ronda revisao-bimestral; só roda com `vigias` também ligado |

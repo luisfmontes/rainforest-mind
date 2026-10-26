@@ -110,8 +110,10 @@ B="$CAIXA/saida-2.json"
 plano "$B" "${BASE[@]}"
 verifica "grupos de passos = GRUPOS_ENTREVISTA, na mesma ordem" "$B" \
   "JSON.stringify(j.passos.map(p => p.grupo)) === JSON.stringify(require('$CONFIG_JS').GRUPOS_ENTREVISTA)"
-verifica "dados, projetos, estrategia e foco aparecem com chaves: []" "$B" \
-  "['dados','projetos','estrategia','foco'].every(g => j.passos.find(p => p.grupo === g).chaves.length === 0)"
+verifica "dados, projetos e estrategia aparecem com chaves: []" "$B" \
+  "['dados','projetos','estrategia'].every(g => j.passos.find(p => p.grupo === g).chaves.length === 0)"
+verifica "foco traz a chave foco (2.0.0: liga o radar, nasce false)" "$B" \
+  "JSON.stringify(j.passos.find(p => p.grupo === 'foco').chaves.map(c => c.chave)) === '[\"foco\"]'"
 
 echo
 echo "== 3. ferramenta ausente no PATH nao vira pergunta =="

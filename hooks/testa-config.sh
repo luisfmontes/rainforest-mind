@@ -407,6 +407,20 @@ igual "419 \"privada\" e valida" '"privada" projeto' "$(vis419 '{"visibilidade-r
 igual "419 \"publica\" e invalida" "null padrao" "$(vis419 '{"visibilidade-repo":"publica"}')"
 igual "419 true e invalido" "null padrao" "$(vis419 '{"visibilidade-repo":true}')"
 igual "419 vazio e invalido" "null padrao" "$(vis419 '{"visibilidade-repo":""}')"
+echo
+echo "== 2.0.0. foco: nasce desligado, liga pela config =="
+igual "foco padrao false" "false padrao" "$(chave16 '{}' foco)"
+igual "foco true do projeto vale" "true projeto" "$(chave16 '{"foco":true}' foco)"
+foco20() { # config_projeto_json -> focoLigado()
+  printf '%s' "$1" > "$SBP/proj/.rainforest/config.json"
+  RFM_ROOT="$SB/lar/.rainforest" node -e '
+    const [src, proj] = process.argv.slice(1);
+    process.stdout.write(String(require(src + "/hooks/lib/config.cjs").focoLigado({ projeto: proj })));
+  ' "$SRC_WIN" "$PROJ" 2>&1
+}
+igual "focoLigado sem chave e false" "false" "$(foco20 '{}')"
+igual "focoLigado com foco true e true" "true" "$(foco20 '{"foco":true}')"
+igual "focoLigado com json quebrado e false" "false" "$(foco20 '{quebrado')"
 rm -f "$SBP/proj/.rainforest/config.json" "$SBP/lar/.rainforest/config.json"
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

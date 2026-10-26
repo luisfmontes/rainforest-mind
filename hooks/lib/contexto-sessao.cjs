@@ -226,6 +226,17 @@ function filtrarRegras(skillText) {
   return bruto.replace(CITACAO, '').replace(/\n{3,}/g, '\n\n').trim();
 }
 
+/** As regras do foco (3 radar de escopo, 8 jornada, 17 multi-janela), que a 2.0.0 tira sem a chave `foco`. */
+const REGRA_DE_FOCO = /^\*\*(3|8|17)\./;
+
+/**
+ * Tira do texto de `filtrarRegras` os blocos das regras 3, 8 e 17, sem renumerar as
+ * outras (D4 do design 2026-10-25-versao-2-0-0): `regra <n>` é citada no repo inteiro.
+ */
+function semRegrasDeFoco(regrasTexto) {
+  return String(regrasTexto || '').split(INICIO_REGRA).filter((b) => !REGRA_DE_FOCO.test(b.trim())).join('\n');
+}
+
 /**
  * Reduz cada regra ao seu NÚCLEO — o texto antes da linha `<!-- detalhe -->`.
  *
@@ -1119,7 +1130,11 @@ function montarContexto(o) {
   // entrega do hook SessionStart. Os tetos maiores vem de hooks/abertura-mod.json
   // (via o adaptador) e SOBREPOEM so os que ele nomeia; sem `destino`, TETOS puro.
   const tetos = o.destino === 'mod' ? { ...TETOS, ...o.tetosMod } : TETOS;
-  const regras = blocoRegras(extrairNucleo(filtrarRegras(o.skillText)), o.caminhoSkill || '(caminho não informado)');
+  // 2.0.0 (D3/D4): sem a chave `foco`, o adaptador passa `foco: false` e a abertura sai
+  // sem as regras 3, 8 e 17 e sem nada do FOCO.md. Omitido, a saída é a de antes.
+  const semFoco = o.foco === false;
+  const regrasTexto = semFoco ? semRegrasDeFoco(filtrarRegras(o.skillText)) : filtrarRegras(o.skillText);
+  const regras = blocoRegras(extrairNucleo(regrasTexto), o.caminhoSkill || '(caminho não informado)');
   // Elaboracao INTEIRA das regras que o destino pede ([{ n, texto }], na ordem).
   // Entra logo apos o nucleo, verbatim: a regra que vem inteira nao precisa de
   // `Skill` nem de leitura para ser aplicada.
@@ -1135,7 +1150,13 @@ function montarContexto(o) {
   // O imóvel mais caro do payload é o começo: é o único pedaço que sobrevive a um
   // corte. Ele carrega a CONVOCAÇÃO, não a identidade — "quem eu sou" não faz nada
   // acontecer; "carregue a skill antes de aplicar a regra marcada" faz.
-  const cabecalho = `RAINFOREST MIND ATIVO — memória de trabalho externa e radar de escopo do usuario (perfil 2e).
+  const identidade = semFoco
+    ? 'RAINFOREST MIND ATIVO — apoio ao desenvolvimento.'
+    : 'RAINFOREST MIND ATIVO — memória de trabalho externa e radar de escopo do usuario (perfil 2e).';
+  const fimCabecalho = semFoco
+    ? '\n\nRegras 3, 8 e 17 (foco) desligadas — `foco: true` na config liga.'
+    : '\n\n## Foco declarado\n';
+  const cabecalho = `${identidade}
 
 ${inteiras.length
     ? `**Estas são as regras em NÚCLEO; as regras ${nomesInteiras} vêm INTEIRAS na seção "Elaboração inteira" logo abaixo.** Regra marcada com ↳ cuja elaboração não veio inteira tem critérios finos, comandos exatos, incidentes.
@@ -1146,10 +1167,7 @@ elaboração que não está aqui — critérios finos, comandos exatos, incident
 \`${pastaReferences}/regra-<n>.md\` (onde \`<n>\` é o número com dois dígitos — \`06\`, \`13\`, \`17\`).
 
 ## Regras (aplicar em toda resposta)
-${regras}${blocoInteiras}
-
-## Foco declarado
-`;
+${regras}${blocoInteiras}${fimCabecalho}`;
 
   // A separação é do rodapé, não dos blocos que ele recebe: quando não havia
   // sessão paralela, o `## Dependências` colava na última linha do foco e virava
@@ -1173,8 +1191,9 @@ ${regras}${blocoInteiras}
     blocoRodape.push(linhasPrincipal);
   }
 
-  blocoRodape.push(`Arquivos de apoio: ${o.root || ''}\\FOCO.md e ${o.root || ''}\\ideias.jsonl (uma ideia por linha)`);
-  let rodape = '\n\n' + blocoRodape.join('\n\n');
+  if (!semFoco) blocoRodape.push(`Arquivos de apoio: ${o.root || ''}\\FOCO.md e ${o.root || ''}\\ideias.jsonl (uma ideia por linha)`);
+  // Rodapé vazio só acontece sem foco (com foco, a linha de apoio sempre entra).
+  let rodape = blocoRodape.length ? '\n\n' + blocoRodape.join('\n\n') : '';
 
   // Issue #74: ponteiro RESIDENTE para o ESTRATEGIA.md, quando o adaptador
   // confirmou que o arquivo existe ao lado do FOCO.md. Reservado ANTES de
@@ -1183,7 +1202,7 @@ ${regras}${blocoInteiras}
   // este arquivo inteiro existe para evitar (mesmo motivo do `reserva` em
   // `priorizarFoco`). Ausente/false: `custoEstrategia` é 0 e nada muda —
   // é a garantia de compatibilidade para trás com FOCO.md monolítico.
-  const pastaEstrategia = o.temEstrategia
+  const pastaEstrategia = o.temEstrategia && !semFoco
     ? `\n\n📎 Estratégia (contexto de negócio, frentes, concluídos): ${o.estrategiaPath || 'ESTRATEGIA.md'}`
     : '';
   const custoEstrategia = pastaEstrategia ? Buffer.byteLength(pastaEstrategia, 'utf8') : 0;
@@ -1198,7 +1217,8 @@ ${regras}${blocoInteiras}
   // vê em outro canal) e só então as SESSÕES (radar de janela, regra 17) —
   // nunca o veredito (regra 3/17, isenção de cobrança de desvio) nem o aviso de
   // revisão, os dois mais curtos e mais críticos para não cobrar errado.
-  if (fixo > tetos.ORCAMENTO_BYTES - tetos.FOCO_MIN_BYTES) {
+  // Sem foco não há bloco a quem abrir espaço: cortar dependência aqui só apagaria aviso.
+  if (!semFoco && fixo > tetos.ORCAMENTO_BYTES - tetos.FOCO_MIN_BYTES) {
     // So' aplica o corte se ELE RESOLVER: simula a remocao das DUAS partes antes
     // de tirar qualquer uma de verdade. Medido ao vivo (2026-09-16, worktree com
     // 11 pastas ja mescladas em origin/main): quando quem domina o estouro e' o
@@ -1245,7 +1265,9 @@ ${regras}${blocoInteiras}
   // Nao cabendo, cai no caminho de sempre, que corta por prioridade e avisa.
   const focoInteiro = o.destino === 'mod' ? normalizarFimDeLinha(o.focoText).trim() : '';
   let foco;
-  if (focoInteiro && Buffer.byteLength(focoInteiro, 'utf8') <= tetoFoco) {
+  if (semFoco) {
+    foco = '';
+  } else if (focoInteiro && Buffer.byteLength(focoInteiro, 'utf8') <= tetoFoco) {
     foco = focoInteiro;
   } else if (!focoResumido) {
     foco = '(nenhum foco declarado — sugira /foco <texto> se o usuario disser no que precisa entregar)';
@@ -1636,7 +1658,11 @@ function montarLegenda(o) {
   // sinal de que o plugin subiu, e traz o comando que resolve a falta.
   const titulo = tituloDoFocoAtivo(focoText);
   const natureza = naturezaDoFocoAtivo(focoText);
-  if (titulo) {
+  // 2.0.0: sem a chave `foco`, a linha só diz que o plugin subiu, e as janelas saem.
+  const semFoco = Boolean(o && o.foco === false);
+  if (semFoco) {
+    linhas.push('🌳 rainforest-mind ativo · apoio ao desenvolvimento');
+  } else if (titulo) {
     const marca = natureza ? ` [${natureza}]` : '';
     // "Esta janela está no foco?" se responde por PASTA, igual à isenção da regra
     // 17 — e só quando o FOCO.md declara as pastas. Sem `Pastas:` a pergunta é
@@ -1656,7 +1682,7 @@ function montarLegenda(o) {
   // Linha das janelas. Só o que a regra 17 pergunta: quantas existem e se alguma
   // está parada esperando ele. Nome de pasta fica fora — isso o modelo já tem
   // pelo `additionalContext`, e aqui custaria a linha inteira.
-  if (entradas.length) {
+  if (entradas.length && !semFoco) {
     const esperando = entradas.filter((e) => !e.trabalhando);
     const trabalhando = entradas.length - esperando.length;
     // Redação enxuta de propósito: a versão longa ("N janela(s) viva(s) · N com Claude
@@ -1693,6 +1719,7 @@ module.exports = {
   tituloDoFocoAtivo,
   montarLegenda,
   filtrarRegras,
+  semRegrasDeFoco,
   extrairNucleo,
   blocoRegras,
   resumirAvancos,
