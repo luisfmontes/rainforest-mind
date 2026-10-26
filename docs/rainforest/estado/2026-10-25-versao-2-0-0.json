@@ -14,14 +14,113 @@
     "em": "2026-10-25"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-10-25"
+    "status": "ok",
+    "catraca_mutacao": "2026-10-25",
+    "tarefas_ok": 5,
+    "tarefas": 5,
+    "integradas": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "em_voo": [],
+    "comando": "node scripts/rodar-longo.cjs iniciar --saida varredura-200.txt -- bash scripts/varrer-baterias.sh; depois bash scripts/testa-backup-estado.sh, scripts/testa-erros-md-raiz.sh, scripts/testa-setup.sh; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-25-versao-2-0-0; revisao 1: bash scratchpad/vizinhas-rev1.sh; claude plugin test .; bash scripts/testa-statusline-foco.sh; bash scripts/testa-foco-desligado.sh; bash scripts/testa-ponte-sem-foco.sh",
+    "saida": "varredura completa: 290 verdes, 3 vermelhas (testa-backup-estado.sh, testa-erros-md-raiz.sh, testa-setup.sh). Consertos: require da config dentro de foco.cjs aviso (9fde2d9b) -> backup-estado 58/0; caixas da sentinela-foco ligam foco (4af8dc6c) -> erros-md-raiz 8/0, setup 84 ok 0 falha. Catraca: tarefas 1-4 vermelho, 5 pulada (n/a). Revisao 1 reprovou (3 medios, 5 baixos); consertos 29f9b42b..0b50fce3: statusline-foco 12/0 (mutacao projeto: 2 vermelhas), plugin test 134 pass 0 fail (mutacao do gate: 2 fail), foco-desligado 10/0, ponte-sem-foco 12/0, conferir-ponte 6 baterias, versao 5/0, mod-relogio 30/0, foco 91/0, backup 58/0, statusline 6 baterias, ponte 60/0.",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "hooks/testa-foco-opcional.sh: abertura sem foco perde a linha de foco desligado"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "scripts/testa-statusline-foco.sh: segmento_prazo sem foco volta vazio"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "scripts/testa-ponte-sem-foco.sh: ponte gerada nao traz regras 3, 8 e 17"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "scripts/testa-foco-desligado.sh: foco.cjs aviso com foco desligado imprime o aviso"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "metadado de versao e documentacao"
+      }
+    ],
+    "em": "2026-10-26",
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ae0100af363693719",
+        "veredito": "ok",
+        "em": "2026-10-26",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-ae0100af363693719.jsonl"
+      }
+    ],
+    "achados": 2,
+    "motivo": "volta 4 ok sobre a emenda do plano (creep 44 arquivos cobertos); voltas 2 e 3 ok no codigo. Baixos: lote 6 em T5 por conveniencia; 13 arquivos previstos sem mudanca. Achado 7 da volta 1 (papel no SKILL.md) vai ao usuario",
+    "base": "dc88603a",
+    "head": "HEAD",
+    "em": "2026-10-26",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ab09721cd5067f6d4",
+            "veredito": "reprovado",
+            "em": "2026-10-26",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-ab09721cd5067f6d4.jsonl"
+          },
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ada8d893a64eed0b3",
+            "veredito": "ok",
+            "em": "2026-10-26",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-ada8d893a64eed0b3.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ac15e8e2012a22ce1",
+            "veredito": "ok",
+            "em": "2026-10-26",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-ac15e8e2012a22ce1.jsonl"
+          }
+        ]
+      }
+    ],
+    "snapshot": {
+      "head": "b92bd05d666af91f79f08c4907010de3437a5802",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-10-25-versao-2-0-0.json"
+      ]
+    }
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scratchpad/verificar-200.sh (as provas das tarefas 1 a 5 e as baterias de arquivos: de cada uma, testa-versao e conferir-versao); claude plugin test .; node scripts/conferir-fluxo.cjs cobertura --slug 2026-10-25-versao-2-0-0",
+    "saida": "HEAD b741a591 (b92bd05 so emenda o plano). tarefa 1: foco-opcional 8/0, contexto-sessao 305/0, abertura-mod-foco 12/0, abertura-mod-config 20/0, mod-abertura 30/0, orcamento 51/0, medir-injecao 45/0, mapa-regras 6/0, memoria-somente-leitura 29/0, ferramentas-nao-toca-abertura 5/0, principal-atrasado 31/0, config 68/0; tarefa 2: statusline-foco 12/0, statusline 6 baterias, mod-relogio 30/0, plugin test 136 pass 0 fail; tarefa 3: ponte-sem-foco 12/0, ponte 60/0, conferir-ponte 6 baterias, conferir-ponte-colado 18/0, ponte-entrevista 96/0, ponte-glossario 25/0, conferir-ponte-glossario 33/0; tarefa 4: foco-desligado 10/0, foco 91/0, run-vigia-claude 33/0, teto-skills 21 OK; tarefa 5: versao 5/0, conferir-versao exit 0, CHANGELOG casado com o diff pelo revisor (voltas 2 e 3); todas exit=0; cobertura valida — 11 decisao(oes), 5 tarefa(s)",
+    "sensor_externo": "node scripts/conferir-fluxo.cjs cobertura",
+    "em": "2026-10-26",
+    "head": "b92bd05d666af91f79f08c4907010de3437a5802"
   },
   "fechar": {
     "status": "pendente"
