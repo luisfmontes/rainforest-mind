@@ -541,10 +541,11 @@ function main() {
       }
       // Ponte gerada antes da 2.0.0: o SKILL.md não mudou (o hash bate), mas o arquivo
       // ainda traz as regras de foco (3, 8, 17) que a geração atual deixou de levar.
-      // Sem este ramo sairia como "editado à mão", que é falso.
+      // Sem este ramo sairia como "editado à mão", que é falso. Uma linha de regra de foco
+      // colada à mão na ponte nova cai aqui também: a mensagem cobre as duas origens.
       const regraDeFoco = /^\*\*(3|8|17)\./m;
       if (regraDeFoco.test(conteudoAtual) && !regraDeFoco.test(conteudoEsperado)) {
-        const msg = 'Ponte gerada antes da 2.0.0: traz as regras de foco (3, 8 e 17) que a ponte deixou de levar. O SKILL.md não mudou; regere o arquivo.';
+        const msg = 'Ponte gerada antes da 2.0.0 (ou editada à mão com uma regra de foco): traz as regras de foco (3, 8 e 17) que a ponte deixou de levar. O SKILL.md não mudou; regere o arquivo.';
         if (json) {
           console.log(JSON.stringify({ arquivo: alvo, situacao: 'ficou-para-tras', hashNoMarcador, hashAtual, msg }, null, 2));
         } else {
