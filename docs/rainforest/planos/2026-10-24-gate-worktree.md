@@ -271,7 +271,7 @@ Provado por `bash hooks/testa-gate-worktree.sh` com o placar `0 falha(s)`.
 
 ### 7. Versão 2.0.2, CHANGELOG e README [tipo: docs]
 atende: D6, D2
-arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`
+arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`, `docs/rainforest/estado/2026-10-23-conta-vigia.json`, `docs/rainforest/estado/2026-10-26-papel-da-skill.json`
 depende de: 6
 mutacao: n/a
   motivo: documentação e número de versão, sem comportamento a inverter. A coerência com a interface é conferida por `testa-versao.sh` e pela leitura do texto contra as decisões
@@ -286,4 +286,4 @@ pronto quando:
 - Se o README descreve o que a rede do gate julga, a descrição passa a incluir o alvo de escritor com expansão no início.
 
 ## Retomada (2026-10-26)
-Retomado na branch `fluxo/gate-worktree-retomada`, rebaseada sobre `e455fb40` (2.0.1). `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh` e `hooks/testa-corpus-comandos.cjs` não mudaram desde `f99164b6` (`git diff --stat` vazio), então as tarefas 1 a 6 valem como escritas; a versão da tarefa 7 passa de 1.74.1 a 2.0.2.
+Retomado na branch `fluxo/gate-worktree-retomada`, rebaseada sobre `e455fb40` (2.0.1). `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh` e `hooks/testa-corpus-comandos.cjs` não mudaram desde `f99164b6` (`git diff --stat` vazio), então as tarefas 1 a 6 valem como escritas; a versão da tarefa 7 passa de 1.74.1 a 2.0.2. A tarefa 7 também carrega o estado de fechamento de dois fluxos anteriores (`conta-vigia`, `papel-da-skill`), que só pode ir para a main na branch seguinte ao merge deles.
