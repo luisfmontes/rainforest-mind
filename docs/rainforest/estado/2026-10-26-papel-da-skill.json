@@ -14,7 +14,7 @@
     "em": "2026-10-26"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-26",
     "tarefas_ok": 1,
     "tarefas": 1,
@@ -22,8 +22,8 @@
       1
     ],
     "em_voo": [],
-    "comando": "bash scratchpad/provas-papel.sh",
-    "saida": "HEAD 9ffedfb1 + diff da tarefa 1 (commit 84eef6b1): testa-conferir-invariantes 32/0, testa-foco-opcional 8/0, testa-versao 5/0, testa-contexto-sessao 305/0, testa-orcamento 51/0, testa-conferir-ponte 6 baterias, testa-ponte 60/0, conferir-versao exit 0, conferir-invariantes exit 0, frase antiga 1 vez no SKILL.md",
+    "comando": "bash scratchpad/provas-papel.sh; bash scratchpad/prova-ponte.sh",
+    "saida": "tarefa 1 (84eef6b1, conserto da revisao 1 em ddb2a08b): testa-conferir-invariantes 32/0, testa-foco-opcional 8/0, testa-versao 5/0, testa-contexto-sessao 305/0, testa-orcamento 51/0, testa-conferir-ponte 6 baterias, testa-ponte 60/0, conferir-versao exit 0, conferir-invariantes exit 0, frase antiga 1 vez no SKILL.md; ponte gerada pela 2.0.0 (d92f98ff, hash 6b78cdf6b2d528ee) conferida pela branch (hash be51f391dcb81083): CLAUDE.md, AGENTS.md e GEMINI.md CONFERIDO exit 0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -32,10 +32,6 @@
       }
     ],
     "em": "2026-10-26",
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-26"
-    },
     "reaberturas": 1
   },
   "revisar": {
