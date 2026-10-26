@@ -10,6 +10,11 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.0.1 — 2026-10-26
+
+- **A skill `rainforest-mind` diz o papel novo.** O parágrafo de abertura do `SKILL.md` dizia que o papel do assistente é ser memória de trabalho externa e radar de escopo; agora diz apoio ao desenvolvimento e, com `foco: true`, também memória de trabalho externa e radar de escopo (`skills/rainforest-mind/SKILL.md:11` na 2.0.0). A abertura da sessão e o núcleo das regras não mudam.
+- **Ponte gerada com a 2.0.0 sai desatualizada.** O hash da ponte é do `SKILL.md` inteiro, então o `conferir-ponte` acusa o CLAUDE.md, o AGENTS.md e o GEMINI.md gerados antes desta versão; é esperado, e `/ponte` regenera. Desenho em `docs/rainforest/design/2026-10-26-papel-da-skill.md`.
+
 ## 2.0.0 — 2026-10-25
 
 ### O que quebra
