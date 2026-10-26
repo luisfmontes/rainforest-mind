@@ -173,6 +173,7 @@ conf "duas linhas Tests somam; Test Files fica de fora" "5 1" "$(PLACAR $' Test 
 conf "Tests no tests (import quebrado) não tem placar" "null" "$(PLACAR $' Test Files  1 failed (1)\n      Tests  no tests')"
 conf "Test Files sozinho não é placar" "null" "$(PLACAR ' Test Files  1 failed (1)')"
 conf "placar do repo vence a linha Tests quando os dois aparecem" "2 0" "$(PLACAR $'      Tests  1 failed (1)\n== resultado: 2 ok, 0 falha(s) ==')"
+conf "libtest vence a linha Tests quando os dois aparecem" "7 0" "$(PLACAR $'test result: ok. 7 passed; 0 failed\n      Tests  1 failed (1)')"
 conf "mediuEFalhou: vermelho do vitest mede" "true" "$(MEDIU '      Tests  1 failed | 14 passed (15)')"
 conf "mediuEFalhou: verde do vitest não mede" "false" "$(MEDIU '      Tests  15 passed (15)')"
 

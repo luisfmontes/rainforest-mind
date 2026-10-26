@@ -18,7 +18,7 @@ nenhuma é substituída.
 
 ## Avaliado e descartado
 - Regex sugerida na issue (`passed` obrigatório): descartada por D2 — `Tests  1 failed (1)` não casa e vira colapso (exit 6).
-- Remover sequências ANSI antes de casar: a saída real do vitest 4.1.11 por pipe, no win32, veio sem nenhum `ESC[` — inclusive com `FORCE_COLOR=1`. Sem cor medida, a remoção seria código para um caso que não existe. Saídas reais capturadas em 2026-10-26: `Tests  2 passed | 1 skipped (3)` (verde), `Tests  1 failed | 1 passed | 1 skipped (3)` (vermelho parcial), `Tests  1 failed (1)` (todos falham), `Tests  no tests` com `Test Files  1 failed (1)` (import quebrado — sem placar, colapso pelo `bateriaColapsou`, como deve).
+- Remover sequências ANSI antes de casar: a saída real do vitest 4.1.11 por pipe, no win32, veio sem nenhum `ESC[` — inclusive com `FORCE_COLOR=1`; na revisão 1, medido de novo com `CI=true`, `CI=true FORCE_COLOR=1` e `FORCE_COLOR=3 --color`, e a linha `Tests` continuou sem `ESC[`. Sem cor medida, a remoção seria código para um caso que não existe. Saídas reais capturadas em 2026-10-26: `Tests  2 passed | 1 skipped (3)` (verde), `Tests  1 failed | 1 passed | 1 skipped (3)` (vermelho parcial), `Tests  1 failed (1)` (todos falham), `Tests  no tests` com `Test Files  1 failed (1)` (import quebrado — sem placar, colapso pelo `bateriaColapsou`, como deve).
 - Somar `Test Files` ao placar (sugestão da issue): conta arquivos, não asserções; misturar as duas unidades faria o critério de colapso (`ok === 0 && falhou === 0`) medir outra coisa.
 
 ## Fora de escopo
