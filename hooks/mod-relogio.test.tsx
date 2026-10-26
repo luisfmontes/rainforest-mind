@@ -82,6 +82,7 @@ async function montar($: any, on: any, surface: Surface, inicio: number, dadosFa
     // 2.0.0 (D6): resposta do `setup.cjs --ligado foco` (exit 0 ligado, 1 desligado).
     foco: true,
     runsFoco: 0,
+    focoLento: false,
   }
   const resposta = (modo: Modo, corpo: unknown) => {
     if (modo === 'exit1') return saida('', 1)
@@ -99,6 +100,7 @@ async function montar($: any, on: any, surface: Surface, inicio: number, dadosFa
     const alvo = String(e.argv[1] ?? '')
     if (alvo.endsWith('setup.cjs') && e.argv.includes('--ligado') && e.argv.includes('foco')) {
       s.runsFoco += 1
+      if (s.focoLento) await relogio.sleep(2000)
       return saida('', s.foco ? 0 : 1)
     }
     if (alvo.endsWith('relogio-sessoes.cjs')) {
@@ -449,7 +451,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
 
   test(`relogio (${surface}): com o foco desligado o relogio nao arma`, async ($, on) => {
     const m = await montar($, on, surface, em(20, 40))
-    const { relogio, s, ui, quieta, comecar, caso } = m
+    const { relogio, s, ui, quieta, comecar, caso, enviar } = m
 
     await caso('2.0.0 setup --ligado foco exit 1: nenhum process.run de jornada nem de sessoes', async () => {
       s.foco = false
@@ -468,6 +470,33 @@ for (const surface of ['terminal', 'desktop'] as const) {
       await relogio.advance(2000)
       expect(s.runsS).toBeGreaterThan(0)
       expect(s.runsJ).toBeGreaterThan(0)
+    })
+
+    await caso('2.0.0 nota pendente do dia nao sai depois que o foco desliga', async () => {
+      // A jornada acesa acima ja deixou a nota pendente (atomo persistente).
+      s.foco = false
+      await comecar()
+      expect(await enviar('oi', { kind: 'composer' })).toEqual([])
+    })
+
+    await ui.unmount()
+  })
+
+  test(`relogio (${surface}): session.end durante a pergunta do foco nao deixa timer`, async ($, on) => {
+    const m = await montar($, on, surface, em(20, 40))
+    const { relogio, s, ui, comecar, terminarSessao, caso } = m
+
+    await caso('2.0.0 session.end chega antes do setup --ligado foco responder', async () => {
+      s.focoLento = true
+      const inicio = comecar()
+      await relogio.advance(500)
+      await terminarSessao()
+      await relogio.advance(3000)
+      await inicio
+      await relogio.advance(600000)
+      expect(s.runsFoco).toBe(1)
+      expect(s.runsS).toBe(0)
+      expect(s.runsJ).toBe(0)
     })
 
     await ui.unmount()
