@@ -34,18 +34,18 @@
     "em": "2026-10-25",
     "tarefas_ok": 7,
     "tarefas": 7,
-    "comando": "volta 3, na janela, sobre os 2 baixos da volta 2: bash scripts/testa-achado-preexistente.sh; bash hooks/testa-veredito-revisor.sh; bash hooks/testa-veredito-coerente.sh; bash scripts/testa-critica-do-revisor.sh; bash scripts/testa-estado.sh; mutacoes numa copia fora do worktree por scratchpad/mutar-l6-volta2.js",
-    "saida": "achado-preexistente 13 ok 0 falha(s) (P4 xa.cjs:3 nao e a.cjs:3; H6 cwd do revisor sem base com estado em repo com diff grava invalido); veredito-revisor 39/0; veredito-coerente 19/0; critica-do-revisor 11/0; estado 324 ok 0 falhas",
+    "comando": "reprovado na revisao do conserto do CI (cwd dentro da junction); branch nova de origin/main b593073e com o mesmo nome; bash hooks/testa-caminho-real.sh; bash hooks/testa-aviso-duplicata.sh; mutacao por scratchpad/mutar-terceiro-nome.cjs numa copia fora do worktree",
+    "saida": "caminho-real 14 ok 0 falha(s) 0 pulado(s) (caso novo: cwd dentro da junction nao acusa o proprio arquivo pelo nome jn/x.cjs); aviso-duplicata ok: 49 falhou: 0",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-achado-preexistente.sh: sem limite antes do caminho -> (P4) 'a.cjs:3 está no diff', 12/1; estado confere na raiz do estado -> (H6) obtido '-', 12/1; hook nao passa RFM_DIFF_CWD -> (H6) obtido '-', 12/1"
+        "fixture": "testa-achado-preexistente.sh, P4 e H6 (volta 3)"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "hooks/testa-relato-executor.sh, caso relato sem a linha ENTREGA é recusado (volta 1)"
+        "fixture": "hooks/testa-relato-executor.sh, relato sem ENTREGA (volta 1)"
       },
       {
         "tarefa": 3,
@@ -60,24 +60,24 @@
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "testa-memoria-consolidar-pulo.sh, pedaço pulado marca houveFalha (volta 1)"
+        "fixture": "testa-memoria-consolidar-pulo.sh, pedaço pulado (volta 1)"
       },
       {
         "tarefa": 6,
         "resultado": "vermelho",
-        "fixture": "hooks/testa-gate-publicacao-write.sh, Write contra o conteúdo antigo (volta 1)"
+        "fixture": "hooks/testa-gate-publicacao-write.sh, Write contra o antigo (volta 1)"
       },
       {
         "tarefa": 7,
         "resultado": "vermelho",
-        "fixture": "hooks/testa-caminho-real.sh, junction sem o segundo nome 9/1 (volta 1)"
+        "fixture": "hooks/testa-caminho-real.sh: sem o terceiro nome, 'cwd dentro da junction nao acusa o proprio arquivo' fica vermelho (13/1); sem o segundo, 'junction com cwd 8.3' fica vermelho (13/1)"
       }
     ]
   },
   "revisar": {
     "status": "ok",
     "snapshot": {
-      "head": "af2be197d11eec7c0d593375d5557bc1ef5446a1",
+      "head": "1edb40d21109007d4583c0a3457d7c3a99e9155f",
       "caminhos_sujos": [
         "docs/rainforest/estado/2026-10-24-apoio-ao-dev-lote-6.json"
       ]
@@ -85,10 +85,10 @@
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "aab3360656ffaa0f7",
+        "agente_id": "a70ed86e6a78d3aeb",
         "veredito": "ok",
         "em": "2026-10-25",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-aab3360656ffaa0f7.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-a70ed86e6a78d3aeb.jsonl"
       }
     ],
     "voltas": [
@@ -115,23 +115,55 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-abf030041048f7c8d.jsonl"
           }
         ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "aab3360656ffaa0f7",
+            "veredito": "ok",
+            "em": "2026-10-25",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-aab3360656ffaa0f7.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 4,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "adc070b804e7b5fc6",
+            "veredito": "reprovado",
+            "em": "2026-10-25",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-adc070b804e7b5fc6.jsonl"
+          }
+        ]
       }
     ],
     "achados": 0,
-    "motivo": "volta 3 aprovou sem achado; volta 1 reprovou (2 medios, 5 baixos), volta 2 aprovou com 2 baixos, todos corrigidos menos o 6 (preexistentes so no stderr), que vai ao PR",
-    "base": "659266c0",
+    "motivo": "revisao do terceiro nome aprovou sem achado da entrega; 2 baixos preexistentes (cwd 8.3 dentro da junction; espelho alvo/jn)",
+    "base": "b593073e",
     "head": "HEAD",
     "em": "2026-10-25"
   },
   "verificar": {
     "status": "ok",
-    "comando": "bash scratchpad/verif-l6.sh: bash scripts/testa-achado-preexistente.sh; bash hooks/testa-relato-executor.sh; bash scripts/testa-conferir-ancoras-degraus.sh; bash scripts/testa-camadas-acoplamento.sh; bash scripts/testa-memoria-consolidar-pulo.sh; bash hooks/testa-gate-publicacao-write.sh; bash hooks/testa-caminho-real.sh; bash scripts/testa-conferir-categoria.sh; vizinhas critica-voltas, critica-do-revisor, veredito-revisor, veredito-coerente, git-por-nome, teto-skills; node -e (versão dos dois plugin.json); node scripts/conferir-fluxo.cjs cobertura --slug 2026-10-24-apoio-ao-dev-lote-6",
-    "saida": "tarefa 1: achado-preexistente 13/0; tarefa 2: relato-executor 15/0; tarefa 3: degraus 12/0; tarefa 4: camadas-acoplamento 13/0; tarefa 5: consolidar-pulo 6/0; tarefa 6: gate-publicacao-write 5/0; tarefa 7: caminho-real 10 ok 0 falha(s) 0 pulado(s), conferir-categoria 14/0, 1.80.0 / 1.80.0, badge 1.80.0, CHANGELOG casado com o diff pelo revisor (volta 1); vizinhas critica-voltas 13/0, critica-do-revisor 11/0, veredito-revisor 39/0, veredito-coerente 19/0, git-por-nome 9/0, teto-skills 21 OK; estado 324/0 na volta 3; todas exit=0; cobertura válida — 11 decisão(ões), 7 tarefa(s)",
+    "comando": "bash scratchpad/verif-l6.sh na branch de seguimento (origin/main b593073e + 1edb40d2): as provas das tarefas 1 a 7, as vizinhas, a versão dos dois plugin.json e node scripts/conferir-fluxo.cjs cobertura --slug 2026-10-24-apoio-ao-dev-lote-6; mais bash hooks/testa-aviso-duplicata.sh",
+    "saida": "tarefa 1: achado-preexistente 13/0; tarefa 2: relato-executor 15/0; tarefa 3: degraus 12/0; tarefa 4: camadas-acoplamento 13/0; tarefa 5: consolidar-pulo 6/0; tarefa 6: gate-publicacao-write 5/0; tarefa 7: caminho-real 14 ok 0 falha(s) 0 pulado(s), aviso-duplicata 49/0, conferir-categoria 14/0, 1.80.0 / 1.80.0; vizinhas critica-voltas 13/0, critica-do-revisor 11/0, veredito-revisor 39/0, veredito-coerente 19/0, git-por-nome 9/0, teto-skills 21 OK; todas exit=0; cobertura válida — 11 decisão(ões), 7 tarefa(s)",
     "sensor_externo": "node scripts/conferir-fluxo.cjs cobertura",
     "em": "2026-10-25",
-    "head": "af2be197d11eec7c0d593375d5557bc1ef5446a1"
+    "head": "1edb40d21109007d4583c0a3457d7c3a99e9155f"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-10-25"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-10-25",
+      "de": "verificar",
+      "motivo": "CI do PR 598: segundo nome da junction com cwd 8.3 no aviso-duplicata (7249e78e), commitado e mergeado depois do verificar"
+    }
+  ]
 }
