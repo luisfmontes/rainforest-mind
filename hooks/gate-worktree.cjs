@@ -1758,10 +1758,10 @@ const CD_MENOS = /(^|[\s;&|(`{])(?:cd|pushd)[ \t]+-(?=$|[\s;&|)}#<>])/;
 /**
  * #573 (D5): trecho que o bloqueio da camada de git acrescenta quando a linha usa `cd -`, com a
  * mesma saida da rede. Aspas sem expansao sao mascaradas antes (`git commit -m "cd - e outras"`
- * nao conta); `cd "-"` conta. Sem `cd -`, devolve "".
+ * nao conta), e o corpo de heredoc tambem; `cd "-"` conta. Sem `cd -`, devolve "".
  */
 function dicaDoCdMenos(comando) {
-  const texto = mascaraAspasBash(String(comando).replace(/(["'])-\1/g, "-")).replace(/["'\\]/g, "");
+  const texto = mascaraAspasBash(mascaraHeredocsBash(String(comando)).replace(/(["'])-\1/g, "-")).replace(/["'\\]/g, "");
   if (!CD_MENOS.test(texto)) return "";
   return "\nA linha usa `cd -` (volta ao diretorio anterior): o gate nao sabe para onde ele leva.\n" +
     "Saida: troque o `cd -` pelo caminho absoluto do diretorio (`cd /caminho/do/worktree`).";
@@ -1856,15 +1856,18 @@ const ESCRITORES_COM_DESTINO = new Set(["cp", "mv", "ln", "install"]);
 
 /**
  * Alvos de escrita de um escritor conhecido (#580, D1), na ordem dos tokens. `cp`, `mv`, `ln` e
- * `install`: o ultimo posicional e o valor de `-t`/`--target-directory`. `sed`: os arquivos, so
+ * `install`: o ultimo posicional e o valor de `-t`/`--target-directory` (tambem colado, `-t"$X"`,
+ * e combinado, `-vt`); `mv` remove a origem, entao todos os posicionais. `sed`: os arquivos, so
  * com `-i`. `dd`: o valor de `of=`. Os demais: todos os posicionais. Comando que nao esta na lista
- * devolve vazio.
+ * devolve vazio. O agrupamento (`(touch x)`, `{ touch x; }`) nao e comando nem alvo.
  * @returns {Array<{comando: string, alvo: string}>}
  */
 function alvosDeEscritor(toks) {
+  toks = toks.filter((t) => t.q || !/^[(){}]$/.test(t.v));
   const pos = posicaoDeComando(toks);
   if (pos === null || pos === undefined) return [];
-  const nome = toks[pos].v.split(/[\\/]/).pop().replace(/\.exe$/i, "");
+  const palavra = toks[pos].q ? toks[pos].v : toks[pos].v.replace(/^\(+/, "");
+  const nome = palavra.split(/[\\/]/).pop().replace(/\.exe$/i, "");
   if (!ESCRITORES_DA_REDE.has(nome)) return [];
   const args = toks.slice(pos + 1).map((t) => t.v);
   const com = (alvo) => ({ comando: nome, alvo });
@@ -1881,7 +1884,9 @@ function alvosDeEscritor(toks) {
     if (a === "--") { fimDasOpcoes = true; continue; }
     const colado = /^--target-directory=(.*)$/s.exec(a);
     if (colado && ESCRITORES_COM_DESTINO.has(nome)) { destinos.push(colado[1]); continue; }
-    if (/^(-t|--target-directory)$/.test(a) && ESCRITORES_COM_DESTINO.has(nome)) {
+    const tColado = /^-[a-zA-Z]*t(.+)$/s.exec(a);
+    if (tColado && !a.startsWith("--") && ESCRITORES_COM_DESTINO.has(nome)) { destinos.push(tColado[1]); continue; }
+    if (/^(-[a-zA-Z]*t|--target-directory)$/.test(a) && ESCRITORES_COM_DESTINO.has(nome)) {
       if (k + 1 < args.length) destinos.push(args[k + 1]);
       k += 1;
       continue;
@@ -1890,7 +1895,8 @@ function alvosDeEscritor(toks) {
     if (comValor.includes(a)) k += 1;
   }
   let alvos;
-  if (ESCRITORES_COM_DESTINO.has(nome)) alvos = destinos.concat(posicionais.slice(-1));
+  if (nome === "mv") alvos = destinos.concat(posicionais);
+  else if (ESCRITORES_COM_DESTINO.has(nome)) alvos = destinos.concat(posicionais.slice(-1));
   else if (nome === "sed") alvos = scriptPorOpcao ? posicionais : posicionais.slice(1);
   else alvos = posicionais;
   return alvos.map(com);
@@ -2062,7 +2068,9 @@ function alvosDaRede(comando, cwd, ehPowerShell, soVeredito = false) {
   const naoConfiavel = /\$\(|`|\$'|\\\r?\n/.test(comando) && !ehPowerShell
     || ehPowerShell && (desalinhaAMascara(comando) || /[\u2018-\u201e]/.test(comando) || /"[^"]*\$\(/.test(comando) || /@['"]/.test(comando));
   if (naoConfiavel) {
-    const expansao = comExpansao(semHeredoc);
+    // Continuacao (`\` + quebra): colada, o alvo da linha de baixo e argumento do comando; sem
+    // colar, vira segmento sem comando. As duas leituras, porque contrabarras pares nao continuam.
+    const expansao = comExpansao(semHeredoc.replace(/\\\r?\n/g, " ")) || comExpansao(semHeredoc);
     if (expansao) return alvo(expansao);
     const citado = citaProtegido(comando, cwd);
     return citado ? alvo(`A linha cita caminho que cai no checkout principal: ${citado}`) : [];

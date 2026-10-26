@@ -18,7 +18,7 @@
     "em": "2026-10-24"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-26",
     "tarefas_ok": 7,
     "tarefas": 7,
@@ -71,10 +71,59 @@
         "motivo": "documentacao e numero de versao"
       }
     ],
-    "em": "2026-10-26"
+    "em": "2026-10-26",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-26"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "18d466a6f61389c499db1ed4bca9d5ec1129bd22",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a9543faad40f48f82",
+        "veredito": "reprovado",
+        "em": "2026-10-26",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-a9543faad40f48f82.jsonl"
+      }
+    ],
+    "base": "e455fb40",
+    "head": "18d466a6",
+    "achados": [
+      {
+        "severidade": "media",
+        "arquivo": "hooks/gate-worktree.cjs",
+        "descricao": "continuacao de linha (\\ + quebra) esconde alvo com expansao do ramo naoConfiavel: touch \\<nl>\"$X/f\", cp -r \\<nl> \"$S\" \\<nl> \"$D\", echo x > \\<nl>\"$X/f\" saem 0"
+      },
+      {
+        "severidade": "baixa",
+        "arquivo": "hooks/gate-worktree.cjs",
+        "descricao": "escritor como primeira palavra de ( ) ou { } nao visto"
+      },
+      {
+        "severidade": "baixa",
+        "arquivo": "hooks/gate-worktree.cjs",
+        "descricao": "mv so confere o ultimo posicional"
+      },
+      {
+        "severidade": "baixa",
+        "arquivo": "hooks/gate-worktree.cjs",
+        "descricao": "cp -t colado/combinado escapa"
+      },
+      {
+        "severidade": "baixa",
+        "arquivo": "hooks/gate-worktree.cjs",
+        "descricao": "dicaDoCdMenos nao mascara corpo de heredoc"
+      }
+    ],
+    "em": "2026-10-26",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

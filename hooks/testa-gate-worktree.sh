@@ -2290,6 +2290,26 @@ gate_stderr '#580 D1: D=<fora>; touch "$D/f" nomeia o comando, o alvo e a saida'
   "$(b "$(printf '%s' 'D=__FORA__; touch "$D/f"' | s573)" "$WN")" 'Alvo de touch comeca com variavel ou substituicao: $D/f' 'diretorio de trabalho principal'
 gate_stderr '#580 D1: cp a.txt "$CLAUDE_PROJECT_DIR/f" da a saida da ferramenta Write' \
   "$(b 'cp a.txt "$CLAUDE_PROJECT_DIR/f"' "$WN")" 'ferramenta Write' 'diretorio de trabalho principal'
+# Revisao 1: continuacao de linha (`\` + quebra) antes do alvo, agrupamento `( )`/`{ }`, origem
+# do `mv`, `-t` colado ou combinado. Contrabarras pares nao continuam a linha e seguem lidas.
+g580e 'touch \<quebra>"$CLAUDE_PROJECT_DIR/f" barra' 2 $'touch \\\n"$CLAUDE_PROJECT_DIR/f"'
+g580e 'cp -r \<quebra> "$SRC" \<quebra> "$DEST" barra' 2 $'cp -r \\\n  "$SRC" \\\n  "$DEST"'
+g580e 'cp -r a "$DEST" \<quebra> barra' 2 $'cp -r a "$DEST" \\\n  '
+g580e 'mkdir -p \<quebra> "$OUT" barra' 2 $'mkdir -p \\\n  "$OUT"'
+g580e 'echo x > \<quebra>"$X/f" barra' 2 $'echo x > \\\n"$X/f"'
+g580e 'echo x >\<quebra>"$X/f" barra' 2 $'echo x >\\\n"$X/f"'
+g580e 'ls \\<quebra>rm -rf "$X" (contrabarras pares) barra' 2 $'ls \\\\\nrm -rf "$X"'
+g580e '(touch "$X/f") barra' 2 '(touch "$X/f")'
+g580e '( touch "$X/f" ) & barra' 2 '( touch "$X/f" ) &'
+g580e '{ touch "$X/f"; } barra' 2 '{ touch "$X/f"; }'
+g580e 'if true; then { touch "$X/f"; }; fi barra' 2 'if true; then { touch "$X/f"; }; fi'
+g580e 'mv "$X/a.txt" b (origem do mv) barra' 2 'mv "$X/a.txt" b'
+g580e 'cp -t"$X" a.txt barra' 2 'cp -t"$X" a.txt'
+g580e 'cp -vt "$X" a.txt barra' 2 'cp -vt "$X" a.txt'
+g580e 'cp -r \<quebra> a.txt \<quebra> b.txt passa' 0 $'cp -r \\\n  a.txt \\\n  b.txt'
+g580e '( cp a.txt b.txt ) passa' 0 '( cp a.txt b.txt )'
+g580e 'mv a.txt b.txt passa' 0 'mv a.txt b.txt'
+g580e 'cp -v a.txt b.txt passa' 0 'cp -v a.txt b.txt'
 
 echo
 echo "== #582: subagente em worktree linkado =="
@@ -2339,6 +2359,14 @@ gate_stderr 'cd - && git commit -m "$(date)" nomeia git commit' "$(b 'cd - && gi
 gate_stderr 'cd "$D" && git commit -m x nao cita o cd -' "$(b 'cd "$D" && git commit -m x' "$WN")" 'git commit' 'troque o `cd -`'
 gate_stderr 'cd "$D" && git commit -m "cd - e outras" nao cita o cd - da mensagem' "$(b 'cd "$D" && git commit -m "cd - e outras"' "$WN")" 'git commit' 'troque o `cd -`'
 gate 'git commit -m "cd - e outras" (cd - so na mensagem) passa' 0 "$(b 'git commit -m "cd - e outras"' "$WN")"
+# Revisao 1: o corpo de heredoc tambem e dado.
+gate_stderr 'cd "$D" && git commit com heredoc que cita cd - nao cita o cd - do corpo' "$(b "$(cat <<'EOC'
+cd "$D" && git commit -m "$(cat <<'EOF'
+feat: troca o cd - por caminho absoluto
+EOF
+)"
+EOC
+)" "$WN")" 'git commit' 'troque o `cd -`'
 gate 'cd <W> && git commit -m "$(date)" com caminho literal passa' 0 "$(b "cd $WN && git commit -m \"\$(date)\"" "$WN")"
 
 echo "== resultado: $ok ok, $falhou falha(s) =="
