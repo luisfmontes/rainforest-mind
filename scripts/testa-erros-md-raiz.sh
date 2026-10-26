@@ -35,7 +35,8 @@ montar() {
   # verde sem nunca chegar nas tres linhas que esta issue conserta.
   cp -r "$SRC/scripts/." "$SB/plugin/scripts/"
   cp -r "$SRC/hooks/." "$SB/plugin/hooks/"
-  printf '{"vigias": true}
+  # `foco` porque a sentinela-foco so roda com ele ligado desde a 2.0.0.
+  printf '{"vigias": true, "foco": true}
 ' > "$SB/dados/config.json"
   : > "$SB/plugin/vigias/ERROS.md"
   : > "$SB/dados/vigias/ERROS.md"

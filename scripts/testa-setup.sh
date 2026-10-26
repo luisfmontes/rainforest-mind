@@ -177,9 +177,11 @@ if command -v powershell.exe >/dev/null 2>&1; then
     falhou=$((falhou+1)); echo "  FALHA ERROS.md nao ficou byte-identico ao de antes"
   fi
 
-  # 3) sem nenhuma chave de ronda gravada: as cinco rondas passam do toggle
+  # 3) sem nenhuma chave de ronda gravada: as cinco rondas passam do toggle.
+  # Desde a 2.0.0 a sentinela-foco tambem pede `foco` (caso proprio em testa-run-vigia-claude.sh).
   rm -f "$DADOS/config.json"
   $SETUP --ligar vigias --escopo usuario >/dev/null 2>&1
+  $SETUP --ligar foco --escopo usuario >/dev/null 2>&1
   saida_cinco=""
   for r in batedor-repos jardineiro-ideias revisao-bimestral sentinela-foco vigia-tickets; do
     s=$($RONDA_ENV powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$SRC/vigias/run-vigia.ps1" -Vigia "$r" 2>&1)
