@@ -18,7 +18,7 @@ Conserto do `hooks/gate-worktree.cjs` para subagente despachado em worktree (#57
 - **Vizinhos que mudam de veredito (D2).** `D=<fora>; touch "$D/f"` e `D=<fora>; cp a.txt "$D/f"` passam a barrar, como já barrava `echo x > "$D/f"`. Argumento de comando fora da lista de escritores (`node x.cjs --raiz "$(git rev-parse --show-toplevel)"`) segue sem julgamento.
 - **#582 fechada por regressão, sem mudar veredito (D3).** Os três comandos da Issue entram na bateria; `node <principal>/scripts/x.cjs` continua barrado, porque roda código do checkout principal.
 - **Comando dinâmico com o cwd no worktree diz o worktree (#583, D4).** `source`, `.` e `eval` seguem barrando, mas a mensagem nomeia o comando dinâmico e não diz mais "diretorio de trabalho principal" quando o agente está no worktree.
-- **A mensagem do `cd -` nomeia a causa que está na linha (#573, D5).** No lugar da lista fixa (`$(`, `bash -c`, `source`), ela lista só o que a linha tem; e o bloqueio da camada de git numa linha com `cd -` (`cd - && git commit -m "$(date)"`) acrescenta a mesma saída: trocar o `cd -` pelo caminho absoluto. `cd -` citado na mensagem do commit, entre aspas ou num heredoc, não conta.
+- **A mensagem do `cd -` nomeia a causa que está na linha (#573, D5).** No lugar da lista fixa (`$(`, `bash -c`, `source`), ela lista só o que a linha tem; e o bloqueio da camada de git numa linha com `cd -` (`cd - && git commit -m "$(date)"`) acrescenta a mesma saída: trocar o `cd -` pelo caminho absoluto. `cd -` citado na mensagem do commit, entre aspas ou num heredoc de delimitador entre aspas (`<<'EOF'`), não conta; no heredoc sem aspas (`<<EOF`) o corpo pode expandir, e a dica segue aparecendo.
 
 ## 2.0.1 — 2026-10-26
 
