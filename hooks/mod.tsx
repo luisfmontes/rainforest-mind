@@ -150,6 +150,20 @@ async function rodarJson(io: IoRodar, argv: string[], timeoutMs: number, env: Re
   }
 }
 
+// 2.0.0 (D6): o relogio da jornada, o das janelas e a nota da regra 8 so armam com o foco
+// ligado. Pergunta ao `setup.cjs --ligado foco` (exit 0 = ligado, 1 = desligado). Sem node,
+// sem resposta ou com erro conta como desligado, o mesmo que `focoLigado()` do config.cjs.
+async function focoLigadoNoMod(io: IoRodar, cwd: string): Promise<boolean> {
+  try {
+    const node = await io.node()
+    if (node === null) return false
+    const r = await io.rodar([node, `${io.raiz}/scripts/setup.cjs`, '--ligado', 'foco'], { cwd: io.raiz, env: { CLAUDE_PROJECT_DIR: cwd }, timeoutMs: 5000 })
+    return r.exitCode === 0
+  } catch {
+    return false
+  }
+}
+
 function jornadaDe(bruto: any): RainforestMindRelogioJornada | null {
   const ultimo_ms = bruto ? Date.parse(bruto.ultimo) : NaN
   if (!bruto || typeof bruto.efetiva_min !== 'number' || !Number.isFinite(ultimo_ms)) return null
@@ -338,6 +352,8 @@ export const register: Register = (on, options) => {
   let timers: { cancel: () => void }[] = []
   // Id da sessao que armou os timers: so o session.end dela cancela o relogio.
   let armadoPor: string | null = null
+  // 2.0.0 (D6): o relogio so arma (jornada, janelas e nota da regra 8) com o foco ligado.
+  let relogioComFoco = false
   // O tique da barra (1 s) so existe depois de alguma atividade (ferramenta, passo, subagente,
   // turno) ou de um compact que pediu medicao nova, e se desarma quando nada mais conta: parado,
   // nao ha timer nenhum.
@@ -355,6 +371,7 @@ export const register: Register = (on, options) => {
   }
   const cancelarRelogio = () => {
     armadoPor = null
+    relogioComFoco = false
     armarTique = null
     if (tiqueTimer !== null) {
       try {
@@ -412,6 +429,8 @@ export const register: Register = (on, options) => {
       const io = { rodar: (argv: string[], init: { cwd: string; env: Record<string, string>; timeoutMs: number }) => $.process.run(argv, init), node: () => caminhoDoNode($), raiz }
       let sessoesEmCurso = false
       let jornadaEmCurso = false
+      // 2.0.0 (D6): sem o foco ligado, o relogio nao arma: os timers abaixo ficam de fora.
+      relogioComFoco = await focoLigadoNoMod(io, cwd)
 
       // Arma a nota do dia quando a jornada acende e o dia ainda nao foi entregue.
       const reavaliar = async () => {
@@ -497,10 +516,12 @@ export const register: Register = (on, options) => {
         }
       }
 
-      timers.push($.clock.after(1000, lerSessoes))
-      timers.push($.clock.after(2000, lerJornada))
-      timers.push($.clock.every(60000, lerSessoes))
-      timers.push($.clock.every(300000, lerJornada))
+      if (relogioComFoco) {
+        timers.push($.clock.after(1000, lerSessoes))
+        timers.push($.clock.after(2000, lerJornada))
+        timers.push($.clock.every(60000, lerSessoes))
+        timers.push($.clock.every(300000, lerJornada))
+      }
       armarTique = () => {
         if (tiqueTimer === null) tiqueTimer = $.clock.every(1000, tique)
       }
@@ -634,7 +655,8 @@ export const register: Register = (on, options) => {
     }
     let nota: string | null = null
     try {
-      if (e.origin === undefined || e.origin.kind === 'composer') {
+      // 2.0.0 (D6): sem o foco ligado, a nota da regra 8 nao sai.
+      if (relogioComFoco && (e.origin === undefined || e.origin.kind === 'composer')) {
         const pendente = await read($, relogioNotaPendente)
         if (pendente) {
           const agora = await $.clock.now()

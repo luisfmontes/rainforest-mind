@@ -67,6 +67,8 @@ function sessoesReais(janelasMin, foco) {
   });
   fs.writeFileSync(path.join(raiz, "sessoes.json"), JSON.stringify(s));
   if (foco !== null) fs.writeFileSync(path.join(raiz, "FOCO.md"), foco);
+  // 2.0.0 (D6): as janelas so armam com a chave `foco` ligada; a caixa declara a chave.
+  fs.writeFileSync(path.join(raiz, "config.json"), JSON.stringify({ foco: true }));
   const r = spawnSync(process.execPath, [SCRIPT_SESSOES, "--cwd", raiz, "--sessao", "eu"], {
     env: envLimpo({ HOME: home, USERPROFILE: home, RFM_ROOT: raiz }),
     encoding: "utf8",
@@ -352,6 +354,38 @@ caso("FIXTURE_SESSOES e FIXTURE_JORNADA de mod-relogio.test.tsx tem as chaves ex
   });
   afirma(r.status === 0, "jornada.cjs saiu " + r.status + ": " + r.stdout + r.stderr);
   igual(chaves(jornada), chaves(JSON.parse(r.stdout)), "chaves de jornada.cjs --json");
+});
+
+// ------------------------------------------------------------------ foco (2.0.0, D6)
+// O mod pergunta `scripts/setup.cjs --ligado foco` antes de armar o relogio (mod.tsx,
+// focoLigadoNoMod): exit 0 arma, exit 1 deixa o relogio desarmado. Aqui a pergunta sai do
+// script de verdade, numa raiz de caixa, sem config (desarmado) e com `foco: true` (armado).
+const SCRIPT_SETUP = path.join(SRC, "scripts", "setup.cjs");
+function focoDaRaiz(conteudo) {
+  const home = caixa("relogio-foco-home-");
+  const raiz = caixa("relogio-foco-raiz-");
+  if (conteudo !== null) fs.writeFileSync(path.join(raiz, "config.json"), conteudo);
+  return spawnSync(process.execPath, [SCRIPT_SETUP, "--ligado", "foco"], {
+    env: envLimpo({ HOME: home, USERPROFILE: home, RFM_ROOT: raiz, CLAUDE_PROJECT_DIR: raiz }),
+    encoding: "utf8",
+  });
+}
+
+caso("relogio desarmado sem a chave foco: --ligado foco sai 1 numa raiz sem config", async () => {
+  const r = focoDaRaiz(null);
+  igual(r.status, 1, "exit do --ligado foco sem config (stdout: " + r.stdout + " stderr: " + r.stderr + ")");
+  igual(r.stdout.trim(), "desligado", "saida");
+});
+
+caso("relogio desarmado com a chave foco em false: --ligado foco sai 1", async () => {
+  const r = focoDaRaiz(JSON.stringify({ foco: false }));
+  igual(r.status, 1, "exit do --ligado foco com foco false");
+});
+
+caso("relogio arma com {\"foco\": true}: --ligado foco sai 0", async () => {
+  const r = focoDaRaiz(JSON.stringify({ foco: true }));
+  igual(r.status, 0, "exit do --ligado foco com foco true (stderr: " + r.stderr + ")");
+  igual(r.stdout.trim(), "ligado", "saida");
 });
 
 // ------------------------------------------------------------------ execucao

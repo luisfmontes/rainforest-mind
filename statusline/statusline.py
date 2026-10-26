@@ -194,10 +194,28 @@ def dispara_refresh():
         pass
 
 
-def segmento_tempo():
+def foco_ligado(cwd):
+    """Chave `foco` (2.0.0, D6): so `true` gravado liga. Le o config.json da pasta
+    de dados pelo mesmo `resolver_raiz_dados` da escada; qualquer erro conta como
+    desligado, e o inverso do `ligado()` do hooks/lib/config.cjs."""
+    try:
+        raiz_dados = resolver_raiz_dados(cwd)
+        if not raiz_dados:
+            return False
+        with open(os.path.join(raiz_dados, "config.json"), "r", encoding="utf-8") as f:
+            config = json.load(f)
+        return config.get("foco") is True
+    except Exception:
+        return False
+
+
+def segmento_tempo(cwd=None):
     agora = datetime.datetime.now()
     cor_relogio = VERMELHO if agora.hour >= 19 else CINZA
     partes = [c(agora.strftime("%Hh%M"), cor_relogio)]
+    # Sem o foco, a barra mostra so o relogio: a jornada nao sai nem le o cache.
+    if not foco_ligado(cwd):
+        return partes[0]
 
     valor = ""
     try:
@@ -293,7 +311,10 @@ def datas_de_compromisso(linha, hoje):
     return achadas
 
 
-def segmento_prazo():
+def segmento_prazo(cwd=None):
+    # 2.0.0 (D6): sem o foco, o prazo nao sai nem le o FOCO.md.
+    if not foco_ligado(cwd):
+        return ""
     try:
         with open(FOCO, "r", encoding="utf-8") as fh:
             texto = secoes_de_prazo(fh.read())
@@ -714,11 +735,11 @@ def montar_segmentos(dados):
         modelo,
         contexto,
         lambda: segmento_limites(dados.get("rate_limits")),
-        segmento_tempo,
+        lambda: segmento_tempo(cwd),
         lambda: segmento_escada_intensidade(cwd),
         lambda: segmento_co_locada(cwd),
         lambda: segmento_versao(transcript_path),
-        segmento_prazo,
+        lambda: segmento_prazo(cwd),
     )
     segmentos = []
     for fabrica in fabricas:

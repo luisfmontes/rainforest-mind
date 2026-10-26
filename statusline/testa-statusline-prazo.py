@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """Bateria do segmento de prazo da statusline. Falsificavel: cada caso diz o
 rotulo esperado, e o teste FALHA se a implementacao devolver outra coisa."""
+import atexit
 import datetime
 import io
 import os
 import re
+import shutil
 import sys
 import tempfile
 
@@ -12,6 +14,15 @@ FONTE = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "statusline.py"
 )
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+# 2.0.0 (D6): o prazo so sai com a chave `foco` ligada, e foco_ligado le o config.json
+# da pasta de dados (RFM_ROOT). Caixa propria com foco ligado, apagada ao fim: nunca o
+# ~/.rainforest vivo, que mudaria o resultado sem a bateria mudar.
+RAIZ_PRAZO = tempfile.mkdtemp(prefix="statusline-prazo-foco-")
+with io.open(os.path.join(RAIZ_PRAZO, "config.json"), "w", encoding="utf-8") as _fh:
+    _fh.write(u'{"foco": true}')
+os.environ["RFM_ROOT"] = RAIZ_PRAZO
+atexit.register(lambda: shutil.rmtree(RAIZ_PRAZO, ignore_errors=True))
 
 # O `__file__` vai junto de proposito: o fonte resolve os vizinhos dele (o
 # statusline-jornada.sh) por caminho relativo a si mesmo, e sem esta linha o
