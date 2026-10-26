@@ -75,51 +75,45 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "87f6871f835c82606b4eea69dc3bf7192a829f3b",
+      "head": "96cd278b4bb25b9e508f5c9a16e8d0f5e3179efb",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a7f1f5f43f03da2c0",
+        "agente_id": "ac420aaa0804fd865",
         "veredito": "ok",
         "em": "2026-10-26",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-a7f1f5f43f03da2c0.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-ac420aaa0804fd865.jsonl"
       }
     ],
     "base": "e455fb40",
-    "head": "18d466a6",
+    "head": "HEAD",
     "achados": [
       {
-        "severidade": "media",
-        "arquivo": "hooks/gate-worktree.cjs",
-        "descricao": "continuacao de linha (\\ + quebra) esconde alvo com expansao do ramo naoConfiavel: touch \\<nl>\"$X/f\", cp -r \\<nl> \"$S\" \\<nl> \"$D\", echo x > \\<nl>\"$X/f\" saem 0"
+        "severidade": "baixa",
+        "descricao": "dica do cd - nao mascara heredoc sem aspas (<<EOF); conservador, so mensagem. CHANGELOG ganhou a ressalva em 87f6871f"
       },
       {
         "severidade": "baixa",
-        "arquivo": "hooks/gate-worktree.cjs",
-        "descricao": "escritor como primeira palavra de ( ) ou { } nao visto"
+        "descricao": "continuacao dentro da palavra (touch \"$\\<nl>X/f\") ainda escapa; base tambem 0"
       },
       {
         "severidade": "baixa",
-        "arquivo": "hooks/gate-worktree.cjs",
-        "descricao": "mv so confere o ultimo posicional"
+        "descricao": "opcao longa com valor separado (touch --reference \"$X\" f) e lida como alvo; falso positivo raro"
       },
       {
         "severidade": "baixa",
-        "arquivo": "hooks/gate-worktree.cjs",
-        "descricao": "cp -t colado/combinado escapa"
+        "descricao": "heredoc sem aspas com touch \"$X/f\" no corpo barra; conservador"
       },
       {
         "severidade": "baixa",
-        "arquivo": "hooks/gate-worktree.cjs",
-        "descricao": "dicaDoCdMenos nao mascara corpo de heredoc"
+        "descricao": "cosmetico: alvo de (touch \"$X/f\") aparece como $X/f)"
       }
     ],
     "em": "2026-10-26",
-    "tentativas": 1,
     "voltas": [
       {
         "volta": 1,
@@ -144,11 +138,30 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-a90bcc1b6e786f10e.jsonl"
           }
         ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a7f1f5f43f03da2c0",
+            "veredito": "ok",
+            "em": "2026-10-26",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-a7f1f5f43f03da2c0.jsonl"
+          }
+        ]
       }
-    ]
+    ],
+    "veredito": "ok",
+    "rodadas": 2
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node scripts/rodar-longo.cjs iniciar --saida gw-verif.txt -- bash hooks/testa-gate-worktree.sh; node hooks/testa-corpus-comandos.cjs; bash scripts/testa-versao.sh; node scripts/conferir-versao.cjs; node scripts/conferir-fluxo.cjs cobertura --slug 2026-10-24-gate-worktree",
+    "saida": "codigo de HEAD 96cd278 (igual a 68113261 em hooks/): testa-gate-worktree 905 ok 0 falha(s) exit 0 (tarefas 1-6, criterio 0 falha); testa-corpus-comandos ok 24 falhou 0 (tarefa 2, sem bloqueio novo); testa-versao ok 5 falhou 0 e conferir-versao exit 0 com 2.0.2 (tarefa 7); CHANGELOG 2.0.2 cita #573 #580 #582 #583 com D1, D2, D3, D4 e D5; README linha do gate-worktree descreve alvo de escritor com expansao no inicio; cobertura valida 6 decisoes, 7 tarefas",
+    "sensor_externo": "node scripts/conferir-fluxo.cjs cobertura",
+    "em": "2026-10-26",
+    "head": "96cd278b4bb25b9e508f5c9a16e8d0f5e3179efb"
   },
   "fechar": {
     "status": "pendente"
