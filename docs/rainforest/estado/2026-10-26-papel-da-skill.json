@@ -35,27 +35,47 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "5037a2c8547076f9077774296626268376a455f3",
+      "head": "aa1f09ab689d9e6b1b9024201027f670f00ecbca",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
         "agente_id": "ab4b452174ab088c3",
-        "veredito": "reprovado",
+        "veredito": "ok",
         "em": "2026-10-26",
         "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-ab4b452174ab088c3.jsonl"
       }
     ],
-    "achados": 1,
-    "motivo": "volta 1: CHANGELOG e D5 afirmam que a ponte da 2.0.0 sai desatualizada; conferir-ponte compara conteudo antes do hash e da CONFERIDO",
+    "achados": 2,
+    "motivo": "volta 2 ok: prova da ponte refeita pelo revisor (CONFERIDO nos 3, exit 0); baixos aceitos: teto de commits do conferir-versao (3 de 5) e a redacao hash atual no D5",
     "em": "2026-10-26",
-    "tentativas": 1
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ab4b452174ab088c3",
+            "veredito": "reprovado",
+            "em": "2026-10-26",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-ab4b452174ab088c3.jsonl"
+          }
+        ]
+      }
+    ],
+    "base": "d92f98ff",
+    "head": "HEAD"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scratchpad/provas-papel.sh; bash scratchpad/prova-ponte.sh; node scripts/conferir-fluxo.cjs cobertura --slug 2026-10-26-papel-da-skill",
+    "saida": "HEAD aa1f09ab: testa-conferir-invariantes 32/0, testa-foco-opcional 8/0, testa-versao 5/0, testa-contexto-sessao 305/0, testa-orcamento 51/0, testa-conferir-ponte 6 baterias, testa-ponte 60/0, conferir-versao exit 0, conferir-invariantes exit 0, frase antiga 1 vez no SKILL.md; ponte da 2.0.0 (hash 6b78cdf6b2d528ee) CONFERIDO exit 0 em CLAUDE.md, AGENTS.md e GEMINI.md contra hash atual be51f391dcb81083; cobertura valida — 5 decisao(oes), 1 tarefa(s)",
+    "sensor_externo": "node scripts/conferir-fluxo.cjs cobertura",
+    "em": "2026-10-26",
+    "head": "aa1f09ab689d9e6b1b9024201027f670f00ecbca"
   },
   "fechar": {
     "status": "pendente"
