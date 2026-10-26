@@ -1,0 +1,27 @@
+{
+  "slug": "2026-10-25-versao-2-0-0",
+  "titulo": "Versao 2.0.0: apoio ao desenvolvimento, foco opcional",
+  "criado_em": "2026-10-25",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "em": "2026-10-25"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
