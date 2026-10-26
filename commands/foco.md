@@ -60,3 +60,7 @@ foco precisa de **critério de pronto verificável** — se o texto não deixar
 claro como saberemos que acabou, pergunte "como saberemos que acabou?" antes
 de gravar. Se já havia foco ativo diferente, pergunte se ele volta para
 frente/compromisso ou se foi concluído.
+
+Depois de gravar o foco, rode `node "${CLAUDE_PLUGIN_ROOT}/scripts/foco.cjs" aviso`.
+Se ele imprimir uma linha, repasse-a ao usuário: com a chave `foco` desligada, o
+foco fica gravado mas não entra na abertura da sessão.

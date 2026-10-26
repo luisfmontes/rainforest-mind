@@ -43,11 +43,17 @@ Se `$ARGUMENTS` estiver vazio: leia o jsonl e liste as **plantadas** em
 markdown legível (título, há quantos dias plantada, projeto, contexto em uma
 linha), mais novas primeiro; feche com uma linha resumindo as colhidas.
 
-Se `$ARGUMENTS` tiver texto: avalie se a ideia está dentro do foco declarado
-(FOCO.md do repo rainforest-mind).
+Se `$ARGUMENTS` tiver texto: primeiro veja se a chave `foco` está ligada com
+`node scripts/setup.cjs --ligado foco` (exit 0 = ligada, 1 = desligada).
+
+- **Ligada:** avalie se a ideia está dentro do foco declarado (FOCO.md do repo
+  rainforest-mind).
+- **Desligada:** não há foco para medir. Avalie contra o repositório em que você
+  está e contra os trabalhos abertos do fluxo (`docs/rainforest/estado/`).
 
 - **Se estiver no escopo:** confirmar e perguntar: "Isso está no foco — entra
-  na tarefa atual ou planto para depois?"
+  na tarefa atual ou planto para depois?" (com a chave desligada, troque "no
+  foco" por "no repositório e no fluxo aberto").
 - **Se estiver fora:** plantar. Se o `projeto` não estiver óbvio pelo contexto
   da conversa, perguntar em uma linha antes de gravar — e a resposta é um slug
   do vocabulário, nunca um caminho. Confirmar: "plantada, de volta a [tarefa]".

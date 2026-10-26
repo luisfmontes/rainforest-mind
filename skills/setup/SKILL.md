@@ -89,6 +89,11 @@ raramente tem; pergunta obrigatória vira resposta inventada. Com resposta, ela 
 
 ### foco — o primeiro foco
 
+Pergunte primeiro se ele liga o foco. Com ele desligado, o foco declarado não
+entra na abertura da sessão. Sim → `"foco": true` nas `chaves` do payload. Não
+→ não grave nada. Em ambos os casos siga com o resto do grupo, inclusive a
+pergunta abaixo.
+
 Pergunte em que ele está trabalhando agora. **Não grave**: o dono do `FOCO.md` é o
 `/foco`. Guarde o texto e, depois do `--aplicar`, rode `/foco <texto>`. Sem foco
 declarado o radar de escopo não tem contra o que medir.
@@ -174,7 +179,7 @@ o grupo que vale é o do campo `entrevista` no catálogo.
 | `vigia-batedor-repos` | ferramentas | ronda batedor-repos; só roda com `vigias` também ligado |
 | `vigia-jardineiro-ideias` | ferramentas | ronda jardineiro-ideias; só roda com `vigias` também ligado |
 | `vigia-revisao-bimestral` | ferramentas | ronda revisao-bimestral; só roda com `vigias` também ligado |
-| `vigia-sentinela-foco` | ferramentas | ronda sentinela-foco; só roda com `vigias` também ligado |
+| `vigia-sentinela-foco` | ferramentas | ronda sentinela-foco; só roda com `vigias` e `foco` ligados |
 | `vigia-tickets` | ferramentas | ronda vigia-tickets; só roda com `vigias` também ligado |
 | `ponte-claude` | ferramentas | gera CLAUDE.md para Claude Code sem o plugin (regras sem as travas) |
 | `ponte-codex` | ferramentas | gera AGENTS.md para o Codex |

@@ -42,7 +42,8 @@ montar() {
   cp "$SRC/vigias/run-vigia.ps1" "$SRC/vigias/erros.ps1" "$SRC/vigias/backup-estado.ps1" "$SB/plugin/vigias/"
   cp -r "$SRC/scripts/." "$SB/plugin/scripts/"
   cp -r "$SRC/hooks/." "$SB/plugin/hooks/"
-  printf '{"vigias": true}\n' > "$SB/dados/config.json"
+  # 2.0.0: o sentinela-foco pede tambem a chave foco, que nasce desligada.
+  printf '{"vigias": true, "foco": true}\n' > "$SB/dados/config.json"
   : > "$SB/plugin/vigias/ERROS.md"
   printf 'prompt de caixa\n' > "$SB/dados/vigias/sentinela-foco.md"
   # Os tres claudes falsos. O do PATH e o que a descoberta acha quando o
@@ -121,6 +122,15 @@ naotem "fora do -Teste as tools de envio do whatsapp seguem livres" "mcp__whatsa
 montar
 igual "exit da ronda no -Teste" "$(rodar "$(win "$SB/bom.cmd")")" "0"
 naotem "no -Teste nao ha lista negra (--disallowedTools)" "--disallowedTools" "$LOG"
+
+echo "== 8. (2.0.0) sem a chave foco, a ronda sentinela-foco nao roda =="
+montar
+printf '{"vigias": true}\n' > "$SB/dados/config.json"
+igual  "exit da ronda sem foco" "$(rodar "$(win "$SB/bom.cmd")")" "0"
+tem    "diz que o foco esta desligado" "foco desligado nesta configuracao" "$SB/saida.txt"
+naotem "o claude nao foi chamado" "resposta-boa" "$SB/saida.txt"
+naotem "nada no log do claude" "resposta-boa" "$LOG"
+igual  "nada em ERROS.md" "$(wc -c < "$ERR" | tr -d ' ')" "0"
 
 echo
 echo "$ok ok, $falhou falha(s)"

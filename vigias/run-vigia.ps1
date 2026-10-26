@@ -76,6 +76,21 @@ if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 2) {
     exit 1
 }
 
+# TOGGLE `foco` — a ronda sentinela-foco mede o FOCO.md. Com a chave `foco` desligada
+# o foco nao entra na abertura, e rodar a ronda seria medir contra um foco que o
+# usuario nao quer. Mesma forma da pergunta do toggle `vigias`.
+if ($chaveRonda -eq 'vigia-sentinela-foco') {
+    $estadoFoco = & node (Join-Path $plugin "scripts\setup.cjs") --ligado foco 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        if ($estadoFoco -eq 'desligado') {
+            Write-Output "foco desligado nesta configuracao - a ronda sentinela-foco nao roda. Ligue com: node scripts/setup.cjs --ligar foco"
+            exit 0
+        }
+        Write-ErroDeVigia -Vigia $Vigia -Plugin $plugin -Motivo "nao consegui ler o toggle 'foco' (node no PATH?)"
+        exit 1
+    }
+}
+
 # O diretorio de trabalho do claude NAO e a raiz do repositorio por acidente de
 # historia: `disabledMcpServers` do .claude.json e por projeto, e neste
 # repositorio o whatsapp e o gmail ficam desligados de proposito — aqui se mexe

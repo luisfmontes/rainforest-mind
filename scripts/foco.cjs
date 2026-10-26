@@ -89,6 +89,10 @@ const RAIZ_PADRAO = (() => {
 // array evita a mesma divergência silenciosa que `hooks/heartbeat.cjs:12-20`
 // já pagou uma vez com duas cópias da raiz.
 const { SECOES_RESIDENTES } = require('../hooks/lib/contexto-sessao.cjs');
+const { focoLigado } = require('../hooks/lib/config.cjs');
+
+// 2.0.0: o foco é gravado no FOCO.md, mas só entra na abertura com a chave `foco` ligada.
+const AVISO_FOCO_DESLIGADO = 'Foco gravado, mas só entra na abertura com foco: true. Ligue com `node scripts/setup.cjs --ligar foco` ou pelo grupo "foco" do /setup.';
 
 /**
  * Teto do bloco "Avanços" DENTRO do FOCO.md, em bytes.
@@ -854,6 +858,12 @@ function separar() {
   if (linhaConta) console.log(linhaConta);
 }
 
+// Chamado pelo /foco logo depois de gravar o foco: com a chave desligada, avisa que
+// o foco não entra na abertura. Sai 0 nos dois casos; o aviso é a única saída.
+function aviso() {
+  if (!focoLigado({ projeto: process.cwd() })) console.log(AVISO_FOCO_DESLIGADO);
+}
+
 function main() {
   const comando = process.argv[2];
   if (comando === 'rotacionar') return rotacionar();
@@ -861,7 +871,9 @@ function main() {
   if (comando === 'separar') return separar();
   if (comando === 'backup') return backup();
   if (comando === 'caminho') return caminho();
+  if (comando === 'aviso') return aviso();
   console.error('uso: node scripts/foco.cjs rotacionar [--aplicar] [--teto N] [--raiz DIR] [--json]');
+  console.error('     node scripts/foco.cjs aviso');
   console.error('     node scripts/foco.cjs avanco "<texto>" [--contexto "<slug>"] [--aplicar] [--raiz DIR] [--teto N] [--json]');
   console.error('     node scripts/foco.cjs separar [--aplicar] [--raiz DIR] [--json]');
   console.error('     node scripts/foco.cjs backup [--teto N] [--raiz DIR] [--json]');
@@ -871,7 +883,7 @@ function main() {
 
 if (require.main === module) main();
 module.exports = {
-  rotacionar, avanco, separar, backup, caminho, main,
+  rotacionar, avanco, separar, backup, caminho, aviso, main,
   dividirFoco, dividirAtivo, dividirPorParagrafo, medirAjusteIdentidade,
   escolher, reconstituirPorOrdemFisica, montarEntradaAvanco,
   RAIZ_PADRAO,
