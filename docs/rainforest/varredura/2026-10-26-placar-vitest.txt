@@ -1,0 +1,131 @@
+Data: 2026-10-26
+Termos: vitest, placar, corte de shell, aquecimento, extrairPlacar
+
+$ gh issue list --state all --search "vitest" --limit 200 --json number,title,state
+[{"number":602,"state":"OPEN","title":"conferir-mutacao: placar do vitest não reconhecido, baseline frio vira 'pulada (corte de shell)'"}]
+
+
+$ gh issue list --state all --search "placar" --limit 200 --json number,title,state
+[{"number":602,"state":"OPEN","title":"conferir-mutacao: placar do vitest não reconhecido, baseline frio vira 'pulada (corte de shell)'"},{"number":583,"state":"OPEN","title":"gate-worktree: bloqueio por comando dinamico (source/eval) diz diretorio principal com cwd em worktree"},{"number":589,"state":"CLOSED","title":"conferir-mutacao: placar do cargo test nao reconhecido, vermelho legitimo vira 'pulada (corte de shell)' e trava o verificar"},{"number":378,"state":"CLOSED","title":"conferir-mutacao.cjs sai 1 sem veredito no Windows quando a raiz tem node_modules como junction"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":270,"state":"CLOSED","title":"Linha de mutante sai como 'FALHA <nome real>' e se confunde com falha de verdade no log"},{"number":215,"state":"CLOSED","title":"Vermelho largo passa por prova: a catraca de mutacao le o exit code da bateria, nunca quantas assercoes cairam"},{"number":385,"state":"CLOSED","title":"marcar plano ok passa com o arquivo declarado ausente do disco"},{"number":249,"state":"CLOSED","title":"O laco das 114 baterias so existe no YAML da CI: nao ha varredura local, e o verificar mede a ferramenta em vez do teste dela"},{"number":341,"state":"CLOSED","title":"varrer-baterias: testa-gate-publicacao-destino.sh roda outras duas baterias .sh em dobro"},{"number":192,"state":"CLOSED","title":"Proibir background no briefing falhou duas vezes, com a proibicao escrita duas vezes no mesmo texto — falta checar a FORMA do retorno"},{"number":379,"state":"CLOSED","title":"verificar não fecha em monorepo: a catraca roda toda bateria com --raiz na raiz do repo"},{"number":208,"state":"CLOSED","title":"testa-ferramentas-consulta.sh reprova quando o ambiente esta lento: nao tem caso para o caminho 'sem garantia'"},{"number":198,"state":"CLOSED","title":"observar.cjs no SessionEnd estoura o orcamento COMPARTILHADO de 60s do CLI e mata os outros hooks — 19 sessoes vazadas"},{"number":266,"state":"CLOSED","title":"conferir-mutacao muta a arvore compartilhada: quem ler naquela janela mede o mutante"},{"number":165,"state":"CLOSED","title":"O gate de publicacao e cego para escrita mediada por Bash — node, sed e heredoc passam"},{"number":243,"state":"CLOSED","title":"foco-session-start.cjs leva 6-8 s nesta maquina e estoura o timeout 5 do hooks.json: testa-memoria-somente-leitura fica vermelha e nada diz que foi timeout"},{"number":120,"state":"CLOSED","title":"testa-contexto-sessao.sh esta vermelha na main: 5 falhas em dentroDoExpediente, focoAtivoEmOutraJanela e co-locada"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"},{"number":335,"state":"CLOSED","title":"13 baterias .cjs nunca rodam no CI: varrer-baterias.sh so descobre testa-*.sh"},{"number":121,"state":"CLOSED","title":"testa-conferir-mutacao.sh e verde ou vermelha conforme a carga da maquina — a catraca de mutacao depende de relogio de parede"},{"number":210,"state":"CLOSED","title":"Entrega vazia + --paralelo: o conjunto do agente e vazio, entao a checagem 4 nunca reprova"},{"number":16,"state":"CLOSED","title":"Nenhuma bateria roda sozinha: sem CI, a catraca depende de alguem lembrar (a de nucleos ficou vermelha 3 dias)"},{"number":258,"state":"CLOSED","title":"gate-staging-total: bloqueia texto que cita comando git, e resolve o repo errado com -C"},{"number":21,"state":"CLOSED","title":"Criterio 'a bateria sai 0' e satisfazivel por fora, e tres instrumentos de conferencia falharam junto"}]
+
+
+$ gh issue list --state all --search "corte de shell" --limit 200 --json number,title,state
+[{"number":602,"state":"OPEN","title":"conferir-mutacao: placar do vitest não reconhecido, baseline frio vira 'pulada (corte de shell)'"},{"number":589,"state":"CLOSED","title":"conferir-mutacao: placar do cargo test nao reconhecido, vermelho legitimo vira 'pulada (corte de shell)' e trava o verificar"},{"number":475,"state":"CLOSED","title":"testa-conferir-fluxo 13c intermitente na CI: mutacao vira 'pulada (corte de shell)'"},{"number":378,"state":"CLOSED","title":"conferir-mutacao.cjs sai 1 sem veredito no Windows quando a raiz tem node_modules como junction"},{"number":215,"state":"CLOSED","title":"Vermelho largo passa por prova: a catraca de mutacao le o exit code da bateria, nunca quantas assercoes cairam"},{"number":230,"state":"CLOSED","title":"conferir-mutacao.cjs entrega a --bateria ao cmd.exe no Windows: 'rm ...; python ...' apagou o venv e o arquivo de teste, e o baseline saiu VERDE"},{"number":121,"state":"CLOSED","title":"testa-conferir-mutacao.sh e verde ou vermelha conforme a carga da maquina — a catraca de mutacao depende de relogio de parede"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"}]
+
+
+$ gh issue list --state all --search "aquecimento" --limit 200 --json number,title,state
+[{"number":602,"state":"OPEN","title":"conferir-mutacao: placar do vitest não reconhecido, baseline frio vira 'pulada (corte de shell)'"}]
+
+
+$ gh issue list --state all --search "extrairPlacar" --limit 200 --json number,title,state
+[{"number":602,"state":"OPEN","title":"conferir-mutacao: placar do vitest não reconhecido, baseline frio vira 'pulada (corte de shell)'"},{"number":589,"state":"CLOSED","title":"conferir-mutacao: placar do cargo test nao reconhecido, vermelho legitimo vira 'pulada (corte de shell)' e trava o verificar"}]
+
+
+$ gh pr list --state all --search "vitest" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "placar" --limit 200 --json number,title,state
+[{"number":597,"state":"MERGED","title":"Apoio ao dev, lote 5: harness (1.79.0)"},{"number":479,"state":"MERGED","title":"Mutacao que falhou medindo nao vira corte de shell (#475)"},{"number":499,"state":"MERGED","title":"Gate flaky com nova tentativa e teto de despachos por fluxo (1.61.0)"},{"number":593,"state":"MERGED","title":"Apoio ao dev, lote 2: veredito coerente, prova que roda, limpeza com prova (1.76.0)"},{"number":212,"state":"MERGED","title":"O orcamento do observar.cjs cabe no teto real do SessionEnd"},{"number":66,"state":"MERGED","title":"Fecha a #61: criterio numerado vira contrato de retorno (P1, P2, P3, P4, P7)"},{"number":117,"state":"MERGED","title":"Tres defeitos achados apurando as observacoes abertas da regra 13"},{"number":17,"state":"MERGED","title":"Nenhuma bateria roda sozinha: CI que roda as 20 baterias a cada PR (#16)"},{"number":242,"state":"MERGED","title":"Zerar Issues, rodada 2: as 6 que faltavam e as 6 novas (1.12.0)"},{"number":119,"state":"MERGED","title":"Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos"},{"number":140,"state":"MERGED","title":"Segunda opiniao cross-model: auditor de outra familia no revisar, e o transporte de CLI externo em um lugar so"},{"number":271,"state":"MERGED","title":"Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador"},{"number":213,"state":"MERGED","title":"Skill montar-corpus: wiki em markdown vira acervo, com o grafo tratado como entrada nao confiavel"},{"number":255,"state":"MERGED","title":"A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241)"}]
+
+
+$ gh pr list --state all --search "corte de shell" --limit 200 --json number,title,state
+[{"number":479,"state":"MERGED","title":"Mutacao que falhou medindo nao vira corte de shell (#475)"},{"number":8,"state":"MERGED","title":"Regra 17 estava cega por construcao: o pid gravado era uma shell efemera"},{"number":126,"state":"MERGED","title":"Fecha #121: a catraca de mutacao para de decidir por relogio de parede"},{"number":119,"state":"MERGED","title":"Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos"}]
+
+
+$ gh pr list --state all --search "aquecimento" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "extrairPlacar" --limit 200 --json number,title,state
+[{"number":593,"state":"MERGED","title":"Apoio ao dev, lote 2: veredito coerente, prova que roda, limpeza com prova (1.76.0)"},{"number":597,"state":"MERGED","title":"Apoio ao dev, lote 5: harness (1.79.0)"},{"number":595,"state":"MERGED","title":"Apoio ao dev, lote 3: baterias pelo diff, duplicata, regras com id, co-mudanca (1.77.0)"}]
+
+
+$ git ls-remote --heads origin | grep -F "vitest"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "placar"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "corte de shell"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "aquecimento"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "extrairPlacar"
+(vazio)
+
+$ git log --all --grep="vitest" --oneline
+(vazio)
+
+$ git log --all --grep="placar" --oneline
+89dbf3b8 Apoio ao dev, lote 5: harness (1.79.0) (#597)
+4beaf3e9 Versao 1.79.0: CHANGELOG e README do lote 5
+866dab73 Design lote 5: harness, com o fechar do lote 4
+bf42234b Apoio ao dev, lote 2: veredito coerente, prova que roda, limpeza com prova (1.76.0) (#593)
+74c0b126 Gate flaky com nova tentativa e teto de despachos por fluxo (1.61.0) (#499)
+7e42a353 Mutacao que falhou medindo nao vira corte de shell (#475) (#479)
+1cbcaa69 vigiar-checar: bateria que sabe falhar e mensagem de chave portavel
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+2f2c81d6 Docs: D5 e T5 passam a 1.12.2; placar do staging re-medido apos o merge
+8c3b8a6d Gate de Issue: texto do here-string para sumidouro entra na varredura
+8d8b1723 Gate de Issue: linha logica do heredoc e texto do corpo varrido
+0a0f8913 Gate de Issue: corpo de heredoc e script se a LINHA tem interpretador
+cc1e10ce Gate de Issue: interpretador atras de wrapper e escapes no here-string nu
+c06cdb0f Gate de Issue: here-string dirigido a interpretador e script
+78411f93 Gate de Issue: <<< consumido inteiro em segmentosParaGate
+f5751d1a Gate de Issue: <<< e here-string, nao heredoc
+d0ade68b Gate de Issue: com <<- a linha de fechamento fecha sem as TABs, como no bash
+4830663a Revisar (rodada 2): os tres achados do revisor, fechados
+91db7071 Estado: executar fecha com 33 tarefas e a catraca declarada; handover ganha a rodada 2
+89dec12a Tarefa 33 (D21, D22, D26): README e travas contam o que a rodada 2 trouxe
+63228ff8 Zerar Issues: a fatia revisada e limpa (12 de 18 Issues)
+91ea18a3 Plano: reaponta as mutacoes da 11 e da 22 para o nome atual da funcao
+81175862 T21, mesmo defeito no vizinho: extrairNumerosTarefa lia <slug>.md fixo
+6967685a Tarefa 22 (D11): o teto de queda vira 'a bateria colapsou'
+3f488cea Catraca de mutação: colapso total substitui proporção fixa de 20%
+757fa0da Tarefa 9 (D9, Issue #192): mutacoes do plano viram executavel
+67214638 Tarefa 11: o placar de uma bateria e a ULTIMA linha, nao a primeira
+67d56442 Tarefa 11 (D11): conferir-mutacao deteta queda desproporcional de asserções
+080f7916 D9: o teto de tempo do CI para de ser cara ou coroa
+3d0cfebb Caso 20 diz o motivo certo quando o caso 18 nao acha a declaracao
+a1345d5a Tarefa 1: Schema do grafo, validador e bateria
+bfa99435 Rodada 11: o modelo certo do NUL, e o sufixo pelo token que casou
+a5a51dda Fluxo nao-mente: executar ok — falso positivo de heredoc consertado
+e5981bdc Conserto do revisar — segunda opinião r5: PATH determinístico e fixtures órfãs
+3cb952cf Conserto do revisar — segunda opinião r5: PATH determinístico e fixtures órfãs
+64379a52 T6 integrada: interruptores conselho-codex/gemini, adaptadores e /saude (6/9)
+6e58a513 T6 integrada: interruptores conselho-codex/gemini, adaptadores e /saude (6/9)
+1ec70423 Fecha #121: a catraca de mutacao para de decidir por relogio de parede (#126)
+a4d836cd Fecha #121: a catraca de mutacao para de decidir por relogio de parede (#126)
+b2582e39 Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos (#119)
+ea9d0286 Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos (#119)
+c579cf6d Issue #61: Fecha P1-P5 — contrato de retorno, placar de bateria, N destinos, afirmações com comando, e enlace regra 16-17 (#98)
+d976f939 Issue #61: Fecha P1-P5 — contrato de retorno, placar de bateria, N destinos, afirmações com comando, e enlace regra 16-17 (#98)
+20c88be7 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+d427f732 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+c3ab6cf1 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+62ca78d5 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+89a53f4b O criterio apontava para o instrumento, e o instrumento e escrito por quem precisa dele verde (#21) (#32)
+83d61946 O criterio apontava para o instrumento, e o instrumento e escrito por quem precisa dele verde (#21) (#32)
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+
+$ git log --all --grep="corte de shell" --oneline
+89dbf3b8 Apoio ao dev, lote 5: harness (1.79.0) (#597)
+2c94d699 Placar: baseline de 8 s nos casos 7 e 9
+7e42a353 Mutacao que falhou medindo nao vira corte de shell (#475) (#479)
+79804d82 conferir-fluxo mutacoes: exit != 0 do conferir-mutacao reprova
+d9cb884f Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79) (#85)
+9b7ee00d Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79) (#85)
+
+$ git log --all --grep="aquecimento" --oneline
+(vazio)
+
+$ git log --all --grep="extrairPlacar" --oneline
+67214638 Tarefa 11: o placar de uma bateria e a ULTIMA linha, nao a primeira
+
+$ cat <dados>/ideias.jsonl
+(vazio)
+

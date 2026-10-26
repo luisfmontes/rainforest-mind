@@ -1,0 +1,33 @@
+{
+  "slug": "2026-10-26-placar-vitest",
+  "titulo": "2026-10-26-placar-vitest",
+  "criado_em": "2026-10-26",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-26-placar-vitest.md",
+    "em": "2026-10-26"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-26-placar-vitest.md",
+    "tarefas": 2,
+    "paralelas": [],
+    "em": "2026-10-26"
+  },
+  "executar": {
+    "status": "pendente",
+    "catraca_mutacao": "2026-10-26"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
