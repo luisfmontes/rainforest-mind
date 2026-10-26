@@ -1752,6 +1752,21 @@ function soComandosInertes(texto) {
     return COMANDOS_INERTES.has(cmd) && !(cmd === "printf" && sub === "-v");
   });
 }
+// `cd -`/`pushd -` fora de aspas: a mesma regex do ramo `medivel` de `alvosDaRede` e de `dicaDoCdMenos`.
+const CD_MENOS = /(^|[\s;&|(`{])(?:cd|pushd)[ \t]+-(?=$|[\s;&|)}#<>])/;
+
+/**
+ * #573 (D5): trecho que o bloqueio da camada de git acrescenta quando a linha usa `cd -`, com a
+ * mesma saida da rede. Aspas sem expansao sao mascaradas antes (`git commit -m "cd - e outras"`
+ * nao conta); `cd "-"` conta. Sem `cd -`, devolve "".
+ */
+function dicaDoCdMenos(comando) {
+  const texto = mascaraAspasBash(String(comando).replace(/(["'])-\1/g, "-")).replace(/["'\\]/g, "");
+  if (!CD_MENOS.test(texto)) return "";
+  return "\nA linha usa `cd -` (volta ao diretorio anterior): o gate nao sabe para onde ele leva.\n" +
+    "Saida: troque o `cd -` pelo caminho absoluto do diretorio (`cd /caminho/do/worktree`).";
+}
+
 /**
  * #573 (D5): os construtos da linha que impedem medir o `cd -`, na ordem: substituicao (`$(`,
  * `<(`/`>(`), crase, interpretador com `-c`/`-e`, `source`/`.`, `eval` e definicao de variavel.
@@ -2033,7 +2048,7 @@ function alvosDaRede(comando, cwd, ehPowerShell, soVeredito = false) {
     const HIFEN = /(^|[\s;&|(`{"'])((?:cd|pushd)[ \t]+)["']?-["']?(?=$|[\s;&|)}#<>"'])/g;
     const medivel = comando.length <= 2000 && (comando.match(HIFEN) || []).length <= 8;
     const comCaminho = medivel ? comando.replace(HIFEN, (_, a, b) => `${a}${b}${cwd}`) : comando;
-    if (!soVeredito && !ehPowerShell && medivel && /(^|[\s;&|(`{])(?:cd|pushd)[ \t]+-(?=$|[\s;&|)}#<>])/.test(comando.replace(/["'\\]/g, "")) &&
+    if (!soVeredito && !ehPowerShell && medivel && CD_MENOS.test(comando.replace(/["'\\]/g, "")) &&
         !alvosDaRede(comCaminho, cwd, false, true).length) {
       // #573 (D5): a mensagem nomeia so o que esta na linha.
       return alvo("A linha usa `cd -` (volta ao diretorio anterior) junto de " + causasDoCdMenos(comando).join(", ") +
@@ -2174,7 +2189,8 @@ function main() {
       // comentario em `alvosBash`.
       alvos = alvosBash(entrada.command, cwd, undefined, nome).map((a) => ({ dir: a.dir, incerto: !!a.incerto }));
       alvos = alvos.concat(alvosEscrita);
-      motivo = `Comando que mexe no estado do repo: git ${verbo}`;
+      // #573 (D5): linha com `cd -` recebe a saida dele tambem na camada de git.
+      motivo = `Comando que mexe no estado do repo: git ${verbo}` + dicaDoCdMenos(entrada.command);
     } else {
       // Inspecionar redirecionamentos e ferramentas de escrita
       if (alvosEscrita.length > 0) {

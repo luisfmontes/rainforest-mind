@@ -2332,6 +2332,14 @@ gate_stderr 'cd -; export FOO=1; ls nao nomeia $(' "$(b 'cd -; export FOO=1; ls'
 gate_stderr 'cd -; echo "$(pwd)" nomeia $( e nao export' "$(b 'cd -; echo "$(pwd)"' "$WN")" '$(' 'export'
 gate_stderr 'cd - && bash -c "echo x > f" nomeia bash -c' "$(b 'cd - && bash -c "echo x > f"' "$WN")" 'bash -c' 'diretorio de trabalho principal'
 gate_stderr 'cd -; eval x nomeia eval' "$(b 'cd -; eval x' "$WN")" 'eval' 'diretorio de trabalho principal'
+# Camada de git: a linha com `cd -` ganha a saida do `cd -`; sem ele, ou com ele so dentro da
+# mensagem, nao.
+gate_stderr 'cd - && git commit -m "$(date)" cita o cd -' "$(b 'cd - && git commit -m "$(date)"' "$WN")" 'troque o `cd -`'
+gate_stderr 'cd - && git commit -m "$(date)" nomeia git commit' "$(b 'cd - && git commit -m "$(date)"' "$WN")" 'git commit'
+gate_stderr 'cd "$D" && git commit -m x nao cita o cd -' "$(b 'cd "$D" && git commit -m x' "$WN")" 'git commit' 'troque o `cd -`'
+gate_stderr 'cd "$D" && git commit -m "cd - e outras" nao cita o cd - da mensagem' "$(b 'cd "$D" && git commit -m "cd - e outras"' "$WN")" 'git commit' 'troque o `cd -`'
+gate 'git commit -m "cd - e outras" (cd - so na mensagem) passa' 0 "$(b 'git commit -m "cd - e outras"' "$WN")"
+gate 'cd <W> && git commit -m "$(date)" com caminho literal passa' 0 "$(b "cd $WN && git commit -m \"\$(date)\"" "$WN")"
 
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
