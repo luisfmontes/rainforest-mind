@@ -182,7 +182,7 @@ pronto quando: achado da revisão de segurança automática sobre o commit da ta
 
 ### 7. Versão 2.0.5, README e colheita [tipo: docs]
 atende: D1, D8
-arquivos: `.claude-plugin/plugin.json`, `README.md`, `vigias/ERROS.md`, `skills/executar/SKILL.md`, `skills/rainforest-mind/references/regra-11.md`
+arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `vigias/ERROS.md`, `skills/executar/SKILL.md`, `skills/rainforest-mind/references/regra-11.md`
 depende de: 2, 4, 6, 8
 mutacao: n/a
   motivo: bump de versão e texto; o comportamento é medido pelas tarefas 1–6 e pela trava `conferir-versao`
