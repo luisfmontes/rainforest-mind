@@ -24,8 +24,8 @@
  *   5   CI não verde (esperar-ci)
  *   6   merge não confirmado: state fechado sem merge, ou prazo esgotado (confirmar-merge)
  *   7   CI verde mas `fechar-mergear` desligada: merge não autorizado (esperar-ci)
- *   8   repositório sem CI: zero workflows e o PR sem check; a evidência é o
- *       `verificar` (esperar-ci, #576). A linha diz se o merge está autorizado
+ *   8   repositório sem CI de PR: nenhum workflow do checkout alcança o PR e o PR
+ *       não tem check; a evidência é o `verificar` (esperar-ci, #576, #591). A linha diz se o merge está autorizado
  *   69  ambiente: git/gh ausente ou sem auth, falha de rede, remoto não GitHub onde
  *       o subcomando precisa dele, ou saída inesperada do gh
  *
@@ -34,6 +34,8 @@
 'use strict';
 
 const { spawnSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 const { caminhoExecutavel, executar } = require('../hooks/lib/resolver-executavel.cjs');
 const { resolverConfig } = require('../hooks/lib/config.cjs');
 
@@ -187,6 +189,34 @@ function mergeAutorizado() {
   }
 }
 
+// #591 (D5): um workflow alcança o PR se o texto cita `pull_request` (inclui
+// `pull_request_target`) ou tem gatilho `push` sem filtro `branches`/`branches-ignore`.
+// Leitura textual conservadora: na dúvida o workflow conta, e o caso cai no 5.
+function alcancaPr(texto) {
+  return /\bpull_request/.test(texto) || (/\bpush\b/.test(texto) && !/\bbranches(-ignore)?\s*:/.test(texto));
+}
+
+// Quantos workflows do checkout (`git ls-files`) alcançam PR. Devolve null quando
+// não dá para ler (git falhou, arquivo listado ilegível): desconhecido não vira 8.
+function workflowsDePr(raiz) {
+  const ls = spawnSync(caminhoExecutavel('git'), ['ls-files', '.github/workflows'], {
+    cwd: raiz,
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  if (ls.status !== 0) return null;
+  const arquivos = (ls.stdout || '').split(/\r?\n/).map((l) => l.trim()).filter((l) => /\.ya?ml$/.test(l));
+  let quantos = 0;
+  try {
+    for (const arq of arquivos) {
+      if (alcancaPr(fs.readFileSync(path.join(raiz, arq), 'utf8'))) quantos++;
+    }
+  } catch {
+    return null;
+  }
+  return quantos;
+}
+
 function esperarCi(pr) {
   const sem = exigirGithub();
   if (sem !== 0) return sem;
@@ -197,13 +227,12 @@ function esperarCi(pr) {
     return 69;
   }
 
-  // Repositório sem workflow nenhum (#576): "no checks reported" ali não é CI
-  // vermelho, é CI ausente, e a evidência é o `verificar`. Só vale com a API
-  // dizendo zero workflows E o PR sem check; leitura que falha segue o caminho
-  // de sempre, onde ausência de check é não verde.
-  const wf = executar('gh', ['api', 'repos/{owner}/{repo}/actions/workflows', '--jq', '.total_count']);
-  const semWorkflows = wf.status === 0 && (wf.stdout || '').trim() === '0';
-  if (semWorkflows) {
+  // Repositório sem CI de PR (#576, #591): "no checks reported" ali não é CI
+  // vermelho, é CI ausente, e a evidência é o `verificar`. Só vale com os
+  // workflows do checkout dizendo zero que alcançam PR E o PR sem check; leitura
+  // que falha (null) segue o caminho de sempre, onde ausência de check é não verde.
+  const semCiDePr = workflowsDePr(toplevel()) === 0;
+  if (semCiDePr) {
     const lidosSem = executar('gh', ['pr', 'checks', String(pr), '--json', 'name,bucket']);
     let semChecks = false;
     try {
@@ -212,11 +241,11 @@ function esperarCi(pr) {
     } catch {
       semChecks = /no checks reported/i.test(`${lidosSem.stdout || ''}${lidosSem.stderr || ''}`);
     }
-    if (semWorkflows && semChecks) {
+    if (semCiDePr && semChecks) {
       const quem = mergeAutorizado()
         ? `merge autorizado — rode gh pr merge ${pr} --squash`
         : 'fechar-mergear desligada — pare no PR aberto';
-      process.stdout.write(`repositório sem CI (zero workflows, PR ${pr} sem check): a evidência é o verificar; ${quem}\n`);
+      process.stdout.write(`repositório sem CI de PR (nenhum workflow alcança PR, PR ${pr} sem check): a evidência é o verificar; ${quem}\n`);
       return 8;
     }
   }
