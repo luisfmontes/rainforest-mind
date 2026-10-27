@@ -1692,6 +1692,73 @@ echo "$S4" | grep -qF "reset --hard"; c=$?
 [ $a -eq 0 ] && [ $b -eq 0 ] && [ $c -eq 0 ]; confere "#608-4. clone completo com historia reescrita continua ALERTA 'sem parentesco' com 'reset --hard'" "$?" "$(echo "$S4" | grep 'plugin instalado')"
 rm -rf "$FR" "$CFGR" "$CFG4"
 
+echo "== #608 D3: config dirs ignoradas =="
+# Sandbox de bench (`.claude-bench-*`) e conta aposentada (`.claude-*.aposentada`) tem
+# `settings.json` e `plugins/` do harness. Antes da D3 a varredura da home as pegava e
+# comparava com a conta real: ALERTA de autocompact e avisos de skill e versao falsos.
+# HOME falsa, como nos outros cenarios; a config do usuario vem de RFM_ROOT.
+HOMED3="$SBP/home-d3"
+DADOS_D3="$SBP/dados-d3"
+OVR45='{"env":{"CLAUDE_AUTOCOMPACT_PCT_OVERRIDE":"45"}}'
+mkdir -p "$DADOS_D3"
+printf '{"poda": false}' > "$DADOS_D3/config.json"
+
+conta_d3() { # $1 = nome da config dir, $2 = settings.json (texto)
+  mkdir -p "$HOMED3/$1/plugins"
+  printf '%s' "$2" > "$HOMED3/$1/settings.json"
+}
+registro_d3() { # $1 = nome da config dir, $2 = versao registrada, $3 = sha
+  mkdir -p "$HOMED3/$1/plugins"
+  printf '{"version":2,"plugins":{"rainforest-mind@rainforest-mind":[{"scope":"user","installPath":"%s","version":"%s","gitCommitSha":"%s"}]}}' \
+    "$HOMED3/$1/plugins/cache/rainforest-mind/$2" "$2" "$3" > "$HOMED3/$1/plugins/installed_plugins.json"
+}
+cenario_bench_d3() { # .claude=45; bench sem override; aposentada=45 em outra versao
+  rm -rf "$HOMED3"; mkdir -p "$HOMED3"
+  conta_d3 ".claude" "$OVR45"
+  registro_d3 ".claude" "0.70.0" "df1b135aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  mkdir -p "$HOMED3/.claude/skills/x"; printf 'aaa' > "$HOMED3/.claude/skills/x/SKILL.md"
+  conta_d3 ".claude-bench-rf" '{"model":"haiku"}'
+  conta_d3 ".claude-personal.aposentada" "$OVR45"
+  registro_d3 ".claude-personal.aposentada" "0.71.0" "1369ca5bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  mkdir -p "$HOMED3/.claude-personal.aposentada/skills/x"; printf 'bbbbbb' > "$HOMED3/.claude-personal.aposentada/skills/x/SKILL.md"
+}
+saude_d3() { # $1 = RFM_ROOT (config do usuario); saida INTEIRA do saude.cjs contra a HOME falsa
+  ( cd "$SRC" && CLAUDE_CONFIG_DIR= USERPROFILE="$HOMED3" HOME="$HOMED3" RFM_ROOT="$1" \
+    node "$SRC/scripts/saude.cjs" 2>&1 )
+}
+
+# Caso 1: bench e aposentada nao entram na comparacao, nem em autocompact nem em avisos.
+cenario_bench_d3
+S1="$(saude_d3 "$DADOS_D3")"
+echo "$S1" | grep -qF "ALERTA  autocompact"; a=$?
+echo "$S1" | grep -E '^  aviso (config dirs|skills-divergentes)' | grep -qE '\.claude-bench-rf|\.claude-personal\.aposentada'; b=$?
+[ $a -ne 0 ] && [ $b -ne 0 ]; confere "D3-1. bench sem override nao gera ALERTA de autocompact" "$?" "$(echo "$S1" | grep -E 'autocompact|config dirs|skills-divergentes')"
+
+# Caso 2 (vizinho que continua ALERTA): .claude=45 contra .claude-personal=50.
+rm -rf "$HOMED3"; mkdir -p "$HOMED3"
+conta_d3 ".claude" "$OVR45"
+conta_d3 ".claude-personal" '{"env":{"CLAUDE_AUTOCOMPACT_PCT_OVERRIDE":"50"}}'
+S2="$(saude_d3 "$DADOS_D3")"
+echo "$S2" | grep -qF "ALERTA  autocompact"; a=$?
+[ $a -eq 0 ]; confere "D3-2. .claude=45 + .claude-personal=50 continua ALERTA de autocompact" "$?" "$(echo "$S2" | grep 'autocompact')"
+
+# Caso 3 (vizinho que continua ALERTA): .claude-personal SEM override contra .claude=45.
+rm -rf "$HOMED3"; mkdir -p "$HOMED3"
+conta_d3 ".claude" "$OVR45"
+conta_d3 ".claude-personal" '{"model":"haiku"}'
+S3="$(saude_d3 "$DADOS_D3")"
+echo "$S3" | grep -qF "ALERTA  autocompact"; a=$?
+[ $a -eq 0 ]; confere "D3-3. .claude=45 + .claude-personal sem override continua ALERTA de autocompact" "$?" "$(echo "$S3" | grep 'autocompact')"
+
+# Caso 4: a chave na config do usuario com [] diz "nao ignore nenhuma": a bench volta a entrar.
+printf '{"poda": false, "saude-ignorar-config-dirs": []}' > "$DADOS_D3/config.json"
+cenario_bench_d3
+S4="$(saude_d3 "$DADOS_D3")"
+echo "$S4" | grep -qF "ALERTA  autocompact"; a=$?
+[ $a -eq 0 ]; confere "D3-4. com saude-ignorar-config-dirs [] a bench volta e o ALERTA de autocompact reaparece" "$?" "$(echo "$S4" | grep 'autocompact')"
+
+rm -rf "$HOMED3" "$DADOS_D3"
+
 # Limpeza
 rm -rf "$R1_TEST" "$R2_TEST" "$R3_TEST"
 

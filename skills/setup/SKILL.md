@@ -194,6 +194,7 @@ o grupo que vale é o do campo `entrevista` no catálogo.
 | `visibilidade-repo` | — | declara o repositório privado quando o `gh` não o enxerga |
 | `idioma` | idioma | idioma preferido para respostas na compactação |
 | `pastas` | — | pastas de mapas/design/planos quando o repo já usa outras |
+| `saude-ignorar-config-dirs` | — | padrões de nome de config dir que o `/saude` não compara (`*` curinga); nulo = `*bench*` e `*.aposentada` |
 | `codex-modelo-haiku` | — | modelo do Codex para agente `haiku` (vazio = `~/.codex/config.toml`) |
 | `codex-modelo-sonnet` | — | modelo do Codex para agente `sonnet` (vazio = `~/.codex/config.toml`) |
 | `codex-modelo-opus` | — | modelo do Codex para agente `opus` (vazio = `~/.codex/config.toml`) |

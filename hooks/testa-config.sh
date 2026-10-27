@@ -423,5 +423,19 @@ igual "focoLigado com foco true e true" "true" "$(foco20 '{"foco":true}')"
 igual "focoLigado com json quebrado e false" "false" "$(foco20 '{quebrado')"
 rm -f "$SBP/proj/.rainforest/config.json" "$SBP/lar/.rainforest/config.json"
 echo
+echo "== #608 D3: tipo 'padroes' (saude-ignorar-config-dirs) =="
+padroes() { # json_do_valor -> validarTipo(valor, 'padroes')
+  node -e '
+    const { validarTipo } = require(process.argv[1] + "/hooks/lib/config.cjs");
+    process.stdout.write(String(validarTipo(JSON.parse(process.argv[2]), "padroes")));
+  ' "$SRC_WIN" "$1" 2>&1
+}
+igual "padroes: [\"*bench*\"] e valido"  "true"  "$(padroes '["*bench*"]')"
+igual "padroes: [] e valido"             "true"  "$(padroes '[]')"
+igual "padroes: null e valido"           "true"  "$(padroes 'null')"
+igual "padroes: [\"\"] e invalido"       "false" "$(padroes '[""]')"
+igual "padroes: \"x\" e invalido"        "false" "$(padroes '"x"')"
+igual "padroes: [1] e invalido"          "false" "$(padroes '[1]')"
+echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]

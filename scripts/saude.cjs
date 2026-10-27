@@ -248,6 +248,37 @@ function manifestoDoPlugin(raiz) {
   return { nome: path.basename(raiz), versao: null };
 }
 
+// Config dirs que existem na maquina mas NAO sao conta de trabalho: sandbox de
+// benchmark (`.claude-bench-*`) e conta aposentada (`.claude-*.aposentada`). Elas
+// tem `settings.json` e `plugins/` do harness, entao a varredura as pega, e comparar
+// uma sandbox com a conta real acusa ALERTA falso (Issue #608, 2026-10-27).
+const IGNORADAS_DE_FABRICA = ['*bench*', '*.aposentada'];
+
+/** Casa um nome com um padrao em que `*` e o unico curinga; sem diferenciar caixa. */
+function casaPadrao(nome, padrao) {
+  const re = new RegExp('^' + padrao.split('*').map((pedaco) => pedaco.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*') + '$', 'i');
+  return re.test(nome);
+}
+
+/**
+ * Padroes de config dir que o /saude nao compara, lidos da chave
+ * `saude-ignorar-config-dirs`. Array vale como esta (inclusive `[]`, que diz "nao
+ * ignore nenhuma"); `null`, ausente ou config ilegivel caem no de fabrica.
+ */
+function padroesIgnorados() {
+  try {
+    const { resolverConfig } = require(path.join(__dirname, '..', 'hooks', 'lib', 'config.cjs'));
+    const valor = resolverConfig().valores['saude-ignorar-config-dirs'];
+    if (Array.isArray(valor)) return valor;
+  } catch { /* sem config legivel: vale o padrao de fabrica */ }
+  return IGNORADAS_DE_FABRICA;
+}
+
+/** Diz se um nome de config dir cai num dos padroes ignorados. */
+function configDirIgnorada(nome, padroes) {
+  return padroes.some((p) => casaPadrao(nome, p));
+}
+
 /**
  * Config dirs do harness a inspecionar.
  *
@@ -266,10 +297,15 @@ function configDirsDoHarness() {
   if (process.env.CLAUDE_CONFIG_DIR) return [path.resolve(process.env.CLAUDE_CONFIG_DIR)];
   const home = process.env.USERPROFILE || process.env.HOME || '';
   if (!home) return [];
+  // Padroes ignorados saem da varredura da home (#608 D3): sandbox de bench e conta
+  // aposentada nao sao conta de trabalho. So neste ramo; com CLAUDE_CONFIG_DIR
+  // declarado a declaracao manda e nada muda.
+  const padroes = padroesIgnorados();
   try {
     return fs.readdirSync(home)
       .filter((n) => n === '.claude' || n.startsWith('.claude-'))
       .map((n) => path.join(home, n))
+      .filter((d) => !configDirIgnorada(path.basename(d), padroes))
       .filter((d) => fs.existsSync(path.join(d, 'plugins')))
       .map((d) => path.resolve(d));
   } catch {
@@ -321,10 +357,13 @@ function instalacoesRegistradas(configDir, nome) {
 function todasAsConfigDirsDaHome() {
   const home = process.env.USERPROFILE || process.env.HOME || '';
   if (!home) return [];
+  // Mesmo filtro de padroes ignorados de configDirsDoHarness (#608 D3).
+  const padroes = padroesIgnorados();
   try {
     return fs.readdirSync(home)
       .filter((n) => n === '.claude' || n.startsWith('.claude-'))
       .map((n) => path.join(home, n))
+      .filter((d) => !configDirIgnorada(path.basename(d), padroes))
       .filter((d) => fs.existsSync(path.join(d, 'plugins')))
       .map((d) => path.resolve(d));
   } catch {
@@ -854,11 +893,15 @@ function checarAutocompact() {
   const CHAVES_DO_HARNESS = ['env', 'model', 'hooks', 'permissions', 'statusLine',
     'enabledPlugins', 'outputStyle', 'defaultView', 'effortLevel'];
 
+  // Sandbox de bench e conta aposentada tem o `settings.json` do harness e entrariam
+  // aqui com `(nao definido)`, gerando o ALERTA de divergencia falso (#608 D3).
+  const padroes = padroesIgnorados();
   let candidatas;
   try {
     candidatas = fs.readdirSync(home)
       .filter((n) => n === '.claude' || n.startsWith('.claude-'))
       .map((n) => path.join(home, n))
+      .filter((d) => !configDirIgnorada(path.basename(d), padroes))
       .filter((d) => fs.existsSync(path.join(d, 'settings.json')));
   } catch {
     return;

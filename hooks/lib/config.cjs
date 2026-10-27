@@ -326,6 +326,12 @@ const CHAVES = {
     descricao: 'pastas de mapas/design/planos quando o repo já usa outra (ex.: {"design": "docs/plans"})',
     entrevista: null,
   },
+  'saude-ignorar-config-dirs': {
+    tipo: 'padroes',
+    padrao: null,
+    descricao: 'padrões de nome de config dir que o /saude não compara; null = *bench* e *.aposentada',
+    entrevista: null,
+  },
   // CODEX COMO RUNTIME — chaves de modelo que mapeiam model: do agente para -m do Codex
   'codex-modelo-haiku': {
     tipo: 'modelo',
@@ -454,6 +460,11 @@ function validarTipo(valor, tipo) {
     return Object.entries(valor).every(([k, v]) => ['mapas', 'design', 'planos'].includes(k) &&
       typeof v === 'string' && v.trim().length > 0 &&
       !/^([a-zA-Z]:|[\\/])/.test(v) && !v.split(/[\\/]/).includes('..'));
+  } else if (tipo === 'padroes') {
+    // Tipo 'padroes': null, ou array de strings não vazias até 60 caracteres. Array
+    // vazio vale: é o jeito de dizer "não ignore nenhuma".
+    if (valor === null) return true;
+    return Array.isArray(valor) && valor.every((p) => typeof p === 'string' && p.length > 0 && p.length <= 60);
   }
   return false;
 }
