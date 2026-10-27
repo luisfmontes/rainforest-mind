@@ -473,33 +473,52 @@ function extrairIssuesComFalsaChave(corpo) {
 }
 
 /**
- * Verifica se uma Issue tem comentário com o marcador de evidência.
- * Retorna true se encontrado, false caso contrário ou em erro.
+ * Consulta os comentários da Issue e diz se algum traz o marcador de evidência.
+ * Devolve { ok: true, tem } quando a leitura deu certo, ou { ok: false, erro }
+ * quando não deu: falha de leitura não é "falta de evidência" (D6, #594), e o
+ * chamador bloqueia nos dois casos com mensagens distintas.
+ * `repo` (o --repo/-R do próprio comando) vai como --repo; sem ele a consulta
+ * roda no cwd do segmento, no molde da consulta da #496 em `verificarComandoGh`.
  */
-function temMarcadorEvidencia(issueNum) {
+function temMarcadorEvidencia(issueNum, repo, cwd) {
+  const argsView = ["issue", "view", String(issueNum), "--json", "comments"];
+  if (repo) argsView.push("--repo", repo);
   try {
-    const resultado = executar("gh", [
-      "issue",
-      "view",
-      String(issueNum),
-      "--json",
-      "comments",
-    ]);
+    const resultado = executar("gh", argsView, cwd ? { cwd } : {});
 
-    // Erro ao chamar o comando
-    if (resultado.status === null || resultado.status === undefined) {
-      return false;
-    }
-
-    if (resultado.status !== 0) {
-      return false;
+    if (resultado.status === null || resultado.status === undefined || resultado.status !== 0) {
+      // Sem stderr, o motivo pode estar em `error` (ex.: cwd que o spawn não alcança).
+      const motivo = (resultado.stderr || "").trim() || (resultado.error && resultado.error.message) || "";
+      return { ok: false, erro: motivo.trim() || "gh não devolveu saída de erro" };
     }
 
     const saida = (resultado.stdout || "").trim();
-    return saida.includes(MARCADOR);
+    // D6 (#594): exit 0 com stdout vazio ou não-JSON é leitura falha, não "sem marcador".
+    let dados;
+    try { dados = JSON.parse(saida); } catch { dados = null; }
+    if (!dados || !Array.isArray(dados.comments)) {
+      return { ok: false, erro: "gh devolveu saída que não é a lista de comentários em JSON" };
+    }
+    return { ok: true, tem: saida.includes(MARCADOR) };
   } catch (e) {
-    return false;
+    return { ok: false, erro: String(e && e.message ? e.message : e) };
   }
+}
+
+/**
+ * Repositório que o próprio comando `gh` aponta com `-R`/`--repo` (antes ou
+ * depois do verbo), no mesmo formato que `semRepoGlobal` aceita. Último
+ * valor vence, como o cobra do gh. Sem flag, devolve null.
+ */
+function repoDoGh(tokens) {
+  let repo = null;
+  for (let i = 0; i < tokens.length; i += 1) {
+    const t = tokens[i];
+    if (t === "-R" || t === "--repo") { repo = tokens[i + 1] ?? null; i += 1; continue; }
+    if (t.startsWith("--repo=")) { repo = t.slice("--repo=".length); continue; }
+    if (/^-R./.test(t)) { repo = t.slice(2); }
+  }
+  return repo;
 }
 
 /**
@@ -865,10 +884,19 @@ function analisarPrMerge(texto) {
  * Issues citadas e o marcador de evidência. Compartilhado pelos dois
  * caminhos abaixo.
  */
-function verificarIssuesCitadas(corpo) {
+function verificarIssuesCitadas(corpo, repo, cwdSegmento) {
   const issues = extrairIssuesCitadas(corpo || "");
   for (const issue of issues) {
-    if (!temMarcadorEvidencia(issue)) {
+    const evidencia = temMarcadorEvidencia(issue, repo, cwdSegmento);
+    if (!evidencia.ok) {
+      // Falha de leitura (D6, #594): fail-closed, mas a mensagem não manda
+      // comentar a evidência — ela já pode estar lá.
+      bloqueia(
+        `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
+        `Razão: não consegui ler a Issue #${issue}: ${evidencia.erro}; rode de dentro do repositório ou use --repo.\n`
+      );
+    }
+    if (!evidencia.tem) {
       bloqueia(
         `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
         `Razão: Issue #${issue} não tem comentário com a evidência de pronto.\n\n` +
@@ -913,6 +941,8 @@ function verificarFalsasChaves(corpo) {
  * corpo de heredoc a partir do `gh`.
  */
 function verificarComandoGh(segmento, subcomandos, cwdSegmento, textoDoComando = COMANDO_INTEIRO) {
+  // Antes de `semRepoGlobal`, que tira o -R/--repo de antes do verbo (#594).
+  const repoDoComando = repoDoGh(subcomandos);
   subcomandos = semRepoGlobal(subcomandos);
 
   // Subcomando montado por variavel (`m=merge; gh pr $m 5`, `gh issue $c 12`,
@@ -1014,7 +1044,7 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento, textoDoComando =
 
     // Verificar palavras-chave falsas ANTES de verificar evidência
     verificarFalsasChaves(corpoDoPR.conteudo);
-    verificarIssuesCitadas(corpoDoPR.conteudo);
+    verificarIssuesCitadas(corpoDoPR.conteudo, repoDoComando, cwdSegmento);
   }
 
   // Caso (d): `gh issue create` → verificar corpo para palavras-chave falsas
@@ -1061,7 +1091,7 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento, textoDoComando =
     }
     for (const mensagem of mensagens) {
       verificarFalsasChaves(mensagem);
-      verificarIssuesCitadas(mensagem);
+      verificarIssuesCitadas(mensagem, repo, cwdSegmento);
     }
     if (ref === null && !cwdSegmento) {
       barraFormaPrMerge(`sem número do PR, o merge age no PR da branch do diretório, e o diretório deste comando não pôde ser determinado.`);
@@ -1100,7 +1130,7 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento, textoDoComando =
       return; // inalcançável (bloqueia sai do processo); documenta intenção
     }
 
-    verificarIssuesCitadas(corpo);
+    verificarIssuesCitadas(corpo, repo, cwdSegmento);
   }
 }
 
