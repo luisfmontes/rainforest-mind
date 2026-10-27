@@ -1613,6 +1613,85 @@ else
   falhou=$((falhou+1)); echo "  FALHA VR1: esperava vigia, causa, 'recorrente x2 em 30 dias, desde' e RESOLVIDO, veio: $VR_OUT"
 fi
 
+echo "== #608 D2: clone raso =="
+# Clone raso (`git clone --depth 1`): `.git/shallow` existe e o historico para no
+# commit de fronteira. Num clone assim a raiz do clone (`rev-list --max-parents=0`)
+# e a fronteira, nao a raiz do repo — e a checagem de parentesco concluia "sem
+# parentesco" com o clone em dia e mandava `reset --hard` (Issue #608). A fixture e
+# propria: repo com 3 commits; o clone raso sai do commit 3, e a fonte avanca depois
+# para o clone ficar atras de verdade.
+FR="$SBP/fonte-raso"
+CFGR="$SBP/cfg-raso"
+MR="$CFGR/plugins/marketplaces/fonte-raso"
+rm -rf "$FR" "$CFGR"
+mkdir -p "$FR/scripts/lib" "$FR/hooks/lib" "$FR/skills/exemplo" "$FR/.claude-plugin" "$CFGR/plugins/marketplaces" "$SBP/home-raso"
+cp "$SRC/scripts/saude.cjs" "$FR/scripts/saude.cjs"
+cp "$SRC/hooks/lib/resolver-executavel.cjs" "$FR/hooks/lib/"
+cp "$SRC/scripts/lib/impressao-falha.cjs" "$FR/scripts/lib/impressao-falha.cjs"
+echo "# skill de exemplo, so para skills/ nao ficar vazio" > "$FR/skills/exemplo/SKILL.md"
+printf '{"name":"fonte-raso","version":"1.0.0"}' > "$FR/.claude-plugin/plugin.json"
+git init -q "$FR"
+git -C "$FR" -c user.email=t@t -c user.name=t add -A >/dev/null 2>&1
+git -C "$FR" -c user.email=t@t -c user.name=t commit -qm "commit 1" >/dev/null 2>&1
+for i in 2 3; do
+  git -C "$FR" -c user.email=t@t -c user.name=t commit -q --allow-empty -m "commit $i" >/dev/null 2>&1
+done
+git clone -q --depth 1 "file://$FR" "$MR" 2>/dev/null
+if [ -f "$MR/.git/shallow" ]; then
+  ok=$((ok+1)); echo "  ok   fixture: o clone saiu raso (.git/shallow existe)"
+else
+  falhou=$((falhou+1)); echo "  FALHA fixture: o clone nao ficou raso — os casos abaixo nao medem a #608"
+fi
+
+# Saida INTEIRA do saude.cjs rodado a partir da fonte, com a config dir indicada.
+# Hermetico: CLAUDE_CONFIG_DIR declarado e home falsa, como nos outros cenarios.
+saude_raso() { # $1 = config dir a usar
+  ( cd "$FR" && CLAUDE_CONFIG_DIR="$1" HOME="$SBP/home-raso" USERPROFILE="$SBP/home-raso" RFM_ROOT="$SBP/dados" \
+    node "$FR/scripts/saude.cjs" 2>&1 )
+}
+confere() { # $1 = nome, $2 = exit do teste, $3 = saida mostrada se falhou
+  if [ "$2" -eq 0 ]; then ok=$((ok+1)); echo "  ok   $1"
+  else falhou=$((falhou+1)); echo "  FALHA $1"; echo "       veio: $3"; fi
+}
+
+# Caso 1: clone raso no MESMO commit da fonte.
+S1="$(saude_raso "$CFGR")"
+echo "$S1" | grep -qF "ALERTA  plugin instalado"; a=$?
+[ $a -ne 0 ]; confere "#608-1. clone raso em dia nao acusa sem parentesco" "$?" "$(echo "$S1" | grep 'plugin instalado')"
+
+# Caso 2: a fonte avanca um commit; o clone raso fica 1 atras.
+git -C "$FR" -c user.email=t@t -c user.name=t commit -q --allow-empty -m "commit 4" >/dev/null 2>&1
+S2="$(saude_raso "$CFGR")"
+L2="$(echo "$S2" | grep 'plugin instalado:')"
+echo "$L2" | grep -q "^  aviso "; a=$?
+echo "$L2" | grep -qF "1 commit(s) atras"; b=$?
+echo "$L2" | grep -qF "sem parentesco"; c=$?
+[ $a -eq 0 ] && [ $b -eq 0 ] && [ $c -ne 0 ]; confere "#608-2. clone raso 1 commit atras vira aviso com '1 commit(s) atras', sem 'sem parentesco'" "$?" "$L2"
+
+# Caso 3: o clone raso ganha um commit proprio; o HEAD dele nao existe na fonte.
+git -C "$MR" -c user.email=t@t -c user.name=t commit -q --allow-empty -m "commit proprio no clone" >/dev/null 2>&1
+S3="$(saude_raso "$CFGR")"
+L3="$(echo "$S3" | grep 'plugin instalado:')"
+echo "$L3" | grep -q "^  aviso "; a=$?
+echo "$S3" | grep -qF "clone e raso"; b=$?
+echo "$S3" | grep -qF "reset --hard"; c=$?
+[ $a -eq 0 ] && [ $b -eq 0 ] && [ $c -ne 0 ]; confere "#608-3. clone raso com HEAD que a fonte nao tem vira aviso 'clone e raso', sem 'reset --hard' na saida inteira" "$?" "$L3"
+
+# Caso 4 (vizinho que continua ALERTA): clone COMPLETO com historia reescrita, raiz
+# diferente. Mesma montagem do cenario B acima; aqui tambem se confere o `reset --hard`
+# da acao, que o cenario B nao checava.
+CFG4="$SBP/cfg-raso-reescrito"
+M4="$CFG4/plugins/marketplaces/fonte-raso"
+mkdir -p "$M4"
+git init -q "$M4"
+git -C "$M4" -c user.email=t@t -c user.name=t commit -q --allow-empty -m "historia reescrita" >/dev/null 2>&1
+S4="$(saude_raso "$CFG4")"
+echo "$S4" | grep -qF "ALERTA  plugin instalado"; a=$?
+echo "$S4" | grep -qF "sem parentesco"; b=$?
+echo "$S4" | grep -qF "reset --hard"; c=$?
+[ $a -eq 0 ] && [ $b -eq 0 ] && [ $c -eq 0 ]; confere "#608-4. clone completo com historia reescrita continua ALERTA 'sem parentesco' com 'reset --hard'" "$?" "$(echo "$S4" | grep 'plugin instalado')"
+rm -rf "$FR" "$CFGR" "$CFG4"
+
 # Limpeza
 rm -rf "$R1_TEST" "$R2_TEST" "$R3_TEST"
 

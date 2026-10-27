@@ -52,6 +52,19 @@ function rodar(cmd, args, opts = {}) {
   }
 }
 
+// Clone RASO é o que `git clone --depth` deixa para trás: o `.git/shallow` existe e
+// o histórico para no commit de fronteira. Descobrir isso é a primeira pergunta da
+// checagem de parentesco (#608), porque num clone raso o discriminador de raiz
+// (`rev-list --max-parents=0`) devolve o próprio commit de fronteira, e não a raiz
+// real do repo — e a checagem concluía "sem parentesco" com o clone em dia.
+// Só status 0 com a saída `true` conta como raso; qualquer outra coisa (inclusive
+// git ausente ou diretório que não é repo) fica como não raso, que é o comportamento
+// de antes desta função existir.
+function cloneRaso(dir) {
+  const r = rodar(caminhoExecutavel('git'), ['rev-parse', '--is-shallow-repository'], { cwd: dir });
+  return r.status === 0 && r.out === 'true';
+}
+
 // ---------------------------------------------------------------- 1. raiz de dados
 // A pergunta que nenhum checador oficial faz: estes dados são SEUS?
 function checarRaiz() {
@@ -644,11 +657,36 @@ function avaliarClone(instalado, nome, instalacoes) {
       const r = rodar(caminhoExecutavel('git'), ['rev-list', '--max-parents=0', 'HEAD'], { cwd: dir });
       return r.status === 0 ? r.out.split('\n').pop().trim() : null;
     };
+    // CLONE RASO (#608, 2026-10-27): `/saude` deu ALERTA "sem parentesco" com o clone
+    // do marketplace em dia, e a saída ainda mandava rodar `reset --hard`. Causa: o
+    // clone virou raso (`.git/shallow` apontando para 0533241), a raiz dele é a
+    // fronteira e não a raiz real do repo (209e0f63), e a comparação de raízes
+    // concluía histórias diferentes. Num raso a comparação de raízes não diz nada —
+    // a fronteira sempre difere da raiz verdadeira.
+    //
+    // O que o raso ainda sabe responder: se o commit do clone EXISTE aqui. Existe →
+    // é o caso normal, e a contagem de atraso abaixo responde. Não existe → ou é
+    // commit próprio do clone, ou é história reescrita. Num clone raso essas duas
+    // são indistinguíveis, então o relato é AVISO e nunca alerta com `reset --hard`:
+    // reaponte à mão se for história reescrita, mas o comando automático destruiria
+    // um commit próprio que só existe na cópia instalada.
+    const raso = cloneRaso(instalado);
     const raizAqui = raizDe(RAIZ_CODIGO);
     const raizLa = raizDe(instalado);
     const par = `(${la.out.slice(0, 7)} vs ${aqui.out.slice(0, 7)})`;
 
-    if (raizAqui && raizLa && raizAqui !== raizLa) {
+    if (raso) {
+      const existe = rodar(caminhoExecutavel('git'), ['cat-file', '-e', `${la.out}^{commit}`], { cwd: RAIZ_CODIGO });
+      if (existe.status !== 0) {
+        return {
+          nivel: 'aviso',
+          detalhe: `o clone e raso e o commit ${la.out.slice(0, 7)} nao existe aqui (commit proprio ou historia reescrita — clone raso nao distingue)`,
+          acao: 'nada automatico: confira na origem se o commit do clone existe antes de mexer nele',
+        };
+      }
+    }
+
+    if (!raso && raizAqui && raizLa && raizAqui !== raizLa) {
       semParentesco = true;
     } else {
       const n = rodar(caminhoExecutavel('git'), ['rev-list', '--count', `${la.out}..HEAD`], { cwd: RAIZ_CODIGO });
