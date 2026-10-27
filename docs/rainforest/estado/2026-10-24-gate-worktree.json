@@ -75,18 +75,18 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "9d538314a1067c0edd85b7daf0c08ce3708e1bf0",
+      "head": "1b44ae98edfa5e0e9e3b3c4b7b14cecd3d95a5b3",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a70463201fad39027",
+        "agente_id": "ab98454838518dfd8",
         "veredito": "ok",
         "em": "2026-10-26",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-a70463201fad39027.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-ab98454838518dfd8.jsonl"
       }
     ],
     "base": "4cfff569",
@@ -111,6 +111,10 @@
       {
         "severidade": "baixa",
         "descricao": "cosmetico: alvo de (touch \"$X/f\") aparece como $X/f)"
+      },
+      {
+        "severidade": "baixa",
+        "descricao": "rodada 6 (conserto do CI do #605, 58ccf3a1): strings entregues ao gate identicas byte a byte (md5), dependencias 6/0, gate 905/0; nome do caso g583 virou rotulo sem o comando literal, so rotulo"
       }
     ],
     "em": "2026-10-26",
@@ -162,18 +166,30 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-ac420aaa0804fd865.jsonl"
           }
         ]
+      },
+      {
+        "volta": 5,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a70463201fad39027",
+            "veredito": "ok",
+            "em": "2026-10-26",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-a70463201fad39027.jsonl"
+          }
+        ]
       }
     ],
     "veredito": "ok",
-    "rodadas": 2
+    "rodadas": 3
   },
   "verificar": {
-    "status": "pendente",
-    "comando": "node scripts/rodar-longo.cjs iniciar --saida gw-verif.txt -- bash hooks/testa-gate-worktree.sh; node hooks/testa-corpus-comandos.cjs; bash scripts/testa-versao.sh; node scripts/conferir-versao.cjs; node scripts/conferir-fluxo.cjs cobertura --slug 2026-10-24-gate-worktree",
-    "saida": "codigo de HEAD 96cd278 (igual a 68113261 em hooks/): testa-gate-worktree 905 ok 0 falha(s) exit 0 (tarefas 1-6, criterio 0 falha); testa-corpus-comandos ok 24 falhou 0 (tarefa 2, sem bloqueio novo); testa-versao ok 5 falhou 0 e conferir-versao exit 0 com 2.0.2 (tarefa 7); CHANGELOG 2.0.2 cita #573 #580 #582 #583 com D1, D2, D3, D4 e D5; README linha do gate-worktree descreve alvo de escritor com expansao no inicio; cobertura valida 6 decisoes, 7 tarefas",
+    "status": "ok",
+    "comando": "node scripts/rodar-longo.cjs iniciar --saida gw-verif2.txt -- bash hooks/testa-gate-worktree.sh; bash scripts/testa-versao.sh; node scripts/conferir-versao.cjs; node scripts/conferir-fluxo.cjs cobertura --slug 2026-10-24-gate-worktree; node hooks/testa-corpus-comandos.cjs; bash scripts/testa-dependencias-de-bateria.sh",
+    "saida": "HEAD 1b44ae9 (conserto do CI 58ccf3a1) (main 4cfff569 trazida, 2.0.4): testa-gate-worktree 905 ok 0 falha(s) exit 0 (tarefas 1-6); testa-versao ok 5 falhou 0 e conferir-versao ok 2.0.4 contra origin/main 2.0.3 (tarefa 7); CHANGELOG 2.0.4 cita #573 #580 #582 #583 com D1-D5, acima da 2.0.3; README linha 183 descreve alvo de escritor com expansao no inicio; corpus ok 24 falhou 0 (medido em 87f6871f; hooks/ igual desde entao); cobertura valida 6 decisoes, 7 tarefas; testa-dependencias-de-bateria 6 ok 0 falha (CI do #605 shard 3)",
     "sensor_externo": "node scripts/conferir-fluxo.cjs cobertura",
     "em": "2026-10-26",
-    "head": "96cd278b4bb25b9e508f5c9a16e8d0f5e3179efb"
+    "head": "1b44ae98edfa5e0e9e3b3c4b7b14cecd3d95a5b3"
   },
   "fechar": {
     "status": "pendente",
