@@ -89,6 +89,12 @@
         "tarefa": "4 esperar-ci sem CI de PR",
         "desde": "2026-10-27",
         "sessao": "bbe7888f-e761-411a-988c-b38fada6b86e"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "5 gate --repo (terminar: stub .cmd)",
+        "desde": "2026-10-27",
+        "sessao": "bbe7888f-e761-411a-988c-b38fada6b86e"
       }
     ],
     "em": "2026-10-27"
