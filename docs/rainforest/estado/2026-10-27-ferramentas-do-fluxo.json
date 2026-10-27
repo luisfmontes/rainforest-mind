@@ -24,7 +24,7 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-27",
-    "tarefas_ok": 6,
+    "tarefas_ok": 7,
     "tarefas": 8,
     "carimbos": [
       {
@@ -87,12 +87,6 @@
       {
         "agente": "executor",
         "tarefa": "2 saude config dirs (terminar)",
-        "desde": "2026-10-27",
-        "sessao": "bbe7888f-e761-411a-988c-b38fada6b86e"
-      },
-      {
-        "agente": "documentador",
-        "tarefa": "7 versao 2.0.5 e README",
         "desde": "2026-10-27",
         "sessao": "bbe7888f-e761-411a-988c-b38fada6b86e"
       }
