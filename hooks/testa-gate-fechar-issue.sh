@@ -3501,6 +3501,36 @@ EXIT_594_7=$?
 ERR_594_7="$(cat "$SBP/err-594-7")"
 echo "$ERR_594_7" | grep -qF "não consegui ler a Issue #12" && test_ok "594-7 stderr diz que não conseguiu ler" || test_fail "594-7 stderr sem 'não consegui ler a Issue #12' ($ERR_594_7)"
 
+# #592: a forma prescrita pelo /feedback tem de passar pelo gate. A extração lê
+# o commands/feedback.md REAL do repo; a frase "na primeira linha:" quebra linha
+# no arquivo, então o texto é normalizado (espaços colapsados) antes do regex.
+# Se a forma não for achada, a forma fica vazia e o caso FALHA (nunca pula).
+echo
+echo "== #592 forma prescrita pelo /feedback =="
+FORMA_592="$(node -e '
+const fs = require("fs");
+const t = fs.readFileSync(process.argv[1], "utf8").replace(/\s+/g, " ");
+const m = t.match(/na primeira linha:\s*`([^`]*)`/);
+process.stdout.write(m ? m[1] : "");
+' "$SRC/commands/feedback.md")"
+FORMA_592="${FORMA_592//'<n>'/591}"
+FORMA_592="${FORMA_592//'...'/texto}"
+[ -n "$FORMA_592" ] && test_ok "592 forma extraída de commands/feedback.md não é vazia ($FORMA_592)" || test_fail "592 forma extraída de commands/feedback.md é vazia (o regex 'na primeira linha: \`...\`' não achou nada)"
+
+# Sem forma, o gate não roda com um título vazio (que passaria e mascararia a falha).
+if [ -n "$FORMA_592" ]; then
+  (
+    export PATH="$SBP/bin:$PATH"
+    PAYLOAD_592="$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "gh issue create --title \"$FORMA_592\" --body \"$FORMA_592\"")"
+    echo "$PAYLOAD_592" | node "$SRC/hooks/gate-fechar-issue.cjs"
+  ) 2>"$SBP/err-592"
+  EXIT_592=$?
+else
+  EXIT_592=99
+  : > "$SBP/err-592"
+fi
+[ $EXIT_592 -eq 0 ] && test_ok "forma prescrita pelo /feedback passa pelo gate" || test_fail "forma prescrita pelo /feedback passa pelo gate (exit $EXIT_592: $(cat "$SBP/err-592"))"
+
 # Resultado final
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="

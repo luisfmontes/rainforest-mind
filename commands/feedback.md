@@ -113,7 +113,7 @@ gh issue list --repo luisfmontes/rainforest-mind --state all --search "<termos d
 
 Se existir, comente no Issue existente com a evidência nova em vez de abrir
 outro. Se o novo achado **corrige ou supera** um anterior, diga isso na primeira
-linha: `CORRIGE #<n>: ...`.
+linha: `Segue #<n>: ...`.
 
 **Depois, mostre o rascunho e espere.** Nunca publique sem confirmação — Issue
 não tem "desfazer" que apague o que já foi indexado.
