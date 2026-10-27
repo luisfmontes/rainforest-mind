@@ -192,8 +192,11 @@
     "head": "1b44ae98edfa5e0e9e3b3c4b7b14cecd3d95a5b3"
   },
   "fechar": {
-    "status": "pendente",
-    "em": "2026-10-26"
+    "status": "ok",
+    "em": "2026-10-27",
+    "comando": "gh pr merge 605 --squash --delete-branch; node scripts/publicar-branch.cjs confirmar-merge --pr 605; gh issue view 573/580/582/583 --json state",
+    "saida": "merge confirmado: PR 605 MERGED (CI verde nos 3 shards em 5c77d93e); Issues 573, 580, 582, 583 CLOSED; branch remota fluxo/gate-worktree apagada (fetch --prune)",
+    "pr": 605
   },
   "reaberturas": [
     {
