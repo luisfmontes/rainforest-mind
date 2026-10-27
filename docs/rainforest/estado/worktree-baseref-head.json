@@ -86,6 +86,10 @@
     "em": "2026-10-10"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "gh pr view 468 --json state,mergedAt",
+    "saida": "PR 468 MERGED 2026-10-10T05:30:30Z (fechado no estado em 2026-10-27)",
+    "pr": 468,
+    "em": "2026-10-27"
   }
 }

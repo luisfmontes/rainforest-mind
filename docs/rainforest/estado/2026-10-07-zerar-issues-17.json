@@ -189,6 +189,10 @@
     "em": "2026-10-07"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "gh pr view 426 --json state,mergedAt",
+    "saida": "PR 426 MERGED 2026-10-07; Issues 409-414 e 417 CLOSED (conferido em 2026-10-27)",
+    "pr": 426,
+    "em": "2026-10-27"
   }
 }
