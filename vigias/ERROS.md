@@ -26,3 +26,10 @@
 - 2026-09-29 08:21 [sentinela-foco]: triagem de inbox nao rodou: MCPs gmail e gmail-leitura deram CONNECT_TIMEOUT (30000ms) na sessao; ToolSearch nao achou search_emails apos 3 tentativas com espera
 - 2026-09-29 08:21 [sentinela-foco]: backup externo falhou (exit 2): RECUSADO: PowerShell failed: ZipArchiveHelper : O processo não pode acessar o arquivo '<caminho>\rainforest.db' porque ele está 
 - 2026-09-30 08:24 [sentinela-foco]: triagem de inbox nao rodou: MCPs gmail e gmail-leitura deram CONNECT_TIMEOUT na sessao; ToolSearch nao achou search_emails apos 3 tentativas com espera
+- 2026-10-05 08:12 [sentinela-foco]: triagem de inbox nao rodou: gmail deu CONNECT_TIMEOUT (90000ms) e gmail-leitura nao subiu; ToolSearch nao achou search_emails apos 3 tentativas com espera
+- 2026-10-09 08:40 [sentinela-foco]: triagem de inbox nao rodou: gmail deu CONNECT_TIMEOUT (90000ms) e gmail-leitura nao subiu; ToolSearch nao achou search_emails apos 3 tentativas com espera
+- 2026-10-09 09:03 [batedor-repos]: send_message sem account: contas pessoal e trabalho configuradas; mensagem nao enviada. Ronda 2026-10-09 gravada em relatorios/2026-10-09-batedor-revisitas-e-busca.md (commit fbbf579a).
+- 2026-10-12 09:53 [sentinela-foco]: triagem de inbox nao rodou: gmail-leitura nao subiu; ToolSearch nao achou search_emails apos 3 tentativas com espera
+- 2026-10-16 08:44 [sentinela-foco]: briefing nao enviado: MCP whatsapp deu CONNECT_TIMEOUT (90000ms) e send_message nao existe na sessao; briefing montado (inbox e foco lidos) mas sem canal de envio
+- 2026-10-16 09:04 [batedor-repos]: mensagem nao enviada: send_message exige conta explicita (pessoal ou trabalho); nada foi enviado. Relatorio e commit 571b87e5 estao prontos.
+- 2026-10-16 15:54 [jardineiro-ideias]: send_message sem account: duas contas WhatsApp (pessoal, trabalho) configuradas; a primeira tentativa foi recusada antes do envio e a segunda, com account=pessoal, foi entregue. Corrigir o prompt do vigia para informar a conta.

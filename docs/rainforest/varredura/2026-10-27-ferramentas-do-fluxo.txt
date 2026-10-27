@@ -1,0 +1,95 @@
+Data: 2026-10-27
+Termos: esperar-ci, temMarcadorEvidencia, checarPluginInstalado, checarAutocompact, clone raso, CORRIGE
+
+$ gh issue list --state all --search "esperar-ci" --limit 200 --json number,title,state
+[{"number":587,"state":"OPEN","title":"esperar-ci le queda de rede como CI vermelho (exit 5 em vez de 69)"},{"number":591,"state":"OPEN","title":"Segue #576: esperar-ci sai 5 em repositório cujo único workflow não dispara em PR"},{"number":541,"state":"OPEN","title":"CI: shard 1 das baterias roda a 3-9 min do timeout de 35"},{"number":576,"state":"CLOSED","title":"esperar-ci: repositório sem CI sai 5 (como CI vermelho) e trava o merge"}]
+
+
+$ gh issue list --state all --search "temMarcadorEvidencia" --limit 200 --json number,title,state
+[{"number":594,"state":"OPEN","title":"gate-fechar-issue: temMarcadorEvidencia consulta a Issue no cwd do hook e lê erro como falta de evidência"}]
+
+
+$ gh issue list --state all --search "checarPluginInstalado" --limit 200 --json number,title,state
+[{"number":608,"state":"OPEN","title":"saude: alerta falso com clone raso e com config dirs de bench"}]
+
+
+$ gh issue list --state all --search "checarAutocompact" --limit 200 --json number,title,state
+[{"number":608,"state":"OPEN","title":"saude: alerta falso com clone raso e com config dirs de bench"}]
+
+
+$ gh issue list --state all --search "clone raso" --limit 200 --json number,title,state
+[{"number":608,"state":"OPEN","title":"saude: alerta falso com clone raso e com config dirs de bench"}]
+
+
+$ gh issue list --state all --search "CORRIGE" --limit 200 --json number,title,state
+[{"number":592,"state":"OPEN","title":"/feedback prescreve 'CORRIGE #<n>:' e o gate-fechar-issue barra essa forma"},{"number":591,"state":"OPEN","title":"Segue #576: esperar-ci sai 5 em repositório cujo único workflow não dispara em PR"},{"number":435,"state":"CLOSED","title":"memória: nome duplicado de projeto no banco (nome curto e slug de caminho)"},{"number":553,"state":"CLOSED","title":"Abertura acusa bridge WhatsApp FORA com a bridge de pé (sonda resolve localhost por DNS)"},{"number":38,"state":"CLOSED","title":"CORRIGE #25: a saida prescrita (branch nova) e o que derruba a outra sessao em diretorio compartilhado"},{"number":571,"state":"CLOSED","title":"conferir-fluxo creep recusa plano com sufixo de marco e o revisor mede creep à mão"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"},{"number":174,"state":"CLOSED","title":"Nada barra \"Fecha #N\" no corpo do PR — a regra está escrita há 10 dias e o erro repetiu"},{"number":240,"state":"CLOSED","title":"Triagem de achado mora em slash command e nunca chega a sessao: todo defeito sai pela porta do plantio"},{"number":16,"state":"CLOSED","title":"Nenhuma bateria roda sozinha: sem CI, a catraca depende de alguem lembrar (a de nucleos ficou vermelha 3 dias)"},{"number":1,"state":"CLOSED","title":"Briefing nao diz o ato de entregar: subagente nomeado termina o trabalho e nao devolve (3 de 3)"}]
+
+
+$ gh pr list --state all --search "esperar-ci" --limit 200 --json number,title,state
+[{"number":539,"state":"MERGED","title":"Versao 1.67.5: esperar-ci nao da verde com check cancelado; baterias SQLite em transacao"},{"number":579,"state":"MERGED","title":"Lote 1021: CI em 3 shards, exit 8 sem CI, .pr.md isento (1.73.0)"},{"number":506,"state":"MERGED","title":"Versao 1.64.0: fechar com push conferido e merge confirmado pelo state"}]
+
+
+$ gh pr list --state all --search "temMarcadorEvidencia" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "checarPluginInstalado" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "checarAutocompact" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "clone raso" --limit 200 --json number,title,state
+[{"number":321,"state":"MERGED","title":"Batedor: doze repos indicados avaliados pelo codigo"},{"number":598,"state":"MERGED","title":"Apoio ao dev, lote 6: ferramentas do fluxo (1.80.0)"},{"number":308,"state":"MERGED","title":"regua: regua selada por construcao e keep/discard automatico (enxerto do autoresearch)"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"}]
+
+
+$ gh pr list --state all --search "CORRIGE" --limit 200 --json number,title,state
+[{"number":251,"state":"MERGED","title":"auditor: corrige mapeamento OWASP da Régua 3 para a edição 2025"},{"number":384,"state":"MERGED","title":"1.38.1: Q da faixa somem no envio e cabem na linha"},{"number":305,"state":"MERGED","title":"Memória: reconciliação na escrita e consolidação automática"}]
+
+
+$ git ls-remote --heads origin | grep -F "esperar-ci"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "temMarcadorEvidencia"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "checarPluginInstalado"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "checarAutocompact"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "clone raso"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "CORRIGE"
+(vazio)
+
+$ git log --all --grep="esperar-ci" --oneline
+32251117 Lote 1021: CI em 3 shards, exit 8 sem CI, .pr.md isento (1.73.0) (#579)
+6b145a4c Versao 1.67.5: esperar-ci nao da verde com check cancelado; baterias SQLite em transacao (#539)
+74b75b34 Versao 1.64.0: fechar com push conferido e merge confirmado pelo state (#506)
+
+$ git log --all --grep="temMarcadorEvidencia" --oneline
+(vazio)
+
+$ git log --all --grep="checarPluginInstalado" --oneline
+(vazio)
+
+$ git log --all --grep="checarAutocompact" --oneline
+(vazio)
+
+$ git log --all --grep="clone raso" --oneline
+e678c417 regua selada: o selo passa a exigir historico, e recusa clone raso
+
+$ git log --all --grep="CORRIGE" --oneline
+b4554485 integra tarefa 5: fechar verificar com ok exige sensor na evidencia
+e5981bdc Conserto do revisar — segunda opinião r5: PATH determinístico e fixtures órfãs
+3cb952cf Conserto do revisar — segunda opinião r5: PATH determinístico e fixtures órfãs
+
+$ cat <dados>/ideias.jsonl
+{"id":"esperar-ci-rede-vs-vermelho","titulo":"esperar-ci: separar falha de rede (69) de CI vermelho (5)"}
+
+
