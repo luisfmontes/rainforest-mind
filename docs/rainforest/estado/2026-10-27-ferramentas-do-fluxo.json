@@ -83,6 +83,12 @@
         "tarefa": "1 saude clone raso (mutacao final)",
         "desde": "2026-10-27",
         "sessao": "bbe7888f-e761-411a-988c-b38fada6b86e"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "2 saude config dirs ignoradas",
+        "desde": "2026-10-27",
+        "sessao": "bbe7888f-e761-411a-988c-b38fada6b86e"
       }
     ],
     "em": "2026-10-27"
