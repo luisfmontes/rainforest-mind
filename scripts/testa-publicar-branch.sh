@@ -61,6 +61,10 @@ if (args[0] === 'pr' && args[1] === 'list') {
   process.exit(0);
 }
 if (args[0] === 'pr' && args[1] === 'checks' && args.includes('--json')) {
+  if (process.env.STUB_CHECKS_JSON_EXIT !== undefined) {
+    if (process.env.STUB_CHECKS_JSON_STDERR) process.stderr.write(process.env.STUB_CHECKS_JSON_STDERR + '\n');
+    process.exit(Number(process.env.STUB_CHECKS_JSON_EXIT));
+  }
   process.stdout.write((process.env.STUB_CHECKS_JSON || '[{"name":"baterias","bucket":"pass"}]') + '\n');
   process.exit(0);
 }
@@ -231,10 +235,28 @@ roda "$CAIXA" esperar-ci --pr 7
 [ "$CODIGO" -eq 7 ]; afirma "(g4) CI verde + config ilegivel: sai 7 (exit=$CODIGO)" $?
 
 printf '{"fechar-mergear": true}\n' > "$CAIXA/.rainforest/config.json"
-export STUB_CHECKS_EXIT=1
+export STUB_CHECKS_EXIT=1 STUB_CHECKS_JSON='[{"name":"a","bucket":"fail"}]'
 roda "$CAIXA" esperar-ci --pr 7
 [ "$CODIGO" -eq 5 ]; afirma "(g5) CI vermelho: sai 5 (exit=$CODIGO)" $?
+grep -q "a (fail)" "$ERRO"; afirma "(g5) stderr nomeia a (fail)" $?
+
+# #587 (D4): --watch saiu 1 e o relido decide. Relido sem estado legivel = 69, nao 5.
+export STUB_CHECKS_JSON_EXIT=1 STUB_CHECKS_JSON_STDERR='error connecting to api.github.com'
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 69 ]; afirma "(g16) watch 1 e releitura sem rede: sai 69 (exit=$CODIGO)" $?
+head -n 1 "$ERRO" | grep -q '^nao-verificavel:'; afirma "(g16) primeira linha do stderr comeca por nao-verificavel:" $?
+unset STUB_CHECKS_JSON_EXIT STUB_CHECKS_JSON_STDERR
+
+export STUB_CHECKS_JSON='[{"name":"a","bucket":"pending"}]'
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 69 ]; afirma "(g18) watch cai com checks pending: sai 69 (exit=$CODIGO)" $?
+head -n 1 "$ERRO" | grep -q '^nao-verificavel:'; afirma "(g18) primeira linha do stderr comeca por nao-verificavel:" $?
+
+export STUB_CHECKS_JSON='[]'
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 5 ]; afirma "(g17) watch cai com lista vazia: sai 5 (exit=$CODIGO)" $?
 export STUB_CHECKS_EXIT=0
+unset STUB_CHECKS_JSON
 
 # gh 2.96 sai 0 do --watch com um check CANCELLED (PR #537): o bucket decide.
 export STUB_CHECKS_JSON='[{"name":"shard 1/2","bucket":"cancel"},{"name":"shard 2/2","bucket":"pass"}]'

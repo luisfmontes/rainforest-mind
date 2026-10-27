@@ -223,6 +223,27 @@ function esperarCi(pr) {
 
   const checks = executar('gh', ['pr', 'checks', String(pr), '--watch', '--interval', '20'], { stdio: 'inherit' });
   if (checks.status !== 0) {
+    // #587 (D4): o --watch saiu ≠ 0 e o stderr dele não chega aqui (stdio inherit).
+    // A decisão é pelo estado relido, não pelo texto do erro: fail/cancel → 5;
+    // leitura ilegível ou espera interrompida (pending/pass) → 69 nao-verificavel.
+    const relido = executar('gh', ['pr', 'checks', String(pr), '--json', 'name,bucket']);
+    let relidos;
+    try {
+      relidos = JSON.parse(relido.stdout);
+      if (!Array.isArray(relidos)) throw new Error('nao e lista');
+    } catch {
+      erro(`nao-verificavel: CI do PR ${pr} não pôde ser lido (gh pr checks saiu ${checks.status}; releitura sem JSON)`, relido.stderr);
+      return 69;
+    }
+    const falhos = relidos.filter((c) => c.bucket === 'fail' || c.bucket === 'cancel');
+    if (falhos.length) {
+      erro(`CI não verde no PR ${pr} (gh pr checks saiu ${checks.status}): ${falhos.map((c) => `${c.name} (${c.bucket})`).join(', ')}`);
+      return 5;
+    }
+    if (!falhos.length && relidos.length) {
+      erro(`nao-verificavel: espera do CI do PR ${pr} interrompida (gh pr checks saiu ${checks.status}); nenhum check falhou, mas nem todos concluíram`);
+      return 69;
+    }
     erro(`CI não verde no PR ${pr} (gh pr checks saiu ${checks.status}; "no checks reported" conta como não verde)`);
     return 5;
   }
