@@ -32,8 +32,8 @@
       7
     ],
     "em_voo": [],
-    "comando": "node scripts/rodar-longo.cjs iniciar --saida gw-t16.txt -- bash hooks/testa-gate-worktree.sh; bash scripts/testa-versao.sh; node scripts/conferir-versao.cjs; corpus do gate; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-24-gate-worktree; merge da origin/main (4cfff569, #603); bash scripts/testa-versao.sh; node scripts/conferir-versao.cjs; diff --stat 96cd278..HEAD em hooks/",
-    "saida": "baseline e455fb40: testa-gate-worktree 813 ok 0 falha; HEAD b1322560: 886 ok 0 falha; corpus 24/0; testa-versao 5/0; conferir-versao exit 0. Catraca: tarefas 1-6 vermelho, 7 pulada (n/a), exit 0, arvore limpa depois. Revisao 1 reprovou (1 media, 4 baixas); conserto 68113261: bateria 905 ok 0 falha (+19 casos), 7 mutacoes manuais vermelhas (continuacao, agrupamento filtro/parentese, mv origem, -t colado/combinado, heredoc no cd -). Reaberto porque o #603 entrou antes como 2.0.3: merge da main em 5d0a6bda, versao 2.0.4 (manifestos, selo, CHANGELOG acima da 2.0.3, plano e design); testa-versao 5/0; conferir-versao ok 2.0.4 (origin/main 2.0.3); diff de hooks/ entre 96cd278 e HEAD vazio (gate e bateria iguais aos verificados, 905/0).",
+    "comando": "node scripts/rodar-longo.cjs iniciar --saida gw-t16.txt -- bash hooks/testa-gate-worktree.sh; bash scripts/testa-versao.sh; node scripts/conferir-versao.cjs; corpus do gate; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-24-gate-worktree; merge da origin/main (4cfff569, #603); bash scripts/testa-versao.sh; node scripts/conferir-versao.cjs; diff --stat 96cd278..HEAD em hooks/; conserto do CI do #605: bash scripts/testa-dependencias-de-bateria.sh; bash hooks/testa-gate-worktree.sh",
+    "saida": "baseline e455fb40: testa-gate-worktree 813 ok 0 falha; HEAD b1322560: 886 ok 0 falha; corpus 24/0; testa-versao 5/0; conferir-versao exit 0. Catraca: tarefas 1-6 vermelho, 7 pulada (n/a), exit 0, arvore limpa depois. Revisao 1 reprovou (1 media, 4 baixas); conserto 68113261: bateria 905 ok 0 falha (+19 casos), 7 mutacoes manuais vermelhas (continuacao, agrupamento filtro/parentese, mv origem, -t colado/combinado, heredoc no cd -). Reaberto porque o #603 entrou antes como 2.0.3: merge da main em 5d0a6bda, versao 2.0.4 (manifestos, selo, CHANGELOG acima da 2.0.3, plano e design); testa-versao 5/0; conferir-versao ok 2.0.4 (origin/main 2.0.3); diff de hooks/ entre 96cd278 e HEAD vazio (gate e bateria iguais aos verificados, 905/0). Reaberto pelo CI do #605 (shard 3: testa-dependencias-de-bateria leu python em posicao de comando em 3 casos da bateria). Conserto 58ccf3a1 reescreve so o texto, mesmo comando: testa-dependencias-de-bateria 6 ok 0 falha; testa-gate-worktree 905 ok 0 falha (contagem igual). Shard 2 (testa-rodar-longo, PID vivo) fora do diff desta branch.",
     "mutacao": [
       {
         "tarefa": 1,
@@ -77,19 +77,19 @@
   "revisar": {
     "status": "pendente",
     "snapshot": {
-      "head": "96cd278b4bb25b9e508f5c9a16e8d0f5e3179efb",
+      "head": "9d538314a1067c0edd85b7daf0c08ce3708e1bf0",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ac420aaa0804fd865",
+        "agente_id": "a70463201fad39027",
         "veredito": "ok",
         "em": "2026-10-26",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-ac420aaa0804fd865.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-a70463201fad39027.jsonl"
       }
     ],
-    "base": "e455fb40",
+    "base": "4cfff569",
     "head": "HEAD",
     "achados": [
       {
@@ -150,6 +150,18 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-a7f1f5f43f03da2c0.jsonl"
           }
         ]
+      },
+      {
+        "volta": 4,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ac420aaa0804fd865",
+            "veredito": "ok",
+            "em": "2026-10-26",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind--claude-worktrees-apoio-ao-dev-lote-1/a8916a80-26c9-4137-b35b-c9bf409af105/subagents/agent-ac420aaa0804fd865.jsonl"
+          }
+        ]
       }
     ],
     "veredito": "ok",
@@ -172,6 +184,11 @@
       "em": "2026-10-26",
       "de": "verificar",
       "motivo": "PR #603 mergeou 2.0.3 na main antes; trazer a main e subir a versao para 2.0.4"
+    },
+    {
+      "em": "2026-10-26",
+      "de": "revisar",
+      "motivo": "CI do #605: varredura de dependencias leu python em posicao de comando em 3 casos da bateria; reescritos sem mudar o comando (58ccf3a1)"
     }
   ]
 }
