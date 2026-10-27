@@ -166,10 +166,24 @@ pronto quando: `commands/feedback.md` (linhas ~115-116) prescreve `` `Segue #<n>
 
 Provado por `bash hooks/testa-gate-fechar-issue.sh` sem falha e `grep -c "CORRIGE #<n>" commands/feedback.md` devolvendo `0`.
 
+### 8. gate-fechar-issue: `gh pr merge <URL>` consulta a Issue no repo da URL [tipo: implementar]
+atende: D6
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 6
+prova-na-base: verde — o caso entra na bateria existente; o vermelho é medido pela mutação
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `const repoDaIssue = repo || repoDaUrlDoPr(ref);`
+  para: `const repoDaIssue = repo;`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
+  fixture: `testa-gate-fechar-issue.sh, secao "#594 merge por URL", caso "pr merge <URL de outro repo> com Closes #12: consulta no repo da URL e barra"`
+pronto quando: achado da revisão de segurança automática sobre o commit da tarefa 5 (2026-10-27): no `gh pr merge <URL>`, o `--repo` é proibido (a URL já diz o repo) e a consulta de evidência corria contra o repo do cwd — Issue de mesmo número com marcador no repo do cwd deixaria passar o fechamento no repo da URL (bypass dentro do modelo de ameaça da D6). Forma do código: função de topo `repoDaUrlDoPr(ref)` devolve `dono/repo` de `https://github.com/<dono>/<repo>/pull/<n>` (com ou sem barra final), `null` para número ou qualquer outra forma; no caminho do merge, a linha exata `const repoDaIssue = repo || repoDaUrlDoPr(ref);` e as duas chamadas `verificarIssuesCitadas(..., repoDaIssue, cwdSegmento)` usam ela. Com o stub `gh` estendido por uma variável que devolve marcador SÓ quando o `issue view` vem SEM `--repo` (simula a Issue homônima com marcador no repo do cwd) e o `pr view` devolvendo corpo `Closes #12`: `gh pr merge https://github.com/caixa/repo/pull/7 --squash` → **2**; vizinho `gh pr merge https://github.com/caixa/repo/pull/7 --squash` com a Issue de `caixa/repo` com marcador → **0**; `gh pr merge 7 --squash` (número, sem URL) → comportamento de hoje. Provado por `bash hooks/testa-gate-fechar-issue.sh` sem falha.
+
 ### 7. Versão 2.0.5, README e colheita [tipo: docs]
 atende: D1, D8
-arquivos: `.claude-plugin/plugin.json`, `README.md`, `vigias/ERROS.md`
-depende de: 2, 4, 6
+arquivos: `.claude-plugin/plugin.json`, `README.md`, `vigias/ERROS.md`, `skills/executar/SKILL.md`, `skills/rainforest-mind/references/regra-11.md`
+depende de: 2, 4, 6, 8
 mutacao: n/a
   motivo: bump de versão e texto; o comportamento é medido pelas tarefas 1–6 e pela trava `conferir-versao`
-pronto quando: `.claude-plugin/plugin.json` em `2.0.5` e o badge do README com o mesmo número; o README descreve, onde já fala de cada peça, (a) a chave `saude-ignorar-config-dirs` com os padrões de fábrica `*bench*` e `*.aposentada`, (b) o 69 do `esperar-ci` como "não verificável" (rede ou espera interrompida) e o 8 como "nenhum workflow do checkout alcança PR"; nenhuma chave nova restaura o comportamento antigo (D1) — conferido por `node -e "const c=require('./hooks/lib/config.cjs').CHAVES;console.log(Object.keys(c).filter(k=>/saude|esperar|gate-fechar/.test(k)).join(','))"` devolvendo exatamente `gate-fechar-issue,saude-ignorar-config-dirs` (na base, 2026-10-27, devolve `gate-fechar-issue`). `vigias/ERROS.md` já está no commit do design. Provado por `node scripts/conferir-versao.cjs` com exit 0 e `ok    versao 2.0.5`.
+pronto quando: `.claude-plugin/plugin.json` em `2.0.5` e o badge do README com o mesmo número; o README descreve, onde já fala de cada peça, (a) a chave `saude-ignorar-config-dirs` com os padrões de fábrica `*bench*` e `*.aposentada`, (b) o 69 do `esperar-ci` como "não verificável" (rede ou espera interrompida) e o 8 como "nenhum workflow do checkout alcança PR"; nenhuma chave nova restaura o comportamento antigo (D1) — conferido por `node -e "const c=require('./hooks/lib/config.cjs').CHAVES;console.log(Object.keys(c).filter(k=>/saude|esperar|gate-fechar/.test(k)).join(','))"` devolvendo exatamente `gate-fechar-issue,saude-ignorar-config-dirs` (na base, 2026-10-27, devolve `gate-fechar-issue`). `vigias/ERROS.md` já está no commit do design. Achado da execução (2026-10-27): `skills/executar/SKILL.md` e `skills/rainforest-mind/references/regra-11.md` mandam o comando de preparo "literal com caminho absoluto"; o único absoluto conhecido no despacho é o do checkout principal, e o gate de worktree da 2.0.4 o barra (3 de 3 agentes pararam no passo 2). O texto passa a prescrever `node scripts/preparar-worktree.cjs --hash <hash>` com caminho RELATIVO, rodado de dentro do worktree do agente — conferido por `grep -n "preparar-worktree" skills/executar/SKILL.md skills/rainforest-mind/references/regra-11.md` sem nenhuma ocorrência de "caminho absoluto" ligada ao preparo. Provado por `node scripts/conferir-versao.cjs` com exit 0 e `ok    versao 2.0.5`.
