@@ -645,6 +645,18 @@ function bloqueia(motivo) {
 const REF_URL_PR_GITHUB = /^https:\/\/github\.com\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/pull\/\d+$/;
 const REPO_GH_CONSERVADOR = /^(?:[A-Za-z0-9.-]+\/)?[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 
+/**
+ * `dono/repo` da URL de um PR (`https://github.com/dono/repo/pull/n`, com ou
+ * sem barra final). `null` para número, vazio ou outra forma. #594: a URL diz
+ * o repo, e o `--repo` é proibido junto dela — sem isto a consulta da Issue
+ * corria no repo do cwd.
+ */
+function repoDaUrlDoPr(ref) {
+  if (typeof ref !== "string") return null;
+  const m = ref.match(/^https?:\/\/github\.com\/([A-Za-z0-9._-]+\/[A-Za-z0-9._-]+)\/pull\/\d+\/?$/);
+  return m ? m[1] : null;
+}
+
 // Conferido contra o manual (cli.github.com/manual/gh_pr_merge, 2026-10-10).
 const BOOLEANAS_PR_MERGE = new Set([
   "--squash", "-s", "--merge", "-m", "--rebase", "-r",
@@ -1078,6 +1090,7 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento, textoDoComando =
     const forma = analisarPrMerge(textoDoComando);
     if (forma.ajuda) return;
     const { ref, repo, mensagens, arquivos } = forma;
+    const repoDaIssue = repo || repoDaUrlDoPr(ref);
     for (const arquivo of arquivos) {
       const caminho = arquivo === "-" ? null
         : path.isAbsolute(normalizarMsys(arquivo)) ? normalizarMsys(arquivo)
@@ -1091,7 +1104,7 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento, textoDoComando =
     }
     for (const mensagem of mensagens) {
       verificarFalsasChaves(mensagem);
-      verificarIssuesCitadas(mensagem, repo, cwdSegmento);
+      verificarIssuesCitadas(mensagem, repoDaIssue, cwdSegmento);
     }
     if (ref === null && !cwdSegmento) {
       barraFormaPrMerge(`sem número do PR, o merge age no PR da branch do diretório, e o diretório deste comando não pôde ser determinado.`);
@@ -1130,7 +1143,7 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento, textoDoComando =
       return; // inalcançável (bloqueia sai do processo); documenta intenção
     }
 
-    verificarIssuesCitadas(corpo, repo, cwdSegmento);
+    verificarIssuesCitadas(corpo, repoDaIssue, cwdSegmento);
   }
 }
 

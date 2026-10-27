@@ -55,6 +55,12 @@ if "%1"=="issue" if "%2"=="view" (
     echo nao e json
     exit /b 0
   )
+  rem #594 merge por URL: com GH_MARCADOR_SO_SEM_REPO=1 o marcador so aparece SEM --repo.
+  if "%GH_MARCADOR_SO_SEM_REPO%"=="1" (
+    echo %* | findstr /C:"--repo" >nul && goto :issuecomrepo
+    echo {"comments":[{"body":"<!-- rainforest-evidencia --> Marcador presente"}]}
+    exit /b 0
+  )
   if "%GH_COM_MARCADOR%"=="1" (
     echo {"comments":[{"body":"<!-- rainforest-evidencia --> Marcador presente"}]}
   ) else (
@@ -79,6 +85,9 @@ exit /b 0
 :semrepo
 >&2 echo failed to run git: fatal: not a git repository
 exit /b 1
+:issuecomrepo
+echo {"comments":[{"body":"Sem marcador aqui"}]}
+exit /b 0
 STUB
 
 # Também criar versão shell para bash, caso resolvedor procure sem extensão
@@ -91,6 +100,11 @@ if [ "$1" = "issue" ] && [ "$2" = "view" ]; then
   fi
   if [ "${GH_ISSUE_VIEW_SAIDA:-}" = "vazio" ]; then exit 0; fi
   if [ "${GH_ISSUE_VIEW_SAIDA:-}" = "lixo" ]; then echo "nao e json"; exit 0; fi
+  # (#594 merge por URL) com GH_MARCADOR_SO_SEM_REPO=1 o marcador so aparece SEM --repo.
+  if [ "${GH_MARCADOR_SO_SEM_REPO:-}" = "1" ]; then
+    case " $* " in *" --repo "*) echo '{"comments":[{"body":"Sem marcador aqui"}]}' ;; *) echo '{"comments":[{"body":"<!-- rainforest-evidencia --> Marcador presente"}]}' ;; esac
+    exit 0
+  fi
   if [ "$GH_COM_MARCADOR" = "1" ]; then
     echo '{"comments":[{"body":"<!-- rainforest-evidencia --> Marcador presente"}]}'
   else
@@ -3530,6 +3544,43 @@ else
   : > "$SBP/err-592"
 fi
 [ $EXIT_592 -eq 0 ] && test_ok "forma prescrita pelo /feedback passa pelo gate" || test_fail "forma prescrita pelo /feedback passa pelo gate (exit $EXIT_592: $(cat "$SBP/err-592"))"
+
+# #594 merge por URL: `gh pr merge <URL>` consulta a Issue no repo da URL, não no
+# repo do cwd. O stub acha marcador SÓ sem --repo (GH_MARCADOR_SO_SEM_REPO=1), então
+# a Issue homônima com marcador no cwd não pode liberar o merge da URL.
+echo
+echo "== #594 merge por URL =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR="" GH_MARCADOR_SO_SEM_REPO=1
+  export GH_PR_VIEW_BODY="Closes #12"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge https://github.com/caixa/repo/pull/7 --squash"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-594m-1"
+EXIT_594M_1=$?
+[ $EXIT_594M_1 -eq 2 ] && test_ok "594m-1 pr merge <URL caixa/repo> com Closes #12, marcador só sem --repo: exit 2" || test_fail "594m-1 pr merge <URL caixa/repo> com Closes #12, marcador só sem --repo: exit 2 (foi $EXIT_594M_1: $(cat "$SBP/err-594m-1"))"
+ERR_594M_1="$(cat "$SBP/err-594m-1")"
+echo "$ERR_594M_1" | grep -qF "Issue #12 não tem comentário" && test_ok "594m-1 stderr cita a Issue #12 sem evidência" || test_fail "594m-1 stderr sem 'Issue #12 não tem comentário' ($ERR_594M_1)"
+
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR=1
+  export GH_PR_VIEW_BODY="Closes #12"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge https://github.com/caixa/repo/pull/7 --squash"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-594m-2"
+EXIT_594M_2=$?
+[ $EXIT_594M_2 -eq 0 ] && test_ok "594m-2 mesma URL com marcador (com e sem --repo): exit 0" || test_fail "594m-2 mesma URL com marcador: exit 0 (foi $EXIT_594M_2: $(cat "$SBP/err-594m-2"))"
+
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR="" GH_MARCADOR_SO_SEM_REPO=1
+  export GH_PR_VIEW_BODY="Closes #12"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr merge 7 --squash"}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-594m-3"
+EXIT_594M_3=$?
+[ $EXIT_594M_3 -eq 0 ] && test_ok "594m-3 pr merge 7 (número, sem URL) com marcador sem --repo: exit 0 (consulta no cwd)" || test_fail "594m-3 pr merge 7 (número): exit 0 (foi $EXIT_594M_3: $(cat "$SBP/err-594m-3"))"
 
 # Resultado final
 echo
