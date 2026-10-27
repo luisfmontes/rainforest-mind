@@ -24,8 +24,8 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-27",
-    "tarefas_ok": 3,
-    "tarefas": 7,
+    "tarefas_ok": 4,
+    "tarefas": 8,
     "carimbos": [
       {
         "tarefa": 1,
@@ -86,7 +86,7 @@
       },
       {
         "agente": "executor",
-        "tarefa": "6 feedback Segue #",
+        "tarefa": "8 gate merge por URL",
         "desde": "2026-10-27",
         "sessao": "bbe7888f-e761-411a-988c-b38fada6b86e"
       }
