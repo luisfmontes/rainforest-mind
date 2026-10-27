@@ -158,8 +158,8 @@ depende de: 5
 prova-na-base: verde — o caso novo lê a forma de `commands/feedback.md`; na base ele não existe, e o vermelho é medido pela mutação
 mutacao:
   arquivo: `commands/feedback.md`
-  de: `` `Segue #<n>: ...` ``
-  para: `` `CORRIGE #<n>: ...` ``
+  de: Segue #<n>: ...
+  para: CORRIGE #<n>: ...
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
   fixture: `testa-gate-fechar-issue.sh, secao "#592", caso "forma prescrita pelo /feedback passa pelo gate"`
 pronto quando: `commands/feedback.md` (linhas ~115-116) prescreve `` `Segue #<n>: ...` `` e não contém mais `CORRIGE #<n>`. O caso novo extrai do `commands/feedback.md` real a forma entre crases que segue "na primeira linha:", troca `<n>` por `591` e `...` por `texto`, e roda `gh issue create --title "<forma>" --body "<forma>"` pelo gate → **exit 0**. Com a mutação (forma `CORRIGE`) → **exit 2**, e o caso fica vermelho. Se a extração não achar a forma, o caso falha (nunca pula).
