@@ -98,7 +98,7 @@ Sensor: <nome>
 Fora da lista ou ilegível registra no log e despacha; só `sensores` malformado nega. Ver `references/sensor-no-briefing.md`.
 
 O briefing de cada agente leva, sempre:
-- **O hash da base** (regra 11) com comando de preparo (forma `node <caminho>/preparar-worktree.cjs --hash <hash>`), montado com `git rev-parse`, nunca digitado. Agente roda esse comando, cola saída, exit ≠ 0 é aborto.
+- **O hash da base** (regra 11) com comando de preparo (forma `node scripts/preparar-worktree.cjs --hash <hash>`, relativo, de dentro do worktree do agente — regra 11). Agente roda esse comando, cola saída, exit ≠ 0 é aborto.
 - **Os caminhos que a tarefa promete criar**, para o `--espera` da integração
   abaixo — sem eles, arquivo que o agente cria e nunca chega ao commit passa
   por todas as outras checagens.

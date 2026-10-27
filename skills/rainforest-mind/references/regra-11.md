@@ -154,8 +154,11 @@ resultado.
 > worktree, não estado estável. Daí o `--ff-only` abaixo ser preferível a
 > parar, quando o toplevel está certo e só o HEAD diverge.
 
-**(2) O briefing leva o comando de preparo**, literal com caminho absoluto,
-montado com `git rev-parse`, nunca digitado. Forma: `node <caminho>/preparar-worktree.cjs --hash <hash> [--exige <arquivo>]...`.
+**(2) O briefing leva o comando de preparo**, literal, com caminho RELATIVO,
+montado com `git rev-parse`, nunca digitado. Forma: `node scripts/preparar-worktree.cjs --hash <hash> [--exige <arquivo>]...`,
+rodado de dentro do worktree do agente (a cópia dele). O caminho é relativo porque o gate
+de worktree barra o caminho do checkout principal no comando do agente (`hooks/gate-worktree.cjs:447`),
+e o absoluto do worktree do agente não é conhecido no despacho (2026-10-27: 3 de 3 agentes pararam no passo 2).
 O agente roda esse comando, cola a saída. Exit 0 → base confirmada, segue.
 Exit ≠ 0 → divergência ou arquivo faltante: PARA e reporta.
 
