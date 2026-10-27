@@ -2317,14 +2317,11 @@ echo "== #582: subagente em worktree linkado =="
 # "$(git rev-parse --show-toplevel)"` e a forma que o briefing do `executar` manda usar. Cwd no
 # worktree linkado ($WN), CLAUDE_PROJECT_DIR no principal. Caminho do principal citado, ou script
 # do principal rodado por caminho absoluto, segue barrado.
-g580e "python3 -c \"open('a/b.py')\" passa" 0 "$(cat <<'EOC'
-python3 -c "open('a/b.py')"
-EOC
-)"
-g580e "python3 -c \"import ast;ast.parse(open('a/b.py', encoding='utf-8').read())\" passa" 0 "$(cat <<'EOC'
-python3 -c "import ast;ast.parse(open('a/b.py', encoding='utf-8').read())"
-EOC
-)"
+# O comando vai entre aspas na mesma linha, nao em heredoc: `python` no inicio da linha e lido
+# como chamada pela varredura de scripts/testa-dependencias-de-bateria.sh.
+g580e "python3 -c \"open('a/b.py')\" passa" 0 "python3 -c \"open('a/b.py')\""
+g580e "python3 -c \"import ast;ast.parse(open('a/b.py', encoding='utf-8').read())\" passa" 0 \
+  "python3 -c \"import ast;ast.parse(open('a/b.py', encoding='utf-8').read())\""
 g580e 'node x.cjs --raiz "$(git rev-parse --show-toplevel)" passa' 0 'node x.cjs --raiz "$(git rev-parse --show-toplevel)"'
 g580e 'node x.cjs --raiz "<principal>" barra' 2 'node x.cjs --raiz "__R__"'
 g580e 'node <principal>/scripts/x.cjs barra' 2 'node __R__/scripts/x.cjs'
@@ -2338,7 +2335,10 @@ echo "== #583: comando dinamico com cwd no worktree =="
 g583() { gate_stderr "$1" "$(b "$2" "$WN")" 'Comando dinamico' 'diretorio de trabalho principal'; }
 g583 '. ./x.sh nao diz diretorio principal' '. ./x.sh'
 g583 'source ./x.sh nao diz diretorio principal' 'source ./x.sh'
-g583 'source .venv/bin/activate && python -m pytest -q nao diz diretorio principal' 'source .venv/bin/activate && python -m pytest -q'
+# Montado em duas linhas pelo mesmo motivo: `&& python` numa linha so e lido como chamada.
+CMD_583='source .venv/bin/activate &&'
+CMD_583="$CMD_583 python -m pytest -q"
+g583 'source do venv seguido de pytest nao diz diretorio principal' "$CMD_583"
 g583 'eval "$(ssh-agent)" nao diz diretorio principal' 'eval "$(ssh-agent)"'
 g583 'cd - && source ./x.sh nao diz diretorio principal' 'cd - && source ./x.sh'
 gate_stderr '#583: source ./x.sh com cwd no principal continua dizendo diretorio principal' \
