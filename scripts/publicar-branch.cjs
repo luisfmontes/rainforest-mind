@@ -205,21 +205,32 @@ function alcancaPr(texto) {
   return !pushSoEmNomesFixos(texto);
 }
 
-// Todo bloco `push:` (chave sozinha na linha) tem `branches:` sem `*` nem
-// `branches-ignore`. Sem bloco nenhum, o push não tem filtro legível: false. Um
-// `on:` em forma de fluxo com push (`on: push`, `on: [push]`) dispara em toda
-// branch, e um `push:` noutro ponto (de `with:`, `env:`) não o filtra: false.
-// Comentário de fim de linha sai antes de procurar `branches:`.
+// O push é filtrado só quando o gatilho é legível na forma exata: `on:` de topo
+// em bloco, e todo filho direto dele que cita push é `push:` sozinho na linha com
+// `branches:` sem `*` nem `branches-ignore` no próprio bloco. Qualquer outra forma
+// (`on: push`, `on: [push]`, `- push`, `push: {}`) dispara em toda branch ou não
+// é legível, e um `push:` de `with:`/`env:` nem é filho de `on:`: false, conta.
+// Comentário de fim de linha sai antes da leitura.
 function pushSoEmNomesFixos(texto) {
-  if (/^\s*["']?on["']?\s*:[^\n#]*\bpush\b/m.test(texto)) return false;
   const linhas = texto.split(/\r?\n/).map((l) => l.replace(/\s#.*$/, ''));
   const recuo = (l) => l.match(/^\s*/)[0].length;
-  const inicios = linhas.map((l, i) => (/^\s*push\s*:\s*(#.*)?$/.test(l) ? i : -1)).filter((i) => i !== -1);
-  if (!inicios.length) return false;
-  return inicios.every((i) => {
+  const util = (l) => l.trim() && !/^\s*#/.test(l);
+  const iOn = linhas.findIndex((l) => /^["']?on["']?\s*:\s*$/.test(l));
+  if (iOn === -1) return false;
+  const filhos = [];
+  let recuoFilho = null;
+  for (let i = iOn + 1; i < linhas.length && !(util(linhas[i]) && recuo(linhas[i]) === 0); i++) {
+    if (!util(linhas[i])) continue;
+    if (recuoFilho === null) recuoFilho = recuo(linhas[i]);
+    if (recuo(linhas[i]) === recuoFilho) filhos.push(i);
+  }
+  const pushes = filhos.filter((i) => /\bpush\b/.test(linhas[i]));
+  if (!pushes.length) return false;
+  return pushes.every((i) => {
+    if (!/^\s*["']?push["']?\s*:\s*$/.test(linhas[i])) return false;
     const bloco = [];
     for (const l of linhas.slice(i + 1)) {
-      if (!l.trim() || /^\s*#/.test(l)) continue;
+      if (!util(l)) continue;
       if (recuo(l) <= recuo(linhas[i])) break;
       bloco.push(l);
     }

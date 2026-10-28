@@ -459,6 +459,41 @@ roda "$CAIXA" esperar-ci --pr 7
 [ "$CODIGO" -eq 5 ]; afirma "(g30) comentario de fim de linha com branches: nao filtra o push: sai 5 (exit=$CODIGO)" $?
 caixa_limpa
 
+# (g31) on: em varias linhas com `- push` (lista) e um push: de with: filtrado em
+# main: o gatilho dispara em toda branch, o with: nao e filho de on:: sai 5, nao 8.
+workflow ci.yml <<'YML'
+on:
+  - push
+jobs:
+  b:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: x/y@v1
+        with:
+          push:
+            branches: [main]
+YML
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 5 ]; afirma "(g31) on: com - push e push: de with: filtrado: sai 5, nao 8 (exit=$CODIGO)" $?
+caixa_limpa
+
+# (g32) o mesmo com `push: {}` como filho de on:: forma que nao e bloco, conta: sai 5.
+workflow ci.yml <<'YML'
+on:
+  push: {}
+jobs:
+  b:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: x/y@v1
+        with:
+          push:
+            branches: [main]
+YML
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 5 ]; afirma "(g32) on: com push: {} e push: de with: filtrado: sai 5, nao 8 (exit=$CODIGO)" $?
+caixa_limpa
+
 # (g22) cwd fora de repositorio git: o script para antes de ler workflow (main), nunca 8.
 mkdir -p "$S/fora"
 roda "$S/fora" esperar-ci --pr 7
