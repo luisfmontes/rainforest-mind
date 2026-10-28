@@ -103,12 +103,12 @@ depende de: 3
 prova-na-base: verde — os casos entram na bateria existente; o vermelho é medido pela mutação
 mutacao:
   arquivo: `scripts/publicar-branch.cjs`
-  de: `return /\bpull_request/.test(texto) || (/\bpush\b/.test(texto) && !/\bbranches(-ignore)?\s*:/.test(texto));`
-  para: `return false;`
+  de: `if (/\bpull_request/.test(texto)) return true;`
+  para: `if (/\bpull_request/.test(texto)) return false;`
   bateria: `bash scripts/testa-publicar-branch.sh`
-  fixture: `testa-publicar-branch.sh, secao "(g) esperar-ci", caso "(g14) workflow com pull_request e PR sem check: sai 5"`
+  fixture: `testa-publicar-branch.sh, secao "(g) esperar-ci", caso "(g19) workflow com pull_request e PR sem check: sai 5" (emenda da revisão 1: o corpo de alcancaPr virou três linhas, a âncora é a do gatilho pull_request)`
 pronto quando: forma do código:
-- Função de topo `alcancaPr(texto)` com o corpo exato da linha `de:`.
+- Função de topo `alcancaPr(texto)`: `pull_request` conta; `push` conta salvo filtro `branches:` de nomes fixos (`branches-ignore` ou `*` contam — emenda da revisão 1).
 - Função de topo `workflowsDePr(raiz)`: `git ls-files .github/workflows` com `cwd: raiz`; status ≠ 0 → `null` (desconhecido); senão lê cada `.yml`/`.yaml` listado e devolve quantos `alcancaPr` aceita.
 - Em `esperarCi`, a consulta `gh api repos/{owner}/{repo}/actions/workflows` sai; `semCiDePr` = `workflowsDePr(process.cwd()) === 0`. `null` segue o caminho de hoje (sem 8). O resto do ramo (PR sem check → 8, mensagem `repositório sem CI de PR`, `merge autorizado`/`pare no PR aberto`) fica.
 - O stub `STUB_WORKFLOWS` deixa de ser lido pelo script; os casos g11/g12 passam a se apoiar na caixa sem `.github/workflows`.
