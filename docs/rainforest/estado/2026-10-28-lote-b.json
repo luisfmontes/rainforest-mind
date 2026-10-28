@@ -23,7 +23,7 @@
     "em": "2026-10-28"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-28",
     "integradas": [
       1,
@@ -86,33 +86,51 @@
         "motivo": "comentario e texto; comportamento medido pelas tarefas 1 a 8"
       }
     ],
-    "reaberturas": 1
+    "reaberturas": 2,
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-28"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "ab49ac374afa6161fe201f7396706acefd1728c1",
+      "head": "3087fabc9177864ca3bafa9be7b84e9df35b854c",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a82142008c6ff96e0",
-        "veredito": "ok",
-        "em": "2026-10-28",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/8a96ac43-ade9-4b4e-a6e0-475b7105c7df/subagents/agent-a82142008c6ff96e0.jsonl"
-      },
-      {
-        "agente": "rainforest-mind:revisor",
-        "agente_id": "ae1aefc8a1f1dd62e",
+        "agente_id": "a48dde6419f3057b7",
         "veredito": "reprovado",
         "em": "2026-10-28",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/8a96ac43-ade9-4b4e-a6e0-475b7105c7df/subagents/agent-ae1aefc8a1f1dd62e.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/8a96ac43-ade9-4b4e-a6e0-475b7105c7df/subagents/agent-a48dde6419f3057b7.jsonl"
       }
     ],
-    "achados": 8,
+    "achados": 1,
     "em": "2026-10-28",
-    "tentativas": 1
+    "tentativas": 2,
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a82142008c6ff96e0",
+            "veredito": "ok",
+            "em": "2026-10-28",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/8a96ac43-ade9-4b4e-a6e0-475b7105c7df/subagents/agent-a82142008c6ff96e0.jsonl"
+          },
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ae1aefc8a1f1dd62e",
+            "veredito": "reprovado",
+            "em": "2026-10-28",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/8a96ac43-ade9-4b4e-a6e0-475b7105c7df/subagents/agent-ae1aefc8a1f1dd62e.jsonl"
+          }
+        ]
+      }
+    ]
   },
   "verificar": {
     "status": "pendente"

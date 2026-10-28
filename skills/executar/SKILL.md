@@ -58,16 +58,8 @@ desperdiçado.
 
 `isolation: "worktree"` em toda chamada de `Agent` que vai tocar arquivo —
 é isto que permite o paralelo: sem isolamento, dois agentes na mesma árvore
-conflitam entre si, e foi por isso que o superpowers proibiu paralelo de
-implementadores. Aqui não precisa proibir porque a trava existe.
-
-**Fora de repo (#565), cada tarefa paralela ganha a sua branch `fluxo/<slug>-t<n>`.**
-Sem sessão dentro do repositório, `isolation: "worktree"` não despacha, e os
-worktrees se criam à mão e se declaram na linha `Worktree:` do briefing. A portaria
-lê a branch do worktree declarado, e o git não deixa a mesma branch em dois
-worktrees: crie cada um da ponta de `fluxo/<slug>` (`git worktree add <dir> -b
-fluxo/<slug>-t<n> fluxo/<slug>`). A forma `-t<n>`, só com dígitos, casa com o fluxo
-`<slug>` (#613, #610); outro sufixo não casa.
+conflitam entre si (a trava dispensa proibir o paralelo). Fora de repo, branch
+`fluxo/<slug>-t<n>`: `references/paralelo-fora-de-repo.md`.
 
 **Agente que edita nunca é retomado por `SendMessage`** — despacha-se de novo,
 com briefing corrigido. O worktree isolado pode não existir mais na retomada, e
