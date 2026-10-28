@@ -428,13 +428,14 @@ function git(dir, args) {
  * Achado na revisao do lote 4.
  */
 const FALSA_CHAVE =
-  /\b(?:fecha|fecham|fechada|fechado|encerra|encerrada|encerrado|conclui|conclu[íi]da|conclu[íi]do|corrige|corrigida|corrigido|resolvida|resolvido)\s+(?:[oa]s?\s+)?(?:#|https?:\/\/\S*\/issues\/)(\d+)/gi;
+  /\b(?:fecha|fecham|fechada|fechado|encerra|encerrada|encerrado|conclui|conclu[íi]da|conclu[íi]do|corrige|corrigida|corrigido|resolvida|resolvido)\s+(?:[oa]s?\s+)?(?:(?:[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)?#|https?:\/\/\S*\/issues\/)(\d+)/gi;
 
 /**
  * Extrai a lista de Issues citadas num corpo de PR usando padrões de fechamento.
  * Padrão: close(s|d)|fix(es|ed)|resolve(s|d) seguido de `#<n>` OU da URL
  * completa da Issue (`https://github.com/org/repo/issues/<n>`).
- * Retorna array de números únicos encontrados.
+ * Retorna array de `{ numero, repo }` sem repetir o par: `repo` é `owner/repo`
+ * quando a citação traz o repo (`owner/repo#N` ou a URL), e `null` para `#N`.
  *
  * M2 (auditor, 5a revisao, 2026-09-03): o GitHub tambem fecha Issue quando o
  * corpo cita a URL completa, nao so `#N` — `Closes
@@ -444,14 +445,25 @@ const FALSA_CHAVE =
  * resolves, resolved), nao verificado por rede nesta rodada.
  */
 function extrairIssuesCitadas(corpo) {
+  // Grupos: 1-2 = owner/repo de `owner/repo#N`; 3 = prefixo da URL antes de
+  // `/issues/`; 4 = o número, em qualquer das formas.
   const regex =
-    /\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+(?:#|https?:\/\/\S*\/issues\/)(\d+)/gi;
-  const issues = new Set();
+    /\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+(?:([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)#|#|(https?:\/\/\S*)\/issues\/)(\d+)/gi;
+  const issues = new Map();
   let match;
   while ((match = regex.exec(corpo)) !== null) {
-    issues.add(parseInt(match[1], 10));
+    const numero = parseInt(match[4], 10);
+    let repo = null;
+    if (match[1]) {
+      repo = `${match[1]}/${match[2]}`;
+    } else if (match[3]) {
+      // Sem repo parseável na URL, fica null: vale o repo do comando.
+      const porUrl = /^https?:\/\/[^/]+\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/.exec(match[3]);
+      repo = porUrl ? `${porUrl[1]}/${porUrl[2]}` : null;
+    }
+    issues.set(`${repo || ""}#${numero}`, { numero, repo });
   }
-  return Array.from(issues);
+  return Array.from(issues.values());
 }
 
 /**
@@ -467,7 +479,10 @@ function extrairIssuesComFalsaChave(corpo) {
     // Extrair a palavra-chave falsa do match completo
     const textoCompleto = match[0];
     const palavraChave = textoCompleto.split(/\s+/)[0];
-    issues.push({ numero: numeroIssue, palavra: palavraChave.toLowerCase() });
+    // Com `owner/repo#N` na citação, a sugestão de troca leva o repo junto.
+    const repoCitado = /([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)#/.exec(textoCompleto);
+    const ref = repoCitado ? `${repoCitado[1]}#${numeroIssue}` : `#${numeroIssue}`;
+    issues.push({ numero: numeroIssue, palavra: palavraChave.toLowerCase(), ref });
   }
   return issues;
 }
@@ -898,26 +913,32 @@ function analisarPrMerge(texto) {
  */
 function verificarIssuesCitadas(corpo, repo, cwdSegmento) {
   const issues = extrairIssuesCitadas(corpo || "");
-  for (const issue of issues) {
-    const evidencia = temMarcadorEvidencia(issue, repo, cwdSegmento);
+  for (const citada of issues) {
+    const issue = citada.numero;
+    const repoDaIssue = citada.repo || repo;
+    // Rótulo humano e --repo dos comandos sugeridos: só quando a citação trouxe
+    // o repo (owner/repo#N ou URL). Sem ele, a mensagem segue como antes (#N).
+    const rotulo = citada.repo ? `${citada.repo}#${issue}` : `#${issue}`;
+    const flagRepo = citada.repo ? ` --repo ${citada.repo}` : "";
+    const evidencia = temMarcadorEvidencia(issue, repoDaIssue, cwdSegmento);
     if (!evidencia.ok) {
       // Falha de leitura (D6, #594): fail-closed, mas a mensagem não manda
       // comentar a evidência — ela já pode estar lá.
       bloqueia(
         `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-        `Razão: não consegui ler a Issue #${issue}: ${evidencia.erro}; rode de dentro do repositório ou use --repo.\n`
+        `Razão: não consegui ler a Issue ${rotulo}: ${evidencia.erro}; rode de dentro do repositório ou use --repo.\n`
       );
     }
     if (!evidencia.tem) {
       bloqueia(
         `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-        `Razão: Issue #${issue} não tem comentário com a evidência de pronto.\n\n` +
+        `Razão: Issue ${rotulo} não tem comentário com a evidência de pronto.\n\n` +
         `O gate procura, nos comentários da Issue, a linha ${MARCADOR} — comentário sem ela não conta.\n\n` +
         `Issue que o merge deste PR vai fechar (o caso comum): comente a evidência COM o marcador, sem fechar,\n` +
         `e rode o gh pr em comando separado — o gate lê o comando inteiro antes de qualquer parte rodar:\n` +
-        `  'gh issue comment ${issue} --body-file <arquivo>' — 1ª linha do arquivo: ${MARCADOR}; depois, comando e saída\n\n` +
+        `  'gh issue comment ${issue}${flagRepo} --body-file <arquivo>' — 1ª linha do arquivo: ${MARCADOR}; depois, comando e saída\n\n` +
         `Issue que já deve fechar agora, antes do PR:\n` +
-        `  node scripts/fechar-issue.cjs ${issue} --comando "<seu-comando>" --saida "<texto colado>" ou --saida-arquivo <caminho dentro do repo>\n`
+        `  node scripts/fechar-issue.cjs ${issue}${flagRepo} --comando "<seu-comando>" --saida "<texto colado>" ou --saida-arquivo <caminho dentro do repo>\n`
       );
     }
   }
@@ -935,11 +956,11 @@ function verificarFalsasChaves(corpo) {
   // Tomar o primeiro caso para a mensagem
   const primeiro = issues[0];
   bloqueia(
-    `BLOQUEADO: "${primeiro.palavra} #${primeiro.numero}" não é palavra-chave do GitHub — a issue fica aberta depois do merge.\n` +
+    `BLOQUEADO: "${primeiro.palavra} ${primeiro.ref}" não é palavra-chave do GitHub — a issue fica aberta depois do merge.\n` +
     `O GitHub reconhece, em inglês: close/closes/closed, fix/fixes/fixed, resolve/resolves/resolved.\n` +
     `A palavra repete antes de cada número: "Closes #81, closes #79".\n` +
-    `Troque por:  Closes #${primeiro.numero}\n` +
-    `Se a referência é deliberada e NÃO deve fechar, use uma palavra neutra: "Segue #${primeiro.numero}", "Ver #${primeiro.numero}".\n`
+    `Troque por:  Closes ${primeiro.ref}\n` +
+    `Se a referência é deliberada e NÃO deve fechar, use uma palavra neutra: "Segue ${primeiro.ref}", "Ver ${primeiro.ref}".\n`
   );
 }
 

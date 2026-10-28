@@ -47,6 +47,13 @@ cat > "$SBP/bin/gh.cmd" <<'STUB'
 rem #594 com GH_ISSUE_VIEW_EXIGE_REPO=1, o issue view so funciona com --repo caixa/repo.
 rem GH_ISSUE_VIEW_SAIDA=vazio (exit 0, stdout vazio) ou lixo (exit 0, nao e JSON) simula leitura sem conteudo.
 if "%1"=="issue" if "%2"=="view" (
+  rem (#614) STUB_LOG registra a leitura; GH_MARCADOR_REPO+GH_MARCADOR_NUM dao marcador so ao par (repo, numero).
+  if defined STUB_LOG echo %*>>"%STUB_LOG%"
+  if defined GH_MARCADOR_NUM (
+    echo %* | findstr /C:"--repo %GH_MARCADOR_REPO%" >nul && if "%3"=="%GH_MARCADOR_NUM%" goto :marcadorpar
+    echo {"comments":[{"body":"Sem marcador aqui"}]}
+    exit /b 0
+  )
   if "%GH_ISSUE_VIEW_EXIGE_REPO%"=="1" (
     echo %* | findstr /C:"--repo caixa/repo" >nul || goto :semrepo
   )
@@ -92,12 +99,27 @@ exit /b 1
 :issuecomrepo
 echo {"comments":[{"body":"Sem marcador aqui"}]}
 exit /b 0
+:marcadorpar
+echo {"comments":[{"body":"<!-- rainforest-evidencia --> Marcador presente"}]}
+exit /b 0
 STUB
 
 # Também criar versão shell para bash, caso resolvedor procure sem extensão
 cat > "$SBP/bin/gh" <<'STUB'
 #!/bin/bash
 if [ "$1" = "issue" ] && [ "$2" = "view" ]; then
+  # (#614) STUB_LOG registra a leitura; GH_MARCADOR_REPO+GH_MARCADOR_NUM dao marcador so ao par (repo, numero).
+  if [ -n "${STUB_LOG:-}" ]; then echo "issue view ${*:3}" >> "$STUB_LOG"; fi
+  if [ -n "${GH_MARCADOR_NUM:-}" ]; then
+    rep=""; prev=""
+    for a in "$@"; do if [ "$prev" = "--repo" ]; then rep="$a"; fi; prev="$a"; done
+    if [ "$3" = "$GH_MARCADOR_NUM" ] && [ "$rep" = "${GH_MARCADOR_REPO:-}" ]; then
+      echo '{"comments":[{"body":"<!-- rainforest-evidencia --> Marcador presente"}]}'
+    else
+      echo '{"comments":[{"body":"Sem marcador aqui"}]}'
+    fi
+    exit 0
+  fi
   # (#594) com GH_ISSUE_VIEW_EXIGE_REPO=1, o issue view só funciona com --repo caixa/repo.
   if [ "${GH_ISSUE_VIEW_EXIGE_REPO:-}" = "1" ]; then
     case " $* " in *" --repo caixa/repo "*) ;; *) echo "failed to run git: fatal: not a git repository" >&2; exit 1 ;; esac
@@ -3598,6 +3620,89 @@ EXIT_594M_2=$?
 ) 2>"$SBP/err-594m-3"
 EXIT_594M_3=$?
 [ $EXIT_594M_3 -eq 0 ] && test_ok "594m-3 pr merge 7 (número, sem URL) com marcador sem --repo: exit 0 (consulta no cwd)" || test_fail "594m-3 pr merge 7 (número): exit 0 (foi $EXIT_594M_3: $(cat "$SBP/err-594m-3"))"
+
+# #614: Issue citada de outro repo (owner/repo#N ou URL) é consultada NO REPO DELA,
+# não no --repo do comando. Antes, a URL de caixa/outro#12 era lida em caixa/alvo,
+# e um marcador em caixa/alvo#12 liberava o fechamento de caixa/outro#12 sem evidência.
+# GH_MARCADOR_REPO+GH_MARCADOR_NUM dão o marcador só ao par (repo, número) do stub.
+echo
+echo "== #614 Issue de outro repo: consulta no repo da citação =="
+
+# (614-1) URL de caixa/outro#12, marcador só em caixa/alvo#12 → exit 2 citando caixa/outro#12
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_MARCADOR_REPO=caixa/alvo GH_MARCADOR_NUM=12 STUB_LOG="$SBP_WIN/log-614-1"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create -R caixa/alvo --body \"Closes https://github.com/caixa/outro/issues/12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-614-1"
+EXIT_614_1=$?
+[ $EXIT_614_1 -eq 2 ] && test_ok "614-1 URL de caixa/outro#12, marcador só em caixa/alvo#12: exit 2" || test_fail "614-1 URL de caixa/outro#12, marcador só em caixa/alvo#12: exit 2 (foi $EXIT_614_1: $(cat "$SBP/err-614-1"))"
+ERR_614_1="$(cat "$SBP/err-614-1")"
+echo "$ERR_614_1" | grep -qF "Issue caixa/outro#12 não tem comentário" && test_ok "614-1 stderr nomeia caixa/outro#12" || test_fail "614-1 stderr sem 'Issue caixa/outro#12 não tem comentário' ($ERR_614_1)"
+grep -qF "issue view 12 --json comments --repo caixa/outro" "$SBP/log-614-1" && test_ok "614-1 leitura feita no repo da URL (caixa/outro)" || test_fail "614-1 leitura sem 'issue view 12 --json comments --repo caixa/outro' (log: $(cat "$SBP/log-614-1" 2>/dev/null))"
+
+# (614-2) mesmo comando, marcador em caixa/outro#12 → exit 0 (contraprova)
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_MARCADOR_REPO=caixa/outro GH_MARCADOR_NUM=12
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create -R caixa/alvo --body \"Closes https://github.com/caixa/outro/issues/12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-614-2"
+EXIT_614_2=$?
+[ $EXIT_614_2 -eq 0 ] && test_ok "614-2 URL de caixa/outro#12, marcador em caixa/outro#12: exit 0" || test_fail "614-2 URL de caixa/outro#12, marcador em caixa/outro#12: exit 0 (foi $EXIT_614_2: $(cat "$SBP/err-614-2"))"
+
+# (614-3) owner/repo#N depois de Fixes, marcador só em caixa/alvo#12 → exit 2 citando caixa/outro#12
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_MARCADOR_REPO=caixa/alvo GH_MARCADOR_NUM=12
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create -R caixa/alvo --body \"Fixes caixa/outro#12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-614-3"
+EXIT_614_3=$?
+[ $EXIT_614_3 -eq 2 ] && test_ok "614-3 Fixes caixa/outro#12, marcador só em caixa/alvo#12: exit 2" || test_fail "614-3 Fixes caixa/outro#12, marcador só em caixa/alvo#12: exit 2 (foi $EXIT_614_3: $(cat "$SBP/err-614-3"))"
+ERR_614_3="$(cat "$SBP/err-614-3")"
+echo "$ERR_614_3" | grep -qF "Issue caixa/outro#12 não tem comentário" && test_ok "614-3 stderr nomeia caixa/outro#12" || test_fail "614-3 stderr sem 'Issue caixa/outro#12 não tem comentário' ($ERR_614_3)"
+
+# (614-4) mesmo comando, marcador em caixa/outro#12 → exit 0
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_MARCADOR_REPO=caixa/outro GH_MARCADOR_NUM=12
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create -R caixa/alvo --body \"Fixes caixa/outro#12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-614-4"
+EXIT_614_4=$?
+[ $EXIT_614_4 -eq 0 ] && test_ok "614-4 Fixes caixa/outro#12, marcador em caixa/outro#12: exit 0" || test_fail "614-4 Fixes caixa/outro#12, marcador em caixa/outro#12: exit 0 (foi $EXIT_614_4: $(cat "$SBP/err-614-4"))"
+
+# (614-5) vizinho: Closes #12 sem repo na citação, marcador em caixa/alvo#12 → exit 0
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_MARCADOR_REPO=caixa/alvo GH_MARCADOR_NUM=12
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create -R caixa/alvo --body \"Closes #12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-614-5"
+EXIT_614_5=$?
+[ $EXIT_614_5 -eq 0 ] && test_ok "614-5 Closes #12 com -R caixa/alvo, marcador em caixa/alvo#12: exit 0" || test_fail "614-5 Closes #12 com -R caixa/alvo, marcador em caixa/alvo#12: exit 0 (foi $EXIT_614_5: $(cat "$SBP/err-614-5"))"
+
+# (614-6) vizinho: Segue #12 → exit 0 (não é fechamento)
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_MARCADOR_REPO=caixa/alvo GH_MARCADOR_NUM=12
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create -R caixa/alvo --body \"Segue #12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-614-6"
+EXIT_614_6=$?
+[ $EXIT_614_6 -eq 0 ] && test_ok "614-6 Segue #12: exit 0" || test_fail "614-6 Segue #12: exit 0 (foi $EXIT_614_6: $(cat "$SBP/err-614-6"))"
+
+# (614-7) FALSA_CHAVE com owner/repo#N: português depois de Fecha → exit 2, sugere Closes caixa/outro#12
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create -R caixa/alvo --body \"Fecha caixa/outro#12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-614-7"
+EXIT_614_7=$?
+[ $EXIT_614_7 -eq 2 ] && test_ok "614-7 Fecha caixa/outro#12 (palavra falsa): exit 2" || test_fail "614-7 Fecha caixa/outro#12 (palavra falsa): exit 2 (foi $EXIT_614_7: $(cat "$SBP/err-614-7"))"
+ERR_614_7="$(cat "$SBP/err-614-7")"
+echo "$ERR_614_7" | grep -qF "Closes caixa/outro#12" && test_ok "614-7 stderr sugere Closes caixa/outro#12" || test_fail "614-7 stderr sem 'Closes caixa/outro#12' ($ERR_614_7)"
 
 # Resultado final
 echo
