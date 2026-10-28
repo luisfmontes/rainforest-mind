@@ -206,9 +206,13 @@ function alcancaPr(texto) {
 }
 
 // Todo bloco `push:` (chave sozinha na linha) tem `branches:` sem `*` nem
-// `branches-ignore`. Sem bloco nenhum, o push não tem filtro legível: false.
+// `branches-ignore`. Sem bloco nenhum, o push não tem filtro legível: false. Um
+// `on:` em forma de fluxo com push (`on: push`, `on: [push]`) dispara em toda
+// branch, e um `push:` noutro ponto (de `with:`, `env:`) não o filtra: false.
+// Comentário de fim de linha sai antes de procurar `branches:`.
 function pushSoEmNomesFixos(texto) {
-  const linhas = texto.split(/\r?\n/);
+  if (/^\s*["']?on["']?\s*:[^\n#]*\bpush\b/m.test(texto)) return false;
+  const linhas = texto.split(/\r?\n/).map((l) => l.replace(/\s#.*$/, ''));
   const recuo = (l) => l.match(/^\s*/)[0].length;
   const inicios = linhas.map((l, i) => (/^\s*push\s*:\s*(#.*)?$/.test(l) ? i : -1)).filter((i) => i !== -1);
   if (!inicios.length) return false;

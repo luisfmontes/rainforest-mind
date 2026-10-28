@@ -21,6 +21,7 @@ rede como CI vermelho e repo sem CI de PR como vermelho). Versão 2.0.5 (PATCH: 
 - **D5: `push` com `branches-ignore` ou glob conta como CI de PR.** Revisor B: `branches-ignore: [main]` e `branches: ["**"]` disparam na branch do PR, e a leitura anterior dava 8 (merge sem CI). Agora só `branches:` sem `branches-ignore` e sem `*` no texto tira o `push`; qualquer dúvida cai no 5. É o princípio que a D5 já declarava ("nunca num 8 indevido").
 - **D5 (revisão 2): o filtro `branches:` só vale dentro do bloco `push:`.** Revisor da rodada 2: `branches:` de `workflow_run`, de um `with:` ou de comentário tirava um `push` sem filtro, e dava 8 indevido. Forma de fluxo (`on: push`, `push: {...}`) segue contando.
 - **D4 (revisão 2): "no checks reported" na releitura é 5, não 69.** O gh 2.96 real, com o PR sem check, sai 1 com stdout vazio e a frase no stderr; o stub da bateria devolvia `[]` com exit 0 e escondia o caso. Rede caída continua 69.
+- **D5 (revisão 3): `on:` de fluxo com push (`on: push`, `on: [push]`) conta sempre, e comentário de fim de linha não filtra.** Revisor da rodada 3: um `push:` de `with:`/`env:` com `branches:` tirava um `on: push` inline, e `# branches: [main]` no fim da linha também; os dois davam 8 indevido.
 
 ## Avaliado e descartado
 - **#608 opção A (comparar autocompact só entre dirs que definem o override)**: esconde exatamente o caso que a checagem existe para pegar — uma conta real editada e a outra esquecida (dir sem override é "usa o padrão", que é a divergência).

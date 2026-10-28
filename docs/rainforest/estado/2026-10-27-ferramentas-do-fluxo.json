@@ -22,7 +22,7 @@
     "em": "2026-10-27"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-27",
     "tarefas_ok": 8,
     "tarefas": 8,
@@ -77,7 +77,7 @@
         "ts": "2026-10-27T16:51:19.100Z"
       }
     ],
-    "em": "2026-10-27",
+    "em": "2026-10-28",
     "comando": "node scripts/conferir-mutacao.cjs (rodada 2: T1 com de emendado sobre testa-saude.sh inteira; achados novos A1 #608-6, A2 D3-1, A4 #608-5, A6 D3-6, B1 g23/g24, B6 594-8) + bash scripts/testa-publicar-branch.sh + bash hooks/testa-gate-fechar-issue.sh + rodada 3: conferir-mutacao M1 (no checks reported) e M2 (filtro so no bloco push)",
     "saida": "T1 mutacao exit=0 (baseline verde 1319793 ms na bateria inteira; VERMELHA em duas rodadas: K, #608-2, #608-3, #608-5); A1 exit=0 (#608-6 vermelho); A2 exit=0 (D3-1 vermelho); A4 exit=0 (#608-5); A6 exit=0 (D3-6); B1 exit=0 (g23, g24); B6 exit=0 (594-8); T4 re-rodada com de emendado exit=0 (g9, g17, g19 vermelhos); testa-publicar-branch 72 ok; testa-gate-fechar-issue 409 ok; testa-config 74 ok; rodada 3: M1 exit=0 (g25 vermelho), M2 exit=0 (g27, g28 vermelhos); testa-publicar-branch 76 ok",
     "mutacao": [
@@ -125,24 +125,23 @@
     "reaberturas": 2
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "pendente",
     "snapshot": {
-      "head": "52f0e532c42f18a21f9c44a3b545d8bac8567e99",
+      "head": "33ff234c2b4b24917056958650c37e2eee7f8020",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a5d6fecf343d6fbc7",
-        "veredito": "reprovado",
-        "em": "2026-10-27",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bbe7888f-e761-411a-988c-b38fada6b86e/subagents/agent-a5d6fecf343d6fbc7.jsonl"
+        "agente_id": "a538e45f58399b957",
+        "veredito": "ok",
+        "em": "2026-10-28",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bbe7888f-e761-411a-988c-b38fada6b86e/subagents/agent-a538e45f58399b957.jsonl"
       }
     ],
     "em_voo": [],
-    "em": "2026-10-27",
-    "achados": 4,
-    "tentativas": 2,
+    "em": "2026-10-28",
+    "achados": 1,
     "voltas": [
       {
         "volta": 1,
@@ -162,14 +161,30 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bbe7888f-e761-411a-988c-b38fada6b86e/subagents/agent-a2af677382b254a14.jsonl"
           }
         ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a5d6fecf343d6fbc7",
+            "veredito": "reprovado",
+            "em": "2026-10-27",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bbe7888f-e761-411a-988c-b38fada6b86e/subagents/agent-a5d6fecf343d6fbc7.jsonl"
+          }
+        ]
       }
-    ]
+    ],
+    "base": "2720ed6c",
+    "head": "33ff234c"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-10-28"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-10-28"
   },
   "decididos": [
     {
@@ -199,6 +214,20 @@
       "porque": "gh 2.96 real nao devolve [] sem check; o stub escondia o caso e o codigo dava 69",
       "estagio": "executar",
       "em": "2026-10-28T02:56:35.397Z"
+    },
+    {
+      "pergunta": "on: push inline e comentario de fim de linha filtram o push (D5)?",
+      "escolha": "nao; on: de fluxo com push conta sempre, comentario sai antes da busca",
+      "porque": "revisor da rodada 3: os dois davam 8 indevido",
+      "estagio": "executar",
+      "em": "2026-10-28T03:06:57.949Z"
+    }
+  ],
+  "reaberturas": [
+    {
+      "em": "2026-10-28",
+      "de": "revisar",
+      "motivo": "revisao 3 [baixa]: pushSoEmNomesFixos da 8 indevido com on: push inline + push: em with:, e com comentario de fim de linha citando branches:"
     }
   ]
 }

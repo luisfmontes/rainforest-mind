@@ -431,6 +431,34 @@ roda "$CAIXA" esperar-ci --pr 7
 [ "$CODIGO" -eq 8 ]; afirma "(g28) push em main com cron no mesmo arquivo: sai 8 (exit=$CODIGO)" $?
 caixa_limpa
 
+# (g29) on: push inline dispara em toda branch; um push: com branches: dentro de
+# with: nao e o gatilho: segue 5, nao 8.
+workflow ci.yml <<'YML'
+on: push
+jobs:
+  b:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: x/y@v1
+        with:
+          push:
+            branches: [main]
+YML
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 5 ]; afirma "(g29) on: push inline e push: de with: com branches: sai 5, nao 8 (exit=$CODIGO)" $?
+caixa_limpa
+
+# (g30) push: so com paths e um comentario de fim de linha citando branches:
+# o comentario nao filtra: segue 5, nao 8.
+workflow ci.yml <<'YML'
+on:
+  push:
+    paths: [src]  # branches: [main] fica pra depois
+YML
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 5 ]; afirma "(g30) comentario de fim de linha com branches: nao filtra o push: sai 5 (exit=$CODIGO)" $?
+caixa_limpa
+
 # (g22) cwd fora de repositorio git: o script para antes de ler workflow (main), nunca 8.
 mkdir -p "$S/fora"
 roda "$S/fora" esperar-ci --pr 7
