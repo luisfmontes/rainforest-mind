@@ -79,7 +79,7 @@
     ],
     "em": "2026-10-28",
     "comando": "node scripts/conferir-mutacao.cjs (rodada 2: T1 com de emendado sobre testa-saude.sh inteira; achados novos A1 #608-6, A2 D3-1, A4 #608-5, A6 D3-6, B1 g23/g24, B6 594-8) + bash scripts/testa-publicar-branch.sh + bash hooks/testa-gate-fechar-issue.sh + rodada 3: conferir-mutacao M1 (no checks reported) e M2 (filtro so no bloco push) + rodada 4: conferir-mutacao (on: de fluxo; comentario de fim de linha) + rodada 5: conferir-mutacao (varredura do texto inteiro; comentario de fim de linha) + rodada 6: conferir-mutacao (glob so *; lista de bloco no mesmo recuo)",
-    "saida": "T1 mutacao exit=0 (baseline verde 1319793 ms na bateria inteira; VERMELHA em duas rodadas: K, #608-2, #608-3, #608-5); A1 exit=0 (#608-6 vermelho); A2 exit=0 (D3-1 vermelho); A4 exit=0 (#608-5); A6 exit=0 (D3-6); B1 exit=0 (g23, g24); B6 exit=0 (594-8); T4 re-rodada com de emendado exit=0 (g9, g17, g19 vermelhos); testa-publicar-branch 72 ok; testa-gate-fechar-issue 409 ok; testa-config 74 ok; rodada 3: M1 exit=0 (g25 vermelho), M2 exit=0 (g27, g28 vermelhos); testa-publicar-branch 76 ok; rodada 4: on: de fluxo exit=0 (g29 vermelho), comentario exit=0 (g30 vermelho); testa-publicar-branch 78 ok; rodada 5: varredura exit=0 (g31, g32 vermelhos), comentario exit=0 (g30); testa-publicar-branch 80 ok; rodada 6: glob exit=0 (g33, g34 vermelhos), lista exit=0 (g33); testa-publicar-branch 83 ok",
+    "saida": "T1 mutacao exit=0 (baseline verde 1319793 ms na bateria inteira; VERMELHA em duas rodadas: K, #608-2, #608-3, #608-5); A1 exit=0 (#608-6 vermelho); A2 exit=0 (D3-1 vermelho); A4 exit=0 (#608-5); A6 exit=0 (D3-6); B1 exit=0 (g23, g24); B6 exit=0 (594-8); T4 re-rodada com de emendado exit=0 (g9, g17, g19 vermelhos); testa-publicar-branch 72 ok; testa-gate-fechar-issue 409 ok; testa-config 74 ok; rodada 3: M1 exit=0 (g25 vermelho), M2 exit=0 (g27, g28 vermelhos); testa-publicar-branch 76 ok; rodada 4: on: de fluxo exit=0 (g29 vermelho), comentario exit=0 (g30 vermelho); testa-publicar-branch 78 ok; rodada 5: varredura exit=0 (g31, g32 vermelhos), comentario exit=0 (g30); testa-publicar-branch 80 ok; rodada 6: glob exit=0 (g33, g34 vermelhos), lista exit=0 (g33); testa-publicar-branch 83 ok; rodada 7: so comentario, testa-publicar-branch 83 ok",
     "mutacao": [
       {
         "tarefa": 1,
@@ -127,16 +127,16 @@
   "revisar": {
     "status": "pendente",
     "snapshot": {
-      "head": "ace23a2db58a9860d4b7d84d3fbb6c9b849a47ec",
+      "head": "9c6c3f50f0ae7fcb058a89afd78cb254dc86f1b8",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "abe6ed5d17661db51",
+        "agente_id": "ad3c3990e889a5ac1",
         "veredito": "ok",
         "em": "2026-10-28",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bbe7888f-e761-411a-988c-b38fada6b86e/subagents/agent-abe6ed5d17661db51.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bbe7888f-e761-411a-988c-b38fada6b86e/subagents/agent-ad3c3990e889a5ac1.jsonl"
       }
     ],
     "em_voo": [],
@@ -197,10 +197,22 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bbe7888f-e761-411a-988c-b38fada6b86e/subagents/agent-adc318faefe3e4e48.jsonl"
           }
         ]
+      },
+      {
+        "volta": 5,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "abe6ed5d17661db51",
+            "veredito": "ok",
+            "em": "2026-10-28",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bbe7888f-e761-411a-988c-b38fada6b86e/subagents/agent-abe6ed5d17661db51.jsonl"
+          }
+        ]
       }
     ],
     "base": "2720ed6c",
-    "head": "ace23a2d"
+    "head": "9c6c3f50"
   },
   "verificar": {
     "status": "pendente",
@@ -276,6 +288,11 @@
       "em": "2026-10-28",
       "de": "revisar",
       "motivo": "revisao 5 [baixa]: so * contava como glob; ?, + e [...] tambem sao glob de branch e davam 8 indevido"
+    },
+    {
+      "em": "2026-10-28",
+      "de": "revisar",
+      "motivo": "revisao 6 [baixa]: comentarios de alcancaPr e pushSoEmNomesFixos ainda dizem * no bloco inteiro"
     }
   ]
 }
