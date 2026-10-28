@@ -86,6 +86,12 @@ const CHAVES = {
     descricao: 'barra turno que promete despacho ou espera de máquina sem concretizar',
     entrevista: null,
   },
+  'gate-pergunta-memoria': {
+    tipo: 'boolean',
+    padrao: true,
+    descricao: 'barra uma vez o turno que sobe pergunta Q<n> que a memória do projeto ou o banco já responde',
+    entrevista: null,
+  },
   'gate-verificador-staged': {
     tipo: 'boolean',
     padrao: true,
