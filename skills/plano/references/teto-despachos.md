@@ -2,8 +2,10 @@
 
 O hook `hooks/gate-teto-despachos.cjs` conta os despachos de agente de cada
 fluxo e nega o que passa do teto. O plano declara o teto do próprio fluxo
-numa linha do cabeçalho; sem a linha, vale o teto padrão de 40 despachos
-(D9 do design `docs/rainforest/design/2026-10-10-flaky-teto.md`).
+numa linha do cabeçalho; sem a linha, vale o teto padrão: `max(40, 1,5 × tarefas do
+plano)`, arredondado para cima, e 65 num plano de 43 tarefas (D9 do design
+`docs/rainforest/design/2026-10-10-flaky-teto.md`; proporcional desde a 2.0.6, #612).
+A conta é cumulativa por fluxo, não de agentes simultâneos.
 
 ## Onde fica
 

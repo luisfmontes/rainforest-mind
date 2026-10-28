@@ -106,8 +106,8 @@ rodada. Flake de uma volta só fica gravado e o laço segue.
 
 O hook `hooks/gate-teto-despachos.cjs` conta todo despacho de agente do
 fluxo ativo (inclusive o que a portaria nega) e nega, com exit 2, o despacho
-que passa do teto. O teto padrão de 40 despachos vale quando o plano não
-declara outro; o plano declara com `teto-despachos: N` no cabeçalho (veja
+que passa do teto. O teto padrão, `max(40, 1,5 × tarefas do plano)`, vale quando
+o plano não declara outro; o plano declara com `teto-despachos: N` no cabeçalho (veja
 `skills/plano/references/teto-despachos.md`). Não há liga/desliga nem
 variável de escape (D15). A única porta acima do teto, com a palavra do
 usuário:

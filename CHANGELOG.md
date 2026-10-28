@@ -10,6 +10,18 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.0.6 — 2026-10-28
+
+Seis defeitos do próprio fluxo, vistos em uso real entre 26 e 28/10 (#613, #610, #616, #614, #612, #606, #609). Desenho em `docs/rainforest/design/2026-10-28-lote-b.md`.
+
+- **Tarefa paralela fora de repo (#613, #610, D2).** A branch `fluxo/<slug>-t<n>` (só dígitos depois do `-t`) casa com o fluxo `<slug>`, então cada tarefa paralela pode ter o seu worktree criado à mão. O casamento exato vence, e `fluxo/outro-t1` continua recusado.
+- **`esperar-ci` espera o run do PR existir (#616, D3).** Logo depois do `gh pr create`, o GitHub ainda não registrou o CI, e o `esperar-ci` saía 5 (vermelho que não existe). Agora sonda até 300 s (`RFM_CI_PRAZO_REGISTRO_S`) antes do `--watch`. O repo sem CI de PR (exit 8) não espera.
+- **Gate de fechamento de Issue consulta a Issue no repo dela (#614, D4).** `Closes owner/repo#N` e `Closes https://github.com/owner/repo/issues/N` são conferidos no repo citado, não no do comando. A palavra-chave falsa em português também é pega na forma `owner/repo#N`.
+- **Teto de despachos proporcional ao plano (#612, D5).** Sem `teto-despachos:`, o teto é `max(40, 1,5 × tarefas)`, e 65 num plano de 43 tarefas. A negação diz que a conta é cumulativa por fluxo e quantas tarefas o plano tem. A `cobertura` avisa quando o teto declarado é menor que o número de tarefas.
+- **Catraca mede o baseline uma vez por bateria (#606, D6).** No `conferir-fluxo mutacoes`, tarefas com a mesma bateria, `raiz:` e `timeout:` repassam o baseline em vez de medi-lo de novo. `no-lugar: sim` mede a cada tarefa, como antes.
+- **Catraca sobe monorepo com `raiz:` (#609, D7).** A cópia temporária é do repositório inteiro, e a bateria roda na pasta da `raiz:`. Import para pasta irmã (`../lib/x.js`) passa a resolver sem `no-lugar: sim`.
+- **Três asserções do `testa-publicar-branch.sh` deixam de ser tautológicas.** O `$(...)` na mensagem do `afirma` zerava o `$?` do teste.
+
 ## 2.0.5 — 2026-10-27
 
 Fim dos falsos alarmes de três ferramentas do fluxo (#608, #592, #594, #587, #591). Desenho em `docs/rainforest/design/2026-10-27-ferramentas-do-fluxo.md`.

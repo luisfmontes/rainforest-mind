@@ -101,7 +101,9 @@ mutacao:
   repositório, a bateria roda. Em monorepo, onde `node --test test/x.test.js` só
   existe dentro do app, é ela que evita a tarefa sair `pulada`; com `raiz:`, o
   `arquivo:` passa a ser relativo a essa pasta. Sem o campo, vale a raiz do
-  repositório. `cobertura` recusa `raiz:` que não seja pasta existente.
+  repositório. `cobertura` recusa `raiz:` que não seja pasta existente. A catraca
+  copia o repositório inteiro e roda a bateria na pasta da `raiz:`, então import
+  para pasta irmã (`../lib/x.js`) resolve na cópia (#609).
 - **`no-lugar: sim`**: `references/mutacao-no-lugar.md`.
 - **`fixture:` nomeia qual caso de teste exercita a mutação** — arquivo, função ou
   intervalo de linhas. Não basta a **bateria** ficar vermelha: o ramo mutado tem de

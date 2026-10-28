@@ -61,6 +61,14 @@ desperdiçado.
 conflitam entre si, e foi por isso que o superpowers proibiu paralelo de
 implementadores. Aqui não precisa proibir porque a trava existe.
 
+**Fora de repo (#565), cada tarefa paralela ganha a sua branch `fluxo/<slug>-t<n>`.**
+Sem sessão dentro do repositório, `isolation: "worktree"` não despacha, e os
+worktrees se criam à mão e se declaram na linha `Worktree:` do briefing. A portaria
+lê a branch do worktree declarado, e o git não deixa a mesma branch em dois
+worktrees: crie cada um da ponta de `fluxo/<slug>` (`git worktree add <dir> -b
+fluxo/<slug>-t<n> fluxo/<slug>`). A forma `-t<n>`, só com dígitos, casa com o fluxo
+`<slug>` (#613, #610); outro sufixo não casa.
+
 **Agente que edita nunca é retomado por `SendMessage`** — despacha-se de novo,
 com briefing corrigido. O worktree isolado pode não existir mais na retomada, e
 o agente passa a commitar na branch de quem despachou.
