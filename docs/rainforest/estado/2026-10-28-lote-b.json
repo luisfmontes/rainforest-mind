@@ -23,17 +23,58 @@
     "em": "2026-10-28"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-28",
     "integradas": [
       1,
       2,
       3,
       4,
-      5
+      5,
+      6
     ],
-    "em_voo": [],
-    "em": "2026-10-28"
+    "em": "2026-10-28",
+    "comando": "node scripts/integrar-tarefa.cjs --slug 2026-10-28-lote-b --tarefa <1..6> (conferir-entrega + apply + conferir-fluxo mutacoes + commit)",
+    "saida": "tarefas 1-6: {\"resultado\":\"aceito\",\"passo\":\"integrada\"} commits c32fe8cb 89270be6 9479c83b 6f980a52 e5ff88b1 ddd37962; tarefa 7 em 1a3bb156",
+    "tarefas_ok": 7,
+    "tarefas": 7,
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-estagio-ativo.cjs: branch fluxo/<slug>-t2 resolve para o fluxo <slug>"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-publicar-branch.sh: (g36) para na 3a sondagem: pr checks --json chamado 4 vezes"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh: 614-1 URL de caixa/outro#12, marcador so em caixa/alvo#12: exit 2"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-teto-declarado.cjs: plano de 43 tarefas sem cabecalho: teto 65"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-fluxo.sh: duas tarefas na mesma bateria: baseline roda uma vez (5 rodadas, nao 6)"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao.sh: #609: raiz app importando ../lib/x.js sai 0 sem --no-lugar"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "n/a",
+        "motivo": "bump de versao e texto; comportamento medido pelas tarefas 1 a 6"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
