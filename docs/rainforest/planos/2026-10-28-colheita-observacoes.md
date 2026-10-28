@@ -55,7 +55,7 @@ busca:
 - repo | rg "buscarPorAssunto|transcript_path|sessoes.json" hooks | `memoria-assunto-prompt.cjs` busca no banco por assunto e o `gate-turno-prometido` lê o último texto; nada confere Q<n>
 - memoria | pulado: o mecanismo é o próprio objeto da tarefa
 desfecho: compor
-prova: `node hooks/testa-gate-pergunta-memoria.cjs`
+prova-na-base: verde — entregue na rodada 1; o arquivo não existia na base d3d57de8, em que a prova saiu ≠ 0 (arquivo ausente)
 mutacao:
   arquivo: `hooks/gate-pergunta-memoria.cjs`
   de: `const LIMIAR_TERMOS = 3;`
