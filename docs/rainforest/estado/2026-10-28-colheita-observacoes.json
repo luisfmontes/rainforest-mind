@@ -24,7 +24,26 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-28",
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "11 portaria sem tools",
+        "desde": "2026-10-28",
+        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "12 gate-pergunta-memoria",
+        "desde": "2026-10-28",
+        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "13 regex do fecho",
+        "desde": "2026-10-28",
+        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f"
+      }
+    ],
     "carimbos": [
       {
         "tarefa": 1,
@@ -60,11 +79,32 @@
         "iteracao": 1,
         "sessao": "184770db-2116-48c8-acbd-618fc0867f9f",
         "ts": "2026-10-28T20:19:35.104Z"
+      },
+      {
+        "tarefa": 11,
+        "hash_base": "c9e8b2d8",
+        "iteracao": 1,
+        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f",
+        "ts": "2026-10-28T21:02:14.355Z"
+      },
+      {
+        "tarefa": 12,
+        "hash_base": "c9e8b2d8",
+        "iteracao": 1,
+        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f",
+        "ts": "2026-10-28T21:02:14.355Z"
+      },
+      {
+        "tarefa": 13,
+        "hash_base": "c9e8b2d8",
+        "iteracao": 1,
+        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f",
+        "ts": "2026-10-28T21:02:14.355Z"
       }
     ],
     "em": "2026-10-28",
     "tarefas_ok": 10,
-    "tarefas": 10,
+    "tarefas": 13,
     "comando": "node scripts/conferir-mutacao.cjs (tarefas 1, 7, 8 e 9, re-rodado na integracao)",
     "saida": "catraca exit 0 nas quatro: N1-N3, G1/G2, P10 (e P12 na mutacao do banco), C10-C12 vermelhos",
     "mutacao": [
