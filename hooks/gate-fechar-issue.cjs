@@ -938,7 +938,9 @@ function verificarIssuesCitadas(corpo, repo, cwdSegmento) {
         `e rode o gh pr em comando separado — o gate lê o comando inteiro antes de qualquer parte rodar:\n` +
         `  'gh issue comment ${issue}${flagRepo} --body-file <arquivo>' — 1ª linha do arquivo: ${MARCADOR}; depois, comando e saída\n\n` +
         `Issue que já deve fechar agora, antes do PR:\n` +
-        `  node scripts/fechar-issue.cjs ${issue}${flagRepo} --comando "<seu-comando>" --saida "<texto colado>" ou --saida-arquivo <caminho dentro do repo>\n`
+        `  node scripts/fechar-issue.cjs ${issue} --comando "<seu-comando>" --saida "<texto colado>" ou --saida-arquivo <caminho dentro do repo>` +
+        // fechar-issue.cjs não aceita --repo: consulta o repo do cwd.
+        (citada.repo ? ` (rodado de dentro de um clone de ${citada.repo})` : "") + `\n`
       );
     }
   }
