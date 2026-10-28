@@ -23,7 +23,7 @@
     "em": "2026-10-28"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-28",
     "integradas": [
       1,
@@ -31,13 +31,14 @@
       3,
       4,
       5,
-      6
+      6,
+      8
     ],
     "em": "2026-10-28",
-    "comando": "node scripts/integrar-tarefa.cjs --slug 2026-10-28-lote-b --tarefa <1..6> (conferir-entrega + apply + conferir-fluxo mutacoes + commit)",
-    "saida": "tarefas 1-6: {\"resultado\":\"aceito\",\"passo\":\"integrada\"} commits c32fe8cb 89270be6 9479c83b 6f980a52 e5ff88b1 ddd37962; tarefa 7 em 1a3bb156",
-    "tarefas_ok": 7,
-    "tarefas": 7,
+    "comando": "node scripts/integrar-tarefa.cjs --slug 2026-10-28-lote-b --tarefa <1..6,8> (conferir-entrega + apply + conferir-fluxo mutacoes + commit)",
+    "saida": "tarefas 1-6 e 8: {\"resultado\":\"aceito\",\"passo\":\"integrada\"}; tarefas 7 (1a3bb156) e 9 (6148d3db) de docs",
+    "tarefas_ok": 9,
+    "tarefas": 9,
     "mutacao": [
       {
         "tarefa": 1,
@@ -73,12 +74,18 @@
         "tarefa": 7,
         "resultado": "n/a",
         "motivo": "bump de versao e texto; comportamento medido pelas tarefas 1 a 6"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-mutacao.sh: baseline repassado com placar: pos-mutacao sem placar e colapso (exit 6)"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "n/a",
+        "motivo": "comentario e texto; comportamento medido pelas tarefas 1 a 8"
       }
     ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-28"
-    },
     "reaberturas": 1
   },
   "revisar": {
