@@ -562,6 +562,25 @@ for (const [nome, texto] of [
   });
 }
 
+// C13: fecho com "()" repetido 30 vezes (backtracking exponencial da regex antiga do fecho): o hook termina em menos de 3 s.
+// A expectativa de exit code nao importa aqui (o texto nao termina em pergunta); mede-se so terminar no prazo.
+teste('C13 fecho com "()" repetido 30 vezes termina em menos de 3 s', () => {
+  const repo = montarRepo({ autonomia: true });
+  const arquivo = transcritoComTexto('Sigo com o executar? ' + '()'.repeat(30) + ' fim');
+  const env = { ...process.env };
+  delete env.RAINFOREST_GATE_OFF;
+  env.RFM_ROOT = repo;
+  const payload = { session_id: 'test-session', cwd: repo, transcript_path: arquivo, hook_event_name: 'Stop' };
+  const inicio = Date.now();
+  const r = spawnSync(process.execPath, [hookPath], {
+    input: JSON.stringify(payload), encoding: 'utf8', env, timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  const duracao = Date.now() - inicio;
+  assert(r.status !== null && r.signal === null && !r.error,
+    `hook não terminou em 3 s (status ${r.status}, signal ${r.signal}, erro ${r.error ? r.error.code : 'nenhum'})`);
+  assert(duracao < 3000, `levou ${duracao} ms`);
+});
+
 console.log(`ok: ${ok}   falhou: ${falha}`);
 
 // Limpeza de tmpdirs

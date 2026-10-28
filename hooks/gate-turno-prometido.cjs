@@ -272,7 +272,7 @@ function main() {
     // Ordem barata primeiro: a regex e o Q rodam antes de qualquer git ou leitura de config.
     // O Q é conferido no texto bruto: normalizarTexto pode engolir um Q1 dentro de crase ou aspa.
     // Fecho formatado (negrito, emoji, parentese) nao esconde o pedido: revisao 1, achado 5.
-    const fimSemFormatacao = (t) => t.replace(/(?:\s|\*\*|__|\(|\)|[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]|\([^()\n]{0,80}\))+$/u, "");
+    const fimSemFormatacao = (t) => t.replace(/(?:\s|\*\*|__|\([^()\n]{0,80}\)|[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}])+$/u, "");
     const fimDoTexto = fimSemFormatacao(textoNormalizado.trim());
     const matchLicenca = fimDoTexto.match(RE_PEDE_LICENCA);
     if (matchLicenca !== null && !/\bQ\d+\b/.test(ultimoText)) {
