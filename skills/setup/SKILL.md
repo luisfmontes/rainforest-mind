@@ -161,7 +161,8 @@ o grupo que vale é o do campo `entrevista` no catálogo.
 | `gate-fechar-issue` | — | barra `gh issue close` direto, palavra-chave falsa e `gh pr`/`gh issue` de escrita sem evidência |
 | `gate-merge-auto` | — | barra `gh pr merge --auto`, que sem check obrigatório mergeia sem esperar o CI |
 | `gate-agente-em-voo` | — | barra sessão quando há agente em voo que morreu |
-| `gate-turno-prometido` | — | barra turno que promete despacho ou espera de máquina sem concretizar |
+| `gate-turno-prometido` | — | barra turno que promete despacho ou espera de máquina sem concretizar, ou que pede licença para seguir com `executar-autonomo` ligada |
+| `gate-pergunta-memoria` | — | barra uma vez o turno com `Q<n>` que a memória do projeto já responde, e aponta sessões vivas de outros repos |
 | `gate-verificador-staged` | — | barra commit quando o `verificador-staged` do config reprova o staged |
 | `contrato-veredito` | — | grava o veredito de uma linha do revisor em SubagentStop |
 | `contrato-relato-executor` | — | devolve a vez ao executor de fluxo que termina sem a linha `ENTREGA:` em SubagentStop |
