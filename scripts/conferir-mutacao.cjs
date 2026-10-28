@@ -913,30 +913,48 @@ function recusaColapso(placarBase, placarRodada, rodada) {
   process.exit(6);
 }
 
+// Topo do repositório git que contém `dir` (`git rev-parse --show-toplevel` com
+// cwd em `dir`), ou `null` quando `dir` não está em repositório git.
+function toplevelDe(dir) {
+  const res = spawnSync(caminhoExecutavel('git'), ['rev-parse', '--show-toplevel'], { cwd: dir, encoding: 'utf8', stdio: 'pipe' });
+  if (res.status !== 0) return null;
+  return res.stdout.trim();
+}
+
 function copiarRaiz(raiz) {
+  // D7 (#609): com `raiz` dentro de um repositório git, copia o TOPO inteiro e a
+  // bateria roda na pasta de `raiz` dentro dessa cópia — o app que importa uma
+  // pasta irmã (`../lib/x.js`) precisa dela. Fora de git, `origem` é a própria
+  // `raiz` e a cópia é só da raiz, como sempre.
+  const origem = toplevelDe(raiz) || raiz;
   // Cópia descartável de toda a árvore: baseline, mutação e bateria
   // pós-mutação rodam AQUI, nunca em `raiz`. Só o `.git` de TOPO fica de
   // fora — `.git` aninhado em alguma fixture não é excluído (D5, Issue #266).
-  const raizExecucao = fs.mkdtempSync(path.join(os.tmpdir(), 'conferir-mutacao-'));
-  armarLimpeza(raizExecucao);
+  const copia = fs.mkdtempSync(path.join(os.tmpdir(), 'conferir-mutacao-'));
+  armarLimpeza(copia);
   //
   // Link simbolico/junction (tipicamente `node_modules` de worktree, Issue
   // #378): `cpSync` o recriaria com `symlinkSync` sem tipo, e no Windows isso
   // exige privilegio (EPERM). O filter pula o link e o script o recria depois:
   // junction para diretorio (nao exige privilegio), copia para arquivo.
   const links = [];
+  let origemReal;
+  let relRaiz;
   try {
-    fs.cpSync(raiz, raizExecucao, {
+    // Temp do Windows vem em nome 8.3 (RUNNER~1): compara-se o caminho real.
+    origemReal = fs.realpathSync.native(origem);
+    relRaiz = path.relative(origemReal, fs.realpathSync.native(raiz));
+    fs.cpSync(origemReal, copia, {
       recursive: true,
       filter: (p) => {
-        if (path.relative(raiz, p) === '.git') return false;
-        if (p === raiz) return true;
+        if (path.relative(origemReal, p) === '.git') return false;
+        if (p === origemReal) return true;
         if (fs.lstatSync(p).isSymbolicLink()) { links.push(p); return false; }
         return true;
       },
     });
     for (const p of links) {
-      const destino = path.join(raizExecucao, path.relative(raiz, p));
+      const destino = path.join(copia, path.relative(origemReal, p));
       const real = fs.realpathSync(p);
       if (fs.statSync(real).isDirectory()) fs.symlinkSync(real, destino, 'junction');
       else fs.copyFileSync(real, destino);
@@ -947,8 +965,8 @@ function copiarRaiz(raiz) {
     process.stderr.write(`nao-verificavel: copia da raiz falhou — ${e.message}\n`);
     process.exit(EXIT_COPIA_FALHOU);
   }
-  materializarGit(raiz, raizExecucao);
-  return raizExecucao;
+  materializarGit(origem, copia);
+  return path.join(copia, relRaiz);
 }
 
 function main() {

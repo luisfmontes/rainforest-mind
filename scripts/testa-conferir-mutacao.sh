@@ -1449,6 +1449,70 @@ tem "diz que sao mutuamente exclusivas" "mutuamente exclusivas"
 exige 1 "--baseline-de com --no-lugar: erro de uso, exit=1" \
   CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' --bateria 'bash bateria-conta.sh' --no-lugar --baseline-de "$W/base-verde.json"
 
+echo
+echo "== 30. raiz em subpasta de repositorio git: a copia e o topo inteiro (plano lote-b, tarefa 6, D7, Issue #609) =="
+# Monorepo: o app em app/ importa um irmao (../lib/x.js). Com a copia so da
+# subpasta, o irmao nao existe na copia; com a copia do topo, existe. Fixture
+# proprio: repositorio git com lib/x.js e app/teste.js. A bateria falha quando
+# x.js esta mutado (module.exports = 2).
+CAIXA_609="$S/caixa-609"; WCAIXA_609="$W/caixa-609"
+mkdir -p "$CAIXA_609/app" "$CAIXA_609/lib"
+printf 'module.exports = 1;\n' > "$CAIXA_609/lib/x.js"
+cat > "$CAIXA_609/app/teste.js" <<'BAT'
+if (require('../lib/x.js') !== 1) { console.log('ok: 0   falhou: 1'); process.exit(1); }
+console.log('ok: 1   falhou: 0');
+BAT
+(
+  cd "$CAIXA_609" || exit 1
+  git init -q
+  git config user.email "test@test"
+  git config user.name "Test"
+  git config core.autocrlf false
+  git add lib/x.js app/teste.js
+  git commit -q -m "commit inicial do fixture #609"
+)
+
+OUT_609="$(node "$SCRIPT" --raiz "$WCAIXA_609/app" --arquivo ../lib/x.js --de 'module.exports = 1;' --para 'module.exports = 2;' --bateria 'node teste.js' 2>&1)"
+GOT_609=$?
+if [ "$GOT_609" -eq 0 ] && printf '%s' "$OUT_609" | grep -q 'VERMELHA'; then
+  ok=$((ok+1)); printf '  ok    #609: raiz app importando ../lib/x.js sai 0 sem --no-lugar (exit=%s, bateria VERMELHA)\n' "$GOT_609"
+else
+  falhou=$((falhou+1)); printf '  FALHA #609: raiz app importando ../lib/x.js sai 0 sem --no-lugar: veio exit=%s\n' "$GOT_609"
+  printf '%s\n' "$OUT_609" | tail -12 | sed 's/^/        | /'
+fi
+STATUS_609="$(cd "$CAIXA_609" && git status --porcelain)"
+if [ -z "$STATUS_609" ]; then
+  ok=$((ok+1)); printf '  ok    #609: repositorio original sem alteracoes apos a catraca (copia do topo, nao o original)\n'
+else
+  falhou=$((falhou+1)); printf '  FALHA #609: repositorio original ficou sujo apos a catraca:\n%s\n' "$STATUS_609"
+fi
+
+# Vizinho 1: raiz fora de git. A copia continua so a raiz, como hoje: o irmao
+# ../lib/x.js nao vai junto, e --arquivo nao existe na copia -> exit 1, antes da bateria.
+CAIXA_FORA="$S/caixa-fora"; WCAIXA_FORA="$W/caixa-fora"
+mkdir -p "$CAIXA_FORA/app" "$CAIXA_FORA/lib"
+printf 'module.exports = 1;\n' > "$CAIXA_FORA/lib/x.js"
+cp "$CAIXA_609/app/teste.js" "$CAIXA_FORA/app/teste.js"
+OUT_FORA="$(node "$SCRIPT" --raiz "$WCAIXA_FORA/app" --arquivo ../lib/x.js --de 'module.exports = 1;' --para 'module.exports = 2;' --bateria 'node teste.js' 2>&1)"
+GOT_FORA=$?
+if [ "$GOT_FORA" -eq 1 ] && printf '%s' "$OUT_FORA" | grep -q 'erro: --arquivo n.*existe'; then
+  ok=$((ok+1)); printf '  ok    vizinho: raiz fora de git copia so a raiz, como hoje (--arquivo nao existe na copia, exit=%s)\n' "$GOT_FORA"
+else
+  falhou=$((falhou+1)); printf '  FALHA vizinho: raiz fora de git deveria sair 1 com --arquivo nao existe: veio exit=%s\n' "$GOT_FORA"
+  printf '%s\n' "$OUT_FORA" | tail -12 | sed 's/^/        | /'
+fi
+
+# Vizinho 2: raiz igual ao topo. Saida igual a de hoje: a copia do topo e a
+# propria raiz; a bateria roda na raiz e vê o irmao sem subpasta no caminho.
+OUT_TOPO="$(node "$SCRIPT" --raiz "$WCAIXA_609" --arquivo lib/x.js --de 'module.exports = 1;' --para 'module.exports = 2;' --bateria 'node app/teste.js' 2>&1)"
+GOT_TOPO=$?
+if [ "$GOT_TOPO" -eq 0 ] && printf '%s' "$OUT_TOPO" | grep -q 'VERMELHA'; then
+  ok=$((ok+1)); printf '  ok    vizinho: raiz igual ao topo sai 0 com bateria VERMELHA (exit=%s)\n' "$GOT_TOPO"
+else
+  falhou=$((falhou+1)); printf '  FALHA vizinho: raiz igual ao topo deveria sair 0 VERMELHA: veio exit=%s\n' "$GOT_TOPO"
+  printf '%s\n' "$OUT_TOPO" | tail -12 | sed 's/^/        | /'
+fi
+
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]
