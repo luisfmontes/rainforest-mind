@@ -18,6 +18,16 @@
  *     - `ScheduleWakeup`
  *     → exit 2
  *
+ * (c) Pede licença para seguir ("sigo com o executar?", "posso seguir?", "quer que eu siga")
+ *     como última frase do turno, sem `Q<n>` no texto, num repositório com fluxo no meio
+ *     (próxima etapa em plano, executar, revisar, verificar ou fechar) e com a chave
+ *     `executar-autonomo` ligada → exit 2. A pergunta é do usuário só quando há decisão
+ *     real, e essa sobe como `Q<n>` com a recomendada.
+ *
+ * Fica FORA de (c): pergunta em prosa que não casa o padrão; repositório sem fluxo
+ * (`estagio-ativo` devolve null); fluxo em design ou já completo; `executar-autonomo`
+ * desligada; texto que traz `Q<n>`.
+ *
  * Saídas silenciosas:
  * - gate desligado (`ligado('gate-turno-prometido')` = false)
  * - `stop_hook_active === true` (anti-loop)
@@ -31,6 +41,37 @@ const path = require('node:path');
 function bloqueia(motivo) {
   process.stderr.write(motivo);
   process.exit(2);
+}
+
+// Estágios em que o fluxo está no meio e a licença para seguir não é decisão do usuário.
+const ESTAGIOS_DE_LICENCA = ['plano', 'executar', 'revisar', 'verificar', 'fechar'];
+
+// Caso (c): devolve { slug, estagio } quando o repositório do cwd tem fluxo aberto num
+// estágio de ESTAGIOS_DE_LICENCA e executar-autonomo está ligada; senão, null.
+// Qualquer falha no caminho devolve null (não barra) e deixa AVISO no stderr.
+// O require do estagio-ativo fica aqui dentro: ele carrega scripts/estado.cjs inteiro,
+// e uma falha de carga no topo derrubaria também os casos (a) e (b).
+function fluxoComLicencaPendente(cwd) {
+  try {
+    const { execFileSync } = require('node:child_process');
+    const { caminhoExecutavel } = require('./lib/resolver-executavel.cjs');
+    const toplevel = execFileSync(caminhoExecutavel('git'), ['rev-parse', '--show-toplevel'], {
+      cwd,
+      encoding: 'utf8',
+      timeout: 3000,
+      windowsHide: true,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+    if (!toplevel) return null;
+    const { resolver } = require('./lib/estagio-ativo.cjs');
+    const fluxo = resolver({ cwd: toplevel });
+    if (!fluxo || !ESTAGIOS_DE_LICENCA.includes(fluxo.estagio)) return null;
+    if (!require('./lib/config.cjs').ligado('executar-autonomo', { projeto: toplevel })) return null;
+    return { slug: fluxo.slug, estagio: fluxo.estagio };
+  } catch (e) {
+    process.stderr.write(`[gate-turno-prometido] AVISO: categoria (c) não avaliada: ${e.message}\n`);
+    return null;
+  }
 }
 
 function main() {
@@ -179,6 +220,7 @@ function main() {
     // Constantes de regex para despacho (com \b nas bordas)
     const RE_PROMETE_DESPACHO = /\b(vou despachar|despachando|disparo agora|vou disparar)\b/i;
     const RE_PROMETE_ESPERA_MAQUINA = /\b(CI rodando|aguardando (o|a) (CI|build))\b/i;
+    const RE_PEDE_LICENCA = /(?:\b(?:sigo|posso seguir|posso continuar|continuo)\b[^.!?\n]{0,80}\?|\bquer que eu (?:siga|continue)\b[^.!?\n]{0,80}\??)\s*$/i;
 
     // Verifica se o texto normalizado promete despacho
     const matchDespacho = textoNormalizado.match(RE_PROMETE_DESPACHO);
@@ -221,6 +263,27 @@ function main() {
           `O que fazer:\n` +
           `  1. Vigiar agora: use Bash ou PowerShell com run_in_background, Monitor ou ScheduleWakeup.\n` +
           `  2. Não vigiar: diz que não precisa mais esperar (muda a resposta).\n` +
+          `  3. Desliga o gate: node scripts/setup.cjs --desligar gate-turno-prometido\n`
+        );
+      }
+    }
+
+    // Caso (c): termina pedindo licença para seguir, sem Q<n>, com fluxo no meio e autonomia ligada.
+    // Ordem barata primeiro: a regex e o Q rodam antes de qualquer git ou leitura de config.
+    // O Q é conferido no texto bruto: normalizarTexto pode engolir um Q1 dentro de crase ou aspa.
+    const fimDoTexto = textoNormalizado.trim();
+    const matchLicenca = fimDoTexto.match(RE_PEDE_LICENCA);
+    if (matchLicenca !== null && !/\bQ\d+\b/.test(ultimoText)) {
+      const fluxo = fluxoComLicencaPendente(ev.cwd);
+      if (fluxo) {
+        bloqueia(
+          `BLOQUEADO pelo gate de turno prometido do rainforest-mind.\n\n` +
+          `Razão: o turno terminou pedindo licença para seguir ("${matchLicenca[0]}"),\n` +
+          `com executar-autonomo ligada neste repositório e o fluxo ${fluxo.slug} em ${fluxo.estagio}.\n` +
+          `Seguir sem perguntar é o combinado aqui.\n\n` +
+          `O que fazer:\n` +
+          `  1. Segue o próximo passo do fluxo agora, sem pedir licença.\n` +
+          `  2. Se há decisão real, sobe como Q<n> no texto, com a recomendada.\n` +
           `  3. Desliga o gate: node scripts/setup.cjs --desligar gate-turno-prometido\n`
         );
       }

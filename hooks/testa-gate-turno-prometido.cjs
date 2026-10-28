@@ -403,6 +403,151 @@ teste('fixtures no formato real (chaves de cada linha cobrem o envelope de trans
 });
 
 
+// --- Categoria (c): pede licença para seguir com fluxo no meio e executar-autonomo ligada ---
+// Cada caso monta um repositório git real num mkdtemp: o gate lê o toplevel do cwd, o
+// estágio do fluxo (scripts/estado.cjs) e a chave em .rainforest/config.json. Nada aqui
+// depende de fixture com cwd fixo, então estes casos não passam pelo rodaGate acima.
+
+const estadoPath = path.join(__dirname, '..', 'scripts', 'estado.cjs');
+const SLUG_FLUXO = '2026-10-28-turno-prometido';
+
+function rodaGit(cwd, args) {
+  const r = spawnSync('git', args, { cwd, encoding: 'utf8', timeout: 30000, stdio: ['pipe', 'pipe', 'pipe'] });
+  assert(r.status === 0, `git ${args.join(' ')} falhou (exit ${r.status}): ${r.stderr}`);
+}
+
+function rodaEstado(repo, args) {
+  const env = { ...process.env, RFM_ESTADO_ROOT: repo, RFM_ROOT: repo };
+  delete env.CLAUDE_PROJECT_DIR;
+  const r = spawnSync(process.execPath, [estadoPath, ...args], {
+    cwd: repo, encoding: 'utf8', env, timeout: 30000, stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  assert(r.status === 0, `estado.cjs ${args[0]} falhou (exit ${r.status}): ${r.stdout} ${r.stderr}`);
+}
+
+// comFluxo: roda `iniciar` (estado gravado pelo estado.cjs real)
+// designAprovado: roda `marcar --estagio design --status aprovado` (próxima etapa vira plano)
+// autonomia: grava .rainforest/config.json com executar-autonomo (undefined = sem arquivo)
+function montarRepo({ comFluxo = true, designAprovado = true, autonomia } = {}) {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'rfm-turno-c-'));
+  tmpdirsCriados.push(repo);
+  rodaGit(repo, ['init', '-q', '-b', 'main']);
+  rodaGit(repo, ['config', 'user.email', 'teste@rainforest.invalid']);
+  rodaGit(repo, ['config', 'user.name', 'teste']);
+  fs.writeFileSync(path.join(repo, 'a.txt'), 'x\n');
+  rodaGit(repo, ['add', 'a.txt']);
+  rodaGit(repo, ['commit', '-q', '-m', 'base']);
+  if (comFluxo) {
+    rodaEstado(repo, ['iniciar', '--slug', SLUG_FLUXO, '--titulo', 'teste-turno-prometido']);
+    if (designAprovado) rodaEstado(repo, ['marcar', '--slug', SLUG_FLUXO, '--estagio', 'design', '--status', 'aprovado']);
+  }
+  rodaGit(repo, ['checkout', '-q', '-b', 'fluxo/turno-prometido']);
+  if (autonomia !== undefined) {
+    fs.mkdirSync(path.join(repo, '.rainforest'), { recursive: true });
+    fs.writeFileSync(path.join(repo, '.rainforest', 'config.json'), JSON.stringify({ 'executar-autonomo': autonomia }));
+  }
+  return repo;
+}
+
+// Transcrito igual ao da fixture pede-licenca-com-autonomia.jsonl, trocando só o texto final.
+function transcritoComTexto(texto) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rfm-turno-c-tr-'));
+  tmpdirsCriados.push(dir);
+  const linhas = fs.readFileSync(path.join(fixtureDir, 'pede-licenca-com-autonomia.jsonl'), 'utf8')
+    .trim().split('\n').map((l) => JSON.parse(l));
+  linhas[1].message.content[0].text = texto;
+  const arquivo = path.join(dir, 'transcricao.jsonl');
+  fs.writeFileSync(arquivo, linhas.map((l) => JSON.stringify(l)).join('\n') + '\n');
+  return arquivo;
+}
+
+function rodaGateNoRepo(repo, transcriptPath, stop_hook_active = false) {
+  const payload = {
+    session_id: 'test-session',
+    cwd: repo,
+    transcript_path: transcriptPath,
+    hook_event_name: 'Stop',
+  };
+  if (stop_hook_active) payload.stop_hook_active = true;
+  const env = { ...process.env };
+  delete env.RAINFOREST_GATE_OFF;
+  env.RFM_ROOT = repo;
+  return spawnSync(process.execPath, [hookPath], {
+    input: JSON.stringify(payload), encoding: 'utf8', env, timeout: 30000, stdio: ['pipe', 'pipe', 'pipe'],
+  });
+}
+
+const FIXTURE_LICENCA = path.join(fixtureDir, 'pede-licenca-com-autonomia.jsonl');
+const FIXTURE_LICENCA_Q = path.join(fixtureDir, 'pede-licenca-com-q.jsonl');
+
+// C1: último texto pede licença, fluxo em plano, autonomia ligada: exit 2
+teste('C1 pede licença com fluxo em plano e autonomia ligada: exit 2', () => {
+  const repo = montarRepo({ autonomia: true });
+  const r = rodaGateNoRepo(repo, FIXTURE_LICENCA);
+  assert(r.status === 2, `esperado 2, obteve ${r.status}: ${r.stderr}`);
+  assert(r.stderr.includes('pedindo licença'), `stderr deve citar a licença: ${r.stderr}`);
+  assert(r.stderr.includes(`fluxo ${SLUG_FLUXO} em plano`), `stderr deve citar slug e estágio: ${r.stderr}`);
+});
+
+// C2: termina em "posso seguir?": exit 2
+teste('C2 termina em "Tudo verde, posso seguir?": exit 2', () => {
+  const repo = montarRepo({ autonomia: true });
+  const r = rodaGateNoRepo(repo, transcritoComTexto('Revisão concluída sem achados. Tudo verde, posso seguir?'));
+  assert(r.status === 2, `esperado 2, obteve ${r.status}: ${r.stderr}`);
+  assert(r.stderr.includes('pedindo licença'), `stderr deve citar a licença: ${r.stderr}`);
+});
+
+// C3: termina em "Quer que eu siga" (sem ponto de interrogação): exit 2
+teste('C3 termina em "Quer que eu siga": exit 2', () => {
+  const repo = montarRepo({ autonomia: true });
+  const r = rodaGateNoRepo(repo, transcritoComTexto('Plano fechado e revisado. Quer que eu siga'));
+  assert(r.status === 2, `esperado 2, obteve ${r.status}: ${r.stderr}`);
+  assert(r.stderr.includes('pedindo licença'), `stderr deve citar a licença: ${r.stderr}`);
+});
+
+// C4: mesmo texto do C1 com uma linha Q1 antes: a decisão real sobe como Q<n>, exit 0
+teste('C4 mesmo texto do C1 com linha Q1 antes: exit 0', () => {
+  const repo = montarRepo({ autonomia: true });
+  const r = rodaGateNoRepo(repo, FIXTURE_LICENCA_Q);
+  assert(r.status === 0, `esperado 0, obteve ${r.status}: ${r.stderr}`);
+});
+
+// C5: o C1 com executar-autonomo desligada: exit 0
+teste('C5 o C1 com executar-autonomo desligada: exit 0', () => {
+  const repo = montarRepo({ autonomia: false });
+  const r = rodaGateNoRepo(repo, FIXTURE_LICENCA);
+  assert(r.status === 0, `esperado 0, obteve ${r.status}: ${r.stderr}`);
+});
+
+// C6: o C1 com o fluxo ainda em design (design não aprovado): exit 0
+teste('C6 o C1 com fluxo ainda em design: exit 0', () => {
+  const repo = montarRepo({ autonomia: true, designAprovado: false });
+  const r = rodaGateNoRepo(repo, FIXTURE_LICENCA);
+  assert(r.status === 0, `esperado 0, obteve ${r.status}: ${r.stderr}`);
+});
+
+// C7: o C1 com stop_hook_active true (anti-loop): exit 0
+teste('C7 o C1 com stop_hook_active true: exit 0 (sem laço)', () => {
+  const repo = montarRepo({ autonomia: true });
+  const r = rodaGateNoRepo(repo, FIXTURE_LICENCA, true);
+  assert(r.status === 0, `esperado 0, obteve ${r.status}: ${r.stderr}`);
+});
+
+// C8: pergunta no meio do texto, não no fim: exit 0
+teste('C8 "Sigo? Antes, um detalhe do log." (pergunta no meio): exit 0', () => {
+  const repo = montarRepo({ autonomia: true });
+  const r = rodaGateNoRepo(repo, transcritoComTexto('Sigo? Antes, um detalhe do log.'));
+  assert(r.status === 0, `esperado 0, obteve ${r.status}: ${r.stderr}`);
+});
+
+// C9: o C1 em repositório sem docs/rainforest/estado/: exit 0
+teste('C9 o C1 em repo sem docs/rainforest/estado: exit 0', () => {
+  const repo = montarRepo({ comFluxo: false, autonomia: true });
+  assert(!fs.existsSync(path.join(repo, 'docs', 'rainforest', 'estado')), 'repo de teste não pode ter estado');
+  const r = rodaGateNoRepo(repo, FIXTURE_LICENCA);
+  assert(r.status === 0, `esperado 0, obteve ${r.status}: ${r.stderr}`);
+});
+
 console.log(`ok: ${ok}   falhou: ${falha}`);
 
 // Limpeza de tmpdirs
