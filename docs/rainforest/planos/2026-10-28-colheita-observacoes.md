@@ -48,7 +48,8 @@ pronto quando: com um transcrito no formato real do Claude Code (linhas `{"type"
 
 ### 3. gate-pergunta-memoria: Q<n> conferida contra a memória antes de subir [tipo: implementar]
 atende: D6, D8
-arquivos: `hooks/gate-pergunta-memoria.cjs`, `hooks/testa-gate-pergunta-memoria.cjs`, `hooks/fixtures/pergunta-memoria/memoria-responde.jsonl`, `hooks/fixtures/pergunta-memoria/memoria-nao-responde.jsonl`, `hooks/fixtures/pergunta-memoria/memory/gate-off-so-por-variavel.md`, `hooks/hooks.json`, `hooks/lib/config.cjs`, `scripts/testa-conferir-categoria.sh`
+arquivos: `hooks/gate-pergunta-memoria.cjs`, `hooks/testa-gate-pergunta-memoria.cjs`, `hooks/fixtures/pergunta-memoria/memoria-responde.jsonl`, `hooks/fixtures/pergunta-memoria/memoria-nao-responde.jsonl`, `hooks/fixtures/pergunta-memoria/memory/gate-off-so-por-variavel.md`, `hooks/hooks.json`, `hooks/lib/config.cjs`, `scripts/testa-conferir-categoria.sh`, `hooks/testa-titulo-sessao-registro.sh`, `skills/setup/SKILL.md`
+emenda (2026-10-28, integração): `testa-titulo-sessao-registro.sh` fixa a contagem de comandos de Stop (5 → 6 com o gate novo) e `testa-conferir-setup.sh` cobra toda chave do catálogo na tabela de `skills/setup/SKILL.md`; as duas ficaram vermelhas na integração da tarefa 3 e só fecham tocando esses arquivos.
 depende de: nenhuma
 busca:
 - repo | rg "buscarPorAssunto|transcript_path|sessoes.json" hooks | `memoria-assunto-prompt.cjs` busca no banco por assunto e o `gate-turno-prometido` lê o último texto; nada confere Q<n>
@@ -81,7 +82,8 @@ pronto quando: com o `ideias.jsonl` real, `node scripts/ideias.cjs listar --tipo
 
 ### 6. Documentação, versão e notas [tipo: docs]
 atende: D1, D2, D3, D4, D6, D8
-arquivos: `README.md`, `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`
+arquivos: `README.md`, `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `docs/travas-mecanicas.md`
+emenda (2026-10-28, integração): `docs/travas-mecanicas.md` descreve a portaria e o `gate-turno-prometido` com o mesmo texto do README e ficaria desatualizado.
 depende de: 1, 2, 3
 mutacao: n/a
   motivo: texto e versão; a falsificação é a coerência com o design e com a interface real
