@@ -196,9 +196,9 @@ function mergeAutorizado() {
 // Leitura textual conservadora: na dúvida o workflow conta, e o caso cai no 5.
 // `push` só deixa de contar com filtro `branches:` de nomes fixos DENTRO do bloco
 // `push:` — `branches:` de `workflow_run`, de um `with:` ou de comentário não filtra
-// o push. `branches-ignore` dispara em toda branch não listada, e `*` no bloco é
-// glob de branch (`["**"]`, `fluxo/**`): os dois contam como PR, nunca viram 8.
-// Forma de fluxo (`on: push`, `on: [push]`, `push: {...}`) também conta.
+// o push. `branches-ignore` dispara em toda branch não listada, e glob no valor de
+// `branches:` (`["**"]`, `fluxo/?`, `[a-z]`) também: os dois contam como PR, nunca
+// viram 8. Forma de fluxo (`on: push`, `on: [push]`, `push: {...}`) também conta.
 function alcancaPr(texto) {
   if (/\bpull_request/.test(texto)) return true;
   if (!/\bpush\b/.test(texto)) return false;
@@ -207,7 +207,8 @@ function alcancaPr(texto) {
 
 // O push é filtrado só quando o gatilho é legível na forma exata: `on:` de topo
 // em bloco, e todo filho direto dele que cita push é `push:` sozinho na linha com
-// `branches:` sem `*` nem `branches-ignore` no próprio bloco. Qualquer outra forma
+// `branches:` de nomes fixos (sem glob no valor) e sem `branches-ignore` no próprio
+// bloco; o `*` de `paths:` não é filtro de branch e não conta. Qualquer outra forma
 // (`on: push`, `on: [push]`, `- push`, `push: {}`) dispara em toda branch ou não
 // é legível, e um `push:` de `with:`/`env:` nem é filho de `on:`: false, conta.
 // Comentário de fim de linha sai antes da leitura.
