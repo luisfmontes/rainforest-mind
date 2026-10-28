@@ -22,7 +22,7 @@
     "em": "2026-10-28"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-28",
     "em_voo": [],
     "carimbos": [
@@ -122,30 +122,77 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "pendente",
     "snapshot": {
-      "head": "1b2f76a6dc35eacf3d2345a7806c95a969086f4e",
+      "head": "0f60fcc16fd76db36d2f74fc4dfaf87bfc0bf697",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a1dbd23c4cd63da6e",
-        "veredito": "reprovado",
+        "agente_id": "a339595a1adde0e2a",
+        "veredito": "ok",
         "em": "2026-10-28",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/184770db-2116-48c8-acbd-618fc0867f9f/subagents/agent-a1dbd23c4cd63da6e.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/184770db-2116-48c8-acbd-618fc0867f9f/subagents/agent-a339595a1adde0e2a.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-28",
-    "achados": 7,
+    "achados": 4,
     "design": 2,
-    "tentativas": 1
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a1dbd23c4cd63da6e",
+            "veredito": "reprovado",
+            "em": "2026-10-28",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/184770db-2116-48c8-acbd-618fc0867f9f/subagents/agent-a1dbd23c4cd63da6e.jsonl"
+          }
+        ]
+      }
+    ],
+    "base": "db7f22101e8541de3674a866626d8a681742dfba",
+    "head": "0f60fcc16fd76db36d2f74fc4dfaf87bfc0bf697"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-10-28"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-10-28"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-10-28",
+      "de": "revisar",
+      "motivo": "revisao 2 aprovou com 4 achados que cabem no PR: falso positivo de 24% no gate-pergunta-memoria (limiar e Q<n> em prosa), trecho '---' do banco, inferencia sem tools: barrando repo sem trilho pela regra 11, backtracking exponencial na regex do fecho"
+    }
+  ],
+  "decididos": [
+    {
+      "pergunta": "achado 3: inferencia de frontmatter sem tools: barra pela regra 11 em repo sem trilho",
+      "escolha": "a inferencia vale so para o fluxo pulado (D3); a regra 11 segue exigindo isolation so de quem declara escreve:true ou tem tool de escrita listada",
+      "porque": "o plano tem como invariante que repo sem trilho nao e barrado, e o D3 descreve a inferencia como sinal para o fluxo pulado",
+      "estagio": "executar",
+      "em": "2026-10-28T20:59:58.902Z"
+    },
+    {
+      "pergunta": "achado 1: 24% de bloqueio no gate-pergunta-memoria",
+      "escolha": "so conta Q<n> que abre linha e termina em ?; termos do vocabulario do projeto (regra, fluxo, worktree, agente, plano, entrega, codex, claude etc.) nao contam; limiar segue 3",
+      "porque": "os falsos positivos medidos vem de recap em prosa e de palavras comuns do projeto, nao do limiar em si",
+      "estagio": "executar",
+      "em": "2026-10-28T20:59:59.012Z"
+    },
+    {
+      "pergunta": "achado 2: banco devolve observacao de outro projeto e trecho ---",
+      "escolha": "o banco so conta observacao do projeto atual e o trecho pula linha de --- e cabecalho",
+      "porque": "o acerto medido era de outro projeto sem relacao, e trecho vazio nao deixa conferir nada",
+      "estagio": "executar",
+      "em": "2026-10-28T21:02:00.850Z"
+    }
+  ]
 }

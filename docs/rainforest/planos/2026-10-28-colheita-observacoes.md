@@ -25,10 +25,11 @@ mutacao:
   arquivo: `hooks/portaria.cjs`
   de: `const escrevePorSinal = !escreveDeclarado && ((!declarado && agentConfig.escreve === true) || payload.tool_input.isolation === "worktree");`
   para: `const escrevePorSinal = false;`
-  emenda (2026-10-28, rodada 2): a tarefa 7 renomeou e ampliou a linha original (`escreveNaoDeclarado`); a mutação passa a desligar a condição inteira.
   bateria: `node hooks/testa-portaria-fluxo-pulado.cjs`
   fixture: `testa-portaria-fluxo-pulado.cjs, casos "N1" a "N3" (não declarado com isolation worktree, sem fluxo, em repo com trilho rainforest e com trilho protheus)`
 pronto quando: com o payload real do PreToolUse de `Agent` (`subagent_type: "general-purpose"`, `isolation: "worktree"`, `cwd` num repositório com `docs/rainforest/estado/` e branch `fluxo/x` sem estado aberto), a portaria sai com exit 2 e o stderr nomeia o agente e as duas saídas (abrir o fluxo, `leve`). Casos que **barram** (contornos): N1 `general-purpose` com `isolation: "worktree"`; N2 agente não declarado cujo frontmatter tem `Edit` (fixture de agente com `tools: Read, Edit`), sem `isolation`; N3 o N1 em repo de trilho protheus (`docs/plans/x.gates.json`) sem plano aberto. Casos vizinhos que **passam** (exit 0): N4 `Explore` sem `isolation`; N5 N1 com `leve` declarado na branch; N6 N1 com estágio `executar` aberto na branch da sessão; N7 N1 em repositório sem trilho; N8 N1 com a chave `aviso-fluxo` desligada no `.rainforest/config.json` do repositório. Parada declarada (D8): agente sem `isolation` e com frontmatter ilegível segue liberado. Provado por `node hooks/testa-portaria-fluxo-pulado.cjs` imprimindo `falhou: 0` e uma linha `ok` para cada um de N1 a N8, e pela mutação acima deixando N1 vermelho.
+
+Nota da tarefa 1 — emenda (2026-10-28, rodada 2): a tarefa 7 renomeou e ampliou a linha original (`escreveNaoDeclarado`); a mutação passa a desligar a condição inteira.
 
 ### 2. gate-turno-prometido pega o pedido de licença com autonomia ligada [tipo: implementar]
 atende: D4, D5, D8
@@ -137,7 +138,7 @@ desfecho: estender
 prova-na-base: verde — a base desta rodada já tem a bateria verde; os casos C10 a C12 nascem com a tarefa
 mutacao:
   arquivo: `hooks/gate-turno-prometido.cjs`
-  de: `const fimSemFormatacao = (t) => t.replace(/(?:\s|\*\*|__|\(|\)|[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]|\([^()\n]{0,80}\))+$/u, "");`
+  de: `const fimSemFormatacao = (t) => t.replace(/(?:\s|\*\*|__|\([^()\n]{0,80}\)|[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}])+$/u, "");`
   para: `const fimSemFormatacao = (t) => t;`
   bateria: `node hooks/testa-gate-turno-prometido.cjs`
   fixture: `testa-gate-turno-prometido.cjs, caso "C10" (último texto "**Sigo com o executar?**")`
@@ -150,3 +151,60 @@ depende de: 6, 7, 8, 9
 mutacao: n/a
   motivo: texto; a falsificação é a coerência com os casos de bateria
 pronto quando: com os hooks da rodada 2, a linha da portaria no README e a primeira coluna da tabela de `docs/travas-mecanicas.md` dizem que o pedido de `isolation: "worktree"` torna qualquer agente escritor e que sem `isolation` e sem frontmatter legível o despacho passa; o parágrafo do `gate-turno-prometido` diz que turno com `Q<n>` e pergunta em prosa fora do padrão passam; o do `gate-pergunta-memoria` diz que a memória é a do repositório principal, casada por nome e descrição, e que o banco do `memoria.cjs` também é consultado. Provado pela leitura, no revisar, de cada frase contra G1–G6, C10–C12 e P10–P12.
+
+## Rodada 3 (revisão 2 aprovada com 4 achados que cabem no PR, 2026-10-28)
+
+Decididas sem o usuário (`estado.cjs decidir`, chave `executar-autonomo`): a inferência de frontmatter sem `tools:` vale só para o fluxo pulado; o `gate-pergunta-memoria` só conta `Q<n>` que abre linha e tem `?`, ignora o vocabulário do projeto e o banco só conta observação do projeto atual.
+
+Emenda na tarefa 9: a tarefa 13 troca a linha de `fimSemFormatacao`; o `de:` da 9 passa a ser a linha nova, com o mesmo `para:`.
+
+### 11. Inferência sem `tools:` não aciona a regra 11 [tipo: implementar]
+atende: D3, D8
+arquivos: `hooks/portaria.cjs`, `hooks/testa-portaria-fluxo-pulado.cjs`
+depende de: 7
+busca:
+- repo | rg "if \(agentConfig.escreve === true\)" hooks/portaria.cjs | o ramo da regra 11, único
+- livro | pulado: emenda de trava própria
+desfecho: estender
+prova-na-base: verde — a base desta rodada já tem a bateria verde; o caso N9 nasce com a tarefa
+mutacao:
+  arquivo: `hooks/portaria.cjs`
+  de: `if (agentConfig.escreve === true && !agentConfig.semTools) {`
+  para: `if (agentConfig.escreve === true) {`
+  bateria: `node hooks/testa-portaria-fluxo-pulado.cjs`
+  fixture: `testa-portaria-fluxo-pulado.cjs, caso "N9" (repo git sem trilho, agente nao declarado com frontmatter sem tools:, sem isolation)`
+pronto quando: com o payload real do PreToolUse de `Agent` para um agente não declarado cujo frontmatter não tem `tools:`, sem `isolation`, num repositório git sem trilho de fluxo, a portaria sai 0 (N9); com trilho e sem estágio aberto o mesmo despacho segue barrado pelo fluxo pulado (G3 inalterado). Agente não declarado com tool de escrita listada e sem `isolation` continua barrado pela regra 11, e a mensagem diz "tem tool de escrita no frontmatter" em vez de "declara 'escreve: true'" (N10). Provado por `node hooks/testa-portaria-fluxo-pulado.cjs` com `falhou: 0` e linhas `ok` de N9 e N10, todas as `hooks/testa-portaria-*.cjs` com `falhou: 0`, e pela mutação acima deixando N9 vermelho.
+
+### 12. gate-pergunta-memoria: só pergunta de verdade, sem vocabulário do projeto, trecho útil do banco [tipo: implementar]
+atende: D6
+arquivos: `hooks/gate-pergunta-memoria.cjs`, `hooks/testa-gate-pergunta-memoria.cjs`
+depende de: 8
+busca:
+- repo | rg "matchAll\(/\bQ" hooks | só o `perguntas()` deste hook
+- livro | pulado: emenda de trava própria
+desfecho: estender
+prova-na-base: verde — a base desta rodada já tem a bateria verde; os casos P14 a P16 nascem com a tarefa
+mutacao:
+  arquivo: `hooks/gate-pergunta-memoria.cjs`
+  de: `const RE_MARCADOR_Q = /^[ \t>*_-]*Q(\d+)\b/gm;`
+  para: `const RE_MARCADOR_Q = /\bQ(\d+)\b/g;`
+  bateria: `node hooks/testa-gate-pergunta-memoria.cjs`
+  fixture: `testa-gate-pergunta-memoria.cjs, caso "P14" (Q1 no meio da prosa, com ? depois, casando 3 termos de uma memoria)`
+pronto quando: com o transcrito real do Stop, um recap "Fechado: Q1 (b), ... <termos de uma memória>?" com `Q1` no meio da linha sai 0 (P14); `Q1 — Convivência com o hook atual?` contra uma memória que só compartilha vocabulário do projeto (`regra`, `fluxo`, `worktree`, `agente`, `plano`, `entrega`, `codex`, `claude`, `continua`, `ficar`) sai 0 (P15); observação do banco do projeto atual cujo conteúdo abre com `---` e um cabeçalho mostra, na mensagem, a primeira linha de texto, nunca `---` (P16); observação de outro projeto não barra. P1 a P13 seguem como estão. Provado por `node hooks/testa-gate-pergunta-memoria.cjs` com `falhou: 0` e linhas `ok` de P14 a P16, e pela mutação acima deixando P14 vermelho.
+
+### 13. Regex do fecho formatado sem backtracking exponencial [tipo: implementar]
+atende: D4
+arquivos: `hooks/gate-turno-prometido.cjs`, `hooks/testa-gate-turno-prometido.cjs`
+depende de: 9
+busca:
+- repo | rg "fimSemFormatacao" hooks | só a linha da tarefa 9
+- livro | pulado: emenda de gate próprio
+desfecho: estender
+prova-na-base: verde — a base desta rodada já tem a bateria verde; o caso C13 nasce com a tarefa
+mutacao:
+  arquivo: `hooks/gate-turno-prometido.cjs`
+  de: `const fimSemFormatacao = (t) => t.replace(/(?:\s|\*\*|__|\([^()\n]{0,80}\)|[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}])+$/u, "");`
+  para: `const fimSemFormatacao = (t) => t.replace(/(?:\s|\*\*|__|\(|\)|[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]|\([^()\n]{0,80}\))+$/u, "");`
+  bateria: `node hooks/testa-gate-turno-prometido.cjs`
+  fixture: `testa-gate-turno-prometido.cjs, caso "C13" (ultimo texto "Sigo com o executar? " + "()" repetido 30 vezes + " fim", hook termina em menos de 3 s)`
+pronto quando: com o C1 trocado só no último texto para "Sigo com o executar? " + "()"×30 + " fim", o hook termina em menos de 3 s (C13); C10, C11 e C12 seguem barrando. Provado por `node hooks/testa-gate-turno-prometido.cjs` com `falhou: 0` e linhas `ok` de C10 a C13, e pela mutação acima (a regex antiga) deixando C13 vermelho por estouro de tempo.
