@@ -24,8 +24,10 @@ antes do `:`. Só uma linha `teto-despachos:` é aceita.
 
 ## Valor aceito
 
-Inteiro de 1 a 9999, sem sinal, sem zero à esquerda e sem unidade. O padrão
-de 40 ficou acima do maior fluxo medido no design (D9, 36 despachos).
+Inteiro de 1 a 9999, sem sinal, sem zero à esquerda e sem unidade. O piso
+de 40 ficou acima do maior fluxo medido no design (D9, 36 despachos); desde a 2.0.6
+o padrão cresce com o plano (1,5 despacho por tarefa), porque um plano de 43 tarefas
+batia no 40 por construção (#612).
 
 ## Valor ilegível
 
@@ -39,10 +41,10 @@ cobertura` (e o `marcar --estagio plano` que a roda) recusa com exit 2 o
 mesmo cabeçalho ilegível, pelo mesmo leitor do hook
 (`hooks/lib/teto-despachos.cjs`, D14).
 
-Plano ainda inexistente (fluxo em `design`) vale o padrão de 40.
+Plano ainda inexistente (fluxo em `design`) vale o piso de 40.
 
 ## Teto efetivo
 
-Teto efetivo é o declarado (ou 40) mais 10 por liberação gravada no estado
+Teto efetivo é o declarado (ou o padrão, `max(40, 1,5 × tarefas)`) mais 10 por liberação gravada no estado
 do fluxo: `node scripts/estado.cjs liberar-teto --slug <slug> --motivo "..."`,
 com a palavra do usuário. Veja `skills/revisar/references/laco.md`.

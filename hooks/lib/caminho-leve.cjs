@@ -31,8 +31,10 @@ function soLeve(estado) {
   return !CHAVES_DO_FLUXO.some((k) => estado[k] !== undefined);
 }
 
-/** O mesmo casamento do `resolver` de hooks/lib/estagio-ativo.cjs: slug sem a data e
- *  sem o `fluxo-N-` casa com a branch sem o prefixo até a primeira barra. */
+/** O casamento exato do `resolver` de hooks/lib/estagio-ativo.cjs: slug sem a data e
+ *  sem o `fluxo-N-` casa com a branch sem o prefixo até a primeira barra. A forma de
+ *  tarefa paralela `fluxo/<slug>-t<n>` (#613) fica de fora de propósito: o leve é um
+ *  hotfix numa branch só, e não convive com tarefa paralela. */
 function casaComBranch(slug, branchBase) {
   const semData = slug.replace(/^\d{4}-\d{2}-\d{2}-/, '');
   return semData === branchBase || semData.replace(/^fluxo-\d+-/, '') === branchBase;
