@@ -548,6 +548,20 @@ teste('C9 o C1 em repo sem docs/rainforest/estado: exit 0', () => {
   assert(r.status === 0, `esperado 0, obteve ${r.status}: ${r.stderr}`);
 });
 
+// C10-C12: o fecho formatado (negrito, emoji, parêntese) não esconde o pedido (revisão 1, achado 5).
+for (const [nome, texto] of [
+  ['C10 fecho em negrito "**Sigo com o executar?**": exit 2', 'Plano escrito.\n\n**Sigo com o executar?**'],
+  ['C11 fecho com emoji "Sigo com o executar? 👍": exit 2', 'Plano escrito. Sigo com o executar? 👍'],
+  ['C12 fecho com parêntese "Sigo com o executar? (o plano está em docs/)": exit 2', 'Plano escrito. Sigo com o executar? (o plano está em docs/)'],
+]) {
+  teste(nome, () => {
+    const repo = montarRepo({ autonomia: true });
+    const r = rodaGateNoRepo(repo, transcritoComTexto(texto));
+    assert(r.status === 2, `esperado 2, obteve ${r.status}: ${r.stderr}`);
+    assert(r.stderr.includes('pedindo licença'), `stderr deve citar a licença: ${r.stderr}`);
+  });
+}
+
 console.log(`ok: ${ok}   falhou: ${falha}`);
 
 // Limpeza de tmpdirs
