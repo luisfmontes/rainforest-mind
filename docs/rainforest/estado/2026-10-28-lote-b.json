@@ -23,7 +23,7 @@
     "em": "2026-10-28"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-28",
     "integradas": [
       1,
@@ -74,10 +74,38 @@
         "resultado": "n/a",
         "motivo": "bump de versao e texto; comportamento medido pelas tarefas 1 a 6"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-28"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "ab49ac374afa6161fe201f7396706acefd1728c1",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a82142008c6ff96e0",
+        "veredito": "ok",
+        "em": "2026-10-28",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/8a96ac43-ade9-4b4e-a6e0-475b7105c7df/subagents/agent-a82142008c6ff96e0.jsonl"
+      },
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ae1aefc8a1f1dd62e",
+        "veredito": "reprovado",
+        "em": "2026-10-28",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/8a96ac43-ade9-4b4e-a6e0-475b7105c7df/subagents/agent-ae1aefc8a1f1dd62e.jsonl"
+      }
+    ],
+    "achados": 8,
+    "em": "2026-10-28",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
