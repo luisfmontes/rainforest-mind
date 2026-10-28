@@ -24,7 +24,20 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-28",
-    "em_voo": [],
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "T7 portaria isolation sinal",
+        "desde": "2026-10-28T22:10:00-03:00",
+        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "T8 memoria do principal",
+        "desde": "2026-10-28T22:10:00-03:00",
+        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f"
+      }
+    ],
     "carimbos": [
       {
         "tarefa": 1,
@@ -46,6 +59,20 @@
         "iteracao": 1,
         "sessao": "184770db-2116-48c8-acbd-618fc0867f9f",
         "ts": "2026-10-28T18:50:05.639Z"
+      },
+      {
+        "tarefa": 7,
+        "hash_base": "e63d3f08386357eaaab76b4ad8e32ec592753f37",
+        "iteracao": 1,
+        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f",
+        "ts": "2026-10-28T20:19:35.104Z"
+      },
+      {
+        "tarefa": 8,
+        "hash_base": "e63d3f08386357eaaab76b4ad8e32ec592753f37",
+        "iteracao": 1,
+        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f",
+        "ts": "2026-10-28T20:19:35.104Z"
       }
     ],
     "em": "2026-10-28",
