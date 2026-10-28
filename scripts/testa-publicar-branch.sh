@@ -366,6 +366,26 @@ roda "$CAIXA" esperar-ci --pr 7
 [ "$CODIGO" -eq 8 ]; afirma "(g21) protect-main e schedule, PR sem check: sai 8 (exit=$CODIGO)" $?
 caixa_limpa
 
+# (g23) push com branches-ignore dispara na branch do PR: o CI existe e nao reportou, segue 5.
+workflow ci.yml <<'YML'
+on:
+  push:
+    branches-ignore: [main]
+YML
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 5 ]; afirma "(g23) push com branches-ignore e PR sem check: sai 5, nao 8 (exit=$CODIGO)" $?
+caixa_limpa
+
+# (g24) push com glob de branch ("**") dispara na branch do PR: segue 5.
+workflow ci.yml <<'YML'
+on:
+  push:
+    branches: ["**"]
+YML
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 5 ]; afirma "(g24) push com branches glob e PR sem check: sai 5, nao 8 (exit=$CODIGO)" $?
+caixa_limpa
+
 # (g22) cwd fora de repositorio git: o script para antes de ler workflow (main), nunca 8.
 mkdir -p "$S/fora"
 roda "$S/fora" esperar-ci --pr 7

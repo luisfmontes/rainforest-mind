@@ -1690,7 +1690,40 @@ echo "$S4" | grep -qF "ALERTA  plugin instalado"; a=$?
 echo "$S4" | grep -qF "sem parentesco"; b=$?
 echo "$S4" | grep -qF "reset --hard"; c=$?
 [ $a -eq 0 ] && [ $b -eq 0 ] && [ $c -eq 0 ]; confere "#608-4. clone completo com historia reescrita continua ALERTA 'sem parentesco' com 'reset --hard'" "$?" "$(echo "$S4" | grep 'plugin instalado')"
-rm -rf "$FR" "$CFGR" "$CFG4"
+
+# Caso 5: o clone raso do caso 3 (commit proprio) E uma skill nova na fonte que o
+# clone nao tem. O aviso de raso nao pode esconder o ALERTA de skill faltando.
+mkdir -p "$FR/skills/nova"; echo "# skill nova" > "$FR/skills/nova/SKILL.md"
+git -C "$FR" -c user.email=t@t -c user.name=t add -A >/dev/null 2>&1
+git -C "$FR" -c user.email=t@t -c user.name=t commit -qm "skill nova" >/dev/null 2>&1
+S5="$(saude_raso "$CFGR")"
+L5="$(echo "$S5" | grep 'plugin instalado:')"
+echo "$L5" | grep -qF "ALERTA  plugin instalado"; a=$?
+echo "$L5" | grep -qF "carregado sem 1 skill(s): nova"; b=$?
+echo "$S5" | grep -qF "reset --hard"; c=$?
+[ $a -eq 0 ] && [ $b -eq 0 ] && [ $c -ne 0 ]; confere "#608-5. clone raso com commit proprio e skill faltando continua ALERTA 'carregado sem', sem 'reset --hard'" "$?" "$L5"
+
+# Caso 6: a FONTE e rasa (checkout de CI) e o clone e completo, 1 commit a frente.
+# A raiz daqui e a fronteira: sem a troca de pergunta, saia "sem parentesco".
+FS="$SBP/fonte-rasa-aqui"
+CFG6="$SBP/cfg-fonte-rasa"
+M6="$CFG6/plugins/marketplaces/fonte-raso"
+rm -rf "$FS" "$CFG6"; mkdir -p "$CFG6/plugins/marketplaces"
+git clone -q --depth 1 "file://$FR" "$FS" 2>/dev/null
+git clone -q "file://$FR" "$M6" 2>/dev/null
+git -C "$M6" -c user.email=t@t -c user.name=t commit -q --allow-empty -m "commit proprio no clone completo" >/dev/null 2>&1
+if [ -f "$FS/.git/shallow" ] && [ ! -f "$M6/.git/shallow" ]; then
+  S6="$( cd "$FS" && CLAUDE_CONFIG_DIR="$CFG6" HOME="$SBP/home-raso" USERPROFILE="$SBP/home-raso" RFM_ROOT="$SBP/dados" \
+    node "$FS/scripts/saude.cjs" 2>&1 )"
+  L6="$(echo "$S6" | grep 'plugin instalado:')"
+  echo "$L6" | grep -q "^  aviso "; a=$?
+  echo "$L6" | grep -qF "este repositorio e raso"; b=$?
+  echo "$S6" | grep -qE "sem parentesco|reset --hard"; c=$?
+  [ $a -eq 0 ] && [ $b -eq 0 ] && [ $c -ne 0 ]; confere "#608-6. fonte rasa e clone completo a frente vira aviso 'este repositorio e raso', sem 'sem parentesco' nem 'reset --hard'" "$?" "$L6"
+else
+  falhou=$((falhou+1)); echo "  FALHA fixture #608-6: a fonte nao saiu rasa ou o clone saiu raso"
+fi
+rm -rf "$FR" "$CFGR" "$CFG4" "$FS" "$CFG6"
 
 echo "== #608 D3: config dirs ignoradas =="
 # Sandbox de bench (`.claude-bench-*`) e conta aposentada (`.claude-*.aposentada`) tem
@@ -1732,7 +1765,8 @@ cenario_bench_d3
 S1="$(saude_d3 "$DADOS_D3")"
 echo "$S1" | grep -qF "ALERTA  autocompact"; a=$?
 echo "$S1" | grep -E '^  aviso (config dirs|skills-divergentes)' | grep -qE '\.claude-bench-rf|\.claude-personal\.aposentada'; b=$?
-[ $a -ne 0 ] && [ $b -ne 0 ]; confere "D3-1. bench sem override nao gera ALERTA de autocompact" "$?" "$(echo "$S1" | grep -E 'autocompact|config dirs|skills-divergentes')"
+echo "$S1" | grep 'plugin instalado' | grep -qE '\.claude-bench-rf|\.claude-personal\.aposentada'; c=$?
+[ $a -ne 0 ] && [ $b -ne 0 ] && [ $c -ne 0 ]; confere "D3-1. bench sem override nao gera ALERTA de autocompact, e plugin instalado nao cita as ignoradas" "$?" "$(echo "$S1" | grep -E 'autocompact|config dirs|skills-divergentes|plugin instalado')"
 
 # Caso 2 (vizinho que continua ALERTA): .claude=45 contra .claude-personal=50.
 rm -rf "$HOMED3"; mkdir -p "$HOMED3"
@@ -1755,7 +1789,25 @@ printf '{"poda": false, "saude-ignorar-config-dirs": []}' > "$DADOS_D3/config.js
 cenario_bench_d3
 S4="$(saude_d3 "$DADOS_D3")"
 echo "$S4" | grep -qF "ALERTA  autocompact"; a=$?
-[ $a -eq 0 ]; confere "D3-4. com saude-ignorar-config-dirs [] a bench volta e o ALERTA de autocompact reaparece" "$?" "$(echo "$S4" | grep 'autocompact')"
+echo "$S4" | grep 'plugin instalado' | grep -qF '.claude-personal.aposentada'; b=$?
+[ $a -eq 0 ] && [ $b -eq 0 ]; confere "D3-4. com saude-ignorar-config-dirs [] a bench volta, o ALERTA de autocompact reaparece e plugin instalado cita a aposentada" "$?" "$(echo "$S4" | grep -E 'autocompact|plugin instalado')"
+
+# Caso 5: o `.` de `*.aposentada` e literal — `.claude-personalXaposentada` e conta.
+printf '{"poda": false}' > "$DADOS_D3/config.json"
+rm -rf "$HOMED3"; mkdir -p "$HOMED3"
+conta_d3 ".claude" "$OVR45"
+conta_d3 ".claude-personalXaposentada" '{"env":{"CLAUDE_AUTOCOMPACT_PCT_OVERRIDE":"50"}}'
+S5="$(saude_d3 "$DADOS_D3")"
+echo "$S5" | grep -qF "ALERTA  autocompact"; a=$?
+[ $a -eq 0 ]; confere "D3-5. .claude-personalXaposentada nao casa *.aposentada e continua ALERTA de autocompact" "$?" "$(echo "$S5" | grep 'autocompact')"
+
+# Caso 6: o padrao nao diferencia caixa — `.claude-BENCH-x` e sandbox.
+rm -rf "$HOMED3"; mkdir -p "$HOMED3"
+conta_d3 ".claude" "$OVR45"
+conta_d3 ".claude-BENCH-x" '{"model":"haiku"}'
+S6="$(saude_d3 "$DADOS_D3")"
+echo "$S6" | grep -qF "ALERTA  autocompact"; a=$?
+[ $a -ne 0 ]; confere "D3-6. .claude-BENCH-x casa *bench* sem diferenciar caixa e nao gera ALERTA" "$?" "$(echo "$S6" | grep 'autocompact')"
 
 rm -rf "$HOMED3" "$DADOS_D3"
 

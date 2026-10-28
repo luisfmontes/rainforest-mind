@@ -254,10 +254,28 @@ function manifestoDoPlugin(raiz) {
 // uma sandbox com a conta real acusa ALERTA falso (Issue #608, 2026-10-27).
 const IGNORADAS_DE_FABRICA = ['*bench*', '*.aposentada'];
 
-/** Casa um nome com um padrao em que `*` e o unico curinga; sem diferenciar caixa. */
+/**
+ * Casa um nome com um padrao em que `*` e o unico curinga; sem diferenciar caixa.
+ * Sem regex de proposito: `*a*a*...*b` virava `.*a.*a...` com backtracking
+ * exponencial, e o padrao vem da config do projeto, que vem do repo. Aqui cada
+ * pedaco entre `*` e procurado uma vez, da esquerda para a direita — o primeiro
+ * encaixe mais a esquerda nunca impede um encaixe que existiria mais adiante.
+ */
 function casaPadrao(nome, padrao) {
-  const re = new RegExp('^' + padrao.split('*').map((pedaco) => pedaco.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*') + '$', 'i');
-  return re.test(nome);
+  const n = nome.toLowerCase();
+  const pedacos = padrao.toLowerCase().split('*');
+  if (pedacos.length === 1) return n === pedacos[0];
+  const primeiro = pedacos[0];
+  const ultimo = pedacos[pedacos.length - 1];
+  if (n.length < primeiro.length + ultimo.length || !n.startsWith(primeiro) || !n.endsWith(ultimo)) return false;
+  const fim = n.length - ultimo.length;
+  let pos = primeiro.length;
+  for (const pedaco of pedacos.slice(1, -1)) {
+    const i = n.indexOf(pedaco, pos);
+    if (i === -1 || i + pedaco.length > fim) return false;
+    pos = i + pedaco.length;
+  }
+  return true;
 }
 
 /**
@@ -679,6 +697,7 @@ function avaliarClone(instalado, nome, instalacoes) {
   // ausente: a interrogação parece ruído de ferramenta, não achado.
   let atrasoCommit = '';
   let semParentesco = false;
+  let rasoSemCommit = '';
   if (aqui.status === 0 && la.status === 0 && aqui.out !== la.out) {
     // O DISCRIMINADOR É O COMMIT RAIZ, e a primeira versão disto errou.
     //
@@ -709,7 +728,15 @@ function avaliarClone(instalado, nome, instalacoes) {
     // são indistinguíveis, então o relato é AVISO e nunca alerta com `reset --hard`:
     // reaponte à mão se for história reescrita, mas o comando automático destruiria
     // um commit próprio que só existe na cópia instalada.
-    const raso = cloneRaso(instalado);
+    //
+    // O MESMO vale com a FONTE rasa (checkout de CI, `clone --depth`) e o clone
+    // completo: a raiz daqui é a fronteira, e a comparação acusava "sem parentesco"
+    // com `reset --hard` na ação. Qualquer lado raso troca a pergunta.
+    //
+    // O aviso não sai daqui direto: guardado em `rasoSemCommit`, ele cede a vez ao
+    // ALERTA de skill faltando abaixo, que o caminho não raso também mostraria.
+    const rasoLa = cloneRaso(instalado);
+    const raso = rasoLa || cloneRaso(RAIZ_CODIGO);
     const raizAqui = raizDe(RAIZ_CODIGO);
     const raizLa = raizDe(instalado);
     const par = `(${la.out.slice(0, 7)} vs ${aqui.out.slice(0, 7)})`;
@@ -717,15 +744,14 @@ function avaliarClone(instalado, nome, instalacoes) {
     if (raso) {
       const existe = rodar(caminhoExecutavel('git'), ['cat-file', '-e', `${la.out}^{commit}`], { cwd: RAIZ_CODIGO });
       if (existe.status !== 0) {
-        return {
-          nivel: 'aviso',
-          detalhe: `o clone e raso e o commit ${la.out.slice(0, 7)} nao existe aqui (commit proprio ou historia reescrita — clone raso nao distingue)`,
-          acao: 'nada automatico: confira na origem se o commit do clone existe antes de mexer nele',
-        };
+        rasoSemCommit = `${rasoLa ? 'o clone' : 'este repositorio'} e raso e o commit ${la.out.slice(0, 7)} nao existe aqui `
+          + '(commit proprio ou historia reescrita — repositorio raso nao distingue)';
       }
     }
 
-    if (!raso && raizAqui && raizLa && raizAqui !== raizLa) {
+    if (rasoSemCommit) {
+      // Sem história para contar atraso nem para julgar parentesco.
+    } else if (!raso && raizAqui && raizLa && raizAqui !== raizLa) {
       semParentesco = true;
     } else {
       const n = rodar(caminhoExecutavel('git'), ['rev-list', '--count', `${la.out}..HEAD`], { cwd: RAIZ_CODIGO });
@@ -766,8 +792,16 @@ function avaliarClone(instalado, nome, instalacoes) {
     return {
       nivel: 'alerta',
       detalhe: `carregado sem ${faltando.length} skill(s): ${faltando.join(', ')}`
-        + (atrasoCommit ? `; ${atrasoCommit}` : ''),
+        + (atrasoCommit ? `; ${atrasoCommit}` : '')
+        + (rasoSemCommit ? `; ${rasoSemCommit}` : ''),
       acao: atualiza,
+    };
+  }
+  if (rasoSemCommit) {
+    return {
+      nivel: 'aviso',
+      detalhe: rasoSemCommit,
+      acao: 'nada automatico: confira na origem se o commit do clone existe antes de mexer nele',
     };
   }
   if (atrasoCommit) {

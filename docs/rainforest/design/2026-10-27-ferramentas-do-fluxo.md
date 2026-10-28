@@ -16,6 +16,10 @@ rede como CI vermelho e repo sem CI de PR como vermelho). Versão 2.0.5 (PATCH: 
 - **D7 — #592: `commands/feedback.md` passa a prescrever `Segue #<n>: ...` no lugar de `CORRIGE #<n>: ...`, com teste estreito que passa a forma prescrita pela regex de palavra-chave falsa do gate e exige que ela não seja barrada** — porquê: o gate já aceita "Segue #<n>" e o teste pega a volta desta contradição exata; a varredura geral de exemplos foi plantada como ideia `exemplos-prescritos-contra-os-gates`.
 - **D8 — Entrega: versão 2.0.5 em `.claude-plugin/plugin.json` e badge do README no mesmo PR; `vigias/ERROS.md` (7 linhas de 05/10 a 16/10, tiradas do PR #611 pela trava de versão) entra neste PR** — porquê: a trava `conferir-versao` exige bump para mudança executável, e o README acompanha toda entrega.
 
+## Emendas da revisão (2026-10-27)
+- **D2 vale para qualquer lado raso.** Revisor A: com a FONTE rasa (checkout de CI) e o clone completo, a raiz daqui é a fronteira e a comparação acusava "sem parentesco" com `reset --hard` — o mesmo defeito invertido. O discriminador por `cat-file -e` passa a valer quando qualquer um dos dois é raso, e o aviso de raso não esconde mais o ALERTA de skill faltando. Mesma direção da D2 (avisar sem acusar), só alarga o alcance.
+- **D5: `push` com `branches-ignore` ou glob conta como CI de PR.** Revisor B: `branches-ignore: [main]` e `branches: ["**"]` disparam na branch do PR, e a leitura anterior dava 8 (merge sem CI). Agora só `branches:` sem `branches-ignore` e sem `*` no texto tira o `push`; qualquer dúvida cai no 5. É o princípio que a D5 já declarava ("nunca num 8 indevido").
+
 ## Avaliado e descartado
 - **#608 opção A (comparar autocompact só entre dirs que definem o override)**: esconde exatamente o caso que a checagem existe para pegar — uma conta real editada e a outra esquecida (dir sem override é "usa o padrão", que é a divergência).
 - **#587 por padrão de stderr**: o `--watch` é chamado com `stdio: 'inherit'`, então o stderr não chega ao script; e texto de erro do `gh` muda entre versões. Reler o estado é independente do texto.

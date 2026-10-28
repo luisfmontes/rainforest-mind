@@ -143,7 +143,7 @@ push. Ver `skills/executar/references/modo-autonomo.md`.
 | `5` | `esperar-ci` | CI vermelho ou sem check: `reabrir` (acima), conserte na branch, não mergeie |
 | `6` | `confirmar-merge` | o state não virou `MERGED` (ou o PR fechou): não declare merge; mostre o `gh pr view` |
 | `7` | `esperar-ci` | CI verde, mas a chave `fechar-mergear` está desligada: pare no PR aberto e informe o número |
-| `8` | `esperar-ci` | repositório sem CI (zero workflows, PR sem check): a evidência é o `verificar`; com `fechar-mergear` ligada mergeie, senão pare no PR aberto |
+| `8` | `esperar-ci` | repositório sem CI de PR (nenhum workflow do checkout alcança o PR, e o PR sem check): a evidência é o `verificar`; com `fechar-mergear` ligada mergeie, senão pare no PR aberto |
 | `69` | qualquer um | ambiente (rede, `gh` ausente ou sem auth, remoto não GitHub): anuncie em uma linha (regra 14) |
 
 A chave `fechar-mergear` vem desligada por padrão: em repositório de cliente, o

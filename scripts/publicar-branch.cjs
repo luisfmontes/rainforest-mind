@@ -27,7 +27,9 @@
  *   8   repositório sem CI de PR: nenhum workflow do checkout alcança o PR e o PR
  *       não tem check; a evidência é o `verificar` (esperar-ci, #576, #591). A linha diz se o merge está autorizado
  *   69  ambiente: git/gh ausente ou sem auth, falha de rede, remoto não GitHub onde
- *       o subcomando precisa dele, ou saída inesperada do gh
+ *       o subcomando precisa dele, ou saída inesperada do gh. No esperar-ci, também
+ *       a espera interrompida sem check vermelho, e a releitura dos checks que falha
+ *       (stderr começa por `nao-verificavel:`) (#587)
  *
  * `RFM_MERGE_PRAZO_S` (padrão 60) limita a espera do state em confirmar-merge.
  */
@@ -190,10 +192,15 @@ function mergeAutorizado() {
 }
 
 // #591 (D5): um workflow alcança o PR se o texto cita `pull_request` (inclui
-// `pull_request_target`) ou tem gatilho `push` sem filtro `branches`/`branches-ignore`.
+// `pull_request_target`) ou tem gatilho `push` que pode disparar na branch do PR.
 // Leitura textual conservadora: na dúvida o workflow conta, e o caso cai no 5.
+// `push` só deixa de contar com filtro `branches:` de nomes fixos: `branches-ignore`
+// dispara em toda branch não listada, e um `*` em qualquer ponto do texto pode ser
+// glob de branch (`["**"]`, `fluxo/**`) — os dois contam como PR, nunca viram 8.
 function alcancaPr(texto) {
-  return /\bpull_request/.test(texto) || (/\bpush\b/.test(texto) && !/\bbranches(-ignore)?\s*:/.test(texto));
+  if (/\bpull_request/.test(texto)) return true;
+  if (!/\bpush\b/.test(texto)) return false;
+  return !/\bbranches\s*:/.test(texto) || /\bbranches-ignore\s*:/.test(texto) || texto.includes('*');
 }
 
 // Quantos workflows do checkout (`git ls-files`) alcançam PR. Devolve null quando

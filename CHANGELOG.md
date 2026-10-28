@@ -10,6 +10,17 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.0.5 — 2026-10-27
+
+Fim dos falsos alarmes de três ferramentas do fluxo (#608, #592, #594, #587, #591). Desenho em `docs/rainforest/design/2026-10-27-ferramentas-do-fluxo.md`.
+
+- **`/saude` com repositório raso (#608, D2).** Clone raso do marketplace, ou checkout raso de onde o `/saude` roda, não acusa mais "sem parentesco" nem manda `reset --hard`: em dia ou atrás, conta o atraso; com commit que o outro lado não tem, dá aviso. Skill faltando continua ALERTA.
+- **`/saude` ignora config dirs que não são conta (#608, D3).** `*bench*` e `*.aposentada` saem da comparação de plugin instalado, versões, skills e autocompact. A chave `saude-ignorar-config-dirs` troca os padrões; `[]` não ignora nenhuma.
+- **`esperar-ci` não lê queda de rede como CI vermelho (#587, D4).** Quando o `--watch` cai, os checks são relidos: vermelho sai 5; releitura que falha sai 69 com `nao-verificavel:`; só pendente sai 69.
+- **"Sem CI de PR" pelos workflows do checkout (#591, D5).** O exit 8 só sai se nenhum workflow da branch alcança o PR. `push` com `branches-ignore` ou glob de branch conta como CI de PR.
+- **Gate de fechamento de Issue consulta o repo certo (#594, D6).** A evidência é lida no repo do `--repo`/`-R` ou da URL do `gh pr merge`; erro de leitura bloqueia com mensagem própria, distinta de "sem evidência".
+- **`/feedback` prescreve `Segue #<n>:` (#592, D7)**, que o gate aceita, no lugar do `CORRIGE #<n>:` que ele barrava.
+
 ## 2.0.4 — 2026-10-26
 
 Conserto do `hooks/gate-worktree.cjs` para subagente despachado em worktree (#573, #580, #582, #583). A janela principal e o PowerShell não mudam. Desenho em `docs/rainforest/design/2026-10-24-gate-worktree.md`.

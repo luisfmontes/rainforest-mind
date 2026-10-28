@@ -55,6 +55,10 @@ if "%1"=="issue" if "%2"=="view" (
     echo nao e json
     exit /b 0
   )
+  if "%GH_ISSUE_VIEW_SAIDA%"=="objeto" (
+    echo {}
+    exit /b 0
+  )
   rem #594 merge por URL: com GH_MARCADOR_SO_SEM_REPO=1 o marcador so aparece SEM --repo.
   if "%GH_MARCADOR_SO_SEM_REPO%"=="1" (
     echo %* | findstr /C:"--repo" >nul && goto :issuecomrepo
@@ -100,6 +104,7 @@ if [ "$1" = "issue" ] && [ "$2" = "view" ]; then
   fi
   if [ "${GH_ISSUE_VIEW_SAIDA:-}" = "vazio" ]; then exit 0; fi
   if [ "${GH_ISSUE_VIEW_SAIDA:-}" = "lixo" ]; then echo "nao e json"; exit 0; fi
+  if [ "${GH_ISSUE_VIEW_SAIDA:-}" = "objeto" ]; then echo '{}'; exit 0; fi
   # (#594 merge por URL) com GH_MARCADOR_SO_SEM_REPO=1 o marcador so aparece SEM --repo.
   if [ "${GH_MARCADOR_SO_SEM_REPO:-}" = "1" ]; then
     case " $* " in *" --repo "*) echo '{"comments":[{"body":"Sem marcador aqui"}]}' ;; *) echo '{"comments":[{"body":"<!-- rainforest-evidencia --> Marcador presente"}]}' ;; esac
@@ -3514,6 +3519,18 @@ EXIT_594_7=$?
 [ $EXIT_594_7 -eq 2 ] && test_ok "594-7 stdout não-JSON com exit 0: exit 2" || test_fail "594-7 stdout não-JSON com exit 0: exit 2 (foi $EXIT_594_7)"
 ERR_594_7="$(cat "$SBP/err-594-7")"
 echo "$ERR_594_7" | grep -qF "não consegui ler a Issue #12" && test_ok "594-7 stderr diz que não conseguiu ler" || test_fail "594-7 stderr sem 'não consegui ler a Issue #12' ($ERR_594_7)"
+
+# (594-8) D6: gh issue view sai 0 com JSON sem `comments` ({}) → leitura falha, não "sem marcador"
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_COM_MARCADOR="" GH_ISSUE_VIEW_SAIDA=objeto
+  PAYLOAD='{"cwd":"'"$SBP_WIN"'","tool_name":"Bash","tool_input":{"command":"gh pr create --body \"Closes #12\""}}'
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-594-8"
+EXIT_594_8=$?
+[ $EXIT_594_8 -eq 2 ] && test_ok "594-8 JSON sem comments com exit 0: exit 2" || test_fail "594-8 JSON sem comments com exit 0: exit 2 (foi $EXIT_594_8)"
+ERR_594_8="$(cat "$SBP/err-594-8")"
+echo "$ERR_594_8" | grep -qF "não consegui ler a Issue #12" && test_ok "594-8 stderr diz que não conseguiu ler" || test_fail "594-8 stderr sem 'não consegui ler a Issue #12' ($ERR_594_8)"
 
 # #592: a forma prescrita pelo /feedback tem de passar pelo gate. A extração lê
 # o commands/feedback.md REAL do repo; a frase "na primeira linha:" quebra linha

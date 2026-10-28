@@ -25,11 +25,11 @@ depende de: nenhuma
 prova-na-base: verde — o caso de clone raso entra na bateria existente, que na base roda sem ele; o vermelho é medido pela mutação
 mutacao:
   arquivo: `scripts/saude.cjs`
-  de: `const raso = cloneRaso(instalado);`
-  para: `const raso = false;`
+  de: `const rasoLa = cloneRaso(instalado);`
+  para: `const rasoLa = false;`
   bateria: `bash scripts/testa-saude.sh`
   timeout: `3600000`
-  fixture: `testa-saude.sh, secao "#608 D2: clone raso", caso "clone raso em dia nao acusa sem parentesco"`
+  fixture: `testa-saude.sh, secao "#608 D2: clone raso", caso "#608-2. clone raso 1 commit atras vira aviso"` (emenda da revisão: o #608-1, em dia, não chega a comparar raízes e não morde a mutação)
 pronto quando: forma do código (a mutação depende dela):
 - Função de topo `cloneRaso(dir)` roda `git rev-parse --is-shallow-repository` com `cwd: dir` e devolve `true` só com status 0 e saída `true`.
 - Dentro de `avaliarConfigDir`, no bloco que hoje compara `raizAqui`/`raizLa`, a linha exata `const raso = cloneRaso(instalado);` vem antes da comparação de raízes. Com `raso` verdadeiro, a comparação de raízes não é usada: `git cat-file -e <la>^{commit}` em `RAIZ_CODIGO` decide — existe → segue para a contagem `rev-list --count` de hoje; não existe → relato `nivel: 'aviso'` com detalhe `o clone e raso e o commit <la7> nao existe aqui (commit proprio ou historia reescrita — clone raso nao distingue)`, **sem** `reset --hard` na ação.
@@ -182,7 +182,7 @@ pronto quando: achado da revisão de segurança automática sobre o commit da ta
 
 ### 7. Versão 2.0.5, README e colheita [tipo: docs]
 atende: D1, D8
-arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `vigias/ERROS.md`, `skills/executar/SKILL.md`, `skills/rainforest-mind/references/regra-11.md`
+arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`, `skills/fechar/SKILL.md`, `vigias/ERROS.md`, `skills/executar/SKILL.md`, `skills/rainforest-mind/references/regra-11.md`
 depende de: 2, 4, 6, 8
 mutacao: n/a
   motivo: bump de versão e texto; o comportamento é medido pelas tarefas 1–6 e pela trava `conferir-versao`
