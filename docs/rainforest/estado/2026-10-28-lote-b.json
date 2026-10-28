@@ -23,7 +23,7 @@
     "em": "2026-10-28"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-28",
     "integradas": [
       1,
@@ -94,17 +94,22 @@
     "reaberturas": 2
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "pendente",
     "snapshot": {
-      "head": "b869d5811a8ad70bcd4fb21ecf91778bbc9bf355",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/2026-10-28-lote-b.json"
-      ]
+      "head": "6f7ad1bdee5918dfc637fa613c1e81a9cd8b2d8c",
+      "caminhos_sujos": []
     },
-    "vereditos": [],
-    "achados": 1,
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ac3c7165878ee1338",
+        "veredito": "ok",
+        "em": "2026-10-28",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/8a96ac43-ade9-4b4e-a6e0-475b7105c7df/subagents/agent-ac3c7165878ee1338.jsonl"
+      }
+    ],
+    "achados": 0,
     "em": "2026-10-28",
-    "tentativas": 2,
     "voltas": [
       {
         "volta": 1,
@@ -137,12 +142,23 @@
           }
         ]
       }
-    ]
+    ],
+    "base": "e37ba660bce08781c9ac73bb67e1a3cc89e5fa9e",
+    "head": "6f7ad1bdee5918dfc637fa613c1e81a9cd8b2d8c"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-10-28"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-10-28"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-10-28",
+      "de": "revisar",
+      "motivo": "CI do PR #618: hooks/testa-abertura-mod-config.sh fixa os bytes das elaboracoes injetadas (33697); a frase da tarefa 7 em regra-11.md somou 122 B a toda sessao. Frase movida para regra-11-atividade.md (tarefa 11)."
+    }
+  ]
 }

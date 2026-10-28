@@ -15,6 +15,10 @@ ao do despacho, e recusar todo o shell do agente. Despachar já do worktree
 destino, ou esperar a entrega. O `gate-agente-em-voo` só barra o fim do turno,
 não a troca.
 
+Dois editores do mesmo fluxo em worktrees criados à mão (sessão fora de repo,
+#565) usam a branch `fluxo/<slug>-t<n>`, que casa com o fluxo `<slug>` (#613):
+`skills/executar/references/paralelo-fora-de-repo.md`.
+
 > 2026-09-03: criei dois worktrees e duas branches para uma atividade (design e
 > plano numa, código dos subagentes noutra); um merge a mais e o histórico
 > partido até consolidar. 2026-09-08: chamei `EnterWorktree` com dois
