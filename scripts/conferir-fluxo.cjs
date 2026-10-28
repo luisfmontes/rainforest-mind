@@ -37,7 +37,7 @@ const { execFileSync } = require('child_process');
 const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 const { contarOcorrencias } = require(path.join(__dirname, '..', 'hooks', 'lib', 'contar-ocorrencias.cjs'));
 const { caminhoDoc } = require(path.join(__dirname, '..', 'hooks', 'lib', 'pastas-docs.cjs'));
-const { lerTetoDeclarado } = require(path.join(__dirname, '..', 'hooks', 'lib', 'teto-despachos.cjs'));
+const { lerTetoDeclarado, tetoPadrao } = require(path.join(__dirname, '..', 'hooks', 'lib', 'teto-despachos.cjs'));
 const { calcularCamadas, ErroCamadas, parseDependencias, globMatches, acoplamentos } = require(path.join(__dirname, 'lib', 'camadas.cjs'));
 
 // A raiz é a do PROJETO em que se trabalha, mesma cadeia do estado.cjs
@@ -275,8 +275,12 @@ function cmdCobertura() {
   const tarefasDag = []; // entrada do calcularCamadas: numero, dependeDe, arquivos
 
   // D14: o mesmo leitor do hook gate-teto-despachos; cabeçalho ilegível recusa aqui, não só no despacho.
-  const tetoDeclarado = lerTetoDeclarado(conteudo_plano);
+  // D5 do lote B: sem a linha, o padrão é o do hook, max(40, 1,5 x tarefas). Aviso (não erro) quando o declarado é menor que as tarefas.
+  const tetoDeclarado = lerTetoDeclarado(conteudo_plano, tetoPadrao(tarefas.length));
   if (tetoDeclarado.erro) erros.push(`plano ${arquivo_plano}: ${tetoDeclarado.erro}`);
+  else if (tetoDeclarado.teto < tarefas.length) {
+    console.log(`aviso: teto-despachos: ${tetoDeclarado.teto} declarado e menor que as ${tarefas.length} tarefas do plano`);
+  }
 
   for (const tarefa of tarefas) {
     const { numero, nome, atende, tipo, paralela, dependeDe, arquivos, mutacao } = tarefa;

@@ -17,7 +17,8 @@
  *
  * Sem toggle e sem variável de escape (D15): a única porta acima do teto é o
  * `liberar-teto` (tarefa 4). Teto efetivo (tarefa 7): o declarado no cabeçalho do plano
- * (`teto-despachos: N`, D9; 40 sem a linha) mais 10 por liberação gravada no estado (D13).
+ * (`teto-despachos: N`, D9; sem a linha, max(40, 1,5 x tarefas do plano), D5 do lote B) mais
+ * 10 por liberação gravada no estado (D13).
  * Cabeçalho ou liberação ilegível NEGA (D12).
  */
 
@@ -26,10 +27,9 @@ const path = require("path");
 const { execFileSync } = require("child_process");
 const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
 const { comTrava } = require(path.join(__dirname, "lib", "trava-jsonl.cjs"));
-const { lerTetoDeclarado } = require(path.join(__dirname, "lib", "teto-despachos.cjs"));
+const { lerTetoDeclarado, tetoPadrao, TETO_MINIMO } = require(path.join(__dirname, "lib", "teto-despachos.cjs"));
 const { caminhoDoc } = require(path.join(__dirname, "lib", "pastas-docs.cjs"));
 
-const TETO_PADRAO = 40;
 const DESPACHOS_POR_LIBERACAO = 10;
 const ESPERA_TRAVA_SEG = 10;
 
@@ -69,11 +69,18 @@ function raizDeDados(raiz) {
   return path.join(raiz, ".rainforest");
 }
 
-// Teto do fluxo: { teto } ou { erro }. Falha de leitura nunca vira o teto padrão (D12).
+// Contador de tarefas é o `extrairTarefas` da `cobertura`, o mesmo do estado.cjs (D5 do lote B).
+// O require fica dentro da função: o conferir-fluxo.cjs já carrega a lib do teto no topo (ciclo).
+function carregarExtrairTarefas() {
+  return require(path.join(__dirname, "..", "scripts", "conferir-fluxo.cjs")).extrairTarefas;
+}
+
+// Teto do fluxo: { teto, declarado, liberacoes, tarefas } ou { erro }. Falha de leitura nunca vira o teto padrão (D12).
 function tetoDoFluxo(raiz, slug) {
   const relPlano = caminhoDoc("planos", slug, { raiz });
   const plano = path.join(raiz, relPlano);
-  let declarado = TETO_PADRAO;
+  let declarado = TETO_MINIMO;
+  let tarefas = 0;
   let st = null;
   try {
     st = fs.statSync(plano);
@@ -88,7 +95,12 @@ function tetoDoFluxo(raiz, slug) {
     } catch (err) {
       return { erro: `o plano ${plano} existe mas nao e um arquivo legivel (${err && err.message})` };
     }
-    const lido = lerTetoDeclarado(texto, TETO_PADRAO);
+    try {
+      tarefas = carregarExtrairTarefas()(texto).length;
+    } catch (err) {
+      return { erro: `o plano ${plano} nao pode ter as tarefas contadas (${err && err.message}); nada foi admitido` };
+    }
+    const lido = lerTetoDeclarado(texto, tetoPadrao(tarefas));
     if (lido.erro) return { erro: `plano ${plano}: ${lido.erro}` };
     declarado = lido.teto;
   }
@@ -114,7 +126,7 @@ function tetoDoFluxo(raiz, slug) {
   }
 
   const teto = declarado + DESPACHOS_POR_LIBERACAO * liberacoes.length;
-  return { teto, declarado, liberacoes: liberacoes.length };
+  return { teto, declarado, liberacoes: liberacoes.length, tarefas };
 }
 
 function lerPayload() {
@@ -185,7 +197,10 @@ function main() {
       const saida = daJanela
         ? ` Para destravar, com a palavra do usuario: declarar \`teto-despachos: N\` no cabecalho do plano, ou node scripts/estado.cjs liberar-teto --slug ${slug} --motivo "<motivo>" (+${DESPACHOS_POR_LIBERACAO}).`
         : " A decisao de liberar mais despachos e do usuario, na janela principal; pare e reporte.";
-      return `o fluxo ${slug} ja admitiu ${total} despachos, o teto e ${teto}, e este despacho foi NEGADO.${saida}`;
+      return (
+        `o fluxo ${slug} ja admitiu ${total} despachos (conta cumulativa do fluxo inteiro, nao agentes simultaneos), ` +
+          `o teto e ${teto} (tarefas do plano: ${decidido.tarefas}), e este despacho foi NEGADO.${saida}`
+      );
     }
 
     const tmp = `${arquivo}.${process.pid}.tmp`;

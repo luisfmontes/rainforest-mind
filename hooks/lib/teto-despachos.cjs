@@ -5,9 +5,17 @@
 // Cabeçalho = as linhas antes do primeiro `## `. Valor válido: inteiro de 1 a 9999.
 
 const VALOR_VALIDO = /^[1-9][0-9]{0,3}$/;
+const TETO_MINIMO = 40;
 
-// { teto } (`padrao`, 40, quando não há a linha) ou { erro } com o texto lido.
-function lerTetoDeclarado(textoDoPlano, padrao = 40) {
+// Teto padrão de um plano sem `teto-despachos:` (D5 do lote B, #612): max(40, ceil(1,5 × tarefas)).
+// `tarefas` vem do `extrairTarefas` do conferir-fluxo.cjs; não numérico ou negativo conta como 0.
+function tetoPadrao(tarefas) {
+  if (!Number.isFinite(tarefas) || tarefas < 0) tarefas = 0;
+  return Math.max(TETO_MINIMO, Math.ceil(1.5 * tarefas));
+}
+
+// { teto } (`padrao`, quando não há a linha) ou { erro } com o texto lido.
+function lerTetoDeclarado(textoDoPlano, padrao = TETO_MINIMO) {
   if (typeof textoDoPlano !== 'string') return { erro: 'plano ilegível: o texto não é uma string' };
   const linhas = textoDoPlano.split(/\r?\n/);
   const fim = linhas.findIndex((l) => l.startsWith('## '));
@@ -24,4 +32,4 @@ function lerTetoDeclarado(textoDoPlano, padrao = 40) {
   return { teto: Number(valor) };
 }
 
-module.exports = { lerTetoDeclarado };
+module.exports = { lerTetoDeclarado, tetoPadrao, TETO_MINIMO };

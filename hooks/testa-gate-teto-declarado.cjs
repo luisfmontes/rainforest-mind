@@ -2,7 +2,7 @@
 "use strict";
 /* Bateria do teto declarado no plano e das liberacoes (Tarefa 7 do plano flaky-teto, D9, D12, D13).
  *
- * O que ela protege: o teto do hook vale o `teto-despachos: N` do cabecalho do plano (40 sem a
+ * O que ela protege: o teto do hook vale o `teto-despachos: N` do cabecalho do plano (max(40, 1,5 x tarefas) sem a
  * linha) mais 10 por `liberar-teto` do PROPRIO fluxo, e cabecalho ou liberacao ilegivel NEGA em
  * vez de cair no teto padrao.
  *
@@ -96,6 +96,15 @@ function gravarPlano(repo, linhaCabecalho, rodape) {
   const extra = linhaCabecalho === undefined ? [] : Array.isArray(linhaCabecalho) ? linhaCabecalho : [linhaCabecalho];
   let texto = [...antes, ...extra, ...depois].join("\n");
   if (rodape) texto += `\n${rodape}\n`;
+  fs.mkdirSync(path.dirname(arquivoPlano(repo)), { recursive: true });
+  fs.writeFileSync(arquivoPlano(repo), texto, "utf8");
+}
+
+/* Plano sintetico com `n` cabecalhos `### k.` (D5 do lote B, #612): sem a linha, o teto e max(40, 1,5 x n). */
+function gravarPlanoDeTarefas(repo, n, linhaCabecalho) {
+  const extra = linhaCabecalho === undefined ? [] : [linhaCabecalho];
+  const tarefas = Array.from({ length: n }, (_, i) => `### ${i + 1}. tarefa sintetica ${i + 1} [tipo: implementar]\n\ncorpo\n`);
+  const texto = ["# Plano sintetico", ...extra, "", "## Tarefas", "", ...tarefas].join("\n");
   fs.mkdirSync(path.dirname(arquivoPlano(repo)), { recursive: true });
   fs.writeFileSync(arquivoPlano(repo), texto, "utf8");
 }
@@ -311,6 +320,31 @@ function main() {
     });
     const r = rodar(repo);
     caso("teto_despachos que nao e objeto: sai 2", r.status === 2, `exit=${r.status} ${r.stderr}`);
+  }
+
+  // == 12. teto padrao proporcional ao numero de tarefas do plano (D5, #612) ==
+  console.log("== 12. plano sem a linha: teto = max(40, 1,5 x tarefas) ==");
+  {
+    const repo = caixa();
+    gravarPlanoDeTarefas(repo, 43);
+    const { a, b, total } = passaDepoisNega(repo, 64);
+    caso("plano de 43 tarefas sem cabecalho: teto 65: a 65a passa", a.status === 0, `exit=${a.status} ${a.stderr}`);
+    caso("plano de 43 tarefas sem cabecalho: teto 65: a 66a nega", b.status === 2, `exit=${b.status} ${b.stderr}`);
+    caso("plano de 43 tarefas sem cabecalho: teto 65: o total para em 65", total === 65, `total=${total}`);
+  }
+  {
+    const repo = caixa();
+    gravarPlanoDeTarefas(repo, 20);
+    const { a, b } = passaDepoisNega(repo, 39);
+    caso("plano de 20 tarefas sem cabecalho: teto 40: a 40a passa", a.status === 0, `exit=${a.status} ${a.stderr}`);
+    caso("plano de 20 tarefas sem cabecalho: teto 40: a 41a nega", b.status === 2, `exit=${b.status} ${b.stderr}`);
+  }
+  {
+    const repo = caixa();
+    gravarPlanoDeTarefas(repo, 43, "teto-despachos: 70");
+    const { a, b } = passaDepoisNega(repo, 69);
+    caso("plano de 43 tarefas com teto-despachos: 70: a 70a passa", a.status === 0, `exit=${a.status} ${a.stderr}`);
+    caso("plano de 43 tarefas com teto-despachos: 70: a 71a nega", b.status === 2, `exit=${b.status} ${b.stderr}`);
   }
 
   // == 11. o leitor sem disco ==

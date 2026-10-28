@@ -365,6 +365,26 @@ async function main() {
     caso("o grupo do registro e o da portaria.cjs", comTeto.length === 1 && usa(comTeto[0], "portaria.cjs"));
   }
 
+  // == 13. negacao do teto proporcional: conta cumulativa e tarefas do plano (D5, #612) ==
+  console.log("== 13. plano de 43 tarefas: a negacao diz conta cumulativa e tarefas do plano: 43 ==");
+  {
+    const repo = caixa();
+    fs.mkdirSync(path.join(repo, "docs", "rainforest", "planos"), { recursive: true });
+    const tarefas = Array.from({ length: 43 }, (_, i) => `### ${i + 1}. tarefa sintetica ${i + 1} [tipo: implementar]\n\ncorpo\n`);
+    fs.writeFileSync(
+      path.join(repo, "docs", "rainforest", "planos", `${SLUG}.md`),
+      ["# Plano sintetico", "", "## Tarefas", "", ...tarefas].join("\n"),
+      "utf8"
+    );
+    semarContador(repo, '{"total":65}\n');
+    const r66 = rodar(repo, janela(repo));
+    caso("plano de 43 tarefas: a 66a nega com exit 2", r66.status === 2, `exit=${r66.status} ${r66.stderr}`);
+    caso("negacao diz conta cumulativa", r66.stderr.includes("conta cumulativa"), r66.stderr);
+    caso("negacao diz tarefas do plano: 43", r66.stderr.includes("tarefas do plano: 43"), r66.stderr);
+    caso("negacao mostra o teto 65", /o teto e 65 /.test(r66.stderr), r66.stderr);
+    caso("total continua 65 depois da negacao", contador(repo) === 65, `total=${contador(repo)}`);
+  }
+
   // == 12. sem raiz de dados, o contador cai no repo e precisa sair do git status ==
   console.log("== 12. sem RFM_ROOT e sem raiz de dados, o contador fica fora do git status ==");
   {

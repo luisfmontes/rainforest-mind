@@ -118,6 +118,23 @@ try {
     caso("duas linhas teto-despachos: recusam na cobertura", recusa(r, "2 linhas"), `exit=${r.status} stderr=${r.stderr}`);
   }
 
+  console.log("== aviso: declarado menor que as tarefas do plano, sem mudar o exit (D5, #612) ==");
+  // Plano real (12 tarefas) + 31 cabecalhos = 43 tarefas. Os extras nao tem atende/mutacao, entao a
+  // cobertura recusa os dois casos; o que se prova e o aviso e o exit igual nas duas variantes.
+  const TAREFAS_EXTRAS = Array.from({ length: 31 }, (_, i) => `### ${13 + i}. tarefa sintetica ${13 + i} [tipo: implementar]`).join("\n");
+  {
+    const repo = caixa();
+    gravarPlano(repo, "teto-despachos: 30", TAREFAS_EXTRAS);
+    arquivoPlanoCitado = arquivoPlano(repo);
+    const c30 = cobertura(repo);
+    caso("43 tarefas com teto-despachos: 30: a cobertura imprime o aviso com 30 e 43", c30.stdout.includes("aviso: teto-despachos: 30 declarado e menor que as 43 tarefas"), `stdout=${c30.stdout} stderr=${c30.stderr}`);
+    const repo70 = caixa();
+    gravarPlano(repo70, "teto-despachos: 70", TAREFAS_EXTRAS);
+    const c70 = cobertura(repo70);
+    caso("43 tarefas com teto-despachos: 70: sem aviso", !c70.stdout.includes("aviso:"), `stdout=${c70.stdout}`);
+    caso("o aviso nao muda o exit da cobertura (30 e 70 saem igual)", c30.status === c70.status, `30: exit=${c30.status} | 70: exit=${c70.status}`);
+  }
+
   console.log("== aceita na cobertura (exit 0) ==");
   {
     const repo = caixa();
