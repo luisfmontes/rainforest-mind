@@ -1397,6 +1397,58 @@ else
   falhou=$((falhou+1)); printf '  FALHA a linha vermelha nao apareceu exatamente uma vez\n'
 fi
 
+echo
+echo "== 29. D6 (#606): --baseline-para grava o verde, --baseline-de repassa sem rodar =="
+# A bateria conta cada execucao num arquivo FORA da copia (CONTAGEM): assim se ve quantas
+# vezes ela rodou, e nao so o exit. Por tras, a bateria honesta decide o veredito.
+cat > "$CAIXA/bateria-conta.sh" <<'BAT'
+#!/bin/bash
+echo x >> "$CONTAGEM"
+exec bash bateria.sh
+BAT
+export CONTAGEM="$S/contagem"
+conta_exec(){ if [ -f "$CONTAGEM" ]; then wc -l < "$CONTAGEM" | tr -d ' '; else echo 0; fi; }
+
+printf '%s' '{"status":1,"duracao":5,"stdout":"","stderr":""}' > "$S/base-vermelho.json"
+printf '%s' 'isto nao e json' > "$S/base-ilegivel.json"
+printf '%s' '{"status":0,"duracao":100,"stdout":"","stderr":""}' > "$S/base-verde.json"
+
+# 29a: status 1 no arquivo — recusa com exit 4 antes de qualquer execucao da bateria.
+rm -f "$CONTAGEM"
+exige 4 "--baseline-de com status 1 recusa com exit=4" \
+  CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' --bateria 'bash bateria-conta.sh' --baseline-de "$W/base-vermelho.json"
+tem "status 1 sai RECUSADO: baseline repassado ilegivel" "RECUSADO: baseline repassado ilegivel"
+exige 0 "status 1 nao roda a bateria nenhuma vez" test "$(conta_exec)" -eq 0
+
+# 29b: arquivo ilegivel e arquivo ausente recusam do mesmo jeito.
+rm -f "$CONTAGEM"
+exige 4 "--baseline-de com arquivo ilegivel recusa com exit=4" \
+  CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' --bateria 'bash bateria-conta.sh' --baseline-de "$W/base-ilegivel.json"
+tem "ilegivel sai RECUSADO: baseline repassado ilegivel" "RECUSADO: baseline repassado ilegivel"
+exige 4 "--baseline-de com arquivo ausente recusa com exit=4" \
+  CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' --bateria 'bash bateria-conta.sh' --baseline-de "$W/nao-existe.json"
+
+# 29c: --baseline-para grava o verde; --baseline-de do arquivo gravado NAO roda a baseline de novo.
+# Base + pos-mutacao + confirmacao = 3 execucoes; repassado = pos + confirmacao = 2.
+rm -f "$CONTAGEM"
+exige 0 "--baseline-para: mutacao vermelha e baseline gravado (3 execucoes)" \
+  CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' --bateria 'bash bateria-conta.sh' --baseline-para "$W/base-gravado.json"
+exige 0 "--baseline-para grava JSON com \"status\":0" grep -q '"status":0' "$S/base-gravado.json"
+exige 0 "--baseline-para: exatamente 3 execucoes da bateria" test "$(conta_exec)" -eq 3
+
+rm -f "$CONTAGEM"
+exige 0 "--baseline-de do arquivo gravado: mutacao vermelha, so 2 execucoes (sem baseline)" \
+  CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' --bateria 'bash bateria-conta.sh' --baseline-de "$W/base-gravado.json"
+tem "a saida diz que o baseline foi repassado" "--- bateria baseline (repassado de"
+exige 0 "--baseline-de: exatamente 2 execucoes da bateria" test "$(conta_exec)" -eq 2
+
+# 29d: uso errado sai 1 antes de qualquer efeito (nada copiado, nada mutado).
+exige 1 "--baseline-para e --baseline-de juntos: erro de uso, exit=1" \
+  CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' --bateria 'bash bateria-conta.sh' --baseline-para "$W/x.json" --baseline-de "$W/base-verde.json"
+tem "diz que sao mutuamente exclusivas" "mutuamente exclusivas"
+exige 1 "--baseline-de com --no-lugar: erro de uso, exit=1" \
+  CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' --bateria 'bash bateria-conta.sh' --no-lugar --baseline-de "$W/base-verde.json"
+
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]

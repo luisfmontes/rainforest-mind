@@ -1455,6 +1455,109 @@ else
   echo "  FALHA nao consegui montar o repositorio de fixture"; falhou=$((falhou+1))
 fi
 
+echo "== 18b. D6 (#606): baseline medido uma vez por bateria =="
+# Duas tarefas na MESMA bateria, cada uma mutando um trecho do mesmo fonte. A bateria
+# acrescenta uma linha ao contador a cada execucao e fica vermelha so com o fonte mutado.
+# Cada tarefa vermelha roda a bateria 3 vezes: baseline, pos-mutacao e confirmacao.
+# Sem repasse sao 2 x 3 = 6 linhas; com repasse, 1 baseline + 2 x 2 = 5. O contador
+# fica FORA da caixa (senao a copia de cada rodada o herdaria), como na secao 17.
+conta_linhas(){ if [ -f "$1" ]; then wc -l < "$1" | tr -d ' '; else echo 0; fi; }
+DC="$(mktemp -d)"; SANDBOXES+=("$DC"); DCW="$(cygpath -m "$DC" 2>/dev/null || printf '%s' "$DC")"
+
+D6="$(mktemp -d)"; SANDBOXES+=("$D6"); D6W="$(cygpath -m "$D6" 2>/dev/null || printf '%s' "$D6")"
+mkdir -p "$D6/docs/rainforest/planos"
+printf 'const alvo = 1;\nconst outro = 2;\n' > "$D6/fonte.cjs"
+cat > "$D6/bat.sh" <<'FIM'
+echo x >> "$CNT"
+if grep -q MUTADO fonte.cjs; then echo "ok: 4   falhou: 1"; exit 1; fi
+echo "ok: 5   falhou: 0"
+exit 0
+FIM
+cp "$D6/bat.sh" "$D6/bat2.sh"
+cat > "$D6/docs/rainforest/planos/d6.md" <<'PLANO'
+# Plano D6 mesma bateria
+
+### 1. Primeira tarefa na bateria compartilhada
+
+atende: D1
+
+mutacao:
+  arquivo: `fonte.cjs`
+  de: `const alvo = 1;`
+  para: `const alvo = 1; // MUTADO`
+  bateria: `bash bat.sh`
+
+### 2. Segunda tarefa na mesma bateria
+
+atende: D1
+
+mutacao:
+  arquivo: `fonte.cjs`
+  de: `const outro = 2;`
+  para: `const outro = 2; // MUTADO`
+  bateria: `bash bat.sh`
+PLANO
+# Mesmo plano, mas a segunda tarefa aponta para outra bateria (bat2.sh, mesmo conteudo).
+awk 'BEGIN{n=0} /bateria: `bash bat.sh`/{n++; if(n==2){sub(/bat.sh/,"bat2.sh")}} {print}' "$D6/docs/rainforest/planos/d6.md" > "$D6/docs/rainforest/planos/d6-bat.md"
+
+rm -f "$DC/contador"
+SAIDA_D6="$(env CNT="$DCW/contador" RFM_ESTADO_ROOT="$D6W" node "$CHECADOR" mutacoes --slug d6 --plano "$D6W/docs/rainforest/planos/d6.md" --raiz-codigo "$D6W" 2>"$DC/err.txt")"
+RC_D6=$?
+exige 0 "duas tarefas na mesma bateria: baseline roda uma vez (5 rodadas, nao 6)" \
+  test "$(conta_linhas "$DC/contador")" -eq 5
+exige 0 "(d6) mutacoes sai 0 com as duas tarefas vermelhas" test "$RC_D6" -eq 0
+exige 0 "(d6) a saida traz 'tarefa 1: vermelho' e 'tarefa 2: vermelho'" \
+  bash -c 'printf "%s\n" "$1" | grep -q "tarefa 1: vermelho" && printf "%s\n" "$1" | grep -q "tarefa 2: vermelho"' _ "$SAIDA_D6"
+
+# Vizinho 1 (plano): baterias DIFERENTES nao compartilham baseline — 6 linhas.
+rm -f "$DC/contador"
+SAIDA_BD="$(env CNT="$DCW/contador" RFM_ESTADO_ROOT="$D6W" node "$CHECADOR" mutacoes --slug d6bd --plano "$D6W/docs/rainforest/planos/d6-bat.md" --raiz-codigo "$D6W" 2>"$DC/err-bd.txt")"
+RC_BD=$?
+exige 0 "vizinho: baterias diferentes medem cada uma o seu baseline (6 linhas)" \
+  test "$(conta_linhas "$DC/contador")" -eq 6
+exige 0 "(d6bd) mutacoes sai 0" test "$RC_BD" -eq 0
+
+# Vizinho 2 (plano): `no-lugar: sim` nas duas tarefas mede o baseline a cada uma — 6 linhas.
+# Repositorio git real, com o fonte commitado e limpo (o modo no lugar exige isso).
+NL="$(mktemp -d)"; SANDBOXES+=("$NL"); NLW="$(cygpath -m "$NL" 2>/dev/null || printf '%s' "$NL")"
+printf 'const alvo = 1;\nconst outro = 2;\n' > "$NL/fonte.cjs"
+cp "$D6/bat.sh" "$NL/bat.sh"
+mkdir -p "$NL/docs/rainforest/planos"
+cat > "$NL/docs/rainforest/planos/d6-nl.md" <<'PLANO'
+# Plano D6 no lugar
+
+### 1. Primeira tarefa no lugar
+
+atende: D1
+
+mutacao:
+  arquivo: `fonte.cjs`
+  de: `const alvo = 1;`
+  para: `const alvo = 1; // MUTADO`
+  bateria: `bash bat.sh`
+  no-lugar: sim
+
+### 2. Segunda tarefa no lugar
+
+atende: D1
+
+mutacao:
+  arquivo: `fonte.cjs`
+  de: `const outro = 2;`
+  para: `const outro = 2; // MUTADO`
+  bateria: `bash bat.sh`
+  no-lugar: sim
+PLANO
+git init -q "$NL"
+( cd "$NL" && git add -A && git -c user.email=t@t.t -c user.name=t commit -q -m base ) >/dev/null 2>&1
+
+rm -f "$DC/contador"
+SAIDA_NL="$(env CNT="$DCW/contador" RFM_ESTADO_ROOT="$NLW" node "$CHECADOR" mutacoes --slug d6nl --plano "$NLW/docs/rainforest/planos/d6-nl.md" --raiz-codigo "$NLW" 2>"$DC/err-nl.txt")"
+RC_NL=$?
+exige 0 "vizinho: no-lugar nas duas tarefas mede o baseline a cada uma (6 linhas)" \
+  test "$(conta_linhas "$DC/contador")" -eq 6
+exige 0 "(d6nl) mutacoes sai 0 com as duas tarefas vermelhas" test "$RC_NL" -eq 0
+
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]

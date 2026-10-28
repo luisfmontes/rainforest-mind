@@ -117,6 +117,10 @@ const USO = `uso: node scripts/conferir-mutacao.cjs --arquivo <caminho> --de <tr
   --slug     <slug>     fluxo onde gravar o flake (junto de --tarefa; os dois ou nenhum)
   --tarefa   <n>        tarefa do plano a que o flake pertence
   --raiz-estado <pasta> onde o estado do fluxo está (padrão: --raiz); só vale com --slug
+  --baseline-para <arq> grava o baseline verde ({status, duracao, stdout, stderr}) em JSON
+  --baseline-de  <arq>  repassa um baseline já medido: a Fase 1 não roda a bateria (sai 4 se
+                        o arquivo for ilegível ou o status não for 0). Mutuamente exclusivas,
+                        e nenhuma das duas vale com --no-lugar
 
 exit (2 e 4 só valem depois de uma nova tentativa; 0 exige vermelho em duas rodadas):
      0 mutação casou e bateria VERMELHA | 2 bateria VERDE | 3 MUTACAO NAO APLICADA |
@@ -695,6 +699,33 @@ function rodaBateria(bateria, raiz, timeout, qual) {
   return { r, duracao, qual };
 }
 
+// `--baseline-de` (D6, #606): o baseline já medido por quem chama (conferir-fluxo
+// `mutacoes`) vira `baselineRes` sem rodar a bateria de novo. Só entra o que foi
+// gravado verde: status diferente de 0 é recusa, e o arquivo ilegível também.
+// Devolve o mesmo formato de `rodaBateria`, porque a detecção de corte e a de colapso
+// leem estes campos e não podem saber de onde vieram.
+function lerBaselineRepassado(arquivo) {
+  const recusa = (motivo) => {
+    console.error('RECUSADO: baseline repassado ilegivel');
+    console.error(`  ${motivo}`);
+    process.exit(4);
+  };
+  let obj;
+  try {
+    obj = JSON.parse(fs.readFileSync(arquivo, 'utf8'));
+  } catch (err) {
+    recusa(`não consegui ler ${arquivo} como JSON — ${err.message}`);
+  }
+  if (!obj || typeof obj !== 'object') recusa(`${arquivo} não é um objeto JSON`);
+  if (obj.status !== 0) recusa(`${arquivo} tem status ${JSON.stringify(obj.status)}, não 0: só baseline verde é repassado`);
+  if (!Number.isFinite(obj.duracao)) recusa(`${arquivo} não tem duracao numérica`);
+  return {
+    r: { status: 0, signal: null, error: undefined, stdout: String(obj.stdout ?? ''), stderr: String(obj.stderr ?? '') },
+    duracao: obj.duracao,
+    qual: 'baseline (repassado)',
+  };
+}
+
 // O piso e a razao moram AQUI, e nao dentro do main(), porque o que precisa ser
 // provado e a REGRA — piso de 1 s, razao de 10%, e onde ficam as fronteiras — e
 // regra se prova com entrada, nao com cronometro.
@@ -946,6 +977,15 @@ function main() {
   if (bateria.trim() === '') erroUso('--bateria vazio');
   if (de === para) erroUso('--de e --para são iguais: isso não inverte comportamento nenhum');
 
+  // Baseline repassado entre tarefas (D6, #606): gravar e repassar não se combinam, e o
+  // modo no lugar não repassa nada — o fonte real é reconferido entre tarefas.
+  const baselinePara = ler('baseline-para');
+  const baselineDe = ler('baseline-de');
+  if (baselinePara === '') erroUso('--baseline-para vazio');
+  if (baselineDe === '') erroUso('--baseline-de vazio');
+  if (baselinePara !== null && baselineDe !== null) erroUso('--baseline-para e --baseline-de são mutuamente exclusivas');
+  if (noLugar && (baselinePara !== null || baselineDe !== null)) erroUso('--baseline-para e --baseline-de não valem com --no-lugar');
+
   const timeout = Number(ler('timeout') ?? TIMEOUT_PADRAO);
   if (!Number.isFinite(timeout) || timeout <= 0) erroUso('--timeout precisa ser um número de ms positivo');
 
@@ -987,12 +1027,17 @@ function main() {
   // Roda a bateria no fonte ÍNTEGRO. Se não sair 0, a prova não será válida,
   // porque qualquer alteração pode deixar a bateria vermelha sem relação com
   // o comportamento que você quer testar. D11 estendido.
-  let baselineRes = rodaBateria(bateria, raizExecucao, timeout, 'baseline');
+  // Com `--baseline-de` a bateria não roda aqui: o baseline vem do arquivo (D6, #606).
+  let baselineRes = baselineDe === null
+    ? rodaBateria(bateria, raizExecucao, timeout, 'baseline')
+    : lerBaselineRepassado(baselineDe);
   const baselineExit = baselineRes.r.status;
   let baselineDuracao = baselineRes.duracao;
 
   const baselineSaida = ultimasLinhas(`${baselineRes.r.stdout || ''}${baselineRes.r.stderr || ''}`, 20);
-  console.log(`--- bateria baseline (fonte íntegro) em ${baselineDuracao} ms ---`);
+  console.log(baselineDe === null
+    ? `--- bateria baseline (fonte íntegro) em ${baselineDuracao} ms ---`
+    : `--- bateria baseline (repassado de ${baselineDe}) em ${baselineDuracao} ms ---`);
   if (baselineSaida) console.log(baselineSaida);
   console.log('---------------------------------');
   console.log('');
@@ -1052,6 +1097,22 @@ function main() {
 
   console.log(`ok: baseline VERDE (exit 0 após ${baselineDuracao} ms).`);
   console.log('');
+
+  // `--baseline-para` (D6, #606): grava o verde para as tarefas seguintes da mesma bateria.
+  // Depois do verde, inclusive o verde da nova tentativa do flake (baselineRes já é ela).
+  if (baselinePara !== null) {
+    try {
+      fs.writeFileSync(baselinePara, JSON.stringify({
+        status: 0,
+        duracao: baselineDuracao,
+        stdout: baselineRes.r.stdout || '',
+        stderr: baselineRes.r.stderr || '',
+      }));
+    } catch (err) {
+      console.error(`RECUSADO: não consegui gravar o baseline em ${baselinePara} — ${err.message}`);
+      process.exit(1);
+    }
+  }
 
   // ====================================================== Fase 2: conferência
   // D11 — antes de escrever qualquer byte. Se o padrão não casa, NÃO há mutação.
