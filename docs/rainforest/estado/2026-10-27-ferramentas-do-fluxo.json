@@ -22,7 +22,7 @@
     "em": "2026-10-27"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-27",
     "tarefas_ok": 8,
     "tarefas": 8,
@@ -122,36 +122,52 @@
         "fixture": "testa-gate-fechar-issue.sh 594m pr merge <URL de outro repo> com Closes: consulta no repo da URL e barra"
       }
     ],
-    "reaberturas": 1
+    "reaberturas": 2,
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-10-27"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "fc80897d3fa29c6d33149dbc81c3778f0b75da9f",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/2026-10-27-ferramentas-do-fluxo.json"
-      ]
+      "head": "52f0e532c42f18a21f9c44a3b545d8bac8567e99",
+      "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a9e24f3684c6f4035",
+        "agente_id": "a5d6fecf343d6fbc7",
         "veredito": "reprovado",
         "em": "2026-10-27",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bbe7888f-e761-411a-988c-b38fada6b86e/subagents/agent-a9e24f3684c6f4035.jsonl"
-      },
-      {
-        "agente": "rainforest-mind:revisor",
-        "agente_id": "a2af677382b254a14",
-        "veredito": "ok",
-        "em": "2026-10-27",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bbe7888f-e761-411a-988c-b38fada6b86e/subagents/agent-a2af677382b254a14.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bbe7888f-e761-411a-988c-b38fada6b86e/subagents/agent-a5d6fecf343d6fbc7.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-27",
-    "achados": 12,
-    "tentativas": 1
+    "achados": 4,
+    "tentativas": 2,
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a9e24f3684c6f4035",
+            "veredito": "reprovado",
+            "em": "2026-10-27",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bbe7888f-e761-411a-988c-b38fada6b86e/subagents/agent-a9e24f3684c6f4035.jsonl"
+          },
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a2af677382b254a14",
+            "veredito": "ok",
+            "em": "2026-10-27",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bbe7888f-e761-411a-988c-b38fada6b86e/subagents/agent-a2af677382b254a14.jsonl"
+          }
+        ]
+      }
+    ]
   },
   "verificar": {
     "status": "pendente"
@@ -173,6 +189,20 @@
       "porque": "revisor B: a leitura anterior dava 8 (merge sem CI) para branches-ignore e [\"**\"]; D5 ja dizia nunca 8 indevido",
       "estagio": "executar",
       "em": "2026-10-28T00:52:08.235Z"
+    },
+    {
+      "pergunta": "branches: fora do bloco push filtra o push (D5)?",
+      "escolha": "nao; so branches: dentro do bloco push: tira o push",
+      "porque": "revisor da rodada 2: branches: de workflow_run/with:/comentario dava 8 indevido com push sem filtro",
+      "estagio": "executar",
+      "em": "2026-10-28T02:56:35.295Z"
+    },
+    {
+      "pergunta": "releitura com 'no checks reported' (gh real, exit 1, stdout vazio) e 5 ou 69 (D4)?",
+      "escolha": "5, como o plano ja mandava para lista vazia",
+      "porque": "gh 2.96 real nao devolve [] sem check; o stub escondia o caso e o codigo dava 69",
+      "estagio": "executar",
+      "em": "2026-10-28T02:56:35.397Z"
     }
   ]
 }

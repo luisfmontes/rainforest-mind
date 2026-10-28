@@ -335,7 +335,18 @@ on: pull_request
 YML
 roda "$CAIXA" esperar-ci --pr 7
 [ "$CODIGO" -eq 5 ]; afirma "(g19) workflow com pull_request e PR sem check: sai 5 (exit=$CODIGO)" $?
+
+# (g25) o mesmo com o formato do gh real (2.96): PR sem check faz a releitura sair 1,
+# stdout vazio, "no checks reported" no stderr. Nao e rede caida: sai 5, nao 69.
+export STUB_CHECKS_JSON_EXIT=1 STUB_CHECKS_JSON_STDERR="no checks reported on the 'x' branch"
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 5 ]; afirma "(g25) pull_request e PR sem check no formato do gh real: sai 5, nao 69 (exit=$CODIGO)" $?
 caixa_limpa
+
+# (g26) sem workflow e PR sem check no formato do gh real: continua 8.
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 8 ]; afirma "(g26) sem .github/workflows e PR sem check no formato do gh real: sai 8 (exit=$CODIGO)" $?
+unset STUB_CHECKS_JSON_EXIT STUB_CHECKS_JSON_STDERR
 
 # (g20) protect-main.yml com o conteudo real da #591 (push em main): nenhum workflow alcanca PR: sai 8.
 workflow protect-main.yml <<'YML'
@@ -384,6 +395,40 @@ on:
 YML
 roda "$CAIXA" esperar-ci --pr 7
 [ "$CODIGO" -eq 5 ]; afirma "(g24) push com branches glob e PR sem check: sai 5, nao 8 (exit=$CODIGO)" $?
+caixa_limpa
+
+# (g27) push sem filtro e `branches:` de outro gatilho (workflow_run) e de um step:
+# o filtro nao e do push, o push dispara na branch do PR: segue 5, nao 8.
+workflow ci.yml <<'YML'
+on:
+  push:
+  workflow_run:
+    workflows: [build]
+    branches: [main]
+jobs:
+  b:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: x/y@v1
+        with:
+          branches: main
+YML
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 5 ]; afirma "(g27) push sem filtro e branches: de workflow_run/with: sai 5, nao 8 (exit=$CODIGO)" $?
+caixa_limpa
+
+# (g28) protect-main com comentario e cron no mesmo arquivo: o filtro do push e de
+# nomes fixos, o * do cron e o comentario nao contam: sai 8.
+workflow protect-main.yml <<'YML'
+on:
+  # so na main
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * *'
+YML
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 8 ]; afirma "(g28) push em main com cron no mesmo arquivo: sai 8 (exit=$CODIGO)" $?
 caixa_limpa
 
 # (g22) cwd fora de repositorio git: o script para antes de ler workflow (main), nunca 8.

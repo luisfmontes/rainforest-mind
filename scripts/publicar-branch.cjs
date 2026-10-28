@@ -194,13 +194,34 @@ function mergeAutorizado() {
 // #591 (D5): um workflow alcança o PR se o texto cita `pull_request` (inclui
 // `pull_request_target`) ou tem gatilho `push` que pode disparar na branch do PR.
 // Leitura textual conservadora: na dúvida o workflow conta, e o caso cai no 5.
-// `push` só deixa de contar com filtro `branches:` de nomes fixos: `branches-ignore`
-// dispara em toda branch não listada, e um `*` em qualquer ponto do texto pode ser
-// glob de branch (`["**"]`, `fluxo/**`) — os dois contam como PR, nunca viram 8.
+// `push` só deixa de contar com filtro `branches:` de nomes fixos DENTRO do bloco
+// `push:` — `branches:` de `workflow_run`, de um `with:` ou de comentário não filtra
+// o push. `branches-ignore` dispara em toda branch não listada, e `*` no bloco é
+// glob de branch (`["**"]`, `fluxo/**`): os dois contam como PR, nunca viram 8.
+// Forma de fluxo (`on: push`, `on: [push]`, `push: {...}`) também conta.
 function alcancaPr(texto) {
   if (/\bpull_request/.test(texto)) return true;
   if (!/\bpush\b/.test(texto)) return false;
-  return !/\bbranches\s*:/.test(texto) || /\bbranches-ignore\s*:/.test(texto) || texto.includes('*');
+  return !pushSoEmNomesFixos(texto);
+}
+
+// Todo bloco `push:` (chave sozinha na linha) tem `branches:` sem `*` nem
+// `branches-ignore`. Sem bloco nenhum, o push não tem filtro legível: false.
+function pushSoEmNomesFixos(texto) {
+  const linhas = texto.split(/\r?\n/);
+  const recuo = (l) => l.match(/^\s*/)[0].length;
+  const inicios = linhas.map((l, i) => (/^\s*push\s*:\s*(#.*)?$/.test(l) ? i : -1)).filter((i) => i !== -1);
+  if (!inicios.length) return false;
+  return inicios.every((i) => {
+    const bloco = [];
+    for (const l of linhas.slice(i + 1)) {
+      if (!l.trim() || /^\s*#/.test(l)) continue;
+      if (recuo(l) <= recuo(linhas[i])) break;
+      bloco.push(l);
+    }
+    const b = bloco.join('\n');
+    return /\bbranches\s*:/.test(b) && !/\bbranches-ignore\s*:/.test(b) && !b.includes('*');
+  });
 }
 
 // Quantos workflows do checkout (`git ls-files`) alcançam PR. Devolve null quando
@@ -268,6 +289,12 @@ function esperarCi(pr) {
       relidos = JSON.parse(relido.stdout);
       if (!Array.isArray(relidos)) throw new Error('nao e lista');
     } catch {
+      // O gh real, com o PR sem check, sai 1 com stdout vazio e "no checks
+      // reported" no stderr — não devolve `[]`. Isso é CI que não reportou: 5.
+      if (/no checks reported/i.test(`${relido.stdout || ''}${relido.stderr || ''}`)) {
+        erro(`CI não verde no PR ${pr} (gh pr checks saiu ${checks.status}; "no checks reported" conta como não verde)`);
+        return 5;
+      }
       erro(`nao-verificavel: CI do PR ${pr} não pôde ser lido (gh pr checks saiu ${checks.status}; releitura sem JSON)`, relido.stderr);
       return 69;
     }

@@ -79,7 +79,7 @@ mutacao:
   de: `if (!falhos.length && relidos.length) {`
   para: `if (false) {`
   bateria: `bash scripts/testa-publicar-branch.sh`
-  fixture: `testa-publicar-branch.sh, secao "(g) esperar-ci", caso "(g13) watch cai com checks pending: sai 69"`
+  fixture: `testa-publicar-branch.sh, secao "(g) esperar-ci", caso "(g18) watch cai com checks pending: sai 69"`
 pronto quando: forma do código:
 - No ramo `checks.status !== 0` de `esperarCi`, antes de devolver 5, relê `gh pr checks <pr> --json name,bucket` e tenta `JSON.parse` do stdout **independente do status** do relido.
 - JSON ilegível ou leitura sem stdout → `erro('nao-verificavel: ...')` com o stderr do `gh`, `return 69`.
@@ -87,7 +87,7 @@ pronto quando: forma do código:
 
 Com o stub `gh` da bateria:
 - `--watch` sai 1 e o relido sai 1 com stderr `error connecting to api.github.com` e stdout vazio → exit **69**, stderr começa por `nao-verificavel:` (critério literal da #587);
-- `--watch` sai 1 e o relido traz `[{"name":"a","bucket":"pending"}]` → **69** (g13);
+- `--watch` sai 1 e o relido traz `[{"name":"a","bucket":"pending"}]` → **69** (g18);
 - `--watch` sai 1 e o relido traz `[{"name":"a","bucket":"fail"}]` → **5**, stderr nomeia `a (fail)` (g5 reescrita);
 - `--watch` sai 1 e o relido traz `[]` → **5**;
 - `--watch` sai 0: g1–g4, g7–g10 inalteradas.
@@ -108,7 +108,7 @@ mutacao:
   bateria: `bash scripts/testa-publicar-branch.sh`
   fixture: `testa-publicar-branch.sh, secao "(g) esperar-ci", caso "(g19) workflow com pull_request e PR sem check: sai 5" (emenda da revisão 1: o corpo de alcancaPr virou três linhas, a âncora é a do gatilho pull_request)`
 pronto quando: forma do código:
-- Função de topo `alcancaPr(texto)`: `pull_request` conta; `push` conta salvo filtro `branches:` de nomes fixos (`branches-ignore` ou `*` contam — emenda da revisão 1).
+- Função de topo `alcancaPr(texto)`: `pull_request` conta; `push` conta salvo filtro `branches:` de nomes fixos dentro do bloco `push:` (`branches-ignore` ou `*` no bloco contam — emenda da revisão 1; `branches:` de outro gatilho, de `with:` ou de comentário não filtra o push, e a releitura no formato do gh real — exit 1, stdout vazio, `no checks reported` no stderr — sai 5, não 69: g25 a g28, emenda da revisão 2).
 - Função de topo `workflowsDePr(raiz)`: `git ls-files .github/workflows` com `cwd: raiz`; status ≠ 0 → `null` (desconhecido); senão lê cada `.yml`/`.yaml` listado e devolve quantos `alcancaPr` aceita.
 - Em `esperarCi`, a consulta `gh api repos/{owner}/{repo}/actions/workflows` sai; `semCiDePr` = `workflowsDePr(process.cwd()) === 0`. `null` segue o caminho de hoje (sem 8). O resto do ramo (PR sem check → 8, mensagem `repositório sem CI de PR`, `merge autorizado`/`pare no PR aberto`) fica.
 - O stub `STUB_WORKFLOWS` deixa de ser lido pelo script; os casos g11/g12 passam a se apoiar na caixa sem `.github/workflows`.
@@ -119,7 +119,7 @@ Com a caixa git da bateria e o PR sem check (`STUB_CHECKS_JSON='[]'`, `STUB_CHEC
 - `.github/workflows/ci.yml` com `on: pull_request` → **5** (g14), porque há CI de PR e ele não reportou;
 - `.github/workflows/ci.yml` com `on: [push]` sem `branches` → **5**;
 - `protect-main.yml` + um workflow só de `schedule:` → **8**;
-- cwd fora de repositório git (ls-files falha) → **5**, nunca 8.
+- cwd fora de repositório git → **69** (o script para antes de ler workflow), nunca 8 (g22; emenda da revisão 2).
 
 Provado por `bash scripts/testa-publicar-branch.sh` sem falha.
 
