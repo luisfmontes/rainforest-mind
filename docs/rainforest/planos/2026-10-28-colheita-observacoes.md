@@ -156,6 +156,8 @@ pronto quando: com os hooks da rodada 2, a linha da portaria no README e a prime
 
 Decididas sem o usuário (`estado.cjs decidir`, chave `executar-autonomo`): a inferência de frontmatter sem `tools:` vale só para o fluxo pulado; o `gate-pergunta-memoria` só conta `Q<n>` que abre linha e tem `?`, ignora o vocabulário do projeto e o banco só conta observação do projeto atual.
 
+Emenda na tarefa 12 (integração): a forma real das perguntas é `❓ **Q1`, então o marcador aceita emoji e marca combinante antes do `Q<n>`; o `de:` da 12 é a linha ampliada.
+
 Emenda na tarefa 9: a tarefa 13 troca a linha de `fimSemFormatacao`; o `de:` da 9 passa a ser a linha nova, com o mesmo `para:`.
 
 ### 11. Inferência sem `tools:` não aciona a regra 11 [tipo: implementar]
@@ -186,7 +188,7 @@ desfecho: estender
 prova-na-base: verde — a base desta rodada já tem a bateria verde; os casos P14 a P16 nascem com a tarefa
 mutacao:
   arquivo: `hooks/gate-pergunta-memoria.cjs`
-  de: `const RE_MARCADOR_Q = /^[ \t>*_-]*Q(\d+)\b/gm;`
+  de: `const RE_MARCADOR_Q = /^[ \t>*_\-\p{Extended_Pictographic}\p{M}]*Q(\d+)\b/gmu;`
   para: `const RE_MARCADOR_Q = /\bQ(\d+)\b/g;`
   bateria: `node hooks/testa-gate-pergunta-memoria.cjs`
   fixture: `testa-gate-pergunta-memoria.cjs, caso "P14" (Q1 no meio da prosa, com ? depois, casando 3 termos de uma memoria)`

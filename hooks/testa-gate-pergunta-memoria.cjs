@@ -136,11 +136,10 @@ function teste(nome, fn) {
   }
 }
 
-// O fixture abre a pergunta com um emoji antes do marcador; o marcador só vale no começo da linha,
-// então o emoji sai (a pergunta real, com Q<n> no começo da linha, é o que o gate enxerga).
-const semEmoji = (t) => trocar(t, '\\n❓ **Q1', '\\n**Q1');
-const TRANSCRITO_RESPONDE = semEmoji(lerFixture('memoria-responde.jsonl'));
-const TRANSCRITO_NAO_RESPONDE = semEmoji(lerFixture('memoria-nao-responde.jsonl'));
+// O fixture abre a pergunta com emoji (`❓ **Q1`), que é a forma real das perguntas: o marcador aceita
+// emoji e negrito antes do Q<n>.
+const TRANSCRITO_RESPONDE = lerFixture("memoria-responde.jsonl");
+const TRANSCRITO_NAO_RESPONDE = lerFixture("memoria-nao-responde.jsonl");
 
 teste('P1 memoria-responde: exit 2, Q1, o arquivo, a description e a sessão do outro repo (não a do mesmo)', () => {
   const c = cenario({ transcrito: TRANSCRITO_RESPONDE });
