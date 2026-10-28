@@ -1,0 +1,88 @@
+# Plano: Colheita das observações: classes recorrentes viram trava mecânica
+
+Design: docs/rainforest/design/2026-10-28-colheita-observacoes.md
+
+## O que não pode quebrar
+- O despacho de agente **declarado** na portaria se comporta como hoje: os casos existentes de `hooks/testa-portaria-fluxo-pulado.cjs` continuam verdes sem edição.
+- Agente não declarado **sem** `isolation: "worktree"` e com `escreve` inferido `false` (Explore, Plan, general-purpose de leitura) continua liberado em repositório com trilho e sem fluxo.
+- Repositório sem trilho de fluxo (`docs/rainforest/estado/` ausente e sem `docs/plans/*.gates.json`) não é barrado por nenhuma das três travas.
+- As categorias (a) despacho prometido e (b) espera prometida do `gate-turno-prometido` não mudam: os casos existentes continuam verdes sem edição.
+- Hook de Stop nunca derruba a sessão: payload ilegível, transcrito ausente, memória ausente, banco fechado ou estouro de prazo saem com exit 0.
+- Barrar é **uma vez**: com `stop_hook_active: true`, os gates de Stop saem com exit 0.
+
+## Tarefas
+
+### 1. Portaria barra agente não declarado que escreve sem fluxo [tipo: implementar]
+atende: D3, D8
+arquivos: `hooks/portaria.cjs`, `hooks/testa-portaria-fluxo-pulado.cjs`
+depende de: nenhuma
+busca:
+- repo | rg "escreveDeclarado|inferirConfigNaoDeclarado" hooks | `portaria.cjs:986` barra só o declarado; `inferirConfigNaoDeclarado` (`:488`) já infere `escreve` pelo frontmatter
+- livro | pulado: mudança interna de uma trava já existente
+desfecho: estender
+prova-na-base: verde — a bateria existente passa na base; os casos do não declarado nascem com esta tarefa
+mutacao:
+  arquivo: `hooks/portaria.cjs`
+  de: `const escreveNaoDeclarado = !declarado && (agentConfig.escreve === true || payload.tool_input.isolation === "worktree");`
+  para: `const escreveNaoDeclarado = false;`
+  bateria: `node hooks/testa-portaria-fluxo-pulado.cjs`
+  fixture: `testa-portaria-fluxo-pulado.cjs, casos "N1" a "N3" (não declarado com isolation worktree, sem fluxo, em repo com trilho rainforest e com trilho protheus)`
+pronto quando: com o payload real do PreToolUse de `Agent` (`subagent_type: "general-purpose"`, `isolation: "worktree"`, `cwd` num repositório com `docs/rainforest/estado/` e branch `fluxo/x` sem estado aberto), a portaria sai com exit 2 e o stderr nomeia o agente e as duas saídas (abrir o fluxo, `leve`). Casos que **barram** (contornos): N1 `general-purpose` com `isolation: "worktree"`; N2 agente não declarado cujo frontmatter tem `Edit` (fixture de agente com `tools: Read, Edit`), sem `isolation`; N3 o N1 em repo de trilho protheus (`docs/plans/x.gates.json`) sem plano aberto. Casos vizinhos que **passam** (exit 0): N4 `Explore` sem `isolation`; N5 N1 com `leve` declarado na branch; N6 N1 com estágio `executar` aberto na branch da sessão; N7 N1 em repositório sem trilho; N8 N1 com a chave `aviso-fluxo` desligada no `.rainforest/config.json` do repositório. Parada declarada (D8): agente sem `isolation` e com frontmatter ilegível segue liberado. Provado por `node hooks/testa-portaria-fluxo-pulado.cjs` imprimindo `falhou: 0` e uma linha `ok` para cada um de N1 a N8, e pela mutação acima deixando N1 vermelho.
+
+### 2. gate-turno-prometido pega o pedido de licença com autonomia ligada [tipo: implementar]
+atende: D4, D5, D8
+arquivos: `hooks/gate-turno-prometido.cjs`, `hooks/testa-gate-turno-prometido.cjs`, `hooks/fixtures/turno-prometido/pede-licenca-com-autonomia.jsonl`, `hooks/fixtures/turno-prometido/pede-licenca-com-q.jsonl`
+depende de: nenhuma
+busca:
+- repo | rg "RE_PROMETE_DESPACHO|stop_hook_active" hooks | o gate já lê o último texto do transcrito e tem o anti-loop; a categoria nova entra ao lado das duas regex
+- livro | pulado: extensão de gate próprio
+desfecho: estender
+prova-na-base: verde — a bateria existente passa na base; os casos da categoria (c) nascem com esta tarefa
+mutacao:
+  arquivo: `hooks/gate-turno-prometido.cjs`
+  de: `const RE_PEDE_LICENCA = /(sigo\?|posso seguir\??|quer que eu siga\??|sigo com o pr[oó]ximo\??)\s*$/i;`
+  para: `const RE_PEDE_LICENCA = /(?!)/;`
+  bateria: `node hooks/testa-gate-turno-prometido.cjs`
+  fixture: `testa-gate-turno-prometido.cjs, caso "C1" (fixture pede-licenca-com-autonomia.jsonl, repo com fluxo no estágio plano e executar-autonomo ligada)`
+pronto quando: com um transcrito no formato real do Claude Code (linhas `{"type":"assistant","message":{"content":[{"type":"text","text":...}]}}`) cujo último texto termina em "Plano escrito. Sigo com o executar?", `cwd` num repositório cuja branch tem fluxo com design aprovado e `fechar` aberto, e `.rainforest/config.json` com `"executar-autonomo": true`, o gate sai com exit 2 e o stderr diz que a autonomia está ligada e manda seguir ou subir uma `Q<n>`. Contornos que **barram**: C1 "Sigo com o executar?"; C2 "posso seguir?" no fim; C3 "Quer que eu siga" sem ponto de interrogação. Vizinhos que **passam** (exit 0): C4 o mesmo texto com uma linha `**Q1 — ...**` antes (fixture `pede-licenca-com-q.jsonl`); C5 o C1 com `executar-autonomo` desligada; C6 o C1 com o fluxo só no estágio `design` (design ainda não aprovado); C7 o C1 com `stop_hook_active: true`; C8 o C1 com "sigo?" no meio do texto e outra frase depois; C9 o C1 em repositório sem fluxo. Os casos existentes das categorias (a) e (b) seguem verdes. Provado por `node hooks/testa-gate-turno-prometido.cjs` com `falhou: 0` e uma linha `ok` de C1 a C9, e pela mutação acima deixando C1 vermelho.
+
+### 3. gate-pergunta-memoria: Q<n> conferida contra a memória antes de subir [tipo: implementar]
+atende: D6, D8
+arquivos: `hooks/gate-pergunta-memoria.cjs`, `hooks/testa-gate-pergunta-memoria.cjs`, `hooks/fixtures/pergunta-memoria/memoria-responde.jsonl`, `hooks/fixtures/pergunta-memoria/memoria-nao-responde.jsonl`, `hooks/fixtures/pergunta-memoria/memory/gate-off-so-por-variavel.md`, `hooks/hooks.json`, `hooks/lib/config.cjs`, `scripts/testa-conferir-categoria.sh`
+depende de: nenhuma
+busca:
+- repo | rg "buscarPorAssunto|transcript_path|sessoes.json" hooks | `memoria-assunto-prompt.cjs` busca no banco por assunto e o `gate-turno-prometido` lê o último texto; nada confere Q<n>
+- memoria | pulado: o mecanismo é o próprio objeto da tarefa
+desfecho: compor
+prova: `node hooks/testa-gate-pergunta-memoria.cjs`
+mutacao:
+  arquivo: `hooks/gate-pergunta-memoria.cjs`
+  de: `const LIMIAR_TERMOS = 3;`
+  para: `const LIMIAR_TERMOS = 999;`
+  bateria: `node hooks/testa-gate-pergunta-memoria.cjs`
+  fixture: `testa-gate-pergunta-memoria.cjs, caso "P1" (fixture memoria-responde.jsonl contra memory/gate-off-so-por-variavel.md)`
+pronto quando: com o payload real do Stop (`session_id`, `transcript_path`, `cwd`, `hook_event_name: "Stop"`, `stop_hook_active: false`) cujo `transcript_path` aponta um transcrito no formato real, com último texto "❓ **Q1 — Desligar o gate**: crio o arquivo .rainforest-gate-off na raiz para desligar o gate de publicação neste repositório cliente?", e uma pasta `memory/` ao lado do transcrito com `gate-off-so-por-variavel.md` (descrição "desligar gate é RAINFOREST_GATE_OFF/config; arquivo .rainforest-gate-off não, por causa de repo de cliente"), o hook sai com exit 2 e o stderr traz `Q1`, o nome `gate-off-so-por-variavel.md` e o trecho da descrição. A forma: termos do texto da `Q` com 5 letras ou mais, minúsculos e sem acento, menos uma lista curta de palavras vazias; acerto quando um arquivo de memória compartilha pelo menos `LIMIAR_TERMOS` termos distintos com a `Q`. O banco do `memoria.cjs` entra pela `buscarPorAssunto` com prazo interno de 1500 ms, e qualquer erro dele é ignorado. Nenhum caso de teste afirma sobre o texto do fonte. Contornos que **barram**: P1 o caso acima; P2 a mesma `Q` escrita `**Q2 -**` (hífen em vez de travessão). Vizinhos que **passam** (exit 0): P3 `Q1` sobre assunto sem memória (fixture `memoria-nao-responde.jsonl`); P4 o texto do P1 sem marcador `Q<n>`; P5 o P1 com `stop_hook_active: true`; P6 o P1 com `agent_id`; P7 o P1 sem pasta `memory/`; P8 o P1 com a chave `gate-pergunta-memoria` desligada; P9 `transcript_path` inexistente. Quando barra, o stderr lista também as sessões vivas de outros repositórios lidas do `sessoes.json` da raiz de dados (a bateria aponta `RFM_ROOT` para um mkdtemp com um `sessoes.json` de duas entradas e confere que a de outro repositório aparece). O hook entra no `hooks.json` em `Stop`, com `timeout` de 10, e tem cabeçalho `// @categoria: sensor`. Provado por `node hooks/testa-gate-pergunta-memoria.cjs` com `falhou: 0` e uma linha `ok` de P1 a P9, pela mutação acima deixando P1 vermelho, e por `bash scripts/testa-conferir-categoria.sh` com 0 falha(s).
+
+### 4. Rascunho da Issue de compilação para o plugin de domínio [tipo: docs]
+atende: D2
+arquivos: `docs/rainforest/planos/2026-10-28-colheita-observacoes.md`
+depende de: nenhuma
+mutacao: n/a
+  motivo: rascunho de texto guardado fora do repositório; não há comportamento a inverter
+pronto quando: com as observações reais da classe Protheus no `ideias.jsonl` (compilar sem avisar ou perguntar, e tela quando o harness REST resolve), existe um rascunho em `~/.rainforest/rascunhos/2026-10-28-issue-compilar-e-harness.md` que cita cada id de observação usado, e o título e o corpo propõem as duas peças do D2 (confirmação antes de `advpls cli` e regra de quando usar o harness REST) — provado por `node -e` que lê o rascunho, extrai os ids citados e confere que cada um existe no `ideias.jsonl`, imprimindo `N ids, N existem` com N ≥ 6, e por `git status --porcelain` do worktree sem nenhum arquivo novo da tarefa.
+
+### 5. Triagem e colheita das observações plantadas [tipo: pesquisar]
+atende: D7
+arquivos: `docs/rainforest/planos/2026-10-28-colheita-observacoes.md`
+depende de: 1, 2, 3
+mutacao: n/a
+  motivo: a tarefa grava dados do usuário pelo `ideias.cjs colher`, sem código a inverter
+pronto quando: com o `ideias.jsonl` real, `node scripts/ideias.cjs listar --tipo observacao` passa a abrir com `0 plantada (observacao)`, e as observações que estavam plantadas no início da tarefa (lista de ids gravada antes, no scratchpad) estão todas `colhidas`, cada uma com `resultado` em uma de três formas: aponta `D3`, `D4` ou `D6` deste design; aponta um arquivo de memória de projeto que existe no disco; ou diz "registrada; reabre se repetir". Provado por `node -e` que cruza a lista inicial com o jsonl e imprime `colhidas: N/N, D: a, memoria: b (todos existem), avulsas: c` com `a + b + c = N`, e pela conferência, na janela principal, de cada citação do relatório do agente de triagem contra o jsonl antes de gravar.
+
+### 6. Documentação, versão e notas [tipo: docs]
+atende: D1, D2, D3, D4, D6, D8
+arquivos: `README.md`, `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`
+depende de: 1, 2, 3
+mutacao: n/a
+  motivo: texto e versão; a falsificação é a coerência com o design e com a interface real
+pronto quando: com os hooks entregues pelas tarefas 1 a 3, o README descreve as três travas com o mesmo comportamento que as baterias provam: quem barra, quando, a chave que desliga e o que fica fora (D8). A versão sobe para a próxima minor acima da que estiver na `main` no momento da tarefa, nos dois `plugin.json` e no selo do README, e o CHANGELOG ganha a seção dessa versão. Provado por `node -e` que confere que as duas versões dos `plugin.json`, a do selo do README e o primeiro `## ` do CHANGELOG são iguais, e pela leitura, no revisar, de cada frase do README contra o caso de bateria que a sustenta (N1–N8, C1–C9, P1–P9).
