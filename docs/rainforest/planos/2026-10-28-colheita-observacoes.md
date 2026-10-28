@@ -23,8 +23,9 @@ desfecho: estender
 prova-na-base: verde — a bateria existente passa na base; os casos do não declarado nascem com esta tarefa
 mutacao:
   arquivo: `hooks/portaria.cjs`
-  de: `const escreveNaoDeclarado = !declarado && (agentConfig.escreve === true || payload.tool_input.isolation === "worktree");`
-  para: `const escreveNaoDeclarado = false;`
+  de: `const escrevePorSinal = !escreveDeclarado && ((!declarado && agentConfig.escreve === true) || payload.tool_input.isolation === "worktree");`
+  para: `const escrevePorSinal = false;`
+  emenda (2026-10-28, rodada 2): a tarefa 7 renomeou e ampliou a linha original (`escreveNaoDeclarado`); a mutação passa a desligar a condição inteira.
   bateria: `node hooks/testa-portaria-fluxo-pulado.cjs`
   fixture: `testa-portaria-fluxo-pulado.cjs, casos "N1" a "N3" (não declarado com isolation worktree, sem fluxo, em repo com trilho rainforest e com trilho protheus)`
 pronto quando: com o payload real do PreToolUse de `Agent` (`subagent_type: "general-purpose"`, `isolation: "worktree"`, `cwd` num repositório com `docs/rainforest/estado/` e branch `fluxo/x` sem estado aberto), a portaria sai com exit 2 e o stderr nomeia o agente e as duas saídas (abrir o fluxo, `leve`). Casos que **barram** (contornos): N1 `general-purpose` com `isolation: "worktree"`; N2 agente não declarado cujo frontmatter tem `Edit` (fixture de agente com `tools: Read, Edit`), sem `isolation`; N3 o N1 em repo de trilho protheus (`docs/plans/x.gates.json`) sem plano aberto. Casos vizinhos que **passam** (exit 0): N4 `Explore` sem `isolation`; N5 N1 com `leve` declarado na branch; N6 N1 com estágio `executar` aberto na branch da sessão; N7 N1 em repositório sem trilho; N8 N1 com a chave `aviso-fluxo` desligada no `.rainforest/config.json` do repositório. Parada declarada (D8): agente sem `isolation` e com frontmatter ilegível segue liberado. Provado por `node hooks/testa-portaria-fluxo-pulado.cjs` imprimindo `falhou: 0` e uma linha `ok` para cada um de N1 a N8, e pela mutação acima deixando N1 vermelho.

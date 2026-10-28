@@ -22,22 +22,9 @@
     "em": "2026-10-28"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-28",
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "T7 portaria isolation sinal",
-        "desde": "2026-10-28T22:10:00-03:00",
-        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f"
-      },
-      {
-        "agente": "executor",
-        "tarefa": "T8 memoria do principal",
-        "desde": "2026-10-28T22:10:00-03:00",
-        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f"
-      }
-    ],
+    "em_voo": [],
     "carimbos": [
       {
         "tarefa": 1,
@@ -76,10 +63,10 @@
       }
     ],
     "em": "2026-10-28",
-    "tarefas_ok": 6,
-    "tarefas": 6,
-    "comando": "node scripts/conferir-mutacao.cjs (tarefas 1, 2 e 3, re-rodado na integracao)",
-    "saida": "catraca exit 0 nas tres: bateria VERMELHA com o comportamento invertido, confirmada em duas rodadas",
+    "tarefas_ok": 10,
+    "tarefas": 10,
+    "comando": "node scripts/conferir-mutacao.cjs (tarefas 1, 7, 8 e 9, re-rodado na integracao)",
+    "saida": "catraca exit 0 nas quatro: N1-N3, G1/G2, P10 (e P12 na mutacao do banco), C10-C12 vermelhos",
     "mutacao": [
       {
         "tarefa": 1,
@@ -110,12 +97,28 @@
         "tarefa": 6,
         "resultado": "n/a",
         "motivo": "doc e versao"
+      },
+      {
+        "tarefa": 7,
+        "resultado": "vermelho",
+        "fixture": "testa-portaria-fluxo-pulado.cjs G1 D3, G2 D3"
+      },
+      {
+        "tarefa": 8,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-pergunta-memoria.cjs P10"
+      },
+      {
+        "tarefa": 9,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-turno-prometido.cjs C10, C11, C12"
+      },
+      {
+        "tarefa": 10,
+        "resultado": "n/a",
+        "motivo": "doc"
       }
     ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-10-28"
-    },
     "reaberturas": 1
   },
   "revisar": {
