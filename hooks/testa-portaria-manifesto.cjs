@@ -409,7 +409,7 @@ console.log("== 6. escreve inferido do frontmatter para agente nao declarado =="
     const r = despachar(repo, "forasteiro-que-edita");
     caso("6a. nao declarado com Write no frontmatter: exit 2 (regra 11)",
       r.status === 2, `exit=${r.status} stderr=${r.stderr}`);
-    caso("6a. o motivo e o da regra 11", /escreve: true/.test(r.stderr || ""), r.stderr);
+    caso("6a. o motivo e o da regra 11", /tem tool de escrita no frontmatter/.test(r.stderr || ""), r.stderr);
 
     fs.rmSync(repo, { recursive: true, force: true });
   }

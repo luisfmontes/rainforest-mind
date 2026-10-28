@@ -752,6 +752,37 @@ function worktreeX(repo) {
 
   descartar(repo);
 }
+{
+  // N9: agente nao declarado com frontmatter SEM `tools:` (herda tudo), sem isolation, repo git SEM trilho:
+  // a inferencia sem `tools:` nao aciona a regra 11, entao passa exit 0.
+  const repo = novoRepo();
+  fs.mkdirSync(path.join(repo.main, ".claude", "agents"), { recursive: true });
+  fs.writeFileSync(path.join(repo.main, ".claude", "agents", "agente-sem-tools-solto.md"),
+    "---\nname: agente-sem-tools-solto\ndescription: agente de teste sem linha tools\n---\n\nCorpo de teste.\n",
+    "utf8");
+
+  const r = despachar(repo, repo.main, "agente-sem-tools-solto", { semIsolation: true });
+  caso("N9 nao declarado com frontmatter sem tools:, sem isolation, repo sem trilho: passa exit 0",
+    r.status === 0, `exit=${r.status} stderr=${r.stderr}`);
+
+  descartar(repo);
+}
+{
+  // N10: agente nao declarado com `tools: Read, Edit` (tool de escrita listada), sem isolation, repo sem trilho:
+  // a regra 11 barra com a mensagem de tool de escrita, e nao com a de `escreve: true` declarado.
+  const repo = novoRepo();
+  fs.mkdirSync(path.join(repo.main, ".claude", "agents"), { recursive: true });
+  fs.writeFileSync(path.join(repo.main, ".claude", "agents", "agente-com-edit-solto.md"),
+    "---\nname: agente-com-edit-solto\ndescription: agente de teste com tool de escrita\ntools: Read, Edit\n---\n\nCorpo de teste.\n",
+    "utf8");
+
+  const r = despachar(repo, repo.main, "agente-com-edit-solto", { semIsolation: true });
+  caso("N10 nao declarado com tools Read, Edit, sem isolation, repo sem trilho: barra exit 2 com 'tem tool de escrita no frontmatter'",
+    r.status === 2 && /tem tool de escrita no frontmatter/.test(r.stderr || "") && !/declara 'escreve: true'/.test(r.stderr || ""),
+    `exit=${r.status} stderr=${r.stderr}`);
+
+  descartar(repo);
+}
 
 // == G D3. agente declarado com escreve: false e nao declarado com sinal de escrita (emenda D3, 2026-10-28) ==
 // Os nomes G1 D3..G6 D3 nao colidem com os G1..G3 do trilho protheus acima.

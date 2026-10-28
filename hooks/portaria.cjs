@@ -531,7 +531,9 @@ function inferirConfigNaoDeclarado(raiz, nomeAgente) {
   if (!fmMatch) return base;
 
   const { declarado: temTools, tools } = parseToolsDoFrontmatter(fmMatch[1]);
-  if (!temTools) return { estagios: null, escreve: true, conferido: true };
+  // `semTools` marca a inferencia que so vale para o fluxo pulado: a regra 11
+  // (isolation) nao a usa, para nao barrar em repo sem trilho quem so herdou tools.
+  if (!temTools) return { estagios: null, escreve: true, conferido: true, semTools: true };
   if (!tools) return base;
 
   return { estagios: null, escreve: Boolean(validarToolsAowlist(tools)), conferido: true };
@@ -1250,14 +1252,15 @@ function main() {
   // nao o worktree em disco — o hook roda ANTES do despacho, e nesse instante
   // o worktree ainda nao existe. A conferencia do worktree real na volta e da
   // integracao (`scripts/conferir-entrega.cjs`), e continua sendo.
-  if (agentConfig.escreve === true) {
+  if (agentConfig.escreve === true && !agentConfig.semTools) {
     const isolamento = payload.tool_input.isolation;
     const nomeDado = payload.tool_input.name;
+    const quemEscreve = declarado ? "declara 'escreve: true'" : "tem tool de escrita no frontmatter";
 
     if (isolamento !== "worktree" && !worktreeDeclarado) {
       const foraDeRepo = gitSaida(payload.cwd || raiz, ["rev-parse", "--git-dir"]) === null;
       const motivo =
-        `agente '${nomeAgente}' declara 'escreve: true' e so roda com isolation: "worktree"` +
+        `agente '${nomeAgente}' ${quemEscreve} e so roda com isolation: "worktree"` +
         ` (veio ${JSON.stringify(isolamento)}) — agente que edita nunca roda na arvore do usuario (regra 11)` +
         (foraDeRepo
           ? `. O cwd da sessao nao e repo git, entao o harness nao cria o worktree: crie um worktree linkado` +
@@ -1270,7 +1273,7 @@ function main() {
 
     if (typeof nomeDado === "string" && nomeDado.trim() !== "") {
       const motivo =
-        `agente '${nomeAgente}' declara 'escreve: true' e foi despachado com name: ${JSON.stringify(nomeDado)}` +
+        `agente '${nomeAgente}' ${quemEscreve} e foi despachado com name: ${JSON.stringify(nomeDado)}` +
         ` — agente que edita nunca e nomeado (regra 10): nomeado vira teammate, o isolamento nao se aplica` +
         ` e a entrega para de voltar inline`;
       gravarDespacho(raiz, "deny", nomeAgente, estagioAtivo, sessao, motivo);

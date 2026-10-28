@@ -158,11 +158,13 @@ Decididas sem o usuário (`estado.cjs decidir`, chave `executar-autonomo`): a in
 
 Emenda na tarefa 12 (integração): a forma real das perguntas é `❓ **Q1`, então o marcador aceita emoji e marca combinante antes do `Q<n>`; o `de:` da 12 é a linha ampliada.
 
+Emenda na tarefa 11 (integração): a mensagem nova da regra 11 para o não declarado muda a asserção do caso 6a de `hooks/testa-portaria-manifesto.cjs`, que entra no `arquivos:`.
+
 Emenda na tarefa 9: a tarefa 13 troca a linha de `fimSemFormatacao`; o `de:` da 9 passa a ser a linha nova, com o mesmo `para:`.
 
 ### 11. Inferência sem `tools:` não aciona a regra 11 [tipo: implementar]
 atende: D3, D8
-arquivos: `hooks/portaria.cjs`, `hooks/testa-portaria-fluxo-pulado.cjs`
+arquivos: `hooks/portaria.cjs`, `hooks/testa-portaria-fluxo-pulado.cjs`, `hooks/testa-portaria-manifesto.cjs`
 depende de: 7
 busca:
 - repo | rg "if \(agentConfig.escreve === true\)" hooks/portaria.cjs | o ramo da regra 11, único
