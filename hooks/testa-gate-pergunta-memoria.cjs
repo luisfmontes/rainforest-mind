@@ -27,6 +27,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { spawnSync } = require('node:child_process');
+const { DatabaseSync } = require('node:sqlite');
+const { criarSchema } = require(path.join(__dirname, '..', 'scripts', 'memoria.cjs'));
 
 const HOOK = path.join(__dirname, 'gate-pergunta-memoria.cjs');
 const FIX = path.join(__dirname, 'fixtures', 'pergunta-memoria');
@@ -57,7 +59,7 @@ function trocar(texto, de, para) {
 const TRECHO_Q1 = '**Q1 — Desligar o gate**:';
 
 // Monta o cenário: transcrito (texto), memoria (copia pasta memory/?), projeto com config opcional.
-function cenario({ transcrito, comMemoria = true, configProjeto = null, sessao = 'sess-atual' }) {
+function cenario({ transcrito, comMemoria = true, configProjeto = null, sessao = 'sess-atual', fixtureMemoria = 'gate-off-so-por-variavel.md' }) {
   const base = novoTmp('rfm-pergunta-base-');
   const proj = path.join(base, 'proj');
   const outro = path.join(base, 'outro-repo');
@@ -70,7 +72,7 @@ function cenario({ transcrito, comMemoria = true, configProjeto = null, sessao =
   if (comMemoria) {
     const memDst = path.join(proj, 'memory');
     fs.mkdirSync(memDst, { recursive: true });
-    fs.copyFileSync(path.join(FIX, 'memory', 'gate-off-so-por-variavel.md'), path.join(memDst, 'gate-off-so-por-variavel.md'));
+    fs.copyFileSync(path.join(FIX, 'memory', fixtureMemoria), path.join(memDst, fixtureMemoria));
   }
 
   if (configProjeto) {
@@ -194,6 +196,78 @@ teste('P9 transcript_path inexistente: exit 0', () => {
   const c = cenario({ transcrito: TRANSCRITO_RESPONDE });
   const r = rodar(c, {}, path.join(c.proj, 'nao-existe.jsonl'));
   assert(r.status === 0, `esperado exit 0, obteve ${r.status} (stderr: ${r.stderr})`);
+});
+
+// Mesma função do hook (design D6): caminho absoluto com todo caractere fora de [A-Za-z0-9] trocado por "-".
+const slugDoProjeto = (p) => p.replace(/[^A-Za-z0-9]/g, "-");
+
+function git(cwd, args) {
+  const r = spawnSync('git', args, {
+    cwd,
+    encoding: 'utf8',
+    env: { ...process.env, GIT_AUTHOR_NAME: 'teste', GIT_AUTHOR_EMAIL: 'teste@example.invalid', GIT_COMMITTER_NAME: 'teste', GIT_COMMITTER_EMAIL: 'teste@example.invalid' },
+  });
+  assert(r.status === 0, `git ${args.join(' ')} falhou: ${r.stderr}`);
+}
+
+teste('P10 sessão em worktree: a memória do repositório principal barra (exit 2), Q1 e o arquivo no stderr', () => {
+  // realpath: o git devolve o caminho longo; o slug tem de sair do mesmo texto nos dois lados.
+  const base = fs.realpathSync.native(novoTmp('rfm-pergunta-wt-'));
+  const repo = path.join(base, 'repo');
+  const wt = path.join(base, 'wt');
+  const projects = fs.realpathSync.native(novoTmp('rfm-pergunta-projects-'));
+  fs.mkdirSync(repo);
+  git(repo, ['init', '-q']);
+  git(repo, ['commit', '--allow-empty', '-q', '-m', 'base']);
+  git(repo, ['worktree', 'add', '-q', '--detach', wt]);
+
+  // O transcrito da sessão aberta no worktree vai para a pasta do worktree; a memória fica só no principal.
+  const dirSessao = path.join(projects, slugDoProjeto(wt));
+  fs.mkdirSync(dirSessao, { recursive: true });
+  const transcriptPath = path.join(dirSessao, 's.jsonl');
+  fs.writeFileSync(transcriptPath, TRANSCRITO_RESPONDE);
+  const memDst = path.join(projects, slugDoProjeto(repo), 'memory');
+  fs.mkdirSync(memDst, { recursive: true });
+  fs.copyFileSync(path.join(FIX, 'memory', 'gate-off-so-por-variavel.md'), path.join(memDst, 'gate-off-so-por-variavel.md'));
+  const rfm = novoTmp('rfm-pergunta-raiz-');
+  fs.writeFileSync(path.join(rfm, 'sessoes.json'), '{}');
+
+  const r = rodar({ proj: wt, transcriptPath, rfm });
+  assert(r.status === 2, `esperado exit 2, obteve ${r.status} (stderr: ${r.stderr})`);
+  assert(r.stderr.includes('Q1'), 'stderr sem Q1');
+  assert(r.stderr.includes('gate-off-so-por-variavel.md'), 'stderr sem o nome do arquivo de memória do principal');
+});
+
+teste('P11 memória com description de outro assunto e termos só no corpo: exit 0', () => {
+  // O corpo repete os termos da Q1; só a description conta para o casamento.
+  const c = cenario({ transcrito: TRANSCRITO_RESPONDE, fixtureMemoria: 'corpo-sem-relacao.md' });
+  const r = rodar(c);
+  assert(r.status === 0, `esperado exit 0, obteve ${r.status} (stderr: ${r.stderr})`);
+});
+
+teste('P12 banco por assunto, sem memory/: observação que casa com Q1 barra (exit 2) e o stderr cita o banco', () => {
+  const c = cenario({ transcrito: TRANSCRITO_RESPONDE, comMemoria: false });
+  const db = new DatabaseSync(path.join(c.rfm, 'rainforest.db'));
+  criarSchema(db);
+  const ins = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
+  // Enchimento de 400 observações sem os termos da Q1: sem ele o termo raro passa do teto de df e nada casa.
+  db.exec('BEGIN');
+  for (let i = 0; i < 400; i++) {
+    ins.run('projeto-enchimento', 'Registro generico ' + i + '\n\nrotina comum de trabalho numero ' + i + ' sem relevancia', '2026-10-01T10:00:00.000Z', 'f' + i);
+  }
+  db.exec('COMMIT');
+  ins.run(
+    'outro-projeto',
+    'Decisao sobre desligar arquivo rainforest publicacao neste repositorio cliente\n\n' + 'desligar arquivo rainforest publicacao neste repositorio cliente '.repeat(3),
+    '2026-10-02T10:00:00.000Z',
+    'alvo-p12',
+  );
+  db.close();
+
+  const r = rodar(c);
+  assert(r.status === 2, `esperado exit 2, obteve ${r.status} (stderr: ${r.stderr})`);
+  assert(r.stderr.includes('Q1'), 'stderr sem Q1');
+  assert(r.stderr.includes('o banco tem observação de outro-projeto'), 'stderr sem a citação do banco');
 });
 
 for (const d of tmpdirs) {

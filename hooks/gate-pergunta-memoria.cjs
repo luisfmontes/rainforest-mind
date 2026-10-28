@@ -99,6 +99,7 @@ function campo(meta, nome) {
 
 // Uma entrada por *.md da pasta memory/ (MEMORY.md é o índice, fica de fora).
 // Arquivo que não lê é pulado: uma memória ilegível não pode derrubar as outras.
+// Casa só por name e description: o corpo de uma memória fala de muita coisa e encheria o casamento.
 function memorias(pasta) {
   let nomes = [];
   try {
@@ -112,7 +113,7 @@ function memorias(pasta) {
       const { meta, corpo } = frontmatter(fs.readFileSync(path.join(pasta, arquivo), 'utf8'));
       const description = campo(meta, 'description');
       const resumo = (description || corpo.replace(/\s+/g, ' ').trim()).slice(0, 160);
-      lista.push({ arquivo, resumo, termos: termosDe([campo(meta, 'name'), description, corpo].join(' ')) });
+      lista.push({ arquivo, resumo, termos: termosDe([campo(meta, 'name'), description].join(' ')) });
     } catch {
       // arquivo ilegível: segue para o próximo
     }
@@ -129,6 +130,29 @@ function melhorMemoria(termosPergunta, lista) {
     if (comuns >= LIMIAR_TERMOS && (!melhor || comuns > melhor.comuns)) melhor = { ...m, comuns };
   }
   return melhor;
+}
+
+// Design D6: o Claude Code guarda a memória do PROJETO em <projects>/<slug do principal>/memory/.
+// Sessão aberta num worktree grava o transcrito em <projects>/<slug do worktree>/, que não tem
+// memory/. Por isso as pastas candidatas são a do principal (a) e a do próprio transcrito (b).
+const slugDoProjeto = (p) => p.replace(/[^A-Za-z0-9]/g, "-");
+
+// Candidatas sem duplicar, na ordem (a) e depois (b). Sem git, ou com erro, só (b).
+function pastasDeMemoria(transcriptPath, cwd) {
+  const dirTranscrito = path.dirname(transcriptPath);
+  const pastas = [];
+  try {
+    const { raizDoPrincipal } = require('./lib/config.cjs');
+    const principal = path.resolve(raizDoPrincipal(cwd));
+    // raizDoPrincipal devolve o próprio cwd quando não acha o principal: aí (a) seria (b).
+    if (principal !== path.resolve(cwd)) {
+      pastas.push(path.join(path.dirname(dirTranscrito), slugDoProjeto(principal), 'memory'));
+    }
+  } catch {
+    // sem git: segue só com (b)
+  }
+  pastas.push(path.join(dirTranscrito, 'memory'));
+  return [...new Set(pastas)];
 }
 
 // Banco por assunto, só leitura e só dentro do orçamento. Qualquer falha = sem banco.
@@ -213,7 +237,7 @@ function main() {
   const cwd = ev.cwd || process.cwd();
   const { raiz } = require('./lib/raiz.cjs').resolverRaiz({ cwd, plugin: path.resolve(__dirname, '..') });
 
-  const lista = memorias(path.join(path.dirname(ev.transcript_path), 'memory'));
+  const lista = pastasDeMemoria(ev.transcript_path, cwd).flatMap((p) => memorias(p));
   const banco = raiz ? conectarBancoLeitura(cwd) : null;
 
   const acertos = [];
