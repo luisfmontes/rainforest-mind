@@ -1,0 +1,9 @@
+{
+  "slug": "2026-10-28-limpeza-codificacao",
+  "titulo": "fluxo/limpeza-codificacao",
+  "criado_em": "2026-10-28",
+  "leve": {
+    "motivo": "limpeza miuda: ideias.cjs recusa acentuacao corrompida + gitignore de saida do task-observer do Codex",
+    "data": "2026-10-28"
+  }
+}

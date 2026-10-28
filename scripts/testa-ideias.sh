@@ -202,14 +202,18 @@ echo "{\"id\":\"teste-um\",$base,\"tipo\":\"invencao\"}" > f.json
 esperado "recusa tipo desconhecido" 1 bash -c '$IDEIAS plantar < f.json'
 esperado "recusa stdin vazio" 1 bash -c '$IDEIAS plantar < /dev/null'
 esperado "recusa JSON malformado" 1 bash -c 'echo "{nao json" | $IDEIAS plantar'
+# UTF-8 lido como ANSI no caminho (Get-Content do PowerShell): entrou assim em
+# 2026-10-27 e so se via ao listar. O exemplo vai por escape JSON: o conferir-encoding reprova o literal.
+echo "{\"id\":\"teste-um\",$base,\"tipo\":\"ideia\",\"gancho\":\"Vers\\u00c3\\u00b5es por m\\u00c3\\u00b3dulo\"}" > f.json
+esperado "recusa acentuacao corrompida (UTF-8 lido como ANSI)" 1 bash -c '$IDEIAS plantar < f.json'
 
 if [ "$md5_antes" = "$(md5sum ideias.jsonl | cut -d' ' -f1)" ]
-then ok=$((ok+1)); echo "  ok   arquivo intocado apos 7 recusas (md5 igual)"
+then ok=$((ok+1)); echo "  ok   arquivo intocado apos 8 recusas (md5 igual)"
 else falhou=$((falhou+1)); echo "  FALHA o arquivo mudou apesar de todas as recusas"; fi
 
 echo
 echo "== 2. caminho feliz =="
-echo "{\"id\":\"teste-um\",\"titulo\":\"Ideia de teste\",\"descricao\":\"d\",\"contexto\":\"c\",\"projeto\":\"sandbox\",\"ao_colher\":\"nada\",\"gancho\":\"revisar quando a bateria rodar de novo\"}" > f.json
+echo "{\"id\":\"teste-um\",\"titulo\":\"Ideia de teste: NÃO e AÇÃO passam\",\"descricao\":\"d\",\"contexto\":\"c\",\"projeto\":\"sandbox\",\"ao_colher\":\"nada\",\"gancho\":\"revisar quando a bateria rodar de novo\"}" > f.json
 esperado "plantar" 0 bash -c '$IDEIAS plantar < f.json'
 prova "data carimbada pelo script (local) e status plantada" '
 const l=O("ideias.jsonl"), o=acha(l,"teste-um");

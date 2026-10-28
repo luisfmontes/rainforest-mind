@@ -10,6 +10,13 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.0.7 — 2026-10-28
+
+Limpeza miúda.
+
+- **`ideias.cjs` recusa acentuação corrompida.** Texto UTF-8 lido como ANSI no caminho (`Get-Content` do PowerShell) virava acento quebrado no livro e só aparecia ao listar. `plantar` e `editar` agora recusam a entrada com o campo e o trecho, e dizem para mandar o arquivo por `< arquivo.json` no Bash. `NÃO` e `AÇÃO` legítimos passam.
+- **`skill-observations/` e `.claude/tmp-portoes-codex-*/` fora do git.** São saída do task-observer e das provas de portão do Codex, de outro dono; não aparecem mais no `git status`.
+
 ## 2.0.6 — 2026-10-28
 
 Seis defeitos do próprio fluxo, em sete Issues (a #610 duplica a #613), vistos em uso real entre 26 e 28/10 (#613, #610, #616, #614, #612, #606, #609). Desenho em `docs/rainforest/design/2026-10-28-lote-b.md`.
