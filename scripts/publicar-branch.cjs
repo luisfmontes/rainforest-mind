@@ -32,6 +32,8 @@
  *       (stderr começa por `nao-verificavel:`) (#587)
  *
  * `RFM_MERGE_PRAZO_S` (padrão 60) limita a espera do state em confirmar-merge.
+ * `RFM_CI_PRAZO_REGISTRO_S` (padrão 300) e `RFM_CI_SONDA_S` (padrão 10) limitam a
+ * espera do registro do run de PR no esperar-ci, antes do --watch (#616).
  */
 'use strict';
 
@@ -271,6 +273,37 @@ function workflowsDePr(raiz) {
   return quantos;
 }
 
+// #616 (D3): o GitHub leva minutos para registrar o run de um PR recém-criado. Com
+// workflow de PR no checkout e a lista ainda vazia, sonda `gh pr checks` até vir
+// check ou até o prazo. Devolve false no teto: quem chama segue para o --watch de
+// hoje, que sai 5 com "no checks reported".
+function esperarRegistro(pr) {
+  const prazoEnv = Number(process.env.RFM_CI_PRAZO_REGISTRO_S);
+  const prazoS = prazoEnv > 0 ? prazoEnv : 300;
+  const sondaEnv = Number(process.env.RFM_CI_SONDA_S);
+  const sondaS = sondaEnv > 0 ? sondaEnv : 10;
+  const fim = Date.now() + prazoS * 1000;
+  let avisado = false;
+
+  for (;;) {
+    const lida = executar('gh', ['pr', 'checks', String(pr), '--json', 'name,bucket']);
+    let lista;
+    try {
+      lista = JSON.parse(lida.stdout);
+    } catch {
+      lista = null;
+    }
+    if (Array.isArray(lista) && lista.length > 0) return true;
+    const resta = fim - Date.now();
+    if (resta <= 0) return false;
+    if (!avisado) {
+      process.stdout.write(`aguardando o GitHub registrar o CI do PR ${pr} (até ${prazoS} s)\n`);
+      avisado = true;
+    }
+    esperar(Math.min(sondaS * 1000, resta));
+  }
+}
+
 function esperarCi(pr) {
   const sem = exigirGithub();
   if (sem !== 0) return sem;
@@ -285,7 +318,8 @@ function esperarCi(pr) {
   // vermelho, é CI ausente, e a evidência é o `verificar`. Só vale com os
   // workflows do checkout dizendo zero que alcançam PR E o PR sem check; leitura
   // que falha (null) segue o caminho de sempre, onde ausência de check é não verde.
-  const semCiDePr = workflowsDePr(toplevel()) === 0;
+  const workflows = workflowsDePr(toplevel());
+  const semCiDePr = workflows === 0;
   if (semCiDePr) {
     const lidosSem = executar('gh', ['pr', 'checks', String(pr), '--json', 'name,bucket']);
     let semChecks = false;
@@ -304,6 +338,9 @@ function esperarCi(pr) {
     }
   }
 
+  // Workflow de PR (ou leitura que falhou, null): espera o registro antes do --watch.
+  // O retorno não muda o caminho: com false, o --watch de hoje decide (5 se nada registrou).
+  if (workflows !== 0) esperarRegistro(pr);
   const checks = executar('gh', ['pr', 'checks', String(pr), '--watch', '--interval', '20'], { stdio: 'inherit' });
   if (checks.status !== 0) {
     // #587 (D4): o --watch saiu ≠ 0 e o stderr dele não chega aqui (stdio inherit).

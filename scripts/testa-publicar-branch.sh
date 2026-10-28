@@ -61,6 +61,15 @@ if (args[0] === 'pr' && args[1] === 'list') {
   process.exit(0);
 }
 if (args[0] === 'pr' && args[1] === 'checks' && args.includes('--json')) {
+  if (process.env.STUB_CHECKS_JSON_VAZIO_N !== undefined) {
+    // #616: conta cada chamada em STUB_CONTAGEM; as N primeiras saem vazias, como o gh com run ainda não registrado.
+    const n = (fs.existsSync(process.env.STUB_CONTAGEM) ? Number(fs.readFileSync(process.env.STUB_CONTAGEM, 'utf8')) : 0) + 1;
+    fs.writeFileSync(process.env.STUB_CONTAGEM, String(n));
+    if (n <= Number(process.env.STUB_CHECKS_JSON_VAZIO_N)) {
+      process.stderr.write("no checks reported on the 'x' branch\n");
+      process.exit(1);
+    }
+  }
   if (process.env.STUB_CHECKS_JSON_EXIT !== undefined) {
     if (process.env.STUB_CHECKS_JSON_STDERR) process.stderr.write(process.env.STUB_CHECKS_JSON_STDERR + '\n');
     process.exit(Number(process.env.STUB_CHECKS_JSON_EXIT));
@@ -129,7 +138,7 @@ roda "$CAIXA" publicar
 [ "$CODIGO" -eq 0 ]; afirma "(a1) sai 0 (exit=$CODIGO)" $?
 H="$(caixa_git rev-parse HEAD)"; U="$(caixa_git rev-parse @{u})"
 [ "$H" = "$U" ]; afirma "(a1) HEAD == @{u} ($H)" $?
-[ "$(ultima_linha)" = "PR aberto: nenhum" ]; afirma "(a1) ultima linha 'PR aberto: nenhum' (saida: $(ultima_linha))" $?
+UL="$(ultima_linha)"; [ "$UL" = "PR aberto: nenhum" ]; afirma "(a1) ultima linha 'PR aberto: nenhum' (saida: $UL)" $?
 grep -q "CHAMADA: gh pr list" "$LOG"; afirma "(a1) o stub foi consultado por pr list" $?
 ! grep -q "pr create" "$LOG"; afirma "(a1) o stub nao registra pr create" $?
 
@@ -203,13 +212,17 @@ caixa_git checkout -q -b feat-f main && (cd "$CAIXA" && echo "feat-f" > novo-f.t
 LOG="$S/log-f.txt"; export STUB_LOG="$LOG"
 roda "$CAIXA" publicar
 [ "$CODIGO" -eq 0 ]; afirma "(f) sai 0 (exit=$CODIGO)" $?
-[ "$(ultima_linha)" = "PR aberto: n/a (remoto não é GitHub)" ]; afirma "(f) ultima linha 'PR aberto: n/a (remoto não é GitHub)' (saida: $(ultima_linha))" $?
+UL="$(ultima_linha)"; [ "$UL" = "PR aberto: n/a (remoto não é GitHub)" ]; afirma "(f) ultima linha 'PR aberto: n/a (remoto não é GitHub)' (saida: $UL)" $?
 [ ! -s "$LOG" ]; afirma "(f) o stub gh nao foi chamado" $?
 caixa_git remote set-url origin https://github.com/caixa/repo.git
 
 # ============================================================ (g) esperar-ci
 echo "== (g) esperar-ci --pr 7"
 export STUB_LOG="$S/log-g.txt"
+# #616: com workflow de PR e lista vazia, o esperar-ci sonda antes do --watch. Nos
+# casos antigos o prazo é 1 s (uma sondagem extra): a saída de cada um é a de hoje.
+# Os casos novos (g36 a g38) põem o próprio prazo.
+export RFM_CI_PRAZO_REGISTRO_S=1 RFM_CI_SONDA_S=1
 # Os workflows entram no indice (git add), que e o que o `git ls-files` le. Ate o
 # (g11) a caixa tem um workflow de PR, como a caixa antiga tinha um workflow (count 1):
 # g1-g10 e g16-g18 testam o esperar-ci com CI de PR presente. caixa_limpa tira tudo antes de g11.
@@ -530,6 +543,43 @@ YML
 roda "$CAIXA" esperar-ci --pr 7
 [ "$CODIGO" -eq 8 ]; afirma "(g35) branches fixos em lista de bloco e paths glob: sai 8 (exit=$CODIGO)" $?
 caixa_limpa
+
+# #616 (D3): run ainda não registrado. Workflow de PR no checkout e lista vazia: o
+# esperar-ci sonda antes do --watch. (g31) já é de `on: com - push`, acima: o caso
+# novo fica com o rótulo (g36).
+workflow ci.yml <<'YML'
+on: pull_request
+YML
+export STUB_CHECKS_JSON='[{"name":"baterias","bucket":"pass"}]' STUB_CHECKS_EXIT=0
+export STUB_CHECKS_JSON_VAZIO_N=2 STUB_CONTAGEM="$S/contagem-g36.txt"
+rm -f "$STUB_CONTAGEM"
+export RFM_CI_PRAZO_REGISTRO_S=5 RFM_CI_SONDA_S=1
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 0 ]; afirma "(g36) run registrado na 3a sondagem: sai 0 (exit=$CODIGO)" $?
+grep -q "aguardando o GitHub registrar o CI do PR 7" "$SAIDA"; afirma "(g36) imprime a linha de espera do registro" $?
+# Para na 3a sondagem: 3 sondagens + 1 releitura = 4 chamadas. Sem parar, a
+# sondagem gasta o prazo inteiro e a conta sobe: esta linha é a que a mutação derruba.
+CONTA="$(cat "$STUB_CONTAGEM")"; [ "$CONTA" -eq 4 ]; afirma "(g36) para na 3a sondagem: pr checks --json chamado 4 vezes (conta=$CONTA)" $?
+
+# (g37) teto do registro estourado: o caminho de hoje, sai 5 com "no checks reported".
+export STUB_CHECKS_JSON_VAZIO_N=99 STUB_CONTAGEM="$S/contagem-g37.txt"
+export RFM_CI_PRAZO_REGISTRO_S=2 RFM_CI_SONDA_S=1
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 5 ]; afirma "(g37) teto do registro estourado: sai 5 (exit=$CODIGO)" $?
+grep -q "no checks reported" "$ERRO"; afirma "(g37) stderr traz 'no checks reported'" $?
+grep -q "aguardando o GitHub registrar" "$SAIDA"; afirma "(g37) espera anunciada antes do teto" $?
+
+# (g38) repositorio sem workflow de PR e PR sem check: sai 8 sem sondagem, uma unica chamada.
+caixa_limpa
+export STUB_CHECKS_JSON='[]' STUB_CHECKS_EXIT=1
+unset STUB_CHECKS_JSON_VAZIO_N STUB_CONTAGEM
+export STUB_LOG="$S/log-g38.txt"; : > "$STUB_LOG"
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 8 ]; afirma "(g38) sem workflow de PR e PR sem check: sai 8 (exit=$CODIGO)" $?
+[ "$(grep -c 'pr checks 7 --json' "$STUB_LOG")" -eq 1 ]; afirma "(g38) uma unica chamada de pr checks --json antes da saida" $?
+! grep -q "aguardando" "$SAIDA"; afirma "(g38) nao imprime linha de espera" $?
+export RFM_CI_PRAZO_REGISTRO_S=1 RFM_CI_SONDA_S=1
+unset STUB_CHECKS_JSON
 
 # (g22) cwd fora de repositorio git: o script para antes de ler workflow (main), nunca 8.
 mkdir -p "$S/fora"
