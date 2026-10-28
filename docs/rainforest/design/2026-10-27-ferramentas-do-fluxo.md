@@ -23,6 +23,7 @@ rede como CI vermelho e repo sem CI de PR como vermelho). Versão 2.0.5 (PATCH: 
 - **D4 (revisão 2): "no checks reported" na releitura é 5, não 69.** O gh 2.96 real, com o PR sem check, sai 1 com stdout vazio e a frase no stderr; o stub da bateria devolvia `[]` com exit 0 e escondia o caso. Rede caída continua 69.
 - **D5 (revisão 3): `on:` de fluxo com push (`on: push`, `on: [push]`) conta sempre, e comentário de fim de linha não filtra.** Revisor da rodada 3: um `push:` de `with:`/`env:` com `branches:` tirava um `on: push` inline, e `# branches: [main]` no fim da linha também; os dois davam 8 indevido.
 - **D5 (revisão 4): a leitura do filtro é dos filhos diretos do `on:` de topo, não de todo `push:` do texto.** Revisor da rodada 4: `on:` em várias linhas (`- push`, `[push]`, `push: {}`) com um `push:` de `with:` filtrado ainda dava 8. Remendar forma a forma não fechava a família; agora o filtro só vale na forma exata (`on:` em bloco → `push:` sozinho → `branches:` de nomes fixos), e qualquer outra forma que cite push conta.
+- **D5 (revisão 5): glob de branch é `*`, `?`, `+` e `[...]`, procurado só no valor de `branches:`.** Revisor da rodada 5: `fluxo/[a-z]` e `fluxo/?` passavam por nomes fixos e davam 8. O `*` de `paths:` deixa de contar, porque não é filtro de branch.
 
 ## Avaliado e descartado
 - **#608 opção A (comparar autocompact só entre dirs que definem o override)**: esconde exatamente o caso que a checagem existe para pegar — uma conta real editada e a outra esquecida (dir sem override é "usa o padrão", que é a divergência).

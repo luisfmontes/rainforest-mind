@@ -22,7 +22,7 @@
     "em": "2026-10-27"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-28",
     "tarefas_ok": 8,
     "tarefas": 8,
@@ -127,16 +127,16 @@
   "revisar": {
     "status": "pendente",
     "snapshot": {
-      "head": "e751ea1ccba2d19be6c5b0baed50f0946dc256fb",
+      "head": "ace23a2db58a9860d4b7d84d3fbb6c9b849a47ec",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "adc318faefe3e4e48",
+        "agente_id": "abe6ed5d17661db51",
         "veredito": "ok",
         "em": "2026-10-28",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bbe7888f-e761-411a-988c-b38fada6b86e/subagents/agent-adc318faefe3e4e48.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bbe7888f-e761-411a-988c-b38fada6b86e/subagents/agent-abe6ed5d17661db51.jsonl"
       }
     ],
     "em_voo": [],
@@ -185,10 +185,22 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bbe7888f-e761-411a-988c-b38fada6b86e/subagents/agent-a538e45f58399b957.jsonl"
           }
         ]
+      },
+      {
+        "volta": 4,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "adc318faefe3e4e48",
+            "veredito": "ok",
+            "em": "2026-10-28",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/bbe7888f-e761-411a-988c-b38fada6b86e/subagents/agent-adc318faefe3e4e48.jsonl"
+          }
+        ]
       }
     ],
     "base": "2720ed6c",
-    "head": "e751ea1c"
+    "head": "ace23a2d"
   },
   "verificar": {
     "status": "pendente",
@@ -240,6 +252,13 @@
       "porque": "revisor da rodada 4 achou mais 5 formas de on: com 8 indevido; a leitura positiva fecha a familia",
       "estagio": "executar",
       "em": "2026-10-28T03:15:50.377Z"
+    },
+    {
+      "pergunta": "o que e glob de branch no filtro do push (D5)?",
+      "escolha": "*, ?, + e [...], so no valor de branches:",
+      "porque": "revisor da rodada 5: [a-z] e ? davam 8 indevido; * de paths: nao e filtro de branch",
+      "estagio": "executar",
+      "em": "2026-10-28T03:25:29.357Z"
     }
   ],
   "reaberturas": [
@@ -252,6 +271,11 @@
       "em": "2026-10-28",
       "de": "revisar",
       "motivo": "revisao 4 [media]: on: em varias linhas (- push, [push], push, push: {}) com push: de with: filtrado da 8 indevido; ler so os filhos diretos do on: de topo"
+    },
+    {
+      "em": "2026-10-28",
+      "de": "revisar",
+      "motivo": "revisao 5 [baixa]: so * contava como glob; ?, + e [...] tambem sao glob de branch e davam 8 indevido"
     }
   ]
 }

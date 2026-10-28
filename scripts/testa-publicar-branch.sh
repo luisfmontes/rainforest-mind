@@ -494,6 +494,43 @@ roda "$CAIXA" esperar-ci --pr 7
 [ "$CODIGO" -eq 5 ]; afirma "(g32) on: com push: {} e push: de with: filtrado: sai 5, nao 8 (exit=$CODIGO)" $?
 caixa_limpa
 
+# (g33) glob de branch sem `*` (`[a-z]`, em lista de bloco no mesmo recuo): o push
+# dispara na branch do PR: sai 5, nao 8.
+workflow ci.yml <<'YML'
+on:
+  push:
+    branches:
+    - main
+    - 'fluxo/[a-z]'
+YML
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 5 ]; afirma "(g33) branches com glob [a-z] em lista de bloco: sai 5, nao 8 (exit=$CODIGO)" $?
+caixa_limpa
+
+# (g34) glob `?` em lista de fluxo: sai 5, nao 8.
+workflow ci.yml <<'YML'
+on:
+  push:
+    branches: [main, 'fluxo/?']
+YML
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 5 ]; afirma "(g34) branches com glob ? em lista de fluxo: sai 5, nao 8 (exit=$CODIGO)" $?
+caixa_limpa
+
+# (g35) nomes fixos em lista de bloco, com paths glob ao lado: o filtro de branch
+# e de nomes fixos, o * do paths nao e de branch: sai 8.
+workflow protect-main.yml <<'YML'
+on:
+  push:
+    branches:
+      - main
+      - release
+    paths: ['src/**']
+YML
+roda "$CAIXA" esperar-ci --pr 7
+[ "$CODIGO" -eq 8 ]; afirma "(g35) branches fixos em lista de bloco e paths glob: sai 8 (exit=$CODIGO)" $?
+caixa_limpa
+
 # (g22) cwd fora de repositorio git: o script para antes de ler workflow (main), nunca 8.
 mkdir -p "$S/fora"
 roda "$S/fora" esperar-ci --pr 7

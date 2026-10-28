@@ -235,7 +235,17 @@ function pushSoEmNomesFixos(texto) {
       bloco.push(l);
     }
     const b = bloco.join('\n');
-    return /\bbranches\s*:/.test(b) && !/\bbranches-ignore\s*:/.test(b) && !b.includes('*');
+    if (!/\bbranches\s*:/.test(b) || /\bbranches-ignore\s*:/.test(b)) return false;
+    // Glob de branch do GitHub: `*`, `?`, `+` e `[...]`, procurados só no valor de
+    // `branches:`. O `[` que abre a lista em fluxo (`[main]`) não conta; os itens
+    // em bloco vêm nas linhas seguintes, mais recuadas ou no mesmo recuo com `-`.
+    const iB = bloco.findIndex((l) => /\bbranches\s*:/.test(l));
+    const valor = [bloco[iB].replace(/^.*?\bbranches\s*:\s*\[?/, '')];
+    for (const l of bloco.slice(iB + 1)) {
+      if (recuo(l) < recuo(bloco[iB]) || (recuo(l) === recuo(bloco[iB]) && !/^\s*-/.test(l))) break;
+      valor.push(l);
+    }
+    return !/[*?+[]/.test(valor.join('\n'));
   });
 }
 
