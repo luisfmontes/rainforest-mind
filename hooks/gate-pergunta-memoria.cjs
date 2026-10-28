@@ -24,7 +24,12 @@ const path = require('node:path');
 
 const LIMIAR_TERMOS = 3;
 const LIMITE_PERGUNTA = 400;
-const ORCAMENTO_BANCO_MS = 1500;
+// Prazo da perna do banco, contado desde a partida do processo. A variável existe para a
+// bateria: sob carga a partida do node passa de 1500 ms e o banco é pulado (falha aberta),
+// o que tornava o P12 instável (revisão 1 e integração da tarefa 8).
+const ORCAMENTO_BANCO_MS = process.env.RFM_PERGUNTA_MEMORIA_ORCAMENTO_MS !== undefined
+  ? Number(process.env.RFM_PERGUNTA_MEMORIA_ORCAMENTO_MS)
+  : 1500;
 const JANELA_VIVA_MS = 6 * 3600 * 1000;
 const INICIO = Date.now();
 

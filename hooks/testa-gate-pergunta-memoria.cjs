@@ -105,7 +105,7 @@ function payload(c, extra = {}) {
 function rodar(c, extra = {}, transcriptOverride = null) {
   const p = payload(c, extra);
   if (transcriptOverride !== null) p.transcript_path = transcriptOverride;
-  const env = { ...process.env, RFM_ROOT: c.rfm };
+  const env = { ...process.env, RFM_ROOT: c.rfm, ...(c.env || {}) };
   delete env.RAINFOREST_GATE_OFF;
   delete env.CLAUDE_PROJECT_DIR;
   return spawnSync(process.execPath, [HOOK], {
@@ -245,8 +245,9 @@ teste('P11 memória com description de outro assunto e termos só no corpo: exit
   assert(r.status === 0, `esperado exit 0, obteve ${r.status} (stderr: ${r.stderr})`);
 });
 
-teste('P12 banco por assunto, sem memory/: observação que casa com Q1 barra (exit 2) e o stderr cita o banco', () => {
+function cenarioComBanco(orcamentoMs) {
   const c = cenario({ transcrito: TRANSCRITO_RESPONDE, comMemoria: false });
+  c.env = { RFM_PERGUNTA_MEMORIA_ORCAMENTO_MS: String(orcamentoMs) };
   const db = new DatabaseSync(path.join(c.rfm, 'rainforest.db'));
   criarSchema(db);
   const ins = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
@@ -263,11 +264,21 @@ teste('P12 banco por assunto, sem memory/: observação que casa com Q1 barra (e
     'alvo-p12',
   );
   db.close();
+  return c;
+}
 
-  const r = rodar(c);
+// Prazo folgado: o P12 mede o casamento no banco, não a velocidade da máquina.
+teste('P12 banco por assunto, sem memory/: observação que casa com Q1 barra (exit 2) e o stderr cita o banco', () => {
+  const r = rodar(cenarioComBanco(20000));
   assert(r.status === 2, `esperado exit 2, obteve ${r.status} (stderr: ${r.stderr})`);
   assert(r.stderr.includes('Q1'), 'stderr sem Q1');
   assert(r.stderr.includes('o banco tem observação de outro-projeto'), 'stderr sem a citação do banco');
+});
+
+// O mesmo banco com prazo zero: a perna do banco é pulada e o hook sai 0 (falha aberta, D6).
+teste('P13 o P12 com prazo do banco zero: banco pulado, exit 0', () => {
+  const r = rodar(cenarioComBanco(0));
+  assert(r.status === 0, `esperado exit 0, obteve ${r.status} (stderr: ${r.stderr})`);
 });
 
 for (const d of tmpdirs) {
