@@ -32,7 +32,8 @@ const DOCUMENTOS_DO_FLUXO = new Set([
 // certo e sempre o da main, e um vermelho aqui significa ou corpo alterado por
 // engano, ou base velha depois que a main andou.
 const ANCORA_CORPOS_SKILLS = {
-  // fechar re-medido em 2026-10-21: linha do exit `8` (repositorio sem CI) na
+  // fechar re-medido em 2026-10-28: o exit `8` passou a se medir pelos workflows do
+  // checkout (#591, 2.0.5). Antes, em 2026-10-21: linha do exit `8` (repositorio sem CI) na
   // tabela do passo 5 (lote-1021, #576, 1.73.0). Antes: re-medido em 2026-10-19: paragrafo "Codigo mudou depois do verificar ok" e o
   // `reabrir` na tabela de saidas do passo 5 (fluxo estado-reabrir, 1.70.0). Antes:
   // re-medido em 2026-10-13 (2a vez): ponteiro do modo autonomo no passo 5
@@ -41,7 +42,7 @@ const ANCORA_CORPOS_SKILLS = {
   // o destino padrao `resolvida`. Antes, no mesmo dia: a Issue #449 acrescentou a secao
   // "Deixado para depois" e o verbo `destinar`. Antes (2026-10-07): o enxerto da
   // skill `pr` (mattpocock v1.3) acrescentou o template do corpo do PR.
-  fechar: { bytes: 16065, sha256: '5f772f3678f07d47e970fcb5eac99145c58bb5f7b0f408500e958f5076ce8158' },
+  fechar: { bytes: 16102, sha256: '75ba348e24b6e6f4b093119a8afe8c88cff6aa1ab73e89ae6cd028cb57cc6931' },
   // fechar, modo-dev e regua re-medidos em 2026-10-05: a revisao bimestral
   // acrescentou texto de proposito (E4, E25, E27, E30).
   // modo-dev re-medido em 2026-10-24: o fluxo apoio-ao-dev-lote-1 (tarefa 4, D7)
