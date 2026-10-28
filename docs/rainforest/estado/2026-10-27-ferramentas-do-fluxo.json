@@ -227,8 +227,11 @@
     "head": "bc14feae"
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-10-28"
+    "status": "ok",
+    "em": "2026-10-28",
+    "comando": "bash scripts/testa-publicar-branch.sh; bash scripts/testa-config.sh; bash scripts/testa-gate-fechar-issue.sh; node scripts/conferir-versao.cjs; node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-27-ferramentas-do-fluxo",
+    "saida": "testa-publicar-branch: 83 ok, 0 falha (exit 0); testa-config: 74 ok (exit 0); testa-gate-fechar-issue: 409 ok (exit 0); conferir-versao: ok versao 2.0.5 (exit 0); chaves: gate-fechar-issue,saude-ignorar-config-dirs; formas T1-T8 conferidas por grep; T6 Segue #<n> presente, CORRIGE ausente; testa-saude verde (22 min). catraca:\ntarefa 1: vermelho\ntarefa 2: vermelho\ntarefa 3: vermelho\ntarefa 4: vermelho\ntarefa 5: vermelho\ntarefa 6: vermelho\ntarefa 8: vermelho\ntarefa 7: pulada (n/a — bump de versão e texto; o comportamento é medido pelas tarefas 1–6 e pela trava `conferir-versao`)",
+    "head": "16f1033dfa091fcefb6e33115f2c90ff6d11348c"
   },
   "fechar": {
     "status": "pendente",
