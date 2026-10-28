@@ -68,6 +68,9 @@ function resolver({ cwd }) {
   // 2. Remover prefixos tipo 'fluxo/' (convenção de branch)
   // A branch pode ser 'fluxo/memoria-e-dados' ou 'memoria-e-dados'
   const branchBase = branch.replace(/^.*?\//, '');
+  // Issue #613/#610 (D2): worktree de tarefa paralela fora de repo tem branch
+  // `fluxo/<slug>-t<n>`. Só dígitos depois de `-t`; sem casamento exato, vale esta.
+  const branchTarefa = branchBase.replace(/-t\d+$/, '');
 
   // 3. Ler arquivos de estado de `docs/rainforest/estado/`
   const dirEstado = path.join(cwd, 'docs', 'rainforest', 'estado');
@@ -83,7 +86,7 @@ function resolver({ cwd }) {
 
   // 4. Encontrar candidatos: arquivos cujo slug (pós-data) casa com a branch
   // e que têm estágio aberto
-  const candidatos = [];
+  let candidatos = [];
 
   for (const arquivo of arquivos) {
     const slug = arquivo.replace(/\.json$/, '');
@@ -116,8 +119,11 @@ function resolver({ cwd }) {
     // `candidatos.length !== 1` la embaixo devolve `null`, como antes.
     const slugSemNumeroDeFluxo = slugSemData.replace(/^fluxo-\d+-/, '');
 
-    // Verificar se alguma das duas formas do slug casa com a branch
-    if (slugSemData !== branchBase && slugSemNumeroDeFluxo !== branchBase) continue;
+    // Verificar se alguma das duas formas do slug casa com a branch inteira
+    // (exato) ou com a branch sem o sufixo de tarefa (`-t<n>`)
+    const casaExato = slugSemData === branchBase || slugSemNumeroDeFluxo === branchBase;
+    const casaTarefa = slugSemData === branchTarefa || slugSemNumeroDeFluxo === branchTarefa;
+    if (!casaExato && !casaTarefa) continue;
 
     // Verificar se há estágio aberto (próximo !== null)
     const prox = proximo(estado);
@@ -127,10 +133,13 @@ function resolver({ cwd }) {
     }
 
     // É candidato!
-    candidatos.push({ slug, estado, estagio: prox });
+    candidatos.push({ slug, estado, estagio: prox, exato: casaExato });
   }
 
   // 5. Retornar resultado
+  // Casamento exato vence: o de tarefa só entra quando nenhum candidato casou a branch inteira
+  const exatos = candidatos.filter((c) => c.exato);
+  if (exatos.length > 0) candidatos = exatos;
   // Ambiguidade nega — a condição tem que existir literal como `candidatos.length !== 1`
   if (candidatos.length !== 1) {
     return null;
@@ -169,10 +178,12 @@ function diagnosticar({ cwd }, limite = 3) {
     }).trim();
     if (!branch || branch === 'HEAD') return null;
     const branchBase = branch.replace(/^.*?\//, '');
+    const branchSemTarefa = branchBase.replace(/-t\d+$/, '');
     const dirEstado = path.join(cwd, 'docs', 'rainforest', 'estado');
     if (!fs.existsSync(dirEstado)) return { branch, branchBase, abertos: [], casados: 0 };
     const abertos = [];
-    let casados = 0;
+    let exatos = 0;
+    let tarefas = 0;
     for (const arquivo of fs.readdirSync(dirEstado).filter((f) => f.endsWith('.json'))) {
       const slug = arquivo.replace(/\.json$/, '');
       let estado;
@@ -184,10 +195,12 @@ function diagnosticar({ cwd }, limite = 3) {
       if (!estado || typeof estado !== 'object' || proximo(estado) === null) continue;
       const slugSemData = slug.replace(/^\d{4}-\d{2}-\d{2}-/, '');
       const semNumero = slugSemData.replace(/^fluxo-\d+-/, '');
-      if (slugSemData === branchBase || semNumero === branchBase) casados++;
-      abertos.push({ slug, esperado: `fluxo/${semNumero}`, d: Math.min(distancia(branchBase, slugSemData), distancia(branchBase, slug)) });
+      if (slugSemData === branchBase || semNumero === branchBase) exatos++;
+      else if (slugSemData === branchSemTarefa || semNumero === branchSemTarefa) tarefas++;
+      abertos.push({ slug, esperado: `fluxo/${semNumero} ou fluxo/${semNumero}-t<n>`, d: Math.min(distancia(branchBase, slugSemData), distancia(branchBase, slug)) });
     }
     abertos.sort((x, y) => x.d - y.d || x.slug.localeCompare(y.slug));
+    const casados = exatos > 0 ? exatos : tarefas;
     return { branch, branchBase, casados, abertos: abertos.slice(0, limite).map(({ slug, esperado }) => ({ slug, esperado })) };
   } catch (_) {
     return null;

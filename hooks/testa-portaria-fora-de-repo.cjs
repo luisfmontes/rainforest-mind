@@ -146,6 +146,33 @@ console.log("== C. cwd dentro de repo: nada muda ==");
     comIsolation.status === 0, `exit=${comIsolation.status} stderr=${comIsolation.stderr}`);
 }
 
+console.log("== D. branch de tarefa fluxo/<slug>-t<n> fora de repo (#613, #610) ==");
+{
+  // Cada tarefa paralela ganha worktree próprio, na branch `fluxo/<slug sem a data>-t<n>`.
+  // O estado é copiado para o worktree: resolver lê `docs/rainforest/estado` do cwd declarado.
+  const estadoDoFluxo = path.join(wt, "docs", "rainforest", "estado", `${SLUG}.json`);
+  const comEstado = (dir) => {
+    fs.mkdirSync(path.join(dir, "docs", "rainforest", "estado"), { recursive: true });
+    fs.copyFileSync(estadoDoFluxo, path.join(dir, "docs", "rainforest", "estado", `${SLUG}.json`));
+  };
+  const wtT1 = path.join(sbx, "wt-tarefa1");
+  git(main, ["worktree", "add", "-q", "-b", "fluxo/teste-t1", wtT1]);
+  comEstado(wtT1);
+  const t1 = despachar(fora, briefing(barras(wtT1)));
+  caso("D1 fora de repo, worktree em fluxo/teste-t1 com fluxo em executar: exit 0",
+    t1.status === 0, `exit=${t1.status} stderr=${t1.stderr}`);
+  const wtOutro = path.join(sbx, "wt-outro");
+  git(main, ["worktree", "add", "-q", "-b", "fluxo/outro-t1", wtOutro]);
+  comEstado(wtOutro);
+  const outro = despachar(fora, briefing(barras(wtOutro)));
+  caso("D2 fora de repo, worktree em fluxo/outro-t1 (fluxo que nao existe): exit 2",
+    outro.status === 2, `exit=${outro.status} stderr=${outro.stderr}`);
+  caso("D2 a negacao cita a forma fluxo/<slug sem a data>-t<n> (#613)",
+    (outro.stderr || "").includes("fluxo/<slug sem a data>-t<n>"), outro.stderr);
+  caso("D2 a negacao cita o fluxo esperado como fluxo/teste-t<n>",
+    (outro.stderr || "").includes("fluxo/teste-t<n>"), outro.stderr);
+}
+
 fs.rmSync(sbx, { recursive: true, force: true });
 console.log(`\n== resultado: ${ok} ok, ${falhou} falha(s) ==`);
 process.exit(falhou === 0 ? 0 : 1);

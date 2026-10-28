@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execSync } = require('child_process');
-const { resolver } = require('./lib/estagio-ativo.cjs');
+const { resolver, diagnosticar } = require('./lib/estagio-ativo.cjs');
 
 // ============================================================================
 // UTILITÁRIOS
@@ -257,6 +257,134 @@ casos['(g) numeracao de fluxo nao afrouxa a ambiguidade'] = function () {
   }
 };
 
+// Issue #613/#610 (D2): branch de tarefa paralela `fluxo/<slug>-t<n>`.
+// Estado com design aprovado e plano ok: o próximo estágio aberto é `executar`.
+function novoEstadoExecutar(slug) {
+  const estado = novoEstado(slug, slug);
+  estado.design.status = 'aprovado';
+  estado.plano.status = 'ok';
+  return estado;
+}
+
+casos['branch fluxo/<slug>-t2 resolve para o fluxo <slug>'] = function () {
+  const sandbox = criarSandbox();
+  try {
+    gravarEstado('2026-10-26-ficha-centralizada', sandbox, novoEstadoExecutar('2026-10-26-ficha-centralizada'));
+    criarBranch(sandbox, 'fluxo/ficha-centralizada-t2');
+
+    const resultado = resolver({ cwd: sandbox });
+
+    if (!resultado || resultado.slug !== '2026-10-26-ficha-centralizada' || resultado.estagio !== 'executar') {
+      throw new Error(
+        `esperado { slug: '2026-10-26-ficha-centralizada', estagio: 'executar' }, ` +
+        `obtido ${JSON.stringify(resultado)}`
+      );
+    }
+  } finally {
+    limparSandbox(sandbox);
+  }
+};
+
+casos['branch fluxo/<slug>-t12 (dois digitos) resolve para o mesmo fluxo'] = function () {
+  const sandbox = criarSandbox();
+  try {
+    gravarEstado('2026-10-26-ficha-centralizada', sandbox, novoEstadoExecutar('2026-10-26-ficha-centralizada'));
+    criarBranch(sandbox, 'fluxo/ficha-centralizada-t12');
+
+    const resultado = resolver({ cwd: sandbox });
+
+    if (!resultado || resultado.slug !== '2026-10-26-ficha-centralizada' || resultado.estagio !== 'executar') {
+      throw new Error(`esperado o fluxo ficha-centralizada em executar, obtido ${JSON.stringify(resultado)}`);
+    }
+  } finally {
+    limparSandbox(sandbox);
+  }
+};
+
+casos['branch fluxo/outro-t1 sem fluxo aberto com esse nome: null'] = function () {
+  const sandbox = criarSandbox();
+  try {
+    gravarEstado('2026-10-26-ficha-centralizada', sandbox, novoEstadoExecutar('2026-10-26-ficha-centralizada'));
+    criarBranch(sandbox, 'fluxo/outro-t1');
+
+    const resultado = resolver({ cwd: sandbox });
+
+    if (resultado !== null) {
+      throw new Error(`esperado null (nenhum fluxo outro), obtido ${JSON.stringify(resultado)}`);
+    }
+  } finally {
+    limparSandbox(sandbox);
+  }
+};
+
+casos['branch com sufixo -t sem digitos ou -tx nao casa tarefa: null'] = function () {
+  const sandbox = criarSandbox();
+  try {
+    gravarEstado('2026-10-26-ficha-centralizada', sandbox, novoEstadoExecutar('2026-10-26-ficha-centralizada'));
+    for (const branchNome of ['fluxo/ficha-centralizada-tx', 'fluxo/ficha-centralizada-t']) {
+      criarBranch(sandbox, branchNome);
+      const resultado = resolver({ cwd: sandbox });
+      if (resultado !== null) {
+        throw new Error(`branch ${branchNome}: esperado null, obtido ${JSON.stringify(resultado)}`);
+      }
+    }
+  } finally {
+    limparSandbox(sandbox);
+  }
+};
+
+casos['fluxos x e x-t1 abertos, branch fluxo/x-t1: casamento exato vence (slug x-t1)'] = function () {
+  const sandbox = criarSandbox();
+  try {
+    gravarEstado('x', sandbox, novoEstado('x', 'x'));
+    gravarEstado('x-t1', sandbox, novoEstado('x-t1', 'x-t1'));
+    criarBranch(sandbox, 'fluxo/x-t1');
+
+    const resultado = resolver({ cwd: sandbox });
+
+    if (!resultado || resultado.slug !== 'x-t1') {
+      throw new Error(`esperado slug 'x-t1' (casamento exato), obtido ${JSON.stringify(resultado)}`);
+    }
+  } finally {
+    limparSandbox(sandbox);
+  }
+};
+
+casos['branch fluxo/<slug> sem sufixo continua resolvendo o fluxo (vizinho)'] = function () {
+  const sandbox = criarSandbox();
+  try {
+    gravarEstado('2026-10-26-ficha-centralizada', sandbox, novoEstadoExecutar('2026-10-26-ficha-centralizada'));
+    criarBranch(sandbox, 'fluxo/ficha-centralizada');
+
+    const resultado = resolver({ cwd: sandbox });
+
+    if (!resultado || resultado.slug !== '2026-10-26-ficha-centralizada' || resultado.estagio !== 'executar') {
+      throw new Error(`esperado o fluxo ficha-centralizada em executar, obtido ${JSON.stringify(resultado)}`);
+    }
+  } finally {
+    limparSandbox(sandbox);
+  }
+};
+
+casos['diagnosticar: branch de tarefa conta o fluxo e cita a forma -t<n> no esperado'] = function () {
+  const sandbox = criarSandbox();
+  try {
+    gravarEstado('2026-10-26-ficha-centralizada', sandbox, novoEstadoExecutar('2026-10-26-ficha-centralizada'));
+    criarBranch(sandbox, 'fluxo/ficha-centralizada-t1');
+
+    const diag = diagnosticar({ cwd: sandbox });
+
+    if (!diag || diag.casados !== 1 || diag.abertos.length !== 1) {
+      throw new Error(`esperado casados 1 e 1 aberto, obtido ${JSON.stringify(diag)}`);
+    }
+    if (!diag.abertos[0].esperado.includes('fluxo/ficha-centralizada-t<n>')) {
+      throw new Error(`esperado esperado com a forma -t<n>, obtido '${diag.abertos[0].esperado}'`);
+    }
+  } finally {
+    limparSandbox(sandbox);
+  }
+};
+
 // ============================================================================
 // EXECUTAR TESTES
 // ============================================================================
@@ -270,6 +398,7 @@ function main() {
     try {
       casos[nome]();
       sucesso++;
+      console.log(`  ok   ${nome}`);
     } catch (err) {
       console.error(`ERRO em ${nome}:`);
       console.error(`  ${err.message}`);

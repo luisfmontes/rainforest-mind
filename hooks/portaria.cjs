@@ -1207,7 +1207,7 @@ function main() {
             : "nenhum fluxo aberto casa com ela";
           diagnostico =
             `\n  branch lida: '${diag.branch}' (comparada como '${diag.branchBase}'); ${porque}. ` +
-            `A branch tem de ser fluxo/<slug sem a data>. Abertos mais perto: ` +
+            `A branch tem de ser fluxo/<slug sem a data>, ou fluxo/<slug sem a data>-t<n> para tarefa paralela. Abertos mais perto: ` +
             diag.abertos.map((a) => `${a.slug} (espera ${a.esperado})`).join(", ");
         }
       }
