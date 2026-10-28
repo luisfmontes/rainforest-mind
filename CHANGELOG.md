@@ -10,6 +10,14 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.1.0 — 2026-10-28
+
+Três travas saídas das 120 observações de outubro, que se concentravam em três erros repetidos apesar da regra escrita. Desenho em `docs/rainforest/design/2026-10-28-colheita-observacoes.md`.
+
+- **Portaria barra agente fora do manifesto que escreve sem fluxo (D3).** Agente não declarado com tool de escrita no frontmatter, ou despachado com `isolation: "worktree"`, é barrado em repo com fluxo quando a branch da sessão não tem estágio aberto nem `leve`. Sem `isolation` e sem frontmatter legível segue passando.
+- **`gate-turno-prometido` pega o pedido de licença (D4).** Com `executar-autonomo` ligada e o fluxo entre design aprovado e `fechar`, o turno que termina em "sigo?" sem `Q<n>` é barrado uma vez.
+- **`gate-pergunta-memoria`, novo (D6).** Turno com `Q<n>` que a memória do projeto já responde é barrado uma vez, com o arquivo e a descrição, e com as sessões vivas de outros repositórios. Chave `gate-pergunta-memoria`.
+
 ## 2.0.7 — 2026-10-28
 
 Limpeza miúda.
