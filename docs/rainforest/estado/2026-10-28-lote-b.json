@@ -99,18 +99,18 @@
     "reaberturas": 2
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "6f7ad1bdee5918dfc637fa613c1e81a9cd8b2d8c",
+      "head": "6de0a83db08b413160805c15042f292a6298674c",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ac3c7165878ee1338",
+        "agente_id": "a2cdc6cdf824ec80d",
         "veredito": "ok",
         "em": "2026-10-28",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/8a96ac43-ade9-4b4e-a6e0-475b7105c7df/subagents/agent-ac3c7165878ee1338.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/8a96ac43-ade9-4b4e-a6e0-475b7105c7df/subagents/agent-a2cdc6cdf824ec80d.jsonl"
       }
     ],
     "achados": 0,
@@ -146,18 +146,36 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/8a96ac43-ade9-4b4e-a6e0-475b7105c7df/subagents/agent-a48dde6419f3057b7.jsonl"
           }
         ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ac3c7165878ee1338",
+            "veredito": "ok",
+            "em": "2026-10-28",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/8a96ac43-ade9-4b4e-a6e0-475b7105c7df/subagents/agent-ac3c7165878ee1338.jsonl"
+          }
+        ]
       }
     ],
     "base": "e37ba660bce08781c9ac73bb67e1a3cc89e5fa9e",
-    "head": "6f7ad1bdee5918dfc637fa613c1e81a9cd8b2d8c"
+    "head": "6de0a83db08b413160805c15042f292a6298674c"
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-10-28"
+    "status": "ok",
+    "em": "2026-10-28",
+    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-10-28-lote-b; e os criterios do plano: node hooks/testa-estagio-ativo.cjs, node hooks/testa-portaria-diagnostico.cjs, node hooks/testa-portaria-fora-de-repo.cjs, node hooks/testa-portaria-fluxo-pulado.cjs, bash scripts/testa-publicar-branch.sh, bash hooks/testa-gate-fechar-issue.sh, node hooks/testa-gate-teto-declarado.cjs, node hooks/testa-gate-teto-despachos.cjs, bash scripts/testa-cobertura-teto.sh, bash scripts/testa-conferir-fluxo.sh, bash scripts/testa-conferir-mutacao.sh, bash scripts/testa-teto-skills.sh, bash hooks/testa-abertura-mod-config.sh, node scripts/conferir-versao.cjs",
+    "saida": "exit 0 em todos: estagio-ativo todos OK; portaria-diagnostico todos OK; fora-de-repo 22 ok 0 falha; fluxo-pulado ok: 76 falhou: 0; publicar-branch ok: 92 falhou: 0; gate-fechar-issue 420 ok 0 falha; teto-declarado ok: 84 falhou: 0; teto-despachos ok: 87 falhou: 0; cobertura-teto ok: 23 falhou: 0; conferir-fluxo ok: 142 falhou: 0; conferir-mutacao ok: 211 falhou: 0; teto-skills 21 OK 0 FALHA; abertura-mod-config ok: 20 falhou: 0; conferir-versao exit 0 (2.0.6); tetoPadrao(43)=65",
+    "head": "6de0a83db08b413160805c15042f292a6298674c"
   },
   "fechar": {
-    "status": "pendente",
-    "em": "2026-10-28"
+    "status": "ok",
+    "em": "2026-10-28",
+    "acao": "merge",
+    "pr": 618,
+    "merge": "3e93ca47"
   },
   "reaberturas": [
     {
