@@ -88,3 +88,64 @@ depende de: 1, 2, 3
 mutacao: n/a
   motivo: texto e versão; a falsificação é a coerência com o design e com a interface real
 pronto quando: com os hooks entregues pelas tarefas 1 a 3, o README descreve as três travas com o mesmo comportamento que as baterias provam: quem barra, quando, a chave que desliga e o que fica fora (D8). A versão sobe para a próxima minor acima da que estiver na `main` no momento da tarefa, nos dois `plugin.json` e no selo do README, e o CHANGELOG ganha a seção dessa versão. Provado por `node -e` que confere que as duas versões dos `plugin.json`, a do selo do README e o primeiro `## ` do CHANGELOG são iguais, e pela leitura, no revisar, de cada frase do README contra o caso de bateria que a sustenta (N1–N8, C1–C9, P1–P9).
+
+## Rodada 2 (revisão 1 reprovada, 2026-10-28)
+
+### 7. Portaria: isolation worktree é sinal de escrita para qualquer agente [tipo: implementar]
+atende: D3, D8
+arquivos: `hooks/portaria.cjs`, `hooks/testa-portaria-fluxo-pulado.cjs`
+depende de: 1
+busca:
+- repo | rg "escreveNaoDeclarado|parseToolsDoFrontmatter" hooks | a linha da tarefa 1 e a inferência de frontmatter, as duas na portaria
+- livro | pulado: emenda de trava própria
+desfecho: estender
+prova-na-base: verde — a base desta rodada já tem a bateria verde; os casos G nascem com a tarefa
+mutacao:
+  arquivo: `hooks/portaria.cjs`
+  de: `const escrevePorSinal = !escreveDeclarado && ((!declarado && agentConfig.escreve === true) || payload.tool_input.isolation === "worktree");`
+  para: `const escrevePorSinal = !escreveDeclarado && (!declarado && agentConfig.escreve === true);`
+  bateria: `node hooks/testa-portaria-fluxo-pulado.cjs`
+  fixture: `testa-portaria-fluxo-pulado.cjs, caso "G1" (general-purpose declarado escreve:false com isolation worktree, sem fluxo)`
+pronto quando: com o payload real do PreToolUse de `Agent` com `subagent_type: "general-purpose"` e `isolation: "worktree"`, em repo com trilho e branch sem estágio aberto nem `leve`, a portaria sai com exit 2 (G1); o mesmo para `Explore` com `isolation` (G2). Agente não declarado cujo frontmatter existe sem linha `tools:` é tratado como escritor (G3, exit 2 sem fluxo). Vizinhos que **passam**: G4 `general-purpose` **sem** `isolation` e sem fluxo (busca de leitura); G5 `general-purpose` com `isolation` e estágio `executar` aberto; G6 `rainforest-mind:revisor` sem `isolation` e sem fluxo. Os casos A3 e A4 passam a despachar sem `isolation`, que é como o revisor e o planejador são despachados de verdade (skills `revisar` e `plano`); nenhum outro caso antigo muda. Provado por `node hooks/testa-portaria-fluxo-pulado.cjs` com `falhou: 0` e linhas `ok` de G1 a G6, por todas as `hooks/testa-portaria-*.cjs` com `falhou: 0`, e pela mutação acima deixando G1 vermelho.
+
+### 8. gate-pergunta-memoria lê a memória do repositório principal e casa só por nome e descrição [tipo: implementar]
+atende: D6, D8
+arquivos: `hooks/gate-pergunta-memoria.cjs`, `hooks/testa-gate-pergunta-memoria.cjs`, `hooks/fixtures/pergunta-memoria/memory/gate-off-so-por-variavel.md`, `hooks/fixtures/pergunta-memoria/memory/corpo-sem-relacao.md`
+depende de: 3
+busca:
+- repo | rg "git-common-dir|projects" hooks/lib | `hooks/lib/config.cjs` tem raizDoPrincipal; o slug de pasta de projeto do Claude Code é o caminho com todo caractere fora de [A-Za-z0-9] trocado por "-"
+- livro | pulado: emenda de gate próprio
+desfecho: estender
+prova-na-base: verde — a base desta rodada já tem a bateria verde; os casos P10 a P12 nascem com a tarefa
+mutacao:
+  arquivo: `hooks/gate-pergunta-memoria.cjs`
+  de: `const slugDoProjeto = (p) => p.replace(/[^A-Za-z0-9]/g, "-");`
+  para: `const slugDoProjeto = (p) => "nao-existe";`
+  bateria: `node hooks/testa-gate-pergunta-memoria.cjs`
+  fixture: `testa-gate-pergunta-memoria.cjs, caso "P10" (transcrito na pasta do slug do worktree, memória só na pasta do slug do principal)`
+pronto quando: com o payload real do Stop cujo `transcript_path` está em `<projects>/<slug do worktree>/<sessao>.jsonl`, `cwd` dentro de um worktree linkado de um repositório git real, e a memória só em `<projects>/<slug do principal>/memory/`, o hook sai com exit 2 citando o arquivo (P10). Casamento só por nome e `description`: um arquivo cujo corpo compartilha os termos da `Q` mas cuja descrição não compartilha **não** barra (P11, fixture `corpo-sem-relacao.md`). A perna do banco é exercitada: com um `rainforest.db` montado no `RFM_ROOT` pelo caminho que as baterias de memória já usam, contendo uma observação que casa com a `Q` e sem `memory/`, o hook sai com exit 2 citando o banco (P12). P1 a P9 seguem verdes. Provado por `node hooks/testa-gate-pergunta-memoria.cjs` com `falhou: 0` e linhas `ok` de P1 a P12, e pela mutação acima deixando P10 vermelho.
+
+### 9. Pedido de licença com fecho formatado [tipo: implementar]
+atende: D4
+arquivos: `hooks/gate-turno-prometido.cjs`, `hooks/testa-gate-turno-prometido.cjs`
+depende de: 2
+busca:
+- repo | rg "RE_PEDE_LICENCA" hooks | só a regex da tarefa 2
+- livro | pulado: emenda de gate próprio
+desfecho: estender
+prova-na-base: verde — a base desta rodada já tem a bateria verde; os casos C10 a C12 nascem com a tarefa
+mutacao:
+  arquivo: `hooks/gate-turno-prometido.cjs`
+  de: `const fimSemFormatacao = (t) => t.replace(/(?:\s|\*\*|__|\(|\)|[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]|\([^()\n]{0,80}\))+$/u, "");`
+  para: `const fimSemFormatacao = (t) => t;`
+  bateria: `node hooks/testa-gate-turno-prometido.cjs`
+  fixture: `testa-gate-turno-prometido.cjs, caso "C10" (último texto "**Sigo com o executar?**")`
+pronto quando: com o C1 trocado só no último texto, o gate barra (exit 2) "**Sigo com o executar?**" (C10), "Sigo com o executar? 👍" (C11) e "Sigo com o executar? (o plano está em docs/)" (C12). C1 a C9 seguem como estão. Provado por `node hooks/testa-gate-turno-prometido.cjs` com `falhou: 0` e linhas `ok` de C10 a C12, e pela mutação acima deixando C10 vermelho.
+
+### 10. Documentação diz o que fica fora [tipo: docs]
+atende: D8
+arquivos: `README.md`, `docs/travas-mecanicas.md`, `CHANGELOG.md`
+depende de: 6, 7, 8, 9
+mutacao: n/a
+  motivo: texto; a falsificação é a coerência com os casos de bateria
+pronto quando: com os hooks da rodada 2, a linha da portaria no README e a primeira coluna da tabela de `docs/travas-mecanicas.md` dizem que o pedido de `isolation: "worktree"` torna qualquer agente escritor e que sem `isolation` e sem frontmatter legível o despacho passa; o parágrafo do `gate-turno-prometido` diz que turno com `Q<n>` e pergunta em prosa fora do padrão passam; o do `gate-pergunta-memoria` diz que a memória é a do repositório principal, casada por nome e descrição, e que o banco do `memoria.cjs` também é consultado. Provado pela leitura, no revisar, de cada frase contra G1–G6, C10–C12 e P10–P12.
