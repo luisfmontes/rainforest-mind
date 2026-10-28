@@ -23,28 +23,9 @@
     "em": "2026-10-28"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-28",
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "T1 portaria nao declarado",
-        "desde": "2026-10-28T19:00:00-03:00",
-        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f"
-      },
-      {
-        "agente": "executor",
-        "tarefa": "T2 gate-turno licenca",
-        "desde": "2026-10-28T19:00:00-03:00",
-        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f"
-      },
-      {
-        "agente": "executor",
-        "tarefa": "T3 gate-pergunta-memoria",
-        "desde": "2026-10-28T19:00:00-03:00",
-        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f"
-      }
-    ],
+    "em_voo": [],
     "carimbos": [
       {
         "tarefa": 1,
@@ -68,7 +49,43 @@
         "ts": "2026-10-28T18:50:05.639Z"
       }
     ],
-    "em": "2026-10-28"
+    "em": "2026-10-28",
+    "tarefas_ok": 6,
+    "tarefas": 6,
+    "comando": "node scripts/conferir-mutacao.cjs (tarefas 1, 2 e 3, re-rodado na integracao)",
+    "saida": "catraca exit 0 nas tres: bateria VERMELHA com o comportamento invertido, confirmada em duas rodadas",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-portaria-fluxo-pulado.cjs N1, N2, N3"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-turno-prometido.cjs C1, C2, C3"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-pergunta-memoria.cjs P1, P2"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "rascunho de texto fora do repo"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "dados do usuario gravados pelo ideias.cjs colher"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "doc e versao"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
