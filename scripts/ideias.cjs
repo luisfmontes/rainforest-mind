@@ -340,11 +340,11 @@ function validarEntrada(obj, exigirObrigatorios = true) {
   }
 }
 
-// UTF-8 lido como cp1252: o primeiro byte vira `Ã` ou `â` e o de continuacao
+// UTF-8 lido como cp1252: o primeiro byte vira U+00C3 ou U+00E2 e o de continuacao
 // (0x80-0xBF) vira simbolo. Tres entradas entraram assim ate 2026-10-27
-// ("VersÃµes", "jÃ¡"), e o que entra quebrado nao se conserta depois de colhido.
+// ("Vers\u00c3\u00b5es", "j\u00c3\u00a1" escritos por escape), e o que entra quebrado nao se conserta depois de colhido.
 // `NÃO` e `AÇÃO` legitimos seguem letra ASCII e nao casam.
-const RE_MOJIBAKE = /Ã[ -¿‚„…†‡‰‹›‘’“”•–˜™š]|â€/;
+const RE_MOJIBAKE = /\u00c3[\u00a0-\u00bf\u201a\u201e\u2026\u2020\u2021\u2030\u2039\u203a\u2018\u2019\u201c\u201d\u2022\u2013\u02dc\u2122\u0161]|\u00e2\u20ac/;
 
 function lerStdin() {
   let bruto;

@@ -14,7 +14,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 Limpeza miúda.
 
-- **`ideias.cjs` recusa acentuação corrompida.** Texto UTF-8 lido como ANSI no caminho (`Get-Content` do PowerShell) virava "VersÃµes" no livro e só aparecia ao listar. `plantar` e `editar` agora recusam a entrada com o campo e o trecho, e dizem para mandar o arquivo por `< arquivo.json` no Bash. `NÃO` e `AÇÃO` legítimos passam.
+- **`ideias.cjs` recusa acentuação corrompida.** Texto UTF-8 lido como ANSI no caminho (`Get-Content` do PowerShell) virava acento quebrado no livro e só aparecia ao listar. `plantar` e `editar` agora recusam a entrada com o campo e o trecho, e dizem para mandar o arquivo por `< arquivo.json` no Bash. `NÃO` e `AÇÃO` legítimos passam.
 - **`skill-observations/` e `.claude/tmp-portoes-codex-*/` fora do git.** São saída do task-observer e das provas de portão do Codex, de outro dono; não aparecem mais no `git status`.
 
 ## 2.0.6 — 2026-10-28
