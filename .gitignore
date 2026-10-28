@@ -113,3 +113,9 @@ evals/results/
 # `git status` acusa arquivo novo no instante em que o `marcar revisar ok` compara.
 docs/rainforest/estado/.*.lock
 docs/rainforest/estado/*.tmp
+
+# Saida do task-observer do Codex (le ~/.agents/skills/) e temporario das
+# provas de portao que ele roda aqui. Sao de outro dono: nem versionar nem
+# apagar; as observacoes que tocam o plugin viram ideia pelo ideias.cjs.
+skill-observations/
+.claude/tmp-portoes-codex-*/

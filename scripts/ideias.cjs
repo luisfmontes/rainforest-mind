@@ -328,7 +328,23 @@ function validarEntrada(obj, exigirObrigatorios = true) {
     throw new Erro(`tipo '${obj.tipo}' desconhecido — use ${TIPOS_CONHECIDOS.join(" ou ")}`);
   }
   if (obj.projeto) validarProjeto(obj.projeto);
+  const corrompido = Object.entries(obj).find(
+    ([, v]) => typeof v === "string" && RE_MOJIBAKE.test(v)
+  );
+  if (corrompido) {
+    throw new Erro(
+      `campo '${corrompido[0]}' tem acentuacao corrompida ('${corrompido[1].match(RE_MOJIBAKE)[0]}'): ` +
+        "o JSON era UTF-8 e foi lido como ANSI antes de chegar aqui. Mande o arquivo " +
+        "por redirecionamento no Bash (< arquivo.json), nao pelo Get-Content do PowerShell."
+    );
+  }
 }
+
+// UTF-8 lido como cp1252: o primeiro byte vira `Ã` ou `â` e o de continuacao
+// (0x80-0xBF) vira simbolo. Tres entradas entraram assim ate 2026-10-27
+// ("VersÃµes", "jÃ¡"), e o que entra quebrado nao se conserta depois de colhido.
+// `NÃO` e `AÇÃO` legitimos seguem letra ASCII e nao casam.
+const RE_MOJIBAKE = /Ã[ -¿‚„…†‡‰‹›‘’“”•–˜™š]|â€/;
 
 function lerStdin() {
   let bruto;
