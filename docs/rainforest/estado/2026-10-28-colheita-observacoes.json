@@ -1,0 +1,28 @@
+{
+  "slug": "2026-10-28-colheita-observacoes",
+  "titulo": "Colheita das observacoes: classes recorrentes viram trava mecanica",
+  "criado_em": "2026-10-28",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-28-colheita-observacoes.md",
+    "em": "2026-10-28"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
