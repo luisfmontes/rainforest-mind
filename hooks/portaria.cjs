@@ -485,6 +485,15 @@ function obterDefinicaoAgente(raiz, nomeAgente, agentesDir) {
   return null; // Arquivo não encontrado
 }
 
+// Frontmatter do arquivo do agente lido SEM linha `tools:` (herda todas as
+// ferramentas). So chamada para o nao declarado com `escreve` true, que o
+// `inferirConfigNaoDeclarado` ja validou: o nome e seguro e o arquivo existe.
+function frontmatterSemLinhaTools(raiz, nomeAgente) {
+  const def = obterDefinicaoAgente(raiz, nomeAgente);
+  const fmMatch = def && def.match(/^---\n([\s\S]*?)\n---/);
+  return Boolean(fmMatch) && !parseToolsDoFrontmatter(fmMatch[1]).declarado;
+}
+
 function inferirConfigNaoDeclarado(raiz, nomeAgente) {
   // Agente fora do manifesto nao e mais barrado (issue #264) — mas tambem nao
   // pode ser presumido read-only. Presumir desligaria a regra 11 justamente
@@ -493,10 +502,11 @@ function inferirConfigNaoDeclarado(raiz, nomeAgente) {
   // Write e Edit no frontmatter; entrar como read-only seria pior do que o
   // deny que esta funcao substitui.
   //
-  // `escreve: true` sai so com EVIDENCIA de escrita — uma tool fora da
-  // allowlist read-only. Todo o resto (arquivo fora de alcance, sem
-  // frontmatter, sem `tools:`, `tools:` em formato que a portaria nao le) sai
-  // como `escreve: false` com `conferido: false`, que e o allow MARCADO da
+  // `escreve: true` sai com EVIDENCIA de escrita — uma tool fora da allowlist
+  // read-only, ou frontmatter SEM linha `tools:` (D3 passo 3, 2026-10-28): no
+  // Claude Code o agente sem `tools:` herda todas as ferramentas, Write incluso.
+  // Todo o resto (arquivo fora de alcance, sem frontmatter, `tools:` em formato
+  // que a portaria nao le) sai como `escreve: false` com `conferido: false`, que e o allow MARCADO da
   // rodada 4 da revisao: quem ler o log distingue "conferi e e read-only" de
   // "nao deu para conferir".
   //
@@ -521,7 +531,8 @@ function inferirConfigNaoDeclarado(raiz, nomeAgente) {
   if (!fmMatch) return base;
 
   const { declarado: temTools, tools } = parseToolsDoFrontmatter(fmMatch[1]);
-  if (!temTools || !tools) return base;
+  if (!temTools) return { estagios: null, escreve: true, conferido: true };
+  if (!tools) return base;
 
   return { estagios: null, escreve: Boolean(validarToolsAowlist(tools)), conferido: true };
 }
@@ -975,35 +986,39 @@ function main() {
 
   // Issue #430, D3/D4/D5 — o despacho de agente que ESCREVE sai do estagio dele
   // sem `leve` na branch e e barrado. Desde 2026-10-28 (fluxo colheita-observacoes,
-  // tarefa 1) a barreira vale tambem para o agente FORA do manifesto que se
-  // comporta como escritor: `isolation: "worktree"` no despacho, ou tool de escrita
-  // no frontmatter do arquivo do agente. Nao declarado sem `isolation` cujo
-  // frontmatter nao deu para ler segue liberado: quem o pega e o `gate-worktree`
-  // na escrita. Agente declarado com `escreve: false`, repo sem trilho de fluxo ou
-  // com a chave `aviso-fluxo` desligada seguem como estao (a portaria so registra).
+  // emenda D3 da revisao 1) a barreira vale tambem para quem se comporta como
+  // escritor sem ser declarado como tal, por um destes sinais: `isolation:
+  // "worktree"` no despacho (declarado ou nao); `escreve` inferido do frontmatter
+  // do arquivo do agente (nao declarado); frontmatter sem linha `tools:`. Os
+  // declarados com `escreve: false` (general-purpose, Explore, ...) entram por
+  // `isolation`: o manifesto diz que nao escrevem, mas com worktree eles escrevem.
+  // Fica FORA (D8): agente sem `isolation` cujo arquivo nao deu para ler; quem pega
+  // a escrita dele e o `gate-worktree`. Declarado com `escreve: false` sem
+  // isolation, repo sem trilho de fluxo ou com a chave `aviso-fluxo` desligada
+  // seguem como estao (a portaria so registra).
   //
-  // Para o declarado, a barreira mora no ramo `escreve === true`, depois da regra
-  // 11 (isolation) e da regra 10 (name) e antes do allow, para a mensagem da regra
-  // 11 continuar sendo a que sai quando ela falha. O nao declarado sai antes desse
-  // ramo (`negarFluxoPulado`, logo acima dele): o ramo so entra com `escreve` true,
-  // e um nao declarado com so `isolation` nao entra.
+  // Para o declarado com `escreve: true`, a barreira mora no ramo `escreve === true`,
+  // depois da regra 11 (isolation) e da regra 10 (name) e antes do allow, para a
+  // mensagem da regra 11 continuar sendo a que sai quando ela falha. Quem se
+  // comporta como escritor sem `escreve: true` declarado (`escrevePorSinal`) sai
+  // antes desse ramo, em `negarFluxoPulado`.
   //
   // A DECISAO INTEIRA MORA NESTAS LINHAS: trilho ausente zera `trilhoComFluxo`,
   // `leve` da branch libera, estagio aberto libera (declarado: dentro dos
   // `estagios` do agente; nao declarado: qualquer estagio aberto).
   const escreveDeclarado = declarado && agentConfig.escreve === true;
-  const escreveNaoDeclarado = !declarado && (agentConfig.escreve === true || payload.tool_input.isolation === "worktree");
+  const escrevePorSinal = !escreveDeclarado && ((!declarado && agentConfig.escreve === true) || payload.tool_input.isolation === "worktree");
   const trilho = detectarTrilhoFluxo(raiz);
   const trilhoComFluxo = trilho !== null && require("./lib/config.cjs").ligado("aviso-fluxo", { projeto: raiz });
-  const leve = trilhoComFluxo && (escreveDeclarado || escreveNaoDeclarado)
+  const leve = trilhoComFluxo && (escreveDeclarado || escrevePorSinal)
     ? Boolean(leveDaBranch({ gitTop: raiz, branch: obterBranch(raiz) }))
     : false;
   const estagioPermitido = trilho === "protheus"
     ? protheusAberto({ gitTop: raiz, branch: obterBranch(raiz) })
-    : escreveNaoDeclarado
+    : escrevePorSinal
       ? Boolean(estResult)
       : Boolean(estResult) && Array.isArray(estagiosDeclarados) && estagiosDeclarados.includes(estResult.estagio);
-  const bloqueiaFluxoPulado = trilhoComFluxo && (escreveDeclarado || escreveNaoDeclarado) && !leve && !estagioPermitido;
+  const bloqueiaFluxoPulado = trilhoComFluxo && (escreveDeclarado || escrevePorSinal) && !leve && !estagioPermitido;
 
 
   // D3 passo 6: escreve: false com tools fora de allowlist → nega.
@@ -1120,18 +1135,26 @@ function main() {
   // que conta como escritor), a condicao e o `exige`. Chamada duas vezes: o
   // nao declarado sai antes do ramo `escreve: true` (abaixo), e o declarado sai
   // dentro dele, depois da regra 11 e da regra 10.
-  const negarFluxoPulado = (naoDeclarado) => {
+  const negarFluxoPulado = () => {
+    // O sinal que tornou o agente escritor. Para o nao declarado com `escreve`
+    // inferido, separa "tool de escrita" de "frontmatter sem tools:" (herda tudo).
     const porQueEscreve = [
       payload.tool_input.isolation === "worktree" ? 'isolation: "worktree" no despacho' : null,
-      agentConfig.escreve === true ? "tool de escrita no frontmatter" : null,
+      !declarado && agentConfig.escreve === true
+        ? (frontmatterSemLinhaTools(raiz, nomeAgente)
+          ? "frontmatter sem `tools:` (herda todas as ferramentas)"
+          : "tool de escrita no frontmatter")
+        : null,
     ].filter(Boolean).join(" e ");
-    const exige = naoDeclarado
-      ? "um estagio aberto"
-      : Array.isArray(estagiosDeclarados) ? estagiosDeclarados.join(" ou ") : "(manifesto sem 'estagios')";
-    const abertura = naoDeclarado
-      ? `agente '${nomeAgente}' nao declarado no manifesto, tratado como escritor (por ${porQueEscreve})`
-      : `agente '${nomeAgente}' escreve (escreve: true)`;
-    const condicao = naoDeclarado ? "e so roda com fluxo aberto" : "e so roda no estagio que declara";
+    const exige = escreveDeclarado
+      ? (Array.isArray(estagiosDeclarados) ? estagiosDeclarados.join(" ou ") : "(manifesto sem 'estagios')")
+      : "um estagio aberto";
+    const abertura = escreveDeclarado
+      ? `agente '${nomeAgente}' escreve (escreve: true)`
+      : declarado
+        ? `agente '${nomeAgente}' declarado com escreve: false, tratado como escritor (por ${porQueEscreve})`
+        : `agente '${nomeAgente}' nao declarado no manifesto, tratado como escritor (por ${porQueEscreve})`;
+    const condicao = escreveDeclarado ? "e so roda no estagio que declara" : "e so roda com fluxo aberto";
     // Caminho absoluto com barras `/`: o comando impresso roda de qualquer cwd e
     // sem contrabarra que o shell do agente engula (Issue #430, emenda 2).
     const caminhoEstado = path.join(path.resolve(__dirname, ".."), "scripts", "estado.cjs").split(path.sep).join("/");
@@ -1187,11 +1210,12 @@ function main() {
     negar(motivo);
   };
 
-  // Nao declarado que se comporta como escritor (isolation ou tool de escrita) sai
-  // aqui, antes do ramo `escreve: true`, para o motivo nao falar em `escreve: true`
-  // de um agente que nao o declara.
-  if (escreveNaoDeclarado && bloqueiaFluxoPulado) {
-    negarFluxoPulado(true);
+  // Quem se comporta como escritor sem `escreve: true` declarado (isolation no
+  // despacho, ou escreve inferido do frontmatter) sai aqui, antes do ramo
+  // `escreve: true`, para o motivo nao falar em `escreve: true` de um agente que
+  // nao o declara.
+  if (escrevePorSinal && bloqueiaFluxoPulado) {
+    negarFluxoPulado();
   }
 
   // `escreve: true` — o agente PODE escrever, e por isso a portaria exige aqui
@@ -1257,7 +1281,7 @@ function main() {
     // na branch, e barrado com as duas saidas que o proprio fluxo oferece. A
     // mensagem nomeia o agente, o estagio exigido e as saidas; o deny vai ao log.
     if (bloqueiaFluxoPulado) {
-      negarFluxoPulado(false);
+      negarFluxoPulado();
     }
 
     // Allow conferido, e a linha diz SOB QUE isolamento — sem isso o log
