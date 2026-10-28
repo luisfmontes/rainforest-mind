@@ -40,7 +40,7 @@ desfecho: estender
 prova-na-base: verde — a bateria existente passa na base; os casos da categoria (c) nascem com esta tarefa
 mutacao:
   arquivo: `hooks/gate-turno-prometido.cjs`
-  de: `const RE_PEDE_LICENCA = /(sigo\?|posso seguir\??|quer que eu siga\??|sigo com o pr[oó]ximo\??)\s*$/i;`
+  de: `const RE_PEDE_LICENCA = /(?:\b(?:sigo|posso seguir|posso continuar|continuo)\b[^.!?\n]{0,80}\?|\bquer que eu (?:siga|continue)\b[^.!?\n]{0,80}\??)\s*$/i;`
   para: `const RE_PEDE_LICENCA = /(?!)/;`
   bateria: `node hooks/testa-gate-turno-prometido.cjs`
   fixture: `testa-gate-turno-prometido.cjs, caso "C1" (fixture pede-licenca-com-autonomia.jsonl, repo com fluxo no estágio plano e executar-autonomo ligada)`

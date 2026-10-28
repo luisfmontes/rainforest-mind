@@ -23,7 +23,52 @@
     "em": "2026-10-28"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-28",
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "T1 portaria nao declarado",
+        "desde": "2026-10-28T19:00:00-03:00",
+        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "T2 gate-turno licenca",
+        "desde": "2026-10-28T19:00:00-03:00",
+        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "T3 gate-pergunta-memoria",
+        "desde": "2026-10-28T19:00:00-03:00",
+        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f"
+      }
+    ],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "6ef20f6ccb008be4cf51f4008fb553ac47262547",
+        "iteracao": 1,
+        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f",
+        "ts": "2026-10-28T18:50:05.639Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "6ef20f6ccb008be4cf51f4008fb553ac47262547",
+        "iteracao": 1,
+        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f",
+        "ts": "2026-10-28T18:50:05.639Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "6ef20f6ccb008be4cf51f4008fb553ac47262547",
+        "iteracao": 1,
+        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f",
+        "ts": "2026-10-28T18:50:05.639Z"
+      }
+    ],
+    "em": "2026-10-28"
   },
   "revisar": {
     "status": "pendente"
