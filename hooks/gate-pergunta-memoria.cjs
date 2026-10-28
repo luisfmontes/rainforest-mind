@@ -31,6 +31,8 @@ const ORCAMENTO_BANCO_MS = process.env.RFM_PERGUNTA_MEMORIA_ORCAMENTO_MS !== und
   ? Number(process.env.RFM_PERGUNTA_MEMORIA_ORCAMENTO_MS)
   : 1500;
 const JANELA_VIVA_MS = 6 * 3600 * 1000;
+// Marcador de pergunta: Q<n> no começo da linha (admite `- `, `> `, `**`). Recap em prosa ("Fechado: Q1 (b)") não conta.
+const RE_MARCADOR_Q = /^[ \t>*_-]*Q(\d+)\b/gm;
 const INICIO = Date.now();
 
 // Palavras comuns demais para contar como assunto. Já normalizadas (sem acento, minúsculas).
@@ -38,6 +40,10 @@ const PALAVRAS_VAZIAS = new Set([
   'sobre', 'quando', 'porque', 'entao', 'ainda', 'sempre', 'depois', 'antes', 'agora',
   'assim', 'tambem', 'nesse', 'nessa', 'outro', 'outra', 'todos', 'todas', 'recomendo',
   'pergunta', 'decisao', 'resposta', 'sessao', 'projeto',
+  // Vocabulário do próprio projeto: aparece em toda memória e não é assunto.
+  'regra', 'regras', 'fluxo', 'fluxos', 'worktree', 'agente', 'agentes', 'plano', 'planos',
+  'entrega', 'codex', 'claude', 'continua', 'ficar', 'tarefa', 'tarefas', 'commit', 'branch',
+  'hooks', 'issue', 'issues', 'arquivo', 'arquivos', 'memoria',
 ]);
 
 // writeSync no fd 2: sai antes do process.exit, sem depender de o stderr estar flushado.
@@ -81,14 +87,17 @@ function ultimoTextoDoTurno(linhas) {
   return ultimo;
 }
 
-// Cada pergunta vai do marcador Q<n> até o próximo marcador (ou o fim), no máximo 400 caracteres.
+// Cada pergunta vai do marcador Q<n> até o próximo marcador (ou o fim), no máximo 400 caracteres,
+// cortada no primeiro `?` (inclusive). Trecho sem `?` não é pergunta e sai da lista.
 function perguntas(texto) {
-  const marcadores = [...texto.matchAll(/\bQ(\d+)\b/g)];
+  const marcadores = [...texto.matchAll(RE_MARCADOR_Q)];
   return marcadores.map((m, i) => {
     const inicio = m.index;
     const fim = i + 1 < marcadores.length ? marcadores[i + 1].index : texto.length;
-    return { n: m[1], texto: texto.slice(inicio, Math.min(fim, inicio + LIMITE_PERGUNTA)) };
-  });
+    const trecho = texto.slice(inicio, Math.min(fim, inicio + LIMITE_PERGUNTA));
+    const q = trecho.indexOf('?');
+    return q === -1 ? null : { n: m[1], texto: trecho.slice(0, q + 1) };
+  }).filter(Boolean);
 }
 
 function frontmatter(conteudo) {
@@ -174,15 +183,19 @@ function conectarBancoLeitura(cwd) {
   }
 }
 
-// Primeira observação com texto que o banco acha para a pergunta. Sem texto, não conta.
+// Primeira observação do PROJETO ATUAL com texto útil que o banco acha para a pergunta. O trecho é a
+// primeira linha que não seja vazia, `---` nem cabeçalho (#); sem ela, não conta.
+// O banco grava o projeto no nome canônico, o mesmo de resolverCaminhos().canonico.
 function achadoNoBanco(banco, texto) {
   if (Date.now() - INICIO > ORCAMENTO_BANCO_MS) return null;
   try {
     const { buscarPorAssunto } = require('./lib/memoria-assunto.cjs');
-    const achados = buscarPorAssunto(banco.conexao, texto, { projetoAtual: banco.canonico, max: 3 });
+    const achados = buscarPorAssunto(banco.conexao, texto, { projetoAtual: banco.canonico, max: 10 });
     for (const a of achados) {
-      const linha = String(a.conteudo || '').trim().split(/\r?\n/)[0].slice(0, 160);
-      if (linha) return { projeto: a.projeto, linha };
+      if (a.projeto !== banco.canonico) continue;
+      const linha = String(a.conteudo || '').split(/\r?\n/).map((l) => l.trim())
+        .find((l) => l && !/^-{3,}\s*$/.test(l) && !/^#{1,6}\s/.test(l));
+      if (linha) return { projeto: a.projeto, linha: linha.slice(0, 160) };
     }
     return null;
   } catch {

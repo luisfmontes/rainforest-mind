@@ -16,6 +16,10 @@
  *   P7 P1 sem pasta memory/: exit 0
  *   P8 P1 com .rainforest/config.json do cwd com gate-pergunta-memoria false: exit 0
  *   P9 transcript_path inexistente: exit 0
+ *   P14 recap em prosa ("Fechado: Q1 (b), ... como fica?"), Q1 no meio da linha: exit 0
+ *   P15 pergunta cujo único vocabulário comum com a memória é o do projeto (regra, fluxo...): exit 0
+ *   P16 banco: observação do projeto atual que abre com `---` e cabeçalho: exit 2 com o trecho útil;
+ *       a mesma observação gravada em OUTRO projeto: exit 0
  *
  * Os exit 0 de P5 a P9 são contrastados com o P1 do mesmo jeito: a mesma montagem, só
  * a condição muda, então um exit 0 sem o mecanismo não passa por acidente.
@@ -132,8 +136,11 @@ function teste(nome, fn) {
   }
 }
 
-const TRANSCRITO_RESPONDE = lerFixture('memoria-responde.jsonl');
-const TRANSCRITO_NAO_RESPONDE = lerFixture('memoria-nao-responde.jsonl');
+// O fixture abre a pergunta com um emoji antes do marcador; o marcador só vale no começo da linha,
+// então o emoji sai (a pergunta real, com Q<n> no começo da linha, é o que o gate enxerga).
+const semEmoji = (t) => trocar(t, '\\n❓ **Q1', '\\n**Q1');
+const TRANSCRITO_RESPONDE = semEmoji(lerFixture('memoria-responde.jsonl'));
+const TRANSCRITO_NAO_RESPONDE = semEmoji(lerFixture('memoria-nao-responde.jsonl'));
 
 teste('P1 memoria-responde: exit 2, Q1, o arquivo, a description e a sessão do outro repo (não a do mesmo)', () => {
   const c = cenario({ transcrito: TRANSCRITO_RESPONDE });
@@ -245,8 +252,13 @@ teste('P11 memória com description de outro assunto e termos só no corpo: exit
   assert(r.status === 0, `esperado exit 0, obteve ${r.status} (stderr: ${r.stderr})`);
 });
 
-function cenarioComBanco(orcamentoMs) {
+const { canonicoDoCaminho } = require(path.join(__dirname, '..', 'scripts', 'lib', 'projeto-canonico.cjs'));
+
+// `projeto`: de quem é a observação alvo ('atual' = o projeto do cwd, no nome canônico que o hook compara).
+function cenarioComBanco(orcamentoMs, { projeto = 'atual', conteudo = null } = {}) {
   const c = cenario({ transcrito: TRANSCRITO_RESPONDE, comMemoria: false });
+  const dono = projeto === 'atual' ? canonicoDoCaminho(c.proj).canonico : projeto;
+  c.dono = dono;
   c.env = { RFM_PERGUNTA_MEMORIA_ORCAMENTO_MS: String(orcamentoMs) };
   const db = new DatabaseSync(path.join(c.rfm, 'rainforest.db'));
   criarSchema(db);
@@ -258,8 +270,8 @@ function cenarioComBanco(orcamentoMs) {
   }
   db.exec('COMMIT');
   ins.run(
-    'outro-projeto',
-    'Decisao sobre desligar arquivo rainforest publicacao neste repositorio cliente\n\n' + 'desligar arquivo rainforest publicacao neste repositorio cliente '.repeat(3),
+    dono,
+    conteudo !== null ? conteudo : 'Decisao sobre desligar arquivo rainforest publicacao neste repositorio cliente\n\n' + 'desligar arquivo rainforest publicacao neste repositorio cliente '.repeat(3),
     '2026-10-02T10:00:00.000Z',
     'alvo-p12',
   );
@@ -268,16 +280,71 @@ function cenarioComBanco(orcamentoMs) {
 }
 
 // Prazo folgado: o P12 mede o casamento no banco, não a velocidade da máquina.
-teste('P12 banco por assunto, sem memory/: observação que casa com Q1 barra (exit 2) e o stderr cita o banco', () => {
-  const r = rodar(cenarioComBanco(20000));
+teste('P12 banco por assunto, sem memory/: observação do projeto atual que casa com Q1 barra (exit 2) e o stderr cita o banco', () => {
+  const c = cenarioComBanco(20000);
+  const r = rodar(c);
   assert(r.status === 2, `esperado exit 2, obteve ${r.status} (stderr: ${r.stderr})`);
   assert(r.stderr.includes('Q1'), 'stderr sem Q1');
-  assert(r.stderr.includes('o banco tem observação de outro-projeto'), 'stderr sem a citação do banco');
+  assert(r.stderr.includes('o banco tem observação de ' + c.dono), 'stderr sem a citação do banco');
 });
 
 // O mesmo banco com prazo zero: a perna do banco é pulada e o hook sai 0 (falha aberta, D6).
 teste('P13 o P12 com prazo do banco zero: banco pulado, exit 0', () => {
   const r = rodar(cenarioComBanco(0));
+  assert(r.status === 0, `esperado exit 0, obteve ${r.status} (stderr: ${r.stderr})`);
+});
+
+// Transcrito de um turno só, com o texto dado como último texto do assistant.
+function transcritoComTexto(texto) {
+  const user = { parentUuid: null, isSidechain: false, uuid: 'fx-t12-1', type: 'user', message: { role: 'user', content: 'segue' } };
+  const asst = { parentUuid: 'fx-t12-1', isSidechain: false, uuid: 'fx-t12-2', type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text: texto }] } };
+  return JSON.stringify(user) + '\n' + JSON.stringify(asst) + '\n';
+}
+
+// Memória de fixture escrita na hora (name e description à escolha) em vez de arquivo novo no repo.
+function cenarioMemoria({ texto, name, description }) {
+  const c = cenario({ transcrito: transcritoComTexto(texto), comMemoria: false });
+  const memDst = path.join(c.proj, 'memory');
+  fs.mkdirSync(memDst, { recursive: true });
+  fs.writeFileSync(path.join(memDst, 'm-p14-p15.md'), `---\nname: ${name}\ndescription: ${description}\n---\n\ncorpo\n`);
+  return c;
+}
+
+const MEM_DESLIGAR = { name: 'gate-off-so-por-variavel', description: DESCRICAO };
+
+teste('P14 recap em prosa com Q1 no MEIO da linha e um ? depois: exit 0 (a memória casa 3 termos, mas não é pergunta)', () => {
+  const texto = 'Fechado: Q1 (b), e sobre desligar rainforest cliente como fica?';
+  const c = cenarioMemoria({ texto, ...MEM_DESLIGAR });
+  const r = rodar(c);
+  assert(r.status === 0, `esperado exit 0, obteve ${r.status} (stderr: ${r.stderr})`);
+});
+
+teste('P14b contraste: os mesmos 3 termos numa pergunta com Q1 no começo da linha: exit 2', () => {
+  const texto = 'Q1 — Desligar rainforest cliente: como fica?';
+  const c = cenarioMemoria({ texto, ...MEM_DESLIGAR });
+  const r = rodar(c);
+  assert(r.status === 2, `esperado exit 2, obteve ${r.status} (stderr: ${r.stderr})`);
+});
+
+teste('P15 pergunta que só compartilha vocabulário do projeto com a memória (regra, fluxo, continua, agente): exit 0', () => {
+  const texto = 'Q1 — Convivência com o hook atual: a regra do fluxo continua para o agente?';
+  const c = cenarioMemoria({ texto, name: 'regra-do-fluxo-continua', description: 'a regra do fluxo continua para o agente' });
+  const r = rodar(c);
+  assert(r.status === 0, `esperado exit 0, obteve ${r.status} (stderr: ${r.stderr})`);
+});
+
+const OBS_COM_CABECALHO = '---\n# Titulo\nTexto util da observacao sobre desligar arquivo rainforest publicacao neste repositorio cliente\n\n' +
+  'desligar arquivo rainforest publicacao neste repositorio cliente '.repeat(3);
+
+teste('P16 banco: observação do projeto atual abrindo com --- e cabeçalho: exit 2, o trecho é a primeira linha útil', () => {
+  const r = rodar(cenarioComBanco(20000, { conteudo: OBS_COM_CABECALHO }));
+  assert(r.status === 2, `esperado exit 2, obteve ${r.status} (stderr: ${r.stderr})`);
+  assert(r.stderr.includes('Texto util da observacao'), 'stderr sem o trecho útil');
+  assert(!r.stderr.includes('— ---'), 'stderr traz o --- como trecho');
+});
+
+teste('P16b a mesma observação gravada em OUTRO projeto: exit 0', () => {
+  const r = rodar(cenarioComBanco(20000, { projeto: 'outro-projeto', conteudo: OBS_COM_CABECALHO }));
   assert(r.status === 0, `esperado exit 0, obteve ${r.status} (stderr: ${r.stderr})`);
 });
 
