@@ -1450,6 +1450,44 @@ exige 1 "--baseline-de com --no-lugar: erro de uso, exit=1" \
   CHK --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' --bateria 'bash bateria-conta.sh' --no-lugar --baseline-de "$W/base-verde.json"
 
 echo
+echo "== 29e. baseline repassado carrega o placar: pos-mutacao sem placar e colapso (exit 6) =="
+# O stdout do baseline gravado por --baseline-para e' o unico lugar onde o placar verde
+# (ok: 5) sobrevive ate a pos-mutacao repassada por --baseline-de. Se esse stdout chegasse
+# vazio ao baseline repassado, o colapso (ok: 0 falhou: 0) nao teria placar para comparar e
+# o caso sairia diferente de 6. Achado 2 da revisao 1 do lote B, tarefa 8.
+cat > "$CAIXA/bateria-colapsa.sh" <<'BAT'
+#!/bin/bash
+# Com a marca COLAPSO-MUTADO no fonte, a bateria colapsou: nenhuma asserção foi tentada.
+if grep -q 'COLAPSO-MUTADO' fonte-colapso.cjs; then
+  echo "ok: 0   falhou: 0"
+  exit 1
+fi
+echo "ok: 5   falhou: 0"
+exit 0
+BAT
+printf 'const comportamento = true;\n' > "$CAIXA/fonte-colapso.cjs"
+cp "$CAIXA/fonte-colapso.cjs" "$S/fonte-colapso.pristino"
+
+# Primeira chamada: grava o baseline verde antes de mutar. A pos-mutacao desta mesma
+# chamada tambem colapsa, entao o exit e' 6; o que importa aqui e' o arquivo gravado.
+rm -f "$S/base-placar.json"
+exige 6 "--baseline-para grava o baseline verde antes do colapso da pos-mutacao (exit 6)" \
+  CHK --arquivo fonte-colapso.cjs --de "const comportamento = true;" --para "const comportamento = true; // COLAPSO-MUTADO" --bateria 'bash bateria-colapsa.sh' --baseline-para "$W/base-placar.json"
+exige 0 "o baseline gravado guarda o placar: stdout com 'ok: 5'" grep -q 'ok: 5' "$S/base-placar.json"
+
+# Segunda chamada: repassa o baseline gravado. So a pos-mutacao roda a bateria, e colapsa.
+exige 6 "baseline repassado com placar: pos-mutacao sem placar e colapso (exit 6)" \
+  CHK --arquivo fonte-colapso.cjs --de "const comportamento = true;" --para "const comportamento = true; // COLAPSO-MUTADO" --bateria 'bash bateria-colapsa.sh' --baseline-de "$W/base-placar.json"
+tem "informa o colapso" "a bateria colapsou"
+tem "o placar do baseline repassado chega ao colapso (ok=5)" "ok=5"
+nao_tem "nao diz placar ausente: o baseline trouxe o placar" "placar ausente"
+if ! cmp -s "$CAIXA/fonte-colapso.cjs" "$S/fonte-colapso.pristino"; then
+  falhou=$((falhou+1)); printf '  FALHA fonte-colapso.cjs nao foi restaurado\n'
+else
+  ok=$((ok+1)); printf '  ok    fonte-colapso.cjs restaurado\n'
+fi
+
+echo
 echo "== 30. raiz em subpasta de repositorio git: a copia e o topo inteiro (plano lote-b, tarefa 6, D7, Issue #609) =="
 # Monorepo: o app em app/ importa um irmao (../lib/x.js). Com a copia so da
 # subpasta, o irmao nao existe na copia; com a copia do topo, existe. Fixture

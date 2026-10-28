@@ -385,6 +385,39 @@ async function main() {
     caso("total continua 65 depois da negacao", contador(repo) === 65, `total=${contador(repo)}`);
   }
 
+  // == 13b. leitor de tarefas ilegivel: nega com exit 2, nunca cai no teto 40 (D12, achado 3 da revisao 1) ==
+  console.log("== 13b. leitor de tarefas ilegivel: nega com exit 2 e nao admite, nunca vira o teto 40 ==");
+  {
+    const repo = caixa();
+    fs.mkdirSync(path.join(repo, "docs", "rainforest", "planos"), { recursive: true });
+    const tarefas = Array.from({ length: 3 }, (_, i) => `### ${i + 1}. tarefa sintetica ${i + 1} [tipo: implementar]\n\ncorpo\n`);
+    fs.writeFileSync(
+      path.join(repo, "docs", "rainforest", "planos", `${SLUG}.md`),
+      ["# Plano sintetico", "", "## Tarefas", "", ...tarefas].join("\n"),
+      "utf8"
+    );
+    // Copia de hooks/ e scripts/ com o leitor quebrado: o require de scripts/conferir-fluxo.cjs lanca.
+    // O plano tem 3 tarefas, entao o hook precisa ler o leitor; se caisse no teto 40, a chamada sairia 0.
+    const sbx = fs.mkdtempSync(path.join(os.tmpdir(), "teto-leitor-ruim-"));
+    caixas.push(sbx);
+    fs.cpSync(__dirname, path.join(sbx, "hooks"), { recursive: true });
+    fs.cpSync(path.join(__dirname, "..", "scripts"), path.join(sbx, "scripts"), { recursive: true });
+    fs.writeFileSync(
+      path.join(sbx, "scripts", "conferir-fluxo.cjs"),
+      'throw new Error("leitor de tarefas ilegivel de proposito");\n',
+      "utf8"
+    );
+    const r = spawnSync(process.execPath, [path.join(sbx, "hooks", "gate-teto-despachos.cjs")], {
+      input: JSON.stringify(janela(repo)),
+      encoding: "utf8",
+      env: envDe(repo),
+    });
+    caso("leitor ilegivel: a janela sai 2 (nunca 0 pelo teto 40)", r.status === 2, `exit=${r.status} ${r.stderr}`);
+    caso("leitor ilegivel: a negacao diz nada foi admitido", (r.stderr || "").includes("nada foi admitido"), r.stderr);
+    caso("leitor ilegivel: a negacao nao cita o teto 40", !/o teto e 40\b/.test(r.stderr || ""), r.stderr);
+    caso("leitor ilegivel: nenhum despacho foi contado", contador(repo) === null, `total=${contador(repo)}`);
+  }
+
   // == 12. sem raiz de dados, o contador cai no repo e precisa sair do git status ==
   console.log("== 12. sem RFM_ROOT e sem raiz de dados, o contador fica fora do git status ==");
   {

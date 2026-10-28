@@ -583,7 +583,7 @@ console.log("== L. branch que nao casa com o slug: a recusa nomeia branch, esper
   caso("L3 stderr nomeia o nome esperado (fluxo/<slug sem data>)",
     err.includes("espera fluxo/glossario-compartilhado"), err);
   caso("L4 stderr lista o slug aberto mais perto primeiro",
-    /Abertos mais perto: 2026-10-08-glossario-compartilhado \(espera fluxo\/glossario-compartilhado\), 2026-10-01-outro-trabalho/.test(err), err);
+    /Abertos mais perto: 2026-10-08-glossario-compartilhado \(espera fluxo\/glossario-compartilhado ou fluxo\/glossario-compartilhado-t<n>\), 2026-10-01-outro-trabalho/.test(err), err);
 
   // Contraprova: sem fluxo aberto nenhum, a mensagem nao ganha a linha de diagnostico.
   const repo2 = novoRepo();

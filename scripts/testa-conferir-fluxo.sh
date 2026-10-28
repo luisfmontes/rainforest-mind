@@ -1558,6 +1558,51 @@ exige 0 "vizinho: no-lugar nas duas tarefas mede o baseline a cada uma (6 linhas
   test "$(conta_linhas "$DC/contador")" -eq 6
 exige 0 "(d6nl) mutacoes sai 0 com as duas tarefas vermelhas" test "$RC_NL" -eq 0
 
+# Raiz diferente na MESMA bateria (achado 2 da revisao 1, lote B tarefa 8): duas tarefas com
+# `bateria: bash bat.sh`, uma em appA e outra em appB. A chave do baseline inclui a raiz, entao
+# cada raiz mede o seu baseline: 1+2 por raiz = 6 linhas. Sem a raiz na chave, a segunda
+# tarefa reaproveitaria o baseline da primeira e sairiam 5, como no caso D6 acima.
+RZ="$(mktemp -d)"; SANDBOXES+=("$RZ"); RZW="$(cygpath -m "$RZ" 2>/dev/null || printf '%s' "$RZ")"
+mkdir -p "$RZ/appA" "$RZ/appB" "$RZ/docs/rainforest/planos"
+printf 'const alvo = 1;\n' > "$RZ/appA/fonte.cjs"
+printf 'const alvo = 1;\n' > "$RZ/appB/fonte.cjs"
+cp "$D6/bat.sh" "$RZ/appA/bat.sh"
+cp "$D6/bat.sh" "$RZ/appB/bat.sh"
+cat > "$RZ/docs/rainforest/planos/rz.md" <<'PLANO'
+# Plano raiz diferente na mesma bateria
+
+### 1. Tarefa na appA
+
+atende: D1
+
+mutacao:
+  arquivo: `fonte.cjs`
+  de: `const alvo = 1;`
+  para: `const alvo = 1; // MUTADO`
+  bateria: `bash bat.sh`
+  raiz: `appA`
+
+### 2. Tarefa na appB
+
+atende: D1
+
+mutacao:
+  arquivo: `fonte.cjs`
+  de: `const alvo = 1;`
+  para: `const alvo = 1; // MUTADO`
+  bateria: `bash bat.sh`
+  raiz: `appB`
+PLANO
+
+rm -f "$DC/contador"
+SAIDA_RZ="$(env CNT="$DCW/contador" RFM_ESTADO_ROOT="$RZW" node "$CHECADOR" mutacoes --slug rz --plano "$RZW/docs/rainforest/planos/rz.md" --raiz-codigo "$RZW" 2>"$DC/err-rz.txt")"
+RC_RZ=$?
+exige 0 "raiz diferente na mesma bateria: cada raiz mede o seu baseline (6 linhas, nao 5)" \
+  test "$(conta_linhas "$DC/contador")" -eq 6
+exige 0 "(rz) mutacoes sai 0 com as duas tarefas vermelhas" test "$RC_RZ" -eq 0
+exige 0 "(rz) a saida traz 'tarefa 1: vermelho' e 'tarefa 2: vermelho'" \
+  bash -c 'printf "%s\n" "$1" | grep -q "tarefa 1: vermelho" && printf "%s\n" "$1" | grep -q "tarefa 2: vermelho"' _ "$SAIDA_RZ"
+
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]
