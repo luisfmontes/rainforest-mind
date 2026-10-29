@@ -10,6 +10,15 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.2.0 — 2026-10-29
+
+- **Carimbo de tarefa com hash que não existe é recusado.** O `estado.cjs marcar --json {"carimbos":…}` passa a conferir, dentro de um repositório git, que o `hash_base` é um commit dele, e sai 2 quando não é. Um carimbo gravado com hash digitado (`d0000000`) passava, e o carimbo existe justamente para retomar de uma base real. Fora de repositório git nada muda.
+- **Bateria `testa-exemplos-prescritos.cjs`.** Roda cada `gh issue`/`gh pr` de escrita que uma skill, comando ou agente manda usar pelo `gate-fechar-issue`, e falha se o gate barrar uma prescrição. Na primeira execução achou o passo 1 do `fechar` mandando `gh pr create` sem `--body-file`, que o gate barra; o texto passou a `gh pr create --title "<título>" --body-file <arquivo>`.
+- **Regra 6: repo alheio com sessão dona viva.** Achado em repo de outro dono vai como pedido por `SendMessage` só à sessão dona, quando ela está viva; Issue fica para quando não há dona viva ou ela pede. Dúvida sobre qual sessão é a dona sobe ao coordenador, sem mensagem a várias nem de cortesia, e aviso que cita design se responde depois de ler a seção de responsabilidades dele.
+- **Skill `plano`: critério sobre arquivo que outras sessões escrevem** (`ideias.jsonl`, `sessoes.json`, banco de memória) entra pelos ids que a tarefa toca, nunca por contagem global.
+
+Desenho em `docs/rainforest/design/2026-10-29-colheita-coordenacao-e-gates.md`.
+
 ## 2.1.3 — 2026-10-29
 
 - **`aviso-fluxo` deixa passar o arquivo que o git ignora (#623).** Na branch padrão sem fluxo, o Edit de um launcher local listado no `.gitignore` era barrado, e a edição acabava indo pelo shell, que o hook não vê. Arquivo ignorado não entra em commit nem em PR, então agora passa. Arquivo rastreado continua barrado mesmo quando casa com um padrão do `.gitignore`, e erro do `git check-ignore` também barra. Desenho em `docs/rainforest/design/2026-10-29-aviso-fluxo-gitignored.md`.

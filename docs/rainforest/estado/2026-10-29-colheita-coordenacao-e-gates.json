@@ -24,18 +24,12 @@
   },
   "executar": {
     "status": "parcial",
-    "tarefas_ok": 0,
+    "tarefas_ok": 3,
     "tarefas": 5,
     "em_voo": [
       {
         "agente": "executor",
         "tarefa": "1 carimbo hash real",
-        "desde": "2026-10-29",
-        "sessao": "4afb8320-f076-402f-8e7d-8f71f64b7cd2"
-      },
-      {
-        "agente": "executor",
-        "tarefa": "2 bateria exemplos prescritos",
         "desde": "2026-10-29",
         "sessao": "4afb8320-f076-402f-8e7d-8f71f64b7cd2"
       }
@@ -50,5 +44,35 @@
   },
   "fechar": {
     "status": "pendente"
-  }
+  },
+  "decididos": [
+    {
+      "pergunta": "Prescricao do fechar barrada pela bateria nova: corrigir neste PR?",
+      "escolha": "Sim: passo 1 do fechar passa a gh pr create --title --body-file, ancora binaria re-medida",
+      "porque": "regra 6: mesma classe do D6 e cabe no PR; a bateria fica verde pela prescricao certa, nao por excecao",
+      "estagio": "executar",
+      "em": "2026-10-29T19:19:13.783Z"
+    },
+    {
+      "pergunta": "Excecoes da bateria: linhas 161-162 do setup",
+      "escolha": "gh issue close e gh pr merge --auto ficam na lista",
+      "porque": "a tabela do setup descreve o que cada gate barra; e anti-exemplo, nao prescricao",
+      "estagio": "executar",
+      "em": "2026-10-29T19:19:13.986Z"
+    },
+    {
+      "pergunta": "Nucleo da regra 6 coube nos tetos?",
+      "escolha": "Sim, reescrito com os mesmos 552 bytes (sai a frase-modelo do plantio e o 'nao escolha')",
+      "porque": "o contrato do nucleo e de 5922 B exatos; crescer 36 B cortava a secao de dependencias da abertura",
+      "estagio": "executar",
+      "em": "2026-10-29T19:19:14.206Z"
+    },
+    {
+      "pergunta": "hashEhCommit consulta qual repositorio?",
+      "escolha": "A raiz do estado (RAIZ: RFM_ESTADO_ROOT, CLAUDE_PROJECT_DIR ou cwd), nao o process.cwd()",
+      "porque": "o carimbo pertence ao fluxo cujo estado mora na RAIZ; o executor usou o cwd e a bateria (cwd em sandbox que tambem e repo) caiu de 0 para 15 falhas; os demais git do estado.cjs ja usam RAIZ",
+      "estagio": "executar",
+      "em": "2026-10-29T19:44:12.948Z"
+    }
+  ]
 }

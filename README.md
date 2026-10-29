@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-2.1.3-1e5c3f?style=flat-square" alt="versão 2.1.3">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-2.2.0-1e5c3f?style=flat-square" alt="versão 2.2.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -259,7 +259,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `scripts/estado.cjs decidir --slug <s> --pergunta <p> --escolha <e> --porque <m>` / `decididos --slug <s>` | Modo autônomo (chave `executar-autonomo`, padrão desligado): a decisão que surge entre `plano ok` e o merge vai para `decididos` em vez de virar pergunta. O `decididos` imprime a seção `## Decidido sem você` do corpo do PR. Sem `--porque`, **exit 2** |
 | `scripts/estado.cjs reabrir --slug <s> --estagio executar --motivo <m>` | Reabre o `executar` depois de `revisar`, `verificar` ou `fechar` fechados: `executar` vira `parcial`, os três seguintes `pendente`, e `reaberturas` ganha `{em, de, motivo}`. **Exit 2** com motivo vazio, estágio que não seja `executar` ou nada a reabrir; slug sem estado sai 1 (#529) |
 | `scripts/estado.cjs exigir --estagio fechar` | Além de `verificar ok` e destinos, recusa (**exit 2**) com código mudado depois do `verificar ok`: arquivo com conteúdo diferente do verificado em que a mudança da branch não é mais a mesma (`git patch-id --verbatim` sem contexto de `merge-base..head` antes e depois; merge limpo da `main` e squash não contam), ou arquivo rastreado sujo, fora das isenções do `creep` e do estado de qualquer slug. Nomeia os arquivos e manda `reabrir`. Sem `verificar.head` (estado antigo ou `verificar` com `--raiz`), só avisa. A mesma recusa roda no `marcar fechar ok` (sem `verificar.head`, avisa) e, contra o HEAD do instantâneo do `revisar`, no `marcar verificar ok` (pulada com `--raiz`) (#567) |
-| `scripts/estado.cjs marcar --json {"carimbos":…}` | Grava por tarefa o hash de base em que ela foi aceita (`iteracao` cresce, nada se apaga); `proximo` e `ler` avisam quando esse hash não é ancestral do HEAD |
+| `scripts/estado.cjs marcar --json {"carimbos":…}` | Grava por tarefa o hash de base em que ela foi aceita (`iteracao` cresce, nada se apaga); recusa hash que não é commit do repositório; `proximo` e `ler` avisam quando esse hash não é ancestral do HEAD |
 | `scripts/estado.cjs marcar --estagio executar --status ok` | Roda a `cobertura` do plano, como o `plano ok`: emenda feita durante o executar que deixa um bloco ilegível (nota entre `para:` e `bateria:` de um `mutacao:`, por exemplo) recusa o `ok` com **exit 2**. Emenda depois do `executar ok` fica com a reabertura pós-verificar |
 | `scripts/testa-teto-skills.sh` | Nenhum `SKILL.md` acima de 500 linhas ou 16.384 B — a falha diz o que mover para `references/` |
 | `scripts/testa-mapa-regras.sh` | Cada uma das 17 regras tem linha em `## Regra → trava` de `docs/travas-mecanicas.md` (hook/script existente **ou** `disciplina`), e todo arquivo citado existe |
