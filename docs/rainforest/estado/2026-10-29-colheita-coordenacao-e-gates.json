@@ -23,7 +23,24 @@
     "em": "2026-10-29"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "tarefas_ok": 0,
+    "tarefas": 5,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "1 carimbo hash real",
+        "desde": "2026-10-29",
+        "sessao": "4afb8320-f076-402f-8e7d-8f71f64b7cd2"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "2 bateria exemplos prescritos",
+        "desde": "2026-10-29",
+        "sessao": "4afb8320-f076-402f-8e7d-8f71f64b7cd2"
+      }
+    ],
+    "em": "2026-10-29"
   },
   "revisar": {
     "status": "pendente"
