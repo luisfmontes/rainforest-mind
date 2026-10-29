@@ -26,11 +26,10 @@
     "status": "ok",
     "tarefas_ok": 5,
     "tarefas": 5,
-    "em_voo": [],
     "em": "2026-10-29",
     "catraca_mutacao": "2026-10-29",
-    "comando": "bash scripts/testa-estado.sh; node scripts/testa-exemplos-prescritos.cjs",
-    "saida": "== resultado: 337 ok, 0 falhas == ; == exemplos prescritos: 11 formas, 9 ok, 2 excecao, 0 falha(s) ==",
+    "comando": "bash scripts/testa-teto-skills.sh; grep -n 'contagem global' skills/plano/SKILL.md",
+    "saida": "Resultado: 21 OK, 0 FALHA ; 188:  contagem global** ...",
     "carimbos": [
       {
         "tarefa": 1,
@@ -66,6 +65,13 @@
         "iteracao": 1,
         "sessao": "4afb8320-f076-402f-8e7d-8f71f64b7cd2",
         "ts": "2026-10-29T20:00:53.077Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "5b438e13faa8ee7c87e716346bc0ab59316d6648",
+        "iteracao": 2,
+        "sessao": "4afb8320-f076-402f-8e7d-8f71f64b7cd2",
+        "ts": "2026-10-29T20:30:03.596Z"
       }
     ],
     "mutacao": [
@@ -97,7 +103,7 @@
     ]
   },
   "revisar": {
-    "status": "ok",
+    "status": "pendente",
     "snapshot": {
       "head": "075a6cd0a1d4b43f150e9a1d9b028b33ba6a9b42",
       "caminhos_sujos": []
@@ -134,10 +140,12 @@
     "em": "2026-10-29"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-10-29"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-10-29"
   },
   "decididos": [
     {
@@ -181,6 +189,13 @@
       "porque": "a quebra caia entre as duas palavras; exit vazio nao e sucesso, e a mudanca e so de espaco em branco (16370 B antes e depois, tetos verdes)",
       "estagio": "verificar",
       "em": "2026-10-29T20:28:19.054Z"
+    }
+  ],
+  "reaberturas": [
+    {
+      "em": "2026-10-29",
+      "de": "revisar",
+      "motivo": "verificar: criterio da tarefa 4 (grep contagem global) saia vazio pela quebra de linha; requebra em skills/plano/SKILL.md, mesmo texto e bytes"
     }
   ]
 }
