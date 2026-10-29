@@ -162,6 +162,8 @@ Emenda na tarefa 11 (integração): a mensagem nova da regra 11 para o não decl
 
 Emenda na tarefa 11 (revisão de segurança na integração): a primeira forma (`&& !agentConfig.semTools` no ramo inteiro) pulava também a regra 11 com trilho e a regra 10; a dispensa virou `dispensaIsolamento`, só sem trilho, e o `de:` da 11 é essa linha.
 
+Emenda na tarefa 11 (revisão 3): caso N12 prova a regra 10 para o agente sem `tools:`; README e CHANGELOG dizem que a dispensa vale só sem trilho.
+
 Emenda na tarefa 9: a tarefa 13 troca a linha de `fimSemFormatacao`; o `de:` da 9 passa a ser a linha nova, com o mesmo `para:`.
 
 ### 11. Inferência sem `tools:` não aciona a regra 11 [tipo: implementar]
@@ -179,7 +181,7 @@ mutacao:
   para: `const dispensaIsolamento = false;`
   bateria: `node hooks/testa-portaria-fluxo-pulado.cjs`
   fixture: `testa-portaria-fluxo-pulado.cjs, caso "N9" (repo git sem trilho, agente nao declarado com frontmatter sem tools:, sem isolation)`
-pronto quando: com o payload real do PreToolUse de `Agent` para um agente não declarado cujo frontmatter não tem `tools:`, sem `isolation`, num repositório git sem trilho de fluxo, a portaria sai 0 (N9); com trilho e sem estágio aberto o mesmo despacho segue barrado pelo fluxo pulado (G3 inalterado). Com trilho e estágio `executar` aberto, o mesmo agente sem `isolation` é barrado pela regra 11 (N11): a dispensa vale só sem trilho, e a regra 10 (`name`) vale sempre. Agente não declarado com tool de escrita listada e sem `isolation` continua barrado pela regra 11, e a mensagem diz "tem tool de escrita no frontmatter" em vez de "declara 'escreve: true'" (N10). Provado por `node hooks/testa-portaria-fluxo-pulado.cjs` com `falhou: 0` e linhas `ok` de N9, N10 e N11, todas as `hooks/testa-portaria-*.cjs` com `falhou: 0`, e pela mutação acima deixando N9 vermelho.
+pronto quando: com o payload real do PreToolUse de `Agent` para um agente não declarado cujo frontmatter não tem `tools:`, sem `isolation`, num repositório git sem trilho de fluxo, a portaria sai 0 (N9); com trilho e sem estágio aberto o mesmo despacho segue barrado pelo fluxo pulado (G3 inalterado). Com trilho e estágio `executar` aberto, o mesmo agente sem `isolation` é barrado pela regra 11 (N11): a dispensa vale só sem trilho, e a regra 10 (`name`) vale sempre. Agente não declarado com tool de escrita listada e sem `isolation` continua barrado pela regra 11, e a mensagem diz "tem tool de escrita no frontmatter" em vez de "declara 'escreve: true'" (N10). Provado por `node hooks/testa-portaria-fluxo-pulado.cjs` com `falhou: 0` e linhas `ok` de N9 a N12 (N12: o N9 com `name` barra pela regra 10), todas as `hooks/testa-portaria-*.cjs` com `falhou: 0`, e pela mutação acima deixando N9 vermelho.
 
 ### 12. gate-pergunta-memoria: só pergunta de verdade, sem vocabulário do projeto, trecho útil do banco [tipo: implementar]
 atende: D6

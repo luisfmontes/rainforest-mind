@@ -86,8 +86,8 @@
     "em": "2026-10-28",
     "tarefas_ok": 13,
     "tarefas": 13,
-    "comando": "node scripts/conferir-mutacao.cjs (tarefas 9, 11, 12 e 13 re-rodadas na integracao da rodada 3)",
-    "saida": "catraca exit 0: N9 e N11 (T11), P14 e P1/P2/P10/P12/P16 (T12), C13 (T13), C10-C12 (T9)",
+    "comando": "node scripts/conferir-mutacao.cjs (tarefa 11 com o caso N12 da revisao 3)",
+    "saida": "catraca exit 0: N12 vermelho com a regra 10 dispensada",
     "mutacao": [
       {
         "tarefa": 1,
@@ -142,7 +142,7 @@
       {
         "tarefa": 11,
         "resultado": "vermelho",
-        "fixture": "testa-portaria-fluxo-pulado.cjs N9 (e N11 na mutacao sem trilho)"
+        "fixture": "testa-portaria-fluxo-pulado.cjs N9 (N11 e N12 nas mutacoes vizinhas)"
       },
       {
         "tarefa": 12,
@@ -160,16 +160,16 @@
   "revisar": {
     "status": "pendente",
     "snapshot": {
-      "head": "0f60fcc16fd76db36d2f74fc4dfaf87bfc0bf697",
+      "head": "80bd51b7a64ffce6d754da5de1f8aa0bef6a30bd",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a339595a1adde0e2a",
+        "agente_id": "a324ccc92999327c2",
         "veredito": "ok",
         "em": "2026-10-28",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/184770db-2116-48c8-acbd-618fc0867f9f/subagents/agent-a339595a1adde0e2a.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/184770db-2116-48c8-acbd-618fc0867f9f/subagents/agent-a324ccc92999327c2.jsonl"
       }
     ],
     "em_voo": [],
@@ -188,10 +188,22 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/184770db-2116-48c8-acbd-618fc0867f9f/subagents/agent-a1dbd23c4cd63da6e.jsonl"
           }
         ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a339595a1adde0e2a",
+            "veredito": "ok",
+            "em": "2026-10-28",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/184770db-2116-48c8-acbd-618fc0867f9f/subagents/agent-a339595a1adde0e2a.jsonl"
+          }
+        ]
       }
     ],
     "base": "db7f22101e8541de3674a866626d8a681742dfba",
-    "head": "0f60fcc16fd76db36d2f74fc4dfaf87bfc0bf697"
+    "head": "80bd51b7a64ffce6d754da5de1f8aa0bef6a30bd"
   },
   "verificar": {
     "status": "pendente",
@@ -206,6 +218,11 @@
       "em": "2026-10-28",
       "de": "revisar",
       "motivo": "revisao 2 aprovou com 4 achados que cabem no PR: falso positivo de 24% no gate-pergunta-memoria (limiar e Q<n> em prosa), trecho '---' do banco, inferencia sem tools: barrando repo sem trilho pela regra 11, backtracking exponencial na regex do fecho"
+    },
+    {
+      "em": "2026-10-28",
+      "de": "revisar",
+      "motivo": "revisao 3 aprovou com 4 achados baixos: README/CHANGELOG mais largos que o codigo sobre a regra 11 sem tools: (corrigir), regra 10 sem caso para agente sem tools: (N12); marcador sem ## / 1. / bullet e filtro de projeto depois do corte do banco viram ideia"
     }
   ],
   "decididos": [

@@ -93,6 +93,7 @@ function estado(repo, cwd, args) {
 function despachar(repo, cwd, subagente, opcoes = {}, hook = HOOK) {
   const toolInput = { subagent_type: subagente, prompt: "Tarefa de teste do fluxo pulado." };
   if (!opcoes.semIsolation) toolInput.isolation = "worktree";
+  if (opcoes.nome) toolInput.name = opcoes.nome;
   const payload = {
     session_id: "sessao-fluxo-pulado",
     cwd,
@@ -800,6 +801,21 @@ function worktreeX(repo) {
   caso("N11 nao declarado sem tools:, sem isolation, repo com trilho e executar aberto: barra exit 2 pela regra 11",
     erro === null && r.status === 2 && /regra 11/.test(r.stderr || "") && /herda todas as tools/.test(r.stderr || ""),
     `erro=${erro} exit=${r.status} stderr=${r.stderr}`);
+
+  descartar(repo);
+}
+
+{
+  // N12: o N9 (sem tools:, repo sem trilho) despachado com `name`: a dispensa e so do isolamento,
+  // a regra 10 barra (exit 2).
+  const repo = novoRepo();
+  fs.mkdirSync(path.join(repo.main, ".claude", "agents"), { recursive: true });
+  fs.writeFileSync(path.join(repo.main, ".claude", "agents", "agente-sem-tools-solto.md"),
+    ["---", "name: agente-sem-tools-solto", "description: agente de teste sem linha tools", "---", "", "Corpo de teste.", ""].join(String.fromCharCode(10)), "utf8");
+
+  const r = despachar(repo, repo.main, "agente-sem-tools-solto", { semIsolation: true, nome: "fulano" });
+  caso("N12 nao declarado sem tools:, repo sem trilho, com name: barra exit 2 pela regra 10",
+    r.status === 2 && /regra 10/.test(r.stderr || ""), `exit=${r.status} stderr=${r.stderr}`);
 
   descartar(repo);
 }
