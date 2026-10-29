@@ -22,11 +22,10 @@
     "em": "2026-10-29"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-29",
     "tarefas_ok": 6,
     "tarefas": 6,
-    "em_voo": [],
     "em": "2026-10-29",
     "carimbos": [
       {
@@ -77,15 +76,36 @@
         "iteracao": 1,
         "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0",
         "ts": "2026-10-29T12:26:27.147Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "6e391545",
+        "iteracao": 3,
+        "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0",
+        "ts": "2026-10-29T12:39:00.939Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "6e391545",
+        "iteracao": 2,
+        "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0",
+        "ts": "2026-10-29T12:39:00.939Z"
+      },
+      {
+        "tarefa": 6,
+        "hash_base": "6e391545",
+        "iteracao": 2,
+        "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0",
+        "ts": "2026-10-29T12:39:00.939Z"
       }
     ],
-    "comando": "node scripts/conferir-mutacao.cjs (tarefas 1-4, re-rodada na integracao)",
-    "saida": "T1 exit 0 (P17,P18,P20,P21 vermelhos); T2 exit 0 (P23); T3 exit 0 (3 casos D4, 2 rodadas); T4 exit 0 (caso TMPDIR)",
+    "comando": "node scripts/conferir-mutacao.cjs (rodada 2, achado 1: item numerado de volta a qualquer numero de digitos) e bash scripts/testa-conferir-mutacao.sh",
+    "saida": "mutacao exit 0 (P24 vermelho); testa-gate-pergunta-memoria ok: 27 falhou: 0; testa-conferir-mutacao ok: 215 falhou: 0",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-gate-pergunta-memoria.cjs, P17 (P18, P20 e P21 tambem)"
+        "fixture": "testa-gate-pergunta-memoria.cjs, P17 e P24"
       },
       {
         "tarefa": 2,
