@@ -22,7 +22,7 @@
     "em": "2026-10-29"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-29",
     "tarefas_ok": 6,
     "tarefas": 6,
@@ -122,12 +122,38 @@
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "7cc5b0ef0eca61d745a7dcc740a0967e94bd39ed",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ab46ad6bc18de3b40",
+        "veredito": "ok",
+        "em": "2026-10-29",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/1430d221-3e0e-4b0d-9cdd-7a92040fc1f0/subagents/agent-ab46ad6bc18de3b40.jsonl"
+      }
+    ],
+    "achados": 3,
+    "base": "46773615f37b2866f221843c26d064e2ee119ae3",
+    "head": "7cc5b0ef0eca61d745a7dcc740a0967e94bd39ed",
+    "em": "2026-10-29"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-10-29"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-10-29"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-10-29",
+      "de": "revisar",
+      "motivo": "revisao 1 ok com 3 achados [baixa] que cabem no PR: (1) item numerado casa ano '2026. Q3 ...?' no RE_MARCADOR_Q; (2) docs sem 'Q em bloco de codigo' e 'PATH sem utilitarios do Git Bash' fora (D7); (3) rmSync do preflight sem try/catch"
+    }
+  ]
 }
