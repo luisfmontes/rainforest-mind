@@ -531,8 +531,8 @@ function inferirConfigNaoDeclarado(raiz, nomeAgente) {
   if (!fmMatch) return base;
 
   const { declarado: temTools, tools } = parseToolsDoFrontmatter(fmMatch[1]);
-  // `semTools` marca a inferencia que so vale para o fluxo pulado: a regra 11
-  // (isolation) nao a usa, para nao barrar em repo sem trilho quem so herdou tools.
+  // `semTools` marca a inferencia por heranca: em repo sem trilho a regra 11
+  // (isolation) a dispensa, para nao barrar quem so herdou tools.
   if (!temTools) return { estagios: null, escreve: true, conferido: true, semTools: true };
   if (!tools) return base;
 
@@ -1252,12 +1252,17 @@ function main() {
   // nao o worktree em disco — o hook roda ANTES do despacho, e nesse instante
   // o worktree ainda nao existe. A conferencia do worktree real na volta e da
   // integracao (`scripts/conferir-entrega.cjs`), e continua sendo.
-  if (agentConfig.escreve === true && !agentConfig.semTools) {
+  if (agentConfig.escreve === true) {
     const isolamento = payload.tool_input.isolation;
     const nomeDado = payload.tool_input.name;
-    const quemEscreve = declarado ? "declara 'escreve: true'" : "tem tool de escrita no frontmatter";
+    const quemEscreve = declarado
+      ? "declara 'escreve: true'"
+      : agentConfig.semTools ? "herda todas as tools (frontmatter sem 'tools:')" : "tem tool de escrita no frontmatter";
+    // Frontmatter sem `tools:` so dispensa o isolamento em repo sem trilho de fluxo; com trilho,
+    // a regra 11 vale como para qualquer escritor, e a regra 10 (`name`) vale sempre.
+    const dispensaIsolamento = agentConfig.semTools === true && trilho === null;
 
-    if (isolamento !== "worktree" && !worktreeDeclarado) {
+    if (isolamento !== "worktree" && !worktreeDeclarado && !dispensaIsolamento) {
       const foraDeRepo = gitSaida(payload.cwd || raiz, ["rev-parse", "--git-dir"]) === null;
       const motivo =
         `agente '${nomeAgente}' ${quemEscreve} e so roda com isolation: "worktree"` +

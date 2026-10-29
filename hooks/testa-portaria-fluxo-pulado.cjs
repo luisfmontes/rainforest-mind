@@ -784,6 +784,26 @@ function worktreeX(repo) {
   descartar(repo);
 }
 
+{
+  // N11: o N9 em repo COM trilho e estagio executar aberto: a dispensa de isolamento so vale sem trilho,
+  // entao a regra 11 barra (exit 2).
+  const repo = novoRepo();
+  const wt = comWorktree(repo);
+  const erro = fluxoAberto(repo, wt, "executar");
+  for (const raiz of [repo.main, wt]) {
+    fs.mkdirSync(path.join(raiz, ".claude", "agents"), { recursive: true });
+    fs.writeFileSync(path.join(raiz, ".claude", "agents", "agente-sem-tools-solto.md"),
+      ["---", "name: agente-sem-tools-solto", "description: agente de teste sem linha tools", "---", "", "Corpo de teste.", ""].join("\n"), "utf8");
+  }
+
+  const r = despachar(repo, wt, "agente-sem-tools-solto", { semIsolation: true });
+  caso("N11 nao declarado sem tools:, sem isolation, repo com trilho e executar aberto: barra exit 2 pela regra 11",
+    erro === null && r.status === 2 && /regra 11/.test(r.stderr || "") && /herda todas as tools/.test(r.stderr || ""),
+    `erro=${erro} exit=${r.status} stderr=${r.stderr}`);
+
+  descartar(repo);
+}
+
 // == G D3. agente declarado com escreve: false e nao declarado com sinal de escrita (emenda D3, 2026-10-28) ==
 // Os nomes G1 D3..G6 D3 nao colidem com os G1..G3 do trilho protheus acima.
 console.log("== G D3. escreve: false declarado com isolation, e nao declarado com sinal de escrita ==");

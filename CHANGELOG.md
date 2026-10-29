@@ -14,9 +14,9 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 Três travas saídas das 120 observações de outubro, que se concentravam em três erros repetidos apesar da regra escrita. Desenho em `docs/rainforest/design/2026-10-28-colheita-observacoes.md`.
 
-- **Portaria barra quem escreve sem fluxo (D3).** Todo despacho com `isolation: "worktree"` (o `general-purpose` incluído, que está declarado como leitor) e todo agente fora do manifesto com tool de escrita ou sem linha `tools:` são barrados em repo com fluxo quando a branch da sessão não tem estágio aberto nem `leve`. Sem `isolation` e com o arquivo do agente ilegível, segue passando. O revisor e o planejador, despachados sem `isolation`, não mudam.
+- **Portaria barra quem escreve sem fluxo (D3).** Todo despacho com `isolation: "worktree"` (o `general-purpose` incluído, que está declarado como leitor) e todo agente fora do manifesto com tool de escrita ou sem linha `tools:` são barrados em repo com fluxo quando a branch da sessão não tem estágio aberto nem `leve`. Sem `isolation` e com o arquivo do agente ilegível, segue passando. O revisor e o planejador, despachados sem `isolation`, não mudam. A falta de `tools:` não aciona a regra 11: repo sem fluxo não é barrado por ela.
 - **`gate-turno-prometido` pega o pedido de licença (D4).** Com `executar-autonomo` ligada e o fluxo entre design aprovado e `fechar`, o turno que termina em "sigo?" sem `Q<n>` é barrado uma vez, também com fecho em negrito, emoji ou parêntese.
-- **`gate-pergunta-memoria`, novo (D6).** Turno com `Q<n>` que a memória do repositório principal (nome e descrição dos arquivos) ou o banco do `memoria.cjs` já responde é barrado uma vez, com o arquivo e a descrição, e com as sessões vivas de outros repositórios. Vale também em sessão aberta num worktree. Chave `gate-pergunta-memoria`.
+- **`gate-pergunta-memoria`, novo (D6).** Turno com `Q<n>` no começo da linha (emoji e negrito antes valem, recap em prosa não) que a memória do repositório principal (nome e descrição dos arquivos) ou o banco do `memoria.cjs` (só o projeto atual) já responde é barrado uma vez, sem contar o vocabulário comum do projeto, com o arquivo e a descrição, e com as sessões vivas de outros repositórios. Vale também em sessão aberta num worktree. Chave `gate-pergunta-memoria`.
 
 ## 2.0.7 — 2026-10-28
 
