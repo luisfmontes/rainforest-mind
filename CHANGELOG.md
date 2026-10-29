@@ -10,6 +10,10 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.1.3 — 2026-10-29
+
+- **`aviso-fluxo` deixa passar o arquivo que o git ignora (#623).** Na branch padrão sem fluxo, o Edit de um launcher local listado no `.gitignore` era barrado, e a edição acabava indo pelo shell, que o hook não vê. Arquivo ignorado não entra em commit nem em PR, então agora passa. Arquivo rastreado continua barrado mesmo quando casa com um padrão do `.gitignore`, e erro do `git check-ignore` também barra. Desenho em `docs/rainforest/design/2026-10-29-aviso-fluxo-gitignored.md`.
+
 ## 2.1.2 — 2026-10-29
 
 - **`gate-pergunta-memoria` deixa de consultar o banco de observações.** Medido nos transcritos das duas contas desde a 2.1.0: os 11 bloqueios distintos do canal do banco eram falso positivo. Um termo raro em comum (o código de uma rotina, o nome de um cliente) bastava para casar um resumo de sessão que não respondia a pergunta. Exigir 3 termos em comum, como nos arquivos, ainda deixava 4 de 11, todos falsos. O gate agora confere só os arquivos de memória do repositório principal, que têm nome e descrição escritos à mão. A opção `soProjeto` da 2.1.1, que só o banco usava, saiu junto. Desenho em `docs/rainforest/design/2026-10-29-gate-memoria-sem-banco.md`.

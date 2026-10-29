@@ -17,7 +17,8 @@
  * vazia: o código já sujo avisa uma vez. Arquivo já sujo que muda de novo não reaparece.
  * A foto guarda também o HEAD: código criado e commitado na mesma chamada conta pelos commits que
  * a sessão fez desde ela, lidos no reflog. A foto acumula o que a sessão já viu, então cada caminho
- * avisa uma vez. Código em pasta ignorada pelo git não aparece (o Edit já o barra).
+ * avisa uma vez. Arquivo ignorado pelo git fica fora dos dois hooks: o `git status` não o lista, e o
+ * Edit o deixa passar (#623), porque ele não chega ao histórico.
  */
 
 const fs = require('node:fs');
