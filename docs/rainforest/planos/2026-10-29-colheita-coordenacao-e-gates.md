@@ -23,6 +23,7 @@ mutacao:
   de: if (hashEhCommit(hash) === false) {
   para: if (false) {
   bateria: `bash scripts/testa-estado.sh`
+  timeout: 900000
   fixture: testa-estado.sh, caso "carimbo com hash_base que nao e commit deste repositorio recusa (D4)"
 pronto quando: com o `marcar --estagio executar --status parcial --json '{"carimbos":[{"tarefa":1,"hash_base":"d0000000"}]}'` que a janela principal roda num repositório git com o fluxo em `executar`, o `estado.cjs` sai 2 com "nao e commit deste repositorio" e não grava o carimbo; o mesmo comando com `hash_base` igual a `git rev-parse HEAD` sai 0 e grava; fora de repositório git o hash inexistente continua aceito — provado por `bash scripts/testa-estado.sh` devolvendo as linhas `ok` dos três casos e `== resultado: N ok, 0 falhas ==`, e por `bash scripts/testa-painel-fluxo.sh` saindo 0
 
