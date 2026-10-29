@@ -20,6 +20,12 @@
  *   P15 pergunta cujo único vocabulário comum com a memória é o do projeto (regra, fluxo...): exit 0
  *   P16 banco: observação do projeto atual que abre com `---` e cabeçalho: exit 2 com o trecho útil;
  *       a mesma observação gravada em OUTRO projeto: exit 0
+ *   P17 marcador `## Q1 — ` (cabeçalho Markdown): exit 2 e Q1 no stderr
+ *   P18 marcador `### **Q1** ` (cabeçalho com negrito): exit 2
+ *   P19 marcador `1. **Q1** ` (item numerado): exit 2
+ *   P20 marcador `• Q1 ` (bullet •): exit 2
+ *   P21 marcador `+ Q1 ` (bullet +): exit 2
+ *   P22 `Veja o item Q1 do plano?` no meio de uma linha que começa com texto: exit 0
  *
  * Os exit 0 de P5 a P9 são contrastados com o P1 do mesmo jeito: a mesma montagem, só
  * a condição muda, então um exit 0 sem o mecanismo não passa por acidente.
@@ -344,6 +350,51 @@ teste('P16 banco: observação do projeto atual abrindo com --- e cabeçalho: ex
 
 teste('P16b a mesma observação gravada em OUTRO projeto: exit 0', () => {
   const r = rodar(cenarioComBanco(20000, { projeto: 'outro-projeto', conteudo: OBS_COM_CABECALHO }));
+  assert(r.status === 0, `esperado exit 0, obteve ${r.status} (stderr: ${r.stderr})`);
+});
+
+// Marcador inteiro da pergunta no fixture, com o emoji que o abre. Os casos P17 a P22 trocam este trecho
+// pela forma de marcador que querem testar: sem trocar o emoji, ele casaria no lugar da forma em teste.
+const TRECHO_MARCADOR_Q1 = '❓ **Q1 — Desligar o gate**:';
+
+function transcritoComMarcador(novo) {
+  return trocar(TRANSCRITO_RESPONDE, TRECHO_MARCADOR_Q1, novo);
+}
+
+teste('P17 marcador `## Q1 — ` (cabeçalho Markdown): exit 2 e Q1 no stderr', () => {
+  const c = cenario({ transcrito: transcritoComMarcador('## Q1 — Desligar o gate:') });
+  const r = rodar(c);
+  assert(r.status === 2, `esperado exit 2, obteve ${r.status} (stderr: ${r.stderr})`);
+  assert(r.stderr.includes('Q1'), 'stderr sem Q1');
+});
+
+teste('P18 marcador `### **Q1** ` (cabeçalho com negrito): exit 2', () => {
+  const c = cenario({ transcrito: transcritoComMarcador('### **Q1** Desligar o gate:') });
+  const r = rodar(c);
+  assert(r.status === 2, `esperado exit 2, obteve ${r.status} (stderr: ${r.stderr})`);
+});
+
+teste('P19 marcador `1. **Q1** ` (item numerado): exit 2', () => {
+  const c = cenario({ transcrito: transcritoComMarcador('1. **Q1** Desligar o gate:') });
+  const r = rodar(c);
+  assert(r.status === 2, `esperado exit 2, obteve ${r.status} (stderr: ${r.stderr})`);
+});
+
+teste('P20 marcador `• Q1 ` (bullet •): exit 2', () => {
+  const c = cenario({ transcrito: transcritoComMarcador('• Q1 Desligar o gate:') });
+  const r = rodar(c);
+  assert(r.status === 2, `esperado exit 2, obteve ${r.status} (stderr: ${r.stderr})`);
+});
+
+teste('P21 marcador `+ Q1 ` (bullet +): exit 2', () => {
+  const c = cenario({ transcrito: transcritoComMarcador('+ Q1 Desligar o gate:') });
+  const r = rodar(c);
+  assert(r.status === 2, `esperado exit 2, obteve ${r.status} (stderr: ${r.stderr})`);
+});
+
+teste('P22 `Veja o item Q1 do plano?` no meio de linha que começa com texto: exit 0', () => {
+  const c = cenario({ transcrito: transcritoComMarcador('Veja o item Q1 do plano?') });
+  const r = rodar(c);
   assert(r.status === 0, `esperado exit 0, obteve ${r.status} (stderr: ${r.stderr})`);
 });
 
