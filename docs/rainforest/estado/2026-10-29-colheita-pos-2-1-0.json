@@ -157,23 +157,23 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "91087559f2f9e1c1d619df2ec42bfdc290a67e44",
+      "head": "c13310bb13799bcea52894a0e6159bce854f5523",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a55377754972ebe8a",
+        "agente_id": "a91acca51b738cc88",
         "veredito": "ok",
         "em": "2026-10-29",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/1430d221-3e0e-4b0d-9cdd-7a92040fc1f0/subagents/agent-a55377754972ebe8a.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/1430d221-3e0e-4b0d-9cdd-7a92040fc1f0/subagents/agent-a91acca51b738cc88.jsonl"
       }
     ],
-    "achados": 1,
+    "achados": 2,
     "base": "46773615f37b2866f221843c26d064e2ee119ae3",
-    "head": "91087559f2f9e1c1d619df2ec42bfdc290a67e44",
+    "head": "c13310bb13799bcea52894a0e6159bce854f5523",
     "em": "2026-10-29",
     "voltas": [
       {
@@ -187,17 +187,30 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/1430d221-3e0e-4b0d-9cdd-7a92040fc1f0/subagents/agent-ab46ad6bc18de3b40.jsonl"
           }
         ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a55377754972ebe8a",
+            "veredito": "ok",
+            "em": "2026-10-29",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/1430d221-3e0e-4b0d-9cdd-7a92040fc1f0/subagents/agent-a55377754972ebe8a.jsonl"
+          }
+        ]
       }
     ]
   },
   "verificar": {
-    "status": "reprovado",
+    "status": "ok",
     "em": "2026-10-29",
     "criterio": "tarefa 5: listar --tipo observacao abre com 0 plantada (observacao)",
-    "comando": "node scripts/ideias.cjs listar --tipo observacao",
-    "saida": "3 plantada (observacao): dono-declarado-no-design-alheio-e-meu, obs-2026-10-29-mensagem-em-massa-a-sessoes, pulei-protheus-plan-direto-pro-implementer (plantadas em 2026-10-29 por sessoes de protheus-inovacao e tbc-apps)",
+    "comando": "node hooks/testa-gate-pergunta-memoria.cjs; node hooks/testa-memoria-assunto.cjs; bash scripts/testa-estado.sh; bash scripts/testa-conferir-mutacao.sh; node -e (6 ids do D6 colhidos); node -e (versoes 2.1.1)",
+    "saida": "T1/T2 ok: 27 falhou: 0 (P17-P24 ok) e 15 ok, 0 falha(s); T3 resultado: 334 ok, 0 falhas (casos D4 ok); T4 ok: 215 falhou: 0 (caso TMPDIR exit=69); T5 6 de 6 colhida, memoria do projeto existe; T6 { a: 2.1.1, b: 2.1.1, r: 2.1.1, c: 2.1.1 } IGUAIS",
     "faltou": "o criterio conta o arquivo inteiro, que outras sessoes escrevem enquanto o fluxo roda; os 6 itens do D6 estao colhidos (node -e conferiu status e resultado de cada id). Emendar o criterio da tarefa 5 para os ids presentes na abertura.",
-    "tentativas": 1
+    "sensor_externo": "bash scripts/testa-estado.sh",
+    "head": "c13310bb13799bcea52894a0e6159bce854f5523"
   },
   "fechar": {
     "status": "pendente",
