@@ -152,8 +152,12 @@
     "em": "2026-10-29"
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-10-29"
+    "status": "ok",
+    "em": "2026-10-29",
+    "comando": "bash scripts/testa-estado.sh; node scripts/testa-exemplos-prescritos.cjs; bash scripts/testa-versao.sh",
+    "saida": "== resultado: 337 ok, 0 falhas == ; == exemplos prescritos: 11 formas, 9 ok, 2 excecao, 0 falha(s) == ; ok: 5 falhou: 0",
+    "sensor_externo": "bash scripts/testa-estado.sh",
+    "head": "75df5a7a296f397dbbed631c23e83151c18f4b06"
   },
   "fechar": {
     "status": "pendente",
