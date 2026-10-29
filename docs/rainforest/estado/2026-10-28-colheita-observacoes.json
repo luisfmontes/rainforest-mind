@@ -158,23 +158,23 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "80bd51b7a64ffce6d754da5de1f8aa0bef6a30bd",
+      "head": "5b2354d4ed9671fc335b7a9e6f14b19a92516e75",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a324ccc92999327c2",
+        "agente_id": "a68909cc885fd1fa2",
         "veredito": "ok",
         "em": "2026-10-28",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/184770db-2116-48c8-acbd-618fc0867f9f/subagents/agent-a324ccc92999327c2.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/184770db-2116-48c8-acbd-618fc0867f9f/subagents/agent-a68909cc885fd1fa2.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-10-28",
-    "achados": 4,
+    "achados": 0,
     "design": 2,
     "voltas": [
       {
@@ -200,14 +200,30 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/184770db-2116-48c8-acbd-618fc0867f9f/subagents/agent-a339595a1adde0e2a.jsonl"
           }
         ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a324ccc92999327c2",
+            "veredito": "ok",
+            "em": "2026-10-28",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/184770db-2116-48c8-acbd-618fc0867f9f/subagents/agent-a324ccc92999327c2.jsonl"
+          }
+        ]
       }
     ],
     "base": "db7f22101e8541de3674a866626d8a681742dfba",
-    "head": "80bd51b7a64ffce6d754da5de1f8aa0bef6a30bd"
+    "head": "5b2354d4ed9671fc335b7a9e6f14b19a92516e75"
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-10-28"
+    "status": "ok",
+    "em": "2026-10-28",
+    "comando": "node scripts/conferir-categoria.cjs; node hooks/testa-portaria-fluxo-pulado.cjs; node hooks/testa-gate-turno-prometido.cjs; node hooks/testa-gate-pergunta-memoria.cjs; bash hooks/testa-titulo-sessao-registro.sh; bash scripts/testa-conferir-categoria.sh; bash scripts/testa-conferir-setup.sh; bash scripts/testa-conferir-versao.sh; 13 hooks/testa-portaria-*.cjs; node hooks/testa-aviso-fluxo.cjs; bash hooks/testa-config.sh; node -e (T4 rascunho, T5 colheita, T6 versao)",
+    "saida": "todas exit 0: fluxo-pulado ok 97 falhou 0; turno-prometido ok 45 falhou 0; pergunta-memoria ok 18 falhou 0; titulo-sessao 3 ok; conferir-categoria 14 ok; conferir-setup 10 ok; conferir-versao 38 ok; portaria manifesto 62, nucleo 92, autorizacao 110, captura 14, diagnostico 29, folha 12, fora-de-repo 22, gitignore 10, lint 31, log 8, portoes exit 0, tools-bloco 23; aviso-fluxo 10 ok; config 74 ok. T4: 9 ids, 9 existem. T5: colhidas 120/120, D 40, memoria 40 (40 existem), avulsas 40; listar mostra 1 plantada nova (obs-2026-10-28-patch-producao-aiba-e-do-arthur, protheus-clientes) plantada depois da triagem e fora da lista inicial. T6: 2.1.0 em plugin.json, selo do README e CHANGELOG.",
+    "sensor_externo": "node hooks/testa-portaria-fluxo-pulado.cjs",
+    "head": "5b2354d4ed9671fc335b7a9e6f14b19a92516e75"
   },
   "fechar": {
     "status": "pendente",
