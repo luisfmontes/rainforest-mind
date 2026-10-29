@@ -1551,6 +1551,19 @@ else
   printf '%s\n' "$OUT_TOPO" | tail -12 | sed 's/^/        | /'
 fi
 
+# Caso D5 (plano colheita-pos-2-1-0, tarefa 4): TMPDIR nao gravavel sai 69
+# nao-verificavel ANTES do baseline. TMPDIR, TMP e TEMP apontam para pasta
+# inexistente, so no ambiente deste processo node. A bateria cria uma sentinela:
+# se ela rodasse, a sentinela existiria.
+CHK_TMP_NAO_GRAVAVEL() { env TMPDIR="$W/nao-existe" TMP="$W/nao-existe" TEMP="$W/nao-existe" node "$SCRIPT" --raiz "$WCAIXA" --arquivo fonte.cjs --de 'process.exit(2);' --para 'process.exit(0);' --bateria "touch '$WCAIXA/sentinela-tmpdir'"; }
+exige 69 "TMPDIR não gravável sai 69 nao-verificavel (preflight antes do baseline)" CHK_TMP_NAO_GRAVAVEL
+tem "a saida traz nao-verificavel: TMPDIR não gravável" "nao-verificavel: TMPDIR não gravável"
+if [ -e "$CAIXA/sentinela-tmpdir" ]; then
+  falhou=$((falhou+1)); printf '  FALHA TMPDIR não gravável: a bateria rodou (sentinela criada)\n'
+else
+  ok=$((ok+1)); printf '  ok    TMPDIR não gravável: sentinela da bateria nao criada\n'
+fi
+
 echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ]

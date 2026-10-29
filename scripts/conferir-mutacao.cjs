@@ -969,6 +969,21 @@ function copiarRaiz(raiz) {
   return path.join(copia, relRaiz);
 }
 
+// D5 (plano colheita-pos-2-1-0, tarefa 4): antes de tudo que depende do tmpdir,
+// prova que `os.tmpdir()` aceita a criação de uma pasta. Se não aceitar, o
+// ambiente falhou — sai como nao-verificavel (exit 69), nunca como vermelho.
+function conferirTmpdirGravavel() {
+  const dir = os.tmpdir();
+  let criada;
+  try {
+    criada = fs.mkdtempSync(path.join(dir, 'conferir-mutacao-preflight-'));
+  } catch {
+    process.stderr.write(`nao-verificavel: TMPDIR não gravável — ${dir}\n`);
+    process.exit(69);
+  }
+  fs.rmSync(criada, { recursive: true, force: true });
+}
+
 function main() {
   if (process.argv.length <= 2) {
     console.error(USO);
@@ -1011,6 +1026,8 @@ function main() {
     console.error(`erro: --raiz não é uma pasta: ${raiz}`);
     process.exit(1);
   }
+
+  conferirTmpdirGravavel();
 
   // Varredura de órfãos de execuções anteriores (tarefa 6, Issue #294.2) —
   // antes de criar a cópia desta execução, para não apagar a própria.
