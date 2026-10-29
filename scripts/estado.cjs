@@ -1783,7 +1783,11 @@ function conferirFechamento(estagio, slug, extra, estado) {
   let args = null;
   if (estagio === 'design' && fs.existsSync(docDoEstagio('design', slug, estado))) {
     args = ['design', '--slug', slug, '--design', docDoEstagio('design', slug, estado)];
-  } else if (estagio === 'plano'
+  // `executar` roda a cobertura TAMBÉM: emenda de plano acontece durante o executar.
+  // Em 2026-10-28 uma nota dentro do bloco `mutacao:` quebrou a leitura de `bateria:`
+  // e o `executar ok` passou sem checar nada. Só a cobertura rodada à mão na rodada
+  // seguinte mostrou o defeito. Mesma condição de existência do `plano`.
+  } else if ((estagio === 'plano' || estagio === 'executar')
       && fs.existsSync(docDoEstagio('planos', slug, estado))
       // `cobertura` cruza os DOIS arquivos, então exigir só o plano prendia o
       // estágio para sempre num projeto que escreveu plano e nunca escreveu

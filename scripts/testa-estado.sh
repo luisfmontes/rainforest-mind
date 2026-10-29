@@ -2906,6 +2906,93 @@ igual "412 plano recusado: cobertura leu o design apontado por doc (D2 sem taref
 printf '%s' "$msg412" | grep -q "D2" && igual "412 recusa cita a decisao D2 descoberta" "sim" "sim" || igual "412 recusa cita a decisao D2 descoberta" "sim" "nao: $msg412"
 rm -rf "$C412"
 
+echo
+echo "== (D4 2026-10-29) executar ok roda a cobertura do plano =="
+# O estagio executar roda `conferir-fluxo cobertura` com a mesma condicao do plano.
+# Emenda de plano acontece DURANTE o executar: uma nota dentro do bloco `mutacao:`
+# (entre `para:` e `bateria:`) quebrou a leitura de `bateria:` em 2026-10-28 e o
+# `executar ok` passou. Cada caso monta design e plano de verdade, nao fixture solta.
+novo_sandbox CEX
+mkdir -p "$CEX/docs/plans" "$CEX/docs/rainforest/varredura" "$CEX/scripts"
+(cd "$CEX" && git init -q && git config user.email t@t && git config user.name T)
+export RFM_ESTADO_ROOT="$CEX"
+cat > "$CEX/docs/plans/modelo-design.md" << 'EOF'
+# Design
+
+## Objetivo
+Teste
+
+## Decisões fechadas
+- **D1 — unica**
+
+## Avaliado e descartado
+n/a
+
+## Fora de escopo
+n/a
+
+## Em aberto
+n/a
+
+## Varredura
+docs/rainforest/varredura/SLUG.txt
+EOF
+# A seção Varredura tem de citar a varredura do PRÓPRIO slug: um design por slug.
+for s in sexi sexe; do
+  sed "s/SLUG/$s/" "$CEX/docs/plans/modelo-design.md" > "$CEX/docs/plans/2026-10-29-$s-design.md"
+  echo "$s" > "$CEX/docs/rainforest/varredura/$s.txt"
+done
+echo "marcador-do-de" > "$CEX/scripts/alvo.cjs"
+cat > "$CEX/docs/plans/sex-plano.md" << 'EOF'
+# Plano
+
+## Tarefas
+
+### 1. Primeira tarefa
+atende: D1
+mutacao:
+  arquivo: scripts/alvo.cjs
+  de: marcador-do-de
+  para: marcador-trocado
+  bateria: `true`
+  fixture: caso-1
+EOF
+# Caso integro: o fluxo inteiro passa com o plano sem emenda.
+node scripts/estado.cjs iniciar --slug sexi >/dev/null
+esperado "D4 integro: design aprovado" 0 node scripts/estado.cjs marcar --slug sexi --estagio design --status aprovado --json '{"doc":"docs/plans/2026-10-29-sexi-design.md"}'
+esperado "D4 integro: plano ok" 0 node scripts/estado.cjs marcar --slug sexi --estagio plano --status ok --json '{"arquivo":"docs/plans/sex-plano.md"}'
+esperado "D4 integro: exigir executar" 0 node scripts/estado.cjs exigir --slug sexi --estagio executar
+esperado "D4 executar ok com plano integro passa" 0 node scripts/estado.cjs marcar --slug sexi --estagio executar --status ok --json '{"comando":"node scripts/estado.cjs","saida":"ok","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"caso-1"}]}'
+# Caso emendado: mesmo plano, com a nota entre `para:` e `bateria:` depois do plano ok.
+node scripts/estado.cjs iniciar --slug sexe >/dev/null
+esperado "D4 emendado: design aprovado" 0 node scripts/estado.cjs marcar --slug sexe --estagio design --status aprovado --json '{"doc":"docs/plans/2026-10-29-sexe-design.md"}'
+esperado "D4 emendado: plano ok antes da emenda" 0 node scripts/estado.cjs marcar --slug sexe --estagio plano --status ok --json '{"arquivo":"docs/plans/sex-plano.md"}'
+esperado "D4 emendado: exigir executar" 0 node scripts/estado.cjs exigir --slug sexe --estagio executar
+cat > "$CEX/docs/plans/sex-plano.md" << 'EOF'
+# Plano
+
+## Tarefas
+
+### 1. Primeira tarefa
+atende: D1
+mutacao:
+  arquivo: scripts/alvo.cjs
+  de: marcador-do-de
+  para: marcador-trocado
+  emenda (2026-10-28): nota
+  bateria: `true`
+  fixture: caso-1
+EOF
+msg_emenda="$(node scripts/estado.cjs marcar --slug sexe --estagio executar --status ok --json '{"comando":"node scripts/estado.cjs","saida":"ok","mutacao":[{"tarefa":1,"resultado":"vermelho","fixture":"caso-1"}]}' 2>&1)"
+cod_emenda=$?
+printf '%s\n' "$msg_emenda" | sed 's/^/         | /'
+igual "executar ok recusado: plano com nota dentro do bloco mutacao (exit 2)" "2" "$cod_emenda"
+igual "D4 emendado: a recusa veio da cobertura (mutacao sem bateria)" "sim" \
+  "$(printf '%s' "$msg_emenda" | grep -q 'sem .bateria:' && echo sim || echo nao)"
+igual "D4 emendado: retomada segue em executar, nao ficou ok" "executar" \
+  "$(node scripts/estado.cjs proximo --slug sexe)"
+rm -rf "$CEX"
+
 unset RFM_ESTADO_ROOT
 
 echo "== resultado: $ok ok, $falhou falhas =="
