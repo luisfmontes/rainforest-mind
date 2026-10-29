@@ -1,0 +1,28 @@
+{
+  "slug": "2026-10-29-colheita-pos-2-1-0",
+  "titulo": "Colheita pos-2.1.0: lapidar o gate-pergunta-memoria, cobertura no marcar executar e itens plantados",
+  "criado_em": "2026-10-29",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-29-colheita-pos-2-1-0.md",
+    "em": "2026-10-29"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
