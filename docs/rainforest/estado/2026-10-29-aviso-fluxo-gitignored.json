@@ -1,0 +1,32 @@
+{
+  "slug": "2026-10-29-aviso-fluxo-gitignored",
+  "titulo": "aviso-fluxo deixa passar arquivo ignorado pelo git (#623)",
+  "criado_em": "2026-10-29",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-29-aviso-fluxo-gitignored.md",
+    "em": "2026-10-29"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-29-aviso-fluxo-gitignored.md",
+    "tarefas": 2,
+    "paralelas": [],
+    "em": "2026-10-29"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
