@@ -169,7 +169,7 @@ stdin, o registro que o cliente realmente tem na tabela, o arquivo no formato
 em que ele realmente chega. A bateria continua existindo e continua rodando —
 ela só não é mais o que a tarefa promete.
 
-Três cuidados ao escrever o critério, porque contrato de interface que ninguém
+Quatro cuidados ao escrever o critério, porque contrato de interface que ninguém
 executou só falha no último portão:
 
 - **Rode a forma literal do comando ao escrever o critério.** Invocação sem os
@@ -184,6 +184,9 @@ executou só falha no último portão:
   preservado **antes** da implementação, e o teste opera sobre bytes crus com
   uma mutação real de EOL ou EOF que fique vermelha. Equivalência textual não
   cobre EOL, EOF nem codificação.
+- **Arquivo que outras sessões escrevem entra pelos ids, nunca por contagem
+  global** (`ideias.jsonl`, `sessoes.json`, banco de memória): em 2026-10-29
+  outra sessão gravou no meio do fluxo e o `verificar` reprovou entrega certa.
 
 > 2026-08-19: as 13 tarefas de um plano tinham `pronto quando:` na forma
 > "`bash <bateria>` sai 0". A entrega passou por **10 baterias verdes**, por

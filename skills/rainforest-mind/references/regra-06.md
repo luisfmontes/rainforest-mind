@@ -10,12 +10,22 @@ A triagem usa a tabela de `commands/issue.md` seção 2 e `commands/feedback.md`
 
 Defeito que **atrapalha a tarefa em curso** conserta na hora e segue: o commit é o registro, e só vira Issue o que não for consertado. Erro que não atrapalha vira Issue e segue normalmente.
 
-Isso vale **só no repo da sessão**. Achado em repo **alheio** nunca vira worktree, commit ou PR ali — por mais que atrapalhe a entrega pedida: sobe como Issue no repo dono (regra normal de triagem) mais uma `Q` numerada para o usuário, já com a recomendação — que pode ser "consertar agora" — e a decisão é dele. O peso do defeito não move a fronteira: "mas bloqueia a entrega" foi exatamente o argumento que puxou o incidente abaixo para o lado errado. A fronteira é só texto: não há hook que avise commit fora do repo da sessão; trava mecânica pediria design próprio.
+Isso vale **só no repo da sessão**. Achado em repo **alheio** nunca vira worktree, commit ou PR ali — por mais que atrapalhe a entrega pedida: sobe como Issue no repo dono (regra normal de triagem) mais uma `Q` numerada para o usuário, já com a recomendação — que pode ser "consertar agora" — e a decisão é dele. O peso do defeito não move a fronteira: "mas bloqueia a entrega" foi exatamente o argumento que puxou o incidente abaixo para o lado errado. A trava mecânica cobre só metade da fronteira: o `hooks/gate-repo-alheio.cjs` barra Write e Edit em arquivo de outro repositório git, mas commit e edição pelo shell continuam só no texto.
 
 Razão: plantio resgata tópicos depois; semente plantada é prioridade baixa. Defeito que atrapalha a tarefa atual é prioridade imediata por definição — mas prioridade não é autorização para editar o repo de outra pessoa.
 
 > **2026-09-16 (Issue #291):** sessão no repo A, pedido para gerar um relatório quinzenal. No meio, achou dois defeitos reais no gerador — mas o gerador mora num plugin de um repo vizinho, com outra sessão ativa nele. O texto da regra dizia o quê e quando ("atrapalha a tarefa em curso, conserta na hora") mas não **onde**; a leitura literal autorizou worktree, commit e teste novo no repo vizinho antes de o usuário decidir. Ele cortou no meio — "por que você tá corrigindo erro de outro repo?" — e estava certo: a regra 11 protegia o **como** (worktree isolado, base conferida, nada commitado até a decisão), mas nenhuma regra protegia a **autorização** de mexer fora do repo da sessão.
 > re-verificar: `gh issue view 291 --json title`
+
+### Repo alheio com sessão dona viva
+
+Antes de abrir a Issue no repo alheio, olhe se a sessão dona dele está viva: `sessoes.json` (o radar lê as duas config dirs) e o `ListAgents`. O `ListAgents` não cruza config dir, então ausência nele não prova sessão morta. Havendo sessão viva dona do repo, o achado vai como pedido por `SendMessage` **só a ela**, com o rascunho completo que iria na Issue. Issue fica para quando não há sessão dona viva, ou quando ela pede. A `Q` ao usuário continua valendo quando o achado bloqueia a sua entrega.
+
+Na dúvida sobre qual sessão é a dona, pergunte ao coordenador da rodada ou ao usuário. Não mande a mesma mensagem a várias sessões para ver quem responde, e não mande mensagem de confirmação nem de cortesia: cada mensagem interrompe o trabalho de quem a recebe.
+
+O caminho inverso também conta. Aviso de outra sessão que cita um design se responde **depois** de abrir o design e procurar o nome da sua sessão ou do seu repo na seção de responsabilidades. "Aguardo" ou "não é comigo" sem essa leitura é afirmar um fato que o ambiente responde (regra 16).
+
+> **2026-10-29**, três tropeços no mesmo dia, numa rodada com várias sessões em repos vizinhos. Uma Issue foi aberta no repo da API pedindo que uma rota devolvesse um número, quando a sessão que cuida dessa API estava ativa; o usuário perguntou por que abrir Issue se a outra sessão já estava ali para resolver. Na mesma rodada, o mesmo pedido foi mandado a duas sessões sem saber qual era a dona, seguido de um aviso para liberar uma delas, e ele corrigiu o excesso. E uma terceira sessão respondeu "do meu lado não faço nada até o guia sair" a um aviso cujo design, na seção de responsabilidades, a nomeava dona da parte que ela esperava; ele corrigiu: a parte era dela.
 
 ### Achado que cabe no PR aberto entra nele
 

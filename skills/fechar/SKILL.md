@@ -113,8 +113,8 @@ para o `gate-fechar-issue` conferir a evidência das Issues que o PR fecha.
 
 1. `node scripts/publicar-branch.cjs publicar` faz `fetch`, `merge-tree` contra a
    base, push e confere `HEAD == @{u}`. Última linha `PR aberto: <n>`: o PR já
-   existe, use esse número. `PR aberto: nenhum`: rode `gh pr create` com o corpo
-   abaixo. `PR aberto: n/a`: o remoto não é GitHub, o passo termina no push.
+   existe, use esse número. `PR aberto: nenhum`: rode
+   `gh pr create --title "<título>" --body-file <arquivo>` com o corpo abaixo. `PR aberto: n/a`: o remoto não é GitHub, o passo termina no push.
 2. `node scripts/publicar-branch.cjs esperar-ci --pr <n>`, sempre em background
    (Monitor ou `run_in_background`), porque as baterias levam minutos. Diga ao
    usuário de quem é a bola enquanto espera.
