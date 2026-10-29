@@ -981,7 +981,9 @@ function conferirTmpdirGravavel() {
     process.stderr.write(`nao-verificavel: TMPDIR não gravável — ${dir}\n`);
     process.exit(69);
   }
-  fs.rmSync(criada, { recursive: true, force: true });
+  // Melhor esforço: antivírus ou indexador segurando a pasta recém-criada (EBUSY/EPERM)
+  // não é motivo para derrubar a catraca; a pasta já provou o que tinha de provar.
+  try { fs.rmSync(criada, { recursive: true, force: true }); } catch { /* sobra para limparTemporariosOrfaos */ }
 }
 
 function main() {

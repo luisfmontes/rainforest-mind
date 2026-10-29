@@ -26,6 +26,7 @@
  *   P20 marcador `• Q1 ` (bullet •): exit 2
  *   P21 marcador `+ Q1 ` (bullet +): exit 2
  *   P22 `Veja o item Q1 do plano?` no meio de uma linha que começa com texto: exit 0
+ *   P24 `2026. Q1 ` (ano no começo da linha): exit 0; P24b `12. Q1 ` (item de dois dígitos): exit 2
  *
  * Os exit 0 de P5 a P9 são contrastados com o P1 do mesmo jeito: a mesma montagem, só
  * a condição muda, então um exit 0 sem o mecanismo não passa por acidente.
@@ -396,6 +397,19 @@ teste('P22 `Veja o item Q1 do plano?` no meio de linha que começa com texto: ex
   const c = cenario({ transcrito: transcritoComMarcador('Veja o item Q1 do plano?') });
   const r = rodar(c);
   assert(r.status === 0, `esperado exit 0, obteve ${r.status} (stderr: ${r.stderr})`);
+});
+
+// Achado 1 da revisão 1: linha que abre com ano ("2026. Q3 faturou mais?") não é item de lista.
+teste('P24 `2026. Q1 ` (ano, não item numerado): exit 0', () => {
+  const c = cenario({ transcrito: transcritoComMarcador('2026. Q1 Desligar o gate:') });
+  const r = rodar(c);
+  assert(r.status === 0, `esperado exit 0, obteve ${r.status} (stderr: ${r.stderr})`);
+});
+
+teste('P24b contraste: `12. Q1 ` (item numerado de dois dígitos): exit 2', () => {
+  const c = cenario({ transcrito: transcritoComMarcador('12. Q1 Desligar o gate:') });
+  const r = rodar(c);
+  assert(r.status === 2, `esperado exit 2, obteve ${r.status} (stderr: ${r.stderr})`);
 });
 
 // P23: 55 observações de OUTRO projeto casam a pergunta melhor (8 repetições: bm25 -37,7) que a única do
