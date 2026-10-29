@@ -22,28 +22,9 @@
     "em": "2026-10-28"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-28",
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "11 portaria sem tools",
-        "desde": "2026-10-28",
-        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f"
-      },
-      {
-        "agente": "executor",
-        "tarefa": "12 gate-pergunta-memoria",
-        "desde": "2026-10-28",
-        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f"
-      },
-      {
-        "agente": "executor",
-        "tarefa": "13 regex do fecho",
-        "desde": "2026-10-28",
-        "sessao": "184770db-2116-48c8-acbd-618fc0867f9f"
-      }
-    ],
+    "em_voo": [],
     "carimbos": [
       {
         "tarefa": 1,
@@ -103,10 +84,10 @@
       }
     ],
     "em": "2026-10-28",
-    "tarefas_ok": 10,
+    "tarefas_ok": 13,
     "tarefas": 13,
-    "comando": "node scripts/conferir-mutacao.cjs (tarefas 1, 7, 8 e 9, re-rodado na integracao)",
-    "saida": "catraca exit 0 nas quatro: N1-N3, G1/G2, P10 (e P12 na mutacao do banco), C10-C12 vermelhos",
+    "comando": "node scripts/conferir-mutacao.cjs (tarefas 9, 11, 12 e 13 re-rodadas na integracao da rodada 3)",
+    "saida": "catraca exit 0: N9 e N11 (T11), P14 e P1/P2/P10/P12/P16 (T12), C13 (T13), C10-C12 (T9)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -157,6 +138,21 @@
         "tarefa": 10,
         "resultado": "n/a",
         "motivo": "doc"
+      },
+      {
+        "tarefa": 11,
+        "resultado": "vermelho",
+        "fixture": "testa-portaria-fluxo-pulado.cjs N9 (e N11 na mutacao sem trilho)"
+      },
+      {
+        "tarefa": 12,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-pergunta-memoria.cjs P14"
+      },
+      {
+        "tarefa": 13,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-turno-prometido.cjs C13"
       }
     ],
     "reaberturas": 1
