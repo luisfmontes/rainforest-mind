@@ -22,8 +22,40 @@
     "em": "2026-10-29"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-10-29"
+    "status": "parcial",
+    "catraca_mutacao": "2026-10-29",
+    "tarefas_ok": 1,
+    "tarefas": 6,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "T3",
+        "desde": "2026-10-29T09:10",
+        "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "T4",
+        "desde": "2026-10-29T09:10",
+        "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "T2",
+        "desde": "2026-10-29T09:25",
+        "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0"
+      }
+    ],
+    "em": "2026-10-29",
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "d95ca02c",
+        "iteracao": 1,
+        "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0",
+        "ts": "2026-10-29T11:46:16.107Z"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
