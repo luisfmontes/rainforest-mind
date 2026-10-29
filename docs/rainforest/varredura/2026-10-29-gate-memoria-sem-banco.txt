@@ -1,0 +1,140 @@
+Data: 2026-10-29
+Termos: gate-pergunta-memoria, achadoNoBanco, soProjeto, falso positivo
+
+$ gh issue list --state all --search "gate-pergunta-memoria" --limit 200 --json number,title,state
+[{"number":430,"state":"CLOSED","title":"Fluxo pulado: escalar o aviso-fluxo para bloqueio com caminho leve declarado"},{"number":25,"state":"CLOSED","title":"A regra de branch so conhece `main`, e nao tem nocao de dono — commitei em cima de outra sessao"},{"number":51,"state":"CLOSED","title":"As tres travas de isolamento falharam na borda: retomada de agente, janela principal, e o rastro da propria esteira"}]
+
+
+$ gh issue list --state all --search "achadoNoBanco" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "soProjeto" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "falso positivo" --limit 200 --json number,title,state
+[{"number":518,"state":"CLOSED","title":"conferir-entrega: ** no arquivos: casa so um nivel de pasta"},{"number":470,"state":"CLOSED","title":"Painel 'Deixado para depois' do mod e pendentes do fluxo: duas fontes"},{"number":580,"state":"CLOSED","title":"gate-worktree: caminho por variável fora do segmento de leitura simples não é julgado (|, $(, argumento)"},{"number":362,"state":"CLOSED","title":"gate-fechar-issue barra laco sem gh quando a variavel esta sem aspas"},{"number":364,"state":"CLOSED","title":"Menores da revisao do semear-travas: aspas na mesma linha, --exige com .., --slug do varrer"},{"number":144,"state":"CLOSED","title":"O gate de publicacao le dump hexadecimal como telefone — e provar defeito de encoding exige colar bytes"},{"number":149,"state":"CLOSED","title":"A regra jid-whatsapp para em 15 digitos, e JID de GRUPO tem 18 — passou por baixo e o dado ficou no repo publico"},{"number":292,"state":"CLOSED","title":"testa-foco.sh: mutantes dos itens 9 e 13 morrem por MODULE_NOT_FOUND, nao pelo comportamento mutado"},{"number":530,"state":"CLOSED","title":"gate-worktree: três formas de cd para o principal passam a partir do worktree ({cd,X}, A=1 cd X, then cd X)"},{"number":302,"state":"CLOSED","title":"Eval de gatilho: nenhuma bateria prova que uma skill e chamada (nem que precisa existir)"},{"number":552,"state":"CLOSED","title":"gate-worktree: remoção (rm/Remove-Item), New-Object de IO e redirecionamento com variável passam"},{"number":162,"state":"CLOSED","title":"testa-versao le 127.0.0.1 do README como semver e deixa a bateria vermelha na main"},{"number":185,"state":"CLOSED","title":"gate-publicacao: hash de commit vira 'telefone', e a saída de emergência não vale no mesmo comando"},{"number":313,"state":"CLOSED","title":"Contrabarra dupla dentro da string do wrapper ainda esconde o comando dos gates"},{"number":260,"state":"CLOSED","title":"conferir-publicacao: 'token' sozinho vira credencial, e a mensagem nao mostra o trecho casado"},{"number":514,"state":"CLOSED","title":"gate-worktree barra comando só de leitura quando a linha junta 2>/dev/null com expansão de chaves {a,b}"},{"number":268,"state":"CLOSED","title":"Mensagem do gate de publicacao nao oferece o toggle do setup, so as saidas de emergencia"},{"number":82,"state":"CLOSED","title":"limpar-branches classifica toda branch de PR squashed como 'trabalho vivo' — e squash e a convencao da main"},{"number":173,"state":"CLOSED","title":"O gate de publicacao barra merge de conteudo que ja esta na main — e engole o git add da mesma chamada"},{"number":88,"state":"CLOSED","title":"gate-worktree so inspeciona Bash com verbo git: 'echo x > arquivo' escreve fora do worktree sem ser examinado"},{"number":146,"state":"CLOSED","title":"O _comum.md manda o vigia escrever direto no ERROS.md — um chamador vivo por fora da porta unica"},{"number":257,"state":"CLOSED","title":"Portaria: autorizacao de subagente exige a palavra exata e culpa o estagio quando o usuario erra a digitacao"},{"number":278,"state":"CLOSED","title":"gate-verificador-staged barra merge por arquivo que ja passou na main"},{"number":258,"state":"CLOSED","title":"gate-staging-total: bloqueia texto que cita comando git, e resolve o repo errado com -C"},{"number":2,"state":"CLOSED","title":"Briefing de dispatch nao cobre dado vivo fora do repositorio git"},{"number":165,"state":"CLOSED","title":"O gate de publicacao e cego para escrita mediada por Bash — node, sed e heredoc passam"},{"number":275,"state":"CLOSED","title":"gate-verificador-staged barra merge por conteudo que ja esta na main"},{"number":42,"state":"CLOSED","title":"A checagem 4 do conferir-entrega.cjs compara contra \"limpo\", nao contra um instantaneo — e reprova entrega por sujeira que ja estava la"},{"number":303,"state":"CLOSED","title":"Gemeo Python de conferir-entrega congelou: 21 falhas na main e o portao do CONTRIBUTING esta vermelho"},{"number":127,"state":"CLOSED","title":"gate-worktree e cego para CLI de agente externa: codex exec --yolo passa, git stash nao"},{"number":14,"state":"CLOSED","title":"limpar-branches.cjs da branch de PR mergeado por squash: classificada 'viva', nunca limpa"},{"number":174,"state":"CLOSED","title":"Nada barra \"Fecha #N\" no corpo do PR — a regra está escrita há 10 dias e o erro repetiu"},{"number":210,"state":"CLOSED","title":"Entrega vazia + --paralelo: o conjunto do agente e vazio, entao a checagem 4 nunca reprova"},{"number":253,"state":"CLOSED","title":"Gate de publicacao bloqueia repo PRIVADO citando \"repo publico\" — nao checa visibilidade"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"},{"number":21,"state":"CLOSED","title":"Criterio 'a bateria sai 0' e satisfazivel por fora, e tres instrumentos de conferencia falharam junto"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"}]
+
+
+$ gh pr list --state all --search "gate-pergunta-memoria" --limit 200 --json number,title,state
+[{"number":621,"state":"MERGED","title":"Colheita das observações: fluxo pulado, pedido de licença e pergunta que a memória responde viram trava (2.1.0)"},{"number":624,"state":"MERGED","title":"Colheita pós-2.1.0: gate-pergunta-memoria, cobertura no executar ok e preflight da catraca (2.1.1)"},{"number":600,"state":"MERGED","title":"Versão 2.0.0: apoio ao desenvolvimento, foco opcional"},{"number":188,"state":"MERGED","title":"Lote 4: instrumento que mede o codigo, e nao a maquina de quem roda"}]
+
+
+$ gh pr list --state all --search "achadoNoBanco" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "soProjeto" --limit 200 --json number,title,state
+[{"number":624,"state":"MERGED","title":"Colheita pós-2.1.0: gate-pergunta-memoria, cobertura no executar ok e preflight da catraca (2.1.1)"}]
+
+
+$ gh pr list --state all --search "falso positivo" --limit 200 --json number,title,state
+[{"number":211,"state":"MERGED","title":"conferir-versao: falso positivo na main em sincronia (regressao da #189)"},{"number":563,"state":"MERGED","title":"gate-worktree: rede de caminho do principal e pai inexistente (#552, 1.68.0)"},{"number":554,"state":"MERGED","title":"gate-worktree: {cd,X} e cmdlets de escrita do PowerShell (#530, #533)"},{"number":605,"state":"MERGED","title":"Gate do worktree: alvo com expansão, mensagens do cd - e do dinâmico (2.0.4)"},{"number":570,"state":"MERGED","title":"estado: reabrir e trava de codigo depois do verificar (#567, #529, 1.70.0)"},{"number":524,"state":"MERGED","title":"Gate: barrar matar processo por nome (#517, 1.67.0)"},{"number":469,"state":"MERGED","title":"Pendencia do fluxo so sai com destino (#449), versao 1.56.0"},{"number":535,"state":"MERGED","title":"Versao 1.67.3: gate nao barra leitura com chaves (#514), buscar por bm25"},{"number":186,"state":"MERGED","title":"R1 (frente 2) + R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao"},{"number":556,"state":"MERGED","title":"gate-worktree: palavra de comando lida como o bash (#530, 1.67.11)"},{"number":336,"state":"MERGED","title":"gate-busca-raiz: subagente nao varre o disco; perfil pede timeout"},{"number":156,"state":"MERGED","title":"Pre-publico: JID de grupo, a porta do agente, e fixtures que eram telefone de gente"},{"number":310,"state":"MERGED","title":"zerar-issues-8: palavra reservada e bash \"$t\" (#309), gemeo Python (#303), eval (#302)"},{"number":166,"state":"MERGED","title":"Gate: placeholder de usuario nao e nome de ninguem"},{"number":139,"state":"MERGED","title":"Gate de worktree: decidir escrita por token, e isentar o scratchpad da sessao"},{"number":99,"state":"MERGED","title":"Fecha #82: branch squash-mergeada SEM upstream deixa de ser 'trabalho vivo'"},{"number":69,"state":"MERGED","title":"Trava de encoding: conferir-encoding.cjs pega mojibake, BOM e CRLF em arquivo rastreado"},{"number":97,"state":"MERGED","title":"Fecha #88: o gate inspeciona Bash para escrita, nao so para verbo git"},{"number":116,"state":"MERGED","title":"Fecha #76: a janela sabe que a ferramenta falta antes de tentar"},{"number":224,"state":"MERGED","title":"Enxerta os sete mecanismos do ponytail, e fecha a fronteira que o gate de código de modelo não tinha"},{"number":141,"state":"MERGED","title":"Fluxo 9 — Portaria: admissao de subagente por manifesto"},{"number":52,"state":"MERGED","title":"Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo"},{"number":8,"state":"MERGED","title":"Regra 17 estava cega por construcao: o pid gravado era uma shell efemera"},{"number":10,"state":"MERGED","title":"Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa"},{"number":188,"state":"MERGED","title":"Lote 4: instrumento que mede o codigo, e nao a maquina de quem roda"},{"number":150,"state":"MERGED","title":"Vigias: dois mortos ha 20 dias, um backup que nunca rodou, e seis vazamentos num arquivo publico"}]
+
+
+$ git ls-remote --heads origin | grep -F "gate-pergunta-memoria"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "achadoNoBanco"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "soProjeto"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "falso positivo"
+(vazio)
+
+$ git log --all --grep="gate-pergunta-memoria" --oneline
+d871ca93 Colheita pós-2.1.0: gate-pergunta-memoria, cobertura no executar ok e preflight da catraca (2.1.1) (#624)
+00ee990b Colheita das observações: fluxo pulado, pedido de licença e pergunta que a memória responde viram trava (2.1.0) (#621)
+
+$ git log --all --grep="achadoNoBanco" --oneline
+00ee990b Colheita das observações: fluxo pulado, pedido de licença e pergunta que a memória responde viram trava (2.1.0) (#621)
+
+$ git log --all --grep="soProjeto" --oneline
+d871ca93 Colheita pós-2.1.0: gate-pergunta-memoria, cobertura no executar ok e preflight da catraca (2.1.1) (#624)
+
+$ git log --all --grep="falso positivo" --oneline
+d14bec85 estado: reabrir e trava de codigo depois do verificar (#567, #529, 1.70.0) (#570)
+038de7d8 gate-worktree: palavra de comando lida como o bash (#530, 1.67.11) (#556)
+6b276c32 Gates de repo alheio e de PR em outro repo, e livro anti-slop (1.60.2) (#497)
+0b686dad E8: plano exige contorno e casos legitimos no criterio de trava
+22ee71b0 Corrigir preparar-worktree: worktree linkado, reexecução e --exige
+0c0af687 gate-busca-raiz: depois de envoltorio, o primeiro find e o comando
+1b4cd293 versao 1.23.1: conserto do gate para bash "$VAR/caminho"
+7587444d Estado: executar fecha ok na rodada 2, com a tarefa 6 dos achados
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+8d8b1723 Gate de Issue: linha logica do heredoc e texto do corpo varrido
+69ef22bf Catraca de cobertura por fixture, versionada
+f44e652d Fechar os quatro achados da segunda rodada de revisao
+d7c9608f Revisar: cota só com exit ≠ 0 (ou evento --json); casos de falso positivo; critério T4 e nota do estado corrigidos
+454bce8f Trava contra termo que nao tem forma: lista privada fora da arvore
+aec7a49b Merge pull request #211 from luisfmontes/fluxo/conferir-versao-nao-acusa-na-main
+9543e934 Consertar B2, B4.1, C4 e nit
+fdfe3464 Fluxo: verificar ok (4/4 criterios no artefato real) + emenda de criterio
+3cd93794 Fluxo: executar ok (6a passada) — NUL fechado, setimo nao-objetivo registrado
+402347b4 Defeitos A e B do gate: NUL trunca argv, fórmula \cX errada e regex de escape incompleta
+3e166bff Rodada 9: escape ANSI-C numerico decodificado
+5b5e5974 Rodada 8: uma maquina de aspas so, e $'...' desembrulhado como as outras
+30d9105f Plano: regra de parada declarada para a trava
+40b4705a Rodada 6 do gate: $'...' entendido, e recusa ambigua que nao inventa comando
+441de8ab Conserto: falso positivo em gate-git-verificacao com quebras de linha em aspas
+7666a5e2 Revisar reprovado (3 achados) e sexto nao-objetivo registrado
+c4db8b7f Rodada 4 do gate: delimitador citado vs nao citado no heredoc
+9aaade4c Revisar reprovado na 3a rodada: o conserto do falso positivo abriu um buraco
+a5a51dda Fluxo nao-mente: executar ok — falso positivo de heredoc consertado
+54c8eabf Merge conserto do falso positivo de heredoc into fluxo/nao-mente
+a6422e04 Corrige falso positivo do gate-git-verificacao: corpo de heredoc e dado, nunca comando
+f954817b Revisar reprovado na 2a rodada: falso positivo em corpo de heredoc
+bb44c934 Merge conserto dos 2 achados do revisor into fluxo/nao-mente
+511f9919 Conserta os dois achados do revisor no gate-git-verificacao
+fa68491c Gate: placeholder de usuario nao e nome de ninguem
+5a282ae2 Gate: placeholder de usuario nao e nome de ninguem
+f91de472 Issue #146: o agente registra erro por comando, e uma trava le a prosa
+fb28aa68 Issue #146: o agente registra erro por comando, e uma trava le a prosa
+063bef0f Issue #149: a regra de JID alcanca grupo, e os fixtures deixam de ser telefone de gente
+aa138c70 Issue #149: a regra de JID alcanca grupo, e os fixtures deixam de ser telefone de gente
+b47e60d5 Vigias: JID multi-dispositivo tambem — e ali o JID E o telefone
+d73c5913 Vigias: JID multi-dispositivo tambem — e ali o JID E o telefone
+8c10b296 Vigias: o ERROS.md commitado carregava um JID de WhatsApp, num repo publico
+8d0d4909 Vigias: o ERROS.md commitado carregava um JID de WhatsApp, num repo publico
+aaecae53 Vigias: desfaz o desempate de posicao no gate OEM — era a troca errada
+31c8fd08 Vigias: desfaz o desempate de posicao no gate OEM — era a troca errada
+955a3074 Vigias: a rodada de correcoes da revisao — o vazamento, o falso positivo, o custo
+83301c7b Vigias: a rodada de correcoes da revisao — o vazamento, o falso positivo, o custo
+480b4243 Fluxo 6 T5 + os portoes deste proprio fluxo, e o falso positivo que eles acharam
+a0c6ee3c Fluxo 6 T5 + os portoes deste proprio fluxo, e o falso positivo que eles acharam
+65821514 Gate de worktree: decidir escrita por token, e isentar o scratchpad
+a461e9dc Gate de worktree: decidir escrita por token, e isentar o scratchpad
+10054d1b Fecha #82: branch squash-mergeada SEM upstream deixa de ser 'trabalho vivo' (#99)
+0c9226be Fecha #82: branch squash-mergeada SEM upstream deixa de ser 'trabalho vivo' (#99)
+d9cb884f Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79) (#85)
+9b7ee00d Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79) (#85)
+c3ab6cf1 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+62ca78d5 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+ced8dfea Trava de encoding: conferir-encoding.cjs pega mojibake, BOM e CRLF em arquivo rastreado (#69)
+0cee6e16 Trava de encoding: conferir-encoding.cjs pega mojibake, BOM e CRLF em arquivo rastreado (#69)
+40e3f3bd Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+2cc8788c Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+4754ddc2 Backstop de mutacao no revisar (#4), skill regua, e o relatorio da branch nova (#43)
+199f85fd Backstop de mutacao no revisar (#4), skill regua, e o relatorio da branch nova (#43)
+4fe42088 A limpeza que nao limpava: squash com remoto vivo, --base <ref>, e um nome de branch que virava comando (#15)
+441b2a5a A limpeza que nao limpava: squash com remoto vivo, --base <ref>, e um nome de branch que virava comando (#15)
+5e576099 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+d5261da4 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+ec2b9848 Colhe o falso positivo do gate, com a checagem no validador
+4918f967 Colhe o falso positivo do gate, com a checagem no validador
+9ec0e401 v0.44.0: o gate de worktree parava de barrar quem estava no lugar certo
+0200576c v0.44.0: o gate de worktree parava de barrar quem estava no lugar certo
+4bd13811 Gate de staging total: git add -A vira exit 2 (escrito e testado, NAO armado)
+5d4b4854 Gate de staging total: git add -A vira exit 2 (escrito e testado, NAO armado)
+
+$ cat <dados>/ideias.jsonl
+{"id":"conferir-entrega-nao-sabe-lidar-com-despacho-paralelo","titulo":"conferir-entrega.cjs da falso positivo nas checagens 4 e 5 quando a janela principal integra a tarefa irma"}
+{"id":"obs-2026-09-04-parser-de-shell-a-mao-troca-um-falso-positivo-por-outro","titulo":"Trava com parser de shell a mao: cada conserto de falso positivo cria o proximo"}
+{"id":"sandbox-pode-produzir-falso-positivo-em-ensaio-de-hook-bloqu","titulo":"Sandbox pode produzir falso positivo em ensaio de hook bloqueador"}
+{"id":"gate-pergunta-memoria-marcador-cabecalho-e-lista","titulo":"gate-pergunta-memoria: marcador Q<n> aceitar cabecalho, lista numerada e bullet"}
+{"id":"gate-pergunta-memoria-filtro-de-projeto-antes-do-corte","titulo":"gate-pergunta-memoria: filtrar o projeto atual antes do corte de 10 do banco"}
+
+

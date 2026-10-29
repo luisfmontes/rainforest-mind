@@ -1,0 +1,35 @@
+{
+  "slug": "2026-10-29-gate-memoria-sem-banco",
+  "titulo": "gate-pergunta-memoria sem o canal do banco: 11 de 11 bloqueios eram falso positivo",
+  "criado_em": "2026-10-29",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-10-29-gate-memoria-sem-banco.md",
+    "em": "2026-10-29"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-10-29-gate-memoria-sem-banco.md",
+    "tarefas": 2,
+    "paralelas": [
+      1,
+      2
+    ],
+    "em": "2026-10-29"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
