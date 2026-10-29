@@ -65,28 +65,46 @@
     "em": "2026-10-29"
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "2918fa1dd34eca3370966f94319190e208f99c92",
+      "head": "22ab4c1c52848362dacdd232816ddf3056de85ef",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a817d776a2261805c",
+        "agente_id": "a045c9f2fc4c0e7fa",
         "veredito": "ok",
         "em": "2026-10-29",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/1430d221-3e0e-4b0d-9cdd-7a92040fc1f0/subagents/agent-a817d776a2261805c.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/1430d221-3e0e-4b0d-9cdd-7a92040fc1f0/subagents/agent-a045c9f2fc4c0e7fa.jsonl"
       }
     ],
-    "achados": 3,
+    "achados": 0,
     "base": "78d9785409698dbd26ee4b98a995a05420bf057e",
-    "head": "2918fa1dd34eca3370966f94319190e208f99c92",
-    "em": "2026-10-29"
+    "head": "22ab4c1c52848362dacdd232816ddf3056de85ef",
+    "em": "2026-10-29",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a817d776a2261805c",
+            "veredito": "ok",
+            "em": "2026-10-29",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/1430d221-3e0e-4b0d-9cdd-7a92040fc1f0/subagents/agent-a817d776a2261805c.jsonl"
+          }
+        ]
+      }
+    ]
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-10-29"
+    "status": "ok",
+    "em": "2026-10-29",
+    "comando": "node hooks/testa-gate-pergunta-memoria.cjs; node hooks/testa-memoria-assunto.cjs; bash scripts/testa-versao.sh; rg (gate sem memoria.cjs, docs sem ORCAMENTO_MS/soProjeto)",
+    "saida": "ok: 23 falhou: 0 (P12 ok); 14 ok, 0 falha(s); ok: 5 falhou: 0; rg exit 1 nos tres; bateria nova contra hook de origin/main: FALHA P12",
+    "sensor_externo": "node hooks/testa-gate-pergunta-memoria.cjs",
+    "head": "22ab4c1c52848362dacdd232816ddf3056de85ef"
   },
   "fechar": {
     "status": "pendente",
