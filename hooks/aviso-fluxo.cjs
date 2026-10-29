@@ -15,11 +15,16 @@
  * O repositório é o do ARQUIVO editado, não o do cwd da sessão (emenda 1 do plano, D1/D9):
  * sessão no checkout principal editando um worktree de fluxo aberto passa.
  *
+ * Arquivo que o git ignora passa (#623): não chega a commit nem a PR, e barrá-lo só
+ * desviava a edição para o shell. Arquivo rastreado que casa com o .gitignore continua barrado.
+ *
  * Extensões de código (comparadas em minúsculas): .js .cjs .mjs .ts .tsx .jsx .py .sh .ps1 .psm1 .prw .prx .tlpp .ch .go .rs .java .cs .rb .php .sql .c .h .cpp .bat .cmd
  */
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
+const { caminhoExecutavel } = require('./lib/resolver-executavel.cjs');
 const { leveDaBranch } = require('./lib/caminho-leve.cjs');
 const { caminhoReal } = require('./lib/caminho-real.cjs');
 
@@ -27,6 +32,19 @@ const {
   EXTENSOES_CODIGO, diretorioExistente, toplevel, branchAtual, ehBranchPadraoDoRepo,
   detectarTrilho, fluXoAberto, mensagemHeadDestacado, mensagemBloqueio,
 } = require('./lib/aviso-fluxo-comum.cjs');
+
+// Sem --no-index: arquivo rastreado que casa com o .gitignore sai 1 e continua barrado,
+// porque entra no próximo commit. Erro do git (128) também barra: a trava fecha na dúvida.
+function ignoradoPeloGit(gitTop, relPath) {
+  try {
+    execFileSync(caminhoExecutavel('git'), ['-C', gitTop, 'check-ignore', '-q', '--', relPath], {
+      stdio: 'ignore',
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function main() {
   let ev;
@@ -91,6 +109,12 @@ function main() {
 
   // Critério 8: a branch tem o caminho leve declarado (D6, D7)
   if (!headDestacado && branch && leveDaBranch({ gitTop, branch })) {
+    process.exit(0);
+  }
+
+  // Critério 9: arquivo ignorado pelo git não chega ao histórico, então não há fluxo a
+  // exigir (#623). Por último, para só gastar o processo git onde ia barrar.
+  if (ignoradoPeloGit(gitTop, relPath)) {
     process.exit(0);
   }
 

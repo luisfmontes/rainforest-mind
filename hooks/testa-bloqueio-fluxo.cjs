@@ -646,6 +646,34 @@ caso('plugin em pasta com espaco: o leve impresso pelo aviso roda e libera a edi
   } finally { limparSandbox(s); limparSandbox(fora); fs.rmSync(dirCopia, { recursive: true, force: true }); }
 });
 
+// #623: o launcher local gerado por máquina, no .gitignore, não chega ao histórico.
+caso('rainforest na main sem fluxo: Edit de .ps1 listado no .gitignore passa (#623)', () => {
+  const s = criarSandbox();
+  try {
+    criarDirEstado(s);
+    fs.writeFileSync(path.join(s, '.gitignore'), 'start-bridge.ps1\naccounts/\n');
+    const raiz = escreverCodigo(s, 'start-bridge.ps1');
+    const conta = escreverCodigo(s, 'accounts/trabalho/start-bridge.ps1');
+    const r1 = passa(rodarHook(payload({ cwd: s, file: raiz }), s));
+    if (r1) return `start-bridge.ps1: ${r1}`;
+    const r2 = passa(rodarHook(payload({ cwd: s, file: conta, tool: 'Write' }), s));
+    return r2 ? `accounts/trabalho/start-bridge.ps1: ${r2}` : null;
+  } finally { limparSandbox(s); }
+});
+
+// D2 do design: rastreado entra no próximo commit, mesmo casando com o .gitignore.
+caso('rainforest na main sem fluxo: .ps1 rastreado que casa com o .gitignore continua barrado (#623)', () => {
+  const s = criarSandbox();
+  try {
+    criarDirEstado(s);
+    fs.writeFileSync(path.join(s, '.gitignore'), 'start-bridge.ps1\n');
+    const arq = escreverCodigo(s, 'start-bridge.ps1');
+    git(s, ['add', '-f', 'start-bridge.ps1']);
+    git(s, ['commit', '-q', '-m', 'rastreado']);
+    return bloqueado(rodarHook(payload({ cwd: s, file: arq }), s), ['nenhum está aberto']);
+  } finally { limparSandbox(s); }
+});
+
 // ============================================================================
 // EXECUÇÃO
 // ============================================================================
