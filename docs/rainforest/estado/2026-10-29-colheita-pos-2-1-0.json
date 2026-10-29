@@ -22,7 +22,7 @@
     "em": "2026-10-29"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-10-29",
     "tarefas_ok": 6,
     "tarefas": 6,
@@ -139,31 +139,55 @@
         "destino": "descartada",
         "motivo": "fora do D6, que cobre o plantado na abertura; seguem no livro para a colheita do projeto dono"
       }
-    ]
+    ],
+    "reaberto_por": {
+      "estagio": "verificar",
+      "data": "2026-10-29"
+    },
+    "reaberturas": 1
   },
   "revisar": {
     "status": "pendente",
     "snapshot": {
-      "head": "7cc5b0ef0eca61d745a7dcc740a0967e94bd39ed",
+      "head": "91087559f2f9e1c1d619df2ec42bfdc290a67e44",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ab46ad6bc18de3b40",
+        "agente_id": "a55377754972ebe8a",
         "veredito": "ok",
         "em": "2026-10-29",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/1430d221-3e0e-4b0d-9cdd-7a92040fc1f0/subagents/agent-ab46ad6bc18de3b40.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/1430d221-3e0e-4b0d-9cdd-7a92040fc1f0/subagents/agent-a55377754972ebe8a.jsonl"
       }
     ],
-    "achados": 3,
+    "achados": 1,
     "base": "46773615f37b2866f221843c26d064e2ee119ae3",
-    "head": "7cc5b0ef0eca61d745a7dcc740a0967e94bd39ed",
-    "em": "2026-10-29"
+    "head": "91087559f2f9e1c1d619df2ec42bfdc290a67e44",
+    "em": "2026-10-29",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ab46ad6bc18de3b40",
+            "veredito": "ok",
+            "em": "2026-10-29",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/1430d221-3e0e-4b0d-9cdd-7a92040fc1f0/subagents/agent-ab46ad6bc18de3b40.jsonl"
+          }
+        ]
+      }
+    ]
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-10-29"
+    "status": "reprovado",
+    "em": "2026-10-29",
+    "criterio": "tarefa 5: listar --tipo observacao abre com 0 plantada (observacao)",
+    "comando": "node scripts/ideias.cjs listar --tipo observacao",
+    "saida": "3 plantada (observacao): dono-declarado-no-design-alheio-e-meu, obs-2026-10-29-mensagem-em-massa-a-sessoes, pulei-protheus-plan-direto-pro-implementer (plantadas em 2026-10-29 por sessoes de protheus-inovacao e tbc-apps)",
+    "faltou": "o criterio conta o arquivo inteiro, que outras sessoes escrevem enquanto o fluxo roda; os 6 itens do D6 estao colhidos (node -e conferiu status e resultado de cada id). Emendar o criterio da tarefa 5 para os ids presentes na abertura.",
+    "tentativas": 1
   },
   "fechar": {
     "status": "pendente",
