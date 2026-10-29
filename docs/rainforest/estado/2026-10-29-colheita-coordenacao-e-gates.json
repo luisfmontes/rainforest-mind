@@ -97,20 +97,41 @@
     ]
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "b13a893101d5bfb746f3d61b03fd479dfa9f64a7",
+      "head": "075a6cd0a1d4b43f150e9a1d9b028b33ba6a9b42",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a8df4b4f505b7f265",
+        "agente_id": "a3b1dfd77bb16b72b",
         "veredito": "ok",
         "em": "2026-10-29",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/4afb8320-f076-402f-8e7d-8f71f64b7cd2/subagents/agent-a8df4b4f505b7f265.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/4afb8320-f076-402f-8e7d-8f71f64b7cd2/subagents/agent-a3b1dfd77bb16b72b.jsonl"
       }
-    ]
+    ],
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a8df4b4f505b7f265",
+            "veredito": "ok",
+            "em": "2026-10-29",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/4afb8320-f076-402f-8e7d-8f71f64b7cd2/subagents/agent-a8df4b4f505b7f265.jsonl"
+          }
+        ]
+      }
+    ],
+    "achados": 0,
+    "rodadas": 2,
+    "base": "816d5e6a3c7dc170324a7afbad5cd79e285aa48f",
+    "head": "075a6cd0a1d4b43f150e9a1d9b028b33ba6a9b42",
+    "comando": "node scripts/testa-exemplos-prescritos.cjs",
+    "saida": "== exemplos prescritos: 11 formas, 9 ok, 2 excecao, 0 falha(s) ==",
+    "em": "2026-10-29"
   },
   "verificar": {
     "status": "pendente"
@@ -146,6 +167,20 @@
       "porque": "o carimbo pertence ao fluxo cujo estado mora na RAIZ; o executor usou o cwd e a bateria (cwd em sandbox que tambem e repo) caiu de 0 para 15 falhas; os demais git do estado.cjs ja usam RAIZ",
       "estagio": "executar",
       "em": "2026-10-29T19:44:12.948Z"
+    },
+    {
+      "pergunta": "Achado preexistente da revisao 2: estado do colheita-pos-2-1-0 cita slugs de projeto de trabalho",
+      "escolha": "Nao mexer",
+      "porque": "os slugs citados passam no gate-publicacao-destino (lista privada do usuario e a fonte do que e sensivel; tbc-apps medido com exit 0 em 2026-10-29); o design deste fluxo foi anonimizado por cautela, sem mudar a regra",
+      "estagio": "revisar",
+      "em": "2026-10-29T20:20:47.679Z"
+    },
+    {
+      "pergunta": "Criterio da tarefa 4 (grep -n 'contagem global') saiu vazio no verificar",
+      "escolha": "Requebrar a linha do bullet sem mudar texto nem bytes",
+      "porque": "a quebra caia entre as duas palavras; exit vazio nao e sucesso, e a mudanca e so de espaco em branco (16370 B antes e depois, tetos verdes)",
+      "estagio": "verificar",
+      "em": "2026-10-29T20:28:19.054Z"
     }
   ]
 }
