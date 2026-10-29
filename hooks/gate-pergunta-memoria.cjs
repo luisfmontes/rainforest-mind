@@ -5,7 +5,7 @@
  * arquivo da memória do projeto já responde.
  *
  * Só os ARQUIVOS de memória contam (a pasta memory/ do repositório principal e a do
- * transcrito). O banco de observações do memoria.cjs saiu deste gate: em 11 de 11
+ * transcrito). O banco de observações saiu deste gate: em 11 de 11
  * bloqueios medidos em 2026-10-29 a observação citada não respondia a pergunta, só
  * compartilhava um termo raro (design 2026-10-29-gate-memoria-sem-banco, D2).
  *

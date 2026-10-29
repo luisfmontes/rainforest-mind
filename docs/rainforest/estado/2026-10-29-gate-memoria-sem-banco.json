@@ -21,8 +21,41 @@
     "em": "2026-10-29"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-10-29"
+    "status": "ok",
+    "catraca_mutacao": "2026-10-29",
+    "comando": "node hooks/testa-gate-pergunta-memoria.cjs (branch e worktree descartavel de origin/main com a bateria nova)",
+    "saida": "branch: ok: 23 falhou: 0; origin/main: FALHA P12 (obteve 2), ok: 22 falhou: 1",
+    "tarefas_ok": 2,
+    "tarefas": 2,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "4a71af31d0c0d83cec83b1bdf6b2d2b9f51360a3",
+        "iteracao": 1,
+        "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0",
+        "ts": "2026-10-29T14:20:42.503Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "4a71af31d0c0d83cec83b1bdf6b2d2b9f51360a3",
+        "iteracao": 1,
+        "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0",
+        "ts": "2026-10-29T14:20:42.503Z"
+      }
+    ],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "n/a",
+        "motivo": "remocao de codigo; regressao medida rodando a bateria nova contra o hook de origin/main: P12 vermelho"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "texto e versao"
+      }
+    ],
+    "em": "2026-10-29"
   },
   "revisar": {
     "status": "pendente"
