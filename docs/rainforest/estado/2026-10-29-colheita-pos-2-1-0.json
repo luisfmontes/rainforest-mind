@@ -22,7 +22,7 @@
     "em": "2026-10-29"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-29",
     "tarefas_ok": 6,
     "tarefas": 6,
@@ -97,10 +97,24 @@
         "iteracao": 2,
         "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0",
         "ts": "2026-10-29T12:39:00.939Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "d0000000",
+        "iteracao": 2,
+        "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0",
+        "ts": "2026-10-29T12:46:19.580Z"
+      },
+      {
+        "tarefa": 5,
+        "hash_base": "c5af1e04e993ef4b8096bec9960840a4b1f89cac",
+        "iteracao": 3,
+        "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0",
+        "ts": "2026-10-29T12:46:30.195Z"
       }
     ],
-    "comando": "node scripts/conferir-mutacao.cjs (rodada 2, achado 1: item numerado de volta a qualquer numero de digitos) e bash scripts/testa-conferir-mutacao.sh",
-    "saida": "mutacao exit 0 (P24 vermelho); testa-gate-pergunta-memoria ok: 27 falhou: 0; testa-conferir-mutacao ok: 215 falhou: 0",
+    "comando": "node -e (status e resultado dos 6 ids do D6) e node scripts/conferir-fluxo.cjs cobertura",
+    "saida": "6 de 6 colhidos com resultado; ok: cobertura valida - 7 decisoes, 6 tarefas",
     "mutacao": [
       {
         "tarefa": 1,
@@ -140,10 +154,6 @@
         "motivo": "fora do D6, que cobre o plantado na abertura; seguem no livro para a colheita do projeto dono"
       }
     ],
-    "reaberto_por": {
-      "estagio": "verificar",
-      "data": "2026-10-29"
-    },
     "reaberturas": 1
   },
   "revisar": {
