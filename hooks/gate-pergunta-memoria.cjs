@@ -1,15 +1,20 @@
 #!/usr/bin/env node
 // @categoria: sensor
 /**
- * Stop — barra UMA vez o turno que sobe uma pergunta `Q<n>` ao usuário quando a
- * memória do projeto (ou o banco por assunto) já responde.
+ * Stop — barra UMA vez o turno que sobe uma pergunta `Q<n>` ao usuário quando um
+ * arquivo da memória do projeto já responde.
  *
- * Protege contra: pergunta com marcador `Q<n>` que a memória do projeto ou o banco
- * por assunto já responde (o turno é barrado e a resposta da memória sai no stderr).
+ * Só os ARQUIVOS de memória contam (a pasta memory/ do repositório principal e a do
+ * transcrito). O banco de observações do memoria.cjs saiu deste gate: em 11 de 11
+ * bloqueios medidos em 2026-10-29 a observação citada não respondia a pergunta, só
+ * compartilhava um termo raro (design 2026-10-29-gate-memoria-sem-banco, D2).
+ *
+ * Protege contra: pergunta com marcador `Q<n>` que um arquivo da memória do projeto
+ * já responde (o turno é barrado e a resposta da memória sai no stderr).
  * Não protege contra: pergunta em prosa, sem `Q<n>` (o marcador é o que o gate
- * enxerga); memória que não compartilha termos com a pergunta (abaixo de
- * LIMIAR_TERMOS); gate desligado (RAINFOREST_GATE_OFF ou `gate-pergunta-memoria`
- * false na config).
+ * enxerga); pergunta que só o banco responderia (passa, exit 0); memória que não
+ * compartilha termos com a pergunta (abaixo de LIMIAR_TERMOS); gate desligado
+ * (RAINFOREST_GATE_OFF ou `gate-pergunta-memoria` false na config).
  *
  * Design D6 do plano 2026-10-28-colheita-observacoes. Anti-loop: o `stop_hook_active`
  * do próprio harness faz o segundo Stop passar livre, então o turno é barrado uma vez.
@@ -24,18 +29,11 @@ const path = require('node:path');
 
 const LIMIAR_TERMOS = 3;
 const LIMITE_PERGUNTA = 400;
-// Prazo da perna do banco, contado desde a partida do processo. A variável existe para a
-// bateria: sob carga a partida do node passa de 1500 ms e o banco é pulado (falha aberta),
-// o que tornava o P12 instável (revisão 1 e integração da tarefa 8).
-const ORCAMENTO_BANCO_MS = process.env.RFM_PERGUNTA_MEMORIA_ORCAMENTO_MS !== undefined
-  ? Number(process.env.RFM_PERGUNTA_MEMORIA_ORCAMENTO_MS)
-  : 1500;
 const JANELA_VIVA_MS = 6 * 3600 * 1000;
 // Marcador de pergunta: Q<n> no começo da linha (admite `- `, `> `, `**`, emoji, cabeçalho `#`, `• `, `+ ` e item
 // numerado `1. `/`1) ` até dois dígitos, para não ler ano como item: "2026. Q3 ...?"). Recap em prosa
 // ("Fechado: Q1 (b)") não conta.
 const RE_MARCADOR_Q = /^[ \t>*_\-#•+\p{Extended_Pictographic}\p{M}]*(?:\d{1,2}[.)][ \t*_]*)?Q(\d+)\b/gmu;
-const INICIO = Date.now();
 
 // Palavras comuns demais para contar como assunto. Já normalizadas (sem acento, minúsculas).
 const PALAVRAS_VAZIAS = new Set([
@@ -171,45 +169,6 @@ function pastasDeMemoria(transcriptPath, cwd) {
   return [...new Set(pastas)];
 }
 
-// Banco por assunto, só leitura e só dentro do orçamento. Qualquer falha = sem banco.
-function conectarBancoLeitura(cwd) {
-  if (Date.now() - INICIO > ORCAMENTO_BANCO_MS) return null;
-  try {
-    const { resolverCaminhos, abrirBancoSomenteLeitura } = require(path.join(__dirname, '..', 'scripts', 'memoria.cjs'));
-    const { caminhoDb, canonico } = resolverCaminhos(cwd);
-    if (!fs.existsSync(caminhoDb)) return null;
-    const conexao = abrirBancoSomenteLeitura(caminhoDb);
-    return conexao ? { conexao, canonico } : null;
-  } catch {
-    return null;
-  }
-}
-
-// Primeira observação do PROJETO ATUAL com texto útil que o banco acha para a pergunta. O trecho é a
-// primeira linha que não seja vazia, `---` nem cabeçalho (#); sem ela, não conta.
-// O banco grava o projeto no nome canônico, o mesmo de resolverCaminhos().canonico.
-function achadoNoBanco(banco, texto) {
-  if (Date.now() - INICIO > ORCAMENTO_BANCO_MS) return null;
-  try {
-    const { buscarPorAssunto } = require('./lib/memoria-assunto.cjs');
-    const achados = buscarPorAssunto(banco.conexao, texto, { projetoAtual: banco.canonico, max: 10, soProjeto: true });
-    for (const a of achados) {
-      if (a.projeto !== banco.canonico) continue;
-      const linha = String(a.conteudo || '').split(/\r?\n/).map((l) => l.trim())
-        .find((l) => l && !/^-{3,}\s*$/.test(l) && !/^#{1,6}\s/.test(l));
-      if (linha) return { projeto: a.projeto, linha: linha.slice(0, 160) };
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function fecharBanco(banco) {
-  if (!banco) return;
-  try { banco.conexao.close(); } catch { /* melhor esforço */ }
-}
-
 // Sessões vivas (mesmo critério da abertura: idade + PID + sem worktree de agente) que
 // estão em OUTRO repositório. Repositório é o checkout principal, como no gate de config.
 function sessoesDeOutrosRepos(raiz, cwd) {
@@ -258,21 +217,11 @@ function main() {
   const { raiz } = require('./lib/raiz.cjs').resolverRaiz({ cwd, plugin: path.resolve(__dirname, '..') });
 
   const lista = pastasDeMemoria(ev.transcript_path, cwd).flatMap((p) => memorias(p));
-  const banco = raiz ? conectarBancoLeitura(cwd) : null;
 
   const acertos = [];
-  try {
-    for (const p of perguntas(ultimo)) {
-      const m = melhorMemoria(termosDe(p.texto), lista);
-      if (m) {
-        acertos.push(`Q${p.n}: a memória tem ${m.arquivo} — ${m.resumo}`);
-        continue;
-      }
-      const b = banco ? achadoNoBanco(banco, p.texto) : null;
-      if (b) acertos.push(`Q${p.n}: o banco tem observação de ${b.projeto} — ${b.linha}`);
-    }
-  } finally {
-    fecharBanco(banco);
+  for (const p of perguntas(ultimo)) {
+    const m = melhorMemoria(termosDe(p.texto), lista);
+    if (m) acertos.push(`Q${p.n}: a memória tem ${m.arquivo} — ${m.resumo}`);
   }
 
   if (acertos.length === 0) process.exit(0);

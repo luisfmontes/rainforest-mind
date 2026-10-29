@@ -153,18 +153,6 @@ caso('FTS ausente devolve vazio sem lancar', () => {
     return buscarPorAssunto(nu, 'qualquer assunto', { projetoAtual: 'p1', jaServidos: new Set(), limiar: PERMISSIVO }).length === 0;
   } finally { nu.close(); }
 });
-caso('soProjeto: 55 linhas de p2 mais bem ranqueadas nao escondem a de p1; sem a opcao, sai p2', () => {
-  limpar();
-  // Enchimento extra: com 1056 vivas o teto de df (21) deixaria de fora os termos que 56 linhas repetem.
-  for (let i = 0; i < 2000; i++) inserir('enchimento', 'Fundo extra ' + i + '\n\nfundo' + i + ' extra' + i);
-  for (let i = 0; i < 55; i++) inserir('p2', 'Tucano outro ' + i + '\n\n' + 'tucano bico grande '.repeat(8));
-  inserir('p1', 'Tucano atual\n\ntucano bico grande');
-  const base = { projetoAtual: 'p1', jaServidos: new Set(), limiar: PERMISSIVO };
-  const com = buscarPorAssunto(db, 'tucano bico grande', { ...base, soProjeto: true });
-  const sem = buscarPorAssunto(db, 'tucano bico grande', base);
-  return com.length >= 1 && com.every((x) => x.projeto === 'p1') &&
-    sem.length > 0 && sem.every((x) => x.projeto === 'p2');
-});
 
 db.close();
 try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) { /* melhor esforço */ }

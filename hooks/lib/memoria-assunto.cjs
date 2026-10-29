@@ -43,22 +43,18 @@ function construirQueryAssunto(conexao, texto, tetoFracao = TETO_DF_FRACAO) {
   return raros.slice(0, LIMITE_TERMOS).map((x) => '"' + x.t.replace(/"/g, '""') + '"').join(' OR ');
 }
 
-// `soProjeto` restringe a consulta ao projeto atual ANTES do LIMIT (D3): sem ele, 50 linhas de outro
-// projeto com bm25 melhor escondem a do atual. Desligado, o SQL e os parâmetros são os de sempre.
-function buscarPorAssunto(conexao, texto, { projetoAtual, jaServidos = new Set(), max = 3, limiar = LIMIAR_BM25, soProjeto = false } = {}) {
+function buscarPorAssunto(conexao, texto, { projetoAtual, jaServidos = new Set(), max = 3, limiar = LIMIAR_BM25 } = {}) {
   try {
     const query = construirQueryAssunto(conexao, texto);
     if (!query) return [];
-    const filtroProjeto = soProjeto ? ' AND lower(o.projeto) = lower(?)' : '';
-    const params = soProjeto ? [query, String(projetoAtual)] : [query];
     const linhas = conexao
       .prepare(
         `SELECT o.id, o.projeto, o.conteudo, o.criada_em, bm25(observacoes_fts) AS bm25
          FROM observacoes_fts JOIN observacoes o ON o.id = observacoes_fts.rowid
-         WHERE observacoes_fts MATCH ? AND o.consolidada_em IS NULL ${filtroVivas('o.')}${filtroProjeto}
+         WHERE observacoes_fts MATCH ? AND o.consolidada_em IS NULL ${filtroVivas('o.')}
          ORDER BY bm25(observacoes_fts) LIMIT ${LIMITE_SQL}`
       )
-      .all(...params)
+      .all(query)
       .filter((l) => l.bm25 <= limiar);
     const candidatas = linhas.filter((l) => !jaServidos.has(l.id));
     const atual = String(projetoAtual).toLowerCase();

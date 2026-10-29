@@ -16,10 +16,10 @@
  *   P7 P1 sem pasta memory/: exit 0
  *   P8 P1 com .rainforest/config.json do cwd com gate-pergunta-memoria false: exit 0
  *   P9 transcript_path inexistente: exit 0
+ *   P12 banco com observação do projeto atual que casa com Q1, sem memory/: exit 0 e o stderr não cita o banco
+ *       (regressão do design 2026-10-29-gate-memoria-sem-banco, D4: o banco saiu do gate)
  *   P14 recap em prosa ("Fechado: Q1 (b), ... como fica?"), Q1 no meio da linha: exit 0
  *   P15 pergunta cujo único vocabulário comum com a memória é o do projeto (regra, fluxo...): exit 0
- *   P16 banco: observação do projeto atual que abre com `---` e cabeçalho: exit 2 com o trecho útil;
- *       a mesma observação gravada em OUTRO projeto: exit 0
  *   P17 marcador `## Q1 — ` (cabeçalho Markdown): exit 2 e Q1 no stderr
  *   P18 marcador `### **Q1** ` (cabeçalho com negrito): exit 2
  *   P19 marcador `1. **Q1** ` (item numerado): exit 2
@@ -116,7 +116,7 @@ function payload(c, extra = {}) {
 function rodar(c, extra = {}, transcriptOverride = null) {
   const p = payload(c, extra);
   if (transcriptOverride !== null) p.transcript_path = transcriptOverride;
-  const env = { ...process.env, RFM_ROOT: c.rfm, ...(c.env || {}) };
+  const env = { ...process.env, RFM_ROOT: c.rfm };
   delete env.RAINFOREST_GATE_OFF;
   delete env.CLAUDE_PROJECT_DIR;
   return spawnSync(process.execPath, [HOOK], {
@@ -260,12 +260,10 @@ teste('P11 memória com description de outro assunto e termos só no corpo: exit
 
 const { canonicoDoCaminho } = require(path.join(__dirname, '..', 'scripts', 'lib', 'projeto-canonico.cjs'));
 
-// `projeto`: de quem é a observação alvo ('atual' = o projeto do cwd, no nome canônico que o hook compara).
-function cenarioComBanco(orcamentoMs, { projeto = 'atual', conteudo = null } = {}) {
+// Banco real (criarSchema) com a observação do projeto atual, no nome canônico que o hook compara.
+function cenarioComBanco() {
   const c = cenario({ transcrito: TRANSCRITO_RESPONDE, comMemoria: false });
-  const dono = projeto === 'atual' ? canonicoDoCaminho(c.proj).canonico : projeto;
-  c.dono = dono;
-  c.env = { RFM_PERGUNTA_MEMORIA_ORCAMENTO_MS: String(orcamentoMs) };
+  const dono = canonicoDoCaminho(c.proj).canonico;
   const db = new DatabaseSync(path.join(c.rfm, 'rainforest.db'));
   criarSchema(db);
   const ins = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
@@ -277,7 +275,7 @@ function cenarioComBanco(orcamentoMs, { projeto = 'atual', conteudo = null } = {
   db.exec('COMMIT');
   ins.run(
     dono,
-    conteudo !== null ? conteudo : 'Decisao sobre desligar arquivo rainforest publicacao neste repositorio cliente\n\n' + 'desligar arquivo rainforest publicacao neste repositorio cliente '.repeat(3),
+    'Decisao sobre desligar arquivo rainforest publicacao neste repositorio cliente\n\n' + 'desligar arquivo rainforest publicacao neste repositorio cliente '.repeat(3),
     '2026-10-02T10:00:00.000Z',
     'alvo-p12',
   );
@@ -285,19 +283,13 @@ function cenarioComBanco(orcamentoMs, { projeto = 'atual', conteudo = null } = {
   return c;
 }
 
-// Prazo folgado: o P12 mede o casamento no banco, não a velocidade da máquina.
-teste('P12 banco por assunto, sem memory/: observação do projeto atual que casa com Q1 barra (exit 2) e o stderr cita o banco', () => {
-  const c = cenarioComBanco(20000);
+// Regressão do design 2026-10-29-gate-memoria-sem-banco (D4): a mesma montagem que barrava com o canal do
+// banco agora sai 0 e não cita o banco. Se alguém religar a consulta ao banco, este caso fica vermelho.
+teste('P12 banco com observação do projeto atual que casa com Q1, sem memory/: exit 0 e o stderr não cita o banco', () => {
+  const c = cenarioComBanco();
   const r = rodar(c);
-  assert(r.status === 2, `esperado exit 2, obteve ${r.status} (stderr: ${r.stderr})`);
-  assert(r.stderr.includes('Q1'), 'stderr sem Q1');
-  assert(r.stderr.includes('o banco tem observação de ' + c.dono), 'stderr sem a citação do banco');
-});
-
-// O mesmo banco com prazo zero: a perna do banco é pulada e o hook sai 0 (falha aberta, D6).
-teste('P13 o P12 com prazo do banco zero: banco pulado, exit 0', () => {
-  const r = rodar(cenarioComBanco(0));
   assert(r.status === 0, `esperado exit 0, obteve ${r.status} (stderr: ${r.stderr})`);
+  assert(!r.stderr.includes('o banco tem observação'), 'stderr cita o banco');
 });
 
 // Transcrito de um turno só, com o texto dado como último texto do assistant.
@@ -336,21 +328,6 @@ teste('P15 pergunta que só compartilha vocabulário do projeto com a memória (
   const texto = 'Q1 — Convivência com o hook atual: a regra do fluxo continua para o agente?';
   const c = cenarioMemoria({ texto, name: 'regra-do-fluxo-continua', description: 'a regra do fluxo continua para o agente' });
   const r = rodar(c);
-  assert(r.status === 0, `esperado exit 0, obteve ${r.status} (stderr: ${r.stderr})`);
-});
-
-const OBS_COM_CABECALHO = '---\n# Titulo\nTexto util da observacao sobre desligar arquivo rainforest publicacao neste repositorio cliente\n\n' +
-  'desligar arquivo rainforest publicacao neste repositorio cliente '.repeat(3);
-
-teste('P16 banco: observação do projeto atual abrindo com --- e cabeçalho: exit 2, o trecho é a primeira linha útil', () => {
-  const r = rodar(cenarioComBanco(20000, { conteudo: OBS_COM_CABECALHO }));
-  assert(r.status === 2, `esperado exit 2, obteve ${r.status} (stderr: ${r.stderr})`);
-  assert(r.stderr.includes('Texto util da observacao'), 'stderr sem o trecho útil');
-  assert(!r.stderr.includes('— ---'), 'stderr traz o --- como trecho');
-});
-
-teste('P16b a mesma observação gravada em OUTRO projeto: exit 0', () => {
-  const r = rodar(cenarioComBanco(20000, { projeto: 'outro-projeto', conteudo: OBS_COM_CABECALHO }));
   assert(r.status === 0, `esperado exit 0, obteve ${r.status} (stderr: ${r.stderr})`);
 });
 
@@ -410,37 +387,6 @@ teste('P24b contraste: `12. Q1 ` (item numerado de dois dígitos): exit 2', () =
   const c = cenario({ transcrito: transcritoComMarcador('12. Q1 Desligar o gate:') });
   const r = rodar(c);
   assert(r.status === 2, `esperado exit 2, obteve ${r.status} (stderr: ${r.stderr})`);
-});
-
-// P23: 55 observações de OUTRO projeto casam a pergunta melhor (8 repetições: bm25 -37,7) que a única do
-// atual (bm25 -36,6), e o SQL corta em 50 antes do filtro de projeto. O enchimento tem de manter o df dos
-// termos abaixo de 2% das vivas (2856 x 0,02 = 57); com 400 linhas, como no P12, a consulta nem sai.
-const OBS_ATUAL_P23 = 'Decisao sobre desligar arquivo rainforest publicacao neste repositorio cliente\n\n' +
-  'desligar arquivo rainforest publicacao neste repositorio cliente '.repeat(3);
-teste('P23 banco: 55 observações de outro projeto com bm25 melhor não escondem a do atual: exit 2 com o trecho dela', () => {
-  const c = cenario({ transcrito: TRANSCRITO_RESPONDE, comMemoria: false });
-  const dono = canonicoDoCaminho(c.proj).canonico;
-  c.env = { RFM_PERGUNTA_MEMORIA_ORCAMENTO_MS: '20000' };
-  const db = new DatabaseSync(path.join(c.rfm, 'rainforest.db'));
-  criarSchema(db);
-  const ins = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
-  db.exec('BEGIN');
-  for (let i = 0; i < 2800; i++) {
-    ins.run('projeto-enchimento', 'Registro generico ' + i + '\n\nrotina comum de trabalho numero ' + i + ' sem relevancia', '2026-10-01T10:00:00.000Z', 'f' + i);
-  }
-  db.exec('COMMIT');
-  ins.run(dono, OBS_ATUAL_P23, '2026-10-02T10:00:00.000Z', 'alvo-p23');
-  db.exec('BEGIN');
-  for (let i = 0; i < 55; i++) {
-    const base = 'desligar arquivo rainforest publicacao neste repositorio cliente ';
-    ins.run('outro-projeto', 'Decisao outra ' + i + '\n\n' + base.repeat(8), '2026-10-02T10:00:00.000Z', 'out-p23-' + i);
-  }
-  db.exec('COMMIT');
-  db.close();
-  const r = rodar(c);
-  assert(r.status === 2, `esperado exit 2, obteve ${r.status} (stderr: ${r.stderr})`);
-  assert(r.stderr.includes('Decisao sobre desligar arquivo'), 'stderr sem o trecho da observação do projeto atual');
-  assert(r.stderr.includes('o banco tem observação de ' + dono), 'stderr sem a citação do banco');
 });
 
 for (const d of tmpdirs) {
