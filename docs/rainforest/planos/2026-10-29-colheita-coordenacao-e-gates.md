@@ -26,11 +26,11 @@ mutacao:
   fixture: testa-estado.sh, caso "carimbo com hash_base que nao e commit deste repositorio recusa (D4)"
 pronto quando: com o `marcar --estagio executar --status parcial --json '{"carimbos":[{"tarefa":1,"hash_base":"d0000000"}]}'` que a janela principal roda num repositório git com o fluxo em `executar`, o `estado.cjs` sai 2 com "nao e commit deste repositorio" e não grava o carimbo; o mesmo comando com `hash_base` igual a `git rev-parse HEAD` sai 0 e grava; fora de repositório git o hash inexistente continua aceito — provado por `bash scripts/testa-estado.sh` devolvendo as linhas `ok` dos três casos e `== resultado: N ok, 0 falhas ==`, e por `bash scripts/testa-painel-fluxo.sh` saindo 0
 
-Forma prescrita para o código novo: uma função `hashEhCommit(hash)` ao lado de `ehAncestralDoHead`, com o mesmo contrato (`true`/`false`/`null`; `null` quando o cwd não é repositório ou o git falha por outro motivo — distinguir com `git rev-parse --is-inside-work-tree` antes do `git cat-file -e <hash>^{commit}`), chamada em `processarCarimbos` logo depois da checagem de formato, numa linha que case com o `de:` acima. Fixtures existentes que usam hash fictício (`abc1234`, `abc1234567890`) dentro de repositório git passam a usar hash real do sandbox; nenhum caso pode afirmar sobre o texto do fonte.
+Forma prescrita para o código novo: uma função `hashEhCommit(hash)` ao lado de `ehAncestralDoHead`, com o mesmo contrato (`true`/`false`/`null`; `null` quando a raiz do estado não é repositório ou o git falha por outro motivo — distinguir com `git rev-parse --is-inside-work-tree` antes do `git cat-file -e <hash>^{commit}`), chamada em `processarCarimbos` logo depois da checagem de formato, numa linha que case com o `de:` acima. Fixtures existentes que usam hash fictício (`abc1234`, `abc1234567890`) dentro de repositório git passam a usar hash real do sandbox; nenhum caso pode afirmar sobre o texto do fonte.
 
 ### 2. Bateria de exemplos prescritos contra o gate-fechar-issue [tipo: teste]
 atende: D6, D7, D8
-arquivos: `scripts/testa-exemplos-prescritos.cjs`, `scripts/tempos-baterias.json`
+arquivos: `scripts/testa-exemplos-prescritos.cjs`, `scripts/tempos-baterias.json`, `skills/fechar/SKILL.md`, `scripts/contrato-plugin-codex.cjs`
 depende de: nenhuma
 prova: `node scripts/testa-exemplos-prescritos.cjs`
 mutacao:
@@ -40,6 +40,8 @@ mutacao:
   bateria: `node scripts/testa-exemplos-prescritos.cjs`
   fixture: testa-exemplos-prescritos.cjs, forma extraída de skills/fechar/SKILL.md (a linha de `--base main`)
 pronto quando: com os `.md` reais de `skills/`, `skills/*/references/`, `commands/` e `agents/` no HEAD da tarefa, cada forma `gh issue|pr <create|close|merge|edit|comment|reopen> ...` entre crases ou em bloco de código vira um payload `PreToolUse` de `Bash` (stdin JSON com `tool_input.command`) passado ao processo `node hooks/gate-fechar-issue.cjs`, com `gh` stub à frente do PATH e corpo em `os.tmpdir()`; a bateria imprime uma linha por forma (arquivo:linha, comando, exit) e sai 0 quando nenhuma forma fora da lista de exceções sai 2 — provado por `node scripts/testa-exemplos-prescritos.cjs` devolvendo ao menos as formas `gh pr create`, `gh pr merge <n> --squash`, `gh pr edit <de-cima> --base main` e `gh issue create --repo` com exit 0, e saindo 1 com a mutação acima aplicada (a linha da forma mutada mostrando exit 2)
+
+Emenda de 2026-10-29, no executar: a primeira execução achou `skills/fechar/SKILL.md:116` prescrevendo `gh pr create` sem `--body-file`, que o gate barra. O texto passou a `gh pr create --title "<título>" --body-file <arquivo>` (regra 6: mesma classe, cabe no PR), e a âncora binária do corpo do `fechar` em `scripts/contrato-plugin-codex.cjs` foi re-medida, provado por `bash scripts/testa-plugin-codex.sh` saindo 0. Emenda da tarefa 1, no mesmo dia: o git da checagem roda na raiz do estado (`RAIZ`), não no cwd.
 
 Contrato da lista de exceções, dentro do próprio arquivo: cada item tem `forma`, `arquivo` e `motivo` não vazio; item sem motivo faz a bateria sair 1, e item cuja forma não aparece mais no arquivo citado também. O peso em `tempos-baterias.json` é o tempo medido de uma execução local, arredondado para cima.
 
