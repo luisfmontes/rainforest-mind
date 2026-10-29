@@ -154,6 +154,7 @@
   "scripts/testa-estado-trava.cjs": 41,
   "scripts/testa-estado.sh": 111,
   "scripts/testa-eval-gatilho.sh": 13,
+  "scripts/testa-exemplos-prescritos.cjs": 8,
   "scripts/testa-exporta-hooks-sessao-start.sh": 1,
   "scripts/testa-extrair-corpus-comandos.cjs": 0,
   "scripts/testa-faixa-dados.sh": 3,
