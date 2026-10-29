@@ -1,0 +1,66 @@
+Data: 2026-10-29
+Termos: SendMessage, sessao dona, exemplos prescritos, contagem global
+
+$ gh issue list --state all --search "SendMessage" --limit 200 --json number,title,state
+[{"number":181,"state":"CLOSED","title":"Retomar agente por SendMessage nao restaura o worktree isolado — ele passa a commitar na branch de quem despachou"},{"number":1,"state":"CLOSED","title":"Briefing nao diz o ato de entregar: subagente nomeado termina o trabalho e nao devolve (3 de 3)"}]
+
+
+$ gh issue list --state all --search "sessao dona" --limit 200 --json number,title,state
+[{"number":302,"state":"CLOSED","title":"Eval de gatilho: nenhuma bateria prova que uma skill e chamada (nem que precisa existir)"},{"number":514,"state":"CLOSED","title":"gate-worktree barra comando só de leitura quando a linha junta 2>/dev/null com expansão de chaves {a,b}"},{"number":25,"state":"CLOSED","title":"A regra de branch so conhece `main`, e nao tem nocao de dono — commitei em cima de outra sessao"}]
+
+
+$ gh issue list --state all --search "exemplos prescritos" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "contagem global" --limit 200 --json number,title,state
+[{"number":2,"state":"CLOSED","title":"Briefing de dispatch nao cobre dado vivo fora do repositorio git"}]
+
+
+$ gh pr list --state all --search "SendMessage" --limit 200 --json number,title,state
+[{"number":365,"state":"MERGED","title":"Seis travas semeadas do historico (1.32.0)"},{"number":188,"state":"MERGED","title":"Lote 4: instrumento que mede o codigo, e nao a maquina de quem roda"},{"number":186,"state":"MERGED","title":"R1 (frente 2) + R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao"}]
+
+
+$ gh pr list --state all --search "sessao dona" --limit 200 --json number,title,state
+[{"number":420,"state":"MERGED","title":"Gate de agente em voo so barra a sessao que despachou"},{"number":31,"state":"MERGED","title":"\"Nao e a main\" nao prova que a branch e sua (#25)"},{"number":56,"state":"MERGED","title":"Fecha a #38: a regra 11 prescreve worktree, e o radar marca a janela co-locada"}]
+
+
+$ gh pr list --state all --search "exemplos prescritos" --limit 200 --json number,title,state
+[{"number":624,"state":"MERGED","title":"Colheita pós-2.1.0: gate-pergunta-memoria, cobertura no executar ok e preflight da catraca (2.1.1)"}]
+
+
+$ gh pr list --state all --search "contagem global" --limit 200 --json number,title,state
+[]
+
+
+$ git ls-remote --heads origin | grep -F "SendMessage"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "sessao dona"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "exemplos prescritos"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "contagem global"
+(vazio)
+
+$ git log --all --grep="SendMessage" --oneline
+da94151c gate-turno-prometido: normalizacao de texto e aceitacao de vigias/despachos ampliados
+3d03436a Regra 11: conferência de base sem envelhecimento, retomada só para leitura
+278622d6 O nucleo avisa que agente nomeado nao entrega sozinho, e a 0.51.0 sai
+e21670e5 O nucleo avisa que agente nomeado nao entrega sozinho, e a 0.51.0 sai
+
+$ git log --all --grep="sessao dona" --oneline
+21f24271 Versao 1.44.1: gate de agente em voo so barra a sessao dona
+
+$ git log --all --grep="exemplos prescritos" --oneline
+(vazio)
+
+$ git log --all --grep="contagem global" --oneline
+d871ca93 Colheita pós-2.1.0: gate-pergunta-memoria, cobertura no executar ok e preflight da catraca (2.1.1) (#624)
+
+$ cat <dados>/ideias.jsonl
+{"id":"issue-com-sessao-dona-viva","titulo":"Issue aberta quando a sessao dona estava viva"}
+
+
