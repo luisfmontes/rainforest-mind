@@ -21,10 +21,10 @@
     "em": "2026-10-29"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-10-29",
-    "comando": "node hooks/testa-gate-pergunta-memoria.cjs (branch e worktree descartavel de origin/main com a bateria nova)",
-    "saida": "branch: ok: 23 falhou: 0; origin/main: FALHA P12 (obteve 2), ok: 22 falhou: 1",
+    "comando": "bash hooks/testa-config.sh; bash scripts/testa-setup.sh; node hooks/testa-gate-pergunta-memoria.cjs",
+    "saida": "74 ok, 0 falha(s); 84 ok, 0 falha(s); ok: 23 falhou: 0",
     "tarefas_ok": 2,
     "tarefas": 2,
     "carimbos": [
@@ -41,6 +41,13 @@
         "iteracao": 1,
         "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0",
         "ts": "2026-10-29T14:20:42.503Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "3b30dbf964e98c8e049db8ec96ae2c8f4c8aa258",
+        "iteracao": 2,
+        "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0",
+        "ts": "2026-10-29T14:25:08.583Z"
       }
     ],
     "mutacao": [
