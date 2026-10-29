@@ -2078,10 +2078,10 @@ function ehAncestralDoHead(hash) {
   return null; // fatal (nao e repo, hash desconhecido, etc.) — nao avisar
 }
 
-/** D4: `true` quando `hash` resolve a commit deste repositorio; `false` quando o
- *  a raiz do estado (RAIZ) e um repositorio e o hash nao resolve a commit nele
- *  (inexistente, ou objeto que nao e commit); `null` quando a RAIZ nao e repositorio git ou o git nao
- *  chegou a responder — fora de repositorio a checagem nao roda, como em
+/** D4: `true` quando `hash` resolve a commit do repositorio da raiz do estado
+ *  (RAIZ); `false` quando a RAIZ e um repositorio e o hash nao resolve a commit
+ *  nele (inexistente, ou objeto que nao e commit); `null` quando a RAIZ nao e
+ *  repositorio git ou o git nao chegou a responder — fora de repositorio a checagem nao roda, como em
  *  `ehAncestralDoHead`. */
 function hashEhCommit(hash) {
   let dentro;

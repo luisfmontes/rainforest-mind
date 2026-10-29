@@ -1813,8 +1813,9 @@ unset RFM_ESTADO_ROOT
 echo
 echo "== 25b. carimbo de hash_base que nao e commit do repositorio (D4) =="
 # D4 (estado.cjs:hashEhCommit): carimbo cujo hash_base nao resolve a commit do
-# repositorio do cwd e recusado antes de gravar. Cada chamada roda com o cwd na
-# raiz indicada e RFM_ESTADO_ROOT na mesma raiz (variavel so no subshell, nao vaza).
+# repositorio da raiz do estado (RFM_ESTADO_ROOT) e recusado antes de gravar. Aqui
+# cwd e raiz coincidem; o que separa os dois sao as secoes 24 e #312, que rodam
+# com o cwd em $SBP (outro repositorio) e a raiz em outro lugar.
 d4() { local r="$1"; shift; (cd "$r" && RFM_ESTADO_ROOT="$r" node "$ESTADO_ABS" "$@"); }
 
 # Caso (a): dentro de repo git (o da secao 24), hash d0000000 nao existe -> exit 2,

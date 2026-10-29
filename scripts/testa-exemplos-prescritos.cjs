@@ -213,7 +213,13 @@ function main() {
       const exit = rodarNoGate(comando, env, dirSandbox);
       const excetuada = EXCECOES.find((e) => e.arquivo === f.arquivo && e.forma === f.forma);
       let marca = '';
-      if (exit === 0) {
+      if (exit === 0 && excetuada) {
+        // Controle positivo: a forma da lista existe porque o gate a barra.
+        // Saindo 0, o gate esta desligado (config do usuario) ou falhou aberto,
+        // e o verde das outras formas deixaria de medir alguma coisa.
+        falhas.push(`excecao que o gate nao barrou (gate desligado ou lista velha): ${f.arquivo}:${f.linha} ${comando}`);
+        marca = ' [FALHA]';
+      } else if (exit === 0) {
         ok++;
       } else if (exit === 2 && excetuada && excetuada.motivo && excetuada.motivo.trim()) {
         excecao++;
@@ -227,6 +233,11 @@ function main() {
       }
       console.log(`${f.arquivo}:${f.linha} | ${comando} | ${exit}${marca}`);
     }
+    // Controle fixo, independente da lista: sem ele, uma lista vazia com o gate
+    // desligado deixaria todas as formas verdes.
+    const controle = rodarNoGate('gh issue close 1', env, dirSandbox);
+    console.log(`controle | gh issue close 1 | ${controle}`);
+    if (controle !== 2) falhas.push(`controle: gh issue close 1 deveria sair 2 (gate barrando), saiu ${controle}`);
   } finally {
     fs.rmSync(dirSandbox, { recursive: true, force: true });
   }
