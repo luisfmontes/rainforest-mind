@@ -55,10 +55,32 @@
     "em": "2026-10-29"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "f35c06442d31b87bfa0c132dff53fd4ee704617a",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a7000daa21d080469",
+        "veredito": "ok",
+        "em": "2026-10-29",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/1430d221-3e0e-4b0d-9cdd-7a92040fc1f0/subagents/agent-a7000daa21d080469.jsonl"
+      }
+    ],
+    "achados": 0,
+    "base": "e74626e754f9d029085189c5a09ff2678ec3eb6c",
+    "head": "f35c06442d31b87bfa0c132dff53fd4ee704617a",
+    "em": "2026-10-29"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node hooks/testa-bloqueio-fluxo.cjs; bash scripts/testa-versao.sh",
+    "saida": "ok: Edit de .ps1 listado no .gitignore passa (#623); ok: .ps1 rastreado que casa com o .gitignore continua barrado (#623); ok: 37 falhou: 0 skipped: 0; testa-versao ok: 5 falhou: 0; grep o Edit ja o barra = 0; grep ignorado pelo git README = 1",
+    "sensor_externo": "node hooks/testa-bloqueio-fluxo.cjs",
+    "em": "2026-10-29",
+    "head": "f35c06442d31b87bfa0c132dff53fd4ee704617a"
   },
   "fechar": {
     "status": "pendente"
