@@ -1811,6 +1811,59 @@ fi
 unset RFM_ESTADO_ROOT
 
 echo
+echo "== 25b. carimbo de hash_base que nao e commit do repositorio (D4) =="
+# D4 (estado.cjs:hashEhCommit): carimbo cujo hash_base nao resolve a commit do
+# repositorio do cwd e recusado antes de gravar. Cada chamada roda com o cwd na
+# raiz indicada e RFM_ESTADO_ROOT na mesma raiz (variavel so no subshell, nao vaza).
+d4() { local r="$1"; shift; (cd "$r" && RFM_ESTADO_ROOT="$r" node "$ESTADO_ABS" "$@"); }
+
+# Caso (a): dentro de repo git (o da secao 24), hash d0000000 nao existe -> exit 2,
+# mensagem com "nao e commit deste repositorio", arquivo do fluxo intacto.
+d4 "$SBP/carimbo" iniciar --slug carim-d4 >/dev/null 2>&1
+d4 "$SBP/carimbo" marcar --slug carim-d4 --estagio design --status aprovado >/dev/null 2>&1
+d4 "$SBP/carimbo" marcar --slug carim-d4 --estagio plano --status ok >/dev/null 2>&1
+ARQ_D4="$SBP/carimbo/docs/rainforest/estado/carim-d4.json"
+ANTES_D4=$(cat "$ARQ_D4")
+msg_d4=$(d4 "$SBP/carimbo" marcar --slug carim-d4 --estagio executar --status parcial --json '{"carimbos":[{"tarefa":1,"hash_base":"d0000000"}]}' 2>&1)
+COD_D4=$?
+DEPOIS_D4=$(cat "$ARQ_D4")
+echo "  stderr da recusa D4: $msg_d4"
+if [ "$COD_D4" = "2" ] && echo "$msg_d4" | grep -q "nao e commit deste repositorio" && [ "$ANTES_D4" = "$DEPOIS_D4" ]; then
+  ok=$((ok+1)); echo "  ok   carimbo com hash_base que nao e commit deste repositorio recusa (D4)"
+else
+  falhou=$((falhou+1)); echo "  FALHA carimbo d0000000 dentro de repo: exit=$COD_D4, msg='$msg_d4'"
+fi
+
+# Caso (b): o mesmo comando com git rev-parse HEAD do repo (commit real) -> exit 0 e gravado.
+HEAD_D4=$(cd "$SBP/carimbo" && git rev-parse HEAD)
+d4 "$SBP/carimbo" marcar --slug carim-d4 --estagio executar --status parcial --json "{\"carimbos\":[{\"tarefa\":1,\"hash_base\":\"$HEAD_D4\"}]}" >/dev/null 2>&1
+COD_D4B=$?
+if [ "$COD_D4B" = "0" ] && grep -q "$HEAD_D4" "$ARQ_D4"; then
+  ok=$((ok+1)); echo "  ok   carimbo com hash real do repositorio (git rev-parse HEAD) grava (D4)"
+else
+  falhou=$((falhou+1)); echo "  FALHA carimbo com hash real: exit=$COD_D4B, gravado=$(grep -c "$HEAD_D4" "$ARQ_D4")"
+fi
+
+# Caso (c): fora de repo git (a caixa nao e repositorio), o mesmo hash inexistente
+# continua aceito: nao ha o que conferir, e a checagem nao roda.
+# Diretorio proprio do mktemp: $SBP e repositorio git, entao subpasta dele nao serve.
+SEM_GIT_D4=$(mktemp -d)
+if (cd "$SEM_GIT_D4" && git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
+  echo "  aviso: $SEM_GIT_D4 esta dentro de um repositorio git; o caso (c) nao mede fora de repo"
+fi
+d4 "$SEM_GIT_D4" iniciar --slug carim-d4c >/dev/null 2>&1
+d4 "$SEM_GIT_D4" marcar --slug carim-d4c --estagio design --status aprovado >/dev/null 2>&1
+d4 "$SEM_GIT_D4" marcar --slug carim-d4c --estagio plano --status ok >/dev/null 2>&1
+d4 "$SEM_GIT_D4" marcar --slug carim-d4c --estagio executar --status parcial --json '{"carimbos":[{"tarefa":1,"hash_base":"d0000000"}]}' >/dev/null 2>&1
+COD_D4C=$?
+if [ "$COD_D4C" = "0" ]; then
+  ok=$((ok+1)); echo "  ok   carimbo com hash inexistente fora de repositorio git continua aceito (D4)"
+else
+  falhou=$((falhou+1)); echo "  FALHA hash inexistente fora de repo deveria ser aceito: exit=$COD_D4C"
+fi
+rm -rf "$SEM_GIT_D4"
+
+echo
 echo "== 26. D28: marcar respeita ordem e valida carimbo =="
 export RFM_ESTADO_ROOT="$SBP"
 
@@ -1878,8 +1931,10 @@ $E iniciar --slug d28b2 >/dev/null
 $E marcar --slug d28b2 --estagio design --status aprovado >/dev/null
 $E marcar --slug d28b2 --estagio plano --status ok >/dev/null
 $E exigir --slug d28b2 --estagio executar >/dev/null
+# D4: dentro de repositorio o hash_base tem de ser commit real (estado.cjs:hashEhCommit).
+HASH_REAL_D28B2=$(cd "${RFM_ESTADO_ROOT:-${CLAUDE_PROJECT_DIR:-$PWD}}" && git rev-parse HEAD)
 esperado "carimbo tarefa 99 sem tarefas gravado: exit 0" 0 \
-  $E marcar --slug d28b2 --estagio executar --status parcial --json '{"carimbos":[{"tarefa":99,"hash_base":"abc1234567890"}]}' 2>/dev/null
+  $E marcar --slug d28b2 --estagio executar --status parcial --json "{\"carimbos\":[{\"tarefa\":99,\"hash_base\":\"$HASH_REAL_D28B2\"}]}" 2>/dev/null
 
 # Caso (c): marcar revisar parcial com executar pendente -> exit 2
 $E iniciar --slug d28c >/dev/null
@@ -2493,7 +2548,7 @@ unset RFM_ESTADO_ROOT
 echo
 echo "== (#312) carimbo de tarefa acrescentada por emenda =="
 mkdir -p "$SBP/plano-arquivo"
-(cd "$SBP/plano-arquivo" && git init -q && git config user.email t@t && git config user.name T)
+(cd "$SBP/plano-arquivo" && git init -q && git config user.email t@t && git config user.name T && git commit -q --allow-empty -m inicial)
 export RFM_ESTADO_ROOT="$SBP/plano-arquivo"
 
 # Criar arquivo de plano com tarefas 1 a 8
@@ -2545,7 +2600,9 @@ fs.writeFileSync("plano-arquivo/docs/rainforest/estado/teste-312.json", JSON.str
 '
 
 # Caso 1: Carimbo da tarefa 8 GRAVA (o maior número do arquivo)
-msg1=$($ETR312 marcar --slug teste-312 --estagio executar --status parcial --json "{\"carimbos\":[{\"tarefa\":8,\"hash_base\":\"abc1234\"}]}" 2>&1)
+# D4: dentro de repositorio o hash_base tem de ser commit real (estado.cjs:hashEhCommit).
+HASH_REAL_312=$(cd "${RFM_ESTADO_ROOT:-${CLAUDE_PROJECT_DIR:-$PWD}}" && git rev-parse HEAD)
+msg1=$($ETR312 marcar --slug teste-312 --estagio executar --status parcial --json "{\"carimbos\":[{\"tarefa\":8,\"hash_base\":\"$HASH_REAL_312\"}]}" 2>&1)
 cod1=$?
 if [ "$cod1" = "0" ]; then
   ok=$((ok+1)); echo "  ok   tarefa 8 (max do arquivo): carimbo grava (exit 0)"
@@ -2565,7 +2622,7 @@ fi
 # Caso 3: Sem arquivo, carimbo 7 recusa com 1..6 (do plano.tarefas)
 # Remover o arquivo do plano
 rm "$SBP/plano-arquivo/docs/rainforest/planos/teste-312.md"
-msg3=$($ETR312 marcar --slug teste-312 --estagio executar --status parcial --json "{\"carimbos\":[{\"tarefa\":7,\"hash_base\":\"abc1234\"}]}" 2>&1)
+msg3=$($ETR312 marcar --slug teste-312 --estagio executar --status parcial --json "{\"carimbos\":[{\"tarefa\":7,\"hash_base\":\"$HASH_REAL_312\"}]}" 2>&1)
 cod3=$?
 if [ "$cod3" = "2" ] && printf '%s' "$msg3" | grep -q "1..6"; then
   ok=$((ok+1)); echo "  ok   sem arquivo: carimbo 7 recusa com 1..6 (do plano.tarefas)"

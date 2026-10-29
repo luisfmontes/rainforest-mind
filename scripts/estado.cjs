@@ -2034,6 +2034,9 @@ function processarCarimbos(estagio, blocoAnterior, extra, estado, slug) {
     if (typeof hash !== 'string' || !/^[0-9a-f]{7,}$/i.test(hash)) {
       return `RECUSADO: ${onde} (tarefa ${tarefa}) precisa de 'hash_base' com 7 ou mais caracteres hexadecimais.\n${forma}`;
     }
+    if (hashEhCommit(hash) === false) {
+      return `RECUSADO: ${onde} (tarefa ${tarefa}): hash_base ${hash} nao e commit deste repositorio — use git rev-parse.`;
+    }
     const iteracao = 1 + acumulado.filter((c) => c && c.tarefa === tarefa).length;
     acumulado.push({ tarefa, hash_base: hash, iteracao, sessao, ts });
   }
@@ -2073,6 +2076,37 @@ function ehAncestralDoHead(hash) {
   if (r.status === 0) return true;
   if (r.status === 1) return false;
   return null; // fatal (nao e repo, hash desconhecido, etc.) — nao avisar
+}
+
+/** D4: `true` quando `hash` resolve a commit deste repositorio; `false` quando o
+ *  a raiz do estado (RAIZ) e um repositorio e o hash nao resolve a commit nele
+ *  (inexistente, ou objeto que nao e commit); `null` quando a RAIZ nao e repositorio git ou o git nao
+ *  chegou a responder — fora de repositorio a checagem nao roda, como em
+ *  `ehAncestralDoHead`. */
+function hashEhCommit(hash) {
+  let dentro;
+  try {
+    dentro = spawnSync(caminhoExecutavel('git'), ['rev-parse', '--is-inside-work-tree'], {
+      cwd: RAIZ,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+  } catch (_) {
+    return null;
+  }
+  if (!dentro || dentro.error || dentro.status !== 0 || dentro.stdout.trim() !== 'true') return null;
+
+  let r;
+  try {
+    r = spawnSync(caminhoExecutavel('git'), ['cat-file', '-e', `${hash}^{commit}`], {
+      cwd: RAIZ,
+      stdio: 'ignore',
+    });
+  } catch (_) {
+    return null;
+  }
+  if (!r || r.error) return null;
+  return r.status === 0;
 }
 
 /** Roda no `proximo` e no `ler`: um aviso em stderr por tarefa cujo carimbo
