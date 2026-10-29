@@ -10,6 +10,15 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.1.1 — 2026-10-29
+
+Correções nas travas da 2.1.0 e na catraca, colhidas do que a revisão e o uso deixaram plantado. Nenhuma trava nova. Desenho em `docs/rainforest/design/2026-10-29-colheita-pos-2-1-0.md`.
+
+- **`gate-pergunta-memoria` reconhece mais formas de `Q<n>` (D2).** Cabeçalho (`## Q1 —`), item numerado (`1. **Q1**`) e os bullets `•` e `+` agora são conferidos; antes a pergunta nessas formas subia sem conferência. `Q<n>` no meio da linha continua fora.
+- **`gate-pergunta-memoria` não perde a observação do projeto atual (D3).** O filtro de projeto entrou na consulta ao banco, antes do corte de 50 linhas; antes, observações de outros projetos mais parecidas com a pergunta escondiam a do projeto atual. O hook de prompt, que mostra outros projetos de propósito, não muda.
+- **`executar ok` roda a cobertura do plano (D4).** Emenda de plano feita durante o executar que deixa um bloco ilegível agora recusa o `ok`, em vez de aparecer só no `verificar`.
+- **Catraca: pasta temporária não gravável é ambiente (D5).** `conferir-mutacao.cjs` confere a pasta temporária antes do baseline e sai `nao-verificavel` (exit 69), em vez de quebrar no meio e parecer vermelho.
+
 ## 2.1.0 — 2026-10-28
 
 Três travas saídas das 120 observações de outubro, que se concentravam em três erros repetidos apesar da regra escrita. Desenho em `docs/rainforest/design/2026-10-28-colheita-observacoes.md`.
