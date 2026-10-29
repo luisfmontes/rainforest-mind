@@ -398,6 +398,37 @@ teste('P22 `Veja o item Q1 do plano?` no meio de linha que começa com texto: ex
   assert(r.status === 0, `esperado exit 0, obteve ${r.status} (stderr: ${r.stderr})`);
 });
 
+// P23: 55 observações de OUTRO projeto casam a pergunta melhor (8 repetições: bm25 -37,7) que a única do
+// atual (bm25 -36,6), e o SQL corta em 50 antes do filtro de projeto. O enchimento tem de manter o df dos
+// termos abaixo de 2% das vivas (2856 x 0,02 = 57); com 400 linhas, como no P12, a consulta nem sai.
+const OBS_ATUAL_P23 = 'Decisao sobre desligar arquivo rainforest publicacao neste repositorio cliente\n\n' +
+  'desligar arquivo rainforest publicacao neste repositorio cliente '.repeat(3);
+teste('P23 banco: 55 observações de outro projeto com bm25 melhor não escondem a do atual: exit 2 com o trecho dela', () => {
+  const c = cenario({ transcrito: TRANSCRITO_RESPONDE, comMemoria: false });
+  const dono = canonicoDoCaminho(c.proj).canonico;
+  c.env = { RFM_PERGUNTA_MEMORIA_ORCAMENTO_MS: '20000' };
+  const db = new DatabaseSync(path.join(c.rfm, 'rainforest.db'));
+  criarSchema(db);
+  const ins = db.prepare('INSERT INTO observacoes (projeto, conteudo, criada_em, origem) VALUES (?, ?, ?, ?)');
+  db.exec('BEGIN');
+  for (let i = 0; i < 2800; i++) {
+    ins.run('projeto-enchimento', 'Registro generico ' + i + '\n\nrotina comum de trabalho numero ' + i + ' sem relevancia', '2026-10-01T10:00:00.000Z', 'f' + i);
+  }
+  db.exec('COMMIT');
+  ins.run(dono, OBS_ATUAL_P23, '2026-10-02T10:00:00.000Z', 'alvo-p23');
+  db.exec('BEGIN');
+  for (let i = 0; i < 55; i++) {
+    const base = 'desligar arquivo rainforest publicacao neste repositorio cliente ';
+    ins.run('outro-projeto', 'Decisao outra ' + i + '\n\n' + base.repeat(8), '2026-10-02T10:00:00.000Z', 'out-p23-' + i);
+  }
+  db.exec('COMMIT');
+  db.close();
+  const r = rodar(c);
+  assert(r.status === 2, `esperado exit 2, obteve ${r.status} (stderr: ${r.stderr})`);
+  assert(r.stderr.includes('Decisao sobre desligar arquivo'), 'stderr sem o trecho da observação do projeto atual');
+  assert(r.stderr.includes('o banco tem observação de ' + dono), 'stderr sem a citação do banco');
+});
+
 for (const d of tmpdirs) {
   try { fs.rmSync(d, { recursive: true, force: true }); } catch { /* melhor esforço */ }
 }

@@ -191,7 +191,7 @@ function achadoNoBanco(banco, texto) {
   if (Date.now() - INICIO > ORCAMENTO_BANCO_MS) return null;
   try {
     const { buscarPorAssunto } = require('./lib/memoria-assunto.cjs');
-    const achados = buscarPorAssunto(banco.conexao, texto, { projetoAtual: banco.canonico, max: 10 });
+    const achados = buscarPorAssunto(banco.conexao, texto, { projetoAtual: banco.canonico, max: 10, soProjeto: true });
     for (const a of achados) {
       if (a.projeto !== banco.canonico) continue;
       const linha = String(a.conteudo || '').split(/\r?\n/).map((l) => l.trim())
