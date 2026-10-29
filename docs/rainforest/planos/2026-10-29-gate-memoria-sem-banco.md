@@ -24,8 +24,12 @@ pronto quando: com um banco real do `memoria.cjs` (schema de `criarSchema`) cont
 
 ### 2. Documentação e versão 2.1.2 [tipo: docs]
 atende: D1, D5
-arquivos: `README.md`, `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `docs/travas-mecanicas.md`
+arquivos: `README.md`, `CHANGELOG.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `docs/travas-mecanicas.md`, `hooks/lib/config.cjs`
 depende de: nenhuma
 mutacao: n/a
   motivo: texto e versão; a falsificação é a coerência com o design e com a interface real
 pronto quando: com o código da tarefa 1, o README e `docs/travas-mecanicas.md` deixam de dizer que o gate consulta o banco do `memoria.cjs` (nem prazo, nem filtro de projeto, nem `RFM_PERGUNTA_MEMORIA_ORCAMENTO_MS`), dizem que só os arquivos de memória do repositório principal contam e por quê (D2), e o CHANGELOG ganha a seção `2.1.2` com a medição (11 de 11). A versão sobe para 2.1.2 nos dois `plugin.json` e no selo do README. Provado por `bash scripts/testa-versao.sh` com `falhou: 0`, por `rg -n "ORCAMENTO_MS|soProjeto|antes do corte de 50|só com observações do projeto atual" README.md docs/travas-mecanicas.md` sem nenhuma linha (o texto pode citar o banco só para dizer que ele não é consultado), e pela leitura, no revisar, de cada frase nova contra o código.
+
+## Rodada 2 (revisão 1 aprovada com achado [baixa], 2026-10-29)
+
+A descrição da chave `gate-pergunta-memoria` em `hooks/lib/config.cjs` ainda citava o banco, e o `setup` a imprime em "O QUE ESTA LIGADO". A tarefa 2 passou a incluir o arquivo, e a descrição fala só do arquivo de memória. O "Desde a 2.1.1" removido do README (achado 2) é exigido pela `testa-versao`, que recusa outra versão no README além da atual depois do bump.

@@ -89,7 +89,7 @@ const CHAVES = {
   'gate-pergunta-memoria': {
     tipo: 'boolean',
     padrao: true,
-    descricao: 'barra uma vez o turno que sobe pergunta Q<n> que a memória do projeto ou o banco já responde',
+    descricao: 'barra uma vez o turno que sobe pergunta Q<n> que um arquivo da memória do projeto já responde',
     entrevista: null,
   },
   'gate-verificador-staged': {
