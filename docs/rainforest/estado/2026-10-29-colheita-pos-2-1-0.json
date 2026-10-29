@@ -24,25 +24,13 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-10-29",
-    "tarefas_ok": 1,
+    "tarefas_ok": 3,
     "tarefas": 6,
     "em_voo": [
       {
         "agente": "executor",
         "tarefa": "T3",
         "desde": "2026-10-29T09:10",
-        "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0"
-      },
-      {
-        "agente": "executor",
-        "tarefa": "T4",
-        "desde": "2026-10-29T09:10",
-        "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0"
-      },
-      {
-        "agente": "executor",
-        "tarefa": "T2",
-        "desde": "2026-10-29T09:25",
         "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0"
       }
     ],
@@ -54,6 +42,27 @@
         "iteracao": 1,
         "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0",
         "ts": "2026-10-29T11:46:16.107Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "d95ca02c",
+        "iteracao": 2,
+        "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0",
+        "ts": "2026-10-29T11:58:55.043Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "26011958",
+        "iteracao": 1,
+        "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0",
+        "ts": "2026-10-29T11:58:55.043Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "d95ca02c",
+        "iteracao": 1,
+        "sessao": "1430d221-3e0e-4b0d-9cdd-7a92040fc1f0",
+        "ts": "2026-10-29T11:58:55.043Z"
       }
     ]
   },
