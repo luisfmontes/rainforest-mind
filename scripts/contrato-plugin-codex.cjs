@@ -32,7 +32,8 @@ const DOCUMENTOS_DO_FLUXO = new Set([
 // certo e sempre o da main, e um vermelho aqui significa ou corpo alterado por
 // engano, ou base velha depois que a main andou.
 const ANCORA_CORPOS_SKILLS = {
-  // fechar re-medido em 2026-10-29: o passo 1 prescreve `gh pr create --title --body-file`,
+  // fechar re-medido em 2026-10-30: a secao `concluido` foi para references/concluido.md
+  // (folga no teto de 16 KB, 2.2.2). Antes, em 2026-10-29: o passo 1 prescreve `gh pr create --title --body-file`,
   // forma que o gate-fechar-issue deixa passar (testa-exemplos-prescritos, 2.2.0). Antes,
   // em 2026-10-28: o exit `8` passou a se medir pelos workflows do
   // checkout (#591, 2.0.5). Antes, em 2026-10-21: linha do exit `8` (repositorio sem CI) na
@@ -44,7 +45,7 @@ const ANCORA_CORPOS_SKILLS = {
   // o destino padrao `resolvida`. Antes, no mesmo dia: a Issue #449 acrescentou a secao
   // "Deixado para depois" e o verbo `destinar`. Antes (2026-10-07): o enxerto da
   // skill `pr` (mattpocock v1.3) acrescentou o template do corpo do PR.
-  fechar: { bytes: 16144, sha256: 'ed9561e55aec42d6c6e1155a4619a8767cebdd579cc112d248e6360803a28916' },
+  fechar: { bytes: 14650, sha256: 'c86702de974e98942c4c8f622c388b58d8abf684654cbdb59db31c473b5b351a' },
   // fechar, modo-dev e regua re-medidos em 2026-10-05: a revisao bimestral
   // acrescentou texto de proposito (E4, E25, E27, E30).
   // modo-dev re-medido em 2026-10-24: o fluxo apoio-ao-dev-lote-1 (tarefa 4, D7)
@@ -53,7 +54,9 @@ const ANCORA_CORPOS_SKILLS = {
   // a linha do substituir.cjs.
   'modo-dev': { bytes: 14931, sha256: '2e0379cd5e2571167d745623c136b5bc7878af7d4f3a994d2bb7b80f68d33939' },
   'montar-corpus': { bytes: 2935, sha256: 'f21d9af8be400bd8222f272b98ece70c1d01c92865e41f418340410b69bb11ab' },
-  regua: { bytes: 16058, sha256: 'e55525133ad68af2282d07bd6f6cfca3a58d5b69973d034d4f8b6c58c26b7776' },
+  // regua re-medido em 2026-10-30: a secao "O que falsificaria esta skill" foi para
+  // references/o-que-falsificaria.md (folga no teto de 16 KB, 2.2.2).
+  regua: { bytes: 13304, sha256: '3c932ec1d950fb87edff01ce3932c3aab0b09d53c7606f2738d8f3ab9f0cc2b8' },
 };
 
 class FalhaContrato extends Error {}
