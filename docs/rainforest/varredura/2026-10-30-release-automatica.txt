@@ -1,0 +1,76 @@
+Data: 2026-10-30
+Termos: gh release, release, git tag
+
+$ gh issue list --state all --search "gh release" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "release" --limit 200 --json number,title,state
+[{"number":553,"state":"CLOSED","title":"Abertura acusa bridge WhatsApp FORA com a bridge de pé (sonda resolve localhost por DNS)"},{"number":193,"state":"CLOSED","title":"Duas sessoes bumparam a MESMA versao e o testa-versao nao pode pegar: falta checagem externa (tag e cache)"},{"number":73,"state":"CLOSED","title":"As 16 skills sao arquivo unico e plano: consultar o detalhe de UMA regra custa ~16,8k tokens"},{"number":244,"state":"CLOSED","title":"Bump de versao e feito a mao no fechar, e o esquecimento e silencioso"}]
+
+
+$ gh issue list --state all --search "git tag" --limit 200 --json number,title,state
+[{"number":193,"state":"CLOSED","title":"Duas sessoes bumparam a MESMA versao e o testa-versao nao pode pegar: falta checagem externa (tag e cache)"},{"number":514,"state":"CLOSED","title":"gate-worktree barra comando só de leitura quando a linha junta 2>/dev/null com expansão de chaves {a,b}"},{"number":206,"state":"CLOSED","title":"Design e doc de uso se contradizem sobre o mesmo mecanismo, e nada mede isso: dois revisores discordaram lendo o mesmo commit"},{"number":189,"state":"CLOSED","title":"conferir-versao.cjs nao olha o numero: versao que anda para tras passa verde, e plugin.json ilegivel sai 0"},{"number":192,"state":"CLOSED","title":"Proibir background no briefing falhou duas vezes, com a proibicao escrita duas vezes no mesmo texto — falta checar a FORMA do retorno"}]
+
+
+$ gh pr list --state all --search "gh release" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "release" --limit 200 --json number,title,state
+[{"number":636,"state":"OPEN","title":"Estado: fechar ok do folga-no-teto-das-skills (PR #635 mergeado)"},{"number":72,"state":"MERGED","title":"Versao 0.75.0: o dia dos sete consertos, e o release que faz eles existirem"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"},{"number":420,"state":"MERGED","title":"Gate de agente em voo so barra a sessao que despachou"},{"number":570,"state":"MERGED","title":"estado: reabrir e trava de codigo depois do verificar (#567, #529, 1.70.0)"},{"number":568,"state":"MERGED","title":"Lote 2026-10-19: #523 #531 #553 #559 #543 (1.69.1)"},{"number":168,"state":"MERGED","title":"1.0.0 — o repositorio vai a publico e o contrato passa a valer"},{"number":44,"state":"MERGED","title":"Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada"},{"number":205,"state":"MERGED","title":"Issue #189: conferir-versao olha o numero declarado e nao sai 0 sem ter medido"},{"number":94,"state":"MERGED","title":"Versao 0.76.0: a abertura passa a aparecer, e o \"somente leitura\" passa a ser verdade"},{"number":234,"state":"MERGED","title":"Absorver de um plugin de terceiro o que vira trava: mensagem de commit, --confirmo, exit 69, duplicação, carimbos"},{"number":48,"state":"MERGED","title":"Versao 0.74.0: solta a skill regua e os outros tres commits represados"},{"number":304,"state":"MERGED","title":"Notas de atualizacao (CHANGELOG) e o adendo que mede o D2 do contrato de territorio"},{"number":26,"state":"MERGED","title":"Nasce a skill analisar: uma pergunta por vez, e o achado passa pela critica antes de virar conclusao"},{"number":78,"state":"MERGED","title":"design: a camada de conhecimento sai do Obsidian e vira rota, nao migracao"},{"number":204,"state":"MERGED","title":"Issue #187: o vazamento e do transporte, nao da bateria — matarDescendencia no rodarCli"},{"number":255,"state":"MERGED","title":"A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241)"},{"number":186,"state":"MERGED","title":"R1 (frente 2) + R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao"}]
+
+
+$ gh pr list --state all --search "git tag" --limit 200 --json number,title,state
+[{"number":590,"state":"MERGED","title":"Apoio ao dev, lote 1: captura limpa, memória moldurada, busca antes de construir (1.75.0)"},{"number":139,"state":"MERGED","title":"Gate de worktree: decidir escrita por token, e isentar o scratchpad da sessao"}]
+
+
+$ git ls-remote --heads origin | grep -F "gh release"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "release"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "git tag"
+(vazio)
+
+$ git log --all --grep="gh release" --oneline
+(vazio)
+
+$ git log --all --grep="release" --oneline
+f1c603c1 Estado: fechar ok do folga-no-teto-das-skills (PR #635 mergeado)
+02d5d99a gate-subagente-sem-gh: nega gh de escrita em subagente (tarefa 1)
+115a06c9 Corrige a proibicao do handover: o veto era a main, nao o push
+73b5eb37 Notas de atualizacao passam a existir, e o D2 medido de fora
+ef77e1e2 A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241) (#255)
+9cfdc8d5 Versao 1.13.1: PATCH do lote de consertos de instrumento
+8025a18b Teto de commits conta so a branch, nao o que veio no merge da main
+a53c5cd3 Pôr no README e no travas-mecanicas o que o lote absorver-plugin-terceiro trouxe
+1199d207 Adicionar modo --commit ao conferir-publicacao (D10)
+05919c37 Documentar exit 69, carimbo de base e gate de release nas skills
+35778558 Versao 1.5.0: gate que barra pulo de verificacao no git, e o verbo concluido
+6e07275c Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README (#129)
+be0332c9 Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README (#129)
+980d99fb Versao 0.76.0: a abertura passa a aparecer, e o "somente leitura" passa a ser verdade (#94)
+11d72093 Versao 0.76.0: a abertura passa a aparecer, e o "somente leitura" passa a ser verdade (#94)
+20c88be7 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+d427f732 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+4fd6d9e0 design: a camada de conhecimento sai do Obsidian e vira rota, nao migracao (#78)
+29b44c0a design: a camada de conhecimento sai do Obsidian e vira rota, nao migracao (#78)
+6098e392 Versao 0.75.0: o dia dos sete consertos, e o release que faz eles existirem (#72)
+c42d1233 Versao 0.75.0: o dia dos sete consertos, e o release que faz eles existirem (#72)
+c2294de6 Versao 0.74.0: solta a skill regua e os outros tres commits represados (#48)
+eb7860f0 Versao 0.74.0: solta a skill regua e os outros tres commits represados (#48)
+c3d775c0 Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada (#44)
+3e615363 Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada (#44)
+bee0de32 Headroom passa pelas seis perguntas: reprova na 4, e so na 4
+3381745d Headroom passa pelas seis perguntas: reprova na 4, e so na 4
+
+$ git log --all --grep="git tag" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+{"id":"query-ao-cliente-com-campo-de-outra-release","titulo":"Mandei query ao cliente com campo que nao existe na release dele (D4_ORIGEM)"}
+{"id":"release-cliente-deduzida-do-version","titulo":"Deduzi a release do cliente pelo @version dos fontes e a do P12_LUIS por memoria errada"}
+
+
