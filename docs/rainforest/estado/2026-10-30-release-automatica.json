@@ -85,7 +85,11 @@
     "head": "22af0aa62abea8d3a57e5c50db22de479e28c985"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node scripts/publicar-branch.cjs confirmar-merge --pr 637; gh release list",
+    "saida": "merge confirmado: PR 637 MERGED; rainforest-mind 2.3.0 Latest v2.3.0 (run release 41054014045, tag em a73487ea)",
+    "pr": 637,
+    "em": "2026-10-30"
   },
   "decididos": [
     {
