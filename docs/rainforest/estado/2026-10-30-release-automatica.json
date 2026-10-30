@@ -14,8 +14,31 @@
     "em": "2026-10-30"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-10-30"
+    "status": "ok",
+    "catraca_mutacao": "2026-10-30",
+    "tarefas_ok": 3,
+    "tarefas": 3,
+    "comando": "bash scripts/testa-release-da-versao.sh",
+    "saida": "ok: 14   falhou: 0",
+    "sensor_externo": "bash scripts/testa-release-da-versao.sh",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-release-da-versao.sh, caso release existente: nenhum create"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "YAML de workflow não roda localmente; comportamento na tarefa 1"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "só texto e número de versão"
+      }
+    ],
+    "em": "2026-10-30"
   },
   "revisar": {
     "status": "pendente"
