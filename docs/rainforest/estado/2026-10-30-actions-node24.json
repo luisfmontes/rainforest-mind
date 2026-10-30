@@ -1,0 +1,30 @@
+{
+  "slug": "2026-10-30-actions-node24",
+  "titulo": "Actions dos workflows em Node 24",
+  "criado_em": "2026-10-30",
+  "arqueologia": {
+    "status": "dispensada",
+    "em": "2026-10-30"
+  },
+  "design": {
+    "status": "aprovado",
+    "em": "2026-10-30"
+  },
+  "plano": {
+    "status": "ok",
+    "em": "2026-10-30"
+  },
+  "executar": {
+    "status": "pendente",
+    "catraca_mutacao": "2026-10-30"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
