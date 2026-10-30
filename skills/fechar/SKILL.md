@@ -220,6 +220,8 @@ de commits acumulados e a recomendação de subir a versão — e **qual casa**:
 se o lote só consertou, MINOR se entrou coisa nova ou mudou contrato (a tabela
 está no `CONTRIBUTING.md`). Não suba a versão por
 conta própria — release é decisão dele, e o commit de bump é entrega própria.
+Tag e release do GitHub saem sozinhas do `.github/workflows/release.yml` quando
+o bump chega à `main`: não há passo de release no `fechar`.
 
 **Antes de recomendar o bump, pergunte: outra pessoa faz o release lendo só o README?**
 Se o README não descreve o que mudou de um jeito que alguém que não viu o

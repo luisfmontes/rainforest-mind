@@ -32,8 +32,9 @@ const DOCUMENTOS_DO_FLUXO = new Set([
 // certo e sempre o da main, e um vermelho aqui significa ou corpo alterado por
 // engano, ou base velha depois que a main andou.
 const ANCORA_CORPOS_SKILLS = {
-  // fechar re-medido em 2026-10-30: a secao `concluido` foi para references/concluido.md
-  // (folga no teto de 16 KB, 2.2.2). Antes, em 2026-10-29: o passo 1 prescreve `gh pr create --title --body-file`,
+  // fechar re-medido em 2026-10-30 (2a vez): o paragrafo do bump diz que tag e release
+  // saem do release.yml (release-automatica, 2.3.0). Antes, no mesmo dia: a secao
+  // `concluido` foi para references/concluido.md (folga no teto de 16 KB, 2.2.2). Antes, em 2026-10-29: o passo 1 prescreve `gh pr create --title --body-file`,
   // forma que o gate-fechar-issue deixa passar (testa-exemplos-prescritos, 2.2.0). Antes,
   // em 2026-10-28: o exit `8` passou a se medir pelos workflows do
   // checkout (#591, 2.0.5). Antes, em 2026-10-21: linha do exit `8` (repositorio sem CI) na
@@ -45,7 +46,7 @@ const ANCORA_CORPOS_SKILLS = {
   // o destino padrao `resolvida`. Antes, no mesmo dia: a Issue #449 acrescentou a secao
   // "Deixado para depois" e o verbo `destinar`. Antes (2026-10-07): o enxerto da
   // skill `pr` (mattpocock v1.3) acrescentou o template do corpo do PR.
-  fechar: { bytes: 14650, sha256: 'c86702de974e98942c4c8f622c388b58d8abf684654cbdb59db31c473b5b351a' },
+  fechar: { bytes: 14793, sha256: '829a9869c54d6ec942039039f35a634d8af5748a59a477e48fc693c53e978e0c' },
   // fechar, modo-dev e regua re-medidos em 2026-10-05: a revisao bimestral
   // acrescentou texto de proposito (E4, E25, E27, E30).
   // modo-dev re-medido em 2026-10-24: o fluxo apoio-ao-dev-lote-1 (tarefa 4, D7)

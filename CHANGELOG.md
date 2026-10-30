@@ -10,6 +10,14 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.3.0 — 2026-10-30
+
+- **Release do GitHub sai sozinha a cada versão nova.** O push do bump do `plugin.json` à `main` dispara `.github/workflows/release.yml`, que chama `scripts/release-da-versao.cjs` e publica `v<versão>` com a seção daquela versão neste CHANGELOG como notas. Release que já existe não é tocada; versão sem seção aqui deixa o run vermelho sem criar nada. Até a 2.2.1 o GitHub ficou em `v1.0.0`, porque a release dependia de alguém lembrar; a `v2.2.2` foi publicada à mão com as notas da linha 2.x, e as versões 1.x seguem só neste arquivo.
+- **Bateria `testa-release-da-versao.sh`.** Roda o script contra um `gh` de mentira: cria a release que falta, não toca a que existe, recusa versão sem seção e não deixa a seção seguinte vazar para as notas.
+- `CONTRIBUTING.md`, `skills/fechar/SKILL.md` e o README (em "Instalação") passam a dizer que tag e release não são passo de ninguém.
+
+Desenho em `docs/rainforest/design/2026-10-30-release-automatica.md`.
+
 ## 2.2.2 — 2026-10-30
 
 - **Folga no teto de 16 KB de quatro skills.** `regua`, `executar`, `fechar` e `plano` estavam a 2–14 bytes do limite que `testa-teto-skills.sh` impõe, e qualquer correção nelas reprovava. Cada uma moveu um bloco autocontido, sem reescrever, para `references/` da própria skill, deixando uma linha de ponteiro no lugar; a instrução que a skill dá não muda. Folga agora: `regua` 2.756 B, `executar` 1.641 B, `fechar` 1.502 B, `plano` 1.019 B.

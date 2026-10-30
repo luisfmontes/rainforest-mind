@@ -317,6 +317,13 @@ número é o único sinal que diz se quem instala precisa reler o README ou não
 **Dois lugares repetem o número e têm que andar juntos:** o
 `.claude-plugin/plugin.json` e o badge de versão no topo do `README.md`.
 
+**A tag e a release do GitHub não são passo de ninguém.** O push do bump à `main`
+dispara `.github/workflows/release.yml`, que chama `scripts/release-da-versao.cjs`:
+publica `v<versão>` com a seção da versão no `CHANGELOG.md` como notas, não toca
+release que já existe, e fica vermelho se a seção faltar. Até 2026-10-30 o GitHub
+ficou em `v1.0.0` enquanto o plugin chegou a 2.2.1, porque a release dependia de
+alguém lembrar.
+
 E o motivo de o bump não ser opcional: o plugin que **executa** não é este clone,
 é o cache `~/.claude/plugins/cache/<marketplace>/<plugin>/<versão>/`, indexado
 pela versão. Sem bump, o `claude plugin update` não tem versão nova para buscar e

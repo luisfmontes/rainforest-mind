@@ -29,6 +29,8 @@ pronto quando: com um repositório falso de `plugin.json` na versão `9.8.7` e u
 
 Forma prescrita: `node scripts/release-da-versao.cjs --sha <sha> [--seco] [--raiz <dir>]`. Lê `<raiz>/.claude-plugin/plugin.json` e `<raiz>/CHANGELOG.md` (raiz padrão: o diretório pai de `scripts/`). Consulta `gh release view v<versão>`: exit 0 → `const jaExiste = true`. A linha `if (jaExiste) {` imprime `release v<versão> já existe — nada a fazer` e sai 0. Seção: da linha que começa com `## <versão> ` até antes da próxima linha que começa com `## `, sem a linha do título, aparada; vazia ou ausente → stderr `CHANGELOG sem a seção <versão>` e exit 1. Notas gravadas num arquivo temporário (`fs.mkdtempSync(os.tmpdir())`) e passadas por `--notes-file`. `--seco` imprime o comando e as notas e não chama o `create`. O `gh` é chamado pelo nome `gh` via `spawnSync` sem shell, e o PATH decide qual roda (a bateria põe o stub na frente). Exit do `create` ≠ 0 → o script sai com o mesmo código.
 
+Emenda do executar (2026-10-30): no Windows o `spawnSync('gh')` ignora um stub bash sem extensão e roda o `gh.exe` real (o executor mediu e parou antes de escrever). O `gh` passa a ser chamado por `executar('gh', args, opts)` de `hooks/lib/resolver-executavel.cjs`, como em `scripts/publicar-branch.cjs`; a bateria monta o stub no padrão de `scripts/testa-publicar-branch.sh` (`gh` + `gh.cmd` + `gh-stub.js`) e prova, antes dos casos, que o PATH sem o stub não acha `gh`.
+
 ### 2. Workflow que chama o script no push do bump à main [tipo: configurar]
 atende: D1, D4
 arquivos: `.github/workflows/release.yml`
