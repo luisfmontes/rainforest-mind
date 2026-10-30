@@ -65,16 +65,17 @@ linha_de_comando() {
   fi
 }
 
-# 0 = o processo e desta bateria (a linha de comando traz a MARCA). Linha vazia
-# com o processo ainda vivo tambem devolve 0: consulta que nao responde fecha
-# para o lado do vermelho (D4). So "nao achou" ou "achou outro" devolve 1.
+# 0 = o processo e desta bateria (a linha de comando traz a MARCA).
+# 2 = a consulta nao respondeu e o processo segue vivo: conta como vivo, para
+#     fechar para o lado do vermelho (D4), mas nao morre, porque pode ser alheio.
+# 1 = nao achou o processo, ou achou outro sem a marca.
 eh_da_bateria() {
   local linha
   linha="$(linha_de_comando "$1")"
   case "$linha" in
     *"$MARCA"*) return 0 ;;
   esac
-  if [ -z "$linha" ] && esta_vivo "$1"; then return 0; fi
+  if [ -z "$linha" ] && esta_vivo "$1"; then return 2; fi
   return 1
 }
 
@@ -171,16 +172,25 @@ eh_da_bateria "$alheio"; rc=$?
 caso "controle: processo vivo sem a marca nao e da bateria (rc=$rc)" $([ "$rc" -eq 1 ] && echo 0 || echo 1)
 node -e 'try{process.kill(Number(process.argv[1]))}catch{}' "$alheio"
 
+# Um processo alheio vivo entra na lista, como um PID que outro processo herdou:
+# o laco final tem de ignora-lo e deixa-lo vivo (#632, D3).
+alheio_final="$(node -e 'const c=require("child_process").spawn(process.execPath,["-e","setTimeout(()=>{},20000)"],{detached:true,stdio:"ignore"});console.log(c.pid);c.unref()')"
+registra "$alheio_final"
+
 echo "-- nenhum processo registrado pela bateria fica vivo no fim"
 vivos=0
 for p in "${PIDS_REGISTRADOS[@]}"; do
   if esta_vivo "$p"; then
     # PID vivo pode ser outro processo que herdou o numero (#632): so conta, e
     # so morre, o que traz a marca desta execucao (D3).
-    if eh_da_bateria "$p"; then
+    eh_da_bateria "$p"; dono=$?
+    if [ "$dono" -eq 0 ]; then
       vivos=$((vivos+1))
       echo "  vivo: PID $p"
       node -e 'try{process.kill(Number(process.argv[1]))}catch{}' "$p"
+    elif [ "$dono" -eq 2 ]; then
+      vivos=$((vivos+1))
+      echo "  vivo: PID $p (linha de comando sem resposta; nao morto, pode ser alheio)"
     else
       echo "  PID $p reaproveitado por outro processo, ignorado"
     fi
@@ -188,6 +198,9 @@ for p in "${PIDS_REGISTRADOS[@]}"; do
 done
 echo "  PIDs registrados: ${#PIDS_REGISTRADOS[@]}   vivos no fim: $vivos"
 caso "nenhum PID registrado segue vivo (vivos=$vivos)" $([ "$vivos" -eq 0 ] && echo 0 || echo 1)
+esta_vivo "$alheio_final"; rc=$?
+caso "o laco final nao conta nem mata o processo alheio registrado (vivo rc=$rc)" $([ "$rc" -eq 0 ] && echo 0 || echo 1)
+node -e 'try{process.kill(Number(process.argv[1]))}catch{}' "$alheio_final"
 
 rm -rf "$TMP"
 
