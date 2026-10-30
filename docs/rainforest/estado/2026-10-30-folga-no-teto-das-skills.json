@@ -39,12 +39,54 @@
     "em": "2026-10-30"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "3c66d2aa381cf2743114a3febdbff6f8ffa5838e",
+      "caminhos_sujos": [
+        "scripts/_conferir-movidos.cjs"
+      ]
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a4907e876b77f882a",
+        "veredito": "ok",
+        "em": "2026-10-30",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/4afb8320-f076-402f-8e7d-8f71f64b7cd2/subagents/agent-a4907e876b77f882a.jsonl"
+      }
+    ],
+    "achados": 4,
+    "base": "6169212f",
+    "head": "3c66d2aa",
+    "comando": "revisor: git diff 6169212f..HEAD + 7 baterias",
+    "saida": "VEREDITO: ok — 4 achados baixa, nenhum bloqueia",
+    "em": "2026-10-30"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-teto-skills.sh",
+    "saida": "Resultado: 21 OK, 0 FALHA; _conferir-movidos ok x4; testa-versao ok 5; grep CHANGELOG = 4",
+    "sensor_externo": "bash scripts/testa-teto-skills.sh",
+    "em": "2026-10-30",
+    "head": "3c66d2aa381cf2743114a3febdbff6f8ffa5838e"
   },
   "fechar": {
     "status": "pendente"
-  }
+  },
+  "decididos": [
+    {
+      "pergunta": "Revisão achado 1: suavizar 'a instrução que a skill dá não muda' no CHANGELOG?",
+      "escolha": "manter",
+      "porque": "o texto da instrução não mudou, só o lugar; o ponteiro do executar diz quando ler a tabela de exits",
+      "estagio": "revisar",
+      "em": "2026-10-30T10:42:32.375Z"
+    },
+    {
+      "pergunta": "Revisão achados 2 e 3: ponteiro da regua sem a proveniência; critério histórico fluxo-13 cita a seção antiga",
+      "escolha": "aceitar os dois",
+      "porque": "o crédito segue no README; documento histórico não se reescreve",
+      "estagio": "revisar",
+      "em": "2026-10-30T10:42:32.473Z"
+    }
+  ]
 }
