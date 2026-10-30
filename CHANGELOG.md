@@ -10,6 +10,10 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.2.1 — 2026-10-29
+
+- **`testa-rodar-longo.sh` deixa de ficar vermelha por reuso de PID (#632).** A checagem final achava vivo um PID registrado que, na verdade, tinha sido herdado por outro processo de vida curta, e ainda chamava `process.kill` nele. A hipótese da Issue (o filho do vigia morto sobrevivendo) não se confirmou: medido sob carga, 3 de 36 execuções acusaram vivo o vigia ou o comando de casos que tinham terminado havia mais de 10 s, e o processo já não existia um segundo depois. A bateria agora põe uma marca única em todo comando que sobe e só conta, e só mata, o processo vivo cuja linha de comando traz essa marca; dois casos de controle provam que a checagem reconhece o processo da bateria e ignora o alheio. Desenho em `docs/rainforest/design/2026-10-29-rodar-longo-flaky.md`.
+
 ## 2.2.0 — 2026-10-29
 
 - **Carimbo de tarefa com hash que não existe é recusado.** O `estado.cjs marcar --json {"carimbos":…}` passa a conferir, dentro de um repositório git, que o `hash_base` é um commit dele, e sai 2 quando não é. Um carimbo gravado com hash digitado (`d0000000`) passava, e o carimbo existe justamente para retomar de uma base real. Fora de repositório git nada muda.
