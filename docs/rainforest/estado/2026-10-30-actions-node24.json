@@ -15,8 +15,25 @@
     "em": "2026-10-30"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-10-30"
+    "status": "ok",
+    "catraca_mutacao": "2026-10-30",
+    "tarefas_ok": 2,
+    "tarefas": 2,
+    "comando": "grep -hc \"actions/checkout@v7|actions/setup-node@v7|actions/setup-python@v7\" .github/workflows/baterias.yml .github/workflows/release.yml; grep -c \"@v4|setup-python@v5\" .github/workflows/*.yml; bash scripts/testa-versao.sh; node scripts/release-da-versao.cjs --sha HEAD --seco",
+    "saida": "3 / 2 ; baterias.yml:0 release.yml:0 ; testa-versao ok: 5 falhou: 0 exit=0 ; --seco imprime gh release create v2.3.1 e a secao 2.3.1 com actions/checkout@v7. Run real do baterias.yml na branch (workflow_dispatch no HEAD da tarefa 1) em andamento; o verificar le o resultado.",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "n/a",
+        "motivo": "YAML de workflow nao roda localmente; prova e o run real do baterias.yml na branch (D3)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "so texto e numero de versao"
+      }
+    ],
+    "em": "2026-10-30"
   },
   "revisar": {
     "status": "pendente"
