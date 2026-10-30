@@ -10,6 +10,16 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.2.2 — 2026-10-30
+
+- **Folga no teto de 16 KB de quatro skills.** `regua`, `executar`, `fechar` e `plano` estavam a 2–14 bytes do limite que `testa-teto-skills.sh` impõe, e qualquer correção nelas reprovava. Cada uma moveu um bloco autocontido, sem reescrever, para `references/` da própria skill, deixando uma linha de ponteiro no lugar; a instrução que a skill dá não muda. Folga agora: `regua` 2.756 B, `executar` 1.641 B, `fechar` 1.502 B, `plano` 1.019 B.
+  - `skills/regua/references/o-que-falsificaria.md` — a seção "O que falsificaria esta skill".
+  - `skills/executar/references/catraca-de-mutacao.md` — a tabela de saídas da catraca e o que fazer com cada exit.
+  - `skills/fechar/references/concluido.md` — como conferir de fora, depois do fluxo, se um trabalho terminou.
+  - `skills/plano/references/incidente-pronto-quando.md` — o incidente de 2026-08-19 que originou a seção sobre `pronto quando:`.
+
+Desenho em `docs/rainforest/design/2026-10-30-folga-no-teto-das-skills.md`.
+
 ## 2.2.1 — 2026-10-29
 
 - **`testa-rodar-longo.sh` deixa de ficar vermelha por reuso de PID (#632).** A checagem final achava vivo um PID registrado que, na verdade, tinha sido herdado por outro processo de vida curta, e ainda chamava `process.kill` nele. A hipótese da Issue (o filho do vigia morto sobrevivendo) não se confirmou: medido sob carga, 3 de 36 execuções acusaram vivo o vigia ou o comando de casos que tinham terminado havia mais de 10 s, e o processo já não existia um segundo depois. A bateria agora põe uma marca única em todo comando que sobe e só mata o processo vivo cuja linha de comando traz essa marca. PID vivo sem a marca é ignorado; se a consulta da linha de comando não responder, o PID conta como vivo (vermelho) mas não é morto. Três casos de controle provam que a checagem reconhece o processo da bateria, ignora o alheio e que o laço final usa essa checagem. Desenho em `docs/rainforest/design/2026-10-29-rodar-longo-flaky.md`.
