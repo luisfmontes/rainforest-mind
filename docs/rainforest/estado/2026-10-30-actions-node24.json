@@ -1,0 +1,87 @@
+{
+  "slug": "2026-10-30-actions-node24",
+  "titulo": "Actions dos workflows em Node 24",
+  "criado_em": "2026-10-30",
+  "arqueologia": {
+    "status": "dispensada",
+    "em": "2026-10-30"
+  },
+  "design": {
+    "status": "aprovado",
+    "em": "2026-10-30"
+  },
+  "plano": {
+    "status": "ok",
+    "em": "2026-10-30"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-10-30",
+    "tarefas_ok": 2,
+    "tarefas": 2,
+    "comando": "grep -hc \"actions/checkout@v7|actions/setup-node@v7|actions/setup-python@v7\" .github/workflows/baterias.yml .github/workflows/release.yml; grep -c \"@v4|setup-python@v5\" .github/workflows/*.yml; bash scripts/testa-versao.sh; node scripts/release-da-versao.cjs --sha HEAD --seco",
+    "saida": "3 / 2 ; baterias.yml:0 release.yml:0 ; testa-versao ok: 5 falhou: 0 exit=0 ; --seco imprime gh release create v2.3.1 e a secao 2.3.1 com actions/checkout@v7. Run real do baterias.yml na branch (workflow_dispatch no HEAD da tarefa 1) em andamento; o verificar le o resultado.",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "n/a",
+        "motivo": "YAML de workflow nao roda localmente; prova e o run real do baterias.yml na branch (D3)"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "so texto e numero de versao"
+      }
+    ],
+    "em": "2026-10-30"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "d23446f10c14a3a598b11fcff3d149405371372e",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ad350b2b1ecf9c059",
+        "veredito": "ok",
+        "em": "2026-10-30",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/4afb8320-f076-402f-8e7d-8f71f64b7cd2/subagents/agent-ad350b2b1ecf9c059.jsonl"
+      }
+    ],
+    "base": "a2a8beaf8358c3baa527939f82279005948acba4",
+    "head": "d23446f10c14a3a598b11fcff3d149405371372e",
+    "achados": [],
+    "em": "2026-10-30"
+  },
+  "verificar": {
+    "status": "ok",
+    "tarefas_ok": 2,
+    "tarefas": 2,
+    "comando": "gh run view 41104963778 --json conclusion,jobs; gh run view 41104963778 --log | grep -c \"Node.js 20 is deprecated\"; grep -hc \"actions/checkout@v7|actions/setup-node@v7|actions/setup-python@v7\" .github/workflows/baterias.yml .github/workflows/release.yml; bash scripts/testa-versao.sh; node scripts/release-da-versao.cjs --sha HEAD --seco",
+    "saida": "run 41104963778 (headSha d23446f, ponta da branch) conclusion success, shards 1/2/3 success; aviso Node 20: 0 (controle: run 41054191351 da main da 3); passos v7 no log: 9; grep workflows 3 e 2, @v4/@v5: 0 e 0; testa-versao ok: 5 falhou: 0 exit 0; --seco imprime release v2.3.1 com a secao 2.3.1. Run anterior no HEAD da tarefa 1 (41101376566) saiu failure no conferir-versao por falta de bump, decisao registrada.",
+    "sensor_externo": "gh run view 41104963778",
+    "em": "2026-10-30",
+    "head": "d23446f10c14a3a598b11fcff3d149405371372e"
+  },
+  "fechar": {
+    "status": "pendente"
+  },
+  "decididos": [
+    {
+      "pergunta": "setup-node v7 removeu o export ficticio de NODE_AUTH_TOKEN, que o design nao cita: muda algo?",
+      "escolha": "nada a mudar",
+      "porque": "nenhum workflow usa NODE_AUTH_TOKEN (grep -c sai 0 nos dois); release.yml usa GH_TOKEN",
+      "estagio": "verificar",
+      "em": "2026-10-30T17:53:09.794Z"
+    },
+    {
+      "pergunta": "criterio da tarefa 1 pedia run do baterias.yml no HEAD da tarefa 1; o passo conferir-versao recusa ali (sem bump) e o shard 1 sai vermelho antes das baterias. Como provar?",
+      "escolha": "novo run na ponta da branch (com o bump 2.3.1), mesmo comando de checagem",
+      "porque": "o vermelho do run no HEAD 1e704ff0 e o conferir-versao (2.3.0 nao maior que 2.3.0), passo anterior as baterias; shards 2 e 3 verdes e zero aviso de Node 20. So a ponta da branch tem bump",
+      "estagio": "verificar",
+      "em": "2026-10-30T18:12:56.696Z"
+    }
+  ]
+}
