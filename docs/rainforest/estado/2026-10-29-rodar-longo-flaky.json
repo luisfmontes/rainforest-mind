@@ -55,18 +55,18 @@
     "em": "2026-10-29"
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "07831b68b0b15e25eb527fe9eb49b39002af0e35",
+      "head": "cf5253eb46ce04db61a3024f0f7d83c13ddf8ee2",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a48f06313f2f39c7f",
+        "agente_id": "a3e457523a8482831",
         "veredito": "ok",
         "em": "2026-10-29",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/4afb8320-f076-402f-8e7d-8f71f64b7cd2/subagents/agent-a48f06313f2f39c7f.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/4afb8320-f076-402f-8e7d-8f71f64b7cd2/subagents/agent-a3e457523a8482831.jsonl"
       }
     ],
     "voltas": [
@@ -81,13 +81,48 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/4afb8320-f076-402f-8e7d-8f71f64b7cd2/subagents/agent-af6274f8651b4d3d5.jsonl"
           }
         ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a48f06313f2f39c7f",
+            "veredito": "ok",
+            "em": "2026-10-29",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/4afb8320-f076-402f-8e7d-8f71f64b7cd2/subagents/agent-a48f06313f2f39c7f.jsonl"
+          }
+        ]
       }
-    ]
+    ],
+    "achados": 0,
+    "rodadas": 3,
+    "base": "1c7a14b125d09e43f4e07377c1b4bdba28960939",
+    "head": "cf5253eb46ce04db61a3024f0f7d83c13ddf8ee2",
+    "comando": "bash scripts/testa-rodar-longo.sh",
+    "saida": "ok: 19   falhou: 0",
+    "em": "2026-10-29"
   },
   "verificar": {
     "status": "pendente"
   },
   "fechar": {
     "status": "pendente"
-  }
+  },
+  "decididos": [
+    {
+      "pergunta": "Revisao 3: ramo dono=2 do laco final sem caso proprio",
+      "escolha": "Nao cobrir neste PR",
+      "porque": "o retorno 2 ja tem controle (c) com mutante vermelho; o ramo do laco e teste do teste numa bateria de dev, e outra volta custaria revisar e verificar inteiros (regra 9)",
+      "estagio": "revisar",
+      "em": "2026-10-30T01:57:35.777Z"
+    },
+    {
+      "pergunta": "Criterio da tarefa 1 contava 2 controles; a revisao 2 acrescentou o terceiro",
+      "escolha": "Criterio emendado para 3",
+      "porque": "a contagem e de controles que o proprio fluxo decidiu acrescentar; o resto do criterio (36 sob carga sem vermelho) nao mudou",
+      "estagio": "verificar",
+      "em": "2026-10-30T02:00:53.293Z"
+    }
+  ]
 }
