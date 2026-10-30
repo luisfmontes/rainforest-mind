@@ -58,6 +58,8 @@ esta_vivo() {
 
 # Linha de comando do processo: no Windows pelo CIM, fora dele pelo ps.
 linha_de_comando() {
+  # CONSULTA_MUDA=1 simula a consulta que nao responde (caso de controle do D4).
+  [ -n "${CONSULTA_MUDA:-}" ] && return 0
   if command -v powershell >/dev/null 2>&1; then
     powershell -NoProfile -Command "(Get-CimInstance Win32_Process -Filter 'ProcessId=$1').CommandLine" 2>/dev/null | tr -d ''
   else
@@ -170,6 +172,8 @@ for p in $pids_c; do node -e 'try{process.kill(Number(process.argv[1]))}catch{}'
 alheio="$(node -e 'const c=require("child_process").spawn(process.execPath,["-e","setTimeout(()=>{},20000)"],{detached:true,stdio:"ignore"});console.log(c.pid);c.unref()')"
 eh_da_bateria "$alheio"; rc=$?
 caso "controle: processo vivo sem a marca nao e da bateria (rc=$rc)" $([ "$rc" -eq 1 ] && echo 0 || echo 1)
+CONSULTA_MUDA=1 eh_da_bateria "$alheio"; rc=$?
+caso "controle: consulta sem resposta com o processo vivo conta como vivo sem dono (rc=$rc)" $([ "$rc" -eq 2 ] && echo 0 || echo 1)
 node -e 'try{process.kill(Number(process.argv[1]))}catch{}' "$alheio"
 
 # Um processo alheio vivo entra na lista, como um PID que outro processo herdou:
