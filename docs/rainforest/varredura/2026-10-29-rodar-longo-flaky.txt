@@ -1,0 +1,48 @@
+Data: 2026-10-29
+Termos: rodar-longo, PID reaproveitado, esta_vivo
+
+$ gh issue list --state all --search "rodar-longo" --limit 200 --json number,title,state
+[{"number":632,"state":"OPEN","title":"testa-rodar-longo.sh intermitente no CI Windows: filho do vigia morto sobrevive ao caso final"}]
+
+
+$ gh issue list --state all --search "PID reaproveitado" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "esta_vivo" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "rodar-longo" --limit 200 --json number,title,state
+[{"number":520,"state":"MERGED","title":"Modo autonomo: do plano aprovado ao PR mergeado (1.66.0)"},{"number":598,"state":"MERGED","title":"Apoio ao dev, lote 6: ferramentas do fluxo (1.80.0)"}]
+
+
+$ gh pr list --state all --search "PID reaproveitado" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "esta_vivo" --limit 200 --json number,title,state
+[]
+
+
+$ git ls-remote --heads origin | grep -F "rodar-longo"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "PID reaproveitado"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "esta_vivo"
+(vazio)
+
+$ git log --all --grep="rodar-longo" --oneline
+b13a86bb Modo autonomo: do plano aprovado ao PR mergeado (1.66.0) (#520)
+
+$ git log --all --grep="PID reaproveitado" --oneline
+(vazio)
+
+$ git log --all --grep="esta_vivo" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+(vazio)
+
