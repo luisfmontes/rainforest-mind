@@ -71,7 +71,11 @@
     "head": "3c66d2aa381cf2743114a3febdbff6f8ffa5838e"
   },
   "fechar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node scripts/publicar-branch.cjs confirmar-merge --pr 635",
+    "saida": "merge confirmado: PR 635 MERGED",
+    "pr": 635,
+    "em": "2026-10-30"
   },
   "decididos": [
     {
