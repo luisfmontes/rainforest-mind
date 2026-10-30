@@ -1,0 +1,43 @@
+# Publica a release do GitHub da versão que acabou de chegar à main.
+#
+# Por que existe: de 2026-09-03 a 2026-10-30 o GitHub ficou em v1.0.0 enquanto o
+# plugin chegou a 2.2.1 — o bump do plugin.json sai em todo lote, a release
+# dependia de alguém lembrar. O push à main é o único caminho por onde passa todo
+# merge (fechar, outra sessão, Codex, interface web), então é aqui que ela sai.
+# Design: docs/rainforest/design/2026-10-30-release-automatica.md.
+#
+# A lógica mora em scripts/release-da-versao.cjs (testada por
+# scripts/testa-release-da-versao.sh): release que já existe não é tocada, e
+# versão sem seção no CHANGELOG deixa o run vermelho sem criar nada.
+#
+# ubuntu-latest, e não o windows das baterias: o script é node puro mais gh.
+# Sem gatilho de PR: só o push à main pode escrever release.
+
+name: release
+
+on:
+  push:
+    branches: [main]
+    paths: ['.claude-plugin/plugin.json']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Publica a release da versao do manifesto
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/release-da-versao.cjs --sha "$GITHUB_SHA"
