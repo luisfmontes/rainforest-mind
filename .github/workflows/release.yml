@@ -30,6 +30,9 @@ concurrency:
 
 jobs:
   release:
+    # workflow_dispatch numa branch de PR publicaria a versao dela num commit que
+    # pode nunca entrar na main, e o merge real depois veria a release ja existente.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

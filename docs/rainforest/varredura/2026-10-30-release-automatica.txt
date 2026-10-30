@@ -70,7 +70,6 @@ $ git log --all --grep="git tag" --oneline
 (vazio)
 
 $ cat <dados>/ideias.jsonl
-{"id":"query-ao-cliente-com-campo-de-outra-release","titulo":"Mandei query ao cliente com campo que nao existe na release dele (D4_ORIGEM)"}
-{"id":"release-cliente-deduzida-do-version","titulo":"Deduzi a release do cliente pelo @version dos fontes e a do P12_LUIS por memoria errada"}
+(2 ideias casadas, de release de cliente em outro domínio; títulos omitidos porque o repositório é público)
 
 

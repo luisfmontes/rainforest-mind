@@ -41,12 +41,48 @@
     "em": "2026-10-30"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "84260e08cc42be2d4f0d374b739ddc7e424e7a8c",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a7e40054ba186cdcd",
+        "veredito": "ok",
+        "em": "2026-10-30",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/4afb8320-f076-402f-8e7d-8f71f64b7cd2/subagents/agent-a7e40054ba186cdcd.jsonl"
+      }
+    ]
   },
   "verificar": {
     "status": "pendente"
   },
   "fechar": {
     "status": "pendente"
-  }
+  },
+  "decididos": [
+    {
+      "pergunta": "Revisão achado 1: workflow_dispatch sem guarda de branch",
+      "escolha": "corrigir no PR: if github.ref == refs/heads/main no job",
+      "porque": "dispatch numa branch de PR publicaria release num commit que pode nunca entrar na main, e o merge real a veria como existente",
+      "estagio": "revisar",
+      "em": "2026-10-30T11:46:36.571Z"
+    },
+    {
+      "pergunta": "Revisão achado 5: varredura com títulos de ideias de outro domínio num repo público",
+      "escolha": "omitir os dois títulos na varredura",
+      "porque": "o repo é público; o conteúdo não pesa no design",
+      "estagio": "revisar",
+      "em": "2026-10-30T11:46:36.772Z"
+    },
+    {
+      "pergunta": "Revisão achados 2, 3 e 4: título de seção sem data não casa; falha do view vira create; g2 decorativo",
+      "escolha": "aceitar os três",
+      "porque": "o CHANGELOG sempre tem data e falha fechado; com o gh real o create de release existente falha e nada é sobrescrito (D3); quem protege do gh real é o g1, que para antes dos casos",
+      "estagio": "revisar",
+      "em": "2026-10-30T11:46:36.951Z"
+    }
+  ]
 }
