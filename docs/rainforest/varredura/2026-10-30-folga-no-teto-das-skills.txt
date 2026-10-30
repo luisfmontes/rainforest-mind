@@ -1,0 +1,72 @@
+Data: 2026-10-30
+Termos: teto-skills, 16384, progressive disclosure
+
+$ gh issue list --state all --search "teto-skills" --limit 200 --json number,title,state
+[{"number":498,"state":"CLOSED","title":"rodar-gate.cjs não é chamado por nenhum estágio: o flaky depende da janela lembrar"},{"number":445,"state":"CLOSED","title":"Nucleo da regra 10 sem as condicoes da barreira de agente que escreve"},{"number":279,"state":"CLOSED","title":"revisar: creep nao tem carve-out para artefato que outra skill obriga a criar"},{"number":270,"state":"CLOSED","title":"Linha de mutante sai como 'FALHA <nome real>' e se confunde com falha de verdade no log"},{"number":81,"state":"CLOSED","title":"testa-orcamento.sh mede a mesa, nao o repo: verde no CI e vermelho local pelo mesmo commit"},{"number":299,"state":"CLOSED","title":"Rota com emoji de status por etapa: formato de acompanhamento que a regra 4 nao tem"},{"number":240,"state":"CLOSED","title":"Triagem de achado mora em slash command e nunca chega a sessao: todo defeito sai pela porta do plantio"},{"number":1,"state":"CLOSED","title":"Briefing nao diz o ato de entregar: subagente nomeado termina o trabalho e nao devolve (3 de 3)"},{"number":14,"state":"CLOSED","title":"limpar-branches.cjs da branch de PR mergeado por squash: classificada 'viva', nunca limpa"},{"number":2,"state":"CLOSED","title":"Briefing de dispatch nao cobre dado vivo fora do repositorio git"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"}]
+
+
+$ gh issue list --state all --search "16384" --limit 200 --json number,title,state
+[{"number":270,"state":"CLOSED","title":"Linha de mutante sai como 'FALHA <nome real>' e se confunde com falha de verdade no log"},{"number":279,"state":"CLOSED","title":"revisar: creep nao tem carve-out para artefato que outra skill obriga a criar"}]
+
+
+$ gh issue list --state all --search "progressive disclosure" --limit 200 --json number,title,state
+[{"number":73,"state":"CLOSED","title":"As 16 skills sao arquivo unico e plano: consultar o detalhe de UMA regra custa ~16,8k tokens"}]
+
+
+$ gh pr list --state all --search "teto-skills" --limit 200 --json number,title,state
+[{"number":630,"state":"MERGED","title":"Colheita: carimbo com hash real, exemplos prescritos contra o gate e regra 6 com sessao dona viva (2.2.0)"},{"number":520,"state":"MERGED","title":"Modo autonomo: do plano aprovado ao PR mergeado (1.66.0)"},{"number":484,"state":"MERGED","title":"Laco executor -> revisor com teto e parada por [design] (1.58.0)"},{"number":468,"state":"MERGED","title":"Worktree do agente segue worktree.baseRef (1.55.1)"},{"number":590,"state":"MERGED","title":"Apoio ao dev, lote 1: captura limpa, memória moldurada, busca antes de construir (1.75.0)"},{"number":406,"state":"MERGED","title":"Revisao bimestral 2026-10-05: 214 observacoes triadas, v1.41.0"},{"number":426,"state":"MERGED","title":"Zerar as Issues #409-#414, #417, #419 (1.46.0)"},{"number":512,"state":"MERGED","title":"Versao 1.65.0: executar com camadas, retomada por trailer e painel do fluxo"},{"number":595,"state":"MERGED","title":"Apoio ao dev, lote 3: baterias pelo diff, duplicata, regras com id, co-mudanca (1.77.0)"},{"number":483,"state":"MERGED","title":"Achado que cabe no PR aberto entra nele, sem virar Issue"},{"number":381,"state":"MERGED","title":"Versao 1.37.0: abertura inteira pelo mod via prompt.compose"},{"number":178,"state":"MERGED","title":"Versão 1.2.0: preflight e mecanismos na régua, recibo de colheita no fechar"},{"number":327,"state":"MERGED","title":"Contrato de veredito de uma linha no revisar (1.23.9)"},{"number":598,"state":"MERGED","title":"Apoio ao dev, lote 6: ferramentas do fluxo (1.80.0)"},{"number":234,"state":"MERGED","title":"Absorver de um plugin de terceiro o que vira trava: mensagem de commit, --confirmo, exit 69, duplicação, carimbos"},{"number":332,"state":"MERGED","title":"Veredito fora da linha: hook devolve a vez uma vez; negrito aceito"},{"number":451,"state":"MERGED","title":"Glossario de dominio por repositorio (GLOSSARIO.md), versao 1.52.0"},{"number":132,"state":"CLOSED","title":"Fluxo 1 — o ciclo reprovado->executar vira maquina, e ok sem evidencia nao fecha"},{"number":347,"state":"MERGED","title":"gate-bateria-sem-timeout: subagente nao deixa bateria ir para segundo plano (1.26.0)"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"},{"number":177,"state":"MERGED","title":"Fluxo 12: régua absorve o bar.md de mecanismos e o preflight de renderização"},{"number":52,"state":"MERGED","title":"Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo"},{"number":105,"state":"MERGED","title":"CI: so no PR, e run superado se cancela — a cota de Actions bateu 90%"},{"number":85,"state":"MERGED","title":"Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79)"},{"number":186,"state":"MERGED","title":"R1 (frente 2) + R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao"},{"number":80,"state":"MERGED","title":"design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado"},{"number":224,"state":"MERGED","title":"Enxerta os sete mecanismos do ponytail, e fecha a fronteira que o gate de código de modelo não tinha"},{"number":267,"state":"MERGED","title":"portaria: deixa de admitir agente e passa a registrar (ver #264)"},{"number":5,"state":"MERGED","title":"Premissa nao-olhada ganha contrapeso, e a Issue #4 ganha a checagem que faltava"},{"number":98,"state":"MERGED","title":"Fecha a P5 da #61: enlace bidirecional entre as regras 16 e 17"},{"number":10,"state":"MERGED","title":"Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa"},{"number":56,"state":"MERGED","title":"Fecha a #38: a regra 11 prescreve worktree, e o radar marca a janela co-locada"},{"number":217,"state":"MERGED","title":"Contrato de territorio: AdvPL vira o primeiro, e o repo publico perde os identificadores de trabalho"},{"number":58,"state":"MERGED","title":"Fecha a #51: as tres travas de isolamento passam a valer na borda"}]
+
+
+$ gh pr list --state all --search "16384" --limit 200 --json number,title,state
+[{"number":380,"state":"MERGED","title":"Versao 1.36.0: mod canario para provar carregamento pelo marketplace"},{"number":598,"state":"MERGED","title":"Apoio ao dev, lote 6: ferramentas do fluxo (1.80.0)"},{"number":285,"state":"MERGED","title":"Guias e sensores: marca de categoria, teto por hook, sensor na evidencia do verificar"}]
+
+
+$ gh pr list --state all --search "progressive disclosure" --limit 200 --json number,title,state
+[]
+
+
+$ git ls-remote --heads origin | grep -F "teto-skills"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "16384"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "progressive disclosure"
+(vazio)
+
+$ git log --all --grep="teto-skills" --oneline
+3e93ca47 Lote B: paralelo por tarefa, esperar-ci, Issue de outro repo, teto e catraca (2.0.6) (#618)
+0d46c7b3 Worktree do agente segue worktree.baseRef (1.55.1) (#468)
+2f5c1845 Invariantes do territorio declaradas e revisar abaixo do teto de 16 KB
+deccd1d4 zerar-issues-14 t1: isencao da varredura cabe no teto da skill
+284804c4 B2 + I2 + M2: consertos em conferir-prova.cjs
+6f2ad3a3 Tarefa 9: O substituir.cjs é citado onde se edita
+b7d7dc87 Tarefa 6: fecha os achados do revisar no conferidor
+721fe3ce Regua cabe no teto de 16 KB, e a contagem de sensores sobe para 26
+792c50bb plano: os tres artefatos que outra regua obrigou a criar ganham tarefa
+f7d76692 teto: o Runtime sai do SKILL.md, e a bateria do ledger declara sensor
+5fb11c94 tarefa 6 integrada, e o detalhe do sensor sai do SKILL.md para references
+72fe131e Ajustar duas baterias que a rodada completa do T15 deixou vermelhas
+e3025dd7 Implement skill size ceiling test (500L/16KB)
+
+$ git log --all --grep="16384" --oneline
+3e93ca47 Lote B: paralelo por tarefa, esperar-ci, Issue de outro repo, teto e catraca (2.0.6) (#618)
+b593073e Apoio ao dev, lote 6: ferramentas do fluxo (1.80.0) (#598)
+2ee28b93 Pendencia do fluxo so sai com destino (#449), versao 1.56.0 (#469)
+deccd1d4 zerar-issues-14 t1: isencao da varredura cabe no teto da skill
+55cdcf91 Tarefa 3: base do agente passa a ser o comando, não a prosa
+117615cb regua selada: fecha os onze achados da rodada 6 do revisar
+b7258733 A2 fecha de verdade: ancoraDe separa ambiente de veredito, e o caso mede
+b7d7dc87 Tarefa 6: fecha os achados do revisar no conferidor
+721fe3ce Regua cabe no teto de 16 KB, e a contagem de sensores sobe para 26
+792c50bb plano: os tres artefatos que outra regua obrigou a criar ganham tarefa
+f7d76692 teto: o Runtime sai do SKILL.md, e a bateria do ledger declara sensor
+5fb11c94 tarefa 6 integrada, e o detalhe do sensor sai do SKILL.md para references
+05919c37 Documentar exit 69, carimbo de base e gate de release nas skills
+
+$ git log --all --grep="progressive disclosure" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+(vazio)
+
