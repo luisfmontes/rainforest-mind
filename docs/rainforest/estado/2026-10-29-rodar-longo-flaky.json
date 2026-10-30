@@ -18,7 +18,41 @@
     "em": "2026-10-29"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-10-29",
+    "tarefas_ok": 2,
+    "tarefas": 2,
+    "comando": "bash scripts/testa-rodar-longo.sh (36 sob carga 3x12 e 40 sob carga 4x10)",
+    "saida": "ok: 17   falhou: 0 em 76 de 76; 1 PID reaproveitado ignorado",
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "b1625e0a1db94b61eea99b21fc09df4515595133",
+        "iteracao": 1,
+        "sessao": "4afb8320-f076-402f-8e7d-8f71f64b7cd2",
+        "ts": "2026-10-30T01:44:28.113Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "768f591237311218452e1f5c9d69803d35e8e70d",
+        "iteracao": 1,
+        "sessao": "4afb8320-f076-402f-8e7d-8f71f64b7cd2",
+        "ts": "2026-10-30T01:44:28.113Z"
+      }
+    ],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-rodar-longo.sh, caso controle: processo vivo com a marca e reconhecido como da bateria"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "so versao e changelog"
+      }
+    ],
+    "em": "2026-10-29"
   },
   "revisar": {
     "status": "pendente"
