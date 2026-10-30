@@ -41,23 +41,48 @@
     "em": "2026-10-30"
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "84260e08cc42be2d4f0d374b739ddc7e424e7a8c",
+      "head": "22af0aa62abea8d3a57e5c50db22de479e28c985",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a7e40054ba186cdcd",
+        "agente_id": "a733490882f4ffa13",
         "veredito": "ok",
         "em": "2026-10-30",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/4afb8320-f076-402f-8e7d-8f71f64b7cd2/subagents/agent-a7e40054ba186cdcd.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/4afb8320-f076-402f-8e7d-8f71f64b7cd2/subagents/agent-a733490882f4ffa13.jsonl"
       }
-    ]
+    ],
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a7e40054ba186cdcd",
+            "veredito": "ok",
+            "em": "2026-10-30",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/4afb8320-f076-402f-8e7d-8f71f64b7cd2/subagents/agent-a7e40054ba186cdcd.jsonl"
+          }
+        ]
+      }
+    ],
+    "achados": 6,
+    "base": "c8b7919e",
+    "head": "22af0aa6",
+    "comando": "revisor rodada 1 (c8b7919e..84260e08) + rodada 2 (84260e08..22af0aa6)",
+    "saida": "VEREDITO: ok nas duas rodadas; achados 1 e 5 corrigidos, 2-4 aceitos",
+    "em": "2026-10-30"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-release-da-versao.sh",
+    "saida": "ok: 14   falhou: 0; T2 6/6 sem pull_request; T3 4 arquivos, baterias 0, --seco com notas 2.3.0",
+    "sensor_externo": "bash scripts/testa-release-da-versao.sh",
+    "em": "2026-10-30",
+    "head": "22af0aa62abea8d3a57e5c50db22de479e28c985"
   },
   "fechar": {
     "status": "pendente"
@@ -83,6 +108,13 @@
       "porque": "o CHANGELOG sempre tem data e falha fechado; com o gh real o create de release existente falha e nada é sobrescrito (D3); quem protege do gh real é o g1, que para antes dos casos",
       "estagio": "revisar",
       "em": "2026-10-30T11:46:36.951Z"
+    },
+    {
+      "pergunta": "Revisão 2: P12_LUIS preexistente na varredura de 2026-10-28",
+      "escolha": "não tratar neste PR",
+      "porque": "fora do delta e anterior a esta entrega; nome de ambiente de teste, não de cliente, e o gate de publicação não o barra",
+      "estagio": "revisar",
+      "em": "2026-10-30T11:47:57.864Z"
     }
   ]
 }
