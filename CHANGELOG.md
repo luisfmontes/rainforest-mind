@@ -10,6 +10,12 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.3.1 — 2026-10-30
+
+- **Workflows sem o aviso de Node 20.** `actions/checkout@v7`, `actions/setup-node@v7` e `actions/setup-python@v7` no `baterias.yml` e no `release.yml`. As versões anteriores (`@v4`, e `@v5` no setup-python) miravam Node 20, e todo run terminava avisando que o GitHub as forçava a rodar em Node 24. Nada muda para quem usa o plugin.
+
+Desenho em `docs/rainforest/design/2026-10-30-actions-node24.md`.
+
 ## 2.3.0 — 2026-10-30
 
 - **Release do GitHub sai sozinha a cada versão nova.** O push do bump do `plugin.json` à `main` dispara `.github/workflows/release.yml`, que chama `scripts/release-da-versao.cjs` e publica `v<versão>` com a seção daquela versão no `CHANGELOG.md` como notas. Release que já existe não é tocada; versão sem seção no CHANGELOG deixa o run vermelho sem criar nada. Até a 2.2.1 o GitHub ficou em `v1.0.0`, porque a release dependia de alguém lembrar; a `v2.2.2` foi publicada à mão com as notas da linha 2.x, e as versões 1.x seguem só no `CHANGELOG.md`.
