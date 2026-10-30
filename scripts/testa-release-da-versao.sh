@@ -65,7 +65,7 @@ PATH_COM_STUB="$BIN:$PATH"
 PATH_SEM_GH="$NODE_DIR:$GIT_DIR"
 
 # ------------------------------------------------------------------ gate
-G1="$(PATH="$PATH_COM_STUB" node -e "console.log(require('$RAIZ_W/hooks/lib/resolver-executavel.cjs').resolverExecutavel('gh'))" 2>/dev/null | tr -d '\r')"
+G1="$(PATH="$PATH_COM_STUB" node -e "console.log(require('$RAIZ_W/hooks/lib/resolver-executavel.cjs').resolverExecutavel('gh'))" 2>/dev/null | tr -d '\r' | tr '\\' '/')"
 case "$G1" in "$BIN_W"/*) g1=0 ;; *) g1=1 ;; esac
 afirma "g1: com o stub no PATH, resolverExecutavel('gh') acha o stub ($G1)" $g1
 if [ "$g1" -ne 0 ]; then
