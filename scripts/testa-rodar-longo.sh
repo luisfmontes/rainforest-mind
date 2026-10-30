@@ -19,6 +19,11 @@ if command -v cygpath >/dev/null 2>&1; then TMP="$(cygpath -m "$TMP")"; fi
 
 PIDS_REGISTRADOS=()
 
+# Marca desta execucao, posta em todo comando que a bateria sobe (D1 do design
+# 2026-10-29-rodar-longo-flaky). Aparece na linha de comando do vigia e do bash
+# do comando, e e o que separa processo da bateria de outro que herdou o PID.
+MARCA="rl-bateria-$$-$RANDOM$RANDOM"
+
 caso() {
   local nome="$1" resultado="$2"
   if [ "$resultado" -eq 0 ]; then
@@ -51,6 +56,28 @@ esta_vivo() {
   node -e 'try{process.kill(Number(process.argv[1]),0);process.exit(0)}catch(e){process.exit(e.code==="EPERM"?0:1)}' "$1"
 }
 
+# Linha de comando do processo: no Windows pelo CIM, fora dele pelo ps.
+linha_de_comando() {
+  if command -v powershell >/dev/null 2>&1; then
+    powershell -NoProfile -Command "(Get-CimInstance Win32_Process -Filter 'ProcessId=$1').CommandLine" 2>/dev/null | tr -d ''
+  else
+    ps -o args= -p "$1" 2>/dev/null
+  fi
+}
+
+# 0 = o processo e desta bateria (a linha de comando traz a MARCA). Linha vazia
+# com o processo ainda vivo tambem devolve 0: consulta que nao responde fecha
+# para o lado do vermelho (D4). So "nao achou" ou "achou outro" devolve 1.
+eh_da_bateria() {
+  local linha
+  linha="$(linha_de_comando "$1")"
+  case "$linha" in
+    *"$MARCA"*) return 0 ;;
+  esac
+  if [ -z "$linha" ] && esta_vivo "$1"; then return 0; fi
+  return 1
+}
+
 # Espera o estado deixar de ser `rodando` (até ~20 s). Imprime a última saída.
 esperar_fim() {
   local saida="$1" t=0 out rc
@@ -76,7 +103,7 @@ caso "estado de saida inexistente sai 2 (rc=$rc)" $([ "$rc" -eq 2 ] && echo 0 ||
 
 echo "== comando que sai 3 registra exit 3"
 SAIDA3="$TMP/sai3.txt"
-pid3="$($RL iniciar --saida "$SAIDA3" -- bash -c 'exit 3')"; rc=$?
+pid3="$($RL iniciar --saida "$SAIDA3" -- bash -c ": $MARCA; exit 3")"; rc=$?
 caso "iniciar do comando que sai 3 sai 0 e imprime PID (rc=$rc pid=$pid3)" $([ "$rc" -eq 0 ] && ehPidNumerico "$pid3" && echo 0 || echo 1)
 registra "$pid3"
 registra $(registra_pids_do_arquivo "$SAIDA3")
@@ -86,7 +113,7 @@ caso "estado depois do fim imprime 'exit 3' e sai 0 (saida='$final3' rc=$rc)" $(
 echo "== iniciar volta na hora, estado acompanha, arquivo guarda saida e exit"
 SAIDA="$TMP/longo.txt"
 t0=$(date +%s%3N)
-pid="$($RL iniciar --saida "$SAIDA" -- bash -c 'sleep 3; echo oi; exit 3')"; rc=$?
+pid="$($RL iniciar --saida "$SAIDA" -- bash -c ": $MARCA; sleep 3; echo oi; exit 3")"; rc=$?
 t1=$(date +%s%3N)
 dt=$((t1 - t0))
 caso "iniciar sai 0 com PID numerico em menos de 2 s (rc=$rc, ${dt} ms)" $([ "$rc" -eq 0 ] && ehPidNumerico "$pid" && [ "$dt" -lt 2000 ] && echo 0 || echo 1)
@@ -103,7 +130,7 @@ caso "a ultima linha do arquivo e 'exit 3'" $([ "$(tail -n 1 "$SAIDA")" = "exit 
 
 echo "== comando inexistente registra exit diferente de zero sem travar"
 SAIDA_X="$TMP/inexistente.txt"
-pidx="$($RL iniciar --saida "$SAIDA_X" -- comando-que-nao-existe-rodar-longo-xyz)"; rc=$?
+pidx="$($RL iniciar --saida "$SAIDA_X" -- comando-que-nao-existe-rodar-longo-xyz "$MARCA")"; rc=$?
 caso "iniciar do comando inexistente sai 0 (rc=$rc)" $([ "$rc" -eq 0 ] && ehPidNumerico "$pidx" && echo 0 || echo 1)
 registra "$pidx"
 registra $(registra_pids_do_arquivo "$SAIDA_X")
@@ -112,7 +139,7 @@ caso "estado final do comando inexistente e exit N com N diferente de 0 (saida='
 
 echo "== linha 'exit N' impressa pelo comando nao e confundida com o fim"
 SAIDA_F="$TMP/falso.txt"
-pidf="$($RL iniciar --saida "$SAIDA_F" -- bash -c 'echo "exit 5"; sleep 2; exit 0')"
+pidf="$($RL iniciar --saida "$SAIDA_F" -- bash -c ": $MARCA; "'echo "exit 5"; sleep 2; exit 0')"
 registra "$pidf"
 registra $(registra_pids_do_arquivo "$SAIDA_F")
 sleep 0.5
@@ -123,7 +150,7 @@ caso "no fim, estado diz o exit real 'exit 0' (saida='$finalf')" $([ "$finalf" =
 
 echo "== vigia morto sem registrar o exit: estado diz morto"
 SAIDA_M="$TMP/morto.txt"
-$RL iniciar --saida "$SAIDA_M" -- bash -c 'sleep 30' >/dev/null
+$RL iniciar --saida "$SAIDA_M" -- bash -c ": $MARCA; sleep 30" >/dev/null
 pids_m="$(registra_pids_do_arquivo "$SAIDA_M")"
 registra $pids_m
 for p in $pids_m; do node -e 'try{process.kill(Number(process.argv[1]))}catch{}' "$p"; done
@@ -131,13 +158,32 @@ sleep 0.5
 out="$($RL estado --saida "$SAIDA_M")"; rc=$?
 caso "estado com o vigia morto imprime 'morto' e sai 4 (saida='$out' rc=$rc)" $([ "$out" = "morto" ] && [ "$rc" -eq 4 ] && echo 0 || echo 1)
 
+echo "== a checagem final reconhece o processo pela marca, nao so pelo PID (D5)"
+SAIDA_C="$TMP/controle.txt"
+$RL iniciar --saida "$SAIDA_C" -- bash -c ": $MARCA; sleep 20" >/dev/null
+pids_c="$(registra_pids_do_arquivo "$SAIDA_C")"
+comando_c="$(echo "$pids_c" | tail -n 1)"
+eh_da_bateria "$comando_c"; rc=$?
+caso "controle: processo vivo com a marca e reconhecido como da bateria (rc=$rc)" $([ "$rc" -eq 0 ] && echo 0 || echo 1)
+for p in $pids_c; do node -e 'try{process.kill(Number(process.argv[1]))}catch{}' "$p"; done
+alheio="$(node -e 'const c=require("child_process").spawn(process.execPath,["-e","setTimeout(()=>{},20000)"],{detached:true,stdio:"ignore"});console.log(c.pid);c.unref()')"
+eh_da_bateria "$alheio"; rc=$?
+caso "controle: processo vivo sem a marca nao e da bateria (rc=$rc)" $([ "$rc" -eq 1 ] && echo 0 || echo 1)
+node -e 'try{process.kill(Number(process.argv[1]))}catch{}' "$alheio"
+
 echo "-- nenhum processo registrado pela bateria fica vivo no fim"
 vivos=0
 for p in "${PIDS_REGISTRADOS[@]}"; do
   if esta_vivo "$p"; then
-    vivos=$((vivos+1))
-    echo "  vivo: PID $p"
-    node -e 'try{process.kill(Number(process.argv[1]))}catch{}' "$p"
+    # PID vivo pode ser outro processo que herdou o numero (#632): so conta, e
+    # so morre, o que traz a marca desta execucao (D3).
+    if eh_da_bateria "$p"; then
+      vivos=$((vivos+1))
+      echo "  vivo: PID $p"
+      node -e 'try{process.kill(Number(process.argv[1]))}catch{}' "$p"
+    else
+      echo "  PID $p reaproveitado por outro processo, ignorado"
+    fi
   fi
 done
 echo "  PIDs registrados: ${#PIDS_REGISTRADOS[@]}   vivos no fim: $vivos"
