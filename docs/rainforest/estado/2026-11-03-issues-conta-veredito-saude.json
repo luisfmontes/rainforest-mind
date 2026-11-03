@@ -1,0 +1,36 @@
+{
+  "slug": "2026-11-03-issues-conta-veredito-saude",
+  "titulo": "Issues #642 e #641, e o falso verde do /saude nos vigias",
+  "criado_em": "2026-11-03",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-11-03-issues-conta-veredito-saude.md",
+    "em": "2026-11-03"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-11-03-issues-conta-veredito-saude.md",
+    "tarefas": 4,
+    "paralelas": [
+      1,
+      2,
+      3
+    ],
+    "em": "2026-11-03"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
