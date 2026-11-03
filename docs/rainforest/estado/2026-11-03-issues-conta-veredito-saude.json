@@ -22,7 +22,31 @@
     "em": "2026-11-03"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-11-03",
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "t1 conta orfao",
+        "desde": "2026-11-03T19:32:02Z",
+        "sessao": "e2e7df6c-57d6-4236-bf0b-5338deda19de"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "t2 Repo no veredito",
+        "desde": "2026-11-03T19:32:02Z",
+        "sessao": "e2e7df6c-57d6-4236-bf0b-5338deda19de"
+      },
+      {
+        "agente": "executor",
+        "tarefa": "t3 saude vigias",
+        "desde": "2026-11-03T19:32:02Z",
+        "sessao": "e2e7df6c-57d6-4236-bf0b-5338deda19de"
+      }
+    ],
+    "tarefas_ok": 0,
+    "tarefas": 4,
+    "em": "2026-11-03"
   },
   "revisar": {
     "status": "pendente"
