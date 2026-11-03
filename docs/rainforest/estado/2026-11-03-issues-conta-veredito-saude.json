@@ -41,7 +41,7 @@
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "testa-saude-vigias.sh, caso C1 desabilitada com proxima preenchida"
+        "fixture": "testa-saude-vigias.sh, casos C1 e C7"
       },
       {
         "tarefa": 4,
@@ -54,16 +54,42 @@
         "fixture": "testa-veredito-revisor.sh, caso #641 R8"
       }
     ],
-    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-03-issues-conta-veredito-saude",
-    "saida": "tarefa 1: vermelho; tarefa 2: vermelho; tarefa 3: vermelho; tarefa 5: vermelho; tarefa 4: pulada (n/a)"
+    "comando": "node scripts/conferir-mutacao.cjs (t3 C7 e t5 R8 na rodada 2)",
+    "saida": "ok: bateria VERMELHA com o comportamento invertido (exit 1), confirmada em duas rodadas."
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "ffe47506e1aef35834299c8523f271295f95e0cc",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a1e4b835c46267c24",
+        "veredito": "ok",
+        "em": "2026-11-03",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e2e7df6c-57d6-4236-bf0b-5338deda19de/subagents/agent-a1e4b835c46267c24.jsonl"
+      }
+    ],
+    "achados": 2,
+    "base": "aa8a9489a2b3a305be6f73d88fcd2741db247876",
+    "head": "ffe47506e1aef35834299c8523f271295f95e0cc",
+    "em": "2026-11-03"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-11-03"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-11-03"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-11-03",
+      "de": "revisar",
+      "motivo": "achados [baixa] da revisao 1: timeout no git sobre o caminho de Repo:, e caso Disabled sem proxima na bateria do /saude"
+    }
+  ]
 }
