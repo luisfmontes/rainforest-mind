@@ -71,12 +71,15 @@ const VOCAB_ULTIMA_LINHA = ['veredito: ok', 'veredito: reprovado'];
 const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || path.resolve(__dirname, '..');
 
 /** Raiz do repositório do cwd do EVENTO — nunca a do processo do hook
- * (mesma função de `hooks/gate-agente-em-voo.cjs` ~56-67). */
-function toplevel(cwd) {
+ * (mesma função de `hooks/gate-agente-em-voo.cjs` ~56-67). `timeout` só para o
+ * caminho que veio do briefing (#641): unidade mapeada para rede fora do ar
+ * penduraria o git até o harness matar o hook, e o veredito se perderia. */
+function toplevel(cwd, timeout) {
   try {
     return execFileSync(caminhoExecutavel('git'), ['-C', cwd, 'rev-parse', '--show-toplevel'], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
+      timeout,
     }).trim() || null;
   } catch {
     return null;
@@ -220,7 +223,7 @@ function main() {
   if (typeof payload.cwd !== 'string' || !payload.cwd) process.exit(0);
   const repoRoot = toplevel(payload.cwd);
   const repoDeclarado = extrairRepo(prompt);
-  const raizDeclarada = repoDeclarado ? toplevel(repoDeclarado) : null;
+  const raizDeclarada = repoDeclarado ? toplevel(repoDeclarado, 10000) : null;
   if (repoDeclarado && raizDeclarada === null) {
     process.stderr.write(`Repo: ${repoDeclarado} nao e repositorio git\n`);
   }

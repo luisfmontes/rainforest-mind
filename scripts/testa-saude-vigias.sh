@@ -111,6 +111,20 @@ else
   falhou=$((falhou+1)); echo "  FALHA C4: esperava alerta so com morta-w e aviso so com dis-y. Saida:"; printf '%s\n' "$OUT" | grep -A1 'vigias'
 fi
 
+echo "== desabilitada sem proxima =="
+cat > "$SBP/c7.json" <<'JSON'
+[{"nome":"dis-vazia","proxima":"","estado":"Disabled"}]
+JSON
+OUT="$(saude 1 "$SBP/c7.json")"
+if printf '%s
+' "$OUT" | grep -qF '1 de 1 tarefa(s) desabilitada(s): dis-vazia'    && ! printf '%s
+' "$OUT" | grep -qF 'ALERTA  vigias'; then
+  ok=$((ok+1)); echo "  ok   C7. desabilitada sem proxima: so o aviso, sem alerta de gatilho vencido"
+else
+  falhou=$((falhou+1)); echo "  FALHA C7: desabilitada sem proxima nao devia virar alerta. Saida:"; printf '%s
+' "$OUT" | grep -A1 'vigias'
+fi
+
 echo "== nome com tab: a<TAB>b, Ready, com data =="
 cat > "$SBP/c5.json" <<'JSON'
 [{"nome":"a\tb","proxima":"2026-11-04T08:00:00","estado":"Ready"}]
