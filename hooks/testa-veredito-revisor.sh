@@ -885,6 +885,120 @@ else
   falhou=$((falhou+1)); echo "  FALHA (#465) H4 payload fora do vocabulario: exit=$GOT, V=$V, saida=$SAIDA"
 fi
 
+# ---------------------------------------------------------------- Issue #641
+# `Repo: <caminho absoluto>` no briefing: o estado do fluxo e procurado PRIMEIRO
+# na raiz declarada (fluxo em outro repositorio que o da sessao) e so depois no
+# cwd do evento. Repo A = cwd da sessao, sem o estado; repo B = repositorio do
+# fluxo, com o estado armado. As asserções conferem o NOME do diretorio (rep-a,
+# rep-b): o caminho que o git devolve pode vir em forma curta (8.3) no CI.
+echo
+echo "== 28. (#641) Repo: no briefing escolhe a raiz do estado =="
+RA="$RAIZ/rep-a"; RB="$RAIZ/rep-b"; NR="$RAIZ/nao-repo"
+for d in "$RA" "$RB"; do
+  git init -q -b main "$d"
+  git -C "$d" config user.email t@t; git -C "$d" config user.name t
+  git -C "$d" config commit.gpgsign false
+  echo base > "$d/a.txt"; git -C "$d" add a.txt; git -C "$d" commit -qm base
+done
+mkdir -p "$NR"
+ESTADO_A="$RA/docs/rainforest/estado/$SLUG.json"
+ESTADO_B="$RB/docs/rainforest/estado/$SLUG.json"
+VEREDITO_641="Diff OK.
+VEREDITO: ok"
+
+# Transcrito de subagente cujo primeiro prompt traz `Slug: <SLUG>` e, quando o
+# primeiro argumento nao esta vazio, `Repo: <argumento>`. Mesma forma de
+# transcrito_com_texto; o texto do assistente sai exato, porque `estado.cjs
+# veredito` o reextrai do arquivo.
+transcrito_briefing() { # repo_declarado (vazio = sem linha Repo), texto, agente_id
+  local repo="$1" texto="$2" id="$3"
+  local dir="$HOME_SBOX_POSIX/.claude-personal/projects/p/sess-caixa/subagents"
+  mkdir -p "$dir"
+  node -e '
+const fs = require("fs");
+const [dir, repo, texto, id, slug] = process.argv.slice(1);
+const briefing = "Slug: " + slug + (repo ? "\nRepo: " + repo : "") + "\nRevise o diff da tarefa de teste.";
+const linha1 = JSON.stringify({type:"user", isSidechain:true, message:{role:"user", content:briefing}});
+const linha2 = JSON.stringify({type:"assistant", isSidechain:true, message:{role:"assistant", content:[{type:"text", text: texto}]}});
+fs.writeFileSync(dir + "/agent-" + id + ".jsonl", linha1 + "\n" + linha2 + "\n");
+fs.writeFileSync(dir + "/agent-" + id + ".meta.json", JSON.stringify({agentType:"rainforest-mind:revisor"}));
+' "$dir" "$repo" "$texto" "$id" "$SLUG"
+  cygpath -m "$dir/agent-$id.jsonl" 2>/dev/null || printf '%s' "$dir/agent-$id.jsonl"
+}
+
+reset_estado "$ESTADO_B"; rm -f "$ESTADO_A"
+T=$(transcrito_briefing "$RB" "$VEREDITO_641" R1ID)
+P=$(pay "$RA" "rainforest-mind:revisor" "R1ID" "$VEREDITO_641" '{"agent_transcript_path":"'"$T"'"}')
+printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" >/dev/null 2>&1; GOT=$?
+VB=$(vereditos "$ESTADO_B")
+if [ "$GOT" = 0 ] && printf '%s' "$VB" | grep -q '"agente_id":"R1ID"' && [ ! -f "$ESTADO_A" ]; then
+  ok=$((ok+1)); echo "  ok    (#641) R1 Repo: aponta para B: grava o veredito em B e A fica sem estado (exit $GOT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#641) R1 Repo: nao gravou em B: exit=$GOT, V_B=$VB, A_existe=$([ -f "$ESTADO_A" ] && echo sim || echo nao)"
+fi
+
+reset_estado "$ESTADO_B"; rm -f "$ESTADO_A"
+T=$(transcrito_briefing "" "$VEREDITO_641" R2ID)
+P=$(pay "$RA" "rainforest-mind:revisor" "R2ID" "$VEREDITO_641" '{"agent_transcript_path":"'"$T"'"}')
+ERR=$(printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" 2>&1 >/dev/null); GOT=$?
+VB=$(vereditos "$ESTADO_B")
+if [ "$GOT" = 0 ] && [ "$VB" = "[]" ] && printf '%s' "$ERR" | grep -q "nao encontrado em" && printf '%s' "$ERR" | grep -q "rep-a"; then
+  ok=$((ok+1)); echo "  ok    (#641) R2 sem Repo: o estado so e procurado no cwd: nada em B, stderr 'nao encontrado em' com A (exit $GOT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#641) R2 sem Repo: exit=$GOT, V_B=$VB, stderr=$ERR"
+fi
+
+reset_estado "$ESTADO_A"; rm -f "$ESTADO_B"
+T=$(transcrito_briefing "$NR" "$VEREDITO_641" R3ID)
+P=$(pay "$RA" "rainforest-mind:revisor" "R3ID" "$VEREDITO_641" '{"agent_transcript_path":"'"$T"'"}')
+ERR=$(printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" 2>&1 >/dev/null); GOT=$?
+VA=$(vereditos "$ESTADO_A")
+if [ "$GOT" = 0 ] && printf '%s' "$VA" | grep -q '"agente_id":"R3ID"' && printf '%s' "$ERR" | grep -q "nao e repositorio git"; then
+  ok=$((ok+1)); echo "  ok    (#641) R3 Repo: que nao e repositorio: grava no cwd (A) e avisa 'nao e repositorio git' (exit $GOT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#641) R3 Repo: nao repositorio: exit=$GOT, V_A=$VA, stderr=$ERR"
+fi
+
+reset_estado "$ESTADO_A"; rm -f "$ESTADO_B"
+T=$(transcrito_briefing "rainforest-mind" "$VEREDITO_641" R4ID)
+P=$(pay "$RA" "rainforest-mind:revisor" "R4ID" "$VEREDITO_641" '{"agent_transcript_path":"'"$T"'"}')
+ERR=$(printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" 2>&1 >/dev/null); GOT=$?
+VA=$(vereditos "$ESTADO_A")
+if [ "$GOT" = 0 ] && printf '%s' "$VA" | grep -q '"agente_id":"R4ID"' && ! printf '%s' "$ERR" | grep -q "Repo:"; then
+  ok=$((ok+1)); echo "  ok    (#641) R4 Repo relativo (rotulo comum): grava no cwd (A) sem aviso de Repo: (exit $GOT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#641) R4 Repo relativo: exit=$GOT, V_A=$VA, stderr=$ERR"
+fi
+
+rm -f "$ESTADO_A" "$ESTADO_B"
+T=$(transcrito_briefing "$RB" "$VEREDITO_641" R5ID)
+P=$(pay "$RA" "rainforest-mind:revisor" "R5ID" "$VEREDITO_641" '{"agent_transcript_path":"'"$T"'"}')
+ERR=$(printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" 2>&1 >/dev/null); GOT=$?
+if [ "$GOT" = 0 ] && printf '%s' "$ERR" | grep -q "nao encontrado em" && printf '%s' "$ERR" | grep -q "rep-b" && printf '%s' "$ERR" | grep -q "rep-a"; then
+  ok=$((ok+1)); echo "  ok    (#641) R5 slug em lugar nenhum, com Repo: B: exit 0 e stderr com o caminho de B e o de A (exit $GOT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#641) R5 slug em lugar nenhum: exit=$GOT, stderr=$ERR"
+fi
+
+reset_estado "$ESTADO_A"; rm -f "$ESTADO_B"
+T=$(transcrito_briefing "$RB" "$VEREDITO_641" R6ID)
+P=$(pay "$RA" "rainforest-mind:revisor" "R6ID" "$VEREDITO_641" '{"agent_transcript_path":"'"$T"'"}')
+printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" >/dev/null 2>&1; GOT=$?
+VA=$(vereditos "$ESTADO_A")
+if [ "$GOT" = 0 ] && printf '%s' "$VA" | grep -q '"agente_id":"R6ID"' && [ ! -f "$ESTADO_B" ]; then
+  ok=$((ok+1)); echo "  ok    (#641) R6 Repo: B valido sem estado, slug so em A: grava em A (fallback nao bloqueado) (exit $GOT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#641) R6 fallback para A: exit=$GOT, V_A=$VA, B_existe=$([ -f "$ESTADO_B" ] && echo sim || echo nao)"
+fi
+
+reset_estado "$ESTADO_B"
+SAIDA_MARCAR=$(RFM_ESTADO_ROOT="$RB" node "$ESTADO" marcar --slug "$SLUG" --estagio revisar --status ok --json '{"base":"x","head":"y"}' 2>&1); GOT=$?
+if printf '%s' "$SAIDA_MARCAR" | grep -q "Repo:" && printf '%s' "$SAIDA_MARCAR" | grep -q "nenhum veredito gravado"; then
+  ok=$((ok+1)); echo "  ok    (#641) R7 marcar revisar ok com janela vazia: a recusa traz a dica 'Repo:' (exit $GOT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#641) R7 marcar sem dica de Repo: exit=$GOT, saida=$SAIDA_MARCAR"
+fi
+
 echo
 echo "-----------------------------------------"
 echo "== resultado: $ok ok, $falhou falha(s) =="

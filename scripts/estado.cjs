@@ -1095,7 +1095,8 @@ function verificarJanelaDeVereditos(bloco_atual) {
   if (bloco_atual.vereditos.length === 0) {
     return "RECUSADO: nenhum veredito gravado para 'revisar'. Um revisor real precisa terminar com\n"
       + "'VEREDITO: ok' (o hook SubagentStop grava a janela) antes de fechar este estagio. Rode um\n"
-      + "agente rainforest-mind:revisor com 'Slug: <slug>' na primeira linha do briefing.";
+      + "agente rainforest-mind:revisor com 'Slug: <slug>' na primeira linha do briefing. "
+      + "Fluxo em outro repositorio que o da sessao: acrescente 'Repo: <caminho absoluto>' ao briefing, ao lado de 'Slug:'.";
   }
   const naoOk = bloco_atual.vereditos.filter((v) => v.veredito !== 'ok');
   if (naoOk.length > 0) {

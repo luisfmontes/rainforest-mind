@@ -43,13 +43,17 @@
  *      repositório do EVENTO (`payload.cwd`), nunca a do processo do hook
  *      (molde `hooks/gate-agente-em-voo.cjs` ~56-67 para a função
  *      `toplevel`).
+ *   7. (#641) briefing com `Repo: <caminho absoluto>` declara o repositório
+ *      do fluxo quando ele não é o da sessão: o estado é procurado PRIMEIRO
+ *      ali, depois no cwd do evento. Sem a linha, vale o que vale desde o
+ *      #329. `preexistentesNoDiff` e `RFM_DIFF_CWD` seguem com `payload.cwd`.
  */
 
 const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 const { caminhoExecutavel } = require(path.join(__dirname, 'lib', 'resolver-executavel.cjs'));
-const { primeiroPrompt, extrairSlug, ultimaMensagemAssistente } = require(path.join(__dirname, '..', 'scripts', 'lib', 'primeiro-prompt-jsonl.cjs'));
+const { primeiroPrompt, extrairSlug, extrairRepo, ultimaMensagemAssistente } = require(path.join(__dirname, '..', 'scripts', 'lib', 'primeiro-prompt-jsonl.cjs'));
 const { extrairUltimaLinha, validarVocabulario } = require(path.join(__dirname, '..', 'scripts', 'lib', 'extrair-veredito.cjs'));
 const { ehWorktreeDeAgente } = require(path.join(__dirname, 'lib', 'contexto-sessao.cjs'));
 const { contarAchados, incoerencia, preexistentesNoDiff, tirarMarcaPreexistente } = require(path.join(__dirname, 'lib', 'achados-revisor.cjs'));
@@ -157,7 +161,7 @@ function raizComEstadoDoSlug(repoRoot, slug) {
 
   if (sobra.length === 1) return sobra[0];
   if (sobra.length === 0) {
-    process.stderr.write(`${slug} nao encontrado\n`);
+    process.stderr.write(`${slug} nao encontrado em ${repoRoot} e worktrees\n`);
   } else {
     process.stderr.write(`${slug} ambiguo: ${sobra.join(' ')}\n`);
   }
@@ -226,10 +230,15 @@ function main() {
 
   if (typeof payload.cwd !== 'string' || !payload.cwd) process.exit(0);
   const repoRoot = toplevel(payload.cwd);
-  if (!repoRoot) process.exit(0);
+  const repoDeclarado = extrairRepo(prompt);
+  const raizDeclarada = repoDeclarado ? toplevel(repoDeclarado) : null;
+  if (repoDeclarado && raizDeclarada === null) {
+    process.stderr.write(`Repo: ${repoDeclarado} nao e repositorio git\n`);
+  }
+  if (!repoRoot && !raizDeclarada) process.exit(0);
 
   try {
-    if (!require('./lib/config.cjs').ligado('contrato-veredito', { projeto: repoRoot })) {
+    if (!require('./lib/config.cjs').ligado('contrato-veredito', { projeto: raizDeclarada || repoRoot })) {
       process.exit(0);
     }
   } catch {}
@@ -247,7 +256,8 @@ function main() {
   }
 
   // D5 — #329: procura docs/rainforest/estado/<slug>.json no repoRoot ou em worktrees
-  const raizEstado = raizComEstadoDoSlug(repoRoot, slug);
+  const raizEstado = (raizDeclarada && raizComEstadoDoSlug(raizDeclarada, slug))
+    || (repoRoot && raizComEstadoDoSlug(repoRoot, slug));
   if (!raizEstado) process.exit(0);
 
   const estadoCjs = path.join(PLUGIN_ROOT, 'scripts', 'estado.cjs');

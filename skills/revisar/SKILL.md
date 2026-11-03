@@ -98,6 +98,8 @@ que o hook `SubagentStop` (`hooks/veredito-revisor.cjs`) lê o slug para
 gravar o veredito (D5); revisão avulsa, sem `Slug:`, não grava nada nem
 trava — continua funcionando como hoje.
 
+Fluxo em outro repositório que o da sessão leva também a linha `Repo: <caminho absoluto>`, logo abaixo de `Slug:` (o hook procura o estado primeiro ali; #641). Sem ela, o veredito não grava e o `marcar` recusa.
+
 Briefing que pede mutação de fonte é recusado na PRIMEIRA linha do relato,
 antes de qualquer leitura. Quando o achado só fecha com mutação — reverter
 o código e ver o teste falhar — descreva-a sem mutar:
