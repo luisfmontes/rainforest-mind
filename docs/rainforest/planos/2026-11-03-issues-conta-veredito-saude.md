@@ -39,8 +39,8 @@ desfecho: estender
 prova-na-base: verde — o caso novo nasce na bateria desta tarefa; a bateria da base não o contém, e a catraca da mutação mede o vermelho
 mutacao:
   arquivo: `hooks/veredito-revisor.cjs`
-  de: `const raizEstado = (raizDeclarada && raizComEstadoDoSlug(raizDeclarada, slug))`
-  para: `const raizEstado = (false && raizComEstadoDoSlug(raizDeclarada, slug))`
+  de: `const viaDeclarada = raizDeclarada && raizComEstadoDoSlug(raizDeclarada, slug);`
+  para: `const viaDeclarada = false;`
   bateria: `bash hooks/testa-veredito-revisor.sh`
   fixture: `testa-veredito-revisor.sh, casos "#641"`
 pronto quando: com o payload real do `SubagentStop` (cwd no repositório A, transcrito com `Slug: <s>` e `Repo: <B>`) e o estado só em B, o veredito é gravado em `revisar.vereditos` de B e A fica sem arquivo; sem o slug em lugar nenhum, o stderr nomeia as raízes procuradas; e a recusa do `marcar revisar` sem veredito cita `Repo:` — provado por `bash hooks/testa-veredito-revisor.sh` imprimindo as linhas `ok    (#641)` e `0 falha(s)`, com `bash scripts/testa-teto-skills.sh`, `bash hooks/testa-abertura-mod-config.sh` e `bash scripts/testa-plugin-codex.sh` saindo 0.
@@ -62,10 +62,27 @@ mutacao:
   fixture: `testa-saude-vigias.sh, caso "desabilitada com proxima preenchida"`
 pronto quando: com a consulta devolvendo tarefa `Disabled` e `NextRunTime` preenchido, o `/saude` imprime `aviso vigias` com o nome dela e o remédio, e nunca `todas com proxima execucao` — provado por `bash scripts/testa-saude-vigias.sh` saindo 0 e, nesta máquina, por `node scripts/saude.cjs` imprimindo `aviso vigias` com as quatro tarefas desabilitadas.
 
+### 5. Emenda: diff do fluxo, chave da raiz do estado e caminho de rede [tipo: implementar]
+atende: D8
+arquivos: `hooks/veredito-revisor.cjs`, `scripts/lib/primeiro-prompt-jsonl.cjs`, `hooks/testa-veredito-revisor.sh`
+depende de: 2
+busca:
+- repo | rg "preexistentesNoDiff|RFM_DIFF_CWD" hooks scripts | hooks/veredito-revisor.cjs e scripts/estado.cjs já recebem o cwd por parâmetro; só o valor muda
+- livro | pulado: conserto interno do hook
+desfecho: estender
+prova-na-base: verde — o caso novo nasce na bateria desta tarefa; a bateria da base não o contém, e a catraca da mutação mede o vermelho
+mutacao:
+  arquivo: `hooks/veredito-revisor.cjs`
+  de: `const cwdDoDiff = viaDeclarada || payload.cwd;`
+  para: `const cwdDoDiff = payload.cwd;`
+  bateria: `bash hooks/testa-veredito-revisor.sh`
+  fixture: `testa-veredito-revisor.sh, caso "(#641) R8"`
+pronto quando: com cwd no repositório A e `Repo: <B>`, relato `VEREDITO: ok` com `[alta] [preexistente]` citando linha que o diff de B tocou faz o hook devolver `decision: block` e nada gravar, e citando linha que ele não tocou grava `ok` em B; caminho de rede em `Repo:` com o estado em A grava em A sem aviso de `Repo:` — provado por `bash hooks/testa-veredito-revisor.sh` imprimindo as linhas `ok    (#641) R8` e `ok    (#641) R9` e `0 falha(s)`.
+
 ### 4. Versão, CHANGELOG, README e .gitignore [tipo: docs]
 atende: D6, D7
 arquivos: `.gitignore`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`, `README.md`
-depende de: 1, 2, 3
+depende de: 1, 2, 3, 5
 mutacao: n/a
   motivo: versão, notas e padrão de ignore não têm comportamento a inverter; o critério confere coerência entre os arquivos e o efeito no git
 pronto quando: com o checkout real, `git check-ignore -v .claude/fixtures/qualquer` casa a linha nova do `.gitignore`, os dois `plugin.json`, o README e a entrada nova do CHANGELOG dizem a mesma versão 2.3.2, e a entrada do CHANGELOG descreve as três correções de D1, D2 e D5 do ponto de vista de quem usa — provado por `git check-ignore -v .claude/fixtures/qualquer` e `node scripts/conferir-versao.cjs` saindo 0.

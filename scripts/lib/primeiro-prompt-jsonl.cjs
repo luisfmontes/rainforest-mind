@@ -78,6 +78,8 @@ function extrairSlug(prompt) {
  * mora o fluxo, quando ele não é o repositório da sessão. Vale a PRIMEIRA
  * linha cujo valor é caminho absoluto. Linha com valor relativo ("Repo:
  * rainforest-mind") é rótulo comum em briefing: é ignorada e a busca segue.
+ * Caminho de rede ou de dispositivo (duas barras no começo) também: o hook
+ * chamaria o git ali e tocaria a rede, e nenhum fluxo mora nele.
  * `null` quando não há nenhuma.
  */
 function extrairRepo(prompt) {
@@ -85,7 +87,7 @@ function extrairRepo(prompt) {
   const linhas = prompt.split(/\r\n|\r|\n/);
   for (const linha of linhas) {
     const m = linha.match(/^\s*repo\s*:\s*(.+?)\s*$/i);
-    if (m && m[1] && path.isAbsolute(m[1])) return m[1];
+    if (m && m[1] && path.isAbsolute(m[1]) && !/^[\\/]{2}/.test(m[1])) return m[1];
   }
   return null;
 }

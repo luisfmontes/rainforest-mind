@@ -999,6 +999,58 @@ else
   falhou=$((falhou+1)); echo "  FALHA (#641) R7 marcar sem dica de Repo: exit=$GOT, saida=$SAIDA_MARCAR"
 fi
 
+# Emenda D8: com o estado achado pela Repo:, a marca [preexistente] se confere no
+# diff de B. A nao tem origin (sem base: a marca passaria como escrita), B tem
+# origin/main atras do HEAD e o diff dele adiciona nova.cjs.
+git -C "$RB" update-ref refs/remotes/origin/main HEAD
+echo 'linha nova' > "$RB/nova.cjs"; git -C "$RB" add nova.cjs; git -C "$RB" commit -qm entrega
+TEXTO_R8='**[alta]** [preexistente] nova.cjs:1 — defeito criado pela entrega
+VEREDITO: ok'
+reset_estado "$ESTADO_B"; rm -f "$ESTADO_A"
+T=$(transcrito_briefing "$RB" "$TEXTO_R8" R8ID)
+P=$(pay "$RA" "rainforest-mind:revisor" "R8ID" "$TEXTO_R8" '{"agent_transcript_path":"'"$T"'"}')
+SAIDA=$(printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" 2>/dev/null); GOT=$?
+VB=$(vereditos "$ESTADO_B")
+if [ "$GOT" = 0 ] && printf '%s' "$SAIDA" | grep -q '"decision":"block"' && ! printf '%s' "$VB" | grep -q '"agente_id":"R8ID"'; then
+  ok=$((ok+1)); echo "  ok    (#641) R8 [preexistente] em linha que o diff de B tocou: bloqueia e nao grava (exit $GOT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#641) R8 marca passou com o diff da sessao: exit=$GOT, V_B=$VB, saida=$SAIDA"
+fi
+
+TEXTO_R8B='**[alta]** [preexistente] a.txt:1 — defeito antigo, linha que a entrega nao tocou
+VEREDITO: ok'
+reset_estado "$ESTADO_B"; rm -f "$ESTADO_A"
+T=$(transcrito_briefing "$RB" "$TEXTO_R8B" R8BID)
+P=$(pay "$RA" "rainforest-mind:revisor" "R8BID" "$TEXTO_R8B" '{"agent_transcript_path":"'"$T"'"}')
+SAIDA=$(printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" 2>/dev/null); GOT=$?
+VB=$(vereditos "$ESTADO_B")
+if [ "$GOT" = 0 ] && ! printf '%s' "$SAIDA" | grep -q '"decision":"block"' && printf '%s' "$VB" | grep -q '"agente_id":"R8BID"' && printf '%s' "$VB" | grep -q '"veredito":"ok"'; then
+  ok=$((ok+1)); echo "  ok    (#641) R8b [preexistente] em linha que o diff de B nao tocou: grava ok em B (exit $GOT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#641) R8b marca legitima recusada: exit=$GOT, V_B=$VB, saida=$SAIDA"
+fi
+
+# Caminho de rede ou de dispositivo nao vale como Repo:. Na lib, as tres formas; no
+# hook, a de contrabarras, que o MSYS nao converte ao passar como argumento.
+LIB_PROMPT="$SRC/scripts/lib/primeiro-prompt-jsonl.cjs"
+FORMAS=$(node -e '
+const { extrairRepo } = require(process.argv[1]);
+const b = String.fromCharCode(92);
+const rede = ["//servidor/share", b + b + "servidor" + b + "share", b + b + "?" + b + "C:" + b + "x"];
+process.stdout.write(rede.map((r) => String(extrairRepo("Repo: " + r))).join(","));
+' "$LIB_PROMPT")
+REDE_HOOK=$(node -e 'const b = String.fromCharCode(92); process.stdout.write(b + b + "servidor" + b + "share");')
+reset_estado "$ESTADO_A"; rm -f "$ESTADO_B"
+T=$(transcrito_briefing "$REDE_HOOK" "$VEREDITO_641" R9ID)
+P=$(pay "$RA" "rainforest-mind:revisor" "R9ID" "$VEREDITO_641" '{"agent_transcript_path":"'"$T"'"}')
+ERR=$(printf '%s' "$P" | env -u RFM_ESTADO_ROOT node "$HOOK" 2>&1 >/dev/null); GOT=$?
+VA=$(vereditos "$ESTADO_A")
+if [ "$GOT" = 0 ] && [ "$FORMAS" = "null,null,null" ] && printf '%s' "$VA" | grep -q '"agente_id":"R9ID"' && ! printf '%s' "$ERR" | grep -q "Repo:"; then
+  ok=$((ok+1)); echo "  ok    (#641) R9 caminho de rede em Repo: e ignorado: grava em A sem aviso de Repo: (exit $GOT)"
+else
+  falhou=$((falhou+1)); echo "  FALHA (#641) R9 caminho de rede: exit=$GOT, formas=$FORMAS, V_A=$VA, stderr=$ERR"
+fi
+
 echo
 echo "-----------------------------------------"
 echo "== resultado: $ok ok, $falhou falha(s) =="
