@@ -524,7 +524,7 @@ async function reconciliar(c, estado, sobTrava) {
     const contaLogin = contaDoEmail(estado, d.email);
     if (!contaLogin) continue;
     if (contaLogin === info.conta) {
-      if (sobTrava && info.conta === info.casa && orfaoPendente(c, P)) retentarOrfao(c, P, info.conta);
+      if (sobTrava && info.conta === info.casa && estacionadoPronto(c, P)) retentarOrfao(c, P, info.conta);
       continue;
     }
     if (!sobTrava) {
@@ -572,14 +572,9 @@ function arquivarOrfao(c, P) {
   }
 }
 
-// Órfão que uma reconciliação não conseguiu arquivar: o último reconciliado da pasta diz isso e o
-// estacionado segue lá. Sem nova tentativa, a troca da pasta falharia a cada rodada até alguém mexer.
-function orfaoPendente(c, P) {
-  if (!estacionadoPronto(c, P)) return false;
-  const ult = lerEventos(c).filter(({ ev }) => ev.tipo === 'reconciliado' && ev.pasta === P).pop();
-  return Boolean(ult && String(ult.ev.motivo || '').startsWith(NAO_ARQUIVEI));
-}
-
+// Com a pasta em casa, o estacionado que sobra é órfão por definição (arqsDaTroca só o cria com a pasta
+// fora de casa): a detecção é pelo estado, não pelo último evento. Qualquer caminho que deixe o órfão,
+// inclusive um eventos.jsonl editado à mão, se cura aqui.
 function retentarOrfao(c, P, conta) {
   const motivo = arquivarOrfao(c, P);
   const ev = { tipo: 'reconciliado', pasta: P, de: conta, para: conta, motivo, manual: false, voltaEm: null };

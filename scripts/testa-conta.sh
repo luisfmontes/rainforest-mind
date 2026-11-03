@@ -1257,5 +1257,58 @@ caso_r5() {
 }
 afirma "#585: login de conta não registrada não reconcilia e segue identidade_divergente" caso_r5
 
+# #642: órfão do estacionado com a pasta em casa, sem nenhum evento 'reconciliado' antes. A detecção
+# é pelo estado (pasta em casa e estacionado presente), então o vigiar arquiva mesmo sem histórico.
+API="$API_PRINCIPAL"
+ESTAC_642='{"claudeAiOauth":{"accessToken":"falso-estacionado-orfao","refreshToken":"falso-refresh-estacionado-orfao","expiresAt":4102444800000,"scopes":["user:inference","user:profile"]}}'
+
+# Casa registrada no estado, como numa máquina que já passou por um status em casa: a reconciliação só
+# reconhece o login da casa pelo e-mail gravado em contas.<casa> (contaDoEmail).
+registrar_casa_642() {
+  node -e "const fs=require('fs');const p=require('path');const c=process.argv[1];const a=p.join(c,'dados','contas','estado.json');const e=JSON.parse(fs.readFileSync(a,'utf8'));const o=JSON.parse(fs.readFileSync(p.join(c,'trabalho','.claude.json'),'utf8')).oauthAccount;e.contas={team:{email:o.emailAddress,oauthAccount:o}};fs.writeFileSync(a,JSON.stringify(e))" "$1"
+}
+
+C_642A="$(novo_caso 642a nao)"
+registrar_casa_642 "$C_642A"
+CT_642A="$C_642A/dados/contas"
+printf '%s\n' "$ESTAC_642" > "$CT_642A/estacionado-trabalho.json"
+H_642A="$(hash "$CT_642A/estacionado-trabalho.json")"
+H_CRED_642A="$(hash "$C_642A/trabalho/.claude/.credentials.json")"
+cli "$C_642A" vigiar > "$RAIZ/642a.txt" 2>&1 || true
+ORFAOS_642A="$(ls "$CT_642A" | grep -E '^estacionado-trabalho\.orfao-[0-9]{8}-[0-9]{6}\.json$' || true)"
+caso_642a() {
+  [ ! -e "$CT_642A/estacionado-trabalho.json" ] \
+    && [ "$(printf '%s\n' "$ORFAOS_642A" | grep -c .)" = 1 ] \
+    && [ "$(hash "$CT_642A/$ORFAOS_642A")" = "$H_642A" ] \
+    && [ "$(hash "$C_642A/trabalho/.claude/.credentials.json")" = "$H_CRED_642A" ]
+}
+afirma "#642: vigiar arquiva o estacionado órfão sem evento anterior" caso_642a
+
+C_642B="$(novo_caso 642b nao)"
+registrar_casa_642 "$C_642B"
+printf '%s\n' "$ESTAC_642" > "$C_642B/dados/contas/estacionado-trabalho.json"
+RC_642B=0
+cli "$C_642B" trocar pessoal --pasta trabalho > "$RAIZ/642b.txt" 2>&1 || RC_642B=$?
+caso_642b() {
+  [ "$RC_642B" -eq 0 ] && contem "$(cat "$RAIZ/642b.txt")" "pasta trabalho:" \
+    && grep -qF '"tipo":"trocar","pasta":"trabalho"' "$C_642B/dados/contas/eventos.jsonl" \
+    && ! grep -qF 'saida_ocupada' "$C_642B/dados/contas/eventos.jsonl"
+}
+afirma "#642: a troca seguinte não falha com saida_ocupada" caso_642b
+
+# Pasta legitimamente fora de casa: o estacionado é o login da casa guardado, não órfão. Automático
+# desligado, para o vigiar só olhar e não trocar nada.
+C_642C="$(novo_caso 642c nao)"
+node "$RAIZ/ajustar.cjs" trocado "$C_642C"
+node -e "const fs=require('fs');const a=process.argv[1];const e=JSON.parse(fs.readFileSync(a,'utf8'));e.automatico=false;fs.writeFileSync(a,JSON.stringify(e))" "$C_642C/dados/contas/estado.json"
+H_642C="$(hash "$C_642C/dados/contas/estacionado-trabalho.json")"
+cli "$C_642C" vigiar > "$RAIZ/642c.txt" 2>&1 || true
+caso_642c() {
+  [ -f "$C_642C/dados/contas/estacionado-trabalho.json" ] \
+    && [ "$(hash "$C_642C/dados/contas/estacionado-trabalho.json")" = "$H_642C" ] \
+    && [ "$(ler "$C_642C/dados/contas/estado.json" pastas.trabalho.conta)" = pessoal ]
+}
+afirma "#642: com a pasta fora de casa o estacionado não é arquivado" caso_642c
+
 echo "ok: $OK   falhou: $FALHOU"
 if [ "$FALHOU" -ne 0 ]; then exit 1; fi
