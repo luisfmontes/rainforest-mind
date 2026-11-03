@@ -58,28 +58,46 @@
     "saida": "ok: bateria VERMELHA com o comportamento invertido (exit 1), confirmada em duas rodadas."
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "ffe47506e1aef35834299c8523f271295f95e0cc",
+      "head": "7c0f74b637b07d70111c9b7807ff943dcf844c06",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a1e4b835c46267c24",
+        "agente_id": "a1de936acb0f19c02",
         "veredito": "ok",
         "em": "2026-11-03",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e2e7df6c-57d6-4236-bf0b-5338deda19de/subagents/agent-a1e4b835c46267c24.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e2e7df6c-57d6-4236-bf0b-5338deda19de/subagents/agent-a1de936acb0f19c02.jsonl"
       }
     ],
-    "achados": 2,
+    "achados": 0,
     "base": "aa8a9489a2b3a305be6f73d88fcd2741db247876",
-    "head": "ffe47506e1aef35834299c8523f271295f95e0cc",
-    "em": "2026-11-03"
+    "head": "7c0f74b637b07d70111c9b7807ff943dcf844c06",
+    "em": "2026-11-03",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a1e4b835c46267c24",
+            "veredito": "ok",
+            "em": "2026-11-03",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e2e7df6c-57d6-4236-bf0b-5338deda19de/subagents/agent-a1e4b835c46267c24.jsonl"
+          }
+        ]
+      }
+    ]
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-11-03"
+    "status": "ok",
+    "em": "2026-11-03",
+    "comando": "bash scripts/testa-conta.sh; bash hooks/testa-veredito-revisor.sh; bash scripts/testa-saude-vigias.sh; bash scripts/testa-teto-skills.sh; bash hooks/testa-abertura-mod-config.sh; bash scripts/testa-plugin-codex.sh; node scripts/saude.cjs; git check-ignore -v .claude/fixtures/qualquer; node scripts/conferir-versao.cjs",
+    "saida": "conta exit 0, ok: 69 falhou: 0, tres linhas ok #642; veredito exit 0, 49 ok 0 falha(s), dez linhas ok (#641); saude-vigias exit 0, 7 ok 0 falha(s); teto exit 0, 21 OK 0 FALHA; abertura exit 0; codex exit 0; saude real: aviso vigias 4 de 4 tarefa(s) desabilitada(s); check-ignore casa .gitignore:123; conferir-versao exit 0 versao 2.3.2",
+    "sensor_externo": "bash scripts/testa-conta.sh",
+    "head": "7c0f74b637b07d70111c9b7807ff943dcf844c06"
   },
   "fechar": {
     "status": "pendente",
