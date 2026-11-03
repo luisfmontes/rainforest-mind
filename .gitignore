@@ -119,3 +119,5 @@ docs/rainforest/estado/*.tmp
 # apagar; as observacoes que tocam o plugin viram ideia pelo ideias.cjs.
 skill-observations/
 .claude/tmp-portoes-codex-*/
+# Fixture do sandbox do Codex, de outro dono: nem versionar nem apagar.
+.claude/fixtures/

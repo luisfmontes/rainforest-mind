@@ -10,6 +10,12 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.3.2 — 2026-11-03
+
+- **`/conta`: login guardado que sobrou não trava mais a troca.** Com a pasta em casa, um `estacionado-<pasta>.json` que ficou para trás fazia toda troca falhar com `saida_ocupada`, até alguém renomear o arquivo à mão. Agora ele é arquivado na rodada seguinte do vigia ou na própria troca, seja qual for o caminho que o deixou lá.
+- **Revisor de fluxo em outro repositório grava o veredito.** Com a sessão num repositório e o fluxo em outro, o briefing do revisor leva `Repo: <caminho absoluto>` ao lado de `Slug:`, e o veredito cai no estado certo, sem comando manual. A marca `[preexistente]` é conferida no diff desse fluxo. Sem a linha, nada muda, e a recusa do `marcar revisar` agora ensina a usá-la.
+- **`/saude` não chama mais de vivo o vigia desabilitado.** Tarefa desabilitada tem próxima execução preenchida no Agendador do Windows, então o checador dizia "todas com próxima execução" com as quatro paradas. Agora sai um aviso com os nomes e o remédio, lembrando que o backup externo depende do `sentinela-foco`.
+
 ## 2.3.1 — 2026-10-30
 
 - **Workflows sem o aviso de Node 20.** `actions/checkout@v7`, `actions/setup-node@v7` e `actions/setup-python@v7` no `baterias.yml` e no `release.yml`. As versões anteriores (`@v4`, e `@v5` no setup-python) miravam Node 20, e todo run terminava avisando que o GitHub as forçava a rodar em Node 24. Nada muda para quem usa o plugin.
