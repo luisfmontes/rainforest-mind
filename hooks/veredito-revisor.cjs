@@ -43,13 +43,19 @@
  *      repositório do EVENTO (`payload.cwd`), nunca a do processo do hook
  *      (molde `hooks/gate-agente-em-voo.cjs` ~56-67 para a função
  *      `toplevel`).
+ *   7. (#641) briefing com `Repo: <caminho absoluto>` declara o repositório
+ *      do fluxo quando ele não é o da sessão: o estado é procurado PRIMEIRO
+ *      ali, depois no cwd do evento. Achado lá, o diff que confere a marca
+ *      [preexistente] e a chave `contrato-veredito` também são os do fluxo:
+ *      no diff da sessão, a marca passaria em linha que a entrega tocou. Sem
+ *      a linha, vale o que vale desde o #329.
  */
 
 const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 const { caminhoExecutavel } = require(path.join(__dirname, 'lib', 'resolver-executavel.cjs'));
-const { primeiroPrompt, extrairSlug, ultimaMensagemAssistente } = require(path.join(__dirname, '..', 'scripts', 'lib', 'primeiro-prompt-jsonl.cjs'));
+const { primeiroPrompt, extrairSlug, extrairRepo, ultimaMensagemAssistente } = require(path.join(__dirname, '..', 'scripts', 'lib', 'primeiro-prompt-jsonl.cjs'));
 const { extrairUltimaLinha, validarVocabulario } = require(path.join(__dirname, '..', 'scripts', 'lib', 'extrair-veredito.cjs'));
 const { ehWorktreeDeAgente } = require(path.join(__dirname, 'lib', 'contexto-sessao.cjs'));
 const { contarAchados, incoerencia, preexistentesNoDiff, tirarMarcaPreexistente } = require(path.join(__dirname, 'lib', 'achados-revisor.cjs'));
@@ -65,12 +71,15 @@ const VOCAB_ULTIMA_LINHA = ['veredito: ok', 'veredito: reprovado'];
 const PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT || path.resolve(__dirname, '..');
 
 /** Raiz do repositório do cwd do EVENTO — nunca a do processo do hook
- * (mesma função de `hooks/gate-agente-em-voo.cjs` ~56-67). */
-function toplevel(cwd) {
+ * (mesma função de `hooks/gate-agente-em-voo.cjs` ~56-67). `timeout` só para o
+ * caminho que veio do briefing (#641): unidade mapeada para rede fora do ar
+ * penduraria o git até o harness matar o hook, e o veredito se perderia. */
+function toplevel(cwd, timeout) {
   try {
     return execFileSync(caminhoExecutavel('git'), ['-C', cwd, 'rev-parse', '--show-toplevel'], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
+      timeout,
     }).trim() || null;
   } catch {
     return null;
@@ -157,7 +166,7 @@ function raizComEstadoDoSlug(repoRoot, slug) {
 
   if (sobra.length === 1) return sobra[0];
   if (sobra.length === 0) {
-    process.stderr.write(`${slug} nao encontrado\n`);
+    process.stderr.write(`${slug} nao encontrado em ${repoRoot} e worktrees\n`);
   } else {
     process.stderr.write(`${slug} ambiguo: ${sobra.join(' ')}\n`);
   }
@@ -211,12 +220,29 @@ function main() {
   }
   if (veredito === null) process.exit(0);
 
+  if (typeof payload.cwd !== 'string' || !payload.cwd) process.exit(0);
+  const repoRoot = toplevel(payload.cwd);
+  const repoDeclarado = extrairRepo(prompt);
+  const raizDeclarada = repoDeclarado ? toplevel(repoDeclarado, 10000) : null;
+  if (repoDeclarado && raizDeclarada === null) {
+    process.stderr.write(`Repo: ${repoDeclarado} nao e repositorio git\n`);
+  }
+  if (!repoRoot && !raizDeclarada) process.exit(0);
+
+  // D5 — #329: procura docs/rainforest/estado/<slug>.json no repoRoot ou em worktrees.
+  // #641: primeiro na raiz declarada; achado lá, o diff que confere a marca
+  // [preexistente] é o do fluxo, não o da sessão. Resolvido aqui, antes da
+  // contagem de achados; a saída sem estado continua depois do bloqueio.
+  const viaDeclarada = raizDeclarada && raizComEstadoDoSlug(raizDeclarada, slug);
+  const raizEstado = viaDeclarada || (repoRoot && raizComEstadoDoSlug(repoRoot, slug));
+  const cwdDoDiff = viaDeclarada || payload.cwd;
+
   // D3 (lote 2): o veredito tem de bater com os achados da MESMA mensagem que
   // o deu. `ok` com [alta] e `reprovado` sem achado marcado viram `invalido`
   // e seguem o caminho do invalido abaixo (devolvem a vez na primeira parada).
   // D3/D9 (lote 6): marca [preexistente] na linha que o diff toca é recusada
   // aqui — volta a contar como bloqueio. Sem base, a marca vale como escrita.
-  const recusadas = preexistentesNoDiff(mensagem, payload.cwd);
+  const recusadas = preexistentesNoDiff(mensagem, cwdDoDiff);
   if (recusadas === null) process.stderr.write('marca [preexistente] não conferida: sem base\n');
   for (const r of recusadas || []) process.stderr.write(`marca [preexistente] recusada: ${r.motivo}\n`);
   const achados = contarAchados(tirarMarcaPreexistente(mensagem, recusadas || []));
@@ -224,12 +250,8 @@ function main() {
   if (veredito === 'ok' && achados.alta > 0) veredito = 'invalido';
   if (veredito === 'reprovado' && achados.total === 0) veredito = 'invalido';
 
-  if (typeof payload.cwd !== 'string' || !payload.cwd) process.exit(0);
-  const repoRoot = toplevel(payload.cwd);
-  if (!repoRoot) process.exit(0);
-
   try {
-    if (!require('./lib/config.cjs').ligado('contrato-veredito', { projeto: repoRoot })) {
+    if (!require('./lib/config.cjs').ligado('contrato-veredito', { projeto: raizEstado || raizDeclarada || repoRoot })) {
       process.exit(0);
     }
   } catch {}
@@ -246,8 +268,6 @@ function main() {
     process.exit(0);
   }
 
-  // D5 — #329: procura docs/rainforest/estado/<slug>.json no repoRoot ou em worktrees
-  const raizEstado = raizComEstadoDoSlug(repoRoot, slug);
   if (!raizEstado) process.exit(0);
 
   const estadoCjs = path.join(PLUGIN_ROOT, 'scripts', 'estado.cjs');
@@ -278,8 +298,8 @@ function main() {
     spawnSync(process.execPath, args, {
       cwd: raizEstado,
       // RFM_DIFF_CWD: o estado.cjs recusa a marca [preexistente] pelo mesmo diff
-      // que este hook usou (payload.cwd), não pelo da raiz do estado.
-      env: { ...process.env, CLAUDE_PROJECT_DIR: raizEstado, RFM_DIFF_CWD: payload.cwd },
+      // que este hook usou (cwdDoDiff), que pode não ser a raiz do estado.
+      env: { ...process.env, CLAUDE_PROJECT_DIR: raizEstado, RFM_DIFF_CWD: cwdDoDiff },
       stdio: 'ignore',
     });
   } catch {

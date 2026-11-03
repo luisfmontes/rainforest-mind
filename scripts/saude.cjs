@@ -1520,27 +1520,31 @@ function tarefasDeVigia() {
     // tarefa parecia morta. Falso alerta e o mesmo defeito que este checador
     // existe para pegar, virado do avesso.
     "ForEach-Object { $i = $_ | Get-ScheduledTaskInfo;",
-    "  $_.TaskName + [char]9 + $i.NextRunTime }",
+    "  $_.TaskName + [char]9 + $i.NextRunTime + [char]9 + $_.State }",
   ].join(' ');
-  const { status, out } = rodar(ps, ['-NoProfile', '-NonInteractive', '-Command', script]);
+  // Bateria apenas (RFM_TEST=1): troca o PowerShell por um executavel falso,
+  // no molde de RFM_CONTA_SCHTASKS em conta.cjs. Fora de bateria nada muda.
+  const emBateria = process.env.RFM_TEST === '1' && process.env.RFM_VIGIAS_PS;
+  const { status, out } = emBateria
+    ? rodar(process.execPath, [process.env.RFM_VIGIAS_PS, '-Command', script])
+    : rodar(ps, ['-NoProfile', '-NonInteractive', '-Command', script]);
   if (status !== 0) return null;
   const linhas = out.split('\n').map((l) => l.trim()).filter(Boolean);
   return linhas.map((l) => {
-    // Corta no ULTIMO tab, nao no primeiro. A versao anterior fazia
-    // `l.split('\t')` e ficava com os dois primeiros pedacos, o que assume que
-    // o NOME da tarefa nao contem tab. Apontado na revisao (2026-09-02): se
-    // contivesse, `proxima` receberia um fragmento do proprio nome — ou seja,
-    // NAO-vazio — e uma tarefa realmente morta passaria por viva, que e
-    // exatamente o defeito que este checador existe para pegar, invertido.
-    //
-    // Nao fui confirmar se o Agendador do Windows aceita tab em nome de tarefa:
-    // cortar pelo ultimo tab torna a pergunta irrelevante, porque o campo que
-    // o PowerShell acrescenta e SEMPRE o ultimo. Trava que depende de "o
-    // sistema provavelmente nao permite" e trava que ninguem conferiu.
-    const corte = l.lastIndexOf('\t');
-    const nome = corte === -1 ? l : l.slice(0, corte);
-    const proxima = corte === -1 ? '' : l.slice(corte + 1);
-    return { nome: nome.trim(), proxima: proxima.trim() };
+    // Corta pelo ULTIMO tab, nao pelo primeiro, e de tras para frente: o ultimo
+    // campo e o `estado`, o penultimo e a `proxima` execucao, e o que sobra e o
+    // `nome`. Assim um nome de tarefa com tab (improvavel, mas nao verificado no
+    // Agendador) nao desloca os campos que importam. Antes (2026-09-02) cortava
+    // so um tab e o nome partido vazava para `proxima`, fazendo uma tarefa morta
+    // parecer viva. Linha sem tab devolve so o nome, com os outros campos vazios.
+    const c1 = l.lastIndexOf('\t');
+    if (c1 === -1) return { nome: l.trim(), proxima: '', estado: '' };
+    const estado = l.slice(c1 + 1).trim();
+    const resto = l.slice(0, c1);
+    const c2 = resto.lastIndexOf('\t');
+    const nome = c2 === -1 ? resto : resto.slice(0, c2);
+    const proxima = c2 === -1 ? '' : resto.slice(c2 + 1);
+    return { nome: nome.trim(), proxima: proxima.trim(), estado };
   }).filter((t) => t.nome);
 }
 
@@ -1581,12 +1585,19 @@ function checarVigias() {
   } else if (tarefas.length === 0) {
     ok('vigias', 'toggle ligado, nenhuma tarefa agendada para os vigias');
   } else {
-    const mortas = tarefas.filter((t) => !t.proxima);
+    const desabilitadas = tarefas.filter((t) => t.estado === 'Disabled');
+    const mortas = tarefas.filter((t) => !t.proxima && t.estado !== 'Disabled');
     if (mortas.length) {
       alerta('vigias',
         `${mortas.length} de ${tarefas.length} tarefa(s) sem proxima execucao: ${mortas.map((t) => t.nome).join(', ')}`,
-        'gatilho vencido (EndBoundary) ou desabilitado - a tarefa aparece Ready e nunca roda; reagende');
-    } else {
+        'gatilho vencido (EndBoundary) - a tarefa aparece Ready e nunca roda; reagende');
+    }
+    if (desabilitadas.length) {
+      aviso('vigias',
+        `${desabilitadas.length} de ${tarefas.length} tarefa(s) desabilitada(s): ${desabilitadas.map((t) => t.nome).join(', ')}`,
+        'nao rodam, e o backup externo depende do sentinela-foco; reabilite no Agendador, ou desligue com: node scripts/setup.cjs --desligar vigias');
+    }
+    if (!mortas.length && !desabilitadas.length) {
       ok('vigias', `${tarefas.length} tarefa(s) agendada(s), todas com proxima execucao`);
     }
   }

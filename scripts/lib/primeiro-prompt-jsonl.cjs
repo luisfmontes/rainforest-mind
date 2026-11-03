@@ -16,6 +16,7 @@
  */
 
 const fs = require('fs');
+const path = require('path');
 
 /**
  * Lê só a primeira linha do jsonl (o resto pode ser megabytes de
@@ -68,6 +69,25 @@ function extrairSlug(prompt) {
   for (const linha of linhas) {
     const m = linha.match(/^\s*slug\s*:\s*(.+?)\s*$/i);
     if (m && m[1]) return m[1];
+  }
+  return null;
+}
+
+/**
+ * Linha isolada `Repo: <caminho absoluto>` (#641): a raiz do repositório onde
+ * mora o fluxo, quando ele não é o repositório da sessão. Vale a PRIMEIRA
+ * linha cujo valor é caminho absoluto. Linha com valor relativo ("Repo:
+ * rainforest-mind") é rótulo comum em briefing: é ignorada e a busca segue.
+ * Caminho de rede ou de dispositivo (duas barras no começo) também: o hook
+ * chamaria o git ali e tocaria a rede, e nenhum fluxo mora nele.
+ * `null` quando não há nenhuma.
+ */
+function extrairRepo(prompt) {
+  if (!prompt || typeof prompt !== 'string') return null;
+  const linhas = prompt.split(/\r\n|\r|\n/);
+  for (const linha of linhas) {
+    const m = linha.match(/^\s*repo\s*:\s*(.+?)\s*$/i);
+    if (m && m[1] && path.isAbsolute(m[1]) && !/^[\\/]{2}/.test(m[1])) return m[1];
   }
   return null;
 }
@@ -142,4 +162,4 @@ function textoDoHandback(input) {
   return maior;
 }
 
-module.exports = { primeiroPrompt, extrairSlug, ultimaMensagemAssistente, textoDoHandback };
+module.exports = { primeiroPrompt, extrairSlug, extrairRepo, ultimaMensagemAssistente, textoDoHandback };
