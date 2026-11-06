@@ -11,6 +11,9 @@
 #   7. chamada solta não é definição: Dart sem tipo de retorno, JS with/setTimeout(function;
 #   8. conferir recusa grupo de uma função só ou repetida, e rebaixa survivor fora do grupo;
 #   9. separar junta categoria por caixa, conta entrada sem categoria e recusa pasta suja.
+#  10. complexas: valores exatos de cognitiva e ciclomática (fila x ninho, sequências, ?, strings,
+#      JSX, objeto, closure, Dart), python como não medido, última linha de aproximação;
+#  11. complexas no repo real: ordem, começo igual ao do listar, contribuições dentro da função.
 #
 # Fixture em mktemp, FORA do worktree, com git init. Arquivos e payloads montados por node,
 # nunca por heredoc de conteúdo. Caminhos vão para o node em forma Windows (cygpath -m).
@@ -187,6 +190,87 @@ node "$CAT" separar --catalogo "$(winpath "$SBP/colide.json")" --saida "$(winpat
 saiu "duas categorias com o mesmo nome de arquivo saem 1" "$EXIT" 1
 tem "stderr nomeia a colisão" "$(cat "$SBP/e9c.txt")" "viram o mesmo arquivo parse-io.json"
 igual "a colisão não deixa arquivo gravado" "$(ls "$SBP/sep-colide" 2>/dev/null | wc -l | tr -d ' ')" "0"
+
+echo "== 10. complexas: aninhamento pesa mais que ramos em fila =="
+# Fixture escrita por node: aspas, crases e barras ficam fora do quoting do bash.
+FX10="$SBP/cx"
+mkdir -p "$FX10"
+node -e '
+const fs = require("fs"), p = require("path"), d = process.argv[1];
+const Q = String.fromCharCode(39), B = String.fromCharCode(92), C = String.fromCharCode(96);
+const w = (f, s) => fs.writeFileSync(p.join(d, f), s);
+w("a.js", [
+  "function fila(a, b) {", "  if (a) {", "    x();", "  }", "  if (b) {", "    y();", "  }", "}",
+  "function ninho(a, b) {", "  if (a) {", "    if (b) {", "      y();", "    }", "  }", "}",
+  "function seqIgual(a, b, c) { return a && b && c; }",
+  "function seqTroca(a, b, c) { return a && b || c; }",
+  "function textos() {",
+  "  const s = " + Q + "if (x)" + Q + ";",
+  "  // if (y)",
+  "  /* if (z) */",
+  "  const t = " + C + "if (w) ${ {a: 1}.a }" + C + ";",
+  "  const r = /if " + B + "(x" + B + ")/;",
+  "  return 1;", "}",
+  "function objeto(a) {", "  const o = { b: { c: 1 } };", "  if (a) {", "    g();", "  }", "}",
+  "function mae(xs) {", "  xs.forEach((x) => {", "    if (x) {", "      g();", "    }", "  });", "}",
+  ""].join("\n"));
+w("b.ts", [
+  "function nulos(x?: number) {", "  const y = a?.b;", "  const z = a ?? b;", "  return c ? 1 : 2;", "}", ""].join("\n"));
+w("c.tsx", [
+  "function Aviso() {", "  return <p>Don" + Q + "t</p>;", "}",
+  "function depoisDoJsx(a) {", "  if (a) {", "    return 1;", "  }", "}", ""].join("\n"));
+w("d.dart", [
+  "void dartF(String? s) {",
+  "  final a = " + Q + Q + Q, "if (x) {", Q + Q + Q + ";",
+  "  final b = r" + Q + "if (y)" + Q + ";",
+  "  final c = " + Q + "${s ?? \"if (z)\"}" + Q + ";",
+  "  if (s != null) {", "    for (final x in xs) {", "      print(x);", "    }", "  }", "}",
+  "class A {", "  int dartMetodo(int v) {", "    return v > 0 ? 1 : 2;", "  }", "}", ""].join("\n"));
+w("e.py", "def solto():\n    if x:\n        pass\n");
+' "$(winpath "$FX10")"
+( cd "$FX10" && git init -q && git config user.email t@t && git config user.name Test && git config core.autocrlf false && git add -A && git commit -q -m base )
+SAI10="$(node "$CAT" complexas --raiz "$(winpath "$FX10")" --top 50)"; EXIT=$?
+saiu "complexas na fixture sai 0" "$EXIT" 0
+linha "dois if em fila dão cognitiva 2" "$SAI10" "2 cognitiva  3 ciclomática  a.js:L1 fila"
+linha "o mesmo par aninhado dá cognitiva 3" "$SAI10" "3 cognitiva  3 ciclomática  a.js:L9 ninho"
+linha "a && b && c conta uma vez" "$SAI10" "1 cognitiva  3 ciclomática  a.js:L16 seqIgual"
+linha "a && b || c conta duas" "$SAI10" "2 cognitiva  3 ciclomática  a.js:L17 seqTroca"
+linha "if em string, comentário, template e regex não conta" "$SAI10" "0 cognitiva  1 ciclomática  a.js:L18 textos"
+linha "objeto literal não aprofunda" "$SAI10" "1 cognitiva  2 ciclomática  a.js:L26 objeto"
+linha "closure aprofunda e soma na mãe" "$SAI10" "2 cognitiva  2 ciclomática  a.js:L32 mae"
+linha "x?: T, ?. e ?? não contam; c ? 1 : 2 conta" "$SAI10" "1 cognitiva  2 ciclomática  b.ts:L1 nulos"
+linha "apóstrofo de texto JSX não cega a função seguinte" "$SAI10" "1 cognitiva  2 ciclomática  c.tsx:L4 depoisDoJsx"
+linha "Dart: string tripla, crua e interpolação não contam; for dentro de if pesa 2" "$SAI10" "3 cognitiva  3 ciclomática  d.dart:L1 dartF"
+linha "Dart: método de classe medido, ternário conta" "$SAI10" "1 cognitiva  2 ciclomática  d.dart:L14 dartMetodo"
+tem "contribuição traz linha e profundidade" "$SAI10" "    +2 L11 if (profundidade 1)"
+linha "python sai como não medido" "$SAI10" "não medido: 1 função(ões) py — linguagem sem chaves"
+nao "o if da closure não vira função à parte" "$SAI10" "a.js:L33"
+igual "a última linha diz que é aproximação" "$(tail -1 <<<"$SAI10")" "medida aproximada (leitura de texto, sem parser): confira no código antes de concluir"
+
+echo "== 11. complexas no repo real: ordem, linha de começo e contribuições dentro da função =="
+node "$CAT" complexas --raiz "$RAIZN" --top 5 > "$SBP/cx-real.txt"; EXIT=$?
+saiu "complexas no repo real sai 0" "$EXIT" 0
+node "$CAT" listar --raiz "$RAIZN" --contexto 0 > "$SBP/cx-cat.json"
+CONF11="$(node -e '
+const fs = require("fs");
+const linhas = fs.readFileSync(process.argv[1], "utf8").split("\n");
+const cat = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const blocos = []; let erro = "";
+for (const l of linhas) {
+  const m = /^(\d+) cognitiva  (\d+) ciclomática  (.+):L(\d+) (\S+)$/.exec(l);
+  if (m) { blocos.push({ c: +m[1], arq: m[3], linha: +m[4], nome: m[5], contrib: [] }); continue; }
+  const k = /^    \+(\d+) L(\d+) /.exec(l);
+  if (k && blocos.length) blocos[blocos.length - 1].contrib.push(+k[2]);
+}
+if (blocos.length !== 5) erro += "blocos=" + blocos.length + " ";
+for (let i = 1; i < blocos.length; i++) if (blocos[i].c > blocos[i - 1].c) erro += "ordem ";
+for (const b of blocos) {
+  if (!cat.some((e) => e.arquivo === b.arq && e.linha === b.linha && e.nome === b.nome)) erro += "fora do catalogo:" + b.arq + ":" + b.linha + " ";
+  if (b.contrib.some((x) => x < b.linha)) erro += "contribuicao antes da funcao:" + b.nome + " ";
+}
+process.stdout.write(erro || "ok");
+' "$(winpath "$SBP/cx-real.txt")" "$(winpath "$SBP/cx-cat.json")")"
+igual "5 blocos em ordem, cada um no começo que o listar dá, contribuições depois do começo" "$CONF11" "ok"
 
 echo
 echo "ok: $ok   falhou: $falhou"
