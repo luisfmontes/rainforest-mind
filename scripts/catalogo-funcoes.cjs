@@ -12,10 +12,16 @@
  *            Linhas `<n> linhas  <caminho>`, da maior para a menor (contexto, não achado: D10).
  *   separar  --catalogo <arq-categorizado.json> --saida <dir> [--minimo 3]
  *            Grava <dir>/<categoria>.json só para categorias com ao menos --minimo funções.
+ *            Categoria agrupa pela caixa baixa. Stderr: `sem categoria: N` quando há entrada
+ *            sem category. Exit 1, sem gravar nada, se <dir> já tem .json ou se duas categorias
+ *            viram o mesmo nome de arquivo.
  *   conferir --catalogo <catalogo.json> --grupos <grupos.json>
  *            Confere cada função do grupo contra o catálogo (arquivo, nome e linha iguais).
- *            Stdout: só os grupos válidos. Stderr: `arquivo:linha nome` de cada função inválida.
- *            Exit 1 se houver qualquer inválida, 0 se todas forem válidas.
+ *            Stdout: só os grupos válidos. Stderr: `arquivo:linha nome` de cada função inválida,
+ *            `grupo N: ...` para grupo com menos de 2 funções distintas e para CONSOLIDATE cujo
+ *            survivor não é função do grupo (esse grupo sai no stdout rebaixado para INVESTIGATE).
+ *            Exit 1 se houver função inválida ou grupo com menos de 2 distintas; o rebaixamento
+ *            sozinho sai 0 — leia o stderr.
  *
  * Arquivos: `git ls-files` (respeita .gitignore) quando a raiz está num repo git; senão varre a
  * pasta. Só extensões da tabela de hooks/lib/definicoes.cjs. Gerados (node_modules, build, dist,
@@ -224,18 +230,23 @@ function separar(catalogoArq, saida, minimo) {
     const velhos = fs.readdirSync(saida).filter((n) => n.toLowerCase().endsWith('.json'));
     if (velhos.length) throw new Error(`--saida ${saida} já tem ${velhos.length} .json de outra rodada; use uma pasta vazia`);
   }
-  fs.mkdirSync(saida, { recursive: true });
+  // Nome de arquivo de cada categoria validado ANTES de gravar: colisão no meio deixava a
+  // pasta com parte dos arquivos, e a rodada seguinte caía na recusa de pasta suja.
   const usados = new Map();
-  let gravadas = 0;
+  const aGravar = [];
   for (const { nome, funcoes } of categorias.values()) {
     if (funcoes.length < minimo) continue;
     const base = nome.replace(/[^\p{L}\p{N}_-]+/gu, '-').replace(/^-+|-+$/g, '') || 'sem-nome';
     const bk = base.toLowerCase();
     if (usados.has(bk)) throw new Error(`categorias "${usados.get(bk)}" e "${nome}" viram o mesmo arquivo ${base}.json`);
     usados.set(bk, nome);
-    fs.writeFileSync(path.join(saida, `${base}.json`), JSON.stringify(funcoes, null, 2) + '\n');
-    gravadas++;
+    aGravar.push({ base, funcoes });
   }
+  fs.mkdirSync(saida, { recursive: true });
+  for (const { base, funcoes } of aGravar) {
+    fs.writeFileSync(path.join(saida, `${base}.json`), JSON.stringify(funcoes, null, 2) + '\n');
+  }
+  const gravadas = aGravar.length;
   return { gravadas, semCategoria };
 }
 

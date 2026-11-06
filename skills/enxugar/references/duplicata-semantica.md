@@ -93,4 +93,8 @@ Regras:
 confere cada função de cada grupo contra o catálogo (mesmo arquivo, nome e
 linha). Os grupos válidos saem no stdout. Cada função inválida é nomeada no
 stderr, e o exit é 1 quando há qualquer uma — aí o grupo dela não vira achado,
-e a categoria se relata com o número de grupos descartados.
+e a categoria se relata com o número de grupos descartados. Grupo com menos de
+duas funções distintas também é descartado e sai 1, com `grupo N: ...` no
+stderr. CONSOLIDATE cujo `survivor` não é o `name` de uma função do grupo sai
+no stdout rebaixado para INVESTIGATE, com aviso no stderr e exit 0: leia o
+stderr antes de contar os `duplicar:`.

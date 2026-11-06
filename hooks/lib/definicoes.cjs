@@ -24,7 +24,7 @@ const EXTENSOES = {
 };
 
 // Palavra que nunca é nome de função de topo em Dart (começo de instrução ou modificador).
-const NAO_RESERVADA_DART = '(?!(?:return|if|for|while|switch|catch|await|throw|new|else|final|const|var|late|case|do|try|class)\\b)';
+const NAO_RESERVADA_DART = '(?!(?:return|if|for|while|switch|catch|await|yield|throw|new|else|final|const|var|late|case|do|try|class)\\b)';
 
 const REGRAS = {
   topo: {

@@ -75,6 +75,7 @@ montar_repo "$FIX" \
 }
 ' \n  'lib/b.dart=setState(() {});
 print(1);
+yield carregar(1);
 ' \n  'src/app.py=def ola():\n    return 1\n' \
   'src/foo.test.js=function teste() {}\n' \
   "src/big.js=$BIG"
@@ -148,6 +149,7 @@ igual "stdout não traz o grupo inválido" "$(cat "$SBP/c6b.txt")" "[]"
 echo "== 7. chamada solta não é definição =="
 nao "setState( na coluna zero do Dart não entra" "$T1" ":setState:"
 nao "print( na coluna zero do Dart não entra" "$T1" ":print:"
+nao "nenhuma linha de lib/b.dart (setState, print, yield) vira definição" "$T1" "lib/b.dart:"
 linha "a função que contém o with entra" "$T1" "src/solto.js:1:envolve:js"
 nao "with (o) { não vira método" "$T1" ":with:js"
 nao "setTimeout(function () { não vira método" "$T1" ":setTimeout:js"
@@ -180,6 +182,11 @@ tem "stderr conta a entrada sem categoria" "$(cat "$SBP/e9.txt")" "sem categoria
 node "$CAT" separar --catalogo "$(winpath "$SBP/caixa.json")" --saida "$(winpath "$SBP/sep-caixa")" --minimo 3 > "$SBP/s9b.txt" 2> "$SBP/e9b.txt"; EXIT=$?
 saiu "separar na mesma pasta de novo sai 1" "$EXIT" 1
 tem "stderr diz que a pasta já tem .json" "$(cat "$SBP/e9b.txt")" "já tem 1 .json"
+node -e 'const f=process.argv[1]; const e=(n,c)=>({arquivo:"a.js",linha:1,nome:n,category:c}); require("fs").writeFileSync(f, JSON.stringify([e("x1","aaa"),e("x2","aaa"),e("x3","aaa"),e("p1","parse/io"),e("p2","parse/io"),e("p3","parse/io"),e("q1","parse io"),e("q2","parse io"),e("q3","parse io")]))' "$(winpath "$SBP/colide.json")"
+node "$CAT" separar --catalogo "$(winpath "$SBP/colide.json")" --saida "$(winpath "$SBP/sep-colide")" --minimo 3 > "$SBP/s9c.txt" 2> "$SBP/e9c.txt"; EXIT=$?
+saiu "duas categorias com o mesmo nome de arquivo saem 1" "$EXIT" 1
+tem "stderr nomeia a colisão" "$(cat "$SBP/e9c.txt")" "viram o mesmo arquivo parse-io.json"
+igual "a colisão não deixa arquivo gravado" "$(ls "$SBP/sep-colide" 2>/dev/null | wc -l | tr -d ' ')" "0"
 
 echo
 echo "ok: $ok   falhou: $falhou"
