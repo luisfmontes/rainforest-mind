@@ -202,7 +202,8 @@ esta passada cobre o resto. Ideia enxertada de `obra/superpowers-lab`
 Do que passou na conferência:
 
 - **HIGH ou MEDIUM com `CONSOLIDATE`** vira linha `duplicar:` no formato de
-  sempre, com o sobrevivente sugerido: `src/a.ts:L12: duplicar formatarData() — mesma intenção de utils/data.ts:L40 dataParaTexto(). manter dataParaTexto().`
+  sempre, depois da trava de wrapper da tag (membro que só chama o outro vira
+  `encolher:` ou nada), com o sobrevivente sugerido: `src/a.ts:L12: duplicar formatarData() — mesma intenção de utils/data.ts:L40 dataParaTexto(). manter dataParaTexto().`
 - **`INVESTIGATE`** vai para uma seção **investigar**, fora do `líquido:` —
   precisa de leitura humana da implementação inteira.
 - **`KEEP_SEPARATE`** não aparece.
