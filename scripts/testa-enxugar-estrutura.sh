@@ -120,6 +120,67 @@ if grep -q 'Cópia byte-idêntica' "$SKILL_FILE"; then
 fi
 ((CASOS++))
 
+# 21-30. Passada de duplicata semântica (design lgpd-e-duplicata, D6, D8, D9, D10)
+# Restrito ao bloco da passada: o resto da skill também fala de `duplicar:`.
+PASSADA="$(sed -n '/^### Passada de duplicata semântica/,/^## /p' "$SKILL_FILE")"
+REF_FILE="$REPO_ROOT/skills/enxugar/references/duplicata-semantica.md"
+caso() { # caso <rotulo> <condicao-ja-avaliada: 0|1>
+  if [ "$2" -eq 0 ]; then echo "✓ $1"; ((PASSOU++)); else echo "✗ $1"; fi
+  ((CASOS++))
+}
+tem_na() { printf '%s' "$1" | grep -qF -- "$2"; }
+
+# modo 2 tem a passada de duplicata semântica com as cinco fases
+fases_ok=1
+if [ -n "$PASSADA" ]; then
+  # as cinco fases, na ordem: listar < haiku < separar < sonnet < conferir
+  ordem="$(printf '%s\n' "$PASSADA" | grep -nE '^[1-5]\. ' | cut -d: -f1 | tr '\n' ' ')"
+  l1="$(printf '%s\n' "$PASSADA" | grep -n 'catalogo-funcoes.cjs listar' | head -1 | cut -d: -f1)"
+  l2="$(printf '%s\n' "$PASSADA" | grep -n 'agente \*\*haiku\*\*' | head -1 | cut -d: -f1)"
+  l3="$(printf '%s\n' "$PASSADA" | grep -n 'catalogo-funcoes.cjs separar' | head -1 | cut -d: -f1)"
+  l4="$(printf '%s\n' "$PASSADA" | grep -n 'agente \*\*sonnet\*\*' | head -1 | cut -d: -f1)"
+  l5="$(printf '%s\n' "$PASSADA" | grep -n 'catalogo-funcoes.cjs conferir' | head -1 | cut -d: -f1)"
+  if [ -n "$l1" ] && [ -n "$l2" ] && [ -n "$l3" ] && [ -n "$l4" ] && [ -n "$l5" ] \
+     && [ "$l1" -lt "$l2" ] && [ "$l2" -lt "$l3" ] && [ "$l3" -lt "$l4" ] && [ "$l4" -lt "$l5" ] \
+     && [ "$(echo $ordem | wc -w)" -eq 5 ]; then fases_ok=0; fi
+fi
+caso "modo 2 tem a passada de duplicata semântica com as cinco fases" "$fases_ok"
+
+# D8: haiku categoriza e sonnet compara — não o contrário
+tem_na "$(printf '%s\n' "$PASSADA" | grep -E '^2\. ')" "haiku"; r1=$?
+tem_na "$(printf '%s\n' "$PASSADA" | grep -E '^4\. ')" "sonnet"; r2=$?
+[ $r1 -eq 0 ] && [ $r2 -eq 0 ]; caso "D8: haiku na fase de categorizar, sonnet na de comparar" $?
+
+# D9: só HIGH/MEDIUM com CONSOLIDATE vira duplicar:, INVESTIGATE à parte, KEEP_SEPARATE some
+tem_na "$PASSADA" "**HIGH ou MEDIUM com \`CONSOLIDATE\`** vira linha \`duplicar:\`"; caso "D9: HIGH/MEDIUM CONSOLIDATE vira duplicar:" $?
+tem_na "$PASSADA" "**\`INVESTIGATE\`** vai para uma seção **investigar**"; caso "D9: INVESTIGATE vai para investigar" $?
+tem_na "$PASSADA" "**\`KEEP_SEPARATE\`** não aparece"; caso "D9: KEEP_SEPARATE não aparece" $?
+tem_na "$PASSADA" "derruba o grupo"; caso "D9: conferência derruba grupo com função inexistente" $?
+
+# D6: a passada nomeia o aviso-duplicata como cobertura de mesmo nome
+tem_na "$PASSADA" "hooks/aviso-duplicata.cjs"; caso "D6: cita o aviso-duplicata para mesmo nome" $?
+
+# D10: maiores arquivos como contexto, fora do líquido
+MODO2="$(sed -n '/^### Modo 2/,/^### Passada de duplicata semântica/p' "$SKILL_FILE" | tr '\n' ' ' | tr -s ' ')"
+tem_na "$MODO2" "catalogo-funcoes.cjs maiores"; r1=$?
+tem_na "$MODO2" "não vira tag nem entra no \`líquido:\`"; r2=$?
+[ $r1 -eq 0 ] && [ $r2 -eq 0 ]; caso "D10: modo 2 abre com os maiores arquivos, fora do líquido" $?
+
+# references: os dois prompts e o formato JSON dos grupos
+if [ -f "$REF_FILE" ]; then
+  REF="$(cat "$REF_FILE")"
+  tem_na "$REF" "## Fase 2 — categorizar (agente haiku)"; r1=$?
+  tem_na "$REF" "## Fase 4 — comparar (um agente sonnet por categoria)"; r2=$?
+  [ $r1 -eq 0 ] && [ $r2 -eq 0 ]; caso "references traz os prompts de categorizar e comparar" $?
+  ok_json=0
+  for campo in '"intent"' '"confidence"' '"functions"' '"file"' '"name"' '"line"' '"notes"' '"differences"' '"recommendation"' '"action"' '"survivor"' '"reason"'; do
+    tem_na "$REF" "$campo" || ok_json=1
+  done
+  caso "references traz o formato JSON dos grupos" $ok_json
+else
+  caso "references/duplicata-semantica.md existe" 1
+fi
+
 echo ""
 echo "Casos: $PASSOU/$CASOS passaram"
 
