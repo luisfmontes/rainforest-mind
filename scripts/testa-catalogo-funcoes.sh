@@ -18,6 +18,7 @@
 #      estilo sem ;, .catch( de promessa, função comentada, else/switch/case/catch, mãe em Dart.
 #  13. complexas (revisão 2): regex depois de =>, JSX de uma linha sem ;, ++, [ na linha de baixo,
 #      if dentro de try/finally/do/switch, p?.catch(, seta dentro de genérico do tipo de retorno.
+#  14. complexas: corpo de topo que atravessa outra função de topo sai como não medido.
 #
 # Fixture em mktemp, FORA do worktree, com git init. Arquivos e payloads montados por node,
 # nunca por heredoc de conteúdo. Caminhos vão para o node em forma Windows (cygpath -m).
@@ -445,6 +446,25 @@ linha "JSX de uma linha sem ; termina a seta" "$SAI13" "0 cognitiva  1 ciclomát
 linha "a função depois do JSX sem ; é medida" "$SAI13" "3 cognitiva  3 ciclomática  t.tsx:L2 gC"
 linha "seta dentro de genérico do tipo de retorno não é a seta do corpo" "$SAI13" "1 cognitiva  2 ciclomática  t.tsx:L10 comGenerico"
 nao "nada da fixture 13 fica sem fechar" "$SAI13" "corpo não fechou"
+
+echo "== 14. complexas: corpo que atravessa outra função de topo vira lacuna declarada =="
+FX14="$SBP/cx14"
+mkdir -p "$FX14"
+# Regex depois de `)` é lida como divisão (limite conhecido): a `{` dela abre bloco e a `}` da
+# regex de hT fecha. Sem a trava, fT engole gT calada; com ela, fT sai como não medido.
+node -e '
+const fs = require("fs"), p = require("path"), d = process.argv[1];
+fs.writeFileSync(p.join(d, "s.js"), [
+  "function fT(s) {", "  if (s) /[{]/.test(s)", "  return 0", "}",
+  "function gT(x) {", "  if (x) {", "    if (x > 1) {", "      return 1", "    }", "  }", "  return 0", "}",
+  "function hT(s) {", "  if (s) /[}]/.test(s)", "  return 1", "}", ""].join("\n"));
+' "$(winpath "$FX14")"
+( cd "$FX14" && git init -q && git config user.email t@t && git config user.name Test && git config core.autocrlf false && git add -A && git commit -q -m base )
+SAI14="$(node "$CAT" complexas --raiz "$(winpath "$FX14")" --top 50)"; EXIT=$?
+saiu "complexas na fixture 14 sai 0" "$EXIT" 0
+linha "a mãe que atravessou gT sai como não medido" "$SAI14" "não medido: s.js:L1 fT — corpo passou por gT (L5): leitura errada"
+linha "a função atravessada é medida" "$SAI14" "3 cognitiva  3 ciclomática  s.js:L5 gT"
+nao "a mãe não sai com nota" "$SAI14" "ciclomática  s.js:L1 fT"
 
 echo "== 11. complexas no repo real: ordem, linha de começo e contribuições dentro da função =="
 node "$CAT" complexas --raiz "$RAIZN" --top 5 > "$SBP/cx-real.txt"; EXIT=$?

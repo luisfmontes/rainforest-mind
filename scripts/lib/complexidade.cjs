@@ -353,13 +353,22 @@ function medirArquivo(texto, linguagem, definicoes) {
   const fichas = tokenizar(texto, linguagem === 'dart');
   const medidas = [];
   const naoMedidas = [];
-  let fimDaMae = 0;
+  const linhas = texto.split(/\r?\n/);
+  const naColunaZero = (d) => !/^\s/.test(linhas[d.linha - 1] || '');
+  let mae = null;
   for (const def of definicoes) {
     if (/(^|\s)class\s/.test(def.assinatura)) continue;
-    if (def.linha <= fimDaMae) continue;
     // O nome tem de ser código naquela linha: definição dentro de comentário ou string não é unidade.
     const ini = fichas.findIndex((f) => f.l === def.linha && f.t === def.nome);
     if (ini === -1) continue;
+    if (mae && def.linha <= mae.fim) {
+      // Definição de topo nunca mora dentro de outra de topo: se o corpo da mãe a atravessou, a
+      // leitura de texto errou. A mãe sai como lacuna declarada e esta é medida normalmente.
+      if (!(mae.colunaZero && naColunaZero(def))) continue;
+      medidas.splice(medidas.indexOf(mae.medida), 1);
+      naoMedidas.push({ linha: mae.medida.linha, nome: mae.medida.nome, motivo: `corpo passou por ${def.nome} (L${def.linha}): leitura errada` });
+      mae = null;
+    }
     const corpo = acharCorpo(fichas, ini);
     if (!corpo) {
       naoMedidas.push({ linha: def.linha, nome: def.nome, motivo: 'corpo não fechou' });
@@ -369,8 +378,9 @@ function medirArquivo(texto, linguagem, definicoes) {
     // dele, e não na primeira da linha seguinte (que pode ser a próxima definição).
     const fecho = fichas[corpo.ate];
     const fim = fecho && (fecho.t === '}' || fecho.t === ';') ? fecho.l : fichas[Math.max(corpo.ate - 1, 0)].l;
-    fimDaMae = fim;
-    medidas.push({ linha: def.linha, nome: def.nome, fim, ...medirCorpo(fichas, corpo.de, corpo.ate) });
+    const medida = { linha: def.linha, nome: def.nome, fim, ...medirCorpo(fichas, corpo.de, corpo.ate) };
+    medidas.push(medida);
+    mae = { medida, fim, colunaZero: naColunaZero(def) };
   }
   return { medidas, naoMedidas };
 }
