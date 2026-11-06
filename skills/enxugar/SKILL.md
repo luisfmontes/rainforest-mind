@@ -175,6 +175,14 @@ Abra com `node <plugin>/scripts/catalogo-funcoes.cjs maiores --raiz <repo> --top
 os maiores arquivos dizem onde olhar primeiro. É **contexto**, não achado — não
 vira tag nem entra no `líquido:`.
 
+Logo depois, `node <plugin>/scripts/catalogo-funcoes.cjs complexas --raiz <repo> --top 10`:
+as funções JS/TS e Dart de maior complexidade cognitiva, cada uma com as três
+contribuições que mais pesaram (`+3 L23 if (profundidade 2)`). A nota é
+**aproximada** (leitura de texto, sem parser) e também é contexto: diz que
+função ler primeiro, não vira tag nem entra no `líquido:`. As linhas
+`não medido:` se leem — linguagem sem chaves ou corpo que não fechou é
+lacuna declarada, não função simples.
+
 ### Passada de duplicata semântica
 
 Só no modo 2. Acha função de **nome diferente e mesma intenção** — o que a
