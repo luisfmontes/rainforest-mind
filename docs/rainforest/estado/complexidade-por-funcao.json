@@ -33,12 +33,12 @@
     "tarefas_ok": 3,
     "tarefas": 3,
     "comando": "bash scripts/testa-catalogo-funcoes.sh",
-    "saida": "ok: 71   falhou: 0",
+    "saida": "ok: 93   falhou: 0",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-catalogo-funcoes.sh, caso 10"
+        "fixture": "testa-catalogo-funcoes.sh, casos 10 e 12"
       },
       {
         "tarefa": 2,
@@ -51,10 +51,35 @@
         "motivo": "tarefa so de texto e versao"
       }
     ],
-    "em": "2026-11-06"
+    "em": "2026-11-06",
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "88d0a7f450eed13c5a355a201aec66a2af9a4a32",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ae5e06aafb03d84ac",
+        "veredito": "reprovado",
+        "em": "2026-11-06",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ad5cf5b9-7811-4201-8c9e-c04e4eba4021/subagents/agent-ae5e06aafb03d84ac.jsonl"
+      }
+    ],
+    "em_voo": [
+      {
+        "agente": "revisor",
+        "tarefa": "revisar complexidade-por-funcao",
+        "desde": "2026-11-06T15:40",
+        "sessao": "ad5cf5b9-7811-4201-8c9e-c04e4eba4021"
+      }
+    ],
+    "em": "2026-11-06",
+    "achados": 7,
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
