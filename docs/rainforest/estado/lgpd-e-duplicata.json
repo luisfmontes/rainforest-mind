@@ -21,7 +21,7 @@
     "em": "2026-11-06"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-06",
     "tarefas_ok": 5,
     "tarefas": 5,
@@ -66,7 +66,7 @@
     ]
   },
   "revisar": {
-    "status": "ok",
+    "status": "pendente",
     "snapshot": {
       "head": "c58da140ea7227a54d8eb80bbeaeda1819f89285",
       "caminhos_sujos": []
@@ -113,7 +113,7 @@
     ]
   },
   "verificar": {
-    "status": "ok",
+    "status": "pendente",
     "em": "2026-11-06",
     "comando": "node scripts/catalogo-funcoes.cjs listar --raiz . | maiores --top 5 | conferir (linha 370 e 371); bash scripts/testa-catalogo-funcoes.sh; bash hooks/testa-aviso-duplicata.sh; bash scripts/testa-enxugar-estrutura.sh; bash scripts/testa-teto-skills.sh; bash scripts/testa-auditor-de-seguranca.sh; greps do T4; bash scripts/testa-plugin-codex.sh; bash hooks/testa-abertura-mod-config.sh; node scripts/conferir-fluxo.cjs mutacoes; T5: node scripts/catalogo-funcoes.cjs listar/conferir no app + sed das linhas citadas + git status antes/depois nos dois repos",
     "saida": "cmdPlantar scripts/ideias.cjs:370 = grep 370; maiores 1a linha 3623 scripts/estado.cjs = wc -l 3623; conferir 370 exit 0, 371 exit 1 nomeando scripts/ideias.cjs:371 cmdPlantar; baterias 53/0, 57/0, 31/31, 21 OK, 166/0, codex exit 0, mod-config exit 0; T4 Régua 4=1 catalogo-funcoes=1 livro=2 versao 2.4.0; mutacoes T1-T3 vermelho, T4-T5 puladas n/a; app: 576 funções (575 dart), 79 grupos conferidos, 1 duplicar CONSOLIDATE (sessaoDoContrato x sessaoDoDispositivo) + 3 rebaixados por survivor em texto livre; site: Régua 4 rodou, 5 achados CONFIRMADO conferidos por sed; git status idêntico antes/depois nos dois repos",
@@ -133,6 +133,11 @@
       "em": "2026-11-06",
       "de": "revisar",
       "motivo": "revisão 2 ok com 3 achados baixos que cabem no PR: (1) docstring do catalogo e references/duplicata-semantica.md descrevem stderr e exit do conferir de antes (sem grupo N, sem rebaixamento); (2) separar lança colisão de nome no meio da gravação e deixa pasta parcial, sem caso na bateria; (3) yield foo(x); na coluna zero casa como definição Dart"
+    },
+    {
+      "em": "2026-11-06",
+      "de": "verificar",
+      "motivo": "CI do PR 646 vermelho: scripts/testa-indice-referencias.sh (shard 3/3) — provavel references/duplicata-semantica.md fora do indice de referencias do enxugar"
     }
   ]
 }
