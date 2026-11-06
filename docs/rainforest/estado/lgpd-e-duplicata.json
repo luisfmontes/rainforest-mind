@@ -21,7 +21,7 @@
     "em": "2026-11-06"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-06",
     "tarefas_ok": 5,
     "tarefas": 5,
@@ -35,8 +35,8 @@
       }
     ],
     "em": "2026-11-06",
-    "comando": "bash hooks/testa-aviso-duplicata.sh; bash scripts/testa-catalogo-funcoes.sh; bash scripts/testa-enxugar-estrutura.sh; bash scripts/testa-teto-skills.sh; node scripts/conferir-mutacao.cjs (T1, T2 do plano + colisao + yield)",
-    "saida": "ok: 57 falhou: 0; ok: 53 falhou: 0; Casos: 31/31; 21 OK 0 FALHA; catraca VERMELHA em duas rodadas nos 4 alvos (T3 sem mudanca desde a rodada anterior, vermelha la)",
+    "comando": "bash scripts/testa-indice-referencias.sh; bash scripts/testa-enxugar-estrutura.sh; bash scripts/testa-teto-skills.sh; bash scripts/testa-indice-derivado.sh",
+    "saida": "8 OK 0 FALHA; Casos 31/31; 21 OK 0 FALHA; 12 ok 0 falha; catracas T1-T3 vermelhas na rodada anterior, fontes delas sem mudanca neste commit (so indice na reference)",
     "mutacao": [
       {
         "tarefa": 1,
