@@ -9,8 +9,9 @@
  * - `topo`: definição na coluna zero (JS, Python, Dart). ADVPL aceita recuo, porque o
  *   fonte costuma vir indentado dentro de bloco.
  * - `metodo`: método de classe recuado. JS/TS só casa com visibilidade, async, static,
- *   get ou set, e sem `if`/`for`/`while`/`switch`/`return`/`catch`. Dart só casa com
- *   tipo de retorno antes do nome, para não confundir chamada solta com definição.
+ *   get ou set, sem `if`/`for`/`while`/`switch`/`return`/`catch`/`with`, e sem `function`
+ *   dentro dos parênteses. Dart (topo e método) só casa com tipo de retorno antes do nome,
+ *   para não confundir chamada solta com definição; `main` de topo fica de fora.
  *
  * Cada regex tem o nome em `m[1]`. `casar` devolve o primeiro nome que casa, ou null.
  */
