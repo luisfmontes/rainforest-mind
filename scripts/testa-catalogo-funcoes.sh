@@ -14,6 +14,8 @@
 #  10. complexas: valores exatos de cognitiva e ciclomática (fila x ninho, sequências, ?, strings,
 #      JSX, objeto, closure, Dart), python como não medido, última linha de aproximação;
 #  11. complexas no repo real: ordem, começo igual ao do listar, contribuições dentro da função.
+#  12. complexas (revisão 1): JSX com </tag> e />, seta com tipo de retorno, corpo de expressão,
+#      estilo sem ;, .catch( de promessa, função comentada, else/switch/case/catch, mãe em Dart.
 #
 # Fixture em mktemp, FORA do worktree, com git init. Arquivos e payloads montados por node,
 # nunca por heredoc de conteúdo. Caminhos vão para o node em forma Windows (cygpath -m).
@@ -246,6 +248,135 @@ tem "contribuição traz linha e profundidade" "$SAI10" "    +2 L11 if (profundi
 linha "python sai como não medido" "$SAI10" "não medido: 1 função(ões) py — linguagem sem chaves"
 nao "o if da closure não vira função à parte" "$SAI10" "a.js:L33"
 igual "a última linha diz que é aproximação" "$(tail -1 <<<"$SAI10")" "medida aproximada (leitura de texto, sem parser): confira no código antes de concluir"
+
+echo "== 12. complexas: JSX, seta, sem ponto e vírgula, controle, mãe e comentário (revisão 1) =="
+FX12="$SBP/cx12"
+mkdir -p "$FX12"
+node -e '
+const fs = require("fs"), p = require("path"), d = process.argv[1];
+const Q = String.fromCharCode(39), C = String.fromCharCode(96);
+const w = (f, s) => fs.writeFileSync(p.join(d, f), s);
+w("j.tsx", [
+  "export function SoFechamento({ xs }) {",
+  "  return <ul>{xs.map((x) => <li key={x}>{x}</li>)}</ul>;",
+  "}",
+  "export function Silencioso({ a, xs }) {",
+  "  if (a) {",
+  "    const x = <div><b>x</b>{a && <i>y</i>}</div>;",
+  "    if (xs) {",
+  "      return x;",
+  "    }",
+  "  }",
+  "  return null;",
+  "}",
+  "function SoPelaChave(xs) {",
+  "  if (xs) {",
+  "    return foo({ k: xs.map((x) => <Item id={x} />) });",
+  "  }",
+  "}",
+  ""].join("\n"));
+w("s.ts", [
+  "const tipado = (a: number): { x: number } => {",
+  "  if (a) {",
+  "    if (a > 1) {",
+  "      return { x: 1 };",
+  "    }",
+  "  }",
+  "  return { x: 2 };",
+  "};",
+  "const estilo = (t) => t.dark ? { c: 1 } : { c: 2 };",
+  "const outro = (a, b, c) => a && b || c ? { d: 1 } : null;",
+  "const dobra = (a) => a ? 1 : 2",
+  "function g2(x) {",
+  "  if (x) {",
+  "    if (x > 1) {",
+  "      y()",
+  "    }",
+  "  }",
+  "}",
+  "function promessa(u) {",
+  "  return fetch(u).then((r) => r).catch((e) => e);",
+  "}",
+  "/*",
+  "function velha(a) { if (a) { return 1; } }",
+  "*/",
+  "function real(b) {",
+  "  if (b) {",
+  "    return 1;",
+  "  }",
+  "}",
+  "function noObjeto(c) {",
+  "  const o = { b: { e: c ? 1 : 2 } };",
+  "  return o;",
+  "}",
+  "function regexComIf(s) {",
+  "  return /if (x)/.test(s);",
+  "}",
+  "function templateAninhado(b) {",
+  "  return " + C + "a ${ " + C + "if (b)" + C + " } c" + C + ";",
+  "}",
+  "function senao(a, b) {",
+  "  if (a) {",
+  "    return 1;",
+  "  } else if (b) {",
+  "    return 2;",
+  "  } else {",
+  "    return 3;",
+  "  }",
+  "}",
+  "function escolha(x) {",
+  "  switch (x) {",
+  "    case 1: return 1;",
+  "    case 2: return 2;",
+  "    default: return 0;",
+  "  }",
+  "}",
+  "function lacos(a) {",
+  "  while (a) {",
+  "    try {",
+  "      g();",
+  "    } catch (e) {",
+  "      h();",
+  "    }",
+  "  }",
+  "}",
+  ""].join("\n"));
+w("m.dart", [
+  "void externa(bool a) {",
+  "  void interna() {",
+  "    if (a) {",
+  "      print(1);",
+  "    }",
+  "  }",
+  "  final s = " + Q + "${a ? " + Q + "if (z)" + Q + " : " + Q + "n" + Q + "}" + Q + ";",
+  "}",
+  ""].join("\n"));
+w("k.py", "class Coisa:\n    pass\n\ndef solta():\n    pass\n");
+' "$(winpath "$FX12")"
+( cd "$FX12" && git init -q && git config user.email t@t && git config user.name Test && git config core.autocrlf false && git add -A && git commit -q -m base )
+SAI12="$(node "$CAT" complexas --raiz "$(winpath "$FX12")" --top 50)"; EXIT=$?
+saiu "complexas na fixture 12 sai 0" "$EXIT" 0
+linha "JSX: </li>) não vira regex e o corpo fecha" "$SAI12" "0 cognitiva  1 ciclomática  j.tsx:L1 SoFechamento"
+linha "JSX: </b> e </i> não engolem a chave" "$SAI12" "4 cognitiva  4 ciclomática  j.tsx:L4 Silencioso"
+linha "JSX: /> depois de } não vira regex" "$SAI12" "1 cognitiva  2 ciclomática  j.tsx:L13 SoPelaChave"
+nao "nenhuma função de JSX fica sem fechar" "$SAI12" "corpo não fechou"
+linha "seta com tipo de retorno literal: o corpo é o bloco depois da seta" "$SAI12" "3 cognitiva  3 ciclomática  s.ts:L1 tipado"
+linha "corpo de expressão com objeto: o ternário conta" "$SAI12" "1 cognitiva  2 ciclomática  s.ts:L9 estilo"
+linha "corpo de expressão: && || e ternário contam" "$SAI12" "3 cognitiva  4 ciclomática  s.ts:L10 outro"
+linha "sem ponto e vírgula: a seta para na quebra de linha" "$SAI12" "1 cognitiva  2 ciclomática  s.ts:L11 dobra"
+linha "sem ponto e vírgula: a função seguinte é medida" "$SAI12" "3 cognitiva  3 ciclomática  s.ts:L12 g2"
+linha ".catch( de promessa não conta" "$SAI12" "0 cognitiva  1 ciclomática  s.ts:L19 promessa"
+nao "função dentro de comentário não é medida" "$SAI12" "velha"
+linha "a função depois do comentário é medida" "$SAI12" "1 cognitiva  2 ciclomática  s.ts:L25 real"
+linha "ternário dentro de objeto fica na profundidade 0" "$SAI12" "1 cognitiva  2 ciclomática  s.ts:L30 noObjeto"
+linha "if dentro de regex não conta" "$SAI12" "0 cognitiva  1 ciclomática  s.ts:L34 regexComIf"
+linha "if dentro de template aninhado não conta" "$SAI12" "0 cognitiva  1 ciclomática  s.ts:L37 templateAninhado"
+linha "else if e else somam 1 cada, sem profundidade" "$SAI12" "3 cognitiva  3 ciclomática  s.ts:L40 senao"
+linha "switch soma 1; cada case soma na ciclomática" "$SAI12" "1 cognitiva  3 ciclomática  s.ts:L49 escolha"
+linha "catch dentro de while pesa 2" "$SAI12" "3 cognitiva  3 ciclomática  s.ts:L56 lacos"
+linha "Dart: função interna soma na mãe; aspas dentro de \${} não contam" "$SAI12" "3 cognitiva  3 ciclomática  m.dart:L1 externa"
+nao "Dart: a função interna não sai à parte" "$SAI12" "m.dart:L2"
+linha "python: classe não conta como função" "$SAI12" "não medido: 1 função(ões) py — linguagem sem chaves"
 
 echo "== 11. complexas no repo real: ordem, linha de começo e contribuições dentro da função =="
 node "$CAT" complexas --raiz "$RAIZN" --top 5 > "$SBP/cx-real.txt"; EXIT=$?

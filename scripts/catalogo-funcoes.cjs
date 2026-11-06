@@ -218,7 +218,8 @@ function complexas(raiz, top) {
     const defs = definicoesDoArquivo(raiz, rel, 0);
     if (!defs.length) continue;
     if (linguagem !== 'js' && linguagem !== 'dart') {
-      semChaves[linguagem] = (semChaves[linguagem] || 0) + defs.length;
+      const funcoes = defs.filter((d) => !/^\s*class\s/i.test(d.assinatura)).length;
+      if (funcoes) semChaves[linguagem] = (semChaves[linguagem] || 0) + funcoes;
       continue;
     }
     let texto;

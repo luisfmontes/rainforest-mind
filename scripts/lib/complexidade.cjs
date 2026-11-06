@@ -20,9 +20,15 @@
  * duas métricas (crédito no design).
  */
 
+// Só o que o D2 lista. `<` e `>` ficam de fora: em JSX a `/` de `</li>` vem depois de `<`, e
+// regex depois de comparação é raro demais para pagar esse risco.
 const ANTES_DE_REGEX = new Set([
-  null, '(', ',', '=', ':', '[', '!', '&', '|', '?', '?:', '{', '}', ';', '&&', '||', '??', '=>',
-  'return', 'typeof', 'case', '+', '-', '*', '%', '<', '>', '~', '^',
+  null, '(', ',', '=', ':', '[', '!', '&', '|', '?', '?:', '{', '}', ';', '&&', '||', '??',
+  'return', 'typeof', 'case',
+]);
+// Ficha que, no fim de uma linha, deixa a expressão continuar na seguinte (corpo `=> expr` sem `;`).
+const CONTINUA_EXPRESSAO = new Set([
+  '?', '?:', ':', '&&', '||', '??', '+', '-', '*', '/', '%', '.', '?.', ',', '(', '[', '=', '=>', '<', '>', '!', '&', '|',
 ]);
 const CONTROLE_COM_PARENTESES = new Set(['if', 'for', 'while', 'switch', 'catch']);
 const ABRE_BLOCO_DE_CONTROLE = new Set(['if', 'else', 'for', 'while', 'do', 'switch', 'try', 'catch', 'finally']);
@@ -140,7 +146,8 @@ function tokenizar(texto, ehDart) {
         emite('str');
         continue;
       }
-      if (c === '/' && !ehDart && ANTES_DE_REGEX.has(anterior)) {
+      // `/>` é fechamento de tag JSX, nunca regex.
+      if (c === '/' && d !== '>' && !ehDart && ANTES_DE_REGEX.has(anterior)) {
         lerRegex();
         emite('regex');
         continue;
@@ -191,35 +198,65 @@ function incrementoAninhado(profundidade) {
   return 1 + profundidade;
 }
 
+/** Índice da chave que fecha a `{` em `k`, ou -1. */
+function fechaChave(fichas, k) {
+  let prof = 0;
+  for (let m = k; m < fichas.length; m++) {
+    if (fichas[m].t === '{') prof++;
+    else if (fichas[m].t === '}' && --prof === 0) return m;
+  }
+  return -1;
+}
+
 /**
- * Acha o corpo da definição que começa na ficha `ini`: da primeira `{` fora de parênteses até a
- * `}` que a fecha; sem `{` antes de um `;`, até o `;`. Chave que fecha e é seguida de `>`, `{`,
- * `|`, `&` ou `[` era tipo literal (`): {a: T} {`) e a busca continua.
- * Devolve {de, ate} (índices exclusivos do corpo) ou null se não fechou.
+ * Corpo `=> expr` (a ficha `de` é a primeira depois da seta): termina no `;` fora de parênteses,
+ * colchetes e chaves, ou na quebra de linha em que nada fica aberto, a linha anterior não termina
+ * em operador e a seguinte não começa com um (estilo sem ponto e vírgula).
+ */
+function fimDaExpressao(fichas, de) {
+  let aberto = 0;
+  for (let k = de; k < fichas.length; k++) {
+    const t = fichas[k].t;
+    if (k > de && aberto === 0 && fichas[k].l > fichas[k - 1].l
+        && !CONTINUA_EXPRESSAO.has(fichas[k - 1].t) && !CONTINUA_EXPRESSAO.has(t)) return k;
+    if (t === '(' || t === '[' || t === '{') aberto++;
+    else if (t === ')' || t === ']' || t === '}') {
+      if (aberto === 0) return k; // a expressão era argumento de algo que fecha aqui
+      aberto--;
+    } else if (t === ';' && aberto === 0) return k;
+  }
+  return fichas.length;
+}
+
+/**
+ * Acha o corpo da definição que começa na ficha `ini`. Depois de `=>` fora de parênteses: bloco
+ * `{ }` se a seta é seguida de `{`, senão a expressão (`fimDaExpressao`). Sem seta: da primeira
+ * `{` fora de parênteses até a `}` que a fecha; `;` antes dela é corpo vazio (`void f();`). Chave
+ * que fecha e é seguida de `>`, `{`, `|`, `&`, `[` ou `=>` era tipo literal (`): {a: T} {`) e a
+ * busca continua. Devolve {de, ate} (índices exclusivos do corpo) ou null se não fechou.
  */
 function acharCorpo(fichas, ini) {
   let parenteses = 0;
+  let angulos = 0; // `<...>` de genérico na assinatura: `Promise<() => void>` não é a seta do corpo
   for (let k = ini; k < fichas.length; k++) {
     const t = fichas[k].t;
     if (t === '(') parenteses++;
     else if (t === ')') parenteses--;
-    else if (t === ';' && parenteses === 0) return { de: ini, ate: k };
-    else if (t === '{' && parenteses === 0) {
-      let prof = 0;
-      let fim = -1;
-      for (let m = k; m < fichas.length; m++) {
-        if (fichas[m].t === '{') prof++;
-        else if (fichas[m].t === '}') {
-          prof--;
-          if (prof === 0) {
-            fim = m;
-            break;
-          }
-        }
+    else if (t === '<' && parenteses === 0) angulos++;
+    else if (t === '>' && parenteses === 0 && angulos > 0) angulos--;
+    else if (angulos > 0) continue;
+    else if (t === '=>' && parenteses === 0) {
+      if (fichas[k + 1] && fichas[k + 1].t === '{') {
+        const fim = fechaChave(fichas, k + 1);
+        return fim === -1 ? null : { de: k + 2, ate: fim };
       }
+      return { de: k + 1, ate: fimDaExpressao(fichas, k + 1) };
+    } else if (t === ';' && parenteses === 0) return { de: ini, ate: k };
+    else if (t === '{' && parenteses === 0) {
+      const fim = fechaChave(fichas, k);
       if (fim === -1) return null;
       const depois = fichas[fim + 1] && fichas[fim + 1].t;
-      if (['>', '{', '|', '&', '['].includes(depois)) {
+      if (['>', '{', '|', '&', '[', '=>'].includes(depois)) {
         k = fim;
         continue;
       }
@@ -267,7 +304,8 @@ function medirCorpo(fichas, de, ate) {
     } else if (t === 'else') {
       pendente = parenteses;
       if (prox !== 'if') soma(1, l, 'else');
-    } else if (ABRE_BLOCO_DE_CONTROLE.has(t)) {
+    } else if (ABRE_BLOCO_DE_CONTROLE.has(t) && ant !== '.' && ant !== '?.') {
+      // `.catch(` de promessa é chamada de método, não estrutura de controle.
       pendente = parenteses;
       if (CONTROLE_COM_PARENTESES.has(t) && prox === '(') {
         if (t === 'if' && ant === 'else') {
@@ -305,15 +343,20 @@ function medirArquivo(texto, linguagem, definicoes) {
   const naoMedidas = [];
   let fimDaMae = 0;
   for (const def of definicoes) {
-    if (/(^|\s)class\s/.test(def.assinatura) || /^class\s/.test(def.assinatura)) continue;
+    if (/(^|\s)class\s/.test(def.assinatura)) continue;
     if (def.linha <= fimDaMae) continue;
-    const ini = fichas.findIndex((f) => f.l >= def.linha);
-    const corpo = ini === -1 ? null : acharCorpo(fichas, ini);
+    // O nome tem de ser código naquela linha: definição dentro de comentário ou string não é unidade.
+    const ini = fichas.findIndex((f) => f.l === def.linha && f.t === def.nome);
+    if (ini === -1) continue;
+    const corpo = acharCorpo(fichas, ini);
     if (!corpo) {
       naoMedidas.push({ linha: def.linha, nome: def.nome, motivo: 'corpo não fechou' });
       continue;
     }
-    const fim = fichas[Math.min(corpo.ate, fichas.length - 1)].l;
+    // Fim do corpo: a `}` ou o `;` que o fecha; corpo de expressão sem `;` acaba na última ficha
+    // dele, e não na primeira da linha seguinte (que pode ser a próxima definição).
+    const fecho = fichas[corpo.ate];
+    const fim = fecho && (fecho.t === '}' || fecho.t === ';') ? fecho.l : fichas[Math.max(corpo.ate - 1, 0)].l;
     fimDaMae = fim;
     medidas.push({ linha: def.linha, nome: def.nome, fim, ...medirCorpo(fichas, corpo.de, corpo.ate) });
   }
