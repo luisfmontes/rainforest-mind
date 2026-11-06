@@ -57,7 +57,7 @@ pronto quando: com o `agents/auditor-de-seguranca.md` real, o passo (a) do méto
 
 ### 4. README, livro de repos e versão 2.4.0 [tipo: docs]
 atende: D12
-arquivos: `README.md`, `vigias/livro-de-repos.md`, `.claude-plugin/plugin.json`, `CHANGELOG.md`
+arquivos: `README.md`, `vigias/livro-de-repos.md`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `CHANGELOG.md`
 depende de: 1, 2, 3
 mutacao: n/a
   motivo: tarefa só de texto e número de versão; não há comportamento a inverter — a falsificação é a coerência com o que as tarefas 1 a 3 entregaram, conferida no critério
