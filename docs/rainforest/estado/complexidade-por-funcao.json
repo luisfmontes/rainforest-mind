@@ -6,7 +6,9 @@
     "status": "pendente"
   },
   "design": {
-    "status": "pendente"
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/complexidade-por-funcao.md",
+    "em": "2026-11-06"
   },
   "plano": {
     "status": "pendente"

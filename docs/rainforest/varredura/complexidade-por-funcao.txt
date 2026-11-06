@@ -1,0 +1,78 @@
+Data: 2026-11-06
+Termos: complexidade, cognitiva, ciclomática, catalogo-funcoes, maiores
+
+$ gh issue list --state all --search "complexidade" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "cognitiva" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "ciclomática" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "catalogo-funcoes" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "maiores" --limit 200 --json number,title,state
+[{"number":3,"state":"CLOSED","title":"conferir esta vermelho desde 11/08 e nao tem como ficar verde: 35 abertas sem gancho, e o reparar recusa sem texto a mao"},{"number":1,"state":"CLOSED","title":"Briefing nao diz o ato de entregar: subagente nomeado termina o trabalho e nao devolve (3 de 3)"}]
+
+
+$ gh pr list --state all --search "complexidade" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "cognitiva" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "ciclomática" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "catalogo-funcoes" --limit 200 --json number,title,state
+[{"number":646,"state":"MERGED","title":"Régua 4 LGPD no auditor e duplicata semântica no enxugar (2.4.0)"}]
+
+
+$ gh pr list --state all --search "maiores" --limit 200 --json number,title,state
+[{"number":646,"state":"MERGED","title":"Régua 4 LGPD no auditor e duplicata semântica no enxugar (2.4.0)"},{"number":52,"state":"MERGED","title":"Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo"}]
+
+
+$ git ls-remote --heads origin | grep -F "complexidade"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "cognitiva"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "ciclomática"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "catalogo-funcoes"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "maiores"
+(vazio)
+
+$ git log --all --grep="complexidade" --oneline
+921c94b0 Design: complexidade por função no enxugar
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+
+$ git log --all --grep="cognitiva" --oneline
+(vazio)
+
+$ git log --all --grep="ciclomática" --oneline
+(vazio)
+
+$ git log --all --grep="catalogo-funcoes" --oneline
+0c0adc21 Régua 4 LGPD no auditor e duplicata semântica no enxugar (2.4.0) (#646)
+
+$ git log --all --grep="maiores" --oneline
+0c0adc21 Régua 4 LGPD no auditor e duplicata semântica no enxugar (2.4.0) (#646)
+
+$ cat <dados>/ideias.jsonl
+(vazio)
+
