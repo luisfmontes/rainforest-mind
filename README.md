@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-2.4.0-1e5c3f?style=flat-square" alt="versão 2.4.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-2.5.0-1e5c3f?style=flat-square" alt="versão 2.5.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -306,7 +306,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `/ponte` | Gera `CLAUDE.md`, `AGENTS.md` ou `GEMINI.md` ([detalhe](docs/pontes.md)) |
 | `modo-dev` | Escada YAGNI, causa raiz antes de remendo, rastreabilidade do diff |
 | `depurar` | Constrói o loop de feedback **antes** de qualquer hipótese |
-| `enxugar` | Lista (nunca aplica) código morto, inflação e abstração não usada, num diff ou no repo inteiro. No repo inteiro abre pelos maiores arquivos e roda a passada de **duplicata semântica** — função de nome diferente e mesma intenção: `scripts/catalogo-funcoes.cjs` cataloga as funções (JS/TS, Dart, Python, ADVPL), um agente haiku agrupa por domínio, um sonnet por grupo compara, e o catálogo confere cada `arquivo:linha` antes de virar achado `duplicar:` |
+| `enxugar` | Lista (nunca aplica) código morto, inflação e abstração não usada, num diff ou no repo inteiro. No repo inteiro abre pelos maiores arquivos e pelas funções mais complexas (`catalogo-funcoes.cjs complexas`: complexidade cognitiva e ciclomática por função JS/TS e Dart, com as três contribuições que mais pesam; medida aproximada, por leitura de texto) e roda a passada de **duplicata semântica** — função de nome diferente e mesma intenção: `scripts/catalogo-funcoes.cjs` cataloga as funções (JS/TS, Dart, Python, ADVPL), um agente haiku agrupa por domínio, um sonnet por grupo compara, e o catálogo confere cada `arquivo:linha` antes de virar achado `duplicar:` |
 | `analisar` | Análise em notebook: uma pergunta por vez, revisão crítica do achado |
 
 **Agentes por função** — a janela principal pensa; o agente executa.

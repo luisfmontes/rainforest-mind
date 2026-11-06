@@ -166,6 +166,16 @@ tem_na "$MODO2" "catalogo-funcoes.cjs maiores"; r1=$?
 tem_na "$MODO2" "não vira tag nem entra no \`líquido:\`"; r2=$?
 [ $r1 -eq 0 ] && [ $r2 -eq 0 ]; caso "D10: modo 2 abre com os maiores arquivos, fora do líquido" $?
 
+# D7 (complexidade-por-funcao): complexas depois do maiores, aproximado, fora do líquido, não medido lido
+TRECHO2="$(sed -n '/^### Modo 2/,/^### Passada de duplicata semântica/p' "$SKILL_FILE")"
+lm="$(printf '%s\n' "$TRECHO2" | grep -n 'catalogo-funcoes.cjs maiores' | head -1 | cut -d: -f1)"
+lc="$(printf '%s\n' "$TRECHO2" | grep -n 'catalogo-funcoes.cjs complexas --raiz <repo> --top 10' | head -1 | cut -d: -f1)"
+r1=1; [ -n "$lm" ] && [ -n "$lc" ] && [ "$lc" -gt "$lm" ] && r1=0
+tem_na "$MODO2" "**aproximada**"; r2=$?
+tem_na "$MODO2" "função ler primeiro, não vira tag nem entra no \`líquido:\`"; r3=$?
+tem_na "$MODO2" "\`não medido:\` se leem"; r4=$?
+[ $r1 -eq 0 ] && [ $r2 -eq 0 ] && [ $r3 -eq 0 ] && [ $r4 -eq 0 ]; caso "D7: modo 2 roda complexas depois do maiores, fora do líquido" $?
+
 # references: os dois prompts e o formato JSON dos grupos
 if [ -f "$REF_FILE" ]; then
   REF="$(cat "$REF_FILE")"

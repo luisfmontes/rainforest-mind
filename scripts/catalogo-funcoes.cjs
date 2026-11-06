@@ -10,6 +10,10 @@
  *            à raiz, com `/`; `linha` é 1-based; `contexto` são as N linhas seguintes à definição.
  *   maiores  [--raiz <dir>] [--top N (padrão 10)]
  *            Linhas `<n> linhas  <caminho>`, da maior para a menor (contexto, não achado: D10).
+ *   complexas [--raiz <dir>] [--top N (padrão 10)]
+ *            Complexidade cognitiva e ciclomática por função JS/TS e Dart, da maior para a menor,
+ *            com as 3 maiores contribuições de cada uma e o que não foi medido (design
+ *            complexidade-por-funcao). Medida aproximada, por leitura de texto: scripts/lib/complexidade.cjs.
  *   separar  --catalogo <arq-categorizado.json> --saida <dir> [--minimo 3]
  *            Grava <dir>/<categoria>.json só para categorias com ao menos --minimo funções.
  *            Categoria agrupa pela caixa baixa. Stderr: `sem categoria: N` quando há entrada
@@ -38,13 +42,15 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { EXTENSOES, casar } = require(path.join(__dirname, '..', 'hooks', 'lib', 'definicoes.cjs'));
 const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
+const { medirArquivo } = require(path.join(__dirname, 'lib', 'complexidade.cjs'));
 
 const DIRETORIOS_GERADOS = new Set(['node_modules', 'build', 'dist', '.dart_tool', '.git']);
 const MAX_CAMINHO_ASSINATURA = 200;
 
-const USO = `uso: node scripts/catalogo-funcoes.cjs <listar|maiores|separar|conferir> [opções]
+const USO = `uso: node scripts/catalogo-funcoes.cjs <listar|maiores|complexas|separar|conferir> [opções]
   listar   [--raiz <dir>] [--contexto N] [--incluir-testes]
   maiores  [--raiz <dir>] [--top N]
+  complexas [--raiz <dir>] [--top N]
   separar  --catalogo <arq> --saida <dir> [--minimo 3]
   conferir --catalogo <arq> --grupos <arq>
 `;
@@ -202,6 +208,35 @@ function maiores(raiz, top) {
   return medidos.slice(0, top);
 }
 
+/** Funções JS/TS e Dart medidas, da maior cognitiva para a menor, e o que ficou sem medida (D6). */
+function complexas(raiz, top) {
+  const medidas = [];
+  const semChaves = {};
+  const naoMedidas = [];
+  for (const rel of candidatos(raiz, false)) {
+    const linguagem = EXTENSOES[path.extname(rel).toLowerCase()];
+    const defs = definicoesDoArquivo(raiz, rel, 0);
+    if (!defs.length) continue;
+    if (linguagem !== 'js' && linguagem !== 'dart') {
+      const funcoes = defs.filter((d) => !/^\s*class\s/i.test(d.assinatura)).length;
+      if (funcoes) semChaves[linguagem] = (semChaves[linguagem] || 0) + funcoes;
+      continue;
+    }
+    let texto;
+    try {
+      texto = fs.readFileSync(path.join(raiz, rel), 'utf8');
+    } catch {
+      naoMedidas.push({ rel, linha: 1, nome: '(arquivo)', motivo: 'arquivo ilegível' });
+      continue;
+    }
+    const r = medirArquivo(texto, linguagem, defs);
+    for (const m of r.medidas) medidas.push({ rel, ...m });
+    for (const m of r.naoMedidas) naoMedidas.push({ rel, ...m });
+  }
+  medidas.sort((a, b) => b.cognitiva - a.cognitiva || b.ciclomatica - a.ciclomatica || (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0) || a.linha - b.linha);
+  return { medidas: medidas.slice(0, top), semChaves, naoMedidas };
+}
+
 function lerJson(arquivo, nome) {
   try {
     return JSON.parse(fs.readFileSync(arquivo, 'utf8'));
@@ -296,7 +331,7 @@ function conferir(catalogoArq, gruposArq) {
 
 function principal(argv) {
   const [sub, ...resto] = argv;
-  const subs = ['listar', 'maiores', 'separar', 'conferir'];
+  const subs = ['listar', 'maiores', 'complexas', 'separar', 'conferir'];
   if (!subs.includes(sub)) {
     process.stderr.write(USO);
     process.exitCode = 1;
@@ -314,6 +349,21 @@ function principal(argv) {
     const top = inteiro(o.top, 10, 'top');
     const linhas = maiores(raiz, top).map((m) => `${m.n} linhas  ${m.rel}`);
     process.stdout.write(linhas.map((l) => l + '\n').join(''));
+    return;
+  }
+  if (sub === 'complexas') {
+    const raiz = path.resolve(o.raiz || '.');
+    const top = inteiro(o.top, 10, 'top');
+    const { medidas, semChaves, naoMedidas } = complexas(raiz, top);
+    const saida = [];
+    for (const m of medidas) {
+      saida.push(`${m.cognitiva} cognitiva  ${m.ciclomatica} ciclomática  ${m.rel}:L${m.linha} ${m.nome}`);
+      for (const c of m.contribuicoes.slice(0, 3)) saida.push(`    +${c.valor} L${c.linha} ${c.rotulo}`);
+    }
+    for (const ling of Object.keys(semChaves).sort()) saida.push(`não medido: ${semChaves[ling]} função(ões) ${ling} — linguagem sem chaves`);
+    for (const m of naoMedidas) saida.push(`não medido: ${m.rel}:L${m.linha} ${m.nome} — ${m.motivo}`);
+    saida.push('medida aproximada (leitura de texto, sem parser): confira no código antes de concluir');
+    process.stdout.write(saida.map((l) => l + '\n').join(''));
     return;
   }
   if (sub === 'separar') {
