@@ -127,11 +127,12 @@
     ]
   },
   "verificar": {
-    "status": "pendente",
+    "status": "ok",
     "em": "2026-11-06",
-    "comando": "node scripts/catalogo-funcoes.cjs listar --raiz . | maiores --top 5 | conferir (linha 370 e 371); bash scripts/testa-catalogo-funcoes.sh; bash hooks/testa-aviso-duplicata.sh; bash scripts/testa-enxugar-estrutura.sh; bash scripts/testa-teto-skills.sh; bash scripts/testa-auditor-de-seguranca.sh; greps do T4; bash scripts/testa-plugin-codex.sh; bash hooks/testa-abertura-mod-config.sh; node scripts/conferir-fluxo.cjs mutacoes; T5: node scripts/catalogo-funcoes.cjs listar/conferir no app + sed das linhas citadas + git status antes/depois nos dois repos",
-    "saida": "cmdPlantar scripts/ideias.cjs:370 = grep 370; maiores 1a linha 3623 scripts/estado.cjs = wc -l 3623; conferir 370 exit 0, 371 exit 1 nomeando scripts/ideias.cjs:371 cmdPlantar; baterias 53/0, 57/0, 31/31, 21 OK, 166/0, codex exit 0, mod-config exit 0; T4 Régua 4=1 catalogo-funcoes=1 livro=2 versao 2.4.0; mutacoes T1-T3 vermelho, T4-T5 puladas n/a; app: 576 funções (575 dart), 79 grupos conferidos, 1 duplicar CONSOLIDATE (sessaoDoContrato x sessaoDoDispositivo) + 3 rebaixados por survivor em texto livre; site: Régua 4 rodou, 5 achados CONFIRMADO conferidos por sed; git status idêntico antes/depois nos dois repos",
-    "head": "c58da140ea7227a54d8eb80bbeaeda1819f89285"
+    "comando": "bash scripts/testa-indice-referencias.sh; node scripts/catalogo-funcoes.cjs listar --raiz .",
+    "saida": "8 OK 0 FALHA; cmdPlantar scripts/ideias.cjs:370 = grep 370; demais criterios da rodada anterior sem fonte alterada",
+    "head": "6619f493cdb75caa10dc9d83f9828943ea2c1fd7",
+    "sensor_externo": "bash scripts/testa-indice-referencias.sh"
   },
   "fechar": {
     "status": "pendente",
