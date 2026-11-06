@@ -35,8 +35,8 @@
       }
     ],
     "em": "2026-11-06",
-    "comando": "bash hooks/testa-aviso-duplicata.sh; bash scripts/testa-catalogo-funcoes.sh; bash scripts/testa-enxugar-estrutura.sh; bash scripts/testa-auditor-de-seguranca.sh; bash scripts/testa-teto-skills.sh; node scripts/conferir-mutacao.cjs (T1 do plano + 8 travas dos achados)",
-    "saida": "ok: 57 falhou: 0; ok: 49 falhou: 0; Casos: 31/31; ok: 166 falhou: 0; 21 OK 0 FALHA; catraca VERMELHA em duas rodadas em todos os alvos",
+    "comando": "bash hooks/testa-aviso-duplicata.sh; bash scripts/testa-catalogo-funcoes.sh; bash scripts/testa-enxugar-estrutura.sh; bash scripts/testa-teto-skills.sh; node scripts/conferir-mutacao.cjs (T1, T2 do plano + colisao + yield)",
+    "saida": "ok: 57 falhou: 0; ok: 53 falhou: 0; Casos: 31/31; 21 OK 0 FALHA; catraca VERMELHA em duas rodadas nos 4 alvos (T3 sem mudanca desde a rodada anterior, vermelha la)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -68,25 +68,37 @@
   "revisar": {
     "status": "pendente",
     "snapshot": {
-      "head": "c37041867891670a366a78f6cb9c5dda290f6827",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/lgpd-e-duplicata.json"
-      ]
+      "head": "436c0a9799ed0627f4e49fbf8690c5e1cefedf43",
+      "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "afca9d17dfbae151d",
+        "agente_id": "a728a3a7efd287915",
         "veredito": "ok",
         "em": "2026-11-06",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ad5cf5b9-7811-4201-8c9e-c04e4eba4021/subagents/agent-afca9d17dfbae151d.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ad5cf5b9-7811-4201-8c9e-c04e4eba4021/subagents/agent-a728a3a7efd287915.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-11-06",
-    "achados": 5,
+    "achados": 3,
     "base": "fa663d6e4960aa214a84e0e14036566e343e8c63",
-    "head": "c37041867891670a366a78f6cb9c5dda290f6827"
+    "head": "436c0a9799ed0627f4e49fbf8690c5e1cefedf43",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "afca9d17dfbae151d",
+            "veredito": "ok",
+            "em": "2026-11-06",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ad5cf5b9-7811-4201-8c9e-c04e4eba4021/subagents/agent-afca9d17dfbae151d.jsonl"
+          }
+        ]
+      }
+    ]
   },
   "verificar": {
     "status": "pendente",
@@ -101,6 +113,11 @@
       "em": "2026-11-06",
       "de": "revisar",
       "motivo": "revisão ok com 5 achados que cabem no PR: (1) Dart topo casa chamada solta e main no aviso-duplicata; (2) conferir aceita grupo de 1 função, duplicada ou survivor fora do grupo; (3) separar perde categoria com caixa diferente no Windows e não avisa entrada sem category nem pasta suja; (4) regex metodo JS casa setTimeout(function e with; (5) plano cita scripts/testa-abertura-mod-config.sh, que mora em hooks/"
+    },
+    {
+      "em": "2026-11-06",
+      "de": "revisar",
+      "motivo": "revisão 2 ok com 3 achados baixos que cabem no PR: (1) docstring do catalogo e references/duplicata-semantica.md descrevem stderr e exit do conferir de antes (sem grupo N, sem rebaixamento); (2) separar lança colisão de nome no meio da gravação e deixa pasta parcial, sem caso na bateria; (3) yield foo(x); na coluna zero casa como definição Dart"
     }
   ]
 }
