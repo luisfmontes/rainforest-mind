@@ -11,7 +11,21 @@
     "em": "2026-11-06"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/complexidade-por-funcao.md",
+    "tarefas": 3,
+    "paralelas": [
+      [
+        1
+      ],
+      [
+        2
+      ],
+      [
+        3
+      ]
+    ],
+    "em": "2026-11-06"
   },
   "executar": {
     "status": "pendente"
