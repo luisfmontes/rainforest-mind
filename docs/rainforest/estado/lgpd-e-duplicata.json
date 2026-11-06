@@ -21,8 +21,50 @@
     "em": "2026-11-06"
   },
   "executar": {
-    "status": "pendente",
-    "catraca_mutacao": "2026-11-06"
+    "status": "ok",
+    "catraca_mutacao": "2026-11-06",
+    "tarefas_ok": 5,
+    "tarefas": 5,
+    "em_voo": [],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "c990fd14fbce635c9778262f67ae3e7954181768",
+        "iteracao": 1,
+        "sessao": "ad5cf5b9-7811-4201-8c9e-c04e4eba4021",
+        "ts": "2026-11-06T12:46:39.462Z"
+      }
+    ],
+    "em": "2026-11-06",
+    "comando": "bash scripts/testa-catalogo-funcoes.sh; bash scripts/testa-enxugar-estrutura.sh; bash scripts/testa-auditor-de-seguranca.sh; node scripts/conferir-mutacao.cjs (3 alvos do plano)",
+    "saida": "ok: 30 falhou: 0; Casos: 31/31; ok: 166 falhou: 0; catraca VERMELHA confirmada em duas rodadas nos 3 alvos",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-catalogo-funcoes.sh, caso dart: função de topo e método de classe entram no catálogo"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-enxugar-estrutura.sh, caso modo 2 tem a passada de duplicata semântica com as cinco fases"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-auditor-de-seguranca.sh, bloco 13 Régua 4 — LGPD: gatilho, nove categorias, tabela normativa"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "tarefa so de texto e versao; coerencia conferida no criterio"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "execucao de leitura em repositorio externo; comportamento coberto pelas mutacoes 1 a 3"
+      }
+    ]
   },
   "revisar": {
     "status": "pendente"
