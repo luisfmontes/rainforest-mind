@@ -24,6 +24,7 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { caminhoExecutavel } = require(path.join(__dirname, 'lib', 'resolver-executavel.cjs'));
 const { caminhoReal } = require(path.join(__dirname, 'lib', 'caminho-real.cjs'));
+const { EXTENSOES, casar } = require(path.join(__dirname, 'lib', 'definicoes.cjs'));
 
 const ORCAMENTO_MS = 3000;
 const ORCAMENTO_TOPO_MS = 1000;
@@ -35,31 +36,8 @@ const MAX_CAMINHO = 200;
 const IDENTIFICADOR = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 const CAMINHO_SEGURO = /^[\w./ À-ſ-]+$/;
 
-const EXTENSOES = {
-  '.js': 'js', '.cjs': 'js', '.mjs': 'js', '.ts': 'js', '.tsx': 'js', '.jsx': 'js',
-  '.py': 'py',
-  '.prw': 'advpl', '.prx': 'advpl', '.tlpp': 'advpl', '.ch': 'advpl',
-};
-
-// Definição de topo por linguagem. JS e Python só olham a coluna zero (topo do arquivo); ADVPL
-// aceita recuo, porque o fonte costuma vir indentado dentro de bloco.
-const REGRAS = {
-  js: [
-    /^(?:export\s+(?:default\s+)?)?(?:async\s+)?function\s+([\w$]+)/,
-    /^(?:export\s+)?(?:const|let|var)\s+([\w$]+)\s*=\s*(?:async\b|\()/,
-    /^(?:export\s+)?class\s+([\w$]+)/,
-    /^exports\.([\w$]+)\s*=/,
-  ],
-  py: [/^(?:async\s+)?def\s+(\w+)/, /^class\s+(\w+)/],
-  advpl: [/^\s*(?:user\s+function|static\s+function|function|class)\s+(\w+)/i],
-};
-
 function nomeDaLinha(linha, tipo) {
-  for (const re of REGRAS[tipo]) {
-    const m = re.exec(linha);
-    if (m) return m[1];
-  }
-  return null;
+  return casar(linha, tipo, 'topo');
 }
 
 function textoNovo(ti) {
