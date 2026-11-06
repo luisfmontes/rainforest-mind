@@ -55,31 +55,24 @@
     "reaberturas": 2
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "444e5dc80eb9735ed90b8b2a4e2e55b0126df449",
-      "caminhos_sujos": []
+      "head": "90fec5f6618f5391ac15a7ed95cf93b150c15cc9",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/complexidade-por-funcao.json"
+      ]
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a92ada196c4710d06",
-        "veredito": "reprovado",
+        "agente_id": "a3b19eabd8f69dbe0",
+        "veredito": "ok",
         "em": "2026-11-06",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ad5cf5b9-7811-4201-8c9e-c04e4eba4021/subagents/agent-a92ada196c4710d06.jsonl"
-      }
-    ],
-    "em_voo": [
-      {
-        "agente": "revisor",
-        "tarefa": "revisar rodada 2",
-        "desde": "2026-11-06T16:30",
-        "sessao": "ad5cf5b9-7811-4201-8c9e-c04e4eba4021"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ad5cf5b9-7811-4201-8c9e-c04e4eba4021/subagents/agent-a3b19eabd8f69dbe0.jsonl"
       }
     ],
     "em": "2026-11-06",
-    "achados": 4,
-    "tentativas": 2,
+    "achados": 7,
     "voltas": [
       {
         "volta": 1,
@@ -92,6 +85,27 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ad5cf5b9-7811-4201-8c9e-c04e4eba4021/subagents/agent-ae5e06aafb03d84ac.jsonl"
           }
         ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a92ada196c4710d06",
+            "veredito": "reprovado",
+            "em": "2026-11-06",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ad5cf5b9-7811-4201-8c9e-c04e4eba4021/subagents/agent-a92ada196c4710d06.jsonl"
+          }
+        ]
+      }
+    ],
+    "base": "2ad359fd",
+    "head": "90fec5f6",
+    "destinos": [
+      {
+        "pendente": "sobras da revisao 3: definicoes.cjs sem FC/memo/forwardRef (media, preexistente) e 6 baixas da leitura de texto",
+        "destino": "plantada",
+        "ref": "https://github.com/luisfmontes/rainforest-mind/issues/648"
       }
     ]
   },
