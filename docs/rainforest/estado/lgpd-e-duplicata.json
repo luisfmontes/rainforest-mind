@@ -1,0 +1,158 @@
+{
+  "slug": "lgpd-e-duplicata",
+  "titulo": "lgpd-e-duplicata",
+  "criado_em": "2026-11-06",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/lgpd-e-duplicata.md",
+    "em": "2026-11-06"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/lgpd-e-duplicata.md",
+    "tarefas": 5,
+    "paralelas": [
+      1,
+      3
+    ],
+    "em": "2026-11-06"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-11-06",
+    "tarefas_ok": 5,
+    "tarefas": 5,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "c990fd14fbce635c9778262f67ae3e7954181768",
+        "iteracao": 1,
+        "sessao": "ad5cf5b9-7811-4201-8c9e-c04e4eba4021",
+        "ts": "2026-11-06T12:46:39.462Z"
+      }
+    ],
+    "em": "2026-11-06",
+    "comando": "bash scripts/testa-indice-referencias.sh; bash scripts/testa-enxugar-estrutura.sh; bash scripts/testa-teto-skills.sh; bash scripts/testa-indice-derivado.sh",
+    "saida": "8 OK 0 FALHA; Casos 31/31; 21 OK 0 FALHA; 12 ok 0 falha; catracas T1-T3 vermelhas na rodada anterior, fontes delas sem mudanca neste commit (so indice na reference)",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-catalogo-funcoes.sh, caso dart: função de topo e método de classe entram no catálogo"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-enxugar-estrutura.sh, caso modo 2 tem a passada de duplicata semântica com as cinco fases"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-auditor-de-seguranca.sh, bloco 13 Régua 4 — LGPD: gatilho, nove categorias, tabela normativa"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "tarefa so de texto e versao; coerencia conferida no criterio"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "n/a",
+        "motivo": "execucao de leitura em repositorio externo; comportamento coberto pelas mutacoes 1 a 3"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "6dc0a5d62f073b874c0832b5d4e0ed5729e278ab",
+      "caminhos_sujos": [
+        "docs/rainforest/planos/lgpd-e-duplicata.pr.md"
+      ]
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ad55358397abcab81",
+        "veredito": "ok",
+        "em": "2026-11-06",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ad5cf5b9-7811-4201-8c9e-c04e4eba4021/subagents/agent-ad55358397abcab81.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-11-06",
+    "achados": 0,
+    "base": "fa663d6e4960aa214a84e0e14036566e343e8c63",
+    "head": "6dc0a5d62f073b874c0832b5d4e0ed5729e278ab",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "afca9d17dfbae151d",
+            "veredito": "ok",
+            "em": "2026-11-06",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ad5cf5b9-7811-4201-8c9e-c04e4eba4021/subagents/agent-afca9d17dfbae151d.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a728a3a7efd287915",
+            "veredito": "ok",
+            "em": "2026-11-06",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ad5cf5b9-7811-4201-8c9e-c04e4eba4021/subagents/agent-a728a3a7efd287915.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a5b5d44e27db31735",
+            "veredito": "ok",
+            "em": "2026-11-06",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ad5cf5b9-7811-4201-8c9e-c04e4eba4021/subagents/agent-a5b5d44e27db31735.jsonl"
+          }
+        ]
+      }
+    ]
+  },
+  "verificar": {
+    "status": "ok",
+    "em": "2026-11-06",
+    "comando": "bash scripts/testa-indice-referencias.sh; node scripts/catalogo-funcoes.cjs listar --raiz .",
+    "saida": "8 OK 0 FALHA; cmdPlantar scripts/ideias.cjs:370 = grep 370; demais criterios da rodada anterior sem fonte alterada",
+    "head": "6619f493cdb75caa10dc9d83f9828943ea2c1fd7",
+    "sensor_externo": "bash scripts/testa-indice-referencias.sh"
+  },
+  "fechar": {
+    "status": "pendente",
+    "em": "2026-11-06"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-11-06",
+      "de": "revisar",
+      "motivo": "revisão ok com 5 achados que cabem no PR: (1) Dart topo casa chamada solta e main no aviso-duplicata; (2) conferir aceita grupo de 1 função, duplicada ou survivor fora do grupo; (3) separar perde categoria com caixa diferente no Windows e não avisa entrada sem category nem pasta suja; (4) regex metodo JS casa setTimeout(function e with; (5) plano cita scripts/testa-abertura-mod-config.sh, que mora em hooks/"
+    },
+    {
+      "em": "2026-11-06",
+      "de": "revisar",
+      "motivo": "revisão 2 ok com 3 achados baixos que cabem no PR: (1) docstring do catalogo e references/duplicata-semantica.md descrevem stderr e exit do conferir de antes (sem grupo N, sem rebaixamento); (2) separar lança colisão de nome no meio da gravação e deixa pasta parcial, sem caso na bateria; (3) yield foo(x); na coluna zero casa como definição Dart"
+    },
+    {
+      "em": "2026-11-06",
+      "de": "verificar",
+      "motivo": "CI do PR 646 vermelho: scripts/testa-indice-referencias.sh (shard 3/3) — provavel references/duplicata-semantica.md fora do indice de referencias do enxugar"
+    }
+  ]
+}

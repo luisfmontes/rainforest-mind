@@ -178,6 +178,30 @@ saiu "def duplicada em Python sai 0" "$EXIT" "0"
 tem  "avisa calcular com lib/util.py:1" "$OUT" '`calcular` já está definido em `lib/util.py:1`'
 
 echo
+echo "== 8c. Dart: definicao tipada avisa; chamada solta, main e outra linguagem nao =="
+R4="$SBP/r4"
+montar_repo "$R4" \
+  'lib/servico.dart=Future<int> carregar(int x) async {\n  return x;\n}\n\nvoid main() {}\n' \
+  'tool/run.py=def main():\n    pass\n\ndef calcular(x):\n    return x\n'
+C4="$(cygpath -m "$R4")"
+gerar write "lib/novo.dart" "$C4" 'Future<int> carregar(int y) async {\n  return y;\n}\n' > "$SBP/p8c.json"
+rodar "$SBP/p8c.json"
+saiu "Dart com funcao tipada duplicada sai 0" "$EXIT" "0"
+tem  "avisa carregar com lib/servico.dart:1" "$OUT" '`carregar` já está definido em `lib/servico.dart:1`'
+gerar edit "lib/tela.dart" "$C4" 'carregar(1);\n' > "$SBP/p8d.json"
+rodar "$SBP/p8d.json"
+saiu "chamada solta na coluna zero sai 0" "$EXIT" "0"
+vazio "carregar(1); sem tipo de retorno nao e definicao" "$OUT"
+gerar write "bin/outro.dart" "$C4" 'void main() {\n}\n' > "$SBP/p8e.json"
+rodar "$SBP/p8e.json"
+saiu "void main em outro arquivo sai 0" "$EXIT" "0"
+vazio "main nao e duplicata (ponto de entrada de todo app Dart)" "$OUT"
+gerar write "lib/conta.dart" "$C4" 'int calcular(int x) {\n  return x;\n}\n' > "$SBP/p8f.json"
+rodar "$SBP/p8f.json"
+saiu "Dart com nome de def Python sai 0" "$EXIT" "0"
+vazio "def calcular de tool/run.py nao acusa a funcao Dart" "$OUT"
+
+echo
 echo "== 9. acento, crase, nome longo, fsmonitor, volume, \$ e caixa (repos novos) =="
 R2="$SBP/r2"
 LONGO="d/$(printf 'a%.0s' $(seq 1 197)).js"

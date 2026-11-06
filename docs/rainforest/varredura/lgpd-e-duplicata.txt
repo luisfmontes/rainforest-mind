@@ -1,0 +1,148 @@
+Data: 2026-11-06
+Termos: lgpd, dado pessoal, duplicata, duplicate-functions, enxugar, auditor-de-seguranca, privacidade
+
+$ gh issue list --state all --search "lgpd" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "dado pessoal" --limit 200 --json number,title,state
+[{"number":83,"state":"CLOSED","title":"Critério de plano só mede o que a máquina lê — passou verde com feature inutilizável e com dado pessoal em repo público"},{"number":81,"state":"CLOSED","title":"testa-orcamento.sh mede a mesa, nao o repo: verde no CI e vermelho local pelo mesmo commit"},{"number":165,"state":"CLOSED","title":"O gate de publicacao e cego para escrita mediada por Bash — node, sed e heredoc passam"},{"number":277,"state":"CLOSED","title":"foco.cjs nao tem comando para registrar avanco: a regra 5 obriga o que a 17 proibe"},{"number":118,"state":"CLOSED","title":"O backup diario do sentinela nunca fez backup — e empurra sozinho para a main de um repo publico"},{"number":63,"state":"CLOSED","title":"O foco não chega na injeção, e a isenção da regra 17 é cega para a segunda pasta — 10ª vez que o radar cobra desvio onde não devia"},{"number":51,"state":"CLOSED","title":"As tres travas de isolamento falharam na borda: retomada de agente, janela principal, e o rastro da propria esteira"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"}]
+
+
+$ gh issue list --state all --search "duplicata" --limit 200 --json number,title,state
+[{"number":610,"state":"CLOSED","title":"Portaria aceita só fluxo/<slug> exato: sem worktree por tarefa no despacho paralelo"},{"number":323,"state":"CLOSED","title":"conferir-duplicacao conta arquivo gitignorado (.claude/marketplaces) e deixa testa-saude vermelho em main limpa"},{"number":278,"state":"CLOSED","title":"gate-verificador-staged barra merge por arquivo que ja passou na main"},{"number":530,"state":"CLOSED","title":"gate-worktree: três formas de cd para o principal passam a partir do worktree ({cd,X}, A=1 cd X, then cd X)"},{"number":221,"state":"CLOSED","title":"saude.cjs quebra com 'path argument undefined' quando ha duas config dirs e a versao do repo esta a frente da instalada"},{"number":157,"state":"CLOSED","title":"REINCIDE #16: o workflow esta disabled_manually ha 232 commits, e a maquina do Actions e mais rica que a de quem instala"}]
+
+
+$ gh issue list --state all --search "duplicate-functions" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "enxugar" --limit 200 --json number,title,state
+[{"number":302,"state":"CLOSED","title":"Eval de gatilho: nenhuma bateria prova que uma skill e chamada (nem que precisa existir)"},{"number":299,"state":"CLOSED","title":"Rota com emoji de status por etapa: formato de acompanhamento que a regra 4 nao tem"}]
+
+
+$ gh issue list --state all --search "auditor-de-seguranca" --limit 200 --json number,title,state
+[{"number":89,"state":"CLOSED","title":"conferir-fluxo monta 'git diff' com execSync e nome de branch interpolado: injecao de comando pelo --head do revisar"},{"number":100,"state":"CLOSED","title":"execSync com valor interpolado em setup.cjs e slug sem validacao em estado.cjs — vizinhos da #89"},{"number":88,"state":"CLOSED","title":"gate-worktree so inspeciona Bash com verbo git: 'echo x > arquivo' escreve fora do worktree sem ser examinado"},{"number":264,"state":"CLOSED","title":"Portaria: manifesto de agentes SUBSTITUI em vez de somar, e agente de outro plugin nunca passa"},{"number":192,"state":"CLOSED","title":"Proibir background no briefing falhou duas vezes, com a proibicao escrita duas vezes no mesmo texto — falta checar a FORMA do retorno"},{"number":206,"state":"CLOSED","title":"Design e doc de uso se contradizem sobre o mesmo mecanismo, e nada mede isso: dois revisores discordaram lendo o mesmo commit"}]
+
+
+$ gh issue list --state all --search "privacidade" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "lgpd" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "dado pessoal" --limit 200 --json number,title,state
+[{"number":504,"state":"MERGED","title":"Versao 1.63.0: uma pasta so de config e conta.cjs unificar"},{"number":415,"state":"MERGED","title":"/transferir claude: a sessão muda de conta com o contexto inteiro (1.42.0)"},{"number":422,"state":"MERGED","title":"Versao 1.45.0: barra de sessao e painel /painel no mod (enxerto do terminal-desk)"},{"number":138,"state":"MERGED","title":"Rastro dos vigias e handover do fluxo 11 que ficaram sem versionar"},{"number":12,"state":"MERGED","title":"O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook"},{"number":78,"state":"MERGED","title":"design: a camada de conhecimento sai do Obsidian e vira rota, nao migracao"},{"number":44,"state":"MERGED","title":"Atualizar a CLI por script, e a barra avisar quando a sessao esta atrasada"},{"number":167,"state":"MERGED","title":"Issue #165: o gate confere o COMMIT, nao so a ferramenta de escrita"},{"number":62,"state":"MERGED","title":"As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada"},{"number":122,"state":"MERGED","title":"Fecha #118: o backup diario do sentinela nunca fez backup — e empurrava sozinho para um repo publico"},{"number":255,"state":"MERGED","title":"A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241)"},{"number":85,"state":"MERGED","title":"Orcamento: a bateria passa a medir o repositorio, e a folga se declara antes de acabar (#81 #79)"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"}]
+
+
+$ gh pr list --state all --search "duplicata" --limit 200 --json number,title,state
+[{"number":599,"state":"MERGED","title":"Lote 6, seguimento: nome da junction com cwd dentro dela"},{"number":595,"state":"MERGED","title":"Apoio ao dev, lote 3: baterias pelo diff, duplicata, regras com id, co-mudanca (1.77.0)"},{"number":597,"state":"MERGED","title":"Apoio ao dev, lote 5: harness (1.79.0)"},{"number":598,"state":"MERGED","title":"Apoio ao dev, lote 6: ferramentas do fluxo (1.80.0)"},{"number":55,"state":"MERGED","title":"O /relatorio vira /feedback, e nasce o /issue para o erro do repo em que voce esta"},{"number":217,"state":"MERGED","title":"Contrato de territorio: AdvPL vira o primeiro, e o repo publico perde os identificadores de trabalho"},{"number":52,"state":"MERGED","title":"Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo"}]
+
+
+$ gh pr list --state all --search "duplicate-functions" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "enxugar" --limit 200 --json number,title,state
+[{"number":324,"state":"MERGED","title":"prompts: tira arqueologia datada e drift da regra 10"},{"number":224,"state":"MERGED","title":"Enxerta os sete mecanismos do ponytail, e fecha a fronteira que o gate de código de modelo não tinha"},{"number":267,"state":"MERGED","title":"portaria: deixa de admitir agente e passa a registrar (ver #264)"}]
+
+
+$ gh pr list --state all --search "auditor-de-seguranca" --limit 200 --json number,title,state
+[{"number":593,"state":"MERGED","title":"Apoio ao dev, lote 2: veredito coerente, prova que roda, limpeza com prova (1.76.0)"},{"number":595,"state":"MERGED","title":"Apoio ao dev, lote 3: baterias pelo diff, duplicata, regras com id, co-mudanca (1.77.0)"},{"number":476,"state":"MERGED","title":"Agentes fixam effort por papel no frontmatter (1.57.0)"},{"number":248,"state":"MERGED","title":"auditor: Régua 3 de técnicas defensivas (do claude-red)"},{"number":251,"state":"MERGED","title":"auditor: corrige mapeamento OWASP da Régua 3 para a edição 2025"},{"number":87,"state":"MERGED","title":"auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API"},{"number":172,"state":"MERGED","title":"Fluxo 7: recibo de colheita — identidade verificavel do artefato entregue (1.1.0)"},{"number":154,"state":"MERGED","title":"README: porta de entrada em vez de diario de bordo"},{"number":95,"state":"MERGED","title":"Fecha #89: creep monta o git diff sem shell, com execFileSync e lista"},{"number":106,"state":"MERGED","title":"Fecha #100: execFileSync em setup.cjs, validarSlug em estado.cjs — e o teste que separa os dois"},{"number":222,"state":"MERGED","title":"Agentes em Claude ou Codex, por escolha do usuário (1.8.0)"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"},{"number":183,"state":"MERGED","title":"Lote 3 — guardas medem o repositorio da operacao; backup fora da maquina; fechar Issue exige criterio rodado"},{"number":188,"state":"MERGED","title":"Lote 4: instrumento que mede o codigo, e nao a maquina de quem roda"},{"number":204,"state":"MERGED","title":"Issue #187: o vazamento e do transporte, nao da bateria — matarDescendencia no rodarCli"}]
+
+
+$ gh pr list --state all --search "privacidade" --limit 200 --json number,title,state
+[{"number":164,"state":"MERGED","title":"Scripts entregues derivam o home de quem roda, com trava"}]
+
+
+$ git ls-remote --heads origin | grep -F "lgpd"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "dado pessoal"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "duplicata"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "duplicate-functions"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "enxugar"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "auditor-de-seguranca"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "privacidade"
+(vazio)
+
+$ git log --all --grep="lgpd" --oneline
+(vazio)
+
+$ git log --all --grep="dado pessoal" --oneline
+889ff9c94 Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+56ea03ccf Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+
+$ git log --all --grep="duplicata" --oneline
+dc88603a Lote 6, seguimento: nome da junction com cwd dentro dela (#599)
+b593073e Apoio ao dev, lote 6: ferramentas do fluxo (1.80.0) (#598)
+89dbf3b8 Apoio ao dev, lote 5: harness (1.79.0) (#597)
+a50e25ce Apoio ao dev, lote 3: baterias pelo diff, duplicata, regras com id, co-mudanca (1.77.0) (#595)
+36e24861 memoria-sessao: trava o orcamento do bloco de memoria com aviso no topo
+1199d207 Adicionar modo --commit ao conferir-publicacao (D10)
+e3a701c1 Adicionar conferir-duplicacao e avisos de allowlist/duplicata no saude
+31b862f5 Tira identificador de empregador, cliente e projeto interno do repositorio publico
+2d667805 Tarefa 6 (Issue #170): Seção 9 afirma piso, não número exato
+82a29482 Tarefas 10-11: Host reescrito para o upstream; bateria orfa removida
+a506712c Tarefas 10-11: Host reescrito para o upstream; bateria orfa removida
+9c742108 Tarefa 20: bloco de projeto truncado recusa a regeneracao com erro — nada de duplicata calada
+86ce0765 Tarefa 20: bloco de projeto truncado recusa a regeneracao com erro — nada de duplicata calada
+7b5e93a5 O /relatorio vira /feedback, e nasce o /issue para o erro do repo em que voce esta (#55)
+fe9e5591 O /relatorio vira /feedback, e nasce o /issue para o erro do repo em que voce esta (#55)
+f6c4bec0 Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo (#52)
+1d5b6312 Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo (#52)
+40e3f3bd Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+2cc8788c Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+0391bbbf As tres costuras da esteira: decisao, opcao morta e creep deixam de evaporar (#9)
+6dbe53cf As tres costuras da esteira: decisao, opcao morta e creep deixam de evaporar (#9)
+1427619b O /relatorio vira gerador de Issue, e a anonimizacao vira exit code
+54d9fed9 O /relatorio vira gerador de Issue, e a anonimizacao vira exit code
+7945fdd3 /saude: so o que o doctor oficial nao sabe, e ponteiro para ele no resto
+6da760f3 /saude: so o que o doctor oficial nao sabe, e ponteiro para ele no resto
+4e055f1c A orquestracao sai da CLAUDE.md duplicada e vira regra do plugin
+12ca0281 A orquestracao sai da CLAUDE.md duplicada e vira regra do plugin
+
+$ git log --all --grep="duplicate-functions" --oneline
+(vazio)
+
+$ git log --all --grep="enxugar" --oneline
+97e6f29e Achado 1 (FEITO): Implementar checagem de invariantes em references/regra-<n>.md
+2dfa734c Corta as duas catracas caseiras: conferir-mutacao.cjs ja faz isso
+5de339c0 Adiciona trava contra falsos positivos na skill enxugar
+edfcc236 Tarefa 4: Skill enxugar (análise de código morto e inflação)
+a317711f Plano: 7 tarefas para os 7 itens do acoplamento do ponytail
+
+$ git log --all --grep="auditor-de-seguranca" --oneline
+b2482715 auditor: Régua 3 de técnicas defensivas (do claude-red) (#248)
+7e333a89 T5: insere bloco ponte-codex em todos os 9 agentes
+a47dc213 Arqueologia: mapa do acervo do fluxo — 36 planos, todos entregue
+faffa3f9 Manifesto admite os cinco agentes que faltavam, e abre o fluxo do inventario
+ca16c4b0 Fluxo 9 T8: manifesto real, com o aceite do bloqueio e a divida nomeada
+da885781 Fluxo 9 T8: manifesto real, com o aceite do bloqueio e a divida nomeada
+6e07275c Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README (#129)
+be0332c9 Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README (#129)
+454ed439 Fecha #89: creep monta o git diff sem shell, com execFileSync e lista (#95)
+6da92f4e Fecha #89: creep monta o git diff sem shell, com execFileSync e lista (#95)
+20c88be7 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+d427f732 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+
+$ git log --all --grep="privacidade" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+(vazio)
+

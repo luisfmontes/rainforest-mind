@@ -10,6 +10,11 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.4.0 — 2026-11-06
+
+- **`auditor-de-seguranca` ganha a Régua 4 — LGPD.** Quando o código trata dado pessoal, o auditor procura, por função e em qualquer stack, nove tipos de problema que se veem no código: dado pessoal em log, coleta além do necessário, falta de exportar/corrigir/excluir/revogar, exclusão incompleta, retenção sem prazo, envio a terceiro, dado sensível sem proteção, consentimento pré-marcado ou genérico, e menores. Cada achado cita o artigo de uma tabela fixa dentro do agente (LGPD, ANPD, Marco Civil, ECA Digital); o que não está na tabela sai "sem citação", nunca com artigo de memória. Documento jurídico não é avaliado.
+- **`enxugar` acha duplicata de nome diferente.** No modo repo inteiro, a passada de duplicata semântica cataloga as funções com o script novo `scripts/catalogo-funcoes.cjs` (JS/TS, Dart, Python, ADVPL, métodos inclusive), agrupa por domínio com um agente haiku, compara cada grupo com um sonnet e só aceita o grupo cujas funções existem no catálogo naquele `arquivo:linha`. O modo abre listando os maiores arquivos do repo.
+
 ## 2.3.2 — 2026-11-03
 
 - **`/conta`: login guardado que sobrou não trava mais a troca.** Com a pasta em casa, um `estacionado-<pasta>.json` que ficou para trás fazia toda troca falhar com `saida_ocupada`, até alguém renomear o arquivo à mão. Agora ele é arquivado na rodada seguinte do vigia ou na própria troca, seja qual for o caminho que o deixou lá.

@@ -171,6 +171,46 @@ oportunidades.
 
 Caso de uso: "onde está o desperdício no projeto?"
 
+Abra com `node <plugin>/scripts/catalogo-funcoes.cjs maiores --raiz <repo> --top 10`:
+os maiores arquivos dizem onde olhar primeiro. É **contexto**, não achado — não
+vira tag nem entra no `líquido:`.
+
+### Passada de duplicata semântica
+
+Só no modo 2. Acha função de **nome diferente e mesma intenção** — o que a
+leitura arquivo a arquivo não vê e o que código gerado por IA mais acumula. A
+duplicata de **mesmo nome** já é avisada na edição pelo `hooks/aviso-duplicata.cjs`;
+esta passada cobre o resto. Ideia enxertada de `obra/superpowers-lab`
+(`finding-duplicate-functions`, MIT). Prompts e lista de categorias:
+`references/duplicata-semantica.md`.
+
+1. **Catálogo**, mecânico: `catalogo-funcoes.cjs listar --raiz <repo> > catalogo.json`
+   (JS/TS, Dart, Python, ADVPL; métodos de classe entram; testes e gerados não).
+2. **Categorizar**, um agente **haiku** com o prompt de categorização: cada
+   função ganha uma categoria de domínio e um propósito de uma frase. Ele lê um
+   catálogo enxuto (`listar --contexto 3`): com o contexto padrão de 15 linhas,
+   577 funções Dart deram 400 KB.
+3. **Separar**, mecânico: `catalogo-funcoes.cjs separar --catalogo categorizado.json --saida <dir>`
+   — só categoria com 3 ou mais funções segue.
+4. **Comparar**, um agente **sonnet** por categoria, em paralelo, com o prompt
+   de comparação: devolve grupos `{intent, confidence, functions, recommendation}`.
+5. **Conferir**, mecânico, antes de qualquer achado:
+   `catalogo-funcoes.cjs conferir --catalogo catalogo.json --grupos <grupos>.json`.
+   Função que não existe no catálogo naquele `arquivo:linha` derruba o grupo —
+   agente inventa linha com a mesma cara de verdade.
+
+Do que passou na conferência:
+
+- **HIGH ou MEDIUM com `CONSOLIDATE`** vira linha `duplicar:` no formato de
+  sempre, depois da trava de wrapper da tag (membro que só chama o outro vira
+  `encolher:` ou nada), com o sobrevivente sugerido: `src/a.ts:L12: duplicar formatarData() — mesma intenção de utils/data.ts:L40 dataParaTexto(). manter dataParaTexto().`
+- **`INVESTIGATE`** vai para uma seção **investigar**, fora do `líquido:` —
+  precisa de leitura humana da implementação inteira.
+- **`KEEP_SEPARATE`** não aparece.
+
+Antes de remover a duplicata, o sobrevivente precisa de teste que cubra os usos
+das que saem — a skill lista, não aplica.
+
 ## Formato de achado
 
 Uma linha por achado, sempre nesta ordem:

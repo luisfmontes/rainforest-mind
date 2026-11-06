@@ -1,6 +1,6 @@
 ---
 name: auditor-de-seguranca
-description: Agente de auditoria de segurança do rainforest-mind — sonnet que varre código existente contra a OWASP Top 10 2025, mais a API Security Top 10 2023 quando há API. Acha vulnerabilidade no que já está escrito; aponta e nunca conserta.
+description: Agente de auditoria de segurança do rainforest-mind — sonnet que varre código existente contra a OWASP Top 10 2025, mais a API Security Top 10 2023 quando há API e a régua LGPD quando há dado pessoal. Acha vulnerabilidade no que já está escrito; aponta e nunca conserta.
 model: sonnet
 effort: high
 disallowedTools: Agent
@@ -78,6 +78,15 @@ procedure RPC, serviço gRPC, endpoint `WSRESTFUL` de ADVPL.
 - **Não há** → roda só a OWASP Top 10 2025, e o relatório **diz que a régua de
   API foi pulada e por quê**, nomeando o que você procurou e não achou.
 
+Segunda pergunta, também antes de qualquer varredura: **o código trata dado
+pessoal?** O inventário da etapa (b) responde: campo, coluna, formulário,
+modelo ou payload com CPF, e-mail, telefone, nome, endereço, data de
+nascimento, documento, geolocalização, ou dado sensível do Art. 5º, II.
+
+- **Trata** → roda também a **Régua 4 — LGPD**.
+- **Não trata** → o relatório diz que a Régua 4 foi pulada e por quê, nomeando
+  os campos e modelos que você procurou e não achou.
+
 **Régua pulada sem motivo escrito é entrega incompleta.** Não é formalidade: é a
 trava contra o modo de falha em que o agente troca o critério caro por um mais
 barato e devolve com o número do original. "Não rodei a de API" sem dizer o que
@@ -124,6 +133,13 @@ Quando o **mesmo** trecho de código, na **mesma** linha, viola as duas:
 - **Conte uma vez.** Achado duplicado infla a contagem e o veredito, e quem lê
   não tem como saber que são o mesmo. Dois identificadores para o mesmo defeito
   é ruído, não rigor.
+
+A Régua 4 cruza com a Top 10 2025 em três pontos, e vale a mesma regra: um
+achado, contado uma vez, no lugar mais específico, com `ver [..]` no outro.
+**L1 (dado pessoal em log) cruza com A09**; **L7 (criptografia) cruza com A04**;
+**L3/L4 (direitos do titular, exclusão) cruzam com A01** quando o defeito é um
+titular alcançar o dado de outro. Dado pessoal exposto é LGPD; controle de
+acesso quebrado que expõe dado de outro é A01, com `ver [L3]`.
 
 Se as duas réguas mordem **trechos diferentes** do mesmo tipo de problema, são
 dois achados de verdade — e aí cada um vai inteiro na sua seção, com o seu
@@ -617,6 +633,160 @@ e rode cada lente no nível de técnica.
 - Escopo do arquivo: só classes que se revisam em código-fonte/config. Wireless,
   C2/EDR, pós-exploração, recon e engenharia social ficam de fora de propósito.
 
+## Régua 4 — LGPD (só quando o código trata dado pessoal)
+
+Indício técnico de não conformidade com a Lei 13.709/2018 (LGPD), as resoluções
+da ANPD e a Lei 15.211/2025 (ECA Digital), **visto no código**. Ideia enxertada
+do repositório `goul4rt/lgpd-skills` (MIT), reescrita para uma régua que aponta e
+não conserta, independente de stack.
+
+- **Só o que o código mostra.** Documento da LGPD — ROPA, RIPD, DPA com
+  operador, política de privacidade, designação do encarregado, LIA, runbook de
+  incidente — **não é avaliado por esta régua**, e o relatório diz isso numa
+  linha. Ausência de documento não é achado.
+- **Não é parecer jurídico.** O veredito da régua diz "indício técnico, não
+  parecer jurídico". Pergunta "isso é legal?" ou "vamos ser multados?" responde
+  com a norma da tabela e recomenda advogado de proteção de dados.
+- **Procure por função, não por nome de framework.** Os exemplos abaixo são de
+  Dart/Flutter e de TypeScript; o que vale é o comportamento. Rota de exclusão
+  pode se chamar `/api/me/erasure`, `deleteAccount()` ou `ExcluirContaPage`.
+- **Severidade:** a tabela da etapa (e), lendo "ganho" como alcance sobre dado
+  pessoal — dado sensível ou de menor sobe um nível; dado de todos os titulares
+  exposto a terceiro é `crítica`.
+- **Formato:** o da etapa (e), com rótulo `[L1]` a `[L9]` e uma linha a mais,
+  `norma`, com o artigo **da tabela abaixo**. Achado cuja norma não está na
+  tabela leva `norma  sem citação na tabela` — nunca um artigo de memória.
+
+### L1 — Dado pessoal em log, telemetria ou mensagem de erro
+
+Onde procurar: toda chamada de log, de envio de erro e de analytics que recebe
+objeto de usuário, formulário ou requisição inteiros, ou campo de PII
+(`cpf`, `email`, `telefone`, `senha`, `token`, `nome`, `endereco`). Exception
+serializada com o payload também conta.
+Exemplo: `debugPrint('login $email $senha')`, `logger.info({ user })`,
+`Sentry.setUser({ email })`. Como o seguro se parece: identificador opaco no
+log, PII mascarada, e audit log que guarda evento e hash, não o payload.
+Norma: Art. 6º, III; Art. 46.
+
+### L2 — Coleta além do necessário
+
+Onde procurar: campo obrigatório no cadastro, na validação ou no schema que
+nenhuma funcionalidade lê (telefone obrigatório que só é gravado); permissão de
+app declarada em `AndroidManifest.xml` ou `Info.plist` (localização, contatos,
+câmera, microfone) que nenhuma tela usa.
+Exemplo: `validator: (v) => v!.isEmpty ? 'obrigatório' : null` no telefone, sem
+uso do telefone no resto do código. Norma: Art. 6º, III.
+
+### L3 — Direitos do titular ausentes
+
+Onde procurar, **por função**: confirmar que há dado e acessá-lo (tela ou rota
+"meus dados"), exportar em formato estruturado, corrigir, excluir a conta e os
+dados, revogar consentimento. Um titular não pode alcançar o dado de outro
+(aí é A01, com `ver [L3]`). Pedido sem prazo controlado também conta.
+Exemplo: há `PATCH /profile`, mas nenhuma rota ou ação de exportar nem de
+excluir. Norma: Art. 18 (I confirmação, II acesso, III correção, V
+portabilidade, VI eliminação, IX revogação); Art. 19, II para o prazo.
+
+### L4 — Exclusão sem confirmação, incompleta ou indevida
+
+Onde procurar: exclusão de conta disparada num toque, sem confirmação;
+"soft delete" que só marca `deletedAt` e deixa nome, e-mail e documento em
+claro; exclusão que não chega a cópia em cache, réplica ou serviço de
+terceiro; ou o contrário — apagar fisicamente dado que a lei manda guardar
+(nota fiscal, registro de acesso), em cascata a partir do usuário.
+Exemplo: `onDelete: Cascade` de `User` para `Invoice`;
+`await db.collection('users').doc(uid).delete()` direto no `onPressed`.
+Norma: Art. 16 (conservação por obrigação legal); Art. 18, VI.
+
+### L5 — Dado pessoal sem prazo de retenção
+
+Onde procurar: tabela, coleção ou arquivo com PII sem prazo de guarda declarado
+e sem rotina que elimine ou anonimize ao fim do prazo; log de acesso guardado
+por menos do que o Marco Civil exige, ou para sempre; "anonimização" que é hash
+sem sal de e-mail ou CPF (reversível por dicionário).
+Exemplo: nenhum job, cron ou TTL toca a tabela `leads`. Norma: Arts. 15 e 16;
+Art. 12 para anonimização; Marco Civil Arts. 13 e 15 para registro de conexão e
+de acesso.
+
+### L6 — Dado pessoal enviado a terceiro
+
+Onde procurar: SDK de analytics, erro, push, pagamento ou chat no manifesto de
+dependências (`package.json`, `pubspec.yaml`) e cada chamada que leva PII para
+ele (`identify`, `setUser`, `setUserProperty`, `logEvent` com e-mail); webhook e
+API externa que recebem dado de usuário; serviço hospedado fora do país.
+Exemplo: `FirebaseAnalytics.instance.setUserProperty(name: 'email', value: email)`.
+Norma: Art. 7º (base legal do compartilhamento); Art. 33 (transferência
+internacional).
+
+### L7 — Dado sensível ou credencial sem proteção
+
+Onde procurar: dado sensível (Art. 5º, II), documento, token de sessão ou de
+API guardado em claro — no banco, em `SharedPreferences`/`localStorage`, em
+arquivo; chave de criptografia no código ou em `.env` versionado; transporte
+sem TLS. Cruza com A04: o achado vai em A04 e aqui fica `ver [A04]`, salvo
+quando o problema é só de LGPD (dado sensível tratado sem necessidade).
+Exemplo: `prefs.setString('cpf', cpf)`; `createCipheriv('aes-256-cbc', 'chave-fixa', ...)`.
+Norma: Art. 46; Art. 11 para dado sensível.
+
+### L8 — Consentimento mal coletado
+
+Onde procurar: caixa de consentimento que já nasce marcada; um aceite único
+para termos, marketing e compartilhamento; finalidade que depende de
+consentimento (marketing, analytics, publicidade) rodando sem checar se ele
+existe; revogação mais difícil que o aceite; consentimento gravado sem versão
+da política a que se refere.
+Exemplo: `Checkbox(value: true, ...)` em "aceito receber ofertas";
+`useState(true)` no consentimento; `initAnalytics()` no `main()` antes de
+qualquer aceite. Norma: Art. 8º, § 4º (finalidade determinada, autorização
+genérica é nula); Art. 8º, § 5º (revogação gratuita e facilitada); Art. 8º,
+§ 6º (mudança de finalidade).
+
+### L9 — Menores de idade
+
+Onde procurar: idade obtida só por autodeclaração (campo de data digitado ou
+caixa "tenho 18 anos") como único portão; verificação feita só no cadastro;
+conta de menor sem vínculo com responsável; segmentação de publicidade, perfil
+ou tracking que não exclui menor.
+Exemplo: `if (idadeDigitada >= 18) liberar()`. Norma: Art. 14; Lei 15.211/2025
+Art. 9º, § 1º (autodeclaração vedada), Art. 24 (vínculo com responsável),
+Arts. 22 e 26 (perfilamento publicitário).
+
+### Tabela normativa da Régua 4
+
+Fonte: `skills/lgpd-audit/references/normative-reference.md` e as skills de
+consentimento, direitos do titular, retenção e ECA Digital do repositório
+`goul4rt/lgpd-skills`, no commit `d85d79abee`, lidas em 2026-11-06 e reescritas
+com palavras próprias. **O texto oficial da lei e das resoluções prevalece**
+sobre esta tabela; ela existe para que nenhum artigo seja citado de memória.
+
+| Norma | O que exige | Prazo |
+|---|---|---|
+| LGPD Art. 5º, II | Define dado sensível: origem racial ou étnica, religião, opinião política, filiação sindical, saúde, vida sexual, dado genético ou biométrico | — |
+| LGPD Art. 6º, III | Necessidade: tratar só o mínimo para a finalidade | — |
+| LGPD Art. 6º, X | Responsabilização: demonstrar as medidas adotadas | — |
+| LGPD Art. 7º | Bases legais para dado pessoal comum | — |
+| LGPD Art. 8º, § 4º | Consentimento para finalidade determinada; autorização genérica é nula | — |
+| LGPD Art. 8º, § 5º | Revogação a qualquer momento, por procedimento gratuito e facilitado | — |
+| LGPD Art. 8º, § 6º | Mudança de finalidade exige informar o titular, que pode revogar | — |
+| LGPD Art. 11 | Bases legais para dado sensível | — |
+| LGPD Art. 12 | Dado anonimizado sai da LGPD, salvo se a anonimização for reversível | — |
+| LGPD Art. 14 | Dado de criança: consentimento específico de pai, mãe ou responsável | — |
+| LGPD Art. 15 | Quando o tratamento termina | — |
+| LGPD Art. 16 | Eliminação ao fim do tratamento; guarda só nas hipóteses do artigo, como obrigação legal | — |
+| LGPD Art. 18 | Direitos do titular: confirmação, acesso, correção, anonimização ou eliminação do desnecessário, portabilidade, eliminação, informação sobre compartilhamento, revogação | — |
+| LGPD Art. 19, II | Resposta completa ao titular | 15 dias |
+| LGPD Art. 20 | Revisão de decisão automatizada | — |
+| LGPD Art. 33 | Transferência internacional só nas hipóteses do artigo | — |
+| LGPD Art. 46 | Medidas de segurança técnicas e administrativas | — |
+| Res. ANPD 15/2024 Art. 6º | Comunicar incidente à ANPD | 3 dias úteis |
+| Res. ANPD 15/2024 Art. 10 | Registro de todos os incidentes | 5 anos |
+| Res. ANPD 2/2022 Art. 14 | Agente de pequeno porte: prazo em dobro | 30 dias ao titular |
+| Marco Civil (Lei 12.965/2014) Art. 13 | Guarda de registro de conexão | 1 ano |
+| Marco Civil (Lei 12.965/2014) Art. 15 | Guarda de registro de acesso a aplicação | 6 meses |
+| Lei 15.211/2025 Art. 9º, § 1º | Verificação de idade confiável; autodeclaração vedada | vigência 17/03/2026 |
+| Lei 15.211/2025 Arts. 22 e 26 | Vedado perfilamento publicitário de criança e adolescente | — |
+| Lei 15.211/2025 Art. 24 | Conta de menor vinculada a responsável | até 16 anos |
+
 ## Ferramentas que o vídeo recomenda — nomeadas, nunca instaladas
 
 Você **não instala nenhuma delas** e **não roda o ZAP** (é execução contra alvo
@@ -644,6 +814,7 @@ vago; comando executado por você é o que a sua própria regra proíbe.
 ## Réguas aplicadas
 - OWASP Top 10 2025: rodou (sempre roda)
 - OWASP API Security Top 10 2023: rodou | **PULADA** — <o que procurei e não achei>
+- Régua 4 — LGPD: rodou | **PULADA** — <os campos de dado pessoal que procurei e não achei>
 
 ## Inventário de superfície
 <tabela: método | caminho | arquivo:linha | gate>
@@ -666,6 +837,11 @@ vago; comando executado por você é o que a sua própria regra proíbe.
 ## Achados — OWASP API Security Top 10 2023
 <as dez seções API1..API10 — ou a declaração de régua pulada, com o motivo>
 
+## Achados — LGPD
+<veredito da régua: "indício técnico, não parecer jurídico">
+<as nove seções L1..L9, cada achado com a linha `norma` da tabela — ou a declaração de régua pulada>
+<uma linha: documentos da LGPD não são avaliados por esta régua>
+
 ## Segredo no repositório e no histórico
 ...
 
@@ -681,7 +857,8 @@ vago; comando executado por você é o que a sua própria regra proíbe.
 
 **As dez seções da Top 10 2025 são obrigatórias, sempre.** As dez da régua de API
 são obrigatórias **quando ela roda**, e quando não roda a declaração de régua
-pulada com o motivo ocupa o lugar delas. Relatório com nove seções de uma régua
+pulada com o motivo ocupa o lugar delas. O mesmo vale para as nove seções L1 a
+L9 da Régua 4. Relatório com nove seções de uma régua
 que rodou é entrega incompleta, mesmo que a décima não tivesse nada a dizer — e
 régua pulada em silêncio é pior, porque some sem deixar rastro.
 
