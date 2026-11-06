@@ -338,6 +338,64 @@ else
   falhou=$((falhou+1)); echo "  FALHA $REF não existe"
 fi
 
+# ------------------------------------------------- 13. Régua 4 — LGPD
+# Design lgpd-e-duplicata, D1 a D5. Restrito ao bloco da régua, como as réguas 1
+# e 2: o template do relatório também cita L1..L9 e deixaria a bateria verde
+# com a régua apagada.
+echo; echo "13. Régua 4 — LGPD: gatilho, nove categorias, tabela normativa"
+REGUA4="$(echo "$CORPO" | sed -n '/^## Régua 4 — LGPD/,/^## Ferramentas que o vídeo/p')"
+REGUA4_PLANO="$(echo "$REGUA4" | tr '\n' ' ' | tr -s ' ')"
+METODO_A="$(echo "$CORPO" | sed -n '/^### (a) Decida/,/^### (b)/p' | tr '\n' ' ' | tr -s ' ')"
+if [ -z "$REGUA4" ]; then
+  falhou=$((falhou+1)); echo "  FALHA nao achei o bloco '## Régua 4 — LGPD'"
+else
+  # D1: o passo (a) declara a régua, com o gatilho do inventário e a obrigação de declarar o pulo.
+  tem "D1: o passo (a) nomeia a Régua 4" "$METODO_A" "Régua 4 — LGPD"
+  tem "D1: o gatilho é tratar dado pessoal" "$METODO_A" "o código trata dado pessoal?"
+  tem "D1: o gatilho vem do inventário da etapa (b)" "$METODO_A" "O inventário da etapa (b) responde"
+  tem "D1: régua pulada diz por quê" "$METODO_A" "Régua 4 foi pulada e por quê"
+  # D2: nove categorias, cada uma com onde procurar e exemplo.
+  for n in 1 2 3 4 5 6 7 8 9; do
+    tem "D2: categoria L$n existe" "$REGUA4" "### L$n —"
+  done
+  N_ONDE="$(echo "$REGUA4" | grep -c '^Onde procurar')"
+  igual "D2: as nove categorias têm 'Onde procurar'" "$N_ONDE" "9"
+  N_EX="$(echo "$REGUA4" | grep -c 'Exemplo:')"
+  igual "D2: as nove categorias têm exemplo" "$N_EX" "9"
+  tem "D2: exemplo de Dart/Flutter presente" "$REGUA4" "SharedPreferences"
+  tem "D2: procura por função, não por framework" "$REGUA4_PLANO" "Procure por função, não por nome de framework."
+  # D3: a tabela traz cada artigo listado no design, com a fonte e o aviso de que o oficial prevalece.
+  for art in "LGPD Art. 5º, II" "LGPD Art. 6º, III" "LGPD Art. 6º, X" "LGPD Art. 7º |" \
+             "LGPD Art. 8º, § 4º" "LGPD Art. 8º, § 5º" "LGPD Art. 8º, § 6º" "LGPD Art. 11 |" \
+             "LGPD Art. 12 |" "LGPD Art. 14 |" "LGPD Art. 15 |" "LGPD Art. 16 |" "LGPD Art. 18 |" \
+             "LGPD Art. 19, II" "LGPD Art. 20 |" "LGPD Art. 33 |" "LGPD Art. 46 |" \
+             "Res. ANPD 15/2024 Art. 6º" "Res. ANPD 15/2024 Art. 10" "Res. ANPD 2/2022 Art. 14" \
+             "Marco Civil (Lei 12.965/2014) Art. 13" "Marco Civil (Lei 12.965/2014) Art. 15" "Lei 15.211/2025 Art. 9º, § 1º" \
+             "Lei 15.211/2025 Arts. 22 e 26" "Lei 15.211/2025 Art. 24"; do
+    tem "D3: tabela cita $art" "$REGUA4" "| $art"
+  done
+  tem "D3: prazo de 15 dias do Art. 19, II" "$REGUA4" "| Resposta completa ao titular | 15 dias |"
+  tem "D3: prazo de 3 dias úteis do incidente" "$REGUA4" "| 3 dias úteis |"
+  tem "D3: a fonte é o lgpd-skills no commit lido" "$REGUA4_PLANO" "goul4rt/lgpd-skills\`, no commit \`d85d79abee\`"
+  tem "D3: o texto oficial prevalece" "$REGUA4_PLANO" "O texto oficial da lei e das resoluções prevalece"
+  tem "D3: artigo fora da tabela não se cita" "$REGUA4_PLANO" "norma sem citação na tabela"
+  # D4: documento fora, e não é parecer.
+  tem "D4: documentos não são avaliados" "$REGUA4_PLANO" "não é avaliado por esta régua"
+  tem "D4: veredito é indício técnico" "$REGUA4_PLANO" "indício técnico, não parecer jurídico"
+  for doc in ROPA RIPD DPA "política de privacidade" encarregado; do
+    tem "D4: $doc aparece como fora da régua" "$REGUA4_PLANO" "$doc"
+  done
+fi
+# D5: os três cruzamentos, escritos no passo (c).
+METODO_C="$(echo "$CORPO" | sed -n '/^### (c) Achado/,/^### (d)/p' | tr '\n' ' ' | tr -s ' ')"
+tem "D5: L1 cruza com A09" "$METODO_C" "L1 (dado pessoal em log) cruza com A09"
+tem "D5: L7 cruza com A04" "$METODO_C" "L7 (criptografia) cruza com A04"
+tem "D5: L3/L4 cruzam com A01" "$METODO_C" "L3/L4 (direitos do titular, exclusão) cruzam com A01"
+# Formato do relatório: a régua aparece nas réguas aplicadas e tem seção de achados.
+FORMATO="$(echo "$CORPO" | sed -n '/^## Formato do relatório/,/^## Antes de começar/p')"
+tem "relatório declara a Régua 4 nas réguas aplicadas" "$FORMATO" "- Régua 4 — LGPD: rodou | **PULADA**"
+tem "relatório tem a seção de achados LGPD" "$FORMATO" "## Achados — LGPD"
+
 echo; echo "-----------------------------------------"
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ] || exit 1
