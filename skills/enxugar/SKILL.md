@@ -187,7 +187,9 @@ esta passada cobre o resto. Ideia enxertada de `obra/superpowers-lab`
 1. **Catálogo**, mecânico: `catalogo-funcoes.cjs listar --raiz <repo> > catalogo.json`
    (JS/TS, Dart, Python, ADVPL; métodos de classe entram; testes e gerados não).
 2. **Categorizar**, um agente **haiku** com o prompt de categorização: cada
-   função ganha uma categoria de domínio e um propósito de uma frase.
+   função ganha uma categoria de domínio e um propósito de uma frase. Ele lê um
+   catálogo enxuto (`listar --contexto 3`): com o contexto padrão de 15 linhas,
+   577 funções Dart deram 400 KB.
 3. **Separar**, mecânico: `catalogo-funcoes.cjs separar --catalogo categorizado.json --saida <dir>`
    — só categoria com 3 ou mais funções segue.
 4. **Comparar**, um agente **sonnet** por categoria, em paralelo, com o prompt
