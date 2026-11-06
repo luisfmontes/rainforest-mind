@@ -7,7 +7,10 @@
 #   3. repo real: cmdPlantar aponta para scripts/ideias.cjs na linha que o grep devolve;
 #   4. maiores em ordem decrescente, e o primeiro número casa com wc -l;
 #   5. separar grava só a categoria com 3 ou mais funções;
-#   6. conferir: grupo com a linha real sai 0; com a linha real+1 sai 1 e nomeia cmdPlantar.
+#   6. conferir: grupo com a linha real sai 0; com a linha real+1 sai 1 e nomeia cmdPlantar;
+#   7. chamada solta não é definição: Dart sem tipo de retorno, JS with/setTimeout(function;
+#   8. conferir recusa grupo de uma função só ou repetida, e rebaixa survivor fora do grupo;
+#   9. separar junta categoria por caixa, conta entrada sem categoria e recusa pasta suja.
 #
 # Fixture em mktemp, FORA do worktree, com git init. Arquivos e payloads montados por node,
 # nunca por heredoc de conteúdo. Caminhos vão para o node em forma Windows (cygpath -m).
@@ -62,7 +65,17 @@ montar_repo "$FIX" \
   'lib/a.g.dart=void gerado() {}\n' \
   '.dart_tool/x.dart=void escondido() {}\n' \
   'src/util.js=function somar(a, b) {\n  return a + b;\n}\n\nclass Calc {\n  async calcular(x) {\n    return x;\n  }\n}\n' \
-  'src/app.py=def ola():\n    return 1\n' \
+  'src/solto.js=function envolve(o) {
+  with (o) {
+    x = 1;
+  }
+  setTimeout(function () {
+    x = 2;
+  }, 10);
+}
+' \n  'lib/b.dart=setState(() {});
+print(1);
+' \n  'src/app.py=def ola():\n    return 1\n' \
   'src/foo.test.js=function teste() {}\n' \
   "src/big.js=$BIG"
 FIXN="$(winpath "$FIX")"
@@ -71,7 +84,7 @@ echo "== 1. dart: função de topo e método de classe entram no catálogo =="
 node "$CAT" listar --raiz "$FIXN" > "$SBP/c1.json" 2> "$SBP/e1.txt"; EXIT=$?
 saiu "listar do fixture sai 0" "$EXIT" 0
 T1="$(tuplas < "$SBP/c1.json")"
-linha "lib/a.dart:1 main (função de topo sem retorno) é dart" "$T1" "lib/a.dart:1:main:dart"
+nao "main (ponto de entrada) fica fora do catálogo" "$T1" ":main:dart"
 linha "lib/a.dart:5 carregar (topo com Future<int>) é dart" "$T1" "lib/a.dart:5:carregar:dart"
 linha "lib/a.dart:9 Repo (classe) é dart" "$T1" "lib/a.dart:9:Repo:dart"
 linha "lib/a.dart:10 buscar (método com tipo de retorno) é dart" "$T1" "lib/a.dart:10:buscar:dart"
@@ -116,9 +129,14 @@ igual "imprime quantas categorias gravou" "$(cat "$SBP/s5.txt")" "categorias gra
 igual "só parsing.json foi gravado" "$(ls "$SBP/separado")" "parsing.json"
 
 echo "== 6. conferir: linha real sai 0; linha real+1 sai 1 e nomeia cmdPlantar =="
-node -e 'const [f,l]=process.argv.slice(1); require("fs").writeFileSync(f, JSON.stringify([{intent:"plantar", confidence:"HIGH", functions:[{file:"scripts/ideias.cjs", name:"cmdPlantar", line:Number(l), notes:"ok"}], differences:"", recommendation:{action:"INVESTIGATE", survivor:"", reason:""}}]))' "$(winpath "$SBP/g-real.json")" "$LINHA_GREP"
-node -e 'const [f,l]=process.argv.slice(1); require("fs").writeFileSync(f, JSON.stringify([{intent:"plantar", confidence:"HIGH", functions:[{file:"scripts/ideias.cjs", name:"cmdPlantar", line:Number(l), notes:"ok"}], differences:"", recommendation:{action:"INVESTIGATE", survivor:"", reason:""}}]))' "$(winpath "$SBP/g-errada.json")" "$((LINHA_GREP+1))"
 CATREAL="$(winpath "$SBP/real.json")"
+# Segunda função real do mesmo arquivo, tirada do catálogo do caso 3: duplicata pede duas.
+SEG="$(node -e 'let s="";process.stdin.on("data",(d)=>{s+=d}).on("end",()=>{const x=JSON.parse(s).find((e)=>e.arquivo==="scripts/ideias.cjs"&&e.nome!=="cmdPlantar");process.stdout.write(x?x.nome+" "+x.linha:"")})' < "$SBP/real.json")"
+NOME2="${SEG% *}"; LINHA2="${SEG#* }"
+# grupo <saida> <linha de cmdPlantar> <nome2> <linha2> <action> <survivor> <repetir cmdPlantar com barra trocada: sim|nao>
+grupo() { node -e 'const [f,l,n2,l2,acao,surv,dup]=process.argv.slice(1); const fn=[{file:"scripts/ideias.cjs",name:"cmdPlantar",line:Number(l),notes:""}]; if(dup==="sim") fn.push({file:"scripts"+String.fromCharCode(92)+"ideias.cjs",name:"cmdPlantar",line:Number(l),notes:""}); if(n2) fn.push({file:"scripts/ideias.cjs",name:n2,line:Number(l2),notes:""}); require("fs").writeFileSync(f, JSON.stringify([{intent:"plantar",confidence:"HIGH",functions:fn,differences:"",recommendation:{action:acao,survivor:surv,reason:""}}]))' "$@"; }
+grupo "$(winpath "$SBP/g-real.json")" "$LINHA_GREP" "$NOME2" "$LINHA2" INVESTIGATE "" nao
+grupo "$(winpath "$SBP/g-errada.json")" "$((LINHA_GREP+1))" "$NOME2" "$LINHA2" INVESTIGATE "" nao
 node "$CAT" conferir --catalogo "$CATREAL" --grupos "$(winpath "$SBP/g-real.json")" > "$SBP/c6a.txt" 2> "$SBP/e6a.txt"; EXIT=$?
 saiu "grupo com a linha real sai 0" "$EXIT" 0
 tem "grupo válido vai para stdout" "$(cat "$SBP/c6a.txt")" '"intent": "plantar"'
@@ -126,6 +144,42 @@ node "$CAT" conferir --catalogo "$CATREAL" --grupos "$(winpath "$SBP/g-errada.js
 saiu "grupo com a linha real+1 sai 1" "$EXIT" 1
 tem "stderr nomeia cmdPlantar na linha errada" "$(cat "$SBP/e6b.txt")" "scripts/ideias.cjs:$((LINHA_GREP+1)) cmdPlantar"
 igual "stdout não traz o grupo inválido" "$(cat "$SBP/c6b.txt")" "[]"
+
+echo "== 7. chamada solta não é definição =="
+nao "setState( na coluna zero do Dart não entra" "$T1" ":setState:"
+nao "print( na coluna zero do Dart não entra" "$T1" ":print:"
+linha "a função que contém o with entra" "$T1" "src/solto.js:1:envolve:js"
+nao "with (o) { não vira método" "$T1" ":with:js"
+nao "setTimeout(function () { não vira método" "$T1" ":setTimeout:js"
+
+echo "== 8. conferir recusa grupo de uma função só ou repetida; rebaixa survivor fora do grupo =="
+grupo "$(winpath "$SBP/g-um.json")" "$LINHA_GREP" "" "" CONSOLIDATE cmdPlantar nao
+node "$CAT" conferir --catalogo "$CATREAL" --grupos "$(winpath "$SBP/g-um.json")" > "$SBP/c8a.txt" 2> "$SBP/e8a.txt"; EXIT=$?
+saiu "grupo de uma função só sai 1" "$EXIT" 1
+tem "stderr diz que duplicata pede 2 ou mais" "$(cat "$SBP/e8a.txt")" "duplicata pede 2 ou mais"
+grupo "$(winpath "$SBP/g-dup.json")" "$LINHA_GREP" "" "" CONSOLIDATE cmdPlantar sim
+node "$CAT" conferir --catalogo "$CATREAL" --grupos "$(winpath "$SBP/g-dup.json")" > "$SBP/c8b.txt" 2> "$SBP/e8b.txt"; EXIT=$?
+saiu "a mesma função com barra trocada sai 1" "$EXIT" 1
+grupo "$(winpath "$SBP/g-surv.json")" "$LINHA_GREP" "$NOME2" "$LINHA2" CONSOLIDATE outraCoisa nao
+node "$CAT" conferir --catalogo "$CATREAL" --grupos "$(winpath "$SBP/g-surv.json")" > "$SBP/c8c.txt" 2> "$SBP/e8c.txt"; EXIT=$?
+saiu "duas funções reais com survivor fora do grupo sai 0" "$EXIT" 0
+tem "survivor fora do grupo vira INVESTIGATE" "$(cat "$SBP/c8c.txt")" '"action": "INVESTIGATE"'
+tem "stderr avisa o rebaixamento" "$(cat "$SBP/e8c.txt")" "rebaixado para INVESTIGATE"
+grupo "$(winpath "$SBP/g-ok.json")" "$LINHA_GREP" "$NOME2" "$LINHA2" CONSOLIDATE cmdPlantar nao
+node "$CAT" conferir --catalogo "$CATREAL" --grupos "$(winpath "$SBP/g-ok.json")" > "$SBP/c8d.txt" 2> "$SBP/e8d.txt"; EXIT=$?
+saiu "survivor do grupo sai 0" "$EXIT" 0
+tem "survivor do grupo mantém CONSOLIDATE" "$(cat "$SBP/c8d.txt")" '"action": "CONSOLIDATE"'
+
+echo "== 9. separar: caixa, entrada sem categoria e pasta suja =="
+node -e 'const f=process.argv[1]; const e=(n,c)=>({arquivo:"a.js",linha:1,nome:n,category:c}); require("fs").writeFileSync(f, JSON.stringify([e("a1","Auth"),e("a2","auth"),e("a3","AUTH"),{arquivo:"a.js",linha:2,nome:"semcat"}]))' "$(winpath "$SBP/caixa.json")"
+node "$CAT" separar --catalogo "$(winpath "$SBP/caixa.json")" --saida "$(winpath "$SBP/sep-caixa")" --minimo 3 > "$SBP/s9.txt" 2> "$SBP/e9.txt"; EXIT=$?
+saiu "separar com caixas misturadas sai 0" "$EXIT" 0
+igual "Auth, auth e AUTH viram uma categoria só" "$(cat "$SBP/s9.txt")" "categorias gravadas: 1"
+igual "o arquivo leva as três funções" "$(node -e 'console.log(require(process.argv[1]).length)' "$(winpath "$SBP/sep-caixa/Auth.json")")" "3"
+tem "stderr conta a entrada sem categoria" "$(cat "$SBP/e9.txt")" "sem categoria: 1"
+node "$CAT" separar --catalogo "$(winpath "$SBP/caixa.json")" --saida "$(winpath "$SBP/sep-caixa")" --minimo 3 > "$SBP/s9b.txt" 2> "$SBP/e9b.txt"; EXIT=$?
+saiu "separar na mesma pasta de novo sai 1" "$EXIT" 1
+tem "stderr diz que a pasta já tem .json" "$(cat "$SBP/e9b.txt")" "já tem 1 .json"
 
 echo
 echo "ok: $ok   falhou: $falhou"
