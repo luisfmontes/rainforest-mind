@@ -110,7 +110,12 @@
     ]
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node scripts/catalogo-funcoes.cjs complexas --raiz . --top 5; bash scripts/testa-catalogo-funcoes.sh; bash scripts/testa-enxugar-estrutura.sh; bash scripts/testa-teto-skills.sh; bash scripts/testa-plugin-codex.sh; bash hooks/testa-abertura-mod-config.sh",
+    "sensor_externo": "node scripts/catalogo-funcoes.cjs complexas",
+    "saida": "complexas exit 0, 5 blocos, ultima linha de aproximacao; testa-catalogo-funcoes ok: 112 falhou: 0; enxugar-estrutura 32/32; teto 21 OK; codex exit 0; mod exit 0; README complexas=1 untangle=0; versao 2.5.0 nos dois plugin.json; CHANGELOG abre com 2.5.0; varredura de 43 baterias do diff: todas exit 0; mutacoes: tarefa 1 vermelho, tarefa 2 vermelho",
+    "em": "2026-11-06",
+    "head": "3ee7137a292a49c6f9280195676efc423fe5b32d"
   },
   "fechar": {
     "status": "pendente"
