@@ -10,6 +10,10 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.5.0 — 2026-11-06
+
+- **`enxugar` diz quais funções são as mais confusas.** No modo repo inteiro, depois dos maiores arquivos, o subcomando novo `catalogo-funcoes.cjs complexas` lista as funções JS/TS e Dart de maior complexidade cognitiva (aninhamento pesa mais que ramos em fila), com a ciclomática ao lado e as três linhas que mais pesaram na nota. A medida é aproximada, feita por leitura de texto e sem parser, e a saída diz o que não mediu (Python e ADVPL, ou corpo que não fechou). É contexto para escolher o que ler primeiro, não achado.
+
 ## 2.4.0 — 2026-11-06
 
 - **`auditor-de-seguranca` ganha a Régua 4 — LGPD.** Quando o código trata dado pessoal, o auditor procura, por função e em qualquer stack, nove tipos de problema que se veem no código: dado pessoal em log, coleta além do necessário, falta de exportar/corrigir/excluir/revogar, exclusão incompleta, retenção sem prazo, envio a terceiro, dado sensível sem proteção, consentimento pré-marcado ou genérico, e menores. Cada achado cita o artigo de uma tabela fixa dentro do agente (LGPD, ANPD, Marco Civil, ECA Digital); o que não está na tabela sai "sem citação", nunca com artigo de memória. Documento jurídico não é avaliado.
