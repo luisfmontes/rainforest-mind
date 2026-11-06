@@ -1,5 +1,13 @@
 # Duplicata semântica — prompts das fases de modelo
 
+<!-- indice -->
+**Índice** — arquivo longo: quem parou no meio não leu os dois prompts nem a conferência. Seções na ordem; cada item é o começo da seção, sem a marcação:
+
+- Fase 2 — categorizar
+- Fase 4 — comparar
+- Fase 5 — o que a conferência faz
+<!-- /indice -->
+
 Detalhe da passada de duplicata semântica do modo 2 do `enxugar`. O `SKILL.md`
 diz a ordem das fases; aqui ficam os dois prompts e o formato que a fase de
 conferência espera. Ideia enxertada de `obra/superpowers-lab`
