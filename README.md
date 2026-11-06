@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-2.3.2-1e5c3f?style=flat-square" alt="versão 2.3.2">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-2.4.0-1e5c3f?style=flat-square" alt="versão 2.4.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -203,7 +203,7 @@ commits que a própria sessão fez (as entradas `commit` do reflog), não pela g
 `rebase` e conflito em andamento não avisam, e cada caminho avisa uma vez por sessão. A chave `aviso-fluxo` desliga os dois.
 
 `aviso-duplicata.cjs` (`PostToolUse` em Write/Edit/MultiEdit) avisa sem barrar (exit 0 com `additionalContext`):
-extrai do texto escrito os nomes de definição de topo (JS/TS, Python e `User Function`/`Static Function`/`Class`
+extrai do texto escrito os nomes de definição de topo (JS/TS, Python, Dart e `User Function`/`Static Function`/`Class`
 de ADVPL/TLPP, sem caixa) e, quando o mesmo nome já está definido em outro arquivo rastreado, diz
 "`x` já está definido em `caminho:linha`", no máximo três nomes. O nome só vai ao `git grep` (sem shell, com
 `--`) depois de casar como identificador; orçamento de 3 s e falha aberta. Em Protheus, `User Function`
@@ -306,6 +306,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `/ponte` | Gera `CLAUDE.md`, `AGENTS.md` ou `GEMINI.md` ([detalhe](docs/pontes.md)) |
 | `modo-dev` | Escada YAGNI, causa raiz antes de remendo, rastreabilidade do diff |
 | `depurar` | Constrói o loop de feedback **antes** de qualquer hipótese |
+| `enxugar` | Lista (nunca aplica) código morto, inflação e abstração não usada, num diff ou no repo inteiro. No repo inteiro abre pelos maiores arquivos e roda a passada de **duplicata semântica** — função de nome diferente e mesma intenção: `scripts/catalogo-funcoes.cjs` cataloga as funções (JS/TS, Dart, Python, ADVPL), um agente haiku agrupa por domínio, um sonnet por grupo compara, e o catálogo confere cada `arquivo:linha` antes de virar achado `duplicar:` |
 | `analisar` | Análise em notebook: uma pergunta por vez, revisão crítica do achado |
 
 **Agentes por função** — a janela principal pensa; o agente executa.
@@ -318,7 +319,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 
 O `revisor` abre cada achado com a severidade, `[alta]`, `[media]` ou `[baixa]` (e `[design]` quando contesta uma decisão), e termina com `VEREDITO: ok` ou `VEREDITO: reprovado`. O hook do veredito devolve a vez quando os dois não casam: `ok` com `[alta]`, ou `reprovado` sem achado marcado. Cada `exigir revisar` guarda a volta anterior em `revisar.voltas`, e o `critica-do-revisor --comparacao` compara os achados com os dessa volta pelo arquivo: `novo`, `persiste (mesmo arquivo)` ou `sumiu — confirmar se foi corrigido`. Esse bloco vai no briefing do revisor da volta seguinte; a saída padrão do `critica-do-revisor` é a crítica que vai ao executor do laço. Achado que já estava na base do diff leva `[preexistente]` junto da severidade e não conta para o bloqueio; a marca é recusada quando a linha citada está num trecho que o diff alterou, e os preexistentes aceitos saem da crítica do executor. O `executor` despachado dentro de fluxo termina o relato com `ENTREGA: completa` ou `ENTREGA: parcial`; sem a linha, o hook `relato-executor` devolve a vez uma vez (chave `contrato-relato-executor`).
 
-O `auditor-de-seguranca` roda duas réguas OWASP (Top 10 2025 + API Security 2023) e uma **Régua 3 de técnicas** — [`referencias/reguas-tecnicas-ofensivas.md`](referencias/reguas-tecnicas-ofensivas.md), 30 lentes de detecção defensiva derivadas do repositório `SnailSploit/claude-red` (MIT) e reescritas report-only — que afia as duas no nível de técnica de ataque.
+O `auditor-de-seguranca` roda duas réguas OWASP (Top 10 2025 + API Security 2023) e uma **Régua 3 de técnicas** — [`referencias/reguas-tecnicas-ofensivas.md`](referencias/reguas-tecnicas-ofensivas.md), 30 lentes de detecção defensiva derivadas do repositório `SnailSploit/claude-red` (MIT) e reescritas report-only — que afia as duas no nível de técnica de ataque. Quando o inventário acha dado pessoal, roda também a **Régua 4 — LGPD**: nove categorias que se veem no código (dado pessoal em log, coleta além do necessário, direitos do titular ausentes, exclusão incompleta, retenção sem prazo, envio a terceiro, dado sensível sem proteção, consentimento mal coletado, menores), cada achado citando o artigo de uma tabela normativa fixa no próprio agente — nunca de memória. Documento jurídico (ROPA, RIPD, política) fica fora, e o veredito é indício técnico, não parecer.
 
 **Agentes em Claude ou Codex** — cada agente tem um `runtime:` no manifesto (ausente = `claude`); a primeira linha do briefing pode ser `Runtime: codex` ou `Runtime: claude` para override (case-insensitive). Quando o usuário diz "faz no codex", "roda no codex" ou equivalente, o despacho põe `Runtime: codex` na primeira linha. Transporte via `codex exec` usa sandbox `read-only` ou `workspace-write` conforme `escreve`, modelo por `codex-modelo-<haiku|sonnet|opus>` no `/setup` (padrão do `~/.codex/config.toml`). As skills `review`, `adversarial-review` e `rescue` do `openai/codex-plugin-cc` não ganharam comando aqui porque já existem como função neste plugin: `revisor`, segunda opinião cross-model, `depurador`.
 
