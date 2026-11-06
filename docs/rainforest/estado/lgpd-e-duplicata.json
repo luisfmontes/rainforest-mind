@@ -135,8 +135,10 @@
     "sensor_externo": "bash scripts/testa-indice-referencias.sh"
   },
   "fechar": {
-    "status": "pendente",
-    "em": "2026-11-06"
+    "status": "ok",
+    "em": "2026-11-06",
+    "acao": "merge",
+    "pr": 646
   },
   "reaberturas": [
     {
