@@ -16,6 +16,8 @@
 #  11. complexas no repo real: ordem, começo igual ao do listar, contribuições dentro da função.
 #  12. complexas (revisão 1): JSX com </tag> e />, seta com tipo de retorno, corpo de expressão,
 #      estilo sem ;, .catch( de promessa, função comentada, else/switch/case/catch, mãe em Dart.
+#  13. complexas (revisão 2): regex depois de =>, JSX de uma linha sem ;, ++, [ na linha de baixo,
+#      if dentro de try/finally/do/switch, p?.catch(, seta dentro de genérico do tipo de retorno.
 #
 # Fixture em mktemp, FORA do worktree, com git init. Arquivos e payloads montados por node,
 # nunca por heredoc de conteúdo. Caminhos vão para o node em forma Windows (cygpath -m).
@@ -377,6 +379,72 @@ linha "catch dentro de while pesa 2" "$SAI12" "3 cognitiva  3 ciclomática  s.ts
 linha "Dart: função interna soma na mãe; aspas dentro de \${} não contam" "$SAI12" "3 cognitiva  3 ciclomática  m.dart:L1 externa"
 nao "Dart: a função interna não sai à parte" "$SAI12" "m.dart:L2"
 linha "python: classe não conta como função" "$SAI12" "não medido: 1 função(ões) py — linguagem sem chaves"
+
+echo "== 13. complexas: regex depois de =>, JSX sem ;, ++, [ na linha de baixo, controle aninhado (revisão 2) =="
+FX13="$SBP/cx13"
+mkdir -p "$FX13"
+node -e '
+const fs = require("fs"), p = require("path"), d = process.argv[1];
+const C = String.fromCharCode(96);
+const w = (f, s) => fs.writeFileSync(p.join(d, f), s);
+const g = (n) => ["function " + n + "(x) {", "  if (x) {", "    if (x > 1) {", "      return 1", "    }", "  }", "  return 0", "}"];
+w("r.js", [
+  "function f(ts) {",
+  "  if (ts.some((x) => /[$" + C + "()@]/.test(x))) {",
+  "    return 1;",
+  "  }",
+  "  return 0;",
+  "}",
+  ...g("gA"),
+  "const ehChave = (s) => /[{]/.test(s);",
+  ...g("gB"),
+  "const inc = () => counter++",
+  ...g("gD"),
+  "function fArr(a) {",
+  "  if (a) {",
+  "    h()",
+  "  }",
+  "}",
+  "[1, 2].forEach(h)",
+  ...g("gE"),
+  "function opcional(p) {",
+  "  return p?.catch((e) => e);",
+  "}",
+  "function ninhos(a, b) {",
+  "  try {", "    if (a) {", "      b()", "    }",
+  "  } finally {", "    if (b) {", "      a()", "    }", "  }",
+  "  do {", "    if (a) {", "      b()", "    }", "  } while (b)",
+  "  switch (a) {", "    case 1:", "      if (b) {", "        return 1", "      }", "  }",
+  "}",
+  ""].join("\n"));
+w("t.tsx", [
+  "const A = () => <div>hi</div>",
+  ...g("gC"),
+  "const comGenerico = async (a): Promise<() => void> => {",
+  "  if (a) {",
+  "    return () => {}",
+  "  }",
+  "  return () => {}",
+  "};",
+  ""].join("\n"));
+' "$(winpath "$FX13")"
+( cd "$FX13" && git init -q && git config user.email t@t && git config user.name Test && git config core.autocrlf false && git add -A && git commit -q -m base )
+SAI13="$(node "$CAT" complexas --raiz "$(winpath "$FX13")" --top 50)"; EXIT=$?
+saiu "complexas na fixture 13 sai 0" "$EXIT" 0
+linha "regex com crase depois de => não abre template" "$SAI13" "1 cognitiva  2 ciclomática  r.js:L1 f"
+linha "a função depois da regex com crase é medida" "$SAI13" "3 cognitiva  3 ciclomática  r.js:L7 gA"
+linha "regex com { depois de => não abre chave" "$SAI13" "0 cognitiva  1 ciclomática  r.js:L15 ehChave"
+linha "a função depois da regex com { é medida" "$SAI13" "3 cognitiva  3 ciclomática  r.js:L16 gB"
+linha "counter++ sem ; termina a seta" "$SAI13" "0 cognitiva  1 ciclomática  r.js:L24 inc"
+linha "a função depois de counter++ é medida" "$SAI13" "3 cognitiva  3 ciclomática  r.js:L25 gD"
+linha "[ na linha de baixo não emenda na chave que fechou" "$SAI13" "1 cognitiva  2 ciclomática  r.js:L33 fArr"
+linha "a função depois do [ é medida" "$SAI13" "3 cognitiva  3 ciclomática  r.js:L39 gE"
+linha "p?.catch( não conta" "$SAI13" "0 cognitiva  1 ciclomática  r.js:L47 opcional"
+linha "if dentro de try, finally, do e switch pesa 2 cada" "$SAI13" "10 cognitiva  7 ciclomática  r.js:L50 ninhos"
+linha "JSX de uma linha sem ; termina a seta" "$SAI13" "0 cognitiva  1 ciclomática  t.tsx:L1 A"
+linha "a função depois do JSX sem ; é medida" "$SAI13" "3 cognitiva  3 ciclomática  t.tsx:L2 gC"
+linha "seta dentro de genérico do tipo de retorno não é a seta do corpo" "$SAI13" "1 cognitiva  2 ciclomática  t.tsx:L10 comGenerico"
+nao "nada da fixture 13 fica sem fechar" "$SAI13" "corpo não fechou"
 
 echo "== 11. complexas no repo real: ordem, linha de começo e contribuições dentro da função =="
 node "$CAT" complexas --raiz "$RAIZN" --top 5 > "$SBP/cx-real.txt"; EXIT=$?

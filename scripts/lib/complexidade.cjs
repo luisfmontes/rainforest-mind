@@ -23,13 +23,23 @@
 // Só o que o D2 lista. `<` e `>` ficam de fora: em JSX a `/` de `</li>` vem depois de `<`, e
 // regex depois de comparação é raro demais para pagar esse risco.
 const ANTES_DE_REGEX = new Set([
-  null, '(', ',', '=', ':', '[', '!', '&', '|', '?', '?:', '{', '}', ';', '&&', '||', '??',
+  null, '(', ',', '=', ':', '[', '!', '&', '|', '?', '?:', '{', '}', ';', '&&', '||', '??', '=>',
   'return', 'typeof', 'case',
 ]);
 // Ficha que, no fim de uma linha, deixa a expressão continuar na seguinte (corpo `=> expr` sem `;`).
+// `<` e `>` ficam de fora: `</div>` termina em `>` e a seta de JSX de uma linha acabava engolindo a
+// função seguinte. `+` e `-` só emendam quando não são `++`/`--` (ver `emendaNoFim`).
 const CONTINUA_EXPRESSAO = new Set([
-  '?', '?:', ':', '&&', '||', '??', '+', '-', '*', '/', '%', '.', '?.', ',', '(', '[', '=', '=>', '<', '>', '!', '&', '|',
+  '?', '?:', ':', '&&', '||', '??', '+', '-', '*', '/', '%', '.', '?.', ',', '(', '[', '=', '=>', '!', '&', '|',
 ]);
+
+/** A ficha `k` termina a linha deixando a expressão aberta? `counter++` e `i--` não deixam. */
+function emendaNoFim(fichas, k) {
+  const t = fichas[k].t;
+  if (!CONTINUA_EXPRESSAO.has(t)) return false;
+  if ((t === '+' || t === '-') && k > 0 && fichas[k - 1].t === t) return false;
+  return true;
+}
 const CONTROLE_COM_PARENTESES = new Set(['if', 'for', 'while', 'switch', 'catch']);
 const ABRE_BLOCO_DE_CONTROLE = new Set(['if', 'else', 'for', 'while', 'do', 'switch', 'try', 'catch', 'finally']);
 const ZERA_SEQUENCIA = new Set(['(', ')', ';', ',', '{', '}']);
@@ -218,7 +228,7 @@ function fimDaExpressao(fichas, de) {
   for (let k = de; k < fichas.length; k++) {
     const t = fichas[k].t;
     if (k > de && aberto === 0 && fichas[k].l > fichas[k - 1].l
-        && !CONTINUA_EXPRESSAO.has(fichas[k - 1].t) && !CONTINUA_EXPRESSAO.has(t)) return k;
+        && !emendaNoFim(fichas, k - 1) && !CONTINUA_EXPRESSAO.has(t)) return k;
     if (t === '(' || t === '[' || t === '{') aberto++;
     else if (t === ')' || t === ']' || t === '}') {
       if (aberto === 0) return k; // a expressão era argumento de algo que fecha aqui
@@ -255,7 +265,9 @@ function acharCorpo(fichas, ini) {
     else if (t === '{' && parenteses === 0) {
       const fim = fechaChave(fichas, k);
       if (fim === -1) return null;
-      const depois = fichas[fim + 1] && fichas[fim + 1].t;
+      // Só emenda na mesma linha da `}`: `[1, 2].forEach(g)` na linha de baixo é outra instrução.
+      const prox = fichas[fim + 1];
+      const depois = prox && prox.l === fichas[fim].l && prox.t;
       if (['>', '{', '|', '&', '[', '=>'].includes(depois)) {
         k = fim;
         continue;
