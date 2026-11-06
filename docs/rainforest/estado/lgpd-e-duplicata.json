@@ -1,0 +1,28 @@
+{
+  "slug": "lgpd-e-duplicata",
+  "titulo": "lgpd-e-duplicata",
+  "criado_em": "2026-11-06",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/lgpd-e-duplicata.md",
+    "em": "2026-11-06"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
