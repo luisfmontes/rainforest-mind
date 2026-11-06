@@ -66,25 +66,25 @@
     ]
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "436c0a9799ed0627f4e49fbf8690c5e1cefedf43",
+      "head": "c58da140ea7227a54d8eb80bbeaeda1819f89285",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a728a3a7efd287915",
+        "agente_id": "a5b5d44e27db31735",
         "veredito": "ok",
         "em": "2026-11-06",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ad5cf5b9-7811-4201-8c9e-c04e4eba4021/subagents/agent-a728a3a7efd287915.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ad5cf5b9-7811-4201-8c9e-c04e4eba4021/subagents/agent-a5b5d44e27db31735.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-11-06",
-    "achados": 3,
+    "achados": 0,
     "base": "fa663d6e4960aa214a84e0e14036566e343e8c63",
-    "head": "436c0a9799ed0627f4e49fbf8690c5e1cefedf43",
+    "head": "c58da140ea7227a54d8eb80bbeaeda1819f89285",
     "voltas": [
       {
         "volta": 1,
@@ -97,12 +97,27 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ad5cf5b9-7811-4201-8c9e-c04e4eba4021/subagents/agent-afca9d17dfbae151d.jsonl"
           }
         ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a728a3a7efd287915",
+            "veredito": "ok",
+            "em": "2026-11-06",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/ad5cf5b9-7811-4201-8c9e-c04e4eba4021/subagents/agent-a728a3a7efd287915.jsonl"
+          }
+        ]
       }
     ]
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-11-06"
+    "status": "ok",
+    "em": "2026-11-06",
+    "comando": "node scripts/catalogo-funcoes.cjs listar --raiz . | maiores --top 5 | conferir (linha 370 e 371); bash scripts/testa-catalogo-funcoes.sh; bash hooks/testa-aviso-duplicata.sh; bash scripts/testa-enxugar-estrutura.sh; bash scripts/testa-teto-skills.sh; bash scripts/testa-auditor-de-seguranca.sh; greps do T4; bash scripts/testa-plugin-codex.sh; bash hooks/testa-abertura-mod-config.sh; node scripts/conferir-fluxo.cjs mutacoes; T5: node scripts/catalogo-funcoes.cjs listar/conferir no app + sed das linhas citadas + git status antes/depois nos dois repos",
+    "saida": "cmdPlantar scripts/ideias.cjs:370 = grep 370; maiores 1a linha 3623 scripts/estado.cjs = wc -l 3623; conferir 370 exit 0, 371 exit 1 nomeando scripts/ideias.cjs:371 cmdPlantar; baterias 53/0, 57/0, 31/31, 21 OK, 166/0, codex exit 0, mod-config exit 0; T4 Régua 4=1 catalogo-funcoes=1 livro=2 versao 2.4.0; mutacoes T1-T3 vermelho, T4-T5 puladas n/a; app: 576 funções (575 dart), 79 grupos conferidos, 1 duplicar CONSOLIDATE (sessaoDoContrato x sessaoDoDispositivo) + 3 rebaixados por survivor em texto livre; site: Régua 4 rodou, 5 achados CONFIRMADO conferidos por sed; git status idêntico antes/depois nos dois repos",
+    "head": "c58da140ea7227a54d8eb80bbeaeda1819f89285"
   },
   "fechar": {
     "status": "pendente",
