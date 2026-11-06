@@ -36,15 +36,20 @@ const REGRAS = {
     py: [/^(?:async\s+)?def\s+(\w+)/, /^class\s+(\w+)/],
     advpl: [/^\s*(?:user\s+function|static\s+function|function|class)\s+(\w+)/i],
     dart: [
-      // função de topo com tipo de retorno opcional: `void main(`, `Future<void> foo(`, `bar(`
-      new RegExp('^' + NAO_RESERVADA_DART + '(?:[A-Za-z_]\\w*(?:<.+?>)?\\??\\s+)?([A-Za-z_]\\w*)\\s*\\('),
+      // função de topo COM tipo de retorno: `void salvar(`, `Future<void> foo(`, `String? bar(`.
+      // Sem tipo, `print('x');` ou `setState(` na coluna zero de um trecho editado viravam
+      // definição. `main` fica de fora: é o ponto de entrada de todo app e de todo teste Dart,
+      // e o mesmo nome em cada arquivo não é duplicata (revisão do lgpd-e-duplicata, achado 1).
+      new RegExp('^' + NAO_RESERVADA_DART + '[A-Za-z_]\\w*(?:<.+?>)?\\??\\s+(?!main\\b)([A-Za-z_]\\w*)\\s*\\('),
       // classe, com modificadores opcionais de Dart 3
       /^(?:(?:abstract|base|final|sealed|interface)\s+)*class\s+([A-Za-z_]\w*)/,
     ],
   },
   metodo: {
     js: [
-      /^\s+(?:(?:public|private|protected|static|async|get|set|readonly)\s+)*(?!(?:if|for|while|switch|return|catch)\b)([\w$]+)\s*\([^)]*\)\s*(?::[^{]*)?\{/,
+      // `with (obj) {` e chamada que recebe função anônima (`setTimeout(function () {`) não são
+      // método: o nome não pode ser palavra de instrução e os parênteses não podem conter `function`.
+      /^\s+(?:(?:public|private|protected|static|async|get|set|readonly)\s+)*(?!(?:if|for|while|switch|return|catch|with|function)\b)([\w$]+)\s*\((?![^)]*\bfunction\b)[^)]*\)\s*(?::[^{]*)?\{/,
     ],
     // tipo de retorno obrigatório antes do nome (void, bool, int, ... ou tipo que começa com maiúscula)
     dart: [

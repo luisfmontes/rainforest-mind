@@ -207,24 +207,36 @@ function lerJson(arquivo, nome) {
 function separar(catalogoArq, saida, minimo) {
   const entradas = lerJson(catalogoArq, '--catalogo');
   if (!Array.isArray(entradas)) throw new Error('--catalogo tem de ser um array');
+  // Categoria agrupa pela caixa baixa: "Auth" e "auth" são a mesma, e em disco que não
+  // distingue caixa (Windows, macOS) os dois arquivos se sobrescreviam.
   const categorias = new Map();
+  let semCategoria = 0;
   for (const e of entradas) {
-    if (!e || typeof e.category !== 'string' || e.category === '') continue;
-    if (!categorias.has(e.category)) categorias.set(e.category, []);
-    categorias.get(e.category).push(e);
+    if (!e || typeof e.category !== 'string' || e.category.trim() === '') {
+      semCategoria++;
+      continue;
+    }
+    const k = e.category.trim().toLowerCase();
+    if (!categorias.has(k)) categorias.set(k, { nome: e.category.trim(), funcoes: [] });
+    categorias.get(k).funcoes.push(e);
+  }
+  if (fs.existsSync(saida)) {
+    const velhos = fs.readdirSync(saida).filter((n) => n.toLowerCase().endsWith('.json'));
+    if (velhos.length) throw new Error(`--saida ${saida} já tem ${velhos.length} .json de outra rodada; use uma pasta vazia`);
   }
   fs.mkdirSync(saida, { recursive: true });
   const usados = new Map();
   let gravadas = 0;
-  for (const [categoria, funcoes] of categorias) {
+  for (const { nome, funcoes } of categorias.values()) {
     if (funcoes.length < minimo) continue;
-    const base = categoria.replace(/[^\p{L}\p{N}_-]+/gu, '-').replace(/^-+|-+$/g, '') || 'sem-nome';
-    if (usados.has(base)) throw new Error(`categorias "${usados.get(base)}" e "${categoria}" viram o mesmo arquivo ${base}.json`);
-    usados.set(base, categoria);
+    const base = nome.replace(/[^\p{L}\p{N}_-]+/gu, '-').replace(/^-+|-+$/g, '') || 'sem-nome';
+    const bk = base.toLowerCase();
+    if (usados.has(bk)) throw new Error(`categorias "${usados.get(bk)}" e "${nome}" viram o mesmo arquivo ${base}.json`);
+    usados.set(bk, nome);
     fs.writeFileSync(path.join(saida, `${base}.json`), JSON.stringify(funcoes, null, 2) + '\n');
     gravadas++;
   }
-  return gravadas;
+  return { gravadas, semCategoria };
 }
 
 function conferir(catalogoArq, gruposArq) {
@@ -239,20 +251,34 @@ function conferir(catalogoArq, gruposArq) {
   let todasValidas = true;
   grupos.forEach((g, gi) => {
     const funcoes = g && Array.isArray(g.functions) ? g.functions : [];
-    if (funcoes.length === 0) {
-      avisos.push(`grupo ${gi + 1}: sem funções`);
+    let ok = true;
+    const distintas = new Set();
+    for (const f of funcoes) {
+      const k = f ? chave(f.file, f.name, f.line) : '';
+      if (!f || !existentes.has(k)) {
+        avisos.push(`${normal(f && f.file)}:${f && f.line} ${f && f.name}`);
+        ok = false;
+      } else distintas.add(k);
+    }
+    // Duplicata pede duas funções diferentes: grupo de uma só, ou a mesma citada duas
+    // vezes com barra trocada (lib/a.dart e lib\a.dart), não compara nada.
+    if (ok && distintas.size < 2) {
+      avisos.push(`grupo ${gi + 1}: ${distintas.size} função distinta; duplicata pede 2 ou mais`);
+      ok = false;
+    }
+    if (!ok) {
       todasValidas = false;
       return;
     }
-    let ok = true;
-    for (const f of funcoes) {
-      if (!f || !existentes.has(chave(f.file, f.name, f.line))) {
-        avisos.push(`${normal(f && f.file)}:${f && f.line} ${f && f.name}`);
-        ok = false;
-      }
+    // CONSOLIDATE cujo survivor não é o nome de uma função do grupo não diz o que manter:
+    // vira INVESTIGATE, com aviso, em vez de virar achado duplicar: sem sobrevivente.
+    const rec = g.recommendation;
+    if (rec && rec.action === 'CONSOLIDATE' && !funcoes.some((f) => f.name === rec.survivor)) {
+      avisos.push(`grupo ${gi + 1}: survivor "${rec.survivor}" não é função do grupo; rebaixado para INVESTIGATE`);
+      validos.push({ ...g, recommendation: { ...rec, action: 'INVESTIGATE' } });
+      return;
     }
-    if (ok) validos.push(g);
-    else todasValidas = false;
+    validos.push(g);
   });
   return { validos, avisos, todasValidas };
 }
@@ -282,8 +308,9 @@ function principal(argv) {
   if (sub === 'separar') {
     if (!o.catalogo || !o.saida) throw new ErroDeUso('separar pede --catalogo e --saida');
     const minimo = inteiro(o.minimo, 3, 'minimo');
-    const gravadas = separar(path.resolve(o.catalogo), path.resolve(o.saida), minimo);
+    const { gravadas, semCategoria } = separar(path.resolve(o.catalogo), path.resolve(o.saida), minimo);
     process.stdout.write(`categorias gravadas: ${gravadas}\n`);
+    if (semCategoria) process.stderr.write(`sem categoria: ${semCategoria} entrada(s) ignorada(s)\n`);
     return;
   }
   // conferir

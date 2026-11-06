@@ -13,7 +13,7 @@ Design: docs/rainforest/design/lgpd-e-duplicata.md
 
 ### 1. Catálogo de funções com Dart, conferência e maiores arquivos [tipo: implementar]
 atende: D7, D9, D10, D11
-arquivos: `hooks/lib/definicoes.cjs`, `hooks/aviso-duplicata.cjs`, `scripts/catalogo-funcoes.cjs`, `scripts/testa-catalogo-funcoes.sh`
+arquivos: `hooks/lib/definicoes.cjs`, `hooks/aviso-duplicata.cjs`, `hooks/testa-aviso-duplicata.sh`, `scripts/catalogo-funcoes.cjs`, `scripts/testa-catalogo-funcoes.sh`
 depende de: nenhuma
 busca:
 - repo | rg "REGRAS|EXTENSOES|nomeDaLinha" hooks scripts | só hooks/aviso-duplicata.cjs tem a tabela de definição (JS/TS, Python, ADVPL, só topo de arquivo); nada lê Dart nem método de classe
@@ -61,7 +61,7 @@ arquivos: `README.md`, `vigias/livro-de-repos.md`, `.claude-plugin/plugin.json`,
 depende de: 1, 2, 3
 mutacao: n/a
   motivo: tarefa só de texto e número de versão; não há comportamento a inverter — a falsificação é a coerência com o que as tarefas 1 a 3 entregaram, conferida no critério
-pronto quando: com o repositório real, o README descreve a Régua 4 junto da frase que hoje lista as réguas do `auditor-de-seguranca` (linha que começa com "O `auditor-de-seguranca` roda") e a passada de duplicata semântica do `enxugar` citando `scripts/catalogo-funcoes.cjs`, sem seção de crédito nova para os dois repos (D12); o livro tem uma linha `| \`goul4rt/lgpd-skills\` |` e uma `| \`obra/superpowers-lab\` |`, ambas com data 2026-11-06 e veredito na trilha enxertar; `.claude-plugin/plugin.json` diz `"version": "2.4.0"` e o `CHANGELOG.md` abre com 2.4.0 — provado por `grep -c "Régua 4" README.md` ≥ 1, `grep -c "catalogo-funcoes" README.md` ≥ 1, `grep -cE "^\| \`(goul4rt/lgpd-skills|obra/superpowers-lab)\` \| 2026-11-06" vigias/livro-de-repos.md` = 2, `node -e "console.log(require('./.claude-plugin/plugin.json').version)"` = `2.4.0`, e `bash scripts/testa-plugin-codex.sh` e `bash scripts/testa-abertura-mod-config.sh` verdes
+pronto quando: com o repositório real, o README descreve a Régua 4 junto da frase que hoje lista as réguas do `auditor-de-seguranca` (linha que começa com "O `auditor-de-seguranca` roda") e a passada de duplicata semântica do `enxugar` citando `scripts/catalogo-funcoes.cjs`, sem seção de crédito nova para os dois repos (D12); o livro tem uma linha `| \`goul4rt/lgpd-skills\` |` e uma `| \`obra/superpowers-lab\` |`, ambas com data 2026-11-06 e veredito na trilha enxertar; `.claude-plugin/plugin.json` diz `"version": "2.4.0"` e o `CHANGELOG.md` abre com 2.4.0 — provado por `grep -c "Régua 4" README.md` ≥ 1, `grep -c "catalogo-funcoes" README.md` ≥ 1, `grep -cE "^\| \`(goul4rt/lgpd-skills|obra/superpowers-lab)\` \| 2026-11-06" vigias/livro-de-repos.md` = 2, `node -e "console.log(require('./.claude-plugin/plugin.json').version)"` = `2.4.0`, e `bash scripts/testa-plugin-codex.sh` e `bash hooks/testa-abertura-mod-config.sh` verdes
 
 ### 5. Prova nos dois repos reais do Luís [tipo: pesquisar]
 atende: D13

@@ -65,7 +65,7 @@ Devolva em <CAMINHO>/grupos-<CATEGORIA>.json um array de grupos:
     "differences": "<como diferem, se diferem>",
     "recommendation": {
       "action": "CONSOLIDATE|INVESTIGATE|KEEP_SEPARATE",
-      "survivor": "<qual manter, se CONSOLIDATE>",
+      "survivor": "<se CONSOLIDATE, o name exato de uma das functions acima>",
       "reason": "<por quê>"
     }
   }

@@ -106,6 +106,9 @@ function acharDefinicoes(gitTop, nomes, tipo, editados, restante) {
     const partes = registro.replace(/\r$/, '').split('\0');
     if (partes.length < 3) continue;
     const [caminho, num, ...resto] = partes;
+    // Só conta definição na mesma linguagem do arquivo editado: `def main():` de um .py,
+    // lido com a regra do Dart, virava definição de `main`.
+    if (EXTENSOES[path.posix.extname(caminho).toLowerCase()] !== tipo) continue;
     const achado = nomeDaLinha(resto.join('\0'), tipo);
     if (!achado) continue;
     const nome = pedidos.get(chave(achado));
