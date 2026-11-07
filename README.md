@@ -9,6 +9,8 @@
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
 
+> English: [README.en.md](README.en.md) — snapshot congelado na 2.5.1; a versão canônica é esta.
+
 > ### O problema não é falta de ideia. É o que recebe luz agora.
 
 Plugin de Claude Code de **apoio ao desenvolvimento**: a feature sai de uma
