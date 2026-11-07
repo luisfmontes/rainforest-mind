@@ -629,7 +629,7 @@ function extrairCorpoDoPR(segmento, cwdSegmento) {
         const conteudo = fs.readFileSync(caminhoResolvido, "utf8");
         return { tipo: "arquivo", conteudo, legivel: true };
       } catch (e) {
-        return { tipo: "arquivo", conteudo: null, legivel: false, caminho: arquivo, codigo: e && e.code };
+        return { tipo: "arquivo", conteudo: null, legivel: false, caminho: arquivo, resolvido: caminhoResolvido, codigo: e && e.code };
       }
     }
   }
@@ -649,10 +649,14 @@ function bloqueiaCorpo(razao) {
 
 // Por que o --body-file não foi lido (D2): caminho do Git Bash que o node não
 // enxerga, arquivo que não existe, ou o código do erro.
-function motivoDaLeitura(caminho, codigo) {
-  if (/^\/(?![A-Za-z](\/|$))/.test(caminho)) return `${caminho} é caminho do Git Bash: o gate roda em node no Windows e não enxerga o /tmp do Git Bash; use caminho absoluto do Windows.`;
-  if (codigo === "ENOENT") return `o arquivo não existe em ${caminho}.`;
-  return `erro ${codigo || "desconhecido"} ao ler ${caminho}.`;
+function motivoDaLeitura(caminho, resolvido, codigo) {
+  if (caminho === "-") return `--body-file - lê o corpo do stdin, que o gate não vê.`;
+  if (!caminho) return `--body-file veio vazio.`;
+  if (/^\/(?![A-Za-z](\/|$)|\/)/.test(caminho)) return `${caminho} é caminho do Git Bash: o gate roda em node no Windows e não enxerga o /tmp do Git Bash; use caminho absoluto do Windows.`;
+  const r = String(resolvido || "").replace(/\\/g, "/");
+  const onde = r && r !== caminho ? `${caminho} (resolvido para ${r})` : caminho;
+  if (codigo === "ENOENT") return `o arquivo não existe em ${onde}.`;
+  return `erro ${codigo || "desconhecido"} ao ler ${onde}.`;
 }
 
 // `WRAPPERS_DE_COMANDO`, `desempacotarWrapper` (agora
@@ -1080,7 +1084,7 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento, textoDoComando =
         bloqueiaCorpo(
           `não consegui ler o arquivo de corpo do PR — o gate o lê ANTES de o ` +
           `comando rodar, e nada neste comando o cria por heredoc. ` +
-          motivoDaLeitura(corpoDoPR.caminho, corpoDoPR.codigo)
+          motivoDaLeitura(corpoDoPR.caminho, corpoDoPR.resolvido, corpoDoPR.codigo)
         );
       } else if (corpoDoPR.tipo === "direto" && (corpoDoPR.conteudo.includes("$(") || corpoDoPR.conteudo.includes("`"))) {
         bloqueiaCorpo(

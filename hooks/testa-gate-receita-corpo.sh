@@ -90,6 +90,22 @@ sai "(8) diretório" 2
 tem "(8) diretório" "EISDIR"
 tem "(8) diretório" "Receita que passa:"
 
+echo "== (10) relativo: a mensagem diz onde o gate procurou =="
+roda "gh pr create --title t --body-file corpo-inexistente-$$.md"
+sai "(10) relativo" 2
+tem "(10) relativo" "(resolvido para $SBP_WIN/corpo-inexistente-$$.md)"
+
+echo "== (11) UNC não é caminho do Git Bash =="
+roda "gh pr create --title t --body-file //rfm-srv-$$/share/pr.md"
+sai "(11) UNC" 2
+nao_tem "(11) UNC" "Git Bash"
+tem "(11) UNC" "Receita que passa:"
+
+echo "== (12) --body-file - (stdin) =="
+roda "gh pr create --title t --body-file -"
+sai "(12) stdin" 2
+tem "(12) stdin" "lê o corpo do stdin"
+
 echo "== (9) heredoc ilegível cria o --body-file =="
 CMD9="$(printf 'cat > x9.md <<EOF\nCloses #$N\nEOF\ngh pr create --title t --body-file x9.md')"
 roda "$CMD9"
