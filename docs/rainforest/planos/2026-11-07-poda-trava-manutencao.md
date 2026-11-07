@@ -23,7 +23,7 @@ mutacao:
   para: `void raiz;`
   bateria: `bash hooks/testa-memoria-manutencao.sh`
   fixture: `testa-memoria-manutencao.sh, seção "11. quem cria a trava do dia apaga as de dias anteriores, e so elas"`
-prova: `bash hooks/testa-memoria-manutencao.sh`
+prova: `D=$(mktemp -d) && : > "$D/manutencao-2026-01-01.lock" && RFM_ROOT="$(cygpath -m "$D")" node hooks/memoria-manutencao-session-start.cjs < /dev/null && test ! -e "$D/manutencao-2026-01-01.lock"`
 pronto quando: com uma raiz de dados em `mktemp -d` que já tem `manutencao-2026-01-01.lock`, `manutencao-2026-01-02.lock`, `manutencao-2999-12-31.lock`, `manutencao.log`, `manutencao-x.lock` e `manutencao-2026-1-1.lock`, e o payload real de `SessionStart` no stdin do hook, o hook sai 0, cria `manutencao-<hoje>.lock`, e depois disso as duas travas de 2026 não existem e os outros quatro arquivos existem; numa segunda raiz com `manutencao-2026-01-02.lock` e a trava de hoje já existente (outra sessão ganhou a corrida), `manutencao-2026-01-02.lock` continua lá — provado por `bash hooks/testa-memoria-manutencao.sh` saindo 0 com a seção 11 listando cada arquivo por nome, nenhum caso afirmando sobre o texto do fonte
 
 Forma prescrita:
