@@ -230,25 +230,25 @@
     "sensor_externo": "bash scripts/testa-versao.sh"
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "12cad7659184431995bb019f3e294682c0f4bcd6",
+      "head": "76366cfb15efb729778cd4026cc6c4ab1b47359e",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a2663cde5207d18e5",
+        "agente_id": "a2bfcc6cca544e6bc",
         "veredito": "ok",
         "em": "2026-11-07",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a2663cde5207d18e5.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a2bfcc6cca544e6bc.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-11-07",
-    "achados": 0,
+    "achados": 1,
     "base": "964be3e2",
-    "head": "12cad765",
+    "head": "76366cfb",
     "voltas": [
       {
         "volta": 1,
@@ -309,16 +309,28 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a8f4cfc7c4a5b3290.jsonl"
           }
         ]
+      },
+      {
+        "volta": 6,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a2663cde5207d18e5",
+            "veredito": "ok",
+            "em": "2026-11-07",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a2663cde5207d18e5.jsonl"
+          }
+        ]
       }
     ]
   },
   "verificar": {
-    "status": "pendente",
+    "status": "ok",
     "em": "2026-11-07",
     "comando": "node hooks/testa-memoria-assunto-agente.cjs",
-    "saida": "18 ok, 0 falha(s); glossario 12 ok; conferir-versao ok 2.6.0; relatorio com T1 (tres graus, leitura completa) e T2 (candidata 1 em hooks/lib/definicoes.cjs:33, checagem null x Painel); mutacoes: tarefa 4 vermelho",
+    "saida": "18 ok, 0 falha(s); testa-versao ok 5 falhou 0; criterios T1-T3 sem mudanca desde a verificacao anterior",
     "sensor_externo": "node hooks/testa-memoria-assunto-agente.cjs",
-    "head": "12cad7659184431995bb019f3e294682c0f4bcd6"
+    "head": "76366cfb15efb729778cd4026cc6c4ab1b47359e"
   },
   "fechar": {
     "status": "pendente",
