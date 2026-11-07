@@ -251,27 +251,40 @@ function fimDaExpressao(fichas, de) {
 }
 
 /**
+ * `const x = (a) <op> ...`: a função vem depois do `)`, na mesma instrução? Só em duas formas
+ * (revisões 1 e 2 do fluxo): depois de `||`, `&&`, `??` ou ternário, `function` ou `=>` fora de
+ * qualquer parêntese (`(opts && opts.noop) || function (a) {`); depois de `(`, como argumento direto
+ * da chamada (`(0, x.y)((cfg) => {`, saída compilada). Seta de callback mais funda
+ * (`(items || []).map((i) => i.name)`) é valor, não função. `de` é a ficha logo depois do `)`.
+ */
+function funcaoNaInstrucao(fichas, de) {
+  const op = fichas[de] && fichas[de].t;
+  let alvo;
+  if (['||', '&&', '??', '?:'].includes(op)) alvo = 0;
+  else if (op === '(') alvo = 1;
+  else return false;
+  let aberto = 0;
+  for (let q = de + 1; q < fichas.length; q++) {
+    const t = fichas[q].t;
+    if (aberto === 0 && fichas[q].l > fichas[q - 1].l
+        && !emendaNoFim(fichas, q - 1) && !CONTINUA_EXPRESSAO.has(t)) return false;
+    if ((t === 'function' || t === '=>') && aberto + (op === '(' ? 1 : 0) === alvo) return true;
+    if (t === '(' || t === '[' || t === '{') aberto++;
+    else if (t === ')' || t === ']' || t === '}') {
+      if (aberto === 0) return false;
+      aberto--;
+    } else if (t === ';' && aberto === 0) return false;
+  }
+  return false;
+}
+
+/**
  * Acha o corpo da definição que começa na ficha `ini`. Depois de `=>` fora de parênteses: bloco
  * `{ }` se a seta é seguida de `{`, senão a expressão (`fimDaExpressao`). Sem seta: da primeira
  * `{` fora de parênteses até a `}` que a fecha; `;` antes dela é corpo vazio (`void f();`). Chave
  * que fecha e é seguida de `>`, `{`, `|`, `&`, `[` ou `=>` era tipo literal (`): {a: T} {`) e a
  * busca continua. Devolve {de, ate} (índices exclusivos do corpo) ou null se não fechou.
  */
-/** Há `function` ou `=>` da ficha `de` até o fim da instrução (`;` ou quebra que a encerra)? */
-function funcaoNaInstrucao(fichas, de) {
-  let aberto = 0;
-  for (let q = de; q < fichas.length; q++) {
-    const t = fichas[q].t;
-    if (aberto === 0 && q > de && fichas[q].l > fichas[q - 1].l
-        && !emendaNoFim(fichas, q - 1) && !CONTINUA_EXPRESSAO.has(t)) return false;
-    if (t === 'function' || t === '=>') return true;
-    if (t === '(' || t === '[' || t === '{') aberto++;
-    else if (t === ')' || t === ']' || t === '}') aberto--;
-    else if (t === ';' && aberto === 0) return false;
-  }
-  return false;
-}
-
 function acharCorpo(fichas, ini) {
   let parenteses = 0;
   let angulos = 0; // `<...>` de genérico na assinatura: `Promise<() => void>` não é a seta do corpo
@@ -283,13 +296,18 @@ function acharCorpo(fichas, ini) {
     const t = fichas[k].t;
     if (t === '(' && envolve) {
       envolve = false;
-      // `memo(Inner)` é apelido, não função: dentro da chamada tem de vir `function`, `async`,
-      // `(` de parâmetros ou `x =>`. Sem isso o `)` de fechamento desbalanceia a contagem e a seta
-      // de uma chamada de topo seguinte vira o corpo (revisão 1 do fluxo, achado 2).
+      // Dentro da chamada envolvente (revisões 1 e 2 do fluxo):
+      // - `function`, `async`, `(` de parâmetros ou `x =>`: a função, segue;
+      // - outro envolvente (`memo(forwardRef(`, `React.memo(React.forwardRef(`): segue, e ele
+      //   mesmo fica transparente adiante;
+      // - `memo(Inner)` ou `memo(Inner, eq)`: apelido, não função;
+      // - qualquer outra chamada (`memo(withRouter(...))`): não sei ler, sai como lacuna declarada.
       const a = fichas[k + 1] && fichas[k + 1].t;
       const b = fichas[k + 2] && fichas[k + 2].t;
-      if (!(a === 'function' || a === 'async' || a === '(' || b === '=>')) return { naoFuncao: true };
-      continue;
+      if (a === 'function' || a === 'async' || a === '(' || b === '=>') continue;
+      if (a === 'memo' || a === 'forwardRef' || (a === 'React' && b === '.')) continue;
+      if (b === ')' || b === ',') return { naoFuncao: true };
+      return null;
     }
     if (tipo) {
       if (t === '(') parenteses++;

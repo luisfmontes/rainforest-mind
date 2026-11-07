@@ -544,6 +544,11 @@ w("w.tsx", [
   "export function memo(fn) {", "  if (fn) {", "    if (fn.a) {", "      return 1", "    }", "  }", "}",
   "const noop = (opts && opts.noop) || function (a) {", "  if (a) {", "    return 1", "  }", "}",
   "const Seta = memo(props => {", "  if (props) {", "    return 1", "  }", "})",
+  // revisão 2: seta de callback não faz função; envolvente aninhado é medido; HOC desconhecido é lacuna
+  "const names = (items || []).map((i) => i.name);",
+  "const v = (a && b) ? items.filter((i) => i.x && i.y || i.z) : [];",
+  "export const Btn = memo(forwardRef<HTMLButtonElement, Props>((props, ref) => {", "  if (props) {", "    return 1", "  }", "}))",
+  "export const R = memo(withRouter((props) => {", "  if (props) {", "    return 1", "  }", "}))",
   ""].join("\n"));
 // troca de mãe: f1 atravessa k e f3; k não é função, e f3 tem de ser medida sem tirar f0
 w("x.js", [
@@ -569,6 +574,10 @@ nao "apelido memo(Inner) não vira função nem lacuna" "$SAI16" "w.tsx:L1 "
 linha "função chamada memo é medida pelos próprios parâmetros" "$SAI16" "3 cognitiva  3 ciclomática  w.tsx:L3 memo"
 linha "função depois de || continua medida" "$SAI16" "1 cognitiva  2 ciclomática  w.tsx:L10 noop"
 linha "memo(x => ...) sem parênteses no parâmetro é medido" "$SAI16" "1 cognitiva  2 ciclomática  w.tsx:L15 Seta"
+nao "seta de callback depois de (a || b).map não faz função" "$SAI16" "w.tsx:L20 "
+nao "seta de callback depois de ternário não faz função" "$SAI16" "w.tsx:L21 "
+linha "memo(forwardRef<T>(...)) aninhado é medido" "$SAI16" "1 cognitiva  2 ciclomática  w.tsx:L22 Btn"
+linha "memo(HOC(...)) sai como lacuna declarada, não some" "$SAI16" "não medido: w.tsx:L27 R — corpo não fechou"
 linha "(e) a função depois dele é medida" "$SAI16" "3 cognitiva  3 ciclomática  r.js:L25 gS"
 nao "(f) sobrecarga sem ; não vira leitura errada" "$SAI16" "não medido: t.ts"
 linha "(f) a implementação depois da sobrecarga sem ; é medida" "$SAI16" "1 cognitiva  2 ciclomática  t.ts:L3 sob"
