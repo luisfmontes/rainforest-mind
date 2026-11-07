@@ -44,24 +44,24 @@
     "em": "2026-11-07"
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "7d4599fb4adab60b741c24b315dfd36b49aaab96",
+      "head": "342338d0815bf2354ed463bb74577e9a3ec85e43",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a9f0c7e98bb26ece3",
+        "agente_id": "ab33c8c988c1e0e3c",
         "veredito": "ok",
         "em": "2026-11-07",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a9f0c7e98bb26ece3.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-ab33c8c988c1e0e3c.jsonl"
       }
     ],
     "em": "2026-11-07",
     "achados": 2,
     "base": "1d5782b9476a3c8b117cd8be2cd9b749178aa969",
-    "head": "7d4599fb4adab60b741c24b315dfd36b49aaab96",
+    "head": "342338d0815bf2354ed463bb74577e9a3ec85e43",
     "voltas": [
       {
         "volta": 1,
@@ -74,12 +74,27 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a02b5fd28534e9fcd.jsonl"
           }
         ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a9f0c7e98bb26ece3",
+            "veredito": "ok",
+            "em": "2026-11-07",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a9f0c7e98bb26ece3.jsonl"
+          }
+        ]
       }
     ]
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-11-07"
+    "status": "ok",
+    "em": "2026-11-07",
+    "comando": "node scripts/catalogo-funcoes.cjs variacao --raiz . --base 1d5782b9; bash scripts/testa-catalogo-funcoes.sh; bash scripts/testa-enxugar-estrutura.sh; bash scripts/testa-teto-skills.sh; bash scripts/testa-versao.sh; bash scripts/testa-plugin-codex.sh; node scripts/conferir-versao.cjs",
+    "saida": "variacao exit 0: nova → 15 cognitiva (+15) ... scripts/catalogo-funcoes.cjs:L393 variacao (listar dá 393); 26 → 35 cognitiva (+9) ... L513 principal; só scripts/catalogo-funcoes.cjs; última linha a de aproximação. ok: 180 falhou: 0; Casos: 33/33; teto 21 OK; versao 5 ok; codex exit 0; conferir-versao exit 0 (2.7.0 > origin/main 2.6.0); README variacao 1, untangle 0",
+    "head": "342338d0815bf2354ed463bb74577e9a3ec85e43"
   },
   "fechar": {
     "status": "pendente",
