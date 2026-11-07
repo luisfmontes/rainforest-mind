@@ -4,10 +4,12 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-2.5.1-1e5c3f?style=flat-square" alt="versão 2.5.1">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-2.5.2-1e5c3f?style=flat-square" alt="versão 2.5.2">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
+
+> English: [README.en.md](README.en.md) — snapshot congelado na 2.5.2; a versão canônica é esta.
 
 > ### O problema não é falta de ideia. É o que recebe luz agora.
 
