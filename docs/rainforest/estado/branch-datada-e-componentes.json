@@ -61,7 +61,7 @@
     "reaberturas": 2
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
@@ -71,7 +71,7 @@
         "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/f08c1282-6b5e-4e1c-a331-ff6f4feb39ef/subagents/agent-a7dced51c6bf054d7.jsonl"
       }
     ],
-    "achados": 3,
+    "achados": 0,
     "em": "2026-11-07",
     "voltas": [
       {
@@ -111,22 +111,34 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/f08c1282-6b5e-4e1c-a331-ff6f4feb39ef/subagents/agent-a7dced51c6bf054d7.jsonl"
           }
         ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a7dced51c6bf054d7",
+            "veredito": "ok",
+            "em": "2026-11-07",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/f08c1282-6b5e-4e1c-a331-ff6f4feb39ef/subagents/agent-a7dced51c6bf054d7.jsonl"
+          }
+        ]
       }
     ],
     "snapshot": {
-      "head": "5accc69568583a98b0bffe4518a81084d9815ffc",
+      "head": "9564f45440e3cacbd52a377960ff2ae106d3e18c",
       "caminhos_sujos": []
     },
     "base": "9e2f5400c77ad6d520275e35a509ad60be006c80",
-    "head": "5accc69568583a98b0bffe4518a81084d9815ffc"
+    "head": "9564f45440e3cacbd52a377960ff2ae106d3e18c"
   },
   "verificar": {
-    "status": "pendente",
-    "comando": "bash scripts/testa-catalogo-funcoes.sh",
-    "saida": "ok: 148   falhou: 0 (e: testa-estagio-ativo todos os casos: OK; testa-saude 94 ok, 0 falha(s); testa-aviso-duplicata ok: 57 falhou: 0; testa-plugin-codex exit 0; testa-abertura-mod-config bateria passou; versao 2.5.1)",
-    "sensor_externo": "bash scripts/testa-catalogo-funcoes.sh",
+    "status": "ok",
+    "comando": "node hooks/testa-portaria-fluxo-pulado.cjs",
+    "saida": "ok: 98   falhou: 0   skipped: 0 (catalogo 148/0, estagio-ativo 17/0 na volta anterior; lib inalterada)",
+    "sensor_externo": "node hooks/testa-portaria-fluxo-pulado.cjs",
     "em": "2026-11-07",
-    "head": "5accc69568583a98b0bffe4518a81084d9815ffc"
+    "head": "9564f45440e3cacbd52a377960ff2ae106d3e18c"
   },
   "fechar": {
     "status": "pendente",
