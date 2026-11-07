@@ -1,0 +1,80 @@
+Data: 2026-11-06
+Termos: slug sem a data, forwardRef, React.memo, leitura errada, complexas
+
+$ gh issue list --state all --search "slug sem a data" --limit 200 --json number,title,state
+[{"number":645,"state":"OPEN","title":"Regra 11: receita manda fluxo/<slug> e a portaria exige o slug sem a data"},{"number":610,"state":"CLOSED","title":"Portaria aceita só fluxo/<slug> exato: sem worktree por tarefa no despacho paralelo"},{"number":613,"state":"CLOSED","title":"Tarefas paralelas do plano não rodam em paralelo: o fluxo só é reconhecido na branch exata `fluxo/<slug>`"},{"number":571,"state":"CLOSED","title":"conferir-fluxo creep recusa plano com sufixo de marco e o revisor mede creep à mão"},{"number":447,"state":"CLOSED","title":"Portaria: fora-de-fluxo nao diz que a branch nao casou com o slug"},{"number":565,"state":"CLOSED","title":"Sessão fora de repo git: regra 10 sem saída para agente que escreve"},{"number":529,"state":"CLOSED","title":"Achado de revisao aprovada que cabe no PR nao tem caminho de volta para executar"},{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":225,"state":"CLOSED","title":"portaria: negação 'sem estágio ativo' lista o mesmo slug uma vez por worktree (~170 linhas repetidas)"},{"number":207,"state":"CLOSED","title":"poda-estagio.cjs devolve null em toda branch fluxo/<slug>: copia divergente do resolvedor canonico, bateria verde"},{"number":238,"state":"CLOSED","title":"estado.cjs marcar reabre executar por baixo do revisar em voo e aceita carimbo de tarefa inexistente"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"},{"number":378,"state":"CLOSED","title":"conferir-mutacao.cjs sai 1 sem veredito no Windows quando a raiz tem node_modules como junction"},{"number":379,"state":"CLOSED","title":"verificar não fecha em monorepo: a catraca roda toda bateria com --raiz na raiz do repo"},{"number":277,"state":"CLOSED","title":"foco.cjs nao tem comando para registrar avanco: a regra 5 obriga o que a 17 proibe"},{"number":148,"state":"CLOSED","title":"reaberto_por aceita texto livre do --json, e exigir recusa onde marcar deixa passar"},{"number":259,"state":"CLOSED","title":"cortarBytes duplicado entre memoria-sessao.cjs e contexto-sessao.cjs, com comentario afirmando reuso que nao existe"},{"number":25,"state":"CLOSED","title":"A regra de branch so conhece `main`, e nao tem nocao de dono — commitei em cima de outra sessao"},{"number":3,"state":"CLOSED","title":"conferir esta vermelho desde 11/08 e nao tem como ficar verde: 35 abertas sem gancho, e o reparar recusa sem texto a mao"},{"number":51,"state":"CLOSED","title":"As tres travas de isolamento falharam na borda: retomada de agente, janela principal, e o rastro da propria esteira"},{"number":38,"state":"CLOSED","title":"CORRIGE #25: a saida prescrita (branch nova) e o que derruba a outra sessao em diretorio compartilhado"}]
+
+
+$ gh issue list --state all --search "forwardRef" --limit 200 --json number,title,state
+[{"number":648,"state":"OPEN","title":"complexas: componente React tipado fora do catálogo e limites da leitura"}]
+
+
+$ gh issue list --state all --search "React.memo" --limit 200 --json number,title,state
+[{"number":648,"state":"OPEN","title":"complexas: componente React tipado fora do catálogo e limites da leitura"}]
+
+
+$ gh issue list --state all --search "leitura errada" --limit 200 --json number,title,state
+[{"number":648,"state":"OPEN","title":"complexas: componente React tipado fora do catálogo e limites da leitura"},{"number":206,"state":"CLOSED","title":"Design e doc de uso se contradizem sobre o mesmo mecanismo, e nada mede isso: dois revisores discordaram lendo o mesmo commit"},{"number":214,"state":"CLOSED","title":"Sessao isolada em worktree nao consegue atualizar o checkout principal — nem o dono pelo prefixo !"},{"number":4,"state":"CLOSED","title":"Worktree de agente nasce na base velha em pelo menos 2 de 8 despachos, e conferir-entrega.cjs nao ve arquivo autoexcluido por gitignore"},{"number":163,"state":"CLOSED","title":"REGRESSAO em testa-conferir-fluxo (verde em 0bb922c), mais duas vermelhas: uma bateria que nunca rodou em CI e um bloco sumido"},{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"},{"number":125,"state":"CLOSED","title":"Nenhum dado do rainforest tem copia fora da maquina — e a primeira pergunta e para onde"},{"number":160,"state":"CLOSED","title":"Quatro baterias leem o config.json real de quem as roda, e quem desliga um gate para si ve a suite vermelha sem pista da causa"},{"number":61,"state":"CLOSED","title":"Estende #21: o agente nao burla o criterio — ele o SUBSTITUI por um mais barato e devolve com o numero do original"},{"number":21,"state":"CLOSED","title":"Criterio 'a bateria sai 0' e satisfazivel por fora, e tres instrumentos de conferencia falharam junto"},{"number":238,"state":"CLOSED","title":"estado.cjs marcar reabre executar por baixo do revisar em voo e aceita carimbo de tarefa inexistente"},{"number":173,"state":"CLOSED","title":"O gate de publicacao barra merge de conteudo que ja esta na main — e engole o git add da mesma chamada"}]
+
+
+$ gh issue list --state all --search "complexas" --limit 200 --json number,title,state
+[{"number":648,"state":"OPEN","title":"complexas: componente React tipado fora do catálogo e limites da leitura"}]
+
+
+$ gh pr list --state all --search "slug sem a data" --limit 200 --json number,title,state
+[{"number":512,"state":"MERGED","title":"Versao 1.65.0: executar com camadas, retomada por trailer e painel do fluxo"},{"number":471,"state":"MERGED","title":"Portaria diz por que a branch ficou fora do fluxo (#447), 1.56.1"},{"number":416,"state":"MERGED","title":"Zerar as 12 Issues da revisao bimestral (1.42.0)"},{"number":202,"state":"MERGED","title":"Fluxo 8: plano do handover.cjs, com o regente.cjs cortado e o corte justificado"},{"number":234,"state":"MERGED","title":"Absorver de um plugin de terceiro o que vira trava: mensagem de commit, --confirmo, exit 69, duplicação, carimbos"},{"number":172,"state":"MERGED","title":"Fluxo 7: recibo de colheita — identidade verificavel do artefato entregue (1.1.0)"},{"number":213,"state":"MERGED","title":"Skill montar-corpus: wiki em markdown vira acervo, com o grafo tratado como entrada nao confiavel"},{"number":31,"state":"MERGED","title":"\"Nao e a main\" nao prova que a branch e sua (#25)"},{"number":119,"state":"MERGED","title":"Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos"},{"number":128,"state":"MERGED","title":"A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo"}]
+
+
+$ gh pr list --state all --search "forwardRef" --limit 200 --json number,title,state
+[{"number":649,"state":"MERGED","title":"Complexidade por função no enxugar (2.5.0)"}]
+
+
+$ gh pr list --state all --search "React.memo" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "leitura errada" --limit 200 --json number,title,state
+[{"number":649,"state":"MERGED","title":"Complexidade por função no enxugar (2.5.0)"},{"number":139,"state":"MERGED","title":"Gate de worktree: decidir escrita por token, e isentar o scratchpad da sessao"},{"number":222,"state":"MERGED","title":"Agentes em Claude ou Codex, por escolha do usuário (1.8.0)"},{"number":186,"state":"MERGED","title":"R1 (frente 2) + R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao"},{"number":60,"state":"MERGED","title":"Fecha a #53: a base do worktree de agente tem mecanismo, e a mutacao ganha a fixture"},{"number":46,"state":"MERGED","title":"Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo'"},{"number":6,"state":"MERGED","title":"Nasce o /divergir, e o CRLF para de custar byte na injecao"},{"number":213,"state":"MERGED","title":"Skill montar-corpus: wiki em markdown vira acervo, com o grafo tratado como entrada nao confiavel"},{"number":128,"state":"MERGED","title":"A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo"}]
+
+
+$ gh pr list --state all --search "complexas" --limit 200 --json number,title,state
+[{"number":649,"state":"MERGED","title":"Complexidade por função no enxugar (2.5.0)"}]
+
+
+$ git ls-remote --heads origin | grep -F "slug sem a data"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "forwardRef"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "React.memo"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "leitura errada"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "complexas"
+(vazio)
+
+$ git log --all --grep="slug sem a data" --oneline
+(vazio)
+
+$ git log --all --grep="forwardRef" --oneline
+(vazio)
+
+$ git log --all --grep="React.memo" --oneline
+(vazio)
+
+$ git log --all --grep="leitura errada" --oneline
+99c38d47 Corrige catraca_mutacao e registra distancia ate a origin/main
+268d3ce8 Vigias T4+T5: campo vazio nao e campo ok, e erro registrado que ninguem le
+cc1dc7a7 Vigias T4+T5: campo vazio nao e campo ok, e erro registrado que ninguem le
+b2582e39 Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos (#119)
+ea9d0286 Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos (#119)
+
+$ git log --all --grep="complexas" --oneline
+32be77c2 Complexidade por função no enxugar (2.5.0) (#649)
+
+$ cat <dados>/ideias.jsonl
+(vazio)
+
