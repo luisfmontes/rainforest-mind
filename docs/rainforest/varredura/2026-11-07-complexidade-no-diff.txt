@@ -1,0 +1,55 @@
+Data: 2026-11-07
+Termos: variacao, complexidade no diff, funções tocadas
+
+$ gh issue list --state all --search "variacao" --limit 200 --json number,title,state
+[{"number":541,"state":"CLOSED","title":"CI: shard 1 das baterias roda a 3-9 min do timeout de 35"},{"number":509,"state":"CLOSED","title":"memoria-assunto-prompt.cjs estoura o timeout de 5 s sob carga (UserPromptSubmit)"},{"number":81,"state":"CLOSED","title":"testa-orcamento.sh mede a mesa, nao o repo: verde no CI e vermelho local pelo mesmo commit"},{"number":153,"state":"CLOSED","title":"A main esta vermelha no CI: 4 baterias que so falham no runner"}]
+
+
+$ gh issue list --state all --search "complexidade no diff" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "funções tocadas" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "variacao" --limit 200 --json number,title,state
+[{"number":186,"state":"MERGED","title":"R1 (frente 2) + R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao"}]
+
+
+$ gh pr list --state all --search "complexidade no diff" --limit 200 --json number,title,state
+[{"number":649,"state":"MERGED","title":"Complexidade por função no enxugar (2.5.0)"}]
+
+
+$ gh pr list --state all --search "funções tocadas" --limit 200 --json number,title,state
+[{"number":651,"state":"MERGED","title":"Branch com slug datado e componentes React no complexas (2.5.1)"}]
+
+
+$ git ls-remote --heads origin | grep -F "variacao"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "complexidade no diff"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "funções tocadas"
+(vazio)
+
+$ git log --all --grep="variacao" --oneline
+030282a7e Fluxo nao-mente: executar ok de novo, com os 2 achados do revisar consertados
+06f8974df Lote 3 rodada 3: R12 criterio exige parenteses, F6 vigia sanitiza caminho antes do ERROS.md
+0391bbbf9 As tres costuras da esteira: decisao, opcao morta e creep deixam de evaporar (#9)
+6dbe53cf9 As tres costuras da esteira: decisao, opcao morta e creep deixam de evaporar (#9)
+60c871456 A metafora tinha 9 usos e zero explicacoes; agora ela e dita antes de ser usada
+7241b1ada A metafora tinha 9 usos e zero explicacoes; agora ela e dita antes de ser usada
+58fc1f36a modo-dev: rastreabilidade do diff, codigo morto alheio, expandir-contrair e portao do registro
+ae594a5cb modo-dev: rastreabilidade do diff, codigo morto alheio, expandir-contrair e portao do registro
+
+$ git log --all --grep="complexidade no diff" --oneline
+(vazio)
+
+$ git log --all --grep="funções tocadas" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+(vazio)
+
