@@ -95,6 +95,13 @@ primeira rodada porque um design já reimplementou uma Issue inteira depois de
 varrer só a `main` (`varri-so-a-main-e-duplique-feature`), e uma sessão apresentou
 o bloco 1 do design sem abrir cinco ideias relevantes.
 
+**Pergunte ao repositório que decisões já moram nos arquivos que a demanda vai tocar:**
+`node scripts/conferir-fluxo.cjs deriva --arquivo <arquivo>` para cada um. Ele lista, por
+design, as decisões cuja âncora de mutação (o `de:` do plano) está naquele arquivo, intacta ou
+perdida, com o commit que a tirou. Leia o design de cada decisão listada antes da primeira
+rodada: decisão intacta é restrição que o design novo herda; âncora perdida é deriva, e o
+design antigo pode estar afirmando o que o código já não faz.
+
 ## Território
 
 Depois do `iniciar`, antes da primeira rodada:

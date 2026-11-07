@@ -10,6 +10,10 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.8.0 — 2026-11-07
+
+- **Deriva entre design e código.** O `conferir-fluxo.cjs deriva` relê os designs já mergeados contra o código atual. A âncora de cada decisão é o `de:` da mutação das tarefas que a atendem, e cada uma sai intacta, sumiu ou arquivo sumiu, as duas últimas com o commit que tirou o trecho (inclusive quando ele saiu por um merge). Com `--arquivo`, responde que decisões moram num arquivo, e o `brainstorm` passa a rodar isso nos arquivos que a demanda vai tocar, antes da primeira rodada. É relatório: sai 0 e não barra nada.
+
 ## 2.7.0 — 2026-11-07
 
 - **O `enxugar --diff` abre pela variação de complexidade.** O subcomando novo `catalogo-funcoes.cjs variacao` mede, antes e depois, só as funções JS/TS e Dart que o diff tocou, incluindo o que ainda não foi commitado, e põe a maior subida primeiro (`8 → 19 cognitiva (+11)`), com as três contribuições que mais pesam. Função nova, removida e tocada sem variação aparecem como tais. A base padrão é a mesma do revisor (`merge-base` com a `origin`), e `--base` troca. É contexto para saber onde ler primeiro: não vira achado nem barra nada.

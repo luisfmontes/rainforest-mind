@@ -1,0 +1,121 @@
+Data: 2026-11-07
+Termos: deriva, drift, âncora
+
+$ gh issue list --state all --search "deriva" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "drift" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "âncora" --limit 200 --json number,title,state
+[{"number":449,"state":"CLOSED","title":"Deixado para depois evapora: pendentes somem no ok e o fechar nao confere"},{"number":110,"state":"CLOSED","title":"O batedor nunca ve as ideias: ideias.jsonl mora em ~/.rainforest e o ROOT cai no repo"},{"number":1,"state":"CLOSED","title":"Briefing nao diz o ato de entregar: subagente nomeado termina o trabalho e nao devolve (3 de 3)"},{"number":237,"state":"CLOSED","title":"gate-publicacao-destino le id publico do GitHub como telefone, e a mensagem manda confirmar sem haver como"},{"number":162,"state":"CLOSED","title":"testa-versao le 127.0.0.1 do README como semver e deixa a bateria vermelha na main"},{"number":254,"state":"CLOSED","title":"Catraca de mutacao: 'pulada' fecha o verificar como se fosse medida"},{"number":266,"state":"CLOSED","title":"conferir-mutacao muta a arvore compartilhada: quem ler naquela janela mede o mutante"},{"number":192,"state":"CLOSED","title":"Proibir background no briefing falhou duas vezes, com a proibicao escrita duas vezes no mesmo texto — falta checar a FORMA do retorno"},{"number":93,"state":"CLOSED","title":"A regua do batedor mede INSTALAR, mas o que a gente faz e ENXERTAR — 29 de 40 vereditos sao 'nao acopla'"},{"number":215,"state":"CLOSED","title":"Vermelho largo passa por prova: a catraca de mutacao le o exit code da bateria, nunca quantas assercoes cairam"},{"number":514,"state":"CLOSED","title":"gate-worktree barra comando só de leitura quando a linha junta 2>/dev/null com expansão de chaves {a,b}"}]
+
+
+$ gh pr list --state all --search "deriva" --limit 200 --json number,title,state
+[{"number":164,"state":"MERGED","title":"Scripts entregues derivam o home de quem roda, com trava"},{"number":154,"state":"MERGED","title":"README: porta de entrada em vez de diario de bordo"},{"number":67,"state":"MERGED","title":"O semear honra o slug, resolve o projeto pelo repo principal, e recusa em vez de devolver acervo vazio"},{"number":49,"state":"MERGED","title":"A memoria volta a ler o que ela mesma escreve"},{"number":62,"state":"MERGED","title":"As duas decisoes que estavam pendentes: --paralelo coexiste, e a statusline avisa a janela co-locada"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"}]
+
+
+$ gh pr list --state all --search "drift" --limit 200 --json number,title,state
+[{"number":324,"state":"MERGED","title":"prompts: tira arqueologia datada e drift da regra 10"}]
+
+
+$ gh pr list --state all --search "âncora" --limit 200 --json number,title,state
+[{"number":654,"state":"MERGED","title":"README.en.md: snapshot em inglês do README da 2.5.1"},{"number":617,"state":"MERGED","title":"Estado: fechar ok do ferramentas-do-fluxo (PR #615 mergeado)"},{"number":598,"state":"MERGED","title":"Apoio ao dev, lote 6: ferramentas do fluxo (1.80.0)"},{"number":595,"state":"MERGED","title":"Apoio ao dev, lote 3: baterias pelo diff, duplicata, regras com id, co-mudanca (1.77.0)"},{"number":597,"state":"MERGED","title":"Apoio ao dev, lote 5: harness (1.79.0)"},{"number":431,"state":"MERGED","title":"Versao 1.47.1: caminho acentuado nao acusa creep falso"},{"number":537,"state":"MERGED","title":"Livro: revisita do ruflo com o ruflo-mods lido no codigo"},{"number":635,"state":"MERGED","title":"Folga no teto de 16 KB de quatro skills (2.2.2)"},{"number":637,"state":"MERGED","title":"Release do GitHub sai sozinha a cada versão nova (2.3.0)"},{"number":321,"state":"MERGED","title":"Batedor: doze repos indicados avaliados pelo codigo"},{"number":280,"state":"CLOSED","title":"Livro de repos: ruflo e TencentDB-Agent-Memory"},{"number":590,"state":"MERGED","title":"Apoio ao dev, lote 1: captura limpa, memória moldurada, busca antes de construir (1.75.0)"},{"number":483,"state":"MERGED","title":"Achado que cabe no PR aberto entra nele, sem virar Issue"},{"number":526,"state":"MERGED","title":"conferir-entrega: --escopo pela regra de glob do creep (#518, 1.67.1)"},{"number":406,"state":"MERGED","title":"Revisao bimestral 2026-10-05: 214 observacoes triadas, v1.41.0"},{"number":469,"state":"MERGED","title":"Pendencia do fluxo so sai com destino (#449), versao 1.56.0"},{"number":630,"state":"MERGED","title":"Colheita: carimbo com hash real, exemplos prescritos contra o gate e regra 6 com sessao dona viva (2.2.0)"},{"number":111,"state":"MERGED","title":"Fecha #110: o batedor volta a enxergar as 202 ideias e observacoes abertas"},{"number":361,"state":"MERGED","title":"Vigias: falha recorrente com impressao digital enxertada do reef"},{"number":109,"state":"MERGED","title":"Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler"},{"number":315,"state":"MERGED","title":"Adapta o Rainforest Mind para o Codex (multihost, 1.25.0)"},{"number":308,"state":"MERGED","title":"regua: regua selada por construcao e keep/discard automatico (enxerto do autoresearch)"},{"number":297,"state":"MERGED","title":"zerar-issues-6: fronteira de repo na regra 6 e os restos da rodada 5"},{"number":45,"state":"CLOSED","title":"Gate de sessao co-locada e catraca de mutacao: duas familias reincidentes viram exit code"},{"number":12,"state":"MERGED","title":"O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook"},{"number":84,"state":"MERGED","title":"batedor: tres repos no livro — OpenViking, deepseek-harness e MiroFish"},{"number":119,"state":"MERGED","title":"Edicoes de regra dos cachos: a regra 12 parte em duas, mais regra 16, regra 3 e o cacho dos pequenos"},{"number":46,"state":"MERGED","title":"Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo'"},{"number":40,"state":"MERGED","title":"A statusline sai de ~/.claude e entra no plugin, e a bateria de saude para de vazar temporario"},{"number":52,"state":"MERGED","title":"Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo"},{"number":10,"state":"MERGED","title":"Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa"},{"number":255,"state":"MERGED","title":"A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241)"}]
+
+
+$ git ls-remote --heads origin | grep -F "deriva"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "drift"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "âncora"
+(vazio)
+
+$ git log --all --grep="deriva" --oneline
+d871ca93 Colheita pós-2.1.0: gate-pergunta-memoria, cobertura no executar ok e preflight da catraca (2.1.1) (#624)
+658b2c8a Um nome por projeto no banco de memoria (#435), versao 1.53.0 (#453)
+820983a3 executar rodada 9: fecha ok; o mutante sobrevivente do ramo onde morreu
+6df1e236 rodada 8: fecha os seis menores da revisao 7
+f6872939 revisar rodada 7: primeira com 0 bloqueantes; reprovado por 6 menores
+7655f385 Livro de repos: corrige o PR inventado e a frase incoerente da linha
+792c50bb plano: os tres artefatos que outra regua obrigou a criar ganham tarefa
+b0133d41 regra 10: diz onde o agentes.extra.json NAO vai, e o caso do outro dev
+0e2bc03c guias-sensores: marca @categoria em 40 pecas e o conferidor que exige
+b2482715 auditor: Régua 3 de técnicas defensivas (do claude-red) (#248)
+74bcea30 Exigir --confirmo em limpar-branches --forcar e limpar-worktrees --remover-sujo
+05919c37 Documentar exit 69, carimbo de base e gate de release nas skills
+64a0ce21 Exigir frase de confirmação ao fechar Issue
+bc778768 Design: acoplar o ponytail de verdade (7 itens)
+cd37302b Alvo de aresta, recusa antes da escrita, e o plano alinhado ao D9
+fa68491c Gate: placeholder de usuario nao e nome de ninguem
+5a282ae2 Gate: placeholder de usuario nao e nome de ninguem
+26b7316e Merge pull request #164 from luisfmontes/fix/caminho-pessoal-nos-scripts
+8e223389 Merge pull request #164 from luisfmontes/fix/caminho-pessoal-nos-scripts
+3c8a8542 Scripts entregues derivam o home de quem roda, com trava
+2a5149d8 Scripts entregues derivam o home de quem roda, com trava
+5e0a4c4e Fluxo 6 T4+T6: ganchos de portoes no estado, e a cobertura deixa de ser inerte
+aefaa17a Fluxo 6 T4+T6: ganchos de portoes no estado, e a cobertura deixa de ser inerte
+836140e9 Divida do merge com a main: nucleo da regra 10 encolhido para caber na catraca
+65223a8f Divida do merge com a main: nucleo da regra 10 encolhido para caber na catraca
+6e07275c Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README (#129)
+be0332c9 Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README (#129)
+7d4942f3 Fecha #77: catraca da ponte — e a ponte passa a gerar saida deterministica (#102)
+a3fbb403 Fecha #77: catraca da ponte — e a ponte passa a gerar saida deterministica (#102)
+20c88be7 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+d427f732 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+c3ab6cf1 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+62ca78d5 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+e44672a2 O semear honra o slug, resolve o projeto pelo repo principal, e recusa em vez de devolver acervo vazio (#67)
+b0df7ecc O semear honra o slug, resolve o projeto pelo repo principal, e recusa em vez de devolver acervo vazio (#67)
+f6c4bec0 Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo (#52)
+1d5b6312 Agente arqueologo: triagem, tres passadas e fatia dentro de um arquivo (#52)
+e1d2592c A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+bfc034d2 A captura passa a ser nossa, e a memoria passa a ter projeto (#24)
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+08991014 Nasce o status `descartada`: a ideia que nao vai acontecer sai da lista sem virar colhida
+a12edfb7 Nasce o status `descartada`: a ideia que nao vai acontecer sai da lista sem virar colhida
+398b8451 Sete repos entram no livro, e o que promete ler o codigo manda o agente nao perguntar
+e69bb2b2 Sete repos entram no livro, e o que promete ler o codigo manda o agente nao perguntar
+2fe99a04 README reescrito: o produto e a sessao legivel, nao o parqueamento de ideia
+53133dcd README reescrito: o produto e a sessao legivel, nao o parqueamento de ideia
+12bcf249 v0.40.0: motor de contexto separado, alarme quando as regras nao carregam, e /relatorio
+71c40bd5 v0.40.0: motor de contexto separado, alarme quando as regras nao carregam, e /relatorio
+874caf07 Relatorio 3 vira regra: briefing falsificavel, revisor e eficacia, v0.38.0
+e161a00f Relatorio 3 vira regra: briefing falsificavel, revisor e eficacia, v0.38.0
+
+$ git log --all --grep="drift" --oneline
+b46924c5 Merge pull request #324 from luisfmontes/chore/prompt-audit
+ebfd5eba versao 1.23.6: prompts sem arqueologia datada e drift da regra 10
+a56533fe prompts: tira arqueologia datada e drift da regra 10
+
+$ git log --all --grep="âncora" --oneline
+c8b7919e Folga no teto de 16 KB de quatro skills (2.2.2) (#635)
+e37ba660 Estado: fechar ok do ferramentas-do-fluxo (PR #615 mergeado) (#617)
+f882989a Lote A: saude, gate-fechar-issue e esperar-ci sem falso alarme (2.0.5) (#615)
+a2d89562 tarefa 6: âncora de testa-conferir-fluxo.sh atualizada
+f02843b9 docs: reancora contrato multihost na 1.21.1
+a1261582 Adiciona subcomando mostrar a conferir-regua.cjs
+6b746a1a tarefa 1: conferir-regua valida âncora e formato do manifesto
+ebe9dbb1 Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler (#109)
+2fd34af9 Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler (#109)
+c3ab6cf1 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+62ca78d5 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+40e3f3bd Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+2cc8788c Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+
+$ cat <dados>/ideias.jsonl
+{"id":"semear-deriva-projeto-do-cwd-e-quebra-em-worktree","titulo":"O semear.cjs deriva o projeto do cwd e ignora o argumento — em worktree ele devolve acervo vazio"}
+{"id":"sonda-de-drift-do-mapa-por-stat-e-hash","titulo":"O mapa da arqueologia nao sabe que envelheceu: sonda de drift stat-primeiro, hash-so-em-suspeita (lida no trailhq/Graft)"}
+{"id":"escada-de-confianca-derivada-da-estrategia","titulo":"CONFIRMADO/INFERIDO/LACUNA hoje depende do bom senso de quem escreve o mapa - no codebase-memory-mcp a confianca e DERIVADA da estrategia que resolveu o fato"}
+{"id":"subtrair-deriva-de-proposito","titulo":"Subtrair as cinco pecas que nao servem ao manifesto"}
+{"id":"preservacao-byte-a-byte-precisa-de-ancora-binaria-executavel","titulo":"Preservação byte a byte precisa de âncora binária executável"}
+{"id":"fluxo-de-dominio-por-percurso-com-validador","titulo":"Fluxo de negocio derivado por percurso no grafo de chamadas; o LLM so nomeia e cita id, um validador fecha"}
+{"id":"deriva-design-codigo-pos-merge","titulo":"Relatório de deriva entre design e código depois do merge"}
+
+
