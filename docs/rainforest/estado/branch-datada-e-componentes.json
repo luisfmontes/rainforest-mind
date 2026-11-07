@@ -61,7 +61,7 @@
     "reaberturas": 2
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
@@ -73,7 +73,6 @@
     ],
     "achados": 3,
     "em": "2026-11-07",
-    "tentativas": 2,
     "voltas": [
       {
         "volta": 1,
@@ -100,17 +99,34 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/f08c1282-6b5e-4e1c-a331-ff6f4feb39ef/subagents/agent-a7dced51c6bf054d7.jsonl"
           }
         ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a7dced51c6bf054d7",
+            "veredito": "ok",
+            "em": "2026-11-07",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/f08c1282-6b5e-4e1c-a331-ff6f4feb39ef/subagents/agent-a7dced51c6bf054d7.jsonl"
+          }
+        ]
       }
     ],
     "snapshot": {
-      "head": "9967552135d649812c24ec7143fb5fbcaa3981a1",
-      "caminhos_sujos": [
-        "docs/rainforest/estado/branch-datada-e-componentes.json"
-      ]
-    }
+      "head": "5accc69568583a98b0bffe4518a81084d9815ffc",
+      "caminhos_sujos": []
+    },
+    "base": "9e2f5400c77ad6d520275e35a509ad60be006c80",
+    "head": "5accc69568583a98b0bffe4518a81084d9815ffc"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-catalogo-funcoes.sh",
+    "saida": "ok: 148   falhou: 0 (e: testa-estagio-ativo todos os casos: OK; testa-saude 94 ok, 0 falha(s); testa-aviso-duplicata ok: 57 falhou: 0; testa-plugin-codex exit 0; testa-abertura-mod-config bateria passou; versao 2.5.1)",
+    "sensor_externo": "bash scripts/testa-catalogo-funcoes.sh",
+    "em": "2026-11-07",
+    "head": "5accc69568583a98b0bffe4518a81084d9815ffc"
   },
   "fechar": {
     "status": "pendente"
