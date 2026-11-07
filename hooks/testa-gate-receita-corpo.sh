@@ -59,6 +59,13 @@ roda "gh pr create --title t --body-file \"$INEX\""
 sai "(3) arquivo inexistente" 2
 tem "(3) arquivo inexistente" "Receita que passa:"
 tem "(3) arquivo inexistente" "Grave o corpo antes"
+tem "(3) arquivo inexistente" "não existe em $INEX"
+
+echo "== (4) /tmp do Git Bash =="
+roda "gh pr create --title t --body-file /tmp/rfm-$$.md"
+sai "(4) /tmp do Git Bash" 2
+tem "(4) /tmp do Git Bash" "/tmp do Git Bash"
+tem "(4) /tmp do Git Bash" "Receita que passa:"
 
 echo "== (5) --body com crase =="
 roda 'gh pr create --title t --body "uso de `x`"'
@@ -76,6 +83,20 @@ echo "== (7) vizinho legítimo: --body-file literal existente, sem fechamento ==
 printf 'corpo sem palavra de fechamento\n' > "$SBP/corpo-ok.md"
 roda "gh pr create --title t --body-file \"$SBP_WIN/corpo-ok.md\""
 sai "(7) vizinho legítimo" 0
+
+echo "== (8) diretório no lugar do arquivo =="
+roda "gh pr create --title t --body-file \"$SBP_WIN\""
+sai "(8) diretório" 2
+tem "(8) diretório" "EISDIR"
+tem "(8) diretório" "Receita que passa:"
+
+echo "== (9) heredoc ilegível cria o --body-file =="
+CMD9="$(printf 'cat > x9.md <<EOF\nCloses #$N\nEOF\ngh pr create --title t --body-file x9.md')"
+roda "$CMD9"
+sai "(9) heredoc ilegível" 2
+tem "(9) heredoc ilegível" "heredoc deste comando"
+tem "(9) heredoc ilegível" "Receita que passa:"
+nao_tem "(9) heredoc ilegível" "não consegui ler"
 
 echo
 echo "ok: $ok   falhou: $falhou"

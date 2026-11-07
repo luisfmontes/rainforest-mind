@@ -623,13 +623,13 @@ function extrairCorpoDoPR(segmento, cwdSegmento) {
       // disco primeiro decidia pelo conteudo VELHO (revisao da zerar-issues-16).
       const corpoCriado = corpoDeHeredocQueCria(COMANDO_INTEIRO, caminhoResolvido, cwdSegmento);
       if (corpoCriado !== null) {
-        return { tipo: "arquivo", conteudo: corpoCriado.legivel ? corpoCriado.corpo : null, legivel: corpoCriado.legivel };
+        return { tipo: "arquivo", conteudo: corpoCriado.legivel ? corpoCriado.corpo : null, legivel: corpoCriado.legivel, heredoc: true };
       }
       try {
         const conteudo = fs.readFileSync(caminhoResolvido, "utf8");
         return { tipo: "arquivo", conteudo, legivel: true };
-      } catch {
-        return { tipo: "arquivo", conteudo: null, legivel: false };
+      } catch (e) {
+        return { tipo: "arquivo", conteudo: null, legivel: false, caminho: arquivo, codigo: e && e.code };
       }
     }
   }
@@ -645,6 +645,14 @@ function bloqueia(motivo) {
 function bloqueiaCorpo(razao) {
   const receita = RECEITA_CORPO_PR;
   bloqueia(`BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\nRazão: ${razao}\n\n${receita}`);
+}
+
+// Por que o --body-file não foi lido (D2): caminho do Git Bash que o node não
+// enxerga, arquivo que não existe, ou o código do erro.
+function motivoDaLeitura(caminho, codigo) {
+  if (/^\/(?![A-Za-z](\/|$))/.test(caminho)) return `${caminho} é caminho do Git Bash: o gate roda em node no Windows e não enxerga o /tmp do Git Bash; use caminho absoluto do Windows.`;
+  if (codigo === "ENOENT") return `o arquivo não existe em ${caminho}.`;
+  return `erro ${codigo || "desconhecido"} ao ler ${caminho}.`;
 }
 
 // `WRAPPERS_DE_COMANDO`, `desempacotarWrapper` (agora
@@ -1063,10 +1071,16 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento, textoDoComando =
           `comando não pôde ser determinado com segurança (cd/pushd dinâmico ou ` +
           `não resolvível antes do 'gh').`
         );
+      } else if (corpoDoPR.tipo === "arquivo" && corpoDoPR.heredoc) {
+        bloqueiaCorpo(
+          `o heredoc deste comando, que cria o --body-file, tem $ ou crase com ` +
+          `delimitador sem aspas, e o gate não lê o que a substituição produz.`
+        );
       } else if (corpoDoPR.tipo === "arquivo") {
         bloqueiaCorpo(
           `não consegui ler o arquivo de corpo do PR — o gate o lê ANTES de o ` +
-          `comando rodar, e nada neste comando o cria por heredoc.`
+          `comando rodar, e nada neste comando o cria por heredoc. ` +
+          motivoDaLeitura(corpoDoPR.caminho, corpoDoPR.codigo)
         );
       } else if (corpoDoPR.tipo === "direto" && (corpoDoPR.conteudo.includes("$(") || corpoDoPR.conteudo.includes("`"))) {
         bloqueiaCorpo(
