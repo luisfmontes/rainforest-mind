@@ -176,6 +176,14 @@ tem_na "$MODO2" "função ler primeiro, não vira tag nem entra no \`líquido:\`
 tem_na "$MODO2" "\`não medido:\` se leem"; r4=$?
 [ $r1 -eq 0 ] && [ $r2 -eq 0 ] && [ $r3 -eq 0 ] && [ $r4 -eq 0 ]; caso "D7: modo 2 roda complexas depois do maiores, fora do líquido" $?
 
+# D6 (complexidade-no-diff): modo 1 abre com variacao, base do revisor, fora do líquido
+MODO1="$(sed -n '/^### Modo 1/,/^### Modo 2/p' "$SKILL_FILE" | tr '\n' ' ' | tr -s ' ')"
+tem_na "$MODO1" "catalogo-funcoes.cjs variacao --raiz <repo>"; r1=$?
+tem_na "$MODO1" "a mesma do revisor"; r2=$?
+tem_na "$MODO1" "mais subiu é onde ler primeiro"; r3=$?
+tem_na "$MODO1" "não vira tag nem entra no \`líquido:\`"; r4=$?
+[ $r1 -eq 0 ] && [ $r2 -eq 0 ] && [ $r3 -eq 0 ] && [ $r4 -eq 0 ]; caso "D6 (complexidade-no-diff): modo 1 abre com variacao, fora do líquido" $?
+
 # references: os dois prompts e o formato JSON dos grupos
 if [ -f "$REF_FILE" ]; then
   REF="$(cat "$REF_FILE")"
