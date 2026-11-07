@@ -243,6 +243,7 @@ aplicá-la a quem não ia instalar.
 | `vercel-labs/agent-browser` | 2026-10-23 | Instalar: nao instala | Instalar 4 (revisita: #1270 segue aberta, open no Git Bash trava; #43, #171 e #1498 fechadas) | 2026-10-23 |
 | `goul4rt/lgpd-skills` | 2026-11-06 | Instalar -> Enxertar: enxerta | **5** de Instalar (19 skills num pacote só, que escreve `.lgpd/` no repo auditado); fora das seis, as checagens e exemplos são presos a Prisma, Better Auth e Next; código de referência com defeito lido na fonte (awk de `extract-prisma-annotations.sh` só pega anotação na coluna 0, extension de cifra cobre só `create`/`findUnique`, `dateOfBirth` digitado reprovado pela própria skill de ECA Digital). Enxertado: tabela normativa fixa e "sem citação, sem recomendação", reescritos como Régua 4 do `auditor-de-seguranca` (fluxo lgpd-e-duplicata) | 2026-05-31 |
 | `obra/superpowers-lab` | 2026-11-06 | Instalar -> Enxertar: enxerta | **4** de Instalar (evidência de código: `extract-functions.sh` exige bash, `rg` e `jq`): `finding-duplicate-functions` é bash + `rg` + `jq` e só extrai TS/JS. Enxertado: as cinco fases (catálogo, haiku categoriza, separar, comparar por categoria, relatório) como passada de duplicata semântica do `enxugar`, com catálogo em node que lê Dart e conferência mecânica de `arquivo:linha` (fluxo lgpd-e-duplicata) | 2026-06-01 |
+| `lboel/untangle` | 2026-11-06 | Instalar -> Enxertar: enxerta | **1** de Instalar: não lê Dart (Dart só aparece como plano, `docs/BUILD_PLAN.md:577` do clone), e metade da âncora é o app Flutter; exige build local com tree-sitter nativo; AGPL-3.0-only (`LICENSE:1-2`). Enxertado sem copiar código: complexidade por função como subcomando `complexas` do `catalogo-funcoes.cjs` (fluxo complexidade-por-funcao, 2.5.0, #649); a variação no diff ficou na ideia `complexidade-no-diff-do-enxugar` | 2026-11-06 |
 
 ## Por que a pergunta 4 aceita código, e não só issue (2026-08-12)
 
@@ -290,3 +291,7 @@ declarada** por candidato) continua aberta.
 ## Rodada apoio-ao-dev, lote 1 (2026-10-24)
 
 Releitura dos repos do livro e dos créditos do README, em 10 grupos: relatorios/2026-10-24-releitura-do-livro.md (entram no lote 1 as peças D3, D4, D6, D7 e D8; o resto é backlog).
+
+## Rodada salvos-instagram (2026-11-06)
+
+Triagem das 144 ferramentas citadas nos posts salvos do Instagram do Luís, **só por README**: relatorios/2026-11-06-salvos-instagram.md. Sem código lido não há veredito (pergunta 4 e "Fila da primeira rodada"), então os repos de lá ficam **triados, não avaliados**, e não entram na tabela. A exceção é o `lboel/untangle`, lido no clone, que tem linha acima. Viraram ideia: `quebra-laco-de-falha-repetida` (TokenEconomizer), `verificar-artefato-de-desktop` (agent-desktop), `leitor-cego-do-plano-antes-do-codigo` e `deriva-design-codigo-pos-merge` (elephant-goldfish-model), `depurador-com-diagnostico-cego` (Raj9914/elephant-goldfish) e `decisao-de-framework-cita-doc-oficial` (addyosmani/agent-skills).
