@@ -11,18 +11,138 @@
     "em": "2026-11-07"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-11-07-receita-corpo-pr.md",
+    "tarefas": 3,
+    "paralelas": [],
+    "em": "2026-11-07"
   },
   "executar": {
-    "status": "pendente"
+    "status": "ok",
+    "catraca_mutacao": "2026-11-07",
+    "tarefas_ok": 3,
+    "tarefas": 3,
+    "comando": "bash hooks/testa-gate-receita-corpo.sh",
+    "saida": "ok: 39 falhou: 0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-receita-corpo.sh casos 1,2,3,5,6"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-receita-corpo.sh caso 3"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "só versão e texto"
+      }
+    ],
+    "em": "2026-11-07"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "ok",
+    "snapshot": {
+      "head": "05549a68a71875602b516b7ae482b796d9aa089d",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-11-07-receita-corpo-pr.json"
+      ]
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "acc90370b052a8e99",
+        "veredito": "ok",
+        "em": "2026-11-07",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-acc90370b052a8e99.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-11-07",
+    "achados": 2,
+    "base": "6244fcac",
+    "head": "05549a68",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ae0fd66c73b24f43c",
+            "veredito": "ok",
+            "em": "2026-11-07",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-ae0fd66c73b24f43c.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a9d41a0d878bae96b",
+            "veredito": "ok",
+            "em": "2026-11-07",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a9d41a0d878bae96b.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a1c74209cff888cbb",
+            "veredito": "ok",
+            "em": "2026-11-07",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a1c74209cff888cbb.jsonl"
+          }
+        ]
+      }
+    ],
+    "destinos": [
+      {
+        "pendente": "[baixa] caso (13) passa sem testar em checkout sob /tmp do Git Bash",
+        "destino": "descartada",
+        "motivo": "CI (windows-latest, /d/a/...) e worktrees reais ficam em caminho de drive, onde o (13) foi visto vermelho com a mutação; checkout sob /tmp não é uso do repo"
+      },
+      {
+        "pendente": "[baixa] motivo cita /tmp para qualquer raiz POSIX",
+        "destino": "descartada",
+        "motivo": "a orientação final (caminho absoluto do Windows) está certa para toda raiz POSIX; só a palavra /tmp é específica demais"
+      }
+    ]
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "em": "2026-11-07",
+    "comando": "bash hooks/testa-gate-receita-corpo.sh; bash hooks/testa-gate-fechar-issue.sh; node hooks/testa-gate-subagente-sem-gh.cjs; node scripts/conferir-versao.cjs",
+    "saida": "ok: 39 falhou: 0 / 420 ok, 0 falha(s) / ok: 102 falhou: 0 / ok versao 2.8.2",
+    "sensor_externo": "bash hooks/testa-gate-receita-corpo.sh",
+    "head": "05549a68a71875602b516b7ae482b796d9aa089d"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-11-07"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-11-07",
+      "de": "revisar",
+      "motivo": "revisão 1: caminho resolvido na mensagem (media), UNC e --body-file - (baixas), CHANGELOG exagera (baixa)"
+    },
+    {
+      "em": "2026-11-07",
+      "de": "revisar",
+      "motivo": "revisão 2: ramo Git Bash só no win32; caminho e resolvido comparados com a mesma barra"
+    },
+    {
+      "em": "2026-11-07",
+      "de": "revisar",
+      "motivo": "revisão 3: literal gh pr create na constante faz o gate-subagente-sem-gh barrar o próprio gate; asserção positiva em 10b e 11; maiúscula no motivo"
+    }
+  ]
 }
