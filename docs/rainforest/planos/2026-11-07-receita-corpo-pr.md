@@ -76,6 +76,7 @@ Forma prescrita:
 - A recusa do arquivo ilegível (sem heredoc) chama `bloqueiaCorpo(<razão da tarefa 1> + " " + motivoDaLeitura(corpoDoPR.caminho, corpoDoPR.codigo))`.
 - A mutação troca só o prefixo `if (codigo === "ENOENT") return` por `if (false) return`; o resto da linha fica.
 - *Emenda da revisão 1:* o retorno do `catch` leva também `resolvido: caminhoResolvido`, e `motivoDaLeitura(caminho, resolvido, codigo)` cita `<caminho> (resolvido para <resolvido com />)` quando os dois diferem (relativo), como o D2 pede ("o caminho resolvido"); `--body-file -` diz que lê do stdin; `--body-file` vazio diz que veio vazio; a regex do Git Bash exclui `//` (UNC). A bateria ganha `(10) relativo`, `(11) UNC` e `(12) stdin`.
+- *Emenda da revisão 2:* o ramo do Git Bash só vale com `process.platform === "win32"` (no Linux o `/tmp` é real); `caminho` e `resolvido` se comparam com a mesma barra, e a bateria ganha `(10b) contrabarra`.
 - **Bateria:** o caso `(3) arquivo inexistente` ganha a asserção `não existe em C:/rfm-nao-existe-$$/pr.md`; entram `(4) /tmp do Git Bash` (`--body-file /tmp/rfm-$$.md`, asserção `/tmp do Git Bash`), `(8) diretório` (`--body-file "$SBP_WIN"`, asserção `EISDIR`) e `(9) heredoc ilegível` (comando de duas linhas `cat > x.md <<EOF` / `Closes #$N` / `EOF` / `gh pr create --title t --body-file x.md`, montado com `printf`, asserção `heredoc deste comando` e ausência de `não consegui ler`).
 - `pronto quando` inclui também `bash hooks/testa-gate-fechar-issue.sh` saindo 0, sem edição.
 

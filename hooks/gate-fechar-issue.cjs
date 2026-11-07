@@ -652,9 +652,9 @@ function bloqueiaCorpo(razao) {
 function motivoDaLeitura(caminho, resolvido, codigo) {
   if (caminho === "-") return `--body-file - lê o corpo do stdin, que o gate não vê.`;
   if (!caminho) return `--body-file veio vazio.`;
-  if (/^\/(?![A-Za-z](\/|$)|\/)/.test(caminho)) return `${caminho} é caminho do Git Bash: o gate roda em node no Windows e não enxerga o /tmp do Git Bash; use caminho absoluto do Windows.`;
+  if (process.platform === "win32" && /^\/(?![A-Za-z](\/|$)|\/)/.test(caminho)) return `${caminho} é caminho do Git Bash: o gate roda em node no Windows e não enxerga o /tmp do Git Bash; use caminho absoluto do Windows.`;
   const r = String(resolvido || "").replace(/\\/g, "/");
-  const onde = r && r !== caminho ? `${caminho} (resolvido para ${r})` : caminho;
+  const onde = r && r !== caminho.replace(/\\/g, "/") ? `${caminho} (resolvido para ${r})` : caminho;
   if (codigo === "ENOENT") return `o arquivo não existe em ${onde}.`;
   return `erro ${codigo || "desconhecido"} ao ler ${onde}.`;
 }

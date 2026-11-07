@@ -95,6 +95,12 @@ roda "gh pr create --title t --body-file corpo-inexistente-$$.md"
 sai "(10) relativo" 2
 tem "(10) relativo" "(resolvido para $SBP_WIN/corpo-inexistente-$$.md)"
 
+echo "== (10b) absoluto com contrabarra não repete o caminho =="
+INEXB="C:\\rfm-nao-existe-$$\\pr.md"
+roda "gh pr create --title t --body-file \"$INEXB\""
+sai "(10b) contrabarra" 2
+nao_tem "(10b) contrabarra" "resolvido para"
+
 echo "== (11) UNC não é caminho do Git Bash =="
 roda "gh pr create --title t --body-file //rfm-srv-$$/share/pr.md"
 sai "(11) UNC" 2
