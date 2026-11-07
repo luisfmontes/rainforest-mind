@@ -1,6 +1,6 @@
 # Provas das tarefas 1 e 2 do fluxo 2026-11-07-leitores-cegos
 
-As saídas abaixo são as que os dois agentes devolveram no `executar`, coladas sem edição. Os dois
+Da tarefa 2, a saída do agente está colada abaixo sem edição. Da tarefa 1, há só o placar e o resumo dos achados: o texto literal ficou no transcrito da sessão. Os dois
 são `general-purpose`, com `model: sonnet`, despachados com o briefing literal das referências
 novas. O plano (`docs/rainforest/planos/2026-11-07-leitores-cegos.md`) traz só o resumo, e é
 aqui que está a evidência.
@@ -35,16 +35,22 @@ Causas candidatas, da mais para a menos provável:
   - Se as duas devolverem `"Painel"`, a causa está derrubada e o defeito é posterior (causa 2).
 
 2. Menos provável: `Painel` entra em `defs`, mas a medição o descarta ou o aninha.
-  [... a causa 2 traz a evidência em complexidade.cjs:362, :248 e :369-374, e a checagem por medirArquivo ...]
+- Evidência:
+  - `complexidade.cjs:362` localiza a ficha com `f.l === def.linha && f.t === def.nome`.
+  - O corpo vem de `acharCorpo` (`:248`), que lida com `<...>` de genérico e com tipo literal antes da seta. A anotação `React.FC` e o JSX (`<div>a</div>`, que o tokenizador trata como `<`/`>`) podem confundir a busca da seta ou do fechamento das chaves.
+  - `:369-374` descarta com `corpo passou por ...` ou `corpo não fechou`, mas esses casos iriam para `naoMedidas`. A saída real só tem a linha de aviso genérico, então esta causa só vale se `naoMedidas` for impresso e estiver vazio. É a hipótese mais fraca porque o sintoma não mostra nenhum aviso.
+- Checagem: depois de aplicar a checagem 1, rodar `node -e "const c=require('./scripts/lib/complexidade.cjs');const t=require('fs').readFileSync('C:/Users/Luis/AppData/Local/Temp/diag648/Painel.tsx','utf8');console.log(JSON.stringify(c.medirArquivo(t,'js',[{linha:2,nome:'Painel'},{linha:6,nome:'Simples'}]),null,1))"`.
+  - `Painel` em `medidas` com cognitiva maior que 0: a medição está sã e o defeito é só a causa 1.
+  - `Painel` em `naoMedidas`, ou ausente das duas listas: a causa 2 está confirmada.
 
 3. Mais fraca: filtro de candidatos ou de ordenação/`top` descartando o resultado.
-  [... a causa 3 traz a checagem com --top 100 ...]
+- Evidência: `candidatos()` (`catalogo-funcoes.cjs:143-147`) filtra por extensão, geração e teste. `.tsx` está em `EXTENSOES` (`definicoes.cjs:20`) e `Simples` do mesmo arquivo aparece, então o arquivo não é filtrado. O `top` padrão é 10 e há só uma função na saída, então o corte também não explica. Está aqui só por completude.
+- Checagem: rodar o repro com `--top 100`. Se `Painel` continuar ausente, a causa 3 cai. Se aparecer, o corte era o problema.
 
 diagnóstico completo
 ```
 
-As causas 2 e 3 estão resumidas entre colchetes. A transcrição inteira delas ficou na sessão, e o
-critério da tarefa só julga a causa nº 1.
+As três candidatas trazem `arquivo:linha` e uma checagem, e nenhuma propõe conserto, como o critério da tarefa pede.
 
 **Checagem discriminante, rodada pela janela principal na base:**
 
@@ -64,8 +70,9 @@ justamente essa regex. Ela passou a aceitar a anotação de tipo antes do `=`, e
 - Achados: 4 bloqueantes, 5 maiores e 3 menores.
 - Cada achado veio com o grau, a tarefa afetada, o trecho citado e a orientação.
 - O agente não propôs código.
-- `git status --short` dos dois worktrees, depois da volta, mostrou só a alteração que a janela
-  principal tinha feito no plano.
+- `git status --short` dos dois worktrees, depois da volta, não saiu vazio, ao contrário do que o
+  critério pedia. Ele mostrou só a alteração que a janela principal tinha feito no plano enquanto o
+  leitor rodava, e nenhuma alteração do leitor.
 
 **Resumo dos achados, na ordem do relato:**
 - **Bloqueantes:**
