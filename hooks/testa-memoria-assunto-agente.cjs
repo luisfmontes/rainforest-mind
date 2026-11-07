@@ -102,6 +102,22 @@ caso('prompt = original + \\n\\n + bloco "## Memória do assunto" (ate 3 linhas)
   return i === PEDIDO.length && p.startsWith(PEDIDO + '\n\n## Memória do assunto') &&
     linhas.length >= 1 && linhas.length <= 3 && linhas.every((l) => l.startsWith('['));
 });
+// D11 do design 2026-11-07-leitores-cegos: briefing cego (leitor do plano, diagnostico do depurar)
+// nao pode receber resumo de outra sessao, que carrega a hipotese que o passo quer esconder.
+caso('linha "Contexto: cego" no briefing: nao injeta a memoria (o glossario fica em testa-glossario-agente)', () =>
+  vazioSaiu0(rodar(payload({ session_id: 'sessao-m' }, { prompt: 'Contexto: cego\n' + PEDIDO }))));
+caso('"Contexto: cego" no meio do briefing e com CRLF tambem cala', () =>
+  vazioSaiu0(rodar(payload({ session_id: 'sessao-o' }, { prompt: PEDIDO.replace('\n', '\r\nContexto: cego\r\n') }))));
+caso('caixa diferente ou recuo nao e a linha: injeta como sempre', () => [
+  'contexto: cego\n' + PEDIDO, '  Contexto: cego\n' + PEDIDO,
+].every((prompt, k) => {
+  const r = rodar(payload({ session_id: 'sessao-p' + k }, { prompt }));
+  return r.codigo === 0 && saidaJson(r.saida).updatedInput.prompt.includes('\n\n## Memória do assunto');
+}));
+caso('"Contexto: cego" no meio de uma frase nao e a linha: injeta como sempre', () => {
+  const r = rodar(payload({ session_id: 'sessao-n' }, { prompt: 'Nota (Contexto: cego) solta.\n' + PEDIDO }));
+  return r.codigo === 0 && saidaJson(r.saida).updatedInput.prompt.includes('\n\n## Memória do assunto');
+});
 caso('nao emite permissionDecision', () => {
   const r = rodar(payload({ session_id: 'sessao-c' }));
   const h = saidaJson(r.saida);

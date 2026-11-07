@@ -1,0 +1,371 @@
+{
+  "slug": "2026-11-07-leitores-cegos",
+  "titulo": "Leitor cego do plano e diagnóstico cego no depurar",
+  "criado_em": "2026-11-07",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-11-07-leitores-cegos.md",
+    "em": "2026-11-07"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-11-07-leitores-cegos.md",
+    "tarefas": 3,
+    "paralelas": [
+      1,
+      2
+    ],
+    "em": "2026-11-07"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-11-07",
+    "tarefas_ok": 4,
+    "tarefas": 4,
+    "em": "2026-11-07",
+    "comando": "bash scripts/testa-versao.sh",
+    "saida": "ok: 5   falhou: 0",
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 1,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T16:35:43.459Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 1,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T16:35:43.459Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 1,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T16:35:43.459Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 2,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T16:49:08.686Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 2,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T16:49:08.686Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 2,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T16:49:08.686Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 3,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:06:22.698Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 3,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:06:22.698Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 3,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:06:22.698Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 4,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:23:48.542Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 4,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:23:48.542Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 4,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:23:48.542Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "e6d247c0",
+        "iteracao": 1,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:23:48.542Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 5,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:30:53.703Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 5,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:30:53.703Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 5,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:30:53.703Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "e6d247c0",
+        "iteracao": 2,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:30:53.703Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 6,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:37:51.803Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 6,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:37:51.803Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 6,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:37:51.803Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "e6d247c0",
+        "iteracao": 3,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:37:51.803Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 7,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T18:05:26.769Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 7,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T18:05:26.769Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 7,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T18:05:26.769Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "e6d247c0",
+        "iteracao": 4,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T18:05:26.769Z"
+      }
+    ],
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "n/a",
+        "motivo": "texto de skill; prova pelo despacho real do leitor cego"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "texto de skill e agente; prova pelo diagnostico cego real do #648 na base 32be77c2"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "bump de versao e notas"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-assunto-agente.cjs, caso linha Contexto: cego no briefing"
+      }
+    ],
+    "sensor_externo": "bash scripts/testa-versao.sh"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "76366cfb15efb729778cd4026cc6c4ab1b47359e",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a2bfcc6cca544e6bc",
+        "veredito": "ok",
+        "em": "2026-11-07",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a2bfcc6cca544e6bc.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-11-07",
+    "achados": 1,
+    "base": "964be3e2",
+    "head": "76366cfb",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a4588bc5ffe20928f",
+            "veredito": "ok",
+            "em": "2026-11-07",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a4588bc5ffe20928f.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a4ca565d3a56983a4",
+            "veredito": "ok",
+            "em": "2026-11-07",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a4ca565d3a56983a4.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "aaa6a742f1dbe31bb",
+            "veredito": "ok",
+            "em": "2026-11-07",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-aaa6a742f1dbe31bb.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 4,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a923852c8ef24814a",
+            "veredito": "ok",
+            "em": "2026-11-07",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a923852c8ef24814a.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 5,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a8f4cfc7c4a5b3290",
+            "veredito": "ok",
+            "em": "2026-11-07",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a8f4cfc7c4a5b3290.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 6,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a2663cde5207d18e5",
+            "veredito": "ok",
+            "em": "2026-11-07",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a2663cde5207d18e5.jsonl"
+          }
+        ]
+      }
+    ]
+  },
+  "verificar": {
+    "status": "ok",
+    "em": "2026-11-07",
+    "comando": "node hooks/testa-memoria-assunto-agente.cjs",
+    "saida": "18 ok, 0 falha(s); testa-versao ok 5 falhou 0; criterios T1-T3 sem mudanca desde a verificacao anterior",
+    "sensor_externo": "node hooks/testa-memoria-assunto-agente.cjs",
+    "head": "76366cfb15efb729778cd4026cc6c4ab1b47359e"
+  },
+  "fechar": {
+    "status": "pendente",
+    "em": "2026-11-07"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-11-07",
+      "de": "revisar",
+      "motivo": "revisao 1 ok com 5 achados de redacao que cabem no PR: Repro no despacho conjunto do depurador, gatilho sem tipo no D1 e CHANGELOG, metade do D4 na SKILL.md, achado [design] sobe ao usuario, saidas das provas T1/T2 no plano"
+    },
+    {
+      "em": "2026-11-07",
+      "de": "revisar",
+      "motivo": "revisao 2 ok com 3 achados: relatorio de provas dizia literal e tinha resumo, CHANGELOG omitia o repro do usuario, D3 e D5 mais estreitos que o texto"
+    },
+    {
+      "em": "2026-11-07",
+      "de": "revisar",
+      "motivo": "revisao 3 ok com 4 achados; o [media] 2 e defeito real: hooks/memoria-assunto-agente.cjs injeta memoria de assunto e glossario em todo subagente, inclusive no leitor cego. Conserto vira tarefa 4 (D11)"
+    },
+    {
+      "em": "2026-11-07",
+      "de": "revisar",
+      "motivo": "revisao 4 ok com 7 achados baixos: README promete cegueira total, runtime-e-orcamento sem a excecao, nome de caso, CRLF/caixa sem teste, referencia do depurar, relatorio, arquivos da T4"
+    },
+    {
+      "em": "2026-11-07",
+      "de": "revisar",
+      "motivo": "merge da origin/main (#654, 2.5.2) depois do revisar: conflitos em plugin.json, README e CHANGELOG resolvidos com 2.6.0 e as duas entradas"
+    },
+    {
+      "em": "2026-11-07",
+      "de": "verificar",
+      "motivo": "CI do PR 655: testa-versao.sh exige que todo semver do README seja a versao do plugin; a linha do link do #654 dizia 2.5.2. A linha passa a nao ter numero."
+    }
+  ]
+}

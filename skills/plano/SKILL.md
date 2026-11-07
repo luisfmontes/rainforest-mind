@@ -227,6 +227,13 @@ node scripts/conferir-fluxo.cjs cobertura --slug <slug>
 
 ## Fechar
 
+**Antes do `ok`, leitor cego** se o plano tem tarefa `implementar`, `configurar`,
+`teste` ou sem tipo: um `general-purpose` sonnet, sem a conversa, lê design e plano
+como o executor haiku leria. Briefing em `references/leitor-cego.md`. Achado
+bloqueante ou maior se corrige no plano antes do `ok` (ou ganha uma linha no plano
+dizendo por que fica); achado que muda uma `D<n>` é `[design]`: o fluxo para e a
+decisão sobe ao usuário (regra 16).
+
 ```
 node scripts/estado.cjs marcar --slug <slug> --estagio plano --status ok --json '{"arquivo":"<caminho do plano>","tarefas":N,"paralelas":[1,3]}'
 ```

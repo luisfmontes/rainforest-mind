@@ -85,7 +85,7 @@ hooks injetam memória durante a sessão, sob o cabeçalho `## Memória do assun
 | Canal | Hook (`hooks/hooks.json`) | Evento | Como entrega |
 |---|---|---|---|
 | Pedido | `memoria-assunto-prompt.cjs` | `UserPromptSubmit` | `additionalContext` |
-| Subagente | `memoria-assunto-agente.cjs` | `PreToolUse`, matcher `Agent` | `updatedInput`: o bloco vai ao fim do `prompt` do briefing, sem `permissionDecision` |
+| Subagente | `memoria-assunto-agente.cjs` | `PreToolUse`, matcher `Agent` | `updatedInput`: o bloco vai ao fim do `prompt` do briefing, sem `permissionDecision`. Briefing com a linha `Contexto: cego` sozinha não recebe bloco (D11 do design `2026-11-07-leitores-cegos`) |
 
 - **Teto:** 3 memórias por pedido ou briefing, bloco de no máximo **1.500 bytes**
   (`TETO_BYTES` em `hooks/lib/memoria-assunto.cjs`) — por volta de 480 tokens no
@@ -122,7 +122,7 @@ O `GLOSSARIO.md` da raiz do repositório entra em dois canais, sob o cabeçalho 
 | Canal | Hook (`hooks/hooks.json`) | Evento | Como entrega |
 |---|---|---|---|
 | Pedido | `memoria-assunto-prompt.cjs` | `UserPromptSubmit` | `additionalContext` |
-| Subagente | `memoria-assunto-agente.cjs` | `PreToolUse`, matcher `Task\|Agent` (`hooks/hooks.json:122`) | `updatedInput`: o bloco do glossário vai ao fim do `prompt` do briefing, antes do bloco de memória |
+| Subagente | `memoria-assunto-agente.cjs` | `PreToolUse`, matcher `Task\|Agent` (`hooks/hooks.json:122`) | `updatedInput`: o bloco do glossário vai ao fim do `prompt` do briefing, antes do bloco de memória. Briefing com a linha `Contexto: cego` sozinha não recebe nenhum dos dois |
 
 - **Teto:** 3 verbetes (`VERBETES_MAX = 3`, `hooks/lib/glossario.cjs:25`) e 1.800 B no bloco inteiro (`TETO_BYTES_GLOSSARIO = 1800`, `:26`). Cada linha de verbete tem no máximo 900 B (`BYTES_MAX_VERBETE = 900`, `:27`); linha maior não entra (`:244`), e se o bloco passar de 1.800 B a última linha sai (`:250-251`).
 - **Casamento:** só entra verbete cujo termo casa com o texto do pedido ou do briefing (`casarVerbetes`, `memoria-assunto-prompt.cjs:83` e `memoria-assunto-agente.cjs:24`).

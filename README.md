@@ -4,12 +4,12 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-2.5.2-1e5c3f?style=flat-square" alt="versão 2.5.2">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-2.6.0-1e5c3f?style=flat-square" alt="versão 2.6.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
 
-> English: [README.en.md](README.en.md) — snapshot congelado na 2.5.2; a versão canônica é esta.
+> English: [README.en.md](README.en.md) — snapshot congelado numa versão anterior (a versão está no topo dele); a versão canônica é esta.
 
 > ### O problema não é falta de ideia. É o que recebe luz agora.
 
@@ -282,7 +282,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `divergir` | **Antes** do brainstorm: seis frames isolados em paralelo mais um crítico cego. Devolve material, não decide |
 | `arqueologia` | Estágio 0, opcional: mapeia a fatia de legado que a demanda toca |
 | `/brainstorm` | Estágio 1: entrevista adversarial em árvore de decisão, grava o design |
-| `plano` | Estágio 2: tarefas tipadas, dependência declarada, critério falsificável; tarefa que cria código novo declara a busca em `busca:` (`scripts/conferir-busca.cjs`) |
+| `plano` | Estágio 2: tarefas tipadas, dependência declarada, critério falsificável; tarefa que cria código novo declara a busca em `busca:` (`scripts/conferir-busca.cjs`); antes do `ok`, um leitor sem a conversa lê o plano como o executor leria |
 | `executar` | Estágio 3: despacha agentes, cada um em worktree isolado |
 | `revisar` | Estágio 4: contexto zerado, escopo fixado pelo diff — o relato não é fonte |
 | `verificar` | Estágio 5: roda o artefato real e cola a saída |
@@ -307,7 +307,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `/conta` | Sem argumento: a conta em uso de cada pasta e o uso das duas contas. `/conta pessoal` ou `/conta trabalho`: troca na mão a pasta da sessão (`--pasta` escolhe a outra) (sem volta automática até a próxima troca manual). `/conta preparar pessoal\|trabalho`: prepara o login de reserva. `/conta unificar [--aplicar] [--profile <arquivo>]`: junta a pasta pessoal na de trabalho, com relatório antes de gravar ([passo a passo](#juntar-as-duas-pastas-numa-só)). Recusa com o Claude aberto, até no relatório: rode num terminal sem Claude aberto. É a forma de trocar a conta de uma pasta, no lugar do antigo `/transferir claude`. Detalhe na seção [Troca automática de conta](#troca-automática-de-conta) |
 | `/ponte` | Gera `CLAUDE.md`, `AGENTS.md` ou `GEMINI.md` ([detalhe](docs/pontes.md)) |
 | `modo-dev` | Escada YAGNI, causa raiz antes de remendo, rastreabilidade do diff |
-| `depurar` | Constrói o loop de feedback **antes** de qualquer hipótese |
+| `depurar` | Constrói o loop de feedback **antes** de qualquer hipótese; um diagnóstico cego, que recebe só o sintoma e o repro, concorre com as hipóteses da sessão |
 | `enxugar` | Lista (nunca aplica) código morto, inflação e abstração não usada, num diff ou no repo inteiro. No repo inteiro abre pelos maiores arquivos e pelas funções mais complexas (`catalogo-funcoes.cjs complexas`: complexidade cognitiva e ciclomática por função JS/TS e Dart, com as três contribuições que mais pesam; medida aproximada, por leitura de texto) e roda a passada de **duplicata semântica** — função de nome diferente e mesma intenção: `scripts/catalogo-funcoes.cjs` cataloga as funções (JS/TS, Dart, Python, ADVPL), um agente haiku agrupa por domínio, um sonnet por grupo compara, e o catálogo confere cada `arquivo:linha` antes de virar achado `duplicar:` |
 | `analisar` | Análise em notebook: uma pergunta por vez, revisão crítica do achado |
 
@@ -480,7 +480,7 @@ A memória chega por três caminhos, cada um com o seu evento:
 |---|---|---|
 | **Abertura** | `SessionStart` (ou o mod) | O bloco `## Memória (corpus residentes)`, escolhido pela recência. **Não mudou.** |
 | **Pedido** | `UserPromptSubmit` | Até **3 memórias** de qualquer projeto que tratam do assunto do pedido, sob o cabeçalho `## Memória do assunto`. Não repete o que a sessão já recebeu (nem o que a abertura serviu) e só entra o que passa do limiar de relevância (bm25 ≤ -10, buscando pelos 30 termos mais raros do pedido e descartando palavras presentes em mais de 2% das memórias). Pedido que começa por `/` ou com menos de 3 palavras úteis é ignorado. |
-| **Subagente** | `PreToolUse` da ferramenta `Agent` | O mesmo bloco, acrescentado ao **fim do briefing** do subagente, pelo `updatedInput`. O hook só reescreve o texto do briefing; não decide permissão. Cada subagente começa do zero, então recebe a memória do assunto mesmo que a sessão já a tenha recebido. |
+| **Subagente** | `PreToolUse` da ferramenta `Agent` | O mesmo bloco, acrescentado ao **fim do briefing** do subagente, pelo `updatedInput`. O hook só reescreve o texto do briefing; não decide permissão. Cada subagente começa do zero, então recebe a memória do assunto mesmo que a sessão já a tenha recebido. Briefing com a linha `Contexto: cego` sozinha (o leitor cego do `plano` e o diagnóstico cego do `depurar`) não ganha nenhum dos dois blocos, nem memória nem glossário. O que o harness entrega a todo subagente (CLAUDE.md, índice de memória, escada do `SubagentStart`) continua chegando. |
 
 Sem candidata acima do limiar, nada é injetado. Cada bloco tem no máximo
 **1.500 bytes**. O projeto atual só desempata entre candidatas de mesma
