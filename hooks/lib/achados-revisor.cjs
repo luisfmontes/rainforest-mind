@@ -236,5 +236,5 @@ function fimDoItem(linhas, indice) {
 
 module.exports = {
   contarAchados, incoerencia, listarAchados, itensAchados,
-  preexistentesNoDiff, tirarMarcaPreexistente, fimDoItem,
+  preexistentesNoDiff, tirarMarcaPreexistente, fimDoItem, baseDoDiff,
 };

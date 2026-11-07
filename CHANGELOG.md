@@ -10,6 +10,10 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.7.0 — 2026-11-07
+
+- **O `enxugar --diff` abre pela variação de complexidade.** O subcomando novo `catalogo-funcoes.cjs variacao` mede, antes e depois, só as funções JS/TS e Dart que o diff tocou, incluindo o que ainda não foi commitado, e põe a maior subida primeiro (`8 → 19 cognitiva (+11)`), com as três contribuições que mais pesam. Função nova, removida e tocada sem variação aparecem como tais. A base padrão é a mesma do revisor (`merge-base` com a `origin`), e `--base` troca. É contexto para saber onde ler primeiro: não vira achado nem barra nada.
+
 ## 2.6.0 — 2026-11-07
 
 - **O `plano` passa por um leitor cego antes do `ok`.** Quando o plano tem tarefa de implementar, configurar ou teste (ou sem tipo), um agente sonnet que nunca viu a conversa lê o design e o plano como o executor haiku vai ler e aponta onde o texto deixa uma decisão para quem implementa, com passo vago ou critério que não roda. Achado bloqueante ou maior se corrige no plano antes do `ok`, e achado que muda uma decisão do design para o fluxo e sobe ao usuário. O briefing está em `skills/plano/references/leitor-cego.md`.
