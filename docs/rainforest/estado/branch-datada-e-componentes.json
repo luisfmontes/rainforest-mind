@@ -1,0 +1,154 @@
+{
+  "slug": "branch-datada-e-componentes",
+  "titulo": "Issues #645 e #648: branch com slug datado e componentes React no catálogo",
+  "criado_em": "2026-11-06",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/branch-datada-e-componentes.md",
+    "em": "2026-11-06"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/branch-datada-e-componentes.md",
+    "tarefas": 4,
+    "paralelas": [
+      [
+        1,
+        2
+      ],
+      [
+        3
+      ],
+      [
+        4
+      ]
+    ],
+    "em": "2026-11-07"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-11-07",
+    "tarefas_ok": 4,
+    "tarefas": 4,
+    "comando": "node hooks/testa-portaria-fluxo-pulado.cjs",
+    "saida": "ok: 98   falhou: 0   skipped: 0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-estagio-ativo.cjs, #645: branch fluxo/<slug datado> casa com o fluxo"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-catalogo-funcoes.sh, caso 15 (Bar e Baz)"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-catalogo-funcoes.sh, caso 16 (a) método que atravessa o vizinho"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "n/a",
+        "motivo": "tarefa so de texto e versao"
+      }
+    ],
+    "em": "2026-11-07",
+    "reaberturas": 2
+  },
+  "revisar": {
+    "status": "ok",
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a7dced51c6bf054d7",
+        "veredito": "ok",
+        "em": "2026-11-07",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/f08c1282-6b5e-4e1c-a331-ff6f4feb39ef/subagents/agent-a7dced51c6bf054d7.jsonl"
+      }
+    ],
+    "achados": 0,
+    "em": "2026-11-07",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a8fa897a1f9edcdec",
+            "veredito": "reprovado",
+            "em": "2026-11-07",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/f08c1282-6b5e-4e1c-a331-ff6f4feb39ef/subagents/agent-a8fa897a1f9edcdec.jsonl"
+          },
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a5b2c876906bf587f",
+            "veredito": "reprovado",
+            "em": "2026-11-07",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/f08c1282-6b5e-4e1c-a331-ff6f4feb39ef/subagents/agent-a5b2c876906bf587f.jsonl"
+          },
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a7dced51c6bf054d7",
+            "veredito": "ok",
+            "em": "2026-11-07",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/f08c1282-6b5e-4e1c-a331-ff6f4feb39ef/subagents/agent-a7dced51c6bf054d7.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a7dced51c6bf054d7",
+            "veredito": "ok",
+            "em": "2026-11-07",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/f08c1282-6b5e-4e1c-a331-ff6f4feb39ef/subagents/agent-a7dced51c6bf054d7.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a7dced51c6bf054d7",
+            "veredito": "ok",
+            "em": "2026-11-07",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/f08c1282-6b5e-4e1c-a331-ff6f4feb39ef/subagents/agent-a7dced51c6bf054d7.jsonl"
+          }
+        ]
+      }
+    ],
+    "snapshot": {
+      "head": "9564f45440e3cacbd52a377960ff2ae106d3e18c",
+      "caminhos_sujos": []
+    },
+    "base": "9e2f5400c77ad6d520275e35a509ad60be006c80",
+    "head": "9564f45440e3cacbd52a377960ff2ae106d3e18c"
+  },
+  "verificar": {
+    "status": "ok",
+    "comando": "node hooks/testa-portaria-fluxo-pulado.cjs",
+    "saida": "ok: 98   falhou: 0   skipped: 0 (catalogo 148/0, estagio-ativo 17/0 na volta anterior; lib inalterada)",
+    "sensor_externo": "node hooks/testa-portaria-fluxo-pulado.cjs",
+    "em": "2026-11-07",
+    "head": "9564f45440e3cacbd52a377960ff2ae106d3e18c"
+  },
+  "fechar": {
+    "status": "pendente",
+    "em": "2026-11-07"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-11-07",
+      "de": "verificar",
+      "motivo": "CI vermelho: testa-portaria-fluxo-pulado caso L presumia que fluxo/<slug datado> nao casa (#447), o que o #645 muda"
+    }
+  ]
+}

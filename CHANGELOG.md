@@ -10,6 +10,13 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.5.1 — 2026-11-07
+
+- **A branch `fluxo/<slug>` com o slug datado passa pela portaria (#645).** Seguir a receita da regra 11 com o slug do `brainstorm` (`2026-11-03-tema`) criava a branch `fluxo/2026-11-03-tema`, e a portaria recusava todo despacho por não reconhecer o fluxo. Agora as duas formas valem, com e sem a data, também para tarefa paralela (`-t<n>`) e para o caminho leve.
+- **`/saude` volta a dizer de quem é a branch em `fluxo/<slug>`.** O aviso "ESTA branch tem dono" só disparava em branch sem o prefixo `fluxo/`, que não é a convenção. O casamento slug × branch agora é uma função só, a mesma da portaria.
+- **`enxugar` mede os componentes React (#648).** `const Foo: React.FC<P> = (...) => {`, `React.memo(function ...)` e `forwardRef<T>((...) => ...)` entram no catálogo de funções, então aparecem no `complexas` e na duplicata semântica; o aviso de duplicata na edição também os vê.
+- **Leitura da complexidade mais certa.** Regex logo depois do `if (...)`, `{page}/{pages}` em texto JSX e `if` sem chave nem `;` deixam de distorcer a nota; método que engole o vizinho sai como "não medido" em vez de nota errada; e `const total = (a + b) * c` e sobrecarga TS sem `;` não aparecem mais como "leitura errada".
+
 ## 2.5.0 — 2026-11-06
 
 - **`enxugar` diz quais funções são as mais confusas.** No modo repo inteiro, depois dos maiores arquivos, o subcomando novo `catalogo-funcoes.cjs complexas` lista as funções JS/TS e Dart de maior complexidade cognitiva (aninhamento pesa mais que ramos em fila), com a ciclomática ao lado e as três linhas que mais pesaram na nota. A medida é aproximada, feita por leitura de texto e sem parser, e a saída diz o que não mediu (Python e ADVPL, ou corpo que não fechou). É contexto para escolher o que ler primeiro, não achado.

@@ -30,7 +30,10 @@ const REGRAS = {
   topo: {
     js: [
       /^(?:export\s+(?:default\s+)?)?(?:async\s+)?function\s+([\w$]+)/,
-      /^(?:export\s+)?(?:const|let|var)\s+([\w$]+)\s*=\s*(?:async\b|\()/,
+      // Seta, `function` ou componente envolvido (`memo(`, `forwardRef<T>(`, com ou sem `React.`),
+      // com anotação de tipo opcional antes do `=` (#648): `const Foo: React.FC<P> = ({ a }) => {`.
+      // A anotação aceita `=>` dentro dela (`const f: (a: T) => void = (a) => {`).
+      /^(?:export\s+)?(?:const|let|var)\s+([\w$]+)\s*(?::(?:[^=]|=>)+?)?=\s*(?:async\b|\(|function\b|(?:React\.)?(?:memo|forwardRef)\s*[(<])/,
       /^(?:export\s+)?class\s+([\w$]+)/,
       /^exports\.([\w$]+)\s*=/,
     ],

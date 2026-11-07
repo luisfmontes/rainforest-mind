@@ -5,15 +5,16 @@
  * Retorna o estágio ativo (próximo não-fechado) do fluxo cuja branch atual
  * casa com o slug do arquivo de estado, sem precisar da slug explícita.
  *
- * Padrão copiado de scripts/saude.cjs:138-162 — remove o prefixo de data
- * (`^\d{4}-\d{2}-\d{2}-`) e compara com a branch. A convenção vem de
- * skills/rainforest-mind/references/regra-11.md:32.
+ * O casamento slug × branch mora em ./slug-branch.cjs (D2 do design
+ * branch-datada-e-componentes), reexportado daqui: slug inteiro, sem a data ou
+ * sem o `fluxo-<N>-`, e o sufixo `-t<n>` de tarefa paralela.
  */
 
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { caminhoExecutavel } = require('./resolver-executavel.cjs');
+const { casaSlugComBranch, branchEsperada } = require('./slug-branch.cjs');
 
 // Lógica oficial de fechamento e de próximo estágio: vem do `estado.cjs`, que é
 // o dono dela. O caminho é relativo a `__dirname`, não ao cwd — resolve igual
@@ -68,9 +69,6 @@ function resolver({ cwd }) {
   // 2. Remover prefixos tipo 'fluxo/' (convenção de branch)
   // A branch pode ser 'fluxo/memoria-e-dados' ou 'memoria-e-dados'
   const branchBase = branch.replace(/^.*?\//, '');
-  // Issue #613/#610 (D2): worktree de tarefa paralela fora de repo tem branch
-  // `fluxo/<slug>-t<n>`. Só dígitos depois de `-t`; sem casamento exato, vale esta.
-  const branchTarefa = branchBase.replace(/-t\d+$/, '');
 
   // 3. Ler arquivos de estado de `docs/rainforest/estado/`
   const dirEstado = path.join(cwd, 'docs', 'rainforest', 'estado');
@@ -84,12 +82,15 @@ function resolver({ cwd }) {
 
   if (!arquivos.length) return null;
 
-  // 4. Encontrar candidatos: arquivos cujo slug (pós-data) casa com a branch
-  // e que têm estágio aberto
+  // 4. Candidatos: arquivos cujo slug casa com a branch (`casaSlugComBranch`) e que
+  // têm estágio aberto. Ambiguidade continua negando: dois arquivos que casam com
+  // estágio aberto viram dois candidatos e o `candidatos.length !== 1` devolve null.
   let candidatos = [];
 
   for (const arquivo of arquivos) {
     const slug = arquivo.replace(/\.json$/, '');
+    const casa = casaSlugComBranch(slug, branchBase);
+    if (!casa) continue;
     let estado;
 
     // Ler o JSON
@@ -102,28 +103,7 @@ function resolver({ cwd }) {
     }
 
     if (!estado || typeof estado !== 'object') continue;
-
-    // Extrair o slug sem o prefixo de data (`^\d{4}-\d{2}-\d{2}-`)
-    // Padrão: 2026-08-17-memoria-e-dados-do-rainforest
-    const slugSemData = slug.replace(/^\d{4}-\d{2}-\d{2}-/, '');
-
-    // ...e sem o prefixo de numeracao de fluxo (`fluxo-<N>-`), que a convencao
-    // `<data>-<branch>` da regra 11 nao previa mas o repo passou a usar: o
-    // estado do fluxo 9 se chama `fluxo-9-portaria` e a branch dele e
-    // `fluxo/portaria`. Sem esta segunda forma, `resolver` devolvia `null` na
-    // branch real — medido em 2026-09-01 — e a portaria, que e fail-closed,
-    // negaria TODO despacho justamente no repositorio que a implementa.
-    //
-    // Ambiguidade continua negando: se `portaria.json` e `fluxo-9-portaria.json`
-    // existirem os dois com estagio aberto, os dois viram candidato e o
-    // `candidatos.length !== 1` la embaixo devolve `null`, como antes.
-    const slugSemNumeroDeFluxo = slugSemData.replace(/^fluxo-\d+-/, '');
-
-    // Verificar se alguma das duas formas do slug casa com a branch inteira
-    // (exato) ou com a branch sem o sufixo de tarefa (`-t<n>`)
-    const casaExato = slugSemData === branchBase || slugSemNumeroDeFluxo === branchBase;
-    const casaTarefa = slugSemData === branchTarefa || slugSemNumeroDeFluxo === branchTarefa;
-    if (!casaExato && !casaTarefa) continue;
+    const casaExato = casa === 'exato';
 
     // Verificar se há estágio aberto (próximo !== null)
     const prox = proximo(estado);
@@ -178,7 +158,6 @@ function diagnosticar({ cwd }, limite = 3) {
     }).trim();
     if (!branch || branch === 'HEAD') return null;
     const branchBase = branch.replace(/^.*?\//, '');
-    const branchSemTarefa = branchBase.replace(/-t\d+$/, '');
     const dirEstado = path.join(cwd, 'docs', 'rainforest', 'estado');
     if (!fs.existsSync(dirEstado)) return { branch, branchBase, abertos: [], casados: 0 };
     const abertos = [];
@@ -193,11 +172,11 @@ function diagnosticar({ cwd }, limite = 3) {
         continue;
       }
       if (!estado || typeof estado !== 'object' || proximo(estado) === null) continue;
-      const slugSemData = slug.replace(/^\d{4}-\d{2}-\d{2}-/, '');
-      const semNumero = slugSemData.replace(/^fluxo-\d+-/, '');
-      if (slugSemData === branchBase || semNumero === branchBase) exatos++;
-      else if (slugSemData === branchSemTarefa || semNumero === branchSemTarefa) tarefas++;
-      abertos.push({ slug, esperado: `fluxo/${semNumero} ou fluxo/${semNumero}-t<n>`, d: Math.min(distancia(branchBase, slugSemData), distancia(branchBase, slug)) });
+      const casa = casaSlugComBranch(slug, branchBase);
+      if (casa === 'exato') exatos++;
+      else if (casa === 'tarefa') tarefas++;
+      const curta = branchEsperada(slug);
+      abertos.push({ slug, esperado: `fluxo/${curta} ou fluxo/${curta}-t<n>`, d: Math.min(distancia(branchBase, curta), distancia(branchBase, slug)) });
     }
     abertos.sort((x, y) => x.d - y.d || x.slug.localeCompare(y.slug));
     const casados = exatos > 0 ? exatos : tarefas;
@@ -207,4 +186,4 @@ function diagnosticar({ cwd }, limite = 3) {
   }
 }
 
-module.exports = { resolver, diagnosticar };
+module.exports = { resolver, diagnosticar, casaSlugComBranch };

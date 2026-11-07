@@ -570,12 +570,15 @@ console.log("== K. plugin copiado em pasta com espaco ==");
   descartar(repo);
 }
 
-// == L. Issue #447: branch com o slug inteiro (com data) nao casa, e a recusa diz por que ==
+// == L. Issue #447: branch que nao casa com nenhum slug aberto, e a recusa diz por que ==
+// Ate a 2.5.0 o exemplo era a branch com o slug inteiro (com data). Desde a #645 (design
+// branch-datada-e-componentes, D1) ela casa; o diagnostico se prova com um nome errado de verdade,
+// e a branch datada ganha a prova positiva no L6.
 console.log("== L. branch que nao casa com o slug: a recusa nomeia branch, esperado e abertos ==");
 {
   const repo = novoRepo();
   const wt = path.join(repo.sbx, "wt-l");
-  git(repo.main, ["worktree", "add", "-q", "-b", "fluxo/2026-10-08-glossario-compartilhado", wt]);
+  git(repo.main, ["worktree", "add", "-q", "-b", "fluxo/glossario-compartilhad", wt]);
   fs.mkdirSync(path.join(wt, "docs", "rainforest", "estado"), { recursive: true });
 
   const ini = estado(repo, wt, ["iniciar", "--slug", "2026-10-08-glossario-compartilhado", "--titulo", "glossario"]);
@@ -588,11 +591,19 @@ console.log("== L. branch que nao casa com o slug: a recusa nomeia branch, esper
   caso("L1 executor sai 2 (fora-de-fluxo)",
     bloq.status === 2 && /estagio aberto: fora-de-fluxo/.test(err), `exit=${bloq.status} stderr=${err}`);
   caso("L2 stderr nomeia a branch lida",
-    err.includes("branch lida: 'fluxo/2026-10-08-glossario-compartilhado'"), err);
+    err.includes("branch lida: 'fluxo/glossario-compartilhad'"), err);
   caso("L3 stderr nomeia o nome esperado (fluxo/<slug sem data>)",
     err.includes("espera fluxo/glossario-compartilhado"), err);
   caso("L4 stderr lista o slug aberto mais perto primeiro",
     /Abertos mais perto: 2026-10-08-glossario-compartilhado \(espera fluxo\/glossario-compartilhado ou fluxo\/glossario-compartilhado-t<n>\), 2026-10-01-outro-trabalho/.test(err), err);
+
+  // #645: a mesma branch com o slug inteiro casa com o fluxo. O executor continua barrado, mas
+  // pelo estagio do fluxo (design), nao por estar fora de fluxo.
+  git(wt, ["branch", "-m", "fluxo/2026-10-08-glossario-compartilhado"]);
+  const datada = despachar(repo, wt, "rainforest-mind:executor");
+  const errD = datada.stderr || "";
+  caso("L6 branch com o slug datado casa: a recusa e pelo estagio design, nao fora-de-fluxo (#645)",
+    datada.status === 2 && /estagio aberto: design/.test(errD) && !/fora-de-fluxo/.test(errD), `exit=${datada.status} stderr=${errD}`);
 
   // Contraprova: sem fluxo aberto nenhum, a mensagem nao ganha a linha de diagnostico.
   const repo2 = novoRepo();

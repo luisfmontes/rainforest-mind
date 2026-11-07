@@ -366,6 +366,74 @@ casos['branch fluxo/<slug> sem sufixo continua resolvendo o fluxo (vizinho)'] = 
   }
 };
 
+// #645: a receita da regra 11 (`-b fluxo/<slug>`) com o slug datado do brainstorm faz a
+// branch `fluxo/<AAAA-MM-DD-tema>`. Até a 2.5.0 a portaria recusava essa branch.
+casos['#645: branch fluxo/<slug datado> casa com o fluxo'] = function () {
+  const sandbox = criarSandbox();
+  try {
+    gravarEstado('2026-11-03-tema', sandbox, novoEstadoExecutar('2026-11-03-tema'));
+    criarBranch(sandbox, 'fluxo/2026-11-03-tema');
+    const r1 = resolver({ cwd: sandbox });
+    if (!r1 || r1.slug !== '2026-11-03-tema' || r1.estagio !== 'executar') {
+      throw new Error(`branch datada: esperado 2026-11-03-tema/executar, obtido ${JSON.stringify(r1)}`);
+    }
+    criarBranch(sandbox, 'fluxo/2026-11-03-tema-t2');
+    const r2 = resolver({ cwd: sandbox });
+    if (!r2 || r2.slug !== '2026-11-03-tema') {
+      throw new Error(`branch datada de tarefa: esperado 2026-11-03-tema, obtido ${JSON.stringify(r2)}`);
+    }
+    criarBranch(sandbox, 'fluxo/tema');
+    const r3 = resolver({ cwd: sandbox });
+    if (!r3 || r3.slug !== '2026-11-03-tema') {
+      throw new Error(`branch sem data (forma antiga): esperado 2026-11-03-tema, obtido ${JSON.stringify(r3)}`);
+    }
+    const d = diagnosticar({ cwd: sandbox });
+    if (!d || d.casados !== 1) throw new Error(`diagnosticar: esperado casados 1, obtido ${JSON.stringify(d)}`);
+  } finally {
+    limparSandbox(sandbox);
+  }
+};
+
+// A forma datada não afrouxa a ambiguidade: `2026-11-03-tema` e `tema` abertos juntos continuam
+// negando em `fluxo/tema`, e só a branch datada escolhe um deles (revisão 1, achado 5).
+casos['#645: slug datado e sem data abertos juntos: fluxo/tema nega, a datada escolhe'] = function () {
+  const sandbox = criarSandbox();
+  try {
+    gravarEstado('2026-11-03-tema', sandbox, novoEstadoExecutar('2026-11-03-tema'));
+    gravarEstado('tema', sandbox, novoEstadoExecutar('tema'));
+    criarBranch(sandbox, 'fluxo/tema');
+    const r1 = resolver({ cwd: sandbox });
+    if (r1 !== null) throw new Error(`fluxo/tema ambígua: esperado null, obtido ${JSON.stringify(r1)}`);
+    criarBranch(sandbox, 'fluxo/2026-11-03-tema');
+    const r2 = resolver({ cwd: sandbox });
+    if (!r2 || r2.slug !== '2026-11-03-tema') {
+      throw new Error(`fluxo/2026-11-03-tema: esperado 2026-11-03-tema, obtido ${JSON.stringify(r2)}`);
+    }
+  } finally {
+    limparSandbox(sandbox);
+  }
+};
+
+casos['#645: casaSlugComBranch e casaComBranch do leve aceitam o slug inteiro'] = function () {
+  const { casaSlugComBranch } = require('./lib/estagio-ativo.cjs');
+  const { casaComBranch } = require('./lib/caminho-leve.cjs');
+  const esperado = [
+    ['2026-11-03-tema', '2026-11-03-tema', 'exato'],
+    ['2026-11-03-tema', 'tema', 'exato'],
+    ['2026-11-03-tema', '2026-11-03-tema-t3', 'tarefa'],
+    ['2026-11-03-tema', 'tema-t3', 'tarefa'],
+    ['fluxo-9-portaria', 'portaria', 'exato'],
+    ['2026-11-03-tema', '2026-11-04-tema', null],
+    ['2026-11-03-tema', 'tema-tx', null],
+  ];
+  for (const [slug, base, quer] of esperado) {
+    const tem = casaSlugComBranch(slug, base);
+    if (tem !== quer) throw new Error(`casaSlugComBranch(${slug}, ${base}) = ${tem}, esperado ${quer}`);
+  }
+  if (!casaComBranch('2026-11-03-tema', '2026-11-03-tema')) throw new Error('leve não aceitou o slug datado');
+  if (casaComBranch('2026-11-03-tema', 'tema-t1')) throw new Error('leve aceitou forma de tarefa');
+};
+
 casos['diagnosticar: branch de tarefa conta o fluxo e cita a forma -t<n> no esperado'] = function () {
   const sandbox = criarSandbox();
   try {

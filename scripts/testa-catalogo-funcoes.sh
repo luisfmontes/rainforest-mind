@@ -450,21 +450,146 @@ nao "nada da fixture 13 fica sem fechar" "$SAI13" "corpo não fechou"
 echo "== 14. complexas: corpo que atravessa outra função de topo vira lacuna declarada =="
 FX14="$SBP/cx14"
 mkdir -p "$FX14"
-# Regex depois de `)` é lida como divisão (limite conhecido): a `{` dela abre bloco e a `}` da
-# regex de hT fecha. Sem a trava, fT engole gT calada; com ela, fT sai como não medido.
+# Regex depois de `<` é lida como divisão (limite conhecido: `<` fica fora do ANTES_DE_REGEX por
+# causa do JSX): a `{` dela abre bloco e a `}` da regex de hT fecha. Sem a trava, fT engole gT
+# calada; com ela, fT sai como não medido. Até a 2.5.0 este caso provocava a leitura errada com
+# regex depois do `)` do if, que o D6 do design branch-datada-e-componentes consertou.
 node -e '
 const fs = require("fs"), p = require("path"), d = process.argv[1];
 fs.writeFileSync(p.join(d, "s.js"), [
-  "function fT(s) {", "  if (s) /[{]/.test(s)", "  return 0", "}",
+  "function fT(s) {", "  return 0 < /[{]/.exec(s).index", "}",
   "function gT(x) {", "  if (x) {", "    if (x > 1) {", "      return 1", "    }", "  }", "  return 0", "}",
-  "function hT(s) {", "  if (s) /[}]/.test(s)", "  return 1", "}", ""].join("\n"));
+  "function hT(s) {", "  return 0 < /[}]/.exec(s).index", "}", ""].join("\n"));
 ' "$(winpath "$FX14")"
 ( cd "$FX14" && git init -q && git config user.email t@t && git config user.name Test && git config core.autocrlf false && git add -A && git commit -q -m base )
 SAI14="$(node "$CAT" complexas --raiz "$(winpath "$FX14")" --top 50)"; EXIT=$?
 saiu "complexas na fixture 14 sai 0" "$EXIT" 0
-linha "a mãe que atravessou gT sai como não medido" "$SAI14" "não medido: s.js:L1 fT — corpo passou por gT (L5): leitura errada"
-linha "a função atravessada é medida" "$SAI14" "3 cognitiva  3 ciclomática  s.js:L5 gT"
+linha "a mãe que atravessou gT sai como não medido" "$SAI14" "não medido: s.js:L1 fT — corpo passou por gT (L4): leitura errada"
+linha "a função atravessada é medida" "$SAI14" "3 cognitiva  3 ciclomática  s.js:L4 gT"
 nao "a mãe não sai com nota" "$SAI14" "ciclomática  s.js:L1 fT"
+
+echo "== 15. complexas: componente React tipado e envolvido (#648) =="
+# Até a 2.5.0 a regra `topo` só via `const x = (` e `const x = async`: os quatro primeiros ficavam
+# fora do catálogo, sem medida e sem "não medido". Cada um tem um if dentro de outro (3 e 3).
+FX15="$SBP/cx15"
+mkdir -p "$FX15"
+node -e '
+const fs = require("fs"), p = require("path"), d = process.argv[1];
+const corpo = ["  if (a) {", "    if (a > 1) {", "      return 1", "    }", "  }", "  return 0"];
+fs.writeFileSync(p.join(d, "c.tsx"), [
+  "const Foo: React.FC<Props> = ({ a }) => {", ...corpo, "}",
+  "export const Bar = React.memo(function Bar(a) {", ...corpo, "})",
+  "export const Baz = forwardRef<HTMLDivElement, P>((a, ref) => {", ...corpo, "})",
+  "const f: (a: number) => void = (a) => {", ...corpo, "}",
+  "const total = soma(a, b)",
+  ""].join("\n"));
+' "$(winpath "$FX15")"
+( cd "$FX15" && git init -q && git config user.email t@t && git config user.name Test && git config core.autocrlf false && git add -A && git commit -q -m base )
+SAI15="$(node "$CAT" complexas --raiz "$(winpath "$FX15")" --top 50)"; EXIT=$?
+saiu "complexas na fixture 15 sai 0" "$EXIT" 0
+linha "React.FC tipado é medido" "$SAI15" "3 cognitiva  3 ciclomática  c.tsx:L1 Foo"
+linha "React.memo(function ...) é medido pelo corpo de dentro" "$SAI15" "3 cognitiva  3 ciclomática  c.tsx:L9 Bar"
+linha "forwardRef<T>((...) => ...) é medido pelo corpo de dentro" "$SAI15" "3 cognitiva  3 ciclomática  c.tsx:L17 Baz"
+linha "seta com tipo de função na anotação é medida" "$SAI15" "3 cognitiva  3 ciclomática  c.tsx:L25 f"
+nao "chamada solta não entra" "$SAI15" "total"
+nao "nada da fixture 15 vira lacuna" "$SAI15" "não medido: c.tsx"
+
+echo "== 16. complexas: limites da leitura (#648) =="
+FX16="$SBP/cx16"
+mkdir -p "$FX16"
+node -e '
+const fs = require("fs"), p = require("path"), d = process.argv[1];
+const Q = String.fromCharCode(39);
+const w = (f, s) => fs.writeFileSync(p.join(d, f), s);
+const g = (n) => ["function " + n + "(x) {", "  if (x) {", "    if (x > 1) {", "      return 1", "    }", "  }", "  return 0", "}"];
+// (a) método cujo } fica escondido pelo apóstrofo do texto JSX atravessa o método vizinho
+w("m.tsx", [
+  "class Lista {",
+  "  render(a) { return <p>Don" + Q + "t</p> }",
+  "  outro(x) {",
+  "    if (x) {",
+  "      return 1",
+  "    }",
+  "  }",
+  "}",
+  ""].join("\n"));
+w("r.js", [
+  // (b) regex depois do ) da condição
+  "function rx(s) {", "  if (s) /[}]/.test(s)", "  if (s) {", "    return 1", "  }", "  return 0", "}",
+  ...g("gR"),
+  // (c) } antes de / em texto JSX
+  "function Pag({ page, pages, a }) {", "  return <span>{page}/{pages}{a ? 1 : 2}</span>", "}",
+  // (d) if sem chave e sem ;, objeto na instrução seguinte
+  "function semChave(x, y) {", "  if (x) return", "  const o = { a: y ? 1 : 2 }", "  return o", "}",
+  // (e) const com parênteses que não é função
+  "const total = (a + b) * c",
+  ...g("gS"),
+  ""].join("\n"));
+// (f) sobrecarga TS sem ;  (g) } seguida de {, |, & e [ no tipo de retorno
+w("t.ts", [
+  "function sob(a: string): string",
+  "function sob(a: number): number",
+  "function sob(a: any): any {", "  if (a) {", "    return a", "  }", "  return 0", "}",
+  "function t1(x): { a: number } {", "  if (x) { return 1 }", "  return 2", "}",
+  "function t2(x): { a: 1 } | null {", "  if (x) { return 1 }", "  return 2", "}",
+  "function t3(x): { a: 1 } & B {", "  if (x) { return 1 }", "  return 2", "}",
+  "function t4(x): { a: 1 }[] {", "  if (x) { return 1 }", "  return 2", "}",
+  ""].join("\n"));
+// IIFE continua medida: é lógica de verdade, só não tem nome de função
+w("i.js", ["const RAIZ = (() => {", "  if (x) {", "    return 1", "  }", "  return 0", "})();", ""].join("\n"));
+// revisão 1: apelido memo(Inner), função chamada memo, função depois de || e memo(x => ...)
+w("w.tsx", [
+  "const Wrapped = memo(Inner);",
+  "describe(" + Q + "W" + Q + ", () => { if (x) { if (y) { g() } } });",
+  "export function memo(fn) {", "  if (fn) {", "    if (fn.a) {", "      return 1", "    }", "  }", "}",
+  "const noop = (opts && opts.noop) || function (a) {", "  if (a) {", "    return 1", "  }", "}",
+  "const Seta = memo(props => {", "  if (props) {", "    return 1", "  }", "})",
+  // revisão 2: seta de callback não faz função; envolvente aninhado é medido; HOC desconhecido é lacuna
+  "const names = (items || []).map((i) => i.name);",
+  "const v = (a && b) ? items.filter((i) => i.x && i.y || i.z) : [];",
+  "export const Btn = memo(forwardRef<HTMLButtonElement, Props>((props, ref) => {", "  if (props) {", "    return 1", "  }", "}))",
+  "export const R = memo(withRouter((props) => {", "  if (props) {", "    return 1", "  }", "}))",
+  ""].join("\n"));
+// troca de mãe: f1 atravessa k e f3; k não é função, e f3 tem de ser medida sem tirar f0
+w("x.js", [
+  "function f0(x) { if (x) { return 1 } return 0 }",
+  "function f1(s) {", "  return 0 < /[{]/.exec(s).index", "}",
+  "const k = (a + b) * c",
+  "function f3(x) {", "  if (x) {", "    return 1", "  }", "  return 0", "}",
+  "function f4(s) {", "  return 0 < /[}]/.exec(s).index", "}",
+  ""].join("\n"));
+' "$(winpath "$FX16")"
+( cd "$FX16" && git init -q && git config user.email t@t && git config user.name Test && git config core.autocrlf false && git add -A && git commit -q -m base )
+SAI16="$(node "$CAT" complexas --raiz "$(winpath "$FX16")" --top 50)"; EXIT=$?
+saiu "complexas na fixture 16 sai 0" "$EXIT" 0
+linha "(a) método que atravessa o vizinho sai como não medido" "$SAI16" "não medido: m.tsx:L2 render — corpo passou por outro (L3): leitura errada"
+linha "(a) o método vizinho é medido" "$SAI16" "1 cognitiva  2 ciclomática  m.tsx:L3 outro"
+linha "(b) regex depois do ) do if não fecha o corpo cedo" "$SAI16" "2 cognitiva  3 ciclomática  r.js:L1 rx"
+linha "(b) a função seguinte é medida certa" "$SAI16" "3 cognitiva  3 ciclomática  r.js:L8 gR"
+linha "(c) {page}/{pages} não esconde o ternário" "$SAI16" "1 cognitiva  2 ciclomática  r.js:L16 Pag"
+linha "(d) if sem chave não aprofunda o objeto seguinte" "$SAI16" "2 cognitiva  3 ciclomática  r.js:L19 semChave"
+nao "(e) const com parênteses que não é função não sai" "$SAI16" "r.js:L24"
+linha "(e) IIFE continua medida" "$SAI16" "2 cognitiva  2 ciclomática  i.js:L1 RAIZ"
+nao "apelido memo(Inner) não vira função nem lacuna" "$SAI16" "w.tsx:L1 "
+linha "função chamada memo é medida pelos próprios parâmetros" "$SAI16" "3 cognitiva  3 ciclomática  w.tsx:L3 memo"
+linha "função depois de || continua medida" "$SAI16" "1 cognitiva  2 ciclomática  w.tsx:L10 noop"
+linha "memo(x => ...) sem parênteses no parâmetro é medido" "$SAI16" "1 cognitiva  2 ciclomática  w.tsx:L15 Seta"
+nao "seta de callback depois de (a || b).map não faz função" "$SAI16" "w.tsx:L20 "
+nao "seta de callback depois de ternário não faz função" "$SAI16" "w.tsx:L21 "
+linha "memo(forwardRef<T>(...)) aninhado é medido" "$SAI16" "1 cognitiva  2 ciclomática  w.tsx:L22 Btn"
+linha "memo(HOC(...)) sai como lacuna declarada, não some" "$SAI16" "não medido: w.tsx:L27 R — corpo não fechou"
+linha "(e) a função depois dele é medida" "$SAI16" "3 cognitiva  3 ciclomática  r.js:L25 gS"
+nao "(f) sobrecarga sem ; não vira leitura errada" "$SAI16" "não medido: t.ts"
+linha "(f) a implementação depois da sobrecarga sem ; é medida" "$SAI16" "1 cognitiva  2 ciclomática  t.ts:L3 sob"
+linha "(g) } seguida de { no tipo de retorno" "$SAI16" "1 cognitiva  2 ciclomática  t.ts:L9 t1"
+linha "(g) } seguida de |" "$SAI16" "1 cognitiva  2 ciclomática  t.ts:L13 t2"
+linha "(g) } seguida de &" "$SAI16" "1 cognitiva  2 ciclomática  t.ts:L17 t3"
+linha "(g) } seguida de [" "$SAI16" "1 cognitiva  2 ciclomática  t.ts:L21 t4"
+linha "troca de mãe: f1 sai como não medido" "$SAI16" "não medido: x.js:L2 f1 — corpo passou por k (L5): leitura errada"
+linha "troca de mãe: f0 continua medida" "$SAI16" "1 cognitiva  2 ciclomática  x.js:L1 f0"
+linha "troca de mãe: f3 é medida" "$SAI16" "1 cognitiva  2 ciclomática  x.js:L6 f3"
+igual "troca de mãe: f1 aparece uma vez só como lacuna" "$(grep -c "x.js:L2 f1" <<<"$SAI16")" "1"
+nao "nenhuma leitura errada fora de render e f1" "$(grep -v "L2 render\|L2 f1" <<<"$SAI16")" "leitura errada"
 
 echo "== 11. complexas no repo real: ordem, linha de começo e contribuições dentro da função =="
 node "$CAT" complexas --raiz "$RAIZN" --top 5 > "$SBP/cx-real.txt"; EXIT=$?

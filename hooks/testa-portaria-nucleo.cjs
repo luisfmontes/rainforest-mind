@@ -803,6 +803,8 @@ console.log("== 15. falha interna nega (exit 2) em vez de crashar (exit 1) ==");
   fs.copyFileSync(daqui("scripts/estado.cjs"), path.join(arvore, "scripts", "estado.cjs"));
   // leve da branch (Issue #430): portaria faz require no topo.
   fs.copyFileSync(daqui("hooks/lib/caminho-leve.cjs"), path.join(arvore, "hooks", "lib", "caminho-leve.cjs"));
+  // casamento slug x branch numa fonte so (design branch-datada-e-componentes, D2).
+  fs.copyFileSync(daqui("hooks/lib/slug-branch.cjs"), path.join(arvore, "hooks", "lib", "slug-branch.cjs"));
 
   const hookCopia = path.join(arvore, "hooks", "portaria.cjs");
   const payload = JSON.stringify({ session_id: "t15", cwd: raiz, tool_input: { subagent_type: "revisor" } });

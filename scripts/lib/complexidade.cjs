@@ -40,6 +40,9 @@ function emendaNoFim(fichas, k) {
   if ((t === '+' || t === '-') && k > 0 && fichas[k - 1].t === t) return false;
   return true;
 }
+// `)` que fecha a condição de um destes admite regex logo depois (D6). Marca interna do tokenizador.
+const CONDICAO_ANTES_DE_REGEX = new Set(['if', 'while', 'for']);
+const FECHA_CONDICAO = ')condicao';
 const CONTROLE_COM_PARENTESES = new Set(['if', 'for', 'while', 'switch', 'catch']);
 const ABRE_BLOCO_DE_CONTROLE = new Set(['if', 'else', 'for', 'while', 'do', 'switch', 'try', 'catch', 'finally']);
 const ZERA_SEQUENCIA = new Set(['(', ')', ';', ',', '{', '}']);
@@ -51,6 +54,8 @@ function tokenizar(texto, ehDart) {
   let i = 0;
   let linha = 1;
   let anterior = null;
+  // Um item por `(` aberto: true quando ele abre a condição de `if`/`while`/`for`.
+  const parentesesDeCondicao = [];
   const emite = (t) => {
     fichas.push({ t, l: linha });
     anterior = t;
@@ -156,8 +161,13 @@ function tokenizar(texto, ehDart) {
         emite('str');
         continue;
       }
-      // `/>` é fechamento de tag JSX, nunca regex.
-      if (c === '/' && d !== '>' && !ehDart && ANTES_DE_REGEX.has(anterior)) {
+      // `/>` é fechamento de tag JSX, nunca regex. Depois do `)` da condição de `if`/`while`/`for`
+      // a `/` abre regex (`if (s) /[}]/.test(s)`, D6). Depois de `}`, só abre regex como primeira
+      // ficha da linha: na mesma linha é texto JSX (`{page}/{pages}`), D7.
+      const primeiraDaLinha = !fichas.length || fichas[fichas.length - 1].l !== linha;
+      const regexPossivel = anterior === FECHA_CONDICAO
+        || (ANTES_DE_REGEX.has(anterior) && (anterior !== '}' || primeiraDaLinha));
+      if (c === '/' && d !== '>' && !ehDart && regexPossivel) {
         lerRegex();
         emite('regex');
         continue;
@@ -195,6 +205,8 @@ function tokenizar(texto, ehDart) {
         continue;
       }
       emite(c);
+      if (c === '(') parentesesDeCondicao.push(CONDICAO_ANTES_DE_REGEX.has(fichas.length > 1 ? fichas[fichas.length - 2].t : null));
+      else if (c === ')' && parentesesDeCondicao.pop()) anterior = FECHA_CONDICAO;
       i++;
     }
   }
@@ -239,6 +251,34 @@ function fimDaExpressao(fichas, de) {
 }
 
 /**
+ * `const x = (a) <op> ...`: a função vem depois do `)`, na mesma instrução? Só em duas formas
+ * (revisões 1 e 2 do fluxo): depois de `||`, `&&`, `??` ou ternário, `function` ou `=>` fora de
+ * qualquer parêntese (`(opts && opts.noop) || function (a) {`); depois de `(`, como argumento direto
+ * da chamada (`(0, x.y)((cfg) => {`, saída compilada). Seta de callback mais funda
+ * (`(items || []).map((i) => i.name)`) é valor, não função. `de` é a ficha logo depois do `)`.
+ */
+function funcaoNaInstrucao(fichas, de) {
+  const op = fichas[de] && fichas[de].t;
+  let alvo;
+  if (['||', '&&', '??', '?:'].includes(op)) alvo = 0;
+  else if (op === '(') alvo = 1;
+  else return false;
+  let aberto = 0;
+  for (let q = de + 1; q < fichas.length; q++) {
+    const t = fichas[q].t;
+    if (aberto === 0 && fichas[q].l > fichas[q - 1].l
+        && !emendaNoFim(fichas, q - 1) && !CONTINUA_EXPRESSAO.has(t)) return false;
+    if ((t === 'function' || t === '=>') && aberto + (op === '(' ? 1 : 0) === alvo) return true;
+    if (t === '(' || t === '[' || t === '{') aberto++;
+    else if (t === ')' || t === ']' || t === '}') {
+      if (aberto === 0) return false;
+      aberto--;
+    } else if (t === ';' && aberto === 0) return false;
+  }
+  return false;
+}
+
+/**
  * Acha o corpo da definição que começa na ficha `ini`. Depois de `=>` fora de parênteses: bloco
  * `{ }` se a seta é seguida de `{`, senão a expressão (`fimDaExpressao`). Sem seta: da primeira
  * `{` fora de parênteses até a `}` que a fecha; `;` antes dela é corpo vazio (`void f();`). Chave
@@ -248,8 +288,64 @@ function fimDaExpressao(fichas, de) {
 function acharCorpo(fichas, ini) {
   let parenteses = 0;
   let angulos = 0; // `<...>` de genérico na assinatura: `Promise<() => void>` não é a seta do corpo
+  // `const f: (a: T) => void = ...`: a anotação de tipo vai até o `=`, e a seta dela não é a do corpo.
+  let tipo = fichas[ini + 1] && fichas[ini + 1].t === ':';
+  let envolve = false; // `memo(` / `forwardRef<T>(`: o `(` da chamada é transparente (D4)
+  let fechouParametros = false;
   for (let k = ini; k < fichas.length; k++) {
     const t = fichas[k].t;
+    if (t === '(' && envolve) {
+      envolve = false;
+      // Dentro da chamada envolvente (revisões 1 e 2 do fluxo):
+      // - `function`, `async`, `(` de parâmetros ou `x =>`: a função, segue;
+      // - outro envolvente (`memo(forwardRef(`, `React.memo(React.forwardRef(`): segue, e ele
+      //   mesmo fica transparente adiante;
+      // - `memo(Inner)` ou `memo(Inner, eq)`: apelido, não função;
+      // - qualquer outra chamada (`memo(withRouter(...))`): não sei ler, sai como lacuna declarada.
+      const a = fichas[k + 1] && fichas[k + 1].t;
+      const b = fichas[k + 2] && fichas[k + 2].t;
+      if (a === 'function' || a === 'async' || a === '(' || b === '=>') continue;
+      if (a === 'memo' || a === 'forwardRef' || (a === 'React' && b === '.')) continue;
+      if (b === ')' || b === ',') return { naoFuncao: true };
+      return null;
+    }
+    if (tipo) {
+      if (t === '(') parenteses++;
+      else if (t === ')') parenteses--;
+      else if (t === '<') angulos++;
+      else if (t === '>' && angulos > 0) angulos--;
+      else if (t === '=' && parenteses === 0 && angulos === 0) tipo = false;
+      if (tipo || t !== '=') continue;
+    }
+    const iife = fichas[k + 2] && ['(', 'function', 'async'].includes(fichas[k + 2].t);
+    if (t === '=' && parenteses === 0 && angulos === 0 && fichas[k + 1] && fichas[k + 1].t === '(' && !iife) {
+      // `const total = (a + b) * c`: depois do `)` que fecha não vem `=>` nem tipo de retorno,
+      // então não é função (D9). Sai sem medida e sem aviso. IIFE (`const RAIZ = (() => {`) fica:
+      // é lógica de verdade, medida desde a 2.5.0.
+      let p = 0;
+      let m = k + 1;
+      for (; m < fichas.length; m++) {
+        if (fichas[m].t === '(') p++;
+        else if (fichas[m].t === ')' && --p === 0) break;
+      }
+      const depois = fichas[m + 1] && fichas[m + 1].t;
+      // `(opts && opts.noop) || function (a) {` e `(0, x.y)((cfg) => {`: a função vem depois, na
+      // mesma instrução, e continua medida como antes (revisão 1 do fluxo, achado 4).
+      if (depois !== '=>' && depois !== ':' && !funcaoNaInstrucao(fichas, m + 1)) return { naoFuncao: true };
+    }
+    // `k > ini`: a função que se chama `memo` não é chamada envolvente (revisão 1, achado 3).
+    if ((t === 'memo' || t === 'forwardRef') && k > ini && parenteses === 0 && angulos === 0
+        && fichas[k + 1] && (fichas[k + 1].t === '(' || fichas[k + 1].t === '<')) {
+      envolve = true;
+      continue;
+    }
+    // Sobrecarga TS sem `;` (D9): parâmetros fechados, nada aberto, e a linha seguinte começa outra
+    // instrução sem a assinatura ter emendado. Termina aqui, como a sobrecarga com `;`.
+    if (fechouParametros && parenteses === 0 && angulos === 0 && k > ini && fichas[k].l > fichas[k - 1].l
+        && t !== '{' && !emendaNoFim(fichas, k - 1) && !CONTINUA_EXPRESSAO.has(t)) {
+      return { de: ini, ate: k };
+    }
+    if (t === ')' && parenteses === 1) fechouParametros = true;
     if (t === '(') parenteses++;
     else if (t === ')') parenteses--;
     else if (t === '<' && parenteses === 0) angulos++;
@@ -291,19 +387,37 @@ function medirCorpo(fichas, de, ate) {
   const blocos = [];
   let parenteses = 0;
   let pendente = null;
+  let esperaCondicao = false; // entre `if` e o `)` da condição dele
+  let corpoSemChave = false; // o corpo da estrutura pendente já começou, e não foi com `{`
   let sequencia = null;
   for (let k = de; k < ate; k++) {
     const { t, l } = fichas[k];
     const ant = k > de ? fichas[k - 1].t : null;
     const prox = k + 1 < ate ? fichas[k + 1].t : null;
+    // `if (x) return` sem `;`: a quebra de linha que encerra a instrução do corpo encerra a
+    // estrutura, e a `{` de objeto da instrução seguinte não aprofunda (D8). "Encerra" é o
+    // critério do corpo `=> expr`: nada aberto, linha sem operador no fim nem no começo da seguinte.
+    if (corpoSemChave && parenteses === pendente && k > de && l > fichas[k - 1].l
+        && !emendaNoFim(fichas, k - 1) && !CONTINUA_EXPRESSAO.has(t)) {
+      pendente = null;
+      corpoSemChave = false;
+    }
+    if (pendente !== null && !esperaCondicao && parenteses === pendente && t !== '{' && t !== ';') {
+      corpoSemChave = true;
+    }
     if (ZERA_SEQUENCIA.has(t)) sequencia = null;
     if (t === '(') parenteses++;
-    else if (t === ')') parenteses--;
-    else if (t === ';') {
-      if (pendente !== null && parenteses === pendente) pendente = null;
+    else if (t === ')') {
+      parenteses--;
+      if (esperaCondicao && parenteses === pendente) esperaCondicao = false;
+    } else if (t === ';') {
+      if (pendente !== null && parenteses === pendente) {
+        pendente = null;
+        corpoSemChave = false;
+      }
     } else if (t === '{') {
       let aprofunda = false;
-      if (pendente !== null && parenteses === pendente) {
+      if (pendente !== null && parenteses === pendente && !corpoSemChave) {
         aprofunda = true;
         pendente = null;
       } else if (ant === '=>' || ant === ')' || ant === 'async') {
@@ -315,10 +429,14 @@ function medirCorpo(fichas, de, ate) {
       if (blocos.pop()) profundidade--;
     } else if (t === 'else') {
       pendente = parenteses;
+      esperaCondicao = false;
+      corpoSemChave = false;
       if (prox !== 'if') soma(1, l, 'else');
     } else if (ABRE_BLOCO_DE_CONTROLE.has(t) && ant !== '.' && ant !== '?.') {
       // `.catch(` de promessa é chamada de método, não estrutura de controle.
       pendente = parenteses;
+      esperaCondicao = CONTROLE_COM_PARENTESES.has(t) && prox === '(';
+      corpoSemChave = false;
       if (CONTROLE_COM_PARENTESES.has(t) && prox === '(') {
         if (t === 'if' && ant === 'else') {
           soma(1, l, 'else if');
@@ -354,7 +472,7 @@ function medirArquivo(texto, linguagem, definicoes) {
   const medidas = [];
   const naoMedidas = [];
   const linhas = texto.split(/\r?\n/);
-  const naColunaZero = (d) => !/^\s/.test(linhas[d.linha - 1] || '');
+  const recuo = (d) => /^\s*/.exec(linhas[d.linha - 1] || '')[0].length;
   let mae = null;
   for (const def of definicoes) {
     if (/(^|\s)class\s/.test(def.assinatura)) continue;
@@ -362,14 +480,17 @@ function medirArquivo(texto, linguagem, definicoes) {
     const ini = fichas.findIndex((f) => f.l === def.linha && f.t === def.nome);
     if (ini === -1) continue;
     if (mae && def.linha <= mae.fim) {
-      // Definição de topo nunca mora dentro de outra de topo: se o corpo da mãe a atravessou, a
-      // leitura de texto errou. A mãe sai como lacuna declarada e esta é medida normalmente.
-      if (!(mae.colunaZero && naColunaZero(def))) continue;
+      // Definição com recuo menor ou igual ao da mãe nunca mora dentro dela: função de topo dentro
+      // de função de topo, método dentro do método vizinho (D5). Se o corpo da mãe a atravessou, a
+      // leitura de texto errou: a mãe sai como lacuna declarada e esta é medida normalmente. Recuo
+      // maior é função aninhada de verdade, e soma na mãe.
+      if (!(recuo(def) <= mae.recuo)) continue;
       medidas.splice(medidas.indexOf(mae.medida), 1);
       naoMedidas.push({ linha: mae.medida.linha, nome: mae.medida.nome, motivo: `corpo passou por ${def.nome} (L${def.linha}): leitura errada` });
       mae = null;
     }
     const corpo = acharCorpo(fichas, ini);
+    if (corpo && corpo.naoFuncao) continue;
     if (!corpo) {
       naoMedidas.push({ linha: def.linha, nome: def.nome, motivo: 'corpo não fechou' });
       continue;
@@ -380,7 +501,7 @@ function medirArquivo(texto, linguagem, definicoes) {
     const fim = fecho && (fecho.t === '}' || fecho.t === ';') ? fecho.l : fichas[Math.max(corpo.ate - 1, 0)].l;
     const medida = { linha: def.linha, nome: def.nome, fim, ...medirCorpo(fichas, corpo.de, corpo.ate) };
     medidas.push(medida);
-    mae = { medida, fim, colunaZero: naColunaZero(def) };
+    mae = { medida, fim, recuo: recuo(def) };
   }
   return { medidas, naoMedidas };
 }
