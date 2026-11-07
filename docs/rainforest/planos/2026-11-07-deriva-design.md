@@ -37,6 +37,8 @@ Forma prescrita:
 - `main` ganha `deriva` no despacho e na linha `uso:`.
 - **Bateria** `scripts/testa-deriva.sh`, no molde de `scripts/testa-conferir-mutacao-placar.sh`: script do próprio checkout (`RAIZ=$(cd "$(dirname "$0")/.." && pwd)`), fixture em `mktemp -d` fora do worktree com `trap rm -rf`, `git init` com `user.name`/`user.email` locais, design e plano escritos por `node -e` com `Design:`, `atende:` e `mutacao:` com crases; o trecho entra num commit e sai noutro (`git commit -m "tira a âncora"`), e o hash esperado vem de `git log -1 --format=%h` da própria fixture. Um caso por comportamento do critério, com o nome literal `âncora tirada por um commit sai como sumiu, com o commit` para o da mutação, mais o caso da opção desconhecida. Termina com `ok: <n>   falhou: <m>` e sai 1 com falha.
 
+*Emenda da revisão 1:* `--arquivo` vira caminho relativo à `RAIZ` antes de comparar (`./`, absoluto e contrabarra casam), e filtro que não casa nenhuma âncora avisa no stderr `aviso: nenhuma âncora de plano aponta para <filtro>`; opção sem valor sai 1 com `erro: falta valor para <opção>`; a pasta e o sufixo dos planos vêm de `caminhoDoc('planos', ...)`, como no `cobertura` e no `creep`; o caminho do `Design:` é o primeiro token da linha, entre crases ou não. A bateria ganha remoção por merge, commit posterior que toca o arquivo sem a âncora, decisão com âncora intacta e perdida, `--arquivo` com `./` e absoluto, aviso e opção sem valor.
+
 ### 2. O brainstorm consulta a deriva dos arquivos que vai tocar [tipo: docs]
 atende: D5
 arquivos: `skills/brainstorm/SKILL.md`

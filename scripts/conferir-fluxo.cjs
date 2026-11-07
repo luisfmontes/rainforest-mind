@@ -1381,34 +1381,48 @@ function cmdDeriva() {
       console.error(`erro: opção desconhecida: ${args[i]}`);
       process.exit(1);
     }
+    if (args[i + 1] === undefined || args[i + 1].startsWith('--')) {
+      console.error(`erro: falta valor para ${args[i]}`);
+      process.exit(1);
+    }
   }
   const slug = arg('slug', false);
   const barra = (c) => String(c).split('\\').join('/');
-  const filtro = arg('arquivo', false) === null ? null : barra(arg('arquivo', false));
-  const pasta = path.join(RAIZ, 'docs', 'rainforest', 'planos');
+  // Caminho do filtro relativo à raiz, como o `arquivo:` do plano: `./x`, absoluto e contrabarra
+  // casam igual (revisão 1: `--arquivo ./src/b.js` dava placar zero, confiante e errado).
+  const filtroDado = arg('arquivo', false);
+  const filtro = filtroDado === null ? null : barra(path.relative(RAIZ, path.resolve(RAIZ, filtroDado)));
+  // Pasta e nome dos planos pela configuração de pastas do projeto, como `cobertura` e `creep`.
+  const modelo = caminhoDoc('planos', '\u0000', { raiz: RAIZ });
+  const pasta = path.join(RAIZ, path.dirname(modelo));
+  const sufixo = path.basename(modelo).slice(1);
   let nomes;
   if (slug) {
-    if (!fs.existsSync(path.join(pasta, `${slug}.md`))) {
-      recusaPlanoAusente(path.join(pasta, `${slug}.md`));
+    if (!fs.existsSync(path.join(pasta, `${slug}${sufixo}`))) {
+      recusaPlanoAusente(path.join(pasta, `${slug}${sufixo}`));
       process.exit(1);
     }
-    nomes = [`${slug}.md`];
+    nomes = [`${slug}${sufixo}`];
   } else {
-    nomes = fs.existsSync(pasta) ? fs.readdirSync(pasta).filter((n) => n.endsWith('.md') && !n.endsWith('.pr.md')).sort() : [];
+    nomes = fs.existsSync(pasta) ? fs.readdirSync(pasta).filter((n) => n.endsWith(sufixo) && !n.endsWith('.pr.md')).sort() : [];
   }
   const placar = { intactas: 0, perdidas: 0, semAncora: 0 };
+  let casouFiltro = false;
   for (const nome of nomes) {
     const conteudo = lerMarkdown(path.join(pasta, nome));
     if (conteudo === null) continue;
-    const slugDoPlano = nome.slice(0, -3);
+    const slugDoPlano = nome.slice(0, -sufixo.length);
     const { ancoras, citadas } = ancorasDoPlano(conteudo);
-    const linhaDesign = /^Design:\s*(.+?)\s*$/m.exec(conteudo);
-    const design = linhaDesign ? lerMarkdown(path.join(RAIZ, linhaDesign[1].replace(/`/g, ''))) : null;
+    // O caminho do design é o primeiro token da linha (entre crases ou não): 16 planos reais têm
+    // prosa depois dele, e a linha inteira não era caminho.
+    const linhaDesign = /^Design:\s*`?([^`\s]+)/m.exec(conteudo);
+    const design = linhaDesign ? lerMarkdown(path.join(RAIZ, linhaDesign[1])) : null;
     const decisoes = design ? [...extrairDecisoes(design)] : [...citadas];
     const perdida = new Set();
     const comAncora = new Set();
     for (const a of ancoras) {
       if (filtro !== null && barra(a.arquivo) !== filtro) continue;
+      casouFiltro = true;
       const estado = estadoDaAncora(a.arquivo, a.de);
       a.decisoes.forEach((d) => comAncora.add(d));
       if (!estado.intacta) a.decisoes.forEach((d) => perdida.add(d));
@@ -1423,6 +1437,7 @@ function cmdDeriva() {
       else if (filtro === null) placar.semAncora++;
     }
   }
+  if (filtro !== null && !casouFiltro) console.error(`aviso: nenhuma âncora de plano aponta para ${filtro}`);
   const com = placar.intactas + placar.perdidas;
   console.log(`decisões: ${com} com âncora (${placar.intactas} intactas, ${placar.perdidas} com âncora perdida), ${placar.semAncora} sem âncora medível`);
 }
