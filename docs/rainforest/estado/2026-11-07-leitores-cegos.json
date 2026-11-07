@@ -147,6 +147,34 @@
         "iteracao": 2,
         "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
         "ts": "2026-11-07T17:30:53.703Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 6,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:37:51.803Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 6,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:37:51.803Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 6,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:37:51.803Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "e6d247c0",
+        "iteracao": 3,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:37:51.803Z"
       }
     ],
     "mutacao": [
@@ -174,7 +202,7 @@
     "sensor_externo": "node hooks/testa-memoria-assunto-agente.cjs"
   },
   "revisar": {
-    "status": "ok",
+    "status": "pendente",
     "snapshot": {
       "head": "704818e777bed87ce33650fa8b4c30621928b61c",
       "caminhos_sujos": []
@@ -272,6 +300,11 @@
       "em": "2026-11-07",
       "de": "revisar",
       "motivo": "revisao 4 ok com 7 achados baixos: README promete cegueira total, runtime-e-orcamento sem a excecao, nome de caso, CRLF/caixa sem teste, referencia do depurar, relatorio, arquivos da T4"
+    },
+    {
+      "em": "2026-11-07",
+      "de": "revisar",
+      "motivo": "merge da origin/main (#654, 2.5.2) depois do revisar: conflitos em plugin.json, README e CHANGELOG resolvidos com 2.6.0 e as duas entradas"
     }
   ]
 }
