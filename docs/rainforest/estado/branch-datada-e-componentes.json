@@ -29,7 +29,7 @@
     "em": "2026-11-07"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-07",
     "tarefas_ok": 4,
     "tarefas": 4,
@@ -61,7 +61,7 @@
     "reaberturas": 2
   },
   "revisar": {
-    "status": "ok",
+    "status": "pendente",
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
@@ -121,7 +121,7 @@
     "head": "5accc69568583a98b0bffe4518a81084d9815ffc"
   },
   "verificar": {
-    "status": "ok",
+    "status": "pendente",
     "comando": "bash scripts/testa-catalogo-funcoes.sh",
     "saida": "ok: 148   falhou: 0 (e: testa-estagio-ativo todos os casos: OK; testa-saude 94 ok, 0 falha(s); testa-aviso-duplicata ok: 57 falhou: 0; testa-plugin-codex exit 0; testa-abertura-mod-config bateria passou; versao 2.5.1)",
     "sensor_externo": "bash scripts/testa-catalogo-funcoes.sh",
@@ -129,6 +129,14 @@
     "head": "5accc69568583a98b0bffe4518a81084d9815ffc"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-11-07"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-11-07",
+      "de": "verificar",
+      "motivo": "CI vermelho: testa-portaria-fluxo-pulado caso L presumia que fluxo/<slug datado> nao casa (#447), o que o #645 muda"
+    }
+  ]
 }
