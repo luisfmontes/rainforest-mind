@@ -10,6 +10,10 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.5.2 — 2026-11-07
+
+- **README em inglês.** O `README.en.md` é uma tradução fiel do README desta versão, congelada: ela não acompanha as entregas, e a versão canônica continua sendo a em português. O `README.md` ganhou o link para ela logo depois dos badges.
+
 ## 2.5.1 — 2026-11-07
 
 - **A branch `fluxo/<slug>` com o slug datado passa pela portaria (#645).** Seguir a receita da regra 11 com o slug do `brainstorm` (`2026-11-03-tema`) criava a branch `fluxo/2026-11-03-tema`, e a portaria recusava todo despacho por não reconhecer o fluxo. Agora as duas formas valem, com e sem a data, também para tarefa paralela (`-t<n>`) e para o caminho leve.

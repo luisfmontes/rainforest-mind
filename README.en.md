@@ -4,12 +4,12 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-2.5.1-1e5c3f?style=flat-square" alt="version 2.5.1">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-2.5.2-1e5c3f?style=flat-square" alt="version 2.5.2">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="one install">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="Node runtime">
 </p>
 
-> **Snapshot** of [README.md](README.md) (Portuguese, canonical) as of v2.5.1 / 2026-11-07. It may lag behind the Portuguese version.
+> **Snapshot** of [README.md](README.md) (Portuguese, canonical) as of v2.5.2 / 2026-11-07. It may lag behind the Portuguese version.
 
 > ### The problem is not a lack of ideas. It is what gets the light right now.
 
