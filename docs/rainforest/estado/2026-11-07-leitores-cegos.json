@@ -21,7 +21,7 @@
     "em": "2026-11-07"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-07",
     "tarefas_ok": 4,
     "tarefas": 4,
@@ -147,23 +147,23 @@
   "revisar": {
     "status": "pendente",
     "snapshot": {
-      "head": "e6d247c0d30b997a578a293a55f3468e07f52a76",
+      "head": "7eb2bab6f8120328a0ed7a4ce87bcb460c784e5a",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "aaa6a742f1dbe31bb",
+        "agente_id": "a923852c8ef24814a",
         "veredito": "ok",
         "em": "2026-11-07",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-aaa6a742f1dbe31bb.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a923852c8ef24814a.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-11-07",
-    "achados": 4,
+    "achados": 7,
     "base": "0ea200c9",
-    "head": "e6d247c0",
+    "head": "7eb2bab6",
     "voltas": [
       {
         "volta": 1,
@@ -186,6 +186,18 @@
             "veredito": "ok",
             "em": "2026-11-07",
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a4ca565d3a56983a4.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "aaa6a742f1dbe31bb",
+            "veredito": "ok",
+            "em": "2026-11-07",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-aaa6a742f1dbe31bb.jsonl"
           }
         ]
       }
@@ -214,6 +226,11 @@
       "em": "2026-11-07",
       "de": "revisar",
       "motivo": "revisao 3 ok com 4 achados; o [media] 2 e defeito real: hooks/memoria-assunto-agente.cjs injeta memoria de assunto e glossario em todo subagente, inclusive no leitor cego. Conserto vira tarefa 4 (D11)"
+    },
+    {
+      "em": "2026-11-07",
+      "de": "revisar",
+      "motivo": "revisao 4 ok com 7 achados baixos: README promete cegueira total, runtime-e-orcamento sem a excecao, nome de caso, CRLF/caixa sem teste, referencia do depurar, relatorio, arquivos da T4"
     }
   ]
 }

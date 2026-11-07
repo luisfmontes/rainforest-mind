@@ -1,6 +1,6 @@
 # Provas das tarefas 1 e 2 do fluxo 2026-11-07-leitores-cegos
 
-As duas saídas estão coladas abaixo, sem edição. Os dois agentes são `general-purpose`, com `model: sonnet`, despachados com o briefing das referências novas. O briefing da tarefa 1 chegou ao agente com um bloco `## Memória do assunto` (três resumos de outras sessões) que o hook `memoria-assunto-agente.cjs` anexou sozinho. A revisão 3 achou isso no transcrito, e por isso existe o D11 (`Contexto: cego`). O briefing da tarefa 2 não recebeu o bloco.
+As duas saídas estão coladas abaixo, sem edição. Os dois agentes são `general-purpose`, com `model: sonnet`, despachados com o briefing das referências novas. O briefing da tarefa 1 chegou ao agente com um bloco `## Memória do assunto` (três resumos de outras sessões) que o hook `memoria-assunto-agente.cjs` anexou sozinho. A revisão 3 achou isso no transcrito, e por isso existe o D11 (`Contexto: cego`). O briefing da tarefa 2 não recebeu o bloco: a revisão 3 abriu os dois transcritos e só achou o bloco no da tarefa 1.
 
 O plano (`docs/rainforest/planos/2026-11-07-leitores-cegos.md`) traz só o resumo, e é aqui que está a evidência.
 
@@ -128,4 +128,4 @@ leitura completa
 - O formato pedido saiu inteiro: três graus, tarefa afetada, trecho citado e orientação, sem código proposto.
 - **`git status --short` depois da volta:** não saiu vazio. No worktree do fluxo apareceu ` M docs/rainforest/planos/2026-11-07-leitores-cegos.md`, que era a correção do critério da T2, feita pela janela principal enquanto o leitor rodava. O worktree da base saiu vazio. Nenhuma alteração era do leitor.
 - **"README sem 2.5.1":** foi leitura concorrente com o commit de versão `c10c7ebd`, feito às 13:15, enquanto o leitor rodava. Isso virou a linha "commite o plano antes do despacho" na referência.
-- **Destino dos achados:** não foram aplicados ao plano. As tarefas foram escritas pela janela principal, conforme a memória "manifesto sem agente sonnet de escrita". E o plano é só de docs, caso em que o D1 dispensa o leitor.
+- **Destino dos achados:** não foram aplicados ao plano. As tarefas foram escritas pela janela principal, conforme a memória "manifesto sem agente sonnet de escrita". E o plano era só de docs na hora do despacho, caso em que o D1 dispensa o leitor. A tarefa 4 (`implementar`) entrou depois do `plano ok`, no executar, em modo autônomo, e não passou pelo leitor cego. Quem leu o código dela foram as revisões 4 e 5.

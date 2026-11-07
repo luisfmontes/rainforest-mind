@@ -39,7 +39,7 @@ pronto quando: com a árvore do fluxo, `node scripts/conferir-versao.cjs` aceita
 
 ### 4. Briefing cego desliga a injeção de memória no subagente [tipo: implementar]
 atende: D11
-arquivos: `hooks/memoria-assunto-agente.cjs`, `hooks/testa-memoria-assunto-agente.cjs`, `hooks/testa-glossario-agente.cjs`, `README.md`, `skills/plano/SKILL.md`, `skills/depurar/SKILL.md`
+arquivos: `hooks/memoria-assunto-agente.cjs`, `hooks/testa-memoria-assunto-agente.cjs`, `hooks/testa-glossario-agente.cjs`, `README.md`, `docs/runtime-e-orcamento.md`, `skills/plano/references/leitor-cego.md`, `skills/depurar/references/diagnostico-cego.md`
 depende de: 1, 2, 3
 busca:
 - repo | rg "Contexto: cego|updatedInput" hooks | só o memoria-assunto-agente.cjs altera o prompt do subagente; não há marca de desligar

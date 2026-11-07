@@ -35,8 +35,8 @@ preencher o campo. As hipóteses que entram na comparação são as do relato do
 
 Preencha as duas linhas e mande o resto como está. **Não ponha a sua hipótese, a área suspeita
 nem o palpite do usuário**: é essa ausência que faz o passo valer. A primeira linha, `Contexto: cego`,
-impede o hook `memoria-assunto-agente.cjs` de anexar memória de outras sessões ao prompt, que
-pode trazer de volta justamente a hipótese escondida. Ela fica sozinha na linha, exatamente assim.
+impede o hook `memoria-assunto-agente.cjs` de anexar ao prompt memória de outras sessões, que
+pode trazer de volta justamente a hipótese escondida, e o glossário. Ela fica sozinha na linha, exatamente assim.
 
 ```
 Contexto: cego
