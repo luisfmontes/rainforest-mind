@@ -674,6 +674,15 @@ nao "--raiz subpasta: arquivo de fora dela não entra" "$SAI18B" "fora.js"
 ERR18="$(node "$CAT" variacao --raiz "$WN" --base HEAD~5 2>&1 >/dev/null)"; EXIT=$?
 saiu "base que não existe sai 1" "$EXIT" 1
 tem "base que não existe é nomeada" "$ERR18" "variacao: base não resolvida: HEAD~5"
+# Revisão 2: lacuna só pelo depoisDe (função nova que não fecha, sem nome igual do outro lado), e
+# falha de git depois do rev-parse (índice corrompido) sai 1 com erro, nunca "nenhuma função".
+escrever "$W" 'fora.js=function fora(b) {\n  return b ? 1 : 2;\n}\n\nfunction solta(c) {\n  if (c) {\n'
+SAI18C="$(node "$CAT" variacao --raiz "$WN" --base HEAD)"
+linha "lacuna nova sem par do outro lado é declarada (atual)" "$SAI18C" "não medido: fora.js:L5 solta — corpo não fechou (atual)"
+printf 'lixo' > "$W/.git/index"
+ERR18C="$(node "$CAT" variacao --raiz "$WN" --base HEAD 2>&1 >/dev/null)"; EXIT=$?
+saiu "git que falha depois do rev-parse sai 1" "$EXIT" 1
+tem "e diz que o git não listou o diff" "$ERR18C" "erro: variacao: o git não listou o diff contra HEAD"
 
 echo "== 11. complexas no repo real: ordem, linha de começo e contribuições dentro da função =="
 node "$CAT" complexas --raiz "$RAIZN" --top 5 > "$SBP/cx-real.txt"; EXIT=$?
