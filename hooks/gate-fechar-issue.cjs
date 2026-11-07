@@ -119,6 +119,13 @@ function indiceSequencia(tokens, padrao) {
 // gate não pode ser pior que ela.
 const TEXTOS_DE_HEREDOC = [];
 
+// Fim de toda recusa do corpo do PR: a única saída que passa em todos os casos.
+const RECEITA_CORPO_PR =
+  `Receita que passa:\n` +
+  `  1. Grave o corpo antes, com a ferramenta de escrita (Write), num caminho absoluto literal do Windows, por exemplo o scratchpad da sessão;\n` +
+  `  2. num comando que só tem o gh: gh pr create --title "<título>" --body-file "<caminho literal>" (ou gh pr edit <n> --body-file "<caminho literal>").\n` +
+  `Comando barrado não roda nenhuma parte: o arquivo que ele criaria não existe.\n`;
+
 // #407: o comando inteiro desta chamada. O `--body-file` é lido no PreToolUse,
 // ANTES de o comando rodar — quando a mesma linha cria o arquivo por heredoc
 // (`cat > corpo.md <<'EOF' ... EOF` e depois `gh pr create --body-file
@@ -635,6 +642,11 @@ function bloqueia(motivo) {
   process.exit(2);
 }
 
+function bloqueiaCorpo(razao) {
+  const receita = RECEITA_CORPO_PR;
+  bloqueia(`BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\nRazão: ${razao}\n\n${receita}`);
+}
+
 // `WRAPPERS_DE_COMANDO`, `desempacotarWrapper` (agora
 // `desempacotarWrapperDeString`) e as funcoes auxiliares dele
 // (`extrairPrimeiroToken`, `casaPrefixoDeFlag`, `desempacota`,
@@ -1037,42 +1049,33 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento, textoDoComando =
 
     // Corpo ilegível (não consegue ler com segurança)
     if (!corpoDoPR.legivel) {
+      // Cada recusa diz a razão e termina na mesma receita (D1 de
+      // docs/rainforest/design/2026-11-07-receita-corpo-pr.md): sugestões
+      // diferentes por recusa levavam o agente de uma recusa a outra.
       if (corpoDoPR.tipo === "arquivo" && corpoDoPR.variavel) {
-        bloqueia(
-          `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-          `Razão: --body-file contém uma variável que o gate não resolve ($, crase).\n\n` +
-          `O gate lê o arquivo antes de o 'gh' rodar e não expande variável: qualquer ` +
-          `forma com $ continua barrada. Escreva o caminho literal, por extenso, ` +
-          `no --body-file (ex.: --body-file "C:/caminho/literal/corpo.md").\n`
+        bloqueiaCorpo(
+          `--body-file contém uma variável que o gate não resolve ($, crase). ` +
+          `O gate lê o arquivo antes de o 'gh' rodar e não expande variável.`
         );
       } else if (corpoDoPR.tipo === "arquivo" && corpoDoPR.cwdIncerto) {
-        bloqueia(
-          `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-          `Razão: --body-file usa caminho relativo, e o diretório efetivo deste ` +
+        bloqueiaCorpo(
+          `--body-file usa caminho relativo, e o diretório efetivo deste ` +
           `comando não pôde ser determinado com segurança (cd/pushd dinâmico ou ` +
-          `não resolvível antes do 'gh').\n\n` +
-          `Use um caminho absoluto em --body-file, ou remova o 'cd' dinâmico antes do 'gh'.\n`
+          `não resolvível antes do 'gh').`
         );
       } else if (corpoDoPR.tipo === "arquivo") {
-        bloqueia(
-          `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-          `Razão: não consegui ler o arquivo de corpo do PR — o gate o lê ANTES de o ` +
-          `comando rodar, e nada neste comando o cria por heredoc.\n\n` +
-          `Grave o corpo antes (ferramenta de escrita, ou num comando separado) e rode ` +
-          `o 'gh' em seguida; ou use --body "texto".\n`
+        bloqueiaCorpo(
+          `não consegui ler o arquivo de corpo do PR — o gate o lê ANTES de o ` +
+          `comando rodar, e nada neste comando o cria por heredoc.`
         );
       } else if (corpoDoPR.tipo === "direto" && (corpoDoPR.conteudo.includes("$(") || corpoDoPR.conteudo.includes("`"))) {
-        bloqueia(
-          `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-          `Razão: o corpo do PR contém substituição de comando (\\$(...) ou backticks), não consegui ler com segurança.\n\n` +
-          `Use --body "texto-plano" ou --body-file <arquivo> com o corpo já expandido.\n`
+        bloqueiaCorpo(
+          `o corpo do PR contém substituição de comando ($(...) ou backticks), não consegui ler com segurança.`
         );
       } else {
-        bloqueia(
-          `BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n` +
-          `Razão: o corpo do PR vem de editor interativo (sem --body ou --body-file).\n\n` +
-          `Se o corpo cita 'closes #N', a checagem não consegue ler.\n` +
-          `Use --body "texto" ou --body-file <arquivo> para incluir a informação de fechamento.\n`
+        bloqueiaCorpo(
+          `o corpo do PR vem de editor interativo (sem --body ou --body-file); ` +
+          `se ele citar 'closes #N', a checagem não consegue ler.`
         );
       }
     }
