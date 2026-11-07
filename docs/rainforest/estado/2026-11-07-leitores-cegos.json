@@ -1,0 +1,35 @@
+{
+  "slug": "2026-11-07-leitores-cegos",
+  "titulo": "Leitor cego do plano e diagnóstico cego no depurar",
+  "criado_em": "2026-11-07",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-11-07-leitores-cegos.md",
+    "em": "2026-11-07"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-11-07-leitores-cegos.md",
+    "tarefas": 3,
+    "paralelas": [
+      1,
+      2
+    ],
+    "em": "2026-11-07"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

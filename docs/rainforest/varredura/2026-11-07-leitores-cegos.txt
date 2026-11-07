@@ -1,0 +1,101 @@
+Data: 2026-11-07
+Termos: goldfish, contexto zerado, leitor cego, diagnóstico cego, implementation_readiness, revisor cego
+
+$ gh issue list --state all --search "goldfish" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "contexto zerado" --limit 200 --json number,title,state
+[{"number":53,"state":"CLOSED","title":"CORRIGE #4 e #51: a base errada do worktree de agente e deterministica — ele nasce na ponta da origin/main"},{"number":21,"state":"CLOSED","title":"Criterio 'a bateria sai 0' e satisfazivel por fora, e tres instrumentos de conferencia falharam junto"}]
+
+
+$ gh issue list --state all --search "leitor cego" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "diagnóstico cego" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "implementation_readiness" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "revisor cego" --limit 200 --json number,title,state
+[{"number":567,"state":"CLOSED","title":"estado.cjs: commit depois do verificar ok nao reabre revisar nem verificar"},{"number":231,"state":"CLOSED","title":"Revisor que confere por mutacao edita o worktree principal, e o gate o impede de desfazer"}]
+
+
+$ gh pr list --state all --search "goldfish" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "contexto zerado" --limit 200 --json number,title,state
+[{"number":563,"state":"MERGED","title":"gate-worktree: rede de caminho do principal e pai inexistente (#552, 1.68.0)"},{"number":305,"state":"MERGED","title":"Memória: reconciliação na escrita e consolidação automática"},{"number":234,"state":"MERGED","title":"Absorver de um plugin de terceiro o que vira trava: mensagem de commit, --confirmo, exit 69, duplicação, carimbos"},{"number":6,"state":"MERGED","title":"Nasce o /divergir, e o CRLF para de custar byte na injecao"},{"number":140,"state":"MERGED","title":"Segunda opiniao cross-model: auditor de outra familia no revisar, e o transporte de CLI externo em um lugar so"}]
+
+
+$ gh pr list --state all --search "leitor cego" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "diagnóstico cego" --limit 200 --json number,title,state
+[{"number":179,"state":"MERGED","title":"Relatorio: rodada cega de 2026-09-04 (com errata de entrada)"}]
+
+
+$ gh pr list --state all --search "implementation_readiness" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "revisor cego" --limit 200 --json number,title,state
+[{"number":593,"state":"MERGED","title":"Apoio ao dev, lote 2: veredito coerente, prova que roda, limpeza com prova (1.76.0)"},{"number":330,"state":"MERGED","title":"Beads: não acopla — 1 bloqueio em 336 ideias abertas"},{"number":177,"state":"MERGED","title":"Fluxo 12: régua absorve o bar.md de mecanismos e o preflight de renderização"},{"number":234,"state":"MERGED","title":"Absorver de um plugin de terceiro o que vira trava: mensagem de commit, --confirmo, exit 69, duplicação, carimbos"},{"number":39,"state":"CLOSED","title":"Skill regua, backstop de mutacao no revisar, e o relatorio da Issue #38"}]
+
+
+$ git ls-remote --heads origin | grep -F "goldfish"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "contexto zerado"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "leitor cego"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "diagnóstico cego"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "implementation_readiness"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "revisor cego"
+(vazio)
+
+$ git log --all --grep="goldfish" --oneline
+(vazio)
+
+$ git log --all --grep="contexto zerado" --oneline
+1ba5156b gate-worktree: rede de caminho do principal e pai inexistente (#552, 1.68.0) (#563)
+afd22083 fluxo memoria-reconciliacao: revisar fecha ok, zero achados
+95f74499 fluxo memoria-reconciliacao: revisar reprova com 2 achados bloqueantes
+c90a0c30 Revisar: REPROVADO com 5 achados; executar reaberto
+030282a7 Fluxo nao-mente: executar ok de novo, com os 2 achados do revisar consertados
+4dd97310 Revisar da ponte: reprovado, 2 criticos reproduzidos com controle
+44cdbdcd Revisar da ponte: reprovado, 2 criticos reproduzidos com controle
+c3ab6cf1 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+62ca78d5 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+1c68627a O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas (#59)
+b4704ff8 O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas (#59)
+
+$ git log --all --grep="leitor cego" --oneline
+(vazio)
+
+$ git log --all --grep="diagnóstico cego" --oneline
+(vazio)
+
+$ git log --all --grep="implementation_readiness" --oneline
+(vazio)
+
+$ git log --all --grep="revisor cego" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+{"id":"leitor-cego-do-plano-antes-do-codigo","titulo":"Leitor de contexto zerado lê design e plano antes do executar"}
+
+
