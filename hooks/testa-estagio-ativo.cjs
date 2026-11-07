@@ -394,6 +394,26 @@ casos['#645: branch fluxo/<slug datado> casa com o fluxo'] = function () {
   }
 };
 
+// A forma datada não afrouxa a ambiguidade: `2026-11-03-tema` e `tema` abertos juntos continuam
+// negando em `fluxo/tema`, e só a branch datada escolhe um deles (revisão 1, achado 5).
+casos['#645: slug datado e sem data abertos juntos: fluxo/tema nega, a datada escolhe'] = function () {
+  const sandbox = criarSandbox();
+  try {
+    gravarEstado('2026-11-03-tema', sandbox, novoEstadoExecutar('2026-11-03-tema'));
+    gravarEstado('tema', sandbox, novoEstadoExecutar('tema'));
+    criarBranch(sandbox, 'fluxo/tema');
+    const r1 = resolver({ cwd: sandbox });
+    if (r1 !== null) throw new Error(`fluxo/tema ambígua: esperado null, obtido ${JSON.stringify(r1)}`);
+    criarBranch(sandbox, 'fluxo/2026-11-03-tema');
+    const r2 = resolver({ cwd: sandbox });
+    if (!r2 || r2.slug !== '2026-11-03-tema') {
+      throw new Error(`fluxo/2026-11-03-tema: esperado 2026-11-03-tema, obtido ${JSON.stringify(r2)}`);
+    }
+  } finally {
+    limparSandbox(sandbox);
+  }
+};
+
 casos['#645: casaSlugComBranch e casaComBranch do leve aceitam o slug inteiro'] = function () {
   const { casaSlugComBranch } = require('./lib/estagio-ativo.cjs');
   const { casaComBranch } = require('./lib/caminho-leve.cjs');

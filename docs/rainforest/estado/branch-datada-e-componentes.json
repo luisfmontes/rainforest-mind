@@ -29,7 +29,7 @@
     "em": "2026-11-07"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-07",
     "tarefas_ok": 4,
     "tarefas": 4,
@@ -57,10 +57,27 @@
         "motivo": "tarefa so de texto e versao"
       }
     ],
-    "em": "2026-11-07"
+    "em": "2026-11-07",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-11-07"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a8fa897a1f9edcdec",
+        "veredito": "reprovado",
+        "em": "2026-11-07",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/f08c1282-6b5e-4e1c-a331-ff6f4feb39ef/subagents/agent-a8fa897a1f9edcdec.jsonl"
+      }
+    ],
+    "achados": 5,
+    "em": "2026-11-07",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

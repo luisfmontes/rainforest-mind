@@ -48,7 +48,7 @@ caixa_nova() {
   cp "$SRC/scripts/estado.cjs" "$CX/scripts/"
   cp "$SRC/scripts/lib/camadas.cjs" "$SRC/scripts/lib/primeiro-prompt-jsonl.cjs" "$SRC/scripts/lib/extrair-veredito.cjs" "$CX/scripts/lib/"
   local lib
-  for lib in raiz config trava-jsonl pastas-docs resolver-executavel contar-ocorrencias caminho-leve teto-despachos; do
+  for lib in raiz config trava-jsonl pastas-docs resolver-executavel contar-ocorrencias caminho-leve slug-branch teto-despachos; do
     cp "$SRC/hooks/lib/$lib.cjs" "$CX/hooks/lib/"
   done
   touch "$CX/FOCO.md"

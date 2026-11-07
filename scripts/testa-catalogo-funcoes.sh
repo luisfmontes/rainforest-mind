@@ -537,6 +537,14 @@ w("t.ts", [
   ""].join("\n"));
 // IIFE continua medida: é lógica de verdade, só não tem nome de função
 w("i.js", ["const RAIZ = (() => {", "  if (x) {", "    return 1", "  }", "  return 0", "})();", ""].join("\n"));
+// revisão 1: apelido memo(Inner), função chamada memo, função depois de || e memo(x => ...)
+w("w.tsx", [
+  "const Wrapped = memo(Inner);",
+  "describe(" + Q + "W" + Q + ", () => { if (x) { if (y) { g() } } });",
+  "export function memo(fn) {", "  if (fn) {", "    if (fn.a) {", "      return 1", "    }", "  }", "}",
+  "const noop = (opts && opts.noop) || function (a) {", "  if (a) {", "    return 1", "  }", "}",
+  "const Seta = memo(props => {", "  if (props) {", "    return 1", "  }", "})",
+  ""].join("\n"));
 // troca de mãe: f1 atravessa k e f3; k não é função, e f3 tem de ser medida sem tirar f0
 w("x.js", [
   "function f0(x) { if (x) { return 1 } return 0 }",
@@ -557,6 +565,10 @@ linha "(c) {page}/{pages} não esconde o ternário" "$SAI16" "1 cognitiva  2 cic
 linha "(d) if sem chave não aprofunda o objeto seguinte" "$SAI16" "2 cognitiva  3 ciclomática  r.js:L19 semChave"
 nao "(e) const com parênteses que não é função não sai" "$SAI16" "r.js:L24"
 linha "(e) IIFE continua medida" "$SAI16" "2 cognitiva  2 ciclomática  i.js:L1 RAIZ"
+nao "apelido memo(Inner) não vira função nem lacuna" "$SAI16" "w.tsx:L1 "
+linha "função chamada memo é medida pelos próprios parâmetros" "$SAI16" "3 cognitiva  3 ciclomática  w.tsx:L3 memo"
+linha "função depois de || continua medida" "$SAI16" "1 cognitiva  2 ciclomática  w.tsx:L10 noop"
+linha "memo(x => ...) sem parênteses no parâmetro é medido" "$SAI16" "1 cognitiva  2 ciclomática  w.tsx:L15 Seta"
 linha "(e) a função depois dele é medida" "$SAI16" "3 cognitiva  3 ciclomática  r.js:L25 gS"
 nao "(f) sobrecarga sem ; não vira leitura errada" "$SAI16" "não medido: t.ts"
 linha "(f) a implementação depois da sobrecarga sem ; é medida" "$SAI16" "1 cognitiva  2 ciclomática  t.ts:L3 sob"

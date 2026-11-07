@@ -257,6 +257,21 @@ function fimDaExpressao(fichas, de) {
  * que fecha e é seguida de `>`, `{`, `|`, `&`, `[` ou `=>` era tipo literal (`): {a: T} {`) e a
  * busca continua. Devolve {de, ate} (índices exclusivos do corpo) ou null se não fechou.
  */
+/** Há `function` ou `=>` da ficha `de` até o fim da instrução (`;` ou quebra que a encerra)? */
+function funcaoNaInstrucao(fichas, de) {
+  let aberto = 0;
+  for (let q = de; q < fichas.length; q++) {
+    const t = fichas[q].t;
+    if (aberto === 0 && q > de && fichas[q].l > fichas[q - 1].l
+        && !emendaNoFim(fichas, q - 1) && !CONTINUA_EXPRESSAO.has(t)) return false;
+    if (t === 'function' || t === '=>') return true;
+    if (t === '(' || t === '[' || t === '{') aberto++;
+    else if (t === ')' || t === ']' || t === '}') aberto--;
+    else if (t === ';' && aberto === 0) return false;
+  }
+  return false;
+}
+
 function acharCorpo(fichas, ini) {
   let parenteses = 0;
   let angulos = 0; // `<...>` de genérico na assinatura: `Promise<() => void>` não é a seta do corpo
@@ -268,6 +283,12 @@ function acharCorpo(fichas, ini) {
     const t = fichas[k].t;
     if (t === '(' && envolve) {
       envolve = false;
+      // `memo(Inner)` é apelido, não função: dentro da chamada tem de vir `function`, `async`,
+      // `(` de parâmetros ou `x =>`. Sem isso o `)` de fechamento desbalanceia a contagem e a seta
+      // de uma chamada de topo seguinte vira o corpo (revisão 1 do fluxo, achado 2).
+      const a = fichas[k + 1] && fichas[k + 1].t;
+      const b = fichas[k + 2] && fichas[k + 2].t;
+      if (!(a === 'function' || a === 'async' || a === '(' || b === '=>')) return { naoFuncao: true };
       continue;
     }
     if (tipo) {
@@ -290,9 +311,12 @@ function acharCorpo(fichas, ini) {
         else if (fichas[m].t === ')' && --p === 0) break;
       }
       const depois = fichas[m + 1] && fichas[m + 1].t;
-      if (depois !== '=>' && depois !== ':') return { naoFuncao: true };
+      // `(opts && opts.noop) || function (a) {` e `(0, x.y)((cfg) => {`: a função vem depois, na
+      // mesma instrução, e continua medida como antes (revisão 1 do fluxo, achado 4).
+      if (depois !== '=>' && depois !== ':' && !funcaoNaInstrucao(fichas, m + 1)) return { naoFuncao: true };
     }
-    if ((t === 'memo' || t === 'forwardRef') && parenteses === 0 && angulos === 0
+    // `k > ini`: a função que se chama `memo` não é chamada envolvente (revisão 1, achado 3).
+    if ((t === 'memo' || t === 'forwardRef') && k > ini && parenteses === 0 && angulos === 0
         && fichas[k + 1] && (fichas[k + 1].t === '(' || fichas[k + 1].t === '<')) {
       envolve = true;
       continue;
