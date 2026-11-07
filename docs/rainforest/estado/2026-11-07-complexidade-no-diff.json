@@ -18,7 +18,7 @@
     "em": "2026-11-07"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-07",
     "tarefas_ok": 3,
     "tarefas": 3,
@@ -44,12 +44,38 @@
     "em": "2026-11-07"
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "2d3c1540caa9f9cda1b366fca4c1ee3c134d5164",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a02b5fd28534e9fcd",
+        "veredito": "ok",
+        "em": "2026-11-07",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a02b5fd28534e9fcd.jsonl"
+      }
+    ],
+    "em": "2026-11-07",
+    "achados": 5,
+    "base": "1d5782b9476a3c8b117cd8be2cd9b749178aa969",
+    "head": "2d3c1540caa9f9cda1b366fca4c1ee3c134d5164"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-11-07"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-11-07"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-11-07",
+      "de": "revisar",
+      "motivo": "revisão 1: diff de arquivos sem -- e com falha engolida; USO sem variacao; lacuna da base escondida atrás de nova; bateria sem caso de lacuna e de --raiz subpasta"
+    }
+  ]
 }

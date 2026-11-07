@@ -52,7 +52,7 @@ const { baseDoDiff } = require(path.join(__dirname, '..', 'hooks', 'lib', 'achad
 const DIRETORIOS_GERADOS = new Set(['node_modules', 'build', 'dist', '.dart_tool', '.git']);
 const MAX_CAMINHO_ASSINATURA = 200;
 
-const USO = `uso: node scripts/catalogo-funcoes.cjs <listar|maiores|complexas|separar|conferir> [opções]
+const USO = `uso: node scripts/catalogo-funcoes.cjs <listar|maiores|complexas|variacao|separar|conferir> [opções]
   listar   [--raiz <dir>] [--contexto N] [--incluir-testes]
   maiores  [--raiz <dir>] [--top N]
   complexas [--raiz <dir>] [--top N]
@@ -271,7 +271,8 @@ function gitSaida(raiz, args) {
 function linhasDoDiff(raiz, base, rel) {
   const novas = new Set();
   const removidas = new Set();
-  const saida = gitSaida(raiz, ['diff', '-U0', '--no-renames', '--relative', '--no-color', base, '--', rel]) || '';
+  const saida = gitSaida(raiz, ['diff', '-U0', '--no-renames', '--relative', '--no-color', base, '--', rel]);
+  if (saida === null) throw new Error(`variacao: o git não deu o diff de ${rel} contra ${base}`);
   for (const l of saida.split('\n')) {
     const h = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/.exec(l);
     if (!h) continue;
@@ -301,10 +302,12 @@ function comChave(medidas) {
 
 /** Arquivos do diff de `base` até o disco, mais os não rastreados, com os filtros do `candidatos` (D2). */
 function arquivosDoDiff(raiz, base) {
-  const listados = [
-    ...(gitSaida(raiz, ['diff', '--name-only', '--relative', '--no-renames', base]) || '').split('\n'),
-    ...(gitSaida(raiz, ['ls-files', '--others', '--exclude-standard']) || '').split('\n'),
-  ].map((s) => normal(s.replace(/\r$/, ''))).filter(Boolean);
+  // `--` depois da base: ramo e pasta de mesmo nome deixam o git em dúvida. Falha do git é erro,
+  // nunca lista vazia, que sairia como "nenhuma função tocada" com exit 0.
+  const doDiff = gitSaida(raiz, ['diff', '--name-only', '--relative', '--no-renames', base, '--']);
+  const soltos = gitSaida(raiz, ['ls-files', '--others', '--exclude-standard']);
+  if (doDiff === null || soltos === null) throw new Error(`variacao: o git não listou o diff contra ${base}`);
+  const listados = [...doDiff.split('\n'), ...soltos.split('\n')].map((s) => normal(s.replace(/\r$/, ''))).filter(Boolean);
   return [...new Set(listados)]
     .sort()
     .filter((rel) => EXTENSOES[path.extname(rel).toLowerCase()] && !ehGerado(rel) && !ehTeste(rel));
@@ -345,12 +348,15 @@ function tocadasDoArquivo(raiz, base, rel, linguagem) {
   for (const [k, v] of doVelho) {
     if (!pareadas.has(k) && tocadaBase(v)) funcoes.push({ rel, antes: v, depois: null });
   }
+  // Lacuna de um lado com função de mesmo nome sem par do outro: sem ela, a `nova` (ou a `removida`)
+  // parece função que nasceu (ou morreu), quando só deixou de ser (ou passou a ser) lacuna.
+  const semPar = (nome, lado) => funcoes.some((f) => !f[lado] && (f.antes || f.depois).nome === nome);
   const lacunas = [
     ...atual.naoMedidas
-      .filter((m) => textoBase === null || depoisDe(novas, m))
+      .filter((m) => textoBase === null || depoisDe(novas, m) || semPar(m.nome, 'depois'))
       .map((m) => ({ rel, ...m, lado: 'atual' })),
     ...velho.naoMedidas
-      .filter((m) => textoAtual === null || depoisDe(removidas, m))
+      .filter((m) => textoAtual === null || depoisDe(removidas, m) || semPar(m.nome, 'antes'))
       .map((m) => ({ rel, ...m, lado: 'base' })),
   ];
   return { funcoes, lacunas };
