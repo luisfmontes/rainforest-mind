@@ -11,7 +11,11 @@
     "em": "2026-11-07"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-11-07-deriva-design.md",
+    "tarefas": 3,
+    "paralelas": [],
+    "em": "2026-11-07"
   },
   "executar": {
     "status": "pendente"

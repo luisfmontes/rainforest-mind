@@ -1317,6 +1317,116 @@ function cmdCamadas() {
   }
 }
 
+// ================================================================ deriva
+
+/** Campo de mutação inteiro entre um par de crases, sem elas; qualquer outra forma não é âncora (D2). */
+function literalEntreCrases(valor) {
+  const m = /^`([^`]+)`$/.exec(String(valor ?? '').trim());
+  return m ? m[1] : null;
+}
+
+/**
+ * Último commit, em `%h %s`, do `git log` com os argumentos dados; null se nada ou se o git falhar.
+ * `--first-parent -m`: a remoção que entrou por commit de merge (o histórico antigo tem muitos) só
+ * aparece com o merge diferido contra o primeiro pai; sem isso o pickaxe devolvia o commit que PÔS
+ * o trecho. A resposta é a mudança na linha do HEAD que tirou o trecho: commit ou merge do PR.
+ */
+function ultimoCommit(args) {
+  try {
+    const saida = execFileSync(caminhoExecutavel('git'), ['-c', 'core.quotePath=false', 'log', '-1', '--first-parent', '-m', '--format=%h %s', ...args], {
+      cwd: RAIZ, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true,
+    }).trim();
+    return saida || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Estado de uma âncora no código atual (D3): intacta, sumiu ou arquivo sumiu, com o commit. */
+function estadoDaAncora(arquivo, de) {
+  let texto = null;
+  try {
+    texto = fs.readFileSync(path.join(RAIZ, arquivo), 'utf8');
+  } catch {
+    texto = null;
+  }
+  const intacta = texto !== null && texto.includes(de);
+  if (intacta) return { intacta: true, texto: 'intacta' };
+  if (texto === null) return { intacta: false, texto: `arquivo sumiu em ${ultimoCommit(['--', arquivo]) || 'commit não achado'}` };
+  return { intacta: false, texto: `sumiu em ${ultimoCommit([`-S${de}`, '--', arquivo]) || 'commit não achado'}` };
+}
+
+/** Decisões e âncoras de um plano: [{arquivo, de, decisoes: Set}], na ordem da primeira tarefa (D2). */
+function ancorasDoPlano(conteudo) {
+  const ancoras = new Map();
+  const citadas = new Set();
+  for (const t of extrairTarefas(conteudo)) {
+    const decisoes = [...String(t.atende ?? '').matchAll(/D(\d+)/g)].map((m) => Number(m[1]));
+    decisoes.forEach((d) => citadas.add(d));
+    const campos = t.mutacao && t.mutacao.campos;
+    const arquivo = campos && literalEntreCrases(campos.arquivo);
+    const de = campos && literalEntreCrases(campos.de);
+    if (!arquivo || !de) continue;
+    const chave = `${arquivo}\u0000${de}`;
+    if (!ancoras.has(chave)) ancoras.set(chave, { arquivo, de, decisoes: new Set() });
+    decisoes.forEach((d) => ancoras.get(chave).decisoes.add(d));
+  }
+  return { ancoras: [...ancoras.values()], citadas };
+}
+
+function cmdDeriva() {
+  const args = process.argv.slice(3);
+  for (let i = 0; i < args.length; i += 2) {
+    if (args[i] !== '--slug' && args[i] !== '--arquivo') {
+      console.error(`erro: opção desconhecida: ${args[i]}`);
+      process.exit(1);
+    }
+  }
+  const slug = arg('slug', false);
+  const barra = (c) => String(c).split('\\').join('/');
+  const filtro = arg('arquivo', false) === null ? null : barra(arg('arquivo', false));
+  const pasta = path.join(RAIZ, 'docs', 'rainforest', 'planos');
+  let nomes;
+  if (slug) {
+    if (!fs.existsSync(path.join(pasta, `${slug}.md`))) {
+      recusaPlanoAusente(path.join(pasta, `${slug}.md`));
+      process.exit(1);
+    }
+    nomes = [`${slug}.md`];
+  } else {
+    nomes = fs.existsSync(pasta) ? fs.readdirSync(pasta).filter((n) => n.endsWith('.md') && !n.endsWith('.pr.md')).sort() : [];
+  }
+  const placar = { intactas: 0, perdidas: 0, semAncora: 0 };
+  for (const nome of nomes) {
+    const conteudo = lerMarkdown(path.join(pasta, nome));
+    if (conteudo === null) continue;
+    const slugDoPlano = nome.slice(0, -3);
+    const { ancoras, citadas } = ancorasDoPlano(conteudo);
+    const linhaDesign = /^Design:\s*(.+?)\s*$/m.exec(conteudo);
+    const design = linhaDesign ? lerMarkdown(path.join(RAIZ, linhaDesign[1].replace(/`/g, ''))) : null;
+    const decisoes = design ? [...extrairDecisoes(design)] : [...citadas];
+    const perdida = new Set();
+    const comAncora = new Set();
+    for (const a of ancoras) {
+      if (filtro !== null && barra(a.arquivo) !== filtro) continue;
+      const estado = estadoDaAncora(a.arquivo, a.de);
+      a.decisoes.forEach((d) => comAncora.add(d));
+      if (!estado.intacta) a.decisoes.forEach((d) => perdida.add(d));
+      if (!estado.intacta || filtro !== null) {
+        const ds = [...a.decisoes].sort((x, y) => x - y).map((d) => `D${d}`).join(', ');
+        console.log(`${slugDoPlano} ${ds}: ${a.arquivo} — ${estado.texto}`);
+      }
+    }
+    for (const d of decisoes) {
+      if (perdida.has(d)) placar.perdidas++;
+      else if (comAncora.has(d)) placar.intactas++;
+      else if (filtro === null) placar.semAncora++;
+    }
+  }
+  const com = placar.intactas + placar.perdidas;
+  console.log(`decisões: ${com} com âncora (${placar.intactas} intactas, ${placar.perdidas} com âncora perdida), ${placar.semAncora} sem âncora medível`);
+}
+
 function main() {
   const cmd = process.argv[2];
 
@@ -1340,7 +1450,11 @@ function main() {
     return cmdMutacoes();
   }
 
-  console.error('uso: design | cobertura | camadas | creep | mutacoes [--gravar-flake]');
+  if (cmd === 'deriva') {
+    return cmdDeriva();
+  }
+
+  console.error('uso: design | cobertura | camadas | creep | mutacoes [--gravar-flake] | deriva [--slug <s>] [--arquivo <a>]');
   process.exit(1);
 }
 
