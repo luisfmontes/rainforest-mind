@@ -59,6 +59,10 @@ function executar() {
   if (!original || typeof original !== 'object' || typeof original.prompt !== 'string' || !original.prompt.trim()) return '';
   const sessao = String(payload.session_id || '');
   if (!/^[A-Za-z0-9_-]+$/.test(sessao)) throw new Error('session_id invalido');
+  // Briefing cego (D11, design 2026-11-07-leitores-cegos): o leitor do plano e o diagnostico do
+  // depurar valem por nao saber o que a sessao sabe; memoria de outra sessao anexada aqui carrega
+  // justamente a hipotese que eles nao podem ver. A linha inteira, sozinha, desliga os dois blocos.
+  if (/^Contexto:[ \t]*cego[ \t]*\r?$/m.test(original.prompt)) return '';
 
   const cwd = payload.cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const blocoGlossario = blocoGlossarioDoPedido(cwd, original);

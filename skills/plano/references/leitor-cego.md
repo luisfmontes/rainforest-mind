@@ -34,9 +34,14 @@ implementador para confundir.
 
 ## Briefing
 
-Preencha os três `<...>` e mande o resto como está.
+Preencha os três `<...>` e mande o resto como está. A primeira linha, `Contexto: cego`, faz o hook
+`memoria-assunto-agente.cjs` não anexar memória de outras sessões nem glossário ao briefing; sem
+ela, resumos alheios entram no fim do prompt e o leitor deixa de ser cego. Ela fica sozinha na
+linha, exatamente assim.
 
 ```
+Contexto: cego
+
 Você vai ler um plano de implementação como se fosse implementá-lo, sem nenhum contexto além
 dos arquivos abaixo. Não edite nenhum arquivo, não rode comando que escreva e não proponha
 código.

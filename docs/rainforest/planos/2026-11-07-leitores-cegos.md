@@ -15,7 +15,7 @@ arquivos: `skills/plano/references/leitor-cego.md`, `skills/plano/SKILL.md`
 depende de: nenhuma
 mutacao: n/a
   motivo: texto de skill, sem comportamento executável a inverter. A falsificação é rodar o briefing de verdade (pronto quando).
-pronto quando: com o briefing literal de `skills/plano/references/leitor-cego.md` preenchido com o design e o plano deste fluxo e despachado num `general-purpose` com `model: sonnet`, o agente devolve achados nos três graus do D4 (bloqueante, maior, menor), cada um com a tarefa afetada, sem propor código e sem editar arquivo. Isso é provado pela saída colada do agente e por `git -C <worktree> status --short` vazio depois do despacho. O `## Fechar` do `skills/plano/SKILL.md` diz quando rodar (D1), aponta para a referência e manda corrigir bloqueante e maior antes do `marcar ok` (D4).
+pronto quando: com o briefing literal de `skills/plano/references/leitor-cego.md` preenchido com o design e o plano deste fluxo e despachado num `general-purpose` com `model: sonnet`, o agente devolve achados nos três graus do D4 (bloqueante, maior, menor), cada um com a tarefa afetada, sem propor código e sem editar arquivo. Isso é provado pela saída do agente colada em `relatorios/2026-11-07-provas-leitores-cegos.md` e por `git -C <worktree do fluxo> status --short` depois da volta, que não mostra nenhuma alteração do leitor: a única linha permitida é a que a janela principal fez durante a leitura, e ela vem nomeada no relatório. (Corrigido na revisão 3: a versão anterior pedia `status` vazio, o que não vale enquanto a janela principal trabalha no mesmo worktree.) O `## Fechar` do `skills/plano/SKILL.md` diz quando rodar (D1), aponta para a referência e manda corrigir bloqueante e maior antes do `marcar ok` (D4).
 
 ### 2. Diagnóstico cego na Fase 3 do depurar [tipo: docs]
 atende: D5, D6, D7, D8, D9
@@ -36,3 +36,19 @@ depende de: 1, 2
 mutacao: n/a
   motivo: subida de versão e notas, sem comportamento a inverter.
 pronto quando: com a árvore do fluxo, `node scripts/conferir-versao.cjs` aceita a 2.6.0 nos dois `plugin.json`, e a entrada 2.6.0 do `CHANGELOG.md` descreve os dois passos novos com o momento em que cada um roda, coerente com D1 e D5. Isso é provado pela saída do `conferir-versao.cjs` e pela leitura da entrada contra o design.
+
+### 4. Briefing cego desliga a injeção de memória no subagente [tipo: implementar]
+atende: D11
+arquivos: `hooks/memoria-assunto-agente.cjs`, `hooks/testa-memoria-assunto-agente.cjs`, `hooks/testa-glossario-agente.cjs`, `README.md`, `skills/plano/SKILL.md`, `skills/depurar/SKILL.md`
+depende de: 1, 2
+busca:
+- repo | rg "Contexto: cego|updatedInput" hooks | só o memoria-assunto-agente.cjs altera o prompt do subagente; não há marca de desligar
+desfecho: estender
+prova: `node hooks/testa-memoria-assunto-agente.cjs`
+mutacao:
+  arquivo: `hooks/memoria-assunto-agente.cjs`
+  de: `if (/^Contexto:[ \t]*cego[ \t]*\r?$/m.test(original.prompt)) return '';`
+  para: `if (false) return '';`
+  bateria: `node hooks/testa-memoria-assunto-agente.cjs`
+  fixture: testa-memoria-assunto-agente.cjs, caso 'linha "Contexto: cego" no briefing: nao injeta memoria nem glossario'
+pronto quando: com o payload real do PreToolUse de Agent cujo prompt começa por `Contexto: cego` e casa memórias do banco, o hook sai 0 sem stdout, e o prompt segue sem `## Memória do assunto` e sem `## Glossário do repo`. A mesma frase no meio de uma linha não desliga nada. Isso é provado por `node hooks/testa-memoria-assunto-agente.cjs` e `node hooks/testa-glossario-agente.cjs`, que imprimem `ok` nos casos "Contexto: cego". As duas referências (`skills/plano/references/leitor-cego.md` e `skills/depurar/references/diagnostico-cego.md`) abrem o briefing com essa linha e dizem por quê. O despacho real só se prova depois do release: o hook roda da versão instalada do plugin, não do worktree.

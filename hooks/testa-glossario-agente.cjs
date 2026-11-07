@@ -157,6 +157,8 @@ caso('com banco: glossario antes da memoria; memoria fica por ultimo, separada p
     p.slice(iM + 2).split('\n').length >= 2;
 });
 
+caso('briefing com termo do glossario e a linha "Contexto: cego" sai vazio (D11 do leitores-cegos)', () =>
+  vazioSaiu0(rodar(payload({ session_id: 'sessao-cego', prompt: 'Contexto: cego\n' + PEDIDO_ESTEIRA }), raizVazia)));
 caso('briefing sem termo do glossario sai vazio (sem banco)', () =>
   vazioSaiu0(rodar(payload({ session_id: 'sessao-f', prompt: PEDIDO_SEM_TERMO }), raizVazia)));
 

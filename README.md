@@ -478,7 +478,7 @@ A memória chega por três caminhos, cada um com o seu evento:
 |---|---|---|
 | **Abertura** | `SessionStart` (ou o mod) | O bloco `## Memória (corpus residentes)`, escolhido pela recência. **Não mudou.** |
 | **Pedido** | `UserPromptSubmit` | Até **3 memórias** de qualquer projeto que tratam do assunto do pedido, sob o cabeçalho `## Memória do assunto`. Não repete o que a sessão já recebeu (nem o que a abertura serviu) e só entra o que passa do limiar de relevância (bm25 ≤ -10, buscando pelos 30 termos mais raros do pedido e descartando palavras presentes em mais de 2% das memórias). Pedido que começa por `/` ou com menos de 3 palavras úteis é ignorado. |
-| **Subagente** | `PreToolUse` da ferramenta `Agent` | O mesmo bloco, acrescentado ao **fim do briefing** do subagente, pelo `updatedInput`. O hook só reescreve o texto do briefing; não decide permissão. Cada subagente começa do zero, então recebe a memória do assunto mesmo que a sessão já a tenha recebido. |
+| **Subagente** | `PreToolUse` da ferramenta `Agent` | O mesmo bloco, acrescentado ao **fim do briefing** do subagente, pelo `updatedInput`. O hook só reescreve o texto do briefing; não decide permissão. Cada subagente começa do zero, então recebe a memória do assunto mesmo que a sessão já a tenha recebido. Briefing com a linha `Contexto: cego` sozinha (o leitor cego do `plano` e o diagnóstico cego do `depurar`) não recebe nada: nem memória, nem glossário. |
 
 Sem candidata acima do limiar, nada é injetado. Cada bloco tem no máximo
 **1.500 bytes**. O projeto atual só desempata entre candidatas de mesma
