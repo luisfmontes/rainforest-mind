@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-2.8.0-1e5c3f?style=flat-square" alt="versão 2.8.0">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-2.8.1-1e5c3f?style=flat-square" alt="versão 2.8.1">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -465,7 +465,9 @@ cima disso sozinhas, sem você chamar nada:
   de captura, que tem orçamento curto): garante o esquema, reconcilia e
   consolida, e grava em `manutencao.log`. O processo roda fora da pasta do
   projeto (cwd temporário, raiz fixada em `RFM_ROOT`), então não impede apagá-la. Falha da manutenção, ou captura
-  parada há mais de 48h, vira uma linha na abertura da sessão seguinte.
+  parada há mais de 48h, vira uma linha na abertura da sessão seguinte. A
+  abertura que dispara a manutenção apaga as travas `manutencao-<data>.lock` de
+  dias anteriores; a do dia, e qualquer outro arquivo da raiz, ficam.
 
 O FTS5 como buscador de candidatas mediu recall de 82,0% contra 200 sondagens
 do acervo real (74,6% na metade em português, 89,2% na metade em inglês) —

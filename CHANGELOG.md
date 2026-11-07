@@ -10,6 +10,10 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.8.1 — 2026-11-07
+
+- **A trava diária da manutenção não acumula mais.** A sessão que cria `manutencao-<AAAA-MM-DD>.lock` apaga, logo depois de disparar a manutenção, as travas de datas anteriores na raiz de dados. A trava do dia, uma de data futura, o `manutencao.log` e qualquer arquivo com outro nome ficam; a sessão que perde a corrida do dia não apaga nada. As travas antigas que já existem somem na primeira abertura com esta versão.
+
 ## 2.8.0 — 2026-11-07
 
 - **Deriva entre design e código.** O `conferir-fluxo.cjs deriva` relê os designs já mergeados contra o código atual. A âncora de cada decisão é o `de:` da mutação das tarefas que a atendem, e cada uma sai intacta, sumiu ou arquivo sumiu, as duas últimas com o commit que tirou o trecho (inclusive quando ele saiu por um merge). Com `--arquivo`, responde que decisões moram num arquivo, e o `brainstorm` passa a rodar isso nos arquivos que a demanda vai tocar, antes da primeira rodada. É relatório: sai 0 e não barra nada.
