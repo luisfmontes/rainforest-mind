@@ -19,6 +19,9 @@
 #  13. complexas (revisão 2): regex depois de =>, JSX de uma linha sem ;, ++, [ na linha de baixo,
 #      if dentro de try/finally/do/switch, p?.catch(, seta dentro de genérico do tipo de retorno.
 #  14. complexas: corpo de topo que atravessa outra função de topo sai como não medido.
+#  17. variacao: só as funções tocadas, antes e depois, com nova, removida, (=), ordem, pareamento
+#      por ordem, remoção pura, py como não medido, sem diff, --base explícito e os dois erros.
+#  18. variacao (revisão 1): base com nome de pasta, lacunas (base)/(atual), --raiz subpasta.
 #
 # Fixture em mktemp, FORA do worktree, com git init. Arquivos e payloads montados por node,
 # nunca por heredoc de conteúdo. Caminhos vão para o node em forma Windows (cygpath -m).
@@ -590,6 +593,96 @@ linha "troca de mãe: f0 continua medida" "$SAI16" "1 cognitiva  2 ciclomática 
 linha "troca de mãe: f3 é medida" "$SAI16" "1 cognitiva  2 ciclomática  x.js:L6 f3"
 igual "troca de mãe: f1 aparece uma vez só como lacuna" "$(grep -c "x.js:L2 f1" <<<"$SAI16")" "1"
 nao "nenhuma leitura errada fora de render e f1" "$(grep -v "L2 render\|L2 f1" <<<"$SAI16")" "leitura errada"
+
+echo "== 17. variacao: só as funções que o diff tocou, antes e depois (design 2026-11-07-complexidade-no-diff) =="
+# Escreve caminho=conteudo na árvore de trabalho, sem commitar (\n literal vira quebra).
+escrever() {
+  local dir="$1"; shift
+  local par
+  for par in "$@"; do
+    node -e 'require("fs").writeFileSync(process.argv[1], process.argv[2].replace(/\\n/g, "\n"))' "$(winpath "$dir/${par%%=*}")" "${par#*=}" || return 1
+  done
+}
+V="$SBP/variacao"
+montar_repo "$V" \
+  'a.js=function f(x) {\n  if (x) return 1;\n  return 0;\n}\n\nfunction g(y) {\n  return y;\n}\n\n\n\nfunction h(z) {\n  if (z) {\n    if (z > 1) return 2;\n  }\n  return 0;\n}\n\nfunction apagar(w) {\n  return w;\n}\n' \
+  'dup.js=function render() {\n  return 1;\n}\nfunction render() {\n  if (a) return 2;\n  return 0;\n}\n' \
+  'eq.js=function e(x) {\n  return x;\n}\n' \
+  'k.js=function k() {\n  return 1;\n}\n' \
+  'p.py=def a():\n  return 1\n' || { echo "FALHA: montar_repo variacao"; exit 1; }
+escrever "$V" \
+  'a.js=function f(x) {\n  if (x) {\n    if (x > 1) return 2;\n  }\n  return 0;\n}\n\nfunction g(y) {\n  return y;\n}\n\nfunction h(z) {\n  if (z) {\n  }\n  return 0;\n}\n' \
+  'dup.js=function render() {\n  return 1;\n}\nfunction render() {\n  if (a) {\n    if (b) return 2;\n  }\n  return 0;\n}\n' \
+  'eq.js=function e(x) {\n  return x + 1;\n}\n' \
+  'novo.ts=export function nv(a: number) {\n  return a ? 1 : 2;\n}\n' \
+  'p.py=def a():\n  return 2\n' || { echo "FALHA: escrever variacao"; exit 1; }
+VN="$(winpath "$V")"
+SAI17="$(node "$CAT" variacao --raiz "$VN" --base HEAD)"; EXIT=$?
+saiu "variacao com --base HEAD sai 0" "$EXIT" 0
+linha "função editada que subiu" "$SAI17" "1 → 3 cognitiva (+2)  2 → 3 ciclomática  a.js:L1 f"
+linha "contribuição da que subiu, recuada debaixo dela" "$SAI17" "    +2 L3 if (profundidade 1)"
+linha "17. variacao: remoção pura dentro da função a marca como tocada" "$SAI17" "3 → 1 cognitiva (-2)  3 → 2 ciclomática  a.js:L12 h"
+linha "função apagada sai como removida, com a linha da base" "$SAI17" "0 → removida cognitiva (-0)  1 → removida ciclomática  a.js:L19 apagar"
+linha "nome repetido pareia pela ordem: a segunda render com a segunda" "$SAI17" "1 → 3 cognitiva (+2)  2 → 3 ciclomática  dup.js:L4 render"
+igual "a primeira render, não tocada, não aparece" "$(grep -c "dup.js:L1 render" <<<"$SAI17")" "0"
+linha "arquivo não rastreado sai como nova" "$SAI17" "nova → 1 cognitiva (+1)  nova → 2 ciclomática  novo.ts:L1 nv"
+linha "tocada sem variação sai com (=)" "$SAI17" "0 → 0 cognitiva (=)  1 → 1 ciclomática  eq.js:L1 e"
+nao "remoção pura entre g e h não marca g" "$SAI17" "a.js:L8 g"
+nao "arquivo fora do diff não aparece" "$SAI17" "k.js"
+linha "arquivo py do diff é lacuna declarada" "$SAI17" "não medido: 1 arquivo(s) py — linguagem sem chaves"
+ORDEM17="$(grep -E ' cognitiva \(' <<<"$SAI17" | sed -E 's/.*  ([^ ]+) ([^ ]+)$/\1 \2/' | tr '\n' ',')"
+igual "ordem: subida primeiro, empate por caminho, descida depois, (=) no fim" "$ORDEM17" "a.js:L1 f,dup.js:L4 render,novo.ts:L1 nv,a.js:L19 apagar,a.js:L12 h,eq.js:L1 e,"
+igual "última linha é a de aproximação" "$(tail -1 <<<"$SAI17")" "medida aproximada (leitura de texto, sem parser): confira no código antes de concluir"
+( cd "$V" && git add -A && git commit -q -m depois ) || { echo "FALHA: commit variacao"; exit 1; }
+SAI17B="$(node "$CAT" variacao --raiz "$VN" --base HEAD)"
+linha "sem diff: nenhuma função tocada" "$SAI17B" "nenhuma função medida tocada pelo diff"
+SAI17C="$(node "$CAT" variacao --raiz "$VN" --base HEAD~1)"
+linha "--base explícito num commit anterior mede contra ele" "$SAI17C" "1 → 3 cognitiva (+2)  2 → 3 ciclomática  a.js:L1 f"
+ERR17="$(node "$CAT" variacao --raiz "$VN" 2>&1 >/dev/null)"; EXIT=$?
+saiu "sem origin e sem --base sai 1" "$EXIT" 1
+tem "a mensagem pede --base" "$ERR17" "base não resolvida (sem origin/<padrão>); passe --base <ref>"
+mkdir -p "$SBP/semgit"
+ERR17D="$(node "$CAT" variacao --raiz "$(winpath "$SBP/semgit")" --base HEAD 2>&1 >/dev/null)"; EXIT=$?
+saiu "--raiz fora de git sai 1" "$EXIT" 1
+tem "a mensagem diz que não é repositório" "$ERR17D" "variacao: --raiz não é repositório git"
+
+echo "== 18. variacao (revisão 1): base ambígua, lacunas (base)/(atual), --raiz subpasta com espaço e acento =="
+W="$SBP/variacao2"
+montar_repo "$W" \
+  'docs/keep.js=function keep(x) {\n  return x;\n}\n' \
+  'lac.js=function quebrada(x) {\n  if (x) {\n    return 1;\n\nfunction depois(y) {\n  return y;\n}\n' \
+  'x.js=function q(x) {\n  return x;\n}\n' \
+  'sub dir/ação.js=function acao(a) {\n  return a;\n}\n' \
+  'fora.js=function fora(b) {\n  return b;\n}\n' || { echo "FALHA: montar_repo variacao2"; exit 1; }
+( cd "$W" && git branch docs ) || { echo "FALHA: branch docs"; exit 1; }
+escrever "$W" \
+  'docs/keep.js=function keep(x) {\n  if (x) return 2;\n  return x;\n}\n' \
+  'lac.js=function quebrada(x) {\n  if (x) {\n    return 1;\n  }\n}\n\nfunction depois(y) {\n  return y;\n}\n' \
+  'x.js=function q(x) {\n  if (x) {\n    return 1;\n' \
+  'sub dir/ação.js=function acao(a) {\n  return a ? 1 : 2;\n}\n' \
+  'fora.js=function fora(b) {\n  return b ? 1 : 2;\n}\n' || { echo "FALHA: escrever variacao2"; exit 1; }
+WN="$(winpath "$W")"
+SAI18="$(node "$CAT" variacao --raiz "$WN" --base docs)"; EXIT=$?
+saiu "base com o nome de uma pasta (docs) sai 0" "$EXIT" 0
+linha "base com o nome de uma pasta mede o diff de verdade" "$SAI18" "0 → 1 cognitiva (+1)  1 → 2 ciclomática  docs/keep.js:L1 keep"
+linha "lacuna da base atrás de uma nova é declarada (base)" "$SAI18" "não medido: lac.js:L1 quebrada — corpo não fechou (base)"
+linha "lacuna do disco atrás de uma removida é declarada (atual)" "$SAI18" "não medido: x.js:L1 q — corpo não fechou (atual)"
+SAI18B="$(node "$CAT" variacao --raiz "$(winpath "$W/sub dir")" --base HEAD)"; EXIT=$?
+saiu "--raiz subpasta com espaço sai 0" "$EXIT" 0
+linha "--raiz subpasta: caminho relativo a ela, com acento" "$SAI18B" "0 → 1 cognitiva (+1)  1 → 2 ciclomática  ação.js:L1 acao"
+nao "--raiz subpasta: arquivo de fora dela não entra" "$SAI18B" "fora.js"
+ERR18="$(node "$CAT" variacao --raiz "$WN" --base HEAD~5 2>&1 >/dev/null)"; EXIT=$?
+saiu "base que não existe sai 1" "$EXIT" 1
+tem "base que não existe é nomeada" "$ERR18" "variacao: base não resolvida: HEAD~5"
+# Revisão 2: lacuna só pelo depoisDe (função nova que não fecha, sem nome igual do outro lado), e
+# falha de git depois do rev-parse (índice corrompido) sai 1 com erro, nunca "nenhuma função".
+escrever "$W" 'fora.js=function fora(b) {\n  return b ? 1 : 2;\n}\n\nfunction solta(c) {\n  if (c) {\n'
+SAI18C="$(node "$CAT" variacao --raiz "$WN" --base HEAD)"
+linha "lacuna nova sem par do outro lado é declarada (atual)" "$SAI18C" "não medido: fora.js:L5 solta — corpo não fechou (atual)"
+printf 'lixo' > "$W/.git/index"
+ERR18C="$(node "$CAT" variacao --raiz "$WN" --base HEAD 2>&1 >/dev/null)"; EXIT=$?
+saiu "git que falha depois do rev-parse sai 1" "$EXIT" 1
+tem "e diz que o git não listou o diff" "$ERR18C" "erro: variacao: o git não listou o diff contra HEAD"
 
 echo "== 11. complexas no repo real: ordem, linha de começo e contribuições dentro da função =="
 node "$CAT" complexas --raiz "$RAIZN" --top 5 > "$SBP/cx-real.txt"; EXIT=$?

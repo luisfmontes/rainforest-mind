@@ -1,0 +1,115 @@
+{
+  "slug": "2026-11-07-complexidade-no-diff",
+  "titulo": "2026-11-07-complexidade-no-diff",
+  "criado_em": "2026-11-07",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-11-07-complexidade-no-diff.md",
+    "em": "2026-11-07"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-11-07-complexidade-no-diff.md",
+    "tarefas": 3,
+    "paralelas": [],
+    "em": "2026-11-07"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-11-07",
+    "tarefas_ok": 3,
+    "tarefas": 3,
+    "comando": "bash scripts/testa-catalogo-funcoes.sh; bash scripts/testa-enxugar-estrutura.sh",
+    "saida": "ok: 180   falhou: 0 / Casos: 33/33 passaram",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-catalogo-funcoes.sh, caso \"17. variacao: remoção pura dentro da função a marca como tocada\""
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-enxugar-estrutura.sh, caso \"D6 (complexidade-no-diff): modo 1 abre com variacao, fora do líquido\""
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "tarefa só de texto e número de versão"
+      }
+    ],
+    "em": "2026-11-07"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "342338d0815bf2354ed463bb74577e9a3ec85e43",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ab33c8c988c1e0e3c",
+        "veredito": "ok",
+        "em": "2026-11-07",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-ab33c8c988c1e0e3c.jsonl"
+      }
+    ],
+    "em": "2026-11-07",
+    "achados": 2,
+    "base": "1d5782b9476a3c8b117cd8be2cd9b749178aa969",
+    "head": "342338d0815bf2354ed463bb74577e9a3ec85e43",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a02b5fd28534e9fcd",
+            "veredito": "ok",
+            "em": "2026-11-07",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a02b5fd28534e9fcd.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a9f0c7e98bb26ece3",
+            "veredito": "ok",
+            "em": "2026-11-07",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a9f0c7e98bb26ece3.jsonl"
+          }
+        ]
+      }
+    ]
+  },
+  "verificar": {
+    "status": "ok",
+    "em": "2026-11-07",
+    "comando": "node scripts/catalogo-funcoes.cjs variacao --raiz . --base 1d5782b9; bash scripts/testa-catalogo-funcoes.sh; bash scripts/testa-enxugar-estrutura.sh; bash scripts/testa-teto-skills.sh; bash scripts/testa-versao.sh; bash scripts/testa-plugin-codex.sh; node scripts/conferir-versao.cjs",
+    "saida": "variacao exit 0: nova → 15 cognitiva (+15) ... scripts/catalogo-funcoes.cjs:L393 variacao (listar dá 393); 26 → 35 cognitiva (+9) ... L513 principal; só scripts/catalogo-funcoes.cjs; última linha a de aproximação. ok: 180 falhou: 0; Casos: 33/33; teto 21 OK; versao 5 ok; codex exit 0; conferir-versao exit 0 (2.7.0 > origin/main 2.6.0); README variacao 1, untangle 0",
+    "head": "342338d0815bf2354ed463bb74577e9a3ec85e43"
+  },
+  "fechar": {
+    "status": "pendente",
+    "em": "2026-11-07"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-11-07",
+      "de": "revisar",
+      "motivo": "revisão 1: diff de arquivos sem -- e com falha engolida; USO sem variacao; lacuna da base escondida atrás de nova; bateria sem caso de lacuna e de --raiz subpasta"
+    },
+    {
+      "em": "2026-11-07",
+      "de": "revisar",
+      "motivo": "revisão 2: sem caso para falha de git virando erro e para lacuna isolada pelo depoisDe"
+    }
+  ]
+}

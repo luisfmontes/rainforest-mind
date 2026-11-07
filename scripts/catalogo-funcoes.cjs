@@ -14,6 +14,10 @@
  *            Complexidade cognitiva e ciclomática por função JS/TS e Dart, da maior para a menor,
  *            com as 3 maiores contribuições de cada uma e o que não foi medido (design
  *            complexidade-por-funcao). Medida aproximada, por leitura de texto: scripts/lib/complexidade.cjs.
+ *   variacao [--raiz <dir>] [--base <ref>]
+ *            Complexidade antes e depois de cada função JS/TS e Dart que o diff de <base> até o
+ *            disco tocou (arquivo não rastreado entra como novo), com a subida primeiro (design
+ *            2026-11-07-complexidade-no-diff). Base padrão: baseDoDiff, a mesma do revisor.
  *   separar  --catalogo <arq-categorizado.json> --saida <dir> [--minimo 3]
  *            Grava <dir>/<categoria>.json só para categorias com ao menos --minimo funções.
  *            Categoria agrupa pela caixa baixa. Stderr: `sem categoria: N` quando há entrada
@@ -43,14 +47,16 @@ const { execFileSync } = require('node:child_process');
 const { EXTENSOES, casar } = require(path.join(__dirname, '..', 'hooks', 'lib', 'definicoes.cjs'));
 const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 const { medirArquivo } = require(path.join(__dirname, 'lib', 'complexidade.cjs'));
+const { baseDoDiff } = require(path.join(__dirname, '..', 'hooks', 'lib', 'achados-revisor.cjs'));
 
 const DIRETORIOS_GERADOS = new Set(['node_modules', 'build', 'dist', '.dart_tool', '.git']);
 const MAX_CAMINHO_ASSINATURA = 200;
 
-const USO = `uso: node scripts/catalogo-funcoes.cjs <listar|maiores|complexas|separar|conferir> [opções]
+const USO = `uso: node scripts/catalogo-funcoes.cjs <listar|maiores|complexas|variacao|separar|conferir> [opções]
   listar   [--raiz <dir>] [--contexto N] [--incluir-testes]
   maiores  [--raiz <dir>] [--top N]
   complexas [--raiz <dir>] [--top N]
+  variacao [--raiz <dir>] [--base <ref>]
   separar  --catalogo <arq> --saida <dir> [--minimo 3]
   conferir --catalogo <arq> --grupos <arq>
 `;
@@ -156,6 +162,11 @@ function definicoesDoArquivo(raiz, rel, contextoN) {
   } catch {
     return [];
   }
+  return definicoesDoTexto(texto, linguagem, contextoN);
+}
+
+/** Definições de um texto já lido: serve ao disco e ao lado da base do `variacao`, sem gravar arquivo. */
+function definicoesDoTexto(texto, linguagem, contextoN) {
   const linhas = texto.split(/\r?\n/);
   const conjuntos = linguagem === 'dart' || linguagem === 'js' ? ['topo', 'metodo'] : ['topo'];
   const achados = [];
@@ -235,6 +246,176 @@ function complexas(raiz, top) {
   }
   medidas.sort((a, b) => b.cognitiva - a.cognitiva || b.ciclomatica - a.ciclomatica || (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0) || a.linha - b.linha);
   return { medidas: medidas.slice(0, top), semChaves, naoMedidas };
+}
+
+/** Stdout de um git rodado na raiz; null se ele sair ≠ 0. */
+function gitSaida(raiz, args) {
+  try {
+    return execFileSync(caminhoExecutavel('git'), ['-c', 'core.quotePath=false', ...args], {
+      cwd: raiz,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      maxBuffer: 256 * 1024 * 1024,
+      windowsHide: true,
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Linhas do diff de um arquivo contra a base (D3). Em cada `@@ -a,b +c,d @@` (b e d valem 1 quando
+ * ausentes): as removidas são do lado da base e as novas do lado atual. Remoção pura dentro de
+ * uma função não precisa de regra própria: as linhas removidas caem na faixa dela na base.
+ */
+function linhasDoDiff(raiz, base, rel) {
+  const novas = new Set();
+  const removidas = new Set();
+  const saida = gitSaida(raiz, ['diff', '-U0', '--no-renames', '--relative', '--no-color', base, '--', rel]);
+  if (saida === null) throw new Error(`variacao: o git não deu o diff de ${rel} contra ${base}`);
+  for (const l of saida.split('\n')) {
+    const h = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/.exec(l);
+    if (!h) continue;
+    const a = Number(h[1]);
+    const b = h[2] === undefined ? 1 : Number(h[2]);
+    const c = Number(h[3]);
+    const d = h[4] === undefined ? 1 : Number(h[4]);
+    for (let i = 0; i < b; i++) removidas.add(a + i);
+    for (let i = 0; i < d; i++) novas.add(c + i);
+  }
+  return { novas, removidas };
+}
+
+function medirTexto(texto, linguagem) {
+  if (texto === null) return { medidas: [], naoMedidas: [] };
+  return medirArquivo(texto, linguagem, definicoesDoTexto(texto, linguagem, 0));
+}
+
+/** Medidas com a chave de pareamento do D4: nome e ordem de ocorrência dele no arquivo. */
+function comChave(medidas) {
+  const vez = {};
+  return medidas.map((m) => {
+    vez[m.nome] = (vez[m.nome] || 0) + 1;
+    return { m, k: `${m.nome}\u0000${vez[m.nome]}` };
+  });
+}
+
+/** Arquivos do diff de `base` até o disco, mais os não rastreados, com os filtros do `candidatos` (D2). */
+function arquivosDoDiff(raiz, base) {
+  // `--` depois da base: ramo e pasta de mesmo nome deixam o git em dúvida. Falha do git é erro,
+  // nunca lista vazia, que sairia como "nenhuma função tocada" com exit 0.
+  const doDiff = gitSaida(raiz, ['diff', '--name-only', '--relative', '--no-renames', base, '--']);
+  const soltos = gitSaida(raiz, ['ls-files', '--others', '--exclude-standard']);
+  if (doDiff === null || soltos === null) throw new Error(`variacao: o git não listou o diff contra ${base}`);
+  const listados = [...doDiff.split('\n'), ...soltos.split('\n')].map((s) => normal(s.replace(/\r$/, ''))).filter(Boolean);
+  return [...new Set(listados)]
+    .sort()
+    .filter((rel) => EXTENSOES[path.extname(rel).toLowerCase()] && !ehGerado(rel) && !ehTeste(rel));
+}
+
+function cruza(conj, m) {
+  for (let n = m.linha; n <= m.fim; n++) if (conj.has(n)) return true;
+  return false;
+}
+
+/** Lacuna não tem fim conhecido: conta como tocada quando alguma linha do diff vem depois do começo. */
+function depoisDe(linhas, m) {
+  return [...linhas].some((n) => n >= m.linha);
+}
+
+/** Pares {antes, depois} das funções de um arquivo que o diff tocou (D3, D4), e as lacunas tocadas. */
+function tocadasDoArquivo(raiz, base, rel, linguagem) {
+  const textoBase = gitSaida(raiz, ['show', `${base}:./${rel}`]);
+  let textoAtual = null;
+  try {
+    textoAtual = fs.readFileSync(path.join(raiz, rel), 'utf8');
+  } catch {
+    textoAtual = null;
+  }
+  const velho = medirTexto(textoBase, linguagem);
+  const atual = medirTexto(textoAtual, linguagem);
+  const { novas, removidas } = linhasDoDiff(raiz, base, rel);
+  const tocadaAtual = (m) => textoBase === null || cruza(novas, m);
+  const tocadaBase = (m) => textoAtual === null || cruza(removidas, m);
+  const funcoes = [];
+  const doVelho = new Map(comChave(velho.medidas).map(({ m, k }) => [k, m]));
+  const pareadas = new Set();
+  for (const { m, k } of comChave(atual.medidas)) {
+    const v = doVelho.get(k);
+    if (v) pareadas.add(k);
+    if (tocadaAtual(m) || (v && tocadaBase(v))) funcoes.push({ rel, antes: v || null, depois: m });
+  }
+  for (const [k, v] of doVelho) {
+    if (!pareadas.has(k) && tocadaBase(v)) funcoes.push({ rel, antes: v, depois: null });
+  }
+  // Lacuna de um lado com função de mesmo nome sem par do outro: sem ela, a `nova` (ou a `removida`)
+  // parece função que nasceu (ou morreu), quando só deixou de ser (ou passou a ser) lacuna.
+  const semPar = (nome, lado) => funcoes.some((f) => !f[lado] && (f.antes || f.depois).nome === nome);
+  const lacunas = [
+    ...atual.naoMedidas
+      .filter((m) => textoBase === null || depoisDe(novas, m) || semPar(m.nome, 'depois'))
+      .map((m) => ({ rel, ...m, lado: 'atual' })),
+    ...velho.naoMedidas
+      .filter((m) => textoAtual === null || depoisDe(removidas, m) || semPar(m.nome, 'antes'))
+      .map((m) => ({ rel, ...m, lado: 'base' })),
+  ];
+  return { funcoes, lacunas };
+}
+
+const varCognitiva = (x) => (x.depois ? x.depois.cognitiva : 0) - (x.antes ? x.antes.cognitiva : 0);
+const varCiclomatica = (x) => (x.depois ? x.depois.ciclomatica : 0) - (x.antes ? x.antes.ciclomatica : 0);
+// Sem variação só o par que existe dos dois lados: nova e removida variam sempre, mesmo com nota 0.
+const semVariacao = (x) => Boolean(x.antes && x.depois) && varCognitiva(x) === 0;
+const linhaDoPar = (x) => (x.depois || x.antes).linha;
+
+/** Ordem do D5: variação cognitiva decrescente, depois ciclomática; as `(=)` no fim, por caminho e linha. */
+function ordemDaVariacao(a, b) {
+  const ia = semVariacao(a);
+  const ib = semVariacao(b);
+  if (ia !== ib) return ia ? 1 : -1;
+  if (!ia && varCognitiva(b) !== varCognitiva(a)) return varCognitiva(b) - varCognitiva(a);
+  if (!ia && varCiclomatica(b) !== varCiclomatica(a)) return varCiclomatica(b) - varCiclomatica(a);
+  return (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0) || linhaDoPar(a) - linhaDoPar(b);
+}
+
+/** Linha de saída de um par (D5): `<antes> → <depois> cognitiva (<d>)  <antes> → <depois> ciclomática  <arq>:L<n> <nome>`. */
+function linhaDaVariacao(x) {
+  const lado = (campo) => `${x.antes ? x.antes[campo] : 'nova'} → ${x.depois ? x.depois[campo] : 'removida'}`;
+  const d = varCognitiva(x);
+  let sinal = `${d}`;
+  if (semVariacao(x)) sinal = '=';
+  else if (!x.antes || d > 0) sinal = `+${d}`;
+  else if (d === 0) sinal = '-0';
+  return `${lado('cognitiva')} cognitiva (${sinal})  ${lado('ciclomatica')} ciclomática  ${x.rel}:L${linhaDoPar(x)} ${(x.depois || x.antes).nome}`;
+}
+
+/** Funções tocadas pelo diff de `base` até o disco, com a medida dos dois lados (D1 a D5). */
+function variacao(raiz, base) {
+  const funcoes = [];
+  const lacunas = [];
+  const semChaves = {};
+  for (const rel of arquivosDoDiff(raiz, base)) {
+    const linguagem = EXTENSOES[path.extname(rel).toLowerCase()];
+    if (linguagem !== 'js' && linguagem !== 'dart') {
+      semChaves[linguagem] = (semChaves[linguagem] || 0) + 1;
+      continue;
+    }
+    const r = tocadasDoArquivo(raiz, base, rel, linguagem);
+    funcoes.push(...r.funcoes);
+    lacunas.push(...r.lacunas);
+  }
+  funcoes.sort(ordemDaVariacao);
+  const saida = [];
+  for (const x of funcoes) {
+    saida.push(linhaDaVariacao(x));
+    const subiu = x.depois && (!x.antes || varCognitiva(x) > 0);
+    if (subiu) for (const c of x.depois.contribuicoes.slice(0, 3)) saida.push(`    +${c.valor} L${c.linha} ${c.rotulo}`);
+  }
+  if (!funcoes.length) saida.push('nenhuma função medida tocada pelo diff');
+  for (const ling of Object.keys(semChaves).sort()) saida.push(`não medido: ${semChaves[ling]} arquivo(s) ${ling} — linguagem sem chaves`);
+  for (const m of lacunas) saida.push(`não medido: ${m.rel}:L${m.linha} ${m.nome} — ${m.motivo} (${m.lado})`);
+  saida.push('medida aproximada (leitura de texto, sem parser): confira no código antes de concluir');
+  return saida;
 }
 
 function lerJson(arquivo, nome) {
@@ -331,7 +512,7 @@ function conferir(catalogoArq, gruposArq) {
 
 function principal(argv) {
   const [sub, ...resto] = argv;
-  const subs = ['listar', 'maiores', 'complexas', 'separar', 'conferir'];
+  const subs = ['listar', 'maiores', 'complexas', 'variacao', 'separar', 'conferir'];
   if (!subs.includes(sub)) {
     process.stderr.write(USO);
     process.exitCode = 1;
@@ -364,6 +545,17 @@ function principal(argv) {
     for (const m of naoMedidas) saida.push(`não medido: ${m.rel}:L${m.linha} ${m.nome} — ${m.motivo}`);
     saida.push('medida aproximada (leitura de texto, sem parser): confira no código antes de concluir');
     process.stdout.write(saida.map((l) => l + '\n').join(''));
+    return;
+  }
+  if (sub === 'variacao') {
+    const raiz = path.resolve(o.raiz || '.');
+    if (!repoGit(raiz)) throw new ErroDeUso('variacao: --raiz não é repositório git');
+    const base = o.base || baseDoDiff(raiz);
+    if (!base) throw new ErroDeUso('variacao: base não resolvida (sem origin/<padrão>); passe --base <ref>');
+    if (gitSaida(raiz, ['rev-parse', '--verify', '--quiet', `${base}^{commit}`]) === null) {
+      throw new ErroDeUso(`variacao: base não resolvida: ${base}`);
+    }
+    process.stdout.write(variacao(raiz, base).map((l) => l + '\n').join(''));
     return;
   }
   if (sub === 'separar') {

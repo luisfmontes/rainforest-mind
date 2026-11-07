@@ -155,8 +155,14 @@ fica só menor.
 ```
 
 Recebe o diff atual (por git ou especificado), localiza linhas novas/mudadas,
-procura em cada bloco editado pelos cinco tipos acima. Sai com os achados
+procura em cada bloco editado pelos seis tipos acima. Sai com os achados
 **da mudança**, não do repo todo.
+
+Abra com `node <plugin>/scripts/catalogo-funcoes.cjs variacao --raiz <repo>`: a complexidade
+de cada função que o diff tocou, antes e depois (`8 → 19 cognitiva (+11)`), com a mesma
+medida aproximada do `complexas`. Sem `--base`, a base é a mesma do revisor,
+`merge-base(HEAD, origin/<padrão>)`; `--base <ref>` troca. A função que mais subiu é onde ler
+primeiro. É contexto: não vira tag nem entra no `líquido:`.
 
 Caso de uso: "o que eu só adicionei que pode sair?"
 
