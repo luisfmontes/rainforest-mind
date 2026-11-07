@@ -79,7 +79,8 @@ Sem achado em algum grau, diga isso. Termine com a linha: leitura completa
   trabalho do estágio.
 - **Menor:** fica a critério da sessão.
 - **Achado que muda uma `D<n>` do design** não se resolve no plano. É achado `[design]`: o fluxo
-  para e volta ao `brainstorm`, como a regra 16 manda.
+  para e a decisão sobe ao usuário, como a regra 16 manda; fechada a decisão, o design muda e o
+  plano é refeito.
 - Confira as citações do leitor na fonte antes de agir (regra 12): ele também pode inventar uma
   lacuna que não existe.
 

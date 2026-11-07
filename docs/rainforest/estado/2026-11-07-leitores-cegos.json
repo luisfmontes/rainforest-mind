@@ -23,31 +23,88 @@
   "executar": {
     "status": "parcial",
     "catraca_mutacao": "2026-11-07",
-    "tarefas_ok": 0,
+    "tarefas_ok": 3,
     "tarefas": 3,
-    "em_voo": [
+    "em": "2026-11-07",
+    "comando": "bash scratchpad/rodar-baterias.sh (varrer-baterias.sh --so para cada bateria de baterias-do-diff --base origin/main)",
+    "saida": "total=28 vermelhas:[]",
+    "carimbos": [
       {
-        "agente": "general-purpose",
-        "tarefa": "prova T1: leitor cego no plano",
-        "desde": "2026-11-07T14:00",
-        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145"
+        "tarefa": 1,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 1,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T16:35:43.459Z"
       },
       {
-        "agente": "general-purpose",
-        "tarefa": "prova T2: diagnostico cego do #648 na base 32be77c2",
-        "desde": "2026-11-07T14:00",
-        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145"
+        "tarefa": 2,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 1,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T16:35:43.459Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 1,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T16:35:43.459Z"
       }
     ],
-    "em": "2026-11-07"
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "n/a",
+        "motivo": "texto de skill; prova pelo despacho real do leitor cego"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "texto de skill e agente; prova pelo diagnostico cego real do #648 na base 32be77c2"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "bump de versao e notas"
+      }
+    ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "pendente",
+    "snapshot": {
+      "head": "364bb7baddd88808d57649b67d430cac21a6f889",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/2026-11-07-leitores-cegos.json"
+      ]
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a4588bc5ffe20928f",
+        "veredito": "ok",
+        "em": "2026-11-07",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a4588bc5ffe20928f.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-11-07",
+    "achados": 5,
+    "base": "0ea200c9",
+    "head": "364bb7ba"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-11-07"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-11-07"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-11-07",
+      "de": "revisar",
+      "motivo": "revisao 1 ok com 5 achados de redacao que cabem no PR: Repro no despacho conjunto do depurador, gatilho sem tipo no D1 e CHANGELOG, metade do D4 na SKILL.md, achado [design] sobe ao usuario, saidas das provas T1/T2 no plano"
+    }
+  ]
 }

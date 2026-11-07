@@ -12,7 +12,8 @@ a sessão deixou de olhar.
 
 ## Quando e como
 
-No começo da Fase 3, com o loop da Fase 1 e o repro mínimo da Fase 2 em mãos:
+No começo da Fase 3, com o loop da Fase 1 e o repro mínimo da Fase 2 em mãos (no caminho do
+subagente `depurador`, abaixo, o repro pode ainda não existir):
 
 1. Despache o diagnóstico em background: `subagent_type: "general-purpose"`, com
    `model: "sonnet"`, sem `isolation` (ele não edita).
@@ -25,7 +26,10 @@ Bug trivial já está fora da skill, e o passo vale para todo o resto.
 **Rodando dentro do subagente `depurador`**, que não tem a ferramenta Agent, pule o passo e diga
 no relato: "diagnóstico cego não rodou: sem Agent neste contexto". Nesse caminho, o diagnóstico
 cego é de quem despachou: a janela principal despacha o `depurador` e o diagnóstico cego juntos,
-com o mesmo sintoma e repro, e compara os dois relatos pelo procedimento abaixo.
+e compara os dois relatos pelo procedimento abaixo. No despacho conjunto, as Fases 1 e 2 ainda
+não rodaram, porque são trabalho do `depurador`. Então o `Repro:` do prompt leva o que o usuário
+descreveu, ou `nenhum ainda: o sintoma é tudo o que se sabe`. Nunca invente um repro para
+preencher o campo. As hipóteses que entram na comparação são as do relato do `depurador`.
 
 ## Prompt
 
@@ -38,7 +42,8 @@ O arquivo de instruções do projeto na raiz (CLAUDE.md ou AGENTS.md), se existi
 arquitetura.
 
 Sintoma: <o que se observa, com a saída real colada>
-Repro: <o comando ou os passos que reproduzem, como a Fase 1 e a Fase 2 deixaram>
+Repro: <o comando ou os passos que reproduzem, como a Fase 1 e a Fase 2 deixaram; no despacho
+conjunto com o depurador, o que o usuário descreveu, ou "nenhum ainda: o sintoma é tudo o que se sabe">
 
 Investigue. Onde o defeito mais provavelmente mora? Cite `arquivo:linha`. Liste de 1 a 3 causas
 candidatas, da mais para a menos provável. Para cada uma, dê:
