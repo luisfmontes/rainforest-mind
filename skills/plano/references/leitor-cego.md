@@ -26,6 +26,9 @@ implementador para confundir.
   `general-purpose` como agente que não escreve.
 - Sem a linha `Slug:`. O hook de veredito só grava para o tipo `revisor`, mas a linha não tem
   função aqui e não deve existir.
+- Commite o plano antes do despacho e não edite o worktree enquanto o leitor roda. Ele lê a
+  árvore, e um arquivo que muda no meio da leitura vira achado falso. Na primeira rodada, um
+  bump de versão feito em paralelo virou "README sem a versão".
 - O briefing leva **só** o que está abaixo. Resumo da conversa, intenção da sessão ou "o que
   eu quis dizer" desfazem a cegueira, e aí o leitor confirma o que você já pensa.
 
