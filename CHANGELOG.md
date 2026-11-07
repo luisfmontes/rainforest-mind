@@ -10,6 +10,10 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.8.2 — 2026-11-07
+
+- **As recusas do corpo do PR terminam na mesma receita.** O `gate-fechar-issue` tinha cinco recusas sobre o corpo de `gh pr create`/`gh pr edit` (variável no `--body-file`, caminho relativo com diretório incerto, arquivo ilegível, `--body` com crase, editor interativo), cada uma com uma sugestão própria, e algumas sugeriam o que a recusa seguinte barrava. Agora todas dizem a razão e terminam em "Receita que passa": gravar o corpo com o Write num caminho absoluto literal e rodar `gh pr create --body-file "<caminho>"` num comando só com o `gh`. A recusa do arquivo ilegível diz também o caminho que tentou e o motivo: arquivo que não existe, `/tmp` do Git Bash (que o node do gate não enxerga) ou o código do erro; heredoc ilegível ganha razão própria. Medido em 300 transcritos: esse gate respondia pela maior parte dos turnos com a mesma falha repetida 3 vezes ou mais.
+
 ## 2.8.1 — 2026-11-07
 
 - **A trava diária da manutenção não acumula mais.** A sessão que cria `manutencao-<AAAA-MM-DD>.lock` apaga, logo depois de disparar a manutenção, as travas de datas anteriores na raiz de dados. A trava do dia, uma de data futura, o `manutencao.log` e qualquer arquivo com outro nome ficam; a sessão que perde a corrida do dia não apaga nada. As travas antigas que já existem somem na primeira abertura com esta versão.
