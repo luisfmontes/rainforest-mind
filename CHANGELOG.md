@@ -10,6 +10,11 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.6.0 — 2026-11-07
+
+- **O `plano` passa por um leitor cego antes do `ok`.** Quando o plano tem tarefa de implementar, configurar ou teste, um agente sonnet que nunca viu a conversa lê o design e o plano como o executor haiku vai ler e aponta onde o texto deixa uma decisão para quem implementa, com passo vago ou critério que não roda. Achado bloqueante ou maior se corrige no plano antes do `ok`, e achado que muda uma decisão do design volta ao `brainstorm`. O briefing está em `skills/plano/references/leitor-cego.md`.
+- **O `depurar` ganha um diagnóstico cego na Fase 3.** No começo da fase, um agente recebe só o sintoma e o repro, nunca a hipótese da sessão, e devolve de 1 a 3 causas com `arquivo:linha` e uma checagem para cada. A sessão escreve as próprias hipóteses enquanto ele roda. Se os dois discordam, decide uma checagem cujo resultado muda conforme a causa real, e não a releitura do código. O subagente `depurador` não tem a ferramenta Agent, então quem o despacha roda esse diagnóstico em paralelo.
+
 ## 2.5.1 — 2026-11-07
 
 - **A branch `fluxo/<slug>` com o slug datado passa pela portaria (#645).** Seguir a receita da regra 11 com o slug do `brainstorm` (`2026-11-03-tema`) criava a branch `fluxo/2026-11-03-tema`, e a portaria recusava todo despacho por não reconhecer o fluxo. Agora as duas formas valem, com e sem a data, também para tarefa paralela (`-t<n>`) e para o caminho leve.
