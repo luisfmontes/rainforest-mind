@@ -23,7 +23,7 @@
     "tarefas_ok": 3,
     "tarefas": 3,
     "comando": "node scripts/conferir-fluxo.cjs deriva; bash scripts/testa-deriva.sh",
-    "saida": "deriva exit 0, 50 linhas, decisões: 615 com âncora (502 intactas, 113 com âncora perdida), 759 sem âncora medível; ok: 18 falhou: 0",
+    "saida": "deriva exit 0, decisões: 621 com âncora (508 intactas, 113 com âncora perdida), 759 sem âncora medível; ok: 25 falhou: 0",
     "mutacao": [
       {
         "tarefa": 1,
