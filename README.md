@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
 
-> English: [README.en.md](README.en.md) — snapshot congelado na 2.5.2; a versão canônica é esta.
+> English: [README.en.md](README.en.md) — snapshot congelado numa versão anterior (a versão está no topo dele); a versão canônica é esta.
 
 > ### O problema não é falta de ideia. É o que recebe luz agora.
 
