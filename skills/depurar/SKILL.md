@@ -90,6 +90,14 @@ dela. Cada uma precisa ser falseável, com a previsão enunciada: "se X é a
 causa, mudar Y faz o bug sumir". Sem previsão enunciável é palpite: descarta
 ou afia.
 
+**Diagnóstico cego, em paralelo.** Ao abrir esta fase, despache em background
+um `general-purpose` sonnet que recebe **só o sintoma e o repro**, nunca a sua
+hipótese, e escreva as suas enquanto ele roda. Discordância se resolve rodando
+uma checagem cujo resultado muda conforme a causa real, nunca relendo código.
+Prompt e procedimento: `references/diagnostico-cego.md`. Sem a ferramenta
+Agent (subagente `depurador`), pule e avise no relato: o passo é de quem
+despachou.
+
 **Saída ruim de modelo: a entrega vem antes da capacidade.** Quando o
 sintoma é "o prompt automatizado devolveu coisa incompleta ou estranha", a
 hipótese nº 1 é a **entrega** — o texto chegou inteiro? no encoding certo? —

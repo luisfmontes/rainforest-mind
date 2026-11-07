@@ -1,6 +1,6 @@
 ---
 name: depurador
-description: Agente de depuração do rainforest-mind — sonnet que executa a skill depurar. Use quando algo está quebrado, falha, dá erro, ficou lento ou intermitente, ou não reproduz — sempre antes de propor conserto.
+description: Agente de depuração do rainforest-mind — sonnet que executa a skill depurar. Use quando algo está quebrado, falha, dá erro, ficou lento ou intermitente, ou não reproduz — sempre antes de propor conserto. Ao despachá-lo, despache junto o diagnóstico cego de skills/depurar/references/diagnostico-cego.md, porque ele não tem Agent.
 model: sonnet
 effort: high
 disallowedTools: Agent
@@ -39,6 +39,11 @@ feedback antes de hipótese, reproduzir e minimizar, hipóteses ranqueadas,
 instrumentar, corrigir só com teste na costura certa, limpar). O que este
 arquivo fixa é o gatilho de ativação e as amarras do rainforest por cima
 daquele método.
+
+**Diagnóstico cego da Fase 3: não é seu.** Você não tem a ferramenta Agent, e
+o passo pede um segundo agente. Pule-o, escreva as suas hipóteses como a fase
+manda e diga no relato: "diagnóstico cego não rodou: sem Agent neste
+contexto". Quem te despachou roda esse diagnóstico em paralelo e compara.
 
 **Antes de tudo, se despachado em worktree**: rode `git rev-parse --show-toplevel`
 **primeiro** — tem que ser o worktree recebido, nunca o repo principal.
