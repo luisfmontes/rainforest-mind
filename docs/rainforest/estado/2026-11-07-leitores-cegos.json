@@ -21,13 +21,13 @@
     "em": "2026-11-07"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-07",
-    "tarefas_ok": 3,
-    "tarefas": 3,
+    "tarefas_ok": 4,
+    "tarefas": 4,
     "em": "2026-11-07",
-    "comando": "bash scripts/varrer-baterias.sh --so <cada bateria nova do diff>",
-    "saida": "total=14 vermelhas:[]",
+    "comando": "node scripts/conferir-mutacao.cjs --raiz . --arquivo hooks/memoria-assunto-agente.cjs --bateria \"node hooks/testa-memoria-assunto-agente.cjs\"",
+    "saida": "ok: bateria VERMELHA com o comportamento invertido (exit 1), confirmada em duas rodadas.",
     "carimbos": [
       {
         "tarefa": 1,
@@ -91,6 +91,34 @@
         "iteracao": 3,
         "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
         "ts": "2026-11-07T17:06:22.698Z"
+      },
+      {
+        "tarefa": 1,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 4,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:23:48.542Z"
+      },
+      {
+        "tarefa": 2,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 4,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:23:48.542Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "1d4ca1c6",
+        "iteracao": 4,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:23:48.542Z"
+      },
+      {
+        "tarefa": 4,
+        "hash_base": "e6d247c0",
+        "iteracao": 1,
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145",
+        "ts": "2026-11-07T17:23:48.542Z"
       }
     ],
     "mutacao": [
@@ -108,6 +136,11 @@
         "tarefa": 3,
         "resultado": "n/a",
         "motivo": "bump de versao e notas"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-memoria-assunto-agente.cjs, caso linha Contexto: cego no briefing"
       }
     ]
   },
