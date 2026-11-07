@@ -425,6 +425,34 @@ afirma "grep -q 'manutencao: completa' '$RAIZ10/manutencao.log' 2>/dev/null" "fi
 afirma "[ ! -e '$HOME10/.rainforest' ]" "filho nao caiu na raiz do home"
 
 echo
+echo "== 11. quem cria a trava do dia apaga as de dias anteriores, e so elas =="
+RAIZ11A="$(novo_sandbox)"
+RFM_ROOT="$RAIZ11A" $MEMORIA iniciar > /dev/null 2>&1
+for f in manutencao-2026-01-01.lock manutencao-2026-01-02.lock manutencao-2999-12-31.lock \
+         manutencao.log manutencao-x.lock manutencao-2026-1-1.lock; do
+  : > "$RAIZ11A/$f"
+done
+echo "  comando: RFM_ROOT=<sandbox com 6 arquivos> printf '%s' '<payload>' | node hooks/memoria-manutencao-session-start.cjs"
+payload "$RAIZ11A" | RFM_ROOT="$RAIZ11A" node "$HOOK_WIN" > /dev/null 2>&1
+igual "hook sai 0" "0" "$?"
+esperar_filho "$RAIZ11A/manutencao-$(date +%F).lock" > /dev/null
+echo "  arquivos depois: $(ls "$RAIZ11A" | grep '^manutencao' | tr '\n' ' ')"
+afirma "[ -f '$RAIZ11A/manutencao-$(date +%F).lock' ]" "trava de hoje criada"
+afirma "[ ! -e '$RAIZ11A/manutencao-2026-01-01.lock' ]" "manutencao-2026-01-01.lock apagada"
+afirma "[ ! -e '$RAIZ11A/manutencao-2026-01-02.lock' ]" "manutencao-2026-01-02.lock apagada"
+afirma "[ -e '$RAIZ11A/manutencao-2999-12-31.lock' ]" "manutencao-2999-12-31.lock (data futura) fica"
+afirma "[ -e '$RAIZ11A/manutencao.log' ]" "manutencao.log fica"
+afirma "[ -e '$RAIZ11A/manutencao-x.lock' ]" "manutencao-x.lock (nome fora do padrao) fica"
+afirma "[ -e '$RAIZ11A/manutencao-2026-1-1.lock' ]" "manutencao-2026-1-1.lock (data sem zero) fica"
+
+RAIZ11B="$(novo_sandbox)"
+: > "$RAIZ11B/manutencao-2026-01-02.lock"
+: > "$RAIZ11B/manutencao-$(date +%F).lock"
+payload "$RAIZ11B" | RFM_ROOT="$RAIZ11B" node "$HOOK_WIN" > /dev/null 2>&1
+igual "hook sai 0 com a trava de hoje ja tomada" "0" "$?"
+afirma "[ -e '$RAIZ11B/manutencao-2026-01-02.lock' ]" "sessao que perdeu a corrida nao poda: manutencao-2026-01-02.lock fica"
+
+echo
 echo "== resumo =="
 echo "ok: $ok, falhou: $falhou"
 if [ "$falhou" -gt 0 ]; then

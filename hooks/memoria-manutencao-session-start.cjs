@@ -21,6 +21,12 @@
  * da trava, e é por ele que a próxima sessão (ou um teste) identifica o
  * processo.
  *
+ * PODA (D1, D2 de `docs/rainforest/design/2026-11-07-poda-trava-manutencao.md`):
+ * quem ganha a trava do dia apaga as `manutencao-<AAAA-MM-DD>.lock` de datas
+ * anteriores, depois do disparo do filho. Só o nome exato com data menor que
+ * hoje sai; a de hoje, uma de data futura e qualquer outro arquivo ficam. Erro
+ * de leitura ou de remoção é engolido arquivo a arquivo.
+ *
  * DEGRADAÇÃO (regra do plano): raiz inacessível, banco ausente ou spawn que
  * não vai — aviso no stderr e exit 0 sempre. Hook que derruba a abertura da
  * sessão é pior que manutenção que não roda.
@@ -47,6 +53,24 @@ function dataLocalHoje() {
   const mes = String(agora.getMonth() + 1).padStart(2, '0');
   const dia = String(agora.getDate()).padStart(2, '0');
   return `${ano}-${mes}-${dia}`;
+}
+
+// Apaga as travas de dias anteriores. `AAAA-MM-DD` compara como texto na
+// mesma ordem que como data.
+function podarTravasAntigas(raiz, hoje) {
+  let nomes;
+  try {
+    nomes = fs.readdirSync(raiz);
+  } catch (_) {
+    return;
+  }
+  for (const nome of nomes) {
+    const m = /^manutencao-(\d{4}-\d{2}-\d{2})\.lock$/.exec(nome);
+    if (!m || m[1] >= hoje) continue;
+    try {
+      fs.unlinkSync(path.join(raiz, nome));
+    } catch (_) {}
+  }
 }
 
 function main() {
@@ -106,6 +130,8 @@ function main() {
   } finally {
     try { fs.closeSync(fd); } catch (_) {}
   }
+
+  podarTravasAntigas(raiz, hoje);
 
   process.exit(0);
 }
