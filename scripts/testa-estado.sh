@@ -42,7 +42,7 @@ cp "$SRC/hooks/lib/pastas-docs.cjs" "$SBP/hooks/lib/"   # onde moram design e pl
 cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SBP/hooks/lib/"   # git pelo caminho (Issue #392)
 cp "$SRC/hooks/lib/contar-ocorrencias.cjs" "$SBP/hooks/lib/"   # conferir-fluxo conta o de: da mutacao (#397)
 cp "$SRC/hooks/lib/teto-despachos.cjs" "$SBP/hooks/lib/"   # conferir-fluxo le o cabecalho teto-despachos (D14)
-cp "$SRC/hooks/lib/caminho-leve.cjs" "$SBP/hooks/lib/"   # estado.cjs le o leve da branch (#430)
+cp "$SRC/hooks/lib/caminho-leve.cjs" "$SRC/hooks/lib/slug-branch.cjs" "$SBP/hooks/lib/"   # estado.cjs le o leve da branch (#430)
 # A caixa vira raiz de dados: sem marcador, resolverRaiz cairia no repo de verdade
 # e a bateria escreveria estado no .rainforest do usuario.
 touch "$SBP/FOCO.md"
@@ -1979,7 +1979,7 @@ cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SRC/hooks/lib/pastas-docs.cjs" "$SRC/hooks
 cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SBP/sensor-test/hooks/lib/"   # git pelo caminho (Issue #392)
 cp "$SRC/hooks/lib/contar-ocorrencias.cjs" "$SBP/sensor-test/hooks/lib/"   # conferir-fluxo conta o de: da mutacao (#397)
 cp "$SRC/hooks/lib/teto-despachos.cjs" "$SBP/sensor-test/hooks/lib/"   # conferir-fluxo le o cabecalho teto-despachos (D14)
-cp "$SRC/hooks/lib/caminho-leve.cjs" "$SBP/sensor-test/hooks/lib/"   # estado.cjs le o leve da branch (#430)
+cp "$SRC/hooks/lib/caminho-leve.cjs" "$SRC/hooks/lib/slug-branch.cjs" "$SBP/sensor-test/hooks/lib/"   # estado.cjs le o leve da branch (#430)
 cd "$SBP/sensor-test" || exit 1
 ES="node scripts/estado.cjs"
 

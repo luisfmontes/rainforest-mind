@@ -20,6 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { caminhoExecutavel } = require('./resolver-executavel.cjs');
+const { casaSlugComBranch } = require('./slug-branch.cjs');
 
 // Estágios que fazem um arquivo de estado ser fluxo. Espelha os de scripts/estado.cjs;
 // a bateria confere a divergência com um `novo()` real.
@@ -31,13 +32,12 @@ function soLeve(estado) {
   return !CHAVES_DO_FLUXO.some((k) => estado[k] !== undefined);
 }
 
-/** O casamento exato do `resolver` de hooks/lib/estagio-ativo.cjs: slug sem a data e
- *  sem o `fluxo-N-` casa com a branch sem o prefixo até a primeira barra. A forma de
- *  tarefa paralela `fluxo/<slug>-t<n>` (#613) fica de fora de propósito: o leve é um
- *  hotfix numa branch só, e não convive com tarefa paralela. */
+/** O casamento exato do `resolver` de hooks/lib/estagio-ativo.cjs (`casaSlugComBranch` de
+ *  ./slug-branch.cjs): slug inteiro, sem a data ou sem o `fluxo-N-` casa com a branch sem o
+ *  prefixo até a primeira barra. A forma de tarefa paralela `fluxo/<slug>-t<n>` (#613) fica de
+ *  fora de propósito: o leve é um hotfix numa branch só, e não convive com tarefa paralela. */
 function casaComBranch(slug, branchBase) {
-  const semData = slug.replace(/^\d{4}-\d{2}-\d{2}-/, '');
-  return semData === branchBase || semData.replace(/^fluxo-\d+-/, '') === branchBase;
+  return casaSlugComBranch(slug, branchBase) === 'exato';
 }
 
 /** Registro válido: motivo texto e não vazio. Motivo vazio gravado à mão não libera a branch. */

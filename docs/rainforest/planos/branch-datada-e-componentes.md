@@ -12,7 +12,7 @@ Design: docs/rainforest/design/branch-datada-e-componentes.md
 
 ### 1. Casamento slug × branch numa função só, aceitando o slug datado [tipo: implementar]
 atende: D1, D2
-arquivos: `hooks/lib/estagio-ativo.cjs`, `hooks/lib/caminho-leve.cjs`, `scripts/saude.cjs`, `hooks/testa-estagio-ativo.cjs`, `scripts/testa-saude.sh`
+arquivos: `hooks/lib/slug-branch.cjs`, `hooks/lib/estagio-ativo.cjs`, `hooks/lib/caminho-leve.cjs`, `scripts/saude.cjs`, `hooks/testa-estagio-ativo.cjs`, `scripts/testa-saude.sh`
 depende de: nenhuma
 busca:
 - repo | rg "d\{4\}-\\d\{2\}-\\d\{2\}-" hooks scripts | quatro cópias: estagio-ativo (resolver e diagnosticar), caminho-leve, saude
@@ -20,14 +20,14 @@ busca:
 desfecho: estender
 prova: `node -e "const m=require('./hooks/lib/estagio-ativo.cjs'); process.exit(m.casaSlugComBranch && m.casaSlugComBranch('2026-11-03-tema','2026-11-03-tema')==='exato' ? 0 : 1)"`
 mutacao:
-  arquivo: `hooks/lib/estagio-ativo.cjs`
-  de: `if (slug === base) return 'exato';`
-  para: `if (false) return 'exato';`
+  arquivo: `hooks/lib/slug-branch.cjs`
+  de: `return [slug, semData, semData.replace(/^fluxo-\d+-/, '')];`
+  para: `return [semData, semData, semData.replace(/^fluxo-\d+-/, '')];`
   bateria: `node hooks/testa-estagio-ativo.cjs`
   fixture: `testa-estagio-ativo.cjs, caso "#645: branch fluxo/<slug datado> casa com o fluxo"`
 pronto quando: num repositório de teste com `docs/rainforest/estado/2026-11-03-tema.json` em `executar`, `resolver` na branch `fluxo/2026-11-03-tema` devolve `{slug: "2026-11-03-tema", estagio: "executar"}`, na branch `fluxo/2026-11-03-tema-t2` também, e na branch `fluxo/tema` também (comportamento antigo); `casaComBranch` do `caminho-leve` aceita a forma datada; e o `/saude` numa branch `fluxo/<slug>` com fluxo aberto imprime `ESTA branch tem dono` — provado por `node hooks/testa-estagio-ativo.cjs` e `bash scripts/testa-saude.sh`, com o caso novo do `/saude` vermelho no código antigo (que compara com o prefixo `fluxo/`)
 
-Forma prescrita: `casaSlugComBranch(slug, branchBase)` devolve `'exato'`, `'tarefa'` ou `null`, e é exportada por `estagio-ativo.cjs`; `resolver`, `diagnosticar`, `caminho-leve.casaComBranch` e `saude.cjs` não fazem mais `replace` de data por conta própria.
+Forma prescrita: `casaSlugComBranch(slug, branchBase)` mora em `hooks/lib/slug-branch.cjs` (sem dependência, para o `caminho-leve` não passar pelo `estado.cjs`), devolve `'exato'`, `'tarefa'` ou `null`, e é reexportada por `estagio-ativo.cjs`; `resolver`, `diagnosticar`, `caminho-leve.casaComBranch` e `saude.cjs` não fazem mais `replace` de data por conta própria.
 
 ### 2. Componente React tipado e envolvido entra no catálogo e é medido [tipo: implementar]
 atende: D3, D4

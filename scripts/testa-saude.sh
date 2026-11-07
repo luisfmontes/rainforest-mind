@@ -965,6 +965,14 @@ else
 fi
 checa "L. e o trabalho aberto continua sendo reportado"  "aviso" "1 trabalho(s) em aberto" "$L2"
 
+# A convencao e `fluxo/<slug>`. Ate a 2.5.0 o /saude comparava o slug com a branch AINDA com o
+# `fluxo/`, e o aviso so disparava na branch sem prefixo do caso acima (design
+# branch-datada-e-componentes, D2). As duas formas: sem a data e com o slug inteiro (#645).
+L3="$(fluxo_em fluxo/branch-de-outro)"
+checa "L. em fluxo/<slug sem data>, avisa que ela tem dono" "aviso" "ESTA branch tem dono" "$L3"
+L4="$(fluxo_em fluxo/2026-01-02-branch-de-outro)"
+checa "L. em fluxo/<slug datado>, avisa que ela tem dono"   "aviso" "ESTA branch tem dono" "$L4"
+
 echo
 echo "== a BATERIA tambem nao pode depender do nome da propria pasta =="
 # O cenario H cobra do PRODUTO a disciplina de tirar o nome do manifesto. Ninguem a

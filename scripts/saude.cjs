@@ -171,8 +171,13 @@ function checarFluxo() {
   // tempo todo e com razao. Ele diz de quem e a branch, e quem sabe se e sua e voce.
   const r = rodar(caminhoExecutavel('git'), ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: process.cwd() });
   const branch = r.status === 0 ? r.out.trim() : '';
+  // O casamento e o mesmo da portaria (hooks/lib/slug-branch.cjs). Ate a 2.5.0 esta linha
+  // comparava o slug com a branch AINDA com o `fluxo/`, e o aviso nunca disparava numa branch
+  // `fluxo/<slug>`, que e a convencao (design branch-datada-e-componentes, D2).
+  const { casaSlugComBranch } = require(path.join(__dirname, '..', 'hooks', 'lib', 'slug-branch.cjs'));
+  const branchBase = branch.replace(/^.*?\//, '');
   const daBranch = branch && branch !== 'HEAD'
-    ? linhas.find((l) => l.trim().split(/\s+/)[0].replace(/^\d{4}-\d{2}-\d{2}-/, '') === branch)
+    ? linhas.find((l) => casaSlugComBranch(l.trim().split(/\s+/)[0], branchBase))
     : null;
 
   if (daBranch) {
