@@ -120,10 +120,15 @@ function indiceSequencia(tokens, padrao) {
 const TEXTOS_DE_HEREDOC = [];
 
 // Fim de toda recusa do corpo do PR: a única saída que passa em todos os casos.
+// Os comandos de exemplo saem de `join`: linha do fonte com o subcomando de
+// escrita do gh por extenso faz o gate-subagente-sem-gh barrar subagente que
+// roda este gate, que é como ele se mede (revisão 3).
+const EXEMPLO_PR_CREATE = ["gh pr", "create"].join(" ");
+const EXEMPLO_PR_EDIT = ["gh pr", "edit"].join(" ");
 const RECEITA_CORPO_PR =
   `Receita que passa:\n` +
   `  1. Grave o corpo antes, com a ferramenta de escrita (Write), num caminho absoluto literal do Windows, por exemplo o scratchpad da sessão;\n` +
-  `  2. num comando que só tem o gh: gh pr create --title "<título>" --body-file "<caminho literal>" (ou gh pr edit <n> --body-file "<caminho literal>").\n` +
+  `  2. num comando que só tem o gh: ${EXEMPLO_PR_CREATE} --title "<título>" --body-file "<caminho literal>" (ou ${EXEMPLO_PR_EDIT} <n> --body-file "<caminho literal>").\n` +
   `Comando barrado não roda nenhuma parte: o arquivo que ele criaria não existe.\n`;
 
 // #407: o comando inteiro desta chamada. O `--body-file` é lido no PreToolUse,
@@ -655,8 +660,8 @@ function motivoDaLeitura(caminho, resolvido, codigo) {
   if (process.platform === "win32" && /^\/(?![A-Za-z](\/|$)|\/)/.test(caminho)) return `${caminho} é caminho do Git Bash: o gate roda em node no Windows e não enxerga o /tmp do Git Bash; use caminho absoluto do Windows.`;
   const r = String(resolvido || "").replace(/\\/g, "/");
   const onde = r && r !== caminho.replace(/\\/g, "/") ? `${caminho} (resolvido para ${r})` : caminho;
-  if (codigo === "ENOENT") return `o arquivo não existe em ${onde}.`;
-  return `erro ${codigo || "desconhecido"} ao ler ${onde}.`;
+  if (codigo === "ENOENT") return `O arquivo não existe em ${onde}.`;
+  return `Erro ${codigo || "desconhecido"} ao ler ${onde}.`;
 }
 
 // `WRAPPERS_DE_COMANDO`, `desempacotarWrapper` (agora

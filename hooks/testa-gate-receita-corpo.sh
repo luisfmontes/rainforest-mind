@@ -100,11 +100,13 @@ INEXB="C:\\rfm-nao-existe-$$\\pr.md"
 roda "gh pr create --title t --body-file \"$INEXB\""
 sai "(10b) contrabarra" 2
 nao_tem "(10b) contrabarra" "resolvido para"
+tem "(10b) contrabarra" "não existe em $INEXB."
 
 echo "== (11) UNC não é caminho do Git Bash =="
 roda "gh pr create --title t --body-file //rfm-srv-$$/share/pr.md"
 sai "(11) UNC" 2
 nao_tem "(11) UNC" "Git Bash"
+tem "(11) UNC" "ao ler //rfm-srv-$$/share/pr.md"
 tem "(11) UNC" "Receita que passa:"
 
 echo "== (12) --body-file - (stdin) =="
@@ -119,6 +121,12 @@ sai "(9) heredoc ilegível" 2
 tem "(9) heredoc ilegível" "heredoc deste comando"
 tem "(9) heredoc ilegível" "Receita que passa:"
 nao_tem "(9) heredoc ilegível" "não consegui ler"
+
+echo "== (13) subagente pode rodar o próprio gate (gate-subagente-sem-gh não o barra) =="
+payload13=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",agent_id:"a1",tool_input:{command:cmd}}))' "$SBP_WIN" "node $SRC/hooks/gate-fechar-issue.cjs")
+printf '%s' "$payload13" | node "$SRC/hooks/gate-subagente-sem-gh.cjs" >/dev/null 2>"$SBP/err"
+E=$?
+sai "(13) subagente roda o gate" 0
 
 echo
 echo "ok: $ok   falhou: $falhou"
