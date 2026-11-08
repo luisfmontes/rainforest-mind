@@ -197,7 +197,7 @@ function cmdPlano() {
     }
   }
 
-  // Git só é exigido quando alguma tarefa cobrada tem candidato a caminho novo.
+  // Git só é exigido quando alguma tarefa cobrada declara caminho de código (novo ou existente).
   const cobradas = tarefas.filter(tarefaCobrada);
   if (!cobradas.some((t) => candidatosDe(t).length > 0)) {
     if (recusas.length > 0) recusar(recusas);
