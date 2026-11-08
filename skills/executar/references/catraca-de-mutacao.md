@@ -9,6 +9,7 @@ Movido de `skills/executar/SKILL.md`, seção "A catraca de mutação: quem roda
 | `3` | `MUTACAO NAO APLICADA` — o `--de` não existe no fonte | a declaração está errada; nada foi medido |
 | `4` | não dá para MEDIR — a bateria já falha no fonte íntegro, ou o `--de` casa mais de uma vez | conserte o baseline (ou desambigue o `--de`) e rode de novo; nada foi mutado |
 | `5` | suspeita de CORTE DE SHELL — pós-mutação < 10% baseline (ou < 1 s) | confirme rodando a bateria pós-mutação à mão; se sair 0, ignorar; se durar >= 1 s, aumentar piso |
+| `6` | a bateria não mediu: COLAPSOU (placar zerado ou sumiu na pós-mutação), ou a mutação quebrou a sintaxe do fonte (`node --check` / `bash -n`, antes de rodar a bateria) | refine a mutação ou a bateria; nada foi medido |
 | `1` | erro de uso, ou bateria sem veredito (estouro de tempo / sinal) | não é aprovação nem reprovação |
 | `69` | bateria não **EXECUTA** — ambiente (D5) | bloqueio de ambiente (regra 14): anuncie e não redespache |
 
@@ -26,4 +27,5 @@ motivo errado é pior que veredito errado, porque ninguém volta a olhar.
 No Git Bash, argumento que **começa** com `//` chega ao script com uma barra
 só (`'// coment'` vira `'/ coment'`) e não casa, dando `3` sem culpa do fonte.
 Ponha um caractere antes das barras, ou exporte `MSYS_NO_PATHCONV=1`.
+Se a barra que sobra deixa o fonte inválido, a catraca agora sai 6 em vez de rodar a bateria.
 
