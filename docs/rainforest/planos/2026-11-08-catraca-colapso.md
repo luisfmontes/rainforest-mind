@@ -64,3 +64,7 @@ pronto quando: com o repositório deste worktree, `node scripts/conferir-versao.
 - Tarefa 1, rótulos: os `exige`/`tem`/`nao_tem` da 14d nomeiam o caso pelo que afirmam (ex.: "mutacao que quebra a sintaxe do .cjs sai 6").
 - Tarefa 2: os exits esperados na tabela são `0 2 3 4 5 6 1 69`, um por linha.
 - Tarefa 3: título do item do CHANGELOG: "A catraca recusa a mutação que quebra a sintaxe do fonte."
+
+## Emendas da revisão 1
+
+- Tarefa 1: `conferirSintaxe` e `recusaSintaxe` saem do meio do docblock de `bateriaColapsou` e vão para depois de `recusaColapso`. A linha citada na recusa prefere a que começa com `XxxError` (a do node), depois a primeira que fala de erro (a do `bash -n`), porque a primeira linha do `node --check` é o caminho e pode conter "error" (pasta `errors-repo`).
