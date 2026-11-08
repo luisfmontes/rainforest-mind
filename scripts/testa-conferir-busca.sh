@@ -276,6 +276,10 @@ fi
 { printf '%s' "$PLANO_CAB"; tarefa 1 docs '`docs/x.md`' '- doc | sem url | x' ''; } > "$ND/p.md"
 caso "doc: sem git, consulta sem URL em tarefa docs sai 2" 2 'linha .doc. inválida' env RFM_ESTADO_ROOT="$ND" node "$CHECADOR" plano --slug t --plano "$ND/p.md"
 
+# Plano item (d): com candidato a caminho novo e sem git, o 69 de antes vale mesmo com doc invalido.
+{ printf '%s' "$PLANO_CAB"; tarefa 1 docs '`docs/x.md`' '- doc | sem url | x' ''; tarefa 2 implementar '`scripts/novo.cjs`' "$BUSCA_OK" "$DESF_OK"; } > "$ND/p.md"
+caso "doc: sem git, doc invalido e caminho novo continua exit 69" 69 'nao-verificavel' env RFM_ESTADO_ROOT="$ND" node "$CHECADOR" plano --slug t --plano "$ND/p.md"
+
 echo "-----------------------------------------"
 echo "total=$total vermelhas:[$(IFS=,; echo "${vermelhas[*]}")]"
 [ "${#vermelhas[@]}" -eq 0 ]

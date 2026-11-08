@@ -94,7 +94,9 @@ Outra palavra é recusa.
 caminho novo que a disparou e o que falta. Sem caminho novo de código no plano, o
 checador sai 0 mesmo fora de repositório git: o git só é exigido quando há candidato.
 A linha `doc` inválida é recusada mesmo sem caminho novo de código e fora de git
-(`## Canal \`doc\``). Fora de git com caminho novo, vale o exit 69 acima, que já recusa.
+(`## Canal \`doc\``). Fora de git com caminho novo, o checador sai 69
+(`nao-verificavel:`) antes de ler a linha `doc`, e o `marcar --estagio plano` trata o 69
+como recusa.
 
 ## Origem
 
