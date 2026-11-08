@@ -165,8 +165,8 @@
     "destinos": [
       {
         "pendente": "revisao-5: caso do 69 nao prende que a recusa do doc fica sem imprimir",
-        "destino": "descartada",
-        "motivo": "o contrato e o exit 69, que o caso prende; imprimir ou nao a recusa junto nao muda o que o marcar faz, e a frase da referencia e descricao, nao requisito"
+        "destino": "resolvida",
+        "evidencia": "caso doc: sem git com arquivo de codigo, a recusa do doc sai junto do 69 prende a impressao; mutacao void recusas deixa so ele vermelho"
       },
       {
         "pendente": "revisao-5: fora de git com caminho novo o usuario so ve a recusa do doc depois de resolver o git",
