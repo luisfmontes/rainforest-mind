@@ -49,6 +49,8 @@ página oficial da versão em uso, não da memória de treino, que pode ser de o
 - Quando a doc não cobre o ponto, o resultado começa com `não verificado:` e diz o que
   faltou. A tarefa segue, e quem revisa sabe onde olhar.
 - `- doc | pulado: <motivo>` vale, como nos outros canais que não são o `repo`.
+- Resultado com `|` vai entre aspas: `- doc | <URL> | "aceita string | number"`. Sem as aspas, o
+  `|` junta o pedaço do resultado à consulta, e a recusa diz que a consulta não é URL.
 - Exceção às regras de `## Quando conta`: a linha `doc` é conferida em **qualquer** tarefa
   que a declara, de qualquer tipo, e sem git, porque decisão de API costuma editar arquivo
   que já existe. O checador confere só a forma: a consulta tem de ser só a URL, `http://` ou
