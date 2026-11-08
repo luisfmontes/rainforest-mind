@@ -19,7 +19,7 @@
     "em": "2026-11-08"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-08",
     "tarefas_ok": 3,
     "tarefas": 3,
@@ -47,23 +47,23 @@
   "revisar": {
     "status": "pendente",
     "snapshot": {
-      "head": "2f9ff29a9cb0952311bdfa3b474e38f0bf8c8292",
+      "head": "46289bc99408721a12fa499612a4fe1c7343daba",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ac0131e0db352102b",
+        "agente_id": "a5b4451cf8387f9d0",
         "veredito": "ok",
         "em": "2026-11-08",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-ac0131e0db352102b.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a5b4451cf8387f9d0.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-11-08",
-    "achados": 2,
+    "achados": 1,
     "base": "4fa56a3d5f2baed4cdfcbc3f2fb8e1e028989247",
-    "head": "2f9ff29a9cb0952311bdfa3b474e38f0bf8c8292",
+    "head": "46289bc99408721a12fa499612a4fe1c7343daba",
     "voltas": [
       {
         "volta": 1,
@@ -86,6 +86,18 @@
             "veredito": "ok",
             "em": "2026-11-08",
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a4fc4def74cc1c031.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ac0131e0db352102b",
+            "veredito": "ok",
+            "em": "2026-11-08",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-ac0131e0db352102b.jsonl"
           }
         ]
       }
@@ -114,6 +126,11 @@
       "em": "2026-11-08",
       "de": "revisar",
       "motivo": "revisao 3: resultado com | sem aspas culpa a URL (falta a frase na referencia); D1 do design diz 'comeca com' e o codigo exige so a URL"
+    },
+    {
+      "em": "2026-11-08",
+      "de": "revisar",
+      "motivo": "revisao 4: campo-busca diz que o 69 sai antes de ler a linha doc; a passada roda antes e o 69 so nao imprime a recusa"
     }
   ]
 }
