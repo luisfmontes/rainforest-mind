@@ -10,6 +10,10 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.9.1 — 2026-11-08
+
+- **A catraca recusa a mutação que quebra a sintaxe do fonte.** Antes de rodar a bateria pós-mutação, o `conferir-mutacao.cjs` confere o fonte mutado com `node --check` (`.js`, `.cjs`, `.mjs`) ou `bash -n` (`.sh`, `.bash`). Se o original carregava e o mutado não, sai 6 sem rodar a bateria, citando a linha do erro. Motivo: uma mutação deixou o fonte com `SyntaxError`, todos os casos da bateria saíram 1 e a catraca aprovou como "bateria VERMELHA, a bateria sabe falhar". Fonte que já não passava na conferência antes da mutação, ou de outra extensão, segue como antes. A tabela de saídas da catraca (`skills/executar/references/catraca-de-mutacao.md`) ganha a linha do exit 6, que faltava.
+
 ## 2.9.0 — 2026-11-08
 
 - **Decisão de API de framework cita a documentação oficial no plano.** O `busca:` da tarefa ganha o canal `doc`: `- doc | <URL da página oficial> | <o que a página diz>`. O `conferir-busca.cjs` recusa a linha `doc` cuja consulta não é URL `http(s)`, em qualquer tarefa que a declara, de qualquer tipo, inclusive fora de git (onde o checador sai 69 se alguma tarefa `implementar` ou sem tipo declara arquivo de código, e imprime a recusa do `doc` antes), porque decisão de API costuma editar arquivo que já existe. A referência do campo (`skills/plano/references/campo-busca.md`) diz quando usar, a ordem das fontes (doc oficial, changelog oficial, padrões web, tabela de compatibilidade; nunca Stack Overflow, tutorial ou memória de treino) e a marca `não verificado:` para o que a doc não cobre. O checador confere só a forma e não abre a URL. Método enxertado do `source-driven-development` do `addyosmani/agent-skills` (MIT).
