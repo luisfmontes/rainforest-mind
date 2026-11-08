@@ -264,7 +264,7 @@ caso "doc: resultado com 'não verificado:' passa" 0 'ok:' CHK plano --slug t --
 - doc | ver a doc do vitest | x" "$DESF_OK"; } > "$P"
 caso "doc: consulta sem URL e' recusada em tarefa que cria codigo" 2 'linha .doc. inválida' CHK plano --slug t --plano "$P"
 
-n_doc="$(CHK plano --slug t --plano "$P" 2>&1 | grep -c 'linha .doc. inválida')"
+n_doc="$(CHK plano --slug t --plano "$P" 2>&1 | grep -c 'a consulta da linha .doc.')"
 total=$((total+1))
 if [ "$n_doc" = 1 ]; then
   printf '  ok    doc: recusa da linha doc sai uma vez so (contagem=%s)\n' "$n_doc"

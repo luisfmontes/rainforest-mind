@@ -51,8 +51,8 @@ página oficial da versão em uso, não da memória de treino, que pode ser de o
 - `- doc | pulado: <motivo>` vale, como nos outros canais que não são o `repo`.
 - Exceção às regras de `## Quando conta`: a linha `doc` é conferida em **qualquer** tarefa
   que a declara, de qualquer tipo, e sem git, porque decisão de API costuma editar arquivo
-  que já existe. O checador confere só a forma: a consulta tem de começar com `http://` ou
-  `https://`. Ele não abre a URL (rede no checador quebraria no CI e offline) e não julga se
+  que já existe. O checador confere só a forma: a consulta tem de ser só a URL, `http://` ou
+  `https://` sem espaço nem texto depois. Ele não abre a URL (rede no checador quebraria no CI e offline) e não julga se
   o resultado é verdade nem se a marca `não verificado:` devia estar lá.
 
 Exemplo:
@@ -93,8 +93,8 @@ Outra palavra é recusa.
 `estado.cjs marcar --estagio plano` roda junto da cobertura. A recusa diz a tarefa, o
 caminho novo que a disparou e o que falta. Sem caminho novo de código no plano, o
 checador sai 0 mesmo fora de repositório git: o git só é exigido quando há candidato.
-A linha `doc` inválida é recusada mesmo sem caminho novo e fora de git
-(`## Canal \`doc\``).
+A linha `doc` inválida é recusada mesmo sem caminho novo de código e fora de git
+(`## Canal \`doc\``). Fora de git com caminho novo, vale o exit 69 acima, que já recusa.
 
 ## Origem
 
