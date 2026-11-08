@@ -920,7 +920,7 @@ function recusaColapso(placarBase, placarRodada, rodada) {
  * O fonte carrega? Confere a sintaxe sem executar (design 2026-11-08-catraca-colapso).
  * Devolve null quando não há conferência (extensão fora, ferramenta ausente ou que
  * não executa), `{ ok: true }` ou `{ ok: false, erro }`, com `erro` = a primeira
- * linha `XxxError:` do node, senão a primeira que fala de erro (o `bash -n`), senão a
+ * linha que começa com `<Algo>Error` (a do node), senão a primeira que fala de erro (o `bash -n`), senão a
  * primeira não vazia (a primeira do `node --check` é o caminho, que pode conter "error").
  */
 function conferirSintaxe(arquivo) {

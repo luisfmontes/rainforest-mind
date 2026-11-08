@@ -769,6 +769,20 @@ exige 0 "fonte que ja nao carregava antes segue sem conferencia e aprova a VERME
       --bateria 'bash bateria-ja-invalido.sh'
 nao_tem "nao acusa sintaxe quebrada pela mutacao" "quebrou a sintaxe"
 
+# A primeira linha do node --check e o caminho do fonte; com "error" no caminho,
+# a recusa tem de citar a linha do SyntaxError, nao o caminho.
+mkdir -p "$CAIXA/errors-repo"
+printf 'const w5 = 4;\n' > "$CAIXA/errors-repo/f.cjs"
+cat > "$CAIXA/bateria-errors.sh" <<'BAT'
+#!/bin/bash
+if grep -q 'w5 = ;' errors-repo/f.cjs; then exit 1; fi
+exit 0
+BAT
+exige 6 "sintaxe quebrada com 'error' no caminho do fonte sai 6" \
+  CHK --arquivo errors-repo/f.cjs --de "const w5 = 4;" --para "const w5 = ;" \
+      --bateria 'bash bateria-errors.sh'
+tem "com 'error' no caminho, cita a linha do SyntaxError" "^  SyntaxError: "
+
 echo
 echo "== 15. queda pequena de asserções (1 de 34): aprova como VERMELHA =="
 # Mesma bateria, mas mutacao que derruba 1 asserção de 34 (2.9%, abaixo de 20%)

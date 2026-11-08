@@ -68,3 +68,7 @@ pronto quando: com o repositório deste worktree, `node scripts/conferir-versao.
 ## Emendas da revisão 1
 
 - Tarefa 1: `conferirSintaxe` e `recusaSintaxe` saem do meio do docblock de `bateriaColapsou` e vão para depois de `recusaColapso`. A linha citada na recusa prefere a que começa com `XxxError` (a do node), depois a primeira que fala de erro (a do `bash -n`), porque a primeira linha do `node --check` é o caminho e pode conter "error" (pasta `errors-repo`).
+
+## Emendas da revisão 2
+
+- Tarefa 1: caso novo na 14d com o fonte em `errors-repo/f.cjs`; a recusa tem de citar a linha `  SyntaxError: ...`. Trocar o seletor `/^\w*Error/` por `/error/i` deixa só esse caso vermelho. O docstring de `conferirSintaxe` diz "a linha que começa com `<Algo>Error`", que é o que o regex faz.
