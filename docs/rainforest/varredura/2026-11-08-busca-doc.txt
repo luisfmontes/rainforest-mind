@@ -1,0 +1,66 @@
+Data: 2026-11-08
+Termos: busca:, conferir-busca, documentação oficial, doc oficial
+
+$ gh issue list --state all --search "busca:" --limit 200 --json number,title,state
+[{"number":457,"state":"CLOSED","title":"mod.tsx chama node pelo nome (busca na pasta atual no Windows)"},{"number":436,"state":"CLOSED","title":"memoria-assunto: medicao da regua D7 com 3 distorcoes antes da colheita"},{"number":335,"state":"CLOSED","title":"13 baterias .cjs nunca rodam no CI: varrer-baterias.sh so descobre testa-*.sh"},{"number":517,"state":"CLOSED","title":"Gate: barrar matar processo por nome (revisor rodou taskkill /IM python.exe)"},{"number":435,"state":"CLOSED","title":"memória: nome duplicado de projeto no banco (nome curto e slug de caminho)"},{"number":346,"state":"CLOSED","title":"gate-bateria-sem-timeout: stdbuf --output L (opcao longa com espaco) escapa"},{"number":496,"state":"CLOSED","title":"gate-fechar-issue descarta o --repo de gh pr merge e lê a descrição do PR no repo da sessão"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"},{"number":392,"state":"CLOSED","title":"git e gh chamados por nome: um git.exe na raiz do repo aberto vence o PATH no Windows"},{"number":452,"state":"CLOSED","title":"Projeto canonico: residuos aceitos na revisao do #435"},{"number":259,"state":"CLOSED","title":"cortarBytes duplicado entre memoria-sessao.cjs e contexto-sessao.cjs, com comentario afirmando reuso que nao existe"},{"number":1,"state":"CLOSED","title":"Briefing nao diz o ato de entregar: subagente nomeado termina o trabalho e nao devolve (3 de 3)"},{"number":145,"state":"CLOSED","title":"A #118 foi fechada com o defeito do titulo vivo — nada exige rodar o criterio de pronto antes de fechar Issue"},{"number":193,"state":"CLOSED","title":"Duas sessoes bumparam a MESMA versao e o testa-versao nao pode pegar: falta checagem externa (tag e cache)"},{"number":86,"state":"CLOSED","title":"observar.cjs sem argumento processa TODAS as marcas pendentes, mas o cabeçalho diz que processa só a mais recente"},{"number":514,"state":"CLOSED","title":"gate-worktree barra comando só de leitura quando a linha junta 2>/dev/null com expansão de chaves {a,b}"},{"number":76,"state":"CLOSED","title":"A regra 14 descobre ferramenta ausente tropecando: falta um catalogo do que existe na maquina"},{"number":63,"state":"CLOSED","title":"O foco não chega na injeção, e a isenção da regra 17 é cega para a segunda pasta — 10ª vez que o radar cobra desvio onde não devia"}]
+
+
+$ gh issue list --state all --search "conferir-busca" --limit 200 --json number,title,state
+[{"number":517,"state":"CLOSED","title":"Gate: barrar matar processo por nome (revisor rodou taskkill /IM python.exe)"},{"number":335,"state":"CLOSED","title":"13 baterias .cjs nunca rodam no CI: varrer-baterias.sh so descobre testa-*.sh"},{"number":346,"state":"CLOSED","title":"gate-bateria-sem-timeout: stdbuf --output L (opcao longa com espaco) escapa"},{"number":496,"state":"CLOSED","title":"gate-fechar-issue descarta o --repo de gh pr merge e lê a descrição do PR no repo da sessão"},{"number":259,"state":"CLOSED","title":"cortarBytes duplicado entre memoria-sessao.cjs e contexto-sessao.cjs, com comentario afirmando reuso que nao existe"},{"number":392,"state":"CLOSED","title":"git e gh chamados por nome: um git.exe na raiz do repo aberto vence o PATH no Windows"},{"number":193,"state":"CLOSED","title":"Duas sessoes bumparam a MESMA versao e o testa-versao nao pode pegar: falta checagem externa (tag e cache)"},{"number":86,"state":"CLOSED","title":"observar.cjs sem argumento processa TODAS as marcas pendentes, mas o cabeçalho diz que processa só a mais recente"},{"number":76,"state":"CLOSED","title":"A regra 14 descobre ferramenta ausente tropecando: falta um catalogo do que existe na maquina"}]
+
+
+$ gh issue list --state all --search "documentação oficial" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "doc oficial" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "busca:" --limit 200 --json number,title,state
+[{"number":590,"state":"MERGED","title":"Apoio ao dev, lote 1: captura limpa, memória moldurada, busca antes de construir (1.75.0)"},{"number":596,"state":"MERGED","title":"Apoio ao dev, lote 4: busca com trecho, resumo invalidado, posicao servida (1.78.0)"},{"number":461,"state":"MERGED","title":"Acabamento da regua D7: progresso do --repontuar e limites (1.54.1)"},{"number":661,"state":"MERGED","title":"Livro de repos: TokenEconomizer e agent-skills avaliados no código"},{"number":336,"state":"MERGED","title":"gate-busca-raiz: subagente nao varre o disco; perfil pede timeout"},{"number":537,"state":"MERGED","title":"Livro: revisita do ruflo com o ruflo-mods lido no codigo"},{"number":437,"state":"MERGED","title":"memoria: injecao pelo assunto no pedido e no subagente (1.49.0)"},{"number":464,"state":"MERGED","title":"Mods: painel de PR e plugins-em-dia (1.55.0)"},{"number":459,"state":"MERGED","title":"Regua D7 da memoria por assunto sem as distorcoes (#436), versao 1.54.0"},{"number":535,"state":"MERGED","title":"Versao 1.67.3: gate nao barra leitura com chaves (#514), buscar por bm25"},{"number":595,"state":"MERGED","title":"Apoio ao dev, lote 3: baterias pelo diff, duplicata, regras com id, co-mudanca (1.77.0)"},{"number":347,"state":"MERGED","title":"gate-bateria-sem-timeout: subagente nao deixa bateria ir para segundo plano (1.26.0)"},{"number":274,"state":"MERGED","title":"Titulo da sessao marca se o fluxo fechou ou onde parou"},{"number":139,"state":"MERGED","title":"Gate de worktree: decidir escrita por token, e isentar o scratchpad da sessao"},{"number":133,"state":"MERGED","title":"Fluxo 2 — memoria com indice vivo, leitura por relevancia e ciclo de vida"},{"number":297,"state":"MERGED","title":"zerar-issues-6: fronteira de repo na regra 6 e os restos da rodada 5"},{"number":217,"state":"MERGED","title":"Contrato de territorio: AdvPL vira o primeiro, e o repo publico perde os identificadores de trabalho"},{"number":5,"state":"MERGED","title":"Premissa nao-olhada ganha contrapeso, e a Issue #4 ganha a checagem que faltava"},{"number":58,"state":"MERGED","title":"Fecha a #51: as tres travas de isolamento passam a valer na borda"},{"number":87,"state":"MERGED","title":"auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API"},{"number":109,"state":"MERGED","title":"Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler"}]
+
+
+$ gh pr list --state all --search "conferir-busca" --limit 200 --json number,title,state
+[{"number":590,"state":"MERGED","title":"Apoio ao dev, lote 1: captura limpa, memória moldurada, busca antes de construir (1.75.0)"},{"number":661,"state":"MERGED","title":"Livro de repos: TokenEconomizer e agent-skills avaliados no código"},{"number":461,"state":"MERGED","title":"Acabamento da regua D7: progresso do --repontuar e limites (1.54.1)"},{"number":595,"state":"MERGED","title":"Apoio ao dev, lote 3: baterias pelo diff, duplicata, regras com id, co-mudanca (1.77.0)"},{"number":336,"state":"MERGED","title":"gate-busca-raiz: subagente nao varre o disco; perfil pede timeout"},{"number":347,"state":"MERGED","title":"gate-bateria-sem-timeout: subagente nao deixa bateria ir para segundo plano (1.26.0)"},{"number":297,"state":"MERGED","title":"zerar-issues-6: fronteira de repo na regra 6 e os restos da rodada 5"},{"number":274,"state":"MERGED","title":"Titulo da sessao marca se o fluxo fechou ou onde parou"},{"number":217,"state":"MERGED","title":"Contrato de territorio: AdvPL vira o primeiro, e o repo publico perde os identificadores de trabalho"},{"number":58,"state":"MERGED","title":"Fecha a #51: as tres travas de isolamento passam a valer na borda"},{"number":5,"state":"MERGED","title":"Premissa nao-olhada ganha contrapeso, e a Issue #4 ganha a checagem que faltava"},{"number":109,"state":"MERGED","title":"Fecha #93: a régua do batedor passa a medir a trilha da âncora — instalar, enxertar, ler"},{"number":87,"state":"MERGED","title":"auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API"}]
+
+
+$ gh pr list --state all --search "documentação oficial" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "doc oficial" --limit 200 --json number,title,state
+[{"number":661,"state":"MERGED","title":"Livro de repos: TokenEconomizer e agent-skills avaliados no código"},{"number":228,"state":"MERGED","title":"Statusline com tempo até o reset; checkout principal fica na main (regra 11, closes #195) — 1.10.0"}]
+
+
+$ git ls-remote --heads origin | grep -F "busca:"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "conferir-busca"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "documentação oficial"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "doc oficial"
+(vazio)
+
+$ git log --all --grep="busca:" --oneline
+9377c36d Livro de repos: TokenEconomizer e agent-skills avaliados no código (#661)
+148c4ba0 Apoio ao dev, lote 1: captura limpa, memória moldurada, busca antes de construir (1.75.0) (#590)
+
+$ git log --all --grep="conferir-busca" --oneline
+148c4ba0 Apoio ao dev, lote 1: captura limpa, memória moldurada, busca antes de construir (1.75.0) (#590)
+
+$ git log --all --grep="documentação oficial" --oneline
+(vazio)
+
+$ git log --all --grep="doc oficial" --oneline
+714a15c6b Fluxo 9: auditoria externa (codex) fecha dois buracos que a rede sincrona deixava
+0843a7fb2 Fluxo 9: auditoria externa (codex) fecha dois buracos que a rede sincrona deixava
+
+$ cat <dados>/ideias.jsonl
+{"id":"busca-previa-como-degrau-com-registro","titulo":"search-first: degrau 'existe pronto fora?' na escada do modo-dev, com bloco busca: conferido por script e agente pesquisador"}
+{"id":"decisao-de-framework-cita-doc-oficial","titulo":"Decisão específica de framework cita a documentação oficial"}
+
+
