@@ -3,6 +3,19 @@
 Detalhe do campo `busca:` do plano. O `skills/plano/SKILL.md` diz o que é obrigatório
 e quando; aqui ficam o formato da linha, o exemplo e as regras de conferência.
 
+<!-- indice -->
+**Índice** — arquivo longo: quem parou no meio não leu o campo inteiro. Seções na ordem; cada item é o começo da seção, sem a marcação:
+
+- Exemplo
+- Linha
+- Canal repo
+- Canal doc
+- desfecho:
+- Quando conta
+- Quem confere
+- Origem
+<!-- /indice -->
+
 ## Exemplo
 
 ```
