@@ -19,17 +19,17 @@
     "em": "2026-11-08"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-08",
     "tarefas_ok": 3,
     "tarefas": 3,
     "comando": "bash scripts/testa-conferir-busca.sh",
-    "saida": "total=33 vermelhas:[]",
+    "saida": "total=34 vermelhas:[]",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-busca.sh, secao 8: doc sem URL recusada em tarefa docs e em tarefa que cria codigo; unicidade morde sem o continue"
+        "fixture": "testa-conferir-busca.sh, secao 8: doc sem URL recusada em tarefa docs e em tarefa que cria codigo"
       },
       {
         "tarefa": 2,
