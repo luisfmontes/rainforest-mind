@@ -245,6 +245,37 @@ caso "repo | grep -E \"a|b\" sem resultado e' recusado" 2 'sem resultado' CHK pl
 { printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/novo.cjs`' '- repo | grep -E "a|b" | 2 candidatos: x.cjs' "$DESF_OK"; } > "$P"
 caso "repo | grep -E \"a|b\" | 2 candidatos: x.cjs passa" 0 'ok:' CHK plano --slug t --plano "$P"
 
+echo
+echo "== 8. canal doc: consulta e' URL http(s), conferida em toda tarefa que a declara =="
+
+{ printf '%s' "$PLANO_CAB"; tarefa 1 docs '`docs/x.md`' '- doc | sem url | x' ''; } > "$P"
+caso "doc: consulta sem URL e' recusada em tarefa docs" 2 'tarefa 1\..*linha .doc. inválida' CHK plano --slug t --plano "$P"
+
+{ printf '%s' "$PLANO_CAB"; tarefa 1 docs '`docs/x.md`' '- doc | https://nodejs.org/api/fs.html | fs.rmSync aceita recursive' ''; } > "$P"
+caso "doc: URL e resultado passa em tarefa docs" 0 'ok:' CHK plano --slug t --plano "$P"
+
+{ printf '%s' "$PLANO_CAB"; tarefa 1 docs '`docs/x.md`' '- doc | pulado: sem API de terceiro' ''; } > "$P"
+caso "doc: pulado: passa" 0 'ok:' CHK plano --slug t --plano "$P"
+
+{ printf '%s' "$PLANO_CAB"; tarefa 1 docs '`docs/x.md`' '- doc | https://x.dev | não verificado: a página não cobre o Windows' ''; } > "$P"
+caso "doc: resultado com 'não verificado:' passa" 0 'ok:' CHK plano --slug t --plano "$P"
+
+{ printf '%s' "$PLANO_CAB"; tarefa 1 implementar '`scripts/novo.cjs`' "$BUSCA_OK
+- doc | ver a doc do vitest | x" "$DESF_OK"; } > "$P"
+caso "doc: consulta sem URL e' recusada em tarefa que cria codigo" 2 'linha .doc. inválida' CHK plano --slug t --plano "$P"
+
+n_doc="$(CHK plano --slug t --plano "$P" 2>&1 | grep -c 'linha .doc. inválida')"
+total=$((total+1))
+if [ "$n_doc" = 1 ]; then
+  printf '  ok    doc: recusa da linha doc sai uma vez so (contagem=%s)\n' "$n_doc"
+else
+  vermelhas+=("doc: recusa da linha doc sai uma vez so")
+  printf '  FALHA doc: recusa da linha doc sai uma vez so: contagem=%s, esperado=1\n' "$n_doc"
+fi
+
+{ printf '%s' "$PLANO_CAB"; tarefa 1 docs '`docs/x.md`' '- doc | sem url | x' ''; } > "$ND/p.md"
+caso "doc: sem git, consulta sem URL em tarefa docs sai 2" 2 'linha .doc. inválida' env RFM_ESTADO_ROOT="$ND" node "$CHECADOR" plano --slug t --plano "$ND/p.md"
+
 echo "-----------------------------------------"
 echo "total=$total vermelhas:[$(IFS=,; echo "${vermelhas[*]}")]"
 [ "${#vermelhas[@]}" -eq 0 ]

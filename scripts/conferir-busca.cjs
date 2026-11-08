@@ -9,7 +9,9 @@
  * Regra: tarefa `implementar` (ou sem tipo) cujo `arquivos:` declara caminho
  * concreto de código que não existe no commit HEAD precisa do bloco `busca:`
  * (uma linha por canal, e o canal `repo`) e de `desfecho:`. Teste e `.md` não
- * contam; glob é ignorado.
+ * contam; glob é ignorado. A linha de canal `doc` é conferida em toda tarefa
+ * que a declara, de qualquer tipo, sem exigir git: a consulta tem de ser a URL
+ * http(s) da página oficial (design 2026-11-08-busca-doc, D1 e D2).
  *
  * Exit: 0 ok, 2 recusa, 1 erro de uso, 69 nao-verificavel (sem git)
  */
@@ -30,6 +32,8 @@ const { extrairTarefas, lerMarkdown } = require(path.join(SCRIPT_DIR, 'conferir-
 const TIPOS_NAO_COBRADOS = ['docs', 'pesquisar', 'pesquisa', 'configurar', 'teste'];
 const DESFECHOS = ['adotar', 'estender', 'compor', 'enxertar', 'construir'];
 const FORMATO_LINHA = '- <canal> | <consulta> | <resultado>  ou  - <canal> | pulado: <motivo>';
+const URL_DOC = /^https?:\/\/\S+$/i;
+const FORMATO_DOC = '- doc | <URL http(s) da página oficial> | <o que a página diz>';
 
 // ================================================================ Utilitários
 
@@ -154,10 +158,19 @@ function lerLinhaBusca(linha) {
   const consulta = campos.slice(1, -1).join(' | ');
   if (!consulta) return { canal, pulado: false, problema: `linha sem consulta: "${linha}"` };
   if (!campos[campos.length - 1]) return { canal, pulado: false, problema: `linha sem resultado: "${linha}"` };
+  if (canal === 'doc' && !URL_DOC.test(consulta)) return { canal, pulado: false, problema: `a consulta da linha \`doc\` tem de ser a URL http(s) da página oficial: "${linha}"` };
   return { canal, pulado: false, problema: null };
 }
 
 // ================================================================ Comando plano
+
+function recusar(recusas) {
+  console.error('RECUSADO:');
+  for (const recusa of recusas) {
+    console.error(`  ${recusa}`);
+  }
+  process.exit(2);
+}
 
 function cmdPlano() {
   const slug = arg('slug');
@@ -170,9 +183,24 @@ function cmdPlano() {
     process.exit(2);
   }
 
+  const recusas = [];
+  const tarefas = extrairTarefas(conteudo);
+
+  // Linha `doc` (D2): conferida em toda tarefa que a declara, sem git.
+  for (const { numero, nome, busca } of tarefas) {
+    if (!busca.presente) continue;
+    for (const linha of busca.linhas) {
+      const { canal, problema } = lerLinhaBusca(linha);
+      if (canal === 'doc' && problema) {
+        recusas.push(`tarefa ${numero}. ${nome}; linha \`doc\` inválida: ${problema}. Formato: ${FORMATO_DOC}.`);
+      }
+    }
+  }
+
   // Git só é exigido quando alguma tarefa cobrada tem candidato a caminho novo.
-  const cobradas = extrairTarefas(conteudo).filter(tarefaCobrada);
+  const cobradas = tarefas.filter(tarefaCobrada);
   if (!cobradas.some((t) => candidatosDe(t).length > 0)) {
+    if (recusas.length > 0) recusar(recusas);
     console.log('ok: nenhuma tarefa cria caminho novo de código sem busca:');
     return;
   }
@@ -183,7 +211,6 @@ function cmdPlano() {
     process.exit(69);
   }
 
-  const recusas = [];
   let exigidas = 0;
 
   for (const tarefa of cobradas) {
@@ -207,6 +234,7 @@ function cmdPlano() {
     let temRepo = false;
     let repoPulado = false;
     for (const linha of busca.linhas) {
+      if (lerLinhaBusca(linha).canal === 'doc') continue;
       const { canal, pulado, problema } = lerLinhaBusca(linha);
       if (problema) {
         recusas.push(`${quem}; bloco \`busca:\` com linha inválida: ${problema}. Formato: ${FORMATO_LINHA}.`);
@@ -230,13 +258,7 @@ function cmdPlano() {
     }
   }
 
-  if (recusas.length > 0) {
-    console.error('RECUSADO:');
-    for (const recusa of recusas) {
-      console.error(`  ${recusa}`);
-    }
-    process.exit(2);
-  }
+  if (recusas.length > 0) recusar(recusas);
 
   if (exigidas > 0) {
     console.log(`ok: ${exigidas} tarefa(s) com caminho novo de código, todas com busca: e desfecho:`);
