@@ -12,7 +12,11 @@
     "em": "2026-11-08"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-11-08-busca-doc.md",
+    "tarefas": 3,
+    "paralelas": [],
+    "em": "2026-11-08"
   },
   "executar": {
     "status": "pendente"
