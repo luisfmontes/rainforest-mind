@@ -65,7 +65,8 @@ página oficial da versão em uso, não da memória de treino, que pode ser de o
 - Resultado com `|` vai entre aspas: `- doc | <URL> | "aceita string | number"`. Sem as aspas, o
   `|` junta o pedaço do resultado à consulta, e a recusa diz que a consulta não é URL.
 - Exceção às regras de `## Quando conta`: a linha `doc` é conferida em **qualquer** tarefa
-  que a declara, de qualquer tipo, e sem git, porque decisão de API costuma editar arquivo
+  que a declara, de qualquer tipo, sem depender de a tarefa criar caminho novo (git: ver
+  `## Quem confere`), porque decisão de API costuma editar arquivo
   que já existe. O checador confere só a forma: a consulta tem de ser só a URL, `http://` ou
   `https://` sem espaço nem texto depois. Ele não abre a URL (rede no checador quebraria no CI e offline) e não julga se
   o resultado é verdade nem se a marca `não verificado:` devia estar lá.
@@ -106,12 +107,12 @@ Outra palavra é recusa.
 
 `node scripts/conferir-busca.cjs plano --slug <slug>`, que o
 `estado.cjs marcar --estagio plano` roda junto da cobertura. A recusa diz a tarefa, o
-caminho novo que a disparou e o que falta. Sem caminho novo de código no plano, o
-checador sai 0 mesmo fora de repositório git: o git só é exigido quando há candidato.
-A linha `doc` inválida é recusada mesmo sem caminho novo de código e fora de git
-(`## Canal \`doc\``). Fora de git com caminho novo, o checador sai 69
-(`nao-verificavel:`) sem imprimir a recusa da linha `doc`, e o `marcar --estagio plano` trata o 69
-como recusa.
+caminho novo que a disparou e o que falta. O git só é exigido quando alguma tarefa
+`implementar` (ou sem tipo) declara arquivo de código em `arquivos:`, novo ou existente,
+porque é contra o HEAD que se confere se ele é novo. Sem nenhuma, o checador roda fora
+de repositório git: sai 0, ou 2 se houver linha `doc` inválida (`## Canal \`doc\``).
+Com alguma e fora de git, sai 69 (`nao-verificavel:`) sem imprimir a recusa da linha
+`doc`, e o `marcar --estagio plano` trata o 69 como recusa.
 
 ## Origem
 
