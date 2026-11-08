@@ -75,7 +75,7 @@ Cada tarefa leva: **tipo**, `atende:` (lista de `D<n>` do design que esta tarefa
 
 ### Campo `busca:` — procurar antes de construir
 
-Tarefa `implementar` (ou sem tipo) que cria caminho novo de código declara a busca antes de escrever: bloco `busca:` com canal `repo` (linha `- repo | <consulta> | <resultado>`; `pulado:` só para outro canal) e `desfecho:` (`adotar`, `estender`, `compor`, `enxertar` ou `construir`). Teste, `.md` e glob não contam. Quem confere é `node scripts/conferir-busca.cjs plano --slug <slug>`, rodado pelo `estado.cjs marcar --estagio plano`. Formato, exemplo e regras (aspas na consulta com `|`, `pulado:` no `repo`, caixa do caminho): `skills/plano/references/campo-busca.md`.
+Tarefa `implementar` (ou sem tipo) que cria caminho novo de código declara a busca antes de escrever: bloco `busca:` com canal `repo` (linha `- repo | <consulta> | <resultado>`; `pulado:` só para outro canal) e `desfecho:` (`adotar`, `estender`, `compor`, `enxertar` ou `construir`). Teste, `.md` e glob não contam. Tarefa que decide API de framework ou biblioteca cita a doc oficial no canal `doc` (URL). Quem confere é `node scripts/conferir-busca.cjs plano --slug <slug>`, rodado pelo `estado.cjs marcar --estagio plano`. Formato, exemplo e regras (aspas na consulta com `|`, `pulado:` no `repo`, caixa do caminho): `skills/plano/references/campo-busca.md`.
 
 ### Campo obrigatório: `mutacao:` — o alvo é declarado, nunca inferido
 
