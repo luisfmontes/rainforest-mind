@@ -1,0 +1,69 @@
+Data: 2026-11-08
+Termos: colapso, conferir-mutacao SyntaxError, node --check
+
+$ gh issue list --state all --search "colapso" --limit 200 --json number,title,state
+[{"number":602,"state":"CLOSED","title":"conferir-mutacao: placar do vitest não reconhecido, baseline frio vira 'pulada (corte de shell)'"},{"number":606,"state":"CLOSED","title":"Catraca de mutação repete o baseline da mesma bateria a cada tarefa"},{"number":378,"state":"CLOSED","title":"conferir-mutacao.cjs sai 1 sem veredito no Windows quando a raiz tem node_modules como junction"},{"number":215,"state":"CLOSED","title":"Vermelho largo passa por prova: a catraca de mutacao le o exit code da bateria, nunca quantas assercoes cairam"},{"number":335,"state":"CLOSED","title":"13 baterias .cjs nunca rodam no CI: varrer-baterias.sh so descobre testa-*.sh"},{"number":313,"state":"CLOSED","title":"Contrabarra dupla dentro da string do wrapper ainda esconde o comando dos gates"}]
+
+
+$ gh issue list --state all --search "conferir-mutacao SyntaxError" --limit 200 --json number,title,state
+[{"number":377,"state":"CLOSED","title":"CI das baterias encostou no teto de 35 min: a suite precisa ficar mais barata"},{"number":340,"state":"CLOSED","title":"veredito grava caminho absoluto do transcrito (pasta pessoal) no estado versionado — repo público"}]
+
+
+$ gh issue list --state all --search "node --check" --limit 200 --json number,title,state
+[{"number":587,"state":"CLOSED","title":"esperar-ci le queda de rede como CI vermelho (exit 5 em vez de 69)"},{"number":616,"state":"CLOSED","title":"esperar-ci sai 5 quando o run do PR ainda não foi registrado"},{"number":623,"state":"CLOSED","title":"aviso-fluxo barra edição de arquivo gitignored na branch padrão"},{"number":591,"state":"CLOSED","title":"Segue #576: esperar-ci sai 5 em repositório cujo único workflow não dispara em PR"},{"number":323,"state":"CLOSED","title":"conferir-duplicacao conta arquivo gitignorado (.claude/marketplaces) e deixa testa-saude vermelho em main limpa"},{"number":346,"state":"CLOSED","title":"gate-bateria-sem-timeout: stdbuf --output L (opcao longa com espaco) escapa"},{"number":244,"state":"CLOSED","title":"Bump de versao e feito a mao no fechar, e o esquecimento e silencioso"},{"number":16,"state":"CLOSED","title":"Nenhuma bateria roda sozinha: sem CI, a catraca depende de alguem lembrar (a de nucleos ficou vermelha 3 dias)"},{"number":14,"state":"CLOSED","title":"limpar-branches.cjs da branch de PR mergeado por squash: classificada 'viva', nunca limpa"}]
+
+
+$ gh pr list --state all --search "colapso" --limit 200 --json number,title,state
+[{"number":603,"state":"MERGED","title":"Catraca de mutação lê o placar do vitest (#602, 2.0.3)"},{"number":499,"state":"MERGED","title":"Gate flaky com nova tentativa e teto de despachos por fluxo (1.61.0)"},{"number":597,"state":"MERGED","title":"Apoio ao dev, lote 5: harness (1.79.0)"},{"number":593,"state":"MERGED","title":"Apoio ao dev, lote 2: veredito coerente, prova que roda, limpeza com prova (1.76.0)"},{"number":318,"state":"MERGED","title":"gates: & com alvo literal no PowerShell e comando comum, nao ilegivel"},{"number":310,"state":"MERGED","title":"zerar-issues-8: palavra reservada e bash \"$t\" (#309), gemeo Python (#303), eval (#302)"}]
+
+
+$ gh pr list --state all --search "conferir-mutacao SyntaxError" --limit 200 --json number,title,state
+[{"number":526,"state":"MERGED","title":"conferir-entrega: --escopo pela regra de glob do creep (#518, 1.67.1)"}]
+
+
+$ gh pr list --state all --search "node --check" --limit 200 --json number,title,state
+[{"number":628,"state":"MERGED","title":"aviso-fluxo deixa passar arquivo ignorado pelo git (2.1.3)"},{"number":317,"state":"MERGED","title":"ci: baterias so no Node 24, a mesma versao da maquina"},{"number":506,"state":"MERGED","title":"Versao 1.64.0: fechar com push conferido e merge confirmado pelo state"},{"number":481,"state":"MERGED","title":"Versao 1.58.0: compactar a 60%, linha do PR na barra, node absoluto"},{"number":359,"state":"MERGED","title":"backup-db-vivo: backup externo com o rainforest.db aberto, 1.30.1"},{"number":246,"state":"MERGED","title":"Triagem de achado e portaria que le autorizacao explicita do usuario"},{"number":347,"state":"MERGED","title":"gate-bateria-sem-timeout: subagente nao deixa bateria ir para segundo plano (1.26.0)"},{"number":97,"state":"MERGED","title":"Fecha #88: o gate inspeciona Bash para escrita, nao so para verbo git"},{"number":108,"state":"MERGED","title":"Fecha #101: catraca de comparação — ela RODA os dois lados em vez de ler o relato"},{"number":92,"state":"MERGED","title":"Somente-leitura de verdade: o banco abria em modo ESCRITA e nada avisava"},{"number":111,"state":"MERGED","title":"Fecha #110: o batedor volta a enxergar as 202 ideias e observacoes abertas"},{"number":102,"state":"MERGED","title":"Fecha #77: catraca da ponte — e a ponte passa a gerar saida deterministica"},{"number":107,"state":"MERGED","title":"Fecha #74: a causa raiz era CRLF — o corte por prioridade nunca rodou no FOCO.md"},{"number":114,"state":"MERGED","title":"Fecha #83 (P2): gate de destino — pergunta para onde o arquivo vai antes de deixar escrever"},{"number":106,"state":"MERGED","title":"Fecha #100: execFileSync em setup.cjs, validarSlug em estado.cjs — e o teste que separa os dois"},{"number":122,"state":"MERGED","title":"Fecha #118: o backup diario do sentinela nunca fez backup — e empurrava sozinho para um repo publico"},{"number":141,"state":"MERGED","title":"Fluxo 9 — Portaria: admissao de subagente por manifesto"}]
+
+
+$ git ls-remote --heads origin | grep -F "colapso"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "conferir-mutacao SyntaxError"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "node --check"
+(vazio)
+
+$ git log --all --grep="colapso" --oneline
+4cfff569 Catraca de mutação lê o placar do vitest (#602, 2.0.3) (#603)
+74c0b126 Gate flaky com nova tentativa e teto de despachos por fluxo (1.61.0) (#499)
+ed1b65b1 Tarefa 2 (#313): escape de aspas duplas reduzido antes do colapso
+ece512fa Tarefa 4: Varredor descobre baterias .cjs (#335)
+309c0432 colapso: o comentario diz em que modo o bash descarta a contrabarra
+b9798336 zerar-issues-8: tarefa 15, bateria de unidade do colapso
+e8f7da5e zerar-issues-8: executar fechado com 14 tarefas
+99bc95a8 zerar-issues-8: tarefa 14, colapso de continuacao segue o bash de verdade
+c078c7e9 zerar-issues-8: tarefa 14, colapso de continuacao segue o bash
+115da24c zerar-issues-8: tarefas 11-12 - |& e continuacao de linha na fronteira de segmento (#309, revisao 2)
+63228ff8 Zerar Issues: a fatia revisada e limpa (12 de 18 Issues)
+6967685a Tarefa 22 (D11): o teto de queda vira 'a bateria colapsou'
+3f488cea Catraca de mutação: colapso total substitui proporção fixa de 20%
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+
+$ git log --all --grep="conferir-mutacao SyntaxError" --oneline
+(vazio)
+
+$ git log --all --grep="node --check" --oneline
+e48caf5d gate-bateria-sem-timeout: stdbuf e checagem de sintaxe (revisao 3)
+8025a18b Teto de commits conta so a branch, nao o que veio no merge da main
+aa7ff34b Timeout do exportador: 60 s como em producao, e estouro que se anuncia
+7d4942f3 Fecha #77: catraca da ponte — e a ponte passa a gerar saida deterministica (#102)
+a3fbb403 Fecha #77: catraca da ponte — e a ponte passa a gerar saida deterministica (#102)
+f8b05c84 Fecha #88: o gate inspeciona Bash para escrita, nao so para verbo git (#97)
+b78b8205 Fecha #88: o gate inspeciona Bash para escrita, nao so para verbo git (#97)
+
+$ cat <dados>/ideias.jsonl
+{"id":"catraca-colapso-por-erro-de-sintaxe","titulo":"Catraca: mutação que quebra a sintaxe e derruba 100% dos casos é colapso, não vermelho"}
+
+
