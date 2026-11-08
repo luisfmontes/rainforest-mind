@@ -45,25 +45,25 @@
     "em": "2026-11-08"
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "71af971bb7373e0c149a02bd9046496b994abe3c",
+      "head": "db1983bd20e79c33a40f46ea356d4551f33a2315",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ad23691e50f89d0f1",
+        "agente_id": "ab403886a21d36b8b",
         "veredito": "ok",
         "em": "2026-11-08",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-ad23691e50f89d0f1.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-ab403886a21d36b8b.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-11-08",
-    "achados": 2,
+    "achados": 0,
     "base": "4fa56a3d5f2baed4cdfcbc3f2fb8e1e028989247",
-    "head": "71af971bb7373e0c149a02bd9046496b994abe3c",
+    "head": "db1983bd20e79c33a40f46ea356d4551f33a2315",
     "voltas": [
       {
         "volta": 1,
@@ -148,6 +148,18 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a8d36058ca6be33c1.jsonl"
           }
         ]
+      },
+      {
+        "volta": 8,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ad23691e50f89d0f1",
+            "veredito": "ok",
+            "em": "2026-11-08",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-ad23691e50f89d0f1.jsonl"
+          }
+        ]
       }
     ],
     "destinos": [
@@ -158,17 +170,17 @@
       },
       {
         "pendente": "revisao-5: fora de git com caminho novo o usuario so ve a recusa do doc depois de resolver o git",
-        "destino": "descartada",
-        "motivo": "troca aceita no item (d) do plano: o 69 de antes vale sem mudanca e o marcar ja recusa; plano fora de git com codigo novo e caso raro"
+        "destino": "resolvida",
+        "evidencia": "o ramo do 69 imprime RECUSADO: <recusa> antes do nao-verificavel; caso doc: sem git com arquivo de codigo, a recusa do doc sai junto do 69 (exit=69) em testa-conferir-busca.sh, total=35 vermelhas:[]"
       }
     ]
   },
   "verificar": {
-    "status": "pendente",
+    "status": "ok",
     "em": "2026-11-08",
-    "comando": "node scripts/conferir-busca.cjs plano --slug p --plano <plano com - doc | sem url | x>; bash scripts/testa-conferir-busca.sh; node scripts/conferir-fluxo.cjs mutacoes; bash scripts/testa-teto-skills.sh; bash hooks/testa-abertura-mod-config.sh; bash scripts/testa-plugin-codex.sh; node scripts/conferir-versao.cjs",
-    "saida": "RECUSADO: tarefa 1. T; linha doc inválida (exit 2); total=34 vermelhas:[]; tarefa 1: vermelho, 2 e 3 n/a; tetos exit 0 (21 OK; ok 20; codex ok); versao 2.9.0 ok",
-    "head": "2e4bf9c617102ef4094310cda1434c9170ca067b"
+    "comando": "node scripts/conferir-busca.cjs plano --slug p --plano <plano com - doc | sem url | x>; bash scripts/testa-conferir-busca.sh; node scripts/conferir-fluxo.cjs mutacoes; bash scripts/testa-teto-skills.sh; bash hooks/testa-abertura-mod-config.sh; bash scripts/testa-plugin-codex.sh; bash scripts/testa-indice-referencias.sh; node scripts/conferir-versao.cjs",
+    "saida": "RECUSADO tarefa 1 linha doc inválida (exit 2); total=35 vermelhas:[]; tarefa 1: vermelho; tetos e indice exit 0; versao 2.9.0 ok",
+    "head": "db1983bd20e79c33a40f46ea356d4551f33a2315"
   },
   "fechar": {
     "status": "pendente",
