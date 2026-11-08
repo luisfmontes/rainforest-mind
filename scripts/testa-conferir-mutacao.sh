@@ -292,7 +292,7 @@ exige 0 "bateria que le stdin recebe EOF em vez de pendurar" \
 tem "a bateria detectou a mutacao" "mutacao detectada"
 
 exige 1 "bateria que estoura o teto nao vira veredito" \
-  CHK --arquivo fonte.cjs --de 'const campo' --para 'const campo // TIMEOUT-TEST-MARK' \
+  CHK --arquivo fonte.cjs --de 'const campo' --para 'const /* TIMEOUT-TEST-MARK */ campo' \
       --bateria 'bash bateria-timeout.sh' --timeout 2000
 tem "diz que ficou sem veredito" "SEM VEREDITO"
 nao_tem "e nao aprova por estouro" "ok: bateria VERMELHA"
@@ -710,6 +710,64 @@ if ! cmp -s "$CAIXA/fonte-crash.cjs" "$S/fonte-crash.pristino"; then
 else
   ok=$((ok+1)); printf '  ok    fonte-crash.cjs restaurado\n'
 fi
+
+echo
+echo "== 14d. mutacao que quebra a sintaxe do fonte e colapso, sem rodar a bateria =="
+# 2026-11-08 (fluxo busca-doc): um --de com // perdeu uma barra no Git Bash, o
+# fonte mutado ficou com SyntaxError, todos os casos sairam 1 e a catraca aprovou
+# como VERMELHA. A conferencia de sintaxe (node --check / bash -n) roda antes da
+# bateria pos-mutacao. A sentinela fica em $S, fora da caixa e da copia que a
+# catraca faz: se a bateria rodasse depois da mutacao, ela apareceria aqui.
+rm -f "$S/sentinela-sintaxe"
+cat > "$CAIXA/bateria-sintaxe.sh" <<BAT
+#!/bin/bash
+if grep -q 'w2 = ;' fonte-sintaxe.cjs; then
+  touch '$S/sentinela-sintaxe'
+  exit 1
+fi
+exit 0
+BAT
+printf 'const w2 = 4;\n' > "$CAIXA/fonte-sintaxe.cjs"
+cp "$CAIXA/fonte-sintaxe.cjs" "$S/fonte-sintaxe.pristino"
+
+exige 6 "mutacao que quebra a sintaxe do .cjs sai 6" \
+  CHK --arquivo fonte-sintaxe.cjs --de "const w2 = 4;" --para "const w2 = ;" \
+      --bateria 'bash bateria-sintaxe.sh'
+tem "diz que a mutacao quebrou a sintaxe do .cjs" "quebrou a sintaxe de fonte-sintaxe.cjs"
+tem "cita o SyntaxError do node" "SyntaxError"
+if [ -e "$S/sentinela-sintaxe" ]; then
+  falhou=$((falhou+1)); printf '  FALHA: a bateria rodou depois da mutacao que quebrou a sintaxe\n'
+else
+  ok=$((ok+1)); printf '  ok    a bateria nao rodou depois da mutacao (sentinela ausente)\n'
+fi
+if ! cmp -s "$CAIXA/fonte-sintaxe.cjs" "$S/fonte-sintaxe.pristino"; then
+  falhou=$((falhou+1)); printf '  FALHA: fonte-sintaxe.cjs nao foi restaurado\n'
+  cp "$S/fonte-sintaxe.pristino" "$CAIXA/fonte-sintaxe.cjs"
+else
+  ok=$((ok+1)); printf '  ok    fonte-sintaxe.cjs restaurado\n'
+fi
+
+cat > "$CAIXA/bateria-sintaxe-sh.sh" <<'BAT'
+#!/bin/bash
+if grep -q 'if then' fonte-sintaxe.sh; then exit 1; fi
+exit 0
+BAT
+printf 'echo ok\n' > "$CAIXA/fonte-sintaxe.sh"
+exige 6 "mutacao que quebra a sintaxe do .sh sai 6" \
+  CHK --arquivo fonte-sintaxe.sh --de "echo ok" --para "if then" \
+      --bateria 'bash bateria-sintaxe-sh.sh'
+tem "diz que a mutacao quebrou a sintaxe do .sh" "quebrou a sintaxe de fonte-sintaxe.sh"
+
+cat > "$CAIXA/bateria-ja-invalido.sh" <<'BAT'
+#!/bin/bash
+if grep -q 'MARCA-JA-INVALIDO' fonte-ja-invalido.cjs; then exit 1; fi
+exit 0
+BAT
+printf 'const z = ;\nconst y3 = 1;\n' > "$CAIXA/fonte-ja-invalido.cjs"
+exige 0 "fonte que ja nao carregava antes segue sem conferencia e aprova a VERMELHA" \
+  CHK --arquivo fonte-ja-invalido.cjs --de "const y3 = 1;" --para "const y3 = 1; // MARCA-JA-INVALIDO" \
+      --bateria 'bash bateria-ja-invalido.sh'
+nao_tem "nao acusa sintaxe quebrada pela mutacao" "quebrou a sintaxe"
 
 echo
 echo "== 15. queda pequena de asserções (1 de 34): aprova como VERMELHA =="

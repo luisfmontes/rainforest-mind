@@ -73,7 +73,10 @@
  *   6  bateria colapsou                  — zero asserção sobreviveu à mutação (ou
  *                                          ela parou de imprimir o próprio placar):
  *                                          o mecanismo de teste morreu antes de
- *                                          exercitar qualquer comportamento
+ *                                          exercitar qualquer comportamento; ou a
+ *                                          mutação quebrou a sintaxe do fonte
+ *                                          (`node --check` / `bash -n`), e a
+ *                                          bateria nem rodou
  *   1  erro de uso, ou bateria sem veredito (estouro de tempo / sinal) pós-mutação,
  *      ou (com `--no-lugar`) restauração que não confere, ou arquivo editado durante
  *      a bateria pós-mutação (não é sobrescrito; os bytes originais ficam no backup)
@@ -888,6 +891,39 @@ function extrairPlacar(saida) {
 /**
  * A bateria pós-mutação COLAPSOU — parou de medir, em vez de medir e discordar?
  */
+/**
+ * O fonte carrega? Confere a sintaxe sem executar (design 2026-11-08-catraca-colapso).
+ * Devolve null quando não há conferência (extensão fora, ferramenta ausente ou que
+ * não executa), `{ ok: true }` ou `{ ok: false, erro }`, com `erro` = a primeira
+ * linha que fala de erro (a primeira não vazia do `node --check` é o caminho).
+ */
+function conferirSintaxe(arquivo) {
+  const ext = path.extname(arquivo).toLowerCase();
+  let r;
+  if (['.js', '.cjs', '.mjs'].includes(ext)) {
+    r = spawnSync(process.execPath, ['--check', arquivo], { encoding: 'utf8', timeout: 30000 });
+  } else if (['.sh', '.bash'].includes(ext)) {
+    const bash = caminhoExecutavel('bash');
+    if (!bash || /\\(system32|windowsapps)\\/i.test(bash)) return null;
+    r = spawnSync(bash, ['-n', arquivo], { encoding: 'utf8', timeout: 30000 });
+  } else {
+    return null;
+  }
+  if (r.error || r.status === null) return null;
+  if (r.status === 0) return { ok: true };
+  const linhas = `${r.stderr || ''}${r.stdout || ''}`.split(/\r?\n/).map((l) => l.trim());
+  const erro = linhas.find((l) => /error/i.test(l)) || linhas.find((l) => l) || `exit ${r.status}`;
+  return { ok: false, erro };
+}
+
+/** RECUSADO pela sintaxe quebrada do fonte mutado: sai 6 sem rodar a bateria. */
+function recusaSintaxe(rel, erro) {
+  console.error(`RECUSADO: a mutação quebrou a sintaxe de ${rel} — a bateria não rodou.`);
+  console.error(`  ${erro}`);
+  console.error('  A mutação tem de manter o fonte carregável: refine o --para (ou o --de).');
+  process.exit(6);
+}
+
 function bateriaColapsou(placarBase, placarPos) {
   if (!placarBase) return false;
   const baseTotal = placarBase.ok + placarBase.falhou;
@@ -1181,6 +1217,8 @@ function main() {
   console.log(`casou   : ${ocorrencias} ocorrência — inversão aplicável`);
   console.log('');
 
+  const sintaxeOriginal = conferirSintaxe(alvo);
+
   // ======================================================== Fase 3: mutação
   // A limpeza da cópia temporária já está armada desde a criação de
   // `raizExecucao` — cobre este caminho de erro sem precisar rearmar.
@@ -1209,6 +1247,10 @@ function main() {
     limpar();
     process.exit(1);
   }
+
+  // Só recusa quando o original carregava e o mutado não (D2).
+  const sintaxeMutado = sintaxeOriginal && sintaxeOriginal.ok ? conferirSintaxe(alvo) : null;
+  if (sintaxeMutado && !sintaxeMutado.ok) recusaSintaxe(rel, sintaxeMutado.erro);
 
   // ============================================ Fase 4: bateria pós-mutação
   if (noLugar) {
