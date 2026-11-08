@@ -54,3 +54,13 @@ mutacao: n/a
   motivo: só versão e texto; o comportamento é medido pela tarefa 1
 Forma: o selo do README (`vers%C3%A3o-2.9.0` na URL e `versão 2.9.0` no `alt`) muda nos dois lugares; o `README.en.md` fica intocado. O CHANGELOG ganha `## 2.9.1 — 2026-11-08` acima da 2.9.0, um item `- **<título>.** <texto>` que diz o que a catraca passa a fazer (confere a sintaxe do fonte mutado com `node --check` ou `bash -n` e sai 6 sem rodar a bateria) e o incidente que motivou (vermelho aprovado sobre fonte com `SyntaxError`).
 pronto quando: com o repositório deste worktree, `node scripts/conferir-versao.cjs` sai 0, os dois `plugin.json` dizem `"version": "2.9.1"`, o selo do README diz `versão 2.9.1`, e o CHANGELOG abre com `## 2.9.1 — 2026-11-08` descrevendo o comportamento novo — provado por `node scripts/conferir-versao.cjs; grep -n '"version"' .claude-plugin/plugin.json .codex-plugin/plugin.json; grep -n "2.9.1" README.md CHANGELOG.md`
+
+## Emendas do leitor cego
+
+- Tarefa 1, caso 1 da 14d: a catraca roda a bateria numa cópia da raiz, então uma sentinela relativa nunca chega à caixa e a afirmação passaria sempre. A `bateria-sintaxe.sh` é escrita com heredoc **sem aspas** e grava a sentinela no caminho absoluto `$S/sentinela-sintaxe` (fora da caixa e da cópia), só no ramo em que o fonte tem `w2 = ;`; o caso afirma que `$S/sentinela-sintaxe` não existe depois da catraca. Assim uma regressão que rode a bateria antes de recusar fica vermelha.
+- Tarefa 1, mensagem: a linha citada é a primeira que contém `Error` ou `error` (a primeira não vazia do `node --check` é o caminho do arquivo). Isso refina o "primeira linha não vazia" do D3, que fica como fallback.
+- Tarefa 1, `bash -n` recebe `alvo` como está (caminho absoluto do Windows); o Git Bash aceita.
+- Tarefa 1, `const sintaxeOriginal = conferirSintaxe(alvo);` entra depois dos `console.log` do `casou` e imediatamente antes do comentário da Fase 3.
+- Tarefa 1, rótulos: os `exige`/`tem`/`nao_tem` da 14d nomeiam o caso pelo que afirmam (ex.: "mutacao que quebra a sintaxe do .cjs sai 6").
+- Tarefa 2: os exits esperados na tabela são `0 2 3 4 5 6 1 69`, um por linha.
+- Tarefa 3: título do item do CHANGELOG: "A catraca recusa a mutação que quebra a sintaxe do fonte."
