@@ -19,7 +19,7 @@
     "em": "2026-11-08"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-08",
     "tarefas_ok": 3,
     "tarefas": 3,
@@ -47,23 +47,23 @@
   "revisar": {
     "status": "pendente",
     "snapshot": {
-      "head": "13231d4cada81b3f5025a0503867595cfd9ed0fa",
+      "head": "e550d1a440001771cf7984ef2400cc1a5e308b59",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a6af06c5017640262",
+        "agente_id": "a8d36058ca6be33c1",
         "veredito": "ok",
         "em": "2026-11-08",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a6af06c5017640262.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a8d36058ca6be33c1.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-11-08",
     "achados": 3,
     "base": "4fa56a3d5f2baed4cdfcbc3f2fb8e1e028989247",
-    "head": "13231d4cada81b3f5025a0503867595cfd9ed0fa",
+    "head": "e550d1a440001771cf7984ef2400cc1a5e308b59",
     "voltas": [
       {
         "volta": 1,
@@ -124,6 +124,18 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a7dcf11c03a8a128a.jsonl"
           }
         ]
+      },
+      {
+        "volta": 6,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a6af06c5017640262",
+            "veredito": "ok",
+            "em": "2026-11-08",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a6af06c5017640262.jsonl"
+          }
+        ]
       }
     ],
     "destinos": [
@@ -180,6 +192,11 @@
       "em": "2026-11-08",
       "de": "revisar",
       "motivo": "revisao do CI: texto diz 'sem git quando nenhuma tarefa cria caminho novo', mas o git e exigido com qualquer arquivo de codigo concreto em tarefa cobrada; contagem de 172 planos nao conferida"
+    },
+    {
+      "em": "2026-11-08",
+      "de": "revisar",
+      "motivo": "revisao: fora de git com arquivo de codigo o 69 engole a recusa do doc (D2 promete conferir sem git); texto sem 'ou sem tipo' e 'arquivo de codigo' mais estreito que candidatosDe"
     }
   ]
 }

@@ -207,6 +207,8 @@ function cmdPlano() {
 
   const repo = raizDoRepo(path.dirname(path.resolve(arquivo)));
   if (!repo) {
+    // D2: a recusa da linha `doc` não depende de git; sai junto do 69.
+    for (const recusa of recusas) console.error(`RECUSADO: ${recusa}`);
     console.error('nao-verificavel: o plano não está num repositório git');
     process.exit(69);
   }

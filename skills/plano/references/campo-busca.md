@@ -108,11 +108,12 @@ Outra palavra é recusa.
 `node scripts/conferir-busca.cjs plano --slug <slug>`, que o
 `estado.cjs marcar --estagio plano` roda junto da cobertura. A recusa diz a tarefa, o
 caminho novo que a disparou e o que falta. O git só é exigido quando alguma tarefa
-`implementar` (ou sem tipo) declara arquivo de código em `arquivos:`, novo ou existente,
-porque é contra o HEAD que se confere se ele é novo. Sem nenhuma, o checador roda fora
-de repositório git: sai 0, ou 2 se houver linha `doc` inválida (`## Canal \`doc\``).
-Com alguma e fora de git, sai 69 (`nao-verificavel:`) sem imprimir a recusa da linha
-`doc`, e o `marcar --estagio plano` trata o 69 como recusa.
+`implementar` (ou sem tipo) declara em `arquivos:` um caminho que não é glob, teste nem
+`.md`, novo ou existente, porque é contra o HEAD que se confere se ele é novo. Sem
+nenhuma, o checador roda fora de repositório git: sai 0, ou 2 se houver linha `doc`
+inválida (`## Canal \`doc\``). Com alguma e fora de git, sai 69 (`nao-verificavel:`),
+imprimindo antes a recusa da linha `doc` se houver, e o `marcar --estagio plano` trata o
+69 como recusa.
 
 ## Origem
 
