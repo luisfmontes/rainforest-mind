@@ -10,6 +10,10 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.9.0 — 2026-11-08
+
+- **Decisão de API de framework cita a documentação oficial no plano.** O `busca:` da tarefa ganha o canal `doc`: `- doc | <URL da página oficial> | <o que a página diz>`. O `conferir-busca.cjs` recusa a linha `doc` cuja consulta não é URL `http(s)`, em qualquer tarefa que a declara, de qualquer tipo e fora de git, porque decisão de API costuma editar arquivo que já existe. A referência do campo (`skills/plano/references/campo-busca.md`) diz quando usar, a ordem das fontes (doc oficial, changelog oficial, padrões web, tabela de compatibilidade; nunca Stack Overflow, tutorial ou memória de treino) e a marca `não verificado:` para o que a doc não cobre. O checador confere só a forma e não abre a URL. Método enxertado do `source-driven-development` do `addyosmani/agent-skills` (MIT).
+
 ## 2.8.2 — 2026-11-07
 
 - **As recusas do corpo do PR terminam na mesma receita.** O `gate-fechar-issue` tinha cinco recusas sobre o corpo de `gh pr create`/`gh pr edit` (variável no `--body-file`, caminho relativo com diretório incerto, arquivo ilegível, `--body` com crase, editor interativo), cada uma com uma sugestão própria, e algumas sugeriam o que a recusa seguinte barrava. Agora todas dizem a razão e terminam em "Receita que passa": gravar o corpo com o Write num caminho absoluto literal e rodar `gh pr create --body-file "<caminho>"` num comando só com o `gh`. A recusa do arquivo ilegível diz também o caminho que tentou e o motivo: arquivo que não existe, `/tmp` do Git Bash (que o node do gate não enxerga) ou o código do erro; heredoc ilegível ganha razão própria. Medido em 300 transcritos: esse gate era a maior fonte de turnos com a mesma falha repetida 3 vezes ou mais (13 de 48).
