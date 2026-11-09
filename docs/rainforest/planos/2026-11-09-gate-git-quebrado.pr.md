@@ -31,6 +31,5 @@ Revisor rodou o gate da base e o do head em 23 estados reais, com `Write` de sub
 
 - revisar: design D5 nao cita is-inside-git-dir nem superprojeto → descartada: o design registra a decisao, que nao mudou; o complemento esta nas emendas das revisoes 1 e 2 do plano
 - revisar: comentario em contexto-sessao.cjs:890 sobre fail-open → descartada: o texto continua certo para a janela principal, unica usuaria de sessaoColocada
-- revisar: copia de caminho-real.cjs em testa-conferir-fluxo.sh:601 sem uso → descartada: arquivo extra na caixa, sem cenario de falha; tirar agora refaria revisao e catraca de 45 min por uma copia sem efeito
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
