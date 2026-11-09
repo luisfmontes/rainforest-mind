@@ -70,7 +70,7 @@ Quando um mutante sobrevive, `marcar verificar ok` recusa com exit 2, imprime a 
 
 ## Teste apagado ou pulado (afrouxa)
 
-O `marcar verificar ok` também roda `conferir-fluxo.cjs afrouxa` sobre o diff que o `revisar` aprovou (`revisar.base...revisar.head`, na raiz do estado). Recusa com exit 2, listando cada achado, quando um arquivo de teste (`testa-*.sh|cjs|py`, `*.test.*`, `*.spec.*`, `*_test.*`, `test_*.py`) foi apagado (renome não conta) ou ganhou linha com marcador de pulo ou foco (`.skip(`, `.only(`, `xit(`, `xdescribe(`, `xtest(`, `@pytest.mark.skip`, `@unittest.skip`, `t.Skip(`, `@Disabled`, `@Ignore`).
+O `marcar verificar ok` também roda `conferir-fluxo.cjs afrouxa` sobre o diff que o `revisar` aprovou (da `base` dele ao HEAD medido no `exigir revisar`, na raiz do estado). Recusa com exit 2, listando cada achado, quando um arquivo de teste (`testa-*.sh|cjs|py`, `*.test.*`, `*.spec.*`, `*_test.*`, `test_*.py`) foi apagado, renomeado para um nome que não é de teste, ou ganhou linha com marcador de pulo ou foco (`.skip(`, `.only(`, com `.each` e espaço antes do parêntese; `xit(`, `xdescribe(`, `xtest(`, `@pytest.mark.skip`, `@unittest.skip`, `t.Skip(`, `t.Skipf(`, `t.SkipNow(`, `@Disabled`, `@Ignore`). A lista é fechada: `fit(` e `fdescribe(` ficam de fora, e nome de teste fora daqueles padrões (`FooTest.java`, `foo_spec.rb`) não é visto.
 
 Quando a tarefa faz isso de propósito, ela declara `afrouxa: <por que>` no plano, e o `arquivos:` dela tem de casar o arquivo. O achado declarado sai no stdout e passa. Um `.only(` ou `.skip(` de outra API dentro de arquivo de teste também casa, com o mesmo remédio. Exit 69 (sem `git`) e erro do git (exit 1) também recusam: não medir não é aprovar. Sem `base`/`head` no `revisar`, avisa e segue.
 

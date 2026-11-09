@@ -85,3 +85,13 @@ pronto quando: com o repositório deste worktree, `node scripts/conferir-versao.
 - Tarefa 1: caminhos ao node na forma mista; A7 com PATH vazio e node por caminho absoluto; prefixos do diff fixados; `+++` lido como cabeçalho só antes do primeiro `@@`.
 - Tarefa 2: `descricao` definida.
 - Tarefa 4: a seção do `verificar` avisa do casamento largo de `.only(`/`.skip(`.
+
+## Emendas da revisão 1
+
+Decisões de Luís em 2026-11-09 sobre o achado `[design]`: renome de teste para fora dos padrões conta como apagado (D2); as variantes de marcador entram, com lista fechada (D2); o head vem de `revisar.snapshot.head` quando existir (D1). O `pronto quando:` da tarefa 1 sobre `git mv` vale para renome de teste para teste (A4).
+
+- Tarefa 1: o achado do renome leva `arquivo` = destino e `de` = origem, e o destino é o que o `creep` exige no `arquivos:`; `descricao` traz `(renomeado de <origem>)`. Cabeçalho `+++` sem o TAB final. `--text --no-ext-diff --no-textconv` no diff. `--base`/`--head` começando com `-` saem 1. Sai a troca de `\\` por `/`, porque o git sempre devolve `/`.
+- Bateria: casos A9 a A16 (renome para fora, espaço no nome, cada padrão de arquivo, cada marcador com a linha certa, linha `++ `, `.gitattributes` com `-diff`, revisão com hífen) e C4 (head declarado igual à base).
+- Tarefa 1: `*.test.*`, `*.spec.*` e `*_test.*` aceitam uma extensão só depois do marcador, senão `a.test.js.off` continuaria sendo arquivo de teste e o renome para fora não seria visto.
+- Tarefa 4: a seção do `verificar` diz que a lista de marcadores é fechada e que nome de teste fora dos padrões não é visto.
+- Descartado: `afrouxa: x` autorizar tudo no `arquivos:` é o que o D4 decide; nome de arquivo com aspas ou barra invertida vem entre aspas no diff e fica fora (não reproduzível no Windows, onde a bateria roda).

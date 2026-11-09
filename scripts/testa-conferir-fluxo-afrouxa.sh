@@ -122,6 +122,36 @@ c=$?; if [ "$c" = 69 ] && tem "nao-verificavel:"; then passa "A7 sem git no PATH
 novo_repo; BASE=$(printf '%040d' 1)
 c=$(chk); if [ "$c" = 1 ] && tem "erro ao rodar git diff"; then passa "A8 revisao desconhecida sai 1, nao passa"; else falha "A8 revisao desconhecida sai 1, nao passa (exit $c)"; fi
 
+novo_repo; g mv src/a.test.js src/a.test.js.off; commita
+c=$(chk); if [ "$c" = 2 ] && tem "apagado: src/a.test.js.off (renomeado de src/a.test.js)"; then passa "A9 renome de teste para fora dos padroes recusa"; else falha "A9 renome de teste para fora dos padroes recusa (exit $c)"; fi
+
+novo_repo; printf 'it.%s(1);\n' "$SK" > "$S/src/x y.test.js"; commita
+c=$(chk); if [ "$c" = 2 ] && tem "pulo: src/x y.test.js:1 "; then passa "A10 nome com espaco casa e sai sem TAB"; else falha "A10 nome com espaco casa e sai sem TAB (exit $c)"; fi
+
+novo_repo; escreve_plano "afrouxa: motivo" "\`src/x y.test.js\`"; printf 'it.%s(1);\n' "$SK" > "$S/src/x y.test.js"; commita
+c=$(chk); if [ "$c" = 0 ] && tem "afrouxa declarado: tarefa 1 (motivo): pulo: src/x y.test.js:1 "; then passa "A11 afrouxa alcanca nome com espaco"; else falha "A11 afrouxa alcanca nome com espaco (exit $c)"; fi
+
+novo_repo
+for f in test_a.py a_test.go a.spec.ts scripts/testa-z.cjs scripts/testa-w.py; do printf 'it.%s(1);\n' "$SK" > "$S/$f"; done; commita
+c=$(chk); falta=""; for f in test_a.py a_test.go a.spec.ts scripts/testa-z.cjs scripts/testa-w.py; do tem "pulo: $f:1 " || falta="$falta $f"; done
+if [ "$c" = 2 ] && [ -z "$falta" ]; then passa "A12 cada padrao de arquivo de teste e visto"; else falha "A12 cada padrao de arquivo de teste e visto (exit $c, faltou:$falta)"; fi
+
+novo_repo
+T_SK="Sk""ip"; DS="x""describe"; XT="x""test"; PY="@py""test.mark.$SK"; UN="@unit""test.$SK"; DI="@Dis""abled"; IG="@Ig""nore"
+MARCADORES=("it.$SK(1)" "it.$ON(1)" "it.$SK (1)" "it.$SK.each(1)" "it.$ON.each(1)" "$XI(1)" "$DS(1)" "$XT(1)" "$PY" "$UN" "t.$T_SK(1)" "t.${T_SK}f(1)" "t.${T_SK}Now()" "$DI" "$IG")
+for m in "${MARCADORES[@]}"; do printf '%s\n' "$m" >> "$S/src/a.test.js"; done; commita
+c=$(chk); n=$(grep -c '^  pulo: ' "$S/saida.txt")
+if [ "$c" = 2 ] && [ "$n" = "${#MARCADORES[@]}" ] && tem "pulo: src/a.test.js:16 "; then passa "A13 cada marcador recusa, com a linha certa"; else falha "A13 cada marcador recusa, com a linha certa (exit $c, n=$n)"; fi
+
+novo_repo; printf '++ x\nit.%s(1);\n' "$SK" >> "$S/src/a.test.js"; commita
+c=$(chk); if [ "$c" = 2 ] && tem "pulo: src/a.test.js:3 "; then passa "A14 linha adicionada com cara de cabecalho nao troca o arquivo"; else falha "A14 linha adicionada com cara de cabecalho nao troca o arquivo (exit $c)"; fi
+
+novo_repo; echo '*.test.js -diff' > "$S/.gitattributes"; commita; BASE=$(g rev-parse HEAD); printf 'it.%s(1);\n' "$SK" >> "$S/src/a.test.js"; commita
+c=$(chk); if [ "$c" = 2 ] && tem "pulo: src/a.test.js:2 "; then passa "A15 gitattributes com -diff nao esconde o marcador"; else falha "A15 gitattributes com -diff nao esconde o marcador (exit $c)"; fi
+
+novo_repo; g rm -q scripts/testa-x.sh; commita; BASE="--stat"
+c=$(chk); if [ "$c" = 1 ] && tem "revisão inválida"; then passa "A16 revisao comecando com hifen sai 1"; else falha "A16 revisao comecando com hifen sai 1 (exit $c)"; fi
+
 echo "== B. o escape afrouxa: =="
 
 novo_repo; escreve_plano "afrouxa: a peca testada saiu"; g rm -q scripts/testa-x.sh; commita
@@ -214,6 +244,25 @@ if prep_fluxo nao; then
   fi
 else
   cp "$S/prep.txt" "$S/saida.txt"; falha "C3 preparo do fluxo"
+fi
+
+novo_repo; g rm -q scripts/testa-x.sh; commita
+if prep_fluxo sim; then
+  HEAD_REAL=$(g rev-parse HEAD)
+  node -e '
+    const fs = require("fs"); const [p, base, head] = process.argv.slice(1);
+    const e = JSON.parse(fs.readFileSync(p, "utf8"));
+    e.revisar.head = base; e.revisar.snapshot = { head, caminhos_sujos: [] };
+    fs.writeFileSync(p, JSON.stringify(e, null, 2));
+  ' "$(JSON_ESTADO)" "$BASE" "$HEAD_REAL"
+  c=$(marca_verificar)
+  if [ "$c" = 2 ] && tem "apagado: scripts/testa-x.sh"; then
+    passa "C4 head declarado igual a base nao esvazia a checagem"
+  else
+    falha "C4 head declarado igual a base nao esvazia a checagem (exit $c)"
+  fi
+else
+  cp "$S/prep.txt" "$S/saida.txt"; falha "C4 preparo do fluxo"
 fi
 
 echo

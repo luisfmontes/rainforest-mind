@@ -3396,10 +3396,12 @@ function main() {
           }
           // O diff que o `revisar` aprovou não tira teste do caminho sem declarar
           // (design 2026-11-09-regua-testes). Roda em RAIZ, onde o `creep` aceitou
-          // base e head; por isso não leva o `--raiz-codigo`.
+          // base e head; por isso não leva o `--raiz-codigo`. O head é o medido no
+          // `exigir revisar`, quando existe: `head` declarado igual à `base` daria diff vazio.
           const rev = estado.revisar || {};
-          if (rev.base && rev.head) {
-            const argsAf = [path.join(__dirname, 'conferir-fluxo.cjs'), 'afrouxa', '--slug', slug, '--plano', arquivo_plano, '--base', String(rev.base), '--head', String(rev.head)];
+          const headAf = (rev.snapshot && rev.snapshot.head) || rev.head;
+          if (rev.base && headAf) {
+            const argsAf = [path.join(__dirname, 'conferir-fluxo.cjs'), 'afrouxa', '--slug', slug, '--plano', arquivo_plano, '--base', String(rev.base), '--head', String(headAf)];
             const afrouxa = spawnSync(process.execPath, argsAf, { stdio: 'inherit' });
             if (afrouxa.status !== 0) {
               console.error('RECUSADO: o verificar não fecha: a checagem de teste apagado ou pulado não passou (acima).');

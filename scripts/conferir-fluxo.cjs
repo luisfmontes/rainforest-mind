@@ -1455,8 +1455,8 @@ function cmdDeriva() {
  * ou acrescentar um marcador de pulo é outro ato, que o glob de arquivos: não
  * distingue, e a suíte continua verde porque o que não roda não falha.
  *
- * Dois sinais, só em arquivo de teste (D2): status D (renome não conta) e linha
- * adicionada com marcador de pulo ou foco. Contar asserção ficou de fora (D3).
+ * Dois sinais, só em arquivo de teste (D2): arquivo apagado, ou renomeado para um
+ * nome que não é de teste, e linha adicionada com marcador de pulo ou foco. Contar asserção ficou de fora (D3).
  * O escape é o campo afrouxa: <motivo> na tarefa cujo arquivos: casa o arquivo (D4).
  * O git roda em RAIZ, onde o creep aceitou base e head: é esse o diff aprovado.
  *
@@ -1465,15 +1465,14 @@ function cmdDeriva() {
  */
 const PADROES_TESTE = [
   /(^|\/)testa-[^/]*\.(sh|cjs|py)$/,
-  /(^|\/)[^/]+\.(test|spec)\.[^/]+$/,
-  /(^|\/)[^/]+_test\.[^/]+$/,
+  /(^|\/)[^/]+\.(test|spec)\.[^./]+$/,
+  /(^|\/)[^/]+_test\.[^./]+$/,
   /(^|\/)test_[^/]+\.py$/,
 ];
-const MARCADOR_PULO = /\.(skip|only)\(|\bx(it|describe|test)\(|@pytest\.mark\.skip|@unittest\.skip|\bt\.Skip\(|@Disabled\b|@Ignore\b/;
+const MARCADOR_PULO = /\.(skip|only)(\.each)?\s*\(|\bx(it|describe|test)\s*\(|@pytest\.mark\.skip|@unittest\.skip|\bt\.Skip(f|Now)?\(|@Disabled\b|@Ignore\b/;
 
 function ehArquivoDeTeste(caminho) {
-  const c = String(caminho).replace(/\\/g, '/');
-  return PADROES_TESTE.some((r) => r.test(c));
+  return PADROES_TESTE.some((r) => r.test(caminho));
 }
 
 function achadosAfrouxa(raiz, base, head) {
@@ -1485,18 +1484,24 @@ function achadosAfrouxa(raiz, base, head) {
     if (!linha.trim()) continue;
     const partes = linha.replace(/\r$/, '').split('\t');
     const status = partes[0].charAt(0);
-    const caminho = (partes[1] || '').replace(/\\/g, '/');
+    const caminho = partes[1] || '';
     if (status === 'D' && ehArquivoDeTeste(caminho)) achados.push({ tipo: 'apagado', arquivo: caminho });
+    // Renome para fora dos padrões tira o teste da descoberta tanto quanto apagar. O
+    // `arquivo` é o destino, o caminho que o `creep` exige no `arquivos:` da tarefa.
+    if (status === 'R' && ehArquivoDeTeste(caminho) && !ehArquivoDeTeste(partes[2] || '')) achados.push({ tipo: 'apagado', arquivo: partes[2], de: caminho });
   }
 
   let atual = null;
   let nova = 0;
   let emCabecalho = false;
-  const saida = git(['diff', '-U0', '--no-color', '-M', '--src-prefix=a/', '--dst-prefix=b/', `${base}...${head}`]);
+  // `--text`: `.gitattributes` com `-diff` não esconde o marcador. Sem ext-diff e
+  // textconv, a saída é a do git, seja qual for o config de quem roda.
+  const saida = git(['diff', '-U0', '--no-color', '-M', '--text', '--no-ext-diff', '--no-textconv', '--src-prefix=a/', '--dst-prefix=b/', `${base}...${head}`]);
   for (const linha of saida.split('\n')) {
     if (linha.startsWith('diff --git ')) { emCabecalho = true; atual = null; continue; }
     if (emCabecalho && linha.startsWith('+++ ')) {
-      atual = linha.startsWith('+++ b/') ? linha.slice(6).replace(/\r$/, '') : null;
+      // Nome com espaço: o git põe um TAB depois do caminho, no cabeçalho.
+      atual = linha.startsWith('+++ b/') ? linha.slice(6).replace(/[\t\r]+$/, '') : null;
       continue;
     }
     const hunk = linha.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
@@ -1526,6 +1531,13 @@ function cmdAfrouxa() {
   const slug = arg('slug');
   const base = arg('base');
   const head = arg('head');
+  // Valor começando com `-` viraria opção do `git diff` e esvaziaria a checagem.
+  for (const ref of [base, head]) {
+    if (ref.startsWith('-')) {
+      console.error(`erro: revisão inválida: ${ref}`);
+      process.exit(1);
+    }
+  }
   const arquivo_plano = arg('plano', false) || docDoEstado(slug, 'plano') || path.join(RAIZ, caminhoDoc('planos', slug, { raiz: RAIZ }));
   const conteudo_plano = lerMarkdown(arquivo_plano);
   if (!conteudo_plano) {
@@ -1558,7 +1570,7 @@ function cmdAfrouxa() {
   const recusas = [];
   for (const achado of achados) {
     const descricao = achado.tipo === 'apagado'
-      ? `apagado: ${achado.arquivo}`
+      ? `apagado: ${achado.arquivo}${achado.de ? ` (renomeado de ${achado.de})` : ''}`
       : `pulo: ${achado.arquivo}:${achado.linha} ${achado.trecho}`;
     const autorizada = autorizadas.find((t) => t.globs.some((g) => globMatches(achado.arquivo, g)));
     if (autorizada) console.log(`afrouxa declarado: tarefa ${autorizada.numero} (${autorizada.motivo}): ${descricao}`);
