@@ -19,6 +19,7 @@ mutacao:
   de: `ehWorktree: dentroDoGit !== "true" && resolverGit(dir, gitDir) !== resolverGit(dir, comum),`
   para: `ehWorktree: gitDir.replace(/\\/g, "/").includes("/worktrees/"),`
   bateria: `bash hooks/testa-gate-worktree.sh`
+  timeout: 600000
   fixture: `testa-gate-worktree.sh, caso "checkout principal sob pasta worktrees, a partir de subpasta, barra"`
 prova: `D=$(mktemp -d) && git init -q "$D/worktrees/proj" && mkdir -p "$D/worktrees/proj/sub" && W=$(cygpath -m "$D/worktrees/proj/sub") && printf '{"agent_id":"a","agent_type":"x","cwd":"%s","tool_name":"Write","tool_input":{"file_path":"%s/f.txt"}}' "$W" "$W" | env RFM_ROOT="$(mktemp -d)" node hooks/gate-worktree.cjs > /dev/null 2>&1; test $? -eq 2`
 pronto quando: com um checkout principal real em `<tmp>/worktrees/proj` e um payload `PreToolUse` de subagente (`agent_id`) com `Write` em `<tmp>/worktrees/proj/sub/f.txt` e `cwd` na subpasta, o hook sai 2; o mesmo `Write` a partir de subpasta de um worktree linkado sai 0 — provado por `bash hooks/testa-gate-worktree.sh` saindo 0 com os dois casos listados pelo nome, e pela mutação acima deixando vermelho o primeiro
@@ -38,6 +39,7 @@ mutacao:
   de: `if (saida === null) return estadoSemGit(dir);`
   para: `if (saida === null) return null;`
   bateria: `bash hooks/testa-gate-worktree.sh`
+  timeout: 600000
   fixture: `testa-gate-worktree.sh, caso "git sem resposta no checkout principal barra subagente"`
 prova: `D=$(mktemp -d) && git init -q "$D/r" && W=$(cygpath -m "$D/r") && V=$(mktemp -d) && N=$(command -v node) && printf '{"agent_id":"a","agent_type":"x","cwd":"%s","tool_name":"Write","tool_input":{"file_path":"%s/f.txt"}}' "$W" "$W" | env RFM_ROOT="$(mktemp -d)" PATH="$V" "$N" hooks/gate-worktree.cjs > /dev/null 2>&1; test $? -eq 2`
 pronto quando: sem `git` no PATH do processo (PATH numa pasta vazia, `node` por caminho absoluto), um `Write` de subagente no checkout principal sai 2 com `git não respondeu num repositório` no stderr; o mesmo `Write` num worktree linkado (`.git` arquivo) sai 0; numa pasta sem `.git` em ancestral nenhum sai 0; e `scripts/conferir-mutacao.cjs` continua distinguindo "fora de repo" de "git que falha" no modo no lugar — provado por `bash hooks/testa-gate-worktree.sh`, `bash hooks/testa-caminho-real.sh` e `bash scripts/testa-conferir-mutacao.sh` saindo 0, e pela mutação acima deixando vermelho o primeiro
@@ -58,6 +60,7 @@ mutacao:
   de: `if (!estado || estado.gitQuebrado) continue;`
   para: `if (!estado) continue;`
   bateria: `bash hooks/testa-gate-worktree.sh`
+  timeout: 600000
   fixture: `testa-gate-worktree.sh, caso "git sem resposta nao barra a janela principal na sessao co-locada"`
 prova-na-base: verde — na base o gate já libera a janela principal com o git sem resposta; a tarefa impede que a tarefa 2 mude isso
 pronto quando: com outra sessão registrada no mesmo diretório e sem `git` no PATH, o payload da janela principal (sem `agent_id`) com `git checkout -b x` em `$R` sai 0 — provado por `bash hooks/testa-gate-worktree.sh` saindo 0 com o caso listado pelo nome, e pela mutação acima deixando esse caso vermelho
@@ -92,3 +95,7 @@ pronto quando: com o repositório deste worktree, `node scripts/conferir-versao.
 
 - Tarefa 1: submódulo responde `--git-dir` igual a `--git-common-dir`, então, dentro de worktree linkado, deixava de passar. O `ehWorktree` do submódulo passa a ser o do superprojeto (`--show-superproject-working-tree`), o que mantém a decisão da base. Casos novos: `submodulo dentro de worktree linkado passa` e `submodulo no checkout principal barra`.
 - Tarefa 4: o texto cita worktree linkado e submódulo como exemplos, porque `--separate-git-dir` também tem `.git` arquivo.
+
+## Emenda do verificar
+
+- Tarefas 1 a 3: `timeout: 600000` no bloco `mutacao:`. A bateria passou de 5 min com os casos novos e a catraca recusou por baseline acima do teto padrão, sem medir nada.
