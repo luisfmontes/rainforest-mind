@@ -50,32 +50,51 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "806690a27989fbc27c2fa8449ac63242ad2383ea",
+      "head": "869f263bdc701356b64517e372e5f9e9343b9bab",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a6dff488ac819097a",
-        "veredito": "reprovado",
+        "agente_id": "a89d2ce23e64dd03e",
+        "veredito": "ok",
         "em": "2026-11-09",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a6dff488ac819097a.jsonl"
-      }
-    ],
-    "em_voo": [
-      {
-        "agente": "revisor",
-        "tarefa": "revisao do diff regua-testes",
-        "desde": "2026-11-09T12:00:00Z",
-        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a89d2ce23e64dd03e.jsonl"
       }
     ],
     "em": "2026-11-09",
-    "achados": 6,
+    "achados": 2,
     "motivo": "achado [design] em D2 (renome para fora de teste); fluxo parado para decisao",
-    "tentativas": 1
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a6dff488ac819097a",
+            "veredito": "reprovado",
+            "em": "2026-11-09",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a6dff488ac819097a.jsonl"
+          }
+        ]
+      }
+    ],
+    "base": "678a000a5daab524f45190a6178c70cfebf1361a",
+    "head": "869f263bdc701356b64517e372e5f9e9343b9bab",
+    "destinos": [
+      {
+        "pendente": "revisao-2: *.test.e2e.ts deixou de ser visto",
+        "destino": "descartada",
+        "motivo": "falha aberta decidida para ver a.test.js.off; o verificar ja diz que nome fora dos padroes nao e visto"
+      },
+      {
+        "pendente": "revisao-2: sem snapshot o head declarado vale",
+        "destino": "descartada",
+        "motivo": "so ocorre com revisar marcado sem exigir; o D1 diz quando existe e o snapshot e gravado a cada exigir revisar"
+      }
+    ]
   },
   "verificar": {
     "status": "pendente"
