@@ -1,0 +1,28 @@
+{
+  "slug": "2026-11-09-gate-git-quebrado",
+  "titulo": "2026-11-09-gate-git-quebrado",
+  "criado_em": "2026-11-09",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/2026-11-09-gate-git-quebrado.md",
+    "em": "2026-11-09"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

@@ -1,0 +1,85 @@
+Data: 2026-11-09
+Termos: gate-worktree git nao respondeu, estadoDoRepo, git-common-dir, ehWorktree
+
+$ gh issue list --state all --search "gate-worktree git nao respondeu" --limit 200 --json number,title,state
+[{"number":671,"state":"OPEN","title":"gate-worktree: git quebrado em repo libera escrita; /worktrees/ no caminho vira worktree"}]
+
+
+$ gh issue list --state all --search "estadoDoRepo" --limit 200 --json number,title,state
+[{"number":671,"state":"OPEN","title":"gate-worktree: git quebrado em repo libera escrita; /worktrees/ no caminho vira worktree"},{"number":127,"state":"CLOSED","title":"gate-worktree e cego para CLI de agente externa: codex exec --yolo passa, git stash nao"}]
+
+
+$ gh issue list --state all --search "git-common-dir" --limit 200 --json number,title,state
+[{"number":671,"state":"OPEN","title":"gate-worktree: git quebrado em repo libera escrita; /worktrees/ no caminho vira worktree"},{"number":565,"state":"CLOSED","title":"Sessão fora de repo git: regra 10 sem saída para agente que escreve"},{"number":446,"state":"CLOSED","title":"Bateria grava user.email t@t no .git/config do repositorio real"},{"number":411,"state":"CLOSED","title":"setup --desligar gate-publicacao --escopo projeto não vale dentro de worktree do mesmo repo"},{"number":265,"state":"CLOSED","title":"gate-publicacao: .rainforest-gate-off nao e herdado pelo worktree, e nao esta no .gitignore"},{"number":350,"state":"CLOSED","title":"gate-worktree ignora git -C <outro-repo> e barra switch num clone descartavel como se fosse o checkout da sessao"},{"number":378,"state":"CLOSED","title":"conferir-mutacao.cjs sai 1 sem veredito no Windows quando a raiz tem node_modules como junction"},{"number":495,"state":"CLOSED","title":"gate-repo-alheio receita uma saída que ele mesmo barra, e dá à janela principal o texto de subagente"},{"number":294,"state":"CLOSED","title":"Achados menores do revisar zerar-issues-5 (catraca em copia, pyc, MSYS)"},{"number":243,"state":"CLOSED","title":"foco-session-start.cjs leva 6-8 s nesta maquina e estoura o timeout 5 do hooks.json: testa-memoria-somente-leitura fica vermelha e nada diz que foi timeout"},{"number":266,"state":"CLOSED","title":"conferir-mutacao muta a arvore compartilhada: quem ler naquela janela mede o mutante"},{"number":153,"state":"CLOSED","title":"A main esta vermelha no CI: 4 baterias que so falham no runner"},{"number":268,"state":"CLOSED","title":"Mensagem do gate de publicacao nao oferece o toggle do setup, so as saidas de emergencia"},{"number":264,"state":"CLOSED","title":"Portaria: manifesto de agentes SUBSTITUI em vez de somar, e agente de outro plugin nunca passa"},{"number":27,"state":"CLOSED","title":"testa-saude.sh fica vermelha por rodar de worktree, nao por defeito no codigo — e e onde a esteira roda"}]
+
+
+$ gh issue list --state all --search "ehWorktree" --limit 200 --json number,title,state
+[{"number":671,"state":"OPEN","title":"gate-worktree: git quebrado em repo libera escrita; /worktrees/ no caminho vira worktree"},{"number":289,"state":"CLOSED","title":"gate-worktree: cd com caminho MSYS (/c/...) vira incerto e barra commit no scratchpad, chamando o worktree de principal"},{"number":142,"state":"CLOSED","title":"O guarda de \"nao remover worktree sujo\" mede o repositorio PAI, e por isso responde \"sujo\" para tudo"}]
+
+
+$ gh pr list --state all --search "gate-worktree git nao respondeu" --limit 200 --json number,title,state
+[{"number":247,"state":"MERGED","title":"zerar-issues rodada 3: heredoc no gate de Issue e radar em 4 chamadas (1.13.2)"},{"number":129,"state":"MERGED","title":"Versao 0.78.0: o release que o repo nao sabia que devia, e 34 correcoes no README"}]
+
+
+$ gh pr list --state all --search "estadoDoRepo" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "git-common-dir" --limit 200 --json number,title,state
+[{"number":574,"state":"MERGED","title":"Portaria fora de repo e aviso de fluxo pelo shell (#565, #564, 1.71.0)"},{"number":219,"state":"MERGED","title":"limpar-worktrees: a limpeza nao sai do repositorio"},{"number":295,"state":"MERGED","title":"zerar-issues-5: conserta 20 Issues abertas em menos de 24h"},{"number":67,"state":"MERGED","title":"O semear honra o slug, resolve o projeto pelo repo principal, e recusa em vez de devolver acervo vazio"}]
+
+
+$ gh pr list --state all --search "ehWorktree" --limit 200 --json number,title,state
+[]
+
+
+$ git ls-remote --heads origin | grep -F "gate-worktree git nao respondeu"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "estadoDoRepo"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "git-common-dir"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "ehWorktree"
+(vazio)
+
+$ git log --all --grep="gate-worktree git nao respondeu" --oneline
+(vazio)
+
+$ git log --all --grep="estadoDoRepo" --oneline
+bf1e32b4 gate-worktree: normaliza cd em forma MSYS e corrige mensagem de incerto
+9e58a6a5 Livro: a cegueira do gate nao e "duas listas" — sao tres, e a prova agora e execucao
+6d90d470 Livro: a cegueira do gate nao e "duas listas" — sao tres, e a prova agora e execucao
+
+$ git log --all --grep="git-common-dir" --oneline
+b13a86bb Modo autonomo: do plano aprovado ao PR mergeado (1.66.0) (#520)
+bb22d0e9 estado: leve --repo <raiz> grava no repositorio indicado (#430, tarefa 8)
+f83d24b7 Fluxo pulado: estado.cjs leve --motivo e o leitor caminho-leve (tarefa 1, #430)
+dd2aa020 Zerar as Issues #409-#414, #417, #419 (1.46.0) (#426)
+6d35d008 Integra M1: preparar-worktree por git-common-dir
+22ee71b0 Corrigir preparar-worktree: worktree linkado, reexecução e --exige
+9ec76d3b conferir-mutacao: copia de worktree vinculado continua vinculada
+a5c9fc90 Handover: registrar o que so a CI pegou
+43df8893 Consertar as tres baterias que so a CI viu vermelhas
+2b2f904f limpar-worktrees: a limpeza nao sai do repositorio
+06574e43 Achado 1: ancorar log em repositório principal, não em worktree
+47679bb9 Achado 1: ancorar log em repositório principal, não em worktree
+e44672a2 O semear honra o slug, resolve o projeto pelo repo principal, e recusa em vez de devolver acervo vazio (#67)
+b0df7ecc O semear honra o slug, resolve o projeto pelo repo principal, e recusa em vez de devolver acervo vazio (#67)
+40e3f3bd Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+2cc8788c Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+
+$ git log --all --grep="ehWorktree" --oneline
+0533241c Gate do worktree: alvo com expansão, mensagens do cd - e do dinâmico (2.0.4) (#605)
+603dff0c veredito-revisor: grava no worktree do fluxo, nao no do revisor (#363)
+bf1e32b4 gate-worktree: normaliza cd em forma MSYS e corrige mensagem de incerto
+c25afc4e O verde mais saudavel do painel era falso: o /saude passa a medir o que executa (#20)
+5ab6da43 O verde mais saudavel do painel era falso: o /saude passa a medir o que executa (#20)
+fc133403 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+68d788d5 O radar para de cobrar quando nao deve: as duas isencoes da regra 3 saem da prosa e viram decisao do hook (#12)
+
+$ cat <dados>/ideias.jsonl
+(vazio)
+
