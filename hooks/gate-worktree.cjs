@@ -64,6 +64,7 @@ const os = require("node:os");
 const fs = require("node:fs");
 const path = require("node:path");
 const { caminhoExecutavel } = require(path.join(__dirname, "lib", "resolver-executavel.cjs"));
+const { caminhoReal, acharGitAcima } = require(path.join(__dirname, "lib", "caminho-real.cjs"));
 const { cwdPorSegmento, resolverMovedor, toplevelConfinado, extrairUltimoDirGit, segmentosComAspas, SEPARADORES } = require(path.join(__dirname, "lib", "cwd-efetivo.cjs"));
 const CLIS_QUE_ESCREVEM = require(path.join(__dirname, "lib", "clis-que-escrevem.cjs"));
 // #530 (D4, D6): a palavra de comando como o bash a le, e o corpo de cada
@@ -356,30 +357,56 @@ function git(dir, args) {
   }
 }
 
+function resolverGit(dir, p) {
+  return caminhoReal(path.resolve(dir, p)).replace(/\\/g, "/");
+}
+
+const AVISOU_SEM_GIT = new Set();
+// O git nao respondeu: decide pelo disco se ali e repositorio (#671).
+function estadoSemGit(dir) {
+  // Diretorio que nao existe: o git falhou pelo caminho, nao por estar quebrado.
+  if (!fs.existsSync(dir)) return null;
+  const achado = acharGitAcima(dir);
+  if (!achado) return null;
+  const raiz = achado.dir.replace(/\\/g, "/");
+  if (!AVISOU_SEM_GIT.has(raiz)) {
+    AVISOU_SEM_GIT.add(raiz);
+    process.stderr.write(
+      `[gate-worktree] git não respondeu num repositório (${raiz}); escrita de subagente fora de worktree linkado fica barrada.\n`
+    );
+  }
+  return { toplevel: raiz, ehWorktree: achado.ehArquivo, gitQuebrado: true };
+}
+
 /**
- * null = nao e repo git (livre) | {toplevel, ehWorktree}
+ * null = nao e repositorio (livre) | {toplevel, ehWorktree, gitQuebrado?}
  *
- * Quando o git nao responde, o gate LIBERA — trava de seguranca nao pode
- * derrubar o trabalho por ambiente quebrado. Mas libera FALANDO: em
- * 2026-08-09 a bateria passou verde por engano porque o teste mandava
- * caminho `/tmp/...` do Git Bash, que o Node no Windows nao resolve; o git
- * falhava, o gate liberava calado e parecia funcionar. Trava que falha em
- * silencio e o mesmo defeito que ela existe pra consertar.
+ * Tres casos. Sem `.git` em pasta nenhuma acima: fora de repositorio, livre. Git que
+ * responde: worktree linkado e o que tem `--git-dir` diferente de `--git-common-dir`,
+ * que nao depende do nome das pastas (#671). Git que nao responde com `.git` acima:
+ * `gitQuebrado`, e o `.git` arquivo conta como worktree; o subagente fora de worktree
+ * e barrado, e a janela principal segue livre (`gateDeSessaoColocada`).
+ *
+ * Fala sempre em stderr: em 2026-08-09 a bateria passou verde por engano porque o git
+ * falhava num caminho `/tmp/...` e o gate liberava calado. Trava que muda de
+ * comportamento em silencio e o mesmo defeito que ela existe pra consertar.
  */
 function estadoDoRepo(dir) {
-  const gitDir = git(dir, ["rev-parse", "--git-dir"]);
-  if (gitDir === null) {
-    if (git(dir, ["--version"]) === null && git(process.cwd(), ["--version"]) === null) {
-      process.stderr.write(
-        `[gate-worktree] git nao respondeu para '${dir}' — gate INATIVO nesta chamada.\n`
-      );
-    }
-    return null;
-  }
-  return {
+  const saida = git(dir, ["rev-parse", "--git-dir", "--git-common-dir", "--is-inside-git-dir"]);
+  if (saida === null) return estadoSemGit(dir);
+  const [gitDir, comum, dentroDoGit] = saida.split(/\r?\n/);
+  const estado = {
     toplevel: git(dir, ["rev-parse", "--show-toplevel"]) || dir,
-    ehWorktree: gitDir.replace(/\\/g, "/").includes("/worktrees/"),
+    // Na pasta administrativa `.git/worktrees/<x>` os dois diferem, e ela nao e worktree.
+    ehWorktree: dentroDoGit !== "true" && resolverGit(dir, gitDir) !== resolverGit(dir, comum),
   };
+  // Submodulo responde `--git-dir` igual a `--git-common-dir`; o que vale e onde ele esta.
+  if (!estado.ehWorktree && dentroDoGit !== "true") {
+    const pai = git(dir, ["rev-parse", "--show-superproject-working-tree"]);
+    const estadoPai = pai ? estadoDoRepo(pai) : null;
+    if (estadoPai) estado.ehWorktree = estadoPai.ehWorktree;
+  }
+  return estado;
 }
 
 // Windows: nome curto 8.3 (`RUNNER~1`) vira o longo, pelo ancestral mais fundo que existe.
@@ -1403,8 +1430,8 @@ function bloqueiaColocada(verbo, toplevel, outras, agora, incerto) {
  *
  * FALHA PARA O LADO DE LIBERAR em tudo que ela nao consegue medir por falta de
  * INFRAESTRUTURA — sem `session_id` no evento, sem `sessoes.json`, sem raiz de dados,
- * fora de repo git. E o mesmo principio que o `estadoDoRepo` ja aplica quando o git
- * nao responde, e aqui ele pesa mais: esta e a UNICA condicao do arquivo que pode
+ * fora de repo git, git sem resposta. O subagente fecha quando o git nao responde; a
+ * janela principal, nao, e aqui o principio pesa mais: esta e a UNICA condicao do arquivo que pode
  * barrar a janela principal, e um falso positivo aqui trava o trabalho de quem esta
  * sozinho no repo.
  *
@@ -1455,7 +1482,8 @@ function gateDeSessaoColocada(ev, cwd) {
 
   for (const alvo of alvosBash(comando, cwd, moveOHead, ev.tool_name)) {
     const estado = estadoDoRepo(dirDe(alvo.dir));
-    if (!estado) continue;
+    // Git sem resposta nao barra a janela principal (#671, D3).
+    if (!estado || estado.gitQuebrado) continue;
     if (estado.toplevel !== daqui.toplevel) continue;
     bloqueiaColocada(alvo.verbo, daqui.toplevel, outras, agora, alvo.incerto === true);
   }

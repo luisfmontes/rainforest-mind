@@ -40,6 +40,7 @@ cp "$SRC/hooks/lib/config.cjs" "$SBP/hooks/lib/"
 cp "$SRC/hooks/lib/trava-jsonl.cjs" "$SBP/hooks/lib/"
 cp "$SRC/hooks/lib/pastas-docs.cjs" "$SBP/hooks/lib/"   # onde moram design e plano (D1/D3 do #412)
 cp "$SRC/hooks/lib/resolver-executavel.cjs" "$SBP/hooks/lib/"   # git pelo caminho (Issue #392)
+cp "$SRC/hooks/lib/caminho-real.cjs" "$SBP/hooks/lib/"   # conferir-mutacao acha o .git acima (#671)
 cp "$SRC/hooks/lib/contar-ocorrencias.cjs" "$SBP/hooks/lib/"   # conferir-fluxo conta o de: da mutacao (#397)
 cp "$SRC/hooks/lib/teto-despachos.cjs" "$SBP/hooks/lib/"   # conferir-fluxo le o cabecalho teto-despachos (D14)
 cp "$SRC/hooks/lib/caminho-leve.cjs" "$SRC/hooks/lib/slug-branch.cjs" "$SBP/hooks/lib/"   # estado.cjs le o leve da branch (#430)

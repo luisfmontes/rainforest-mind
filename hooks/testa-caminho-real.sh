@@ -173,6 +173,15 @@ fi
 
 echo
 echo
+echo "== acharGitAcima =="
+ag() { node -e 'process.stdout.write(JSON.stringify(require(process.argv[1]).acharGitAcima(process.argv[2])))' "$LIB" "$(cygpath -m "$1" 2>/dev/null || printf '%s' "$1")"; }
+mkdir -p "$SBP/com-pasta/.git" "$SBP/com-pasta/a/b" "$SBP/com-arquivo/a" "$SBP/sem"
+echo 'gitdir: x' > "$SBP/com-arquivo/.git"
+tem "subpasta acha o .git pasta acima" "$(ag "$SBP/com-pasta/a/b")" 'com-pasta","ehArquivo":false'
+tem ".git arquivo vem marcado" "$(ag "$SBP/com-arquivo/a")" 'com-arquivo","ehArquivo":true'
+if [ "$(ag "$SBP/sem")" = null ]; then ok=$((ok+1)); echo "  ok   sem .git em ancestral nenhum devolve null"
+else pulou "sem .git: a pasta temporaria esta dentro de um repositorio"; fi
+
 echo "== resultado: $ok ok, $falhou falha(s), $pulados pulado(s) =="
 [ "$falhou" -eq 0 ] || exit 1
 exit 0

@@ -48,6 +48,16 @@ echo v1 > "$R/a.txt"; git -C "$R" add .; git -C "$R" commit -qm base
 WT="$RAIZ/wt"; git -C "$R" worktree add -q -b trabalho "$WT" >/dev/null 2>&1
 FORA="$RAIZ/sem-git"; mkdir -p "$FORA"
 
+# Sem git (#671): PATH numa pasta vazia e o node por caminho absoluto.
+VAZIA="$RAIZ_POSIX/path-vazio"; mkdir -p "$VAZIA"; NODE_ABS="$(command -v node)"
+gate_sem_git() { # nome, exit esperado, json, [texto esperado na saida], [RFM_ROOT]
+  local nome="$1" esp="$2" json="$3" texto="${4:-}" dados="${5:-$RFM_ROOT}"
+  if [ -z "$json" ]; then falhou=$((falhou+1)); echo "  FALHA $nome: payload vazio"; return; fi
+  local saida; saida=$(printf '%s' "$json" | env RFM_ROOT="$dados" PATH="$VAZIA" "$NODE_ABS" "$GATE" 2>&1); local got=$?
+  if [ "$got" = "$esp" ] && { [ -z "$texto" ] || printf '%s' "$saida" | grep -qF -- "$texto"; }; then ok=$((ok+1)); echo "  ok   $nome (exit $got)"
+  else falhou=$((falhou+1)); echo "  FALHA $nome: esperava $esp, veio $got"; echo "$saida" | sed 's/^/         /' | head -6; fi
+}
+
 # Todo payload sai de JSON.stringify, com os valores CRUS por argv (#403):
 # montado por printf, aspas duplas ou barra invertida no valor quebravam o
 # JSON, o gate saia 0 por payload invalido e o caso ficava verde sem ter sido
@@ -382,6 +392,7 @@ gatec "sessoes.json ausente (fail-open)"          0 "$(p "git checkout -b x" "$R
 printf 'isto nao e json' > "$DADOS/sessoes.json"
 gatec "sessoes.json ilegivel (fail-open)"         0 "$(p "git checkout -b x" "$R")"
 mv "$DADOS/sessoes.bak" "$DADOS/sessoes.json"
+gate_sem_git "git sem resposta nao barra a janela principal na sessao co-locada" 0 "$(p "git checkout -b x" "$R")" "" "$DADOSW"
 saida=$(printf '%s' "$(p "git checkout -b x" "$R")" | RFM_ROOT="$RAIZ/nao-existe" node "$GATE" 2>&1); rc=$?
 if [ "$rc" = 0 ]; then ok=$((ok+1)); echo "  ok   raiz de dados sem sessoes.json (fail-open, exit 0)"
 else falhou=$((falhou+1)); echo "  FALHA raiz inexistente nao liberou (exit $rc)"; fi
@@ -2368,6 +2379,32 @@ EOF
 EOC
 )" "$WN")" 'git commit' 'troque o `cd -`'
 gate 'cd <W> && git commit -m "$(date)" com caminho literal passa' 0 "$(b "cd $WN && git commit -m \"\$(date)\"" "$WN")"
+
+echo "== git sem resposta e pasta chamada worktrees (#671) =="
+WTS="$RAIZ/worktrees/proj"; git init -q "$WTS"; mkdir -p "$WTS/sub" "$WT/sub" "$R/sub"
+gate "checkout principal sob pasta worktrees, a partir de subpasta, barra" 2 "$(j Write file_path "$WTS/sub/f.txt" "$WTS/sub")"
+gate "subpasta de worktree linkado passa" 0 "$(j Write file_path "$WT/sub/f.txt" "$WT/sub")"
+gate "pasta administrativa do worktree linkado barra" 2 "$(j Write file_path "$R/.git/worktrees/wt/info/exclude" "$WT")"
+CURTO="$(cygpath -d "$R/sub" 2>/dev/null || true)"
+case "$CURTO" in
+  *~*) gate "checkout principal por nome curto, subpasta, barra" 2 "$(j Write file_path "$CURTO/f.txt" "$CURTO")" ;;
+  *) echo "  (pulado: volume sem nome curto 8.3)" ;;
+esac
+gate_sem_git "git sem resposta no checkout principal barra subagente" 2 "$(j Write file_path "$R/f.txt")" "git não respondeu num repositório"
+gate_sem_git "git sem resposta em worktree linkado passa" 0 "$(j Write file_path "$WT/f.txt" "$WT")"
+if node -e 'process.exit(require(process.argv[1]).acharGitAcima(process.argv[2]) ? 1 : 0)' "$(cygpath -m "$SRC/hooks/lib/caminho-real.cjs" 2>/dev/null || printf '%s' "$SRC/hooks/lib/caminho-real.cjs")" "$FORA"; then
+  gate_sem_git "git sem resposta fora de repositorio passa" 0 "$(j Write file_path "$FORA/f.txt" "$FORA")"
+else
+  echo "  (pulado: a pasta temporaria esta dentro de um repositorio)"
+fi
+SMO="$RAIZ/sm-origem"; R2="$RAIZ/com-sm"; W2="$RAIZ/com-sm-wt"
+gcf() { git -c user.email=t@t -c user.name=t -c commit.gpgsign=false -c protocol.file.allow=always "$@"; }
+git init -q "$SMO"; echo s > "$SMO/s.txt"; gcf -C "$SMO" add .; gcf -C "$SMO" commit -qm s
+git init -q "$R2"; echo r > "$R2/r.txt"; gcf -C "$R2" add .; gcf -C "$R2" submodule --quiet add "$SMO" sm; gcf -C "$R2" commit -qm r
+gcf -C "$R2" worktree add -q -b com-sm "$W2" >/dev/null 2>&1; gcf -C "$W2" submodule --quiet update --init >/dev/null 2>&1
+gate "submodulo dentro de worktree linkado passa" 0 "$(j Write file_path "$W2/sm/n.txt" "$W2")"
+gate "submodulo no checkout principal barra" 2 "$(j Write file_path "$R2/sm/n.txt" "$R2")"
+gate "cwd inexistente dentro de repositorio nao vira git quebrado" 0 "$(b "$G13 echo x" "$R/nao-existe")"
 
 echo "== resultado: $ok ok, $falhou falha(s) =="
 [ "$falhou" = 0 ]
