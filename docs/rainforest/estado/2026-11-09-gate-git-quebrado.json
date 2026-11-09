@@ -21,14 +21,14 @@
     "status": "ok",
     "catraca_mutacao": "2026-11-09",
     "comando": "bash hooks/testa-gate-worktree.sh; mutacoes em copia",
-    "saida": "913 ok, 0 falhas; as tres mutacoes derrubam so os casos nomeados",
+    "saida": "914 ok, 0 falhas; mutacoes derrubam os casos nomeados",
     "tarefas_ok": 4,
     "tarefas": 4,
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "pasta worktrees"
+        "fixture": "pasta worktrees e pasta administrativa"
       },
       {
         "tarefa": 2,
@@ -46,10 +46,35 @@
         "motivo": "texto e versao"
       }
     ],
-    "em": "2026-11-09"
+    "em": "2026-11-09",
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "4941f40175ad06df295d931a995f68f85ccdbba2",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "acc5c3da0f3e7d0c6",
+        "veredito": "reprovado",
+        "em": "2026-11-09",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-acc5c3da0f3e7d0c6.jsonl"
+      }
+    ],
+    "em_voo": [
+      {
+        "agente": "revisor",
+        "tarefa": "revisao gate-git-quebrado",
+        "desde": "2026-11-09T21:00:00Z",
+        "sessao": "e33c35f1-6de6-4663-b9f9-7da74ed0d145"
+      }
+    ],
+    "em": "2026-11-09",
+    "achados": 2,
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

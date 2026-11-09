@@ -16,7 +16,7 @@ arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`
 depende de: nenhuma
 mutacao:
   arquivo: `hooks/gate-worktree.cjs`
-  de: `ehWorktree: resolverGit(dir, gitDir) !== resolverGit(dir, comum),`
+  de: `ehWorktree: dentroDoGit !== "true" && resolverGit(dir, gitDir) !== resolverGit(dir, comum),`
   para: `ehWorktree: gitDir.replace(/\\/g, "/").includes("/worktrees/"),`
   bateria: `bash hooks/testa-gate-worktree.sh`
   fixture: `testa-gate-worktree.sh, caso "checkout principal sob pasta worktrees, a partir de subpasta, barra"`
@@ -82,3 +82,8 @@ pronto quando: com o repositório deste worktree, `node scripts/conferir-versao.
 - Tarefa 1: caso `checkout principal por nome curto, subpasta, barra` (`cygpath -d`; pulado no volume sem 8.3). É o lado perigoso: `--git-dir` longo contra `--git-common-dir` relativo sobre `dir` curto.
 - Tarefa 3: a guarda fica só no `if (!estado) continue;` do laço; uma segunda no `daqui` era redundante e a mutação de uma sobrevivia à outra (medido). O comentário de `gateDeSessaoColocada` passa a dizer que o princípio de liberar vale para a janela principal.
 - Tarefa 4: a frase entra no fim da segunda coluna da linha do `gate-worktree.cjs`.
+
+## Emendas da revisão 1
+
+- Tarefa 1: `ehWorktree` exige também `--is-inside-git-dir` falso. Na pasta administrativa `.git/worktrees/<x>` o `--git-dir` e o `--git-common-dir` diferem, e a escrita de subagente passava lá. Caso novo: `pasta administrativa do worktree linkado barra`.
+- Tarefa 4: o texto diz "onde `.git` é arquivo (worktree linkado, submódulo)", que é o que o código faz (D2).

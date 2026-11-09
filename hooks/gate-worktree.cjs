@@ -392,12 +392,13 @@ function estadoSemGit(dir) {
  * comportamento em silencio e o mesmo defeito que ela existe pra consertar.
  */
 function estadoDoRepo(dir) {
-  const saida = git(dir, ["rev-parse", "--git-dir", "--git-common-dir"]);
+  const saida = git(dir, ["rev-parse", "--git-dir", "--git-common-dir", "--is-inside-git-dir"]);
   if (saida === null) return estadoSemGit(dir);
-  const [gitDir, comum] = saida.split(/\r?\n/);
+  const [gitDir, comum, dentroDoGit] = saida.split(/\r?\n/);
   return {
     toplevel: git(dir, ["rev-parse", "--show-toplevel"]) || dir,
-    ehWorktree: resolverGit(dir, gitDir) !== resolverGit(dir, comum),
+    // Na pasta administrativa `.git/worktrees/<x>` os dois diferem, e ela nao e worktree.
+    ehWorktree: dentroDoGit !== "true" && resolverGit(dir, gitDir) !== resolverGit(dir, comum),
   };
 }
 

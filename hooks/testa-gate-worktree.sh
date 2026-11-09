@@ -2384,6 +2384,7 @@ echo "== git sem resposta e pasta chamada worktrees (#671) =="
 WTS="$RAIZ/worktrees/proj"; git init -q "$WTS"; mkdir -p "$WTS/sub" "$WT/sub" "$R/sub"
 gate "checkout principal sob pasta worktrees, a partir de subpasta, barra" 2 "$(j Write file_path "$WTS/sub/f.txt" "$WTS/sub")"
 gate "subpasta de worktree linkado passa" 0 "$(j Write file_path "$WT/sub/f.txt" "$WT/sub")"
+gate "pasta administrativa do worktree linkado barra" 2 "$(j Write file_path "$R/.git/worktrees/wt/info/exclude" "$WT")"
 CURTO="$(cygpath -d "$R/sub" 2>/dev/null || true)"
 case "$CURTO" in
   *~*) gate "checkout principal por nome curto, subpasta, barra" 2 "$(j Write file_path "$CURTO/f.txt" "$CURTO")" ;;
