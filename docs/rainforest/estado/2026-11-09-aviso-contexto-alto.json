@@ -18,7 +18,7 @@
     "em": "2026-11-09"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-09",
     "tarefas_ok": 3,
     "tarefas": 3,
@@ -41,10 +41,32 @@
         "motivo": "tarefa so descreve a chave e sobe a versao"
       }
     ],
-    "em": "2026-11-09"
+    "em": "2026-11-09",
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-11-09"
+    },
+    "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "65f1735a77104dc496aa35f79162328a90b7c3a9",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ae4d7292f657bd9aa",
+        "veredito": "reprovado",
+        "em": "2026-11-09",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-ae4d7292f657bd9aa.jsonl"
+      }
+    ],
+    "achados": 4,
+    "criterio": "medida dobra com advisor; limiar padrao nunca dispara (D3)",
+    "em": "2026-11-09",
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"
