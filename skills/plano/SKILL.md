@@ -138,6 +138,8 @@ real, por exemplo). Exigir o impossível cria o hábito do `--forcar`, e trava q
 se contorna por hábito não trava mais nada. O que **não** vale é `n/a` sem
 motivo: o preço do escape é escrever por que ele cabe.
 
+Tarefa que apaga ou pula teste de propósito declara `afrouxa: <por que>`, senão o `verificar` recusa.
+
 > 2026-08-21: um agente cumpriu todos os critérios falsificáveis do briefing,
 > colou saída de validação por mutação e entregou 49/49 verde — com a trava que
 > ele acabara de escrever recusando o caminho feliz **sempre**. Não foi caso

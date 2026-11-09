@@ -358,6 +358,11 @@ function cmdCobertura() {
       erros.push(`tarefa ${numero}. ${nome} campo desconhecido: ${campo}`);
     }
 
+    // Campo `afrouxa:` vazio: o preço do escape é escrever por quê (design regua-testes, D4).
+    if (motivoAfrouxa(conteudo_plano, numero) === '') {
+      erros.push(`tarefa ${numero}. ${nome} afrouxa: sem motivo — diga por que o teste sai ou é pulado`);
+    }
+
     // D15: Conta ocorrências de de: no arquivo da mutacao
     if (mutacao && mutacao.campos.de && !mutacao.campos.de.toLowerCase().includes('n/a')) {
       const arquivo_mutacao = mutacao.campos.arquivo ? mutacao.campos.arquivo.replace(/^`|`$/g, '') : null;
@@ -755,7 +760,7 @@ function extrairCorpoTarefa(conteudo_plano, numero_tarefa) {
 function extrairCamposDesconhecidos(corpo, cerca) {
   const conhecidos_top = new Set([
     'atende', 'arquivos', 'depende de', 'paralela', 'prova',
-    'prova-na-base', 'mutacao', 'motivo', 'pronto quando', 'busca', 'desfecho'
+    'prova-na-base', 'mutacao', 'motivo', 'pronto quando', 'busca', 'desfecho', 'afrouxa'
   ]);
   const conhecidos_subcampos = new Set([
     'arquivo', 'de', 'para', 'bateria', 'fixture', 'raiz', 'timeout', 'motivo', 'no-lugar'
@@ -1442,6 +1447,132 @@ function cmdDeriva() {
   console.log(`decisões: ${com} com âncora (${placar.intactas} intactas, ${placar.perdidas} com âncora perdida), ${placar.semAncora} sem âncora medível`);
 }
 
+// ================================================================ afrouxa
+
+/**
+ * Diff revisado não tira teste do caminho sem a tarefa declarar (design
+ * 2026-11-09-regua-testes). O creep autoriza TOCAR um arquivo; apagar a bateria
+ * ou acrescentar um marcador de pulo é outro ato, que o glob de arquivos: não
+ * distingue, e a suíte continua verde porque o que não roda não falha.
+ *
+ * Dois sinais, só em arquivo de teste (D2): status D (renome não conta) e linha
+ * adicionada com marcador de pulo ou foco. Contar asserção ficou de fora (D3).
+ * O escape é o campo afrouxa: <motivo> na tarefa cujo arquivos: casa o arquivo (D4).
+ * O git roda em RAIZ, onde o creep aceitou base e head: é esse o diff aprovado.
+ *
+ * Saídas (D5): 0 limpo ou tudo declarado; 2 recusa; 69 sem git; 1 uso ou erro do
+ * git (revisão desconhecida não é "nada a declarar").
+ */
+const PADROES_TESTE = [
+  /(^|\/)testa-[^/]*\.(sh|cjs|py)$/,
+  /(^|\/)[^/]+\.(test|spec)\.[^/]+$/,
+  /(^|\/)[^/]+_test\.[^/]+$/,
+  /(^|\/)test_[^/]+\.py$/,
+];
+const MARCADOR_PULO = /\.(skip|only)\(|\bx(it|describe|test)\(|@pytest\.mark\.skip|@unittest\.skip|\bt\.Skip\(|@Disabled\b|@Ignore\b/;
+
+function ehArquivoDeTeste(caminho) {
+  const c = String(caminho).replace(/\\/g, '/');
+  return PADROES_TESTE.some((r) => r.test(c));
+}
+
+function achadosAfrouxa(raiz, base, head) {
+  const git = (args) => execFileSync(caminhoExecutavel('git'), ['-c', 'core.quotepath=false', ...args], {
+    cwd: raiz, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 256 * 1024 * 1024,
+  });
+  const achados = [];
+  for (const linha of git(['diff', '--name-status', '-M', `${base}...${head}`]).split('\n')) {
+    if (!linha.trim()) continue;
+    const partes = linha.replace(/\r$/, '').split('\t');
+    const status = partes[0].charAt(0);
+    const caminho = (partes[1] || '').replace(/\\/g, '/');
+    if (status === 'D' && ehArquivoDeTeste(caminho)) achados.push({ tipo: 'apagado', arquivo: caminho });
+  }
+
+  let atual = null;
+  let nova = 0;
+  let emCabecalho = false;
+  const saida = git(['diff', '-U0', '--no-color', '-M', '--src-prefix=a/', '--dst-prefix=b/', `${base}...${head}`]);
+  for (const linha of saida.split('\n')) {
+    if (linha.startsWith('diff --git ')) { emCabecalho = true; atual = null; continue; }
+    if (emCabecalho && linha.startsWith('+++ ')) {
+      atual = linha.startsWith('+++ b/') ? linha.slice(6).replace(/\r$/, '') : null;
+      continue;
+    }
+    const hunk = linha.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+    if (hunk) { emCabecalho = false; nova = Number(hunk[1]); continue; }
+    if (emCabecalho || !linha.startsWith('+')) continue;
+    if (atual && ehArquivoDeTeste(atual) && MARCADOR_PULO.test(linha.slice(1))) {
+      achados.push({ tipo: 'pulo', arquivo: atual, linha: nova, trecho: linha.slice(1).trim().slice(0, 120) });
+    }
+    nova++;
+  }
+  return achados;
+}
+
+/** O texto do campo afrouxa: da tarefa ('' se vazio) ou null sem o campo. */
+function motivoAfrouxa(conteudo_plano, numero) {
+  const { corpo, corpo_cerca } = extrairCorpoTarefa(conteudo_plano, numero);
+  for (let k = 0; k < corpo.length; k++) {
+    if (corpo_cerca[k]) continue;
+    if (/^pronto quando:/.test(corpo[k])) break;
+    const m = corpo[k].match(/^afrouxa:([^\r\n]*)/);
+    if (m) return m[1].trim();
+  }
+  return null;
+}
+
+function cmdAfrouxa() {
+  const slug = arg('slug');
+  const base = arg('base');
+  const head = arg('head');
+  const arquivo_plano = arg('plano', false) || docDoEstado(slug, 'plano') || path.join(RAIZ, caminhoDoc('planos', slug, { raiz: RAIZ }));
+  const conteudo_plano = lerMarkdown(arquivo_plano);
+  if (!conteudo_plano) {
+    recusaPlanoAusente(arquivo_plano);
+    process.exit(2);
+  }
+
+  let achados;
+  try {
+    achados = achadosAfrouxa(RAIZ, base, head);
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      process.stderr.write('nao-verificavel: git nao encontrado no PATH\n');
+      process.exit(69);
+    }
+    console.error(`erro ao rodar git diff: ${err.message}`);
+    process.exit(1);
+  }
+  if (achados.length === 0) {
+    console.log('ok: nenhum teste apagado ou pulado no diff');
+    return;
+  }
+
+  const autorizadas = [];
+  for (const tarefa of extrairTarefas(conteudo_plano)) {
+    const motivo = motivoAfrouxa(conteudo_plano, tarefa.numero);
+    if (motivo) autorizadas.push({ numero: tarefa.numero, motivo, globs: extrairArquivos(conteudo_plano, tarefa.numero) });
+  }
+
+  const recusas = [];
+  for (const achado of achados) {
+    const descricao = achado.tipo === 'apagado'
+      ? `apagado: ${achado.arquivo}`
+      : `pulo: ${achado.arquivo}:${achado.linha} ${achado.trecho}`;
+    const autorizada = autorizadas.find((t) => t.globs.some((g) => globMatches(achado.arquivo, g)));
+    if (autorizada) console.log(`afrouxa declarado: tarefa ${autorizada.numero} (${autorizada.motivo}): ${descricao}`);
+    else recusas.push(descricao);
+  }
+  if (recusas.length > 0) {
+    console.error('RECUSADO: o diff tira teste do caminho sem declarar:');
+    for (const r of recusas) console.error(`  ${r}`);
+    console.error('Declare na tarefa que toca o arquivo: afrouxa: <por que o teste sai ou é pulado>');
+    process.exit(2);
+  }
+  console.log(`ok: ${achados.length} teste(s) tirado(s) do caminho, todos declarados`);
+}
+
 function main() {
   const cmd = process.argv[2];
 
@@ -1461,6 +1592,10 @@ function main() {
     return cmdCreep();
   }
 
+  if (cmd === 'afrouxa') {
+    return cmdAfrouxa();
+  }
+
   if (cmd === 'mutacoes') {
     return cmdMutacoes();
   }
@@ -1469,7 +1604,7 @@ function main() {
     return cmdDeriva();
   }
 
-  console.error('uso: design | cobertura | camadas | creep | mutacoes [--gravar-flake] | deriva [--slug <s>] [--arquivo <a>]');
+  console.error('uso: design | cobertura | camadas | creep | afrouxa | mutacoes [--gravar-flake] | deriva [--slug <s>] [--arquivo <a>]');
   process.exit(1);
 }
 

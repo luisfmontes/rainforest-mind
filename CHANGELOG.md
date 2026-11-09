@@ -10,6 +10,10 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.10.0 — 2026-11-09
+
+- **O verificar recusa teste apagado ou pulado sem declarar.** O `marcar verificar ok` confere o diff que o `revisar` aprovou. Arquivo de teste apagado, ou com `.skip(`, `.only(`, `xit(` e afins novos, recusa com exit 2, porque a suíte continua verde quando o teste deixa de rodar. Tarefa que faz isso de propósito declara `afrouxa: <por que>` no plano. Renome não conta, e contar asserção ficou de fora: no histórico daqui, tirar asserção foi legítimo nas 16 vezes medidas.
+
 ## 2.9.1 — 2026-11-08
 
 - **A catraca recusa a mutação que quebra a sintaxe do fonte.** Antes de rodar a bateria pós-mutação, o `conferir-mutacao.cjs` confere o fonte mutado com `node --check` (`.js`, `.cjs`, `.mjs`) ou `bash -n` (`.sh`, `.bash`). Se o original carregava e o mutado não, sai 6 sem rodar a bateria, citando a linha do erro. Motivo: uma mutação deixou o fonte com `SyntaxError`, todos os casos da bateria saíram 1 e a catraca aprovou como "bateria VERMELHA, a bateria sabe falhar". Fonte que já não passava na conferência antes da mutação, ou de outra extensão, segue como antes. A tabela de saídas da catraca (`skills/executar/references/catraca-de-mutacao.md`) ganha a linha do exit 6, que faltava.

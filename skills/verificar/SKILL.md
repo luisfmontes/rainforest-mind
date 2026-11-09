@@ -68,6 +68,12 @@ Exit code do subcomando:
 
 Quando um mutante sobrevive, `marcar verificar ok` recusa com exit 2, imprime a saída acima e não grava o estado — é a mesma forma do `executar` quando a catraca de mutação falha.
 
+## Teste apagado ou pulado (afrouxa)
+
+O `marcar verificar ok` também roda `conferir-fluxo.cjs afrouxa` sobre o diff que o `revisar` aprovou (`revisar.base...revisar.head`, na raiz do estado). Recusa com exit 2, listando cada achado, quando um arquivo de teste (`testa-*.sh|cjs|py`, `*.test.*`, `*.spec.*`, `*_test.*`, `test_*.py`) foi apagado (renome não conta) ou ganhou linha com marcador de pulo ou foco (`.skip(`, `.only(`, `xit(`, `xdescribe(`, `xtest(`, `@pytest.mark.skip`, `@unittest.skip`, `t.Skip(`, `@Disabled`, `@Ignore`).
+
+Quando a tarefa faz isso de propósito, ela declara `afrouxa: <por que>` no plano, e o `arquivos:` dela tem de casar o arquivo. O achado declarado sai no stdout e passa. Um `.only(` ou `.skip(` de outra API dentro de arquivo de teste também casa, com o mesmo remédio. Exit 69 (sem `git`) e erro do git (exit 1) também recusam: não medir não é aprovar. Sem `base`/`head` no `revisar`, avisa e segue.
+
 ## Território
 
 Para cada fonte tocado pela entrega:

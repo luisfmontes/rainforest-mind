@@ -3394,6 +3394,20 @@ function main() {
             console.error('RECUSADO: catraca de mutações não passou. Revise as tarefas com mutante sobrevivente acima.');
             process.exit(2);
           }
+          // O diff que o `revisar` aprovou não tira teste do caminho sem declarar
+          // (design 2026-11-09-regua-testes). Roda em RAIZ, onde o `creep` aceitou
+          // base e head; por isso não leva o `--raiz-codigo`.
+          const rev = estado.revisar || {};
+          if (rev.base && rev.head) {
+            const argsAf = [path.join(__dirname, 'conferir-fluxo.cjs'), 'afrouxa', '--slug', slug, '--plano', arquivo_plano, '--base', String(rev.base), '--head', String(rev.head)];
+            const afrouxa = spawnSync(process.execPath, argsAf, { stdio: 'inherit' });
+            if (afrouxa.status !== 0) {
+              console.error('RECUSADO: o verificar não fecha: a checagem de teste apagado ou pulado não passou (acima).');
+              process.exit(2);
+            }
+          } else {
+            console.error('aviso: revisar sem base/head gravados; a checagem de teste apagado ou pulado não rodou');
+          }
         }
       }
       // O gate tem de enxergar o `--json` DESTA chamada, não só o que já estava
