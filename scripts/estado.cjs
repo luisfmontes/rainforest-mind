@@ -954,6 +954,18 @@ function contratoVereditoLigado() {
   }
 }
 
+function avisarContextoAlto(estagio) {
+  try {
+    const { resolverConfig } = require(path.join(__dirname, '..', 'hooks', 'lib', 'config.cjs'));
+    const { avisoDeContexto } = require(path.join(__dirname, 'lib', 'uso-contexto.cjs'));
+    const { valores } = resolverConfig({ projeto: RAIZ });
+    const aviso = avisoDeContexto(valores['contexto-alto-tokens'], estagio);
+    if (aviso) console.error(aviso);
+  } catch (_) {
+    // Aviso nunca derruba o `exigir`; a lib dentro do try deixa de fora as caixas de bateria (D5).
+  }
+}
+
 // -------------------------------------------- transcrito confirma o veredito (D12)
 //
 // Achado 2 da revisao de 2026-09-23: o subcomando `veredito` (mais abaixo)
@@ -2908,6 +2920,7 @@ function main() {
       console.error(`erro: estagio desconhecido '${estagio}'`);
       process.exit(1);
     }
+    avisarContextoAlto(estagio);
 
     // Teto de tentativas: se ESTE estágio foi reaberto e quem o reprovou já
     // acumulou TETO_TENTATIVAS, insistir precisa de decisão humana (liberar).

@@ -338,6 +338,12 @@ const CHAVES = {
     descricao: 'padrões de nome de config dir que o /saude não compara; null = *bench* e *.aposentada',
     entrevista: null,
   },
+  'contexto-alto-tokens': {
+    tipo: 'tokens',
+    padrao: 700000,
+    descricao: 'tokens de contexto a partir dos quais o `exigir` avisa na fronteira de estágio; 0 desliga',
+    entrevista: null,
+  },
   // CODEX COMO RUNTIME — chaves de modelo que mapeiam model: do agente para -m do Codex
   'codex-modelo-haiku': {
     tipo: 'modelo',
@@ -466,6 +472,8 @@ function validarTipo(valor, tipo) {
     return Object.entries(valor).every(([k, v]) => ['mapas', 'design', 'planos'].includes(k) &&
       typeof v === 'string' && v.trim().length > 0 &&
       !/^([a-zA-Z]:|[\\/])/.test(v) && !v.split(/[\\/]/).includes('..'));
+  } else if (tipo === 'tokens') {
+    return Number.isInteger(valor) && valor >= 0;
   } else if (tipo === 'padroes') {
     // Tipo 'padroes': null, ou array de strings não vazias até 60 caracteres. Array
     // vazio vale: é o jeito de dizer "não ignore nenhuma".

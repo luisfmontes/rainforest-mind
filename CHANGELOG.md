@@ -10,6 +10,10 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.11.0 — 2026-11-09
+
+- **O `exigir` avisa quando o contexto da sessão está alto.** Na abertura de cada estágio, a última mensagem do transcript é somada em tokens e, a partir de 700 mil, sai uma linha em stderr sugerindo registrar o estado e considerar `/compact` ou uma sessão nova. O limiar é a chave `contexto-alto-tokens` (`0` desliga) e o padrão presume janela de 1 M. Só existe dentro do fluxo, e nunca muda o resultado do `exigir`.
+
 ## 2.10.1 — 2026-11-09
 
 - **O gate-worktree fecha para subagente quando o git não responde num repositório.** Antes, git ausente ou quebrado era lido como "fora de repositório" e a escrita do subagente no checkout principal passava. Agora, com `.git` acima, o subagente é barrado fora de worktree linkado, com aviso em stderr; onde `.git` é arquivo (como worktree linkado e submódulo) e fora de repositório ele segue livre, e a janela principal nunca é barrada por isso. Também deixa de ler como worktree um checkout principal clonado sob uma pasta chamada `worktrees` (#671).

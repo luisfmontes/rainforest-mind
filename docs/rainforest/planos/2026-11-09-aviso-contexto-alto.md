@@ -15,6 +15,7 @@ arquivos: `scripts/lib/uso-contexto.cjs`, `scripts/testa-uso-contexto.sh`
 depende de: nenhuma
 busca:
 - repo | rg "cache_read_input_tokens" scripts hooks | só scripts/poda.cjs e relatorio-poda.cjs, que somam stream SSE do proxy, não transcript
+- repo | rg "function acharTranscrito" scripts | calibrar-limiar-assunto.cjs:51 não exporta, e varre as duas pastas de conta em vez de seguir CLAUDE_CONFIG_DIR
 - ideias | ideias.jsonl "aviso-de-contexto-alto-pelo-uso-real" | aponta o ECC, que lê a cauda e soma os mesmos campos; a tabela de janela dele ficou de fora (D3)
 desfecho: construir
 mutacao:

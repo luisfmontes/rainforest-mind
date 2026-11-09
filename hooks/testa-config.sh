@@ -375,6 +375,10 @@ chave16() { # config_projeto_json, chave
     process.stdout.write(JSON.stringify(r.valores[chave]) + " " + r.origem[chave]);
   ' "$SRC_WIN" "$PROJ" "$2" 2>&1
 }
+igual "(e) contexto-alto-tokens padrao 700 mil" "700000 padrao" "$(chave16 '{}' contexto-alto-tokens)"
+igual "(e) contexto-alto-tokens do projeto vale" "100000 projeto" "$(chave16 '{"contexto-alto-tokens":100000}' contexto-alto-tokens)"
+igual "(e) contexto-alto-tokens zero vale" "0 projeto" "$(chave16 '{"contexto-alto-tokens":0}' contexto-alto-tokens)"
+igual "(e) contexto-alto-tokens invalido cai no padrao" "700000 padrao" "$(chave16 '{"contexto-alto-tokens":"muito"}' contexto-alto-tokens)"
 igual "(e) idioma padrao null" "null padrao" "$(chave16 '{}' idioma)"
 igual "(e) idioma do projeto vale" '"português do Brasil" projeto' "$(chave16 '{"idioma":"português do Brasil"}' idioma)"
 LONGO="$(node -e 'process.stdout.write(JSON.stringify({idioma:"x".repeat(61)}))')"
