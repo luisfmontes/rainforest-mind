@@ -598,7 +598,7 @@ echo "  -- SABOTAGEM: devolver o execSync com string e exigir que a assercao cai
 # Trava que nunca foi vista travando nao e evidencia de nada. O mutante volta a
 # montar o comando como string; se o sentinela NAO aparecer nele, este teste esta
 # medindo outra coisa.
-mkdir -p "$CAIXA_INJ/mut/scripts" "$CAIXA_INJ/mut/hooks/lib" && cp "$RAIZ/hooks/lib/resolver-executavel.cjs" "$RAIZ/hooks/lib/contar-ocorrencias.cjs" "$RAIZ/hooks/lib/pastas-docs.cjs" "$RAIZ/hooks/lib/config.cjs" "$RAIZ/hooks/lib/raiz.cjs" "$RAIZ/hooks/lib/teto-despachos.cjs" "$CAIXA_INJ/mut/hooks/lib/"   # o mutante faz require do resolvedor (Issue #392), da contagem do #397 e do leitor do teto (D14)
+mkdir -p "$CAIXA_INJ/mut/scripts" "$CAIXA_INJ/mut/hooks/lib" && cp "$RAIZ/hooks/lib/resolver-executavel.cjs" "$RAIZ/hooks/lib/contar-ocorrencias.cjs" "$RAIZ/hooks/lib/pastas-docs.cjs" "$RAIZ/hooks/lib/config.cjs" "$RAIZ/hooks/lib/raiz.cjs" "$RAIZ/hooks/lib/teto-despachos.cjs" "$RAIZ/hooks/lib/caminho-real.cjs" "$CAIXA_INJ/mut/hooks/lib/"   # o mutante faz require do resolvedor (Issue #392), da contagem do #397 e do leitor do teto (D14)
 mkdir -p "$CAIXA_INJ/mut/scripts/lib" && cp "$RAIZ/scripts/lib/"*.cjs "$CAIXA_INJ/mut/scripts/lib/"   # o mutante faz require de scripts/lib/camadas.cjs (emenda D2, 2026-10-13)
 MUT_CHECADOR="$CAIXA_INJ/mut/scripts/conferir-fluxo-mut.cjs"
 cp "$CHECADOR" "$MUT_CHECADOR"

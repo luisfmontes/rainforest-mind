@@ -54,7 +54,7 @@ caixa_nova() {
     cp "$SRC/scripts/$s" "$CX/scripts/"
   done
   cp "$SRC/scripts/lib/camadas.cjs" "$SRC/scripts/lib/primeiro-prompt-jsonl.cjs" "$SRC/scripts/lib/extrair-veredito.cjs" "$SRC/scripts/lib/baterias-vizinhas.cjs" "$CX/scripts/lib/"
-  for lib in raiz config trava-jsonl pastas-docs resolver-executavel contar-ocorrencias caminho-leve slug-branch teto-despachos; do
+  for lib in raiz config trava-jsonl pastas-docs resolver-executavel caminho-real contar-ocorrencias caminho-leve slug-branch teto-despachos; do
     cp "$SRC/hooks/lib/$lib.cjs" "$CX/hooks/lib/"
   done
   export RFM_ESTADO_ROOT="$W"

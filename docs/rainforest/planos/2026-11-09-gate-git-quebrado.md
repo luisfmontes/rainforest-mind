@@ -32,7 +32,7 @@ Forma prescrita:
 
 ### 2. Git sem resposta com `.git` acima fecha o gate para subagente [tipo: implementar]
 atende: D1, D2, D4, D6
-arquivos: `hooks/gate-worktree.cjs`, `hooks/lib/caminho-real.cjs`, `scripts/conferir-mutacao.cjs`, `hooks/testa-gate-worktree.sh`, `hooks/testa-caminho-real.sh`
+arquivos: `hooks/gate-worktree.cjs`, `hooks/lib/caminho-real.cjs`, `scripts/conferir-mutacao.cjs`, `hooks/testa-gate-worktree.sh`, `hooks/testa-caminho-real.sh`, `scripts/testa-conferir-mutacao-flaky.sh`, `scripts/testa-estado-flaky-status.sh`, `scripts/testa-estado-flaky.sh`, `scripts/testa-estado-teto.sh`, `scripts/testa-integrar-tarefa.sh`, `scripts/testa-estado-territorio.sh`, `scripts/testa-estado.sh`, `scripts/testa-conferir-fluxo.sh`
 depende de: 1
 mutacao:
   arquivo: `hooks/gate-worktree.cjs`
@@ -99,3 +99,7 @@ pronto quando: com o repositório deste worktree, `node scripts/conferir-versao.
 ## Emenda do verificar
 
 - Tarefas 1 a 3: `timeout: 1200000` no bloco `mutacao:`. A bateria leva 7 min sozinha (medido: 425 s), e 10 min não bastaram dentro da catraca, que recusou por baseline acima do teto padrão, sem medir nada.
+
+## Emenda do CI
+
+- Tarefa 2: as baterias que copiam `scripts/conferir-mutacao.cjs` para uma caixa levam também `hooks/lib/caminho-real.cjs`, que o script passou a exigir. O CI do #674 caiu nas três que dependem disso (`testa-conferir-mutacao-flaky`, `testa-estado`, `testa-integrar-tarefa`).

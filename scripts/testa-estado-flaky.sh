@@ -27,7 +27,7 @@ cp "$SRC/scripts/conferir-fluxo.cjs" "$SBP/scripts/"
 cp "$SRC/scripts/conferir-mutacao.cjs" "$SBP/scripts/"
 cp "$SRC/scripts/lib/primeiro-prompt-jsonl.cjs" "$SBP/scripts/lib/"
 cp "$SRC/scripts/lib/extrair-veredito.cjs" "$SBP/scripts/lib/"
-for lib in raiz config trava-jsonl pastas-docs resolver-executavel contar-ocorrencias caminho-leve slug-branch; do
+for lib in raiz config trava-jsonl pastas-docs resolver-executavel caminho-real contar-ocorrencias caminho-leve slug-branch; do
   cp "$SRC/hooks/lib/$lib.cjs" "$SBP/hooks/lib/"
 done
 # A caixa vira raiz de dados: sem marcador, resolverRaiz cairia no repo de verdade.
