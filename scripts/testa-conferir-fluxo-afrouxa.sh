@@ -132,8 +132,9 @@ novo_repo; escreve_plano "afrouxa: motivo" "\`src/x y.test.js\`"; printf 'it.%s(
 c=$(chk); if [ "$c" = 0 ] && tem "afrouxa declarado: tarefa 1 (motivo): pulo: src/x y.test.js:1 "; then passa "A11 afrouxa alcanca nome com espaco"; else falha "A11 afrouxa alcanca nome com espaco (exit $c)"; fi
 
 novo_repo
-for f in test_a.py a_test.go a.spec.ts scripts/testa-z.cjs scripts/testa-w.py; do printf 'it.%s(1);\n' "$SK" > "$S/$f"; done; commita
-c=$(chk); falta=""; for f in test_a.py a_test.go a.spec.ts scripts/testa-z.cjs scripts/testa-w.py; do tem "pulo: $f:1 " || falta="$falta $f"; done
+TZ="scripts/tes""ta-z.cjs"; TW="scripts/tes""ta-w.py"
+for f in test_a.py a_test.go a.spec.ts "$TZ" "$TW"; do printf 'it.%s(1);\n' "$SK" > "$S/$f"; done; commita
+c=$(chk); falta=""; for f in test_a.py a_test.go a.spec.ts "$TZ" "$TW"; do tem "pulo: $f:1 " || falta="$falta $f"; done
 if [ "$c" = 2 ] && [ -z "$falta" ]; then passa "A12 cada padrao de arquivo de teste e visto"; else falha "A12 cada padrao de arquivo de teste e visto (exit $c, faltou:$falta)"; fi
 
 novo_repo

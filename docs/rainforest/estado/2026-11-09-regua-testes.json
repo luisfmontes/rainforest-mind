@@ -20,8 +20,8 @@
   "executar": {
     "status": "ok",
     "catraca_mutacao": "2026-11-09",
-    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug 2026-11-09-regua-testes",
-    "saida": "tarefas 1-3 vermelho, 4 pulada; bateria afrouxa ok: 24 falhou: 0",
+    "comando": "bash scripts/testa-conferir-fluxo-afrouxa.sh; bash scripts/testa-varrer-baterias.sh",
+    "saida": "ok: 24 falhou: 0; PASS (n), exit 0",
     "tarefas_ok": 4,
     "tarefas": 4,
     "mutacao": [
@@ -50,7 +50,7 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "ok",
+    "status": "pendente",
     "snapshot": {
       "head": "869f263bdc701356b64517e372e5f9e9343b9bab",
       "caminhos_sujos": []
@@ -97,7 +97,7 @@
     ]
   },
   "verificar": {
-    "status": "ok",
+    "status": "pendente",
     "comando": "bash scripts/testa-conferir-fluxo-afrouxa.sh; bash scripts/testa-estado.sh; bash scripts/testa-estado-reabrir.sh; node scripts/conferir-versao.cjs",
     "saida": "exit 0 em todas: testa-conferir-fluxo-afrouxa.sh=0; testa-estado.sh=0; testa-estado-reabrir.sh=0; testa-conferir-fluxo.sh=0; testa-conferir-categoria.sh=0; testa-recibo-fechar.sh=0; testa-portoes-gate.sh=0; testa-estado-territorio.sh=0; testa-ledger-fluxos.sh=0; testa-teto-skills.sh=0; testa-abertura-mod-config.sh=0; testa-plugin-codex.sh=0; testa-indice-referencias.sh=0; conferir-versao=0",
     "sensor_externo": "bash scripts/testa-conferir-fluxo-afrouxa.sh",
@@ -105,6 +105,14 @@
     "head": "11583aa1b6fae3873fdfa3839c13364b07aa627e"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-11-09"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-11-09",
+      "de": "verificar",
+      "motivo": "CI: testa-varrer-baterias caso n acusa o nome testa-z.cjs citado no fixture da bateria nova"
+    }
+  ]
 }
