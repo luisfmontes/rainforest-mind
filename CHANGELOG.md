@@ -10,6 +10,10 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.10.1 — 2026-11-09
+
+- **O gate-worktree fecha para subagente quando o git não responde num repositório.** Antes, git ausente ou quebrado era lido como "fora de repositório" e a escrita do subagente no checkout principal passava. Agora, com `.git` acima, o subagente é barrado fora de worktree linkado, com aviso em stderr; em worktree linkado e fora de repositório ele segue livre, e a janela principal nunca é barrada por isso. Também deixa de ler como worktree um checkout principal clonado sob uma pasta chamada `worktrees` (#671).
+
 ## 2.10.0 — 2026-11-09
 
 - **O verificar recusa teste apagado ou pulado sem declarar.** O `marcar verificar ok` confere o diff que o `revisar` aprovou. Arquivo de teste apagado, renomeado para um nome que não é de teste, ou com `.skip(`, `.only(`, `xit(` e afins novos, recusa com exit 2, porque a suíte continua verde quando o teste deixa de rodar. Tarefa que faz isso de propósito declara `afrouxa: <por que>` no plano. Renome de teste para teste não conta, e contar asserção ficou de fora: no histórico daqui, tirar asserção foi legítimo nas 16 vezes medidas.

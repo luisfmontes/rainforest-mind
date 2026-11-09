@@ -102,6 +102,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
+const { acharGitAcima } = require(path.join(__dirname, '..', 'hooks', 'lib', 'caminho-real.cjs'));
 
 const TIMEOUT_PADRAO = 300000; // 5 min
 const LIMITE_ORFAO_MS = 24 * 60 * 60 * 1000; // 24h (tarefa 6, Issue #294.2)
@@ -377,13 +378,6 @@ function restaurarOrfaos(alvoReal) {
 // Guarda-corpo antes de qualquer bateria no lugar: o alvo precisa estar limpo no
 // git (para `git checkout -- <arquivo>` sempre desfazer), e nenhuma outra execução
 // pode estar com o mesmo arquivo mutado.
-function temGitAcima(dir) {
-  for (let d = path.resolve(dir); ; d = path.dirname(d)) {
-    if (fs.existsSync(path.join(d, '.git'))) return true;
-    if (path.dirname(d) === d) return false;
-  }
-}
-
 function conferirNoLugar(raizExecucao, alvo) {
   const git = (args) => spawnSync(caminhoExecutavel('git'), args, { cwd: raizExecucao, encoding: 'utf8', stdio: 'pipe', env: { ...process.env, LC_ALL: 'C', LANGUAGE: 'C' } });
   const dentro = git(['rev-parse', '--is-inside-work-tree']);
@@ -391,7 +385,7 @@ function conferirNoLugar(raizExecucao, alvo) {
   // Git que falha por outro motivo, ou que não reconhece um `.git` que existe
   // (`.git/HEAD` corrompido), não sabe dizer se o alvo está limpo.
   const naoERepo = !dentro.error && dentro.status !== 0
-    && /not a git repository/i.test(dentro.stderr || '') && !temGitAcima(raizExecucao);
+    && /not a git repository/i.test(dentro.stderr || '') && !acharGitAcima(raizExecucao);
   if (!naoERepo && (dentro.error || dentro.status !== 0)) {
     const porque = dentro.error ? dentro.error.message : (dentro.stderr || '').trim() || `exit ${dentro.status}`;
     console.error(`RECUSADO: git rev-parse falhou — ${porque}.`);

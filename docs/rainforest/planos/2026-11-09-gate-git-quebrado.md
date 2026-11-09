@@ -55,15 +55,15 @@ arquivos: `hooks/gate-worktree.cjs`, `hooks/testa-gate-worktree.sh`
 depende de: 2
 mutacao:
   arquivo: `hooks/gate-worktree.cjs`
-  de: `if (!daqui || daqui.gitQuebrado) return; // fora de repo git, ou git sem resposta: nao ha HEAD para medir`
-  para: `if (!daqui) return;`
+  de: `if (!estado || estado.gitQuebrado) continue;`
+  para: `if (!estado) continue;`
   bateria: `bash hooks/testa-gate-worktree.sh`
   fixture: `testa-gate-worktree.sh, caso "git sem resposta nao barra a janela principal na sessao co-locada"`
 prova-na-base: verde — na base o gate já libera a janela principal com o git sem resposta; a tarefa impede que a tarefa 2 mude isso
 pronto quando: com outra sessão registrada no mesmo diretório e sem `git` no PATH, o payload da janela principal (sem `agent_id`) com `git checkout -b x` em `$R` sai 0 — provado por `bash hooks/testa-gate-worktree.sh` saindo 0 com o caso listado pelo nome, e pela mutação acima deixando esse caso vermelho
 
 Forma prescrita:
-- `gateDeSessaoColocada`: a linha `if (!daqui) return; // fora de repo git: nao ha HEAD para mover` vira a do `de:` acima.
+- `gateDeSessaoColocada`: no laço dos alvos, o `if (!estado) continue;` vira a linha do `de:` acima. O `if (!daqui) return;` fica como está.
 - **Bateria:** logo depois do bloco `sessoes.json ausente`/`ilegivel` (depois de `mv "$DADOS/sessoes.bak" "$DADOS/sessoes.json"`), o caso do `fixture:`, com `RFM_ROOT="$DADOSW"` e o `$(p "git checkout -b x" "$R")`, rodado como no `gate_sem_git`. `VAZIA` e `NODE_ABS` são definidos no topo do arquivo, junto de `FORA`.
 
 ### 4. Documentação, versão 2.10.1 e CHANGELOG [tipo: docs]
@@ -80,5 +80,5 @@ pronto quando: com o repositório deste worktree, `node scripts/conferir-versao.
 - Tarefa 1: o teste do ramo vira `if (saida === null) {` com o bloco antigo intacto, e só depois `const [gitDir, comum] = saida.split(...)`.
 - Tarefa 2: `gate_sem_git`, `VAZIA` e `NODE_ABS` ficam no topo da bateria, junto de `FORA`, com quinto parâmetro opcional de `RFM_ROOT`; a tarefa 3 passa `"$DADOSW"`, senão o gate sai antes de medir a sessão co-locada. `estadoSemGit` devolve `null` para diretório inexistente (caso: `cwd inexistente dentro de repositorio nao vira git quebrado`, com o `$G13` da seção #530). O aviso é neutro (D4). O caso "fora de repositório" pula, com mensagem, se a pasta temporária tiver `.git` em ancestral. `acharGitAcima` ganha casos em `hooks/testa-caminho-real.sh` (`.git` pasta, `.git` arquivo, nenhum).
 - Tarefa 1: caso `checkout principal por nome curto, subpasta, barra` (`cygpath -d`; pulado no volume sem 8.3). É o lado perigoso: `--git-dir` longo contra `--git-common-dir` relativo sobre `dir` curto.
-- Tarefa 3: o `if (!estado) continue;` do laço também ignora `gitQuebrado`, e o comentário de `gateDeSessaoColocada` passa a dizer que o princípio de liberar vale para a janela principal.
+- Tarefa 3: a guarda fica só no `if (!estado) continue;` do laço; uma segunda no `daqui` era redundante e a mutação de uma sobrevivia à outra (medido). O comentário de `gateDeSessaoColocada` passa a dizer que o princípio de liberar vale para a janela principal.
 - Tarefa 4: a frase entra no fim da segunda coluna da linha do `gate-worktree.cjs`.
