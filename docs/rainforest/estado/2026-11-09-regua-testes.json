@@ -97,7 +97,12 @@
     ]
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "bash scripts/testa-conferir-fluxo-afrouxa.sh; bash scripts/testa-estado.sh; bash scripts/testa-estado-reabrir.sh; node scripts/conferir-versao.cjs",
+    "saida": "exit 0 em todas: testa-conferir-fluxo-afrouxa.sh=0; testa-estado.sh=0; testa-estado-reabrir.sh=0; testa-conferir-fluxo.sh=0; testa-conferir-categoria.sh=0; testa-recibo-fechar.sh=0; testa-portoes-gate.sh=0; testa-estado-territorio.sh=0; testa-ledger-fluxos.sh=0; testa-teto-skills.sh=0; testa-abertura-mod-config.sh=0; testa-plugin-codex.sh=0; testa-indice-referencias.sh=0; conferir-versao=0",
+    "sensor_externo": "bash scripts/testa-conferir-fluxo-afrouxa.sh",
+    "em": "2026-11-09",
+    "head": "11583aa1b6fae3873fdfa3839c13364b07aa627e"
   },
   "fechar": {
     "status": "pendente"
