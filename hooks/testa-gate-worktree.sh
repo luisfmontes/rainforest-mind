@@ -2397,6 +2397,13 @@ if node -e 'process.exit(require(process.argv[1]).acharGitAcima(process.argv[2])
 else
   echo "  (pulado: a pasta temporaria esta dentro de um repositorio)"
 fi
+SMO="$RAIZ/sm-origem"; R2="$RAIZ/com-sm"; W2="$RAIZ/com-sm-wt"
+gcf() { git -c user.email=t@t -c user.name=t -c commit.gpgsign=false -c protocol.file.allow=always "$@"; }
+git init -q "$SMO"; echo s > "$SMO/s.txt"; gcf -C "$SMO" add .; gcf -C "$SMO" commit -qm s
+git init -q "$R2"; echo r > "$R2/r.txt"; gcf -C "$R2" add .; gcf -C "$R2" submodule --quiet add "$SMO" sm; gcf -C "$R2" commit -qm r
+gcf -C "$R2" worktree add -q -b com-sm "$W2" >/dev/null 2>&1; gcf -C "$W2" submodule --quiet update --init >/dev/null 2>&1
+gate "submodulo dentro de worktree linkado passa" 0 "$(j Write file_path "$W2/sm/n.txt" "$W2")"
+gate "submodulo no checkout principal barra" 2 "$(j Write file_path "$R2/sm/n.txt" "$R2")"
 gate "cwd inexistente dentro de repositorio nao vira git quebrado" 0 "$(b "$G13 echo x" "$R/nao-existe")"
 
 echo "== resultado: $ok ok, $falhou falha(s) =="

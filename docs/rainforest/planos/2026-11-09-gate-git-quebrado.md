@@ -87,3 +87,8 @@ pronto quando: com o repositório deste worktree, `node scripts/conferir-versao.
 
 - Tarefa 1: `ehWorktree` exige também `--is-inside-git-dir` falso. Na pasta administrativa `.git/worktrees/<x>` o `--git-dir` e o `--git-common-dir` diferem, e a escrita de subagente passava lá. Caso novo: `pasta administrativa do worktree linkado barra`.
 - Tarefa 4: o texto diz "onde `.git` é arquivo (worktree linkado, submódulo)", que é o que o código faz (D2).
+
+## Emendas da revisão 2
+
+- Tarefa 1: submódulo responde `--git-dir` igual a `--git-common-dir`, então, dentro de worktree linkado, deixava de passar. O `ehWorktree` do submódulo passa a ser o do superprojeto (`--show-superproject-working-tree`), o que mantém a decisão da base. Casos novos: `submodulo dentro de worktree linkado passa` e `submodulo no checkout principal barra`.
+- Tarefa 4: o texto cita worktree linkado e submódulo como exemplos, porque `--separate-git-dir` também tem `.git` arquivo.

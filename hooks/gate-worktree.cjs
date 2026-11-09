@@ -395,11 +395,18 @@ function estadoDoRepo(dir) {
   const saida = git(dir, ["rev-parse", "--git-dir", "--git-common-dir", "--is-inside-git-dir"]);
   if (saida === null) return estadoSemGit(dir);
   const [gitDir, comum, dentroDoGit] = saida.split(/\r?\n/);
-  return {
+  const estado = {
     toplevel: git(dir, ["rev-parse", "--show-toplevel"]) || dir,
     // Na pasta administrativa `.git/worktrees/<x>` os dois diferem, e ela nao e worktree.
     ehWorktree: dentroDoGit !== "true" && resolverGit(dir, gitDir) !== resolverGit(dir, comum),
   };
+  // Submodulo responde `--git-dir` igual a `--git-common-dir`; o que vale e onde ele esta.
+  if (!estado.ehWorktree && dentroDoGit !== "true") {
+    const pai = git(dir, ["rev-parse", "--show-superproject-working-tree"]);
+    const estadoPai = pai ? estadoDoRepo(pai) : null;
+    if (estadoPai) estado.ehWorktree = estadoPai.ehWorktree;
+  }
+  return estado;
 }
 
 // Windows: nome curto 8.3 (`RUNNER~1`) vira o longo, pelo ancestral mais fundo que existe.

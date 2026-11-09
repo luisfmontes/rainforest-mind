@@ -12,7 +12,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 ## 2.10.1 — 2026-11-09
 
-- **O gate-worktree fecha para subagente quando o git não responde num repositório.** Antes, git ausente ou quebrado era lido como "fora de repositório" e a escrita do subagente no checkout principal passava. Agora, com `.git` acima, o subagente é barrado fora de worktree linkado, com aviso em stderr; onde `.git` é arquivo (worktree linkado, submódulo) e fora de repositório ele segue livre, e a janela principal nunca é barrada por isso. Também deixa de ler como worktree um checkout principal clonado sob uma pasta chamada `worktrees` (#671).
+- **O gate-worktree fecha para subagente quando o git não responde num repositório.** Antes, git ausente ou quebrado era lido como "fora de repositório" e a escrita do subagente no checkout principal passava. Agora, com `.git` acima, o subagente é barrado fora de worktree linkado, com aviso em stderr; onde `.git` é arquivo (como worktree linkado e submódulo) e fora de repositório ele segue livre, e a janela principal nunca é barrada por isso. Também deixa de ler como worktree um checkout principal clonado sob uma pasta chamada `worktrees` (#671).
 
 ## 2.10.0 — 2026-11-09
 
