@@ -1,0 +1,131 @@
+Data: 2026-11-09
+Termos: teste apagado, skip, afrouxa, floor-guard
+
+$ gh issue list --state all --search "teste apagado" --limit 200 --json number,title,state
+[{"number":4,"state":"CLOSED","title":"Worktree de agente nasce na base velha em pelo menos 2 de 8 despachos, e conferir-entrega.cjs nao ve arquivo autoexcluido por gitignore"}]
+
+
+$ gh issue list --state all --search "skip" --limit 200 --json number,title,state
+[{"number":602,"state":"CLOSED","title":"conferir-mutacao: placar do vitest não reconhecido, baseline frio vira 'pulada (corte de shell)'"},{"number":581,"state":"CLOSED","title":"run-vigia -Teste: lista negra de tools deixa escrita do WhatsApp liberada"},{"number":442,"state":"CLOSED","title":"Comando impresso pelos gates de fluxo nao cola em PowerShell"},{"number":623,"state":"CLOSED","title":"aviso-fluxo barra edição de arquivo gitignored na branch padrão"},{"number":470,"state":"CLOSED","title":"Painel 'Deixado para depois' do mod e pendentes do fluxo: duas fontes"},{"number":438,"state":"CLOSED","title":"Mensagens dos gates de fluxo: caminho com espaço e doc da portaria com 4 casos"},{"number":388,"state":"CLOSED","title":"faixa do mod: semControle deixa passar LRM/RLM, ALM e separadores de linha"},{"number":485,"state":"CLOSED","title":"jornada conta prompt de máquina como presença humana: sessão headless, subagente e task-notification fazem a madrugada virar jornada"},{"number":482,"state":"CLOSED","title":"Painel de PR acorda a sessão de novo no mesmo conflito (UNKNOWN entre leituras)"},{"number":386,"state":"CLOSED","title":"relogio do mod: jornada do dia anterior acende ate 5 min depois da meia-noite"},{"number":424,"state":"CLOSED","title":"Painel: 'Deixado para depois' nunca fecha item resolvido e conta Q de decisão como pendência"},{"number":412,"state":"CLOSED","title":"arqueologia: gravar o mapa na pasta de legado que o repo já usa"},{"number":545,"state":"CLOSED","title":"estado.cjs: escritores do arquivo do fluxo nao se excluem (travas separadas, marcar sem trava)"},{"number":480,"state":"CLOSED","title":"Mod: node pelo nome na abertura e localizador sem cache negativo"},{"number":474,"state":"CLOSED","title":"Portaria imprime comandos com aspas duplas: $(...) num nome de pasta executa ao colar"},{"number":447,"state":"CLOSED","title":"Portaria: fora-de-fluxo nao diz que a branch nao casou com o slug"},{"number":421,"state":"CLOSED","title":"Painel do mod: bordas do desvio (fila cheia, cache de veredito provisorio, chave do mapa) e texto do corte"},{"number":466,"state":"CLOSED","title":"Painel de PR e plugins-em-dia: achados menores da revisao do PR #464"},{"number":51,"state":"CLOSED","title":"As tres travas de isolamento falharam na borda: retomada de agente, janela principal, e o rastro da propria esteira"},{"number":223,"state":"CLOSED","title":"despachar-codex monta comando como string de shell: injecao por --saida e por config"},{"number":2,"state":"CLOSED","title":"Briefing de dispatch nao cobre dado vivo fora do repositorio git"}]
+
+
+$ gh issue list --state all --search "afrouxa" --limit 200 --json number,title,state
+[{"number":530,"state":"CLOSED","title":"gate-worktree: três formas de cd para o principal passam a partir do worktree ({cd,X}, A=1 cd X, then cd X)"},{"number":552,"state":"CLOSED","title":"gate-worktree: remoção (rm/Remove-Item), New-Object de IO e redirecionamento com variável passam"},{"number":260,"state":"CLOSED","title":"conferir-publicacao: 'token' sozinho vira credencial, e a mensagem nao mostra o trecho casado"}]
+
+
+$ gh issue list --state all --search "floor-guard" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "teste apagado" --limit 200 --json number,title,state
+[{"number":588,"state":"MERGED","title":"Conta e vigia: -Teste só leitura, aviso da pasta manual, estado segue o login (1.74.0)"},{"number":659,"state":"MERGED","title":"Deriva entre design fechado e código (2.8.0)"},{"number":50,"state":"MERGED","title":"Aposenta o gemeo python do ideias"},{"number":11,"state":"MERGED","title":"Tres ajustes pos-merge: a regra que convidava o erro, a trava de versao, e o teste que herdava dado quebrado"},{"number":183,"state":"MERGED","title":"Lote 3 — guardas medem o repositorio da operacao; backup fora da maquina; fechar Issue exige criterio rodado"},{"number":271,"state":"MERGED","title":"Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador"},{"number":217,"state":"MERGED","title":"Contrato de territorio: AdvPL vira o primeiro, e o repo publico perde os identificadores de trabalho"},{"number":122,"state":"MERGED","title":"Fecha #118: o backup diario do sentinela nunca fez backup — e empurrava sozinho para um repo publico"}]
+
+
+$ gh pr list --state all --search "skip" --limit 200 --json number,title,state
+[{"number":539,"state":"MERGED","title":"Versao 1.67.5: esperar-ci nao da verde com check cancelado; baterias SQLite em transacao"},{"number":628,"state":"MERGED","title":"aviso-fluxo deixa passar arquivo ignorado pelo git (2.1.3)"},{"number":548,"state":"MERGED","title":"Painel de PR: achados menores do #464 (#466, 1.67.8)"},{"number":603,"state":"MERGED","title":"Catraca de mutação lê o placar do vitest (#602, 2.0.3)"},{"number":588,"state":"MERGED","title":"Conta e vigia: -Teste só leitura, aviso da pasta manual, estado segue o login (1.74.0)"},{"number":515,"state":"MERGED","title":"Versao 1.65.1: jornada so conta prompt digitado (#485)"},{"number":280,"state":"CLOSED","title":"Livro de repos: ruflo e TencentDB-Agent-Memory"},{"number":384,"state":"MERGED","title":"1.38.1: Q da faixa somem no envio e cabem na linha"},{"number":550,"state":"MERGED","title":"estado.cjs: escritores do fluxo se excluem (#545, 1.67.9)"},{"number":353,"state":"MERGED","title":"1.28.1 — vigia que nao chega ao claude nao sai mais com sucesso"},{"number":305,"state":"MERGED","title":"Memória: reconciliação na escrita e consolidação automática"},{"number":58,"state":"MERGED","title":"Fecha a #51: as tres travas de isolamento passam a valer na borda"},{"number":304,"state":"MERGED","title":"Notas de atualizacao (CHANGELOG) e o adendo que mede o D2 do contrato de territorio"},{"number":37,"state":"MERGED","title":"A triagem de inbox do sentinela-foco tinha duas causas, nao uma"},{"number":106,"state":"MERGED","title":"Fecha #100: execFileSync em setup.cjs, validarSlug em estado.cjs — e o teste que separa os dois"},{"number":8,"state":"MERGED","title":"Regra 17 estava cega por construcao: o pid gravado era uma shell efemera"}]
+
+
+$ gh pr list --state all --search "afrouxa" --limit 200 --json number,title,state
+[{"number":113,"state":"MERGED","title":"Fecha #83 (P1 e P3): criterio de superficie humana no plano, e rede de fork na regra 15"},{"number":13,"state":"MERGED","title":"Conferencia de entrega e teste de saude sobrevivem a despacho paralelo"}]
+
+
+$ gh pr list --state all --search "floor-guard" --limit 200 --json number,title,state
+[]
+
+
+$ git ls-remote --heads origin | grep -F "teste apagado"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "skip"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "afrouxa"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "floor-guard"
+(vazio)
+
+$ git log --all --grep="teste apagado" --oneline
+(vazio)
+
+$ git log --all --grep="skip" --oneline
+4cfff569 Catraca de mutação lê o placar do vitest (#602, 2.0.3) (#603)
+c2fdd79b Conta e vigia: -Teste só leitura, aviso da pasta manual, estado segue o login (1.74.0) (#588)
+6b145a4c Versao 1.67.5: esperar-ci nao da verde com check cancelado; baterias SQLite em transacao (#539)
+1c9bf7bf vigias: -Teste tira as tools de envio da sessao, nao so pede no prompt
+1a93708e bump 1.19.1 -> 1.20.0
+4cd8b0cd docs: memória, reconciliação e consolidação automáticas
+413525e1 memoria: reconciliar store/update/merge/skip do acervo pendente
+73b5eb37 Notas de atualizacao passam a existir, e o D2 medido de fora
+a988ad98 fluxo: fecha o verificar de guias-e-sensores
+da8617ae Livro de repos: ruflo e TencentDB-Agent-Memory
+36e24861 memoria-sessao: trava o orcamento do bloco de memoria com aviso no topo
+2448df0d Tarefa 1, rodada 3: o caso media o instrumento errado, e a isencao media o valor inteiro
+f025a2bb T8: fecha cobertura da bateria do conselho — desempate real e lint de dependência
+b76ed64b T8: fecha cobertura da bateria do conselho — desempate real e lint de dependência
+9169838f Tarefa 6: Interruptores conselho-codex e conselho-gemini no /setup
+7082fabb Tarefa 6: Interruptores conselho-codex e conselho-gemini no /setup
+9ee1894e Fluxo 11: emenda Q2 no design — membros externos na v1, quorum N>=3, falha fechada
+215ef4a6 Fluxo 11: emenda Q2 no design — membros externos na v1, quorum N>=3, falha fechada
+a3049ec0 Fecha #100: execFileSync em setup.cjs, validarSlug em estado.cjs — e o teste que separa os dois (#106)
+2fed9beb Fecha #100: execFileSync em setup.cjs, validarSlug em estado.cjs — e o teste que separa os dois (#106)
+01cbf1bc Fecha a #51: as tres travas de isolamento passam a valer na borda (#58)
+5948bc61 Fecha a #51: as tres travas de isolamento passam a valer na borda (#58)
+762b4abb A triagem de inbox do sentinela-foco tinha duas causas, nao uma (#37)
+0f0f0793 A triagem de inbox do sentinela-foco tinha duas causas, nao uma (#37)
+60628c0f Regra 17 estava cega por construcao: o pid gravado era uma shell efemera (#8)
+c70f1f99 Regra 17 estava cega por construcao: o pid gravado era uma shell efemera (#8)
+5a474af5 v0.41.0: executor.md ganha a familia 'mecanismo que se valida por si mesmo'
+4c19ce07 v0.41.0: executor.md ganha a familia 'mecanismo que se valida por si mesmo'
+
+$ git log --all --grep="afrouxa" --oneline
+5609eec7 CHANGELOG 1.34.0: registra o pareamento estrito de aspas
+b569ef30 zerar-issues-13: rodada 3 do plano (6 achados da 2a revisao)
+e678c417 regua selada: o selo passa a exigir historico, e recusa clone raso
+e2fbfde5 Plano: tarefa 9 registra o conserto das cinco regressoes
+71d574c0 conserta 5 regressoes da entrega memoria-reconciliacao-e-consolidacao
+88e3ed9b plano: a clausula (f) da tarefa 6 volta ao canonico
+73847e3e as seis baterias restantes: duas causas, nenhuma delas a Tarefa 6
+e1b87680 integra tarefa 3: o bloco de memoria corta por observacao e avisa no topo
+ef77e1e2 A portaria de subagente vale em toda sessao (fecha a decisao 1 da #241) (#255)
+9cfdc8d5 Versao 1.13.1: PATCH do lote de consertos de instrumento
+8025a18b Teto de commits conta so a branch, nao o que veio no merge da main
+981e9f9e Marcar revisar e verificar do fluxo da triagem e da portaria
+1661fd0c Matar a regra de condicao pendurada, que nao tinha como acertar
+c4515c38 Revisao do lote 4: sete afrouxamentos que o proprio lote introduziu
+955a3074 Vigias: a rodada de correcoes da revisao — o vazamento, o falso positivo, o custo
+83301c7b Vigias: a rodada de correcoes da revisao — o vazamento, o falso positivo, o custo
+c23ed8b2 testa-versao: 127.0.0.1 no README nao e o semver 127.0.0
+f750d1f5 testa-versao: 127.0.0.1 no README nao e o semver 127.0.0
+836140e9 Divida do merge com a main: nucleo da regra 10 encolhido para caber na catraca
+65223a8f Divida do merge com a main: nucleo da regra 10 encolhido para caber na catraca
+889ff9c9 Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+56ea03cc Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+b5645f7a Fecha #74: a causa raiz era CRLF — o corte por prioridade nunca rodou no FOCO.md (#107)
+5eccf346 Fecha #74: a causa raiz era CRLF — o corte por prioridade nunca rodou no FOCO.md (#107)
+c3ab6cf1 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+62ca78d5 design: a elaboracao sai do SKILL.md e vira arquivo por regra, com o parser intocado (#80)
+ced8dfea Trava de encoding: conferir-encoding.cjs pega mojibake, BOM e CRLF em arquivo rastreado (#69)
+0cee6e16 Trava de encoding: conferir-encoding.cjs pega mojibake, BOM e CRLF em arquivo rastreado (#69)
+40e3f3bd Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+2cc8788c Gate de sessao co-locada, catraca de mutacao, e o plugin passa a dizer 'fluxo' (#46)
+fcc5eeb8 Memoria e dados do rainforest saem de dependencia fragil (#22)
+b0d17caa Memoria e dados do rainforest saem de dependencia fragil (#22)
+5e576099 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+d5261da4 Regua de orcamento de token: medir a abertura antes de comprimir qualquer coisa (#10)
+ea43498e O radar para de comer o prazo: tres pastas por nome, o resto vira numero
+094f56d1 O radar para de comer o prazo: tres pastas por nome, o resto vira numero
+cfd62bfc A esteira ganha maquina de estados que RECUSA, em vez de pedir por favor
+deb1411b A esteira ganha maquina de estados que RECUSA, em vez de pedir por favor
+434fb3a5 ideias.py ganha gemeo em Node, e o bloco de mutacao para de sabotar o arquivo errado
+605dfa7d ideias.py ganha gemeo em Node, e o bloco de mutacao para de sabotar o arquivo errado
+2fe99a04 README reescrito: o produto e a sessao legivel, nao o parqueamento de ideia
+53133dcd README reescrito: o produto e a sessao legivel, nao o parqueamento de ideia
+
+$ git log --all --grep="floor-guard" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+{"id":"regua-que-nao-afrouxa","titulo":"Regua que nao afrouxa: barrar edicao de config de lint/teste/CI e recusar diff que apaga ou enfraquece teste"}
+
+
