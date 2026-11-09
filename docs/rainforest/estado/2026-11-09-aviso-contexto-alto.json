@@ -1,0 +1,32 @@
+{
+  "slug": "2026-11-09-aviso-contexto-alto",
+  "titulo": "Aviso de contexto alto na fronteira de estágio, pelo uso real do transcript",
+  "criado_em": "2026-11-09",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-11-09-aviso-contexto-alto.md",
+    "em": "2026-11-09"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-11-09-aviso-contexto-alto.md",
+    "tarefas": 3,
+    "paralelas": [],
+    "em": "2026-11-09"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
