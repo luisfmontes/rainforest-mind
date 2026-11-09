@@ -50,22 +50,22 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "869f263bdc701356b64517e372e5f9e9343b9bab",
+      "head": "db5846e4170fed2a5fe48289aff83cb8f21d4d35",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a89d2ce23e64dd03e",
+        "agente_id": "a474b1d8e90697047",
         "veredito": "ok",
         "em": "2026-11-09",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a89d2ce23e64dd03e.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a474b1d8e90697047.jsonl"
       }
     ],
     "em": "2026-11-09",
-    "achados": 2,
+    "achados": 3,
     "motivo": "achado [design] em D2 (renome para fora de teste); fluxo parado para decisao",
     "voltas": [
       {
@@ -79,10 +79,22 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a6dff488ac819097a.jsonl"
           }
         ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a89d2ce23e64dd03e",
+            "veredito": "ok",
+            "em": "2026-11-09",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a89d2ce23e64dd03e.jsonl"
+          }
+        ]
       }
     ],
     "base": "678a000a5daab524f45190a6178c70cfebf1361a",
-    "head": "869f263bdc701356b64517e372e5f9e9343b9bab",
+    "head": "db5846e4170fed2a5fe48289aff83cb8f21d4d35",
     "destinos": [
       {
         "pendente": "revisao-2: *.test.e2e.ts deixou de ser visto",
@@ -93,6 +105,16 @@
         "pendente": "revisao-2: sem snapshot o head declarado vale",
         "destino": "descartada",
         "motivo": "so ocorre com revisar marcado sem exigir; o D1 diz quando existe e o snapshot e gravado a cada exigir revisar"
+      },
+      {
+        "pendente": "revisao-3: nome partido escapa do caso n de testa-varrer-baterias",
+        "destino": "descartada",
+        "motivo": "o caso n barra casca por descuido, nao quem parte o nome de proposito; este fixture nao executa bateria e o nome e dado de teste"
+      },
+      {
+        "pendente": "revisao-3: variavel TZ no fixture",
+        "destino": "descartada",
+        "motivo": "so afetaria o fuso dos filhos da propria bateria, que nao usam data; nao medido como defeito"
       }
     ]
   },
