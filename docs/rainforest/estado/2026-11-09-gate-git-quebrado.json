@@ -50,22 +50,22 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "eb40727ab5b64e33820ff1e6a09abde5441a3c8c",
+      "head": "bbd27736f50f77422452d7fee74c4a32deb822cd",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "aa64cb8f2996b8a05",
+        "agente_id": "abeed35dbf590d310",
         "veredito": "ok",
         "em": "2026-11-09",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-aa64cb8f2996b8a05.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-abeed35dbf590d310.jsonl"
       }
     ],
     "em": "2026-11-09",
-    "achados": 2,
+    "achados": 1,
     "voltas": [
       {
         "volta": 1,
@@ -90,10 +90,22 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-abd3b94c0e9e247ea.jsonl"
           }
         ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "aa64cb8f2996b8a05",
+            "veredito": "ok",
+            "em": "2026-11-09",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-aa64cb8f2996b8a05.jsonl"
+          }
+        ]
       }
     ],
     "base": "3099637ea9762bbed2546f9683da613b32415c55",
-    "head": "eb40727ab5b64e33820ff1e6a09abde5441a3c8c",
+    "head": "bbd27736f50f77422452d7fee74c4a32deb822cd",
     "destinos": [
       {
         "pendente": "design D5 nao cita is-inside-git-dir nem superprojeto",
@@ -104,20 +116,27 @@
         "pendente": "comentario em contexto-sessao.cjs:890 sobre fail-open",
         "destino": "descartada",
         "motivo": "o texto continua certo para a janela principal, unica usuaria de sessaoColocada"
+      },
+      {
+        "pendente": "copia de caminho-real.cjs em testa-conferir-fluxo.sh:601 sem uso",
+        "destino": "descartada",
+        "motivo": "arquivo extra na caixa, sem cenario de falha; tirar agora refaria revisao e catraca de 45 min por uma copia sem efeito"
       }
     ]
   },
   "verificar": {
-    "status": "pendente",
-    "comando": "bash hooks/testa-gate-worktree.sh; bash hooks/testa-caminho-real.sh; bash scripts/testa-conferir-mutacao.sh; bash scripts/testa-varrer-baterias.sh; node scripts/conferir-versao.cjs",
-    "saida": "exit 0 em todas: testa-gate-worktree.sh=0; testa-caminho-real.sh=0; testa-conferir-mutacao.sh=0; testa-varrer-baterias.sh=0; testa-teto-skills.sh=0; testa-cobertura-teto.sh=0; testa-indice-referencias.sh=0; testa-plugin-codex.sh=0; conferir-versao=0",
+    "status": "ok",
+    "comando": "bash hooks/testa-gate-worktree.sh; bash hooks/testa-caminho-real.sh; bash scripts/testa-conferir-mutacao.sh; bash scripts/testa-varrer-baterias.sh; node scripts/conferir-versao.cjs; bash scripts/testa-conferir-mutacao-flaky.sh; bash scripts/testa-integrar-tarefa.sh; bash scripts/testa-estado.sh; bash scripts/testa-conferir-fluxo.sh",
+    "saida": "exit 0 em todas: testa-gate-worktree.sh=0; testa-caminho-real.sh=0; testa-conferir-mutacao.sh=0; testa-varrer-baterias.sh=0; testa-teto-skills.sh=0; testa-cobertura-teto.sh=0; testa-indice-referencias.sh=0; testa-plugin-codex.sh=0; conferir-versao=0 | conserto do CI, exit 0 em todas: testa-conferir-mutacao-flaky.sh exit=0; testa-integrar-tarefa.sh exit=0; testa-estado-flaky.sh exit=0; testa-estado-flaky-status.sh exit=0; testa-estado-teto.sh exit=0; testa-estado-territorio.sh exit=0; testa-estado.sh exit=0; testa-conferir-fluxo.sh exit=0",
     "sensor_externo": "bash hooks/testa-gate-worktree.sh",
     "em": "2026-11-09",
-    "head": "38a126a6d3f053854c5eb9ced6199205065bbd18"
+    "head": "68e35991d08799a4896a1c17bed3e670d36aa3cf"
   },
   "fechar": {
-    "status": "pendente",
-    "em": "2026-11-09"
+    "status": "ok",
+    "em": "2026-11-09",
+    "acao": "merge",
+    "pr": 674
   },
   "reaberturas": [
     {
