@@ -77,21 +77,21 @@
     ]
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "0d25b0219a39d176a7d4fd5c06fd19f32ceb7c4a",
+      "head": "df39f24ef2593994976737ec7afac9342d5b2f29",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a4367ba75deabd9b6",
+        "agente_id": "a2788842be63fdc95",
         "veredito": "ok",
         "em": "2026-11-10",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a4367ba75deabd9b6.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a2788842be63fdc95.jsonl"
       }
     ],
-    "achados": 2,
+    "achados": 0,
     "criterio": "medida dobra com advisor; limiar padrao nunca dispara (D3)",
     "em": "2026-11-10",
     "voltas": [
@@ -106,15 +106,30 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-ae4d7292f657bd9aa.jsonl"
           }
         ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a4367ba75deabd9b6",
+            "veredito": "ok",
+            "em": "2026-11-10",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a4367ba75deabd9b6.jsonl"
+          }
+        ]
       }
     ],
-    "em_voo": [],
     "base": "a2694dfbb43fc890afa5546786233f94815c2cdf",
-    "head": "0d25b0219a39d176a7d4fd5c06fd19f32ceb7c4a"
+    "head": "df39f24ef2593994976737ec7afac9342d5b2f29"
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-11-10"
+    "status": "ok",
+    "em": "2026-11-10",
+    "comando": "bash scripts/testa-uso-contexto.sh; bash hooks/testa-config.sh; bash scripts/testa-conferir-setup.sh; node scripts/conferir-versao.cjs",
+    "saida": "ok: 28   falhou: 0 | == resultado: 78 ok, 0 falha(s) == | == resultado: 10 ok, 0 falha(s) == | ok versao 2.11.0 (exit 0)",
+    "sensor_externo": "bash scripts/testa-uso-contexto.sh",
+    "head": "df39f24ef2593994976737ec7afac9342d5b2f29"
   },
   "fechar": {
     "status": "pendente",
