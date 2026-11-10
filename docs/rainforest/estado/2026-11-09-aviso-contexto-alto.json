@@ -20,10 +20,10 @@
   "executar": {
     "status": "ok",
     "catraca_mutacao": "2026-11-10",
-    "tarefas_ok": 3,
-    "tarefas": 3,
-    "comando": "bash scripts/testa-uso-contexto.sh",
-    "saida": "ok: 28   falhou: 0",
+    "tarefas_ok": 4,
+    "tarefas": 4,
+    "comando": "bash scripts/testa-uso-contexto.sh; node scripts/testa-estado-trava.cjs",
+    "saida": "ok: 28   falhou: 0 | 16 ok, 0 falha(s), 0 skipped",
     "mutacao": [
       {
         "tarefa": 1,
@@ -39,6 +39,11 @@
         "tarefa": 3,
         "resultado": "n/a",
         "motivo": "tarefa so descreve a chave e sobe a versao"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-estado-trava.cjs, caso \"N1: EPERM passageiro ao criar a trava espera e entra\""
       }
     ],
     "em": "2026-11-10",
@@ -77,7 +82,7 @@
     ]
   },
   "revisar": {
-    "status": "ok",
+    "status": "pendente",
     "snapshot": {
       "head": "df39f24ef2593994976737ec7afac9342d5b2f29",
       "caminhos_sujos": []
@@ -124,7 +129,7 @@
     "head": "df39f24ef2593994976737ec7afac9342d5b2f29"
   },
   "verificar": {
-    "status": "ok",
+    "status": "pendente",
     "em": "2026-11-10",
     "comando": "bash scripts/testa-uso-contexto.sh; bash hooks/testa-config.sh; bash scripts/testa-conferir-setup.sh; node scripts/conferir-versao.cjs",
     "saida": "ok: 28   falhou: 0 | == resultado: 78 ok, 0 falha(s) == | == resultado: 10 ok, 0 falha(s) == | ok versao 2.11.0 (exit 0)",
@@ -140,6 +145,11 @@
       "em": "2026-11-10",
       "de": "revisar",
       "motivo": "revisao 2 ok com 2 achados [baixa]: limite inferior da cauda e filtro type message sem teste que falhe"
+    },
+    {
+      "em": "2026-11-10",
+      "de": "verificar",
+      "motivo": "CI do PR 676 vermelho: testa-gate-teto-despachos negou 1 de 12 despachos simultaneos por EPERM ao criar a trava no Windows (trava-jsonl.cjs entrar)"
     }
   ]
 }
