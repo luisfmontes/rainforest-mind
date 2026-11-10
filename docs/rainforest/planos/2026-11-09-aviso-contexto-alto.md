@@ -58,7 +58,7 @@ pronto quando: com a chave nova em `CHAVES`, a tabela de `skills/setup/SKILL.md`
 
 ### 4. Trava espera EPERM passageiro ao nascer no Windows [tipo: implementar]
 atende: D5
-arquivos: `hooks/lib/trava-jsonl.cjs`, `scripts/testa-estado-trava.cjs`, `CHANGELOG.md`
+arquivos: `hooks/lib/trava-jsonl.cjs`, `scripts/testa-estado-trava.cjs`, `hooks/testa-gate-teto-despachos.cjs`, `CHANGELOG.md`
 depende de: nenhuma
 busca:
 - repo | rg "EPERM" hooks/lib scripts/lib | só contexto-sessao.cjs e trava-jsonl.cjs:57 (processoVivo), nenhum trata EPERM ao abrir arquivo

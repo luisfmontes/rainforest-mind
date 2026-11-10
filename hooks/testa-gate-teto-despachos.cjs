@@ -140,13 +140,13 @@ function rodarAssincrono(repo, p) {
 }
 
 /* Detalhe de um lote de processos: os que sairam != 0 com indice, exit e stderr
- * aparado; depois a lista de exits. Sem falha, devolve so a lista de exits (o de hoje). */
+ * inteiro ate 1000 caracteres (o caminho do EPERM fica no fim da mensagem); depois a lista de exits. Sem falha, devolve so a lista de exits (o de hoje). */
 function detalheDosProcessos(rs) {
   const sts = rs.map((r) => r.status).join(",");
   const falhas = rs
     .map((r, i) => ({ r, i }))
     .filter(({ r }) => r.status !== 0)
-    .map(({ r, i }) => `[processo ${i}] exit=${r.status} stderr=${String(r.stderr).trim().slice(0, 200)}`);
+    .map(({ r, i }) => `[processo ${i}] exit=${r.status} stderr=${String(r.stderr).trim().slice(0, 1000)}`);
   return falhas.length ? `${falhas.join(" | ")} | exits=${sts}` : sts;
 }
 
