@@ -39,6 +39,17 @@ function lerCauda(arquivo) {
   }
 }
 
+// Resposta que chama o advisor faz várias chamadas ao modelo, e o topo de `usage`
+// soma todas: o contexto é o da última iteração `message`.
+function promptDoUso(u) {
+  const soma = (x) => (x.input_tokens || 0) + (x.cache_creation_input_tokens || 0) + (x.cache_read_input_tokens || 0);
+  if (Array.isArray(u.iterations)) {
+    const mensagens = u.iterations.filter((it) => it && it.type === 'message');
+    if (mensagens.length) return soma(mensagens[mensagens.length - 1]);
+  }
+  return soma(u);
+}
+
 /** Tokens do prompt na última mensagem da janela principal, ou null se não há medida. */
 function usoDoTranscrito(env = process.env) {
   const arquivo = acharTranscrito(env);
@@ -54,7 +65,7 @@ function usoDoTranscrito(env = process.env) {
     const u = registro && registro.type === 'assistant' && !registro.isSidechain
       && registro.message && registro.message.usage;
     if (!u) continue;
-    const total = (u.input_tokens || 0) + (u.cache_creation_input_tokens || 0) + (u.cache_read_input_tokens || 0);
+    const total = promptDoUso(u);
     if (total > 0) return total; // zero é mensagem <synthetic>, sem chamada ao modelo
   }
   return null;

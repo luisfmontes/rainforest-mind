@@ -37,6 +37,13 @@ falha() { falhou=$((falhou+1)); echo "  FALHA $1"; [ -z "${2:-}" ] || echo "$2" 
 msg() {
   printf '{"type":"assistant","isSidechain":false,"message":{"model":"claude-opus-5-5","usage":{"input_tokens":1,"cache_creation_input_tokens":2,"cache_read_input_tokens":%d,"output_tokens":9}}}\n' "$(( $1 - 3 ))"
 }
+# Resposta que consultou o advisor, no formato real: o topo soma as duas chamadas
+# `message` (cache_read e cache_creation em dobro), e cada iteração traz a sua.
+# msg_advisor <primeira> <ultima>: tokens de prompt de cada iteração `message`.
+msg_advisor() {
+  printf '{"type":"assistant","isSidechain":false,"message":{"model":"claude-opus-5-5","usage":{"input_tokens":4,"cache_creation_input_tokens":4,"cache_read_input_tokens":%d,"output_tokens":9,"iterations":[{"input_tokens":2,"cache_creation_input_tokens":2,"cache_read_input_tokens":%d,"output_tokens":5,"type":"message"},{"input_tokens":114616,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":6908,"type":"advisor_message","model":"claude-fable-5-1"},{"input_tokens":2,"cache_creation_input_tokens":2,"cache_read_input_tokens":%d,"output_tokens":4,"type":"message"}]}}}\n' \
+    "$(( $1 + $2 - 8 ))" "$(( $1 - 4 ))" "$(( $2 - 4 ))"
+}
 usuario() { printf '{"type":"user","message":{"role":"user","content":"oi"}}\n'; }
 
 # rodar <id> [estagio]: roda o exigir e guarda stdout, stderr e exit.
@@ -58,27 +65,37 @@ sem_cfg() { rm -f "$SBP/.rainforest/config.json"; }
 node scripts/estado.cjs iniciar --slug caixa --titulo "caixa" > /dev/null 2>&1 || { echo "FALHA iniciar"; exit 1; }
 
 echo "== medida (D1, D2) =="
-{ usuario; msg 300000; usuario; msg 712000; } > "$TRANSCRITOS/alto.jsonl"
+{ usuario; msg 200000; usuario; msg 320000; } > "$TRANSCRITOS/alto.jsonl"
 env -u CLAUDE_CODE_SESSION_ID node scripts/estado.cjs exigir --slug caixa --estagio limpar > "$T/out-base" 2> "$T/err-base"
 rodar alto
-com_aviso "uso acima do limiar avisa com tokens, limiar e estagio" "aviso: contexto em 712 mil tokens (limiar 700 mil). Antes de abrir 'limpar', registre o estado e considere /compact ou uma sessão nova."
+com_aviso "uso acima do limiar avisa com tokens, limiar e estagio" "aviso: contexto em 320 mil tokens (limiar 310 mil). Antes de abrir 'limpar', registre o estado e considere /compact ou uma sessão nova."
 if cmp -s "$T/out" "$T/out-base"; then passa "stdout igual ao de sessao sem transcript"; else falha "stdout igual ao de sessao sem transcript" "$(cat "$T/out")"; fi
 
-{ msg 712000; msg 699999; } > "$TRANSCRITOS/abaixo.jsonl"
+{ msg 320000; msg 309999; } > "$TRANSCRITOS/abaixo.jsonl"
 rodar abaixo; sem_aviso "abaixo do limiar nao avisa, e vale a ultima mensagem"
-msg 700000 > "$TRANSCRITOS/exato.jsonl"
-rodar exato; com_aviso "exatamente no limiar avisa" "contexto em 700 mil"
-{ msg 950000; usuario; msg 40000; } > "$TRANSCRITOS/compactou.jsonl"
+msg 310000 > "$TRANSCRITOS/exato.jsonl"
+rodar exato; com_aviso "exatamente no limiar avisa" "contexto em 310 mil"
+{ msg 440000; usuario; msg 40000; } > "$TRANSCRITOS/compactou.jsonl"
 rodar compactou; sem_aviso "depois de compactar o aviso some"
 
-{ msg 712000; printf '{"type":"assistant","message":{"usage":{"input_tok'; } > "$TRANSCRITOS/truncado.jsonl"
-rodar truncado; com_aviso "linha final truncada vale a anterior" "contexto em 712 mil"
-{ msg 712000; printf '{"type":"assistant","message":{"model":"<synthetic>","usage":{"input_tokens":0,"output_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}}\n'; } > "$TRANSCRITOS/sintetico.jsonl"
-rodar sintetico; com_aviso "mensagem sintetica zerada vale a anterior" "contexto em 712 mil"
-{ msg 712000; printf '{"type":"assistant","isSidechain":true,"message":{"usage":{"input_tokens":5,"cache_read_input_tokens":10}}}\n'; } > "$TRANSCRITOS/lateral.jsonl"
-rodar lateral; com_aviso "mensagem de subagente no fim vale a anterior" "contexto em 712 mil"
-{ node -e 'process.stdout.write("x".repeat(1200000)+"\n")'; msg 712000; } > "$TRANSCRITOS/grande.jsonl"
-rodar grande; com_aviso "transcript maior que a cauda" "contexto em 712 mil"
+# Advisor: o topo diria 620 mil; a última iteração `message` diz 320 mil.
+msg_advisor 300000 320000 > "$TRANSCRITOS/advisor.jsonl"
+rodar advisor; com_aviso "com advisor vale a ultima iteracao message, nao a soma do topo" "contexto em 320 mil tokens"
+# Topo acima do limiar (300 + 200 = 500 mil), a última iteração abaixo dele.
+msg_advisor 300000 200000 > "$TRANSCRITOS/advisor-baixo.jsonl"
+rodar advisor-baixo; sem_aviso "com advisor a soma do topo nao dispara sozinha"
+
+{ msg 320000; printf '{"type":"assistant","message":{"usage":{"input_tok'; } > "$TRANSCRITOS/truncado.jsonl"
+rodar truncado; com_aviso "linha final truncada vale a anterior" "contexto em 320 mil"
+{ msg 320000; printf '{"type":"assistant","message":{"model":"<synthetic>","usage":{"input_tokens":0,"output_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}}\n'; } > "$TRANSCRITOS/sintetico.jsonl"
+rodar sintetico; com_aviso "mensagem sintetica zerada vale a anterior" "contexto em 320 mil"
+{ msg 320000; printf '{"type":"assistant","isSidechain":true,"message":{"usage":{"input_tokens":5,"cache_read_input_tokens":10}}}\n'; } > "$TRANSCRITOS/lateral.jsonl"
+rodar lateral; com_aviso "mensagem de subagente no fim vale a anterior" "contexto em 320 mil"
+{ node -e 'process.stdout.write("x".repeat(1200000)+"\n")'; msg 320000; } > "$TRANSCRITOS/grande.jsonl"
+rodar grande; com_aviso "transcript maior que a cauda" "contexto em 320 mil"
+# Só a cauda de 1 MB é lida: a mensagem alta antes de 1,2 MB de outra coisa não conta.
+{ msg 440000; node -e 'process.stdout.write("x".repeat(1200000)+"\n")'; } > "$TRANSCRITOS/fora-da-cauda.jsonl"
+rodar fora-da-cauda; sem_aviso "mensagem antes da cauda de 1 MB nao conta"
 
 echo "== sem medida (D2, D5) =="
 env -u CLAUDE_CODE_SESSION_ID node scripts/estado.cjs exigir --slug caixa --estagio limpar > "$T/out" 2> "$T/err"; RC=$?
@@ -91,10 +108,12 @@ printf 'lixo\n{nem json\n' > "$TRANSCRITOS/lixo.jsonl"
 rodar lixo; sem_aviso "transcript ilegivel fica calado"
 CLAUDE_CONFIG_DIR="$RAIZ_TMP/sem-pasta" CLAUDE_CODE_SESSION_ID=alto node scripts/estado.cjs exigir --slug caixa --estagio limpar > "$T/out" 2> "$T/err"; RC=$?
 sem_aviso "config dir sem projects fica calado"
+env -u CLAUDE_CONFIG_DIR CLAUDE_CODE_SESSION_ID=alto node scripts/estado.cjs exigir --slug caixa --estagio limpar > "$T/out" 2> "$T/err"; RC=$?
+com_aviso "sem CLAUDE_CONFIG_DIR acha o transcript em ~/.claude" "contexto em 320 mil"
 
 echo "== limiar (D3) =="
 msg 120000 > "$TRANSCRITOS/medio.jsonl"
-rodar medio; sem_aviso "padrao 700 mil nao avisa em 120 mil"
+rodar medio; sem_aviso "padrao 310 mil nao avisa em 120 mil"
 cfg '{"contexto-alto-tokens":100000}'
 rodar medio; com_aviso "limiar do projeto vale no exigir" "contexto em 120 mil tokens (limiar 100 mil)"
 msg 900000 > "$TRANSCRITOS/muito.jsonl"
@@ -102,7 +121,7 @@ cfg '{"contexto-alto-tokens":0}'
 rodar muito; sem_aviso "zero desliga mesmo em 900 mil"
 for invalido in '"muito"' '-5' '1.5'; do
   cfg "{\"contexto-alto-tokens\":$invalido}"
-  rodar alto; com_aviso "valor invalido $invalido cai no padrao" "limiar 700 mil"
+  rodar alto; com_aviso "valor invalido $invalido cai no padrao" "limiar 310 mil"
 done
 sem_cfg
 

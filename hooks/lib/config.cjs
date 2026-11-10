@@ -340,7 +340,7 @@ const CHAVES = {
   },
   'contexto-alto-tokens': {
     tipo: 'tokens',
-    padrao: 700000,
+    padrao: 310000,
     descricao: 'tokens de contexto a partir dos quais o `exigir` avisa na fronteira de estágio; 0 desliga',
     entrevista: null,
   },
