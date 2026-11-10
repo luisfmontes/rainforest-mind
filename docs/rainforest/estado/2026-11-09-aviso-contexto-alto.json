@@ -23,7 +23,7 @@
     "tarefas_ok": 3,
     "tarefas": 3,
     "comando": "bash scripts/testa-uso-contexto.sh",
-    "saida": "ok: 26   falhou: 0",
+    "saida": "ok: 28   falhou: 0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -63,33 +63,68 @@
         "pendente": "revisao-1 achado 4: subagente que roda exigir mede o contexto do pai",
         "destino": "descartada",
         "motivo": "exigir e rodado pela janela principal; no subagente o efeito e so uma linha a mais em stderr, sem mudar exit nem stdout (D4)"
+      },
+      {
+        "pendente": "revisao-2 achado 1: limite inferior da cauda sem teste",
+        "destino": "resolvida",
+        "evidencia": "250009f7: caso 'mensagem 200 KB antes do fim ainda esta na cauda'; mutacao CAUDA_BYTES=1024 vermelha (conferir-mutacao exit 0)"
+      },
+      {
+        "pendente": "revisao-2 achado 2: filtro type message nunca exercitado",
+        "destino": "resolvida",
+        "evidencia": "250009f7: caso 'iteracao advisor_message no fim da lista e ignorada'; mutacao filter(it => it) vermelha (conferir-mutacao exit 0)"
       }
     ]
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "pendente",
     "snapshot": {
-      "head": "65f1735a77104dc496aa35f79162328a90b7c3a9",
+      "head": "0d25b0219a39d176a7d4fd5c06fd19f32ceb7c4a",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ae4d7292f657bd9aa",
-        "veredito": "reprovado",
-        "em": "2026-11-09",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-ae4d7292f657bd9aa.jsonl"
+        "agente_id": "a4367ba75deabd9b6",
+        "veredito": "ok",
+        "em": "2026-11-10",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a4367ba75deabd9b6.jsonl"
       }
     ],
-    "achados": 4,
+    "achados": 2,
     "criterio": "medida dobra com advisor; limiar padrao nunca dispara (D3)",
-    "em": "2026-11-09",
-    "tentativas": 1
+    "em": "2026-11-10",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ae4d7292f657bd9aa",
+            "veredito": "reprovado",
+            "em": "2026-11-09",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-ae4d7292f657bd9aa.jsonl"
+          }
+        ]
+      }
+    ],
+    "em_voo": [],
+    "base": "a2694dfbb43fc890afa5546786233f94815c2cdf",
+    "head": "0d25b0219a39d176a7d4fd5c06fd19f32ceb7c4a"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-11-10"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-11-10"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-11-10",
+      "de": "revisar",
+      "motivo": "revisao 2 ok com 2 achados [baixa]: limite inferior da cauda e filtro type message sem teste que falhe"
+    }
+  ]
 }
