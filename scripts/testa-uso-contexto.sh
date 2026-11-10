@@ -84,6 +84,9 @@ rodar advisor; com_aviso "com advisor vale a ultima iteracao message, nao a soma
 # Topo acima do limiar (300 + 200 = 500 mil), a última iteração abaixo dele.
 msg_advisor 300000 200000 > "$TRANSCRITOS/advisor-baixo.jsonl"
 rodar advisor-baixo; sem_aviso "com advisor a soma do topo nao dispara sozinha"
+# Iteração de outro tipo no fim da lista não é o contexto da janela.
+printf '{"type":"assistant","isSidechain":false,"message":{"usage":{"input_tokens":114618,"cache_creation_input_tokens":2,"cache_read_input_tokens":319996,"output_tokens":9,"iterations":[{"input_tokens":2,"cache_creation_input_tokens":2,"cache_read_input_tokens":319996,"output_tokens":5,"type":"message"},{"input_tokens":114616,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":6908,"type":"advisor_message"}]}}}\n' > "$TRANSCRITOS/advisor-no-fim.jsonl"
+rodar advisor-no-fim; com_aviso "iteracao advisor_message no fim da lista e ignorada" "contexto em 320 mil tokens"
 
 { msg 320000; printf '{"type":"assistant","message":{"usage":{"input_tok'; } > "$TRANSCRITOS/truncado.jsonl"
 rodar truncado; com_aviso "linha final truncada vale a anterior" "contexto em 320 mil"
@@ -96,6 +99,9 @@ rodar grande; com_aviso "transcript maior que a cauda" "contexto em 320 mil"
 # Só a cauda de 1 MB é lida: a mensagem alta antes de 1,2 MB de outra coisa não conta.
 { msg 440000; node -e 'process.stdout.write("x".repeat(1200000)+"\n")'; } > "$TRANSCRITOS/fora-da-cauda.jsonl"
 rodar fora-da-cauda; sem_aviso "mensagem antes da cauda de 1 MB nao conta"
+# Em 60 transcripts reais, o último assistant útil ficou até 211 KB antes do fim.
+{ msg 320000; node -e 'process.stdout.write("x".repeat(200000)+"\n")'; } > "$TRANSCRITOS/dentro-da-cauda.jsonl"
+rodar dentro-da-cauda; com_aviso "mensagem 200 KB antes do fim ainda esta na cauda" "contexto em 320 mil"
 
 echo "== sem medida (D2, D5) =="
 env -u CLAUDE_CODE_SESSION_ID node scripts/estado.cjs exigir --slug caixa --estagio limpar > "$T/out" 2> "$T/err"; RC=$?
