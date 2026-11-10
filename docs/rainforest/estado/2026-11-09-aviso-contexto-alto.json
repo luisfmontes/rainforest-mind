@@ -22,8 +22,8 @@
     "catraca_mutacao": "2026-11-10",
     "tarefas_ok": 4,
     "tarefas": 4,
-    "comando": "bash scripts/testa-uso-contexto.sh; node scripts/testa-estado-trava.cjs",
-    "saida": "ok: 28   falhou: 0 | 16 ok, 0 falha(s), 0 skipped",
+    "comando": "bash scripts/testa-uso-contexto.sh; node scripts/testa-estado-trava.cjs; node hooks/testa-gate-teto-despachos.cjs",
+    "saida": "ok: 28   falhou: 0 | 16 ok, 0 falha(s), 0 skipped | ok: 87   falhou: 0",
     "mutacao": [
       {
         "tarefa": 1,
@@ -78,25 +78,40 @@
         "pendente": "revisao-2 achado 2: filtro type message nunca exercitado",
         "destino": "resolvida",
         "evidencia": "250009f7: caso 'iteracao advisor_message no fim da lista e ignorada'; mutacao filter(it => it) vermelha (conferir-mutacao exit 0)"
+      },
+      {
+        "pendente": "revisao-4 achado 1: stderr cortado em 200 caracteres na bateria do teto",
+        "destino": "resolvida",
+        "evidencia": "commit de 'Bateria do teto mostra o stderr inteiro': slice(0, 1000); testa-gate-teto-despachos ok: 87 falhou: 0"
+      },
+      {
+        "pendente": "revisao-4 achado 2: CHANGELOG afirma causa inferida",
+        "destino": "resolvida",
+        "evidencia": "CHANGELOG 2.11.0 diz 'A hipotese mais forte e a criacao da trava...'"
+      },
+      {
+        "pendente": "revisao-4 achado 3: corrida na quebra de trava orfa (preexistente)",
+        "destino": "descartada",
+        "motivo": "corrida teorica nunca observada; o assert total==12 da bateria a denunciaria, e o stderr inteiro agora nomeia o arquivo. Vira Issue se o EPERM voltar com a retentativa no lugar"
       }
     ]
   },
   "revisar": {
     "status": "pendente",
     "snapshot": {
-      "head": "df39f24ef2593994976737ec7afac9342d5b2f29",
+      "head": "a5da19df61f5258d312e11fa9365f01a7011de37",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a2788842be63fdc95",
+        "agente_id": "a1a02b600c95316da",
         "veredito": "ok",
         "em": "2026-11-10",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a2788842be63fdc95.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a1a02b600c95316da.jsonl"
       }
     ],
-    "achados": 0,
+    "achados": 3,
     "criterio": "medida dobra com advisor; limiar padrao nunca dispara (D3)",
     "em": "2026-11-10",
     "voltas": [
@@ -123,10 +138,23 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a4367ba75deabd9b6.jsonl"
           }
         ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a2788842be63fdc95",
+            "veredito": "ok",
+            "em": "2026-11-10",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a2788842be63fdc95.jsonl"
+          }
+        ]
       }
     ],
     "base": "a2694dfbb43fc890afa5546786233f94815c2cdf",
-    "head": "df39f24ef2593994976737ec7afac9342d5b2f29"
+    "head": "a5da19df61f5258d312e11fa9365f01a7011de37",
+    "em_voo": []
   },
   "verificar": {
     "status": "pendente",
@@ -150,6 +178,11 @@
       "em": "2026-11-10",
       "de": "verificar",
       "motivo": "CI do PR 676 vermelho: testa-gate-teto-despachos negou 1 de 12 despachos simultaneos por EPERM ao criar a trava no Windows (trava-jsonl.cjs entrar)"
+    },
+    {
+      "em": "2026-11-10",
+      "de": "revisar",
+      "motivo": "revisao 4 ok com achados: stderr cortado na bateria do teto e CHANGELOG afirmando causa inferida"
     }
   ]
 }
