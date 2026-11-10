@@ -1,0 +1,207 @@
+{
+  "slug": "2026-11-09-aviso-contexto-alto",
+  "titulo": "Aviso de contexto alto na fronteira de estágio, pelo uso real do transcript",
+  "criado_em": "2026-11-09",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/2026-11-09-aviso-contexto-alto.md",
+    "em": "2026-11-09"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/2026-11-09-aviso-contexto-alto.md",
+    "tarefas": 3,
+    "paralelas": [],
+    "em": "2026-11-09"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-11-10",
+    "tarefas_ok": 4,
+    "tarefas": 4,
+    "comando": "bash scripts/testa-uso-contexto.sh; node scripts/testa-estado-trava.cjs; node hooks/testa-gate-teto-despachos.cjs",
+    "saida": "ok: 28   falhou: 0 | 16 ok, 0 falha(s), 0 skipped | ok: 87   falhou: 0",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-uso-contexto.sh, caso \"uso acima do limiar avisa com tokens, limiar e estagio\""
+      },
+      {
+        "tarefa": 2,
+        "resultado": "vermelho",
+        "fixture": "testa-uso-contexto.sh, caso \"limiar do projeto vale no exigir\""
+      },
+      {
+        "tarefa": 3,
+        "resultado": "n/a",
+        "motivo": "tarefa so descreve a chave e sobe a versao"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-estado-trava.cjs, caso \"N1: EPERM passageiro ao criar a trava espera e entra\""
+      }
+    ],
+    "em": "2026-11-10",
+    "reaberturas": 1,
+    "destinos": [
+      {
+        "pendente": "revisao-1 achado 1: medida dobrada com usage.iterations",
+        "destino": "resolvida",
+        "evidencia": "e425035c: promptDoUso usa a ultima iteracao message; casos 'com advisor ...' na bateria; mutacoes if(false) e mensagens[0] vermelhas (conferir-mutacao exit 0)"
+      },
+      {
+        "pendente": "revisao-1 achado 2: padrao 700 mil nunca dispara",
+        "destino": "resolvida",
+        "evidencia": "e425035c: padrao 310000 por decisao do Luis em 2026-11-10 (Q1 A); D3 emendada; testa-config 78 ok"
+      },
+      {
+        "pendente": "revisao-1 achado 3: limite da cauda e fallback ~/.claude sem teste",
+        "destino": "resolvida",
+        "evidencia": "e425035c: casos 'mensagem antes da cauda de 1 MB nao conta' e 'sem CLAUDE_CONFIG_DIR acha o transcript em ~/.claude'; mutacoes Math.min->size e .claude->.claude-x vermelhas"
+      },
+      {
+        "pendente": "revisao-1 achado 4: subagente que roda exigir mede o contexto do pai",
+        "destino": "descartada",
+        "motivo": "exigir e rodado pela janela principal; no subagente o efeito e so uma linha a mais em stderr, sem mudar exit nem stdout (D4)"
+      },
+      {
+        "pendente": "revisao-2 achado 1: limite inferior da cauda sem teste",
+        "destino": "resolvida",
+        "evidencia": "250009f7: caso 'mensagem 200 KB antes do fim ainda esta na cauda'; mutacao CAUDA_BYTES=1024 vermelha (conferir-mutacao exit 0)"
+      },
+      {
+        "pendente": "revisao-2 achado 2: filtro type message nunca exercitado",
+        "destino": "resolvida",
+        "evidencia": "250009f7: caso 'iteracao advisor_message no fim da lista e ignorada'; mutacao filter(it => it) vermelha (conferir-mutacao exit 0)"
+      },
+      {
+        "pendente": "revisao-4 achado 1: stderr cortado em 200 caracteres na bateria do teto",
+        "destino": "resolvida",
+        "evidencia": "commit de 'Bateria do teto mostra o stderr inteiro': slice(0, 1000); testa-gate-teto-despachos ok: 87 falhou: 0"
+      },
+      {
+        "pendente": "revisao-4 achado 2: CHANGELOG afirma causa inferida",
+        "destino": "resolvida",
+        "evidencia": "CHANGELOG 2.11.0 diz 'A hipotese mais forte e a criacao da trava...'"
+      },
+      {
+        "pendente": "revisao-4 achado 3: corrida na quebra de trava orfa (preexistente)",
+        "destino": "descartada",
+        "motivo": "corrida teorica nunca observada; o assert total==12 da bateria a denunciaria, e o stderr inteiro agora nomeia o arquivo. Vira Issue se o EPERM voltar com a retentativa no lugar"
+      }
+    ]
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "6a1c7b6f45f57397137139a6e578ede43851d255",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "ab009c83924aa60c9",
+        "veredito": "ok",
+        "em": "2026-11-10",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-ab009c83924aa60c9.jsonl"
+      }
+    ],
+    "achados": 1,
+    "criterio": "medida dobra com advisor; limiar padrao nunca dispara (D3)",
+    "em": "2026-11-10",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ae4d7292f657bd9aa",
+            "veredito": "reprovado",
+            "em": "2026-11-09",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-ae4d7292f657bd9aa.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a4367ba75deabd9b6",
+            "veredito": "ok",
+            "em": "2026-11-10",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a4367ba75deabd9b6.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a2788842be63fdc95",
+            "veredito": "ok",
+            "em": "2026-11-10",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a2788842be63fdc95.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 4,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a1a02b600c95316da",
+            "veredito": "ok",
+            "em": "2026-11-10",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/e33c35f1-6de6-4663-b9f9-7da74ed0d145/subagents/agent-a1a02b600c95316da.jsonl"
+          }
+        ]
+      }
+    ],
+    "base": "a2694dfbb43fc890afa5546786233f94815c2cdf",
+    "head": "6a1c7b6f45f57397137139a6e578ede43851d255",
+    "em_voo": [],
+    "destinos": [
+      {
+        "pendente": "revisao-5 achado 1: CHANGELOG diz stderr inteiro e o codigo corta em 1000",
+        "destino": "descartada",
+        "motivo": "a mensagem do gate tem ~110 caracteres mais o caminho; 1000 cobre qualquer caminho de CI real, e o comentario da funcao ja diz ate 1000"
+      }
+    ]
+  },
+  "verificar": {
+    "status": "ok",
+    "em": "2026-11-10",
+    "comando": "bash scripts/testa-uso-contexto.sh; node scripts/testa-estado-trava.cjs; node hooks/testa-gate-teto-despachos.cjs; bash hooks/testa-config.sh; bash scripts/testa-conferir-setup.sh; node scripts/conferir-versao.cjs",
+    "saida": "ok: 28   falhou: 0 | 16 ok, 0 falha(s), 0 skipped | ok: 87   falhou: 0 | == resultado: 78 ok, 0 falha(s) == | == resultado: 10 ok, 0 falha(s) == | ok versao 2.11.0 (exit 0)",
+    "sensor_externo": "bash scripts/testa-uso-contexto.sh",
+    "head": "6a1c7b6f45f57397137139a6e578ede43851d255"
+  },
+  "fechar": {
+    "status": "pendente",
+    "em": "2026-11-10"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-11-10",
+      "de": "revisar",
+      "motivo": "revisao 2 ok com 2 achados [baixa]: limite inferior da cauda e filtro type message sem teste que falhe"
+    },
+    {
+      "em": "2026-11-10",
+      "de": "verificar",
+      "motivo": "CI do PR 676 vermelho: testa-gate-teto-despachos negou 1 de 12 despachos simultaneos por EPERM ao criar a trava no Windows (trava-jsonl.cjs entrar)"
+    },
+    {
+      "em": "2026-11-10",
+      "de": "revisar",
+      "motivo": "revisao 4 ok com achados: stderr cortado na bateria do teto e CHANGELOG afirmando causa inferida"
+    }
+  ]
+}

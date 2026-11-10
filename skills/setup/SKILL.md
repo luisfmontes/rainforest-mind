@@ -201,6 +201,7 @@ o grupo que vale é o do campo `entrevista` no catálogo.
 | `codex-modelo-opus` | — | modelo do Codex para agente `opus` (vazio = `~/.codex/config.toml`) |
 | `transfer-codex` | ferramentas | transfere a sessão para uma thread Codex, sob demanda |
 | `gate-review-codex` | ferramentas | o revisor em Codex revisa a última resposta no Stop; falha fechada |
+| `contexto-alto-tokens` | — | tokens de contexto a partir dos quais o `exigir` avisa na fronteira de estágio; padrão 310000, `0` desliga |
 | `fechar-mergear` | fechar | o `fechar` mergeia o PR (squash) depois do CI verde; desligada, para no PR aberto |
 | `executar-autonomo` | fechar | do plano ok ao merge, decide sem perguntar e registra com `estado.cjs decidir` |
 

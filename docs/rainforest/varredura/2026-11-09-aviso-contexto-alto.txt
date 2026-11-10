@@ -1,0 +1,116 @@
+Data: 2026-11-09
+Termos: contexto alto, autocompact, used_percentage, handover
+
+$ gh issue list --state all --search "contexto alto" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "autocompact" --limit 200 --json number,title,state
+[{"number":608,"state":"CLOSED","title":"saude: alerta falso com clone raso e com config dirs de bench"}]
+
+
+$ gh issue list --state all --search "used_percentage" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "handover" --limit 200 --json number,title,state
+[{"number":207,"state":"CLOSED","title":"poda-estagio.cjs devolve null em toda branch fluxo/<slug>: copia divergente do resolvedor canonico, bateria verde"},{"number":196,"state":"CLOSED","title":"conferir-fluxo creep nao isenta relatorios/**, e recusa por arquivo que por construcao nao pode ter tarefa"},{"number":180,"state":"CLOSED","title":"Fluxo: o estagio que despacha agente aposta que o turno dura mais que o agente"}]
+
+
+$ gh pr list --state all --search "contexto alto" --limit 200 --json number,title,state
+[{"number":128,"state":"MERGED","title":"A trava de cwd: tres observacoes que prescreviam o mesmo mecanismo viram codigo"}]
+
+
+$ gh pr list --state all --search "autocompact" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "used_percentage" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "handover" --limit 200 --json number,title,state
+[{"number":202,"state":"MERGED","title":"Fluxo 8: plano do handover.cjs, com o regente.cjs cortado e o corte justificado"},{"number":138,"state":"MERGED","title":"Rastro dos vigias e handover do fluxo 11 que ficaram sem versionar"},{"number":169,"state":"MERGED","title":"Handover: publicacao do repositorio, 1.0.0 e a fila da proxima sessao"},{"number":236,"state":"MERGED","title":"Zerar Issues: a fatia revisada e limpa (12 de 18 Issues)"},{"number":315,"state":"MERGED","title":"Adapta o Rainforest Mind para o Codex (multihost, 1.25.0)"},{"number":130,"state":"MERGED","title":"Designs 9-11 e o indice consolidado v2 entram no repo"},{"number":179,"state":"MERGED","title":"Relatorio: rodada cega de 2026-09-04 (com errata de entrada)"},{"number":150,"state":"MERGED","title":"Vigias: dois mortos ha 20 dias, um backup que nunca rodou, e seis vazamentos num arquivo publico"},{"number":190,"state":"MERGED","title":"Inventario do acervo parado: tres mapas, e o manifesto que admite os cinco agentes negados"},{"number":242,"state":"MERGED","title":"Zerar Issues, rodada 2: as 6 que faltavam e as 6 novas (1.12.0)"},{"number":186,"state":"MERGED","title":"R1 (frente 2) + R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao"},{"number":152,"state":"MERGED","title":"Portaria: escreve:true admitido com worktree obrigatorio (0.82.0)"},{"number":204,"state":"MERGED","title":"Issue #187: o vazamento e do transporte, nao da bateria — matarDescendencia no rodarCli"}]
+
+
+$ git ls-remote --heads origin | grep -F "contexto alto"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "autocompact"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "used_percentage"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "handover"
+(vazio)
+
+$ git log --all --grep="contexto alto" --oneline
+(vazio)
+
+$ git log --all --grep="autocompact" --oneline
+5443bc0e2 A limpeza enxerga a branch que sobrevive ao worktree, e as config dirs param de divergir em silencio
+acc85203f A limpeza enxerga a branch que sobrevive ao worktree, e as config dirs param de divergir em silencio
+
+$ git log --all --grep="used_percentage" --oneline
+84eddec17 Revisão rodada 1: NaN/Infinity não derrubam a barra; trava do iniciar olha o cwd real; núcleo cita a chave
+
+$ git log --all --grep="handover" --oneline
+014faf21 Arquiva o fluxo 8 (handover e regente)
+639cc9ab Registra achado da revisão final do handover
+5cd54d32 Corrige o que a reancoragem tornou falso no handover
+9dc9c00b Registra a reancoragem e refaz a evidencia de instalacao
+1cd74a2e Reancora a entrega multihost na origin/main 1.19.1
+115a06c9 Corrige a proibicao do handover: o veto era a main, nao o push
+a8fcfd6f Conclui contraprova do hook e restaura instalacao final 1.13.2
+d1cfe613 Prepara handover da verificacao para Claude
+44ac4c2a Corrige retomada final do handover multihost
+46fcf099 Registra achado residual do handover
+4a590dab CI: a asserção do restauro compara com o toplevel que o gate imprime
+cede6b0a Estado: verificar ok com a catraca completa; handover aponta para a rodada 2
+91db7071 Estado: executar fecha com 33 tarefas e a catraca declarada; handover ganha a rodada 2
+ddde15b4 Integracao das tarefas 24 e 25: literal do plano e sandbox com a catraca
+8d00c33d Merge pull request #202 from luisfmontes/fluxo/fluxo-8-handover-regente
+7159bbc6 Ponteiro no design narrativo do fluxo 8: quem le so ele nao sabia do corte
+6dd373fa Corrige a tarefa 4 do plano: dependencia declarada nao batia com o criterio
+381c95ea Fluxo 8: plano do handover.cjs, com o regente.cjs cortado e o corte justificado
+67e92cff Tres baterias que so ficavam vermelhas no runner: forma do caminho e conteudo do repo
+f90a755c Merge origin/main (PR #179: relatorio da rodada cega) into fluxo/nao-mente
+f8b217fa Tarefa 3 (R8): prosa do briefing do executor sobre pular verificacao
+deefbd42 Lote 3: handover da rodada 18 e estado (revisar reprovado pela 16a revisao; revisor interrompido)
+1064b74a Lote 3: revisar reprovado (3a revisao: 8 itens) e emenda no plano — handover e rastro, D14 declarada, rodada 5 dentro das tarefas
+3f526a4c Lote 3: handover da rodada 3 e estado (executar reaberto pelo revisar)
+4e5bda19 Fluxo 7: emenda no plano — tarefa 8 nomeia o rastro que o creep achou
+18ac1c6a Merge pull request #169 from luisfmontes/doc/handover-publicacao
+efb93aef Handover da branch reescrito para o estado final
+a4631349 Handover da branch reescrito para o estado final
+d4f0c52b Doc do conserto da portaria, relatorio de metodo, e versao 0.82.0
+e942b368 Doc do conserto da portaria, relatorio de metodo, e versao 0.82.0
+418fcee1 Handover: onde o conserto da portaria parou, e o que falta
+1cd1c252 Handover: onde o conserto da portaria parou, e o que falta
+fb89ae63 Vigias T6: "campo vazio nao e campo ok" entra no acervo da regra 12
+13dbebb9 Vigias T6: "campo vazio nao e campo ok" entra no acervo da regra 12
+b2aa0b07 Vigias T3: a catraca de encoding aprende a assinatura OEM, e o passado e backfill
+d92f27a2 Vigias T3: a catraca de encoding aprende a assinatura OEM, e o passado e backfill
+b700381e Vigias T1+T2: a raiz do backup, e uma porta unica de escrita no ERROS.md
+bcc79088 Vigias T1+T2: a raiz do backup, e uma porta unica de escrita no ERROS.md
+cc87d965 Merge pull request #138 from luisfmontes/docs/rastro-vigias-e-handover
+00686ad8 Merge pull request #138 from luisfmontes/docs/rastro-vigias-e-handover
+b733fd0e Rastro dos vigias e handover do fluxo 11 que ficaram fora do versionamento
+751b1d0f Rastro dos vigias e handover do fluxo 11 que ficaram fora do versionamento
+4a335d62 Emenda 26: handover de relatorios coberto pelo plano (trava de creep do revisar)
+b772126a Emenda 26: handover de relatorios coberto pelo plano (trava de creep do revisar)
+5070645f Remove creep da revisao: hooks/portaria.cjs pertence ao fluxo 9
+28124094 Remove creep da revisao: hooks/portaria.cjs pertence ao fluxo 9
+c08d90e5 Handover da sessao: fluxos 3 (8/10) e 9 (T2 em curso), protocolo de integracao e catracas medidas
+82185640 Handover da sessao: fluxos 3 (8/10) e 9 (T2 em curso), protocolo de integracao e catracas medidas
+9e40056b Handover advpl-graph preservado em referencias/ — frente separada, plantada como ideia
+086096a5 Handover advpl-graph preservado em referencias/ — frente separada, plantada como ideia
+d485d55c Revalidacao contra os originais rebaixados: fluxo 1 restaurado, fluxos 2-8 instalados, plano do fluxo 9
+3727df50 Revalidacao contra os originais rebaixados: fluxo 1 restaurado, fluxos 2-8 instalados, plano do fluxo 9
+
+$ cat <dados>/ideias.jsonl
+{"id":"handover-nao-deve-congelar-o-head-que-ele-mesmo-altera","titulo":"Handover não deve congelar o HEAD que ele mesmo altera"}
+{"id":"aviso-de-contexto-alto-pelo-uso-real","titulo":"Sensor de contexto alto lendo o usage do transcript, para sugerir handover/compact em fronteira de estagio"}
+
+

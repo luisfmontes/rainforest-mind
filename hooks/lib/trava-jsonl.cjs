@@ -81,6 +81,13 @@ class Trava {
         fs.writeSync(this.fd, `${process.pid} ${new Date().toISOString()}\n`);
         return this;
       } catch (e) {
+        // Windows: criar a trava enquanto a anterior ainda esta sendo apagada por
+        // outro processo da EPERM (ou EACCES). E passageiro: espera e tenta de novo
+        // ate o limite, e so entao propaga o erro original.
+        if ((e.code === "EPERM" || e.code === "EACCES") && Date.now() <= limite) {
+          sleepSync(50);
+          continue;
+        }
         if (e.code !== "EEXIST") throw e;
         let idadeSeg, conteudo;
         try {
