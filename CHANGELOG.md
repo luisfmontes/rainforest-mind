@@ -13,6 +13,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 ## 2.11.0 — 2026-11-09
 
 - **O `exigir` avisa quando o contexto da sessão está alto.** Na abertura de cada estágio, a última chamada ao modelo registrada no transcript é somada em tokens (a resposta que consulta o advisor conta só a última iteração `message`, não a soma de todas) e, a partir de 310 mil, sai uma linha em stderr sugerindo registrar o estado e considerar `/compact` ou uma sessão nova. O limiar é a chave `contexto-alto-tokens` (`0` desliga). O padrão é 70% de onde o autocompact entra na prática: em 54 sessões ele disparou entre 211 mil e 447 mil, mesmo com janela de 1 M. Só existe dentro do fluxo, e nunca muda o resultado do `exigir`.
+- **A trava de arquivo espera o `EPERM` passageiro do Windows.** Criar a trava no instante em que outro processo acaba de apagá-la dava `EPERM`, e a trava propagava o erro: o gate do teto de despachos negava um despacho legítimo como falha interna. Agora ela espera e tenta de novo até o limite, e só então propaga o erro original.
 
 ## 2.10.1 — 2026-11-09
 

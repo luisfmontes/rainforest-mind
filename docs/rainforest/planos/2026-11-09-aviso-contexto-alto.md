@@ -55,3 +55,21 @@ depende de: 2
 mutacao: n/a
   motivo: tarefa só descreve a chave e sobe a versão; o comportamento está nas tarefas 1 e 2
 pronto quando: com a chave nova em `CHAVES`, a tabela de `skills/setup/SKILL.md` traz `contexto-alto-tokens` com o padrão 310000 e o `0` que desliga, coerentes com a D3, e o CHANGELOG 2.11.0 descreve o aviso com o limiar e o local da D4 — provado por `bash scripts/testa-conferir-setup.sh` devolvendo `0 falha(s)` e por `node scripts/conferir-versao.cjs` saindo 0.
+
+### 4. Trava espera EPERM passageiro ao nascer no Windows [tipo: implementar]
+atende: D5
+arquivos: `hooks/lib/trava-jsonl.cjs`, `scripts/testa-estado-trava.cjs`, `CHANGELOG.md`
+depende de: nenhuma
+busca:
+- repo | rg "EPERM" hooks/lib scripts/lib | só contexto-sessao.cjs e trava-jsonl.cjs:57 (processoVivo), nenhum trata EPERM ao abrir arquivo
+desfecho: estender
+mutacao:
+  arquivo: `hooks/lib/trava-jsonl.cjs`
+  de: `if ((e.code === "EPERM" || e.code === "EACCES") && Date.now() <= limite) {`
+  para: `if (false) {`
+  bateria: `node scripts/testa-estado-trava.cjs`
+  fixture: `testa-estado-trava.cjs, caso "N1: EPERM passageiro ao criar a trava espera e entra"`
+prova: `node scripts/testa-estado-trava.cjs`
+pronto quando: com o `fs.openSync(<lock>, "wx")` da trava lançando `EPERM` nas duas primeiras tentativas, como o Windows faz quando outro processo acabou de apagar a trava, `comTrava` entra na terceira e devolve o resultado da função; com `EPERM` permanente e limite de 0,3 s, propaga `EPERM` entre 0,25 s e 5 s — provado por `node scripts/testa-estado-trava.cjs` devolvendo `0 falha(s)`.
+
+Emenda de 2026-11-10: o CI do PR #676 negou 1 de 12 despachos simultâneos em `hooks/testa-gate-teto-despachos.cjs` com `EPERM: operation not permitted, open '...fluxos/...'`. A falha existia antes desta mudança e o PR não fecha sem ela (D5: o aviso entra no `exigir`, que já depende da mesma trava).

@@ -532,7 +532,54 @@ async function casoM() {
   }
 }
 
+// N: no Windows, criar a trava logo depois de outro processo apagá-la dá EPERM
+// passageiro. A trava espera e entra; EPERM que não passa propaga até o limite.
+// A falha é simulada no fs.openSync da própria trava, sem depender do SO.
+function casoN() {
+  const raiz = fs.mkdtempSync(path.join(os.tmpdir(), "estado-trava-n-"));
+  const lock = path.join(raiz, ".n.lock");
+  const { comTrava } = require(path.join(REPO, "hooks", "lib", "trava-jsonl.cjs"));
+  const original = fs.openSync;
+  let falsas = 0;
+  let maximo = 2;
+  fs.openSync = function (p, flags, ...resto) {
+    if (p === lock && flags === "wx" && falsas < maximo) {
+      falsas++;
+      const e = new Error(`EPERM: operation not permitted, open '${p}'`);
+      e.code = "EPERM";
+      throw e;
+    }
+    return original.call(fs, p, flags, ...resto);
+  };
+  try {
+    let r;
+    try {
+      r = comTrava(lock, () => "dentro", 5);
+    } catch (e) {
+      r = `lancou ${e.code || e.message}`;
+    }
+    caso("N1: EPERM passageiro ao criar a trava espera e entra", r === "dentro" && falsas === 2 && !fs.existsSync(lock),
+      `r=${r} falsas=${falsas} lock=${fs.existsSync(lock)}`);
+
+    falsas = 0;
+    maximo = Infinity;
+    const t0 = Date.now();
+    try {
+      r = comTrava(lock, () => "dentro", 0.3);
+    } catch (e) {
+      r = `lancou ${e.code || e.message}`;
+    }
+    const ms = Date.now() - t0;
+    caso("N2: EPERM que nao passa propaga depois do limite", r === "lancou EPERM" && ms >= 250 && ms < 5000,
+      `r=${r} ms=${ms}`);
+  } finally {
+    fs.openSync = original;
+    apagar(raiz);
+  }
+}
+
 (async () => {
+  casoN();
   await casoA();
   await casoB();
   await casoC();
