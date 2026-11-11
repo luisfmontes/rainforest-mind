@@ -1,0 +1,28 @@
+{
+  "slug": "gate-pr-flag-curta",
+  "titulo": "#664: gate-fechar-issue reconhece -F e compara flags curtas com caixa (-B não é -b)",
+  "criado_em": "2026-11-11",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/gate-pr-flag-curta.md",
+    "em": "2026-11-11"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
