@@ -113,8 +113,12 @@
     ]
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-11-11"
+    "status": "ok",
+    "em": "2026-11-11",
+    "comando": "bash hooks/testa-gate-pr-flag-curta.sh; bash hooks/testa-gate-receita-corpo.sh; bash hooks/testa-gate-fechar-issue.sh; node scripts/conferir-versao.cjs; node scripts/conferir-fluxo.cjs mutacoes --slug gate-pr-flag-curta",
+    "saida": "ok: 37 falhou: 0 (exit 0); ok: 39 falhou: 0 (exit 0); 420 ok, 0 falha(s) (exit 0); versao 2.11.1 ok (exit 0); tarefas 1, 3, 4 vermelho, 2 pulada n/a (exit 0)",
+    "sensor_externo": "bash hooks/testa-gate-pr-flag-curta.sh",
+    "head": "44c96eeccb634ffb7bd9d01e527bd2234f18d5a9"
   },
   "fechar": {
     "status": "pendente",
