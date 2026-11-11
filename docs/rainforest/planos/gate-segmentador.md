@@ -24,6 +24,7 @@ mutacao:
   de: `      i += 2; // D1 (gate-segmentador): a palavra do here-string volta ao laco`
   para: `      i = k - 1;`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
   fixture: `testa-gate-fechar-issue.sh, casos (hs-1), (hs-2) e (hs-3)`
 prova: `node -e 'process.stdout.write(JSON.stringify({cwd:process.cwd(),tool_name:"Bash",tool_input:{command:"cat <<< \u0060gh issue close 12\u0060"}}))' | node hooks/gate-fechar-issue.cjs; test $? -eq 2`
 pronto quando: com o payload real de PreToolUse (Bash), ``cat <<< `gh issue close 12` ``, ``cat <<< "`gh issue close 12`"`` e `cat <<< $(gh issue close 12)` saem 2, e `cat <<< "texto comum"` sai 0 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 440 ok, 0 falha(s) ==` com exit 0, e pela mutação acima deixando (hs-1), (hs-2) e (hs-3) vermelhos.
@@ -70,6 +71,7 @@ mutacao:
   de: `FERRAMENTA !== "PowerShell" && aspa === null &&`
   para: `false && aspa === null &&`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
   fixture: `testa-gate-fechar-issue.sh, casos (cb-1) e (cb-2)`
 prova: `node -e 'process.stdout.write(JSON.stringify({cwd:process.cwd(),tool_name:"Bash",tool_input:{command:"echo \u005c\u0022; gh issue close 12"}}))' | node hooks/gate-fechar-issue.cjs; test $? -eq 2`
 pronto quando: com o payload real de PreToolUse, `echo \"; gh issue close 12` e ``echo \'`gh issue close 12` `` (Bash) saem 2; `echo \"oi\"` (Bash) sai 0; `echo 'a\'; gh issue close 12` (Bash) continua 2; `cd C:\x\; gh issue close 12` e `Write-Host "C:\"; gh issue close 12` (PowerShell) continuam 2 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 446 ok, 0 falha(s) ==` com exit 0, e pela mutação acima deixando (cb-1) e (cb-2) vermelhos.
@@ -109,6 +111,7 @@ mutacao:
   de: `return aspa === "$'" ||`
   para: `return false &&`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
   fixture: `testa-gate-fechar-issue.sh, casos (ad-1) e (ad-2)`
 prova: `node -e 'process.stdout.write(JSON.stringify({cwd:process.cwd(),tool_name:"Bash",tool_input:{command:"echo \u0022\u005c\u0022\u0022; gh issue close 12"}}))' | node hooks/gate-fechar-issue.cjs; test $? -eq 2`
 pronto quando: com o payload real de PreToolUse (Bash), `echo "\""; gh issue close 12`, `echo $'\''; gh issue close 12` e `echo \$'a\'; gh issue close 12` saem 2, e `echo "say \"oi\""` e ``echo $'`gh issue close 12`'`` saem 0 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 451 ok, 0 falha(s) ==` com exit 0, e pela mutação acima deixando (ad-1) e (ad-2) vermelhos.
@@ -164,6 +167,7 @@ mutacao:
   de: `if (INTERIOR_COMPLEXO.test(interno) &&`
   para: `if (false &&`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
   fixture: `testa-gate-fechar-issue.sh, casos (ps-1), (ps-3) e (ps-4)`
 prova: `node -e 'process.stdout.write(JSON.stringify({cwd:process.cwd(),tool_name:"Bash",tool_input:{command:"echo \u0022$(echo \u0027)\u0027 ; gh issue close 12)\u0022"}}))' | node hooks/gate-fechar-issue.cjs; test $? -eq 2`
 pronto quando: com o payload real de PreToolUse (Bash), `echo "$(echo ')' ; gh issue close 12)"`, `echo "$(echo ')' && gh issue close 12)"`, `echo "$(echo ')' ; gh pr merge 5)"` e `echo "$(echo "'")"; gh issue close 12` saem 2, e `echo "$(echo ')' ; echo oi)"` e o commit por heredoc com apóstrofo e `)` solto sem `gh` saem 0 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 457 ok, 0 falha(s) ==` com exit 0, pelas baterias `hooks/testa-gate-pr-flag-curta.sh`, `hooks/testa-gate-merge-auto.sh`, `hooks/testa-gate-receita-corpo.sh`, `hooks/testa-gate-staging-total.sh` e `node hooks/testa-gate-subagente-sem-gh.cjs` saindo 0 cada uma, e pela mutação acima deixando (ps-1), (ps-3) e (ps-4) vermelhos.
@@ -219,6 +223,7 @@ mutacao:
   de: `const canonico = HEREDOC_CANONICO.exec(cmd.slice(i));`
   para: `const canonico = null;`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
   fixture: `testa-gate-fechar-issue.sh, casos (hc-1) e (crase-12)`
 prova: `node -e 'process.stdout.write(JSON.stringify({cwd:process.cwd(),tool_name:"Bash",tool_input:{command:"git commit -m "$(cat <<'EOF'\nfoo " bar\nEOF\n)"; gh issue close 12"}}))' | node hooks/gate-fechar-issue.cjs; test $? -eq 2`
 pronto quando: com o payload real de PreToolUse (Bash), o commit canônico seguido de `&& gh issue comment 5 --body ok` sai 0; `git commit -m "$(cat <<'EOF'` + `foo " bar` + `EOF` + `)"; gh issue close 12` sai 2; e o (crase-12), commit canônico que cita `` `gh issue close` `` entre crases, passa de 2 para 0 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 459 ok, 0 falha(s) ==` com exit 0, pelas baterias `hooks/testa-gate-pr-flag-curta.sh`, `hooks/testa-gate-merge-auto.sh`, `hooks/testa-gate-receita-corpo.sh`, `hooks/testa-gate-staging-total.sh` e `node hooks/testa-gate-subagente-sem-gh.cjs` saindo 0 cada uma, e pela mutação acima deixando (hc-1) e (crase-12) vermelhos.
@@ -268,6 +273,7 @@ mutacao:
   de: `FERRAMENTA = dialetoDoWrapper(toksComAspas[pos].v, anterior);`
   para: `FERRAMENTA = anterior;`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
   fixture: `testa-gate-fechar-issue.sh, caso (wd-1)`
 prova: `node -e 'process.stdout.write(JSON.stringify({cwd:process.cwd(),tool_name:"PowerShell",tool_input:{command:"bash -c \u0027echo \u005c\u0022; gh issue close 12\u0027"}}))' | node hooks/gate-fechar-issue.cjs; test $? -eq 2`
 pronto quando: com o payload real de PreToolUse, `bash -c 'echo \"; gh issue close 12'` pela ferramenta PowerShell sai 2 e `bash -c 'echo \"oi\"'` pela PowerShell sai 0; `pwsh -Command 'Write-Host "C:\"; gh issue close 12'` pelo Bash continua 2 e `pwsh -Command 'Write-Host "oi"'` pelo Bash continua 0 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 463 ok, 0 falha(s) ==` com exit 0, pelas baterias `hooks/testa-gate-pr-flag-curta.sh`, `hooks/testa-gate-merge-auto.sh`, `hooks/testa-gate-receita-corpo.sh`, `hooks/testa-gate-staging-total.sh` e `node hooks/testa-gate-subagente-sem-gh.cjs` saindo 0 cada uma, e pela mutação acima deixando (wd-1) vermelho.
