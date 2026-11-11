@@ -256,6 +256,15 @@ function segmentosParaGate(cmd) {
       continue;
     }
 
+    // D2 (gate-segmentador, Issue #689): no Bash, contrabarra fora de aspas
+    // escapa o caractere seguinte (`echo \"; gh issue close 12` executa o gh).
+    // No PowerShell a contrabarra e literal.
+    if (FERRAMENTA !== "PowerShell" && aspa === null && c === "\\" && i + 1 < cmd.length) {
+      atual += c + cmd[i + 1];
+      i += 1;
+      continue;
+    }
+
     if (aspa) {
       // P4 (rodada 8, lote 3, 2026-09-04): `$(...)` DENTRO de aspas DUPLAS
       // e executado pelo bash mesmo citado — `echo "$(gh issue close 42)"`

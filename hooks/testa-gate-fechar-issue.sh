@@ -1012,6 +1012,78 @@ COMANDO_HS_4=$'cat <<< "texto comum"'
 EXIT_HS_4=$?
 [ $EXIT_HS_4 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_HS_4)"
 
+# Caso (cb-1): contrabarra fora de aspas escapa a aspa e esconde gh issue close → exit 2 (D2 de gate-segmentador)
+echo
+echo "== (cb-1) Bash: contrabarra fora de aspas escapa aspa e esconde gh issue close → exit 2 =="
+COMANDO_CB_1=$'echo \\"; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CB_1")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cb-1"
+EXIT_CB_1=$?
+[ $EXIT_CB_1 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CB_1)"
+
+# Caso (cb-2): contrabarra fora de aspas escapa a aspa simples antes de crase de gh de escrita → exit 2 (D2 de gate-segmentador)
+echo
+echo "== (cb-2) Bash: contrabarra fora de aspas escapa aspa simples antes de crase de gh de escrita → exit 2 =="
+COMANDO_CB_2=$'echo \\\'`gh issue close 12`'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CB_2")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cb-2"
+EXIT_CB_2=$?
+[ $EXIT_CB_2 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CB_2)"
+
+# Caso (cb-3): contrabarra fora de aspas em texto comum com aspas escapadas → exit 0 (D2 de gate-segmentador)
+echo
+echo "== (cb-3) Bash: contrabarra fora de aspas em texto comum com aspas escapadas → exit 0 =="
+COMANDO_CB_3=$'echo \\"oi\\"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CB_3")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cb-3"
+EXIT_CB_3=$?
+[ $EXIT_CB_3 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CB_3)"
+
+# Caso (cb-4): contrabarra dentro de aspa simples nao escapa, mas a aspa escapada fora dela esconde gh → exit 2 (D2 de gate-segmentador)
+echo
+echo "== (cb-4) Bash: aspa simples com contrabarra final nao escapa, gh issue close depois → exit 2 =="
+COMANDO_CB_4=$'echo \'a\\\'; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CB_4")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cb-4"
+EXIT_CB_4=$?
+[ $EXIT_CB_4 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CB_4)"
+
+# Caso (cb-5): PowerShell, contrabarra fora de aspas e literal (cd C:\x\ ; gh issue close) → exit 2 (D2 de gate-segmentador)
+echo
+echo "== (cb-5) PowerShell: contrabarra fora de aspas e literal, gh issue close depois → exit 2 =="
+COMANDO_CB_5=$'cd C:\\x\\; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"PowerShell",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CB_5")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cb-5"
+EXIT_CB_5=$?
+[ $EXIT_CB_5 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CB_5)"
+
+# Caso (cb-6): PowerShell, contrabarra antes de aspa dupla e literal (Write-Host "C:\"; gh issue close) → exit 2 (D2 de gate-segmentador)
+echo
+echo "== (cb-6) PowerShell: contrabarra antes de aspa dupla e literal, gh issue close depois → exit 2 =="
+COMANDO_CB_6=$'Write-Host "C:\\"; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"PowerShell",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CB_6")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cb-6"
+EXIT_CB_6=$?
+[ $EXIT_CB_6 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CB_6)"
+
 # R2 (rodada 9, lote 3, 2026-09-04): `Invoke-Expression`/`iex` (PowerShell)
 # nao eram reconhecidos como wrapper de string sem flag (igual `eval`) — o
 # conteudo era um token citado so, a busca por sequencia nao casava dentro
