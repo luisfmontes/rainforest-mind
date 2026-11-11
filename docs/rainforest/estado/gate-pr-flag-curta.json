@@ -71,25 +71,25 @@
     "saida": "bateria VERMELHA com (c15); testa-gate-pr-flag-curta ok: 40 falhou: 0; testa-gate-fechar-issue 420 ok, 0 falha(s); testa-gate-receita-corpo ok: 39"
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "0ef8adc131051e86d27dd8c0a69537d17e52b137",
+      "head": "8da7ec7a1eee9b1be880c5a8135ee20ded993b82",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a41ee5e85b0a89571",
+        "agente_id": "a91cb081f60b94204",
         "veredito": "ok",
         "em": "2026-11-11",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a41ee5e85b0a89571.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a91cb081f60b94204.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-11-11",
     "achados": 0,
     "base": "7882b947f226a1dec732462a133e30cb349dec0d",
-    "head": "0ef8adc131051e86d27dd8c0a69537d17e52b137",
+    "head": "8da7ec7a1eee9b1be880c5a8135ee20ded993b82",
     "voltas": [
       {
         "volta": 1,
@@ -114,16 +114,28 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-acdee200d3b6bdf7c.jsonl"
           }
         ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a41ee5e85b0a89571",
+            "veredito": "ok",
+            "em": "2026-11-11",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a41ee5e85b0a89571.jsonl"
+          }
+        ]
       }
     ]
   },
   "verificar": {
-    "status": "pendente",
+    "status": "ok",
     "em": "2026-11-11",
     "comando": "bash hooks/testa-gate-pr-flag-curta.sh; bash hooks/testa-gate-receita-corpo.sh; bash hooks/testa-gate-fechar-issue.sh; node scripts/conferir-versao.cjs; node scripts/conferir-fluxo.cjs mutacoes --slug gate-pr-flag-curta",
-    "saida": "ok: 37 falhou: 0 (exit 0); ok: 39 falhou: 0 (exit 0); 420 ok, 0 falha(s) (exit 0); versao 2.11.1 ok (exit 0); tarefas 1, 3, 4 vermelho, 2 pulada n/a (exit 0)",
+    "saida": "ok: 40 falhou: 0 (exit 0); ok: 39 falhou: 0 (exit 0); 420 ok, 0 falha(s) (exit 0, rodada no HEAD 8da7ec7); versao 2.11.1 ok; tarefas 1, 3, 4, 5 vermelho, 2 pulada n/a",
     "sensor_externo": "bash hooks/testa-gate-pr-flag-curta.sh",
-    "head": "44c96eeccb634ffb7bd9d01e527bd2234f18d5a9"
+    "head": "8da7ec7a1eee9b1be880c5a8135ee20ded993b82"
   },
   "fechar": {
     "status": "pendente",
