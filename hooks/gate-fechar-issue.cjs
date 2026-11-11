@@ -558,7 +558,7 @@ const FLAGS_CORPO_ARQUIVO = new Set(["--body-file", "-F"]);
 const FLAGS_COM_VALOR = new Set([
   "--title", "-t", "--base", "-B", "--head", "-H", "--repo", "-R",
   "--assignee", "-a", "--label", "-l", "--milestone", "-m", "--project", "-p",
-  "--reviewer", "-r", "--template", "-T", "--recover",
+  "--reviewer", "-r", "--template", "-T", "--recover", "--attach", "--blocked-by", "--blocking", "--parent", "--type",
   "--add-assignee", "--add-label", "--add-project", "--add-reviewer",
   "--remove-assignee", "--remove-label", "--remove-project", "--remove-reviewer",
 ]);

@@ -152,6 +152,29 @@ Forma prescrita:
 - O docblock de `extrairCorpoDoPR` volta a ficar colado na função (as constantes sobem para antes dele) e passa a dizer: lê `-b`/`--body` e `-F`/`--body-file` com valor separado, `=` ou colado, pula o valor das `FLAGS_COM_VALOR`, junta todas as ocorrências legíveis, e devolve a primeira ilegível com `conteudoLegivel`.
 - Bateria: cabeçalho cita D1, D2, D3 e D5; a seção `(c1..c11)` vira `(c1..c14)`; casos `(c14)` e `(v7)` com os dois comandos acima.
 
+### 5. Flags de valor que o manual tem e o conjunto não tinha (emenda pós-verificar) [tipo: implementar]
+atende: D5
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-pr-flag-curta.sh`
+depende de: 4
+busca:
+- repo | rg -n "FLAGS_COM_VALOR" hooks/gate-fechar-issue.cjs | o conjunto da tarefa 3; estender
+- doc | https://cli.github.com/manual/gh_pr_create | --attach leva valor
+- doc | https://cli.github.com/manual/gh_issue_create | --attach, --blocked-by, --blocking, --parent e --type levam valor
+- livro | pulado: correção do próprio gate
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `"--recover", "--attach",`
+  para: `"--recover",`
+  bateria: `bash hooks/testa-gate-pr-flag-curta.sh`
+  fixture: `testa-gate-pr-flag-curta.sh, caso "(c15) create --fill com --attach -bar"`
+prova: `bash hooks/testa-gate-pr-flag-curta.sh`
+pronto quando: com o mesmo payload real e `gh` falso, `gh pr create --fill --attach "-bar"` sai 2 com `editor interativo` (no HEAD da tarefa 4 sai 0) e `gh issue create --title t --type "-bar" -b ok` sai 0 — provado por `bash hooks/testa-gate-pr-flag-curta.sh` saindo 0, e as duas baterias antigas saindo 0 sem edição
+
+Forma prescrita:
+- Na linha `"--reviewer", "-r", "--template", "-T", "--recover",` de `FLAGS_COM_VALOR`, `"--recover",` vira `"--recover", "--attach", "--blocked-by", "--blocking", "--parent", "--type",`.
+- Bateria: `(c15)` com o primeiro comando (exit 2, `editor interativo`) e `(v8)` com o segundo (exit 0); seções `(c1..c15)` e `(v1..v8)`.
+
 ### 2. Versão PATCH, README e CHANGELOG [tipo: docs]
 atende: D4
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`

@@ -43,7 +43,7 @@ sai() { # <nome> <exit esperado>
   else test_fail "$1: exit esperado $2, veio $E -- $(head -4 "$SBP/err" | tr '\n' ' ')"; fi
 }
 
-echo "== (c1..c14) recusas: o corpo com palavra de fechamento é achado =="
+echo "== (c1..c15) recusas: o corpo com palavra de fechamento é achado =="
 
 roda "gh pr create -B main --title t --body-file $SBP_WIN/c.md"
 sai "(c1) create -B main antes do --body-file" 2
@@ -101,7 +101,11 @@ roda "gh issue comment 1 -b \"Fecha #12\" -F $SBP_WIN/nao-existe.md"
 sai "(c14) issue comment com palavra falsa e -F inexistente" 2
 tem "(c14) issue comment com palavra falsa e -F inexistente" "Closes #12"
 
-echo "== (v1..v7) vizinhos legítimos passam =="
+roda 'gh pr create --fill --attach "-bar"'
+sai "(c15) create --fill com --attach -bar" 2
+tem "(c15) create --fill com --attach -bar" "editor interativo"
+
+echo "== (v1..v8) vizinhos legítimos passam =="
 
 roda "gh pr create --title t -F $SBP_WIN/n.md"
 sai "(v1) create -F sem fechamento" 0
@@ -123,6 +127,9 @@ sai "(v6) corpo direto começando com -F" 0
 
 roda "gh issue comment 1 -b \"Segue #12\" -F $SBP_WIN/nao-existe.md"
 sai "(v7) issue comment benigno com -F inexistente" 0
+
+roda 'gh issue create --title t --type "-bar" -b ok'
+sai "(v8) issue create com --type -bar" 0
 
 echo "== (f1) -f não é corpo =="
 
