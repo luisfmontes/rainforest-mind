@@ -1240,6 +1240,54 @@ COMANDO_HC_2=$'git commit -m "$(cat <<\'EOF\'\nfoo " bar\nEOF\n)"; gh issue clos
 EXIT_HC_2=$?
 [ $EXIT_HC_2 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HC_2)"
 
+# Caso (wd-1): bash -c pela PowerShell, aspa escapada dentro do wrapper → exit 2 (D7 de gate-segmentador)
+echo
+echo "== (wd-1) bash -c pela PowerShell com aspa escapada dentro do wrapper → exit 2 =="
+COMANDO_WD_1=$'bash -c \'echo \\"; gh issue close 12\''
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"PowerShell",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_WD_1")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-wd-1"
+EXIT_WD_1=$?
+[ $EXIT_WD_1 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_WD_1)"
+
+# Caso (wd-2): bash -c pela PowerShell com aspa escapada e texto comum → exit 0 (D7 de gate-segmentador)
+echo
+echo "== (wd-2) bash -c pela PowerShell com aspa escapada e texto comum → exit 0 =="
+COMANDO_WD_2=$'bash -c \'echo \\"oi\\"\''
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"PowerShell",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_WD_2")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-wd-2"
+EXIT_WD_2=$?
+[ $EXIT_WD_2 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_WD_2)"
+
+# Caso (wd-3): pwsh -Command pelo Bash com contrabarra literal dentro do wrapper → exit 2 (D7 de gate-segmentador)
+echo
+echo "== (wd-3) pwsh -Command pelo Bash com contrabarra literal dentro do wrapper → exit 2 =="
+COMANDO_WD_3=$'pwsh -Command \'Write-Host "C:\\"; gh issue close 12\''
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_WD_3")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-wd-3"
+EXIT_WD_3=$?
+[ $EXIT_WD_3 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_WD_3)"
+
+# Caso (wd-4): pwsh -Command pelo Bash com texto comum → exit 0 (D7 de gate-segmentador)
+echo
+echo "== (wd-4) pwsh -Command pelo Bash com texto comum → exit 0 =="
+COMANDO_WD_4=$'pwsh -Command \'Write-Host "oi"\''
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_WD_4")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-wd-4"
+EXIT_WD_4=$?
+[ $EXIT_WD_4 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_WD_4)"
+
 # R2 (rodada 9, lote 3, 2026-09-04): `Invoke-Expression`/`iex` (PowerShell)
 # nao eram reconhecidos como wrapper de string sem flag (igual `eval`) — o
 # conteudo era um token citado so, a busca por sequencia nao casava dentro

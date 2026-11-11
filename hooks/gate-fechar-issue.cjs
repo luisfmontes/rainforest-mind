@@ -1447,6 +1447,16 @@ let LENDO_SOURCE = 0;
 let CWD_DO_EVENTO = "";
 // Bash ou PowerShell: o PowerShell 5.1 monta o argv do .exe a seu modo.
 let FERRAMENTA = "";
+// D7 (gate-segmentador, Issue #689): o texto de dentro de um wrapper segue as
+// regras de aspas e escape do wrapper, nao as da ferramenta que o chamou.
+const WRAPPERS_BASH = new Set(["bash", "sh", "zsh", "ksh", "dash", "eval"]);
+const WRAPPERS_POWERSHELL = new Set(["pwsh", "powershell", "cmd", "invoke-expression", "iex"]);
+function dialetoDoWrapper(token, atual) {
+  const exe = normalizarExecutavel(token);
+  if (WRAPPERS_BASH.has(exe)) return "Bash";
+  if (WRAPPERS_POWERSHELL.has(exe)) return "PowerShell";
+  return atual;
+}
 const RE_MUDA_DIRETORIO = /(?:^|[\s;&|({])(?:cd|pushd)(?=\s|$)/;
 
 // Busca TEXTUAL de `gh [-R x|--repo x] issue close|create|comment` ou `gh ... pr
@@ -1622,8 +1632,14 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
     );
   }
   if (interno !== null) {
-    for (const sub of segmentosParaGate(interno)) {
-      processarSegmento(sub, mapaCwd, contadores, ferramenta);
+    const anterior = FERRAMENTA;
+    FERRAMENTA = dialetoDoWrapper(toksComAspas[pos].v, anterior);
+    try {
+      for (const sub of segmentosParaGate(interno)) {
+        processarSegmento(sub, mapaCwd, contadores, ferramenta);
+      }
+    } finally {
+      FERRAMENTA = anterior;
     }
     return;
   }
