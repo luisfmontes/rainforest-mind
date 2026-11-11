@@ -1,0 +1,54 @@
+# Plano: fechar-issue aceita "Pronto quando" e o gate deixa passar a ajuda do gh
+
+Design: docs/rainforest/design/fechar-issue-pronto-e-ajuda.md
+
+## O que não pode quebrar
+- `gh pr create` sem corpo, ou com corpo citando `Closes #N` sem evidência, continua saindo 2 no gate.
+- `fechar-issue.cjs` continua recusando Issue sem critério nenhum e as variantes (j) e (k) do cabeçalho canônico.
+- As baterias `hooks/testa-gate-pr-flag-curta.sh` (40 ok), `hooks/testa-gate-fechar-issue.sh` e `scripts/testa-fechar-issue.sh` continuam verdes.
+
+## Tarefas
+
+### 1. fechar-issue aceita as formas de "Pronto quando" [tipo: implementar]
+atende: D1, D2
+arquivos: `scripts/fechar-issue.cjs`, `scripts/testa-fechar-issue.sh`
+depende de: nenhuma
+busca:
+- repo | grep -n "temCriterio" scripts/fechar-issue.cjs | uma regex só, linha 163, só o cabeçalho canônico
+desfecho: estender
+mutacao:
+  arquivo: `scripts/fechar-issue.cjs`
+  de: `|| RE_PRONTO_QUANDO.test(issueBody)`
+  para: `|| false`
+  bateria: `bash scripts/testa-fechar-issue.sh`
+  fixture: `testa-fechar-issue.sh, casos novos (l), (m) e (n)`
+prova: `bash scripts/testa-fechar-issue.sh`
+pronto quando: com o corpo de Issue que o `gh` falso devolve, `node scripts/fechar-issue.cjs <n> --comando x --saida y` sai 0 e comenta para cada uma das três formas — `## Pronto quando` (caso l), `**Pronto quando:** ...` (caso m) e `Pronto quando: ...` no início da linha (caso n) —, sai 2 para corpo sem critério (caso b, que já existe) e continua saindo 2 nos casos (j) e (k); a recusa cita "Pronto quando" — provado por `bash scripts/testa-fechar-issue.sh` terminando sem `FALHA` e com exit 0, e pela mutação acima deixando a bateria vermelha
+
+Forma prescrita (código a nascer): duas constantes no topo, `RE_CRITERIO` (a regex de hoje, intacta) e `RE_PRONTO_QUANDO = /^(?:#{2,3}\s+Pronto quando\b|(?:[-*]\s+)?\*\*Pronto quando:\*\*|Pronto quando:)/m`, e a linha `const temCriterio = RE_CRITERIO.test(issueBody) || RE_PRONTO_QUANDO.test(issueBody);`. A mensagem de recusa vira `RECUSADO: a Issue #<n> nao tem criterio de pronto ("## Critério de pronto (falsificável)" ou "Pronto quando:")`. Os casos novos seguem a forma do `gh` falso da bateria (variável que escolhe o corpo, linhas 40-56). Nenhum caso afirma sobre o texto do fonte.
+
+### 2. O gate deixa passar a ajuda do gh [tipo: implementar]
+atende: D3, D4
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-pr-flag-curta.sh`
+depende de: nenhuma
+busca:
+- repo | grep -n "AJUDA_PR_MERGE" hooks/gate-fechar-issue.cjs | só o `gh pr merge` trata ajuda (linha 761, uso 943)
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `if (ehAjudaDoGh(subcomandos)) return;`
+  para: `if (false) return;`
+  bateria: `bash hooks/testa-gate-pr-flag-curta.sh`
+  fixture: `testa-gate-pr-flag-curta.sh, casos h1-h3 (gh pr create --help, -h, gh help pr create)`
+prova: `bash hooks/testa-gate-pr-flag-curta.sh`
+pronto quando: com o payload real de PreToolUse (o `roda` da bateria), `gh pr create --help`, `gh pr create -h`, `gh pr edit --help`, `gh issue create --help`, `gh issue comment --help` e `gh help pr create` saem 0, e continuam saindo 2: `gh pr create --title t`, `gh pr create --title t --help` (ajuda misturada, D4), `gh pr create --help --body "Closes #12"` e `gh pr create -dh` — provado por `bash hooks/testa-gate-pr-flag-curta.sh` terminando em `ok: 50   falhou: 0` (40 de hoje + 10 novos) com exit 0, e pela mutação acima deixando a bateria vermelha
+
+Forma prescrita (código a nascer): `const AJUDA_GH = new Set(["--help", "-h"]);` junto ao `AJUDA_PR_MERGE`, e a função de uma expressão só, sem ramo e sem print: `function ehAjudaDoGh(subcomandos) { return subcomandos[0] === "help" || (subcomandos.length === 3 && AJUDA_GH.has(subcomandos[2])); }`. A chamada `if (ehAjudaDoGh(subcomandos)) return;` entra no `verificarComandoGh` logo depois do bloco que recusa subcomando por variável e antes do bloco `gh api`. Medido em 2026-11-11 antes da mudança: barram (exit 2) `gh pr create --help`, `gh pr create -h`, `gh help pr create`; já passam (exit 0) `gh pr edit --help`, `gh issue create --help`, `gh issue comment --help`.
+
+### 3. Versão PATCH e CHANGELOG [tipo: docs]
+atende: D1, D3
+arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`
+depende de: 1, 2
+mutacao: n/a
+  motivo: só versão e texto; comportamento medido pelas tarefas 1 e 2
+pronto quando: com a `main` trazida para a branch (`git fetch origin && git merge origin/main`), `node scripts/conferir-versao.cjs` sai 0 e os quatro lugares (dois `plugin.json`, selo do README com `vers%C3%A3o-X-` e `alt="versão X"`, topo do CHANGELOG `## X — 2026-11-11`) dizem a versão seguinte à da `main` na casa PATCH; o CHANGELOG descreve pelo comportamento as formas de "Pronto quando" aceitas e a ajuda do `gh` que passa — provado por `node scripts/conferir-versao.cjs; grep -n '"version"' .claude-plugin/plugin.json .codex-plugin/plugin.json; grep -n 'alt="versão' README.md; grep -n -m2 -A3 '^## ' CHANGELOG.md`
