@@ -1084,6 +1084,66 @@ COMANDO_CB_6=$'Write-Host "C:\\"; gh issue close 12'
 EXIT_CB_6=$?
 [ $EXIT_CB_6 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CB_6)"
 
+# Caso (ad-1): aspa dupla com aspa escapada dentro e gh issue close depois → exit 2 (D2 de gate-segmentador)
+echo
+echo "== (ad-1) Bash: aspa dupla com aspa escapada dentro e gh issue close depois → exit 2 =="
+COMANDO_AD_1=$'echo "\\""; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_AD_1")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ad-1"
+EXIT_AD_1=$?
+[ $EXIT_AD_1 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AD_1)"
+
+# Caso (ad-2): ANSI-C com aspa escapada e gh issue close depois → exit 2 (D2 de gate-segmentador)
+echo
+echo "== (ad-2) Bash: ANSI-C com aspa escapada e gh issue close depois → exit 2 =="
+COMANDO_AD_2=$'echo $\'\\\'\'; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_AD_2")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ad-2"
+EXIT_AD_2=$?
+[ $EXIT_AD_2 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AD_2)"
+
+# Caso (ad-3): aspas duplas com aspas escapadas e texto comum → exit 0 (D2 de gate-segmentador)
+echo
+echo "== (ad-3) Bash: aspas duplas com aspas escapadas e texto comum → exit 0 =="
+COMANDO_AD_3=$'echo "say \\"oi\\""'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_AD_3")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ad-3"
+EXIT_AD_3=$?
+[ $EXIT_AD_3 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_AD_3)"
+
+# Caso (ad-4): ANSI-C com crase de gh de escrita, crase literal → exit 0 (D2 de gate-segmentador)
+echo
+echo "== (ad-4) Bash: ANSI-C com crase de gh de escrita, crase literal → exit 0 =="
+COMANDO_AD_4=$'echo $\'`gh issue close 12`\''
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_AD_4")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ad-4"
+EXIT_AD_4=$?
+[ $EXIT_AD_4 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_AD_4)"
+
+# Caso (ad-5): ANSI-C com cifrao escapado e aspa escapada antes de gh issue close → exit 2 (D2 de gate-segmentador)
+echo
+echo "== (ad-5) Bash: ANSI-C com cifrao escapado e aspa escapada antes de gh issue close → exit 2 =="
+COMANDO_AD_5=$'echo \\$\'a\\\'; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_AD_5")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ad-5"
+EXIT_AD_5=$?
+[ $EXIT_AD_5 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AD_5)"
+
 # R2 (rodada 9, lote 3, 2026-09-04): `Invoke-Expression`/`iex` (PowerShell)
 # nao eram reconhecidos como wrapper de string sem flag (igual `eval`) — o
 # conteudo era um token citado so, a busca por sequencia nao casava dentro

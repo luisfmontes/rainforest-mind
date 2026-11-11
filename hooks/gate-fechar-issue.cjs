@@ -201,6 +201,12 @@ function escapadaPorContrabarra(s, i) {
 // Acima do teto o gate barra (falha fechada).
 const TETO_SEGMENTACAO = 2000;
 let chamadasSegmentacao = 0;
+// D2 (gate-segmentador, Issue #689): dentro de aspas duplas a contrabarra so
+// escapa `"`, `\`, `$` e crase; em aspas ANSI-C ($'...') escapa qualquer um.
+const ESCAPAVEIS_EM_ASPAS_DUPLAS = new Set(['"', "\\", "$", "`"]);
+function escapaDentroDaAspa(aspa, proximo) {
+  return aspa === "$'" || (aspa === '"' && ESCAPAVEIS_EM_ASPAS_DUPLAS.has(proximo));
+}
 
 function segmentosParaGate(cmd) {
   chamadasSegmentacao += 1;
@@ -239,7 +245,7 @@ function segmentosParaGate(cmd) {
     // conferida tambem dentro de $(...) entre aspas, alem da recursao do P4
     // (D7): pular a regiao do $(...) dependia de achar o fim dele contando
     // parenteses sem entender aspas nem heredoc, e isso abria bypass.
-    if (c === "`" && aspa !== "'" && !escapadaPorContrabarra(cmd, i)) {
+    if (c === "`" && aspa !== "'" && aspa !== "$'" && !escapadaPorContrabarra(cmd, i)) {
       let j = i + 1;
       let internoCrase = "";
       while (j < cmd.length && !(cmd[j] === "`" && !escapadaPorContrabarra(cmd, j))) {
@@ -266,6 +272,11 @@ function segmentosParaGate(cmd) {
     }
 
     if (aspa) {
+      if (FERRAMENTA !== "PowerShell" && c === "\\" && i + 1 < cmd.length && escapaDentroDaAspa(aspa, cmd[i + 1])) {
+        atual += c + cmd[i + 1];
+        i += 1;
+        continue;
+      }
       // P4 (rodada 8, lote 3, 2026-09-04): `$(...)` DENTRO de aspas DUPLAS
       // e executado pelo bash mesmo citado — `echo "$(gh issue close 42)"`
       // fecha a Issue de verdade. Ate aqui `segmentosParaGate` so descia em
@@ -300,12 +311,12 @@ function segmentosParaGate(cmd) {
           }
         }
       }
-      if (c === aspa) aspa = null;
+      if (c === aspa || (aspa === "$'" && c === "'")) aspa = null;
       atual += c;
       continue;
     }
     if (c === '"' || c === "'") {
-      aspa = c;
+      aspa = c === "'" && FERRAMENTA !== "PowerShell" && cmd[i - 1] === "$" && !escapadaPorContrabarra(cmd, i - 1) ? "$'" : c;
       atual += c;
       continue;
     }
