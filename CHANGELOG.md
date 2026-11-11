@@ -10,6 +10,13 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.12.3 — 2026-11-11
+
+- **O gate de fechamento de Issue não se deixa esconder por here-string, contrabarra nem `"$(...)"`.** Estes casos passavam com `gh issue close` ou `gh pr merge` executado pelo bash e o gate em silêncio (Issue #689): `` cat <<< `gh issue close 12` `` e `cat <<< $(gh issue close 12)`; contrabarra antes de aspa no Bash, como `echo \"; gh issue close 12` e `echo "\""; gh issue close 12`; e `"$(...)"` com aspa, crase, comentário, heredoc ou `case` dentro, como `echo "$(echo ')' ; gh issue close 12)"`. Agora todos barram. Texto comum com essas formas continua passando.
+- **Falso positivo aceito.** Um `"$(...)"` com interior complexo que não está na forma canônica do item seguinte, seguido de `gh` de escrita em qualquer ponto do comando, é barrado. Contorno: rode o `gh` em comando separado e passe o corpo por `--body-file` ou `git commit -F <arquivo>`.
+- **Wrapper segue as próprias regras de aspas.** O texto de dentro de `bash -c` (e `eval`, `sh`, `zsh`) é lido com as regras do Bash mesmo quando o comando veio pela ferramenta PowerShell, e o de `pwsh -Command` (e `cmd`, `iex`) com as do PowerShell mesmo quando veio pelo Bash.
+- **Commit por heredoc canônico volta a passar.** `git commit -m "$(cat <<'EOF' ... EOF)"` que cita `gh issue close` entre crases no corpo sai 0 de novo, porque o bash não executa o corpo de heredoc citado. Se o mesmo commit vier seguido de `gh` de escrita, o `gh` é checado.
+
 ## 2.12.2 — 2026-11-11
 
 - **O gate de fechamento de Issue confere o comando dentro de crases.** `` echo "`gh issue close 12`" `` e `` echo `gh pr merge 5 --squash` `` passavam sem checagem de evidência, embora o bash execute o que está entre crases. Agora o comando de dentro é conferido como já era dentro de `$(...)`, com ou sem aspas duplas; uma aspa dentro da crase também não esconde mais o que vem depois dela. Crase entre aspas simples e a crase de escape do PowerShell continuam passando. Mensagem de commit escrita por heredoc que cite um `gh issue close` ou `gh pr merge` entre crases passa a ser barrada, como já acontecia com `$(...)`; use `git commit -F <arquivo>`.
