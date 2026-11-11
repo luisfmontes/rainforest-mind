@@ -82,33 +82,52 @@
     ]
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "3be79580c912dd129c1873c9b078cbb1e6ad5d5d",
+      "head": "be00a03ee5bed4438f9fcda5f8c81b6ba14df15b",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a89e589074d278feb",
+        "agente_id": "a016ff1f592d99a88",
         "veredito": "ok",
         "em": "2026-11-11",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a89e589074d278feb.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a016ff1f592d99a88.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-11-11",
-    "achados": 2,
+    "achados": 0,
     "base": "55ce264c81fd196648fbd38f4f86adc10bc3be19",
-    "head": "3be79580c912dd129c1873c9b078cbb1e6ad5d5d"
+    "head": "be00a03ee5bed4438f9fcda5f8c81b6ba14df15b",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a89e589074d278feb",
+            "veredito": "ok",
+            "em": "2026-11-11",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a89e589074d278feb.jsonl"
+          }
+        ]
+      }
+    ]
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-11-11"
+    "status": "ok",
+    "em": "2026-11-11",
+    "comando": "node hooks/gate-fechar-issue.cjs (payload gh help pr create); bash scripts/testa-fechar-issue.sh; bash hooks/testa-gate-pr-flag-curta.sh; bash hooks/testa-gate-fechar-issue.sh; node scripts/conferir-versao.cjs",
+    "saida": "gh help exit=0 / 54 ok, 0 falha(s) / ok: 51 falhou: 0 / 420 ok, 0 falha(s) / ok versao 2.12.1 (origin/main: 2.12.0)",
+    "head": "be00a03ee5bed4438f9fcda5f8c81b6ba14df15b"
   },
   "fechar": {
-    "status": "pendente",
-    "em": "2026-11-11"
+    "status": "ok",
+    "em": "2026-11-11",
+    "acao": "merge",
+    "pr": 687
   },
   "reaberturas": [
     {
