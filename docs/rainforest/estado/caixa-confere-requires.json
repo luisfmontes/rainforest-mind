@@ -18,7 +18,7 @@
     "em": "2026-11-11"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-11",
     "tarefas_ok": 4,
     "tarefas": 4,
@@ -73,7 +73,7 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "ok",
+    "status": "pendente",
     "snapshot": {
       "head": "340b41c9aee77c64017cef0b95268e1af5b60523",
       "caminhos_sujos": [
@@ -110,13 +110,21 @@
     "head": "340b41c9aee77c64017cef0b95268e1af5b60523"
   },
   "verificar": {
-    "status": "ok",
+    "status": "pendente",
     "comando": "node scripts/conferir-caixas.cjs --base $(git merge-base HEAD origin/main); bash scripts/testa-conferir-caixas.sh; node scripts/conferir-caixas.cjs; bash scripts/testa-varrer-baterias.sh; node scripts/conferir-versao.cjs",
     "saida": "conferir-caixas: 224 bateria(s), 0 achado(s) novo(s), 128 já existente(s) na base (exit 0) / ok: 29 falhou: 0 / 224 bateria(s), 128 achado(s) / TODOS OS TESTES PASSARAM / ok versao 2.12.0 (origin/main: 2.11.1)",
     "em": "2026-11-11",
     "head": "340b41c9aee77c64017cef0b95268e1af5b60523"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-11-11"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-11-11",
+      "de": "verificar",
+      "motivo": "CI do PR #684 vermelho: testa-conferir-categoria (66 pecas fixas) e testa-git-por-nome (conferir-caixas chama git por nome)"
+    }
+  ]
 }

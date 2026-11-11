@@ -29,6 +29,9 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
+
+const GIT = caminhoExecutavel('git');
 
 const USO = 'uso: node scripts/conferir-caixas.cjs [--raiz <dir>] [--base <ref>]';
 
@@ -71,12 +74,12 @@ function lerArgs(argv) {
 // D6: extrai hooks/ e scripts/ do commit <ref> para uma pasta temporaria.
 // Qualquer falha de git ou tar sai com exit 2 (nunca vira "0 achados").
 function extrairBase(raiz, ref) {
-  const rev = spawnSync('git', ['-C', raiz, 'rev-parse', '--verify', `${ref}^{commit}`], { encoding: 'utf8' });
+  const rev = spawnSync(GIT, ['-C', raiz, 'rev-parse', '--verify', `${ref}^{commit}`], { encoding: 'utf8' });
   if (rev.error || rev.status !== 0) {
     console.error(`conferir-caixas: base '${ref}' não existe`);
     process.exit(2);
   }
-  const arc = spawnSync('git', ['-C', raiz, 'archive', '--format=tar', ref, 'hooks', 'scripts'], {
+  const arc = spawnSync(GIT, ['-C', raiz, 'archive', '--format=tar', ref, 'hooks', 'scripts'], {
     maxBuffer: 512 * 1024 * 1024,
   });
   if (arc.error || arc.status !== 0) {

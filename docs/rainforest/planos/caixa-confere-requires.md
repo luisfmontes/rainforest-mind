@@ -126,3 +126,19 @@ mutacao:
   fixture: `testa-conferir-caixas.sh, casos (9b) e (7b)`
 prova: `bash scripts/testa-conferir-caixas.sh`
 pronto quando: com o repositório real, `node scripts/conferir-caixas.cjs` não acusa mais `hooks/lib/*` nem `scripts/lib/*` nas 4 baterias que copiam a pasta por `cp -r "$SRC/<x>/lib/." ...` e o total cai de 144 para 128; a bateria tem os casos (9b) `cp -r "$SRC/hooks/lib/."` → 0 achado e (7b) `cp -r "$SRC/scripts/."` → pulada; o uso cita `[--base <ref>]`; o CHANGELOG diz 128 — provado por `node scripts/conferir-caixas.cjs | tail -1` devolvendo `224 bateria(s), 128 achado(s)` e `bash scripts/testa-conferir-caixas.sh` terminando em `ok: 29   falhou: 0`
+
+### 5. CI do PR #684: git por caminho e contagem de peças [tipo: implementar]
+atende: D4
+arquivos: `scripts/conferir-caixas.cjs`, `scripts/testa-conferir-categoria.sh`
+depende de: 4
+busca:
+- repo | grep -n "caminhoExecutavel('git')" scripts/integrar-tarefa.cjs | convenção do repo: `const GIT = caminhoExecutavel('git')` de `hooks/lib/resolver-executavel.cjs`
+desfecho: adotar
+mutacao:
+  arquivo: `scripts/conferir-caixas.cjs`
+  de: `spawnSync(GIT, ['-C', raiz, 'rev-parse'`
+  para: `spawnSync('git', ['-C', raiz, 'rev-parse'`
+  bateria: `bash scripts/testa-git-por-nome.sh`
+  fixture: `testa-git-por-nome.sh, varredura de scripts/ (FALHA git/gh chamado por nome)`
+prova-na-base: verde — as duas baterias passam na base; ficaram vermelhas só com o checador novo no CI do PR #684 (run 43039407174)
+pronto quando: com o repositório da branch, `bash scripts/testa-git-por-nome.sh` e `bash scripts/testa-conferir-categoria.sh` saem 0 (a segunda contando 67 peças, 25/39/3), e `node scripts/conferir-caixas.cjs --base c278aa06` continua com `0 achado(s) novo(s)` — provado pelos três comandos
