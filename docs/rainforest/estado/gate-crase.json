@@ -71,23 +71,23 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "6bbfa81c70528cfaea348725162f3474e66c5b08",
+      "head": "f0e335a90cb4f1905aeaebc983ef6afe9a9d2488",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a0ffc2222c66b2363",
+        "agente_id": "a609a34cb07d90d37",
         "veredito": "ok",
         "em": "2026-11-11",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a0ffc2222c66b2363.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a609a34cb07d90d37.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-11-11",
-    "achados": 3,
+    "achados": 4,
     "voltas": [
       {
         "volta": 1,
@@ -100,18 +100,35 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-ab54b668e6176312e.jsonl"
           }
         ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a0ffc2222c66b2363",
+            "veredito": "ok",
+            "em": "2026-11-11",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a0ffc2222c66b2363.jsonl"
+          }
+        ]
       }
     ],
     "base": "537c46b326df456aec303f8b8768bfc5bd369a09",
-    "head": "6bbfa81c70528cfaea348725162f3474e66c5b08"
+    "head": "f0e335a90cb4f1905aeaebc983ef6afe9a9d2488"
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-11-11"
+    "status": "ok",
+    "em": "2026-11-11",
+    "comando": "node hooks/gate-fechar-issue.cjs (payload echo x; echo crase gh issue close 12 crase); bash hooks/testa-gate-fechar-issue.sh; bash hooks/testa-gate-pr-flag-curta.sh; bash hooks/testa-gate-merge-auto.sh; bash hooks/testa-gate-receita-corpo.sh; bash hooks/testa-gate-staging-total.sh; node scripts/conferir-versao.cjs",
+    "saida": "prova exit=2 / 436 ok, 0 falha(s) / ok: 51 / ok: 14 / ok: 39 / 189 ok / ok versao 2.12.2 (origin/main: 2.12.1)",
+    "head": "f0e335a90cb4f1905aeaebc983ef6afe9a9d2488"
   },
   "fechar": {
-    "status": "pendente",
-    "em": "2026-11-11"
+    "status": "ok",
+    "em": "2026-11-11",
+    "acao": "merge",
+    "pr": 690
   },
   "reaberturas": [
     {
