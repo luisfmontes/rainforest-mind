@@ -21,8 +21,15 @@
     "status": "parcial",
     "catraca_mutacao": "2026-11-11",
     "tarefas_ok": 2,
-    "tarefas": 2,
-    "em_voo": [],
+    "tarefas": 3,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "3 valor de outra flag",
+        "desde": "2026-11-11",
+        "sessao": "77ec548d-5d34-488c-99ae-8f54633d2e8c"
+      }
+    ],
     "carimbos": [
       {
         "tarefa": 1,
@@ -30,6 +37,13 @@
         "iteracao": 1,
         "sessao": "77ec548d-5d34-488c-99ae-8f54633d2e8c",
         "ts": "2026-11-11T11:57:58.319Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "46af3e1ab7c2c4550064781f9229188317894c5c",
+        "iteracao": 1,
+        "sessao": "77ec548d-5d34-488c-99ae-8f54633d2e8c",
+        "ts": "2026-11-11T12:11:56.856Z"
       }
     ],
     "em": "2026-11-11",
