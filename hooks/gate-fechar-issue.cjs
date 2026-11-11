@@ -581,6 +581,15 @@ function repoDoGh(tokens) {
 // (--fill) NÃO são corpo (design gate-pr-flag-curta, D1).
 const FLAGS_CORPO_DIRETO = new Set(["--body", "-b"]);
 const FLAGS_CORPO_ARQUIVO = new Set(["--body-file", "-F"]);
+// Flags de valor do pr create/edit e issue create/comment (D5): o token
+// seguinte é o valor delas, nunca uma flag.
+const FLAGS_COM_VALOR = new Set([
+  "--title", "-t", "--base", "-B", "--head", "-H", "--repo", "-R",
+  "--assignee", "-a", "--label", "-l", "--milestone", "-m", "--project", "-p",
+  "--reviewer", "-r", "--template", "-T", "--recover",
+  "--add-assignee", "--add-label", "--add-project", "--add-reviewer",
+  "--remove-assignee", "--remove-label", "--remove-project", "--remove-reviewer",
+]);
 
 function extrairCorpoDoPR(segmento, cwdSegmento) {
   const toks = tokensComAspas(segmento);
@@ -599,12 +608,18 @@ function extrairCorpoDoPR(segmento, cwdSegmento) {
       ? (pontoIgual === -1 ? null : tok.slice(pontoIgual + 1))
       : (curta && tok.length > 2 ? tok.slice(2).replace(/^=/, "") : null);
 
+    if ((longa || curta) && FLAGS_COM_VALOR.has(chave)) {
+      if (colado === null) i += 1;
+      continue;
+    }
+
     if ((longa || curta) && FLAGS_CORPO_DIRETO.has(chave)) {
       let corpo;
       if (colado !== null) {
         corpo = colado;
       } else if (i + 1 < toks.length) {
         corpo = toks[i + 1].v;
+        i += 1;
       } else {
         continue;
       }
@@ -623,6 +638,7 @@ function extrairCorpoDoPR(segmento, cwdSegmento) {
         arquivo = colado;
       } else if (i + 1 < toks.length) {
         arquivo = toks[i + 1].v;
+        i += 1;
       } else {
         continue;
       }

@@ -89,6 +89,14 @@ roda "gh issue comment 1 -F $SBP_WIN/f.md"
 sai "(c11) issue comment -F com palavra falsa" 2
 tem "(c11) issue comment -F com palavra falsa" "Closes #12"
 
+roda 'gh pr create --fill --title "-bar"'
+sai "(c12) create --fill com título -bar" 2
+tem "(c12) create --fill com título -bar" "editor interativo"
+
+roda 'gh pr create --fill -t "-Fx"'
+sai "(c13) create --fill com -t -Fx" 2
+tem "(c13) create --fill com -t -Fx" "editor interativo"
+
 echo "== (v1..v4) vizinhos legítimos passam =="
 
 roda "gh pr create --title t -F $SBP_WIN/n.md"
@@ -102,6 +110,12 @@ sai "(v3) edit -B sem corpo" 0
 
 roda "gh pr edit 5 --title x"
 sai "(v4) edit só título" 0
+
+roda 'gh pr create --title "-bar" --body-file '"$SBP_WIN"'/n.md'
+sai "(v5) título -bar com corpo benigno" 0
+
+roda 'gh pr create --title t --body "-Fx sem fechamento"'
+sai "(v6) corpo direto começando com -F" 0
 
 echo "== (f1) -f não é corpo =="
 
