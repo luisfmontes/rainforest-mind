@@ -18,10 +18,10 @@
     "em": "2026-11-11"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-11",
     "tarefas_ok": 7,
-    "tarefas": 7,
+    "tarefas": 10,
     "em": "2026-11-11",
     "pendente": "re-rodar node scripts/conferir-fluxo.cjs mutacoes --slug gate-segmentador e fechar executar ok; depois revisar",
     "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug gate-segmentador",
@@ -62,10 +62,40 @@
         "resultado": "vermelho",
         "fixture": "wd-1"
       }
+    ],
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-11-11"
+    },
+    "reaberturas": 1,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "tarefas 8, 9, 10 e 6",
+        "desde": "2026-11-12T00:30:00Z",
+        "sessao": "77ec548d-5d34-488c-99ae-8f54633d2e8c"
+      }
     ]
   },
   "revisar": {
-    "status": "pendente"
+    "status": "reprovado",
+    "snapshot": {
+      "head": "264e1eaa40237b3acbfe34ab13f28c9e5daa8c5c",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a4f44b4a983a342f7",
+        "veredito": "reprovado",
+        "em": "2026-11-11",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a4f44b4a983a342f7.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-11-11",
+    "achados": 2,
+    "tentativas": 1
   },
   "verificar": {
     "status": "pendente"

@@ -330,11 +330,132 @@ Casos novos (molde acima):
 | wd-3 | `COMANDO_WD_3=$'pwsh -Command \'Write-Host "C:\\"; gh issue close 12\''` | Bash | 2 |
 | wd-4 | `COMANDO_WD_4=$'pwsh -Command \'Write-Host "oi"\''` | Bash | 0 |
 
+### 8. Heredoc canônico só com fim exato (revisão 1) [tipo: implementar]
+atende: D6
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 7
+busca:
+- repo | grep -n "HEREDOC_CANONICO.exec" hooks/gate-fechar-issue.cjs | o atalho da tarefa 5 aceita o primeiro \nDELIM\n) mesmo com um DELIM anterior
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `const fimExato = canonico !== null && canonico[0].indexOf(`
+  para: `const fimExato = canonico !== null; const ignorado = canonico !== null && canonico[0].indexOf(`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
+  fixture: `testa-gate-fechar-issue.sh, caso (hc-3)`
+prova: `bash -c 'test "$(grep -c "const fimExato = " hooks/gate-fechar-issue.cjs)" -eq 1'`
+pronto quando: com o payload real de PreToolUse (Bash), o comando de várias linhas `echo "$(cat <<'EOF'` / `x` / `EOF` / `echo '` / `EOF` / `)'` / `gh issue close 12` / `echo ')')"` sai 2 (o bash executa o `gh`), e (hc-1), (hc-2), (crase-12) e (ps-6) continuam com o exit de antes — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 464 ok, 0 falha(s) ==` com exit 0, e pela mutação acima deixando (hc-3) vermelho.
+
+Forma prescrita: no ramo do P4, trocar
+
+```
+        if (canonico) {
+```
+
+por
+
+```
+        // A primeira linha igual ao delimitador tem de ser a que vem antes do
+        // `)`: um DELIM anterior fecha o heredoc no bash, e o resto executa
+        // (revisao 1 do gate-segmentador).
+        const fimExato = canonico !== null && canonico[0].indexOf("\n" + canonico[1] + "\n") === canonico[0].length - canonico[1].length - 3;
+        if (fimExato) {
+```
+
+Caso novo (molde acima, Bash):
+| caso | atribuição | exit |
+|---|---|---|
+| hc-3 | `COMANDO_HC_3=$'echo "$(cat <<\'EOF\'\nx\nEOF\necho \'\nEOF\n)\'\ngh issue close 12\necho \')\')"'` | 2 |
+
+### 9. `tokensComAspas` com a contrabarra do Bash na remontagem do wrapper (revisão 1) [tipo: implementar]
+atende: D8
+arquivos: `hooks/lib/tokens-comando.cjs`, `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 8
+busca:
+- repo | grep -n "function tokensComAspas" hooks/lib/tokens-comando.cjs | ignora a contrabarra; textoAPartir remonta o wrapper a partir desses tokens
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `tokensComAspas(segmento, { contrabarra: FERRAMENTA !== "PowerShell" })`
+  para: `tokensComAspas(segmento, { contrabarra: false })`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
+  fixture: `testa-gate-fechar-issue.sh, casos (cw-1), (cw-2) e (cw-3)`
+prova: `node -e 'process.stdout.write(JSON.stringify({cwd:process.cwd(),tool_name:"Bash",tool_input:{command:"bash -c "echo \\\"; gh issue close 12""}}))' | node hooks/gate-fechar-issue.cjs; test $? -eq 2`
+pronto quando: com o payload real de PreToolUse (Bash), `bash -c "echo \\\"; gh issue close 12"`, `eval "echo \\\"; gh issue close 12"` e `sh -c "echo \\\"; gh pr merge 5"` saem 2, e `bash -c "echo \"oi\""` sai 0; (#313d) e (#339) continuam verdes — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 468 ok, 0 falha(s) ==` com exit 0; por `bash hooks/testa-gate-staging-total.sh`, `bash hooks/testa-cwd-efetivo.sh`, `bash hooks/testa-gate-mensagem-commit.sh`, `node hooks/testa-colapso-continuacao.cjs`, `bash hooks/testa-gate-pr-flag-curta.sh`, `bash hooks/testa-gate-merge-auto.sh`, `bash hooks/testa-gate-receita-corpo.sh` e `node hooks/testa-gate-subagente-sem-gh.cjs` saindo 0 cada uma; e pela mutação acima deixando (cw-1), (cw-2) e (cw-3) vermelhos.
+
+Forma prescrita:
+1. Em `hooks/lib/tokens-comando.cjs`, a assinatura `function tokensComAspas(cmd) {` passa a `function tokensComAspas(cmd, opcoes = {}) {`, e como PRIMEIRA coisa dentro do `for`, logo depois de `const c = cmd[i];`, entra:
+
+```
+    // D8 (gate-segmentador, Issue #689): com `opcoes.contrabarra` (Bash), fora
+    // de aspas simples a contrabarra e o caractere seguinte entram crus no
+    // token e nao abrem, fecham nem separam. Sem a opcao, nada muda.
+    if (opcoes.contrabarra && c === "\\" && aspa !== "'" && i + 1 < cmd.length) {
+      atual += c + cmd[i + 1];
+      i += 1;
+      temAlgo = true;
+      continue;
+    }
+```
+
+   Acrescentar ao docblock de `tokensComAspas` uma linha dizendo que a opção `contrabarra` existe e quem a usa (o `processarSegmento` do `gate-fechar-issue`).
+2. Em `hooks/gate-fechar-issue.cjs`, em `processarSegmento`, a linha `  const toksComAspas = tokensComAspas(segmento);` passa a `  const toksComAspas = tokensComAspas(segmento, { contrabarra: FERRAMENTA !== "PowerShell" });`. Nenhuma outra chamada de `tokensComAspas` muda.
+
+Casos novos (molde acima, todos Bash):
+| caso | atribuição | exit |
+|---|---|---|
+| cw-1 | `COMANDO_CW_1=$'bash -c "echo \\\\\\"; gh issue close 12"'` | 2 |
+| cw-2 | `COMANDO_CW_2=$'eval "echo \\\\\\"; gh issue close 12"'` | 2 |
+| cw-3 | `COMANDO_CW_3=$'sh -c "echo \\\\\\"; gh pr merge 5"'` | 2 |
+| cw-4 | `COMANDO_CW_4=$'bash -c "echo \\"oi\\""'` | 0 |
+
+### 10. Comentário de shell vai até o fim da linha (revisão 1) [tipo: implementar]
+atende: D9
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 9
+busca:
+- repo | grep -n "idxComentario" hooks/gate-fechar-issue.cjs | o comentario ja e tratado na W2 e no heredoc, mas nao no laco de segmentosParaGate
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `if (aspa === null && c === "#" &&`
+  para: `if (false && c === "#" &&`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
+  fixture: `testa-gate-fechar-issue.sh, casos (cm-1) e (cm-2)`
+prova: `node -e 'process.stdout.write(JSON.stringify({cwd:process.cwd(),tool_name:"Bash",tool_input:{command:"# it's done\ngh issue close 12"}}))' | node hooks/gate-fechar-issue.cjs; test $? -eq 2`
+pronto quando: com o payload real de PreToolUse (Bash), `# it's done` + quebra + `gh issue close 12` e `git status` + quebra + `# don't forget` + quebra + `gh pr merge 5 --squash` saem 2, e `echo a#b; echo 'x'` e `echo hi # comentario` saem 0 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 472 ok, 0 falha(s) ==` com exit 0, e pela mutação acima deixando (cm-1) e (cm-2) vermelhos.
+
+Forma prescrita: em `segmentosParaGate`, logo DEPOIS do bloco do D2 que termina em `      i += 1;\n      continue;\n    }` (o `if (FERRAMENTA !== "PowerShell" && aspa === null && c === "\\" ...`) e ANTES da primeira ocorrência de `    if (aspa) {`, inserir:
+
+```
+    // D9 (gate-segmentador, Issue #689): comentario de shell fora de aspas vai
+    // ate o fim da linha; o apostrofo dele nao abre aspa.
+    if (aspa === null && c === "#" && (i === 0 || /[\s;&|()]/.test(cmd[i - 1]))) {
+      while (i < cmd.length && cmd[i] !== "\n") {
+        atual += cmd[i];
+        i += 1;
+      }
+      i -= 1;
+      continue;
+    }
+```
+
+Casos novos (molde acima, todos Bash):
+| caso | atribuição | exit |
+|---|---|---|
+| cm-1 | `COMANDO_CM_1=$'# it\'s done\ngh issue close 12'` | 2 |
+| cm-2 | `COMANDO_CM_2=$'git status\n# don\'t forget\ngh pr merge 5 --squash'` | 2 |
+| cm-3 | `COMANDO_CM_3=$'echo a#b; echo \'x\''` | 0 |
+| cm-4 | `COMANDO_CM_4=$'echo hi # comentario'` | 0 |
+
 ### 6. Versão PATCH e CHANGELOG [tipo: docs]
-atende: D4, D6, D7
+atende: D4, D6, D7, D8, D9
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`
-depende de: 5, 7
+depende de: 5, 7, 10
 mutacao: n/a
-  motivo: só versão e texto; comportamento medido pelas tarefas 1 a 5 e 7
-pronto quando: `node scripts/conferir-versao.cjs` sai 0 e os quatro lugares (dois `plugin.json`, selo do README com `vers%C3%A3o-2.12.3-` e `alt="versão 2.12.3"`, topo do CHANGELOG `## 2.12.3 — 2026-11-11`) dizem 2.12.3; a entrada do CHANGELOG diz, pelo comportamento, que here-string, contrabarra antes de aspa (Bash) e `"$(...)"` com interior complexo deixam de esconder `gh issue close`/`gh pr merge` do gate (Issue 689), nomeia o falso positivo aceito do D4 (`"$(...)"` com interior complexo fora da forma canônica, seguido de `gh` de escrita, é barrado; contorno: `gh` em comando separado, corpo por `--body-file`/`-F`) diz que `bash -c` rodado pelo PowerShell (e `pwsh -Command` pelo Bash) segue as regras de aspas do wrapper (D7), e diz que o commit por heredoc canônico (`"$(cat <<'EOF' ... EOF
+  motivo: só versão e texto; comportamento medido pelas tarefas 1 a 5 e 7 a 10
+pronto quando: `node scripts/conferir-versao.cjs` sai 0 e os quatro lugares (dois `plugin.json`, selo do README com `vers%C3%A3o-2.12.3-` e `alt="versão 2.12.3"`, topo do CHANGELOG `## 2.12.3 — 2026-11-11`) dizem 2.12.3; a entrada do CHANGELOG diz, pelo comportamento, que here-string, contrabarra antes de aspa (Bash) e `"$(...)"` com interior complexo deixam de esconder `gh issue close`/`gh pr merge` do gate (Issue 689), nomeia o falso positivo aceito do D4 (`"$(...)"` com interior complexo fora da forma canônica, seguido de `gh` de escrita, é barrado; contorno: `gh` em comando separado, corpo por `--body-file`/`-F`) diz que `bash -c` rodado pelo PowerShell (e `pwsh -Command` pelo Bash) segue as regras de aspas do wrapper (D7), diz que comentário de shell com apóstrofo não esconde mais as linhas seguintes (D9), e diz que o commit por heredoc canônico (`"$(cat <<'EOF' ... EOF
 )"`) que cita `gh` de escrita entre crases volta a passar (D6) — provado por `node scripts/conferir-versao.cjs; grep -n '"version"' .claude-plugin/plugin.json .codex-plugin/plugin.json; grep -n 'alt="versão' README.md; grep -n -m2 -A4 '^## ' CHANGELOG.md`
