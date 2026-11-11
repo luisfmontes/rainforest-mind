@@ -964,6 +964,54 @@ COMANDO_CRASE_16=$'git commit -m "$(cat <<\'EOF\'\nfix: ajusta `git log` no text
 EXIT_CRASE_16=$?
 [ $EXIT_CRASE_16 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CRASE_16)"
 
+# Caso (hs-1): here-string com crase de gh de escrita → exit 2 (D1 de gate-segmentador)
+echo
+echo "== (hs-1) here-string com crase de gh de escrita → exit 2 =="
+COMANDO_HS_1=$'cat <<< `gh issue close 12`'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_HS_1")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hs-1"
+EXIT_HS_1=$?
+[ $EXIT_HS_1 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HS_1)"
+
+# Caso (hs-2): here-string com crase dentro de aspas duplas de gh de escrita → exit 2 (D1 de gate-segmentador)
+echo
+echo "== (hs-2) here-string com crase dentro de aspas duplas de gh de escrita → exit 2 =="
+COMANDO_HS_2=$'cat <<< "`gh issue close 12`"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_HS_2")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hs-2"
+EXIT_HS_2=$?
+[ $EXIT_HS_2 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HS_2)"
+
+# Caso (hs-3): here-string com $(gh issue close) → exit 2 (D1 de gate-segmentador)
+echo
+echo "== (hs-3) here-string com \$(gh issue close) → exit 2 =="
+COMANDO_HS_3=$'cat <<< $(gh issue close 12)'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_HS_3")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hs-3"
+EXIT_HS_3=$?
+[ $EXIT_HS_3 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HS_3)"
+
+# Caso (hs-4): here-string com texto comum entre aspas duplas → exit 0 (D1 de gate-segmentador)
+echo
+echo "== (hs-4) here-string com texto comum entre aspas duplas → exit 0 =="
+COMANDO_HS_4=$'cat <<< "texto comum"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_HS_4")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hs-4"
+EXIT_HS_4=$?
+[ $EXIT_HS_4 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_HS_4)"
+
 # R2 (rodada 9, lote 3, 2026-09-04): `Invoke-Expression`/`iex` (PowerShell)
 # nao eram reconhecidos como wrapper de string sem flag (igual `eval`) — o
 # conteudo era um token citado so, a busca por sequencia nao casava dentro

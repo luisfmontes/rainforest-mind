@@ -391,8 +391,10 @@ function segmentosParaGate(cmd) {
         // `cat <<<'gh issue close 12' > s.sh` + `bash s.sh` executa.
         TEXTOS_DE_HEREDOC.push(conteudo);
       }
-      atual += cmd.slice(i, k);
-      i = k - 1;
+      // D1 (gate-segmentador, Issue #689): o ramo consome so os tres `<`; a
+      // palavra segue pelo laco, onde crase, aspas e $( tem ramo proprio.
+      atual += "<<<";
+      i += 2; // D1 (gate-segmentador): a palavra do here-string volta ao laco
       continue;
     }
     if (c === "<" && cmd[i + 1] === "<") {
