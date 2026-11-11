@@ -903,10 +903,10 @@ COMANDO_CRASE_11=$'echo \\`gh issue close 12\\`'
 EXIT_CRASE_11=$?
 [ $EXIT_CRASE_11 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CRASE_11)"
 
-# Caso (crase-12): commit por heredoc citado com crase que cita gh de escrita → exit 2 (D7 de gate-crase:
-# falso positivo aceito, o mesmo do $(gh ...) na base; o contorno e git commit -F arquivo)
+# Caso (crase-12): commit por heredoc canonico que cita gh de escrita em crase → exit 0 (D6 de gate-segmentador:
+# o corpo de heredoc citado e literal; desfaz o falso positivo do D7 de gate-crase)
 echo
-echo "== (crase-12) commit por heredoc citado com crase que cita gh de escrita → exit 2 =="
+echo "== (crase-12) commit por heredoc canonico que cita gh de escrita em crase → exit 0 =="
 COMANDO_CRASE_12=$'git commit -m "$(cat <<\'EOF\'\nfix: gate barra `gh issue close` em crase\nEOF\n)"'
 (
   export PATH="$SBP/bin:$PATH"
@@ -914,7 +914,7 @@ COMANDO_CRASE_12=$'git commit -m "$(cat <<\'EOF\'\nfix: gate barra `gh issue clo
   echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
 ) 2>"$SBP/err-crase-12"
 EXIT_CRASE_12=$?
-[ $EXIT_CRASE_12 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CRASE_12)"
+[ $EXIT_CRASE_12 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CRASE_12)"
 
 # Caso (crase-13): crase dentro de $(...) entre aspas duplas → exit 2 (D6 de gate-crase)
 echo
@@ -1215,6 +1215,30 @@ COMANDO_PS_6=$'git commit -m "$(cat <<\'EOF\'\ndon\'t ) solto\nEOF\n)"'
 ) 2>"$SBP/err-ps-6"
 EXIT_PS_6=$?
 [ $EXIT_PS_6 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_PS_6)"
+
+# Caso (hc-1): commit por heredoc canonico seguido de gh de comentario → exit 0 (D6 de gate-segmentador)
+echo
+echo "== (hc-1) commit por heredoc canonico seguido de gh issue comment → exit 0 =="
+COMANDO_HC_1=$'git commit -m "$(cat <<\'EOF\'\nfix: ajusta o texto\nEOF\n)" && gh issue comment 5 --body ok'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_HC_1")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hc-1"
+EXIT_HC_1=$?
+[ $EXIT_HC_1 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_HC_1)"
+
+# Caso (hc-2): commit por heredoc canonico com aspa no corpo seguido de gh de escrita → exit 2 (D6 de gate-segmentador)
+echo
+echo "== (hc-2) commit por heredoc canonico com aspa no corpo seguido de gh issue close → exit 2 =="
+COMANDO_HC_2=$'git commit -m "$(cat <<\'EOF\'\nfoo " bar\nEOF\n)"; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_HC_2")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-hc-2"
+EXIT_HC_2=$?
+[ $EXIT_HC_2 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HC_2)"
 
 # R2 (rodada 9, lote 3, 2026-09-04): `Invoke-Expression`/`iex` (PowerShell)
 # nao eram reconhecidos como wrapper de string sem flag (igual `eval`) — o

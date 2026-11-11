@@ -207,6 +207,11 @@ const ESCAPAVEIS_EM_ASPAS_DUPLAS = new Set(['"', "\\", "$", "`"]);
 function escapaDentroDaAspa(aspa, proximo) {
   return aspa === "$'" || (aspa === '"' && ESCAPAVEIS_EM_ASPAS_DUPLAS.has(proximo));
 }
+// D6 (gate-segmentador, Issue #689): "$(cat <<'DELIM'\n...\nDELIM\n)" tem fim
+// exato (o bash fecha o heredoc na primeira linha igual ao delimitador) e o
+// corpo de heredoc citado e literal. Essa forma e opaca para o laco de fora e
+// fica fora do D3.
+const HEREDOC_CANONICO = /^\$\(cat <<'([A-Za-z_][A-Za-z0-9_]*)'\n[\s\S]*?\n\1\n\)/;
 // D3 (gate-segmentador, Issue #689): interior de "$(...)" cujo fim a contagem
 // de parenteses nao acha com seguranca (aspa, crase, comentario, heredoc,
 // contrabarra, case).
@@ -296,6 +301,17 @@ function segmentosParaGate(cmd) {
       // ver o `$(` e bloquear por ilegivel — cortar o texto ali quebraria
       // essa checagem). O conteudo interno so GANHA verificacao a mais.
       if (aspa === '"' && c === "$" && cmd[i + 1] === "(") {
+        // D6 (gate-segmentador): forma canonica do heredoc citado vai inteira
+        // para `atual` e o interior e recursado; o corpo nao entra no laco.
+        const canonico = HEREDOC_CANONICO.exec(cmd.slice(i));
+        if (canonico) {
+          for (const sub of segmentosParaGate(canonico[0].slice(2, -1))) {
+            if (sub.trim()) segmentos.push(sub);
+          }
+          atual += canonico[0];
+          i += canonico[0].length - 1;
+          continue;
+        }
         let profundidade = 1;
         let j = i + 2;
         let interno = "";
