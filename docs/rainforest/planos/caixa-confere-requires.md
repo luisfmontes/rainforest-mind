@@ -3,7 +3,7 @@
 Design: docs/rainforest/design/caixa-confere-requires.md
 
 ## O que não pode quebrar
-- Nenhuma bateria existente muda de comportamento: as edições nelas são só linhas de comentário `# caixa-sem:` (tarefa 2).
+- Nenhuma bateria existente é editada.
 - `bash scripts/varrer-baterias.sh --listar` e `--so <bateria>` continuam iguais (o checador não roda nesses modos).
 - `bash scripts/testa-varrer-baterias.sh` continua verde.
 
@@ -50,32 +50,47 @@ Forma prescrita:
 - `caixa-sem` (D3): linha `^\s*#\s*caixa-sem:\s*(\S+)\s+—\s*(\S.*)$` (travessão `—` ou `-`) tira o caminho dos achados daquela bateria; sem o motivo depois do travessão, não tira.
 - Bateria `scripts/testa-conferir-caixas.sh`: `set -u`, raiz em `mktemp -d` com `trap` de limpeza, uma subpasta por caso com `scripts/`, `hooks/lib/` e uma `hooks/testa-caso.sh` escrita por `printf`; `sai`/`tem` no molde de `hooks/testa-gate-receita-corpo.sh`; termina com `ok: <n>   falhou: <m>` e sai 1 com falha.
 
-### 2. caixa-sem nas baterias de hoje e o checador no varrer-baterias [tipo: implementar]
-atende: D3, D4
-arquivos: `scripts/varrer-baterias.sh`, `hooks/testa-*.sh`, `scripts/testa-*.sh`
+### 2. Só achado novo reprova (--base) e o checador no varrer-baterias [tipo: implementar]
+atende: D4, D6
+arquivos: `scripts/conferir-caixas.cjs`, `scripts/testa-conferir-caixas.sh`, `scripts/varrer-baterias.sh`
 depende de: 1
+*Emenda de 2026-11-11 (Q1 = A do Luís):* a versão anterior desta tarefa anotava `# caixa-sem:` nas baterias; o repositório real deu 144 achados e o D6 trocou isso por comparar com a base. Nenhuma bateria existente é editada.
 busca:
 - repo | rg -n "^vermelhas=\(\)" scripts/varrer-baterias.sh | o laço das baterias começa ali; o checador entra logo antes
+- repo | rg -n "fetch-depth" .github/workflows/baterias.yml | fetch-depth 0: origin/main existe no CI
 - livro | pulado: integração interna
 desfecho: estender
 mutacao:
-  arquivo: `scripts/testa-estado-teto.sh`
-  de: `resolver-executavel caminho-real contar-ocorrencias`
-  para: `resolver-executavel contar-ocorrencias`
-  bateria: `node scripts/conferir-caixas.cjs`
-  fixture: `scripts/testa-estado-teto.sh, laço for lib da caixa (o conferir-mutacao.cjs copiado exige hooks/lib/caminho-real.cjs)`
-prova: `node scripts/conferir-caixas.cjs`
-pronto quando: com o repositório real, `node scripts/conferir-caixas.cjs` sai 0 com a última linha `conferir-caixas: <n> bateria(s), 0 achado(s)`, e tirar `caminho-real` do laço de `scripts/testa-estado-teto.sh` (o episódio de 2026-11-09) o faz sair 1 com `scripts/testa-estado-teto.sh: falta hooks/lib/caminho-real.cjs (exigido por scripts/conferir-mutacao.cjs)`; e `bash scripts/varrer-baterias.sh --shard 1/3 --listar` continua listando sem rodar o checador — provado pelos três comandos e por `bash scripts/testa-varrer-baterias.sh` saindo 0
+  arquivo: `scripts/conferir-caixas.cjs`
+  de: `const novos = linhas.filter((l) => !daBase.has(l));`
+  para: `const novos = linhas;`
+  bateria: `bash scripts/testa-conferir-caixas.sh`
+  fixture: `testa-conferir-caixas.sh, caso "(10) achado que já existe na base não reprova"`
+prova: `bash scripts/testa-conferir-caixas.sh`
+pronto quando: com a tabela abaixo montada pela bateria (repositório git de fixture com um commit de base), cada caso dá o exit e a saída da tabela, e os casos (1)–(9) continuam iguais; e, no repositório real, `node scripts/conferir-caixas.cjs --base $(git merge-base HEAD origin/main)` sai 0 com `0 achado(s) novo(s)` — provado por `bash scripts/testa-conferir-caixas.sh` saindo 0, pelo comando no repositório real, e por `bash scripts/testa-varrer-baterias.sh` saindo 0
+
+| id | montagem | exit | saída contém |
+|---|---|---|---|
+| (10) achado que já existe na base não reprova | repo git com o caso (1) commitado; `--base HEAD` | 0 | `0 achado(s) novo(s)` e `1 já existente(s) na base` |
+| (11) achado novo reprova | repo git com o caso (2) commitado (sem achado); na árvore de trabalho, tira `y` do laço e acrescenta em `a.cjs` um `require(path.join(__dirname, '..', 'hooks', 'lib', 'y.cjs'))`, com `hooks/lib/y.cjs` existente; `--base HEAD` | 1 | `falta hooks/lib/y.cjs (exigido por scripts/a.cjs)` |
+| (12) base que não existe | `--base nao-existe-xyz` | 2 | `base` |
 
 Forma prescrita:
-- Rodar `node scripts/conferir-caixas.cjs` na branch. Regra fixa para cada achado: se o `require` faltante está dentro de um bloco `try { ... } catch` cujo `catch` não relança (`throw`) — degrada para aviso e segue —, acrescentar na bateria, logo acima do `cp` do script que o exige, `# caixa-sem: <caminho> — <o que degrada, em poucas palavras>`; em qualquer outro caso, acrescentar o `cp` que falta (no mesmo formato das linhas vizinhas) **e** listar a bateria no relatório como defeito latente achado. Nenhuma outra edição nas baterias.
-- `scripts/varrer-baterias.sh`: logo antes de `vermelhas=()`, mover `vermelhas=()` para cima e acrescentar o bloco abaixo. `modo_solo` é a variável do `--so`; o `--listar` já saiu antes deste ponto. O checador roda pelo caminho absoluto do próprio `varrer` e examina a raiz de onde o `varrer` foi chamado (o cwd), para que as caixas de `scripts/testa-varrer-baterias.sh` — que rodam o `varrer` dentro de sandboxes com baterias fictícias, sem `cp` — saiam com `0 achado(s)`:
+- `--base <ref>` em `conferir-caixas.cjs`. Com ele: `git -C <raiz> rev-parse --verify <ref>^{commit}` (falha → `conferir-caixas: base '<ref>' não existe` em stderr, exit 2); extrai `hooks/` e `scripts/` da base para uma pasta em `os.tmpdir()` com `git -C <raiz> archive --format=tar <ref> hooks scripts` cujo stdout vai para `tar -x -C <pasta>` (ambos por `spawnSync`, sem shell); roda a mesma análise na pasta e na raiz; apaga a pasta no fim (`fs.rmSync(..., {recursive:true, force:true})`).
+- As linhas comparadas são as de achado já formatadas (`<bateria>: falta <caminho> (exigido por <arquivo>)`). `daBase` é o `Set` das linhas da base; a comparação é exatamente `const novos = linhas.filter((l) => !daBase.has(l));`. Imprime só os `novos`, e termina com `conferir-caixas: <n> bateria(s), <k> achado(s) novo(s), <j> já existente(s) na base`; exit 1 se `k > 0`. Sem `--base`, a saída e o exit continuam os da tarefa 1.
+- `scripts/varrer-baterias.sh`: mover `vermelhas=()` para logo antes do bloco abaixo e inserir o bloco antes do laço. `modo_solo` é a variável do `--so`; o `--listar` já saiu antes deste ponto. O checador roda pelo caminho absoluto do próprio `varrer` e examina o cwd, para que as caixas de `scripts/testa-varrer-baterias.sh` (sandboxes com baterias fictícias, sem `cp`, sem git) saiam verdes:
   ```
   if [ -z "$modo_solo" ] && { [ -z "$shard" ] || [ "${shard%%/*}" = "1" ]; }; then
     echo ""
     echo "----- conferir-caixas -----"
     dir_varrer="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    if node "$dir_varrer/conferir-caixas.cjs" --raiz "$PWD"; then
+    base_caixas="$(git merge-base HEAD origin/main 2>/dev/null || true)"
+    if [ -n "$base_caixas" ]; then
+      args_caixas=(--raiz "$PWD" --base "$base_caixas")
+    else
+      args_caixas=(--raiz "$PWD")
+    fi
+    if node "$dir_varrer/conferir-caixas.cjs" "${args_caixas[@]}"; then
       echo "  >> VERDE  conferir-caixas"
     else
       echo "  >> VERMELHA conferir-caixas"
@@ -83,8 +98,9 @@ Forma prescrita:
     fi
   fi
   ```
-- Se `bash scripts/testa-varrer-baterias.sh` ficar vermelha com o bloco, PARE e reporte com a saída: a bateria não está em `arquivos:` e não se edita aqui.
-- A mutação do critério é aplicada e desfeita pelo `node scripts/conferir-mutacao.cjs --arquivo scripts/testa-estado-teto.sh --de 'resolver-executavel caminho-real contar-ocorrencias' --para 'resolver-executavel contar-ocorrencias' --bateria 'node scripts/conferir-caixas.cjs'`, nunca à mão.
+  Sem `origin/main` (sandbox), o checador roda sem base; as baterias fictícias não têm `cp`, então saem com `0 achado(s)`.
+- Se `bash scripts/testa-varrer-baterias.sh` ficar vermelha com o bloco, PARE e reporte com a saída: a bateria não está em `arquivos:`.
+- Bateria: os casos (10)–(12) fazem `git init -q`, `git -c user.email=t@t -c user.name=t add/commit -q` na subpasta do caso (identidade só por `-c`, nunca `git config`).
 
 ### 3. Versão MINOR, README e CHANGELOG [tipo: docs]
 atende: D4

@@ -33,8 +33,13 @@
       }
     ],
     "em": "2026-11-11",
-    "pendentes": [
-      "[design] conferir-caixas acha 144 faltas em 224 baterias (84 vindas de requires tardios do estado.cjs que as baterias nao exercitam); D3 supunha excecao rara. Decisao do Luis: catraca por diff (so achado novo reprova) x so require de topo x anotar as 144."
+    "pendentes": [],
+    "destinos": [
+      {
+        "pendente": "[design] conferir-caixas acha 144 faltas em 224 baterias (84 vindas de requires tardios do estado.cjs que as baterias nao exercitam); D3 supunha excecao rara. Decisao do Luis: catraca por diff (so achado novo reprova) x so require de topo x anotar as 144.",
+        "destino": "resolvida",
+        "evidencia": "Luis escolheu Q1=A em 2026-11-11; virou D6 do design e a tarefa 2 reescrita do plano"
+      }
     ]
   },
   "revisar": {
