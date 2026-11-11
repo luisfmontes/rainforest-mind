@@ -196,9 +196,32 @@ function segmentosParaGate(cmd) {
   const segmentos = [];
   let atual = "";
   let aspa = null;
+  let fimCrase = -1;
 
   for (let i = 0; i < cmd.length; i++) {
     const c = cmd[i];
+
+    // Crase (Issue #685, D1 de docs/rainforest/design/gate-crase.md): fora de
+    // aspas simples, a crase executa o que esta dentro, como o `$(...)` do P4.
+    // `echo `gh issue close 12`` fecha a Issue de verdade. O texto de dentro
+    // vira segmento adicional (verificado recursivamente); o segmento
+    // original nao muda, pelo mesmo motivo do P4 (`gh pr create --body`).
+    // Crase sem par vai ate o fim do comando. Nao altera `i`, `atual` nem
+    // `aspa` e nao tem `continue`: o laco segue para o mesmo caractere.
+    if (c === "`" && aspa !== "'" && cmd[i - 1] !== "\\" && i > fimCrase) {
+      let j = i + 1;
+      let internoCrase = "";
+      while (j < cmd.length && !(cmd[j] === "`" && cmd[j - 1] !== "\\")) {
+        internoCrase += cmd[j];
+        j += 1;
+      }
+      fimCrase = j;
+      if (internoCrase.trim()) {
+        for (const sub of segmentosParaGate(internoCrase)) {
+          if (sub.trim()) segmentos.push(sub);
+        }
+      }
+    }
 
     if (aspa) {
       // P4 (rodada 8, lote 3, 2026-09-04): `$(...)` DENTRO de aspas DUPLAS
