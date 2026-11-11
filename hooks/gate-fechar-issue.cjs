@@ -576,17 +576,33 @@ function repoDoGh(tokens) {
  * nunca de onde o hook foi disparado. Caminho absoluto ignora `cwdSegmento`
  * por completo — não há ambiguidade a resolver.
  */
+// Grafias que o pflag do gh aceita para o corpo do PR: `-b`/`--body` leem o
+// corpo direto; `-F`/`--body-file` leem de arquivo. `-B` (--base) e `-f`
+// (--fill) NÃO são corpo (design gate-pr-flag-curta, D1).
+const FLAGS_CORPO_DIRETO = new Set(["--body", "-b"]);
+const FLAGS_CORPO_ARQUIVO = new Set(["--body-file", "-F"]);
+
 function extrairCorpoDoPR(segmento, cwdSegmento) {
   const toks = tokensComAspas(segmento);
+  // D3: todas as ocorrências de corpo no segmento, não só a primeira.
+  const achados = [];
   for (let i = 0; i < toks.length; i += 1) {
     const tok = toks[i].v;
     const pontoIgual = tok.indexOf("=");
-    const chave = (pontoIgual === -1 ? tok : tok.slice(0, pontoIgual)).toLowerCase();
+    const longa = tok.startsWith("--");
+    const curta = !longa && /^-[A-Za-z]/.test(tok);
+    const chave = longa
+      ? (pontoIgual === -1 ? tok : tok.slice(0, pontoIgual)).toLowerCase()
+      : tok.slice(0, 2);
+    // valor na mesma palavra: --x=v, -Fv ou -F=v (pflag)
+    const colado = longa
+      ? (pontoIgual === -1 ? null : tok.slice(pontoIgual + 1))
+      : (curta && tok.length > 2 ? tok.slice(2).replace(/^=/, "") : null);
 
-    if (chave === "--body" || chave === "-b") {
+    if ((longa || curta) && FLAGS_CORPO_DIRETO.has(chave)) {
       let corpo;
-      if (pontoIgual !== -1) {
-        corpo = tok.slice(pontoIgual + 1);
+      if (colado !== null) {
+        corpo = colado;
       } else if (i + 1 < toks.length) {
         corpo = toks[i + 1].v;
       } else {
@@ -594,15 +610,17 @@ function extrairCorpoDoPR(segmento, cwdSegmento) {
       }
       // Validar se o corpo é legível: não contém $(...) nem crases.
       if (corpo.includes("$(") || corpo.includes("`")) {
-        return { tipo: "direto", conteudo: corpo, legivel: false };
+        achados.push({ tipo: "direto", conteudo: corpo, legivel: false });
+      } else {
+        achados.push({ tipo: "direto", conteudo: corpo, legivel: true });
       }
-      return { tipo: "direto", conteudo: corpo, legivel: true };
+      continue;
     }
 
-    if (chave === "--body-file") {
+    if ((longa || curta) && FLAGS_CORPO_ARQUIVO.has(chave)) {
       let arquivo;
-      if (pontoIgual !== -1) {
-        arquivo = tok.slice(pontoIgual + 1);
+      if (colado !== null) {
+        arquivo = colado;
       } else if (i + 1 < toks.length) {
         arquivo = toks[i + 1].v;
       } else {
@@ -610,7 +628,8 @@ function extrairCorpoDoPR(segmento, cwdSegmento) {
       }
       arquivo = normalizarMsys(arquivo);
       if (/[$\x60]/.test(arquivo)) {
-        return { tipo: "arquivo", conteudo: null, legivel: false, variavel: true };
+        achados.push({ tipo: "arquivo", conteudo: null, legivel: false, variavel: true });
+        continue;
       }
       if (!path.isAbsolute(arquivo) && cwdSegmento == null) {
         // Caminho relativo e não dá pra saber onde este segmento roda de
@@ -618,7 +637,8 @@ function extrairCorpoDoPR(segmento, cwdSegmento) {
         // ler contra o cwd do PROCESSO do hook seria adivinhar um lugar que
         // pode não ser onde o `gh` roda — bloqueia por segurança, igual a
         // um arquivo ilegível.
-        return { tipo: "arquivo", conteudo: null, legivel: false, cwdIncerto: true };
+        achados.push({ tipo: "arquivo", conteudo: null, legivel: false, cwdIncerto: true });
+        continue;
       }
       const caminhoResolvido = path.isAbsolute(arquivo)
         ? arquivo
@@ -628,18 +648,25 @@ function extrairCorpoDoPR(segmento, cwdSegmento) {
       // disco primeiro decidia pelo conteudo VELHO (revisao da zerar-issues-16).
       const corpoCriado = corpoDeHeredocQueCria(COMANDO_INTEIRO, caminhoResolvido, cwdSegmento);
       if (corpoCriado !== null) {
-        return { tipo: "arquivo", conteudo: corpoCriado.legivel ? corpoCriado.corpo : null, legivel: corpoCriado.legivel, heredoc: true };
+        achados.push({ tipo: "arquivo", conteudo: corpoCriado.legivel ? corpoCriado.corpo : null, legivel: corpoCriado.legivel, heredoc: true });
+        continue;
       }
       try {
         const conteudo = fs.readFileSync(caminhoResolvido, "utf8");
-        return { tipo: "arquivo", conteudo, legivel: true };
+        achados.push({ tipo: "arquivo", conteudo, legivel: true });
       } catch (e) {
-        return { tipo: "arquivo", conteudo: null, legivel: false, caminho: arquivo, resolvido: caminhoResolvido, codigo: e && e.code };
+        achados.push({ tipo: "arquivo", conteudo: null, legivel: false, caminho: arquivo, resolvido: caminhoResolvido, codigo: e && e.code });
       }
+      continue;
     }
   }
 
-  return { tipo: "nenhum", conteudo: null, legivel: false };
+  if (achados.length === 0) return { tipo: "nenhum", conteudo: null, legivel: false };
+  // Qualquer ocorrência ilegível decide pela recusa dela; legíveis, o
+  // conteúdo checado é a junção de todas.
+  const ilegivel = achados.find((a) => !a.legivel);
+  if (ilegivel) return ilegivel;
+  return { ...achados[0], conteudo: achados.map((a) => a.conteudo).join("\n") };
 }
 
 function bloqueia(motivo) {
