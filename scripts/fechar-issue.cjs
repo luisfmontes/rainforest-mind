@@ -21,6 +21,9 @@ const { execFileSync } = require('child_process');
 const { MARCADOR } = require(path.join(__dirname, '..', 'hooks', 'lib', 'marcador-evidencia.cjs'));
 const { resolverExecutavel, executar, caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
+const RE_CRITERIO = /^##\s+Crit[eé]rio de pronto\s+\(falsific[áa]vel\)/m;
+const RE_PRONTO_QUANDO = /^(?:#{2,3}\s+Pronto quando\b|(?:[-*]\s+)?\*\*Pronto quando:\*\*|Pronto quando:)/m;
+
 /**
  * Tenta rodar git rev-parse --show-toplevel no cwd.
  * Retorna o toplevel ou null se falhar.
@@ -158,11 +161,11 @@ try {
 }
 
 // Verificar se o corpo contém a seção obrigatória
-// Aceita tanto a versão com acentos quanto a versão ASCII, mas exige os
-// parênteses literais do cabeçalho canônico (ver commands/issue.md).
-const temCriterio = /^##\s+Crit[eé]rio de pronto\s+\(falsific[áa]vel\)/m.test(issueBody);
+// Aceita o cabeçalho canônico (com os parênteses literais, ver commands/issue.md)
+// e também as formas "Pronto quando" (cabeçalho ## ou ###, negrito ou linha).
+const temCriterio = RE_CRITERIO.test(issueBody) || RE_PRONTO_QUANDO.test(issueBody);
 if (!temCriterio) {
-  console.error(`RECUSADO: a Issue #${n} nao tem a secao "Critério de pronto (falsificável)"`);
+  console.error(`RECUSADO: a Issue #${n} nao tem criterio de pronto ("## Critério de pronto (falsificável)" ou "Pronto quando:")`);
   process.exit(2);
 }
 

@@ -40,6 +40,9 @@ if (args[0] === "issue" && args[1] === "view" && args[3] === "--json" && args[4]
   const semParenteses = process.env.GH_CORPO_SEM_PARENTESES === "1";
   const caret = process.env.GH_CORPO_CARET === "1";
   const canonico = process.env.GH_CORPO_CANONICO === "1";
+  const prontoH2 = process.env.GH_CORPO_PRONTO_H2 === "1";
+  const prontoNegrito = process.env.GH_CORPO_PRONTO_NEGRITO === "1";
+  const prontoLinha = process.env.GH_CORPO_PRONTO_LINHA === "1";
   let body;
   if (semParenteses) {
     body = "Como reproduzir: passo1 passo2\n## Criterio de pronto falsificavel\ncomando esperado";
@@ -49,6 +52,12 @@ if (args[0] === "issue" && args[1] === "view" && args[3] === "--json" && args[4]
     body = "Como reproduzir: passo1 passo2\n## Critério de pronto (falsificável)\ncomando esperado";
   } else if (com) {
     body = "Como reproduzir: passo1 passo2\n## Criterio de pronto (falsificavel)\ncomando esperado";
+  } else if (prontoH2) {
+    body = "Como reproduzir: passo1 passo2\n## Pronto quando\ncomando esperado";
+  } else if (prontoNegrito) {
+    body = "Como reproduzir: passo1 passo2\n**Pronto quando:** comando esperado";
+  } else if (prontoLinha) {
+    body = "Como reproduzir: passo1 passo2\nPronto quando: comando esperado";
   } else {
     body = "Como reproduzir: passo1 passo2";
   }
@@ -332,6 +341,77 @@ if [ -n "$LOG_P" ]; then
 else
   test_ok "gh não foi chamado (log vazio)"
 fi
+
+# Caso (q): corpo com "## Pronto quando" (cabeçalho) → ACEITO, comenta e fecha
+echo
+echo "== (q) corpo com '## Pronto quando' → comenta e fecha =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_LOG="$SBP/log-q"
+  export GH_CORPO_PRONTO_H2=1
+  node "$SRC/scripts/fechar-issue.cjs" 999913 --comando "echo teste" --saida "ok"
+) >/dev/null 2>&1
+[ $? -eq 0 ] && test_ok "exit 0" || test_fail "exit code"
+LOG_Q="$(cat "$SBP/log-q" 2>/dev/null || echo '')"
+[ -n "$LOG_Q" ] && {
+  echo "$LOG_Q" | grep -q "issue comment" && test_ok "issue comment chamado" || test_fail "issue comment"
+  echo "$LOG_Q" | grep -q "issue close" && test_ok "issue close chamado" || test_fail "issue close"
+} || {
+  test_fail "log vazio"
+  test_fail "issue comment"
+  test_fail "issue close"
+}
+
+# Caso (r): corpo com "**Pronto quando:**" (negrito) → ACEITO, comenta e fecha
+echo
+echo "== (r) corpo com '**Pronto quando:**' → comenta e fecha =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_LOG="$SBP/log-r"
+  export GH_CORPO_PRONTO_NEGRITO=1
+  node "$SRC/scripts/fechar-issue.cjs" 999914 --comando "echo teste" --saida "ok"
+) >/dev/null 2>&1
+[ $? -eq 0 ] && test_ok "exit 0" || test_fail "exit code"
+LOG_R="$(cat "$SBP/log-r" 2>/dev/null || echo '')"
+[ -n "$LOG_R" ] && {
+  echo "$LOG_R" | grep -q "issue comment" && test_ok "issue comment chamado" || test_fail "issue comment"
+  echo "$LOG_R" | grep -q "issue close" && test_ok "issue close chamado" || test_fail "issue close"
+} || {
+  test_fail "log vazio"
+  test_fail "issue comment"
+  test_fail "issue close"
+}
+
+# Caso (s): linha "Pronto quando: ..." no início da linha → ACEITO, comenta e fecha
+echo
+echo "== (s) corpo com 'Pronto quando:' no início da linha → comenta e fecha =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_LOG="$SBP/log-s"
+  export GH_CORPO_PRONTO_LINHA=1
+  node "$SRC/scripts/fechar-issue.cjs" 999915 --comando "echo teste" --saida "ok"
+) >/dev/null 2>&1
+[ $? -eq 0 ] && test_ok "exit 0" || test_fail "exit code"
+LOG_S="$(cat "$SBP/log-s" 2>/dev/null || echo '')"
+[ -n "$LOG_S" ] && {
+  echo "$LOG_S" | grep -q "issue comment" && test_ok "issue comment chamado" || test_fail "issue comment"
+  echo "$LOG_S" | grep -q "issue close" && test_ok "issue close chamado" || test_fail "issue close"
+} || {
+  test_fail "log vazio"
+  test_fail "issue comment"
+  test_fail "issue close"
+}
+
+# Caso (t): corpo SEM critério nem "Pronto quando" → exit 2, recusa cita "Pronto quando"
+echo
+echo "== (t) corpo sem critério → exit 2, recusa cita 'Pronto quando' =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_LOG="$SBP/log-t"
+  node "$SRC/scripts/fechar-issue.cjs" 999916 --comando "echo teste" --saida "ok" 2>"$SBP/err-t"
+) >/dev/null
+[ $? -eq 2 ] && test_ok "exit 2" || test_fail "exit code"
+grep -q "Pronto quando" "$SBP/err-t" && test_ok "recusa cita 'Pronto quando'" || test_fail "recusa sem 'Pronto quando'"
 
 echo
 echo "== resultado: $ok ok, $falhou falha(s) =="
