@@ -35,12 +35,16 @@ pronto quando: com baterias de fixture montadas pela própria bateria numa raiz 
 | (4) transitivo | `a.cjs` → `./b.cjs` → `../hooks/lib/x.cjs`; copia `a.cjs` e `b.cjs` | 1 | `falta hooks/lib/x.cjs (exigido por scripts/b.cjs)` |
 | (5) caixa-sem com motivo | caso (1) mais a linha `# caixa-sem: hooks/lib/x.cjs — degrada para aviso` | 0 | `0 achado(s)` |
 | (6) caixa-sem sem motivo | caso (1) mais `# caixa-sem: hooks/lib/x.cjs` | 1 | `falta hooks/lib/x.cjs` |
-| (7) cp -r da pasta inteira | `cp -r "$SRC/scripts" "$SBP/"` com o `a.cjs` do caso (1) | 0 | `0 achado(s)` |
+| (7) cp -r da pasta inteira | `cp -r "$SRC/scripts" "$SBP/"` **e** `cp "$SRC/scripts/a.cjs" "$SBP/scripts/"`, com o `a.cjs` do caso (1) | 0 | `pulada` |
 | (8) módulo do Node não conta | `a.cjs` só com `require('fs')` e `require('path')` | 0 | `0 achado(s)` |
+| (9) cp -r de subpasta conta como copiada | caso (1) mais `cp -r "$SRC/hooks/lib" "$SBP/hooks/"` | 0 | `0 achado(s)` |
+
+Arquivos de cada fixture (todos criados pela bateria com `printf`, numa subpasta própria por caso): `scripts/a.cjs` com o conteúdo da coluna; `hooks/lib/x.cjs` (conteúdo `module.exports = {};`) em todos os casos que citam `x.cjs`; `scripts/b.cjs` nos casos (3) e (4) — no (3) `module.exports = {};`, no (4) com `require(path.join(__dirname, '..', 'hooks', 'lib', 'x.cjs'))` e `const path = require('path');`; e `hooks/testa-caso.sh` com as linhas de `cp` da coluna (com `SRC=...` e `SBP=...` atribuídos no topo; a bateria de fixture nunca é executada, só lida).
 
 Forma prescrita:
-- CLI: `node scripts/conferir-caixas.cjs [--raiz <dir>]` (padrão: a pasta acima do script). Lê `hooks/testa-*.sh` e `scripts/testa-*.sh` da raiz. Uma linha por achado: `<bateria>: falta <caminho> (exigido por <arquivo>)`, caminhos relativos à raiz com `/`. Última linha: `conferir-caixas: <n> bateria(s), <m> achado(s)`. Exit 1 com achado, 0 sem, 2 em uso errado.
-- Conjunto copiado (D1): de cada linha que contém `cp ` e não começa com `#`, os trechos `\$\{?[A-Za-z_]+\}?/((scripts|hooks)/[^"' ]+\.cjs)`. Laço: linha `for <v> in <palavras>; do` (uma linha) — enquanto não vier `done`, as linhas de `cp` com `$<v>` ou `${<v>}` se expandem para cada palavra. Linha de `cp` com `-r`/`-R`/`-a` cuja origem termina em `/scripts"` ou `/hooks"` (ou sem aspas) marca a bateria como pulada.
+- CLI: `node scripts/conferir-caixas.cjs [--raiz <dir>]` (padrão: a pasta acima do script). Lê `hooks/testa-*.sh` e `scripts/testa-*.sh` da raiz (as `testa-*.cjs` ficam fora). Uma linha por achado: `<bateria>: falta <caminho> (exigido por <arquivo>)`, caminhos relativos à raiz com `/`, achados deduplicados por bateria e ordenados por bateria e depois por caminho. Bateria pulada imprime `<bateria>: pulada (cp -r de <pasta>)`. Última linha: `conferir-caixas: <n> bateria(s), <m> achado(s)`. Exit 1 com achado, 0 sem; argumento desconhecido ou `--raiz` sem pasta existente imprime `uso: node scripts/conferir-caixas.cjs [--raiz <dir>]` e sai 2. Arquivo copiado que não existe na raiz é ignorado em silêncio.
+- Conjunto copiado (D1): de cada linha que contém `cp ` e não começa com `#`, os trechos `\$\{?[A-Za-z_]+\}?/((scripts|hooks)/[^"' ]+\.cjs)`. Laço: linha `for <v> in <palavras>; do` (uma linha) — enquanto não vier `done`, as linhas de `cp` com `$<v>` ou `${<v>}` se expandem para cada palavra. Linha de `cp` com `-r`/`-R`/`-a`: se **qualquer** argumento de origem termina em `/scripts` ou `/hooks` (com ou sem aspas de fechamento), a bateria é pulada; se termina em `/hooks/lib` ou `/scripts/lib`, todos os `.cjs` dessa pasta na raiz entram no conjunto copiado.
+- Fica fora (D5), sem achado e sem erro: `cp` com glob (`"$RAIZ"/hooks/*.cjs`) e origem cujas aspas fecham antes do `/` — a regex simplesmente não casa.
 - Requires (D2): no texto do `.cjs` copiado (lido da raiz), `require\(path\.join\(__dirname,\s*([^)]*)\)\)` com todas as partes literais entre aspas (parte não literal descarta o require), e `require\(\s*['"](\.{1,2}/[^'"]+)['"]\s*\)`. O caminho resolve a partir da pasta do arquivo e vira relativo à raiz. Só conta alvo `.cjs` que existe na raiz. Transitivo: o alvo que está no conjunto copiado tem os requires dele conferidos também.
 - A comparação final é exatamente `const faltando = exigidos.filter((c) => !copiados.has(c));` (uma expressão, sem ramo), com `exigidos` e `copiados` já calculados; nenhum caso de teste lê o fonte.
 - `caixa-sem` (D3): linha `^\s*#\s*caixa-sem:\s*(\S+)\s+—\s*(\S.*)$` (travessão `—` ou `-`) tira o caminho dos achados daquela bateria; sem o motivo depois do travessão, não tira.
@@ -64,8 +68,23 @@ prova: `node scripts/conferir-caixas.cjs`
 pronto quando: com o repositório real, `node scripts/conferir-caixas.cjs` sai 0 com a última linha `conferir-caixas: <n> bateria(s), 0 achado(s)`, e tirar `caminho-real` do laço de `scripts/testa-estado-teto.sh` (o episódio de 2026-11-09) o faz sair 1 com `scripts/testa-estado-teto.sh: falta hooks/lib/caminho-real.cjs (exigido por scripts/conferir-mutacao.cjs)`; e `bash scripts/varrer-baterias.sh --shard 1/3 --listar` continua listando sem rodar o checador — provado pelos três comandos e por `bash scripts/testa-varrer-baterias.sh` saindo 0
 
 Forma prescrita:
-- Rodar `node scripts/conferir-caixas.cjs` na branch. Para cada achado, decidir lendo o script: se o `require` faltante está em `try/catch` que degrada (aviso e segue), acrescentar na bateria, logo acima do `cp` do script que o exige, `# caixa-sem: <caminho> — <o que degrada, em poucas palavras>`; se não degrada (o script quebra sem a lib), acrescentar o `cp` que falta **e** listar a bateria no relatório como defeito latente achado. Nenhuma outra edição nas baterias.
-- `scripts/varrer-baterias.sh`: logo antes de `vermelhas=()`, quando não é `--so` e o shard é vazio ou `1/<n>`: `echo "----- conferir-caixas -----"`, roda `node scripts/conferir-caixas.cjs`; saída ≠ 0 acrescenta `conferir-caixas` a `vermelhas` (o array é criado antes, então mover a linha `vermelhas=()` para cima do bloco).
+- Rodar `node scripts/conferir-caixas.cjs` na branch. Regra fixa para cada achado: se o `require` faltante está dentro de um bloco `try { ... } catch` cujo `catch` não relança (`throw`) — degrada para aviso e segue —, acrescentar na bateria, logo acima do `cp` do script que o exige, `# caixa-sem: <caminho> — <o que degrada, em poucas palavras>`; em qualquer outro caso, acrescentar o `cp` que falta (no mesmo formato das linhas vizinhas) **e** listar a bateria no relatório como defeito latente achado. Nenhuma outra edição nas baterias.
+- `scripts/varrer-baterias.sh`: logo antes de `vermelhas=()`, mover `vermelhas=()` para cima e acrescentar o bloco abaixo. `modo_solo` é a variável do `--so`; o `--listar` já saiu antes deste ponto. O checador roda pelo caminho absoluto do próprio `varrer` e examina a raiz de onde o `varrer` foi chamado (o cwd), para que as caixas de `scripts/testa-varrer-baterias.sh` — que rodam o `varrer` dentro de sandboxes com baterias fictícias, sem `cp` — saiam com `0 achado(s)`:
+  ```
+  if [ -z "$modo_solo" ] && { [ -z "$shard" ] || [ "${shard%%/*}" = "1" ]; }; then
+    echo ""
+    echo "----- conferir-caixas -----"
+    dir_varrer="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if node "$dir_varrer/conferir-caixas.cjs" --raiz "$PWD"; then
+      echo "  >> VERDE  conferir-caixas"
+    else
+      echo "  >> VERMELHA conferir-caixas"
+      vermelhas+=("conferir-caixas")
+    fi
+  fi
+  ```
+- Se `bash scripts/testa-varrer-baterias.sh` ficar vermelha com o bloco, PARE e reporte com a saída: a bateria não está em `arquivos:` e não se edita aqui.
+- A mutação do critério é aplicada e desfeita pelo `node scripts/conferir-mutacao.cjs --arquivo scripts/testa-estado-teto.sh --de 'resolver-executavel caminho-real contar-ocorrencias' --para 'resolver-executavel contar-ocorrencias' --bateria 'node scripts/conferir-caixas.cjs'`, nunca à mão.
 
 ### 3. Versão MINOR, README e CHANGELOG [tipo: docs]
 atende: D4
@@ -73,4 +92,5 @@ arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`
 depende de: 2
 mutacao: n/a
   motivo: só versão e texto; comportamento medido pelas tarefas 1 e 2
+*Emenda do leitor cego:* trazer a `main` com `git fetch origin && git merge origin/main`; data do cabeçalho 2026-11-11; o `README.md` ganha, na tabela de scripts `conferir-*` (seção de scripts, ~linhas 252-261), uma linha para `conferir-caixas.cjs` no mesmo formato das vizinhas.
 pronto quando: com a `main` trazida para a branch, `node scripts/conferir-versao.cjs` sai 0 e os quatro lugares (dois `plugin.json`, selo do README com `vers%C3%A3o-X-` e `alt="versão X"`, topo do CHANGELOG `## X — AAAA-MM-DD`) dizem a versão seguinte à da `main` na casa MINOR (2.12.0 se a `main` estiver em 2.11.1); o CHANGELOG descreve pelo comportamento o checador, onde ele roda e a linha `# caixa-sem:` — provado por `node scripts/conferir-versao.cjs; grep -n '"version"' .claude-plugin/plugin.json .codex-plugin/plugin.json; grep -n 'alt="versão' README.md; grep -n -m2 -A3 '^## ' CHANGELOG.md`
