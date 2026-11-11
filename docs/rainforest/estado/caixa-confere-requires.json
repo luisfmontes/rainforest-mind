@@ -18,11 +18,10 @@
     "em": "2026-11-11"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-11",
-    "tarefas_ok": 3,
-    "tarefas": 3,
-    "em_voo": [],
+    "tarefas_ok": 4,
+    "tarefas": 4,
     "carimbos": [
       {
         "tarefa": 1,
@@ -47,53 +46,75 @@
         "evidencia": "Luis escolheu Q1=A em 2026-11-11; virou D6 do design e a tarefa 2 reescrita do plano"
       }
     ],
-    "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug caixa-confere-requires; bash scripts/testa-conferir-caixas.sh; bash scripts/varrer-baterias.sh --shard 1/150",
-    "saida": "tarefa 1 vermelho, tarefa 2 vermelho, tarefa 3 pulada n/a; testa-conferir-caixas ok: 25 falhou: 0; varrer shard 1/150: conferir-caixas 0 achado(s) novo(s), 144 ja existente(s) na base, VERDE",
+    "comando": "bash scripts/testa-conferir-caixas.sh; node scripts/conferir-caixas.cjs | tail -1",
+    "saida": "ok: 29   falhou: 0 / conferir-caixas: 224 bateria(s), 128 achado(s)",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-caixas.sh, caso (1) script copiado sem a lib que ele exige"
+        "fixture": "testa-conferir-caixas.sh casos (1)-(4)"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "testa-conferir-caixas.sh, caso (10) achado que ja existe na base nao reprova"
+        "fixture": "testa-conferir-caixas.sh casos (10)-(11)"
       },
       {
         "tarefa": 3,
         "resultado": "n/a",
-        "motivo": "so versao e texto; comportamento medido pelas tarefas 1 e 2"
+        "motivo": "so versao e texto"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-conferir-caixas.sh casos (9b) e (7b)"
       }
     ],
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-11-11"
-    },
     "reaberturas": 1
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "ok",
     "snapshot": {
-      "head": "b21a40c12cb3882f4b5f7c891416a671391cefdd",
-      "caminhos_sujos": []
+      "head": "340b41c9aee77c64017cef0b95268e1af5b60523",
+      "caminhos_sujos": [
+        "docs/rainforest/estado/caixa-confere-requires.json"
+      ]
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a19ffbc460dfad3ff",
-        "veredito": "reprovado",
+        "agente_id": "a5768e1c157908d48",
+        "veredito": "ok",
         "em": "2026-11-11",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a19ffbc460dfad3ff.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a5768e1c157908d48.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-11-11",
-    "achados": 4,
-    "tentativas": 1
+    "achados": 2,
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a19ffbc460dfad3ff",
+            "veredito": "reprovado",
+            "em": "2026-11-11",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a19ffbc460dfad3ff.jsonl"
+          }
+        ]
+      }
+    ],
+    "base": "c278aa06",
+    "head": "340b41c9aee77c64017cef0b95268e1af5b60523"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "ok",
+    "comando": "node scripts/conferir-caixas.cjs --base $(git merge-base HEAD origin/main); bash scripts/testa-conferir-caixas.sh; node scripts/conferir-caixas.cjs; bash scripts/testa-varrer-baterias.sh; node scripts/conferir-versao.cjs",
+    "saida": "conferir-caixas: 224 bateria(s), 0 achado(s) novo(s), 128 já existente(s) na base (exit 0) / ok: 29 falhou: 0 / 224 bateria(s), 128 achado(s) / TODOS OS TESTES PASSARAM / ok versao 2.12.0 (origin/main: 2.11.1)",
+    "em": "2026-11-11",
+    "head": "340b41c9aee77c64017cef0b95268e1af5b60523"
   },
   "fechar": {
     "status": "pendente"
