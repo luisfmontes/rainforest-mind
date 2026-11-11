@@ -18,18 +18,11 @@
     "em": "2026-11-11"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-11",
-    "tarefas_ok": 2,
+    "tarefas_ok": 3,
     "tarefas": 3,
-    "em_voo": [
-      {
-        "agente": "executor",
-        "tarefa": "3 valor de outra flag",
-        "desde": "2026-11-11",
-        "sessao": "77ec548d-5d34-488c-99ae-8f54633d2e8c"
-      }
-    ],
+    "em_voo": [],
     "carimbos": [
       {
         "tarefa": 1,
@@ -56,11 +49,16 @@
       {
         "tarefa": 2,
         "resultado": "n/a",
-        "motivo": "so versao e texto; comportamento medido pela tarefa 1"
+        "motivo": "so versao e texto; comportamento medido pelas tarefas 1 e 3"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-pr-flag-curta.sh, caso (c12) create --fill com titulo -bar"
       }
     ],
-    "comando": "node scripts/conferir-mutacao.cjs --arquivo hooks/gate-fechar-issue.cjs --de \": tok.slice(0, 2);\" --para \": tok.slice(0, 2).toLowerCase();\" --bateria \"bash hooks/testa-gate-pr-flag-curta.sh\"",
-    "saida": "bateria VERMELHA com o comportamento invertido (exit 1), confirmada em duas rodadas; (c10) entre os casos vermelhos; D2 e D3 tambem vermelhas"
+    "comando": "node scripts/conferir-mutacao.cjs --arquivo hooks/gate-fechar-issue.cjs --de \"if (colado === null) i += 1;\" --para \"if (false) i += 1;\" --bateria \"bash hooks/testa-gate-pr-flag-curta.sh\"; bash hooks/testa-gate-pr-flag-curta.sh",
+    "saida": "bateria VERMELHA com (c12) e (c13); D1 vermelha com (c10); bateria integrada ok: 34 falhou: 0"
   },
   "revisar": {
     "status": "pendente",
