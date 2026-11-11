@@ -1,0 +1,28 @@
+{
+  "slug": "gate-crase",
+  "titulo": "gate-crase",
+  "criado_em": "2026-11-11",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/gate-crase.md",
+    "em": "2026-11-11"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}

@@ -1,0 +1,107 @@
+Data: 2026-11-11
+Termos: crase, backtick, segmentosParaGate
+
+$ gh issue list --state all --search "crase" --limit 200 --json number,title,state
+[{"number":685,"state":"OPEN","title":"gate-fechar-issue: gh issue close dentro de crases passa sem checagem"},{"number":580,"state":"CLOSED","title":"gate-worktree: caminho por variável fora do segmento de leitura simples não é julgado (|, $(, argumento)"},{"number":682,"state":"CLOSED","title":"gate-fechar-issue barra 'gh pr create --help' e 'gh help pr create'"},{"number":474,"state":"CLOSED","title":"Portaria imprime comandos com aspas duplas: $(...) num nome de pasta executa ao colar"},{"number":552,"state":"CLOSED","title":"gate-worktree: remoção (rm/Remove-Item), New-Object de IO e redirecionamento com variável passam"},{"number":494,"state":"CLOSED","title":"gate-publicacao barra header Authorization com variavel (Bearer ${token}) como credencial"},{"number":364,"state":"CLOSED","title":"Menores da revisao do semear-travas: aspas na mesma linha, --exige com .., --slug do varrer"},{"number":281,"state":"CLOSED","title":"catraca de mutacao sai 0 quando nenhuma mutacao declarada foi aplicada"},{"number":337,"state":"CLOSED","title":"gate-fechar-issue barra bash $t sem aspas como comando encapsulado"},{"number":187,"state":"CLOSED","title":"testa-segunda-opiniao.sh vaza processo: 7 vivos por 95h, 531s de CPU, bateria verde"},{"number":530,"state":"CLOSED","title":"gate-worktree: três formas de cd para o principal passam a partir do worktree ({cd,X}, A=1 cd X, then cd X)"},{"number":258,"state":"CLOSED","title":"gate-staging-total: bloqueia texto que cita comando git, e resolve o repo errado com -C"},{"number":223,"state":"CLOSED","title":"despachar-codex monta comando como string de shell: injecao por --saida e por config"},{"number":239,"state":"CLOSED","title":"gate-fechar-issue bloqueia heredoc cujo texto fecha frase com parentese: \").\" e lido como subshell + source"},{"number":254,"state":"CLOSED","title":"Catraca de mutacao: 'pulada' fecha o verificar como se fosse medida"},{"number":344,"state":"CLOSED","title":"gate-fechar-issue: --body-file com caminho MSYS (/c/...) vira ilegivel"},{"number":339,"state":"CLOSED","title":"Tres contrabarras dentro das aspas duplas do wrapper ainda escondem o comando (residuo da #313)"}]
+
+
+$ gh issue list --state all --search "backtick" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "segmentosParaGate" --limit 200 --json number,title,state
+[{"number":685,"state":"OPEN","title":"gate-fechar-issue: gh issue close dentro de crases passa sem checagem"},{"number":239,"state":"CLOSED","title":"gate-fechar-issue bloqueia heredoc cujo texto fecha frase com parentese: \").\" e lido como subshell + source"}]
+
+
+$ gh pr list --state all --search "crase" --limit 200 --json number,title,state
+[{"number":687,"state":"OPEN","title":"fechar-issue aceita Pronto quando e o gate deixa passar a ajuda do gh (2.12.1)"},{"number":532,"state":"MERGED","title":"conferir-publicacao: Authorization com variavel em JS nao e credencial (#494, 1.67.2)"},{"number":554,"state":"MERGED","title":"gate-worktree: {cd,X} e cmdlets de escrita do PowerShell (#530, #533)"},{"number":605,"state":"MERGED","title":"Gate do worktree: alvo com expansão, mensagens do cd - e do dinâmico (2.0.4)"},{"number":370,"state":"MERGED","title":"zerar-issues-13: #362 #363 #364 (1.34.0)"},{"number":357,"state":"MERGED","title":"zerar-issues-12: gates dizem quando a causa é variável (#350), 1.30.0"},{"number":316,"state":"MERGED","title":"gates: bash \"$VAR/caminho\" e caminho de script, nao wrapper ilegivel"},{"number":365,"state":"MERGED","title":"Seis travas semeadas do historico (1.32.0)"},{"number":332,"state":"MERGED","title":"Veredito fora da linha: hook devolve a vez uma vez; negrito aceito"},{"number":347,"state":"MERGED","title":"gate-bateria-sem-timeout: subagente nao deixa bateria ir para segundo plano (1.26.0)"},{"number":556,"state":"MERGED","title":"gate-worktree: palavra de comando lida como o bash (#530, 1.67.11)"},{"number":336,"state":"MERGED","title":"gate-busca-raiz: subagente nao varre o disco; perfil pede timeout"},{"number":186,"state":"MERGED","title":"R1 (frente 2) + R8: o fluxo nao mente sobre ter terminado, e o executor nao pula verificacao"},{"number":247,"state":"MERGED","title":"zerar-issues rodada 3: heredoc no gate de Issue e radar em 4 chamadas (1.13.2)"},{"number":18,"state":"MERGED","title":"O til no meio do caminho barrava commit legitimo, e o 8.3 mandava nao integrar (#16)"},{"number":213,"state":"MERGED","title":"Skill montar-corpus: wiki em markdown vira acervo, com o grafo tratado como entrada nao confiavel"}]
+
+
+$ gh pr list --state all --search "backtick" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "segmentosParaGate" --limit 200 --json number,title,state
+[{"number":649,"state":"MERGED","title":"Complexidade por função no enxugar (2.5.0)"},{"number":247,"state":"MERGED","title":"zerar-issues rodada 3: heredoc no gate de Issue e radar em 4 chamadas (1.13.2)"}]
+
+
+$ git ls-remote --heads origin | grep -F "crase"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "backtick"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "segmentosParaGate"
+(vazio)
+
+$ git log --all --grep="crase" --oneline
+472984f4 gate-fechar-issue: ajuda com $ ou crase nao e ajuda (D5)
+510c08cd gate-fechar-issue: recusas do corpo do PR com uma receita só (2.8.2) (#665)
+32be77c2 Complexidade por função no enxugar (2.5.0) (#649)
+f882989a Lote A: saude, gate-fechar-issue e esperar-ci sem falso alarme (2.0.5) (#615)
+0533241c Gate do worktree: alvo com expansão, mensagens do cd - e do dinâmico (2.0.4) (#605)
+b593073e Apoio ao dev, lote 6: ferramentas do fluxo (1.80.0) (#598)
+68c1cbad gate-worktree: HOME redefinido na linha falha fechado (#561, 1.70.1) (#572)
+1ba5156b gate-worktree: rede de caminho do principal e pai inexistente (#552, 1.68.0) (#563)
+038de7d8 gate-worktree: palavra de comando lida como o bash (#530, 1.67.11) (#556)
+b767d7d5 gate-worktree: {cd,X} e cmdlets de escrita do PowerShell (#530, #533) (#554)
+397aa5a9 Glossario de dominio por repositorio (GLOSSARIO.md), versao 1.52.0 (#451)
+75a376e1 Plano: de:/para: da tarefa 10 sem barra antes das crases
+dd2aa020 Zerar as Issues #409-#414, #417, #419 (1.46.0) (#426)
+1bc6d8ac plano zerar-issues-15: mutacao da tarefa 15 sem crase
+6cc3e88b faixa: corrige achados da revisao (teste por conteudo, agente, Q)
+76d81848 Tarefa 3: aspas e crases só se pareiam quando abrem e fecham de verdade
+dff9e98c Menores da revisao 2: exige na rota ja-contem, negacao e aspa solta
+6f2ad3a3 Tarefa 9: O substituir.cjs é citado onde se edita
+d9f639d8 gate-fechar-issue: --body-file com variavel tem mensagem propria (#350)
+cb0fb31b agente-sem-background: conserta achados da revisão 2
+537ea330 revisar ok; achados menores da revisao corrigidos
+292ac316 extracao de veredito: aceita marcacao so nas pontas da ultima linha (D2/D4)
+68978c3d gates: & com alvo literal no PowerShell e comando comum, nao ilegivel
+33367532 gates: bash "$VAR/caminho" e caminho de script, nao wrapper ilegivel
+14d60339 plano: crase faltando na lista de arquivos da tarefa 10
+d8529b9e regua selada: o validador passa a ver o que o critico cego ve
+1fbe4769 conferir-invariantes: vivacidade do nao_deve de producao
+891db543 Plano zerar-issues-5: tarefa 22 e de/para literal da tarefa 8
+79804d82 conferir-fluxo mutacoes: exit != 0 do conferir-mutacao reprova
+e79236ff Zerar issues 4: heredoc e dado, visibilidade do remoto, varredura unica e token sem qualificador (#271)
+8d8b1723 Gate de Issue: linha logica do heredoc e texto do corpo varrido
+e6dcb4fd Escape deixa de valer so para o titulo: resumo, id, caminho e tipo tambem
+c4db8b7f Rodada 4 do gate: delimitador citado vs nao citado no heredoc
+38a31904 Conserta falso negativo do gate-git-verificacao: heredoc sem aspas expande $(...) e crase
+9aaade4c Revisar reprovado na 3a rodada: o conserto do falso positivo abriu um buraco
+bcbedd46 Conserta o gate git-verificacao: nove contornos que passavam no criterio velho
+97327d16 Lote 3 rodada 5: cwd por segmento, pushd/env -C, procuraCLI so em posicao de comando
+795c2383 Lote 3 rodada 4: gate-fechar-issue confere cada segmento e a string do bash -c
+c9ba72d9 Lote 3 rodada 2: Consertos F3, F4, F5, F7 e casos novos (g-j)
+aaecae53 Vigias: desfaz o desempate de posicao no gate OEM — era a troca errada
+31c8fd08 Vigias: desfaz o desempate de posicao no gate OEM — era a troca errada
+e4815530 Tarefa 1: transporte de CLI externo com bateria
+411067b5 Tarefa 1: transporte de CLI externo com bateria
+889ff9c9 Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+56ea03cc Fecha #76: a janela sabe que a ferramenta falta antes de tentar (#116)
+454ed439 Fecha #89: creep monta o git diff sem shell, com execFileSync e lista (#95)
+6da92f4e Fecha #89: creep monta o git diff sem shell, com execFileSync e lista (#95)
+20c88be7 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+d427f732 auditor-de-seguranca: audita codigo existente contra a OWASP Top 10 2025, mais a de API quando ha API (#87)
+1c68627a O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas (#59)
+b4704ff8 O divergir vira grafo em codigo: workflow, conferidor de isolamento e registrador de rodadas (#59)
+
+$ git log --all --grep="backtick" --oneline
+ed1b65b1 Tarefa 2 (#313): escape de aspas duplas reduzido antes do colapso
+05dec528 Correção de segurança: elimina injeção de template literal e eval sem isolamento
+
+$ git log --all --grep="segmentosParaGate" --oneline
+99c5e5b7 Zerar as 12 Issues da revisao bimestral (1.43.0) (#416)
+82837b95 zerar-issues-8: tarefa 13, continuacao de linha no topo do comando (#309)
+115da24c zerar-issues-8: tarefas 11-12 - |& e continuacao de linha na fronteira de segmento (#309, revisao 2)
+074053d3 gate: pular palavra reservada do shell na posicao de comando (#309)
+c06cdb0f Gate de Issue: here-string dirigido a interpretador e script
+78411f93 Gate de Issue: <<< consumido inteiro em segmentosParaGate
+93ceca0e Gate de Issue: so o corpo do heredoc e dado; o resto da linha e comando
+ef92114a Design e plano: zerar-issues rodada 3 (D1-D5, tarefas 1-5)
+b6bce104 Lote 3 rodada 19: injecao no pr merge, chaves como fronteira, apostrofo no conferir
+
+$ cat <dados>/ideias.jsonl
+(vazio)
+
