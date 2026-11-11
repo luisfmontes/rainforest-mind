@@ -207,6 +207,10 @@ const ESCAPAVEIS_EM_ASPAS_DUPLAS = new Set(['"', "\\", "$", "`"]);
 function escapaDentroDaAspa(aspa, proximo) {
   return aspa === "$'" || (aspa === '"' && ESCAPAVEIS_EM_ASPAS_DUPLAS.has(proximo));
 }
+// D3 (gate-segmentador, Issue #689): interior de "$(...)" cujo fim a contagem
+// de parenteses nao acha com seguranca (aspa, crase, comentario, heredoc,
+// contrabarra, case).
+const INTERIOR_COMPLEXO = /['"`#<\\]|\bcase\b/;
 
 function segmentosParaGate(cmd) {
   chamadasSegmentacao += 1;
@@ -303,6 +307,18 @@ function segmentosParaGate(cmd) {
           }
           interno += cmd[j];
           j += 1;
+        }
+        // D3 (gate-segmentador): o fim do $(...) sai da contagem de parenteses,
+        // que nao entende aspas; com interior complexo o laco de fora pode
+        // reler o resto com o estado de aspas errado. Com gh de escrita do $(
+        // em diante, barra (falha fechada). Gatilho booleano: nao conta gh.
+        if (INTERIOR_COMPLEXO.test(interno) && temGhLiteralQueEscreve(cmd.slice(i))) {
+          bloqueia(
+            "BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n" +
+            "Razão: o comando tem \"$(...)\" com aspa, crase, comentário, heredoc ou case dentro, e um 'gh' que escreve depois dele;\n" +
+            "o gate não acha o fim da substituição com segurança.\n\n" +
+            "Rode o 'gh' em comando separado. Texto de corpo vai por --body-file ou git commit -F <arquivo>.\n"
+          );
         }
         // A recursao (e nao o push cru) desce em crase e heredoc la dentro (D6).
         if (interno.trim()) {

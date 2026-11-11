@@ -1144,6 +1144,78 @@ COMANDO_AD_5=$'echo \\$\'a\\\'; gh issue close 12'
 EXIT_AD_5=$?
 [ $EXIT_AD_5 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AD_5)"
 
+# Caso (ps-1): "$(...)" com ponto e virgula e aspa simples no interior, gh issue close depois → exit 2 (D3 de gate-segmentador)
+echo
+echo "== (ps-1) Bash: \$(...) com aspa simples no interior e gh issue close depois → exit 2 =="
+COMANDO_PS_1=$'echo "$(echo \')\' ; gh issue close 12)"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_PS_1")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ps-1"
+EXIT_PS_1=$?
+[ $EXIT_PS_1 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_PS_1)"
+
+# Caso (ps-2): "$(...)" com aspa simples no interior e && gh issue close depois → exit 2 (D3 de gate-segmentador)
+echo
+echo "== (ps-2) Bash: \$(...) com aspa simples no interior e && gh issue close depois → exit 2 =="
+COMANDO_PS_2=$'echo "$(echo \')\' && gh issue close 12)"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_PS_2")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ps-2"
+EXIT_PS_2=$?
+[ $EXIT_PS_2 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_PS_2)"
+
+# Caso (ps-3): "$(...)" com aspa simples no interior e gh pr merge depois → exit 2 (D3 de gate-segmentador)
+echo
+echo "== (ps-3) Bash: \$(...) com aspa simples no interior e gh pr merge depois → exit 2 =="
+COMANDO_PS_3=$'echo "$(echo \')\' ; gh pr merge 5)"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_PS_3")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ps-3"
+EXIT_PS_3=$?
+[ $EXIT_PS_3 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_PS_3)"
+
+# Caso (ps-4): "$(...)" com aspa dupla e simples no interior, gh issue close depois do fecho → exit 2 (D3 de gate-segmentador)
+echo
+echo "== (ps-4) Bash: \$(...) com aspa dupla e simples no interior, gh issue close depois do fecho → exit 2 =="
+COMANDO_PS_4=$'echo "$(echo "\'")"; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_PS_4")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ps-4"
+EXIT_PS_4=$?
+[ $EXIT_PS_4 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_PS_4)"
+
+# Caso (ps-5): "$(...)" com aspa simples no interior e so echo depois, sem gh de escrita → exit 0 (D3 de gate-segmentador)
+echo
+echo "== (ps-5) Bash: \$(...) com aspa simples no interior e so echo depois, sem gh de escrita → exit 0 =="
+COMANDO_PS_5=$'echo "$(echo \')\' ; echo oi)"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_PS_5")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ps-5"
+EXIT_PS_5=$?
+[ $EXIT_PS_5 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_PS_5)"
+
+# Caso (ps-6): commit por heredoc com apostrofo e parenteses soltos no corpo, sem gh → exit 0 (D3 de gate-segmentador)
+echo
+echo "== (ps-6) commit por heredoc com apostrofo e parenteses soltos no corpo, sem gh → exit 0 =="
+COMANDO_PS_6=$'git commit -m "$(cat <<\'EOF\'\ndon\'t ) solto\nEOF\n)"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_PS_6")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ps-6"
+EXIT_PS_6=$?
+[ $EXIT_PS_6 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_PS_6)"
+
 # R2 (rodada 9, lote 3, 2026-09-04): `Invoke-Expression`/`iex` (PowerShell)
 # nao eram reconhecidos como wrapper de string sem flag (igual `eval`) — o
 # conteudo era um token citado so, a busca por sequencia nao casava dentro
