@@ -2,7 +2,8 @@
 # Bateria: o gate-fechar-issue acha o corpo do PR em toda grafia de flag que o
 # gh (pflag) aceita — -b/-F com valor colado, -F=, -F separado — e ignora -B
 # e -f como corpo. Cada caso e uma linha da tabela de casos do design
-# docs/rainforest/design/gate-pr-flag-curta.md (D1, D2, D3, D5).
+# docs/rainforest/design/gate-pr-flag-curta.md (D1, D2, D3, D5). Cobre tambem a
+# ajuda do gh (D3/D4 do design fechar-issue-pronto-e-ajuda).
 #
 # Cada caso manda o payload real de PreToolUse ao gate e le o stderr. Um gh
 # falso (sai 1) fica a frente do PATH: nenhum caso consulta o GitHub real.
@@ -136,6 +137,38 @@ echo "== (f1) -f não é corpo =="
 roda "gh pr create --title t -f"
 sai "(f1) create -f" 2
 tem "(f1) create -f" "editor interativo"
+
+echo "== (h1..h10) ajuda do gh =="
+
+roda "gh pr create --help"
+sai "(h1) pr create --help" 0
+
+roda "gh pr create -h"
+sai "(h2) pr create -h" 0
+
+roda "gh pr edit --help"
+sai "(h3) pr edit --help" 0
+
+roda "gh issue create --help"
+sai "(h4) issue create --help" 0
+
+roda "gh issue comment --help"
+sai "(h5) issue comment --help" 0
+
+roda "gh help pr create"
+sai "(h6) help pr create" 0
+
+roda "gh pr create --title t"
+sai "(h7) pr create --title t" 2
+
+roda "gh pr create --title t --help"
+sai "(h8) pr create --title t --help" 2
+
+roda 'gh pr create --help --body "Closes #12"'
+sai "(h9) pr create --help --body Closes" 2
+
+roda "gh pr create -dh"
+sai "(h10) pr create -dh" 2
 
 echo
 echo "ok: $ok   falhou: $falhou"
