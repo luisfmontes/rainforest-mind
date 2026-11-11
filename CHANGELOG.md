@@ -10,6 +10,11 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.12.1 — 2026-11-11
+
+- **Fechar Issue no formato comum do repositório.** O `scripts/fechar-issue.cjs` aceitava só o cabeçalho `## Critério de pronto (falsificável)` e recusava as Issues escritas com `## Pronto quando`, `**Pronto quando:**` ou `Pronto quando:` no início da linha, que são a maioria. Agora aceita as quatro formas, e a recusa diz quais são. Quem fechava Issue comentando o marcador de evidência à mão volta a usar o script.
+- **A ajuda do `gh` passa pelo gate.** `gh pr create --help`, `gh pr create -h` e `gh help pr create` eram barrados como se criassem PR. Agora passam quando a ajuda é o único argumento depois do verbo. Ajuda misturada com outras flags, `-h` agrupado e qualquer token com `$` ou crase continuam barrados, porque nessas formas o `gh` pode criar o PR ou executar outro comando.
+
 ## 2.12.0 — 2026-11-11
 
 - **A varredura de baterias acusa a caixa que esquece uma lib.** Muitas baterias montam uma caixa de areia copiando alguns scripts do repositório; quando um desses scripts ganha um `require` novo e a caixa não copia o alvo, a bateria cai no CI com `Cannot find module`, ou pior, degrada para "pulada" e fica verde. Isso derrubou o CI quatro vezes entre setembro e novembro. O `scripts/conferir-caixas.cjs` lê o texto das baterias e dos scripts copiados e aponta cada lib que falta, em segundos. O `varrer-baterias.sh` (local e CI) o roda antes das baterias e só reprova a falta **nova** em relação à `origin/main`: o repositório tem hoje 128 faltas que já existiam (72 delas são `require` tardio do `estado.cjs`), e elas não reprovam. Ausência intencional se declara na bateria com `# caixa-sem: <caminho> — <motivo>`. Fica fora: `require` com caminho em variável, `cp` com glob ou com origem montada fora do laço de uma linha.
