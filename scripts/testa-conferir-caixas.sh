@@ -39,6 +39,18 @@ roda() {
   node "$SRC/scripts/conferir-caixas.cjs" --raiz "$(win "$SBP/$1")" > "$SBP/saida" 2>&1
   E=$?
 }
+# rodaBase <caso> <ref>: como roda, com --base <ref> (D6)
+rodaBase() {
+  node "$SRC/scripts/conferir-caixas.cjs" --raiz "$(win "$SBP/$1")" --base "$2" > "$SBP/saida" 2>&1
+  E=$?
+}
+# commita: transforma a raiz do caso num repositorio com um commit de base.
+# Identidade so por -c; qualquer falha de git e FALHA, nunca silencio.
+commita() {
+  if ! (cd "$CASO" && git init -q && git add -A && git -c user.email=t@t -c user.name=t commit -q -m base); then
+    test_fail "commita: git falhou na raiz $CASO"
+  fi
+}
 sai() {
   if [ "$E" = "$2" ]; then test_ok "$1: exit $2"
   else test_fail "$1: exit $E (esperado $2) -- $(head -4 "$SBP/saida" | tr '\n' ' ')"; fi
@@ -121,6 +133,36 @@ bateria 'cp "$SRC/scripts/a.cjs" "$SBP/scripts/"' 'cp -r "$SRC/hooks/lib" "$SBP/
 roda c9
 sai "(9)" 0
 tem "(9)" "0 achado(s)"
+
+# (10) achado que ja existe na base nao reprova (--base, D6)
+caso c10
+cjs scripts/a.cjs "const path = require('path');" "require(path.join(__dirname, '..', 'hooks', 'lib', 'x.cjs'));"
+bateria 'cp "$SRC/scripts/a.cjs" "$SBP/scripts/"'
+commita
+rodaBase c10 HEAD
+sai "(10)" 0
+tem "(10)" "0 achado(s) novo(s)"
+tem "(10)" "1 já existente(s) na base"
+
+# (11) achado novo reprova: o y entra no require e sai do laco, na arvore de trabalho
+caso c11
+cjs scripts/a.cjs "const path = require('path');" "require(path.join(__dirname, '..', 'hooks', 'lib', 'x.cjs'));"
+bateria 'cp "$SRC/scripts/a.cjs" "$SBP/scripts/"' 'for lib in x y; do cp "$SRC/hooks/lib/$lib.cjs" "$SBP/hooks/lib/"; done'
+commita
+bateria 'cp "$SRC/scripts/a.cjs" "$SBP/scripts/"' 'for lib in x; do cp "$SRC/hooks/lib/$lib.cjs" "$SBP/hooks/lib/"; done'
+cjs scripts/a.cjs "const path = require('path');" "require(path.join(__dirname, '..', 'hooks', 'lib', 'x.cjs'));" "require(path.join(__dirname, '..', 'hooks', 'lib', 'y.cjs'));"
+rodaBase c11 HEAD
+sai "(11)" 1
+tem "(11)" "falta hooks/lib/y.cjs (exigido por scripts/a.cjs)"
+
+# (12) base que nao existe: exit 2 e a mensagem diz a base
+caso c12
+cjs scripts/a.cjs "const path = require('path');"
+bateria 'cp "$SRC/scripts/a.cjs" "$SBP/scripts/"'
+commita
+rodaBase c12 nao-existe-xyz
+sai "(12)" 2
+tem "(12)" "base 'nao-existe-xyz' não existe"
 
 echo "ok: $ok   falhou: $falhou"
 if [ "$falhou" -gt 0 ]; then exit 1; fi

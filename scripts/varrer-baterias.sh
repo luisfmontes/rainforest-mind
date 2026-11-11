@@ -198,6 +198,26 @@ identidade_repo() { git config --local --get-regexp '^user\.' 2>/dev/null | sort
 identidade_antes="$(identidade_repo)"
 
 vermelhas=()
+# Caixas que copiam script sem a lib que ele exige (conferir-caixas, D4 e D6): so o
+# achado que nao existe em origin/main reprova. Sem origin/main, analisa tudo.
+if [ -z "$modo_solo" ] && { [ -z "$shard" ] || [ "${shard%%/*}" = "1" ]; }; then
+  echo ""
+  echo "----- conferir-caixas -----"
+  dir_varrer="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  base_caixas="$(git merge-base HEAD origin/main 2>/dev/null || true)"
+  if [ -n "$base_caixas" ]; then
+    args_caixas=(--raiz "$PWD" --base "$base_caixas")
+  else
+    args_caixas=(--raiz "$PWD")
+  fi
+  if node "$dir_varrer/conferir-caixas.cjs" "${args_caixas[@]}"; then
+    echo "  >> VERDE  conferir-caixas"
+  else
+    echo "  >> VERMELHA conferir-caixas"
+    vermelhas+=("conferir-caixas")
+  fi
+fi
+
 for f in "${baterias[@]}"; do
   echo ""
   echo "----- $f -----"

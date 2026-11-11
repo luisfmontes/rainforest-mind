@@ -17,13 +17,18 @@
  * Linha `# caixa-sem: <caminho> — <motivo>` na bateria declara que a ausencia e
  * intencional (um `require` tardio que degrada para aviso). Sem o motivo, nao vale.
  *
- * Uso:   node scripts/conferir-caixas.cjs [--raiz <dir>]
- * Saida: 0 sem achado, 1 com achado, 2 uso.
+ * Com `--base <ref>` (D6), roda a mesma analise sobre a arvore de `hooks/` e
+ * `scripts/` do commit <ref> e reprova so o achado que nao existe la.
  *
- * Design: docs/rainforest/design/caixa-confere-requires.md (D1 a D5).
+ * Uso:   node scripts/conferir-caixas.cjs [--raiz <dir>] [--base <ref>]
+ * Saida: 0 sem achado (novo), 1 com achado, 2 uso.
+ *
+ * Design: docs/rainforest/design/caixa-confere-requires.md (D1 a D6).
  */
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const USO = 'uso: node scripts/conferir-caixas.cjs [--raiz <dir>]';
 
@@ -50,15 +55,42 @@ function ehArquivo(p) {
   return fs.existsSync(p) && fs.statSync(p).isFile();
 }
 
-function lerRaiz(argv) {
+function lerArgs(argv) {
   let raiz = path.resolve(__dirname, '..');
-  for (let i = 0; i < argv.length; i++) {
-    if (argv[i] !== '--raiz' || i + 1 >= argv.length) uso();
-    raiz = path.resolve(argv[i + 1]);
-    i++;
+  let base = null;
+  for (let i = 0; i < argv.length; i += 2) {
+    const flag = argv[i];
+    if ((flag !== '--raiz' && flag !== '--base') || i + 1 >= argv.length) uso();
+    if (flag === '--raiz') raiz = path.resolve(argv[i + 1]);
+    else base = argv[i + 1];
   }
   if (!ehPasta(raiz)) uso();
-  return raiz;
+  return { raiz, base };
+}
+
+// D6: extrai hooks/ e scripts/ do commit <ref> para uma pasta temporaria.
+// Qualquer falha de git ou tar sai com exit 2 (nunca vira "0 achados").
+function extrairBase(raiz, ref) {
+  const rev = spawnSync('git', ['-C', raiz, 'rev-parse', '--verify', `${ref}^{commit}`], { encoding: 'utf8' });
+  if (rev.error || rev.status !== 0) {
+    console.error(`conferir-caixas: base '${ref}' não existe`);
+    process.exit(2);
+  }
+  const arc = spawnSync('git', ['-C', raiz, 'archive', '--format=tar', ref, 'hooks', 'scripts'], {
+    maxBuffer: 512 * 1024 * 1024,
+  });
+  if (arc.error || arc.status !== 0) {
+    console.error(`conferir-caixas: não deu para ler hooks/ e scripts/ de '${ref}'`);
+    process.exit(2);
+  }
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'conferir-base-'));
+  const tar = spawnSync('tar', ['-x', '-f', '-', '-C', dir], { input: arc.stdout });
+  if (tar.error || tar.status !== 0) {
+    fs.rmSync(dir, { recursive: true, force: true });
+    console.error(`conferir-caixas: não deu para extrair a base '${ref}'`);
+    process.exit(2);
+  }
+  return dir;
 }
 
 function listarBaterias(raiz) {
@@ -191,23 +223,49 @@ function conferirBateria(bat, raiz) {
   return { achados };
 }
 
-function main() {
-  const raiz = lerRaiz(process.argv.slice(2));
+// Analisa a raiz inteira: `linhas` e a saida na ordem (inclui as puladas),
+// `achados` so as linhas de achado, ja formatadas.
+function analisar(raiz) {
   const baterias = listarBaterias(raiz);
-  let achados = 0;
+  const linhas = [];
+  const achados = [];
   for (const bat of baterias) {
     const r = conferirBateria(bat, raiz);
     if (r.pulada) {
-      console.log(`${bat}: pulada (cp -r de ${r.pulada})`);
+      linhas.push(`${bat}: pulada (cp -r de ${r.pulada})`);
       continue;
     }
     for (const a of r.achados) {
-      console.log(`${bat}: ${a}`);
-      achados++;
+      const linha = `${bat}: ${a}`;
+      linhas.push(linha);
+      achados.push(linha);
     }
   }
-  console.log(`conferir-caixas: ${baterias.length} bateria(s), ${achados} achado(s)`);
-  process.exitCode = achados > 0 ? 1 : 0;
+  return { baterias, linhas, achados };
+}
+
+function main() {
+  const { raiz, base } = lerArgs(process.argv.slice(2));
+  const atual = analisar(raiz);
+  if (base === null) {
+    for (const l of atual.linhas) console.log(l);
+    console.log(`conferir-caixas: ${atual.baterias.length} bateria(s), ${atual.achados.length} achado(s)`);
+    process.exitCode = atual.achados.length > 0 ? 1 : 0;
+    return;
+  }
+  const dirBase = extrairBase(raiz, base);
+  let daBase;
+  try {
+    daBase = new Set(analisar(dirBase).achados);
+  } finally {
+    fs.rmSync(dirBase, { recursive: true, force: true });
+  }
+  const linhas = atual.achados;
+  const novos = linhas.filter((l) => !daBase.has(l));
+  for (const l of novos) console.log(l);
+  const ja = linhas.length - novos.length;
+  console.log(`conferir-caixas: ${atual.baterias.length} bateria(s), ${novos.length} achado(s) novo(s), ${ja} já existente(s) na base`);
+  process.exitCode = novos.length > 0 ? 1 : 0;
 }
 
 main();
