@@ -10,6 +10,10 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.11.1 — 2026-11-11
+
+- **O gate de fechamento de Issue lê o corpo do PR em toda grafia que o `gh` aceita.** `-F` passa a valer como `--body-file` (antes caía na recusa "editor interativo", razão errada, e no `gh pr edit` passava sem checagem), o valor colado à flag curta (`-F<arquivo>`, `-F=<arquivo>`, `-b"<texto>"`) é lido, e flag curta compara com a caixa exata: `-B` é `--base` e `-f` é `--fill`, não corpo. Antes, `-B main` antes do `--body-file` virava corpo "main" e deixava `Closes #N` sem evidência passar, e `gh pr create -B main --fill` passava sem que o gate lesse corpo nenhum. Quando o comando traz mais de um corpo, todos são checados. `gh issue create` e `gh issue comment` herdam o `-F` na checagem de palavra-chave falsa. Fica fora: alias do `gh`, `gh api`, variável de ambiente do `gh` e `--template` (#664).
+
 ## 2.11.0 — 2026-11-09
 
 - **O `exigir` avisa quando o contexto da sessão está alto.** Na abertura de cada estágio, a última chamada ao modelo registrada no transcript é somada em tokens (a resposta que consulta o advisor conta só a última iteração `message`, não a soma de todas) e, a partir de 310 mil, sai uma linha em stderr sugerindo registrar o estado e considerar `/compact` ou uma sessão nova. O limiar é a chave `contexto-alto-tokens` (`0` desliga). O padrão é 70% de onde o autocompact entra na prática: em 54 sessões ele disparou entre 211 mil e 447 mil, mesmo com janela de 1 M. Só existe dentro do fluxo, e nunca muda o resultado do `exigir`.
