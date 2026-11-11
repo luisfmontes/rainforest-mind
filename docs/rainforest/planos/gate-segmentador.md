@@ -256,11 +256,79 @@ Casos novos (molde acima, todos Bash):
 | hc-1 | `COMANDO_HC_1=$'git commit -m "$(cat <<\'EOF\'\nfix: ajusta o texto\nEOF\n)" && gh issue comment 5 --body ok'` | 0 |
 | hc-2 | `COMANDO_HC_2=$'git commit -m "$(cat <<\'EOF\'\nfoo " bar\nEOF\n)"; gh issue close 12'` | 2 |
 
-### 6. Versão PATCH e CHANGELOG [tipo: docs]
-atende: D4, D6
-arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`
+### 7. Dialeto do texto de dentro do wrapper (revisão de segurança) [tipo: implementar]
+atende: D7
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
 depende de: 5
+busca:
+- repo | grep -n "for (const sub of segmentosParaGate(interno)) {" hooks/gate-fechar-issue.cjs | a recursão do wrapper em processarSegmento roda com o FERRAMENTA global
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `FERRAMENTA = dialetoDoWrapper(toksComAspas[pos].v, anterior);`
+  para: `FERRAMENTA = anterior;`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  fixture: `testa-gate-fechar-issue.sh, caso (wd-1)`
+prova: `node -e 'process.stdout.write(JSON.stringify({cwd:process.cwd(),tool_name:"PowerShell",tool_input:{command:"bash -c \u0027echo \u005c\u0022; gh issue close 12\u0027"}}))' | node hooks/gate-fechar-issue.cjs; test $? -eq 2`
+pronto quando: com o payload real de PreToolUse, `bash -c 'echo \"; gh issue close 12'` pela ferramenta PowerShell sai 2 e `bash -c 'echo \"oi\"'` pela PowerShell sai 0; `pwsh -Command 'Write-Host "C:\"; gh issue close 12'` pelo Bash continua 2 e `pwsh -Command 'Write-Host "oi"'` pelo Bash continua 0 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 463 ok, 0 falha(s) ==` com exit 0, pelas baterias `hooks/testa-gate-pr-flag-curta.sh`, `hooks/testa-gate-merge-auto.sh`, `hooks/testa-gate-receita-corpo.sh`, `hooks/testa-gate-staging-total.sh` e `node hooks/testa-gate-subagente-sem-gh.cjs` saindo 0 cada uma, e pela mutação acima deixando (wd-1) vermelho.
+
+Forma prescrita:
+1. Logo depois da linha `let FERRAMENTA = "";`, acrescentar:
+
+```
+// D7 (gate-segmentador, Issue #689): o texto de dentro de um wrapper segue as
+// regras de aspas e escape do wrapper, nao as da ferramenta que o chamou.
+const WRAPPERS_BASH = new Set(["bash", "sh", "zsh", "ksh", "dash", "eval"]);
+const WRAPPERS_POWERSHELL = new Set(["pwsh", "powershell", "cmd", "invoke-expression", "iex"]);
+function dialetoDoWrapper(token, atual) {
+  const exe = normalizarExecutavel(token);
+  if (WRAPPERS_BASH.has(exe)) return "Bash";
+  if (WRAPPERS_POWERSHELL.has(exe)) return "PowerShell";
+  return atual;
+}
+```
+
+2. Em `processarSegmento`, trocar o bloco
+
+```
+  if (interno !== null) {
+    for (const sub of segmentosParaGate(interno)) {
+      processarSegmento(sub, mapaCwd, contadores, ferramenta);
+    }
+    return;
+  }
+```
+
+por
+
+```
+  if (interno !== null) {
+    const anterior = FERRAMENTA;
+    FERRAMENTA = dialetoDoWrapper(toksComAspas[pos].v, anterior);
+    try {
+      for (const sub of segmentosParaGate(interno)) {
+        processarSegmento(sub, mapaCwd, contadores, ferramenta);
+      }
+    } finally {
+      FERRAMENTA = anterior;
+    }
+    return;
+  }
+```
+
+Casos novos (molde acima):
+| caso | atribuição | ferramenta | exit |
+|---|---|---|---|
+| wd-1 | `COMANDO_WD_1=$'bash -c \'echo \\"; gh issue close 12\''` | PowerShell | 2 |
+| wd-2 | `COMANDO_WD_2=$'bash -c \'echo \\"oi\\"\''` | PowerShell | 0 |
+| wd-3 | `COMANDO_WD_3=$'pwsh -Command \'Write-Host "C:\\"; gh issue close 12\''` | Bash | 2 |
+| wd-4 | `COMANDO_WD_4=$'pwsh -Command \'Write-Host "oi"\''` | Bash | 0 |
+
+### 6. Versão PATCH e CHANGELOG [tipo: docs]
+atende: D4, D6, D7
+arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`
+depende de: 5, 7
 mutacao: n/a
-  motivo: só versão e texto; comportamento medido pelas tarefas 1 a 5
-pronto quando: `node scripts/conferir-versao.cjs` sai 0 e os quatro lugares (dois `plugin.json`, selo do README com `vers%C3%A3o-2.12.3-` e `alt="versão 2.12.3"`, topo do CHANGELOG `## 2.12.3 — 2026-11-11`) dizem 2.12.3; a entrada do CHANGELOG diz, pelo comportamento, que here-string, contrabarra antes de aspa (Bash) e `"$(...)"` com interior complexo deixam de esconder `gh issue close`/`gh pr merge` do gate (Issue 689), nomeia o falso positivo aceito do D4 (`"$(...)"` com interior complexo fora da forma canônica, seguido de `gh` de escrita, é barrado; contorno: `gh` em comando separado, corpo por `--body-file`/`-F`) e diz que o commit por heredoc canônico (`"$(cat <<'EOF' ... EOF
+  motivo: só versão e texto; comportamento medido pelas tarefas 1 a 5 e 7
+pronto quando: `node scripts/conferir-versao.cjs` sai 0 e os quatro lugares (dois `plugin.json`, selo do README com `vers%C3%A3o-2.12.3-` e `alt="versão 2.12.3"`, topo do CHANGELOG `## 2.12.3 — 2026-11-11`) dizem 2.12.3; a entrada do CHANGELOG diz, pelo comportamento, que here-string, contrabarra antes de aspa (Bash) e `"$(...)"` com interior complexo deixam de esconder `gh issue close`/`gh pr merge` do gate (Issue 689), nomeia o falso positivo aceito do D4 (`"$(...)"` com interior complexo fora da forma canônica, seguido de `gh` de escrita, é barrado; contorno: `gh` em comando separado, corpo por `--body-file`/`-F`) diz que `bash -c` rodado pelo PowerShell (e `pwsh -Command` pelo Bash) segue as regras de aspas do wrapper (D7), e diz que o commit por heredoc canônico (`"$(cat <<'EOF' ... EOF
 )"`) que cita `gh` de escrita entre crases volta a passar (D6) — provado por `node scripts/conferir-versao.cjs; grep -n '"version"' .claude-plugin/plugin.json .codex-plugin/plugin.json; grep -n 'alt="versão' README.md; grep -n -m2 -A4 '^## ' CHANGELOG.md`
