@@ -22,7 +22,7 @@ mutacao:
   para: `|| false`
   bateria: `bash scripts/testa-fechar-issue.sh`
   fixture: `testa-fechar-issue.sh, casos novos (l), (m), (n) e (o)`
-prova: `bash scripts/testa-fechar-issue.sh`
+prova-na-base: verde — a bateria de hoje passa na base e o fechar-issue só se exercita com o gh falso que a própria bateria monta; os casos (l) a (o) nascem com a tarefa e a mutação mede que eles mordem
 pronto quando: com o corpo de Issue que o `gh` falso devolve, `node scripts/fechar-issue.cjs <n> --comando x --saida y` sai 0 e comenta para cada uma das três formas — `## Pronto quando` (caso l), `**Pronto quando:** ...` (caso m) e `Pronto quando: ...` no início da linha (caso n) —, sai 2 para corpo sem critério (caso b, que já existe) e continua saindo 2 nos casos (j) e (k); a recusa cita "Pronto quando" — provado por `bash scripts/testa-fechar-issue.sh` terminando sem `FALHA` e com exit 0, e pela mutação acima deixando a bateria vermelha
 
 Forma prescrita (código a nascer): duas constantes no topo, `RE_CRITERIO` (a regex de hoje, intacta) e `RE_PRONTO_QUANDO = /^(?:#{2,3}\s+Pronto quando\b|(?:[-*]\s+)?\*\*Pronto quando:\*\*|Pronto quando:)/m`, e a linha `const temCriterio = RE_CRITERIO.test(issueBody) || RE_PRONTO_QUANDO.test(issueBody);`. A mensagem de recusa vira `RECUSADO: a Issue #<n> nao tem criterio de pronto ("## Critério de pronto (falsificável)" ou "Pronto quando:")`. Os casos novos seguem a forma do `gh` falso da bateria (variável que escolhe o corpo, linhas 40-56). Nenhum caso afirma sobre o texto do fonte.
@@ -42,7 +42,7 @@ mutacao:
   para: `if (false) return;`
   bateria: `bash hooks/testa-gate-pr-flag-curta.sh`
   fixture: `testa-gate-pr-flag-curta.sh, casos h1, h2 e h6 (gh pr create --help, gh pr create -h, gh help pr create)`
-prova: `bash hooks/testa-gate-pr-flag-curta.sh`
+prova: `node -e 'process.stdout.write(JSON.stringify({cwd:process.cwd(),tool_name:"Bash",tool_input:{command:"gh help pr create"}}))' | node hooks/gate-fechar-issue.cjs`
 pronto quando: com o payload real de PreToolUse (o `roda` da bateria), `gh pr create --help`, `gh pr create -h`, `gh pr edit --help`, `gh issue create --help`, `gh issue comment --help` e `gh help pr create` saem 0, e continuam saindo 2: `gh pr create --title t`, `gh pr create --title t --help` (ajuda misturada, D4), `gh pr create --help --body "Closes #12"` e `gh pr create -dh` — provado por `bash hooks/testa-gate-pr-flag-curta.sh` terminando em `ok: 50   falhou: 0` (40 de hoje + 10 novos) com exit 0, e pela mutação acima deixando a bateria vermelha
 
 Forma prescrita (código a nascer): `const AJUDA_GH = new Set(["--help", "-h"]);` junto ao `AJUDA_PR_MERGE`, e a função de uma expressão só, sem ramo e sem print: `function ehAjudaDoGh(subcomandos) { return subcomandos[0] === "help" || (subcomandos.length === 3 && AJUDA_GH.has(subcomandos[2])); }`. A chamada `if (ehAjudaDoGh(subcomandos)) return;` entra no `verificarComandoGh` logo depois do bloco que recusa subcomando por variável e antes do bloco `gh api`. Medido em 2026-11-11 antes da mudança: barram (exit 2) `gh pr create --help`, `gh pr create -h`, `gh help pr create`; já passam (exit 0) `gh pr edit --help`, `gh issue create --help`, `gh issue comment --help`.
