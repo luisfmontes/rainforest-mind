@@ -66,25 +66,25 @@
     "saida": "bateria VERMELHA com (c14); testa-gate-pr-flag-curta ok: 37 falhou: 0; testa-gate-fechar-issue 420 ok, 0 falha(s); testa-gate-receita-corpo ok: 39"
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "eaa7cc5debc8f45912b3f40f123feb25b28516b4",
+      "head": "0ef8adc131051e86d27dd8c0a69537d17e52b137",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "acdee200d3b6bdf7c",
+        "agente_id": "a41ee5e85b0a89571",
         "veredito": "ok",
         "em": "2026-11-11",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-acdee200d3b6bdf7c.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a41ee5e85b0a89571.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-11-11",
-    "achados": 3,
+    "achados": 0,
     "base": "7882b947f226a1dec732462a133e30cb349dec0d",
-    "head": "eaa7cc5debc8f45912b3f40f123feb25b28516b4",
+    "head": "0ef8adc131051e86d27dd8c0a69537d17e52b137",
     "voltas": [
       {
         "volta": 1,
@@ -95,6 +95,18 @@
             "veredito": "ok",
             "em": "2026-11-11",
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-ae4bf32ab49a84266.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "acdee200d3b6bdf7c",
+            "veredito": "ok",
+            "em": "2026-11-11",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-acdee200d3b6bdf7c.jsonl"
           }
         ]
       }
