@@ -1,0 +1,28 @@
+{
+  "slug": "caixa-confere-requires",
+  "titulo": "Bateria que monta caixa leva as libs que os scripts copiados exigem",
+  "criado_em": "2026-11-11",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/caixa-confere-requires.md",
+    "em": "2026-11-11"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
