@@ -186,7 +186,31 @@ function corpoDeHeredocQueCria(comando, caminho, cwdSegmento) {
  * objetivo é só garantir que um `gh ...` escondido lá dentro apareça como
  * segmento verificável; não precisa entender a sintaxe do subshell/grupo.
  */
+// Caractere em `i` escapado: numero impar de contrabarras logo antes (D5 de
+// docs/rainforest/design/gate-crase.md).
+function escapadaPorContrabarra(s, i) {
+  let n = 0;
+  for (let k = i - 1; k >= 0 && s[k] === "\\"; k -= 1) n += 1;
+  return n % 2 === 1;
+}
+
+// Teto de chamadas do segmentosParaGate por evento (D7 de
+// docs/rainforest/design/gate-crase.md). A recursao em crase e em $(...)
+// percorre o texto de dentro mais de uma vez; aninhamento fundo cresceria
+// sem limite e estouraria o tempo do hook, e o hook que estoura deixa passar.
+// Acima do teto o gate barra (falha fechada).
+const TETO_SEGMENTACAO = 2000;
+let chamadasSegmentacao = 0;
+
 function segmentosParaGate(cmd) {
+  chamadasSegmentacao += 1;
+  if (chamadasSegmentacao > TETO_SEGMENTACAO) {
+    bloqueia(
+      "BLOQUEADO pelo gate de fechamento de Issue do rainforest-mind.\n\n" +
+      "Razão: o comando tem substituição (crase ou $(...)) aninhada demais para o gate ler com segurança.\n\n" +
+      "Rode o 'gh' direto, sem aninhar, ou divida o comando.\n"
+    );
+  }
   // Tarefa 13 (#309, revisao 2): colapsa contrabarra+LF/CRLF de nivel
   // superior (nao citada em aspas simples) ANTES de fatiar em segmentos —
   // senao o `\n` cru vira fronteira de segmento incondicional (abaixo) e
@@ -199,6 +223,38 @@ function segmentosParaGate(cmd) {
 
   for (let i = 0; i < cmd.length; i++) {
     const c = cmd[i];
+
+    // Crase (Issue #685, D1 de docs/rainforest/design/gate-crase.md): fora de
+    // aspas simples, a crase executa o que esta dentro, como o `$(...)` do P4.
+    // `echo `gh issue close 12`` fecha a Issue de verdade. O texto de dentro
+    // vira segmento adicional (verificado recursivamente); o texto bruto da
+    // crase entra inteiro em `atual`, pelo mesmo motivo do P4 (`gh pr create
+    // --body`). O conteudo da crase e opaco para o rastreio de aspas de fora
+    // (D4): sem isso, `echo `echo "`; gh issue close 12` deixava a aspa de
+    // dentro aberta e escondia o `; gh issue close` como texto citado.
+    // Crase sem par vai ate o fim do comando. Escapada so com numero IMPAR de
+    // contrabarras antes (\\+crase e contrabarra literal + crase viva, D5). O
+    // texto de dentro e desescapado como o bash faz (\+crase, \\, \$) antes
+    // de recursar: crase aninhada com \+crase e crase viva (D5). A crase e
+    // conferida tambem dentro de $(...) entre aspas, alem da recursao do P4
+    // (D7): pular a regiao do $(...) dependia de achar o fim dele contando
+    // parenteses sem entender aspas nem heredoc, e isso abria bypass.
+    if (c === "`" && aspa !== "'" && !escapadaPorContrabarra(cmd, i)) {
+      let j = i + 1;
+      let internoCrase = "";
+      while (j < cmd.length && !(cmd[j] === "`" && !escapadaPorContrabarra(cmd, j))) {
+        internoCrase += cmd[j];
+        j += 1;
+      }
+      if (internoCrase.trim()) {
+        for (const sub of segmentosParaGate(internoCrase.replace(/\\([\\`$])/g, "$1"))) {
+          if (sub.trim()) segmentos.push(sub);
+        }
+      }
+      atual += cmd.slice(i, Math.min(j + 1, cmd.length));
+      i = j;
+      continue;
+    }
 
     if (aspa) {
       // P4 (rodada 8, lote 3, 2026-09-04): `$(...)` DENTRO de aspas DUPLAS
@@ -228,7 +284,12 @@ function segmentosParaGate(cmd) {
           interno += cmd[j];
           j += 1;
         }
-        if (interno.trim()) segmentos.push(interno);
+        // A recursao (e nao o push cru) desce em crase e heredoc la dentro (D6).
+        if (interno.trim()) {
+          for (const sub of segmentosParaGate(interno)) {
+            if (sub.trim()) segmentos.push(sub);
+          }
+        }
       }
       if (c === aspa) aspa = null;
       atual += c;

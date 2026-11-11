@@ -10,6 +10,10 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.12.2 — 2026-11-11
+
+- **O gate de fechamento de Issue confere o comando dentro de crases.** `` echo "`gh issue close 12`" `` e `` echo `gh pr merge 5 --squash` `` passavam sem checagem de evidência, embora o bash execute o que está entre crases. Agora o comando de dentro é conferido como já era dentro de `$(...)`, com ou sem aspas duplas; uma aspa dentro da crase também não esconde mais o que vem depois dela. Crase entre aspas simples e a crase de escape do PowerShell continuam passando. Mensagem de commit escrita por heredoc que cite um `gh issue close` ou `gh pr merge` entre crases passa a ser barrada, como já acontecia com `$(...)`; use `git commit -F <arquivo>`.
+
 ## 2.12.1 — 2026-11-11
 
 - **Fechar Issue no formato comum do repositório.** O `scripts/fechar-issue.cjs` aceitava só o cabeçalho `## Critério de pronto (falsificável)` e recusava as Issues escritas com `## Pronto quando`, `**Pronto quando:**` ou `Pronto quando:` no início da linha, que são a maioria. Agora aceita as quatro formas, e a recusa diz quais são. Quem fechava Issue comentando o marcador de evidência à mão volta a usar o script.

@@ -1,0 +1,123 @@
+{
+  "slug": "gate-crase",
+  "titulo": "gate-crase",
+  "criado_em": "2026-11-11",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/gate-crase.md",
+    "em": "2026-11-11"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/gate-crase.md",
+    "tarefas": 2,
+    "paralelas": [
+      1
+    ],
+    "em": "2026-11-11"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-11-11",
+    "tarefas_ok": 6,
+    "tarefas": 6,
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "d5da834",
+        "iteracao": 1,
+        "sessao": "77ec548d-5d34-488c-99ae-8f54633d2e8c",
+        "ts": "2026-11-11T15:49:24.907Z"
+      }
+    ],
+    "em": "2026-11-11",
+    "comando": "bash hooks/testa-gate-fechar-issue.sh; bash hooks/testa-gate-pr-flag-curta.sh; bash hooks/testa-gate-merge-auto.sh; bash hooks/testa-gate-receita-corpo.sh; bash hooks/testa-gate-staging-total.sh",
+    "saida": "436 ok, 0 falha(s) / ok: 51 / ok: 14 / ok: 39 / 189 ok",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh casos crase-1, crase-2, crase-3, crase-7"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "so versao e texto"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh caso crase-8"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh caso crase-9"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh caso crase-13"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh caso crase-15"
+      }
+    ],
+    "reaberturas": 1
+  },
+  "revisar": {
+    "status": "pendente",
+    "snapshot": {
+      "head": "6bbfa81c70528cfaea348725162f3474e66c5b08",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a0ffc2222c66b2363",
+        "veredito": "ok",
+        "em": "2026-11-11",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a0ffc2222c66b2363.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-11-11",
+    "achados": 3,
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ab54b668e6176312e",
+            "veredito": "reprovado",
+            "em": "2026-11-11",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-ab54b668e6176312e.jsonl"
+          }
+        ]
+      }
+    ],
+    "base": "537c46b326df456aec303f8b8768bfc5bd369a09",
+    "head": "6bbfa81c70528cfaea348725162f3474e66c5b08"
+  },
+  "verificar": {
+    "status": "pendente",
+    "em": "2026-11-11"
+  },
+  "fechar": {
+    "status": "pendente",
+    "em": "2026-11-11"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-11-11",
+      "de": "revisar",
+      "motivo": "revisao de seguranca do commit 6bbfa81: fimDolarAspas com contagem de parenteses sem aspas abre bypass (echo \"$(echo '(' ) 'crase gh issue close crase' \") e recursao exponencial em $(...) aninhado"
+    }
+  ]
+}
