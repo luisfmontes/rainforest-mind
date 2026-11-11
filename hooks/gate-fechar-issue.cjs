@@ -761,9 +761,10 @@ const COM_VALOR_PR_MERGE = new Set([
 const AJUDA_PR_MERGE = new Set(["--help", "-h"]);
 // Ajuda nao escreve. So `--help`/`-h` como UNICO argumento depois do verbo:
 // em outra posicao pode ser valor de uma flag que o gate nao conhece (D3 de
-// docs/rainforest/design/fechar-issue-pronto-e-ajuda.md).
+// docs/rainforest/design/fechar-issue-pronto-e-ajuda.md). Token com `$` ou
+// crase nao e ajuda: `gh help pr \`gh issue close 12\`` executa o close (D5).
 const AJUDA_GH = new Set(["--help", "-h"]);
-function ehAjudaDoGh(subcomandos) { return subcomandos[0] === "help" || (subcomandos.length === 3 && AJUDA_GH.has(subcomandos[2])); }
+function ehAjudaDoGh(subcomandos) { return !subcomandos.some((t) => /[$`]/.test(t)) && (subcomandos[0] === "help" || (subcomandos.length === 3 && AJUDA_GH.has(subcomandos[2]))); }
 const FORMA_PERMITIDA_PR_MERGE =
   "gh pr merge <número ou URL do PR> [--squash|--merge|--rebase] [--delete-branch] [--repo dono/repo]";
 

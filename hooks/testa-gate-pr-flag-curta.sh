@@ -170,6 +170,8 @@ sai "(h9) pr create --help --body Closes" 2
 roda "gh pr create -dh"
 sai "(h10) pr create -dh" 2
 
+roda 'gh help pr `gh issue close 12`'
+sai "(h11) help com crase que fecha Issue" 2
 echo
 echo "ok: $ok   falhou: $falhou"
 [ "$falhou" -eq 0 ] || exit 1
