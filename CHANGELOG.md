@@ -12,7 +12,7 @@ entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
 ## 2.12.2 — 2026-11-11
 
-- **O gate de fechamento de Issue confere o comando dentro de crases.** `` echo "`gh issue close 12`" `` e `` echo `gh pr merge 5 --squash` `` passavam sem checagem de evidência, embora o bash execute o que está entre crases. Agora o comando de dentro é conferido como já era dentro de `$(...)`, com ou sem aspas duplas; uma aspa dentro da crase também não esconde mais o que vem depois dela. Crase entre aspas simples e a crase de escape do PowerShell continuam passando.
+- **O gate de fechamento de Issue confere o comando dentro de crases.** `` echo "`gh issue close 12`" `` e `` echo `gh pr merge 5 --squash` `` passavam sem checagem de evidência, embora o bash execute o que está entre crases. Agora o comando de dentro é conferido como já era dentro de `$(...)`, com ou sem aspas duplas; uma aspa dentro da crase também não esconde mais o que vem depois dela. Crase entre aspas simples e a crase de escape do PowerShell continuam passando. Mensagem de commit escrita por heredoc que cite um `gh issue close` ou `gh pr merge` entre crases passa a ser barrada, como já acontecia com `$(...)`; use `git commit -F <arquivo>`.
 
 ## 2.12.1 — 2026-11-11
 

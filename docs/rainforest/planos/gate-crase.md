@@ -97,9 +97,27 @@ busca:
 desfecho: estender
 mutacao:
   arquivo: `hooks/gate-fechar-issue.cjs`
-  de: `        fimDolarAspas = j;`
-  para: `        fimDolarAspas = -1;`
+  de: `          for (const sub of segmentosParaGate(interno)) {`
+  para: `          for (const sub of [interno]) {`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
-  fixture: `testa-gate-fechar-issue.sh, caso (crase-12)`
+  fixture: `testa-gate-fechar-issue.sh, caso (crase-13)`
 prova-na-base: verde — (crase-12) saía 0 na base e 2 na versão da tarefa 3; (crase-13) saía 0 nas duas (medido no payload real)
 pronto quando: com o payload real, o commit por heredoc citado com crase de texto (crase-12) sai 0 e a crase dentro de `$(...)` entre aspas (crase-13) sai 2 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 433 ok, 0 falha(s) ==`; trocar a recursão do P4 por `[interno]` também deixa (crase-13) vermelho (medido)
+
+*Emenda da revisão de segurança do commit 6bbfa81:* a tarefa 5 perdeu o `fimDolarAspas` (D7), então o alvo de mutação dela passou a ser a recursão do P4, medido por (crase-13); o (crase-12) passou a esperar 2.
+
+### 6. Crase conferida dentro de $(...) e teto de segmentação [tipo: implementar]
+atende: D7
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 5
+busca:
+- repo | grep -n "fimDolarAspas" hooks/gate-fechar-issue.cjs | o pulo da tarefa 5, que contava parênteses sem entender aspas
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `  if (chamadasSegmentacao > TETO_SEGMENTACAO) {`
+  para: `  if (false) {`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  fixture: `testa-gate-fechar-issue.sh, caso (crase-15)`
+prova-na-base: verde — (crase-14) e (crase-15) saíam 0 na versão da tarefa 5 (medido no payload real); a base não tinha a recursão
+pronto quando: com o payload real, o parêntese entre aspas simples dentro de `$(...)` não esconde a crase (crase-14 sai 2), `"$(...)"` aninhado 20 vezes barra em menos de 1 s (crase-15 sai 2), o commit por heredoc citado com crase que cita `gh` de escrita sai 2 (crase-12) e com crase de texto comum sai 0 (crase-16) — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 436 ok, 0 falha(s) ==`

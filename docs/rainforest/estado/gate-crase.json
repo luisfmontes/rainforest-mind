@@ -20,7 +20,7 @@
     "em": "2026-11-11"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-11",
     "tarefas_ok": 5,
     "tarefas": 5,
@@ -66,29 +66,53 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "reprovado",
+    "status": "pendente",
     "snapshot": {
-      "head": "d258cdf786251f19c86c020f14a77cc554b7611f",
+      "head": "6bbfa81c70528cfaea348725162f3474e66c5b08",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ab54b668e6176312e",
-        "veredito": "reprovado",
+        "agente_id": "a0ffc2222c66b2363",
+        "veredito": "ok",
         "em": "2026-11-11",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-ab54b668e6176312e.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a0ffc2222c66b2363.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-11-11",
     "achados": 3,
-    "tentativas": 1
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ab54b668e6176312e",
+            "veredito": "reprovado",
+            "em": "2026-11-11",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-ab54b668e6176312e.jsonl"
+          }
+        ]
+      }
+    ],
+    "base": "537c46b326df456aec303f8b8768bfc5bd369a09",
+    "head": "6bbfa81c70528cfaea348725162f3474e66c5b08"
   },
   "verificar": {
-    "status": "pendente"
+    "status": "pendente",
+    "em": "2026-11-11"
   },
   "fechar": {
-    "status": "pendente"
-  }
+    "status": "pendente",
+    "em": "2026-11-11"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-11-11",
+      "de": "revisar",
+      "motivo": "revisao de seguranca do commit 6bbfa81: fimDolarAspas com contagem de parenteses sem aspas abre bypass (echo \"$(echo '(' ) 'crase gh issue close crase' \") e recursao exponencial em $(...) aninhado"
+    }
+  ]
 }
