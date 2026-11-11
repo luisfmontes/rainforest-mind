@@ -78,12 +78,62 @@ Forma prescrita (dentro de `extrairCorpoDoPR`):
 - Valor ausente (`colado === null` e `i + 1 >= toks.length`) = `continue` sem empurrar nada, como hoje. Valor colado vazio (`-F=`, `--body-file=`) segue o fluxo normal: string vazia vai para o ramo e a recusa é a de hoje para arquivo ilegível (`--body-file veio vazio.`).
 - **Bateria nova** `hooks/testa-gate-pr-flag-curta.sh`, no molde de `hooks/testa-gate-receita-corpo.sh` (copiar o cabeçalho, o `gh` falso que sai 1 e as funções `roda`, `tem`, `sai`). Cria `c.md`, `n.md` e `f.md` com `printf` no `$SBP`. Um bloco por linha da tabela, na ordem da tabela: `roda '<comando>'`, `sai "<id>" <exit>` e, quando a coluna tem trecho, `tem "<id>" "<trecho>"`. Termina com `echo "ok: $ok   falhou: $falhou"` e `[ "$falhou" -eq 0 ]`. **Não** registrar em `scripts/baterias-obrigatorias.txt` (a bateria-molde também não está lá).
 - Mutações extras que a integração re-roda à mão (fora da catraca, uma por decisão): D2 — `new Set(["--body-file", "-F"])` → `new Set(["--body-file"])` deixa `(c3)`..`(c6)` vermelhos; D3 — `conteudo: achados.map((a) => a.conteudo).join("\n")` → `conteudo: achados[0].conteudo` deixa `(c8)` vermelho.
-- Parada (D4): alias do `gh`, `gh api`, env do `gh`, `--template` e flag longa abreviada ficam fora; valor de outra flag que começa com `-b`/`-F` (`--title -bar`) é lido como flag — superconjunto aceito, como já era. Achado de revisão nessas classes não reabre esta tarefa.
+- Parada (D4): alias do `gh`, `gh api`, env do `gh`, `--template` e flag longa abreviada ficam fora. *Emenda da revisão 1:* a frase que estava aqui ("valor de outra flag que começa com `-b`/`-F` é lido como flag, como já era") era falsa — virou o D5 e a tarefa 3.
+
+### 3. Valor de outra flag não é lido como flag (emenda da revisão 1) [tipo: implementar]
+atende: D5
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-pr-flag-curta.sh`
+depende de: 1
+busca:
+- repo | rg -n "COM_VALOR_PR_MERGE" hooks/gate-fechar-issue.cjs | o pr merge já pula o valor das flags que o levam (:711); estender o mesmo padrão ao extrairCorpoDoPR
+- doc | https://cli.github.com/manual/gh_pr_create | flags de valor do create
+- doc | https://cli.github.com/manual/gh_pr_edit | flags de valor do edit (sem atalho booleano)
+- livro | pulado: correção de parser do próprio gate
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `if (colado === null) i += 1;`
+  para: `if (false) i += 1;`
+  bateria: `bash hooks/testa-gate-pr-flag-curta.sh`
+  fixture: `testa-gate-pr-flag-curta.sh, caso "(c12) create --fill com título -bar"`
+prova-na-base: verde — na base 7882b947 o (c12) já sai 2 (a regressão nasceu na tarefa 1); a prova é a mutação acima, que reverte o D5 sobre o HEAD da tarefa 1
+pronto quando: com o mesmo payload real e o mesmo `gh` falso da tarefa 1, as linhas novas da tabela abaixo dão o exit e o trecho da tabela, e as 16 linhas antigas continuam iguais — provado por `bash hooks/testa-gate-pr-flag-curta.sh` saindo 0, nenhum caso afirmando sobre o texto do fonte; e `bash hooks/testa-gate-fechar-issue.sh` e `bash hooks/testa-gate-receita-corpo.sh` saindo 0 sem edição
+
+| id | comando | exit | stderr contém |
+|---|---|---|---|
+| (c12) create --fill com título -bar | `gh pr create --fill --title "-bar"` | 2 | `editor interativo` |
+| (c13) create --fill com -t -Fx | `gh pr create --fill -t "-Fx"` | 2 | `editor interativo` |
+| (v5) título -bar com corpo benigno | `gh pr create --title "-bar" --body-file <N>` | 0 | — |
+| (v6) corpo direto começando com -F | `gh pr create --title t --body "-Fx sem fechamento"` | 0 | — |
+
+Forma prescrita:
+- Constante logo abaixo de `FLAGS_CORPO_ARQUIVO`:
+  ```
+  // Flags de valor do pr create/edit e issue create/comment (D5): o token
+  // seguinte é o valor delas, nunca uma flag.
+  const FLAGS_COM_VALOR = new Set([
+    "--title", "-t", "--base", "-B", "--head", "-H", "--repo", "-R",
+    "--assignee", "-a", "--label", "-l", "--milestone", "-m", "--project", "-p",
+    "--reviewer", "-r", "--template", "-T", "--recover",
+    "--add-assignee", "--add-label", "--add-project", "--add-reviewer",
+    "--remove-assignee", "--remove-label", "--remove-project", "--remove-reviewer",
+  ]);
+  ```
+- No laço, logo depois de calcular `colado` e antes do ramo de corpo direto:
+  ```
+  if ((longa || curta) && FLAGS_COM_VALOR.has(chave)) {
+    if (colado === null) i += 1;
+    continue;
+  }
+  ```
+- Nos dois ramos de corpo, onde o valor vem de `toks[i + 1].v`, acrescentar `i += 1;` logo depois da atribuição (ex.: `corpo = toks[i + 1].v;` vira `corpo = toks[i + 1].v; i += 1;`), para o valor do corpo também não ser relido como flag (caso `(v6)`).
+- Bateria: os quatro casos entram depois do `(c11)`/`(v4)`, no mesmo formato (`roda`, `sai`, `tem`).
 
 ### 2. Versão PATCH, README e CHANGELOG [tipo: docs]
 atende: D4
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`
-depende de: 1
+depende de: 1, 3
+*Emenda da revisão 1:* o CHANGELOG diz que, **no PR**, todos os corpos são checados (achado 2: no `issue create`/`issue comment` um corpo ilegível faz a checagem de palavra falsa ser pulada), diz que valor de outra flag não é lido como flag (D5) e põe flag curta agrupada entre o que fica fora.
 mutacao: n/a
   motivo: só versão e texto; o comportamento é medido pela tarefa 1
 pronto quando: com a `main` trazida para a branch (`git merge origin/main`), `node scripts/conferir-versao.cjs` sai 0, os quatro lugares — `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, o selo do README (`vers%C3%A3o-X-` e `alt="versão X"`) e o topo do CHANGELOG (`## X — AAAA-MM-DD`, data do dia) — dizem a versão seguinte à da `main` na casa PATCH (2.11.1 se a `main` ainda estiver em 2.11.0), e o CHANGELOG abre com essa versão descrevendo pelo comportamento as grafias que o gate passa a ler (`-F`, valor colado, `-B` deixa de ser corpo, todas as ocorrências) e o que fica fora pelo D4 — provado por `node scripts/conferir-versao.cjs; grep -n '"version"' .claude-plugin/plugin.json .codex-plugin/plugin.json; grep -n 'alt="versão' README.md; grep -n -m2 -A3 '^## ' CHANGELOG.md`
