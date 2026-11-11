@@ -110,3 +110,19 @@ mutacao: n/a
   motivo: só versão e texto; comportamento medido pelas tarefas 1 e 2
 *Emenda do leitor cego:* trazer a `main` com `git fetch origin && git merge origin/main`; data do cabeçalho 2026-11-11; o `README.md` ganha, na tabela de scripts `conferir-*` (seção de scripts, ~linhas 252-261), uma linha para `conferir-caixas.cjs` no mesmo formato das vizinhas.
 pronto quando: com a `main` trazida para a branch, `node scripts/conferir-versao.cjs` sai 0 e os quatro lugares (dois `plugin.json`, selo do README com `vers%C3%A3o-X-` e `alt="versão X"`, topo do CHANGELOG `## X — AAAA-MM-DD`) dizem a versão seguinte à da `main` na casa MINOR (2.12.0 se a `main` estiver em 2.11.1); o CHANGELOG descreve pelo comportamento o checador, onde ele roda e a linha `# caixa-sem:` — provado por `node scripts/conferir-versao.cjs; grep -n '"version"' .claude-plugin/plugin.json .codex-plugin/plugin.json; grep -n 'alt="versão' README.md; grep -n -m2 -A3 '^## ' CHANGELOG.md`
+
+### 4. Origem de `cp -r` terminada em `/.` (revisão 1) [tipo: implementar]
+atende: D1, D6
+arquivos: `scripts/conferir-caixas.cjs`, `scripts/testa-conferir-caixas.sh`, `CHANGELOG.md`
+depende de: 3
+busca:
+- repo | grep -n "cp -r \"\$SRC/.*/\." scripts/testa-*.sh hooks/testa-*.sh | 4 baterias copiam `scripts/lib/.` e `hooks/lib/.` (estado-principal, importar-claude-mem, backup-estado, registrar-erro)
+desfecho: estender
+mutacao:
+  arquivo: `scripts/conferir-caixas.cjs`
+  de: `.replace(/\/+$/, '').replace(/\/\.$/, ''));`
+  para: `.replace(/\/+$/, ''));`
+  bateria: `bash scripts/testa-conferir-caixas.sh`
+  fixture: `testa-conferir-caixas.sh, casos (9b) e (7b)`
+prova: `bash scripts/testa-conferir-caixas.sh`
+pronto quando: com o repositório real, `node scripts/conferir-caixas.cjs` não acusa mais `hooks/lib/*` nem `scripts/lib/*` nas 4 baterias que copiam a pasta por `cp -r "$SRC/<x>/lib/." ...` e o total cai de 144 para 128; a bateria tem os casos (9b) `cp -r "$SRC/hooks/lib/."` → 0 achado e (7b) `cp -r "$SRC/scripts/."` → pulada; o uso cita `[--base <ref>]`; o CHANGELOG diz 128 — provado por `node scripts/conferir-caixas.cjs | tail -1` devolvendo `224 bateria(s), 128 achado(s)` e `bash scripts/testa-conferir-caixas.sh` terminando em `ok: 29   falhou: 0`

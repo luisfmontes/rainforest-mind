@@ -134,6 +134,22 @@ roda c9
 sai "(9)" 0
 tem "(9)" "0 achado(s)"
 
+# (9b) cp -r de subpasta lib com "/." no fim (forma de 4 baterias reais) conta como copiada
+caso c9b
+cjs scripts/a.cjs "const path = require('path');" "require(path.join(__dirname, '..', 'hooks', 'lib', 'x.cjs'));"
+bateria 'cp "$SRC/scripts/a.cjs" "$SBP/scripts/"' 'cp -r "$SRC/hooks/lib/." "$SBP/hooks/lib/"'
+roda c9b
+sai "(9b)" 0
+tem "(9b)" "0 achado(s)"
+
+# (7b) cp -r da pasta inteira com "/." no fim: a bateria e pulada
+caso c7b
+cjs scripts/a.cjs "const path = require('path');" "require(path.join(__dirname, '..', 'hooks', 'lib', 'x.cjs'));"
+bateria 'cp -r "$SRC/scripts/." "$SBP/scripts/"'
+roda c7b
+sai "(7b)" 0
+tem "(7b)" "pulada"
+
 # (10) achado que ja existe na base nao reprova (--base, D6)
 caso c10
 cjs scripts/a.cjs "const path = require('path');" "require(path.join(__dirname, '..', 'hooks', 'lib', 'x.cjs'));"

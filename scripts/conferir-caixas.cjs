@@ -30,7 +30,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const USO = 'uso: node scripts/conferir-caixas.cjs [--raiz <dir>]';
+const USO = 'uso: node scripts/conferir-caixas.cjs [--raiz <dir>] [--base <ref>]';
 
 const RE_CP = /(^|[\s;&(|])cp\s/;
 const RE_TRECHO = /\$\{?[A-Za-z_]+\}?\/((?:scripts|hooks)\/[^"' ]+\.cjs)/g;
@@ -127,7 +127,7 @@ function lerCopia(texto, raiz) {
     const opcoes = resto.filter((t) => t.startsWith('-'));
     const args = resto
       .filter((t) => !t.startsWith('-'))
-      .map((t) => t.replace(/["']/g, '').replace(/\/+$/, ''));
+      .map((t) => t.replace(/["']/g, '').replace(/\/+$/, '').replace(/\/\.$/, ''));
     const recursivo = opcoes.some((o) => /^-[a-zA-Z]*[rRa]/.test(o) || o === '--recursive' || o === '--archive');
     if (recursivo) {
       const origens = args.slice(0, -1);
