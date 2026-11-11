@@ -25,9 +25,32 @@ mutacao:
   de: `: tok.slice(0, 2);`
   para: `: tok.slice(0, 2).toLowerCase();`
   bateria: `bash hooks/testa-gate-pr-flag-curta.sh`
-  fixture: `testa-gate-pr-flag-curta.sh, casos "(c1) create -B main antes do --body-file" e "(c2) edit -B main antes do --body-file"`
+  fixture: `testa-gate-pr-flag-curta.sh, caso "(c10) create -B main --fill"`
 prova: `bash hooks/testa-gate-pr-flag-curta.sh`
-pronto quando: com o payload real de `PreToolUse` (`{"cwd":...,"tool_name":"Bash","tool_input":{"command":...}}`) no stdin de `node hooks/gate-fechar-issue.cjs` e um `gh` falso no PATH que sai 1 (a Issue não tem evidência legível), saem **2 citando `#12`** os contornos: `gh pr create -B main --title t --body-file <C>`, `gh pr edit 5 -B main --body-file <C>`, `gh pr create --title t -F <C>`, `gh pr edit 5 -F <C>`, `gh pr edit 5 -F=<C>`, `gh pr edit 5 -F<C>`, `gh pr edit 5 -b"Closes #12"`, `gh pr create --title t -b x --body-file <C>` e `gh pr create --title t --body-file <N> -b "Closes #12"`; e saem **0** os vizinhos legítimos: `gh pr create --title t -F <N>`, `gh pr create -B main --title t --body-file <N>`, `gh pr edit 5 -B main` e `gh pr edit 5 --title x` — onde `<C>` é arquivo literal com `Closes #12` e `<N>` arquivo literal sem palavra de fechamento; e `gh pr create --title t -f` continua saindo 2 com a razão "editor interativo" — provado por `bash hooks/testa-gate-pr-flag-curta.sh` saindo 0 com uma linha `ok` por caso, nenhum caso afirmando sobre o texto do fonte; e `bash hooks/testa-gate-fechar-issue.sh` e `bash hooks/testa-gate-receita-corpo.sh` saindo 0 sem edição
+pronto quando: com o payload real de `PreToolUse` (`{"cwd":...,"tool_name":"Bash","tool_input":{"command":...}}`) no stdin de `node hooks/gate-fechar-issue.cjs` e um `gh` falso no PATH que sai 1 (a Issue não tem evidência legível), cada linha da tabela de casos abaixo dá o exit e o trecho de stderr da tabela — provado por `bash hooks/testa-gate-pr-flag-curta.sh` saindo 0 com uma linha `ok` por asserção, nenhum caso afirmando sobre o texto do fonte; e `bash hooks/testa-gate-fechar-issue.sh` e `bash hooks/testa-gate-receita-corpo.sh` saindo 0 sem edição
+
+Tabela de casos (`<C>` = `$SBP_WIN/c.md` contendo `Closes #12`; `<N>` = `$SBP_WIN/n.md` contendo `corpo sem palavra de fechamento`; `<F>` = `$SBP_WIN/f.md` contendo `Fecha #12`). Na bateria, o nome de cada caso começa pelo id:
+
+| id | comando | exit | stderr contém |
+|---|---|---|---|
+| (c1) create -B main antes do --body-file | `gh pr create -B main --title t --body-file <C>` | 2 | `#12` |
+| (c2) edit -B main antes do --body-file | `gh pr edit 5 -B main --body-file <C>` | 2 | `#12` |
+| (c3) create -F | `gh pr create --title t -F <C>` | 2 | `#12` |
+| (c4) edit -F | `gh pr edit 5 -F <C>` | 2 | `#12` |
+| (c5) edit -F= | `gh pr edit 5 -F=<C>` | 2 | `#12` |
+| (c6) edit -F colado | `gh pr edit 5 -F<C>` | 2 | `#12` |
+| (c7) edit -b colado | `gh pr edit 5 -b"Closes #12"` | 2 | `#12` |
+| (c8) -b benigno antes do --body-file | `gh pr create --title t -b x --body-file <C>` | 2 | `#12` |
+| (c9) --body-file benigno antes do -b | `gh pr create --title t --body-file <N> -b "Closes #12"` | 2 | `#12` |
+| (c10) create -B main --fill | `gh pr create -B main --fill` | 2 | `editor interativo` |
+| (c11) issue comment -F com palavra falsa | `gh issue comment 1 -F <F>` | 2 | `Closes #12` |
+| (v1) create -F sem fechamento | `gh pr create --title t -F <N>` | 0 | — |
+| (v2) create -B main com corpo benigno | `gh pr create -B main --title t --body-file <N>` | 0 | — |
+| (v3) edit -B sem corpo | `gh pr edit 5 -B main` | 0 | — |
+| (v4) edit só título | `gh pr edit 5 --title x` | 0 | — |
+| (f1) create -f | `gh pr create --title t -f` | 2 | `editor interativo` |
+
+O `(c10)` é o caso que só a caixa exata separa: hoje `-B main` vira corpo "main" e o `--fill` (corpo dos commits, que o gate não lê) passa com 0; com a caixa exata não há corpo e cai na recusa "editor interativo". O `(c11)` prova que `gh issue create`/`gh issue comment` (os outros dois chamadores de `extrairCorpoDoPR`, em `:1114` e `:1124`) herdam o `-F` **de propósito**: o `gh` aceita `-F` nos dois, e lá a checagem é só de palavra-chave falsa (o stderr sugere `Closes #12`, como o caso 614-7 da bateria antiga).
 
 Forma prescrita (dentro de `extrairCorpoDoPR`):
 - Duas constantes logo acima da função: `const FLAGS_CORPO_DIRETO = new Set(["--body", "-b"]);` e `const FLAGS_CORPO_ARQUIVO = new Set(["--body-file", "-F"]);`.
@@ -51,10 +74,11 @@ Forma prescrita (dentro de `extrairCorpoDoPR`):
   if (ilegivel) return ilegivel;
   return { ...achados[0], conteudo: achados.map((a) => a.conteudo).join("\n") };
   ```
-- Os retornos internos de hoje (variável, cwd incerto, heredoc, ENOENT com `caminho`/`resolvido`/`codigo`) ficam com os mesmos campos — só viram `achados.push(...)`.
-- **Bateria nova** `hooks/testa-gate-pr-flag-curta.sh`, no molde de `hooks/testa-gate-receita-corpo.sh` (cabeçalho, `gh` falso que sai 1, `roda`, `tem`, `sai`). `<C>` = `$SBP_WIN/c.md` com `Closes #12`; `<N>` = `$SBP_WIN/n.md` com `corpo sem palavra de fechamento`. Casos `(c1)`..`(c9)` são os contornos (exit 2 e `tem ... "#12"`), `(v1)`..`(v4)` os vizinhos (exit 0), `(f1)` o `-f` (exit 2, `tem ... "editor interativo"`). Termina com `ok: <n>   falhou: <m>` e sai 1 com falha.
+- A ordem interna de cada ramo (variável, cwd incerto, heredoc, leitura do disco) **não muda**, e os retornos de hoje ficam com os mesmos campos (`caminho`/`resolvido`/`codigo` no ENOENT, `heredoc`, `variavel`, `cwdIncerto`): só `return X` vira `achados.push(X); continue;`.
+- Valor ausente (`colado === null` e `i + 1 >= toks.length`) = `continue` sem empurrar nada, como hoje. Valor colado vazio (`-F=`, `--body-file=`) segue o fluxo normal: string vazia vai para o ramo e a recusa é a de hoje para arquivo ilegível (`--body-file veio vazio.`).
+- **Bateria nova** `hooks/testa-gate-pr-flag-curta.sh`, no molde de `hooks/testa-gate-receita-corpo.sh` (copiar o cabeçalho, o `gh` falso que sai 1 e as funções `roda`, `tem`, `sai`). Cria `c.md`, `n.md` e `f.md` com `printf` no `$SBP`. Um bloco por linha da tabela, na ordem da tabela: `roda '<comando>'`, `sai "<id>" <exit>` e, quando a coluna tem trecho, `tem "<id>" "<trecho>"`. Termina com `echo "ok: $ok   falhou: $falhou"` e `[ "$falhou" -eq 0 ]`. **Não** registrar em `scripts/baterias-obrigatorias.txt` (a bateria-molde também não está lá).
 - Mutações extras que a integração re-roda à mão (fora da catraca, uma por decisão): D2 — `new Set(["--body-file", "-F"])` → `new Set(["--body-file"])` deixa `(c3)`..`(c6)` vermelhos; D3 — `conteudo: achados.map((a) => a.conteudo).join("\n")` → `conteudo: achados[0].conteudo` deixa `(c8)` vermelho.
-- Parada (D4): alias do `gh`, `gh api`, env do `gh`, `--template`/`--fill` e flag longa abreviada ficam fora; achado de revisão nessas classes não reabre esta tarefa.
+- Parada (D4): alias do `gh`, `gh api`, env do `gh`, `--template` e flag longa abreviada ficam fora; valor de outra flag que começa com `-b`/`-F` (`--title -bar`) é lido como flag — superconjunto aceito, como já era. Achado de revisão nessas classes não reabre esta tarefa.
 
 ### 2. Versão PATCH, README e CHANGELOG [tipo: docs]
 atende: D4
@@ -62,4 +86,4 @@ arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`
 depende de: 1
 mutacao: n/a
   motivo: só versão e texto; o comportamento é medido pela tarefa 1
-pronto quando: com a `main` trazida para a branch (`git merge origin/main`), `node scripts/conferir-versao.cjs` sai 0, os dois `plugin.json` e o selo do README dizem a versão seguinte à da `main` na casa PATCH, e o CHANGELOG abre com essa versão descrevendo pelo comportamento as grafias que o gate passa a ler (`-F`, valor colado, `-B` deixa de ser corpo, todas as ocorrências) e o que fica fora pelo D4 — provado por `node scripts/conferir-versao.cjs; grep -n '"version"' .claude-plugin/plugin.json .codex-plugin/plugin.json; grep -n 'alt="versão' README.md; grep -n -m2 -A3 '^## ' CHANGELOG.md`
+pronto quando: com a `main` trazida para a branch (`git merge origin/main`), `node scripts/conferir-versao.cjs` sai 0, os quatro lugares — `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, o selo do README (`vers%C3%A3o-X-` e `alt="versão X"`) e o topo do CHANGELOG (`## X — AAAA-MM-DD`, data do dia) — dizem a versão seguinte à da `main` na casa PATCH (2.11.1 se a `main` ainda estiver em 2.11.0), e o CHANGELOG abre com essa versão descrevendo pelo comportamento as grafias que o gate passa a ler (`-F`, valor colado, `-B` deixa de ser corpo, todas as ocorrências) e o que fica fora pelo D4 — provado por `node scripts/conferir-versao.cjs; grep -n '"version"' .claude-plugin/plugin.json .codex-plugin/plugin.json; grep -n 'alt="versão' README.md; grep -n -m2 -A3 '^## ' CHANGELOG.md`

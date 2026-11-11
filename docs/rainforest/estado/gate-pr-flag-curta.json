@@ -11,7 +11,11 @@
     "em": "2026-11-11"
   },
   "plano": {
-    "status": "pendente"
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/gate-pr-flag-curta.md",
+    "tarefas": 2,
+    "paralelas": [],
+    "em": "2026-11-11"
   },
   "executar": {
     "status": "pendente"
