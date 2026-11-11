@@ -186,6 +186,14 @@ function corpoDeHeredocQueCria(comando, caminho, cwdSegmento) {
  * objetivo é só garantir que um `gh ...` escondido lá dentro apareça como
  * segmento verificável; não precisa entender a sintaxe do subshell/grupo.
  */
+// Caractere em `i` escapado: numero impar de contrabarras logo antes (D5 de
+// docs/rainforest/design/gate-crase.md).
+function escapadaPorContrabarra(s, i) {
+  let n = 0;
+  for (let k = i - 1; k >= 0 && s[k] === "\\"; k -= 1) n += 1;
+  return n % 2 === 1;
+}
+
 function segmentosParaGate(cmd) {
   // Tarefa 13 (#309, revisao 2): colapsa contrabarra+LF/CRLF de nivel
   // superior (nao citada em aspas simples) ANTES de fatiar em segmentos —
@@ -196,6 +204,7 @@ function segmentosParaGate(cmd) {
   const segmentos = [];
   let atual = "";
   let aspa = null;
+  let fimDolarAspas = -1;
 
   for (let i = 0; i < cmd.length; i++) {
     const c = cmd[i];
@@ -208,16 +217,21 @@ function segmentosParaGate(cmd) {
     // --body`). O conteudo da crase e opaco para o rastreio de aspas de fora
     // (D4): sem isso, `echo `echo "`; gh issue close 12` deixava a aspa de
     // dentro aberta e escondia o `; gh issue close` como texto citado.
-    // Crase sem par vai ate o fim do comando.
-    if (c === "`" && aspa !== "'" && cmd[i - 1] !== "\\") {
+    // Crase sem par vai ate o fim do comando. Escapada so com numero IMPAR de
+    // contrabarras antes (`\`+crase e contrabarra literal + crase viva, D5).
+    // Dentro de `$(...)` entre aspas duplas a crase fica para a recursao do
+    // P4, que respeita heredoc de delimitador citado (D6). O texto de dentro
+    // e desescapado como o bash faz (``+crase, `\`, `$`) antes de
+    // recursar: crase aninhada com ``+crase e crase viva (D5).
+    if (c === "`" && aspa !== "'" && !escapadaPorContrabarra(cmd, i) && !(aspa === '"' && i < fimDolarAspas)) {
       let j = i + 1;
       let internoCrase = "";
-      while (j < cmd.length && !(cmd[j] === "`" && cmd[j - 1] !== "\\")) {
+      while (j < cmd.length && !(cmd[j] === "`" && !escapadaPorContrabarra(cmd, j))) {
         internoCrase += cmd[j];
         j += 1;
       }
       if (internoCrase.trim()) {
-        for (const sub of segmentosParaGate(internoCrase)) {
+        for (const sub of segmentosParaGate(internoCrase.replace(/\\([\\`$])/g, "$1"))) {
           if (sub.trim()) segmentos.push(sub);
         }
       }
@@ -254,7 +268,13 @@ function segmentosParaGate(cmd) {
           interno += cmd[j];
           j += 1;
         }
-        if (interno.trim()) segmentos.push(interno);
+        // A recursao (e nao o push cru) desce em crase e heredoc la dentro (D6).
+        if (interno.trim()) {
+          for (const sub of segmentosParaGate(interno)) {
+            if (sub.trim()) segmentos.push(sub);
+          }
+        }
+        fimDolarAspas = j;
       }
       if (c === aspa) aspa = null;
       atual += c;

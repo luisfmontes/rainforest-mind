@@ -18,8 +18,8 @@ busca:
 desfecho: estender
 mutacao:
   arquivo: `hooks/gate-fechar-issue.cjs`
-  de: `for (const sub of segmentosParaGate(internoCrase)) {`
-  para: `for (const sub of [].slice(0)) {`
+  de: `if (c === "`" && aspa !== "'"`
+  para: `if (false && aspa !== "'"`
   bateria: `bash hooks/testa-gate-fechar-issue.sh`
   fixture: `testa-gate-fechar-issue.sh, casos (crase-1), (crase-2), (crase-3) e (crase-7)`
 prova: `node -e 'process.stdout.write(JSON.stringify({cwd:process.cwd(),tool_name:"Bash",tool_input:{command:"echo x; echo \u0060gh issue close 12\u0060"}}))' | node hooks/gate-fechar-issue.cjs; test $? -eq 2`
@@ -69,3 +69,37 @@ prova-na-base: verde — o caso (crase-8) nasce com esta tarefa; a versão entre
 pronto quando: com o payload real de PreToolUse, `` echo `echo "`; gh issue close 12 `` sai 2 (caso crase-8) e a bateria inteira fica verde — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 428 ok, 0 falha(s) ==`
 
 Na tarefa 1, o bloco passa a terminar com `atual += cmd.slice(i, Math.min(j + 1, cmd.length)); i = j; continue;`, e a variável `fimCrase` sai (o salto do índice substitui a guarda). A mutação `i = i + 0` não serve de medida: a crase de fechamento abre outra varredura até o fim e barra o caso por outro caminho.
+
+*Emenda da revisão 1:* o alvo de mutação da tarefa 1 passou a ser a condição de entrada do bloco, porque a linha da recursão mudou na tarefa 4.
+
+### 4. Escape de crase como o bash (revisão 1 e revisão de segurança) [tipo: implementar]
+atende: D5
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 3
+busca:
+- repo | grep -n "cmd`[i - 1] !== `" hooks/gate-fechar-issue.cjs | o bloco da crase olhava só um caractere antes
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `g, "$1"))) {`
+  para: `g, "$&"))) {`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  fixture: `testa-gate-fechar-issue.sh, caso (crase-9)`
+prova-na-base: verde — os casos (crase-9) a (crase-11) nascem com esta tarefa; na versão da tarefa 3, (crase-9) e (crase-10) saíam 0 (medido no payload real)
+pronto quando: com o payload real de PreToolUse, a crase aninhada com `\`` (crase-9) e `\\` antes da crase (crase-10) saem 2, e `\`` sozinho (crase-11) sai 0 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 433 ok, 0 falha(s) ==`
+
+### 5. Crase dentro de $(...) entre aspas fica com o P4 recursivo [tipo: implementar]
+atende: D6
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 4
+busca:
+- repo | grep -n "if (interno.trim()) segmentos.push(interno);" hooks/gate-fechar-issue.cjs | o P4 empurrava o conteúdo de $(...) cru, sem recursão
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `        fimDolarAspas = j;`
+  para: `        fimDolarAspas = -1;`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  fixture: `testa-gate-fechar-issue.sh, caso (crase-12)`
+prova-na-base: verde — (crase-12) saía 0 na base e 2 na versão da tarefa 3; (crase-13) saía 0 nas duas (medido no payload real)
+pronto quando: com o payload real, o commit por heredoc citado com crase de texto (crase-12) sai 0 e a crase dentro de `$(...)` entre aspas (crase-13) sai 2 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 433 ok, 0 falha(s) ==`; trocar a recursão do P4 por `[interno]` também deixa (crase-13) vermelho (medido)

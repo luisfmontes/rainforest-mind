@@ -867,6 +867,66 @@ COMANDO_CRASE_8=$'echo `echo "`; gh issue close 12'
 EXIT_CRASE_8=$?
 [ $EXIT_CRASE_8 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CRASE_8)"
 
+# Caso (crase-9): crase aninhada com \\` (o bash desescapa) com gh issue close → exit 2 (D5 de gate-crase)
+echo
+echo "== (crase-9) crase aninhada com crase (o bash desescapa) com gh issue close → exit 2 =="
+COMANDO_CRASE_9=$'echo `echo \\`gh issue close 12\\``'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CRASE_9")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-crase-9"
+EXIT_CRASE_9=$?
+[ $EXIT_CRASE_9 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CRASE_9)"
+
+# Caso (crase-10): duas contrabarras antes da crase (contrabarra literal + crase viva) → exit 2 (D5 de gate-crase)
+echo
+echo "== (crase-10) duas contrabarras antes da crase (contrabarra literal + crase viva) → exit 2 =="
+COMANDO_CRASE_10=$'echo \\\\`gh issue close 12`'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CRASE_10")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-crase-10"
+EXIT_CRASE_10=$?
+[ $EXIT_CRASE_10 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CRASE_10)"
+
+# Caso (crase-11): crase escapada com uma contrabarra nao executa → exit 0 (D5 de gate-crase)
+echo
+echo "== (crase-11) crase escapada com uma contrabarra nao executa → exit 0 =="
+COMANDO_CRASE_11=$'echo \\`gh issue close 12\\`'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CRASE_11")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-crase-11"
+EXIT_CRASE_11=$?
+[ $EXIT_CRASE_11 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CRASE_11)"
+
+# Caso (crase-12): commit por heredoc citado com crase de texto na mensagem → exit 0 (D6 de gate-crase)
+echo
+echo "== (crase-12) commit por heredoc citado com crase de texto na mensagem → exit 0 =="
+COMANDO_CRASE_12=$'git commit -m "$(cat <<\'EOF\'\nfix: gate barra `gh issue close` em crase\nEOF\n)"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CRASE_12")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-crase-12"
+EXIT_CRASE_12=$?
+[ $EXIT_CRASE_12 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CRASE_12)"
+
+# Caso (crase-13): crase dentro de $(...) entre aspas duplas → exit 2 (D6 de gate-crase)
+echo
+echo "== (crase-13) crase dentro de dolar-parenteses entre aspas duplas → exit 2 =="
+COMANDO_CRASE_13=$'echo "$(echo `gh issue close 12`)"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CRASE_13")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-crase-13"
+EXIT_CRASE_13=$?
+[ $EXIT_CRASE_13 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CRASE_13)"
+
 # R2 (rodada 9, lote 3, 2026-09-04): `Invoke-Expression`/`iex` (PowerShell)
 # nao eram reconhecidos como wrapper de string sem flag (igual `eval`) — o
 # conteudo era um token citado so, a busca por sequencia nao casava dentro
