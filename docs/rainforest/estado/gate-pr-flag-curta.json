@@ -1,0 +1,161 @@
+{
+  "slug": "gate-pr-flag-curta",
+  "titulo": "#664: gate-fechar-issue reconhece -F e compara flags curtas com caixa (-B não é -b)",
+  "criado_em": "2026-11-11",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "doc": "docs/rainforest/design/gate-pr-flag-curta.md",
+    "em": "2026-11-11"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/gate-pr-flag-curta.md",
+    "tarefas": 2,
+    "paralelas": [],
+    "em": "2026-11-11"
+  },
+  "executar": {
+    "status": "ok",
+    "catraca_mutacao": "2026-11-11",
+    "tarefas_ok": 5,
+    "tarefas": 5,
+    "em_voo": [],
+    "carimbos": [
+      {
+        "tarefa": 1,
+        "hash_base": "c431b2b3e4474d0504e7dc31a6f538bd6c44fd4d",
+        "iteracao": 1,
+        "sessao": "77ec548d-5d34-488c-99ae-8f54633d2e8c",
+        "ts": "2026-11-11T11:57:58.319Z"
+      },
+      {
+        "tarefa": 3,
+        "hash_base": "46af3e1ab7c2c4550064781f9229188317894c5c",
+        "iteracao": 1,
+        "sessao": "77ec548d-5d34-488c-99ae-8f54633d2e8c",
+        "ts": "2026-11-11T12:11:56.856Z"
+      }
+    ],
+    "em": "2026-11-11",
+    "mutacao": [
+      {
+        "tarefa": 1,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-pr-flag-curta.sh, caso (c10) create -B main --fill"
+      },
+      {
+        "tarefa": 2,
+        "resultado": "n/a",
+        "motivo": "so versao e texto; comportamento medido pelas tarefas 1, 3, 4 e 5"
+      },
+      {
+        "tarefa": 3,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-pr-flag-curta.sh, caso (c12) create --fill com titulo -bar"
+      },
+      {
+        "tarefa": 4,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-pr-flag-curta.sh, caso (c14) issue comment com palavra falsa e -F inexistente"
+      },
+      {
+        "tarefa": 5,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-pr-flag-curta.sh, caso (c15) create --fill com --attach -bar"
+      }
+    ],
+    "comando": "node scripts/conferir-mutacao.cjs --arquivo hooks/gate-fechar-issue.cjs --de \"\\\"--recover\\\", \\\"--attach\\\",\" --para \"\\\"--recover\\\",\" --bateria \"bash hooks/testa-gate-pr-flag-curta.sh\"; bash hooks/testa-gate-fechar-issue.sh",
+    "saida": "bateria VERMELHA com (c15); testa-gate-pr-flag-curta ok: 40 falhou: 0; testa-gate-fechar-issue 420 ok, 0 falha(s); testa-gate-receita-corpo ok: 39"
+  },
+  "revisar": {
+    "status": "ok",
+    "snapshot": {
+      "head": "8da7ec7a1eee9b1be880c5a8135ee20ded993b82",
+      "caminhos_sujos": []
+    },
+    "vereditos": [
+      {
+        "agente": "rainforest-mind:revisor",
+        "agente_id": "a91cb081f60b94204",
+        "veredito": "ok",
+        "em": "2026-11-11",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a91cb081f60b94204.jsonl"
+      }
+    ],
+    "em_voo": [],
+    "em": "2026-11-11",
+    "achados": 0,
+    "base": "7882b947f226a1dec732462a133e30cb349dec0d",
+    "head": "8da7ec7a1eee9b1be880c5a8135ee20ded993b82",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ae4bf32ab49a84266",
+            "veredito": "ok",
+            "em": "2026-11-11",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-ae4bf32ab49a84266.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "acdee200d3b6bdf7c",
+            "veredito": "ok",
+            "em": "2026-11-11",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-acdee200d3b6bdf7c.jsonl"
+          }
+        ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a41ee5e85b0a89571",
+            "veredito": "ok",
+            "em": "2026-11-11",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a41ee5e85b0a89571.jsonl"
+          }
+        ]
+      }
+    ]
+  },
+  "verificar": {
+    "status": "ok",
+    "em": "2026-11-11",
+    "comando": "bash hooks/testa-gate-pr-flag-curta.sh; bash hooks/testa-gate-receita-corpo.sh; bash hooks/testa-gate-fechar-issue.sh; node scripts/conferir-versao.cjs; node scripts/conferir-fluxo.cjs mutacoes --slug gate-pr-flag-curta",
+    "saida": "ok: 40 falhou: 0 (exit 0); ok: 39 falhou: 0 (exit 0); 420 ok, 0 falha(s) (exit 0, rodada no HEAD 8da7ec7); versao 2.11.1 ok; tarefas 1, 3, 4, 5 vermelho, 2 pulada n/a",
+    "sensor_externo": "bash hooks/testa-gate-pr-flag-curta.sh",
+    "head": "8da7ec7a1eee9b1be880c5a8135ee20ded993b82"
+  },
+  "fechar": {
+    "status": "pendente",
+    "em": "2026-11-11"
+  },
+  "reaberturas": [
+    {
+      "em": "2026-11-11",
+      "de": "revisar",
+      "motivo": "revisao 1: achado 1 (regressao: --fill --title -bar sai 0) vira D5/tarefa 3; achados 2 e 3 viram texto do CHANGELOG e D5"
+    },
+    {
+      "em": "2026-11-11",
+      "de": "revisar",
+      "motivo": "revisao 2: achado 1 (issue comment com corpo ilegivel pula palavra falsa) e 2 (docblock) e 3 (cabecalho da bateria) viram tarefa 4"
+    },
+    {
+      "em": "2026-11-11",
+      "de": "verificar",
+      "motivo": "manual do gh: --attach, --blocked-by, --blocking, --parent e --type levam valor e ficaram fora de FLAGS_COM_VALOR; --fill --attach -bar sai 0"
+    }
+  ]
+}

@@ -548,13 +548,32 @@ function repoDoGh(tokens) {
   return repo;
 }
 
+// Grafias que o pflag do gh aceita para o corpo do PR: `-b`/`--body` leem o
+// corpo direto; `-F`/`--body-file` leem de arquivo. `-B` (--base) e `-f`
+// (--fill) NÃO são corpo (design gate-pr-flag-curta, D1).
+const FLAGS_CORPO_DIRETO = new Set(["--body", "-b"]);
+const FLAGS_CORPO_ARQUIVO = new Set(["--body-file", "-F"]);
+// Flags de valor do pr create/edit e issue create/comment (D5): o token
+// seguinte é o valor delas, nunca uma flag.
+const FLAGS_COM_VALOR = new Set([
+  "--title", "-t", "--base", "-B", "--head", "-H", "--repo", "-R",
+  "--assignee", "-a", "--label", "-l", "--milestone", "-m", "--project", "-p",
+  "--reviewer", "-r", "--template", "-T", "--recover", "--attach", "--blocked-by", "--blocking", "--parent", "--type",
+  "--add-assignee", "--add-label", "--add-project", "--add-reviewer",
+  "--remove-assignee", "--remove-label", "--remove-project", "--remove-reviewer",
+]);
+
 /**
  * Extrai o corpo do comando `gh pr create` ou `gh pr edit` (o `--body` de
  * `gh pr merge` NÃO passa por aqui — é a mensagem do merge commit, lida à
  * parte via `gh pr view` em `verificarComandoGh`).
- * Procura por `--body <valor>`/`--body=<valor>`/`-b <valor>` (o corpo direto)
- * ou `--body-file <arquivo>`/`--body-file=<arquivo>`.
- * Retorna { tipo: "direto"|"arquivo"|"nenhum", conteudo: string|null, legivel: bool }
+ * Lê `-b`/`--body` (corpo direto) e `-F`/`--body-file` (arquivo), com o valor
+ * no token seguinte, depois de `=` ou colado à flag curta (`-Fx`), e pula o
+ * valor das `FLAGS_COM_VALOR` (design gate-pr-flag-curta, D1, D2 e D5). Junta
+ * TODAS as ocorrências (D3): legíveis, devolve { tipo, conteudo: a junção,
+ * legivel: true }; havendo uma ilegível, devolve a primeira delas com
+ * `conteudoLegivel` (a junção das legíveis, para a checagem de palavra falsa
+ * do `issue create`/`issue comment`); sem nenhuma, { tipo: "nenhum" }.
  *
  * P3 (rodada 8, lote 3, 2026-09-04): a versao anterior usava o regex
  * `/--body\s+["']([^"']+)["']/i` sobre o texto CRU do comando — ele para no
@@ -578,39 +597,59 @@ function repoDoGh(tokens) {
  */
 function extrairCorpoDoPR(segmento, cwdSegmento) {
   const toks = tokensComAspas(segmento);
+  // D3: todas as ocorrências de corpo no segmento, não só a primeira.
+  const achados = [];
   for (let i = 0; i < toks.length; i += 1) {
     const tok = toks[i].v;
     const pontoIgual = tok.indexOf("=");
-    const chave = (pontoIgual === -1 ? tok : tok.slice(0, pontoIgual)).toLowerCase();
+    const longa = tok.startsWith("--");
+    const curta = !longa && /^-[A-Za-z]/.test(tok);
+    const chave = longa
+      ? (pontoIgual === -1 ? tok : tok.slice(0, pontoIgual)).toLowerCase()
+      : tok.slice(0, 2);
+    // valor na mesma palavra: --x=v, -Fv ou -F=v (pflag)
+    const colado = longa
+      ? (pontoIgual === -1 ? null : tok.slice(pontoIgual + 1))
+      : (curta && tok.length > 2 ? tok.slice(2).replace(/^=/, "") : null);
 
-    if (chave === "--body" || chave === "-b") {
+    if ((longa || curta) && FLAGS_COM_VALOR.has(chave)) {
+      if (colado === null) i += 1;
+      continue;
+    }
+
+    if ((longa || curta) && FLAGS_CORPO_DIRETO.has(chave)) {
       let corpo;
-      if (pontoIgual !== -1) {
-        corpo = tok.slice(pontoIgual + 1);
+      if (colado !== null) {
+        corpo = colado;
       } else if (i + 1 < toks.length) {
         corpo = toks[i + 1].v;
+        i += 1;
       } else {
         continue;
       }
       // Validar se o corpo é legível: não contém $(...) nem crases.
       if (corpo.includes("$(") || corpo.includes("`")) {
-        return { tipo: "direto", conteudo: corpo, legivel: false };
+        achados.push({ tipo: "direto", conteudo: corpo, legivel: false });
+      } else {
+        achados.push({ tipo: "direto", conteudo: corpo, legivel: true });
       }
-      return { tipo: "direto", conteudo: corpo, legivel: true };
+      continue;
     }
 
-    if (chave === "--body-file") {
+    if ((longa || curta) && FLAGS_CORPO_ARQUIVO.has(chave)) {
       let arquivo;
-      if (pontoIgual !== -1) {
-        arquivo = tok.slice(pontoIgual + 1);
+      if (colado !== null) {
+        arquivo = colado;
       } else if (i + 1 < toks.length) {
         arquivo = toks[i + 1].v;
+        i += 1;
       } else {
         continue;
       }
       arquivo = normalizarMsys(arquivo);
       if (/[$\x60]/.test(arquivo)) {
-        return { tipo: "arquivo", conteudo: null, legivel: false, variavel: true };
+        achados.push({ tipo: "arquivo", conteudo: null, legivel: false, variavel: true });
+        continue;
       }
       if (!path.isAbsolute(arquivo) && cwdSegmento == null) {
         // Caminho relativo e não dá pra saber onde este segmento roda de
@@ -618,7 +657,8 @@ function extrairCorpoDoPR(segmento, cwdSegmento) {
         // ler contra o cwd do PROCESSO do hook seria adivinhar um lugar que
         // pode não ser onde o `gh` roda — bloqueia por segurança, igual a
         // um arquivo ilegível.
-        return { tipo: "arquivo", conteudo: null, legivel: false, cwdIncerto: true };
+        achados.push({ tipo: "arquivo", conteudo: null, legivel: false, cwdIncerto: true });
+        continue;
       }
       const caminhoResolvido = path.isAbsolute(arquivo)
         ? arquivo
@@ -628,18 +668,25 @@ function extrairCorpoDoPR(segmento, cwdSegmento) {
       // disco primeiro decidia pelo conteudo VELHO (revisao da zerar-issues-16).
       const corpoCriado = corpoDeHeredocQueCria(COMANDO_INTEIRO, caminhoResolvido, cwdSegmento);
       if (corpoCriado !== null) {
-        return { tipo: "arquivo", conteudo: corpoCriado.legivel ? corpoCriado.corpo : null, legivel: corpoCriado.legivel, heredoc: true };
+        achados.push({ tipo: "arquivo", conteudo: corpoCriado.legivel ? corpoCriado.corpo : null, legivel: corpoCriado.legivel, heredoc: true });
+        continue;
       }
       try {
         const conteudo = fs.readFileSync(caminhoResolvido, "utf8");
-        return { tipo: "arquivo", conteudo, legivel: true };
+        achados.push({ tipo: "arquivo", conteudo, legivel: true });
       } catch (e) {
-        return { tipo: "arquivo", conteudo: null, legivel: false, caminho: arquivo, resolvido: caminhoResolvido, codigo: e && e.code };
+        achados.push({ tipo: "arquivo", conteudo: null, legivel: false, caminho: arquivo, resolvido: caminhoResolvido, codigo: e && e.code });
       }
+      continue;
     }
   }
 
-  return { tipo: "nenhum", conteudo: null, legivel: false };
+  if (achados.length === 0) return { tipo: "nenhum", conteudo: null, legivel: false };
+  // Qualquer ocorrência ilegível decide pela recusa dela; legíveis, o
+  // conteúdo checado é a junção de todas.
+  const ilegivel = achados.find((a) => !a.legivel);
+  if (ilegivel) return { ...ilegivel, conteudoLegivel: achados.filter((a) => a.legivel).map((a) => a.conteudo).join("\n") };
+  return { ...achados[0], conteudo: achados.map((a) => a.conteudo).join("\n") };
 }
 
 function bloqueia(motivo) {
@@ -1114,9 +1161,9 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento, textoDoComando =
     const corpoIssue = extrairCorpoDoPR(segmento, cwdSegmento);
 
     // Só verifica palavras-chave falsas; não precisa de `--body` explícito
-    if (corpoIssue.legivel && corpoIssue.conteudo) {
-      verificarFalsasChaves(corpoIssue.conteudo);
-    }
+    // Ilegível somado a legível: a palavra falsa dos legíveis ainda conta.
+    const texto = corpoIssue.legivel ? corpoIssue.conteudo : corpoIssue.conteudoLegivel;
+    if (texto) verificarFalsasChaves(texto);
   }
 
   // Caso (e): `gh issue comment` → verificar corpo para palavras-chave falsas
@@ -1124,9 +1171,8 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento, textoDoComando =
     const corpoComentario = extrairCorpoDoPR(segmento, cwdSegmento);
 
     // Só verifica palavras-chave falsas; não precisa de `--body` explícito
-    if (corpoComentario.legivel && corpoComentario.conteudo) {
-      verificarFalsasChaves(corpoComentario.conteudo);
-    }
+    const texto = corpoComentario.legivel ? corpoComentario.conteudo : corpoComentario.conteudoLegivel;
+    if (texto) verificarFalsasChaves(texto);
   }
 
   // Caso (c): `gh pr merge` → NÃO ler o `--body` (é a mensagem do merge
