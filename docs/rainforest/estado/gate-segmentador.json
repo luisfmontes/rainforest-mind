@@ -1,0 +1,32 @@
+{
+  "slug": "gate-segmentador",
+  "titulo": "gate-segmentador",
+  "criado_em": "2026-11-11",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/gate-segmentador.md",
+    "em": "2026-11-11"
+  },
+  "plano": {
+    "status": "ok",
+    "arquivo": "docs/rainforest/planos/gate-segmentador.md",
+    "tarefas": 6,
+    "paralelas": [],
+    "em": "2026-11-11"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
