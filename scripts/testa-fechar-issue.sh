@@ -58,6 +58,12 @@ if (args[0] === "issue" && args[1] === "view" && args[3] === "--json" && args[4]
     body = "Como reproduzir: passo1 passo2\n**Pronto quando:** comando esperado";
   } else if (prontoLinha) {
     body = "Como reproduzir: passo1 passo2\nPronto quando: comando esperado";
+  } else if (process.env.GH_CORPO_PRONTO_H3 === "1") {
+    body = "Como reproduzir: passo1 passo2\n### Pronto quando\ncomando esperado";
+  } else if (process.env.GH_CORPO_PRONTO_LISTA === "1") {
+    body = "Como reproduzir: passo1 passo2\n- **Pronto quando:** comando esperado";
+  } else if (process.env.GH_CORPO_PRONTO_QUEBRA === "1") {
+    body = "Como reproduzir: passo1 passo2\n##\nPronto quando a sessao terminar";
   } else {
     body = "Como reproduzir: passo1 passo2";
   }
@@ -404,6 +410,36 @@ LOG_S="$(cat "$SBP/log-s" 2>/dev/null || echo '')"
 
 # Caso (t): corpo SEM critério nem "Pronto quando" → exit 2, recusa cita "Pronto quando"
 echo
+echo "== (u) corpo com '### Pronto quando' → comenta e fecha =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_LOG="$SBP/log-u"
+  export GH_CORPO_PRONTO_H3=1
+  node "$SRC/scripts/fechar-issue.cjs" 999917 --comando "echo teste" --saida "ok"
+) >/dev/null 2>&1
+[ $? -eq 0 ] && test_ok "(u) exit 0" || test_fail "(u) exit code"
+grep -q "issue close" "$SBP/log-u" 2>/dev/null && test_ok "(u) issue close chamado" || test_fail "(u) issue close"
+
+echo "== (v) corpo com '- **Pronto quando:**' → comenta e fecha =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_LOG="$SBP/log-v"
+  export GH_CORPO_PRONTO_LISTA=1
+  node "$SRC/scripts/fechar-issue.cjs" 999918 --comando "echo teste" --saida "ok"
+) >/dev/null 2>&1
+[ $? -eq 0 ] && test_ok "(v) exit 0" || test_fail "(v) exit code"
+grep -q "issue close" "$SBP/log-v" 2>/dev/null && test_ok "(v) issue close chamado" || test_fail "(v) issue close"
+
+echo "== (w) '##' vazio e 'Pronto quando' na linha seguinte → exit 2 =="
+(
+  export PATH="$SBP/bin:$PATH"
+  export GH_LOG="$SBP/log-w"
+  export GH_CORPO_PRONTO_QUEBRA=1
+  node "$SRC/scripts/fechar-issue.cjs" 999919 --comando "echo teste" --saida "ok"
+) >/dev/null 2>&1
+[ $? -eq 2 ] && test_ok "(w) exit 2" || test_fail "(w) exit code"
+grep -q "issue close" "$SBP/log-w" 2>/dev/null && test_fail "(w) fechou sem criterio" || test_ok "(w) nao fechou"
+
 echo "== (t) corpo sem critério → exit 2, recusa cita 'Pronto quando' =="
 (
   export PATH="$SBP/bin:$PATH"

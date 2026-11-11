@@ -22,7 +22,7 @@ const { MARCADOR } = require(path.join(__dirname, '..', 'hooks', 'lib', 'marcado
 const { resolverExecutavel, executar, caminhoExecutavel } = require(path.join(__dirname, '..', 'hooks', 'lib', 'resolver-executavel.cjs'));
 
 const RE_CRITERIO = /^##\s+Crit[eé]rio de pronto\s+\(falsific[áa]vel\)/m;
-const RE_PRONTO_QUANDO = /^(?:#{2,3}\s+Pronto quando\b|(?:[-*]\s+)?\*\*Pronto quando:\*\*|Pronto quando:)/m;
+const RE_PRONTO_QUANDO = /^(?:#{2,3}[ \t]+Pronto quando\b|(?:[-*][ \t]+)?\*\*Pronto quando:\*\*|Pronto quando:)/m;
 
 /**
  * Tenta rodar git rev-parse --show-toplevel no cwd.

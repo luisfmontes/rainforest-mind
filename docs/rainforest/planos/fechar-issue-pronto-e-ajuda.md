@@ -56,3 +56,19 @@ depende de: 1, 2
 mutacao: n/a
   motivo: só versão e texto; comportamento medido pelas tarefas 1 e 2
 pronto quando: com a `main` trazida para a branch (`git fetch origin && git merge origin/main`; conflito fora de versão e CHANGELOG: pare e relate), `node scripts/conferir-versao.cjs` sai 0 e os quatro lugares (dois `plugin.json`, selo do README com `vers%C3%A3o-X-` e `alt="versão X"`, topo do CHANGELOG `## X — 2026-11-11`) dizem a versão seguinte à da `main` na casa PATCH; o CHANGELOG descreve pelo comportamento as formas de "Pronto quando" aceitas e a ajuda do `gh` que passa — provado por `node scripts/conferir-versao.cjs; grep -n '"version"' .claude-plugin/plugin.json .codex-plugin/plugin.json; grep -n 'alt="versão' README.md; grep -n -m2 -A3 '^## ' CHANGELOG.md`
+
+### 4. Revisão 1: "Pronto quando" na mesma linha e casos que faltavam [tipo: implementar]
+atende: D1
+arquivos: `scripts/fechar-issue.cjs`, `scripts/testa-fechar-issue.sh`
+depende de: 3
+busca:
+- repo | grep -n "RE_PRONTO_QUANDO" scripts/fechar-issue.cjs | a regex da tarefa 1 usa \s+, que com /m atravessa linha
+desfecho: estender
+mutacao:
+  arquivo: `scripts/fechar-issue.cjs`
+  de: `#{2,3}[ \t]+Pronto quando`
+  para: `#{2,3}\s+Pronto quando`
+  bateria: `bash scripts/testa-fechar-issue.sh`
+  fixture: `testa-fechar-issue.sh, caso (w)`
+prova-na-base: verde — os casos (u), (v) e (w) nascem com esta tarefa; a bateria de antes passa e as três mutações (#{2}, sem o prefixo de lista, \s+) deixam (u), (v) e (w) vermelhos
+pronto quando: com o corpo de Issue do gh falso, `### Pronto quando` (u) e `- **Pronto quando:** ...` (v) saem 0 e fecham, e `##` vazio com "Pronto quando" na linha seguinte (w) sai 2 sem fechar — provado por `bash scripts/testa-fechar-issue.sh` terminando em `54 ok, 0 falha(s)`
