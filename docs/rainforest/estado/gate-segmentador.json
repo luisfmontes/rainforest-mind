@@ -18,7 +18,19 @@
     "em": "2026-11-11"
   },
   "executar": {
-    "status": "pendente"
+    "status": "parcial",
+    "catraca_mutacao": "2026-11-11",
+    "tarefas_ok": 0,
+    "tarefas": 6,
+    "em_voo": [
+      {
+        "agente": "executor",
+        "tarefa": "tarefas 1-6",
+        "desde": "2026-11-11T20:00:00Z",
+        "sessao": "77ec548d-5d34-488c-99ae-8f54633d2e8c"
+      }
+    ],
+    "em": "2026-11-11"
   },
   "revisar": {
     "status": "pendente"
