@@ -18,7 +18,7 @@
     "em": "2026-11-11"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-11",
     "tarefas_ok": 3,
     "tarefas": 3,
@@ -63,23 +63,37 @@
   "revisar": {
     "status": "pendente",
     "snapshot": {
-      "head": "fb0b781d94a37be99a778a9f90194c5de40a1aa3",
+      "head": "eaa7cc5debc8f45912b3f40f123feb25b28516b4",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ae4bf32ab49a84266",
+        "agente_id": "acdee200d3b6bdf7c",
         "veredito": "ok",
         "em": "2026-11-11",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-ae4bf32ab49a84266.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-acdee200d3b6bdf7c.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-11-11",
     "achados": 3,
     "base": "7882b947f226a1dec732462a133e30cb349dec0d",
-    "head": "fb0b781d94a37be99a778a9f90194c5de40a1aa3"
+    "head": "eaa7cc5debc8f45912b3f40f123feb25b28516b4",
+    "voltas": [
+      {
+        "volta": 1,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ae4bf32ab49a84266",
+            "veredito": "ok",
+            "em": "2026-11-11",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-ae4bf32ab49a84266.jsonl"
+          }
+        ]
+      }
+    ]
   },
   "verificar": {
     "status": "pendente",
@@ -94,6 +108,11 @@
       "em": "2026-11-11",
       "de": "revisar",
       "motivo": "revisao 1: achado 1 (regressao: --fill --title -bar sai 0) vira D5/tarefa 3; achados 2 e 3 viram texto do CHANGELOG e D5"
+    },
+    {
+      "em": "2026-11-11",
+      "de": "revisar",
+      "motivo": "revisao 2: achado 1 (issue comment com corpo ilegivel pula palavra falsa) e 2 (docblock) e 3 (cabecalho da bateria) viram tarefa 4"
     }
   ]
 }

@@ -129,6 +129,29 @@ Forma prescrita:
 - Nos dois ramos de corpo, onde o valor vem de `toks[i + 1].v`, acrescentar `i += 1;` logo depois da atribuição (ex.: `corpo = toks[i + 1].v;` vira `corpo = toks[i + 1].v; i += 1;`), para o valor do corpo também não ser relido como flag (caso `(v6)`).
 - Bateria: os quatro casos entram depois do `(c11)`/`(v4)`, no mesmo formato (`roda`, `sai`, `tem`).
 
+### 4. Issue com corpo ilegível ainda checa a palavra falsa dos legíveis (emenda da revisão 2) [tipo: implementar]
+atende: D3
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-pr-flag-curta.sh`
+depende de: 3
+busca:
+- repo | rg -n "corpoIssue|corpoComentario" hooks/gate-fechar-issue.cjs | os dois chamadores de issue só checam palavra falsa com legivel; estender o retorno do D3
+- livro | pulado: correção do próprio gate
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `if (ilegivel) return { ...ilegivel, conteudoLegivel:`
+  para: `if (ilegivel) return { ...ilegivel, conteudoNaoUsado:`
+  bateria: `bash hooks/testa-gate-pr-flag-curta.sh`
+  fixture: `testa-gate-pr-flag-curta.sh, caso "(c14) issue comment com palavra falsa e -F inexistente"`
+prova: `bash hooks/testa-gate-pr-flag-curta.sh`
+pronto quando: com o mesmo payload real e `gh` falso, `gh issue comment 1 -b "Fecha #12" -F <caminho inexistente>` sai 2 com `Closes #12` no stderr (na base 7882b947 já saía 2; no HEAD da tarefa 3 sai 0), e `gh issue comment 1 -b "Segue #12" -F <caminho inexistente>` sai 0 — provado por `bash hooks/testa-gate-pr-flag-curta.sh` saindo 0, e as duas baterias antigas saindo 0 sem edição
+
+Forma prescrita:
+- O retorno do ilegível no fim de `extrairCorpoDoPR` vira `if (ilegivel) return { ...ilegivel, conteudoLegivel: achados.filter((a) => a.legivel).map((a) => a.conteudo).join("\n") };`.
+- Nos chamadores de `issue create` e `issue comment`, `const texto = corpo.legivel ? corpo.conteudo : corpo.conteudoLegivel;` e `if (texto) verificarFalsasChaves(texto);` no lugar do `if (corpo.legivel && corpo.conteudo)`.
+- O docblock de `extrairCorpoDoPR` volta a ficar colado na função (as constantes sobem para antes dele) e passa a dizer: lê `-b`/`--body` e `-F`/`--body-file` com valor separado, `=` ou colado, pula o valor das `FLAGS_COM_VALOR`, junta todas as ocorrências legíveis, e devolve a primeira ilegível com `conteudoLegivel`.
+- Bateria: cabeçalho cita D1, D2, D3 e D5; a seção `(c1..c11)` vira `(c1..c14)`; casos `(c14)` e `(v7)` com os dois comandos acima.
+
 ### 2. Versão PATCH, README e CHANGELOG [tipo: docs]
 atende: D4
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`

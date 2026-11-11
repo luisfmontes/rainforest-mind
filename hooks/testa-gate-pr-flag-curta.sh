@@ -2,7 +2,7 @@
 # Bateria: o gate-fechar-issue acha o corpo do PR em toda grafia de flag que o
 # gh (pflag) aceita — -b/-F com valor colado, -F=, -F separado — e ignora -B
 # e -f como corpo. Cada caso e uma linha da tabela de casos do design
-# docs/rainforest/design/gate-pr-flag-curta.md (D1, D2, D3).
+# docs/rainforest/design/gate-pr-flag-curta.md (D1, D2, D3, D5).
 #
 # Cada caso manda o payload real de PreToolUse ao gate e le o stderr. Um gh
 # falso (sai 1) fica a frente do PATH: nenhum caso consulta o GitHub real.
@@ -43,7 +43,7 @@ sai() { # <nome> <exit esperado>
   else test_fail "$1: exit esperado $2, veio $E -- $(head -4 "$SBP/err" | tr '\n' ' ')"; fi
 }
 
-echo "== (c1..c11) recusas: o corpo com palavra de fechamento é achado =="
+echo "== (c1..c14) recusas: o corpo com palavra de fechamento é achado =="
 
 roda "gh pr create -B main --title t --body-file $SBP_WIN/c.md"
 sai "(c1) create -B main antes do --body-file" 2
@@ -97,7 +97,11 @@ roda 'gh pr create --fill -t "-Fx"'
 sai "(c13) create --fill com -t -Fx" 2
 tem "(c13) create --fill com -t -Fx" "editor interativo"
 
-echo "== (v1..v4) vizinhos legítimos passam =="
+roda "gh issue comment 1 -b \"Fecha #12\" -F $SBP_WIN/nao-existe.md"
+sai "(c14) issue comment com palavra falsa e -F inexistente" 2
+tem "(c14) issue comment com palavra falsa e -F inexistente" "Closes #12"
+
+echo "== (v1..v7) vizinhos legítimos passam =="
 
 roda "gh pr create --title t -F $SBP_WIN/n.md"
 sai "(v1) create -F sem fechamento" 0
@@ -116,6 +120,9 @@ sai "(v5) título -bar com corpo benigno" 0
 
 roda 'gh pr create --title t --body "-Fx sem fechamento"'
 sai "(v6) corpo direto começando com -F" 0
+
+roda "gh issue comment 1 -b \"Segue #12\" -F $SBP_WIN/nao-existe.md"
+sai "(v7) issue comment benigno com -F inexistente" 0
 
 echo "== (f1) -f não é corpo =="
 

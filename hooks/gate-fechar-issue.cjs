@@ -548,13 +548,32 @@ function repoDoGh(tokens) {
   return repo;
 }
 
+// Grafias que o pflag do gh aceita para o corpo do PR: `-b`/`--body` leem o
+// corpo direto; `-F`/`--body-file` leem de arquivo. `-B` (--base) e `-f`
+// (--fill) NÃO são corpo (design gate-pr-flag-curta, D1).
+const FLAGS_CORPO_DIRETO = new Set(["--body", "-b"]);
+const FLAGS_CORPO_ARQUIVO = new Set(["--body-file", "-F"]);
+// Flags de valor do pr create/edit e issue create/comment (D5): o token
+// seguinte é o valor delas, nunca uma flag.
+const FLAGS_COM_VALOR = new Set([
+  "--title", "-t", "--base", "-B", "--head", "-H", "--repo", "-R",
+  "--assignee", "-a", "--label", "-l", "--milestone", "-m", "--project", "-p",
+  "--reviewer", "-r", "--template", "-T", "--recover",
+  "--add-assignee", "--add-label", "--add-project", "--add-reviewer",
+  "--remove-assignee", "--remove-label", "--remove-project", "--remove-reviewer",
+]);
+
 /**
  * Extrai o corpo do comando `gh pr create` ou `gh pr edit` (o `--body` de
  * `gh pr merge` NÃO passa por aqui — é a mensagem do merge commit, lida à
  * parte via `gh pr view` em `verificarComandoGh`).
- * Procura por `--body <valor>`/`--body=<valor>`/`-b <valor>` (o corpo direto)
- * ou `--body-file <arquivo>`/`--body-file=<arquivo>`.
- * Retorna { tipo: "direto"|"arquivo"|"nenhum", conteudo: string|null, legivel: bool }
+ * Lê `-b`/`--body` (corpo direto) e `-F`/`--body-file` (arquivo), com o valor
+ * no token seguinte, depois de `=` ou colado à flag curta (`-Fx`), e pula o
+ * valor das `FLAGS_COM_VALOR` (design gate-pr-flag-curta, D1, D2 e D5). Junta
+ * TODAS as ocorrências (D3): legíveis, devolve { tipo, conteudo: a junção,
+ * legivel: true }; havendo uma ilegível, devolve a primeira delas com
+ * `conteudoLegivel` (a junção das legíveis, para a checagem de palavra falsa
+ * do `issue create`/`issue comment`); sem nenhuma, { tipo: "nenhum" }.
  *
  * P3 (rodada 8, lote 3, 2026-09-04): a versao anterior usava o regex
  * `/--body\s+["']([^"']+)["']/i` sobre o texto CRU do comando — ele para no
@@ -576,21 +595,6 @@ function repoDoGh(tokens) {
  * nunca de onde o hook foi disparado. Caminho absoluto ignora `cwdSegmento`
  * por completo — não há ambiguidade a resolver.
  */
-// Grafias que o pflag do gh aceita para o corpo do PR: `-b`/`--body` leem o
-// corpo direto; `-F`/`--body-file` leem de arquivo. `-B` (--base) e `-f`
-// (--fill) NÃO são corpo (design gate-pr-flag-curta, D1).
-const FLAGS_CORPO_DIRETO = new Set(["--body", "-b"]);
-const FLAGS_CORPO_ARQUIVO = new Set(["--body-file", "-F"]);
-// Flags de valor do pr create/edit e issue create/comment (D5): o token
-// seguinte é o valor delas, nunca uma flag.
-const FLAGS_COM_VALOR = new Set([
-  "--title", "-t", "--base", "-B", "--head", "-H", "--repo", "-R",
-  "--assignee", "-a", "--label", "-l", "--milestone", "-m", "--project", "-p",
-  "--reviewer", "-r", "--template", "-T", "--recover",
-  "--add-assignee", "--add-label", "--add-project", "--add-reviewer",
-  "--remove-assignee", "--remove-label", "--remove-project", "--remove-reviewer",
-]);
-
 function extrairCorpoDoPR(segmento, cwdSegmento) {
   const toks = tokensComAspas(segmento);
   // D3: todas as ocorrências de corpo no segmento, não só a primeira.
@@ -681,7 +685,7 @@ function extrairCorpoDoPR(segmento, cwdSegmento) {
   // Qualquer ocorrência ilegível decide pela recusa dela; legíveis, o
   // conteúdo checado é a junção de todas.
   const ilegivel = achados.find((a) => !a.legivel);
-  if (ilegivel) return ilegivel;
+  if (ilegivel) return { ...ilegivel, conteudoLegivel: achados.filter((a) => a.legivel).map((a) => a.conteudo).join("\n") };
   return { ...achados[0], conteudo: achados.map((a) => a.conteudo).join("\n") };
 }
 
@@ -1157,9 +1161,9 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento, textoDoComando =
     const corpoIssue = extrairCorpoDoPR(segmento, cwdSegmento);
 
     // Só verifica palavras-chave falsas; não precisa de `--body` explícito
-    if (corpoIssue.legivel && corpoIssue.conteudo) {
-      verificarFalsasChaves(corpoIssue.conteudo);
-    }
+    // Ilegível somado a legível: a palavra falsa dos legíveis ainda conta.
+    const texto = corpoIssue.legivel ? corpoIssue.conteudo : corpoIssue.conteudoLegivel;
+    if (texto) verificarFalsasChaves(texto);
   }
 
   // Caso (e): `gh issue comment` → verificar corpo para palavras-chave falsas
@@ -1167,9 +1171,8 @@ function verificarComandoGh(segmento, subcomandos, cwdSegmento, textoDoComando =
     const corpoComentario = extrairCorpoDoPR(segmento, cwdSegmento);
 
     // Só verifica palavras-chave falsas; não precisa de `--body` explícito
-    if (corpoComentario.legivel && corpoComentario.conteudo) {
-      verificarFalsasChaves(corpoComentario.conteudo);
-    }
+    const texto = corpoComentario.legivel ? corpoComentario.conteudo : corpoComentario.conteudoLegivel;
+    if (texto) verificarFalsasChaves(texto);
   }
 
   // Caso (c): `gh pr merge` → NÃO ler o `--body` (é a mensagem do merge
