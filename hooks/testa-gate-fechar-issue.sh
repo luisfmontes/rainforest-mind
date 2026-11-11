@@ -854,6 +854,19 @@ COMANDO_CRASE_7=$'echo `gh issue close 12'
 EXIT_CRASE_7=$?
 [ $EXIT_CRASE_7 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CRASE_7)"
 
+# Caso (crase-8): aspa DENTRO da crase nao abre aspa fora (D4, revisao de
+# seguranca do commit): sem isso o `; gh issue close` ficava "citado" → exit 2
+echo
+echo "== (crase-8) aspa dentro da crase seguida de gh issue close → exit 2 =="
+COMANDO_CRASE_8=$'echo `echo "`; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CRASE_8")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-crase-8"
+EXIT_CRASE_8=$?
+[ $EXIT_CRASE_8 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CRASE_8)"
+
 # R2 (rodada 9, lote 3, 2026-09-04): `Invoke-Expression`/`iex` (PowerShell)
 # nao eram reconhecidos como wrapper de string sem flag (igual `eval`) — o
 # conteudo era um token citado so, a busca por sequencia nao casava dentro

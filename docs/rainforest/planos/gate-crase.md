@@ -51,3 +51,21 @@ depende de: 1
 mutacao: n/a
   motivo: só versão e texto; comportamento medido pela tarefa 1
 pronto quando: com a `main` trazida para a branch (`git fetch origin && git merge origin/main`; conflito fora de versão e CHANGELOG: pare e relate), `node scripts/conferir-versao.cjs` sai 0 e os quatro lugares (dois `plugin.json`, selo do README com `vers%C3%A3o-X-` e `alt="versão X"`, topo do CHANGELOG `## X — 2026-11-11`) dizem a versão seguinte à da `main` na casa PATCH; a entrada do CHANGELOG diz, pelo comportamento, que `gh issue close` ou `gh pr merge` dentro de crases passa a ser conferido pelo gate como já era dentro de `$(...)` — provado por `node scripts/conferir-versao.cjs; grep -n '"version"' .claude-plugin/plugin.json .codex-plugin/plugin.json; grep -n 'alt="versão' README.md; grep -n -m2 -A3 '^## ' CHANGELOG.md`
+
+### 3. Conteúdo da crase opaco para as aspas de fora (revisão de segurança) [tipo: implementar]
+atende: D4
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 1
+busca:
+- repo | grep -n "internoCrase" hooks/gate-fechar-issue.cjs | o bloco da tarefa 1 lia a crase e deixava o laço de fora reler o conteúdo
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `      i = j;`
+  para: `      i = cmd.length;`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  fixture: `testa-gate-fechar-issue.sh, caso (crase-8)`
+prova-na-base: verde — o caso (crase-8) nasce com esta tarefa; a versão entregue na tarefa 1 deixava o mesmo comando sair 0 (medido no payload real)
+pronto quando: com o payload real de PreToolUse, `` echo `echo "`; gh issue close 12 `` sai 2 (caso crase-8) e a bateria inteira fica verde — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 428 ok, 0 falha(s) ==`
+
+Na tarefa 1, o bloco passa a terminar com `atual += cmd.slice(i, Math.min(j + 1, cmd.length)); i = j; continue;`, e a variável `fimCrase` sai (o salto do índice substitui a guarda). A mutação `i = i + 0` não serve de medida: a crase de fechamento abre outra varredura até o fim e barra o caso por outro caminho.
