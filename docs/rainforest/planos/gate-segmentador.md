@@ -418,14 +418,9 @@ depende de: 9
 busca:
 - repo | grep -n "idxComentario" hooks/gate-fechar-issue.cjs | o comentario ja e tratado na W2 e no heredoc, mas nao no laco de segmentosParaGate
 desfecho: estender
-mutacao:
-  arquivo: `hooks/gate-fechar-issue.cjs`
-  de: `if (aspa === null && c === "#" &&`
-  para: `if (false && c === "#" &&`
-  bateria: `bash hooks/testa-gate-fechar-issue.sh`
-  timeout: `1200000`
-  fixture: `testa-gate-fechar-issue.sh, casos (cm-1) e (cm-2)`
-prova: `node -e 'process.stdout.write(JSON.stringify({cwd:process.cwd(),tool_name:"Bash",tool_input:{command:"# it's done\ngh issue close 12"}}))' | node hooks/gate-fechar-issue.cjs; test $? -eq 2`
+mutacao: n/a
+  motivo: D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16
+prova-na-base: verde — D9 revogado; o comportamento volta ao da base
 pronto quando: com o payload real de PreToolUse (Bash), `# it's done` + quebra + `gh issue close 12` e `git status` + quebra + `# don't forget` + quebra + `gh pr merge 5 --squash` saem 2, e `echo a#b; echo 'x'` e `echo hi # comentario` saem 0 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 472 ok, 0 falha(s) ==` com exit 0, e pela mutação acima deixando (cm-1) e (cm-2) vermelhos.
 
 Forma prescrita: em `segmentosParaGate`, logo DEPOIS do bloco do D2 que termina em `      i += 1;\n      continue;\n    }` (o `if (FERRAMENTA !== "PowerShell" && aspa === null && c === "\\" ...`) e ANTES da primeira ocorrência de `    if (aspa) {`, inserir:
@@ -483,9 +478,9 @@ Casos novos (molde acima, todos Bash):
 atende: D9
 arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
 depende de: 11
-prova-na-base: verde — a rede W2 da segunda camada já barra `echo \ #; gh issue close 12` sem a guarda; ela é defesa em profundidade da primeira camada
+prova-na-base: verde — D9 revogado; o comportamento volta ao da base
 mutacao: n/a
-  motivo: mutação neutra medida em 2026-11-12: sem a guarda, (cm-5) e (cm-6) continuam 2 porque a W2 de processarSegmento acha o gh na segunda camada; não há comando do mundo que distinga
+  motivo: D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16
 pronto quando: com o payload real de PreToolUse (Bash), `echo \ #; gh issue close 12` e `echo \;#x; gh pr merge 5` saem 2 e (cm-1) a (cm-4) mantêm o exit — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 477 ok, 0 falha(s) ==` com exit 0.
 
 Forma prescrita: em `segmentosParaGate`, a condição do D9 `if (aspa === null && c === "#" && (i === 0 || /[\s;&|()]/.test(cmd[i - 1]))) {` passa a `if (aspa === null && c === "#" && (i === 0 || (/[\s;&|()]/.test(cmd[i - 1]) && !escapadaPorContrabarra(cmd, i - 1)))) {`.
@@ -503,14 +498,9 @@ depende de: 12
 busca:
 - repo | grep -n "D9 (gate-segmentador" hooks/gate-fechar-issue.cjs | o ramo do comentario engole ; e && ate a quebra de linha
 desfecho: estender
-mutacao:
-  arquivo: `hooks/gate-fechar-issue.cjs`
-  de: `for (const pedaco of comentario.split(/[;&|]+/).slice(1)) {`
-  para: `for (const pedaco of [].slice(1)) {`
-  bateria: `bash hooks/testa-gate-fechar-issue.sh`
-  timeout: `1200000`
-  fixture: `testa-gate-fechar-issue.sh, casos (cm-7), (cm-8) e (cm-9)`
-prova: `node -e 'process.stdout.write(JSON.stringify({cwd:process.cwd(),tool_name:"Bash",tool_input:{command:"echo $(true)#; gh issue close 12"}}))' | node hooks/gate-fechar-issue.cjs; test $? -eq 2`
+mutacao: n/a
+  motivo: D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16
+prova-na-base: verde — D9 revogado; o comportamento volta ao da base
 pronto quando: com o payload real de PreToolUse (Bash), `echo $(true)#; gh issue close 12`, `echo ${x:-a #b}; gh issue close 12` e `a=(x)#; gh issue close 12` saem 2, e (cm-1) a (cm-6) mantêm o exit — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 480 ok, 0 falha(s) ==` com exit 0, e pela mutação acima deixando (cm-7), (cm-8) e (cm-9) vermelhos.
 
 Forma prescrita: no ramo do D9, o laço que consome o comentário passa a juntar o texto numa variável `comentario`, que entra em `atual`; depois, cada pedaço do comentário após um `;`, `&` ou `|` vira segmento:
@@ -598,10 +588,46 @@ Caso novo (molde acima, Bash):
 |---|---|---|
 | hs-7 | `COMANDO_HS_7=$'cat <<< "echo \\\\\\"; gh issue close 12" \| bash'` | 2 |
 
+### 16. Revoga o D9: o `#` volta ao comportamento da base (4ª rodada) [tipo: implementar]
+atende: D9
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 15
+prova-na-base: verde — remoção de código; na base o `#` já não era tratado
+mutacao: n/a
+  motivo: remoção; não há comportamento novo a inverter, e os vizinhos (cm-3) a (cm-9) medem que o `#` voltou ao da base
+pronto quando: com o payload real de PreToolUse (Bash), `echo $(true)#$(gh issue close 12)` e `echo ${x:-a #b}$(gh issue close 12)` saem 2 (como na base), e (cm-3) a (cm-9) mantêm o exit — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 484 ok, 0 falha(s) ==` com exit 0 (os casos (cm-1) e (cm-2), que exigiam o D9, saem da bateria).
+
+Forma prescrita: em `segmentosParaGate`, remover o bloco inteiro do D9 (do comentário `// D9 (gate-segmentador, Issue #689): comentario de shell fora de aspas vai` até o `continue;` que fecha o `if`, antes de `if (aspa) {`); em `hooks/testa-gate-fechar-issue.sh`, remover os casos (cm-1) e (cm-2).
+
+### 17. Here-string lê a palavra inteira, com trechos citados colados (revisão 3) [tipo: implementar]
+atende: D1
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 16
+busca:
+- repo | grep -n "let conteudo = ''" hooks/gate-fechar-issue.cjs | a extracao separava palavra citada de palavra nua e parava na primeira ; da palavra nua
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `const aspaDaPalavra = cmd[k] === "'" || cmd[k] === '"' ? cmd[k] : null;`
+  para: `const aspaDaPalavra = null;`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
+  fixture: `testa-gate-fechar-issue.sh, casos (hs-9) e (hs-10)`
+prova: `node -e 'process.stdout.write(JSON.stringify({cwd:process.cwd(),tool_name:"Bash",tool_input:{command:"bash <<< 'echo x'"; gh issue close 12""}}))' | node hooks/gate-fechar-issue.cjs; test $? -eq 2`
+pronto quando: com o payload real de PreToolUse (Bash), `bash <<< echo\ x";gh issue close 12"` e `bash <<< 'echo x'"; gh issue close 12"` saem 2, e (hs-4), (hs-8) e os here-strings de interpretador existentes mantêm o exit — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 484 ok, 0 falha(s) ==` com exit 0, e pela mutação acima deixando (hs-9) e (hs-10) vermelhos.
+
+Forma prescrita: no ramo do `<<<`, os dois ramos da extração (palavra citada / palavra nua) viram um laço só que lê a palavra até espaço, `;`, `&` ou `|` fora de aspas; dentro dele, uma aspa abre um trecho citado (com a redução de contrabarra das aspas duplas) e, fora de aspas, a contrabarra escapa o caractere seguinte.
+
+Casos novos (molde acima, todos Bash):
+| caso | atribuição | exit |
+|---|---|---|
+| hs-9 | `COMANDO_HS_9=$'bash <<< echo\\ x";gh issue close 12"'` | 2 |
+| hs-10 | `COMANDO_HS_10=$'bash <<< \'echo x\'"; gh issue close 12"'` | 2 |
+
 ### 6. Versão PATCH e CHANGELOG [tipo: docs]
 atende: D4, D6, D7, D8, D9
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`
-depende de: 5, 7, 10
+depende de: 5, 7, 17
 mutacao: n/a
   motivo: só versão e texto; comportamento medido pelas tarefas 1 a 5 e 7 a 10
 pronto quando: `node scripts/conferir-versao.cjs` sai 0 e os quatro lugares (dois `plugin.json`, selo do README com `vers%C3%A3o-2.12.3-` e `alt="versão 2.12.3"`, topo do CHANGELOG `## 2.12.3 — 2026-11-11`) dizem 2.12.3; a entrada do CHANGELOG diz, pelo comportamento, que here-string, contrabarra antes de aspa (Bash) e `"$(...)"` com interior complexo deixam de esconder `gh issue close`/`gh pr merge` do gate (Issue 689), nomeia o falso positivo aceito do D4 (`"$(...)"` com interior complexo fora da forma canônica, seguido de `gh` de escrita, é barrado; contorno: `gh` em comando separado, corpo por `--body-file`/`-F`) diz que `bash -c` rodado pelo PowerShell (e `pwsh -Command` pelo Bash) segue as regras de aspas do wrapper (D7), diz que comentário de shell com apóstrofo não esconde mais as linhas seguintes (D9), e diz que o commit por heredoc canônico (`"$(cat <<'EOF' ... EOF

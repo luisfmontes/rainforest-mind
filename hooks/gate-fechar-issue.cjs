@@ -280,25 +280,6 @@ function segmentosParaGate(cmd) {
       continue;
     }
 
-    // D9 (gate-segmentador, Issue #689): comentario de shell fora de aspas vai
-    // ate o fim da linha; o apostrofo dele nao abre aspa.
-    if (aspa === null && c === "#" && (i === 0 || (/[\s;&|()]/.test(cmd[i - 1]) && !escapadaPorContrabarra(cmd, i - 1)))) {
-      let comentario = "";
-      while (i < cmd.length && cmd[i] !== "\n") {
-        comentario += cmd[i];
-        i += 1;
-      }
-      atual += comentario;
-      // Falha fechada (revisao 2): o gate nao sabe sempre se o # abre
-      // comentario (`$(true)#`, `${x:-a #b}`); o resto depois de ; & | e
-      // conferido como comando.
-      for (const pedaco of comentario.split(/[;&|]+/).slice(1)) {
-        if (pedaco.trim()) segmentos.push(pedaco);
-      }
-      i -= 1;
-      continue;
-    }
-
     if (aspa) {
       if (FERRAMENTA !== "PowerShell" && c === "\\" && i + 1 < cmd.length && escapaDentroDaAspa(aspa, cmd[i + 1])) {
         atual += c + cmd[i + 1];
@@ -443,23 +424,24 @@ function segmentosParaGate(cmd) {
       let k = i + 3;
       while (k < cmd.length && (cmd[k] === ' ' || cmd[k] === '\t')) k++;
       let conteudo = '';
-      if (cmd[k] === "'" || cmd[k] === '"') {
-        const aspa = cmd[k];
-        k++;
-        while (k < cmd.length && cmd[k] !== aspa) {
-          // Entre aspas duplas a contrabarra escapa ", \, $ e crase, como no
-          // bash (revisao 2 do gate-segmentador).
-          if (aspa === '"' && cmd[k] === '\\' && k + 1 < cmd.length && ESCAPAVEIS_EM_ASPAS_DUPLAS.has(cmd[k + 1])) { conteudo += cmd[k + 1]; k += 2; continue; }
-          conteudo += cmd[k]; k++;
+      // A palavra inteira, como o bash a monta: trechos citados e nus colados
+      // (`'echo x'"; gh issue close 12"`, `echo\ x";gh ..."`) sao UMA palavra
+      // e so terminam em espaco, ; & | fora de aspas (revisao 3 do
+      // gate-segmentador). Fora de aspas `\` escapa o seguinte (`gh\ issue\
+      // close`, quinta revisao); entre aspas duplas escapa ", \, $ e crase.
+      while (k < cmd.length && !/[\s;&|]/.test(cmd[k])) {
+        const aspaDaPalavra = cmd[k] === "'" || cmd[k] === '"' ? cmd[k] : null;
+        if (aspaDaPalavra) {
+          k++;
+          while (k < cmd.length && cmd[k] !== aspaDaPalavra) {
+            if (aspaDaPalavra === '"' && cmd[k] === '\\' && k + 1 < cmd.length && ESCAPAVEIS_EM_ASPAS_DUPLAS.has(cmd[k + 1])) { conteudo += cmd[k + 1]; k += 2; continue; }
+            conteudo += cmd[k]; k++;
+          }
+          if (k < cmd.length) k++; // fecha a aspa
+          continue;
         }
-        if (k < cmd.length) k++; // fecha a aspa
-      } else {
-        // Palavra nua: `\` escapa o caractere seguinte (`gh\ issue\ close`
-        // é UMA palavra com espaços para o bash — quinta revisão).
-        while (k < cmd.length && !/[\s;&|]/.test(cmd[k])) {
-          if (cmd[k] === '\\' && k + 1 < cmd.length) { conteudo += cmd[k + 1]; k += 2; continue; }
-          conteudo += cmd[k]; k++;
-        }
+        if (cmd[k] === '\\' && k + 1 < cmd.length) { conteudo += cmd[k + 1]; k += 2; continue; }
+        conteudo += cmd[k]; k++;
       }
       if (linhaDoHeredocTemInterpretador(cmd, i)) {
         for (const sub of segmentosParaGate(conteudo)) {
