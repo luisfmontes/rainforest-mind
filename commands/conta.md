@@ -16,8 +16,10 @@ ligada; e os limites em uso.
 **`/conta pessoal` ou `/conta trabalho`**: troca a pasta **desta sessão** (a do `CLAUDE_CONFIG_DIR`;
 sem ele, `~/.claude`) para a conta pedida, na hora. Para mexer na outra pasta, use `--pasta trabalho` ou
 `--pasta pessoal`. `trocar <conta>` continua valendo como sinônimo
-(`node "${CLAUDE_PLUGIN_ROOT}/scripts/conta.cjs" trocar pessoal`). Troca manual não volta sozinha: a pasta fica
-na conta escolhida até a próxima troca manual.
+(`node "${CLAUDE_PLUGIN_ROOT}/scripts/conta.cjs" trocar pessoal`). A pasta fica na conta escolhida até
+essa conta chegar ao limite de troca (`trocarEm`, 97% por padrão) na 5 h ou na semana; aí ela volta para casa
+sozinha, se a conta de casa tiver folga (abaixo de `destinoMax5h` e `destinoMaxSemana`) e o login dela estiver
+guardado. Sem isso, o vigia só avisa (`manual_no_limite`).
 
 **`agendar` / `desagendar`**: cria ou remove a tarefa agendada do vigia (a cada 1 minuto). `agendar` só roda depois
 que as duas reservas existem; `agendar --imprimir` mostra o comando sem agendar nada.

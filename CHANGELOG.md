@@ -10,6 +10,13 @@ que existe delas é o commit de release (`git log --grep="^Versao "`), e reescre
 29 releases de memória produziria nota bonita e errada. Versão nova daqui em diante
 entra aqui no mesmo commit que sobe o `version` do `plugin.json`.
 
+## 2.13.0 — 2026-11-12
+
+- **A troca automática de conta não trava mais em silêncio (Issue #693).** Uma pasta de configuração sem `.credentials.json` (por exemplo uma `~/.claude-personal` esquecida) fazia o vigia abortar toda rodada, e como a tarefa agendada roda sem janela ninguém via o erro: a conta chegava ao limite e a troca não acontecia. Agora a pasta sem login fica fora da decisão e o vigia decide pela outra. A rodada que ainda abortar por outro motivo é gravada no log de eventos, uma vez por motivo.
+- **A pasta trocada à mão volta sozinha.** Depois de `/conta pessoal` ou `/conta trabalho`, quando a conta escolhida também chega ao limite (97% na 5 h ou na semana) e a conta de casa tem folga e login guardado, a pasta volta para casa como na volta automática. Antes ela ficava presa até alguém fazer `/login` na mão. Sem folga na casa, continua só o aviso de limite.
+- **O problema de conta aparece na sessão.** Um hook novo (`conta-aviso-sessao.cjs`, no início da sessão e a cada mensagem) põe no contexto, em até 5 linhas, o que está travando a troca e o comando que resolve: pasta sem login, vigia que abortou, uso da conta ilegível há 30 min, pasta manual no limite e login guardado que não renova. Cada problema aparece uma vez por sessão, por até 7 dias. Limite aceito: se o mesmo problema se repete na mesma sessão, ele não é anunciado de novo.
+- O `/conta` mostra, na pasta trocada à mão, a condição em que ela volta.
+
 ## 2.12.2 — 2026-11-11
 
 - **O gate de fechamento de Issue confere o comando dentro de crases.** `` echo "`gh issue close 12`" `` e `` echo `gh pr merge 5 --squash` `` passavam sem checagem de evidência, embora o bash execute o que está entre crases. Agora o comando de dentro é conferido como já era dentro de `$(...)`, com ou sem aspas duplas; uma aspa dentro da crase também não esconde mais o que vem depois dela. Crase entre aspas simples e a crase de escape do PowerShell continuam passando. Mensagem de commit escrita por heredoc que cite um `gh issue close` ou `gh pr merge` entre crases passa a ser barrada, como já acontecia com `$(...)`; use `git commit -F <arquivo>`.
