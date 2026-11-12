@@ -1300,6 +1300,54 @@ COMANDO_HC_3=$'echo "$(cat <<\'EOF\'\nx\nEOF\necho \'\nEOF\n)\'\ngh issue close 
 EXIT_HC_3=$?
 [ $EXIT_HC_3 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_HC_3)"
 
+# Caso (cw-1): bash -c com aspa escapada e gh de escrita dentro → exit 2 (D8 de gate-segmentador)
+echo
+echo "== (cw-1) bash -c com aspa escapada e gh de escrita dentro → exit 2 =="
+COMANDO_CW_1=$'bash -c "echo \\\\\\"; gh issue close 12"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_1")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-1"
+EXIT_CW_1=$?
+[ $EXIT_CW_1 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CW_1)"
+
+# Caso (cw-2): eval com aspa escapada e gh de escrita dentro → exit 2 (D8 de gate-segmentador)
+echo
+echo "== (cw-2) eval com aspa escapada e gh de escrita dentro → exit 2 =="
+COMANDO_CW_2=$'eval "echo \\\\\\"; gh issue close 12"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_2")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-2"
+EXIT_CW_2=$?
+[ $EXIT_CW_2 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CW_2)"
+
+# Caso (cw-3): sh -c com aspa escapada e gh de escrita dentro → exit 2 (D8 de gate-segmentador)
+echo
+echo "== (cw-3) sh -c com aspa escapada e gh de escrita dentro → exit 2 =="
+COMANDO_CW_3=$'sh -c "echo \\\\\\"; gh pr merge 5"'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_3")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-3"
+EXIT_CW_3=$?
+[ $EXIT_CW_3 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CW_3)"
+
+# Caso (cw-4): bash -c com aspa escapada e texto comum → exit 0 (D8 de gate-segmentador)
+echo
+echo "== (cw-4) bash -c com aspa escapada e texto comum → exit 0 =="
+COMANDO_CW_4=$'bash -c "echo \\"oi\\""'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CW_4")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cw-4"
+EXIT_CW_4=$?
+[ $EXIT_CW_4 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CW_4)"
+
 # R2 (rodada 9, lote 3, 2026-09-04): `Invoke-Expression`/`iex` (PowerShell)
 # nao eram reconhecidos como wrapper de string sem flag (igual `eval`) — o
 # conteudo era um token citado so, a busca por sequencia nao casava dentro

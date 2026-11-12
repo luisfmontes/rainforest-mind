@@ -1526,7 +1526,7 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   const ordem = contadores.get(alvo) || 0;
   contadores.set(alvo, ordem + 1);
 
-  const toksComAspas = tokensComAspas(segmento);
+  const toksComAspas = tokensComAspas(segmento, { contrabarra: FERRAMENTA !== "PowerShell" });
   if (toksComAspas.length === 0) return;
 
   const pos = posicaoDeComando(toksComAspas);

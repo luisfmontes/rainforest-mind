@@ -27,12 +27,25 @@
  * codigo, entao o falso positivo era diario e empurrava o agente a reescrever
  * comando legitimo ate passar. `palavras()` ja sabia respeitar aspas para achar
  * subcomando de git; a deteccao de escrita e que tinha ficado no regex cru.
+ *
+ * `opcoes.contrabarra` (Bash): fora de aspas simples, a contrabarra escapa o
+ * caractere seguinte, como no bash. So o `gate-fechar-issue` passa a opcao
+ * (D8 de gate-segmentador); sem ela o comportamento e o de sempre.
  */
-function tokensComAspas(cmd) {
+function tokensComAspas(cmd, opcoes = {}) {
   const out = [];
   let atual = "", aspa = null, temAlgo = false, citado = false, primeiraAspa = null;
   for (let i = 0; i < cmd.length; i += 1) {
     const c = cmd[i];
+    // D8 (gate-segmentador, Issue #689): com `opcoes.contrabarra` (Bash), fora
+    // de aspas simples a contrabarra e o caractere seguinte entram crus no
+    // token e nao abrem, fecham nem separam. Sem a opcao, nada muda.
+    if (opcoes.contrabarra && c === "\\" && aspa !== "'" && i + 1 < cmd.length) {
+      atual += c + cmd[i + 1];
+      i += 1;
+      temAlgo = true;
+      continue;
+    }
     if (aspa) {
       if (c === aspa) aspa = null;
       else atual += c;
