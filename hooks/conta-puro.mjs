@@ -38,7 +38,7 @@ export function frase(ev) {
   const manual = !!ev.manual || ev.motivo === 'manual';
   const e = { ...ev, tipo, manual, para: nomeConta(ev.para), de: nomeConta(ev.de), motivo: motivoLegivel(ev.motivo) };
   if (e.tipo === 'trocar' && e.manual) {
-    return 'Conta: a pasta ' + e.pasta + ' passou da conta ' + e.de + ' para a conta ' + e.para + ' (troca manual; não volta sozinha).';
+    return 'Conta: a pasta ' + e.pasta + ' passou da conta ' + e.de + ' para a conta ' + e.para + ' (troca manual; volta sozinha se a conta chegar ao limite e a de casa tiver folga).';
   }
   if (e.tipo === 'trocar') {
     const volta = hhmm(e.voltaEm);
@@ -60,11 +60,11 @@ export function frase(ev) {
   if (e.tipo === 'credencial_duplicada') {
     return 'Conta: o mesmo login está em dois arquivos (' + e.motivo + '); a troca automática não move nem renova nada até você separar.';
   }
-  // #584: a pasta trocada na mão não volta sozinha (D8); o aviso diz onde ela está e como devolver.
+  // #584: a pasta trocada na mão só volta sozinha pela regra da D3 de conta-reserva-avisa (limite e folga da casa); sem ela, o aviso diz onde ela está e como devolver.
   // O comando leva --pasta: o aviso aparece em toda sessão aberta, e /conta sem --pasta troca a pasta
   // da sessão que o roda, não a do aviso.
   if (e.tipo === 'manual_no_limite') {
-    const base = 'Conta: a pasta ' + e.pasta + ' está na conta ' + e.de + ', que chegou ao limite (' + e.motivo + '). A troca foi manual e não volta sozinha: ';
+    const base = 'Conta: a pasta ' + e.pasta + ' está na conta ' + e.de + ', que chegou ao limite (' + e.motivo + '). A troca foi manual e a volta automática não aconteceu: ';
     if (ev.causa === SEM_LOGIN_GUARDADO) {
       return base + 'não há login guardado da conta ' + e.para + ' para devolver, então faça /login da conta ' + e.para + ' na pasta ' + e.pasta + '.';
     }
