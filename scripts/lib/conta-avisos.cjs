@@ -9,7 +9,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { resolverRaiz } = require('../../hooks/lib/raiz.cjs');
 
-const RENOVAR_ANTES_MS = 60 * 60 * 1000; // o mesmo valor de scripts/conta.cjs:37
+const RENOVAR_ANTES_MS = 60 * 60 * 1000; // única fonte: scripts/conta.cjs importa daqui
 const JANELA_DIAS = 7;
 const DIA_MS = 24 * 60 * 60 * 1000;
 const MAX_LINHA = 200;
