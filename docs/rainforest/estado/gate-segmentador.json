@@ -18,7 +18,7 @@
     "em": "2026-11-11"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-12",
     "tarefas_ok": 17,
     "tarefas": 17,
@@ -113,27 +113,31 @@
         "fixture": "testa-gate-fechar-issue.sh hs-9, hs-10"
       }
     ],
-    "reaberturas": 3
+    "reaberturas": 4,
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-11-12"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "798e1f15f9271c87a348be83fa2245684b0c8dfc",
+      "head": "380ea14a6ef11728f25d39fdc2101252507c0a3a",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a79ccf5d45d0cf3fc",
+        "agente_id": "ae3ae1301a4ef74bc",
         "veredito": "reprovado",
-        "em": "2026-11-11",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a79ccf5d45d0cf3fc.jsonl"
+        "em": "2026-11-12",
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-ae3ae1301a4ef74bc.jsonl"
       }
     ],
     "em_voo": [],
-    "em": "2026-11-11",
-    "achados": 3,
-    "tentativas": 3,
+    "em": "2026-11-12",
+    "achados": 5,
+    "tentativas": 4,
     "voltas": [
       {
         "volta": 1,
@@ -158,9 +162,20 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a161a03052abdc24b.jsonl"
           }
         ]
+      },
+      {
+        "volta": 3,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a79ccf5d45d0cf3fc",
+            "veredito": "reprovado",
+            "em": "2026-11-11",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a79ccf5d45d0cf3fc.jsonl"
+          }
+        ]
       }
     ],
-    "liberado_em": "2026-11-12",
     "rodadas_extra": [
       {
         "texto": "Luis (2026-11-12): opcao A - tirar o D9 inteiro (comentario volta ao da base, vai para a #692) e consertar o here-string de palavra com aspa",

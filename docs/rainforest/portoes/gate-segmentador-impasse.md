@@ -14,3 +14,17 @@ Três revisões reprovaram, cada uma com bypass novo aberto pelo próprio diff (
 - **A (recomendada):** tirar o D9 inteiro (o `#` volta ao comportamento da base) e levar o comentário com apóstrofo para a Issue #692; consertar só o achado 2 (here-string de palavra nua com aspa: falhar fechado quando a palavra tem aspa e a linha tem interpretador). Remove os achados 1 e 3 de uma vez.
 - **B:** manter o D9 e segmentar também em `$(`, crase, `<(` e `>(` dentro do comentário. Fecha os achados 1 e 3 conhecidos, mas segue a mesma classe que já reprovou duas vezes.
 - **C:** fechar o fluxo no estado atual: não, há regressões altas contra a base.
+
+## 4ª rodada (opção A) e a 4ª reprovação
+
+A opção A foi aplicada (D9 revogado, tarefas 16 e 17). A revisão 4 reprovou com um achado novo do diff e quatro preexistentes:
+
+| achado | origem | destino |
+|---|---|---|
+| `echo $$'\'; bash -c 'gh issue close 12'; echo '\'` sai 0 (base 2): `$$'` lido como ANSI-C | tarefa 2 (D2) | consertado na tarefa 18 (ad-6, ad-7; mutação vermelha) |
+| rede do D3 não conhece `gh api` de merge/fechamento | preexistente | Issue #692 |
+| `powershell -NoProfile -Command ...` não desembrulha | preexistente | Issue #692 |
+| heredoc sem aspas no delimitador executa `$(...)`/crase no corpo | preexistente | Issue #692 |
+| `tokensComAspas` não conhece `$'...'` (`FOO=$'\'' gh issue close 12`) | preexistente | Issue #692 |
+
+Nenhum achado reprovado é do D9 nem do here-string; o único do diff é de uma linha, e a correção não reabre decisão do design.

@@ -1144,6 +1144,30 @@ COMANDO_AD_5=$'echo \\$\'a\\\'; gh issue close 12'
 EXIT_AD_5=$?
 [ $EXIT_AD_5 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AD_5)"
 
+# Caso (ad-6): $$ (PID) seguido de aspa simples nao abre ANSI-C → exit 2 (revisao 4 de gate-segmentador)
+echo
+echo "== (ad-6) Bash: \$\$ seguido de aspa simples e gh dentro de bash -c → exit 2 =="
+COMANDO_AD_6=$'echo $$\'\\\'; bash -c \'gh issue close 12\'; echo \'\\\''
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_AD_6")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ad-6"
+EXIT_AD_6=$?
+[ $EXIT_AD_6 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AD_6)"
+
+# Caso (ad-7): $$$ seguido de aspa abre ANSI-C ($$ e $'...') e gh depois → exit 2 (revisao 4 de gate-segmentador)
+echo
+echo "== (ad-7) Bash: \$\$\$ com ANSI-C de aspa escapada e gh issue close depois → exit 2 =="
+COMANDO_AD_7=$'echo $$$\'\\\'\'; gh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_AD_7")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-ad-7"
+EXIT_AD_7=$?
+[ $EXIT_AD_7 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_AD_7)"
+
 # Caso (ps-1): "$(...)" com ponto e virgula e aspa simples no interior, gh issue close depois → exit 2 (D3 de gate-segmentador)
 echo
 echo "== (ps-1) Bash: \$(...) com aspa simples no interior e gh issue close depois → exit 2 =="

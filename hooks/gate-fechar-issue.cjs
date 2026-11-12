@@ -194,6 +194,16 @@ function escapadaPorContrabarra(s, i) {
   return n % 2 === 1;
 }
 
+// `$'` so abre ANSI-C quando a sequencia de `$` colada na aspa e impar: `$$'a\'` e o PID
+// seguido de aspa simples, onde a contrabarra e literal (revisao 4 de gate-segmentador).
+function abreAnsiC(s, i) {
+  let n = 0;
+  let k = i - 1;
+  for (; k >= 0 && s[k] === "$"; k -= 1) n += 1;
+  if (n > 0 && escapadaPorContrabarra(s, k + 1)) n -= 1;
+  return n % 2 !== 0;
+}
+
 // Teto de chamadas do segmentosParaGate por evento (D7 de
 // docs/rainforest/design/gate-crase.md). A recursao em crase e em $(...)
 // percorre o texto de dentro mais de uma vez; aninhamento fundo cresceria
@@ -352,7 +362,7 @@ function segmentosParaGate(cmd) {
       continue;
     }
     if (c === '"' || c === "'") {
-      aspa = c === "'" && FERRAMENTA !== "PowerShell" && cmd[i - 1] === "$" && !escapadaPorContrabarra(cmd, i - 1) ? "$'" : c;
+      aspa = c === "'" && FERRAMENTA !== "PowerShell" && abreAnsiC(cmd, i) ? "$'" : c;
       atual += c;
       continue;
     }

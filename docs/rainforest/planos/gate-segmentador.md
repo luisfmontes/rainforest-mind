@@ -624,6 +624,27 @@ Casos novos (molde acima, todos Bash):
 | hs-9 | `COMANDO_HS_9=$'bash <<< echo\\ x";gh issue close 12"'` | 2 |
 | hs-10 | `COMANDO_HS_10=$'bash <<< \'echo x\'"; gh issue close 12"'` | 2 |
 
+### 18. `$'` só abre ANSI-C com `$` ímpar colado na aspa (revisão 4) [tipo: implementar]
+atende: D2
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 17
+busca:
+- repo | grep -n 'cmd\[i - 1\] === "\$"' hooks/gate-fechar-issue.cjs | a abertura do `$'` olhava um `$` só e tomava `$$'` (PID + aspa simples) por ANSI-C
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `return n % 2 !== 0;`
+  para: `return n > 0;`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
+  fixture: `testa-gate-fechar-issue.sh, caso (ad-6)`
+prova-na-base: verde — regressão aberta pelo próprio diff (tarefa 2); a base já barrava o caso com exit 2
+pronto quando: com o payload real de PreToolUse (Bash), `echo $$'\'; bash -c 'gh issue close 12'; echo '\'` sai 2 (saía 0 no HEAD da revisão 4, 2 na base) e `echo $$$'\''; gh issue close 12` sai 2 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 486 ok, 0 falha(s) ==` com exit 0, e pela mutação acima deixando (ad-6) vermelho.
+
+Forma prescrita: função `abreAnsiC(s, i)` conta os `$` colados antes da aspa, desconta o primeiro se escapado por contrabarra, e devolve se a contagem é ímpar; o ramo de abertura de aspa usa `abreAnsiC(cmd, i)` no lugar de `cmd[i - 1] === "$"`.
+
+Casos novos: (ad-6) `echo $$'\'; bash -c 'gh issue close 12'; echo '\'` → 2; (ad-7) `echo $$$'\''; gh issue close 12` → 2.
+
 ### 6. Versão PATCH e CHANGELOG [tipo: docs]
 atende: D4, D6, D7, D8, D9
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`
