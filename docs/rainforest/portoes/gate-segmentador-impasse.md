@@ -50,3 +50,14 @@ O fuzz local da quinta rodada, refeito com log por processo, não achou contorno
 5. **[baixa]** `cwd-efetivo` cego à contrabarra, já declarado no CHANGELOG como falso positivo aceito.
 
 Padrão das seis rodadas: cada revisão acha uma construção nova de quoting que a remontagem textual do `eval`/`bash -c` interpreta diferente do bash. Remendar a remontagem converge devagar.
+
+## Sétima reprovação (revisão 7, 2026-11-12)
+
+O fuzz r7 da janela (5.400 casos) não achou contorno; o revisor 7, com gerador novo (g6, `$'` falso antes do `gh`), achou:
+
+1. **[alta] Regressão da decodificação de ANSI-C (D3).** A regex `\$'...'` casa num `$'` falso (fim de `'$'`, ou `"$'"`), e `iss\ue` vira `iss`+U+000E. O comando de prova está em `scratchpad/rev/r8c.json` da sessão: com um `echo '$'` antes de `gh iss\ue close 12` dentro de `"$(...)"`, o bash executa o fechamento com HEAD 0; a versão da 6ª rodada barrava (2). 46 de 1.500 casos do g6.
+2. **[media] Achado 2 da 6ª segue aberto** quando um `$'` falso desloca os spans: `$'clo\x73e'` não é decodificado. Base e 6ª rodada também passam — não é regressão.
+3. **[media] Falso positivo novo no PowerShell.** `mistaComGh` vale para `&`, `cmd /c`, `pwsh -Command` e `iex`, onde a contrabarra é literal: `& "C:\Microsiga\advpls.exe" appre x.prw -I"C:\Microsiga\includes"` passa a ser barrado (base 0). O D8 só fala de `eval`/`bash -c`.
+4. **[alta] [preexistente]** `bash -c "<gh de escrita>" x` (argumento posicional depois do script) passa no HEAD e na base. Fora das Issues #692 e #694.
+
+**Leitura:** sete rodadas, e cada rede nova abre uma classe nova. O que converge é parar de acrescentar decodificação e fechar só as regressões contra a base, mandando as classes preexistentes para Issue.
