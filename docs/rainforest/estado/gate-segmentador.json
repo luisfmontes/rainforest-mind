@@ -18,54 +18,59 @@
     "em": "2026-11-11"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-12",
-    "tarefas_ok": 20,
-    "tarefas": 20,
+    "tarefas_ok": 23,
+    "tarefas": 23,
     "em": "2026-11-12",
     "pendente": "re-rodar node scripts/conferir-fluxo.cjs mutacoes --slug gate-segmentador e fechar executar ok; depois revisar",
     "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug gate-segmentador",
-    "saida": "exit=0; tarefas 1-5,7-9,11,14,15,17-20: vermelho; 6,10,12,13,16: pulada (n/a)",
+    "saida": "tarefa 1: vermelho | tarefa 2: vermelho | tarefa 3: vermelho | tarefa 4: vermelho | tarefa 5: vermelho | tarefa 7: vermelho | tarefa 8: vermelho | tarefa 9: vermelho | tarefa 10: pulada (n/a — D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16) | tarefa 11: vermelho | tarefa 12: pulada (n/a — D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16) | tarefa 13: pulada (n/a — D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16) | tarefa 14: vermelho | tarefa 15: vermelho | tarefa 16: pulada (n/a — remoção; não há comportamento novo a inverter, e os vizinhos (cm-3) a (cm-9) medem que o `#` voltou ao da base) | tarefa 17: vermelho | tarefa 18: vermelho | tarefa 19: vermelho | tarefa 20: vermelho | tarefa 21: vermelho | tarefa 22: vermelho | tarefa 23: pulada (n/a — só texto; o comportamento está medido pelas tarefas 21 e 22, e a falsificação é a coerência do CHANGELOG com o da base mais a entrada 2.12.3) | tarefa 6: pulada (n/a — só versão e texto; comportamento medido pelas tarefas 1 a 5 e 7 a 10)",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "`testa-gate-fechar-issue.sh, casos (hs-1), (hs-2) e (hs-3)`"
+        "fixture": "testa-gate-fechar-issue.sh, casos (hs-1), (hs-2) e (hs-3)"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "`testa-gate-fechar-issue.sh, casos (cb-1) e (cb-2)`"
+        "fixture": "testa-gate-fechar-issue.sh, casos (cb-1) e (cb-2)"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "`testa-gate-fechar-issue.sh, casos (ad-1) e (ad-2)`"
+        "fixture": "testa-gate-fechar-issue.sh, casos (ad-1) e (ad-2)"
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "`testa-gate-fechar-issue.sh, casos (ps-1), (ps-3) e (ps-4)`"
+        "fixture": "testa-gate-fechar-issue.sh, casos (ps-1), (ps-3) e (ps-4)"
       },
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "`testa-gate-fechar-issue.sh, casos (hc-1) e (crase-12)`"
+        "fixture": "testa-gate-fechar-issue.sh, casos (hc-1) e (crase-12)"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "só versão e texto; comportamento medido pelas tarefas 1 a 5 e 7 a 10"
       },
       {
         "tarefa": 7,
         "resultado": "vermelho",
-        "fixture": "`testa-gate-fechar-issue.sh, caso (wd-1)`"
+        "fixture": "testa-gate-fechar-issue.sh, caso (wd-1)"
       },
       {
         "tarefa": 8,
         "resultado": "vermelho",
-        "fixture": "`testa-gate-fechar-issue.sh, caso (hc-3)`"
+        "fixture": "testa-gate-fechar-issue.sh, caso (hc-3)"
       },
       {
         "tarefa": 9,
         "resultado": "vermelho",
-        "fixture": "`testa-gate-fechar-issue.sh, casos (cw-1), (cw-2) e (cw-3)`"
+        "fixture": "testa-gate-fechar-issue.sh, casos (cw-1), (cw-2) e (cw-3)"
       },
       {
         "tarefa": 10,
@@ -75,7 +80,7 @@
       {
         "tarefa": 11,
         "resultado": "vermelho",
-        "fixture": "`testa-gate-fechar-issue.sh, casos (cw-5) e (cw-6)`"
+        "fixture": "testa-gate-fechar-issue.sh, casos (cw-5) e (cw-6)"
       },
       {
         "tarefa": 12,
@@ -90,12 +95,12 @@
       {
         "tarefa": 14,
         "resultado": "vermelho",
-        "fixture": "`testa-gate-fechar-issue.sh, casos (hs-5) e (hs-6)`"
+        "fixture": "testa-gate-fechar-issue.sh, casos (hs-5) e (hs-6)"
       },
       {
         "tarefa": 15,
         "resultado": "vermelho",
-        "fixture": "`testa-gate-fechar-issue.sh, caso (hs-7)`"
+        "fixture": "testa-gate-fechar-issue.sh, caso (hs-7)"
       },
       {
         "tarefa": 16,
@@ -105,34 +110,40 @@
       {
         "tarefa": 17,
         "resultado": "vermelho",
-        "fixture": "`testa-gate-fechar-issue.sh, casos (hs-9) e (hs-10)`"
+        "fixture": "testa-gate-fechar-issue.sh, casos (hs-9) e (hs-10)"
       },
       {
         "tarefa": 18,
         "resultado": "vermelho",
-        "fixture": "`testa-gate-fechar-issue.sh, caso (ad-6)`"
+        "fixture": "testa-gate-fechar-issue.sh, caso (ad-6)"
       },
       {
         "tarefa": 19,
         "resultado": "vermelho",
-        "fixture": "`testa-gate-fechar-issue.sh, casos (cw-8) e (cw-9)`"
+        "fixture": "testa-gate-fechar-issue.sh, casos (cw-8) e (cw-9)"
       },
       {
         "tarefa": 20,
         "resultado": "vermelho",
-        "fixture": "`testa-gate-fechar-issue.sh, caso (cw-11)`"
+        "fixture": "testa-gate-fechar-issue.sh, caso (cw-11)"
       },
       {
-        "tarefa": 6,
+        "tarefa": 21,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, casos (mx-1) a (mx-5)"
+      },
+      {
+        "tarefa": 22,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh, casos (ac-1) a (ac-3)"
+      },
+      {
+        "tarefa": 23,
         "resultado": "n/a",
-        "motivo": "só versão e texto; comportamento medido pelas tarefas 1 a 5 e 7 a 10"
+        "motivo": "só texto; o comportamento está medido pelas tarefas 21 e 22, e a falsificação é a coerência do CHANGELOG com o da base mais a entrada 2.12.3"
       }
     ],
-    "reaberturas": 6,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-11-12"
-    }
+    "reaberturas": 6
   },
   "revisar": {
     "status": "reprovado",
