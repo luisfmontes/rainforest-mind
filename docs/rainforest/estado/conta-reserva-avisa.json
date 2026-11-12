@@ -165,22 +165,22 @@
     "reaberturas": 1
   },
   "revisar": {
-    "status": "pendente",
+    "status": "ok",
     "snapshot": {
-      "head": "1a01040596cd5d5cc583d7bbdae50dbba09a19c1",
+      "head": "447d2fdbd0309b388adda2e671b4f310c5546741",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "a05adec04e0ef9266",
+        "agente_id": "a8b1263f0bd9198ac",
         "veredito": "ok",
         "em": "2026-11-12",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a05adec04e0ef9266.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a8b1263f0bd9198ac.jsonl"
       }
     ],
     "em": "2026-11-12",
-    "achados": 2,
+    "achados": 0,
     "voltas": [
       {
         "volta": 1,
@@ -193,14 +193,30 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a1a0909693f7a1e5f.jsonl"
           }
         ]
+      },
+      {
+        "volta": 2,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "a05adec04e0ef9266",
+            "veredito": "ok",
+            "em": "2026-11-12",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a05adec04e0ef9266.jsonl"
+          }
+        ]
       }
     ],
     "base": "e3d7896de294375107c6e86fba591ba91cec0452",
-    "head": "1a01040596cd5d5cc583d7bbdae50dbba09a19c1"
+    "head": "447d2fdbd0309b388adda2e671b4f310c5546741"
   },
   "verificar": {
-    "status": "pendente",
-    "em": "2026-11-12"
+    "status": "ok",
+    "em": "2026-11-12",
+    "comando": "bash scripts/testa-conta-vigia-avisa.sh; node scripts/testa-conta-avisos.cjs; node hooks/testa-conta-aviso-sessao.cjs; node scripts/testa-conta-decidir.cjs; node hooks/testa-mod-conta.cjs; bash scripts/testa-conta.sh; node scripts/conferir-versao.cjs",
+    "saida": "ok: 51   falhou: 0 | 34 ok, 0 falha(s) | 39 ok, 0 falha(s) | 40 ok, 0 falha(s) | 33 ok, 0 falha(s) | ok: 74   falhou: 0 | ok    versao 2.13.0: 6 commit(s) desde o bump 6fa385f — teto 5 nao se aplica: 2.13.0 ja supera a origin/main, entao estes commits saem sob esse bump (origin/main: 2.12.2) | versao exit=0 | 0",
+    "sensor_externo": "bash scripts/testa-conta-vigia-avisa.sh",
+    "head": "447d2fdbd0309b388adda2e671b4f310c5546741"
   },
   "fechar": {
     "status": "pendente",
