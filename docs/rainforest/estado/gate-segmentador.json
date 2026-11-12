@@ -227,8 +227,13 @@
       {
         "texto": "Luis (2026-11-12): 6a rodada, opcao A - D8 pela semantica do bash (eval junta valores, -c leva o argumento em aspas duplas), 14 casos do fuzz na bateria, fuzz do revisor rodado localmente ate zerar HEAD 0/base 2 antes da revisao 6",
         "em": "2026-11-12"
+      },
+      {
+        "texto": "Q1 A (Luís, 2026-11-12): dentro de eval/bash -c, palavra de aspas mistas com contrabarra que contém gh de escrita é ilegível e barra; a rede do D3 decodifica \\xHH e octal do ANSI-C; CHANGELOG restaurado; achados 4 e 5 como falso positivo aceito",
+        "em": "2026-11-12"
       }
-    ]
+    ],
+    "liberado_em": "2026-11-12"
   },
   "verificar": {
     "status": "pendente"

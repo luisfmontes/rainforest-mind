@@ -683,6 +683,54 @@ pronto quando: com o payload real de PreToolUse (Bash), `bash -c echo\ \'x\'\;\ 
 
 Forma prescrita: em `textoAPartir`, token sem aspas com espaço (só nasce da opção `contrabarra`) sai entre aspas duplas com contrabarra antes de contrabarra, aspa dupla, cifrão e crase (crase escrita como `\x60` na classe), que o `desempacota` reduz ao valor exato.
 
+Emenda da 7ª rodada (revisão 6; Q1 A do Luís em 2026-11-12): as tarefas 21 a 23 fecham os achados 1 a 3 da revisão 6. A bateria passa a 504 ok (492 + os 12 casos (mx) e (ac)).
+
+### 21. Palavra de aspas mistas com contrabarra e `gh` de escrita dentro de wrapper é ilegível (revisão 6) [tipo: implementar]
+atende: D8
+arquivos: `hooks/lib/tokens-comando.cjs`, `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 6, 20
+busca:
+- repo | grep -n "primeiraAspa" hooks/lib/tokens-comando.cjs | o token guarda só a primeira aspa; o internoDoEval e o textoAPartir reduzem a palavra inteira por ela
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `if (ilegivel || mistaComGh) {`
+  para: `if (ilegivel) {`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
+  fixture: `testa-gate-fechar-issue.sh, casos (mx-1) a (mx-5)`
+prova-na-base: verde — a base também deixa passar (mx-1) e (mx-3) a (mx-5) e barra (mx-2) só por acidente; a prova é a mutação acima, que reabre os cinco
+pronto quando: com o payload real de PreToolUse (Bash), `eval "echo"' \"; gh issue close 12'`, `bash -c "echo"' \"; gh issue close 12'`, `eval ""'echo \"; gh pr merge 5'`, `time eval "echo"' \"; gh issue close 12'` e `eval "e"'cho \"'"; gh pr merge 5"` saem 2 (o bash executa o `gh` nos cinco, conferido com o stub de `gh`), e os vizinhos `eval "echo"' \"oi'`, `bash -c "gh issue view 12"' --json \"title\"'` e `echo "a"' \"; gh issue close 12'` saem 0 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 504 ok, 0 falha(s) ==` com exit 0 e pela mutação acima deixando (mx-1) vermelho.
+
+Forma prescrita: `tokensComAspas` guarda, por palavra, os modos de citação vistos (aspas duplas, simples, fora de aspas; abrir a aspa conta, mesmo vazia) e o token com mais de um modo sai com `mista: true` (sem mistura, o campo não existe). Em `processarSegmento`, depois de achar o `interno` do wrapper, `mistaComGh` é verdadeiro quando algum token depois da posição de comando é misto, tem contrabarra e `temGhLiteralQueEscreve` acha `gh` de escrita no valor dele; `ilegivel || mistaComGh` barra.
+
+### 22. A rede do D3 decodifica o ANSI-C antes de procurar o `gh` (revisão 6) [tipo: implementar]
+atende: D3
+arquivos: `hooks/gate-fechar-issue.cjs`, `hooks/testa-gate-fechar-issue.sh`
+depende de: 21
+busca:
+- repo | grep -n "function semContrabarra" hooks/lib/tokens-comando.cjs | a decodificação de `\xHH`, `\u` e octal já existe para o nome de comando; a rede do D3 não a aplicava
+desfecho: estender
+mutacao:
+  arquivo: `hooks/gate-fechar-issue.cjs`
+  de: `const v = ansiC.replace(`
+  para: `const v = String(texto).replace(`
+  bateria: `bash hooks/testa-gate-fechar-issue.sh`
+  timeout: `1200000`
+  fixture: `testa-gate-fechar-issue.sh, casos (ac-1) a (ac-3)`
+prova: `bash hooks/testa-gate-fechar-issue.sh`
+pronto quando: com o payload real de PreToolUse (Bash), `echo "$(echo ')' ; gh issue $'clo\x73e' 12)"`, `echo "$(echo ')' ; gh issue $'cl\157se' 12)"` e `echo "$(echo ')' ; $'\x67h' issue close 12)"` saem 2 (o bash executa `gh issue close 12` nos três, conferido com o stub), e `echo "$(echo ')' ; echo $'clo\x73e')"` sai 0 — provado por `bash hooks/testa-gate-fechar-issue.sh` terminando em `== resultado: 504 ok, 0 falha(s) ==` com exit 0 e pela mutação acima deixando (ac-1) vermelho.
+
+Forma prescrita: em `temGhLiteralQueEscreve`, antes de tirar aspas, cada `$'...'` do texto tem `\xHH`, `\uHHHH` e octal de até três dígitos trocados pelo caractere; fora de `$'...'` nada muda.
+
+### 23. CHANGELOG restaurado e os falsos positivos da revisão 6 [tipo: docs]
+atende: D4
+arquivos: `CHANGELOG.md`
+depende de: 22
+mutacao: n/a
+  motivo: só texto; o comportamento está medido pelas tarefas 21 e 22, e a falsificação é a coerência do CHANGELOG com o da base mais a entrada 2.12.3
+pronto quando: o `CHANGELOG.md` tem o mesmo número de linhas da base mais as linhas da entrada `## 2.12.3` (uma ocorrência de `## 2.12.2`, nenhuma linha truncada), e a entrada 2.12.3 diz, pelo comportamento, que a palavra de aspas mistas dentro de `eval`/`bash -c` com `gh` de escrita e o ANSI-C dentro de `"$(...)"` passam a barrar, e nomeia os dois falsos positivos aceitos da emenda do D4 com o contorno — conferido por `grep -c '^## 2.12.2' CHANGELOG.md` devolvendo `1`, `git diff --stat e3d7896d -- CHANGELOG.md` mostrando só inserções, e a leitura da entrada contra a D3, a D4 e a D8.
+
 ### 6. Versão PATCH e CHANGELOG [tipo: docs]
 atende: D4, D6, D7, D8, D9
 arquivos: `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `README.md`, `CHANGELOG.md`

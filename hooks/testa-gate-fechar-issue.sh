@@ -1504,6 +1504,35 @@ COMANDO_CW_13=$'bash -c echo\\ \\\'oi\\\''
 EXIT_CW_13=$?
 [ $EXIT_CW_13 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CW_13)"
 
+# Casos (mx) e (ac): revisao 6 de gate-segmentador (Q1 A). (mx) palavra de aspas mistas com
+# contrabarra dentro de eval/bash -c: o bash reduz cada trecho pela propria aspa, o gate reduzia
+# a palavra inteira pela primeira; com gh que escreve, ilegivel. (ac) a rede do D3 decodifica o
+# ANSI-C ($'\xHH', octal) antes de procurar o gh. Os vizinhos de exit 0 sao legitimos.
+caso_gate() { # $1 rotulo, $2 exit esperado, $3 comando
+  local rot="$1" esp="$2" cmd="$3" ex
+  echo
+  echo "== ($rot) exit $esp: $cmd =="
+  (
+    export PATH="$SBP/bin:$PATH"
+    PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$cmd")
+    echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+  ) 2>"$SBP/err-$rot"
+  ex=$?
+  [ $ex -eq "$esp" ] && test_ok "$rot exit $esp" || test_fail "$rot exit $esp (foi $ex: $(cat "$SBP/err-$rot"))"
+}
+caso_gate mx-1 2 $'eval "echo"\' \\"; gh issue close 12\''
+caso_gate mx-2 2 $'bash -c "echo"\' \\"; gh issue close 12\''
+caso_gate mx-3 2 $'eval ""\'echo \\"; gh pr merge 5\''
+caso_gate mx-4 2 $'time eval "echo"\' \\"; gh issue close 12\''
+caso_gate mx-5 2 $'eval "e"\'cho \\"\'"; gh pr merge 5"'
+caso_gate mx-6 0 $'eval "echo"\' \\"oi\''
+caso_gate mx-7 0 $'bash -c "gh issue view 12"\' --json \\"title\\"\''
+caso_gate mx-8 0 $'echo "a"\' \\"; gh issue close 12\''
+caso_gate ac-1 2 $'echo "$(echo \')\' ; gh issue $\'clo\\x73e\' 12)"'
+caso_gate ac-2 2 $'echo "$(echo \')\' ; gh issue $\'cl\\157se\' 12)"'
+caso_gate ac-3 2 $'echo "$(echo \')\' ; $\'\\x67h\' issue close 12)"'
+caso_gate ac-4 0 $'echo "$(echo \')\' ; echo $\'clo\\x73e\')"'
+
 # Caso (cm-5): espaco escapado antes do # nao abre comentario → exit 2 (D9 de gate-segmentador)
 echo
 echo "== (cm-5) espaco escapado antes do # nao abre comentario → exit 2 =="
