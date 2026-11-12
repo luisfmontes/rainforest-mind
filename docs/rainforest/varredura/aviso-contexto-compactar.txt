@@ -1,0 +1,34 @@
+Data: 2026-11-12
+Termos: considere /compact, avisoDeContexto
+
+$ gh issue list --state all --search "considere /compact" --limit 200 --json number,title,state
+[]
+
+
+$ gh issue list --state all --search "avisoDeContexto" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "considere /compact" --limit 200 --json number,title,state
+[]
+
+
+$ gh pr list --state all --search "avisoDeContexto" --limit 200 --json number,title,state
+[]
+
+
+$ git ls-remote --heads origin | grep -F "considere /compact"
+(vazio)
+
+$ git ls-remote --heads origin | grep -F "avisoDeContexto"
+(vazio)
+
+$ git log --all --grep="considere /compact" --oneline
+(vazio)
+
+$ git log --all --grep="avisoDeContexto" --oneline
+(vazio)
+
+$ cat <dados>/ideias.jsonl
+(vazio)
+

@@ -1,0 +1,29 @@
+{
+  "slug": "aviso-contexto-compactar",
+  "titulo": "aviso-contexto-compactar",
+  "criado_em": "2026-11-12",
+  "arqueologia": {
+    "status": "pendente"
+  },
+  "design": {
+    "status": "aprovado",
+    "arquivo": "docs/rainforest/design/aviso-contexto-compactar.md",
+    "aprovado_por": "Luís, 2026-11-12: quero que com esse aviso ele dê a ideia de compactar antes de começar",
+    "em": "2026-11-12"
+  },
+  "plano": {
+    "status": "pendente"
+  },
+  "executar": {
+    "status": "pendente"
+  },
+  "revisar": {
+    "status": "pendente"
+  },
+  "verificar": {
+    "status": "pendente"
+  },
+  "fechar": {
+    "status": "pendente"
+  }
+}
