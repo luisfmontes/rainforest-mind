@@ -18,111 +18,117 @@
     "em": "2026-11-11"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-12",
-    "tarefas_ok": 18,
-    "tarefas": 18,
+    "tarefas_ok": 20,
+    "tarefas": 20,
     "em": "2026-11-12",
     "pendente": "re-rodar node scripts/conferir-fluxo.cjs mutacoes --slug gate-segmentador e fechar executar ok; depois revisar",
     "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug gate-segmentador",
-    "saida": "exit=0\ntarefa 1: vermelho\ntarefa 2: vermelho\ntarefa 3: vermelho\ntarefa 4: vermelho\ntarefa 5: vermelho\ntarefa 7: vermelho\ntarefa 8: vermelho\ntarefa 9: vermelho\ntarefa 10: pulada (n/a — D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16)\ntarefa 11: vermelho\ntarefa 12: pulada (n/a — D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16)\ntarefa 13: pulada (n/a — D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16)\ntarefa 14: vermelho\ntarefa 15: vermelho\ntarefa 16: pulada (n/a — remoção; não há comportamento novo a inverter, e os vizinhos (cm-3) a (cm-9) medem que o `#` voltou ao da base)\ntarefa 17: vermelho\ntarefa 6: pulada (n/a — só versão e texto; comportamento medido pelas tarefas 1 a 5 e 7 a 10)\n\n[exited with code 0] / tarefa 18 (conferir-mutacao, exit 0): == resultado: 485 ok, 1 falha(s) == (ad-6)",
+    "saida": "exit=0; tarefas 1-5,7-9,11,14,15,17-20: vermelho; 6,10,12,13,16: pulada (n/a)",
     "mutacao": [
       {
         "tarefa": 1,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh hs-1..hs-3"
+        "fixture": "`testa-gate-fechar-issue.sh, casos (hs-1), (hs-2) e (hs-3)`"
       },
       {
         "tarefa": 2,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh cb-1, cb-2"
+        "fixture": "`testa-gate-fechar-issue.sh, casos (cb-1) e (cb-2)`"
       },
       {
         "tarefa": 3,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh ad-1, ad-2"
+        "fixture": "`testa-gate-fechar-issue.sh, casos (ad-1) e (ad-2)`"
       },
       {
         "tarefa": 4,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh ps-1, ps-3, ps-4"
+        "fixture": "`testa-gate-fechar-issue.sh, casos (ps-1), (ps-3) e (ps-4)`"
       },
       {
         "tarefa": 5,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh hc-1, crase-12"
-      },
-      {
-        "tarefa": 6,
-        "resultado": "n/a",
-        "motivo": "so versao e texto; comportamento medido pelas tarefas 1 a 5 e 7 a 17"
+        "fixture": "`testa-gate-fechar-issue.sh, casos (hc-1) e (crase-12)`"
       },
       {
         "tarefa": 7,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh wd-1"
+        "fixture": "`testa-gate-fechar-issue.sh, caso (wd-1)`"
       },
       {
         "tarefa": 8,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh hc-3"
+        "fixture": "`testa-gate-fechar-issue.sh, caso (hc-3)`"
       },
       {
         "tarefa": 9,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh cw-1..cw-3"
+        "fixture": "`testa-gate-fechar-issue.sh, casos (cw-1), (cw-2) e (cw-3)`"
       },
       {
         "tarefa": 10,
         "resultado": "n/a",
-        "motivo": "D9 revogado na 4a rodada (decisao do Luis, 2026-11-12); codigo removido pela tarefa 16"
+        "motivo": "D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16"
       },
       {
         "tarefa": 11,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh cw-5, cw-6"
+        "fixture": "`testa-gate-fechar-issue.sh, casos (cw-5) e (cw-6)`"
       },
       {
         "tarefa": 12,
         "resultado": "n/a",
-        "motivo": "D9 revogado na 4a rodada (decisao do Luis, 2026-11-12); codigo removido pela tarefa 16"
+        "motivo": "D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16"
       },
       {
         "tarefa": 13,
         "resultado": "n/a",
-        "motivo": "D9 revogado na 4a rodada (decisao do Luis, 2026-11-12); codigo removido pela tarefa 16"
+        "motivo": "D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16"
       },
       {
         "tarefa": 14,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh hs-5, hs-6"
+        "fixture": "`testa-gate-fechar-issue.sh, casos (hs-5) e (hs-6)`"
       },
       {
         "tarefa": 15,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh hs-7"
+        "fixture": "`testa-gate-fechar-issue.sh, caso (hs-7)`"
       },
       {
         "tarefa": 16,
         "resultado": "n/a",
-        "motivo": "remocao; os vizinhos cm-3..cm-9 medem que o # voltou ao da base"
+        "motivo": "remoção; não há comportamento novo a inverter, e os vizinhos (cm-3) a (cm-9) medem que o `#` voltou ao da base"
       },
       {
         "tarefa": 17,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh hs-9, hs-10"
+        "fixture": "`testa-gate-fechar-issue.sh, casos (hs-9) e (hs-10)`"
       },
       {
         "tarefa": 18,
         "resultado": "vermelho",
-        "fixture": "testa-gate-fechar-issue.sh ad-6"
+        "fixture": "`testa-gate-fechar-issue.sh, caso (ad-6)`"
+      },
+      {
+        "tarefa": 19,
+        "resultado": "vermelho",
+        "fixture": "`testa-gate-fechar-issue.sh, casos (cw-8) e (cw-9)`"
+      },
+      {
+        "tarefa": 20,
+        "resultado": "vermelho",
+        "fixture": "`testa-gate-fechar-issue.sh, caso (cw-11)`"
+      },
+      {
+        "tarefa": 6,
+        "resultado": "n/a",
+        "motivo": "só versão e texto; comportamento medido pelas tarefas 1 a 5 e 7 a 10"
       }
     ],
-    "reaberturas": 5,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-11-12"
-    }
+    "reaberturas": 5
   },
   "revisar": {
     "status": "reprovado",
