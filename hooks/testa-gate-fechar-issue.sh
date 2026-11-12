@@ -1539,6 +1539,9 @@ caso_gate mx-10 2 $'eval "echo"\' \\";\' gh issue close 12'
 caso_gate mx-11 2 $'eval "echo"\' \\"; gh issue -R o/r close 12\''
 caso_gate mx-12 2 $'eval "echo"\' \\"; gh issue {close,} 12\''
 caso_gate mx-13 2 $'eval "echo"\' \\"; gh pr --repo o/r merge 5\''
+# Revisao de seguranca do commit 5513b4d3: ANSI-C montando o gh dentro do wrapper com palavra mista.
+caso_gate mx-14 2 $'eval "echo"\' \\"; \'$\'\\x67h\'\' issue close 12\''
+caso_gate mx-15 2 $'eval "echo"\' \\"; \'$\'\\147h\'\' issue close 12\''
 caso_gate ac-5 2 $'echo "$(echo \')\' ; gh issue $\'clo\\U00000073e\' 12)"'
 
 # Caso (cm-5): espaco escapado antes do # nao abre comentario → exit 2 (D9 de gate-segmentador)

@@ -1663,7 +1663,11 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   // verbo (`gh issue -R o/r close`) e expansao de chaves (`gh issue {close,}`),
   // que o bash executa (revisao de seguranca do commit f06775e7).
   const depois = toksComAspas.slice(pos + 1);
-  const mistaComGh = interno !== null && depois.some((t) => t.mista && t.v.includes("\\")) && temGhQualquer(depois.map((t) => t.v).join(" "));
+  // ANSI-C (`$'\x67h'`) monta qualquer palavra, inclusive `gh`, e o token ja vem
+  // sem as aspas: com `$'` ou `$"` no segmento, a palavra mista barra sem
+  // procurar o `gh` (revisao de seguranca do commit 5513b4d3).
+  const mistaComGh = interno !== null && depois.some((t) => t.mista && t.v.includes("\\")) &&
+    (/\$['"]/.test(segmento) || temGhQualquer(depois.map((t) => t.v).join(" ")));
   if (ilegivel || mistaComGh) {
     // Dentro de arquivo carregado, ilegivel so passa quando NAO ha `gh` que
     // fecha/cria literal no texto (D16: fica fora o `gh` montado de variavel).
