@@ -280,6 +280,17 @@ function segmentosParaGate(cmd) {
       continue;
     }
 
+    // D9 (gate-segmentador, Issue #689): comentario de shell fora de aspas vai
+    // ate o fim da linha; o apostrofo dele nao abre aspa.
+    if (aspa === null && c === "#" && (i === 0 || /[\s;&|()]/.test(cmd[i - 1]))) {
+      while (i < cmd.length && cmd[i] !== "\n") {
+        atual += cmd[i];
+        i += 1;
+      }
+      i -= 1;
+      continue;
+    }
+
     if (aspa) {
       if (FERRAMENTA !== "PowerShell" && c === "\\" && i + 1 < cmd.length && escapaDentroDaAspa(aspa, cmd[i + 1])) {
         atual += c + cmd[i + 1];

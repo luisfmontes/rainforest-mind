@@ -1348,6 +1348,54 @@ COMANDO_CW_4=$'bash -c "echo \\"oi\\""'
 EXIT_CW_4=$?
 [ $EXIT_CW_4 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CW_4)"
 
+# Caso (cm-1): comentario de shell com apostrofo nao esconde o gh da linha seguinte → exit 2 (D9 de gate-segmentador)
+echo
+echo "== (cm-1) comentario de shell com apostrofo nao esconde o gh da linha seguinte → exit 2 =="
+COMANDO_CM_1=$'# it\'s done\ngh issue close 12'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CM_1")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cm-1"
+EXIT_CM_1=$?
+[ $EXIT_CM_1 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CM_1)"
+
+# Caso (cm-2): comentario com apostrofo no meio de comando → gh de merge depois dele → exit 2 (D9 de gate-segmentador)
+echo
+echo "== (cm-2) comentario com apostrofo no meio de comando → gh de merge depois dele → exit 2 =="
+COMANDO_CM_2=$'git status\n# don\'t forget\ngh pr merge 5 --squash'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CM_2")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cm-2"
+EXIT_CM_2=$?
+[ $EXIT_CM_2 -eq 2 ] && test_ok "exit 2" || test_fail "exit code (foi $EXIT_CM_2)"
+
+# Caso (cm-3): # no meio de palavra nao e comentario (echo a#b; echo 'x') → exit 0 (D9 de gate-segmentador)
+echo
+echo "== (cm-3) # no meio de palavra nao e comentario → exit 0 =="
+COMANDO_CM_3=$'echo a#b; echo \'x\''
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CM_3")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cm-3"
+EXIT_CM_3=$?
+[ $EXIT_CM_3 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CM_3)"
+
+# Caso (cm-4): comentario no fim da linha de comando comum → exit 0 (D9 de gate-segmentador)
+echo
+echo "== (cm-4) comentario no fim da linha de comando comum → exit 0 =="
+COMANDO_CM_4=$'echo hi # comentario'
+(
+  export PATH="$SBP/bin:$PATH"
+  PAYLOAD=$(node -e 'const [cwd,cmd]=process.argv.slice(1);process.stdout.write(JSON.stringify({cwd,tool_name:"Bash",tool_input:{command:cmd}}))' "$SBP_WIN" "$COMANDO_CM_4")
+  echo "$PAYLOAD" | node "$SRC/hooks/gate-fechar-issue.cjs"
+) 2>"$SBP/err-cm-4"
+EXIT_CM_4=$?
+[ $EXIT_CM_4 -eq 0 ] && test_ok "exit 0" || test_fail "exit code (foi $EXIT_CM_4)"
+
 # R2 (rodada 9, lote 3, 2026-09-04): `Invoke-Expression`/`iex` (PowerShell)
 # nao eram reconhecidos como wrapper de string sem flag (igual `eval`) — o
 # conteudo era um token citado so, a busca por sequencia nao casava dentro
