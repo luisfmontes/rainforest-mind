@@ -18,14 +18,14 @@
     "em": "2026-11-11"
   },
   "executar": {
-    "status": "parcial",
+    "status": "ok",
     "catraca_mutacao": "2026-11-12",
-    "tarefas_ok": 17,
-    "tarefas": 17,
+    "tarefas_ok": 18,
+    "tarefas": 18,
     "em": "2026-11-12",
     "pendente": "re-rodar node scripts/conferir-fluxo.cjs mutacoes --slug gate-segmentador e fechar executar ok; depois revisar",
     "comando": "node scripts/conferir-fluxo.cjs mutacoes --slug gate-segmentador",
-    "saida": "exit=0\ntarefa 1: vermelho\ntarefa 2: vermelho\ntarefa 3: vermelho\ntarefa 4: vermelho\ntarefa 5: vermelho\ntarefa 7: vermelho\ntarefa 8: vermelho\ntarefa 9: vermelho\ntarefa 10: pulada (n/a — D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16)\ntarefa 11: vermelho\ntarefa 12: pulada (n/a — D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16)\ntarefa 13: pulada (n/a — D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16)\ntarefa 14: vermelho\ntarefa 15: vermelho\ntarefa 16: pulada (n/a — remoção; não há comportamento novo a inverter, e os vizinhos (cm-3) a (cm-9) medem que o `#` voltou ao da base)\ntarefa 17: vermelho\ntarefa 6: pulada (n/a — só versão e texto; comportamento medido pelas tarefas 1 a 5 e 7 a 10)\n\n[exited with code 0]",
+    "saida": "exit=0\ntarefa 1: vermelho\ntarefa 2: vermelho\ntarefa 3: vermelho\ntarefa 4: vermelho\ntarefa 5: vermelho\ntarefa 7: vermelho\ntarefa 8: vermelho\ntarefa 9: vermelho\ntarefa 10: pulada (n/a — D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16)\ntarefa 11: vermelho\ntarefa 12: pulada (n/a — D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16)\ntarefa 13: pulada (n/a — D9 revogado na 4ª rodada (decisão do Luís, 2026-11-12); o código desta tarefa foi removido pela tarefa 16)\ntarefa 14: vermelho\ntarefa 15: vermelho\ntarefa 16: pulada (n/a — remoção; não há comportamento novo a inverter, e os vizinhos (cm-3) a (cm-9) medem que o `#` voltou ao da base)\ntarefa 17: vermelho\ntarefa 6: pulada (n/a — só versão e texto; comportamento medido pelas tarefas 1 a 5 e 7 a 10)\n\n[exited with code 0] / tarefa 18 (conferir-mutacao, exit 0): == resultado: 485 ok, 1 falha(s) == (ad-6)",
     "mutacao": [
       {
         "tarefa": 1,
@@ -111,13 +111,14 @@
         "tarefa": 17,
         "resultado": "vermelho",
         "fixture": "testa-gate-fechar-issue.sh hs-9, hs-10"
+      },
+      {
+        "tarefa": 18,
+        "resultado": "vermelho",
+        "fixture": "testa-gate-fechar-issue.sh ad-6"
       }
     ],
-    "reaberturas": 4,
-    "reaberto_por": {
-      "estagio": "revisar",
-      "data": "2026-11-12"
-    }
+    "reaberturas": 4
   },
   "revisar": {
     "status": "reprovado",
@@ -180,8 +181,13 @@
       {
         "texto": "Luis (2026-11-12): opcao A - tirar o D9 inteiro (comentario volta ao da base, vai para a #692) e consertar o here-string de palavra com aspa",
         "em": "2026-11-12"
+      },
+      {
+        "texto": "Luis (2026-11-12): 5a rodada liberada (Q1 recomendada) para revisar o conserto do $$' (tarefa 18); preexistentes da revisao 4 plantados na #692",
+        "em": "2026-11-12"
       }
-    ]
+    ],
+    "liberado_em": "2026-11-12"
   },
   "verificar": {
     "status": "pendente"
