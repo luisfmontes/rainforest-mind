@@ -158,6 +158,7 @@ iniciar_servidor() { # $1 = mapa token -> conta; $2 = arquivo onde sai a porta
   API="http://127.0.0.1:$(head -n1 "$2")"
 }
 iniciar_servidor "$RAIZ/mapa-d1.json" "$RAIZ/porta-d1.txt"
+API_D1="$API"
 
 cli() {
   local c="$1"; shift
@@ -342,6 +343,7 @@ numerico() { [[ "$1" =~ ^[0-9]+$ ]]; }
 
 # Os casos D4 usam o mapa base (uso da pessoal legível quando o login volta), não o de D1 a 100%.
 iniciar_servidor "$RAIZ/mapa.json" "$RAIZ/porta-d4.txt"
+API_D4="$API"
 
 # (d4-1) primeira rodada: semUsoDesde numérico e nenhum uso_ilegivel.
 novo_caso_d4 d4-1
@@ -386,6 +388,38 @@ cli "$CASO" status > "$RAIZ/st-1.txt" 2>&1 || RC=$?
 LINHA_ST_1="$(grep -F 'pasta trabalho' "$RAIZ/st-1.txt" || true)"
 afirma "(st-1) a linha da pasta trabalho diz a condição da volta" contem "$LINHA_ST_1" "troca manual (volta se a conta em uso chegar ao limite e a de casa tiver folga)"
 afirma "(st-1) o status não diz sem volta automática" bash -c '! grep -qF "sem volta automática" "$1"' _ "$RAIZ/st-1.txt"
+
+# Fechamento (revisão 1, achado 3): o aviso que o hook mantém aberto ganha o próprio evento de fechamento.
+# (f-1) o dado de uso volta: a rodada grava um uso_legivel, a seguinte não grava outro, e nenhum
+# manual_fora_do_limite sai sem manual_no_limite aberto.
+novo_caso_d4 f-1
+definir_sem_uso trabalho 31
+rodar f-1 r1
+afirma "(f-1) o período de 31 min grava um uso_ilegivel" test "$(contar uso_ilegivel trabalho)" = 1
+expirar "$CASO/trabalho/.claude/.credentials.json" 4102444800000
+rodar f-1 r2
+afirma "(f-1) com o dado de volta, a rodada grava um uso_legivel da trabalho" test "$(contar uso_legivel trabalho)" = 1
+rodar f-1 r3
+afirma "(f-1) a rodada seguinte não grava outro uso_legivel" test "$(contar uso_legivel trabalho)" = 1
+afirma "(f-1) sem manual_no_limite aberto, nenhum manual_fora_do_limite" test "$(contar manual_fora_do_limite)" = 0
+
+# (f-2) pasta manual com a pessoal a 100% e a casa sem folga: aviso; a pessoal cai para 7% (o servidor
+# do mapa base): a rodada grava um manual_fora_do_limite, a seguinte não grava outro.
+novo_caso_d2 f-2
+API="$API_D1"
+rodar f-2 r1
+afirma "(f-2) com a pessoal a 100% grava um manual_no_limite da trabalho" test "$(contar manual_no_limite trabalho)" = 1
+afirma "(f-2) e nenhum manual_fora_do_limite" test "$(contar manual_fora_do_limite)" = 0
+API="$API_D4"
+# A leitura de 100% fica no cache de uso (validade longa acima do limiar): sem apagá-lo, a rodada não
+# pergunta ao servidor novo.
+rm -f "$CASO/dados/contas/uso-cache.json"
+rodar f-2 r2
+afirma "(f-2) com a pessoal abaixo do limite, a rodada sai 0" test "$RC" -eq 0
+afirma "(f-2) e grava um manual_fora_do_limite da trabalho" test "$(contar manual_fora_do_limite trabalho)" = 1
+rodar f-2 r3
+afirma "(f-2) a rodada seguinte não grava outro" test "$(contar manual_fora_do_limite trabalho)" = 1
+afirma "(f-2) nenhum uso_legivel sem uso_ilegivel aberto" test "$(contar uso_legivel)" = 0
 
 echo "ok: $OK   falhou: $FALHOU"
 if [ "$FALHOU" -ne 0 ]; then exit 1; fi

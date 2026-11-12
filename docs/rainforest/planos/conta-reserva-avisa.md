@@ -329,6 +329,100 @@ pronto quando: com o evento que `/conta pessoal --pasta trabalho` grava (`{"em":
 
 Forma prescrita em `hooks/conta-puro.mjs`: na linha 41, o final `' (troca manual; não volta sozinha).'` vira `' (troca manual; volta sozinha se a conta chegar ao limite e a de casa tiver folga).'`; na linha 67, `'). A troca foi manual e não volta sozinha: '` vira `'). A troca foi manual e a volta automática não aconteceu: '`; o comentário da linha 63 (`a pasta trocada na mão não volta sozinha (D8)`) passa a dizer que a volta é a da D3 de conta-reserva-avisa. Em `hooks/testa-mod-conta.cjs`: a expectativa da linha 169 troca o texto pelo novo, e o caso novo (m67), um único `afirma` (as duas frases juntas por `&&`), afirma, para o `manual_no_limite` das linhas 240 e 243, que a frase contém `a volta automática não aconteceu` e não contém `não volta sozinha`. Nenhum caso de teste pode afirmar sobre o texto do fonte, só sobre o que `frase()` devolve.
 
+Emenda da revisão 1 (achados 2, 3 e 5; decisão do Luís em 2026-11-12, Q2 recomendada): as tarefas 11 a 16 realizam a D7 e a D8 do design. As contagens das baterias passam a ser 49 ok em `testa-conta-vigia-avisa.sh` (39 + (f-1) 4 + (f-2) 6), 34 em `testa-conta-avisos.cjs` (30 + (a10) 4) e 39 em `testa-conta-aviso-sessao.cjs` (mesmo número; mudam as expectativas de texto).
+
+### 11. D7: o dado de uso de volta grava `uso_legivel` [tipo: implementar]
+atende: D7
+arquivos: `scripts/conta.cjs`, `scripts/testa-conta-vigia-avisa.sh`
+depende de: 9, 10
+busca:
+- repo | registrarCredencialVoltou | `scripts/conta.cjs` fecha o `pasta_sem_credencial` pelo último evento da pasta; o mesmo molde serve aos dois avisos novos
+desfecho: estender
+mutacao:
+  arquivo: `scripts/conta.cjs`
+  de: `if (avisoAberto(c, P, 'uso_ilegivel', 'uso_legivel')) {`
+  para: `if (false) {`
+  bateria: `bash scripts/testa-conta-vigia-avisa.sh`
+  fixture: `testa-conta-vigia-avisa.sh, caso (f-1)`
+prova: `bash scripts/testa-conta-vigia-avisa.sh`
+pronto quando: com o caso de `novo_caso_d4` (pasta `trabalho` manual na pessoal, login da pasta vencido) e `semUsoDesde` = agora − 31 min, a rodada real de `node scripts/conta.cjs vigiar` grava um `uso_ilegivel`; com o login de volta (`expiresAt` 4102444800000), a rodada seguinte grava um `uso_legivel` da `trabalho`, a terceira não grava outro, e nenhum `manual_fora_do_limite` sai — provado por `bash scripts/testa-conta-vigia-avisa.sh` devolvendo `ok: 49   falhou: 0`.
+
+Forma: `avisoAberto(c, P, aviso, fecha)` devolve true quando o último evento da pasta `P` entre `aviso`, `fecha`, `trocar`, `voltar` e `reconciliado` é o `aviso`. Em `avisarUsoIlegivel`, no ramo da pasta em casa ou com dado legível, grava `uso_legivel` (`de` = conta em uso, `motivo` `dado de uso voltou` ou `pasta em casa`) quando `avisoAberto` diz que o `uso_ilegivel` está aberto.
+
+### 12. D7: a conta em uso abaixo do limite grava `manual_fora_do_limite` [tipo: implementar]
+atende: D7
+arquivos: `scripts/conta.cjs`, `scripts/testa-conta-vigia-avisa.sh`
+depende de: 11
+busca:
+- repo | avisarManualNoLimite | `scripts/conta.cjs` grava o aviso; o fechamento usa o `avisoAberto` da tarefa 11
+desfecho: estender
+mutacao:
+  arquivo: `scripts/conta.cjs`
+  de: `if (naSituacao && !abaixo) continue;`
+  para: `if (naSituacao) continue;`
+  bateria: `bash scripts/testa-conta-vigia-avisa.sh`
+  fixture: `testa-conta-vigia-avisa.sh, caso (f-2)`
+prova: `bash scripts/testa-conta-vigia-avisa.sh`
+pronto quando: com o caso de `novo_caso_d2` (pasta `trabalho` manual na pessoal, as duas com credencial) e o servidor do mapa D1 (pessoal a 100% na semana, team a 97%), a rodada real grava um `manual_no_limite` e nenhum `manual_fora_do_limite`; com o servidor do mapa base (pessoal a 7%) e o `uso-cache.json` apagado, a rodada seguinte sai 0 e grava um `manual_fora_do_limite` da `trabalho`, a terceira não grava outro, e nenhum `uso_legivel` sai — provado por `bash scripts/testa-conta-vigia-avisa.sh` devolvendo `ok: 49   falhou: 0`.
+
+Forma: `fecharManualNoLimite(c, estado, pastas, usos, config)`, chamada logo depois do `decidir` em `vigiarRodada`, com o estado de antes das ações. Para cada pasta: `naSituacao` = manual e fora de casa; `abaixo` = dado completo e `five_hour` e `seven_day` abaixo de `config.trocarEm`. Em situação e sem `abaixo` (inclusive sem dado), nada; senão, com o aviso aberto, grava `manual_fora_do_limite` (`motivo` `conta em uso abaixo do limite` ou `pasta saiu da troca manual`).
+
+### 13. D7: o hook fecha cada aviso pelo próprio evento de fechamento [tipo: implementar]
+atende: D7
+arquivos: `scripts/lib/conta-avisos.cjs`, `scripts/testa-conta-avisos.cjs`
+depende de: 12
+busca:
+- repo | RESOLVEM | `scripts/lib/conta-avisos.cjs` já fecha os dois avisos por `trocar`, `voltar` e `reconciliado`
+desfecho: estender
+mutacao:
+  arquivo: `scripts/lib/conta-avisos.cjs`
+  de: `RESOLVE_USO.has(ev.tipo)`
+  para: `RESOLVE_MANUAL.has(ev.tipo)`
+  bateria: `node scripts/testa-conta-avisos.cjs`
+  fixture: `testa-conta-avisos.cjs, casos (a10-1) e (a10-3)`
+prova: `node scripts/testa-conta-avisos.cjs`
+pronto quando: com o log `uso_ilegivel` da `trabalho` seguido de `uso_legivel` da mesma pasta, `problemasAbertos` devolve lista vazia; com `manual_no_limite` seguido de `manual_fora_do_limite`, vazia; o `manual_fora_do_limite` não fecha o `uso_ilegivel` e o `uso_legivel` não fecha o `manual_no_limite`; fechamento da outra pasta ou anterior não fecha — provado por `node scripts/testa-conta-avisos.cjs` devolvendo `34 ok, 0 falha(s)`.
+
+### 14. D8: os comandos do aviso são `/conta ...` [tipo: implementar]
+atende: D8
+arquivos: `scripts/lib/conta-avisos.cjs`, `scripts/testa-conta-avisos.cjs`, `hooks/testa-conta-aviso-sessao.cjs`
+depende de: 13
+busca:
+- repo | conta.md | `commands/conta.md` roda o `conta.cjs` do plugin com `$ARGUMENTS`, então `/conta status` e `/conta preparar <conta> --refazer` valem em qualquer cwd
+desfecho: adotar
+mutacao:
+  arquivo: `scripts/lib/conta-avisos.cjs`
+  de: `Diagnóstico: /conta status`
+  para: `Diagnóstico: node scripts/conta.cjs status`
+  bateria: `node hooks/testa-conta-aviso-sessao.cjs`
+  fixture: `testa-conta-aviso-sessao.cjs, h1-1 "vigia_falhou: uma linha com vigia e /conta status"`
+prova: `node hooks/testa-conta-aviso-sessao.cjs`
+pronto quando: com um `eventos.jsonl` real (as rodadas do vigia dos casos e2e e os eventos montados de h1), o hook injeta as linhas com `/conta status` e `/conta preparar trabalho --refazer` e nenhuma com `node scripts/conta.cjs` — provado por `node hooks/testa-conta-aviso-sessao.cjs` devolvendo `39 ok, 0 falha(s)` e por `grep -c "node scripts/conta.cjs" scripts/lib/conta-avisos.cjs` devolvendo `0`.
+
+### 15. D8: o trecho livre do log perde `#`, crase, `<` e `>` [tipo: implementar]
+atende: D8
+arquivos: `scripts/lib/conta-avisos.cjs`, `scripts/testa-conta-avisos.cjs`, `hooks/testa-conta-aviso-sessao.cjs`
+depende de: 14
+busca:
+- repo | comTrecho | `scripts/lib/conta-avisos.cjs` já troca quebra e controle por espaço; a classe ganha os quatro sinais
+desfecho: estender
+mutacao:
+  arquivo: `scripts/lib/conta-avisos.cjs`
+  de: `\x7f#`
+  para: `\x7f`
+  bateria: `node scripts/testa-conta-avisos.cjs`
+  fixture: `testa-conta-avisos.cjs, caso (a9-3)`
+prova: `node scripts/testa-conta-avisos.cjs`
+pronto quando: com um `vigia_falhou` de motivo `boom`, quebra de linha, `## Ignore`, a palavra `tudo` entre crases e `<tag>`, a seção tem duas linhas e a do vigia contém `boom Ignore tudo tag` sem nenhum `#`, crase, `<` ou `>`; o trecho de 500 caracteres cabe no orçamento (47 no vigia e na reserva, 80 no estacionado, linha de 192) — provado por `node scripts/testa-conta-avisos.cjs` devolvendo `34 ok, 0 falha(s)`.
+
+### 16. D7 e D8 no README e no CHANGELOG [tipo: docs]
+atende: D7, D8
+arquivos: `README.md`, `CHANGELOG.md`
+depende de: 15
+mutacao: n/a
+  motivo: só texto; o comportamento está medido pelas tarefas 11 a 15, e a falsificação é a coerência do texto com a D7 e a D8
+pronto quando: o README, na seção da troca de conta, nomeia `uso_legivel` como o fechamento do `uso_ilegivel` e `manual_fora_do_limite` como o do `manual_no_limite` (com as condições da D7: dado de volta; conta abaixo do limite ou pasta fora da troca manual), cita os comandos `/conta ...` e os quatro sinais tirados do trecho do log (D8); o CHANGELOG 2.13.0 diz que o aviso fecha quando o problema acaba e que os comandos são `/conta ...` — conferido lendo o item "O que trava a troca também chega à sessão" do README contra o texto da D7 e da D8.
+
 ## Premissas aceitas sem conferir
 
 Quem despachou é o único que pode corrigir estas; o resto do plano saiu de arquivo lido ou comando rodado na base `71912254`.

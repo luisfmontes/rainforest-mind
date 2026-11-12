@@ -959,6 +959,19 @@ function registrarPastaSaiuDeUso(c) {
 // limite disparam, e isso só saía no stderr.
 const SEM_USO_AVISAR_MS = 30 * 60 * 1000;
 
+// Revisão 1 de conta-reserva-avisa (achado 3): o uso_ilegivel e o manual_no_limite ficam abertos no hook
+// de sessão até um evento posterior da mesma pasta. Cada um ganha o próprio evento de fechamento
+// (uso_legivel, manual_fora_do_limite), gravado quando o aviso é o último entre ele, o fechamento dele
+// e os eventos que o hook já conta como resolução. Sem isso, o aviso chegava a toda sessão nova por até
+// 7 dias depois de o dado voltar ou de a conta sair do limite.
+const RESOLVEM_PASTA = ['trocar', 'voltar', 'reconciliado'];
+
+function avisoAberto(c, P, aviso, fecha) {
+  const tipos = new Set([aviso, fecha, ...RESOLVEM_PASTA]);
+  const da = lerEventos(c).map(({ ev }) => ev).filter((ev) => ev.pasta === P && tipos.has(ev.tipo));
+  return da.length > 0 && da[da.length - 1].tipo === aviso;
+}
+
 function avisarUsoIlegivel(c, estado, pastas, usos) {
   const agora = Date.now();
   let mudou = false;
@@ -970,6 +983,15 @@ function avisarUsoIlegivel(c, estado, pastas, usos) {
       if (info.semUsoDesde !== undefined) {
         delete info.semUsoDesde;
         mudou = true;
+      }
+      if (avisoAberto(c, P, 'uso_ilegivel', 'uso_legivel')) {
+        registrarEvento(c, {
+          tipo: 'uso_legivel',
+          pasta: P,
+          de: info.conta,
+          motivo: legivel ? 'dado de uso voltou' : 'pasta em casa',
+          manual: info.manual,
+        });
       }
       continue;
     }
@@ -991,6 +1013,28 @@ function avisarUsoIlegivel(c, estado, pastas, usos) {
     });
   }
   if (mudou) gravarEstado(c, estado);
+}
+
+// Fecha o manual_no_limite aberto quando a pasta deixou a situação (voltou para casa ou deixou de ser
+// manual) ou quando a conta em uso tem dado e está abaixo do trocarEm nas duas janelas. Sem dado, o
+// aviso continua aberto: não se sabe se a conta saiu do limite.
+function fecharManualNoLimite(c, estado, pastas, usos, config) {
+  for (const P of Object.keys(pastas)) {
+    const info = estado.pastas[P];
+    const u = usos[info.conta];
+    const naSituacao = Boolean(info.manual) && info.conta !== info.casa;
+    const abaixo = Boolean(u && u.five_hour && u.seven_day)
+      && u.five_hour.utilization < config.trocarEm && u.seven_day.utilization < config.trocarEm;
+    if (naSituacao && !abaixo) continue;
+    if (!avisoAberto(c, P, 'manual_no_limite', 'manual_fora_do_limite')) continue;
+    registrarEvento(c, {
+      tipo: 'manual_fora_do_limite',
+      pasta: P,
+      de: info.conta,
+      motivo: naSituacao ? 'conta em uso abaixo do limite' : 'pasta saiu da troca manual',
+      manual: info.manual,
+    });
+  }
 }
 
 // D2 (conta-reserva-avisa): a rodada que aborta grava vigia_falhou com a mensagem segura. Não
@@ -1079,6 +1123,7 @@ async function vigiarRodada(c) {
     }
     const config = lerConfig(c);
     const acoes = decidir({ pastas, usos, reservas, config, agora: Date.now() });
+    fecharManualNoLimite(c, estado, pastas, usos, config);
 
     let codigo = 0;
     for (const a of acoes) {

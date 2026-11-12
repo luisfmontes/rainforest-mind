@@ -19,8 +19,19 @@ const CONTAS = new Set(['team', 'pessoal']);
 const NOME_CONTA = { team: 'trabalho', pessoal: 'pessoal' };
 const LIMITE_LEGIVEL = { seven_day: 'semana', five_hour: 'janela de 5 h' };
 const ORDEM = ['vigia_falhou', 'pasta_sem_credencial', 'renovacao_falhou', 'uso_ilegivel', 'manual_no_limite'];
-const TIPOS_COM_PASTA = new Set(['pasta_sem_credencial', 'pasta_com_credencial', 'uso_ilegivel', 'manual_no_limite']);
-const RESOLVEM = new Set(['trocar', 'voltar', 'reconciliado']);
+const TIPOS_COM_PASTA = new Set([
+  'pasta_sem_credencial',
+  'pasta_com_credencial',
+  'uso_ilegivel',
+  'uso_legivel',
+  'manual_no_limite',
+  'manual_fora_do_limite',
+]);
+// trocar, voltar e reconciliado da mesma pasta fecham os dois; cada um tem ainda o próprio evento de
+// fechamento, que o vigia grava quando o dado de uso volta ou a conta em uso sai do limite.
+const RESOLVEM = ['trocar', 'voltar', 'reconciliado'];
+const RESOLVE_USO = new Set([...RESOLVEM, 'uso_legivel']);
+const RESOLVE_MANUAL = new Set([...RESOLVEM, 'manual_fora_do_limite']);
 const RE_FALHA = /^([\w-]+): (.*)$/;
 const RE_RESERVA = /^reserva-(team|pessoal)$/;
 const RE_MOTIVO_MANUAL = /^(seven_day|five_hour) de (team|pessoal) em ([\d.,]{1,6}%)(?: \(>= [\d.,]+\))?$/;
@@ -127,7 +138,7 @@ function problemasAbertos(eventos, { agora, expiraEm, vigiaOkEm }) {
     const uso = recentes.filter((ev) => ev.tipo === 'uso_ilegivel' && ev.pasta === pasta);
     if (uso.length) {
       const u = ultimo(uso);
-      const resolvido = recentes.some((ev) => ev.pasta === pasta && RESOLVEM.has(ev.tipo) && ev.em > u.em);
+      const resolvido = recentes.some((ev) => ev.pasta === pasta && RESOLVE_USO.has(ev.tipo) && ev.em > u.em);
       if (!resolvido && CONTAS.has(u.de)) {
         itens.push(item(`uso_ilegivel:${pasta}`, 'uso_ilegivel', u.em, { pasta, de: u.de }));
       }
@@ -135,7 +146,7 @@ function problemasAbertos(eventos, { agora, expiraEm, vigiaOkEm }) {
     const manual = recentes.filter((ev) => ev.tipo === 'manual_no_limite' && ev.pasta === pasta);
     if (manual.length) {
       const u = ultimo(manual);
-      const resolvido = recentes.some((ev) => ev.pasta === pasta && RESOLVEM.has(ev.tipo) && ev.em > u.em);
+      const resolvido = recentes.some((ev) => ev.pasta === pasta && RESOLVE_MANUAL.has(ev.tipo) && ev.em > u.em);
       if (!resolvido && CONTAS.has(u.de) && CONTAS.has(u.para)) {
         itens.push(
           item(`manual_no_limite:${pasta}`, 'manual_no_limite', u.em, {
@@ -155,11 +166,13 @@ function problemasAbertos(eventos, { agora, expiraEm, vigiaOkEm }) {
 
 const dataUtc = (em) => new Date(em).toISOString().slice(0, 16).replace('T', ' ');
 
-// Trecho livre do log: quebra e controle viram espaço, sequência de espaços vira um. O orçamento é
+// Trecho livre do log: quebra, controle e os sinais de markdown e de marcação (#, crase, < e >) viram
+// espaço, e sequência de espaços vira um: o trecho entra no contexto do modelo e não pode abrir seção,
+// bloco de código nem tag. O orçamento é
 // o que sobra de 200 depois do texto fixo (entre 20 e 80), e o corte termina em "…" dentro dele.
 function comTrecho(prefixo, sufixo, trecho) {
   const texto = String(trecho ?? '')
-    .replace(/[\x00-\x1f\x7f]/g, ' ')
+    .replace(/[\x00-\x1f\x7f#`<>]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
   const orcamento = Math.min(80, Math.max(20, MAX_LINHA - (prefixo + sufixo).length));
@@ -183,7 +196,7 @@ function linhaManual(p) {
 function linhaDoProblema(p) {
   if (p.tipo === 'vigia_falhou') {
     return comTrecho(
-      `- vigia: a rodada do vigia de troca de conta abortou em ${dataUtc(p.em)} UTC e a troca automática ficou sem decidir. Diagnóstico: node scripts/conta.cjs status (log: "`,
+      `- vigia: a rodada do vigia de troca de conta abortou em ${dataUtc(p.em)} UTC e a troca automática ficou sem decidir. Diagnóstico: /conta status (log: "`,
       '")',
       p.motivo,
     );
@@ -195,19 +208,19 @@ function linhaDoProblema(p) {
     const reserva = RE_RESERVA.exec(p.nome);
     if (reserva) {
       return comTrecho(
-        `- login guardado ${p.nome}: a renovação falhou em ${dataUtc(p.em)} UTC; se o servidor recusa, refaça com: node scripts/conta.cjs preparar ${NOME_CONTA[reserva[1]]} --refazer (log: "`,
+        `- login guardado ${p.nome}: a renovação falhou em ${dataUtc(p.em)} UTC; se o servidor recusa, refaça com: /conta preparar ${NOME_CONTA[reserva[1]]} --refazer (log: "`,
         '")',
         p.motivo,
       );
     }
     return comTrecho(
-      `- login guardado ${p.nome}: a renovação falhou em ${dataUtc(p.em)} UTC; veja: node scripts/conta.cjs status (log: "`,
+      `- login guardado ${p.nome}: a renovação falhou em ${dataUtc(p.em)} UTC; veja: /conta status (log: "`,
       '")',
       p.motivo,
     );
   }
   if (p.tipo === 'uso_ilegivel') {
-    return `- pasta ${p.pasta}: o uso da conta ${NOME_CONTA[p.de]} está ilegível há mais de 30 min; sem ele a volta e o aviso de limite não disparam. Veja: node scripts/conta.cjs status`;
+    return `- pasta ${p.pasta}: o uso da conta ${NOME_CONTA[p.de]} está ilegível há mais de 30 min; sem ele a volta e o aviso de limite não disparam. Veja: /conta status`;
   }
   return linhaManual(p);
 }
@@ -218,7 +231,7 @@ function montarSecao(problemas) {
   const linhas = ['## Conta (regra 14)'];
   for (const p of problemas.slice(0, MAX_PROBLEMAS)) linhas.push(linhaDoProblema(p));
   if (problemas.length > MAX_PROBLEMAS) {
-    linhas.push(`... e mais ${problemas.length - MAX_PROBLEMAS}: node scripts/conta.cjs status`);
+    linhas.push(`... e mais ${problemas.length - MAX_PROBLEMAS}: /conta status`);
   }
   return linhas.join('\n');
 }

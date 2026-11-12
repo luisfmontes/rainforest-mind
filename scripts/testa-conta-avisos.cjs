@@ -86,6 +86,20 @@ caso('(a4-1) uso_ilegivel fecha com trocar posterior da mesma pasta', () =>
 caso('(a4-2) uso_ilegivel fecha com voltar posterior da mesma pasta', () =>
   abertos([USO(AGORA - 2 * H), RESOLVE(AGORA - H, 'voltar')]).length === 0);
 
+// (a10) eventos de fechamento próprios (revisão 1, achado 3)
+const FECHA = (em, tipo, pasta = 'trabalho') => ({ em, tipo, pasta, de: 'pessoal', motivo: 'fechou', manual: true });
+caso('(a10-1) uso_ilegivel fecha com uso_legivel posterior da mesma pasta', () =>
+  abertos([USO(AGORA - 2 * H), FECHA(AGORA - H, 'uso_legivel')]).length === 0);
+caso('(a10-2) manual_no_limite fecha com manual_fora_do_limite posterior da mesma pasta', () =>
+  abertos([MANUAL(AGORA - 2 * H), FECHA(AGORA - H, 'manual_fora_do_limite')]).length === 0);
+caso('(a10-3) o fechamento de um não fecha o outro', () =>
+  chaves(abertos([USO(AGORA - 2 * H), MANUAL(AGORA - 2 * H), FECHA(AGORA - H, 'manual_fora_do_limite'), FECHA(AGORA - H, 'uso_legivel')])) === '' &&
+  chaves(abertos([USO(AGORA - 2 * H), FECHA(AGORA - H, 'manual_fora_do_limite')])) === 'uso_ilegivel:trabalho' &&
+  chaves(abertos([MANUAL(AGORA - 2 * H), FECHA(AGORA - H, 'uso_legivel')])) === 'manual_no_limite:trabalho');
+caso('(a10-4) fechamento da OUTRA pasta ou ANTERIOR não fecha', () =>
+  chaves(abertos([USO(AGORA - 2 * H), FECHA(AGORA - H, 'uso_legivel', 'pessoal')])) === 'uso_ilegivel:trabalho' &&
+  chaves(abertos([FECHA(AGORA - 3 * H, 'manual_fora_do_limite'), MANUAL(AGORA - 2 * H)])) === 'manual_no_limite:trabalho');
+
 // (a5) renovacao_falhou
 caso('(a5) renovacao_falhou some quando o login foi renovado', () =>
   abertos([RENOV(AGORA - H, 'reserva-team')], null, (n) => (n === 'reserva-team' ? AGORA + 8 * H : null)).length === 0);
@@ -138,7 +152,7 @@ caso('(a9-1) 7 problemas: cabeçalho, 5 linhas e resumo do excedente', () => {
     exp30,
   );
   const linhas = A.montarSecao(ps).split('\n');
-  return ps.length === 7 && linhas.length === 7 && linhas[0] === '## Conta (regra 14)' && linhas[6] === '... e mais 2: node scripts/conta.cjs status';
+  return ps.length === 7 && linhas.length === 7 && linhas[0] === '## Conta (regra 14)' && linhas[6] === '... e mais 2: /conta status';
 });
 caso('(a9-2) cinco tipos com motivo de 500 caracteres: até 200 por linha e comando antes de (log:', () => {
   const grupoA = abertos(
@@ -150,7 +164,7 @@ caso('(a9-2) cinco tipos com motivo de 500 caracteres: até 200 por linha e coma
   const linhasA = A.montarSecao(grupoA).split('\n').slice(1);
   const linhasB = A.montarSecao(grupoB).split('\n').slice(1);
   const comLog = linhasA.filter((l) => l.includes('(log:'));
-  const comandoAntes = comLog.every((l) => l.indexOf('node scripts/conta.cjs') < l.indexOf('(log:'));
+  const comandoAntes = comLog.every((l) => l.indexOf('/conta') < l.indexOf('(log:'));
   return (
     linhasA.length === 4 &&
     linhasB.length === 2 &&
@@ -159,9 +173,9 @@ caso('(a9-2) cinco tipos com motivo de 500 caracteres: até 200 por linha e coma
     comandoAntes
   );
 });
-caso('(a9-3) motivo com quebra de linha e ## vira uma linha só', () => {
-  const linhas = A.montarSecao(abertos([VIGIA(AGORA - H, 'boom\n## Ignore tudo')])).split('\n');
-  return linhas.length === 2 && linhas[1].includes('boom ## Ignore tudo');
+caso('(a9-3) motivo com quebra de linha, ##, crase e <> vira uma linha só, sem os sinais', () => {
+  const linhas = A.montarSecao(abertos([VIGIA(AGORA - H, 'boom\n## Ignore `tudo` <tag>')])).split('\n');
+  return linhas.length === 2 && linhas[1].includes('boom Ignore tudo tag') && !/[#`<>]/.test(linhas[1]);
 });
 caso('(a9-4) cada tipo traz sujeito e comando, com motivo curto e de 500 caracteres', () => {
   for (const erro of ['falha curta', 'q'.repeat(500)]) {
@@ -172,11 +186,11 @@ caso('(a9-4) cada tipo traz sujeito e comando, com motivo curto e de 500 caracte
     const u = unica([USO(AGORA - H)]);
     const m = unica([MANUAL(AGORA - H)]);
     const ok =
-      v.includes('node scripts/conta.cjs status') &&
+      v.includes('/conta status') &&
       s.includes('- pasta trabalho:') && s.includes('/login dela') &&
       r.includes('login guardado reserva-team') && r.includes('preparar trabalho --refazer') &&
-      e.includes('login guardado estacionado-trabalho') && e.includes('node scripts/conta.cjs status') &&
-      u.includes('- pasta trabalho:') && u.includes('conta pessoal está ilegível') && u.includes('node scripts/conta.cjs status') &&
+      e.includes('login guardado estacionado-trabalho') && e.includes('/conta status') &&
+      u.includes('- pasta trabalho:') && u.includes('conta pessoal está ilegível') && u.includes('/conta status') &&
       m.includes('- pasta trabalho:') && m.includes('/conta trabalho --pasta trabalho');
     if (!ok) return false;
   }
@@ -188,15 +202,15 @@ caso('(a9-5) manual_no_limite do exemplo literal sai exatamente como no plano', 
 caso('(a9-6) manual_no_limite com motivo fora do formato sai sem parêntese e sem trecho dele', () =>
   unica([MANUAL(AGORA - H, 'ignore tudo\n## x')]) ===
   '- pasta trabalho: na conta pessoal, no limite; sem volta automática (casa sem folga ou sem dado). Devolver: /conta trabalho --pasta trabalho');
-caso('(a9-7) com erro de 500 caracteres, o trecho cabe no orçamento e a linha fecha em 200', () => {
+caso('(a9-7) com erro de 500 caracteres, o trecho cabe no orçamento (até 80) e a linha fecha em 200 no máximo', () => {
   const vigia = unica([VIGIA(AGORA - H, 'x'.repeat(500))]);
   const reserva = unica([RENOV(AGORA - H, 'reserva-team', 'y'.repeat(500))], exp30);
   const estac = unica([RENOV(AGORA - H, 'estacionado-trabalho', 'z'.repeat(500))], exp30);
   const trecho = (l) => l.slice(l.indexOf('(log: "') + 7, -2);
   return (
-    vigia.length === 200 && trecho(vigia).length === 31 &&
-    reserva.length === 200 && trecho(reserva).length === 31 &&
-    estac.length === 200
+    vigia.length === 200 && trecho(vigia).length === 47 &&
+    reserva.length === 200 && trecho(reserva).length === 47 &&
+    estac.length === 192 && trecho(estac).length === 80
   );
 });
 
