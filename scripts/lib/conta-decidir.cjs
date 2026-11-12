@@ -7,7 +7,7 @@
 //             P = {
 //               casa:      'team' | 'pessoal'   conta cujo login é o próprio desta pasta,
 //               conta:     'team' | 'pessoal'   conta em uso agora (igual a casa = não trocada),
-//               manual:    boolean              troca manual (D8): nunca recebe ação automática,
+//               manual:    boolean              troca manual (D8): em casa nunca recebe ação; fora de casa volta com folga na casa (D3),
 //               travouPor: { limite: 'five_hour' | 'seven_day', resetsAt: ISO } | null,
 //               expiresAt: ISO | ms             validade do access token em uso
 //               estacionado: { expiresAt } | undefined  login da pasta guardado enquanto ela
@@ -25,8 +25,9 @@
 //   agora:    ms ou ISO
 //
 // Regras (D1, D3, D4, D8, D11):
-//   - pasta manual nunca recebe ação automática; fora de casa, com a conta em uso no trocarEm,
-//     recebe 'avisar' (#584), que só vira aviso no vigia e não move nada;
+//   - pasta manual fora de casa com a conta em uso no limite e a conta de casa com folga volta
+//     (D3 de conta-reserva-avisa); sem folga, sem dado da casa ou sem estacionado, recebe 'avisar'
+//     (#584), que só vira aviso no vigia e não move nada; pasta manual em casa não recebe ação;
 //   - pasta em casa: troca para a outra conta quando a em uso chega a trocarEm (>=) na
 //     five_hour OU na seven_day, SÓ se a outra está abaixo de destinoMax5h (<) na 5 h E
 //     abaixo de destinoMaxSemana (<) na semana, E tem reserva;
@@ -55,6 +56,11 @@ function decidir({ pastas, usos, reservas, config, agora }) {
   for (const nome of Object.keys(pastas)) {
     const pasta = pastas[nome];
     if (pasta.manual) {
+      const volta = voltaManual(nome, pasta, usos, config, agoraMs);
+      if (volta) {
+        acoes.push(volta);
+        continue;
+      }
       const aviso = avisoManual(nome, pasta, usos, config);
       if (aviso) acoes.push(aviso);
       continue;
@@ -86,6 +92,22 @@ function avisoManual(nome, pasta, usos, config) {
     limite,
     resetsAt: uso[limite].resets_at,
   };
+}
+
+// D3 de conta-reserva-avisa: a pasta trocada na mão volta quando a conta em uso chega ao limite e a
+// conta de casa tem folga. Sem folga, sem dado da casa ou sem login estacionado, devolve null e o
+// avisoManual segue. A volta passa pela mesma checarVida da volta comum e grava 'voltar'.
+function voltaManual(nome, pasta, usos, config, agoraMs) {
+  if (pasta.conta === pasta.casa) return null;
+  const uso = usos[pasta.conta];
+  if (!dadosCompletos(uso)) return null;
+  const limite = LIMITES.find((l) => uso[l].utilization >= config.trocarEm);
+  if (!limite) return null;
+  const casaUso = usos[pasta.casa];
+  const folga = dadosCompletos(casaUso) && casaUso.five_hour.utilization < config.destinoMax5h && casaUso.seven_day.utilization < config.destinoMaxSemana; // D3 (conta-reserva-avisa)
+  if (!folga || !pasta.estacionado) return null;
+  const motivo = `${limite} de ${pasta.conta} em ${uso[limite].utilization}% (>= ${config.trocarEm})`;
+  return checarVida(nome, pasta.casa, pasta, pasta.estacionado.expiresAt, agoraMs, 'voltar', motivo);
 }
 
 function decidirVolta(nome, pasta, agoraMs) {
