@@ -733,7 +733,14 @@ caso_y() {
     && [ "$RC_Y6" -eq 1 ] && contem "$(cat "$RAIZ/y6.txt")" "erro: JSON inválido" && [ ! -e "$C_Y6/dados/contas/eventos.jsonl" ]
 }
 afirma "trecho de token de arquivo corrompido não aparece em nenhuma saída nem evento" caso_y
-afirma "arquivo corrompido: a trava é solta e nada é movido" test ! -e "$C_Y/dados/contas/vigia.lock" -a ! -e "$C_Y/dados/contas/eventos.jsonl"
+# Desde a D2 de conta-reserva-avisa a rodada que aborta grava um vigia_falhou; "nada é movido"
+# passa a ser: nenhum evento além dele.
+caso_y_nada() {
+  [ ! -e "$C_Y/dados/contas/vigia.lock" ] || return 1
+  [ -e "$C_Y/dados/contas/eventos.jsonl" ] || return 0
+  ! grep -v '"tipo":"vigia_falhou"' "$C_Y/dados/contas/eventos.jsonl" | grep -q .
+}
+afirma "arquivo corrompido: a trava é solta e nada é movido" caso_y_nada
 
 # (z) renovarOciosos só renova o que o vigia guarda (reserva-* e estacionado-*), nunca o login de uma
 # pasta: quem usa a pasta é uma sessão, que renova o próprio token, e o refresh token é de uso único
@@ -1099,6 +1106,39 @@ cli "$C_ML4" vigiar > "$RAIZ/ml4b.txt" 2>&1 || true
 API="$API_PRINCIPAL"
 afirma "#584: estouro sem resets_at registra um manual_no_limite só, em duas rodadas" \
   test "$(grep -c '"tipo":"manual_no_limite"' "$C_ML4/dados/contas/eventos.jsonl" 2>/dev/null || true)" = 1
+
+# #693 D3: pasta trabalho trocada na mão para a pessoal, com a pessoal a 100% na semana e a team com
+# folga (10% e 10%), e login estacionado vivo. O vigia devolve a pasta à team (voltar): o login que
+# volta é o estacionado, sem renovação (os tokens valem até 2100), e a pasta fica com manual false.
+echo "== #693 D3: pasta manual volta com folga na casa =="
+C_D3="$(novo_caso d3 sim)"
+node "$RAIZ/ajustar.cjs" trocado "$C_D3"
+node -e "const fs=require('fs');const a=process.argv[1];const e=JSON.parse(fs.readFileSync(a,'utf8'));e.pastas.trabalho.manual=true;e.pastas.trabalho.travouPor=null;fs.writeFileSync(a,JSON.stringify(e))" "$C_D3/dados/contas/estado.json"
+node -e "const fs=require('fs');for(const a of process.argv.slice(1)){const e=JSON.parse(fs.readFileSync(a,'utf8'));e.claudeAiOauth.expiresAt=4102444800000;fs.writeFileSync(a,JSON.stringify(e))}" "$C_D3/dados/contas/estacionado-trabalho.json" "$C_D3/dados/contas/reserva-team.json"
+D3_USO='{"tokens":{"falso-pessoal-pasta":{"uso7":100},"falso-pessoal-reserva":{"uso7":100},"falso-team-pasta":{"uso5":10,"uso7":10},"falso-team-reserva":{"uso5":10,"uso7":10}}}'
+node "$RAIZ/derivar.cjs" "$RAIZ/mapa.json" "$RAIZ/mapa-d3.json" "$D3_USO"
+iniciar_servidor "$RAIZ/mapa-d3.json" "$RAIZ/porta-d3.txt"
+API_D3="$API"
+API="$API_PRINCIPAL"
+EV_D3="$C_D3/dados/contas/eventos.jsonl"
+REF_EST_D3="$(ler "$C_D3/dados/contas/estacionado-trabalho.json" claudeAiOauth.refreshToken)"
+RC_D3=0
+API="$API_D3"
+cli "$C_D3" vigiar > "$RAIZ/d3.txt" 2>&1 || RC_D3=$?
+API="$API_PRINCIPAL"
+caso_d3_i1() { [ "$RC_D3" -eq 0 ] && contem "$(cat "$RAIZ/d3.txt")" "voltar trabalho: pessoal -> team"; }
+caso_d3_i5() {
+  grep -qF '"tipo":"voltar"' "$EV_D3" \
+    && [ "$(grep -c '"tipo":"manual_no_limite"' "$EV_D3" || true)" = 0 ]
+}
+afirma "(d3-i1) vigiar sai 0 e a saída diz voltar trabalho: pessoal -> team" caso_d3_i1
+afirma "(d3-i2) estado.json com pastas.trabalho.conta = team" \
+  test "$(ler "$C_D3/dados/contas/estado.json" pastas.trabalho.conta)" = team
+afirma "(d3-i3) pastas.trabalho.manual = false depois da volta" \
+  test "$(ler "$C_D3/dados/contas/estado.json" pastas.trabalho.manual)" = false
+afirma "(d3-i4) o refreshToken da pasta trabalho é o do estacionado lido antes da rodada" \
+  test "$(ler "$C_D3/trabalho/.claude/.credentials.json" claudeAiOauth.refreshToken)" = "$REF_EST_D3"
+afirma "(d3-i5) evento voltar gravado e nenhum manual_no_limite no log" caso_d3_i5
 
 # #585: /login feito fora do conta.cjs. O estado diz trabalho na conta pessoal (troca manual), mas
 # a pasta recebeu um login novo da team (o /login grava .credentials.json e o oauthAccount). O

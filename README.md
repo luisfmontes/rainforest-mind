@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-plugin-2e8b57?style=flat-square" alt="Claude Code plugin">
-  <img src="https://img.shields.io/badge/vers%C3%A3o-2.12.2-1e5c3f?style=flat-square" alt="versão 2.12.2">
+  <img src="https://img.shields.io/badge/vers%C3%A3o-2.13.0-1e5c3f?style=flat-square" alt="versão 2.13.0">
   <img src="https://img.shields.io/badge/instala%C3%A7%C3%A3o-1_comando-6fcf97?style=flat-square" alt="uma instalação">
   <img src="https://img.shields.io/badge/runtime-Node-9fd8ba?style=flat-square" alt="runtime Node">
 </p>
@@ -211,9 +211,13 @@ de ADVPL/TLPP, sem caixa) e, quando o mesmo nome já está definido em outro arq
 `--`) depois de casar como identificador; orçamento de 3 s e falha aberta. Em Protheus, `User Function`
 repetida colide no RPO. A chave `aviso-duplicata` desliga.
 
-Um hook avisa sem barrar (exit 0 com `additionalContext`): `idioma-session-start.cjs`
+Dois hooks avisam sem barrar (exit 0 com `additionalContext`). O `idioma-session-start.cjs`
 (`SessionStart` na compactação) reinjeta o idioma da chave `idioma` do config,
-que escorregava depois de compactar.
+que escorregava depois de compactar. O `conta-aviso-sessao.cjs` (`SessionStart` e
+`UserPromptSubmit`) lê só o `<dados>/contas/eventos.jsonl`, sem rede, e injeta os problemas
+de conta abertos que a sessão ainda não viu, uma vez por sessão e problema, até 7 dias, no
+máximo 5 linhas de 200 caracteres mais a linha de excedente
+([Troca automática de conta](#troca-automática-de-conta)).
 
 Fora da tabela porque o mecanismo é outro (`Stop`, exit 0 com
 `{"decision":"block"}`, e **opt-in** pela chave `gate-review-codex`):
@@ -308,7 +312,7 @@ scripts com exit code: [`docs/travas-mecanicas.md`](docs/travas-mecanicas.md)
 | `/vigiar <contato>` | Acompanha uma conversa de WhatsApp sem gastar token e acorda a sessão quando a pessoa escreve. Exige a integração `integracao-whatsapp-mcp` ligada e a bridge da conta de pé; o fluxo mora no repo [whatsapp-mcp](https://github.com/luisfmontes/whatsapp-mcp) |
 | `/regua` | Régua externa nomeada, builder contra crítico cego — para o que não tem teste. A Fase 0 destila a régua em 5-7 mecanismos conferíveis por olho em `docs/rainforest/reguas/<slug>.md` (o builder não os vê; o crítico sim) e faz o preflight de renderização, nomeando qual crítico ficaria cego. A régua é **selada pelo commit que a adicionou**: `scripts/conferir-regua.cjs` (`validar` antes de selar, `conferir`, `mostrar`) recusa régua alterada depois, e `mostrar` é o único caminho que a imprime. A partir da 2ª rodada, um segundo crítico cego compara o novo com o melhor guardado e decide **keep/discard** sozinho; as rodadas ficam num TSV versionado |
 | `/transferir` | Leva a sessão atual para o Codex. Sem argumento: uma thread Codex retomável por `codex resume <id>`, exige `transfer-codex` ligado no `/setup`. `/transferir claude` foi retirado: sai com exit 2 e aponta o `/conta` |
-| `/conta` | Sem argumento: a conta em uso de cada pasta e o uso das duas contas. `/conta pessoal` ou `/conta trabalho`: troca na mão a pasta da sessão (`--pasta` escolhe a outra) (sem volta automática até a próxima troca manual). `/conta preparar pessoal\|trabalho`: prepara o login de reserva. `/conta unificar [--aplicar] [--profile <arquivo>]`: junta a pasta pessoal na de trabalho, com relatório antes de gravar ([passo a passo](#juntar-as-duas-pastas-numa-só)). Recusa com o Claude aberto, até no relatório: rode num terminal sem Claude aberto. É a forma de trocar a conta de uma pasta, no lugar do antigo `/transferir claude`. Detalhe na seção [Troca automática de conta](#troca-automática-de-conta) |
+| `/conta` | Sem argumento: a conta em uso de cada pasta e o uso das duas contas. `/conta pessoal` ou `/conta trabalho`: troca na mão a pasta da sessão (`--pasta` escolhe a outra); a pasta volta para casa quando a conta escolhida chega ao limite e a de casa tem folga. `/conta preparar pessoal\|trabalho`: prepara o login de reserva. `/conta unificar [--aplicar] [--profile <arquivo>]`: junta a pasta pessoal na de trabalho, com relatório antes de gravar ([passo a passo](#juntar-as-duas-pastas-numa-só)). Recusa com o Claude aberto, até no relatório: rode num terminal sem Claude aberto. É a forma de trocar a conta de uma pasta, no lugar do antigo `/transferir claude`. Detalhe na seção [Troca automática de conta](#troca-automática-de-conta) |
 | `/ponte` | Gera `CLAUDE.md`, `AGENTS.md` ou `GEMINI.md` ([detalhe](docs/pontes.md)) |
 | `modo-dev` | Escada YAGNI, causa raiz antes de remendo, rastreabilidade do diff |
 | `depurar` | Constrói o loop de feedback **antes** de qualquer hipótese; um diagnóstico cego, que recebe só o sintoma e o repro, concorre com as hipóteses da sessão |
@@ -335,9 +339,19 @@ Uma conta do Claude Code tem limite de 5 h e de semana. Quando a conta de uma pa
 
 - **Na troca:** a pasta troca de conta quando passa de 97% na janela de 5 h ou na semana. O destino só entra se estiver abaixo de 60% (5 h) e de 85% (semana). A troca vale nos dois sentidos, e misturar a conta da organização com a pessoal é permitido.
 - **Na volta:** a pasta volta para a conta dela quando o limite que travou zera, pela data de reset que o servidor devolve.
-- **Na troca manual:** `/conta pessoal` ou `/conta trabalho` troca a pasta na hora. Troca manual não volta sozinha: a pasta fica na conta escolhida até a próxima troca manual. Quando a conta em uso dela passa de 97%, o vigia avisa uma vez por estouro (`manual_no_limite`), com o `/conta` que devolve a pasta.
+- **Na troca manual:** `/conta pessoal` ou `/conta trabalho` troca a pasta na hora. A pasta fica na conta escolhida até a conta em uso chegar a 97% (`trocarEm`) na janela de 5 h ou na semana. Nesse ponto ela volta para casa sozinha (evento `voltar`), desde que a conta de casa esteja abaixo de 60% (5 h) e de 85% (semana) e o login dela esteja guardado. Sem essa folga, sem dado de uso da casa ou sem o login guardado, o vigia só avisa, uma vez por estouro (`manual_no_limite`), com o `/conta` que devolve a pasta.
 - **O estado segue o login:** se o login de uma pasta é de outra conta que não a que o estado diz (um `/login` feito por fora, ou um desfazer que falhou), o vigia, o `/conta` e a troca alinham o estado ao login, sem mover credencial, e registram `reconciliado`. Sem a trava, o `/conta` só mostra a divergência na linha da pasta. Quando a pasta volta para casa assim, o login guardado antigo dela vira `estacionado-<pasta>.orfao-<data>.json`, porque no lugar ele travaria a próxima troca. Se o arquivo estiver preso (antivírus, indexador), a rodada seguinte tenta de novo, e o aviso da falha repetida volta no máximo uma vez por hora.
 - **Nas sessões:** toda troca e toda volta aparece como aviso nas sessões abertas e gera uma linha em `<dados>/contas/eventos.jsonl`.
+- **O que trava a troca também chega à sessão:** o hook `conta-aviso-sessao.cjs` lê o `eventos.jsonl` e põe no contexto da sessão uma linha por problema aberto, com o comando que resolve (`/conta status`, `/conta preparar <conta> --refazer` ou `/conta <conta> --pasta <pasta>`, que funcionam em qualquer repositório). Os problemas e os eventos que os abrem:
+  - `pasta_sem_credencial`: uma pasta ficou sem `.credentials.json`. O vigia não aborta mais por isso: deixa essa pasta fora da decisão e decide pela outra. O evento sai uma vez enquanto a falta durar, e `pasta_com_credencial` o fecha quando o login volta.
+  - `vigia_falhou`: a rodada do vigia abortou. Grava uma vez por motivo; uma rodada concluída depois fecha o problema.
+  - `uso_ilegivel`: a conta em uso de uma pasta fora de casa ficou 30 min sem dado de uso. Sem ele, nem a volta nem o aviso de limite disparam. Quando o dado volta, o vigia grava `uso_legivel` e o problema fecha.
+  - `manual_no_limite`: a pasta manual chegou ao limite e não pôde voltar. Quando a conta em uso cai abaixo do limite, ou a pasta deixa a troca manual, o vigia grava `manual_fora_do_limite` e o problema fecha.
+  - A falha de renovação de um login guardado (`renovacao_falhou`) também entra, e fecha quando o login renova.
+
+  O texto que vem do log (o motivo da falha) entra sem quebra de linha e sem `#`, crase, `<` e `>`.
+
+  Cada problema aparece uma vez por sessão, até 7 dias depois do evento, em no máximo 5 linhas de até 200 caracteres; o que passar vira uma linha `... e mais N`. O mesmo problema que se repete na mesma sessão não é anunciado de novo.
 - **O vigia:** uma tarefa agendada do Windows roda a cada 1 minuto (`schtasks`), consulta o uso das duas contas e faz a troca. Cada rodada leva ~0,7 s e não fica nenhum processo residente; uma trava impede duas rodadas ao mesmo tempo. `node scripts/conta.cjs agendar` cria a tarefa `\ClaudeVigias\troca-de-conta` com `/SC MINUTE /MO 1`, sem data de fim (`/ED`), e só roda depois que as duas reservas existem; `agendar --imprimir` só mostra o comando, sem chamar o `schtasks`; `desagendar` remove a tarefa.
 - **Uma credencial nunca fica em dois lugares:** a troca move o login, nunca copia. Cada conta tem uma reserva guardada fora das duas pastas, e antes de mover os dois logins precisam ter pelo menos 30 min de vida no access token (exceção: o login que sai da pasta, vencido há mais de 10 min, dispensa a guarda, porque nenhuma sessão usa a pasta). A troca manual (`/conta pessoal|trabalho`) segue a mesma guarda e, ao recusar, diz qual login está curto e quando tentar de novo. A conferência é feita no servidor depois da troca; se não bater, a troca é desfeita; se nem o desfazer der certo, o aviso diz que a troca ficou pela metade ou não pôde ser desfeita e manda conferir com `/conta`.
 - **Pré-requisito:** com as duas pastas, a troca automática só liga depois de `/conta preparar pessoal` e `/conta preparar trabalho`, um login no navegador por conta. Com uma pasta só, basta `/conta preparar pessoal`.

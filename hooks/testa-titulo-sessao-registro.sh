@@ -84,7 +84,9 @@ echo "contagem: $RES3"
 # Em 2026-10-14 (gate-matar-por-nome, #517): PreToolUse 17 -> 18 com
 # hooks/gate-matar-por-nome.cjs (matcher Bash|PowerShell, no fim do grupo).
 # Em 2026-10-28 (colheita-observacoes, D6): Stop 5 -> 6 com hooks/gate-pergunta-memoria.cjs.
-if [ "$RES3" = '{"SessionStart":7,"PreToolUse":18,"Stop":6,"UserPromptSubmit":2}' ]; then
+# Em 2026-11-12 (conta-reserva-avisa, hooks/conta-aviso-sessao.cjs): SessionStart 7 -> 8 (grupo
+# novo ao fim) e UserPromptSubmit 2 -> 3 (ao fim do grupo existente).
+if [ "$RES3" = '{"SessionStart":8,"PreToolUse":18,"Stop":6,"UserPromptSubmit":3}' ]; then
   ok=$((ok+1)); echo "  ok    JSON valido e contagem de SessionStart/PreToolUse/Stop/UserPromptSubmit preservada"
 else
   falhou=$((falhou+1)); echo "  FALHA contagem mudou (ou JSON invalido): $RES3"

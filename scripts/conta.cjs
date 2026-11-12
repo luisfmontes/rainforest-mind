@@ -25,6 +25,7 @@ const { mover, gravarAtomico: gravarCred, prefixo: prefixoDoLogin } = require('.
 const { acharExecutavelClaude } = require('./lib/achar-executavel-claude.cjs');
 const API = require('./lib/conta-api.cjs');
 const UNIFICAR = require('./lib/conta-unificar.cjs');
+const AVISOS = require('./lib/conta-avisos.cjs');
 const { sessoesVivas, JANELA_COLOCADA_MS } = require('../hooks/lib/contexto-sessao.cjs');
 
 // Padrão dos limiares (D4). Vale o que o arquivo <dados>/contas/config.json diz, chave a chave.
@@ -34,7 +35,7 @@ const TRAVA_MS = 5 * 60 * 1000;
 const GUARDA_MS = 30 * 1000;
 const ESPERA_TRAVA_MS = 30 * 1000;
 const RECUO_MS = 15 * 60 * 1000;
-const RENOVAR_ANTES_MS = 60 * 60 * 1000;
+const { RENOVAR_ANTES_MS } = AVISOS;
 const LEITURA_MAX_MS = 15 * 60 * 1000;
 // Aviso repetido (mesmo tipo e motivo) não vira uma linha por minuto: 1 por hora.
 const AVISO_REPETIDO_MS = 60 * 60 * 1000;
@@ -80,11 +81,7 @@ function pastaDaSessao() {
 // credencial dentro do repositório dele, separada da que o vigia agendado lê. Por isso o
 // "projeto" aqui é o home (nível 2 e 3 da cadeia coincidem em ~/.rainforest).
 function dadosDir() {
-  if (process.env.RFM_CONTA_DADOS) return process.env.RFM_CONTA_DADOS;
-  const raiz = require('../hooks/lib/raiz.cjs').resolverRaiz({
-    cwd: os.homedir(),
-    plugin: path.resolve(__dirname, '..'),
-  }).raiz;
+  const raiz = AVISOS.dadosDir({ env: process.env, home: os.homedir(), plugin: path.resolve(__dirname, '..') });
   if (!raiz) throw new Error('sem pasta de dados do rainforest (defina RFM_CONTA_DADOS)');
   return raiz;
 }
@@ -328,6 +325,17 @@ function lerEventos(c) {
     }
   }
   return validos;
+}
+
+// Leitura do log que só serve de contabilidade da rodada (D1, D4, D7 de conta-reserva-avisa): erro de
+// leitura que não seja ENOENT (EISDIR, EBUSY, EACCES) vale "sem evento". A base só lia o log ao gravar,
+// e um log ilegível não derrubava a decisão (revisão 2, achado 1).
+function eventosDaRodada(c) {
+  try {
+    return lerEventos(c);
+  } catch {
+    return [];
+  }
 }
 
 // Evento de diagnóstico que pode se repetir enquanto o problema durar.
@@ -594,24 +602,22 @@ function carimboLocal(agora = new Date()) {
 // menos de 1 h): login que já foi renovado depois da falha, ou que sumiu, não aparece. Lê só os
 // eventos (que não levam credencial) e o expiresAt do arquivo.
 function falhasDeRenovacao(c) {
-  const ultima = new Map();
-  for (const { ev } of lerEventos(c)) {
-    if (ev.tipo !== 'renovacao_falhou' || typeof ev.motivo !== 'string') continue;
-    const m = /^([\w-]+): (.*)$/.exec(ev.motivo);
-    if (m) ultima.set(m[1], { em: ev.em, erro: m[2] });
-  }
-  const linhas = [];
-  for (const [nome, f] of ultima) {
-    let login;
+  const eventos = lerEventos(c).map(({ ev }) => ev);
+  // expiresAt do login guardado (null sem arquivo ou em erro). O critério mora na lib, que o hook usa também.
+  const expiraEm = (nome) => {
     try {
-      login = (lerJson(path.join(c.contas, `${nome}.json`), null) || {}).claudeAiOauth;
+      const login = (lerJson(path.join(c.contas, `${nome}.json`), null) || {}).claudeAiOauth;
+      return login ? Number(login.expiresAt) : null;
     } catch {
-      continue;
+      return null;
     }
-    if (!login || !(Number(login.expiresAt) - Date.now() < RENOVAR_ANTES_MS)) continue;
-    const conta = /^reserva-(\w+)$/.exec(nome);
+  };
+  const linhas = [];
+  const abertas = AVISOS.falhasDeRenovacao(eventos, expiraEm, Date.now()); // D5 (conta-reserva-avisa)
+  for (const f of abertas) {
+    const conta = /^reserva-(\w+)$/.exec(f.nome);
     const refazer = conta && NOME[conta[1]] ? `; se o servidor recusa, refaça: preparar ${NOME[conta[1]]} --refazer` : '';
-    linhas.push(`aviso: a renovação de ${nome} falhou em ${new Date(f.em).toISOString()} (${f.erro})${refazer}`);
+    linhas.push(`aviso: a renovação de ${f.nome} falhou em ${new Date(f.em).toISOString()} (${f.erro})${refazer}`);
   }
   return linhas;
 }
@@ -825,7 +831,7 @@ async function statusLido(c, sobTrava) {
       // Sem a trava não se grava: diz a divergência em vez do "troca manual" do estado velho.
       linha += ` · estado diverge: diz conta ${NOME[div.estado]}, o login é da conta ${NOME[div.login]} (a próxima rodada com a trava alinha)`;
     } else {
-      if (info.manual) linha += ' · troca manual (sem volta automática)';
+      if (info.manual) linha += ' · troca manual (volta se a conta em uso chegar ao limite e a de casa tiver folga)';
       if (info.travouPor) linha += ` · volta em ${info.travouPor.resetsAt}`;
     }
     if (conta && usos[conta]) {
@@ -924,27 +930,203 @@ async function trocar(c, args) {
   }
 }
 
+// D1 (conta-reserva-avisa): pasta sem .credentials.json fica fora da decisão e vira evento. O último
+// evento de credencial da pasta diz em que estado ela está (sem credencial ou com).
+function ultimoDaCredencial(c, P) {
+  const evs = eventosDaRodada(c)
+    .map(({ ev }) => ev)
+    .filter((ev) => ev.pasta === P && (ev.tipo === 'pasta_sem_credencial' || ev.tipo === 'pasta_com_credencial'));
+  return evs[evs.length - 1];
+}
+
+function avisarPastaSemCredencial(c, P) {
+  const u = ultimoDaCredencial(c, P);
+  if (u && u.tipo === 'pasta_sem_credencial') return;
+  registrarEvento(c, { tipo: 'pasta_sem_credencial', pasta: P, motivo: 'sem .credentials.json', manual: false });
+}
+
+function registrarCredencialVoltou(c, P) {
+  const u = ultimoDaCredencial(c, P);
+  if (!u || u.tipo !== 'pasta_sem_credencial') return;
+  registrarEvento(c, { tipo: 'pasta_com_credencial', pasta: P, motivo: '.credentials.json voltou', manual: false });
+}
+
+// Pasta que saiu de pastasAtivas() (renomeada, por exemplo) com um pasta_sem_credencial em aberto:
+// nenhuma rodada volta a vê-la, então o vigia fecha o evento aqui uma vez.
+function registrarPastaSaiuDeUso(c) {
+  const ativas = pastasAtivas();
+  for (const P of Object.keys(CONTA_CLI)) {
+    if (ativas.includes(P)) continue;
+    const u = ultimoDaCredencial(c, P);
+    if (u && u.tipo === 'pasta_sem_credencial') {
+      registrarEvento(c, { tipo: 'pasta_com_credencial', pasta: P, motivo: 'pasta saiu de uso', manual: false });
+    }
+  }
+}
+
+// D4 (conta-reserva-avisa): pasta fora de casa cuja conta em uso fica sem dado de uso por 30 min
+// seguidos grava uso_ilegivel uma vez por período. O início do período é estado.pastas[P].semUsoDesde;
+// dado de uso de volta, ou pasta em casa, zera o período. Sem o dado, nem a D3 nem o aviso de
+// limite disparam, e isso só saía no stderr.
+const SEM_USO_AVISAR_MS = 30 * 60 * 1000;
+
+// Revisão 1 de conta-reserva-avisa (achado 3): o uso_ilegivel e o manual_no_limite ficam abertos no hook
+// de sessão até um evento posterior da mesma pasta. Cada um ganha o próprio evento de fechamento
+// (uso_legivel, manual_fora_do_limite), gravado quando o aviso é o último entre ele, o fechamento dele
+// e os eventos que o hook já conta como resolução. Sem isso, o aviso chegava a toda sessão nova por até
+// 7 dias depois de o dado voltar ou de a conta sair do limite.
+const RESOLVEM_PASTA = ['trocar', 'voltar', 'reconciliado'];
+
+function avisoAberto(c, P, aviso, fecha) {
+  const tipos = new Set([aviso, fecha, ...RESOLVEM_PASTA]);
+  const da = eventosDaRodada(c).map(({ ev }) => ev).filter((ev) => ev.pasta === P && tipos.has(ev.tipo));
+  return da.length > 0 && da[da.length - 1].tipo === aviso;
+}
+
+function avisarUsoIlegivel(c, estado, pastas, usos) {
+  const agora = Date.now();
+  let mudou = false;
+  for (const P of Object.keys(pastas)) {
+    const info = estado.pastas[P];
+    const u = usos[info.conta];
+    const legivel = Boolean(u && u.five_hour && u.seven_day);
+    if (info.conta === info.casa || legivel) {
+      if (info.semUsoDesde !== undefined) {
+        delete info.semUsoDesde;
+        mudou = true;
+      }
+      if (avisoAberto(c, P, 'uso_ilegivel', 'uso_legivel')) {
+        registrarEvento(c, {
+          tipo: 'uso_legivel',
+          pasta: P,
+          de: info.conta,
+          motivo: legivel ? 'dado de uso voltou' : 'pasta em casa',
+          manual: info.manual,
+        });
+      }
+      continue;
+    }
+    if (info.semUsoDesde === undefined) {
+      info.semUsoDesde = agora;
+      mudou = true;
+    }
+    if (agora - info.semUsoDesde < SEM_USO_AVISAR_MS) continue; // D4 (conta-reserva-avisa)
+    const ja = eventosDaRodada(c).some(({ ev }) => ev.tipo === 'uso_ilegivel' && ev.pasta === P && ev.em >= info.semUsoDesde);
+    if (ja) continue;
+    const min = Math.floor((agora - info.semUsoDesde) / 60000);
+    registrarEvento(c, {
+      tipo: 'uso_ilegivel',
+      pasta: P,
+      de: info.conta,
+      para: info.casa,
+      motivo: `sem dado de uso de ${NOME[info.conta]} há ${min} min`,
+      manual: info.manual,
+    });
+  }
+  if (mudou) gravarEstado(c, estado);
+}
+
+// Fecha o manual_no_limite aberto quando a pasta deixou a situação (voltou para casa ou deixou de ser
+// manual) ou quando a conta em uso tem dado e está abaixo do trocarEm nas duas janelas. Sem dado, o
+// aviso continua aberto: não se sabe se a conta saiu do limite.
+function fecharManualNoLimite(c, estado, pastas, usos, config) {
+  for (const P of Object.keys(pastas)) {
+    const info = estado.pastas[P];
+    const u = usos[info.conta];
+    const naSituacao = Boolean(info.manual) && info.conta !== info.casa;
+    const abaixo = Boolean(u && u.five_hour && u.seven_day)
+      && u.five_hour.utilization < config.trocarEm && u.seven_day.utilization < config.trocarEm;
+    if (naSituacao && !abaixo) continue;
+    if (!avisoAberto(c, P, 'manual_no_limite', 'manual_fora_do_limite')) continue;
+    registrarEvento(c, {
+      tipo: 'manual_fora_do_limite',
+      pasta: P,
+      de: info.conta,
+      motivo: naSituacao ? 'conta em uso abaixo do limite' : 'pasta saiu da troca manual',
+      manual: info.manual,
+    });
+  }
+}
+
+// D2 (conta-reserva-avisa): a rodada que aborta grava vigia_falhou com a mensagem segura. Não
+// repete: grava só se o último vigia_falhou tem outro motivo, ou se uma rodada que chegou a decidir
+// (vigia-ok) é mais nova que ele. Sem essa checagem, um JSON ruim em estado.json grava um evento
+// por minuto.
+const VIGIA_OK = 'vigia-ok';
+
+function vigiaOkEm(c) {
+  try {
+    return fs.statSync(path.join(c.contas, VIGIA_OK)).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+
+// As duas funções engolem o próprio erro: a falha de gravar o evento ou a marca nunca troca a
+// exceção original da rodada, nem transforma em falha uma rodada que decidiu.
+function registrarVigiaFalhou(c, e) {
+  try {
+    const motivo = msgSegura(e);
+    const falhas = lerEventos(c).map(({ ev }) => ev).filter((ev) => ev.tipo === 'vigia_falhou');
+    const ultima = falhas[falhas.length - 1];
+    const okEm = vigiaOkEm(c);
+    const repetida = ultima !== undefined && ultima.motivo === motivo && !(okEm > ultima.em); // D2 (conta-reserva-avisa)
+    if (!repetida) registrarEvento(c, { tipo: 'vigia_falhou', motivo, manual: false });
+  } catch {
+    // nada: a exceção da rodada é a que sobe
+  }
+}
+
+function marcarVigiaOk(c) {
+  try {
+    fs.writeFileSync(path.join(c.contas, VIGIA_OK), String(Date.now()));
+  } catch {
+    // nada: sem a marca, o vigia_falhou anterior só fica aberto até a próxima rodada que grave
+  }
+}
+
 async function vigiar(c) {
+  try {
+    const { codigo, decidiu } = await vigiarRodada(c);
+    if (decidiu) marcarVigiaOk(c);
+    return codigo;
+  } catch (e) {
+    registrarVigiaFalhou(c, e);
+    throw e;
+  }
+}
+
+// Uma rodada. Devolve { codigo, decidiu }: decidiu é true só quando a rodada chegou a decidir.
+async function vigiarRodada(c) {
   const lock = c.lock;
   fs.mkdirSync(c.contas, { recursive: true });
-  if (!pegarTrava(lock)) return sair(0, 'outra rodada em curso');
+  if (!pegarTrava(lock)) return { codigo: sair(0, 'outra rodada em curso'), decidiu: false };
   try {
     const estado = lerEstado(c);
     // Antes da chave: o estado segue o login mesmo com a troca automática desligada (#585).
     await reconciliar(c, estado, true);
-    if (!estado.automatico) return sair(0, 'troca automática desligada: nada a fazer');
+    if (!estado.automatico) return { codigo: sair(0, 'troca automática desligada: nada a fazer'), decidiu: false };
     if (await registrarCasas(c, estado, true)) gravarEstado(c, estado);
     // Antes de renovar: renovar um login que está em dois arquivos mata a cópia do outro.
     const duplicadas = credenciaisDuplicadas(c);
     if (duplicadas.length) {
       avisarDuplicadas(c, duplicadas);
-      return sair(1, 'o mesmo login está em dois arquivos: nada movido nem renovado');
+      return { codigo: sair(1, 'o mesmo login está em dois arquivos: nada movido nem renovado'), decidiu: false };
     }
     await renovarOciosos(c, estado);
 
     const pastas = {};
-    for (const P of pastasAtivas()) pastas[P] = infoPasta(c, estado, P);
+    for (const P of pastasAtivas()) {
+      if (!credDaPasta(c, P)) { // D1 (conta-reserva-avisa)
+        avisarPastaSemCredencial(c, P);
+        continue;
+      }
+      registrarCredencialVoltou(c, P);
+      pastas[P] = infoPasta(c, estado, P);
+    }
+    registrarPastaSaiuDeUso(c);
     const usos = await coletarUsos(c, estado);
+    avisarUsoIlegivel(c, estado, pastas, usos);
     const reservas = {};
     for (const conta of CONTAS) {
       const r = reservaPronta(c, conta);
@@ -952,6 +1134,7 @@ async function vigiar(c) {
     }
     const config = lerConfig(c);
     const acoes = decidir({ pastas, usos, reservas, config, agora: Date.now() });
+    fecharManualNoLimite(c, estado, pastas, usos, config);
 
     let codigo = 0;
     for (const a of acoes) {
@@ -999,7 +1182,7 @@ async function vigiar(c) {
       }
     }
     if (!acoes.length) console.log('sem ação');
-    return sair(codigo, codigo ? 'alguma ação não foi feita' : 'rodada concluída');
+    return { codigo: sair(codigo, codigo ? 'alguma ação não foi feita' : 'rodada concluída'), decidiu: true };
   } finally {
     soltarTrava(lock);
   }

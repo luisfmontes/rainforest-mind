@@ -64,10 +64,12 @@ QTD="$(node -e '
 # 7 desde 2026-10-06: entrou hooks/idioma-session-start.cjs (#401), com matcher
 # "compact". Ele escreve, mas so na compactacao; na abertura (source startup)
 # sai mudo mesmo com a chave `idioma` ligada — provado logo abaixo.
-if [ "$QTD" = "7" ]; then
-  ok=$((ok+1)); echo "  ok   SessionStart continua com 7 hooks"
+# 8 desde 2026-11-12: entrou hooks/conta-aviso-sessao.cjs (conta-reserva-avisa). Sem
+# eventos.jsonl ele sai mudo na abertura, provado logo abaixo.
+if [ "$QTD" = "8" ]; then
+  ok=$((ok+1)); echo "  ok   SessionStart continua com 8 hooks"
 else
-  falhou=$((falhou+1)); echo "  FALHA SessionStart tem $QTD hooks, esperava 7"
+  falhou=$((falhou+1)); echo "  FALHA SessionStart tem $QTD hooks, esperava 8"
 fi
 PROJ="$DADOS/projeto-idioma"; mkdir -p "$PROJ/.rainforest"
 echo '{"idioma":"ingles"}' > "$PROJ/.rainforest/config.json"
@@ -79,6 +81,13 @@ if [ -z "$SAIDA_ID" ] && printf '%s' "$SAIDA_IC" | grep -q 'ingles'; then
   ok=$((ok+1)); echo "  ok   idioma-session-start mudo na abertura (e fala na compactacao: controle)"
 else
   falhou=$((falhou+1)); echo "  FALHA idioma-session-start na abertura: '$SAIDA_ID' / compact: '$SAIDA_IC'"
+fi
+EVENTO_CS="$(node -e 'process.stdout.write(JSON.stringify({hook_event_name:"SessionStart",session_id:"s-abertura",source:"startup",cwd:process.argv[1]}))' "$PROJ")"
+SAIDA_CS="$(printf '%s' "$EVENTO_CS" | env -u RFM_CONTA_DADOS RFM_ROOT="$DADOS" node "$SRC/hooks/conta-aviso-sessao.cjs" 2>/dev/null)"; RC_CS=$?
+if [ -z "$SAIDA_CS" ] && [ "$RC_CS" = "0" ]; then
+  ok=$((ok+1)); echo "  ok   conta-aviso-sessao mudo na abertura (sem eventos.jsonl na caixa)"
+else
+  falhou=$((falhou+1)); echo "  FALHA conta-aviso-sessao na abertura: '$SAIDA_CS' (exit $RC_CS)"
 fi
 
 echo

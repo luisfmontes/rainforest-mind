@@ -49,6 +49,15 @@
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/idioma-session-start.cjs\""
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/conta-aviso-sessao.cjs\"",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -190,6 +199,11 @@
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/memoria-assunto-prompt.cjs\"",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/conta-aviso-sessao.cjs\"",
+            "timeout": 5
           }
         ]
       }
