@@ -733,7 +733,14 @@ caso_y() {
     && [ "$RC_Y6" -eq 1 ] && contem "$(cat "$RAIZ/y6.txt")" "erro: JSON inválido" && [ ! -e "$C_Y6/dados/contas/eventos.jsonl" ]
 }
 afirma "trecho de token de arquivo corrompido não aparece em nenhuma saída nem evento" caso_y
-afirma "arquivo corrompido: a trava é solta e nada é movido" test ! -e "$C_Y/dados/contas/vigia.lock" -a ! -e "$C_Y/dados/contas/eventos.jsonl"
+# Desde a D2 de conta-reserva-avisa a rodada que aborta grava um vigia_falhou; "nada é movido"
+# passa a ser: nenhum evento além dele.
+caso_y_nada() {
+  [ ! -e "$C_Y/dados/contas/vigia.lock" ] || return 1
+  [ -e "$C_Y/dados/contas/eventos.jsonl" ] || return 0
+  ! grep -v '"tipo":"vigia_falhou"' "$C_Y/dados/contas/eventos.jsonl" | grep -q .
+}
+afirma "arquivo corrompido: a trava é solta e nada é movido" caso_y_nada
 
 # (z) renovarOciosos só renova o que o vigia guarda (reserva-* e estacionado-*), nunca o login de uma
 # pasta: quem usa a pasta é uma sessão, que renova o próprio token, e o refresh token é de uso único

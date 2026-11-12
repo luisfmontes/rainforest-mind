@@ -106,16 +106,16 @@ Caso de integração em `scripts/testa-conta.sh` (nova seção `#693 D3` logo de
 
 ### 3. D2: rodada que aborta vira evento [tipo: implementar]
 atende: D2
-arquivos: `scripts/conta.cjs`, `scripts/testa-conta-vigia-avisa.sh`
+arquivos: `scripts/conta.cjs`, `scripts/testa-conta-vigia-avisa.sh`, `scripts/testa-conta.sh`
 depende de: 1
 mutacao:
   arquivo: `scripts/conta.cjs`
   de: `const repetida = ultima !== undefined && ultima.motivo === motivo && !(okEm > ultima.em); // D2 (conta-reserva-avisa)`
   para: `const repetida = false; // D2 (conta-reserva-avisa)`
   bateria: `bash scripts/testa-conta-vigia-avisa.sh`
-  fixture: `testa-conta-vigia-avisa.sh, casos (d2-1) e (d2-3)`
+  fixture: `testa-conta-vigia-avisa.sh, caso (d2-1)`
 prova: `bash scripts/testa-conta-vigia-avisa.sh`
-pronto quando: com um home temporário no formato real e o `estado.json` com JSON inválido (`{`), duas rodadas seguidas de `node scripts/conta.cjs vigiar` saem 1, escrevem `erro: JSON inválido` no stderr (como hoje) e o `eventos.jsonl` ganha exatamente um `{"tipo":"vigia_falhou","motivo":"JSON inválido em estado.json"...}`; com o `estado.json` válido e o `.credentials.json` da pasta `trabalho` com JSON inválido, a rodada grava um segundo `vigia_falhou` com o motivo `JSON inválido em .credentials.json`; com tudo válido, a rodada sai 0 e cria o arquivo `<dados>/contas/vigia-ok`; com o mesmo erro de novo depois dessa rodada, grava um terceiro; com o `estado.json` válido mas `automatico: false`, a rodada sai 0 com `troca automática desligada` e NÃO cria nem toca `vigia-ok` (só a rodada que chegou a `decidir` o marca); nenhum desses eventos nem a saída contém o texto do arquivo corrompido (`falso-segredo-xyz` colocado dentro dele) — provado por `bash scripts/testa-conta-vigia-avisa.sh` terminando em `ok: 27   falhou: 0` com exit 0, e pela mutação acima deixando (d2-1) e (d2-3) vermelhos (a rodada com o mesmo erro passaria a gravar um evento por minuto).
+pronto quando: com um home temporário no formato real e o `estado.json` com JSON inválido (`{`), duas rodadas seguidas de `node scripts/conta.cjs vigiar` saem 1, escrevem `erro: JSON inválido` no stderr (como hoje) e o `eventos.jsonl` ganha exatamente um `{"tipo":"vigia_falhou","motivo":"JSON inválido em estado.json"...}`; com o `estado.json` válido e o `.credentials.json` da pasta `trabalho` com JSON inválido, a rodada grava um segundo `vigia_falhou` com o motivo `JSON inválido em .credentials.json`; com tudo válido, a rodada sai 0 e cria o arquivo `<dados>/contas/vigia-ok`; com o mesmo erro de novo depois dessa rodada, grava um terceiro; com o `estado.json` válido mas `automatico: false`, a rodada sai 0 com `troca automática desligada` e NÃO cria nem toca `vigia-ok` (só a rodada que chegou a `decidir` o marca); nenhum desses eventos nem a saída contém o texto do arquivo corrompido (`falso-segredo-xyz` colocado dentro dele) — provado por `bash scripts/testa-conta-vigia-avisa.sh` terminando em `ok: 26   falhou: 0` com exit 0 (14 da tarefa 1 + 12 de (d2-*), medido na integração), por `bash scripts/testa-conta.sh` terminando em `ok: 74   falhou: 0` (a asserção "arquivo corrompido: a trava é solta e nada é movido" passa a aceitar o `vigia_falhou` da D2 e nenhum outro evento), e pela mutação acima deixando (d2-1) vermelho (a rodada com o mesmo erro passaria a gravar um evento por minuto).
 
 Forma prescrita: renomear o `async function vigiar(c)` atual para `vigiarRodada(c)` (corpo intacto, exceto o que a tarefa 1 já fez) e criar acima dele
 
