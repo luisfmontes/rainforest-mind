@@ -1526,7 +1526,7 @@ caso_gate mx-3 2 $'eval ""\'echo \\"; gh pr merge 5\''
 caso_gate mx-4 2 $'time eval "echo"\' \\"; gh issue close 12\''
 caso_gate mx-5 2 $'eval "e"\'cho \\"\'"; gh pr merge 5"'
 caso_gate mx-6 0 $'eval "echo"\' \\"oi\''
-caso_gate mx-7 0 $'bash -c "gh issue view 12"\' --json \\"title\\"\''
+caso_gate mx-7 2 $'bash -c "gh issue view 12"\' --json \\"title\\"\''
 caso_gate mx-8 0 $'echo "a"\' \\"; gh issue close 12\''
 caso_gate ac-1 2 $'echo "$(echo \')\' ; gh issue $\'clo\\x73e\' 12)"'
 caso_gate ac-2 2 $'echo "$(echo \')\' ; gh issue $\'cl\\157se\' 12)"'
@@ -1535,6 +1535,10 @@ caso_gate ac-4 0 $'echo "$(echo \')\' ; echo $\'clo\\x73e\')"'
 # Revisao de seguranca do commit 60835732: o gh fora da palavra mista, e o \U de 8 digitos.
 caso_gate mx-9 2 $'eval "echo"\' \\"; gh\' issue close 12'
 caso_gate mx-10 2 $'eval "echo"\' \\";\' gh issue close 12'
+# Revisao de seguranca do commit f06775e7: flag entre substantivo e verbo, e expansao de chaves.
+caso_gate mx-11 2 $'eval "echo"\' \\"; gh issue -R o/r close 12\''
+caso_gate mx-12 2 $'eval "echo"\' \\"; gh issue {close,} 12\''
+caso_gate mx-13 2 $'eval "echo"\' \\"; gh pr --repo o/r merge 5\''
 caso_gate ac-5 2 $'echo "$(echo \')\' ; gh issue $\'clo\\U00000073e\' 12)"'
 
 # Caso (cm-5): espaco escapado antes do # nao abre comentario → exit 2 (D9 de gate-segmentador)

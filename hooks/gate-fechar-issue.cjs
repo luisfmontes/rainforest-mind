@@ -1507,6 +1507,13 @@ function temGhLiteralQueEscreve(texto) {
   return false;
 }
 
+// Algum `gh` no texto, em qualquer posicao (aspas, crase e contrabarra somem;
+// separadores de shell e chaves viram espaco). Usado so onde a leitura ja e
+// insegura (palavra de aspas mistas dentro de wrapper).
+function temGhQualquer(texto) {
+  return String(texto).replace(/\$(?=["'])/g, "").replace(/["'\x60\\]/g, "").split(/[\s;&|(){},]+/).some((p) => normalizarExecutavel(p) === "gh");
+}
+
 function ehSourceDeArquivo(toks, pos) {
   if (pos === null) return false;
   const exe = normalizarExecutavel(toks[pos].v);
@@ -1651,11 +1658,12 @@ function processarSegmento(segmento, mapaCwd, contadores, ferramenta) {
   // contrabarra (`"echo"' \"; gh issue close 12'`) tem a contrabarra reduzida
   // aqui pela regra da PRIMEIRA aspa, e o bash reduz cada trecho pela propria
   // aspa. Dentro de wrapper, com `gh` que escreve no texto dela, a leitura nao
-  // e segura: ilegivel. O `gh` pode estar em outra palavra (`eval "echo"' \";'
-  // gh issue close 12`, ou so o `gh` dentro da mista): a procura e no texto de
-  // todas as palavras depois do wrapper, nao so no da mista.
+  // e segura: ilegivel. Basta haver um `gh` qualquer no texto depois do wrapper:
+  // procurar so o `gh` de escrita deixava passar flag entre o substantivo e o
+  // verbo (`gh issue -R o/r close`) e expansao de chaves (`gh issue {close,}`),
+  // que o bash executa (revisao de seguranca do commit f06775e7).
   const depois = toksComAspas.slice(pos + 1);
-  const mistaComGh = interno !== null && depois.some((t) => t.mista && t.v.includes("\\")) && temGhLiteralQueEscreve(depois.map((t) => t.v).join(" "));
+  const mistaComGh = interno !== null && depois.some((t) => t.mista && t.v.includes("\\")) && temGhQualquer(depois.map((t) => t.v).join(" "));
   if (ilegivel || mistaComGh) {
     // Dentro de arquivo carregado, ilegivel so passa quando NAO ha `gh` que
     // fecha/cria literal no texto (D16: fica fora o `gh` montado de variavel).
