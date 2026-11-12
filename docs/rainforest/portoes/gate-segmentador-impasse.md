@@ -28,3 +28,13 @@ A opção A foi aplicada (D9 revogado, tarefas 16 e 17). A revisão 4 reprovou c
 | `tokensComAspas` não conhece `$'...'` (`FOO=$'\'' gh issue close 12`) | preexistente | Issue #692 |
 
 Nenhum achado reprovado é do D9 nem do here-string; o único do diff é de uma linha, e a correção não reabre decisão do design.
+
+## 5ª reprovação (revisão 5, sobre d3036ad)
+
+| achado | origem | situação |
+|---|---|---|
+| `eval echo\ x\;gh pr merge 5`, `bash -c echo\ \'x\'\;\ gh\ issue\ close\ 12` e variantes (14 no fuzz do revisor) saem 0 no HEAD, 2 na base, `gh` executado | D8: `textoAPartir` remonta token com espaço como `'...'` com `'\''`, que o desempacotador não reverte; `eval` com vários argumentos não junta os valores | aberto |
+| `echo it\'s; gh pr create --body-file b.md` barra (HEAD 2, base 0) | D2 × `cwd-efetivo.cjs` cego à contrabarra; falha fechada, caminho absoluto passa | aberto (baixa) |
+| texto de `gh` passado a `bash` por pipe de `echo` passa | preexistente | Issue #692 |
+
+**Leitura:** a quinta revisão seguida acha furo novo aberto pelo próprio diff, agora na remontagem do D8. O revisor rodou um fuzz (mais de 5000 comandos, bash real com stub) que a bateria não tem; cada rodada só descobre o furo na revisão.

@@ -18,7 +18,7 @@
     "em": "2026-11-11"
   },
   "executar": {
-    "status": "ok",
+    "status": "parcial",
     "catraca_mutacao": "2026-11-12",
     "tarefas_ok": 18,
     "tarefas": 18,
@@ -118,27 +118,31 @@
         "fixture": "testa-gate-fechar-issue.sh ad-6"
       }
     ],
-    "reaberturas": 4
+    "reaberturas": 5,
+    "reaberto_por": {
+      "estagio": "revisar",
+      "data": "2026-11-12"
+    }
   },
   "revisar": {
     "status": "reprovado",
     "snapshot": {
-      "head": "380ea14a6ef11728f25d39fdc2101252507c0a3a",
+      "head": "d3036ad8294c8b262fc1e58dbffe150e62af4fa8",
       "caminhos_sujos": []
     },
     "vereditos": [
       {
         "agente": "rainforest-mind:revisor",
-        "agente_id": "ae3ae1301a4ef74bc",
+        "agente_id": "a09b6f3b777c6f899",
         "veredito": "reprovado",
         "em": "2026-11-12",
-        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-ae3ae1301a4ef74bc.jsonl"
+        "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a09b6f3b777c6f899.jsonl"
       }
     ],
     "em_voo": [],
     "em": "2026-11-12",
-    "achados": 5,
-    "tentativas": 4,
+    "achados": 3,
+    "tentativas": 5,
     "voltas": [
       {
         "volta": 1,
@@ -175,6 +179,18 @@
             "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-a79ccf5d45d0cf3fc.jsonl"
           }
         ]
+      },
+      {
+        "volta": 4,
+        "vereditos": [
+          {
+            "agente": "rainforest-mind:revisor",
+            "agente_id": "ae3ae1301a4ef74bc",
+            "veredito": "reprovado",
+            "em": "2026-11-12",
+            "transcrito": "~/.claude/projects/C--Projetos-rainforest-mind/77ec548d-5d34-488c-99ae-8f54633d2e8c/subagents/agent-ae3ae1301a4ef74bc.jsonl"
+          }
+        ]
       }
     ],
     "rodadas_extra": [
@@ -186,8 +202,7 @@
         "texto": "Luis (2026-11-12): 5a rodada liberada (Q1 recomendada) para revisar o conserto do $$' (tarefa 18); preexistentes da revisao 4 plantados na #692",
         "em": "2026-11-12"
       }
-    ],
-    "liberado_em": "2026-11-12"
+    ]
   },
   "verificar": {
     "status": "pendente"
